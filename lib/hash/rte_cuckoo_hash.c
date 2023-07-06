@@ -166,6 +166,7 @@ rte_hash_create(const struct rte_hash_parameters *params)
 	/* Check for valid parameters */
 	if ((params->entries > RTE_HASH_ENTRIES_MAX) ||
 			(params->entries < RTE_HASH_BUCKET_ENTRIES) ||
+			(params->name == NULL) ||
 			(params->key_len == 0)) {
 		rte_errno = EINVAL;
 		RTE_LOG(ERR, HASH, "rte_hash_create has invalid parameters\n");
