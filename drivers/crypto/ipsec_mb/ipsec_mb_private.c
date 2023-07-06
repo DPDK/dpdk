@@ -205,10 +205,6 @@ ipsec_mb_remove(struct rte_vdev_device *vdev)
 		rte_free(cryptodev->security_ctx);
 		cryptodev->security_ctx = NULL;
 	}
-#ifdef AESNI_MB_DOCSIS_SEC_ENABLED
-	rte_free(cryptodev->security_ctx);
-	cryptodev->security_ctx = NULL;
-#endif
 
 	for (qp_id = 0; qp_id < cryptodev->data->nb_queue_pairs; qp_id++)
 		ipsec_mb_qp_release(cryptodev, qp_id);
