@@ -11,7 +11,7 @@
 #include <bus_pci_driver.h>
 #include <rte_atomic.h>
 #include <rte_prefetch.h>
-#ifdef RTE_LIB_SECURITY
+#ifdef BUILD_QAT_SYM
 #include <rte_ether.h>
 #endif
 
