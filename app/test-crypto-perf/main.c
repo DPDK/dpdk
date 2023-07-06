@@ -193,11 +193,10 @@ cperf_initialize_cryptodev(struct cperf_options *opts, uint8_t *enabled_cdevs)
 #endif
 
 		struct rte_cryptodev_info cdev_info;
-		uint8_t socket_id = rte_cryptodev_socket_id(cdev_id);
-		/* range check the socket_id - negative values become big
-		 * positive ones due to use of unsigned value
-		 */
-		if (socket_id >= RTE_MAX_NUMA_NODES)
+		int socket_id = rte_cryptodev_socket_id(cdev_id);
+
+		/* Use the first socket if SOCKET_ID_ANY is returned. */
+		if (socket_id == SOCKET_ID_ANY)
 			socket_id = 0;
 
 		rte_cryptodev_info_get(cdev_id, &cdev_info);
@@ -650,7 +649,11 @@ main(int argc, char **argv)
 
 		cdev_id = enabled_cdevs[cdev_index];
 
-		uint8_t socket_id = rte_cryptodev_socket_id(cdev_id);
+		int socket_id = rte_cryptodev_socket_id(cdev_id);
+
+		/* Use the first socket if SOCKET_ID_ANY is returned. */
+		if (socket_id == SOCKET_ID_ANY)
+			socket_id = 0;
 
 		ctx[i] = cperf_testmap[opts.test].constructor(
 				session_pool_socket[socket_id].sess_mp,
