@@ -15,6 +15,10 @@ mana_stop_tx_queues(struct rte_eth_dev *dev)
 	struct mana_priv *priv = dev->data->dev_private;
 	int i, ret;
 
+	for (i = 0; i < priv->num_queues; i++)
+		if (dev->data->tx_queue_state[i] == RTE_ETH_QUEUE_STATE_STOPPED)
+			return -EINVAL;
+
 	for (i = 0; i < priv->num_queues; i++) {
 		struct mana_txq *txq = dev->data->tx_queues[i];
 
@@ -51,6 +55,8 @@ mana_stop_tx_queues(struct rte_eth_dev *dev)
 
 		memset(&txq->gdma_sq, 0, sizeof(txq->gdma_sq));
 		memset(&txq->gdma_cq, 0, sizeof(txq->gdma_cq));
+
+		dev->data->tx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
 	}
 
 	return 0;
@@ -63,6 +69,11 @@ mana_start_tx_queues(struct rte_eth_dev *dev)
 	int ret, i;
 
 	/* start TX queues */
+
+	for (i = 0; i < priv->num_queues; i++)
+		if (dev->data->tx_queue_state[i] == RTE_ETH_QUEUE_STATE_STARTED)
+			return -EINVAL;
+
 	for (i = 0; i < priv->num_queues; i++) {
 		struct mana_txq *txq;
 		struct ibv_qp_init_attr qp_attr = { 0 };
@@ -142,6 +153,8 @@ mana_start_tx_queues(struct rte_eth_dev *dev)
 			txq->gdma_cq.id, txq->gdma_cq.buffer,
 			txq->gdma_cq.count, txq->gdma_cq.size,
 			txq->gdma_cq.head);
+
+		dev->data->tx_queue_state[i] = RTE_ETH_QUEUE_STATE_STARTED;
 	}
 
 	return 0;

@@ -155,6 +155,10 @@ mana_stop_rx_queues(struct rte_eth_dev *dev)
 	struct mana_priv *priv = dev->data->dev_private;
 	int ret, i;
 
+	for (i = 0; i < priv->num_queues; i++)
+		if (dev->data->rx_queue_state[i] == RTE_ETH_QUEUE_STATE_STOPPED)
+			return -EINVAL;
+
 	if (priv->rwq_qp) {
 		ret = ibv_destroy_qp(priv->rwq_qp);
 		if (ret)
@@ -211,7 +215,10 @@ mana_stop_rx_queues(struct rte_eth_dev *dev)
 
 		memset(&rxq->gdma_rq, 0, sizeof(rxq->gdma_rq));
 		memset(&rxq->gdma_cq, 0, sizeof(rxq->gdma_cq));
+
+		dev->data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
 	}
+
 	return 0;
 }
 
@@ -223,6 +230,11 @@ mana_start_rx_queues(struct rte_eth_dev *dev)
 	struct ibv_wq *ind_tbl[priv->num_queues];
 
 	DRV_LOG(INFO, "start rx queues");
+
+	for (i = 0; i < priv->num_queues; i++)
+		if (dev->data->rx_queue_state[i] == RTE_ETH_QUEUE_STATE_STARTED)
+			return -EINVAL;
+
 	for (i = 0; i < priv->num_queues; i++) {
 		struct mana_rxq *rxq = dev->data->rx_queues[i];
 		struct ibv_wq_init_attr wq_attr = {};
@@ -396,6 +408,9 @@ mana_start_rx_queues(struct rte_eth_dev *dev)
 		if (ret)
 			goto fail;
 	}
+
+	for (i = 0; i < priv->num_queues; i++)
+		dev->data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STARTED;
 
 	return 0;
 
