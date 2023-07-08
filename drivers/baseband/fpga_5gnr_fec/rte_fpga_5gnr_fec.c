@@ -1549,8 +1549,7 @@ fpga_harq_write_loopback(struct fpga_queue *q,
 		rte_bbdev_log(ERR, "HARQ in length > HARQ buffer size\n");
 	}
 
-	input = (uint64_t *)rte_pktmbuf_mtod_offset(harq_input,
-			uint8_t *, in_offset);
+	input = rte_pktmbuf_mtod_offset(harq_input, uint64_t *, in_offset);
 
 	while (left_length > 0) {
 		if (fpga_reg_read_8(q->d->mmio_base,
@@ -1627,8 +1626,8 @@ fpga_harq_read_loopback(struct fpga_queue *q,
 	}
 	left_length = harq_in_length;
 
-	input = (uint64_t *)rte_pktmbuf_mtod_offset(harq_output,
-			uint8_t *, harq_out_offset);
+	input = rte_pktmbuf_mtod_offset(harq_output, uint64_t *,
+					harq_out_offset);
 
 	while (left_length > 0) {
 		fpga_reg_write_32(q->d->mmio_base,
