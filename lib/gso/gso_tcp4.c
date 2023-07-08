@@ -16,8 +16,8 @@ update_ipv4_tcp_headers(struct rte_mbuf *pkt, uint8_t ipid_delta,
 	uint16_t l3_offset = pkt->l2_len;
 	uint16_t l4_offset = l3_offset + pkt->l3_len;
 
-	ipv4_hdr = (struct rte_ipv4_hdr *)(rte_pktmbuf_mtod(pkt, char*) +
-			l3_offset);
+	ipv4_hdr = rte_pktmbuf_mtod_offset(pkt, struct rte_ipv4_hdr *,
+					   l3_offset);
 	tcp_hdr = (struct rte_tcp_hdr *)((char *)ipv4_hdr + pkt->l3_len);
 	id = rte_be_to_cpu_16(ipv4_hdr->packet_id);
 	sent_seq = rte_be_to_cpu_32(tcp_hdr->sent_seq);
@@ -46,8 +46,8 @@ gso_tcp4_segment(struct rte_mbuf *pkt,
 	int ret;
 
 	/* Don't process the fragmented packet */
-	ipv4_hdr = (struct rte_ipv4_hdr *)(rte_pktmbuf_mtod(pkt, char *) +
-			pkt->l2_len);
+	ipv4_hdr = rte_pktmbuf_mtod_offset(pkt, struct rte_ipv4_hdr *,
+					   pkt->l2_len);
 	frag_off = rte_be_to_cpu_16(ipv4_hdr->fragment_offset);
 	if (unlikely(IS_FRAGMENTED(frag_off))) {
 		return 0;

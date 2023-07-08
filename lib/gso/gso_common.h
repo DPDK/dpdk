@@ -52,8 +52,8 @@ update_udp_header(struct rte_mbuf *pkt, uint16_t udp_offset)
 {
 	struct rte_udp_hdr *udp_hdr;
 
-	udp_hdr = (struct rte_udp_hdr *)(rte_pktmbuf_mtod(pkt, char *) +
-			udp_offset);
+	udp_hdr = rte_pktmbuf_mtod_offset(pkt, struct rte_udp_hdr *,
+					  udp_offset);
 	udp_hdr->dgram_len = rte_cpu_to_be_16(pkt->pkt_len - udp_offset);
 }
 
@@ -77,8 +77,8 @@ update_tcp_header(struct rte_mbuf *pkt, uint16_t l4_offset, uint32_t sent_seq,
 {
 	struct rte_tcp_hdr *tcp_hdr;
 
-	tcp_hdr = (struct rte_tcp_hdr *)(rte_pktmbuf_mtod(pkt, char *) +
-			l4_offset);
+	tcp_hdr = rte_pktmbuf_mtod_offset(pkt, struct rte_tcp_hdr *,
+					  l4_offset);
 	tcp_hdr->sent_seq = rte_cpu_to_be_32(sent_seq);
 	if (likely(non_tail))
 		tcp_hdr->tcp_flags &= (~(TCP_HDR_PSH_MASK |
@@ -104,8 +104,8 @@ update_ipv4_header(struct rte_mbuf *pkt, uint16_t l3_offset, uint16_t id)
 {
 	struct rte_ipv4_hdr *ipv4_hdr;
 
-	ipv4_hdr = (struct rte_ipv4_hdr *)(rte_pktmbuf_mtod(pkt, char *) +
-			l3_offset);
+	ipv4_hdr = rte_pktmbuf_mtod_offset(pkt, struct rte_ipv4_hdr *,
+					   l3_offset);
 	ipv4_hdr->total_length = rte_cpu_to_be_16(pkt->pkt_len - l3_offset);
 	ipv4_hdr->packet_id = rte_cpu_to_be_16(id);
 }
