@@ -2045,19 +2045,16 @@ xstats_reset(uint8_t dev_id,
 
 }
 
-static int
-process_eventdev_xstats(void)
+static unsigned int
+eventdev_xstats(void)
 {
-	int i;
-	int j;
-	int processing_eventdev_xstats = 0;
+	unsigned int count = 0;
+	int i, j;
 
-	for (i = 0; i < RTE_EVENT_MAX_DEVS; i++) {
-
-		if (!processing_eventdev_xstats)
-			processing_eventdev_xstats = 1;
+	for (i = 0; i < rte_event_dev_count(); i++) {
 
 		if (eventdev_var[i].dump_xstats) {
+			++count;
 			int ret = rte_event_dev_dump(i, stdout);
 
 			if (ret)
@@ -2065,6 +2062,7 @@ process_eventdev_xstats(void)
 		}
 
 		if (eventdev_var[i].shw_device_xstats == 1) {
+			++count;
 			xstats_display(i, RTE_EVENT_DEV_XSTATS_DEVICE, 0);
 
 			if (eventdev_var[i].reset_xstats == 1)
@@ -2072,6 +2070,7 @@ process_eventdev_xstats(void)
 		}
 
 		if (eventdev_var[i].shw_all_ports == 1) {
+			++count;
 			for (j = 0; j < MAX_PORTS_QUEUES; j++) {
 				xstats_display(i, RTE_EVENT_DEV_XSTATS_PORT, j);
 
@@ -2079,6 +2078,8 @@ process_eventdev_xstats(void)
 					xstats_reset(i, RTE_EVENT_DEV_XSTATS_PORT, j);
 			}
 		} else {
+			if (eventdev_var[i].num_ports > 0)
+				++count;
 			for (j = 0; j < eventdev_var[i].num_ports; j++) {
 				xstats_display(i, RTE_EVENT_DEV_XSTATS_PORT,
 					eventdev_var[i].ports[j]);
@@ -2090,6 +2091,7 @@ process_eventdev_xstats(void)
 		}
 
 		if (eventdev_var[i].shw_all_queues == 1) {
+			++count;
 			for (j = 0; j < MAX_PORTS_QUEUES; j++) {
 				xstats_display(i, RTE_EVENT_DEV_XSTATS_QUEUE, j);
 
@@ -2097,6 +2099,8 @@ process_eventdev_xstats(void)
 					xstats_reset(i, RTE_EVENT_DEV_XSTATS_QUEUE, j);
 			}
 		} else {
+			if (eventdev_var[i].num_queues > 0)
+				++count;
 			for (j = 0; j < eventdev_var[i].num_queues; j++) {
 				xstats_display(i, RTE_EVENT_DEV_XSTATS_QUEUE,
 						eventdev_var[i].queues[j]);
@@ -2108,10 +2112,7 @@ process_eventdev_xstats(void)
 		}
 	}
 
-	if (processing_eventdev_xstats)
-		return 1;
-
-	return 0;
+	return count;
 }
 
 int
@@ -2164,7 +2165,7 @@ main(int argc, char **argv)
 		return 0;
 	}
 
-	if (process_eventdev_xstats())
+	if (eventdev_xstats() > 0)
 		return 0;
 
 	nb_ports = rte_eth_dev_count_avail();
