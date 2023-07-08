@@ -631,15 +631,15 @@ hw_poll_job_ring(struct sec_job_ring_t *job_ring,
 
 			if (ctx->op->sym->m_dst) {
 				/*TODO check for ip header or other*/
-				ip4_hdr = (struct ip *)
-				rte_pktmbuf_mtod(ctx->op->sym->m_dst, char*);
+				ip4_hdr = rte_pktmbuf_mtod(ctx->op->sym->m_dst,
+							   struct ip *);
 				ctx->op->sym->m_dst->pkt_len =
 					rte_be_to_cpu_16(ip4_hdr->ip_len);
 				ctx->op->sym->m_dst->data_len =
 					rte_be_to_cpu_16(ip4_hdr->ip_len);
 			} else {
-				ip4_hdr = (struct ip *)
-				rte_pktmbuf_mtod(ctx->op->sym->m_src, char*);
+				ip4_hdr = rte_pktmbuf_mtod(ctx->op->sym->m_src,
+							   struct ip *);
 				ctx->op->sym->m_src->pkt_len =
 					rte_be_to_cpu_16(ip4_hdr->ip_len);
 				ctx->op->sym->m_src->data_len =

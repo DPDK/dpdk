@@ -107,13 +107,14 @@ process_zuc_cipher_op(struct ipsec_mb_qp *qp, struct rte_crypto_op **ops,
 		}
 #endif
 
-		src[i] = rte_pktmbuf_mtod(ops[i]->sym->m_src, uint8_t *) +
-				(ops[i]->sym->cipher.data.offset >> 3);
+		src[i] = rte_pktmbuf_mtod_offset(ops[i]->sym->m_src,
+						 uint8_t *,
+						 (ops[i]->sym->cipher.data.offset >> 3));
 		dst[i] = ops[i]->sym->m_dst ?
-			rte_pktmbuf_mtod(ops[i]->sym->m_dst, uint8_t *) +
-				(ops[i]->sym->cipher.data.offset >> 3) :
-			rte_pktmbuf_mtod(ops[i]->sym->m_src, uint8_t *) +
-				(ops[i]->sym->cipher.data.offset >> 3);
+			rte_pktmbuf_mtod_offset(ops[i]->sym->m_dst, uint8_t *,
+						(ops[i]->sym->cipher.data.offset >> 3)) :
+			rte_pktmbuf_mtod_offset(ops[i]->sym->m_src, uint8_t *,
+						(ops[i]->sym->cipher.data.offset >> 3));
 		iv[i] = rte_crypto_op_ctod_offset(ops[i], uint8_t *,
 				sess->cipher_iv_offset);
 		num_bytes[i] = ops[i]->sym->cipher.data.length >> 3;
@@ -159,8 +160,9 @@ process_zuc_hash_op(struct ipsec_mb_qp *qp, struct rte_crypto_op **ops,
 
 		length_in_bits[i] = ops[i]->sym->auth.data.length;
 
-		src[i] = rte_pktmbuf_mtod(ops[i]->sym->m_src, uint8_t *) +
-				(ops[i]->sym->auth.data.offset >> 3);
+		src[i] = rte_pktmbuf_mtod_offset(ops[i]->sym->m_src,
+						 uint8_t *,
+						 (ops[i]->sym->auth.data.offset >> 3));
 		iv[i] = rte_crypto_op_ctod_offset(ops[i], uint8_t *,
 				sess->auth_iv_offset);
 

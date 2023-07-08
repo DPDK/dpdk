@@ -520,7 +520,7 @@ cn9k_cpt_sec_post_process(struct rte_crypto_op *cop,
 
 	if (infl_req->op_flags & CPT_OP_FLAGS_IPSEC_DIR_INBOUND) {
 
-		hdr = (struct roc_ie_on_inb_hdr *)rte_pktmbuf_mtod(m, char *);
+		hdr = rte_pktmbuf_mtod(m, struct roc_ie_on_inb_hdr *);
 
 		if (likely(m->next == NULL)) {
 			ip = PLT_PTR_ADD(hdr, ROC_IE_ON_INB_RPTR_HDR);

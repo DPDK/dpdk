@@ -248,8 +248,8 @@ process_snow3g_hash_op(struct ipsec_mb_qp *qp, struct rte_crypto_op **ops,
 
 		length_in_bits = ops[i]->sym->auth.data.length;
 
-		src = rte_pktmbuf_mtod(ops[i]->sym->m_src, uint8_t *) +
-				(ops[i]->sym->auth.data.offset >> 3);
+		src = rte_pktmbuf_mtod_offset(ops[i]->sym->m_src, uint8_t *,
+					      (ops[i]->sym->auth.data.offset >> 3));
 		iv = rte_crypto_op_ctod_offset(ops[i], uint8_t *,
 				session->auth_iv_offset);
 

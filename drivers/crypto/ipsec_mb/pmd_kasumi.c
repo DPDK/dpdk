@@ -83,13 +83,16 @@ process_kasumi_cipher_op(struct ipsec_mb_qp *qp, struct rte_crypto_op **ops,
 	uint32_t num_bytes[num_ops];
 
 	for (i = 0; i < num_ops; i++) {
-		src[i] = rte_pktmbuf_mtod(ops[i]->sym->m_src, uint8_t *)
-			 + (ops[i]->sym->cipher.data.offset >> 3);
+		src[i] = rte_pktmbuf_mtod_offset(ops[i]->sym->m_src,
+						 uint8_t *,
+						 (ops[i]->sym->cipher.data.offset >> 3));
 		dst[i] = ops[i]->sym->m_dst
-			     ? rte_pktmbuf_mtod(ops[i]->sym->m_dst, uint8_t *)
-				   + (ops[i]->sym->cipher.data.offset >> 3)
-			     : rte_pktmbuf_mtod(ops[i]->sym->m_src, uint8_t *)
-				   + (ops[i]->sym->cipher.data.offset >> 3);
+			     ? rte_pktmbuf_mtod_offset(ops[i]->sym->m_dst,
+						       uint8_t *,
+						       (ops[i]->sym->cipher.data.offset >> 3))
+			     : rte_pktmbuf_mtod_offset(ops[i]->sym->m_src,
+						       uint8_t *,
+						       (ops[i]->sym->cipher.data.offset >> 3));
 		iv_ptr = rte_crypto_op_ctod_offset(ops[i], uint8_t *,
 						    session->cipher_iv_offset);
 		iv[i] = *((uint64_t *)(iv_ptr));
@@ -155,8 +158,8 @@ process_kasumi_hash_op(struct ipsec_mb_qp *qp, struct rte_crypto_op **ops,
 
 		length_in_bits = ops[i]->sym->auth.data.length;
 
-		src = rte_pktmbuf_mtod(ops[i]->sym->m_src, uint8_t *)
-		      + (ops[i]->sym->auth.data.offset >> 3);
+		src = rte_pktmbuf_mtod_offset(ops[i]->sym->m_src, uint8_t *,
+					      (ops[i]->sym->auth.data.offset >> 3));
 		/* Direction from next bit after end of message */
 		num_bytes = length_in_bits >> 3;
 

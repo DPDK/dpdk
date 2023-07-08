@@ -197,13 +197,14 @@ qat_bpicipher_postprocess(struct qat_sym_session *ctx,
 
 		last_block_offset = sym_op->cipher.data.offset +
 				sym_op->cipher.data.length - last_block_len;
-		last_block = (uint8_t *) rte_pktmbuf_mtod_offset(sym_op->m_src,
-				uint8_t *, last_block_offset);
+		last_block = rte_pktmbuf_mtod_offset(sym_op->m_src, uint8_t *,
+						     last_block_offset);
 
 		if (unlikely(sym_op->m_dst != NULL))
 			/* out-of-place operation (OOP) */
-			dst = (uint8_t *) rte_pktmbuf_mtod_offset(sym_op->m_dst,
-						uint8_t *, last_block_offset);
+			dst = rte_pktmbuf_mtod_offset(sym_op->m_dst,
+						      uint8_t *,
+						      last_block_offset);
 		else
 			dst = last_block;
 
