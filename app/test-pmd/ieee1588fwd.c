@@ -138,8 +138,8 @@ ieee1588_packet_fwd(struct fwd_stream *fs)
 	 * Check that the received PTP packet is a PTP V2 packet of type
 	 * PTP_SYNC_MESSAGE.
 	 */
-	ptp_hdr = (struct ptpv2_msg *) (rte_pktmbuf_mtod(mb, char *) +
-					sizeof(struct rte_ether_hdr));
+	ptp_hdr = rte_pktmbuf_mtod_offset(mb, struct ptpv2_msg *,
+					  sizeof(struct rte_ether_hdr));
 	if (ptp_hdr->version != 0x02) {
 		printf("Port %u Received PTP V2 Ethernet frame with wrong PTP"
 		       " protocol version 0x%x (should be 0x02)\n",
