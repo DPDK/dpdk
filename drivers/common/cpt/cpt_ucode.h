@@ -3167,9 +3167,8 @@ fill_fc_params(struct rte_crypto_op *cop,
 				m = m_src;
 
 			/* hmac immediately following data is best case */
-			if (unlikely(rte_pktmbuf_mtod(m, uint8_t *) +
-			    mc_hash_off !=
-			    (uint8_t *)sym_op->aead.digest.data)) {
+			if (unlikely(rte_pktmbuf_mtod_offset(m, uint8_t *, mc_hash_off) !=
+				     (uint8_t *)sym_op->aead.digest.data)) {
 				flags |= VALID_MAC_BUF;
 				fc_params.mac_buf.size = sess_misc->mac_len;
 				fc_params.mac_buf.vaddr =
@@ -3211,9 +3210,8 @@ fill_fc_params(struct rte_crypto_op *cop,
 
 			/* hmac immediately following data is best case */
 			if (!ctx->dec_auth && !ctx->auth_enc &&
-				 (unlikely(rte_pktmbuf_mtod(m, uint8_t *) +
-			    mc_hash_off !=
-			     (uint8_t *)sym_op->auth.digest.data))) {
+				 (unlikely(rte_pktmbuf_mtod_offset(m, uint8_t *, mc_hash_off) !=
+					   (uint8_t *)sym_op->auth.digest.data))) {
 				flags |= VALID_MAC_BUF;
 				fc_params.mac_buf.size =
 					sess_misc->mac_len;
