@@ -354,8 +354,8 @@ parse_sync(struct ptpv2_data_slave_ordinary *ptp_data, uint16_t rx_tstamp_idx)
 {
 	struct ptp_header *ptp_hdr;
 
-	ptp_hdr = (struct ptp_header *)(rte_pktmbuf_mtod(ptp_data->m, char *)
-			+ sizeof(struct rte_ether_hdr));
+	ptp_hdr = rte_pktmbuf_mtod_offset(ptp_data->m, struct ptp_header *,
+					  sizeof(struct rte_ether_hdr));
 	ptp_data->seqID_SYNC = rte_be_to_cpu_16(ptp_hdr->seq_id);
 
 	if (ptp_data->ptpset == 0) {
@@ -397,15 +397,15 @@ parse_fup(struct ptpv2_data_slave_ordinary *ptp_data)
 	int ret;
 
 	eth_hdr = rte_pktmbuf_mtod(m, struct rte_ether_hdr *);
-	ptp_hdr = (struct ptp_header *)(rte_pktmbuf_mtod(m, char *)
-			+ sizeof(struct rte_ether_hdr));
+	ptp_hdr = rte_pktmbuf_mtod_offset(m, struct ptp_header *,
+					  sizeof(struct rte_ether_hdr));
 	if (memcmp(&ptp_data->master_clock_id,
 			&ptp_hdr->source_port_id.clock_id,
 			sizeof(struct clock_id)) != 0)
 		return;
 
 	ptp_data->seqID_FOLLOWUP = rte_be_to_cpu_16(ptp_hdr->seq_id);
-	ptp_msg = (struct ptp_message *) (rte_pktmbuf_mtod(m, char *) +
+	ptp_msg = rte_pktmbuf_mtod_offset(m, struct ptp_message *,
 					  sizeof(struct rte_ether_hdr));
 
 	origin_tstamp = &ptp_msg->follow_up.precise_origin_tstamp;
@@ -537,8 +537,8 @@ parse_drsp(struct ptpv2_data_slave_ordinary *ptp_data)
 	struct tstamp *rx_tstamp;
 	uint16_t seq_id;
 
-	ptp_msg = (struct ptp_message *) (rte_pktmbuf_mtod(m, char *) +
-					sizeof(struct rte_ether_hdr));
+	ptp_msg = rte_pktmbuf_mtod_offset(m, struct ptp_message *,
+					  sizeof(struct rte_ether_hdr));
 	seq_id = rte_be_to_cpu_16(ptp_msg->delay_resp.hdr.seq_id);
 	if (memcmp(&ptp_data->client_clock_id,
 		   &ptp_msg->delay_resp.req_port_id.clock_id,
@@ -585,8 +585,8 @@ parse_ptp_frames(uint16_t portid, struct rte_mbuf *m) {
 	if (eth_type == PTP_PROTOCOL) {
 		ptp_data.m = m;
 		ptp_data.portid = portid;
-		ptp_hdr = (struct ptp_header *)(rte_pktmbuf_mtod(m, char *)
-					+ sizeof(struct rte_ether_hdr));
+		ptp_hdr = rte_pktmbuf_mtod_offset(m, struct ptp_header *,
+						  sizeof(struct rte_ether_hdr));
 
 		switch (ptp_hdr->msg_type) {
 		case SYNC:
