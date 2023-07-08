@@ -150,8 +150,8 @@ check_seq_option(struct gro_tcp_item *item,
 	struct rte_tcp_hdr *tcph_orig;
 	uint16_t len, tcp_hl_orig;
 
-	iph_orig = (char *)(rte_pktmbuf_mtod(pkt_orig, char *) +
-			l2_offset + pkt_orig->l2_len);
+	iph_orig = rte_pktmbuf_mtod_offset(pkt_orig, char *,
+					   l2_offset + pkt_orig->l2_len);
 	tcph_orig = (struct rte_tcp_hdr *)(iph_orig + pkt_orig->l3_len);
 	tcp_hl_orig = pkt_orig->l4_len;
 

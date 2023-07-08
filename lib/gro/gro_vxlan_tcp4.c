@@ -263,8 +263,8 @@ update_vxlan_header(struct gro_vxlan_tcp4_item *item)
 
 	/* Update the outer IPv4 header. */
 	len = pkt->pkt_len - pkt->outer_l2_len;
-	ipv4_hdr = (struct rte_ipv4_hdr *)(rte_pktmbuf_mtod(pkt, char *) +
-			pkt->outer_l2_len);
+	ipv4_hdr = rte_pktmbuf_mtod_offset(pkt, struct rte_ipv4_hdr *,
+					   pkt->outer_l2_len);
 	ipv4_hdr->total_length = rte_cpu_to_be_16(len);
 
 	/* Update the outer UDP header. */

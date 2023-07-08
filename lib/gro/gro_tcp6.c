@@ -118,8 +118,8 @@ update_header(struct gro_tcp_item *item)
 	struct rte_ipv6_hdr *ipv6_hdr;
 	struct rte_mbuf *pkt = item->firstseg;
 
-	ipv6_hdr = (struct rte_ipv6_hdr *)(rte_pktmbuf_mtod(pkt, char *) +
-			pkt->l2_len);
+	ipv6_hdr = rte_pktmbuf_mtod_offset(pkt, struct rte_ipv6_hdr *,
+					   pkt->l2_len);
 	ipv6_hdr->payload_len = rte_cpu_to_be_16(pkt->pkt_len -
 			pkt->l2_len - pkt->l3_len);
 }

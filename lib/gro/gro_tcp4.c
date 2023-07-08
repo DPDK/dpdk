@@ -223,8 +223,8 @@ update_header(struct gro_tcp_item *item)
 	struct rte_ipv4_hdr *ipv4_hdr;
 	struct rte_mbuf *pkt = item->firstseg;
 
-	ipv4_hdr = (struct rte_ipv4_hdr *)(rte_pktmbuf_mtod(pkt, char *) +
-			pkt->l2_len);
+	ipv4_hdr = rte_pktmbuf_mtod_offset(pkt, struct rte_ipv4_hdr *,
+					   pkt->l2_len);
 	ipv4_hdr->total_length = rte_cpu_to_be_16(pkt->pkt_len -
 			pkt->l2_len);
 }
