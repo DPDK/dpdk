@@ -120,15 +120,19 @@ struct mlx5dr_action {
 			struct mlx5dr_pool_chunk stc[MLX5DR_TABLE_TYPE_MAX];
 			union {
 				struct {
-					struct mlx5dr_devx_obj *pattern_obj;
+					struct mlx5dr_devx_obj *pat_obj;
 					struct mlx5dr_devx_obj *arg_obj;
 					__be64 single_action;
+					uint8_t num_of_patterns;
 					uint8_t single_action_type;
-					uint16_t num_of_actions;
+					uint8_t num_of_actions;
+					uint8_t max_num_of_actions;
 				} modify_header;
 				struct {
 					struct mlx5dr_devx_obj *arg_obj;
 					uint32_t header_size;
+					uint8_t num_of_hdrs;
+					uint16_t max_hdr_sz;
 				} reformat;
 				struct {
 					struct mlx5dr_devx_obj *devx_obj;

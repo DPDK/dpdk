@@ -28,7 +28,6 @@ struct mlx5dr_pattern_cache {
 };
 
 struct mlx5dr_pattern_cache_item {
-	enum mlx5dr_action_type type;
 	struct {
 		struct mlx5dr_devx_obj *pattern_obj;
 		struct dr_icm_chunk *chunk;
@@ -53,16 +52,29 @@ int mlx5dr_pat_init_pattern_cache(struct mlx5dr_pattern_cache **cache);
 
 void mlx5dr_pat_uninit_pattern_cache(struct mlx5dr_pattern_cache *cache);
 
-bool mlx5dr_pat_arg_verify_actions(__be64 pattern[], uint16_t num_of_actions);
+bool mlx5dr_pat_verify_actions(__be64 pattern[], size_t sz);
 
-int mlx5dr_pat_arg_create_modify_header(struct mlx5dr_context *ctx,
-					struct mlx5dr_action *action,
-					size_t pattern_sz,
-					__be64 pattern[],
-					uint32_t bulk_size);
+struct mlx5dr_devx_obj *
+mlx5dr_arg_create(struct mlx5dr_context *ctx,
+		  uint8_t *data,
+		  size_t data_sz,
+		  uint32_t log_bulk_sz,
+		  bool write_data);
 
-void mlx5dr_pat_arg_destroy_modify_header(struct mlx5dr_context *ctx,
-					  struct mlx5dr_action *action);
+struct mlx5dr_devx_obj *
+mlx5dr_arg_create_modify_header_arg(struct mlx5dr_context *ctx,
+				    __be64 *data,
+				    uint8_t num_of_actions,
+				    uint32_t log_bulk_sz,
+				    bool write_data);
+
+struct mlx5dr_devx_obj *
+mlx5dr_pat_get_pattern(struct mlx5dr_context *ctx,
+		       __be64 *pattern,
+		       size_t pattern_sz);
+
+void mlx5dr_pat_put_pattern(struct mlx5dr_context *ctx,
+			    struct mlx5dr_devx_obj *pat_obj);
 
 bool mlx5dr_arg_is_valid_arg_request_size(struct mlx5dr_context *ctx,
 					  uint32_t arg_size);

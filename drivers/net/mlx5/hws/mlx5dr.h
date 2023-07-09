@@ -156,8 +156,21 @@ struct mlx5dr_devx_obj {
 	uint32_t id;
 };
 
-/* In actions that take offset, the offset is unique, and the user should not
- * reuse the same index because data changing is not atomic.
+struct mlx5dr_action_reformat_header {
+	size_t sz;
+	void *data;
+};
+
+struct mlx5dr_action_mh_pattern {
+	/* Byte size of modify actions provided by "data" */
+	size_t sz;
+	/* PRM format modify actions pattern */
+	__be64 *data;
+};
+
+/* In actions that take offset, the offset is unique, pointing to a single
+ * resource and the user should not reuse the same index because data changing
+ * is not atomic.
  */
 struct mlx5dr_rule_action {
 	struct mlx5dr_action *action;
@@ -172,11 +185,13 @@ struct mlx5dr_rule_action {
 
 		struct {
 			uint32_t offset;
+			uint8_t pattern_idx;
 			uint8_t *data;
 		} modify_header;
 
 		struct {
 			uint32_t offset;
+			uint8_t hdr_idx;
 			uint8_t *data;
 		} reformat;
 
@@ -481,12 +496,12 @@ mlx5dr_action_create_counter(struct mlx5dr_context *ctx,
  *	The context in which the new action will be created.
  * @param[in] reformat_type
  *	Type of reformat prefixed with MLX5DR_ACTION_TYP_REFORMAT.
- * @param[in] data_sz
- *	Size in bytes of data.
- * @param[in] inline_data
- *	Header data array in case of inline action.
+ * @param[in] num_of_hdrs
+ *	Number of provided headers in "hdrs" array.
+ * @param[in] hdrs
+ *	Headers array containing header information.
  * @param[in] log_bulk_size
- *	Number of unique values used with this pattern.
+ *	Number of unique values used with this reformat.
  * @param[in] flags
  *	Action creation flags. (enum mlx5dr_action_flags)
  * @return pointer to mlx5dr_action on success NULL otherwise.
@@ -494,8 +509,8 @@ mlx5dr_action_create_counter(struct mlx5dr_context *ctx,
 struct mlx5dr_action *
 mlx5dr_action_create_reformat(struct mlx5dr_context *ctx,
 			      enum mlx5dr_action_type reformat_type,
-			      size_t data_sz,
-			      void *inline_data,
+			      uint8_t num_of_hdrs,
+			      struct mlx5dr_action_reformat_header *hdrs,
 			      uint32_t log_bulk_size,
 			      uint32_t flags);
 
@@ -503,10 +518,10 @@ mlx5dr_action_create_reformat(struct mlx5dr_context *ctx,
  *
  * @param[in] ctx
  *	The context in which the new action will be created.
- * @param[in] pattern_sz
- *	Byte size of the pattern array.
- * @param[in] pattern
- *	PRM format modify pattern action array.
+ * @param[in] num_of_patterns
+ *	Number of provided patterns in "patterns" array.
+ * @param[in] patterns
+ *	Patterns array containing pattern information.
  * @param[in] log_bulk_size
  *	Number of unique values used with this pattern.
  * @param[in] flags
@@ -515,8 +530,8 @@ mlx5dr_action_create_reformat(struct mlx5dr_context *ctx,
  */
 struct mlx5dr_action *
 mlx5dr_action_create_modify_header(struct mlx5dr_context *ctx,
-				   size_t pattern_sz,
-				   __be64 pattern[],
+				   uint8_t num_of_patterns,
+				   struct mlx5dr_action_mh_pattern *patterns,
 				   uint32_t log_bulk_size,
 				   uint32_t flags);
 

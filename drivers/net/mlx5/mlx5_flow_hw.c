@@ -1766,6 +1766,7 @@ __flow_hw_actions_translate(struct rte_eth_dev *dev,
 		}
 	}
 	if (mhdr.pos != UINT16_MAX) {
+		struct mlx5dr_action_mh_pattern pattern;
 		uint32_t flags;
 		uint32_t bulk_size;
 		size_t mhdr_len;
@@ -1787,14 +1788,17 @@ __flow_hw_actions_translate(struct rte_eth_dev *dev,
 		} else {
 			bulk_size = rte_log2_u32(table_attr->nb_flows);
 		}
+		pattern.data = (__be64 *)acts->mhdr->mhdr_cmds;
+		pattern.sz = mhdr_len;
 		acts->mhdr->action = mlx5dr_action_create_modify_header
-				(priv->dr_ctx, mhdr_len, (__be64 *)acts->mhdr->mhdr_cmds,
+				(priv->dr_ctx, 1, &pattern,
 				 bulk_size, flags);
 		if (!acts->mhdr->action)
 			goto err;
 		acts->rule_acts[acts->mhdr->pos].action = acts->mhdr->action;
 	}
 	if (reformat_used) {
+		struct mlx5dr_action_reformat_header hdr;
 		uint8_t buf[MLX5_ENCAP_MAX_LEN];
 		bool shared_rfmt = true;
 
@@ -1818,9 +1822,12 @@ __flow_hw_actions_translate(struct rte_eth_dev *dev,
 			acts->encap_decap->data_size = data_size;
 			memcpy(acts->encap_decap->data, encap_data, data_size);
 		}
+
+		hdr.sz = data_size;
+		hdr.data = encap_data;
 		acts->encap_decap->action = mlx5dr_action_create_reformat
 				(priv->dr_ctx, refmt_type,
-				 data_size, encap_data,
+				 1, &hdr,
 				 shared_rfmt ? 0 : rte_log2_u32(table_attr->nb_flows),
 				 mlx5_hw_act_flag[!!attr->group][type] |
 				 (shared_rfmt ? MLX5DR_ACTION_FLAG_SHARED : 0));
