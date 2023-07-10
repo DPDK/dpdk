@@ -665,7 +665,7 @@ test_graph_clone(void)
 {
 	rte_graph_t cloned_graph_id = RTE_GRAPH_ID_INVALID;
 	rte_graph_t main_graph_id = RTE_GRAPH_ID_INVALID;
-	struct rte_graph_param graph_conf;
+	struct rte_graph_param graph_conf = {0};
 	int ret = 0;
 
 	main_graph_id = rte_graph_from_name("worker0");
@@ -700,6 +700,7 @@ test_graph_model_mcore_dispatch_node_lcore_affinity_set(void)
 {
 	rte_graph_t cloned_graph_id = RTE_GRAPH_ID_INVALID;
 	unsigned int worker_lcore = RTE_MAX_LCORE;
+	struct rte_graph_param graph_conf = {0};
 	rte_node_t nid = RTE_NODE_ID_INVALID;
 	char node_name[64] = "test_node00";
 	struct rte_node *node;
@@ -711,7 +712,7 @@ test_graph_model_mcore_dispatch_node_lcore_affinity_set(void)
 		printf("Set node %s affinity to lcore %u\n", node_name, worker_lcore);
 
 	nid = rte_node_from_name(node_name);
-	cloned_graph_id = rte_graph_clone(graph_id, "cloned-test1", NULL);
+	cloned_graph_id = rte_graph_clone(graph_id, "cloned-test1", &graph_conf);
 	node = rte_graph_node_get(cloned_graph_id, nid);
 
 	if (node->dispatch.lcore_id != worker_lcore) {
@@ -729,11 +730,12 @@ test_graph_model_mcore_dispatch_core_bind_unbind(void)
 {
 	rte_graph_t cloned_graph_id = RTE_GRAPH_ID_INVALID;
 	unsigned int worker_lcore = RTE_MAX_LCORE;
+	struct rte_graph_param graph_conf = {0};
 	struct rte_graph *graph;
 	int ret = 0;
 
 	worker_lcore = rte_get_next_lcore(worker_lcore, true, 1);
-	cloned_graph_id = rte_graph_clone(graph_id, "cloned-test2", NULL);
+	cloned_graph_id = rte_graph_clone(graph_id, "cloned-test2", &graph_conf);
 
 	ret = rte_graph_model_mcore_dispatch_core_bind(cloned_graph_id, worker_lcore);
 	if (ret != 0) {
@@ -765,10 +767,11 @@ static int
 test_graph_worker_model_set_get(void)
 {
 	rte_graph_t cloned_graph_id = RTE_GRAPH_ID_INVALID;
+	struct rte_graph_param graph_conf = {0};
 	struct rte_graph *graph;
 	int ret = 0;
 
-	cloned_graph_id = rte_graph_clone(graph_id, "cloned-test3", NULL);
+	cloned_graph_id = rte_graph_clone(graph_id, "cloned-test3", &graph_conf);
 	ret = rte_graph_worker_model_set(RTE_GRAPH_MODEL_MCORE_DISPATCH);
 	if (ret != 0) {
 		printf("Set graph mcore dispatch model failed\n");
