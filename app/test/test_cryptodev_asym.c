@@ -2248,8 +2248,7 @@ _test_sm2_enc(bool rnd_secret)
 		}
 	}
 exit:
-	if (pbuf != NULL)
-		rte_free(pbuf);
+	rte_free(pbuf);
 
 	if (sess != NULL)
 		rte_cryptodev_asym_session_free(dev_id, sess);
