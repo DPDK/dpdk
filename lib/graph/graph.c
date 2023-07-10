@@ -287,7 +287,7 @@ rte_graph_model_mcore_dispatch_core_bind(rte_graph_t id, int lcore)
 		if (graph->id == id)
 			break;
 
-	if (graph->graph->model == RTE_GRAPH_MODEL_MCORE_DISPATCH)
+	if (graph->graph->model != RTE_GRAPH_MODEL_MCORE_DISPATCH)
 		goto fail;
 
 	graph->lcore_id = lcore;

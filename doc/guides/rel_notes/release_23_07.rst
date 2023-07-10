@@ -208,6 +208,14 @@ New Features
 
   Enhanced the GRO library to support TCP packets over IPv6 network.
 
+* **Added mcore dispatch model in graph library.**
+
+  * Added set, get and validate model APIs to enhance graph framework
+    to choose different walk models.
+  * Added mcore dispatch model to support cross-core dispatching mechanism.
+  * Added a command option ``--model`` in l3fwd-graph example
+    to choose RTC or mcore dispatch model.
+
 * **Added DMA device performance test application.**
 
   Added an application to test the performance of DMA device and CPU.

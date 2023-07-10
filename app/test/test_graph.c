@@ -737,6 +737,12 @@ test_graph_model_mcore_dispatch_core_bind_unbind(void)
 	worker_lcore = rte_get_next_lcore(worker_lcore, true, 1);
 	cloned_graph_id = rte_graph_clone(graph_id, "cloned-test2", &graph_conf);
 
+	ret = rte_graph_worker_model_set(RTE_GRAPH_MODEL_MCORE_DISPATCH);
+	if (ret != 0) {
+		printf("Set graph mcore dispatch model failed\n");
+		ret = -1;
+	}
+
 	ret = rte_graph_model_mcore_dispatch_core_bind(cloned_graph_id, worker_lcore);
 	if (ret != 0) {
 		printf("bind graph %d to lcore %u failed\n", graph_id, worker_lcore);
