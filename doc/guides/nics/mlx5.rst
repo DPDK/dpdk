@@ -483,6 +483,14 @@ Limitations
   - The input buffer, providing the removal size, is not validated.
   - The buffer size must match the length of the headers to be removed.
 
+- Outer UDP checksum calculation for encapsulation flow actions:
+
+  - Currently available NVIDIA NICs and DPUs do not have a capability to calculate
+    the UDP checksum in the header added using encapsulation flow actions.
+
+    Applications are required to use 0 in UDP checksum field in such flow actions.
+    Resulting packet will have outer UDP checksum equal to 0.
+
 - ICMP(code/type/identifier/sequence number) / ICMP6(code/type/identifier/sequence number) matching,
   IP-in-IP and MPLS flow matching are all mutually exclusive features which cannot be supported together
   (see :ref:`mlx5_firmware_config`).
