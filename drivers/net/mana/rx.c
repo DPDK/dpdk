@@ -380,7 +380,7 @@ uint16_t
 mana_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 {
 	uint16_t pkt_received = 0;
-	uint8_t wqe_posted = 0;
+	uint16_t wqe_posted = 0;
 	struct mana_rxq *rxq = dpdk_rxq;
 	struct mana_priv *priv = rxq->priv;
 	struct rte_mbuf *mbuf;
