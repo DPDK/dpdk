@@ -457,7 +457,7 @@ extern int mana_logtype_init;
 
 int mana_ring_doorbell(void *db_page, enum gdma_queue_types queue_type,
 		       uint32_t queue_id, uint32_t tail, uint8_t arm);
-int mana_rq_ring_doorbell(struct mana_rxq *rxq, uint8_t arm);
+int mana_rq_ring_doorbell(struct mana_rxq *rxq);
 
 int gdma_post_work_request(struct mana_gdma_queue *queue,
 			   struct gdma_work_request *work_req,

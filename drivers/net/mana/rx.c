@@ -22,7 +22,7 @@ static uint8_t mana_rss_hash_key_default[TOEPLITZ_HASH_KEY_SIZE_IN_BYTES] = {
 };
 
 int
-mana_rq_ring_doorbell(struct mana_rxq *rxq, uint8_t arm)
+mana_rq_ring_doorbell(struct mana_rxq *rxq)
 {
 	struct mana_priv *priv = rxq->priv;
 	int ret;
@@ -36,10 +36,13 @@ mana_rq_ring_doorbell(struct mana_rxq *rxq, uint8_t arm)
 		db_page = process_priv->db_page;
 	}
 
+	/* Hardware Spec specifies that software client should set 0 for
+	 * wqe_cnt for Receive Queues.
+	 */
 	ret = mana_ring_doorbell(db_page, GDMA_QUEUE_RECEIVE,
 			 rxq->gdma_rq.id,
 			 rxq->gdma_rq.head * GDMA_WQE_ALIGNMENT_UNIT_SIZE,
-			 arm);
+			 0);
 
 	if (ret)
 		DP_LOG(ERR, "failed to ring RX doorbell ret %d", ret);
@@ -120,7 +123,7 @@ mana_alloc_and_post_rx_wqes(struct mana_rxq *rxq)
 		}
 	}
 
-	mana_rq_ring_doorbell(rxq, rxq->num_desc);
+	mana_rq_ring_doorbell(rxq);
 
 	return ret;
 }
@@ -517,7 +520,7 @@ drop:
 	}
 
 	if (wqe_posted)
-		mana_rq_ring_doorbell(rxq, wqe_posted);
+		mana_rq_ring_doorbell(rxq);
 
 	return pkt_received;
 }
