@@ -338,46 +338,6 @@ hns3_recv_pkts_vec_sve(void *__restrict rx_queue,
 }
 
 static inline void
-hns3_tx_free_buffers_sve(struct hns3_tx_queue *txq)
-{
-#define HNS3_SVE_CHECK_DESCS_PER_LOOP	8
-#define TX_VLD_U8_ZIP_INDEX		svindex_u8(0, 4)
-	svbool_t pg32 = svwhilelt_b32(0, HNS3_SVE_CHECK_DESCS_PER_LOOP);
-	svuint32_t vld, vld2;
-	svuint8_t vld_u8;
-	uint64_t vld_all;
-	struct hns3_desc *tx_desc;
-	int i;
-
-	/*
-	 * All mbufs can be released only when the VLD bits of all
-	 * descriptors in a batch are cleared.
-	 */
-	/* do logical OR operation for all desc's valid field */
-	vld = svdup_n_u32(0);
-	tx_desc = &txq->tx_ring[txq->next_to_clean];
-	for (i = 0; i < txq->tx_rs_thresh; i += HNS3_SVE_CHECK_DESCS_PER_LOOP,
-				tx_desc += HNS3_SVE_CHECK_DESCS_PER_LOOP) {
-		vld2 = svld1_gather_u32offset_u32(pg32, (uint32_t *)tx_desc,
-				svindex_u32(BD_FIELD_VALID_OFFSET, BD_SIZE));
-		vld = svorr_u32_z(pg32, vld, vld2);
-	}
-	/* shift left and then right to get all valid bit */
-	vld = svlsl_n_u32_z(pg32, vld,
-			    HNS3_UINT32_BIT - 1 - HNS3_TXD_VLD_B);
-	vld = svreinterpret_u32_s32(svasr_n_s32_z(pg32,
-		svreinterpret_s32_u32(vld), HNS3_UINT32_BIT - 1));
-	/* use tbl to compress 32bit-lane to 8bit-lane */
-	vld_u8 = svtbl_u8(svreinterpret_u8_u32(vld), TX_VLD_U8_ZIP_INDEX);
-	/* dump compressed 64bit to variable */
-	svst1_u64(PG64_64BIT, &vld_all, svreinterpret_u64_u8(vld_u8));
-	if (vld_all > 0)
-		return;
-
-	hns3_tx_bulk_free_buffers(txq);
-}
-
-static inline void
 hns3_tx_fill_hw_ring_sve(struct hns3_tx_queue *txq,
 			 struct rte_mbuf **pkts,
 			 uint16_t nb_pkts)
@@ -462,7 +422,7 @@ hns3_xmit_fixed_burst_vec_sve(void *__restrict tx_queue,
 	uint16_t nb_tx = 0;
 
 	if (txq->tx_bd_ready < txq->tx_free_thresh)
-		hns3_tx_free_buffers_sve(txq);
+		hns3_tx_free_buffers(txq);
 
 	nb_pkts = RTE_MIN(txq->tx_bd_ready, nb_pkts);
 	if (unlikely(nb_pkts == 0)) {
