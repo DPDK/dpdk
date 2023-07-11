@@ -198,7 +198,7 @@ outb_tun_pkt_prepare(struct rte_ipsec_sa *sa, rte_be64_t sqc,
 		struct rte_udp_hdr *udph = (struct rte_udp_hdr *)
 			(ph + sa->hdr_len - sizeof(struct rte_udp_hdr));
 		udph->dgram_len = rte_cpu_to_be_16(mb->pkt_len - sqh_len -
-				sa->hdr_l3_off - sa->hdr_len);
+				sa->hdr_len + sizeof(struct rte_udp_hdr));
 	}
 
 	/* update original and new ip header fields */
