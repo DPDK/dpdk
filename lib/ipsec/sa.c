@@ -371,7 +371,7 @@ esp_outb_tun_init(struct rte_ipsec_sa *sa, const struct rte_ipsec_sa_prm *prm)
 
 	/* update l2_len and l3_len fields for outbound mbuf */
 	sa->tx_offload.val = rte_mbuf_tx_offload(sa->hdr_l3_off,
-		sa->hdr_len - sa->hdr_l3_off, 0, 0, 0, 0, 0);
+		prm->tun.hdr_len - sa->hdr_l3_off, 0, 0, 0, 0, 0);
 
 	esp_outb_init(sa, sa->hdr_len, prm->ipsec_xform.esn.value);
 }
