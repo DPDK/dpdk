@@ -534,11 +534,6 @@ int hn_vf_stop(struct rte_eth_dev *dev)
 		return ret;					\
 	}
 
-void hn_vf_reset(struct rte_eth_dev *dev)
-{
-	VF_ETHDEV_FUNC(dev, rte_eth_dev_reset);
-}
-
 int hn_vf_close(struct rte_eth_dev *dev)
 {
 	int ret = 0;
