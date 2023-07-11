@@ -107,7 +107,11 @@ static inline phys_addr_t iova_to_phys(struct task_struct *tsk,
 #ifdef HAVE_TSK_IN_GUP
 	ret = get_user_pages_remote(tsk, tsk->mm, iova, 1, 0, &page, NULL, NULL);
 #else
+  #ifdef HAVE_VMA_IN_GUP
 	ret = get_user_pages_remote(tsk->mm, iova, 1, 0, &page, NULL, NULL);
+  #else
+	ret = get_user_pages_remote(tsk->mm, iova, 1, 0, &page, NULL);
+  #endif
 #endif
 	if (ret < 0)
 		return 0;
