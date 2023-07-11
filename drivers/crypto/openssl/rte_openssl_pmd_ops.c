@@ -1285,6 +1285,7 @@ err_dsa:
 	case RTE_CRYPTO_ASYM_XFORM_SM2:
 	{
 #if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
+#ifndef OPENSSL_NO_SM2
 		OSSL_PARAM_BLD *param_bld = NULL;
 		OSSL_PARAM *params = NULL;
 		int ret = -1;
@@ -1324,6 +1325,10 @@ err_sm2:
 			OSSL_PARAM_free(asym_session->u.sm2.params);
 
 		return -1;
+#else
+		OPENSSL_LOG(WARNING, "SM2 unsupported in current OpenSSL Version");
+		return -ENOTSUP;
+#endif
 #else
 		OPENSSL_LOG(WARNING, "SM2 unsupported for OpenSSL Version < 3.0");
 		return -ENOTSUP;
