@@ -126,12 +126,13 @@ rte_eth_dev_pci_generic_probe(struct rte_pci_device *pci_dev,
 	struct rte_eth_dev *eth_dev;
 	int ret;
 
+	if (*dev_init == NULL)
+		return -EINVAL;
+
 	eth_dev = rte_eth_dev_pci_allocate(pci_dev, private_data_size);
 	if (!eth_dev)
 		return -ENOMEM;
 
-	if (*dev_init == NULL)
-		return -EINVAL;
 	ret = dev_init(eth_dev);
 	if (ret)
 		rte_eth_dev_release_port(eth_dev);
