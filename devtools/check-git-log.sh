@@ -264,7 +264,7 @@ names=$(git log --format='From: %an <%ae>%n%b' --reverse $range |
 	sed -rn 's,.*: (.*<.*@.*>),\1,p' |
 	sort -u)
 bad=$(for contributor in $names ; do
-	contributor=${contributor//(/\\(}
+	contributor=$(echo $contributor | sed 's,(,\\(,')
 	! grep -qE "^$contributor($| <)" $selfdir/../.mailmap || continue
 	name=${contributor%% <*}
 	if grep -q "^$name <" $selfdir/../.mailmap ; then
