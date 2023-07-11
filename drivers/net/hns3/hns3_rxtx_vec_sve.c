@@ -237,54 +237,6 @@ hns3_recv_burst_vec_sve(struct hns3_rx_queue *__restrict rxq,
 	return nb_rx;
 }
 
-static inline void
-hns3_rxq_rearm_mbuf_sve(struct hns3_rx_queue *rxq)
-{
-#define REARM_LOOP_STEP_NUM	4
-	struct hns3_entry *rxep = &rxq->sw_ring[rxq->rx_rearm_start];
-	struct hns3_desc *rxdp = rxq->rx_ring + rxq->rx_rearm_start;
-	struct hns3_entry *rxep_tmp = rxep;
-	int i;
-
-	if (unlikely(rte_mempool_get_bulk(rxq->mb_pool, (void *)rxep,
-					  HNS3_DEFAULT_RXQ_REARM_THRESH) < 0)) {
-		rte_eth_devices[rxq->port_id].data->rx_mbuf_alloc_failed++;
-		return;
-	}
-
-	for (i = 0; i < HNS3_DEFAULT_RXQ_REARM_THRESH; i += REARM_LOOP_STEP_NUM,
-		rxep_tmp += REARM_LOOP_STEP_NUM) {
-		svuint64_t prf = svld1_u64(PG64_256BIT, (uint64_t *)rxep_tmp);
-		svprfd_gather_u64base(PG64_256BIT, prf, SV_PLDL1STRM);
-	}
-
-	for (i = 0; i < HNS3_DEFAULT_RXQ_REARM_THRESH; i += REARM_LOOP_STEP_NUM,
-		rxep += REARM_LOOP_STEP_NUM, rxdp += REARM_LOOP_STEP_NUM) {
-		uint64_t iova[REARM_LOOP_STEP_NUM];
-		iova[0] = rte_mbuf_iova_get(rxep[0].mbuf);
-		iova[1] = rte_mbuf_iova_get(rxep[1].mbuf);
-		iova[2] = rte_mbuf_iova_get(rxep[2].mbuf);
-		iova[3] = rte_mbuf_iova_get(rxep[3].mbuf);
-		svuint64_t siova = svld1_u64(PG64_256BIT, iova);
-		siova = svadd_n_u64_z(PG64_256BIT, siova, RTE_PKTMBUF_HEADROOM);
-		svuint64_t ol_base = svdup_n_u64(0);
-		svst1_scatter_u64offset_u64(PG64_256BIT,
-			(uint64_t *)&rxdp[0].addr,
-			svindex_u64(BD_FIELD_ADDR_OFFSET, BD_SIZE), siova);
-		svst1_scatter_u64offset_u64(PG64_256BIT,
-			(uint64_t *)&rxdp[0].addr,
-			svindex_u64(BD_FIELD_OL_OFFSET, BD_SIZE), ol_base);
-	}
-
-	rxq->rx_rearm_start += HNS3_DEFAULT_RXQ_REARM_THRESH;
-	if (rxq->rx_rearm_start >= rxq->nb_rx_desc)
-		rxq->rx_rearm_start = 0;
-
-	rxq->rx_rearm_nb -= HNS3_DEFAULT_RXQ_REARM_THRESH;
-
-	hns3_write_reg_opt(rxq->io_head_reg, HNS3_DEFAULT_RXQ_REARM_THRESH);
-}
-
 uint16_t
 hns3_recv_pkts_vec_sve(void *__restrict rx_queue,
 		       struct rte_mbuf **__restrict rx_pkts,
@@ -300,7 +252,7 @@ hns3_recv_pkts_vec_sve(void *__restrict rx_queue,
 	nb_pkts = RTE_ALIGN_FLOOR(nb_pkts, HNS3_SVE_DEFAULT_DESCS_PER_LOOP);
 
 	if (rxq->rx_rearm_nb > HNS3_DEFAULT_RXQ_REARM_THRESH)
-		hns3_rxq_rearm_mbuf_sve(rxq);
+		hns3_rxq_rearm_mbuf(rxq);
 
 	if (unlikely(!(rxdp->rx.bd_base_info &
 			rte_cpu_to_le_32(1u << HNS3_RXD_VLD_B))))
@@ -331,7 +283,7 @@ hns3_recv_pkts_vec_sve(void *__restrict rx_queue,
 			break;
 
 		if (rxq->rx_rearm_nb > HNS3_DEFAULT_RXQ_REARM_THRESH)
-			hns3_rxq_rearm_mbuf_sve(rxq);
+			hns3_rxq_rearm_mbuf(rxq);
 	}
 
 	return nb_rx;
