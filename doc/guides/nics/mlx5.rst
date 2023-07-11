@@ -1939,6 +1939,81 @@ The procedure below is an example of using a ConnectX-5 adapter card (pf0) with 
 
    $ echo "0000:82:00.2" >> /sys/bus/pci/drivers/mlx5_core/bind
 
+How to trace Tx datapath
+------------------------
+
+The mlx5 PMD provides Tx datapath tracing capability with extra debug information:
+when and how packets were scheduled,
+and when the actual sending was completed by the NIC hardware.
+
+Steps to enable Tx datapath tracing:
+
+#. Build DPDK application with enabled datapath tracing
+
+   The Meson option ``--enable_trace_fp=true`` and
+   the C flag ``ALLOW_EXPERIMENTAL_API`` should be specified.
+
+   .. code-block:: console
+
+      meson configure --buildtype=debug -Denable_trace_fp=true
+         -Dc_args='-DRTE_LIBRTE_MLX5_DEBUG -DRTE_ENABLE_ASSERT -DALLOW_EXPERIMENTAL_API' build
+
+#. Configure the NIC
+
+   If the sending completion timings are important,
+   the NIC should be configured to provide realtime timestamps.
+   The non-volatile settings parameter  ``REAL_TIME_CLOCK_ENABLE`` should be configured as ``1``.
+
+   .. code-block:: console
+
+      mlxconfig -d /dev/mst/mt4125_pciconf0 s REAL_TIME_CLOCK_ENABLE=1
+
+   The ``mlxconfig`` utility is part of the MFT package.
+
+#. Run application with EAL parameter enabling tracing in mlx5 Tx datapath
+
+   By default all tracepoints are disabled.
+   To analyze Tx datapath and its timings: ``--trace=pmd.net.mlx5.tx``.
+
+#. Commit the tracing data to the storage (with ``rte_trace_save()`` API call).
+
+#. Install or build the ``babeltrace2`` package
+
+   The Python script analyzing gathered trace data uses the ``babeltrace2`` library.
+   The package should be either installed or built from source as shown below.
+
+   .. code-block:: console
+
+      git clone https://github.com/efficios/babeltrace.git
+      cd babeltrace
+      ./bootstrap
+      ./configure -help
+      ./configure --disable-api-doc --disable-man-pages
+                  --disable-python-bindings-doc --enable-python-plugins
+                  --enable-python-binding
+
+#. Run analyzing script
+
+   ``mlx5_trace.py`` is used to combine related events (packet firing and completion)
+   and to show the results in human-readable view.
+
+   The analyzing script is located in the DPDK source tree: ``drivers/net/mlx5/tools``.
+
+   It requires Python 3.6 and ``babeltrace2`` package.
+
+   The parameter of the script is the trace data folder.
+
+   .. code-block:: console
+
+      mlx5_trace.py /var/log/rte-2023-01-23-AM-11-52-39
+
+#. Interpreting the script output data
+
+   All the timings are given in nanoseconds.
+   The list of Tx bursts per port/queue is presented in the output.
+   Each list element contains the list of built WQEs with specific opcodes.
+   Each WQE contains the list of the encompassed packets to send.
+
 Host shaper
 -----------
 
