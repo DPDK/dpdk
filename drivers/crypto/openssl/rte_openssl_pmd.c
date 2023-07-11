@@ -2734,7 +2734,7 @@ process_openssl_sm2_op_evp(struct rte_crypto_op *cop,
 	case RTE_CRYPTO_ASYM_OP_ENCRYPT:
 		{
 			OSSL_PARAM *eparams = sess->u.sm2.params;
-			size_t output_len;
+			size_t output_len = 0;
 
 			kctx = EVP_PKEY_CTX_new_id(EVP_PKEY_SM2, NULL);
 			if (kctx == NULL || EVP_PKEY_fromdata_init(kctx) <= 0 ||
