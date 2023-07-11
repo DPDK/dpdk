@@ -180,19 +180,12 @@ hns3_recv_burst_vec(struct hns3_rx_queue *__restrict rxq,
 		bd_vld = vset_lane_u16(rxdp[2].rx.bdtype_vld_udp0, bd_vld, 2);
 		bd_vld = vset_lane_u16(rxdp[3].rx.bdtype_vld_udp0, bd_vld, 3);
 
-		/* load 2 mbuf pointer */
-		mbp1 = vld1q_u64((uint64_t *)&sw_ring[pos]);
-
 		bd_vld = vshl_n_u16(bd_vld,
 				    HNS3_UINT16_BIT - 1 - HNS3_RXD_VLD_B);
 		bd_vld = vreinterpret_u16_s16(
 				vshr_n_s16(vreinterpret_s16_u16(bd_vld),
 					   HNS3_UINT16_BIT - 1));
 		stat = ~vget_lane_u64(vreinterpret_u64_u16(bd_vld), 0);
-
-		/* load 2 mbuf pointer again */
-		mbp2 = vld1q_u64((uint64_t *)&sw_ring[pos + 2]);
-
 		if (likely(stat == 0))
 			bd_valid_num = HNS3_DEFAULT_DESCS_PER_LOOP;
 		else
@@ -200,20 +193,20 @@ hns3_recv_burst_vec(struct hns3_rx_queue *__restrict rxq,
 		if (bd_valid_num == 0)
 			break;
 
+		/* load 4 mbuf pointer */
+		mbp1 = vld1q_u64((uint64_t *)&sw_ring[pos]);
+		mbp2 = vld1q_u64((uint64_t *)&sw_ring[pos + 2]);
+
+		/* store 4 mbuf pointer into rx_pkts */
+		vst1q_u64((uint64_t *)&rx_pkts[pos], mbp1);
+		vst1q_u64((uint64_t *)&rx_pkts[pos + 2], mbp2);
+
 		/* use offset to control below data load oper ordering */
 		offset = rxq->offset_table[bd_valid_num];
 
-		/* store 2 mbuf pointer into rx_pkts */
-		vst1q_u64((uint64_t *)&rx_pkts[pos], mbp1);
-
-		/* read first two descs */
+		/* read 4 descs */
 		descs[0] = vld2q_u64((uint64_t *)(rxdp + offset));
 		descs[1] = vld2q_u64((uint64_t *)(rxdp + offset + 1));
-
-		/* store 2 mbuf pointer into rx_pkts again */
-		vst1q_u64((uint64_t *)&rx_pkts[pos + 2], mbp2);
-
-		/* read remains two descs */
 		descs[2] = vld2q_u64((uint64_t *)(rxdp + offset + 2));
 		descs[3] = vld2q_u64((uint64_t *)(rxdp + offset + 3));
 
@@ -221,55 +214,46 @@ hns3_recv_burst_vec(struct hns3_rx_queue *__restrict rxq,
 		pkt_mbuf1.val[1] = vreinterpretq_u8_u64(descs[0].val[1]);
 		pkt_mbuf2.val[0] = vreinterpretq_u8_u64(descs[1].val[0]);
 		pkt_mbuf2.val[1] = vreinterpretq_u8_u64(descs[1].val[1]);
-
-		/* pkt 1,2 convert format from desc to pktmbuf */
-		pkt_mb1 = vqtbl2q_u8(pkt_mbuf1, shuf_desc_fields_msk);
-		pkt_mb2 = vqtbl2q_u8(pkt_mbuf2, shuf_desc_fields_msk);
-
-		/* store the first 8 bytes of pkt 1,2 mbuf's rearm_data */
-		*(uint64_t *)&sw_ring[pos + 0].mbuf->rearm_data =
-			rxq->mbuf_initializer;
-		*(uint64_t *)&sw_ring[pos + 1].mbuf->rearm_data =
-			rxq->mbuf_initializer;
-
-		/* pkt 1,2 remove crc */
-		tmp = vsubq_u16(vreinterpretq_u16_u8(pkt_mb1), crc_adjust);
-		pkt_mb1 = vreinterpretq_u8_u16(tmp);
-		tmp = vsubq_u16(vreinterpretq_u16_u8(pkt_mb2), crc_adjust);
-		pkt_mb2 = vreinterpretq_u8_u16(tmp);
-
 		pkt_mbuf3.val[0] = vreinterpretq_u8_u64(descs[2].val[0]);
 		pkt_mbuf3.val[1] = vreinterpretq_u8_u64(descs[2].val[1]);
 		pkt_mbuf4.val[0] = vreinterpretq_u8_u64(descs[3].val[0]);
 		pkt_mbuf4.val[1] = vreinterpretq_u8_u64(descs[3].val[1]);
 
-		/* pkt 3,4 convert format from desc to pktmbuf */
+		/* 4 packets convert format from desc to pktmbuf */
+		pkt_mb1 = vqtbl2q_u8(pkt_mbuf1, shuf_desc_fields_msk);
+		pkt_mb2 = vqtbl2q_u8(pkt_mbuf2, shuf_desc_fields_msk);
 		pkt_mb3 = vqtbl2q_u8(pkt_mbuf3, shuf_desc_fields_msk);
 		pkt_mb4 = vqtbl2q_u8(pkt_mbuf4, shuf_desc_fields_msk);
 
-		/* pkt 1,2 save to rx_pkts mbuf */
-		vst1q_u8((void *)&sw_ring[pos + 0].mbuf->rx_descriptor_fields1,
-			 pkt_mb1);
-		vst1q_u8((void *)&sw_ring[pos + 1].mbuf->rx_descriptor_fields1,
-			 pkt_mb2);
-
-		/* pkt 3,4 remove crc */
+		/* 4 packets remove crc */
+		tmp = vsubq_u16(vreinterpretq_u16_u8(pkt_mb1), crc_adjust);
+		pkt_mb1 = vreinterpretq_u8_u16(tmp);
+		tmp = vsubq_u16(vreinterpretq_u16_u8(pkt_mb2), crc_adjust);
+		pkt_mb2 = vreinterpretq_u8_u16(tmp);
 		tmp = vsubq_u16(vreinterpretq_u16_u8(pkt_mb3), crc_adjust);
 		pkt_mb3 = vreinterpretq_u8_u16(tmp);
 		tmp = vsubq_u16(vreinterpretq_u16_u8(pkt_mb4), crc_adjust);
 		pkt_mb4 = vreinterpretq_u8_u16(tmp);
 
-		/* store the first 8 bytes of pkt 3,4 mbuf's rearm_data */
-		*(uint64_t *)&sw_ring[pos + 2].mbuf->rearm_data =
-			rxq->mbuf_initializer;
-		*(uint64_t *)&sw_ring[pos + 3].mbuf->rearm_data =
-			rxq->mbuf_initializer;
-
-		/* pkt 3,4 save to rx_pkts mbuf */
+		/* save packet info to rx_pkts mbuf */
+		vst1q_u8((void *)&sw_ring[pos + 0].mbuf->rx_descriptor_fields1,
+			 pkt_mb1);
+		vst1q_u8((void *)&sw_ring[pos + 1].mbuf->rx_descriptor_fields1,
+			 pkt_mb2);
 		vst1q_u8((void *)&sw_ring[pos + 2].mbuf->rx_descriptor_fields1,
 			 pkt_mb3);
 		vst1q_u8((void *)&sw_ring[pos + 3].mbuf->rx_descriptor_fields1,
 			 pkt_mb4);
+
+		/* store the first 8 bytes of packets mbuf's rearm_data */
+		*(uint64_t *)&sw_ring[pos + 0].mbuf->rearm_data =
+			rxq->mbuf_initializer;
+		*(uint64_t *)&sw_ring[pos + 1].mbuf->rearm_data =
+			rxq->mbuf_initializer;
+		*(uint64_t *)&sw_ring[pos + 2].mbuf->rearm_data =
+			rxq->mbuf_initializer;
+		*(uint64_t *)&sw_ring[pos + 3].mbuf->rearm_data =
+			rxq->mbuf_initializer;
 
 		rte_prefetch_non_temporal(rxdp + HNS3_DEFAULT_DESCS_PER_LOOP);
 
