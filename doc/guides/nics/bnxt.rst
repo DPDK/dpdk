@@ -916,6 +916,7 @@ Shown below are DPDK LTS releases and their supported firmware versions:
 * ``DPDK Release 19.11`` ... Firmware 219.0.103 or later
 * ``DPDK Release 20.11`` ... Firmware 219.0.103 or later
 * ``DPDK Release 21.11`` ... Firmware 221.0.101 or later
+* ``DPDK Release 22.11`` ... Firmware 226.0.131 or later
 
 Supported APIs
 --------------
