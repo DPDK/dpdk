@@ -1854,6 +1854,7 @@ igb_dev_clear_queues(struct rte_eth_dev *dev)
 		if (txq != NULL) {
 			igb_tx_queue_release_mbufs(txq);
 			igb_reset_tx_queue(txq, dev);
+			dev->data->tx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
 		}
 	}
 
@@ -1862,6 +1863,7 @@ igb_dev_clear_queues(struct rte_eth_dev *dev)
 		if (rxq != NULL) {
 			igb_rx_queue_release_mbufs(rxq);
 			igb_reset_rx_queue(rxq);
+			dev->data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
 		}
 	}
 }
@@ -2442,6 +2444,7 @@ eth_igb_rx_init(struct rte_eth_dev *dev)
 		rxdctl |= ((rxq->hthresh & 0x1F) << 8);
 		rxdctl |= ((rxq->wthresh & 0x1F) << 16);
 		E1000_WRITE_REG(hw, E1000_RXDCTL(rxq->reg_idx), rxdctl);
+		dev->data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STARTED;
 	}
 
 	if (dev->data->dev_conf.rxmode.offloads & RTE_ETH_RX_OFFLOAD_SCATTER) {
@@ -2606,6 +2609,7 @@ eth_igb_tx_init(struct rte_eth_dev *dev)
 		txdctl |= ((txq->wthresh & 0x1F) << 16);
 		txdctl |= E1000_TXDCTL_QUEUE_ENABLE;
 		E1000_WRITE_REG(hw, E1000_TXDCTL(txq->reg_idx), txdctl);
+		dev->data->tx_queue_state[i] = RTE_ETH_QUEUE_STATE_STARTED;
 	}
 
 	/* Program the Transmit Control Register. */
