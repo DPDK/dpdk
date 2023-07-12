@@ -50,6 +50,9 @@ Deprecation Notices
   the replacement API rte_thread_set_name and rte_thread_create_control being
   marked as stable, and planned to be removed by the 23.11 release.
 
+* eal: ``RTE_CPUFLAG_NUMFLAGS`` will be removed in DPDK 23.11 release.
+  This is to allow new CPU features to be added without ABI breakage.
+
 * rte_atomicNN_xxx: These APIs do not take memory order parameter. This does
   not allow for writing optimized code for all the CPU architectures supported
   in DPDK. DPDK has adopted the atomic operations from
