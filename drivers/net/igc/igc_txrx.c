@@ -1215,6 +1215,7 @@ igc_rx_init(struct rte_eth_dev *dev)
 			dvmolr |= IGC_DVMOLR_STRCRC;
 
 		IGC_WRITE_REG(hw, IGC_DVMOLR(rxq->reg_idx), dvmolr);
+		dev->data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STARTED;
 	}
 
 	return 0;
@@ -1888,6 +1889,7 @@ igc_dev_clear_queues(struct rte_eth_dev *dev)
 		if (txq != NULL) {
 			igc_tx_queue_release_mbufs(txq);
 			igc_reset_tx_queue(txq);
+			dev->data->tx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
 		}
 	}
 
@@ -1896,6 +1898,7 @@ igc_dev_clear_queues(struct rte_eth_dev *dev)
 		if (rxq != NULL) {
 			igc_rx_queue_release_mbufs(rxq);
 			igc_reset_rx_queue(rxq);
+			dev->data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
 		}
 	}
 }
@@ -2143,6 +2146,7 @@ igc_tx_init(struct rte_eth_dev *dev)
 				IGC_TXDCTL_WTHRESH_MSK;
 		txdctl |= IGC_TXDCTL_QUEUE_ENABLE;
 		IGC_WRITE_REG(hw, IGC_TXDCTL(txq->reg_idx), txdctl);
+		dev->data->tx_queue_state[i] = RTE_ETH_QUEUE_STATE_STARTED;
 	}
 
 	if (offloads & RTE_ETH_TX_OFFLOAD_SEND_ON_TIMESTAMP) {
