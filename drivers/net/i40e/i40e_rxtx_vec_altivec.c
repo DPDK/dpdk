@@ -449,8 +449,6 @@ _recv_raw_pkts_vec(struct i40e_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 
  /* Notice:
   * - nb_pkts < RTE_I40E_DESCS_PER_LOOP, just return no packet
-  * - nb_pkts > RTE_I40E_VPMD_RX_BURST, only scan RTE_I40E_VPMD_RX_BURST
-  *   numbers of DD bits
   */
 uint16_t
 i40e_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
