@@ -3378,6 +3378,7 @@ ixgbe_dev_clear_queues(struct rte_eth_dev *dev)
 		if (txq != NULL) {
 			txq->ops->release_mbufs(txq);
 			txq->ops->reset(txq);
+			dev->data->tx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
 		}
 	}
 
@@ -3387,6 +3388,7 @@ ixgbe_dev_clear_queues(struct rte_eth_dev *dev)
 		if (rxq != NULL) {
 			ixgbe_rx_queue_release_mbufs(rxq);
 			ixgbe_reset_rx_queue(adapter, rxq);
+			dev->data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
 		}
 	}
 	/* If loopback mode was enabled, reconfigure the link accordingly */
@@ -5896,6 +5898,8 @@ ixgbevf_dev_rxtx_start(struct rte_eth_dev *dev)
 		} while (--poll_ms && !(txdctl & IXGBE_TXDCTL_ENABLE));
 		if (!poll_ms)
 			PMD_INIT_LOG(ERR, "Could not enable Tx Queue %d", i);
+		else
+			dev->data->tx_queue_state[i] = RTE_ETH_QUEUE_STATE_STARTED;
 	}
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
 
@@ -5913,6 +5917,8 @@ ixgbevf_dev_rxtx_start(struct rte_eth_dev *dev)
 		} while (--poll_ms && !(rxdctl & IXGBE_RXDCTL_ENABLE));
 		if (!poll_ms)
 			PMD_INIT_LOG(ERR, "Could not enable Rx Queue %d", i);
+		else
+			dev->data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STARTED;
 		rte_wmb();
 		IXGBE_WRITE_REG(hw, IXGBE_VFRDT(i), rxq->nb_rx_desc - 1);
 
