@@ -1047,8 +1047,6 @@ iavf_dev_stop(struct rte_eth_dev *dev)
 	if (adapter->stopped == 1)
 		return 0;
 
-	iavf_stop_queues(dev);
-
 	/* Disable the interrupt for Rx */
 	rte_intr_efd_disable(intr_handle);
 	/* Rx interrupt vector mapping free */
@@ -1060,6 +1058,8 @@ iavf_dev_stop(struct rte_eth_dev *dev)
 	/* remove all multicast addresses */
 	iavf_add_del_mc_addr_list(adapter, vf->mc_addrs, vf->mc_addrs_num,
 				  false);
+
+	iavf_stop_queues(dev);
 
 	adapter->stopped = 1;
 	dev->data->dev_started = 0;
