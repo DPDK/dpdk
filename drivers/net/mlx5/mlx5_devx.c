@@ -1127,6 +1127,10 @@ mlx5_devx_drop_action_destroy(struct rte_eth_dev *dev)
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_hrxq *hrxq = priv->drop_queue.hrxq;
 
+#if defined(HAVE_IBV_FLOW_DV_SUPPORT) || !defined(HAVE_INFINIBAND_VERBS_H)
+	if (hrxq->action != NULL)
+		mlx5_flow_os_destroy_flow_action(hrxq->action);
+#endif
 	if (hrxq->tir != NULL)
 		mlx5_devx_tir_destroy(hrxq);
 	if (hrxq->ind_table->ind_table != NULL)
