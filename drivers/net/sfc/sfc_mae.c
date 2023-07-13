@@ -2331,7 +2331,7 @@ sfc_mae_rule_parse_item_ipv4(const struct rte_flow_item *item,
 	if (ctx_mae->match_spec != ctx_mae->match_spec_action)
 		supp_mask.hdr.fragment_offset = 0;
 
-	if (item != NULL && item->last != NULL) {
+	if (item->last != NULL) {
 		last = item->last;
 		item_dup.last = NULL;
 	}
