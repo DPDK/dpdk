@@ -3460,8 +3460,10 @@ sfc_mae_rule_parse_pattern(struct sfc_adapter *sa,
 		}
 		break;
 	default:
-		SFC_ASSERT(B_FALSE);
-		break;
+		rc = rte_flow_error_set(error, EINVAL,
+			RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+			"FT: unexpected rule type");
+		goto fail_unexpected_ft_rule_type;
 	}
 
 	/*
@@ -3531,6 +3533,7 @@ fail_encap_parse_init:
 	if (ctx_mae.match_spec_action != NULL)
 		efx_mae_match_spec_fini(sa->nic, ctx_mae.match_spec_action);
 
+fail_unexpected_ft_rule_type:
 fail_init_match_spec_action:
 fail_priority_check:
 	return rc;
