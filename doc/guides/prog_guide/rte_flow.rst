@@ -148,14 +148,15 @@ Attribute: Group
 Flow rules can be grouped by assigning them a common group number. Groups
 allow a logical hierarchy of flow rule groups (tables) to be defined. These
 groups can be supported virtually in the PMD or in the physical device.
-Group 0 is the default group and this is the only group which flows are
-guarantee to matched against, all subsequent groups can only be reached by
-way of the JUMP action from a matched flow rule.
+Group 0 is the default group and is the only group that
+flows are guaranteed to be matched against.
+All subsequent groups can only be reached by using a JUMP action
+from a matched flow rule.
 
 Although optional, applications are encouraged to group similar rules as
 much as possible to fully take advantage of hardware capabilities
 (e.g. optimized matching) and work around limitations (e.g. a single pattern
-type possibly allowed in a given group), while being aware that the groups
+type possibly allowed in a given group), while being aware that the groups'
 hierarchies must be programmed explicitly.
 
 Note that support for more than a single group is not guaranteed.
@@ -170,7 +171,7 @@ Priority levels are arbitrary and up to the application, they do
 not need to be contiguous nor start from 0, however the maximum number
 varies between devices and may be affected by existing flow rules.
 
-A flow which matches multiple rules in the same group will always matched by
+A flow which matches multiple rules in the same group will always be matched by
 the rule with the highest priority in that group.
 
 If a packet is matched by several rules of a given group for a given
@@ -1769,12 +1770,12 @@ flow group/tables on the device, this action redirects the matched flow to
 the specified group on that device.
 
 If a matched flow is redirected to a table which doesn't contain a matching
-rule for that flow then the behavior is undefined and the resulting behavior
-is up to the specific device. Best practice when using groups would be define
+rule for that flow, then the behavior is undefined and the resulting behavior
+is up to the specific device. Best practice when using groups would be to define
 a default flow rule for each group which a defines the default actions in that
 group so a consistent behavior is defined.
 
-Defining an action for matched flow in a group to jump to a group which is
+Defining an action for a matched flow in a group to jump to a group which is
 higher in the group hierarchy may not be supported by physical devices,
 depending on how groups are mapped to the physical devices. In the
 definitions of jump actions, applications should be aware that it may be
