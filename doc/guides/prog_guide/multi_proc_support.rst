@@ -107,15 +107,19 @@ Running Multiple Independent DPDK Applications
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 In addition to the above scenarios involving multiple DPDK processes working together,
-it is possible to run multiple DPDK processes side-by-side,
+it is possible to run multiple DPDK processes concurrently,
 where those processes are all working independently.
 Support for this usage scenario is provided using the ``--file-prefix`` parameter to the EAL.
 
-By default, the EAL creates hugepage files on each hugetlbfs filesystem using the rtemap_X filename,
+The EAL puts shared runtime files in a directory based on standard conventions.
+If ``$RUNTIME_DIRECTORY`` is defined in the environment,
+it is used (as ``$RUNTIME_DIRECTORY/dpdk``).
+Otherwise, if DPDK is run as root user, it uses ``/var/run/dpdk``
+or if run as non-root user then the ``/tmp/dpdk`` (or ``$XDG_RUNTIME_DIRECTORY/dpdk``) is used.
+Hugepage files on each hugetlbfs filesystem use the ``rtemap_X`` filename,
 where X is in the range 0 to the maximum number of hugepages -1.
-Similarly, it creates shared configuration files, memory mapped in each process, using the /var/run/.rte_config filename,
-when run as root (or $HOME/.rte_config when run as a non-root user;
-if filesystem and device permissions are set up to allow this).
+Similarly, it creates shared configuration files, memory mapped in each process,
+using the ``.rte_config`` filename.
 The rte part of the filenames of each of the above is configurable using the file-prefix parameter.
 
 In addition to specifying the file-prefix parameter,
