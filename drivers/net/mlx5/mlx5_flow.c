@@ -10758,6 +10758,7 @@ mlx5_action_handle_update(struct rte_eth_dev *dev,
 
 	switch (type) {
 	case MLX5_INDIRECT_ACTION_TYPE_CT:
+	case MLX5_INDIRECT_ACTION_TYPE_METER_MARK:
 		ret = 0;
 		break;
 	default:
