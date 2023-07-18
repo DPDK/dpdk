@@ -152,6 +152,19 @@ Deprecation Notices
   The relevant code can be updated using ``RTE_ETH_DEV_BONDING_MEMBER``.
   The data structure ``struct rte_eth_bond_8023ad_slave_info`` will be
   renamed to ``struct rte_eth_bond_8023ad_member_info`` in DPDK 23.11.
+  The following functions will be removed in DPDK 23.11.
+  The old functions:
+  ``rte_eth_bond_8023ad_slave_info``,
+  ``rte_eth_bond_active_slaves_get``,
+  ``rte_eth_bond_slave_add``,
+  ``rte_eth_bond_slave_remove``, and
+  ``rte_eth_bond_slaves_get``
+  will be replaced by:
+  ``rte_eth_bond_8023ad_member_info``,
+  ``rte_eth_bond_active_members_get``,
+  ``rte_eth_bond_member_add``,
+  ``rte_eth_bond_member_remove``, and
+  ``rte_eth_bond_members_get``.
 
 * cryptodev: The function ``rte_cryptodev_cb_fn`` will be updated
   to have another parameter ``qp_id`` to return the queue pair ID
