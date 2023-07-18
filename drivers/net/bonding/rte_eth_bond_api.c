@@ -472,7 +472,7 @@ __eth_bond_slave_add_lock_free(uint16_t bonded_port_id, uint16_t slave_port_id)
 		return -1;
 
 	slave_eth_dev = &rte_eth_devices[slave_port_id];
-	if (slave_eth_dev->data->dev_flags & RTE_ETH_DEV_BONDED_SLAVE) {
+	if (slave_eth_dev->data->dev_flags & RTE_ETH_DEV_BONDING_MEMBER) {
 		RTE_BOND_LOG(ERR, "Slave device is already a slave of a bonded device");
 		return -1;
 	}
@@ -615,7 +615,7 @@ __eth_bond_slave_add_lock_free(uint16_t bonded_port_id, uint16_t slave_port_id)
 	}
 
 	/* Add slave details to bonded device */
-	slave_eth_dev->data->dev_flags |= RTE_ETH_DEV_BONDED_SLAVE;
+	slave_eth_dev->data->dev_flags |= RTE_ETH_DEV_BONDING_MEMBER;
 
 	slave_vlan_filter_set(bonded_port_id, slave_port_id);
 
@@ -724,7 +724,7 @@ __eth_bond_slave_remove_lock_free(uint16_t bonded_port_id,
 
 	slave_eth_dev = &rte_eth_devices[slave_port_id];
 	slave_remove(internals, slave_eth_dev);
-	slave_eth_dev->data->dev_flags &= (~RTE_ETH_DEV_BONDED_SLAVE);
+	slave_eth_dev->data->dev_flags &= (~RTE_ETH_DEV_BONDING_MEMBER);
 
 	/*  first slave in the active list will be the primary by default,
 	 *  otherwise use first device in list */

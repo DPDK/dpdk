@@ -4248,7 +4248,7 @@ uint8_t port_is_bonding_slave(portid_t slave_pid)
 			slave_pid);
 		return 0;
 	}
-	if ((*dev_info.dev_flags & RTE_ETH_DEV_BONDED_SLAVE) || (port->slave_flag == 1))
+	if ((*dev_info.dev_flags & RTE_ETH_DEV_BONDING_MEMBER) || (port->slave_flag == 1))
 		return 1;
 	return 0;
 }

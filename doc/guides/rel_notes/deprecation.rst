@@ -147,6 +147,10 @@ Deprecation Notices
   The legacy actions should be removed
   once ``MODIFY_FIELD`` alternative is implemented in drivers.
 
+* bonding: The macro ``RTE_ETH_DEV_BONDED_SLAVE`` will be
+  deprecated in DPDK 23.07, and removed in DPDK 23.11.
+  The relevant code can be updated using ``RTE_ETH_DEV_BONDING_MEMBER``.
+
 * cryptodev: The function ``rte_cryptodev_cb_fn`` will be updated
   to have another parameter ``qp_id`` to return the queue pair ID
   which got error interrupt to the application,

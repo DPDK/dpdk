@@ -2036,8 +2036,9 @@ struct rte_eth_dev_owner {
 #define RTE_ETH_DEV_FLOW_OPS_THREAD_SAFE  RTE_BIT32(0)
 /** Device supports link state interrupt */
 #define RTE_ETH_DEV_INTR_LSC              RTE_BIT32(1)
-/** Device is a bonded slave */
-#define RTE_ETH_DEV_BONDED_SLAVE          RTE_BIT32(2)
+/** Device is a bonding member */
+#define RTE_ETH_DEV_BONDING_MEMBER        RTE_BIT32(2)
+#define RTE_ETH_DEV_BONDED_SLAVE RTE_DEPRECATED(RTE_ETH_DEV_BONDED_SLAVE) RTE_ETH_DEV_BONDING_MEMBER
 /** Device supports device removal interrupt */
 #define RTE_ETH_DEV_INTR_RMV              RTE_BIT32(3)
 /** Device is port representor */
