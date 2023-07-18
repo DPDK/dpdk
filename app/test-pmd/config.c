@@ -1875,6 +1875,7 @@ port_action_handle_update(portid_t port_id, uint32_t id,
 	struct rte_flow_error error;
 	struct rte_flow_action_handle *action_handle;
 	struct port_indirect_action *pia;
+	struct rte_flow_update_meter_mark mtr_update;
 	const void *update;
 
 	action_handle = port_action_handle_get_by_id(port_id, id);
@@ -1887,6 +1888,17 @@ port_action_handle_update(portid_t port_id, uint32_t id,
 	case RTE_FLOW_ACTION_TYPE_AGE:
 	case RTE_FLOW_ACTION_TYPE_CONNTRACK:
 		update = action->conf;
+		break;
+	case RTE_FLOW_ACTION_TYPE_METER_MARK:
+		memcpy(&mtr_update.meter_mark, action->conf,
+		       sizeof(struct rte_flow_action_meter_mark));
+		if (mtr_update.meter_mark.profile)
+			mtr_update.profile_valid = 1;
+		if (mtr_update.meter_mark.policy)
+			mtr_update.policy_valid = 1;
+		mtr_update.color_mode_valid = 1;
+		mtr_update.state_valid = 1;
+		update = &mtr_update;
 		break;
 	default:
 		update = action;
@@ -2924,8 +2936,10 @@ port_queue_action_handle_update(portid_t port_id,
 	case RTE_FLOW_ACTION_TYPE_METER_MARK:
 		rte_memcpy(&mtr_update.meter_mark, action->conf,
 			sizeof(struct rte_flow_action_meter_mark));
-		mtr_update.profile_valid = 1;
-		mtr_update.policy_valid = 1;
+		if (mtr_update.meter_mark.profile)
+			mtr_update.profile_valid = 1;
+		if (mtr_update.meter_mark.policy)
+			mtr_update.policy_valid = 1;
 		mtr_update.color_mode_valid = 1;
 		mtr_update.init_color_valid = 1;
 		mtr_update.state_valid = 1;
