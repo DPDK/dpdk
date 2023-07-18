@@ -8955,9 +8955,18 @@ mlx5_action_handle_update(struct rte_eth_dev *dev,
 	const struct mlx5_flow_driver_ops *fops =
 			flow_get_drv_ops(flow_get_drv_type(dev, &attr));
 	int ret;
+	uint32_t act_idx = (uint32_t)(uintptr_t)handle;
+	uint32_t type = act_idx >> MLX5_INDIRECT_ACTION_TYPE_OFFSET;
 
-	ret = flow_drv_action_validate(dev, NULL,
-			(const struct rte_flow_action *)update, fops, error);
+	switch (type) {
+	case MLX5_INDIRECT_ACTION_TYPE_CT:
+		ret = 0;
+		break;
+	default:
+		ret = flow_drv_action_validate(dev, NULL,
+				(const struct rte_flow_action *)update,
+				fops, error);
+	}
 	if (ret)
 		return ret;
 	return flow_drv_action_update(dev, handle, update, fops,
