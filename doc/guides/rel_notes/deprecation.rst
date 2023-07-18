@@ -150,6 +150,8 @@ Deprecation Notices
 * bonding: The macro ``RTE_ETH_DEV_BONDED_SLAVE`` will be
   deprecated in DPDK 23.07, and removed in DPDK 23.11.
   The relevant code can be updated using ``RTE_ETH_DEV_BONDING_MEMBER``.
+  The data structure ``struct rte_eth_bond_8023ad_slave_info`` will be
+  renamed to ``struct rte_eth_bond_8023ad_member_info`` in DPDK 23.11.
 
 * cryptodev: The function ``rte_cryptodev_cb_fn`` will be updated
   to have another parameter ``qp_id`` to return the queue pair ID
