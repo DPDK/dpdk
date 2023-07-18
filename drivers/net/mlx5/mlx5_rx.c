@@ -1090,6 +1090,7 @@ mlx5_lro_update_tcp_hdr(struct rte_tcp_hdr *__rte_restrict tcp,
 	tcp->cksum = 0;
 	csum += rte_raw_cksum(tcp, (tcp->data_off >> 4) * 4);
 	csum = ((csum & 0xffff0000) >> 16) + (csum & 0xffff);
+	csum = ((csum & 0xffff0000) >> 16) + (csum & 0xffff);
 	csum = (~csum) & 0xffff;
 	if (csum == 0)
 		csum = 0xffff;
