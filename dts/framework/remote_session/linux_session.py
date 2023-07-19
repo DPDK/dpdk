@@ -2,11 +2,45 @@
 # Copyright(c) 2023 PANTHEON.tech s.r.o.
 # Copyright(c) 2023 University of New Hampshire
 
+import json
+from typing import TypedDict
+
+from typing_extensions import NotRequired
+
 from framework.exception import RemoteCommandExecutionError
 from framework.testbed_model import LogicalCore
+from framework.testbed_model.hw.port import Port
 from framework.utils import expand_range
 
 from .posix_session import PosixSession
+
+
+class LshwConfigurationOutput(TypedDict):
+    link: str
+
+
+class LshwOutput(TypedDict):
+    """
+    A model of the relevant information from json lshw output, e.g.:
+    {
+    ...
+    "businfo" : "pci@0000:08:00.0",
+    "logicalname" : "enp8s0",
+    "version" : "00",
+    "serial" : "52:54:00:59:e1:ac",
+    ...
+    "configuration" : {
+      ...
+      "link" : "yes",
+      ...
+    },
+    ...
+    """
+
+    businfo: str
+    logicalname: NotRequired[str]
+    serial: NotRequired[str]
+    configuration: LshwConfigurationOutput
 
 
 class LinuxSession(PosixSession):
@@ -102,4 +136,48 @@ class LinuxSession(PosixSession):
 
         self.send_command(
             f"echo {amount} | tee {hugepage_config_path}", privileged=True
+        )
+
+    def update_ports(self, ports: list[Port]) -> None:
+        self._logger.debug("Gathering port info.")
+        for port in ports:
+            assert (
+                port.node == self.name
+            ), "Attempted to gather port info on the wrong node"
+
+        port_info_list = self._get_lshw_info()
+        for port in ports:
+            for port_info in port_info_list:
+                if f"pci@{port.pci}" == port_info.get("businfo"):
+                    self._update_port_attr(
+                        port, port_info.get("logicalname"), "logical_name"
+                    )
+                    self._update_port_attr(port, port_info.get("serial"), "mac_address")
+                    port_info_list.remove(port_info)
+                    break
+            else:
+                self._logger.warning(f"No port at pci address {port.pci} found.")
+
+    def _get_lshw_info(self) -> list[LshwOutput]:
+        output = self.send_command("lshw -quiet -json -C network", verify=True)
+        return json.loads(output.stdout)
+
+    def _update_port_attr(
+        self, port: Port, attr_value: str | None, attr_name: str
+    ) -> None:
+        if attr_value:
+            setattr(port, attr_name, attr_value)
+            self._logger.debug(
+                f"Found '{attr_name}' of port {port.pci}: '{attr_value}'."
+            )
+        else:
+            self._logger.warning(
+                f"Attempted to get '{attr_name}' of port {port.pci}, "
+                f"but it doesn't exist."
+            )
+
+    def configure_port_state(self, port: Port, enable: bool) -> None:
+        state = "up" if enable else "down"
+        self.send_command(
+            f"ip link set dev {port.logical_name} {state}", privileged=True
         )

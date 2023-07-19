@@ -12,6 +12,7 @@ from framework.logger import DTSLOG
 from framework.remote_session.remote import InteractiveShell
 from framework.settings import SETTINGS
 from framework.testbed_model import LogicalCore
+from framework.testbed_model.hw.port import Port
 from framework.utils import MesonArgs
 
 from .remote import (
@@ -248,4 +249,18 @@ class OSSession(ABC):
     def get_node_info(self) -> NodeInfo:
         """
         Collect information about the node
+        """
+
+    @abstractmethod
+    def update_ports(self, ports: list[Port]) -> None:
+        """
+        Get additional information about ports:
+            Logical name (e.g. enp7s0) if applicable
+            Mac address
+        """
+
+    @abstractmethod
+    def configure_port_state(self, port: Port, enable: bool) -> None:
+        """
+        Enable/disable port.
         """

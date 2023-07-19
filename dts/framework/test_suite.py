@@ -20,7 +20,7 @@ from .exception import (
 from .logger import DTSLOG, getLogger
 from .settings import SETTINGS
 from .test_result import BuildTargetResult, Result, TestCaseResult, TestSuiteResult
-from .testbed_model import SutNode
+from .testbed_model import SutNode, TGNode
 
 
 class TestSuite(object):
@@ -51,11 +51,13 @@ class TestSuite(object):
     def __init__(
         self,
         sut_node: SutNode,
+        tg_node: TGNode,
         test_cases: list[str],
         func: bool,
         build_target_result: BuildTargetResult,
     ):
         self.sut_node = sut_node
+        self.tg_node = tg_node
         self._logger = getLogger(self.__class__.__name__)
         self._test_cases_to_run = test_cases
         self._test_cases_to_run.extend(SETTINGS.test_cases)

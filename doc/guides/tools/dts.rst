@@ -153,6 +153,37 @@ There are two areas that need to be set up on a System Under Test:
 
       sudo usermod -aG sudo <sut_user>
 
+
+Setting up Traffic Generator Node
+---------------------------------
+
+These need to be set up on a Traffic Generator Node:
+
+#. **Traffic generator dependencies**
+
+   The traffic generator running on the traffic generator node must be installed beforehand.
+   For Scapy traffic generator, only a few Python libraries need to be installed:
+
+   .. code-block:: console
+
+      sudo apt install python3-pip
+      sudo pip install --upgrade pip
+      sudo pip install scapy==2.5.0
+
+#. **Hardware dependencies**
+
+   The traffic generators, like DPDK, need a proper driver and firmware.
+   The Scapy traffic generator doesn't have strict requirements - the drivers that come
+   with most OS distributions will be satisfactory.
+
+
+#. **User with administrator privileges**
+
+   Similarly to the System Under Test, traffic generators need administrator privileges
+   to be able to use the devices.
+   Refer to the `System Under Test section <sut_admin_user>` for details.
+
+
 Running DTS
 -----------
 

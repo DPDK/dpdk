@@ -4,12 +4,15 @@
 # Copyright(c) 2022-2023 University of New Hampshire
 
 import atexit
+import json
 import os
 import subprocess
 import sys
 from enum import Enum
 from pathlib import Path
 from subprocess import SubprocessError
+
+from scapy.packet import Packet  # type: ignore[import]
 
 from .exception import ConfigurationError
 
@@ -62,6 +65,16 @@ def expand_range(range_str: str) -> list[int]:
         )
 
     return expanded_range
+
+
+def get_packet_summaries(packets: list[Packet]):
+    if len(packets) == 1:
+        packet_summaries = packets[0].summary()
+    else:
+        packet_summaries = json.dumps(
+            list(map(lambda pkt: pkt.summary(), packets)), indent=4
+        )
+    return f"Packet contents: \n{packet_summaries}"
 
 
 def RED(text: str) -> str:

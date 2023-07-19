@@ -7,6 +7,7 @@
 A node is a generic host that DTS connects to and manages.
 """
 
+from abc import ABC
 from typing import Any, Callable, Type
 
 from framework.config import (
@@ -26,9 +27,10 @@ from .hw import (
     VirtualDevice,
     lcore_filter,
 )
+from .hw.port import Port
 
 
-class Node(object):
+class Node(ABC):
     """
     Basic class for node management. This class implements methods that
     manage a node, such as information gathering (of CPU/PCI/NIC) and
@@ -39,6 +41,7 @@ class Node(object):
     config: NodeConfiguration
     name: str
     lcores: list[LogicalCore]
+    ports: list[Port]
     _logger: DTSLOG
     _other_sessions: list[OSSession]
     _execution_config: ExecutionConfiguration
@@ -50,6 +53,8 @@ class Node(object):
         self._logger = getLogger(self.name)
         self.main_session = create_session(self.config, self.name, self._logger)
 
+        self._logger.info(f"Connected to node: {self.name}")
+
         self._get_remote_cpus()
         # filter the node lcores according to user config
         self.lcores = LogicalCoreListFilter(
@@ -58,8 +63,13 @@ class Node(object):
 
         self._other_sessions = []
         self.virtual_devices = []
+        self._init_ports()
 
-        self._logger.info(f"Created node: {self.name}")
+    def _init_ports(self) -> None:
+        self.ports = [Port(self.name, port_config) for port_config in self.config.ports]
+        self.main_session.update_ports(self.ports)
+        for port in self.ports:
+            self.configure_port_state(port)
 
     def set_up_execution(self, execution_config: ExecutionConfiguration) -> None:
         """
@@ -204,6 +214,12 @@ class Node(object):
             self.main_session.setup_hugepages(
                 self.config.hugepages.amount, self.config.hugepages.force_first_numa
             )
+
+    def configure_port_state(self, port: Port, enable: bool = True) -> None:
+        """
+        Enable/disable port.
+        """
+        self.main_session.configure_port_state(port, enable)
 
     def close(self) -> None:
         """

@@ -105,6 +105,7 @@ class SutNode(Node):
         self._dpdk_version = None
         self._node_info = None
         self._compiler_version = None
+        self._logger.info(f"Created node: {self.name}")
 
     @property
     def _remote_dpdk_dir(self) -> PurePath:

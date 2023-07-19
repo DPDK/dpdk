@@ -20,3 +20,4 @@ from .hw import (
 )
 from .node import Node
 from .sut_node import SutNode
+from .tg_node import TGNode

@@ -15,7 +15,7 @@ from .exception import BlockingTestSuiteError
 from .logger import DTSLOG, getLogger
 from .test_result import BuildTargetResult, DTSResult, ExecutionResult, Result
 from .test_suite import get_test_suites
-from .testbed_model import SutNode
+from .testbed_model import SutNode, TGNode
 from .utils import check_dts_python_version
 
 dts_logger: DTSLOG = getLogger("DTSRunner")
@@ -33,29 +33,31 @@ def run_all() -> None:
     # check the python version of the server that run dts
     check_dts_python_version()
 
-    nodes: dict[str, SutNode] = {}
+    sut_nodes: dict[str, SutNode] = {}
+    tg_nodes: dict[str, TGNode] = {}
     try:
         # for all Execution sections
         for execution in CONFIGURATION.executions:
-            sut_node = None
-            if execution.system_under_test_node.name in nodes:
-                # a Node with the same name already exists
-                sut_node = nodes[execution.system_under_test_node.name]
-            else:
-                # the SUT has not been initialized yet
-                try:
-                    sut_node = SutNode(execution.system_under_test_node)
-                    result.update_setup(Result.PASS)
-                except Exception as e:
-                    dts_logger.exception(
-                        f"Connection to node {execution.system_under_test_node} failed."
-                    )
-                    result.update_setup(Result.FAIL, e)
-                else:
-                    nodes[sut_node.name] = sut_node
+            sut_node = sut_nodes.get(execution.system_under_test_node.name)
+            tg_node = tg_nodes.get(execution.traffic_generator_node.name)
 
-            if sut_node:
-                _run_execution(sut_node, execution, result)
+            try:
+                if not sut_node:
+                    sut_node = SutNode(execution.system_under_test_node)
+                    sut_nodes[sut_node.name] = sut_node
+                if not tg_node:
+                    tg_node = TGNode(execution.traffic_generator_node)
+                    tg_nodes[tg_node.name] = tg_node
+                result.update_setup(Result.PASS)
+            except Exception as e:
+                failed_node = execution.system_under_test_node.name
+                if sut_node:
+                    failed_node = execution.traffic_generator_node.name
+                dts_logger.exception(f"Creation of node {failed_node} failed.")
+                result.update_setup(Result.FAIL, e)
+
+            else:
+                _run_execution(sut_node, tg_node, execution, result)
 
     except Exception as e:
         dts_logger.exception("An unexpected error has occurred.")
@@ -64,7 +66,7 @@ def run_all() -> None:
 
     finally:
         try:
-            for node in nodes.values():
+            for node in (sut_nodes | tg_nodes).values():
                 node.close()
             result.update_teardown(Result.PASS)
         except Exception as e:
@@ -81,7 +83,10 @@ def run_all() -> None:
 
 
 def _run_execution(
-    sut_node: SutNode, execution: ExecutionConfiguration, result: DTSResult
+    sut_node: SutNode,
+    tg_node: TGNode,
+    execution: ExecutionConfiguration,
+    result: DTSResult,
 ) -> None:
     """
     Run the given execution. This involves running the execution setup as well as
@@ -102,7 +107,9 @@ def _run_execution(
 
     else:
         for build_target in execution.build_targets:
-            _run_build_target(sut_node, build_target, execution, execution_result)
+            _run_build_target(
+                sut_node, tg_node, build_target, execution, execution_result
+            )
 
     finally:
         try:
@@ -115,6 +122,7 @@ def _run_execution(
 
 def _run_build_target(
     sut_node: SutNode,
+    tg_node: TGNode,
     build_target: BuildTargetConfiguration,
     execution: ExecutionConfiguration,
     execution_result: ExecutionResult,
@@ -135,7 +143,7 @@ def _run_build_target(
         build_target_result.update_setup(Result.FAIL, e)
 
     else:
-        _run_all_suites(sut_node, execution, build_target_result)
+        _run_all_suites(sut_node, tg_node, execution, build_target_result)
 
     finally:
         try:
@@ -148,6 +156,7 @@ def _run_build_target(
 
 def _run_all_suites(
     sut_node: SutNode,
+    tg_node: TGNode,
     execution: ExecutionConfiguration,
     build_target_result: BuildTargetResult,
 ) -> None:
@@ -162,7 +171,7 @@ def _run_all_suites(
     for test_suite_config in execution.test_suites:
         try:
             _run_single_suite(
-                sut_node, execution, build_target_result, test_suite_config
+                sut_node, tg_node, execution, build_target_result, test_suite_config
             )
         except BlockingTestSuiteError as e:
             dts_logger.exception(
@@ -178,6 +187,7 @@ def _run_all_suites(
 
 def _run_single_suite(
     sut_node: SutNode,
+    tg_node: TGNode,
     execution: ExecutionConfiguration,
     build_target_result: BuildTargetResult,
     test_suite_config: TestSuiteConfig,
@@ -206,6 +216,7 @@ def _run_single_suite(
         for test_suite_class in test_suite_classes:
             test_suite = test_suite_class(
                 sut_node,
+                tg_node,
                 test_suite_config.test_cases,
                 execution.func,
                 build_target_result,
