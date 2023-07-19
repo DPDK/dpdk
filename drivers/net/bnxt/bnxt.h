@@ -801,6 +801,7 @@ struct bnxt {
 	(BNXT_CHIP_P5_P7((bp)) && \
 	 (bp)->hwrm_spec_code >= HWRM_VERSION_1_9_2 && \
 	 !BNXT_VF((bp)))
+#define BNXT_FW_CAP_UDP_GSO		BIT(13)
 #define BNXT_TRUFLOW_EN(bp)	((bp)->fw_cap & BNXT_FW_CAP_TRUFLOW_EN &&\
 				 (bp)->app_id != 0xFF)
 

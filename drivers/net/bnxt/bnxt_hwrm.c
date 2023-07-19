@@ -950,6 +950,8 @@ static int __bnxt_hwrm_func_qcaps(struct bnxt *bp)
 	flags_ext2 = rte_le_to_cpu_32(resp->flags_ext2);
 	if (flags_ext2 & HWRM_FUNC_QCAPS_OUTPUT_FLAGS_EXT2_RX_ALL_PKTS_TIMESTAMPS_SUPPORTED)
 		bp->fw_cap |= BNXT_FW_CAP_RX_ALL_PKT_TS;
+	if (flags_ext2 & HWRM_FUNC_QCAPS_OUTPUT_FLAGS_EXT2_UDP_GSO_SUPPORTED)
+		bp->fw_cap |= BNXT_FW_CAP_UDP_GSO;
 
 unlock:
 	HWRM_UNLOCK();

@@ -42,6 +42,8 @@ uint64_t bnxt_get_tx_port_offloads(struct bnxt *bp)
 		tx_offload_capa |= RTE_ETH_TX_OFFLOAD_GENEVE_TNL_TSO;
 	if (BNXT_TUNNELED_OFFLOADS_CAP_IPINIP_EN(bp))
 		tx_offload_capa |= RTE_ETH_TX_OFFLOAD_IPIP_TNL_TSO;
+	if (bp->fw_cap & BNXT_FW_CAP_UDP_GSO)
+		tx_offload_capa |= RTE_ETH_TX_OFFLOAD_UDP_TSO;
 
 	return tx_offload_capa;
 }

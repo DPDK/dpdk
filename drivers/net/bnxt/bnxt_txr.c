@@ -123,6 +123,10 @@ bnxt_xmit_need_long_bd(struct rte_mbuf *tx_pkt, struct bnxt_tx_queue *txq)
 	return false;
 }
 
+/* Used for verifying TSO segments during TCP Segmentation Offload or
+ * UDP Fragmentation Offload. tx_pkt->tso_segsz stores the number of
+ * segments or fragments in those cases.
+ */
 static bool
 bnxt_zero_data_len_tso_segsz(struct rte_mbuf *tx_pkt, uint8_t data_len_chk)
 {
@@ -308,7 +312,8 @@ static uint16_t bnxt_start_xmit(struct rte_mbuf *tx_pkt,
 		else
 			txbd1->cfa_action = txq->bp->tx_cfa_action;
 
-		if (tx_pkt->ol_flags & RTE_MBUF_F_TX_TCP_SEG) {
+		if (tx_pkt->ol_flags & RTE_MBUF_F_TX_TCP_SEG ||
+		    tx_pkt->ol_flags & RTE_MBUF_F_TX_UDP_SEG) {
 			uint16_t hdr_size;
 
 			/* TSO */
