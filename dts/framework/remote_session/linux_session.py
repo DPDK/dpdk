@@ -3,7 +3,8 @@
 # Copyright(c) 2023 University of New Hampshire
 
 import json
-from typing import TypedDict
+from ipaddress import IPv4Interface, IPv6Interface
+from typing import TypedDict, Union
 
 from typing_extensions import NotRequired
 
@@ -181,3 +182,20 @@ class LinuxSession(PosixSession):
         self.send_command(
             f"ip link set dev {port.logical_name} {state}", privileged=True
         )
+
+    def configure_port_ip_address(
+        self,
+        address: Union[IPv4Interface, IPv6Interface],
+        port: Port,
+        delete: bool,
+    ) -> None:
+        command = "del" if delete else "add"
+        self.send_command(
+            f"ip address {command} {address} dev {port.logical_name}",
+            privileged=True,
+            verify=True,
+        )
+
+    def configure_ipv4_forwarding(self, enable: bool) -> None:
+        state = 1 if enable else 0
+        self.send_command(f"sysctl -w net.ipv4.ip_forward={state}", privileged=True)

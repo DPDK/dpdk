@@ -351,6 +351,9 @@ class SutNode(Node):
             f"{app_path} {eal_args}", timeout, privileged=True, verify=True
         )
 
+    def configure_ipv4_forwarding(self, enable: bool) -> None:
+        self.main_session.configure_ipv4_forwarding(enable)
+
     def create_interactive_shell(
         self,
         shell_cls: Type[InteractiveShellType],

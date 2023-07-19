@@ -13,6 +13,7 @@ executions:
     skip_smoke_tests: false # optional flag that allows you to skip smoke tests
     test_suites:
       - hello_world
+      - os_udp
     system_under_test_node:
       node_name: "SUT 1"
       vdevs: # optional; if removed, vdevs won't be used in the execution

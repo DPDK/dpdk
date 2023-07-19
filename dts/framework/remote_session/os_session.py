@@ -4,8 +4,9 @@
 
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
+from ipaddress import IPv4Interface, IPv6Interface
 from pathlib import PurePath
-from typing import Type, TypeVar
+from typing import Type, TypeVar, Union
 
 from framework.config import Architecture, NodeConfiguration, NodeInfo
 from framework.logger import DTSLOG
@@ -263,4 +264,21 @@ class OSSession(ABC):
     def configure_port_state(self, port: Port, enable: bool) -> None:
         """
         Enable/disable port.
+        """
+
+    @abstractmethod
+    def configure_port_ip_address(
+        self,
+        address: Union[IPv4Interface, IPv6Interface],
+        port: Port,
+        delete: bool,
+    ) -> None:
+        """
+        Configure (add or delete) an IP address of the input port.
+        """
+
+    @abstractmethod
+    def configure_ipv4_forwarding(self, enable: bool) -> None:
+        """
+        Enable IPv4 forwarding in the underlying OS.
         """

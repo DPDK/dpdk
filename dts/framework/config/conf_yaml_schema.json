@@ -185,7 +185,8 @@
     "test_suite": {
       "type": "string",
       "enum": [
-        "hello_world"
+        "hello_world",
+        "os_udp"
       ]
     },
     "test_target": {

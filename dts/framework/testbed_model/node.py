@@ -8,7 +8,8 @@ A node is a generic host that DTS connects to and manages.
 """
 
 from abc import ABC
-from typing import Any, Callable, Type
+from ipaddress import IPv4Interface, IPv6Interface
+from typing import Any, Callable, Type, Union
 
 from framework.config import (
     BuildTargetConfiguration,
@@ -220,6 +221,17 @@ class Node(ABC):
         Enable/disable port.
         """
         self.main_session.configure_port_state(port, enable)
+
+    def configure_port_ip_address(
+        self,
+        address: Union[IPv4Interface, IPv6Interface],
+        port: Port,
+        delete: bool = False,
+    ) -> None:
+        """
+        Configure the IP address of a port on this node.
+        """
+        self.main_session.configure_port_ip_address(address, port, delete)
 
     def close(self) -> None:
         """
