@@ -13,10 +13,11 @@ executions:
     skip_smoke_tests: false # optional flag that allows you to skip smoke tests
     test_suites:
       - hello_world
-    system_under_test:
+    system_under_test_node:
       node_name: "SUT 1"
       vdevs: # optional; if removed, vdevs won't be used in the execution
         - "crypto_openssl"
+    traffic_generator_node: "TG 1"
 nodes:
   - name: "SUT 1"
     hostname: sut1.change.me.localhost
@@ -40,3 +41,26 @@ nodes:
         os_driver: i40e
         peer_node: "TG 1"
         peer_pci: "0000:00:08.1"
+  - name: "TG 1"
+    hostname: tg1.change.me.localhost
+    user: dtsuser
+    arch: x86_64
+    os: linux
+    lcores: ""
+    ports:
+      - pci: "0000:00:08.0"
+        os_driver_for_dpdk: rdma
+        os_driver: rdma
+        peer_node: "SUT 1"
+        peer_pci: "0000:00:08.0"
+      - pci: "0000:00:08.1"
+        os_driver_for_dpdk: rdma
+        os_driver: rdma
+        peer_node: "SUT 1"
+        peer_pci: "0000:00:08.1"
+    use_first_core: false
+    hugepages:  # optional; if removed, will use system hugepage configuration
+        amount: 256
+        force_first_numa: false
+    traffic_generator:
+        type: SCAPY

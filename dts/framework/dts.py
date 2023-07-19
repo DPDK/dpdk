@@ -38,17 +38,17 @@ def run_all() -> None:
         # for all Execution sections
         for execution in CONFIGURATION.executions:
             sut_node = None
-            if execution.system_under_test.name in nodes:
+            if execution.system_under_test_node.name in nodes:
                 # a Node with the same name already exists
-                sut_node = nodes[execution.system_under_test.name]
+                sut_node = nodes[execution.system_under_test_node.name]
             else:
                 # the SUT has not been initialized yet
                 try:
-                    sut_node = SutNode(execution.system_under_test)
+                    sut_node = SutNode(execution.system_under_test_node)
                     result.update_setup(Result.PASS)
                 except Exception as e:
                     dts_logger.exception(
-                        f"Connection to node {execution.system_under_test} failed."
+                        f"Connection to node {execution.system_under_test_node} failed."
                     )
                     result.update_setup(Result.FAIL, e)
                 else:
@@ -87,7 +87,9 @@ def _run_execution(
     Run the given execution. This involves running the execution setup as well as
     running all build targets in the given execution.
     """
-    dts_logger.info(f"Running execution with SUT '{execution.system_under_test.name}'.")
+    dts_logger.info(
+        f"Running execution with SUT '{execution.system_under_test_node.name}'."
+    )
     execution_result = result.add_execution(sut_node.config)
     execution_result.add_sut_info(sut_node.node_info)
 

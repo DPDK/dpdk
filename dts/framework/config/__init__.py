@@ -12,7 +12,7 @@ import os.path
 import pathlib
 from dataclasses import dataclass
 from enum import auto, unique
-from typing import Any, TypedDict
+from typing import Any, TypedDict, Union
 
 import warlock  # type: ignore
 import yaml
@@ -54,6 +54,11 @@ class Compiler(StrEnum):
     msvc = auto()
 
 
+@unique
+class TrafficGeneratorType(StrEnum):
+    SCAPY = auto()
+
+
 # Slots enables some optimizations, by pre-allocating space for the defined
 # attributes in the underlying data structure.
 #
@@ -80,6 +85,26 @@ class PortConfig:
 
 
 @dataclass(slots=True, frozen=True)
+class TrafficGeneratorConfig:
+    traffic_generator_type: TrafficGeneratorType
+
+    @staticmethod
+    def from_dict(d: dict):
+        # This looks useless now, but is designed to allow expansion to traffic
+        # generators that require more configuration later.
+        match TrafficGeneratorType(d["type"]):
+            case TrafficGeneratorType.SCAPY:
+                return ScapyTrafficGeneratorConfig(
+                    traffic_generator_type=TrafficGeneratorType.SCAPY
+                )
+
+
+@dataclass(slots=True, frozen=True)
+class ScapyTrafficGeneratorConfig(TrafficGeneratorConfig):
+    pass
+
+
+@dataclass(slots=True, frozen=True)
 class NodeConfiguration:
     name: str
     hostname: str
@@ -89,17 +114,17 @@ class NodeConfiguration:
     os: OS
     lcores: str
     use_first_core: bool
-    memory_channels: int
     hugepages: HugepageConfiguration | None
     ports: list[PortConfig]
 
     @staticmethod
-    def from_dict(d: dict) -> "NodeConfiguration":
+    def from_dict(d: dict) -> Union["SutNodeConfiguration", "TGNodeConfiguration"]:
         hugepage_config = d.get("hugepages")
         if hugepage_config:
             if "force_first_numa" not in hugepage_config:
                 hugepage_config["force_first_numa"] = False
             hugepage_config = HugepageConfiguration(**hugepage_config)
+
         common_config = {
             "name": d["name"],
             "hostname": d["hostname"],
@@ -109,12 +134,31 @@ class NodeConfiguration:
             "os": OS(d["os"]),
             "lcores": d.get("lcores", "1"),
             "use_first_core": d.get("use_first_core", False),
-            "memory_channels": d.get("memory_channels", 1),
             "hugepages": hugepage_config,
             "ports": [PortConfig.from_dict(d["name"], port) for port in d["ports"]],
         }
 
-        return NodeConfiguration(**common_config)
+        if "traffic_generator" in d:
+            return TGNodeConfiguration(
+                traffic_generator=TrafficGeneratorConfig.from_dict(
+                    d["traffic_generator"]
+                ),
+                **common_config,
+            )
+        else:
+            return SutNodeConfiguration(
+                memory_channels=d.get("memory_channels", 1), **common_config
+            )
+
+
+@dataclass(slots=True, frozen=True)
+class SutNodeConfiguration(NodeConfiguration):
+    memory_channels: int
+
+
+@dataclass(slots=True, frozen=True)
+class TGNodeConfiguration(NodeConfiguration):
+    traffic_generator: ScapyTrafficGeneratorConfig
 
 
 @dataclass(slots=True, frozen=True)
@@ -193,23 +237,40 @@ class ExecutionConfiguration:
     perf: bool
     func: bool
     test_suites: list[TestSuiteConfig]
-    system_under_test: NodeConfiguration
+    system_under_test_node: SutNodeConfiguration
+    traffic_generator_node: TGNodeConfiguration
     vdevs: list[str]
     skip_smoke_tests: bool
 
     @staticmethod
-    def from_dict(d: dict, node_map: dict) -> "ExecutionConfiguration":
+    def from_dict(
+        d: dict, node_map: dict[str, Union[SutNodeConfiguration | TGNodeConfiguration]]
+    ) -> "ExecutionConfiguration":
         build_targets: list[BuildTargetConfiguration] = list(
             map(BuildTargetConfiguration.from_dict, d["build_targets"])
         )
         test_suites: list[TestSuiteConfig] = list(
             map(TestSuiteConfig.from_dict, d["test_suites"])
         )
-        sut_name = d["system_under_test"]["node_name"]
+        sut_name = d["system_under_test_node"]["node_name"]
         skip_smoke_tests = d.get("skip_smoke_tests", False)
         assert sut_name in node_map, f"Unknown SUT {sut_name} in execution {d}"
+        system_under_test_node = node_map[sut_name]
+        assert isinstance(
+            system_under_test_node, SutNodeConfiguration
+        ), f"Invalid SUT configuration {system_under_test_node}"
+
+        tg_name = d["traffic_generator_node"]
+        assert tg_name in node_map, f"Unknown TG {tg_name} in execution {d}"
+        traffic_generator_node = node_map[tg_name]
+        assert isinstance(
+            traffic_generator_node, TGNodeConfiguration
+        ), f"Invalid TG configuration {traffic_generator_node}"
+
         vdevs = (
-            d["system_under_test"]["vdevs"] if "vdevs" in d["system_under_test"] else []
+            d["system_under_test_node"]["vdevs"]
+            if "vdevs" in d["system_under_test_node"]
+            else []
         )
         return ExecutionConfiguration(
             build_targets=build_targets,
@@ -217,7 +278,8 @@ class ExecutionConfiguration:
             func=d["func"],
             skip_smoke_tests=skip_smoke_tests,
             test_suites=test_suites,
-            system_under_test=node_map[sut_name],
+            system_under_test_node=system_under_test_node,
+            traffic_generator_node=traffic_generator_node,
             vdevs=vdevs,
         )
 
@@ -228,7 +290,7 @@ class Configuration:
 
     @staticmethod
     def from_dict(d: dict) -> "Configuration":
-        nodes: list[NodeConfiguration] = list(
+        nodes: list[Union[SutNodeConfiguration | TGNodeConfiguration]] = list(
             map(NodeConfiguration.from_dict, d["nodes"])
         )
         assert len(nodes) > 0, "There must be a node to test"

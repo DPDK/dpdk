@@ -12,8 +12,8 @@ from typing import Type
 from framework.config import (
     BuildTargetConfiguration,
     BuildTargetInfo,
-    NodeConfiguration,
     NodeInfo,
+    SutNodeConfiguration,
 )
 from framework.remote_session import CommandResult, InteractiveShellType, OSSession
 from framework.settings import SETTINGS
@@ -77,6 +77,7 @@ class SutNode(Node):
     Another key capability is building DPDK according to given build target.
     """
 
+    config: SutNodeConfiguration
     _dpdk_prefix_list: list[str]
     _dpdk_timestamp: str
     _build_target_config: BuildTargetConfiguration | None
@@ -89,7 +90,7 @@ class SutNode(Node):
     _node_info: NodeInfo | None
     _compiler_version: str | None
 
-    def __init__(self, node_config: NodeConfiguration):
+    def __init__(self, node_config: SutNodeConfiguration):
         super(SutNode, self).__init__(node_config)
         self._dpdk_prefix_list = []
         self._build_target_config = None

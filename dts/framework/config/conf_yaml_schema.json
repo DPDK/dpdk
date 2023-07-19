@@ -164,6 +164,11 @@
         "amount"
       ]
     },
+    "mac_address": {
+      "type": "string",
+      "description": "A MAC address",
+      "pattern": "^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$"
+    },
     "pci_address": {
       "type": "string",
       "pattern": "^[\\da-fA-F]{4}:[\\da-fA-F]{2}:[\\da-fA-F]{2}.\\d:?\\w*$"
@@ -286,6 +291,22 @@
               ]
             },
             "minimum": 1
+          },
+          "traffic_generator": {
+            "oneOf": [
+              {
+                "type": "object",
+                "description": "Scapy traffic generator. Used for functional testing.",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "SCAPY"
+                    ]
+                  }
+                }
+              }
+            ]
           }
         },
         "additionalProperties": false,
@@ -336,7 +357,7 @@
             "description": "Optional field that allows you to skip smoke testing",
             "type": "boolean"
           },
-          "system_under_test": {
+          "system_under_test_node": {
             "type":"object",
             "properties": {
               "node_name": {
@@ -353,6 +374,9 @@
             "required": [
               "node_name"
             ]
+          },
+          "traffic_generator_node": {
+            "$ref": "#/definitions/node_name"
           }
         },
         "additionalProperties": false,
@@ -361,7 +385,8 @@
           "perf",
           "func",
           "test_suites",
-          "system_under_test"
+          "system_under_test_node",
+          "traffic_generator_node"
         ]
       },
       "minimum": 1
