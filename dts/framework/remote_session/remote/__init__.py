@@ -9,6 +9,7 @@ from framework.logger import DTSLOG
 
 from .interactive_remote_session import InteractiveRemoteSession
 from .interactive_shell import InteractiveShell
+from .python_shell import PythonShell
 from .remote_session import CommandResult, RemoteSession
 from .ssh_session import SSHSession
 from .testpmd_shell import TestPmdDevice, TestPmdShell

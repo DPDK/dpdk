@@ -22,6 +22,7 @@ from .remote import (
     CommandResult,
     InteractiveRemoteSession,
     InteractiveShell,
+    PythonShell,
     RemoteSession,
     SSHSession,
     TestPmdDevice,
