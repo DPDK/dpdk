@@ -347,6 +347,19 @@ optional = false
 python-versions = ">=3.6"
 
 [[package]]
+name = "scapy"
+version = "2.5.0"
+description = "Scapy: interactive packet manipulation tool"
+category = "main"
+optional = false
+python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, <4"
+
+[package.extras]
+basic = ["ipython"]
+complete = ["ipython", "pyx", "cryptography (>=2.0)", "matplotlib"]
+docs = ["sphinx (>=3.0.0)", "sphinx_rtd_theme (>=0.4.3)", "tox (>=3.0.0)"]
+
+[[package]]
 name = "six"
 version = "1.16.0"
 description = "Python 2 and 3 compatibility utilities"
@@ -409,7 +422,7 @@ jsonschema = ">=4,<5"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.10"
-content-hash = "719c43bcaa5d181921debda884f8f714063df0b2336d61e9f64ecab034e8b139"
+content-hash = "907bf4ae92b05bbdb7cf2f37fc63e530702f1fff9990afa1f8e6c369b97ba592"
 
 [metadata.files]
 attrs = []
@@ -431,10 +444,7 @@ mypy-extensions = []
 paramiko = []
 pathlib2 = []
 pathspec = []
-platformdirs = [
-    {file = "platformdirs-2.5.2-py3-none-any.whl", hash = "sha256:027d8e83a2d7de06bbac4e5ef7e023c02b863d7ea5d079477e722bb41ab25788"},
-    {file = "platformdirs-2.5.2.tar.gz", hash = "sha256:58c8abb07dcb441e6ee4b11d8df0ac856038f944ab98b7be6b27b2a3c7feef19"},
-]
+platformdirs = []
 pycodestyle = []
 pycparser = []
 pydocstyle = []
@@ -443,6 +453,7 @@ pylama = []
 pynacl = []
 pyrsistent = []
 pyyaml = []
+scapy = []
 six = []
 snowballstemmer = []
 toml = []
