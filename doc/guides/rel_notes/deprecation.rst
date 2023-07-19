@@ -201,19 +201,16 @@ Deprecation Notices
   In the absence of such interest, this library will be removed in DPDK 23.11.
 
 * pipeline: The pipeline library legacy API (functions rte_pipeline_*)
-  will be deprecated in DPDK 23.07 release and removed in DPDK 23.11 release.
-  The new pipeline library API (functions rte_swx_pipeline_*)
-  will gradually transition from experimental to stable status
-  starting with DPDK 23.07 release.
+  will be deprecated and subsequently removed in DPDK 24.11 release.
+  Before this, the new pipeline library API (functions rte_swx_pipeline_*)
+  will gradually transition from experimental to stable status.
 
 * table: The table library legacy API (functions rte_table_*)
-  will be deprecated in DPDK 23.07 release and removed in DPDK 23.11 release.
-  The new table library API (functions rte_swx_table_*)
-  will gradually transition from experimental to stable status
-  starting with DPDK 23.07 release.
+  will be deprecated and subsequently removed in DPDK 24.11 release.
+  Before this, the new table library API (functions rte_swx_table_*)
+  will gradually transition from experimental to stable status.
 
 * port: The port library legacy API (functions rte_port_*)
-  will be deprecated in DPDK 23.07 release and removed in DPDK 23.11 release.
-  The new port library API (functions rte_swx_port_*)
-  will gradually transition from experimental to stable status
-  starting with DPDK 23.07 release.
+  will be deprecated and subsequently removed in DPDK 24.11 release.
+  Before this, the new port library API (functions rte_swx_port_*)
+  will gradually transition from experimental to stable status.
