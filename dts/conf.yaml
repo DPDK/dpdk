@@ -10,9 +10,13 @@ executions:
         compiler_wrapper: ccache
     perf: false
     func: true
+    skip_smoke_tests: false # optional flag that allows you to skip smoke tests
     test_suites:
       - hello_world
-    system_under_test: "SUT 1"
+    system_under_test:
+      node_name: "SUT 1"
+      vdevs: # optional; if removed, vdevs won't be used in the execution
+        - "crypto_openssl"
 nodes:
   - name: "SUT 1"
     hostname: sut1.change.me.localhost
@@ -25,3 +29,14 @@ nodes:
     hugepages:  # optional; if removed, will use system hugepage configuration
         amount: 256
         force_first_numa: false
+    ports:
+      - pci: "0000:00:08.0"
+        os_driver_for_dpdk: vfio-pci # OS driver that DPDK will use
+        os_driver: i40e
+        peer_node: "TG 1"
+        peer_pci: "0000:00:08.0"
+      - pci: "0000:00:08.1"
+        os_driver_for_dpdk: vfio-pci
+        os_driver: i40e
+        peer_node: "TG 1"
+        peer_pci: "0000:00:08.1"

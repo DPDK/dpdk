@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2023 PANTHEON.tech s.r.o.
+# Copyright(c) 2023 University of New Hampshire
 
 """
 Generic result container and reporters
@@ -13,9 +14,11 @@ from .config import (
     OS,
     Architecture,
     BuildTargetConfiguration,
+    BuildTargetInfo,
     Compiler,
     CPUType,
     NodeConfiguration,
+    NodeInfo,
 )
 from .exception import DTSError, ErrorSeverity
 from .logger import DTSLOG
@@ -67,7 +70,7 @@ class Statistics(dict):
     Using a dict provides a convenient way to format the data.
     """
 
-    def __init__(self, dpdk_version):
+    def __init__(self, dpdk_version: str | None):
         super(Statistics, self).__init__()
         for result in Result:
             self[result.name] = 0
@@ -206,6 +209,8 @@ class BuildTargetResult(BaseResult):
     os: OS
     cpu: CPUType
     compiler: Compiler
+    compiler_version: str | None
+    dpdk_version: str | None
 
     def __init__(self, build_target: BuildTargetConfiguration):
         super(BuildTargetResult, self).__init__()
@@ -213,6 +218,12 @@ class BuildTargetResult(BaseResult):
         self.os = build_target.os
         self.cpu = build_target.cpu
         self.compiler = build_target.compiler
+        self.compiler_version = None
+        self.dpdk_version = None
+
+    def add_build_target_info(self, versions: BuildTargetInfo) -> None:
+        self.compiler_version = versions.compiler_version
+        self.dpdk_version = versions.dpdk_version
 
     def add_test_suite(self, test_suite_name: str) -> TestSuiteResult:
         test_suite_result = TestSuiteResult(test_suite_name)
@@ -228,6 +239,9 @@ class ExecutionResult(BaseResult):
     """
 
     sut_node: NodeConfiguration
+    sut_os_name: str
+    sut_os_version: str
+    sut_kernel_version: str
 
     def __init__(self, sut_node: NodeConfiguration):
         super(ExecutionResult, self).__init__()
@@ -239,6 +253,11 @@ class ExecutionResult(BaseResult):
         build_target_result = BuildTargetResult(build_target)
         self._inner_results.append(build_target_result)
         return build_target_result
+
+    def add_sut_info(self, sut_info: NodeInfo):
+        self.sut_os_name = sut_info.os_name
+        self.sut_os_version = sut_info.os_version
+        self.sut_kernel_version = sut_info.kernel_version
 
 
 class DTSResult(BaseResult):

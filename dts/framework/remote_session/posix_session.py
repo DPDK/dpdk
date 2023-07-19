@@ -6,7 +6,7 @@ import re
 from collections.abc import Iterable
 from pathlib import PurePath, PurePosixPath
 
-from framework.config import Architecture
+from framework.config import Architecture, NodeInfo
 from framework.exception import DPDKBuildError, RemoteCommandExecutionError
 from framework.settings import SETTINGS
 from framework.utils import MesonArgs
@@ -221,3 +221,30 @@ class PosixSession(OSSession):
 
     def get_dpdk_file_prefix(self, dpdk_prefix) -> str:
         return ""
+
+    def get_compiler_version(self, compiler_name: str) -> str:
+        match compiler_name:
+            case "gcc":
+                return self.send_command(
+                    f"{compiler_name} --version", SETTINGS.timeout
+                ).stdout.split("\n")[0]
+            case "clang":
+                return self.send_command(
+                    f"{compiler_name} --version", SETTINGS.timeout
+                ).stdout.split("\n")[0]
+            case "msvc":
+                return self.send_command("cl", SETTINGS.timeout).stdout
+            case "icc":
+                return self.send_command(f"{compiler_name} -V", SETTINGS.timeout).stdout
+            case _:
+                raise ValueError(f"Unknown compiler {compiler_name}")
+
+    def get_node_info(self) -> NodeInfo:
+        os_release_info = self.send_command(
+            "awk -F= '$1 ~ /^NAME$|^VERSION$/ {print $2}' /etc/os-release",
+            SETTINGS.timeout,
+        ).stdout.split("\n")
+        kernel_version = self.send_command("uname -r", SETTINGS.timeout).stdout
+        return NodeInfo(
+            os_release_info[0].strip(), os_release_info[1].strip(), kernel_version
+        )

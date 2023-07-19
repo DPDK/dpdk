@@ -5,7 +5,13 @@
 
 import sys
 
-from .config import CONFIGURATION, BuildTargetConfiguration, ExecutionConfiguration
+from .config import (
+    CONFIGURATION,
+    BuildTargetConfiguration,
+    ExecutionConfiguration,
+    TestSuiteConfig,
+)
+from .exception import BlockingTestSuiteError
 from .logger import DTSLOG, getLogger
 from .test_result import BuildTargetResult, DTSResult, ExecutionResult, Result
 from .test_suite import get_test_suites
@@ -83,6 +89,7 @@ def _run_execution(
     """
     dts_logger.info(f"Running execution with SUT '{execution.system_under_test.name}'.")
     execution_result = result.add_execution(sut_node.config)
+    execution_result.add_sut_info(sut_node.node_info)
 
     try:
         sut_node.set_up_execution(execution)
@@ -119,13 +126,14 @@ def _run_build_target(
     try:
         sut_node.set_up_build_target(build_target)
         result.dpdk_version = sut_node.dpdk_version
+        build_target_result.add_build_target_info(sut_node.get_build_target_info())
         build_target_result.update_setup(Result.PASS)
     except Exception as e:
         dts_logger.exception("Build target setup failed.")
         build_target_result.update_setup(Result.FAIL, e)
 
     else:
-        _run_suites(sut_node, execution, build_target_result)
+        _run_all_suites(sut_node, execution, build_target_result)
 
     finally:
         try:
@@ -136,7 +144,7 @@ def _run_build_target(
             build_target_result.update_teardown(Result.FAIL, e)
 
 
-def _run_suites(
+def _run_all_suites(
     sut_node: SutNode,
     execution: ExecutionConfiguration,
     build_target_result: BuildTargetResult,
@@ -146,27 +154,61 @@ def _run_suites(
     with possibly only a subset of test cases.
     If no subset is specified, run all test cases.
     """
+    end_build_target = False
+    if not execution.skip_smoke_tests:
+        execution.test_suites[:0] = [TestSuiteConfig.from_dict("smoke_tests")]
     for test_suite_config in execution.test_suites:
         try:
-            full_suite_path = f"tests.TestSuite_{test_suite_config.test_suite}"
-            test_suite_classes = get_test_suites(full_suite_path)
-            suites_str = ", ".join((x.__name__ for x in test_suite_classes))
-            dts_logger.debug(
-                f"Found test suites '{suites_str}' in '{full_suite_path}'."
+            _run_single_suite(
+                sut_node, execution, build_target_result, test_suite_config
             )
-        except Exception as e:
-            dts_logger.exception("An error occurred when searching for test suites.")
-            result.update_setup(Result.ERROR, e)
+        except BlockingTestSuiteError as e:
+            dts_logger.exception(
+                f"An error occurred within {test_suite_config.test_suite}. "
+                "Skipping build target..."
+            )
+            result.add_error(e)
+            end_build_target = True
+        # if a blocking test failed and we need to bail out of suite executions
+        if end_build_target:
+            break
 
-        else:
-            for test_suite_class in test_suite_classes:
-                test_suite = test_suite_class(
-                    sut_node,
-                    test_suite_config.test_cases,
-                    execution.func,
-                    build_target_result,
-                )
-                test_suite.run()
+
+def _run_single_suite(
+    sut_node: SutNode,
+    execution: ExecutionConfiguration,
+    build_target_result: BuildTargetResult,
+    test_suite_config: TestSuiteConfig,
+) -> None:
+    """Runs a single test suite.
+
+    Args:
+        sut_node: Node to run tests on.
+        execution: Execution the test case belongs to.
+        build_target_result: Build target configuration test case is run on
+        test_suite_config: Test suite configuration
+
+    Raises:
+        BlockingTestSuiteError: If a test suite that was marked as blocking fails.
+    """
+    try:
+        full_suite_path = f"tests.TestSuite_{test_suite_config.test_suite}"
+        test_suite_classes = get_test_suites(full_suite_path)
+        suites_str = ", ".join((x.__name__ for x in test_suite_classes))
+        dts_logger.debug(f"Found test suites '{suites_str}' in '{full_suite_path}'.")
+    except Exception as e:
+        dts_logger.exception("An error occurred when searching for test suites.")
+        result.update_setup(Result.ERROR, e)
+
+    else:
+        for test_suite_class in test_suite_classes:
+            test_suite = test_suite_class(
+                sut_node,
+                test_suite_config.test_cases,
+                execution.func,
+                build_target_result,
+            )
+            test_suite.run()
 
 
 def _exit_dts() -> None:

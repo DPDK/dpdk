@@ -25,6 +25,7 @@ class ErrorSeverity(IntEnum):
     SSH_ERR = 4
     DPDK_BUILD_ERR = 10
     TESTCASE_VERIFY_ERR = 20
+    BLOCKING_TESTSUITE_ERR = 25
 
 
 class DTSError(Exception):
@@ -150,3 +151,14 @@ class TestCaseVerifyError(DTSError):
 
     def __str__(self) -> str:
         return repr(self.value)
+
+
+class BlockingTestSuiteError(DTSError):
+    suite_name: str
+    severity: ClassVar[ErrorSeverity] = ErrorSeverity.BLOCKING_TESTSUITE_ERR
+
+    def __init__(self, suite_name: str) -> None:
+        self.suite_name = suite_name
+
+    def __str__(self) -> str:
+        return f"Blocking suite {self.suite_name} failed."

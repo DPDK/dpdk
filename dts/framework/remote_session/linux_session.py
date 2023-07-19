@@ -14,7 +14,8 @@ class LinuxSession(PosixSession):
     The implementation of non-Posix compliant parts of Linux remote sessions.
     """
 
-    def _get_privileged_command(self, command: str) -> str:
+    @staticmethod
+    def _get_privileged_command(command: str) -> str:
         return f"sudo -- sh -c '{command}'"
 
     def get_remote_cpus(self, use_first_core: bool) -> list[LogicalCore]:

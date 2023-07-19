@@ -25,6 +25,9 @@ class StrEnum(Enum):
         return self.name
 
 
+REGEX_FOR_PCI_ADDRESS = "/[0-9a-fA-F]{4}:[0-9a-fA-F]{2}:[0-9a-fA-F]{2}.[0-9]{1}/"
+
+
 def check_dts_python_version() -> None:
     if sys.version_info.major < 3 or (
         sys.version_info.major == 3 and sys.version_info.minor < 10

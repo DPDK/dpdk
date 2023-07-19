@@ -66,6 +66,20 @@ class HugepageConfiguration:
 
 
 @dataclass(slots=True, frozen=True)
+class PortConfig:
+    node: str
+    pci: str
+    os_driver_for_dpdk: str
+    os_driver: str
+    peer_node: str
+    peer_pci: str
+
+    @staticmethod
+    def from_dict(node: str, d: dict) -> "PortConfig":
+        return PortConfig(node=node, **d)
+
+
+@dataclass(slots=True, frozen=True)
 class NodeConfiguration:
     name: str
     hostname: str
@@ -77,6 +91,7 @@ class NodeConfiguration:
     use_first_core: bool
     memory_channels: int
     hugepages: HugepageConfiguration | None
+    ports: list[PortConfig]
 
     @staticmethod
     def from_dict(d: dict) -> "NodeConfiguration":
@@ -85,19 +100,36 @@ class NodeConfiguration:
             if "force_first_numa" not in hugepage_config:
                 hugepage_config["force_first_numa"] = False
             hugepage_config = HugepageConfiguration(**hugepage_config)
+        common_config = {
+            "name": d["name"],
+            "hostname": d["hostname"],
+            "user": d["user"],
+            "password": d.get("password"),
+            "arch": Architecture(d["arch"]),
+            "os": OS(d["os"]),
+            "lcores": d.get("lcores", "1"),
+            "use_first_core": d.get("use_first_core", False),
+            "memory_channels": d.get("memory_channels", 1),
+            "hugepages": hugepage_config,
+            "ports": [PortConfig.from_dict(d["name"], port) for port in d["ports"]],
+        }
 
-        return NodeConfiguration(
-            name=d["name"],
-            hostname=d["hostname"],
-            user=d["user"],
-            password=d.get("password"),
-            arch=Architecture(d["arch"]),
-            os=OS(d["os"]),
-            lcores=d.get("lcores", "1"),
-            use_first_core=d.get("use_first_core", False),
-            memory_channels=d.get("memory_channels", 1),
-            hugepages=hugepage_config,
-        )
+        return NodeConfiguration(**common_config)
+
+
+@dataclass(slots=True, frozen=True)
+class NodeInfo:
+    """Class to hold important versions within the node.
+
+    This class, unlike the NodeConfiguration class, cannot be generated at the start.
+    This is because we need to initialize a connection with the node before we can
+    collect the information needed in this class. Therefore, it cannot be a part of
+    the configuration class above.
+    """
+
+    os_name: str
+    os_version: str
+    kernel_version: str
 
 
 @dataclass(slots=True, frozen=True)
@@ -119,6 +151,18 @@ class BuildTargetConfiguration:
             compiler_wrapper=d.get("compiler_wrapper", ""),
             name=f"{d['arch']}-{d['os']}-{d['cpu']}-{d['compiler']}",
         )
+
+
+@dataclass(slots=True, frozen=True)
+class BuildTargetInfo:
+    """Class to hold important versions within the build target.
+
+    This is very similar to the NodeInfo class, it just instead holds information
+    for the build target.
+    """
+
+    dpdk_version: str
+    compiler_version: str
 
 
 class TestSuiteConfigDict(TypedDict):
@@ -150,6 +194,8 @@ class ExecutionConfiguration:
     func: bool
     test_suites: list[TestSuiteConfig]
     system_under_test: NodeConfiguration
+    vdevs: list[str]
+    skip_smoke_tests: bool
 
     @staticmethod
     def from_dict(d: dict, node_map: dict) -> "ExecutionConfiguration":
@@ -159,15 +205,20 @@ class ExecutionConfiguration:
         test_suites: list[TestSuiteConfig] = list(
             map(TestSuiteConfig.from_dict, d["test_suites"])
         )
-        sut_name = d["system_under_test"]
+        sut_name = d["system_under_test"]["node_name"]
+        skip_smoke_tests = d.get("skip_smoke_tests", False)
         assert sut_name in node_map, f"Unknown SUT {sut_name} in execution {d}"
-
+        vdevs = (
+            d["system_under_test"]["vdevs"] if "vdevs" in d["system_under_test"] else []
+        )
         return ExecutionConfiguration(
             build_targets=build_targets,
             perf=d["perf"],
             func=d["func"],
+            skip_smoke_tests=skip_smoke_tests,
             test_suites=test_suites,
             system_under_test=node_map[sut_name],
+            vdevs=vdevs,
         )
 
 

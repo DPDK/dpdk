@@ -1,19 +1,72 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2010-2014 Intel Corporation
 # Copyright(c) 2023 PANTHEON.tech s.r.o.
+# Copyright(c) 2023 University of New Hampshire
 
 import os
 import tarfile
 import time
 from pathlib import PurePath
+from typing import Type
 
-from framework.config import BuildTargetConfiguration, NodeConfiguration
-from framework.remote_session import CommandResult, OSSession
+from framework.config import (
+    BuildTargetConfiguration,
+    BuildTargetInfo,
+    NodeConfiguration,
+    NodeInfo,
+)
+from framework.remote_session import CommandResult, InteractiveShellType, OSSession
 from framework.settings import SETTINGS
 from framework.utils import MesonArgs
 
 from .hw import LogicalCoreCount, LogicalCoreList, VirtualDevice
 from .node import Node
+
+
+class EalParameters(object):
+    def __init__(
+        self,
+        lcore_list: LogicalCoreList,
+        memory_channels: int,
+        prefix: str,
+        no_pci: bool,
+        vdevs: list[VirtualDevice],
+        other_eal_param: str,
+    ):
+        """
+        Generate eal parameters character string;
+        :param lcore_list: the list of logical cores to use.
+        :param memory_channels: the number of memory channels to use.
+        :param prefix: set file prefix string, eg:
+                        prefix='vf'
+        :param no_pci: switch of disable PCI bus eg:
+                        no_pci=True
+        :param vdevs: virtual device list, eg:
+                        vdevs=[
+                            VirtualDevice('net_ring0'),
+                            VirtualDevice('net_ring1')
+                        ]
+        :param other_eal_param: user defined DPDK eal parameters, eg:
+                        other_eal_param='--single-file-segments'
+        """
+        self._lcore_list = f"-l {lcore_list}"
+        self._memory_channels = f"-n {memory_channels}"
+        self._prefix = prefix
+        if prefix:
+            self._prefix = f"--file-prefix={prefix}"
+        self._no_pci = "--no-pci" if no_pci else ""
+        self._vdevs = " ".join(f"--vdev {vdev}" for vdev in vdevs)
+        self._other_eal_param = other_eal_param
+
+    def __str__(self) -> str:
+        return (
+            f"{self._lcore_list} "
+            f"{self._memory_channels} "
+            f"{self._prefix} "
+            f"{self._no_pci} "
+            f"{self._vdevs} "
+            f"{self._other_eal_param}"
+        )
 
 
 class SutNode(Node):
@@ -30,9 +83,11 @@ class SutNode(Node):
     _env_vars: dict
     _remote_tmp_dir: PurePath
     __remote_dpdk_dir: PurePath | None
-    _dpdk_version: str | None
     _app_compile_timeout: float
     _dpdk_kill_session: OSSession | None
+    _dpdk_version: str | None
+    _node_info: NodeInfo | None
+    _compiler_version: str | None
 
     def __init__(self, node_config: NodeConfiguration):
         super(SutNode, self).__init__(node_config)
@@ -41,12 +96,14 @@ class SutNode(Node):
         self._env_vars = {}
         self._remote_tmp_dir = self.main_session.get_remote_tmp_dir()
         self.__remote_dpdk_dir = None
-        self._dpdk_version = None
         self._app_compile_timeout = 90
         self._dpdk_kill_session = None
         self._dpdk_timestamp = (
             f"{str(os.getpid())}_{time.strftime('%Y%m%d%H%M%S', time.localtime())}"
         )
+        self._dpdk_version = None
+        self._node_info = None
+        self._compiler_version = None
 
     @property
     def _remote_dpdk_dir(self) -> PurePath:
@@ -75,6 +132,32 @@ class SutNode(Node):
             )
         return self._dpdk_version
 
+    @property
+    def node_info(self) -> NodeInfo:
+        if self._node_info is None:
+            self._node_info = self.main_session.get_node_info()
+        return self._node_info
+
+    @property
+    def compiler_version(self) -> str:
+        if self._compiler_version is None:
+            if self._build_target_config is not None:
+                self._compiler_version = self.main_session.get_compiler_version(
+                    self._build_target_config.compiler.name
+                )
+            else:
+                self._logger.warning(
+                    "Failed to get compiler version because"
+                    "_build_target_config is None."
+                )
+                return ""
+        return self._compiler_version
+
+    def get_build_target_info(self) -> BuildTargetInfo:
+        return BuildTargetInfo(
+            dpdk_version=self.dpdk_version, compiler_version=self.compiler_version
+        )
+
     def _guess_dpdk_remote_dir(self) -> PurePath:
         return self.main_session.guess_dpdk_remote_dir(self._remote_tmp_dir)
 
@@ -84,6 +167,10 @@ class SutNode(Node):
         """
         Setup DPDK on the SUT node.
         """
+        # we want to ensure that dpdk_version and compiler_version is reset for new
+        # build targets
+        self._dpdk_version = None
+        self._compiler_version = None
         self._configure_build_target(build_target_config)
         self._copy_dpdk_tarball()
         self._build_dpdk()
@@ -262,48 +349,38 @@ class SutNode(Node):
             f"{app_path} {eal_args}", timeout, privileged=True, verify=True
         )
 
-
-class EalParameters(object):
-    def __init__(
+    def create_interactive_shell(
         self,
-        lcore_list: LogicalCoreList,
-        memory_channels: int,
-        prefix: str,
-        no_pci: bool,
-        vdevs: list[VirtualDevice],
-        other_eal_param: str,
-    ):
-        """
-        Generate eal parameters character string;
-        :param lcore_list: the list of logical cores to use.
-        :param memory_channels: the number of memory channels to use.
-        :param prefix: set file prefix string, eg:
-                        prefix='vf'
-        :param no_pci: switch of disable PCI bus eg:
-                        no_pci=True
-        :param vdevs: virtual device list, eg:
-                        vdevs=[
-                            VirtualDevice('net_ring0'),
-                            VirtualDevice('net_ring1')
-                        ]
-        :param other_eal_param: user defined DPDK eal parameters, eg:
-                        other_eal_param='--single-file-segments'
-        """
-        self._lcore_list = f"-l {lcore_list}"
-        self._memory_channels = f"-n {memory_channels}"
-        self._prefix = prefix
-        if prefix:
-            self._prefix = f"--file-prefix={prefix}"
-        self._no_pci = "--no-pci" if no_pci else ""
-        self._vdevs = " ".join(f"--vdev {vdev}" for vdev in vdevs)
-        self._other_eal_param = other_eal_param
+        shell_cls: Type[InteractiveShellType],
+        timeout: float = SETTINGS.timeout,
+        privileged: bool = False,
+        eal_parameters: EalParameters | str | None = None,
+    ) -> InteractiveShellType:
+        """Factory method for creating a handler for an interactive session.
 
-    def __str__(self) -> str:
-        return (
-            f"{self._lcore_list} "
-            f"{self._memory_channels} "
-            f"{self._prefix} "
-            f"{self._no_pci} "
-            f"{self._vdevs} "
-            f"{self._other_eal_param}"
+        Instantiate shell_cls according to the remote OS specifics.
+
+        Args:
+            shell_cls: The class of the shell.
+            timeout: Timeout for reading output from the SSH channel. If you are
+                reading from the buffer and don't receive any data within the timeout
+                it will throw an error.
+            privileged: Whether to run the shell with administrative privileges.
+            eal_parameters: List of EAL parameters to use to launch the app. If this
+                isn't provided or an empty string is passed, it will default to calling
+                create_eal_parameters().
+        Returns:
+            Instance of the desired interactive application.
+        """
+        if not eal_parameters:
+            eal_parameters = self.create_eal_parameters()
+
+        # We need to append the build directory for DPDK apps
+        if shell_cls.dpdk_app:
+            shell_cls.path = self.main_session.join_remote_path(
+                self.remote_dpdk_build_dir, shell_cls.path
+            )
+
+        return super().create_interactive_shell(
+            shell_cls, timeout, privileged, str(eal_parameters)
         )

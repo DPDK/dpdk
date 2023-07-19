@@ -11,7 +11,12 @@ import inspect
 import re
 from types import MethodType
 
-from .exception import ConfigurationError, SSHTimeoutError, TestCaseVerifyError
+from .exception import (
+    BlockingTestSuiteError,
+    ConfigurationError,
+    SSHTimeoutError,
+    TestCaseVerifyError,
+)
 from .logger import DTSLOG, getLogger
 from .settings import SETTINGS
 from .test_result import BuildTargetResult, Result, TestCaseResult, TestSuiteResult
@@ -37,6 +42,7 @@ class TestSuite(object):
     """
 
     sut_node: SutNode
+    is_blocking = False
     _logger: DTSLOG
     _test_cases_to_run: list[str]
     _func: bool
@@ -118,6 +124,8 @@ class TestSuite(object):
                     f"the next test suite may be affected."
                 )
                 self._result.update_setup(Result.ERROR, e)
+            if len(self._result.get_errors()) > 0 and self.is_blocking:
+                raise BlockingTestSuiteError(test_suite_name)
 
     def _execute_test_suite(self) -> None:
         """
