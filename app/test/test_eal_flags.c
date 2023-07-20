@@ -1017,7 +1017,7 @@ test_misc_flags(void)
 
 	/* try running with base-virtaddr param */
 	const char *argv13[] = {prgname, "--file-prefix=virtaddr",
-			"--base-virtaddr=0x12345678"};
+			"--base-virtaddr=0x23456789"};
 
 	/* try running with --vfio-intr INTx flag */
 	const char *argv14[] = {prgname, "--file-prefix=intr",
