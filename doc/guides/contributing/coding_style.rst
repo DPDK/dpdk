@@ -804,6 +804,29 @@ logging of a particular topic, the ``--log-level`` parameter can be provided
 to EAL, which will change the log level. DPDK code can register topics,
 which allows the user to adjust the log verbosity for that specific topic.
 
+To register a library or driver for dynamic logging,
+using the standardized naming scheme described below,
+use ``RTE_LOG_REGISTER_DEFAULT`` macro
+to define a log-type variable inside your component's main C file.
+Thereafter, it is usual to define a macro or macros inside your component
+to make logging more convenient.
+
+For example, the ``rte_cfgfile`` library defines:
+
+.. literalinclude:: ../../../lib/cfgfile/rte_cfgfile.c
+   :language: c
+   :start-after: Setting up dynamic logging 8<
+   :end-before: >8 End of setting up dynamic logging
+
+.. note::
+
+   The statically-defined log types defined in ``rte_log.h`` are for legacy components,
+   and they will likely be removed in a future release.
+   Do not add new entries to this file.
+
+Dynamic Logging Naming Scheme
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 In general, the naming scheme is as follows: ``type.section.name``
 
  * Type is the type of component, where ``lib``, ``pmd``, ``bus`` and ``user``
@@ -837,6 +860,8 @@ A specialization looks like this:
 
  * Initialization output: ``type.section.name.init``
  * PF/VF mailbox output: ``type.section.name.mbox``
+
+These specializations are created using the ``RTE_LOG_REGISTER_SUFFIX`` macro.
 
 A real world example is the i40e poll mode driver which exposes two
 specializations, one for initialization ``pmd.net.i40e.init`` and the other for

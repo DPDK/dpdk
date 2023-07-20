@@ -27,11 +27,13 @@ struct rte_cfgfile {
 	struct rte_cfgfile_section *sections;
 };
 
+/* Setting up dynamic logging 8< */
 RTE_LOG_REGISTER_DEFAULT(cfgfile_logtype, INFO);
 
 #define CFG_LOG(level, fmt, args...)					\
 	rte_log(RTE_LOG_ ## level, cfgfile_logtype, "%s(): " fmt "\n",	\
 		__func__, ## args)
+/* >8 End of setting up dynamic logging */
 
 /** when we resize a file structure, how many extra entries
  * for new sections do we add in */
