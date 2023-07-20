@@ -1555,6 +1555,8 @@ add_cdev_mapping(const struct rte_cryptodev_info *dev_info, uint16_t cdev_id,
 	struct lcore_conf *qconf;
 	struct ipsec_ctx *ipsec_ctx;
 	const char *str;
+	void *sec_ctx;
+	const struct rte_security_capability *sec_cap;
 
 	qconf = &lcore_conf[params->lcore_id];
 
@@ -1569,8 +1571,8 @@ add_cdev_mapping(const struct rte_cryptodev_info *dev_info, uint16_t cdev_id,
 	}
 
 	/* Required cryptodevs with operation chaining */
-	if (!(dev_info->feature_flags &
-				RTE_CRYPTODEV_FF_SYM_OPERATION_CHAINING))
+	if (!(dev_info->feature_flags & RTE_CRYPTODEV_FF_SYM_OPERATION_CHAINING) &&
+			!(dev_info->feature_flags & RTE_CRYPTODEV_FF_SECURITY))
 		return ret;
 
 	for (i = dev_info->capabilities;
@@ -1588,6 +1590,41 @@ add_cdev_mapping(const struct rte_cryptodev_info *dev_info, uint16_t cdev_id,
 			continue;
 
 		for (j = dev_info->capabilities;
+				j->op != RTE_CRYPTO_OP_TYPE_UNDEFINED; j++) {
+			if (j->op != RTE_CRYPTO_OP_TYPE_SYMMETRIC)
+				continue;
+
+			if (j->sym.xform_type != RTE_CRYPTO_SYM_XFORM_AUTH)
+				continue;
+
+			ret |= add_mapping(str, cdev_id, qp, params,
+						ipsec_ctx, i, j, NULL);
+		}
+	}
+
+	sec_ctx = rte_cryptodev_get_sec_ctx(cdev_id);
+	if (sec_ctx == NULL)
+		return ret;
+
+	sec_cap = rte_security_capabilities_get(sec_ctx);
+	if (sec_cap == NULL)
+		return ret;
+
+	for (i = sec_cap->crypto_capabilities;
+			i->op != RTE_CRYPTO_OP_TYPE_UNDEFINED; i++) {
+		if (i->op != RTE_CRYPTO_OP_TYPE_SYMMETRIC)
+			continue;
+
+		if (i->sym.xform_type == RTE_CRYPTO_SYM_XFORM_AEAD) {
+			ret |= add_mapping(str, cdev_id, qp, params,
+					ipsec_ctx, NULL, NULL, i);
+			continue;
+		}
+
+		if (i->sym.xform_type != RTE_CRYPTO_SYM_XFORM_CIPHER)
+			continue;
+
+		for (j = sec_cap->crypto_capabilities;
 				j->op != RTE_CRYPTO_OP_TYPE_UNDEFINED; j++) {
 			if (j->op != RTE_CRYPTO_OP_TYPE_SYMMETRIC)
 				continue;
