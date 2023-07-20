@@ -2191,6 +2191,7 @@ ngbe_get_rx_port_offloads(struct rte_eth_dev *dev)
 		   RTE_ETH_RX_OFFLOAD_TCP_CKSUM   |
 		   RTE_ETH_RX_OFFLOAD_KEEP_CRC    |
 		   RTE_ETH_RX_OFFLOAD_VLAN_FILTER |
+		   RTE_ETH_RX_OFFLOAD_RSS_HASH    |
 		   RTE_ETH_RX_OFFLOAD_SCATTER;
 
 	if (hw->is_pf)
