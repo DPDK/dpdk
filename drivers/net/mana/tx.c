@@ -201,7 +201,7 @@ mana_tx_burst(void *dpdk_txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		if (!desc->pkt) {
 			DP_LOG(ERR, "mana_txq_desc has a NULL pkt");
 		} else {
-			txq->stats.bytes += desc->pkt->data_len;
+			txq->stats.bytes += desc->pkt->pkt_len;
 			rte_pktmbuf_free(desc->pkt);
 		}
 
