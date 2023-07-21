@@ -1202,6 +1202,7 @@ err_secondary:
 	config->mprq.log_min_stride_wqe_size =
 			MLX5_MPRQ_LOG_MIN_STRIDE_WQE_SIZE;
 	config->mprq.log_stride_num = MLX5_MPRQ_DEFAULT_LOG_STRIDE_NUM;
+	config->mprq.log_stride_size = MLX5_MPRQ_DEFAULT_LOG_STRIDE_SIZE;
 	if (config->devx) {
 		config->mprq.log_min_stride_wqe_size =
 				config->hca_attr.log_min_stride_wqe_sz;
