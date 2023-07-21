@@ -127,6 +127,23 @@ void bnxt_handle_vf_cfg_change(void *arg)
 	}
 }
 
+static void
+bnxt_process_vf_flr(struct bnxt *bp, uint32_t data1)
+{
+	uint16_t pfid, vfid;
+
+	if (!BNXT_TRUFLOW_EN(bp))
+		return;
+
+	pfid = (data1 & HWRM_ASYNC_EVENT_CMPL_VF_FLR_EVENT_DATA1_PF_ID_MASK) >>
+		HWRM_ASYNC_EVENT_CMPL_VF_FLR_EVENT_DATA1_PF_ID_SFT;
+	vfid = (data1 & HWRM_ASYNC_EVENT_CMPL_VF_FLR_EVENT_DATA1_VF_ID_MASK) >>
+		HWRM_ASYNC_EVENT_CMPL_VF_FLR_EVENT_DATA1_VF_ID_SFT;
+
+	PMD_DRV_LOG(INFO, "VF FLR async event received pfid: %u, vfid: %u\n",
+		    pfid, vfid);
+}
+
 /*
  * Async event handling
  */
@@ -263,6 +280,9 @@ void bnxt_handle_async_event(struct bnxt *bp,
 		break;
 	case HWRM_ASYNC_EVENT_CMPL_EVENT_ID_ERROR_REPORT:
 		bnxt_handle_event_error_report(bp, data1, data2);
+		break;
+	case HWRM_ASYNC_EVENT_CMPL_EVENT_ID_VF_FLR:
+		bnxt_process_vf_flr(bp, data1);
 		break;
 	default:
 		PMD_DRV_LOG(DEBUG, "handle_async_event id = 0x%x\n", event_id);
