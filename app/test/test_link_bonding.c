@@ -2,7 +2,7 @@
  * Copyright(c) 2010-2014 Intel Corporation
  */
 
-#include "unistd.h"
+#include <unistd.h>
 #include <string.h>
 #include <stdarg.h>
 #include <stdio.h>
