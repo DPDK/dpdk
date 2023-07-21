@@ -6006,14 +6006,16 @@ i40e_vsi_setup(struct i40e_pf *pf,
 		}
 	}
 
-	/* MAC/VLAN configuration */
-	rte_memcpy(&filter.mac_addr, &broadcast, RTE_ETHER_ADDR_LEN);
-	filter.filter_type = I40E_MACVLAN_PERFECT_MATCH;
+	if (vsi->type != I40E_VSI_FDIR) {
+		/* MAC/VLAN configuration for non-FDIR VSI*/
+		rte_memcpy(&filter.mac_addr, &broadcast, RTE_ETHER_ADDR_LEN);
+		filter.filter_type = I40E_MACVLAN_PERFECT_MATCH;
 
-	ret = i40e_vsi_add_mac(vsi, &filter);
-	if (ret != I40E_SUCCESS) {
-		PMD_DRV_LOG(ERR, "Failed to add MACVLAN filter");
-		goto fail_msix_alloc;
+		ret = i40e_vsi_add_mac(vsi, &filter);
+		if (ret != I40E_SUCCESS) {
+			PMD_DRV_LOG(ERR, "Failed to add MACVLAN filter");
+			goto fail_msix_alloc;
+		}
 	}
 
 	/* Get VSI BW information */
