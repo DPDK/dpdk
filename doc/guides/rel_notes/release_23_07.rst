@@ -104,6 +104,14 @@ New Features
   * Added support for Rx timestamp offload on vector paths.
   * Added support for UDP fragmentation offload.
 
+* **Updated Intel idpf driver.**
+
+  * Added support for Intel IPU E2100 VF.
+
+* **Updated Intel cpfl driver.**
+
+  * Added support for hairpin queue.
+
 * **Updated Marvell cnxk ethdev driver.**
 
   * Added support for reassembly of multi-segment packets.
