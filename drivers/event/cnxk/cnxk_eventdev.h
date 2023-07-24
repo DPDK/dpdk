@@ -113,7 +113,7 @@ struct cnxk_sso_evdev {
 	/* CN9K */
 	uint8_t dual_ws;
 	/* CN10K */
-	uint8_t gw_mode;
+	uint32_t gw_mode;
 	/* Crypto adapter */
 	uint8_t is_ca_internal_port;
 } __rte_cache_aligned;
