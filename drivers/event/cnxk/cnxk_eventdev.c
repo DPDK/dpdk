@@ -551,7 +551,7 @@ cnxk_sso_parse_devargs(struct cnxk_sso_evdev *dev, struct rte_devargs *devargs)
 			   &dev->force_ena_bp);
 	rte_kvargs_process(kvlist, CN9K_SSO_SINGLE_WS, &parse_kvargs_flag,
 			   &single_ws);
-	rte_kvargs_process(kvlist, CN10K_SSO_GW_MODE, &parse_kvargs_flag,
+	rte_kvargs_process(kvlist, CN10K_SSO_GW_MODE, &parse_kvargs_value,
 			   &dev->gw_mode);
 	dev->dual_ws = !single_ws;
 	rte_kvargs_free(kvlist);
