@@ -119,7 +119,7 @@ struct cnxk_sso_evdev {
 	/* CN9K */
 	uint8_t dual_ws;
 	/* CN10K */
-	uint8_t gw_mode;
+	uint32_t gw_mode;
 	uint16_t stash_cnt;
 	struct cnxk_sso_stash *stash_parse_data;
 } __rte_cache_aligned;
