@@ -300,7 +300,8 @@ cn10k_sso_hws_get_work(struct cn10k_sso_hws *ws, struct rte_event *ev,
 	} gw;
 
 	gw.get_work = ws->gw_wdata;
-#if defined(RTE_ARCH_ARM64) && !defined(__clang__)
+#if defined(RTE_ARCH_ARM64)
+#if !defined(__clang__)
 	asm volatile(
 		PLT_CPU_FEATURE_PREAMBLE
 		"caspal %[wdata], %H[wdata], %[wdata], %H[wdata], [%[gw_loc]]\n"
@@ -308,11 +309,23 @@ cn10k_sso_hws_get_work(struct cn10k_sso_hws *ws, struct rte_event *ev,
 		: [gw_loc] "r"(ws->base + SSOW_LF_GWS_OP_GET_WORK0)
 		: "memory");
 #else
+	register uint64_t x0 __asm("x0") = (uint64_t)gw.u64[0];
+	register uint64_t x1 __asm("x1") = (uint64_t)gw.u64[1];
+	asm volatile(".arch armv8-a+lse\n"
+		     "caspal %[x0], %[x1], %[x0], %[x1], [%[dst]]\n"
+		     : [x0] "+r"(x0), [x1] "+r"(x1)
+		     : [dst] "r"(ws->base + SSOW_LF_GWS_OP_GET_WORK0)
+		     : "memory");
+	gw.u64[0] = x0;
+	gw.u64[1] = x1;
+#endif
+#else
 	plt_write64(gw.u64[0], ws->base + SSOW_LF_GWS_OP_GET_WORK0);
 	do {
 		roc_load_pair(gw.u64[0], gw.u64[1],
 			      ws->base + SSOW_LF_GWS_WQE0);
 	} while (gw.u64[0] & BIT_ULL(63));
+	rte_atomic_thread_fence(__ATOMIC_SEQ_CST);
 #endif
 	ws->gw_rdata = gw.u64[0];
 	if (gw.u64[1])
