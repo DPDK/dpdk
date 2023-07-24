@@ -505,8 +505,7 @@ rte_rawdev_pmd_allocate(const char *name, size_t dev_priv_size, int socket_id)
 	uint16_t dev_id;
 
 	if (rte_rawdev_pmd_get_named_dev(name) != NULL) {
-		RTE_RDEV_ERR("Event device with name %s already allocated!",
-			     name);
+		RTE_RDEV_ERR("Raw device with name %s already allocated!", name);
 		return NULL;
 	}
 
