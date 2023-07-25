@@ -822,7 +822,6 @@ get_port_mac(struct ibv_device *device, unsigned int port,
 	DIR *dir;
 	struct dirent *dent;
 	unsigned int dev_port;
-	char mac[20];
 
 	MANA_MKSTR(path, "%s/device/net", device->ibdev_path);
 
@@ -832,6 +831,7 @@ get_port_mac(struct ibv_device *device, unsigned int port,
 
 	while ((dent = readdir(dir))) {
 		char *name = dent->d_name;
+		char *mac = NULL;
 
 		MANA_MKSTR(port_path, "%s/%s/dev_port", path, name);
 
@@ -859,7 +859,7 @@ get_port_mac(struct ibv_device *device, unsigned int port,
 			if (!file)
 				continue;
 
-			ret = fscanf(file, "%s", mac);
+			ret = fscanf(file, "%ms", &mac);
 			fclose(file);
 
 			if (ret < 0)
@@ -868,6 +868,8 @@ get_port_mac(struct ibv_device *device, unsigned int port,
 			ret = rte_ether_unformat_addr(mac, addr);
 			if (ret)
 				DRV_LOG(ERR, "unrecognized mac addr %s", mac);
+
+			free(mac);
 			break;
 		}
 	}
