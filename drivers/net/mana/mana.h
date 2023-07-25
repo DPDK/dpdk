@@ -16,8 +16,8 @@ struct mana_shared_data {
 	unsigned int secondary_cnt;
 };
 
+#define MANA_MAX_MTU	9000
 #define MIN_RX_BUF_SIZE	1024
-#define MAX_FRAME_SIZE	RTE_ETHER_MAX_LEN
 #define MANA_MAX_MAC_ADDR 1
 
 #define MANA_DEV_RX_OFFLOAD_SUPPORT ( \
