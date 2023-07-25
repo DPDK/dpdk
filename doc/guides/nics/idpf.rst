@@ -19,6 +19,20 @@ To get better performance on Intel platforms,
 please follow the :doc:`../linux_gsg/nic_perf_intel_platform`.
 
 
+Recommended Matching List
+-------------------------
+
+It is highly recommended to upgrade the idpf kernel driver, MEV-ts release
+to avoid compatibility issues with the idpf PMD.
+Here is the suggested matching list which has been tested and verified.
+
+   +------------+---------------+------------------+
+   |    DPDK    | Kernel Driver |  MEV-ts release  |
+   +============+===============+==================+
+   |    23.07   |    0.0.710    |      0.9.1       |
+   +------------+---------------+------------------+
+
+
 Configuration
 -------------
 

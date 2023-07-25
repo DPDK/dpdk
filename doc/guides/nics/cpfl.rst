@@ -21,6 +21,20 @@ To get better performance on Intel platforms,
 please follow the :doc:`../linux_gsg/nic_perf_intel_platform`.
 
 
+Recommended Matching List
+-------------------------
+
+It is highly recommended to upgrade the MEV-ts release
+to avoid compatibility issues with the cpfl PMD.
+Here is the suggested matching list which has been tested and verified.
+
+   +------------+------------------+
+   |     DPDK   |  MEV-ts release  |
+   +============+==================+
+   |    23.07   |      0.9.1       |
+   +------------+------------------+
+
+
 Configuration
 -------------
 
