@@ -82,6 +82,7 @@ Setting up DTS environment
    Another benefit is the usage of ``pyproject.toml``, which has become the standard config file
    for python projects, improving project organization.
    To install Poetry, visit their `doc pages <https://python-poetry.org/docs/>`_.
+   The recommended Poetry version is at least 1.5.1.
 
 #. **Getting a Poetry shell**
 

@@ -16,7 +16,7 @@ from abc import ABC
 from pathlib import PurePath
 from typing import Callable
 
-from paramiko import Channel, SSHClient, channel  # type: ignore
+from paramiko import Channel, SSHClient, channel  # type: ignore[import]
 
 from framework.logger import DTSLOG
 from framework.settings import SETTINGS

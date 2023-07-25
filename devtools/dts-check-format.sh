@@ -1,6 +1,7 @@
 #!/bin/sh
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2022 University of New Hampshire
+# Copyright(c) 2023 PANTHEON.tech s.r.o.
 
 usage() {
 	echo "Usage: $(basename $0) [options] [directory]"
@@ -11,9 +12,10 @@ usage() {
 
 format=true
 lint=true
+typecheck=true
 
 # Comments after args serve as documentation; must be present
-while getopts "hfl" arg; do
+while getopts "hflt" arg; do
 	case $arg in
 	h) # Display this message
 		echo 'Run formatting and linting programs for DTS.'
@@ -25,6 +27,9 @@ while getopts "hfl" arg; do
 		;;
 	l) # Don't run linter
 		lint=false
+		;;
+	t) # Don't run type checker
+		typecheck=false
 		;;
 	?)
 		usage
@@ -89,6 +94,20 @@ if $lint; then
 		errors=$((errors + $?))
 	else
 		echo "pylama not found, unable to run linter"
+		errors=$((errors + 1))
+	fi
+fi
+
+if $typecheck; then
+	if $format || $lint; then
+		echo
+	fi
+	heading "Checking types in $directory/"
+	if command -v mypy > /dev/null; then
+		mypy .
+		errors=$((errors + $?))
+	else
+		echo "mypy not found, unable to check types"
 		errors=$((errors + 1))
 	fi
 fi
