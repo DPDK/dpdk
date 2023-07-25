@@ -800,6 +800,7 @@ static int nfp_pf_init(struct rte_pci_device *pci_dev)
 {
 	struct nfp_pf_dev *pf_dev = NULL;
 	struct nfp_cpp *cpp;
+	uint32_t cpp_id;
 	struct nfp_hwinfo *hwinfo;
 	struct nfp_rtsym_table *sym_tbl;
 	struct nfp_eth_table *nfp_eth_table = NULL;
@@ -904,7 +905,8 @@ static int nfp_pf_init(struct rte_pci_device *pci_dev)
 	PMD_INIT_LOG(DEBUG, "ctrl bar: %p", pf_dev->ctrl_bar);
 
 	/* configure access to tx/rx vNIC BARs */
-	pf_dev->hw_queues = nfp_cpp_map_area(pf_dev->cpp, 0, 0,
+	cpp_id = NFP_CPP_ISLAND_ID(0, NFP_CPP_ACTION_RW, 0, 0);
+	pf_dev->hw_queues = nfp_cpp_map_area(pf_dev->cpp, cpp_id,
 					      NFP_PCIE_QUEUE(0),
 					      NFP_QCP_QUEUE_AREA_SZ,
 					      &pf_dev->hwqueues_area);
