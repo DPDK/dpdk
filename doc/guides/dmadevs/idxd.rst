@@ -123,6 +123,13 @@ For example::
 
 	$ dpdk-devbind.py -b vfio-pci 6a:01.0
 
+.. note::
+
+   Since each individual queue on the HW device is its own separate dmadev instance,
+   the internal DMA device name includes the HW queue ID as a suffix on the PCI address.
+   The above device when used by a DPDK application will be accessible via dmadevs with names:
+   ``0000:6a:01.0-q0``, ``00006a:01.0-q1``, etc.
+
 Device Probing and Initialization
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
