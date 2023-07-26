@@ -892,6 +892,10 @@ virtio_vdpa_dev_close(int vid)
 		DRV_LOG(ERR, "Invalid vDPA device: %s", vdev->device->name);
 		return -ENODEV;
 	}
+	if (!priv->configured) {
+		DRV_LOG(ERR, "vDPA device: %s isn't configured.", vdev->device->name);
+		return -EINVAL;
+	}
 
 	priv->configured = false;
 
