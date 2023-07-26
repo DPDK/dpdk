@@ -35,7 +35,7 @@
 #include "hn_rndis.h"
 #include "ndis.h"
 
-#define RNDIS_TIMEOUT_SEC 5
+#define RNDIS_TIMEOUT_SEC 60
 #define RNDIS_DELAY_MS    10
 
 #define HN_RNDIS_XFER_SIZE		0x4000
