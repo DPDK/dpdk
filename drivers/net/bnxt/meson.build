@@ -53,23 +53,16 @@ subdir('hcapi/cfa')
 
 if arch_subdir == 'x86'
     sources += files('bnxt_rxtx_vec_sse.c')
-    # compile AVX2 version if either:
-    # a. we have AVX supported in minimum instruction set baseline
-    # b. it's not minimum instruction set, but supported by compiler
-    if cc.get_define('__AVX2__', args: machine_args) != ''
-            cflags += ['-DCC_AVX2_SUPPORT']
-            sources += files('bnxt_rxtx_vec_avx2.c')
-    elif cc.has_argument('-mavx2')
-            cflags += ['-DCC_AVX2_SUPPORT']
-            bnxt_avx2_lib = static_library('bnxt_avx2_lib',
-                            'bnxt_rxtx_vec_avx2.c',
-                            dependencies: [static_rte_ethdev,
-                                    static_rte_bus_pci,
-                                    static_rte_kvargs, static_rte_hash],
-                            include_directories: includes,
-                            c_args: [cflags, '-mavx2'])
-            objs += bnxt_avx2_lib.extract_objects('bnxt_rxtx_vec_avx2.c')
-     endif
+    cflags += ['-DCC_AVX2_SUPPORT']
+    # build AVX2 code with instruction set explicitly enabled for runtime selection
+    bnxt_avx2_lib = static_library('bnxt_avx2_lib',
+            'bnxt_rxtx_vec_avx2.c',
+            dependencies: [static_rte_ethdev,
+                static_rte_bus_pci,
+                static_rte_kvargs, static_rte_hash],
+            include_directories: includes,
+            c_args: [cflags, '-mavx2'])
+     objs += bnxt_avx2_lib.extract_objects('bnxt_rxtx_vec_avx2.c')
 elif arch_subdir == 'arm' and dpdk_conf.get('RTE_ARCH_64')
     sources += files('bnxt_rxtx_vec_neon.c')
 endif

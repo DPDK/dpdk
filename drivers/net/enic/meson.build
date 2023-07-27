@@ -28,14 +28,10 @@ sources = files(
 deps += ['hash']
 includes += include_directories('base')
 
-# The current implementation assumes 64-bit pointers
-if cc.get_define('__AVX2__', args: machine_args) != '' and dpdk_conf.get('RTE_ARCH_64')
-    sources += files('enic_rxtx_vec_avx2.c')
-# Build the avx2 handler if the compiler supports it, even though 'machine'
-# does not. This is to support users who build for the min supported machine
+# Build the avx2 handler for 64-bit X86 targets, even though 'machine'
+# may not. This is to support users who build for the min supported machine
 # and need to run the binary on newer CPUs too.
-# This part is from i40e meson.build
-elif cc.has_argument('-mavx2') and dpdk_conf.get('RTE_ARCH_64')
+if dpdk_conf.has('RTE_ARCH_X86_64')
     enic_avx2_lib = static_library('enic_avx2_lib',
             'enic_rxtx_vec_avx2.c',
             dependencies: [static_rte_ethdev, static_rte_bus_pci],
