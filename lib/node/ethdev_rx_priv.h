@@ -39,6 +39,7 @@ struct ethdev_rx_node_elem {
 enum ethdev_rx_next_nodes {
 	ETHDEV_RX_NEXT_IP4_LOOKUP,
 	ETHDEV_RX_NEXT_PKT_CLS,
+	ETHDEV_RX_NEXT_IP4_REASSEMBLY,
 	ETHDEV_RX_NEXT_MAX,
 };
 

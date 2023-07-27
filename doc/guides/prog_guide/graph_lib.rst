@@ -453,6 +453,14 @@ to determine the L2 header to be written to the packet before sending
 the packet out to a particular ethdev_tx node.
 ``rte_node_ip4_rewrite_add()`` is control path API to add next-hop info.
 
+ip4_reassembly
+~~~~~~~~~~~~~~
+This node is an intermediate node that reassembles ipv4 fragmented packets,
+non-fragmented packets pass through the node un-effected.
+The node rewrites its stream and moves it to the next node.
+The fragment table and death row table should be setup via the
+``rte_node_ip4_reassembly_configure`` API.
+
 ip6_lookup
 ~~~~~~~~~~
 This node is an intermediate node that does LPM lookup for the received

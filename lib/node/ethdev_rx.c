@@ -215,6 +215,7 @@ static struct rte_node_register ethdev_rx_node_base = {
 	.next_nodes = {
 		[ETHDEV_RX_NEXT_PKT_CLS] = "pkt_cls",
 		[ETHDEV_RX_NEXT_IP4_LOOKUP] = "ip4_lookup",
+		[ETHDEV_RX_NEXT_IP4_REASSEMBLY] = "ip4_reassembly",
 	},
 };
 

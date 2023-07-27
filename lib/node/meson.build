@@ -12,6 +12,7 @@ sources = files(
         'ethdev_rx.c',
         'ethdev_tx.c',
         'ip4_lookup.c',
+        'ip4_reassembly.c',
         'ip4_rewrite.c',
         'ip6_lookup.c',
         'ip6_rewrite.c',
@@ -30,4 +31,4 @@ headers = files(
 
 # Strict-aliasing rules are violated by uint8_t[] to context size casts.
 cflags += '-fno-strict-aliasing'
-deps += ['graph', 'mbuf', 'lpm', 'ethdev', 'mempool', 'cryptodev']
+deps += ['graph', 'mbuf', 'lpm', 'ethdev', 'mempool', 'cryptodev', 'ip_frag']
