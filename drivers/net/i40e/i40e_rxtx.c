@@ -3240,15 +3240,9 @@ get_avx_supported(bool request_avx512)
 #endif
 	} else {
 		if (rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_256 &&
-		rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX2) == 1 &&
-		rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512F) == 1)
-#ifdef CC_AVX2_SUPPORT
+				rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX2) == 1 &&
+				rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512F) == 1)
 			return true;
-#else
-		PMD_DRV_LOG(NOTICE,
-			"AVX2 is not supported in build env");
-		return false;
-#endif
 	}
 
 	return false;
@@ -3640,7 +3634,7 @@ i40e_set_default_pctype_table(struct rte_eth_dev *dev)
 	}
 }
 
-#ifndef CC_AVX2_SUPPORT
+#ifndef RTE_ARCH_X86
 uint16_t
 i40e_recv_pkts_vec_avx2(void __rte_unused *rx_queue,
 			struct rte_mbuf __rte_unused **rx_pkts,
@@ -3664,4 +3658,4 @@ i40e_xmit_pkts_vec_avx2(void __rte_unused * tx_queue,
 {
 	return 0;
 }
-#endif /* ifndef CC_AVX2_SUPPORT */
+#endif /* ifndef RTE_ARCH_X86 */

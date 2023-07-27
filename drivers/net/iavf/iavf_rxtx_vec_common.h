@@ -396,7 +396,7 @@ iavf_txd_enable_offload(__rte_unused struct rte_mbuf *tx_pkt,
 	*txd_hi |= ((uint64_t)td_cmd) << IAVF_TXD_QW1_CMD_SHIFT;
 }
 
-#ifdef CC_AVX2_SUPPORT
+#ifdef RTE_ARCH_X86
 static __rte_always_inline void
 iavf_rxq_rearm_common(struct iavf_rx_queue *rxq, __rte_unused bool avx512)
 {

@@ -50,7 +50,6 @@ if arch_subdir == 'x86'
         cflags += ['-fno-asynchronous-unwind-tables']
     endif
 
-    cflags += ['-DCC_AVX2_SUPPORT']
     i40e_avx2_lib = static_library('i40e_avx2_lib',
             'i40e_rxtx_vec_avx2.c',
             dependencies: [static_rte_ethdev, static_rte_kvargs, static_rte_hash],

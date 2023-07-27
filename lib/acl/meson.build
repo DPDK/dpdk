@@ -14,7 +14,6 @@ headers = files('rte_acl.h', 'rte_acl_osdep.h')
 if dpdk_conf.has('RTE_ARCH_X86')
     sources += files('acl_run_sse.c')
 
-    cflags += '-DCC_AVX2_SUPPORT'
     avx2_tmplib = static_library('avx2_tmp',
             'acl_run_avx2.c',
             dependencies: static_rte_eal,

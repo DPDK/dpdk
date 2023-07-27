@@ -53,7 +53,6 @@ subdir('hcapi/cfa')
 
 if arch_subdir == 'x86'
     sources += files('bnxt_rxtx_vec_sse.c')
-    cflags += ['-DCC_AVX2_SUPPORT']
     # build AVX2 code with instruction set explicitly enabled for runtime selection
     bnxt_avx2_lib = static_library('bnxt_avx2_lib',
             'bnxt_rxtx_vec_avx2.c',

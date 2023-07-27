@@ -42,10 +42,9 @@ rte_acl_classify_avx512x32(__rte_unused const struct rte_acl_ctx *ctx,
 }
 #endif
 
-#ifndef CC_AVX2_SUPPORT
+#ifndef RTE_ARCH_X86
 /*
- * If the compiler doesn't support AVX2 instructions,
- * then the dummy one would be used instead for AVX2 classify method.
+ * If ISA doesn't have AVX2 or SSE, provide dummy fallbacks
  */
 int
 rte_acl_classify_avx2(__rte_unused const struct rte_acl_ctx *ctx,
@@ -56,9 +55,6 @@ rte_acl_classify_avx2(__rte_unused const struct rte_acl_ctx *ctx,
 {
 	return -ENOTSUP;
 }
-#endif
-
-#ifndef RTE_ARCH_X86
 int
 rte_acl_classify_sse(__rte_unused const struct rte_acl_ctx *ctx,
 	__rte_unused const uint8_t **data,
@@ -182,7 +178,7 @@ acl_check_alg_x86(enum rte_acl_classify_alg alg)
 	}
 
 	if (alg == RTE_ACL_CLASSIFY_AVX2) {
-#ifdef CC_AVX2_SUPPORT
+#ifdef RTE_ARCH_X86
 		if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX2) &&
 				rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_256)
 			return 0;
