@@ -1159,7 +1159,7 @@ struct mlx5_dev_ctx_shared {
 	uint32_t tunnel_header_0_1:1; /* tunnel_header_0_1 is supported. */
 	uint32_t misc5_cap:1; /* misc5 matcher parameter is supported. */
 	uint32_t reclaim_mode:1; /* Reclaim memory. */
-	uint32_t dr_drop_action_en:1; /* Use DR drop action. */
+	uint32_t dr_root_drop_action_en:1; /* DR drop action is usable on root tables. */
 	uint32_t drop_action_check_flag:1; /* Check Flag for drop action. */
 	uint32_t flow_priority_check_flag:1; /* Check Flag for flow priority. */
 	uint32_t metadata_regc_check_flag:1; /* Check Flag for metadata REGC. */

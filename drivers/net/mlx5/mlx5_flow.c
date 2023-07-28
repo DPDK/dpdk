@@ -1606,8 +1606,10 @@ mlx5_flow_validate_action_mark(const struct rte_flow_action *action,
 /*
  * Validate the drop action.
  *
- * @param[in] action_flags
- *   Bit-fields that holds the actions detected until now.
+ * @param[in] dev
+ *   Pointer to the Ethernet device structure.
+ * @param[in] is_root
+ *   True if flow is validated for root table. False otherwise.
  * @param[in] attr
  *   Attributes of flow that includes this action.
  * @param[out] error
@@ -1617,15 +1619,25 @@ mlx5_flow_validate_action_mark(const struct rte_flow_action *action,
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 int
-mlx5_flow_validate_action_drop(uint64_t action_flags __rte_unused,
+mlx5_flow_validate_action_drop(struct rte_eth_dev *dev,
+			       bool is_root,
 			       const struct rte_flow_attr *attr,
 			       struct rte_flow_error *error)
 {
-	if (attr->egress)
+	struct mlx5_priv *priv = dev->data->dev_private;
+
+	if (priv->config.dv_flow_en == 0 && attr->egress)
 		return rte_flow_error_set(error, ENOTSUP,
 					  RTE_FLOW_ERROR_TYPE_ATTR_EGRESS, NULL,
 					  "drop action not supported for "
 					  "egress");
+	if (priv->config.dv_flow_en == 1 && is_root && (attr->egress || attr->transfer) &&
+	    !priv->sh->dr_root_drop_action_en) {
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ATTR, NULL,
+					  "drop action not supported for "
+					  "egress and transfer on group 0");
+	}
 	return 0;
 }
 
