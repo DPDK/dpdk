@@ -1,4 +1,4 @@
-DPDK_23 {
+DPDK_24 {
 	global:
 
 	rte_tel_data_add_array_container;
@@ -30,13 +30,6 @@ EXPERIMENTAL {
 
 	local: *;
 };
-
-DPDK_24 {
-	global:
-
-	rte_tel_data_add_array_int;
-	rte_tel_data_add_dict_int;
-} DPDK_23;
 
 INTERNAL {
 	rte_telemetry_legacy_register;
