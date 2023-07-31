@@ -9,6 +9,7 @@
 #include <rte_malloc.h>
 #include <rte_random.h>
 #include <rte_eal.h>
+#include <rte_errno.h>
 #include <rte_cryptodev.h>
 #ifdef RTE_CRYPTO_SCHEDULER
 #include <rte_cryptodev_scheduler.h>
@@ -560,6 +561,7 @@ main(int argc, char **argv)
 
 	int ret;
 	uint32_t lcore_id;
+	bool cap_unsupported = false;
 
 	/* Initialise DPDK EAL */
 	ret = rte_eal_init(argc, argv);
@@ -600,6 +602,7 @@ main(int argc, char **argv)
 	if (ret) {
 		RTE_LOG(ERR, USER1, "Crypto device type does not support "
 				"capabilities requested\n");
+		cap_unsupported = true;
 		goto err;
 	}
 
@@ -819,6 +822,10 @@ err:
 	rte_free(opts.imix_buffer_sizes);
 	free_test_vector(t_vec, &opts);
 
+	if (rte_errno == ENOTSUP || cap_unsupported) {
+		RTE_LOG(ERR, USER1, "Unsupported case: errno: %u\n", rte_errno);
+		return -ENOTSUP;
+	}
 	printf("\n");
 	return EXIT_FAILURE;
 }
