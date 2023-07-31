@@ -1,11 +1,8 @@
 DPDK_24 {
 	global:
 
-	rte_crypto_aead_algorithm_strings;
 	rte_crypto_aead_operation_strings;
-	rte_crypto_auth_algorithm_strings;
 	rte_crypto_auth_operation_strings;
-	rte_crypto_cipher_algorithm_strings;
 	rte_crypto_cipher_operation_strings;
 	rte_crypto_fp_ops;
 	rte_crypto_op_pool_create;
@@ -61,7 +58,6 @@ EXPERIMENTAL {
 	rte_cryptodev_sym_session_pool_create;
 	rte_cryptodev_sym_session_set_user_data;
 	rte_crypto_asym_op_strings;
-	rte_crypto_asym_xform_strings;
 
 	# added in 20.05
 	__rte_cryptodev_trace_dequeue_burst;

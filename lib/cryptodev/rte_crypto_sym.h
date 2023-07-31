@@ -180,11 +180,6 @@ enum rte_crypto_cipher_algorithm {
 	/**< ShangMi 4 (SM4) algorithm in CFB mode */
 };
 
-/** Cipher algorithm name strings */
-__rte_deprecated
-extern const char *
-rte_crypto_cipher_algorithm_strings[];
-
 /** Symmetric Cipher Direction */
 enum rte_crypto_cipher_operation {
 	RTE_CRYPTO_CIPHER_OP_ENCRYPT,
@@ -389,11 +384,6 @@ enum rte_crypto_auth_algorithm {
 	/** < HMAC using ShangMi 3 (SM3) algorithm */
 };
 
-/** Authentication algorithm name strings */
-__rte_deprecated
-extern const char *
-rte_crypto_auth_algorithm_strings[];
-
 /** Symmetric Authentication / Hash Operations */
 enum rte_crypto_auth_operation {
 	RTE_CRYPTO_AUTH_OP_VERIFY,	/**< Verify authentication digest */
@@ -493,11 +483,6 @@ enum rte_crypto_aead_algorithm {
 	RTE_CRYPTO_AEAD_CHACHA20_POLY1305
 	/**< Chacha20 cipher with poly1305 authenticator */
 };
-
-/** AEAD algorithm name strings */
-__rte_deprecated
-extern const char *
-rte_crypto_aead_algorithm_strings[];
 
 /** Symmetric AEAD Operations */
 enum rte_crypto_aead_operation {

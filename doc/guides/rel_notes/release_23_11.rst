@@ -153,6 +153,10 @@ Removed Items
 
 * kni: Removed the Kernel Network Interface (KNI) library and driver.
 
+* cryptodev: Removed the arrays of algorithm strings ``rte_crypto_cipher_algorithm_strings``,
+  ``rte_crypto_auth_algorithm_strings``, ``rte_crypto_aead_algorithm_strings`` and
+  ``rte_crypto_asym_xform_strings``.
+
 
 API Changes
 -----------
