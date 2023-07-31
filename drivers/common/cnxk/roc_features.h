@@ -71,4 +71,10 @@ roc_feature_bphy_has_macsec(void)
 {
 	return roc_model_is_cnf10kb();
 }
+
+static inline bool
+roc_feature_nix_has_inl_ipsec(void)
+{
+	return !roc_model_is_cnf10kb();
+}
 #endif

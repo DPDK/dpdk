@@ -7,6 +7,9 @@
 
 #define MCS_AES_GCM_256_KEYLEN 32
 
+#define ROC_MCS_MAX_AR_WINSZ BIT_ULL(31)
+#define ROC_MCS_MAX_MTU      (BIT_ULL(16) - 1)
+
 struct roc_mcs_alloc_rsrc_req {
 	uint8_t rsrc_type;
 	uint8_t rsrc_cnt; /* Resources count */
