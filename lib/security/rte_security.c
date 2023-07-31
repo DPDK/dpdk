@@ -282,6 +282,10 @@ rte_security_capability_get(struct rte_security_ctx *instance,
 				if (capability->docsis.direction ==
 							idx->docsis.direction)
 					return capability;
+			} else if (idx->protocol ==
+						RTE_SECURITY_PROTOCOL_MACSEC) {
+				if (idx->macsec.alg == capability->macsec.alg)
+					return capability;
 			}
 		}
 	}
