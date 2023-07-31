@@ -446,6 +446,10 @@ npc_flow_dump_rx_action(FILE *file, uint64_t npc_action)
 		plt_strlcpy(index_name, "Multicast/mirror table index",
 			    NPC_MAX_FIELD_NAME_SIZE);
 		break;
+	case NIX_RX_ACTIONOP_DEFAULT:
+		fprintf(file, "NIX_RX_ACTIONOP_DEFAULT (%" PRIu64 ")\n",
+			(uint64_t)NIX_RX_ACTIONOP_DEFAULT);
+		break;
 	default:
 		plt_err("Unknown NIX_RX_ACTIONOP found");
 		return;
