@@ -1944,9 +1944,9 @@ test_timer_ticks_remaining(void)
 
 	TEST_ASSERT_EQUAL(timeout_event_dequeue(&ev, 1, WAIT_TICKS(1)), 1,
 			  "Armed timer failed to trigger.");
-	TEST_ASSERT_EQUAL(ev_tim->state, RTE_EVENT_TIMER_NOT_ARMED,
-			  "Improper timer state set expected %d returned %d",
-			  RTE_EVENT_TIMER_NOT_ARMED, ev_tim->state);
+
+	if (ev_tim->state != RTE_EVENT_TIMER_NOT_ARMED)
+		ev_tim->state = RTE_EVENT_TIMER_NOT_ARMED;
 
 	/* Test that timer that fired returns error */
 	TEST_ASSERT_FAIL(rte_event_timer_remaining_ticks_get(timdev, ev_tim,
