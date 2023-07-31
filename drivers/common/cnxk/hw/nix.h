@@ -619,6 +619,7 @@
 #define NIX_RX_ACTIONOP_RSS	     (0x4ull)
 #define NIX_RX_ACTIONOP_PF_FUNC_DROP (0x5ull)
 #define NIX_RX_ACTIONOP_MIRROR	     (0x6ull)
+#define NIX_RX_ACTIONOP_DEFAULT	     (0xfull)
 
 #define NIX_RX_VTAGACTION_VTAG0_RELPTR (0x0ull)
 #define NIX_RX_VTAGACTION_VTAG1_RELPTR (0x4ull)
