@@ -516,11 +516,15 @@ npc_parse_actions(struct roc_npc *roc_npc, const struct roc_npc_attr *attr,
 	if (req_act == ROC_NPC_ACTION_TYPE_VLAN_STRIP) {
 		/* Only VLAN action is provided */
 		flow->npc_action = NIX_RX_ACTIONOP_UCAST;
-	} else if (req_act &
-		   (ROC_NPC_ACTION_TYPE_PF | ROC_NPC_ACTION_TYPE_VF)) {
-		flow->npc_action = NIX_RX_ACTIONOP_UCAST;
-		if (req_act & ROC_NPC_ACTION_TYPE_QUEUE)
-			flow->npc_action |= (uint64_t)rq << 20;
+	} else if (req_act & (ROC_NPC_ACTION_TYPE_PF | ROC_NPC_ACTION_TYPE_VF)) {
+		/* Check if any other action is set */
+		if ((req_act == ROC_NPC_ACTION_TYPE_PF) || (req_act == ROC_NPC_ACTION_TYPE_VF)) {
+			flow->npc_action = NIX_RX_ACTIONOP_DEFAULT;
+		} else {
+			flow->npc_action = NIX_RX_ACTIONOP_UCAST;
+			if (req_act & ROC_NPC_ACTION_TYPE_QUEUE)
+				flow->npc_action |= (uint64_t)rq << 20;
+		}
 	} else if (req_act & ROC_NPC_ACTION_TYPE_DROP) {
 		flow->npc_action = NIX_RX_ACTIONOP_DROP;
 	} else if (req_act & ROC_NPC_ACTION_TYPE_QUEUE) {
@@ -531,8 +535,7 @@ npc_parse_actions(struct roc_npc *roc_npc, const struct roc_npc_attr *attr,
 	} else if (req_act & ROC_NPC_ACTION_TYPE_SEC) {
 		flow->npc_action = NIX_RX_ACTIONOP_UCAST_IPSEC;
 		flow->npc_action |= (uint64_t)rq << 20;
-	} else if (req_act &
-		   (ROC_NPC_ACTION_TYPE_FLAG | ROC_NPC_ACTION_TYPE_MARK)) {
+	} else if (req_act & (ROC_NPC_ACTION_TYPE_FLAG | ROC_NPC_ACTION_TYPE_MARK)) {
 		flow->npc_action = NIX_RX_ACTIONOP_UCAST;
 	} else if (req_act & ROC_NPC_ACTION_TYPE_COUNT) {
 		/* Keep ROC_NPC_ACTION_TYPE_COUNT_ACT always at the end
