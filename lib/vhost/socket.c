@@ -15,7 +15,6 @@
 #include <fcntl.h>
 #include <pthread.h>
 
-#include <rte_function_versioning.h>
 #include <rte_log.h>
 
 #include "fd_man.h"
@@ -64,7 +63,6 @@ struct vhost_user_socket {
 	struct rte_vdpa_device *vdpa_dev;
 
 	struct rte_vhost_device_ops const *notify_ops;
-	struct rte_vhost_device_ops *malloc_notify_ops;
 };
 
 struct vhost_user_connection {
@@ -880,7 +878,6 @@ vhost_user_socket_mem_free(struct vhost_user_socket *vsocket)
 		return;
 
 	free(vsocket->path);
-	free(vsocket->malloc_notify_ops);
 	free(vsocket);
 }
 
@@ -1146,68 +1143,20 @@ again:
 /*
  * Register ops so that we can add/remove device to data core.
  */
-static int
-vhost_driver_callback_register(const char *path,
-	struct rte_vhost_device_ops const * const ops,
-	struct rte_vhost_device_ops *malloc_ops)
+int
+rte_vhost_driver_callback_register(const char *path,
+	struct rte_vhost_device_ops const * const ops)
 {
 	struct vhost_user_socket *vsocket;
 
 	pthread_mutex_lock(&vhost_user.mutex);
 	vsocket = find_vhost_user_socket(path);
-	if (vsocket) {
+	if (vsocket)
 		vsocket->notify_ops = ops;
-		free(vsocket->malloc_notify_ops);
-		vsocket->malloc_notify_ops = malloc_ops;
-	}
 	pthread_mutex_unlock(&vhost_user.mutex);
 
 	return vsocket ? 0 : -1;
 }
-
-int __vsym
-rte_vhost_driver_callback_register_v24(const char *path,
-	struct rte_vhost_device_ops const * const ops)
-{
-	return vhost_driver_callback_register(path, ops, NULL);
-}
-
-int __vsym
-rte_vhost_driver_callback_register_v23(const char *path,
-	struct rte_vhost_device_ops const * const ops)
-{
-	int ret;
-
-	/*
-	 * Although the ops structure is a const structure, we do need to
-	 * override the guest_notify operation. This is because with the
-	 * previous APIs it was "reserved" and if any garbage value was passed,
-	 * it could crash the application.
-	 */
-	if (ops && !ops->guest_notify) {
-		struct rte_vhost_device_ops *new_ops;
-
-		new_ops = malloc(sizeof(*new_ops));
-		if (new_ops == NULL)
-			return -1;
-
-		memcpy(new_ops, ops, sizeof(*new_ops));
-		new_ops->guest_notify = NULL;
-
-		ret = vhost_driver_callback_register(path, new_ops, new_ops);
-	} else {
-		ret = vhost_driver_callback_register(path, ops, NULL);
-	}
-
-	return ret;
-}
-
-/* Mark the v23 function as the old version, and v24 as the default version. */
-VERSION_SYMBOL(rte_vhost_driver_callback_register, _v23, 23);
-BIND_DEFAULT_SYMBOL(rte_vhost_driver_callback_register, _v24, 24);
-MAP_STATIC_SYMBOL(int rte_vhost_driver_callback_register(const char *path,
-		struct rte_vhost_device_ops const * const ops),
-		rte_vhost_driver_callback_register_v24);
 
 struct rte_vhost_device_ops const *
 vhost_driver_callback_get(const char *path)

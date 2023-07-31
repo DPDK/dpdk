@@ -1,4 +1,4 @@
-DPDK_23 {
+DPDK_24 {
 	global:
 
 	rte_vdpa_find_device_by_name;
@@ -63,12 +63,6 @@ DPDK_23 {
 
 	local: *;
 };
-
-DPDK_24 {
-	global:
-
-	rte_vhost_driver_callback_register;
-} DPDK_23;
 
 EXPERIMENTAL {
 	global:

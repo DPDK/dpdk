@@ -1046,10 +1046,4 @@ mbuf_is_consumed(struct rte_mbuf *m)
 
 void mem_set_dump(void *ptr, size_t size, bool enable, uint64_t alignment);
 
-/* Versioned functions */
-int rte_vhost_driver_callback_register_v23(const char *path,
-	struct rte_vhost_device_ops const * const ops);
-int rte_vhost_driver_callback_register_v24(const char *path,
-	struct rte_vhost_device_ops const * const ops);
-
 #endif /* _VHOST_NET_CDEV_H_ */
