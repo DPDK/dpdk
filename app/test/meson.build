@@ -359,10 +359,6 @@ if dpdk_conf.has('RTE_EVENT_SKELETON')
     test_deps += 'event_skeleton'
 endif
 
-if dpdk_conf.has('RTE_LIB_FLOW_CLASSIFY')
-    test_sources += 'test_flow_classify.c'
-    fast_tests += [['flow_classify_autotest', false, true]]
-endif
 if dpdk_conf.has('RTE_LIB_GRAPH')
     test_sources += 'test_graph.c'
     fast_tests += [['graph_autotest', true, true]]

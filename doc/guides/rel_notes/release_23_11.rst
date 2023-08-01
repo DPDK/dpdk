@@ -85,6 +85,8 @@ Removed Items
    Also, make sure to start the actual text at the margin.
    =======================================================
 
+* flow_classify: Removed flow classification library and examples.
+
 
 API Changes
 -----------

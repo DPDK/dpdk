@@ -62,7 +62,6 @@ libraries = [
         'pdump', # pdump lib depends on bpf
         'table',
         'pipeline',
-        'flow_classify', # flow_classify lib depends on pkt framework table lib
         'graph',
         'node',
 ]
@@ -70,7 +69,6 @@ libraries = [
 optional_libs = [
         'bitratestats',
         'cfgfile',
-        'flow_classify',
         'gpudev',
         'graph',
         'gro',
@@ -89,7 +87,6 @@ optional_libs = [
 ]
 
 dpdk_libs_deprecated += [
-        'flow_classify',
         'kni',
 ]
 

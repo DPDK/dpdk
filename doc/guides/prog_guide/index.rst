@@ -43,7 +43,6 @@ Programmer's Guide
     lpm6_lib
     fib_lib
     rib_lib
-    flow_classify_lib
     packet_distrib_lib
     reorder_lib
     ip_fragment_reassembly_lib

@@ -160,7 +160,6 @@ The public API headers are grouped by topics:
   [EFD](@ref rte_efd.h),
   [ACL](@ref rte_acl.h),
   [member](@ref rte_member.h),
-  [flow classify](@ref rte_flow_classify.h),
   [BPF](@ref rte_bpf.h)
 
 - **containers**:
