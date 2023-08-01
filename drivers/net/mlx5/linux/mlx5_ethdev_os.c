@@ -1083,6 +1083,7 @@ mlx5_sysfs_switch_info(unsigned int ifindex, struct mlx5_switch_info *info)
 
 		line_size = getline(&port_name, &port_name_size, file);
 		if (line_size < 0) {
+			free(port_name);
 			fclose(file);
 			rte_errno = errno;
 			return -rte_errno;
