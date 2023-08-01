@@ -43,22 +43,6 @@ __rte_experimental
 struct rdline *
 cmdline_get_rdline(struct cmdline *cl);
 
-/**
- * @deprecated Function is broken and scheduled for removal.
- *
- * This function is nonblocking equivalent of ``cmdline_interact()``. It polls
- * *cl* for one character and interpret it. If return value is *RDLINE_EXITED*
- * it mean that ``cmdline_quit()`` was invoked.
- *
- * @param cl
- *   The command line object.
- *
- * @return
- *   On success return object status - one of *enum rdline_status*.
- *   On error return negative value.
- */
-__rte_deprecated
-int cmdline_poll(struct cmdline *cl);
 
 void cmdline_interact(struct cmdline *cl);
 void cmdline_quit(struct cmdline *cl);

@@ -177,40 +177,6 @@ cmdline_quit(struct cmdline *cl)
 	rdline_quit(&cl->rdl);
 }
 
-int
-cmdline_poll(struct cmdline *cl)
-{
-	int status;
-	ssize_t read_status;
-	char c;
-
-	if (!cl)
-		return -EINVAL;
-	else if (cl->rdl.status == RDLINE_EXITED)
-		return RDLINE_EXITED;
-
-	status = cmdline_poll_char(cl);
-	if (status < 0)
-		return status;
-	else if (status > 0) {
-		c = -1;
-		read_status = cmdline_read_char(cl, &c);
-		if (read_status < 0)
-			return read_status;
-
-		if (read_status == 0) {
-			/* end of file is implicit quit */
-			cmdline_quit(cl);
-		} else {
-			status = cmdline_in(cl, &c, 1);
-			if (status < 0 && cl->rdl.status != RDLINE_EXITED)
-				return status;
-		}
-	}
-
-	return cl->rdl.status;
-}
-
 void
 cmdline_interact(struct cmdline *cl)
 {

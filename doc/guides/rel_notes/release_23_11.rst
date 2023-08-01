@@ -276,6 +276,8 @@ Removed Items
 
 * mldev: Removed functions ``rte_ml_io_input_size_get`` and ``rte_ml_io_output_size_get``.
 
+* cmdline: Removed broken and unused function ``cmdline_poll``.
+
 
 API Changes
 -----------

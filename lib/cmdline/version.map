@@ -40,7 +40,6 @@ DPDK_24 {
 	cmdline_parse_num;
 	cmdline_parse_portlist;
 	cmdline_parse_string;
-	cmdline_poll;
 	cmdline_printf;
 	cmdline_quit;
 	cmdline_set_prompt;
