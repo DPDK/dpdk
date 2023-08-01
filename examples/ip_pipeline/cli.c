@@ -14,7 +14,6 @@
 #include "cli.h"
 
 #include "cryptodev.h"
-#include "kni.h"
 #include "link.h"
 #include "mempool.h"
 #include "parser.h"
@@ -728,65 +727,6 @@ cmd_tap(char **tokens,
 	}
 }
 
-static const char cmd_kni_help[] =
-"kni <kni_name>\n"
-"   link <link_name>\n"
-"   mempool <mempool_name>\n"
-"   [thread <thread_id>]\n";
-
-static void
-cmd_kni(char **tokens,
-	uint32_t n_tokens,
-	char *out,
-	size_t out_size)
-{
-	struct kni_params p;
-	char *name;
-	struct kni *kni;
-
-	memset(&p, 0, sizeof(p));
-	if ((n_tokens != 6) && (n_tokens != 8)) {
-		snprintf(out, out_size, MSG_ARG_MISMATCH, tokens[0]);
-		return;
-	}
-
-	name = tokens[1];
-
-	if (strcmp(tokens[2], "link") != 0) {
-		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "link");
-		return;
-	}
-
-	p.link_name = tokens[3];
-
-	if (strcmp(tokens[4], "mempool") != 0) {
-		snprintf(out, out_size, MSG_ARG_NOT_FOUND, "mempool");
-		return;
-	}
-
-	p.mempool_name = tokens[5];
-
-	if (n_tokens == 8) {
-		if (strcmp(tokens[6], "thread") != 0) {
-			snprintf(out, out_size, MSG_ARG_NOT_FOUND, "thread");
-			return;
-		}
-
-		if (parser_read_uint32(&p.thread_id, tokens[7]) != 0) {
-			snprintf(out, out_size, MSG_ARG_INVALID, "thread_id");
-			return;
-		}
-
-		p.force_bind = 1;
-	} else
-		p.force_bind = 0;
-
-	kni = kni_create(name, &p);
-	if (kni == NULL) {
-		snprintf(out, out_size, MSG_CMD_FAIL, tokens[0]);
-		return;
-	}
-}
 
 static const char cmd_cryptodev_help[] =
 "cryptodev <cryptodev_name>\n"
@@ -1541,7 +1481,6 @@ static const char cmd_pipeline_port_in_help[] =
 "   | swq <swq_name>\n"
 "   | tmgr <tmgr_name>\n"
 "   | tap <tap_name> mempool <mempool_name> mtu <mtu>\n"
-"   | kni <kni_name>\n"
 "   | source mempool <mempool_name> file <file_name> bpp <n_bytes_per_pkt>\n"
 "   | cryptodev <cryptodev_name> rxq <queue_id>\n"
 "   [action <port_in_action_profile_name>]\n"
@@ -1664,18 +1603,6 @@ cmd_pipeline_port_in(char **tokens,
 		}
 
 		t0 += 6;
-	} else if (strcmp(tokens[t0], "kni") == 0) {
-		if (n_tokens < t0 + 2) {
-			snprintf(out, out_size, MSG_ARG_MISMATCH,
-				"pipeline port in kni");
-			return;
-		}
-
-		p.type = PORT_IN_KNI;
-
-		p.dev_name = tokens[t0 + 1];
-
-		t0 += 2;
 	} else if (strcmp(tokens[t0], "source") == 0) {
 		if (n_tokens < t0 + 6) {
 			snprintf(out, out_size, MSG_ARG_MISMATCH,
@@ -1781,7 +1708,6 @@ static const char cmd_pipeline_port_out_help[] =
 "   | swq <swq_name>\n"
 "   | tmgr <tmgr_name>\n"
 "   | tap <tap_name>\n"
-"   | kni <kni_name>\n"
 "   | sink [file <file_name> pkts <max_n_pkts>]\n"
 "   | cryptodev <cryptodev_name> txq <txq_id> offset <crypto_op_offset>\n";
 
@@ -1872,16 +1798,6 @@ cmd_pipeline_port_out(char **tokens,
 		}
 
 		p.type = PORT_OUT_TAP;
-
-		p.dev_name = tokens[7];
-	} else if (strcmp(tokens[6], "kni") == 0) {
-		if (n_tokens != 8) {
-			snprintf(out, out_size, MSG_ARG_MISMATCH,
-				"pipeline port out kni");
-			return;
-		}
-
-		p.type = PORT_OUT_KNI;
 
 		p.dev_name = tokens[7];
 	} else if (strcmp(tokens[6], "sink") == 0) {
@@ -6038,7 +5954,6 @@ cmd_help(char **tokens, uint32_t n_tokens, char *out, size_t out_size)
 			"\ttmgr subport\n"
 			"\ttmgr subport pipe\n"
 			"\ttap\n"
-			"\tkni\n"
 			"\tport in action profile\n"
 			"\ttable action profile\n"
 			"\tpipeline\n"
@@ -6121,11 +6036,6 @@ cmd_help(char **tokens, uint32_t n_tokens, char *out, size_t out_size)
 
 	if (strcmp(tokens[0], "tap") == 0) {
 		snprintf(out, out_size, "\n%s\n", cmd_tap_help);
-		return;
-	}
-
-	if (strcmp(tokens[0], "kni") == 0) {
-		snprintf(out, out_size, "\n%s\n", cmd_kni_help);
 		return;
 	}
 
@@ -6433,11 +6343,6 @@ cli_process(char *in, char *out, size_t out_size)
 
 	if (strcmp(tokens[0], "tap") == 0) {
 		cmd_tap(tokens, n_tokens, out, out_size);
-		return;
-	}
-
-	if (strcmp(tokens[0], "kni") == 0) {
-		cmd_kni(tokens, n_tokens, out, out_size);
 		return;
 	}
 

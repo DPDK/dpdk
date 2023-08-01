@@ -164,15 +164,6 @@ Examples
    |                       |                      |                | 8. Pipeline table rule add default |
    |                       |                      |                | 9. Pipeline table rule add         |
    +-----------------------+----------------------+----------------+------------------------------------+
-   | KNI                   | Stub                 | Forward        | 1. Mempool create                  |
-   |                       |                      |                | 2. Link create                     |
-   |                       |                      |                | 3. Pipeline create                 |
-   |                       |                      |                | 4. Pipeline port in/out            |
-   |                       |                      |                | 5. Pipeline table                  |
-   |                       |                      |                | 6. Pipeline port in table          |
-   |                       |                      |                | 7. Pipeline enable                 |
-   |                       |                      |                | 8. Pipeline table rule add         |
-   +-----------------------+----------------------+----------------+------------------------------------+
    | Firewall              | ACL                  | Allow/Drop     | 1. Mempool create                  |
    |                       |                      |                | 2. Link create                     |
    |                       | * Key = n-tuple      |                | 3. Pipeline create                 |
@@ -297,17 +288,6 @@ Tap
   tap <name>
 
 
-Kni
-~~~
-
-  Create kni port ::
-
-   kni <kni_name>
-    link <link_name>
-    mempool <mempool_name>
-    [thread <thread_id>]
-
-
 Cryptodev
 ~~~~~~~~~
 
@@ -366,7 +346,6 @@ Create pipeline input port ::
    | swq <swq_name>
    | tmgr <tmgr_name>
    | tap <tap_name> mempool <mempool_name> mtu <mtu>
-   | kni <kni_name>
    | source mempool <mempool_name> file <file_name> bpp <n_bytes_per_pkt>
    [action <port_in_action_profile_name>]
    [disabled]
@@ -379,7 +358,6 @@ Create pipeline output port ::
    | swq <swq_name>
    | tmgr <tmgr_name>
    | tap <tap_name>
-   | kni <kni_name>
    | sink [file <file_name> pkts <max_n_pkts>]
 
 Create pipeline table ::

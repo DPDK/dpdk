@@ -617,12 +617,6 @@ F: doc/guides/prog_guide/link_bonding_poll_mode_drv_lib.rst
 F: app/test/test_link_bonding*
 F: examples/bond/
 
-Linux KNI
-F: kernel/linux/kni/
-F: lib/kni/
-F: doc/guides/prog_guide/kernel_nic_interface.rst
-F: app/test/test_kni.c
-
 Linux AF_PACKET
 M: John W. Linville <linville@tuxdriver.com>
 F: drivers/net/af_packet/
@@ -1026,10 +1020,6 @@ Tap PMD
 F: drivers/net/tap/
 F: doc/guides/nics/tap.rst
 F: doc/guides/nics/features/tap.ini
-
-KNI PMD
-F: drivers/net/kni/
-F: doc/guides/nics/kni.rst
 
 Ring PMD
 M: Bruce Richardson <bruce.richardson@intel.com>

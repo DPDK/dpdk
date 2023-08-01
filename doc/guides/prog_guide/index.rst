@@ -53,7 +53,6 @@ Programmer's Guide
     pcapng_lib
     pdump_lib
     multi_proc_support
-    kernel_nic_interface
     thread_safety_dpdk_functions
     eventdev
     event_ethernet_rx_adapter

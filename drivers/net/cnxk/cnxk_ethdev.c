@@ -1130,7 +1130,7 @@ nix_set_nop_rxtx_function(struct rte_eth_dev *eth_dev)
 {
 	/* These dummy functions are required for supporting
 	 * some applications which reconfigure queues without
-	 * stopping tx burst and rx burst threads(eg kni app)
+	 * stopping tx burst and rx burst threads.
 	 * When the queues context is saved, txq/rxqs are released
 	 * which caused app crash since rx/tx burst is still
 	 * on different lcores

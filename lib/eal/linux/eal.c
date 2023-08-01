@@ -1084,11 +1084,6 @@ rte_eal_init(int argc, char **argv)
 				 */
 				iova_mode = RTE_IOVA_VA;
 				RTE_LOG(DEBUG, EAL, "Physical addresses are unavailable, selecting IOVA as VA mode.\n");
-#if defined(RTE_LIB_KNI) && LINUX_VERSION_CODE >= KERNEL_VERSION(4, 10, 0)
-			} else if (rte_eal_check_module("rte_kni") == 1) {
-				iova_mode = RTE_IOVA_PA;
-				RTE_LOG(DEBUG, EAL, "KNI is loaded, selecting IOVA as PA mode for better KNI performance.\n");
-#endif
 			} else if (is_iommu_enabled()) {
 				/* we have an IOMMU, pick IOVA as VA mode */
 				iova_mode = RTE_IOVA_VA;
@@ -1101,20 +1096,6 @@ rte_eal_init(int argc, char **argv)
 				RTE_LOG(DEBUG, EAL, "IOMMU is not available, selecting IOVA as PA mode.\n");
 			}
 		}
-#if defined(RTE_LIB_KNI) && LINUX_VERSION_CODE < KERNEL_VERSION(4, 10, 0)
-		/* Workaround for KNI which requires physical address to work
-		 * in kernels < 4.10
-		 */
-		if (iova_mode == RTE_IOVA_VA &&
-				rte_eal_check_module("rte_kni") == 1) {
-			if (phys_addrs) {
-				iova_mode = RTE_IOVA_PA;
-				RTE_LOG(WARNING, EAL, "Forcing IOVA as 'PA' because KNI module is loaded\n");
-			} else {
-				RTE_LOG(DEBUG, EAL, "KNI can not work since physical addresses are unavailable\n");
-			}
-		}
-#endif
 		rte_eal_get_configuration()->iova_mode = iova_mode;
 	} else {
 		rte_eal_get_configuration()->iova_mode =

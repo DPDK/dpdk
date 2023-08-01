@@ -7,8 +7,7 @@ Flow Bifurcation How-to Guide
 Flow Bifurcation is a mechanism which uses hardware capable Ethernet devices
 to split traffic between Linux user space and kernel space. Since it is a
 hardware assisted feature this approach can provide line rate processing
-capability. Other than :ref:`KNI <kni>`, the software is just required to
-enable device configuration, there is no need to take care of the packet
+capability. There is no need to take care of the packet
 movement during the traffic split. This can yield better performance with
 less CPU overhead.
 

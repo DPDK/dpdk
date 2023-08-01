@@ -17,7 +17,7 @@ Other API and ABI deprecation notices are to be posted below.
 Deprecation Notices
 -------------------
 
-* build: Enabling deprecated libraries (``kni``)
+* build: Enabling deprecated libraries
   won't be possible anymore through the use of the ``disable_libs`` build option.
   A new build option for deprecated libraries will be introduced instead.
 
@@ -59,13 +59,6 @@ Deprecation Notices
   operations and a new wrapper ``rte_atomic_thread_fence`` instead of
   ``__atomic_thread_fence`` must be used for patches that need to be merged in
   20.08 onwards. This change will not introduce any performance degradation.
-
-* kni: The KNI kernel module and library are not recommended for use by new
-  applications - other technologies such as virtio-user are recommended instead.
-  Following the DPDK technical board
-  `decision <https://mails.dpdk.org/archives/dev/2021-January/197077.html>`_
-  and `refinement <https://mails.dpdk.org/archives/dev/2022-June/243596.html>`_,
-  the KNI kernel module, library and PMD will be removed from the DPDK 23.11 release.
 
 * lib: will fix extending some enum/define breaking the ABI. There are multiple
   samples in DPDK that enum/define terminated with a ``.*MAX.*`` value which is

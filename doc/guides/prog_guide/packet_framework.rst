@@ -87,18 +87,15 @@ Port Types
    |   |                  | management and hierarchical scheduling according to pre-defined SLAs.                 |
    |   |                  |                                                                                       |
    +---+------------------+---------------------------------------------------------------------------------------+
-   | 6 | KNI              | Send/receive packets to/from Linux kernel space.                                      |
-   |   |                  |                                                                                       |
-   +---+------------------+---------------------------------------------------------------------------------------+
-   | 7 | Source           | Input port used as packet generator. Similar to Linux kernel /dev/zero character      |
+   | 6 | Source           | Input port used as packet generator. Similar to Linux kernel /dev/zero character      |
    |   |                  | device.                                                                               |
    |   |                  |                                                                                       |
    +---+------------------+---------------------------------------------------------------------------------------+
-   | 8 | Sink             | Output port used to drop all input packets. Similar to Linux kernel /dev/null         |
+   | 7 | Sink             | Output port used to drop all input packets. Similar to Linux kernel /dev/null         |
    |   |                  | character device.                                                                     |
    |   |                  |                                                                                       |
    +---+------------------+---------------------------------------------------------------------------------------+
-   | 9 | Sym_crypto       | Output port used to extract DPDK Cryptodev operations from a fixed offset of the      |
+   | 8 | Sym_crypto       | Output port used to extract DPDK Cryptodev operations from a fixed offset of the      |
    |   |                  | packet and then enqueue to the Cryptodev PMD. Input port used to dequeue the          |
    |   |                  | Cryptodev operations from the Cryptodev PMD and then retrieve the packets from them.  |
    +---+------------------+---------------------------------------------------------------------------------------+

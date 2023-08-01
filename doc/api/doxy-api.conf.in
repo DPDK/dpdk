@@ -48,7 +48,6 @@ INPUT                   = @TOPDIR@/doc/api/doxy-api-index.md \
                           @TOPDIR@/lib/ip_frag \
                           @TOPDIR@/lib/ipsec \
                           @TOPDIR@/lib/jobstats \
-                          @TOPDIR@/lib/kni \
                           @TOPDIR@/lib/kvargs \
                           @TOPDIR@/lib/latencystats \
                           @TOPDIR@/lib/lpm \

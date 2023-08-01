@@ -25,7 +25,6 @@ enum port_in_type {
 	PORT_IN_SWQ,
 	PORT_IN_TMGR,
 	PORT_IN_TAP,
-	PORT_IN_KNI,
 	PORT_IN_SOURCE,
 	PORT_IN_CRYPTODEV,
 };
@@ -67,7 +66,6 @@ enum port_out_type {
 	PORT_OUT_SWQ,
 	PORT_OUT_TMGR,
 	PORT_OUT_TAP,
-	PORT_OUT_KNI,
 	PORT_OUT_SINK,
 	PORT_OUT_CRYPTODEV,
 };

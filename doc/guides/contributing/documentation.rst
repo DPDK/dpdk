@@ -95,7 +95,7 @@ added to by the developer.
 * **The Programmers Guide**
 
   The Programmers Guide explains how the API components of DPDK such as the EAL, Memzone, Rings and the Hash Library work.
-  It also explains how some higher level functionality such as Packet Distributor, Packet Framework and KNI work.
+  It also describes some of the higher level functionality such as Packet Distributor and Packet Framework.
   It also shows the build system and explains how to add applications.
 
   The Programmers Guide should be expanded when new functionality is added to DPDK.

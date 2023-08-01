@@ -43,7 +43,6 @@ The public API headers are grouped by topics:
   [bond](@ref rte_eth_bond.h),
   [vhost](@ref rte_vhost.h),
   [vdpa](@ref rte_vdpa.h),
-  [KNI](@ref rte_kni.h),
   [ixgbe](@ref rte_pmd_ixgbe.h),
   [i40e](@ref rte_pmd_i40e.h),
   [iavf](@ref rte_pmd_iavf.h),
@@ -177,7 +176,6 @@ The public API headers are grouped by topics:
     [frag](@ref rte_port_frag.h),
     [reass](@ref rte_port_ras.h),
     [sched](@ref rte_port_sched.h),
-    [kni](@ref rte_port_kni.h),
     [src/sink](@ref rte_port_source_sink.h)
   * [table](@ref rte_table.h):
     [lpm IPv4](@ref rte_table_lpm.h),
