@@ -145,6 +145,8 @@ jobs:
   prepare-container-images:
     name: ${{ join(matrix.config.*, '-') }}
     runs-on: ubuntu-latest
+    outputs:
+      image: ${{ steps.get_keys.outputs.image }}
 
     strategy:
       fail-fast: false
@@ -210,14 +212,13 @@ jobs:
       id: get_keys
       run: |
         echo 'ccache=ccache-${{ matrix.config.image }}-${{ matrix.config.compiler }}-'$(date -u +%Y-w%W) >> $GITHUB_OUTPUT
-        echo 'image=image-${{ matrix.config.image }}-'$(date -u +%Y-%m-%d) >> $GITHUB_OUTPUT
         echo 'logs=meson-logs-${{ join(matrix.config.*, '-') }}' | tr -d ':' >> $GITHUB_OUTPUT
     - name: Retrieve image cache
       id: image_cache
       uses: actions/cache@v3
       with:
         path: ~/.image
-        key: ${{ steps.get_keys.outputs.image }}
+        key: ${{ needs.prepare-container-images.outputs.image }}
     - name: Fail if no image (not supposed to happen)
       if: steps.image_cache.outputs.cache-hit != 'true'
       run: |
