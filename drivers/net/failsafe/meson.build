@@ -7,7 +7,6 @@ if is_windows
     subdir_done()
 endif
 
-cflags += '-std=gnu99'
 cflags += '-D_DEFAULT_SOURCE'
 cflags += '-D_XOPEN_SOURCE=700'
 cflags += '-pedantic'

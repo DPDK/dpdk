@@ -231,11 +231,12 @@ if  libmtcr_ul_found
 endif
 
 foreach arg:has_sym_args
-    mlx5_config.set(arg[0], cc.has_header_symbol(arg[1], arg[2], dependencies: libs))
+    mlx5_config.set(arg[0], cc.has_header_symbol(arg[1], arg[2], dependencies: libs, args: cflags))
 endforeach
 foreach arg:has_member_args
     file_prefix = '#include <' + arg[1] + '>'
-    mlx5_config.set(arg[0], cc.has_member(arg[2], arg[3], prefix : file_prefix, dependencies: libs))
+    mlx5_config.set(arg[0],
+            cc.has_member(arg[2], arg[3], prefix : file_prefix, dependencies: libs, args: cflags))
 endforeach
 
 # Build Glue Library

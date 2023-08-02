@@ -9,6 +9,7 @@ project('DPDK', 'c',
         license: 'BSD',
         default_options: [
             'buildtype=release',
+            'c_std=c11',
             'default_library=static',
             'warning_level=2',
         ],

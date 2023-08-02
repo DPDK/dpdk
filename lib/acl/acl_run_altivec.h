@@ -41,7 +41,7 @@ resolve_priority_altivec(uint64_t transition, int n,
 {
 	uint32_t x;
 	xmm_t results, priority, results1, priority1;
-	__vector bool int selector;
+	__vector __bool int selector;
 	xmm_t *saved_results, *saved_priority;
 
 	for (x = 0; x < categories; x += RTE_ACL_RESULTS_MULTIPLIER) {
@@ -110,7 +110,7 @@ transition4(xmm_t next_input, const uint64_t *trans,
 	xmm_t in, node_type, r, t;
 	xmm_t dfa_ofs, quad_ofs;
 	xmm_t *index_mask, *tp;
-	__vector bool int dfa_msk;
+	__vector __bool int dfa_msk;
 	__vector signed char zeroes = {};
 	union {
 		uint64_t d64[2];

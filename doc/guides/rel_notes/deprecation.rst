@@ -17,24 +17,6 @@ Other API and ABI deprecation notices are to be posted below.
 Deprecation Notices
 -------------------
 
-* C Compiler: From DPDK 23.11 onwards,
-  building DPDK will require a C compiler which supports the C11 standard,
-  including support for C11 standard atomics.
-
-  More specifically, the requirements will be:
-
-  * Support for flag "-std=c11" (or similar)
-  * __STDC_NO_ATOMICS__ is *not defined* when using c11 flag
-
-  Please note:
-
-  * C11, including standard atomics, is supported from GCC version 5 onwards,
-    and is the default language version in that release
-    (Ref: https://gcc.gnu.org/gcc-5/changes.html)
-  * C11 is the default compilation mode in Clang from version 3.6,
-    which also added support for standard atomics
-    (Ref: https://releases.llvm.org/3.6.0/tools/clang/docs/ReleaseNotes.html)
-
 * build: Enabling deprecated libraries (``flow_classify``, ``kni``)
   won't be possible anymore through the use of the ``disable_libs`` build option.
   A new build option for deprecated libraries will be introduced instead.

@@ -4,6 +4,7 @@
 
 /* Use XSI-compliant portable version of strerror_r() */
 #undef _GNU_SOURCE
+#define _POSIX_C_SOURCE 200809L
 
 #include <stdio.h>
 #include <string.h>
