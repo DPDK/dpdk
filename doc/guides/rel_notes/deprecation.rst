@@ -33,10 +33,6 @@ Deprecation Notices
   are renamed to ``rte_tel_data_add_array_uint`` and ``rte_tel_data_add_dict_uint`` respectively.
   As such, the old function names are deprecated and will be removed in a future release.
 
-* eal: RTE_FUNC_PTR_OR_* macros have been marked deprecated and will be removed
-  in the future. Applications can use ``devtools/cocci/func_or_ret.cocci``
-  to update their code.
-
 * eal: The functions ``rte_thread_setname`` and ``rte_ctrl_thread_create``
   are planned to be deprecated starting with the 23.07 release, subject to
   the replacement API rte_thread_set_name and rte_thread_create_control being

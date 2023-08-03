@@ -85,6 +85,8 @@ Removed Items
    Also, make sure to start the actual text at the margin.
    =======================================================
 
+* eal: Removed deprecated ``RTE_FUNC_PTR_OR_*`` macros.
+
 * flow_classify: Removed flow classification library and examples.
 
 * kni: Removed the Kernel Network Interface (KNI) library and driver.

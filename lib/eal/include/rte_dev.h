@@ -42,19 +42,6 @@ typedef void (*rte_dev_event_cb_fn)(const char *device_name,
 					enum rte_dev_event_type event,
 					void *cb_arg);
 
-/* Macros to check for invalid function pointers */
-#define RTE_FUNC_PTR_OR_ERR_RET(func, retval) RTE_DEPRECATED(RTE_FUNC_PTR_OR_ERR_RET) \
-do { \
-	if ((func) == NULL) \
-		return retval; \
-} while (0)
-
-#define RTE_FUNC_PTR_OR_RET(func) RTE_DEPRECATED(RTE_FUNC_PTR_OR_RET) \
-do { \
-	if ((func) == NULL) \
-		return; \
-} while (0)
-
 /**
  * Device policies.
  */
