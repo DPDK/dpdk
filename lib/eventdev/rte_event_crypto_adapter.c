@@ -248,9 +248,18 @@ eca_circular_buffer_flush_to_cdev(struct crypto_ops_circular_buffer *bufp,
 		n = *tailp - *headp;
 	else if (*tailp < *headp)
 		n = bufp->size - *headp;
-	else {
-		*nb_ops_flushed = 0;
-		return 0;  /* buffer empty */
+	else { /* head == tail case */
+		/* when head == tail,
+		 * circ buff is either full(tail pointer roll over) or empty
+		 */
+		if (bufp->count != 0) {
+			/* circ buffer is full */
+			n = bufp->count;
+		} else {
+			/* circ buffer is empty */
+			*nb_ops_flushed = 0;
+			return 0;  /* buffer empty */
+		}
 	}
 
 	*nb_ops_flushed = rte_cryptodev_enqueue_burst(cdev_id, qp_id,
