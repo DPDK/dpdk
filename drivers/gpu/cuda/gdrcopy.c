@@ -6,6 +6,8 @@
 
 #ifdef DRIVERS_GPU_CUDA_GDRCOPY_H
 
+#include <stdlib.h>
+
 static void *gdrclib;
 static gdr_t (*sym_gdr_open)(void);
 static int (*sym_gdr_pin_buffer)(gdr_t g, unsigned long addr, size_t size,
