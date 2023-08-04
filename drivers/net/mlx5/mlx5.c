@@ -1720,7 +1720,7 @@ error:
 	do {
 		if (sh->tis[i])
 			claim_zero(mlx5_devx_cmd_destroy(sh->tis[i]));
-	} while (++i < (uint32_t)sh->bond.n_port);
+	} while (++i <= (uint32_t)sh->bond.n_port);
 	if (sh->td)
 		claim_zero(mlx5_devx_cmd_destroy(sh->td));
 	mlx5_free(sh);
@@ -1864,7 +1864,7 @@ mlx5_free_shared_dev_ctx(struct mlx5_dev_ctx_shared *sh)
 	do {
 		if (sh->tis[i])
 			claim_zero(mlx5_devx_cmd_destroy(sh->tis[i]));
-	} while (++i < sh->bond.n_port);
+	} while (++i <= sh->bond.n_port);
 	if (sh->td)
 		claim_zero(mlx5_devx_cmd_destroy(sh->td));
 #ifdef HAVE_MLX5_HWS_SUPPORT
