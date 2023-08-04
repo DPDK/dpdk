@@ -13,7 +13,7 @@
  * Tunable ethdev params
  */
 #define HN_MIN_RX_BUF_SIZE	1024
-#define HN_MAX_XFER_LEN		2048
+#define HN_MAX_XFER_LEN		RTE_ETHER_MAX_JUMBO_FRAME_LEN
 #define	HN_MAX_MAC_ADDRS	1
 #define HN_MAX_CHANNELS		64
 

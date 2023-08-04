@@ -1112,6 +1112,13 @@ hn_rndis_get_eaddr(struct hn_data *hv, uint8_t *eaddr)
 }
 
 int
+hn_rndis_get_mtu(struct hn_data *hv, uint32_t *mtu)
+{
+	return hn_rndis_query(hv, OID_GEN_MAXIMUM_FRAME_SIZE, NULL, 0,
+			       mtu, sizeof(uint32_t));
+}
+
+int
 hn_rndis_get_linkstatus(struct hn_data *hv)
 {
 	return hn_rndis_query(hv, OID_GEN_MEDIA_CONNECT_STATUS, NULL, 0,

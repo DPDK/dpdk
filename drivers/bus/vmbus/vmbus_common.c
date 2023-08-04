@@ -39,7 +39,9 @@ vmbus_map_resource(void *requested_addr, int fd, off_t offset, size_t size,
 			  "mmap(%d, %p, %zu, %ld) failed: %s",
 			  fd, requested_addr, size, (long)offset,
 			  strerror(errno));
-	}
+	} else
+		VMBUS_LOG(DEBUG, "  VMBUS memory mapped at %p",
+			  mapaddr);
 	return mapaddr;
 }
 
