@@ -2038,11 +2038,41 @@ hns3_set_mc_addr_calc_addr(struct hns3_hw *hw,
 }
 
 static int
+hns3_configure_all_mc_mac_addr(struct hns3_adapter *hns, bool del)
+{
+	char mac_str[RTE_ETHER_ADDR_FMT_SIZE];
+	struct hns3_hw *hw = &hns->hw;
+	struct rte_ether_addr *addr;
+	int err = 0;
+	int ret;
+	int i;
+
+	for (i = 0; i < hw->mc_addrs_num; i++) {
+		addr = &hw->mc_addrs[i];
+		if (!rte_is_multicast_ether_addr(addr))
+			continue;
+		if (del)
+			ret = hns3_remove_mc_addr(hw, addr);
+		else
+			ret = hns3_add_mc_addr(hw, addr);
+		if (ret) {
+			err = ret;
+			rte_ether_format_addr(mac_str, RTE_ETHER_ADDR_FMT_SIZE,
+					      addr);
+			hns3_dbg(hw, "%s mc mac addr: %s failed for pf: ret = %d",
+				 del ? "Remove" : "Restore", mac_str, ret);
+		}
+	}
+	return err;
+}
+
+static int
 hns3_set_mc_mac_addr_list(struct rte_eth_dev *dev,
 			  struct rte_ether_addr *mc_addr_set,
 			  uint32_t nb_mc_addr)
 {
 	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct hns3_adapter *hns = HNS3_DEV_HW_TO_ADAPTER(hw);
 	struct rte_ether_addr reserved_addr_list[HNS3_MC_MACADDR_NUM];
 	struct rte_ether_addr add_addr_list[HNS3_MC_MACADDR_NUM];
 	struct rte_ether_addr rm_addr_list[HNS3_MC_MACADDR_NUM];
@@ -2054,6 +2084,15 @@ hns3_set_mc_mac_addr_list(struct rte_eth_dev *dev,
 	int num;
 	int ret;
 	int i;
+
+	if (mc_addr_set == NULL || nb_mc_addr == 0) {
+		rte_spinlock_lock(&hw->lock);
+		ret = hns3_configure_all_mc_mac_addr(hns, true);
+		if (ret == 0)
+			hw->mc_addrs_num = 0;
+		rte_spinlock_unlock(&hw->lock);
+		return ret;
+	}
 
 	/* Check if input parameters are valid */
 	ret = hns3_set_mc_addr_chk_param(hw, mc_addr_set, nb_mc_addr);
@@ -2100,35 +2139,6 @@ hns3_set_mc_mac_addr_list(struct rte_eth_dev *dev,
 	rte_spinlock_unlock(&hw->lock);
 
 	return 0;
-}
-
-static int
-hns3_configure_all_mc_mac_addr(struct hns3_adapter *hns, bool del)
-{
-	char mac_str[RTE_ETHER_ADDR_FMT_SIZE];
-	struct hns3_hw *hw = &hns->hw;
-	struct rte_ether_addr *addr;
-	int err = 0;
-	int ret;
-	int i;
-
-	for (i = 0; i < hw->mc_addrs_num; i++) {
-		addr = &hw->mc_addrs[i];
-		if (!rte_is_multicast_ether_addr(addr))
-			continue;
-		if (del)
-			ret = hns3_remove_mc_addr(hw, addr);
-		else
-			ret = hns3_add_mc_addr(hw, addr);
-		if (ret) {
-			err = ret;
-			rte_ether_format_addr(mac_str, RTE_ETHER_ADDR_FMT_SIZE,
-					      addr);
-			hns3_dbg(hw, "%s mc mac addr: %s failed for pf: ret = %d",
-				 del ? "Remove" : "Restore", mac_str, ret);
-		}
-	}
-	return err;
 }
 
 static int
