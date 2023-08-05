@@ -918,6 +918,8 @@ hns3_eth_dev_priv_dump(struct rte_eth_dev *dev, FILE *file)
 	struct hns3_adapter *hns = dev->data->dev_private;
 	struct hns3_hw *hw = &hns->hw;
 
+	rte_spinlock_lock(&hw->lock);
+
 	hns3_get_device_basic_info(file, dev);
 	hns3_get_dev_feature_capability(file, hw);
 	hns3_get_rxtx_queue_info(file, dev);
@@ -927,14 +929,18 @@ hns3_eth_dev_priv_dump(struct rte_eth_dev *dev, FILE *file)
 	 * VF only supports dumping basic info, feature capability and queue
 	 * info.
 	 */
-	if (hns->is_vf)
+	if (hns->is_vf) {
+		rte_spinlock_unlock(&hw->lock);
 		return 0;
+	}
 
 	hns3_get_dev_mac_info(file, hns);
 	hns3_get_vlan_config_info(file, hw);
 	hns3_get_fdir_basic_info(file, &hns->pf);
 	hns3_get_tm_conf_info(file, dev);
 	hns3_get_flow_ctrl_info(file, dev);
+
+	rte_spinlock_unlock(&hw->lock);
 
 	return 0;
 }
