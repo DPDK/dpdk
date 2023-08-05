@@ -351,7 +351,7 @@ hns3_set_mc_addr_chk_param(struct hns3_hw *hw,
 		hns3_err(hw, "failed to set mc mac addr, nb_mc_addr(%u) "
 			 "invalid. valid range: 0~%d",
 			 nb_mc_addr, HNS3_MC_MACADDR_NUM);
-		return -EINVAL;
+		return -ENOSPC;
 	}
 
 	/* Check if input mac addresses are valid */
