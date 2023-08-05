@@ -169,6 +169,8 @@ hns3vf_set_default_mac_addr(struct rte_eth_dev *dev,
 			hns3_err(hw, "Failed to set mac addr(%s) for vf: %d",
 				 mac_str, ret);
 		}
+		rte_spinlock_unlock(&hw->lock);
+		return ret;
 	}
 
 	rte_ether_addr_copy(mac_addr,
