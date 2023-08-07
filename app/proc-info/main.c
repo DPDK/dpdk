@@ -19,7 +19,6 @@
 #include <rte_common.h>
 #include <rte_debug.h>
 #include <rte_ethdev.h>
-#include <rte_malloc.h>
 #include <rte_memory.h>
 #include <rte_memzone.h>
 #include <rte_launch.h>
@@ -719,24 +718,23 @@ metrics_display(int port_id)
 		return;
 	}
 
-	metrics = rte_malloc("proc_info_metrics",
-		sizeof(struct rte_metric_value) * len, 0);
+	metrics = malloc(sizeof(struct rte_metric_value) * len);
 	if (metrics == NULL) {
 		printf("Cannot allocate memory for metrics\n");
 		return;
 	}
 
-	names =  rte_malloc(NULL, sizeof(struct rte_metric_name) * len, 0);
+	names = malloc(sizeof(struct rte_metric_name) * len);
 	if (names == NULL) {
 		printf("Cannot allocate memory for metrics names\n");
-		rte_free(metrics);
+		free(metrics);
 		return;
 	}
 
 	if (len != rte_metrics_get_names(names, len)) {
 		printf("Cannot get metrics names\n");
-		rte_free(metrics);
-		rte_free(names);
+		free(metrics);
+		free(names);
 		return;
 	}
 
@@ -748,8 +746,8 @@ metrics_display(int port_id)
 	ret = rte_metrics_get_values(port_id, metrics, len);
 	if (ret < 0 || ret > len) {
 		printf("Cannot get metrics values\n");
-		rte_free(metrics);
-		rte_free(names);
+		free(metrics);
+		free(names);
 		return;
 	}
 
@@ -758,8 +756,8 @@ metrics_display(int port_id)
 		printf("%s: %"PRIu64"\n", names[i].name, metrics[i].value);
 
 	printf("%s############################\n", nic_stats_border);
-	rte_free(metrics);
-	rte_free(names);
+	free(metrics);
+	free(names);
 }
 #endif
 
