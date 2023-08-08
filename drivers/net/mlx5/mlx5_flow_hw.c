@@ -1344,8 +1344,7 @@ flow_hw_meter_mark_alloc(struct rte_eth_dev *dev, uint32_t queue,
 	aso_mtr->state = (queue == MLX5_HW_INV_QUEUE) ?
 			  ASO_METER_WAIT : ASO_METER_WAIT_ASYNC;
 	aso_mtr->offset = mtr_id - 1;
-	aso_mtr->init_color = (meter_mark->color_mode) ?
-		meter_mark->init_color : RTE_COLOR_GREEN;
+	aso_mtr->init_color = fm->color_aware ? RTE_COLORS : RTE_COLOR_GREEN;
 	/* Update ASO flow meter by wqe. */
 	if (mlx5_aso_meter_update_by_wqe(priv->sh, queue, aso_mtr,
 					 &priv->mtr_bulk, user_data, push)) {
@@ -1380,9 +1379,6 @@ flow_hw_meter_mark_compile(struct rte_eth_dev *dev,
 	/* Compile METER_MARK action */
 	acts[aso_mtr_pos].action = pool->action;
 	acts[aso_mtr_pos].aso_meter.offset = aso_mtr->offset;
-	acts[aso_mtr_pos].aso_meter.init_color =
-		(enum mlx5dr_action_aso_meter_color)
-		rte_col_2_mlx5_col(aso_mtr->init_color);
 	*index = aso_mtr->fm.meter_id;
 	return 0;
 }
@@ -2068,9 +2064,6 @@ flow_hw_shared_action_construct(struct rte_eth_dev *dev, uint32_t queue,
 			return -1;
 		rule_act->action = pool->action;
 		rule_act->aso_meter.offset = aso_mtr->offset;
-		rule_act->aso_meter.init_color =
-			(enum mlx5dr_action_aso_meter_color)
-			rte_col_2_mlx5_col(aso_mtr->init_color);
 		break;
 	case MLX5_INDIRECT_ACTION_TYPE_QUOTA:
 		flow_hw_construct_quota(priv, rule_act, idx);
@@ -2483,9 +2476,6 @@ flow_hw_actions_construct(struct rte_eth_dev *dev,
 							pool->action;
 			rule_acts[act_data->action_dst].aso_meter.offset =
 							aso_mtr->offset;
-			rule_acts[act_data->action_dst].aso_meter.init_color =
-				(enum mlx5dr_action_aso_meter_color)
-				rte_col_2_mlx5_col(aso_mtr->init_color);
 			break;
 		case RTE_FLOW_ACTION_TYPE_METER_MARK:
 			/*
@@ -8659,6 +8649,45 @@ flow_hw_action_handle_create(struct rte_eth_dev *dev, uint32_t queue,
 	return handle;
 }
 
+static int
+mlx5_flow_update_meter_mark(struct rte_eth_dev *dev, uint32_t queue,
+			    const struct rte_flow_update_meter_mark *upd_meter_mark,
+			    uint32_t idx, bool push,
+			    struct mlx5_hw_q_job *job, struct rte_flow_error *error)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_aso_mtr_pool *pool = priv->hws_mpool;
+	const struct rte_flow_action_meter_mark *meter_mark = &upd_meter_mark->meter_mark;
+	struct mlx5_aso_mtr *aso_mtr = mlx5_ipool_get(pool->idx_pool, idx);
+	struct mlx5_flow_meter_info *fm;
+
+	if (!aso_mtr)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					  NULL, "Invalid meter_mark update index");
+	fm = &aso_mtr->fm;
+	if (upd_meter_mark->profile_valid)
+		fm->profile = (struct mlx5_flow_meter_profile *)
+			(meter_mark->profile);
+	if (upd_meter_mark->color_mode_valid)
+		fm->color_aware = meter_mark->color_mode;
+	if (upd_meter_mark->state_valid)
+		fm->is_enable = meter_mark->state;
+	/* Update ASO flow meter by wqe. */
+	if (mlx5_aso_meter_update_by_wqe(priv->sh, queue,
+					 aso_mtr, &priv->mtr_bulk, job, push))
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					  NULL, "Unable to update ASO meter WQE");
+	/* Wait for ASO object completion. */
+	if (queue == MLX5_HW_INV_QUEUE &&
+	    mlx5_aso_mtr_wait(priv->sh, MLX5_HW_INV_QUEUE, aso_mtr))
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					  NULL, "Unable to wait for ASO meter CQE");
+	return 0;
+}
+
 /**
  * Update shared action.
  *
@@ -8689,15 +8718,9 @@ flow_hw_action_handle_update(struct rte_eth_dev *dev, uint32_t queue,
 			     struct rte_flow_error *error)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_aso_mtr_pool *pool = priv->hws_mpool;
 	const struct rte_flow_modify_conntrack *ct_conf =
 		(const struct rte_flow_modify_conntrack *)update;
-	const struct rte_flow_update_meter_mark *upd_meter_mark =
-		(const struct rte_flow_update_meter_mark *)update;
-	const struct rte_flow_action_meter_mark *meter_mark;
 	struct mlx5_hw_q_job *job = NULL;
-	struct mlx5_aso_mtr *aso_mtr;
-	struct mlx5_flow_meter_info *fm;
 	uint32_t act_idx = (uint32_t)(uintptr_t)handle;
 	uint32_t type = act_idx >> MLX5_INDIRECT_ACTION_TYPE_OFFSET;
 	uint32_t idx = act_idx & ((1u << MLX5_INDIRECT_ACTION_TYPE_OFFSET) - 1);
@@ -8724,44 +8747,8 @@ flow_hw_action_handle_update(struct rte_eth_dev *dev, uint32_t queue,
 		break;
 	case MLX5_INDIRECT_ACTION_TYPE_METER_MARK:
 		aso = true;
-		meter_mark = &upd_meter_mark->meter_mark;
-		/* Find ASO object. */
-		aso_mtr = mlx5_ipool_get(pool->idx_pool, idx);
-		if (!aso_mtr) {
-			ret = -EINVAL;
-			rte_flow_error_set(error, EINVAL,
-				RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
-				NULL, "Invalid meter_mark update index");
-			break;
-		}
-		fm = &aso_mtr->fm;
-		if (upd_meter_mark->profile_valid)
-			fm->profile = (struct mlx5_flow_meter_profile *)
-							(meter_mark->profile);
-		if (upd_meter_mark->color_mode_valid)
-			fm->color_aware = meter_mark->color_mode;
-		if (upd_meter_mark->init_color_valid)
-			aso_mtr->init_color = (meter_mark->color_mode) ?
-				meter_mark->init_color : RTE_COLOR_GREEN;
-		if (upd_meter_mark->state_valid)
-			fm->is_enable = meter_mark->state;
-		/* Update ASO flow meter by wqe. */
-		if (mlx5_aso_meter_update_by_wqe(priv->sh, queue,
-						 aso_mtr, &priv->mtr_bulk, job, push)) {
-			ret = -EINVAL;
-			rte_flow_error_set(error, EINVAL,
-				RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
-				NULL, "Unable to update ASO meter WQE");
-			break;
-		}
-		/* Wait for ASO object completion. */
-		if (queue == MLX5_HW_INV_QUEUE &&
-		    mlx5_aso_mtr_wait(priv->sh, MLX5_HW_INV_QUEUE, aso_mtr)) {
-			ret = -EINVAL;
-			rte_flow_error_set(error, EINVAL,
-				RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
-				NULL, "Unable to wait for ASO meter CQE");
-		}
+		ret = mlx5_flow_update_meter_mark(dev, queue, update, idx, push,
+						  job, error);
 		break;
 	case MLX5_INDIRECT_ACTION_TYPE_RSS:
 		ret = flow_dv_action_update(dev, handle, update, error);

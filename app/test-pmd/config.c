@@ -3180,7 +3180,6 @@ port_queue_action_handle_update(portid_t port_id,
 		if (mtr_update.meter_mark.policy)
 			mtr_update.policy_valid = 1;
 		mtr_update.color_mode_valid = 1;
-		mtr_update.init_color_valid = 1;
 		mtr_update.state_valid = 1;
 		update = &mtr_update;
 		break;

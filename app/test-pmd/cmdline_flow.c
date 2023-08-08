@@ -592,7 +592,6 @@ enum index {
 	ACTION_METER_POLICY,
 	ACTION_METER_POLICY_ID2PTR,
 	ACTION_METER_COLOR_MODE,
-	ACTION_METER_INIT_COLOR,
 	ACTION_METER_STATE,
 	ACTION_OF_DEC_NW_TTL,
 	ACTION_OF_POP_VLAN,
@@ -2261,7 +2260,6 @@ static const enum index action_meter_mark[] = {
 	ACTION_METER_PROFILE,
 	ACTION_METER_POLICY,
 	ACTION_METER_COLOR_MODE,
-	ACTION_METER_INIT_COLOR,
 	ACTION_METER_STATE,
 	ACTION_NEXT,
 	ZERO,
@@ -6306,12 +6304,6 @@ static const struct token token_list[] = {
 		.next = NEXT(action_meter_mark, NEXT_ENTRY(COMMON_UNSIGNED)),
 		.args = ARGS(ARGS_ENTRY(struct rte_flow_action_meter_mark, color_mode)),
 		.call = parse_vc_conf,
-	},
-	[ACTION_METER_INIT_COLOR] = {
-		.name = "mtr_init_color",
-		.help = "meter initial color",
-		.next = NEXT(action_meter_mark, NEXT_ENTRY(ITEM_METER_COLOR_NAME)),
-		.args = ARGS(ARGS_ENTRY(struct rte_flow_action_meter_mark, init_color)),
 	},
 	[ACTION_METER_STATE] = {
 		.name = "mtr_state",
