@@ -282,6 +282,7 @@ _internal_mlx5_vdpa_dev_close(struct mlx5_vdpa_priv *priv,
 	int ret = 0;
 	int vid = priv->vid;
 
+	mlx5_vdpa_virtq_unreg_intr_handle_all(priv);
 	mlx5_vdpa_cqe_event_unset(priv);
 	if (priv->state == MLX5_VDPA_STATE_CONFIGURED) {
 		ret |= mlx5_vdpa_lm_log(priv);
