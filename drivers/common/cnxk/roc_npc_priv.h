@@ -378,6 +378,13 @@ struct npc_prio_flow_entry {
 
 TAILQ_HEAD(npc_prio_flow_list_head, npc_prio_flow_entry);
 
+struct npc_age_flow_entry {
+	struct roc_npc_flow *flow;
+	TAILQ_ENTRY(npc_age_flow_entry) next;
+};
+
+TAILQ_HEAD(npc_age_flow_list_head, npc_age_flow_entry);
+
 struct npc {
 	struct mbox *mbox;			/* Mbox */
 	uint32_t keyx_supp_nmask[NPC_MAX_INTF]; /* nibble mask */
@@ -403,6 +410,7 @@ struct npc {
 	npc_ld_flags_t prx_lfcfg;    /* KEX LD_Flags CFG */
 	struct npc_flow_list *flow_list;
 	struct npc_prio_flow_list_head *prio_flow_list;
+	struct npc_age_flow_list_head age_flow_list;
 	struct plt_bitmap *rss_grp_entries;
 	struct npc_flow_list ipsec_list;
 	uint8_t exact_match_ena;
@@ -480,4 +488,13 @@ int npc_rss_action_program(struct roc_npc *roc_npc, const struct roc_npc_action 
 int npc_rss_group_free(struct npc *npc, struct roc_npc_flow *flow);
 int npc_mcam_init(struct npc *npc, struct roc_npc_flow *flow, int mcam_id);
 int npc_mcam_move(struct mbox *mbox, uint16_t old_ent, uint16_t new_ent);
+void npc_age_flow_list_entry_add(struct roc_npc *npc, struct roc_npc_flow *flow);
+void npc_age_flow_list_entry_delete(struct roc_npc *npc, struct roc_npc_flow *flow);
+uint32_t npc_aged_flows_get(void *args);
+int npc_aged_flows_bitmap_alloc(struct roc_npc *roc_npc);
+void npc_aged_flows_bitmap_free(struct roc_npc *roc_npc);
+int npc_aging_ctrl_thread_create(struct roc_npc *roc_npc,
+				 const struct roc_npc_action_age *age,
+				 struct roc_npc_flow *flow);
+void npc_aging_ctrl_thread_destroy(struct roc_npc *roc_npc);
 #endif /* _ROC_NPC_PRIV_H_ */

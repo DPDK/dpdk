@@ -302,6 +302,7 @@ roc_npc_init(struct roc_npc *roc_npc)
 	npc_mem = mem;
 
 	TAILQ_INIT(&npc->ipsec_list);
+	TAILQ_INIT(&npc->age_flow_list);
 	for (idx = 0; idx < npc->flow_max_priority; idx++) {
 		TAILQ_INIT(&npc->flow_list[idx]);
 		TAILQ_INIT(&npc->prio_flow_list[idx]);
@@ -330,6 +331,9 @@ roc_npc_init(struct roc_npc *roc_npc)
 	 */
 	plt_bitmap_set(npc->rss_grp_entries, 0);
 
+	rc = npc_aged_flows_bitmap_alloc(roc_npc);
+	if (rc != 0)
+		goto done;
 	return rc;
 
 done:
@@ -609,6 +613,17 @@ npc_parse_actions(struct roc_npc *roc_npc, const struct roc_npc_attr *attr,
 					  actions->conf;
 			flow->mtr_id = act_mtr->mtr_id;
 			req_act |= ROC_NPC_ACTION_TYPE_METER;
+			break;
+		case ROC_NPC_ACTION_TYPE_AGE:
+			if (flow->is_validate == true)
+				break;
+			plt_seqcount_init(&roc_npc->flow_age.seq_cnt);
+			errcode = npc_aging_ctrl_thread_create(roc_npc,
+							       actions->conf,
+							       flow);
+			if (errcode != 0)
+				goto err_exit;
+			req_act |= ROC_NPC_ACTION_TYPE_AGE;
 			break;
 		default:
 			errcode = NPC_ERR_ACTION_NOTSUP;
@@ -1488,6 +1503,9 @@ roc_npc_flow_create(struct roc_npc *roc_npc, const struct roc_npc_attr *attr,
 		}
 	}
 	TAILQ_INSERT_TAIL(list, flow, next);
+
+	npc_age_flow_list_entry_add(roc_npc, flow);
+
 	return flow;
 
 set_rss_failed:
@@ -1584,6 +1602,11 @@ roc_npc_flow_destroy(struct roc_npc *roc_npc, struct roc_npc_flow *flow)
 	TAILQ_REMOVE(&npc->flow_list[flow->priority], flow, next);
 
 	npc_delete_prio_list_entry(npc, flow);
+
+	npc_age_flow_list_entry_delete(roc_npc, flow);
+	if (roc_npc->flow_age.age_flow_refcnt == 0 &&
+		plt_thread_is_valid(roc_npc->flow_age.aged_flows_poll_thread))
+		npc_aging_ctrl_thread_destroy(roc_npc);
 
 done:
 	plt_free(flow);
