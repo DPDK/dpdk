@@ -190,7 +190,6 @@ mlx5_vdpa_c_thread_handle(void *arg)
 			pthread_mutex_unlock(&virtq->virtq_lock);
 			break;
 		case MLX5_VDPA_TASK_DEV_CLOSE_NOWAIT:
-			mlx5_vdpa_virtq_unreg_intr_handle_all(priv);
 			pthread_mutex_lock(&priv->steer_update_lock);
 			mlx5_vdpa_steer_unset(priv);
 			pthread_mutex_unlock(&priv->steer_update_lock);
