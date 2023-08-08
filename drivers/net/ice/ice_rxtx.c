@@ -2002,7 +2002,7 @@ ice_recv_scattered_pkts(void *rx_queue,
 			}
 			rxq->hw_time_update = rte_get_timer_cycles() /
 					     (rte_get_timer_hz() / 1000);
-			*RTE_MBUF_DYNFIELD(rxm,
+			*RTE_MBUF_DYNFIELD(first_seg,
 					   (ice_timestamp_dynfield_offset),
 					   rte_mbuf_timestamp_t *) = ts_ns;
 			pkt_flags |= ice_timestamp_dynflag;
