@@ -245,6 +245,19 @@ parse_sdp_channel_mask(const char *key, const char *value, void *extra_args)
 	return 0;
 }
 
+static int
+parse_val_u16(const char *key, const char *value, void *extra_args)
+{
+	RTE_SET_USED(key);
+	uint16_t val;
+
+	val = atoi(value);
+
+	*(uint16_t *)extra_args = val;
+
+	return 0;
+}
+
 #define CNXK_RSS_RETA_SIZE	"reta_size"
 #define CNXK_SCL_ENABLE		"scalar_enable"
 #define CNXK_TX_COMPL_ENA       "tx_compl_ena"
@@ -265,10 +278,12 @@ parse_sdp_channel_mask(const char *key, const char *value, void *extra_args)
 #define CNXK_CUSTOM_SA_ACT	"custom_sa_act"
 #define CNXK_SQB_SLACK		"sqb_slack"
 #define CNXK_NIX_META_BUF_SZ	"meta_buf_sz"
+#define CNXK_FLOW_AGING_POLL_FREQ	"aging_poll_freq"
 
 int
 cnxk_ethdev_parse_devargs(struct rte_devargs *devargs, struct cnxk_eth_dev *dev)
 {
+	uint16_t aging_thread_poll_freq = ROC_NPC_AGE_POLL_FREQ_MIN;
 	uint16_t reta_sz = ROC_NIX_RSS_RETA_SZ_64;
 	uint16_t sqb_count = CNXK_NIX_TX_MAX_SQB;
 	struct flow_pre_l2_size_info pre_l2_info;
@@ -338,6 +353,8 @@ cnxk_ethdev_parse_devargs(struct rte_devargs *devargs, struct cnxk_eth_dev *dev)
 	rte_kvargs_process(kvlist, CNXK_SQB_SLACK, &parse_sqb_count,
 			   &sqb_slack);
 	rte_kvargs_process(kvlist, CNXK_NIX_META_BUF_SZ, &parse_meta_bufsize, &meta_buf_sz);
+	rte_kvargs_process(kvlist, CNXK_FLOW_AGING_POLL_FREQ, &parse_val_u16,
+			   &aging_thread_poll_freq);
 	rte_kvargs_free(kvlist);
 
 null_devargs:
@@ -369,6 +386,7 @@ null_devargs:
 	dev->npc.pre_l2_size_offset = pre_l2_info.pre_l2_size_off;
 	dev->npc.pre_l2_size_offset_mask = pre_l2_info.pre_l2_size_off_mask;
 	dev->npc.pre_l2_size_shift_dir = pre_l2_info.pre_l2_size_shift_dir;
+	dev->npc.flow_age.aging_poll_freq = aging_thread_poll_freq;
 	return 0;
 exit:
 	return -EINVAL;
@@ -390,4 +408,5 @@ RTE_PMD_REGISTER_PARAM_STRING(net_cnxk,
 			      CNXK_NO_INL_DEV "=0"
 			      CNXK_SDP_CHANNEL_MASK "=<1-4095>/<1-4095>"
 			      CNXK_CUSTOM_SA_ACT "=1"
-			      CNXK_SQB_SLACK "=<12-512>");
+			      CNXK_SQB_SLACK "=<12-512>"
+			      CNXK_FLOW_AGING_POLL_FREQ "=<10-65535>");

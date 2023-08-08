@@ -221,7 +221,7 @@ struct roc_npc_action_port_id {
 struct roc_npc_action_age {
 	uint32_t timeout : 24; /**< Time in seconds. */
 	uint32_t reserved : 8; /**< Reserved, must be zero. */
-	/** The user flow context, NULL means the rte_flow pointer. */
+	/** The user flow context, NULL means the flow pointer. */
 	void *context;
 };
 

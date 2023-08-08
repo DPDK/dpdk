@@ -130,6 +130,7 @@ New Features
 * **Updated Marvell cnxk net driver.**
 
   * Added support for ``RTE_FLOW_ITEM_TYPE_IPV6_ROUTING_EXT`` flow item.
+  * Added support for ``RTE_FLOW_ACTION_TYPE_AGE`` flow action.
 
 * **Updated Solarflare net driver.**
 

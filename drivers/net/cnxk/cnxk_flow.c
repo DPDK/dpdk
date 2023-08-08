@@ -232,6 +232,10 @@ cnxk_map_actions(struct rte_eth_dev *eth_dev, const struct rte_flow_attr *attr,
 			in_actions[i].type = ROC_NPC_ACTION_TYPE_METER;
 			in_actions[i].conf = actions->conf;
 			break;
+		case RTE_FLOW_ACTION_TYPE_AGE:
+			in_actions[i].type = ROC_NPC_ACTION_TYPE_AGE;
+			in_actions[i].conf = actions->conf;
+			break;
 		default:
 			plt_npc_dbg("Action is not supported = %d",
 				    actions->type);
@@ -482,10 +486,51 @@ cnxk_flow_dev_dump(struct rte_eth_dev *eth_dev, struct rte_flow *flow,
 	return 0;
 }
 
+static int
+cnxk_flow_get_aged_flows(struct rte_eth_dev *eth_dev, void **context,
+			 uint32_t nb_contexts, struct rte_flow_error *err)
+{
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	struct roc_npc *roc_npc = &dev->npc;
+	struct roc_npc_flow_age *flow_age;
+	uint32_t start_id;
+	uint32_t end_id;
+	int cnt = 0;
+	uint32_t sn;
+	uint32_t i;
+
+	RTE_SET_USED(err);
+
+	flow_age = &roc_npc->flow_age;
+
+	do {
+		sn = plt_seqcount_read_begin(&flow_age->seq_cnt);
+
+		if (nb_contexts == 0) {
+			cnt = flow_age->aged_flows_cnt;
+		} else {
+			start_id = flow_age->start_id;
+			end_id = flow_age->end_id;
+			for (i = start_id; i <= end_id; i++) {
+				if ((int)nb_contexts == cnt)
+					break;
+				if (plt_bitmap_get(flow_age->aged_flows, i)) {
+					context[cnt] =
+						roc_npc_aged_flow_ctx_get(roc_npc, i);
+					cnt++;
+				}
+			}
+		}
+	} while (plt_seqcount_read_retry(&flow_age->seq_cnt, sn));
+
+	return cnt;
+}
+
 struct rte_flow_ops cnxk_flow_ops = {
 	.validate = cnxk_flow_validate,
 	.flush = cnxk_flow_flush,
 	.query = cnxk_flow_query,
 	.isolate = cnxk_flow_isolate,
 	.dev_dump = cnxk_flow_dev_dump,
+	.get_aged_flows = cnxk_flow_get_aged_flows,
 };

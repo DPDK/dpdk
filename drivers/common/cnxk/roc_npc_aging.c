@@ -61,7 +61,7 @@ check_timeout_cycles(struct roc_npc *roc_npc, uint32_t mcam_id)
 	list = &npc->age_flow_list;
 	TAILQ_FOREACH(fl_iter, list, next) {
 		if (fl_iter->flow->mcam_id == mcam_id &&
-		    fl_iter->flow->timeout_cycles < rte_get_timer_cycles()) {
+		    fl_iter->flow->timeout_cycles < plt_tsc_cycles()) {
 			/* update bitmap */
 			plt_bitmap_set(flow_age->aged_flows, mcam_id);
 			if (flow_age->aged_flows_cnt == 0) {
@@ -88,8 +88,8 @@ update_timeout_cycles(struct roc_npc *roc_npc, uint32_t mcam_id)
 	list = &npc->age_flow_list;
 	TAILQ_FOREACH(fl_iter, list, next) {
 		if (fl_iter->flow->mcam_id == mcam_id) {
-			fl_iter->flow->timeout_cycles = rte_get_timer_cycles() +
-				fl_iter->flow->timeout * rte_get_timer_hz();
+			fl_iter->flow->timeout_cycles = plt_tsc_cycles() +
+				fl_iter->flow->timeout * plt_tsc_hz();
 			break;
 		}
 	}
@@ -212,6 +212,11 @@ npc_age_flow_list_entry_add(struct roc_npc *roc_npc, struct roc_npc_flow *flow)
 	struct npc_age_flow_entry *new_entry;
 
 	new_entry = plt_zmalloc(sizeof(*new_entry), 0);
+	if (new_entry == NULL) {
+		plt_err("flow entry alloc failed");
+		return;
+	}
+
 	new_entry->flow = flow;
 	roc_npc->flow_age.age_flow_refcnt++;
 	/* List in ascending order of mcam entries */
@@ -267,8 +272,7 @@ npc_aging_ctrl_thread_create(struct roc_npc *roc_npc,
 
 	flow->age_context = age->context == NULL ? flow : age->context;
 	flow->timeout = age->timeout;
-	flow->timeout_cycles = rte_get_timer_cycles() + age->timeout *
-			       rte_get_timer_hz();
+	flow->timeout_cycles = plt_tsc_cycles() + age->timeout * plt_tsc_hz();
 
 	if (flow_age->age_flow_refcnt == 0) {
 		flow_age->aged_flows_get_thread_exit = false;
