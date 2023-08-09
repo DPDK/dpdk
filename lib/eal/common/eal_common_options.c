@@ -39,7 +39,7 @@
 #include "eal_options.h"
 #include "eal_filesystem.h"
 #include "eal_private.h"
-#include "eal_log.h"
+#include "log_internal.h"
 #ifndef RTE_EXEC_ENV_WINDOWS
 #include "eal_trace.h"
 #endif

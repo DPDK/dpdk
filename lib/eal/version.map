@@ -140,21 +140,6 @@ DPDK_24 {
 	rte_lcore_iterate;
 	rte_lcore_to_cpu_id;
 	rte_lcore_to_socket_id;
-	rte_log;
-	rte_log_can_log;
-	rte_log_cur_msg_loglevel;
-	rte_log_cur_msg_logtype;
-	rte_log_dump;
-	rte_log_get_global_level;
-	rte_log_get_level;
-	rte_log_get_stream;
-	rte_log_list_types;
-	rte_log_register;
-	rte_log_register_type_and_pick_level;
-	rte_log_set_global_level;
-	rte_log_set_level;
-	rte_log_set_level_pattern;
-	rte_log_set_level_regexp;
 	rte_malloc;
 	rte_malloc_dump_heaps;
 	rte_malloc_dump_stats;
@@ -225,7 +210,6 @@ DPDK_24 {
 	rte_mp_request_async;
 	rte_mp_request_sync;
 	rte_mp_sendmsg;
-	rte_openlog_stream;
 	rte_rand;
 	rte_rand_max;
 	rte_realloc;
@@ -299,7 +283,6 @@ DPDK_24 {
 	rte_vfio_noiommu_is_enabled; # WINDOWS_NO_EXPORT
 	rte_vfio_release_device; # WINDOWS_NO_EXPORT
 	rte_vfio_setup_device; # WINDOWS_NO_EXPORT
-	rte_vlog;
 	rte_zmalloc;
 	rte_zmalloc_socket;
 

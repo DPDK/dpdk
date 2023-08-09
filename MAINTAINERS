@@ -164,7 +164,6 @@ F: app/test/test_devargs.c
 F: app/test/test_eal*
 F: app/test/test_errno.c
 F: app/test/test_lcores.c
-F: app/test/test_logs.c
 F: app/test/test_memcpy*
 F: app/test/test_per_lcore.c
 F: app/test/test_pflock.c
@@ -176,6 +175,11 @@ F: app/test/test_string_fns.c
 F: app/test/test_tailq.c
 F: app/test/test_threads.c
 F: app/test/test_version.c
+
+Logging
+F: lib/log/
+F: doc/guides/prog_guide/log_lib.rst
+F: app/test/test_logs.c
 
 Trace - EXPERIMENTAL
 M: Jerin Jacob <jerinj@marvell.com>

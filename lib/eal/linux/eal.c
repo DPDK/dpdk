@@ -50,10 +50,10 @@
 #include "eal_hugepages.h"
 #include "eal_memcfg.h"
 #include "eal_trace.h"
-#include "eal_log.h"
 #include "eal_options.h"
 #include "eal_vfio.h"
 #include "hotplug_mp.h"
+#include "log_internal.h"
 
 #define MEMSIZE_IF_NO_HUGE_PAGE (64ULL * 1024ULL * 1024ULL)
 

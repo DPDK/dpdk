@@ -9,6 +9,7 @@
 # given as a dep, no need to mention ring. This is especially true for the
 # core libs which are widely reused, so their deps are kept to a minimum.
 libraries = [
+        'log',
         'kvargs', # eal depends on kvargs
         'telemetry', # basic info querying
         'eal', # everything depends on eal

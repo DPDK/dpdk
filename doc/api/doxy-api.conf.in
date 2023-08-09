@@ -50,6 +50,7 @@ INPUT                   = @TOPDIR@/doc/api/doxy-api-index.md \
                           @TOPDIR@/lib/jobstats \
                           @TOPDIR@/lib/kvargs \
                           @TOPDIR@/lib/latencystats \
+                          @TOPDIR@/lib/log \
                           @TOPDIR@/lib/lpm \
                           @TOPDIR@/lib/mbuf \
                           @TOPDIR@/lib/member \

@@ -18,7 +18,6 @@ sources += files(
         'eal_common_interrupts.c',
         'eal_common_launch.c',
         'eal_common_lcore.c',
-        'eal_common_log.c',
         'eal_common_mcfg.c',
         'eal_common_memalloc.c',
         'eal_common_memory.c',

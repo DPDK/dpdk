@@ -27,8 +27,8 @@
 #include "eal_firmware.h"
 #include "eal_hugepages.h"
 #include "eal_trace.h"
-#include "eal_log.h"
 #include "eal_windows.h"
+#include "log_internal.h"
 
 #define MEMSIZE_IF_NO_HUGE_PAGE (64ULL * 1024ULL * 1024ULL)
 

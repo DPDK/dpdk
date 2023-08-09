@@ -8,7 +8,7 @@
 
 #include <rte_log.h>
 
-#include "eal_log.h"
+#include "log_internal.h"
 
 /*
  * default log function

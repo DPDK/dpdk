@@ -4,7 +4,7 @@
 
 #include <rte_common.h>
 #include <rte_log.h>
-#include "eal_log.h"
+#include "log_internal.h"
 
 /* set the log to default function, called during eal init process. */
 int

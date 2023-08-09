@@ -12,6 +12,7 @@ Programmer's Guide
     overview
     source_org
     env_abstraction_layer
+    log_lib
     service_cores
     trace_lib
     rcu_lib

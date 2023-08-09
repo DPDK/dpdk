@@ -443,9 +443,7 @@ Per-lcore variables are implemented using *Thread Local Storage* (TLS) to provid
 Logs
 ~~~~
 
-A logging API is provided by EAL.
-By default, in a Linux application, logs are sent to syslog and also to the console.
-However, the log function can be overridden by the user to use a different logging mechanism.
+While originally part of EAL, DPDK logging functionality is now provided by the :doc:`log_lib`.
 
 Trace and Debug Functions
 ^^^^^^^^^^^^^^^^^^^^^^^^^

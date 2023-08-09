@@ -1,0 +1,34 @@
+DPDK_24 {
+	global:
+
+	rte_log;
+	rte_log_cur_msg_loglevel;
+	rte_log_cur_msg_logtype;
+	rte_log_can_log;
+	rte_log_dump;
+	rte_log_get_global_level;
+	rte_log_get_level;
+	rte_log_get_stream;
+	rte_log_list_types;
+	rte_log_register;
+	rte_log_register_type_and_pick_level;
+	rte_log_set_global_level;
+	rte_log_set_level;
+	rte_log_set_level_pattern;
+	rte_log_set_level_regexp;
+	rte_openlog_stream;
+	rte_vlog;
+
+	local: *;
+};
+
+INTERNAL {
+	global:
+
+	eal_log_init;
+	eal_log_level2str;
+	eal_log_save_pattern;
+	eal_log_save_regexp;
+	eal_log_set_default;
+	rte_eal_log_cleanup;
+};
