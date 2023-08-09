@@ -18,7 +18,6 @@ sources += files(
         'eal_mp.c',
         'eal_thread.c',
         'eal_timer.c',
-        'fnmatch.c',
         'getopt.c',
         'rte_thread.c',
 )
