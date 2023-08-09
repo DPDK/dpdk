@@ -197,10 +197,6 @@ int
 rte_eth_bond_8023ad_slave_info(uint16_t port_id, uint16_t slave_id,
 		struct rte_eth_bond_8023ad_slave_info *conf);
 
-#ifdef __cplusplus
-}
-#endif
-
 /**
  * Configure a slave port to start collecting.
  *
@@ -331,4 +327,9 @@ rte_eth_bond_8023ad_agg_selection_get(uint16_t port_id);
 int
 rte_eth_bond_8023ad_agg_selection_set(uint16_t port_id,
 		enum rte_bond_8023ad_agg_selection agg_selection);
+
+#ifdef __cplusplus
+}
+#endif
+
 #endif /* RTE_ETH_BOND_8023AD_H_ */
