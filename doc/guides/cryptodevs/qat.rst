@@ -384,6 +384,14 @@ The "rte_cryptodev_devices_get()" returns the devices exposed by either of these
   <pci bdf>_<service>, e.g. "0000:41:01.0_qat_comp".
   This name can be passed to rte_compressdev_get_dev_id() to get the device_id.
 
+
+Running QAT on Aarch64 based Ampere Altra platform
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Requires Linux kernel v6.0+.
+See also `this kernel patch <https://lkml.org/lkml/2022/6/17/328>`_.
+
+
 .. _qat_kernel:
 
 Dependency on the QAT kernel driver
