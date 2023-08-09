@@ -108,7 +108,6 @@ typedef int (*rte_log_fn)(uint32_t level, uint32_t logtype, const char *format, 
  */
 __rte_internal
 int
-rte_telemetry_init(const char *runtime_dir, const char *rte_version, rte_cpuset_t *cpuset,
-		rte_log_fn log_fn, uint32_t registered_logtype);
+rte_telemetry_init(const char *runtime_dir, const char *rte_version, rte_cpuset_t *cpuset);
 
 #endif

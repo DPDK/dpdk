@@ -54,11 +54,9 @@ static struct socket v1_socket; /* socket for v1 telemetry */
 static const char *telemetry_version; /* save rte_version */
 static const char *socket_dir;        /* runtime directory */
 static rte_cpuset_t *thread_cpuset;
-static rte_log_fn rte_log_ptr;
-static uint32_t logtype;
 
-#define TMTY_LOG(l, ...) \
-        rte_log_ptr(RTE_LOG_ ## l, logtype, "TELEMETRY: " __VA_ARGS__)
+RTE_LOG_REGISTER_DEFAULT(logtype, WARNING);
+#define TMTY_LOG(l, ...) rte_log(RTE_LOG_ ## l, logtype, "TELEMETRY: " __VA_ARGS__)
 
 /* list of command callbacks, with one command registered by default */
 static struct cmd_callback *callbacks;
@@ -627,14 +625,11 @@ telemetry_v2_init(void)
 #endif /* !RTE_EXEC_ENV_WINDOWS */
 
 int32_t
-rte_telemetry_init(const char *runtime_dir, const char *rte_version, rte_cpuset_t *cpuset,
-		rte_log_fn log_fn, uint32_t registered_logtype)
+rte_telemetry_init(const char *runtime_dir, const char *rte_version, rte_cpuset_t *cpuset)
 {
 	telemetry_version = rte_version;
 	socket_dir = runtime_dir;
 	thread_cpuset = cpuset;
-	rte_log_ptr = log_fn;
-	logtype = registered_logtype;
 
 #ifndef RTE_EXEC_ENV_WINDOWS
 	if (telemetry_v2_init() != 0)
