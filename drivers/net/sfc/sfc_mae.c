@@ -665,6 +665,9 @@ sfc_mae_encap_header_attach(struct sfc_adapter *sa,
 	SFC_ASSERT(sfc_adapter_is_locked(sa));
 
 	TAILQ_FOREACH(encap_header, &mae->encap_headers, entries) {
+		if (encap_header->indirect)
+			continue;
+
 		if (encap_header->size == bounce_eh->size &&
 		    memcmp(encap_header->buf, bounce_eh->buf,
 			   bounce_eh->size) == 0) {
@@ -4059,6 +4062,9 @@ sfc_mae_rule_parse_action_vxlan_encap(
 	/* Take care of the masks. */
 	sfc_mae_header_force_item_masks(buf, parsed_items, nb_parsed_items);
 
+	if (spec == NULL)
+		return 0;
+
 	rc = efx_mae_action_set_populate_encap(spec);
 	if (rc != 0) {
 		rc = rte_flow_error_set(error, rc, RTE_FLOW_ERROR_TYPE_ACTION,
@@ -4162,6 +4168,23 @@ sfc_mae_rule_parse_action_indirect(struct sfc_adapter *sa,
 			sfc_dbg(sa, "attaching to indirect_action=%p", entry);
 
 			switch (entry->type) {
+			case RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP:
+				if (ctx->encap_header != NULL) {
+					return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+					  "cannot have multiple actions VXLAN_ENCAP in one flow");
+				}
+
+				rc = efx_mae_action_set_populate_encap(ctx->spec);
+				if (rc != 0) {
+					return rte_flow_error_set(error, rc,
+					 RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+					 "failed to add ENCAP to MAE action set");
+				}
+
+				ctx->encap_header = entry->encap_header;
+				++(ctx->encap_header->refcnt);
+				break;
 			case RTE_FLOW_ACTION_TYPE_COUNT:
 				if (ft_rule_type != SFC_FT_RULE_NONE) {
 					return rte_flow_error_set(error, EINVAL,
@@ -5184,12 +5207,31 @@ sfc_mae_indir_action_create(struct sfc_adapter *sa,
 			    struct rte_flow_action_handle *handle,
 			    struct rte_flow_error *error)
 {
+	struct sfc_mae *mae = &sa->mae;
+	bool custom_error = false;
 	int ret;
 
 	SFC_ASSERT(sfc_adapter_is_locked(sa));
 	SFC_ASSERT(handle != NULL);
 
 	switch (action->type) {
+	case RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP:
+		/* Cleanup after previous encap. header bounce buffer usage. */
+		sfc_mae_bounce_eh_invalidate(&mae->bounce_eh);
+
+		ret = sfc_mae_rule_parse_action_vxlan_encap(mae, action->conf,
+							    NULL, error);
+		if (ret != 0) {
+			custom_error = true;
+			break;
+		}
+
+		ret = sfc_mae_encap_header_add(sa, &mae->bounce_eh,
+					       &handle->encap_header);
+		if (ret == 0)
+			handle->encap_header->indirect = true;
+		break;
+
 	case RTE_FLOW_ACTION_TYPE_COUNT:
 		ret = sfc_mae_rule_parse_action_count(sa, action->conf,
 						      EFX_COUNTER_TYPE_ACTION,
@@ -5200,6 +5242,9 @@ sfc_mae_indir_action_create(struct sfc_adapter *sa,
 	default:
 		ret = ENOTSUP;
 	}
+
+	if (custom_error)
+		return ret;
 
 	if (ret != 0) {
 		return rte_flow_error_set(error, ret,
@@ -5221,6 +5266,12 @@ sfc_mae_indir_action_destroy(struct sfc_adapter *sa,
 	SFC_ASSERT(handle != NULL);
 
 	switch (handle->type) {
+	case RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP:
+		if (handle->encap_header->refcnt != 1)
+			goto fail;
+
+		sfc_mae_encap_header_del(sa, handle->encap_header);
+		break;
 	case RTE_FLOW_ACTION_TYPE_COUNT:
 		if (handle->counter->refcnt != 1)
 			goto fail;

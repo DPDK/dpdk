@@ -59,6 +59,7 @@ TAILQ_HEAD(sfc_mae_mac_addrs, sfc_mae_mac_addr);
 struct sfc_mae_encap_header {
 	TAILQ_ENTRY(sfc_mae_encap_header)	entries;
 	unsigned int				refcnt;
+	bool					indirect;
 	uint8_t					*buf;
 	size_t					size;
 	efx_tunnel_protocol_t			type;

@@ -98,6 +98,7 @@ struct rte_flow_action_handle {
 	enum rte_flow_action_type		type;
 
 	union {
+		struct sfc_mae_encap_header	*encap_header;
 		struct sfc_mae_counter		*counter;
 	};
 };

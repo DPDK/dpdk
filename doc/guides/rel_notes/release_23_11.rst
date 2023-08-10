@@ -72,6 +72,10 @@ New Features
      Also, make sure to start the actual text at the margin.
      =======================================================
 
+* **Updated Solarflare net driver.**
+
+  * Added support for transfer flow action ``INDIRECT`` with subtype ``VXLAN_ENCAP``.
+
 * build: Enabling deprecated libraries is now done using the new
   ``enable_deprecated_libraries`` build option.
 
