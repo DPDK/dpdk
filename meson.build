@@ -95,10 +95,8 @@ install_subdir('examples',
         install_dir: get_option('datadir') + '/dpdk',
         exclude_files: ex_file_excludes)
 
-# build kernel modules if enabled
-if get_option('enable_kmods')
-    subdir('kernel')
-endif
+# build kernel modules
+subdir('kernel')
 
 # check header includes if requested
 if get_option('check_includes')
