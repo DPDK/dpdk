@@ -281,8 +281,10 @@ sfc_mae_attach(struct sfc_adapter *sa)
 		bounce_eh->buf_size = limits.eml_encap_header_size_limit;
 		bounce_eh->buf = rte_malloc("sfc_mae_bounce_eh",
 					    bounce_eh->buf_size, 0);
-		if (bounce_eh->buf == NULL)
+		if (bounce_eh->buf == NULL) {
+			rc = ENOMEM;
 			goto fail_mae_alloc_bounce_eh;
+		}
 
 		mae->nb_outer_rule_prios_max = limits.eml_max_n_outer_prios;
 		mae->nb_action_rule_prios_max = limits.eml_max_n_action_prios;
