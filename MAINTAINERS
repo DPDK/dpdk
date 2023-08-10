@@ -1735,7 +1735,7 @@ F: app/test/test_bpf.c
 F: app/test-pmd/bpf_cmd.*
 F: doc/guides/prog_guide/bpf_lib.rst
 
-Graph - EXPERIMENTAL
+Graph
 M: Jerin Jacob <jerinj@marvell.com>
 M: Kiran Kumar K <kirankumark@marvell.com>
 M: Nithin Dabilpuram <ndabilpuram@marvell.com>

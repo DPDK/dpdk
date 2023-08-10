@@ -22,7 +22,6 @@ extern "C" {
  *
  * @see rte_graph_lookup()
  */
-__rte_experimental
 static inline void
 rte_graph_walk(struct rte_graph *graph)
 {

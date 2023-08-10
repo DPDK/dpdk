@@ -8,10 +8,6 @@
 /**
  * @file rte_graph_model_mcore_dispatch.h
  *
- * @warning
- * @b EXPERIMENTAL:
- * All functions in this file may be changed or removed without prior notice.
- *
  * These APIs allow to set core affinity with the node and only used for mcore
  * dispatch model.
  */
@@ -48,7 +44,6 @@ extern "C" {
  * This implementation is used by mcore dispatch model only and user application
  * should not call it directly.
  */
-__rte_experimental
 bool __rte_noinline __rte_graph_mcore_dispatch_sched_node_enqueue(struct rte_node *node,
 								  struct rte_graph_rq_head *rq);
 
@@ -64,7 +59,6 @@ bool __rte_noinline __rte_graph_mcore_dispatch_sched_node_enqueue(struct rte_nod
  * This implementation is used by mcore dispatch model only and user application
  * should not call it directly.
  */
-__rte_experimental
 void __rte_graph_mcore_dispatch_sched_wq_process(struct rte_graph *graph);
 
 /**
@@ -79,7 +73,6 @@ void __rte_graph_mcore_dispatch_sched_wq_process(struct rte_graph *graph);
  * @return
  *   0 on success, error otherwise.
  */
-__rte_experimental
 int rte_graph_model_mcore_dispatch_node_lcore_affinity_set(const char *name,
 							   unsigned int lcore_id);
 
@@ -92,7 +85,6 @@ int rte_graph_model_mcore_dispatch_node_lcore_affinity_set(const char *name,
  *
  * @see rte_graph_lookup()
  */
-__rte_experimental
 static inline void
 rte_graph_walk_mcore_dispatch(struct rte_graph *graph)
 {

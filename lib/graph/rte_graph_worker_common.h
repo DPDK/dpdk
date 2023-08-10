@@ -8,15 +8,10 @@
 /**
  * @file rte_graph_worker_common.h
  *
- * @warning
- * @b EXPERIMENTAL:
- * All functions in this file may be changed or removed without prior notice.
- *
  * This API allows a worker thread to walk over a graph and nodes to create,
  * process, enqueue and move streams of objects to the next nodes.
  */
 
-#include <rte_compat.h>
 #include <rte_common.h>
 #include <rte_cycles.h>
 #include <rte_prefetch.h>
@@ -144,7 +139,6 @@ struct rte_node {
  * @param node
  *   Pointer to the node object.
  */
-__rte_experimental
 void __rte_node_stream_alloc(struct rte_graph *graph, struct rte_node *node);
 
 /**
@@ -161,7 +155,6 @@ void __rte_node_stream_alloc(struct rte_graph *graph, struct rte_node *node);
  * @param req_size
  *   Number of objects to be allocated.
  */
-__rte_experimental
 void __rte_node_stream_alloc_size(struct rte_graph *graph,
 				  struct rte_node *node, uint16_t req_size);
 
@@ -289,7 +282,6 @@ __rte_node_next_node_get(struct rte_node *node, rte_edge_t next)
  * @param nb_objs
  *   Number of objs to enqueue.
  */
-__rte_experimental
 static inline void
 rte_node_enqueue(struct rte_graph *graph, struct rte_node *node,
 		 rte_edge_t next, void **objs, uint16_t nb_objs)
@@ -316,7 +308,6 @@ rte_node_enqueue(struct rte_graph *graph, struct rte_node *node,
  * @param obj
  *   Obj to enqueue.
  */
-__rte_experimental
 static inline void
 rte_node_enqueue_x1(struct rte_graph *graph, struct rte_node *node,
 		    rte_edge_t next, void *obj)
@@ -346,7 +337,6 @@ rte_node_enqueue_x1(struct rte_graph *graph, struct rte_node *node,
  * @param obj1
  *   Obj to enqueue.
  */
-__rte_experimental
 static inline void
 rte_node_enqueue_x2(struct rte_graph *graph, struct rte_node *node,
 		    rte_edge_t next, void *obj0, void *obj1)
@@ -381,7 +371,6 @@ rte_node_enqueue_x2(struct rte_graph *graph, struct rte_node *node,
  * @param obj3
  *   4th obj to enqueue.
  */
-__rte_experimental
 static inline void
 rte_node_enqueue_x4(struct rte_graph *graph, struct rte_node *node,
 		    rte_edge_t next, void *obj0, void *obj1, void *obj2,
@@ -415,7 +404,6 @@ rte_node_enqueue_x4(struct rte_graph *graph, struct rte_node *node,
  * @param nb_objs
  *   Number of objs to enqueue.
  */
-__rte_experimental
 static inline void
 rte_node_enqueue_next(struct rte_graph *graph, struct rte_node *node,
 		      rte_edge_t *nexts, void **objs, uint16_t nb_objs)
@@ -445,7 +433,6 @@ rte_node_enqueue_next(struct rte_graph *graph, struct rte_node *node,
  *
  * @see rte_node_next_stream_put().
  */
-__rte_experimental
 static inline void **
 rte_node_next_stream_get(struct rte_graph *graph, struct rte_node *node,
 			 rte_edge_t next, uint16_t nb_objs)
@@ -476,7 +463,6 @@ rte_node_next_stream_get(struct rte_graph *graph, struct rte_node *node,
  *
  * @see rte_node_next_stream_get().
  */
-__rte_experimental
 static inline void
 rte_node_next_stream_put(struct rte_graph *graph, struct rte_node *node,
 			 rte_edge_t next, uint16_t idx)
@@ -505,7 +491,6 @@ rte_node_next_stream_put(struct rte_graph *graph, struct rte_node *node,
  * @param next
  *   Relative next node index.
  */
-__rte_experimental
 static inline void
 rte_node_next_stream_move(struct rte_graph *graph, struct rte_node *src,
 			  rte_edge_t next)
@@ -536,7 +521,6 @@ rte_node_next_stream_move(struct rte_graph *graph, struct rte_node *src,
  * @return
  *   True if graph model is valid, false otherwise.
  */
-__rte_experimental
 bool
 rte_graph_model_is_valid(uint8_t model);
 
@@ -550,7 +534,6 @@ rte_graph_model_is_valid(uint8_t model);
  * @return
  *   0 on success, -1 otherwise.
  */
-__rte_experimental
 int rte_graph_worker_model_set(uint8_t model);
 
 /**
@@ -565,7 +548,6 @@ int rte_graph_worker_model_set(uint8_t model);
  * @return
  *   Graph worker model on success.
  */
-__rte_experimental
 uint8_t rte_graph_worker_model_get(struct rte_graph *graph);
 
 /**
@@ -580,7 +562,6 @@ uint8_t rte_graph_worker_model_get(struct rte_graph *graph);
  * @return
  *   Graph worker model on success.
  */
-__rte_experimental
 static __rte_always_inline
 uint8_t rte_graph_worker_model_no_check_get(struct rte_graph *graph)
 {
