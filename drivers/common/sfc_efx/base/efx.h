@@ -4813,6 +4813,15 @@ efx_mae_encap_header_alloc(
 
 LIBEFX_API
 extern	__checkReturn			efx_rc_t
+efx_mae_encap_header_update(
+	__in				efx_nic_t *enp,
+	__in				efx_mae_eh_id_t *eh_idp,
+	__in				efx_tunnel_protocol_t encap_type,
+	__in_bcount(header_size)	const uint8_t *header_data,
+	__in				size_t header_size);
+
+LIBEFX_API
+extern	__checkReturn			efx_rc_t
 efx_mae_encap_header_free(
 	__in				efx_nic_t *enp,
 	__in				const efx_mae_eh_id_t *eh_idp);

@@ -421,6 +421,11 @@ int sfc_mae_indir_action_destroy(struct sfc_adapter *sa,
 				 const struct rte_flow_action_handle *handle,
 				 struct rte_flow_error *error);
 
+int sfc_mae_indir_action_update(struct sfc_adapter *sa,
+				struct rte_flow_action_handle *handle,
+				const void *update,
+				struct rte_flow_error *error);
+
 int sfc_mae_indir_action_query(struct sfc_adapter *sa,
 			       const struct rte_flow_action_handle *handle,
 			       void *data, struct rte_flow_error *error);
