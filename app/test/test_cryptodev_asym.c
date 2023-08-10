@@ -1478,6 +1478,9 @@ test_ecdsa_sign_verify(enum curve curve_id)
 	case SECP521R1:
 		input_params = ecdsa_param_secp521r1;
 		break;
+	case SECP521R1_UA:
+		input_params = ecdsa_param_secp521r1_ua;
+		break;
 	default:
 		RTE_LOG(ERR, USER1,
 				"line %u FAILED: %s", __LINE__,
@@ -1793,6 +1796,9 @@ test_ecpm_all_curve(void)
 	const char *msg;
 
 	for (curve_id = SECP192R1; curve_id < END_OF_CURVE_LIST; curve_id++) {
+		if (curve_id == SECP521R1_UA)
+			continue;
+
 		status = test_ecpm(curve_id);
 		if (status == TEST_SUCCESS) {
 			msg = "succeeded";
