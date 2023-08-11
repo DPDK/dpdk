@@ -400,14 +400,14 @@ roc_nix_xstats_get(struct roc_nix *roc_nix, struct roc_nix_xstat *xstats,
 		if (rc)
 			goto exit;
 
-		for (i = 0; i < roc_nix_num_rx_xstats(); i++) {
+		for (i = 0; i < CNXK_NIX_NUM_RX_XSTATS_CGX; i++) {
 			xstats[count].value =
 				cgx_resp->rx_stats[nix_rx_xstats_cgx[i].offset];
 			xstats[count].id = count;
 			count++;
 		}
 
-		for (i = 0; i < roc_nix_num_tx_xstats(); i++) {
+		for (i = 0; i < CNXK_NIX_NUM_TX_XSTATS_CGX; i++) {
 			xstats[count].value =
 				cgx_resp->tx_stats[nix_tx_xstats_cgx[i].offset];
 			xstats[count].id = count;
@@ -426,14 +426,14 @@ roc_nix_xstats_get(struct roc_nix *roc_nix, struct roc_nix_xstat *xstats,
 		if (rc)
 			goto exit;
 
-		for (i = 0; i < roc_nix_num_rx_xstats(); i++) {
+		for (i = 0; i < CNXK_NIX_NUM_RX_XSTATS_RPM; i++) {
 			xstats[count].value =
 				rpm_resp->rx_stats[nix_rx_xstats_rpm[i].offset];
 			xstats[count].id = count;
 			count++;
 		}
 
-		for (i = 0; i < roc_nix_num_tx_xstats(); i++) {
+		for (i = 0; i < CNXK_NIX_NUM_TX_XSTATS_RPM; i++) {
 			xstats[count].value =
 				rpm_resp->tx_stats[nix_tx_xstats_rpm[i].offset];
 			xstats[count].id = count;
@@ -504,26 +504,26 @@ roc_nix_xstats_names_get(struct roc_nix *roc_nix,
 		return count;
 
 	if (roc_model_is_cn9k()) {
-		for (i = 0; i < roc_nix_num_rx_xstats(); i++) {
+		for (i = 0; i < CNXK_NIX_NUM_RX_XSTATS_CGX; i++) {
 			NIX_XSTATS_NAME_PRINT(xstats_names, count,
 					      nix_rx_xstats_cgx, i);
 			count++;
 		}
 
-		for (i = 0; i < roc_nix_num_tx_xstats(); i++) {
+		for (i = 0; i < CNXK_NIX_NUM_TX_XSTATS_CGX; i++) {
 			NIX_XSTATS_NAME_PRINT(xstats_names, count,
 					      nix_tx_xstats_cgx, i);
 			count++;
 		}
 
 	} else {
-		for (i = 0; i < roc_nix_num_rx_xstats(); i++) {
+		for (i = 0; i < CNXK_NIX_NUM_RX_XSTATS_RPM; i++) {
 			NIX_XSTATS_NAME_PRINT(xstats_names, count,
 					      nix_rx_xstats_rpm, i);
 			count++;
 		}
 
-		for (i = 0; i < roc_nix_num_tx_xstats(); i++) {
+		for (i = 0; i < CNXK_NIX_NUM_TX_XSTATS_RPM; i++) {
 			NIX_XSTATS_NAME_PRINT(xstats_names, count,
 					      nix_tx_xstats_rpm, i);
 			count++;
