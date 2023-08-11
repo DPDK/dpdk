@@ -205,26 +205,36 @@ nix_sec_reass_first_frag_update(struct rte_mbuf *head, const uint8_t *m_ipptr,
 		struct rte_ipv6_hdr *hdr = (struct rte_ipv6_hdr *)ipptr;
 		size_t ext_len = sizeof(struct rte_ipv6_hdr);
 		uint8_t *nxt_hdr = (uint8_t *)hdr;
+		uint8_t *nxt_proto = &hdr->proto;
 		int nh = hdr->proto;
 
 		*ihl = 0;
+		tot_len = 0;
 		while (nh != -EINVAL) {
 			nxt_hdr += ext_len;
 			*ihl += ext_len;
+			if (nh == IPPROTO_FRAGMENT) {
+				*nxt_proto = *nxt_hdr;
+				tot_len = *ihl;
+			}
 			nh = rte_ipv6_get_next_ext(nxt_hdr, nh, &ext_len);
+			nxt_proto = nxt_hdr;
 		}
 
 		/* Remove the frag header by moving header 8 bytes forward */
 		hdr->payload_len = rte_cpu_to_be_16(fragx_sum + *ihl -
 					8 - sizeof(struct rte_ipv6_hdr));
 
+		/* tot_len is sum of all IP header's length before fragment header */
 		rte_memcpy(rte_pktmbuf_mtod_offset(head, void *, 8),
 			   rte_pktmbuf_mtod(head, void *),
-			   lcptr + sizeof(struct rte_ipv6_hdr));
+			   lcptr + tot_len);
 
 		head->data_len -= 8;
 		head->data_off += 8;
 		head->pkt_len = lcptr + *ihl - 8 + fragx_sum;
+		/* ihl l3hdr size value should be up to fragment header for next frags */
+		*ihl = tot_len + 8;
 	}
 }
 
