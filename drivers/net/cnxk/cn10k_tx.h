@@ -1011,7 +1011,8 @@ cn10k_nix_xmit_prepare(struct cn10k_eth_txq *txq,
 		send_hdr_ext->w0.markptr = markptr;
 	}
 
-	if (flags & NIX_TX_OFFLOAD_TSO_F && (ol_flags & RTE_MBUF_F_TX_TCP_SEG)) {
+	if (flags & NIX_TX_NEED_EXT_HDR && flags & NIX_TX_OFFLOAD_TSO_F &&
+	    (ol_flags & RTE_MBUF_F_TX_TCP_SEG)) {
 		uint16_t lso_sb;
 		uint64_t mask;
 
