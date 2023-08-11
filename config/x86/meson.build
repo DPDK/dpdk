@@ -35,6 +35,12 @@ if not is_ms_compiler
     endif
 endif
 
+# enable restricted transactional memory intrinsics
+# https://gcc.gnu.org/onlinedocs/gcc/x86-transactional-memory-intrinsics.html
+if cc.get_id() != 'msvc'
+    machine_args += '-mrtm'
+endif
+
 base_flags = ['SSE', 'SSE2', 'SSE3','SSSE3', 'SSE4_1', 'SSE4_2']
 foreach f:base_flags
     compile_time_cpuflags += ['RTE_CPUFLAG_' + f]

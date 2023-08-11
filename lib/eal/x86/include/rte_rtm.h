@@ -5,6 +5,7 @@
 #ifndef _RTE_RTM_H_
 #define _RTE_RTM_H_ 1
 
+#include <immintrin.h>
 
 /* Official RTM intrinsics interface matching gcc/icc, but works
    on older gcc compatible compilers and binutils. */
@@ -28,31 +29,22 @@ extern "C" {
 static __rte_always_inline
 unsigned int rte_xbegin(void)
 {
-	unsigned int ret = RTE_XBEGIN_STARTED;
-
-	asm volatile(".byte 0xc7,0xf8 ; .long 0" : "+a" (ret) :: "memory");
-	return ret;
+	return _xbegin();
 }
 
 static __rte_always_inline
 void rte_xend(void)
 {
-	 asm volatile(".byte 0x0f,0x01,0xd5" ::: "memory");
+	_xend();
 }
 
 /* not an inline function to workaround a clang bug with -O0 */
-#define rte_xabort(status) do { \
-	asm volatile(".byte 0xc6,0xf8,%P0" :: "i" (status) : "memory"); \
-} while (0)
+#define rte_xabort(status) _xabort(status)
 
 static __rte_always_inline
 int rte_xtest(void)
 {
-	unsigned char out;
-
-	asm volatile(".byte 0x0f,0x01,0xd6 ; setnz %0" :
-		"=r" (out) :: "memory");
-	return out;
+	return _xtest();
 }
 
 #ifdef __cplusplus
