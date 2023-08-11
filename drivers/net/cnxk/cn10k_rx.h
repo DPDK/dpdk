@@ -424,7 +424,7 @@ cn10k_nix_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t pkts,
 	struct nix_cqe_hdr_s *cq;
 	struct rte_mbuf *mbuf;
 	uint64_t aura_handle;
-	uint64_t sa_base;
+	uint64_t sa_base = 0;
 	uint16_t lmt_id;
 	uint64_t laddr;
 
@@ -548,9 +548,9 @@ cn10k_nix_recv_pkts_vector(void *args, struct rte_mbuf **mbufs, uint16_t pkts,
 	uint8_t loff = 0, lnum = 0;
 	uint8x16_t f0, f1, f2, f3;
 	uint16_t lmt_id, d_off;
+	uintptr_t sa_base = 0;
 	uint16_t packets = 0;
 	uint16_t pkts_left;
-	uintptr_t sa_base;
 	uint32_t head;
 	uintptr_t cq0;
 
