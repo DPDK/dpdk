@@ -49,6 +49,7 @@ struct npa_aura_lim {
 
 struct npa_aura_attr {
 	int buf_type[ROC_NPA_BUF_TYPE_END];
+	uint16_t ref_count;
 };
 
 struct dev;

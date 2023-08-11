@@ -537,6 +537,7 @@ roc_nix_fc_npa_bp_cfg(struct roc_nix *roc_nix, uint64_t pool_id, uint8_t ena, ui
 					plt_err("Enabling backpressue failed on aura 0x%" PRIx64,
 						pool_id);
 			} else {
+				lf->aura_attr[aura_id].ref_count++;
 				plt_info("Ignoring port=%u tc=%u config on shared aura 0x%" PRIx64,
 					 roc_nix->port_id, tc, pool_id);
 			}
@@ -552,6 +553,8 @@ roc_nix_fc_npa_bp_cfg(struct roc_nix *roc_nix, uint64_t pool_id, uint8_t ena, ui
 	if (ena) {
 		if (roc_npa_aura_bp_configure(pool_id, nix->bpid[tc], bp_intf, bp_thresh, true))
 			plt_err("Enabling backpressue failed on aura 0x%" PRIx64, pool_id);
+		else
+			lf->aura_attr[aura_id].ref_count++;
 	} else {
 		bool found = !!force;
 
@@ -560,6 +563,9 @@ roc_nix_fc_npa_bp_cfg(struct roc_nix *roc_nix, uint64_t pool_id, uint8_t ena, ui
 			if (bpid == nix->bpid[i])
 				found = true;
 		if (!found)
+			return;
+		else if ((lf->aura_attr[aura_id].ref_count > 0) &&
+			 --lf->aura_attr[aura_id].ref_count)
 			return;
 
 		if (roc_npa_aura_bp_configure(pool_id, 0, 0, 0, false))
