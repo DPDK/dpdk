@@ -7,6 +7,9 @@
 #include "roc_api.h"
 #include "roc_priv.h"
 
+/* Default SQB slack per SQ */
+#define ROC_NIX_SQB_SLACK_DFLT 24
+
 static inline uint32_t
 nix_qsize_to_val(enum nix_q_size qsize)
 {
@@ -1012,7 +1015,10 @@ sqb_pool_populate(struct roc_nix *roc_nix, struct roc_nix_sq *sq)
 	sq->sqes_per_sqb_log2 = (uint16_t)plt_log2_u32(sqes_per_sqb);
 	sq->nb_sqb_bufs_adj = nb_sqb_bufs;
 
-	nb_sqb_bufs += PLT_MAX(thr, roc_nix->sqb_slack);
+	if (roc_nix->sqb_slack)
+		nb_sqb_bufs += roc_nix->sqb_slack;
+	else
+		nb_sqb_bufs += PLT_MAX((int)thr, (int)ROC_NIX_SQB_SLACK_DFLT);
 	/* Explicitly set nat_align alone as by default pool is with both
 	 * nat_align and buf_offset = 1 which we don't want for SQB.
 	 */
