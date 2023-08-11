@@ -214,6 +214,7 @@ INTERNAL {
 	roc_nix_get_base_chan;
 	roc_nix_get_pf;
 	roc_nix_get_pf_func;
+	roc_nix_get_rx_chan_cnt;
 	roc_nix_get_vf;
 	roc_nix_get_vwqe_interval;
 	roc_nix_inl_cb_register;

@@ -21,6 +21,14 @@ roc_nix_get_base_chan(struct roc_nix *roc_nix)
 	return nix->rx_chan_base;
 }
 
+uint8_t
+roc_nix_get_rx_chan_cnt(struct roc_nix *roc_nix)
+{
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+
+	return nix->rx_chan_cnt;
+}
+
 uint16_t
 roc_nix_get_vwqe_interval(struct roc_nix *roc_nix)
 {

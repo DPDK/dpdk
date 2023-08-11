@@ -526,6 +526,7 @@ bool __roc_api roc_nix_is_sdp(struct roc_nix *roc_nix);
 bool __roc_api roc_nix_is_pf(struct roc_nix *roc_nix);
 bool __roc_api roc_nix_is_vf_or_sdp(struct roc_nix *roc_nix);
 int __roc_api roc_nix_get_base_chan(struct roc_nix *roc_nix);
+uint8_t __roc_api roc_nix_get_rx_chan_cnt(struct roc_nix *roc_nix);
 int __roc_api roc_nix_get_pf(struct roc_nix *roc_nix);
 int __roc_api roc_nix_get_vf(struct roc_nix *roc_nix);
 uint16_t __roc_api roc_nix_get_pf_func(struct roc_nix *roc_nix);
