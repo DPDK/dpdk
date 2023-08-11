@@ -45,6 +45,8 @@
 #define RTE_BYTE_ORDER RTE_BIG_ENDIAN
 #elif defined __LITTLE_ENDIAN__
 #define RTE_BYTE_ORDER RTE_LITTLE_ENDIAN
+#elif defined RTE_TOOLCHAIN_MSVC
+#define RTE_BYTE_ORDER RTE_LITTLE_ENDIAN
 #endif
 #if !defined(RTE_BYTE_ORDER)
 #error Unknown endianness.
