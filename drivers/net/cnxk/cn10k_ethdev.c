@@ -262,7 +262,7 @@ cn10k_nix_tx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t qid,
 
 		txq->cpt_desc = inl_lf->nb_desc * 0.7;
 		txq->sa_base = (uint64_t)dev->outb.sa_base;
-		txq->sa_base |= eth_dev->data->port_id;
+		txq->sa_base |= (uint64_t)eth_dev->data->port_id;
 		PLT_STATIC_ASSERT(ROC_NIX_INL_SA_BASE_ALIGN == BIT_ULL(16));
 	}
 

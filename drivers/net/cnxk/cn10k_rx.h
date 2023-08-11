@@ -879,7 +879,7 @@ cn10k_nix_cqe_to_mbuf(const struct nix_cqe_hdr_s *cq, const uint32_t tag,
 	/* Skip rx ol flags extraction for Security packets */
 	if ((!(flag & NIX_RX_SEC_REASSEMBLY_F) || !(w1 & BIT(11))) &&
 			flag & NIX_RX_OFFLOAD_CHECKSUM_F)
-		ol_flags |= nix_rx_olflags_get(lookup_mem, w1);
+		ol_flags |= (uint64_t)nix_rx_olflags_get(lookup_mem, w1);
 
 	if (flag & NIX_RX_OFFLOAD_VLAN_STRIP_F) {
 		if (rx->vtag0_gone) {
@@ -1432,10 +1432,10 @@ cn10k_nix_recv_pkts_vector(void *args, struct rte_mbuf **mbufs, uint16_t pkts,
 		}
 
 		if (flags & NIX_RX_OFFLOAD_CHECKSUM_F) {
-			ol_flags0 |= nix_rx_olflags_get(lookup_mem, cq0_w1);
-			ol_flags1 |= nix_rx_olflags_get(lookup_mem, cq1_w1);
-			ol_flags2 |= nix_rx_olflags_get(lookup_mem, cq2_w1);
-			ol_flags3 |= nix_rx_olflags_get(lookup_mem, cq3_w1);
+			ol_flags0 |= (uint64_t)nix_rx_olflags_get(lookup_mem, cq0_w1);
+			ol_flags1 |= (uint64_t)nix_rx_olflags_get(lookup_mem, cq1_w1);
+			ol_flags2 |= (uint64_t)nix_rx_olflags_get(lookup_mem, cq2_w1);
+			ol_flags3 |= (uint64_t)nix_rx_olflags_get(lookup_mem, cq3_w1);
 		}
 
 		/* Translate meta to mbuf */

@@ -484,7 +484,7 @@ cn10k_nix_sec_steorl(uintptr_t io_addr, uint32_t lmt_id, uint8_t lnum,
 	data &= ~(0x7ULL << 16);
 	/* Update lines - 1 that contain valid data */
 	data |= ((uint64_t)(lnum + loff - 1)) << 12;
-	data |= lmt_id;
+	data |= (uint64_t)lmt_id;
 
 	/* STEOR */
 	roc_lmt_submit_steorl(data, pa);
@@ -577,7 +577,7 @@ cn10k_nix_prep_sec_vec(struct rte_mbuf *m, uint64x2_t *cmd0, uint64x2_t *cmd1,
 		nixtx = (nixtx - 1) & ~(BIT_ULL(7) - 1);
 		nixtx += 16;
 
-		w0 |= cn10k_nix_tx_ext_subs(flags) + 1;
+		w0 |= cn10k_nix_tx_ext_subs(flags) + 1ULL;
 		dptr += l2_len;
 		ucode_cmd[1] = dptr;
 		*cmd1 = vsetq_lane_u16(pkt_len + dlen_adj, *cmd1, 0);
@@ -718,7 +718,7 @@ cn10k_nix_prep_sec(struct rte_mbuf *m, uint64_t *cmd, uintptr_t *nixtx_addr,
 		nixtx = (nixtx - 1) & ~(BIT_ULL(7) - 1);
 		nixtx += 16;
 
-		w0 |= cn10k_nix_tx_ext_subs(flags) + 1;
+		w0 |= cn10k_nix_tx_ext_subs(flags) + 1ULL;
 		dptr += l2_len;
 		ucode_cmd[1] = dptr;
 		sg->seg1_size = pkt_len + dlen_adj;
@@ -1421,7 +1421,7 @@ again:
 		pa = io_addr | (data & 0x7) << 4;
 		data &= ~0x7ULL;
 		data |= ((uint64_t)(burst - 1)) << 12;
-		data |= lmt_id;
+		data |= (uint64_t)lmt_id;
 
 		if (flags & NIX_TX_VWQE_F)
 			cn10k_nix_vwqe_wait_fc(txq, burst);
@@ -1583,7 +1583,7 @@ again:
 		data0 &= ~0x7ULL;
 		/* Move lmtst1..15 sz to bits 63:19 */
 		data0 <<= 16;
-		data0 |= ((burst - 1) << 12);
+		data0 |= ((burst - 1ULL) << 12);
 		data0 |= (uint64_t)lmt_id;
 
 		if (flags & NIX_TX_VWQE_F)
@@ -3193,7 +3193,7 @@ again:
 			wd.data[0] <<= 16;
 
 		wd.data[0] |= ((uint64_t)(lnum - 1)) << 12;
-		wd.data[0] |= lmt_id;
+		wd.data[0] |= (uint64_t)lmt_id;
 
 		if (flags & NIX_TX_VWQE_F)
 			cn10k_nix_vwqe_wait_fc(txq, burst);
