@@ -133,9 +133,6 @@ enum rte_cpu_flag_t {
 	RTE_CPUFLAG_AVX512VP2INTERSECT,     /**< AVX512 Two Register Intersection */
 
 	RTE_CPUFLAG_WAITPKG,                /**< UMONITOR/UMWAIT/TPAUSE */
-
-	/* The last item */
-	RTE_CPUFLAG_NUMFLAGS,               /**< This should always be the last! */
 };
 
 #include "generic/rte_cpuflags.h"

@@ -48,8 +48,6 @@ enum rte_cpu_flag_t {
 	RTE_CPUFLAG_DSCR,
 	RTE_CPUFLAG_HTM,
 	RTE_CPUFLAG_ARCH_2_07,
-	/* The last item */
-	RTE_CPUFLAG_NUMFLAGS,/**< This should always be the last! */
 };
 
 #include "generic/rte_cpuflags.h"

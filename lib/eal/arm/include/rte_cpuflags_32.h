@@ -42,8 +42,6 @@ enum rte_cpu_flag_t {
 	RTE_CPUFLAG_CRC32,
 	RTE_CPUFLAG_V7L,
 	RTE_CPUFLAG_V8L,
-	/* The last item */
-	RTE_CPUFLAG_NUMFLAGS,/**< This should always be the last! */
 };
 
 #include "generic/rte_cpuflags.h"

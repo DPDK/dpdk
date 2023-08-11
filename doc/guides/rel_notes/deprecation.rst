@@ -29,9 +29,6 @@ Deprecation Notices
   are renamed to ``rte_tel_data_add_array_uint`` and ``rte_tel_data_add_dict_uint`` respectively.
   As such, the old function names are deprecated and will be removed in a future release.
 
-* eal: ``RTE_CPUFLAG_NUMFLAGS`` will be removed in DPDK 23.11 release.
-  This is to allow new CPU features to be added without ABI breakage.
-
 * rte_atomicNN_xxx: These APIs do not take memory order parameter. This does
   not allow for writing optimized code for all the CPU architectures supported
   in DPDK. DPDK has adopted the atomic operations from

@@ -150,7 +150,7 @@ rte_cpu_get_flag_enabled(enum rte_cpu_flag_t feature)
 	cpuid_registers_t regs;
 	unsigned int maxleaf;
 
-	if (feature >= RTE_CPUFLAG_NUMFLAGS)
+	if ((unsigned int)feature >= RTE_DIM(rte_cpu_feature_table))
 		/* Flag does not match anything in the feature tables */
 		return -ENOENT;
 
@@ -180,7 +180,7 @@ rte_cpu_get_flag_enabled(enum rte_cpu_flag_t feature)
 const char *
 rte_cpu_get_flag_name(enum rte_cpu_flag_t feature)
 {
-	if (feature >= RTE_CPUFLAG_NUMFLAGS)
+	if ((unsigned int)feature >= RTE_DIM(rte_cpu_feature_table))
 		return NULL;
 	return rte_cpu_feature_table[feature].name;
 }

@@ -139,6 +139,9 @@ API Changes
   except ``rte_thread_setname()`` and ``rte_ctrl_thread_create()`` which are
   replaced with ``rte_thread_set_name()`` and ``rte_thread_create_control()``.
 
+* eal: Removed ``RTE_CPUFLAG_NUMFLAGS`` to avoid misusage and theoretical ABI
+  compatibility issue when adding new cpuflags.
+
 * bonding: Replaced master/slave to main/member. The data structure
   ``struct rte_eth_bond_8023ad_slave_info`` was renamed to
   ``struct rte_eth_bond_8023ad_member_info`` in DPDK 23.11.

@@ -26,8 +26,6 @@ enum rte_cpu_flag_t {
 	RTE_CPUFLAG_LBT_X86,
 	RTE_CPUFLAG_LBT_ARM,
 	RTE_CPUFLAG_LBT_MIPS,
-	/* The last item */
-	RTE_CPUFLAG_NUMFLAGS /**< This should always be the last! */
 };
 
 #include "generic/rte_cpuflags.h"
