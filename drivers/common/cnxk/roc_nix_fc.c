@@ -285,15 +285,11 @@ nix_fc_rq_config_set(struct roc_nix *roc_nix, struct roc_nix_fc_cfg *fc_cfg)
 	struct roc_nix_fc_cfg tmp;
 	uint64_t pool_drop_pct;
 	struct roc_nix_rq *rq;
-	int sso_ena = 0, rc;
+	int rc;
 
 	rq = nix->rqs[fc_cfg->rq_cfg.rq];
-	/* Check whether RQ is connected to SSO or not */
-	sso_ena = roc_nix_rq_is_sso_enable(roc_nix, fc_cfg->rq_cfg.rq);
-	if (sso_ena < 0)
-		return -EINVAL;
 
-	if (sso_ena) {
+	if (rq->sso_ena) {
 		pool_drop_pct = fc_cfg->rq_cfg.pool_drop_pct;
 		/* Use default value for zero pct */
 		if (fc_cfg->rq_cfg.enable && !pool_drop_pct)
@@ -486,12 +482,10 @@ roc_nix_fc_npa_bp_cfg(struct roc_nix *roc_nix, uint64_t pool_id, uint8_t ena, ui
 	uint32_t aura_id = roc_npa_aura_handle_to_aura(pool_id);
 	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
 	struct npa_lf *lf = idev_npa_obj_get();
-	struct npa_aq_enq_req *req;
-	struct npa_aq_enq_rsp *rsp;
+	struct npa_aura_attr *aura_attr;
 	uint8_t bp_thresh, bp_intf;
-	struct mbox *mbox;
 	uint16_t bpid;
-	int rc, i;
+	int i;
 
 	if (roc_nix_is_sdp(roc_nix))
 		return;
@@ -499,30 +493,14 @@ roc_nix_fc_npa_bp_cfg(struct roc_nix *roc_nix, uint64_t pool_id, uint8_t ena, ui
 	if (!lf)
 		return;
 
-	mbox = lf->mbox;
-	req = mbox_alloc_msg_npa_aq_enq(mbox_get(mbox));
-	if (req == NULL) {
-		mbox_put(mbox);
-		return;
-	}
-
-	req->aura_id = aura_id;
-	req->ctype = NPA_AQ_CTYPE_AURA;
-	req->op = NPA_AQ_INSTOP_READ;
-
-	rc = mbox_process_msg(mbox, (void *)&rsp);
-	mbox_put(mbox);
-	if (rc) {
-		plt_nix_dbg("Failed to read context of aura 0x%" PRIx64, pool_id);
-		return;
-	}
+	aura_attr = &lf->aura_attr[aura_id];
 
 	bp_intf = 1 << nix->is_nix1;
-	bp_thresh = NIX_RQ_AURA_THRESH(drop_percent, rsp->aura.limit >> rsp->aura.shift);
+	bp_thresh = NIX_RQ_AURA_THRESH(drop_percent, aura_attr->limit >> aura_attr->shift);
 
-	bpid = (rsp->aura.bp_ena & 0x1) ? rsp->aura.nix0_bpid : rsp->aura.nix1_bpid;
+	bpid = (aura_attr->bp_ena & 0x1) ? aura_attr->nix0_bpid : aura_attr->nix1_bpid;
 	/* BP is already enabled. */
-	if (rsp->aura.bp_ena && ena) {
+	if (aura_attr->bp_ena && ena) {
 		/* Disable BP if BPIDs don't match and couldn't add new BPID. */
 		if (bpid != nix->bpid[tc]) {
 			uint16_t bpid_new = NIX_BPID_INVALID;
@@ -537,7 +515,7 @@ roc_nix_fc_npa_bp_cfg(struct roc_nix *roc_nix, uint64_t pool_id, uint8_t ena, ui
 					plt_err("Enabling backpressue failed on aura 0x%" PRIx64,
 						pool_id);
 			} else {
-				lf->aura_attr[aura_id].ref_count++;
+				aura_attr->ref_count++;
 				plt_info("Ignoring port=%u tc=%u config on shared aura 0x%" PRIx64,
 					 roc_nix->port_id, tc, pool_id);
 			}
@@ -547,14 +525,14 @@ roc_nix_fc_npa_bp_cfg(struct roc_nix *roc_nix, uint64_t pool_id, uint8_t ena, ui
 	}
 
 	/* BP was previously enabled but now disabled skip. */
-	if (rsp->aura.bp && ena)
+	if (aura_attr->bp && ena)
 		return;
 
 	if (ena) {
 		if (roc_npa_aura_bp_configure(pool_id, nix->bpid[tc], bp_intf, bp_thresh, true))
 			plt_err("Enabling backpressue failed on aura 0x%" PRIx64, pool_id);
 		else
-			lf->aura_attr[aura_id].ref_count++;
+			aura_attr->ref_count++;
 	} else {
 		bool found = !!force;
 
@@ -564,8 +542,7 @@ roc_nix_fc_npa_bp_cfg(struct roc_nix *roc_nix, uint64_t pool_id, uint8_t ena, ui
 				found = true;
 		if (!found)
 			return;
-		else if ((lf->aura_attr[aura_id].ref_count > 0) &&
-			 --lf->aura_attr[aura_id].ref_count)
+		else if ((aura_attr->ref_count > 0) && --(aura_attr->ref_count))
 			return;
 
 		if (roc_npa_aura_bp_configure(pool_id, 0, 0, 0, false))
