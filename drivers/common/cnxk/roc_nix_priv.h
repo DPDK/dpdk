@@ -153,6 +153,7 @@ struct nix {
 	uint8_t sdp_links;
 	uint8_t tx_link;
 	uint16_t sqb_size;
+	uint32_t dmac_flt_idx;
 	/* Without FCS, with L2 overhead */
 	uint16_t mtu;
 	uint16_t chan_cnt;

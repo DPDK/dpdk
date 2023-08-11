@@ -586,6 +586,7 @@ struct cgx_fec_stats_rsp {
 struct cgx_mac_addr_set_or_get {
 	struct mbox_msghdr hdr;
 	uint8_t __io mac_addr[PLT_ETHER_ADDR_LEN];
+	uint32_t index;
 };
 
 /* Structure for requesting the operation to

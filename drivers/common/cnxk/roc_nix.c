@@ -475,6 +475,7 @@ skip_dev_init:
 	nix->pci_dev = pci_dev;
 	nix->reta_sz = reta_sz;
 	nix->mtu = ROC_NIX_DEFAULT_HW_FRS;
+	nix->dmac_flt_idx = -1;
 
 	/* Register error and ras interrupts */
 	rc = nix_register_irqs(nix);

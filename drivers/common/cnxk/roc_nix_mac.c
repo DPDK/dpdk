@@ -81,9 +81,9 @@ int
 roc_nix_mac_addr_set(struct roc_nix *roc_nix, const uint8_t addr[])
 {
 	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	struct cgx_mac_addr_set_or_get *req, *rsp;
 	struct dev *dev = &nix->dev;
 	struct mbox *mbox = mbox_get(dev->mbox);
-	struct cgx_mac_addr_set_or_get *req;
 	int rc;
 
 	if (roc_nix_is_vf_or_sdp(roc_nix)) {
@@ -97,9 +97,13 @@ roc_nix_mac_addr_set(struct roc_nix *roc_nix, const uint8_t addr[])
 	}
 
 	req = mbox_alloc_msg_cgx_mac_addr_set(mbox);
+	req->index = nix->dmac_flt_idx;
 	mbox_memcpy(req->mac_addr, addr, PLT_ETHER_ADDR_LEN);
 
-	rc = mbox_process(mbox);
+	rc = mbox_process_msg(mbox, (void *)&rsp);
+	if (rc)
+		goto exit;
+	nix->dmac_flt_idx = rsp->index;
 exit:
 	mbox_put(mbox);
 	return rc;
