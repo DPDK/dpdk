@@ -196,6 +196,14 @@ init_pci_device(struct rte_pci_device *dev, struct idxd_dmadev *idxd,
 	pci->portals = dev->mem_resource[2].addr;
 	pci->wq_cfg_sz = (pci->regs->wqcap >> 24) & 0x0F;
 
+	/* reset */
+	idxd->u.pci = pci;
+	err_code = idxd_pci_dev_command(idxd, idxd_reset_device);
+	if (err_code) {
+		IDXD_PMD_ERR("Error reset device: code %#x", err_code);
+		goto err;
+	}
+
 	/* sanity check device status */
 	if (pci->regs->gensts & GENSTS_DEV_STATE_MASK) {
 		/* need function-level-reset (FLR) or is enabled */
