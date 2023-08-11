@@ -560,7 +560,7 @@ enum cgx_af_status {
 
 struct cgx_stats_rsp {
 	struct mbox_msghdr hdr;
-#define CGX_RX_STATS_COUNT 13
+#define CGX_RX_STATS_COUNT 9
 #define CGX_TX_STATS_COUNT 18
 	uint64_t __io rx_stats[CGX_RX_STATS_COUNT];
 	uint64_t __io tx_stats[CGX_TX_STATS_COUNT];
