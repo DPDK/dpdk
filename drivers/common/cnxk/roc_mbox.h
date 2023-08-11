@@ -542,6 +542,21 @@ struct lmtst_tbl_setup_req {
 };
 
 /* CGX mbox message formats */
+/* CGX mailbox error codes
+ * Range 1101 - 1200.
+ */
+enum cgx_af_status {
+	LMAC_AF_ERR_INVALID_PARAM = -1101,
+	LMAC_AF_ERR_PF_NOT_MAPPED = -1102,
+	LMAC_AF_ERR_PERM_DENIED = -1103,
+	LMAC_AF_ERR_PFC_ENADIS_PERM_DENIED = -1104,
+	LMAC_AF_ERR_8023PAUSE_ENADIS_PERM_DENIED = -1105,
+	LMAC_AF_ERR_CMD_TIMEOUT = -1106,
+	LMAC_AF_ERR_FIRMWARE_DATA_NOT_MAPPED = -1107,
+	LMAC_AF_ERR_EXACT_MATCH_TBL_ADD_FAILED = -1108,
+	LMAC_AF_ERR_EXACT_MATCH_TBL_DEL_FAILED = -1109,
+	LMAC_AF_ERR_EXACT_MATCH_TBL_LOOK_UP_FAILED = -1110,
+};
 
 struct cgx_stats_rsp {
 	struct mbox_msghdr hdr;
