@@ -570,6 +570,9 @@ PLT_STATIC_ASSERT(offsetof(struct roc_ot_ipsec_outb_sa, hmac_opad_ipad) ==
 PLT_STATIC_ASSERT(offsetof(struct roc_ot_ipsec_outb_sa, ctx) ==
 		  31 * sizeof(uint64_t));
 
+#define ROC_OT_IPSEC_SA_SZ_MAX \
+	(PLT_MAX(sizeof(struct roc_ot_ipsec_inb_sa), sizeof(struct roc_ot_ipsec_outb_sa)))
+
 void __roc_api roc_ot_ipsec_inb_sa_init(struct roc_ot_ipsec_inb_sa *sa,
 					bool is_inline);
 void __roc_api roc_ot_ipsec_outb_sa_init(struct roc_ot_ipsec_outb_sa *sa);

@@ -82,6 +82,13 @@ roc_errata_cpt_hang_on_x2p_bp(void)
 	return roc_model_is_cn10ka_a0() || roc_model_is_cn10ka_a1();
 }
 
+/* Errata IPBUCPT-38756 */
+static inline bool
+roc_errata_cpt_has_ctx_fetch_issue(void)
+{
+	return roc_model_is_cn10kb();
+}
+
 /* IPBUNIXRX-40400 */
 static inline bool
 roc_errata_nix_no_meta_aura(void)

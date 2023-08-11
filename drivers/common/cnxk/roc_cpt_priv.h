@@ -21,8 +21,8 @@ roc_cpt_to_cpt_priv(struct roc_cpt *roc_cpt)
 int cpt_lfs_attach(struct dev *dev, uint8_t blkaddr, bool modify,
 		   uint16_t nb_lf);
 int cpt_lfs_detach(struct dev *dev);
-int cpt_lfs_alloc(struct dev *dev, uint8_t eng_grpmsk, uint8_t blk,
-		  bool inl_dev_sso);
+int cpt_lfs_alloc(struct dev *dev, uint8_t eng_grpmsk, uint8_t blk, bool inl_dev_sso,
+		  bool ctx_ilen_valid, uint8_t ctx_ilen);
 int cpt_lfs_free(struct dev *dev);
 int cpt_lf_init(struct roc_cpt_lf *lf);
 void cpt_lf_fini(struct roc_cpt_lf *lf);

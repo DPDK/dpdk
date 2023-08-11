@@ -851,6 +851,11 @@ roc_nix_inl_inb_init(struct roc_nix *roc_nix)
 			nix->cpt_nixbpid = bpids[0];
 			cfg.bpid = nix->cpt_nixbpid;
 		}
+
+		if (roc_errata_cpt_has_ctx_fetch_issue()) {
+			cfg.ctx_ilen_valid = true;
+			cfg.ctx_ilen = (ROC_NIX_INL_OT_IPSEC_INB_HW_SZ / 128) - 1;
+		}
 	}
 
 	/* Do onetime Inbound Inline config in CPTPF */
@@ -931,7 +936,9 @@ roc_nix_inl_outb_init(struct roc_nix *roc_nix)
 	struct dev *dev = &nix->dev;
 	struct msix_offset_rsp *rsp;
 	struct nix_inl_dev *inl_dev;
+	bool ctx_ilen_valid = false;
 	size_t sa_sz, ring_sz;
+	uint8_t ctx_ilen = 0;
 	uint16_t sso_pffunc;
 	uint8_t eng_grpmask;
 	uint64_t blkaddr, i;
@@ -967,12 +974,17 @@ roc_nix_inl_outb_init(struct roc_nix *roc_nix)
 		return rc;
 	}
 
+	if (!roc_model_is_cn9k() && roc_errata_cpt_has_ctx_fetch_issue()) {
+		ctx_ilen = (ROC_NIX_INL_OT_IPSEC_OUTB_HW_SZ / 128) - 1;
+		ctx_ilen_valid = true;
+	}
+
 	/* Alloc CPT LF */
 	eng_grpmask = (1ULL << ROC_CPT_DFLT_ENG_GRP_SE |
 		       1ULL << ROC_CPT_DFLT_ENG_GRP_SE_IE |
 		       1ULL << ROC_CPT_DFLT_ENG_GRP_AE);
 	rc = cpt_lfs_alloc(dev, eng_grpmask, blkaddr,
-			   !roc_nix->ipsec_out_sso_pffunc);
+			   !roc_nix->ipsec_out_sso_pffunc, ctx_ilen_valid, ctx_ilen);
 	if (rc) {
 		plt_err("Failed to alloc CPT LF resources, rc=%d", rc);
 		goto lf_detach;

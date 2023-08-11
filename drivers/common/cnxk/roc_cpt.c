@@ -331,6 +331,8 @@ roc_cpt_inline_ipsec_inb_cfg(struct roc_cpt *roc_cpt, struct roc_cpt_inline_ipse
 	req->param2 = cfg->param2;
 	req->opcode = cfg->opcode;
 	req->bpid = cfg->bpid;
+	req->ctx_ilen_valid = cfg->ctx_ilen_valid;
+	req->ctx_ilen = cfg->ctx_ilen;
 
 	rc = mbox_process(mbox);
 exit:
@@ -460,8 +462,8 @@ exit:
 }
 
 int
-cpt_lfs_alloc(struct dev *dev, uint8_t eng_grpmsk, uint8_t blkaddr,
-	      bool inl_dev_sso)
+cpt_lfs_alloc(struct dev *dev, uint8_t eng_grpmsk, uint8_t blkaddr, bool inl_dev_sso,
+	      bool ctx_ilen_valid, uint8_t ctx_ilen)
 {
 	struct cpt_lf_alloc_req_msg *req;
 	struct mbox *mbox = mbox_get(dev->mbox);
@@ -485,6 +487,8 @@ cpt_lfs_alloc(struct dev *dev, uint8_t eng_grpmsk, uint8_t blkaddr,
 		req->sso_pf_func = idev_sso_pffunc_get();
 	req->eng_grpmsk = eng_grpmsk;
 	req->blkaddr = blkaddr;
+	req->ctx_ilen_valid = ctx_ilen_valid;
+	req->ctx_ilen = ctx_ilen;
 
 	rc = mbox_process(mbox);
 exit:
@@ -587,6 +591,8 @@ roc_cpt_dev_configure(struct roc_cpt *roc_cpt, int nb_lf)
 	struct cpt *cpt = roc_cpt_to_cpt_priv(roc_cpt);
 	uint8_t blkaddr[ROC_CPT_MAX_BLKS];
 	struct msix_offset_rsp *rsp;
+	bool ctx_ilen_valid = false;
+	uint16_t ctx_ilen = 0;
 	uint8_t eng_grpmsk;
 	int blknum = 0;
 	int rc, i;
@@ -618,7 +624,13 @@ roc_cpt_dev_configure(struct roc_cpt *roc_cpt, int nb_lf)
 		     (1 << roc_cpt->eng_grp[CPT_ENG_TYPE_SE]) |
 		     (1 << roc_cpt->eng_grp[CPT_ENG_TYPE_IE]);
 
-	rc = cpt_lfs_alloc(&cpt->dev, eng_grpmsk, blkaddr[blknum], false);
+	if (roc_errata_cpt_has_ctx_fetch_issue()) {
+		ctx_ilen_valid = true;
+		/* Inbound SA size is max context size */
+		ctx_ilen = (PLT_ALIGN(ROC_OT_IPSEC_SA_SZ_MAX, ROC_ALIGN) / 128) - 1;
+	}
+
+	rc = cpt_lfs_alloc(&cpt->dev, eng_grpmsk, blkaddr[blknum], false, ctx_ilen_valid, ctx_ilen);
 	if (rc)
 		goto lfs_detach;
 
@@ -1107,6 +1119,11 @@ roc_cpt_iq_enable(struct roc_cpt_lf *lf)
 	lf_inprog.u = plt_read64(lf->rbase + CPT_LF_INPROG);
 	lf_inprog.s.eena = 1;
 	plt_write64(lf_inprog.u, lf->rbase + CPT_LF_INPROG);
+
+	if (roc_errata_cpt_has_ctx_fetch_issue()) {
+		/* Enable flush on FLR */
+		plt_write64(1, lf->rbase + CPT_LF_CTX_CTL);
+	}
 
 	cpt_lf_dump(lf);
 }

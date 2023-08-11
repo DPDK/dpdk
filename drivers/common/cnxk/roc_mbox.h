@@ -2004,6 +2004,8 @@ struct cpt_lf_alloc_req_msg {
 	uint16_t __io sso_pf_func;
 	uint16_t __io eng_grpmsk;
 	uint8_t __io blkaddr;
+	uint8_t __io ctx_ilen_valid : 1;
+	uint8_t __io ctx_ilen : 7;
 };
 
 #define CPT_INLINE_INBOUND  0
@@ -2085,6 +2087,8 @@ struct cpt_rx_inline_lf_cfg_msg {
 	uint32_t __io credit_th;
 	uint16_t __io bpid;
 	uint32_t __io reserved;
+	uint8_t __io ctx_ilen_valid : 1;
+	uint8_t __io ctx_ilen : 7;
 };
 
 struct cpt_caps_rsp_msg {
