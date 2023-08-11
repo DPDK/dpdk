@@ -643,7 +643,8 @@ no_pool:
 	}
 
 	/* Setup xaq for hwgrps */
-	rc = sso_hwgrp_alloc_xaq(&inl_dev->dev, inl_dev->xaq.aura_handle, 1);
+	rc = sso_hwgrp_alloc_xaq(&inl_dev->dev,
+				 roc_npa_aura_handle_to_aura(inl_dev->xaq.aura_handle), 1);
 	if (rc) {
 		plt_err("Failed to setup hwgrp xaq aura, rc=%d", rc);
 		return rc;
