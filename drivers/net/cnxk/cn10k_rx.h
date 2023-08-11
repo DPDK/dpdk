@@ -551,6 +551,7 @@ nix_sec_meta_to_mbuf(uint64_t cq_w1, uint64_t cq_w5, uintptr_t inb_sa,
 		(const struct cpt_parse_hdr_s *)cpth;
 	uint64_t mbuf_init = vgetq_lane_u64(*rearm, 0);
 	struct cn10k_inb_priv_data *inb_priv;
+	uintptr_t p;
 
 	/* Clear checksum flags */
 	*ol_flags &= ~(RTE_MBUF_F_RX_L4_CKSUM_MASK |
@@ -573,7 +574,8 @@ nix_sec_meta_to_mbuf(uint64_t cq_w1, uint64_t cq_w5, uintptr_t inb_sa,
 			/* First frag len */
 			inner->pkt_len = vgetq_lane_u16(*rx_desc_field1, 2);
 			inner->data_len = vgetq_lane_u16(*rx_desc_field1, 4);
-			*(uint64_t *)(&inner->rearm_data) = mbuf_init;
+			p = (uintptr_t)&inner->rearm_data;
+			*(uint64_t *)p = mbuf_init;
 
 			/* Reassembly success */
 			nix_sec_reassemble_frags(hdr, inner, cq_w1, cq_w5, mbuf_init);
@@ -588,7 +590,7 @@ nix_sec_meta_to_mbuf(uint64_t cq_w1, uint64_t cq_w5, uintptr_t inb_sa,
 							 *rx_desc_field1, 4);
 
 			/* Data offset might be updated */
-			mbuf_init = *(uint64_t *)(&inner->rearm_data);
+			mbuf_init = *(uint64_t *)p;
 			*rearm = vsetq_lane_u64(mbuf_init, *rearm, 0);
 		} else {
 			/* Reassembly failure */
@@ -762,7 +764,8 @@ again:
 
 		mbuf->data_len = sg_len;
 		sg = sg >> 16;
-		*(uint64_t *)(&mbuf->rearm_data) = rearm & ~0xFFFF;
+		p = (uintptr_t)&mbuf->rearm_data;
+		*(uint64_t *)p = rearm & ~0xFFFF;
 		nb_segs--;
 		iova_list++;
 
@@ -812,7 +815,8 @@ again:
 			head->nb_segs = nb_segs;
 		}
 		mbuf = next_frag;
-		*(uint64_t *)(&mbuf->rearm_data) = rearm + ldptr;
+		p = (uintptr_t)&mbuf->rearm_data;
+		*(uint64_t *)p = rearm + ldptr;
 		mbuf->data_len = (sg & 0xFFFF) - ldptr -
 				 (flags & NIX_RX_OFFLOAD_TSTAMP_F ?
 				  CNXK_NIX_TIMESYNC_RX_OFFSET : 0);
@@ -865,6 +869,7 @@ cn10k_nix_cqe_to_mbuf(const struct nix_cqe_hdr_s *cq, const uint32_t tag,
 	const uint64_t w1 = *(const uint64_t *)rx;
 	uint16_t len = rx->pkt_lenm1 + 1;
 	uint64_t ol_flags = 0;
+	uintptr_t p;
 
 	if (flag & NIX_RX_OFFLOAD_PTYPE_F)
 		mbuf->packet_type = nix_ptype_get(lookup_mem, w1);
@@ -902,7 +907,8 @@ cn10k_nix_cqe_to_mbuf(const struct nix_cqe_hdr_s *cq, const uint32_t tag,
 		mbuf->ol_flags = ol_flags;
 		mbuf->pkt_len = len;
 		mbuf->data_len = len;
-		*(uint64_t *)(&mbuf->rearm_data) = val;
+		p = (uintptr_t)&mbuf->rearm_data;
+		*(uint64_t *)p = val;
 	}
 
 	if (flag & NIX_RX_MULTI_SEG_F)
