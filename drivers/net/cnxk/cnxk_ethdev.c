@@ -1197,8 +1197,8 @@ cnxk_nix_configure(struct rte_eth_dev *eth_dev)
 	char ea_fmt[RTE_ETHER_ADDR_FMT_SIZE];
 	struct roc_nix_fc_cfg fc_cfg = {0};
 	struct roc_nix *nix = &dev->nix;
+	uint16_t nb_rxq, nb_txq, nb_cq;
 	struct rte_ether_addr *ea;
-	uint16_t nb_rxq, nb_txq;
 	uint64_t rx_cfg;
 	void *qs;
 	int rc;
@@ -1309,6 +1309,9 @@ cnxk_nix_configure(struct rte_eth_dev *eth_dev)
 
 	nb_rxq = data->nb_rx_queues;
 	nb_txq = data->nb_tx_queues;
+	nb_cq = nb_rxq;
+	if (nix->tx_compl_ena)
+		nb_cq += nb_txq;
 	rc = -ENOMEM;
 	if (nb_rxq) {
 		/* Allocate memory for roc rq's and cq's */
@@ -1318,13 +1321,6 @@ cnxk_nix_configure(struct rte_eth_dev *eth_dev)
 			goto free_nix_lf;
 		}
 		dev->rqs = qs;
-
-		qs = plt_zmalloc(sizeof(struct roc_nix_cq) * nb_rxq, 0);
-		if (!qs) {
-			plt_err("Failed to alloc cqs");
-			goto free_nix_lf;
-		}
-		dev->cqs = qs;
 	}
 
 	if (nb_txq) {
@@ -1335,15 +1331,15 @@ cnxk_nix_configure(struct rte_eth_dev *eth_dev)
 			goto free_nix_lf;
 		}
 		dev->sqs = qs;
+	}
 
-		if (nix->tx_compl_ena) {
-			qs = plt_zmalloc(sizeof(struct roc_nix_cq) * nb_txq, 0);
-			if (!qs) {
-				plt_err("Failed to alloc cqs");
-				goto free_nix_lf;
-			}
-			dev->cqs = qs;
+	if (nb_cq) {
+		qs = plt_zmalloc(sizeof(struct roc_nix_cq) * nb_cq, 0);
+		if (!qs) {
+			plt_err("Failed to alloc cqs");
+			goto free_nix_lf;
 		}
+		dev->cqs = qs;
 	}
 
 	/* Re-enable NIX LF error interrupts */
