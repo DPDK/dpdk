@@ -1301,6 +1301,15 @@ cnxk_nix_configure(struct rte_eth_dev *eth_dev)
 		goto fail_configure;
 	}
 
+	if (!roc_nix_is_vf_or_sdp(nix)) {
+		/* Sync same MAC address to CGX/RPM table */
+		rc = roc_nix_mac_addr_set(nix, dev->mac_addr);
+		if (rc) {
+			plt_err("Failed to set mac addr, rc=%d", rc);
+			goto fail_configure;
+		}
+	}
+
 	/* Check if ptp is enable in PF owning this VF*/
 	if (!roc_nix_is_pf(nix) && (!roc_nix_is_sdp(nix)))
 		dev->ptp_en = roc_nix_ptp_is_enable(nix);
@@ -1940,15 +1949,6 @@ cnxk_eth_dev_init(struct rte_eth_dev *eth_dev)
 
 	/* Update the mac address */
 	memcpy(eth_dev->data->mac_addrs, dev->mac_addr, RTE_ETHER_ADDR_LEN);
-
-	if (!roc_nix_is_vf_or_sdp(nix)) {
-		/* Sync same MAC address to CGX/RPM table */
-		rc = roc_nix_mac_addr_set(nix, dev->mac_addr);
-		if (rc) {
-			plt_err("Failed to set mac addr, rc=%d", rc);
-			goto free_mac_addrs;
-		}
-	}
 
 	/* Union of all capabilities supported by CNXK.
 	 * Platform specific capabilities will be
