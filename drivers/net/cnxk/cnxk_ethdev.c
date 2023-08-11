@@ -1921,6 +1921,13 @@ cnxk_eth_dev_init(struct rte_eth_dev *eth_dev)
 		goto dev_fini;
 	}
 
+	dev->dmac_idx_map = rte_zmalloc("dmac_idx_map", max_entries * sizeof(int), 0);
+	if (dev->dmac_idx_map == NULL) {
+		plt_err("Failed to allocate memory for dmac idx map");
+		rc = -ENOMEM;
+		goto free_mac_addrs;
+	}
+
 	dev->max_mac_entries = max_entries;
 	dev->dmac_filter_count = 1;
 
@@ -1978,6 +1985,7 @@ cnxk_eth_dev_init(struct rte_eth_dev *eth_dev)
 
 free_mac_addrs:
 	rte_free(eth_dev->data->mac_addrs);
+	rte_free(dev->dmac_idx_map);
 dev_fini:
 	roc_nix_dev_fini(nix);
 error:
@@ -2094,6 +2102,9 @@ cnxk_eth_dev_uninit(struct rte_eth_dev *eth_dev, bool reset)
 	rc = roc_nix_lf_free(nix);
 	if (rc)
 		plt_err("Failed to free nix lf, rc=%d", rc);
+
+	rte_free(dev->dmac_idx_map);
+	dev->dmac_idx_map = NULL;
 
 	rte_free(eth_dev->data->mac_addrs);
 	eth_dev->data->mac_addrs = NULL;

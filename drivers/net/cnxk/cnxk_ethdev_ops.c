@@ -474,6 +474,8 @@ cnxk_nix_mac_addr_add(struct rte_eth_dev *eth_dev, struct rte_ether_addr *addr,
 		return rc;
 	}
 
+	dev->dmac_idx_map[index] = rc;
+
 	/* Enable promiscuous mode at NIX level */
 	roc_nix_npc_promisc_ena_dis(nix, true);
 	dev->dmac_filter_enable = true;
@@ -490,7 +492,7 @@ cnxk_nix_mac_addr_del(struct rte_eth_dev *eth_dev, uint32_t index)
 	struct roc_nix *nix = &dev->nix;
 	int rc;
 
-	rc = roc_nix_mac_addr_del(nix, index);
+	rc = roc_nix_mac_addr_del(nix, dev->dmac_idx_map[index]);
 	if (rc)
 		plt_err("Failed to delete mac address, rc=%d", rc);
 

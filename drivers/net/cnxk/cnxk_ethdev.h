@@ -338,6 +338,7 @@ struct cnxk_eth_dev {
 	uint8_t dmac_filter_count;
 	uint8_t max_mac_entries;
 	bool dmac_filter_enable;
+	int *dmac_idx_map;
 
 	uint16_t flags;
 	uint8_t ptype_disable;
