@@ -207,8 +207,29 @@ typedef uint16_t unaligned_uint16_t;
  *   Lowest number is the first to run.
  */
 #ifndef RTE_INIT_PRIO /* Allow to override from EAL */
+#ifndef RTE_TOOLCHAIN_MSVC
 #define RTE_INIT_PRIO(func, prio) \
 static void __attribute__((constructor(RTE_PRIO(prio)), used)) func(void)
+#else
+/* definition from the Microsoft CRT */
+typedef int(__cdecl *_PIFV)(void);
+
+#define CTOR_SECTION_LOG ".CRT$XIB"
+#define CTOR_SECTION_BUS ".CRT$XIC"
+#define CTOR_SECTION_CLASS ".CRT$XID"
+#define CTOR_SECTION_LAST ".CRT$XIY"
+
+#define CTOR_PRIORITY_TO_SECTION(priority) CTOR_SECTION_ ## priority
+
+#define RTE_INIT_PRIO(name, priority) \
+	static void name(void); \
+	static int __cdecl name ## _thunk(void) { name(); return 0; } \
+	__pragma(const_seg(CTOR_PRIORITY_TO_SECTION(priority))) \
+	__declspec(allocate(CTOR_PRIORITY_TO_SECTION(priority))) \
+	    _PIFV name ## _pointer = &name ## _thunk; \
+	__pragma(const_seg()) \
+	static void name(void)
+#endif
 #endif
 
 /**
@@ -232,8 +253,24 @@ static void __attribute__((constructor(RTE_PRIO(prio)), used)) func(void)
  *   Lowest number is the last to run.
  */
 #ifndef RTE_FINI_PRIO /* Allow to override from EAL */
+#ifndef RTE_TOOLCHAIN_MSVC
 #define RTE_FINI_PRIO(func, prio) \
 static void __attribute__((destructor(RTE_PRIO(prio)), used)) func(void)
+#else
+#define DTOR_SECTION_LOG "mydtor$B"
+#define DTOR_SECTION_BUS "mydtor$C"
+#define DTOR_SECTION_CLASS "mydtor$D"
+#define DTOR_SECTION_LAST "mydtor$Y"
+
+#define DTOR_PRIORITY_TO_SECTION(priority) DTOR_SECTION_ ## priority
+
+#define RTE_FINI_PRIO(name, priority) \
+	static void name(void); \
+	__pragma(const_seg(DTOR_PRIORITY_TO_SECTION(priority))) \
+	__declspec(allocate(DTOR_PRIORITY_TO_SECTION(priority))) name ## _pointer = &name; \
+	__pragma(const_seg()) \
+	static void name(void)
+#endif
 #endif
 
 /**
