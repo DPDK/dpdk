@@ -282,8 +282,8 @@ static int
 nix_fc_rq_config_set(struct roc_nix *roc_nix, struct roc_nix_fc_cfg *fc_cfg)
 {
 	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	uint64_t pool_drop_pct, spb_pool_drop_pct;
 	struct roc_nix_fc_cfg tmp;
-	uint64_t pool_drop_pct;
 	struct roc_nix_rq *rq;
 	int rc;
 
@@ -295,14 +295,18 @@ nix_fc_rq_config_set(struct roc_nix *roc_nix, struct roc_nix_fc_cfg *fc_cfg)
 		if (fc_cfg->rq_cfg.enable && !pool_drop_pct)
 			pool_drop_pct = ROC_NIX_AURA_THRESH;
 
-		roc_nix_fc_npa_bp_cfg(roc_nix, fc_cfg->rq_cfg.pool,
-				      fc_cfg->rq_cfg.enable, roc_nix->force_rx_aura_bp,
-				      fc_cfg->rq_cfg.tc, pool_drop_pct);
+		roc_nix_fc_npa_bp_cfg(roc_nix, fc_cfg->rq_cfg.pool, fc_cfg->rq_cfg.enable,
+				      roc_nix->force_rx_aura_bp, fc_cfg->rq_cfg.tc, pool_drop_pct);
 
 		if (rq->spb_ena) {
+			spb_pool_drop_pct = fc_cfg->rq_cfg.spb_pool_drop_pct;
+			/* Use default value for zero pct */
+			if (!spb_pool_drop_pct)
+				spb_pool_drop_pct = ROC_NIX_AURA_THRESH;
+
 			roc_nix_fc_npa_bp_cfg(roc_nix, fc_cfg->rq_cfg.spb_pool,
 					      fc_cfg->rq_cfg.enable, roc_nix->force_rx_aura_bp,
-					      fc_cfg->rq_cfg.tc, pool_drop_pct);
+					      fc_cfg->rq_cfg.tc, spb_pool_drop_pct);
 		}
 
 		if (roc_nix->local_meta_aura_ena && roc_nix->meta_aura_handle)
