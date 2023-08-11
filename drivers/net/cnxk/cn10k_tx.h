@@ -1999,6 +1999,7 @@ cn10k_nix_xmit_pkts_vector(void *tx_queue, uint64_t *ws,
 	uint64x2_t xmask01_w0, xmask23_w0;
 	uint64x2_t xmask01_w1, xmask23_w1;
 	rte_iova_t io_addr = txq->io_addr;
+	uint8_t lnum, shift = 0, loff = 0;
 	uintptr_t laddr = txq->lmt_base;
 	uint8_t c_lnum, c_shft, c_loff;
 	struct nix_send_hdr_s send_hdr;
@@ -2006,7 +2007,6 @@ cn10k_nix_xmit_pkts_vector(void *tx_queue, uint64_t *ws,
 	uint64x2_t xtmp128, ytmp128;
 	uint64x2_t xmask01, xmask23;
 	uintptr_t c_laddr = laddr;
-	uint8_t lnum, shift, loff = 0;
 	rte_iova_t c_io_addr;
 	uint64_t sa_base;
 	union wdata {
