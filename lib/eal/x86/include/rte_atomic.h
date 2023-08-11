@@ -66,10 +66,14 @@ extern "C" {
 static __rte_always_inline void
 rte_smp_mb(void)
 {
+#ifdef RTE_TOOLCHAIN_MSVC
+	_mm_mfence();
+#else
 #ifdef RTE_ARCH_I686
 	asm volatile("lock addl $0, -128(%%esp); " ::: "memory");
 #else
 	asm volatile("lock addl $0, -128(%%rsp); " ::: "memory");
+#endif
 #endif
 }
 

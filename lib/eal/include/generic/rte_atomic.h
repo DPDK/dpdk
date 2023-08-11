@@ -146,9 +146,13 @@ static inline void rte_io_rmb(void);
  * Guarantees that operation reordering does not occur at compile time
  * for operations directly before and after the barrier.
  */
+#ifdef RTE_TOOLCHAIN_MSVC
+#define rte_compiler_barrier() _ReadWriteBarrier()
+#else
 #define	rte_compiler_barrier() do {		\
 	asm volatile ("" : : : "memory");	\
 } while(0)
+#endif
 
 /**
  * Synchronization fence between threads based on the specified memory order.
