@@ -1033,6 +1033,104 @@ roc_nix_tm_init(struct roc_nix *roc_nix)
 }
 
 int
+roc_nix_tm_pfc_rlimit_sq(struct roc_nix *roc_nix, uint16_t qid, uint64_t rate)
+{
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	struct nix_tm_shaper_profile profile;
+	struct mbox *mbox = (&nix->dev)->mbox;
+	struct nix_tm_node *node, *parent;
+	struct roc_nix_link_info link_info;
+
+	volatile uint64_t *reg, *regval;
+	struct nix_txschq_config *req;
+	uint64_t tl2_rate = 0;
+	uint16_t flags;
+	uint8_t k = 0;
+	int rc;
+
+	if ((nix->tm_tree != ROC_NIX_TM_PFC) || !(nix->tm_flags & NIX_TM_HIERARCHY_ENA))
+		return NIX_ERR_TM_INVALID_TREE;
+
+	node = nix_tm_node_search(nix, qid, nix->tm_tree);
+
+	/* check if we found a valid leaf node */
+	if (!node || !nix_tm_is_leaf(nix, node->lvl) || !node->parent ||
+	    node->parent->hw_id == NIX_TM_HW_ID_INVALID) {
+		return NIX_ERR_TM_INVALID_NODE;
+	}
+
+	/* Get the link Speed */
+	if (roc_nix_mac_link_info_get(roc_nix, &link_info))
+		return -EINVAL;
+
+	if (link_info.status)
+		tl2_rate = link_info.speed * (uint64_t)1E6;
+
+	/* Configure TL3 of leaf node with requested rate */
+	parent = node->parent;	 /* SMQ/MDQ */
+	parent = parent->parent; /* TL4 */
+	parent = parent->parent; /* TL3 */
+	flags = parent->flags;
+
+	req = mbox_alloc_msg_nix_txschq_cfg(mbox_get(mbox));
+	req->lvl = parent->hw_lvl;
+	reg = req->reg;
+	regval = req->regval;
+
+	if (rate == 0) {
+		k += nix_tm_sw_xoff_prep(parent, true, &reg[k], &regval[k]);
+		flags &= ~NIX_TM_NODE_ENABLED;
+		goto exit;
+	}
+
+	if (!(flags & NIX_TM_NODE_ENABLED)) {
+		k += nix_tm_sw_xoff_prep(parent, false, &reg[k], &regval[k]);
+		flags |= NIX_TM_NODE_ENABLED;
+	}
+
+	/* Use only PIR for rate limit */
+	memset(&profile, 0, sizeof(profile));
+	profile.peak.rate = rate;
+	/* Minimum burst of ~4us Bytes of Tx */
+	profile.peak.size =
+		PLT_MAX((uint64_t)roc_nix_max_pkt_len(roc_nix), (4ul * rate) / ((uint64_t)1E6 * 8));
+	if (!nix->tm_rate_min || nix->tm_rate_min > rate)
+		nix->tm_rate_min = rate;
+
+	k += nix_tm_shaper_reg_prep(parent, &profile, &reg[k], &regval[k]);
+exit:
+	req->num_regs = k;
+	rc = mbox_process(mbox);
+	mbox_put(mbox);
+	if (rc)
+		return rc;
+
+	parent->flags = flags;
+
+	/* If link is up then configure TL2 with link speed */
+	if (tl2_rate && (flags & NIX_TM_NODE_ENABLED)) {
+		k = 0;
+		parent = parent->parent;
+		req = mbox_alloc_msg_nix_txschq_cfg(mbox_get(mbox));
+		req->lvl = parent->hw_lvl;
+		reg = req->reg;
+		regval = req->regval;
+
+		/* Use only PIR for rate limit */
+		memset(&profile, 0, sizeof(profile));
+		profile.peak.rate = tl2_rate;
+		/* Minimum burst of ~4us Bytes of Tx */
+		profile.peak.size = PLT_MAX((uint64_t)roc_nix_max_pkt_len(roc_nix),
+					    (4ul * tl2_rate) / ((uint64_t)1E6 * 8));
+		k += nix_tm_shaper_reg_prep(parent, &profile, &reg[k], &regval[k]);
+		req->num_regs = k;
+		rc = mbox_process(mbox);
+		mbox_put(mbox);
+	}
+	return rc;
+}
+
+int
 roc_nix_tm_rlimit_sq(struct roc_nix *roc_nix, uint16_t qid, uint64_t rate)
 {
 	struct nix *nix = roc_nix_to_nix_priv(roc_nix);

@@ -706,8 +706,13 @@ int __roc_api roc_nix_tm_node_stats_get(struct roc_nix *roc_nix,
 /*
  * TM ratelimit tree API.
  */
-int __roc_api roc_nix_tm_rlimit_sq(struct roc_nix *roc_nix, uint16_t qid,
-				   uint64_t rate);
+int __roc_api roc_nix_tm_rlimit_sq(struct roc_nix *roc_nix, uint16_t qid, uint64_t rate);
+
+/*
+ * TM PFC tree ratelimit API.
+ */
+int __roc_api roc_nix_tm_pfc_rlimit_sq(struct roc_nix *roc_nix, uint16_t qid, uint64_t rate);
+
 /*
  * TM hierarchy enable/disable API.
  */
