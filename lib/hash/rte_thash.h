@@ -73,7 +73,6 @@ static const __m128i rte_thash_ipv6_bswap_mask = {
 struct rte_ipv4_tuple {
 	uint32_t	src_addr;
 	uint32_t	dst_addr;
-	RTE_STD_C11
 	union {
 		struct {
 			uint16_t dport;
@@ -91,7 +90,6 @@ struct rte_ipv4_tuple {
 struct rte_ipv6_tuple {
 	uint8_t		src_addr[16];
 	uint8_t		dst_addr[16];
-	RTE_STD_C11
 	union {
 		struct {
 			uint16_t dport;

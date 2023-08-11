@@ -522,7 +522,6 @@ struct rte_mbuf {
 	 * would have RTE_PTYPE_L2_ETHER and not RTE_PTYPE_L2_VLAN because the
 	 * vlan is stripped from the data.
 	 */
-	RTE_STD_C11
 	union {
 		uint32_t packet_type; /**< L2/L3/L4 and tunnel information. */
 		__extension__
@@ -531,7 +530,6 @@ struct rte_mbuf {
 			uint8_t l3_type:4;   /**< (Outer) L3 type. */
 			uint8_t l4_type:4;   /**< (Outer) L4 type. */
 			uint8_t tun_type:4;  /**< Tunnel type. */
-			RTE_STD_C11
 			union {
 				uint8_t inner_esp_next_proto;
 				/**< ESP next protocol type, valid if
@@ -555,7 +553,6 @@ struct rte_mbuf {
 	/** VLAN TCI (CPU order), valid if RTE_MBUF_F_RX_VLAN is set. */
 	uint16_t vlan_tci;
 
-	RTE_STD_C11
 	union {
 		union {
 			uint32_t rss;     /**< RSS hash result if RSS enabled */
@@ -614,7 +611,6 @@ struct rte_mbuf {
 #endif
 
 	/* fields to support TX offloads */
-	RTE_STD_C11
 	union {
 		uint64_t tx_offload;       /**< combined for easy fetch */
 		__extension__

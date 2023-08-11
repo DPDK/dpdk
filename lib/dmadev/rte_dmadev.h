@@ -484,7 +484,6 @@ struct rte_dma_port_param {
 	 * @see enum rte_dma_port_type
 	 */
 	enum rte_dma_port_type port_type;
-	RTE_STD_C11
 	union {
 		/** PCIe access port parameters.
 		 *

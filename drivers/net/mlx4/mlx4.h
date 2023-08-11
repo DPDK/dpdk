@@ -79,7 +79,6 @@ struct mlx4_mp_param {
 	enum mlx4_mp_req_type type;
 	int port_id;
 	int result;
-	RTE_STD_C11
 	union {
 		uintptr_t addr; /* MLX4_MP_REQ_CREATE_MR */
 	} args;

@@ -168,7 +168,6 @@ struct rte_graph_param {
 	uint64_t num_pkt_to_capture; /**< Number of packets to capture. */
 	char *pcap_filename; /**< Filename in which packets to be captured.*/
 
-	RTE_STD_C11
 	union {
 		struct {
 			uint64_t rsvd; /**< Reserved for rtc model. */
@@ -192,7 +191,6 @@ struct rte_graph_cluster_stats_param {
 	/**< Stats print callback function. NULL value allowed, in that case,
 	 *   default print stat function used.
 	 */
-	RTE_STD_C11
 	union {
 		void *cookie;
 		FILE *f; /**< File pointer to dump the stats when fn == NULL. */
@@ -218,7 +216,6 @@ struct rte_graph_cluster_node_stats {
 	uint64_t prev_objs;	/**< Previous number of processed objs. */
 	uint64_t prev_cycles;	/**< Previous number of cycles. */
 
-	RTE_STD_C11
 	union {
 		struct {
 			uint64_t sched_objs;

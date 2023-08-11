@@ -80,7 +80,6 @@ struct pending_request {
 	struct rte_mp_msg *request;
 	struct rte_mp_msg *reply;
 	int reply_received;
-	RTE_STD_C11
 	union {
 		struct {
 			struct async_request_param *param;

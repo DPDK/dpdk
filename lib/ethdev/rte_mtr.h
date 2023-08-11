@@ -129,7 +129,6 @@ struct rte_mtr_meter_profile {
 	/** Traffic metering algorithm. */
 	enum rte_mtr_algorithm alg;
 
-	RTE_STD_C11
 	union {
 		/** Items only valid when *alg* is set to srTCM - RFC 2697. */
 		struct {

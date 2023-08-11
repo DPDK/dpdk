@@ -216,10 +216,8 @@ extern rte_power_freq_change_t rte_power_freq_disable_turbo;
  * Power capabilities summary.
  */
 struct rte_power_core_capabilities {
-	RTE_STD_C11
 	union {
 		uint64_t capabilities;
-		RTE_STD_C11
 		struct {
 			uint64_t turbo:1;	/**< Turbo can be enabled. */
 			uint64_t priority:1;	/**< SST-BF high freq core */

@@ -148,7 +148,6 @@ void vfio_mp_sync_cleanup(void);
 struct vfio_mp_param {
 	int req;
 	int result;
-	RTE_STD_C11
 	union {
 		int group_num;
 		int iommu_type_id;

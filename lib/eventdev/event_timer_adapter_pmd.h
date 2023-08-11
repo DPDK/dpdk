@@ -108,7 +108,6 @@ struct rte_event_timer_adapter_data {
 	uint32_t service_id;
 	/**< Service ID*/
 
-	RTE_STD_C11
 	uint8_t started : 1;
 	/**< Flag to indicate adapter started. */
 } __rte_cache_aligned;

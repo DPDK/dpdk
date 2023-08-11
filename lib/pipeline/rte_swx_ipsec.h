@@ -263,7 +263,6 @@ struct rte_swx_ipsec_sa_params {
 
 	/** Crypto operation parameters. */
 	struct {
-		RTE_STD_C11
 		union {
 			struct {
 				/** Crypto cipher operation parameters. */

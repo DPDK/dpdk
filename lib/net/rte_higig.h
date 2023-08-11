@@ -136,7 +136,6 @@ struct rte_higig2_ppt_type1 {
  *
  * higig2 header
  */
-RTE_STD_C11
 struct rte_higig2_hdr {
 	struct rte_higig2_frc fcr;
 	union {

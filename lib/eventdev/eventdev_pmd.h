@@ -135,7 +135,6 @@ struct rte_eventdev_data {
 	void *dev_stop_flush_arg;
 	/**< User-provided argument for event flush function */
 
-	RTE_STD_C11
 	uint8_t dev_started : 1;
 	/**< Device state: STARTED(1)/STOPPED(0) */
 
@@ -155,7 +154,6 @@ struct rte_eventdev {
 	struct rte_device *dev;
 	/**< Device info. supplied by probing */
 
-	RTE_STD_C11
 	uint8_t attached : 1;
 	/**< Flag indicating the device is attached */
 

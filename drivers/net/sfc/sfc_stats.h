@@ -26,7 +26,6 @@ extern "C" {
  * required.
  */
 union sfc_pkts_bytes {
-	RTE_STD_C11
 	struct {
 		uint64_t		pkts;
 		uint64_t		bytes;

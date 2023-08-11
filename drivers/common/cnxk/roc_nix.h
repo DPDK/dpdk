@@ -294,7 +294,6 @@ struct roc_nix_stats {
 };
 
 struct roc_nix_stats_queue {
-	PLT_STD_C11
 	union {
 		struct {
 			/* Rx */

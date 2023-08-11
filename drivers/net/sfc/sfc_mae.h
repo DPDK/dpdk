@@ -25,7 +25,6 @@ extern "C" {
 /** FW-allocatable resource context */
 struct sfc_mae_fw_rsrc {
 	unsigned int			refcnt;
-	RTE_STD_C11
 	union {
 		efx_counter_t		counter_id;
 		efx_mae_aset_id_t	aset_id;

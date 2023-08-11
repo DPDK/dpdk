@@ -225,7 +225,6 @@ struct rte_table_action_meter_profile {
 	/** Traffic metering algorithm. */
 	enum rte_table_action_meter_algorithm alg;
 
-	RTE_STD_C11
 	union {
 		/** Only valid when *alg* is set to srTCM - IETF RFC 2697. */
 		struct rte_meter_srtcm_params srtcm;
@@ -487,7 +486,6 @@ struct rte_table_action_encap_vxlan_params {
 	struct rte_table_action_ether_hdr ether; /**< Ethernet header. */
 	struct rte_table_action_vlan_hdr vlan; /**< VLAN header. */
 
-	RTE_STD_C11
 	union {
 		struct rte_table_action_ipv4_header ipv4; /**< IPv4 header. */
 		struct rte_table_action_ipv6_header ipv6; /**< IPv6 header. */
@@ -508,7 +506,6 @@ struct rte_table_action_encap_config {
 	uint64_t encap_mask;
 
 	/** Encapsulation type specific configuration. */
-	RTE_STD_C11
 	union {
 		struct {
 			/** Input packet to be encapsulated: offset within the
@@ -547,7 +544,6 @@ struct rte_table_action_encap_params {
 	/** Encapsulation type. */
 	enum rte_table_action_encap_type type;
 
-	RTE_STD_C11
 	union {
 		/** Only valid when *type* is set to Ether. */
 		struct rte_table_action_encap_ether_params ether;

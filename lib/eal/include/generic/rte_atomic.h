@@ -1069,9 +1069,7 @@ static inline void rte_atomic64_clear(rte_atomic64_t *v)
 /**
  * 128-bit integer structure.
  */
-RTE_STD_C11
 typedef struct {
-	RTE_STD_C11
 	union {
 		uint64_t val[2];
 #ifdef RTE_ARCH_64

@@ -211,7 +211,6 @@ pipeline_table_create(const char *pipeline_name,
 struct table_rule_match_acl {
 	int ip_version;
 
-	RTE_STD_C11
 	union {
 		struct {
 			uint32_t sa;
@@ -254,7 +253,6 @@ struct table_rule_match_hash {
 struct table_rule_match_lpm {
 	int ip_version;
 
-	RTE_STD_C11
 	union {
 		uint32_t ipv4;
 		uint8_t ipv6[16];

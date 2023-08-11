@@ -473,7 +473,6 @@ enum rte_event_timer_state {
  * The generic *rte_event_timer* structure to hold the event timer attributes
  * for arm and cancel operations.
  */
-RTE_STD_C11
 struct rte_event_timer {
 	struct rte_event ev;
 	/**<
@@ -539,7 +538,6 @@ struct rte_event_timer_adapter {
 	const struct event_timer_adapter_ops *ops;
 	/**< Functions exported by adapter driver */
 
-	RTE_STD_C11
 	uint8_t allocated : 1;
 	/**< Flag to indicate that this adapter has been allocated */
 } __rte_cache_aligned;

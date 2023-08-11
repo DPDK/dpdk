@@ -164,7 +164,6 @@ struct eventmode_conf {
 	uint32_t eth_portmask;
 		/**< Mask of the eth ports to be used */
 	union {
-		RTE_STD_C11
 		struct {
 			uint64_t sched_type			: 2;
 		/**< Schedule type */
@@ -213,7 +212,6 @@ struct eh_conf {
 /* Workers registered by the application */
 struct eh_app_worker_params {
 	union {
-		RTE_STD_C11
 		struct {
 			uint64_t burst : 1;
 			/**< Specify status of rx type burst */

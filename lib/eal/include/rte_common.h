@@ -34,13 +34,6 @@ extern "C" {
 #endif
 #endif
 
-/** C extension macro for environments lacking C11 features. */
-#if !defined(__STDC_VERSION__) || __STDC_VERSION__ < 201112L
-#define RTE_STD_C11 __extension__
-#else
-#define RTE_STD_C11
-#endif
-
 /*
  * RTE_TOOLCHAIN_GCC is defined if the target is built with GCC,
  * while a host application (like pmdinfogen) may have another compiler.

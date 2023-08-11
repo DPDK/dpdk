@@ -8,7 +8,6 @@
 
 #ifdef __KERNEL__
 #include <linux/if.h>
-#define RTE_STD_C11
 #else
 #include <stdint.h>
 #include <rte_common.h>
@@ -76,7 +75,6 @@ struct rte_avp_device_config {
  */
 struct rte_avp_request {
 	uint32_t req_id; /**< Request id */
-	RTE_STD_C11
 	union {
 		uint32_t new_mtu; /**< New MTU */
 		uint8_t if_up;	/**< 1: interface up, 0: interface down */

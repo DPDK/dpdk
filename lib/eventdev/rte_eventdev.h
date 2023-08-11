@@ -1273,7 +1273,6 @@ struct rte_event_vector {
  * The generic *rte_event* structure to hold the event attributes
  * for dequeue and enqueue operation
  */
-RTE_STD_C11
 struct rte_event {
 	/** WORD0 */
 	union {

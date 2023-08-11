@@ -25,7 +25,6 @@ rte_rdtsc(void)
 {
 	union {
 		uint64_t tsc_64;
-		RTE_STD_C11
 		struct {
 			uint32_t lo_32;
 			uint32_t hi_32;

@@ -212,7 +212,6 @@ struct rte_pipeline_table_entry {
 	/** Reserved action */
 	enum rte_pipeline_action action;
 
-	RTE_STD_C11
 	union {
 		/** Output port ID (meta-data for "Send packet to output port"
 		action) */

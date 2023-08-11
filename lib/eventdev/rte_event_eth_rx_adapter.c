@@ -52,7 +52,6 @@
  * Used to store port and queue ID of interrupting Rx queue
  */
 union queue_data {
-	RTE_STD_C11
 	void *ptr;
 	struct {
 		uint16_t port;

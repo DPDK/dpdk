@@ -66,7 +66,6 @@ extern "C" {
 /**
  * eCPRI Common Header
  */
-RTE_STD_C11
 struct rte_ecpri_common_hdr {
 	union {
 		rte_be32_t u32;			/**< 4B common header in BE */
@@ -123,7 +122,6 @@ struct rte_ecpri_msg_gen_data {
 /**
  * eCPRI Message Header of Type #4: Remote Memory Access
  */
-RTE_STD_C11
 struct rte_ecpri_msg_rm_access {
 #if RTE_BYTE_ORDER == RTE_LITTLE_ENDIAN
 	uint32_t ele_id:16;		/**< Element ID */
@@ -169,7 +167,6 @@ struct rte_ecpri_msg_event_ind {
 /**
  * eCPRI Combined Message Header Format: Common Header + Message Types
  */
-RTE_STD_C11
 struct rte_ecpri_combined_msg_hdr {
 	struct rte_ecpri_common_hdr common;
 	union {

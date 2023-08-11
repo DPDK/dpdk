@@ -1535,7 +1535,6 @@ struct mlx5_rxq_obj {
 	LIST_ENTRY(mlx5_rxq_obj) next; /* Pointer to the next element. */
 	struct mlx5_rxq_ctrl *rxq_ctrl; /* Back pointer to parent. */
 	int fd; /* File descriptor for event channel */
-	RTE_STD_C11
 	union {
 		struct {
 			void *wq; /* Work Queue. */
@@ -1555,7 +1554,6 @@ struct mlx5_rxq_obj {
 struct mlx5_ind_table_obj {
 	LIST_ENTRY(mlx5_ind_table_obj) next; /* Pointer to the next element. */
 	uint32_t refcnt; /* Reference counter. */
-	RTE_STD_C11
 	union {
 		void *ind_table; /**< Indirection table. */
 		struct mlx5_devx_obj *rqt; /* DevX RQT object. */
@@ -1570,7 +1568,6 @@ struct mlx5_hrxq {
 	struct mlx5_list_entry entry; /* List entry. */
 	uint32_t standalone:1; /* This object used in shared action. */
 	struct mlx5_ind_table_obj *ind_table; /* Indirection table. */
-	RTE_STD_C11
 	union {
 		void *qp; /* Verbs queue pair. */
 		struct mlx5_devx_obj *tir; /* DevX TIR object. */
@@ -1590,7 +1587,6 @@ struct mlx5_hrxq {
 struct mlx5_txq_obj {
 	LIST_ENTRY(mlx5_txq_obj) next; /* Pointer to the next element. */
 	struct mlx5_txq_ctrl *txq_ctrl; /* Pointer to the control queue. */
-	RTE_STD_C11
 	union {
 		struct {
 			void *cq; /* Completion Queue. */

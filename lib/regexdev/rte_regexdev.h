@@ -1246,7 +1246,6 @@ rte_regexdev_dump(uint8_t dev_id, FILE *f);
  * @see struct rte_regex_ops::matches
  */
 struct rte_regexdev_match {
-	RTE_STD_C11
 	union {
 		uint64_t u64;
 		struct {
@@ -1260,7 +1259,6 @@ struct rte_regexdev_match {
 			 */
 			uint16_t start_offset;
 			/**< Starting Byte Position for matched rule. */
-			RTE_STD_C11
 			union {
 				uint16_t len;
 				/**< Length of match in bytes */
@@ -1393,7 +1391,6 @@ struct rte_regex_ops {
 	 */
 
 	/* W3 */
-	RTE_STD_C11
 	union {
 		uint64_t user_id;
 		/**< Application specific opaque value. An application may use
@@ -1406,7 +1403,6 @@ struct rte_regex_ops {
 	};
 
 	/* W4 */
-	RTE_STD_C11
 	union {
 		uint64_t cross_buf_id;
 		/**< ID used by the RegEx device in order to support cross
