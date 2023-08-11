@@ -164,9 +164,9 @@ nix_sec_reass_frags_get(const struct cpt_parse_hdr_s *hdr, struct rte_mbuf **nex
 	next_mbufs[1] = ((struct rte_mbuf *)vgetq_lane_u64(frags23, 0) - 1);
 	next_mbufs[2] = ((struct rte_mbuf *)vgetq_lane_u64(frags23, 1) - 1);
 
-	fsz_w1 = vdup_n_u64(finfo->w1.u64);
+	fsz_w1 = vreinterpret_u16_u64(vdup_n_u64(finfo->w1.u64));
 	fsz_w1 = vrev16_u8(fsz_w1);
-	return vget_lane_u64(fsz_w1, 0);
+	return vget_lane_u64(vreinterpret_u64_u16(fsz_w1), 0);
 }
 
 static __rte_always_inline void
@@ -174,7 +174,7 @@ nix_sec_reass_first_frag_update(struct rte_mbuf *head, const uint8_t *m_ipptr,
 				uint64_t fsz, uint64_t cq_w1, uint16_t *ihl)
 {
 	union nix_rx_parse_u *rx = (union nix_rx_parse_u *)((uintptr_t)(head + 1) + 8);
-	uint16_t fragx_sum = vaddv_u16(vdup_n_u64(fsz));
+	uint16_t fragx_sum = vaddv_u16(vreinterpret_u16_u64(vdup_n_u64(fsz)));
 	uint8_t lcptr = rx->lcptr;
 	uint16_t tot_len;
 	uint32_t cksum;
