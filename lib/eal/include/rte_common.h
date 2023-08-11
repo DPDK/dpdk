@@ -34,6 +34,10 @@ extern "C" {
 #endif
 #endif
 
+#ifdef RTE_TOOLCHAIN_MSVC
+#define __extension__
+#endif
+
 /*
  * RTE_TOOLCHAIN_GCC is defined if the target is built with GCC,
  * while a host application (like pmdinfogen) may have another compiler.
@@ -58,7 +62,11 @@ extern "C" {
 /**
  * Force alignment
  */
+#ifdef RTE_TOOLCHAIN_MSVC
+#define __rte_aligned(a)
+#else
 #define __rte_aligned(a) __attribute__((__aligned__(a)))
+#endif
 
 #ifdef RTE_ARCH_STRICT_ALIGN
 typedef uint64_t unaligned_uint64_t __rte_aligned(1);
@@ -73,16 +81,29 @@ typedef uint16_t unaligned_uint16_t;
 /**
  * Force a structure to be packed
  */
+#ifdef RTE_TOOLCHAIN_MSVC
+#define __rte_packed
+#else
 #define __rte_packed __attribute__((__packed__))
+#endif
 
 /**
  * Macro to mark a type that is not subject to type-based aliasing rules
  */
+#ifdef RTE_TOOLCHAIN_MSVC
+#define __rte_may_alias
+#else
 #define __rte_may_alias __attribute__((__may_alias__))
+#endif
 
 /******* Macro to mark functions and fields scheduled for removal *****/
+#ifdef RTE_TOOLCHAIN_MSVC
+#define __rte_deprecated
+#define __rte_deprecated_msg(msg)
+#else
 #define __rte_deprecated	__attribute__((__deprecated__))
 #define __rte_deprecated_msg(msg)	__attribute__((__deprecated__(msg)))
+#endif
 
 /**
  *  Macro to mark macros and defines scheduled for removal
@@ -103,14 +124,22 @@ typedef uint16_t unaligned_uint16_t;
 /**
  * Force symbol to be generated even if it appears to be unused.
  */
+#ifdef RTE_TOOLCHAIN_MSVC
+#define __rte_used
+#else
 #define __rte_used __attribute__((used))
+#endif
 
 /*********** Macros to eliminate unused variable warnings ********/
 
 /**
  * short definition to mark a function parameter unused
  */
+#ifdef RTE_TOOLCHAIN_MSVC
+#define __rte_unused
+#else
 #define __rte_unused __attribute__((__unused__))
+#endif
 
 /**
  * Mark pointer as restricted with regard to pointer aliasing.
@@ -134,12 +163,16 @@ typedef uint16_t unaligned_uint16_t;
  * even if the underlying stdio implementation is ANSI-compliant,
  * so this must be overridden.
  */
+#ifdef RTE_TOOLCHAIN_MSVC
+#define __rte_format_printf(format_index, first_arg)
+#else
 #if RTE_CC_IS_GNU
 #define __rte_format_printf(format_index, first_arg) \
 	__attribute__((format(gnu_printf, format_index, first_arg)))
 #else
 #define __rte_format_printf(format_index, first_arg) \
 	__attribute__((format(printf, format_index, first_arg)))
+#endif
 #endif
 
 /**
@@ -215,7 +248,11 @@ static void __attribute__((destructor(RTE_PRIO(prio)), used)) func(void)
 /**
  * Hint never returning function
  */
+#ifdef RTE_TOOLCHAIN_MSVC
+#define __rte_noreturn
+#else
 #define __rte_noreturn __attribute__((noreturn))
+#endif
 
 /**
  * Issue a warning in case the function's return value is ignored.
@@ -240,12 +277,20 @@ static void __attribute__((destructor(RTE_PRIO(prio)), used)) func(void)
  *  }
  * @endcode
  */
+#ifdef RTE_TOOLCHAIN_MSVC
+#define __rte_warn_unused_result
+#else
 #define __rte_warn_unused_result __attribute__((warn_unused_result))
+#endif
 
 /**
  * Force a function to be inlined
  */
+#ifdef RTE_TOOLCHAIN_MSVC
+#define __rte_always_inline
+#else
 #define __rte_always_inline inline __attribute__((always_inline))
+#endif
 
 /**
  * Force a function to be noinlined
@@ -260,7 +305,11 @@ static void __attribute__((destructor(RTE_PRIO(prio)), used)) func(void)
 /**
  * Hint function in the cold path
  */
+#ifdef RTE_TOOLCHAIN_MSVC
+#define __rte_cold
+#else
 #define __rte_cold __attribute__((cold))
+#endif
 
 /**
  * Disable AddressSanitizer on some code
@@ -430,7 +479,11 @@ rte_is_aligned(const void * const __rte_restrict ptr, const unsigned int align)
 #define RTE_CACHE_LINE_MIN_SIZE 64
 
 /** Force alignment to cache line. */
+#ifdef RTE_TOOLCHAIN_MSVC
+#define __rte_cache_aligned
+#else
 #define __rte_cache_aligned __rte_aligned(RTE_CACHE_LINE_SIZE)
+#endif
 
 /** Force minimum cache line alignment. */
 #define __rte_cache_min_aligned __rte_aligned(RTE_CACHE_LINE_MIN_SIZE)
@@ -512,12 +565,17 @@ __extension__ typedef uint64_t RTE_MARKER64[0];
  *  struct wrapper *w = container_of(x, struct wrapper, c);
  */
 #ifndef container_of
+#ifdef RTE_TOOLCHAIN_MSVC
+#define container_of(ptr, type, member) \
+			((type *)((uintptr_t)(ptr) - offsetof(type, member)))
+#else
 #define container_of(ptr, type, member)	__extension__ ({		\
 			const typeof(((type *)0)->member) *_ptr = (ptr); \
 			__rte_unused type *_target_ptr =	\
 				(type *)(ptr);				\
 			(type *)(((uintptr_t)_ptr) - offsetof(type, member)); \
 		})
+#endif
 #endif
 
 /** Swap two variables. */
