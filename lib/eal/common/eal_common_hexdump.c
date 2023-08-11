@@ -15,7 +15,7 @@ rte_hexdump(FILE *f, const char *title, const void *buf, unsigned int len)
 	char line[LINE_LEN];	/* space needed 8+16*3+3+16 == 75 */
 
 	fprintf(f, "%s at [%p], len=%u\n",
-		title ? : "  Dump data", data, len);
+		title != NULL ? title : "  Dump data", data, len);
 	ofs = 0;
 	while (ofs < len) {
 		/* format the line in the buffer */

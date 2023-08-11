@@ -93,7 +93,7 @@ rte_log_get_stream(void)
 		 * of stderr, even if the application closes and
 		 * reopens it.
 		 */
-		return default_log_stream ? : stderr;
+		return default_log_stream != NULL ? default_log_stream : stderr;
 	}
 	return f;
 }
