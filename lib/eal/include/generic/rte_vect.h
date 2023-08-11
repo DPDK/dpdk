@@ -17,6 +17,8 @@
 
 #include <rte_compat.h>
 
+#ifndef RTE_TOOLCHAIN_MSVC
+
 /* Unsigned vector types */
 
 /**
@@ -185,6 +187,8 @@ typedef int32_t rte_v256s32_t __attribute__((vector_size(32), aligned(32)));
  * a = (rte_v256s64_t){ a0, a1, a2, a3 }
  */
 typedef int64_t rte_v256s64_t __attribute__((vector_size(32), aligned(32)));
+
+#endif
 
 /**
  * The max SIMD bitwidth value to limit vector path selection.
