@@ -24,8 +24,10 @@ extern "C" {
 /* OS specific include */
 #include <rte_os.h>
 
+#ifndef RTE_TOOLCHAIN_MSVC
 #ifndef typeof
 #define typeof __typeof__
+#endif
 #endif
 
 #ifndef __cplusplus
