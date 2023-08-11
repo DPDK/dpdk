@@ -43,8 +43,6 @@ if get_option('default_library') == 'static' and not is_windows
     default_ldflags += ['-Wl,--export-dynamic']
 endif
 
-enabled_apps = [] # used to print summary at the end
-
 foreach app:apps
     name = app
     build = true
@@ -95,7 +93,7 @@ foreach app:apps
         continue
     endif
 
-    enabled_apps += app
+    dpdk_apps_enabled += app
     link_libs = []
     if get_option('default_library') == 'static'
         link_libs = dpdk_static_libraries + dpdk_drivers
