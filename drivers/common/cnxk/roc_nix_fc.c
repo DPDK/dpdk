@@ -501,7 +501,6 @@ roc_nix_fc_npa_bp_cfg(struct roc_nix *roc_nix, uint64_t pool_id, uint8_t ena, ui
 	bpid = (aura_attr->bp_ena & 0x1) ? aura_attr->nix0_bpid : aura_attr->nix1_bpid;
 	/* BP is already enabled. */
 	if (aura_attr->bp_ena && ena) {
-		/* Disable BP if BPIDs don't match and couldn't add new BPID. */
 		if (bpid != nix->bpid[tc]) {
 			uint16_t bpid_new = NIX_BPID_INVALID;
 
@@ -519,14 +518,12 @@ roc_nix_fc_npa_bp_cfg(struct roc_nix *roc_nix, uint64_t pool_id, uint8_t ena, ui
 				plt_info("Ignoring port=%u tc=%u config on shared aura 0x%" PRIx64,
 					 roc_nix->port_id, tc, pool_id);
 			}
+		} else {
+			aura_attr->ref_count++;
 		}
 
 		return;
 	}
-
-	/* BP was previously enabled but now disabled skip. */
-	if (aura_attr->bp && ena)
-		return;
 
 	if (ena) {
 		if (roc_npa_aura_bp_configure(pool_id, nix->bpid[tc], bp_intf, bp_thresh, true))
