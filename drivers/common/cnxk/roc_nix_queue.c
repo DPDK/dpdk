@@ -908,6 +908,13 @@ roc_nix_cq_init(struct roc_nix *roc_nix, struct roc_nix_cq *cq)
 	}
 	cq_ctx->bp = cq->drop_thresh;
 
+	if (roc_feature_nix_has_cqe_stash()) {
+		if (cq_ctx->caching) {
+			cq_ctx->stashing = 1;
+			cq_ctx->stash_thresh = cq->stash_thresh;
+		}
+	}
+
 	rc = mbox_process(mbox);
 	mbox_put(mbox);
 	if (rc)
