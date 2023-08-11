@@ -496,7 +496,7 @@ roc_nix_fc_npa_bp_cfg(struct roc_nix *roc_nix, uint64_t pool_id, uint8_t ena, ui
 	aura_attr = &lf->aura_attr[aura_id];
 
 	bp_intf = 1 << nix->is_nix1;
-	bp_thresh = NIX_RQ_AURA_THRESH(drop_percent, aura_attr->limit >> aura_attr->shift);
+	bp_thresh = NIX_RQ_AURA_BP_THRESH(drop_percent, aura_attr->limit, aura_attr->shift);
 
 	bpid = (aura_attr->bp_ena & 0x1) ? aura_attr->nix0_bpid : aura_attr->nix1_bpid;
 	/* BP is already enabled. */

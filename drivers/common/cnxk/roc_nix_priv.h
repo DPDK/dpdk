@@ -20,7 +20,7 @@
 /* Apply LBP at 75% of actual BP */
 #define NIX_CQ_LPB_THRESH_FRAC	(75 * 16 / 100)
 #define NIX_CQ_FULL_ERRATA_SKID (1024ull * 256)
-#define NIX_RQ_AURA_THRESH(percent, val) (((val) * (percent)) / 100)
+#define NIX_RQ_AURA_BP_THRESH(percent, limit, shift) ((((limit) * (percent)) / 100) >> (shift))
 
 /* IRQ triggered when NIX_LF_CINTX_CNT[QCOUNT] crosses this value */
 #define CQ_CQE_THRESH_DEFAULT	0x1ULL
