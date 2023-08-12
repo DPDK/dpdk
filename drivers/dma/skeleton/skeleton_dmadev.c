@@ -137,7 +137,7 @@ skeldma_start(struct rte_dma_dev *dev)
 
 	if (hw->lcore_id != -1) {
 		cpuset = rte_lcore_cpuset(hw->lcore_id);
-		ret = rte_thread_get_affinity_by_id(hw->thread, &cpuset);
+		ret = rte_thread_set_affinity_by_id(hw->thread, &cpuset);
 		if (ret)
 			SKELDMA_LOG(WARNING,
 				"Set thread affinity lcore = %d fail!",
