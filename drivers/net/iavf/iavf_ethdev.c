@@ -324,24 +324,31 @@ iavf_dev_watchdog(void *cb_arg)
 void
 iavf_dev_watchdog_enable(struct iavf_adapter *adapter)
 {
-	if (adapter->devargs.watchdog_period && !adapter->vf.watchdog_enabled) {
-		PMD_DRV_LOG(INFO, "Enabling device watchdog, period is %dμs",
-					adapter->devargs.watchdog_period);
-		adapter->vf.watchdog_enabled = true;
-		if (rte_eal_alarm_set(adapter->devargs.watchdog_period,
-					&iavf_dev_watchdog, (void *)adapter))
-			PMD_DRV_LOG(ERR, "Failed to enabled device watchdog");
-	} else {
+	if (!adapter->devargs.watchdog_period) {
 		PMD_DRV_LOG(INFO, "Device watchdog is disabled");
+	} else {
+		if (!adapter->vf.watchdog_enabled) {
+			PMD_DRV_LOG(INFO, "Enabling device watchdog, period is %dμs",
+						adapter->devargs.watchdog_period);
+			adapter->vf.watchdog_enabled = true;
+			if (rte_eal_alarm_set(adapter->devargs.watchdog_period,
+						&iavf_dev_watchdog, (void *)adapter))
+				PMD_DRV_LOG(ERR, "Failed to enable device watchdog");
+		}
 	}
 }
 
 void
 iavf_dev_watchdog_disable(struct iavf_adapter *adapter)
 {
-	if (adapter->devargs.watchdog_period && adapter->vf.watchdog_enabled) {
-		PMD_DRV_LOG(INFO, "Disabling device watchdog");
-		adapter->vf.watchdog_enabled = false;
+	if (!adapter->devargs.watchdog_period) {
+		PMD_DRV_LOG(INFO, "Device watchdog is not enabled");
+	} else {
+		if (adapter->vf.watchdog_enabled) {
+			PMD_DRV_LOG(INFO, "Disabling device watchdog");
+			adapter->vf.watchdog_enabled = false;
+			rte_eal_alarm_cancel(&iavf_dev_watchdog, (void *)adapter);
+		}
 	}
 }
 
