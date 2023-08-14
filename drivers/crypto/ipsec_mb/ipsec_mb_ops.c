@@ -7,6 +7,7 @@
 
 #include <rte_common.h>
 #include <rte_malloc.h>
+#include <rte_log.h>
 
 #include "ipsec_mb_private.h"
 
@@ -125,7 +126,7 @@ ipsec_mb_secondary_qp_op(int dev_id, int qp_id,
 	qp_req_msg.num_fds = 0;
 	ret = rte_mp_request_sync(&qp_req_msg, &qp_resp, &ts);
 	if (ret) {
-		RTE_LOG(ERR, USER1, "Create MR request to primary process failed.");
+		IPSEC_MB_LOG(ERR, "Create MR request to primary process failed.");
 		return -1;
 	}
 	qp_resp_msg = &qp_resp.msgs[0];
