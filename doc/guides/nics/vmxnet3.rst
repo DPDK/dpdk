@@ -100,6 +100,8 @@ There are several options available for filtering packets at VMXNET3 device leve
 
     *   Multicast with Multicast Filter table is not supported.
 
+    *   IOVA as VA on AMD hosts is supported from ESXi 7.0 U1 onwards.
+
 Prerequisites
 -------------
 
