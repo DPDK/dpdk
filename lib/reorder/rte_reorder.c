@@ -16,6 +16,9 @@
 
 #include "rte_reorder.h"
 
+RTE_LOG_REGISTER_DEFAULT(reorder_logtype, INFO);
+#define RTE_LOGTYPE_REORDER reorder_logtype
+
 TAILQ_HEAD(rte_reorder_list, rte_tailq_entry);
 
 static struct rte_tailq_elem rte_reorder_tailq = {
@@ -26,9 +29,6 @@ EAL_REGISTER_TAILQ(rte_reorder_tailq)
 #define NO_FLAGS 0
 #define RTE_REORDER_PREFIX "RO_"
 #define RTE_REORDER_NAMESIZE 32
-
-/* Macros for printing using RTE_LOG */
-#define RTE_LOGTYPE_REORDER	RTE_LOGTYPE_USER1
 
 #define RTE_REORDER_SEQN_DYNFIELD_NAME "rte_reorder_seqn_dynfield"
 int rte_reorder_seqn_dynfield_offset = -1;
