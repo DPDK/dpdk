@@ -26,7 +26,8 @@ latencystat_cycles_per_ns(void)
 }
 
 /* Macros for printing using RTE_LOG */
-#define RTE_LOGTYPE_LATENCY_STATS RTE_LOGTYPE_USER1
+RTE_LOG_REGISTER_DEFAULT(latencystat_logtype, INFO);
+#define RTE_LOGTYPE_LATENCY_STATS latencystat_logtype
 
 static uint64_t timestamp_dynflag;
 static int timestamp_dynfield_offset = -1;
