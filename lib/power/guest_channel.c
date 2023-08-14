@@ -17,7 +17,8 @@
 
 #include "guest_channel.h"
 
-#define RTE_LOGTYPE_GUEST_CHANNEL RTE_LOGTYPE_USER1
+RTE_LOG_REGISTER_SUFFIX(guest_channel_logtype, guest_channel, INFO);
+#define RTE_LOGTYPE_GUEST_CHANNEL guest_channel_logtype
 
 /* Timeout for incoming message in milliseconds. */
 #define TIMEOUT 10
