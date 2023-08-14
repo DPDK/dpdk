@@ -792,7 +792,7 @@ virtio_vdpa_features_set(int vid)
 					priv->vdev->device->name);
 		return ret;
 	}
-	if (RTE_VHOST_NEED_LOG(features)) {
+	if (RTE_VHOST_NEED_LOG(features) && priv->configured) {
 		ret = rte_vhost_get_log_base(vid, &log_base, &log_size);
 		if (ret) {
 			DRV_LOG(ERR, "%s failed to get log base",
