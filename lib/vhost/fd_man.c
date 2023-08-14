@@ -10,8 +10,8 @@
 
 #include "fd_man.h"
 
-
-#define RTE_LOGTYPE_VHOST_FDMAN RTE_LOGTYPE_USER1
+RTE_LOG_REGISTER_SUFFIX(vhost_fdset_logtype, fdset, INFO);
+#define RTE_LOGTYPE_VHOST_FDMAN vhost_fdset_logtype
 
 #define FDPOLLERR (POLLERR | POLLHUP | POLLNVAL)
 
