@@ -7,6 +7,8 @@
 
 #include <rte_log.h>
 
+RTE_LOG_REGISTER_DEFAULT(ipfrag_logtype, INFO);
+
 #include "ip_frag_common.h"
 
 #define	IP_FRAG_HASH_FNUM	2
@@ -52,20 +54,20 @@ rte_ip_frag_table_create(uint32_t bucket_num, uint32_t bucket_entries,
 	if (rte_is_power_of_2(bucket_entries) == 0 ||
 			nb_entries > UINT32_MAX || nb_entries == 0 ||
 			nb_entries < max_entries) {
-		RTE_LOG(ERR, USER1, "%s: invalid input parameter\n", __func__);
+		RTE_LOG(ERR, IPFRAG, "%s: invalid input parameter\n", __func__);
 		return NULL;
 	}
 
 	sz = sizeof (*tbl) + nb_entries * sizeof (tbl->pkt[0]);
 	if ((tbl = rte_zmalloc_socket(__func__, sz, RTE_CACHE_LINE_SIZE,
 			socket_id)) == NULL) {
-		RTE_LOG(ERR, USER1,
+		RTE_LOG(ERR, IPFRAG,
 			"%s: allocation of %zu bytes at socket %d failed do\n",
 			__func__, sz, socket_id);
 		return NULL;
 	}
 
-	RTE_LOG(INFO, USER1, "%s: allocated of %zu bytes at socket %d\n",
+	RTE_LOG(INFO, IPFRAG, "%s: allocated of %zu bytes at socket %d\n",
 		__func__, sz, socket_id);
 
 	tbl->max_cycles = max_cycles;

@@ -18,9 +18,12 @@
 #include "rte_ip_frag.h"
 #include "ip_reassembly.h"
 
+extern int ipfrag_logtype;
+#define RTE_LOGTYPE_IPFRAG	ipfrag_logtype
+
 /* logging macros. */
 #ifdef RTE_LIBRTE_IP_FRAG_DEBUG
-#define	IP_FRAG_LOG(lvl, fmt, args...)	RTE_LOG(lvl, USER1, fmt, ##args)
+#define	IP_FRAG_LOG(lvl, fmt, args...)	RTE_LOG(lvl, IPFRAG, fmt, ##args)
 #else
 #define	IP_FRAG_LOG(lvl, fmt, args...)	do {} while(0)
 #endif /* IP_FRAG_DEBUG */
