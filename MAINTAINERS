@@ -1246,6 +1246,7 @@ F: doc/guides/dmadevs/hisilicon.rst
 
 Marvell CNXK DPI DMA
 M: Vamsi Attunuru <vattunuru@marvell.com>
+T: git://dpdk.org/next/dpdk-next-net-mrvl
 F: drivers/dma/cnxk/
 F: doc/guides/dmadevs/cnxk.rst
 
@@ -1267,6 +1268,7 @@ RegEx Drivers
 
 Marvell OCTEON CN9K regex
 M: Liron Himi <lironh@marvell.com>
+T: git://dpdk.org/next/dpdk-next-net-mrvl
 F: drivers/regex/cn9k/
 F: doc/guides/regexdevs/cn9k.rst
 F: doc/guides/regexdevs/features/cn9k.ini
@@ -1283,6 +1285,7 @@ MLdev Drivers
 
 Marvell ML CNXK
 M: Srikanth Yalavarthi <syalavarthi@marvell.com>
+T: git://dpdk.org/next/dpdk-next-net-mrvl
 F: drivers/common/cnxk/hw/ml.h
 F: drivers/common/cnxk/roc_ml*
 F: drivers/ml/cnxk/
@@ -1429,12 +1432,14 @@ F: doc/guides/rawdevs/ifpga.rst
 Marvell CNXK BPHY
 M: Jakub Palider <jpalider@marvell.com>
 M: Tomasz Duszynski <tduszynski@marvell.com>
+T: git://dpdk.org/next/dpdk-next-net-mrvl
 F: doc/guides/rawdevs/cnxk_bphy.rst
 F: drivers/raw/cnxk_bphy/
 
 Marvell CNXK GPIO
 M: Jakub Palider <jpalider@marvell.com>
 M: Tomasz Duszynski <tduszynski@marvell.com>
+T: git://dpdk.org/next/dpdk-next-net-mrvl
 F: doc/guides/rawdevs/cnxk_gpio.rst
 F: drivers/raw/cnxk_gpio/
 
