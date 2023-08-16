@@ -27,6 +27,22 @@ dpdk_conf.set('RTE_EXEC_ENV_' + exec_env.to_upper(), 1)
 is_ms_compiler = is_windows and (cc.get_id() == 'msvc')
 is_ms_linker = is_windows and (cc.get_id() == 'clang' or is_ms_compiler)
 
+if is_ms_compiler
+    # force the use of intrinsics the MSVC compiler (except x86)
+    # does not support inline assembly
+    dpdk_conf.set('RTE_FORCE_INTRINSICS', 1)
+
+    # suppress warnings raised for using standard library functions
+    # the MSVC compiler regards as unsafe but are used by DPDK
+    dpdk_conf.set('_CRT_SECURE_NO_WARNINGS', 1)
+
+    # enable non-locking atomic operations
+    add_project_arguments('/experimental:c11atomics', language: 'c')
+
+    # enable typeof operator
+    add_project_arguments('/d1experimental:typeof', language: 'c')
+endif
+
 # set the major version, which might be used by drivers and libraries
 # depending on the configuration options
 pver = meson.project_version().split('.')
