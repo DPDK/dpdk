@@ -127,6 +127,23 @@ API Changes
   except ``rte_thread_setname()`` and ``rte_ctrl_thread_create()`` which are
   replaced with ``rte_thread_set_name()`` and ``rte_thread_create_control()``.
 
+* bonding: Replaced master/slave to main/member. The data structure
+  ``struct rte_eth_bond_8023ad_slave_info`` was renamed to
+  ``struct rte_eth_bond_8023ad_member_info`` in DPDK 23.11.
+  The following functions were removed in DPDK 23.11.
+  The old functions:
+  ``rte_eth_bond_8023ad_slave_info``,
+  ``rte_eth_bond_active_slaves_get``,
+  ``rte_eth_bond_slave_add``,
+  ``rte_eth_bond_slave_remove``, and
+  ``rte_eth_bond_slaves_get``
+  will be replaced by:
+  ``rte_eth_bond_8023ad_member_info``,
+  ``rte_eth_bond_active_members_get``,
+  ``rte_eth_bond_member_add``,
+  ``rte_eth_bond_member_remove``, and
+  ``rte_eth_bond_members_get``.
+
 
 ABI Changes
 -----------

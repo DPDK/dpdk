@@ -53,7 +53,7 @@
      v:langID="1033"
      v:metric="true"
      v:viewMarkup="false"><v:userDefs><v:ud
-         v:nameU="msvSubprocessMaster"
+         v:nameU="msvSubprocessMain"
          v:prompt=""
          v:val="VT4(Rectangle)" /><v:ud
          v:nameU="msvNoAutoConnect"

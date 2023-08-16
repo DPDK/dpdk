@@ -337,7 +337,7 @@ struct rte_port {
 	uint32_t                mc_addr_nb; /**< nb. of addr. in mc_addr_pool */
 	queueid_t               queue_nb; /**< nb. of queues for flow rules */
 	uint32_t                queue_sz; /**< size of a queue for flow rules */
-	uint8_t                 slave_flag : 1, /**< bonding slave port */
+	uint8_t                 member_flag : 1, /**< bonding member port */
 				bond_flag : 1, /**< port is bond device */
 				fwd_mac_swap : 1, /**< swap packet MAC before forward */
 				update_conf : 1; /**< need to update bonding device configuration */
@@ -1107,9 +1107,9 @@ void stop_packet_forwarding(void);
 void dev_set_link_up(portid_t pid);
 void dev_set_link_down(portid_t pid);
 void init_port_config(void);
-void set_port_slave_flag(portid_t slave_pid);
-void clear_port_slave_flag(portid_t slave_pid);
-uint8_t port_is_bonding_slave(portid_t slave_pid);
+void set_port_member_flag(portid_t member_pid);
+void clear_port_member_flag(portid_t member_pid);
+uint8_t port_is_bonding_member(portid_t member_pid);
 
 int init_port_dcb_config(portid_t pid, enum dcb_mode_enable dcb_mode,
 		     enum rte_eth_nb_tcs num_tcs,

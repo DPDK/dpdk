@@ -69,12 +69,12 @@ bond_flow_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 	int i;
 	int ret;
 
-	for (i = 0; i < internals->slave_count; i++) {
-		ret = rte_flow_validate(internals->slaves[i].port_id, attr,
+	for (i = 0; i < internals->member_count; i++) {
+		ret = rte_flow_validate(internals->members[i].port_id, attr,
 					patterns, actions, err);
 		if (ret) {
 			RTE_BOND_LOG(ERR, "Operation rte_flow_validate failed"
-				     " for slave %d with error %d", i, ret);
+				     " for member %d with error %d", i, ret);
 			return ret;
 		}
 	}
@@ -97,11 +97,11 @@ bond_flow_create(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 				   NULL, rte_strerror(ENOMEM));
 		return NULL;
 	}
-	for (i = 0; i < internals->slave_count; i++) {
-		flow->flows[i] = rte_flow_create(internals->slaves[i].port_id,
+	for (i = 0; i < internals->member_count; i++) {
+		flow->flows[i] = rte_flow_create(internals->members[i].port_id,
 						 attr, patterns, actions, err);
 		if (unlikely(flow->flows[i] == NULL)) {
-			RTE_BOND_LOG(ERR, "Failed to create flow on slave %d",
+			RTE_BOND_LOG(ERR, "Failed to create flow on member %d",
 				     i);
 			goto err;
 		}
@@ -109,10 +109,10 @@ bond_flow_create(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 	TAILQ_INSERT_TAIL(&internals->flow_list, flow, next);
 	return flow;
 err:
-	/* Destroy all slaves flows. */
-	for (i = 0; i < internals->slave_count; i++) {
+	/* Destroy all members flows. */
+	for (i = 0; i < internals->member_count; i++) {
 		if (flow->flows[i] != NULL)
-			rte_flow_destroy(internals->slaves[i].port_id,
+			rte_flow_destroy(internals->members[i].port_id,
 					 flow->flows[i], err);
 	}
 	bond_flow_release(&flow);
@@ -127,15 +127,15 @@ bond_flow_destroy(struct rte_eth_dev *dev, struct rte_flow *flow,
 	int i;
 	int ret = 0;
 
-	for (i = 0; i < internals->slave_count; i++) {
+	for (i = 0; i < internals->member_count; i++) {
 		int lret;
 
 		if (unlikely(flow->flows[i] == NULL))
 			continue;
-		lret = rte_flow_destroy(internals->slaves[i].port_id,
+		lret = rte_flow_destroy(internals->members[i].port_id,
 					flow->flows[i], err);
 		if (unlikely(lret != 0)) {
-			RTE_BOND_LOG(ERR, "Failed to destroy flow on slave %d:"
+			RTE_BOND_LOG(ERR, "Failed to destroy flow on member %d:"
 				     " %d", i, lret);
 			ret = lret;
 		}
@@ -154,7 +154,7 @@ bond_flow_flush(struct rte_eth_dev *dev, struct rte_flow_error *err)
 	int ret = 0;
 	int lret;
 
-	/* Destroy all bond flows from its slaves instead of flushing them to
+	/* Destroy all bond flows from its members instead of flushing them to
 	 * keep the LACP flow or any other external flows.
 	 */
 	RTE_TAILQ_FOREACH_SAFE(flow, &internals->flow_list, next, tmp) {
@@ -163,7 +163,7 @@ bond_flow_flush(struct rte_eth_dev *dev, struct rte_flow_error *err)
 			ret = lret;
 	}
 	if (unlikely(ret != 0))
-		RTE_BOND_LOG(ERR, "Failed to flush flow in all slaves");
+		RTE_BOND_LOG(ERR, "Failed to flush flow in all members");
 	return ret;
 }
 
@@ -174,26 +174,26 @@ bond_flow_query_count(struct rte_eth_dev *dev, struct rte_flow *flow,
 		      struct rte_flow_error *err)
 {
 	struct bond_dev_private *internals = dev->data->dev_private;
-	struct rte_flow_query_count slave_count;
+	struct rte_flow_query_count member_count;
 	int i;
 	int ret;
 
 	count->bytes = 0;
 	count->hits = 0;
-	rte_memcpy(&slave_count, count, sizeof(slave_count));
-	for (i = 0; i < internals->slave_count; i++) {
-		ret = rte_flow_query(internals->slaves[i].port_id,
+	rte_memcpy(&member_count, count, sizeof(member_count));
+	for (i = 0; i < internals->member_count; i++) {
+		ret = rte_flow_query(internals->members[i].port_id,
 				     flow->flows[i], action,
-				     &slave_count, err);
+				     &member_count, err);
 		if (unlikely(ret != 0)) {
 			RTE_BOND_LOG(ERR, "Failed to query flow on"
-				     " slave %d: %d", i, ret);
+				     " member %d: %d", i, ret);
 			return ret;
 		}
-		count->bytes += slave_count.bytes;
-		count->hits += slave_count.hits;
-		slave_count.bytes = 0;
-		slave_count.hits = 0;
+		count->bytes += member_count.bytes;
+		count->hits += member_count.hits;
+		member_count.bytes = 0;
+		member_count.hits = 0;
 	}
 	return 0;
 }
@@ -221,11 +221,11 @@ bond_flow_isolate(struct rte_eth_dev *dev, int set,
 	int i;
 	int ret;
 
-	for (i = 0; i < internals->slave_count; i++) {
-		ret = rte_flow_isolate(internals->slaves[i].port_id, set, err);
+	for (i = 0; i < internals->member_count; i++) {
+		ret = rte_flow_isolate(internals->members[i].port_id, set, err);
 		if (unlikely(ret != 0)) {
 			RTE_BOND_LOG(ERR, "Operation rte_flow_isolate failed"
-				     " for slave %d with error %d", i, ret);
+				     " for member %d with error %d", i, ret);
 			internals->flow_isolated_valid = 0;
 			return ret;
 		}

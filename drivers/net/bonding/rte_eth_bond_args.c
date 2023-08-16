@@ -12,8 +12,8 @@
 #include "eth_bond_private.h"
 
 const char *pmd_bond_init_valid_arguments[] = {
-	PMD_BOND_SLAVE_PORT_KVARG,
-	PMD_BOND_PRIMARY_SLAVE_KVARG,
+	PMD_BOND_MEMBER_PORT_KVARG,
+	PMD_BOND_PRIMARY_MEMBER_KVARG,
 	PMD_BOND_MODE_KVARG,
 	PMD_BOND_XMIT_POLICY_KVARG,
 	PMD_BOND_SOCKET_ID_KVARG,
@@ -109,31 +109,31 @@ parse_port_id(const char *port_str)
 }
 
 int
-bond_ethdev_parse_slave_port_kvarg(const char *key,
+bond_ethdev_parse_member_port_kvarg(const char *key,
 		const char *value, void *extra_args)
 {
-	struct bond_ethdev_slave_ports *slave_ports;
+	struct bond_ethdev_member_ports *member_ports;
 
 	if (value == NULL || extra_args == NULL)
 		return -1;
 
-	slave_ports = extra_args;
+	member_ports = extra_args;
 
-	if (strcmp(key, PMD_BOND_SLAVE_PORT_KVARG) == 0) {
+	if (strcmp(key, PMD_BOND_MEMBER_PORT_KVARG) == 0) {
 		int port_id = parse_port_id(value);
 		if (port_id < 0) {
-			RTE_BOND_LOG(ERR, "Invalid slave port value (%s) specified",
+			RTE_BOND_LOG(ERR, "Invalid member port value (%s) specified",
 				     value);
 			return -1;
 		} else
-			slave_ports->slaves[slave_ports->slave_count++] =
+			member_ports->members[member_ports->member_count++] =
 					port_id;
 	}
 	return 0;
 }
 
 int
-bond_ethdev_parse_slave_mode_kvarg(const char *key __rte_unused,
+bond_ethdev_parse_member_mode_kvarg(const char *key __rte_unused,
 		const char *value, void *extra_args)
 {
 	uint8_t *mode;
@@ -160,13 +160,13 @@ bond_ethdev_parse_slave_mode_kvarg(const char *key __rte_unused,
 	case BONDING_MODE_ALB:
 		return 0;
 	default:
-		RTE_BOND_LOG(ERR, "Invalid slave mode value (%s) specified", value);
+		RTE_BOND_LOG(ERR, "Invalid member mode value (%s) specified", value);
 		return -1;
 	}
 }
 
 int
-bond_ethdev_parse_slave_agg_mode_kvarg(const char *key __rte_unused,
+bond_ethdev_parse_member_agg_mode_kvarg(const char *key __rte_unused,
 		const char *value, void *extra_args)
 {
 	uint8_t *agg_mode;
@@ -227,19 +227,19 @@ bond_ethdev_parse_socket_id_kvarg(const char *key __rte_unused,
 }
 
 int
-bond_ethdev_parse_primary_slave_port_id_kvarg(const char *key __rte_unused,
+bond_ethdev_parse_primary_member_port_id_kvarg(const char *key __rte_unused,
 		const char *value, void *extra_args)
 {
-	int primary_slave_port_id;
+	int primary_member_port_id;
 
 	if (value == NULL || extra_args == NULL)
 		return -1;
 
-	primary_slave_port_id = parse_port_id(value);
-	if (primary_slave_port_id < 0)
+	primary_member_port_id = parse_port_id(value);
+	if (primary_member_port_id < 0)
 		return -1;
 
-	*(uint16_t *)extra_args = (uint16_t)primary_slave_port_id;
+	*(uint16_t *)extra_args = (uint16_t)primary_member_port_id;
 
 	return 0;
 }

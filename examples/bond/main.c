@@ -105,8 +105,8 @@
 		":%02"PRIx8":%02"PRIx8":%02"PRIx8,	\
 		RTE_ETHER_ADDR_BYTES(&addr))
 
-uint16_t slaves[RTE_MAX_ETHPORTS];
-uint16_t slaves_count;
+uint16_t members[RTE_MAX_ETHPORTS];
+uint16_t members_count;
 
 static uint16_t BOND_PORT = 0xffff;
 
@@ -128,7 +128,7 @@ static struct rte_eth_conf port_conf = {
 };
 
 static void
-slave_port_init(uint16_t portid, struct rte_mempool *mbuf_pool)
+member_port_init(uint16_t portid, struct rte_mempool *mbuf_pool)
 {
 	int retval;
 	uint16_t nb_rxd = RTE_RX_DESC_DEFAULT;
@@ -252,10 +252,10 @@ bond_port_init(struct rte_mempool *mbuf_pool)
 		rte_exit(EXIT_FAILURE, "port %u: rte_eth_dev_adjust_nb_rx_tx_desc "
 				"failed (res=%d)\n", BOND_PORT, retval);
 
-	for (i = 0; i < slaves_count; i++) {
-		if (rte_eth_bond_slave_add(BOND_PORT, slaves[i]) == -1)
-			rte_exit(-1, "Oooops! adding slave (%u) to bond (%u) failed!\n",
-					slaves[i], BOND_PORT);
+	for (i = 0; i < members_count; i++) {
+		if (rte_eth_bond_member_add(BOND_PORT, members[i]) == -1)
+			rte_exit(-1, "Oooops! adding member (%u) to bond (%u) failed!\n",
+					members[i], BOND_PORT);
 
 	}
 
@@ -283,18 +283,18 @@ bond_port_init(struct rte_mempool *mbuf_pool)
 	if (retval < 0)
 		rte_exit(retval, "Start port %d failed (res=%d)", BOND_PORT, retval);
 
-	printf("Waiting for slaves to become active...");
+	printf("Waiting for members to become active...");
 	while (wait_counter) {
-		uint16_t act_slaves[16] = {0};
-		if (rte_eth_bond_active_slaves_get(BOND_PORT, act_slaves, 16) ==
-				slaves_count) {
+		uint16_t act_members[16] = {0};
+		if (rte_eth_bond_active_members_get(BOND_PORT, act_members, 16) ==
+				members_count) {
 			printf("\n");
 			break;
 		}
 		sleep(1);
 		printf("...");
 		if (--wait_counter == 0)
-			rte_exit(-1, "\nFailed to activate slaves\n");
+			rte_exit(-1, "\nFailed to activate members\n");
 	}
 
 	retval = rte_eth_promiscuous_enable(BOND_PORT);
@@ -631,7 +631,7 @@ static void cmd_help_parsed(__rte_unused void *parsed_result,
 			"send IP	- sends one ARPrequest through bonding for IP.\n"
 			"start		- starts listening ARPs.\n"
 			"stop		- stops lcore_main.\n"
-			"show		- shows some bond info: ex. active slaves etc.\n"
+			"show		- shows some bond info: ex. active members etc.\n"
 			"help		- prints help.\n"
 			"quit		- terminate all threads and quit.\n"
 		       );
@@ -742,13 +742,13 @@ static void cmd_show_parsed(__rte_unused void *parsed_result,
 			    struct cmdline *cl,
 			    __rte_unused void *data)
 {
-	uint16_t slaves[16] = {0};
+	uint16_t members[16] = {0};
 	uint8_t len = 16;
 	struct rte_ether_addr addr;
 	uint16_t i;
 	int ret;
 
-	for (i = 0; i < slaves_count; i++) {
+	for (i = 0; i < members_count; i++) {
 		ret = rte_eth_macaddr_get(i, &addr);
 		if (ret != 0) {
 			cmdline_printf(cl,
@@ -763,9 +763,9 @@ static void cmd_show_parsed(__rte_unused void *parsed_result,
 
 	rte_spinlock_lock(&global_flag_stru_p->lock);
 	cmdline_printf(cl,
-			"Active_slaves:%d "
+			"Active_members:%d "
 			"packets received:Tot:%d Arp:%d IPv4:%d\n",
-			rte_eth_bond_active_slaves_get(BOND_PORT, slaves, len),
+			rte_eth_bond_active_members_get(BOND_PORT, members, len),
 			global_flag_stru_p->port_packets[0],
 			global_flag_stru_p->port_packets[1],
 			global_flag_stru_p->port_packets[2]);
@@ -836,10 +836,10 @@ main(int argc, char *argv[])
 		rte_exit(EXIT_FAILURE, "Cannot create mbuf pool\n");
 
 	/* initialize all ports */
-	slaves_count = nb_ports;
+	members_count = nb_ports;
 	RTE_ETH_FOREACH_DEV(i) {
-		slave_port_init(i, mbuf_pool);
-		slaves[i] = i;
+		member_port_init(i, mbuf_pool);
+		members[i] = i;
 	}
 
 	bond_port_init(mbuf_pool);

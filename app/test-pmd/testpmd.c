@@ -602,27 +602,27 @@ eth_dev_configure_mp(uint16_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 }
 
 static int
-change_bonding_slave_port_status(portid_t bond_pid, bool is_stop)
+change_bonding_member_port_status(portid_t bond_pid, bool is_stop)
 {
 #ifdef RTE_NET_BOND
 
-	portid_t slave_pids[RTE_MAX_ETHPORTS];
+	portid_t member_pids[RTE_MAX_ETHPORTS];
 	struct rte_port *port;
-	int num_slaves;
-	portid_t slave_pid;
+	int num_members;
+	portid_t member_pid;
 	int i;
 
-	num_slaves = rte_eth_bond_slaves_get(bond_pid, slave_pids,
+	num_members = rte_eth_bond_members_get(bond_pid, member_pids,
 						RTE_MAX_ETHPORTS);
-	if (num_slaves < 0) {
-		fprintf(stderr, "Failed to get slave list for port = %u\n",
+	if (num_members < 0) {
+		fprintf(stderr, "Failed to get member list for port = %u\n",
 			bond_pid);
-		return num_slaves;
+		return num_members;
 	}
 
-	for (i = 0; i < num_slaves; i++) {
-		slave_pid = slave_pids[i];
-		port = &ports[slave_pid];
+	for (i = 0; i < num_members; i++) {
+		member_pid = member_pids[i];
+		port = &ports[member_pid];
 		port->port_status =
 			is_stop ? RTE_PORT_STOPPED : RTE_PORT_STARTED;
 	}
@@ -646,12 +646,12 @@ eth_dev_start_mp(uint16_t port_id)
 		struct rte_port *port = &ports[port_id];
 
 		/*
-		 * Starting a bonded port also starts all slaves under the bonded
+		 * Starting a bonded port also starts all members under the bonded
 		 * device. So if this port is bond device, we need to modify the
-		 * port status of these slaves.
+		 * port status of these members.
 		 */
 		if (port->bond_flag == 1)
-			return change_bonding_slave_port_status(port_id, false);
+			return change_bonding_member_port_status(port_id, false);
 	}
 
 	return 0;
@@ -670,12 +670,12 @@ eth_dev_stop_mp(uint16_t port_id)
 		struct rte_port *port = &ports[port_id];
 
 		/*
-		 * Stopping a bonded port also stops all slaves under the bonded
+		 * Stopping a bonded port also stops all members under the bonded
 		 * device. So if this port is bond device, we need to modify the
-		 * port status of these slaves.
+		 * port status of these members.
 		 */
 		if (port->bond_flag == 1)
-			return change_bonding_slave_port_status(port_id, true);
+			return change_bonding_member_port_status(port_id, true);
 	}
 
 	return 0;
@@ -2624,7 +2624,7 @@ all_ports_started(void)
 		port = &ports[pi];
 		/* Check if there is a port which is not started */
 		if ((port->port_status != RTE_PORT_STARTED) &&
-			(port->slave_flag == 0))
+			(port->member_flag == 0))
 			return 0;
 	}
 
@@ -2638,7 +2638,7 @@ port_is_stopped(portid_t port_id)
 	struct rte_port *port = &ports[port_id];
 
 	if ((port->port_status != RTE_PORT_STOPPED) &&
-	    (port->slave_flag == 0))
+	    (port->member_flag == 0))
 		return 0;
 	return 1;
 }
@@ -2984,8 +2984,8 @@ fill_xstats_display_info(void)
 
 /*
  * Some capabilities (like, rx_offload_capa and tx_offload_capa) of bonding
- * device in dev_info is zero when no slave is added. And its capability
- * will be updated when add a new slave device. So adding a slave device need
+ * device in dev_info is zero when no member is added. And its capability
+ * will be updated when add a new member device. So adding a member device need
  * to update the port configurations of bonding device.
  */
 static void
@@ -3042,7 +3042,7 @@ start_port(portid_t pid)
 		if (pid != pi && pid != (portid_t)RTE_PORT_ALL)
 			continue;
 
-		if (port_is_bonding_slave(pi)) {
+		if (port_is_bonding_member(pi)) {
 			fprintf(stderr,
 				"Please remove port %d from bonded device.\n",
 				pi);
@@ -3364,7 +3364,7 @@ stop_port(portid_t pid)
 			continue;
 		}
 
-		if (port_is_bonding_slave(pi)) {
+		if (port_is_bonding_member(pi)) {
 			fprintf(stderr,
 				"Please remove port %d from bonded device.\n",
 				pi);
@@ -3453,28 +3453,28 @@ flush_port_owned_resources(portid_t pi)
 }
 
 static void
-clear_bonding_slave_device(portid_t *slave_pids, uint16_t num_slaves)
+clear_bonding_member_device(portid_t *member_pids, uint16_t num_members)
 {
 	struct rte_port *port;
-	portid_t slave_pid;
+	portid_t member_pid;
 	uint16_t i;
 
-	for (i = 0; i < num_slaves; i++) {
-		slave_pid = slave_pids[i];
-		if (port_is_started(slave_pid) == 1) {
-			if (rte_eth_dev_stop(slave_pid) != 0)
+	for (i = 0; i < num_members; i++) {
+		member_pid = member_pids[i];
+		if (port_is_started(member_pid) == 1) {
+			if (rte_eth_dev_stop(member_pid) != 0)
 				fprintf(stderr, "rte_eth_dev_stop failed for port %u\n",
-					slave_pid);
+					member_pid);
 
-			port = &ports[slave_pid];
+			port = &ports[member_pid];
 			port->port_status = RTE_PORT_STOPPED;
 		}
 
-		clear_port_slave_flag(slave_pid);
+		clear_port_member_flag(member_pid);
 
-		/* Close slave device when testpmd quit or is killed. */
+		/* Close member device when testpmd quit or is killed. */
 		if (cl_quit == 1 || f_quit == 1)
-			rte_eth_dev_close(slave_pid);
+			rte_eth_dev_close(member_pid);
 	}
 }
 
@@ -3483,8 +3483,8 @@ close_port(portid_t pid)
 {
 	portid_t pi;
 	struct rte_port *port;
-	portid_t slave_pids[RTE_MAX_ETHPORTS];
-	int num_slaves = 0;
+	portid_t member_pids[RTE_MAX_ETHPORTS];
+	int num_members = 0;
 
 	if (port_id_is_invalid(pid, ENABLED_WARN))
 		return;
@@ -3502,7 +3502,7 @@ close_port(portid_t pid)
 			continue;
 		}
 
-		if (port_is_bonding_slave(pi)) {
+		if (port_is_bonding_member(pi)) {
 			fprintf(stderr,
 				"Please remove port %d from bonded device.\n",
 				pi);
@@ -3519,17 +3519,17 @@ close_port(portid_t pid)
 			flush_port_owned_resources(pi);
 #ifdef RTE_NET_BOND
 			if (port->bond_flag == 1)
-				num_slaves = rte_eth_bond_slaves_get(pi,
-						slave_pids, RTE_MAX_ETHPORTS);
+				num_members = rte_eth_bond_members_get(pi,
+						member_pids, RTE_MAX_ETHPORTS);
 #endif
 			rte_eth_dev_close(pi);
 			/*
-			 * If this port is bonded device, all slaves under the
+			 * If this port is bonded device, all members under the
 			 * device need to be removed or closed.
 			 */
-			if (port->bond_flag == 1 && num_slaves > 0)
-				clear_bonding_slave_device(slave_pids,
-							num_slaves);
+			if (port->bond_flag == 1 && num_members > 0)
+				clear_bonding_member_device(member_pids,
+							num_members);
 		}
 
 		free_xstats_display_info(pi);
@@ -3569,7 +3569,7 @@ reset_port(portid_t pid)
 			continue;
 		}
 
-		if (port_is_bonding_slave(pi)) {
+		if (port_is_bonding_member(pi)) {
 			fprintf(stderr,
 				"Please remove port %d from bonded device.\n",
 				pi);
@@ -4217,38 +4217,39 @@ init_port_config(void)
 	}
 }
 
-void set_port_slave_flag(portid_t slave_pid)
+void set_port_member_flag(portid_t member_pid)
 {
 	struct rte_port *port;
 
-	port = &ports[slave_pid];
-	port->slave_flag = 1;
+	port = &ports[member_pid];
+	port->member_flag = 1;
 }
 
-void clear_port_slave_flag(portid_t slave_pid)
+void clear_port_member_flag(portid_t member_pid)
 {
 	struct rte_port *port;
 
-	port = &ports[slave_pid];
-	port->slave_flag = 0;
+	port = &ports[member_pid];
+	port->member_flag = 0;
 }
 
-uint8_t port_is_bonding_slave(portid_t slave_pid)
+uint8_t port_is_bonding_member(portid_t member_pid)
 {
 	struct rte_port *port;
 	struct rte_eth_dev_info dev_info;
 	int ret;
 
-	port = &ports[slave_pid];
-	ret = eth_dev_info_get_print_err(slave_pid, &dev_info);
+	port = &ports[member_pid];
+	ret = eth_dev_info_get_print_err(member_pid, &dev_info);
 	if (ret != 0) {
 		TESTPMD_LOG(ERR,
 			"Failed to get device info for port id %d,"
-			"cannot determine if the port is a bonded slave",
-			slave_pid);
+			"cannot determine if the port is a bonded member",
+			member_pid);
 		return 0;
 	}
-	if ((*dev_info.dev_flags & RTE_ETH_DEV_BONDING_MEMBER) || (port->slave_flag == 1))
+
+	if ((*dev_info.dev_flags & RTE_ETH_DEV_BONDING_MEMBER) || (port->member_flag == 1))
 		return 1;
 	return 0;
 }

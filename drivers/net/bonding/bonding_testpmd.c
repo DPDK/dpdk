@@ -279,7 +279,7 @@ struct cmd_set_bonding_primary_result {
 	cmdline_fixed_string_t set;
 	cmdline_fixed_string_t bonding;
 	cmdline_fixed_string_t primary;
-	portid_t slave_id;
+	portid_t member_id;
 	portid_t port_id;
 };
 
@@ -287,13 +287,13 @@ static void cmd_set_bonding_primary_parsed(void *parsed_result,
 	__rte_unused struct cmdline *cl, __rte_unused void *data)
 {
 	struct cmd_set_bonding_primary_result *res = parsed_result;
-	portid_t master_port_id = res->port_id;
-	portid_t slave_port_id = res->slave_id;
+	portid_t main_port_id = res->port_id;
+	portid_t member_port_id = res->member_id;
 
-	/* Set the primary slave for a bonded device. */
-	if (rte_eth_bond_primary_set(master_port_id, slave_port_id) != 0) {
-		fprintf(stderr, "\t Failed to set primary slave for port = %d.\n",
-			master_port_id);
+	/* Set the primary member for a bonded device. */
+	if (rte_eth_bond_primary_set(main_port_id, member_port_id) != 0) {
+		fprintf(stderr, "\t Failed to set primary member for port = %d.\n",
+			main_port_id);
 		return;
 	}
 	init_port_config();
@@ -308,141 +308,141 @@ static cmdline_parse_token_string_t cmd_setbonding_primary_bonding =
 static cmdline_parse_token_string_t cmd_setbonding_primary_primary =
 	TOKEN_STRING_INITIALIZER(struct cmd_set_bonding_primary_result,
 		primary, "primary");
-static cmdline_parse_token_num_t cmd_setbonding_primary_slave =
+static cmdline_parse_token_num_t cmd_setbonding_primary_member =
 	TOKEN_NUM_INITIALIZER(struct cmd_set_bonding_primary_result,
-		slave_id, RTE_UINT16);
+		member_id, RTE_UINT16);
 static cmdline_parse_token_num_t cmd_setbonding_primary_port =
 	TOKEN_NUM_INITIALIZER(struct cmd_set_bonding_primary_result,
 		port_id, RTE_UINT16);
 
 static cmdline_parse_inst_t cmd_set_bonding_primary = {
 	.f = cmd_set_bonding_primary_parsed,
-	.help_str = "set bonding primary <slave_id> <port_id>: "
-		"Set the primary slave for port_id",
+	.help_str = "set bonding primary <member_id> <port_id>: "
+		"Set the primary member for port_id",
 	.data = NULL,
 	.tokens = {
 		(void *)&cmd_setbonding_primary_set,
 		(void *)&cmd_setbonding_primary_bonding,
 		(void *)&cmd_setbonding_primary_primary,
-		(void *)&cmd_setbonding_primary_slave,
+		(void *)&cmd_setbonding_primary_member,
 		(void *)&cmd_setbonding_primary_port,
 		NULL
 	}
 };
 
-/* *** ADD SLAVE *** */
-struct cmd_add_bonding_slave_result {
+/* *** ADD Member *** */
+struct cmd_add_bonding_member_result {
 	cmdline_fixed_string_t add;
 	cmdline_fixed_string_t bonding;
-	cmdline_fixed_string_t slave;
-	portid_t slave_id;
+	cmdline_fixed_string_t member;
+	portid_t member_id;
 	portid_t port_id;
 };
 
-static void cmd_add_bonding_slave_parsed(void *parsed_result,
+static void cmd_add_bonding_member_parsed(void *parsed_result,
 	__rte_unused struct cmdline *cl, __rte_unused void *data)
 {
-	struct cmd_add_bonding_slave_result *res = parsed_result;
-	portid_t master_port_id = res->port_id;
-	portid_t slave_port_id = res->slave_id;
+	struct cmd_add_bonding_member_result *res = parsed_result;
+	portid_t main_port_id = res->port_id;
+	portid_t member_port_id = res->member_id;
 
-	/* add the slave for a bonded device. */
-	if (rte_eth_bond_slave_add(master_port_id, slave_port_id) != 0) {
+	/* add the member for a bonded device. */
+	if (rte_eth_bond_member_add(main_port_id, member_port_id) != 0) {
 		fprintf(stderr,
-			"\t Failed to add slave %d to master port = %d.\n",
-			slave_port_id, master_port_id);
+			"\t Failed to add member %d to main port = %d.\n",
+			member_port_id, main_port_id);
 		return;
 	}
-	ports[master_port_id].update_conf = 1;
+	ports[main_port_id].update_conf = 1;
 	init_port_config();
-	set_port_slave_flag(slave_port_id);
+	set_port_member_flag(member_port_id);
 }
 
-static cmdline_parse_token_string_t cmd_addbonding_slave_add =
-	TOKEN_STRING_INITIALIZER(struct cmd_add_bonding_slave_result,
+static cmdline_parse_token_string_t cmd_addbonding_member_add =
+	TOKEN_STRING_INITIALIZER(struct cmd_add_bonding_member_result,
 		add, "add");
-static cmdline_parse_token_string_t cmd_addbonding_slave_bonding =
-	TOKEN_STRING_INITIALIZER(struct cmd_add_bonding_slave_result,
+static cmdline_parse_token_string_t cmd_addbonding_member_bonding =
+	TOKEN_STRING_INITIALIZER(struct cmd_add_bonding_member_result,
 		bonding, "bonding");
-static cmdline_parse_token_string_t cmd_addbonding_slave_slave =
-	TOKEN_STRING_INITIALIZER(struct cmd_add_bonding_slave_result,
-		slave, "slave");
-static cmdline_parse_token_num_t cmd_addbonding_slave_slaveid =
-	TOKEN_NUM_INITIALIZER(struct cmd_add_bonding_slave_result,
-		slave_id, RTE_UINT16);
-static cmdline_parse_token_num_t cmd_addbonding_slave_port =
-	TOKEN_NUM_INITIALIZER(struct cmd_add_bonding_slave_result,
+static cmdline_parse_token_string_t cmd_addbonding_member_member =
+	TOKEN_STRING_INITIALIZER(struct cmd_add_bonding_member_result,
+		member, "member");
+static cmdline_parse_token_num_t cmd_addbonding_member_memberid =
+	TOKEN_NUM_INITIALIZER(struct cmd_add_bonding_member_result,
+		member_id, RTE_UINT16);
+static cmdline_parse_token_num_t cmd_addbonding_member_port =
+	TOKEN_NUM_INITIALIZER(struct cmd_add_bonding_member_result,
 		port_id, RTE_UINT16);
 
-static cmdline_parse_inst_t cmd_add_bonding_slave = {
-	.f = cmd_add_bonding_slave_parsed,
-	.help_str = "add bonding slave <slave_id> <port_id>: "
-		"Add a slave device to a bonded device",
+static cmdline_parse_inst_t cmd_add_bonding_member = {
+	.f = cmd_add_bonding_member_parsed,
+	.help_str = "add bonding member <member_id> <port_id>: "
+		"Add a member device to a bonded device",
 	.data = NULL,
 	.tokens = {
-		(void *)&cmd_addbonding_slave_add,
-		(void *)&cmd_addbonding_slave_bonding,
-		(void *)&cmd_addbonding_slave_slave,
-		(void *)&cmd_addbonding_slave_slaveid,
-		(void *)&cmd_addbonding_slave_port,
+		(void *)&cmd_addbonding_member_add,
+		(void *)&cmd_addbonding_member_bonding,
+		(void *)&cmd_addbonding_member_member,
+		(void *)&cmd_addbonding_member_memberid,
+		(void *)&cmd_addbonding_member_port,
 		NULL
 	}
 };
 
-/* *** REMOVE SLAVE *** */
-struct cmd_remove_bonding_slave_result {
+/* *** REMOVE Member *** */
+struct cmd_remove_bonding_member_result {
 	cmdline_fixed_string_t remove;
 	cmdline_fixed_string_t bonding;
-	cmdline_fixed_string_t slave;
-	portid_t slave_id;
+	cmdline_fixed_string_t member;
+	portid_t member_id;
 	portid_t port_id;
 };
 
-static void cmd_remove_bonding_slave_parsed(void *parsed_result,
+static void cmd_remove_bonding_member_parsed(void *parsed_result,
 	__rte_unused struct cmdline *cl, __rte_unused void *data)
 {
-	struct cmd_remove_bonding_slave_result *res = parsed_result;
-	portid_t master_port_id = res->port_id;
-	portid_t slave_port_id = res->slave_id;
+	struct cmd_remove_bonding_member_result *res = parsed_result;
+	portid_t main_port_id = res->port_id;
+	portid_t member_port_id = res->member_id;
 
-	/* remove the slave from a bonded device. */
-	if (rte_eth_bond_slave_remove(master_port_id, slave_port_id) != 0) {
+	/* remove the member from a bonded device. */
+	if (rte_eth_bond_member_remove(main_port_id, member_port_id) != 0) {
 		fprintf(stderr,
-			"\t Failed to remove slave %d from master port = %d.\n",
-			slave_port_id, master_port_id);
+			"\t Failed to remove member %d from main port = %d.\n",
+			member_port_id, main_port_id);
 		return;
 	}
 	init_port_config();
-	clear_port_slave_flag(slave_port_id);
+	clear_port_member_flag(member_port_id);
 }
 
-static cmdline_parse_token_string_t cmd_removebonding_slave_remove =
-	TOKEN_STRING_INITIALIZER(struct cmd_remove_bonding_slave_result,
+static cmdline_parse_token_string_t cmd_removebonding_member_remove =
+	TOKEN_STRING_INITIALIZER(struct cmd_remove_bonding_member_result,
 		remove, "remove");
-static cmdline_parse_token_string_t cmd_removebonding_slave_bonding =
-	TOKEN_STRING_INITIALIZER(struct cmd_remove_bonding_slave_result,
+static cmdline_parse_token_string_t cmd_removebonding_member_bonding =
+	TOKEN_STRING_INITIALIZER(struct cmd_remove_bonding_member_result,
 		bonding, "bonding");
-static cmdline_parse_token_string_t cmd_removebonding_slave_slave =
-	TOKEN_STRING_INITIALIZER(struct cmd_remove_bonding_slave_result,
-		slave, "slave");
-static cmdline_parse_token_num_t cmd_removebonding_slave_slaveid =
-	TOKEN_NUM_INITIALIZER(struct cmd_remove_bonding_slave_result,
-		slave_id, RTE_UINT16);
-static cmdline_parse_token_num_t cmd_removebonding_slave_port =
-	TOKEN_NUM_INITIALIZER(struct cmd_remove_bonding_slave_result,
+static cmdline_parse_token_string_t cmd_removebonding_member_member =
+	TOKEN_STRING_INITIALIZER(struct cmd_remove_bonding_member_result,
+		member, "member");
+static cmdline_parse_token_num_t cmd_removebonding_member_memberid =
+	TOKEN_NUM_INITIALIZER(struct cmd_remove_bonding_member_result,
+		member_id, RTE_UINT16);
+static cmdline_parse_token_num_t cmd_removebonding_member_port =
+	TOKEN_NUM_INITIALIZER(struct cmd_remove_bonding_member_result,
 		port_id, RTE_UINT16);
 
-static cmdline_parse_inst_t cmd_remove_bonding_slave = {
-	.f = cmd_remove_bonding_slave_parsed,
-	.help_str = "remove bonding slave <slave_id> <port_id>: "
-		"Remove a slave device from a bonded device",
+static cmdline_parse_inst_t cmd_remove_bonding_member = {
+	.f = cmd_remove_bonding_member_parsed,
+	.help_str = "remove bonding member <member_id> <port_id>: "
+		"Remove a member device from a bonded device",
 	.data = NULL,
 	.tokens = {
-		(void *)&cmd_removebonding_slave_remove,
-		(void *)&cmd_removebonding_slave_bonding,
-		(void *)&cmd_removebonding_slave_slave,
-		(void *)&cmd_removebonding_slave_slaveid,
-		(void *)&cmd_removebonding_slave_port,
+		(void *)&cmd_removebonding_member_remove,
+		(void *)&cmd_removebonding_member_bonding,
+		(void *)&cmd_removebonding_member_member,
+		(void *)&cmd_removebonding_member_memberid,
+		(void *)&cmd_removebonding_member_port,
 		NULL
 	}
 };
@@ -706,18 +706,18 @@ static struct testpmd_driver_commands bonding_cmds = {
 	},
 	{
 		&cmd_set_bonding_primary,
-		"set bonding primary (slave_id) (port_id)\n"
-		"	Set the primary slave for a bonded device.\n",
+		"set bonding primary (member_id) (port_id)\n"
+		"	Set the primary member for a bonded device.\n",
 	},
 	{
-		&cmd_add_bonding_slave,
-		"add bonding slave (slave_id) (port_id)\n"
-		"	Add a slave device to a bonded device.\n",
+		&cmd_add_bonding_member,
+		"add bonding member (member_id) (port_id)\n"
+		"	Add a member device to a bonded device.\n",
 	},
 	{
-		&cmd_remove_bonding_slave,
-		"remove bonding slave (slave_id) (port_id)\n"
-		"	Remove a slave device from a bonded device.\n",
+		&cmd_remove_bonding_member,
+		"remove bonding member (member_id) (port_id)\n"
+		"	Remove a member device from a bonded device.\n",
 	},
 	{
 		&cmd_create_bonded_device,
