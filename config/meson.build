@@ -14,6 +14,14 @@ foreach env:supported_exec_envs
     set_variable('is_' + env, exec_env == env)
 endforeach
 
+exec_envs = {'freebsd': 0, 'linux': 1, 'windows': 2}
+foreach env, id:exec_envs
+    dpdk_conf.set('RTE_ENV_' + env.to_upper(), id)
+    dpdk_conf.set10('RTE_EXEC_ENV_IS_' + env.to_upper(), (exec_env == env))
+endforeach
+dpdk_conf.set('RTE_EXEC_ENV', exec_envs[exec_env])
+dpdk_conf.set('RTE_EXEC_ENV_' + exec_env.to_upper(), 1)
+
 # MS linker requires special treatment.
 # TODO: use cc.get_linker_id() with Meson >= 0.54
 is_ms_linker = is_windows and (cc.get_id() == 'clang')
