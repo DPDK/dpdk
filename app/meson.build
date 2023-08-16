@@ -101,7 +101,7 @@ foreach app:apps
         link_libs = dpdk_static_libraries + dpdk_drivers
     endif
 
-    executable('dpdk-' + name,
+    exec = executable('dpdk-' + name,
             sources,
             c_args: cflags,
             link_args: ldflags,
@@ -110,4 +110,9 @@ foreach app:apps
             include_directories: includes,
             install_rpath: join_paths(get_option('prefix'), driver_install_path),
             install: true)
+    if name == 'test'
+        dpdk_test = exec
+        autotest_sources = sources
+        subdir('test/suites')  # define the pre-canned test suites
+    endif
 endforeach

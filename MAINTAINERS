@@ -1731,7 +1731,6 @@ Test Applications
 
 Unit tests framework
 F: app/test/commands.c
-F: app/test/has_hugepage.py
 F: app/test/packet_burst_generator.c
 F: app/test/packet_burst_generator.h
 F: app/test/process.h
@@ -1742,6 +1741,8 @@ F: app/test/test_pmd_perf.c
 F: app/test/test_resource.c
 F: app/test/virtual_pmd.c
 F: app/test/virtual_pmd.h
+F: buildtools/has-hugepages.py
+F: buildtools/get-test-suites.py
 
 Sample packet helper functions for unit test
 M: Reshma Pattan <reshma.pattan@intel.com>

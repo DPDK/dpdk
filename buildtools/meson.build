@@ -18,6 +18,8 @@ map_to_win_cmd = py3 + files('map_to_win.py')
 sphinx_wrapper = py3 + files('call-sphinx-build.py')
 get_cpu_count_cmd = py3 + files('get-cpu-count.py')
 get_numa_count_cmd = py3 + files('get-numa-count.py')
+get_test_suites_cmd = py3 + files('get-test-suites.py')
+has_hugepages_cmd = py3 + files('has-hugepages.py')
 binutils_avx512_check = (py3 + files('binutils-avx512-check.py') +
                         [objdump] + cc.cmd_array())
 
