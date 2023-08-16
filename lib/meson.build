@@ -67,8 +67,12 @@ libraries = [
 ]
 
 optional_libs = [
+        'bbdev',
         'bitratestats',
         'cfgfile',
+        'compressdev',
+        'dmadev',
+        'eventdev',
         'gpudev',
         'graph',
         'gro',
@@ -76,11 +80,14 @@ optional_libs = [
         'jobstats',
         'latencystats',
         'metrics',
+        'mldev',
         'node',
         'pdump',
         'pipeline',
         'port',
         'power',
+        'rawdev',
+        'regexdev',
         'table',
         'vhost',
 ]
