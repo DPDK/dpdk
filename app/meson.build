@@ -32,6 +32,11 @@ apps = [
         'test-security-perf',
 ]
 
+if get_option('tests')
+# build the auto test app if enabled.
+    apps += 'test'
+endif
+
 default_cflags = machine_args + ['-DALLOW_EXPERIMENTAL_API']
 default_ldflags = []
 if get_option('default_library') == 'static' and not is_windows
@@ -106,6 +111,3 @@ foreach app:apps
             install_rpath: join_paths(get_option('prefix'), driver_install_path),
             install: true)
 endforeach
-
-# special case the autotests
-subdir('test')
