@@ -99,6 +99,8 @@ Removed Items
 
 * eal: Removed deprecated ``RTE_FUNC_PTR_OR_*`` macros.
 
+* ethdev: Removed deprecated macro ``RTE_ETH_DEV_BONDED_SLAVE``.
+
 * flow_classify: Removed flow classification library and examples.
 
 * kni: Removed the Kernel Network Interface (KNI) library and driver.
