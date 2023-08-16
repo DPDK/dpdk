@@ -27,10 +27,12 @@ if cc.has_argument('-mavx512f')
     endif
 endif
 
-# we require SSE4.2 for DPDK
-if cc.get_define('__SSE4_2__', args: machine_args) == ''
-    message('SSE 4.2 not enabled by default, explicitly enabling')
-    machine_args += '-msse4'
+if not is_ms_compiler
+    # we require SSE4.2 for DPDK
+    if cc.get_define('__SSE4_2__', args: machine_args) == ''
+        message('SSE 4.2 not enabled by default, explicitly enabling')
+        machine_args += '-msse4'
+    endif
 endif
 
 base_flags = ['SSE', 'SSE2', 'SSE3','SSSE3', 'SSE4_1', 'SSE4_2']

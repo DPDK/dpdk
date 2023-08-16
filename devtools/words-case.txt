@@ -54,6 +54,7 @@ MPU
 MSI
 MSI-X
 MSS
+MSVC
 MTU
 NEON
 Netlink

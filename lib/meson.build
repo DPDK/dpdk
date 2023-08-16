@@ -267,9 +267,16 @@ foreach l:libraries
                 output: '@0@_exports.def'.format(libname))
         lk_deps += [def_file]
 
-        lk_args = ['-Wl,/def:' + def_file.full_path()]
-        if meson.version().version_compare('<0.54.0')
-            lk_args += ['-Wl,/implib:lib\\librte_' + l + '.dll.a']
+        if is_ms_compiler
+            lk_args = ['/def:' + def_file.full_path()]
+            if meson.version().version_compare('<0.54.0')
+                lk_args += ['/implib:lib\\librte_' + l + '.dll.a']
+            endif
+        else
+            lk_args = ['-Wl,/def:' + def_file.full_path()]
+            if meson.version().version_compare('<0.54.0')
+                lk_args += ['-Wl,/implib:lib\\librte_' + l + '.dll.a']
+            endif
         endif
     else
         if is_windows

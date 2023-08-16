@@ -24,7 +24,8 @@ dpdk_conf.set('RTE_EXEC_ENV_' + exec_env.to_upper(), 1)
 
 # MS linker requires special treatment.
 # TODO: use cc.get_linker_id() with Meson >= 0.54
-is_ms_linker = is_windows and (cc.get_id() == 'clang')
+is_ms_compiler = is_windows and (cc.get_id() == 'msvc')
+is_ms_linker = is_windows and (cc.get_id() == 'clang' or is_ms_compiler)
 
 # set the major version, which might be used by drivers and libraries
 # depending on the configuration options
@@ -137,12 +138,14 @@ endif
 dpdk_conf.set('RTE_MACHINE', cpu_instruction_set)
 machine_args = []
 
-# ppc64 does not support -march= at all, use -mcpu and -mtune for that
-if host_machine.cpu_family().startswith('ppc')
-    machine_args += '-mcpu=' + cpu_instruction_set
-    machine_args += '-mtune=' + cpu_instruction_set
-else
-    machine_args += '-march=' + cpu_instruction_set
+if not is_ms_compiler
+    # ppc64 does not support -march= at all, use -mcpu and -mtune for that
+    if host_machine.cpu_family().startswith('ppc')
+        machine_args += '-mcpu=' + cpu_instruction_set
+        machine_args += '-mtune=' + cpu_instruction_set
+    else
+        machine_args += '-march=' + cpu_instruction_set
+    endif
 endif
 
 toolchain = cc.get_id()
@@ -261,7 +264,11 @@ if cc.get_id() == 'clang' and dpdk_conf.get('RTE_ARCH_64') == false
 endif
 
 # add -include rte_config to cflags
-add_project_arguments('-include', 'rte_config.h', language: 'c')
+if is_ms_compiler
+    add_project_arguments('/FI', 'rte_config.h', language: 'c')
+else
+    add_project_arguments('-include', 'rte_config.h', language: 'c')
+endif
 
 # enable extra warnings and disable any unwanted warnings
 # -Wall is added by default at warning level 1, and -Wextra
