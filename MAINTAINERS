@@ -1698,6 +1698,7 @@ Telemetry
 M: Ciara Power <ciara.power@intel.com>
 F: lib/telemetry/
 F: app/test/test_telemetry*
+F: app/test/suites/test_telemetry.sh
 F: usertools/dpdk-telemetry*
 F: doc/guides/howto/telemetry.rst
 
