@@ -90,6 +90,7 @@
 
 /* rte_power defines */
 #define RTE_MAX_LCORE_FREQS 64
+#define RTE_MAX_UNCORE_FREQS 64
 
 /* rte_graph defines */
 #define RTE_GRAPH_BURST_SIZE 256

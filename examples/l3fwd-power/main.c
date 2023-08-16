@@ -46,7 +46,7 @@
 #include <rte_metrics.h>
 #include <rte_telemetry.h>
 #include <rte_power_pmd_mgmt.h>
-#include <rte_power_intel_uncore.h>
+#include <rte_power_uncore.h>
 
 #include "perf_core.h"
 #include "main.h"

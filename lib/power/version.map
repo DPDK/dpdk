@@ -52,4 +52,10 @@ EXPERIMENTAL {
 	rte_power_uncore_get_num_freqs;
 	rte_power_uncore_get_num_pkgs;
 	rte_power_uncore_init;
+
+	# added in 23.11
+	rte_power_get_uncore_env;
+	rte_power_set_uncore_env;
+	rte_power_uncore_freqs;
+	rte_power_unset_uncore_env;
 };

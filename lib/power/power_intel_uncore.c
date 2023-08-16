@@ -8,7 +8,7 @@
 
 #include <rte_memcpy.h>
 
-#include "rte_power_intel_uncore.h"
+#include "power_intel_uncore.h"
 #include "power_common.h"
 
 #define MAX_UNCORE_FREQS 32
@@ -246,7 +246,7 @@ static int
 check_pkg_die_values(unsigned int pkg, unsigned int die)
 {
 	unsigned int max_pkgs, max_dies;
-	max_pkgs = rte_power_uncore_get_num_pkgs();
+	max_pkgs = power_intel_uncore_get_num_pkgs();
 	if (max_pkgs == 0)
 		return -1;
 	if (pkg >= max_pkgs) {
@@ -255,7 +255,7 @@ check_pkg_die_values(unsigned int pkg, unsigned int die)
 		return -1;
 	}
 
-	max_dies = rte_power_uncore_get_num_dies(pkg);
+	max_dies = power_intel_uncore_get_num_dies(pkg);
 	if (max_dies == 0)
 		return -1;
 	if (die >= max_dies) {
@@ -268,7 +268,7 @@ check_pkg_die_values(unsigned int pkg, unsigned int die)
 }
 
 int
-rte_power_uncore_init(unsigned int pkg, unsigned int die)
+power_intel_uncore_init(unsigned int pkg, unsigned int die)
 {
 	struct uncore_power_info *ui;
 
@@ -298,7 +298,7 @@ rte_power_uncore_init(unsigned int pkg, unsigned int die)
 }
 
 int
-rte_power_uncore_exit(unsigned int pkg, unsigned int die)
+power_intel_uncore_exit(unsigned int pkg, unsigned int die)
 {
 	struct uncore_power_info *ui;
 
@@ -333,7 +333,7 @@ rte_power_uncore_exit(unsigned int pkg, unsigned int die)
 }
 
 uint32_t
-rte_power_get_uncore_freq(unsigned int pkg, unsigned int die)
+power_get_intel_uncore_freq(unsigned int pkg, unsigned int die)
 {
 	int ret = check_pkg_die_values(pkg, die);
 	if (ret < 0)
@@ -343,7 +343,7 @@ rte_power_get_uncore_freq(unsigned int pkg, unsigned int die)
 }
 
 int
-rte_power_set_uncore_freq(unsigned int pkg, unsigned int die, uint32_t index)
+power_set_intel_uncore_freq(unsigned int pkg, unsigned int die, uint32_t index)
 {
 	int ret = check_pkg_die_values(pkg, die);
 	if (ret < 0)
@@ -353,7 +353,7 @@ rte_power_set_uncore_freq(unsigned int pkg, unsigned int die, uint32_t index)
 }
 
 int
-rte_power_uncore_freq_max(unsigned int pkg, unsigned int die)
+power_intel_uncore_freq_max(unsigned int pkg, unsigned int die)
 {
 	int ret = check_pkg_die_values(pkg, die);
 	if (ret < 0)
@@ -364,7 +364,7 @@ rte_power_uncore_freq_max(unsigned int pkg, unsigned int die)
 
 
 int
-rte_power_uncore_freq_min(unsigned int pkg, unsigned int die)
+power_intel_uncore_freq_min(unsigned int pkg, unsigned int die)
 {
 	int ret = check_pkg_die_values(pkg, die);
 	if (ret < 0)
@@ -376,7 +376,31 @@ rte_power_uncore_freq_min(unsigned int pkg, unsigned int die)
 }
 
 int
-rte_power_uncore_get_num_freqs(unsigned int pkg, unsigned int die)
+power_intel_uncore_freqs(unsigned int pkg, unsigned int die, uint32_t *freqs, uint32_t num)
+{
+	struct uncore_power_info *ui;
+
+	int ret = check_pkg_die_values(pkg, die);
+	if (ret < 0)
+		return -1;
+
+	if (freqs == NULL) {
+		RTE_LOG(ERR, POWER, "NULL buffer supplied\n");
+		return 0;
+	}
+
+	ui = &uncore_info[pkg][die];
+	if (num < ui->nb_freqs) {
+		RTE_LOG(ERR, POWER, "Buffer size is not enough\n");
+		return 0;
+	}
+	rte_memcpy(freqs, ui->freqs, ui->nb_freqs * sizeof(uint32_t));
+
+	return ui->nb_freqs;
+}
+
+int
+power_intel_uncore_get_num_freqs(unsigned int pkg, unsigned int die)
 {
 	int ret = check_pkg_die_values(pkg, die);
 	if (ret < 0)
@@ -386,7 +410,7 @@ rte_power_uncore_get_num_freqs(unsigned int pkg, unsigned int die)
 }
 
 unsigned int
-rte_power_uncore_get_num_pkgs(void)
+power_intel_uncore_get_num_pkgs(void)
 {
 	DIR *d;
 	struct dirent *dir;
@@ -397,7 +421,7 @@ rte_power_uncore_get_num_pkgs(void)
 	if (d == NULL) {
 		RTE_LOG(ERR, POWER,
 		"Uncore frequency management not supported/enabled on this kernel. "
-		"Please enable CONFIG_INTEL_UNCORE_FREQ_CONTROL if on x86 with linux kernel"
+		"Please enable CONFIG_INTEL_UNCORE_FREQ_CONTROL if on Intel x86 with linux kernel"
 		" >= 5.6\n");
 		return 0;
 	}
@@ -416,14 +440,14 @@ rte_power_uncore_get_num_pkgs(void)
 }
 
 unsigned int
-rte_power_uncore_get_num_dies(unsigned int pkg)
+power_intel_uncore_get_num_dies(unsigned int pkg)
 {
 	DIR *d;
 	struct dirent *dir;
 	unsigned int count = 0, max_pkgs;
 	char filter[FILTER_LENGTH];
 
-	max_pkgs = rte_power_uncore_get_num_pkgs();
+	max_pkgs = power_intel_uncore_get_num_pkgs();
 	if (max_pkgs == 0)
 		return 0;
 	if (pkg >= max_pkgs) {
@@ -435,7 +459,7 @@ rte_power_uncore_get_num_dies(unsigned int pkg)
 	if (d == NULL) {
 		RTE_LOG(ERR, POWER,
 		"Uncore frequency management not supported/enabled on this kernel. "
-		"Please enable CONFIG_INTEL_UNCORE_FREQ_CONTROL if on x86 with linux kernel"
+		"Please enable CONFIG_INTEL_UNCORE_FREQ_CONTROL if on Intel x86 with linux kernel"
 		" >= 5.6\n");
 		return 0;
 	}
