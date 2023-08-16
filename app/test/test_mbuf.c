@@ -2955,4 +2955,4 @@ err:
 }
 #undef GOTO_FAIL
 
-REGISTER_TEST_COMMAND(mbuf_autotest, test_mbuf);
+REGISTER_FAST_TEST(mbuf_autotest, false, true, test_mbuf);

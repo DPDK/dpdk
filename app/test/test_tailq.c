@@ -125,4 +125,4 @@ test_tailq(void)
 	return ret;
 }
 
-REGISTER_TEST_COMMAND(tailq_autotest, test_tailq);
+REGISTER_FAST_TEST(tailq_autotest, true, true, test_tailq);

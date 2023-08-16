@@ -1000,4 +1000,4 @@ test_reassembly_perf(void)
 	return TEST_SUCCESS;
 }
 
-REGISTER_TEST_COMMAND(reassembly_perf_autotest, test_reassembly_perf);
+REGISTER_PERF_TEST(reassembly_perf_autotest, test_reassembly_perf);

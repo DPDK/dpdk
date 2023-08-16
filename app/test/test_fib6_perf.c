@@ -156,4 +156,4 @@ test_fib6_perf(void)
 	return 0;
 }
 
-REGISTER_TEST_COMMAND(fib6_perf_autotest, test_fib6_perf);
+REGISTER_PERF_TEST(fib6_perf_autotest, test_fib6_perf);

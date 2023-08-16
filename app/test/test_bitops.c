@@ -135,4 +135,4 @@ test_bitops(void)
 	return TEST_SUCCESS;
 }
 
-REGISTER_TEST_COMMAND(bitops_autotest, test_bitops);
+REGISTER_FAST_TEST(bitops_autotest, true, true, test_bitops);

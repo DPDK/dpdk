@@ -250,4 +250,4 @@ test_trace(void)
 
 #endif /* !RTE_EXEC_ENV_WINDOWS */
 
-REGISTER_TEST_COMMAND(trace_autotest, test_trace);
+REGISTER_FAST_TEST(trace_autotest, true, true, test_trace);

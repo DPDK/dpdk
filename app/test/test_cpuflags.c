@@ -334,4 +334,4 @@ test_cpuflags(void)
 	return 0;
 }
 
-REGISTER_TEST_COMMAND(cpuflags_autotest, test_cpuflags);
+REGISTER_FAST_TEST(cpuflags_autotest, true, true, test_cpuflags);

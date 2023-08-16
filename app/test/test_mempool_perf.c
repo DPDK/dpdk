@@ -437,4 +437,4 @@ err:
 	return ret;
 }
 
-REGISTER_TEST_COMMAND(mempool_perf_autotest, test_mempool_perf);
+REGISTER_PERF_TEST(mempool_perf_autotest, test_mempool_perf);

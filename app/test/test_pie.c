@@ -1087,6 +1087,6 @@ test_pie_all(void)
 
 #endif /* !RTE_EXEC_ENV_WINDOWS */
 
-REGISTER_TEST_COMMAND(pie_autotest, test_pie);
-REGISTER_TEST_COMMAND(pie_perf, test_pie_perf);
-REGISTER_TEST_COMMAND(pie_all, test_pie_all);
+REGISTER_FAST_TEST(pie_autotest, true, true, test_pie);
+REGISTER_PERF_TEST(pie_perf, test_pie_perf);
+REGISTER_PERF_TEST(pie_all, test_pie_all);

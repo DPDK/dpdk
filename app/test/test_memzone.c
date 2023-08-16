@@ -1163,4 +1163,4 @@ test_memzone(void)
 	return 0;
 }
 
-REGISTER_TEST_COMMAND(memzone_autotest, test_memzone);
+REGISTER_FAST_TEST(memzone_autotest, false, true, test_memzone);

@@ -941,4 +941,4 @@ test_dma(void)
 	return 0;
 }
 
-REGISTER_TEST_COMMAND(dmadev_autotest, test_dma);
+REGISTER_DRIVER_TEST(dmadev_autotest, test_dma);

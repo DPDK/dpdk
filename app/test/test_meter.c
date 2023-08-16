@@ -713,4 +713,4 @@ test_meter(void)
 
 }
 
-REGISTER_TEST_COMMAND(meter_autotest, test_meter);
+REGISTER_FAST_TEST(meter_autotest, true, true, test_meter);

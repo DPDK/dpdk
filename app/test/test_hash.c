@@ -2264,4 +2264,4 @@ test_hash(void)
 	return 0;
 }
 
-REGISTER_TEST_COMMAND(hash_autotest, test_hash);
+REGISTER_FAST_TEST(hash_autotest, true, true, test_hash);

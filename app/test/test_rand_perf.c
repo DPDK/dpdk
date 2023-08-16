@@ -96,4 +96,4 @@ test_rand_perf(void)
 	return 0;
 }
 
-REGISTER_TEST_COMMAND(rand_perf_autotest, test_rand_perf);
+REGISTER_PERF_TEST(rand_perf_autotest, test_rand_perf);

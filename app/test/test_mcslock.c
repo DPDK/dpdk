@@ -241,4 +241,4 @@ test_mcslock(void)
 	return ret;
 }
 
-REGISTER_TEST_COMMAND(mcslock_autotest, test_mcslock);
+REGISTER_FAST_TEST(mcslock_autotest, false, true, test_mcslock);

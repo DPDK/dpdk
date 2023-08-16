@@ -193,4 +193,4 @@ test_pflock(void)
 	return 0;
 }
 
-REGISTER_TEST_COMMAND(pflock_autotest, test_pflock);
+REGISTER_FAST_TEST(pflock_autotest, true, true, test_pflock);

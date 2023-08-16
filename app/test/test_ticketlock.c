@@ -314,4 +314,4 @@ test_ticketlock(void)
 	return ret;
 }
 
-REGISTER_TEST_COMMAND(ticketlock_autotest, test_ticketlock);
+REGISTER_FAST_TEST(ticketlock_autotest, true, true, test_ticketlock);

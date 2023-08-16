@@ -631,4 +631,4 @@ test_atomic(void)
 
 	return 0;
 }
-REGISTER_TEST_COMMAND(atomic_autotest, test_atomic);
+REGISTER_FAST_TEST(atomic_autotest, false, true, test_atomic);

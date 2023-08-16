@@ -760,4 +760,4 @@ test_lpm_perf(void)
 	return 0;
 }
 
-REGISTER_TEST_COMMAND(lpm_perf_autotest, test_lpm_perf);
+REGISTER_PERF_TEST(lpm_perf_autotest, test_lpm_perf);

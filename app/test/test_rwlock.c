@@ -506,7 +506,7 @@ try_rwlock_test_rde_wro(void)
 	return process_try_lcore_stats();
 }
 
-REGISTER_TEST_COMMAND(rwlock_test1_autotest, rwlock_test1);
-REGISTER_TEST_COMMAND(rwlock_rda_autotest, try_rwlock_test_rda);
-REGISTER_TEST_COMMAND(rwlock_rds_wrm_autotest, try_rwlock_test_rds_wrm);
-REGISTER_TEST_COMMAND(rwlock_rde_wro_autotest, try_rwlock_test_rde_wro);
+REGISTER_FAST_TEST(rwlock_test1_autotest, true, true, rwlock_test1);
+REGISTER_FAST_TEST(rwlock_rda_autotest, true, true, try_rwlock_test_rda);
+REGISTER_FAST_TEST(rwlock_rds_wrm_autotest, true, true, try_rwlock_test_rds_wrm);
+REGISTER_FAST_TEST(rwlock_rde_wro_autotest, true, true, try_rwlock_test_rde_wro);

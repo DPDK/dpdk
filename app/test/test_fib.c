@@ -415,5 +415,5 @@ test_slow_fib(void)
 	return unit_test_suite_runner(&fib_slow_tests);
 }
 
-REGISTER_TEST_COMMAND(fib_autotest, test_fib);
-REGISTER_TEST_COMMAND(fib_slow_autotest, test_slow_fib);
+REGISTER_FAST_TEST(fib_autotest, true, true, test_fib);
+REGISTER_PERF_TEST(fib_slow_autotest, test_slow_fib);

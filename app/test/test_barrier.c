@@ -285,4 +285,4 @@ test_barrier(void)
 	return ret;
 }
 
-REGISTER_TEST_COMMAND(barrier_autotest, test_barrier);
+REGISTER_PERF_TEST(barrier_autotest, test_barrier);

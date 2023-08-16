@@ -205,4 +205,4 @@ test_reciprocal_division_perf(void)
 	return result;
 }
 
-REGISTER_TEST_COMMAND(reciprocal_division_perf, test_reciprocal_division_perf);
+REGISTER_PERF_TEST(reciprocal_division_perf, test_reciprocal_division_perf);

@@ -690,4 +690,4 @@ test_fail:
 	return -1;
 }
 
-REGISTER_TEST_COMMAND(rcu_qsbr_perf_autotest, test_rcu_qsbr_main);
+REGISTER_PERF_TEST(rcu_qsbr_perf_autotest, test_rcu_qsbr_main);

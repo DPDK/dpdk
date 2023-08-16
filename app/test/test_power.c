@@ -172,4 +172,4 @@ fail_all:
 }
 #endif
 
-REGISTER_TEST_COMMAND(power_autotest, test_power);
+REGISTER_FAST_TEST(power_autotest, true, true, test_power);

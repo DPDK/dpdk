@@ -1749,4 +1749,4 @@ test_acl(void)
 
 #endif /* !RTE_EXEC_ENV_WINDOWS */
 
-REGISTER_TEST_COMMAND(acl_autotest, test_acl);
+REGISTER_FAST_TEST(acl_autotest, true, true, test_acl);

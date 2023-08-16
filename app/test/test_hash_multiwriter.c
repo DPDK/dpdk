@@ -287,4 +287,4 @@ test_hash_multiwriter_main(void)
 	return 0;
 }
 
-REGISTER_TEST_COMMAND(hash_multiwriter_autotest, test_hash_multiwriter_main);
+REGISTER_PERF_TEST(hash_multiwriter_autotest, test_hash_multiwriter_main);

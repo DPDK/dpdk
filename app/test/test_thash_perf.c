@@ -135,4 +135,4 @@ test_thash_perf(void)
 	return 0;
 }
 
-REGISTER_TEST_COMMAND(thash_perf_autotest, test_thash_perf);
+REGISTER_PERF_TEST(thash_perf_autotest, test_thash_perf);

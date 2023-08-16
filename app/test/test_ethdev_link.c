@@ -167,4 +167,4 @@ test_link_status(void)
 	return unit_test_suite_runner(&link_status_testsuite);
 }
 
-REGISTER_TEST_COMMAND(ethdev_link_status, test_link_status);
+REGISTER_FAST_TEST(ethdev_link_status, true, true, test_link_status);

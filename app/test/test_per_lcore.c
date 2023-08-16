@@ -105,4 +105,4 @@ test_per_lcore(void)
 	return 0;
 }
 
-REGISTER_TEST_COMMAND(per_lcore_autotest, test_per_lcore);
+REGISTER_FAST_TEST(per_lcore_autotest, true, true, test_per_lcore);

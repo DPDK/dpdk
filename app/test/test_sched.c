@@ -215,4 +215,4 @@ test_sched(void)
 
 #endif /* !RTE_EXEC_ENV_WINDOWS */
 
-REGISTER_TEST_COMMAND(sched_autotest, test_sched);
+REGISTER_FAST_TEST(sched_autotest, true, true, test_sched);

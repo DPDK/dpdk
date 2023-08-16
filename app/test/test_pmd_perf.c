@@ -899,4 +899,4 @@ test_set_rxtx_sc(cmdline_fixed_string_t type)
 	return -1;
 }
 
-REGISTER_TEST_COMMAND(pmd_perf_autotest, test_pmd_perf);
+REGISTER_PERF_TEST(pmd_perf_autotest, test_pmd_perf);

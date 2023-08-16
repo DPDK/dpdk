@@ -182,4 +182,4 @@ test_string_fns(void)
 	return 0;
 }
 
-REGISTER_TEST_COMMAND(string_autotest, test_string_fns);
+REGISTER_FAST_TEST(string_autotest, true, true, test_string_fns);

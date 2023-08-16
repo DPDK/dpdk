@@ -760,5 +760,5 @@ test_hash_rw_func_main(void)
 	return 0;
 }
 
-REGISTER_TEST_COMMAND(hash_readwrite_func_autotest, test_hash_rw_func_main);
-REGISTER_TEST_COMMAND(hash_readwrite_perf_autotest, test_hash_rw_perf_main);
+REGISTER_FAST_TEST(hash_readwrite_func_autotest, false, true, test_hash_rw_func_main);
+REGISTER_PERF_TEST(hash_readwrite_perf_autotest, test_hash_rw_perf_main);

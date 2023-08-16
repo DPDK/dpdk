@@ -171,4 +171,4 @@ test_crc(void)
 	return 0;
 }
 
-REGISTER_TEST_COMMAND(crc_autotest, test_crc);
+REGISTER_FAST_TEST(crc_autotest, true, true, test_crc);
