@@ -66,6 +66,14 @@ libraries = [
         'node',
 ]
 
+if is_ms_compiler
+    libraries = [
+            'log',
+            'kvargs',
+            'telemetry',
+    ]
+endif
+
 optional_libs = [
         'bbdev',
         'bitratestats',
