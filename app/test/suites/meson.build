@@ -102,3 +102,23 @@ if not is_windows and dpdk_conf.has('RTE_LIB_TELEMETRY')
             is_parallel : false,
             suite : 'fast-tests')
 endif
+
+# dump tests are defined in commands.c, and not easily extractable
+dump_test_names = [
+        'dump_devargs',
+        'dump_log_types',
+        'dump_malloc_heaps',
+        'dump_malloc_stats',
+        'dump_mempool',
+        'dump_memzone',
+        'dump_physmem',
+        'dump_ring',
+        'dump_struct_sizes',
+]
+foreach arg : dump_test_names
+    test(arg, dpdk_test,
+                env : ['DPDK_TEST=' + arg],
+                timeout : timeout_seconds_fast,
+                is_parallel : false,
+                suite : 'debug-tests')
+endforeach
