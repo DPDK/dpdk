@@ -2,6 +2,7 @@
  * Copyright(C) 2019 Marvell International Ltd.
  */
 
+#ifdef RTE_LIB_EVENTDEV
 #include <stdbool.h>
 
 #include "l3fwd.h"
@@ -309,3 +310,4 @@ l3fwd_event_set_generic_ops(struct l3fwd_event_setup_ops *ops)
 	ops->event_port_setup = l3fwd_event_port_setup_generic;
 	ops->adapter_setup = l3fwd_rx_tx_adapter_setup_generic;
 }
+#endif /* RTE_LIB_EVENTDEV */

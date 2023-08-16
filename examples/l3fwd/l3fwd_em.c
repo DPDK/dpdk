@@ -663,6 +663,7 @@ em_main_loop(__rte_unused void *dummy)
 	return 0;
 }
 
+#ifdef RTE_LIB_EVENTDEV
 static __rte_always_inline void
 em_event_loop_single(struct l3fwd_event_resources *evt_rsrc,
 		const uint8_t flags)
@@ -959,6 +960,7 @@ em_event_main_loop_tx_q_burst_vector(__rte_unused void *dummy)
 	em_event_loop_vector(evt_rsrc, L3FWD_EVENT_TX_ENQ);
 	return 0;
 }
+#endif
 
 /* Initialize exact match (hash) parameters. 8< */
 void
