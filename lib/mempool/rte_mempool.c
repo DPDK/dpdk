@@ -915,6 +915,22 @@ rte_mempool_create_empty(const char *name, unsigned n, unsigned elt_size,
 	STAILQ_INIT(&mp->mem_list);
 
 	/*
+	 * Since we have 4 combinations of the SP/SC/MP/MC examine the flags to
+	 * set the correct index into the table of ops structs.
+	 */
+	if ((flags & RTE_MEMPOOL_F_SP_PUT) && (flags & RTE_MEMPOOL_F_SC_GET))
+		ret = rte_mempool_set_ops_byname(mp, "ring_sp_sc", NULL);
+	else if (flags & RTE_MEMPOOL_F_SP_PUT)
+		ret = rte_mempool_set_ops_byname(mp, "ring_sp_mc", NULL);
+	else if (flags & RTE_MEMPOOL_F_SC_GET)
+		ret = rte_mempool_set_ops_byname(mp, "ring_mp_sc", NULL);
+	else
+		ret = rte_mempool_set_ops_byname(mp, "ring_mp_mc", NULL);
+
+	if (ret)
+		goto exit_unlock;
+
+	/*
 	 * local_cache pointer is set even if cache_size is zero.
 	 * The local_cache points to just past the elt_pa[] array.
 	 */
@@ -954,29 +970,12 @@ rte_mempool_create(const char *name, unsigned n, unsigned elt_size,
 	rte_mempool_obj_cb_t *obj_init, void *obj_init_arg,
 	int socket_id, unsigned flags)
 {
-	int ret;
 	struct rte_mempool *mp;
 
 	mp = rte_mempool_create_empty(name, n, elt_size, cache_size,
 		private_data_size, socket_id, flags);
 	if (mp == NULL)
 		return NULL;
-
-	/*
-	 * Since we have 4 combinations of the SP/SC/MP/MC examine the flags to
-	 * set the correct index into the table of ops structs.
-	 */
-	if ((flags & RTE_MEMPOOL_F_SP_PUT) && (flags & RTE_MEMPOOL_F_SC_GET))
-		ret = rte_mempool_set_ops_byname(mp, "ring_sp_sc", NULL);
-	else if (flags & RTE_MEMPOOL_F_SP_PUT)
-		ret = rte_mempool_set_ops_byname(mp, "ring_sp_mc", NULL);
-	else if (flags & RTE_MEMPOOL_F_SC_GET)
-		ret = rte_mempool_set_ops_byname(mp, "ring_mp_sc", NULL);
-	else
-		ret = rte_mempool_set_ops_byname(mp, "ring_mp_mc", NULL);
-
-	if (ret)
-		goto fail;
 
 	/* call the mempool priv initializer */
 	if (mp_init)
