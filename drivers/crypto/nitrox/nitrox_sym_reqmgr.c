@@ -10,8 +10,11 @@
 #include "nitrox_sym_reqmgr.h"
 #include "nitrox_logs.h"
 
-#define MAX_SGBUF_CNT 16
-#define MAX_SGCOMP_CNT 5
+#define MAX_SUPPORTED_MBUF_SEGS 16
+/* IV + AAD + ORH + CC + DIGEST */
+#define ADDITIONAL_SGBUF_CNT 5
+#define MAX_SGBUF_CNT (MAX_SUPPORTED_MBUF_SEGS + ADDITIONAL_SGBUF_CNT)
+#define MAX_SGCOMP_CNT (RTE_ALIGN_MUL_CEIL(MAX_SGBUF_CNT, 4) / 4)
 /* SLC_STORE_INFO */
 #define MIN_UDD_LEN 16
 /* PKT_IN_HDR + SLC_STORE_INFO */
@@ -303,7 +306,7 @@ create_sglist_from_mbuf(struct nitrox_sgtable *sgtbl, struct rte_mbuf *mbuf,
 		datalen -= mlen;
 	}
 
-	RTE_VERIFY(cnt <= MAX_SGBUF_CNT);
+	RTE_ASSERT(cnt <= MAX_SGBUF_CNT);
 	sgtbl->map_bufs_cnt = cnt;
 	return 0;
 }
@@ -375,7 +378,7 @@ create_cipher_outbuf(struct nitrox_softreq *sr)
 	sr->out.sglist[cnt].virt = &sr->resp.completion;
 	cnt++;
 
-	RTE_VERIFY(cnt <= MAX_SGBUF_CNT);
+	RTE_ASSERT(cnt <= MAX_SGBUF_CNT);
 	sr->out.map_bufs_cnt = cnt;
 
 	create_sgcomp(&sr->out);
@@ -600,7 +603,7 @@ create_aead_outbuf(struct nitrox_softreq *sr, struct nitrox_sglist *digest)
 						     resp.completion);
 	sr->out.sglist[cnt].virt = &sr->resp.completion;
 	cnt++;
-	RTE_VERIFY(cnt <= MAX_SGBUF_CNT);
+	RTE_ASSERT(cnt <= MAX_SGBUF_CNT);
 	sr->out.map_bufs_cnt = cnt;
 
 	create_sgcomp(&sr->out);
@@ -773,6 +776,14 @@ nitrox_process_se_req(uint16_t qno, struct rte_crypto_op *op,
 		      struct nitrox_softreq *sr)
 {
 	int err;
+
+	if (unlikely(op->sym->m_src->nb_segs > MAX_SUPPORTED_MBUF_SEGS ||
+		     (op->sym->m_dst &&
+		      op->sym->m_dst->nb_segs > MAX_SUPPORTED_MBUF_SEGS))) {
+		NITROX_LOG(ERR, "Mbuf segments not supported. "
+			   "Max supported %d\n", MAX_SUPPORTED_MBUF_SEGS);
+		return -ENOTSUP;
+	}
 
 	softreq_init(sr, sr->iova);
 	sr->ctx = ctx;
