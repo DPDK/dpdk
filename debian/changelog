@@ -1,4 +1,4 @@
-dpdk-vhost-vfe (0.5) UNRELEASED; urgency=medium
+dpdk-vhost-vfe (0.6) UNRELEASED; urgency=medium
 
   * Initial packaging
 
