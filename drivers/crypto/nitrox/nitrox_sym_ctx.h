@@ -70,6 +70,7 @@ struct flexi_crypto_context {
 struct nitrox_crypto_ctx {
 	struct flexi_crypto_context fctx;
 	enum nitrox_chain nitrox_chain;
+	enum rte_crypto_aead_algorithm aead_algo;
 	struct {
 		uint16_t offset;
 		uint16_t length;

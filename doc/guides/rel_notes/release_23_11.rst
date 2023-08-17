@@ -238,6 +238,10 @@ New Features
 
   * Added SM2 algorithm support in asymmetric crypto operations.
 
+* **Updated Marvell Nitrox symmetric crypto driver.**
+
+  * Added support for AES-CCM algorithm.
+
 * **Updated Intel vRAN Boost baseband driver.**
 
   * Added support for the new Intel vRAN Boost v2 device variant (GNR-D)
