@@ -622,6 +622,7 @@ struct rte_security_docsis_xform {
 /**
  * Security session action type.
  */
+/* Enumeration of rte_security_session_action_type 8<*/
 enum rte_security_session_action_type {
 	RTE_SECURITY_ACTION_TYPE_NONE,
 	/**< No security actions */
@@ -642,8 +643,10 @@ enum rte_security_session_action_type {
 	 * protocol is processed synchronously by a CPU.
 	 */
 };
+/* >8 End enumeration of rte_security_session_action_type. */
 
 /** Security session protocol definition */
+/* Enumeration of rte_security_session_protocol 8<*/
 enum rte_security_session_protocol {
 	RTE_SECURITY_PROTOCOL_IPSEC = 1,
 	/**< IPsec Protocol */
@@ -654,10 +657,12 @@ enum rte_security_session_protocol {
 	RTE_SECURITY_PROTOCOL_DOCSIS,
 	/**< DOCSIS Protocol */
 };
+/* >8 End enumeration of rte_security_session_protocol. */
 
 /**
  * Security session configuration
  */
+/* Structure rte_security_session_conf 8< */
 struct rte_security_session_conf {
 	enum rte_security_session_action_type action_type;
 	/**< Type of action to be performed on the session */
@@ -675,6 +680,7 @@ struct rte_security_session_conf {
 	void *userdata;
 	/**< Application specific userdata to be saved with session */
 };
+/* >8 End of structure rte_security_session_conf. */
 
 /**
  * Create security session as specified by the session configuration

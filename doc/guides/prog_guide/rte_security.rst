@@ -671,68 +671,27 @@ Security session configuration
 
 Security Session configuration structure is defined as ``rte_security_session_conf``
 
-.. code-block:: c
-
-    struct rte_security_session_conf {
-        enum rte_security_session_action_type action_type;
-        /**< Type of action to be performed on the session */
-        enum rte_security_session_protocol protocol;
-        /**< Security protocol to be configured */
-        union {
-                struct rte_security_ipsec_xform ipsec;
-                struct rte_security_macsec_xform macsec;
-                struct rte_security_pdcp_xform pdcp;
-                struct rte_security_docsis_xform docsis;
-        };
-        /**< Configuration parameters for security session */
-        struct rte_crypto_sym_xform *crypto_xform;
-        /**< Security Session Crypto Transformations */
-        void *userdata;
-        /**< Application specific userdata to be saved with session */
-    };
+.. literalinclude:: ../../../lib/security/rte_security.h
+   :language: c
+   :start-after: Structure rte_security_session_conf 8<
+   :end-before: >8 End of structure rte_security_session_conf.
 
 The configuration structure reuses the ``rte_crypto_sym_xform`` struct for crypto related
 configuration. The ``rte_security_session_action_type`` struct is used to specify whether the
 session is configured for Lookaside Protocol offload or Inline Crypto or Inline Protocol
 Offload.
 
-.. code-block:: c
-
-    enum rte_security_session_action_type {
-        RTE_SECURITY_ACTION_TYPE_NONE,
-        /**< No security actions */
-        RTE_SECURITY_ACTION_TYPE_INLINE_CRYPTO,
-        /**< Crypto processing for security protocol is processed inline
-         * during transmission
-         */
-        RTE_SECURITY_ACTION_TYPE_INLINE_PROTOCOL,
-        /**< All security protocol processing is performed inline during
-         * transmission
-         */
-        RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL,
-        /**< All security protocol processing including crypto is performed
-         * on a lookaside accelerator
-         */
-        RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO
-        /**< Similar to ACTION_TYPE_NONE but crypto processing for security
-         * protocol is processed synchronously by a CPU.
-         */
-    };
+.. literalinclude:: ../../../lib/security/rte_security.h
+   :language: c
+   :start-after: Enumeration of rte_security_session_action_type 8<
+   :end-before: >8 End enumeration of rte_security_session_action_type.
 
 The ``rte_security_session_protocol`` is defined as
 
-.. code-block:: c
-
-    enum rte_security_session_protocol {
-        RTE_SECURITY_PROTOCOL_IPSEC = 1,
-        /**< IPsec Protocol */
-        RTE_SECURITY_PROTOCOL_MACSEC,
-        /**< MACSec Protocol */
-        RTE_SECURITY_PROTOCOL_PDCP,
-        /**< PDCP Protocol */
-        RTE_SECURITY_PROTOCOL_DOCSIS,
-        /**< DOCSIS Protocol */
-    };
+.. literalinclude:: ../../../lib/security/rte_security.h
+   :language: c
+   :start-after: Enumeration of rte_security_session_protocol 8<
+   :end-before: >8 End enumeration of rte_security_session_protocol.
 
 Currently the library defines configuration parameters for IPsec and PDCP only.
 For other protocols like MACSec, structures and enums are defined as place holders
