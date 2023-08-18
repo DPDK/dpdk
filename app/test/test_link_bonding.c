@@ -4261,7 +4261,7 @@ test_tlb_tx_burst(void)
 			burst_size);
 	TEST_ASSERT_EQUAL(nb_tx, 0, " bad number of packet in burst");
 
-	/* Clean ugit checkout masterp and remove slaves from bonded device */
+	/* Clean up and remove members from bonding device */
 	return remove_slaves_and_stop_bonded_device();
 }
 
