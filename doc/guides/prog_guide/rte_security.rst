@@ -693,10 +693,6 @@ The ``rte_security_session_protocol`` is defined as
    :start-after: Enumeration of rte_security_session_protocol 8<
    :end-before: >8 End enumeration of rte_security_session_protocol.
 
-Currently the library defines configuration parameters for IPsec and PDCP only.
-For other protocols like MACSec, structures and enums are defined as place holders
-which will be updated in the future.
-
 IPsec related configuration parameters are defined in ``rte_security_ipsec_xform``
 
 MACsec related configuration parameters are defined in ``rte_security_macsec_xform``
