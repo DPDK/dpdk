@@ -2486,6 +2486,40 @@ rxa_create(uint8_t id, uint8_t dev_id,
 	return 0;
 }
 
+static int
+rxa_config_params_validate(struct rte_event_eth_rx_adapter_params *rxa_params,
+			   struct rte_event_eth_rx_adapter_params *temp_params)
+{
+	if (rxa_params == NULL) {
+		/* use default values if rxa_params is NULL */
+		temp_params->event_buf_size = ETH_EVENT_BUFFER_SIZE;
+		temp_params->use_queue_event_buf = false;
+		return 0;
+	} else if (!rxa_params->use_queue_event_buf &&
+		    rxa_params->event_buf_size == 0) {
+		RTE_EDEV_LOG_ERR("event buffer size can't be zero\n");
+		return -EINVAL;
+	} else if (rxa_params->use_queue_event_buf &&
+		   rxa_params->event_buf_size != 0) {
+		RTE_EDEV_LOG_ERR("event buffer size needs to be configured "
+				 "as part of queue add\n");
+		return -EINVAL;
+	}
+
+	*temp_params = *rxa_params;
+	/* adjust event buff size with BATCH_SIZE used for fetching
+	 * packets from NIC rx queues to get full buffer utilization
+	 * and prevent unnecessary rollovers.
+	 */
+	if (!temp_params->use_queue_event_buf) {
+		temp_params->event_buf_size =
+			RTE_ALIGN(temp_params->event_buf_size, BATCH_SIZE);
+		temp_params->event_buf_size += (BATCH_SIZE + BATCH_SIZE);
+	}
+
+	return 0;
+}
+
 int
 rte_event_eth_rx_adapter_create_ext(uint8_t id, uint8_t dev_id,
 				rte_event_eth_rx_adapter_conf_cb conf_cb,
@@ -2512,27 +2546,9 @@ rte_event_eth_rx_adapter_create_with_params(uint8_t id, uint8_t dev_id,
 	if (port_config == NULL)
 		return -EINVAL;
 
-	if (rxa_params == NULL) {
-		/* use default values if rxa_params is NULL */
-		rxa_params = &temp_params;
-		rxa_params->event_buf_size = ETH_EVENT_BUFFER_SIZE;
-		rxa_params->use_queue_event_buf = false;
-	} else if ((!rxa_params->use_queue_event_buf &&
-		    rxa_params->event_buf_size == 0) ||
-		   (rxa_params->use_queue_event_buf &&
-		    rxa_params->event_buf_size != 0)) {
-		RTE_EDEV_LOG_ERR("Invalid adapter params\n");
-		return -EINVAL;
-	} else if (!rxa_params->use_queue_event_buf) {
-		/* adjust event buff size with BATCH_SIZE used for fetching
-		 * packets from NIC rx queues to get full buffer utilization
-		 * and prevent unnecessary rollovers.
-		 */
-
-		rxa_params->event_buf_size =
-			RTE_ALIGN(rxa_params->event_buf_size, BATCH_SIZE);
-		rxa_params->event_buf_size += (BATCH_SIZE + BATCH_SIZE);
-	}
+	ret = rxa_config_params_validate(rxa_params, &temp_params);
+	if (ret != 0)
+		return ret;
 
 	pc = rte_malloc(NULL, sizeof(*pc), 0);
 	if (pc == NULL)
@@ -2540,7 +2556,7 @@ rte_event_eth_rx_adapter_create_with_params(uint8_t id, uint8_t dev_id,
 
 	*pc = *port_config;
 
-	ret = rxa_create(id, dev_id, rxa_params, rxa_default_conf_cb, pc);
+	ret = rxa_create(id, dev_id, &temp_params, rxa_default_conf_cb, pc);
 	if (ret)
 		rte_free(pc);
 
@@ -2548,6 +2564,22 @@ rte_event_eth_rx_adapter_create_with_params(uint8_t id, uint8_t dev_id,
 		port_config, rxa_params, ret);
 
 	return ret;
+}
+
+int
+rte_event_eth_rx_adapter_create_ext_with_params(uint8_t id, uint8_t dev_id,
+			rte_event_eth_rx_adapter_conf_cb conf_cb,
+			void *conf_arg,
+			struct rte_event_eth_rx_adapter_params *rxa_params)
+{
+	struct rte_event_eth_rx_adapter_params temp_params = {0};
+	int ret;
+
+	ret = rxa_config_params_validate(rxa_params, &temp_params);
+	if (ret != 0)
+		return ret;
+
+	return rxa_create(id, dev_id, &temp_params, conf_cb, conf_arg);
 }
 
 int

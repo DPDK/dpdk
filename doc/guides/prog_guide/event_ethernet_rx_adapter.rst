@@ -71,6 +71,9 @@ set to true. The function is passed the event device to be associated with
 the adapter and port configuration for the adapter to setup an event port
 if the adapter needs to use a service function.
 
+If the application desires to control both the event port allocation and event
+buffer size, ``rte_event_eth_rx_adapter_create_ext_with_params()`` can be used.
+
 Event device configuration for service based adapter
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

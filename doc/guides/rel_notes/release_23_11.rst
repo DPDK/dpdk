@@ -178,6 +178,12 @@ New Features
 
   * Added SM2 algorithm support in asymmetric crypto operations.
 
+* **Added new eventdev Ethernet Rx adapter create API.**
+
+  Added new function ``rte_event_eth_rx_adapter_create_ext_with_params()``
+  for creating Rx adapter instance for the applications desire to
+  control both the event port allocation and event buffer size.
+
 
 Removed Items
 -------------
