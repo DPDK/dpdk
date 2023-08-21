@@ -114,6 +114,10 @@ New Features
 
   * Added support for digest encrypted to AESNI_MB asynchronous crypto driver.
 
+* **Updated Intel QuickAssist Technology driver.**
+
+  * Enabled support for QAT 2.0c (4944) devices in QAT crypto driver.
+
 * build: Enabling deprecated libraries is now done using the new
   ``enable_deprecated_libraries`` build option.
 
