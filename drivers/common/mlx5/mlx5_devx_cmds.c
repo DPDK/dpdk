@@ -543,7 +543,7 @@ mlx5_devx_cmd_query_hca_vdpa_attr(void *ctx,
 			MLX5_GET_HCA_CAP_OP_MOD_VDPA_EMULATION |
 			MLX5_HCA_CAP_OPMOD_GET_CUR);
 	if (!hcattr) {
-		RTE_LOG(DEBUG, PMD, "Failed to query devx VDPA capabilities");
+		DRV_LOG(DEBUG, "Failed to query devx VDPA capabilities");
 		vdpa_attr->valid = 0;
 	} else {
 		vdpa_attr->valid = 1;

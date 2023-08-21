@@ -266,7 +266,7 @@ mlx5_glue_path(char *buf, size_t size)
 		goto error;
 	return buf;
 error:
-	RTE_LOG(ERR, PMD, "unable to append \"-glue\" to last component of"
+	DRV_LOG(ERR, "unable to append \"-glue\" to last component of"
 		" RTE_EAL_PMD_PATH (\"" RTE_EAL_PMD_PATH "\"), please"
 		" re-configure DPDK");
 	return NULL;
