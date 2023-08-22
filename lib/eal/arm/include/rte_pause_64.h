@@ -41,7 +41,7 @@ static inline void rte_pause(void)
  * implicitly to exit WFE.
  */
 #define __RTE_ARM_LOAD_EXC_8(src, dst, memorder) {       \
-	if (memorder == __ATOMIC_RELAXED) {               \
+	if (memorder == rte_memory_order_relaxed) {       \
 		asm volatile("ldxrb %w[tmp], [%x[addr]]"  \
 			: [tmp] "=&r" (dst)               \
 			: [addr] "r" (src)                \
@@ -60,7 +60,7 @@ static inline void rte_pause(void)
  * implicitly to exit WFE.
  */
 #define __RTE_ARM_LOAD_EXC_16(src, dst, memorder) {       \
-	if (memorder == __ATOMIC_RELAXED) {               \
+	if (memorder == rte_memory_order_relaxed) {       \
 		asm volatile("ldxrh %w[tmp], [%x[addr]]"  \
 			: [tmp] "=&r" (dst)               \
 			: [addr] "r" (src)                \
@@ -79,7 +79,7 @@ static inline void rte_pause(void)
  * implicitly to exit WFE.
  */
 #define __RTE_ARM_LOAD_EXC_32(src, dst, memorder) {      \
-	if (memorder == __ATOMIC_RELAXED) {              \
+	if (memorder == rte_memory_order_relaxed) {      \
 		asm volatile("ldxr %w[tmp], [%x[addr]]"  \
 			: [tmp] "=&r" (dst)              \
 			: [addr] "r" (src)               \
@@ -98,7 +98,7 @@ static inline void rte_pause(void)
  * implicitly to exit WFE.
  */
 #define __RTE_ARM_LOAD_EXC_64(src, dst, memorder) {      \
-	if (memorder == __ATOMIC_RELAXED) {              \
+	if (memorder == rte_memory_order_relaxed) {      \
 		asm volatile("ldxr %x[tmp], [%x[addr]]"  \
 			: [tmp] "=&r" (dst)              \
 			: [addr] "r" (src)               \
@@ -118,7 +118,7 @@ static inline void rte_pause(void)
  */
 #define __RTE_ARM_LOAD_EXC_128(src, dst, memorder) {                    \
 	volatile rte_int128_t *dst_128 = (volatile rte_int128_t *)&dst; \
-	if (memorder == __ATOMIC_RELAXED) {                             \
+	if (memorder == rte_memory_order_relaxed) {                     \
 		asm volatile("ldxp %x[tmp0], %x[tmp1], [%x[addr]]"      \
 			: [tmp0] "=&r" (dst_128->val[0]),               \
 			  [tmp1] "=&r" (dst_128->val[1])                \
@@ -153,8 +153,8 @@ rte_wait_until_equal_16(volatile uint16_t *addr, uint16_t expected,
 {
 	uint16_t value;
 
-	RTE_BUILD_BUG_ON(memorder != __ATOMIC_ACQUIRE &&
-		memorder != __ATOMIC_RELAXED);
+	RTE_BUILD_BUG_ON(memorder != rte_memory_order_acquire &&
+		memorder != rte_memory_order_relaxed);
 
 	__RTE_ARM_LOAD_EXC_16(addr, value, memorder)
 	if (value != expected) {
@@ -172,8 +172,8 @@ rte_wait_until_equal_32(volatile uint32_t *addr, uint32_t expected,
 {
 	uint32_t value;
 
-	RTE_BUILD_BUG_ON(memorder != __ATOMIC_ACQUIRE &&
-		memorder != __ATOMIC_RELAXED);
+	RTE_BUILD_BUG_ON(memorder != rte_memory_order_acquire &&
+		memorder != rte_memory_order_relaxed);
 
 	__RTE_ARM_LOAD_EXC_32(addr, value, memorder)
 	if (value != expected) {
@@ -191,8 +191,8 @@ rte_wait_until_equal_64(volatile uint64_t *addr, uint64_t expected,
 {
 	uint64_t value;
 
-	RTE_BUILD_BUG_ON(memorder != __ATOMIC_ACQUIRE &&
-		memorder != __ATOMIC_RELAXED);
+	RTE_BUILD_BUG_ON(memorder != rte_memory_order_acquire &&
+		memorder != rte_memory_order_relaxed);
 
 	__RTE_ARM_LOAD_EXC_64(addr, value, memorder)
 	if (value != expected) {
@@ -206,8 +206,8 @@ rte_wait_until_equal_64(volatile uint64_t *addr, uint64_t expected,
 
 #define RTE_WAIT_UNTIL_MASKED(addr, mask, cond, expected, memorder) do {  \
 	RTE_BUILD_BUG_ON(!__builtin_constant_p(memorder));                \
-	RTE_BUILD_BUG_ON(memorder != __ATOMIC_ACQUIRE &&                  \
-		memorder != __ATOMIC_RELAXED);                            \
+	RTE_BUILD_BUG_ON(memorder != rte_memory_order_acquire &&          \
+		memorder != rte_memory_order_relaxed);                    \
 	const uint32_t size = sizeof(*(addr)) << 3;                       \
 	typeof(*(addr)) expected_value = (expected);                      \
 	typeof(*(addr)) value;                                            \

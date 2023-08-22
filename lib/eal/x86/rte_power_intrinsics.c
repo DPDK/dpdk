@@ -23,9 +23,9 @@ __umwait_wakeup(volatile void *addr)
 	uint64_t val;
 
 	/* trigger a write but don't change the value */
-	val = __atomic_load_n((volatile uint64_t *)addr, __ATOMIC_RELAXED);
-	__atomic_compare_exchange_n((volatile uint64_t *)addr, &val, val, 0,
-			__ATOMIC_RELAXED, __ATOMIC_RELAXED);
+	val = rte_atomic_load_explicit((volatile uint64_t *)addr, rte_memory_order_relaxed);
+	rte_atomic_compare_exchange_strong_explicit((volatile uint64_t *)addr, &val, val,
+			rte_memory_order_relaxed, rte_memory_order_relaxed);
 }
 
 static bool wait_supported;
