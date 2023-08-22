@@ -257,6 +257,12 @@ cn10k_mempool_deq(struct rte_mempool *mp, void **obj_table, unsigned int n)
 		}
 	}
 
+	/* For non-EAL threads, rte_lcore_id() will not be valid. Hence
+	 * fallback to bulk alloc
+	 */
+	if (unlikely(rte_lcore_id() == LCORE_ID_ANY))
+		return cnxk_mempool_deq(mp, obj_table, n);
+
 	if (unlikely(count != n)) {
 		/* No partial alloc allowed. Free up allocated pointers */
 		cn10k_mempool_enq(mp, obj_table, count);
