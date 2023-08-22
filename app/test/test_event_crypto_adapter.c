@@ -519,11 +519,10 @@ configure_cryptodev(void)
 		return TEST_FAILED;
 	}
 
-	/* Create a NULL crypto device */
-	nb_devs = rte_cryptodev_device_count_by_driver(
-			rte_cryptodev_driver_id_get(
-			RTE_STR(CRYPTODEV_NAME_NULL_PMD)));
+
+	nb_devs = rte_cryptodev_count();
 	if (!nb_devs) {
+		/* Create a NULL crypto device */
 		ret = rte_vdev_init(
 			RTE_STR(CRYPTODEV_NAME_NULL_PMD), NULL);
 
