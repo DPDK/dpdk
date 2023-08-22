@@ -78,6 +78,12 @@ New Features
 * build: Optional libraries can now be selected with the new ``enable_libs``
   build option similarly to the existing ``enable_drivers`` build option.
 
+* eal: Introduced a new API for atomic operations. This new API serves as a
+  wrapper for transitioning to standard atomic operations as described in the
+  C11 standard. This API implementation points at the compiler intrinsics by
+  default. The implementation using C11 standard atomic operations is enabled
+  via the ``enable_stdatomic`` build option.
+
 
 Removed Items
 -------------

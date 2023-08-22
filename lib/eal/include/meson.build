@@ -42,6 +42,7 @@ headers += files(
         'rte_seqlock.h',
         'rte_service.h',
         'rte_service_component.h',
+        'rte_stdatomic.h',
         'rte_string_fns.h',
         'rte_tailq.h',
         'rte_thread.h',
