@@ -332,6 +332,12 @@ cn10k_mempool_deq(struct rte_mempool *mp, void **obj_table, unsigned int n)
 	struct batch_op_data *op_data;
 	unsigned int count = 0;
 
+	/* For non-EAL threads, rte_lcore_id() will not be valid. Hence
+	 * fallback to bulk alloc
+	 */
+	if (unlikely(rte_lcore_id() == LCORE_ID_ANY))
+		return cnxk_mempool_deq(mp, obj_table, n);
+
 	op_data = batch_op_data_get(mp->pool_id);
 	if (op_data->max_async_batch)
 		count = mempool_deq_batch_async(mp, obj_table, n);
