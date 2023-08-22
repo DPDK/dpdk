@@ -284,6 +284,9 @@ test_crypto_adapter_params(void)
 	};
 
 	err = rte_event_crypto_adapter_caps_get(evdev, TEST_CDEV_ID, &cap);
+	if (err == -ENOTSUP)
+		return TEST_SKIPPED;
+
 	TEST_ASSERT_SUCCESS(err, "Failed to get adapter capabilities\n");
 
 	if (cap & RTE_EVENT_CRYPTO_ADAPTER_CAP_INTERNAL_PORT_QP_EV_BIND) {
@@ -1252,7 +1255,12 @@ test_crypto_adapter_create(void)
 		.enqueue_depth = 8,
 		.new_event_threshold = 1200,
 	};
+	uint32_t cap;
 	int ret;
+
+	ret = rte_event_crypto_adapter_caps_get(evdev, TEST_CDEV_ID, &cap);
+	if (ret == -ENOTSUP)
+		return ret;
 
 	/* Create adapter with default port creation callback */
 	ret = rte_event_crypto_adapter_create(TEST_ADAPTER_ID,
@@ -1274,6 +1282,9 @@ test_crypto_adapter_qp_add_del(void)
 	int ret;
 
 	ret = rte_event_crypto_adapter_caps_get(evdev, TEST_CDEV_ID, &cap);
+	if (ret == -ENOTSUP)
+		return TEST_SKIPPED;
+
 	TEST_ASSERT_SUCCESS(ret, "Failed to get adapter capabilities\n");
 
 	if (cap & RTE_EVENT_CRYPTO_ADAPTER_CAP_INTERNAL_PORT_QP_EV_BIND) {
@@ -1309,6 +1320,9 @@ configure_event_crypto_adapter(enum rte_event_crypto_adapter_mode mode)
 	int ret;
 
 	ret = rte_event_crypto_adapter_caps_get(evdev, TEST_CDEV_ID, &cap);
+	if (ret == -ENOTSUP)
+		return ret;
+
 	TEST_ASSERT_SUCCESS(ret, "Failed to get adapter capabilities\n");
 
 	/* Skip mode and capability mismatch check for SW eventdev */
@@ -1474,6 +1488,9 @@ static void
 crypto_adapter_teardown(void)
 {
 	int ret;
+
+	if (!crypto_adapter_setup_done)
+		return;
 
 	ret = rte_event_crypto_adapter_stop(TEST_ADAPTER_ID);
 	if (ret < 0)
