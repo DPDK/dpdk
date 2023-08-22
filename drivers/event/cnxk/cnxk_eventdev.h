@@ -48,10 +48,10 @@
 	(min + val / ((max + cnt - 1) / cnt))
 #define CNXK_SSO_FLUSH_RETRY_MAX 0xfff
 
-#define CNXK_VALID_DEV_OR_ERR_RET(dev, drv_name)                               \
+#define CNXK_VALID_DEV_OR_ERR_RET(dev, drv_name, err_val)                      \
 	do {                                                                   \
 		if (strncmp(dev->driver->name, drv_name, strlen(drv_name)))    \
-			return -EINVAL;                                        \
+			return -err_val;                                       \
 	} while (0)
 
 typedef void *(*cnxk_sso_init_hws_mem_t)(void *dev, uint8_t port_id);
