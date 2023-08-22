@@ -433,6 +433,26 @@ The OCTEON CN9K/CN10K SoC family NIC has inbuilt HW assisted external mempool ma
 as it is performance wise most effective way for packet allocation and Tx buffer
 recycling on OCTEON 9 SoC platform.
 
+``mempool_cnxk`` rte_mempool cache sizes for CN10K
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The OCTEON CN10K SoC Family supports asynchronous batch allocation
+of objects from an NPA pool.
+In the CNXK mempool driver, asynchronous batch allocation is enabled
+when local caches are enabled.
+This asynchronous batch allocation will be using an additional local async buffer
+whose size will be equal to ``RTE_ALIGN_CEIL(rte_mempool->cache_size, 16)``.
+This can result in additional objects being cached locally.
+While creating an rte_mempool using ``mempool_cnxk`` driver for OCTEON CN10K,
+this must be taken into consideration
+and the local cache sizes should be adjusted accordingly
+so that starvation does not happen.
+
+For Eg: If the ``cache_size`` passed into ``rte_mempool_create`` is ``8``,
+then the max objects than can get cached locally on a core
+would be the sum of max objects in the local cache + max objects in the async buffer
+i.e ``8 + RTE_ALIGN_CEIL(8, 16) = 24``.
+
 CRC stripping
 ~~~~~~~~~~~~~
 
