@@ -162,6 +162,12 @@ cn10k_mempool_enq(struct rte_mempool *mp, void *const *obj_table,
 	 */
 	rte_io_wmb();
 
+	/* For non-EAL threads, rte_lcore_id() will not be valid. Hence
+	 * fallback to bulk alloc
+	 */
+	if (unlikely(rte_lcore_id() == LCORE_ID_ANY))
+		return cnxk_mempool_enq(mp, obj_table, n);
+
 	if (n == 1) {
 		roc_npa_aura_op_free(mp->pool_id, 1, ptr[0]);
 		return 0;
