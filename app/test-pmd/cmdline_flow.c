@@ -365,6 +365,7 @@ enum index {
 	ITEM_MPLS_LABEL,
 	ITEM_MPLS_TC,
 	ITEM_MPLS_S,
+	ITEM_MPLS_TTL,
 	ITEM_GRE,
 	ITEM_GRE_PROTO,
 	ITEM_GRE_C_RSVD0_VER,
@@ -1712,6 +1713,7 @@ static const enum index item_mpls[] = {
 	ITEM_MPLS_LABEL,
 	ITEM_MPLS_TC,
 	ITEM_MPLS_S,
+	ITEM_MPLS_TTL,
 	ITEM_NEXT,
 	ZERO,
 };
@@ -4649,6 +4651,13 @@ static const struct token token_list[] = {
 		.args = ARGS(ARGS_ENTRY_MASK_HTON(struct rte_flow_item_mpls,
 						  label_tc_s,
 						  "\x00\x00\x01")),
+	},
+	[ITEM_MPLS_TTL] = {
+		.name = "ttl",
+		.help = "MPLS Time-to-Live",
+		.next = NEXT(item_mpls, NEXT_ENTRY(COMMON_UNSIGNED),
+			     item_param),
+		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_mpls, ttl)),
 	},
 	[ITEM_GRE] = {
 		.name = "gre",
