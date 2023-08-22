@@ -392,6 +392,7 @@ cnxk_tim_caps_get(const struct rte_eventdev *evdev, uint64_t flags,
 	cnxk_tim_ops.start = cnxk_tim_ring_start;
 	cnxk_tim_ops.stop = cnxk_tim_ring_stop;
 	cnxk_tim_ops.get_info = cnxk_tim_ring_info_get;
+	cnxk_tim_ops.remaining_ticks_get = cnxk_tim_remaining_ticks_get;
 	sso_set_priv_mem_fn = priv_mem_fn;
 
 	if (dev->enable_stats) {

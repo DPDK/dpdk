@@ -184,6 +184,11 @@ New Features
   for creating Rx adapter instance for the applications desire to
   control both the event port allocation and event buffer size.
 
+* **Updated Marvell cnxk eventdev driver.**
+
+  * Added support for ``remaining_ticks_get`` timer adapter PMD callback
+    to get the remaining ticks to expire for a given event timer.
+
 
 Removed Items
 -------------

@@ -171,3 +171,38 @@ cnxk_tim_timer_cancel_burst(const struct rte_event_timer_adapter *adptr,
 
 	return index;
 }
+
+int
+cnxk_tim_remaining_ticks_get(const struct rte_event_timer_adapter *adapter,
+			     const struct rte_event_timer *evtim, uint64_t *ticks_remaining)
+{
+	struct cnxk_tim_ring *tim_ring = adapter->data->adapter_priv;
+	struct cnxk_tim_bkt *bkt, *current_bkt;
+	struct cnxk_tim_ent *entry;
+	uint64_t bkt_cyc, bucket;
+	uint64_t sema;
+
+	if (evtim->impl_opaque[1] == 0 || evtim->impl_opaque[0] == 0)
+		return -ENOENT;
+
+	entry = (struct cnxk_tim_ent *)(uintptr_t)evtim->impl_opaque[0];
+	if (entry->wqe != evtim->ev.u64)
+		return -ENOENT;
+
+	if (evtim->state != RTE_EVENT_TIMER_ARMED)
+		return -ENOENT;
+
+	bkt = (struct cnxk_tim_bkt *)evtim->impl_opaque[1];
+	sema = rte_atomic_load_explicit(&bkt->w1, rte_memory_order_acquire);
+	if (cnxk_tim_bkt_get_hbt(sema) || !cnxk_tim_bkt_get_nent(sema))
+		return -ENOENT;
+
+	bkt_cyc = tim_ring->tick_fn(tim_ring->tbase) - tim_ring->ring_start_cyc;
+	bucket = rte_reciprocal_divide_u64(bkt_cyc, &tim_ring->fast_div);
+	current_bkt = &tim_ring->bkt[bucket];
+
+	*ticks_remaining = RTE_MAX(bkt, current_bkt) - RTE_MIN(bkt, current_bkt);
+	/* Assume that the current bucket is yet to expire */
+	*ticks_remaining += 1;
+	return 0;
+}
