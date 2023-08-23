@@ -9,7 +9,7 @@
 #define DPI_MAX_POINTER	     15
 #define STRM_INC(s, var)     ((s).var = ((s).var + 1) & (s).max_cnt)
 #define STRM_DEC(s, var)     ((s).var = ((s).var - 1) == -1 ? (s).max_cnt : ((s).var - 1))
-#define DPI_MAX_DESC	     1024
+#define DPI_MAX_DESC	     2048
 #define DPI_MIN_DESC	     2
 #define MAX_VCHANS_PER_QUEUE 4
 

@@ -434,6 +434,11 @@ cnxk_dmadev_copy(void *dev_private, uint16_t vchan, rte_iova_t src, rte_iova_t d
 	header->cn9k.ptr = (uint64_t)comp_ptr;
 	STRM_INC(dpi_conf->c_desc, tail);
 
+	if (unlikely(dpi_conf->c_desc.tail == dpi_conf->c_desc.head)) {
+		STRM_DEC(dpi_conf->c_desc, tail);
+		return -ENOSPC;
+	}
+
 	header->cn9k.nfst = 1;
 	header->cn9k.nlst = 1;
 
@@ -493,6 +498,11 @@ cnxk_dmadev_copy_sg(void *dev_private, uint16_t vchan, const struct rte_dma_sge 
 	comp_ptr = dpi_conf->c_desc.compl_ptr[dpi_conf->c_desc.tail];
 	header->cn9k.ptr = (uint64_t)comp_ptr;
 	STRM_INC(dpi_conf->c_desc, tail);
+
+	if (unlikely(dpi_conf->c_desc.tail == dpi_conf->c_desc.head)) {
+		STRM_DEC(dpi_conf->c_desc, tail);
+		return -ENOSPC;
+	}
 
 	/*
 	 * For inbound case, src pointers are last pointers.
@@ -561,6 +571,11 @@ cn10k_dmadev_copy(void *dev_private, uint16_t vchan, rte_iova_t src, rte_iova_t 
 	header->cn10k.ptr = (uint64_t)comp_ptr;
 	STRM_INC(dpi_conf->c_desc, tail);
 
+	if (unlikely(dpi_conf->c_desc.tail == dpi_conf->c_desc.head)) {
+		STRM_DEC(dpi_conf->c_desc, tail);
+		return -ENOSPC;
+	}
+
 	header->cn10k.nfst = 1;
 	header->cn10k.nlst = 1;
 
@@ -612,6 +627,11 @@ cn10k_dmadev_copy_sg(void *dev_private, uint16_t vchan, const struct rte_dma_sge
 	comp_ptr = dpi_conf->c_desc.compl_ptr[dpi_conf->c_desc.tail];
 	header->cn10k.ptr = (uint64_t)comp_ptr;
 	STRM_INC(dpi_conf->c_desc, tail);
+
+	if (unlikely(dpi_conf->c_desc.tail == dpi_conf->c_desc.head)) {
+		STRM_DEC(dpi_conf->c_desc, tail);
+		return -ENOSPC;
+	}
 
 	header->cn10k.nfst = nb_src & DPI_MAX_POINTER;
 	header->cn10k.nlst = nb_dst & DPI_MAX_POINTER;
@@ -694,8 +714,6 @@ cnxk_dmadev_completed_status(void *dev_private, uint16_t vchan, const uint16_t n
 	struct cnxk_dpi_cdesc_data_s *c_desc = &dpi_conf->c_desc;
 	struct cnxk_dpi_compl_s *comp_ptr;
 	int cnt;
-
-	RTE_SET_USED(last_idx);
 
 	for (cnt = 0; cnt < nb_cpls; cnt++) {
 		comp_ptr = c_desc->compl_ptr[c_desc->head];
