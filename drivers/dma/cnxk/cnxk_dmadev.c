@@ -84,13 +84,21 @@ cnxk_dmadev_vchan_setup(struct rte_dma_dev *dev, uint16_t vchan,
 		header->cn9k.xtype = DPI_XTYPE_INBOUND;
 		header->cn9k.lport = conf->src_port.pcie.coreid;
 		header->cn9k.fport = 0;
-		header->cn9k.pvfe = 1;
+		header->cn9k.pvfe = conf->src_port.pcie.vfen;
+		if (header->cn9k.pvfe) {
+			header->cn9k.func = conf->src_port.pcie.pfid << 12;
+			header->cn9k.func |= conf->src_port.pcie.vfid;
+		}
 		break;
 	case RTE_DMA_DIR_MEM_TO_DEV:
 		header->cn9k.xtype = DPI_XTYPE_OUTBOUND;
 		header->cn9k.lport = 0;
 		header->cn9k.fport = conf->dst_port.pcie.coreid;
-		header->cn9k.pvfe = 1;
+		header->cn9k.pvfe = conf->dst_port.pcie.vfen;
+		if (header->cn9k.pvfe) {
+			header->cn9k.func = conf->dst_port.pcie.pfid << 12;
+			header->cn9k.func |= conf->dst_port.pcie.vfid;
+		}
 		break;
 	case RTE_DMA_DIR_MEM_TO_MEM:
 		header->cn9k.xtype = DPI_XTYPE_INTERNAL_ONLY;
@@ -102,6 +110,7 @@ cnxk_dmadev_vchan_setup(struct rte_dma_dev *dev, uint16_t vchan,
 		header->cn9k.xtype = DPI_XTYPE_EXTERNAL_ONLY;
 		header->cn9k.lport = conf->src_port.pcie.coreid;
 		header->cn9k.fport = conf->dst_port.pcie.coreid;
+		header->cn9k.pvfe = 0;
 	};
 
 	max_desc = conf->nb_desc;
@@ -159,13 +168,21 @@ cn10k_dmadev_vchan_setup(struct rte_dma_dev *dev, uint16_t vchan,
 		header->cn10k.xtype = DPI_XTYPE_INBOUND;
 		header->cn10k.lport = conf->src_port.pcie.coreid;
 		header->cn10k.fport = 0;
-		header->cn10k.pvfe = 1;
+		header->cn10k.pvfe = conf->src_port.pcie.vfen;
+		if (header->cn10k.pvfe) {
+			header->cn10k.func = conf->src_port.pcie.pfid << 12;
+			header->cn10k.func |= conf->src_port.pcie.vfid;
+		}
 		break;
 	case RTE_DMA_DIR_MEM_TO_DEV:
 		header->cn10k.xtype = DPI_XTYPE_OUTBOUND;
 		header->cn10k.lport = 0;
 		header->cn10k.fport = conf->dst_port.pcie.coreid;
-		header->cn10k.pvfe = 1;
+		header->cn10k.pvfe = conf->dst_port.pcie.vfen;
+		if (header->cn10k.pvfe) {
+			header->cn10k.func = conf->dst_port.pcie.pfid << 12;
+			header->cn10k.func |= conf->dst_port.pcie.vfid;
+		}
 		break;
 	case RTE_DMA_DIR_MEM_TO_MEM:
 		header->cn10k.xtype = DPI_XTYPE_INTERNAL_ONLY;
@@ -177,6 +194,7 @@ cn10k_dmadev_vchan_setup(struct rte_dma_dev *dev, uint16_t vchan,
 		header->cn10k.xtype = DPI_XTYPE_EXTERNAL_ONLY;
 		header->cn10k.lport = conf->src_port.pcie.coreid;
 		header->cn10k.fport = conf->dst_port.pcie.coreid;
+		header->cn10k.pvfe = 0;
 	};
 
 	max_desc = conf->nb_desc;
