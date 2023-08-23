@@ -447,8 +447,7 @@ static const struct rte_dma_dev_ops cnxk_dmadev_ops = {
 };
 
 static int
-cnxk_dmadev_probe(struct rte_pci_driver *pci_drv __rte_unused,
-		  struct rte_pci_device *pci_dev)
+cnxk_dmadev_probe(struct rte_pci_driver *pci_drv __rte_unused, struct rte_pci_device *pci_dev)
 {
 	struct cnxk_dpi_vf_s *dpivf = NULL;
 	char name[RTE_DEV_NAME_MAX_LEN];
@@ -467,8 +466,7 @@ cnxk_dmadev_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	memset(name, 0, sizeof(name));
 	rte_pci_device_name(&pci_dev->addr, name, sizeof(name));
 
-	dmadev = rte_dma_pmd_allocate(name, pci_dev->device.numa_node,
-				      sizeof(*dpivf));
+	dmadev = rte_dma_pmd_allocate(name, pci_dev->device.numa_node, sizeof(*dpivf));
 	if (dmadev == NULL) {
 		plt_err("dma device allocation failed for %s", name);
 		return -ENOMEM;
@@ -492,6 +490,8 @@ cnxk_dmadev_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	rc = roc_dpi_dev_init(rdpi);
 	if (rc < 0)
 		goto err_out_free;
+
+	dmadev->state = RTE_DMA_DEV_READY;
 
 	return 0;
 
