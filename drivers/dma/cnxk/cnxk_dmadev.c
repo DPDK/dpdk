@@ -7,39 +7,35 @@
 
 #include <bus_pci_driver.h>
 #include <rte_common.h>
+#include <rte_dmadev.h>
+#include <rte_dmadev_pmd.h>
 #include <rte_eal.h>
 #include <rte_lcore.h>
 #include <rte_mempool.h>
 #include <rte_pci.h>
-#include <rte_dmadev.h>
-#include <rte_dmadev_pmd.h>
 
-#include <roc_api.h>
 #include <cnxk_dmadev.h>
 
 static int
-cnxk_dmadev_info_get(const struct rte_dma_dev *dev,
-		     struct rte_dma_info *dev_info, uint32_t size)
+cnxk_dmadev_info_get(const struct rte_dma_dev *dev, struct rte_dma_info *dev_info, uint32_t size)
 {
 	RTE_SET_USED(dev);
 	RTE_SET_USED(size);
 
 	dev_info->max_vchans = 1;
 	dev_info->nb_vchans = 1;
-	dev_info->dev_capa = RTE_DMA_CAPA_MEM_TO_MEM |
-		RTE_DMA_CAPA_MEM_TO_DEV | RTE_DMA_CAPA_DEV_TO_MEM |
-		RTE_DMA_CAPA_DEV_TO_DEV | RTE_DMA_CAPA_OPS_COPY |
-		RTE_DMA_CAPA_OPS_COPY_SG;
+	dev_info->dev_capa = RTE_DMA_CAPA_MEM_TO_MEM | RTE_DMA_CAPA_MEM_TO_DEV |
+			     RTE_DMA_CAPA_DEV_TO_MEM | RTE_DMA_CAPA_DEV_TO_DEV |
+			     RTE_DMA_CAPA_OPS_COPY | RTE_DMA_CAPA_OPS_COPY_SG;
 	dev_info->max_desc = DPI_MAX_DESC;
-	dev_info->min_desc = 1;
+	dev_info->min_desc = 2;
 	dev_info->max_sges = DPI_MAX_POINTER;
 
 	return 0;
 }
 
 static int
-cnxk_dmadev_configure(struct rte_dma_dev *dev,
-		      const struct rte_dma_conf *conf, uint32_t conf_sz)
+cnxk_dmadev_configure(struct rte_dma_dev *dev, const struct rte_dma_conf *conf, uint32_t conf_sz)
 {
 	struct cnxk_dpi_vf_s *dpivf = NULL;
 	int rc = 0;
@@ -66,12 +62,13 @@ done:
 
 static int
 cnxk_dmadev_vchan_setup(struct rte_dma_dev *dev, uint16_t vchan,
-			const struct rte_dma_vchan_conf *conf,
-			uint32_t conf_sz)
+			const struct rte_dma_vchan_conf *conf, uint32_t conf_sz)
 {
 	struct cnxk_dpi_vf_s *dpivf = dev->fp_obj->dev_private;
-	struct cnxk_dpi_compl_s *comp_data;
-	union dpi_instr_hdr_s *header = &dpivf->conf.hdr;
+	struct cnxk_dpi_conf *dpi_conf = &dpivf->conf;
+	union dpi_instr_hdr_s *header = &dpi_conf->hdr;
+	uint16_t max_desc;
+	uint32_t size;
 	int i;
 
 	RTE_SET_USED(vchan);
@@ -107,18 +104,30 @@ cnxk_dmadev_vchan_setup(struct rte_dma_dev *dev, uint16_t vchan,
 		header->cn9k.fport = conf->dst_port.pcie.coreid;
 	};
 
-	for (i = 0; i < conf->nb_desc; i++) {
-		comp_data = rte_zmalloc(NULL, sizeof(*comp_data), 0);
-		if (comp_data == NULL) {
-			plt_err("Failed to allocate for comp_data");
-			return -ENOMEM;
-		}
-		comp_data->cdata = DPI_REQ_CDATA;
-		dpivf->conf.c_desc.compl_ptr[i] = comp_data;
-	};
-	dpivf->conf.c_desc.max_cnt = DPI_MAX_DESC;
-	dpivf->conf.c_desc.head = 0;
-	dpivf->conf.c_desc.tail = 0;
+	max_desc = conf->nb_desc;
+	if (!rte_is_power_of_2(max_desc))
+		max_desc = rte_align32pow2(max_desc);
+
+	if (max_desc > DPI_MAX_DESC)
+		max_desc = DPI_MAX_DESC;
+
+	size = (max_desc * sizeof(struct cnxk_dpi_compl_s *));
+	dpi_conf->c_desc.compl_ptr = rte_zmalloc(NULL, size, 0);
+
+	if (dpi_conf->c_desc.compl_ptr == NULL) {
+		plt_err("Failed to allocate for comp_data");
+		return -ENOMEM;
+	}
+
+	for (i = 0; i < max_desc; i++) {
+		dpi_conf->c_desc.compl_ptr[i] =
+			rte_zmalloc(NULL, sizeof(struct cnxk_dpi_compl_s), 0);
+		dpi_conf->c_desc.compl_ptr[i]->cdata = DPI_REQ_CDATA;
+	}
+
+	dpi_conf->c_desc.max_cnt = (max_desc - 1);
+	dpi_conf->c_desc.head = 0;
+	dpi_conf->c_desc.tail = 0;
 	dpivf->pending = 0;
 	dpivf->flag |= CNXK_DPI_VCHAN_CONFIG;
 
@@ -127,12 +136,13 @@ cnxk_dmadev_vchan_setup(struct rte_dma_dev *dev, uint16_t vchan,
 
 static int
 cn10k_dmadev_vchan_setup(struct rte_dma_dev *dev, uint16_t vchan,
-			 const struct rte_dma_vchan_conf *conf,
-			 uint32_t conf_sz)
+			 const struct rte_dma_vchan_conf *conf, uint32_t conf_sz)
 {
 	struct cnxk_dpi_vf_s *dpivf = dev->fp_obj->dev_private;
-	struct cnxk_dpi_compl_s *comp_data;
-	union dpi_instr_hdr_s *header = &dpivf->conf.hdr;
+	struct cnxk_dpi_conf *dpi_conf = &dpivf->conf;
+	union dpi_instr_hdr_s *header = &dpi_conf->hdr;
+	uint16_t max_desc;
+	uint32_t size;
 	int i;
 
 	RTE_SET_USED(vchan);
@@ -169,18 +179,30 @@ cn10k_dmadev_vchan_setup(struct rte_dma_dev *dev, uint16_t vchan,
 		header->cn10k.fport = conf->dst_port.pcie.coreid;
 	};
 
-	for (i = 0; i < conf->nb_desc; i++) {
-		comp_data = rte_zmalloc(NULL, sizeof(*comp_data), 0);
-		if (comp_data == NULL) {
-			plt_err("Failed to allocate for comp_data");
-			return -ENOMEM;
-		}
-		comp_data->cdata = DPI_REQ_CDATA;
-		dpivf->conf.c_desc.compl_ptr[i] = comp_data;
-	};
-	dpivf->conf.c_desc.max_cnt = DPI_MAX_DESC;
-	dpivf->conf.c_desc.head = 0;
-	dpivf->conf.c_desc.tail = 0;
+	max_desc = conf->nb_desc;
+	if (!rte_is_power_of_2(max_desc))
+		max_desc = rte_align32pow2(max_desc);
+
+	if (max_desc > DPI_MAX_DESC)
+		max_desc = DPI_MAX_DESC;
+
+	size = (max_desc * sizeof(struct cnxk_dpi_compl_s *));
+	dpi_conf->c_desc.compl_ptr = rte_zmalloc(NULL, size, 0);
+
+	if (dpi_conf->c_desc.compl_ptr == NULL) {
+		plt_err("Failed to allocate for comp_data");
+		return -ENOMEM;
+	}
+
+	for (i = 0; i < max_desc; i++) {
+		dpi_conf->c_desc.compl_ptr[i] =
+			rte_zmalloc(NULL, sizeof(struct cnxk_dpi_compl_s), 0);
+		dpi_conf->c_desc.compl_ptr[i]->cdata = DPI_REQ_CDATA;
+	}
+
+	dpi_conf->c_desc.max_cnt = (max_desc - 1);
+	dpi_conf->c_desc.head = 0;
+	dpi_conf->c_desc.tail = 0;
 	dpivf->pending = 0;
 	dpivf->flag |= CNXK_DPI_VCHAN_CONFIG;
 
@@ -308,12 +330,13 @@ __dpi_queue_write(struct roc_dpi *dpi, uint64_t *cmds, int cmd_count)
 }
 
 static int
-cnxk_dmadev_copy(void *dev_private, uint16_t vchan, rte_iova_t src,
-		 rte_iova_t dst, uint32_t length, uint64_t flags)
+cnxk_dmadev_copy(void *dev_private, uint16_t vchan, rte_iova_t src, rte_iova_t dst, uint32_t length,
+		 uint64_t flags)
 {
 	struct cnxk_dpi_vf_s *dpivf = dev_private;
 	union dpi_instr_hdr_s *header = &dpivf->conf.hdr;
 	struct cnxk_dpi_compl_s *comp_ptr;
+	uint64_t cmd[DPI_MAX_CMD_SIZE];
 	rte_iova_t fptr, lptr;
 	int num_words = 0;
 	int rc;
@@ -321,7 +344,6 @@ cnxk_dmadev_copy(void *dev_private, uint16_t vchan, rte_iova_t src,
 	RTE_SET_USED(vchan);
 
 	comp_ptr = dpivf->conf.c_desc.compl_ptr[dpivf->conf.c_desc.tail];
-	comp_ptr->cdata = DPI_REQ_CDATA;
 	header->cn9k.ptr = (uint64_t)comp_ptr;
 	STRM_INC(dpivf->conf.c_desc, tail);
 
@@ -340,17 +362,17 @@ cnxk_dmadev_copy(void *dev_private, uint16_t vchan, rte_iova_t src,
 		lptr = dst;
 	}
 
-	dpivf->cmd[0] = header->u[0];
-	dpivf->cmd[1] = header->u[1];
-	dpivf->cmd[2] = header->u[2];
+	cmd[0] = header->u[0];
+	cmd[1] = header->u[1];
+	cmd[2] = header->u[2];
 	/* word3 is always 0 */
 	num_words += 4;
-	dpivf->cmd[num_words++] = length;
-	dpivf->cmd[num_words++] = fptr;
-	dpivf->cmd[num_words++] = length;
-	dpivf->cmd[num_words++] = lptr;
+	cmd[num_words++] = length;
+	cmd[num_words++] = fptr;
+	cmd[num_words++] = length;
+	cmd[num_words++] = lptr;
 
-	rc = __dpi_queue_write(&dpivf->rdpi, dpivf->cmd, num_words);
+	rc = __dpi_queue_write(&dpivf->rdpi, cmd, num_words);
 	if (unlikely(rc)) {
 		STRM_DEC(dpivf->conf.c_desc, tail);
 		return rc;
@@ -369,22 +391,20 @@ cnxk_dmadev_copy(void *dev_private, uint16_t vchan, rte_iova_t src,
 }
 
 static int
-cnxk_dmadev_copy_sg(void *dev_private, uint16_t vchan,
-		    const struct rte_dma_sge *src,
-		    const struct rte_dma_sge *dst,
-		    uint16_t nb_src, uint16_t nb_dst, uint64_t flags)
+cnxk_dmadev_copy_sg(void *dev_private, uint16_t vchan, const struct rte_dma_sge *src,
+		    const struct rte_dma_sge *dst, uint16_t nb_src, uint16_t nb_dst, uint64_t flags)
 {
 	struct cnxk_dpi_vf_s *dpivf = dev_private;
 	union dpi_instr_hdr_s *header = &dpivf->conf.hdr;
 	const struct rte_dma_sge *fptr, *lptr;
 	struct cnxk_dpi_compl_s *comp_ptr;
+	uint64_t cmd[DPI_MAX_CMD_SIZE];
 	int num_words = 0;
 	int i, rc;
 
 	RTE_SET_USED(vchan);
 
 	comp_ptr = dpivf->conf.c_desc.compl_ptr[dpivf->conf.c_desc.tail];
-	comp_ptr->cdata = DPI_REQ_CDATA;
 	header->cn9k.ptr = (uint64_t)comp_ptr;
 	STRM_INC(dpivf->conf.c_desc, tail);
 
@@ -393,34 +413,34 @@ cnxk_dmadev_copy_sg(void *dev_private, uint16_t vchan,
 	 * For all other cases, src pointers are first pointers.
 	 */
 	if (header->cn9k.xtype == DPI_XTYPE_INBOUND) {
-		header->cn9k.nfst = nb_dst & 0xf;
-		header->cn9k.nlst = nb_src & 0xf;
+		header->cn9k.nfst = nb_dst & DPI_MAX_POINTER;
+		header->cn9k.nlst = nb_src & DPI_MAX_POINTER;
 		fptr = &dst[0];
 		lptr = &src[0];
 	} else {
-		header->cn9k.nfst = nb_src & 0xf;
-		header->cn9k.nlst = nb_dst & 0xf;
+		header->cn9k.nfst = nb_src & DPI_MAX_POINTER;
+		header->cn9k.nlst = nb_dst & DPI_MAX_POINTER;
 		fptr = &src[0];
 		lptr = &dst[0];
 	}
 
-	dpivf->cmd[0] = header->u[0];
-	dpivf->cmd[1] = header->u[1];
-	dpivf->cmd[2] = header->u[2];
+	cmd[0] = header->u[0];
+	cmd[1] = header->u[1];
+	cmd[2] = header->u[2];
 	num_words += 4;
 	for (i = 0; i < header->cn9k.nfst; i++) {
-		dpivf->cmd[num_words++] = (uint64_t)fptr->length;
-		dpivf->cmd[num_words++] = fptr->addr;
+		cmd[num_words++] = (uint64_t)fptr->length;
+		cmd[num_words++] = fptr->addr;
 		fptr++;
 	}
 
 	for (i = 0; i < header->cn9k.nlst; i++) {
-		dpivf->cmd[num_words++] = (uint64_t)lptr->length;
-		dpivf->cmd[num_words++] = lptr->addr;
+		cmd[num_words++] = (uint64_t)lptr->length;
+		cmd[num_words++] = lptr->addr;
 		lptr++;
 	}
 
-	rc = __dpi_queue_write(&dpivf->rdpi, dpivf->cmd, num_words);
+	rc = __dpi_queue_write(&dpivf->rdpi, cmd, num_words);
 	if (unlikely(rc)) {
 		STRM_DEC(dpivf->conf.c_desc, tail);
 		return rc;
@@ -439,12 +459,13 @@ cnxk_dmadev_copy_sg(void *dev_private, uint16_t vchan,
 }
 
 static int
-cn10k_dmadev_copy(void *dev_private, uint16_t vchan, rte_iova_t src,
-		  rte_iova_t dst, uint32_t length, uint64_t flags)
+cn10k_dmadev_copy(void *dev_private, uint16_t vchan, rte_iova_t src, rte_iova_t dst,
+		  uint32_t length, uint64_t flags)
 {
 	struct cnxk_dpi_vf_s *dpivf = dev_private;
 	union dpi_instr_hdr_s *header = &dpivf->conf.hdr;
 	struct cnxk_dpi_compl_s *comp_ptr;
+	uint64_t cmd[DPI_MAX_CMD_SIZE];
 	rte_iova_t fptr, lptr;
 	int num_words = 0;
 	int rc;
@@ -452,7 +473,6 @@ cn10k_dmadev_copy(void *dev_private, uint16_t vchan, rte_iova_t src,
 	RTE_SET_USED(vchan);
 
 	comp_ptr = dpivf->conf.c_desc.compl_ptr[dpivf->conf.c_desc.tail];
-	comp_ptr->cdata = DPI_REQ_CDATA;
 	header->cn10k.ptr = (uint64_t)comp_ptr;
 	STRM_INC(dpivf->conf.c_desc, tail);
 
@@ -462,17 +482,17 @@ cn10k_dmadev_copy(void *dev_private, uint16_t vchan, rte_iova_t src,
 	fptr = src;
 	lptr = dst;
 
-	dpivf->cmd[0] = header->u[0];
-	dpivf->cmd[1] = header->u[1];
-	dpivf->cmd[2] = header->u[2];
+	cmd[0] = header->u[0];
+	cmd[1] = header->u[1];
+	cmd[2] = header->u[2];
 	/* word3 is always 0 */
 	num_words += 4;
-	dpivf->cmd[num_words++] = length;
-	dpivf->cmd[num_words++] = fptr;
-	dpivf->cmd[num_words++] = length;
-	dpivf->cmd[num_words++] = lptr;
+	cmd[num_words++] = length;
+	cmd[num_words++] = fptr;
+	cmd[num_words++] = length;
+	cmd[num_words++] = lptr;
 
-	rc = __dpi_queue_write(&dpivf->rdpi, dpivf->cmd, num_words);
+	rc = __dpi_queue_write(&dpivf->rdpi, cmd, num_words);
 	if (unlikely(rc)) {
 		STRM_DEC(dpivf->conf.c_desc, tail);
 		return rc;
@@ -491,48 +511,47 @@ cn10k_dmadev_copy(void *dev_private, uint16_t vchan, rte_iova_t src,
 }
 
 static int
-cn10k_dmadev_copy_sg(void *dev_private, uint16_t vchan,
-		     const struct rte_dma_sge *src,
-		     const struct rte_dma_sge *dst, uint16_t nb_src,
-		     uint16_t nb_dst, uint64_t flags)
+cn10k_dmadev_copy_sg(void *dev_private, uint16_t vchan, const struct rte_dma_sge *src,
+		     const struct rte_dma_sge *dst, uint16_t nb_src, uint16_t nb_dst,
+		     uint64_t flags)
 {
 	struct cnxk_dpi_vf_s *dpivf = dev_private;
 	union dpi_instr_hdr_s *header = &dpivf->conf.hdr;
 	const struct rte_dma_sge *fptr, *lptr;
 	struct cnxk_dpi_compl_s *comp_ptr;
+	uint64_t cmd[DPI_MAX_CMD_SIZE];
 	int num_words = 0;
 	int i, rc;
 
 	RTE_SET_USED(vchan);
 
 	comp_ptr = dpivf->conf.c_desc.compl_ptr[dpivf->conf.c_desc.tail];
-	comp_ptr->cdata = DPI_REQ_CDATA;
 	header->cn10k.ptr = (uint64_t)comp_ptr;
 	STRM_INC(dpivf->conf.c_desc, tail);
 
-	header->cn10k.nfst = nb_src & 0xf;
-	header->cn10k.nlst = nb_dst & 0xf;
+	header->cn10k.nfst = nb_src & DPI_MAX_POINTER;
+	header->cn10k.nlst = nb_dst & DPI_MAX_POINTER;
 	fptr = &src[0];
 	lptr = &dst[0];
 
-	dpivf->cmd[0] = header->u[0];
-	dpivf->cmd[1] = header->u[1];
-	dpivf->cmd[2] = header->u[2];
+	cmd[0] = header->u[0];
+	cmd[1] = header->u[1];
+	cmd[2] = header->u[2];
 	num_words += 4;
 
 	for (i = 0; i < header->cn10k.nfst; i++) {
-		dpivf->cmd[num_words++] = (uint64_t)fptr->length;
-		dpivf->cmd[num_words++] = fptr->addr;
+		cmd[num_words++] = (uint64_t)fptr->length;
+		cmd[num_words++] = fptr->addr;
 		fptr++;
 	}
 
 	for (i = 0; i < header->cn10k.nlst; i++) {
-		dpivf->cmd[num_words++] = (uint64_t)lptr->length;
-		dpivf->cmd[num_words++] = lptr->addr;
+		cmd[num_words++] = (uint64_t)lptr->length;
+		cmd[num_words++] = lptr->addr;
 		lptr++;
 	}
 
-	rc = __dpi_queue_write(&dpivf->rdpi, dpivf->cmd, num_words);
+	rc = __dpi_queue_write(&dpivf->rdpi, cmd, num_words);
 	if (unlikely(rc)) {
 		STRM_DEC(dpivf->conf.c_desc, tail);
 		return rc;
@@ -551,50 +570,52 @@ cn10k_dmadev_copy_sg(void *dev_private, uint16_t vchan,
 }
 
 static uint16_t
-cnxk_dmadev_completed(void *dev_private, uint16_t vchan, const uint16_t nb_cpls,
-		      uint16_t *last_idx, bool *has_error)
+cnxk_dmadev_completed(void *dev_private, uint16_t vchan, const uint16_t nb_cpls, uint16_t *last_idx,
+		      bool *has_error)
 {
 	struct cnxk_dpi_vf_s *dpivf = dev_private;
+	struct cnxk_dpi_cdesc_data_s *c_desc = &dpivf->conf.c_desc;
+	struct cnxk_dpi_compl_s *comp_ptr;
 	int cnt;
 
 	RTE_SET_USED(vchan);
 
-	if (dpivf->stats.submitted == dpivf->stats.completed)
-		return 0;
-
 	for (cnt = 0; cnt < nb_cpls; cnt++) {
-		struct cnxk_dpi_compl_s *comp_ptr =
-			dpivf->conf.c_desc.compl_ptr[cnt];
+		comp_ptr = c_desc->compl_ptr[c_desc->head];
 
 		if (comp_ptr->cdata) {
 			if (comp_ptr->cdata == DPI_REQ_CDATA)
 				break;
 			*has_error = 1;
 			dpivf->stats.errors++;
+			STRM_INC(*c_desc, head);
 			break;
 		}
+
+		comp_ptr->cdata = DPI_REQ_CDATA;
+		STRM_INC(*c_desc, head);
 	}
 
-	*last_idx = cnt - 1;
-	dpivf->conf.c_desc.tail = cnt;
 	dpivf->stats.completed += cnt;
+	*last_idx = dpivf->stats.completed - 1;
 
 	return cnt;
 }
 
 static uint16_t
-cnxk_dmadev_completed_status(void *dev_private, uint16_t vchan,
-			     const uint16_t nb_cpls, uint16_t *last_idx,
-			     enum rte_dma_status_code *status)
+cnxk_dmadev_completed_status(void *dev_private, uint16_t vchan, const uint16_t nb_cpls,
+			     uint16_t *last_idx, enum rte_dma_status_code *status)
 {
 	struct cnxk_dpi_vf_s *dpivf = dev_private;
+	struct cnxk_dpi_cdesc_data_s *c_desc = &dpivf->conf.c_desc;
+	struct cnxk_dpi_compl_s *comp_ptr;
 	int cnt;
 
 	RTE_SET_USED(vchan);
 	RTE_SET_USED(last_idx);
+
 	for (cnt = 0; cnt < nb_cpls; cnt++) {
-		struct cnxk_dpi_compl_s *comp_ptr =
-			dpivf->conf.c_desc.compl_ptr[cnt];
+		comp_ptr = c_desc->compl_ptr[c_desc->head];
 		status[cnt] = comp_ptr->cdata;
 		if (status[cnt]) {
 			if (status[cnt] == DPI_REQ_CDATA)
@@ -602,11 +623,12 @@ cnxk_dmadev_completed_status(void *dev_private, uint16_t vchan,
 
 			dpivf->stats.errors++;
 		}
+		comp_ptr->cdata = DPI_REQ_CDATA;
+		STRM_INC(*c_desc, head);
 	}
 
-	*last_idx = cnt - 1;
-	dpivf->conf.c_desc.tail = 0;
 	dpivf->stats.completed += cnt;
+	*last_idx = dpivf->stats.completed - 1;
 
 	return cnt;
 }
@@ -645,8 +667,8 @@ cnxk_dmadev_submit(void *dev_private, uint16_t vchan __rte_unused)
 }
 
 static int
-cnxk_stats_get(const struct rte_dma_dev *dev, uint16_t vchan,
-	       struct rte_dma_stats *rte_stats, uint32_t size)
+cnxk_stats_get(const struct rte_dma_dev *dev, uint16_t vchan, struct rte_dma_stats *rte_stats,
+	       uint32_t size)
 {
 	struct cnxk_dpi_vf_s *dpivf = dev->fp_obj->dev_private;
 	struct rte_dma_stats *stats = &dpivf->stats;
@@ -770,20 +792,17 @@ cnxk_dmadev_remove(struct rte_pci_device *pci_dev)
 }
 
 static const struct rte_pci_id cnxk_dma_pci_map[] = {
-	{
-		RTE_PCI_DEVICE(PCI_VENDOR_ID_CAVIUM,
-			       PCI_DEVID_CNXK_DPI_VF)
-	},
+	{RTE_PCI_DEVICE(PCI_VENDOR_ID_CAVIUM, PCI_DEVID_CNXK_DPI_VF)},
 	{
 		.vendor_id = 0,
 	},
 };
 
 static struct rte_pci_driver cnxk_dmadev = {
-	.id_table  = cnxk_dma_pci_map,
+	.id_table = cnxk_dma_pci_map,
 	.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_NEED_IOVA_AS_VA,
-	.probe     = cnxk_dmadev_probe,
-	.remove    = cnxk_dmadev_remove,
+	.probe = cnxk_dmadev_probe,
+	.remove = cnxk_dmadev_remove,
 };
 
 RTE_PMD_REGISTER_PCI(cnxk_dmadev_pci_driver, cnxk_dmadev);
