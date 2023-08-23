@@ -1181,7 +1181,7 @@ out:
 }
 
 static int
-test_inline_macsec_encap_all(const void *data __rte_unused)
+test_inline_macsec_encap_all(void)
 {
 	const struct mcs_test_vector *cur_td;
 	struct mcs_test_opts opts = {0};
@@ -1215,7 +1215,7 @@ test_inline_macsec_encap_all(const void *data __rte_unused)
 }
 
 static int
-test_inline_macsec_decap_all(const void *data __rte_unused)
+test_inline_macsec_decap_all(void)
 {
 	const struct mcs_test_vector *cur_td;
 	struct mcs_test_opts opts = {0};
@@ -1247,7 +1247,7 @@ test_inline_macsec_decap_all(const void *data __rte_unused)
 }
 
 static int
-test_inline_macsec_auth_only_all(const void *data __rte_unused)
+test_inline_macsec_auth_only_all(void)
 {
 	const struct mcs_test_vector *cur_td;
 	struct mcs_test_opts opts = {0};
@@ -1281,7 +1281,7 @@ test_inline_macsec_auth_only_all(const void *data __rte_unused)
 }
 
 static int
-test_inline_macsec_verify_only_all(const void *data __rte_unused)
+test_inline_macsec_verify_only_all(void)
 {
 	const struct mcs_test_vector *cur_td;
 	struct mcs_test_opts opts = {0};
@@ -1314,7 +1314,7 @@ test_inline_macsec_verify_only_all(const void *data __rte_unused)
 }
 
 static int
-test_inline_macsec_encap_decap_all(const void *data __rte_unused)
+test_inline_macsec_encap_decap_all(void)
 {
 	const struct mcs_test_vector *cur_td;
 	struct mcs_test_opts opts = {0};
@@ -1350,7 +1350,7 @@ test_inline_macsec_encap_decap_all(const void *data __rte_unused)
 
 
 static int
-test_inline_macsec_auth_verify_all(const void *data __rte_unused)
+test_inline_macsec_auth_verify_all(void)
 {
 	const struct mcs_test_vector *cur_td;
 	struct mcs_test_opts opts = {0};
@@ -1384,7 +1384,7 @@ test_inline_macsec_auth_verify_all(const void *data __rte_unused)
 }
 
 static int
-test_inline_macsec_multi_flow(const void *data __rte_unused)
+test_inline_macsec_multi_flow(void)
 {
 	const struct mcs_test_vector *tv[MCS_MAX_FLOWS];
 	struct mcs_test_vector iter[MCS_MAX_FLOWS];
@@ -1429,7 +1429,7 @@ test_inline_macsec_multi_flow(const void *data __rte_unused)
 }
 
 static int
-test_inline_macsec_with_vlan(const void *data __rte_unused)
+test_inline_macsec_with_vlan(void)
 {
 	const struct mcs_test_vector *cur_td;
 	struct mcs_test_opts opts = {0};
@@ -1492,7 +1492,7 @@ test_inline_macsec_with_vlan(const void *data __rte_unused)
 }
 
 static int
-test_inline_macsec_pkt_drop(const void *data __rte_unused)
+test_inline_macsec_pkt_drop(void)
 {
 	const struct mcs_test_vector *cur_td;
 	struct mcs_test_opts opts = {0};
@@ -1527,7 +1527,7 @@ test_inline_macsec_pkt_drop(const void *data __rte_unused)
 }
 
 static int
-test_inline_macsec_untagged_rx(const void *data __rte_unused)
+test_inline_macsec_untagged_rx(void)
 {
 	const struct mcs_test_vector *cur_td;
 	struct mcs_test_opts opts = {0};
@@ -1572,7 +1572,7 @@ test_inline_macsec_untagged_rx(const void *data __rte_unused)
 }
 
 static int
-test_inline_macsec_bad_tag_rx(const void *data __rte_unused)
+test_inline_macsec_bad_tag_rx(void)
 {
 	const struct mcs_test_vector *cur_td;
 	struct mcs_test_opts opts = {0};
@@ -1606,7 +1606,7 @@ test_inline_macsec_bad_tag_rx(const void *data __rte_unused)
 }
 
 static int
-test_inline_macsec_sa_not_in_use(const void *data __rte_unused)
+test_inline_macsec_sa_not_in_use(void)
 {
 	const struct mcs_test_vector *cur_td;
 	struct mcs_test_opts opts = {0};
@@ -1640,7 +1640,7 @@ test_inline_macsec_sa_not_in_use(const void *data __rte_unused)
 }
 
 static int
-test_inline_macsec_decap_stats(const void *data __rte_unused)
+test_inline_macsec_decap_stats(void)
 {
 	const struct mcs_test_vector *cur_td;
 	struct mcs_test_opts opts = {0};
@@ -1675,7 +1675,7 @@ test_inline_macsec_decap_stats(const void *data __rte_unused)
 }
 
 static int
-test_inline_macsec_verify_only_stats(const void *data __rte_unused)
+test_inline_macsec_verify_only_stats(void)
 {
 	const struct mcs_test_vector *cur_td;
 	struct mcs_test_opts opts = {0};
@@ -1710,7 +1710,7 @@ test_inline_macsec_verify_only_stats(const void *data __rte_unused)
 }
 
 static int
-test_inline_macsec_pkts_invalid_stats(const void *data __rte_unused)
+test_inline_macsec_pkts_invalid_stats(void)
 {
 	const struct mcs_test_vector *cur_td;
 	struct mcs_test_opts opts = {0};
@@ -1741,7 +1741,7 @@ test_inline_macsec_pkts_invalid_stats(const void *data __rte_unused)
 }
 
 static int
-test_inline_macsec_pkts_unchecked_stats(const void *data __rte_unused)
+test_inline_macsec_pkts_unchecked_stats(void)
 {
 	const struct mcs_test_vector *cur_td;
 	struct mcs_test_opts opts = {0};
@@ -1774,7 +1774,7 @@ test_inline_macsec_pkts_unchecked_stats(const void *data __rte_unused)
 }
 
 static int
-test_inline_macsec_out_pkts_untagged(const void *data __rte_unused)
+test_inline_macsec_out_pkts_untagged(void)
 {
 	const struct mcs_test_vector *cur_td;
 	struct mcs_test_opts opts = {0};
@@ -1807,7 +1807,7 @@ test_inline_macsec_out_pkts_untagged(const void *data __rte_unused)
 }
 
 static int
-test_inline_macsec_out_pkts_toolong(const void *data __rte_unused)
+test_inline_macsec_out_pkts_toolong(void)
 {
 	const struct mcs_test_vector *cur_td;
 	struct mcs_test_opts opts = {0};
@@ -1840,7 +1840,7 @@ test_inline_macsec_out_pkts_toolong(const void *data __rte_unused)
 }
 
 static int
-test_inline_macsec_encap_stats(const void *data __rte_unused)
+test_inline_macsec_encap_stats(void)
 {
 	const struct mcs_test_vector *cur_td;
 	struct mcs_test_opts opts = {0};
@@ -1872,7 +1872,7 @@ test_inline_macsec_encap_stats(const void *data __rte_unused)
 }
 
 static int
-test_inline_macsec_auth_only_stats(const void *data __rte_unused)
+test_inline_macsec_auth_only_stats(void)
 {
 	const struct mcs_test_vector *cur_td;
 	struct mcs_test_opts opts = {0};
@@ -1904,7 +1904,7 @@ test_inline_macsec_auth_only_stats(const void *data __rte_unused)
 }
 
 static int
-test_inline_macsec_interrupts_all(const void *data __rte_unused)
+test_inline_macsec_interrupts_all(void)
 {
 	struct mcs_err_vector err_vector = {0};
 	const struct mcs_test_vector *cur_td;
@@ -1957,7 +1957,7 @@ test_inline_macsec_interrupts_all(const void *data __rte_unused)
 }
 
 static int
-test_inline_macsec_rekey_tx(const void *data __rte_unused)
+test_inline_macsec_rekey_tx(void)
 {
 	const struct mcs_test_vector *cur_td;
 	struct mcs_test_opts opts = {0};
@@ -1994,7 +1994,7 @@ test_inline_macsec_rekey_tx(const void *data __rte_unused)
 }
 
 static int
-test_inline_macsec_rekey_rx(const void *data __rte_unused)
+test_inline_macsec_rekey_rx(void)
 {
 	const struct mcs_test_vector *cur_td;
 	struct mcs_test_opts opts = {0};
@@ -2029,7 +2029,7 @@ test_inline_macsec_rekey_rx(const void *data __rte_unused)
 }
 
 static int
-test_inline_macsec_anti_replay(const void *data __rte_unused)
+test_inline_macsec_anti_replay(void)
 {
 	const struct mcs_test_vector *cur_td;
 	struct mcs_test_opts opts = {0};
