@@ -127,7 +127,7 @@ struct unit_test_case {
 		{ setup, teardown, NULL, testcase, #testcase, 1, data }
 
 #define TEST_CASE_NAMED_ST(name, setup, teardown, testcase) \
-		{ setup, teardown, NULL, testcase, name, 1, NULL }
+		{ setup, teardown, testcase, NULL, name, 1, NULL }
 
 #define TEST_CASE_NAMED_WITH_DATA(name, setup, teardown, testcase, data) \
 		{ setup, teardown, NULL, testcase, name, 1, data }
