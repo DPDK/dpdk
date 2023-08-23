@@ -15,6 +15,10 @@
  */
 #define DPI_REQ_CDATA		0xFF
 
+#define CNXK_DPI_DEV_CONFIG   (1ULL << 0)
+#define CNXK_DPI_VCHAN_CONFIG (1ULL << 1)
+#define CNXK_DPI_DEV_START    (1ULL << 2)
+
 struct cnxk_dpi_compl_s {
 	uint64_t cdata;
 	void *cb_data;
@@ -39,6 +43,7 @@ struct cnxk_dpi_vf_s {
 	uint64_t cmd[DPI_MAX_CMD_SIZE];
 	uint32_t num_words;
 	uint16_t desc_idx;
+	uint16_t flag;
 };
 
 #endif

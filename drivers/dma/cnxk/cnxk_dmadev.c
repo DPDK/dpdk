@@ -45,14 +45,22 @@ cnxk_dmadev_configure(struct rte_dma_dev *dev,
 	int rc = 0;
 
 	RTE_SET_USED(conf);
-	RTE_SET_USED(conf);
 	RTE_SET_USED(conf_sz);
-	RTE_SET_USED(conf_sz);
-	dpivf = dev->fp_obj->dev_private;
-	rc = roc_dpi_configure(&dpivf->rdpi);
-	if (rc < 0)
-		plt_err("DMA configure failed err = %d", rc);
 
+	dpivf = dev->fp_obj->dev_private;
+
+	if (dpivf->flag & CNXK_DPI_DEV_CONFIG)
+		return rc;
+
+	rc = roc_dpi_configure(&dpivf->rdpi);
+	if (rc < 0) {
+		plt_err("DMA configure failed err = %d", rc);
+		goto done;
+	}
+
+	dpivf->flag |= CNXK_DPI_DEV_CONFIG;
+
+done:
 	return rc;
 }
 
@@ -68,6 +76,9 @@ cnxk_dmadev_vchan_setup(struct rte_dma_dev *dev, uint16_t vchan,
 
 	RTE_SET_USED(vchan);
 	RTE_SET_USED(conf_sz);
+
+	if (dpivf->flag & CNXK_DPI_VCHAN_CONFIG)
+		return 0;
 
 	header->cn9k.pt = DPI_HDR_PT_ZBW_CA;
 
@@ -108,6 +119,7 @@ cnxk_dmadev_vchan_setup(struct rte_dma_dev *dev, uint16_t vchan,
 	dpivf->conf.c_desc.max_cnt = DPI_MAX_DESC;
 	dpivf->conf.c_desc.head = 0;
 	dpivf->conf.c_desc.tail = 0;
+	dpivf->flag |= CNXK_DPI_VCHAN_CONFIG;
 
 	return 0;
 }
@@ -124,6 +136,10 @@ cn10k_dmadev_vchan_setup(struct rte_dma_dev *dev, uint16_t vchan,
 
 	RTE_SET_USED(vchan);
 	RTE_SET_USED(conf_sz);
+
+
+	if (dpivf->flag & CNXK_DPI_VCHAN_CONFIG)
+		return 0;
 
 	header->cn10k.pt = DPI_HDR_PT_ZBW_CA;
 
@@ -164,6 +180,7 @@ cn10k_dmadev_vchan_setup(struct rte_dma_dev *dev, uint16_t vchan,
 	dpivf->conf.c_desc.max_cnt = DPI_MAX_DESC;
 	dpivf->conf.c_desc.head = 0;
 	dpivf->conf.c_desc.tail = 0;
+	dpivf->flag |= CNXK_DPI_VCHAN_CONFIG;
 
 	return 0;
 }
@@ -173,9 +190,14 @@ cnxk_dmadev_start(struct rte_dma_dev *dev)
 {
 	struct cnxk_dpi_vf_s *dpivf = dev->fp_obj->dev_private;
 
+	if (dpivf->flag & CNXK_DPI_DEV_START)
+		return 0;
+
 	dpivf->desc_idx = 0;
 	dpivf->num_words = 0;
 	roc_dpi_enable(&dpivf->rdpi);
+
+	dpivf->flag |= CNXK_DPI_DEV_START;
 
 	return 0;
 }
@@ -187,6 +209,8 @@ cnxk_dmadev_stop(struct rte_dma_dev *dev)
 
 	roc_dpi_disable(&dpivf->rdpi);
 
+	dpivf->flag &= ~CNXK_DPI_DEV_START;
+
 	return 0;
 }
 
@@ -197,6 +221,8 @@ cnxk_dmadev_close(struct rte_dma_dev *dev)
 
 	roc_dpi_disable(&dpivf->rdpi);
 	roc_dpi_dev_fini(&dpivf->rdpi);
+
+	dpivf->flag = 0;
 
 	return 0;
 }
