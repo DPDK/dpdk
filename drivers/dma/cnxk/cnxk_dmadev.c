@@ -232,8 +232,7 @@ __dpi_queue_write(struct roc_dpi *dpi, uint64_t *cmds, int cmd_count)
 {
 	uint64_t *ptr = dpi->chunk_base;
 
-	if ((cmd_count < DPI_MIN_CMD_SIZE) || (cmd_count > DPI_MAX_CMD_SIZE) ||
-	    cmds == NULL)
+	if ((cmd_count < DPI_MIN_CMD_SIZE) || (cmd_count > DPI_MAX_CMD_SIZE) || cmds == NULL)
 		return -EINVAL;
 
 	/*
@@ -249,11 +248,15 @@ __dpi_queue_write(struct roc_dpi *dpi, uint64_t *cmds, int cmd_count)
 		int count;
 		uint64_t *new_buff = dpi->chunk_next;
 
-		dpi->chunk_next =
-			(void *)roc_npa_aura_op_alloc(dpi->aura_handle, 0);
+		dpi->chunk_next = (void *)roc_npa_aura_op_alloc(dpi->aura_handle, 0);
 		if (!dpi->chunk_next) {
-			plt_err("Failed to alloc next buffer from NPA");
-			return -ENOMEM;
+			plt_dp_dbg("Failed to alloc next buffer from NPA");
+
+			/* NPA failed to allocate a buffer. Restoring chunk_next
+			 * to its original address.
+			 */
+			dpi->chunk_next = new_buff;
+			return -ENOSPC;
 		}
 
 		/*
@@ -287,13 +290,17 @@ __dpi_queue_write(struct roc_dpi *dpi, uint64_t *cmds, int cmd_count)
 		/* queue index may be greater than pool size */
 		if (dpi->chunk_head >= dpi->pool_size_m1) {
 			new_buff = dpi->chunk_next;
-			dpi->chunk_next =
-				(void *)roc_npa_aura_op_alloc(dpi->aura_handle,
-							      0);
+			dpi->chunk_next = (void *)roc_npa_aura_op_alloc(dpi->aura_handle, 0);
 			if (!dpi->chunk_next) {
-				plt_err("Failed to alloc next buffer from NPA");
-				return -ENOMEM;
+				plt_dp_dbg("Failed to alloc next buffer from NPA");
+
+				/* NPA failed to allocate a buffer. Restoring chunk_next
+				 * to its original address.
+				 */
+				dpi->chunk_next = new_buff;
+				return -ENOSPC;
 			}
+
 			/* Write next buffer address */
 			*ptr = (uint64_t)new_buff;
 			dpi->chunk_base = new_buff;
