@@ -298,6 +298,7 @@ cnxk_dmadev_start(struct rte_dma_dev *dev)
 		}
 
 		cnxk_stats_reset(dev, i);
+		dpi_conf->completed_offset = 0;
 	}
 
 	roc_dpi_enable(&dpivf->rdpi);
@@ -479,7 +480,7 @@ cnxk_dmadev_copy(void *dev_private, uint16_t vchan, rte_iova_t src, rte_iova_t d
 		dpi_conf->pending++;
 	}
 
-	return (dpi_conf->desc_idx++);
+	return dpi_conf->desc_idx++;
 }
 
 static int
@@ -545,13 +546,13 @@ cnxk_dmadev_copy_sg(void *dev_private, uint16_t vchan, const struct rte_dma_sge 
 	if (flags & RTE_DMA_OP_FLAG_SUBMIT) {
 		rte_wmb();
 		plt_write64(num_words, dpivf->rdpi.rbase + DPI_VDMA_DBELL);
-		dpi_conf->stats.submitted += nb_src;
+		dpi_conf->stats.submitted++;
 	} else {
 		dpi_conf->pnum_words += num_words;
 		dpi_conf->pending++;
 	}
 
-	return (dpi_conf->desc_idx++);
+	return dpi_conf->desc_idx++;
 }
 
 static int
@@ -664,13 +665,13 @@ cn10k_dmadev_copy_sg(void *dev_private, uint16_t vchan, const struct rte_dma_sge
 	if (flags & RTE_DMA_OP_FLAG_SUBMIT) {
 		rte_wmb();
 		plt_write64(num_words, dpivf->rdpi.rbase + DPI_VDMA_DBELL);
-		dpi_conf->stats.submitted += nb_src;
+		dpi_conf->stats.submitted++;
 	} else {
 		dpi_conf->pnum_words += num_words;
 		dpi_conf->pending++;
 	}
 
-	return (dpi_conf->desc_idx++);
+	return dpi_conf->desc_idx++;
 }
 
 static uint16_t
@@ -700,7 +701,7 @@ cnxk_dmadev_completed(void *dev_private, uint16_t vchan, const uint16_t nb_cpls,
 	}
 
 	dpi_conf->stats.completed += cnt;
-	*last_idx = dpi_conf->stats.completed - 1;
+	*last_idx = (dpi_conf->completed_offset + dpi_conf->stats.completed - 1) & 0xffff;
 
 	return cnt;
 }
@@ -729,7 +730,7 @@ cnxk_dmadev_completed_status(void *dev_private, uint16_t vchan, const uint16_t n
 	}
 
 	dpi_conf->stats.completed += cnt;
-	*last_idx = dpi_conf->stats.completed - 1;
+	*last_idx = (dpi_conf->completed_offset + dpi_conf->stats.completed - 1) & 0xffff;
 
 	return cnt;
 }
@@ -814,6 +815,7 @@ cnxk_stats_reset(struct rte_dma_dev *dev, uint16_t vchan)
 	if (vchan == RTE_DMA_ALL_VCHAN) {
 		for (i = 0; i < dpivf->num_vchans; i++) {
 			dpi_conf = &dpivf->conf[i];
+			dpi_conf->completed_offset += dpi_conf->stats.completed;
 			dpi_conf->stats = (struct rte_dma_stats){0};
 		}
 
@@ -824,6 +826,7 @@ cnxk_stats_reset(struct rte_dma_dev *dev, uint16_t vchan)
 		return -EINVAL;
 
 	dpi_conf = &dpivf->conf[vchan];
+	dpi_conf->completed_offset += dpi_conf->stats.completed;
 	dpi_conf->stats = (struct rte_dma_stats){0};
 
 	return 0;

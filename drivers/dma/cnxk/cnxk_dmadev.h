@@ -41,6 +41,7 @@ struct cnxk_dpi_conf {
 	uint16_t desc_idx;
 	uint16_t pad0;
 	struct rte_dma_stats stats;
+	uint64_t completed_offset;
 };
 
 struct cnxk_dpi_vf_s {
