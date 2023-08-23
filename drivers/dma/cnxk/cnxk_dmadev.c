@@ -108,6 +108,7 @@ cnxk_dmadev_vchan_setup(struct rte_dma_dev *dev, uint16_t vchan,
 	dpivf->conf.c_desc.max_cnt = DPI_MAX_DESC;
 	dpivf->conf.c_desc.head = 0;
 	dpivf->conf.c_desc.tail = 0;
+	dpivf->pending = 0;
 
 	return 0;
 }
@@ -164,6 +165,7 @@ cn10k_dmadev_vchan_setup(struct rte_dma_dev *dev, uint16_t vchan,
 	dpivf->conf.c_desc.max_cnt = DPI_MAX_DESC;
 	dpivf->conf.c_desc.head = 0;
 	dpivf->conf.c_desc.tail = 0;
+	dpivf->pending = 0;
 
 	return 0;
 }
@@ -174,7 +176,8 @@ cnxk_dmadev_start(struct rte_dma_dev *dev)
 	struct cnxk_dpi_vf_s *dpivf = dev->fp_obj->dev_private;
 
 	dpivf->desc_idx = 0;
-	dpivf->num_words = 0;
+	dpivf->pending = 0;
+	dpivf->pnum_words = 0;
 	roc_dpi_enable(&dpivf->rdpi);
 
 	return 0;
@@ -294,7 +297,7 @@ cnxk_dmadev_copy(void *dev_private, uint16_t vchan, rte_iova_t src,
 	comp_ptr = dpivf->conf.c_desc.compl_ptr[dpivf->conf.c_desc.tail];
 	comp_ptr->cdata = DPI_REQ_CDATA;
 	header->cn9k.ptr = (uint64_t)comp_ptr;
-	STRM_INC(dpivf->conf.c_desc);
+	STRM_INC(dpivf->conf.c_desc, tail);
 
 	header->cn9k.nfst = 1;
 	header->cn9k.nlst = 1;
@@ -322,17 +325,21 @@ cnxk_dmadev_copy(void *dev_private, uint16_t vchan, rte_iova_t src,
 	dpivf->cmd[num_words++] = lptr;
 
 	rc = __dpi_queue_write(&dpivf->rdpi, dpivf->cmd, num_words);
-	if (!rc) {
-		if (flags & RTE_DMA_OP_FLAG_SUBMIT) {
-			rte_wmb();
-			plt_write64(num_words,
-				    dpivf->rdpi.rbase + DPI_VDMA_DBELL);
-			dpivf->stats.submitted++;
-		}
-		dpivf->num_words += num_words;
+	if (unlikely(rc)) {
+		STRM_DEC(dpivf->conf.c_desc, tail);
+		return rc;
 	}
 
-	return dpivf->desc_idx++;
+	if (flags & RTE_DMA_OP_FLAG_SUBMIT) {
+		rte_wmb();
+		plt_write64(num_words, dpivf->rdpi.rbase + DPI_VDMA_DBELL);
+		dpivf->stats.submitted++;
+	} else {
+		dpivf->pnum_words += num_words;
+		dpivf->pending++;
+	}
+
+	return (dpivf->desc_idx++);
 }
 
 static int
@@ -353,7 +360,7 @@ cnxk_dmadev_copy_sg(void *dev_private, uint16_t vchan,
 	comp_ptr = dpivf->conf.c_desc.compl_ptr[dpivf->conf.c_desc.tail];
 	comp_ptr->cdata = DPI_REQ_CDATA;
 	header->cn9k.ptr = (uint64_t)comp_ptr;
-	STRM_INC(dpivf->conf.c_desc);
+	STRM_INC(dpivf->conf.c_desc, tail);
 
 	/*
 	 * For inbound case, src pointers are last pointers.
@@ -388,17 +395,21 @@ cnxk_dmadev_copy_sg(void *dev_private, uint16_t vchan,
 	}
 
 	rc = __dpi_queue_write(&dpivf->rdpi, dpivf->cmd, num_words);
-	if (!rc) {
-		if (flags & RTE_DMA_OP_FLAG_SUBMIT) {
-			rte_wmb();
-			plt_write64(num_words,
-				    dpivf->rdpi.rbase + DPI_VDMA_DBELL);
-			dpivf->stats.submitted += nb_src;
-		}
-		dpivf->num_words += num_words;
+	if (unlikely(rc)) {
+		STRM_DEC(dpivf->conf.c_desc, tail);
+		return rc;
 	}
 
-	return (rc < 0) ? rc : dpivf->desc_idx++;
+	if (flags & RTE_DMA_OP_FLAG_SUBMIT) {
+		rte_wmb();
+		plt_write64(num_words, dpivf->rdpi.rbase + DPI_VDMA_DBELL);
+		dpivf->stats.submitted += nb_src;
+	} else {
+		dpivf->pnum_words += num_words;
+		dpivf->pending++;
+	}
+
+	return (dpivf->desc_idx++);
 }
 
 static int
@@ -417,7 +428,7 @@ cn10k_dmadev_copy(void *dev_private, uint16_t vchan, rte_iova_t src,
 	comp_ptr = dpivf->conf.c_desc.compl_ptr[dpivf->conf.c_desc.tail];
 	comp_ptr->cdata = DPI_REQ_CDATA;
 	header->cn10k.ptr = (uint64_t)comp_ptr;
-	STRM_INC(dpivf->conf.c_desc);
+	STRM_INC(dpivf->conf.c_desc, tail);
 
 	header->cn10k.nfst = 1;
 	header->cn10k.nlst = 1;
@@ -436,14 +447,18 @@ cn10k_dmadev_copy(void *dev_private, uint16_t vchan, rte_iova_t src,
 	dpivf->cmd[num_words++] = lptr;
 
 	rc = __dpi_queue_write(&dpivf->rdpi, dpivf->cmd, num_words);
-	if (!rc) {
-		if (flags & RTE_DMA_OP_FLAG_SUBMIT) {
-			rte_wmb();
-			plt_write64(num_words,
-				    dpivf->rdpi.rbase + DPI_VDMA_DBELL);
-			dpivf->stats.submitted++;
-		}
-		dpivf->num_words += num_words;
+	if (unlikely(rc)) {
+		STRM_DEC(dpivf->conf.c_desc, tail);
+		return rc;
+	}
+
+	if (flags & RTE_DMA_OP_FLAG_SUBMIT) {
+		rte_wmb();
+		plt_write64(num_words, dpivf->rdpi.rbase + DPI_VDMA_DBELL);
+		dpivf->stats.submitted++;
+	} else {
+		dpivf->pnum_words += num_words;
+		dpivf->pending++;
 	}
 
 	return dpivf->desc_idx++;
@@ -467,7 +482,7 @@ cn10k_dmadev_copy_sg(void *dev_private, uint16_t vchan,
 	comp_ptr = dpivf->conf.c_desc.compl_ptr[dpivf->conf.c_desc.tail];
 	comp_ptr->cdata = DPI_REQ_CDATA;
 	header->cn10k.ptr = (uint64_t)comp_ptr;
-	STRM_INC(dpivf->conf.c_desc);
+	STRM_INC(dpivf->conf.c_desc, tail);
 
 	header->cn10k.nfst = nb_src & 0xf;
 	header->cn10k.nlst = nb_dst & 0xf;
@@ -492,17 +507,21 @@ cn10k_dmadev_copy_sg(void *dev_private, uint16_t vchan,
 	}
 
 	rc = __dpi_queue_write(&dpivf->rdpi, dpivf->cmd, num_words);
-	if (!rc) {
-		if (flags & RTE_DMA_OP_FLAG_SUBMIT) {
-			rte_wmb();
-			plt_write64(num_words,
-				    dpivf->rdpi.rbase + DPI_VDMA_DBELL);
-			dpivf->stats.submitted += nb_src;
-		}
-		dpivf->num_words += num_words;
+	if (unlikely(rc)) {
+		STRM_DEC(dpivf->conf.c_desc, tail);
+		return rc;
 	}
 
-	return (rc < 0) ? rc : dpivf->desc_idx++;
+	if (flags & RTE_DMA_OP_FLAG_SUBMIT) {
+		rte_wmb();
+		plt_write64(num_words, dpivf->rdpi.rbase + DPI_VDMA_DBELL);
+		dpivf->stats.submitted += nb_src;
+	} else {
+		dpivf->pnum_words += num_words;
+		dpivf->pending++;
+	}
+
+	return (dpivf->desc_idx++);
 }
 
 static uint16_t
@@ -566,14 +585,35 @@ cnxk_dmadev_completed_status(void *dev_private, uint16_t vchan,
 	return cnt;
 }
 
+static uint16_t
+cnxk_damdev_burst_capacity(const void *dev_private, uint16_t vchan)
+{
+	const struct cnxk_dpi_vf_s *dpivf = (const struct cnxk_dpi_vf_s *)dev_private;
+	uint16_t burst_cap;
+
+	RTE_SET_USED(vchan);
+
+	burst_cap = dpivf->conf.c_desc.max_cnt -
+		    ((dpivf->stats.submitted - dpivf->stats.completed) + dpivf->pending) + 1;
+
+	return burst_cap;
+}
+
 static int
 cnxk_dmadev_submit(void *dev_private, uint16_t vchan __rte_unused)
 {
 	struct cnxk_dpi_vf_s *dpivf = dev_private;
+	uint32_t num_words = dpivf->pnum_words;
+
+	if (!dpivf->pnum_words)
+		return 0;
 
 	rte_wmb();
-	plt_write64(dpivf->num_words, dpivf->rdpi.rbase + DPI_VDMA_DBELL);
-	dpivf->stats.submitted++;
+	plt_write64(num_words, dpivf->rdpi.rbase + DPI_VDMA_DBELL);
+
+	dpivf->stats.submitted += dpivf->pending;
+	dpivf->pnum_words = 0;
+	dpivf->pending = 0;
 
 	return 0;
 }
@@ -666,6 +706,7 @@ cnxk_dmadev_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	dmadev->fp_obj->submit = cnxk_dmadev_submit;
 	dmadev->fp_obj->completed = cnxk_dmadev_completed;
 	dmadev->fp_obj->completed_status = cnxk_dmadev_completed_status;
+	dmadev->fp_obj->burst_capacity = cnxk_damdev_burst_capacity;
 
 	if (pci_dev->id.subsystem_device_id == PCI_SUBSYSTEM_DEVID_CN10KA ||
 	    pci_dev->id.subsystem_device_id == PCI_SUBSYSTEM_DEVID_CNF10KA ||
