@@ -59,15 +59,6 @@ static inline uint32_t rte_arch_bswap32(uint32_t _x)
 #define rte_bswap64(x) ((uint64_t)(__builtin_constant_p(x) ?		\
 				   rte_constant_bswap64(x) :		\
 				   rte_arch_bswap64(x)))
-#else
-/*
- * __builtin_bswap16 is only available gcc 4.8 and upwards
- */
-#if __GNUC__ < 4 || (__GNUC__ == 4 && __GNUC_MINOR__ < 8)
-#define rte_bswap16(x) ((uint16_t)(__builtin_constant_p(x) ?		\
-				   rte_constant_bswap16(x) :		\
-				   rte_arch_bswap16(x)))
-#endif
 #endif
 
 #define rte_cpu_to_le_16(x) (x)

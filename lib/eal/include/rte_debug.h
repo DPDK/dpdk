@@ -60,11 +60,7 @@ void rte_dump_stack(void);
  * documentation.
  */
 void __rte_panic(const char *funcname , const char *format, ...)
-#ifdef __GNUC__
-#if (__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ > 2))
 	__rte_cold
-#endif
-#endif
 	__rte_noreturn
 	__rte_format_printf(2, 3);
 

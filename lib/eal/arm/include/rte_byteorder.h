@@ -17,25 +17,6 @@ extern "C" {
 #include <rte_common.h>
 #include "generic/rte_byteorder.h"
 
-/* fix missing __builtin_bswap16 for gcc older then 4.8 */
-#if !(__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 8))
-
-static inline uint16_t rte_arch_bswap16(uint16_t _x)
-{
-	uint16_t x = _x;
-
-	asm volatile ("rev16 %w0,%w1"
-		      : "=r" (x)
-		      : "r" (x)
-		      );
-	return x;
-}
-
-#define rte_bswap16(x) ((uint16_t)(__builtin_constant_p(x) ? \
-				   rte_constant_bswap16(x) : \
-				   rte_arch_bswap16(x)))
-#endif
-
 /* ARM architecture is bi-endian (both big and little). */
 #if RTE_BYTE_ORDER == RTE_LITTLE_ENDIAN
 
