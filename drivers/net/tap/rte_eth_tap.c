@@ -645,13 +645,22 @@ tap_write_mbufs(struct tx_queue *txq, uint16_t num_mbufs,
 		    ((mbuf->ol_flags & (RTE_MBUF_F_TX_IP_CKSUM | RTE_MBUF_F_TX_IPV4) ||
 		      (mbuf->ol_flags & RTE_MBUF_F_TX_L4_MASK) == RTE_MBUF_F_TX_UDP_CKSUM ||
 		      (mbuf->ol_flags & RTE_MBUF_F_TX_L4_MASK) == RTE_MBUF_F_TX_TCP_CKSUM))) {
+			unsigned int l4_len = 0;
+
 			is_cksum = 1;
+
+			if ((mbuf->ol_flags & RTE_MBUF_F_TX_L4_MASK) ==
+					RTE_MBUF_F_TX_UDP_CKSUM)
+				l4_len = sizeof(struct rte_udp_hdr);
+			else if ((mbuf->ol_flags & RTE_MBUF_F_TX_L4_MASK) ==
+					RTE_MBUF_F_TX_TCP_CKSUM)
+				l4_len = sizeof(struct rte_tcp_hdr);
 
 			/* Support only packets with at least layer 4
 			 * header included in the first segment
 			 */
 			seg_len = rte_pktmbuf_data_len(mbuf);
-			l234_hlen = mbuf->l2_len + mbuf->l3_len + mbuf->l4_len;
+			l234_hlen = mbuf->l2_len + mbuf->l3_len + l4_len;
 			if (seg_len < l234_hlen)
 				return -1;
 
@@ -661,7 +670,7 @@ tap_write_mbufs(struct tx_queue *txq, uint16_t num_mbufs,
 			rte_memcpy(m_copy, rte_pktmbuf_mtod(mbuf, void *),
 					l234_hlen);
 			tap_tx_l3_cksum(m_copy, mbuf->ol_flags,
-				       mbuf->l2_len, mbuf->l3_len, mbuf->l4_len,
+				       mbuf->l2_len, mbuf->l3_len, l4_len,
 				       &l4_cksum, &l4_phdr_cksum,
 				       &l4_raw_cksum);
 			iovecs[k].iov_base = m_copy;
