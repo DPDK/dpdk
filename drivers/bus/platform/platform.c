@@ -617,8 +617,8 @@ platform_bus_cleanup(void)
 	struct rte_platform_device *pdev, *tmp;
 
 	RTE_TAILQ_FOREACH_SAFE(pdev, &platform_bus.device_list, next, tmp) {
-		platform_bus_unplug(&pdev->device);
 		TAILQ_REMOVE(&platform_bus.device_list, pdev, next);
+		platform_bus_unplug(&pdev->device);
 	}
 
 	return 0;
