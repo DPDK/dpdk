@@ -570,7 +570,7 @@ tap_tx_l3_cksum(char *packet, uint64_t ol_flags, unsigned int l2_len,
 {
 	void *l3_hdr = packet + l2_len;
 
-	if (ol_flags & (PKT_TX_IP_CKSUM | PKT_TX_IPV4)) {
+	if (ol_flags & PKT_TX_IP_CKSUM) {
 		struct rte_ipv4_hdr *iph = l3_hdr;
 		uint16_t cksum;
 
@@ -653,7 +653,7 @@ tap_write_mbufs(struct tx_queue *txq, uint16_t num_mbufs,
 
 		nb_segs = mbuf->nb_segs;
 		if (txq->csum &&
-		    ((mbuf->ol_flags & (PKT_TX_IP_CKSUM | PKT_TX_IPV4) ||
+		    ((mbuf->ol_flags & PKT_TX_IP_CKSUM ||
 		     (mbuf->ol_flags & PKT_TX_L4_MASK) == PKT_TX_UDP_CKSUM ||
 		     (mbuf->ol_flags & PKT_TX_L4_MASK) == PKT_TX_TCP_CKSUM))) {
 			unsigned int l4_len = 0;
