@@ -521,79 +521,13 @@ end:
 	return num_rx;
 }
 
-/* Finalize l4 checksum calculation */
-static void
-tap_tx_l4_cksum(uint16_t *l4_cksum, uint16_t l4_phdr_cksum,
-		uint32_t l4_raw_cksum)
-{
-	if (l4_cksum) {
-		uint32_t cksum;
-
-		cksum = __rte_raw_cksum_reduce(l4_raw_cksum);
-		cksum += l4_phdr_cksum;
-
-		cksum = ((cksum & 0xffff0000) >> 16) + (cksum & 0xffff);
-		cksum = (~cksum) & 0xffff;
-		if (cksum == 0)
-			cksum = 0xffff;
-		*l4_cksum = cksum;
-	}
-}
-
-/* Accumulate L4 raw checksums */
-static void
-tap_tx_l4_add_rcksum(char *l4_data, unsigned int l4_len, uint16_t *l4_cksum,
-			uint32_t *l4_raw_cksum)
-{
-	if (l4_cksum == NULL)
-		return;
-
-	*l4_raw_cksum = __rte_raw_cksum(l4_data, l4_len, *l4_raw_cksum);
-}
-
-/* L3 and L4 pseudo headers checksum offloads */
-static void
-tap_tx_l3_cksum(char *packet, uint64_t ol_flags, unsigned int l2_len,
-		unsigned int l3_len, unsigned int l4_len, uint16_t **l4_cksum,
-		uint16_t *l4_phdr_cksum, uint32_t *l4_raw_cksum)
-{
-	void *l3_hdr = packet + l2_len;
-
-	if (ol_flags & RTE_MBUF_F_TX_IP_CKSUM) {
-		struct rte_ipv4_hdr *iph = l3_hdr;
-		uint16_t cksum;
-
-		iph->hdr_checksum = 0;
-		cksum = rte_raw_cksum(iph, l3_len);
-		iph->hdr_checksum = (cksum == 0xffff) ? cksum : ~cksum;
-	}
-	if (ol_flags & RTE_MBUF_F_TX_L4_MASK) {
-		void *l4_hdr;
-
-		l4_hdr = packet + l2_len + l3_len;
-		if ((ol_flags & RTE_MBUF_F_TX_L4_MASK) == RTE_MBUF_F_TX_UDP_CKSUM)
-			*l4_cksum = &((struct rte_udp_hdr *)l4_hdr)->dgram_cksum;
-		else if ((ol_flags & RTE_MBUF_F_TX_L4_MASK) == RTE_MBUF_F_TX_TCP_CKSUM)
-			*l4_cksum = &((struct rte_tcp_hdr *)l4_hdr)->cksum;
-		else
-			return;
-		**l4_cksum = 0;
-		if (ol_flags & RTE_MBUF_F_TX_IPV4)
-			*l4_phdr_cksum = rte_ipv4_phdr_cksum(l3_hdr, 0);
-		else
-			*l4_phdr_cksum = rte_ipv6_phdr_cksum(l3_hdr, 0);
-		*l4_raw_cksum = __rte_raw_cksum(l4_hdr, l4_len, 0);
-	}
-}
-
 static inline int
 tap_write_mbufs(struct tx_queue *txq, uint16_t num_mbufs,
 			struct rte_mbuf **pmbufs,
 			uint16_t *num_packets, unsigned long *num_tx_bytes)
 {
-	int i;
-	uint16_t l234_hlen;
 	struct pmd_process_private *process_private;
+	int i;
 
 	process_private = rte_eth_devices[txq->out_port].process_private;
 
@@ -602,19 +536,12 @@ tap_write_mbufs(struct tx_queue *txq, uint16_t num_mbufs,
 		struct iovec iovecs[mbuf->nb_segs + 2];
 		struct tun_pi pi = { .flags = 0, .proto = 0x00 };
 		struct rte_mbuf *seg = mbuf;
-		char m_copy[mbuf->data_len];
+		uint64_t l4_ol_flags;
 		int proto;
 		int n;
 		int j;
 		int k; /* current index in iovecs for copying segments */
-		uint16_t seg_len; /* length of first segment */
-		uint16_t nb_segs;
-		uint16_t *l4_cksum; /* l4 checksum (pseudo header + payload) */
-		uint32_t l4_raw_cksum = 0; /* TCP/UDP payload raw checksum */
-		uint16_t l4_phdr_cksum = 0; /* TCP/UDP pseudo header checksum */
-		uint16_t is_cksum = 0; /* in case cksum should be offloaded */
 
-		l4_cksum = NULL;
 		if (txq->type == ETH_TUNTAP_TYPE_TUN) {
 			/*
 			 * TUN and TAP are created with IFF_NO_PI disabled.
@@ -640,73 +567,83 @@ tap_write_mbufs(struct tx_queue *txq, uint16_t num_mbufs,
 		iovecs[k].iov_len = sizeof(pi);
 		k++;
 
-		nb_segs = mbuf->nb_segs;
-		if (txq->csum &&
-		    ((mbuf->ol_flags & RTE_MBUF_F_TX_IP_CKSUM ||
-		      (mbuf->ol_flags & RTE_MBUF_F_TX_L4_MASK) == RTE_MBUF_F_TX_UDP_CKSUM ||
-		      (mbuf->ol_flags & RTE_MBUF_F_TX_L4_MASK) == RTE_MBUF_F_TX_TCP_CKSUM))) {
-			unsigned int l4_len = 0;
+		l4_ol_flags = mbuf->ol_flags & RTE_MBUF_F_TX_L4_MASK;
+		if (txq->csum && (mbuf->ol_flags & RTE_MBUF_F_TX_IP_CKSUM ||
+				l4_ol_flags == RTE_MBUF_F_TX_UDP_CKSUM ||
+				l4_ol_flags == RTE_MBUF_F_TX_TCP_CKSUM)) {
+			unsigned int hdrlens = mbuf->l2_len + mbuf->l3_len;
+			uint16_t *l4_cksum;
+			void *l3_hdr;
 
-			is_cksum = 1;
-
-			if ((mbuf->ol_flags & RTE_MBUF_F_TX_L4_MASK) ==
-					RTE_MBUF_F_TX_UDP_CKSUM)
-				l4_len = sizeof(struct rte_udp_hdr);
-			else if ((mbuf->ol_flags & RTE_MBUF_F_TX_L4_MASK) ==
-					RTE_MBUF_F_TX_TCP_CKSUM)
-				l4_len = sizeof(struct rte_tcp_hdr);
+			if (l4_ol_flags == RTE_MBUF_F_TX_UDP_CKSUM)
+				hdrlens += sizeof(struct rte_udp_hdr);
+			else if (l4_ol_flags == RTE_MBUF_F_TX_TCP_CKSUM)
+				hdrlens += sizeof(struct rte_tcp_hdr);
+			else if (l4_ol_flags != RTE_MBUF_F_TX_L4_NO_CKSUM)
+				return -1;
 
 			/* Support only packets with at least layer 4
 			 * header included in the first segment
 			 */
-			seg_len = rte_pktmbuf_data_len(mbuf);
-			l234_hlen = mbuf->l2_len + mbuf->l3_len + l4_len;
-			if (seg_len < l234_hlen)
+			if (rte_pktmbuf_data_len(mbuf) < hdrlens)
 				return -1;
 
-			/* To change checksums, work on a * copy of l2, l3
-			 * headers + l4 pseudo header
+			/* To change checksums (considering that a mbuf can be
+			 * indirect, for example), copy l2, l3 and l4 headers
+			 * in a new segment and chain it to existing data
 			 */
-			rte_memcpy(m_copy, rte_pktmbuf_mtod(mbuf, void *),
-					l234_hlen);
-			tap_tx_l3_cksum(m_copy, mbuf->ol_flags,
-				       mbuf->l2_len, mbuf->l3_len, l4_len,
-				       &l4_cksum, &l4_phdr_cksum,
-				       &l4_raw_cksum);
-			iovecs[k].iov_base = m_copy;
-			iovecs[k].iov_len = l234_hlen;
-			k++;
+			seg = rte_pktmbuf_copy(mbuf, mbuf->pool, 0, hdrlens);
+			if (seg == NULL)
+				return -1;
+			rte_pktmbuf_adj(mbuf, hdrlens);
+			rte_pktmbuf_chain(seg, mbuf);
+			pmbufs[i] = mbuf = seg;
 
-			/* Update next iovecs[] beyond l2, l3, l4 headers */
-			if (seg_len > l234_hlen) {
-				iovecs[k].iov_len = seg_len - l234_hlen;
-				iovecs[k].iov_base =
-					rte_pktmbuf_mtod(seg, char *) +
-						l234_hlen;
-				tap_tx_l4_add_rcksum(iovecs[k].iov_base,
-					iovecs[k].iov_len, l4_cksum,
-					&l4_raw_cksum);
-				k++;
-				nb_segs++;
+			l3_hdr = rte_pktmbuf_mtod_offset(mbuf, void *, mbuf->l2_len);
+			if (mbuf->ol_flags & RTE_MBUF_F_TX_IP_CKSUM) {
+				struct rte_ipv4_hdr *iph = l3_hdr;
+
+				iph->hdr_checksum = 0;
+				iph->hdr_checksum = rte_ipv4_cksum(iph);
 			}
-			seg = seg->next;
+
+			if (l4_ol_flags == RTE_MBUF_F_TX_L4_NO_CKSUM)
+				goto skip_l4_cksum;
+
+			if (l4_ol_flags == RTE_MBUF_F_TX_UDP_CKSUM) {
+				struct rte_udp_hdr *udp_hdr;
+
+				udp_hdr = rte_pktmbuf_mtod_offset(mbuf, struct rte_udp_hdr *,
+					mbuf->l2_len + mbuf->l3_len);
+				l4_cksum = &udp_hdr->dgram_cksum;
+			} else {
+				struct rte_tcp_hdr *tcp_hdr;
+
+				tcp_hdr = rte_pktmbuf_mtod_offset(mbuf, struct rte_tcp_hdr *,
+					mbuf->l2_len + mbuf->l3_len);
+				l4_cksum = &tcp_hdr->cksum;
+			}
+
+			*l4_cksum = 0;
+			if (mbuf->ol_flags & RTE_MBUF_F_TX_IPV4) {
+				*l4_cksum = rte_ipv4_udptcp_cksum_mbuf(mbuf, l3_hdr,
+					mbuf->l2_len + mbuf->l3_len);
+			} else {
+				*l4_cksum = rte_ipv6_udptcp_cksum_mbuf(mbuf, l3_hdr,
+					mbuf->l2_len + mbuf->l3_len);
+			}
 		}
 
-		for (j = k; j <= nb_segs; j++) {
-			iovecs[j].iov_len = rte_pktmbuf_data_len(seg);
-			iovecs[j].iov_base = rte_pktmbuf_mtod(seg, void *);
-			if (is_cksum)
-				tap_tx_l4_add_rcksum(iovecs[j].iov_base,
-					iovecs[j].iov_len, l4_cksum,
-					&l4_raw_cksum);
+skip_l4_cksum:
+		for (j = 0; j < mbuf->nb_segs; j++) {
+			iovecs[k].iov_len = rte_pktmbuf_data_len(seg);
+			iovecs[k].iov_base = rte_pktmbuf_mtod(seg, void *);
+			k++;
 			seg = seg->next;
 		}
-
-		if (is_cksum)
-			tap_tx_l4_cksum(l4_cksum, l4_phdr_cksum, l4_raw_cksum);
 
 		/* copy the tx frame data */
-		n = writev(process_private->txq_fds[txq->queue_id], iovecs, j);
+		n = writev(process_private->txq_fds[txq->queue_id], iovecs, k);
 		if (n <= 0)
 			return -1;
 
@@ -801,11 +738,15 @@ pmd_tx_burst(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 			break;
 		}
 		num_tx++;
-		/* free original mbuf */
-		rte_pktmbuf_free(mbuf_in);
-		/* free tso mbufs */
-		if (num_tso_mbufs > 0)
+		if (num_tso_mbufs == 0) {
+			/* tap_write_mbufs may prepend a segment to mbuf_in */
+			rte_pktmbuf_free(mbuf[0]);
+		} else {
+			/* free original mbuf */
+			rte_pktmbuf_free(mbuf_in);
+			/* free tso mbufs */
 			rte_pktmbuf_free_bulk(mbuf, num_tso_mbufs);
+		}
 	}
 
 	txq->stats.opackets += num_packets;
