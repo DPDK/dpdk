@@ -185,6 +185,8 @@ npa_aura_pool_fini(struct mbox *m_box, uint32_t aura_id, uint64_t aura_handle)
 	aura_req->op = NPA_AQ_INSTOP_WRITE;
 	aura_req->aura.ena = 0;
 	aura_req->aura_mask.ena = ~aura_req->aura_mask.ena;
+	aura_req->aura.bp_ena = 0;
+	aura_req->aura_mask.bp_ena = ~aura_req->aura_mask.bp_ena;
 
 	rc = mbox_process(mbox);
 	if (rc < 0)
