@@ -526,3 +526,9 @@ roc_mcs_flowid_entry_enable(struct roc_mcs *mcs, struct roc_mcs_flowid_ena_dis_e
 
 	return mbox_process_msg(mcs->mbox, (void *)&rsp);
 }
+
+void
+roc_mcs_sa_port_map_update(struct roc_mcs *mcs, int sa_id, uint8_t port_id)
+{
+	mcs->sa_port_map[sa_id] = port_id;
+}

@@ -480,15 +480,17 @@ struct roc_mcs_fips_result_rsp {
 };
 
 /** User application callback to be registered for any notifications from driver. */
-typedef int (*roc_mcs_dev_cb_fn)(void *userdata, struct roc_mcs_event_desc *desc, void *cb_arg);
+typedef int (*roc_mcs_dev_cb_fn)(void *userdata, struct roc_mcs_event_desc *desc, void *cb_arg,
+				 uint8_t port_id);
 
 struct roc_mcs {
 	TAILQ_ENTRY(roc_mcs) next;
 	struct plt_pci_device *pci_dev;
 	struct mbox *mbox;
-	void *userdata;
 	uint8_t idx;
 	uint8_t refcount;
+	bool intr_cfg_once;
+	uint8_t *sa_port_map;
 
 #define ROC_MCS_MEM_SZ (1 * 1024)
 	uint8_t reserved[ROC_MCS_MEM_SZ] __plt_cache_aligned;
@@ -559,6 +561,8 @@ __roc_api int roc_mcs_tx_sc_sa_map_write(struct roc_mcs *mcs,
 					 struct roc_mcs_tx_sc_sa_map *tx_sc_sa_map);
 __roc_api int roc_mcs_tx_sc_sa_map_read(struct roc_mcs *mcs,
 					struct roc_mcs_tx_sc_sa_map *tx_sc_sa_map);
+/* SA to Port map update */
+__roc_api void roc_mcs_sa_port_map_update(struct roc_mcs *mcs, int sa_id, uint8_t port_id);
 
 /* Flow entry read, write and enable */
 __roc_api int roc_mcs_flowid_entry_write(struct roc_mcs *mcs,

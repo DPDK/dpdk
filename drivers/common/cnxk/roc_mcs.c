@@ -10,6 +10,7 @@ struct mcs_event_cb {
 	enum roc_mcs_event_type event;
 	roc_mcs_dev_cb_fn cb_fn;
 	void *cb_arg;
+	void *userdata;
 	void *ret_param;
 	uint32_t active;
 };
@@ -320,11 +321,15 @@ roc_mcs_intr_configure(struct roc_mcs *mcs, struct roc_mcs_intr_cfg *config)
 {
 	struct mcs_intr_cfg *req;
 	struct msg_rsp *rsp;
+	int rc;
 
 	if (config == NULL)
 		return -EINVAL;
 
 	MCS_SUPPORT_CHECK;
+
+	if (mcs->intr_cfg_once)
+		return 0;
 
 	req = mbox_alloc_msg_mcs_intr_cfg(mcs->mbox);
 	if (req == NULL)
@@ -333,7 +338,11 @@ roc_mcs_intr_configure(struct roc_mcs *mcs, struct roc_mcs_intr_cfg *config)
 	req->intr_mask = config->intr_mask;
 	req->mcs_id = mcs->idx;
 
-	return mbox_process_msg(mcs->mbox, (void *)&rsp);
+	rc = mbox_process_msg(mcs->mbox, (void *)&rsp);
+	if (rc == 0)
+		mcs->intr_cfg_once = true;
+
+	return rc;
 }
 
 int
@@ -630,7 +639,7 @@ roc_mcs_event_cb_register(struct roc_mcs *mcs, enum roc_mcs_event_type event,
 		cb->cb_fn = cb_fn;
 		cb->cb_arg = cb_arg;
 		cb->event = event;
-		mcs->userdata = userdata;
+		cb->userdata = userdata;
 		TAILQ_INSERT_TAIL(cb_list, cb, next);
 	}
 
@@ -678,7 +687,8 @@ mcs_event_cb_process(struct roc_mcs *mcs, struct roc_mcs_event_desc *desc)
 		cb->active = 1;
 		mcs_cb.ret_param = desc;
 
-		rc = mcs_cb.cb_fn(mcs->userdata, mcs_cb.ret_param, mcs_cb.cb_arg);
+		rc = mcs_cb.cb_fn(mcs_cb.userdata, mcs_cb.ret_param, mcs_cb.cb_arg,
+				  mcs->sa_port_map[desc->metadata.sa_idx]);
 		cb->active = 0;
 	}
 
@@ -788,6 +798,10 @@ mcs_alloc_rsrc_bmap(struct roc_mcs *mcs)
 		}
 	}
 
+	mcs->sa_port_map = plt_zmalloc(sizeof(uint8_t) * hw->sa_entries, 0);
+	if (mcs->sa_port_map == NULL)
+		goto exit;
+
 	return rc;
 
 exit:
@@ -864,6 +878,8 @@ roc_mcs_dev_fini(struct roc_mcs *mcs)
 	}
 
 	plt_free(priv->port_rsrc);
+
+	plt_free(mcs->sa_port_map);
 
 	roc_idev_mcs_free(mcs);
 

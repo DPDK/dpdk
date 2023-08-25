@@ -113,6 +113,8 @@ cnxk_eth_macsec_sa_create(void *device, struct rte_security_macsec_sa *conf)
 		return -EINVAL;
 	}
 
+	roc_mcs_sa_port_map_update(mcs_dev->mdev, sa_id, mcs_dev->port_id);
+
 	return sa_id;
 }
 
@@ -586,9 +588,11 @@ cnxk_eth_macsec_session_stats_get(struct cnxk_eth_dev *dev, struct cnxk_macsec_s
 }
 
 static int
-cnxk_mcs_event_cb(void *userdata, struct roc_mcs_event_desc *desc, void *cb_arg)
+cnxk_mcs_event_cb(void *userdata, struct roc_mcs_event_desc *desc, void *cb_arg,
+		  uint8_t port_id)
 {
 	struct rte_eth_event_macsec_desc d = {0};
+	struct cnxk_mcs_dev *mcs_dev = userdata;
 
 	d.metadata = (uint64_t)userdata;
 
@@ -617,15 +621,23 @@ cnxk_mcs_event_cb(void *userdata, struct roc_mcs_event_desc *desc, void *cb_arg)
 		break;
 	case ROC_MCS_EVENT_RX_SA_PN_HARD_EXP:
 		d.type = RTE_ETH_EVENT_MACSEC_RX_SA_PN_HARD_EXP;
+		if (mcs_dev->port_id != port_id)
+			return 0;
 		break;
 	case ROC_MCS_EVENT_RX_SA_PN_SOFT_EXP:
 		d.type = RTE_ETH_EVENT_MACSEC_RX_SA_PN_SOFT_EXP;
+		if (mcs_dev->port_id != port_id)
+			return 0;
 		break;
 	case ROC_MCS_EVENT_TX_SA_PN_HARD_EXP:
 		d.type = RTE_ETH_EVENT_MACSEC_TX_SA_PN_HARD_EXP;
+		if (mcs_dev->port_id != port_id)
+			return 0;
 		break;
 	case ROC_MCS_EVENT_TX_SA_PN_SOFT_EXP:
 		d.type = RTE_ETH_EVENT_MACSEC_TX_SA_PN_SOFT_EXP;
+		if (mcs_dev->port_id != port_id)
+			return 0;
 		break;
 	default:
 		plt_err("Unknown MACsec event type: %d", desc->type);
