@@ -241,7 +241,12 @@ static const struct mlx5_indexed_pool_config mlx5_ipool_cfg[] = {
 		.type = "mlx5_port_id_ipool",
 	},
 	[MLX5_IPOOL_JUMP] = {
-		.size = sizeof(struct mlx5_flow_tbl_data_entry),
+		/*
+		 * MLX5_IPOOL_JUMP ipool entry size depends on selected flow engine.
+		 * When HW steering is enabled mlx5_flow_group struct is used.
+		 * Otherwise mlx5_flow_tbl_data_entry struct is used.
+		 */
+		.size = 0,
 		.trunk_size = 64,
 		.grow_trunk = 3,
 		.grow_shift = 2,
@@ -902,6 +907,14 @@ mlx5_flow_ipool_create(struct mlx5_dev_ctx_shared *sh)
 				sizeof(struct mlx5_flow_handle) :
 				MLX5_FLOW_HANDLE_VERBS_SIZE;
 			break;
+#if defined(HAVE_IBV_FLOW_DV_SUPPORT) || !defined(HAVE_INFINIBAND_VERBS_H)
+		/* Set MLX5_IPOOL_JUMP ipool entry size depending on selected flow engine. */
+		case MLX5_IPOOL_JUMP:
+			cfg.size = sh->config.dv_flow_en == 2 ?
+				sizeof(struct mlx5_flow_group) :
+				sizeof(struct mlx5_flow_tbl_data_entry);
+			break;
+#endif
 		}
 		if (sh->config.reclaim_mode) {
 			cfg.release_mem_en = 1;
