@@ -96,6 +96,7 @@ optional_libs = [
         'mldev',
         'node',
         'pcapng',
+        'pdcp',
         'pdump',
         'pipeline',
         'port',
