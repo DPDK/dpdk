@@ -370,7 +370,7 @@ eval_umax_bits(uint64_t v, size_t opsz)
 	if (v == 0)
 		return 0;
 
-	v = __builtin_clzll(v);
+	v = rte_clz64(v);
 	return RTE_LEN2MASK(opsz - v, uint64_t);
 }
 

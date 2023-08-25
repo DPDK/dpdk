@@ -116,7 +116,7 @@ hn_update_packet_stats(struct hn_stats *stats, const struct rte_mbuf *m)
 		uint32_t bin;
 
 		/* count zeros, and offset into correct bin */
-		bin = (sizeof(s) * 8) - __builtin_clz(s) - 5;
+		bin = (sizeof(s) * 8) - rte_clz32(s) - 5;
 		stats->size_bins[bin]++;
 	} else {
 		if (s < 64)

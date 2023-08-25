@@ -77,7 +77,7 @@ vhost_queue_stats_update(struct virtio_net *dev, struct vhost_virtqueue *vq,
 			uint32_t bin;
 
 			/* count zeros, and offset into correct bin */
-			bin = (sizeof(pkt_len) * 8) - __builtin_clz(pkt_len) - 5;
+			bin = (sizeof(pkt_len) * 8) - rte_clz32(pkt_len) - 5;
 			stats->size_bins[bin]++;
 		} else {
 			if (pkt_len < 64)

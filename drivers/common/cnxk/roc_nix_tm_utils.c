@@ -927,7 +927,7 @@ nix_tm_resource_avail(struct nix *nix, uint8_t hw_lvl, bool contig)
 	/* Count bit set */
 	start_pos = pos;
 	do {
-		count += __builtin_popcountll(slab);
+		count += rte_popcount64(slab);
 		if (!plt_bitmap_scan(bmp, &pos, &slab))
 			break;
 	} while (pos != start_pos);

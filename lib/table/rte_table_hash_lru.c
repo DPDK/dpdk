@@ -404,7 +404,7 @@ static int rte_table_hash_lru_lookup_unoptimized(
 	struct rte_table_hash *t = (struct rte_table_hash *) table;
 	uint64_t pkts_mask_out = 0;
 
-	__rte_unused uint32_t n_pkts_in = __builtin_popcountll(pkts_mask);
+	__rte_unused uint32_t n_pkts_in = rte_popcount64(pkts_mask);
 	RTE_TABLE_HASH_LRU_STATS_PKTS_IN_ADD(t, n_pkts_in);
 
 	for ( ; pkts_mask; ) {
@@ -414,7 +414,7 @@ static int rte_table_hash_lru_lookup_unoptimized(
 		uint64_t pkt_mask, sig;
 		uint32_t pkt_index, bkt_index, i;
 
-		pkt_index = __builtin_ctzll(pkts_mask);
+		pkt_index = rte_ctz64(pkts_mask);
 		pkt_mask = 1LLU << pkt_index;
 		pkts_mask &= ~pkt_mask;
 
@@ -447,7 +447,7 @@ static int rte_table_hash_lru_lookup_unoptimized(
 	}
 
 	*lookup_hit_mask = pkts_mask_out;
-	RTE_TABLE_HASH_LRU_STATS_PKTS_LOOKUP_MISS(t, n_pkts_in - __builtin_popcountll(pkts_mask_out));
+	RTE_TABLE_HASH_LRU_STATS_PKTS_LOOKUP_MISS(t, n_pkts_in - rte_popcount64(pkts_mask_out));
 	return 0;
 }
 
@@ -606,12 +606,12 @@ static int rte_table_hash_lru_lookup_unoptimized(
 	struct rte_mbuf *mbuf00, *mbuf01;			\
 	uint32_t key_offset = t->key_offset;		\
 								\
-	pkt00_index = __builtin_ctzll(pkts_mask);		\
+	pkt00_index = rte_ctz64(pkts_mask);		\
 	pkt00_mask = 1LLU << pkt00_index;			\
 	pkts_mask &= ~pkt00_mask;				\
 	mbuf00 = pkts[pkt00_index];				\
 								\
-	pkt01_index = __builtin_ctzll(pkts_mask);		\
+	pkt01_index = rte_ctz64(pkts_mask);		\
 	pkt01_mask = 1LLU << pkt01_index;			\
 	pkts_mask &= ~pkt01_mask;				\
 	mbuf01 = pkts[pkt01_index];				\
@@ -627,12 +627,12 @@ static int rte_table_hash_lru_lookup_unoptimized(
 	struct rte_mbuf *mbuf00, *mbuf01;			\
 	uint32_t key_offset = t->key_offset;		\
 								\
-	pkt00_index = __builtin_ctzll(pkts_mask);		\
+	pkt00_index = rte_ctz64(pkts_mask);		\
 	pkt00_mask = 1LLU << pkt00_index;			\
 	pkts_mask &= ~pkt00_mask;				\
 	mbuf00 = pkts[pkt00_index];				\
 								\
-	pkt01_index = __builtin_ctzll(pkts_mask);		\
+	pkt01_index = rte_ctz64(pkts_mask);		\
 	if (pkts_mask == 0)					\
 		pkt01_index = pkt00_index;			\
 								\
@@ -809,11 +809,11 @@ static int rte_table_hash_lru_lookup(
 	uint64_t pkts_mask_out = 0, pkts_mask_match_many = 0;
 	int status = 0;
 
-	__rte_unused uint32_t n_pkts_in = __builtin_popcountll(pkts_mask);
+	__rte_unused uint32_t n_pkts_in = rte_popcount64(pkts_mask);
 	RTE_TABLE_HASH_LRU_STATS_PKTS_IN_ADD(t, n_pkts_in);
 
 	/* Cannot run the pipeline with less than 7 packets */
-	if (__builtin_popcountll(pkts_mask) < 7)
+	if (rte_popcount64(pkts_mask) < 7)
 		return rte_table_hash_lru_lookup_unoptimized(table, pkts,
 			pkts_mask, lookup_hit_mask, entries);
 
@@ -924,7 +924,7 @@ static int rte_table_hash_lru_lookup(
 	}
 
 	*lookup_hit_mask = pkts_mask_out;
-	RTE_TABLE_HASH_LRU_STATS_PKTS_LOOKUP_MISS(t, n_pkts_in - __builtin_popcountll(pkts_mask_out));
+	RTE_TABLE_HASH_LRU_STATS_PKTS_LOOKUP_MISS(t, n_pkts_in - rte_popcount64(pkts_mask_out));
 	return status;
 }
 

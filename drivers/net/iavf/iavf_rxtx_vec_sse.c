@@ -695,7 +695,7 @@ _recv_raw_pkts_vec(struct iavf_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 				 pkt_mb1);
 		desc_to_ptype_v(descs, &rx_pkts[pos], ptype_tbl);
 		/* C.4 calc available number of desc */
-		var = __builtin_popcountll(_mm_cvtsi128_si64(staterr));
+		var = rte_popcount64(_mm_cvtsi128_si64(staterr));
 		nb_pkts_recd += var;
 		if (likely(var != IAVF_VPMD_DESCS_PER_LOOP))
 			break;
@@ -1122,7 +1122,7 @@ _recv_raw_pkts_vec_flex_rxd(struct iavf_rx_queue *rxq,
 				 pkt_mb0);
 		flex_desc_to_ptype_v(descs, &rx_pkts[pos], ptype_tbl);
 		/* C.4 calc available number of desc */
-		var = __builtin_popcountll(_mm_cvtsi128_si64(staterr));
+		var = rte_popcount64(_mm_cvtsi128_si64(staterr));
 		nb_pkts_recd += var;
 
 #ifndef RTE_LIBRTE_IAVF_16BYTE_RX_DESC

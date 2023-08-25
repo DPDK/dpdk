@@ -386,7 +386,7 @@ tm_apply(struct tm_data *data,
 
 	/* Apply */
 	data->queue_id = p->subport_id <<
-				(__builtin_ctz(cfg->n_pipes_per_subport) + 4) |
+				(rte_ctz32(cfg->n_pipes_per_subport) + 4) |
 				p->pipe_id << 4;
 
 	return 0;
@@ -429,7 +429,7 @@ static int
 encap_cfg_check(struct rte_table_action_encap_config *encap)
 {
 	if ((encap->encap_mask == 0) ||
-		(__builtin_popcountll(encap->encap_mask) != 1))
+		(rte_popcount64(encap->encap_mask) != 1))
 		return -ENOTSUP;
 
 	return 0;
@@ -3364,7 +3364,7 @@ ah(struct rte_pipeline *p,
 		time = rte_rdtsc();
 
 	if ((pkts_mask & (pkts_mask + 1)) == 0) {
-		uint64_t n_pkts = __builtin_popcountll(pkts_mask);
+		uint64_t n_pkts = rte_popcount64(pkts_mask);
 		uint32_t i;
 
 		for (i = 0; i < (n_pkts & (~0x3LLU)); i += 4) {
@@ -3392,7 +3392,7 @@ ah(struct rte_pipeline *p,
 		}
 	} else
 		for ( ; pkts_mask; ) {
-			uint32_t pos = __builtin_ctzll(pkts_mask);
+			uint32_t pos = rte_ctz64(pkts_mask);
 			uint64_t pkt_mask = 1LLU << pos;
 			uint64_t drop_mask;
 

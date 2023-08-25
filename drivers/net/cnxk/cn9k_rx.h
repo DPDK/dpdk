@@ -788,7 +788,7 @@ cn9k_nix_recv_pkts_vector(void *rx_queue, struct rte_mbuf **rx_pkts,
 				 */
 				rxq->tstamp->rx_ready = 1;
 				rxq->tstamp->rx_tstamp =
-					ts[31 - __builtin_clz(res)];
+					ts[31 - rte_clz32(res)];
 			}
 		}
 

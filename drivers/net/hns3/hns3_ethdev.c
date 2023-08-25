@@ -5936,7 +5936,7 @@ hns3_fec_get_capability(struct rte_eth_dev *dev,
 
 	speed_capa = hns3_get_speed_capa(hw);
 	/* speed_num counts number of speed capabilities */
-	speed_num = __builtin_popcount(speed_capa & HNS3_SPEEDS_SUPP_FEC);
+	speed_num = rte_popcount32(speed_capa & HNS3_SPEEDS_SUPP_FEC);
 	if (speed_num == 0)
 		return -ENOTSUP;
 
@@ -6143,7 +6143,7 @@ hns3_fec_mode_valid(struct rte_eth_dev *dev, uint32_t mode)
 	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(hns);
 	uint32_t cur_capa;
 
-	if (__builtin_popcount(mode) != 1) {
+	if (rte_popcount32(mode) != 1) {
 		hns3_err(hw, "FEC mode(0x%x) should be only one bit set", mode);
 		return -EINVAL;
 	}

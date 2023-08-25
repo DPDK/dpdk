@@ -230,17 +230,17 @@ parse_app_args(int argc, char **argv)
 			break;
 		case 'r':
 			rx_lcore_mask = parse_coremask(optarg);
-			popcnt = __builtin_popcountll(rx_lcore_mask);
+			popcnt = rte_popcount64(rx_lcore_mask);
 			fdata->rx_single = (popcnt == 1);
 			break;
 		case 't':
 			tx_lcore_mask = parse_coremask(optarg);
-			popcnt = __builtin_popcountll(tx_lcore_mask);
+			popcnt = rte_popcount64(tx_lcore_mask);
 			fdata->tx_single = (popcnt == 1);
 			break;
 		case 'e':
 			sched_lcore_mask = parse_coremask(optarg);
-			popcnt = __builtin_popcountll(sched_lcore_mask);
+			popcnt = rte_popcount64(sched_lcore_mask);
 			fdata->sched_single = (popcnt == 1);
 			break;
 		case 'm':

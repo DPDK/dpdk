@@ -1311,7 +1311,7 @@ err_secondary:
 			 * REG_C_0 and REG_C_1 is reserved for metadata feature.
 			 */
 			reg_c_mask &= 0xfc;
-			if (__builtin_popcount(reg_c_mask) < 1) {
+			if (rte_popcount32(reg_c_mask) < 1) {
 				priv->mtr_en = 0;
 				DRV_LOG(WARNING, "No available register for"
 					" meter.");
@@ -1592,8 +1592,8 @@ err_secondary:
 				err = ENOTSUP;
 				goto error;
 			}
-			usable_bits = __builtin_popcount(priv->sh->dv_regc0_mask);
-			required_bits = __builtin_popcount(priv->vport_meta_mask);
+			usable_bits = rte_popcount32(priv->sh->dv_regc0_mask);
+			required_bits = rte_popcount32(priv->vport_meta_mask);
 			if (usable_bits < required_bits) {
 				DRV_LOG(ERR, "Not enough bits available in reg_c[0] to provide "
 					     "representor matching.");

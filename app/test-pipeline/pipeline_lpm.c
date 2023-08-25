@@ -123,8 +123,8 @@ app_main_loop_worker_pipeline_lpm(void) {
 		};
 
 		struct rte_table_lpm_key key = {
-			.ip = i << (24 - __builtin_popcount(app.n_ports - 1)),
-			.depth = 8 + __builtin_popcount(app.n_ports - 1),
+			.ip = i << (24 - rte_popcount32(app.n_ports - 1)),
+			.depth = 8 + rte_popcount32(app.n_ports - 1),
 		};
 
 		struct rte_pipeline_table_entry *entry_ptr;

@@ -758,7 +758,7 @@ dma_dump_capability(FILE *f, uint64_t dev_capa)
 
 	(void)fprintf(f, "  dev_capa: 0x%" PRIx64 " -", dev_capa);
 	while (dev_capa > 0) {
-		capa = 1ull << __builtin_ctzll(dev_capa);
+		capa = 1ull << rte_ctz64(dev_capa);
 		(void)fprintf(f, " %s", dma_capability_name(capa));
 		dev_capa &= ~capa;
 	}

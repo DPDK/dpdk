@@ -500,7 +500,7 @@ rte_port_sink_tx_bulk(void *port, struct rte_mbuf **pkts,
 	struct rte_port_sink *p = port;
 
 	if ((pkts_mask & (pkts_mask + 1)) == 0) {
-		uint64_t n_pkts = __builtin_popcountll(pkts_mask);
+		uint64_t n_pkts = rte_popcount64(pkts_mask);
 		uint32_t i;
 
 		RTE_PORT_SINK_STATS_PKTS_IN_ADD(p, n_pkts);
@@ -523,7 +523,7 @@ rte_port_sink_tx_bulk(void *port, struct rte_mbuf **pkts,
 			uint32_t pkt_index;
 
 			for ( ; dump_pkts_mask; ) {
-				pkt_index = __builtin_ctzll(
+				pkt_index = rte_ctz64(
 					dump_pkts_mask);
 				PCAP_SINK_WRITE_PKT(p, pkts[pkt_index]);
 				dump_pkts_mask &= ~(1LLU << pkt_index);
@@ -531,7 +531,7 @@ rte_port_sink_tx_bulk(void *port, struct rte_mbuf **pkts,
 		}
 
 		for ( ; pkts_mask; ) {
-			uint32_t pkt_index = __builtin_ctzll(pkts_mask);
+			uint32_t pkt_index = rte_ctz64(pkts_mask);
 			uint64_t pkt_mask = 1LLU << pkt_index;
 			struct rte_mbuf *pkt = pkts[pkt_index];
 

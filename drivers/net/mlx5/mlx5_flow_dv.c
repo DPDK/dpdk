@@ -421,7 +421,7 @@ flow_dv_convert_modify_action(struct rte_flow_item *item,
 			/* Deduce actual data width in bits from mask value. */
 			off_b = rte_bsf32(mask) + carry_b;
 			size_b = sizeof(uint32_t) * CHAR_BIT -
-				 off_b - __builtin_clz(mask);
+				 off_b - rte_clz32(mask);
 		}
 		MLX5_ASSERT(size_b);
 		actions[i] = (struct mlx5_modification_cmd) {
@@ -1392,10 +1392,10 @@ mlx5_flow_item_field_width(struct rte_eth_dev *dev,
 	case RTE_FLOW_FIELD_TAG:
 		return 32;
 	case RTE_FLOW_FIELD_MARK:
-		return __builtin_popcount(priv->sh->dv_mark_mask);
+		return rte_popcount32(priv->sh->dv_mark_mask);
 	case RTE_FLOW_FIELD_META:
 		return (flow_dv_get_metadata_reg(dev, attr, error) == REG_C_0) ?
-			__builtin_popcount(priv->sh->dv_meta_mask) : 32;
+			rte_popcount32(priv->sh->dv_meta_mask) : 32;
 	case RTE_FLOW_FIELD_POINTER:
 	case RTE_FLOW_FIELD_VALUE:
 		return inherit < 0 ? 0 : inherit;
@@ -1940,7 +1940,7 @@ mlx5_flow_field_id_to_modify_info
 	case RTE_FLOW_FIELD_MARK:
 		{
 			uint32_t mark_mask = priv->sh->dv_mark_mask;
-			uint32_t mark_count = __builtin_popcount(mark_mask);
+			uint32_t mark_count = rte_popcount32(mark_mask);
 			RTE_SET_USED(mark_count);
 			MLX5_ASSERT(data->offset + width <= mark_count);
 			int reg = mlx5_flow_get_reg_id(dev, MLX5_FLOW_MARK,
@@ -1961,7 +1961,7 @@ mlx5_flow_field_id_to_modify_info
 	case RTE_FLOW_FIELD_META:
 		{
 			uint32_t meta_mask = priv->sh->dv_meta_mask;
-			uint32_t meta_count = __builtin_popcount(meta_mask);
+			uint32_t meta_count = rte_popcount32(meta_mask);
 			RTE_SET_USED(meta_count);
 			MLX5_ASSERT(data->offset + width <= meta_count);
 			int reg = flow_dv_get_metadata_reg(dev, attr, error);
@@ -2002,7 +2002,7 @@ mlx5_flow_field_id_to_modify_info
 	case MLX5_RTE_FLOW_FIELD_META_REG:
 		{
 			uint32_t meta_mask = priv->sh->dv_meta_mask;
-			uint32_t meta_count = __builtin_popcount(meta_mask);
+			uint32_t meta_count = rte_popcount32(meta_mask);
 			uint8_t reg = flow_tag_index_get(data);
 
 			RTE_SET_USED(meta_count);

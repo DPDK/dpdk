@@ -973,7 +973,7 @@ rte_sched_port_config(struct rte_sched_port_params *params)
 	port->n_max_subport_profiles = params->n_max_subport_profiles;
 	port->n_pipes_per_subport = params->n_pipes_per_subport;
 	port->n_pipes_per_subport_log2 =
-			__builtin_ctz(params->n_pipes_per_subport);
+			rte_ctz32(params->n_pipes_per_subport);
 	port->socket = params->socket;
 
 	for (i = 0; i < RTE_SCHED_TRAFFIC_CLASSES_PER_PIPE; i++)

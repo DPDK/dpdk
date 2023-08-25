@@ -1398,7 +1398,7 @@ iavf_any_invalid_rss_type(enum rte_eth_hash_function rss_func,
 
 	/* check invalid combination */
 	for (i = 0; i < RTE_DIM(invalid_rss_comb); i++) {
-		if (__builtin_popcountll(rss_type & invalid_rss_comb[i]) > 1)
+		if (rte_popcount64(rss_type & invalid_rss_comb[i]) > 1)
 			return true;
 	}
 

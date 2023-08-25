@@ -452,7 +452,7 @@ _recv_raw_pkts_vec(struct ixgbe_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 		if (unlikely(stat == 0)) {
 			nb_pkts_recd += RTE_IXGBE_DESCS_PER_LOOP;
 		} else {
-			nb_pkts_recd += __builtin_ctz(stat) / IXGBE_UINT8_BIT;
+			nb_pkts_recd += rte_ctz32(stat) / IXGBE_UINT8_BIT;
 			break;
 		}
 	}

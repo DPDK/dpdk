@@ -146,12 +146,12 @@ rte_table_array_lookup(
 	void **entries)
 {
 	struct rte_table_array *t = (struct rte_table_array *) table;
-	__rte_unused uint32_t n_pkts_in = __builtin_popcountll(pkts_mask);
+	__rte_unused uint32_t n_pkts_in = rte_popcount64(pkts_mask);
 	RTE_TABLE_ARRAY_STATS_PKTS_IN_ADD(t, n_pkts_in);
 	*lookup_hit_mask = pkts_mask;
 
 	if ((pkts_mask & (pkts_mask + 1)) == 0) {
-		uint64_t n_pkts = __builtin_popcountll(pkts_mask);
+		uint64_t n_pkts = rte_popcount64(pkts_mask);
 		uint32_t i;
 
 		for (i = 0; i < n_pkts; i++) {
@@ -164,7 +164,7 @@ rte_table_array_lookup(
 		}
 	} else {
 		for ( ; pkts_mask; ) {
-			uint32_t pkt_index = __builtin_ctzll(pkts_mask);
+			uint32_t pkt_index = rte_ctz64(pkts_mask);
 			uint64_t pkt_mask = 1LLU << pkt_index;
 			struct rte_mbuf *pkt = pkts[pkt_index];
 			uint32_t entry_pos = RTE_MBUF_METADATA_UINT32(pkt,

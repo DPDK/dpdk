@@ -362,7 +362,7 @@ rte_rib6_insert(struct rte_rib6 *rib,
 		if (ip_xor == 0)
 			d += 8;
 		else {
-			d += __builtin_clz(ip_xor << 24);
+			d += rte_clz32(ip_xor << 24);
 			break;
 		}
 	}

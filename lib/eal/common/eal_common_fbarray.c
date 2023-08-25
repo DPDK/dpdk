@@ -189,7 +189,7 @@ find_next_n(const struct rte_fbarray *arr, unsigned int start, unsigned int n,
 				tmp_msk &= tmp_msk >> 1ULL;
 			/* we found what we were looking for */
 			if (tmp_msk != 0) {
-				run_start = __builtin_ctzll(tmp_msk);
+				run_start = rte_ctz64(tmp_msk);
 				return MASK_GET_IDX(msk_idx, run_start);
 			}
 		}
@@ -203,7 +203,7 @@ find_next_n(const struct rte_fbarray *arr, unsigned int start, unsigned int n,
 		if (~cur_msk == 0)
 			clz = sizeof(cur_msk) * 8;
 		else
-			clz = __builtin_clzll(~cur_msk);
+			clz = rte_clz64(~cur_msk);
 
 		/* if there aren't any runs at the end either, just continue */
 		if (clz == 0)
@@ -308,7 +308,7 @@ find_next(const struct rte_fbarray *arr, unsigned int start, bool used)
 		 * find first set bit - that will correspond to whatever it is
 		 * that we're looking for.
 		 */
-		found = __builtin_ctzll(cur);
+		found = rte_ctz64(cur);
 		return MASK_GET_IDX(idx, found);
 	}
 	/* we didn't find anything */
@@ -366,7 +366,7 @@ find_contig(const struct rte_fbarray *arr, unsigned int start, bool used)
 		/*
 		 * see if current run ends before mask end.
 		 */
-		run_len = __builtin_ctzll(cur);
+		run_len = rte_ctz64(cur);
 
 		/* add however many zeroes we've had in the last run and quit */
 		if (run_len < need_len) {
@@ -454,7 +454,7 @@ find_prev_n(const struct rte_fbarray *arr, unsigned int start, unsigned int n,
 				 * would have been.
 				 */
 				run_start = MASK_ALIGN -
-						__builtin_clzll(tmp_msk) - n;
+						rte_clz64(tmp_msk) - n;
 				return MASK_GET_IDX(msk_idx, run_start);
 			}
 		}
@@ -468,7 +468,7 @@ find_prev_n(const struct rte_fbarray *arr, unsigned int start, unsigned int n,
 		if (~cur_msk == 0)
 			ctz = sizeof(cur_msk) * 8;
 		else
-			ctz = __builtin_ctzll(~cur_msk);
+			ctz = rte_ctz64(~cur_msk);
 
 		/* if there aren't any runs at the start either, just
 		 * continue
@@ -584,7 +584,7 @@ find_prev(const struct rte_fbarray *arr, unsigned int start, bool used)
 		 * the value we get is counted from end of mask, so calculate
 		 * position from start of mask.
 		 */
-		found = MASK_ALIGN - __builtin_clzll(cur) - 1;
+		found = MASK_ALIGN - rte_clz64(cur) - 1;
 
 		return MASK_GET_IDX(idx, found);
 	} while (idx-- != 0); /* decrement after check  to include zero*/
@@ -635,7 +635,7 @@ find_rev_contig(const struct rte_fbarray *arr, unsigned int start, bool used)
 		/*
 		 * see where run ends, starting from the end.
 		 */
-		run_len = __builtin_clzll(cur);
+		run_len = rte_clz64(cur);
 
 		/* add however many zeroes we've had in the last run and quit */
 		if (run_len < need_len) {

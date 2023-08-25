@@ -432,7 +432,7 @@ _recv_raw_pkts_vec(struct i40e_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 		desc_to_olflags_v(descs, &rx_pkts[pos]);
 
 		/* C.4 calc available number of desc */
-		var = __builtin_popcountll((vec_ld(0,
+		var = rte_popcount64((vec_ld(0,
 			(__vector unsigned long *)&staterr)[0]));
 		nb_pkts_recd += var;
 		if (likely(var != RTE_I40E_DESCS_PER_LOOP))

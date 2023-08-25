@@ -271,7 +271,7 @@ vhost_user_iotlb_cache_insert(struct virtio_net *dev, uint64_t iova, uint64_t ua
 	new_node->uaddr = uaddr;
 	new_node->uoffset = uoffset;
 	new_node->size = size;
-	new_node->page_shift = __builtin_ctzll(page_size);
+	new_node->page_shift = rte_ctz64(page_size);
 	new_node->perm = perm;
 
 	vhost_user_iotlb_wr_lock_all(dev);

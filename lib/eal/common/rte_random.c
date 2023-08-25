@@ -7,6 +7,7 @@
 #endif
 #include <unistd.h>
 
+#include <rte_bitops.h>
 #include <rte_branch_prediction.h>
 #include <rte_cycles.h>
 #include <rte_lcore.h>
@@ -153,7 +154,7 @@ rte_rand_max(uint64_t upper_bound)
 
 	state = __rte_rand_get_state();
 
-	ones = __builtin_popcountll(upper_bound);
+	ones = rte_popcount64(upper_bound);
 
 	/* Handle power-of-2 upper_bound as a special case, since it
 	 * has no bias issues.
@@ -168,7 +169,7 @@ rte_rand_max(uint64_t upper_bound)
 	 * the value and generate a new one.
 	 */
 
-	leading_zeros = __builtin_clzll(upper_bound);
+	leading_zeros = rte_clz64(upper_bound);
 	mask >>= leading_zeros;
 
 	do {

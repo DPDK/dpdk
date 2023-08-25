@@ -586,7 +586,7 @@ rte_service_lcore_count_services(uint32_t lcore)
 	if (!cs->is_service_core)
 		return -ENOTSUP;
 
-	return __builtin_popcountll(cs->service_mask);
+	return rte_popcount64(cs->service_mask);
 }
 
 int32_t

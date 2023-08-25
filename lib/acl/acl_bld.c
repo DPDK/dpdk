@@ -1091,7 +1091,7 @@ acl_calc_wildness(struct rte_acl_build_rule *head,
 
 			switch (rule->config->defs[n].type) {
 			case RTE_ACL_FIELD_TYPE_BITMASK:
-				wild = (size - __builtin_popcountll(
+				wild = (size - rte_popcount64(
 					fld->mask_range.u64 & msk_val)) /
 					size;
 				break;

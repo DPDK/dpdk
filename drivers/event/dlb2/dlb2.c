@@ -1679,7 +1679,7 @@ dlb2_hw_create_ldb_port(struct dlb2_eventdev *dlb2,
 	else
 		qm_port->cq_depth_mask = qm_port->cq_depth - 1;
 
-	qm_port->gen_bit_shift = __builtin_popcount(qm_port->cq_depth_mask);
+	qm_port->gen_bit_shift = rte_popcount32(qm_port->cq_depth_mask);
 	/* starting value of gen bit - it toggles at wrap time */
 	qm_port->gen_bit = 1;
 
@@ -1893,7 +1893,7 @@ dlb2_hw_create_dir_port(struct dlb2_eventdev *dlb2,
 	else
 		qm_port->cq_depth_mask = cfg.cq_depth - 1;
 
-	qm_port->gen_bit_shift = __builtin_popcount(qm_port->cq_depth_mask);
+	qm_port->gen_bit_shift = rte_popcount32(qm_port->cq_depth_mask);
 	/* starting value of gen bit - it toggles at wrap time */
 	qm_port->gen_bit = 1;
 	dlb2_hw_cq_bitmask_init(qm_port, qm_port->cq_depth);
@@ -3695,7 +3695,7 @@ dlb2_recv_qe_sparse(struct dlb2_port *qm_port, struct dlb2_dequeue_qe *qe)
 	/* Mask off gen bits we don't care about */
 	gen_bits &= and_mask;
 
-	return __builtin_popcount(gen_bits);
+	return rte_popcount32(gen_bits);
 }
 
 static inline void
@@ -3946,7 +3946,7 @@ dlb2_recv_qe_sparse_vec(struct dlb2_port *qm_port, void *events,
 	 */
 	uint64_t rolling = qm_port->cq_rolling_mask & 0xF;
 	uint64_t qe_xor_bits = (qe_gen_bits ^ rolling);
-	uint32_t count_new = __builtin_popcount(qe_xor_bits);
+	uint32_t count_new = rte_popcount32(qe_xor_bits);
 	count_new = RTE_MIN(count_new, max_events);
 	if (!count_new)
 		return 0;
@@ -4122,7 +4122,7 @@ dlb2_recv_qe(struct dlb2_port *qm_port, struct dlb2_dequeue_qe *qe,
 	/* Mask off gen bits we don't care about */
 	gen_bits &= and_mask[*offset];
 
-	return __builtin_popcount(gen_bits);
+	return rte_popcount32(gen_bits);
 }
 
 static inline int16_t

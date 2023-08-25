@@ -309,12 +309,12 @@ rte_table_lpm_lookup(
 	uint64_t pkts_out_mask = 0;
 	uint32_t i;
 
-	__rte_unused uint32_t n_pkts_in = __builtin_popcountll(pkts_mask);
+	__rte_unused uint32_t n_pkts_in = rte_popcount64(pkts_mask);
 	RTE_TABLE_LPM_STATS_PKTS_IN_ADD(lpm, n_pkts_in);
 
 	pkts_out_mask = 0;
 	for (i = 0; i < (uint32_t)(RTE_PORT_IN_BURST_SIZE_MAX -
-		__builtin_clzll(pkts_mask)); i++) {
+		rte_clz64(pkts_mask)); i++) {
 		uint64_t pkt_mask = 1LLU << i;
 
 		if (pkt_mask & pkts_mask) {
@@ -334,7 +334,7 @@ rte_table_lpm_lookup(
 	}
 
 	*lookup_hit_mask = pkts_out_mask;
-	RTE_TABLE_LPM_STATS_PKTS_LOOKUP_MISS(lpm, n_pkts_in - __builtin_popcountll(pkts_out_mask));
+	RTE_TABLE_LPM_STATS_PKTS_LOOKUP_MISS(lpm, n_pkts_in - rte_popcount64(pkts_out_mask));
 	return 0;
 }
 

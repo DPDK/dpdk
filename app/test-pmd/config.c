@@ -699,8 +699,8 @@ print_dev_capabilities(uint64_t capabilities)
 	if (capabilities == 0)
 		return;
 
-	begin = __builtin_ctzll(capabilities);
-	end = sizeof(capabilities) * CHAR_BIT - __builtin_clzll(capabilities);
+	begin = rte_ctz64(capabilities);
+	end = sizeof(capabilities) * CHAR_BIT - rte_clz64(capabilities);
 
 	single_capa = 1ULL << begin;
 	for (bit = begin; bit < end; bit++) {

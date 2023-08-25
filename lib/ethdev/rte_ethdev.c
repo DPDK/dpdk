@@ -1067,7 +1067,7 @@ eth_dev_offload_names(uint64_t bitmask, char *buf, size_t size,
 	}
 
 	while (bitmask != 0) {
-		uint64_t offload = RTE_BIT64(__builtin_ctzll(bitmask));
+		uint64_t offload = RTE_BIT64(rte_ctz64(bitmask));
 		const char *name = offload_name(offload);
 
 		ret = snprintf(&buf[pos], size - pos, "%s,", name);
@@ -1165,7 +1165,7 @@ eth_dev_validate_offloads(uint16_t port_id, uint64_t req_offloads,
 
 	while (offloads_diff != 0) {
 		/* Check if any offload is requested but not enabled. */
-		offload = RTE_BIT64(__builtin_ctzll(offloads_diff));
+		offload = RTE_BIT64(rte_ctz64(offloads_diff));
 		if (offload & req_offloads) {
 			RTE_ETHDEV_LOG(ERR,
 				"Port %u failed to enable %s offload %s\n",

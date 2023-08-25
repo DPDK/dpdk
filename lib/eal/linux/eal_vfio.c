@@ -1682,7 +1682,7 @@ spapr_dma_win_size(void)
 	RTE_LOG(DEBUG, EAL, "Setting DMA window size to 0x%" PRIx64 "\n",
 		spapr_dma_win_len);
 	spapr_dma_win_page_sz = param.page_sz;
-	rte_mem_set_dma_mask(__builtin_ctzll(spapr_dma_win_len));
+	rte_mem_set_dma_mask(rte_ctz64(spapr_dma_win_len));
 	return 0;
 }
 
@@ -1720,7 +1720,7 @@ vfio_spapr_create_dma_window(int vfio_container_fd)
 
 	/* create a new DMA window (start address is not selectable) */
 	create.window_size = spapr_dma_win_len;
-	create.page_shift  = __builtin_ctzll(spapr_dma_win_page_sz);
+	create.page_shift  = rte_ctz64(spapr_dma_win_page_sz);
 	create.levels = 1;
 	ret = ioctl(vfio_container_fd, VFIO_IOMMU_SPAPR_TCE_CREATE, &create);
 #ifdef VFIO_IOMMU_SPAPR_INFO_DDW
