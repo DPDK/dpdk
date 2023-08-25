@@ -80,6 +80,7 @@ optional_libs = [
         'bpf',
         'cfgfile',
         'compressdev',
+        'cryptodev',
         'distributor',
         'dmadev',
         'efd',
@@ -89,6 +90,7 @@ optional_libs = [
         'gro',
         'gso',
         'ip_frag',
+        'ipsec',
         'jobstats',
         'latencystats',
         'member',
@@ -105,6 +107,7 @@ optional_libs = [
         'regexdev',
         'reorder',
         'sched',
+        'security',
         'table',
         'vhost',
 ]
