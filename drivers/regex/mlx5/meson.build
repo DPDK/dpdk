@@ -7,7 +7,7 @@ if not is_linux
     subdir_done()
 endif
 
-deps += ['common_mlx5', 'eal', 'regexdev']
+deps += ['common_mlx5', 'eal']
 if not dpdk_conf.has('RTE_COMMON_MLX5')
     # avoid referencing undefined variables from common/mlx5
     subdir_done()

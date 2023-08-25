@@ -5,4 +5,4 @@ drivers = [
         'mlx5',
         'cn9k',
 ]
-std_deps = ['ethdev', 'kvargs'] # 'ethdev' also pulls in mbuf, net, eal etc
+std_deps = ['ethdev', 'kvargs', 'regexdev'] # 'ethdev' also pulls in mbuf, net, eal etc
