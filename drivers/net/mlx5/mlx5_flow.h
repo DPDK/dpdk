@@ -1516,8 +1516,8 @@ struct rte_flow_template_table {
 #define MLX5_RSS_HASH_NONE 0ULL
 
 #define MLX5_RSS_IS_SYMM(func) \
-		((func) == RTE_ETH_HASH_FUNCTION_SYMMETRIC_TOEPLITZ)
-
+		(((func) == RTE_ETH_HASH_FUNCTION_SYMMETRIC_TOEPLITZ) || \
+		 ((func) == RTE_ETH_HASH_FUNCTION_SYMMETRIC_TOEPLITZ_SORT))
 
 /* extract next protocol type from Ethernet & VLAN headers */
 #define MLX5_ETHER_TYPE_FROM_HEADER(_s, _m, _itm, _prt) do { \
