@@ -3196,6 +3196,13 @@ enum rte_eth_hash_function {
 	 * src or dst address will xor with zero pair.
 	 */
 	RTE_ETH_HASH_FUNCTION_SYMMETRIC_TOEPLITZ,
+	/**
+	 * Symmetric Toeplitz: L3 and L4 fields are sorted prior to
+	 * the hash function.
+	 *  If src_ip > dst_ip, swap src_ip and dst_ip.
+	 *  If src_port > dst_port, swap src_port and dst_port.
+	 */
+	RTE_ETH_HASH_FUNCTION_SYMMETRIC_TOEPLITZ_SORT,
 	RTE_ETH_HASH_FUNCTION_MAX,
 };
 
