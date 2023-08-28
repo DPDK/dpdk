@@ -13009,7 +13009,7 @@ test_AES_GMAC_authentication(const struct gmac_test_data *tdata)
 	retval = create_gmac_session(ts_params->valid_devs[0],
 			tdata, RTE_CRYPTO_AUTH_OP_GENERATE);
 
-	if (retval == -ENOTSUP)
+	if (retval == TEST_SKIPPED)
 		return TEST_SKIPPED;
 	if (retval < 0)
 		return retval;
@@ -13140,7 +13140,7 @@ test_AES_GMAC_authentication_verify(const struct gmac_test_data *tdata)
 	retval = create_gmac_session(ts_params->valid_devs[0],
 			tdata, RTE_CRYPTO_AUTH_OP_VERIFY);
 
-	if (retval == -ENOTSUP)
+	if (retval == TEST_SKIPPED)
 		return TEST_SKIPPED;
 	if (retval < 0)
 		return retval;
@@ -13269,7 +13269,7 @@ test_AES_GMAC_authentication_SGL(const struct gmac_test_data *tdata,
 	retval = create_gmac_session(ts_params->valid_devs[0],
 			tdata, RTE_CRYPTO_AUTH_OP_GENERATE);
 
-	if (retval == -ENOTSUP)
+	if (retval == TEST_SKIPPED)
 		return TEST_SKIPPED;
 	if (retval < 0)
 		return retval;
@@ -13886,7 +13886,7 @@ test_authentication_verify_fail_when_data_corruption(
 			reference,
 			RTE_CRYPTO_AUTH_OP_VERIFY);
 
-	if (retval == -ENOTSUP)
+	if (retval == TEST_SKIPPED)
 		return TEST_SKIPPED;
 	if (retval < 0)
 		return retval;
@@ -13973,6 +13973,8 @@ test_authentication_verify_GMAC_fail_when_corruption(
 			reference,
 			RTE_CRYPTO_AUTH_OP_VERIFY,
 			RTE_CRYPTO_CIPHER_OP_DECRYPT);
+	if (retval == TEST_SKIPPED)
+		return TEST_SKIPPED;
 	if (retval < 0)
 		return retval;
 
@@ -14063,8 +14065,7 @@ test_authenticated_decryption_fail_when_corruption(
 			reference,
 			RTE_CRYPTO_AUTH_OP_VERIFY,
 			RTE_CRYPTO_CIPHER_OP_DECRYPT);
-
-	if (retval == -ENOTSUP)
+	if (retval == TEST_SKIPPED)
 		return TEST_SKIPPED;
 	if (retval < 0)
 		return retval;
