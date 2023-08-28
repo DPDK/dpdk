@@ -103,15 +103,15 @@ rte_power_monitor(const struct rte_power_monitor_cond *pmc,
 	rte_spinlock_lock(&s->lock);
 	s->monitor_addr = pmc->addr;
 
-	/*
-	 * we're using raw byte codes for now as only the newest compiler
-	 * versions support this instruction natively.
-	 */
-
 	/* set address for UMONITOR */
 #if defined(RTE_TOOLCHAIN_MSVC) || defined(__WAITPKG__)
-	_umonitor(pmc->addr);
+	/* cast away "volatile" when using the intrinsic */
+	_umonitor((void *)(uintptr_t)pmc->addr);
 #else
+	/*
+	 * we're using raw byte codes for compiler versions which
+	 * don't support this instruction natively.
+	 */
 	asm volatile(".byte 0xf3, 0x0f, 0xae, 0xf7;"
 			:
 			: "D"(pmc->addr));
