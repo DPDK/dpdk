@@ -133,6 +133,8 @@ static int iavf_dev_rx_queue_intr_enable(struct rte_eth_dev *dev,
 					uint16_t queue_id);
 static int iavf_dev_rx_queue_intr_disable(struct rte_eth_dev *dev,
 					 uint16_t queue_id);
+static void iavf_dev_interrupt_handler(void *param);
+static inline void iavf_disable_irq0(struct iavf_hw *hw);
 static int iavf_dev_flow_ops_get(struct rte_eth_dev *dev,
 				 const struct rte_flow_ops **ops);
 static int iavf_set_mc_addr_list(struct rte_eth_dev *dev,
@@ -2490,8 +2492,21 @@ iavf_uninit_vf(struct rte_eth_dev *dev)
 {
 	struct iavf_hw *hw = IAVF_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
+        struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+        struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
 
 	iavf_shutdown_adminq(hw);
+
+        if (vf->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_WB_ON_ITR) {
+                /* disable uio intr before callback unregister */
+                rte_intr_disable(intr_handle);
+
+                /* unregister callback func from eal lib */
+                rte_intr_callback_unregister(intr_handle,
+                                             iavf_dev_interrupt_handler, dev);
+        } else {
+                rte_eal_alarm_cancel(iavf_dev_alarm_handler, dev);
+        }
 
 	rte_free(vf->vf_res);
 	vf->vsi_res = NULL;
