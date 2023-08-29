@@ -20,6 +20,7 @@ endif
 
 sources = files(
         'cnxk_eventdev.c',
+        'cnxk_worker.c',
         'cnxk_eventdev_adptr.c',
         'cnxk_eventdev_selftest.c',
         'cnxk_eventdev_stats.c',
@@ -314,6 +315,7 @@ foreach flag: extra_flags
     endif
 endforeach
 
+headers = files('rte_pmd_cnxk_eventdev.h')
 deps += ['bus_pci', 'common_cnxk', 'net_cnxk', 'crypto_cnxk']
 
 require_iova_in_mbuf = false

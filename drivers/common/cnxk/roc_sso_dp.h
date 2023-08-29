@@ -30,4 +30,12 @@ roc_sso_hws_head_wait(uintptr_t base)
 	return tag;
 }
 
+static __plt_always_inline uint8_t
+roc_sso_hws_is_head(uintptr_t base)
+{
+	uintptr_t tag_op = base + SSOW_LF_GWS_TAG;
+
+	return !!(plt_read64(tag_op) & BIT_ULL(35));
+}
+
 #endif /* _ROC_SSO_DP_H_ */

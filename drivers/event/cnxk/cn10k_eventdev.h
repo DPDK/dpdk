@@ -10,9 +10,9 @@
 
 struct cn10k_sso_hws {
 	uint64_t base;
-	uint64_t gw_rdata;
-	void *lookup_mem;
 	uint32_t gw_wdata;
+	void *lookup_mem;
+	uint64_t gw_rdata;
 	uint8_t swtag_req;
 	uint8_t hws_id;
 	/* PTP timestamp */
