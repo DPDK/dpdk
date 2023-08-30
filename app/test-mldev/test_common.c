@@ -107,6 +107,16 @@ ml_test_opt_check(struct ml_options *opt)
 		return -EINVAL;
 	}
 
+	if (opt->queue_pairs == 0) {
+		ml_err("Invalid option, queue_pairs = %d", opt->queue_pairs);
+		return -EINVAL;
+	}
+
+	if (opt->queue_size == 0) {
+		ml_err("Invalid option, queue_size = %d", opt->queue_size);
+		return -EINVAL;
+	}
+
 	return 0;
 }
 
