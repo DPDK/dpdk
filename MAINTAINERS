@@ -644,7 +644,7 @@ F: doc/guides/nics/ena.rst
 F: doc/guides/nics/features/ena.ini
 
 AMD axgbe
-M: Chandubabu Namburu <chandu@amd.com>
+M: Selwin Sebastian <selwin.sebastian@amd.com>
 F: drivers/net/axgbe/
 F: doc/guides/nics/axgbe.rst
 F: doc/guides/nics/features/axgbe.ini
