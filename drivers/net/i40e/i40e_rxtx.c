@@ -1918,6 +1918,12 @@ i40e_dev_rx_queue_setup_runtime(struct rte_eth_dev *dev,
 		if (use_def_burst_func)
 			ad->rx_bulk_alloc_allowed = false;
 		i40e_set_rx_function(dev);
+
+		if (ad->rx_vec_allowed && i40e_rxq_vec_setup(rxq)) {
+			PMD_DRV_LOG(ERR, "Failed vector rx setup.");
+			return -EINVAL;
+		}
+
 		return 0;
 	} else if (ad->rx_vec_allowed && !rte_is_power_of_2(rxq->nb_rx_desc)) {
 		PMD_DRV_LOG(ERR, "Vector mode is allowed, but descriptor"
