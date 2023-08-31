@@ -186,12 +186,11 @@ _iavf_tx_queue_release_mbufs_vec(struct iavf_tx_queue *txq)
 		return;
 
 	i = txq->next_dd - txq->rs_thresh + 1;
-	if (txq->tx_tail < i) {
-		for (; i < txq->nb_tx_desc; i++) {
-			rte_pktmbuf_free_seg(txq->sw_ring[i].mbuf);
-			txq->sw_ring[i].mbuf = NULL;
-		}
-		i = 0;
+	while (i != txq->tx_tail) {
+		rte_pktmbuf_free_seg(txq->sw_ring[i].mbuf);
+		txq->sw_ring[i].mbuf = NULL;
+		if (++i == txq->nb_tx_desc)
+			i = 0;
 	}
 }
 

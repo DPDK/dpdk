@@ -2460,20 +2460,19 @@ iavf_tx_queue_release_mbufs_avx512(struct iavf_tx_queue *txq)
 {
 	unsigned int i;
 	const uint16_t max_desc = (uint16_t)(txq->nb_tx_desc - 1);
+	const uint16_t end_desc = txq->tx_tail >> txq->use_ctx; /* next empty slot */
+	const uint16_t wrap_point = txq->nb_tx_desc >> txq->use_ctx;  /* end of SW ring */
 	struct iavf_tx_vec_entry *swr = (void *)txq->sw_ring;
 
 	if (!txq->sw_ring || txq->nb_free == max_desc)
 		return;
 
-	i = (txq->next_dd >> txq->use_ctx) + 1 -
-			(txq->rs_thresh >> txq->use_ctx);
-
-	if (txq->tx_tail < i) {
-		for (; i < (unsigned int)(txq->nb_tx_desc >> txq->use_ctx); i++) {
-			rte_pktmbuf_free_seg(swr[i].mbuf);
-			swr[i].mbuf = NULL;
-		}
-		i = 0;
+	i = (txq->next_dd - txq->rs_thresh + 1) >> txq->use_ctx;
+	while (i != end_desc) {
+		rte_pktmbuf_free_seg(swr[i].mbuf);
+		swr[i].mbuf = NULL;
+		if (++i == wrap_point)
+			i = 0;
 	}
 }
 
