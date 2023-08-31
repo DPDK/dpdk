@@ -201,6 +201,7 @@ i40e_rxq_vec_setup_default(struct i40e_rx_queue *rxq)
 	rte_compiler_barrier();
 	p = (uintptr_t)&mb_def.rearm_data;
 	rxq->mbuf_initializer = *(uint64_t *)p;
+	rxq->rx_using_sse = 1;
 	return 0;
 }
 
