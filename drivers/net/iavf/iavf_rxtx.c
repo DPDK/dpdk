@@ -755,6 +755,13 @@ iavf_dev_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 	if (check_rx_vec_allow(rxq) == false)
 		ad->rx_vec_allowed = false;
 
+#if defined RTE_ARCH_X86 || defined RTE_ARCH_ARM
+	/* check vector conflict */
+	if (ad->rx_vec_allowed && iavf_rxq_vec_setup(rxq)) {
+		PMD_DRV_LOG(ERR, "Failed vector rx setup.");
+		return -EINVAL;
+	}
+#endif
 	return 0;
 }
 
