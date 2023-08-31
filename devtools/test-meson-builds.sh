@@ -282,6 +282,9 @@ build build-loongarch64-generic-gcc $f ABI $use_shared
 
 # IBM POWER
 f=$srcdir/config/ppc/ppc64le-power8-linux-gcc
+if grep -q 'NAME="Ubuntu"' /etc/os-release ; then
+	f=$f-ubuntu
+fi
 build build-ppc64-power8-gcc $f ABI $use_shared
 
 # generic RISC-V
