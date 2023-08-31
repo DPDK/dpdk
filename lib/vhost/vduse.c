@@ -163,9 +163,12 @@ vduse_vring_setup(struct virtio_net *dev, unsigned int index)
 
 	VHOST_LOG_CONFIG(dev->ifname, INFO, "VQ %u info:\n", index);
 	VHOST_LOG_CONFIG(dev->ifname, INFO, "\tnum: %u\n", vq_info.num);
-	VHOST_LOG_CONFIG(dev->ifname, INFO, "\tdesc_addr: %llx\n", vq_info.desc_addr);
-	VHOST_LOG_CONFIG(dev->ifname, INFO, "\tdriver_addr: %llx\n", vq_info.driver_addr);
-	VHOST_LOG_CONFIG(dev->ifname, INFO, "\tdevice_addr: %llx\n", vq_info.device_addr);
+	VHOST_LOG_CONFIG(dev->ifname, INFO, "\tdesc_addr: %llx\n",
+			(unsigned long long)vq_info.desc_addr);
+	VHOST_LOG_CONFIG(dev->ifname, INFO, "\tdriver_addr: %llx\n",
+			(unsigned long long)vq_info.driver_addr);
+	VHOST_LOG_CONFIG(dev->ifname, INFO, "\tdevice_addr: %llx\n",
+			(unsigned long long)vq_info.device_addr);
 	VHOST_LOG_CONFIG(dev->ifname, INFO, "\tavail_idx: %u\n", vq_info.split.avail_index);
 	VHOST_LOG_CONFIG(dev->ifname, INFO, "\tready: %u\n", vq_info.ready);
 
