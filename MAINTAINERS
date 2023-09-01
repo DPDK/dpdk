@@ -609,8 +609,8 @@ F: drivers/bus/vmbus/
 
 Networking Drivers
 ------------------
-M: Ferruh Yigit <ferruh.yigit@amd.com>
 T: git://dpdk.org/next/dpdk-next-net
+F: drivers/net/meson.build
 F: doc/guides/nics/features/default.ini
 
 Link bonding
@@ -1057,6 +1057,7 @@ F: doc/guides/nics/features/memif.ini
 Crypto Drivers
 --------------
 T: git://dpdk.org/next/dpdk-next-crypto
+F: drivers/crypto/meson.build
 F: doc/guides/cryptodevs/features/default.ini
 
 AMD CCP Crypto
@@ -1193,6 +1194,7 @@ F: doc/guides/cryptodevs/features/virtio.ini
 Compression Drivers
 -------------------
 T: git://dpdk.org/next/dpdk-next-crypto
+F: drivers/compress/meson.build
 
 Cavium OCTEON TX zipvf
 M: Ashish Gupta <ashish.gupta@marvell.com>
@@ -1290,6 +1292,7 @@ F: doc/guides/mldevs/cnxk.rst
 vDPA Drivers
 ------------
 T: git://dpdk.org/next/dpdk-next-virtio
+F: drivers/vdpa/meson.build
 
 Intel ifc
 M: Xiao Wang <xiao.w.wang@intel.com>
@@ -1313,8 +1316,8 @@ F: doc/guides/vdpadevs/features/sfc.ini
 
 Eventdev Drivers
 ----------------
-M: Jerin Jacob <jerinj@marvell.com>
 T: git://dpdk.org/next/dpdk-next-eventdev
+F: drivers/event/meson.build
 
 Cavium OCTEON TX ssovf
 M: Jerin Jacob <jerinj@marvell.com>
@@ -1369,10 +1372,11 @@ F: doc/guides/eventdevs/opdl.rst
 
 Baseband Drivers
 ----------------
+T: git://dpdk.org/next/dpdk-next-baseband
+F: drivers/baseband/meson.build
 
 Intel baseband
 M: Nicolas Chautru <nicolas.chautru@intel.com>
-T: git://dpdk.org/next/dpdk-next-baseband
 F: drivers/baseband/turbo_sw/
 F: doc/guides/bbdevs/turbo_sw.rst
 F: doc/guides/bbdevs/features/turbo_sw.ini
@@ -1391,7 +1395,6 @@ F: doc/guides/bbdevs/features/vrb1.ini
 
 Null baseband
 M: Nicolas Chautru <nicolas.chautru@intel.com>
-T: git://dpdk.org/next/dpdk-next-baseband
 F: drivers/baseband/null/
 F: doc/guides/bbdevs/null.rst
 F: doc/guides/bbdevs/features/null.ini
@@ -1399,7 +1402,6 @@ F: doc/guides/bbdevs/features/null.ini
 NXP LA12xx
 M: Gagandeep Singh <g.singh@nxp.com>
 M: Hemant Agrawal <hemant.agrawal@nxp.com>
-T: git://dpdk.org/next/dpdk-next-baseband
 F: drivers/baseband/la12xx/
 F: doc/guides/bbdevs/la12xx.rst
 F: doc/guides/bbdevs/features/la12xx.ini
