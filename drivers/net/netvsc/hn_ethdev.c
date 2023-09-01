@@ -1102,6 +1102,8 @@ static int
 hn_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 {
 	struct hn_data *hv = dev->data->dev_private;
+	struct hn_rx_queue *rxq = dev->data->rx_queues[0];
+	struct hn_tx_queue *txq = dev->data->tx_queues[0];
 	struct rte_eth_dev *vf_dev;
 	unsigned int orig_mtu = dev->data->mtu;
 	uint32_t rndis_mtu;
@@ -1111,10 +1113,6 @@ hn_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 		PMD_DRV_LOG(ERR, "Device must be stopped before changing MTU");
 		return -EIO;
 	}
-
-	ret = hn_dev_close(dev);
-	if (ret)
-		return ret;
 
 	/* Change MTU of underlying VF netdev first, if it exists */
 	rte_rwlock_read_lock(&hv->vf_lock);
@@ -1131,6 +1129,8 @@ hn_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 	/* Release channel resources */
 	hn_detach(hv);
 	hn_chim_uninit(dev);
+
+	/* Close primary channel */
 	rte_vmbus_chan_close(hv->channels[0]);
 
 	/* Unmap and re-map vmbus device */
@@ -1155,20 +1155,18 @@ hn_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 
 	rte_vmbus_set_latency(hv->vmbus, hv->channels[0], hv->latency);
 
-	hv->primary = hn_rx_queue_alloc(hv, 0,
-					dev->device->numa_node);
-
-	if (!hv->primary) {
-		/* This is a catastrophic error - the device is unusable */
-		PMD_DRV_LOG(ERR, "No memory to allocate rx queue!");
-		return -ENOMEM;
-	}
+	rxq->chan = hv->channels[0];
+	txq->chan = hv->channels[0];
 
 	ret = hn_attach(hv, mtu);
 	if (ret)
 		goto error;
 
 	ret = hn_chim_init(dev);
+	if (ret)
+		goto error;
+
+	ret = hn_dev_configure(dev);
 	if (!ret)
 		goto out;
 
