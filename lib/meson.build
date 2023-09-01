@@ -131,7 +131,9 @@ endforeach
 disable_libs = run_command(list_dir_globs, get_option('disable_libs'), check: true).stdout().split()
 
 enable_libs = run_command(list_dir_globs, get_option('enable_libs'), check: true).stdout().split()
+require_libs = true
 if enable_libs.length() == 0
+    require_libs = false
     enable_libs += optional_libs
 endif
 enable_libs += always_enable
@@ -189,6 +191,10 @@ foreach l:libraries
 
     if build
         subdir(l)
+        if not build and require_libs
+            error('Cannot build explicitly requested lib "@0@".\n'.format(name)
+                    +'\tReason: ' + reason)
+        endif
     endif
     if name != l
         warning('Library name, "@0@", and directory name, "@1@", do not match'.format(name, l))
@@ -208,6 +214,10 @@ foreach l:libraries
             endif
             message('Disabling @1@ [@2@]: missing internal dependency "@0@"'
                     .format(d, name, 'lib/' + l))
+            if require_libs
+                error('Cannot build explicitly requested lib "@0@".\n'.format(name)
+                        + '\tPlease add missing dependency "@0@" to "enable_libs" option'.format(d))
+            endif
         else
             shared_deps += [get_variable('shared_rte_' + d)]
             static_deps += [get_variable('static_rte_' + d)]
