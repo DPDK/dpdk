@@ -356,7 +356,7 @@ next_bulk:
 		rx_pkts = 0;
 		pkts = nb_pkts < MAX_PKT_BURST ? nb_pkts : MAX_PKT_BURST;
 		while (n_slots && rx_pkts < pkts) {
-			mbuf_head = mbufs[n_rx_pkts];
+			mbuf_head = mbufs[rx_pkts];
 			mbuf = mbuf_head;
 
 next_slot1:
