@@ -78,6 +78,7 @@ struct rte_mempool_debug_stats {
 	uint64_t get_fail_objs;        /**< Objects that failed to be allocated. */
 	uint64_t get_success_blks;     /**< Successful allocation number of contiguous blocks. */
 	uint64_t get_fail_blks;        /**< Failed allocation number of contiguous blocks. */
+	RTE_CACHE_GUARD;
 } __rte_cache_aligned;
 #endif
 
