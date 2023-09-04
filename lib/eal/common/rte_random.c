@@ -19,6 +19,7 @@ struct rte_rand_state {
 	uint64_t z3;
 	uint64_t z4;
 	uint64_t z5;
+	RTE_CACHE_GUARD;
 } __rte_cache_aligned;
 
 /* One instance each for every lcore id-equipped thread, and one
