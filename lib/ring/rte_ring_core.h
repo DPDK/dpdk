@@ -126,7 +126,7 @@ struct rte_ring {
 	uint32_t mask;           /**< Mask (size-1) of ring. */
 	uint32_t capacity;       /**< Usable size of ring */
 
-	char pad0 __rte_cache_aligned; /**< empty cache line */
+	RTE_CACHE_GUARD;
 
 	/** Ring producer status. */
 	union {
@@ -135,7 +135,7 @@ struct rte_ring {
 		struct rte_ring_rts_headtail rts_prod;
 	}  __rte_cache_aligned;
 
-	char pad1 __rte_cache_aligned; /**< empty cache line */
+	RTE_CACHE_GUARD;
 
 	/** Ring consumer status. */
 	union {
@@ -144,7 +144,7 @@ struct rte_ring {
 		struct rte_ring_rts_headtail rts_cons;
 	}  __rte_cache_aligned;
 
-	char pad2 __rte_cache_aligned; /**< empty cache line */
+	RTE_CACHE_GUARD;
 };
 
 #define RING_F_SP_ENQ 0x0001 /**< The default enqueue is "single-producer". */

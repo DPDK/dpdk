@@ -527,6 +527,19 @@ rte_is_aligned(const void * const __rte_restrict ptr, const unsigned int align)
 /** Force minimum cache line alignment. */
 #define __rte_cache_min_aligned __rte_aligned(RTE_CACHE_LINE_MIN_SIZE)
 
+#define _RTE_CACHE_GUARD_HELPER2(unique) \
+	char cache_guard_ ## unique[RTE_CACHE_LINE_SIZE * RTE_CACHE_GUARD_LINES] \
+	__rte_cache_aligned
+#define _RTE_CACHE_GUARD_HELPER1(unique) _RTE_CACHE_GUARD_HELPER2(unique)
+/**
+ * Empty cache lines, to guard against false sharing-like effects
+ * on systems with a next-N-lines hardware prefetcher.
+ *
+ * Use as spacing between data accessed by different lcores,
+ * to prevent cache thrashing on hardware with speculative prefetching.
+ */
+#define RTE_CACHE_GUARD _RTE_CACHE_GUARD_HELPER1(__COUNTER__)
+
 /*********** PA/IOVA type definitions ********/
 
 /** Physical address */

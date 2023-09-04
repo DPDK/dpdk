@@ -28,6 +28,7 @@
 /****** library defines ********/
 
 /* EAL defines */
+#define RTE_CACHE_GUARD_LINES 1
 #define RTE_MAX_HEAPS 32
 #define RTE_MAX_MEMSEG_LISTS 128
 #define RTE_MAX_MEMSEG_PER_LIST 8192
