@@ -10,6 +10,13 @@
 #include "qat_sym_session.h"
 #include "qat_sym.h"
 
+#define AES_OR_3DES_MISALIGNED (ctx->qat_mode == ICP_QAT_HW_CIPHER_CBC_MODE && \
+			((((ctx->qat_cipher_alg == ICP_QAT_HW_CIPHER_ALGO_AES128) || \
+			(ctx->qat_cipher_alg == ICP_QAT_HW_CIPHER_ALGO_AES192) || \
+			(ctx->qat_cipher_alg == ICP_QAT_HW_CIPHER_ALGO_AES256)) && \
+			(cipher_param->cipher_length % ICP_QAT_HW_AES_BLK_SZ)) || \
+			((ctx->qat_cipher_alg == ICP_QAT_HW_CIPHER_ALGO_3DES) && \
+			(cipher_param->cipher_length % ICP_QAT_HW_3DES_BLK_SZ))))
 #define QAT_SYM_DP_GET_MAX_ENQ(q, c, n) \
 	RTE_MIN((q->max_inflights - q->enqueued + q->dequeued - c), n)
 
@@ -704,6 +711,21 @@ enqueue_one_chain_job_gen1(struct qat_sym_session *ctx,
 	auth_param->auth_off = ofs.ofs.auth.head;
 	auth_param->auth_len = auth_len;
 	auth_param->auth_res_addr = digest->iova;
+	/* Input cipher length alignment requirement for 3DES-CBC and AES-CBC.
+	 * For 3DES-CBC cipher algo, ESP Payload size requires 8 Byte aligned.
+	 * For AES-CBC cipher algo, ESP Payload size requires 16 Byte aligned.
+	 * The alignment should be guaranteed by the ESP package padding field
+	 * according to the RFC4303. Under this condition, QAT will pass through
+	 * chain job as NULL cipher and NULL auth operation and report misalignment
+	 * error detected.
+	 */
+	if (AES_OR_3DES_MISALIGNED) {
+		QAT_LOG(ERR, "Input cipher length alignment error detected.\n");
+		ctx->qat_cipher_alg = ICP_QAT_HW_CIPHER_ALGO_NULL;
+		ctx->qat_hash_alg = ICP_QAT_HW_AUTH_ALGO_NULL;
+		cipher_param->cipher_length = 0;
+		auth_param->auth_len = 0;
+	}
 
 	switch (ctx->qat_hash_alg) {
 	case ICP_QAT_HW_AUTH_ALGO_SNOW_3G_UIA2:
