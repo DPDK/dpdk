@@ -100,6 +100,8 @@ int __roc_api roc_sso_hwgrp_free_xaq_aura(struct roc_sso *roc_sso,
 int __roc_api roc_sso_hwgrp_stash_config(struct roc_sso *roc_sso,
 					 struct roc_sso_hwgrp_stash *stash,
 					 uint16_t nb_stash);
+void __roc_api roc_sso_hws_gwc_invalidate(struct roc_sso *roc_sso, uint8_t *hws,
+					  uint8_t nb_hws);
 
 /* Debug */
 void __roc_api roc_sso_dump(struct roc_sso *roc_sso, uint8_t nb_hws,

@@ -118,6 +118,7 @@ static int
 cn10k_sso_hws_flush_events(void *hws, uint8_t queue_id, uintptr_t base,
 			   cnxk_handle_event_t fn, void *arg)
 {
+	struct cnxk_sso_evdev *dev = cnxk_sso_pmd_priv(arg);
 	uint64_t retry = CNXK_SSO_FLUSH_RETRY_MAX;
 	struct cn10k_sso_hws *ws = hws;
 	uint64_t cq_ds_cnt = 1;
@@ -128,6 +129,7 @@ cn10k_sso_hws_flush_events(void *hws, uint8_t queue_id, uintptr_t base,
 
 	plt_write64(0, base + SSO_LF_GGRP_QCTL);
 
+	roc_sso_hws_gwc_invalidate(&dev->sso, &ws->hws_id, 1);
 	plt_write64(0, ws->base + SSOW_LF_GWS_OP_GWC_INVAL);
 	req = queue_id;	    /* GGRP ID */
 	req |= BIT_ULL(18); /* Grouped */
@@ -162,6 +164,7 @@ cn10k_sso_hws_flush_events(void *hws, uint8_t queue_id, uintptr_t base,
 		return -EAGAIN;
 
 	plt_write64(0, ws->base + SSOW_LF_GWS_OP_GWC_INVAL);
+	roc_sso_hws_gwc_invalidate(&dev->sso, &ws->hws_id, 1);
 	rte_mb();
 
 	return 0;
@@ -181,6 +184,7 @@ cn10k_sso_hws_reset(void *arg, void *hws)
 	uint8_t pend_tt;
 	bool is_pend;
 
+	roc_sso_hws_gwc_invalidate(&dev->sso, &ws->hws_id, 1);
 	plt_write64(0, ws->base + SSOW_LF_GWS_OP_GWC_INVAL);
 	/* Wait till getwork/swtp/waitw/desched completes. */
 	is_pend = false;
@@ -237,6 +241,7 @@ cn10k_sso_hws_reset(void *arg, void *hws)
 	}
 
 	plt_write64(0, base + SSOW_LF_GWS_OP_GWC_INVAL);
+	roc_sso_hws_gwc_invalidate(&dev->sso, &ws->hws_id, 1);
 	rte_mb();
 }
 
@@ -670,7 +675,9 @@ cn10k_sso_configure_queue_stash(struct rte_eventdev *event_dev)
 static int
 cn10k_sso_start(struct rte_eventdev *event_dev)
 {
-	int rc;
+	struct cnxk_sso_evdev *dev = cnxk_sso_pmd_priv(event_dev);
+	uint8_t hws[RTE_EVENT_MAX_PORTS_PER_DEV];
+	int rc, i;
 
 	rc = cn10k_sso_updt_tx_adptr_data(event_dev);
 	if (rc < 0)
@@ -682,6 +689,9 @@ cn10k_sso_start(struct rte_eventdev *event_dev)
 	if (rc < 0)
 		return rc;
 	cn10k_sso_fp_fns_set(event_dev);
+	for (i = 0; i < event_dev->data->nb_ports; i++)
+		hws[i] = i;
+	roc_sso_hws_gwc_invalidate(&dev->sso, hws, event_dev->data->nb_ports);
 
 	return rc;
 }
@@ -689,6 +699,13 @@ cn10k_sso_start(struct rte_eventdev *event_dev)
 static void
 cn10k_sso_stop(struct rte_eventdev *event_dev)
 {
+	struct cnxk_sso_evdev *dev = cnxk_sso_pmd_priv(event_dev);
+	uint8_t hws[RTE_EVENT_MAX_PORTS_PER_DEV];
+	int i;
+
+	for (i = 0; i < event_dev->data->nb_ports; i++)
+		hws[i] = i;
+	roc_sso_hws_gwc_invalidate(&dev->sso, hws, event_dev->data->nb_ports);
 	cnxk_sso_stop(event_dev, cn10k_sso_hws_reset,
 		      cn10k_sso_hws_flush_events);
 }

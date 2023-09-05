@@ -357,6 +357,37 @@ fail:
 	return rc;
 }
 
+void
+roc_sso_hws_gwc_invalidate(struct roc_sso *roc_sso, uint8_t *hws,
+			   uint8_t nb_hws)
+{
+	struct sso *sso = roc_sso_to_sso_priv(roc_sso);
+	struct ssow_lf_inv_req *req;
+	struct dev *dev = &sso->dev;
+	struct mbox *mbox;
+	int i;
+
+	if (!nb_hws)
+		return;
+
+	mbox = mbox_get(dev->mbox);
+	req = mbox_alloc_msg_sso_ws_cache_inv(mbox);
+	if (req == NULL) {
+		mbox_process(mbox);
+		req = mbox_alloc_msg_sso_ws_cache_inv(mbox);
+		if (req == NULL) {
+			mbox_put(mbox);
+			return;
+		}
+	}
+	req->hdr.ver = SSOW_INVAL_SELECTIVE_VER;
+	req->nb_hws = nb_hws;
+	for (i = 0; i < nb_hws; i++)
+		req->hws[i] = hws[i];
+	mbox_process(mbox);
+	mbox_put(mbox);
+}
+
 int
 roc_sso_hwgrp_stats_get(struct roc_sso *roc_sso, uint8_t hwgrp,
 			struct roc_sso_hwgrp_stats *stats)
