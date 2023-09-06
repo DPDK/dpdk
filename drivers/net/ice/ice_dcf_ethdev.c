@@ -670,7 +670,6 @@ ice_dcf_dev_stop(struct rte_eth_dev *dev)
 	struct ice_dcf_adapter *dcf_ad = dev->data->dev_private;
 	struct rte_intr_handle *intr_handle = dev->intr_handle;
 	struct ice_adapter *ad = &dcf_ad->parent;
-	struct ice_dcf_hw *hw = &dcf_ad->real_hw;
 
 	if (ad->pf.adapter_stopped == 1) {
 		PMD_DRV_LOG(DEBUG, "Port is already stopped");
@@ -697,7 +696,6 @@ ice_dcf_dev_stop(struct rte_eth_dev *dev)
 
 	dev->data->dev_link.link_status = RTE_ETH_LINK_DOWN;
 	ad->pf.adapter_stopped = 1;
-	hw->tm_conf.committed = false;
 
 	return 0;
 }

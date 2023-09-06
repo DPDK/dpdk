@@ -237,6 +237,7 @@ ice_dcf_node_add(struct rte_eth_dev *dev, uint32_t node_id,
 	enum ice_dcf_tm_node_type node_type = ICE_DCF_TM_NODE_TYPE_MAX;
 	struct ice_dcf_tm_shaper_profile *shaper_profile = NULL;
 	struct ice_dcf_adapter *adapter = dev->data->dev_private;
+	struct ice_adapter *ad = &adapter->parent;
 	struct ice_dcf_hw *hw = &adapter->real_hw;
 	struct ice_dcf_tm_node *parent_node;
 	struct ice_dcf_tm_node *tm_node;
@@ -246,10 +247,10 @@ ice_dcf_node_add(struct rte_eth_dev *dev, uint32_t node_id,
 	if (!params || !error)
 		return -EINVAL;
 
-	/* if already committed */
-	if (hw->tm_conf.committed) {
+	/* if port is running */
+	if (!ad->pf.adapter_stopped) {
 		error->type = RTE_TM_ERROR_TYPE_UNSPECIFIED;
-		error->message = "already committed";
+		error->message = "port is running";
 		return -EINVAL;
 	}
 
@@ -400,16 +401,17 @@ ice_dcf_node_delete(struct rte_eth_dev *dev, uint32_t node_id,
 {
 	enum ice_dcf_tm_node_type node_type = ICE_DCF_TM_NODE_TYPE_MAX;
 	struct ice_dcf_adapter *adapter = dev->data->dev_private;
+	struct ice_adapter *ad = &adapter->parent;
 	struct ice_dcf_hw *hw = &adapter->real_hw;
 	struct ice_dcf_tm_node *tm_node;
 
 	if (!error)
 		return -EINVAL;
 
-	/* if already committed */
-	if (hw->tm_conf.committed) {
+	/* if port is running */
+	if (!ad->pf.adapter_stopped) {
 		error->type = RTE_TM_ERROR_TYPE_UNSPECIFIED;
-		error->message = "already committed";
+		error->message = "port is running";
 		return -EINVAL;
 	}
 
