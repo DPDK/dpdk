@@ -131,6 +131,8 @@ static int iavf_dev_rx_queue_intr_enable(struct rte_eth_dev *dev,
 					uint16_t queue_id);
 static int iavf_dev_rx_queue_intr_disable(struct rte_eth_dev *dev,
 					 uint16_t queue_id);
+static void iavf_dev_interrupt_handler(void *param);
+static void iavf_disable_irq0(struct iavf_hw *hw);
 static int iavf_dev_flow_ops_get(struct rte_eth_dev *dev,
 				 const struct rte_flow_ops **ops);
 static int iavf_set_mc_addr_list(struct rte_eth_dev *dev,
@@ -2689,13 +2691,13 @@ iavf_dev_init(struct rte_eth_dev *eth_dev)
 		ret = iavf_security_ctx_create(adapter);
 		if (ret) {
 			PMD_INIT_LOG(ERR, "failed to create ipsec crypto security instance");
-			return ret;
+			goto flow_init_err;
 		}
 
 		ret = iavf_security_init(adapter);
 		if (ret) {
 			PMD_INIT_LOG(ERR, "failed to initialized ipsec crypto resources");
-			return ret;
+			goto security_init_err;
 		}
 	}
 
@@ -2709,7 +2711,23 @@ iavf_dev_init(struct rte_eth_dev *eth_dev)
 
 	return 0;
 
+security_init_err:
+	iavf_security_ctx_destroy(adapter);
+
 flow_init_err:
+	iavf_disable_irq0(hw);
+
+	if (vf->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_WB_ON_ITR) {
+		/* disable uio intr before callback unregiser */
+		rte_intr_disable(pci_dev->intr_handle);
+
+		/* unregister callback func from eal lib */
+		rte_intr_callback_unregister(pci_dev->intr_handle,
+					     iavf_dev_interrupt_handler, eth_dev);
+	} else {
+		rte_eal_alarm_cancel(iavf_dev_alarm_handler, eth_dev);
+	}
+
 	rte_free(eth_dev->data->mac_addrs);
 	eth_dev->data->mac_addrs = NULL;
 
