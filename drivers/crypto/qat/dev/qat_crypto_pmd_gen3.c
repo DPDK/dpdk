@@ -637,6 +637,8 @@ qat_sym_dp_enqueue_single_auth_gen3(void *qp_data, uint8_t *drv_ctx,
 	struct icp_qat_fw_la_bulk_req *req;
 	int32_t data_len;
 	uint32_t tail = dp_ctx->tail;
+	struct rte_crypto_va_iova_ptr null_digest;
+	struct rte_crypto_va_iova_ptr *job_digest = digest;
 
 	req = (struct icp_qat_fw_la_bulk_req *)(
 		(uint8_t *)tx_queue->base_addr + tail);
@@ -650,7 +652,12 @@ qat_sym_dp_enqueue_single_auth_gen3(void *qp_data, uint8_t *drv_ctx,
 	if (unlikely(data_len < 0))
 		return -1;
 
-	enqueue_one_auth_job_gen3(ctx, cookie, req, digest, auth_iv, ofs,
+	if (ctx->qat_hash_alg == ICP_QAT_HW_AUTH_ALGO_NULL) {
+		null_digest.iova = cookie->digest_null_phys_addr;
+		job_digest = &null_digest;
+	}
+
+	enqueue_one_auth_job_gen3(ctx, cookie, req, job_digest, auth_iv, ofs,
 			(uint32_t)data_len);
 
 	dp_ctx->tail = tail;
@@ -672,6 +679,8 @@ qat_sym_dp_enqueue_auth_jobs_gen3(void *qp_data, uint8_t *drv_ctx,
 	uint32_t tail;
 	struct icp_qat_fw_la_bulk_req *req;
 	int32_t data_len;
+	struct rte_crypto_va_iova_ptr null_digest;
+	struct rte_crypto_va_iova_ptr *job_digest = NULL;
 
 	n = QAT_SYM_DP_GET_MAX_ENQ(qp, dp_ctx->cached_enqueue, vec->num);
 	if (unlikely(n == 0)) {
@@ -704,7 +713,13 @@ qat_sym_dp_enqueue_auth_jobs_gen3(void *qp_data, uint8_t *drv_ctx,
 
 		if (unlikely(data_len < 0))
 			break;
-		enqueue_one_auth_job_gen3(ctx, cookie, req, &vec->digest[i],
+		if (ctx->qat_hash_alg == ICP_QAT_HW_AUTH_ALGO_NULL) {
+			null_digest.iova = cookie->digest_null_phys_addr;
+			job_digest = &null_digest;
+		} else
+			job_digest = &vec->digest[i];
+
+		enqueue_one_auth_job_gen3(ctx, cookie, req, job_digest,
 			&vec->auth_iv[i], ofs, (uint32_t)data_len);
 		tail = (tail + tx_queue->msg_size) & tx_queue->modulo_mask;
 	}
