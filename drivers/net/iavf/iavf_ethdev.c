@@ -2701,6 +2701,7 @@ iavf_dev_init(struct rte_eth_dev *eth_dev)
 
 	iavf_default_rss_disable(adapter);
 
+	iavf_dev_stats_reset(eth_dev);
 
 	/* Start device watchdog */
 	iavf_dev_watchdog_enable(adapter);
