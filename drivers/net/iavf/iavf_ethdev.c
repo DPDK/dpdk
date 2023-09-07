@@ -2076,6 +2076,8 @@ iavf_dev_init(struct rte_eth_dev *eth_dev)
 		return ret;
 	}
 
+	iavf_dev_stats_reset(eth_dev);
+
 	return 0;
 }
 
