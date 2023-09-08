@@ -84,6 +84,7 @@ int
 nfp_flower_pf_start(struct rte_eth_dev *dev)
 {
 	int ret;
+	uint16_t i;
 	uint32_t new_ctrl;
 	uint32_t update = 0;
 	struct nfp_net_hw *hw;
@@ -136,6 +137,11 @@ nfp_flower_pf_start(struct rte_eth_dev *dev)
 		return -EIO;
 	}
 
+	for (i = 0; i < dev->data->nb_rx_queues; i++)
+		dev->data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STARTED;
+	for (i = 0; i < dev->data->nb_tx_queues; i++)
+		dev->data->tx_queue_state[i] = RTE_ETH_QUEUE_STATE_STARTED;
+
 	return 0;
 }
 
@@ -158,11 +164,13 @@ nfp_flower_pf_stop(struct rte_eth_dev *dev)
 	for (i = 0; i < dev->data->nb_tx_queues; i++) {
 		this_tx_q = (struct nfp_net_txq *)dev->data->tx_queues[i];
 		nfp_net_reset_tx_queue(this_tx_q);
+		dev->data->tx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
 	}
 
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
 		this_rx_q = (struct nfp_net_rxq *)dev->data->rx_queues[i];
 		nfp_net_reset_rx_queue(this_rx_q);
+		dev->data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
 	}
 
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
