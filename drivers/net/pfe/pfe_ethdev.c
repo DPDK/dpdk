@@ -241,6 +241,7 @@ pfe_eth_open(struct rte_eth_dev *dev)
 	struct pfe_eth_priv_s *priv = dev->data->dev_private;
 	struct hif_client_s *client;
 	struct hif_shm *hif_shm;
+	uint16_t i;
 	int rc;
 
 	/* Register client driver with HIF */
@@ -318,6 +319,10 @@ pfe_eth_open(struct rte_eth_dev *dev)
 		PFE_PMD_INFO("PFE INTERRUPT Mode enabled");
 	}
 
+	for (i = 0; i < dev->data->nb_rx_queues; i++)
+		dev->data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STARTED;
+	for (i = 0; i < dev->data->nb_tx_queues; i++)
+		dev->data->tx_queue_state[i] = RTE_ETH_QUEUE_STATE_STARTED;
 
 err0:
 	return rc;
@@ -361,6 +366,7 @@ static int
 pfe_eth_stop(struct rte_eth_dev *dev/*, int wake*/)
 {
 	struct pfe_eth_priv_s *priv = dev->data->dev_private;
+	uint16_t i;
 
 	dev->data->dev_started = 0;
 
@@ -369,6 +375,11 @@ pfe_eth_stop(struct rte_eth_dev *dev/*, int wake*/)
 
 	dev->rx_pkt_burst = rte_eth_pkt_burst_dummy;
 	dev->tx_pkt_burst = rte_eth_pkt_burst_dummy;
+
+	for (i = 0; i < dev->data->nb_rx_queues; i++)
+		dev->data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
+	for (i = 0; i < dev->data->nb_tx_queues; i++)
+		dev->data->tx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
 
 	return 0;
 }
