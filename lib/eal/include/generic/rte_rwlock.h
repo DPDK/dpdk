@@ -79,6 +79,10 @@ rte_rwlock_init(rte_rwlock_t *rwl)
 /**
  * Take a read lock. Loop until the lock is held.
  *
+ * @note The RW lock isn't recursive, so calling this function on the same
+ * lock twice without releasing it could potentially result in a deadlock
+ * scenario when a write lock is involved.
+ *
  * @param rwl
  *   A pointer to a rwlock structure.
  */

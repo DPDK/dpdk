@@ -1740,7 +1740,10 @@ eal_memalloc_init(void)
 		eal_get_internal_configuration();
 
 	if (rte_eal_process_type() == RTE_PROC_SECONDARY)
-		if (rte_memseg_list_walk(secondary_msl_create_walk, NULL) < 0)
+		/*  memory_hotplug_lock is held during initialization, so it's
+		 *  safe to call thread-unsafe version.
+		 */
+		if (rte_memseg_list_walk_thread_unsafe(secondary_msl_create_walk, NULL) < 0)
 			return -1;
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY &&
 			internal_conf->in_memory) {
@@ -1778,7 +1781,7 @@ eal_memalloc_init(void)
 	}
 
 	/* initialize all of the fd lists */
-	if (rte_memseg_list_walk(fd_list_create_walk, NULL))
+	if (rte_memseg_list_walk_thread_unsafe(fd_list_create_walk, NULL))
 		return -1;
 	return 0;
 }

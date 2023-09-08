@@ -251,7 +251,10 @@ eal_dynmem_hugepage_init(void)
 		 */
 		memset(&dummy, 0, sizeof(dummy));
 		dummy.hugepage_sz = hpi->hugepage_sz;
-		if (rte_memseg_list_walk(hugepage_count_walk, &dummy) < 0)
+		/*  memory_hotplug_lock is held during initialization, so it's
+		 *  safe to call thread-unsafe version.
+		 */
+		if (rte_memseg_list_walk_thread_unsafe(hugepage_count_walk, &dummy) < 0)
 			return -1;
 
 		for (i = 0; i < RTE_DIM(dummy.num_pages); i++) {
