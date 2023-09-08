@@ -1171,6 +1171,7 @@ static int ena_start(struct rte_eth_dev *dev)
 	struct ena_adapter *adapter = dev->data->dev_private;
 	uint64_t ticks;
 	int rc = 0;
+	uint16_t i;
 
 	/* Cannot allocate memory in secondary process */
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
@@ -1208,6 +1209,11 @@ static int ena_start(struct rte_eth_dev *dev)
 	++adapter->dev_stats.dev_start;
 	adapter->state = ENA_ADAPTER_STATE_RUNNING;
 
+	for (i = 0; i < dev->data->nb_rx_queues; i++)
+		dev->data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STARTED;
+	for (i = 0; i < dev->data->nb_tx_queues; i++)
+		dev->data->tx_queue_state[i] = RTE_ETH_QUEUE_STATE_STARTED;
+
 	return 0;
 
 err_rss_init:
@@ -1223,6 +1229,7 @@ static int ena_stop(struct rte_eth_dev *dev)
 	struct ena_com_dev *ena_dev = &adapter->ena_dev;
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
+	uint16_t i;
 	int rc;
 
 	/* Cannot free memory in secondary process */
@@ -1253,6 +1260,11 @@ static int ena_stop(struct rte_eth_dev *dev)
 	++adapter->dev_stats.dev_stop;
 	adapter->state = ENA_ADAPTER_STATE_STOPPED;
 	dev->data->dev_started = 0;
+
+	for (i = 0; i < dev->data->nb_rx_queues; i++)
+		dev->data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
+	for (i = 0; i < dev->data->nb_tx_queues; i++)
+		dev->data->tx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
 
 	return 0;
 }
