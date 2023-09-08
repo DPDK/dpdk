@@ -164,6 +164,7 @@ pmd_dev_start(struct rte_eth_dev *dev)
 {
 	struct pmd_internals *p = dev->data->dev_private;
 	int status;
+	uint16_t i;
 
 	/* Firmware */
 	status = softnic_cli_script_process(p,
@@ -176,6 +177,11 @@ pmd_dev_start(struct rte_eth_dev *dev)
 	/* Link UP */
 	dev->data->dev_link.link_status = RTE_ETH_LINK_UP;
 
+	for (i = 0; i < dev->data->nb_rx_queues; i++)
+		dev->data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STARTED;
+	for (i = 0; i < dev->data->nb_tx_queues; i++)
+		dev->data->tx_queue_state[i] = RTE_ETH_QUEUE_STATE_STARTED;
+
 	return 0;
 }
 
@@ -183,6 +189,7 @@ static int
 pmd_dev_stop(struct rte_eth_dev *dev)
 {
 	struct pmd_internals *p = dev->data->dev_private;
+	uint16_t i;
 
 	/* Link DOWN */
 	dev->data->dev_link.link_status = RTE_ETH_LINK_DOWN;
@@ -200,6 +207,11 @@ pmd_dev_stop(struct rte_eth_dev *dev)
 
 	tm_hierarchy_free(p);
 	softnic_mtr_free(p);
+
+	for (i = 0; i < dev->data->nb_rx_queues; i++)
+		dev->data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
+	for (i = 0; i < dev->data->nb_tx_queues; i++)
+		dev->data->tx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
 
 	return 0;
 }
