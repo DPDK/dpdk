@@ -91,7 +91,8 @@ int
 eal_memalloc_get_seg_fd_offset(int list_idx, int seg_idx, size_t *offset);
 
 int
-eal_memalloc_init(void);
+eal_memalloc_init(void)
+	__rte_shared_locks_required(rte_mcfg_mem_get_lock());
 
 int
 eal_memalloc_cleanup(void);

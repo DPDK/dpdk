@@ -40,6 +40,9 @@ extern "C" {
 #define __rte_unlock_function(...) \
 	__attribute__((unlock_function(__VA_ARGS__)))
 
+#define __rte_locks_excluded(...) \
+	__attribute__((locks_excluded(__VA_ARGS__)))
+
 #define __rte_no_thread_safety_analysis \
 	__attribute__((no_thread_safety_analysis))
 
@@ -61,6 +64,8 @@ extern "C" {
 #define __rte_assert_shared_lock(...)
 
 #define __rte_unlock_function(...)
+
+#define __rte_locks_excluded(...)
 
 #define __rte_no_thread_safety_analysis
 
