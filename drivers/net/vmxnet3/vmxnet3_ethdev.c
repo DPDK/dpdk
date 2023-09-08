@@ -1048,6 +1048,7 @@ vmxnet3_dev_start(struct rte_eth_dev *dev)
 {
 	int ret;
 	struct vmxnet3_hw *hw = dev->data->dev_private;
+	uint16_t i;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -1151,6 +1152,11 @@ vmxnet3_dev_start(struct rte_eth_dev *dev)
 	 */
 	__vmxnet3_dev_link_update(dev, 0);
 
+	for (i = 0; i < dev->data->nb_rx_queues; i++)
+		dev->data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STARTED;
+	for (i = 0; i < dev->data->nb_tx_queues; i++)
+		dev->data->tx_queue_state[i] = RTE_ETH_QUEUE_STATE_STARTED;
+
 	return VMXNET3_SUCCESS;
 }
 
@@ -1163,6 +1169,7 @@ vmxnet3_dev_stop(struct rte_eth_dev *dev)
 	struct rte_eth_link link;
 	struct vmxnet3_hw *hw = dev->data->dev_private;
 	struct rte_intr_handle *intr_handle = dev->intr_handle;
+	uint16_t i;
 	int ret;
 
 	PMD_INIT_FUNC_TRACE();
@@ -1217,6 +1224,11 @@ vmxnet3_dev_stop(struct rte_eth_dev *dev)
 
 	hw->adapter_stopped = 1;
 	dev->data->dev_started = 0;
+
+	for (i = 0; i < dev->data->nb_rx_queues; i++)
+		dev->data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
+	for (i = 0; i < dev->data->nb_tx_queues; i++)
+		dev->data->tx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
 
 	return 0;
 }
