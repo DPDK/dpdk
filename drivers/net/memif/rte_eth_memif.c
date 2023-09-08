@@ -1358,6 +1358,7 @@ memif_dev_start(struct rte_eth_dev *dev)
 {
 	struct pmd_internals *pmd = dev->data->dev_private;
 	int ret = 0;
+	uint16_t i;
 
 	switch (pmd->role) {
 	case MEMIF_ROLE_CLIENT:
@@ -1372,13 +1373,28 @@ memif_dev_start(struct rte_eth_dev *dev)
 		break;
 	}
 
+	if (ret == 0) {
+		for (i = 0; i < dev->data->nb_rx_queues; i++)
+			dev->data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STARTED;
+		for (i = 0; i < dev->data->nb_tx_queues; i++)
+			dev->data->tx_queue_state[i] = RTE_ETH_QUEUE_STATE_STARTED;
+	}
+
 	return ret;
 }
 
 static int
 memif_dev_stop(struct rte_eth_dev *dev)
 {
+	uint16_t i;
+
 	memif_disconnect(dev);
+
+	for (i = 0; i < dev->data->nb_rx_queues; i++)
+		dev->data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
+	for (i = 0; i < dev->data->nb_tx_queues; i++)
+		dev->data->tx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
+
 	return 0;
 }
 
