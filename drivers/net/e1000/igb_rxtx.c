@@ -2745,6 +2745,8 @@ eth_igbvf_rx_init(struct rte_eth_dev *dev)
 		else
 			rxdctl |= ((rxq->wthresh & 0x1F) << 16);
 		E1000_WRITE_REG(hw, E1000_RXDCTL(i), rxdctl);
+
+		dev->data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STARTED;
 	}
 
 	if (dev->data->dev_conf.rxmode.offloads & RTE_ETH_RX_OFFLOAD_SCATTER) {
@@ -2816,6 +2818,8 @@ eth_igbvf_tx_init(struct rte_eth_dev *dev)
 			txdctl |= ((txq->wthresh & 0x1F) << 16);
 		txdctl |= E1000_TXDCTL_QUEUE_ENABLE;
 		E1000_WRITE_REG(hw, E1000_TXDCTL(i), txdctl);
+
+		dev->data->tx_queue_state[i] = RTE_ETH_QUEUE_STATE_STARTED;
 	}
 
 }
