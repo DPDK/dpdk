@@ -2415,6 +2415,7 @@ ngbe_dev_clear_queues(struct rte_eth_dev *dev)
 		if (txq != NULL) {
 			txq->ops->release_mbufs(txq);
 			txq->ops->reset(txq);
+			dev->data->tx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
 		}
 	}
 
@@ -2424,6 +2425,7 @@ ngbe_dev_clear_queues(struct rte_eth_dev *dev)
 		if (rxq != NULL) {
 			ngbe_rx_queue_release_mbufs(rxq);
 			ngbe_reset_rx_queue(adapter, rxq);
+			dev->data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
 		}
 	}
 }
