@@ -120,6 +120,7 @@ ipn3ke_rpst_dev_start(struct rte_eth_dev *dev)
 	uint64_t base_mac;
 	uint32_t val;
 	char attr_name[IPN3KE_RAWDEV_ATTR_LEN_MAX];
+	uint16_t i;
 
 	rawdev = hw->rawdev;
 
@@ -190,6 +191,11 @@ ipn3ke_rpst_dev_start(struct rte_eth_dev *dev)
 
 	ipn3ke_rpst_link_update(dev, 0);
 
+	for (i = 0; i < dev->data->nb_rx_queues; i++)
+		dev->data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STARTED;
+	for (i = 0; i < dev->data->nb_tx_queues; i++)
+		dev->data->tx_queue_state[i] = RTE_ETH_QUEUE_STATE_STARTED;
+
 	return 0;
 }
 
@@ -198,6 +204,7 @@ ipn3ke_rpst_dev_stop(struct rte_eth_dev *dev)
 {
 	struct ipn3ke_hw *hw = IPN3KE_DEV_PRIVATE_TO_HW(dev);
 	struct ipn3ke_rpst *rpst = IPN3KE_DEV_PRIVATE_TO_RPST(dev);
+	uint16_t i;
 
 	if (hw->retimer.mac_type == IFPGA_RAWDEV_RETIMER_MAC_TYPE_10GE_XFI) {
 		/* Disable the TX path */
@@ -206,6 +213,11 @@ ipn3ke_rpst_dev_stop(struct rte_eth_dev *dev)
 		/* Disable the RX path */
 		ipn3ke_xmac_rx_disable(hw, rpst->port_id, 0);
 	}
+
+	for (i = 0; i < dev->data->nb_rx_queues; i++)
+		dev->data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
+	for (i = 0; i < dev->data->nb_tx_queues; i++)
+		dev->data->tx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
 
 	return 0;
 }
