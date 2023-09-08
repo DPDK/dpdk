@@ -2036,6 +2036,7 @@ static int
 avp_dev_start(struct rte_eth_dev *eth_dev)
 {
 	struct avp_dev *avp = AVP_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
+	uint16_t i;
 	int ret;
 
 	rte_spinlock_lock(&avp->lock);
@@ -2056,6 +2057,11 @@ avp_dev_start(struct rte_eth_dev *eth_dev)
 	/* remember current link state */
 	avp->flags |= AVP_F_LINKUP;
 
+	for (i = 0; i < avp->num_rx_queues; i++)
+		eth_dev->data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STARTED;
+	for (i = 0; i < avp->num_tx_queues; i++)
+		eth_dev->data->tx_queue_state[i] = RTE_ETH_QUEUE_STATE_STARTED;
+
 	ret = 0;
 
 unlock:
@@ -2067,6 +2073,7 @@ static int
 avp_dev_stop(struct rte_eth_dev *eth_dev)
 {
 	struct avp_dev *avp = AVP_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
+	uint16_t i;
 	int ret;
 
 	rte_spinlock_lock(&avp->lock);
@@ -2085,6 +2092,11 @@ avp_dev_stop(struct rte_eth_dev *eth_dev)
 		PMD_DRV_LOG(ERR, "Link state change failed by host, ret=%d\n",
 			    ret);
 	}
+
+	for (i = 0; i < avp->num_rx_queues; i++)
+		eth_dev->data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
+	for (i = 0; i < avp->num_tx_queues; i++)
+		eth_dev->data->tx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
 
 unlock:
 	rte_spinlock_unlock(&avp->lock);
