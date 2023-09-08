@@ -3497,6 +3497,15 @@ The ``quota`` value is reduced according to ``mode`` setting.
    | ``RTE_FLOW_QUOTA_MODE_L3``      | Count packet bytes starting from L3 |
    +------------------+----------------------------------------------------+
 
+Action: ``SEND_TO_KERNEL``
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Send packets to the kernel, without going to userspace at all.
+
+The packets will be received by the kernel driver sharing the same device
+as the DPDK port on which this action is configured.
+
+
 Negative types
 ~~~~~~~~~~~~~~
 

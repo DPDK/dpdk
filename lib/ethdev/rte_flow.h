@@ -2962,7 +2962,6 @@ enum rte_flow_action_type {
 	 * The packets will be received by the kernel driver sharing
 	 * the same device as the DPDK port on which this action is configured.
 	 * This action mostly suits bifurcated driver model.
-	 * This is an ingress non-transfer action only.
 	 *
 	 * No associated configuration structure.
 	 */

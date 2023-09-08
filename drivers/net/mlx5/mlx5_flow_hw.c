@@ -1435,6 +1435,7 @@ __flow_hw_actions_translate(struct rte_eth_dev *dev,
 	uint32_t ct_idx;
 	int err;
 	uint32_t target_grp = 0;
+	int table_type;
 
 	flow_hw_modify_field_init(&mhdr, at);
 	if (attr->transfer)
@@ -1631,7 +1632,10 @@ __flow_hw_actions_translate(struct rte_eth_dev *dev,
 						"Send to kernel action on root table is not supported in HW steering mode");
 			}
 			action_pos = at->actions_off[actions - at->actions];
-			acts->rule_acts[action_pos].action = priv->hw_send_to_kernel;
+			table_type = attr->ingress ? MLX5DR_TABLE_TYPE_NIC_RX :
+				     ((attr->egress) ? MLX5DR_TABLE_TYPE_NIC_TX :
+				     MLX5DR_TABLE_TYPE_FDB);
+			acts->rule_acts[action_pos].action = priv->hw_send_to_kernel[table_type];
 			break;
 		case RTE_FLOW_ACTION_TYPE_MODIFY_FIELD:
 			err = flow_hw_modify_field_compile(dev, attr, action_start,
@@ -4335,8 +4339,11 @@ mlx5_flow_hw_actions_validate(struct rte_eth_dev *dev,
 	const struct rte_flow_action_count *count_mask = NULL;
 	bool fixed_cnt = false;
 	uint64_t action_flags = 0;
-	uint16_t i;
 	bool actions_end = false;
+#ifdef HAVE_MLX5DV_DR_ACTION_CREATE_DEST_ROOT_TABLE
+	int table_type;
+#endif
+	uint16_t i;
 	int ret;
 
 	/* FDB actions are only valid to proxy port. */
@@ -4387,7 +4394,10 @@ mlx5_flow_hw_actions_validate(struct rte_eth_dev *dev,
 							  RTE_FLOW_ERROR_TYPE_ACTION,
 							  action,
 							  "action not supported in guest port");
-			if (!priv->hw_send_to_kernel)
+			table_type = attr->ingress ? MLX5DR_TABLE_TYPE_NIC_RX :
+				     ((attr->egress) ? MLX5DR_TABLE_TYPE_NIC_TX :
+				     MLX5DR_TABLE_TYPE_FDB);
+			if (!priv->hw_send_to_kernel[table_type])
 				return rte_flow_error_set(error, ENOTSUP,
 							  RTE_FLOW_ERROR_TYPE_ACTION,
 							  action,
@@ -5945,13 +5955,19 @@ static void
 flow_hw_create_send_to_kernel_actions(struct mlx5_priv *priv __rte_unused)
 {
 #ifdef HAVE_MLX5DV_DR_ACTION_CREATE_DEST_ROOT_TABLE
-	priv->hw_send_to_kernel =
-			mlx5dr_action_create_dest_root(priv->dr_ctx,
-						       MLX5_HW_LOWEST_PRIO_ROOT,
-						       MLX5DR_ACTION_FLAG_HWS_RX);
-	if (!priv->hw_send_to_kernel) {
-		DRV_LOG(WARNING, "Unable to create HWS send to kernel action");
-		return;
+	int action_flag;
+	int i;
+
+	for (i = MLX5DR_TABLE_TYPE_NIC_RX; i < MLX5DR_TABLE_TYPE_MAX; i++) {
+		action_flag = mlx5_hw_act_flag[1][i];
+		priv->hw_send_to_kernel[i] =
+				mlx5dr_action_create_dest_root(priv->dr_ctx,
+							MLX5_HW_LOWEST_PRIO_ROOT,
+							action_flag);
+		if (!priv->hw_send_to_kernel[i]) {
+			DRV_LOG(WARNING, "Unable to create HWS send to kernel action");
+			return;
+		}
 	}
 #endif
 }
@@ -5959,9 +5975,12 @@ flow_hw_create_send_to_kernel_actions(struct mlx5_priv *priv __rte_unused)
 static void
 flow_hw_destroy_send_to_kernel_action(struct mlx5_priv *priv)
 {
-	if (priv->hw_send_to_kernel) {
-		mlx5dr_action_destroy(priv->hw_send_to_kernel);
-		priv->hw_send_to_kernel = NULL;
+	int i;
+	for (i = MLX5DR_TABLE_TYPE_NIC_RX; i < MLX5DR_TABLE_TYPE_MAX; i++) {
+		if (priv->hw_send_to_kernel[i]) {
+			mlx5dr_action_destroy(priv->hw_send_to_kernel[i]);
+			priv->hw_send_to_kernel[i] = NULL;
+		}
 	}
 }
 

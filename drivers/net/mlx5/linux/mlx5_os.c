@@ -675,6 +675,9 @@ void
 mlx5_os_free_shared_dr(struct mlx5_priv *priv)
 {
 	struct mlx5_dev_ctx_shared *sh = priv->sh;
+#ifdef HAVE_MLX5DV_DR
+	int i;
+#endif
 
 	MLX5_ASSERT(sh && sh->refcnt);
 	if (sh->refcnt > 1)
@@ -703,18 +706,20 @@ mlx5_os_free_shared_dr(struct mlx5_priv *priv)
 		mlx5_glue->destroy_flow_action(sh->pop_vlan_action);
 		sh->pop_vlan_action = NULL;
 	}
-	if (sh->send_to_kernel_action.action) {
-		void *action = sh->send_to_kernel_action.action;
+	for (i = 0; i < MLX5DR_TABLE_TYPE_MAX; i++) {
+		if (sh->send_to_kernel_action[i].action) {
+			void *action = sh->send_to_kernel_action[i].action;
 
-		mlx5_glue->destroy_flow_action(action);
-		sh->send_to_kernel_action.action = NULL;
-	}
-	if (sh->send_to_kernel_action.tbl) {
-		struct mlx5_flow_tbl_resource *tbl =
-				sh->send_to_kernel_action.tbl;
+			mlx5_glue->destroy_flow_action(action);
+			sh->send_to_kernel_action[i].action = NULL;
+		}
+		if (sh->send_to_kernel_action[i].tbl) {
+			struct mlx5_flow_tbl_resource *tbl =
+					sh->send_to_kernel_action[i].tbl;
 
-		flow_dv_tbl_resource_release(sh, tbl);
-		sh->send_to_kernel_action.tbl = NULL;
+			flow_dv_tbl_resource_release(sh, tbl);
+			sh->send_to_kernel_action[i].tbl = NULL;
+		}
 	}
 #endif /* HAVE_MLX5DV_DR */
 	if (sh->default_miss_action)

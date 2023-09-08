@@ -12724,17 +12724,22 @@ flow_dv_translate_action_sample(struct rte_eth_dev *dev,
 
 static void *
 flow_dv_translate_action_send_to_kernel(struct rte_eth_dev *dev,
+					const struct rte_flow_attr *attr,
 					struct rte_flow_error *error)
 {
 	struct mlx5_flow_tbl_resource *tbl;
 	struct mlx5_dev_ctx_shared *sh;
 	uint32_t priority;
 	void *action;
+	int ft_type;
 	int ret;
 
 	sh = MLX5_SH(dev);
-	if (sh->send_to_kernel_action.action)
-		return sh->send_to_kernel_action.action;
+	ft_type = (attr->ingress) ? MLX5DR_TABLE_TYPE_NIC_RX :
+		  ((attr->transfer) ? MLX5DR_TABLE_TYPE_FDB :
+		  MLX5DR_TABLE_TYPE_NIC_TX);
+	if (sh->send_to_kernel_action[ft_type].action)
+		return sh->send_to_kernel_action[ft_type].action;
 	priority = mlx5_get_send_to_kernel_priority(dev);
 	if (priority == (uint32_t)-1) {
 		rte_flow_error_set(error, ENOTSUP,
@@ -12742,7 +12747,7 @@ flow_dv_translate_action_send_to_kernel(struct rte_eth_dev *dev,
 				   "required priority is not available");
 		return NULL;
 	}
-	tbl = flow_dv_tbl_resource_get(dev, 0, 0, 0, false, NULL, 0, 0, 0,
+	tbl = flow_dv_tbl_resource_get(dev, 0, attr->egress, attr->transfer, false, NULL, 0, 0, 0,
 				       error);
 	if (!tbl) {
 		rte_flow_error_set(error, ENODATA,
@@ -12759,8 +12764,8 @@ flow_dv_translate_action_send_to_kernel(struct rte_eth_dev *dev,
 		goto err;
 	}
 	MLX5_ASSERT(action);
-	sh->send_to_kernel_action.action = action;
-	sh->send_to_kernel_action.tbl = tbl;
+	sh->send_to_kernel_action[ft_type].action = action;
+	sh->send_to_kernel_action[ft_type].tbl = tbl;
 	return action;
 err:
 	flow_dv_tbl_resource_release(sh, tbl);
@@ -14511,7 +14516,7 @@ flow_dv_translate(struct rte_eth_dev *dev,
 			break;
 		case RTE_FLOW_ACTION_TYPE_SEND_TO_KERNEL:
 			dev_flow->dv.actions[actions_n] =
-				flow_dv_translate_action_send_to_kernel(dev,
+				flow_dv_translate_action_send_to_kernel(dev, attr,
 							error);
 			if (!dev_flow->dv.actions[actions_n])
 				return -rte_errno;

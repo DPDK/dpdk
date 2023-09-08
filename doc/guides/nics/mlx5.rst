@@ -153,6 +153,7 @@ Features
 - RSS support in sample action.
 - E-Switch mirroring and jump.
 - E-Switch mirroring and modify.
+- Send to kernel.
 - 21844 flow priorities for ingress or egress flow groups greater than 0 and for any transfer
   flow group.
 - Flow quota.
@@ -711,6 +712,13 @@ Limitations
   Matching on checksum and sequence needs MLNX_OFED 5.6+.
 
 - The NIC egress flow rules on representor port are not supported.
+
+- Send to kernel action (``RTE_FLOW_ACTION_TYPE_SEND_TO_KERNEL``):
+
+  - Supported on non-root table.
+  - Supported in isolated mode.
+  - In HW steering (``dv_flow_en`` = 2):
+    - not supported on guest port.
 
 - During live migration to a new process set its flow engine as standby mode,
   the user should only program flow rules in group 0 (``fdb_def_rule_en=0``).
