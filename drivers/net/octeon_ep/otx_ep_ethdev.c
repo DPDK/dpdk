@@ -156,6 +156,11 @@ otx_ep_dev_start(struct rte_eth_dev *eth_dev)
 	otx_ep_dev_link_update(eth_dev, 0);
 	otx_ep_info("dev started\n");
 
+	for (q = 0; q < eth_dev->data->nb_rx_queues; q++)
+		eth_dev->data->rx_queue_state[q] = RTE_ETH_QUEUE_STATE_STARTED;
+	for (q = 0; q < eth_dev->data->nb_tx_queues; q++)
+		eth_dev->data->tx_queue_state[q] = RTE_ETH_QUEUE_STATE_STARTED;
+
 	return 0;
 }
 
@@ -164,8 +169,14 @@ static int
 otx_ep_dev_stop(struct rte_eth_dev *eth_dev)
 {
 	struct otx_ep_device *otx_epvf = OTX_EP_DEV(eth_dev);
+	uint16_t i;
 
 	otx_epvf->fn_list.disable_io_queues(otx_epvf);
+
+	for (i = 0; i < eth_dev->data->nb_rx_queues; i++)
+		eth_dev->data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
+	for (i = 0; i < eth_dev->data->nb_tx_queues; i++)
+		eth_dev->data->tx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
 
 	return 0;
 }
