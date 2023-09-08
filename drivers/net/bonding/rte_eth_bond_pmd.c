@@ -2063,6 +2063,11 @@ bond_ethdev_start(struct rte_eth_dev *eth_dev)
 			internals->mode == BONDING_MODE_ALB)
 		bond_tlb_enable(internals);
 
+	for (i = 0; i < eth_dev->data->nb_rx_queues; i++)
+		eth_dev->data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STARTED;
+	for (i = 0; i < eth_dev->data->nb_tx_queues; i++)
+		eth_dev->data->tx_queue_state[i] = RTE_ETH_QUEUE_STATE_STARTED;
+
 	return 0;
 
 out_err:
@@ -2147,6 +2152,11 @@ bond_ethdev_stop(struct rte_eth_dev *eth_dev)
 					internals->active_slave_count)
 			deactivate_slave(eth_dev, slave_id);
 	}
+
+	for (i = 0; i < eth_dev->data->nb_rx_queues; i++)
+		eth_dev->data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
+	for (i = 0; i < eth_dev->data->nb_tx_queues; i++)
+		eth_dev->data->tx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
 
 	return 0;
 }
