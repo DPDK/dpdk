@@ -414,6 +414,7 @@ int cxgbe_dev_stop(struct rte_eth_dev *eth_dev)
 {
 	struct port_info *pi = eth_dev->data->dev_private;
 	struct adapter *adapter = pi->adapter;
+	uint16_t i;
 
 	CXGBE_FUNC_TRACE();
 
@@ -428,6 +429,11 @@ int cxgbe_dev_stop(struct rte_eth_dev *eth_dev)
 	 */
 	t4_sge_eth_clear_queues(pi);
 	eth_dev->data->scattered_rx = 0;
+
+	for (i = 0; i < eth_dev->data->nb_rx_queues; i++)
+		eth_dev->data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
+	for (i = 0; i < eth_dev->data->nb_tx_queues; i++)
+		eth_dev->data->tx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
 
 	return 0;
 }
