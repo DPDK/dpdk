@@ -1576,6 +1576,8 @@ em_dev_clear_queues(struct rte_eth_dev *dev)
 			em_tx_queue_release_mbufs(txq);
 			em_reset_tx_queue(txq);
 		}
+
+		dev->data->tx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
 	}
 
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
@@ -1584,6 +1586,8 @@ em_dev_clear_queues(struct rte_eth_dev *dev)
 			em_rx_queue_release_mbufs(rxq);
 			em_reset_rx_queue(rxq);
 		}
+
+		dev->data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
 	}
 }
 
@@ -1812,6 +1816,8 @@ eth_em_rx_init(struct rte_eth_dev *dev)
 		rxdctl |= E1000_RXDCTL_GRAN;
 		E1000_WRITE_REG(hw, E1000_RXDCTL(i), rxdctl);
 
+		dev->data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STARTED;
+
 		/*
 		 * Due to EM devices not having any sort of hardware
 		 * limit for packet length, jumbo frame of any size
@@ -1946,6 +1952,8 @@ eth_em_tx_init(struct rte_eth_dev *dev)
 		txdctl |= (txq->wthresh & 0x3F) << 16;
 		txdctl |= E1000_TXDCTL_GRAN;
 		E1000_WRITE_REG(hw, E1000_TXDCTL(i), txdctl);
+
+		dev->data->tx_queue_state[i] = RTE_ETH_QUEUE_STATE_STARTED;
 	}
 
 	/* Program the Transmit Control Register. */
