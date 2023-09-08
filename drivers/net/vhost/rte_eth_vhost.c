@@ -1132,6 +1132,7 @@ eth_dev_start(struct rte_eth_dev *eth_dev)
 {
 	struct pmd_internal *internal = eth_dev->data->dev_private;
 	struct rte_eth_conf *dev_conf = &eth_dev->data->dev_conf;
+	uint16_t i;
 
 	eth_vhost_uninstall_intr(eth_dev);
 	if (dev_conf->intr_conf.rxq && eth_vhost_install_intr(eth_dev) < 0) {
@@ -1147,6 +1148,11 @@ eth_dev_start(struct rte_eth_dev *eth_dev)
 	rte_atomic32_set(&internal->started, 1);
 	update_queuing_status(eth_dev, false);
 
+	for (i = 0; i < eth_dev->data->nb_rx_queues; i++)
+		eth_dev->data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STARTED;
+	for (i = 0; i < eth_dev->data->nb_tx_queues; i++)
+		eth_dev->data->tx_queue_state[i] = RTE_ETH_QUEUE_STATE_STARTED;
+
 	return 0;
 }
 
@@ -1154,10 +1160,16 @@ static int
 eth_dev_stop(struct rte_eth_dev *dev)
 {
 	struct pmd_internal *internal = dev->data->dev_private;
+	uint16_t i;
 
 	dev->data->dev_started = 0;
 	rte_atomic32_set(&internal->started, 0);
 	update_queuing_status(dev, true);
+
+	for (i = 0; i < dev->data->nb_rx_queues; i++)
+		dev->data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
+	for (i = 0; i < dev->data->nb_tx_queues; i++)
+		dev->data->tx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
 
 	return 0;
 }
