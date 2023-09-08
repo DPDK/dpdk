@@ -391,7 +391,7 @@ pdcp_pre_process_uplane_sn_12_ul(const struct rte_pdcp_entity *entity, struct rt
 	uint8_t *mac_i;
 	int i;
 
-	const uint8_t data_offset = en_priv->hdr_sz + en_priv->aad_sz;
+	const uint8_t data_offset = en_priv->hdr_sz + en_priv->aad_sz + en_priv->cipher_skip_sz;
 	const int is_null_auth = en_priv->flags.is_null_auth;
 
 	nb_cop = rte_crypto_op_bulk_alloc(en_priv->cop_pool, RTE_CRYPTO_OP_TYPE_SYMMETRIC, cop,
@@ -477,7 +477,7 @@ pdcp_pre_process_uplane_sn_18_ul(const struct rte_pdcp_entity *entity, struct rt
 	uint8_t *mac_i;
 	int i;
 
-	const uint8_t data_offset = en_priv->hdr_sz + en_priv->aad_sz;
+	const uint8_t data_offset = en_priv->hdr_sz + en_priv->aad_sz + en_priv->cipher_skip_sz;
 	const int is_null_auth = en_priv->flags.is_null_auth;
 
 	nb_cop = rte_crypto_op_bulk_alloc(en_priv->cop_pool, RTE_CRYPTO_OP_TYPE_SYMMETRIC, cop,
@@ -540,7 +540,7 @@ pdcp_pre_process_cplane_sn_12_ul(const struct rte_pdcp_entity *entity, struct rt
 	int i;
 
 	const uint8_t hdr_sz = en_priv->hdr_sz;
-	const uint8_t data_offset = hdr_sz + en_priv->aad_sz;
+	const uint8_t data_offset = hdr_sz + en_priv->aad_sz + en_priv->cipher_skip_sz;
 	const int is_null_auth = en_priv->flags.is_null_auth;
 
 	nb_cop = rte_crypto_op_bulk_alloc(en_priv->cop_pool, RTE_CRYPTO_OP_TYPE_SYMMETRIC, cop,
@@ -658,7 +658,7 @@ pdcp_pre_process_uplane_sn_12_dl_flags(const struct rte_pdcp_entity *entity,
 	uint32_t count;
 	int i;
 
-	const uint8_t data_offset = en_priv->hdr_sz + en_priv->aad_sz;
+	const uint8_t data_offset = en_priv->hdr_sz + en_priv->aad_sz + en_priv->cipher_skip_sz;
 
 	nb_cop = rte_crypto_op_bulk_alloc(en_priv->cop_pool, RTE_CRYPTO_OP_TYPE_SYMMETRIC, cop,
 					  num);
@@ -727,7 +727,7 @@ pdcp_pre_process_uplane_sn_18_dl_flags(const struct rte_pdcp_entity *entity,
 	uint32_t count;
 	int i;
 
-	const uint8_t data_offset = en_priv->hdr_sz + en_priv->aad_sz;
+	const uint8_t data_offset = en_priv->hdr_sz + en_priv->aad_sz + en_priv->cipher_skip_sz;
 	nb_cop = rte_crypto_op_bulk_alloc(en_priv->cop_pool, RTE_CRYPTO_OP_TYPE_SYMMETRIC, cop,
 					  num);
 
@@ -795,7 +795,7 @@ pdcp_pre_process_cplane_sn_12_dl(const struct rte_pdcp_entity *entity, struct rt
 	int32_t rsn;
 	int i;
 
-	const uint8_t data_offset = en_priv->hdr_sz + en_priv->aad_sz;
+	const uint8_t data_offset = en_priv->hdr_sz + en_priv->aad_sz + en_priv->cipher_skip_sz;
 
 	nb_cop = rte_crypto_op_bulk_alloc(en_priv->cop_pool, RTE_CRYPTO_OP_TYPE_SYMMETRIC, cop,
 					  num);
@@ -1201,6 +1201,16 @@ pdcp_entity_priv_populate(struct entity_priv *en_priv, const struct rte_pdcp_ent
 		en_priv->aad_sz = 8;
 	else
 		en_priv->aad_sz = 0;
+
+	/**
+	 * cipher_skip_sz
+	 *
+	 * When SDAP protocol is enabled for the PDCP entity, skip the SDAP header from ciphering.
+	 */
+	if (conf->pdcp_xfrm.sdap_enabled)
+		en_priv->cipher_skip_sz = 1;
+	else
+		en_priv->cipher_skip_sz = 0;
 
 	return 0;
 }

@@ -171,6 +171,8 @@ struct entity_priv {
 	uint8_t hdr_sz;
 	/** PDCP AAD size. For AES-CMAC, additional message is prepended for the operation. */
 	uint8_t aad_sz;
+	/** PDCP cipher skip size. When enabled, SDAP header needs to be skipped from ciphering */
+	uint8_t cipher_skip_sz;
 	/** Device ID of the device to be used for offload. */
 	uint8_t dev_id;
 };

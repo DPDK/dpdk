@@ -15,6 +15,7 @@
 
 #include "test.h"
 #include "test_cryptodev.h"
+#include "test_cryptodev_security_pdcp_sdap_test_vectors.h"
 #include "test_cryptodev_security_pdcp_test_vectors.h"
 
 #define NSECPERSEC 1E9
@@ -23,7 +24,8 @@
 #define TEST_EV_QUEUE_ID 0
 #define TEST_EV_PORT_ID 0
 #define CDEV_INVALID_ID UINT8_MAX
-#define NB_TESTS RTE_DIM(pdcp_test_params)
+#define NB_BASIC_TESTS RTE_DIM(pdcp_test_params)
+#define NB_SDAP_TESTS RTE_DIM(list_pdcp_sdap_tests)
 #define PDCP_IV_LEN 16
 
 /* Assert that condition is true, or goto the mark */
@@ -72,24 +74,71 @@ struct pdcp_test_conf {
 	uint32_t output_len;
 };
 
-static int create_test_conf_from_index(const int index, struct pdcp_test_conf *conf);
+enum pdcp_test_suite_type {
+	PDCP_TEST_SUITE_TY_BASIC,
+	PDCP_TEST_SUITE_TY_SDAP,
+};
+
+static int create_test_conf_from_index(const int index, struct pdcp_test_conf *conf,
+				       enum pdcp_test_suite_type suite_type);
 
 typedef int (*test_with_conf_t)(struct pdcp_test_conf *conf);
 
+static uint32_t
+nb_tests_get(enum pdcp_test_suite_type type)
+{
+	uint32_t ret;
+
+	switch (type) {
+	case PDCP_TEST_SUITE_TY_BASIC:
+		ret = NB_BASIC_TESTS;
+		break;
+	case PDCP_TEST_SUITE_TY_SDAP:
+		ret = NB_SDAP_TESTS;
+		break;
+	default:
+		return 0;
+	}
+
+	return ret;
+}
+
+static const char*
+pdcp_test_name_get(enum pdcp_test_suite_type type, int idx)
+{
+	const char *test_name = NULL;
+
+	switch (type) {
+	case PDCP_TEST_SUITE_TY_BASIC:
+		test_name = pdcp_test_params[idx].name;
+		break;
+	case PDCP_TEST_SUITE_TY_SDAP:
+		test_name = list_pdcp_sdap_tests[idx].param.name;
+		break;
+	default:
+		return NULL;
+	}
+
+	return test_name;
+}
+
 static int
-run_test_foreach_known_vec(test_with_conf_t test, bool stop_on_first_pass)
+run_test_foreach_known_vec(test_with_conf_t test, bool stop_on_first_pass,
+			   enum pdcp_test_suite_type suite_type)
 {
 	struct pdcp_test_conf test_conf;
 	bool all_tests_skipped = true;
+	uint32_t nb_tests = nb_tests_get(suite_type);
 	uint32_t i;
 	int ret;
 
-	for (i = 0; i < NB_TESTS; i++) {
-		create_test_conf_from_index(i, &test_conf);
+	for (i = 0; i < nb_tests; i++) {
+		create_test_conf_from_index(i, &test_conf, suite_type);
 		ret = test(&test_conf);
 
 		if (ret == TEST_FAILED) {
-			printf("[%03i] - %s - failed\n", i, pdcp_test_params[i].name);
+			printf("[%03i] - %s - failed\n", i,
+			       pdcp_test_name_get(suite_type, i));
 			return TEST_FAILED;
 		}
 
@@ -113,7 +162,17 @@ run_test_with_all_known_vec(const void *args)
 {
 	test_with_conf_t test = args;
 
-	return run_test_foreach_known_vec(test, false);
+	return run_test_foreach_known_vec(test, false,
+					  PDCP_TEST_SUITE_TY_BASIC);
+}
+
+static int
+run_test_with_all_sdap_known_vec(const void *args)
+{
+	test_with_conf_t test = args;
+
+	return run_test_foreach_known_vec(test, false,
+					  PDCP_TEST_SUITE_TY_SDAP);
 }
 
 static int
@@ -121,7 +180,8 @@ run_test_with_all_known_vec_until_first_pass(const void *args)
 {
 	test_with_conf_t test = args;
 
-	return run_test_foreach_known_vec(test, true);
+	return run_test_foreach_known_vec(test, true,
+					  PDCP_TEST_SUITE_TY_BASIC);
 }
 
 static inline uint32_t
@@ -522,13 +582,296 @@ pdcp_sn_to_raw_set(void *data, uint32_t sn, int size)
 	}
 }
 
+static uint8_t
+pdcp_test_bearer_get(enum pdcp_test_suite_type suite_type, const int index)
+{
+	uint8_t ret;
+
+	switch (suite_type) {
+	case PDCP_TEST_SUITE_TY_BASIC:
+		ret = pdcp_test_bearer[index];
+		break;
+	case PDCP_TEST_SUITE_TY_SDAP:
+		ret = list_pdcp_sdap_tests[index].bearer;
+		break;
+	default:
+		RTE_LOG(ERR, USER1, "Invalid suite_type: %d\n", suite_type);
+		ret = -1;
+
+	}
+
+	return ret;
+}
+
+static enum rte_security_pdcp_domain
+pdcp_test_param_domain_get(enum pdcp_test_suite_type suite_type, const int index)
+{
+	enum rte_security_pdcp_domain ret;
+
+	switch (suite_type) {
+	case PDCP_TEST_SUITE_TY_BASIC:
+		ret = pdcp_test_params[index].domain;
+		break;
+	case PDCP_TEST_SUITE_TY_SDAP:
+		ret = list_pdcp_sdap_tests[index].param.domain;
+		break;
+	default:
+		RTE_LOG(ERR, USER1, "Invalid suite_type: %d\n", suite_type);
+		ret = -1;
+	}
+
+	return ret;
+}
+
+static uint8_t
+pdcp_test_data_sn_size_get(enum pdcp_test_suite_type suite_type, const int index)
+{
+	uint8_t ret;
+
+	switch (suite_type) {
+	case PDCP_TEST_SUITE_TY_BASIC:
+		ret = pdcp_test_data_sn_size[index];
+		break;
+	case PDCP_TEST_SUITE_TY_SDAP:
+		ret = list_pdcp_sdap_tests[index].sn_size;
+		break;
+	default:
+		RTE_LOG(ERR, USER1, "Invalid suite_type: %d\n", suite_type);
+		return -1;
+
+	}
+
+	return ret;
+}
+
+static uint8_t
+pdcp_test_packet_direction_get(enum pdcp_test_suite_type suite_type, const int index)
+{
+	uint8_t ret;
+
+	switch (suite_type) {
+	case PDCP_TEST_SUITE_TY_BASIC:
+		ret = pdcp_test_packet_direction[index];
+		break;
+	case PDCP_TEST_SUITE_TY_SDAP:
+		ret = list_pdcp_sdap_tests[index].packet_direction;
+		break;
+	default:
+		RTE_LOG(ERR, USER1, "Invalid suite_type: %d\n", suite_type);
+		return -1;
+	}
+
+	return ret;
+}
+
+static enum rte_crypto_cipher_algorithm
+pdcp_test_param_cipher_alg_get(enum pdcp_test_suite_type suite_type, const int index)
+{
+	enum rte_crypto_cipher_algorithm ret;
+
+	switch (suite_type) {
+	case PDCP_TEST_SUITE_TY_BASIC:
+		ret = pdcp_test_params[index].cipher_alg;
+		break;
+	case PDCP_TEST_SUITE_TY_SDAP:
+		ret = list_pdcp_sdap_tests[index].param.cipher_alg;
+		break;
+	default:
+		RTE_LOG(ERR, USER1, "Invalid suite_type: %d\n", suite_type);
+		return 0;
+	}
+
+	return ret;
+}
+
+static uint8_t
+pdcp_test_param_cipher_key_len_get(enum pdcp_test_suite_type suite_type, const int index)
+{
+	uint8_t ret;
+
+	switch (suite_type) {
+	case PDCP_TEST_SUITE_TY_BASIC:
+		ret = pdcp_test_params[index].cipher_key_len;
+		break;
+	case PDCP_TEST_SUITE_TY_SDAP:
+		ret = list_pdcp_sdap_tests[index].param.cipher_key_len;
+		break;
+	default:
+		RTE_LOG(ERR, USER1, "Invalid suite_type: %d\n", suite_type);
+		return -1;
+	}
+
+	return ret;
+}
+
+static const uint8_t*
+pdcp_test_crypto_key_get(enum pdcp_test_suite_type suite_type, const int index)
+{
+	const uint8_t *ret;
+
+	switch (suite_type) {
+	case PDCP_TEST_SUITE_TY_BASIC:
+		ret = pdcp_test_crypto_key[index];
+		break;
+	case PDCP_TEST_SUITE_TY_SDAP:
+		ret = list_pdcp_sdap_tests[index].cipher_key;
+		break;
+	default:
+		RTE_LOG(ERR, USER1, "Invalid suite_type: %d\n", suite_type);
+		return NULL;
+	}
+
+	return ret;
+}
+
+static enum rte_crypto_auth_algorithm
+pdcp_test_param_auth_alg_get(enum pdcp_test_suite_type suite_type, const int index)
+{
+	enum rte_crypto_auth_algorithm ret;
+
+	switch (suite_type) {
+	case PDCP_TEST_SUITE_TY_BASIC:
+		ret = pdcp_test_params[index].auth_alg;
+		break;
+	case PDCP_TEST_SUITE_TY_SDAP:
+		ret = list_pdcp_sdap_tests[index].param.auth_alg;
+		break;
+	default:
+		RTE_LOG(ERR, USER1, "Invalid suite_type: %d\n", suite_type);
+		return 0;
+	}
+
+	return ret;
+}
+
+static uint8_t
+pdcp_test_param_auth_key_len_get(enum pdcp_test_suite_type suite_type, const int index)
+{
+	uint8_t ret;
+
+	switch (suite_type) {
+	case PDCP_TEST_SUITE_TY_BASIC:
+		ret = pdcp_test_params[index].auth_key_len;
+		break;
+	case PDCP_TEST_SUITE_TY_SDAP:
+		ret = list_pdcp_sdap_tests[index].param.auth_key_len;
+		break;
+	default:
+		RTE_LOG(ERR, USER1, "Invalid suite_type: %d\n", suite_type);
+		return -1;
+	}
+
+	return ret;
+}
+
+static const uint8_t*
+pdcp_test_auth_key_get(enum pdcp_test_suite_type suite_type, const int index)
+{
+	const uint8_t *ret;
+
+	switch (suite_type) {
+	case PDCP_TEST_SUITE_TY_BASIC:
+		ret = pdcp_test_auth_key[index];
+		break;
+	case PDCP_TEST_SUITE_TY_SDAP:
+		ret = list_pdcp_sdap_tests[index].auth_key;
+		break;
+	default:
+		RTE_LOG(ERR, USER1, "Invalid suite_type: %d\n", suite_type);
+		return NULL;
+	}
+
+	return ret;
+}
+
+static const uint8_t*
+pdcp_test_data_in_get(enum pdcp_test_suite_type suite_type, const int index)
+{
+	const uint8_t *ret;
+
+	switch (suite_type) {
+	case PDCP_TEST_SUITE_TY_BASIC:
+		ret = pdcp_test_data_in[index];
+		break;
+	case PDCP_TEST_SUITE_TY_SDAP:
+		ret = list_pdcp_sdap_tests[index].data_in;
+		break;
+	default:
+		RTE_LOG(ERR, USER1, "Invalid suite_type: %d\n", suite_type);
+		return NULL;
+	}
+
+	return ret;
+}
+
+static uint8_t
+pdcp_test_data_in_len_get(enum pdcp_test_suite_type suite_type, const int index)
+{
+	uint8_t ret;
+
+	switch (suite_type) {
+	case PDCP_TEST_SUITE_TY_BASIC:
+		ret = pdcp_test_data_in_len[index];
+		break;
+	case PDCP_TEST_SUITE_TY_SDAP:
+		ret = list_pdcp_sdap_tests[index].in_len;
+		break;
+	default:
+		RTE_LOG(ERR, USER1, "Invalid suite_type: %d\n", suite_type);
+		return -1;
+	}
+
+	return ret;
+}
+
+static const uint8_t*
+pdcp_test_data_out_get(enum pdcp_test_suite_type suite_type, const int index)
+{
+	const uint8_t *ret;
+
+	switch (suite_type) {
+	case PDCP_TEST_SUITE_TY_BASIC:
+		ret = pdcp_test_data_out[index];
+		break;
+	case PDCP_TEST_SUITE_TY_SDAP:
+		ret = list_pdcp_sdap_tests[index].data_out;
+		break;
+	default:
+		RTE_LOG(ERR, USER1, "Invalid suite_type: %d\n", suite_type);
+		return NULL;
+	}
+
+	return ret;
+}
+
+static uint32_t
+pdcp_test_hfn_get(enum pdcp_test_suite_type suite_type, const int index)
+{
+	uint32_t ret;
+
+	switch (suite_type) {
+	case PDCP_TEST_SUITE_TY_BASIC:
+		ret = pdcp_test_hfn[index];
+		break;
+	case PDCP_TEST_SUITE_TY_SDAP:
+		ret = list_pdcp_sdap_tests[index].hfn;
+		break;
+	default:
+		RTE_LOG(ERR, USER1, "Invalid suite_type: %d\n", suite_type);
+		return -1;
+	}
+
+	return ret;
+}
+
 static int
-create_test_conf_from_index(const int index, struct pdcp_test_conf *conf)
+create_test_conf_from_index(const int index, struct pdcp_test_conf *conf,
+			    enum pdcp_test_suite_type suite_type)
 {
 	const struct pdcp_testsuite_params *ts_params = &testsuite_params;
 	struct rte_crypto_sym_xform c_xfrm, a_xfrm;
+	const uint8_t *data, *expected;
 	uint32_t sn, expected_len;
-	uint8_t *data, *expected;
 	int pdcp_hdr_sz;
 
 	memset(conf, 0, sizeof(*conf));
@@ -538,41 +881,42 @@ create_test_conf_from_index(const int index, struct pdcp_test_conf *conf)
 	conf->entity.sess_mpool = ts_params->sess_pool;
 	conf->entity.cop_pool = ts_params->cop_pool;
 	conf->entity.ctrl_pdu_pool = ts_params->mbuf_pool;
-	conf->entity.pdcp_xfrm.bearer = pdcp_test_bearer[index];
+	conf->entity.pdcp_xfrm.bearer = pdcp_test_bearer_get(suite_type, index);
 	conf->entity.pdcp_xfrm.en_ordering = 0;
 	conf->entity.pdcp_xfrm.remove_duplicates = 0;
-	conf->entity.pdcp_xfrm.domain = pdcp_test_params[index].domain;
+	conf->entity.pdcp_xfrm.domain = pdcp_test_param_domain_get(suite_type, index);
 	conf->entity.t_reordering = t_reorder_timer;
 
-	if (pdcp_test_packet_direction[index] == PDCP_DIR_UPLINK)
+	if (pdcp_test_packet_direction_get(suite_type, index) == PDCP_DIR_UPLINK)
 		conf->entity.pdcp_xfrm.pkt_dir = RTE_SECURITY_PDCP_UPLINK;
 	else
 		conf->entity.pdcp_xfrm.pkt_dir = RTE_SECURITY_PDCP_DOWNLINK;
 
-	conf->entity.pdcp_xfrm.sn_size = pdcp_test_data_sn_size[index];
+	conf->entity.pdcp_xfrm.sn_size = pdcp_test_data_sn_size_get(suite_type, index);
 
 	/* Zero initialize unsupported flags */
 	conf->entity.pdcp_xfrm.hfn_threshold = 0;
 	conf->entity.pdcp_xfrm.hfn_ovrd = 0;
-	conf->entity.pdcp_xfrm.sdap_enabled = 0;
+
+	conf->entity.pdcp_xfrm.sdap_enabled = (suite_type == PDCP_TEST_SUITE_TY_SDAP);
 
 	c_xfrm.type = RTE_CRYPTO_SYM_XFORM_CIPHER;
-	c_xfrm.cipher.algo = pdcp_test_params[index].cipher_alg;
-	c_xfrm.cipher.key.length = pdcp_test_params[index].cipher_key_len;
-	c_xfrm.cipher.key.data = pdcp_test_crypto_key[index];
+	c_xfrm.cipher.algo = pdcp_test_param_cipher_alg_get(suite_type, index);
+	c_xfrm.cipher.key.length = pdcp_test_param_cipher_key_len_get(suite_type, index);
+	c_xfrm.cipher.key.data = pdcp_test_crypto_key_get(suite_type, index);
 
 	a_xfrm.type = RTE_CRYPTO_SYM_XFORM_AUTH;
 
-	if (pdcp_test_params[index].auth_alg == 0) {
+	if (pdcp_test_param_auth_alg_get(suite_type, index) == 0) {
 		conf->is_integrity_protected = false;
 	} else {
-		a_xfrm.auth.algo = pdcp_test_params[index].auth_alg;
-		a_xfrm.auth.key.data = pdcp_test_auth_key[index];
-		a_xfrm.auth.key.length = pdcp_test_params[index].auth_key_len;
+		a_xfrm.auth.algo = pdcp_test_param_auth_alg_get(suite_type, index);
+		a_xfrm.auth.key.data = pdcp_test_auth_key_get(suite_type, index);
+		a_xfrm.auth.key.length = pdcp_test_param_auth_key_len_get(suite_type, index);
 		conf->is_integrity_protected = true;
 	}
 
-	pdcp_hdr_sz = pdcp_hdr_size_get(pdcp_test_data_sn_size[index]);
+	pdcp_hdr_sz = pdcp_hdr_size_get(pdcp_test_data_sn_size_get(suite_type, index));
 
 	/*
 	 * Uplink means PDCP entity is configured for transmit. Downlink means PDCP entity is
@@ -640,41 +984,42 @@ create_test_conf_from_index(const int index, struct pdcp_test_conf *conf)
 	conf->entity.dev_id = (uint8_t)cryptodev_id_get(conf->is_integrity_protected,
 			&conf->c_xfrm, &conf->a_xfrm);
 
-	if (pdcp_test_params[index].domain == RTE_SECURITY_PDCP_MODE_CONTROL ||
-	    pdcp_test_params[index].domain == RTE_SECURITY_PDCP_MODE_DATA) {
-		data = pdcp_test_data_in[index];
-		sn = pdcp_sn_from_raw_get(data, pdcp_test_data_sn_size[index]);
-		conf->entity.pdcp_xfrm.hfn = pdcp_test_hfn[index];
+	if (pdcp_test_param_domain_get(suite_type, index) == RTE_SECURITY_PDCP_MODE_CONTROL ||
+	    pdcp_test_param_domain_get(suite_type, index) == RTE_SECURITY_PDCP_MODE_DATA) {
+		data = pdcp_test_data_in_get(suite_type, index);
+		sn = pdcp_sn_from_raw_get(data, pdcp_test_data_sn_size_get(suite_type, index));
+		conf->entity.pdcp_xfrm.hfn = pdcp_test_hfn_get(suite_type, index);
 		conf->entity.sn = sn;
 	}
 
 	if (conf->entity.pdcp_xfrm.pkt_dir == RTE_SECURITY_PDCP_UPLINK) {
 #ifdef VEC_DUMP
-		debug_hexdump(stdout, "Original vector:", pdcp_test_data_in[index],
-				pdcp_test_data_in_len[index]);
+		debug_hexdump(stdout, "Original vector:", pdcp_test_data_in_get(suite_type, index),
+				pdcp_test_data_in_len_get(suite_type, index));
 #endif
 		/* Since the vectors available already have PDCP header, trim the same */
-		conf->input_len = pdcp_test_data_in_len[index] - pdcp_hdr_sz;
-		memcpy(conf->input, pdcp_test_data_in[index] + pdcp_hdr_sz, conf->input_len);
+		conf->input_len = pdcp_test_data_in_len_get(suite_type, index) - pdcp_hdr_sz;
+		memcpy(conf->input, pdcp_test_data_in_get(suite_type, index) + pdcp_hdr_sz,
+		       conf->input_len);
 	} else {
-		conf->input_len = pdcp_test_data_in_len[index];
+		conf->input_len = pdcp_test_data_in_len_get(suite_type, index);
 
 		if (conf->is_integrity_protected)
 			conf->input_len += RTE_PDCP_MAC_I_LEN;
 
-		memcpy(conf->input, pdcp_test_data_out[index], conf->input_len);
+		memcpy(conf->input, pdcp_test_data_out_get(suite_type, index), conf->input_len);
 #ifdef VEC_DUMP
 		debug_hexdump(stdout, "Original vector:", conf->input, conf->input_len);
 #endif
 	}
 
 	if (conf->entity.pdcp_xfrm.pkt_dir == RTE_SECURITY_PDCP_UPLINK)
-		expected = pdcp_test_data_out[index];
+		expected = pdcp_test_data_out_get(suite_type, index);
 	else
-		expected = pdcp_test_data_in[index];
+		expected = pdcp_test_data_in_get(suite_type, index);
 
 	/* Calculate expected packet length */
-	expected_len = pdcp_test_data_in_len[index];
+	expected_len = pdcp_test_data_in_len_get(suite_type, index);
 
 	/* In DL processing, PDCP header would be stripped */
 	if (conf->entity.pdcp_xfrm.pkt_dir == RTE_SECURITY_PDCP_DOWNLINK) {
@@ -1836,7 +2181,7 @@ run_test_for_one_known_vec(const void *arg)
 	struct pdcp_test_conf test_conf;
 	int i = *(const uint32_t *)arg;
 
-	create_test_conf_from_index(i, &test_conf);
+	create_test_conf_from_index(i, &test_conf, PDCP_TEST_SUITE_TY_BASIC);
 	return test_attempt_single(&test_conf);
 }
 
@@ -1924,8 +2269,21 @@ static struct unit_test_suite status_report_test_cases  = {
 	}
 };
 
+static struct unit_test_suite sdap_test_cases  = {
+	.suite_name = "PDCP SDAP",
+	.unit_test_cases = {
+		TEST_CASE_NAMED_WITH_DATA("SDAP Known vector cases",
+			ut_setup_pdcp, ut_teardown_pdcp,
+			run_test_with_all_sdap_known_vec, test_attempt_single),
+		TEST_CASE_NAMED_WITH_DATA("SDAP combined mode",
+			ut_setup_pdcp, ut_teardown_pdcp,
+			run_test_with_all_sdap_known_vec, test_combined),
+		TEST_CASES_END() /**< NULL terminate unit test array */
+	}
+};
 struct unit_test_suite *test_suites[] = {
 	NULL, /* Place holder for known_vector_cases */
+	&sdap_test_cases,
 	&combined_mode_cases,
 	&hfn_sn_test_cases,
 	&reorder_test_cases,
@@ -1945,11 +2303,12 @@ static int
 test_pdcp(void)
 {
 	struct unit_test_suite *known_vector_cases;
-	int ret, index[NB_TESTS];
+	uint32_t nb_tests = nb_tests_get(PDCP_TEST_SUITE_TY_BASIC);
+	int ret, index[nb_tests];
 	uint32_t i, size;
 
 	size = sizeof(struct unit_test_suite);
-	size += (NB_TESTS + 1) * sizeof(struct unit_test_case);
+	size += (nb_tests + 1) * sizeof(struct unit_test_case);
 
 	known_vector_cases = rte_zmalloc(NULL, size, 0);
 	if (known_vector_cases == NULL)
@@ -1957,7 +2316,7 @@ test_pdcp(void)
 
 	known_vector_cases->suite_name = "Known vector cases";
 
-	for (i = 0; i < NB_TESTS; i++) {
+	for (i = 0; i < nb_tests; i++) {
 		index[i] = i;
 		known_vector_cases->unit_test_cases[i].name = pdcp_test_params[i].name;
 		known_vector_cases->unit_test_cases[i].data = (void *)&index[i];
