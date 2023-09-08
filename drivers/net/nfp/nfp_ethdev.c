@@ -52,6 +52,7 @@ nfp_net_start(struct rte_eth_dev *dev)
 	struct rte_eth_conf *dev_conf;
 	struct rte_eth_rxmode *rxmode;
 	uint32_t intr_vector;
+	uint16_t i;
 	int ret;
 
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
@@ -166,6 +167,11 @@ nfp_net_start(struct rte_eth_dev *dev)
 				       hw->nfp_idx, 1);
 
 	hw->ctrl = new_ctrl;
+
+	for (i = 0; i < dev->data->nb_rx_queues; i++)
+		dev->data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STARTED;
+	for (i = 0; i < dev->data->nb_tx_queues; i++)
+		dev->data->tx_queue_state[i] = RTE_ETH_QUEUE_STATE_STARTED;
 
 	return 0;
 

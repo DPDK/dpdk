@@ -310,6 +310,7 @@ nfp_flower_repr_dev_start(struct rte_eth_dev *dev)
 {
 	struct nfp_flower_representor *repr;
 	struct nfp_app_fw_flower *app_fw_flower;
+	uint16_t i;
 
 	repr = dev->data->dev_private;
 	app_fw_flower = repr->app_fw_flower;
@@ -321,6 +322,11 @@ nfp_flower_repr_dev_start(struct rte_eth_dev *dev)
 
 	nfp_flower_cmsg_port_mod(app_fw_flower, repr->port_id, true);
 
+	for (i = 0; i < dev->data->nb_rx_queues; i++)
+		dev->data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STARTED;
+	for (i = 0; i < dev->data->nb_tx_queues; i++)
+		dev->data->tx_queue_state[i] = RTE_ETH_QUEUE_STATE_STARTED;
+
 	return 0;
 }
 
@@ -329,6 +335,7 @@ nfp_flower_repr_dev_stop(struct rte_eth_dev *dev)
 {
 	struct nfp_flower_representor *repr;
 	struct nfp_app_fw_flower *app_fw_flower;
+	uint16_t i;
 
 	repr = dev->data->dev_private;
 	app_fw_flower = repr->app_fw_flower;
@@ -339,6 +346,11 @@ nfp_flower_repr_dev_stop(struct rte_eth_dev *dev)
 		nfp_eth_set_configured(app_fw_flower->pf_hw->pf_dev->cpp,
 				repr->nfp_idx, 0);
 	}
+
+	for (i = 0; i < dev->data->nb_rx_queues; i++)
+		dev->data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
+	for (i = 0; i < dev->data->nb_tx_queues; i++)
+		dev->data->tx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
 
 	return 0;
 }
