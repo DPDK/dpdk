@@ -291,6 +291,7 @@ static int
 sfc_repr_dev_start(struct rte_eth_dev *dev)
 {
 	struct sfc_repr *sr = sfc_repr_by_eth_dev(dev);
+	uint16_t i;
 	int ret;
 
 	sfcr_info(sr, "entry");
@@ -301,6 +302,11 @@ sfc_repr_dev_start(struct rte_eth_dev *dev)
 
 	if (ret != 0)
 		goto fail_start;
+
+	for (i = 0; i < dev->data->nb_rx_queues; i++)
+		dev->data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STARTED;
+	for (i = 0; i < dev->data->nb_tx_queues; i++)
+		dev->data->tx_queue_state[i] = RTE_ETH_QUEUE_STATE_STARTED;
 
 	sfcr_info(sr, "done");
 
@@ -366,6 +372,7 @@ static int
 sfc_repr_dev_stop(struct rte_eth_dev *dev)
 {
 	struct sfc_repr *sr = sfc_repr_by_eth_dev(dev);
+	uint16_t i;
 	int ret;
 
 	sfcr_info(sr, "entry");
@@ -379,6 +386,11 @@ sfc_repr_dev_stop(struct rte_eth_dev *dev)
 	}
 
 	sfc_repr_unlock(sr);
+
+	for (i = 0; i < dev->data->nb_rx_queues; i++)
+		dev->data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
+	for (i = 0; i < dev->data->nb_tx_queues; i++)
+		dev->data->tx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
 
 	sfcr_info(sr, "done");
 
