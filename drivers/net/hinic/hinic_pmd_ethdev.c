@@ -980,6 +980,7 @@ static int hinic_dev_start(struct rte_eth_dev *dev)
 	int rc;
 	char *name;
 	struct hinic_nic_dev *nic_dev;
+	uint16_t i;
 
 	nic_dev = HINIC_ETH_DEV_TO_PRIVATE_NIC_DEV(dev);
 	name = dev->data->name;
@@ -1046,6 +1047,11 @@ static int hinic_dev_start(struct rte_eth_dev *dev)
 		(void)hinic_link_update(dev, 0);
 
 	rte_bit_relaxed_set32(HINIC_DEV_START, &nic_dev->dev_status);
+
+	for (i = 0; i < dev->data->nb_rx_queues; i++)
+		dev->data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STARTED;
+	for (i = 0; i < dev->data->nb_tx_queues; i++)
+		dev->data->tx_queue_state[i] = RTE_ETH_QUEUE_STATE_STARTED;
 
 	return 0;
 
@@ -1169,6 +1175,7 @@ static int hinic_dev_stop(struct rte_eth_dev *dev)
 	uint16_t port_id;
 	struct hinic_nic_dev *nic_dev;
 	struct rte_eth_link link;
+	uint16_t i;
 
 	nic_dev = HINIC_ETH_DEV_TO_PRIVATE_NIC_DEV(dev);
 	name = dev->data->name;
@@ -1214,6 +1221,11 @@ static int hinic_dev_stop(struct rte_eth_dev *dev)
 	/* free mbuf */
 	hinic_free_all_rx_mbuf(dev);
 	hinic_free_all_tx_mbuf(dev);
+
+	for (i = 0; i < dev->data->nb_rx_queues; i++)
+		dev->data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
+	for (i = 0; i < dev->data->nb_tx_queues; i++)
+		dev->data->tx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
 
 	return 0;
 }
