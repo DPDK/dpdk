@@ -1507,6 +1507,7 @@ static int bnxt_dev_stop(struct rte_eth_dev *eth_dev)
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
 	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
 	struct rte_eth_link link;
+	uint16_t i;
 	int ret;
 
 	eth_dev->data->dev_started = 0;
@@ -1566,6 +1567,11 @@ static int bnxt_dev_stop(struct rte_eth_dev *eth_dev)
 		bp->flow_stat->flow_count = 0;
 
 	eth_dev->data->scattered_rx = 0;
+
+	for (i = 0; i < eth_dev->data->nb_rx_queues; i++)
+		eth_dev->data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
+	for (i = 0; i < eth_dev->data->nb_tx_queues; i++)
+		eth_dev->data->tx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
 
 	return 0;
 }
