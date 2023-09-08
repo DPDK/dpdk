@@ -1124,6 +1124,7 @@ void axgbe_dev_clear_queues(struct rte_eth_dev *dev)
 			axgbe_rx_queue_release(rxq);
 			dev->data->rx_queues[i] = NULL;
 		}
+		dev->data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
 	}
 
 	for (i = 0; i < dev->data->nb_tx_queues; i++) {
@@ -1133,6 +1134,7 @@ void axgbe_dev_clear_queues(struct rte_eth_dev *dev)
 			axgbe_tx_queue_release(txq);
 			dev->data->tx_queues[i] = NULL;
 		}
+		dev->data->tx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
 	}
 }
 

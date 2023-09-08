@@ -363,6 +363,7 @@ static int
 axgbe_dev_start(struct rte_eth_dev *dev)
 {
 	struct axgbe_port *pdata = dev->data->dev_private;
+	uint16_t i;
 	int ret;
 
 	dev->dev_ops = &axgbe_eth_dev_ops;
@@ -399,6 +400,12 @@ axgbe_dev_start(struct rte_eth_dev *dev)
 
 	axgbe_set_rx_function(dev);
 	axgbe_set_tx_function(dev);
+
+	for (i = 0; i < dev->data->nb_rx_queues; i++)
+		dev->data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STARTED;
+	for (i = 0; i < dev->data->nb_tx_queues; i++)
+		dev->data->tx_queue_state[i] = RTE_ETH_QUEUE_STATE_STARTED;
+
 	return 0;
 }
 
