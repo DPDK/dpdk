@@ -17,6 +17,7 @@ enetc_dev_start(struct rte_eth_dev *dev)
 		ENETC_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct enetc_hw *enetc_hw = &hw->hw;
 	uint32_t val;
+	uint16_t i;
 
 	PMD_INIT_FUNC_TRACE();
 	if (hw->device_id == ENETC_DEV_ID_VF)
@@ -45,6 +46,11 @@ enetc_dev_start(struct rte_eth_dev *dev)
 			      ENETC_PM0_IFM_XGMII);
 	}
 
+	for (i = 0; i < dev->data->nb_rx_queues; i++)
+		dev->data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STARTED;
+	for (i = 0; i < dev->data->nb_tx_queues; i++)
+		dev->data->tx_queue_state[i] = RTE_ETH_QUEUE_STATE_STARTED;
+
 	return 0;
 }
 
@@ -55,6 +61,7 @@ enetc_dev_stop(struct rte_eth_dev *dev)
 		ENETC_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct enetc_hw *enetc_hw = &hw->hw;
 	uint32_t val;
+	uint16_t i;
 
 	PMD_INIT_FUNC_TRACE();
 	dev->data->dev_started = 0;
@@ -68,6 +75,11 @@ enetc_dev_stop(struct rte_eth_dev *dev)
 	val = enetc_port_rd(enetc_hw, ENETC_PM0_CMD_CFG);
 	enetc_port_wr(enetc_hw, ENETC_PM0_CMD_CFG,
 		      val & (~(ENETC_PM0_TX_EN | ENETC_PM0_RX_EN)));
+
+	for (i = 0; i < dev->data->nb_rx_queues; i++)
+		dev->data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
+	for (i = 0; i < dev->data->nb_tx_queues; i++)
+		dev->data->tx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
 
 	return 0;
 }
