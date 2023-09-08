@@ -1102,12 +1102,13 @@ static int
 hn_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 {
 	struct hn_data *hv = dev->data->dev_private;
-	struct hn_rx_queue *rxq = dev->data->rx_queues[0];
-	struct hn_tx_queue *txq = dev->data->tx_queues[0];
+	struct hn_rx_queue **rxqs = (struct hn_rx_queue **)dev->data->rx_queues;
+	struct hn_tx_queue **txqs = (struct hn_tx_queue **)dev->data->tx_queues;
 	struct rte_eth_dev *vf_dev;
 	unsigned int orig_mtu = dev->data->mtu;
 	uint32_t rndis_mtu;
 	int ret = 0;
+	int i;
 
 	if (dev->data->dev_started) {
 		PMD_DRV_LOG(ERR, "Device must be stopped before changing MTU");
@@ -1128,7 +1129,6 @@ hn_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 
 	/* Release channel resources */
 	hn_detach(hv);
-	hn_chim_uninit(dev);
 
 	/* Close primary channel */
 	rte_vmbus_chan_close(hv->channels[0]);
@@ -1142,7 +1142,7 @@ hn_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 		return ret;
 	}
 
-	/* Update pointers to re-mapped memory */
+	/* Update pointers to re-mapped UIO resources */
 	hv->rxbuf_res = hv->vmbus->resource[HV_RECV_BUF_MAP];
 	hv->chim_res  = hv->vmbus->resource[HV_SEND_BUF_MAP];
 
@@ -1155,31 +1155,24 @@ hn_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 
 	rte_vmbus_set_latency(hv->vmbus, hv->channels[0], hv->latency);
 
-	rxq->chan = hv->channels[0];
-	txq->chan = hv->channels[0];
+	/* Point primary queues at new primary channel */
+	rxqs[0]->chan = hv->channels[0];
+	txqs[0]->chan = hv->channels[0];
 
 	ret = hn_attach(hv, mtu);
 	if (ret)
 		goto error;
 
-	ret = hn_chim_init(dev);
+	/* Create vmbus subchannels, additional RNDIS configuration */
+	ret = hn_dev_configure(dev);
 	if (ret)
 		goto error;
-
-	ret = hn_dev_configure(dev);
-	if (!ret)
-		goto out;
-
-error:
-	/* In case of error, attempt rollback to original MTU */
-	if (hn_attach(hv, orig_mtu))
-		PMD_DRV_LOG(ERR, "Restoring original MTU failed");
-
-	rte_rwlock_read_lock(&hv->vf_lock);
-	vf_dev = hn_get_vf_dev(hv);
-	if (hv->vf_ctx.vf_vsc_switched && vf_dev)
-		vf_dev->dev_ops->mtu_set(vf_dev, orig_mtu);
-	rte_rwlock_read_unlock(&hv->vf_lock);
+	
+	/* Point any additional queues at new subchannels */
+	for (i = 1; i < dev->data->nb_rx_queues; i++)
+		rxqs[i]->chan = hv->channels[i];
+	for (i = 1; i < dev->data->nb_tx_queues; i++)
+		txqs[i]->chan = hv->channels[i];
 
 out:
 	if (hn_rndis_get_mtu(hv, &rndis_mtu))
@@ -1188,6 +1181,19 @@ out:
 		dev->data->mtu = (uint16_t)rndis_mtu;
 		PMD_DRV_LOG(DEBUG, "RNDIS MTU is %u", dev->data->mtu);
 	}
+
+	return ret;
+
+error:
+	/* In case of error, attempt to restore original MTU */
+	if (hn_attach(hv, orig_mtu))
+		PMD_DRV_LOG(ERR, "Restoring original MTU failed");
+
+	rte_rwlock_read_lock(&hv->vf_lock);
+	vf_dev = hn_get_vf_dev(hv);
+	if (hv->vf_ctx.vf_vsc_switched && vf_dev)
+		vf_dev->dev_ops->mtu_set(vf_dev, orig_mtu);
+	rte_rwlock_read_unlock(&hv->vf_lock);
 
 	return ret;
 }
