@@ -1130,8 +1130,9 @@ hn_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 	/* Release channel resources */
 	hn_detach(hv);
 
-	/* Close primary channel */
-	rte_vmbus_chan_close(hv->channels[0]);
+	/* Close vmbus channels */
+	for (i = 0; i < hv->num_queues; i++)
+		rte_vmbus_chan_close(hv->channels[i]);
 
 	/* Unmap and re-map vmbus device */
 	rte_vmbus_unmap_device(hv->vmbus);
