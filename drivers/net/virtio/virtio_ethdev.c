@@ -2417,6 +2417,11 @@ virtio_dev_start(struct rte_eth_dev *dev)
 	set_rxtx_funcs(dev);
 	hw->started = 1;
 
+	for (i = 0; i < dev->data->nb_rx_queues; i++)
+		dev->data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STARTED;
+	for (i = 0; i < dev->data->nb_tx_queues; i++)
+		dev->data->tx_queue_state[i] = RTE_ETH_QUEUE_STATE_STARTED;
+
 	/* Initialize Link state */
 	virtio_dev_link_update(dev, 0);
 
@@ -2506,6 +2511,7 @@ virtio_dev_stop(struct rte_eth_dev *dev)
 	struct virtio_hw *hw = dev->data->dev_private;
 	struct rte_eth_link link;
 	struct rte_eth_intr_conf *intr_conf = &dev->data->dev_conf.intr_conf;
+	uint16_t i;
 
 	PMD_INIT_LOG(DEBUG, "stop");
 	dev->data->dev_started = 0;
@@ -2532,6 +2538,11 @@ virtio_dev_stop(struct rte_eth_dev *dev)
 	rte_eth_linkstatus_set(dev, &link);
 out_unlock:
 	rte_spinlock_unlock(&hw->state_lock);
+
+	for (i = 0; i < dev->data->nb_rx_queues; i++)
+		dev->data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
+	for (i = 0; i < dev->data->nb_tx_queues; i++)
+		dev->data->tx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
 
 	return 0;
 }
