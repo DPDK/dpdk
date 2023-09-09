@@ -7,6 +7,7 @@ INTERNAL {
 	cnxk_ipsec_outb_roundup_byte;
 	cnxk_logtype_base;
 	cnxk_logtype_cpt;
+	cnxk_logtype_dpi;
 	cnxk_logtype_mbox;
 	cnxk_logtype_ml;
 	cnxk_logtype_nix;

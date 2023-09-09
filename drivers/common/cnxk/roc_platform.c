@@ -60,14 +60,15 @@ roc_plt_init(void)
 	return 0;
 }
 
-RTE_LOG_REGISTER(cnxk_logtype_base, pmd.cnxk.base, NOTICE);
-RTE_LOG_REGISTER(cnxk_logtype_mbox, pmd.cnxk.mbox, NOTICE);
-RTE_LOG_REGISTER(cnxk_logtype_cpt, pmd.crypto.cnxk, NOTICE);
-RTE_LOG_REGISTER(cnxk_logtype_ml, pmd.ml.cnxk, NOTICE);
-RTE_LOG_REGISTER(cnxk_logtype_npa, pmd.mempool.cnxk, NOTICE);
-RTE_LOG_REGISTER(cnxk_logtype_nix, pmd.net.cnxk, NOTICE);
-RTE_LOG_REGISTER(cnxk_logtype_npc, pmd.net.cnxk.flow, NOTICE);
-RTE_LOG_REGISTER(cnxk_logtype_sso, pmd.event.cnxk, NOTICE);
-RTE_LOG_REGISTER(cnxk_logtype_tim, pmd.event.cnxk.timer, NOTICE);
-RTE_LOG_REGISTER(cnxk_logtype_tm, pmd.net.cnxk.tm, NOTICE);
+RTE_LOG_REGISTER_DEFAULT(cnxk_logtype_base, NOTICE);
+RTE_LOG_REGISTER_DEFAULT(cnxk_logtype_mbox, NOTICE);
+RTE_LOG_REGISTER_DEFAULT(cnxk_logtype_cpt, NOTICE);
+RTE_LOG_REGISTER_DEFAULT(cnxk_logtype_ml, NOTICE);
+RTE_LOG_REGISTER_DEFAULT(cnxk_logtype_npa, NOTICE);
+RTE_LOG_REGISTER_DEFAULT(cnxk_logtype_nix, NOTICE);
+RTE_LOG_REGISTER_DEFAULT(cnxk_logtype_npc, NOTICE);
+RTE_LOG_REGISTER_DEFAULT(cnxk_logtype_sso, NOTICE);
+RTE_LOG_REGISTER_DEFAULT(cnxk_logtype_tim, NOTICE);
+RTE_LOG_REGISTER_DEFAULT(cnxk_logtype_tm, NOTICE);
+RTE_LOG_REGISTER_DEFAULT(cnxk_logtype_dpi, NOTICE);
 RTE_LOG_REGISTER_DEFAULT(cnxk_logtype_ree, NOTICE);

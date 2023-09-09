@@ -2,18 +2,6 @@
  * Copyright (C) 2021 Marvell International Ltd.
  */
 
-#include <string.h>
-#include <unistd.h>
-
-#include <bus_pci_driver.h>
-#include <rte_common.h>
-#include <rte_dmadev.h>
-#include <rte_dmadev_pmd.h>
-#include <rte_eal.h>
-#include <rte_lcore.h>
-#include <rte_mempool.h>
-#include <rte_pci.h>
-
 #include <cnxk_dmadev.h>
 
 static int cnxk_stats_reset(struct rte_dma_dev *dev, uint16_t vchan);
@@ -24,14 +12,14 @@ cnxk_dmadev_info_get(const struct rte_dma_dev *dev, struct rte_dma_info *dev_inf
 	struct cnxk_dpi_vf_s *dpivf = dev->fp_obj->dev_private;
 	RTE_SET_USED(size);
 
-	dev_info->max_vchans = MAX_VCHANS_PER_QUEUE;
+	dev_info->max_vchans = CNXK_DPI_MAX_VCHANS_PER_QUEUE;
 	dev_info->nb_vchans = dpivf->num_vchans;
 	dev_info->dev_capa = RTE_DMA_CAPA_MEM_TO_MEM | RTE_DMA_CAPA_MEM_TO_DEV |
 			     RTE_DMA_CAPA_DEV_TO_MEM | RTE_DMA_CAPA_DEV_TO_DEV |
 			     RTE_DMA_CAPA_OPS_COPY | RTE_DMA_CAPA_OPS_COPY_SG;
-	dev_info->max_desc = DPI_MAX_DESC;
-	dev_info->min_desc = DPI_MIN_DESC;
-	dev_info->max_sges = DPI_MAX_POINTER;
+	dev_info->max_desc = CNXK_DPI_MAX_DESC;
+	dev_info->min_desc = CNXK_DPI_MIN_DESC;
+	dev_info->max_sges = CNXK_DPI_MAX_POINTER;
 
 	return 0;
 }
@@ -48,7 +36,7 @@ cnxk_dmadev_vchan_free(struct cnxk_dpi_vf_s *dpivf, uint16_t vchan)
 		num_vchans = dpivf->num_vchans;
 		i = 0;
 	} else {
-		if (vchan >= MAX_VCHANS_PER_QUEUE)
+		if (vchan >= CNXK_DPI_MAX_VCHANS_PER_QUEUE)
 			return -EINVAL;
 
 		num_vchans = vchan + 1;
@@ -57,7 +45,7 @@ cnxk_dmadev_vchan_free(struct cnxk_dpi_vf_s *dpivf, uint16_t vchan)
 
 	for (; i < num_vchans; i++) {
 		dpi_conf = &dpivf->conf[i];
-		max_desc = dpi_conf->c_desc.max_cnt;
+		max_desc = dpi_conf->c_desc.max_cnt + 1;
 		if (dpi_conf->c_desc.compl_ptr) {
 			for (j = 0; j < max_desc; j++)
 				rte_free(dpi_conf->c_desc.compl_ptr[j]);
@@ -71,37 +59,60 @@ cnxk_dmadev_vchan_free(struct cnxk_dpi_vf_s *dpivf, uint16_t vchan)
 }
 
 static int
+cnxk_dmadev_chunk_pool_create(struct rte_dma_dev *dev, uint32_t nb_chunks, uint32_t chunk_sz)
+{
+	char pool_name[RTE_MEMPOOL_NAMESIZE];
+	struct cnxk_dpi_vf_s *dpivf = NULL;
+	int rc;
+
+	dpivf = dev->fp_obj->dev_private;
+	/* Create chunk pool. */
+	snprintf(pool_name, sizeof(pool_name), "cnxk_dma_chunk_pool%d", dev->data->dev_id);
+
+	nb_chunks += (CNXK_DPI_POOL_MAX_CACHE_SZ * rte_lcore_count());
+	dpivf->chunk_pool = rte_mempool_create_empty(
+		pool_name, nb_chunks, chunk_sz, CNXK_DPI_POOL_MAX_CACHE_SZ, 0, rte_socket_id(), 0);
+
+	if (dpivf->chunk_pool == NULL) {
+		plt_err("Unable to create chunkpool.");
+		return -ENOMEM;
+	}
+
+	rc = rte_mempool_set_ops_byname(dpivf->chunk_pool, rte_mbuf_platform_mempool_ops(), NULL);
+	if (rc < 0) {
+		plt_err("Unable to set chunkpool ops");
+		goto free;
+	}
+
+	rc = rte_mempool_populate_default(dpivf->chunk_pool);
+	if (rc < 0) {
+		plt_err("Unable to set populate chunkpool.");
+		goto free;
+	}
+	dpivf->aura = roc_npa_aura_handle_to_aura(dpivf->chunk_pool->pool_id);
+
+	return 0;
+
+free:
+	rte_mempool_free(dpivf->chunk_pool);
+	return rc;
+}
+
+static int
 cnxk_dmadev_configure(struct rte_dma_dev *dev, const struct rte_dma_conf *conf, uint32_t conf_sz)
 {
 	struct cnxk_dpi_vf_s *dpivf = NULL;
-	int rc = 0;
 
 	RTE_SET_USED(conf_sz);
-
 	dpivf = dev->fp_obj->dev_private;
 
-	/* Accept only number of vchans as config from application. */
-	if (!(dpivf->flag & CNXK_DPI_DEV_START)) {
-		/* After config function, vchan setup function has to be called.
-		 * Free up vchan memory if any, before configuring num_vchans.
-		 */
-		cnxk_dmadev_vchan_free(dpivf, RTE_DMA_ALL_VCHAN);
-		dpivf->num_vchans = conf->nb_vchans;
-	}
+	/* After config function, vchan setup function has to be called.
+	 * Free up vchan memory if any, before configuring num_vchans.
+	 */
+	cnxk_dmadev_vchan_free(dpivf, RTE_DMA_ALL_VCHAN);
+	dpivf->num_vchans = conf->nb_vchans;
 
-	if (dpivf->flag & CNXK_DPI_DEV_CONFIG)
-		return rc;
-
-	rc = roc_dpi_configure(&dpivf->rdpi);
-	if (rc < 0) {
-		plt_err("DMA configure failed err = %d", rc);
-		goto done;
-	}
-
-	dpivf->flag |= CNXK_DPI_DEV_CONFIG;
-
-done:
-	return rc;
+	return 0;
 }
 
 static int
@@ -116,9 +127,6 @@ cnxk_dmadev_vchan_setup(struct rte_dma_dev *dev, uint16_t vchan,
 	int i;
 
 	RTE_SET_USED(conf_sz);
-
-	if (dpivf->flag & CNXK_DPI_DEV_START)
-		return 0;
 
 	header->cn9k.pt = DPI_HDR_PT_ZBW_CA;
 
@@ -163,8 +171,8 @@ cnxk_dmadev_vchan_setup(struct rte_dma_dev *dev, uint16_t vchan,
 	if (!rte_is_power_of_2(max_desc))
 		max_desc = rte_align32pow2(max_desc);
 
-	if (max_desc > DPI_MAX_DESC)
-		max_desc = DPI_MAX_DESC;
+	if (max_desc > CNXK_DPI_MAX_DESC)
+		max_desc = CNXK_DPI_MAX_DESC;
 
 	size = (max_desc * sizeof(struct cnxk_dpi_compl_s *));
 	dpi_conf->c_desc.compl_ptr = rte_zmalloc(NULL, size, 0);
@@ -182,7 +190,7 @@ cnxk_dmadev_vchan_setup(struct rte_dma_dev *dev, uint16_t vchan,
 			return -ENOMEM;
 		}
 
-		dpi_conf->c_desc.compl_ptr[i]->cdata = DPI_REQ_CDATA;
+		dpi_conf->c_desc.compl_ptr[i]->cdata = CNXK_DPI_REQ_CDATA;
 	}
 
 	dpi_conf->c_desc.max_cnt = (max_desc - 1);
@@ -202,9 +210,6 @@ cn10k_dmadev_vchan_setup(struct rte_dma_dev *dev, uint16_t vchan,
 	int i;
 
 	RTE_SET_USED(conf_sz);
-
-	if (dpivf->flag & CNXK_DPI_DEV_START)
-		return 0;
 
 	header->cn10k.pt = DPI_HDR_PT_ZBW_CA;
 
@@ -249,8 +254,8 @@ cn10k_dmadev_vchan_setup(struct rte_dma_dev *dev, uint16_t vchan,
 	if (!rte_is_power_of_2(max_desc))
 		max_desc = rte_align32pow2(max_desc);
 
-	if (max_desc > DPI_MAX_DESC)
-		max_desc = DPI_MAX_DESC;
+	if (max_desc > CNXK_DPI_MAX_DESC)
+		max_desc = CNXK_DPI_MAX_DESC;
 
 	size = (max_desc * sizeof(struct cnxk_dpi_compl_s *));
 	dpi_conf->c_desc.compl_ptr = rte_zmalloc(NULL, size, 0);
@@ -267,7 +272,8 @@ cn10k_dmadev_vchan_setup(struct rte_dma_dev *dev, uint16_t vchan,
 			plt_err("Failed to allocate for descriptor memory");
 			return -ENOMEM;
 		}
-		dpi_conf->c_desc.compl_ptr[i]->cdata = DPI_REQ_CDATA;
+
+		dpi_conf->c_desc.compl_ptr[i]->cdata = CNXK_DPI_REQ_CDATA;
 	}
 
 	dpi_conf->c_desc.max_cnt = (max_desc - 1);
@@ -280,10 +286,9 @@ cnxk_dmadev_start(struct rte_dma_dev *dev)
 {
 	struct cnxk_dpi_vf_s *dpivf = dev->fp_obj->dev_private;
 	struct cnxk_dpi_conf *dpi_conf;
-	int i, j;
-
-	if (dpivf->flag & CNXK_DPI_DEV_START)
-		return 0;
+	uint32_t chunks, nb_desc = 0;
+	int i, j, rc = 0;
+	void *chunk;
 
 	for (i = 0; i < dpivf->num_vchans; i++) {
 		dpi_conf = &dpivf->conf[i];
@@ -292,29 +297,61 @@ cnxk_dmadev_start(struct rte_dma_dev *dev)
 		dpi_conf->pnum_words = 0;
 		dpi_conf->pending = 0;
 		dpi_conf->desc_idx = 0;
-		for (j = 0; j < dpi_conf->c_desc.max_cnt; j++) {
+		for (j = 0; j < dpi_conf->c_desc.max_cnt + 1; j++) {
 			if (dpi_conf->c_desc.compl_ptr[j])
-				dpi_conf->c_desc.compl_ptr[j]->cdata = DPI_REQ_CDATA;
+				dpi_conf->c_desc.compl_ptr[j]->cdata = CNXK_DPI_REQ_CDATA;
 		}
-
+		nb_desc += dpi_conf->c_desc.max_cnt + 1;
 		cnxk_stats_reset(dev, i);
 		dpi_conf->completed_offset = 0;
 	}
 
+	chunks = CNXK_DPI_CHUNKS_FROM_DESC(CNXK_DPI_QUEUE_BUF_SIZE, nb_desc);
+	rc = cnxk_dmadev_chunk_pool_create(dev, chunks, CNXK_DPI_QUEUE_BUF_SIZE);
+	if (rc < 0) {
+		plt_err("DMA pool configure failed err = %d", rc);
+		goto done;
+	}
+
+	rc = rte_mempool_get(dpivf->chunk_pool, &chunk);
+	if (rc < 0) {
+		plt_err("DMA failed to get chunk pointer err = %d", rc);
+		rte_mempool_free(dpivf->chunk_pool);
+		goto done;
+	}
+
+	rc = roc_dpi_configure(&dpivf->rdpi, CNXK_DPI_QUEUE_BUF_SIZE, dpivf->aura, (uint64_t)chunk);
+	if (rc < 0) {
+		plt_err("DMA configure failed err = %d", rc);
+		rte_mempool_free(dpivf->chunk_pool);
+		goto done;
+	}
+
+	dpivf->chunk_base = chunk;
+	dpivf->chunk_head = 0;
+	dpivf->chunk_size_m1 = (CNXK_DPI_QUEUE_BUF_SIZE >> 3) - 2;
+
 	roc_dpi_enable(&dpivf->rdpi);
 
-	dpivf->flag |= CNXK_DPI_DEV_START;
-
-	return 0;
+done:
+	return rc;
 }
 
 static int
 cnxk_dmadev_stop(struct rte_dma_dev *dev)
 {
 	struct cnxk_dpi_vf_s *dpivf = dev->fp_obj->dev_private;
+	uint64_t reg;
+
+	reg = plt_read64(dpivf->rdpi.rbase + DPI_VDMA_SADDR);
+	while (!(reg & BIT_ULL(63)))
+		reg = plt_read64(dpivf->rdpi.rbase + DPI_VDMA_SADDR);
 
 	roc_dpi_disable(&dpivf->rdpi);
-	dpivf->flag &= ~CNXK_DPI_DEV_START;
+	rte_mempool_free(dpivf->chunk_pool);
+	dpivf->chunk_pool = NULL;
+	dpivf->chunk_base = NULL;
+	dpivf->chunk_size_m1 = 0;
 
 	return 0;
 }
@@ -335,7 +372,7 @@ cnxk_dmadev_close(struct rte_dma_dev *dev)
 }
 
 static inline int
-__dpi_queue_write(struct roc_dpi *dpi, uint64_t *cmds, int cmd_count)
+__dpi_queue_write(struct cnxk_dpi_vf_s *dpi, uint64_t *cmds, int cmd_count)
 {
 	uint64_t *ptr = dpi->chunk_base;
 
@@ -346,31 +383,25 @@ __dpi_queue_write(struct roc_dpi *dpi, uint64_t *cmds, int cmd_count)
 	 * Normally there is plenty of room in the current buffer for the
 	 * command
 	 */
-	if (dpi->chunk_head + cmd_count < dpi->pool_size_m1) {
+	if (dpi->chunk_head + cmd_count < dpi->chunk_size_m1) {
 		ptr += dpi->chunk_head;
 		dpi->chunk_head += cmd_count;
 		while (cmd_count--)
 			*ptr++ = *cmds++;
 	} else {
+		uint64_t *new_buff = NULL;
 		int count;
-		uint64_t *new_buff = dpi->chunk_next;
 
-		dpi->chunk_next = (void *)roc_npa_aura_op_alloc(dpi->aura_handle, 0);
-		if (!dpi->chunk_next) {
-			plt_dp_dbg("Failed to alloc next buffer from NPA");
-
-			/* NPA failed to allocate a buffer. Restoring chunk_next
-			 * to its original address.
-			 */
-			dpi->chunk_next = new_buff;
-			return -ENOSPC;
+		if (rte_mempool_get(dpi->chunk_pool, (void **)&new_buff) < 0) {
+			plt_dpi_dbg("Failed to alloc next buffer from NPA");
+			return -ENOMEM;
 		}
 
 		/*
 		 * Figure out how many cmd words will fit in this buffer.
 		 * One location will be needed for the next buffer pointer.
 		 */
-		count = dpi->pool_size_m1 - dpi->chunk_head;
+		count = dpi->chunk_size_m1 - dpi->chunk_head;
 		ptr += dpi->chunk_head;
 		cmd_count -= count;
 		while (count--)
@@ -395,17 +426,10 @@ __dpi_queue_write(struct roc_dpi *dpi, uint64_t *cmds, int cmd_count)
 			*ptr++ = *cmds++;
 
 		/* queue index may be greater than pool size */
-		if (dpi->chunk_head >= dpi->pool_size_m1) {
-			new_buff = dpi->chunk_next;
-			dpi->chunk_next = (void *)roc_npa_aura_op_alloc(dpi->aura_handle, 0);
-			if (!dpi->chunk_next) {
-				plt_dp_dbg("Failed to alloc next buffer from NPA");
-
-				/* NPA failed to allocate a buffer. Restoring chunk_next
-				 * to its original address.
-				 */
-				dpi->chunk_next = new_buff;
-				return -ENOSPC;
+		if (dpi->chunk_head == dpi->chunk_size_m1) {
+			if (rte_mempool_get(dpi->chunk_pool, (void **)&new_buff) < 0) {
+				plt_dpi_dbg("Failed to alloc next buffer from NPA");
+				return -ENOMEM;
 			}
 
 			/* Write next buffer address */
@@ -433,10 +457,10 @@ cnxk_dmadev_copy(void *dev_private, uint16_t vchan, rte_iova_t src, rte_iova_t d
 
 	comp_ptr = dpi_conf->c_desc.compl_ptr[dpi_conf->c_desc.tail];
 	header->cn9k.ptr = (uint64_t)comp_ptr;
-	STRM_INC(dpi_conf->c_desc, tail);
+	CNXK_DPI_STRM_INC(dpi_conf->c_desc, tail);
 
 	if (unlikely(dpi_conf->c_desc.tail == dpi_conf->c_desc.head)) {
-		STRM_DEC(dpi_conf->c_desc, tail);
+		CNXK_DPI_STRM_DEC(dpi_conf->c_desc, tail);
 		return -ENOSPC;
 	}
 
@@ -465,9 +489,9 @@ cnxk_dmadev_copy(void *dev_private, uint16_t vchan, rte_iova_t src, rte_iova_t d
 	cmd[num_words++] = length;
 	cmd[num_words++] = lptr;
 
-	rc = __dpi_queue_write(&dpivf->rdpi, cmd, num_words);
+	rc = __dpi_queue_write(dpivf, cmd, num_words);
 	if (unlikely(rc)) {
-		STRM_DEC(dpi_conf->c_desc, tail);
+		CNXK_DPI_STRM_DEC(dpi_conf->c_desc, tail);
 		return rc;
 	}
 
@@ -498,10 +522,10 @@ cnxk_dmadev_copy_sg(void *dev_private, uint16_t vchan, const struct rte_dma_sge 
 
 	comp_ptr = dpi_conf->c_desc.compl_ptr[dpi_conf->c_desc.tail];
 	header->cn9k.ptr = (uint64_t)comp_ptr;
-	STRM_INC(dpi_conf->c_desc, tail);
+	CNXK_DPI_STRM_INC(dpi_conf->c_desc, tail);
 
 	if (unlikely(dpi_conf->c_desc.tail == dpi_conf->c_desc.head)) {
-		STRM_DEC(dpi_conf->c_desc, tail);
+		CNXK_DPI_STRM_DEC(dpi_conf->c_desc, tail);
 		return -ENOSPC;
 	}
 
@@ -510,13 +534,13 @@ cnxk_dmadev_copy_sg(void *dev_private, uint16_t vchan, const struct rte_dma_sge 
 	 * For all other cases, src pointers are first pointers.
 	 */
 	if (header->cn9k.xtype == DPI_XTYPE_INBOUND) {
-		header->cn9k.nfst = nb_dst & DPI_MAX_POINTER;
-		header->cn9k.nlst = nb_src & DPI_MAX_POINTER;
+		header->cn9k.nfst = nb_dst & CNXK_DPI_MAX_POINTER;
+		header->cn9k.nlst = nb_src & CNXK_DPI_MAX_POINTER;
 		fptr = &dst[0];
 		lptr = &src[0];
 	} else {
-		header->cn9k.nfst = nb_src & DPI_MAX_POINTER;
-		header->cn9k.nlst = nb_dst & DPI_MAX_POINTER;
+		header->cn9k.nfst = nb_src & CNXK_DPI_MAX_POINTER;
+		header->cn9k.nlst = nb_dst & CNXK_DPI_MAX_POINTER;
 		fptr = &src[0];
 		lptr = &dst[0];
 	}
@@ -537,9 +561,9 @@ cnxk_dmadev_copy_sg(void *dev_private, uint16_t vchan, const struct rte_dma_sge 
 		lptr++;
 	}
 
-	rc = __dpi_queue_write(&dpivf->rdpi, cmd, num_words);
+	rc = __dpi_queue_write(dpivf, cmd, num_words);
 	if (unlikely(rc)) {
-		STRM_DEC(dpi_conf->c_desc, tail);
+		CNXK_DPI_STRM_DEC(dpi_conf->c_desc, tail);
 		return rc;
 	}
 
@@ -570,10 +594,10 @@ cn10k_dmadev_copy(void *dev_private, uint16_t vchan, rte_iova_t src, rte_iova_t 
 
 	comp_ptr = dpi_conf->c_desc.compl_ptr[dpi_conf->c_desc.tail];
 	header->cn10k.ptr = (uint64_t)comp_ptr;
-	STRM_INC(dpi_conf->c_desc, tail);
+	CNXK_DPI_STRM_INC(dpi_conf->c_desc, tail);
 
 	if (unlikely(dpi_conf->c_desc.tail == dpi_conf->c_desc.head)) {
-		STRM_DEC(dpi_conf->c_desc, tail);
+		CNXK_DPI_STRM_DEC(dpi_conf->c_desc, tail);
 		return -ENOSPC;
 	}
 
@@ -593,9 +617,9 @@ cn10k_dmadev_copy(void *dev_private, uint16_t vchan, rte_iova_t src, rte_iova_t 
 	cmd[num_words++] = length;
 	cmd[num_words++] = lptr;
 
-	rc = __dpi_queue_write(&dpivf->rdpi, cmd, num_words);
+	rc = __dpi_queue_write(dpivf, cmd, num_words);
 	if (unlikely(rc)) {
-		STRM_DEC(dpi_conf->c_desc, tail);
+		CNXK_DPI_STRM_DEC(dpi_conf->c_desc, tail);
 		return rc;
 	}
 
@@ -627,15 +651,15 @@ cn10k_dmadev_copy_sg(void *dev_private, uint16_t vchan, const struct rte_dma_sge
 
 	comp_ptr = dpi_conf->c_desc.compl_ptr[dpi_conf->c_desc.tail];
 	header->cn10k.ptr = (uint64_t)comp_ptr;
-	STRM_INC(dpi_conf->c_desc, tail);
+	CNXK_DPI_STRM_INC(dpi_conf->c_desc, tail);
 
 	if (unlikely(dpi_conf->c_desc.tail == dpi_conf->c_desc.head)) {
-		STRM_DEC(dpi_conf->c_desc, tail);
+		CNXK_DPI_STRM_DEC(dpi_conf->c_desc, tail);
 		return -ENOSPC;
 	}
 
-	header->cn10k.nfst = nb_src & DPI_MAX_POINTER;
-	header->cn10k.nlst = nb_dst & DPI_MAX_POINTER;
+	header->cn10k.nfst = nb_src & CNXK_DPI_MAX_POINTER;
+	header->cn10k.nlst = nb_dst & CNXK_DPI_MAX_POINTER;
 	fptr = &src[0];
 	lptr = &dst[0];
 
@@ -656,9 +680,9 @@ cn10k_dmadev_copy_sg(void *dev_private, uint16_t vchan, const struct rte_dma_sge
 		lptr++;
 	}
 
-	rc = __dpi_queue_write(&dpivf->rdpi, cmd, num_words);
+	rc = __dpi_queue_write(dpivf, cmd, num_words);
 	if (unlikely(rc)) {
-		STRM_DEC(dpi_conf->c_desc, tail);
+		CNXK_DPI_STRM_DEC(dpi_conf->c_desc, tail);
 		return rc;
 	}
 
@@ -688,16 +712,16 @@ cnxk_dmadev_completed(void *dev_private, uint16_t vchan, const uint16_t nb_cpls,
 		comp_ptr = c_desc->compl_ptr[c_desc->head];
 
 		if (comp_ptr->cdata) {
-			if (comp_ptr->cdata == DPI_REQ_CDATA)
+			if (comp_ptr->cdata == CNXK_DPI_REQ_CDATA)
 				break;
 			*has_error = 1;
 			dpi_conf->stats.errors++;
-			STRM_INC(*c_desc, head);
+			CNXK_DPI_STRM_INC(*c_desc, head);
 			break;
 		}
 
-		comp_ptr->cdata = DPI_REQ_CDATA;
-		STRM_INC(*c_desc, head);
+		comp_ptr->cdata = CNXK_DPI_REQ_CDATA;
+		CNXK_DPI_STRM_INC(*c_desc, head);
 	}
 
 	dpi_conf->stats.completed += cnt;
@@ -720,13 +744,13 @@ cnxk_dmadev_completed_status(void *dev_private, uint16_t vchan, const uint16_t n
 		comp_ptr = c_desc->compl_ptr[c_desc->head];
 		status[cnt] = comp_ptr->cdata;
 		if (status[cnt]) {
-			if (status[cnt] == DPI_REQ_CDATA)
+			if (status[cnt] == CNXK_DPI_REQ_CDATA)
 				break;
 
 			dpi_conf->stats.errors++;
 		}
-		comp_ptr->cdata = DPI_REQ_CDATA;
-		STRM_INC(*c_desc, head);
+		comp_ptr->cdata = CNXK_DPI_REQ_CDATA;
+		CNXK_DPI_STRM_INC(*c_desc, head);
 	}
 
 	dpi_conf->stats.completed += cnt;
@@ -794,7 +818,7 @@ cnxk_stats_get(const struct rte_dma_dev *dev, uint16_t vchan, struct rte_dma_sta
 		goto done;
 	}
 
-	if (vchan >= MAX_VCHANS_PER_QUEUE)
+	if (vchan >= CNXK_DPI_MAX_VCHANS_PER_QUEUE)
 		return -EINVAL;
 
 	dpi_conf = &dpivf->conf[vchan];
@@ -822,7 +846,7 @@ cnxk_stats_reset(struct rte_dma_dev *dev, uint16_t vchan)
 		return 0;
 	}
 
-	if (vchan >= MAX_VCHANS_PER_QUEUE)
+	if (vchan >= CNXK_DPI_MAX_VCHANS_PER_QUEUE)
 		return -EINVAL;
 
 	dpi_conf = &dpivf->conf[vchan];
