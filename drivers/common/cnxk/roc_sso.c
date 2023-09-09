@@ -5,7 +5,8 @@
 #include "roc_api.h"
 #include "roc_priv.h"
 
-#define SSO_XAQ_CACHE_CNT (0x7)
+#define SSO_XAQ_CACHE_CNT (0x3)
+#define SSO_XAQ_RSVD_CNT  (0x4)
 #define SSO_XAQ_SLACK	  (16)
 
 /* Private functions. */
@@ -530,6 +531,7 @@ sso_hwgrp_init_xaq_aura(struct dev *dev, struct roc_sso_xaq_data *xaq,
 	 * pipelining.
 	 */
 	xaq->nb_xaq = (SSO_XAQ_CACHE_CNT * nb_hwgrp);
+	xaq->nb_xaq += (SSO_XAQ_RSVD_CNT * nb_hwgrp);
 	xaq->nb_xaq += PLT_MAX(1 + ((xaq->nb_xae - 1) / xae_waes), xaq->nb_xaq);
 	xaq->nb_xaq += SSO_XAQ_SLACK;
 
@@ -573,8 +575,7 @@ sso_hwgrp_init_xaq_aura(struct dev *dev, struct roc_sso_xaq_data *xaq,
 	 * There should be a minimum headroom of 7 XAQs per HWGRP for SSO
 	 * to request XAQ to cache them even before enqueue is called.
 	 */
-	xaq->xaq_lmt =
-		xaq->nb_xaq - (nb_hwgrp * SSO_XAQ_CACHE_CNT) - SSO_XAQ_SLACK;
+	xaq->xaq_lmt = xaq->nb_xaq - (nb_hwgrp * SSO_XAQ_CACHE_CNT) - SSO_XAQ_SLACK;
 
 	return 0;
 npa_fill_fail:
