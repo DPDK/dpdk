@@ -204,12 +204,14 @@ cn10k_sso_hws_reset(void *arg, void *hws)
 			cnxk_sso_hws_swtag_untag(base +
 						 SSOW_LF_GWS_OP_SWTAG_UNTAG);
 		plt_write64(0, base + SSOW_LF_GWS_OP_DESCHED);
+	} else if (pend_tt != SSO_TT_EMPTY) {
+		plt_write64(0, base + SSOW_LF_GWS_OP_SWTAG_FLUSH);
 	}
 
 	/* Wait for desched to complete. */
 	do {
 		pend_state = plt_read64(base + SSOW_LF_GWS_PENDSTATE);
-	} while (pend_state & BIT_ULL(58));
+	} while (pend_state & (BIT_ULL(58) | BIT_ULL(56)));
 
 	switch (dev->gw_mode) {
 	case CN10K_GW_MODE_PREF:
@@ -587,11 +589,16 @@ cn10k_sso_port_quiesce(struct rte_eventdev *event_dev, void *port,
 
 	cn10k_sso_hws_get_work_empty(ws, &ev,
 				     (NIX_RX_OFFLOAD_MAX - 1) | NIX_RX_REAS_F | NIX_RX_MULTI_SEG_F);
-	if (is_pend && ev.u64) {
+	if (is_pend && ev.u64)
 		if (flush_cb)
 			flush_cb(event_dev->data->dev_id, ev, args);
+	ptag = (plt_read64(ws->base + SSOW_LF_GWS_TAG) >> 32) & SSO_TT_EMPTY;
+	if (ptag != SSO_TT_EMPTY)
 		cnxk_sso_hws_swtag_flush(ws->base);
-	}
+
+	do {
+		ptag = plt_read64(ws->base + SSOW_LF_GWS_PENDSTATE);
+	} while (ptag & BIT_ULL(56));
 
 	/* Check if we have work in PRF_WQE0, if so extract it. */
 	switch (dev->gw_mode) {
@@ -615,8 +622,11 @@ cn10k_sso_port_quiesce(struct rte_eventdev *event_dev, void *port,
 		if (ev.u64) {
 			if (flush_cb)
 				flush_cb(event_dev->data->dev_id, ev, args);
-			cnxk_sso_hws_swtag_flush(ws->base);
 		}
+		cnxk_sso_hws_swtag_flush(ws->base);
+		do {
+			ptag = plt_read64(ws->base + SSOW_LF_GWS_PENDSTATE);
+		} while (ptag & BIT_ULL(56));
 	}
 	ws->swtag_req = 0;
 	plt_write64(0, ws->base + SSOW_LF_GWS_OP_GWC_INVAL);
