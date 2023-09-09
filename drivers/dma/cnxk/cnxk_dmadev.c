@@ -115,19 +115,9 @@ cnxk_dmadev_configure(struct rte_dma_dev *dev, const struct rte_dma_conf *conf, 
 	return 0;
 }
 
-static int
-cnxk_dmadev_vchan_setup(struct rte_dma_dev *dev, uint16_t vchan,
-			const struct rte_dma_vchan_conf *conf, uint32_t conf_sz)
+static void
+cn9k_dmadev_setup_hdr(union cnxk_dpi_instr_cmd *header, const struct rte_dma_vchan_conf *conf)
 {
-	struct cnxk_dpi_vf_s *dpivf = dev->fp_obj->dev_private;
-	struct cnxk_dpi_conf *dpi_conf = &dpivf->conf[vchan];
-	union dpi_instr_hdr_s *header = &dpi_conf->hdr;
-	uint16_t max_desc;
-	uint32_t size;
-	int i;
-
-	RTE_SET_USED(conf_sz);
-
 	header->cn9k.pt = DPI_HDR_PT_ZBW_CA;
 
 	switch (conf->direction) {
@@ -163,54 +153,11 @@ cnxk_dmadev_vchan_setup(struct rte_dma_dev *dev, uint16_t vchan,
 		header->cn9k.fport = conf->dst_port.pcie.coreid;
 		header->cn9k.pvfe = 0;
 	};
-
-	/* Free up descriptor memory before allocating. */
-	cnxk_dmadev_vchan_free(dpivf, vchan);
-
-	max_desc = conf->nb_desc;
-	if (!rte_is_power_of_2(max_desc))
-		max_desc = rte_align32pow2(max_desc);
-
-	if (max_desc > CNXK_DPI_MAX_DESC)
-		max_desc = CNXK_DPI_MAX_DESC;
-
-	size = (max_desc * sizeof(struct cnxk_dpi_compl_s *));
-	dpi_conf->c_desc.compl_ptr = rte_zmalloc(NULL, size, 0);
-
-	if (dpi_conf->c_desc.compl_ptr == NULL) {
-		plt_err("Failed to allocate for comp_data");
-		return -ENOMEM;
-	}
-
-	for (i = 0; i < max_desc; i++) {
-		dpi_conf->c_desc.compl_ptr[i] =
-			rte_zmalloc(NULL, sizeof(struct cnxk_dpi_compl_s), 0);
-		if (!dpi_conf->c_desc.compl_ptr[i]) {
-			plt_err("Failed to allocate for descriptor memory");
-			return -ENOMEM;
-		}
-
-		dpi_conf->c_desc.compl_ptr[i]->cdata = CNXK_DPI_REQ_CDATA;
-	}
-
-	dpi_conf->c_desc.max_cnt = (max_desc - 1);
-
-	return 0;
 }
 
-static int
-cn10k_dmadev_vchan_setup(struct rte_dma_dev *dev, uint16_t vchan,
-			 const struct rte_dma_vchan_conf *conf, uint32_t conf_sz)
+static void
+cn10k_dmadev_setup_hdr(union cnxk_dpi_instr_cmd *header, const struct rte_dma_vchan_conf *conf)
 {
-	struct cnxk_dpi_vf_s *dpivf = dev->fp_obj->dev_private;
-	struct cnxk_dpi_conf *dpi_conf = &dpivf->conf[vchan];
-	union dpi_instr_hdr_s *header = &dpi_conf->hdr;
-	uint16_t max_desc;
-	uint32_t size;
-	int i;
-
-	RTE_SET_USED(conf_sz);
-
 	header->cn10k.pt = DPI_HDR_PT_ZBW_CA;
 
 	switch (conf->direction) {
@@ -246,6 +193,27 @@ cn10k_dmadev_vchan_setup(struct rte_dma_dev *dev, uint16_t vchan,
 		header->cn10k.fport = conf->dst_port.pcie.coreid;
 		header->cn10k.pvfe = 0;
 	};
+}
+
+static int
+cnxk_dmadev_vchan_setup(struct rte_dma_dev *dev, uint16_t vchan,
+			const struct rte_dma_vchan_conf *conf, uint32_t conf_sz)
+{
+	struct cnxk_dpi_vf_s *dpivf = dev->fp_obj->dev_private;
+	struct cnxk_dpi_conf *dpi_conf = &dpivf->conf[vchan];
+	union cnxk_dpi_instr_cmd *header;
+	uint16_t max_desc;
+	uint32_t size;
+	int i;
+
+	RTE_SET_USED(conf_sz);
+
+	header = (union cnxk_dpi_instr_cmd *)&dpi_conf->cmd.u;
+
+	if (dpivf->is_cn10k)
+		cn10k_dmadev_setup_hdr(header, conf);
+	else
+		cn9k_dmadev_setup_hdr(header, conf);
 
 	/* Free up descriptor memory before allocating. */
 	cnxk_dmadev_vchan_free(dpivf, vchan);
@@ -369,333 +337,6 @@ cnxk_dmadev_close(struct rte_dma_dev *dev)
 	dpivf->flag = 0;
 
 	return 0;
-}
-
-static inline int
-__dpi_queue_write(struct cnxk_dpi_vf_s *dpi, uint64_t *cmds, int cmd_count)
-{
-	uint64_t *ptr = dpi->chunk_base;
-
-	if ((cmd_count < DPI_MIN_CMD_SIZE) || (cmd_count > DPI_MAX_CMD_SIZE) || cmds == NULL)
-		return -EINVAL;
-
-	/*
-	 * Normally there is plenty of room in the current buffer for the
-	 * command
-	 */
-	if (dpi->chunk_head + cmd_count < dpi->chunk_size_m1) {
-		ptr += dpi->chunk_head;
-		dpi->chunk_head += cmd_count;
-		while (cmd_count--)
-			*ptr++ = *cmds++;
-	} else {
-		uint64_t *new_buff = NULL;
-		int count;
-
-		if (rte_mempool_get(dpi->chunk_pool, (void **)&new_buff) < 0) {
-			plt_dpi_dbg("Failed to alloc next buffer from NPA");
-			return -ENOMEM;
-		}
-
-		/*
-		 * Figure out how many cmd words will fit in this buffer.
-		 * One location will be needed for the next buffer pointer.
-		 */
-		count = dpi->chunk_size_m1 - dpi->chunk_head;
-		ptr += dpi->chunk_head;
-		cmd_count -= count;
-		while (count--)
-			*ptr++ = *cmds++;
-
-		/*
-		 * chunk next ptr is 2 DWORDS
-		 * second DWORD is reserved.
-		 */
-		*ptr++ = (uint64_t)new_buff;
-		*ptr = 0;
-
-		/*
-		 * The current buffer is full and has a link to the next
-		 * buffers. Time to write the rest of the commands into the new
-		 * buffer.
-		 */
-		dpi->chunk_base = new_buff;
-		dpi->chunk_head = cmd_count;
-		ptr = new_buff;
-		while (cmd_count--)
-			*ptr++ = *cmds++;
-
-		/* queue index may be greater than pool size */
-		if (dpi->chunk_head == dpi->chunk_size_m1) {
-			if (rte_mempool_get(dpi->chunk_pool, (void **)&new_buff) < 0) {
-				plt_dpi_dbg("Failed to alloc next buffer from NPA");
-				return -ENOMEM;
-			}
-
-			/* Write next buffer address */
-			*ptr = (uint64_t)new_buff;
-			dpi->chunk_base = new_buff;
-			dpi->chunk_head = 0;
-		}
-	}
-
-	return 0;
-}
-
-static int
-cnxk_dmadev_copy(void *dev_private, uint16_t vchan, rte_iova_t src, rte_iova_t dst, uint32_t length,
-		 uint64_t flags)
-{
-	struct cnxk_dpi_vf_s *dpivf = dev_private;
-	struct cnxk_dpi_conf *dpi_conf = &dpivf->conf[vchan];
-	union dpi_instr_hdr_s *header = &dpi_conf->hdr;
-	struct cnxk_dpi_compl_s *comp_ptr;
-	uint64_t cmd[DPI_MAX_CMD_SIZE];
-	rte_iova_t fptr, lptr;
-	int num_words = 0;
-	int rc;
-
-	comp_ptr = dpi_conf->c_desc.compl_ptr[dpi_conf->c_desc.tail];
-	header->cn9k.ptr = (uint64_t)comp_ptr;
-	CNXK_DPI_STRM_INC(dpi_conf->c_desc, tail);
-
-	if (unlikely(dpi_conf->c_desc.tail == dpi_conf->c_desc.head)) {
-		CNXK_DPI_STRM_DEC(dpi_conf->c_desc, tail);
-		return -ENOSPC;
-	}
-
-	header->cn9k.nfst = 1;
-	header->cn9k.nlst = 1;
-
-	/*
-	 * For inbound case, src pointers are last pointers.
-	 * For all other cases, src pointers are first pointers.
-	 */
-	if (header->cn9k.xtype == DPI_XTYPE_INBOUND) {
-		fptr = dst;
-		lptr = src;
-	} else {
-		fptr = src;
-		lptr = dst;
-	}
-
-	cmd[0] = header->u[0];
-	cmd[1] = header->u[1];
-	cmd[2] = header->u[2];
-	/* word3 is always 0 */
-	num_words += 4;
-	cmd[num_words++] = length;
-	cmd[num_words++] = fptr;
-	cmd[num_words++] = length;
-	cmd[num_words++] = lptr;
-
-	rc = __dpi_queue_write(dpivf, cmd, num_words);
-	if (unlikely(rc)) {
-		CNXK_DPI_STRM_DEC(dpi_conf->c_desc, tail);
-		return rc;
-	}
-
-	if (flags & RTE_DMA_OP_FLAG_SUBMIT) {
-		rte_wmb();
-		plt_write64(num_words, dpivf->rdpi.rbase + DPI_VDMA_DBELL);
-		dpi_conf->stats.submitted++;
-	} else {
-		dpi_conf->pnum_words += num_words;
-		dpi_conf->pending++;
-	}
-
-	return dpi_conf->desc_idx++;
-}
-
-static int
-cnxk_dmadev_copy_sg(void *dev_private, uint16_t vchan, const struct rte_dma_sge *src,
-		    const struct rte_dma_sge *dst, uint16_t nb_src, uint16_t nb_dst, uint64_t flags)
-{
-	struct cnxk_dpi_vf_s *dpivf = dev_private;
-	struct cnxk_dpi_conf *dpi_conf = &dpivf->conf[vchan];
-	union dpi_instr_hdr_s *header = &dpi_conf->hdr;
-	const struct rte_dma_sge *fptr, *lptr;
-	struct cnxk_dpi_compl_s *comp_ptr;
-	uint64_t cmd[DPI_MAX_CMD_SIZE];
-	int num_words = 0;
-	int i, rc;
-
-	comp_ptr = dpi_conf->c_desc.compl_ptr[dpi_conf->c_desc.tail];
-	header->cn9k.ptr = (uint64_t)comp_ptr;
-	CNXK_DPI_STRM_INC(dpi_conf->c_desc, tail);
-
-	if (unlikely(dpi_conf->c_desc.tail == dpi_conf->c_desc.head)) {
-		CNXK_DPI_STRM_DEC(dpi_conf->c_desc, tail);
-		return -ENOSPC;
-	}
-
-	/*
-	 * For inbound case, src pointers are last pointers.
-	 * For all other cases, src pointers are first pointers.
-	 */
-	if (header->cn9k.xtype == DPI_XTYPE_INBOUND) {
-		header->cn9k.nfst = nb_dst & CNXK_DPI_MAX_POINTER;
-		header->cn9k.nlst = nb_src & CNXK_DPI_MAX_POINTER;
-		fptr = &dst[0];
-		lptr = &src[0];
-	} else {
-		header->cn9k.nfst = nb_src & CNXK_DPI_MAX_POINTER;
-		header->cn9k.nlst = nb_dst & CNXK_DPI_MAX_POINTER;
-		fptr = &src[0];
-		lptr = &dst[0];
-	}
-
-	cmd[0] = header->u[0];
-	cmd[1] = header->u[1];
-	cmd[2] = header->u[2];
-	num_words += 4;
-	for (i = 0; i < header->cn9k.nfst; i++) {
-		cmd[num_words++] = (uint64_t)fptr->length;
-		cmd[num_words++] = fptr->addr;
-		fptr++;
-	}
-
-	for (i = 0; i < header->cn9k.nlst; i++) {
-		cmd[num_words++] = (uint64_t)lptr->length;
-		cmd[num_words++] = lptr->addr;
-		lptr++;
-	}
-
-	rc = __dpi_queue_write(dpivf, cmd, num_words);
-	if (unlikely(rc)) {
-		CNXK_DPI_STRM_DEC(dpi_conf->c_desc, tail);
-		return rc;
-	}
-
-	if (flags & RTE_DMA_OP_FLAG_SUBMIT) {
-		rte_wmb();
-		plt_write64(num_words, dpivf->rdpi.rbase + DPI_VDMA_DBELL);
-		dpi_conf->stats.submitted++;
-	} else {
-		dpi_conf->pnum_words += num_words;
-		dpi_conf->pending++;
-	}
-
-	return dpi_conf->desc_idx++;
-}
-
-static int
-cn10k_dmadev_copy(void *dev_private, uint16_t vchan, rte_iova_t src, rte_iova_t dst,
-		  uint32_t length, uint64_t flags)
-{
-	struct cnxk_dpi_vf_s *dpivf = dev_private;
-	struct cnxk_dpi_conf *dpi_conf = &dpivf->conf[vchan];
-	union dpi_instr_hdr_s *header = &dpi_conf->hdr;
-	struct cnxk_dpi_compl_s *comp_ptr;
-	uint64_t cmd[DPI_MAX_CMD_SIZE];
-	rte_iova_t fptr, lptr;
-	int num_words = 0;
-	int rc;
-
-	comp_ptr = dpi_conf->c_desc.compl_ptr[dpi_conf->c_desc.tail];
-	header->cn10k.ptr = (uint64_t)comp_ptr;
-	CNXK_DPI_STRM_INC(dpi_conf->c_desc, tail);
-
-	if (unlikely(dpi_conf->c_desc.tail == dpi_conf->c_desc.head)) {
-		CNXK_DPI_STRM_DEC(dpi_conf->c_desc, tail);
-		return -ENOSPC;
-	}
-
-	header->cn10k.nfst = 1;
-	header->cn10k.nlst = 1;
-
-	fptr = src;
-	lptr = dst;
-
-	cmd[0] = header->u[0];
-	cmd[1] = header->u[1];
-	cmd[2] = header->u[2];
-	/* word3 is always 0 */
-	num_words += 4;
-	cmd[num_words++] = length;
-	cmd[num_words++] = fptr;
-	cmd[num_words++] = length;
-	cmd[num_words++] = lptr;
-
-	rc = __dpi_queue_write(dpivf, cmd, num_words);
-	if (unlikely(rc)) {
-		CNXK_DPI_STRM_DEC(dpi_conf->c_desc, tail);
-		return rc;
-	}
-
-	if (flags & RTE_DMA_OP_FLAG_SUBMIT) {
-		rte_wmb();
-		plt_write64(num_words, dpivf->rdpi.rbase + DPI_VDMA_DBELL);
-		dpi_conf->stats.submitted++;
-	} else {
-		dpi_conf->pnum_words += num_words;
-		dpi_conf->pending++;
-	}
-
-	return dpi_conf->desc_idx++;
-}
-
-static int
-cn10k_dmadev_copy_sg(void *dev_private, uint16_t vchan, const struct rte_dma_sge *src,
-		     const struct rte_dma_sge *dst, uint16_t nb_src, uint16_t nb_dst,
-		     uint64_t flags)
-{
-	struct cnxk_dpi_vf_s *dpivf = dev_private;
-	struct cnxk_dpi_conf *dpi_conf = &dpivf->conf[vchan];
-	union dpi_instr_hdr_s *header = &dpi_conf->hdr;
-	const struct rte_dma_sge *fptr, *lptr;
-	struct cnxk_dpi_compl_s *comp_ptr;
-	uint64_t cmd[DPI_MAX_CMD_SIZE];
-	int num_words = 0;
-	int i, rc;
-
-	comp_ptr = dpi_conf->c_desc.compl_ptr[dpi_conf->c_desc.tail];
-	header->cn10k.ptr = (uint64_t)comp_ptr;
-	CNXK_DPI_STRM_INC(dpi_conf->c_desc, tail);
-
-	if (unlikely(dpi_conf->c_desc.tail == dpi_conf->c_desc.head)) {
-		CNXK_DPI_STRM_DEC(dpi_conf->c_desc, tail);
-		return -ENOSPC;
-	}
-
-	header->cn10k.nfst = nb_src & CNXK_DPI_MAX_POINTER;
-	header->cn10k.nlst = nb_dst & CNXK_DPI_MAX_POINTER;
-	fptr = &src[0];
-	lptr = &dst[0];
-
-	cmd[0] = header->u[0];
-	cmd[1] = header->u[1];
-	cmd[2] = header->u[2];
-	num_words += 4;
-
-	for (i = 0; i < header->cn10k.nfst; i++) {
-		cmd[num_words++] = (uint64_t)fptr->length;
-		cmd[num_words++] = fptr->addr;
-		fptr++;
-	}
-
-	for (i = 0; i < header->cn10k.nlst; i++) {
-		cmd[num_words++] = (uint64_t)lptr->length;
-		cmd[num_words++] = lptr->addr;
-		lptr++;
-	}
-
-	rc = __dpi_queue_write(dpivf, cmd, num_words);
-	if (unlikely(rc)) {
-		CNXK_DPI_STRM_DEC(dpi_conf->c_desc, tail);
-		return rc;
-	}
-
-	if (flags & RTE_DMA_OP_FLAG_SUBMIT) {
-		rte_wmb();
-		plt_write64(num_words, dpivf->rdpi.rbase + DPI_VDMA_DBELL);
-		dpi_conf->stats.submitted++;
-	} else {
-		dpi_conf->pnum_words += num_words;
-		dpi_conf->pending++;
-	}
-
-	return dpi_conf->desc_idx++;
 }
 
 static uint16_t
@@ -856,17 +497,6 @@ cnxk_stats_reset(struct rte_dma_dev *dev, uint16_t vchan)
 	return 0;
 }
 
-static const struct rte_dma_dev_ops cn10k_dmadev_ops = {
-	.dev_close = cnxk_dmadev_close,
-	.dev_configure = cnxk_dmadev_configure,
-	.dev_info_get = cnxk_dmadev_info_get,
-	.dev_start = cnxk_dmadev_start,
-	.dev_stop = cnxk_dmadev_stop,
-	.stats_get = cnxk_stats_get,
-	.stats_reset = cnxk_stats_reset,
-	.vchan_setup = cn10k_dmadev_vchan_setup,
-};
-
 static const struct rte_dma_dev_ops cnxk_dmadev_ops = {
 	.dev_close = cnxk_dmadev_close,
 	.dev_configure = cnxk_dmadev_configure,
@@ -917,12 +547,8 @@ cnxk_dmadev_probe(struct rte_pci_driver *pci_drv __rte_unused, struct rte_pci_de
 	dmadev->fp_obj->completed_status = cnxk_dmadev_completed_status;
 	dmadev->fp_obj->burst_capacity = cnxk_damdev_burst_capacity;
 
-	if (pci_dev->id.subsystem_device_id == PCI_SUBSYSTEM_DEVID_CN10KA ||
-	    pci_dev->id.subsystem_device_id == PCI_SUBSYSTEM_DEVID_CN10KAS ||
-	    pci_dev->id.subsystem_device_id == PCI_SUBSYSTEM_DEVID_CNF10KA ||
-	    pci_dev->id.subsystem_device_id == PCI_SUBSYSTEM_DEVID_CNF10KB ||
-	    pci_dev->id.subsystem_device_id == PCI_SUBSYSTEM_DEVID_CN10KB) {
-		dmadev->dev_ops = &cn10k_dmadev_ops;
+	if (roc_model_is_cn10k()) {
+		dpivf->is_cn10k = true;
 		dmadev->fp_obj->copy = cn10k_dmadev_copy;
 		dmadev->fp_obj->copy_sg = cn10k_dmadev_copy_sg;
 	}
