@@ -1320,35 +1320,24 @@ mlx5dr_definer_conv_item_mpls(struct mlx5dr_definer_conv_data *cd,
 		return rte_errno;
 	}
 
-	if (cd->relaxed) {
-		DR_LOG(ERR, "Relaxed mode is not supported");
-		rte_errno = ENOTSUP;
-		return rte_errno;
-	}
+	if (!cd->relaxed) {
+		/* In order to match on MPLS we must match on ip_protocol and l4_dport. */
+		fc = &cd->fc[DR_CALC_FNAME(IP_PROTOCOL, false)];
+		if (!fc->tag_set) {
+			fc->item_idx = item_idx;
+			fc->tag_mask_set = &mlx5dr_definer_ones_set;
+			fc->tag_set = &mlx5dr_definer_udp_protocol_set;
+			DR_CALC_SET(fc, eth_l2, l4_type_bwc, false);
+		}
 
-	/* Currently support only MPLSoUDP */
-	if (cd->last_item != RTE_FLOW_ITEM_TYPE_UDP &&
-	    cd->last_item != RTE_FLOW_ITEM_TYPE_MPLS) {
-		DR_LOG(ERR, "MPLS supported only after UDP");
-		rte_errno = ENOTSUP;
-		return rte_errno;
-	}
-
-	/* In order to match on MPLS we must match on ip_protocol and l4_dport. */
-	fc = &cd->fc[DR_CALC_FNAME(IP_PROTOCOL, false)];
-	if (!fc->tag_set) {
-		fc->item_idx = item_idx;
-		fc->tag_mask_set = &mlx5dr_definer_ones_set;
-		fc->tag_set = &mlx5dr_definer_udp_protocol_set;
-		DR_CALC_SET(fc, eth_l2, l4_type_bwc, false);
-	}
-
-	fc = &cd->fc[DR_CALC_FNAME(L4_DPORT, false)];
-	if (!fc->tag_set) {
-		fc->item_idx = item_idx;
-		fc->tag_mask_set = &mlx5dr_definer_ones_set;
-		fc->tag_set = &mlx5dr_definer_mpls_udp_port_set;
-		DR_CALC_SET(fc, eth_l4, destination_port, false);
+		/* Currently support only MPLSoUDP */
+		fc = &cd->fc[DR_CALC_FNAME(L4_DPORT, false)];
+		if (!fc->tag_set) {
+			fc->item_idx = item_idx;
+			fc->tag_mask_set = &mlx5dr_definer_ones_set;
+			fc->tag_set = &mlx5dr_definer_mpls_udp_port_set;
+			DR_CALC_SET(fc, eth_l4, destination_port, false);
+		}
 	}
 
 	if (m && (!is_mem_zero(m->label_tc_s, 3) || m->ttl)) {
