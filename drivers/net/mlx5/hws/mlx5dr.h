@@ -139,6 +139,8 @@ struct mlx5dr_matcher_attr {
 			uint8_t num_log;
 		} rule;
 	};
+	/* Optional AT attach configuration - Max number of additional AT */
+	uint8_t max_num_of_at_attach;
 };
 
 struct mlx5dr_rule_attr {
@@ -327,6 +329,17 @@ mlx5dr_matcher_create(struct mlx5dr_table *table,
  * @return zero on success non zero otherwise.
  */
 int mlx5dr_matcher_destroy(struct mlx5dr_matcher *matcher);
+
+/* Attach new action template to direct rule matcher.
+ *
+ * @param[in] matcher
+ *	Matcher to attach at to.
+ * @param[in] at
+ *	Action template to be attached to the matcher.
+ * @return zero on success non zero otherwise.
+ */
+int mlx5dr_matcher_attach_at(struct mlx5dr_matcher *matcher,
+			     struct mlx5dr_action_template *at);
 
 /* Get the size of the rule handle (mlx5dr_rule) to be used on rule creation.
  *

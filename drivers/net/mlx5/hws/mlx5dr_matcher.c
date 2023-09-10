@@ -680,6 +680,30 @@ static void mlx5dr_matcher_set_pool_attr(struct mlx5dr_pool_attr *attr,
 	}
 }
 
+static int mlx5dr_matcher_check_and_process_at(struct mlx5dr_matcher *matcher,
+					       struct mlx5dr_action_template *at)
+{
+	bool valid;
+	int ret;
+
+	/* Check if action combinabtion is valid */
+	valid = mlx5dr_action_check_combo(at->action_type_arr, matcher->tbl->type);
+	if (!valid) {
+		DR_LOG(ERR, "Invalid combination in action template");
+		rte_errno = EINVAL;
+		return rte_errno;
+	}
+
+	/* Process action template to setters */
+	ret = mlx5dr_action_template_process(at);
+	if (ret) {
+		DR_LOG(ERR, "Failed to process action template");
+		return ret;
+	}
+
+	return 0;
+}
+
 static int mlx5dr_matcher_bind_at(struct mlx5dr_matcher *matcher)
 {
 	bool is_jumbo = mlx5dr_matcher_mt_is_jumbo(matcher->mt);
@@ -689,22 +713,13 @@ static int mlx5dr_matcher_bind_at(struct mlx5dr_matcher *matcher)
 	struct mlx5dr_context *ctx = tbl->ctx;
 	uint32_t required_stes;
 	int i, ret;
-	bool valid;
 
 	for (i = 0; i < matcher->num_of_at; i++) {
 		struct mlx5dr_action_template *at = &matcher->at[i];
 
-		/* Check if action combinabtion is valid */
-		valid = mlx5dr_action_check_combo(at->action_type_arr, matcher->tbl->type);
-		if (!valid) {
-			DR_LOG(ERR, "Invalid combination in action template %d", i);
-			return rte_errno;
-		}
-
-		/* Process action template to setters */
-		ret = mlx5dr_action_template_process(at);
+		ret = mlx5dr_matcher_check_and_process_at(matcher, at);
 		if (ret) {
-			DR_LOG(ERR, "Failed to process action template %d", i);
+			DR_LOG(ERR, "Invalid at %d", i);
 			return rte_errno;
 		}
 
@@ -924,6 +939,10 @@ mlx5dr_matcher_process_attr(struct mlx5dr_cmd_query_caps *caps,
 			DR_LOG(ERR, "Root matcher can't specify FDB direction");
 			goto not_supported;
 		}
+		if (attr->max_num_of_at_attach) {
+			DR_LOG(ERR, "Root matcher does not support at attaching");
+			goto not_supported;
+		}
 		return 0;
 	}
 
@@ -1038,6 +1057,8 @@ mlx5dr_matcher_create_col_matcher(struct mlx5dr_matcher *matcher)
 	col_matcher->attr.table.sz_col_log = MLX5DR_MATCHER_ASSURED_COL_TBL_DEPTH;
 	if (col_matcher->attr.table.sz_row_log > MLX5DR_MATCHER_ASSURED_ROW_RATIO)
 		col_matcher->attr.table.sz_row_log -= MLX5DR_MATCHER_ASSURED_ROW_RATIO;
+
+	col_matcher->attr.max_num_of_at_attach = matcher->attr.max_num_of_at_attach;
 
 	ret = mlx5dr_matcher_process_attr(ctx->caps, col_matcher, false);
 	if (ret)
@@ -1212,6 +1233,42 @@ static int mlx5dr_matcher_uninit_root(struct mlx5dr_matcher *matcher)
 	return ret;
 }
 
+int mlx5dr_matcher_attach_at(struct mlx5dr_matcher *matcher,
+			     struct mlx5dr_action_template *at)
+{
+	bool is_jumbo = mlx5dr_matcher_mt_is_jumbo(matcher->mt);
+	uint32_t required_stes;
+	int ret;
+
+	if (!matcher->attr.max_num_of_at_attach) {
+		DR_LOG(ERR, "Num of current at (%d) exceed allowed value",
+		       matcher->num_of_at);
+		rte_errno = ENOTSUP;
+		return -rte_errno;
+	}
+
+	ret = mlx5dr_matcher_check_and_process_at(matcher, at);
+	if (ret)
+		return -rte_errno;
+
+	required_stes = at->num_of_action_stes - (!is_jumbo || at->only_term);
+	if (matcher->action_ste.max_stes < required_stes) {
+		DR_LOG(ERR, "Required STEs [%d] exceeds initial action template STE [%d]",
+		       required_stes, matcher->action_ste.max_stes);
+		rte_errno = ENOMEM;
+		return -rte_errno;
+	}
+
+	matcher->at[matcher->num_of_at] = *at;
+	matcher->num_of_at += 1;
+	matcher->attr.max_num_of_at_attach -= 1;
+
+	if (matcher->col_matcher)
+		matcher->col_matcher->num_of_at = matcher->num_of_at;
+
+	return 0;
+}
+
 static int
 mlx5dr_matcher_set_templates(struct mlx5dr_matcher *matcher,
 			     struct mlx5dr_match_template *mt[],
@@ -1241,7 +1298,8 @@ mlx5dr_matcher_set_templates(struct mlx5dr_matcher *matcher,
 		return rte_errno;
 	}
 
-	matcher->at = simple_calloc(num_of_at, sizeof(*matcher->at));
+	matcher->at = simple_calloc(num_of_at + matcher->attr.max_num_of_at_attach,
+				    sizeof(*matcher->at));
 	if (!matcher->at) {
 		DR_LOG(ERR, "Failed to allocate action template array");
 		rte_errno = ENOMEM;
