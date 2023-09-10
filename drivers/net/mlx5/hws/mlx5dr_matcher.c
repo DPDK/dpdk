@@ -714,6 +714,9 @@ static int mlx5dr_matcher_bind_at(struct mlx5dr_matcher *matcher)
 	uint32_t required_stes;
 	int i, ret;
 
+	if (matcher->flags & MLX5DR_MATCHER_FLAGS_COLLISION)
+		return 0;
+
 	for (i = 0; i < matcher->num_of_at; i++) {
 		struct mlx5dr_action_template *at = &matcher->at[i];
 
@@ -786,7 +789,7 @@ static void mlx5dr_matcher_unbind_at(struct mlx5dr_matcher *matcher)
 {
 	struct mlx5dr_table *tbl = matcher->tbl;
 
-	if (!matcher->action_ste.max_stes)
+	if (!matcher->action_ste.max_stes || matcher->flags & MLX5DR_MATCHER_FLAGS_COLLISION)
 		return;
 
 	mlx5dr_action_free_single_stc(tbl->ctx, tbl->type, &matcher->action_ste.stc);
