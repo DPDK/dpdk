@@ -828,6 +828,7 @@ iavf_ipsec_crypto_sa_update_esn(struct iavf_adapter *adapter,
 	/* set request params */
 	request->ipsec_data.sa_update->sa_index = sess->sa.hw_idx;
 	request->ipsec_data.sa_update->esn_hi = sess->esn.hi;
+	request->ipsec_data.sa_update->esn_low = sess->esn.low;
 
 	/* send virtual channel request to add SA to hardware database */
 	rc = iavf_ipsec_crypto_request(adapter,
