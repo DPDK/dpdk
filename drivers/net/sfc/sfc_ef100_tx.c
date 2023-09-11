@@ -405,7 +405,7 @@ sfc_ef100_tx_qdesc_send_create(const struct sfc_ef100_txq *txq,
 				m->l2_len + m->l3_len) >> 1;
 	}
 
-	rc = sfc_ef100_tx_map(txq, rte_mbuf_data_iova_default(m),
+	rc = sfc_ef100_tx_map(txq, rte_mbuf_data_iova(m),
 			      rte_pktmbuf_data_len(m), &dma_addr);
 	if (unlikely(rc != 0))
 		return rc;
