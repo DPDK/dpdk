@@ -530,6 +530,7 @@ sfc_repr_dev_infos_get(struct rte_eth_dev *dev,
 
 	dev_info->device = dev->device;
 
+	dev_info->max_rx_pktlen = EFX_MAC_PDU_MAX;
 	dev_info->max_rx_queues = SFC_REPR_RXQ_MAX;
 	dev_info->max_tx_queues = SFC_REPR_TXQ_MAX;
 	dev_info->default_rxconf.rx_drop_en = 1;
