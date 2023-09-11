@@ -408,36 +408,30 @@ error:
 static int
 virtio_vdpa_virtq_disable(struct virtio_vdpa_priv *priv, int vq_idx)
 {
+	struct rte_vhost_vring vq;
 	int ret;
 
 	ret = virtio_vdpa_virtq_doorbell_relay_disable(priv, vq_idx);
 	if (ret) {
 		DRV_LOG(ERR, "%s doorbell relay disable failed ret:%d",
 						priv->vdev->device->name, ret);
-		return ret;
-	}
-
-	priv->configured ? virtio_pci_dev_queue_del(priv->vpdev, vq_idx) :
-					virtio_pci_dev_state_queue_del(priv->vpdev, vq_idx, priv->state_mz->addr);
-
-	ret = priv->configured ? virtio_pci_dev_interrupt_disable(priv->vpdev, vq_idx + 1) :
-		virtio_pci_dev_state_interrupt_disable(priv->vpdev, vq_idx + 1, priv->state_mz->addr);
-	if (ret) {
-		DRV_LOG(ERR, "%s virtq %d interrupt disabel failed",
-						priv->vdev->device->name, vq_idx);
-		return ret;
 	}
 	priv->vrings[vq_idx]->notifier_state = VIRTIO_VDPA_NOTIFIER_STATE_DISABLED;
-	priv->vrings[vq_idx]->enable = false;
 
 	if (priv->configured) {
-		struct rte_vhost_vring vq;
+		virtio_pci_dev_queue_del(priv->vpdev, vq_idx);
 
+		if (priv->vrings[vq_idx]->vector_enable) {
+			ret = virtio_pci_dev_interrupt_disable(priv->vpdev, vq_idx + 1);
+		}
+		if (ret) {
+			DRV_LOG(ERR, "%s virtq %d interrupt disabel failed",
+							priv->vdev->device->name, vq_idx);
+		}
 		ret = rte_vhost_get_vhost_vring(priv->vid, vq_idx, &vq);
 		if (ret) {
 			DRV_LOG(ERR, "%s virtq %d fail to get hardware idx",
 							priv->vdev->device->name, vq_idx);
-			return ret;
 		}
 
 		DRV_LOG(INFO, "%s virtq %d set hardware idx:%d",
@@ -446,9 +440,13 @@ virtio_vdpa_virtq_disable(struct virtio_vdpa_priv *priv, int vq_idx)
 		if (ret) {
 			DRV_LOG(ERR, "%s virtq %d fail to set hardware idx",
 							priv->vdev->device->name, vq_idx);
-			return ret;
 		}
+	} else {
+		virtio_pci_dev_state_queue_del(priv->vpdev, vq_idx, priv->state_mz->addr);
+		virtio_pci_dev_state_interrupt_disable(priv->vpdev, vq_idx + 1, priv->state_mz->addr);
 	}
+
+	priv->vrings[vq_idx]->enable = false;
 	return 0;
 }
 
@@ -483,6 +481,8 @@ virtio_vdpa_virtq_enable(struct virtio_vdpa_priv *priv, int vq_idx)
 							priv->vdev->device->name, ret);
 			return ret;
 		}
+		if (priv->configured)
+			priv->vrings[vq_idx]->vector_enable = true;
 	} else {
 		DRV_LOG(DEBUG, "%s virtq %d call fd is -1, interrupt is disabled",
 						priv->vdev->device->name, vq_idx);
