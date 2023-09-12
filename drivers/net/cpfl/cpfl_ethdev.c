@@ -13,8 +13,10 @@
 #include <rte_hash_crc.h>
 
 #include "cpfl_ethdev.h"
+#include <ethdev_private.h>
 #include "cpfl_rxtx.h"
 
+#define CPFL_REPRESENTOR	"representor"
 #define CPFL_TX_SINGLE_Q	"tx_single"
 #define CPFL_RX_SINGLE_Q	"rx_single"
 #define CPFL_VPORT		"vport"
@@ -25,6 +27,7 @@ struct cpfl_adapter_list cpfl_adapter_list;
 bool cpfl_adapter_list_init;
 
 static const char * const cpfl_valid_args[] = {
+	CPFL_REPRESENTOR,
 	CPFL_TX_SINGLE_Q,
 	CPFL_RX_SINGLE_Q,
 	CPFL_VPORT,
@@ -1408,6 +1411,128 @@ parse_bool(const char *key, const char *value, void *args)
 }
 
 static int
+enlist(uint16_t *list, uint16_t *len_list, const uint16_t max_list, uint16_t val)
+{
+	uint16_t i;
+
+	for (i = 0; i < *len_list; i++) {
+		if (list[i] == val)
+			return 0;
+	}
+	if (*len_list >= max_list)
+		return -1;
+	list[(*len_list)++] = val;
+	return 0;
+}
+
+static const char *
+process_range(const char *str, uint16_t *list, uint16_t *len_list,
+	const uint16_t max_list)
+{
+	uint16_t lo, hi, val;
+	int result, n = 0;
+	const char *pos = str;
+
+	result = sscanf(str, "%hu%n-%hu%n", &lo, &n, &hi, &n);
+	if (result == 1) {
+		if (enlist(list, len_list, max_list, lo) != 0)
+			return NULL;
+	} else if (result == 2) {
+		if (lo > hi)
+			return NULL;
+		for (val = lo; val <= hi; val++) {
+			if (enlist(list, len_list, max_list, val) != 0)
+				return NULL;
+		}
+	} else {
+		return NULL;
+	}
+	return pos + n;
+}
+
+static const char *
+process_list(const char *str, uint16_t *list, uint16_t *len_list, const uint16_t max_list)
+{
+	const char *pos = str;
+
+	if (*pos == '[')
+		pos++;
+	while (1) {
+		pos = process_range(pos, list, len_list, max_list);
+		if (pos == NULL)
+			return NULL;
+		if (*pos != ',') /* end of list */
+			break;
+		pos++;
+	}
+	if (*str == '[' && *pos != ']')
+		return NULL;
+	if (*pos == ']')
+		pos++;
+	return pos;
+}
+
+static int
+parse_repr(const char *key __rte_unused, const char *value, void *args)
+{
+	struct cpfl_devargs *devargs = args;
+	struct rte_eth_devargs *eth_da;
+	const char *str = value;
+
+	if (devargs->repr_args_num == CPFL_REPR_ARG_NUM_MAX)
+		return -EINVAL;
+
+	eth_da = &devargs->repr_args[devargs->repr_args_num];
+
+	if (str[0] == 'c') {
+		str += 1;
+		str = process_list(str, eth_da->mh_controllers,
+				&eth_da->nb_mh_controllers,
+				RTE_DIM(eth_da->mh_controllers));
+		if (str == NULL)
+			goto done;
+	}
+	if (str[0] == 'p' && str[1] == 'f') {
+		eth_da->type = RTE_ETH_REPRESENTOR_PF;
+		str += 2;
+		str = process_list(str, eth_da->ports,
+				&eth_da->nb_ports, RTE_DIM(eth_da->ports));
+		if (str == NULL || str[0] == '\0')
+			goto done;
+	} else if (eth_da->nb_mh_controllers > 0) {
+		/* 'c' must followed by 'pf'. */
+		str = NULL;
+		goto done;
+	}
+	if (str[0] == 'v' && str[1] == 'f') {
+		eth_da->type = RTE_ETH_REPRESENTOR_VF;
+		str += 2;
+	} else if (str[0] == 's' && str[1] == 'f') {
+		eth_da->type = RTE_ETH_REPRESENTOR_SF;
+		str += 2;
+	} else {
+		/* 'pf' must followed by 'vf' or 'sf'. */
+		if (eth_da->type == RTE_ETH_REPRESENTOR_PF) {
+			str = NULL;
+			goto done;
+		}
+		eth_da->type = RTE_ETH_REPRESENTOR_VF;
+	}
+	str = process_list(str, eth_da->representor_ports,
+		&eth_da->nb_representor_ports,
+		RTE_DIM(eth_da->representor_ports));
+done:
+	if (str == NULL) {
+		RTE_LOG(ERR, EAL, "wrong representor format: %s\n", str);
+		return -1;
+	}
+
+	devargs->repr_args_num++;
+
+	return 0;
+}
+
+static int
 cpfl_parse_devargs(struct rte_pci_device *pci_dev, struct cpfl_adapter_ext *adapter)
 {
 	struct rte_devargs *devargs = pci_dev->device.devargs;
@@ -1430,6 +1555,12 @@ cpfl_parse_devargs(struct rte_pci_device *pci_dev, struct cpfl_adapter_ext *adap
 		PMD_INIT_LOG(ERR, "devarg vport is duplicated.");
 		return -EINVAL;
 	}
+
+	cpfl_args->repr_args_num = 0;
+	ret = rte_kvargs_process(kvlist, CPFL_REPRESENTOR, &parse_repr, cpfl_args);
+
+	if (ret != 0)
+		goto fail;
 
 	ret = rte_kvargs_process(kvlist, CPFL_VPORT, &parse_vport,
 				 cpfl_args);
@@ -2088,6 +2219,48 @@ cpfl_vport_devargs_process(struct cpfl_adapter_ext *adapter)
 }
 
 static int
+cpfl_repr_devargs_process(struct cpfl_adapter_ext *adapter)
+{
+	struct cpfl_devargs *devargs = &adapter->devargs;
+	int i, j;
+
+	/* check and refine repr args */
+	for (i = 0; i < devargs->repr_args_num; i++) {
+		struct rte_eth_devargs *eth_da = &devargs->repr_args[i];
+
+		/* set default host_id to xeon host */
+		if (eth_da->nb_mh_controllers == 0) {
+			eth_da->nb_mh_controllers = 1;
+			eth_da->mh_controllers[0] = CPFL_HOST_ID_HOST;
+		} else {
+			for (j = 0; j < eth_da->nb_mh_controllers; j++) {
+				if (eth_da->mh_controllers[j] > CPFL_HOST_ID_ACC) {
+					PMD_INIT_LOG(ERR, "Invalid Host ID %d",
+						     eth_da->mh_controllers[j]);
+					return -EINVAL;
+				}
+			}
+		}
+
+		/* set default pf to APF */
+		if (eth_da->nb_ports == 0) {
+			eth_da->nb_ports = 1;
+			eth_da->ports[0] = CPFL_PF_TYPE_APF;
+		} else {
+			for (j = 0; j < eth_da->nb_ports; j++) {
+				if (eth_da->ports[j] > CPFL_PF_TYPE_CPF) {
+					PMD_INIT_LOG(ERR, "Invalid Host ID %d",
+						     eth_da->ports[j]);
+					return -EINVAL;
+				}
+			}
+		}
+	}
+
+	return 0;
+}
+
+static int
 cpfl_vport_create(struct rte_pci_device *pci_dev, struct cpfl_adapter_ext *adapter)
 {
 	struct cpfl_vport_param vport_param;
@@ -2162,6 +2335,12 @@ cpfl_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	retval = cpfl_vport_create(pci_dev, adapter);
 	if (retval != 0) {
 		PMD_INIT_LOG(ERR, "Failed to create vports.");
+		goto err;
+	}
+
+	retval = cpfl_repr_devargs_process(adapter);
+	if (retval != 0) {
+		PMD_INIT_LOG(ERR, "Failed to process repr devargs");
 		goto err;
 	}
 

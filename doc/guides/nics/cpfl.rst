@@ -92,6 +92,42 @@ Runtime Configuration
   Then the PMD will configure Tx queue with single queue mode.
   Otherwise, split queue mode is chosen by default.
 
+- ``representor`` (default ``not enabled``)
+
+  The cpfl PMD supports the creation of APF/CPF/VF port representors.
+  Each port representor corresponds to a single function of that device.
+  Using the ``devargs`` option ``representor`` the user can specify
+  which functions to create port representors.
+
+  Format is::
+
+    [[c<controller_id>]pf<pf_id>]vf<vf_id>
+
+  Controller_id 0 is host (default), while 1 is accelerator core.
+  Pf_id 0 is APF (default), while 1 is CPF.
+  Default value can be omitted.
+
+  Create 4 representors for 4 vfs on host APF::
+
+    -a BDF,representor=c0pf0vf[0-3]
+
+  Or::
+
+    -a BDF,representor=pf0vf[0-3]
+
+  Or::
+
+    -a BDF,representor=vf[0-3]
+
+  Create a representor for CPF on accelerator core::
+
+    -a BDF,representor=c1pf1
+
+  Multiple representor devargs are supported. Create 4 representors for 4
+  vfs on host APF and one representor for CPF on accelerator core::
+
+    -a BDF,representor=vf[0-3],representor=c1pf1
+
 
 Driver compilation and testing
 ------------------------------

@@ -60,16 +60,24 @@
 #define IDPF_DEV_ID_CPF			0x1453
 #define VIRTCHNL2_QUEUE_GROUP_P2P	0x100
 
+#define CPFL_HOST_ID_HOST	0
+#define CPFL_HOST_ID_ACC	1
+#define CPFL_PF_TYPE_APF	0
+#define CPFL_PF_TYPE_CPF	1
+
 struct cpfl_vport_param {
 	struct cpfl_adapter_ext *adapter;
 	uint16_t devarg_id; /* arg id from user */
 	uint16_t idx;       /* index in adapter->vports[]*/
 };
 
+#define CPFL_REPR_ARG_NUM_MAX	4
 /* Struct used when parse driver specific devargs */
 struct cpfl_devargs {
 	uint16_t req_vports[CPFL_MAX_VPORT_NUM];
 	uint16_t req_vport_nb;
+	uint8_t repr_args_num;
+	struct rte_eth_devargs repr_args[CPFL_REPR_ARG_NUM_MAX];
 };
 
 struct p2p_queue_chunks_info {
