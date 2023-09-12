@@ -26,11 +26,16 @@ rte_spinlock_t cpfl_adapter_lock;
 struct cpfl_adapter_list cpfl_adapter_list;
 bool cpfl_adapter_list_init;
 
-static const char * const cpfl_valid_args[] = {
+static const char * const cpfl_valid_args_first[] = {
 	CPFL_REPRESENTOR,
 	CPFL_TX_SINGLE_Q,
 	CPFL_RX_SINGLE_Q,
 	CPFL_VPORT,
+	NULL
+};
+
+static const char * const cpfl_valid_args_again[] = {
+	CPFL_REPRESENTOR,
 	NULL
 };
 
@@ -1533,19 +1538,21 @@ done:
 }
 
 static int
-cpfl_parse_devargs(struct rte_pci_device *pci_dev, struct cpfl_adapter_ext *adapter)
+cpfl_parse_devargs(struct rte_pci_device *pci_dev, struct cpfl_adapter_ext *adapter, bool first)
 {
 	struct rte_devargs *devargs = pci_dev->device.devargs;
 	struct cpfl_devargs *cpfl_args = &adapter->devargs;
 	struct rte_kvargs *kvlist;
 	int ret;
 
-	cpfl_args->req_vport_nb = 0;
-
 	if (devargs == NULL)
 		return 0;
 
-	kvlist = rte_kvargs_parse(devargs->args, cpfl_valid_args);
+	if (first)
+		memset(cpfl_args, 0, sizeof(struct cpfl_devargs));
+
+	kvlist = rte_kvargs_parse(devargs->args,
+			first ? cpfl_valid_args_first : cpfl_valid_args_again);
 	if (kvlist == NULL) {
 		PMD_INIT_LOG(ERR, "invalid kvargs key");
 		return -EINVAL;
@@ -1556,11 +1563,13 @@ cpfl_parse_devargs(struct rte_pci_device *pci_dev, struct cpfl_adapter_ext *adap
 		return -EINVAL;
 	}
 
-	cpfl_args->repr_args_num = 0;
 	ret = rte_kvargs_process(kvlist, CPFL_REPRESENTOR, &parse_repr, cpfl_args);
 
 	if (ret != 0)
 		goto fail;
+
+	if (!first)
+		return 0;
 
 	ret = rte_kvargs_process(kvlist, CPFL_VPORT, &parse_vport,
 				 cpfl_args);
@@ -2291,17 +2300,10 @@ cpfl_vport_create(struct rte_pci_device *pci_dev, struct cpfl_adapter_ext *adapt
 }
 
 static int
-cpfl_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
-	       struct rte_pci_device *pci_dev)
+cpfl_pci_probe_first(struct rte_pci_device *pci_dev)
 {
 	struct cpfl_adapter_ext *adapter;
 	int retval;
-
-	if (!cpfl_adapter_list_init) {
-		rte_spinlock_init(&cpfl_adapter_lock);
-		TAILQ_INIT(&cpfl_adapter_list);
-		cpfl_adapter_list_init = true;
-	}
 
 	adapter = rte_zmalloc("cpfl_adapter_ext",
 			      sizeof(struct cpfl_adapter_ext), 0);
@@ -2310,7 +2312,7 @@ cpfl_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		return -ENOMEM;
 	}
 
-	retval = cpfl_parse_devargs(pci_dev, adapter);
+	retval = cpfl_parse_devargs(pci_dev, adapter, true);
 	if (retval != 0) {
 		PMD_INIT_LOG(ERR, "Failed to parse private devargs");
 		return retval;
@@ -2356,6 +2358,46 @@ err:
 }
 
 static int
+cpfl_pci_probe_again(struct rte_pci_device *pci_dev, struct cpfl_adapter_ext *adapter)
+{
+	int ret;
+
+	ret = cpfl_parse_devargs(pci_dev, adapter, false);
+	if (ret != 0) {
+		PMD_INIT_LOG(ERR, "Failed to parse private devargs");
+		return ret;
+	}
+
+	ret = cpfl_repr_devargs_process(adapter);
+	if (ret != 0) {
+		PMD_INIT_LOG(ERR, "Failed to process reprenstor devargs");
+		return ret;
+	}
+
+	return 0;
+}
+
+static int
+cpfl_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
+	       struct rte_pci_device *pci_dev)
+{
+	struct cpfl_adapter_ext *adapter;
+
+	if (!cpfl_adapter_list_init) {
+		rte_spinlock_init(&cpfl_adapter_lock);
+		TAILQ_INIT(&cpfl_adapter_list);
+		cpfl_adapter_list_init = true;
+	}
+
+	adapter = cpfl_find_adapter_ext(pci_dev);
+
+	if (adapter == NULL)
+		return cpfl_pci_probe_first(pci_dev);
+	else
+		return cpfl_pci_probe_again(pci_dev, adapter);
+}
+
+static int
 cpfl_pci_remove(struct rte_pci_device *pci_dev)
 {
 	struct cpfl_adapter_ext *adapter = cpfl_find_adapter_ext(pci_dev);
@@ -2377,7 +2419,8 @@ cpfl_pci_remove(struct rte_pci_device *pci_dev)
 
 static struct rte_pci_driver rte_cpfl_pmd = {
 	.id_table	= pci_id_cpfl_map,
-	.drv_flags	= RTE_PCI_DRV_NEED_MAPPING,
+	.drv_flags	= RTE_PCI_DRV_NEED_MAPPING |
+			  RTE_PCI_DRV_PROBE_AGAIN,
 	.probe		= cpfl_pci_probe,
 	.remove		= cpfl_pci_remove,
 };
