@@ -1803,6 +1803,9 @@ cpfl_dev_vport_init(struct rte_eth_dev *dev, void *init_params)
 		goto err;
 	}
 
+	cpfl_vport->itf.type = CPFL_ITF_TYPE_VPORT;
+	cpfl_vport->itf.adapter = adapter;
+	cpfl_vport->itf.data = dev->data;
 	adapter->vports[param->idx] = cpfl_vport;
 	adapter->cur_vports |= RTE_BIT32(param->devarg_id);
 	adapter->cur_vport_nb++;

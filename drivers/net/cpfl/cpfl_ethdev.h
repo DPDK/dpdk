@@ -86,7 +86,18 @@ struct p2p_queue_chunks_info {
 	uint32_t rx_buf_qtail_spacing;
 };
 
+enum cpfl_itf_type {
+	CPFL_ITF_TYPE_VPORT,
+};
+
+struct cpfl_itf {
+	enum cpfl_itf_type type;
+	struct cpfl_adapter_ext *adapter;
+	void *data;
+};
+
 struct cpfl_vport {
+	struct cpfl_itf itf;
 	struct idpf_vport base;
 	struct p2p_queue_chunks_info *p2p_q_chunks_info;
 
@@ -124,5 +135,9 @@ TAILQ_HEAD(cpfl_adapter_list, cpfl_adapter_ext);
 	RTE_DEV_TO_PCI((eth_dev)->device)
 #define CPFL_ADAPTER_TO_EXT(p)					\
 	container_of((p), struct cpfl_adapter_ext, base)
+#define CPFL_DEV_TO_VPORT(dev)					\
+	((struct cpfl_vport *)((dev)->data->dev_private))
+#define CPFL_DEV_TO_ITF(dev)				\
+	((struct cpfl_itf *)((dev)->data->dev_private))
 
 #endif /* _CPFL_ETHDEV_H_ */
