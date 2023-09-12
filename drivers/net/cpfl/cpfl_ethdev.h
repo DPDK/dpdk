@@ -115,6 +115,7 @@ struct cpfl_adapter_ext {
 	uint16_t cur_vport_nb;
 
 	uint16_t used_vecs_num;
+	struct cpfl_devargs devargs;
 };
 
 TAILQ_HEAD(cpfl_adapter_list, cpfl_adapter_ext);

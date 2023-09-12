@@ -1407,12 +1407,12 @@ parse_bool(const char *key, const char *value, void *args)
 }
 
 static int
-cpfl_parse_devargs(struct rte_pci_device *pci_dev, struct cpfl_adapter_ext *adapter,
-		   struct cpfl_devargs *cpfl_args)
+cpfl_parse_devargs(struct rte_pci_device *pci_dev, struct cpfl_adapter_ext *adapter)
 {
 	struct rte_devargs *devargs = pci_dev->device.devargs;
+	struct cpfl_devargs *cpfl_args = &adapter->devargs;
 	struct rte_kvargs *kvlist;
-	int i, ret;
+	int ret;
 
 	cpfl_args->req_vport_nb = 0;
 
@@ -1444,31 +1444,6 @@ cpfl_parse_devargs(struct rte_pci_device *pci_dev, struct cpfl_adapter_ext *adap
 				 &adapter->base.is_rx_singleq);
 	if (ret != 0)
 		goto fail;
-
-	/* check parsed devargs */
-	if (adapter->cur_vport_nb + cpfl_args->req_vport_nb >
-	    adapter->max_vport_nb) {
-		PMD_INIT_LOG(ERR, "Total vport number can't be > %d",
-			     adapter->max_vport_nb);
-		ret = -EINVAL;
-		goto fail;
-	}
-
-	for (i = 0; i < cpfl_args->req_vport_nb; i++) {
-		if (cpfl_args->req_vports[i] > adapter->max_vport_nb - 1) {
-			PMD_INIT_LOG(ERR, "Invalid vport id %d, it should be 0 ~ %d",
-				     cpfl_args->req_vports[i], adapter->max_vport_nb - 1);
-			ret = -EINVAL;
-			goto fail;
-		}
-
-		if (adapter->cur_vports & RTE_BIT32(cpfl_args->req_vports[i])) {
-			PMD_INIT_LOG(ERR, "Vport %d has been requested",
-				     cpfl_args->req_vports[i]);
-			ret = -EINVAL;
-			goto fail;
-		}
-	}
 
 fail:
 	rte_kvargs_free(kvlist);
@@ -1916,14 +1891,78 @@ cpfl_adapter_ext_deinit(struct cpfl_adapter_ext *adapter)
 }
 
 static int
+cpfl_vport_devargs_process(struct cpfl_adapter_ext *adapter)
+{
+	struct cpfl_devargs *devargs = &adapter->devargs;
+	int i;
+
+	/* refine vport number, at least 1 vport */
+	if (devargs->req_vport_nb == 0) {
+		devargs->req_vport_nb = 1;
+		devargs->req_vports[0] = 0;
+	}
+
+	/* check parsed devargs */
+	if (adapter->cur_vport_nb + devargs->req_vport_nb >
+	    adapter->max_vport_nb) {
+		PMD_INIT_LOG(ERR, "Total vport number can't be > %d",
+			     adapter->max_vport_nb);
+		return -EINVAL;
+	}
+
+	for (i = 0; i < devargs->req_vport_nb; i++) {
+		if (devargs->req_vports[i] > adapter->max_vport_nb - 1) {
+			PMD_INIT_LOG(ERR, "Invalid vport id %d, it should be 0 ~ %d",
+				     devargs->req_vports[i], adapter->max_vport_nb - 1);
+			return -EINVAL;
+		}
+
+		if (adapter->cur_vports & RTE_BIT32(devargs->req_vports[i])) {
+			PMD_INIT_LOG(ERR, "Vport %d has been requested",
+				     devargs->req_vports[i]);
+			return -EINVAL;
+		}
+	}
+
+	return 0;
+}
+
+static int
+cpfl_vport_create(struct rte_pci_device *pci_dev, struct cpfl_adapter_ext *adapter)
+{
+	struct cpfl_vport_param vport_param;
+	char name[RTE_ETH_NAME_MAX_LEN];
+	int ret, i;
+
+	for (i = 0; i < adapter->devargs.req_vport_nb; i++) {
+		vport_param.adapter = adapter;
+		vport_param.devarg_id = adapter->devargs.req_vports[i];
+		vport_param.idx = cpfl_vport_idx_alloc(adapter);
+		if (vport_param.idx == CPFL_INVALID_VPORT_IDX) {
+			PMD_INIT_LOG(ERR, "No space for vport %u", vport_param.devarg_id);
+			break;
+		}
+		snprintf(name, sizeof(name), "net_%s_vport_%d",
+			 pci_dev->device.name,
+			 adapter->devargs.req_vports[i]);
+		ret = rte_eth_dev_create(&pci_dev->device, name,
+					    sizeof(struct cpfl_vport),
+					    NULL, NULL, cpfl_dev_vport_init,
+					    &vport_param);
+		if (ret != 0)
+			PMD_DRV_LOG(ERR, "Failed to create vport %d",
+				    vport_param.devarg_id);
+	}
+
+	return 0;
+}
+
+static int
 cpfl_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	       struct rte_pci_device *pci_dev)
 {
-	struct cpfl_vport_param vport_param;
 	struct cpfl_adapter_ext *adapter;
-	struct cpfl_devargs devargs;
-	char name[RTE_ETH_NAME_MAX_LEN];
-	int i, retval;
+	int retval;
 
 	if (!cpfl_adapter_list_init) {
 		rte_spinlock_init(&cpfl_adapter_lock);
@@ -1938,6 +1977,12 @@ cpfl_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		return -ENOMEM;
 	}
 
+	retval = cpfl_parse_devargs(pci_dev, adapter);
+	if (retval != 0) {
+		PMD_INIT_LOG(ERR, "Failed to parse private devargs");
+		return retval;
+	}
+
 	retval = cpfl_adapter_ext_init(pci_dev, adapter);
 	if (retval != 0) {
 		PMD_INIT_LOG(ERR, "Failed to init adapter.");
@@ -1948,49 +1993,16 @@ cpfl_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	TAILQ_INSERT_TAIL(&cpfl_adapter_list, adapter, next);
 	rte_spinlock_unlock(&cpfl_adapter_lock);
 
-	retval = cpfl_parse_devargs(pci_dev, adapter, &devargs);
+	retval = cpfl_vport_devargs_process(adapter);
 	if (retval != 0) {
-		PMD_INIT_LOG(ERR, "Failed to parse private devargs");
+		PMD_INIT_LOG(ERR, "Failed to process vport devargs");
 		goto err;
 	}
 
-	if (devargs.req_vport_nb == 0) {
-		/* If no vport devarg, create vport 0 by default. */
-		vport_param.adapter = adapter;
-		vport_param.devarg_id = 0;
-		vport_param.idx = cpfl_vport_idx_alloc(adapter);
-		if (vport_param.idx == CPFL_INVALID_VPORT_IDX) {
-			PMD_INIT_LOG(ERR, "No space for vport %u", vport_param.devarg_id);
-			return 0;
-		}
-		snprintf(name, sizeof(name), "cpfl_%s_vport_0",
-			 pci_dev->device.name);
-		retval = rte_eth_dev_create(&pci_dev->device, name,
-					    sizeof(struct cpfl_vport),
-					    NULL, NULL, cpfl_dev_vport_init,
-					    &vport_param);
-		if (retval != 0)
-			PMD_DRV_LOG(ERR, "Failed to create default vport 0");
-	} else {
-		for (i = 0; i < devargs.req_vport_nb; i++) {
-			vport_param.adapter = adapter;
-			vport_param.devarg_id = devargs.req_vports[i];
-			vport_param.idx = cpfl_vport_idx_alloc(adapter);
-			if (vport_param.idx == CPFL_INVALID_VPORT_IDX) {
-				PMD_INIT_LOG(ERR, "No space for vport %u", vport_param.devarg_id);
-				break;
-			}
-			snprintf(name, sizeof(name), "cpfl_%s_vport_%d",
-				 pci_dev->device.name,
-				 devargs.req_vports[i]);
-			retval = rte_eth_dev_create(&pci_dev->device, name,
-						    sizeof(struct cpfl_vport),
-						    NULL, NULL, cpfl_dev_vport_init,
-						    &vport_param);
-			if (retval != 0)
-				PMD_DRV_LOG(ERR, "Failed to create vport %d",
-					    vport_param.devarg_id);
-		}
+	retval = cpfl_vport_create(pci_dev, adapter);
+	if (retval != 0) {
+		PMD_INIT_LOG(ERR, "Failed to create vports.");
+		goto err;
 	}
 
 	return 0;
