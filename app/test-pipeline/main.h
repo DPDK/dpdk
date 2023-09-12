@@ -60,6 +60,8 @@ struct app_params {
 
 extern struct app_params app;
 
+extern bool force_quit;
+
 int app_parse_args(int argc, char **argv);
 void app_print_usage(void);
 void app_init(void);

@@ -10,6 +10,7 @@
 #include <string.h>
 #include <sys/queue.h>
 #include <stdarg.h>
+#include <signal.h>
 #include <errno.h>
 #include <getopt.h>
 #include <unistd.h>
@@ -41,6 +42,15 @@
 
 #include "main.h"
 
+bool force_quit;
+
+static void
+signal_handler(int signum)
+{
+	if (signum == SIGINT || signum == SIGTERM)
+		force_quit = true;
+}
+
 int
 main(int argc, char **argv)
 {
@@ -53,6 +63,10 @@ main(int argc, char **argv)
 		return -1;
 	argc -= ret;
 	argv += ret;
+
+	force_quit = false;
+	signal(SIGINT, signal_handler);
+	signal(SIGTERM, signal_handler);
 
 	/* Parse application arguments (after the EAL ones) */
 	ret = app_parse_args(argc, argv);

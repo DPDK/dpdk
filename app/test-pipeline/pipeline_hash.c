@@ -366,14 +366,16 @@ app_main_loop_worker_pipeline_hash(void) {
 
 	/* Run-time */
 #if APP_FLUSH == 0
-	for ( ; ; )
+	while (!force_quit)
 		rte_pipeline_run(p);
 #else
-	for (i = 0; ; i++) {
+	i = 0;
+	while (!force_quit) {
 		rte_pipeline_run(p);
 
 		if ((i & APP_FLUSH) == 0)
 			rte_pipeline_flush(p);
+		i++;
 	}
 #endif
 }
@@ -411,59 +413,61 @@ app_main_loop_rx_metadata(void) {
 	RTE_LOG(INFO, USER1, "Core %u is doing RX (with meta-data)\n",
 		rte_lcore_id());
 
-	for (i = 0; ; i = ((i + 1) & (app.n_ports - 1))) {
-		uint16_t n_mbufs;
+	while (!force_quit) {
+		for (i = 0; i < app.n_ports; i++) {
+			uint16_t n_mbufs;
 
-		n_mbufs = rte_eth_rx_burst(
-			app.ports[i],
-			0,
-			app.mbuf_rx.array,
-			app.burst_size_rx_read);
+			n_mbufs = rte_eth_rx_burst(
+				app.ports[i],
+				0,
+				app.mbuf_rx.array,
+				app.burst_size_rx_read);
 
-		if (n_mbufs == 0)
-			continue;
-
-		for (j = 0; j < n_mbufs; j++) {
-			struct rte_mbuf *m;
-			uint8_t *m_data, *key;
-			struct rte_ipv4_hdr *ip_hdr;
-			struct rte_ipv6_hdr *ipv6_hdr;
-			uint32_t ip_dst;
-			uint8_t *ipv6_dst;
-			uint32_t *signature, *k32;
-
-			m = app.mbuf_rx.array[j];
-			m_data = rte_pktmbuf_mtod(m, uint8_t *);
-			signature = RTE_MBUF_METADATA_UINT32_PTR(m,
-					APP_METADATA_OFFSET(0));
-			key = RTE_MBUF_METADATA_UINT8_PTR(m,
-					APP_METADATA_OFFSET(32));
-
-			if (RTE_ETH_IS_IPV4_HDR(m->packet_type)) {
-				ip_hdr = (struct rte_ipv4_hdr *)
-					&m_data[sizeof(struct rte_ether_hdr)];
-				ip_dst = ip_hdr->dst_addr;
-
-				k32 = (uint32_t *) key;
-				k32[0] = ip_dst & 0xFFFFFF00;
-			} else if (RTE_ETH_IS_IPV6_HDR(m->packet_type)) {
-				ipv6_hdr = (struct rte_ipv6_hdr *)
-					&m_data[sizeof(struct rte_ether_hdr)];
-				ipv6_dst = ipv6_hdr->dst_addr;
-
-				memcpy(key, ipv6_dst, 16);
-			} else
+			if (n_mbufs == 0)
 				continue;
 
-			*signature = test_hash(key, NULL, 0, 0);
-		}
+			for (j = 0; j < n_mbufs; j++) {
+				struct rte_mbuf *m;
+				uint8_t *m_data, *key;
+				struct rte_ipv4_hdr *ip_hdr;
+				struct rte_ipv6_hdr *ipv6_hdr;
+				uint32_t ip_dst;
+				uint8_t *ipv6_dst;
+				uint32_t *signature, *k32;
 
-		do {
-			ret = rte_ring_sp_enqueue_bulk(
-				app.rings_rx[i],
-				(void **) app.mbuf_rx.array,
-				n_mbufs,
-				NULL);
-		} while (ret == 0);
+				m = app.mbuf_rx.array[j];
+				m_data = rte_pktmbuf_mtod(m, uint8_t *);
+				signature = RTE_MBUF_METADATA_UINT32_PTR(m,
+						APP_METADATA_OFFSET(0));
+				key = RTE_MBUF_METADATA_UINT8_PTR(m,
+						APP_METADATA_OFFSET(32));
+
+				if (RTE_ETH_IS_IPV4_HDR(m->packet_type)) {
+					ip_hdr = (struct rte_ipv4_hdr *)
+						&m_data[sizeof(struct rte_ether_hdr)];
+					ip_dst = ip_hdr->dst_addr;
+
+					k32 = (uint32_t *) key;
+					k32[0] = ip_dst & 0xFFFFFF00;
+				} else if (RTE_ETH_IS_IPV6_HDR(m->packet_type)) {
+					ipv6_hdr = (struct rte_ipv6_hdr *)
+						&m_data[sizeof(struct rte_ether_hdr)];
+					ipv6_dst = ipv6_hdr->dst_addr;
+
+					memcpy(key, ipv6_dst, 16);
+				} else
+					continue;
+
+				*signature = test_hash(key, NULL, 0, 0);
+			}
+
+			do {
+				ret = rte_ring_sp_enqueue_bulk(
+					app.rings_rx[i],
+					(void **) app.mbuf_rx.array,
+					n_mbufs,
+					NULL);
+			} while (ret == 0 && !force_quit);
+		}
 	}
 }
