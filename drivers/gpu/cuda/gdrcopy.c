@@ -2,6 +2,8 @@
  * Copyright (c) 2022 NVIDIA Corporation & Affiliates
  */
 
+#include <stdlib.h>
+
 #include "common.h"
 
 #ifdef DRIVERS_GPU_CUDA_GDRCOPY_H
