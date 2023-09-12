@@ -1645,7 +1645,7 @@ cpfl_handle_vchnl_event_msg(struct cpfl_adapter_ext *adapter, uint8_t *msg, uint
 	}
 }
 
-static int
+int
 cpfl_vport_info_create(struct cpfl_adapter_ext *adapter,
 		       struct cpfl_vport_id *vport_identity,
 		       struct cpchnl2_event_vport_created *vport_created)
@@ -1899,6 +1899,42 @@ cpfl_vport_map_uninit(struct cpfl_adapter_ext *adapter)
 }
 
 static int
+cpfl_repr_allowlist_init(struct cpfl_adapter_ext *adapter)
+{
+	char hname[32];
+
+	snprintf(hname, 32, "%s-repr_al", adapter->name);
+
+	rte_spinlock_init(&adapter->repr_lock);
+
+#define CPFL_REPR_HASH_ENTRY_NUM 2048
+
+	struct rte_hash_parameters params = {
+		.name = hname,
+		.entries = CPFL_REPR_HASH_ENTRY_NUM,
+		.key_len = sizeof(struct cpfl_repr_id),
+		.hash_func = rte_hash_crc,
+		.socket_id = SOCKET_ID_ANY,
+	};
+
+	adapter->repr_allowlist_hash = rte_hash_create(&params);
+
+	if (adapter->repr_allowlist_hash == NULL) {
+		PMD_INIT_LOG(ERR, "Failed to create repr allowlist hash");
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static void
+cpfl_repr_allowlist_uninit(struct cpfl_adapter_ext *adapter)
+{
+	rte_hash_free(adapter->repr_allowlist_hash);
+}
+
+
+static int
 cpfl_adapter_ext_init(struct rte_pci_device *pci_dev, struct cpfl_adapter_ext *adapter)
 {
 	struct idpf_adapter *base = &adapter->base;
@@ -1928,6 +1964,12 @@ cpfl_adapter_ext_init(struct rte_pci_device *pci_dev, struct cpfl_adapter_ext *a
 		goto err_vport_map_init;
 	}
 
+	ret = cpfl_repr_allowlist_init(adapter);
+	if (ret) {
+		PMD_INIT_LOG(ERR, "Failed to init representor allowlist");
+		goto err_repr_allowlist_init;
+	}
+
 	rte_eal_alarm_set(CPFL_ALARM_INTERVAL, cpfl_dev_alarm_handler, adapter);
 
 	adapter->max_vport_nb = adapter->base.caps.max_vports > CPFL_MAX_VPORT_NUM ?
@@ -1952,6 +1994,8 @@ cpfl_adapter_ext_init(struct rte_pci_device *pci_dev, struct cpfl_adapter_ext *a
 
 err_vports_alloc:
 	rte_eal_alarm_cancel(cpfl_dev_alarm_handler, adapter);
+	cpfl_repr_allowlist_uninit(adapter);
+err_repr_allowlist_init:
 	cpfl_vport_map_uninit(adapter);
 err_vport_map_init:
 	idpf_adapter_deinit(base);
@@ -2228,48 +2272,6 @@ cpfl_vport_devargs_process(struct cpfl_adapter_ext *adapter)
 }
 
 static int
-cpfl_repr_devargs_process(struct cpfl_adapter_ext *adapter)
-{
-	struct cpfl_devargs *devargs = &adapter->devargs;
-	int i, j;
-
-	/* check and refine repr args */
-	for (i = 0; i < devargs->repr_args_num; i++) {
-		struct rte_eth_devargs *eth_da = &devargs->repr_args[i];
-
-		/* set default host_id to xeon host */
-		if (eth_da->nb_mh_controllers == 0) {
-			eth_da->nb_mh_controllers = 1;
-			eth_da->mh_controllers[0] = CPFL_HOST_ID_HOST;
-		} else {
-			for (j = 0; j < eth_da->nb_mh_controllers; j++) {
-				if (eth_da->mh_controllers[j] > CPFL_HOST_ID_ACC) {
-					PMD_INIT_LOG(ERR, "Invalid Host ID %d",
-						     eth_da->mh_controllers[j]);
-					return -EINVAL;
-				}
-			}
-		}
-
-		/* set default pf to APF */
-		if (eth_da->nb_ports == 0) {
-			eth_da->nb_ports = 1;
-			eth_da->ports[0] = CPFL_PF_TYPE_APF;
-		} else {
-			for (j = 0; j < eth_da->nb_ports; j++) {
-				if (eth_da->ports[j] > CPFL_PF_TYPE_CPF) {
-					PMD_INIT_LOG(ERR, "Invalid Host ID %d",
-						     eth_da->ports[j]);
-					return -EINVAL;
-				}
-			}
-		}
-	}
-
-	return 0;
-}
-
-static int
 cpfl_vport_create(struct rte_pci_device *pci_dev, struct cpfl_adapter_ext *adapter)
 {
 	struct cpfl_vport_param vport_param;
@@ -2304,6 +2306,7 @@ cpfl_pci_probe_first(struct rte_pci_device *pci_dev)
 {
 	struct cpfl_adapter_ext *adapter;
 	int retval;
+	uint16_t port_id;
 
 	adapter = rte_zmalloc("cpfl_adapter_ext",
 			      sizeof(struct cpfl_adapter_ext), 0);
@@ -2343,11 +2346,23 @@ cpfl_pci_probe_first(struct rte_pci_device *pci_dev)
 	retval = cpfl_repr_devargs_process(adapter);
 	if (retval != 0) {
 		PMD_INIT_LOG(ERR, "Failed to process repr devargs");
-		goto err;
+		goto close_ethdev;
 	}
+
+	retval = cpfl_repr_create(pci_dev, adapter);
+	if (retval != 0) {
+		PMD_INIT_LOG(ERR, "Failed to create representors ");
+		goto close_ethdev;
+	}
+
 
 	return 0;
 
+close_ethdev:
+	/* Ethdev created can be found RTE_ETH_FOREACH_DEV_OF through rte_device */
+	RTE_ETH_FOREACH_DEV_OF(port_id, &pci_dev->device) {
+		rte_eth_dev_close(port_id);
+	}
 err:
 	rte_spinlock_lock(&cpfl_adapter_lock);
 	TAILQ_REMOVE(&cpfl_adapter_list, adapter, next);
@@ -2371,6 +2386,12 @@ cpfl_pci_probe_again(struct rte_pci_device *pci_dev, struct cpfl_adapter_ext *ad
 	ret = cpfl_repr_devargs_process(adapter);
 	if (ret != 0) {
 		PMD_INIT_LOG(ERR, "Failed to process reprenstor devargs");
+		return ret;
+	}
+
+	ret = cpfl_repr_create(pci_dev, adapter);
+	if (ret != 0) {
+		PMD_INIT_LOG(ERR, "Failed to create representors ");
 		return ret;
 	}
 
