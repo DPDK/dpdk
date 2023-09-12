@@ -48,24 +48,26 @@ app_main_loop_rx(void) {
 
 	RTE_LOG(INFO, USER1, "Core %u is doing RX\n", rte_lcore_id());
 
-	for (i = 0; ; i = ((i + 1) & (app.n_ports - 1))) {
-		uint16_t n_mbufs;
+	while (!force_quit) {
+		for (i = 0; i < app.n_ports; i++) {
+			uint16_t n_mbufs;
 
-		n_mbufs = rte_eth_rx_burst(
-			app.ports[i],
-			0,
-			app.mbuf_rx.array,
-			app.burst_size_rx_read);
+			n_mbufs = rte_eth_rx_burst(
+				app.ports[i],
+				0,
+				app.mbuf_rx.array,
+				app.burst_size_rx_read);
 
-		if (n_mbufs == 0)
-			continue;
+			if (n_mbufs == 0)
+				continue;
 
-		do {
-			ret = rte_ring_sp_enqueue_bulk(
-				app.rings_rx[i],
-				(void **) app.mbuf_rx.array,
-				n_mbufs, NULL);
-		} while (ret == 0);
+			do {
+				ret = rte_ring_sp_enqueue_bulk(
+					app.rings_rx[i],
+					(void **) app.mbuf_rx.array,
+					n_mbufs, NULL);
+			} while (ret == 0 && !force_quit);
+		}
 	}
 }
 
@@ -82,25 +84,27 @@ app_main_loop_worker(void) {
 	if (worker_mbuf == NULL)
 		rte_panic("Worker thread: cannot allocate buffer space\n");
 
-	for (i = 0; ; i = ((i + 1) & (app.n_ports - 1))) {
-		int ret;
+	while (!force_quit) {
+		for (i = 0; i < app.n_ports; i++) {
+			int ret;
 
-		ret = rte_ring_sc_dequeue_bulk(
-			app.rings_rx[i],
-			(void **) worker_mbuf->array,
-			app.burst_size_worker_read,
-			NULL);
-
-		if (ret == 0)
-			continue;
-
-		do {
-			ret = rte_ring_sp_enqueue_bulk(
-				app.rings_tx[i ^ 1],
+			ret = rte_ring_sc_dequeue_bulk(
+				app.rings_rx[i],
 				(void **) worker_mbuf->array,
-				app.burst_size_worker_write,
+				app.burst_size_worker_read,
 				NULL);
-		} while (ret == 0);
+
+			if (ret == 0)
+				continue;
+
+			do {
+				ret = rte_ring_sp_enqueue_bulk(
+					app.rings_tx[i ^ 1],
+					(void **) worker_mbuf->array,
+					app.burst_size_worker_write,
+					NULL);
+			} while (ret == 0 && !force_quit);
+		}
 	}
 }
 
@@ -110,45 +114,47 @@ app_main_loop_tx(void) {
 
 	RTE_LOG(INFO, USER1, "Core %u is doing TX\n", rte_lcore_id());
 
-	for (i = 0; ; i = ((i + 1) & (app.n_ports - 1))) {
-		uint16_t n_mbufs, n_pkts;
-		int ret;
+	while (!force_quit) {
+		for (i = 0; i < app.n_ports; i++) {
+			uint16_t n_mbufs, n_pkts;
+			int ret;
 
-		n_mbufs = app.mbuf_tx[i].n_mbufs;
+			n_mbufs = app.mbuf_tx[i].n_mbufs;
 
-		ret = rte_ring_sc_dequeue_bulk(
-			app.rings_tx[i],
-			(void **) &app.mbuf_tx[i].array[n_mbufs],
-			app.burst_size_tx_read,
-			NULL);
+			ret = rte_ring_sc_dequeue_bulk(
+				app.rings_tx[i],
+				(void **) &app.mbuf_tx[i].array[n_mbufs],
+				app.burst_size_tx_read,
+				NULL);
 
-		if (ret == 0)
-			continue;
+			if (ret == 0)
+				continue;
 
-		n_mbufs += app.burst_size_tx_read;
+			n_mbufs += app.burst_size_tx_read;
 
-		if (n_mbufs < app.burst_size_tx_write) {
-			app.mbuf_tx[i].n_mbufs = n_mbufs;
-			continue;
-		}
-
-		n_pkts = rte_eth_tx_burst(
-			app.ports[i],
-			0,
-			app.mbuf_tx[i].array,
-			n_mbufs);
-
-		if (n_pkts < n_mbufs) {
-			uint16_t k;
-
-			for (k = n_pkts; k < n_mbufs; k++) {
-				struct rte_mbuf *pkt_to_free;
-
-				pkt_to_free = app.mbuf_tx[i].array[k];
-				rte_pktmbuf_free(pkt_to_free);
+			if (n_mbufs < app.burst_size_tx_write) {
+				app.mbuf_tx[i].n_mbufs = n_mbufs;
+				continue;
 			}
-		}
 
-		app.mbuf_tx[i].n_mbufs = 0;
+			n_pkts = rte_eth_tx_burst(
+				app.ports[i],
+				0,
+				app.mbuf_tx[i].array,
+				n_mbufs);
+
+			if (n_pkts < n_mbufs) {
+				uint16_t k;
+
+				for (k = n_pkts; k < n_mbufs; k++) {
+					struct rte_mbuf *pkt_to_free;
+
+					pkt_to_free = app.mbuf_tx[i].array[k];
+					rte_pktmbuf_free(pkt_to_free);
+				}
+			}
+
+			app.mbuf_tx[i].n_mbufs = 0;
+		}
 	}
 }

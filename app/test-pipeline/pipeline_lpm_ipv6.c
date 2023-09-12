@@ -158,14 +158,16 @@ app_main_loop_worker_pipeline_lpm_ipv6(void) {
 
 	/* Run-time */
 #if APP_FLUSH == 0
-	for ( ; ; )
+	while (!force_quit)
 		rte_pipeline_run(p);
 #else
-	for (i = 0; ; i++) {
+	i = 0;
+	while (!force_quit) {
 		rte_pipeline_run(p);
 
 		if ((i & APP_FLUSH) == 0)
 			rte_pipeline_flush(p);
+		i++;
 	}
 #endif
 }
