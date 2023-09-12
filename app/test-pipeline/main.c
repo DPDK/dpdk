@@ -55,6 +55,7 @@ int
 main(int argc, char **argv)
 {
 	uint32_t lcore;
+	uint32_t i;
 	int ret;
 
 	/* Init EAL */
@@ -84,6 +85,24 @@ main(int argc, char **argv)
 		if (rte_eal_wait_lcore(lcore) < 0)
 			return -1;
 	}
+
+	/* Close ports */
+	for (i = 0; i < app.n_ports; i++) {
+		uint16_t port;
+		int ret;
+
+		port = app.ports[i];
+		printf("Closing port %d...", port);
+		ret = rte_eth_dev_stop(port);
+		if (ret != 0)
+			printf("rte_eth_dev_stop: err=%d, port=%u\n",
+					 ret, port);
+		rte_eth_dev_close(port);
+		printf("Done\n");
+	}
+
+	/* Clean up the EAL */
+	rte_eal_cleanup();
 
 	return 0;
 }
