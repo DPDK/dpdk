@@ -10,15 +10,17 @@
 #include <rte_spinlock.h>
 #include <rte_ethdev.h>
 #include <rte_kvargs.h>
+#include <rte_hash.h>
 #include <ethdev_driver.h>
 #include <ethdev_pci.h>
-
-#include "cpfl_logs.h"
 
 #include <idpf_common_device.h>
 #include <idpf_common_virtchnl.h>
 #include <base/idpf_prototype.h>
 #include <base/virtchnl2.h>
+
+#include "cpfl_logs.h"
+#include "cpfl_cpchnl.h"
 
 /* Currently, backend supports up to 8 vports */
 #define CPFL_MAX_VPORT_NUM	8
@@ -86,6 +88,18 @@ struct p2p_queue_chunks_info {
 	uint32_t rx_buf_qtail_spacing;
 };
 
+struct cpfl_vport_id {
+	uint32_t vport_id;
+	uint8_t func_type;
+	uint8_t pf_id;
+	uint16_t vf_id;
+};
+
+struct cpfl_vport_info {
+	struct cpchnl2_event_vport_created vport;
+	bool enabled;
+};
+
 enum cpfl_itf_type {
 	CPFL_ITF_TYPE_VPORT,
 };
@@ -127,6 +141,9 @@ struct cpfl_adapter_ext {
 
 	uint16_t used_vecs_num;
 	struct cpfl_devargs devargs;
+
+	rte_spinlock_t vport_map_lock;
+	struct rte_hash *vport_map_hash;
 };
 
 TAILQ_HEAD(cpfl_adapter_list, cpfl_adapter_ext);

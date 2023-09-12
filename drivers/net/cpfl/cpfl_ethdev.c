@@ -10,6 +10,7 @@
 #include <rte_dev.h>
 #include <errno.h>
 #include <rte_alarm.h>
+#include <rte_hash_crc.h>
 
 #include "cpfl_ethdev.h"
 #include "cpfl_rxtx.h"
@@ -1504,6 +1505,108 @@ cpfl_handle_vchnl_event_msg(struct cpfl_adapter_ext *adapter, uint8_t *msg, uint
 	}
 }
 
+static int
+cpfl_vport_info_create(struct cpfl_adapter_ext *adapter,
+		       struct cpfl_vport_id *vport_identity,
+		       struct cpchnl2_event_vport_created *vport_created)
+{
+	struct cpfl_vport_info *info = NULL;
+	int ret;
+
+	rte_spinlock_lock(&adapter->vport_map_lock);
+	ret = rte_hash_lookup_data(adapter->vport_map_hash, vport_identity, (void **)&info);
+	if (ret >= 0) {
+		PMD_DRV_LOG(WARNING, "vport already exist, overwrite info anyway");
+		/* overwrite info */
+		if (info)
+			info->vport = *vport_created;
+		goto fini;
+	}
+
+	info = rte_zmalloc(NULL, sizeof(*info), 0);
+	if (info == NULL) {
+		PMD_DRV_LOG(ERR, "Failed to alloc memory for vport map info");
+		ret = -ENOMEM;
+		goto err;
+	}
+
+	info->vport = *vport_created;
+
+	ret = rte_hash_add_key_data(adapter->vport_map_hash, vport_identity, info);
+	if (ret < 0) {
+		PMD_DRV_LOG(ERR, "Failed to add vport map into hash");
+		rte_free(info);
+		goto err;
+	}
+
+fini:
+	rte_spinlock_unlock(&adapter->vport_map_lock);
+	return 0;
+err:
+	rte_spinlock_unlock(&adapter->vport_map_lock);
+	return ret;
+}
+
+static int
+cpfl_vport_info_destroy(struct cpfl_adapter_ext *adapter, struct cpfl_vport_id *vport_identity)
+{
+	struct cpfl_vport_info *info;
+	int ret;
+
+	rte_spinlock_lock(&adapter->vport_map_lock);
+	ret = rte_hash_lookup_data(adapter->vport_map_hash, vport_identity, (void **)&info);
+	if (ret < 0) {
+		PMD_DRV_LOG(ERR, "vport id doesn't exist");
+		goto err;
+	}
+
+	rte_hash_del_key(adapter->vport_map_hash, vport_identity);
+	rte_spinlock_unlock(&adapter->vport_map_lock);
+	rte_free(info);
+
+	return 0;
+
+err:
+	rte_spinlock_unlock(&adapter->vport_map_lock);
+	return ret;
+}
+
+static void
+cpfl_handle_cpchnl_event_msg(struct cpfl_adapter_ext *adapter, uint8_t *msg, uint16_t msglen)
+{
+	struct cpchnl2_event_info *cpchnl2_event = (struct cpchnl2_event_info *)msg;
+	struct cpchnl2_event_vport_created *vport_created;
+	struct cpfl_vport_id vport_identity = { 0 };
+
+	if (msglen < sizeof(struct cpchnl2_event_info)) {
+		PMD_DRV_LOG(ERR, "Error event");
+		return;
+	}
+
+	switch (cpchnl2_event->header.type) {
+	case CPCHNL2_EVENT_VPORT_CREATED:
+		vport_identity.vport_id = cpchnl2_event->data.vport_created.vport.vport_id;
+		vport_created = &cpchnl2_event->data.vport_created;
+		vport_identity.func_type = vport_created->info.func_type;
+		vport_identity.pf_id = vport_created->info.pf_id;
+		vport_identity.vf_id = vport_created->info.vf_id;
+		if (cpfl_vport_info_create(adapter, &vport_identity, vport_created))
+			PMD_DRV_LOG(WARNING, "Failed to handle CPCHNL2_EVENT_VPORT_CREATED");
+		break;
+	case CPCHNL2_EVENT_VPORT_DESTROYED:
+		vport_identity.vport_id = cpchnl2_event->data.vport_destroyed.vport.vport_id;
+		vport_identity.func_type = cpchnl2_event->data.vport_destroyed.func.func_type;
+		vport_identity.pf_id = cpchnl2_event->data.vport_destroyed.func.pf_id;
+		vport_identity.vf_id = cpchnl2_event->data.vport_destroyed.func.vf_id;
+		if (cpfl_vport_info_destroy(adapter, &vport_identity))
+			PMD_DRV_LOG(WARNING, "Failed to handle CPCHNL2_EVENT_VPORT_DESTROY");
+		break;
+	default:
+		PMD_DRV_LOG(ERR, " unknown event received %u", cpchnl2_event->header.type);
+		break;
+	}
+}
+
 static void
 cpfl_handle_virtchnl_msg(struct cpfl_adapter_ext *adapter)
 {
@@ -1535,6 +1638,9 @@ cpfl_handle_virtchnl_msg(struct cpfl_adapter_ext *adapter)
 			if (vc_op == VIRTCHNL2_OP_EVENT) {
 				cpfl_handle_vchnl_event_msg(adapter, adapter->base.mbx_resp,
 							    ctlq_msg.data_len);
+			} else if (vc_op == CPCHNL2_OP_EVENT) {
+				cpfl_handle_cpchnl_event_msg(adapter, adapter->base.mbx_resp,
+							     ctlq_msg.data_len);
 			} else {
 				if (vc_op == base->pend_cmd)
 					notify_cmd(base, base->cmd_retval);
@@ -1611,6 +1717,48 @@ static struct virtchnl2_get_capabilities req_caps = {
 };
 
 static int
+cpfl_vport_map_init(struct cpfl_adapter_ext *adapter)
+{
+	char hname[32];
+
+	snprintf(hname, 32, "%s-vport", adapter->name);
+
+	rte_spinlock_init(&adapter->vport_map_lock);
+
+#define CPFL_VPORT_MAP_HASH_ENTRY_NUM 2048
+
+	struct rte_hash_parameters params = {
+		.name = adapter->name,
+		.entries = CPFL_VPORT_MAP_HASH_ENTRY_NUM,
+		.key_len = sizeof(struct cpfl_vport_id),
+		.hash_func = rte_hash_crc,
+		.socket_id = SOCKET_ID_ANY,
+	};
+
+	adapter->vport_map_hash = rte_hash_create(&params);
+
+	if (adapter->vport_map_hash == NULL) {
+		PMD_INIT_LOG(ERR, "Failed to create vport map hash");
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static void
+cpfl_vport_map_uninit(struct cpfl_adapter_ext *adapter)
+{
+	const void *key = NULL;
+	struct cpfl_vport_map_info *info;
+	uint32_t iter = 0;
+
+	while (rte_hash_iterate(adapter->vport_map_hash, &key, (void **)&info, &iter) >= 0)
+		rte_free(info);
+
+	rte_hash_free(adapter->vport_map_hash);
+}
+
+static int
 cpfl_adapter_ext_init(struct rte_pci_device *pci_dev, struct cpfl_adapter_ext *adapter)
 {
 	struct idpf_adapter *base = &adapter->base;
@@ -1632,6 +1780,12 @@ cpfl_adapter_ext_init(struct rte_pci_device *pci_dev, struct cpfl_adapter_ext *a
 	if (ret != 0) {
 		PMD_INIT_LOG(ERR, "Failed to init adapter");
 		goto err_adapter_init;
+	}
+
+	ret = cpfl_vport_map_init(adapter);
+	if (ret) {
+		PMD_INIT_LOG(ERR, "Failed to init vport map");
+		goto err_vport_map_init;
 	}
 
 	rte_eal_alarm_set(CPFL_ALARM_INTERVAL, cpfl_dev_alarm_handler, adapter);
@@ -1658,6 +1812,8 @@ cpfl_adapter_ext_init(struct rte_pci_device *pci_dev, struct cpfl_adapter_ext *a
 
 err_vports_alloc:
 	rte_eal_alarm_cancel(cpfl_dev_alarm_handler, adapter);
+	cpfl_vport_map_uninit(adapter);
+err_vport_map_init:
 	idpf_adapter_deinit(base);
 err_adapter_init:
 	return ret;
@@ -1887,6 +2043,7 @@ static void
 cpfl_adapter_ext_deinit(struct cpfl_adapter_ext *adapter)
 {
 	rte_eal_alarm_cancel(cpfl_dev_alarm_handler, adapter);
+	cpfl_vport_map_uninit(adapter);
 	idpf_adapter_deinit(&adapter->base);
 
 	rte_free(adapter->vports);
