@@ -1450,40 +1450,52 @@ fail:
 	return ret;
 }
 
-static struct idpf_vport *
+static struct cpfl_vport *
 cpfl_find_vport(struct cpfl_adapter_ext *adapter, uint32_t vport_id)
 {
-	struct idpf_vport *vport = NULL;
+	struct cpfl_vport *vport = NULL;
 	int i;
 
 	for (i = 0; i < adapter->cur_vport_nb; i++) {
-		vport = &adapter->vports[i]->base;
-		if (vport->vport_id != vport_id)
+		vport = adapter->vports[i];
+		if (vport == NULL)
+			continue;
+		if (vport->base.vport_id != vport_id)
 			continue;
 		else
 			return vport;
 	}
 
-	return vport;
+	return NULL;
 }
 
 static void
-cpfl_handle_event_msg(struct idpf_vport *vport, uint8_t *msg, uint16_t msglen)
+cpfl_handle_vchnl_event_msg(struct cpfl_adapter_ext *adapter, uint8_t *msg, uint16_t msglen)
 {
 	struct virtchnl2_event *vc_event = (struct virtchnl2_event *)msg;
-	struct rte_eth_dev_data *data = vport->dev_data;
-	struct rte_eth_dev *dev = &rte_eth_devices[data->port_id];
+	struct cpfl_vport *vport;
+	struct rte_eth_dev_data *data;
+	struct rte_eth_dev *dev;
 
 	if (msglen < sizeof(struct virtchnl2_event)) {
 		PMD_DRV_LOG(ERR, "Error event");
 		return;
 	}
 
+	vport = cpfl_find_vport(adapter, vc_event->vport_id);
+	if (!vport) {
+		PMD_DRV_LOG(ERR, "Can't find vport.");
+		return;
+	}
+
+	data = vport->itf.data;
+	dev = &rte_eth_devices[data->port_id];
+
 	switch (vc_event->event) {
 	case VIRTCHNL2_EVENT_LINK_CHANGE:
 		PMD_DRV_LOG(DEBUG, "VIRTCHNL2_EVENT_LINK_CHANGE");
-		vport->link_up = !!(vc_event->link_status);
-		vport->link_speed = vc_event->link_speed;
+		vport->base.link_up = !!(vc_event->link_status);
+		vport->base.link_speed = vc_event->link_speed;
 		cpfl_dev_link_update(dev, 0);
 		break;
 	default:
@@ -1498,10 +1510,8 @@ cpfl_handle_virtchnl_msg(struct cpfl_adapter_ext *adapter)
 	struct idpf_adapter *base = &adapter->base;
 	struct idpf_dma_mem *dma_mem = NULL;
 	struct idpf_hw *hw = &base->hw;
-	struct virtchnl2_event *vc_event;
 	struct idpf_ctlq_msg ctlq_msg;
 	enum idpf_mbx_opc mbx_op;
-	struct idpf_vport *vport;
 	uint16_t pending = 1;
 	uint32_t vc_op;
 	int ret;
@@ -1523,18 +1533,8 @@ cpfl_handle_virtchnl_msg(struct cpfl_adapter_ext *adapter)
 		switch (mbx_op) {
 		case idpf_mbq_opc_send_msg_to_peer_pf:
 			if (vc_op == VIRTCHNL2_OP_EVENT) {
-				if (ctlq_msg.data_len < sizeof(struct virtchnl2_event)) {
-					PMD_DRV_LOG(ERR, "Error event");
-					return;
-				}
-				vc_event = (struct virtchnl2_event *)base->mbx_resp;
-				vport = cpfl_find_vport(adapter, vc_event->vport_id);
-				if (!vport) {
-					PMD_DRV_LOG(ERR, "Can't find vport.");
-					return;
-				}
-				cpfl_handle_event_msg(vport, base->mbx_resp,
-						      ctlq_msg.data_len);
+				cpfl_handle_vchnl_event_msg(adapter, adapter->base.mbx_resp,
+							    ctlq_msg.data_len);
 			} else {
 				if (vc_op == base->pend_cmd)
 					notify_cmd(base, base->cmd_retval);
