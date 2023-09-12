@@ -162,7 +162,7 @@ init_params(int use_ext, int use_htm, int rw_lf, int use_jhash)
 
 	handle = rte_hash_create(&hash_params);
 	if (handle == NULL) {
-		printf("hash creation failed");
+		printf("hash creation failed\n");
 		return -1;
 	}
 
