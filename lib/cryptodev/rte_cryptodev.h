@@ -897,6 +897,15 @@ struct rte_cryptodev_cb_rcu {
 	/**< RCU QSBR variable per queue pair */
 };
 
+/**
+ * Get the security context for the cryptodev.
+ *
+ * @param dev_id
+ *   The device identifier.
+ * @return
+ *   - NULL on error.
+ *   - Pointer to security context on success.
+ */
 void *
 rte_cryptodev_get_sec_ctx(uint8_t dev_id);
 
