@@ -162,6 +162,7 @@ struct cpfl_repr {
 	struct cpfl_repr_id repr_id;
 	struct rte_ether_addr mac_addr;
 	struct cpfl_vport_info *vport_info;
+	bool func_up; /* If the represented function is up */
 };
 
 struct cpfl_adapter_ext {

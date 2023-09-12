@@ -308,47 +308,6 @@ cpfl_repr_tx_queue_setup(__rte_unused struct rte_eth_dev *dev,
 	return 0;
 }
 
-static const struct eth_dev_ops cpfl_repr_dev_ops = {
-	.dev_start		= cpfl_repr_dev_start,
-	.dev_stop		= cpfl_repr_dev_stop,
-	.dev_configure		= cpfl_repr_dev_configure,
-	.dev_close		= cpfl_repr_dev_close,
-	.dev_infos_get		= cpfl_repr_dev_info_get,
-
-	.rx_queue_setup		= cpfl_repr_rx_queue_setup,
-	.tx_queue_setup		= cpfl_repr_tx_queue_setup,
-};
-
-static int
-cpfl_repr_init(struct rte_eth_dev *eth_dev, void *init_param)
-{
-	struct cpfl_repr *repr = CPFL_DEV_TO_REPR(eth_dev);
-	struct cpfl_repr_param *param = init_param;
-	struct cpfl_adapter_ext *adapter = param->adapter;
-
-	repr->repr_id = param->repr_id;
-	repr->vport_info = param->vport_info;
-	repr->itf.type = CPFL_ITF_TYPE_REPRESENTOR;
-	repr->itf.adapter = adapter;
-	repr->itf.data = eth_dev->data;
-
-	eth_dev->dev_ops = &cpfl_repr_dev_ops;
-
-	eth_dev->data->dev_flags |= RTE_ETH_DEV_REPRESENTOR;
-
-	eth_dev->data->representor_id =
-		CPFL_REPRESENTOR_ID(repr->repr_id.type,
-				    repr->repr_id.host_id,
-				    repr->repr_id.pf_id,
-				    repr->repr_id.vf_id);
-
-	eth_dev->data->mac_addrs = &repr->mac_addr;
-
-	rte_eth_random_addr(repr->mac_addr.addr_bytes);
-
-	return cpfl_repr_allowlist_update(adapter, &repr->repr_id, eth_dev);
-}
-
 static int
 cpfl_func_id_get(uint8_t host_id, uint8_t pf_id)
 {
@@ -366,6 +325,98 @@ cpfl_func_id_get(uint8_t host_id, uint8_t pf_id)
 	};
 
 	return func_id_map[host_id][pf_id];
+}
+
+static int
+cpfl_repr_link_update(struct rte_eth_dev *ethdev,
+		      int wait_to_complete)
+{
+	struct cpfl_repr *repr = CPFL_DEV_TO_REPR(ethdev);
+	struct rte_eth_link *dev_link = &ethdev->data->dev_link;
+	struct cpfl_adapter_ext *adapter = repr->itf.adapter;
+	struct cpchnl2_get_vport_info_response response;
+	struct cpfl_vport_id vi;
+	int ret;
+
+	if (!(ethdev->data->dev_flags & RTE_ETH_DEV_REPRESENTOR)) {
+		PMD_INIT_LOG(ERR, "This ethdev is not representor.");
+		return -EINVAL;
+	}
+
+	if (wait_to_complete) {
+		if (repr->repr_id.type == RTE_ETH_REPRESENTOR_PF) {
+			/* PF */
+			vi.func_type = CPCHNL2_FUNC_TYPE_PF;
+			vi.pf_id = cpfl_func_id_get(repr->repr_id.host_id, repr->repr_id.pf_id);
+			vi.vf_id = 0;
+		} else {
+			/* VF */
+			vi.func_type = CPCHNL2_FUNC_TYPE_SRIOV;
+			vi.pf_id = CPFL_HOST0_APF;
+			vi.vf_id = repr->repr_id.vf_id;
+		}
+		ret = cpfl_cc_vport_info_get(adapter, &repr->vport_info->vport.vport,
+					     &vi, &response);
+		if (ret < 0) {
+			PMD_INIT_LOG(ERR, "Fail to get vport info.");
+			return ret;
+		}
+
+		if (response.info.vport_status == CPCHNL2_VPORT_STATUS_ENABLED)
+			repr->func_up = true;
+		else
+			repr->func_up = false;
+	}
+
+	dev_link->link_status = repr->func_up ?
+		RTE_ETH_LINK_UP : RTE_ETH_LINK_DOWN;
+
+	return 0;
+}
+
+static const struct eth_dev_ops cpfl_repr_dev_ops = {
+	.dev_start		= cpfl_repr_dev_start,
+	.dev_stop		= cpfl_repr_dev_stop,
+	.dev_configure		= cpfl_repr_dev_configure,
+	.dev_close		= cpfl_repr_dev_close,
+	.dev_infos_get		= cpfl_repr_dev_info_get,
+
+	.rx_queue_setup		= cpfl_repr_rx_queue_setup,
+	.tx_queue_setup		= cpfl_repr_tx_queue_setup,
+
+	.link_update		= cpfl_repr_link_update,
+};
+
+static int
+cpfl_repr_init(struct rte_eth_dev *eth_dev, void *init_param)
+{
+	struct cpfl_repr *repr = CPFL_DEV_TO_REPR(eth_dev);
+	struct cpfl_repr_param *param = init_param;
+	struct cpfl_adapter_ext *adapter = param->adapter;
+
+	repr->repr_id = param->repr_id;
+	repr->vport_info = param->vport_info;
+	repr->itf.type = CPFL_ITF_TYPE_REPRESENTOR;
+	repr->itf.adapter = adapter;
+	repr->itf.data = eth_dev->data;
+	if (repr->vport_info->vport.info.vport_status == CPCHNL2_VPORT_STATUS_ENABLED)
+		repr->func_up = true;
+
+	eth_dev->dev_ops = &cpfl_repr_dev_ops;
+
+	eth_dev->data->dev_flags |= RTE_ETH_DEV_REPRESENTOR;
+
+	eth_dev->data->representor_id =
+		CPFL_REPRESENTOR_ID(repr->repr_id.type,
+				    repr->repr_id.host_id,
+				    repr->repr_id.pf_id,
+				    repr->repr_id.vf_id);
+
+	eth_dev->data->mac_addrs = &repr->mac_addr;
+
+	rte_eth_random_addr(repr->mac_addr.addr_bytes);
+
+	return cpfl_repr_allowlist_update(adapter, &repr->repr_id, eth_dev);
 }
 
 static bool
