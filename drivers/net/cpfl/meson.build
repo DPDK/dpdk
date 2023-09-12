@@ -16,6 +16,7 @@ deps += ['hash', 'common_idpf']
 sources = files(
         'cpfl_ethdev.c',
         'cpfl_rxtx.c',
+        'cpfl_vchnl.c',
 )
 
 if arch_subdir == 'x86'
