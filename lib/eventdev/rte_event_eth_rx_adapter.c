@@ -10,6 +10,7 @@
 #include <unistd.h>
 
 #include <rte_cycles.h>
+#include <rte_thread.h>
 #include <rte_common.h>
 #include <dev_driver.h>
 #include <rte_errno.h>
@@ -165,7 +166,7 @@ struct event_eth_rx_adapter {
 	/* Count of interrupt vectors in use */
 	uint32_t num_intr_vec;
 	/* Thread blocked on Rx interrupts */
-	pthread_t rx_intr_thread;
+	rte_thread_t rx_intr_thread;
 	/* Configuration callback for rte_service configuration */
 	rte_event_eth_rx_adapter_conf_cb conf_cb;
 	/* Configuration callback argument */
@@ -1154,13 +1155,13 @@ rxa_intr_ring_del_entries(struct event_eth_rx_adapter *rx_adapter,
 	rte_spinlock_unlock(&rx_adapter->intr_ring_lock);
 }
 
-/* pthread callback handling interrupt mode receive queues
+/* thread callback handling interrupt mode receive queues
  * After receiving an Rx interrupt, it enqueues the port id and queue id of the
  * interrupting queue to the adapter's ring buffer for interrupt events.
  * These events are picked up by rxa_intr_ring_dequeue() which is invoked from
  * the adapter service function.
  */
-static void *
+static uint32_t
 rxa_intr_thread(void *arg)
 {
 	struct event_eth_rx_adapter *rx_adapter = arg;
@@ -1179,7 +1180,7 @@ rxa_intr_thread(void *arg)
 		}
 	}
 
-	return NULL;
+	return 0;
 }
 
 /* Dequeue <port, q> from interrupt ring and enqueue received
@@ -1595,7 +1596,7 @@ static int
 rxa_create_intr_thread(struct event_eth_rx_adapter *rx_adapter)
 {
 	int err;
-	char thread_name[RTE_MAX_THREAD_NAME_LEN];
+	char thread_name[RTE_THREAD_INTERNAL_NAME_SIZE];
 
 	if (rx_adapter->intr_ring)
 		return 0;
@@ -1618,11 +1619,11 @@ rxa_create_intr_thread(struct event_eth_rx_adapter *rx_adapter)
 
 	rte_spinlock_init(&rx_adapter->intr_ring_lock);
 
-	snprintf(thread_name, RTE_MAX_THREAD_NAME_LEN,
-			"dpdk-evt-rx%d", rx_adapter->id);
+	snprintf(thread_name, sizeof(thread_name),
+			"evt-rx%d", rx_adapter->id);
 
-	err = rte_ctrl_thread_create(&rx_adapter->rx_intr_thread, thread_name,
-				NULL, rxa_intr_thread, rx_adapter);
+	err = rte_thread_create_internal_control(&rx_adapter->rx_intr_thread,
+			thread_name, rxa_intr_thread, rx_adapter);
 	if (!err)
 		return 0;
 
@@ -1640,12 +1641,12 @@ rxa_destroy_intr_thread(struct event_eth_rx_adapter *rx_adapter)
 {
 	int err;
 
-	err = pthread_cancel(rx_adapter->rx_intr_thread);
+	err = pthread_cancel((pthread_t)rx_adapter->rx_intr_thread.opaque_id);
 	if (err)
 		RTE_EDEV_LOG_ERR("Can't cancel interrupt thread err = %d\n",
 				err);
 
-	err = pthread_join(rx_adapter->rx_intr_thread, NULL);
+	err = rte_thread_join(rx_adapter->rx_intr_thread, NULL);
 	if (err)
 		RTE_EDEV_LOG_ERR("Can't join interrupt thread err = %d\n", err);
 

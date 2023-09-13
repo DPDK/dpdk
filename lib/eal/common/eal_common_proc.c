@@ -26,6 +26,7 @@
 #include <rte_errno.h>
 #include <rte_lcore.h>
 #include <rte_log.h>
+#include <rte_thread.h>
 
 #include "eal_memcfg.h"
 #include "eal_private.h"
@@ -33,7 +34,7 @@
 #include "eal_internal_cfg.h"
 
 static int mp_fd = -1;
-static pthread_t mp_handle_tid;
+static rte_thread_t mp_handle_tid;
 static char mp_filter[PATH_MAX];   /* Filter for secondary process sockets */
 static char mp_dir_path[PATH_MAX]; /* The directory path for all mp sockets */
 static pthread_mutex_t mp_mutex_action = PTHREAD_MUTEX_INITIALIZER;
@@ -396,7 +397,7 @@ process_msg(struct mp_msg_internal *m, struct sockaddr_un *s)
 	}
 }
 
-static void *
+static uint32_t
 mp_handle(void *arg __rte_unused)
 {
 	struct mp_msg_internal msg;
@@ -413,7 +414,7 @@ mp_handle(void *arg __rte_unused)
 		process_msg(&msg, &sa);
 	}
 
-	return NULL;
+	return 0;
 }
 
 static int
@@ -646,8 +647,8 @@ rte_mp_channel_init(void)
 		return -1;
 	}
 
-	if (rte_ctrl_thread_create(&mp_handle_tid, "dpdk-mp-msg",
-			NULL, mp_handle, NULL) < 0) {
+	if (rte_thread_create_internal_control(&mp_handle_tid, "mp-msg",
+			mp_handle, NULL) < 0) {
 		RTE_LOG(ERR, EAL, "failed to create mp thread: %s\n",
 			strerror(errno));
 		close(dir_fd);
@@ -671,8 +672,8 @@ rte_mp_channel_cleanup(void)
 	if (fd < 0)
 		return;
 
-	pthread_cancel(mp_handle_tid);
-	pthread_join(mp_handle_tid, NULL);
+	pthread_cancel((pthread_t)mp_handle_tid.opaque_id);
+	rte_thread_join(mp_handle_tid, NULL);
 	close_socket_fd(fd);
 }
 

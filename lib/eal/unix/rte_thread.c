@@ -190,7 +190,7 @@ rte_thread_create(rte_thread_t *thread_id,
 	pthread_mutex_unlock(&ctx.wrapper_mutex);
 
 	if (ret != 0)
-		pthread_join((pthread_t)thread_id->opaque_id, NULL);
+		rte_thread_join(*thread_id, NULL);
 
 cleanup:
 	if (attrp != NULL)

@@ -212,7 +212,7 @@ fdset_try_del(struct fdset *pfdset, int fd)
  * will wait until the flag is reset to zero(which indicates the callback is
  * finished), then it could free the context after fdset_del.
  */
-void *
+uint32_t
 fdset_event_dispatch(void *arg)
 {
 	int i;
@@ -227,7 +227,7 @@ fdset_event_dispatch(void *arg)
 	int val;
 
 	if (pfdset == NULL)
-		return NULL;
+		return 0;
 
 	while (1) {
 
@@ -303,7 +303,7 @@ fdset_event_dispatch(void *arg)
 			fdset_shrink(pfdset);
 	}
 
-	return NULL;
+	return 0;
 }
 
 static void
