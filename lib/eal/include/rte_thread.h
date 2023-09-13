@@ -116,12 +116,10 @@ int rte_thread_create(rte_thread_t *thread_id,
  * @param name
  *   The name of the control thread
  *   (max RTE_THREAD_NAME_SIZE characters including '\0').
- * @param thread_attr
- *   Attributes for the new thread.
  * @param thread_func
  *   Function to be executed by the new thread.
  * @param arg
- *   Argument passed to start_routine.
+ *   Argument passed to thread_func.
  * @return
  *   On success, returns 0; on error, it returns a negative value
  *   corresponding to the error number.
@@ -129,8 +127,7 @@ int rte_thread_create(rte_thread_t *thread_id,
 __rte_experimental
 int
 rte_thread_create_control(rte_thread_t *thread, const char *name,
-	const rte_thread_attr_t *thread_attr, rte_thread_func thread_func,
-	void *arg);
+		rte_thread_func thread_func, void *arg);
 
 /**
  * @warning

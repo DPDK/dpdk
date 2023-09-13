@@ -349,8 +349,7 @@ rte_ctrl_thread_create(pthread_t *thread, const char *name,
 
 int
 rte_thread_create_control(rte_thread_t *thread, const char *name,
-	const rte_thread_attr_t *attr, rte_thread_func start_routine,
-	void *arg)
+		rte_thread_func start_routine, void *arg)
 {
 	struct rte_thread_ctrl_params *params;
 	enum __rte_ctrl_thread_status ctrl_thread_status;
@@ -365,7 +364,7 @@ rte_thread_create_control(rte_thread_t *thread, const char *name,
 	params->ret = 0;
 	params->ctrl_thread_status = CTRL_THREAD_LAUNCHING;
 
-	ret = rte_thread_create(thread, attr, control_thread_start, params);
+	ret = rte_thread_create(thread, NULL, control_thread_start, params);
 	if (ret != 0) {
 		free(params);
 		return -ret;

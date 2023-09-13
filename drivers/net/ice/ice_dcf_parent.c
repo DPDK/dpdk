@@ -182,7 +182,7 @@ start_vsi_reset_thread(struct ice_dcf_hw *dcf_hw, bool vfr, uint16_t vf_id)
 	param->vf_id = vf_id;
 
 	snprintf(name, sizeof(name), "dpdk-ice-rst%u", vf_id);
-	ret = rte_thread_create_control(&thread, name, NULL,
+	ret = rte_thread_create_control(&thread, name,
 				     ice_dcf_vsi_update_service_handler, param);
 	if (ret != 0) {
 		PMD_DRV_LOG(ERR, "Failed to start the thread for reset handling");

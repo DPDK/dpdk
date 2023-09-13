@@ -113,6 +113,9 @@ API Changes
    Also, make sure to start the actual text at the margin.
    =======================================================
 
+* eal: The thread API has changed.
+  The function ``rte_thread_create_control()`` does not take attributes anymore.
+
 
 ABI Changes
 -----------

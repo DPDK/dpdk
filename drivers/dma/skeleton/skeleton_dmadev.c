@@ -128,8 +128,7 @@ skeldma_start(struct rte_dma_dev *dev)
 	rte_mb();
 
 	snprintf(name, sizeof(name), "dpdk-dma-skel%d", dev->data->dev_id);
-	ret = rte_thread_create_control(&hw->thread, name, NULL,
-				     cpucopy_thread, dev);
+	ret = rte_thread_create_control(&hw->thread, name, cpucopy_thread, dev);
 	if (ret) {
 		SKELDMA_LOG(ERR, "Start cpucopy thread fail!");
 		return -EINVAL;
