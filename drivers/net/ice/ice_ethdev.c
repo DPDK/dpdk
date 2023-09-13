@@ -3646,6 +3646,8 @@ ice_get_init_link_status(struct rte_eth_dev *dev)
 
 	if (link_status.link_info & ICE_AQ_LINK_UP)
 		pf->init_link_up = true;
+	else
+		pf->init_link_up = false;
 }
 
 static int
