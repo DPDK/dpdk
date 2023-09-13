@@ -462,4 +462,6 @@ INTERNAL {
 	rte_mem_map;
 	rte_mem_page_size;
 	rte_mem_unmap;
+	rte_thread_create_internal_control;
+	rte_thread_set_prefixed_name;
 };

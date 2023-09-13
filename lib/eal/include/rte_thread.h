@@ -28,6 +28,11 @@ extern "C" {
 /* Old definition, aliased for compatibility. */
 #define RTE_MAX_THREAD_NAME_LEN RTE_THREAD_NAME_SIZE
 
+/** Thread name prefix automatically added to all internal threads. */
+#define RTE_THREAD_INTERNAL_PREFIX "dpdk-"
+/** Maximum internal thread name length (including '\0'). */
+#define RTE_THREAD_INTERNAL_NAME_SIZE 11
+
 /**
  * Thread id descriptor.
  */
@@ -122,6 +127,35 @@ rte_thread_create_control(rte_thread_t *thread, const char *name,
 		rte_thread_func thread_func, void *arg);
 
 /**
+ * Create an internal control thread.
+ *
+ * Creates a control thread with the given name prefixed.
+ * If setting the name of the thread fails, the error is ignored and logged.
+ *
+ * The affinity of the new thread is based on the CPU affinity retrieved
+ * at the time rte_eal_init() was called, the EAL threads are then excluded.
+ *
+ * @param id
+ *   Filled with the thread ID of the new created thread.
+ * @param name
+ *   The name of the control thread.
+ *   See RTE_THREAD_INTERNAL_NAME_SIZE for maximum length.
+ *   The name of the driver or library should be first,
+ *   then followed by a hyphen and more details.
+ *   It will be prefixed with RTE_THREAD_INTERNAL_PREFIX by this function.
+ * @param func
+ *   Function to be executed by the new thread.
+ * @param arg
+ *   Argument passed to func.
+ * @return
+ *   On success, returns 0; a negative value otherwise.
+ */
+__rte_internal
+int
+rte_thread_create_internal_control(rte_thread_t *id, const char *name,
+		rte_thread_func func, void *arg);
+
+/**
  * Waits for the thread identified by 'thread_id' to terminate
  *
  * @param thread_id
@@ -159,6 +193,7 @@ rte_thread_t rte_thread_self(void);
 
 /**
  * Set the name of the thread.
+ *
  * This API is a noop if the underlying platform does not
  * support setting the thread name or the platform-specific
  * API used to set the thread name fails.
@@ -172,6 +207,26 @@ rte_thread_t rte_thread_self(void);
  */
 void
 rte_thread_set_name(rte_thread_t thread_id, const char *thread_name);
+
+/**
+ * Set the name of an internal thread with the common prefix.
+ *
+ * This API is a noop if the underlying platform does not support
+ * setting the thread name, or if it fails.
+ *
+ * @param id
+ *   The ID of the thread to set name.
+ *
+ * @param name
+ *   The name to set after being prefixed.
+ *   See RTE_THREAD_INTERNAL_NAME_SIZE for maximum length.
+ *   The name of the driver or library should be first,
+ *   then followed by a hyphen and more details.
+ *   It will be prefixed with RTE_THREAD_INTERNAL_PREFIX by this function.
+ */
+__rte_internal
+void
+rte_thread_set_prefixed_name(rte_thread_t id, const char *name);
 
 /**
  * Check if 2 thread ids are equal.

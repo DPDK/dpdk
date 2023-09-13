@@ -167,6 +167,14 @@ check_forbidden_additions() { # <patch>
 		-f $(dirname $(readlink -f $0))/check-forbidden-tokens.awk \
 		"$1" || res=1
 
+	# forbid non-internal thread in drivers and libs
+	awk -v FOLDERS='lib drivers' \
+		-v EXPRESSIONS="rte_thread_(set_name|create_control)\\\(" \
+		-v RET_ON_FAIL=1 \
+		-v MESSAGE='Prefer rte_thread_(set_prefixed_name|create_internal_control)' \
+		-f $(dirname $(readlink -f $0))/check-forbidden-tokens.awk \
+		"$1" || res=1
+
 	# forbid inclusion of driver specific headers in apps and examples
 	awk -v FOLDERS='app examples' \
 		-v EXPRESSIONS='include.*_driver\\.h include.*_pmd\\.h' \

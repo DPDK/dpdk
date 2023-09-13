@@ -392,6 +392,39 @@ rte_thread_create_control(rte_thread_t *thread, const char *name,
 	return ret;
 }
 
+static void
+add_internal_prefix(char *prefixed_name, const char *name, size_t size)
+{
+	size_t prefixlen;
+
+	/* Check RTE_THREAD_INTERNAL_NAME_SIZE definition. */
+	RTE_BUILD_BUG_ON(RTE_THREAD_INTERNAL_NAME_SIZE !=
+		RTE_THREAD_NAME_SIZE - sizeof(RTE_THREAD_INTERNAL_PREFIX) + 1);
+
+	prefixlen = strlen(RTE_THREAD_INTERNAL_PREFIX);
+	strlcpy(prefixed_name, RTE_THREAD_INTERNAL_PREFIX, size);
+	strlcpy(prefixed_name + prefixlen, name, size - prefixlen);
+}
+
+int
+rte_thread_create_internal_control(rte_thread_t *id, const char *name,
+		rte_thread_func func, void *arg)
+{
+	char prefixed_name[RTE_THREAD_NAME_SIZE];
+
+	add_internal_prefix(prefixed_name, name, sizeof(prefixed_name));
+	return rte_thread_create_control(id, prefixed_name, func, arg);
+}
+
+void
+rte_thread_set_prefixed_name(rte_thread_t id, const char *name)
+{
+	char prefixed_name[RTE_THREAD_NAME_SIZE];
+
+	add_internal_prefix(prefixed_name, name, sizeof(prefixed_name));
+	rte_thread_set_name(id, prefixed_name);
+}
+
 int
 rte_thread_register(void)
 {
