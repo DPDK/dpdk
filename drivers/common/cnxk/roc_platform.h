@@ -134,7 +134,8 @@
 #define plt_intr_disable	     rte_intr_disable
 #define plt_thread_is_intr	     rte_thread_is_intr
 #define plt_intr_callback_fn	     rte_intr_callback_fn
-#define plt_ctrl_thread_create	     rte_ctrl_thread_create
+#define plt_thread_create_control    rte_thread_create_internal_control
+#define plt_thread_join	             rte_thread_join
 
 #define plt_intr_efd_counter_size_get	rte_intr_efd_counter_size_get
 #define plt_intr_efd_counter_size_set	rte_intr_efd_counter_size_set

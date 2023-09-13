@@ -18,7 +18,7 @@
 #define ROC_PCI_SRIOV_TOTAL_VF 0x0e /* Total VFs */
 
 /* VF Mbox handler thread name */
-#define MBOX_HANDLER_NAME_MAX_LEN 25
+#define MBOX_HANDLER_NAME_MAX_LEN RTE_THREAD_INTERNAL_NAME_SIZE
 
 /* VF interrupt message pending bits - mbox or flr */
 #define ROC_DEV_MBOX_PEND BIT_ULL(0)
@@ -1070,7 +1070,7 @@ vf_flr_handle_msg(void *param, dev_intr_t *flr)
 	}
 }
 
-static void *
+static uint32_t
 pf_vf_mbox_thread_main(void *arg)
 {
 	struct dev *dev = arg;
@@ -1114,7 +1114,7 @@ pf_vf_mbox_thread_main(void *arg)
 
 	pthread_mutex_unlock(&dev->sync.mutex);
 
-	return NULL;
+	return 0;
 }
 
 static void
@@ -1455,10 +1455,10 @@ dev_init(struct dev *dev, struct plt_pci_device *pci_dev)
 		pthread_cond_init(&dev->sync.pfvf_msg_cond, NULL);
 		pthread_mutex_init(&dev->sync.mutex, NULL);
 
-		snprintf(name, MBOX_HANDLER_NAME_MAX_LEN, "pf%d_vf_msg_hndlr", dev->pf);
+		snprintf(name, MBOX_HANDLER_NAME_MAX_LEN, "mbox_pf%d", dev->pf);
 		dev->sync.start_thread = true;
-		rc = plt_ctrl_thread_create(&dev->sync.pfvf_msg_thread, name, NULL,
-					    pf_vf_mbox_thread_main, dev);
+		rc = plt_thread_create_control(&dev->sync.pfvf_msg_thread, name,
+				pf_vf_mbox_thread_main, dev);
 		if (rc != 0) {
 			plt_err("Failed to create thread for VF mbox handling\n");
 			goto iounmap;
@@ -1488,7 +1488,7 @@ stop_msg_thrd:
 	if (dev->sync.start_thread) {
 		dev->sync.start_thread = false;
 		pthread_cond_signal(&dev->sync.pfvf_msg_cond);
-		pthread_join(dev->sync.pfvf_msg_thread, NULL);
+		plt_thread_join(dev->sync.pfvf_msg_thread, NULL);
 		pthread_mutex_destroy(&dev->sync.mutex);
 		pthread_cond_destroy(&dev->sync.pfvf_msg_cond);
 	}
@@ -1519,7 +1519,7 @@ dev_fini(struct dev *dev, struct plt_pci_device *pci_dev)
 	if (dev->sync.start_thread) {
 		dev->sync.start_thread = false;
 		pthread_cond_signal(&dev->sync.pfvf_msg_cond);
-		pthread_join(dev->sync.pfvf_msg_thread, NULL);
+		plt_thread_join(dev->sync.pfvf_msg_thread, NULL);
 		pthread_mutex_destroy(&dev->sync.mutex);
 		pthread_cond_destroy(&dev->sync.pfvf_msg_cond);
 	}

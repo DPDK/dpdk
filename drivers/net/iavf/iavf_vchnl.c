@@ -135,7 +135,7 @@ iavf_dev_event_handler_init(void)
 	TAILQ_INIT(&handler->pending);
 	pthread_mutex_init(&handler->lock, NULL);
 
-	if (rte_thread_create_control(&handler->tid, "dpdk-iavf-event",
+	if (rte_thread_create_internal_control(&handler->tid, "iavf-event",
 				iavf_dev_event_handle, NULL)) {
 		__atomic_fetch_sub(&handler->ndev, 1, __ATOMIC_RELAXED);
 		return -1;

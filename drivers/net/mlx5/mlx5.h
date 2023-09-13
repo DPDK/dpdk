@@ -1368,7 +1368,7 @@ struct mlx5_hws_cnt_svc_mng {
 	uint32_t refcnt;
 	uint32_t service_core;
 	uint32_t query_interval;
-	pthread_t service_thread;
+	rte_thread_t service_thread;
 	uint8_t svc_running;
 	struct mlx5_hws_aso_mng aso_mng __rte_cache_aligned;
 };

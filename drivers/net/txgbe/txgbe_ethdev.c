@@ -2896,9 +2896,9 @@ txgbe_dev_link_update_share(struct rte_eth_dev *dev,
 				 * when there is no link thread running.
 				 */
 				intr->flags |= TXGBE_FLAG_NEED_LINK_CONFIG;
-				if (rte_thread_create_control(&ad->link_thread_tid,
-					"dpdk-txgbe-link",
-					txgbe_dev_setup_link_thread_handler, dev) < 0) {
+				if (rte_thread_create_internal_control(&ad->link_thread_tid,
+						"txgbe-link",
+						txgbe_dev_setup_link_thread_handler, dev) < 0) {
 					PMD_DRV_LOG(ERR, "Create link thread failed!");
 					__atomic_clear(&ad->link_thread_running, __ATOMIC_SEQ_CST);
 				}

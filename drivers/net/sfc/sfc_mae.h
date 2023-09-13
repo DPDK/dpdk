@@ -196,7 +196,7 @@ struct sfc_mae_counter_registry {
 		} service;
 		struct {
 			/** Counter thread ID */
-			pthread_t			id;
+			rte_thread_t			id;
 			/** The thread should keep running */
 			bool				run;
 		} thread;

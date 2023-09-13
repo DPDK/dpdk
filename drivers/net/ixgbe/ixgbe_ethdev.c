@@ -4328,10 +4328,9 @@ ixgbe_dev_link_update_share(struct rte_eth_dev *dev,
 				 * when there is no link thread running.
 				 */
 				intr->flags |= IXGBE_FLAG_NEED_LINK_CONFIG;
-				if (rte_thread_create_control(&ad->link_thread_tid,
-					"dpdk-ixgbe-link",
-					ixgbe_dev_setup_link_thread_handler,
-					dev) < 0) {
+				if (rte_thread_create_internal_control(&ad->link_thread_tid,
+						"ixgbe-link",
+						ixgbe_dev_setup_link_thread_handler, dev) < 0) {
 					PMD_DRV_LOG(ERR,
 						"Create link thread failed!");
 					/* NOTE: review for potential ordering optimization */
