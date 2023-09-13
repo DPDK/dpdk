@@ -115,6 +115,7 @@ API Changes
 
 * eal: The thread API has changed.
   The function ``rte_thread_create_control()`` does not take attributes anymore.
+  The whole thread API was promoted to stable level.
 
 
 ABI Changes

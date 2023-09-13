@@ -257,12 +257,31 @@ DPDK_24 {
 	rte_strscpy;
 	rte_strsplit;
 	rte_sys_gettid;
+	rte_thread_attr_get_affinity;
+	rte_thread_attr_init;
+	rte_thread_attr_set_affinity;
+	rte_thread_attr_set_priority;
+	rte_thread_create;
+	rte_thread_create_control;
+	rte_thread_detach;
+	rte_thread_equal;
 	rte_thread_get_affinity;
+	rte_thread_get_affinity_by_id;
+	rte_thread_get_priority;
 	rte_thread_is_intr;
+	rte_thread_join;
+	rte_thread_key_create;
+	rte_thread_key_delete;
 	rte_thread_register;
+	rte_thread_self;
 	rte_thread_set_affinity;
+	rte_thread_set_affinity_by_id;
+	rte_thread_set_name;
+	rte_thread_set_priority;
 	rte_thread_setname;
 	rte_thread_unregister;
+	rte_thread_value_get;
+	rte_thread_value_set;
 	rte_uuid_compare;
 	rte_uuid_is_null;
 	rte_uuid_parse;
@@ -368,10 +387,6 @@ EXPERIMENTAL {
 	# added in 21.05
 	rte_devargs_reset;
 	rte_intr_callback_unregister_sync;
-	rte_thread_key_create;
-	rte_thread_key_delete;
-	rte_thread_value_get;
-	rte_thread_value_set;
 	rte_version_minor;
 	rte_version_month;
 	rte_version_prefix;
@@ -392,26 +407,9 @@ EXPERIMENTAL {
 
 	# added in 22.07
 	rte_drand;
-	rte_thread_get_affinity_by_id;
-	rte_thread_get_priority;
-	rte_thread_self;
-	rte_thread_set_affinity_by_id;
-	rte_thread_set_priority;
-
-	# added in 22.11
-	rte_thread_attr_get_affinity;
-	rte_thread_attr_init;
-	rte_thread_attr_set_affinity;
-	rte_thread_attr_set_priority;
-	rte_thread_create;
-	rte_thread_detach;
-	rte_thread_equal;
-	rte_thread_join;
 
 	# added in 23.03
 	rte_lcore_register_usage_cb;
-	rte_thread_create_control;
-	rte_thread_set_name;
 	__rte_eal_trace_generic_blob;
 
 	# added in 23.07
