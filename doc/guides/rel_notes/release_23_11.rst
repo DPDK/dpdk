@@ -127,6 +127,10 @@ New Features
   a group's miss actions, which are the actions to be performed on packets
   that didn't match any of the flow rules in the group.
 
+* **Updated Intel i40e driver.**
+
+  * Added support for new X722 devices.
+
 * **Updated Marvell cnxk net driver.**
 
   * Added support for ``RTE_FLOW_ITEM_TYPE_IPV6_ROUTING_EXT`` flow item.

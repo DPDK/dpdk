@@ -26,6 +26,7 @@
 #define I40E_DEV_ID_XXV710_N3000	0x0D58
 #define I40E_DEV_ID_10G_BASE_T_BC	0x15FF
 #define I40E_DEV_ID_5G_BASE_T_BC	0x101F
+#define I40E_DEV_ID_1G_BASE_T_BC        0x0DD2
 #if defined(INTEGRATED_VF) || defined(VF_DRIVER) || defined(I40E_NDIS_SUPPORT)
 #define I40E_DEV_ID_VF			0x154C
 #define I40E_DEV_ID_VF_HV		0x1571
@@ -48,6 +49,7 @@
 #define I40E_DEV_ID_1G_BASE_T_X722	0x37D1
 #define I40E_DEV_ID_10G_BASE_T_X722	0x37D2
 #define I40E_DEV_ID_SFP_I_X722		0x37D3
+#define I40E_DEV_ID_SFP_X722_A          0x0DDA
 #if defined(INTEGRATED_VF) || defined(VF_DRIVER) || defined(I40E_NDIS_SUPPORT)
 #define I40E_DEV_ID_X722_VF		0x37CD
 #endif /* VF_DRIVER */
