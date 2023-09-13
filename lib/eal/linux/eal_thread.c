@@ -24,7 +24,7 @@ void rte_thread_set_name(rte_thread_t thread_id, const char *thread_name)
 	int ret = ENOSYS;
 #if defined(__GLIBC__) && defined(__GLIBC_PREREQ)
 #if __GLIBC_PREREQ(2, 12)
-	char truncated[RTE_MAX_THREAD_NAME_LEN];
+	char truncated[RTE_THREAD_NAME_SIZE];
 	const size_t truncatedsz = sizeof(truncated);
 
 	if (strlcpy(truncated, thread_name, truncatedsz) >= truncatedsz)

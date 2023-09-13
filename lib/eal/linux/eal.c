@@ -970,7 +970,7 @@ rte_eal_init(int argc, char **argv)
 	static uint32_t run_once;
 	uint32_t has_run = 0;
 	char cpuset[RTE_CPU_AFFINITY_STR_LEN];
-	char thread_name[RTE_MAX_THREAD_NAME_LEN];
+	char thread_name[RTE_THREAD_NAME_SIZE];
 	bool phys_addrs;
 	const struct rte_config *config = rte_eal_get_configuration();
 	struct internal_config *internal_conf =

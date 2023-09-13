@@ -283,7 +283,7 @@ rte_eal_init(int argc, char **argv)
 	enum rte_iova_mode iova_mode;
 	int ret;
 	char cpuset[RTE_CPU_AFFINITY_STR_LEN];
-	char thread_name[RTE_MAX_THREAD_NAME_LEN];
+	char thread_name[RTE_THREAD_NAME_SIZE];
 
 	eal_log_init(NULL, 0);
 

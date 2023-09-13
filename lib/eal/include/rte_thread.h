@@ -23,6 +23,11 @@
 extern "C" {
 #endif
 
+/** Maximum thread name length (including '\0'). */
+#define RTE_THREAD_NAME_SIZE 16
+/* Old definition, aliased for compatibility. */
+#define RTE_MAX_THREAD_NAME_LEN RTE_THREAD_NAME_SIZE
+
 /**
  * Thread id descriptor.
  */
@@ -110,7 +115,7 @@ int rte_thread_create(rte_thread_t *thread_id,
  *   Filled with the thread id of the new created thread.
  * @param name
  *   The name of the control thread
- *   (max RTE_MAX_THREAD_NAME_LEN characters including '\0').
+ *   (max RTE_THREAD_NAME_SIZE characters including '\0').
  * @param thread_attr
  *   Attributes for the new thread.
  * @param thread_func
@@ -188,7 +193,7 @@ rte_thread_t rte_thread_self(void);
  *    The id of the thread to set name.
  *
  * @param thread_name
- *    The name to set. Truncated to RTE_MAX_THREAD_NAME_LEN,
+ *    The name to set. Truncated to RTE_THREAD_NAME_SIZE,
  *    including terminating NUL if necessary.
  */
 __rte_experimental
