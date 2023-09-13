@@ -2483,7 +2483,7 @@ iavf_fill_ctx_desc_segmentation_field(volatile uint64_t *field,
 			total_length -= m->outer_l3_len + m->outer_l2_len;
 	}
 
-#ifdef RTE_LIBRTE_IAVF_DEBUG_TX
+#ifdef RTE_ETHDEV_DEBUG_TX
 	if (!m->l4_len || !m->tso_segsz)
 		PMD_TX_LOG(DEBUG, "L4 length %d, LSO Segment size %d",
 			 m->l4_len, m->tso_segsz);
