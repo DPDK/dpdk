@@ -304,7 +304,7 @@ rte_pci_probe_one_driver(struct rte_pci_driver *dr,
 		}
 	}
 
-	RTE_LOG(INFO, EAL, "Probe PCI driver: %s (%x:%x) device: "PCI_PRI_FMT" (socket %i)\n",
+	RTE_LOG(INFO, EAL, "Probe PCI driver: %s (%x:%04x) device: "PCI_PRI_FMT" (socket %i)\n",
 			dr->driver.name, dev->id.vendor_id, dev->id.device_id,
 			loc->domain, loc->bus, loc->devid, loc->function,
 			dev->device.numa_node);
