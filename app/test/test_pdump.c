@@ -136,8 +136,8 @@ test_pdump_uninit(void)
 	return ret;
 }
 
-void *
-send_pkts(void *empty)
+uint32_t
+send_pkts(void *empty __rte_unused)
 {
 	int ret = 0;
 	struct rte_mbuf *pbuf[NUM_PACKETS] = { };
@@ -161,7 +161,7 @@ send_pkts(void *empty)
 
 	rte_eth_dev_stop(portid);
 	test_put_mbuf_to_pool(mp, pbuf);
-	return empty;
+	return 0;
 }
 
 /*
