@@ -756,7 +756,7 @@ Control Thread API
 ~~~~~~~~~~~~~~~~~~
 
 It is possible to create Control Threads using the public API
-``rte_ctrl_thread_create()``.
+``rte_thread_create_control()``.
 Those threads can be used for management/infrastructure tasks and are used
 internally by DPDK for multi process support and interrupt handling.
 

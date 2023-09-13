@@ -235,25 +235,22 @@ enum __rte_ctrl_thread_status {
 	CTRL_THREAD_ERROR /* Control thread encountered an error */
 };
 
-struct rte_thread_ctrl_params {
-	union {
-		void *(*ctrl_start_routine)(void *arg);
-		rte_thread_func control_start_routine;
-	} u;
+struct control_thread_params {
+	rte_thread_func start_routine;
 	void *arg;
 	int ret;
 	/* Control thread status.
 	 * If the status is CTRL_THREAD_ERROR, 'ret' has the error code.
 	 */
-	enum __rte_ctrl_thread_status ctrl_thread_status;
+	enum __rte_ctrl_thread_status status;
 };
 
-static int ctrl_thread_init(void *arg)
+static int control_thread_init(void *arg)
 {
 	struct internal_config *internal_conf =
 		eal_get_internal_configuration();
 	rte_cpuset_t *cpuset = &internal_conf->ctrl_cpuset;
-	struct rte_thread_ctrl_params *params = arg;
+	struct control_thread_params *params = arg;
 
 	__rte_thread_init(rte_lcore_id(), cpuset);
 	/* Set control thread socket ID to SOCKET_ID_ANY
@@ -262,96 +259,34 @@ static int ctrl_thread_init(void *arg)
 	RTE_PER_LCORE(_socket_id) = SOCKET_ID_ANY;
 	params->ret = rte_thread_set_affinity_by_id(rte_thread_self(), cpuset);
 	if (params->ret != 0) {
-		__atomic_store_n(&params->ctrl_thread_status,
+		__atomic_store_n(&params->status,
 			CTRL_THREAD_ERROR, __ATOMIC_RELEASE);
 		return 1;
 	}
 
-	__atomic_store_n(&params->ctrl_thread_status,
+	__atomic_store_n(&params->status,
 		CTRL_THREAD_RUNNING, __ATOMIC_RELEASE);
 
 	return 0;
 }
 
-static void *ctrl_thread_start(void *arg)
-{
-	struct rte_thread_ctrl_params *params = arg;
-	void *start_arg = params->arg;
-	void *(*start_routine)(void *) = params->u.ctrl_start_routine;
-
-	if (ctrl_thread_init(arg) != 0)
-		return NULL;
-
-	return start_routine(start_arg);
-}
-
 static uint32_t control_thread_start(void *arg)
 {
-	struct rte_thread_ctrl_params *params = arg;
+	struct control_thread_params *params = arg;
 	void *start_arg = params->arg;
-	rte_thread_func start_routine = params->u.control_start_routine;
+	rte_thread_func start_routine = params->start_routine;
 
-	if (ctrl_thread_init(arg) != 0)
+	if (control_thread_init(arg) != 0)
 		return 0;
 
 	return start_routine(start_arg);
 }
 
 int
-rte_ctrl_thread_create(pthread_t *thread, const char *name,
-		const pthread_attr_t *attr,
-		void *(*start_routine)(void *), void *arg)
-{
-	struct rte_thread_ctrl_params *params;
-	enum __rte_ctrl_thread_status ctrl_thread_status;
-	int ret;
-
-	params = malloc(sizeof(*params));
-	if (!params)
-		return -ENOMEM;
-
-	params->u.ctrl_start_routine = start_routine;
-	params->arg = arg;
-	params->ret = 0;
-	params->ctrl_thread_status = CTRL_THREAD_LAUNCHING;
-
-	ret = pthread_create(thread, attr, ctrl_thread_start, (void *)params);
-	if (ret != 0) {
-		free(params);
-		return -ret;
-	}
-
-	if (name != NULL)
-		rte_thread_set_name((rte_thread_t){(uintptr_t)*thread}, name);
-
-	/* Wait for the control thread to initialize successfully */
-	while ((ctrl_thread_status =
-			__atomic_load_n(&params->ctrl_thread_status,
-			__ATOMIC_ACQUIRE)) == CTRL_THREAD_LAUNCHING) {
-		/* Yield the CPU. Using sched_yield call requires maintaining
-		 * another implementation for Windows as sched_yield is not
-		 * supported on Windows.
-		 */
-		rte_delay_us_sleep(1);
-	}
-
-	/* Check if the control thread encountered an error */
-	if (ctrl_thread_status == CTRL_THREAD_ERROR) {
-		/* ctrl thread is exiting */
-		rte_thread_join((rte_thread_t){(uintptr_t)*thread}, NULL);
-	}
-
-	ret = params->ret;
-	free(params);
-
-	return -ret;
-}
-
-int
 rte_thread_create_control(rte_thread_t *thread, const char *name,
 		rte_thread_func start_routine, void *arg)
 {
-	struct rte_thread_ctrl_params *params;
+	struct control_thread_params *params;
 	enum __rte_ctrl_thread_status ctrl_thread_status;
 	int ret;
 
@@ -359,10 +294,10 @@ rte_thread_create_control(rte_thread_t *thread, const char *name,
 	if (params == NULL)
 		return -ENOMEM;
 
-	params->u.control_start_routine = start_routine;
+	params->start_routine = start_routine;
 	params->arg = arg;
 	params->ret = 0;
-	params->ctrl_thread_status = CTRL_THREAD_LAUNCHING;
+	params->status = CTRL_THREAD_LAUNCHING;
 
 	ret = rte_thread_create(thread, NULL, control_thread_start, params);
 	if (ret != 0) {
@@ -375,7 +310,7 @@ rte_thread_create_control(rte_thread_t *thread, const char *name,
 
 	/* Wait for the control thread to initialize successfully */
 	while ((ctrl_thread_status =
-			__atomic_load_n(&params->ctrl_thread_status,
+			__atomic_load_n(&params->status,
 			__ATOMIC_ACQUIRE)) == CTRL_THREAD_LAUNCHING) {
 		rte_delay_us_sleep(1);
 	}

@@ -39,19 +39,3 @@ void rte_thread_set_name(rte_thread_t thread_id, const char *thread_name)
 	if (ret != 0)
 		RTE_LOG(DEBUG, EAL, "Failed to set thread name\n");
 }
-
-int rte_thread_setname(pthread_t id, const char *name)
-{
-	int ret = ENOSYS;
-#if defined(__GLIBC__) && defined(__GLIBC_PREREQ)
-#if __GLIBC_PREREQ(2, 12)
-	char truncated[16];
-
-	strlcpy(truncated, name, sizeof(truncated));
-	ret = pthread_setname_np(id, truncated);
-#endif
-#endif
-	RTE_SET_USED(id);
-	RTE_SET_USED(name);
-	return -ret;
-}

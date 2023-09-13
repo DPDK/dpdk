@@ -29,11 +29,6 @@ Deprecation Notices
   are renamed to ``rte_tel_data_add_array_uint`` and ``rte_tel_data_add_dict_uint`` respectively.
   As such, the old function names are deprecated and will be removed in a future release.
 
-* eal: The functions ``rte_thread_setname`` and ``rte_ctrl_thread_create``
-  are planned to be deprecated starting with the 23.07 release, subject to
-  the replacement API rte_thread_set_name and rte_thread_create_control being
-  marked as stable, and planned to be removed by the 23.11 release.
-
 * eal: ``RTE_CPUFLAG_NUMFLAGS`` will be removed in DPDK 23.11 release.
   This is to allow new CPU features to be added without ABI breakage.
 

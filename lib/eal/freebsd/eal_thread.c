@@ -42,10 +42,3 @@ void rte_thread_set_name(rte_thread_t thread_id, const char *thread_name)
 
 	pthread_set_name_np((pthread_t)thread_id.opaque_id, truncated);
 }
-
-int rte_thread_setname(pthread_t id, const char *name)
-{
-	/* this BSD function returns no error */
-	pthread_set_name_np(id, name);
-	return 0;
-}

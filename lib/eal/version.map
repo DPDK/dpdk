@@ -20,7 +20,6 @@ DPDK_24 {
 	rte_cpu_get_flag_enabled;
 	rte_cpu_get_flag_name;
 	rte_cpu_is_supported; # WINDOWS_NO_EXPORT
-	rte_ctrl_thread_create;
 	rte_cycles_vmware_tsc_map; # WINDOWS_NO_EXPORT
 	rte_delay_us;
 	rte_delay_us_block;
@@ -278,7 +277,6 @@ DPDK_24 {
 	rte_thread_set_affinity_by_id;
 	rte_thread_set_name;
 	rte_thread_set_priority;
-	rte_thread_setname;
 	rte_thread_unregister;
 	rte_thread_value_get;
 	rte_thread_value_set;
