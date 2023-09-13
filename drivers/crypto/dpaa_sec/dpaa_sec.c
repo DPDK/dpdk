@@ -671,7 +671,7 @@ dpaa_sec_dump(struct dpaa_sec_op_ctx *ctx, struct dpaa_sec_qp *qp)
 
 	if (op->sess_type == RTE_CRYPTO_OP_WITH_SESSION)
 		sess = CRYPTODEV_GET_SYM_SESS_PRIV(op->sym->session);
-#ifdef RTE_LIBRTE_SECURITY
+#ifdef RTE_LIB_SECURITY
 	else if (op->sess_type == RTE_CRYPTO_OP_SECURITY_SESSION)
 		sess = SECURITY_GET_SESS_PRIV(op->sym->session);
 #endif
@@ -682,7 +682,7 @@ dpaa_sec_dump(struct dpaa_sec_op_ctx *ctx, struct dpaa_sec_qp *qp)
 
 	cdb = &sess->cdb;
 	rte_memcpy(&c_cdb, cdb, sizeof(struct sec_cdb));
-#ifdef RTE_LIBRTE_SECURITY
+#ifdef RTE_LIB_SECURITY
 	printf("\nsession protocol type = %d\n", sess->proto_alg);
 #endif
 	printf("\n****************************************\n"
@@ -707,7 +707,7 @@ dpaa_sec_dump(struct dpaa_sec_op_ctx *ctx, struct dpaa_sec_qp *qp)
 		sess->iv.length, sess->iv.offset,
 		sess->digest_length, sess->auth_only_len,
 		sess->auth_cipher_text);
-#ifdef RTE_LIBRTE_SECURITY
+#ifdef RTE_LIB_SECURITY
 	printf("PDCP session params:\n"
 		"\tDomain:\t\t%d\n\tBearer:\t\t%d\n\tpkt_dir:\t%d\n\thfn_ovd:"
 		"\t%d\n\tsn_size:\t%d\n\tsdap_enabled:\t%d\n\thfn_ovd_offset:"
