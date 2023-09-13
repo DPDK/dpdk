@@ -4,6 +4,7 @@
 
 #include <stdlib.h>
 #include <fnmatch.h>
+#include <pthread.h>
 #include <sys/queue.h>
 #include <regex.h>
 

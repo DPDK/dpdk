@@ -4,6 +4,7 @@
  */
 #include <ctype.h>
 #include <stdlib.h>
+#include <pthread.h>
 #if defined(LINUX)
 #include <sys/epoll.h>
 #endif

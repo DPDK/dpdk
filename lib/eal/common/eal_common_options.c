@@ -5,6 +5,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <pthread.h>
 #ifndef RTE_EXEC_ENV_WINDOWS
 #include <syslog.h>
 #endif

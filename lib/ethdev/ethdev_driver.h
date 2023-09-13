@@ -18,6 +18,8 @@ extern "C" {
  * use them.
  */
 
+#include <pthread.h>
+
 #include <dev_driver.h>
 #include <rte_compat.h>
 #include <rte_ethdev.h>

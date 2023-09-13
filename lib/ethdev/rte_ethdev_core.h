@@ -5,8 +5,6 @@
 #ifndef _RTE_ETHDEV_CORE_H_
 #define _RTE_ETHDEV_CORE_H_
 
-#include <pthread.h>
-
 /**
  * @file
  *

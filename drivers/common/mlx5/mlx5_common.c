@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <stdio.h>
+#include <pthread.h>
 
 #include <rte_errno.h>
 #include <rte_mempool.h>

@@ -8,6 +8,7 @@
 #define __BCM_OSAL_H
 
 #include <stdbool.h>
+#include <pthread.h>
 #include <time.h>
 #include <rte_bitops.h>
 #include <rte_byteorder.h>

@@ -6,6 +6,7 @@
 #include <linux/virtio_net.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <pthread.h>
 #ifdef RTE_LIBRTE_VHOST_NUMA
 #include <numa.h>
 #include <numaif.h>

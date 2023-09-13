@@ -22,8 +22,6 @@
 extern "C" {
 #endif
 
-#include <pthread.h>
-
 #ifdef RTE_TOOLCHAIN_MSVC
 /**
  * Macro to define a per lcore variable "var" of type "type", don't

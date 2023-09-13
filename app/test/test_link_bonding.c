@@ -10,8 +10,10 @@
 #include <stdint.h>
 #include <inttypes.h>
 #include <errno.h>
+#include <pthread.h>
 #include <sys/queue.h>
 #include <sys/time.h>
+
 #include <rte_cycles.h>
 #include <rte_byteorder.h>
 #include <rte_common.h>
