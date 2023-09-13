@@ -119,6 +119,14 @@ check_forbidden_additions() { # <patch>
 		-f $(dirname $(readlink -f $0))/check-forbidden-tokens.awk \
 		"$1" || res=1
 
+	# refrain from using some pthread functions
+	awk -v FOLDERS="lib drivers app examples" \
+		-v EXPRESSIONS="pthread_(create|join|detach|set(_?name_np|affinity_np)|attr_set(inheritsched|schedpolicy))\\\(" \
+		-v RET_ON_FAIL=1 \
+		-v MESSAGE='Using pthread functions, prefer rte_thread' \
+		-f $(dirname $(readlink -f $0))/check-forbidden-tokens.awk \
+		"$1" || res=1
+
 	# forbid use of __reserved which is a reserved keyword in Windows system headers
 	awk -v FOLDERS="lib drivers app examples" \
 		-v EXPRESSIONS='\\<__reserved\\>' \
