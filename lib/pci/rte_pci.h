@@ -102,6 +102,11 @@ extern "C" {
 #define RTE_PCI_EXT_CAP_ID_SRIOV	0x10	/* SR-IOV */
 #define RTE_PCI_EXT_CAP_ID_PRI		0x13	/* Page Request Interface */
 
+/* Advanced Error Reporting (RTE_PCI_EXT_CAP_ID_ERR) */
+#define RTE_PCI_ERR_UNCOR_STATUS	0x04	/* Uncorrectable Error Status */
+#define RTE_PCI_ERR_COR_STATUS		0x10	/* Correctable Error Status */
+#define RTE_PCI_ERR_ROOT_STATUS		0x30
+
 /* Access Control Service (RTE_PCI_EXT_CAP_ID_ACS) */
 #define RTE_PCI_ACS_CAP			0x04	/* ACS Capability Register */
 #define RTE_PCI_ACS_CTRL		0x06	/* ACS Control Register */

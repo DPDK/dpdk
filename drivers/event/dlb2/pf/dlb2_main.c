@@ -27,10 +27,6 @@
 #define NO_OWNER_VF 0	/* PF ONLY! */
 #define NOT_VF_REQ false /* PF ONLY! */
 
-#define DLB2_PCI_ERR_ROOT_STATUS         0x30
-#define DLB2_PCI_ERR_COR_STATUS          0x10
-#define DLB2_PCI_ERR_UNCOR_STATUS        0x4
-
 static int
 dlb2_pf_init_driver_state(struct dlb2_dev *dlb2_dev)
 {
@@ -399,7 +395,7 @@ dlb2_pf_reset(struct dlb2_dev *dlb2_dev)
 	if (err_cap_offset >= 0) {
 		uint32_t tmp;
 
-		off = err_cap_offset + DLB2_PCI_ERR_ROOT_STATUS;
+		off = err_cap_offset + RTE_PCI_ERR_ROOT_STATUS;
 		if (rte_pci_read_config(pdev, &tmp, 4, off) != 4)
 			tmp = 0;
 
@@ -410,7 +406,7 @@ dlb2_pf_reset(struct dlb2_dev *dlb2_dev)
 			return ret;
 		}
 
-		off = err_cap_offset + DLB2_PCI_ERR_COR_STATUS;
+		off = err_cap_offset + RTE_PCI_ERR_COR_STATUS;
 		if (rte_pci_read_config(pdev, &tmp, 4, off) != 4)
 			tmp = 0;
 
@@ -421,7 +417,7 @@ dlb2_pf_reset(struct dlb2_dev *dlb2_dev)
 			return ret;
 		}
 
-		off = err_cap_offset + DLB2_PCI_ERR_UNCOR_STATUS;
+		off = err_cap_offset + RTE_PCI_ERR_UNCOR_STATUS;
 		if (rte_pci_read_config(pdev, &tmp, 4, off) != 4)
 			tmp = 0;
 
