@@ -33,10 +33,6 @@
 #ifndef RTE_EXEC_ENV_FREEBSD
 #include <linux/pci_regs.h>
 
-#define PCIY_PMG                       PCI_CAP_ID_PM
-#define PCIY_MSI                       PCI_CAP_ID_MSI
-#define PCIY_EXPRESS                   PCI_CAP_ID_EXP
-#define PCIY_MSIX                      PCI_CAP_ID_MSIX
 #define PCIR_EXPRESS_DEVICE_STA        PCI_EXP_TYPE_RC_EC
 #define PCIM_EXP_STA_TRANSACTION_PND   PCI_EXP_DEVSTA_TRPND
 #define PCIR_EXPRESS_LINK_STA          PCI_EXP_LNKSTA

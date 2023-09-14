@@ -15,14 +15,6 @@
 #include "virtqueue.h"
 
 /*
- * Following macros are derived from linux/pci_regs.h, however,
- * we can't simply include that header here, as there is no such
- * file for non-Linux platform.
- */
-#define PCI_CAP_ID_VNDR		0x09
-#define PCI_CAP_ID_MSIX		0x11
-
-/*
  * The remaining space is defined by each driver as the per-driver
  * configuration space.
  */
@@ -356,7 +348,7 @@ virtio_read_caps(struct rte_pci_device *dev, struct virtio_crypto_hw *hw)
 	 * Transitional devices would also have this capability,
 	 * that's why we also check if msix is enabled.
 	 */
-	pos = rte_pci_find_capability(dev, PCI_CAP_ID_MSIX);
+	pos = rte_pci_find_capability(dev, RTE_PCI_CAP_ID_MSIX);
 	if (pos > 0 && rte_pci_read_config(dev, &flags, sizeof(flags),
 			pos + 2) == sizeof(flags)) {
 		if (flags & PCI_MSIX_ENABLE)
@@ -367,7 +359,7 @@ virtio_read_caps(struct rte_pci_device *dev, struct virtio_crypto_hw *hw)
 		hw->use_msix = VIRTIO_MSIX_NONE;
 	}
 
-	pos = rte_pci_find_capability(dev, PCI_CAP_ID_VNDR);
+	pos = rte_pci_find_capability(dev, RTE_PCI_CAP_ID_VNDR);
 	while (pos > 0) {
 		if (rte_pci_read_config(dev, &cap, sizeof(cap), pos) != sizeof(cap))
 			break;
@@ -396,7 +388,7 @@ virtio_read_caps(struct rte_pci_device *dev, struct virtio_crypto_hw *hw)
 			break;
 		}
 
-		pos = rte_pci_find_next_capability(dev, PCI_CAP_ID_VNDR, pos);
+		pos = rte_pci_find_next_capability(dev, RTE_PCI_CAP_ID_VNDR, pos);
 	}
 
 	if (hw->common_cfg == NULL || hw->notify_base == NULL ||

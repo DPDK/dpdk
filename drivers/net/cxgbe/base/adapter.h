@@ -511,8 +511,7 @@ static inline void t4_write_reg64(struct adapter *adapter, u32 reg_addr,
 	CXGBE_WRITE_REG64(adapter, reg_addr, val);
 }
 
-/* Offset of first capability list entry */
-#define PCI_CAP_ID_EXP          0x10    /* PCI Express */
+#define PCI_CAP_ID_EXP          RTE_PCI_CAP_ID_EXP
 #define PCI_EXP_DEVCTL          0x0008  /* Device control */
 #define PCI_EXP_DEVCTL2         40      /* Device Control 2 */
 #define PCI_EXP_DEVCTL_EXT_TAG  0x0100  /* Extended Tag Field Enable */

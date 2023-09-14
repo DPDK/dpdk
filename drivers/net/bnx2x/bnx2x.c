@@ -7613,7 +7613,7 @@ static uint32_t bnx2x_pcie_capability_read(struct bnx2x_softc *sc, int reg)
 	struct bnx2x_pci_cap *caps;
 
 	/* ensure PCIe capability is enabled */
-	caps = pci_find_cap(sc, PCIY_EXPRESS, BNX2X_PCI_CAP);
+	caps = pci_find_cap(sc, RTE_PCI_CAP_ID_EXP, BNX2X_PCI_CAP);
 	if (NULL != caps) {
 		PMD_DRV_LOG(DEBUG, sc, "Found PCIe capability: "
 			    "id=0x%04X type=0x%04X addr=0x%08X",
@@ -7647,7 +7647,7 @@ static void bnx2x_probe_pci_caps(struct bnx2x_softc *sc)
 	int reg = 0;
 
 	/* check if PCI Power Management is enabled */
-	caps = pci_find_cap(sc, PCIY_PMG, BNX2X_PCI_CAP);
+	caps = pci_find_cap(sc, RTE_PCI_CAP_ID_PM, BNX2X_PCI_CAP);
 	if (NULL != caps) {
 		PMD_DRV_LOG(DEBUG, sc, "Found PM capability: "
 			    "id=0x%04X type=0x%04X addr=0x%08X",
@@ -7669,7 +7669,7 @@ static void bnx2x_probe_pci_caps(struct bnx2x_softc *sc)
 	sc->devinfo.pcie_cap_flags |= BNX2X_PCIE_CAPABLE_FLAG;
 
 	/* check if MSI capability is enabled */
-	caps = pci_find_cap(sc, PCIY_MSI, BNX2X_PCI_CAP);
+	caps = pci_find_cap(sc, RTE_PCI_CAP_ID_MSI, BNX2X_PCI_CAP);
 	if (NULL != caps) {
 		PMD_DRV_LOG(DEBUG, sc, "Found MSI capability at 0x%04x", reg);
 
@@ -7678,7 +7678,7 @@ static void bnx2x_probe_pci_caps(struct bnx2x_softc *sc)
 	}
 
 	/* check if MSI-X capability is enabled */
-	caps = pci_find_cap(sc, PCIY_MSIX, BNX2X_PCI_CAP);
+	caps = pci_find_cap(sc, RTE_PCI_CAP_ID_MSIX, BNX2X_PCI_CAP);
 	if (NULL != caps) {
 		PMD_DRV_LOG(DEBUG, sc, "Found MSI-X capability at 0x%04x", reg);
 
@@ -9587,10 +9587,10 @@ static void bnx2x_init_multi_cos(struct bnx2x_softc *sc)
 }
 
 static uint8_t bnx2x_pci_capabilities[] = {
-	PCIY_EXPRESS,
-	PCIY_PMG,
-	PCIY_MSI,
-	PCIY_MSIX,
+	RTE_PCI_CAP_ID_EXP,
+	RTE_PCI_CAP_ID_PM,
+	RTE_PCI_CAP_ID_MSI,
+	RTE_PCI_CAP_ID_MSIX,
 };
 
 static int bnx2x_pci_get_caps(struct bnx2x_softc *sc)

@@ -609,7 +609,7 @@ gve_teardown_device_resources(struct gve_priv *priv)
 static int
 pci_dev_msix_vec_count(struct rte_pci_device *pdev)
 {
-	off_t msix_pos = rte_pci_find_capability(pdev, PCI_CAP_ID_MSIX);
+	off_t msix_pos = rte_pci_find_capability(pdev, RTE_PCI_CAP_ID_MSIX);
 	uint16_t control;
 
 	if (msix_pos > 0 && rte_pci_read_config(pdev, &control, sizeof(control),

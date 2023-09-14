@@ -44,6 +44,11 @@ extern "C" {
 #define RTE_PCI_STATUS_CAP_LIST		0x10	/* Support Capability List */
 
 /* Capability registers (RTE_PCI_CAPABILITY_LIST) */
+#define RTE_PCI_CAP_ID_PM		0x01	/* Power Management */
+#define RTE_PCI_CAP_ID_MSI		0x05	/* Message Signalled Interrupts */
+#define RTE_PCI_CAP_ID_VNDR		0x09	/* Vendor-Specific */
+#define RTE_PCI_CAP_ID_EXP		0x10	/* PCI Express */
+#define RTE_PCI_CAP_ID_MSIX		0x11	/* MSI-X */
 #define RTE_PCI_CAP_SIZEOF		4
 #define RTE_PCI_CAP_NEXT		1
 

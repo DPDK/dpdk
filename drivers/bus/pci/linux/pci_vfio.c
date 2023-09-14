@@ -112,7 +112,7 @@ pci_vfio_get_msix_bar(const struct rte_pci_device *dev,
 {
 	off_t cap_offset;
 
-	cap_offset = rte_pci_find_capability(dev, PCI_CAP_ID_MSIX);
+	cap_offset = rte_pci_find_capability(dev, RTE_PCI_CAP_ID_MSIX);
 	if (cap_offset < 0)
 		return -1;
 

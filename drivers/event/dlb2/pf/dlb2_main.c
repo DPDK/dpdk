@@ -38,8 +38,6 @@
 #define DLB2_PCI_EXP_DEVSTA_TRPND 0x20
 #define DLB2_PCI_EXP_DEVCTL_BCR_FLR 0x8000
 
-#define DLB2_PCI_CAP_ID_EXP       0x10
-#define DLB2_PCI_CAP_ID_MSIX      0x11
 #define DLB2_PCI_EXT_CAP_ID_PRI   0x13
 #define DLB2_PCI_EXT_CAP_ID_ACS   0xD
 
@@ -244,7 +242,7 @@ dlb2_pf_reset(struct dlb2_dev *dlb2_dev)
 			return ret;
 	}
 
-	pcie_cap_offset = rte_pci_find_capability(pdev, DLB2_PCI_CAP_ID_EXP);
+	pcie_cap_offset = rte_pci_find_capability(pdev, RTE_PCI_CAP_ID_EXP);
 
 	if (pcie_cap_offset < 0) {
 		DLB2_LOG_ERR("[%s()] failed to find the pcie capability\n",
@@ -483,7 +481,7 @@ dlb2_pf_reset(struct dlb2_dev *dlb2_dev)
 		}
 	}
 
-	msix_cap_offset = rte_pci_find_capability(pdev, DLB2_PCI_CAP_ID_MSIX);
+	msix_cap_offset = rte_pci_find_capability(pdev, RTE_PCI_CAP_ID_MSIX);
 	if (msix_cap_offset >= 0) {
 		off = msix_cap_offset + DLB2_PCI_MSIX_FLAGS;
 		if (rte_pci_read_config(pdev, &cmd, 2, off) == 2) {

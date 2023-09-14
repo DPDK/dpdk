@@ -61,7 +61,7 @@ hns3vf_enable_msix(const struct rte_pci_device *device, bool op)
 		return 0;
 	}
 
-	pos = rte_pci_find_capability(device, PCI_CAP_ID_MSIX);
+	pos = rte_pci_find_capability(device, RTE_PCI_CAP_ID_MSIX);
 	if (pos > 0) {
 		ret = rte_pci_read_config(device, &control, sizeof(control),
 			pos + PCI_MSIX_FLAGS);
