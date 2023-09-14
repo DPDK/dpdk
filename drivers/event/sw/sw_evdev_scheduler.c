@@ -368,12 +368,6 @@ __pull_port_lb(struct sw_evdev *sw, uint32_t port_id, int allow_reorder)
 		if (!allow_reorder && !eop)
 			flags = QE_FLAG_VALID;
 
-		/*
-		 * if we don't have space for this packet in an IQ,
-		 * then move on to next queue. Technically, for a
-		 * packet that needs reordering, we don't need to check
-		 * here, but it simplifies things not to special-case
-		 */
 		uint32_t iq_num = PRIO_TO_IQ(qe->priority);
 		struct sw_qid *qid = &sw->qids[qe->queue_id];
 
