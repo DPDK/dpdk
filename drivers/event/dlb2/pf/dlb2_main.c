@@ -27,9 +27,6 @@
 #define NO_OWNER_VF 0	/* PF ONLY! */
 #define NOT_VF_REQ false /* PF ONLY! */
 
-#define DLB2_PCI_EXT_CAP_ID_PRI   0x13
-#define DLB2_PCI_EXT_CAP_ID_ACS   0xD
-
 #define DLB2_PCI_PRI_CTRL_ENABLE         0x1
 #define DLB2_PCI_PRI_ALLOC_REQ           0xC
 #define DLB2_PCI_PRI_CTRL                0x4
@@ -263,7 +260,7 @@ dlb2_pf_reset(struct dlb2_dev *dlb2_dev)
 	if (rte_pci_read_config(pdev, &slt_word2, 2, off) != 2)
 		slt_word2 = 0;
 
-	off = DLB2_PCI_EXT_CAP_ID_PRI;
+	off = RTE_PCI_EXT_CAP_ID_PRI;
 	pri_cap_offset = rte_pci_find_ext_capability(pdev, off);
 
 	if (pri_cap_offset >= 0) {
@@ -490,7 +487,7 @@ dlb2_pf_reset(struct dlb2_dev *dlb2_dev)
 		}
 	}
 
-	off = DLB2_PCI_EXT_CAP_ID_ACS;
+	off = RTE_PCI_EXT_CAP_ID_ACS;
 	acs_cap_offset = rte_pci_find_ext_capability(pdev, off);
 
 	if (acs_cap_offset >= 0) {

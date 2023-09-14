@@ -98,9 +98,11 @@ extern "C" {
 
 #define RTE_PCI_EXT_CAP_ID_ERR		0x01	/* Advanced Error Reporting */
 #define RTE_PCI_EXT_CAP_ID_DSN		0x03	/* Device Serial Number */
-#define RTE_PCI_EXT_CAP_ID_SRIOV	0x10	/* SR-IOV*/
+#define RTE_PCI_EXT_CAP_ID_ACS		0x0d	/* Access Control Services */
+#define RTE_PCI_EXT_CAP_ID_SRIOV	0x10	/* SR-IOV */
+#define RTE_PCI_EXT_CAP_ID_PRI		0x13	/* Page Request Interface */
 
-/* Single Root I/O Virtualization */
+/* Single Root I/O Virtualization (RTE_PCI_EXT_CAP_ID_SRIOV) */
 #define RTE_PCI_SRIOV_CAP		0x04	/* SR-IOV Capabilities */
 #define RTE_PCI_SRIOV_CTRL		0x08	/* SR-IOV Control */
 #define RTE_PCI_SRIOV_INITIAL_VF	0x0c	/* Initial VFs */
