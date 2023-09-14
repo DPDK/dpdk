@@ -102,6 +102,15 @@ extern "C" {
 #define RTE_PCI_EXT_CAP_ID_SRIOV	0x10	/* SR-IOV */
 #define RTE_PCI_EXT_CAP_ID_PRI		0x13	/* Page Request Interface */
 
+/* Access Control Service (RTE_PCI_EXT_CAP_ID_ACS) */
+#define RTE_PCI_ACS_CAP			0x04	/* ACS Capability Register */
+#define RTE_PCI_ACS_CTRL		0x06	/* ACS Control Register */
+#define RTE_PCI_ACS_SV			0x0001	/* Source Validation */
+#define RTE_PCI_ACS_RR			0x0004	/* P2P Request Redirect */
+#define RTE_PCI_ACS_CR			0x0008	/* P2P Completion Redirect */
+#define RTE_PCI_ACS_UF			0x0010	/* Upstream Forwarding */
+#define RTE_PCI_ACS_EC			0x0020	/* P2P Egress Control */
+
 /* Single Root I/O Virtualization (RTE_PCI_EXT_CAP_ID_SRIOV) */
 #define RTE_PCI_SRIOV_CAP		0x04	/* SR-IOV Capabilities */
 #define RTE_PCI_SRIOV_CTRL		0x08	/* SR-IOV Control */

@@ -33,13 +33,6 @@
 #define DLB2_PCI_ERR_ROOT_STATUS         0x30
 #define DLB2_PCI_ERR_COR_STATUS          0x10
 #define DLB2_PCI_ERR_UNCOR_STATUS        0x4
-#define DLB2_PCI_ACS_CAP                 0x4
-#define DLB2_PCI_ACS_CTRL                0x6
-#define DLB2_PCI_ACS_SV                  0x1
-#define DLB2_PCI_ACS_RR                  0x4
-#define DLB2_PCI_ACS_CR                  0x8
-#define DLB2_PCI_ACS_UF                  0x10
-#define DLB2_PCI_ACS_EC                  0x20
 
 static int
 dlb2_pf_init_driver_state(struct dlb2_dev *dlb2_dev)
@@ -492,16 +485,16 @@ dlb2_pf_reset(struct dlb2_dev *dlb2_dev)
 
 	if (acs_cap_offset >= 0) {
 		uint16_t acs_cap, acs_ctrl, acs_mask;
-		off = acs_cap_offset + DLB2_PCI_ACS_CAP;
+		off = acs_cap_offset + RTE_PCI_ACS_CAP;
 		if (rte_pci_read_config(pdev, &acs_cap, 2, off) != 2)
 			acs_cap = 0;
 
-		off = acs_cap_offset + DLB2_PCI_ACS_CTRL;
+		off = acs_cap_offset + RTE_PCI_ACS_CTRL;
 		if (rte_pci_read_config(pdev, &acs_ctrl, 2, off) != 2)
 			acs_ctrl = 0;
 
-		acs_mask = DLB2_PCI_ACS_SV | DLB2_PCI_ACS_RR;
-		acs_mask |= (DLB2_PCI_ACS_CR | DLB2_PCI_ACS_UF);
+		acs_mask = RTE_PCI_ACS_SV | RTE_PCI_ACS_RR;
+		acs_mask |= (RTE_PCI_ACS_CR | RTE_PCI_ACS_UF);
 		acs_ctrl |= (acs_cap & acs_mask);
 
 		ret = rte_pci_write_config(pdev, &acs_ctrl, 2, off);
@@ -511,15 +504,15 @@ dlb2_pf_reset(struct dlb2_dev *dlb2_dev)
 			return ret;
 		}
 
-		off = acs_cap_offset + DLB2_PCI_ACS_CTRL;
+		off = acs_cap_offset + RTE_PCI_ACS_CTRL;
 		if (rte_pci_read_config(pdev, &acs_ctrl, 2, off) != 2)
 			acs_ctrl = 0;
 
-		acs_mask = DLB2_PCI_ACS_RR | DLB2_PCI_ACS_CR;
-		acs_mask |= DLB2_PCI_ACS_EC;
+		acs_mask = RTE_PCI_ACS_RR | RTE_PCI_ACS_CR;
+		acs_mask |= RTE_PCI_ACS_EC;
 		acs_ctrl &= ~acs_mask;
 
-		off = acs_cap_offset + DLB2_PCI_ACS_CTRL;
+		off = acs_cap_offset + RTE_PCI_ACS_CTRL;
 		ret = rte_pci_write_config(pdev, &acs_ctrl, 2, off);
 		if (ret != 2) {
 			DLB2_LOG_ERR("[%s()] failed to write the pcie config space at offset %d\n",
