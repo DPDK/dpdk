@@ -12,6 +12,7 @@
 
 #include <rte_hexdump.h>
 #include <rte_common.h>
+#include <rte_os_shim.h>
 
 #define TEST_SUCCESS EXIT_SUCCESS
 #define TEST_FAILED  -1

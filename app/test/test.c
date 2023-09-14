@@ -193,6 +193,25 @@ main(int argc, char **argv)
 
 	if (test_count > 0) {
 		char buf[1024];
+		char *dpdk_test_skip = getenv("DPDK_TEST_SKIP");
+		char *skip_tests[128] = {0};
+		size_t n_skip_tests = 0;
+
+		if (dpdk_test_skip != NULL && strlen(dpdk_test_skip) > 0) {
+			int split_ret;
+			char *dpdk_test_skip_cp = strdup(dpdk_test_skip);
+			if (dpdk_test_skip_cp == NULL) {
+				ret = -1;
+				goto out;
+			}
+			dpdk_test_skip = dpdk_test_skip_cp;
+			split_ret = rte_strsplit(dpdk_test_skip, strlen(dpdk_test_skip),
+					skip_tests, RTE_DIM(skip_tests), ',');
+			if (split_ret > 0)
+				n_skip_tests = split_ret;
+			else
+				free(dpdk_test_skip);
+		}
 
 		cl = cmdline_new(main_ctx, "RTE>>", 0, 1);
 		if (cl == NULL) {
@@ -201,6 +220,15 @@ main(int argc, char **argv)
 		}
 
 		for (i = 0; i < test_count; i++) {
+			/* check if test is to be skipped */
+			for (size_t j = 0; j < n_skip_tests; j++) {
+				if (strcmp(tests[i], skip_tests[j]) == 0) {
+					fprintf(stderr, "Skipping %s [DPDK_TEST_SKIP]\n", tests[i]);
+					ret = TEST_SKIPPED;
+					goto end_of_cmd;
+				}
+			}
+
 			snprintf(buf, sizeof(buf), "%s\n", tests[i]);
 			if (cmdline_parse_check(cl, buf) < 0) {
 				printf("Error: invalid test command: '%s'\n", tests[i]);
@@ -211,9 +239,13 @@ main(int argc, char **argv)
 			} else
 				ret = last_test_result;
 
+end_of_cmd:
 			if (ret != 0)
 				break;
 		}
+		if (n_skip_tests > 0)
+			free(dpdk_test_skip);
+
 		cmdline_free(cl);
 		goto out;
 	} else {
