@@ -223,42 +223,6 @@ pci_vfio_enable_bus_memory(struct rte_pci_device *dev, int dev_fd)
 	return 0;
 }
 
-/* set PCI bus mastering */
-static int
-pci_vfio_set_bus_master(const struct rte_pci_device *dev, int dev_fd, bool op)
-{
-	uint64_t size, offset;
-	uint16_t reg;
-	int ret;
-
-	if (pci_vfio_get_region(dev, VFIO_PCI_CONFIG_REGION_INDEX,
-		&size, &offset) != 0) {
-		RTE_LOG(ERR, EAL, "Cannot get offset of CONFIG region.\n");
-		return -1;
-	}
-
-	ret = pread64(dev_fd, &reg, sizeof(reg), offset + PCI_COMMAND);
-	if (ret != sizeof(reg)) {
-		RTE_LOG(ERR, EAL, "Cannot read command from PCI config space!\n");
-		return -1;
-	}
-
-	if (op)
-		/* set the master bit */
-		reg |= PCI_COMMAND_MASTER;
-	else
-		reg &= ~(PCI_COMMAND_MASTER);
-
-	ret = pwrite64(dev_fd, &reg, sizeof(reg), offset + PCI_COMMAND);
-
-	if (ret != sizeof(reg)) {
-		RTE_LOG(ERR, EAL, "Cannot write command to PCI config space!\n");
-		return -1;
-	}
-
-	return 0;
-}
-
 /* set up interrupt support (but not enable interrupts) */
 static int
 pci_vfio_setup_interrupts(struct rte_pci_device *dev, int vfio_dev_fd)
@@ -535,8 +499,7 @@ pci_rte_vfio_setup_device(struct rte_pci_device *dev, int vfio_dev_fd)
 		return -1;
 	}
 
-	/* set bus mastering for the device */
-	if (pci_vfio_set_bus_master(dev, vfio_dev_fd, true)) {
+	if (rte_pci_set_bus_master(dev, true)) {
 		RTE_LOG(ERR, EAL, "Cannot set up bus mastering!\n");
 		return -1;
 	}
@@ -1226,7 +1189,7 @@ pci_vfio_unmap_resource_primary(struct rte_pci_device *dev)
 	if (vfio_dev_fd < 0)
 		return -1;
 
-	if (pci_vfio_set_bus_master(dev, vfio_dev_fd, false)) {
+	if (rte_pci_set_bus_master(dev, false)) {
 		RTE_LOG(ERR, EAL, "%s cannot unset bus mastering for PCI device!\n",
 				pci_addr);
 		return -1;

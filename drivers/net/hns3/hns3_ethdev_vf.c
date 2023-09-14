@@ -49,29 +49,6 @@ static int hns3vf_remove_mc_mac_addr(struct hns3_hw *hw,
 static int hns3vf_dev_link_update(struct rte_eth_dev *eth_dev,
 				   __rte_unused int wait_to_complete);
 
-/* set PCI bus mastering */
-static int
-hns3vf_set_bus_master(const struct rte_pci_device *device, bool op)
-{
-	uint16_t reg;
-	int ret;
-
-	ret = rte_pci_read_config(device, &reg, sizeof(reg), PCI_COMMAND);
-	if (ret < 0) {
-		PMD_INIT_LOG(ERR, "Failed to read PCI offset 0x%x",
-			     PCI_COMMAND);
-		return ret;
-	}
-
-	if (op)
-		/* set the master bit */
-		reg |= PCI_COMMAND_MASTER;
-	else
-		reg &= ~(PCI_COMMAND_MASTER);
-
-	return rte_pci_write_config(device, &reg, sizeof(reg), PCI_COMMAND);
-}
-
 /**
  * hns3vf_find_pci_capability - lookup a capability in the PCI capability list
  * @cap: the capability
@@ -2140,7 +2117,7 @@ hns3vf_reinit_dev(struct hns3_adapter *hns)
 
 	if (hw->reset.level == HNS3_VF_FULL_RESET) {
 		rte_intr_disable(pci_dev->intr_handle);
-		ret = hns3vf_set_bus_master(pci_dev, true);
+		ret = rte_pci_set_bus_master(pci_dev, true);
 		if (ret < 0) {
 			hns3_err(hw, "failed to set pci bus, ret = %d", ret);
 			return ret;
