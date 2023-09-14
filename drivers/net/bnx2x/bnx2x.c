@@ -7628,8 +7628,8 @@ static uint32_t bnx2x_pcie_capability_read(struct bnx2x_softc *sc, int reg)
 
 static uint8_t bnx2x_is_pcie_pending(struct bnx2x_softc *sc)
 {
-	return bnx2x_pcie_capability_read(sc, PCIR_EXPRESS_DEVICE_STA) &
-		PCIM_EXP_STA_TRANSACTION_PND;
+	return bnx2x_pcie_capability_read(sc, RTE_PCI_EXP_TYPE_RC_EC) &
+		RTE_PCI_EXP_DEVSTA_TRPND;
 }
 
 /*
@@ -7656,11 +7656,11 @@ static void bnx2x_probe_pci_caps(struct bnx2x_softc *sc)
 		sc->devinfo.pcie_pm_cap_reg = caps->addr;
 	}
 
-	link_status = bnx2x_pcie_capability_read(sc, PCIR_EXPRESS_LINK_STA);
+	link_status = bnx2x_pcie_capability_read(sc, RTE_PCI_EXP_LNKSTA);
 
-	sc->devinfo.pcie_link_speed = (link_status & PCIM_LINK_STA_SPEED);
+	sc->devinfo.pcie_link_speed = (link_status & RTE_PCI_EXP_LNKSTA_CLS);
 	sc->devinfo.pcie_link_width =
-	    ((link_status & PCIM_LINK_STA_WIDTH) >> 4);
+	    ((link_status & RTE_PCI_EXP_LNKSTA_NLW) >> 4);
 
 	PMD_DRV_LOG(DEBUG, sc, "PCIe link speed=%d width=%d",
 		    sc->devinfo.pcie_link_speed, sc->devinfo.pcie_link_width);
@@ -9977,10 +9977,10 @@ static void bnx2x_init_pxp(struct bnx2x_softc *sc)
 	uint16_t devctl;
 	int r_order, w_order;
 
-	devctl = bnx2x_pcie_capability_read(sc, PCIR_EXPRESS_DEVICE_CTL);
+	devctl = bnx2x_pcie_capability_read(sc, RTE_PCI_EXP_DEVCTL);
 
-	w_order = ((devctl & PCIM_EXP_CTL_MAX_PAYLOAD) >> 5);
-	r_order = ((devctl & PCIM_EXP_CTL_MAX_READ_REQUEST) >> 12);
+	w_order = ((devctl & RTE_PCI_EXP_DEVCTL_PAYLOAD) >> 5);
+	r_order = ((devctl & RTE_PCI_EXP_DEVCTL_READRQ) >> 12);
 
 	ecore_init_pxp_arb(sc, r_order, w_order);
 }

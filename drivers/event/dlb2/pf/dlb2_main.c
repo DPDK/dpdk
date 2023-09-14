@@ -27,16 +27,6 @@
 #define NO_OWNER_VF 0	/* PF ONLY! */
 #define NOT_VF_REQ false /* PF ONLY! */
 
-#define DLB2_PCI_LNKCTL 16
-#define DLB2_PCI_SLTCTL 24
-#define DLB2_PCI_RTCTL 28
-#define DLB2_PCI_EXP_DEVCTL2 40
-#define DLB2_PCI_LNKCTL2 48
-#define DLB2_PCI_SLTCTL2 56
-#define DLB2_PCI_EXP_DEVSTA 10
-#define DLB2_PCI_EXP_DEVSTA_TRPND 0x20
-#define DLB2_PCI_EXP_DEVCTL_BCR_FLR 0x8000
-
 #define DLB2_PCI_EXT_CAP_ID_PRI   0x13
 #define DLB2_PCI_EXT_CAP_ID_ACS   0xD
 
@@ -249,27 +239,27 @@ dlb2_pf_reset(struct dlb2_dev *dlb2_dev)
 	if (rte_pci_read_config(pdev, &dev_ctl_word, 2, off) != 2)
 		dev_ctl_word = 0;
 
-	off = pcie_cap_offset + DLB2_PCI_LNKCTL;
+	off = pcie_cap_offset + RTE_PCI_EXP_LNKCTL;
 	if (rte_pci_read_config(pdev, &lnk_word, 2, off) != 2)
 		lnk_word = 0;
 
-	off = pcie_cap_offset + DLB2_PCI_SLTCTL;
+	off = pcie_cap_offset + RTE_PCI_EXP_SLTCTL;
 	if (rte_pci_read_config(pdev, &slt_word, 2, off) != 2)
 		slt_word = 0;
 
-	off = pcie_cap_offset + DLB2_PCI_RTCTL;
+	off = pcie_cap_offset + RTE_PCI_EXP_RTCTL;
 	if (rte_pci_read_config(pdev, &rt_ctl_word, 2, off) != 2)
 		rt_ctl_word = 0;
 
-	off = pcie_cap_offset + DLB2_PCI_EXP_DEVCTL2;
+	off = pcie_cap_offset + RTE_PCI_EXP_DEVCTL2;
 	if (rte_pci_read_config(pdev, &dev_ctl2_word, 2, off) != 2)
 		dev_ctl2_word = 0;
 
-	off = pcie_cap_offset + DLB2_PCI_LNKCTL2;
+	off = pcie_cap_offset + RTE_PCI_EXP_LNKCTL2;
 	if (rte_pci_read_config(pdev, &lnk_word2, 2, off) != 2)
 		lnk_word2 = 0;
 
-	off = pcie_cap_offset + DLB2_PCI_SLTCTL2;
+	off = pcie_cap_offset + RTE_PCI_EXP_SLTCTL2;
 	if (rte_pci_read_config(pdev, &slt_word2, 2, off) != 2)
 		slt_word2 = 0;
 
@@ -296,7 +286,7 @@ dlb2_pf_reset(struct dlb2_dev *dlb2_dev)
 	for (wait_count = 0; wait_count < 4; wait_count++) {
 		int sleep_time;
 
-		off = pcie_cap_offset + DLB2_PCI_EXP_DEVSTA;
+		off = pcie_cap_offset + RTE_PCI_EXP_DEVSTA;
 		ret = rte_pci_read_config(pdev, &devsta_busy_word, 2, off);
 		if (ret != 2) {
 			DLB2_LOG_ERR("[%s()] failed to read the pci device status\n",
@@ -304,7 +294,7 @@ dlb2_pf_reset(struct dlb2_dev *dlb2_dev)
 			return ret;
 		}
 
-		if (!(devsta_busy_word & DLB2_PCI_EXP_DEVSTA_TRPND))
+		if (!(devsta_busy_word & RTE_PCI_EXP_DEVSTA_TRPND))
 			break;
 
 		sleep_time = (1 << (wait_count)) * 100;
@@ -325,7 +315,7 @@ dlb2_pf_reset(struct dlb2_dev *dlb2_dev)
 		return ret;
 	}
 
-	devctl_word |= DLB2_PCI_EXP_DEVCTL_BCR_FLR;
+	devctl_word |= RTE_PCI_EXP_DEVCTL_BCR_FLR;
 
 	ret = rte_pci_write_config(pdev, &devctl_word, 2, off);
 	if (ret != 2) {
@@ -347,7 +337,7 @@ dlb2_pf_reset(struct dlb2_dev *dlb2_dev)
 			return ret;
 		}
 
-		off = pcie_cap_offset + DLB2_PCI_LNKCTL;
+		off = pcie_cap_offset + RTE_PCI_EXP_LNKCTL;
 		ret = rte_pci_write_config(pdev, &lnk_word, 2, off);
 		if (ret != 2) {
 			DLB2_LOG_ERR("[%s()] failed to write the pcie config space at offset %d\n",
@@ -355,7 +345,7 @@ dlb2_pf_reset(struct dlb2_dev *dlb2_dev)
 			return ret;
 		}
 
-		off = pcie_cap_offset + DLB2_PCI_SLTCTL;
+		off = pcie_cap_offset + RTE_PCI_EXP_SLTCTL;
 		ret = rte_pci_write_config(pdev, &slt_word, 2, off);
 		if (ret != 2) {
 			DLB2_LOG_ERR("[%s()] failed to write the pcie config space at offset %d\n",
@@ -363,7 +353,7 @@ dlb2_pf_reset(struct dlb2_dev *dlb2_dev)
 			return ret;
 		}
 
-		off = pcie_cap_offset + DLB2_PCI_RTCTL;
+		off = pcie_cap_offset + RTE_PCI_EXP_RTCTL;
 		ret = rte_pci_write_config(pdev, &rt_ctl_word, 2, off);
 		if (ret != 2) {
 			DLB2_LOG_ERR("[%s()] failed to write the pcie config space at offset %d\n",
@@ -371,7 +361,7 @@ dlb2_pf_reset(struct dlb2_dev *dlb2_dev)
 			return ret;
 		}
 
-		off = pcie_cap_offset + DLB2_PCI_EXP_DEVCTL2;
+		off = pcie_cap_offset + RTE_PCI_EXP_DEVCTL2;
 		ret = rte_pci_write_config(pdev, &dev_ctl2_word, 2, off);
 		if (ret != 2) {
 			DLB2_LOG_ERR("[%s()] failed to write the pcie config space at offset %d\n",
@@ -379,7 +369,7 @@ dlb2_pf_reset(struct dlb2_dev *dlb2_dev)
 			return ret;
 		}
 
-		off = pcie_cap_offset + DLB2_PCI_LNKCTL2;
+		off = pcie_cap_offset + RTE_PCI_EXP_LNKCTL2;
 		ret = rte_pci_write_config(pdev, &lnk_word2, 2, off);
 		if (ret != 2) {
 			DLB2_LOG_ERR("[%s()] failed to write the pcie config space at offset %d\n",
@@ -387,7 +377,7 @@ dlb2_pf_reset(struct dlb2_dev *dlb2_dev)
 			return ret;
 		}
 
-		off = pcie_cap_offset + DLB2_PCI_SLTCTL2;
+		off = pcie_cap_offset + RTE_PCI_EXP_SLTCTL2;
 		ret = rte_pci_write_config(pdev, &slt_word2, 2, off);
 		if (ret != 2) {
 			DLB2_LOG_ERR("[%s()] failed to write the pcie config space at offset %d\n",
