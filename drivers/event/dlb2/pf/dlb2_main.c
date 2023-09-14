@@ -44,9 +44,6 @@
 #define DLB2_PCI_PRI_CTRL_ENABLE         0x1
 #define DLB2_PCI_PRI_ALLOC_REQ           0xC
 #define DLB2_PCI_PRI_CTRL                0x4
-#define DLB2_PCI_MSIX_FLAGS              0x2
-#define DLB2_PCI_MSIX_FLAGS_ENABLE       0x8000
-#define DLB2_PCI_MSIX_FLAGS_MASKALL      0x4000
 #define DLB2_PCI_ERR_ROOT_STATUS         0x30
 #define DLB2_PCI_ERR_COR_STATUS          0x10
 #define DLB2_PCI_ERR_UNCOR_STATUS        0x4
@@ -483,10 +480,10 @@ dlb2_pf_reset(struct dlb2_dev *dlb2_dev)
 
 	msix_cap_offset = rte_pci_find_capability(pdev, RTE_PCI_CAP_ID_MSIX);
 	if (msix_cap_offset >= 0) {
-		off = msix_cap_offset + DLB2_PCI_MSIX_FLAGS;
+		off = msix_cap_offset + RTE_PCI_MSIX_FLAGS;
 		if (rte_pci_read_config(pdev, &cmd, 2, off) == 2) {
-			cmd |= DLB2_PCI_MSIX_FLAGS_ENABLE;
-			cmd |= DLB2_PCI_MSIX_FLAGS_MASKALL;
+			cmd |= RTE_PCI_MSIX_FLAGS_ENABLE;
+			cmd |= RTE_PCI_MSIX_FLAGS_MASKALL;
 			if (rte_pci_write_config(pdev, &cmd, 2, off) != 2) {
 				DLB2_LOG_ERR("[%s()] failed to write msix flags\n",
 				       __func__);
@@ -494,9 +491,9 @@ dlb2_pf_reset(struct dlb2_dev *dlb2_dev)
 			}
 		}
 
-		off = msix_cap_offset + DLB2_PCI_MSIX_FLAGS;
+		off = msix_cap_offset + RTE_PCI_MSIX_FLAGS;
 		if (rte_pci_read_config(pdev, &cmd, 2, off) == 2) {
-			cmd &= ~DLB2_PCI_MSIX_FLAGS_MASKALL;
+			cmd &= ~RTE_PCI_MSIX_FLAGS_MASKALL;
 			if (rte_pci_write_config(pdev, &cmd, 2, off) != 2) {
 				DLB2_LOG_ERR("[%s()] failed to write msix flags\n",
 				       __func__);

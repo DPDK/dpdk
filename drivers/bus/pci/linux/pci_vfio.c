@@ -120,14 +120,15 @@ pci_vfio_get_msix_bar(const struct rte_pci_device *dev,
 		uint16_t flags;
 		uint32_t reg;
 
-		/* table offset resides in the next 4 bytes */
-		if (rte_pci_read_config(dev, &reg, sizeof(reg), cap_offset + 4) < 0) {
+		if (rte_pci_read_config(dev, &reg, sizeof(reg), cap_offset +
+				RTE_PCI_MSIX_TABLE) < 0) {
 			RTE_LOG(ERR, EAL,
 				"Cannot read MSIX table from PCI config space!\n");
 			return -1;
 		}
 
-		if (rte_pci_read_config(dev, &flags, sizeof(flags), cap_offset + 2) < 0) {
+		if (rte_pci_read_config(dev, &flags, sizeof(flags), cap_offset +
+				RTE_PCI_MSIX_FLAGS) < 0) {
 			RTE_LOG(ERR, EAL,
 				"Cannot read MSIX flags from PCI config space!\n");
 			return -1;

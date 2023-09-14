@@ -9766,9 +9766,9 @@ int bnx2x_attach(struct bnx2x_softc *sc)
 	if (sc->devinfo.pcie_msix_cap_reg != 0) {
 		uint32_t val;
 		pci_read(sc,
-			 (sc->devinfo.pcie_msix_cap_reg + PCIR_MSIX_CTRL), &val,
+			 (sc->devinfo.pcie_msix_cap_reg + RTE_PCI_MSIX_FLAGS), &val,
 			 2);
-		sc->igu_sb_cnt = (val & PCIM_MSIXCTRL_TABLE_SIZE) + 1;
+		sc->igu_sb_cnt = (val & RTE_PCI_MSIX_FLAGS_QSIZE) + 1;
 	} else {
 		sc->igu_sb_cnt = 1;
 	}

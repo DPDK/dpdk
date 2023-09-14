@@ -613,8 +613,8 @@ pci_dev_msix_vec_count(struct rte_pci_device *pdev)
 	uint16_t control;
 
 	if (msix_pos > 0 && rte_pci_read_config(pdev, &control, sizeof(control),
-			msix_pos + PCI_MSIX_FLAGS) == sizeof(control))
-		return (control & PCI_MSIX_FLAGS_QSIZE) + 1;
+			msix_pos + RTE_PCI_MSIX_FLAGS) == sizeof(control))
+		return (control & RTE_PCI_MSIX_FLAGS_QSIZE) + 1;
 
 	return 0;
 }

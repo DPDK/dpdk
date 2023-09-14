@@ -46,8 +46,6 @@
 #define PCIM_PSTAT_PME                 PCI_PM_CTRL_PME_STATUS
 #define PCIM_PSTAT_D3                  0x3
 #define PCIM_PSTAT_PMEENABLE           PCI_PM_CTRL_PME_ENABLE
-#define PCIR_MSIX_CTRL                 PCI_MSIX_FLAGS
-#define PCIM_MSIXCTRL_TABLE_SIZE       PCI_MSIX_FLAGS_QSIZE
 #else
 #include <dev/pci/pcireg.h>
 #endif

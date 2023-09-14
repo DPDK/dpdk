@@ -52,6 +52,16 @@ extern "C" {
 #define RTE_PCI_CAP_SIZEOF		4
 #define RTE_PCI_CAP_NEXT		1
 
+/* MSI-X registers (RTE_PCI_CAP_ID_MSIX) */
+#define RTE_PCI_MSIX_FLAGS		2	/* Message Control */
+#define RTE_PCI_MSIX_FLAGS_QSIZE	0x07ff	/* Table size */
+#define RTE_PCI_MSIX_FLAGS_MASKALL	0x4000	/* Mask all vectors for this function */
+#define RTE_PCI_MSIX_FLAGS_ENABLE	0x8000	/* MSI-X enable */
+
+#define RTE_PCI_MSIX_TABLE		4	/* Table offset */
+#define RTE_PCI_MSIX_TABLE_BIR		0x00000007 /* BAR index */
+#define RTE_PCI_MSIX_TABLE_OFFSET	0xfffffff8 /* Offset into specified BAR */
+
 /* PCI Express capability registers */
 #define RTE_PCI_EXP_DEVCTL	8	/* Device Control */
 

@@ -15,14 +15,6 @@
 /* TODO: this is a workaround to ensure that Tx complq is enough */
 #define DQO_TX_MULTIPLIER 4
 
-/*
- * Following macros are derived from linux/pci_regs.h, however,
- * we can't simply include that header here, as there is no such
- * file for non-Linux platform.
- */
-#define PCI_MSIX_FLAGS		2	/* Message Control */
-#define PCI_MSIX_FLAGS_QSIZE	0x07FF	/* Table size */
-
 #define GVE_DEFAULT_RX_FREE_THRESH  512
 #define GVE_DEFAULT_TX_FREE_THRESH   32
 #define GVE_DEFAULT_TX_RS_THRESH     32

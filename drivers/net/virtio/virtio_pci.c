@@ -24,8 +24,6 @@
 
 struct virtio_pci_internal virtio_pci_internal[RTE_MAX_ETHPORTS];
 
-#define PCI_MSIX_ENABLE 0x8000
-
 static enum virtio_msix_status
 vtpci_msix_detect(struct rte_pci_device *dev)
 {
@@ -34,8 +32,8 @@ vtpci_msix_detect(struct rte_pci_device *dev)
 
 	pos = rte_pci_find_capability(dev, RTE_PCI_CAP_ID_MSIX);
 	if (pos > 0 && rte_pci_read_config(dev, &flags, sizeof(flags),
-			pos + 2) == sizeof(flags)) {
-		if (flags & PCI_MSIX_ENABLE)
+			pos + RTE_PCI_MSIX_FLAGS) == sizeof(flags)) {
+		if (flags & RTE_PCI_MSIX_FLAGS_ENABLE)
 			return VIRTIO_MSIX_ENABLED;
 		else
 			return VIRTIO_MSIX_DISABLED;

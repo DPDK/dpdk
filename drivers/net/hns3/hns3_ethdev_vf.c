@@ -2,7 +2,6 @@
  * Copyright(c) 2018-2021 HiSilicon Limited.
  */
 
-#include <linux/pci_regs.h>
 #include <rte_alarm.h>
 #include <ethdev_pci.h>
 #include <rte_io.h>
@@ -64,18 +63,18 @@ hns3vf_enable_msix(const struct rte_pci_device *device, bool op)
 	pos = rte_pci_find_capability(device, RTE_PCI_CAP_ID_MSIX);
 	if (pos > 0) {
 		ret = rte_pci_read_config(device, &control, sizeof(control),
-			pos + PCI_MSIX_FLAGS);
+			pos + RTE_PCI_MSIX_FLAGS);
 		if (ret < 0) {
 			PMD_INIT_LOG(ERR, "Failed to read MSIX flags");
 			return -ENXIO;
 		}
 
 		if (op)
-			control |= PCI_MSIX_FLAGS_ENABLE;
+			control |= RTE_PCI_MSIX_FLAGS_ENABLE;
 		else
-			control &= ~PCI_MSIX_FLAGS_ENABLE;
+			control &= ~RTE_PCI_MSIX_FLAGS_ENABLE;
 		ret = rte_pci_write_config(device, &control, sizeof(control),
-			pos + PCI_MSIX_FLAGS);
+			pos + RTE_PCI_MSIX_FLAGS);
 		if (ret < 0) {
 			PMD_INIT_LOG(ERR, "failed to write MSIX flags");
 			return -ENXIO;
