@@ -123,6 +123,11 @@ extern "C" {
 #define RTE_PCI_SRIOV_VF_DID		0x1a	/* VF Device ID */
 #define RTE_PCI_SRIOV_SUP_PGSIZE	0x1c	/* Supported Page Sizes */
 
+/* Page Request Interface (RTE_PCI_EXT_CAP_ID_PRI) */
+#define RTE_PCI_PRI_CTRL		0x04	/* PRI control register */
+#define RTE_PCI_PRI_CTRL_ENABLE		0x0001	/* Enable */
+#define RTE_PCI_PRI_ALLOC_REQ		0x0c	/* PRI max reqs allowed */
+
 /** Formatting string for PCI device identifier: Ex: 0000:00:01.0 */
 #define PCI_PRI_FMT "%.4" PRIx32 ":%.2" PRIx8 ":%.2" PRIx8 ".%" PRIx8
 #define PCI_PRI_STR_SIZE sizeof("XXXXXXXX:XX:XX.X")

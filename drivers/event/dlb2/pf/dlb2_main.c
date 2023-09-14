@@ -27,9 +27,6 @@
 #define NO_OWNER_VF 0	/* PF ONLY! */
 #define NOT_VF_REQ false /* PF ONLY! */
 
-#define DLB2_PCI_PRI_CTRL_ENABLE         0x1
-#define DLB2_PCI_PRI_ALLOC_REQ           0xC
-#define DLB2_PCI_PRI_CTRL                0x4
 #define DLB2_PCI_ERR_ROOT_STATUS         0x30
 #define DLB2_PCI_ERR_COR_STATUS          0x10
 #define DLB2_PCI_ERR_UNCOR_STATUS        0x4
@@ -257,7 +254,7 @@ dlb2_pf_reset(struct dlb2_dev *dlb2_dev)
 	pri_cap_offset = rte_pci_find_ext_capability(pdev, off);
 
 	if (pri_cap_offset >= 0) {
-		off = pri_cap_offset + DLB2_PCI_PRI_ALLOC_REQ;
+		off = pri_cap_offset + RTE_PCI_PRI_ALLOC_REQ;
 		if (rte_pci_read_config(pdev, &pri_reqs_dword, 4, off) != 4)
 			pri_reqs_dword = 0;
 	}
@@ -377,9 +374,9 @@ dlb2_pf_reset(struct dlb2_dev *dlb2_dev)
 	}
 
 	if (pri_cap_offset >= 0) {
-		pri_ctrl_word = DLB2_PCI_PRI_CTRL_ENABLE;
+		pri_ctrl_word = RTE_PCI_PRI_CTRL_ENABLE;
 
-		off = pri_cap_offset + DLB2_PCI_PRI_ALLOC_REQ;
+		off = pri_cap_offset + RTE_PCI_PRI_ALLOC_REQ;
 		ret = rte_pci_write_config(pdev, &pri_reqs_dword, 4, off);
 		if (ret != 4) {
 			DLB2_LOG_ERR("[%s()] failed to write the pcie config space at offset %d\n",
@@ -387,7 +384,7 @@ dlb2_pf_reset(struct dlb2_dev *dlb2_dev)
 			return ret;
 		}
 
-		off = pri_cap_offset + DLB2_PCI_PRI_CTRL;
+		off = pri_cap_offset + RTE_PCI_PRI_CTRL;
 		ret = rte_pci_write_config(pdev, &pri_ctrl_word, 2, off);
 		if (ret != 2) {
 			DLB2_LOG_ERR("[%s()] failed to write the pcie config space at offset %d\n",
