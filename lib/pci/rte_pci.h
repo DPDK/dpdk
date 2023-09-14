@@ -35,6 +35,7 @@ extern "C" {
 #define RTE_PCI_DEVICE_ID	0x02	/* 16 bits */
 #define RTE_PCI_COMMAND		0x04	/* 16 bits */
 #define RTE_PCI_STATUS		0x06	/* 16 bits */
+#define RTE_PCI_BASE_ADDRESS_0	0x10	/* 32 bits */
 #define RTE_PCI_CAPABILITY_LIST	0x34	/* 32 bits */
 
 /* PCI Command Register (RTE_PCI_COMMAND) */
@@ -44,6 +45,9 @@ extern "C" {
 
 /* PCI Status Register (RTE_PCI_STATUS) */
 #define RTE_PCI_STATUS_CAP_LIST		0x10	/* Support Capability List */
+
+/* Base addresses (RTE_PCI_BASE_ADDRESS_*) */
+#define RTE_PCI_BASE_ADDRESS_SPACE_IO	0x01
 
 /* Capability registers (RTE_PCI_CAPABILITY_LIST) */
 #define RTE_PCI_CAP_ID_PM		0x01	/* Power Management */

@@ -5,7 +5,6 @@
 #include <unistd.h>
 #include <string.h>
 #include <fcntl.h>
-#include <linux/pci_regs.h>
 #include <sys/eventfd.h>
 #include <sys/socket.h>
 #include <sys/ioctl.h>
@@ -427,14 +426,14 @@ pci_vfio_is_ioport_bar(const struct rte_pci_device *dev, int vfio_dev_fd,
 	}
 
 	ret = pread64(vfio_dev_fd, &ioport_bar, sizeof(ioport_bar),
-			  offset + PCI_BASE_ADDRESS_0 + bar_index * 4);
+			  offset + RTE_PCI_BASE_ADDRESS_0 + bar_index * 4);
 	if (ret != sizeof(ioport_bar)) {
 		RTE_LOG(ERR, EAL, "Cannot read command (%x) from config space!\n",
-			PCI_BASE_ADDRESS_0 + bar_index*4);
+			RTE_PCI_BASE_ADDRESS_0 + bar_index*4);
 		return -1;
 	}
 
-	return (ioport_bar & PCI_BASE_ADDRESS_SPACE_IO) != 0;
+	return (ioport_bar & RTE_PCI_BASE_ADDRESS_SPACE_IO) != 0;
 }
 
 static int
