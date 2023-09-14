@@ -28,12 +28,24 @@ extern "C" {
 #define RTE_PCI_CFG_SPACE_SIZE		256
 #define RTE_PCI_CFG_SPACE_EXP_SIZE	4096
 
+#define RTE_PCI_STD_HEADER_SIZEOF	64
+
+/* Standard register offsets in the PCI configuration space */
 #define RTE_PCI_VENDOR_ID	0x00	/* 16 bits */
 #define RTE_PCI_DEVICE_ID	0x02	/* 16 bits */
 #define RTE_PCI_COMMAND		0x04	/* 16 bits */
+#define RTE_PCI_STATUS		0x06	/* 16 bits */
+#define RTE_PCI_CAPABILITY_LIST	0x34	/* 32 bits */
 
 /* PCI Command Register */
 #define RTE_PCI_COMMAND_MASTER	0x4	/* Bus Master Enable */
+
+/* PCI Status Register (RTE_PCI_STATUS) */
+#define RTE_PCI_STATUS_CAP_LIST		0x10	/* Support Capability List */
+
+/* Capability registers (RTE_PCI_CAPABILITY_LIST) */
+#define RTE_PCI_CAP_SIZEOF		4
+#define RTE_PCI_CAP_NEXT		1
 
 /* PCI Express capability registers */
 #define RTE_PCI_EXP_DEVCTL	8	/* Device Control */

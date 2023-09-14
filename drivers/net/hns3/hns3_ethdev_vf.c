@@ -49,80 +49,24 @@ static int hns3vf_remove_mc_mac_addr(struct hns3_hw *hw,
 static int hns3vf_dev_link_update(struct rte_eth_dev *eth_dev,
 				   __rte_unused int wait_to_complete);
 
-/**
- * hns3vf_find_pci_capability - lookup a capability in the PCI capability list
- * @cap: the capability
- *
- * Return the address of the given capability within the PCI capability list.
- */
-static int
-hns3vf_find_pci_capability(const struct rte_pci_device *device, int cap)
-{
-#define MAX_PCIE_CAPABILITY 48
-	uint16_t status;
-	uint8_t pos;
-	uint8_t id;
-	int ttl;
-	int ret;
-
-	ret = rte_pci_read_config(device, &status, sizeof(status), PCI_STATUS);
-	if (ret < 0) {
-		PMD_INIT_LOG(ERR, "Failed to read PCI offset 0x%x", PCI_STATUS);
-		return 0;
-	}
-
-	if (!(status & PCI_STATUS_CAP_LIST))
-		return 0;
-
-	ttl = MAX_PCIE_CAPABILITY;
-	ret = rte_pci_read_config(device, &pos, sizeof(pos),
-				  PCI_CAPABILITY_LIST);
-	if (ret < 0) {
-		PMD_INIT_LOG(ERR, "Failed to read PCI offset 0x%x",
-			     PCI_CAPABILITY_LIST);
-		return 0;
-	}
-
-	while (ttl-- && pos >= PCI_STD_HEADER_SIZEOF) {
-		ret = rte_pci_read_config(device, &id, sizeof(id),
-					  (pos + PCI_CAP_LIST_ID));
-		if (ret < 0) {
-			PMD_INIT_LOG(ERR, "Failed to read PCI offset 0x%x",
-				     (pos + PCI_CAP_LIST_ID));
-			break;
-		}
-
-		if (id == 0xFF)
-			break;
-
-		if (id == cap)
-			return (int)pos;
-
-		ret = rte_pci_read_config(device, &pos, sizeof(pos),
-					  (pos + PCI_CAP_LIST_NEXT));
-		if (ret < 0) {
-			PMD_INIT_LOG(ERR, "Failed to read PCI offset 0x%x",
-				     (pos + PCI_CAP_LIST_NEXT));
-			break;
-		}
-	}
-	return 0;
-}
-
 static int
 hns3vf_enable_msix(const struct rte_pci_device *device, bool op)
 {
 	uint16_t control;
-	int pos;
+	off_t pos;
 	int ret;
 
-	pos = hns3vf_find_pci_capability(device, PCI_CAP_ID_MSIX);
-	if (pos) {
+	if (!rte_pci_has_capability_list(device)) {
+		PMD_INIT_LOG(ERR, "Failed to read PCI capability list");
+		return 0;
+	}
+
+	pos = rte_pci_find_capability(device, PCI_CAP_ID_MSIX);
+	if (pos > 0) {
 		ret = rte_pci_read_config(device, &control, sizeof(control),
-					  (pos + PCI_MSIX_FLAGS));
+			pos + PCI_MSIX_FLAGS);
 		if (ret < 0) {
-			PMD_INIT_LOG(ERR, "Failed to read PCI offset 0x%x",
-				     (pos + PCI_MSIX_FLAGS));
+			PMD_INIT_LOG(ERR, "Failed to read MSIX flags");
 			return -ENXIO;
 		}
 
@@ -131,10 +75,9 @@ hns3vf_enable_msix(const struct rte_pci_device *device, bool op)
 		else
 			control &= ~PCI_MSIX_FLAGS_ENABLE;
 		ret = rte_pci_write_config(device, &control, sizeof(control),
-					   (pos + PCI_MSIX_FLAGS));
+			pos + PCI_MSIX_FLAGS);
 		if (ret < 0) {
-			PMD_INIT_LOG(ERR, "failed to write PCI offset 0x%x",
-				     (pos + PCI_MSIX_FLAGS));
+			PMD_INIT_LOG(ERR, "failed to write MSIX flags");
 			return -ENXIO;
 		}
 

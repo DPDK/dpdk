@@ -19,10 +19,6 @@
  * we can't simply include that header here, as there is no such
  * file for non-Linux platform.
  */
-#define PCI_CFG_SPACE_SIZE	256
-#define PCI_CAPABILITY_LIST	0x34	/* Offset of first capability list entry */
-#define PCI_STD_HEADER_SIZEOF	64
-#define PCI_CAP_SIZEOF		4
 #define PCI_CAP_ID_MSIX		0x11	/* MSI-X */
 #define PCI_MSIX_FLAGS		2	/* Message Control */
 #define PCI_MSIX_FLAGS_QSIZE	0x07FF	/* Table size */

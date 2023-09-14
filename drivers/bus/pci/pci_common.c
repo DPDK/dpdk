@@ -813,6 +813,60 @@ rte_pci_get_iommu_class(void)
 	return iova_mode;
 }
 
+bool
+rte_pci_has_capability_list(const struct rte_pci_device *dev)
+{
+	uint16_t status;
+
+	if (rte_pci_read_config(dev, &status, sizeof(status), RTE_PCI_STATUS) != sizeof(status))
+		return false;
+
+	return (status & RTE_PCI_STATUS_CAP_LIST) != 0;
+}
+
+off_t
+rte_pci_find_capability(const struct rte_pci_device *dev, uint8_t cap)
+{
+	return rte_pci_find_next_capability(dev, cap, 0);
+}
+
+off_t
+rte_pci_find_next_capability(const struct rte_pci_device *dev, uint8_t cap,
+	off_t offset)
+{
+	uint8_t pos;
+	int ttl;
+
+	if (offset == 0)
+		offset = RTE_PCI_CAPABILITY_LIST;
+	else
+		offset += RTE_PCI_CAP_NEXT;
+	ttl = (RTE_PCI_CFG_SPACE_SIZE - RTE_PCI_STD_HEADER_SIZEOF) / RTE_PCI_CAP_SIZEOF;
+
+	if (rte_pci_read_config(dev, &pos, sizeof(pos), offset) < 0)
+		return -1;
+
+	while (pos && ttl--) {
+		uint16_t ent;
+		uint8_t id;
+
+		offset = pos;
+		if (rte_pci_read_config(dev, &ent, sizeof(ent), offset) < 0)
+			return -1;
+
+		id = ent & 0xff;
+		if (id == 0xff)
+			break;
+
+		if (id == cap)
+			return offset;
+
+		pos = (ent >> 8);
+	}
+
+	return 0;
+}
+
 off_t
 rte_pci_find_ext_capability(const struct rte_pci_device *dev, uint32_t cap)
 {

@@ -9586,14 +9586,17 @@ static void bnx2x_init_multi_cos(struct bnx2x_softc *sc)
 	}
 }
 
+static uint8_t bnx2x_pci_capabilities[] = {
+	PCIY_EXPRESS,
+	PCIY_PMG,
+	PCIY_MSI,
+	PCIY_MSIX,
+};
+
 static int bnx2x_pci_get_caps(struct bnx2x_softc *sc)
 {
-	struct {
-		uint8_t id;
-		uint8_t next;
-	} pci_cap;
-	uint16_t status;
 	struct bnx2x_pci_cap *cap;
+	unsigned int i;
 
 	cap = sc->pci_caps = rte_zmalloc("caps", sizeof(struct bnx2x_pci_cap),
 					 RTE_CACHE_LINE_SIZE);
@@ -9602,29 +9605,21 @@ static int bnx2x_pci_get_caps(struct bnx2x_softc *sc)
 		return -ENOMEM;
 	}
 
-#ifndef RTE_EXEC_ENV_FREEBSD
-	pci_read(sc, PCI_STATUS, &status, 2);
-	if (!(status & PCI_STATUS_CAP_LIST)) {
-#else
-	pci_read(sc, PCIR_STATUS, &status, 2);
-	if (!(status & PCIM_STATUS_CAPPRESENT)) {
-#endif
+	if (!rte_pci_has_capability_list(sc->pci_dev)) {
 		PMD_DRV_LOG(NOTICE, sc, "PCIe capability reading failed");
 		return -1;
 	}
 
-#ifndef RTE_EXEC_ENV_FREEBSD
-	pci_read(sc, PCI_CAPABILITY_LIST, &pci_cap.next, 1);
-#else
-	pci_read(sc, PCIR_CAP_PTR, &pci_cap.next, 1);
-#endif
-	while (pci_cap.next) {
-		cap->addr = pci_cap.next & ~3;
-		pci_read(sc, pci_cap.next & ~3, &pci_cap, 2);
-		if (pci_cap.id == 0xff)
-			break;
-		cap->id = pci_cap.id;
+	for (i = 0; i < RTE_DIM(bnx2x_pci_capabilities); i++) {
+		off_t pos = rte_pci_find_capability(sc->pci_dev,
+			bnx2x_pci_capabilities[i]);
+
+		if (pos <= 0)
+			continue;
+
+		cap->id = bnx2x_pci_capabilities[i];
 		cap->type = BNX2X_PCI_CAP;
+		cap->addr = pos;
 		cap->next = rte_zmalloc("pci_cap",
 					sizeof(struct bnx2x_pci_cap),
 					RTE_CACHE_LINE_SIZE);

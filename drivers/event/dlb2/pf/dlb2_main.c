@@ -27,10 +27,6 @@
 #define NO_OWNER_VF 0	/* PF ONLY! */
 #define NOT_VF_REQ false /* PF ONLY! */
 
-#define DLB2_PCI_CAP_POINTER 0x34
-#define DLB2_PCI_CAP_NEXT(hdr) (((hdr) >> 8) & 0xFC)
-#define DLB2_PCI_CAP_ID(hdr) ((hdr) & 0xFF)
-
 #define DLB2_PCI_LNKCTL 16
 #define DLB2_PCI_SLTCTL 24
 #define DLB2_PCI_RTCTL 28
@@ -64,35 +60,6 @@
 #define DLB2_PCI_ACS_CR                  0x8
 #define DLB2_PCI_ACS_UF                  0x10
 #define DLB2_PCI_ACS_EC                  0x20
-
-static int dlb2_pci_find_capability(struct rte_pci_device *pdev, uint32_t id)
-{
-	uint8_t pos;
-	int ret;
-	uint16_t hdr;
-
-	ret = rte_pci_read_config(pdev, &pos, 1, DLB2_PCI_CAP_POINTER);
-	pos &= 0xFC;
-
-	if (ret != 1)
-		return -1;
-
-	while (pos > 0x3F) {
-		ret = rte_pci_read_config(pdev, &hdr, 2, pos);
-		if (ret != 2)
-			return -1;
-
-		if (DLB2_PCI_CAP_ID(hdr) == id)
-			return pos;
-
-		if (DLB2_PCI_CAP_ID(hdr) == 0xFF)
-			return -1;
-
-		pos = DLB2_PCI_CAP_NEXT(hdr);
-	}
-
-	return -1;
-}
 
 static int
 dlb2_pf_init_driver_state(struct dlb2_dev *dlb2_dev)
@@ -258,9 +225,9 @@ dlb2_pf_reset(struct dlb2_dev *dlb2_dev)
 	uint32_t pri_reqs_dword;
 	uint16_t pri_ctrl_word;
 
-	int pcie_cap_offset;
+	off_t pcie_cap_offset;
 	int pri_cap_offset;
-	int msix_cap_offset;
+	off_t msix_cap_offset;
 	int err_cap_offset;
 	int acs_cap_offset;
 	int wait_count;
@@ -277,7 +244,7 @@ dlb2_pf_reset(struct dlb2_dev *dlb2_dev)
 			return ret;
 	}
 
-	pcie_cap_offset = dlb2_pci_find_capability(pdev, DLB2_PCI_CAP_ID_EXP);
+	pcie_cap_offset = rte_pci_find_capability(pdev, DLB2_PCI_CAP_ID_EXP);
 
 	if (pcie_cap_offset < 0) {
 		DLB2_LOG_ERR("[%s()] failed to find the pcie capability\n",
@@ -516,8 +483,7 @@ dlb2_pf_reset(struct dlb2_dev *dlb2_dev)
 		}
 	}
 
-	msix_cap_offset = dlb2_pci_find_capability(pdev,
-						   DLB2_PCI_CAP_ID_MSIX);
+	msix_cap_offset = rte_pci_find_capability(pdev, DLB2_PCI_CAP_ID_MSIX);
 	if (msix_cap_offset >= 0) {
 		off = msix_cap_offset + DLB2_PCI_MSIX_FLAGS;
 		if (rte_pci_read_config(pdev, &cmd, 2, off) == 2) {
