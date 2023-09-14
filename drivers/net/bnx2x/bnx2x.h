@@ -41,11 +41,6 @@
 #define PCIR_EXPRESS_DEVICE_CTL        PCI_EXP_DEVCTL
 #define PCIM_EXP_CTL_MAX_PAYLOAD       PCI_EXP_DEVCTL_PAYLOAD
 #define PCIM_EXP_CTL_MAX_READ_REQUEST  PCI_EXP_DEVCTL_READRQ
-#define PCIR_POWER_STATUS              PCI_PM_CTRL
-#define PCIM_PSTAT_DMASK               PCI_PM_CTRL_STATE_MASK
-#define PCIM_PSTAT_PME                 PCI_PM_CTRL_PME_STATUS
-#define PCIM_PSTAT_D3                  0x3
-#define PCIM_PSTAT_PMEENABLE           PCI_PM_CTRL_PME_ENABLE
 #else
 #include <dev/pci/pcireg.h>
 #endif

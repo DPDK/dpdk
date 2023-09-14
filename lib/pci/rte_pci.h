@@ -58,6 +58,12 @@ extern "C" {
 #define RTE_PCI_CAP_SIZEOF		4
 #define RTE_PCI_CAP_NEXT		1
 
+/* Power Management Registers (RTE_PCI_CAP_ID_PM) */
+#define RTE_PCI_PM_CTRL			4	/* PM control and status register */
+#define RTE_PCI_PM_CTRL_STATE_MASK	0x0003	/* Current power state (D0 to D3) */
+#define RTE_PCI_PM_CTRL_PME_ENABLE	0x0100	/* PME pin enable */
+#define RTE_PCI_PM_CTRL_PME_STATUS	0x8000	/* PME pin status */
+
 /* MSI-X registers (RTE_PCI_CAP_ID_MSIX) */
 #define RTE_PCI_MSIX_FLAGS		2	/* Message Control */
 #define RTE_PCI_MSIX_FLAGS_QSIZE	0x07ff	/* Table size */

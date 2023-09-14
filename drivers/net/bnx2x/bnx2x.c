@@ -5843,17 +5843,15 @@ static int bnx2x_set_power_state(struct bnx2x_softc *sc, uint8_t state)
 		return 0;
 	}
 
-	pci_read(sc, (sc->devinfo.pcie_pm_cap_reg + PCIR_POWER_STATUS), &pmcsr,
+	pci_read(sc, (sc->devinfo.pcie_pm_cap_reg + RTE_PCI_PM_CTRL), &pmcsr,
 		 2);
 
 	switch (state) {
 	case PCI_PM_D0:
-		pci_write_word(sc,
-			       (sc->devinfo.pcie_pm_cap_reg +
-				PCIR_POWER_STATUS),
-			       ((pmcsr & ~PCIM_PSTAT_DMASK) | PCIM_PSTAT_PME));
+		pci_write_word(sc, (sc->devinfo.pcie_pm_cap_reg + RTE_PCI_PM_CTRL),
+			((pmcsr & ~RTE_PCI_PM_CTRL_STATE_MASK) | RTE_PCI_PM_CTRL_PME_STATUS));
 
-		if (pmcsr & PCIM_PSTAT_DMASK) {
+		if (pmcsr & RTE_PCI_PM_CTRL_STATE_MASK) {
 			/* delay required during transition out of D3hot */
 			DELAY(20000);
 		}
@@ -5866,16 +5864,17 @@ static int bnx2x_set_power_state(struct bnx2x_softc *sc, uint8_t state)
 			return 0;
 		}
 
-		pmcsr &= ~PCIM_PSTAT_DMASK;
-		pmcsr |= PCIM_PSTAT_D3;
+		pmcsr &= ~RTE_PCI_PM_CTRL_STATE_MASK;
+		/* D3 power state */
+		pmcsr |= 0x3;
 
 		if (sc->wol) {
-			pmcsr |= PCIM_PSTAT_PMEENABLE;
+			pmcsr |= RTE_PCI_PM_CTRL_PME_ENABLE;
 		}
 
 		pci_write_long(sc,
 			       (sc->devinfo.pcie_pm_cap_reg +
-				PCIR_POWER_STATUS), pmcsr);
+				RTE_PCI_PM_CTRL), pmcsr);
 
 		/*
 		 * No more memory access after this point until device is brought back
