@@ -33,7 +33,6 @@
 #define DLB2_PCI_EXP_DEVCTL2 40
 #define DLB2_PCI_LNKCTL2 48
 #define DLB2_PCI_SLTCTL2 56
-#define DLB2_PCI_CMD 4
 #define DLB2_PCI_EXP_DEVSTA 10
 #define DLB2_PCI_EXP_DEVSTA_TRPND 0x20
 #define DLB2_PCI_EXP_DEVCTL_BCR_FLR 0x8000
@@ -47,7 +46,6 @@
 #define DLB2_PCI_ERR_ROOT_STATUS         0x30
 #define DLB2_PCI_ERR_COR_STATUS          0x10
 #define DLB2_PCI_ERR_UNCOR_STATUS        0x4
-#define DLB2_PCI_COMMAND_INTX_DISABLE    0x400
 #define DLB2_PCI_ACS_CAP                 0x4
 #define DLB2_PCI_ACS_CTRL                0x6
 #define DLB2_PCI_ACS_SV                  0x1
@@ -286,7 +284,7 @@ dlb2_pf_reset(struct dlb2_dev *dlb2_dev)
 
 	/* clear the PCI command register before issuing the FLR */
 
-	off = DLB2_PCI_CMD;
+	off = RTE_PCI_COMMAND;
 	cmd = 0;
 	if (rte_pci_write_config(pdev, &cmd, 2, off) != 2) {
 		DLB2_LOG_ERR("[%s()] failed to write the pci command\n",
@@ -468,9 +466,9 @@ dlb2_pf_reset(struct dlb2_dev *dlb2_dev)
 		}
 	}
 
-	off = DLB2_PCI_CMD;
+	off = RTE_PCI_COMMAND;
 	if (rte_pci_read_config(pdev, &cmd, 2, off) == 2) {
-		cmd &= ~DLB2_PCI_COMMAND_INTX_DISABLE;
+		cmd &= ~RTE_PCI_COMMAND_INTX_DISABLE;
 		if (rte_pci_write_config(pdev, &cmd, 2, off) != 2) {
 			DLB2_LOG_ERR("[%s()] failed to write the pci command\n",
 			       __func__);

@@ -156,18 +156,18 @@ pci_vfio_enable_bus_memory(struct rte_pci_device *dev, int dev_fd)
 		return -1;
 	}
 
-	ret = pread64(dev_fd, &cmd, sizeof(cmd), offset + PCI_COMMAND);
+	ret = pread64(dev_fd, &cmd, sizeof(cmd), offset + RTE_PCI_COMMAND);
 
 	if (ret != sizeof(cmd)) {
 		RTE_LOG(ERR, EAL, "Cannot read command from PCI config space!\n");
 		return -1;
 	}
 
-	if (cmd & PCI_COMMAND_MEMORY)
+	if (cmd & RTE_PCI_COMMAND_MEMORY)
 		return 0;
 
-	cmd |= PCI_COMMAND_MEMORY;
-	ret = pwrite64(dev_fd, &cmd, sizeof(cmd), offset + PCI_COMMAND);
+	cmd |= RTE_PCI_COMMAND_MEMORY;
+	ret = pwrite64(dev_fd, &cmd, sizeof(cmd), offset + RTE_PCI_COMMAND);
 
 	if (ret != sizeof(cmd)) {
 		RTE_LOG(ERR, EAL, "Cannot write command to PCI config space!\n");

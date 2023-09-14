@@ -37,8 +37,10 @@ extern "C" {
 #define RTE_PCI_STATUS		0x06	/* 16 bits */
 #define RTE_PCI_CAPABILITY_LIST	0x34	/* 32 bits */
 
-/* PCI Command Register */
-#define RTE_PCI_COMMAND_MASTER	0x4	/* Bus Master Enable */
+/* PCI Command Register (RTE_PCI_COMMAND) */
+#define RTE_PCI_COMMAND_MEMORY		0x2	/* Enable response in Memory space */
+#define RTE_PCI_COMMAND_MASTER		0x4	/* Bus Master Enable */
+#define RTE_PCI_COMMAND_INTX_DISABLE	0x400	/* INTx Emulation Disable */
 
 /* PCI Status Register (RTE_PCI_STATUS) */
 #define RTE_PCI_STATUS_CAP_LIST		0x10	/* Support Capability List */
