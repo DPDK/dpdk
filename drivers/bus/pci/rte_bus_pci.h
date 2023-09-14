@@ -85,7 +85,7 @@ void rte_pci_dump(FILE *f);
  *  = 0: Device does not support it.
  */
 __rte_experimental
-off_t rte_pci_find_ext_capability(struct rte_pci_device *dev, uint32_t cap);
+off_t rte_pci_find_ext_capability(const struct rte_pci_device *dev, uint32_t cap);
 
 /**
  * Enables/Disables Bus Master for device's PCI command register.
@@ -99,7 +99,7 @@ off_t rte_pci_find_ext_capability(struct rte_pci_device *dev, uint32_t cap);
  *  0 on success, -1 on error in PCI config space read/write.
  */
 __rte_experimental
-int rte_pci_set_bus_master(struct rte_pci_device *dev, bool enable);
+int rte_pci_set_bus_master(const struct rte_pci_device *dev, bool enable);
 
 /**
  * Read PCI config space.

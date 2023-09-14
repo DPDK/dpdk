@@ -814,7 +814,7 @@ rte_pci_get_iommu_class(void)
 }
 
 off_t
-rte_pci_find_ext_capability(struct rte_pci_device *dev, uint32_t cap)
+rte_pci_find_ext_capability(const struct rte_pci_device *dev, uint32_t cap)
 {
 	off_t offset = RTE_PCI_CFG_SPACE_SIZE;
 	uint32_t header;
@@ -857,7 +857,7 @@ rte_pci_find_ext_capability(struct rte_pci_device *dev, uint32_t cap)
 }
 
 int
-rte_pci_set_bus_master(struct rte_pci_device *dev, bool enable)
+rte_pci_set_bus_master(const struct rte_pci_device *dev, bool enable)
 {
 	uint16_t old_cmd, cmd;
 
