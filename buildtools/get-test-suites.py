@@ -8,18 +8,23 @@ import re
 input_list = sys.argv[1:]
 test_def_regex = re.compile("REGISTER_([A-Z]+)_TEST\s*\(\s*([a-z0-9_]+)")
 test_suites = {}
+# track tests not in any test suite.
+non_suite_regex = re.compile("REGISTER_TEST_COMMAND\s*\(\s*([a-z0-9_]+)")
+non_suite_tests = []
 
 def get_fast_test_params(test_name, ln):
     "Extract the extra fast-test parameters from the line"
-    #print(f"ln: {ln.rstrip()}, test_name: {test_name}, split: {ln.split(test_name, 1)}")
     (_, rest_of_line) = ln.split(test_name, 1)
     (_, nohuge, asan, _func) = rest_of_line.split(',', 3)
     return f":{nohuge.strip().lower()}:{asan.strip().lower()}"
 
 for fname in input_list:
     with open(fname) as f:
-        contents = [ln for ln in f.readlines() if test_def_regex.match(ln.strip())]
-    for ln in contents:
+        contents = [ln.strip() for ln in f.readlines()]
+        test_lines = [ln for ln in contents if test_def_regex.match(ln)]
+        non_suite_tests.extend([non_suite_regex.match(ln).group(1)
+                for ln in contents if non_suite_regex.match(ln)])
+    for ln in test_lines:
         (test_suite, test_name) = test_def_regex.match(ln).group(1, 2)
         suite_name = f"{test_suite.lower()}-tests"
         if suite_name in test_suites:
@@ -31,3 +36,4 @@ for fname in input_list:
 
 for suite in test_suites.keys():
     print(f"{suite}={','.join(test_suites[suite])}")
+print(f"non_suite_tests={','.join(non_suite_tests)}")

@@ -21,7 +21,18 @@ foreach suite:test_suites
     suite = suite.split('=')
     suite_name = suite[0]
     suite_tests = suite[1].split(',')
-    if suite_name != 'fast-tests'
+    if suite_name == 'non_suite_tests'
+        # tests not in any suite
+        foreach t: suite_tests
+            if developer_mode
+                warning('Test "@0@" is not defined in any test suite'.format(t))
+            endif
+            test(t, dpdk_test,
+                    env: ['DPDK_TEST=' + t],
+                    timeout: timeout_seconds,
+                    is_parallel: false)
+        endforeach
+    elif suite_name != 'fast-tests'
         # simple cases - tests without parameters or special handling
         foreach t: suite_tests
             test(t, dpdk_test,
