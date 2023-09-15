@@ -17439,7 +17439,7 @@ test_cryptodev_scheduler(void)
 	return ret;
 }
 
-REGISTER_TEST_COMMAND(cryptodev_scheduler_autotest, test_cryptodev_scheduler);
+REGISTER_DRIVER_TEST(cryptodev_scheduler_autotest, test_cryptodev_scheduler);
 
 #endif
 

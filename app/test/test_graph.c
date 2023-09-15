@@ -989,7 +989,7 @@ graph_autotest_fn(void)
 	return unit_test_suite_runner(&graph_testsuite);
 }
 
-REGISTER_TEST_COMMAND(graph_autotest, graph_autotest_fn);
+REGISTER_FAST_TEST(graph_autotest, true, true, graph_autotest_fn);
 
 static int
 test_node_list_dump(void)
@@ -1001,4 +1001,4 @@ test_node_list_dump(void)
 
 #endif /* !RTE_EXEC_ENV_WINDOWS */
 
-REGISTER_TEST_COMMAND(node_list_dump, test_node_list_dump);
+REGISTER_FAST_TEST(node_list_dump, true, true, test_node_list_dump);

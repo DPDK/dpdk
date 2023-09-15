@@ -206,4 +206,4 @@ end:
 
 #endif /* !RTE_EXEC_ENV_WINDOWS */
 
-REGISTER_TEST_COMMAND(table_autotest, test_table);
+REGISTER_FAST_TEST(table_autotest, true, true, test_table);

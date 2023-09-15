@@ -615,4 +615,4 @@ telemetry_data_autotest(void)
 }
 #endif /* !RTE_EXEC_ENV_WINDOWS */
 
-REGISTER_TEST_COMMAND(telemetry_data_autotest, telemetry_data_autotest);
+REGISTER_FAST_TEST(telemetry_data_autotest, true, true, telemetry_data_autotest);

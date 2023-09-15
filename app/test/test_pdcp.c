@@ -1980,4 +1980,4 @@ test_pdcp(void)
 	return ret;
 }
 
-REGISTER_TEST_COMMAND(pdcp_autotest, test_pdcp);
+REGISTER_FAST_TEST(pdcp_autotest, false, true, test_pdcp);

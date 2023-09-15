@@ -728,4 +728,4 @@ test_link_bonding_rssconf(void)
 	return unit_test_suite_runner(&link_bonding_rssconf_test_suite);
 }
 
-REGISTER_TEST_COMMAND(link_bonding_rssconf_autotest, test_link_bonding_rssconf);
+REGISTER_DRIVER_TEST(link_bonding_rssconf_autotest, test_link_bonding_rssconf);

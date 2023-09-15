@@ -163,4 +163,4 @@ test_ring_pmd_perf(void)
 	return 0;
 }
 
-REGISTER_TEST_COMMAND(ring_pmd_perf_autotest, test_ring_pmd_perf);
+REGISTER_PERF_TEST(ring_pmd_perf_autotest, test_ring_pmd_perf);

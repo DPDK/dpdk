@@ -1674,4 +1674,4 @@ test_link_bonding_mode4(void)
 	return unit_test_suite_runner(&link_bonding_mode4_test_suite);
 }
 
-REGISTER_TEST_COMMAND(link_bonding_mode4_autotest, test_link_bonding_mode4);
+REGISTER_DRIVER_TEST(link_bonding_mode4_autotest, test_link_bonding_mode4);
