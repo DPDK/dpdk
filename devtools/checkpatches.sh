@@ -183,6 +183,14 @@ check_forbidden_additions() { # <patch>
 		-f $(dirname $(readlink -f $0))/check-forbidden-tokens.awk \
 		"$1" || res=1
 
+	# prevent addition of tests not in one of our test suites
+	awk -v FOLDERS='app/test' \
+		-v EXPRESSIONS='REGISTER_TEST_COMMAND' \
+		-v RET_ON_FAIL=1 \
+		-v MESSAGE='Using REGISTER_TEST_COMMAND instead of REGISTER_<suite_name>_TEST' \
+		-f $(dirname $(readlink -f $0))/check-forbidden-tokens.awk \
+		"$1" || res=1
+
 	# SVG must be included with wildcard extension to allow conversion
 	awk -v FOLDERS='doc' \
 		-v EXPRESSIONS='::[[:space:]]*[^[:space:]]*\\.svg' \
