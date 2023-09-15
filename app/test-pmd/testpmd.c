@@ -4010,6 +4010,28 @@ register_eth_event_callback(void)
 	return 0;
 }
 
+static int
+unregister_eth_event_callback(void)
+{
+	int ret;
+	enum rte_eth_event_type event;
+
+	for (event = RTE_ETH_EVENT_UNKNOWN;
+			event < RTE_ETH_EVENT_MAX; event++) {
+		ret = rte_eth_dev_callback_unregister(RTE_ETH_ALL,
+				event,
+				eth_event_callback,
+				NULL);
+		if (ret != 0) {
+			TESTPMD_LOG(ERR, "Failed to unregister callback for "
+					"%s event\n", eth_event_desc[event]);
+			return -1;
+		}
+	}
+
+	return 0;
+}
+
 /* This function is used by the interrupt thread */
 static void
 dev_event_callback(const char *device_name, enum rte_dev_event_type type,
@@ -4738,6 +4760,11 @@ main(int argc, char** argv)
 	if (latencystats_enabled != 0)
 		rte_latencystats_uninit();
 #endif
+
+	ret = unregister_eth_event_callback();
+	if (ret != 0)
+		rte_exit(EXIT_FAILURE, "Cannot unregister for ethdev events");
+
 
 	ret = rte_eal_cleanup();
 	if (ret != 0)
