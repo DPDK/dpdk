@@ -177,7 +177,8 @@ struct mlx5dr_definer_conv_data {
 	X(SET_BE32,     ipsec_spi,              v->hdr.spi,             rte_flow_item_esp) \
 	X(SET_BE32,     ipsec_sequence_number,  v->hdr.seq,             rte_flow_item_esp) \
 	X(SET,		ib_l4_udp_port,		UDP_ROCEV2_PORT,	rte_flow_item_ib_bth) \
-	X(SET,		ib_l4_opcode,		v->hdr.opcode,		rte_flow_item_ib_bth)
+	X(SET,		ib_l4_opcode,		v->hdr.opcode,		rte_flow_item_ib_bth) \
+	X(SET,		ib_l4_bth_a,		v->hdr.a,		rte_flow_item_ib_bth) \
 
 /* Item set function format */
 #define X(set_type, func_name, value, item_type) \
@@ -2137,7 +2138,7 @@ mlx5dr_definer_conv_item_ib_l4(struct mlx5dr_definer_conv_data *cd,
 
 	if (m->hdr.se || m->hdr.m || m->hdr.padcnt || m->hdr.tver ||
 		m->hdr.pkey || m->hdr.f || m->hdr.b || m->hdr.rsvd0 ||
-		m->hdr.a || m->hdr.rsvd1 || !is_mem_zero(m->hdr.psn, 3)) {
+		m->hdr.rsvd1 || !is_mem_zero(m->hdr.psn, 3)) {
 		rte_errno = ENOTSUP;
 		return rte_errno;
 	}
@@ -2154,6 +2155,13 @@ mlx5dr_definer_conv_item_ib_l4(struct mlx5dr_definer_conv_data *cd,
 		fc->item_idx = item_idx;
 		fc->tag_set = &mlx5dr_definer_ib_l4_qp_set;
 		DR_CALC_SET_HDR(fc, ib_l4, qp);
+	}
+
+	if (m->hdr.a) {
+		fc = &cd->fc[MLX5DR_DEFINER_FNAME_IB_L4_A];
+		fc->item_idx = item_idx;
+		fc->tag_set = &mlx5dr_definer_ib_l4_bth_a_set;
+		DR_CALC_SET_HDR(fc, ib_l4, ackreq);
 	}
 
 	return 0;
