@@ -331,11 +331,12 @@ static int mlx5dr_debug_dump_table(FILE *f, struct mlx5dr_table *tbl)
 		}
 	}
 
-	ret = fprintf(f, ",0x%" PRIx64 ",0x%" PRIx64 ",0x%" PRIx64 ",0x%" PRIx64 "\n",
+	ret = fprintf(f, ",0x%" PRIx64 ",0x%" PRIx64 ",0x%" PRIx64 ",0x%" PRIx64 ",0x%" PRIx64 "\n",
 		      mlx5dr_debug_icm_to_idx(icm_addr_0),
 		      mlx5dr_debug_icm_to_idx(icm_addr_1),
 		      mlx5dr_debug_icm_to_idx(local_icm_addr_0),
-		      mlx5dr_debug_icm_to_idx(local_icm_addr_1));
+		      mlx5dr_debug_icm_to_idx(local_icm_addr_1),
+		      (uint64_t)(uintptr_t)tbl->default_miss.miss_tbl);
 	if (ret < 0)
 		goto out_err;
 

@@ -596,7 +596,6 @@ mlx5dr_cmd_header_modify_pattern_create(struct ibv_context *ctx,
 		rte_errno = ENOMEM;
 		return NULL;
 	}
-
 	attr = MLX5_ADDR_OF(create_header_modify_pattern_in, in, hdr);
 	MLX5_SET(general_obj_in_cmd_hdr,
 		 attr, opcode, MLX5_CMD_OP_CREATE_GENERAL_OBJECT);
@@ -1051,6 +1050,12 @@ int mlx5dr_cmd_query_caps(struct ibv_context *ctx,
 	caps->nic_ft.reparse = MLX5_GET(query_hca_cap_out, out,
 					capability.flow_table_nic_cap.
 					flow_table_properties_nic_receive.reparse);
+
+	caps->nic_ft.ignore_flow_level_rtc_valid =
+		MLX5_GET(query_hca_cap_out,
+			 out,
+			 capability.flow_table_nic_cap.
+			 flow_table_properties_nic_receive.ignore_flow_level_rtc_valid);
 
 	/* check cross-VHCA support in flow table properties */
 	res =

@@ -158,6 +158,7 @@ struct mlx5dr_cmd_allow_other_vhca_access_attr {
 struct mlx5dr_cmd_query_ft_caps {
 	uint8_t max_level;
 	uint8_t reparse;
+	uint8_t ignore_flow_level_rtc_valid;
 };
 
 struct mlx5dr_cmd_query_vport_caps {

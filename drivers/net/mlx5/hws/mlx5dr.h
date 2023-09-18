@@ -254,6 +254,18 @@ mlx5dr_table_create(struct mlx5dr_context *ctx,
  */
 int mlx5dr_table_destroy(struct mlx5dr_table *tbl);
 
+/* Set default miss table for mlx5dr_table by using another mlx5dr_table
+ * Traffic which all table matchers miss will be forwarded to miss table.
+ *
+ * @param[in] tbl
+ *	source mlx5dr table
+ * @param[in] miss_tbl
+ *	target (miss) mlx5dr table, or NULL to remove current miss table
+ * @return zero on success non zero otherwise.
+ */
+int mlx5dr_table_set_default_miss(struct mlx5dr_table *tbl,
+				  struct mlx5dr_table *miss_tbl);
+
 /* Create new match template based on items mask, the match template
  * will be used for matcher creation.
  *

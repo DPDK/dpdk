@@ -2087,7 +2087,10 @@ struct mlx5_ifc_flow_table_prop_layout_bits {
 	u8 reparse[0x1];
 	u8 reserved_at_6b[0x1];
 	u8 cross_vhca_object[0x1];
-	u8 reserved_at_6d[0xb];
+	u8 reformat_l2_to_l3_audp_tunnel[0x1];
+	u8 reformat_l3_audp_tunnel_to_l2[0x1];
+	u8 ignore_flow_level_rtc_valid[0x1];
+	u8 reserved_at_70[0x8];
 	u8 log_max_ft_num[0x8];
 	u8 reserved_at_80[0x10];
 	u8 log_max_flow_counter[0x8];

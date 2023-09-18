@@ -115,4 +115,9 @@ static inline bool mlx5dr_matcher_is_insert_by_idx(struct mlx5dr_matcher *matche
 	return matcher->attr.insert_mode == MLX5DR_MATCHER_INSERT_BY_INDEX;
 }
 
+int mlx5dr_matcher_free_rtc_pointing(struct mlx5dr_context *ctx,
+				     uint32_t fw_ft_type,
+				     enum mlx5dr_table_type type,
+				     struct mlx5dr_devx_obj *devx_obj);
+
 #endif /* MLX5DR_MATCHER_H_ */

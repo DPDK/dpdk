@@ -43,29 +43,21 @@ static void mlx5dr_matcher_destroy_end_ft(struct mlx5dr_matcher *matcher)
 	mlx5dr_table_destroy_default_ft(matcher->tbl, matcher->end_ft);
 }
 
-static int mlx5dr_matcher_free_rtc_pointing(struct mlx5dr_context *ctx,
-					    uint32_t fw_ft_type,
-					    enum mlx5dr_table_type type,
-					    struct mlx5dr_devx_obj *devx_obj)
+int mlx5dr_matcher_free_rtc_pointing(struct mlx5dr_context *ctx,
+				     uint32_t fw_ft_type,
+				     enum mlx5dr_table_type type,
+				     struct mlx5dr_devx_obj *devx_obj)
 {
-	struct mlx5dr_cmd_ft_modify_attr ft_attr = {0};
 	int ret;
 
 	if (type != MLX5DR_TABLE_TYPE_FDB && !mlx5dr_context_shared_gvmi_used(ctx))
 		return 0;
 
-	ft_attr.modify_fs = MLX5_IFC_MODIFY_FLOW_TABLE_RTC_ID;
-	ft_attr.type = fw_ft_type;
-	ft_attr.rtc_id_0 = 0;
-	ft_attr.rtc_id_1 = 0;
-
-	ret = mlx5dr_cmd_flow_table_modify(devx_obj, &ft_attr);
-	if (ret) {
+	ret = mlx5dr_table_ft_set_next_rtc(devx_obj, fw_ft_type, NULL, NULL);
+	if (ret)
 		DR_LOG(ERR, "Failed to disconnect previous RTC");
-		return ret;
-	}
 
-	return 0;
+	return ret;
 }
 
 static int mlx5dr_matcher_shared_point_end_ft(struct mlx5dr_matcher *matcher)
@@ -200,12 +192,10 @@ static int mlx5dr_matcher_shared_update_local_ft(struct mlx5dr_table *tbl)
 
 static int mlx5dr_matcher_connect(struct mlx5dr_matcher *matcher)
 {
-	struct mlx5dr_cmd_ft_modify_attr ft_attr = {0};
 	struct mlx5dr_table *tbl = matcher->tbl;
 	struct mlx5dr_matcher *prev = NULL;
 	struct mlx5dr_matcher *next = NULL;
 	struct mlx5dr_matcher *tmp_matcher;
-	struct mlx5dr_devx_obj *ft;
 	int ret;
 
 	/* Find location in matcher list */
@@ -228,32 +218,30 @@ static int mlx5dr_matcher_connect(struct mlx5dr_matcher *matcher)
 		LIST_INSERT_AFTER(prev, matcher, next);
 
 connect:
-	ft_attr.modify_fs = MLX5_IFC_MODIFY_FLOW_TABLE_RTC_ID;
-	ft_attr.type = tbl->fw_ft_type;
-
-	/* Connect to next */
 	if (next) {
-		if (next->match_ste.rtc_0)
-			ft_attr.rtc_id_0 = next->match_ste.rtc_0->id;
-		if (next->match_ste.rtc_1)
-			ft_attr.rtc_id_1 = next->match_ste.rtc_1->id;
-
-		ret = mlx5dr_cmd_flow_table_modify(matcher->end_ft, &ft_attr);
+		/* Connect to next RTC */
+		ret = mlx5dr_table_ft_set_next_rtc(matcher->end_ft,
+						   tbl->fw_ft_type,
+						   next->match_ste.rtc_0,
+						   next->match_ste.rtc_1);
 		if (ret) {
 			DR_LOG(ERR, "Failed to connect new matcher to next RTC");
 			goto remove_from_list;
 		}
+	} else {
+		/* Connect last matcher to next miss_tbl if exists */
+		ret = mlx5dr_table_connect_to_miss_table(tbl, tbl->default_miss.miss_tbl);
+		if (ret) {
+			DR_LOG(ERR, "Failed connect new matcher to miss_tbl");
+			goto remove_from_list;
+		}
 	}
 
-	/* Connect to previous */
-	ft = prev ? prev->end_ft : tbl->ft;
-
-	if (matcher->match_ste.rtc_0)
-		ft_attr.rtc_id_0 = matcher->match_ste.rtc_0->id;
-	if (matcher->match_ste.rtc_1)
-		ft_attr.rtc_id_1 = matcher->match_ste.rtc_1->id;
-
-	ret = mlx5dr_cmd_flow_table_modify(ft, &ft_attr);
+	/* Connect to previous FT */
+	ret = mlx5dr_table_ft_set_next_rtc(prev ? prev->end_ft : tbl->ft,
+					   tbl->fw_ft_type,
+					   matcher->match_ste.rtc_0,
+					   matcher->match_ste.rtc_1);
 	if (ret) {
 		DR_LOG(ERR, "Failed to connect new matcher to previous FT");
 		goto remove_from_list;
@@ -265,6 +253,22 @@ connect:
 		goto remove_from_list;
 	}
 
+	if (prev) {
+		/* Reset next miss FT to default (drop refcount) */
+		ret = mlx5dr_table_ft_set_default_next_ft(tbl, prev->end_ft);
+		if (ret) {
+			DR_LOG(ERR, "Failed to reset matcher ft default miss");
+			goto remove_from_list;
+		}
+	} else {
+		/* Update tables missing to current table */
+		ret = mlx5dr_table_update_connected_miss_tables(tbl);
+		if (ret) {
+			DR_LOG(ERR, "Fatal error, failed to update connected miss table");
+			goto remove_from_list;
+		}
+	}
+
 	return 0;
 
 remove_from_list:
@@ -272,81 +276,97 @@ remove_from_list:
 	return ret;
 }
 
-static int mlx5dr_matcher_disconnect(struct mlx5dr_matcher *matcher)
+static int mlx5dr_last_matcher_disconnect(struct mlx5dr_table *tbl,
+					  struct mlx5dr_devx_obj *prev_ft)
 {
 	struct mlx5dr_cmd_ft_modify_attr ft_attr = {0};
-	struct mlx5dr_table *tbl = matcher->tbl;
-	struct mlx5dr_matcher *tmp_matcher;
-	struct mlx5dr_devx_obj *prev_ft;
-	struct mlx5dr_matcher *next;
-	int ret;
 
-	prev_ft = matcher->tbl->ft;
-	LIST_FOREACH(tmp_matcher, &tbl->head, next) {
-		if (tmp_matcher == matcher)
-			break;
-
-		prev_ft = tmp_matcher->end_ft;
-	}
-
-	next = matcher->next.le_next;
-
-	ft_attr.modify_fs = MLX5_IFC_MODIFY_FLOW_TABLE_RTC_ID;
-	ft_attr.type = matcher->tbl->fw_ft_type;
-
-	if (next) {
-		/* Connect previous end FT to next RTC if exists */
-		if (next->match_ste.rtc_0)
-			ft_attr.rtc_id_0 = next->match_ste.rtc_0->id;
-		if (next->match_ste.rtc_1)
-			ft_attr.rtc_id_1 = next->match_ste.rtc_1->id;
+	if (tbl->default_miss.miss_tbl) {
+		/* Connect new last matcher to next miss_tbl if exists */
+		return mlx5dr_table_connect_to_miss_table(tbl,
+							  tbl->default_miss.miss_tbl);
 	} else {
+		ft_attr.modify_fs = MLX5_IFC_MODIFY_FLOW_TABLE_RTC_ID;
+		ft_attr.type = tbl->fw_ft_type;
 		/* Matcher is last, point prev end FT to default miss */
 		mlx5dr_cmd_set_attr_connect_miss_tbl(tbl->ctx,
 						     tbl->fw_ft_type,
 						     tbl->type,
 						     &ft_attr);
+		return mlx5dr_cmd_flow_table_modify(prev_ft, &ft_attr);
+	}
+}
+
+static int mlx5dr_matcher_disconnect(struct mlx5dr_matcher *matcher)
+{
+	struct mlx5dr_matcher *tmp_matcher, *prev_matcher;
+	struct mlx5dr_table *tbl = matcher->tbl;
+	struct mlx5dr_devx_obj *prev_ft;
+	struct mlx5dr_matcher *next;
+	int ret;
+
+	prev_ft = tbl->ft;
+	prev_matcher = LIST_FIRST(&tbl->head);
+	LIST_FOREACH(tmp_matcher, &tbl->head, next) {
+		if (tmp_matcher == matcher)
+			break;
+
+		prev_ft = tmp_matcher->end_ft;
+		prev_matcher = tmp_matcher;
 	}
 
-	ret = mlx5dr_cmd_flow_table_modify(prev_ft, &ft_attr);
-	if (ret) {
-		DR_LOG(ERR, "Failed to disconnect matcher");
-		return ret;
-	}
+	next = matcher->next.le_next;
 
 	LIST_REMOVE(matcher, next);
 
-	if (!next) {
-		/* ft no longer points to any RTC, drop refcount */
-		ret = mlx5dr_matcher_free_rtc_pointing(tbl->ctx,
-						       tbl->fw_ft_type,
-						       tbl->type,
-						       prev_ft);
+	if (next) {
+		/* Connect previous end FT to next RTC */
+		ret = mlx5dr_table_ft_set_next_rtc(prev_ft,
+						   tbl->fw_ft_type,
+						   next->match_ste.rtc_0,
+						   next->match_ste.rtc_1);
 		if (ret) {
-			DR_LOG(ERR, "Failed to reset last RTC refcount");
-			return ret;
+			DR_LOG(ERR, "Failed to disconnect matcher");
+			goto matcher_reconnect;
+		}
+	} else {
+		ret = mlx5dr_last_matcher_disconnect(tbl, prev_ft);
+		if (ret) {
+			DR_LOG(ERR, "Failed to disconnect last matcher");
+			goto matcher_reconnect;
 		}
 	}
 
 	ret = mlx5dr_matcher_shared_update_local_ft(tbl);
 	if (ret) {
 		DR_LOG(ERR, "Failed to update local_ft in shared table");
-		return ret;
+		goto matcher_reconnect;
 	}
 
-	if (!next) {
-		/* ft no longer points to any RTC, drop refcount */
-		ret = mlx5dr_matcher_free_rtc_pointing(tbl->ctx,
-						       tbl->fw_ft_type,
-						       tbl->type,
-						       prev_ft);
+	/* Removing first matcher, update connected miss tables if exists */
+	if (prev_ft == tbl->ft) {
+		ret = mlx5dr_table_update_connected_miss_tables(tbl);
 		if (ret) {
-			DR_LOG(ERR, "Failed to reset last RTC refcount");
-			return ret;
+			DR_LOG(ERR, "Fatal error, failed to update connected miss table");
+			goto matcher_reconnect;
 		}
 	}
 
+	ret = mlx5dr_table_ft_set_default_next_ft(tbl, prev_ft);
+	if (ret) {
+		DR_LOG(ERR, "Fatal error, failed to restore matcher ft default miss");
+		goto matcher_reconnect;
+	}
+
 	return 0;
+
+matcher_reconnect:
+	if (LIST_EMPTY(&tbl->head))
+		LIST_INSERT_HEAD(&matcher->tbl->head, matcher, next);
+	else
+		LIST_INSERT_AFTER(prev_matcher, matcher, next);
+
+	return ret;
 }
 
 static bool mlx5dr_matcher_supp_fw_wqe(struct mlx5dr_matcher *matcher)
