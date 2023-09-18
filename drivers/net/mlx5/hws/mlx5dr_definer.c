@@ -2364,11 +2364,15 @@ mlx5dr_definer_find_byte_in_tag(struct mlx5dr_definer *definer,
 				uint32_t *tag_byte_off)
 {
 	uint8_t byte_offset;
-	int i;
+	int i, dw_to_scan;
+
+	/* Avoid accessing unused DW selectors */
+	dw_to_scan = mlx5dr_definer_is_jumbo(definer) ?
+		DW_SELECTORS : DW_SELECTORS_MATCH;
 
 	/* Add offset since each DW covers multiple BYTEs */
 	byte_offset = hl_byte_off % DW_SIZE;
-	for (i = 0; i < DW_SELECTORS; i++) {
+	for (i = 0; i < dw_to_scan; i++) {
 		if (definer->dw_selector[i] == hl_byte_off / DW_SIZE) {
 			*tag_byte_off = byte_offset + DW_SIZE * (DW_SELECTORS - i - 1);
 			return 0;
