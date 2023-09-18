@@ -74,7 +74,8 @@ static bool mlx5dr_pat_compare_pattern(int cur_num_of_actions,
 		u8 action_id =
 			MLX5_GET(set_action_in, &actions[i], action_type);
 
-		if (action_id == MLX5_MODIFICATION_TYPE_COPY) {
+		if (action_id == MLX5_MODIFICATION_TYPE_COPY ||
+		    action_id == MLX5_MODIFICATION_TYPE_ADD_FIELD) {
 			if (actions[i] != cur_actions[i])
 				return false;
 		} else {

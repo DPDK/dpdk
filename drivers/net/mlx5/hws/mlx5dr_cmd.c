@@ -439,6 +439,7 @@ mlx5dr_cmd_stc_modify_set_stc_param(struct mlx5dr_cmd_stc_modify_attr *stc_attr,
 	case MLX5_IFC_STC_ACTION_TYPE_COPY:
 	case MLX5_IFC_STC_ACTION_TYPE_SET:
 	case MLX5_IFC_STC_ACTION_TYPE_ADD:
+	case MLX5_IFC_STC_ACTION_TYPE_ADD_FIELD:
 		*(__be64 *)stc_parm = stc_attr->modify_action.data;
 		break;
 	case MLX5_IFC_STC_ACTION_TYPE_JUMP_TO_VPORT:
@@ -614,7 +615,8 @@ mlx5dr_cmd_header_modify_pattern_create(struct ibv_context *ctx,
 		int type;
 
 		type = MLX5_GET(set_action_in, &pattern_data[i], action_type);
-		if (type != MLX5_MODIFICATION_TYPE_COPY)
+		if (type != MLX5_MODIFICATION_TYPE_COPY &&
+		    type != MLX5_MODIFICATION_TYPE_ADD_FIELD)
 			/* Action typ-copy use all bytes for control */
 			MLX5_SET(set_action_in, &pattern_data[i], data, 0);
 	}

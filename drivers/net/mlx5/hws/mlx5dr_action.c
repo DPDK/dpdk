@@ -481,6 +481,8 @@ static uint32_t mlx5dr_action_get_mh_stc_type(__be64 pattern)
 		return MLX5_IFC_STC_ACTION_TYPE_ADD;
 	case MLX5_MODIFICATION_TYPE_COPY:
 		return MLX5_IFC_STC_ACTION_TYPE_COPY;
+	case MLX5_MODIFICATION_TYPE_ADD_FIELD:
+		return MLX5_IFC_STC_ACTION_TYPE_ADD_FIELD;
 	default:
 		assert(false);
 		DR_LOG(ERR, "Unsupported action type: 0x%x", action_type);
@@ -2044,7 +2046,9 @@ mlx5dr_action_setter_modify_header(struct mlx5dr_actions_apply_data *apply,
 
 	if (action->modify_header.num_of_actions == 1) {
 		if (action->modify_header.single_action_type ==
-		    MLX5_MODIFICATION_TYPE_COPY) {
+		    MLX5_MODIFICATION_TYPE_COPY ||
+		    action->modify_header.single_action_type ==
+		    MLX5_MODIFICATION_TYPE_ADD_FIELD) {
 			apply->wqe_data[MLX5DR_ACTION_OFFSET_DW7] = 0;
 			return;
 		}
