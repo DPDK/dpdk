@@ -1401,6 +1401,22 @@ mlx5dr_definer_get_register_fc(struct mlx5dr_definer_conv_data *cd, int reg)
 		fc = &cd->fc[MLX5DR_DEFINER_FNAME_REG_7];
 		DR_CALC_SET_HDR(fc, registers, register_c_7);
 		break;
+	case REG_C_8:
+		fc = &cd->fc[MLX5DR_DEFINER_FNAME_REG_8];
+		DR_CALC_SET_HDR(fc, registers, register_c_8);
+		break;
+	case REG_C_9:
+		fc = &cd->fc[MLX5DR_DEFINER_FNAME_REG_9];
+		DR_CALC_SET_HDR(fc, registers, register_c_9);
+		break;
+	case REG_C_10:
+		fc = &cd->fc[MLX5DR_DEFINER_FNAME_REG_10];
+		DR_CALC_SET_HDR(fc, registers, register_c_10);
+		break;
+	case REG_C_11:
+		fc = &cd->fc[MLX5DR_DEFINER_FNAME_REG_11];
+		DR_CALC_SET_HDR(fc, registers, register_c_11);
+		break;
 	case REG_A:
 		fc = &cd->fc[MLX5DR_DEFINER_FNAME_REG_A];
 		DR_CALC_SET_HDR(fc, metadata, general_purpose);

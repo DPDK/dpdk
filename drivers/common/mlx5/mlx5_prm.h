@@ -857,6 +857,10 @@ enum modify_reg {
 	REG_C_5,
 	REG_C_6,
 	REG_C_7,
+	REG_C_8,
+	REG_C_9,
+	REG_C_10,
+	REG_C_11,
 };
 
 /* Modification sub command. */
