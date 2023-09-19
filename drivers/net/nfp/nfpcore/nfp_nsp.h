@@ -3,8 +3,8 @@
  * All rights reserved.
  */
 
-#ifndef NSP_NSP_H
-#define NSP_NSP_H 1
+#ifndef __NSP_NSP_H__
+#define __NSP_NSP_H__
 
 #include "nfp_cpp.h"
 #include "nfp_nsp.h"
@@ -260,4 +260,4 @@ enum nfp_nsp_sensor_id {
 int nfp_hwmon_read_sensor(struct nfp_cpp *cpp, enum nfp_nsp_sensor_id id,
 		uint32_t *val);
 
-#endif
+#endif /* __NSP_NSP_H__ */

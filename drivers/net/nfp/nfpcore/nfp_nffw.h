@@ -75,4 +75,4 @@ struct nfp_nffw_info {
 struct nfp_nffw_info *nfp_nffw_info_open(struct nfp_cpp *cpp);
 void nfp_nffw_info_close(struct nfp_nffw_info *state);
 
-#endif
+#endif /* __NFP_NFFW_H__ */

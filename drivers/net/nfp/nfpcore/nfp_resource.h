@@ -3,8 +3,8 @@
  * All rights reserved.
  */
 
-#ifndef NFP_RESOURCE_H
-#define NFP_RESOURCE_H
+#ifndef __NFP_RESOURCE_H__
+#define __NFP_RESOURCE_H__
 
 #include "nfp_cpp.h"
 
@@ -33,4 +33,4 @@ uint64_t nfp_resource_address(const struct nfp_resource *res);
 
 uint64_t nfp_resource_size(const struct nfp_resource *res);
 
-#endif /* NFP_RESOURCE_H */
+#endif /* __NFP_RESOURCE_H__ */

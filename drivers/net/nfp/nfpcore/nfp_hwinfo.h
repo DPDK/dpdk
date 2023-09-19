@@ -81,4 +81,4 @@ struct nfp_hwinfo *nfp_hwinfo_read(struct nfp_cpp *cpp);
 
 const char *nfp_hwinfo_lookup(struct nfp_hwinfo *hwinfo, const char *lookup);
 
-#endif
+#endif /* __NFP_HWINFO_H__ */

@@ -442,4 +442,4 @@ int nfp_cpp_mutex_trylock(struct nfp_cpp_mutex *mutex);
 
 uint32_t nfp_cpp_mu_locality_lsb(struct nfp_cpp *cpp);
 
-#endif /* !__NFP_CPP_H__ */
+#endif /* __NFP_CPP_H__ */

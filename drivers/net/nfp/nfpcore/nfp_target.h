@@ -3,7 +3,7 @@
  * All rights reserved.
  */
 
-#ifndef NFP_TARGET_H
-#define NFP_TARGET_H
+#ifndef __NFP_TARGET_H__
+#define __NFP_TARGET_H__
 
-#endif /* NFP_TARGET_H */
+#endif /* __NFP_TARGET_H__ */

@@ -58,4 +58,4 @@ uint64_t nfp_rtsym_read_le(struct nfp_rtsym_table *rtbl, const char *name,
 uint8_t *nfp_rtsym_map(struct nfp_rtsym_table *rtbl, const char *name,
 		uint32_t min_size, struct nfp_cpp_area **area);
 
-#endif
+#endif /* __NFP_RTSYM_H__ */
