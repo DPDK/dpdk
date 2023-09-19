@@ -107,5 +107,6 @@ nfp_hwmon_read_sensor(struct nfp_cpp *cpp,
 	default:
 		return -EINVAL;
 	}
+
 	return 0;
 }

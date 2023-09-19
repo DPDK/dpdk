@@ -17,18 +17,18 @@
 #include "nfp6000/nfp6000.h"
 
 /* These need to match the linker */
-#define SYM_TGT_LMEM		0
-#define SYM_TGT_EMU_CACHE	0x17
+#define SYM_TGT_LMEM            0
+#define SYM_TGT_EMU_CACHE       0x17
 
 struct nfp_rtsym_entry {
-	uint8_t	type;
-	uint8_t	target;
-	uint8_t	island;
-	uint8_t	addr_hi;
+	uint8_t type;
+	uint8_t target;
+	uint8_t island;
+	uint8_t addr_hi;
 	uint32_t addr_lo;
 	uint16_t name;
-	uint8_t	menum;
-	uint8_t	size_hi;
+	uint8_t menum;
+	uint8_t size_hi;
 	uint32_t size_lo;
 };
 

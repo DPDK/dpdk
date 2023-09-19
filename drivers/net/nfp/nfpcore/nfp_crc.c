@@ -15,11 +15,13 @@ nfp_crc32_be_generic(uint32_t crc,
 		uint32_t polynomial)
 {
 	uint32_t i;
+
 	while (len--) {
 		crc ^= *p++ << 24;
 		for (i = 0; i < 8; i++)
 			crc = (crc << 1) ^ ((crc & 0x80000000) ? polynomial : 0);
 	}
+
 	return crc;
 }
 

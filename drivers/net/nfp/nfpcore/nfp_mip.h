@@ -18,4 +18,5 @@ void nfp_mip_symtab(const struct nfp_mip *mip, uint32_t *addr, uint32_t *size);
 void nfp_mip_strtab(const struct nfp_mip *mip, uint32_t *addr, uint32_t *size);
 int nfp_nffw_info_mip_first(struct nfp_nffw_info *state, uint32_t *cpp_id,
 		uint64_t *off);
+
 #endif

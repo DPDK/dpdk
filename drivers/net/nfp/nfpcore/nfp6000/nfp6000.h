@@ -15,8 +15,8 @@
 #define NFP_CPP_TARGET_PCIE             9
 #define NFP_CPP_TARGET_ARM              10
 #define NFP_CPP_TARGET_CRYPTO           12
-#define NFP_CPP_TARGET_ISLAND_XPB       14	/* Shared with CAP */
-#define NFP_CPP_TARGET_ISLAND_CAP       14	/* Shared with XPB */
+#define NFP_CPP_TARGET_ISLAND_XPB       14      /* Shared with CAP */
+#define NFP_CPP_TARGET_ISLAND_CAP       14      /* Shared with XPB */
 #define NFP_CPP_TARGET_CT_XPB           14
 #define NFP_CPP_TARGET_LOCAL_SCRATCH    15
 #define NFP_CPP_TARGET_CLS              NFP_CPP_TARGET_LOCAL_SCRATCH

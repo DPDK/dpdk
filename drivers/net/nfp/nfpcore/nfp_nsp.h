@@ -10,73 +10,72 @@
 #include "nfp_nsp.h"
 
 #define GENMASK_ULL(h, l) \
-	(((~0ULL) - (1ULL << (l)) + 1) & \
-	 (~0ULL >> (64 - 1 - (h))))
+	(((~0ULL) - (1ULL << (l)) + 1) & (~0ULL >> (64 - 1 - (h))))
 
 #define __bf_shf(x) (__builtin_ffsll(x) - 1)
 
-#define FIELD_GET(_mask, _reg)	\
+#define FIELD_GET(_mask, _reg) \
 	(__extension__ ({ \
 		typeof(_mask) _x = (_mask); \
-		(typeof(_x))(((_reg) & (_x)) >> __bf_shf(_x));	\
+		(typeof(_x))(((_reg) & (_x)) >> __bf_shf(_x)); \
 	}))
 
-#define FIELD_FIT(_mask, _val)						\
+#define FIELD_FIT(_mask, _val) \
 	(__extension__ ({ \
 		typeof(_mask) _x = (_mask); \
 		!((((typeof(_x))_val) << __bf_shf(_x)) & ~(_x)); \
 	}))
 
-#define FIELD_PREP(_mask, _val)						\
+#define FIELD_PREP(_mask, _val) \
 	(__extension__ ({ \
 		typeof(_mask) _x = (_mask); \
-		((typeof(_x))(_val) << __bf_shf(_x)) & (_x);	\
+		((typeof(_x))(_val) << __bf_shf(_x)) & (_x); \
 	}))
 
 /* Offsets relative to the CSR base */
-#define NSP_STATUS		0x00
-#define   NSP_STATUS_MAGIC	GENMASK_ULL(63, 48)
-#define   NSP_STATUS_MAJOR	GENMASK_ULL(47, 44)
-#define   NSP_STATUS_MINOR	GENMASK_ULL(43, 32)
-#define   NSP_STATUS_CODE	GENMASK_ULL(31, 16)
-#define   NSP_STATUS_RESULT	GENMASK_ULL(15, 8)
-#define   NSP_STATUS_BUSY	RTE_BIT64(0)
+#define NSP_STATUS              0x00
+#define   NSP_STATUS_MAGIC      GENMASK_ULL(63, 48)
+#define   NSP_STATUS_MAJOR      GENMASK_ULL(47, 44)
+#define   NSP_STATUS_MINOR      GENMASK_ULL(43, 32)
+#define   NSP_STATUS_CODE       GENMASK_ULL(31, 16)
+#define   NSP_STATUS_RESULT     GENMASK_ULL(15, 8)
+#define   NSP_STATUS_BUSY       RTE_BIT64(0)
 
-#define NSP_COMMAND		0x08
-#define   NSP_COMMAND_OPTION	GENMASK_ULL(63, 32)
-#define   NSP_COMMAND_CODE	GENMASK_ULL(31, 16)
-#define   NSP_COMMAND_START	RTE_BIT64(0)
+#define NSP_COMMAND             0x08
+#define   NSP_COMMAND_OPTION    GENMASK_ULL(63, 32)
+#define   NSP_COMMAND_CODE      GENMASK_ULL(31, 16)
+#define   NSP_COMMAND_START     RTE_BIT64(0)
 
 /* CPP address to retrieve the data from */
-#define NSP_BUFFER		0x10
-#define   NSP_BUFFER_CPP	GENMASK_ULL(63, 40)
-#define   NSP_BUFFER_PCIE	GENMASK_ULL(39, 38)
-#define   NSP_BUFFER_ADDRESS	GENMASK_ULL(37, 0)
+#define NSP_BUFFER              0x10
+#define   NSP_BUFFER_CPP        GENMASK_ULL(63, 40)
+#define   NSP_BUFFER_PCIE       GENMASK_ULL(39, 38)
+#define   NSP_BUFFER_ADDRESS    GENMASK_ULL(37, 0)
 
-#define NSP_DFLT_BUFFER		0x18
+#define NSP_DFLT_BUFFER         0x18
 
-#define NSP_DFLT_BUFFER_CONFIG	0x20
-#define   NSP_DFLT_BUFFER_SIZE_MB	GENMASK_ULL(7, 0)
+#define NSP_DFLT_BUFFER_CONFIG 0x20
+#define   NSP_DFLT_BUFFER_SIZE_MB    GENMASK_ULL(7, 0)
 
-#define NSP_MAGIC		0xab10
-#define NSP_MAJOR		0
-#define NSP_MINOR		8
+#define NSP_MAGIC               0xab10
+#define NSP_MAJOR               0
+#define NSP_MINOR               8
 
-#define NSP_CODE_MAJOR		GENMASK(15, 12)
-#define NSP_CODE_MINOR		GENMASK(11, 0)
+#define NSP_CODE_MAJOR          GENMASK(15, 12)
+#define NSP_CODE_MINOR          GENMASK(11, 0)
 
 enum nfp_nsp_cmd {
-	SPCODE_NOOP		= 0, /* No operation */
-	SPCODE_SOFT_RESET	= 1, /* Soft reset the NFP */
-	SPCODE_FW_DEFAULT	= 2, /* Load default (UNDI) FW */
-	SPCODE_PHY_INIT		= 3, /* Initialize the PHY */
-	SPCODE_MAC_INIT		= 4, /* Initialize the MAC */
-	SPCODE_PHY_RXADAPT	= 5, /* Re-run PHY RX Adaptation */
-	SPCODE_FW_LOAD		= 6, /* Load fw from buffer, len in option */
-	SPCODE_ETH_RESCAN	= 7, /* Rescan ETHs, write ETH_TABLE to buf */
-	SPCODE_ETH_CONTROL	= 8, /* Update media config from buffer */
-	SPCODE_NSP_SENSORS	= 12, /* Read NSP sensor(s) */
-	SPCODE_NSP_IDENTIFY	= 13, /* Read NSP version */
+	SPCODE_NOOP             = 0, /* No operation */
+	SPCODE_SOFT_RESET       = 1, /* Soft reset the NFP */
+	SPCODE_FW_DEFAULT       = 2, /* Load default (UNDI) FW */
+	SPCODE_PHY_INIT         = 3, /* Initialize the PHY */
+	SPCODE_MAC_INIT         = 4, /* Initialize the MAC */
+	SPCODE_PHY_RXADAPT      = 5, /* Re-run PHY RX Adaptation */
+	SPCODE_FW_LOAD          = 6, /* Load fw from buffer, len in option */
+	SPCODE_ETH_RESCAN       = 7, /* Rescan ETHs, write ETH_TABLE to buf */
+	SPCODE_ETH_CONTROL      = 8, /* Update media config from buffer */
+	SPCODE_NSP_SENSORS      = 12, /* Read NSP sensor(s) */
+	SPCODE_NSP_IDENTIFY     = 13, /* Read NSP version */
 };
 
 static const struct {
@@ -123,13 +122,13 @@ nfp_nsp_has_mac_reinit(struct nfp_nsp *state)
 }
 
 enum nfp_eth_interface {
-	NFP_INTERFACE_NONE	= 0,
-	NFP_INTERFACE_SFP	= 1,
-	NFP_INTERFACE_SFPP	= 10,
-	NFP_INTERFACE_SFP28	= 28,
-	NFP_INTERFACE_QSFP	= 40,
-	NFP_INTERFACE_CXP	= 100,
-	NFP_INTERFACE_QSFP28	= 112,
+	NFP_INTERFACE_NONE      = 0,
+	NFP_INTERFACE_SFP       = 1,
+	NFP_INTERFACE_SFPP      = 10,
+	NFP_INTERFACE_SFP28     = 28,
+	NFP_INTERFACE_QSFP      = 40,
+	NFP_INTERFACE_CXP       = 100,
+	NFP_INTERFACE_QSFP28    = 112,
 };
 
 enum nfp_eth_media {
@@ -153,10 +152,10 @@ enum nfp_eth_fec {
 	NFP_FEC_DISABLED_BIT,
 };
 
-#define NFP_FEC_AUTO		RTE_BIT32(NFP_FEC_AUTO_BIT)
-#define NFP_FEC_BASER		RTE_BIT32(NFP_FEC_BASER_BIT)
-#define NFP_FEC_REED_SOLOMON	RTE_BIT32(NFP_FEC_REED_SOLOMON_BIT)
-#define NFP_FEC_DISABLED	RTE_BIT32(NFP_FEC_DISABLED_BIT)
+#define NFP_FEC_AUTO            RTE_BIT32(NFP_FEC_AUTO_BIT)
+#define NFP_FEC_BASER           RTE_BIT32(NFP_FEC_BASER_BIT)
+#define NFP_FEC_REED_SOLOMON    RTE_BIT32(NFP_FEC_REED_SOLOMON_BIT)
+#define NFP_FEC_DISABLED        RTE_BIT32(NFP_FEC_DISABLED_BIT)
 
 /* ETH table information */
 struct nfp_eth_table {

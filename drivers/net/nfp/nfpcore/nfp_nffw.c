@@ -61,10 +61,10 @@ nffw_fwinfo_mip_offset_get(const struct nffw_fwinfo *fi)
 	return (mip_off_hi & 0xFF) << 32 | fi->mip_offset_lo;
 }
 
-#define NFP_IMB_TGTADDRESSMODECFG_MODE_of(_x)		(((_x) >> 13) & 0x7)
-#define NFP_IMB_TGTADDRESSMODECFG_ADDRMODE		RTE_BIT32(12)
-#define   NFP_IMB_TGTADDRESSMODECFG_ADDRMODE_32_BIT	0
-#define   NFP_IMB_TGTADDRESSMODECFG_ADDRMODE_40_BIT	RTE_BIT32(12)
+#define NFP_IMB_TGTADDRESSMODECFG_MODE_of(_x)           (((_x) >> 13) & 0x7)
+#define NFP_IMB_TGTADDRESSMODECFG_ADDRMODE              RTE_BIT32(12)
+#define   NFP_IMB_TGTADDRESSMODECFG_ADDRMODE_32_BIT     0
+#define   NFP_IMB_TGTADDRESSMODECFG_ADDRMODE_40_BIT     RTE_BIT32(12)
 
 static int
 nfp_mip_mu_locality_lsb(struct nfp_cpp *cpp)

@@ -433,7 +433,6 @@ nfp_cpp_area_acquire(struct nfp_cpp_area *area)
 {
 	if (area->cpp->op->area_acquire != NULL) {
 		int err = area->cpp->op->area_acquire(area);
-
 		if (err < 0) {
 			PMD_DRV_LOG(ERR, "Area acquire op failed");
 			return -1;
@@ -862,7 +861,6 @@ nfp_cpp_alloc(struct rte_pci_device *dev,
 	const struct nfp_cpp_operations *ops;
 
 	ops = nfp_cpp_transport_operations();
-
 	if (ops == NULL || ops->init == NULL)
 		return NULL;
 

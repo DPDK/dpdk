@@ -290,6 +290,7 @@ nfp_nsp_command(struct nfp_nsp *state,
 	err = nfp_cpp_readq(cpp, nsp_cpp, nsp_command, &ret_val);
 	if (err < 0)
 		return err;
+
 	ret_val = FIELD_GET(NSP_COMMAND_OPTION, ret_val);
 
 	err = FIELD_GET(NSP_STATUS_RESULT, reg);
@@ -354,6 +355,7 @@ nfp_nsp_command_buf(struct nfp_nsp *nsp,
 		if (err < 0)
 			return err;
 	}
+
 	/* Zero out remaining part of the buffer */
 	if (out_buf != NULL && out_size > 0 && out_size > in_size) {
 		memset(out_buf, 0, out_size - in_size);
@@ -400,6 +402,7 @@ nfp_nsp_wait(struct nfp_nsp *state)
 			break;
 		}
 	}
+
 	if (err != 0)
 		PMD_DRV_LOG(ERR, "NSP failed to respond %d", err);
 

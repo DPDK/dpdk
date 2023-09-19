@@ -54,6 +54,7 @@ nfp_hwinfo_db_walk(struct nfp_hwinfo *hwinfo,
 			return -EINVAL;
 		}
 	}
+
 	return 0;
 }
 
@@ -178,6 +179,7 @@ nfp_hwinfo_read(struct nfp_cpp *cpp)
 		free(db);
 		return NULL;
 	}
+
 	return db;
 }
 

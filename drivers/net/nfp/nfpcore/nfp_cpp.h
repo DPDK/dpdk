@@ -80,16 +80,17 @@ struct nfp_cpp_operations {
 	 * Serialized
 	 */
 	int (*area_acquire)(struct nfp_cpp_area *area);
+
 	/*
 	 * Release resources for a NFP CPP area
 	 * Serialized
 	 */
 	void (*area_release)(struct nfp_cpp_area *area);
+
 	/*
 	 * Return a void IO pointer to a NFP CPP area
 	 * NOTE: This is _not_ serialized
 	 */
-
 	void *(*area_iomem)(struct nfp_cpp_area *area);
 
 	/*
@@ -280,7 +281,7 @@ void nfp_cpp_free(struct nfp_cpp *cpp);
  * @return
  *   true if model is in the NFP6000 family, false otherwise.
  */
-#define NFP_CPP_MODEL_IS_6000(model)		     \
+#define NFP_CPP_MODEL_IS_6000(model)                         \
 		((NFP_CPP_MODEL_CHIP_of(model) >= 0x3800) && \
 		(NFP_CPP_MODEL_CHIP_of(model) < 0x7000))
 
@@ -290,11 +291,11 @@ uint32_t nfp_cpp_model(struct nfp_cpp *cpp);
  * NFP Interface types - logical interface for this CPP connection 4 bits are
  * reserved for interface type.
  */
-#define NFP_CPP_INTERFACE_TYPE_INVALID		0x0
-#define NFP_CPP_INTERFACE_TYPE_PCI		0x1
-#define NFP_CPP_INTERFACE_TYPE_ARM		0x2
-#define NFP_CPP_INTERFACE_TYPE_RPC		0x3
-#define NFP_CPP_INTERFACE_TYPE_ILA		0x4
+#define NFP_CPP_INTERFACE_TYPE_INVALID          0x0
+#define NFP_CPP_INTERFACE_TYPE_PCI              0x1
+#define NFP_CPP_INTERFACE_TYPE_ARM              0x2
+#define NFP_CPP_INTERFACE_TYPE_RPC              0x3
+#define NFP_CPP_INTERFACE_TYPE_ILA              0x4
 
 /**
  * Construct a 16-bit NFP Interface ID
@@ -316,7 +317,7 @@ uint32_t nfp_cpp_model(struct nfp_cpp *cpp);
  * @return
  *   Interface ID
  */
-#define NFP_CPP_INTERFACE(type, unit, channel)	\
+#define NFP_CPP_INTERFACE(type, unit, channel) \
 	((((type) & 0xf) << 12) | \
 	 (((unit) & 0xf) <<  8) | \
 	 (((channel) & 0xff) << 0))
@@ -353,7 +354,6 @@ uint32_t nfp_cpp_model(struct nfp_cpp *cpp);
  *   NFP Interface ID's channel
  */
 #define NFP_CPP_INTERFACE_CHANNEL_of(interface)	(((interface) >>  0) & 0xff)
-
 
 uint16_t nfp_cpp_interface(struct nfp_cpp *cpp);
 

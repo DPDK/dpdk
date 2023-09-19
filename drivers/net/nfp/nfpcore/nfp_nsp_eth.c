@@ -11,70 +11,68 @@
 #include "nfp_nsp.h"
 #include "nfp6000/nfp6000.h"
 
-#define NSP_ETH_NBI_PORT_COUNT		24
-#define NSP_ETH_MAX_COUNT		(2 * NSP_ETH_NBI_PORT_COUNT)
-#define NSP_ETH_TABLE_SIZE		(NSP_ETH_MAX_COUNT *		\
-					 sizeof(union eth_table_entry))
+#define NSP_ETH_NBI_PORT_COUNT          24
+#define NSP_ETH_MAX_COUNT               (2 * NSP_ETH_NBI_PORT_COUNT)
+#define NSP_ETH_TABLE_SIZE              (NSP_ETH_MAX_COUNT * sizeof(union eth_table_entry))
 
-#define NSP_ETH_PORT_LANES		GENMASK_ULL(3, 0)
-#define NSP_ETH_PORT_INDEX		GENMASK_ULL(15, 8)
-#define NSP_ETH_PORT_LABEL		GENMASK_ULL(53, 48)
-#define NSP_ETH_PORT_PHYLABEL		GENMASK_ULL(59, 54)
-#define NSP_ETH_PORT_FEC_SUPP_BASER	RTE_BIT64(60)
-#define NSP_ETH_PORT_FEC_SUPP_RS	RTE_BIT64(61)
+#define NSP_ETH_PORT_LANES              GENMASK_ULL(3, 0)
+#define NSP_ETH_PORT_INDEX              GENMASK_ULL(15, 8)
+#define NSP_ETH_PORT_LABEL              GENMASK_ULL(53, 48)
+#define NSP_ETH_PORT_PHYLABEL           GENMASK_ULL(59, 54)
+#define NSP_ETH_PORT_FEC_SUPP_BASER     RTE_BIT64(60)
+#define NSP_ETH_PORT_FEC_SUPP_RS        RTE_BIT64(61)
 
-#define NSP_ETH_PORT_LANES_MASK		rte_cpu_to_le_64(NSP_ETH_PORT_LANES)
+#define NSP_ETH_PORT_LANES_MASK         rte_cpu_to_le_64(NSP_ETH_PORT_LANES)
 
-#define NSP_ETH_STATE_CONFIGURED	RTE_BIT64(0)
-#define NSP_ETH_STATE_ENABLED		RTE_BIT64(1)
-#define NSP_ETH_STATE_TX_ENABLED	RTE_BIT64(2)
-#define NSP_ETH_STATE_RX_ENABLED	RTE_BIT64(3)
-#define NSP_ETH_STATE_RATE		GENMASK_ULL(11, 8)
-#define NSP_ETH_STATE_INTERFACE		GENMASK_ULL(19, 12)
-#define NSP_ETH_STATE_MEDIA		GENMASK_ULL(21, 20)
-#define NSP_ETH_STATE_OVRD_CHNG		RTE_BIT64(22)
-#define NSP_ETH_STATE_ANEG		GENMASK_ULL(25, 23)
-#define NSP_ETH_STATE_FEC		GENMASK_ULL(27, 26)
+#define NSP_ETH_STATE_CONFIGURED        RTE_BIT64(0)
+#define NSP_ETH_STATE_ENABLED           RTE_BIT64(1)
+#define NSP_ETH_STATE_TX_ENABLED        RTE_BIT64(2)
+#define NSP_ETH_STATE_RX_ENABLED        RTE_BIT64(3)
+#define NSP_ETH_STATE_RATE              GENMASK_ULL(11, 8)
+#define NSP_ETH_STATE_INTERFACE         GENMASK_ULL(19, 12)
+#define NSP_ETH_STATE_MEDIA             GENMASK_ULL(21, 20)
+#define NSP_ETH_STATE_OVRD_CHNG         RTE_BIT64(22)
+#define NSP_ETH_STATE_ANEG              GENMASK_ULL(25, 23)
+#define NSP_ETH_STATE_FEC               GENMASK_ULL(27, 26)
 
-#define NSP_ETH_CTRL_CONFIGURED		RTE_BIT64(0)
-#define NSP_ETH_CTRL_ENABLED		RTE_BIT64(1)
-#define NSP_ETH_CTRL_TX_ENABLED		RTE_BIT64(2)
-#define NSP_ETH_CTRL_RX_ENABLED		RTE_BIT64(3)
-#define NSP_ETH_CTRL_SET_RATE		RTE_BIT64(4)
-#define NSP_ETH_CTRL_SET_LANES		RTE_BIT64(5)
-#define NSP_ETH_CTRL_SET_ANEG		RTE_BIT64(6)
-#define NSP_ETH_CTRL_SET_FEC		RTE_BIT64(7)
+#define NSP_ETH_CTRL_CONFIGURED         RTE_BIT64(0)
+#define NSP_ETH_CTRL_ENABLED            RTE_BIT64(1)
+#define NSP_ETH_CTRL_TX_ENABLED         RTE_BIT64(2)
+#define NSP_ETH_CTRL_RX_ENABLED         RTE_BIT64(3)
+#define NSP_ETH_CTRL_SET_RATE           RTE_BIT64(4)
+#define NSP_ETH_CTRL_SET_LANES          RTE_BIT64(5)
+#define NSP_ETH_CTRL_SET_ANEG           RTE_BIT64(6)
+#define NSP_ETH_CTRL_SET_FEC            RTE_BIT64(7)
 
 /* Which connector port. */
-#define PORT_TP			0x00
-#define PORT_AUI		0x01
-#define PORT_MII		0x02
-#define PORT_FIBRE		0x03
-#define PORT_BNC		0x04
-#define PORT_DA			0x05
-#define PORT_NONE		0xef
-#define PORT_OTHER		0xff
+#define PORT_TP                 0x00
+#define PORT_AUI                0x01
+#define PORT_MII                0x02
+#define PORT_FIBRE              0x03
+#define PORT_BNC                0x04
+#define PORT_DA                 0x05
+#define PORT_NONE               0xef
+#define PORT_OTHER              0xff
 
-#define SPEED_10		10
-#define SPEED_100		100
-#define SPEED_1000		1000
-#define SPEED_2500		2500
-#define SPEED_5000		5000
-#define SPEED_10000		10000
-#define SPEED_14000		14000
-#define SPEED_20000		20000
-#define SPEED_25000		25000
-#define SPEED_40000		40000
-#define SPEED_50000		50000
-#define SPEED_56000		56000
-#define SPEED_100000		100000
+#define SPEED_10                10
+#define SPEED_100               100
+#define SPEED_1000              1000
+#define SPEED_2500              2500
+#define SPEED_5000              5000
+#define SPEED_10000             10000
+#define SPEED_14000             14000
+#define SPEED_20000             20000
+#define SPEED_25000             25000
+#define SPEED_40000             40000
+#define SPEED_50000             50000
+#define SPEED_56000             56000
+#define SPEED_100000            100000
 
 enum nfp_eth_raw {
 	NSP_ETH_RAW_PORT = 0,
 	NSP_ETH_RAW_STATE,
 	NSP_ETH_RAW_MAC,
 	NSP_ETH_RAW_CONTROL,
-
 	NSP_ETH_NUM_RAW
 };
 
@@ -102,12 +100,12 @@ static const struct {
 	enum nfp_eth_rate rate;
 	uint32_t speed;
 } nsp_eth_rate_tbl[] = {
-	{ RATE_INVALID,	0, },
-	{ RATE_10M,	SPEED_10, },
-	{ RATE_100M,	SPEED_100, },
-	{ RATE_1G,	SPEED_1000, },
-	{ RATE_10G,	SPEED_10000, },
-	{ RATE_25G,	SPEED_25000, },
+	{ RATE_INVALID, 0, },
+	{ RATE_10M,     SPEED_10, },
+	{ RATE_100M,    SPEED_100, },
+	{ RATE_1G,      SPEED_1000, },
+	{ RATE_10G,     SPEED_10000, },
+	{ RATE_25G,     SPEED_25000, },
 };
 
 static uint32_t
@@ -212,10 +210,12 @@ nfp_eth_calc_port_geometry(struct nfp_eth_table *table)
 			if (table->ports[i].label_port !=
 					table->ports[j].label_port)
 				continue;
+
 			table->ports[i].port_lanes += table->ports[j].lanes;
 
 			if (i == j)
 				continue;
+
 			if (table->ports[i].label_subport ==
 					table->ports[j].label_subport)
 				PMD_DRV_LOG(DEBUG, "Port %d subport %d is a duplicate",
@@ -556,11 +556,11 @@ nfp_eth_set_bit_config(struct nfp_nsp *nsp,
 	return 0;
 }
 
-#define NFP_ETH_SET_BIT_CONFIG(nsp, raw_idx, mask, val, ctrl_bit)	\
-	(__extension__ ({ \
-		typeof(mask) _x = (mask); \
+#define NFP_ETH_SET_BIT_CONFIG(nsp, raw_idx, mask, val, ctrl_bit)      \
+	(__extension__ ({                                              \
+		typeof(mask) _x = (mask);                              \
 		nfp_eth_set_bit_config(nsp, raw_idx, _x, __bf_shf(_x), \
-				val, ctrl_bit);			\
+				val, ctrl_bit);                        \
 	}))
 
 /**

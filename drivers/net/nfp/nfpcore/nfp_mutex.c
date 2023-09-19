@@ -85,7 +85,7 @@ nfp_cpp_mutex_init(struct nfp_cpp *cpp,
 {
 	int err;
 	uint32_t model = nfp_cpp_model(cpp);
-	uint32_t muw = NFP_CPP_ID(target, 4, 0);	/* atomic_write */
+	uint32_t muw = NFP_CPP_ID(target, 4, 0);    /* atomic_write */
 
 	err = _nfp_cpp_mutex_validate(model, &target, address);
 	if (err < 0)
@@ -134,7 +134,7 @@ nfp_cpp_mutex_alloc(struct nfp_cpp *cpp,
 	uint32_t tmp;
 	struct nfp_cpp_mutex *mutex;
 	uint32_t model = nfp_cpp_model(cpp);
-	uint32_t mur = NFP_CPP_ID(target, 3, 0);	/* atomic_read */
+	uint32_t mur = NFP_CPP_ID(target, 3, 0);    /* atomic_read */
 
 	/* Look for cached mutex */
 	for (mutex = cpp->mutex_cache; mutex; mutex = mutex->next) {
@@ -231,12 +231,15 @@ nfp_cpp_mutex_lock(struct nfp_cpp_mutex *mutex)
 		/* If err != -EBUSY, then the lock was damaged */
 		if (err < 0 && err != -EBUSY)
 			return err;
+
 		if (time(NULL) >= warn_at) {
 			PMD_DRV_LOG(WARNING, "Waiting for NFP mutex...");
 			warn_at = time(NULL) + 60;
 		}
+
 		sched_yield();
 	}
+
 	return 0;
 }
 
@@ -257,8 +260,8 @@ nfp_cpp_mutex_unlock(struct nfp_cpp_mutex *mutex)
 	uint32_t value;
 	struct nfp_cpp *cpp = mutex->cpp;
 	uint16_t interface = nfp_cpp_interface(cpp);
-	uint32_t muw = NFP_CPP_ID(mutex->target, 4, 0);	/* atomic_write */
-	uint32_t mur = NFP_CPP_ID(mutex->target, 3, 0);	/* atomic_read */
+	uint32_t muw = NFP_CPP_ID(mutex->target, 4, 0);    /* atomic_write */
+	uint32_t mur = NFP_CPP_ID(mutex->target, 3, 0);    /* atomic_read */
 
 	if (mutex->depth > 1) {
 		mutex->depth--;
@@ -314,9 +317,9 @@ nfp_cpp_mutex_trylock(struct nfp_cpp_mutex *mutex)
 	uint32_t tmp;
 	uint32_t value;
 	struct nfp_cpp *cpp = mutex->cpp;
-	uint32_t mur = NFP_CPP_ID(mutex->target, 3, 0);	/* atomic_read */
-	uint32_t muw = NFP_CPP_ID(mutex->target, 4, 0);	/* atomic_write */
-	uint32_t mus = NFP_CPP_ID(mutex->target, 5, 3);	/* test_set_imm */
+	uint32_t mur = NFP_CPP_ID(mutex->target, 3, 0);    /* atomic_read */
+	uint32_t muw = NFP_CPP_ID(mutex->target, 4, 0);    /* atomic_write */
+	uint32_t mus = NFP_CPP_ID(mutex->target, 5, 3);    /* test_set_imm */
 
 	if (mutex->depth > 0) {
 		if (mutex->depth == MUTEX_DEPTH_MAX)

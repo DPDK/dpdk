@@ -37,7 +37,7 @@
 #include "nfp6000/nfp6000.h"
 #include "../nfp_logs.h"
 
-#define NFP_PCIE_BAR(_pf)	(0x30000 + ((_pf) & 7) * 0xc0)
+#define NFP_PCIE_BAR(_pf)        (0x30000 + ((_pf) & 7) * 0xc0)
 
 #define NFP_PCIE_BAR_PCIE2CPP_ACTION_BASEADDRESS(_x)  (((_x) & 0x1f) << 16)
 #define NFP_PCIE_BAR_PCIE2CPP_BASEADDRESS(_x)         (((_x) & 0xffff) << 0)
@@ -58,7 +58,7 @@
  * Minimal size of the PCIe cfg memory we depend on being mapped,
  * queue controller and DMA controller don't have to be covered.
  */
-#define NFP_PCI_MIN_MAP_SIZE				0x080000        /* 512K */
+#define NFP_PCI_MIN_MAP_SIZE        0x080000        /* 512K */
 
 #define NFP_PCIE_P2C_FIXED_SIZE(bar)               (1 << (bar)->bitsize)
 #define NFP_PCIE_P2C_BULK_SIZE(bar)                (1 << (bar)->bitsize)
@@ -93,7 +93,7 @@ struct nfp_bar {
 	char *iomem;         /**< mapped IO memory */
 };
 
-#define BUSDEV_SZ	13
+#define BUSDEV_SZ    13
 struct nfp_pcie_user {
 	struct nfp_bar bar[NFP_BAR_MAX];
 
@@ -163,7 +163,6 @@ nfp_compute_bar(const struct nfp_bar *bar,
 			return -EINVAL;
 
 		offset &= mask;
-
 		bitsize = 40 - 16;
 	} else {
 		mask = ~(NFP_PCIE_P2C_BULK_SIZE(bar) - 1);
@@ -171,7 +170,6 @@ nfp_compute_bar(const struct nfp_bar *bar,
 		/* Bulk mapping */
 		newcfg |= NFP_PCIE_BAR_PCIE2CPP_MAPTYPE
 				(NFP_PCIE_BAR_PCIE2CPP_MAPTYPE_BULK);
-
 		newcfg |= NFP_PCIE_BAR_PCIE2CPP_TARGET_BASEADDRESS(tgt);
 		newcfg |= NFP_PCIE_BAR_PCIE2CPP_TOKEN_BASEADDRESS(tok);
 
@@ -179,7 +177,6 @@ nfp_compute_bar(const struct nfp_bar *bar,
 			return -EINVAL;
 
 		offset &= mask;
-
 		bitsize = 40 - 21;
 	}
 
@@ -278,6 +275,7 @@ nfp_enable_bars(struct nfp_pcie_user *nfp)
 		start = NFP_BAR_MAX;
 		end = NFP_BAR_MID;
 	}
+
 	for (x = start; x > end; x--) {
 		bar = &nfp->bar[x - 1];
 		bar->barcfg = 0;
@@ -310,6 +308,7 @@ nfp_alloc_bar(struct nfp_pcie_user *nfp)
 		start = NFP_BAR_MAX;
 		end = NFP_BAR_MID;
 	}
+
 	for (x = start; x > end; x--) {
 		bar = &nfp->bar[x - 1];
 		if (bar->lock == 0) {
@@ -317,6 +316,7 @@ nfp_alloc_bar(struct nfp_pcie_user *nfp)
 			return bar;
 		}
 	}
+
 	return NULL;
 }
 
@@ -346,7 +346,6 @@ nfp_disable_bars(struct nfp_pcie_user *nfp)
 }
 
 /* Generic CPP bus access interface. */
-
 struct nfp6000_area_priv {
 	struct nfp_bar *bar;
 	uint32_t bar_offset;
@@ -443,6 +442,7 @@ static void
 nfp6000_area_release(struct nfp_cpp_area *area)
 {
 	struct nfp6000_area_priv *priv = nfp_cpp_area_priv(area);
+
 	priv->bar->lock = 0;
 	priv->bar = NULL;
 	priv->iomem = NULL;
@@ -478,7 +478,6 @@ nfp6000_area_read(struct nfp_cpp_area *area,
 		return -EFAULT;
 
 	width = priv->width.read;
-
 	if (width <= 0)
 		return -EINVAL;
 
@@ -548,7 +547,6 @@ nfp6000_area_write(struct nfp_cpp_area *area,
 		return -EFAULT;
 
 	width = priv->width.write;
-
 	if (width <= 0)
 		return -EINVAL;
 
@@ -718,6 +716,7 @@ nfp6000_set_barsz(struct rte_pci_device *dev,
 		i++;
 
 	desc->barsz = i;
+
 	return 0;
 }
 

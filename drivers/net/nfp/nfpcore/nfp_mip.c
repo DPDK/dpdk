@@ -11,9 +11,9 @@
 #include "nfp_mip.h"
 #include "nfp_nffw.h"
 
-#define NFP_MIP_SIGNATURE	rte_cpu_to_le_32(0x0050494d)  /* "MIP\0" */
-#define NFP_MIP_VERSION		rte_cpu_to_le_32(1)
-#define NFP_MIP_MAX_OFFSET	(256 * 1024)
+#define NFP_MIP_SIGNATURE        rte_cpu_to_le_32(0x0050494d)  /* "MIP\0" */
+#define NFP_MIP_VERSION          rte_cpu_to_le_32(1)
+#define NFP_MIP_MAX_OFFSET       (256 * 1024)
 
 struct nfp_mip {
 	uint32_t signature;
@@ -49,11 +49,13 @@ nfp_mip_try_read(struct nfp_cpp *cpp,
 		PMD_DRV_LOG(ERR, "Failed to read MIP data");
 		return -EIO;
 	}
+
 	if (mip->signature != NFP_MIP_SIGNATURE) {
 		PMD_DRV_LOG(ERR, "Incorrect MIP signature %#08x",
 				rte_le_to_cpu_32(mip->signature));
 		return -EINVAL;
 	}
+
 	if (mip->mip_version != NFP_MIP_VERSION) {
 		PMD_DRV_LOG(ERR, "Unsupported MIP version %d",
 				rte_le_to_cpu_32(mip->mip_version));
@@ -82,6 +84,7 @@ nfp_mip_read_resource(struct nfp_cpp *cpp,
 		goto exit_close_nffw;
 
 	err = nfp_mip_try_read(cpp, cpp_id, addr, mip);
+
 exit_close_nffw:
 	nfp_nffw_info_close(nffw_info);
 	return err;
