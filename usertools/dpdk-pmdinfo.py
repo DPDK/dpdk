@@ -23,7 +23,7 @@ Get only the required kernel modules for a given driver:
 Get only the required kernel modules for a given device:
 
   %(prog)s dpdk-testpmd | \
-  jq '.[] | select(.devices[] | .vendor_id == "15b3" and .device_id == "1013").kmod'
+  jq '.[] | select(.pci_ids[]? | .vendor == "15b3" and .device == "1013").kmod'
 """
 
 import argparse
