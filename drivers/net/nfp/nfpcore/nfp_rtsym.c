@@ -8,13 +8,24 @@
  * Interface for accessing run-time symbol table
  */
 
-#include <stdio.h>
+#include "nfp_rtsym.h"
+
 #include <rte_byteorder.h>
-#include "nfp_cpp.h"
+
 #include "nfp_logs.h"
 #include "nfp_mip.h"
-#include "nfp_rtsym.h"
 #include "nfp6000/nfp6000.h"
+
+enum nfp_rtsym_type {
+	NFP_RTSYM_TYPE_NONE,
+	NFP_RTSYM_TYPE_OBJECT,
+	NFP_RTSYM_TYPE_FUNCTION,
+	NFP_RTSYM_TYPE_ABS,
+};
+
+#define NFP_RTSYM_TARGET_NONE           0
+#define NFP_RTSYM_TARGET_LMEM           -1
+#define NFP_RTSYM_TARGET_EMU_CACHE      -7
 
 /* These need to match the linker */
 #define SYM_TGT_LMEM            0
@@ -30,6 +41,30 @@ struct nfp_rtsym_entry {
 	uint8_t menum;
 	uint8_t size_hi;
 	uint32_t size_lo;
+};
+
+/*
+ * Structure describing a run-time NFP symbol.
+ *
+ * The memory target of the symbol is generally the CPP target number and can be
+ * used directly by the nfp_cpp API calls.  However, in some cases (i.e., for
+ * local memory or control store) the target is encoded using a negative number.
+ *
+ * When the target type can not be used to fully describe the location of a
+ * symbol the domain field is used to further specify the location (i.e., the
+ * specific ME or island number).
+ *
+ * For ME target resources, 'domain' is an MEID.
+ * For Island target resources, 'domain' is an island ID, with the one exception
+ * of "sram" symbols for backward compatibility, which are viewed as global.
+ */
+struct nfp_rtsym {
+	const char *name;  /**< Symbol name */
+	uint64_t addr;     /**< Address in the domain/target's address space */
+	uint64_t size;     /**< Size (in bytes) of the symbol */
+	enum nfp_rtsym_type type; /**< NFP_RTSYM_TYPE_* of the symbol */
+	int target;        /**< CPP target identifier, or NFP_RTSYM_TARGET_* */
+	int domain;        /**< CPP target domain */
 };
 
 struct nfp_rtsym_table {
@@ -80,21 +115,8 @@ nfp_rtsym_sw_entry_init(struct nfp_rtsym_table *cache,
 		sw->domain = -1;
 }
 
-struct nfp_rtsym_table *
-nfp_rtsym_table_read(struct nfp_cpp *cpp)
-{
-	struct nfp_mip *mip;
-	struct nfp_rtsym_table *rtbl;
-
-	mip = nfp_mip_open(cpp);
-	rtbl = __nfp_rtsym_table_read(cpp, mip);
-	nfp_mip_close(mip);
-
-	return rtbl;
-}
-
-struct nfp_rtsym_table *
-__nfp_rtsym_table_read(struct nfp_cpp *cpp,
+static struct nfp_rtsym_table *
+nfp_rtsym_table_read_real(struct nfp_cpp *cpp,
 		const struct nfp_mip *mip)
 {
 	int n;
@@ -160,6 +182,19 @@ exit_free_cache:
 exit_free_rtsym_raw:
 	free(rtsymtab);
 	return NULL;
+}
+
+struct nfp_rtsym_table *
+nfp_rtsym_table_read(struct nfp_cpp *cpp)
+{
+	struct nfp_mip *mip;
+	struct nfp_rtsym_table *rtbl;
+
+	mip = nfp_mip_open(cpp);
+	rtbl = nfp_rtsym_table_read_real(cpp, mip);
+	nfp_mip_close(mip);
+
+	return rtbl;
 }
 
 /**
@@ -287,7 +322,59 @@ nfp_rtsym_to_dest(struct nfp_cpp *cpp,
 }
 
 static int
-nfp_rtsym_readl(struct nfp_cpp *cpp,
+nfp_rtsym_read_real(struct nfp_cpp *cpp,
+		const struct nfp_rtsym *sym,
+		uint8_t action,
+		uint8_t token,
+		uint64_t offset,
+		void *buf,
+		size_t len)
+{
+	int err;
+	uint64_t addr;
+	uint32_t cpp_id;
+	size_t length = len;
+	uint64_t sym_size = nfp_rtsym_size(sym);
+
+	if (offset > sym_size) {
+		PMD_DRV_LOG(ERR, "rtsym '%s' read out of bounds", sym->name);
+		return -ENXIO;
+	}
+
+	if (length > sym_size - offset)
+		length = sym_size - offset;
+
+	if (sym->type == NFP_RTSYM_TYPE_ABS) {
+		union {
+			uint64_t value_64;
+			uint8_t value_8[8];
+		} tmp;
+
+		tmp.value_64 = sym->addr;
+		memcpy(buf, &tmp.value_8[offset], length);
+
+		return length;
+	}
+
+	err = nfp_rtsym_to_dest(cpp, sym, action, token, offset, &cpp_id, &addr);
+	if (err != 0)
+		return err;
+
+	return nfp_cpp_read(cpp, cpp_id, addr, buf, length);
+}
+
+int
+nfp_rtsym_read(struct nfp_cpp *cpp,
+		const struct nfp_rtsym *sym,
+		uint64_t offset,
+		void *buf,
+		size_t len)
+{
+	return nfp_rtsym_read_real(cpp, sym, NFP_CPP_ACTION_RW, 0, offset, buf, len);
+}
+
+static int
+nfp_rtsym_readl_real(struct nfp_cpp *cpp,
 		const struct nfp_rtsym *sym,
 		uint8_t action,
 		uint8_t token,
@@ -310,8 +397,17 @@ nfp_rtsym_readl(struct nfp_cpp *cpp,
 	return nfp_cpp_readl(cpp, cpp_id, addr, value);
 }
 
+int
+nfp_rtsym_readl(struct nfp_cpp *cpp,
+		const struct nfp_rtsym *sym,
+		uint64_t offset,
+		uint32_t *value)
+{
+	return nfp_rtsym_readl_real(cpp, sym, NFP_CPP_ACTION_RW, 0, offset, value);
+}
+
 static int
-nfp_rtsym_readq(struct nfp_cpp *cpp,
+nfp_rtsym_readq_real(struct nfp_cpp *cpp,
 		const struct nfp_rtsym *sym,
 		uint8_t action,
 		uint8_t token,
@@ -337,6 +433,121 @@ nfp_rtsym_readq(struct nfp_cpp *cpp,
 		return ret;
 
 	return nfp_cpp_readq(cpp, cpp_id, addr, value);
+}
+
+int
+nfp_rtsym_readq(struct nfp_cpp *cpp,
+		const struct nfp_rtsym *sym,
+		uint64_t offset,
+		uint64_t *value)
+{
+	return nfp_rtsym_readq_real(cpp, sym, NFP_CPP_ACTION_RW, 0, offset, value);
+}
+
+static int
+nfp_rtsym_write_real(struct nfp_cpp *cpp,
+		const struct nfp_rtsym *sym,
+		uint8_t action,
+		uint8_t token,
+		uint64_t offset,
+		void *buf,
+		size_t len)
+{
+	int err;
+	uint64_t addr;
+	uint32_t cpp_id;
+	size_t length = len;
+	uint64_t sym_size = nfp_rtsym_size(sym);
+
+	if (offset > sym_size) {
+		PMD_DRV_LOG(ERR, "rtsym '%s' write out of bounds", sym->name);
+		return -ENXIO;
+	}
+
+	if (length > sym_size - offset)
+		length = sym_size - offset;
+
+	err = nfp_rtsym_to_dest(cpp, sym, action, token, offset, &cpp_id, &addr);
+	if (err != 0)
+		return err;
+
+	return nfp_cpp_write(cpp, cpp_id, addr, buf, length);
+}
+
+int
+nfp_rtsym_write(struct nfp_cpp *cpp,
+		const struct nfp_rtsym *sym,
+		uint64_t offset,
+		void *buf,
+		size_t len)
+{
+	return nfp_rtsym_write_real(cpp, sym, NFP_CPP_ACTION_RW, 0, offset, buf, len);
+}
+
+static int
+nfp_rtsym_writel_real(struct nfp_cpp *cpp,
+		const struct nfp_rtsym *sym,
+		uint8_t action,
+		uint8_t token,
+		uint64_t offset,
+		uint32_t value)
+{
+	int err;
+	uint64_t addr;
+	uint32_t cpp_id;
+
+	if (offset + 4 > nfp_rtsym_size(sym)) {
+		PMD_DRV_LOG(ERR, "rtsym '%s' write out of bounds", sym->name);
+		return -ENXIO;
+	}
+
+	err = nfp_rtsym_to_dest(cpp, sym, action, token, offset, &cpp_id, &addr);
+	if (err != 0)
+		return err;
+
+	return nfp_cpp_writel(cpp, cpp_id, addr, value);
+}
+
+int
+nfp_rtsym_writel(struct nfp_cpp *cpp,
+		const struct nfp_rtsym *sym,
+		uint64_t offset,
+		uint32_t value)
+{
+	return nfp_rtsym_writel_real(cpp, sym, NFP_CPP_ACTION_RW, 0, offset, value);
+}
+
+static int
+nfp_rtsym_writeq_real(struct nfp_cpp *cpp,
+		const struct nfp_rtsym *sym,
+		uint8_t action,
+		uint8_t token,
+		uint64_t offset,
+		uint64_t value)
+{
+	int err;
+	uint64_t addr;
+	uint32_t cpp_id;
+
+	if (offset + 8 > nfp_rtsym_size(sym)) {
+		PMD_DRV_LOG(ERR, "rtsym '%s' write out of bounds", sym->name);
+		return -ENXIO;
+	}
+
+	err = nfp_rtsym_to_dest(cpp, sym, action, token, offset, &cpp_id, &addr);
+	if (err != 0)
+		return err;
+
+	return nfp_cpp_writeq(cpp, cpp_id, addr, value);
+}
+
+int
+nfp_rtsym_writeq(struct nfp_cpp *cpp,
+		const struct nfp_rtsym *sym,
+		uint64_t offset,
+		uint64_t value)
+{
+	return nfp_rtsym_writeq_real(cpp, sym, NFP_CPP_ACTION_RW, 0, offset, value);
 }
 
 /**
@@ -374,11 +585,11 @@ nfp_rtsym_read_le(struct nfp_rtsym_table *rtbl,
 
 	switch (sym->size) {
 	case 4:
-		err = nfp_rtsym_readl(rtbl->cpp, sym, NFP_CPP_ACTION_RW, 0, 0, &val32);
+		err = nfp_rtsym_readl(rtbl->cpp, sym, 0, &val32);
 		val = val32;
 		break;
 	case 8:
-		err = nfp_rtsym_readq(rtbl->cpp, sym, NFP_CPP_ACTION_RW, 0, 0, &val);
+		err = nfp_rtsym_readq(rtbl->cpp, sym, 0, &val);
 		break;
 	default:
 		PMD_DRV_LOG(ERR, "rtsym '%s' unsupported size: %#lx",
@@ -387,8 +598,6 @@ nfp_rtsym_read_le(struct nfp_rtsym_table *rtbl,
 		break;
 	}
 
-	if (err)
-		err = -EIO;
 exit:
 	if (error != NULL)
 		*error = err;
@@ -397,6 +606,54 @@ exit:
 		return ~0ULL;
 
 	return val;
+}
+
+/**
+ * Write an unsigned scalar value to a symbol
+ *
+ * Lookup a symbol and write a value to it. Symbol can be 4 or 8 bytes in size.
+ * If 4 bytes then the lower 32-bits of 'value' are used. Value will be
+ * written as simple little-endian unsigned value.
+ *
+ * @param rtbl
+ *   NFP RTSYM table
+ * @param name
+ *   Symbol name
+ * @param value
+ *   Value to write
+ *
+ * @return
+ *   0 on success or error code.
+ */
+int
+nfp_rtsym_write_le(struct nfp_rtsym_table *rtbl,
+		const char *name,
+		uint64_t value)
+{
+	int err;
+	uint64_t sym_size;
+	const struct nfp_rtsym *sym;
+
+	sym = nfp_rtsym_lookup(rtbl, name);
+	if (sym == NULL)
+		return -ENOENT;
+
+	sym_size = nfp_rtsym_size(sym);
+	switch (sym_size) {
+	case 4:
+		err = nfp_rtsym_writel(rtbl->cpp, sym, 0, value);
+		break;
+	case 8:
+		err = nfp_rtsym_writeq(rtbl->cpp, sym, 0, value);
+		break;
+	default:
+		PMD_DRV_LOG(ERR, "rtsym '%s' unsupported size: %#lx",
+				name, sym_size);
+		err = -EINVAL;
+		break;
+	}
+
+	return err;
 }
 
 uint8_t *
