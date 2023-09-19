@@ -7,6 +7,7 @@
 
 #include "nfp_crc.h"
 #include "nfp_logs.h"
+#include "nfp_mutex.h"
 #include "nfp_target.h"
 
 #define NFP_RESOURCE_TBL_TARGET         NFP_CPP_TARGET_MU

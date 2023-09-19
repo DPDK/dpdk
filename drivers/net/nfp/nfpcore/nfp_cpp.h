@@ -8,8 +8,6 @@
 
 #include <ethdev_pci.h>
 
-struct nfp_cpp_mutex;
-
 /* NFP CPP handle */
 struct nfp_cpp {
 	uint32_t model;
@@ -425,20 +423,6 @@ int nfp_cpp_readq(struct nfp_cpp *cpp, uint32_t cpp_id,
 
 int nfp_cpp_writeq(struct nfp_cpp *cpp, uint32_t cpp_id,
 		uint64_t address, uint64_t value);
-
-int nfp_cpp_mutex_init(struct nfp_cpp *cpp, int target,
-		uint64_t address, uint32_t key_id);
-
-struct nfp_cpp_mutex *nfp_cpp_mutex_alloc(struct nfp_cpp *cpp, int target,
-		uint64_t address, uint32_t key_id);
-
-void nfp_cpp_mutex_free(struct nfp_cpp_mutex *mutex);
-
-int nfp_cpp_mutex_lock(struct nfp_cpp_mutex *mutex);
-
-int nfp_cpp_mutex_unlock(struct nfp_cpp_mutex *mutex);
-
-int nfp_cpp_mutex_trylock(struct nfp_cpp_mutex *mutex);
 
 uint32_t nfp_cpp_mu_locality_lsb(struct nfp_cpp *cpp);
 
