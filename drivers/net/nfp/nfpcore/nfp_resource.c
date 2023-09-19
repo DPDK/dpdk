@@ -3,15 +3,11 @@
  * All rights reserved.
  */
 
-#include <stdio.h>
-#include <time.h>
-#include <endian.h>
+#include "nfp_resource.h"
 
-#include "nfp_cpp.h"
+#include "nfp_crc.h"
 #include "nfp_logs.h"
 #include "nfp6000/nfp6000.h"
-#include "nfp_resource.h"
-#include "nfp_crc.h"
 
 #define NFP_RESOURCE_TBL_TARGET         NFP_CPP_TARGET_MU
 #define NFP_RESOURCE_TBL_BASE           0x8100000000ULL
@@ -43,7 +39,7 @@ struct nfp_resource_entry {
 };
 
 #define NFP_RESOURCE_TBL_SIZE       4096
-#define NFP_RESOURCE_TBL_ENTRIES    (int)(NFP_RESOURCE_TBL_SIZE /        \
+#define NFP_RESOURCE_TBL_ENTRIES    (NFP_RESOURCE_TBL_SIZE /        \
 					sizeof(struct nfp_resource_entry))
 
 struct nfp_resource {
@@ -175,8 +171,7 @@ nfp_resource_acquire(struct nfp_cpp *cpp,
 			NFP_RESOURCE_TBL_BASE, NFP_RESOURCE_TBL_KEY);
 	if (dev_mutex == NULL) {
 		PMD_DRV_LOG(ERR, "RESOURCE - CPP mutex alloc failed");
-		free(res);
-		return NULL;
+		goto err_free;
 	}
 
 	wait.tv_sec = 0;
@@ -188,13 +183,12 @@ nfp_resource_acquire(struct nfp_cpp *cpp,
 			break;
 		if (err != -EBUSY) {
 			PMD_DRV_LOG(ERR, "RESOURCE - try acquire failed");
-			goto err_free;
+			goto mutex_free;
 		}
 
 		if (count++ > 1000) {    /* 1ms * 1000 = 1s */
 			PMD_DRV_LOG(ERR, "Error: resource %s timed out", name);
-			err = -EBUSY;
-			goto err_free;
+			goto mutex_free;
 		}
 
 		nanosleep(&wait, NULL);
@@ -204,8 +198,9 @@ nfp_resource_acquire(struct nfp_cpp *cpp,
 
 	return res;
 
-err_free:
+mutex_free:
 	nfp_cpp_mutex_free(dev_mutex);
+err_free:
 	free(res);
 	return NULL;
 }
