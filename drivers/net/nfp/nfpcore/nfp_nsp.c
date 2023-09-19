@@ -13,6 +13,7 @@
 #include "nfp_cpp.h"
 #include "nfp_logs.h"
 #include "nfp_nsp.h"
+#include "nfp_platform.h"
 #include "nfp_resource.h"
 
 int

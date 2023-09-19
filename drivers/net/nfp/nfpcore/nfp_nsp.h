@@ -9,29 +9,6 @@
 #include "nfp_cpp.h"
 #include "nfp_nsp.h"
 
-#define GENMASK_ULL(h, l) \
-	(((~0ULL) - (1ULL << (l)) + 1) & (~0ULL >> (64 - 1 - (h))))
-
-#define __bf_shf(x) (__builtin_ffsll(x) - 1)
-
-#define FIELD_GET(_mask, _reg) \
-	(__extension__ ({ \
-		typeof(_mask) _x = (_mask); \
-		(typeof(_x))(((_reg) & (_x)) >> __bf_shf(_x)); \
-	}))
-
-#define FIELD_FIT(_mask, _val) \
-	(__extension__ ({ \
-		typeof(_mask) _x = (_mask); \
-		!((((typeof(_x))_val) << __bf_shf(_x)) & ~(_x)); \
-	}))
-
-#define FIELD_PREP(_mask, _val) \
-	(__extension__ ({ \
-		typeof(_mask) _x = (_mask); \
-		((typeof(_x))(_val) << __bf_shf(_x)) & (_x); \
-	}))
-
 /* Offsets relative to the CSR base */
 #define NSP_STATUS              0x00
 #define   NSP_STATUS_MAGIC      GENMASK_ULL(63, 48)
