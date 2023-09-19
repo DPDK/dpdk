@@ -3,12 +3,76 @@
  * All rights reserved.
  */
 
-#include "../nfp_logs.h"
-#include "nfp_cpp.h"
 #include "nfp_nffw.h"
+
+#include "../nfp_logs.h"
 #include "nfp_mip.h"
-#include "nfp6000/nfp6000.h"
 #include "nfp_resource.h"
+#include "nfp6000/nfp6000.h"
+
+/*
+ * Init-CSR owner IDs for firmware map to firmware IDs which start at 4.
+ * Lower IDs are reserved for target and loader IDs.
+ */
+#define NFFW_FWID_EXT   3 /* For active MEs that we didn't load. */
+#define NFFW_FWID_BASE  4
+
+#define NFFW_FWID_ALL   255
+
+/*
+ * NFFW_INFO_VERSION history:
+ * 0: This was never actually used (before versioning), but it refers to
+ *    the previous struct which had FWINFO_CNT = MEINFO_CNT = 120 that later
+ *    changed to 200.
+ * 1: First versioned struct, with
+ *     FWINFO_CNT = 120
+ *     MEINFO_CNT = 120
+ * 2:  FWINFO_CNT = 200
+ *     MEINFO_CNT = 200
+ */
+#define NFFW_INFO_VERSION_CURRENT 2
+
+/* Enough for all current chip families */
+#define NFFW_MEINFO_CNT_V1 120
+#define NFFW_FWINFO_CNT_V1 120
+#define NFFW_MEINFO_CNT_V2 200
+#define NFFW_FWINFO_CNT_V2 200
+
+/* nfp.nffw meinfo */
+struct nffw_meinfo {
+	uint32_t ctxmask_fwid_meid;
+};
+
+struct nffw_fwinfo {
+	uint32_t loaded_mu_da_mip_off_hi;
+	uint32_t mip_cppid; /**< 0 means no MIP */
+	uint32_t mip_offset_lo;
+};
+
+struct nfp_nffw_info_v1 {
+	struct nffw_meinfo meinfo[NFFW_MEINFO_CNT_V1];
+	struct nffw_fwinfo fwinfo[NFFW_FWINFO_CNT_V1];
+};
+
+struct nfp_nffw_info_v2 {
+	struct nffw_meinfo meinfo[NFFW_MEINFO_CNT_V2];
+	struct nffw_fwinfo fwinfo[NFFW_FWINFO_CNT_V2];
+};
+
+struct nfp_nffw_info_data {
+	uint32_t flags[2];
+	union {
+		struct nfp_nffw_info_v1 v1;
+		struct nfp_nffw_info_v2 v2;
+	} info;
+};
+
+struct nfp_nffw_info {
+	struct nfp_cpp *cpp;
+	struct nfp_resource *res;
+
+	struct nfp_nffw_info_data fwinf;
+};
 
 /*
  * flg_info_version = flags[0]<27:16>
@@ -59,32 +123,6 @@ nffw_fwinfo_mip_offset_get(const struct nffw_fwinfo *fi)
 	uint64_t mip_off_hi = fi->loaded_mu_da_mip_off_hi;
 
 	return (mip_off_hi & 0xFF) << 32 | fi->mip_offset_lo;
-}
-
-#define NFP_IMB_TGTADDRESSMODECFG_MODE_of(_x)           (((_x) >> 13) & 0x7)
-#define NFP_IMB_TGTADDRESSMODECFG_ADDRMODE              RTE_BIT32(12)
-#define   NFP_IMB_TGTADDRESSMODECFG_ADDRMODE_32_BIT     0
-#define   NFP_IMB_TGTADDRESSMODECFG_ADDRMODE_40_BIT     RTE_BIT32(12)
-
-static int
-nfp_mip_mu_locality_lsb(struct nfp_cpp *cpp)
-{
-	int err;
-	uint32_t mode;
-	uint32_t addr40;
-	uint32_t xpbaddr;
-	uint32_t imbcppat;
-
-	/* Hardcoded XPB IMB Base, island 0 */
-	xpbaddr = 0x000a0000 + NFP_CPP_TARGET_MU * 4;
-	err = nfp_xpb_readl(cpp, xpbaddr, &imbcppat);
-	if (err < 0)
-		return err;
-
-	mode = NFP_IMB_TGTADDRESSMODECFG_MODE_of(imbcppat);
-	addr40 = !!(imbcppat & NFP_IMB_TGTADDRESSMODECFG_ADDRMODE);
-
-	return nfp_cppat_mu_locality_lsb(mode, addr40);
 }
 
 static uint32_t
@@ -239,14 +277,7 @@ nfp_nffw_info_mip_first(struct nfp_nffw_info *state,
 	*offset = nffw_fwinfo_mip_offset_get(fwinfo);
 
 	if (nffw_fwinfo_mip_mu_da_get(fwinfo) != 0) {
-		int locality_off;
-
-		if (NFP_CPP_ID_TARGET_of(*cpp_id) != NFP_CPP_TARGET_MU)
-			return 0;
-
-		locality_off = nfp_mip_mu_locality_lsb(state->cpp);
-		if (locality_off < 0)
-			return locality_off;
+		int locality_off = nfp_cpp_mu_locality_lsb(state->cpp);
 
 		*offset &= ~(NFP_MU_ADDR_ACCESS_TYPE_MASK << locality_off);
 		*offset |= NFP_MU_ADDR_ACCESS_TYPE_DIRECT << locality_off;
