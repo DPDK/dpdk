@@ -26,9 +26,9 @@ struct nsp_identify {
 struct nfp_nsp_identify *
 __nfp_nsp_identify(struct nfp_nsp *nsp)
 {
-	struct nfp_nsp_identify *nspi = NULL;
-	struct nsp_identify *ni;
 	int ret;
+	struct nsp_identify *ni;
+	struct nfp_nsp_identify *nspi = NULL;
 
 	if (nfp_nsp_get_abi_ver_minor(nsp) < 15)
 		return NULL;
@@ -77,9 +77,9 @@ nfp_hwmon_read_sensor(struct nfp_cpp *cpp,
 		enum nfp_nsp_sensor_id id,
 		uint32_t *val)
 {
-	struct nfp_sensors s;
-	struct nfp_nsp *nsp;
 	int ret;
+	struct nfp_nsp *nsp;
+	struct nfp_sensors s;
 
 	nsp = nfp_nsp_open(cpp);
 	if (nsp == NULL)

@@ -150,9 +150,10 @@ nfp_eth_port_translate(struct nfp_nsp *nsp,
 		uint32_t index,
 		struct nfp_eth_table_port *dst)
 {
-	uint32_t rate;
 	uint32_t fec;
-	uint64_t port, state;
+	uint64_t port;
+	uint32_t rate;
+	uint64_t state;
 
 	port = rte_le_to_cpu_64(src->port);
 	state = rte_le_to_cpu_64(src->state);
@@ -200,7 +201,8 @@ nfp_eth_port_translate(struct nfp_nsp *nsp,
 static void
 nfp_eth_calc_port_geometry(struct nfp_eth_table *table)
 {
-	uint32_t i, j;
+	uint32_t i;
+	uint32_t j;
 
 	for (i = 0; i < table->count; i++) {
 		table->max_index = RTE_MAX(table->max_index,
@@ -242,12 +244,13 @@ nfp_eth_calc_port_type(struct nfp_eth_table_port *entry)
 static struct nfp_eth_table *
 __nfp_eth_read_ports(struct nfp_nsp *nsp)
 {
-	union eth_table_entry *entries;
-	struct nfp_eth_table *table;
-	uint32_t table_sz;
+	int ret;
 	uint32_t i;
 	uint32_t j;
-	int ret, cnt = 0;
+	int cnt = 0;
+	uint32_t table_sz;
+	struct nfp_eth_table *table;
+	union eth_table_entry *entries;
 	const struct rte_ether_addr *mac;
 
 	entries = malloc(NSP_ETH_TABLE_SIZE);
@@ -321,8 +324,8 @@ err:
 struct nfp_eth_table *
 nfp_eth_read_ports(struct nfp_cpp *cpp)
 {
-	struct nfp_eth_table *ret;
 	struct nfp_nsp *nsp;
+	struct nfp_eth_table *ret;
 
 	nsp = nfp_nsp_open(cpp);
 	if (nsp == NULL)
@@ -338,9 +341,9 @@ struct nfp_nsp *
 nfp_eth_config_start(struct nfp_cpp *cpp,
 		uint32_t idx)
 {
-	union eth_table_entry *entries;
-	struct nfp_nsp *nsp;
 	int ret;
+	struct nfp_nsp *nsp;
+	union eth_table_entry *entries;
 
 	entries = malloc(NSP_ETH_TABLE_SIZE);
 	if (entries == NULL)
@@ -401,8 +404,8 @@ nfp_eth_config_cleanup_end(struct nfp_nsp *nsp)
 int
 nfp_eth_config_commit_end(struct nfp_nsp *nsp)
 {
-	union eth_table_entry *entries = nfp_nsp_config_entries(nsp);
 	int ret = 1;
+	union eth_table_entry *entries = nfp_nsp_config_entries(nsp);
 
 	if (nfp_nsp_config_modified(nsp)) {
 		ret = nfp_nsp_write_eth_table(nsp, entries, NSP_ETH_TABLE_SIZE);
@@ -433,9 +436,9 @@ nfp_eth_set_mod_enable(struct nfp_cpp *cpp,
 		uint32_t idx,
 		int enable)
 {
-	union eth_table_entry *entries;
-	struct nfp_nsp *nsp;
 	uint64_t reg;
+	struct nfp_nsp *nsp;
+	union eth_table_entry *entries;
 
 	nsp = nfp_eth_config_start(cpp, idx);
 	if (nsp == NULL)
@@ -475,9 +478,9 @@ nfp_eth_set_configured(struct nfp_cpp *cpp,
 		uint32_t idx,
 		int configed)
 {
-	union eth_table_entry *entries;
-	struct nfp_nsp *nsp;
 	uint64_t reg;
+	struct nfp_nsp *nsp;
+	union eth_table_entry *entries;
 
 	nsp = nfp_eth_config_start(cpp, idx);
 	if (nsp == NULL)
@@ -516,9 +519,9 @@ nfp_eth_set_bit_config(struct nfp_nsp *nsp,
 		uint32_t val,
 		const uint64_t ctrl_bit)
 {
-	union eth_table_entry *entries = nfp_nsp_config_entries(nsp);
-	uint32_t idx = nfp_nsp_config_idx(nsp);
 	uint64_t reg;
+	uint32_t idx = nfp_nsp_config_idx(nsp);
+	union eth_table_entry *entries = nfp_nsp_config_entries(nsp);
 
 	/*
 	 * Note: set features were added in ABI 0.14 but the error
@@ -604,8 +607,8 @@ nfp_eth_set_fec(struct nfp_cpp *cpp,
 		uint32_t idx,
 		enum nfp_eth_fec mode)
 {
-	struct nfp_nsp *nsp;
 	int err;
+	struct nfp_nsp *nsp;
 
 	nsp = nfp_eth_config_start(cpp, idx);
 	if (nsp == NULL)

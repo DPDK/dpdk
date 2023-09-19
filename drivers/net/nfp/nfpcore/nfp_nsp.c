@@ -72,10 +72,11 @@ nfp_nsp_print_extended_error(uint32_t ret_val)
 static int
 nfp_nsp_check(struct nfp_nsp *state)
 {
-	struct nfp_cpp *cpp = state->cpp;
-	uint64_t nsp_status, reg;
-	uint32_t nsp_cpp;
 	int err;
+	uint64_t reg;
+	uint32_t nsp_cpp;
+	uint64_t nsp_status;
+	struct nfp_cpp *cpp = state->cpp;
 
 	nsp_cpp = nfp_resource_cpp_id(state->res);
 	nsp_status = nfp_resource_address(state->res) + NSP_STATUS;
@@ -113,9 +114,9 @@ nfp_nsp_check(struct nfp_nsp *state)
 struct nfp_nsp *
 nfp_nsp_open(struct nfp_cpp *cpp)
 {
-	struct nfp_resource *res;
-	struct nfp_nsp *state;
 	int err;
+	struct nfp_nsp *state;
+	struct nfp_resource *res;
 
 	res = nfp_resource_acquire(cpp, NFP_RESOURCE_NSP);
 	if (res == NULL)
@@ -170,13 +171,12 @@ nfp_nsp_wait_reg(struct nfp_cpp *cpp,
 		uint64_t mask,
 		uint64_t val)
 {
-	struct timespec wait;
-	uint32_t count;
 	int err;
+	uint32_t count = 0;
+	struct timespec wait;
 
 	wait.tv_sec = 0;
 	wait.tv_nsec = 25000000;
-	count = 0;
 
 	for (;;) {
 		err = nfp_cpp_readq(cpp, nsp_cpp, addr, reg);
@@ -217,10 +217,15 @@ nfp_nsp_command(struct nfp_nsp *state,
 		uint32_t buff_cpp,
 		uint64_t buff_addr)
 {
-	uint64_t reg, ret_val, nsp_base, nsp_buffer, nsp_status, nsp_command;
-	struct nfp_cpp *cpp = state->cpp;
-	uint32_t nsp_cpp;
 	int err;
+	uint64_t reg;
+	uint32_t nsp_cpp;
+	uint64_t ret_val;
+	uint64_t nsp_base;
+	uint64_t nsp_buffer;
+	uint64_t nsp_status;
+	uint64_t nsp_command;
+	struct nfp_cpp *cpp = state->cpp;
 
 	nsp_cpp = nfp_resource_cpp_id(state->res);
 	nsp_base = nfp_resource_address(state->res);
@@ -296,11 +301,13 @@ nfp_nsp_command_buf(struct nfp_nsp *nsp,
 		void *out_buf,
 		unsigned int out_size)
 {
-	struct nfp_cpp *cpp = nsp->cpp;
+	int err;
+	int ret;
+	uint64_t reg;
 	size_t max_size;
-	uint64_t reg, cpp_buf;
-	int ret, err;
 	uint32_t cpp_id;
+	uint64_t cpp_buf;
+	struct nfp_cpp *cpp = nsp->cpp;
 
 	if (nsp->ver.minor < 13) {
 		PMD_DRV_LOG(ERR, "NSP: Code 0x%04x with buffer not supported ABI %hu.%hu)",
@@ -360,13 +367,12 @@ nfp_nsp_command_buf(struct nfp_nsp *nsp,
 int
 nfp_nsp_wait(struct nfp_nsp *state)
 {
-	struct timespec wait;
-	uint32_t count;
 	int err;
+	int count = 0;
+	struct timespec wait;
 
 	wait.tv_sec = 0;
 	wait.tv_nsec = 25000000;
-	count = 0;
 
 	for (;;) {
 		err = nfp_nsp_command(state, SPCODE_NOOP, 0, 0, 0);

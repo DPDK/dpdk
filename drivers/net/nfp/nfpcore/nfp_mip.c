@@ -68,10 +68,10 @@ static int
 nfp_mip_read_resource(struct nfp_cpp *cpp,
 		struct nfp_mip *mip)
 {
-	struct nfp_nffw_info *nffw_info;
-	uint32_t cpp_id;
-	uint64_t addr;
 	int err;
+	uint64_t addr;
+	uint32_t cpp_id;
+	struct nfp_nffw_info *nffw_info;
 
 	nffw_info = nfp_nffw_info_open(cpp);
 	if (nffw_info == NULL)
@@ -100,8 +100,8 @@ exit_close_nffw:
 struct nfp_mip *
 nfp_mip_open(struct nfp_cpp *cpp)
 {
-	struct nfp_mip *mip;
 	int err;
+	struct nfp_mip *mip;
 
 	mip = malloc(sizeof(*mip));
 	if (mip == NULL)

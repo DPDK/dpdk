@@ -85,8 +85,8 @@ nfp_rtsym_sw_entry_init(struct nfp_rtsym_table *cache,
 struct nfp_rtsym_table *
 nfp_rtsym_table_read(struct nfp_cpp *cpp)
 {
-	struct nfp_rtsym_table *rtbl;
 	struct nfp_mip *mip;
+	struct nfp_rtsym_table *rtbl;
 
 	mip = nfp_mip_open(cpp);
 	rtbl = __nfp_rtsym_table_read(cpp, mip);
@@ -99,13 +99,18 @@ struct nfp_rtsym_table *
 __nfp_rtsym_table_read(struct nfp_cpp *cpp,
 		const struct nfp_mip *mip)
 {
-	uint32_t strtab_addr, symtab_addr, strtab_size, symtab_size;
-	struct nfp_rtsym_entry *rtsymtab;
+	int n;
+	int err;
+	uint32_t size;
+	uint32_t strtab_addr;
+	uint32_t symtab_addr;
+	uint32_t strtab_size;
+	uint32_t symtab_size;
 	struct nfp_rtsym_table *cache;
+	struct nfp_rtsym_entry *rtsymtab;
 	const uint32_t dram =
 		NFP_CPP_ID(NFP_CPP_TARGET_MU, NFP_CPP_ACTION_RW, 0) |
 		NFP_ISL_EMEM0;
-	int err, n, size;
 
 	if (mip == NULL)
 		return NULL;
@@ -341,10 +346,10 @@ nfp_rtsym_read_le(struct nfp_rtsym_table *rtbl,
 		const char *name,
 		int *error)
 {
-	const struct nfp_rtsym *sym;
-	uint32_t val32;
-	uint64_t val;
 	int err;
+	uint64_t val;
+	uint32_t val32;
+	const struct nfp_rtsym *sym;
 
 	sym = nfp_rtsym_lookup(rtbl, name);
 	if (sym == NULL) {

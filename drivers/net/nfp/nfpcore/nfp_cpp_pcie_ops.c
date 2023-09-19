@@ -140,9 +140,9 @@ nfp_compute_bar(const struct nfp_bar *bar,
 		size_t size,
 		int width)
 {
-	uint32_t bitsize;
-	uint32_t newcfg;
 	uint64_t mask;
+	uint32_t newcfg;
+	uint32_t bitsize;
 
 	if (tgt >= 16)
 		return -EINVAL;
@@ -239,7 +239,8 @@ nfp_bar_write(struct nfp_pcie_user *nfp,
 		struct nfp_bar *bar,
 		uint32_t newcfg)
 {
-	int base, slot;
+	int base;
+	int slot;
 
 	base = bar->index >> 3;
 	slot = bar->index & 7;
@@ -268,9 +269,9 @@ nfp_reconfigure_bar(struct nfp_pcie_user *nfp,
 		size_t size,
 		int width)
 {
-	uint64_t newbase;
-	uint32_t newcfg;
 	int err;
+	uint32_t newcfg;
+	uint64_t newbase;
 
 	err = nfp_compute_bar(bar, &newcfg, &newbase, tgt, act, tok, offset,
 			size, width);
@@ -303,8 +304,10 @@ nfp_reconfigure_bar(struct nfp_pcie_user *nfp,
 static int
 nfp_enable_bars(struct nfp_pcie_user *nfp)
 {
+	int x;
+	int end;
+	int start;
 	struct nfp_bar *bar;
-	int x, start, end;
 
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
 		start = NFP_BAR_MID;
@@ -333,8 +336,10 @@ nfp_enable_bars(struct nfp_pcie_user *nfp)
 static struct nfp_bar *
 nfp_alloc_bar(struct nfp_pcie_user *nfp)
 {
+	int x;
+	int end;
+	int start;
 	struct nfp_bar *bar;
-	int x, start, end;
 
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
 		start = NFP_BAR_MID;
@@ -356,8 +361,10 @@ nfp_alloc_bar(struct nfp_pcie_user *nfp)
 static void
 nfp_disable_bars(struct nfp_pcie_user *nfp)
 {
+	int x;
+	int end;
+	int start;
 	struct nfp_bar *bar;
-	int x, start, end;
 
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
 		start = NFP_BAR_MID;
@@ -403,12 +410,13 @@ nfp6000_area_init(struct nfp_cpp_area *area,
 		uint64_t address,
 		size_t size)
 {
-	struct nfp_pcie_user *nfp = nfp_cpp_priv(nfp_cpp_area_cpp(area));
-	struct nfp6000_area_priv *priv = nfp_cpp_area_priv(area);
+	int pp;
+	int ret = 0;
+	uint32_t token = NFP_CPP_ID_TOKEN_of(dest);
 	uint32_t target = NFP_CPP_ID_TARGET_of(dest);
 	uint32_t action = NFP_CPP_ID_ACTION_of(dest);
-	uint32_t token = NFP_CPP_ID_TOKEN_of(dest);
-	int pp, ret = 0;
+	struct nfp6000_area_priv *priv = nfp_cpp_area_priv(area);
+	struct nfp_pcie_user *nfp = nfp_cpp_priv(nfp_cpp_area_cpp(area));
 
 	pp = nfp_target_pushpull(NFP_CPP_ID(target, action, token), address);
 	if (pp < 0)
@@ -493,14 +501,14 @@ nfp6000_area_read(struct nfp_cpp_area *area,
 		uint32_t offset,
 		size_t length)
 {
-	uint64_t *wrptr64 = kernel_vaddr;
-	const volatile uint64_t *rdptr64;
-	struct nfp6000_area_priv *priv;
-	uint32_t *wrptr32 = kernel_vaddr;
-	const volatile uint32_t *rdptr32;
-	int width;
 	size_t n;
+	int width;
 	bool is_64;
+	uint32_t *wrptr32 = kernel_vaddr;
+	uint64_t *wrptr64 = kernel_vaddr;
+	struct nfp6000_area_priv *priv;
+	const volatile uint32_t *rdptr32;
+	const volatile uint64_t *rdptr64;
 
 	priv = nfp_cpp_area_priv(area);
 	rdptr64 = (uint64_t *)(priv->iomem + offset);
@@ -563,14 +571,14 @@ nfp6000_area_write(struct nfp_cpp_area *area,
 		uint32_t offset,
 		size_t length)
 {
-	const uint64_t *rdptr64 = kernel_vaddr;
-	uint64_t *wrptr64;
-	const uint32_t *rdptr32 = kernel_vaddr;
-	struct nfp6000_area_priv *priv;
-	uint32_t *wrptr32;
-	int width;
 	size_t n;
+	int width;
 	bool is_64;
+	uint32_t *wrptr32;
+	uint64_t *wrptr64;
+	struct nfp6000_area_priv *priv;
+	const uint32_t *rdptr32 = kernel_vaddr;
+	const uint64_t *rdptr64 = kernel_vaddr;
 
 	priv = nfp_cpp_area_priv(area);
 	wrptr64 = (uint64_t *)(priv->iomem + offset);
@@ -693,10 +701,10 @@ static int
 nfp6000_set_serial(struct rte_pci_device *dev,
 		struct nfp_cpp *cpp)
 {
+	off_t pos;
 	uint16_t tmp;
 	uint8_t serial[6];
 	int serial_len = 6;
-	off_t pos;
 
 	pos = rte_pci_find_ext_capability(dev, RTE_PCI_EXT_CAP_ID_DSN);
 	if (pos <= 0) {
@@ -741,8 +749,8 @@ static int
 nfp6000_set_barsz(struct rte_pci_device *dev,
 		struct nfp_pcie_user *desc)
 {
-	uint64_t tmp;
 	int i = 0;
+	uint64_t tmp;
 
 	tmp = dev->mem_resource[0].len;
 

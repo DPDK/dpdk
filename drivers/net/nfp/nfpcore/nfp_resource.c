@@ -67,10 +67,12 @@ static int
 nfp_cpp_resource_find(struct nfp_cpp *cpp,
 		struct nfp_resource *res)
 {
-	char name_pad[NFP_RESOURCE_ENTRY_NAME_SZ + 2];
+	int ret;
+	uint32_t i;
+	uint32_t key;
+	uint32_t cpp_id;
 	struct nfp_resource_entry entry;
-	uint32_t cpp_id, key;
-	int ret, i;
+	char name_pad[NFP_RESOURCE_ENTRY_NAME_SZ + 2];
 
 	cpp_id = NFP_CPP_ID(NFP_RESOURCE_TBL_TARGET, 3, 0);  /* Atomic read */
 
@@ -152,11 +154,11 @@ struct nfp_resource *
 nfp_resource_acquire(struct nfp_cpp *cpp,
 		const char *name)
 {
-	struct nfp_cpp_mutex *dev_mutex;
-	struct nfp_resource *res;
 	int err;
+	uint16_t count = 0;
 	struct timespec wait;
-	uint16_t count;
+	struct nfp_resource *res;
+	struct nfp_cpp_mutex *dev_mutex;
 
 	res = malloc(sizeof(*res));
 	if (res == NULL)
@@ -175,7 +177,6 @@ nfp_resource_acquire(struct nfp_cpp *cpp,
 
 	wait.tv_sec = 0;
 	wait.tv_nsec = 1000000;
-	count = 0;
 
 	for (;;) {
 		err = nfp_resource_try_acquire(cpp, res, dev_mutex);

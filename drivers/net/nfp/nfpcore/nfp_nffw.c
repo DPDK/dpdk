@@ -68,9 +68,11 @@ nffw_fwinfo_mip_offset_get(const struct nffw_fwinfo *fi)
 static int
 nfp_mip_mu_locality_lsb(struct nfp_cpp *cpp)
 {
-	uint32_t mode, addr40;
-	uint32_t xpbaddr, imbcppat;
 	int err;
+	uint32_t mode;
+	uint32_t addr40;
+	uint32_t xpbaddr;
+	uint32_t imbcppat;
 
 	/* Hardcoded XPB IMB Base, island 0 */
 	xpbaddr = 0x000a0000 + NFP_CPP_TARGET_MU * 4;
@@ -118,10 +120,10 @@ nffw_res_fwinfos(struct nfp_nffw_info_data *fwinf,
 struct nfp_nffw_info *
 nfp_nffw_info_open(struct nfp_cpp *cpp)
 {
-	struct nfp_nffw_info_data *fwinf;
-	struct nfp_nffw_info *state;
-	uint32_t info_ver;
 	int err;
+	uint32_t info_ver;
+	struct nfp_nffw_info *state;
+	struct nfp_nffw_info_data *fwinf;
 
 	state = malloc(sizeof(*state));
 	if (state == NULL)
@@ -183,8 +185,9 @@ nfp_nffw_info_close(struct nfp_nffw_info *state)
 static struct nffw_fwinfo *
 nfp_nffw_info_fwid_first(struct nfp_nffw_info *state)
 {
+	uint32_t i;
+	uint32_t cnt;
 	struct nffw_fwinfo *fwinfo;
-	uint32_t cnt, i;
 
 	cnt = nffw_res_fwinfos(&state->fwinf, &fwinfo);
 	if (cnt == 0)

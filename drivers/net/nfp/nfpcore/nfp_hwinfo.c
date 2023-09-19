@@ -36,7 +36,9 @@ static int
 nfp_hwinfo_db_walk(struct nfp_hwinfo *hwinfo,
 		uint32_t size)
 {
-	const char *key, *val, *end = hwinfo->data + size;
+	const char *key;
+	const char *val;
+	const char *end = hwinfo->data + size;
 
 	for (key = hwinfo->data; *key != 0 && key < end;
 			key = val + strlen(val) + 1) {
@@ -58,7 +60,9 @@ static int
 nfp_hwinfo_db_validate(struct nfp_hwinfo *db,
 		uint32_t len)
 {
-	uint32_t size, new_crc, *crc;
+	uint32_t *crc;
+	uint32_t size;
+	uint32_t new_crc;
 
 	size = db->size;
 	if (size > len) {
@@ -82,12 +86,12 @@ static struct nfp_hwinfo *
 nfp_hwinfo_try_fetch(struct nfp_cpp *cpp,
 		size_t *cpp_size)
 {
-	struct nfp_hwinfo *header;
-	void *res;
-	uint64_t cpp_addr;
-	uint32_t cpp_id;
 	int err;
+	void *res;
 	uint8_t *db;
+	uint32_t cpp_id;
+	uint64_t cpp_addr;
+	struct nfp_hwinfo *header;
 
 	res = nfp_resource_acquire(cpp, NFP_RESOURCE_NFP_HWINFO);
 	if (res) {
@@ -135,13 +139,12 @@ static struct nfp_hwinfo *
 nfp_hwinfo_fetch(struct nfp_cpp *cpp,
 		size_t *hwdb_size)
 {
+	int count = 0;
 	struct timespec wait;
 	struct nfp_hwinfo *db;
-	int count;
 
 	wait.tv_sec = 0;
 	wait.tv_nsec = 10000000;
-	count = 0;
 
 	for (;;) {
 		db = nfp_hwinfo_try_fetch(cpp, hwdb_size);
@@ -159,9 +162,9 @@ nfp_hwinfo_fetch(struct nfp_cpp *cpp,
 struct nfp_hwinfo *
 nfp_hwinfo_read(struct nfp_cpp *cpp)
 {
-	struct nfp_hwinfo *db;
-	size_t hwdb_size = 0;
 	int err;
+	size_t hwdb_size = 0;
+	struct nfp_hwinfo *db;
 
 	db = nfp_hwinfo_fetch(cpp, &hwdb_size);
 	if (db == NULL)
@@ -186,7 +189,9 @@ const char *
 nfp_hwinfo_lookup(struct nfp_hwinfo *hwinfo,
 		const char *lookup)
 {
-	const char *key, *val, *end;
+	const char *key;
+	const char *val;
+	const char *end;
 
 	if (hwinfo == NULL || lookup == NULL)
 		return NULL;

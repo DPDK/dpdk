@@ -172,9 +172,9 @@ nfp_cpp_area_alloc_with_name(struct nfp_cpp *cpp,
 		uint64_t address,
 		uint32_t size)
 {
+	int err;
 	struct nfp_cpp_area *area;
 	uint64_t tmp64 = (uint64_t)address;
-	int err;
 
 	if (cpp == NULL)
 		return NULL;
@@ -396,8 +396,8 @@ static uint32_t
 nfp_xpb_to_cpp(struct nfp_cpp *cpp,
 		uint32_t *xpb_addr)
 {
-	uint32_t xpb;
 	int island;
+	uint32_t xpb;
 
 	xpb = NFP_CPP_ID(14, NFP_CPP_ACTION_RW, 0);
 
@@ -569,9 +569,9 @@ static struct nfp_cpp *
 nfp_cpp_alloc(struct rte_pci_device *dev,
 		int driver_lock_needed)
 {
-	const struct nfp_cpp_operations *ops;
-	struct nfp_cpp *cpp;
 	int err;
+	struct nfp_cpp *cpp;
+	const struct nfp_cpp_operations *ops;
 
 	ops = nfp_cpp_transport_operations();
 
@@ -657,8 +657,8 @@ nfp_cpp_read(struct nfp_cpp *cpp,
 		void *kernel_vaddr,
 		size_t length)
 {
-	struct nfp_cpp_area *area;
 	int err;
+	struct nfp_cpp_area *area;
 
 	area = nfp_cpp_area_alloc_acquire(cpp, destination, address, length);
 	if (area == NULL) {
@@ -687,8 +687,8 @@ nfp_cpp_write(struct nfp_cpp *cpp,
 		const void *kernel_vaddr,
 		size_t length)
 {
-	struct nfp_cpp_area *area;
 	int err;
+	struct nfp_cpp_area *area;
 
 	area = nfp_cpp_area_alloc_acquire(cpp, destination, address, length);
 	if (area == NULL)
@@ -708,8 +708,8 @@ uint32_t
 __nfp_cpp_model_autodetect(struct nfp_cpp *cpp,
 		uint32_t *model)
 {
-	uint32_t reg;
 	int err;
+	uint32_t reg;
 
 	err = nfp_xpb_readl(cpp, NFP_XPB_DEVICE(1, 1, 16) + NFP_PL_DEVICE_ID,
 			&reg);

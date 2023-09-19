@@ -79,9 +79,9 @@ nfp_cpp_mutex_init(struct nfp_cpp *cpp,
 		uint64_t address,
 		uint32_t key)
 {
+	int err;
 	uint32_t model = nfp_cpp_model(cpp);
 	uint32_t muw = NFP_CPP_ID(target, 4, 0);	/* atomic_write */
-	int err;
 
 	err = _nfp_cpp_mutex_validate(model, &target, address);
 	if (err < 0)
@@ -122,11 +122,11 @@ nfp_cpp_mutex_alloc(struct nfp_cpp *cpp,
 		uint64_t address,
 		uint32_t key)
 {
-	uint32_t model = nfp_cpp_model(cpp);
-	struct nfp_cpp_mutex *mutex;
-	uint32_t mur = NFP_CPP_ID(target, 3, 0);	/* atomic_read */
 	int err;
 	uint32_t tmp;
+	struct nfp_cpp_mutex *mutex;
+	uint32_t model = nfp_cpp_model(cpp);
+	uint32_t mur = NFP_CPP_ID(target, 3, 0);	/* atomic_read */
 
 	/* Look for cached mutex */
 	for (mutex = cpp->mutex_cache; mutex; mutex = mutex->next) {
@@ -242,12 +242,13 @@ nfp_cpp_mutex_lock(struct nfp_cpp_mutex *mutex)
 int
 nfp_cpp_mutex_unlock(struct nfp_cpp_mutex *mutex)
 {
+	int err;
+	uint32_t key;
+	uint32_t value;
+	struct nfp_cpp *cpp = mutex->cpp;
+	uint16_t interface = nfp_cpp_interface(cpp);
 	uint32_t muw = NFP_CPP_ID(mutex->target, 4, 0);	/* atomic_write */
 	uint32_t mur = NFP_CPP_ID(mutex->target, 3, 0);	/* atomic_read */
-	struct nfp_cpp *cpp = mutex->cpp;
-	uint32_t key, value;
-	uint16_t interface = nfp_cpp_interface(cpp);
-	int err;
 
 	if (mutex->depth > 1) {
 		mutex->depth--;
@@ -296,12 +297,14 @@ exit:
 int
 nfp_cpp_mutex_trylock(struct nfp_cpp_mutex *mutex)
 {
+	int err;
+	uint32_t key;
+	uint32_t tmp;
+	uint32_t value;
+	struct nfp_cpp *cpp = mutex->cpp;
 	uint32_t mur = NFP_CPP_ID(mutex->target, 3, 0);	/* atomic_read */
 	uint32_t muw = NFP_CPP_ID(mutex->target, 4, 0);	/* atomic_write */
 	uint32_t mus = NFP_CPP_ID(mutex->target, 5, 3);	/* test_set_imm */
-	uint32_t key, value, tmp;
-	struct nfp_cpp *cpp = mutex->cpp;
-	int err;
 
 	if (mutex->depth > 0) {
 		if (mutex->depth == MUTEX_DEPTH_MAX)
