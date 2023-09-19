@@ -247,7 +247,7 @@ void *nfp_cpp_priv(struct nfp_cpp *cpp);
 
 void *nfp_cpp_area_priv(struct nfp_cpp_area *cpp_area);
 
-uint32_t __nfp_cpp_model_autodetect(struct nfp_cpp *cpp, uint32_t *model);
+uint32_t nfp_cpp_model_autodetect(struct nfp_cpp *cpp, uint32_t *model);
 
 /* NFP CPP core interface for CPP clients */
 struct nfp_cpp *nfp_cpp_from_device_name(struct rte_pci_device *dev,
@@ -381,10 +381,10 @@ uint8_t *nfp_cpp_map_area(struct nfp_cpp *cpp, uint32_t cpp_id,
 		uint64_t addr, uint32_t size, struct nfp_cpp_area **area);
 
 int nfp_cpp_area_read(struct nfp_cpp_area *area, uint32_t offset,
-		void *buffer, size_t length);
+		void *address, size_t length);
 
 int nfp_cpp_area_write(struct nfp_cpp_area *area, uint32_t offset,
-		const void *buffer, size_t length);
+		const void *address, size_t length);
 
 void *nfp_cpp_area_iomem(struct nfp_cpp_area *area);
 
@@ -393,10 +393,10 @@ struct nfp_cpp *nfp_cpp_area_cpp(struct nfp_cpp_area *cpp_area);
 const char *nfp_cpp_area_name(struct nfp_cpp_area *cpp_area);
 
 int nfp_cpp_read(struct nfp_cpp *cpp, uint32_t cpp_id,
-		uint64_t address, void *kernel_vaddr, size_t length);
+		uint64_t address, void *buf, size_t length);
 
 int nfp_cpp_write(struct nfp_cpp *cpp, uint32_t cpp_id,
-		uint64_t address, const void *kernel_vaddr, size_t length);
+		uint64_t address, const void *buf, size_t length);
 
 int nfp_cpp_area_readl(struct nfp_cpp_area *area, uint32_t offset,
 		uint32_t *value);

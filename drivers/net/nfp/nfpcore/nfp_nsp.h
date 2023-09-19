@@ -231,9 +231,9 @@ struct nfp_nsp *nfp_eth_config_start(struct nfp_cpp *cpp, uint32_t idx);
 int nfp_eth_config_commit_end(struct nfp_nsp *nsp);
 void nfp_eth_config_cleanup_end(struct nfp_nsp *nsp);
 
-int __nfp_eth_set_aneg(struct nfp_nsp *nsp, enum nfp_eth_aneg mode);
-int __nfp_eth_set_speed(struct nfp_nsp *nsp, uint32_t speed);
-int __nfp_eth_set_split(struct nfp_nsp *nsp, uint32_t lanes);
+int nfp_eth_set_aneg(struct nfp_nsp *nsp, enum nfp_eth_aneg mode);
+int nfp_eth_set_speed(struct nfp_nsp *nsp, uint32_t speed);
+int nfp_eth_set_split(struct nfp_nsp *nsp, uint32_t lanes);
 
 /* NSP static information */
 struct nfp_nsp_identify {
@@ -248,7 +248,7 @@ struct nfp_nsp_identify {
 	uint64_t sensor_mask;  /**< Mask of present sensors available on NIC */
 };
 
-struct nfp_nsp_identify *__nfp_nsp_identify(struct nfp_nsp *nsp);
+struct nfp_nsp_identify *nfp_nsp_identify(struct nfp_nsp *nsp);
 
 enum nfp_nsp_sensor_id {
 	NFP_SENSOR_CHIP_TEMPERATURE,

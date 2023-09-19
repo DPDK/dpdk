@@ -118,9 +118,9 @@ static int
 nfp_compute_bar(const struct nfp_bar *bar,
 		uint32_t *bar_config,
 		uint64_t *bar_base,
-		int tgt,
-		int act,
-		int tok,
+		int target,
+		int action,
+		int token,
 		uint64_t offset,
 		size_t size,
 		int width)
@@ -129,7 +129,7 @@ nfp_compute_bar(const struct nfp_bar *bar,
 	uint32_t newcfg;
 	uint32_t bitsize;
 
-	if (tgt >= 16)
+	if (target >= 16)
 		return -EINVAL;
 
 	switch (width) {
@@ -149,15 +149,15 @@ nfp_compute_bar(const struct nfp_bar *bar,
 		return -EINVAL;
 	}
 
-	if (act != NFP_CPP_ACTION_RW && act != 0) {
+	if (action != NFP_CPP_ACTION_RW && action != 0) {
 		/* Fixed CPP mapping with specific action */
 		mask = ~(NFP_PCIE_P2C_FIXED_SIZE(bar) - 1);
 
 		newcfg |= NFP_PCIE_BAR_PCIE2CPP_MAPTYPE
 				(NFP_PCIE_BAR_PCIE2CPP_MAPTYPE_FIXED);
-		newcfg |= NFP_PCIE_BAR_PCIE2CPP_TARGET_BASEADDRESS(tgt);
-		newcfg |= NFP_PCIE_BAR_PCIE2CPP_ACTION_BASEADDRESS(act);
-		newcfg |= NFP_PCIE_BAR_PCIE2CPP_TOKEN_BASEADDRESS(tok);
+		newcfg |= NFP_PCIE_BAR_PCIE2CPP_TARGET_BASEADDRESS(target);
+		newcfg |= NFP_PCIE_BAR_PCIE2CPP_ACTION_BASEADDRESS(action);
+		newcfg |= NFP_PCIE_BAR_PCIE2CPP_TOKEN_BASEADDRESS(token);
 
 		if ((offset & mask) != ((offset + size - 1) & mask))
 			return -EINVAL;
@@ -170,8 +170,8 @@ nfp_compute_bar(const struct nfp_bar *bar,
 		/* Bulk mapping */
 		newcfg |= NFP_PCIE_BAR_PCIE2CPP_MAPTYPE
 				(NFP_PCIE_BAR_PCIE2CPP_MAPTYPE_BULK);
-		newcfg |= NFP_PCIE_BAR_PCIE2CPP_TARGET_BASEADDRESS(tgt);
-		newcfg |= NFP_PCIE_BAR_PCIE2CPP_TOKEN_BASEADDRESS(tok);
+		newcfg |= NFP_PCIE_BAR_PCIE2CPP_TARGET_BASEADDRESS(target);
+		newcfg |= NFP_PCIE_BAR_PCIE2CPP_TOKEN_BASEADDRESS(token);
 
 		if ((offset & mask) != ((offset + size - 1) & mask))
 			return -EINVAL;
@@ -221,9 +221,9 @@ nfp_bar_write(struct nfp_pcie_user *nfp,
 static int
 nfp_reconfigure_bar(struct nfp_pcie_user *nfp,
 		struct nfp_bar *bar,
-		int tgt,
-		int act,
-		int tok,
+		int target,
+		int action,
+		int token,
 		uint64_t offset,
 		size_t size,
 		int width)
@@ -232,8 +232,8 @@ nfp_reconfigure_bar(struct nfp_pcie_user *nfp,
 	uint32_t newcfg;
 	uint64_t newbase;
 
-	err = nfp_compute_bar(bar, &newcfg, &newbase, tgt, act, tok, offset,
-			size, width);
+	err = nfp_compute_bar(bar, &newcfg, &newbase, target, action,
+			token, offset, size, width);
 	if (err != 0)
 		return err;
 
@@ -457,15 +457,15 @@ nfp6000_area_iomem(struct nfp_cpp_area *area)
 
 static int
 nfp6000_area_read(struct nfp_cpp_area *area,
-		void *kernel_vaddr,
+		void *address,
 		uint32_t offset,
 		size_t length)
 {
 	size_t n;
 	int width;
 	bool is_64;
-	uint32_t *wrptr32 = kernel_vaddr;
-	uint64_t *wrptr64 = kernel_vaddr;
+	uint32_t *wrptr32 = address;
+	uint64_t *wrptr64 = address;
 	struct nfp6000_area_priv *priv;
 	const volatile uint32_t *rdptr32;
 	const volatile uint64_t *rdptr64;
@@ -526,7 +526,7 @@ nfp6000_area_read(struct nfp_cpp_area *area,
 
 static int
 nfp6000_area_write(struct nfp_cpp_area *area,
-		const void *kernel_vaddr,
+		const void *address,
 		uint32_t offset,
 		size_t length)
 {
@@ -536,8 +536,8 @@ nfp6000_area_write(struct nfp_cpp_area *area,
 	uint32_t *wrptr32;
 	uint64_t *wrptr64;
 	struct nfp6000_area_priv *priv;
-	const uint32_t *rdptr32 = kernel_vaddr;
-	const uint64_t *rdptr64 = kernel_vaddr;
+	const uint32_t *rdptr32 = address;
+	const uint64_t *rdptr64 = address;
 
 	priv = nfp_cpp_area_priv(area);
 	wrptr64 = (uint64_t *)(priv->iomem + offset);

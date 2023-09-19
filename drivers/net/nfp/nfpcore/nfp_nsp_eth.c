@@ -242,7 +242,7 @@ nfp_eth_calc_port_type(struct nfp_eth_table_port *entry)
 }
 
 static struct nfp_eth_table *
-__nfp_eth_read_ports(struct nfp_nsp *nsp)
+nfp_eth_read_ports_real(struct nfp_nsp *nsp)
 {
 	int ret;
 	uint32_t i;
@@ -335,7 +335,7 @@ nfp_eth_read_ports(struct nfp_cpp *cpp)
 	if (nsp == NULL)
 		return NULL;
 
-	ret = __nfp_eth_read_ports(nsp);
+	ret = nfp_eth_read_ports_real(nsp);
 	nfp_nsp_close(nsp);
 
 	return ret;
@@ -484,7 +484,7 @@ nfp_eth_set_mod_enable(struct nfp_cpp *cpp,
 int
 nfp_eth_set_configured(struct nfp_cpp *cpp,
 		uint32_t idx,
-		int configed)
+		int configured)
 {
 	uint64_t reg;
 	struct nfp_nsp *nsp;
@@ -507,10 +507,10 @@ nfp_eth_set_configured(struct nfp_cpp *cpp,
 
 	/* Check if we are already in requested state */
 	reg = rte_le_to_cpu_64(entries[idx].state);
-	if (configed != (int)FIELD_GET(NSP_ETH_STATE_CONFIGURED, reg)) {
+	if (configured != (int)FIELD_GET(NSP_ETH_STATE_CONFIGURED, reg)) {
 		reg = rte_le_to_cpu_64(entries[idx].control);
 		reg &= ~NSP_ETH_CTRL_CONFIGURED;
-		reg |= FIELD_PREP(NSP_ETH_CTRL_CONFIGURED, configed);
+		reg |= FIELD_PREP(NSP_ETH_CTRL_CONFIGURED, configured);
 		entries[idx].control = rte_cpu_to_le_64(reg);
 
 		nfp_nsp_config_set_modified(nsp, 1);
@@ -576,7 +576,7 @@ nfp_eth_set_bit_config(struct nfp_nsp *nsp,
  *   0 or -ERRNO
  */
 int
-__nfp_eth_set_aneg(struct nfp_nsp *nsp,
+nfp_eth_set_aneg(struct nfp_nsp *nsp,
 		enum nfp_eth_aneg mode)
 {
 	return NFP_ETH_SET_BIT_CONFIG(nsp, NSP_ETH_RAW_STATE,
@@ -596,7 +596,7 @@ __nfp_eth_set_aneg(struct nfp_nsp *nsp,
  *   0 or -ERRNO
  */
 static int
-__nfp_eth_set_fec(struct nfp_nsp *nsp,
+nfp_eth_set_fec_real(struct nfp_nsp *nsp,
 		enum nfp_eth_fec mode)
 {
 	return NFP_ETH_SET_BIT_CONFIG(nsp, NSP_ETH_RAW_STATE,
@@ -630,7 +630,7 @@ nfp_eth_set_fec(struct nfp_cpp *cpp,
 	if (nsp == NULL)
 		return -EIO;
 
-	err = __nfp_eth_set_fec(nsp, mode);
+	err = nfp_eth_set_fec_real(nsp, mode);
 	if (err != 0) {
 		nfp_eth_config_cleanup_end(nsp);
 		return err;
@@ -654,7 +654,7 @@ nfp_eth_set_fec(struct nfp_cpp *cpp,
  *   0 or -ERRNO
  */
 int
-__nfp_eth_set_speed(struct nfp_nsp *nsp,
+nfp_eth_set_speed(struct nfp_nsp *nsp,
 		uint32_t speed)
 {
 	enum nfp_eth_rate rate;
@@ -682,7 +682,7 @@ __nfp_eth_set_speed(struct nfp_nsp *nsp,
  *   0 or -ERRNO
  */
 int
-__nfp_eth_set_split(struct nfp_nsp *nsp,
+nfp_eth_set_split(struct nfp_nsp *nsp,
 		uint32_t lanes)
 {
 	return NFP_ETH_SET_BIT_CONFIG(nsp, NSP_ETH_RAW_PORT,

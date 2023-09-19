@@ -90,7 +90,7 @@ nfp_cpp_model(struct nfp_cpp *cpp)
 	if (cpp == NULL)
 		return NFP_CPP_MODEL_INVALID;
 
-	err = __nfp_cpp_model_autodetect(cpp, &model);
+	err = nfp_cpp_model_autodetect(cpp, &model);
 
 	if (err < 0)
 		return err;
@@ -484,7 +484,7 @@ nfp_cpp_area_iomem(struct nfp_cpp_area *area)
  *   CPP area handle
  * @param offset
  *   Offset into CPP area
- * @param kernel_vaddr
+ * @param address
  *   Address to put data into
  * @param length
  *   Number of bytes to read
@@ -498,13 +498,13 @@ nfp_cpp_area_iomem(struct nfp_cpp_area *area)
 int
 nfp_cpp_area_read(struct nfp_cpp_area *area,
 		uint32_t offset,
-		void *kernel_vaddr,
+		void *address,
 		size_t length)
 {
 	if ((offset + length) > area->size)
 		return -EFAULT;
 
-	return area->cpp->op->area_read(area, kernel_vaddr, offset, length);
+	return area->cpp->op->area_read(area, address, offset, length);
 }
 
 /**
@@ -514,7 +514,7 @@ nfp_cpp_area_read(struct nfp_cpp_area *area,
  *   CPP area handle
  * @param offset
  *   Offset into CPP area
- * @param kernel_vaddr
+ * @param address
  *   Address to put data into
  * @param length
  *   Number of bytes to read
@@ -528,13 +528,13 @@ nfp_cpp_area_read(struct nfp_cpp_area *area,
 int
 nfp_cpp_area_write(struct nfp_cpp_area *area,
 		uint32_t offset,
-		const void *kernel_vaddr,
+		const void *address,
 		size_t length)
 {
 	if ((offset + length) > area->size)
 		return -EFAULT;
 
-	return area->cpp->op->area_write(area, kernel_vaddr, offset, length);
+	return area->cpp->op->area_write(area, address, offset, length);
 }
 
 /*
@@ -880,14 +880,14 @@ nfp_cpp_alloc(struct rte_pci_device *dev,
 	}
 
 	if (NFP_CPP_MODEL_IS_6000(nfp_cpp_model(cpp))) {
-		uint32_t xpbaddr;
-		size_t tgt;
+		uint32_t xpb_addr;
+		size_t target;
 
-		for (tgt = 0; tgt < RTE_DIM(cpp->imb_cat_table); tgt++) {
+		for (target = 0; target < RTE_DIM(cpp->imb_cat_table); target++) {
 			/* Hardcoded XPB IMB Base, island 0 */
-			xpbaddr = 0x000a0000 + (tgt * 4);
-			err = nfp_xpb_readl(cpp, xpbaddr,
-					(uint32_t *)&cpp->imb_cat_table[tgt]);
+			xpb_addr = 0x000a0000 + (target * 4);
+			err = nfp_xpb_readl(cpp, xpb_addr,
+					(uint32_t *)&cpp->imb_cat_table[target]);
 			if (err < 0) {
 				free(cpp);
 				return NULL;
@@ -950,9 +950,9 @@ nfp_cpp_from_device_name(struct rte_pci_device *dev,
  *   CPP handle
  * @param destination
  *   CPP id
- * @param address
+ * @param offset
  *   Offset into CPP target
- * @param kernel_vaddr
+ * @param address
  *   Buffer for result
  * @param length
  *   Number of bytes to read
@@ -963,20 +963,20 @@ nfp_cpp_from_device_name(struct rte_pci_device *dev,
 int
 nfp_cpp_read(struct nfp_cpp *cpp,
 		uint32_t destination,
-		uint64_t address,
-		void *kernel_vaddr,
+		uint64_t offset,
+		void *address,
 		size_t length)
 {
 	int err;
 	struct nfp_cpp_area *area;
 
-	area = nfp_cpp_area_alloc_acquire(cpp, destination, address, length);
+	area = nfp_cpp_area_alloc_acquire(cpp, destination, offset, length);
 	if (area == NULL) {
 		PMD_DRV_LOG(ERR, "Area allocation/acquire failed for read");
 		return -1;
 	}
 
-	err = nfp_cpp_area_read(area, 0, kernel_vaddr, length);
+	err = nfp_cpp_area_read(area, 0, address, length);
 
 	nfp_cpp_area_release_free(area);
 	return err;
@@ -989,9 +989,9 @@ nfp_cpp_read(struct nfp_cpp *cpp,
  *   CPP handle
  * @param destination
  *   CPP id
- * @param address
+ * @param offset
  *   Offset into CPP target
- * @param kernel_vaddr
+ * @param address
  *   Buffer to read from
  * @param length
  *   Number of bytes to write
@@ -1002,20 +1002,20 @@ nfp_cpp_read(struct nfp_cpp *cpp,
 int
 nfp_cpp_write(struct nfp_cpp *cpp,
 		uint32_t destination,
-		uint64_t address,
-		const void *kernel_vaddr,
+		uint64_t offset,
+		const void *address,
 		size_t length)
 {
 	int err;
 	struct nfp_cpp_area *area;
 
-	area = nfp_cpp_area_alloc_acquire(cpp, destination, address, length);
+	area = nfp_cpp_area_alloc_acquire(cpp, destination, offset, length);
 	if (area == NULL) {
 		PMD_DRV_LOG(ERR, "Area allocation/acquire failed for write");
 		return -1;
 	}
 
-	err = nfp_cpp_area_write(area, 0, kernel_vaddr, length);
+	err = nfp_cpp_area_write(area, 0, address, length);
 
 	nfp_cpp_area_release_free(area);
 	return err;
@@ -1026,7 +1026,7 @@ nfp_cpp_write(struct nfp_cpp *cpp,
  * as those are model-specific
  */
 uint32_t
-__nfp_cpp_model_autodetect(struct nfp_cpp *cpp,
+nfp_cpp_model_autodetect(struct nfp_cpp *cpp,
 		uint32_t *model)
 {
 	int err;

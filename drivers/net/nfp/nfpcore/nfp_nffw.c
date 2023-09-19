@@ -31,11 +31,11 @@ nffw_res_flg_init_get(const struct nfp_nffw_info_data *res)
 	return (res->flags[0] >> 0) & 1;
 }
 
-/* loaded = loaded__mu_da__mip_off_hi<31:31> */
+/* loaded = loaded_mu_da_mip_off_hi<31:31> */
 static uint32_t
 nffw_fwinfo_loaded_get(const struct nffw_fwinfo *fi)
 {
-	return (fi->loaded__mu_da__mip_off_hi >> 31) & 1;
+	return (fi->loaded_mu_da_mip_off_hi >> 31) & 1;
 }
 
 /* mip_cppid = mip_cppid */
@@ -45,18 +45,18 @@ nffw_fwinfo_mip_cppid_get(const struct nffw_fwinfo *fi)
 	return fi->mip_cppid;
 }
 
-/* loaded = loaded__mu_da__mip_off_hi<8:8> */
+/* loaded = loaded_mu_da_mip_off_hi<8:8> */
 static uint32_t
 nffw_fwinfo_mip_mu_da_get(const struct nffw_fwinfo *fi)
 {
-	return (fi->loaded__mu_da__mip_off_hi >> 8) & 1;
+	return (fi->loaded_mu_da_mip_off_hi >> 8) & 1;
 }
 
-/* mip_offset = (loaded__mu_da__mip_off_hi<7:0> << 32) | mip_offset_lo */
+/* mip_offset = (loaded_mu_da_mip_off_hi<7:0> << 32) | mip_offset_lo */
 static uint64_t
 nffw_fwinfo_mip_offset_get(const struct nffw_fwinfo *fi)
 {
-	uint64_t mip_off_hi = fi->loaded__mu_da__mip_off_hi;
+	uint64_t mip_off_hi = fi->loaded_mu_da_mip_off_hi;
 
 	return (mip_off_hi & 0xFF) << 32 | fi->mip_offset_lo;
 }
@@ -227,7 +227,7 @@ nfp_nffw_info_fwid_first(struct nfp_nffw_info *state)
 int
 nfp_nffw_info_mip_first(struct nfp_nffw_info *state,
 		uint32_t *cpp_id,
-		uint64_t *off)
+		uint64_t *offset)
 {
 	struct nffw_fwinfo *fwinfo;
 
@@ -236,7 +236,7 @@ nfp_nffw_info_mip_first(struct nfp_nffw_info *state,
 		return -EINVAL;
 
 	*cpp_id = nffw_fwinfo_mip_cppid_get(fwinfo);
-	*off = nffw_fwinfo_mip_offset_get(fwinfo);
+	*offset = nffw_fwinfo_mip_offset_get(fwinfo);
 
 	if (nffw_fwinfo_mip_mu_da_get(fwinfo) != 0) {
 		int locality_off;
@@ -248,8 +248,8 @@ nfp_nffw_info_mip_first(struct nfp_nffw_info *state,
 		if (locality_off < 0)
 			return locality_off;
 
-		*off &= ~(NFP_MU_ADDR_ACCESS_TYPE_MASK << locality_off);
-		*off |= NFP_MU_ADDR_ACCESS_TYPE_DIRECT << locality_off;
+		*offset &= ~(NFP_MU_ADDR_ACCESS_TYPE_MASK << locality_off);
+		*offset |= NFP_MU_ADDR_ACCESS_TYPE_DIRECT << locality_off;
 	}
 
 	return 0;

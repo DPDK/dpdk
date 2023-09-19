@@ -35,7 +35,7 @@ struct nfp_cpp_mutex {
 };
 
 static int
-_nfp_cpp_mutex_validate(uint32_t model,
+nfp_cpp_mutex_validate(uint32_t model,
 		int *target,
 		uint64_t address)
 {
@@ -87,7 +87,7 @@ nfp_cpp_mutex_init(struct nfp_cpp *cpp,
 	uint32_t model = nfp_cpp_model(cpp);
 	uint32_t muw = NFP_CPP_ID(target, 4, 0);    /* atomic_write */
 
-	err = _nfp_cpp_mutex_validate(model, &target, address);
+	err = nfp_cpp_mutex_validate(model, &target, address);
 	if (err < 0)
 		return err;
 
@@ -152,7 +152,7 @@ nfp_cpp_mutex_alloc(struct nfp_cpp *cpp,
 		return NULL;
 	}
 
-	err = _nfp_cpp_mutex_validate(model, &target, address);
+	err = nfp_cpp_mutex_validate(model, &target, address);
 	if (err < 0)
 		return NULL;
 

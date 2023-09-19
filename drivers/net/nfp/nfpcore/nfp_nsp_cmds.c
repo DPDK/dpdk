@@ -24,7 +24,7 @@ struct nsp_identify {
 };
 
 struct nfp_nsp_identify *
-__nfp_nsp_identify(struct nfp_nsp *nsp)
+nfp_nsp_identify(struct nfp_nsp *nsp)
 {
 	int ret;
 	struct nsp_identify *ni;

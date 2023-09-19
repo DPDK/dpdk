@@ -38,11 +38,11 @@
 
 /* nfp.nffw meinfo */
 struct nffw_meinfo {
-	uint32_t ctxmask__fwid__meid;
+	uint32_t ctxmask_fwid_meid;
 };
 
 struct nffw_fwinfo {
-	uint32_t loaded__mu_da__mip_off_hi;
+	uint32_t loaded_mu_da_mip_off_hi;
 	uint32_t mip_cppid; /* 0 means no MIP */
 	uint32_t mip_offset_lo;
 };
