@@ -101,7 +101,7 @@ struct nfp_bar {
 	uint64_t base;		/* CPP address base */
 	uint64_t mask;		/* Bit mask of the bar */
 	uint32_t bitsize;	/* Bit size of the bar */
-	int index;
+	uint32_t index;
 	int lock;
 
 	char *csr;
@@ -400,8 +400,8 @@ struct nfp6000_area_priv {
 static int
 nfp6000_area_init(struct nfp_cpp_area *area,
 		uint32_t dest,
-		unsigned long long address,
-		unsigned long size)
+		uint64_t address,
+		size_t size)
 {
 	struct nfp_pcie_user *nfp = nfp_cpp_priv(nfp_cpp_area_cpp(area));
 	struct nfp6000_area_priv *priv = nfp_cpp_area_priv(area);
@@ -501,8 +501,8 @@ nfp6000_area_iomem(struct nfp_cpp_area *area)
 static int
 nfp6000_area_read(struct nfp_cpp_area *area,
 		void *kernel_vaddr,
-		unsigned long offset,
-		unsigned int length)
+		uint32_t offset,
+		size_t length)
 {
 	uint64_t *wrptr64 = kernel_vaddr;
 	const volatile uint64_t *rdptr64;
@@ -510,7 +510,7 @@ nfp6000_area_read(struct nfp_cpp_area *area,
 	uint32_t *wrptr32 = kernel_vaddr;
 	const volatile uint32_t *rdptr32;
 	int width;
-	unsigned int n;
+	size_t n;
 	bool is_64;
 
 	priv = nfp_cpp_area_priv(area);
@@ -571,8 +571,8 @@ nfp6000_area_read(struct nfp_cpp_area *area,
 static int
 nfp6000_area_write(struct nfp_cpp_area *area,
 		const void *kernel_vaddr,
-		unsigned long offset,
-		unsigned int length)
+		uint32_t offset,
+		size_t length)
 {
 	const uint64_t *rdptr64 = kernel_vaddr;
 	uint64_t *wrptr64;
@@ -580,7 +580,7 @@ nfp6000_area_write(struct nfp_cpp_area *area,
 	struct nfp6000_area_priv *priv;
 	uint32_t *wrptr32;
 	int width;
-	unsigned int n;
+	size_t n;
 	bool is_64;
 
 	priv = nfp_cpp_area_priv(area);
@@ -752,7 +752,7 @@ static int
 nfp6000_set_barsz(struct rte_pci_device *dev,
 		struct nfp_pcie_user *desc)
 {
-	unsigned long tmp;
+	uint64_t tmp;
 	int i = 0;
 
 	tmp = dev->mem_resource[0].len;

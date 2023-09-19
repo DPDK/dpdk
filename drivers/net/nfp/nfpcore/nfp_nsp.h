@@ -110,11 +110,11 @@ uint16_t nfp_nsp_get_abi_ver_major(struct nfp_nsp *state);
 uint16_t nfp_nsp_get_abi_ver_minor(struct nfp_nsp *state);
 int nfp_nsp_wait(struct nfp_nsp *state);
 int nfp_nsp_device_soft_reset(struct nfp_nsp *state);
-int nfp_nsp_load_fw(struct nfp_nsp *state, void *buf, unsigned int size);
+int nfp_nsp_load_fw(struct nfp_nsp *state, void *buf, size_t size);
 int nfp_nsp_mac_reinit(struct nfp_nsp *state);
-int nfp_nsp_read_identify(struct nfp_nsp *state, void *buf, unsigned int size);
-int nfp_nsp_read_sensors(struct nfp_nsp *state, unsigned int sensor_mask,
-		void *buf, unsigned int size);
+int nfp_nsp_read_identify(struct nfp_nsp *state, void *buf, size_t size);
+int nfp_nsp_read_sensors(struct nfp_nsp *state, uint32_t sensor_mask,
+		void *buf, size_t size);
 
 static inline int
 nfp_nsp_has_mac_reinit(struct nfp_nsp *state)
@@ -188,17 +188,17 @@ enum nfp_eth_fec {
  * @fec_modes_supported:	bitmap of FEC modes supported
  */
 struct nfp_eth_table {
-	unsigned int count;
-	unsigned int max_index;
+	uint32_t count;
+	uint32_t max_index;
 	struct nfp_eth_table_port {
-		unsigned int eth_index;
-		unsigned int index;
-		unsigned int nbi;
-		unsigned int base;
-		unsigned int lanes;
-		unsigned int speed;
+		uint32_t eth_index;
+		uint32_t index;
+		uint32_t nbi;
+		uint32_t base;
+		uint32_t lanes;
+		uint32_t speed;
 
-		unsigned int interface;
+		uint32_t interface;
 		enum nfp_eth_media media;
 
 		enum nfp_eth_fec fec;
@@ -218,51 +218,50 @@ struct nfp_eth_table {
 		/* Computed fields */
 		uint8_t port_type;
 
-		unsigned int port_lanes;
+		uint32_t port_lanes;
 
 		int is_split;
 
-		unsigned int fec_modes_supported;
+		uint32_t fec_modes_supported;
 	} ports[];
 };
 
 struct nfp_eth_table *nfp_eth_read_ports(struct nfp_cpp *cpp);
 
-int nfp_eth_set_mod_enable(struct nfp_cpp *cpp, unsigned int idx, int enable);
-int nfp_eth_set_configured(struct nfp_cpp *cpp, unsigned int idx,
-		int configed);
-int nfp_eth_set_fec(struct nfp_cpp *cpp, unsigned int idx, enum nfp_eth_fec mode);
+int nfp_eth_set_mod_enable(struct nfp_cpp *cpp, uint32_t idx, int enable);
+int nfp_eth_set_configured(struct nfp_cpp *cpp, uint32_t idx, int configed);
+int nfp_eth_set_fec(struct nfp_cpp *cpp, uint32_t idx, enum nfp_eth_fec mode);
 
-int nfp_nsp_read_eth_table(struct nfp_nsp *state, void *buf, unsigned int size);
+int nfp_nsp_read_eth_table(struct nfp_nsp *state, void *buf, size_t size);
 int nfp_nsp_write_eth_table(struct nfp_nsp *state, const void *buf,
-		unsigned int size);
+		size_t size);
 void nfp_nsp_config_set_state(struct nfp_nsp *state, void *entries,
-		unsigned int idx);
+		uint32_t idx);
 void nfp_nsp_config_clear_state(struct nfp_nsp *state);
 void nfp_nsp_config_set_modified(struct nfp_nsp *state, int modified);
 void *nfp_nsp_config_entries(struct nfp_nsp *state);
 int nfp_nsp_config_modified(struct nfp_nsp *state);
-unsigned int nfp_nsp_config_idx(struct nfp_nsp *state);
+uint32_t nfp_nsp_config_idx(struct nfp_nsp *state);
 
 static inline int
 nfp_eth_can_support_fec(struct nfp_eth_table_port *eth_port)
 {
-	return !!eth_port->fec_modes_supported;
+	return eth_port->fec_modes_supported != 0;
 }
 
-static inline unsigned int
+static inline uint32_t
 nfp_eth_supported_fec_modes(struct nfp_eth_table_port *eth_port)
 {
 	return eth_port->fec_modes_supported;
 }
 
-struct nfp_nsp *nfp_eth_config_start(struct nfp_cpp *cpp, unsigned int idx);
+struct nfp_nsp *nfp_eth_config_start(struct nfp_cpp *cpp, uint32_t idx);
 int nfp_eth_config_commit_end(struct nfp_nsp *nsp);
 void nfp_eth_config_cleanup_end(struct nfp_nsp *nsp);
 
 int __nfp_eth_set_aneg(struct nfp_nsp *nsp, enum nfp_eth_aneg mode);
-int __nfp_eth_set_speed(struct nfp_nsp *nsp, unsigned int speed);
-int __nfp_eth_set_split(struct nfp_nsp *nsp, unsigned int lanes);
+int __nfp_eth_set_speed(struct nfp_nsp *nsp, uint32_t speed);
+int __nfp_eth_set_split(struct nfp_nsp *nsp, uint32_t lanes);
 
 /**
  * struct nfp_nsp_identify - NSP static information
@@ -298,6 +297,6 @@ enum nfp_nsp_sensor_id {
 };
 
 int nfp_hwmon_read_sensor(struct nfp_cpp *cpp, enum nfp_nsp_sensor_id id,
-		long *val);
+		uint32_t *val);
 
 #endif

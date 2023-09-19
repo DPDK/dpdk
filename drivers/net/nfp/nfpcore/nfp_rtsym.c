@@ -382,7 +382,7 @@ exit:
 uint8_t *
 nfp_rtsym_map(struct nfp_rtsym_table *rtbl,
 		const char *name,
-		unsigned int min_size,
+		uint32_t min_size,
 		struct nfp_cpp_area **area)
 {
 	int ret;

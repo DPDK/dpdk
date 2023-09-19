@@ -34,7 +34,7 @@ nfp_nsp_config_entries(struct nfp_nsp *state)
 	return state->entries;
 }
 
-unsigned int
+uint32_t
 nfp_nsp_config_idx(struct nfp_nsp *state)
 {
 	return state->idx;
@@ -43,7 +43,7 @@ nfp_nsp_config_idx(struct nfp_nsp *state)
 void
 nfp_nsp_config_set_state(struct nfp_nsp *state,
 		void *entries,
-		unsigned int idx)
+		uint32_t idx)
 {
 	state->entries = entries;
 	state->idx = idx;
@@ -59,12 +59,12 @@ nfp_nsp_config_clear_state(struct nfp_nsp *state)
 static void
 nfp_nsp_print_extended_error(uint32_t ret_val)
 {
-	int i;
+	uint32_t i;
 
 	if (ret_val == 0)
 		return;
 
-	for (i = 0; i < (int)RTE_DIM(nsp_errors); i++)
+	for (i = 0; i < RTE_DIM(nsp_errors); i++)
 		if (ret_val == (uint32_t)nsp_errors[i].code)
 			PMD_DRV_LOG(ERR, "err msg: %s", nsp_errors[i].msg);
 }
@@ -171,7 +171,7 @@ nfp_nsp_wait_reg(struct nfp_cpp *cpp,
 		uint64_t val)
 {
 	struct timespec wait;
-	int count;
+	uint32_t count;
 	int err;
 
 	wait.tv_sec = 0;
@@ -297,7 +297,7 @@ nfp_nsp_command_buf(struct nfp_nsp *nsp,
 		unsigned int out_size)
 {
 	struct nfp_cpp *cpp = nsp->cpp;
-	unsigned int max_size;
+	size_t max_size;
 	uint64_t reg, cpp_buf;
 	int ret, err;
 	uint32_t cpp_id;
@@ -316,7 +316,7 @@ nfp_nsp_command_buf(struct nfp_nsp *nsp,
 
 	max_size = RTE_MAX(in_size, out_size);
 	if (FIELD_GET(NSP_DFLT_BUFFER_SIZE_MB, reg) * SZ_1M < max_size) {
-		PMD_DRV_LOG(ERR, "NSP: default buffer too small for command 0x%04x (%llu < %u)",
+		PMD_DRV_LOG(ERR, "NSP: default buffer too small for command 0x%04x (%llu < %zu)",
 				code, FIELD_GET(NSP_DFLT_BUFFER_SIZE_MB, reg) * SZ_1M, max_size);
 		return -EINVAL;
 	}
@@ -361,7 +361,7 @@ int
 nfp_nsp_wait(struct nfp_nsp *state)
 {
 	struct timespec wait;
-	int count;
+	uint32_t count;
 	int err;
 
 	wait.tv_sec = 0;
@@ -401,7 +401,7 @@ nfp_nsp_mac_reinit(struct nfp_nsp *state)
 int
 nfp_nsp_load_fw(struct nfp_nsp *state,
 		void *buf,
-		unsigned int size)
+		size_t size)
 {
 	return nfp_nsp_command_buf(state, SPCODE_FW_LOAD, size, buf, size,
 			NULL, 0);
@@ -410,7 +410,7 @@ nfp_nsp_load_fw(struct nfp_nsp *state,
 int
 nfp_nsp_read_eth_table(struct nfp_nsp *state,
 		void *buf,
-		unsigned int size)
+		size_t size)
 {
 	return nfp_nsp_command_buf(state, SPCODE_ETH_RESCAN, size, NULL, 0,
 			buf, size);
@@ -419,7 +419,7 @@ nfp_nsp_read_eth_table(struct nfp_nsp *state,
 int
 nfp_nsp_write_eth_table(struct nfp_nsp *state,
 		const void *buf,
-		unsigned int size)
+		size_t size)
 {
 	return nfp_nsp_command_buf(state, SPCODE_ETH_CONTROL, size, buf, size,
 			NULL, 0);
@@ -428,7 +428,7 @@ nfp_nsp_write_eth_table(struct nfp_nsp *state,
 int
 nfp_nsp_read_identify(struct nfp_nsp *state,
 		void *buf,
-		unsigned int size)
+		size_t size)
 {
 	return nfp_nsp_command_buf(state, SPCODE_NSP_IDENTIFY, size, NULL, 0,
 			buf, size);
@@ -436,9 +436,9 @@ nfp_nsp_read_identify(struct nfp_nsp *state,
 
 int
 nfp_nsp_read_sensors(struct nfp_nsp *state,
-		unsigned int sensor_mask,
+		uint32_t sensor_mask,
 		void *buf,
-		unsigned int size)
+		size_t size)
 {
 	return nfp_nsp_command_buf(state, SPCODE_NSP_SENSORS, sensor_mask, NULL,
 			0, buf, size);

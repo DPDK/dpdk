@@ -68,7 +68,7 @@ nffw_fwinfo_mip_offset_get(const struct nffw_fwinfo *fi)
 static int
 nfp_mip_mu_locality_lsb(struct nfp_cpp *cpp)
 {
-	unsigned int mode, addr40;
+	uint32_t mode, addr40;
 	uint32_t xpbaddr, imbcppat;
 	int err;
 
@@ -84,7 +84,7 @@ nfp_mip_mu_locality_lsb(struct nfp_cpp *cpp)
 	return nfp_cppat_mu_locality_lsb(mode, addr40);
 }
 
-static unsigned int
+static uint32_t
 nffw_res_fwinfos(struct nfp_nffw_info_data *fwinf,
 		struct nffw_fwinfo **arr)
 {
@@ -184,7 +184,7 @@ static struct nffw_fwinfo *
 nfp_nffw_info_fwid_first(struct nfp_nffw_info *state)
 {
 	struct nffw_fwinfo *fwinfo;
-	unsigned int cnt, i;
+	uint32_t cnt, i;
 
 	cnt = nffw_res_fwinfos(&state->fwinf, &fwinfo);
 	if (cnt == 0)

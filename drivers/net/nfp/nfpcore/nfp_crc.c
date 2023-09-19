@@ -14,7 +14,7 @@ nfp_crc32_be_generic(uint32_t crc,
 		size_t len,
 		uint32_t polynomial)
 {
-	int i;
+	uint32_t i;
 	while (len--) {
 		crc ^= *p++ << 24;
 		for (i = 0; i < 8; i++)

@@ -156,7 +156,7 @@ nfp_resource_acquire(struct nfp_cpp *cpp,
 	struct nfp_resource *res;
 	int err;
 	struct timespec wait;
-	int count;
+	uint16_t count;
 
 	res = malloc(sizeof(*res));
 	if (res == NULL)

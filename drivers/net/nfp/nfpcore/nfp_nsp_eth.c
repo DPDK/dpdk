@@ -124,7 +124,7 @@ union eth_table_entry {
 
 static const struct {
 	enum nfp_eth_rate rate;
-	unsigned int speed;
+	uint32_t speed;
 } nsp_eth_rate_tbl[] = {
 	{ RATE_INVALID,	0, },
 	{ RATE_10M,	SPEED_10, },
@@ -134,24 +134,24 @@ static const struct {
 	{ RATE_25G,	SPEED_25000, },
 };
 
-static unsigned int
+static uint32_t
 nfp_eth_rate2speed(enum nfp_eth_rate rate)
 {
-	int i;
+	uint32_t i;
 
-	for (i = 0; i < (int)RTE_DIM(nsp_eth_rate_tbl); i++)
+	for (i = 0; i < RTE_DIM(nsp_eth_rate_tbl); i++)
 		if (nsp_eth_rate_tbl[i].rate == rate)
 			return nsp_eth_rate_tbl[i].speed;
 
 	return 0;
 }
 
-static unsigned int
-nfp_eth_speed2rate(unsigned int speed)
+static enum nfp_eth_rate
+nfp_eth_speed2rate(uint32_t speed)
 {
-	int i;
+	uint32_t i;
 
-	for (i = 0; i < (int)RTE_DIM(nsp_eth_rate_tbl); i++)
+	for (i = 0; i < RTE_DIM(nsp_eth_rate_tbl); i++)
 		if (nsp_eth_rate_tbl[i].speed == speed)
 			return nsp_eth_rate_tbl[i].rate;
 
@@ -162,7 +162,7 @@ static void
 nfp_eth_copy_mac_reverse(uint8_t *dst,
 		const uint8_t *src)
 {
-	int i;
+	uint32_t i;
 
 	for (i = 0; i < RTE_ETHER_ADDR_LEN; i++)
 		dst[RTE_ETHER_ADDR_LEN - i - 1] = src[i];
@@ -171,11 +171,11 @@ nfp_eth_copy_mac_reverse(uint8_t *dst,
 static void
 nfp_eth_port_translate(struct nfp_nsp *nsp,
 		const union eth_table_entry *src,
-		unsigned int index,
+		uint32_t index,
 		struct nfp_eth_table_port *dst)
 {
-	unsigned int rate;
-	unsigned int fec;
+	uint32_t rate;
+	uint32_t fec;
 	uint64_t port, state;
 
 	port = rte_le_to_cpu_64(src->port);
@@ -224,7 +224,7 @@ nfp_eth_port_translate(struct nfp_nsp *nsp,
 static void
 nfp_eth_calc_port_geometry(struct nfp_eth_table *table)
 {
-	unsigned int i, j;
+	uint32_t i, j;
 
 	for (i = 0; i < table->count; i++) {
 		table->max_index = RTE_MAX(table->max_index,
@@ -269,7 +269,9 @@ __nfp_eth_read_ports(struct nfp_nsp *nsp)
 	union eth_table_entry *entries;
 	struct nfp_eth_table *table;
 	uint32_t table_sz;
-	int i, j, ret, cnt = 0;
+	uint32_t i;
+	uint32_t j;
+	int ret, cnt = 0;
 	const struct rte_ether_addr *mac;
 
 	entries = malloc(NSP_ETH_TABLE_SIZE);
@@ -319,7 +321,7 @@ __nfp_eth_read_ports(struct nfp_nsp *nsp)
 	}
 
 	nfp_eth_calc_port_geometry(table);
-	for (i = 0; i < (int)table->count; i++)
+	for (i = 0; i < table->count; i++)
 		nfp_eth_calc_port_type(&table->ports[i]);
 
 	free(entries);
@@ -358,7 +360,7 @@ nfp_eth_read_ports(struct nfp_cpp *cpp)
 
 struct nfp_nsp *
 nfp_eth_config_start(struct nfp_cpp *cpp,
-		unsigned int idx)
+		uint32_t idx)
 {
 	union eth_table_entry *entries;
 	struct nfp_nsp *nsp;
@@ -452,7 +454,7 @@ nfp_eth_config_commit_end(struct nfp_nsp *nsp)
  */
 int
 nfp_eth_set_mod_enable(struct nfp_cpp *cpp,
-		unsigned int idx,
+		uint32_t idx,
 		int enable)
 {
 	union eth_table_entry *entries;
@@ -494,7 +496,7 @@ nfp_eth_set_mod_enable(struct nfp_cpp *cpp,
  */
 int
 nfp_eth_set_configured(struct nfp_cpp *cpp,
-		unsigned int idx,
+		uint32_t idx,
 		int configed)
 {
 	union eth_table_entry *entries;
@@ -532,14 +534,14 @@ nfp_eth_set_configured(struct nfp_cpp *cpp,
 
 static int
 nfp_eth_set_bit_config(struct nfp_nsp *nsp,
-		unsigned int raw_idx,
+		uint32_t raw_idx,
 		const uint64_t mask,
-		const unsigned int shift,
-		unsigned int val,
+		const uint32_t shift,
+		uint32_t val,
 		const uint64_t ctrl_bit)
 {
 	union eth_table_entry *entries = nfp_nsp_config_entries(nsp);
-	unsigned int idx = nfp_nsp_config_idx(nsp);
+	uint32_t idx = nfp_nsp_config_idx(nsp);
 	uint64_t reg;
 
 	/*
@@ -623,7 +625,7 @@ __nfp_eth_set_fec(struct nfp_nsp *nsp,
  */
 int
 nfp_eth_set_fec(struct nfp_cpp *cpp,
-		unsigned int idx,
+		uint32_t idx,
 		enum nfp_eth_fec mode)
 {
 	struct nfp_nsp *nsp;
@@ -656,7 +658,7 @@ nfp_eth_set_fec(struct nfp_cpp *cpp,
  */
 int
 __nfp_eth_set_speed(struct nfp_nsp *nsp,
-		unsigned int speed)
+		uint32_t speed)
 {
 	enum nfp_eth_rate rate;
 
@@ -682,7 +684,7 @@ __nfp_eth_set_speed(struct nfp_nsp *nsp,
  */
 int
 __nfp_eth_set_split(struct nfp_nsp *nsp,
-		unsigned int lanes)
+		uint32_t lanes)
 {
 	return NFP_ETH_SET_BIT_CONFIG(nsp, NSP_ETH_RAW_PORT,
 			NSP_ETH_PORT_LANES, lanes, NSP_ETH_CTRL_SET_LANES);

@@ -169,8 +169,8 @@ struct nfp_cpp_area *
 nfp_cpp_area_alloc_with_name(struct nfp_cpp *cpp,
 		uint32_t dest,
 		const char *name,
-		unsigned long long address,
-		unsigned long size)
+		uint64_t address,
+		uint32_t size)
 {
 	struct nfp_cpp_area *area;
 	uint64_t tmp64 = (uint64_t)address;
@@ -184,7 +184,7 @@ nfp_cpp_area_alloc_with_name(struct nfp_cpp *cpp,
 	if (err < 0)
 		return NULL;
 
-	address = (unsigned long long)tmp64;
+	address = tmp64;
 
 	if (name == NULL)
 		name = "";
@@ -213,8 +213,8 @@ nfp_cpp_area_alloc_with_name(struct nfp_cpp *cpp,
 struct nfp_cpp_area *
 nfp_cpp_area_alloc(struct nfp_cpp *cpp,
 		uint32_t dest,
-		unsigned long long address,
-		unsigned long size)
+		uint64_t address,
+		size_t size)
 {
 	return nfp_cpp_area_alloc_with_name(cpp, dest, NULL, address, size);
 }
@@ -237,8 +237,8 @@ nfp_cpp_area_alloc(struct nfp_cpp *cpp,
 struct nfp_cpp_area *
 nfp_cpp_area_alloc_acquire(struct nfp_cpp *cpp,
 		uint32_t destination,
-		unsigned long long address,
-		unsigned long size)
+		uint64_t address,
+		size_t size)
 {
 	struct nfp_cpp_area *area;
 
@@ -352,7 +352,7 @@ nfp_cpp_area_iomem(struct nfp_cpp_area *area)
  */
 int
 nfp_cpp_area_read(struct nfp_cpp_area *area,
-		unsigned long offset,
+		uint32_t offset,
 		void *kernel_vaddr,
 		size_t length)
 {
@@ -378,7 +378,7 @@ nfp_cpp_area_read(struct nfp_cpp_area *area,
  */
 int
 nfp_cpp_area_write(struct nfp_cpp_area *area,
-		unsigned long offset,
+		uint32_t offset,
 		const void *kernel_vaddr,
 		size_t length)
 {
@@ -461,7 +461,7 @@ nfp_xpb_to_cpp(struct nfp_cpp *cpp,
 
 int
 nfp_cpp_area_readl(struct nfp_cpp_area *area,
-		unsigned long offset,
+		uint32_t offset,
 		uint32_t *value)
 {
 	int sz;
@@ -475,7 +475,7 @@ nfp_cpp_area_readl(struct nfp_cpp_area *area,
 
 int
 nfp_cpp_area_writel(struct nfp_cpp_area *area,
-		unsigned long offset,
+		uint32_t offset,
 		uint32_t value)
 {
 	int sz;
@@ -487,7 +487,7 @@ nfp_cpp_area_writel(struct nfp_cpp_area *area,
 
 int
 nfp_cpp_area_readq(struct nfp_cpp_area *area,
-		unsigned long offset,
+		uint32_t offset,
 		uint64_t *value)
 {
 	int sz;
@@ -501,7 +501,7 @@ nfp_cpp_area_readq(struct nfp_cpp_area *area,
 
 int
 nfp_cpp_area_writeq(struct nfp_cpp_area *area,
-		unsigned long offset,
+		uint32_t offset,
 		uint64_t value)
 {
 	int sz;
@@ -515,7 +515,7 @@ nfp_cpp_area_writeq(struct nfp_cpp_area *area,
 int
 nfp_cpp_readl(struct nfp_cpp *cpp,
 		uint32_t cpp_id,
-		unsigned long long address,
+		uint64_t address,
 		uint32_t *value)
 {
 	int sz;
@@ -530,7 +530,7 @@ nfp_cpp_readl(struct nfp_cpp *cpp,
 int
 nfp_cpp_writel(struct nfp_cpp *cpp,
 		uint32_t cpp_id,
-		unsigned long long address,
+		uint64_t address,
 		uint32_t value)
 {
 	int sz;
@@ -544,7 +544,7 @@ nfp_cpp_writel(struct nfp_cpp *cpp,
 int
 nfp_cpp_readq(struct nfp_cpp *cpp,
 		uint32_t cpp_id,
-		unsigned long long address,
+		uint64_t address,
 		uint64_t *value)
 {
 	int sz;
@@ -559,7 +559,7 @@ nfp_cpp_readq(struct nfp_cpp *cpp,
 int
 nfp_cpp_writeq(struct nfp_cpp *cpp,
 		uint32_t cpp_id,
-		unsigned long long address,
+		uint64_t address,
 		uint64_t value)
 {
 	int sz;
@@ -758,7 +758,7 @@ exit:
 int
 nfp_cpp_read(struct nfp_cpp *cpp,
 		uint32_t destination,
-		unsigned long long address,
+		uint64_t address,
 		void *kernel_vaddr,
 		size_t length)
 {
@@ -788,7 +788,7 @@ nfp_cpp_read(struct nfp_cpp *cpp,
 int
 nfp_cpp_write(struct nfp_cpp *cpp,
 		uint32_t destination,
-		unsigned long long address,
+		uint64_t address,
 		const void *kernel_vaddr,
 		size_t length)
 {
@@ -902,7 +902,7 @@ uint8_t *
 nfp_cpp_map_area(struct nfp_cpp *cpp,
 		uint32_t cpp_id,
 		uint64_t addr,
-		unsigned long size,
+		uint32_t size,
 		struct nfp_cpp_area **area)
 {
 	uint8_t *res;

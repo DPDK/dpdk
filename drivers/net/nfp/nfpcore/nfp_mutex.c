@@ -28,16 +28,16 @@ struct nfp_cpp_mutex {
 	struct nfp_cpp *cpp;
 	uint8_t target;
 	uint16_t depth;
-	unsigned long long address;
+	uint64_t address;
 	uint32_t key;
-	unsigned int usage;
+	uint32_t usage;
 	struct nfp_cpp_mutex *prev, *next;
 };
 
 static int
 _nfp_cpp_mutex_validate(uint32_t model,
 		int *target,
-		unsigned long long address)
+		uint64_t address)
 {
 	/* Address must be 64-bit aligned */
 	if ((address & 7) != 0)
@@ -76,7 +76,7 @@ _nfp_cpp_mutex_validate(uint32_t model,
 int
 nfp_cpp_mutex_init(struct nfp_cpp *cpp,
 		int target,
-		unsigned long long address,
+		uint64_t address,
 		uint32_t key)
 {
 	uint32_t model = nfp_cpp_model(cpp);
@@ -119,7 +119,7 @@ nfp_cpp_mutex_init(struct nfp_cpp *cpp,
 struct nfp_cpp_mutex *
 nfp_cpp_mutex_alloc(struct nfp_cpp *cpp,
 		int target,
-		unsigned long long address,
+		uint64_t address,
 		uint32_t key)
 {
 	uint32_t model = nfp_cpp_model(cpp);
@@ -269,9 +269,10 @@ nfp_cpp_mutex_lock(struct nfp_cpp_mutex *mutex)
 		if (err < 0 && err != -EBUSY)
 			return err;
 		if (time(NULL) >= warn_at) {
-			PMD_DRV_LOG(ERR, "Warning: waiting for NFP mutex usage:%u depth:%hd] target:%d addr:%llx key:%08x]",
+			PMD_DRV_LOG(ERR, "Warning: waiting for NFP mutex usage:%u depth:%hd] "
+					"target:%d key:%08x] addr:%" PRIx64,
 					mutex->usage, mutex->depth, mutex->target,
-					mutex->address, mutex->key);
+					mutex->key, mutex->address);
 			warn_at = time(NULL) + 60;
 		}
 		sched_yield();

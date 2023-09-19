@@ -56,5 +56,5 @@ const struct nfp_rtsym *nfp_rtsym_lookup(struct nfp_rtsym_table *rtbl,
 uint64_t nfp_rtsym_read_le(struct nfp_rtsym_table *rtbl, const char *name,
 		int *error);
 uint8_t *nfp_rtsym_map(struct nfp_rtsym_table *rtbl, const char *name,
-		unsigned int min_size, struct nfp_cpp_area **area);
+		uint32_t min_size, struct nfp_cpp_area **area);
 #endif
