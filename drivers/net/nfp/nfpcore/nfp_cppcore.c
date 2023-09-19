@@ -14,12 +14,12 @@
 #include <rte_byteorder.h>
 #include <ethdev_pci.h>
 
-#include "nfp_cpp.h"
 #include "nfp_logs.h"
 #include "nfp_target.h"
 #include "nfp6000/nfp6000.h"
 #include "nfp6000/nfp_xpb.h"
 #include "nfp_nffw.h"
+#include "nfp6000_pcie.h"
 
 #define NFP_PL_DEVICE_ID                        0x00000004
 #define NFP_PL_DEVICE_ID_MASK                   0xff

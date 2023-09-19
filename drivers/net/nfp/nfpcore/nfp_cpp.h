@@ -226,12 +226,6 @@ NFP_CPP_ID_ISLAND_of(uint32_t id)
 	return id & 0xff;
 }
 
-/*
- * This should be the only external function the transport
- * module supplies
- */
-const struct nfp_cpp_operations *nfp_cpp_transport_operations(void);
-
 void nfp_cpp_model_set(struct nfp_cpp *cpp, uint32_t model);
 
 void nfp_cpp_interface_set(struct nfp_cpp *cpp, uint32_t interface);

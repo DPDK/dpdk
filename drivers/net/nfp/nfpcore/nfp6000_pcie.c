@@ -14,6 +14,8 @@
  * The generic CPP bus abstraction builds upon this BAR interface.
  */
 
+#include "nfp6000_pcie.h"
+
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
