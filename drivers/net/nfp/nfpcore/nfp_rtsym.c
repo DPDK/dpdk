@@ -14,6 +14,7 @@
 
 #include "nfp_logs.h"
 #include "nfp_mip.h"
+#include "nfp_target.h"
 #include "nfp6000/nfp6000.h"
 
 enum nfp_rtsym_type {

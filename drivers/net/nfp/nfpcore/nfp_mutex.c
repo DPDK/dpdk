@@ -9,7 +9,7 @@
 
 #include "nfp_cpp.h"
 #include "nfp_logs.h"
-#include "nfp6000/nfp6000.h"
+#include "nfp_target.h"
 
 #define MUTEX_LOCKED(interface)  ((((uint32_t)(interface)) << 16) | 0x000f)
 #define MUTEX_UNLOCK(interface)  (0                               | 0x0000)

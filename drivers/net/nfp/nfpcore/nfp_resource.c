@@ -7,7 +7,7 @@
 
 #include "nfp_crc.h"
 #include "nfp_logs.h"
-#include "nfp6000/nfp6000.h"
+#include "nfp_target.h"
 
 #define NFP_RESOURCE_TBL_TARGET         NFP_CPP_TARGET_MU
 #define NFP_RESOURCE_TBL_BASE           0x8100000000ULL

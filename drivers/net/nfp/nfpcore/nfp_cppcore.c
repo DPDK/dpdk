@@ -16,6 +16,7 @@
 
 #include "nfp_cpp.h"
 #include "nfp_logs.h"
+#include "nfp_target.h"
 #include "nfp6000/nfp6000.h"
 #include "nfp6000/nfp_xpb.h"
 #include "nfp_nffw.h"
