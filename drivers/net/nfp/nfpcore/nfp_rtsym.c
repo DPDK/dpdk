@@ -60,8 +60,6 @@ nfp_rtsym_sw_entry_init(struct nfp_rtsym_table *cache,
 	sw->size = ((uint64_t)fw->size_hi << 32) |
 			rte_le_to_cpu_32(fw->size_lo);
 
-	PMD_INIT_LOG(DEBUG, "rtsym_entry_init name=%s, addr=%" PRIx64 ", size=%" PRIu64 ", target=%d",
-		     sw->name, sw->addr, sw->size, sw->target);
 	switch (fw->target) {
 	case SYM_TGT_LMEM:
 		sw->target = NFP_RTSYM_TARGET_LMEM;
@@ -227,7 +225,7 @@ nfp_rtsym_size(const struct nfp_rtsym *sym)
 {
 	switch (sym->type) {
 	case NFP_RTSYM_TYPE_NONE:
-		PMD_DRV_LOG(ERR, "rtsym '%s': type NONE", sym->name);
+		PMD_DRV_LOG(ERR, "The type of rtsym '%s' is NONE", sym->name);
 		return 0;
 	case NFP_RTSYM_TYPE_OBJECT:    /* Fall through */
 	case NFP_RTSYM_TYPE_FUNCTION:
@@ -235,7 +233,7 @@ nfp_rtsym_size(const struct nfp_rtsym *sym)
 	case NFP_RTSYM_TYPE_ABS:
 		return sizeof(uint64_t);
 	default:
-		PMD_DRV_LOG(ERR, "rtsym '%s': unknown type: %d", sym->name, sym->type);
+		PMD_DRV_LOG(ERR, "Unknown RTSYM type %u", sym->type);
 		return 0;
 	}
 }
@@ -366,7 +364,7 @@ nfp_rtsym_read_le(struct nfp_rtsym_table *rtbl,
 		err = nfp_rtsym_readq(rtbl->cpp, sym, NFP_CPP_ACTION_RW, 0, 0, &val);
 		break;
 	default:
-		PMD_DRV_LOG(ERR, "rtsym '%s' unsupported size: %" PRId64,
+		PMD_DRV_LOG(ERR, "rtsym '%s' unsupported size: %#lx",
 				name, sym->size);
 		err = -EINVAL;
 		break;
@@ -396,10 +394,9 @@ nfp_rtsym_map(struct nfp_rtsym_table *rtbl,
 	uint32_t cpp_id;
 	const struct nfp_rtsym *sym;
 
-	PMD_DRV_LOG(DEBUG, "mapping symbol %s", name);
 	sym = nfp_rtsym_lookup(rtbl, name);
 	if (sym == NULL) {
-		PMD_INIT_LOG(ERR, "symbol lookup fails for %s", name);
+		PMD_DRV_LOG(ERR, "Symbol lookup fails for %s", name);
 		return NULL;
 	}
 
@@ -418,10 +415,9 @@ nfp_rtsym_map(struct nfp_rtsym_table *rtbl,
 
 	mem = nfp_cpp_map_area(rtbl->cpp, cpp_id, addr, sym->size, area);
 	if (mem == NULL) {
-		PMD_INIT_LOG(ERR, "Failed to map symbol %s", name);
+		PMD_DRV_LOG(ERR, "Failed to map symbol %s", name);
 		return NULL;
 	}
-	PMD_DRV_LOG(DEBUG, "symbol %s with address %p", name, mem);
 
 	return mem;
 }

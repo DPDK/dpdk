@@ -118,16 +118,22 @@ nfp_resource_try_acquire(struct nfp_cpp *cpp,
 {
 	int err;
 
-	if (nfp_cpp_mutex_lock(dev_mutex) != 0)
+	if (nfp_cpp_mutex_lock(dev_mutex) != 0) {
+		PMD_DRV_LOG(ERR, "RESOURCE - CPP mutex lock failed");
 		return -EINVAL;
+	}
 
 	err = nfp_cpp_resource_find(cpp, res);
-	if (err != 0)
+	if (err != 0) {
+		PMD_DRV_LOG(ERR, "RESOURCE - CPP resource find failed");
 		goto err_unlock_dev;
+	}
 
 	err = nfp_cpp_mutex_trylock(res->mutex);
-	if (err != 0)
+	if (err != 0) {
+		PMD_DRV_LOG(ERR, "RESOURCE - CPP mutex trylock failed");
 		goto err_res_mutex_free;
+	}
 
 	nfp_cpp_mutex_unlock(dev_mutex);
 
@@ -171,6 +177,7 @@ nfp_resource_acquire(struct nfp_cpp *cpp,
 	dev_mutex = nfp_cpp_mutex_alloc(cpp, NFP_RESOURCE_TBL_TARGET,
 			NFP_RESOURCE_TBL_BASE, NFP_RESOURCE_TBL_KEY);
 	if (dev_mutex == NULL) {
+		PMD_DRV_LOG(ERR, "RESOURCE - CPP mutex alloc failed");
 		free(res);
 		return NULL;
 	}
@@ -182,8 +189,10 @@ nfp_resource_acquire(struct nfp_cpp *cpp,
 		err = nfp_resource_try_acquire(cpp, res, dev_mutex);
 		if (err == 0)
 			break;
-		if (err != -EBUSY)
+		if (err != -EBUSY) {
+			PMD_DRV_LOG(ERR, "RESOURCE - try acquire failed");
 			goto err_free;
+		}
 
 		if (count++ > 1000) {
 			PMD_DRV_LOG(ERR, "Error: resource %s timed out", name);

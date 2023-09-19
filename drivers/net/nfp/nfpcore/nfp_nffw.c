@@ -3,6 +3,7 @@
  * All rights reserved.
  */
 
+#include "../nfp_logs.h"
 #include "nfp_cpp.h"
 #include "nfp_nffw.h"
 #include "nfp_mip.h"
@@ -132,8 +133,10 @@ nfp_nffw_info_open(struct nfp_cpp *cpp)
 	memset(state, 0, sizeof(*state));
 
 	state->res = nfp_resource_acquire(cpp, NFP_RESOURCE_NFP_NFFW);
-	if (state->res == NULL)
+	if (state->res == NULL) {
+		PMD_DRV_LOG(ERR, "NFFW - acquire resource failed");
 		goto err_free;
+	}
 
 	fwinf = &state->fwinf;
 
@@ -143,8 +146,10 @@ nfp_nffw_info_open(struct nfp_cpp *cpp)
 	err = nfp_cpp_read(cpp, nfp_resource_cpp_id(state->res),
 			nfp_resource_address(state->res),
 			fwinf, sizeof(*fwinf));
-	if (err < (int)sizeof(*fwinf))
+	if (err < (int)sizeof(*fwinf)) {
+		PMD_DRV_LOG(ERR, "NFFW - CPP read error %d", err);
 		goto err_release;
+	}
 
 	if (nffw_res_flg_init_get(fwinf) == 0)
 		goto err_release;

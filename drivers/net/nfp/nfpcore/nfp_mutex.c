@@ -221,10 +221,7 @@ nfp_cpp_mutex_lock(struct nfp_cpp_mutex *mutex)
 		if (err < 0 && err != -EBUSY)
 			return err;
 		if (time(NULL) >= warn_at) {
-			PMD_DRV_LOG(ERR, "Warning: waiting for NFP mutex usage:%u depth:%hd] "
-					"target:%d key:%08x] addr:%" PRIx64,
-					mutex->usage, mutex->depth, mutex->target,
-					mutex->key, mutex->address);
+			PMD_DRV_LOG(WARNING, "Waiting for NFP mutex...");
 			warn_at = time(NULL) + 60;
 		}
 		sched_yield();

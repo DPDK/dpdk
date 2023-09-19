@@ -260,7 +260,7 @@ __nfp_eth_read_ports(struct nfp_nsp *nsp)
 	memset(entries, 0, NSP_ETH_TABLE_SIZE);
 	ret = nfp_nsp_read_eth_table(nsp, entries, NSP_ETH_TABLE_SIZE);
 	if (ret < 0) {
-		PMD_DRV_LOG(ERR, "reading port table failed %d", ret);
+		PMD_DRV_LOG(ERR, "Reading port table failed %d", ret);
 		goto err;
 	}
 
@@ -279,7 +279,7 @@ __nfp_eth_read_ports(struct nfp_nsp *nsp)
 	 * above.
 	 */
 	if (ret != 0 && ret != cnt) {
-		PMD_DRV_LOG(ERR, "table entry count (%d) unmatch entries present (%d)",
+		PMD_DRV_LOG(ERR, "Table entry count (%d) unmatch entries present (%d)",
 				ret, cnt);
 		goto err;
 	}
@@ -358,12 +358,12 @@ nfp_eth_config_start(struct nfp_cpp *cpp,
 
 	ret = nfp_nsp_read_eth_table(nsp, entries, NSP_ETH_TABLE_SIZE);
 	if (ret < 0) {
-		PMD_DRV_LOG(ERR, "reading port table failed %d", ret);
+		PMD_DRV_LOG(ERR, "Reading port table failed %d", ret);
 		goto err;
 	}
 
 	if ((entries[idx].port & NSP_ETH_PORT_LANES_MASK) == 0) {
-		PMD_DRV_LOG(ERR, "trying to set port state on disabled port %d", idx);
+		PMD_DRV_LOG(ERR, "Trying to set port state on disabled port %d", idx);
 		goto err;
 	}
 
@@ -643,7 +643,7 @@ __nfp_eth_set_speed(struct nfp_nsp *nsp,
 
 	rate = nfp_eth_speed2rate(speed);
 	if (rate == RATE_INVALID) {
-		PMD_DRV_LOG(ERR, "could not find matching lane rate for speed %u", speed);
+		PMD_DRV_LOG(ERR, "Could not find matching lane rate for speed %u", speed);
 		return -EINVAL;
 	}
 

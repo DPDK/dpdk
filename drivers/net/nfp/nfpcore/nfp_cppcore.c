@@ -200,6 +200,7 @@ nfp_cpp_area_alloc_with_name(struct nfp_cpp *cpp,
 
 	err = cpp->op->area_init(area, dest, address, size);
 	if (err < 0) {
+		PMD_DRV_LOG(ERR, "Area init op failed");
 		free(area);
 		return NULL;
 	}
@@ -243,10 +244,13 @@ nfp_cpp_area_alloc_acquire(struct nfp_cpp *cpp,
 	struct nfp_cpp_area *area;
 
 	area = nfp_cpp_area_alloc(cpp, destination, address, size);
-	if (area == NULL)
+	if (area == NULL) {
+		PMD_DRV_LOG(ERR, "Failed to allocate CPP area");
 		return NULL;
+	}
 
 	if (nfp_cpp_area_acquire(area) != 0) {
+		PMD_DRV_LOG(ERR, "Failed to acquire CPP area");
 		nfp_cpp_area_free(area);
 		return NULL;
 	}
@@ -294,8 +298,10 @@ nfp_cpp_area_acquire(struct nfp_cpp_area *area)
 	if (area->cpp->op->area_acquire != NULL) {
 		int err = area->cpp->op->area_acquire(area);
 
-		if (err < 0)
+		if (err < 0) {
+			PMD_DRV_LOG(ERR, "Area acquire op failed");
 			return -1;
+		}
 	}
 
 	return 0;
@@ -662,7 +668,7 @@ nfp_cpp_read(struct nfp_cpp *cpp,
 
 	area = nfp_cpp_area_alloc_acquire(cpp, destination, address, length);
 	if (area == NULL) {
-		PMD_DRV_LOG(ERR, "Area allocation/acquire failed");
+		PMD_DRV_LOG(ERR, "Area allocation/acquire failed for read");
 		return -1;
 	}
 
@@ -691,8 +697,10 @@ nfp_cpp_write(struct nfp_cpp *cpp,
 	struct nfp_cpp_area *area;
 
 	area = nfp_cpp_area_alloc_acquire(cpp, destination, address, length);
-	if (area == NULL)
+	if (area == NULL) {
+		PMD_DRV_LOG(ERR, "Area allocation/acquire failed for write");
 		return -1;
+	}
 
 	err = nfp_cpp_area_write(area, 0, kernel_vaddr, length);
 
@@ -746,8 +754,10 @@ nfp_cpp_map_area(struct nfp_cpp *cpp,
 	uint8_t *res;
 
 	*area = nfp_cpp_area_alloc_acquire(cpp, cpp_id, addr, size);
-	if (*area == NULL)
+	if (*area == NULL) {
+		PMD_DRV_LOG(ERR, "Area allocation/acquire failed for map");
 		goto err_eio;
+	}
 
 	res = nfp_cpp_area_iomem(*area);
 	if (res == NULL)

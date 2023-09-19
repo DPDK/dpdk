@@ -174,18 +174,10 @@ nfp_compute_bar(const struct nfp_bar *bar,
 		newcfg |= NFP_PCIE_BAR_PCIE2CPP_ACTION_BASEADDRESS(act);
 		newcfg |= NFP_PCIE_BAR_PCIE2CPP_TOKEN_BASEADDRESS(tok);
 
-		if ((offset & mask) != ((offset + size - 1) & mask)) {
-			PMD_DRV_LOG(ERR, "BAR%d: Won't use for Fixed mapping <%#llx,%#llx>, action=%d BAR too small (0x%llx)",
-					bar->index, (unsigned long long)offset,
-					(unsigned long long)(offset + size), act,
-					(unsigned long long)mask);
+		if ((offset & mask) != ((offset + size - 1) & mask))
 			return -EINVAL;
-		}
-		offset &= mask;
 
-		PMD_DRV_LOG(DEBUG, "BAR%d: Created Fixed mapping %d:%d:%d:0x%#llx-0x%#llx>",
-				bar->index, tgt, act, tok, (unsigned long long)offset,
-				(unsigned long long)(offset + mask));
+		offset &= mask;
 
 		bitsize = 40 - 16;
 	} else {
@@ -198,30 +190,16 @@ nfp_compute_bar(const struct nfp_bar *bar,
 		newcfg |= NFP_PCIE_BAR_PCIE2CPP_TARGET_BASEADDRESS(tgt);
 		newcfg |= NFP_PCIE_BAR_PCIE2CPP_TOKEN_BASEADDRESS(tok);
 
-		if ((offset & mask) != ((offset + size - 1) & mask)) {
-			PMD_DRV_LOG(ERR, "BAR%d: Won't use for bulk mapping <%#llx,%#llx> target=%d, token=%d BAR too small (%#llx) - (%#llx != %#llx).",
-					bar->index, (unsigned long long)offset,
-					(unsigned long long)(offset + size),
-					tgt, tok, (unsigned long long)mask,
-					(unsigned long long)(offset & mask),
-					(unsigned long long)(offset + size - 1) & mask);
+		if ((offset & mask) != ((offset + size - 1) & mask))
 			return -EINVAL;
-		}
 
 		offset &= mask;
-
-		PMD_DRV_LOG(DEBUG, "BAR%d: Created bulk mapping %d:x:%d:%#llx-%#llx",
-				bar->index, tgt, tok, (unsigned long long)offset,
-				(unsigned long long)(offset + ~mask));
 
 		bitsize = 40 - 21;
 	}
 
-	if (bar->bitsize < bitsize) {
-		PMD_DRV_LOG(ERR, "BAR%d: Too small for %d:%d:%d", bar->index,
-				tgt, tok, act);
+	if (bar->bitsize < bitsize)
 		return -EINVAL;
-	}
 
 	newcfg |= offset >> bitsize;
 
@@ -254,7 +232,6 @@ nfp_bar_write(struct nfp_pcie_user *nfp,
 	*(uint32_t *)(bar->csr) = newcfg;
 
 	bar->barcfg = newcfg;
-	PMD_DRV_LOG(DEBUG, "BAR%d: updated to 0x%08x", bar->index, newcfg);
 
 	return 0;
 }
@@ -795,7 +772,11 @@ nfp6000_init(struct nfp_cpp *cpp,
 	desc->cfg = dev->mem_resource[0].addr;
 	desc->dev_id = dev->addr.function & 0x7;
 
-	nfp_enable_bars(desc);
+	ret = nfp_enable_bars(desc);
+	if (ret != 0) {
+		PMD_DRV_LOG(ERR, "Enable bars failed");
+		return -1;
+	}
 
 	nfp_cpp_priv_set(cpp, desc);
 

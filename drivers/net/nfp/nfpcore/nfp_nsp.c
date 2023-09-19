@@ -82,8 +82,10 @@ nfp_nsp_check(struct nfp_nsp *state)
 	nsp_status = nfp_resource_address(state->res) + NSP_STATUS;
 
 	err = nfp_cpp_readq(cpp, nsp_cpp, nsp_status, &reg);
-	if (err < 0)
+	if (err < 0) {
+		PMD_DRV_LOG(ERR, "NSP - CPP readq failed %d", err);
 		return err;
+	}
 
 	if (FIELD_GET(NSP_STATUS_MAGIC, reg) != NSP_MAGIC) {
 		PMD_DRV_LOG(ERR, "Cannot detect NFP Service Processor");
@@ -119,8 +121,10 @@ nfp_nsp_open(struct nfp_cpp *cpp)
 	struct nfp_resource *res;
 
 	res = nfp_resource_acquire(cpp, NFP_RESOURCE_NSP);
-	if (res == NULL)
+	if (res == NULL) {
+		PMD_DRV_LOG(ERR, "NSP - resource acquire failed");
 		return NULL;
+	}
 
 	state = malloc(sizeof(*state));
 	if (state == NULL) {
@@ -133,6 +137,7 @@ nfp_nsp_open(struct nfp_cpp *cpp)
 
 	err = nfp_nsp_check(state);
 	if (err != 0) {
+		PMD_DRV_LOG(ERR, "NSP - check failed");
 		nfp_nsp_close(state);
 		return NULL;
 	}
@@ -180,8 +185,10 @@ nfp_nsp_wait_reg(struct nfp_cpp *cpp,
 
 	for (;;) {
 		err = nfp_cpp_readq(cpp, nsp_cpp, addr, reg);
-		if (err < 0)
+		if (err < 0) {
+			PMD_DRV_LOG(ERR, "NSP - CPP readq failed");
 			return err;
+		}
 
 		if ((*reg & mask) == val)
 			return 0;
@@ -234,8 +241,10 @@ nfp_nsp_command(struct nfp_nsp *state,
 	nsp_buffer = nsp_base + NSP_BUFFER;
 
 	err = nfp_nsp_check(state);
-	if (err != 0)
+	if (err != 0) {
+		PMD_DRV_LOG(ERR, "Check NSP command failed");
 		return err;
+	}
 
 	if (!FIELD_FIT(NSP_BUFFER_CPP, buff_cpp >> 8) ||
 			!FIELD_FIT(NSP_BUFFER_ADDRESS, buff_addr)) {
@@ -261,7 +270,7 @@ nfp_nsp_command(struct nfp_nsp *state,
 	err = nfp_nsp_wait_reg(cpp, &reg, nsp_cpp, nsp_command,
 			NSP_COMMAND_START, 0);
 	if (err != 0) {
-		PMD_DRV_LOG(ERR, "Error %d waiting for code 0x%04x to start",
+		PMD_DRV_LOG(ERR, "Error %d waiting for code %#04x to start",
 				err, code);
 		return err;
 	}
@@ -270,7 +279,7 @@ nfp_nsp_command(struct nfp_nsp *state,
 	err = nfp_nsp_wait_reg(cpp, &reg, nsp_cpp, nsp_status,
 			NSP_STATUS_BUSY, 0);
 	if (err != 0) {
-		PMD_DRV_LOG(ERR, "Error %d waiting for code 0x%04x to start",
+		PMD_DRV_LOG(ERR, "Error %d waiting for code %#04x to complete",
 				err, code);
 		return err;
 	}
@@ -352,8 +361,10 @@ nfp_nsp_command_buf(struct nfp_nsp *nsp,
 	}
 
 	ret = nfp_nsp_command(nsp, code, option, cpp_id, cpp_buf);
-	if (ret < 0)
+	if (ret < 0) {
+		PMD_DRV_LOG(ERR, "NSP command failed");
 		return ret;
+	}
 
 	if (out_buf != NULL && out_size > 0) {
 		err = nfp_cpp_read(cpp, cpp_id, cpp_buf, out_buf, out_size);

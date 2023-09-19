@@ -74,7 +74,7 @@ nfp_hwinfo_db_validate(struct nfp_hwinfo *db,
 	new_crc = nfp_crc32_posix((char *)db, size);
 	crc = (uint32_t *)(db->start + size);
 	if (new_crc != *crc) {
-		PMD_DRV_LOG(ERR, "Corrupt hwinfo table (CRC mismatch) calculated 0x%x, expected 0x%x",
+		PMD_DRV_LOG(ERR, "CRC mismatch, calculated %#x, expected %#x",
 				new_crc, *crc);
 		return -EINVAL;
 	}
@@ -94,34 +94,36 @@ nfp_hwinfo_try_fetch(struct nfp_cpp *cpp,
 	struct nfp_hwinfo *header;
 
 	res = nfp_resource_acquire(cpp, NFP_RESOURCE_NFP_HWINFO);
-	if (res) {
-		cpp_id = nfp_resource_cpp_id(res);
-		cpp_addr = nfp_resource_address(res);
-		*cpp_size = nfp_resource_size(res);
-
-		nfp_resource_release(res);
-
-		if (*cpp_size < HWINFO_SIZE_MIN)
-			return NULL;
-	} else {
+	if (res == NULL) {
+		PMD_DRV_LOG(ERR, "HWInfo - acquire resource failed");
 		return NULL;
 	}
+
+	cpp_id = nfp_resource_cpp_id(res);
+	cpp_addr = nfp_resource_address(res);
+	*cpp_size = nfp_resource_size(res);
+
+	nfp_resource_release(res);
+
+	if (*cpp_size < HWINFO_SIZE_MIN)
+		return NULL;
 
 	db = malloc(*cpp_size + 1);
 	if (db == NULL)
 		return NULL;
 
 	err = nfp_cpp_read(cpp, cpp_id, cpp_addr, db, *cpp_size);
-	if (err != (int)*cpp_size)
+	if (err != (int)*cpp_size) {
+		PMD_DRV_LOG(ERR, "HWInfo - CPP read error %d", err);
 		goto exit_free;
+	}
 
 	header = (void *)db;
-	PMD_DRV_LOG(DEBUG, "NFP HWINFO header: %#08x", *(uint32_t *)header);
 	if (nfp_hwinfo_is_updating(header))
 		goto exit_free;
 
 	if (header->version != NFP_HWINFO_VERSION_2) {
-		PMD_DRV_LOG(DEBUG, "Unknown HWInfo version: 0x%08x",
+		PMD_DRV_LOG(ERR, "Unknown HWInfo version: %#08x",
 				header->version);
 		goto exit_free;
 	}
