@@ -110,6 +110,10 @@ New Features
 
   * Added 100M and auto-neg support in YT PHY fiber mode.
 
+* **Updated ipsec_mb crypto driver.**
+
+  * Added support for digest encrypted to AESNI_MB asynchronous crypto driver.
+
 * build: Enabling deprecated libraries is now done using the new
   ``enable_deprecated_libraries`` build option.
 

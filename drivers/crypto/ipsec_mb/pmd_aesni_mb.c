@@ -1438,6 +1438,54 @@ set_gcm_job(IMB_MGR *mb_mgr, IMB_JOB *job, const uint8_t sgl,
 	return 0;
 }
 
+/** Check if conditions are met for digest-appended operations */
+static uint8_t *
+aesni_mb_digest_appended_in_src(struct rte_crypto_op *op, IMB_JOB *job,
+		uint32_t oop)
+{
+	unsigned int auth_size, cipher_size;
+	uint8_t *end_cipher;
+	uint8_t *start_cipher;
+
+	if (job->cipher_mode == IMB_CIPHER_NULL)
+		return NULL;
+
+	if (job->cipher_mode == IMB_CIPHER_ZUC_EEA3 ||
+		job->cipher_mode == IMB_CIPHER_SNOW3G_UEA2_BITLEN ||
+		job->cipher_mode == IMB_CIPHER_KASUMI_UEA1_BITLEN) {
+		cipher_size = (op->sym->cipher.data.offset >> 3) +
+			(op->sym->cipher.data.length >> 3);
+	} else {
+		cipher_size = (op->sym->cipher.data.offset) +
+			(op->sym->cipher.data.length);
+	}
+	if (job->hash_alg == IMB_AUTH_ZUC_EIA3_BITLEN ||
+		job->hash_alg == IMB_AUTH_SNOW3G_UIA2_BITLEN ||
+		job->hash_alg == IMB_AUTH_KASUMI_UIA1 ||
+		job->hash_alg == IMB_AUTH_ZUC256_EIA3_BITLEN) {
+		auth_size = (op->sym->auth.data.offset >> 3) +
+			(op->sym->auth.data.length >> 3);
+	} else {
+		auth_size = (op->sym->auth.data.offset) +
+			(op->sym->auth.data.length);
+	}
+
+	if (!oop) {
+		end_cipher = rte_pktmbuf_mtod_offset(op->sym->m_src, uint8_t *, cipher_size);
+		start_cipher = rte_pktmbuf_mtod(op->sym->m_src, uint8_t *);
+	} else {
+		end_cipher = rte_pktmbuf_mtod_offset(op->sym->m_dst, uint8_t *, cipher_size);
+		start_cipher = rte_pktmbuf_mtod(op->sym->m_dst, uint8_t *);
+	}
+
+	if (start_cipher < op->sym->auth.digest.data &&
+		op->sym->auth.digest.data < end_cipher) {
+		return rte_pktmbuf_mtod_offset(op->sym->m_src, uint8_t *, auth_size);
+	} else {
+		return NULL;
+	}
+}
+
 /**
  * Process a crypto operation and complete a IMB_JOB job structure for
  * submission to the multi buffer library for processing.
@@ -1580,9 +1628,12 @@ set_mb_job_params(IMB_JOB *job, struct ipsec_mb_qp *qp,
 	} else {
 		if (aead)
 			job->auth_tag_output = op->sym->aead.digest.data;
-		else
-			job->auth_tag_output = op->sym->auth.digest.data;
-
+		else {
+			job->auth_tag_output = aesni_mb_digest_appended_in_src(op, job, oop);
+			if (job->auth_tag_output == NULL) {
+				job->auth_tag_output = op->sym->auth.digest.data;
+			}
+		}
 		if (session->auth.req_digest_len !=
 				job->auth_tag_output_len_in_bytes) {
 			job->auth_tag_output =
@@ -1917,6 +1968,7 @@ post_process_mb_job(struct ipsec_mb_qp *qp, IMB_JOB *job)
 	struct aesni_mb_session *sess = NULL;
 	uint8_t *linear_buf = NULL;
 	int sgl = 0;
+	uint8_t oop = 0;
 	uint8_t is_docsis_sec = 0;
 
 	if (op->sess_type == RTE_CRYPTO_OP_SECURITY_SESSION) {
@@ -1962,8 +2014,54 @@ post_process_mb_job(struct ipsec_mb_qp *qp, IMB_JOB *job)
 						op->sym->auth.digest.data,
 						sess->auth.req_digest_len,
 						&op->status);
-			} else
+			} else {
+				if (!op->sym->m_dst || op->sym->m_dst == op->sym->m_src) {
+					/* in-place operation */
+					oop = 0;
+				} else { /* out-of-place operation */
+					oop = 1;
+				}
+
+				/* Enable digest check */
+				if (op->sym->m_src->nb_segs == 1 && op->sym->m_dst != NULL
+				&& !is_aead_algo(job->hash_alg,	sess->template_job.cipher_mode) &&
+				aesni_mb_digest_appended_in_src(op, job, oop) != NULL) {
+					unsigned int auth_size, cipher_size;
+					int unencrypted_bytes = 0;
+					if (job->cipher_mode == IMB_CIPHER_SNOW3G_UEA2_BITLEN ||
+						job->cipher_mode == IMB_CIPHER_KASUMI_UEA1_BITLEN ||
+						job->cipher_mode == IMB_CIPHER_ZUC_EEA3) {
+						cipher_size = (op->sym->cipher.data.offset >> 3) +
+							(op->sym->cipher.data.length >> 3);
+					} else {
+						cipher_size = (op->sym->cipher.data.offset) +
+							(op->sym->cipher.data.length);
+					}
+					if (job->hash_alg == IMB_AUTH_ZUC_EIA3_BITLEN ||
+						job->hash_alg == IMB_AUTH_SNOW3G_UIA2_BITLEN ||
+						job->hash_alg == IMB_AUTH_KASUMI_UIA1 ||
+						job->hash_alg == IMB_AUTH_ZUC256_EIA3_BITLEN) {
+						auth_size = (op->sym->auth.data.offset >> 3) +
+							(op->sym->auth.data.length >> 3);
+					} else {
+						auth_size = (op->sym->auth.data.offset) +
+						(op->sym->auth.data.length);
+					}
+					/* Check for unencrypted bytes in partial digest cases */
+					if (job->cipher_mode != IMB_CIPHER_NULL) {
+						unencrypted_bytes = auth_size +
+						job->auth_tag_output_len_in_bytes - cipher_size;
+					}
+					if (unencrypted_bytes > 0)
+						rte_memcpy(
+						rte_pktmbuf_mtod_offset(op->sym->m_dst, uint8_t *,
+						cipher_size),
+						rte_pktmbuf_mtod_offset(op->sym->m_src, uint8_t *,
+						cipher_size),
+						unencrypted_bytes);
+				}
 				generate_digest(job, op, sess);
+			}
 			break;
 		default:
 			op->status = RTE_CRYPTO_OP_STATUS_ERROR;
@@ -2555,7 +2653,8 @@ RTE_INIT(ipsec_mb_register_aesni_mb)
 			RTE_CRYPTODEV_FF_OOP_SGL_IN_SGL_OUT |
 			RTE_CRYPTODEV_FF_OOP_LB_IN_SGL_OUT |
 			RTE_CRYPTODEV_FF_OOP_SGL_IN_LB_OUT |
-			RTE_CRYPTODEV_FF_SECURITY;
+			RTE_CRYPTODEV_FF_SECURITY |
+			RTE_CRYPTODEV_FF_DIGEST_ENCRYPTED;
 
 	aesni_mb_data->internals_priv_size = 0;
 	aesni_mb_data->ops = &aesni_mb_pmd_ops;
