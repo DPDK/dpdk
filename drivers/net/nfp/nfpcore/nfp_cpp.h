@@ -16,6 +16,8 @@ struct nfp_cpp_area;
 
 #define NFP_SERIAL_LEN        6
 
+#define NFP_CPP_NUM_TARGETS             16
+
 /*
  * NFP CPP operations structure
  */
@@ -32,6 +34,13 @@ struct nfp_cpp_operations {
 	 * Called only once, during nfp_cpp_unregister()
 	 */
 	void (*free)(struct nfp_cpp *cpp);
+
+	int (*get_interface)(struct rte_pci_device *dev,
+			uint16_t *interface);
+
+	int (*get_serial)(struct rte_pci_device *dev,
+			uint8_t *serial,
+			size_t length);
 
 	/*
 	 * Initialize a new NFP CPP area

@@ -16,23 +16,8 @@
 
 #include "nfp6000_pcie.h"
 
-#include <assert.h>
-#include <stdio.h>
-#include <stdlib.h>
 #include <unistd.h>
-#include <stdint.h>
-#include <stdbool.h>
 #include <fcntl.h>
-#include <string.h>
-#include <errno.h>
-#include <dirent.h>
-#include <libgen.h>
-
-#include <sys/mman.h>
-#include <sys/file.h>
-#include <sys/stat.h>
-
-#include <ethdev_pci.h>
 
 #include "nfp_cpp.h"
 #include "nfp_logs.h"
@@ -43,8 +28,11 @@
 #define NFP_PCIE_BAR(_pf)        (0x30000 + ((_pf) & 7) * 0xc0)
 
 #define NFP_PCIE_BAR_PCIE2CPP_ACTION_BASEADDRESS(_x)  (((_x) & 0x1f) << 16)
+#define NFP_PCIE_BAR_PCIE2CPP_ACTION_BASEADDRESS_OF(_x) (((_x) >> 16) & 0x1f)
 #define NFP_PCIE_BAR_PCIE2CPP_BASEADDRESS(_x)         (((_x) & 0xffff) << 0)
+#define NFP_PCIE_BAR_PCIE2CPP_BASEADDRESS_OF(_x)      (((_x) >> 0) & 0xffff)
 #define NFP_PCIE_BAR_PCIE2CPP_LENGTHSELECT(_x)        (((_x) & 0x3) << 27)
+#define NFP_PCIE_BAR_PCIE2CPP_LENGTHSELECT_OF(_x)     (((_x) >> 27) & 0x3)
 #define NFP_PCIE_BAR_PCIE2CPP_LENGTHSELECT_32BIT    0
 #define NFP_PCIE_BAR_PCIE2CPP_LENGTHSELECT_64BIT    1
 #define NFP_PCIE_BAR_PCIE2CPP_LENGTHSELECT_0BYTE    3
@@ -55,7 +43,9 @@
 #define NFP_PCIE_BAR_PCIE2CPP_MAPTYPE_TARGET        2
 #define NFP_PCIE_BAR_PCIE2CPP_MAPTYPE_GENERAL       3
 #define NFP_PCIE_BAR_PCIE2CPP_TARGET_BASEADDRESS(_x)  (((_x) & 0xf) << 23)
+#define NFP_PCIE_BAR_PCIE2CPP_TARGET_BASEADDRESS_OF(_x) (((_x) >> 23) & 0xf)
 #define NFP_PCIE_BAR_PCIE2CPP_TOKEN_BASEADDRESS(_x)   (((_x) & 0x3) << 21)
+#define NFP_PCIE_BAR_PCIE2CPP_TOKEN_BASEADDRESS_OF(_x) (((_x) >> 21) & 0x3)
 
 /*
  * Minimal size of the PCIe cfg memory we depend on being mapped,
@@ -132,7 +122,7 @@ nfp_compute_bar(const struct nfp_bar *bar,
 	uint32_t newcfg;
 	uint32_t bitsize;
 
-	if (target >= 16)
+	if (target >= NFP_CPP_NUM_TARGETS)
 		return -EINVAL;
 
 	switch (width) {
@@ -182,10 +172,6 @@ nfp_compute_bar(const struct nfp_bar *bar,
 		offset &= mask;
 		bitsize = 40 - 21;
 	}
-
-	if (bar->bitsize < bitsize)
-		return -EINVAL;
-
 	newcfg |= offset >> bitsize;
 
 	if (bar_base != NULL)
@@ -434,7 +420,7 @@ nfp6000_area_acquire(struct nfp_cpp_area *area)
 
 	/* Must have been too big. Sub-allocate. */
 	if (priv->bar->iomem == NULL)
-		return (-ENOMEM);
+		return -ENOMEM;
 
 	priv->iomem = priv->bar->iomem + priv->bar_offset;
 
@@ -464,9 +450,9 @@ nfp6000_area_read(struct nfp_cpp_area *area,
 		uint32_t offset,
 		size_t length)
 {
+	int ret;
 	size_t n;
 	int width;
-	bool is_64;
 	uint32_t *wrptr32 = address;
 	uint64_t *wrptr64 = address;
 	struct nfp6000_area_priv *priv;
@@ -484,47 +470,54 @@ nfp6000_area_read(struct nfp_cpp_area *area,
 	if (width <= 0)
 		return -EINVAL;
 
+	/* MU reads via a PCIe2CPP BAR support 32bit (and other) lengths */
+	if (priv->target == (NFP_CPP_TARGET_MU & NFP_CPP_TARGET_ID_MASK) &&
+			priv->action == NFP_CPP_ACTION_RW &&
+			(offset % sizeof(uint64_t) == 4 ||
+			length % sizeof(uint64_t) == 4))
+		width = TARGET_WIDTH_32;
+
 	/* Unaligned? Translate to an explicit access */
 	if (((priv->offset + offset) & (width - 1)) != 0) {
 		PMD_DRV_LOG(ERR, "aread_read unaligned!!!");
 		return -EINVAL;
 	}
 
-	is_64 = width == TARGET_WIDTH_64;
-
-	/* MU reads via a PCIe2CPP BAR supports 32bit (and other) lengths */
-	if (priv->target == (NFP_CPP_TARGET_ID_MASK & NFP_CPP_TARGET_MU) &&
-			priv->action == NFP_CPP_ACTION_RW) {
-		is_64 = false;
-	}
-
-	if (is_64) {
-		if (offset % sizeof(uint64_t) != 0 ||
-				length % sizeof(uint64_t) != 0)
-			return -EINVAL;
-	} else {
-		if (offset % sizeof(uint32_t) != 0 ||
-				length % sizeof(uint32_t) != 0)
-			return -EINVAL;
-	}
-
 	if (priv->bar == NULL)
 		return -EFAULT;
 
-	if (is_64)
-		for (n = 0; n < length; n += sizeof(uint64_t)) {
-			*wrptr64 = *rdptr64;
-			wrptr64++;
-			rdptr64++;
-		}
-	else
+	switch (width) {
+	case TARGET_WIDTH_32:
+		if (offset % sizeof(uint32_t) != 0 ||
+				length % sizeof(uint32_t) != 0)
+			return -EINVAL;
+
 		for (n = 0; n < length; n += sizeof(uint32_t)) {
 			*wrptr32 = *rdptr32;
 			wrptr32++;
 			rdptr32++;
 		}
 
-	return n;
+		ret = n;
+		break;
+	case TARGET_WIDTH_64:
+		if (offset % sizeof(uint64_t) != 0 ||
+				length % sizeof(uint64_t) != 0)
+			return -EINVAL;
+
+		for (n = 0; n < length; n += sizeof(uint64_t)) {
+			*wrptr64 = *rdptr64;
+			wrptr64++;
+			rdptr64++;
+		}
+
+		ret = n;
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	return ret;
 }
 
 static int
@@ -533,9 +526,9 @@ nfp6000_area_write(struct nfp_cpp_area *area,
 		uint32_t offset,
 		size_t length)
 {
+	int ret;
 	size_t n;
 	int width;
-	bool is_64;
 	uint32_t *wrptr32;
 	uint64_t *wrptr64;
 	struct nfp6000_area_priv *priv;
@@ -553,47 +546,53 @@ nfp6000_area_write(struct nfp_cpp_area *area,
 	if (width <= 0)
 		return -EINVAL;
 
+	/* MU reads via a PCIe2CPP BAR support 32bit (and other) lengths */
+	if (priv->target == (NFP_CPP_TARGET_MU & NFP_CPP_TARGET_ID_MASK) &&
+			priv->action == NFP_CPP_ACTION_RW &&
+			(offset % sizeof(uint64_t) == 4 ||
+			length % sizeof(uint64_t) == 4))
+		width = TARGET_WIDTH_32;
+
 	/* Unaligned? Translate to an explicit access */
 	if (((priv->offset + offset) & (width - 1)) != 0)
 		return -EINVAL;
 
-	is_64 = width == TARGET_WIDTH_64;
-
-	/* MU writes via a PCIe2CPP BAR supports 32bit (and other) lengths */
-	if (priv->target == (NFP_CPP_TARGET_ID_MASK & NFP_CPP_TARGET_MU) &&
-			priv->action == NFP_CPP_ACTION_RW)
-		is_64 = false;
-
-	if (is_64) {
-		if (offset % sizeof(uint64_t) != 0 ||
-				length % sizeof(uint64_t) != 0)
-			return -EINVAL;
-	} else {
-		if (offset % sizeof(uint32_t) != 0 ||
-				length % sizeof(uint32_t) != 0)
-			return -EINVAL;
-	}
-
 	if (priv->bar == NULL)
 		return -EFAULT;
 
-	if (is_64)
-		for (n = 0; n < length; n += sizeof(uint64_t)) {
-			*wrptr64 = *rdptr64;
-			wrptr64++;
-			rdptr64++;
-		}
-	else
+	switch (width) {
+	case TARGET_WIDTH_32:
+		if (offset % sizeof(uint32_t) != 0 ||
+				length % sizeof(uint32_t) != 0)
+			return -EINVAL;
+
 		for (n = 0; n < length; n += sizeof(uint32_t)) {
 			*wrptr32 = *rdptr32;
 			wrptr32++;
 			rdptr32++;
 		}
 
-	return n;
-}
+		ret = n;
+		break;
+	case TARGET_WIDTH_64:
+		if (offset % sizeof(uint64_t) != 0 ||
+				length % sizeof(uint64_t) != 0)
+			return -EINVAL;
 
-#define PCI_DEVICES "/sys/bus/pci/devices"
+		for (n = 0; n < length; n += sizeof(uint64_t)) {
+			*wrptr64 = *rdptr64;
+			wrptr64++;
+			rdptr64++;
+		}
+
+		ret = n;
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	return ret;
+}
 
 static int
 nfp_acquire_process_lock(struct nfp_pcie_user *desc)
@@ -707,6 +706,74 @@ nfp6000_set_serial(struct rte_pci_device *dev,
 }
 
 static int
+nfp6000_get_dsn(struct rte_pci_device *pci_dev,
+		uint64_t *dsn)
+{
+	off_t pos;
+	size_t len;
+	uint64_t tmp = 0;
+
+	pos = rte_pci_find_ext_capability(pci_dev, RTE_PCI_EXT_CAP_ID_DSN);
+	if (pos <= 0) {
+		PMD_DRV_LOG(ERR, "PCI_EXT_CAP_ID_DSN not found");
+		return -ENODEV;
+	}
+
+	pos += 4;
+	len = sizeof(tmp);
+
+	if (rte_pci_read_config(pci_dev, &tmp, len, pos) < 0) {
+		PMD_DRV_LOG(ERR, "nfp get device serial number failed");
+		return -ENOENT;
+	}
+
+	*dsn = tmp;
+
+	return 0;
+}
+
+static int
+nfp6000_get_interface(struct rte_pci_device *dev,
+		uint16_t *interface)
+{
+	int ret;
+	uint64_t dsn = 0;
+
+	ret = nfp6000_get_dsn(dev, &dsn);
+	if (ret != 0)
+		return ret;
+
+	*interface = dsn & 0xffff;
+
+	return 0;
+}
+
+static int
+nfp6000_get_serial(struct rte_pci_device *dev,
+		uint8_t *serial,
+		size_t length)
+{
+	int ret;
+	uint64_t dsn = 0;
+
+	if (length < NFP_SERIAL_LEN)
+		return -ENOMEM;
+
+	ret = nfp6000_get_dsn(dev, &dsn);
+	if (ret != 0)
+		return ret;
+
+	serial[0] = (dsn >> 56) & 0xff;
+	serial[1] = (dsn >> 48) & 0xff;
+	serial[2] = (dsn >> 40) & 0xff;
+	serial[3] = (dsn >> 32) & 0xff;
+	serial[4] = (dsn >> 24) & 0xff;
+	serial[5] = (dsn >> 16) & 0xff;
+
+	return 0;
+}
+
+static int
 nfp6000_set_barsz(struct rte_pci_device *dev,
 		struct nfp_pcie_user *desc)
 {
@@ -789,6 +856,10 @@ static const struct nfp_cpp_operations nfp6000_pcie_ops = {
 	.free = nfp6000_free,
 
 	.area_priv_size = sizeof(struct nfp6000_area_priv),
+
+	.get_interface = nfp6000_get_interface,
+	.get_serial = nfp6000_get_serial,
+
 	.area_init = nfp6000_area_init,
 	.area_acquire = nfp6000_area_acquire,
 	.area_release = nfp6000_area_release,
