@@ -6394,6 +6394,9 @@ test_zuc_auth_cipher(const struct wireless_test_data *tdata,
 			tdata->digest.len) < 0)
 		return TEST_SKIPPED;
 
+	if (gbl_action_type == RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO)
+		return TEST_SKIPPED;
+
 	rte_cryptodev_info_get(ts_params->valid_devs[0], &dev_info);
 
 	uint64_t feat_flags = dev_info.feature_flags;
@@ -7827,6 +7830,9 @@ test_mixed_auth_cipher(const struct mixed_cipher_auth_test_data *tdata,
 	if (test_mixed_check_if_unsupported(tdata))
 		return TEST_SKIPPED;
 	if (global_api_test_type == CRYPTODEV_RAW_API_TEST)
+		return TEST_SKIPPED;
+
+	if (gbl_action_type == RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO)
 		return TEST_SKIPPED;
 
 	rte_cryptodev_info_get(ts_params->valid_devs[0], &dev_info);
