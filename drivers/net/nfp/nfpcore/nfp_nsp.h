@@ -158,72 +158,45 @@ enum nfp_eth_fec {
 #define NFP_FEC_REED_SOLOMON	RTE_BIT32(NFP_FEC_REED_SOLOMON_BIT)
 #define NFP_FEC_DISABLED	RTE_BIT32(NFP_FEC_DISABLED_BIT)
 
-/**
- * struct nfp_eth_table - ETH table information
- * @count:	number of table entries
- * @max_index:	max of @index fields of all @ports
- * @ports:	table of ports
- *
- * @eth_index:	port index according to legacy ethX numbering
- * @index:	chip-wide first channel index
- * @nbi:	NBI index
- * @base:	first channel index (within NBI)
- * @lanes:	number of channels
- * @speed:	interface speed (in Mbps)
- * @interface:	interface (module) plugged in
- * @media:	media type of the @interface
- * @fec:	forward error correction mode
- * @aneg:	auto negotiation mode
- * @mac_addr:	interface MAC address
- * @label_port:	port id
- * @label_subport:  id of interface within port (for split ports)
- * @enabled:	is enabled?
- * @tx_enabled:	is TX enabled?
- * @rx_enabled:	is RX enabled?
- * @override_changed: is media reconfig pending?
- *
- * @port_type:	one of %PORT_* defines for ethtool
- * @port_lanes:	total number of lanes on the port (sum of lanes of all subports)
- * @is_split:	is interface part of a split port
- * @fec_modes_supported:	bitmap of FEC modes supported
- */
+/* ETH table information */
 struct nfp_eth_table {
-	uint32_t count;
-	uint32_t max_index;
+	uint32_t count;     /**< Number of table entries */
+	uint32_t max_index; /**< Max of @index fields of all @ports */
 	struct nfp_eth_table_port {
+		/** Port index according to legacy ethX numbering */
 		uint32_t eth_index;
-		uint32_t index;
-		uint32_t nbi;
-		uint32_t base;
-		uint32_t lanes;
-		uint32_t speed;
+		uint32_t index;  /**< Chip-wide first channel index */
+		uint32_t nbi;    /**< NBI index */
+		uint32_t base;   /**< First channel index (within NBI) */
+		uint32_t lanes;  /**< Number of channels */
+		uint32_t speed;  /**< Interface speed (in Mbps) */
 
-		uint32_t interface;
-		enum nfp_eth_media media;
+		uint32_t interface;  /**< Interface (module) plugged in */
+		enum nfp_eth_media media; /**< Media type of the @interface */
 
-		enum nfp_eth_fec fec;
-		enum nfp_eth_aneg aneg;
+		enum nfp_eth_fec fec;     /**< Forward Error Correction mode */
+		enum nfp_eth_aneg aneg;   /**< Auto negotiation mode */
 
-		struct rte_ether_addr mac_addr;
+		struct rte_ether_addr mac_addr;  /**< Interface MAC address */
 
-		uint8_t label_port;
+		uint8_t label_port;    /**< Port id */
+		/** Id of interface within port (for split ports) */
 		uint8_t label_subport;
 
-		int enabled;
-		int tx_enabled;
-		int rx_enabled;
+		int enabled;     /**< Enable port */
+		int tx_enabled;  /**< Enable TX */
+		int rx_enabled;  /**< Enable RX */
 
-		int override_changed;
+		int override_changed;  /**< Media reconfig pending */
 
-		/* Computed fields */
-		uint8_t port_type;
-
+		uint8_t port_type;    /**< One of %PORT_* */
+		/** Sum of lanes of all subports of this port */
 		uint32_t port_lanes;
 
-		int is_split;
+		int is_split;   /**< Split port */
 
-		uint32_t fec_modes_supported;
-	} ports[];
+		uint32_t fec_modes_supported;  /**< Bitmap of FEC modes supported */
+	} ports[]; /**< Table of ports */
 };
 
 struct nfp_eth_table *nfp_eth_read_ports(struct nfp_cpp *cpp);
@@ -263,28 +236,17 @@ int __nfp_eth_set_aneg(struct nfp_nsp *nsp, enum nfp_eth_aneg mode);
 int __nfp_eth_set_speed(struct nfp_nsp *nsp, uint32_t speed);
 int __nfp_eth_set_split(struct nfp_nsp *nsp, uint32_t lanes);
 
-/**
- * struct nfp_nsp_identify - NSP static information
- * @version:      opaque version string
- * @flags:        version flags
- * @br_primary:   branch id of primary bootloader
- * @br_secondary: branch id of secondary bootloader
- * @br_nsp:       branch id of NSP
- * @primary:      version of primary bootloader
- * @secondary:    version id of secondary bootloader
- * @nsp:          version id of NSP
- * @sensor_mask:  mask of present sensors available on NIC
- */
+/* NSP static information */
 struct nfp_nsp_identify {
-	char version[40];
-	uint8_t flags;
-	uint8_t br_primary;
-	uint8_t br_secondary;
-	uint8_t br_nsp;
-	uint16_t primary;
-	uint16_t secondary;
-	uint16_t nsp;
-	uint64_t sensor_mask;
+	char version[40];      /**< Opaque version string */
+	uint8_t flags;         /**< Version flags */
+	uint8_t br_primary;    /**< Branch id of primary bootloader */
+	uint8_t br_secondary;  /**< Branch id of secondary bootloader */
+	uint8_t br_nsp;        /**< Branch id of NSP */
+	uint16_t primary;      /**< Version of primary bootloader */
+	uint16_t secondary;    /**< Version id of secondary bootloader */
+	uint16_t nsp;          /**< Version id of NSP */
+	uint64_t sensor_mask;  /**< Mask of present sensors available on NIC */
 };
 
 struct nfp_nsp_identify *__nfp_nsp_identify(struct nfp_nsp *nsp);

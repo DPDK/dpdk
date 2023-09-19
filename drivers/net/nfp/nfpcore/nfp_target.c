@@ -767,7 +767,7 @@ nfp_encode_basic(uint64_t *addr,
 		/*
 		 * Make sure we compare against isldN values by clearing the
 		 * LSB. This is what the silicon does.
-		 **/
+		 */
 		isld[0] &= ~1;
 		isld[1] &= ~1;
 

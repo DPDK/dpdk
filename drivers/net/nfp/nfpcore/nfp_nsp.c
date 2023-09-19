@@ -109,9 +109,11 @@ nfp_nsp_check(struct nfp_nsp *state)
 	return 0;
 }
 
-/*
- * nfp_nsp_open() - Prepare for communication and lock the NSP resource.
- * @cpp:	NFP CPP Handle
+/**
+ * Prepare for communication and lock the NSP resource.
+ *
+ * @param cpp
+ *   NFP CPP Handle
  */
 struct nfp_nsp *
 nfp_nsp_open(struct nfp_cpp *cpp)
@@ -145,9 +147,11 @@ nfp_nsp_open(struct nfp_cpp *cpp)
 	return state;
 }
 
-/*
- * nfp_nsp_close() - Clean up and unlock the NSP resource.
- * @state:	NFP SP state
+/**
+ * Clean up and unlock the NSP resource.
+ *
+ * @param state
+ *   NFP SP state
  */
 void
 nfp_nsp_close(struct nfp_nsp *state)
@@ -181,7 +185,7 @@ nfp_nsp_wait_reg(struct nfp_cpp *cpp,
 	struct timespec wait;
 
 	wait.tv_sec = 0;
-	wait.tv_nsec = 25000000;
+	wait.tv_nsec = 25000000;     /* 25ms */
 
 	for (;;) {
 		err = nfp_cpp_readq(cpp, nsp_cpp, addr, reg);
@@ -194,28 +198,27 @@ nfp_nsp_wait_reg(struct nfp_cpp *cpp,
 			return 0;
 
 		nanosleep(&wait, 0);
-		if (count++ > 1000)
+		if (count++ > 1000)     /* 25ms * 1000 = 25s */
 			return -ETIMEDOUT;
 	}
 }
 
-/*
- * nfp_nsp_command() - Execute a command on the NFP Service Processor
- * @state:	NFP SP state
- * @code:	NFP SP Command Code
- * @option:	NFP SP Command Argument
- * @buff_cpp:	NFP SP Buffer CPP Address info
- * @buff_addr:	NFP SP Buffer Host address
+/**
+ * Execute a command on the NFP Service Processor
  *
- * Return: 0 for success with no result
+ * @param state
+ *   NFP SP state
+ * @param arg
+ *   NFP command argument structure
  *
- *	 positive value for NSP completion with a result code
- *
- *	-EAGAIN if the NSP is not yet present
- *	-ENODEV if the NSP is not a supported model
- *	-EBUSY if the NSP is stuck
- *	-EINTR if interrupted while waiting for completion
- *	-ETIMEDOUT if the NSP took longer than 30 seconds to complete
+ * @return
+ *   - 0 for success with no result
+ *   - Positive value for NSP completion with a result code
+ *   - -EAGAIN if the NSP is not yet present
+ *   - -ENODEV if the NSP is not a supported model
+ *   - -EBUSY if the NSP is stuck
+ *   - -EINTR if interrupted while waiting for completion
+ *   - -ETIMEDOUT if the NSP took longer than @timeout_sec seconds to complete
  */
 static int
 nfp_nsp_command(struct nfp_nsp *state,
@@ -383,7 +386,7 @@ nfp_nsp_wait(struct nfp_nsp *state)
 	struct timespec wait;
 
 	wait.tv_sec = 0;
-	wait.tv_nsec = 25000000;
+	wait.tv_nsec = 25000000;    /* 25ms */
 
 	for (;;) {
 		err = nfp_nsp_command(state, SPCODE_NOOP, 0, 0, 0);
@@ -392,7 +395,7 @@ nfp_nsp_wait(struct nfp_nsp *state)
 
 		nanosleep(&wait, 0);
 
-		if (count++ > 1000) {
+		if (count++ > 1000) {    /* 25ms * 1000 = 25s */
 			err = -ETIMEDOUT;
 			break;
 		}

@@ -162,11 +162,14 @@ exit_free_rtsym_raw:
 	return NULL;
 }
 
-/*
- * nfp_rtsym_count() - Get the number of RTSYM descriptors
- * @rtbl:	NFP RTsym table
+/**
+ * Get the number of RTSYM descriptors
  *
- * Return: Number of RTSYM descriptors
+ * @param rtbl
+ *   NFP RTSYM table
+ *
+ * @return
+ *   Number of RTSYM descriptors
  */
 int
 nfp_rtsym_count(struct nfp_rtsym_table *rtbl)
@@ -177,12 +180,16 @@ nfp_rtsym_count(struct nfp_rtsym_table *rtbl)
 	return rtbl->num;
 }
 
-/*
- * nfp_rtsym_get() - Get the Nth RTSYM descriptor
- * @rtbl:	NFP RTsym table
- * @idx:	Index (0-based) of the RTSYM descriptor
+/**
+ * Get the Nth RTSYM descriptor
  *
- * Return: const pointer to a struct nfp_rtsym descriptor, or NULL
+ * @param rtbl
+ *   NFP RTSYM table
+ * @param idx
+ *   Index (0-based) of the RTSYM descriptor
+ *
+ * @return
+ *   Const pointer to a struct nfp_rtsym descriptor, or NULL
  */
 const struct nfp_rtsym *
 nfp_rtsym_get(struct nfp_rtsym_table *rtbl,
@@ -197,12 +204,16 @@ nfp_rtsym_get(struct nfp_rtsym_table *rtbl,
 	return &rtbl->symtab[idx];
 }
 
-/*
- * nfp_rtsym_lookup() - Return the RTSYM descriptor for a symbol name
- * @rtbl:	NFP RTsym table
- * @name:	Symbol name
+/**
+ * Return the RTSYM descriptor for a symbol name
  *
- * Return: const pointer to a struct nfp_rtsym descriptor, or NULL
+ * @param rtbl
+ *   NFP RTSYM table
+ * @param name
+ *   Symbol name
+ *
+ * @return
+ *   Const pointer to a struct nfp_rtsym descriptor, or NULL
  */
 const struct nfp_rtsym *
 nfp_rtsym_lookup(struct nfp_rtsym_table *rtbl,
@@ -227,7 +238,8 @@ nfp_rtsym_size(const struct nfp_rtsym *sym)
 	case NFP_RTSYM_TYPE_NONE:
 		PMD_DRV_LOG(ERR, "The type of rtsym '%s' is NONE", sym->name);
 		return 0;
-	case NFP_RTSYM_TYPE_OBJECT:    /* Fall through */
+	case NFP_RTSYM_TYPE_OBJECT:
+		/* FALLTHROUGH */
 	case NFP_RTSYM_TYPE_FUNCTION:
 		return sym->size;
 	case NFP_RTSYM_TYPE_ABS:
@@ -327,17 +339,22 @@ nfp_rtsym_readq(struct nfp_cpp *cpp,
 	return nfp_cpp_readq(cpp, cpp_id, addr, value);
 }
 
-/*
- * nfp_rtsym_read_le() - Read a simple unsigned scalar value from symbol
- * @rtbl:	NFP RTsym table
- * @name:	Symbol name
- * @error:	Pointer to error code (optional)
+/**
+ * Read a simple unsigned scalar value from symbol
  *
  * Lookup a symbol, map, read it and return it's value. Value of the symbol
  * will be interpreted as a simple little-endian unsigned value. Symbol can
  * be 4 or 8 bytes in size.
  *
- * Return: value read, on error sets the error and returns ~0ULL.
+ * @param rtbl
+ *   NFP RTSYM table
+ * @param name
+ *   Symbol name
+ * @param error
+ *   Pointer to error code (optional)
+ *
+ * @return
+ *   Value read, on error sets the error and returns ~0ULL.
  */
 uint64_t
 nfp_rtsym_read_le(struct nfp_rtsym_table *rtbl,

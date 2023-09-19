@@ -22,32 +22,23 @@
 
 #define NFP_RESOURCE_ENTRY_NAME_SZ	8
 
-/*
- * struct nfp_resource_entry - Resource table entry
- * @owner:		NFP CPP Lock, interface owner
- * @key:		NFP CPP Lock, posix_crc32(name, 8)
- * @region:		Memory region descriptor
- * @name:		ASCII, zero padded name
- * @reserved
- * @cpp_action:		CPP Action
- * @cpp_token:		CPP Token
- * @cpp_target:		CPP Target ID
- * @page_offset:	256-byte page offset into target's CPP address
- * @page_size:		size, in 256-byte pages
- */
+/* Resource table entry */
 struct nfp_resource_entry {
 	struct nfp_resource_entry_mutex {
-		uint32_t owner;
-		uint32_t key;
+		uint32_t owner;  /**< NFP CPP Lock, interface owner */
+		uint32_t key;    /**< NFP CPP Lock, posix_crc32(name, 8) */
 	} mutex;
+	/* Memory region descriptor */
 	struct nfp_resource_entry_region {
+		/** ASCII, zero padded name */
 		uint8_t  name[NFP_RESOURCE_ENTRY_NAME_SZ];
 		uint8_t  reserved[5];
-		uint8_t  cpp_action;
-		uint8_t  cpp_token;
-		uint8_t  cpp_target;
+		uint8_t  cpp_action;  /**< CPP Action */
+		uint8_t  cpp_token;   /**< CPP Token */
+		uint8_t  cpp_target;  /**< CPP Target ID */
+		/** 256-byte page offset into target's CPP address */
 		uint32_t page_offset;
-		uint32_t page_size;
+		uint32_t page_size;   /**< Size, in 256-byte pages */
 	} region;
 };
 
@@ -147,14 +138,18 @@ err_unlock_dev:
 	return err;
 }
 
-/*
- * nfp_resource_acquire() - Acquire a resource handle
- * @cpp:	NFP CPP handle
- * @name:	Name of the resource
+/**
+ * Acquire a resource handle
  *
- * NOTE: This function locks the acquired resource
+ * Note: This function locks the acquired resource.
  *
- * Return: NFP Resource handle, or NULL
+ * @param cpp
+ *   NFP CPP handle
+ * @param name
+ *   Name of the resource
+ *
+ * @return
+ *   NFP Resource handle, or NULL
  */
 struct nfp_resource *
 nfp_resource_acquire(struct nfp_cpp *cpp,
@@ -183,7 +178,7 @@ nfp_resource_acquire(struct nfp_cpp *cpp,
 	}
 
 	wait.tv_sec = 0;
-	wait.tv_nsec = 1000000;
+	wait.tv_nsec = 1000000;    /* 1ms */
 
 	for (;;) {
 		err = nfp_resource_try_acquire(cpp, res, dev_mutex);
@@ -194,7 +189,7 @@ nfp_resource_acquire(struct nfp_cpp *cpp,
 			goto err_free;
 		}
 
-		if (count++ > 1000) {
+		if (count++ > 1000) {    /* 1ms * 1000 = 1s */
 			PMD_DRV_LOG(ERR, "Error: resource %s timed out", name);
 			err = -EBUSY;
 			goto err_free;
@@ -213,11 +208,13 @@ err_free:
 	return NULL;
 }
 
-/*
- * nfp_resource_release() - Release a NFP Resource handle
- * @res:	NFP Resource handle
+/**
+ * Release a NFP Resource handle
  *
- * NOTE: This function implicitly unlocks the resource handle
+ * NOTE: This function implicitly unlocks the resource handle.
+ *
+ * @param res
+ *   NFP Resource handle
  */
 void
 nfp_resource_release(struct nfp_resource *res)
@@ -227,11 +224,14 @@ nfp_resource_release(struct nfp_resource *res)
 	free(res);
 }
 
-/*
- * nfp_resource_cpp_id() - Return the cpp_id of a resource handle
- * @res:        NFP Resource handle
+/**
+ * Return the cpp_id of a resource handle
  *
- * Return: NFP CPP ID
+ * @param res
+ *   NFP Resource handle
+ *
+ * @return
+ *   NFP CPP ID
  */
 uint32_t
 nfp_resource_cpp_id(const struct nfp_resource *res)
@@ -239,11 +239,14 @@ nfp_resource_cpp_id(const struct nfp_resource *res)
 	return res->cpp_id;
 }
 
-/*
- * nfp_resource_name() - Return the name of a resource handle
- * @res:        NFP Resource handle
+/**
+ * Return the name of a resource handle
  *
- * Return: const char pointer to the name of the resource
+ * @param res
+ *   NFP Resource handle
+ *
+ * @return
+ *   Const char pointer to the name of the resource
  */
 const char *
 nfp_resource_name(const struct nfp_resource *res)
@@ -251,11 +254,14 @@ nfp_resource_name(const struct nfp_resource *res)
 	return res->name;
 }
 
-/*
- * nfp_resource_address() - Return the address of a resource handle
- * @res:        NFP Resource handle
+/**
+ * Return the address of a resource handle
  *
- * Return: Address of the resource
+ * @param res
+ *   NFP Resource handle
+ *
+ * @return
+ *   Address of the resource
  */
 uint64_t
 nfp_resource_address(const struct nfp_resource *res)
@@ -263,11 +269,14 @@ nfp_resource_address(const struct nfp_resource *res)
 	return res->addr;
 }
 
-/*
- * nfp_resource_size() - Return the size in bytes of a resource handle
- * @res:        NFP Resource handle
+/**
+ * Return the size in bytes of a resource handle
  *
- * Return: Size of the resource in bytes
+ * @param res
+ *   NFP Resource handle
+ *
+ * @return
+ *   Size of the resource in bytes
  */
 uint64_t
 nfp_resource_size(const struct nfp_resource *res)

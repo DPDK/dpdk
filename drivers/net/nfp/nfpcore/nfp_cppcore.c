@@ -26,6 +26,15 @@
 #define NFP_PL_DEVICE_MODEL_MASK               (NFP_PL_DEVICE_PART_MASK | \
 						NFP_PL_DEVICE_ID_MASK)
 
+/**
+ * Set the private data of the nfp_cpp instance
+ *
+ * @param cpp
+ *   NFP CPP operations structure
+ *
+ * @return
+ *   Opaque device pointer
+ */
 void
 nfp_cpp_priv_set(struct nfp_cpp *cpp,
 		void *priv)
@@ -33,12 +42,29 @@ nfp_cpp_priv_set(struct nfp_cpp *cpp,
 	cpp->priv = priv;
 }
 
+/**
+ * Return the private data of the nfp_cpp instance
+ *
+ * @param cpp
+ *   NFP CPP operations structure
+ *
+ * @return
+ *   Opaque device pointer
+ */
 void *
 nfp_cpp_priv(struct nfp_cpp *cpp)
 {
 	return cpp->priv;
 }
 
+/**
+ * Set the model id
+ *
+ * @param cpp
+ *   NFP CPP operations structure
+ * @param model
+ *   Model ID
+ */
 void
 nfp_cpp_model_set(struct nfp_cpp *cpp,
 		uint32_t model)
@@ -46,6 +72,15 @@ nfp_cpp_model_set(struct nfp_cpp *cpp,
 	cpp->model = model;
 }
 
+/**
+ * Retrieve the Model ID of the NFP
+ *
+ * @param cpp
+ *   NFP CPP handle
+ *
+ * @return
+ *   NFP CPP Model ID
+ */
 uint32_t
 nfp_cpp_model(struct nfp_cpp *cpp)
 {
@@ -63,6 +98,14 @@ nfp_cpp_model(struct nfp_cpp *cpp)
 	return model;
 }
 
+/**
+ * Set the private instance owned data of a nfp_cpp struct
+ *
+ * @param cpp
+ *   NFP CPP operations structure
+ * @param interface
+ *   Interface ID
+ */
 void
 nfp_cpp_interface_set(struct nfp_cpp *cpp,
 		uint32_t interface)
@@ -70,6 +113,17 @@ nfp_cpp_interface_set(struct nfp_cpp *cpp,
 	cpp->interface = interface;
 }
 
+/**
+ * Retrieve the Serial ID of the NFP
+ *
+ * @param cpp
+ *   NFP CPP handle
+ * @param serial
+ *   Pointer to NFP serial number
+ *
+ * @return
+ *   Length of NFP serial number
+ */
 int
 nfp_cpp_serial(struct nfp_cpp *cpp,
 		const uint8_t **serial)
@@ -78,6 +132,16 @@ nfp_cpp_serial(struct nfp_cpp *cpp,
 	return cpp->serial_len;
 }
 
+/**
+ * Set the private instance owned data of a nfp_cpp struct
+ *
+ * @param cpp
+ *   NFP CPP operations structure
+ * @param serial
+ *   NFP serial byte array
+ * @param serial_len
+ *   Length of the serial byte array
+ */
 int
 nfp_cpp_serial_set(struct nfp_cpp *cpp,
 		const uint8_t *serial,
@@ -96,6 +160,15 @@ nfp_cpp_serial_set(struct nfp_cpp *cpp,
 	return 0;
 }
 
+/**
+ * Retrieve the Interface ID of the NFP
+ *
+ * @param cpp
+ *   NFP CPP handle
+ *
+ * @return
+ *   NFP CPP Interface ID
+ */
 uint16_t
 nfp_cpp_interface(struct nfp_cpp *cpp)
 {
@@ -105,18 +178,45 @@ nfp_cpp_interface(struct nfp_cpp *cpp)
 	return cpp->interface;
 }
 
+/**
+ * Get the privately allocated portion of a NFP CPP area handle
+ *
+ * @param cpp_area
+ *   NFP CPP area handle
+ *
+ * @return
+ *   Pointer to the private area, or NULL on failure
+ */
 void *
 nfp_cpp_area_priv(struct nfp_cpp_area *cpp_area)
 {
 	return &cpp_area[1];
 }
 
+/**
+ * Get the NFP CPP handle that is the pci_dev of a NFP CPP area handle
+ *
+ * @param cpp_area
+ *   NFP CPP area handle
+ *
+ * @return
+ *   NFP CPP handle
+ */
 struct nfp_cpp *
 nfp_cpp_area_cpp(struct nfp_cpp_area *cpp_area)
 {
 	return cpp_area->cpp;
 }
 
+/**
+ * Get the name passed during allocation of the NFP CPP area handle
+ *
+ * @param cpp_area
+ *   NFP CPP area handle
+ *
+ * @return
+ *   Pointer to the area's name
+ */
 const char *
 nfp_cpp_area_name(struct nfp_cpp_area *cpp_area)
 {
@@ -153,15 +253,24 @@ nfp_cpp_mu_locality_lsb(struct nfp_cpp *cpp)
 	return cpp->mu_locality_lsb;
 }
 
-/*
- * nfp_cpp_area_alloc - allocate a new CPP area
- * @cpp:    CPP handle
- * @dest:   CPP id
- * @address:    start address on CPP target
- * @size:   size of area in bytes
+/**
+ * Allocate and initialize a CPP area structure.
+ * The area must later be locked down with an 'acquire' before
+ * it can be safely accessed.
  *
- * Allocate and initialize a CPP area structure.  The area must later
- * be locked down with an 'acquire' before it can be safely accessed.
+ * @param cpp
+ *   CPP device handle
+ * @param dest
+ *   CPP id
+ * @param name
+ *   Name of region
+ * @param address
+ *   Address of region
+ * @param size
+ *   Size of region
+ *
+ * @return
+ *   NFP CPP area handle, or NULL
  *
  * NOTE: @address and @size must be 32-bit aligned values.
  */
@@ -211,6 +320,25 @@ nfp_cpp_area_alloc_with_name(struct nfp_cpp *cpp,
 	return area;
 }
 
+/**
+ * Allocate and initialize a CPP area structure.
+ * The area must later be locked down with an 'acquire' before
+ * it can be safely accessed.
+ *
+ * @param cpp
+ *   CPP device handle
+ * @param dest
+ *   CPP id
+ * @param address
+ *   Address of region
+ * @param size
+ *   Size of region
+ *
+ * @return
+ *   NFP CPP area handle, or NULL
+ *
+ * NOTE: @address and @size must be 32-bit aligned values.
+ */
 struct nfp_cpp_area *
 nfp_cpp_area_alloc(struct nfp_cpp *cpp,
 		uint32_t dest,
@@ -220,16 +348,21 @@ nfp_cpp_area_alloc(struct nfp_cpp *cpp,
 	return nfp_cpp_area_alloc_with_name(cpp, dest, NULL, address, size);
 }
 
-/*
- * nfp_cpp_area_alloc_acquire - allocate a new CPP area and lock it down
- *
- * @cpp:    CPP handle
- * @dest:   CPP id
- * @address:    start address on CPP target
- * @size:   size of area
- *
+/**
  * Allocate and initialize a CPP area structure, and lock it down so
  * that it can be accessed directly.
+ *
+ * @param cpp
+ *   CPP device handle
+ * @param destination
+ *   CPP id
+ * @param address
+ *   Address of region
+ * @param size
+ *   Size of region
+ *
+ * @return
+ *   NFP CPP area handle, or NULL
  *
  * NOTE: @address and @size must be 32-bit aligned values.
  *
@@ -258,11 +391,11 @@ nfp_cpp_area_alloc_acquire(struct nfp_cpp *cpp,
 	return area;
 }
 
-/*
- * nfp_cpp_area_free - free up the CPP area
- * area:    CPP area handle
- *
+/**
  * Frees up memory resources held by the CPP area.
+ *
+ * @param area
+ *   CPP area handle
  */
 void
 nfp_cpp_area_free(struct nfp_cpp_area *area)
@@ -272,11 +405,11 @@ nfp_cpp_area_free(struct nfp_cpp_area *area)
 	free(area);
 }
 
-/*
- * nfp_cpp_area_release_free - release CPP area and free it
- * area:    CPP area handle
+/**
+ * Releases CPP area and frees up memory resources held by it.
  *
- * Releases CPP area and frees up memory resources held by the it.
+ * @param area
+ *   CPP area handle
  */
 void
 nfp_cpp_area_release_free(struct nfp_cpp_area *area)
@@ -285,12 +418,15 @@ nfp_cpp_area_release_free(struct nfp_cpp_area *area)
 	nfp_cpp_area_free(area);
 }
 
-/*
- * nfp_cpp_area_acquire - lock down a CPP area for access
- * @area:   CPP area handle
+/**
+ * Locks down the CPP area for a potential long term activity.
+ * Area must always be locked down before being accessed.
  *
- * Locks down the CPP area for a potential long term activity.  Area
- * must always be locked down before being accessed.
+ * @param area
+ *   CPP area handle
+ *
+ * @return
+ *   0 on success, -1 on failure.
  */
 int
 nfp_cpp_area_acquire(struct nfp_cpp_area *area)
@@ -307,11 +443,11 @@ nfp_cpp_area_acquire(struct nfp_cpp_area *area)
 	return 0;
 }
 
-/*
- * nfp_cpp_area_release - release a locked down CPP area
- * @area:   CPP area handle
- *
+/**
  * Releases a previously locked down CPP area.
+ *
+ * @param area
+ *   CPP area handle
  */
 void
 nfp_cpp_area_release(struct nfp_cpp_area *area)
@@ -320,16 +456,16 @@ nfp_cpp_area_release(struct nfp_cpp_area *area)
 		area->cpp->op->area_release(area);
 }
 
-/*
- * nfp_cpp_area_iomem() - get IOMEM region for CPP area
- *
- * @area:       CPP area handle
- *
+/**
  * Returns an iomem pointer for use with readl()/writel() style operations.
  *
- * NOTE: Area must have been locked down with an 'acquire'.
+ * @param area
+ *   CPP area handle
  *
- * Return: pointer to the area, or NULL
+ * @return
+ *   Pointer to the area, or NULL
+ *
+ * NOTE: Area must have been locked down with an 'acquire'.
  */
 void *
 nfp_cpp_area_iomem(struct nfp_cpp_area *area)
@@ -342,18 +478,22 @@ nfp_cpp_area_iomem(struct nfp_cpp_area *area)
 	return iomem;
 }
 
-/*
- * nfp_cpp_area_read - read data from CPP area
- *
- * @area:       CPP area handle
- * @offset:     offset into CPP area
- * @kernel_vaddr:   kernel address to put data into
- * @length:     number of bytes to read
- *
+/**
  * Read data from indicated CPP region.
  *
- * NOTE: @offset and @length must be 32-bit aligned values.
+ * @param area
+ *   CPP area handle
+ * @param offset
+ *   Offset into CPP area
+ * @param kernel_vaddr
+ *   Address to put data into
+ * @param length
+ *   Number of bytes to read
  *
+ * @return
+ *   Length of io, or -ERRNO
+ *
+ * NOTE: @offset and @length must be 32-bit aligned values.
  * NOTE: Area must have been locked down with an 'acquire'.
  */
 int
@@ -368,18 +508,22 @@ nfp_cpp_area_read(struct nfp_cpp_area *area,
 	return area->cpp->op->area_read(area, kernel_vaddr, offset, length);
 }
 
-/*
- * nfp_cpp_area_write - write data to CPP area
- *
- * @area:       CPP area handle
- * @offset:     offset into CPP area
- * @kernel_vaddr:   kernel address to read data from
- * @length:     number of bytes to write
- *
+/**
  * Write data to indicated CPP region.
  *
- * NOTE: @offset and @length must be 32-bit aligned values.
+ * @param area
+ *   CPP area handle
+ * @param offset
+ *   Offset into CPP area
+ * @param kernel_vaddr
+ *   Address to put data into
+ * @param length
+ *   Number of bytes to read
  *
+ * @return
+ *   Length of io, or -ERRNO
+ *
+ * NOTE: @offset and @length must be 32-bit aligned values.
  * NOTE: Area must have been locked down with an 'acquire'.
  */
 int
@@ -436,6 +580,19 @@ nfp_xpb_to_cpp(struct nfp_cpp *cpp,
 	return xpb;
 }
 
+/**
+ * Read a uint32_t value from an area
+ *
+ * @param area
+ *   CPP Area handle
+ * @param offset
+ *   Offset into area
+ * @param value
+ *   Pointer to read buffer
+ *
+ * @return
+ *   0 on success, or -ERRNO
+ */
 int
 nfp_cpp_area_readl(struct nfp_cpp_area *area,
 		uint32_t offset,
@@ -450,6 +607,19 @@ nfp_cpp_area_readl(struct nfp_cpp_area *area,
 	return (sz == sizeof(*value)) ? 0 : -1;
 }
 
+/**
+ * Write a uint32_t vale to an area
+ *
+ * @param area
+ *   CPP Area handle
+ * @param offset
+ *   Offset into area
+ * @param value
+ *   Value to write
+ *
+ * @return
+ *   0 on success, or -ERRNO
+ */
 int
 nfp_cpp_area_writel(struct nfp_cpp_area *area,
 		uint32_t offset,
@@ -462,6 +632,19 @@ nfp_cpp_area_writel(struct nfp_cpp_area *area,
 	return (sz == sizeof(value)) ? 0 : -1;
 }
 
+/**
+ * Read a uint64_t value from an area
+ *
+ * @param area
+ *   CPP Area handle
+ * @param offset
+ *   Offset into area
+ * @param value
+ *   Pointer to read buffer
+ *
+ * @return
+ *   0 on success, or -ERRNO
+ */
 int
 nfp_cpp_area_readq(struct nfp_cpp_area *area,
 		uint32_t offset,
@@ -476,6 +659,19 @@ nfp_cpp_area_readq(struct nfp_cpp_area *area,
 	return (sz == sizeof(*value)) ? 0 : -1;
 }
 
+/**
+ * Write a uint64_t vale to an area
+ *
+ * @param area
+ *   CPP Area handle
+ * @param offset
+ *   Offset into area
+ * @param value
+ *   Value to write
+ *
+ * @return
+ *   0 on success, or -ERRNO
+ */
 int
 nfp_cpp_area_writeq(struct nfp_cpp_area *area,
 		uint32_t offset,
@@ -489,6 +685,21 @@ nfp_cpp_area_writeq(struct nfp_cpp_area *area,
 	return (sz == sizeof(value)) ? 0 : -1;
 }
 
+/**
+ * Read a uint32_t value from a CPP location
+ *
+ * @param cpp
+ *   CPP device handle
+ * @param cpp_id
+ *   CPP ID for operation
+ * @param address
+ *   Address for operation
+ * @param value
+ *   Pointer to read buffer
+ *
+ * @return
+ *   0 on success, or -ERRNO
+ */
 int
 nfp_cpp_readl(struct nfp_cpp *cpp,
 		uint32_t cpp_id,
@@ -504,6 +715,21 @@ nfp_cpp_readl(struct nfp_cpp *cpp,
 	return (sz == sizeof(*value)) ? 0 : -1;
 }
 
+/**
+ * Write a uint32_t value to a CPP location
+ *
+ * @param cpp
+ *   CPP device handle
+ * @param cpp_id
+ *   CPP ID for operation
+ * @param address
+ *   Address for operation
+ * @param value
+ *   Value to write
+ *
+ * @return
+ *   0 on success, or -ERRNO
+ */
 int
 nfp_cpp_writel(struct nfp_cpp *cpp,
 		uint32_t cpp_id,
@@ -518,6 +744,21 @@ nfp_cpp_writel(struct nfp_cpp *cpp,
 	return (sz == sizeof(value)) ? 0 : -1;
 }
 
+/**
+ * Read a uint64_t value from a CPP location
+ *
+ * @param cpp
+ *   CPP device handle
+ * @param cpp_id
+ *   CPP ID for operation
+ * @param address
+ *   Address for operation
+ * @param value
+ *   Pointer to read buffer
+ *
+ * @return
+ *   0 on success, or -ERRNO
+ */
 int
 nfp_cpp_readq(struct nfp_cpp *cpp,
 		uint32_t cpp_id,
@@ -533,6 +774,21 @@ nfp_cpp_readq(struct nfp_cpp *cpp,
 	return (sz == sizeof(*value)) ? 0 : -1;
 }
 
+/**
+ * Write a uint64_t value to a CPP location
+ *
+ * @param cpp
+ *   CPP device handle
+ * @param cpp_id
+ *   CPP ID for operation
+ * @param address
+ *   Address for operation
+ * @param value
+ *   Value to write
+ *
+ * @return
+ *   0 on success, or -ERRNO
+ */
 int
 nfp_cpp_writeq(struct nfp_cpp *cpp,
 		uint32_t cpp_id,
@@ -547,6 +803,19 @@ nfp_cpp_writeq(struct nfp_cpp *cpp,
 	return (sz == sizeof(value)) ? 0 : -1;
 }
 
+/**
+ * Write a uint32_t word to a XPB location
+ *
+ * @param cpp
+ *   CPP device handle
+ * @param xpb_addr
+ *   XPB target and address
+ * @param value
+ *   Value to write
+ *
+ * @return
+ *   0 on success, or -ERRNO
+ */
 int
 nfp_xpb_writel(struct nfp_cpp *cpp,
 		uint32_t xpb_addr,
@@ -559,6 +828,19 @@ nfp_xpb_writel(struct nfp_cpp *cpp,
 	return nfp_cpp_writel(cpp, cpp_dest, xpb_addr, value);
 }
 
+/**
+ * Read a uint32_t value from a XPB location
+ *
+ * @param cpp
+ *   CPP device handle
+ * @param xpb_addr
+ *   XPB target and address
+ * @param value
+ *   Pointer to read buffer
+ *
+ * @return
+ *   0 on success, or -ERRNO
+ */
 int
 nfp_xpb_readl(struct nfp_cpp *cpp,
 		uint32_t xpb_addr,
@@ -625,9 +907,11 @@ nfp_cpp_alloc(struct rte_pci_device *dev,
 	return cpp;
 }
 
-/*
- * nfp_cpp_free - free the CPP handle
- * @cpp:    CPP handle
+/**
+ * Free the CPP handle
+ *
+ * @param cpp
+ *   CPP handle
  */
 void
 nfp_cpp_free(struct nfp_cpp *cpp)
@@ -641,6 +925,19 @@ nfp_cpp_free(struct nfp_cpp *cpp)
 	free(cpp);
 }
 
+/**
+ * Create a NFP CPP handle from device
+ *
+ * @param dev
+ *   PCI device
+ * @param driver_lock_needed
+ *   Driver lock flag
+ *
+ * @return
+ *   NFP CPP handle on success, NULL on failure
+ *
+ * NOTE: On failure, cpp_ops->free will be called!
+ */
 struct nfp_cpp *
 nfp_cpp_from_device_name(struct rte_pci_device *dev,
 		int driver_lock_needed)
@@ -648,13 +945,22 @@ nfp_cpp_from_device_name(struct rte_pci_device *dev,
 	return nfp_cpp_alloc(dev, driver_lock_needed);
 }
 
-/*
- * nfp_cpp_read - read from CPP target
- * @cpp:        CPP handle
- * @destination:    CPP id
- * @address:        offset into CPP target
- * @kernel_vaddr:   kernel buffer for result
- * @length:     number of bytes to read
+/**
+ * Read from CPP target
+ *
+ * @param cpp
+ *   CPP handle
+ * @param destination
+ *   CPP id
+ * @param address
+ *   Offset into CPP target
+ * @param kernel_vaddr
+ *   Buffer for result
+ * @param length
+ *   Number of bytes to read
+ *
+ * @return
+ *   Length of io, or -ERRNO
  */
 int
 nfp_cpp_read(struct nfp_cpp *cpp,
@@ -678,13 +984,22 @@ nfp_cpp_read(struct nfp_cpp *cpp,
 	return err;
 }
 
-/*
- * nfp_cpp_write - write to CPP target
- * @cpp:        CPP handle
- * @destination:    CPP id
- * @address:        offset into CPP target
- * @kernel_vaddr:   kernel buffer to read from
- * @length:     number of bytes to write
+/**
+ * Write to CPP target
+ *
+ * @param cpp
+ *   CPP handle
+ * @param destination
+ *   CPP id
+ * @param address
+ *   Offset into CPP target
+ * @param kernel_vaddr
+ *   Buffer to read from
+ * @param length
+ *   Number of bytes to write
+ *
+ * @return
+ *   Length of io, or -ERRNO
  */
 int
 nfp_cpp_write(struct nfp_cpp *cpp,
@@ -731,18 +1046,23 @@ __nfp_cpp_model_autodetect(struct nfp_cpp *cpp,
 	return 0;
 }
 
-/*
- * nfp_cpp_map_area() - Helper function to map an area
- * @cpp:    NFP CPP handler
- * @cpp_id: CPP ID
- * @addr:   CPP address
- * @size:   Size of the area
- * @area:   Area handle (output)
+/**
+ * Map an area of IOMEM access.
+ * To undo the effect of this function call @nfp_cpp_area_release_free(*area).
  *
- * Map an area of IOMEM access.  To undo the effect of this function call
- * @nfp_cpp_area_release_free(*area).
+ * @param cpp
+ *   NFP CPP handler
+ * @param cpp_id
+ *   CPP id
+ * @param addr
+ *   CPP address
+ * @param size
+ *   Size of the area
+ * @param area
+ *   Area handle (output)
  *
- * Return: Pointer to memory mapped area or NULL
+ * @return
+ *   Pointer to memory mapped area or NULL
  */
 uint8_t *
 nfp_cpp_map_area(struct nfp_cpp *cpp,

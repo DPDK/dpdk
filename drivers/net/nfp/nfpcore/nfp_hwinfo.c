@@ -3,7 +3,8 @@
  * All rights reserved.
  */
 
-/* Parse the hwinfo table that the ARM firmware builds in the ARM scratch SRAM
+/*
+ * Parse the hwinfo table that the ARM firmware builds in the ARM scratch SRAM
  * after chip reset.
  *
  * Examples of the fields:
@@ -146,7 +147,7 @@ nfp_hwinfo_fetch(struct nfp_cpp *cpp,
 	struct nfp_hwinfo *db;
 
 	wait.tv_sec = 0;
-	wait.tv_nsec = 10000000;
+	wait.tv_nsec = 10000000;    /* 10ms */
 
 	for (;;) {
 		db = nfp_hwinfo_try_fetch(cpp, hwdb_size);
@@ -154,7 +155,7 @@ nfp_hwinfo_fetch(struct nfp_cpp *cpp,
 			return db;
 
 		nanosleep(&wait, NULL);
-		if (count++ > 200) {
+		if (count++ > 200) {    /* 10ms * 200 = 2s */
 			PMD_DRV_LOG(ERR, "NFP access error");
 			return NULL;
 		}
@@ -180,12 +181,16 @@ nfp_hwinfo_read(struct nfp_cpp *cpp)
 	return db;
 }
 
-/*
- * nfp_hwinfo_lookup() - Find a value in the HWInfo table by name
- * @hwinfo:	NFP HWinfo table
- * @lookup:	HWInfo name to search for
+/**
+ * Find a value in the HWInfo table by name
  *
- * Return: Value of the HWInfo name, or NULL
+ * @param hwinfo
+ *   NFP HWInfo table
+ * @param lookup
+ *   HWInfo name to search for
+ *
+ * @return
+ *   Value of the HWInfo name, or NULL
  */
 const char *
 nfp_hwinfo_lookup(struct nfp_hwinfo *hwinfo,

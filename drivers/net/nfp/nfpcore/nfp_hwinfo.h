@@ -59,6 +59,8 @@
  * Packed UTF8Z strings, ie 'key1\000value1\000key2\000value2\000'
  *
  * Unsorted.
+ *
+ * Note: Only the HwInfo v2 Table be supported now.
  */
 
 #define NFP_HWINFO_VERSION_1 ('H' << 24 | 'I' << 16 | 1 << 8 | 0 << 1 | 0)

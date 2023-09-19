@@ -87,15 +87,16 @@ exit_close_nffw:
 	return err;
 }
 
-/*
- * nfp_mip_open() - Get device MIP structure
- * @cpp:	NFP CPP Handle
- *
- * Copy MIP structure from NFP device and return it.  The returned
+/**
+ * Copy MIP structure from NFP device and return it. The returned
  * structure is handled internally by the library and should be
- * freed by calling nfp_mip_close().
+ * freed by calling @nfp_mip_close().
  *
- * Return: pointer to mip, NULL on failure.
+ * @param cpp
+ *   NFP CPP Handle
+ *
+ * @return
+ *   Pointer to MIP, NULL on failure.
  */
 struct nfp_mip *
 nfp_mip_open(struct nfp_cpp *cpp)
@@ -131,11 +132,15 @@ nfp_mip_name(const struct nfp_mip *mip)
 	return mip->name;
 }
 
-/*
- * nfp_mip_symtab() - Get the address and size of the MIP symbol table
- * @mip:	MIP handle
- * @addr:	Location for NFP DDR address of MIP symbol table
- * @size:	Location for size of MIP symbol table
+/**
+ * Get the address and size of the MIP symbol table.
+ *
+ * @param mip
+ *   MIP handle
+ * @param addr
+ *   Location for NFP DDR address of MIP symbol table
+ * @param size
+ *   Location for size of MIP symbol table
  */
 void
 nfp_mip_symtab(const struct nfp_mip *mip,
@@ -146,11 +151,15 @@ nfp_mip_symtab(const struct nfp_mip *mip,
 	*size = rte_le_to_cpu_32(mip->symtab_size);
 }
 
-/*
- * nfp_mip_strtab() - Get the address and size of the MIP symbol name table
- * @mip:	MIP handle
- * @addr:	Location for NFP DDR address of MIP symbol name table
- * @size:	Location for size of MIP symbol name table
+/**
+ * Get the address and size of the MIP symbol name table.
+ *
+ * @param mip
+ *   MIP handle
+ * @param addr
+ *   Location for NFP DDR address of MIP symbol name table
+ * @param size
+ *   Location for size of MIP symbol name table
  */
 void
 nfp_mip_strtab(const struct nfp_mip *mip,

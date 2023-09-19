@@ -58,7 +58,7 @@
  * Minimal size of the PCIe cfg memory we depend on being mapped,
  * queue controller and DMA controller don't have to be covered.
  */
-#define NFP_PCI_MIN_MAP_SIZE				0x080000
+#define NFP_PCI_MIN_MAP_SIZE				0x080000        /* 512K */
 
 #define NFP_PCIE_P2C_FIXED_SIZE(bar)               (1 << (bar)->bitsize)
 #define NFP_PCIE_P2C_BULK_SIZE(bar)                (1 << (bar)->bitsize)
@@ -72,40 +72,25 @@
 #define NFP_PCIE_CPP_BAR_PCIETOCPPEXPBAR(bar, slot) \
 	(((bar) * 8 + (slot)) * 4)
 
-/*
- * Define to enable a bit more verbose debug output.
- * Set to 1 to enable a bit more verbose debug output.
- */
 struct nfp_pcie_user;
 struct nfp6000_area_priv;
 
-/*
- * struct nfp_bar - describes BAR configuration and usage
- * @nfp:	backlink to owner
- * @barcfg:	cached contents of BAR config CSR
- * @base:	the BAR's base CPP offset
- * @mask:       mask for the BAR aperture (read only)
- * @bitsize:	bitsize of BAR aperture (read only)
- * @index:	index of the BAR
- * @lock:	lock to specify if bar is in use
- * @refcnt:	number of current users
- * @iomem:	mapped IO memory
- */
+/* Describes BAR configuration and usage */
 #define NFP_BAR_MIN 1
 #define NFP_BAR_MID 5
 #define NFP_BAR_MAX 7
 
 struct nfp_bar {
-	struct nfp_pcie_user *nfp;
-	uint32_t barcfg;
-	uint64_t base;		/* CPP address base */
-	uint64_t mask;		/* Bit mask of the bar */
-	uint32_t bitsize;	/* Bit size of the bar */
-	uint32_t index;
-	int lock;
+	struct nfp_pcie_user *nfp;    /**< Backlink to owner */
+	uint32_t barcfg;     /**< BAR config CSR */
+	uint64_t base;       /**< Base CPP offset */
+	uint64_t mask;       /**< Mask of the BAR aperture (read only) */
+	uint32_t bitsize;    /**< Bit size of the BAR aperture (read only) */
+	uint32_t index;      /**< Index of the BAR */
+	int lock;            /**< If the BAR has been locked */
 
 	char *csr;
-	char *iomem;
+	char *iomem;         /**< mapped IO memory */
 };
 
 #define BUSDEV_SZ	13
@@ -360,9 +345,7 @@ nfp_disable_bars(struct nfp_pcie_user *nfp)
 	}
 }
 
-/*
- * Generic CPP bus access interface.
- */
+/* Generic CPP bus access interface. */
 
 struct nfp6000_area_priv {
 	struct nfp_bar *bar;

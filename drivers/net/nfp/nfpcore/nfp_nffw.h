@@ -8,7 +8,8 @@
 
 #include "nfp_cpp.h"
 
-/* Init-CSR owner IDs for firmware map to firmware IDs which start at 4.
+/*
+ * Init-CSR owner IDs for firmware map to firmware IDs which start at 4.
  * Lower IDs are reserved for target and loader IDs.
  */
 #define NFFW_FWID_EXT   3 /* For active MEs that we didn't load. */
@@ -16,7 +17,7 @@
 
 #define NFFW_FWID_ALL   255
 
-/**
+/*
  * NFFW_INFO_VERSION history:
  * 0: This was never actually used (before versioning), but it refers to
  *    the previous struct which had FWINFO_CNT = MEINFO_CNT = 120 that later
@@ -35,6 +36,7 @@
 #define NFFW_MEINFO_CNT_V2 200
 #define NFFW_FWINFO_CNT_V2 200
 
+/* nfp.nffw meinfo */
 struct nffw_meinfo {
 	uint32_t ctxmask__fwid__meid;
 };

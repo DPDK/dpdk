@@ -53,7 +53,7 @@ _nfp_cpp_mutex_validate(uint32_t model,
 	return 0;
 }
 
-/*
+/**
  * Initialize a mutex location
  *
  * The CPP target:address must point to a 64-bit aligned location, and
@@ -65,13 +65,17 @@ _nfp_cpp_mutex_validate(uint32_t model,
  * This function should only be called when setting up
  * the initial lock state upon boot-up of the system.
  *
- * @param mutex     NFP CPP Mutex handle
- * @param target    NFP CPP target ID (ie NFP_CPP_TARGET_CLS or
- *		    NFP_CPP_TARGET_MU)
- * @param address   Offset into the address space of the NFP CPP target ID
- * @param key       Unique 32-bit value for this mutex
+ * @param cpp
+ *   NFP CPP handle
+ * @param target
+ *   NFP CPP target ID (ie NFP_CPP_TARGET_CLS or NFP_CPP_TARGET_MU)
+ * @param address
+ *   Offset into the address space of the NFP CPP target ID
+ * @param key
+ *   Unique 32-bit value for this mutex
  *
- * @return 0 on success, or negative value on failure.
+ * @return
+ *   0 on success, or negative value on failure
  */
 int
 nfp_cpp_mutex_init(struct nfp_cpp *cpp,
@@ -99,7 +103,7 @@ nfp_cpp_mutex_init(struct nfp_cpp *cpp,
 	return 0;
 }
 
-/*
+/**
  * Create a mutex handle from an address controlled by a MU Atomic engine
  *
  * The CPP target:address must point to a 64-bit aligned location, and
@@ -108,13 +112,17 @@ nfp_cpp_mutex_init(struct nfp_cpp *cpp,
  * Only target/address pairs that point to entities that support the
  * MU Atomic Engine are supported.
  *
- * @param cpp       NFP CPP handle
- * @param target    NFP CPP target ID (ie NFP_CPP_TARGET_CLS or
- *		    NFP_CPP_TARGET_MU)
- * @param address   Offset into the address space of the NFP CPP target ID
- * @param key       32-bit unique key (must match the key at this location)
+ * @param cpp
+ *   NFP CPP handle
+ * @param target
+ *   NFP CPP target ID (ie NFP_CPP_TARGET_CLS or NFP_CPP_TARGET_MU)
+ * @param address
+ *   Offset into the address space of the NFP CPP target ID
+ * @param key
+ *   32-bit unique key (must match the key at this location)
  *
- * @return      A non-NULL struct nfp_cpp_mutex * on success, NULL on failure.
+ * @return
+ *   A non-NULL struct nfp_cpp_mutex * on success, NULL on failure.
  */
 struct nfp_cpp_mutex *
 nfp_cpp_mutex_alloc(struct nfp_cpp *cpp,
@@ -178,10 +186,11 @@ nfp_cpp_mutex_alloc(struct nfp_cpp *cpp,
 	return mutex;
 }
 
-/*
+/**
  * Free a mutex handle - does not alter the lock state
  *
- * @param mutex     NFP CPP Mutex handle
+ * @param mutex
+ *   NFP CPP Mutex handle
  */
 void
 nfp_cpp_mutex_free(struct nfp_cpp_mutex *mutex)
@@ -203,12 +212,14 @@ nfp_cpp_mutex_free(struct nfp_cpp_mutex *mutex)
 	free(mutex);
 }
 
-/*
+/**
  * Lock a mutex handle, using the NFP MU Atomic Engine
  *
- * @param mutex     NFP CPP Mutex handle
+ * @param mutex
+ *   NFP CPP Mutex handle
  *
- * @return 0 on success, or negative value on failure.
+ * @return
+ *   0 on success, or negative value on failure.
  */
 int
 nfp_cpp_mutex_lock(struct nfp_cpp_mutex *mutex)
@@ -229,12 +240,14 @@ nfp_cpp_mutex_lock(struct nfp_cpp_mutex *mutex)
 	return 0;
 }
 
-/*
+/**
  * Unlock a mutex handle, using the NFP MU Atomic Engine
  *
- * @param mutex     NFP CPP Mutex handle
+ * @param mutex
+ *   NFP CPP Mutex handle
  *
- * @return 0 on success, or negative value on failure.
+ * @return
+ *   0 on success, or negative value on failure
  */
 int
 nfp_cpp_mutex_unlock(struct nfp_cpp_mutex *mutex)
@@ -280,16 +293,18 @@ exit:
 	return err;
 }
 
-/*
+/**
  * Attempt to lock a mutex handle, using the NFP MU Atomic Engine
  *
  * Valid lock states:
- *
  *      0x....0000      - Unlocked
  *      0x....000f      - Locked
  *
- * @param mutex     NFP CPP Mutex handle
- * @return      0 if the lock succeeded, negative value on failure.
+ * @param mutex
+ *   NFP CPP Mutex handle
+ *
+ * @return
+ *   0 if the lock succeeded, negative value on failure.
  */
 int
 nfp_cpp_mutex_trylock(struct nfp_cpp_mutex *mutex)
@@ -352,7 +367,7 @@ nfp_cpp_mutex_trylock(struct nfp_cpp_mutex *mutex)
 		 * If there was another contending for this lock, then
 		 * the lock state would be 0x....000f
 		 *
-		 * Write our owner ID into the lock
+		 * Write our owner ID into the lock.
 		 * While not strictly necessary, this helps with
 		 * debug and bookkeeping.
 		 */
