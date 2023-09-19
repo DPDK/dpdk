@@ -21,6 +21,7 @@ sources = files(
         'nfpcore/nfp_rtsym.c',
         'nfpcore/nfp_nsp_cmds.c',
         'nfpcore/nfp_crc.c',
+        'nfpcore/nfp_dev.c',
         'nfpcore/nfp_mutex.c',
         'nfpcore/nfp_nsp_eth.c',
         'nfpcore/nfp_hwinfo.c',

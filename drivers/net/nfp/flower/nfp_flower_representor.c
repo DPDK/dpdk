@@ -67,7 +67,8 @@ nfp_pf_repr_rx_queue_setup(struct rte_eth_dev *dev,
 	 * resizing in later calls to the queue setup function.
 	 */
 	tz = rte_eth_dma_zone_reserve(dev, "rx_ring", queue_idx,
-			sizeof(struct nfp_net_rx_desc) * NFP_NET_MAX_RX_DESC,
+			sizeof(struct nfp_net_rx_desc) *
+			hw->dev_info->max_qc_size,
 			NFP_MEMZONE_ALIGN, socket_id);
 	if (tz == NULL) {
 		PMD_DRV_LOG(ERR, "Error allocating rx dma");
@@ -140,7 +141,8 @@ nfp_pf_repr_tx_queue_setup(struct rte_eth_dev *dev,
 	 * resizing in later calls to the queue setup function.
 	 */
 	tz = rte_eth_dma_zone_reserve(dev, "tx_ring", queue_idx,
-			sizeof(struct nfp_net_nfd3_tx_desc) * NFP_NET_MAX_TX_DESC,
+			sizeof(struct nfp_net_nfd3_tx_desc) *
+			hw->dev_info->max_qc_size,
 			NFP_MEMZONE_ALIGN, socket_id);
 	if (tz == NULL) {
 		PMD_DRV_LOG(ERR, "Error allocating tx dma");

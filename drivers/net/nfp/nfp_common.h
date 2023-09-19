@@ -7,16 +7,9 @@
 #define _NFP_COMMON_H_
 
 #include "nfp_ctrl.h"
+#include "nfpcore/nfp_dev.h"
 
 #define NFP_NET_PMD_VERSION "0.1"
-#define PCI_VENDOR_ID_NETRONOME         0x19ee
-#define PCI_VENDOR_ID_CORIGINE          0x1da8
-
-#define PCI_DEVICE_ID_NFP3800_PF_NIC    0x3800
-#define PCI_DEVICE_ID_NFP3800_VF_NIC    0x3803
-#define PCI_DEVICE_ID_NFP4000_PF_NIC    0x4000
-#define PCI_DEVICE_ID_NFP6000_PF_NIC    0x6000
-#define PCI_DEVICE_ID_NFP6000_VF_NIC    0x6003  /* Include NFP4000VF */
 
 /* Forward declaration */
 struct nfp_net_adapter;
@@ -28,7 +21,6 @@ struct nfp_net_adapter;
 #define NFP_NET_CRTL_BAR        0
 #define NFP_NET_TX_BAR          2
 #define NFP_NET_RX_BAR          2
-#define NFP_QCP_QUEUE_AREA_SZ			0x80000
 
 /* Macros for accessing the Queue Controller Peripheral 'CSRs' */
 #define NFP_QCP_QUEUE_OFF(_x)                 ((_x) * 0x800)
@@ -38,17 +30,6 @@ struct nfp_net_adapter;
 #define NFP_QCP_QUEUE_STS_LO_READPTR_mask     (0x3ffff)
 #define NFP_QCP_QUEUE_STS_HI                    0x000c
 #define NFP_QCP_QUEUE_STS_HI_WRITEPTR_mask    (0x3ffff)
-
-#define NFP_PCIE_QCP_NFP3800_OFFSET            0x400000
-#define NFP_PCIE_QCP_NFP6000_OFFSET            0x80000
-#define NFP_PCIE_QUEUE_NFP3800_MASK            0x1ff
-#define NFP_PCIE_QUEUE_NFP6000_MASK            0xff
-#define NFP_PCIE_QCP_PF_OFFSET                 0x0
-#define NFP_PCIE_QCP_VF_OFFSET                 0x0
-
-/* The offset of the queue controller queues in the PCIe Target */
-#define NFP_PCIE_QUEUE(_offset, _q, _mask)    \
-		((_offset) + (NFP_QCP_QUEUE_ADDR_SZ * ((_q) & (_mask))))
 
 /* Interrupt definitions */
 #define NFP_NET_IRQ_LSC_IDX             0
@@ -162,6 +143,9 @@ struct nfp_net_hw {
 	uint32_t mtu;
 	uint32_t rx_offset;
 	enum nfp_net_meta_format meta_format;
+
+	/** NFP ASIC params */
+	const struct nfp_dev_info *dev_info;
 
 	/* Current values for control */
 	uint32_t ctrl;
@@ -352,23 +336,11 @@ nfp_qcp_read(uint8_t *q, enum nfp_qcp_ptr ptr)
 }
 
 static inline uint32_t
-nfp_pci_queue(struct rte_pci_device *pdev, uint16_t queue)
+nfp_qcp_queue_offset(const struct nfp_dev_info *dev_info,
+		uint16_t queue)
 {
-	switch (pdev->id.device_id) {
-	case PCI_DEVICE_ID_NFP4000_PF_NIC:
-	case PCI_DEVICE_ID_NFP6000_PF_NIC:
-		return NFP_PCIE_QUEUE(NFP_PCIE_QCP_PF_OFFSET, queue,
-				NFP_PCIE_QUEUE_NFP6000_MASK);
-	case PCI_DEVICE_ID_NFP3800_VF_NIC:
-		return NFP_PCIE_QUEUE(NFP_PCIE_QCP_VF_OFFSET, queue,
-				NFP_PCIE_QUEUE_NFP3800_MASK);
-	case PCI_DEVICE_ID_NFP6000_VF_NIC:
-		return NFP_PCIE_QUEUE(NFP_PCIE_QCP_VF_OFFSET, queue,
-				NFP_PCIE_QUEUE_NFP6000_MASK);
-	default:
-		return NFP_PCIE_QUEUE(NFP_PCIE_QCP_PF_OFFSET, queue,
-				NFP_PCIE_QUEUE_NFP3800_MASK);
-	}
+	return dev_info->qc_addr_offset + NFP_QCP_QUEUE_ADDR_SZ *
+			(queue & dev_info->qc_idx_mask);
 }
 
 /* Prototypes for common NFP functions */
@@ -434,10 +406,10 @@ void nfp_net_close_rx_queue(struct rte_eth_dev *dev);
 void nfp_net_stop_tx_queue(struct rte_eth_dev *dev);
 void nfp_net_close_tx_queue(struct rte_eth_dev *dev);
 int nfp_net_set_vxlan_port(struct nfp_net_hw *hw, size_t idx, uint16_t port);
-int nfp_net_rx_desc_limits(struct nfp_net_hw *hw,
+void nfp_net_rx_desc_limits(struct nfp_net_hw *hw,
 		uint16_t *min_rx_desc,
 		uint16_t *max_rx_desc);
-int nfp_net_tx_desc_limits(struct nfp_net_hw *hw,
+void nfp_net_tx_desc_limits(struct nfp_net_hw *hw,
 		uint16_t *min_tx_desc,
 		uint16_t *max_tx_desc);
 int nfp_net_check_dma_mask(struct nfp_net_hw *hw, char *name);

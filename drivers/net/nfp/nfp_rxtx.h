@@ -74,18 +74,6 @@ struct nfp_meta_parsed {
 	} vlan[NFP_META_MAX_VLANS];
 };
 
-/*
- * The maximum number of descriptors is limited by design as
- * DPDK uses uint16_t variables for these values
- */
-#define NFP_NET_MAX_TX_DESC (32 * 1024)
-#define NFP_NET_MIN_TX_DESC 256
-#define NFP3800_NET_MIN_TX_DESC 512
-
-#define NFP_NET_MAX_RX_DESC (32 * 1024)
-#define NFP_NET_MIN_RX_DESC 256
-#define NFP3800_NET_MIN_RX_DESC 512
-
 /* Descriptor alignment */
 #define NFP_ALIGN_RING_DESC 128
 

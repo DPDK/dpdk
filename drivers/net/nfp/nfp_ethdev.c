@@ -496,9 +496,8 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 	struct nfp_app_fw_nic *app_fw_nic;
 	struct nfp_net_hw *hw;
 	struct rte_ether_addr *tmp_ether_addr;
-	uint64_t rx_bar_off = 0;
-	uint64_t tx_bar_off = 0;
-	uint32_t start_q;
+	uint64_t rx_base;
+	uint64_t tx_base;
 	int port = 0;
 	int err;
 
@@ -576,25 +575,14 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 
 
 	/* Work out where in the BAR the queues start. */
-	switch (pci_dev->id.device_id) {
-	case PCI_DEVICE_ID_NFP3800_PF_NIC:
-	case PCI_DEVICE_ID_NFP4000_PF_NIC:
-	case PCI_DEVICE_ID_NFP6000_PF_NIC:
-		start_q = nn_cfg_readl(hw, NFP_NET_CFG_START_TXQ);
-		tx_bar_off = nfp_pci_queue(pci_dev, start_q);
-		start_q = nn_cfg_readl(hw, NFP_NET_CFG_START_RXQ);
-		rx_bar_off = nfp_pci_queue(pci_dev, start_q);
-		break;
-	default:
-		PMD_DRV_LOG(ERR, "nfp_net: no device ID matching");
-		return -ENODEV;
-	}
+	tx_base = nn_cfg_readl(hw, NFP_NET_CFG_START_TXQ);
+	rx_base = nn_cfg_readl(hw, NFP_NET_CFG_START_RXQ);
 
-	PMD_INIT_LOG(DEBUG, "tx_bar_off: 0x%" PRIx64 "", tx_bar_off);
-	PMD_INIT_LOG(DEBUG, "rx_bar_off: 0x%" PRIx64 "", rx_bar_off);
+	PMD_INIT_LOG(DEBUG, "tx_base: 0x%" PRIx64 "", tx_base);
+	PMD_INIT_LOG(DEBUG, "rx_base: 0x%" PRIx64 "", rx_base);
 
-	hw->tx_bar = pf_dev->qc_bar + tx_bar_off;
-	hw->rx_bar = pf_dev->qc_bar + rx_bar_off;
+	hw->tx_bar = pf_dev->qc_bar + tx_base * NFP_QCP_QUEUE_ADDR_SZ;
+	hw->rx_bar = pf_dev->qc_bar + rx_base * NFP_QCP_QUEUE_ADDR_SZ;
 	eth_dev->data->dev_private = hw;
 
 	PMD_INIT_LOG(DEBUG, "ctrl_bar: %p, tx_bar: %p, rx_bar: %p",
@@ -761,7 +749,8 @@ nfp_fw_setup(struct rte_pci_device *dev,
 }
 
 static int
-nfp_init_app_fw_nic(struct nfp_pf_dev *pf_dev)
+nfp_init_app_fw_nic(struct nfp_pf_dev *pf_dev,
+		const struct nfp_dev_info *dev_info)
 {
 	int i;
 	int ret;
@@ -849,6 +838,7 @@ nfp_init_app_fw_nic(struct nfp_pf_dev *pf_dev)
 		/* Add this device to the PF's array of physical ports */
 		app_fw_nic->ports[i] = hw;
 
+		hw->dev_info = dev_info;
 		hw->pf_dev = pf_dev;
 		hw->cpp = pf_dev->cpp;
 		hw->eth_dev = eth_dev;
@@ -902,9 +892,16 @@ nfp_pf_init(struct rte_pci_device *pci_dev)
 	char name[RTE_ETH_NAME_MAX_LEN];
 	struct nfp_rtsym_table *sym_tbl;
 	struct nfp_eth_table *nfp_eth_table;
+	const struct nfp_dev_info *dev_info;
 
 	if (pci_dev == NULL)
 		return -ENODEV;
+
+	dev_info = nfp_dev_info_get(pci_dev->id.device_id);
+	if (dev_info == NULL) {
+		PMD_INIT_LOG(ERR, "Not supported device ID");
+		return -ENODEV;
+	}
 
 	/*
 	 * When device bound to UIO, the device could be used, by mistake,
@@ -978,26 +975,11 @@ nfp_pf_init(struct rte_pci_device *pci_dev)
 	pf_dev->nfp_eth_table = nfp_eth_table;
 
 	/* configure access to tx/rx vNIC BARs */
-	switch (pci_dev->id.device_id) {
-	case PCI_DEVICE_ID_NFP3800_PF_NIC:
-		addr = NFP_PCIE_QUEUE(NFP_PCIE_QCP_NFP3800_OFFSET,
-					0, NFP_PCIE_QUEUE_NFP3800_MASK);
-		break;
-	case PCI_DEVICE_ID_NFP4000_PF_NIC:
-	case PCI_DEVICE_ID_NFP6000_PF_NIC:
-		addr = NFP_PCIE_QUEUE(NFP_PCIE_QCP_NFP6000_OFFSET,
-					0, NFP_PCIE_QUEUE_NFP6000_MASK);
-		break;
-	default:
-		PMD_INIT_LOG(ERR, "nfp_net: no device ID matching");
-		ret = -ENODEV;
-		goto pf_cleanup;
-	}
-
+	addr = nfp_qcp_queue_offset(dev_info, 0);
 	cpp_id = NFP_CPP_ISLAND_ID(0, NFP_CPP_ACTION_RW, 0, 0);
+
 	pf_dev->qc_bar = nfp_cpp_map_area(pf_dev->cpp, cpp_id,
-			addr, NFP_QCP_QUEUE_AREA_SZ,
-			&pf_dev->qc_area);
+			addr, dev_info->qc_area_sz, &pf_dev->qc_area);
 	if (pf_dev->qc_bar == NULL) {
 		PMD_INIT_LOG(ERR, "nfp_rtsym_map fails for net.qc");
 		ret = -EIO;
@@ -1013,7 +995,7 @@ nfp_pf_init(struct rte_pci_device *pci_dev)
 	switch (pf_dev->app_fw_id) {
 	case NFP_APP_FW_CORE_NIC:
 		PMD_INIT_LOG(INFO, "Initializing coreNIC");
-		ret = nfp_init_app_fw_nic(pf_dev);
+		ret = nfp_init_app_fw_nic(pf_dev, dev_info);
 		if (ret != 0) {
 			PMD_INIT_LOG(ERR, "Could not initialize coreNIC!");
 			goto hwqueues_cleanup;
@@ -1021,7 +1003,7 @@ nfp_pf_init(struct rte_pci_device *pci_dev)
 		break;
 	case NFP_APP_FW_FLOWER_NIC:
 		PMD_INIT_LOG(INFO, "Initializing Flower");
-		ret = nfp_init_app_fw_flower(pf_dev);
+		ret = nfp_init_app_fw_flower(pf_dev, dev_info);
 		if (ret != 0) {
 			PMD_INIT_LOG(ERR, "Could not initialize Flower!");
 			goto hwqueues_cleanup;
@@ -1111,9 +1093,16 @@ nfp_pf_secondary_init(struct rte_pci_device *pci_dev)
 	struct nfp_cpp *cpp;
 	enum nfp_app_fw_id app_fw_id;
 	struct nfp_rtsym_table *sym_tbl;
+	const struct nfp_dev_info *dev_info;
 
 	if (pci_dev == NULL)
 		return -ENODEV;
+
+	dev_info = nfp_dev_info_get(pci_dev->id.device_id);
+	if (dev_info == NULL) {
+		PMD_INIT_LOG(ERR, "Not supported device ID");
+		return -ENODEV;
+	}
 
 	/*
 	 * When device bound to UIO, the device could be used, by mistake,

@@ -357,7 +357,6 @@ nfp_net_nfdk_tx_queue_setup(struct rte_eth_dev *dev,
 		unsigned int socket_id,
 		const struct rte_eth_txconf *tx_conf)
 {
-	int ret;
 	size_t size;
 	uint32_t tx_desc_sz;
 	uint16_t min_tx_desc;
@@ -371,9 +370,7 @@ nfp_net_nfdk_tx_queue_setup(struct rte_eth_dev *dev,
 
 	PMD_INIT_FUNC_TRACE();
 
-	ret = nfp_net_tx_desc_limits(hw, &min_tx_desc, &max_tx_desc);
-	if (ret != 0)
-		return ret;
+	nfp_net_tx_desc_limits(hw, &min_tx_desc, &max_tx_desc);
 
 	/* Validating number of descriptors */
 	tx_desc_sz = nb_desc * sizeof(struct nfp_net_nfdk_tx_desc);

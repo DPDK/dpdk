@@ -677,7 +677,6 @@ nfp_net_rx_queue_setup(struct rte_eth_dev *dev,
 		       const struct rte_eth_rxconf *rx_conf,
 		       struct rte_mempool *mp)
 {
-	int ret;
 	uint16_t min_rx_desc;
 	uint16_t max_rx_desc;
 	const struct rte_memzone *tz;
@@ -689,9 +688,7 @@ nfp_net_rx_queue_setup(struct rte_eth_dev *dev,
 
 	PMD_INIT_FUNC_TRACE();
 
-	ret = nfp_net_rx_desc_limits(hw, &min_rx_desc, &max_rx_desc);
-	if (ret != 0)
-		return ret;
+	nfp_net_rx_desc_limits(hw, &min_rx_desc, &max_rx_desc);
 
 	/* Validating number of descriptors */
 	rx_desc_sz = nb_desc * sizeof(struct nfp_net_rx_desc);
