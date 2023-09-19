@@ -64,7 +64,8 @@ struct nfp_resource {
 };
 
 static int
-nfp_cpp_resource_find(struct nfp_cpp *cpp, struct nfp_resource *res)
+nfp_cpp_resource_find(struct nfp_cpp *cpp,
+		struct nfp_resource *res)
 {
 	char name_pad[NFP_RESOURCE_ENTRY_NAME_SZ + 2];
 	struct nfp_resource_entry entry;
@@ -85,7 +86,7 @@ nfp_cpp_resource_find(struct nfp_cpp *cpp, struct nfp_resource *res)
 
 	for (i = 0; i < NFP_RESOURCE_TBL_ENTRIES; i++) {
 		uint64_t addr = NFP_RESOURCE_TBL_BASE +
-			sizeof(struct nfp_resource_entry) * i;
+				sizeof(struct nfp_resource_entry) * i;
 
 		ret = nfp_cpp_read(cpp, cpp_id, addr, &entry, sizeof(entry));
 		if (ret != sizeof(entry))
@@ -95,12 +96,11 @@ nfp_cpp_resource_find(struct nfp_cpp *cpp, struct nfp_resource *res)
 			continue;
 
 		/* Found key! */
-		res->mutex =
-			nfp_cpp_mutex_alloc(cpp,
-					    NFP_RESOURCE_TBL_TARGET, addr, key);
+		res->mutex = nfp_cpp_mutex_alloc(cpp, NFP_RESOURCE_TBL_TARGET,
+				addr, key);
 		res->cpp_id = NFP_CPP_ID(entry.region.cpp_target,
-					 entry.region.cpp_action,
-					 entry.region.cpp_token);
+				entry.region.cpp_action,
+				entry.region.cpp_token);
 		res->addr = ((uint64_t)entry.region.page_offset) << 8;
 		res->size = (uint64_t)entry.region.page_size << 8;
 		return 0;
@@ -110,8 +110,9 @@ nfp_cpp_resource_find(struct nfp_cpp *cpp, struct nfp_resource *res)
 }
 
 static int
-nfp_resource_try_acquire(struct nfp_cpp *cpp, struct nfp_resource *res,
-			 struct nfp_cpp_mutex *dev_mutex)
+nfp_resource_try_acquire(struct nfp_cpp *cpp,
+		struct nfp_resource *res,
+		struct nfp_cpp_mutex *dev_mutex)
 {
 	int err;
 
@@ -148,7 +149,8 @@ err_unlock_dev:
  * Return: NFP Resource handle, or NULL
  */
 struct nfp_resource *
-nfp_resource_acquire(struct nfp_cpp *cpp, const char *name)
+nfp_resource_acquire(struct nfp_cpp *cpp,
+		const char *name)
 {
 	struct nfp_cpp_mutex *dev_mutex;
 	struct nfp_resource *res;
@@ -165,8 +167,7 @@ nfp_resource_acquire(struct nfp_cpp *cpp, const char *name)
 	strncpy(res->name, name, NFP_RESOURCE_ENTRY_NAME_SZ);
 
 	dev_mutex = nfp_cpp_mutex_alloc(cpp, NFP_RESOURCE_TBL_TARGET,
-					NFP_RESOURCE_TBL_BASE,
-					NFP_RESOURCE_TBL_KEY);
+			NFP_RESOURCE_TBL_BASE, NFP_RESOURCE_TBL_KEY);
 	if (dev_mutex == NULL) {
 		free(res);
 		return NULL;
@@ -234,8 +235,8 @@ nfp_resource_cpp_id(const struct nfp_resource *res)
  *
  * Return: const char pointer to the name of the resource
  */
-const char
-*nfp_resource_name(const struct nfp_resource *res)
+const char *
+nfp_resource_name(const struct nfp_resource *res)
 {
 	return res->name;
 }

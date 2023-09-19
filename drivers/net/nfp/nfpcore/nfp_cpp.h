@@ -56,7 +56,8 @@ struct nfp_cpp_operations {
 	size_t area_priv_size;
 
 	/* Instance an NFP CPP */
-	int (*init)(struct nfp_cpp *cpp, struct rte_pci_device *dev);
+	int (*init)(struct nfp_cpp *cpp,
+			struct rte_pci_device *dev);
 
 	/*
 	 * Free the bus.
@@ -69,9 +70,9 @@ struct nfp_cpp_operations {
 	 * NOTE: This is _not_ serialized
 	 */
 	int (*area_init)(struct nfp_cpp_area *area,
-			 uint32_t dest,
-			 unsigned long long address,
-			 unsigned long size);
+			uint32_t dest,
+			unsigned long long address,
+			unsigned long size);
 	/*
 	 * Clean up a NFP CPP area before it is freed
 	 * NOTE: This is _not_ serialized
@@ -101,17 +102,17 @@ struct nfp_cpp_operations {
 	 * Serialized
 	 */
 	int (*area_read)(struct nfp_cpp_area *area,
-			 void *kernel_vaddr,
-			 unsigned long offset,
-			 unsigned int length);
+			void *kernel_vaddr,
+			unsigned long offset,
+			unsigned int length);
 	/*
 	 * Perform a write to a NFP CPP area
 	 * Serialized
 	 */
 	int (*area_write)(struct nfp_cpp_area *area,
-			  const void *kernel_vaddr,
-			  unsigned long offset,
-			  unsigned int length);
+			const void *kernel_vaddr,
+			unsigned long offset,
+			unsigned int length);
 };
 
 /*
@@ -239,7 +240,7 @@ void nfp_cpp_interface_set(struct nfp_cpp *cpp, uint32_t interface);
  * @param   len     Length of the serial byte array
  */
 int nfp_cpp_serial_set(struct nfp_cpp *cpp, const uint8_t *serial,
-		       size_t serial_len);
+		size_t serial_len);
 
 /*
  * Set the private data of the nfp_cpp instance
@@ -279,7 +280,7 @@ uint32_t __nfp_cpp_model_autodetect(struct nfp_cpp *cpp, uint32_t *model);
  * @return NFP CPP handle, or NULL on failure.
  */
 struct nfp_cpp *nfp_cpp_from_device_name(struct rte_pci_device *dev,
-					 int driver_lock_needed);
+		int driver_lock_needed);
 
 /*
  * Free a NFP CPP handle
@@ -397,8 +398,7 @@ int nfp_cpp_serial(struct nfp_cpp *cpp, const uint8_t **serial);
  * @return NFP CPP handle, or NULL on failure.
  */
 struct nfp_cpp_area *nfp_cpp_area_alloc(struct nfp_cpp *cpp, uint32_t cpp_id,
-					unsigned long long address,
-					unsigned long size);
+		unsigned long long address, unsigned long size);
 
 /*
  * Allocate a NFP CPP area handle, as an offset into a CPP ID, by a named owner
@@ -411,10 +411,8 @@ struct nfp_cpp_area *nfp_cpp_area_alloc(struct nfp_cpp *cpp, uint32_t cpp_id,
  * @return NFP CPP handle, or NULL on failure.
  */
 struct nfp_cpp_area *nfp_cpp_area_alloc_with_name(struct nfp_cpp *cpp,
-						  uint32_t cpp_id,
-						  const char *name,
-						  unsigned long long address,
-						  unsigned long size);
+		uint32_t cpp_id, const char *name, unsigned long long address,
+		unsigned long size);
 
 /*
  * Free an allocated NFP CPP area handle
@@ -448,9 +446,7 @@ void nfp_cpp_area_release(struct nfp_cpp_area *area);
  * @return NFP CPP handle, or NULL on failure.
  */
 struct nfp_cpp_area *nfp_cpp_area_alloc_acquire(struct nfp_cpp *cpp,
-						uint32_t cpp_id,
-						unsigned long long address,
-						unsigned long size);
+		uint32_t cpp_id, unsigned long long address, unsigned long size);
 
 /*
  * Release the resources, then free the NFP CPP area handle
@@ -459,8 +455,7 @@ struct nfp_cpp_area *nfp_cpp_area_alloc_acquire(struct nfp_cpp *cpp,
 void nfp_cpp_area_release_free(struct nfp_cpp_area *area);
 
 uint8_t *nfp_cpp_map_area(struct nfp_cpp *cpp, uint32_t cpp_id,
-			   uint64_t addr, unsigned long size,
-			   struct nfp_cpp_area **area);
+		uint64_t addr, unsigned long size, struct nfp_cpp_area **area);
 /*
  * Return an IO pointer to the beginning of the NFP CPP area handle. The area
  * must be acquired with 'nfp_cpp_area_acquire()' before calling this operation.
@@ -484,7 +479,7 @@ void *nfp_cpp_area_mapped(struct nfp_cpp_area *area);
  *
  */
 int nfp_cpp_area_read(struct nfp_cpp_area *area, unsigned long offset,
-		      void *buffer, size_t length);
+		void *buffer, size_t length);
 
 /*
  * Write to a NFP CPP area handle from a buffer. The area must be acquired with
@@ -498,7 +493,7 @@ int nfp_cpp_area_read(struct nfp_cpp_area *area, unsigned long offset,
  * @return bytes written on success, negative value on failure.
  */
 int nfp_cpp_area_write(struct nfp_cpp_area *area, unsigned long offset,
-		       const void *buffer, size_t length);
+		const void *buffer, size_t length);
 
 /*
  * nfp_cpp_area_iomem() - get IOMEM region for CPP area
@@ -522,7 +517,7 @@ void *nfp_cpp_area_iomem(struct nfp_cpp_area *area);
  * @return 0 on success, negative value on failure.
  */
 int nfp_cpp_area_check_range(struct nfp_cpp_area *area,
-			     unsigned long long offset, unsigned long size);
+		unsigned long long offset, unsigned long size);
 
 /*
  * Get the NFP CPP handle that is the parent of a NFP CPP area handle
@@ -552,7 +547,7 @@ const char *nfp_cpp_area_name(struct nfp_cpp_area *cpp_area);
  * @return bytes read on success, -1 on failure.
  */
 int nfp_cpp_read(struct nfp_cpp *cpp, uint32_t cpp_id,
-		 unsigned long long address, void *kernel_vaddr, size_t length);
+		unsigned long long address, void *kernel_vaddr, size_t length);
 
 /*
  * Write a block of data to a NFP CPP ID
@@ -566,8 +561,8 @@ int nfp_cpp_read(struct nfp_cpp *cpp, uint32_t cpp_id,
  * @return bytes written on success, -1 on failure.
  */
 int nfp_cpp_write(struct nfp_cpp *cpp, uint32_t cpp_id,
-		  unsigned long long address, const void *kernel_vaddr,
-		  size_t length);
+		unsigned long long address, const void *kernel_vaddr,
+		size_t length);
 
 
 
@@ -582,7 +577,7 @@ int nfp_cpp_write(struct nfp_cpp *cpp, uint32_t cpp_id,
  * @return bytes written on success, negative value on failure.
  */
 int nfp_cpp_area_fill(struct nfp_cpp_area *area, unsigned long offset,
-		      uint32_t value, size_t length);
+		uint32_t value, size_t length);
 
 /*
  * Read a single 32-bit value from a NFP CPP area handle
@@ -599,7 +594,7 @@ int nfp_cpp_area_fill(struct nfp_cpp_area *area, unsigned long offset,
  * @return 0 on success, or -1 on error.
  */
 int nfp_cpp_area_readl(struct nfp_cpp_area *area, unsigned long offset,
-		       uint32_t *value);
+		uint32_t *value);
 
 /*
  * Write a single 32-bit value to a NFP CPP area handle
@@ -616,7 +611,7 @@ int nfp_cpp_area_readl(struct nfp_cpp_area *area, unsigned long offset,
  * @return 0 on success, or -1 on error.
  */
 int nfp_cpp_area_writel(struct nfp_cpp_area *area, unsigned long offset,
-			uint32_t value);
+		uint32_t value);
 
 /*
  * Read a single 64-bit value from a NFP CPP area handle
@@ -633,7 +628,7 @@ int nfp_cpp_area_writel(struct nfp_cpp_area *area, unsigned long offset,
  * @return 0 on success, or -1 on error.
  */
 int nfp_cpp_area_readq(struct nfp_cpp_area *area, unsigned long offset,
-		       uint64_t *value);
+		uint64_t *value);
 
 /*
  * Write a single 64-bit value to a NFP CPP area handle
@@ -650,7 +645,7 @@ int nfp_cpp_area_readq(struct nfp_cpp_area *area, unsigned long offset,
  * @return 0 on success, or -1 on error.
  */
 int nfp_cpp_area_writeq(struct nfp_cpp_area *area, unsigned long offset,
-			uint64_t value);
+		uint64_t value);
 
 /*
  * Write a single 32-bit value on the XPB bus
@@ -685,7 +680,7 @@ int nfp_xpb_readl(struct nfp_cpp *cpp, uint32_t xpb_tgt, uint32_t *value);
  * @return 0 on success, or -1 on failure.
  */
 int nfp_xpb_writelm(struct nfp_cpp *cpp, uint32_t xpb_tgt, uint32_t mask,
-		    uint32_t value);
+		uint32_t value);
 
 /*
  * Modify bits of a 32-bit value from the XPB bus
@@ -699,7 +694,7 @@ int nfp_xpb_writelm(struct nfp_cpp *cpp, uint32_t xpb_tgt, uint32_t mask,
  * @return >= 0 on success, negative value on failure.
  */
 int nfp_xpb_waitlm(struct nfp_cpp *cpp, uint32_t xpb_tgt, uint32_t mask,
-		   uint32_t value, int timeout_us);
+		uint32_t value, int timeout_us);
 
 /*
  * Read a 32-bit word from a NFP CPP ID
@@ -712,7 +707,7 @@ int nfp_xpb_waitlm(struct nfp_cpp *cpp, uint32_t xpb_tgt, uint32_t mask,
  * @return 0 on success, or -1 on failure.
  */
 int nfp_cpp_readl(struct nfp_cpp *cpp, uint32_t cpp_id,
-		  unsigned long long address, uint32_t *value);
+		unsigned long long address, uint32_t *value);
 
 /*
  * Write a 32-bit value to a NFP CPP ID
@@ -726,7 +721,7 @@ int nfp_cpp_readl(struct nfp_cpp *cpp, uint32_t cpp_id,
  *
  */
 int nfp_cpp_writel(struct nfp_cpp *cpp, uint32_t cpp_id,
-		   unsigned long long address, uint32_t value);
+		unsigned long long address, uint32_t value);
 
 /*
  * Read a 64-bit work from a NFP CPP ID
@@ -739,7 +734,7 @@ int nfp_cpp_writel(struct nfp_cpp *cpp, uint32_t cpp_id,
  * @return 0 on success, or -1 on failure.
  */
 int nfp_cpp_readq(struct nfp_cpp *cpp, uint32_t cpp_id,
-		  unsigned long long address, uint64_t *value);
+		unsigned long long address, uint64_t *value);
 
 /*
  * Write a 64-bit value to a NFP CPP ID
@@ -752,7 +747,7 @@ int nfp_cpp_readq(struct nfp_cpp *cpp, uint32_t cpp_id,
  * @return 0 on success, or -1 on failure.
  */
 int nfp_cpp_writeq(struct nfp_cpp *cpp, uint32_t cpp_id,
-		   unsigned long long address, uint64_t value);
+		unsigned long long address, uint64_t value);
 
 /*
  * Initialize a mutex location
@@ -773,7 +768,7 @@ int nfp_cpp_writeq(struct nfp_cpp *cpp, uint32_t cpp_id,
  * @return 0 on success, negative value on failure.
  */
 int nfp_cpp_mutex_init(struct nfp_cpp *cpp, int target,
-		       unsigned long long address, uint32_t key_id);
+		unsigned long long address, uint32_t key_id);
 
 /*
  * Create a mutex handle from an address controlled by a MU Atomic engine
@@ -793,8 +788,7 @@ int nfp_cpp_mutex_init(struct nfp_cpp *cpp, int target,
  *                      failure.
  */
 struct nfp_cpp_mutex *nfp_cpp_mutex_alloc(struct nfp_cpp *cpp, int target,
-					  unsigned long long address,
-					  uint32_t key_id);
+		unsigned long long address, uint32_t key_id);
 
 /*
  * Get the NFP CPP handle the mutex was created with

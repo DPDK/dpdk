@@ -159,7 +159,8 @@ nfp_eth_speed2rate(unsigned int speed)
 }
 
 static void
-nfp_eth_copy_mac_reverse(uint8_t *dst, const uint8_t *src)
+nfp_eth_copy_mac_reverse(uint8_t *dst,
+		const uint8_t *src)
 {
 	int i;
 
@@ -168,8 +169,10 @@ nfp_eth_copy_mac_reverse(uint8_t *dst, const uint8_t *src)
 }
 
 static void
-nfp_eth_port_translate(struct nfp_nsp *nsp, const union eth_table_entry *src,
-		       unsigned int index, struct nfp_eth_table_port *dst)
+nfp_eth_port_translate(struct nfp_nsp *nsp,
+		const union eth_table_entry *src,
+		unsigned int index,
+		struct nfp_eth_table_port *dst)
 {
 	unsigned int rate;
 	unsigned int fec;
@@ -225,21 +228,21 @@ nfp_eth_calc_port_geometry(struct nfp_eth_table *table)
 
 	for (i = 0; i < table->count; i++) {
 		table->max_index = RTE_MAX(table->max_index,
-					   table->ports[i].index);
+				table->ports[i].index);
 
 		for (j = 0; j < table->count; j++) {
 			if (table->ports[i].label_port !=
-			    table->ports[j].label_port)
+					table->ports[j].label_port)
 				continue;
 			table->ports[i].port_lanes += table->ports[j].lanes;
 
 			if (i == j)
 				continue;
 			if (table->ports[i].label_subport ==
-			    table->ports[j].label_subport)
+					table->ports[j].label_subport)
 				PMD_DRV_LOG(DEBUG, "Port %d subport %d is a duplicate",
-					 table->ports[i].label_port,
-					 table->ports[i].label_subport);
+						table->ports[i].label_port,
+						table->ports[i].label_subport);
 
 			table->ports[i].is_split = 1;
 		}
@@ -296,7 +299,7 @@ __nfp_eth_read_ports(struct nfp_nsp *nsp)
 	 */
 	if (ret != 0 && ret != cnt) {
 		PMD_DRV_LOG(ERR, "table entry count (%d) unmatch entries present (%d)",
-		       ret, cnt);
+				ret, cnt);
 		goto err;
 	}
 
@@ -354,7 +357,8 @@ nfp_eth_read_ports(struct nfp_cpp *cpp)
 }
 
 struct nfp_nsp *
-nfp_eth_config_start(struct nfp_cpp *cpp, unsigned int idx)
+nfp_eth_config_start(struct nfp_cpp *cpp,
+		unsigned int idx)
 {
 	union eth_table_entry *entries;
 	struct nfp_nsp *nsp;
@@ -447,7 +451,9 @@ nfp_eth_config_commit_end(struct nfp_nsp *nsp)
  * -ERRNO - configuration failed.
  */
 int
-nfp_eth_set_mod_enable(struct nfp_cpp *cpp, unsigned int idx, int enable)
+nfp_eth_set_mod_enable(struct nfp_cpp *cpp,
+		unsigned int idx,
+		int enable)
 {
 	union eth_table_entry *entries;
 	struct nfp_nsp *nsp;
@@ -487,7 +493,9 @@ nfp_eth_set_mod_enable(struct nfp_cpp *cpp, unsigned int idx, int enable)
  * -ERRNO - configuration failed.
  */
 int
-nfp_eth_set_configured(struct nfp_cpp *cpp, unsigned int idx, int configed)
+nfp_eth_set_configured(struct nfp_cpp *cpp,
+		unsigned int idx,
+		int configed)
 {
 	union eth_table_entry *entries;
 	struct nfp_nsp *nsp;
@@ -523,9 +531,12 @@ nfp_eth_set_configured(struct nfp_cpp *cpp, unsigned int idx, int configed)
 }
 
 static int
-nfp_eth_set_bit_config(struct nfp_nsp *nsp, unsigned int raw_idx,
-		       const uint64_t mask, const unsigned int shift,
-		       unsigned int val, const uint64_t ctrl_bit)
+nfp_eth_set_bit_config(struct nfp_nsp *nsp,
+		unsigned int raw_idx,
+		const uint64_t mask,
+		const unsigned int shift,
+		unsigned int val,
+		const uint64_t ctrl_bit)
 {
 	union eth_table_entry *entries = nfp_nsp_config_entries(nsp);
 	unsigned int idx = nfp_nsp_config_idx(nsp);
@@ -560,7 +571,7 @@ nfp_eth_set_bit_config(struct nfp_nsp *nsp, unsigned int raw_idx,
 	(__extension__ ({ \
 		typeof(mask) _x = (mask); \
 		nfp_eth_set_bit_config(nsp, raw_idx, _x, __bf_shf(_x), \
-				       val, ctrl_bit);			\
+				val, ctrl_bit);			\
 	}))
 
 /*
@@ -574,11 +585,11 @@ nfp_eth_set_bit_config(struct nfp_nsp *nsp, unsigned int raw_idx,
  * Return: 0 or -ERRNO.
  */
 int
-__nfp_eth_set_aneg(struct nfp_nsp *nsp, enum nfp_eth_aneg mode)
+__nfp_eth_set_aneg(struct nfp_nsp *nsp,
+		enum nfp_eth_aneg mode)
 {
 	return NFP_ETH_SET_BIT_CONFIG(nsp, NSP_ETH_RAW_STATE,
-				      NSP_ETH_STATE_ANEG, mode,
-				      NSP_ETH_CTRL_SET_ANEG);
+			NSP_ETH_STATE_ANEG, mode, NSP_ETH_CTRL_SET_ANEG);
 }
 
 /*
@@ -592,11 +603,11 @@ __nfp_eth_set_aneg(struct nfp_nsp *nsp, enum nfp_eth_aneg mode)
  * Return: 0 or -ERRNO.
  */
 static int
-__nfp_eth_set_fec(struct nfp_nsp *nsp, enum nfp_eth_fec mode)
+__nfp_eth_set_fec(struct nfp_nsp *nsp,
+		enum nfp_eth_fec mode)
 {
 	return NFP_ETH_SET_BIT_CONFIG(nsp, NSP_ETH_RAW_STATE,
-				      NSP_ETH_STATE_FEC, mode,
-				      NSP_ETH_CTRL_SET_FEC);
+			NSP_ETH_STATE_FEC, mode, NSP_ETH_CTRL_SET_FEC);
 }
 
 /*
@@ -611,7 +622,9 @@ __nfp_eth_set_fec(struct nfp_nsp *nsp, enum nfp_eth_fec mode)
  * -ERRNO - configuration failed.
  */
 int
-nfp_eth_set_fec(struct nfp_cpp *cpp, unsigned int idx, enum nfp_eth_fec mode)
+nfp_eth_set_fec(struct nfp_cpp *cpp,
+		unsigned int idx,
+		enum nfp_eth_fec mode)
 {
 	struct nfp_nsp *nsp;
 	int err;
@@ -642,7 +655,8 @@ nfp_eth_set_fec(struct nfp_cpp *cpp, unsigned int idx, enum nfp_eth_fec mode)
  * Return: 0 or -ERRNO.
  */
 int
-__nfp_eth_set_speed(struct nfp_nsp *nsp, unsigned int speed)
+__nfp_eth_set_speed(struct nfp_nsp *nsp,
+		unsigned int speed)
 {
 	enum nfp_eth_rate rate;
 
@@ -653,8 +667,7 @@ __nfp_eth_set_speed(struct nfp_nsp *nsp, unsigned int speed)
 	}
 
 	return NFP_ETH_SET_BIT_CONFIG(nsp, NSP_ETH_RAW_STATE,
-				      NSP_ETH_STATE_RATE, rate,
-				      NSP_ETH_CTRL_SET_RATE);
+			NSP_ETH_STATE_RATE, rate, NSP_ETH_CTRL_SET_RATE);
 }
 
 /*
@@ -668,8 +681,9 @@ __nfp_eth_set_speed(struct nfp_nsp *nsp, unsigned int speed)
  * Return: 0 or -ERRNO.
  */
 int
-__nfp_eth_set_split(struct nfp_nsp *nsp, unsigned int lanes)
+__nfp_eth_set_split(struct nfp_nsp *nsp,
+		unsigned int lanes)
 {
-	return NFP_ETH_SET_BIT_CONFIG(nsp, NSP_ETH_RAW_PORT, NSP_ETH_PORT_LANES,
-				      lanes, NSP_ETH_CTRL_SET_LANES);
+	return NFP_ETH_SET_BIT_CONFIG(nsp, NSP_ETH_RAW_PORT,
+			NSP_ETH_PORT_LANES, lanes, NSP_ETH_CTRL_SET_LANES);
 }

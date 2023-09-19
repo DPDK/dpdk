@@ -27,7 +27,8 @@
 						NFP_PL_DEVICE_ID_MASK)
 
 void
-nfp_cpp_priv_set(struct nfp_cpp *cpp, void *priv)
+nfp_cpp_priv_set(struct nfp_cpp *cpp,
+		void *priv)
 {
 	cpp->priv = priv;
 }
@@ -39,7 +40,8 @@ nfp_cpp_priv(struct nfp_cpp *cpp)
 }
 
 void
-nfp_cpp_model_set(struct nfp_cpp *cpp, uint32_t model)
+nfp_cpp_model_set(struct nfp_cpp *cpp,
+		uint32_t model)
 {
 	cpp->model = model;
 }
@@ -62,21 +64,24 @@ nfp_cpp_model(struct nfp_cpp *cpp)
 }
 
 void
-nfp_cpp_interface_set(struct nfp_cpp *cpp, uint32_t interface)
+nfp_cpp_interface_set(struct nfp_cpp *cpp,
+		uint32_t interface)
 {
 	cpp->interface = interface;
 }
 
 int
-nfp_cpp_serial(struct nfp_cpp *cpp, const uint8_t **serial)
+nfp_cpp_serial(struct nfp_cpp *cpp,
+		const uint8_t **serial)
 {
 	*serial = cpp->serial;
 	return cpp->serial_len;
 }
 
 int
-nfp_cpp_serial_set(struct nfp_cpp *cpp, const uint8_t *serial,
-		   size_t serial_len)
+nfp_cpp_serial_set(struct nfp_cpp *cpp,
+		const uint8_t *serial,
+		size_t serial_len)
 {
 	if (cpp->serial_len)
 		free(cpp->serial);
@@ -161,9 +166,11 @@ nfp_cpp_mu_locality_lsb(struct nfp_cpp *cpp)
  * NOTE: @address and @size must be 32-bit aligned values.
  */
 struct nfp_cpp_area *
-nfp_cpp_area_alloc_with_name(struct nfp_cpp *cpp, uint32_t dest,
-			      const char *name, unsigned long long address,
-			      unsigned long size)
+nfp_cpp_area_alloc_with_name(struct nfp_cpp *cpp,
+		uint32_t dest,
+		const char *name,
+		unsigned long long address,
+		unsigned long size)
 {
 	struct nfp_cpp_area *area;
 	uint64_t tmp64 = (uint64_t)address;
@@ -183,7 +190,7 @@ nfp_cpp_area_alloc_with_name(struct nfp_cpp *cpp, uint32_t dest,
 		name = "";
 
 	area = calloc(1, sizeof(*area) + cpp->op->area_priv_size +
-		      strlen(name) + 1);
+			strlen(name) + 1);
 	if (area == NULL)
 		return NULL;
 
@@ -204,8 +211,10 @@ nfp_cpp_area_alloc_with_name(struct nfp_cpp *cpp, uint32_t dest,
 }
 
 struct nfp_cpp_area *
-nfp_cpp_area_alloc(struct nfp_cpp *cpp, uint32_t dest,
-		    unsigned long long address, unsigned long size)
+nfp_cpp_area_alloc(struct nfp_cpp *cpp,
+		uint32_t dest,
+		unsigned long long address,
+		unsigned long size)
 {
 	return nfp_cpp_area_alloc_with_name(cpp, dest, NULL, address, size);
 }
@@ -226,8 +235,10 @@ nfp_cpp_area_alloc(struct nfp_cpp *cpp, uint32_t dest,
  * NOTE: The area must also be 'released' when the structure is freed.
  */
 struct nfp_cpp_area *
-nfp_cpp_area_alloc_acquire(struct nfp_cpp *cpp, uint32_t destination,
-			    unsigned long long address, unsigned long size)
+nfp_cpp_area_alloc_acquire(struct nfp_cpp *cpp,
+		uint32_t destination,
+		unsigned long long address,
+		unsigned long size)
 {
 	struct nfp_cpp_area *area;
 
@@ -340,8 +351,10 @@ nfp_cpp_area_iomem(struct nfp_cpp_area *area)
  * NOTE: Area must have been locked down with an 'acquire'.
  */
 int
-nfp_cpp_area_read(struct nfp_cpp_area *area, unsigned long offset,
-		  void *kernel_vaddr, size_t length)
+nfp_cpp_area_read(struct nfp_cpp_area *area,
+		unsigned long offset,
+		void *kernel_vaddr,
+		size_t length)
 {
 	if ((offset + length) > area->size)
 		return -EFAULT;
@@ -364,8 +377,10 @@ nfp_cpp_area_read(struct nfp_cpp_area *area, unsigned long offset,
  * NOTE: Area must have been locked down with an 'acquire'.
  */
 int
-nfp_cpp_area_write(struct nfp_cpp_area *area, unsigned long offset,
-		   const void *kernel_vaddr, size_t length)
+nfp_cpp_area_write(struct nfp_cpp_area *area,
+		unsigned long offset,
+		const void *kernel_vaddr,
+		size_t length)
 {
 	if ((offset + length) > area->size)
 		return -EFAULT;
@@ -392,8 +407,9 @@ nfp_cpp_area_mapped(struct nfp_cpp_area *area)
  * or negative value on error.
  */
 int
-nfp_cpp_area_check_range(struct nfp_cpp_area *area, unsigned long long offset,
-			 unsigned long length)
+nfp_cpp_area_check_range(struct nfp_cpp_area *area,
+		unsigned long long offset,
+		unsigned long length)
 {
 	if (((offset + length) > area->size))
 		return -EFAULT;
@@ -406,7 +422,8 @@ nfp_cpp_area_check_range(struct nfp_cpp_area *area, unsigned long long offset,
  * based upon NFP model.
  */
 static uint32_t
-nfp_xpb_to_cpp(struct nfp_cpp *cpp, uint32_t *xpb_addr)
+nfp_xpb_to_cpp(struct nfp_cpp *cpp,
+		uint32_t *xpb_addr)
 {
 	uint32_t xpb;
 	int island;
@@ -433,7 +450,7 @@ nfp_xpb_to_cpp(struct nfp_cpp *cpp, uint32_t *xpb_addr)
 		else
 			/* And only non-ARM interfaces use island id = 1 */
 			if (NFP_CPP_INTERFACE_TYPE_of(nfp_cpp_interface(cpp)) !=
-			    NFP_CPP_INTERFACE_TYPE_ARM)
+					NFP_CPP_INTERFACE_TYPE_ARM)
 				*xpb_addr |= (1 << 24);
 	} else {
 		(*xpb_addr) |= (1 << 30);
@@ -443,8 +460,9 @@ nfp_xpb_to_cpp(struct nfp_cpp *cpp, uint32_t *xpb_addr)
 }
 
 int
-nfp_cpp_area_readl(struct nfp_cpp_area *area, unsigned long offset,
-		   uint32_t *value)
+nfp_cpp_area_readl(struct nfp_cpp_area *area,
+		unsigned long offset,
+		uint32_t *value)
 {
 	int sz;
 	uint32_t tmp = 0;
@@ -456,8 +474,9 @@ nfp_cpp_area_readl(struct nfp_cpp_area *area, unsigned long offset,
 }
 
 int
-nfp_cpp_area_writel(struct nfp_cpp_area *area, unsigned long offset,
-		    uint32_t value)
+nfp_cpp_area_writel(struct nfp_cpp_area *area,
+		unsigned long offset,
+		uint32_t value)
 {
 	int sz;
 
@@ -467,8 +486,9 @@ nfp_cpp_area_writel(struct nfp_cpp_area *area, unsigned long offset,
 }
 
 int
-nfp_cpp_area_readq(struct nfp_cpp_area *area, unsigned long offset,
-		   uint64_t *value)
+nfp_cpp_area_readq(struct nfp_cpp_area *area,
+		unsigned long offset,
+		uint64_t *value)
 {
 	int sz;
 	uint64_t tmp = 0;
@@ -480,8 +500,9 @@ nfp_cpp_area_readq(struct nfp_cpp_area *area, unsigned long offset,
 }
 
 int
-nfp_cpp_area_writeq(struct nfp_cpp_area *area, unsigned long offset,
-		    uint64_t value)
+nfp_cpp_area_writeq(struct nfp_cpp_area *area,
+		unsigned long offset,
+		uint64_t value)
 {
 	int sz;
 
@@ -492,8 +513,10 @@ nfp_cpp_area_writeq(struct nfp_cpp_area *area, unsigned long offset,
 }
 
 int
-nfp_cpp_readl(struct nfp_cpp *cpp, uint32_t cpp_id, unsigned long long address,
-	      uint32_t *value)
+nfp_cpp_readl(struct nfp_cpp *cpp,
+		uint32_t cpp_id,
+		unsigned long long address,
+		uint32_t *value)
 {
 	int sz;
 	uint32_t tmp;
@@ -505,8 +528,10 @@ nfp_cpp_readl(struct nfp_cpp *cpp, uint32_t cpp_id, unsigned long long address,
 }
 
 int
-nfp_cpp_writel(struct nfp_cpp *cpp, uint32_t cpp_id, unsigned long long address,
-	       uint32_t value)
+nfp_cpp_writel(struct nfp_cpp *cpp,
+		uint32_t cpp_id,
+		unsigned long long address,
+		uint32_t value)
 {
 	int sz;
 
@@ -517,8 +542,10 @@ nfp_cpp_writel(struct nfp_cpp *cpp, uint32_t cpp_id, unsigned long long address,
 }
 
 int
-nfp_cpp_readq(struct nfp_cpp *cpp, uint32_t cpp_id, unsigned long long address,
-	      uint64_t *value)
+nfp_cpp_readq(struct nfp_cpp *cpp,
+		uint32_t cpp_id,
+		unsigned long long address,
+		uint64_t *value)
 {
 	int sz;
 	uint64_t tmp;
@@ -530,8 +557,10 @@ nfp_cpp_readq(struct nfp_cpp *cpp, uint32_t cpp_id, unsigned long long address,
 }
 
 int
-nfp_cpp_writeq(struct nfp_cpp *cpp, uint32_t cpp_id, unsigned long long address,
-	       uint64_t value)
+nfp_cpp_writeq(struct nfp_cpp *cpp,
+		uint32_t cpp_id,
+		unsigned long long address,
+		uint64_t value)
 {
 	int sz;
 
@@ -542,7 +571,9 @@ nfp_cpp_writeq(struct nfp_cpp *cpp, uint32_t cpp_id, unsigned long long address,
 }
 
 int
-nfp_xpb_writel(struct nfp_cpp *cpp, uint32_t xpb_addr, uint32_t value)
+nfp_xpb_writel(struct nfp_cpp *cpp,
+		uint32_t xpb_addr,
+		uint32_t value)
 {
 	uint32_t cpp_dest;
 
@@ -552,7 +583,9 @@ nfp_xpb_writel(struct nfp_cpp *cpp, uint32_t xpb_addr, uint32_t value)
 }
 
 int
-nfp_xpb_readl(struct nfp_cpp *cpp, uint32_t xpb_addr, uint32_t *value)
+nfp_xpb_readl(struct nfp_cpp *cpp,
+		uint32_t xpb_addr,
+		uint32_t *value)
 {
 	uint32_t cpp_dest;
 
@@ -562,7 +595,8 @@ nfp_xpb_readl(struct nfp_cpp *cpp, uint32_t xpb_addr, uint32_t *value)
 }
 
 static struct nfp_cpp *
-nfp_cpp_alloc(struct rte_pci_device *dev, int driver_lock_needed)
+nfp_cpp_alloc(struct rte_pci_device *dev,
+		int driver_lock_needed)
 {
 	const struct nfp_cpp_operations *ops;
 	struct nfp_cpp *cpp;
@@ -596,7 +630,7 @@ nfp_cpp_alloc(struct rte_pci_device *dev, int driver_lock_needed)
 			/* Hardcoded XPB IMB Base, island 0 */
 			xpbaddr = 0x000a0000 + (tgt * 4);
 			err = nfp_xpb_readl(cpp, xpbaddr,
-				(uint32_t *)&cpp->imb_cat_table[tgt]);
+					(uint32_t *)&cpp->imb_cat_table[tgt]);
 			if (err < 0) {
 				free(cpp);
 				return NULL;
@@ -631,7 +665,8 @@ nfp_cpp_free(struct nfp_cpp *cpp)
 }
 
 struct nfp_cpp *
-nfp_cpp_from_device_name(struct rte_pci_device *dev, int driver_lock_needed)
+nfp_cpp_from_device_name(struct rte_pci_device *dev,
+		int driver_lock_needed)
 {
 	return nfp_cpp_alloc(dev, driver_lock_needed);
 }
@@ -647,7 +682,9 @@ nfp_cpp_from_device_name(struct rte_pci_device *dev, int driver_lock_needed)
  * @return 0 on success, or -1 on failure.
  */
 int
-nfp_xpb_writelm(struct nfp_cpp *cpp, uint32_t xpb_tgt, uint32_t mask,
+nfp_xpb_writelm(struct nfp_cpp *cpp,
+		uint32_t xpb_tgt,
+		uint32_t mask,
 		uint32_t value)
 {
 	int err;
@@ -674,8 +711,11 @@ nfp_xpb_writelm(struct nfp_cpp *cpp, uint32_t xpb_tgt, uint32_t mask,
  * @return >= 0 on success, or negative value on failure.
  */
 int
-nfp_xpb_waitlm(struct nfp_cpp *cpp, uint32_t xpb_tgt, uint32_t mask,
-	       uint32_t value, int timeout_us)
+nfp_xpb_waitlm(struct nfp_cpp *cpp,
+		uint32_t xpb_tgt,
+		uint32_t mask,
+		uint32_t value,
+		int timeout_us)
 {
 	uint32_t tmp;
 	int err;
@@ -716,8 +756,11 @@ exit:
  * @length:     number of bytes to read
  */
 int
-nfp_cpp_read(struct nfp_cpp *cpp, uint32_t destination,
-	     unsigned long long address, void *kernel_vaddr, size_t length)
+nfp_cpp_read(struct nfp_cpp *cpp,
+		uint32_t destination,
+		unsigned long long address,
+		void *kernel_vaddr,
+		size_t length)
 {
 	struct nfp_cpp_area *area;
 	int err;
@@ -743,9 +786,11 @@ nfp_cpp_read(struct nfp_cpp *cpp, uint32_t destination,
  * @length:     number of bytes to write
  */
 int
-nfp_cpp_write(struct nfp_cpp *cpp, uint32_t destination,
-	      unsigned long long address, const void *kernel_vaddr,
-	      size_t length)
+nfp_cpp_write(struct nfp_cpp *cpp,
+		uint32_t destination,
+		unsigned long long address,
+		const void *kernel_vaddr,
+		size_t length)
 {
 	struct nfp_cpp_area *area;
 	int err;
@@ -768,8 +813,10 @@ nfp_cpp_write(struct nfp_cpp *cpp, uint32_t destination,
  * @length:     length of area to fill
  */
 int
-nfp_cpp_area_fill(struct nfp_cpp_area *area, unsigned long offset,
-		  uint32_t value, size_t length)
+nfp_cpp_area_fill(struct nfp_cpp_area *area,
+		unsigned long offset,
+		uint32_t value,
+		size_t length)
 {
 	int err;
 	size_t i;
@@ -795,9 +842,8 @@ nfp_cpp_area_fill(struct nfp_cpp_area *area, unsigned long offset,
 	}
 
 	for (i = 0; (i + sizeof(value)) < length; i += sizeof(value64)) {
-		err =
-		    nfp_cpp_area_write(area, offset + i, &value64,
-				       sizeof(value64));
+		err = nfp_cpp_area_write(area, offset + i, &value64,
+				sizeof(value64));
 		if (err < 0)
 			return err;
 		if (err != sizeof(value64))
@@ -805,8 +851,7 @@ nfp_cpp_area_fill(struct nfp_cpp_area *area, unsigned long offset,
 	}
 
 	if ((i + sizeof(value)) <= length) {
-		err =
-		    nfp_cpp_area_write(area, offset + i, &value, sizeof(value));
+		err = nfp_cpp_area_write(area, offset + i, &value, sizeof(value));
 		if (err < 0)
 			return err;
 		if (err != sizeof(value))
@@ -822,13 +867,14 @@ nfp_cpp_area_fill(struct nfp_cpp_area *area, unsigned long offset,
  * as those are model-specific
  */
 uint32_t
-__nfp_cpp_model_autodetect(struct nfp_cpp *cpp, uint32_t *model)
+__nfp_cpp_model_autodetect(struct nfp_cpp *cpp,
+		uint32_t *model)
 {
 	uint32_t reg;
 	int err;
 
 	err = nfp_xpb_readl(cpp, NFP_XPB_DEVICE(1, 1, 16) + NFP_PL_DEVICE_ID,
-			    &reg);
+			&reg);
 	if (err < 0)
 		return err;
 
@@ -853,8 +899,11 @@ __nfp_cpp_model_autodetect(struct nfp_cpp *cpp, uint32_t *model)
  * Return: Pointer to memory mapped area or NULL
  */
 uint8_t *
-nfp_cpp_map_area(struct nfp_cpp *cpp, uint32_t cpp_id, uint64_t addr,
-		 unsigned long size, struct nfp_cpp_area **area)
+nfp_cpp_map_area(struct nfp_cpp *cpp,
+		uint32_t cpp_id,
+		uint64_t addr,
+		unsigned long size,
+		struct nfp_cpp_area **area)
 {
 	uint8_t *res;
 

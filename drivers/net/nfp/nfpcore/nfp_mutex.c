@@ -35,7 +35,9 @@ struct nfp_cpp_mutex {
 };
 
 static int
-_nfp_cpp_mutex_validate(uint32_t model, int *target, unsigned long long address)
+_nfp_cpp_mutex_validate(uint32_t model,
+		int *target,
+		unsigned long long address)
 {
 	/* Address must be 64-bit aligned */
 	if ((address & 7) != 0)
@@ -72,8 +74,10 @@ _nfp_cpp_mutex_validate(uint32_t model, int *target, unsigned long long address)
  * @return 0 on success, or negative value on failure.
  */
 int
-nfp_cpp_mutex_init(struct nfp_cpp *cpp, int target, unsigned long long address,
-		   uint32_t key)
+nfp_cpp_mutex_init(struct nfp_cpp *cpp,
+		int target,
+		unsigned long long address,
+		uint32_t key)
 {
 	uint32_t model = nfp_cpp_model(cpp);
 	uint32_t muw = NFP_CPP_ID(target, 4, 0);	/* atomic_write */
@@ -87,9 +91,8 @@ nfp_cpp_mutex_init(struct nfp_cpp *cpp, int target, unsigned long long address,
 	if (err < 0)
 		return err;
 
-	err =
-	    nfp_cpp_writel(cpp, muw, address + 0,
-			   MUTEX_LOCKED(nfp_cpp_interface(cpp)));
+	err = nfp_cpp_writel(cpp, muw, address + 0,
+			MUTEX_LOCKED(nfp_cpp_interface(cpp)));
 	if (err < 0)
 		return err;
 
@@ -114,8 +117,10 @@ nfp_cpp_mutex_init(struct nfp_cpp *cpp, int target, unsigned long long address,
  * @return      A non-NULL struct nfp_cpp_mutex * on success, NULL on failure.
  */
 struct nfp_cpp_mutex *
-nfp_cpp_mutex_alloc(struct nfp_cpp *cpp, int target,
-		     unsigned long long address, uint32_t key)
+nfp_cpp_mutex_alloc(struct nfp_cpp *cpp,
+		int target,
+		unsigned long long address,
+		uint32_t key)
 {
 	uint32_t model = nfp_cpp_model(cpp);
 	struct nfp_cpp_mutex *mutex;
@@ -265,8 +270,8 @@ nfp_cpp_mutex_lock(struct nfp_cpp_mutex *mutex)
 			return err;
 		if (time(NULL) >= warn_at) {
 			PMD_DRV_LOG(ERR, "Warning: waiting for NFP mutex usage:%u depth:%hd] target:%d addr:%llx key:%08x]",
-				    mutex->usage, mutex->depth, mutex->target,
-				    mutex->address, mutex->key);
+					mutex->usage, mutex->depth, mutex->target,
+					mutex->address, mutex->key);
 			warn_at = time(NULL) + 60;
 		}
 		sched_yield();

@@ -85,7 +85,8 @@ nfp_mip_mu_locality_lsb(struct nfp_cpp *cpp)
 }
 
 static unsigned int
-nffw_res_fwinfos(struct nfp_nffw_info_data *fwinf, struct nffw_fwinfo **arr)
+nffw_res_fwinfos(struct nfp_nffw_info_data *fwinf,
+		struct nffw_fwinfo **arr)
 {
 	/*
 	 * For the this code, version 0 is most likely to be version 1 in this
@@ -138,8 +139,8 @@ nfp_nffw_info_open(struct nfp_cpp *cpp)
 		goto err_release;
 
 	err = nfp_cpp_read(cpp, nfp_resource_cpp_id(state->res),
-			   nfp_resource_address(state->res),
-			   fwinf, sizeof(*fwinf));
+			nfp_resource_address(state->res),
+			fwinf, sizeof(*fwinf));
 	if (err < (int)sizeof(*fwinf))
 		goto err_release;
 
@@ -205,8 +206,9 @@ nfp_nffw_info_fwid_first(struct nfp_nffw_info *state)
  * Return: 0, or -ERRNO
  */
 int
-nfp_nffw_info_mip_first(struct nfp_nffw_info *state, uint32_t *cpp_id,
-			uint64_t *off)
+nfp_nffw_info_mip_first(struct nfp_nffw_info *state,
+		uint32_t *cpp_id,
+		uint64_t *off)
 {
 	struct nffw_fwinfo *fwinfo;
 

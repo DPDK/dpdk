@@ -33,12 +33,13 @@ nfp_hwinfo_is_updating(struct nfp_hwinfo *hwinfo)
 }
 
 static int
-nfp_hwinfo_db_walk(struct nfp_hwinfo *hwinfo, uint32_t size)
+nfp_hwinfo_db_walk(struct nfp_hwinfo *hwinfo,
+		uint32_t size)
 {
 	const char *key, *val, *end = hwinfo->data + size;
 
 	for (key = hwinfo->data; *key != 0 && key < end;
-	     key = val + strlen(val) + 1) {
+			key = val + strlen(val) + 1) {
 		val = key + strlen(key) + 1;
 		if (val >= end) {
 			PMD_DRV_LOG(ERR, "Bad HWINFO - overflowing value");
@@ -54,7 +55,8 @@ nfp_hwinfo_db_walk(struct nfp_hwinfo *hwinfo, uint32_t size)
 }
 
 static int
-nfp_hwinfo_db_validate(struct nfp_hwinfo *db, uint32_t len)
+nfp_hwinfo_db_validate(struct nfp_hwinfo *db,
+		uint32_t len)
 {
 	uint32_t size, new_crc, *crc;
 
@@ -69,7 +71,7 @@ nfp_hwinfo_db_validate(struct nfp_hwinfo *db, uint32_t len)
 	crc = (uint32_t *)(db->start + size);
 	if (new_crc != *crc) {
 		PMD_DRV_LOG(ERR, "Corrupt hwinfo table (CRC mismatch) calculated 0x%x, expected 0x%x",
-			    new_crc, *crc);
+				new_crc, *crc);
 		return -EINVAL;
 	}
 
@@ -77,7 +79,8 @@ nfp_hwinfo_db_validate(struct nfp_hwinfo *db, uint32_t len)
 }
 
 static struct nfp_hwinfo *
-nfp_hwinfo_try_fetch(struct nfp_cpp *cpp, size_t *cpp_size)
+nfp_hwinfo_try_fetch(struct nfp_cpp *cpp,
+		size_t *cpp_size)
 {
 	struct nfp_hwinfo *header;
 	void *res;
@@ -115,7 +118,7 @@ nfp_hwinfo_try_fetch(struct nfp_cpp *cpp, size_t *cpp_size)
 
 	if (header->version != NFP_HWINFO_VERSION_2) {
 		PMD_DRV_LOG(DEBUG, "Unknown HWInfo version: 0x%08x",
-			header->version);
+				header->version);
 		goto exit_free;
 	}
 
@@ -129,7 +132,8 @@ exit_free:
 }
 
 static struct nfp_hwinfo *
-nfp_hwinfo_fetch(struct nfp_cpp *cpp, size_t *hwdb_size)
+nfp_hwinfo_fetch(struct nfp_cpp *cpp,
+		size_t *hwdb_size)
 {
 	struct timespec wait;
 	struct nfp_hwinfo *db;
@@ -179,7 +183,8 @@ nfp_hwinfo_read(struct nfp_cpp *cpp)
  * Return: Value of the HWInfo name, or NULL
  */
 const char *
-nfp_hwinfo_lookup(struct nfp_hwinfo *hwinfo, const char *lookup)
+nfp_hwinfo_lookup(struct nfp_hwinfo *hwinfo,
+		const char *lookup)
 {
 	const char *key, *val, *end;
 
@@ -189,7 +194,7 @@ nfp_hwinfo_lookup(struct nfp_hwinfo *hwinfo, const char *lookup)
 	end = hwinfo->data + hwinfo->size - sizeof(uint32_t);
 
 	for (key = hwinfo->data; *key != 0 && key < end;
-	     key = val + strlen(val) + 1) {
+			key = val + strlen(val) + 1) {
 		val = key + strlen(key) + 1;
 
 		if (strcmp(key, lookup) == 0)

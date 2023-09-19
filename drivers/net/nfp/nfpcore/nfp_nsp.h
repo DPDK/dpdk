@@ -114,9 +114,10 @@ int nfp_nsp_load_fw(struct nfp_nsp *state, void *buf, unsigned int size);
 int nfp_nsp_mac_reinit(struct nfp_nsp *state);
 int nfp_nsp_read_identify(struct nfp_nsp *state, void *buf, unsigned int size);
 int nfp_nsp_read_sensors(struct nfp_nsp *state, unsigned int sensor_mask,
-			 void *buf, unsigned int size);
+		void *buf, unsigned int size);
 
-static inline int nfp_nsp_has_mac_reinit(struct nfp_nsp *state)
+static inline int
+nfp_nsp_has_mac_reinit(struct nfp_nsp *state)
 {
 	return nfp_nsp_get_abi_ver_minor(state) > 20;
 }
@@ -229,22 +230,22 @@ struct nfp_eth_table *nfp_eth_read_ports(struct nfp_cpp *cpp);
 
 int nfp_eth_set_mod_enable(struct nfp_cpp *cpp, unsigned int idx, int enable);
 int nfp_eth_set_configured(struct nfp_cpp *cpp, unsigned int idx,
-			   int configed);
-int
-nfp_eth_set_fec(struct nfp_cpp *cpp, unsigned int idx, enum nfp_eth_fec mode);
+		int configed);
+int nfp_eth_set_fec(struct nfp_cpp *cpp, unsigned int idx, enum nfp_eth_fec mode);
 
 int nfp_nsp_read_eth_table(struct nfp_nsp *state, void *buf, unsigned int size);
 int nfp_nsp_write_eth_table(struct nfp_nsp *state, const void *buf,
-			    unsigned int size);
+		unsigned int size);
 void nfp_nsp_config_set_state(struct nfp_nsp *state, void *entries,
-			      unsigned int idx);
+		unsigned int idx);
 void nfp_nsp_config_clear_state(struct nfp_nsp *state);
 void nfp_nsp_config_set_modified(struct nfp_nsp *state, int modified);
 void *nfp_nsp_config_entries(struct nfp_nsp *state);
 int nfp_nsp_config_modified(struct nfp_nsp *state);
 unsigned int nfp_nsp_config_idx(struct nfp_nsp *state);
 
-static inline int nfp_eth_can_support_fec(struct nfp_eth_table_port *eth_port)
+static inline int
+nfp_eth_can_support_fec(struct nfp_eth_table_port *eth_port)
 {
 	return !!eth_port->fec_modes_supported;
 }
@@ -297,6 +298,6 @@ enum nfp_nsp_sensor_id {
 };
 
 int nfp_hwmon_read_sensor(struct nfp_cpp *cpp, enum nfp_nsp_sensor_id id,
-			  long *val);
+		long *val);
 
 #endif

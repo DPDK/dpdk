@@ -40,22 +40,25 @@ struct nfp_rtsym_table {
 };
 
 static int
-nfp_meid(uint8_t island_id, uint8_t menum)
+nfp_meid(uint8_t island_id,
+		uint8_t menum)
 {
 	return (island_id & 0x3F) == island_id && menum < 12 ?
 		(island_id << 4) | (menum + 4) : -1;
 }
 
 static void
-nfp_rtsym_sw_entry_init(struct nfp_rtsym_table *cache, uint32_t strtab_size,
-			struct nfp_rtsym *sw, struct nfp_rtsym_entry *fw)
+nfp_rtsym_sw_entry_init(struct nfp_rtsym_table *cache,
+		uint32_t strtab_size,
+		struct nfp_rtsym *sw,
+		struct nfp_rtsym_entry *fw)
 {
 	sw->type = fw->type;
 	sw->name = cache->strtab + rte_le_to_cpu_16(fw->name) % strtab_size;
 	sw->addr = ((uint64_t)fw->addr_hi << 32) |
-		   rte_le_to_cpu_32(fw->addr_lo);
+			rte_le_to_cpu_32(fw->addr_lo);
 	sw->size = ((uint64_t)fw->size_hi << 32) |
-		   rte_le_to_cpu_32(fw->size_lo);
+			rte_le_to_cpu_32(fw->size_lo);
 
 	PMD_INIT_LOG(DEBUG, "rtsym_entry_init name=%s, addr=%" PRIx64 ", size=%" PRIu64 ", target=%d",
 		     sw->name, sw->addr, sw->size, sw->target);
@@ -93,7 +96,8 @@ nfp_rtsym_table_read(struct nfp_cpp *cpp)
 }
 
 struct nfp_rtsym_table *
-__nfp_rtsym_table_read(struct nfp_cpp *cpp, const struct nfp_mip *mip)
+__nfp_rtsym_table_read(struct nfp_cpp *cpp,
+		const struct nfp_mip *mip)
 {
 	uint32_t strtab_addr, symtab_addr, strtab_size, symtab_size;
 	struct nfp_rtsym_entry *rtsymtab;
@@ -142,7 +146,7 @@ __nfp_rtsym_table_read(struct nfp_cpp *cpp, const struct nfp_mip *mip)
 
 	for (n = 0; n < cache->num; n++)
 		nfp_rtsym_sw_entry_init(cache, strtab_size,
-					&cache->symtab[n], &rtsymtab[n]);
+				&cache->symtab[n], &rtsymtab[n]);
 
 	free(rtsymtab);
 
@@ -178,7 +182,8 @@ nfp_rtsym_count(struct nfp_rtsym_table *rtbl)
  * Return: const pointer to a struct nfp_rtsym descriptor, or NULL
  */
 const struct nfp_rtsym *
-nfp_rtsym_get(struct nfp_rtsym_table *rtbl, int idx)
+nfp_rtsym_get(struct nfp_rtsym_table *rtbl,
+		int idx)
 {
 	if (rtbl == NULL)
 		return NULL;
@@ -197,7 +202,8 @@ nfp_rtsym_get(struct nfp_rtsym_table *rtbl, int idx)
  * Return: const pointer to a struct nfp_rtsym descriptor, or NULL
  */
 const struct nfp_rtsym *
-nfp_rtsym_lookup(struct nfp_rtsym_table *rtbl, const char *name)
+nfp_rtsym_lookup(struct nfp_rtsym_table *rtbl,
+		const char *name)
 {
 	int n;
 
@@ -331,7 +337,9 @@ nfp_rtsym_readq(struct nfp_cpp *cpp,
  * Return: value read, on error sets the error and returns ~0ULL.
  */
 uint64_t
-nfp_rtsym_read_le(struct nfp_rtsym_table *rtbl, const char *name, int *error)
+nfp_rtsym_read_le(struct nfp_rtsym_table *rtbl,
+		const char *name,
+		int *error)
 {
 	const struct nfp_rtsym *sym;
 	uint32_t val32;
@@ -354,7 +362,7 @@ nfp_rtsym_read_le(struct nfp_rtsym_table *rtbl, const char *name, int *error)
 		break;
 	default:
 		PMD_DRV_LOG(ERR, "rtsym '%s' unsupported size: %" PRId64,
-			name, sym->size);
+				name, sym->size);
 		err = -EINVAL;
 		break;
 	}
@@ -372,8 +380,10 @@ exit:
 }
 
 uint8_t *
-nfp_rtsym_map(struct nfp_rtsym_table *rtbl, const char *name,
-	      unsigned int min_size, struct nfp_cpp_area **area)
+nfp_rtsym_map(struct nfp_rtsym_table *rtbl,
+		const char *name,
+		unsigned int min_size,
+		struct nfp_cpp_area **area)
 {
 	int ret;
 	uint8_t *mem;
@@ -397,7 +407,7 @@ nfp_rtsym_map(struct nfp_rtsym_table *rtbl, const char *name,
 
 	if (sym->size < min_size) {
 		PMD_DRV_LOG(ERR, "Symbol %s too small (%" PRIu64 " < %u)", name,
-			sym->size, min_size);
+				sym->size, min_size);
 		return NULL;
 	}
 

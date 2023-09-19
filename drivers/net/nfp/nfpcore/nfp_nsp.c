@@ -22,7 +22,8 @@ nfp_nsp_config_modified(struct nfp_nsp *state)
 }
 
 void
-nfp_nsp_config_set_modified(struct nfp_nsp *state, int modified)
+nfp_nsp_config_set_modified(struct nfp_nsp *state,
+		int modified)
 {
 	state->modified = modified;
 }
@@ -40,7 +41,9 @@ nfp_nsp_config_idx(struct nfp_nsp *state)
 }
 
 void
-nfp_nsp_config_set_state(struct nfp_nsp *state, void *entries, unsigned int idx)
+nfp_nsp_config_set_state(struct nfp_nsp *state,
+		void *entries,
+		unsigned int idx)
 {
 	state->entries = entries;
 	state->idx = idx;
@@ -91,7 +94,7 @@ nfp_nsp_check(struct nfp_nsp *state)
 
 	if (state->ver.major != NSP_MAJOR || state->ver.minor < NSP_MINOR) {
 		PMD_DRV_LOG(ERR, "Unsupported ABI %hu.%hu", state->ver.major,
-						    state->ver.minor);
+				state->ver.minor);
 		return -EINVAL;
 	}
 
@@ -160,8 +163,12 @@ nfp_nsp_get_abi_ver_minor(struct nfp_nsp *state)
 }
 
 static int
-nfp_nsp_wait_reg(struct nfp_cpp *cpp, uint64_t *reg, uint32_t nsp_cpp,
-		 uint64_t addr, uint64_t mask, uint64_t val)
+nfp_nsp_wait_reg(struct nfp_cpp *cpp,
+		uint64_t *reg,
+		uint32_t nsp_cpp,
+		uint64_t addr,
+		uint64_t mask,
+		uint64_t val)
 {
 	struct timespec wait;
 	int count;
@@ -204,8 +211,11 @@ nfp_nsp_wait_reg(struct nfp_cpp *cpp, uint64_t *reg, uint32_t nsp_cpp,
  *	-ETIMEDOUT if the NSP took longer than 30 seconds to complete
  */
 static int
-nfp_nsp_command(struct nfp_nsp *state, uint16_t code, uint32_t option,
-		uint32_t buff_cpp, uint64_t buff_addr)
+nfp_nsp_command(struct nfp_nsp *state,
+		uint16_t code,
+		uint32_t option,
+		uint32_t buff_cpp,
+		uint64_t buff_addr)
 {
 	uint64_t reg, ret_val, nsp_base, nsp_buffer, nsp_status, nsp_command;
 	struct nfp_cpp *cpp = state->cpp;
@@ -223,40 +233,40 @@ nfp_nsp_command(struct nfp_nsp *state, uint16_t code, uint32_t option,
 		return err;
 
 	if (!FIELD_FIT(NSP_BUFFER_CPP, buff_cpp >> 8) ||
-	    !FIELD_FIT(NSP_BUFFER_ADDRESS, buff_addr)) {
+			!FIELD_FIT(NSP_BUFFER_ADDRESS, buff_addr)) {
 		PMD_DRV_LOG(ERR, "Host buffer out of reach %08x %" PRIx64,
-			buff_cpp, buff_addr);
+				buff_cpp, buff_addr);
 		return -EINVAL;
 	}
 
 	err = nfp_cpp_writeq(cpp, nsp_cpp, nsp_buffer,
-			     FIELD_PREP(NSP_BUFFER_CPP, buff_cpp >> 8) |
-			     FIELD_PREP(NSP_BUFFER_ADDRESS, buff_addr));
+			FIELD_PREP(NSP_BUFFER_CPP, buff_cpp >> 8) |
+			FIELD_PREP(NSP_BUFFER_ADDRESS, buff_addr));
 	if (err < 0)
 		return err;
 
 	err = nfp_cpp_writeq(cpp, nsp_cpp, nsp_command,
-			     FIELD_PREP(NSP_COMMAND_OPTION, option) |
-			     FIELD_PREP(NSP_COMMAND_CODE, code) |
-			     FIELD_PREP(NSP_COMMAND_START, 1));
+			FIELD_PREP(NSP_COMMAND_OPTION, option) |
+			FIELD_PREP(NSP_COMMAND_CODE, code) |
+			FIELD_PREP(NSP_COMMAND_START, 1));
 	if (err < 0)
 		return err;
 
 	/* Wait for NSP_COMMAND_START to go to 0 */
 	err = nfp_nsp_wait_reg(cpp, &reg, nsp_cpp, nsp_command,
-			       NSP_COMMAND_START, 0);
+			NSP_COMMAND_START, 0);
 	if (err != 0) {
 		PMD_DRV_LOG(ERR, "Error %d waiting for code 0x%04x to start",
-			err, code);
+				err, code);
 		return err;
 	}
 
 	/* Wait for NSP_STATUS_BUSY to go to 0 */
-	err = nfp_nsp_wait_reg(cpp, &reg, nsp_cpp, nsp_status, NSP_STATUS_BUSY,
-			       0);
+	err = nfp_nsp_wait_reg(cpp, &reg, nsp_cpp, nsp_status,
+			NSP_STATUS_BUSY, 0);
 	if (err != 0) {
 		PMD_DRV_LOG(ERR, "Error %d waiting for code 0x%04x to start",
-			err, code);
+				err, code);
 		return err;
 	}
 
@@ -268,7 +278,7 @@ nfp_nsp_command(struct nfp_nsp *state, uint16_t code, uint32_t option,
 	err = FIELD_GET(NSP_STATUS_RESULT, reg);
 	if (err != 0) {
 		PMD_DRV_LOG(ERR, "Result (error) code set: %d (%d) command: %d",
-			 -err, (int)ret_val, code);
+				-err, (int)ret_val, code);
 		nfp_nsp_print_extended_error(ret_val);
 		return -err;
 	}
@@ -279,9 +289,12 @@ nfp_nsp_command(struct nfp_nsp *state, uint16_t code, uint32_t option,
 #define SZ_1M 0x00100000
 
 static int
-nfp_nsp_command_buf(struct nfp_nsp *nsp, uint16_t code, uint32_t option,
-		    const void *in_buf, unsigned int in_size, void *out_buf,
-		    unsigned int out_size)
+nfp_nsp_command_buf(struct nfp_nsp *nsp,
+		uint16_t code, uint32_t option,
+		const void *in_buf,
+		unsigned int in_size,
+		void *out_buf,
+		unsigned int out_size)
 {
 	struct nfp_cpp *cpp = nsp->cpp;
 	unsigned int max_size;
@@ -291,28 +304,26 @@ nfp_nsp_command_buf(struct nfp_nsp *nsp, uint16_t code, uint32_t option,
 
 	if (nsp->ver.minor < 13) {
 		PMD_DRV_LOG(ERR, "NSP: Code 0x%04x with buffer not supported ABI %hu.%hu)",
-			    code, nsp->ver.major, nsp->ver.minor);
+				code, nsp->ver.major, nsp->ver.minor);
 		return -EOPNOTSUPP;
 	}
 
 	err = nfp_cpp_readq(cpp, nfp_resource_cpp_id(nsp->res),
-			    nfp_resource_address(nsp->res) +
-			    NSP_DFLT_BUFFER_CONFIG,
-			    &reg);
+			nfp_resource_address(nsp->res) + NSP_DFLT_BUFFER_CONFIG,
+			&reg);
 	if (err < 0)
 		return err;
 
 	max_size = RTE_MAX(in_size, out_size);
 	if (FIELD_GET(NSP_DFLT_BUFFER_SIZE_MB, reg) * SZ_1M < max_size) {
 		PMD_DRV_LOG(ERR, "NSP: default buffer too small for command 0x%04x (%llu < %u)",
-			    code, FIELD_GET(NSP_DFLT_BUFFER_SIZE_MB, reg) * SZ_1M, max_size);
+				code, FIELD_GET(NSP_DFLT_BUFFER_SIZE_MB, reg) * SZ_1M, max_size);
 		return -EINVAL;
 	}
 
 	err = nfp_cpp_readq(cpp, nfp_resource_cpp_id(nsp->res),
-			    nfp_resource_address(nsp->res) +
-			    NSP_DFLT_BUFFER,
-			    &reg);
+			nfp_resource_address(nsp->res) + NSP_DFLT_BUFFER,
+			&reg);
 	if (err < 0)
 		return err;
 
@@ -328,7 +339,7 @@ nfp_nsp_command_buf(struct nfp_nsp *nsp, uint16_t code, uint32_t option,
 	if (out_buf != NULL && out_size > 0 && out_size > in_size) {
 		memset(out_buf, 0, out_size - in_size);
 		err = nfp_cpp_write(cpp, cpp_id, cpp_buf + in_size, out_buf,
-				    out_size - in_size);
+				out_size - in_size);
 		if (err < 0)
 			return err;
 	}
@@ -388,38 +399,47 @@ nfp_nsp_mac_reinit(struct nfp_nsp *state)
 }
 
 int
-nfp_nsp_load_fw(struct nfp_nsp *state, void *buf, unsigned int size)
+nfp_nsp_load_fw(struct nfp_nsp *state,
+		void *buf,
+		unsigned int size)
 {
 	return nfp_nsp_command_buf(state, SPCODE_FW_LOAD, size, buf, size,
-				   NULL, 0);
+			NULL, 0);
 }
 
 int
-nfp_nsp_read_eth_table(struct nfp_nsp *state, void *buf, unsigned int size)
+nfp_nsp_read_eth_table(struct nfp_nsp *state,
+		void *buf,
+		unsigned int size)
 {
 	return nfp_nsp_command_buf(state, SPCODE_ETH_RESCAN, size, NULL, 0,
-				   buf, size);
+			buf, size);
 }
 
 int
-nfp_nsp_write_eth_table(struct nfp_nsp *state, const void *buf,
-			unsigned int size)
+nfp_nsp_write_eth_table(struct nfp_nsp *state,
+		const void *buf,
+		unsigned int size)
 {
 	return nfp_nsp_command_buf(state, SPCODE_ETH_CONTROL, size, buf, size,
-				   NULL, 0);
+			NULL, 0);
 }
 
 int
-nfp_nsp_read_identify(struct nfp_nsp *state, void *buf, unsigned int size)
+nfp_nsp_read_identify(struct nfp_nsp *state,
+		void *buf,
+		unsigned int size)
 {
 	return nfp_nsp_command_buf(state, SPCODE_NSP_IDENTIFY, size, NULL, 0,
-				   buf, size);
+			buf, size);
 }
 
 int
-nfp_nsp_read_sensors(struct nfp_nsp *state, unsigned int sensor_mask, void *buf,
-		     unsigned int size)
+nfp_nsp_read_sensors(struct nfp_nsp *state,
+		unsigned int sensor_mask,
+		void *buf,
+		unsigned int size)
 {
 	return nfp_nsp_command_buf(state, SPCODE_NSP_SENSORS, sensor_mask, NULL,
-				   0, buf, size);
+			0, buf, size);
 }

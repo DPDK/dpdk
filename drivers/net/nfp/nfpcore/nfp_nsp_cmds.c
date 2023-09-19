@@ -73,7 +73,9 @@ struct nfp_sensors {
 };
 
 int
-nfp_hwmon_read_sensor(struct nfp_cpp *cpp, enum nfp_nsp_sensor_id id, long *val)
+nfp_hwmon_read_sensor(struct nfp_cpp *cpp,
+		enum nfp_nsp_sensor_id id,
+		long *val)
 {
 	struct nfp_sensors s;
 	struct nfp_nsp *nsp;

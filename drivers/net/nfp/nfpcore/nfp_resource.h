@@ -18,7 +18,7 @@
 struct nfp_resource;
 
 struct nfp_resource *nfp_resource_acquire(struct nfp_cpp *cpp,
-					  const char *name);
+		const char *name);
 
 /**
  * Release a NFP Resource, and free the handle

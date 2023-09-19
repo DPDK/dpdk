@@ -37,8 +37,10 @@ struct nfp_mip {
 
 /* Read memory and check if it could be a valid MIP */
 static int
-nfp_mip_try_read(struct nfp_cpp *cpp, uint32_t cpp_id, uint64_t addr,
-		 struct nfp_mip *mip)
+nfp_mip_try_read(struct nfp_cpp *cpp,
+		uint32_t cpp_id,
+		uint64_t addr,
+		struct nfp_mip *mip)
 {
 	int ret;
 
@@ -49,12 +51,12 @@ nfp_mip_try_read(struct nfp_cpp *cpp, uint32_t cpp_id, uint64_t addr,
 	}
 	if (mip->signature != NFP_MIP_SIGNATURE) {
 		PMD_DRV_LOG(ERR, "Incorrect MIP signature (0x%08x)",
-			    rte_le_to_cpu_32(mip->signature));
+				rte_le_to_cpu_32(mip->signature));
 		return -EINVAL;
 	}
 	if (mip->mip_version != NFP_MIP_VERSION) {
 		PMD_DRV_LOG(ERR, "Unsupported MIP version (%d)",
-			    rte_le_to_cpu_32(mip->mip_version));
+				rte_le_to_cpu_32(mip->mip_version));
 		return -EINVAL;
 	}
 
@@ -63,7 +65,8 @@ nfp_mip_try_read(struct nfp_cpp *cpp, uint32_t cpp_id, uint64_t addr,
 
 /* Try to locate MIP using the resource table */
 static int
-nfp_mip_read_resource(struct nfp_cpp *cpp, struct nfp_mip *mip)
+nfp_mip_read_resource(struct nfp_cpp *cpp,
+		struct nfp_mip *mip)
 {
 	struct nfp_nffw_info *nffw_info;
 	uint32_t cpp_id;
@@ -134,7 +137,9 @@ nfp_mip_name(const struct nfp_mip *mip)
  * @size:	Location for size of MIP symbol table
  */
 void
-nfp_mip_symtab(const struct nfp_mip *mip, uint32_t *addr, uint32_t *size)
+nfp_mip_symtab(const struct nfp_mip *mip,
+		uint32_t *addr,
+		uint32_t *size)
 {
 	*addr = rte_le_to_cpu_32(mip->symtab_addr);
 	*size = rte_le_to_cpu_32(mip->symtab_size);
@@ -147,7 +152,9 @@ nfp_mip_symtab(const struct nfp_mip *mip, uint32_t *addr, uint32_t *size)
  * @size:	Location for size of MIP symbol name table
  */
 void
-nfp_mip_strtab(const struct nfp_mip *mip, uint32_t *addr, uint32_t *size)
+nfp_mip_strtab(const struct nfp_mip *mip,
+		uint32_t *addr,
+		uint32_t *size)
 {
 	*addr = rte_le_to_cpu_32(mip->strtab_addr);
 	*size = rte_le_to_cpu_32(mip->strtab_size);
