@@ -11,30 +11,6 @@
 #include "nfp_nsp.h"
 #include "nfp6000/nfp6000.h"
 
-#define GENMASK_ULL(h, l) \
-	(((~0ULL) - (1ULL << (l)) + 1) & \
-	 (~0ULL >> (64 - 1 - (h))))
-
-#define __bf_shf(x) (__builtin_ffsll(x) - 1)
-
-#define FIELD_GET(_mask, _reg)						\
-	(__extension__ ({ \
-		typeof(_mask) _x = (_mask); \
-		(typeof(_x))(((_reg) & (_x)) >> __bf_shf(_x));	\
-	}))
-
-#define FIELD_FIT(_mask, _val)						\
-	(__extension__ ({ \
-		typeof(_mask) _x = (_mask); \
-		!((((typeof(_x))_val) << __bf_shf(_x)) & ~(_x)); \
-	}))
-
-#define FIELD_PREP(_mask, _val)						\
-	(__extension__ ({ \
-		typeof(_mask) _x = (_mask); \
-		((typeof(_x))(_val) << __bf_shf(_x)) & (_x);	\
-	}))
-
 #define NSP_ETH_NBI_PORT_COUNT		24
 #define NSP_ETH_MAX_COUNT		(2 * NSP_ETH_NBI_PORT_COUNT)
 #define NSP_ETH_TABLE_SIZE		(NSP_ETH_MAX_COUNT *		\

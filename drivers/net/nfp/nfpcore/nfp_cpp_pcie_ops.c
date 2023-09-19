@@ -471,17 +471,6 @@ nfp6000_area_acquire(struct nfp_cpp_area *area)
 	return 0;
 }
 
-static void *
-nfp6000_area_mapped(struct nfp_cpp_area *area)
-{
-	struct nfp6000_area_priv *area_priv = nfp_cpp_area_priv(area);
-
-	if (area_priv->iomem == NULL)
-		return NULL;
-
-	return area_priv->iomem;
-}
-
 static void
 nfp6000_area_release(struct nfp_cpp_area *area)
 {
@@ -829,7 +818,6 @@ static const struct nfp_cpp_operations nfp6000_pcie_ops = {
 	.area_init = nfp6000_area_init,
 	.area_acquire = nfp6000_area_acquire,
 	.area_release = nfp6000_area_release,
-	.area_mapped = nfp6000_area_mapped,
 	.area_read = nfp6000_area_read,
 	.area_write = nfp6000_area_write,
 	.area_iomem = nfp6000_area_iomem,

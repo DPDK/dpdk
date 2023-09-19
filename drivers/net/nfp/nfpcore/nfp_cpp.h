@@ -96,7 +96,6 @@ struct nfp_cpp_operations {
 
 	void *(*area_iomem)(struct nfp_cpp_area *area);
 
-	void *(*area_mapped)(struct nfp_cpp_area *area);
 	/*
 	 * Perform a read from a NFP CPP area
 	 * Serialized
@@ -458,16 +457,6 @@ uint8_t *nfp_cpp_map_area(struct nfp_cpp *cpp, uint32_t cpp_id,
 		uint64_t addr, uint32_t size, struct nfp_cpp_area **area);
 
 /*
- * Return an IO pointer to the beginning of the NFP CPP area handle. The area
- * must be acquired with 'nfp_cpp_area_acquire()' before calling this operation.
- *
- * @param[in]	area	NFP CPP area handle
- *
- * @return Pointer to IO memory, or NULL on failure.
- */
-void *nfp_cpp_area_mapped(struct nfp_cpp_area *area);
-
-/*
  * Read from a NFP CPP area handle into a buffer. The area must be acquired with
  * 'nfp_cpp_area_acquire()' before calling this operation.
  *
@@ -507,18 +496,6 @@ int nfp_cpp_area_write(struct nfp_cpp_area *area, uint32_t offset,
  * Return: pointer to the area, or NULL
  */
 void *nfp_cpp_area_iomem(struct nfp_cpp_area *area);
-
-/*
- * Verify that IO can be performed on an offset in an area
- *
- * @param[in]	area	NFP CPP area handle
- * @param[in]	offset	Offset into the area
- * @param[in]	size	Size of region to validate
- *
- * @return 0 on success, negative value on failure.
- */
-int nfp_cpp_area_check_range(struct nfp_cpp_area *area,
-		unsigned long long offset, unsigned long size);
 
 /*
  * Get the NFP CPP handle that is the parent of a NFP CPP area handle
@@ -563,20 +540,6 @@ int nfp_cpp_read(struct nfp_cpp *cpp, uint32_t cpp_id,
  */
 int nfp_cpp_write(struct nfp_cpp *cpp, uint32_t cpp_id,
 		uint64_t address, const void *kernel_vaddr, size_t length);
-
-
-/*
- * Fill a NFP CPP area handle and offset with a value
- *
- * @param[in]	area	NFP CPP area handle
- * @param[in]	offset	Offset into the NFP CPP ID address space
- * @param[in]	value	32-bit value to fill area with
- * @param[in]	length	Size of the area to reserve
- *
- * @return bytes written on success, negative value on failure.
- */
-int nfp_cpp_area_fill(struct nfp_cpp_area *area, unsigned long offset,
-		uint32_t value, size_t length);
 
 /*
  * Read a single 32-bit value from a NFP CPP area handle
@@ -667,33 +630,6 @@ int nfp_xpb_writel(struct nfp_cpp *cpp, uint32_t xpb_tgt, uint32_t value);
  * @return 0 on success, or -1 on failure.
  */
 int nfp_xpb_readl(struct nfp_cpp *cpp, uint32_t xpb_tgt, uint32_t *value);
-
-/*
- * Modify bits of a 32-bit value from the XPB bus
- *
- * @param cpp           NFP CPP device handle
- * @param xpb_tgt       XPB target and address
- * @param mask          mask of bits to alter
- * @param value         value to modify
- *
- * @return 0 on success, or -1 on failure.
- */
-int nfp_xpb_writelm(struct nfp_cpp *cpp, uint32_t xpb_tgt, uint32_t mask,
-		uint32_t value);
-
-/*
- * Modify bits of a 32-bit value from the XPB bus
- *
- * @param cpp           NFP CPP device handle
- * @param xpb_tgt       XPB target and address
- * @param mask          mask of bits to alter
- * @param value         value to monitor for
- * @param timeout_us    maximum number of us to wait (-1 for forever)
- *
- * @return >= 0 on success, negative value on failure.
- */
-int nfp_xpb_waitlm(struct nfp_cpp *cpp, uint32_t xpb_tgt, uint32_t mask,
-		uint32_t value, int timeout_us);
 
 /*
  * Read a 32-bit word from a NFP CPP ID
@@ -788,49 +724,6 @@ int nfp_cpp_mutex_init(struct nfp_cpp *cpp, int target,
  */
 struct nfp_cpp_mutex *nfp_cpp_mutex_alloc(struct nfp_cpp *cpp, int target,
 		uint64_t address, uint32_t key_id);
-
-/*
- * Get the NFP CPP handle the mutex was created with
- *
- * @param   mutex   NFP mutex handle
- * @return          NFP CPP handle
- */
-struct nfp_cpp *nfp_cpp_mutex_cpp(struct nfp_cpp_mutex *mutex);
-
-/*
- * Get the mutex key
- *
- * @param   mutex   NFP mutex handle
- * @return          Mutex key
- */
-uint32_t nfp_cpp_mutex_key(struct nfp_cpp_mutex *mutex);
-
-/*
- * Get the mutex owner
- *
- * @param   mutex   NFP mutex handle
- * @return          Interface ID of the mutex owner
- *
- * NOTE: This is for debug purposes ONLY - the owner may change at any time,
- * unless it has been locked by this NFP CPP handle.
- */
-uint16_t nfp_cpp_mutex_owner(struct nfp_cpp_mutex *mutex);
-
-/*
- * Get the mutex target
- *
- * @param   mutex   NFP mutex handle
- * @return          Mutex CPP target (ie NFP_CPP_TARGET_MU)
- */
-int nfp_cpp_mutex_target(struct nfp_cpp_mutex *mutex);
-
-/*
- * Get the mutex address
- *
- * @param   mutex   NFP mutex handle
- * @return          Mutex CPP address
- */
-uint64_t nfp_cpp_mutex_address(struct nfp_cpp_mutex *mutex);
 
 /*
  * Free a mutex handle - does not alter the lock state

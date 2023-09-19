@@ -178,54 +178,6 @@ nfp_cpp_mutex_alloc(struct nfp_cpp *cpp,
 	return mutex;
 }
 
-struct nfp_cpp *
-nfp_cpp_mutex_cpp(struct nfp_cpp_mutex *mutex)
-{
-	return mutex->cpp;
-}
-
-uint32_t
-nfp_cpp_mutex_key(struct nfp_cpp_mutex *mutex)
-{
-	return mutex->key;
-}
-
-uint16_t
-nfp_cpp_mutex_owner(struct nfp_cpp_mutex *mutex)
-{
-	uint32_t mur = NFP_CPP_ID(mutex->target, 3, 0);	/* atomic_read */
-	uint32_t value, key;
-	int err;
-
-	err = nfp_cpp_readl(mutex->cpp, mur, mutex->address, &value);
-	if (err < 0)
-		return err;
-
-	err = nfp_cpp_readl(mutex->cpp, mur, mutex->address + 4, &key);
-	if (err < 0)
-		return err;
-
-	if (key != mutex->key)
-		return -EPERM;
-
-	if (MUTEX_IS_LOCKED(value) == 0)
-		return 0;
-
-	return MUTEX_INTERFACE(value);
-}
-
-int
-nfp_cpp_mutex_target(struct nfp_cpp_mutex *mutex)
-{
-	return mutex->target;
-}
-
-uint64_t
-nfp_cpp_mutex_address(struct nfp_cpp_mutex *mutex)
-{
-	return mutex->address;
-}
-
 /*
  * Free a mutex handle - does not alter the lock state
  *

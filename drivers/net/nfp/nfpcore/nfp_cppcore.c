@@ -388,35 +388,6 @@ nfp_cpp_area_write(struct nfp_cpp_area *area,
 	return area->cpp->op->area_write(area, kernel_vaddr, offset, length);
 }
 
-void *
-nfp_cpp_area_mapped(struct nfp_cpp_area *area)
-{
-	if (area->cpp->op->area_mapped)
-		return area->cpp->op->area_mapped(area);
-	return NULL;
-}
-
-/*
- * nfp_cpp_area_check_range - check if address range fits in CPP area
- *
- * @area:   CPP area handle
- * @offset: offset into CPP area
- * @length: size of address range in bytes
- *
- * Check if address range fits within CPP area.  Return 0 if area fits
- * or negative value on error.
- */
-int
-nfp_cpp_area_check_range(struct nfp_cpp_area *area,
-		unsigned long long offset,
-		unsigned long length)
-{
-	if (((offset + length) > area->size))
-		return -EFAULT;
-
-	return 0;
-}
-
 /*
  * Return the correct CPP address, and fixup xpb_addr as needed,
  * based upon NFP model.
@@ -672,82 +643,6 @@ nfp_cpp_from_device_name(struct rte_pci_device *dev,
 }
 
 /*
- * Modify bits of a 32-bit value from the XPB bus
- *
- * @param cpp           NFP CPP device handle
- * @param xpb_tgt       XPB target and address
- * @param mask          mask of bits to alter
- * @param value         value to modify
- *
- * @return 0 on success, or -1 on failure.
- */
-int
-nfp_xpb_writelm(struct nfp_cpp *cpp,
-		uint32_t xpb_tgt,
-		uint32_t mask,
-		uint32_t value)
-{
-	int err;
-	uint32_t tmp;
-
-	err = nfp_xpb_readl(cpp, xpb_tgt, &tmp);
-	if (err < 0)
-		return err;
-
-	tmp &= ~mask;
-	tmp |= (mask & value);
-	return nfp_xpb_writel(cpp, xpb_tgt, tmp);
-}
-
-/*
- * Modify bits of a 32-bit value from the XPB bus
- *
- * @param cpp           NFP CPP device handle
- * @param xpb_tgt       XPB target and address
- * @param mask          mask of bits to alter
- * @param value         value to monitor for
- * @param timeout_us    maximum number of us to wait (-1 for forever)
- *
- * @return >= 0 on success, or negative value on failure.
- */
-int
-nfp_xpb_waitlm(struct nfp_cpp *cpp,
-		uint32_t xpb_tgt,
-		uint32_t mask,
-		uint32_t value,
-		int timeout_us)
-{
-	uint32_t tmp;
-	int err;
-
-	do {
-		err = nfp_xpb_readl(cpp, xpb_tgt, &tmp);
-		if (err < 0)
-			goto exit;
-
-		if ((tmp & mask) == (value & mask)) {
-			if (timeout_us < 0)
-				timeout_us = 0;
-			break;
-		}
-
-		if (timeout_us < 0)
-			continue;
-
-		timeout_us -= 100;
-		usleep(100);
-	} while (timeout_us >= 0);
-
-	if (timeout_us < 0)
-		err = -ETIMEDOUT;
-	else
-		err = timeout_us;
-
-exit:
-	return err;
-}
-
-/*
  * nfp_cpp_read - read from CPP target
  * @cpp:        CPP handle
  * @destination:    CPP id
@@ -803,63 +698,6 @@ nfp_cpp_write(struct nfp_cpp *cpp,
 
 	nfp_cpp_area_release_free(area);
 	return err;
-}
-
-/*
- * nfp_cpp_area_fill - fill a CPP area with a value
- * @area:       CPP area
- * @offset:     offset into CPP area
- * @value:      value to fill with
- * @length:     length of area to fill
- */
-int
-nfp_cpp_area_fill(struct nfp_cpp_area *area,
-		unsigned long offset,
-		uint32_t value,
-		size_t length)
-{
-	int err;
-	size_t i;
-	uint64_t value64;
-
-	value = rte_cpu_to_le_32(value);
-	value64 = ((uint64_t)value << 32) | value;
-
-	if ((offset + length) > area->size)
-		return -EINVAL;
-
-	if ((area->offset + offset) & 3)
-		return -EINVAL;
-
-	if (((area->offset + offset) & 7) == 4 && length >= 4) {
-		err = nfp_cpp_area_write(area, offset, &value, sizeof(value));
-		if (err < 0)
-			return err;
-		if (err != sizeof(value))
-			return -ENOSPC;
-		offset += sizeof(value);
-		length -= sizeof(value);
-	}
-
-	for (i = 0; (i + sizeof(value)) < length; i += sizeof(value64)) {
-		err = nfp_cpp_area_write(area, offset + i, &value64,
-				sizeof(value64));
-		if (err < 0)
-			return err;
-		if (err != sizeof(value64))
-			return -ENOSPC;
-	}
-
-	if ((i + sizeof(value)) <= length) {
-		err = nfp_cpp_area_write(area, offset + i, &value, sizeof(value));
-		if (err < 0)
-			return err;
-		if (err != sizeof(value))
-			return -ENOSPC;
-		i += sizeof(value);
-	}
-
-	return (int)i;
 }
 
 /*
