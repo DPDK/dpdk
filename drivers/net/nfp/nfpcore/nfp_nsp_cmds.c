@@ -3,12 +3,8 @@
  * All rights reserved.
  */
 
-#include <stdio.h>
-#include <rte_byteorder.h>
-#include "nfp_cpp.h"
 #include "nfp_logs.h"
 #include "nfp_nsp.h"
-#include "nfp_nffw.h"
 
 struct nsp_identify {
 	uint8_t version[40];

@@ -3,10 +3,6 @@
  * All rights reserved.
  */
 
-#include <stdio.h>
-#include <rte_common.h>
-#include <rte_byteorder.h>
-#include "nfp_cpp.h"
 #include "nfp_logs.h"
 #include "nfp_nsp.h"
 #include "nfp_platform.h"
@@ -21,6 +17,7 @@
 #define NSP_ETH_PORT_PHYLABEL           GENMASK_ULL(59, 54)
 #define NSP_ETH_PORT_FEC_SUPP_BASER     RTE_BIT64(60)
 #define NSP_ETH_PORT_FEC_SUPP_RS        RTE_BIT64(61)
+#define NSP_ETH_PORT_SUPP_ANEG          RTE_BIT64(63)
 
 #define NSP_ETH_PORT_LANES_MASK         rte_cpu_to_le_64(NSP_ETH_PORT_LANES)
 
@@ -34,6 +31,7 @@
 #define NSP_ETH_STATE_OVRD_CHNG         RTE_BIT64(22)
 #define NSP_ETH_STATE_ANEG              GENMASK_ULL(25, 23)
 #define NSP_ETH_STATE_FEC               GENMASK_ULL(27, 26)
+#define NSP_ETH_STATE_ACT_FEC           GENMASK_ULL(29, 28)
 
 #define NSP_ETH_CTRL_CONFIGURED         RTE_BIT64(0)
 #define NSP_ETH_CTRL_ENABLED            RTE_BIT64(1)
@@ -54,26 +52,12 @@
 #define PORT_NONE               0xef
 #define PORT_OTHER              0xff
 
-#define SPEED_10                10
-#define SPEED_100               100
-#define SPEED_1000              1000
-#define SPEED_2500              2500
-#define SPEED_5000              5000
-#define SPEED_10000             10000
-#define SPEED_14000             14000
-#define SPEED_20000             20000
-#define SPEED_25000             25000
-#define SPEED_40000             40000
-#define SPEED_50000             50000
-#define SPEED_56000             56000
-#define SPEED_100000            100000
-
 enum nfp_eth_raw {
 	NSP_ETH_RAW_PORT = 0,
 	NSP_ETH_RAW_STATE,
 	NSP_ETH_RAW_MAC,
 	NSP_ETH_RAW_CONTROL,
-	NSP_ETH_NUM_RAW
+	NSP_ETH_NUM_RAW,
 };
 
 enum nfp_eth_rate {
@@ -100,12 +84,12 @@ static const struct {
 	enum nfp_eth_rate rate;
 	uint32_t speed;
 } nsp_eth_rate_tbl[] = {
-	{ RATE_INVALID, 0, },
-	{ RATE_10M,     SPEED_10, },
-	{ RATE_100M,    SPEED_100, },
-	{ RATE_1G,      SPEED_1000, },
-	{ RATE_10G,     SPEED_10000, },
-	{ RATE_25G,     SPEED_25000, },
+	{ RATE_INVALID, RTE_ETH_SPEED_NUM_NONE, },
+	{ RATE_10M,     RTE_ETH_SPEED_NUM_10M, },
+	{ RATE_100M,    RTE_ETH_SPEED_NUM_100M, },
+	{ RATE_1G,      RTE_ETH_SPEED_NUM_1G, },
+	{ RATE_10G,     RTE_ETH_SPEED_NUM_10G, },
+	{ RATE_25G,     RTE_ETH_SPEED_NUM_25G, },
 };
 
 static uint32_t
@@ -193,7 +177,14 @@ nfp_eth_port_translate(struct nfp_nsp *nsp,
 	if (dst->fec_modes_supported != 0)
 		dst->fec_modes_supported |= NFP_FEC_AUTO | NFP_FEC_DISABLED;
 
-	dst->fec = 1 << FIELD_GET(NSP_ETH_STATE_FEC, state);
+	dst->fec = FIELD_GET(NSP_ETH_STATE_FEC, state);
+	dst->act_fec = dst->fec;
+
+	if (nfp_nsp_get_abi_ver_minor(nsp) < 33)
+		return;
+
+	dst->act_fec = FIELD_GET(NSP_ETH_STATE_ACT_FEC, state);
+	dst->supp_aneg = FIELD_GET(NSP_ETH_PORT_SUPP_ANEG, port);
 }
 
 static void
@@ -222,7 +213,7 @@ nfp_eth_calc_port_geometry(struct nfp_eth_table *table)
 						table->ports[i].label_port,
 						table->ports[i].label_subport);
 
-			table->ports[i].is_split = 1;
+			table->ports[i].is_split = true;
 		}
 	}
 }
@@ -232,6 +223,9 @@ nfp_eth_calc_port_type(struct nfp_eth_table_port *entry)
 {
 	if (entry->interface == NFP_INTERFACE_NONE) {
 		entry->port_type = PORT_NONE;
+		return;
+	} else if (entry->interface == NFP_INTERFACE_RJ45) {
+		entry->port_type = PORT_TP;
 		return;
 	}
 
@@ -251,7 +245,6 @@ nfp_eth_read_ports_real(struct nfp_nsp *nsp)
 	uint32_t table_sz;
 	struct nfp_eth_table *table;
 	union eth_table_entry *entries;
-	const struct rte_ether_addr *mac;
 
 	entries = malloc(NSP_ETH_TABLE_SIZE);
 	if (entries == NULL)
@@ -264,16 +257,9 @@ nfp_eth_read_ports_real(struct nfp_nsp *nsp)
 		goto err;
 	}
 
-	/*
-	 * The NFP3800 NIC support 8 ports, but only 2 ports are valid,
-	 * the rest 6 ports mac are all 0, ensure we don't use these port
-	 */
-	for (i = 0; i < NSP_ETH_MAX_COUNT; i++) {
-		mac = (const struct rte_ether_addr *)entries[i].mac_addr;
-		if ((entries[i].port & NSP_ETH_PORT_LANES_MASK) != 0 &&
-				!rte_is_zero_ether_addr(mac))
+	for (i = 0; i < NSP_ETH_MAX_COUNT; i++)
+		if ((entries[i].port & NSP_ETH_PORT_LANES_MASK) != 0)
 			cnt++;
-	}
 
 	/*
 	 * Some versions of flash will give us 0 instead of port count. For
@@ -294,11 +280,8 @@ nfp_eth_read_ports_real(struct nfp_nsp *nsp)
 	memset(table, 0, table_sz);
 	table->count = cnt;
 	for (i = 0, j = 0; i < NSP_ETH_MAX_COUNT; i++) {
-		mac = (const struct rte_ether_addr *)entries[i].mac_addr;
-		if ((entries[i].port & NSP_ETH_PORT_LANES_MASK) != 0 &&
-				!rte_is_zero_ether_addr(mac))
-			nfp_eth_port_translate(nsp, &entries[i], i,
-					&table->ports[j++]);
+		if ((entries[i].port & NSP_ETH_PORT_LANES_MASK) != 0)
+			nfp_eth_port_translate(nsp, &entries[i], i, &table->ports[j++]);
 	}
 
 	nfp_eth_calc_port_geometry(table);
@@ -440,7 +423,7 @@ nfp_eth_config_commit_end(struct nfp_nsp *nsp)
 int
 nfp_eth_set_mod_enable(struct nfp_cpp *cpp,
 		uint32_t idx,
-		int enable)
+		bool enable)
 {
 	uint64_t reg;
 	struct nfp_nsp *nsp;
@@ -448,7 +431,7 @@ nfp_eth_set_mod_enable(struct nfp_cpp *cpp,
 
 	nsp = nfp_eth_config_start(cpp, idx);
 	if (nsp == NULL)
-		return -1;
+		return -EIO;
 
 	entries = nfp_nsp_config_entries(nsp);
 
@@ -460,7 +443,7 @@ nfp_eth_set_mod_enable(struct nfp_cpp *cpp,
 		reg |= FIELD_PREP(NSP_ETH_CTRL_ENABLED, enable);
 		entries[idx].control = rte_cpu_to_le_64(reg);
 
-		nfp_nsp_config_set_modified(nsp, 1);
+		nfp_nsp_config_set_modified(nsp, true);
 	}
 
 	return nfp_eth_config_commit_end(nsp);
@@ -484,7 +467,7 @@ nfp_eth_set_mod_enable(struct nfp_cpp *cpp,
 int
 nfp_eth_set_configured(struct nfp_cpp *cpp,
 		uint32_t idx,
-		int configured)
+		bool configured)
 {
 	uint64_t reg;
 	struct nfp_nsp *nsp;
@@ -513,7 +496,7 @@ nfp_eth_set_configured(struct nfp_cpp *cpp,
 		reg |= FIELD_PREP(NSP_ETH_CTRL_CONFIGURED, configured);
 		entries[idx].control = rte_cpu_to_le_64(reg);
 
-		nfp_nsp_config_set_modified(nsp, 1);
+		nfp_nsp_config_set_modified(nsp, true);
 	}
 
 	return nfp_eth_config_commit_end(nsp);
@@ -551,7 +534,7 @@ nfp_eth_set_bit_config(struct nfp_nsp *nsp,
 
 	entries[idx].control |= rte_cpu_to_le_64(ctrl_bit);
 
-	nfp_nsp_config_set_modified(nsp, 1);
+	nfp_nsp_config_set_modified(nsp, true);
 
 	return 0;
 }

@@ -7,78 +7,8 @@
 #define __NSP_NSP_H__
 
 #include "nfp_cpp.h"
-#include "nfp_nsp.h"
 
-/* Offsets relative to the CSR base */
-#define NSP_STATUS              0x00
-#define   NSP_STATUS_MAGIC      GENMASK_ULL(63, 48)
-#define   NSP_STATUS_MAJOR      GENMASK_ULL(47, 44)
-#define   NSP_STATUS_MINOR      GENMASK_ULL(43, 32)
-#define   NSP_STATUS_CODE       GENMASK_ULL(31, 16)
-#define   NSP_STATUS_RESULT     GENMASK_ULL(15, 8)
-#define   NSP_STATUS_BUSY       RTE_BIT64(0)
-
-#define NSP_COMMAND             0x08
-#define   NSP_COMMAND_OPTION    GENMASK_ULL(63, 32)
-#define   NSP_COMMAND_CODE      GENMASK_ULL(31, 16)
-#define   NSP_COMMAND_START     RTE_BIT64(0)
-
-/* CPP address to retrieve the data from */
-#define NSP_BUFFER              0x10
-#define   NSP_BUFFER_CPP        GENMASK_ULL(63, 40)
-#define   NSP_BUFFER_PCIE       GENMASK_ULL(39, 38)
-#define   NSP_BUFFER_ADDRESS    GENMASK_ULL(37, 0)
-
-#define NSP_DFLT_BUFFER         0x18
-
-#define NSP_DFLT_BUFFER_CONFIG 0x20
-#define   NSP_DFLT_BUFFER_SIZE_MB    GENMASK_ULL(7, 0)
-
-#define NSP_MAGIC               0xab10
-#define NSP_MAJOR               0
-#define NSP_MINOR               8
-
-#define NSP_CODE_MAJOR          GENMASK(15, 12)
-#define NSP_CODE_MINOR          GENMASK(11, 0)
-
-enum nfp_nsp_cmd {
-	SPCODE_NOOP             = 0, /* No operation */
-	SPCODE_SOFT_RESET       = 1, /* Soft reset the NFP */
-	SPCODE_FW_DEFAULT       = 2, /* Load default (UNDI) FW */
-	SPCODE_PHY_INIT         = 3, /* Initialize the PHY */
-	SPCODE_MAC_INIT         = 4, /* Initialize the MAC */
-	SPCODE_PHY_RXADAPT      = 5, /* Re-run PHY RX Adaptation */
-	SPCODE_FW_LOAD          = 6, /* Load fw from buffer, len in option */
-	SPCODE_ETH_RESCAN       = 7, /* Rescan ETHs, write ETH_TABLE to buf */
-	SPCODE_ETH_CONTROL      = 8, /* Update media config from buffer */
-	SPCODE_NSP_SENSORS      = 12, /* Read NSP sensor(s) */
-	SPCODE_NSP_IDENTIFY     = 13, /* Read NSP version */
-};
-
-static const struct {
-	int code;
-	const char *msg;
-} nsp_errors[] = {
-	{ 6010, "could not map to phy for port" },
-	{ 6011, "not an allowed rate/lanes for port" },
-	{ 6012, "not an allowed rate/lanes for port" },
-	{ 6013, "high/low error, change other port first" },
-	{ 6014, "config not found in flash" },
-};
-
-struct nfp_nsp {
-	struct nfp_cpp *cpp;
-	struct nfp_resource *res;
-	struct {
-		uint16_t major;
-		uint16_t minor;
-	} ver;
-
-	/* Eth table config state */
-	int modified;
-	unsigned int idx;
-	void *entries;
-};
+struct nfp_nsp;
 
 struct nfp_nsp *nfp_nsp_open(struct nfp_cpp *cpp);
 void nfp_nsp_close(struct nfp_nsp *state);
@@ -92,10 +22,52 @@ int nfp_nsp_read_identify(struct nfp_nsp *state, void *buf, size_t size);
 int nfp_nsp_read_sensors(struct nfp_nsp *state, uint32_t sensor_mask,
 		void *buf, size_t size);
 
-static inline int
+static inline bool
 nfp_nsp_has_mac_reinit(struct nfp_nsp *state)
 {
 	return nfp_nsp_get_abi_ver_minor(state) > 20;
+}
+
+static inline bool
+nfp_nsp_has_stored_fw_load(struct nfp_nsp *state)
+{
+	return nfp_nsp_get_abi_ver_minor(state) > 23;
+}
+
+static inline bool
+nfp_nsp_has_hwinfo_lookup(struct nfp_nsp *state)
+{
+	return nfp_nsp_get_abi_ver_minor(state) > 24;
+}
+
+static inline bool
+nfp_nsp_has_hwinfo_set(struct nfp_nsp *state)
+{
+	return nfp_nsp_get_abi_ver_minor(state) > 25;
+}
+
+static inline bool
+nfp_nsp_has_fw_loaded(struct nfp_nsp *state)
+{
+	return nfp_nsp_get_abi_ver_minor(state) > 25;
+}
+
+static inline bool
+nfp_nsp_has_versions(struct nfp_nsp *state)
+{
+	return nfp_nsp_get_abi_ver_minor(state) > 27;
+}
+
+static inline bool
+nfp_nsp_has_read_module_eeprom(struct nfp_nsp *state)
+{
+	return nfp_nsp_get_abi_ver_minor(state) > 28;
+}
+
+static inline bool
+nfp_nsp_has_read_media(struct nfp_nsp *state)
+{
+	return nfp_nsp_get_abi_ver_minor(state) > 33;
 }
 
 enum nfp_eth_interface {
@@ -104,6 +76,7 @@ enum nfp_eth_interface {
 	NFP_INTERFACE_SFPP      = 10,
 	NFP_INTERFACE_SFP28     = 28,
 	NFP_INTERFACE_QSFP      = 40,
+	NFP_INTERFACE_RJ45      = 45,
 	NFP_INTERFACE_CXP       = 100,
 	NFP_INTERFACE_QSFP28    = 112,
 };
@@ -151,6 +124,7 @@ struct nfp_eth_table {
 		enum nfp_eth_media media; /**< Media type of the @interface */
 
 		enum nfp_eth_fec fec;     /**< Forward Error Correction mode */
+		enum nfp_eth_fec act_fec; /**< Active Forward Error Correction mode */
 		enum nfp_eth_aneg aneg;   /**< Auto negotiation mode */
 
 		struct rte_ether_addr mac_addr;  /**< Interface MAC address */
@@ -159,17 +133,18 @@ struct nfp_eth_table {
 		/** Id of interface within port (for split ports) */
 		uint8_t label_subport;
 
-		int enabled;     /**< Enable port */
-		int tx_enabled;  /**< Enable TX */
-		int rx_enabled;  /**< Enable RX */
+		bool enabled;     /**< Enable port */
+		bool tx_enabled;  /**< Enable TX */
+		bool rx_enabled;  /**< Enable RX */
+		bool supp_aneg;   /**< Support auto negotiation */
 
-		int override_changed;  /**< Media reconfig pending */
+		bool override_changed;  /**< Media reconfig pending */
 
 		uint8_t port_type;    /**< One of %PORT_* */
 		/** Sum of lanes of all subports of this port */
 		uint32_t port_lanes;
 
-		int is_split;   /**< Split port */
+		bool is_split;   /**< Split port */
 
 		uint32_t fec_modes_supported;  /**< Bitmap of FEC modes supported */
 	} ports[]; /**< Table of ports */
@@ -177,8 +152,8 @@ struct nfp_eth_table {
 
 struct nfp_eth_table *nfp_eth_read_ports(struct nfp_cpp *cpp);
 
-int nfp_eth_set_mod_enable(struct nfp_cpp *cpp, uint32_t idx, int enable);
-int nfp_eth_set_configured(struct nfp_cpp *cpp, uint32_t idx, int configed);
+int nfp_eth_set_mod_enable(struct nfp_cpp *cpp, uint32_t idx, bool enable);
+int nfp_eth_set_configured(struct nfp_cpp *cpp, uint32_t idx, bool configured);
 int nfp_eth_set_fec(struct nfp_cpp *cpp, uint32_t idx, enum nfp_eth_fec mode);
 
 int nfp_nsp_read_eth_table(struct nfp_nsp *state, void *buf, size_t size);
@@ -187,12 +162,13 @@ int nfp_nsp_write_eth_table(struct nfp_nsp *state, const void *buf,
 void nfp_nsp_config_set_state(struct nfp_nsp *state, void *entries,
 		uint32_t idx);
 void nfp_nsp_config_clear_state(struct nfp_nsp *state);
-void nfp_nsp_config_set_modified(struct nfp_nsp *state, int modified);
+void nfp_nsp_config_set_modified(struct nfp_nsp *state, bool modified);
 void *nfp_nsp_config_entries(struct nfp_nsp *state);
-int nfp_nsp_config_modified(struct nfp_nsp *state);
+struct nfp_cpp *nfp_nsp_cpp(struct nfp_nsp *state);
+bool nfp_nsp_config_modified(struct nfp_nsp *state);
 uint32_t nfp_nsp_config_idx(struct nfp_nsp *state);
 
-static inline int
+static inline bool
 nfp_eth_can_support_fec(struct nfp_eth_table_port *eth_port)
 {
 	return eth_port->fec_modes_supported != 0;

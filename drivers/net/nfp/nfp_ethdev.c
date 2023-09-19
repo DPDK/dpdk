@@ -661,7 +661,7 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 static int
 nfp_fw_upload(struct rte_pci_device *dev, struct nfp_nsp *nsp, char *card)
 {
-	struct nfp_cpp *cpp = nsp->cpp;
+	struct nfp_cpp *cpp = nfp_nsp_cpp(nsp);
 	void *fw_buf;
 	char fw_name[125];
 	char serial[40];
