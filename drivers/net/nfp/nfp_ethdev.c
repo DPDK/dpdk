@@ -311,7 +311,7 @@ nfp_net_close(struct rte_eth_dev *dev)
 	/* Now it is safe to free all PF resources */
 	PMD_INIT_LOG(INFO, "Freeing PF resources");
 	nfp_cpp_area_free(pf_dev->ctrl_area);
-	nfp_cpp_area_free(pf_dev->hwqueues_area);
+	nfp_cpp_area_free(pf_dev->qc_area);
 	free(pf_dev->hwinfo);
 	free(pf_dev->sym_tbl);
 	nfp_cpp_free(pf_dev->cpp);
@@ -593,8 +593,8 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 	PMD_INIT_LOG(DEBUG, "tx_bar_off: 0x%" PRIx64 "", tx_bar_off);
 	PMD_INIT_LOG(DEBUG, "rx_bar_off: 0x%" PRIx64 "", rx_bar_off);
 
-	hw->tx_bar = pf_dev->hw_queues + tx_bar_off;
-	hw->rx_bar = pf_dev->hw_queues + rx_bar_off;
+	hw->tx_bar = pf_dev->qc_bar + tx_bar_off;
+	hw->rx_bar = pf_dev->qc_bar + rx_bar_off;
 	eth_dev->data->dev_private = hw;
 
 	PMD_INIT_LOG(DEBUG, "ctrl_bar: %p, tx_bar: %p, rx_bar: %p",
@@ -995,16 +995,16 @@ nfp_pf_init(struct rte_pci_device *pci_dev)
 	}
 
 	cpp_id = NFP_CPP_ISLAND_ID(0, NFP_CPP_ACTION_RW, 0, 0);
-	pf_dev->hw_queues = nfp_cpp_map_area(pf_dev->cpp, cpp_id,
+	pf_dev->qc_bar = nfp_cpp_map_area(pf_dev->cpp, cpp_id,
 			addr, NFP_QCP_QUEUE_AREA_SZ,
-			&pf_dev->hwqueues_area);
-	if (pf_dev->hw_queues == NULL) {
+			&pf_dev->qc_area);
+	if (pf_dev->qc_bar == NULL) {
 		PMD_INIT_LOG(ERR, "nfp_rtsym_map fails for net.qc");
 		ret = -EIO;
 		goto pf_cleanup;
 	}
 
-	PMD_INIT_LOG(DEBUG, "tx/rx bar address: 0x%p", pf_dev->hw_queues);
+	PMD_INIT_LOG(DEBUG, "qc_bar address: 0x%p", pf_dev->qc_bar);
 
 	/*
 	 * PF initialization has been done at this point. Call app specific
@@ -1041,7 +1041,7 @@ nfp_pf_init(struct rte_pci_device *pci_dev)
 	return 0;
 
 hwqueues_cleanup:
-	nfp_cpp_area_free(pf_dev->hwqueues_area);
+	nfp_cpp_area_free(pf_dev->qc_area);
 pf_cleanup:
 	rte_free(pf_dev);
 sym_tbl_cleanup:

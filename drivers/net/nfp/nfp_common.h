@@ -123,9 +123,9 @@ struct nfp_pf_dev {
 
 	struct nfp_cpp *cpp;
 	struct nfp_cpp_area *ctrl_area;
-	struct nfp_cpp_area *hwqueues_area;
+	struct nfp_cpp_area *qc_area;
 
-	uint8_t *hw_queues;
+	uint8_t *qc_bar;
 
 	struct nfp_hwinfo *hwinfo;
 	struct nfp_rtsym_table *sym_tbl;

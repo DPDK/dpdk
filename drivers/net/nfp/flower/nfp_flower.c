@@ -224,7 +224,7 @@ nfp_flower_pf_close(struct rte_eth_dev *dev)
 	/* Now it is safe to free all PF resources */
 	PMD_DRV_LOG(INFO, "Freeing PF resources");
 	nfp_cpp_area_free(pf_dev->ctrl_area);
-	nfp_cpp_area_free(pf_dev->hwqueues_area);
+	nfp_cpp_area_free(pf_dev->qc_area);
 	free(pf_dev->hwinfo);
 	free(pf_dev->sym_tbl);
 	nfp_cpp_free(pf_dev->cpp);
@@ -360,8 +360,8 @@ nfp_flower_init_vnic_common(struct nfp_net_hw *hw, const char *vnic_type)
 	start_q = nn_cfg_readl(hw, NFP_NET_CFG_START_RXQ);
 	rx_bar_off = (uint64_t)start_q * NFP_QCP_QUEUE_ADDR_SZ;
 
-	hw->tx_bar = pf_dev->hw_queues + tx_bar_off;
-	hw->rx_bar = pf_dev->hw_queues + rx_bar_off;
+	hw->tx_bar = pf_dev->qc_bar + tx_bar_off;
+	hw->rx_bar = pf_dev->qc_bar + rx_bar_off;
 
 	/* Set the current MTU to the maximum supported */
 	hw->mtu = hw->max_mtu;
