@@ -235,7 +235,7 @@ nfp_cpp_area_alloc_acquire(struct nfp_cpp *cpp, uint32_t destination,
 	if (area == NULL)
 		return NULL;
 
-	if (nfp_cpp_area_acquire(area)) {
+	if (nfp_cpp_area_acquire(area) != 0) {
 		nfp_cpp_area_free(area);
 		return NULL;
 	}
@@ -252,7 +252,7 @@ nfp_cpp_area_alloc_acquire(struct nfp_cpp *cpp, uint32_t destination,
 void
 nfp_cpp_area_free(struct nfp_cpp_area *area)
 {
-	if (area->cpp->op->area_cleanup)
+	if (area->cpp->op->area_cleanup != NULL)
 		area->cpp->op->area_cleanup(area);
 	free(area);
 }
@@ -280,7 +280,7 @@ nfp_cpp_area_release_free(struct nfp_cpp_area *area)
 int
 nfp_cpp_area_acquire(struct nfp_cpp_area *area)
 {
-	if (area->cpp->op->area_acquire) {
+	if (area->cpp->op->area_acquire != NULL) {
 		int err = area->cpp->op->area_acquire(area);
 
 		if (err < 0)
@@ -299,7 +299,7 @@ nfp_cpp_area_acquire(struct nfp_cpp_area *area)
 void
 nfp_cpp_area_release(struct nfp_cpp_area *area)
 {
-	if (area->cpp->op->area_release)
+	if (area->cpp->op->area_release != NULL)
 		area->cpp->op->area_release(area);
 }
 
@@ -319,7 +319,7 @@ nfp_cpp_area_iomem(struct nfp_cpp_area *area)
 {
 	void *iomem = NULL;
 
-	if (area->cpp->op->area_iomem)
+	if (area->cpp->op->area_iomem != NULL)
 		iomem = area->cpp->op->area_iomem(area);
 
 	return iomem;
@@ -621,10 +621,10 @@ nfp_cpp_alloc(struct rte_pci_device *dev, int driver_lock_needed)
 void
 nfp_cpp_free(struct nfp_cpp *cpp)
 {
-	if (cpp->op && cpp->op->free)
+	if (cpp->op != NULL && cpp->op->free != NULL)
 		cpp->op->free(cpp);
 
-	if (cpp->serial_len)
+	if (cpp->serial_len != 0)
 		free(cpp->serial);
 
 	free(cpp);
@@ -833,7 +833,7 @@ __nfp_cpp_model_autodetect(struct nfp_cpp *cpp, uint32_t *model)
 		return err;
 
 	*model = reg & NFP_PL_DEVICE_MODEL_MASK;
-	if (*model & NFP_PL_DEVICE_ID_MASK)
+	if ((*model & NFP_PL_DEVICE_ID_MASK) != 0)
 		*model -= 0x10;
 
 	return 0;

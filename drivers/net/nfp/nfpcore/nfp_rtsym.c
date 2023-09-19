@@ -362,10 +362,10 @@ nfp_rtsym_read_le(struct nfp_rtsym_table *rtbl, const char *name, int *error)
 	if (err)
 		err = -EIO;
 exit:
-	if (error)
+	if (error != NULL)
 		*error = err;
 
-	if (err)
+	if (err != 0)
 		return ~0ULL;
 
 	return val;

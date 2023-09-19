@@ -75,7 +75,7 @@ nfp_mip_read_resource(struct nfp_cpp *cpp, struct nfp_mip *mip)
 		return -ENODEV;
 
 	err = nfp_nffw_info_mip_first(nffw_info, &cpp_id, &addr);
-	if (err)
+	if (err != 0)
 		goto exit_close_nffw;
 
 	err = nfp_mip_try_read(cpp, cpp_id, addr, mip);
@@ -105,7 +105,7 @@ nfp_mip_open(struct nfp_cpp *cpp)
 		return NULL;
 
 	err = nfp_mip_read_resource(cpp, mip);
-	if (err) {
+	if (err != 0) {
 		free(mip);
 		return NULL;
 	}

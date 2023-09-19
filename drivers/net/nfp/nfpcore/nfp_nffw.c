@@ -190,7 +190,7 @@ nfp_nffw_info_fwid_first(struct nfp_nffw_info *state)
 		return NULL;
 
 	for (i = 0; i < cnt; i++)
-		if (nffw_fwinfo_loaded_get(&fwinfo[i]))
+		if (nffw_fwinfo_loaded_get(&fwinfo[i]) != 0)
 			return &fwinfo[i];
 
 	return NULL;
@@ -217,7 +217,7 @@ nfp_nffw_info_mip_first(struct nfp_nffw_info *state, uint32_t *cpp_id,
 	*cpp_id = nffw_fwinfo_mip_cppid_get(fwinfo);
 	*off = nffw_fwinfo_mip_offset_get(fwinfo);
 
-	if (nffw_fwinfo_mip_mu_da_get(fwinfo)) {
+	if (nffw_fwinfo_mip_mu_da_get(fwinfo) != 0) {
 		int locality_off;
 
 		if (NFP_CPP_ID_TARGET_of(*cpp_id) != NFP_CPP_TARGET_MU)

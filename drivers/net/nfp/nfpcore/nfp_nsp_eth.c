@@ -212,7 +212,7 @@ nfp_eth_port_translate(struct nfp_nsp *nsp, const union eth_table_entry *src,
 	dst->fec_modes_supported |= fec << NFP_FEC_BASER_BIT;
 	fec = FIELD_GET(NSP_ETH_PORT_FEC_SUPP_RS, port);
 	dst->fec_modes_supported |= fec << NFP_FEC_REED_SOLOMON_BIT;
-	if (dst->fec_modes_supported)
+	if (dst->fec_modes_supported != 0)
 		dst->fec_modes_supported |= NFP_FEC_AUTO | NFP_FEC_DISABLED;
 
 	dst->fec = 1 << FIELD_GET(NSP_ETH_STATE_FEC, state);
@@ -285,7 +285,7 @@ __nfp_eth_read_ports(struct nfp_nsp *nsp)
 	 */
 	for (i = 0; i < NSP_ETH_MAX_COUNT; i++) {
 		mac = (const struct rte_ether_addr *)entries[i].mac_addr;
-		if ((entries[i].port & NSP_ETH_PORT_LANES_MASK) &&
+		if ((entries[i].port & NSP_ETH_PORT_LANES_MASK) != 0 &&
 				!rte_is_zero_ether_addr(mac))
 			cnt++;
 	}
@@ -294,7 +294,7 @@ __nfp_eth_read_ports(struct nfp_nsp *nsp)
 	 * those that give a port count, verify it against the value calculated
 	 * above.
 	 */
-	if (ret && ret != cnt) {
+	if (ret != 0 && ret != cnt) {
 		PMD_DRV_LOG(ERR, "table entry count (%d) unmatch entries present (%d)",
 		       ret, cnt);
 		goto err;
@@ -309,7 +309,7 @@ __nfp_eth_read_ports(struct nfp_nsp *nsp)
 	table->count = cnt;
 	for (i = 0, j = 0; i < NSP_ETH_MAX_COUNT; i++) {
 		mac = (const struct rte_ether_addr *)entries[i].mac_addr;
-		if ((entries[i].port & NSP_ETH_PORT_LANES_MASK) &&
+		if ((entries[i].port & NSP_ETH_PORT_LANES_MASK) != 0 &&
 				!rte_is_zero_ether_addr(mac))
 			nfp_eth_port_translate(nsp, &entries[i], i,
 					&table->ports[j++]);
@@ -621,7 +621,7 @@ nfp_eth_set_fec(struct nfp_cpp *cpp, unsigned int idx, enum nfp_eth_fec mode)
 		return -EIO;
 
 	err = __nfp_eth_set_fec(nsp, mode);
-	if (err) {
+	if (err != 0) {
 		nfp_eth_config_cleanup_end(nsp);
 		return err;
 	}

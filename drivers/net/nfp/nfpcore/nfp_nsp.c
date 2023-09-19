@@ -95,7 +95,7 @@ nfp_nsp_check(struct nfp_nsp *state)
 		return -EINVAL;
 	}
 
-	if (reg & NSP_STATUS_BUSY) {
+	if ((reg & NSP_STATUS_BUSY) != 0) {
 		PMD_DRV_LOG(ERR, "Service processor busy!");
 		return -EBUSY;
 	}
@@ -128,7 +128,7 @@ nfp_nsp_open(struct nfp_cpp *cpp)
 	state->res = res;
 
 	err = nfp_nsp_check(state);
-	if (err) {
+	if (err != 0) {
 		nfp_nsp_close(state);
 		return NULL;
 	}
@@ -219,7 +219,7 @@ nfp_nsp_command(struct nfp_nsp *state, uint16_t code, uint32_t option,
 	nsp_buffer = nsp_base + NSP_BUFFER;
 
 	err = nfp_nsp_check(state);
-	if (err)
+	if (err != 0)
 		return err;
 
 	if (!FIELD_FIT(NSP_BUFFER_CPP, buff_cpp >> 8) ||
@@ -245,7 +245,7 @@ nfp_nsp_command(struct nfp_nsp *state, uint16_t code, uint32_t option,
 	/* Wait for NSP_COMMAND_START to go to 0 */
 	err = nfp_nsp_wait_reg(cpp, &reg, nsp_cpp, nsp_command,
 			       NSP_COMMAND_START, 0);
-	if (err) {
+	if (err != 0) {
 		PMD_DRV_LOG(ERR, "Error %d waiting for code 0x%04x to start",
 			err, code);
 		return err;
@@ -254,7 +254,7 @@ nfp_nsp_command(struct nfp_nsp *state, uint16_t code, uint32_t option,
 	/* Wait for NSP_STATUS_BUSY to go to 0 */
 	err = nfp_nsp_wait_reg(cpp, &reg, nsp_cpp, nsp_status, NSP_STATUS_BUSY,
 			       0);
-	if (err) {
+	if (err != 0) {
 		PMD_DRV_LOG(ERR, "Error %d waiting for code 0x%04x to start",
 			err, code);
 		return err;
@@ -266,7 +266,7 @@ nfp_nsp_command(struct nfp_nsp *state, uint16_t code, uint32_t option,
 	ret_val = FIELD_GET(NSP_COMMAND_OPTION, ret_val);
 
 	err = FIELD_GET(NSP_STATUS_RESULT, reg);
-	if (err) {
+	if (err != 0) {
 		PMD_DRV_LOG(ERR, "Result (error) code set: %d (%d) command: %d",
 			 -err, (int)ret_val, code);
 		nfp_nsp_print_extended_error(ret_val);
@@ -319,13 +319,13 @@ nfp_nsp_command_buf(struct nfp_nsp *nsp, uint16_t code, uint32_t option,
 	cpp_id = FIELD_GET(NSP_BUFFER_CPP, reg) << 8;
 	cpp_buf = FIELD_GET(NSP_BUFFER_ADDRESS, reg);
 
-	if (in_buf && in_size) {
+	if (in_buf != NULL && in_size > 0) {
 		err = nfp_cpp_write(cpp, cpp_id, cpp_buf, in_buf, in_size);
 		if (err < 0)
 			return err;
 	}
 	/* Zero out remaining part of the buffer */
-	if (out_buf && out_size && out_size > in_size) {
+	if (out_buf != NULL && out_size > 0 && out_size > in_size) {
 		memset(out_buf, 0, out_size - in_size);
 		err = nfp_cpp_write(cpp, cpp_id, cpp_buf + in_size, out_buf,
 				    out_size - in_size);
@@ -337,7 +337,7 @@ nfp_nsp_command_buf(struct nfp_nsp *nsp, uint16_t code, uint32_t option,
 	if (ret < 0)
 		return ret;
 
-	if (out_buf && out_size) {
+	if (out_buf != NULL && out_size > 0) {
 		err = nfp_cpp_read(cpp, cpp_id, cpp_buf, out_buf, out_size);
 		if (err < 0)
 			return err;
@@ -369,7 +369,7 @@ nfp_nsp_wait(struct nfp_nsp *state)
 			break;
 		}
 	}
-	if (err)
+	if (err != 0)
 		PMD_DRV_LOG(ERR, "NSP failed to respond %d", err);
 
 	return err;

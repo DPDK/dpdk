@@ -38,7 +38,7 @@ static int
 _nfp_cpp_mutex_validate(uint32_t model, int *target, unsigned long long address)
 {
 	/* Address must be 64-bit aligned */
-	if (address & 7)
+	if ((address & 7) != 0)
 		return -EINVAL;
 
 	if (NFP_CPP_MODEL_IS_6000(model)) {

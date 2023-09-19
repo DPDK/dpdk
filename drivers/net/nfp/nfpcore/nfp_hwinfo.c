@@ -37,7 +37,7 @@ nfp_hwinfo_db_walk(struct nfp_hwinfo *hwinfo, uint32_t size)
 {
 	const char *key, *val, *end = hwinfo->data + size;
 
-	for (key = hwinfo->data; *key && key < end;
+	for (key = hwinfo->data; *key != 0 && key < end;
 	     key = val + strlen(val) + 1) {
 		val = key + strlen(key) + 1;
 		if (val >= end) {
@@ -141,7 +141,7 @@ nfp_hwinfo_fetch(struct nfp_cpp *cpp, size_t *hwdb_size)
 
 	for (;;) {
 		db = nfp_hwinfo_try_fetch(cpp, hwdb_size);
-		if (db)
+		if (db != NULL)
 			return db;
 
 		nanosleep(&wait, NULL);
@@ -164,7 +164,7 @@ nfp_hwinfo_read(struct nfp_cpp *cpp)
 		return NULL;
 
 	err = nfp_hwinfo_db_validate(db, hwdb_size);
-	if (err) {
+	if (err != 0) {
 		free(db);
 		return NULL;
 	}
@@ -188,7 +188,7 @@ nfp_hwinfo_lookup(struct nfp_hwinfo *hwinfo, const char *lookup)
 
 	end = hwinfo->data + hwinfo->size - sizeof(uint32_t);
 
-	for (key = hwinfo->data; *key && key < end;
+	for (key = hwinfo->data; *key != 0 && key < end;
 	     key = val + strlen(val) + 1) {
 		val = key + strlen(key) + 1;
 

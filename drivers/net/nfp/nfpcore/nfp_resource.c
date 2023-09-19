@@ -115,15 +115,15 @@ nfp_resource_try_acquire(struct nfp_cpp *cpp, struct nfp_resource *res,
 {
 	int err;
 
-	if (nfp_cpp_mutex_lock(dev_mutex))
+	if (nfp_cpp_mutex_lock(dev_mutex) != 0)
 		return -EINVAL;
 
 	err = nfp_cpp_resource_find(cpp, res);
-	if (err)
+	if (err != 0)
 		goto err_unlock_dev;
 
 	err = nfp_cpp_mutex_trylock(res->mutex);
-	if (err)
+	if (err != 0)
 		goto err_res_mutex_free;
 
 	nfp_cpp_mutex_unlock(dev_mutex);

@@ -224,10 +224,10 @@ nfp_compute_bar(const struct nfp_bar *bar, uint32_t *bar_config,
 
 	newcfg |= offset >> bitsize;
 
-	if (bar_base)
+	if (bar_base != NULL)
 		*bar_base = offset;
 
-	if (bar_config)
+	if (bar_config != NULL)
 		*bar_config = newcfg;
 
 	return 0;
@@ -266,7 +266,7 @@ nfp_reconfigure_bar(struct nfp_pcie_user *nfp, struct nfp_bar *bar, int tgt,
 
 	err = nfp_compute_bar(bar, &newcfg, &newbase, tgt, act, tok, offset,
 			      size, width);
-	if (err)
+	if (err != 0)
 		return err;
 
 	bar->base = newbase;
@@ -515,7 +515,7 @@ nfp6000_area_read(struct nfp_cpp_area *area, void *kernel_vaddr,
 		return -EINVAL;
 
 	/* Unaligned? Translate to an explicit access */
-	if ((priv->offset + offset) & (width - 1)) {
+	if (((priv->offset + offset) & (width - 1)) != 0) {
 		PMD_DRV_LOG(ERR, "aread_read unaligned!!!");
 		return -EINVAL;
 	}
@@ -583,7 +583,7 @@ nfp6000_area_write(struct nfp_cpp_area *area, const void *kernel_vaddr,
 		return -EINVAL;
 
 	/* Unaligned? Translate to an explicit access */
-	if ((priv->offset + offset) & (width - 1))
+	if (((priv->offset + offset) & (width - 1)) != 0)
 		return -EINVAL;
 
 	is_64 = width == TARGET_WIDTH_64;
@@ -764,7 +764,7 @@ nfp6000_init(struct nfp_cpp *cpp, struct rte_pci_device *dev)
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY &&
 	    cpp->driver_lock_needed) {
 		ret = nfp_acquire_process_lock(desc);
-		if (ret)
+		if (ret != 0)
 			goto error;
 	}
 
