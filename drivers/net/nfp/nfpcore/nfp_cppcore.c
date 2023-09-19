@@ -3,29 +3,55 @@
  * All rights reserved.
  */
 
-#include <assert.h>
-#include <stdint.h>
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <sys/types.h>
-
-#include <rte_byteorder.h>
-#include <ethdev_pci.h>
+#include "nfp_cpp.h"
 
 #include "nfp_logs.h"
+#include "nfp_platform.h"
 #include "nfp_target.h"
 #include "nfp6000/nfp6000.h"
 #include "nfp6000/nfp_xpb.h"
-#include "nfp_nffw.h"
 #include "nfp6000_pcie.h"
 
+#define NFP_PL_DEVICE_PART_NFP6000              0x6200
 #define NFP_PL_DEVICE_ID                        0x00000004
 #define NFP_PL_DEVICE_ID_MASK                   0xff
 #define NFP_PL_DEVICE_PART_MASK                 0xffff0000
 #define NFP_PL_DEVICE_MODEL_MASK               (NFP_PL_DEVICE_PART_MASK | \
 						NFP_PL_DEVICE_ID_MASK)
+
+/* NFP CPP handle */
+struct nfp_cpp {
+	void *priv;  /**< Private data of the low-level implementation */
+
+	uint32_t model;  /**< Chip model */
+	uint16_t interface;  /**< Chip interface id */
+	uint8_t serial[NFP_SERIAL_LEN];  /**< Chip serial number */
+
+	/** Low-level implementation ops */
+	const struct nfp_cpp_operations *op;
+
+	/*
+	 * NFP-6xxx originating island IMB CPP Address Translation. CPP Target
+	 * ID is index into array. Values are obtained at runtime from local
+	 * island XPB CSRs.
+	 */
+	uint32_t imb_cat_table[16];
+
+	/**< MU access type bit offset */
+	uint32_t mu_locality_lsb;
+
+	bool driver_lock_needed;
+};
+
+/* NFP CPP device area handle */
+struct nfp_cpp_area {
+	struct nfp_cpp *cpp;
+	char *name;
+	uint64_t offset;
+	uint32_t size;
+	/* Here follows the 'priv' part of nfp_cpp_area. */
+	/* Here follows the ASCII name, pointed by @name */
+};
 
 /**
  * Set the private data of the nfp_cpp instance
@@ -125,12 +151,13 @@ nfp_cpp_interface_set(struct nfp_cpp *cpp,
  * @return
  *   Length of NFP serial number
  */
-int
+uint32_t
 nfp_cpp_serial(struct nfp_cpp *cpp,
 		const uint8_t **serial)
 {
-	*serial = cpp->serial;
-	return cpp->serial_len;
+	*serial = &cpp->serial[0];
+
+	return sizeof(cpp->serial);
 }
 
 /**
@@ -143,22 +170,12 @@ nfp_cpp_serial(struct nfp_cpp *cpp,
  * @param serial_len
  *   Length of the serial byte array
  */
-int
+void
 nfp_cpp_serial_set(struct nfp_cpp *cpp,
 		const uint8_t *serial,
 		size_t serial_len)
 {
-	if (cpp->serial_len)
-		free(cpp->serial);
-
-	cpp->serial = malloc(serial_len);
-	if (cpp->serial == NULL)
-		return -1;
-
 	memcpy(cpp->serial, serial, serial_len);
-	cpp->serial_len = serial_len;
-
-	return 0;
 }
 
 /**
@@ -177,6 +194,21 @@ nfp_cpp_interface(struct nfp_cpp *cpp)
 		return NFP_CPP_INTERFACE(NFP_CPP_INTERFACE_TYPE_INVALID, 0, 0);
 
 	return cpp->interface;
+}
+
+/**
+ * Retrieve the driver need lock flag
+ *
+ * @param cpp
+ *   NFP CPP handle
+ *
+ * @return
+ *   The driver need lock flag
+ */
+bool
+nfp_cpp_driver_need_lock(const struct nfp_cpp *cpp)
+{
+	return cpp->driver_lock_needed;
 }
 
 /**
@@ -283,39 +315,40 @@ nfp_cpp_area_alloc_with_name(struct nfp_cpp *cpp,
 		uint32_t size)
 {
 	int err;
+	size_t name_len;
+	uint32_t target_id;
+	uint64_t target_addr;
 	struct nfp_cpp_area *area;
-	uint64_t tmp64 = (uint64_t)address;
 
 	if (cpp == NULL)
 		return NULL;
 
 	/* Remap from cpp_island to cpp_target */
-	err = nfp_target_cpp(dest, tmp64, &dest, &tmp64, cpp->imb_cat_table);
+	err = nfp_target_cpp(dest, address, &target_id, &target_addr,
+			cpp->imb_cat_table);
 	if (err < 0)
 		return NULL;
 
-	address = tmp64;
-
 	if (name == NULL)
-		name = "";
+		name = "(reserved)";
 
-	area = calloc(1, sizeof(*area) + cpp->op->area_priv_size +
-			strlen(name) + 1);
+	name_len = strlen(name) + 1;
+	area = calloc(1, sizeof(*area) + cpp->op->area_priv_size + name_len);
 	if (area == NULL)
 		return NULL;
 
 	area->cpp = cpp;
 	area->name = ((char *)area) + sizeof(*area) + cpp->op->area_priv_size;
-	memcpy(area->name, name, strlen(name) + 1);
+	memcpy(area->name, name, name_len);
 
-	err = cpp->op->area_init(area, dest, address, size);
+	err = cpp->op->area_init(area, target_id, target_addr, size);
 	if (err < 0) {
 		PMD_DRV_LOG(ERR, "Area init op failed");
 		free(area);
 		return NULL;
 	}
 
-	area->offset = address;
+	area->offset = target_addr;
 	area->size = size;
 
 	return area;
@@ -555,26 +588,28 @@ nfp_xpb_to_cpp(struct nfp_cpp *cpp,
 	 * Ensure that non-local XPB accesses go out through the
 	 * global XPBM bus.
 	 */
-	island = ((*xpb_addr) >> 24) & 0x3f;
+	island = (*xpb_addr >> 24) & 0x3f;
 
 	if (island == 0)
 		return xpb;
 
-	if (island == 1) {
-		/*
-		 * Accesses to the ARM Island overlay uses Island 0
-		 * Global Bit
-		 */
-		(*xpb_addr) &= ~0x7f000000;
-		if (*xpb_addr < 0x60000)
-			*xpb_addr |= (1 << 30);
-		else
-			/* And only non-ARM interfaces use island id = 1 */
-			if (NFP_CPP_INTERFACE_TYPE_of(nfp_cpp_interface(cpp)) !=
-					NFP_CPP_INTERFACE_TYPE_ARM)
-				*xpb_addr |= (1 << 24);
+	if (island != 1) {
+		*xpb_addr |= (1 << 30);
+		return xpb;
+	}
+
+	/*
+	 * Accesses to the ARM Island overlay uses Island 0
+	 * Global Bit
+	 */
+	*xpb_addr &= ~0x7f000000;
+	if (*xpb_addr < 0x60000) {
+		*xpb_addr |= (1 << 30);
 	} else {
-		(*xpb_addr) |= (1 << 30);
+		/* And only non-ARM interfaces use island id = 1 */
+		if (NFP_CPP_INTERFACE_TYPE_of(nfp_cpp_interface(cpp)) !=
+				NFP_CPP_INTERFACE_TYPE_ARM)
+			*xpb_addr |= (1 << 24);
 	}
 
 	return xpb;
@@ -602,9 +637,12 @@ nfp_cpp_area_readl(struct nfp_cpp_area *area,
 	uint32_t tmp = 0;
 
 	sz = nfp_cpp_area_read(area, offset, &tmp, sizeof(tmp));
+	if (sz != sizeof(tmp))
+		return sz < 0 ? sz : -EIO;
+
 	*value = rte_le_to_cpu_32(tmp);
 
-	return (sz == sizeof(*value)) ? 0 : -1;
+	return 0;
 }
 
 /**
@@ -629,7 +667,10 @@ nfp_cpp_area_writel(struct nfp_cpp_area *area,
 
 	value = rte_cpu_to_le_32(value);
 	sz = nfp_cpp_area_write(area, offset, &value, sizeof(value));
-	return (sz == sizeof(value)) ? 0 : -1;
+	if (sz != sizeof(value))
+		return sz < 0 ? sz : -EIO;
+
+	return 0;
 }
 
 /**
@@ -654,9 +695,12 @@ nfp_cpp_area_readq(struct nfp_cpp_area *area,
 	uint64_t tmp = 0;
 
 	sz = nfp_cpp_area_read(area, offset, &tmp, sizeof(tmp));
+	if (sz != sizeof(tmp))
+		return sz < 0 ? sz : -EIO;
+
 	*value = rte_le_to_cpu_64(tmp);
 
-	return (sz == sizeof(*value)) ? 0 : -1;
+	return 0;
 }
 
 /**
@@ -681,8 +725,10 @@ nfp_cpp_area_writeq(struct nfp_cpp_area *area,
 
 	value = rte_cpu_to_le_64(value);
 	sz = nfp_cpp_area_write(area, offset, &value, sizeof(value));
+	if (sz != sizeof(value))
+		return sz < 0 ? sz : -EIO;
 
-	return (sz == sizeof(value)) ? 0 : -1;
+	return 0;
 }
 
 /**
@@ -710,9 +756,12 @@ nfp_cpp_readl(struct nfp_cpp *cpp,
 	uint32_t tmp;
 
 	sz = nfp_cpp_read(cpp, cpp_id, address, &tmp, sizeof(tmp));
+	if (sz != sizeof(tmp))
+		return sz < 0 ? sz : -EIO;
+
 	*value = rte_le_to_cpu_32(tmp);
 
-	return (sz == sizeof(*value)) ? 0 : -1;
+	return 0;
 }
 
 /**
@@ -740,8 +789,10 @@ nfp_cpp_writel(struct nfp_cpp *cpp,
 
 	value = rte_cpu_to_le_32(value);
 	sz = nfp_cpp_write(cpp, cpp_id, address, &value, sizeof(value));
+	if (sz != sizeof(value))
+		return sz < 0 ? sz : -EIO;
 
-	return (sz == sizeof(value)) ? 0 : -1;
+	return 0;
 }
 
 /**
@@ -770,8 +821,10 @@ nfp_cpp_readq(struct nfp_cpp *cpp,
 
 	sz = nfp_cpp_read(cpp, cpp_id, address, &tmp, sizeof(tmp));
 	*value = rte_le_to_cpu_64(tmp);
+	if (sz != sizeof(tmp))
+		return sz < 0 ? sz : -EIO;
 
-	return (sz == sizeof(*value)) ? 0 : -1;
+	return 0;
 }
 
 /**
@@ -799,8 +852,10 @@ nfp_cpp_writeq(struct nfp_cpp *cpp,
 
 	value = rte_cpu_to_le_64(value);
 	sz = nfp_cpp_write(cpp, cpp_id, address, &value, sizeof(value));
+	if (sz != sizeof(value))
+		return sz < 0 ? sz : -EIO;
 
-	return (sz == sizeof(value)) ? 0 : -1;
+	return 0;
 }
 
 /**
@@ -918,9 +973,6 @@ nfp_cpp_free(struct nfp_cpp *cpp)
 	if (cpp->op != NULL && cpp->op->free != NULL)
 		cpp->op->free(cpp);
 
-	if (cpp->serial_len != 0)
-		free(cpp->serial);
-
 	free(cpp);
 }
 
@@ -974,7 +1026,7 @@ nfp_cpp_read(struct nfp_cpp *cpp,
 	area = nfp_cpp_area_alloc_acquire(cpp, destination, offset, length);
 	if (area == NULL) {
 		PMD_DRV_LOG(ERR, "Area allocation/acquire failed for read");
-		return -1;
+		return -EACCES;
 	}
 
 	err = nfp_cpp_area_read(area, 0, address, length);
@@ -1013,7 +1065,7 @@ nfp_cpp_write(struct nfp_cpp *cpp,
 	area = nfp_cpp_area_alloc_acquire(cpp, destination, offset, length);
 	if (area == NULL) {
 		PMD_DRV_LOG(ERR, "Area allocation/acquire failed for write");
-		return -1;
+		return -EACCES;
 	}
 
 	err = nfp_cpp_area_write(area, 0, address, length);
@@ -1039,8 +1091,12 @@ nfp_cpp_model_autodetect(struct nfp_cpp *cpp,
 		return err;
 
 	*model = reg & NFP_PL_DEVICE_MODEL_MASK;
-	if ((*model & NFP_PL_DEVICE_ID_MASK) != 0)
-		*model -= 0x10;
+	/* Disambiguate the NFP4000/NFP5000/NFP6000 chips */
+	if (FIELD_GET(NFP_PL_DEVICE_PART_MASK, reg) ==
+			NFP_PL_DEVICE_PART_NFP6000) {
+		if ((*model & NFP_PL_DEVICE_ID_MASK) != 0)
+			*model -= 0x10;
+	}
 
 	return 0;
 }

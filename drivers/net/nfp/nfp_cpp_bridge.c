@@ -344,7 +344,7 @@ nfp_cpp_bridge_serve_ioctl(int sockfd, struct nfp_cpp *cpp)
 		return -EIO;
 	}
 
-	tmp = cpp->interface;
+	tmp = nfp_cpp_interface(cpp);
 
 	PMD_CPP_LOG(DEBUG, "%s: sending NFP interface %08x\n", __func__, tmp);
 

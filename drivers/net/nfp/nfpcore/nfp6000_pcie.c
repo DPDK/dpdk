@@ -739,7 +739,7 @@ nfp6000_init(struct nfp_cpp *cpp,
 	strlcpy(desc->busdev, dev->device.name, sizeof(desc->busdev));
 
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY &&
-			cpp->driver_lock_needed) {
+			nfp_cpp_driver_need_lock(cpp)) {
 		ret = nfp_acquire_process_lock(desc);
 		if (ret != 0)
 			goto error;
@@ -778,7 +778,7 @@ nfp6000_free(struct nfp_cpp *cpp)
 	struct nfp_pcie_user *desc = nfp_cpp_priv(cpp);
 
 	nfp_disable_bars(desc);
-	if (cpp->driver_lock_needed)
+	if (nfp_cpp_driver_need_lock(cpp))
 		close(desc->lock);
 	close(desc->device);
 	free(desc);

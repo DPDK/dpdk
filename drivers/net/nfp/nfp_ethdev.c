@@ -654,15 +654,23 @@ nfp_fw_upload(struct rte_pci_device *dev, struct nfp_nsp *nsp, char *card)
 	char fw_name[125];
 	char serial[40];
 	size_t fsize;
+	uint16_t interface;
+	uint32_t cpp_serial_len;
+	const uint8_t *cpp_serial;
+
+	cpp_serial_len = nfp_cpp_serial(cpp, &cpp_serial);
+	if (cpp_serial_len != NFP_SERIAL_LEN)
+		return -ERANGE;
+
+	interface = nfp_cpp_interface(cpp);
 
 	/* Looking for firmware file in order of priority */
 
 	/* First try to find a firmware image specific for this device */
 	snprintf(serial, sizeof(serial),
 			"serial-%02x-%02x-%02x-%02x-%02x-%02x-%02x-%02x",
-		cpp->serial[0], cpp->serial[1], cpp->serial[2], cpp->serial[3],
-		cpp->serial[4], cpp->serial[5], cpp->interface >> 8,
-		cpp->interface & 0xff);
+		cpp_serial[0], cpp_serial[1], cpp_serial[2], cpp_serial[3],
+		cpp_serial[4], cpp_serial[5], interface >> 8, interface & 0xff);
 
 	snprintf(fw_name, sizeof(fw_name), "%s/%s.nffw", DEFAULT_FW_PATH,
 			serial);

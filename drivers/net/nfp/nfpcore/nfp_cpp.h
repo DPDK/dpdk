@@ -9,38 +9,12 @@
 #include <ethdev_pci.h>
 
 /* NFP CPP handle */
-struct nfp_cpp {
-	uint32_t model;
-	uint32_t interface;
-	uint8_t *serial;
-	int serial_len;
-	void *priv;
-
-	/* Mutex cache */
-	struct nfp_cpp_mutex *mutex_cache;
-	const struct nfp_cpp_operations *op;
-
-	/*
-	 * NFP-6xxx originating island IMB CPP Address Translation. CPP Target
-	 * ID is index into array. Values are obtained at runtime from local
-	 * island XPB CSRs.
-	 */
-	uint32_t imb_cat_table[16];
-
-	/* MU access type bit offset */
-	uint32_t mu_locality_lsb;
-
-	int driver_lock_needed;
-};
+struct nfp_cpp;
 
 /* NFP CPP device area handle */
-struct nfp_cpp_area {
-	struct nfp_cpp *cpp;
-	char *name;
-	unsigned long long offset;
-	unsigned long size;
-	/* Here follows the 'priv' part of nfp_cpp_area. */
-};
+struct nfp_cpp_area;
+
+#define NFP_SERIAL_LEN        6
 
 /*
  * NFP CPP operations structure
@@ -230,7 +204,7 @@ void nfp_cpp_model_set(struct nfp_cpp *cpp, uint32_t model);
 
 void nfp_cpp_interface_set(struct nfp_cpp *cpp, uint32_t interface);
 
-int nfp_cpp_serial_set(struct nfp_cpp *cpp, const uint8_t *serial,
+void nfp_cpp_serial_set(struct nfp_cpp *cpp, const uint8_t *serial,
 		size_t serial_len);
 
 void nfp_cpp_priv_set(struct nfp_cpp *cpp, void *priv);
@@ -349,7 +323,9 @@ uint32_t nfp_cpp_model(struct nfp_cpp *cpp);
 
 uint16_t nfp_cpp_interface(struct nfp_cpp *cpp);
 
-int nfp_cpp_serial(struct nfp_cpp *cpp, const uint8_t **serial);
+uint32_t nfp_cpp_serial(struct nfp_cpp *cpp, const uint8_t **serial);
+
+bool nfp_cpp_driver_need_lock(const struct nfp_cpp *cpp);
 
 struct nfp_cpp_area *nfp_cpp_area_alloc(struct nfp_cpp *cpp, uint32_t cpp_id,
 		uint64_t address, size_t size);
