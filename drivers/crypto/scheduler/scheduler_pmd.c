@@ -8,6 +8,7 @@
 #include <rte_hexdump.h>
 #include <rte_cryptodev.h>
 #include <cryptodev_pmd.h>
+#include <rte_security_driver.h>
 #include <bus_vdev_driver.h>
 #include <rte_malloc.h>
 #include <rte_cpuflags.h>
@@ -76,6 +77,23 @@ const struct scheduler_parse_map scheduler_ordering_map[] = {
 };
 
 #define CDEV_SCHED_MODE_PARAM_SEP_CHAR		':'
+
+static void
+free_mem(struct rte_cryptodev *dev)
+{
+	struct scheduler_ctx *sched_ctx = dev->data->dev_private;
+	int i;
+
+	for (i = 0; i < sched_ctx->nb_init_workers; i++) {
+		rte_free(sched_ctx->init_worker_names[i]);
+		sched_ctx->init_worker_names[i] = NULL;
+	}
+
+	scheduler_free_capabilities(sched_ctx);
+
+	rte_free(dev->security_ctx);
+	dev->security_ctx = NULL;
+}
 
 static int
 cryptodev_scheduler_create(const char *name,
@@ -206,8 +224,8 @@ cryptodev_scheduler_create(const char *name,
 
 		if (!sched_ctx->init_worker_names[
 				sched_ctx->nb_init_workers]) {
-			CR_SCHED_LOG(ERR, "driver %s: Insufficient memory",
-					name);
+			CR_SCHED_LOG(ERR, "Not enough memory for init worker name");
+			free_mem(dev);
 			return -ENOMEM;
 		}
 
@@ -228,8 +246,38 @@ cryptodev_scheduler_create(const char *name,
 			0, SOCKET_ID_ANY);
 
 	if (!sched_ctx->capabilities) {
-		CR_SCHED_LOG(ERR, "Not enough memory for capability "
-				"information");
+		CR_SCHED_LOG(ERR, "Not enough memory for capability information");
+		free_mem(dev);
+		return -ENOMEM;
+	}
+
+	/* Initialize security context */
+	struct rte_security_ctx *security_instance;
+	security_instance = rte_zmalloc_socket(NULL,
+					sizeof(struct rte_security_ctx),
+					RTE_CACHE_LINE_SIZE, SOCKET_ID_ANY);
+	if (!security_instance) {
+		CR_SCHED_LOG(ERR, "Not enough memory for security context");
+		free_mem(dev);
+		return -ENOMEM;
+	}
+
+	security_instance->device = dev;
+	security_instance->ops = rte_crypto_scheduler_pmd_sec_ops;
+	security_instance->sess_cnt = 0;
+	dev->security_ctx = security_instance;
+
+	/*
+	 * Initialize security capabilities structure as an empty structure,
+	 * in case device information is requested when no workers are attached
+	 */
+	sched_ctx->sec_capabilities = rte_zmalloc_socket(NULL,
+					sizeof(struct rte_security_capability),
+					0, SOCKET_ID_ANY);
+
+	if (!sched_ctx->sec_capabilities) {
+		CR_SCHED_LOG(ERR, "Not enough memory for security capability information");
+		free_mem(dev);
 		return -ENOMEM;
 	}
 
@@ -262,6 +310,9 @@ cryptodev_scheduler_remove(struct rte_vdev_device *vdev)
 			rte_cryptodev_scheduler_worker_detach(dev->data->dev_id,
 					sched_ctx->workers[i].dev_id);
 	}
+
+	rte_free(dev->security_ctx);
+	dev->security_ctx = NULL;
 
 	return rte_cryptodev_pmd_destroy(dev);
 }

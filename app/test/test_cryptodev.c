@@ -17583,6 +17583,12 @@ test_cryptodev_scheduler(void)
 		&scheduler_config,
 		&end_testsuite
 	};
+	struct unit_test_suite *sched_mode_static_suites[] = {
+#ifdef RTE_LIB_SECURITY
+		&docsis_proto_testsuite,
+#endif
+		&end_testsuite
+	};
 	static struct unit_test_suite ts = {
 		.suite_name = "Scheduler Unit Test Suite",
 		.setup = scheduler_testsuite_setup,
@@ -17608,9 +17614,13 @@ test_cryptodev_scheduler(void)
 		uint8_t blk_i = 0;
 		sched_mode_suites[sched_i]->unit_test_suites = malloc(sizeof
 				(struct unit_test_suite *) *
-				(RTE_DIM(blk_suites) + 1));
+				(RTE_DIM(blk_suites) +
+				RTE_DIM(sched_mode_static_suites) + 1));
 		ADD_BLOCKCIPHER_TESTSUITE(blk_i, (*sched_mode_suites[sched_i]),
 				blk_suites, RTE_DIM(blk_suites));
+		ADD_STATIC_TESTSUITE(blk_i, (*sched_mode_suites[sched_i]),
+				sched_mode_static_suites,
+				RTE_DIM(sched_mode_static_suites));
 		sched_mode_suites[sched_i]->unit_test_suites[blk_i] = &end_testsuite;
 	}
 

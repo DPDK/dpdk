@@ -110,6 +110,11 @@ New Features
 
   * Added 100M and auto-neg support in YT PHY fiber mode.
 
+* **Updated cryptodev scheduler driver.**
+
+  * Added support for DOCSIS security protocol
+    through the ``rte_security`` API callbacks.
+
 * **Updated ipsec_mb crypto driver.**
 
   * Added support for digest encrypted to AESNI_MB asynchronous crypto driver.

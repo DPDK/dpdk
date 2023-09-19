@@ -8,10 +8,204 @@
 #include <dev_driver.h>
 #include <rte_cryptodev.h>
 #include <cryptodev_pmd.h>
+#include <rte_security_driver.h>
 #include <rte_reorder.h>
 #include <rte_errno.h>
 
 #include "scheduler_pmd_private.h"
+
+struct scheduler_configured_sess_info {
+	uint8_t dev_id;
+	uint8_t driver_id;
+	union {
+		struct rte_cryptodev_sym_session *sess;
+		struct {
+			struct rte_security_session *sec_sess;
+			struct rte_security_ctx *sec_ctx;
+		};
+	};
+};
+
+static int
+scheduler_session_create(void *sess, void *sess_params,
+		struct scheduler_ctx *sched_ctx,
+		enum rte_crypto_op_sess_type session_type)
+{
+	struct rte_mempool *mp = rte_mempool_from_obj(sess);
+	struct scheduler_session_ctx *sess_ctx;
+	struct scheduler_configured_sess_info configured_sess[
+			RTE_CRYPTODEV_SCHEDULER_MAX_NB_WORKERS] = {{0}};
+	uint32_t i, j, n_configured_sess = 0;
+	int ret = 0;
+
+	if (session_type == RTE_CRYPTO_OP_WITH_SESSION)
+		sess_ctx = CRYPTODEV_GET_SYM_SESS_PRIV(sess);
+	else
+		sess_ctx = SECURITY_GET_SESS_PRIV(sess);
+
+	if (mp == NULL)
+		return -EINVAL;
+
+	for (i = 0; i < sched_ctx->nb_workers; i++) {
+		struct scheduler_worker *worker = &sched_ctx->workers[i];
+		struct rte_cryptodev *dev = &rte_cryptodevs[worker->dev_id];
+		uint8_t next_worker = 0;
+
+		for (j = 0; j < n_configured_sess; j++) {
+			if (configured_sess[j].driver_id == worker->driver_id) {
+				if (session_type == RTE_CRYPTO_OP_WITH_SESSION)
+					sess_ctx->worker_sess[i] =
+						configured_sess[j].sess;
+				else
+					sess_ctx->worker_sec_sess[i] =
+						configured_sess[j].sec_sess;
+
+				next_worker = 1;
+				break;
+			}
+		}
+		if (next_worker)
+			continue;
+
+		if (rte_mempool_avail_count(mp) == 0) {
+			ret = -ENOMEM;
+			goto error_exit;
+		}
+
+		if (session_type == RTE_CRYPTO_OP_WITH_SESSION) {
+			struct rte_cryptodev_sym_session *worker_sess =
+				rte_cryptodev_sym_session_create(worker->dev_id,
+						sess_params, mp);
+
+			if (worker_sess == NULL) {
+				ret = -rte_errno;
+				goto error_exit;
+			}
+
+			worker_sess->opaque_data = (uint64_t)sess;
+			sess_ctx->worker_sess[i] = worker_sess;
+			configured_sess[n_configured_sess].sess = worker_sess;
+		} else {
+			struct rte_security_session *worker_sess =
+				rte_security_session_create(dev->security_ctx,
+						sess_params, mp);
+
+			if (worker_sess == NULL) {
+				ret = -rte_errno;
+				goto error_exit;
+			}
+
+			worker_sess->opaque_data = (uint64_t)sess;
+			sess_ctx->worker_sec_sess[i] = worker_sess;
+			configured_sess[n_configured_sess].sec_sess =
+							worker_sess;
+			configured_sess[n_configured_sess].sec_ctx =
+							dev->security_ctx;
+		}
+
+		configured_sess[n_configured_sess].driver_id =
+							worker->driver_id;
+		configured_sess[n_configured_sess].dev_id = worker->dev_id;
+		n_configured_sess++;
+	}
+
+	return 0;
+
+error_exit:
+	sess_ctx->ref_cnt = sched_ctx->ref_cnt;
+	for (i = 0; i < n_configured_sess; i++) {
+		if (session_type == RTE_CRYPTO_OP_WITH_SESSION)
+			rte_cryptodev_sym_session_free(
+						configured_sess[i].dev_id,
+						configured_sess[i].sess);
+		else
+			rte_security_session_destroy(
+						configured_sess[i].sec_ctx,
+						configured_sess[i].sec_sess);
+	}
+
+	return ret;
+}
+
+static void
+scheduler_session_destroy(void *sess, struct scheduler_ctx *sched_ctx,
+		uint8_t session_type)
+{
+	struct scheduler_session_ctx *sess_ctx;
+	struct scheduler_configured_sess_info deleted_sess[
+			RTE_CRYPTODEV_SCHEDULER_MAX_NB_WORKERS] = {{0}};
+	uint32_t i, j, n_deleted_sess = 0;
+
+	if (session_type == RTE_CRYPTO_OP_WITH_SESSION)
+		sess_ctx = CRYPTODEV_GET_SYM_SESS_PRIV(sess);
+	else
+		sess_ctx = SECURITY_GET_SESS_PRIV(sess);
+
+	if (sched_ctx->ref_cnt != sess_ctx->ref_cnt) {
+		CR_SCHED_LOG(WARNING,
+			"Worker updated between session creation/deletion. "
+			"The session may not be freed fully.");
+	}
+
+	for (i = 0; i < sched_ctx->nb_workers; i++) {
+		struct scheduler_worker *worker = &sched_ctx->workers[i];
+		struct rte_cryptodev *dev = &rte_cryptodevs[worker->dev_id];
+		uint8_t next_worker = 0;
+
+		for (j = 0; j < n_deleted_sess; j++) {
+			if (deleted_sess[j].driver_id == worker->driver_id) {
+				if (session_type == RTE_CRYPTO_OP_WITH_SESSION)
+					sess_ctx->worker_sess[i] = NULL;
+				else
+					sess_ctx->worker_sec_sess[i] = NULL;
+
+				next_worker = 1;
+				break;
+			}
+		}
+		if (next_worker)
+			continue;
+
+		if (session_type == RTE_CRYPTO_OP_WITH_SESSION) {
+			rte_cryptodev_sym_session_free(worker->dev_id,
+						sess_ctx->worker_sess[i]);
+			sess_ctx->worker_sess[i] = NULL;
+		} else {
+			rte_security_session_destroy(dev->security_ctx,
+						sess_ctx->worker_sec_sess[i]);
+			sess_ctx->worker_sec_sess[i] = NULL;
+		}
+
+		deleted_sess[n_deleted_sess++].driver_id = worker->driver_id;
+	}
+}
+
+static unsigned int
+scheduler_session_size_get(struct scheduler_ctx *sched_ctx,
+		uint8_t session_type)
+{
+	uint8_t i = 0;
+	uint32_t max_priv_sess_size = 0;
+
+	/* Check what is the maximum private session size for all workers */
+	for (i = 0; i < sched_ctx->nb_workers; i++) {
+		uint8_t worker_dev_id = sched_ctx->workers[i].dev_id;
+		struct rte_cryptodev *dev = &rte_cryptodevs[worker_dev_id];
+		struct rte_security_ctx *sec_ctx = dev->security_ctx;
+		uint32_t priv_sess_size = 0;
+
+		if (session_type == RTE_CRYPTO_OP_WITH_SESSION) {
+			priv_sess_size =
+				(*dev->dev_ops->sym_session_get_size)(dev);
+		} else {
+			priv_sess_size = (*sec_ctx->ops->session_get_size)(dev);
+		}
+
+		max_priv_sess_size = RTE_MAX(max_priv_sess_size, priv_sess_size);
+	}
+
+	return max_priv_sess_size;
+}
 
 /** attaching the workers predefined by scheduler's EAL options */
 static int
@@ -265,10 +459,7 @@ scheduler_pmd_close(struct rte_cryptodev *dev)
 		sched_ctx->private_ctx = NULL;
 	}
 
-	if (sched_ctx->capabilities) {
-		rte_free(sched_ctx->capabilities);
-		sched_ctx->capabilities = NULL;
-	}
+	scheduler_free_capabilities(sched_ctx);
 
 	return 0;
 }
@@ -451,30 +642,12 @@ scheduler_pmd_qp_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 }
 
 static uint32_t
-scheduler_pmd_sym_session_get_size(struct rte_cryptodev *dev __rte_unused)
+scheduler_pmd_sym_session_get_size(struct rte_cryptodev *dev)
 {
 	struct scheduler_ctx *sched_ctx = dev->data->dev_private;
-	uint8_t i = 0;
-	uint32_t max_priv_sess_size = 0;
 
-	/* Check what is the maximum private session size for all workers */
-	for (i = 0; i < sched_ctx->nb_workers; i++) {
-		uint8_t worker_dev_id = sched_ctx->workers[i].dev_id;
-		struct rte_cryptodev *dev = &rte_cryptodevs[worker_dev_id];
-		uint32_t priv_sess_size = (*dev->dev_ops->sym_session_get_size)(dev);
-
-		if (max_priv_sess_size < priv_sess_size)
-			max_priv_sess_size = priv_sess_size;
-	}
-
-	return max_priv_sess_size;
+	return scheduler_session_size_get(sched_ctx, RTE_CRYPTO_OP_WITH_SESSION);
 }
-
-struct scheduler_configured_sess_info {
-	uint8_t dev_id;
-	uint8_t driver_id;
-	struct rte_cryptodev_sym_session *sess;
-};
 
 static int
 scheduler_pmd_sym_session_configure(struct rte_cryptodev *dev,
@@ -482,61 +655,8 @@ scheduler_pmd_sym_session_configure(struct rte_cryptodev *dev,
 	struct rte_cryptodev_sym_session *sess)
 {
 	struct scheduler_ctx *sched_ctx = dev->data->dev_private;
-	struct rte_mempool *mp = rte_mempool_from_obj(sess);
-	struct scheduler_session_ctx *sess_ctx = CRYPTODEV_GET_SYM_SESS_PRIV(sess);
-	struct scheduler_configured_sess_info configured_sess[
-			RTE_CRYPTODEV_SCHEDULER_MAX_NB_WORKERS] = {{0}};
-	uint32_t i, j, n_configured_sess = 0;
-	int ret = 0;
 
-	if (mp == NULL)
-		return -EINVAL;
-
-	for (i = 0; i < sched_ctx->nb_workers; i++) {
-		struct scheduler_worker *worker = &sched_ctx->workers[i];
-		struct rte_cryptodev_sym_session *worker_sess;
-		uint8_t next_worker = 0;
-
-		for (j = 0; j < n_configured_sess; j++) {
-			if (configured_sess[j].driver_id ==
-					worker->driver_id) {
-				sess_ctx->worker_sess[i] =
-					configured_sess[j].sess;
-				next_worker = 1;
-				break;
-			}
-		}
-		if (next_worker)
-			continue;
-
-		if (rte_mempool_avail_count(mp) == 0) {
-			ret = -ENOMEM;
-			goto error_exit;
-		}
-
-		worker_sess = rte_cryptodev_sym_session_create(worker->dev_id,
-			xform, mp);
-		if (worker_sess == NULL) {
-			ret = -rte_errno;
-			goto error_exit;
-		}
-
-		worker_sess->opaque_data = (uint64_t)sess;
-		sess_ctx->worker_sess[i] = worker_sess;
-		configured_sess[n_configured_sess].driver_id =
-			worker->driver_id;
-		configured_sess[n_configured_sess].dev_id = worker->dev_id;
-		configured_sess[n_configured_sess].sess = worker_sess;
-		n_configured_sess++;
-	}
-
-	return 0;
-error_exit:
-	sess_ctx->ref_cnt = sched_ctx->ref_cnt;
-	for (i = 0; i < n_configured_sess; i++)
-		rte_cryptodev_sym_session_free(configured_sess[i].dev_id,
-			configured_sess[i].sess);
-	return ret;
+	return scheduler_session_create(sess, xform, sched_ctx, RTE_CRYPTO_OP_WITH_SESSION);
 }
 
 /** Clear the memory of session so it doesn't leave key material behind */
@@ -545,37 +665,8 @@ scheduler_pmd_sym_session_clear(struct rte_cryptodev *dev,
 		struct rte_cryptodev_sym_session *sess)
 {
 	struct scheduler_ctx *sched_ctx = dev->data->dev_private;
-	struct scheduler_session_ctx *sess_ctx = CRYPTODEV_GET_SYM_SESS_PRIV(sess);
-	struct scheduler_configured_sess_info deleted_sess[
-			RTE_CRYPTODEV_SCHEDULER_MAX_NB_WORKERS] = {{0}};
-	uint32_t i, j, n_deleted_sess = 0;
 
-	if (sched_ctx->ref_cnt != sess_ctx->ref_cnt) {
-		CR_SCHED_LOG(WARNING,
-			"Worker updated between session creation/deletion. "
-			"The session may not be freed fully.");
-	}
-
-	for (i = 0; i < sched_ctx->nb_workers; i++) {
-		struct scheduler_worker *worker = &sched_ctx->workers[i];
-		uint8_t next_worker = 0;
-
-		for (j = 0; j < n_deleted_sess; j++) {
-			if (deleted_sess[j].driver_id == worker->driver_id) {
-				sess_ctx->worker_sess[i] = NULL;
-				next_worker = 1;
-				break;
-			}
-		}
-		if (next_worker)
-			continue;
-
-		rte_cryptodev_sym_session_free(worker->dev_id,
-			sess_ctx->worker_sess[i]);
-
-		deleted_sess[n_deleted_sess++].driver_id = worker->driver_id;
-		sess_ctx->worker_sess[i] = NULL;
-	}
+	scheduler_session_destroy(sess, sched_ctx, RTE_CRYPTO_OP_WITH_SESSION);
 }
 
 static struct rte_cryptodev_ops scheduler_pmd_ops = {
@@ -598,3 +689,66 @@ static struct rte_cryptodev_ops scheduler_pmd_ops = {
 };
 
 struct rte_cryptodev_ops *rte_crypto_scheduler_pmd_ops = &scheduler_pmd_ops;
+
+/** Configure a scheduler session from a security session configuration */
+static int
+scheduler_pmd_sec_sess_create(void *dev, struct rte_security_session_conf *conf,
+			struct rte_security_session *sess)
+{
+	struct rte_cryptodev *cdev = dev;
+	struct scheduler_ctx *sched_ctx = cdev->data->dev_private;
+
+	/* Check for supported security protocols */
+	if (!scheduler_check_sec_proto_supp(conf->action_type, conf->protocol)) {
+		CR_SCHED_LOG(ERR, "Unsupported security protocol");
+		return -ENOTSUP;
+	}
+
+	return scheduler_session_create(sess, conf, sched_ctx, RTE_CRYPTO_OP_SECURITY_SESSION);
+}
+
+/** Clear the memory of session so it doesn't leave key material behind */
+static int
+scheduler_pmd_sec_sess_destroy(void *dev,
+			       struct rte_security_session *sess)
+{
+	struct rte_cryptodev *cdev = dev;
+	struct scheduler_ctx *sched_ctx = cdev->data->dev_private;
+
+	scheduler_session_destroy(sess, sched_ctx, RTE_CRYPTO_OP_SECURITY_SESSION);
+
+	return 0;
+}
+
+/** Get sync security capabilities for scheduler pmds */
+static const struct rte_security_capability *
+scheduler_pmd_sec_capa_get(void *dev)
+{
+	struct rte_cryptodev *cdev = dev;
+	struct scheduler_ctx *sched_ctx = cdev->data->dev_private;
+
+	return sched_ctx->sec_capabilities;
+}
+
+static unsigned int
+scheduler_pmd_sec_sess_size_get(void *dev)
+{
+	struct rte_cryptodev *cdev = dev;
+	struct scheduler_ctx *sched_ctx = cdev->data->dev_private;
+
+	return scheduler_session_size_get(sched_ctx,
+				RTE_CRYPTO_OP_SECURITY_SESSION);
+}
+
+static struct rte_security_ops scheduler_pmd_sec_ops = {
+		.session_create = scheduler_pmd_sec_sess_create,
+		.session_update = NULL,
+		.session_get_size = scheduler_pmd_sec_sess_size_get,
+		.session_stats_get = NULL,
+		.session_destroy = scheduler_pmd_sec_sess_destroy,
+		.set_pkt_metadata = NULL,
+		.capabilities_get = scheduler_pmd_sec_capa_get
+};
+
+struct rte_security_ops *rte_crypto_scheduler_pmd_sec_ops =
+							&scheduler_pmd_sec_ops;
