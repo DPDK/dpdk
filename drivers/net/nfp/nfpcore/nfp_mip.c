@@ -3,12 +3,11 @@
  * All rights reserved.
  */
 
-#include <stdio.h>
+#include "nfp_mip.h"
+
 #include <rte_byteorder.h>
 
-#include "nfp_cpp.h"
 #include "nfp_logs.h"
-#include "nfp_mip.h"
 #include "nfp_nffw.h"
 
 #define NFP_MIP_SIGNATURE        rte_cpu_to_le_32(0x0050494d)  /* "MIP\0" */
