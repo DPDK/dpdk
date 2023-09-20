@@ -3,16 +3,100 @@
  * All rights reserved.
  */
 
-#include <ethdev_driver.h>
+#include "nfp_nfd3.h"
+
 #include <bus_pci_driver.h>
 #include <rte_malloc.h>
 
-#include "../nfp_logs.h"
-#include "../nfp_common.h"
-#include "../nfp_rxtx.h"
 #include "../flower/nfp_flower.h"
-#include "../flower/nfp_flower_cmsg.h"
-#include "nfp_nfd3.h"
+#include "../nfp_logs.h"
+
+/* Flags in the host TX descriptor */
+#define NFD3_DESC_TX_CSUM               RTE_BIT32(7)
+#define NFD3_DESC_TX_IP4_CSUM           RTE_BIT32(6)
+#define NFD3_DESC_TX_TCP_CSUM           RTE_BIT32(5)
+#define NFD3_DESC_TX_UDP_CSUM           RTE_BIT32(4)
+#define NFD3_DESC_TX_VLAN               RTE_BIT32(3)
+#define NFD3_DESC_TX_LSO                RTE_BIT32(2)
+#define NFD3_DESC_TX_ENCAP              RTE_BIT32(1)
+#define NFD3_DESC_TX_O_IP4_CSUM         RTE_BIT32(0)
+
+/* Set NFD3 TX descriptor for TSO */
+static void
+nfp_net_nfd3_tx_tso(struct nfp_net_txq *txq,
+		struct nfp_net_nfd3_tx_desc *txd,
+		struct rte_mbuf *mb)
+{
+	uint64_t ol_flags;
+	struct nfp_net_hw *hw = txq->hw;
+
+	if ((hw->cap & NFP_NET_CFG_CTRL_LSO_ANY) == 0)
+		goto clean_txd;
+
+	ol_flags = mb->ol_flags;
+	if ((ol_flags & RTE_MBUF_F_TX_TCP_SEG) == 0)
+		goto clean_txd;
+
+	txd->l3_offset = mb->l2_len;
+	txd->l4_offset = mb->l2_len + mb->l3_len;
+	txd->lso_hdrlen = mb->l2_len + mb->l3_len + mb->l4_len;
+
+	if ((ol_flags & RTE_MBUF_F_TX_TUNNEL_MASK) != 0) {
+		txd->l3_offset += mb->outer_l2_len + mb->outer_l3_len;
+		txd->l4_offset += mb->outer_l2_len + mb->outer_l3_len;
+		txd->lso_hdrlen += mb->outer_l2_len + mb->outer_l3_len;
+	}
+
+	txd->mss = rte_cpu_to_le_16(mb->tso_segsz);
+	txd->flags = NFD3_DESC_TX_LSO;
+
+	return;
+
+clean_txd:
+	txd->flags = 0;
+	txd->l3_offset = 0;
+	txd->l4_offset = 0;
+	txd->lso_hdrlen = 0;
+	txd->mss = 0;
+}
+
+/* Set TX CSUM offload flags in NFD3 TX descriptor */
+static void
+nfp_net_nfd3_tx_cksum(struct nfp_net_txq *txq,
+		struct nfp_net_nfd3_tx_desc *txd,
+		struct rte_mbuf *mb)
+{
+	uint64_t ol_flags;
+	struct nfp_net_hw *hw = txq->hw;
+
+	if ((hw->cap & NFP_NET_CFG_CTRL_TXCSUM) == 0)
+		return;
+
+	ol_flags = mb->ol_flags;
+
+	/* Set TCP csum offload if TSO enabled. */
+	if ((ol_flags & RTE_MBUF_F_TX_TCP_SEG) != 0)
+		txd->flags |= NFD3_DESC_TX_TCP_CSUM;
+
+	/* IPv6 does not need checksum */
+	if ((ol_flags & RTE_MBUF_F_TX_IP_CKSUM) != 0)
+		txd->flags |= NFD3_DESC_TX_IP4_CSUM;
+
+	if ((ol_flags & RTE_MBUF_F_TX_TUNNEL_MASK) != 0)
+		txd->flags |= NFD3_DESC_TX_ENCAP;
+
+	switch (ol_flags & RTE_MBUF_F_TX_L4_MASK) {
+	case RTE_MBUF_F_TX_UDP_CKSUM:
+		txd->flags |= NFD3_DESC_TX_UDP_CSUM;
+		break;
+	case RTE_MBUF_F_TX_TCP_CKSUM:
+		txd->flags |= NFD3_DESC_TX_TCP_CSUM;
+		break;
+	}
+
+	if ((ol_flags & (RTE_MBUF_F_TX_IP_CKSUM | RTE_MBUF_F_TX_L4_MASK)) != 0)
+		txd->flags |= NFD3_DESC_TX_CSUM;
+}
 
 uint32_t
 nfp_flower_nfd3_pkt_add_metadata(struct rte_mbuf *mbuf,
