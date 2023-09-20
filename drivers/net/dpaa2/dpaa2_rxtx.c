@@ -471,8 +471,7 @@ eth_mbuf_to_sg_fd(struct rte_mbuf *mbuf,
 		sge = &sgt[i];
 		/*Resetting the buffer pool id and offset field*/
 		sge->fin_bpid_offset = 0;
-		DPAA2_SET_FLE_ADDR(sge, DPAA2_MBUF_VADDR_TO_IOVA(cur_seg));
-		DPAA2_SET_FLE_OFFSET(sge, cur_seg->data_off);
+		DPAA2_SET_FLE_ADDR(sge, rte_pktmbuf_iova(cur_seg));
 		sge->length = cur_seg->data_len;
 		if (RTE_MBUF_DIRECT(cur_seg)) {
 			/* if we are using inline SGT in same buffers
