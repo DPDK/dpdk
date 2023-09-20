@@ -103,6 +103,7 @@ struct ipsec_test_flags {
 	bool fragment;
 	bool stats_success;
 	bool antireplay;
+	bool use_ext_mbuf;
 	enum df_flags df;
 	enum dscp_flags dscp;
 	enum flabel_flags flabel;

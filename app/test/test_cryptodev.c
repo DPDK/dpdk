@@ -9754,6 +9754,133 @@ test_PDCP_SDAP_PROTO_decap_all(void)
 	return (all_err == TEST_SUCCESS) ? TEST_SUCCESS : TEST_FAILED;
 }
 
+static inline void
+ext_mbuf_callback_fn_free(void *addr __rte_unused, void *opaque __rte_unused)
+{
+}
+
+static inline void
+ext_mbuf_memzone_free(int nb_segs)
+{
+	int i;
+
+	for (i = 0; i <= nb_segs; i++) {
+		char mz_name[RTE_MEMZONE_NAMESIZE];
+		const struct rte_memzone *memzone;
+		snprintf(mz_name, RTE_MEMZONE_NAMESIZE, "ext_buf_%d", i);
+		memzone = rte_memzone_lookup(mz_name);
+		if (memzone != NULL) {
+			rte_memzone_free(memzone);
+			memzone = NULL;
+		}
+	}
+}
+
+static inline struct rte_mbuf *
+ext_mbuf_create(struct rte_mempool *mbuf_pool, int pkt_len,
+		int nb_segs, const void *input_text)
+{
+	struct rte_mbuf *m = NULL, *mbuf = NULL;
+	size_t data_off = 0;
+	uint8_t *dst;
+	int i, size;
+	int t_len;
+
+	if (pkt_len < 1) {
+		printf("Packet size must be 1 or more (is %d)\n", pkt_len);
+		return NULL;
+	}
+
+	if (nb_segs < 1) {
+		printf("Number of segments must be 1 or more (is %d)\n",
+				nb_segs);
+		return NULL;
+	}
+
+	t_len = pkt_len >= nb_segs ? pkt_len / nb_segs : 1;
+	size = pkt_len;
+
+	/* Create chained mbuf_src with external buffer */
+	for (i = 0; size > 0; i++) {
+		struct rte_mbuf_ext_shared_info *ret_shinfo = NULL;
+		uint16_t data_len = RTE_MIN(size, t_len);
+		char mz_name[RTE_MEMZONE_NAMESIZE];
+		const struct rte_memzone *memzone;
+		void *ext_buf_addr = NULL;
+		rte_iova_t buf_iova;
+		bool freed = false;
+		uint16_t buf_len;
+
+		buf_len = RTE_ALIGN_CEIL(data_len + 1024 +
+			sizeof(struct rte_mbuf_ext_shared_info), 8);
+
+		snprintf(mz_name, RTE_MEMZONE_NAMESIZE, "ext_buf_%d", i);
+		memzone = rte_memzone_lookup(mz_name);
+		if (memzone != NULL && memzone->len != buf_len) {
+			rte_memzone_free(memzone);
+			memzone = NULL;
+		}
+		if (memzone == NULL) {
+			memzone = rte_memzone_reserve_aligned(mz_name, buf_len, SOCKET_ID_ANY,
+				RTE_MEMZONE_IOVA_CONTIG, RTE_CACHE_LINE_SIZE);
+			if (memzone == NULL) {
+				printf("Can't allocate memory zone %s\n", mz_name);
+				return NULL;
+			}
+		}
+
+		ext_buf_addr = memzone->addr;
+		memcpy(ext_buf_addr, RTE_PTR_ADD(input_text, data_off), data_len);
+
+		/* Create buffer to hold rte_mbuf header */
+		m = rte_pktmbuf_alloc(mbuf_pool);
+		if (i == 0)
+			mbuf = m;
+
+		if (m == NULL) {
+			printf("Cannot create segment for source mbuf");
+			goto fail;
+		}
+
+		/* Save shared data (like callback function) in external buffer's end */
+		ret_shinfo = rte_pktmbuf_ext_shinfo_init_helper(ext_buf_addr, &buf_len,
+			ext_mbuf_callback_fn_free, &freed);
+		if (ret_shinfo == NULL) {
+			printf("Shared mem initialization failed!\n");
+			goto fail;
+		}
+
+		buf_iova = rte_mem_virt2iova(ext_buf_addr);
+
+		/* Attach external buffer to mbuf */
+		rte_pktmbuf_attach_extbuf(m, ext_buf_addr, buf_iova, buf_len,
+			ret_shinfo);
+		if (m->ol_flags != RTE_MBUF_F_EXTERNAL) {
+			printf("External buffer is not attached to mbuf\n");
+			goto fail;
+		}
+
+		dst = (uint8_t *)rte_pktmbuf_append(m, data_len);
+		if (dst == NULL) {
+			printf("Cannot append %d bytes to the mbuf\n", data_len);
+			goto fail;
+		}
+
+		if (mbuf != m)
+			rte_pktmbuf_chain(mbuf, m);
+
+		size -= data_len;
+		data_off += data_len;
+	}
+
+	return mbuf;
+
+fail:
+	rte_pktmbuf_free(mbuf);
+	ext_mbuf_memzone_free(nb_segs);
+	return NULL;
+}
+
 static int
 test_ipsec_proto_process(const struct ipsec_test_data td[],
 			 struct ipsec_test_data res_d[],
@@ -9969,9 +10096,14 @@ test_ipsec_proto_process(const struct ipsec_test_data td[],
 			return TEST_FAILED;
 
 		/* Setup source mbuf payload */
-		ut_params->ibuf = create_segmented_mbuf(ts_params->mbuf_pool, td[i].input_text.len,
-				nb_segs, 0);
-		pktmbuf_write(ut_params->ibuf, 0, td[i].input_text.len, input_text);
+		if (flags->use_ext_mbuf) {
+			ut_params->ibuf = ext_mbuf_create(ts_params->mbuf_pool,
+					td[i].input_text.len, nb_segs, input_text);
+		} else {
+			ut_params->ibuf = create_segmented_mbuf(ts_params->mbuf_pool,
+					td[i].input_text.len, nb_segs, 0);
+			pktmbuf_write(ut_params->ibuf, 0, td[i].input_text.len, input_text);
+		}
 
 		/* Generate crypto op data structure */
 		ut_params->op = rte_crypto_op_alloc(ts_params->op_mpool,
@@ -10042,6 +10174,9 @@ crypto_op_free:
 	rte_crypto_op_free(ut_params->op);
 	ut_params->op = NULL;
 
+	if (flags->use_ext_mbuf)
+		ext_mbuf_memzone_free(nb_segs);
+
 	rte_pktmbuf_free(ut_params->ibuf);
 	ut_params->ibuf = NULL;
 
@@ -10059,6 +10194,27 @@ test_ipsec_proto_known_vec(const void *test_data)
 	struct ipsec_test_flags flags;
 
 	memset(&flags, 0, sizeof(flags));
+
+	memcpy(&td_outb, test_data, sizeof(td_outb));
+
+	if (td_outb.aes_gmac || td_outb.aead ||
+	    ((td_outb.ipsec_xform.proto != RTE_SECURITY_IPSEC_SA_PROTO_AH) &&
+	     (td_outb.xform.chain.cipher.cipher.algo != RTE_CRYPTO_CIPHER_NULL))) {
+		/* Disable IV gen to be able to test with known vectors */
+		td_outb.ipsec_xform.options.iv_gen_disable = 1;
+	}
+
+	return test_ipsec_proto_process(&td_outb, NULL, 1, false, &flags);
+}
+
+static int
+test_ipsec_proto_known_vec_ext_mbuf(const void *test_data)
+{
+	struct ipsec_test_data td_outb;
+	struct ipsec_test_flags flags;
+
+	memset(&flags, 0, sizeof(flags));
+	flags.use_ext_mbuf = true;
 
 	memcpy(&td_outb, test_data, sizeof(td_outb));
 
@@ -10677,6 +10833,27 @@ test_ipsec_proto_sgl(void)
 
 	struct ipsec_test_flags flags = {
 		.nb_segs_in_mbuf = 5
+	};
+
+	rte_cryptodev_info_get(ts_params->valid_devs[0], &dev_info);
+	if (!(dev_info.feature_flags & RTE_CRYPTODEV_FF_IN_PLACE_SGL)) {
+		printf("Device doesn't support in-place scatter-gather. "
+				"Test Skipped.\n");
+		return TEST_SKIPPED;
+	}
+
+	return test_ipsec_proto_all(&flags);
+}
+
+static int
+test_ipsec_proto_sgl_ext_mbuf(void)
+{
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	struct rte_cryptodev_info dev_info;
+
+	struct ipsec_test_flags flags = {
+		.nb_segs_in_mbuf = 5,
+		.use_ext_mbuf = 1
 	};
 
 	rte_cryptodev_info_get(ts_params->valid_devs[0], &dev_info);
@@ -15763,6 +15940,10 @@ static struct unit_test_suite ipsec_proto_testsuite  = {
 			ut_setup_security, ut_teardown,
 			test_ipsec_proto_known_vec, &pkt_aes_128_gcm),
 		TEST_CASE_NAMED_WITH_DATA(
+			"Outbound known vector ext_mbuf mode (ESP tunnel mode IPv4 AES-GCM 128)",
+			ut_setup_security, ut_teardown,
+			test_ipsec_proto_known_vec_ext_mbuf, &pkt_aes_128_gcm),
+		TEST_CASE_NAMED_WITH_DATA(
 			"Outbound known vector (ESP tunnel mode IPv4 AES-GCM 192)",
 			ut_setup_security, ut_teardown,
 			test_ipsec_proto_known_vec, &pkt_aes_192_gcm),
@@ -16144,6 +16325,10 @@ static struct unit_test_suite ipsec_proto_testsuite  = {
 			"Multi-segmented mode",
 			ut_setup_security, ut_teardown,
 			test_ipsec_proto_sgl),
+		TEST_CASE_NAMED_ST(
+			"Multi-segmented external mbuf mode",
+			ut_setup_security, ut_teardown,
+			test_ipsec_proto_sgl_ext_mbuf),
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}
 };
