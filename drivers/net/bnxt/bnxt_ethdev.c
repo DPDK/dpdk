@@ -698,7 +698,10 @@ static inline bool bnxt_force_link_config(struct bnxt *bp)
 
 static int bnxt_update_phy_setting(struct bnxt *bp)
 {
+	struct rte_eth_conf *dev_conf = &bp->eth_dev->data->dev_conf;
+	struct rte_eth_link *link = &bp->eth_dev->data->dev_link;
 	struct rte_eth_link new;
+	uint32_t curr_speed_bit;
 	int rc;
 
 	rc = bnxt_get_hwrm_link_config(bp, &new);
@@ -707,13 +710,17 @@ static int bnxt_update_phy_setting(struct bnxt *bp)
 		return rc;
 	}
 
+	/* convert to speedbit flag */
+	curr_speed_bit = rte_eth_speed_bitflag((uint32_t)link->link_speed, 1);
+
 	/*
 	 * Device is not obliged link down in certain scenarios, even
 	 * when forced. When FW does not allow any user other than BMC
 	 * to shutdown the port, bnxt_get_hwrm_link_config() call always
 	 * returns link up. Force phy update always in that case.
 	 */
-	if (!new.link_status || bnxt_force_link_config(bp)) {
+	if (!new.link_status || bnxt_force_link_config(bp) ||
+	    (BNXT_LINK_SPEEDS_V2(bp) && dev_conf->link_speeds != curr_speed_bit)) {
 		rc = bnxt_set_hwrm_link_config(bp, true);
 		if (rc) {
 			PMD_DRV_LOG(ERR, "Failed to update PHY settings\n");
@@ -934,6 +941,50 @@ static int bnxt_shutdown_nic(struct bnxt *bp)
  * Device configuration and status function
  */
 
+static uint32_t bnxt_get_speed_capabilities_v2(struct bnxt *bp)
+{
+	uint32_t link_speed = 0;
+	uint32_t speed_capa = 0;
+
+	if (bp->link_info == NULL)
+		return 0;
+
+	link_speed = bp->link_info->support_speeds2;
+
+	if (link_speed & HWRM_PORT_PHY_QCFG_OUTPUT_SUPPORT_SPEEDS2_1GB)
+		speed_capa |= RTE_ETH_LINK_SPEED_1G;
+	if (link_speed & HWRM_PORT_PHY_QCFG_OUTPUT_SUPPORT_SPEEDS2_10GB)
+		speed_capa |= RTE_ETH_LINK_SPEED_10G;
+	if (link_speed & HWRM_PORT_PHY_QCFG_OUTPUT_SUPPORT_SPEEDS2_25GB)
+		speed_capa |= RTE_ETH_LINK_SPEED_25G;
+	if (link_speed & HWRM_PORT_PHY_QCFG_OUTPUT_SUPPORT_SPEEDS2_40GB)
+		speed_capa |= RTE_ETH_LINK_SPEED_40G;
+	if (link_speed & HWRM_PORT_PHY_QCFG_OUTPUT_SUPPORT_SPEEDS2_50GB)
+		speed_capa |= RTE_ETH_LINK_SPEED_50G;
+	if (link_speed & HWRM_PORT_PHY_QCFG_OUTPUT_SUPPORT_SPEEDS2_100GB)
+		speed_capa |= RTE_ETH_LINK_SPEED_100G;
+	if (link_speed & HWRM_PORT_PHY_QCFG_OUTPUT_SUPPORT_SPEEDS2_50GB_PAM4_56)
+		speed_capa |= RTE_ETH_LINK_SPEED_50G;
+	if (link_speed & HWRM_PORT_PHY_QCFG_OUTPUT_SUPPORT_SPEEDS2_100GB_PAM4_56)
+		speed_capa |= RTE_ETH_LINK_SPEED_100G;
+	if (link_speed & HWRM_PORT_PHY_QCFG_OUTPUT_SUPPORT_SPEEDS2_200GB_PAM4_56)
+		speed_capa |= RTE_ETH_LINK_SPEED_200G;
+	if (link_speed & HWRM_PORT_PHY_QCFG_OUTPUT_SUPPORT_SPEEDS2_400GB_PAM4_56)
+		speed_capa |= RTE_ETH_LINK_SPEED_400G;
+	if (link_speed & HWRM_PORT_PHY_QCFG_OUTPUT_SUPPORT_SPEEDS2_100GB_PAM4_112)
+		speed_capa |= RTE_ETH_LINK_SPEED_100G;
+	if (link_speed & HWRM_PORT_PHY_QCFG_OUTPUT_SUPPORT_SPEEDS2_200GB_PAM4_112)
+		speed_capa |= RTE_ETH_LINK_SPEED_200G;
+	if (link_speed & HWRM_PORT_PHY_QCFG_OUTPUT_SUPPORT_SPEEDS2_400GB_PAM4_112)
+		speed_capa |= RTE_ETH_LINK_SPEED_400G;
+
+	if (bp->link_info->auto_mode ==
+	    HWRM_PORT_PHY_QCFG_OUTPUT_AUTO_MODE_NONE)
+		speed_capa |= RTE_ETH_LINK_SPEED_FIXED;
+
+	return speed_capa;
+}
+
 uint32_t bnxt_get_speed_capabilities(struct bnxt *bp)
 {
 	uint32_t pam4_link_speed = 0;
@@ -942,6 +993,10 @@ uint32_t bnxt_get_speed_capabilities(struct bnxt *bp)
 
 	if (bp->link_info == NULL)
 		return 0;
+
+	/* P7 uses speeds_v2 */
+	if (BNXT_LINK_SPEEDS_V2(bp))
+		return bnxt_get_speed_capabilities_v2(bp);
 
 	link_speed = bp->link_info->support_speeds;
 

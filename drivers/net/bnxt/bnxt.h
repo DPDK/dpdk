@@ -318,6 +318,16 @@ struct bnxt_link_info {
 	uint16_t		support_pam4_auto_speeds;
 	uint8_t			req_signal_mode;
 	uint8_t			module_status;
+	/* P7 speeds2 fields */
+	bool                    support_speeds_v2;
+	uint16_t                supported_speeds2_force_mode;
+	uint16_t                supported_speeds2_auto_mode;
+	uint16_t                support_speeds2;
+	uint16_t                force_link_speeds2;
+	uint16_t                auto_link_speeds2;
+	uint16_t                cfg_auto_link_speeds2_mask;
+	uint8_t                 active_lanes;
+	uint8_t			option_flags;
 };
 
 #define BNXT_COS_QUEUE_COUNT	8
@@ -1157,6 +1167,11 @@ extern int bnxt_logtype_driver;
 #define PMD_DRV_LOG(level, fmt, args...) \
 	  PMD_DRV_LOG_RAW(level, fmt, ## args)
 
+#define BNXT_LINK_SPEEDS_V2_OPTIONS(f) \
+	((f) & HWRM_PORT_PHY_QCFG_OUTPUT_OPTION_FLAGS_SPEEDS2_SUPPORTED)
+#define BNXT_LINK_SPEEDS_V2_VF(bp) (BNXT_VF((bp)) && ((bp)->link_info->option_flags))
+#define BNXT_LINK_SPEEDS_V2(bp) (((bp)->link_info) && (((bp)->link_info->support_speeds_v2) || \
+						       BNXT_LINK_SPEEDS_V2_VF((bp))))
 extern const struct rte_flow_ops bnxt_ulp_rte_flow_ops;
 int32_t bnxt_ulp_port_init(struct bnxt *bp);
 void bnxt_ulp_port_deinit(struct bnxt *bp);
