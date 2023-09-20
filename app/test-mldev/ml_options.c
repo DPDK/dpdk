@@ -83,14 +83,15 @@ ml_parse_models(struct ml_options *opt, const char *arg)
 
 	token = strtok(models, delim);
 	while (token != NULL) {
-		strlcpy(opt->filelist[opt->nb_filelist].model, token, PATH_MAX);
-		opt->nb_filelist++;
-
 		if (opt->nb_filelist >= ML_TEST_MAX_MODELS) {
 			ml_err("Exceeded model count, max = %d\n", ML_TEST_MAX_MODELS);
 			ret = -EINVAL;
 			break;
 		}
+
+		strlcpy(opt->filelist[opt->nb_filelist].model, token, PATH_MAX);
+		opt->nb_filelist++;
+
 		token = strtok(NULL, delim);
 	}
 
