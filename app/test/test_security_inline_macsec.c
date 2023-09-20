@@ -136,7 +136,7 @@ init_packet(struct rte_mempool *mp, const uint8_t *data, unsigned int len)
 static int
 init_mempools(unsigned int nb_mbuf)
 {
-	struct rte_security_ctx *sec_ctx;
+	void *sec_ctx;
 	uint16_t nb_sess = 512;
 	uint32_t sess_sz;
 	char s[64];
@@ -482,7 +482,7 @@ test_macsec_post_process(struct rte_mbuf *m, const struct mcs_test_vector *td,
 }
 
 static void
-mcs_stats_dump(struct rte_security_ctx *ctx, enum mcs_op op,
+mcs_stats_dump(void *ctx, enum mcs_op op,
 	       void *rx_sess, void *tx_sess,
 	       uint8_t rx_sc_id, uint8_t tx_sc_id,
 	       uint16_t rx_sa_id[], uint16_t tx_sa_id[])
@@ -667,7 +667,7 @@ mcs_stats_dump(struct rte_security_ctx *ctx, enum mcs_op op,
 }
 
 static int
-mcs_stats_check(struct rte_security_ctx *ctx, enum mcs_op op,
+mcs_stats_check(void *ctx, enum mcs_op op,
 		const struct mcs_test_opts *opts,
 		const struct mcs_test_vector *td,
 		void *rx_sess, void *tx_sess,
@@ -900,7 +900,7 @@ test_macsec(const struct mcs_test_vector *td[], enum mcs_op op, const struct mcs
 	struct rte_security_macsec_sa sa_conf = {0};
 	struct rte_security_macsec_sc sc_conf = {0};
 	struct mcs_err_vector err_vector = {0};
-	struct rte_security_ctx *ctx;
+	void *ctx;
 	int nb_rx = 0, nb_sent;
 	int i, j = 0, ret, id, an = 0;
 	uint8_t tci_off;
@@ -908,7 +908,7 @@ test_macsec(const struct mcs_test_vector *td[], enum mcs_op op, const struct mcs
 
 	memset(rx_pkts_burst, 0, sizeof(rx_pkts_burst[0]) * opts->nb_td);
 
-	ctx = (struct rte_security_ctx *)rte_eth_dev_get_sec_ctx(port_id);
+	ctx = rte_eth_dev_get_sec_ctx(port_id);
 	if (ctx == NULL) {
 		printf("Ethernet device doesn't support security features.\n");
 		return TEST_SKIPPED;

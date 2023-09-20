@@ -212,6 +212,9 @@ API Changes
   ``rte_eth_bond_member_remove``, and
   ``rte_eth_bond_members_get``.
 
+* security: Structures ``rte_security_ops`` and ``rte_security_ctx`` were moved to
+  internal library headers not visible to application.
+
 
 ABI Changes
 -----------

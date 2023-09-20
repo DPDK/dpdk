@@ -344,7 +344,7 @@ test_security_session_perf(void *arg)
 	struct rte_security_session_conf sess_conf;
 	int i, ret, nb_sessions, nb_sess_total;
 	struct rte_security_session **sess;
-	struct rte_security_ctx *sec_ctx;
+	void *sec_ctx;
 	double setup_rate, destroy_rate;
 	uint64_t setup_ms, destroy_ms;
 	struct lcore_conf *conf = arg;

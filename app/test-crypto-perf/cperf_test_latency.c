@@ -53,8 +53,7 @@ cperf_latency_test_free(struct cperf_latency_ctx *ctx)
 		else if (ctx->options->op_type == CPERF_PDCP ||
 			 ctx->options->op_type == CPERF_DOCSIS ||
 			 ctx->options->op_type == CPERF_IPSEC) {
-			struct rte_security_ctx *sec_ctx =
-				rte_cryptodev_get_sec_ctx(ctx->dev_id);
+			void *sec_ctx = rte_cryptodev_get_sec_ctx(ctx->dev_id);
 			rte_security_session_destroy(sec_ctx, ctx->sess);
 		}
 #endif

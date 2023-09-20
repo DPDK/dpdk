@@ -119,7 +119,7 @@ adjust_ipv6_pktlen(struct rte_mbuf *m, const struct rte_ipv6_hdr *iph,
 }
 
 static __rte_always_inline void
-prepare_one_packet(struct rte_security_ctx *ctx, struct rte_mbuf *pkt,
+prepare_one_packet(void *ctx, struct rte_mbuf *pkt,
 		   struct ipsec_traffic *t)
 {
 	uint32_t ptype = pkt->packet_type;
@@ -230,7 +230,7 @@ prepare_one_packet(struct rte_security_ctx *ctx, struct rte_mbuf *pkt,
 }
 
 static __rte_always_inline void
-prepare_traffic(struct rte_security_ctx *ctx, struct rte_mbuf **pkts,
+prepare_traffic(void *ctx, struct rte_mbuf **pkts,
 		struct ipsec_traffic *t, uint16_t nb_pkts)
 {
 	int32_t i;

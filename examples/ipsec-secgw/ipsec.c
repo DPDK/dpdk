@@ -205,7 +205,7 @@ verify_ipsec_capabilities(struct rte_security_ipsec_xform *ipsec_xform,
 
 
 static inline int
-verify_security_capabilities(struct rte_security_ctx *ctx,
+verify_security_capabilities(void *ctx,
 		struct rte_security_session_conf *sess_conf,
 		uint32_t *ol_flags)
 {
@@ -327,9 +327,7 @@ create_lookaside_session(struct ipsec_ctx *ipsec_ctx_lcore[],
 		};
 
 		if (ips->type == RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL) {
-			struct rte_security_ctx *ctx = (struct rte_security_ctx *)
-							rte_cryptodev_get_sec_ctx(
-							cdev_id);
+			void *ctx = rte_cryptodev_get_sec_ctx(cdev_id);
 
 			/* Set IPsec parameters in conf */
 			set_ipsec_conf(sa, &(sess_conf.ipsec));
@@ -411,7 +409,7 @@ create_inline_session(struct socket_ctx *skt_ctx, struct ipsec_sa *sa,
 		struct rte_ipsec_session *ips)
 {
 	int32_t ret = 0;
-	struct rte_security_ctx *sec_ctx;
+	void *sec_ctx;
 	struct rte_security_session_conf sess_conf = {
 		.action_type = ips->type,
 		.protocol = RTE_SECURITY_PROTOCOL_IPSEC,
@@ -490,9 +488,7 @@ create_inline_session(struct socket_ctx *skt_ctx, struct ipsec_sa *sa,
 		struct rte_flow_error err;
 		int ret = 0;
 
-		sec_ctx = (struct rte_security_ctx *)
-					rte_eth_dev_get_sec_ctx(
-					sa->portid);
+		sec_ctx = rte_eth_dev_get_sec_ctx(sa->portid);
 		if (sec_ctx == NULL) {
 			RTE_LOG(ERR, IPSEC,
 				" rte_eth_dev_get_sec_ctx failed\n");
@@ -657,8 +653,7 @@ flow_create_failure:
 			return -1;
 		}
 	} else if (ips->type ==	RTE_SECURITY_ACTION_TYPE_INLINE_PROTOCOL) {
-		sec_ctx = (struct rte_security_ctx *)
-				rte_eth_dev_get_sec_ctx(sa->portid);
+		sec_ctx = rte_eth_dev_get_sec_ctx(sa->portid);
 
 		if (sec_ctx == NULL) {
 			RTE_LOG(ERR, IPSEC,

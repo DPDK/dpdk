@@ -637,7 +637,7 @@ And the session mempool object size should be enough to accommodate
 Once the session mempools have been created, ``rte_security_session_create()``
 is used to allocate and initialize a session for the required crypto/ethernet device.
 
-Session APIs need a parameter ``rte_security_ctx`` to identify the crypto/ethernet
+Session APIs need an opaque handle to identify the crypto/ethernet
 security ops. This parameter can be retrieved using the APIs
 ``rte_cryptodev_get_sec_ctx()`` (for crypto device) or ``rte_eth_dev_get_sec_ctx``
 (for ethernet port).

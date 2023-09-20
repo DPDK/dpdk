@@ -568,7 +568,7 @@ process_pkts_outbound_nosp(struct ipsec_ctx *ipsec_ctx,
 
 static inline void
 process_pkts(struct lcore_conf *qconf, struct rte_mbuf **pkts,
-	     uint8_t nb_pkts, uint16_t portid, struct rte_security_ctx *ctx)
+	     uint8_t nb_pkts, uint16_t portid, void *ctx)
 {
 	struct ipsec_traffic traffic;
 

@@ -136,7 +136,7 @@ static struct rte_flow *default_flow[RTE_MAX_ETHPORTS];
 /* Create Inline IPsec session */
 static int
 create_inline_ipsec_session(struct ipsec_test_data *sa, uint16_t portid,
-		void **sess, struct rte_security_ctx **ctx,
+		void **sess, void **ctx,
 		uint32_t *ol_flags, const struct ipsec_test_flags *flags,
 		struct rte_security_session_conf *sess_conf)
 {
@@ -149,7 +149,7 @@ create_inline_ipsec_session(struct ipsec_test_data *sa, uint16_t portid,
 	struct rte_security_capability_idx sec_cap_idx;
 	const struct rte_security_capability *sec_cap;
 	enum rte_security_ipsec_sa_direction dir;
-	struct rte_security_ctx *sec_ctx;
+	void *sec_ctx;
 	uint32_t verify;
 
 	sess_conf->action_type = RTE_SECURITY_ACTION_TYPE_INLINE_PROTOCOL;
@@ -221,7 +221,7 @@ create_inline_ipsec_session(struct ipsec_test_data *sa, uint16_t portid,
 
 	sess_conf->userdata = (void *) sa;
 
-	sec_ctx = (struct rte_security_ctx *)rte_eth_dev_get_sec_ctx(portid);
+	sec_ctx = rte_eth_dev_get_sec_ctx(portid);
 	if (sec_ctx == NULL) {
 		printf("Ethernet device doesn't support security features.\n");
 		return TEST_SKIPPED;
@@ -503,7 +503,7 @@ error:
 static int
 init_mempools(unsigned int nb_mbuf)
 {
-	struct rte_security_ctx *sec_ctx;
+	void *sec_ctx;
 	uint16_t nb_sess = 512;
 	uint32_t sess_sz;
 	char s[64];
@@ -846,7 +846,7 @@ test_ipsec_with_reassembly(struct reassembly_vector *vector,
 	struct rte_crypto_sym_xform auth_in = {0};
 	struct rte_crypto_sym_xform aead_in = {0};
 	struct ipsec_test_data sa_data;
-	struct rte_security_ctx *ctx;
+	void *ctx;
 	unsigned int i, nb_rx = 0, j;
 	uint32_t ol_flags;
 	bool outer_ipv4;
@@ -1113,7 +1113,7 @@ test_ipsec_inline_proto_process(struct ipsec_test_data *td,
 	struct rte_crypto_sym_xform auth = {0};
 	struct rte_crypto_sym_xform aead = {0};
 	struct sa_expiry_vector vector = {0};
-	struct rte_security_ctx *ctx;
+	void *ctx;
 	int nb_rx = 0, nb_sent;
 	uint32_t ol_flags;
 	int i, j = 0, ret;
@@ -1398,7 +1398,7 @@ test_ipsec_inline_proto_process_with_esn(struct ipsec_test_data td[],
 	struct rte_mbuf *tx_pkt = NULL;
 	int nb_rx, nb_sent;
 	void *ses;
-	struct rte_security_ctx *ctx;
+	void *ctx;
 	uint32_t ol_flags;
 	bool outer_ipv4;
 	int i, ret;

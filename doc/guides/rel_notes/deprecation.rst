@@ -124,9 +124,6 @@ Deprecation Notices
   which got error interrupt to the application,
   so that application can reset that particular queue pair.
 
-* security: Hide structures ``rte_security_ops`` and ``rte_security_ctx``
-  as these are internal to DPDK library and drivers.
-
 * eventdev: The single-event (non-burst) enqueue and dequeue operations,
   used by static inline burst enqueue and dequeue functions in ``rte_eventdev.h``,
   will be removed in DPDK 23.11.

@@ -279,7 +279,7 @@ struct cnt_blk {
 struct lcore_rx_queue {
 	uint16_t port_id;
 	uint8_t queue_id;
-	struct rte_security_ctx *sec_ctx;
+	void *sec_ctx;
 } __rte_cache_aligned;
 
 struct buffer {

@@ -749,8 +749,7 @@ create_ipsec_session(struct rte_mempool *sess_mp,
 	else
 		sess_conf.ipsec.direction = RTE_SECURITY_IPSEC_SA_DIR_INGRESS;
 
-	struct rte_security_ctx *ctx = (struct rte_security_ctx *)
-				rte_cryptodev_get_sec_ctx(dev_id);
+	void *ctx = rte_cryptodev_get_sec_ctx(dev_id);
 
 	/* Create security session */
 	return (void *)rte_security_session_create(ctx, &sess_conf, sess_mp);
@@ -853,8 +852,7 @@ cperf_create_session(struct rte_mempool *sess_mp,
 			.crypto_xform = &cipher_xform
 		};
 
-		struct rte_security_ctx *ctx = (struct rte_security_ctx *)
-					rte_cryptodev_get_sec_ctx(dev_id);
+		void *ctx = rte_cryptodev_get_sec_ctx(dev_id);
 
 		/* Create security session */
 		return (void *)rte_security_session_create(ctx, &sess_conf, sess_mp);
@@ -901,8 +899,7 @@ cperf_create_session(struct rte_mempool *sess_mp,
 			} },
 			.crypto_xform = &cipher_xform
 		};
-		struct rte_security_ctx *ctx = (struct rte_security_ctx *)
-					rte_cryptodev_get_sec_ctx(dev_id);
+		void *ctx = rte_cryptodev_get_sec_ctx(dev_id);
 
 		/* Create security session */
 		return (void *)rte_security_session_create(ctx, &sess_conf, sess_mp);

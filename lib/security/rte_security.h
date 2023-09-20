@@ -56,30 +56,6 @@ enum rte_security_ipsec_tunnel_type {
 #define RTE_SECURITY_IPSEC_TUNNEL_VERIFY_DST_ADDR     0x1
 #define RTE_SECURITY_IPSEC_TUNNEL_VERIFY_SRC_DST_ADDR 0x2
 
-/**
- * Security context for crypto/eth devices
- *
- * Security instance for each driver to register security operations.
- * The application can get the security context from the crypto/eth device id
- * using the APIs rte_cryptodev_get_sec_ctx()/rte_eth_dev_get_sec_ctx()
- * This structure is used to identify the device(crypto/eth) for which the
- * security operations need to be performed.
- */
-struct rte_security_ctx {
-	void *device;
-	/**< Crypto/ethernet device attached */
-	const struct rte_security_ops *ops;
-	/**< Pointer to security ops for the device */
-	uint16_t sess_cnt;
-	/**< Number of sessions attached to this context */
-	uint16_t macsec_sc_cnt;
-	/**< Number of MACsec SC attached to this context */
-	uint16_t macsec_sa_cnt;
-	/**< Number of MACsec SA attached to this context */
-	uint32_t flags;
-	/**< Flags for security context */
-};
-
 #define RTE_SEC_CTX_F_FAST_SET_MDATA 0x00000001
 /**< Driver uses fast metadata update without using driver specific callback.
  * For fast mdata, mbuf dynamic field would be registered by driver
@@ -695,7 +671,7 @@ struct rte_security_session_conf {
  *  - On failure, NULL
  */
 void *
-rte_security_session_create(struct rte_security_ctx *instance,
+rte_security_session_create(void *instance,
 			    struct rte_security_session_conf *conf,
 			    struct rte_mempool *mp);
 
@@ -711,7 +687,7 @@ rte_security_session_create(struct rte_security_ctx *instance,
  */
 __rte_experimental
 int
-rte_security_session_update(struct rte_security_ctx *instance,
+rte_security_session_update(void *instance,
 			    void *sess,
 			    struct rte_security_session_conf *conf);
 
@@ -725,7 +701,7 @@ rte_security_session_update(struct rte_security_ctx *instance,
  *   - 0 if device is invalid or does not support the operation.
  */
 unsigned int
-rte_security_session_get_size(struct rte_security_ctx *instance);
+rte_security_session_get_size(void *instance);
 
 /**
  * Free security session header and the session private data and
@@ -742,7 +718,7 @@ rte_security_session_get_size(struct rte_security_ctx *instance);
  *  - other negative values in case of freeing private data errors.
  */
 int
-rte_security_session_destroy(struct rte_security_ctx *instance, void *sess);
+rte_security_session_destroy(void *instance, void *sess);
 
 /**
  * @warning
@@ -761,7 +737,7 @@ rte_security_session_destroy(struct rte_security_ctx *instance, void *sess);
  */
 __rte_experimental
 int
-rte_security_macsec_sc_create(struct rte_security_ctx *instance,
+rte_security_macsec_sc_create(void *instance,
 			      struct rte_security_macsec_sc *conf);
 
 /**
@@ -780,7 +756,7 @@ rte_security_macsec_sc_create(struct rte_security_ctx *instance,
  */
 __rte_experimental
 int
-rte_security_macsec_sc_destroy(struct rte_security_ctx *instance, uint16_t sc_id,
+rte_security_macsec_sc_destroy(void *instance, uint16_t sc_id,
 			       enum rte_security_macsec_direction dir);
 
 /**
@@ -800,7 +776,7 @@ rte_security_macsec_sc_destroy(struct rte_security_ctx *instance, uint16_t sc_id
  */
 __rte_experimental
 int
-rte_security_macsec_sa_create(struct rte_security_ctx *instance,
+rte_security_macsec_sa_create(void *instance,
 			      struct rte_security_macsec_sa *conf);
 
 /**
@@ -819,7 +795,7 @@ rte_security_macsec_sa_create(struct rte_security_ctx *instance,
  */
 __rte_experimental
 int
-rte_security_macsec_sa_destroy(struct rte_security_ctx *instance, uint16_t sa_id,
+rte_security_macsec_sa_destroy(void *instance, uint16_t sa_id,
 			       enum rte_security_macsec_direction dir);
 
 /** Device-specific metadata field type */
@@ -889,6 +865,27 @@ static inline bool rte_security_dynfield_is_registered(void)
 	return rte_security_dynfield_offset >= 0;
 }
 
+#define RTE_SECURITY_CTX_FLAGS_OFF		4
+/**
+ * Get security flags from security instance.
+ */
+static inline uint32_t
+rte_security_ctx_flags_get(void *ctx)
+{
+	return *((uint32_t *)ctx + RTE_SECURITY_CTX_FLAGS_OFF);
+}
+
+/**
+ * Set security flags in security instance.
+ */
+static inline void
+rte_security_ctx_flags_set(void *ctx, uint32_t flags)
+{
+	uint32_t *data;
+	data = (((uint32_t *)ctx) + RTE_SECURITY_CTX_FLAGS_OFF);
+	*data = flags;
+}
+
 #define RTE_SECURITY_SESS_OPAQUE_DATA_OFF	0
 #define RTE_SECURITY_SESS_FAST_MDATA_OFF	1
 /**
@@ -933,7 +930,7 @@ rte_security_session_fast_mdata_set(void *sess, uint64_t fdata)
 
 /** Function to call PMD specific function pointer set_pkt_metadata() */
 __rte_experimental
-int __rte_security_set_pkt_metadata(struct rte_security_ctx *instance,
+int __rte_security_set_pkt_metadata(void *instance,
 				    void *sess,
 				    struct rte_mbuf *m, void *params);
 
@@ -951,12 +948,12 @@ int __rte_security_set_pkt_metadata(struct rte_security_ctx *instance,
  *  - On failure, a negative value.
  */
 static inline int
-rte_security_set_pkt_metadata(struct rte_security_ctx *instance,
+rte_security_set_pkt_metadata(void *instance,
 			      void *sess,
 			      struct rte_mbuf *mb, void *params)
 {
 	/* Fast Path */
-	if (instance->flags & RTE_SEC_CTX_F_FAST_SET_MDATA) {
+	if (rte_security_ctx_flags_get(instance) & RTE_SEC_CTX_F_FAST_SET_MDATA) {
 		*rte_security_dynfield(mb) = (rte_security_dynfield_t)
 			rte_security_session_fast_mdata_get(sess);
 		return 0;
@@ -1105,7 +1102,7 @@ struct rte_security_stats {
  */
 __rte_experimental
 int
-rte_security_session_stats_get(struct rte_security_ctx *instance,
+rte_security_session_stats_get(void *instance,
 			       void *sess,
 			       struct rte_security_stats *stats);
 
@@ -1125,7 +1122,7 @@ rte_security_session_stats_get(struct rte_security_ctx *instance,
  */
 __rte_experimental
 int
-rte_security_macsec_sa_stats_get(struct rte_security_ctx *instance,
+rte_security_macsec_sa_stats_get(void *instance,
 				 uint16_t sa_id, enum rte_security_macsec_direction dir,
 				 struct rte_security_macsec_sa_stats *stats);
 
@@ -1145,7 +1142,7 @@ rte_security_macsec_sa_stats_get(struct rte_security_ctx *instance,
  */
 __rte_experimental
 int
-rte_security_macsec_sc_stats_get(struct rte_security_ctx *instance,
+rte_security_macsec_sc_stats_get(void *instance,
 				 uint16_t sc_id, enum rte_security_macsec_direction dir,
 				 struct rte_security_macsec_sc_stats *stats);
 
@@ -1296,7 +1293,7 @@ struct rte_security_capability_idx {
  *   - Return NULL if no capabilities available.
  */
 const struct rte_security_capability *
-rte_security_capabilities_get(struct rte_security_ctx *instance);
+rte_security_capabilities_get(void *instance);
 
 /**
  * Query if a specific capability is available on security instance
@@ -1310,7 +1307,7 @@ rte_security_capabilities_get(struct rte_security_ctx *instance);
  *   - Return NULL if the capability not matched on security instance.
  */
 const struct rte_security_capability *
-rte_security_capability_get(struct rte_security_ctx *instance,
+rte_security_capability_get(void *instance,
 			    struct rte_security_capability_idx *idx);
 
 #ifdef __cplusplus

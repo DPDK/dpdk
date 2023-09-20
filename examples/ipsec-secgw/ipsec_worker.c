@@ -20,7 +20,7 @@
 
 struct port_drv_mode_data {
 	void *sess;
-	struct rte_security_ctx *ctx;
+	void *ctx;
 };
 
 typedef void (*ipsec_worker_fn_t)(void);

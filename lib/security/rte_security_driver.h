@@ -38,6 +38,30 @@ struct rte_security_session {
 };
 
 /**
+ * Security context for crypto/eth devices
+ *
+ * Security instance for each driver to register security operations.
+ * The application can get the security context from the crypto/eth device id
+ * using the APIs rte_cryptodev_get_sec_ctx()/rte_eth_dev_get_sec_ctx()
+ * This structure is used to identify the device(crypto/eth) for which the
+ * security operations need to be performed.
+ */
+struct rte_security_ctx {
+	void *device;
+	/**< Crypto/ethernet device attached */
+	const struct rte_security_ops *ops;
+	/**< Pointer to security ops for the device */
+	uint32_t flags;
+	/**< Flags for security context */
+	uint16_t sess_cnt;
+	/**< Number of sessions attached to this context */
+	uint16_t macsec_sc_cnt;
+	/**< Number of MACsec SC attached to this context */
+	uint16_t macsec_sa_cnt;
+	/**< Number of MACsec SA attached to this context */
+};
+
+/**
  * Helper macro to get driver private data
  */
 #define SECURITY_GET_SESS_PRIV(s) \
