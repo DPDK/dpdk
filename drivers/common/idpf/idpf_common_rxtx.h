@@ -157,7 +157,7 @@ struct idpf_tx_entry {
 /* Structure associated with each TX queue. */
 struct idpf_tx_queue {
 	const struct rte_memzone *mz;		/* memzone for Tx ring */
-	volatile struct idpf_flex_tx_desc *tx_ring;	/* Tx ring virtual address */
+	volatile struct idpf_base_tx_desc *tx_ring;	/* Tx ring virtual address */
 	volatile union {
 		struct idpf_flex_tx_sched_desc *desc_ring;
 		struct idpf_splitq_tx_compl_desc *compl_ring;

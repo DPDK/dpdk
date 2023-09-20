@@ -1005,7 +1005,7 @@ idpf_tx_singleq_free_bufs_avx512(struct idpf_tx_queue *txq)
 	struct rte_mbuf *m, *free[txq->rs_thresh];
 
 	/* check DD bits on threshold descriptor */
-	if ((txq->tx_ring[txq->next_dd].qw1.cmd_dtype &
+	if ((txq->tx_ring[txq->next_dd].qw1 &
 			rte_cpu_to_le_64(IDPF_TXD_QW1_DTYPE_M)) !=
 			rte_cpu_to_le_64(IDPF_TX_DESC_DTYPE_DESC_DONE))
 		return 0;
@@ -1113,15 +1113,14 @@ tx_backlog_entry_avx512(struct idpf_tx_vec_entry *txep,
 		txep[i].mbuf = tx_pkts[i];
 }
 
-#define IDPF_FLEX_TXD_QW1_BUF_SZ_S 48
 static __rte_always_inline void
-idpf_singleq_vtx1(volatile struct idpf_flex_tx_desc *txdp,
+idpf_singleq_vtx1(volatile struct idpf_base_tx_desc *txdp,
 	  struct rte_mbuf *pkt, uint64_t flags)
 {
 	uint64_t high_qw =
-		(IDPF_TX_DESC_DTYPE_FLEX_DATA << IDPF_FLEX_TXD_QW1_DTYPE_S |
-		 ((uint64_t)flags  << IDPF_FLEX_TXD_QW1_CMD_S) |
-		 ((uint64_t)pkt->data_len << IDPF_FLEX_TXD_QW1_BUF_SZ_S));
+		(IDPF_TX_DESC_DTYPE_DATA |
+		 ((uint64_t)flags  << IDPF_TXD_QW1_CMD_S) |
+		 ((uint64_t)pkt->data_len << IDPF_TXD_QW1_TX_BUF_SZ_S));
 
 	__m128i descriptor = _mm_set_epi64x(high_qw,
 					    pkt->buf_iova + pkt->data_off);
@@ -1131,11 +1130,11 @@ idpf_singleq_vtx1(volatile struct idpf_flex_tx_desc *txdp,
 #define IDPF_TX_LEN_MASK 0xAA
 #define IDPF_TX_OFF_MASK 0x55
 static __rte_always_inline void
-idpf_singleq_vtx(volatile struct idpf_flex_tx_desc *txdp,
+idpf_singleq_vtx(volatile struct idpf_base_tx_desc *txdp,
 	 struct rte_mbuf **pkt, uint16_t nb_pkts,  uint64_t flags)
 {
-	const uint64_t hi_qw_tmpl = (IDPF_TX_DESC_DTYPE_FLEX_DATA  |
-			((uint64_t)flags  << IDPF_FLEX_TXD_QW1_CMD_S));
+	const uint64_t hi_qw_tmpl = (IDPF_TX_DESC_DTYPE_DATA  |
+			((uint64_t)flags  << IDPF_TXD_QW1_CMD_S));
 
 	/* if unaligned on 32-bit boundary, do one to align */
 	if (((uintptr_t)txdp & 0x1F) != 0 && nb_pkts != 0) {
@@ -1148,19 +1147,19 @@ idpf_singleq_vtx(volatile struct idpf_flex_tx_desc *txdp,
 		uint64_t hi_qw3 =
 			hi_qw_tmpl |
 			((uint64_t)pkt[3]->data_len <<
-			 IDPF_FLEX_TXD_QW1_BUF_SZ_S);
+			 IDPF_TXD_QW1_TX_BUF_SZ_S);
 		uint64_t hi_qw2 =
 			hi_qw_tmpl |
 			((uint64_t)pkt[2]->data_len <<
-			 IDPF_FLEX_TXD_QW1_BUF_SZ_S);
+			 IDPF_TXD_QW1_TX_BUF_SZ_S);
 		uint64_t hi_qw1 =
 			hi_qw_tmpl |
 			((uint64_t)pkt[1]->data_len <<
-			 IDPF_FLEX_TXD_QW1_BUF_SZ_S);
+			 IDPF_TXD_QW1_TX_BUF_SZ_S);
 		uint64_t hi_qw0 =
 			hi_qw_tmpl |
 			((uint64_t)pkt[0]->data_len <<
-			 IDPF_FLEX_TXD_QW1_BUF_SZ_S);
+			 IDPF_TXD_QW1_TX_BUF_SZ_S);
 
 		__m512i desc0_3 =
 			_mm512_set_epi64
@@ -1187,11 +1186,11 @@ idpf_singleq_xmit_fixed_burst_vec_avx512(void *tx_queue, struct rte_mbuf **tx_pk
 					 uint16_t nb_pkts)
 {
 	struct idpf_tx_queue *txq = tx_queue;
-	volatile struct idpf_flex_tx_desc *txdp;
+	volatile struct idpf_base_tx_desc *txdp;
 	struct idpf_tx_vec_entry *txep;
 	uint16_t n, nb_commit, tx_id;
-	uint64_t flags = IDPF_TX_FLEX_DESC_CMD_EOP;
-	uint64_t rs = IDPF_TX_FLEX_DESC_CMD_RS | flags;
+	uint64_t flags = IDPF_TX_DESC_CMD_EOP;
+	uint64_t rs = IDPF_TX_DESC_CMD_RS | flags;
 
 	/* cross rx_thresh boundary is not allowed */
 	nb_pkts = RTE_MIN(nb_pkts, txq->rs_thresh);
@@ -1238,9 +1237,9 @@ idpf_singleq_xmit_fixed_burst_vec_avx512(void *tx_queue, struct rte_mbuf **tx_pk
 
 	tx_id = (uint16_t)(tx_id + nb_commit);
 	if (tx_id > txq->next_rs) {
-		txq->tx_ring[txq->next_rs].qw1.cmd_dtype |=
-			rte_cpu_to_le_64(((uint64_t)IDPF_TX_FLEX_DESC_CMD_RS) <<
-					 IDPF_FLEX_TXD_QW1_CMD_S);
+		txq->tx_ring[txq->next_rs].qw1 |=
+			rte_cpu_to_le_64(((uint64_t)IDPF_TX_DESC_CMD_RS) <<
+					 IDPF_TXD_QW1_CMD_S);
 		txq->next_rs =
 			(uint16_t)(txq->next_rs + txq->rs_thresh);
 	}

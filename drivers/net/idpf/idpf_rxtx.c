@@ -74,7 +74,7 @@ idpf_dma_zone_reserve(struct rte_eth_dev *dev, uint16_t queue_idx,
 			ring_size = RTE_ALIGN(len * sizeof(struct idpf_flex_tx_sched_desc),
 					      IDPF_DMA_MEM_ALIGN);
 		else
-			ring_size = RTE_ALIGN(len * sizeof(struct idpf_flex_tx_desc),
+			ring_size = RTE_ALIGN(len * sizeof(struct idpf_base_tx_desc),
 					      IDPF_DMA_MEM_ALIGN);
 		rte_memcpy(ring_name, "idpf Tx ring", sizeof("idpf Tx ring"));
 		break;

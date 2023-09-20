@@ -135,7 +135,7 @@ cpfl_dma_zone_reserve(struct rte_eth_dev *dev, uint16_t queue_idx,
 			ring_size = RTE_ALIGN(len * sizeof(struct idpf_flex_tx_sched_desc),
 					      CPFL_DMA_MEM_ALIGN);
 		else
-			ring_size = RTE_ALIGN(len * sizeof(struct idpf_flex_tx_desc),
+			ring_size = RTE_ALIGN(len * sizeof(struct idpf_base_tx_desc),
 					      CPFL_DMA_MEM_ALIGN);
 		memcpy(ring_name, "cpfl Tx ring", sizeof("cpfl Tx ring"));
 		break;
