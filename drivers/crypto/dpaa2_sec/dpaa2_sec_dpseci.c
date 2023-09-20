@@ -4386,7 +4386,7 @@ cryptodev_dpaa2_sec_probe(struct rte_dpaa2_driver *dpaa2_drv __rte_unused,
 	else
 		rta_set_sec_era(RTA_SEC_ERA_8);
 
-	DPAA2_SEC_INFO("2-SEC ERA is %d", rta_get_sec_era());
+	DPAA2_SEC_INFO("2-SEC ERA is %d", USER_SEC_ERA(rta_get_sec_era()));
 
 	/* Invoke PMD device initialization function */
 	retval = dpaa2_sec_dev_init(cryptodev);
