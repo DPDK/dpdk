@@ -3,21 +3,28 @@
  * All rights reserved.
  */
 
-#include <rte_common.h>
-#include <ethdev_pci.h>
-
-#include "../nfp_common.h"
-#include "../nfp_logs.h"
-#include "../nfp_ctrl.h"
-#include "../nfp_rxtx.h"
-#include "../nfd3/nfp_nfd3.h"
-#include "../nfpcore/nfp_mip.h"
-#include "../nfpcore/nfp_rtsym.h"
-#include "../nfpcore/nfp_nsp.h"
-#include "nfp_flower.h"
 #include "nfp_flower_representor.h"
-#include "nfp_flower_ctrl.h"
+
+#include "../nfd3/nfp_nfd3.h"
+#include "../nfpcore/nfp_nsp.h"
+#include "../nfp_flow.h"
+#include "../nfp_logs.h"
+#include "../nfp_mtr.h"
 #include "nfp_flower_cmsg.h"
+
+/*
+ * enum nfp_repr_type - type of representor
+ * @NFP_REPR_TYPE_PHYS_PORT:   external NIC port
+ * @NFP_REPR_TYPE_PF:          physical function
+ * @NFP_REPR_TYPE_VF:          virtual function
+ * @NFP_REPR_TYPE_MAX:         number of representor types
+ */
+enum nfp_repr_type {
+	NFP_REPR_TYPE_PHYS_PORT,
+	NFP_REPR_TYPE_PF,
+	NFP_REPR_TYPE_VF,
+	NFP_REPR_TYPE_MAX,
+};
 
 static int
 nfp_pf_repr_rx_queue_setup(struct rte_eth_dev *dev,
