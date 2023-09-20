@@ -6,8 +6,9 @@
 #ifndef _NFP_NFDK_H_
 #define _NFP_NFDK_H_
 
+#include "../nfp_rxtx.h"
+
 #define NFDK_TX_DESC_PER_SIMPLE_PKT     2
-#define NFDK_TX_DESC_GATHER_MAX         17
 
 #define NFDK_TX_MAX_DATA_PER_HEAD       0x00001000    /* 4K */
 #define NFDK_TX_MAX_DATA_PER_DESC       0x00004000    /* 16K */
@@ -16,7 +17,6 @@
 /* The mask of 'dma_len_xx' of address descriptor */
 #define NFDK_DESC_TX_DMA_LEN_HEAD       0x0FFF        /* [0,11] */
 #define NFDK_DESC_TX_DMA_LEN            0x3FFF        /* [0,13] */
-#define NFDK_DESC_TX_TYPE_HEAD          0xF000        /* [12,15] */
 
 /* The mask of upper 4 bit of first address descriptor */
 #define NFDK_DESC_TX_TYPE_HEAD          0xF000        /* [12,15] */
@@ -158,73 +158,6 @@ static inline bool
 nfp_net_nfdk_txq_full(struct nfp_net_txq *txq)
 {
 	return (nfp_net_nfdk_free_tx_desc(txq) < txq->tx_free_thresh);
-}
-
-/* nfp_net_nfdk_tx_cksum() - Set TX CSUM offload flags in TX descriptor of nfdk */
-static inline uint64_t
-nfp_net_nfdk_tx_cksum(struct nfp_net_txq *txq,
-		struct rte_mbuf *mb,
-		uint64_t flags)
-{
-	uint64_t ol_flags;
-	struct nfp_net_hw *hw = txq->hw;
-
-	if ((hw->cap & NFP_NET_CFG_CTRL_TXCSUM) == 0)
-		return flags;
-
-	ol_flags = mb->ol_flags;
-
-	/* Set TCP csum offload if TSO enabled. */
-	if ((ol_flags & RTE_MBUF_F_TX_TCP_SEG) != 0)
-		flags |= NFDK_DESC_TX_L4_CSUM;
-
-	if ((ol_flags & RTE_MBUF_F_TX_TUNNEL_MASK) != 0)
-		flags |= NFDK_DESC_TX_ENCAP;
-
-	/* IPv6 does not need checksum */
-	if ((ol_flags & RTE_MBUF_F_TX_IP_CKSUM) != 0)
-		flags |= NFDK_DESC_TX_L3_CSUM;
-
-	if ((ol_flags & RTE_MBUF_F_TX_L4_MASK) != 0)
-		flags |= NFDK_DESC_TX_L4_CSUM;
-
-	return flags;
-}
-
-/* nfp_net_nfdk_tx_tso() - Set TX descriptor for TSO of nfdk */
-static inline uint64_t
-nfp_net_nfdk_tx_tso(struct nfp_net_txq *txq,
-		struct rte_mbuf *mb)
-{
-	uint8_t outer_len;
-	uint64_t ol_flags;
-	struct nfp_net_nfdk_tx_desc txd;
-	struct nfp_net_hw *hw = txq->hw;
-
-	txd.raw = 0;
-
-	if ((hw->cap & NFP_NET_CFG_CTRL_LSO_ANY) == 0)
-		return txd.raw;
-
-	ol_flags = mb->ol_flags;
-	if ((ol_flags & RTE_MBUF_F_TX_TCP_SEG) == 0)
-		return txd.raw;
-
-	txd.l3_offset = mb->l2_len;
-	txd.l4_offset = mb->l2_len + mb->l3_len;
-	txd.lso_meta_res = 0;
-	txd.mss = rte_cpu_to_le_16(mb->tso_segsz);
-	txd.lso_hdrlen = mb->l2_len + mb->l3_len + mb->l4_len;
-	txd.lso_totsegs = (mb->pkt_len + mb->tso_segsz) / mb->tso_segsz;
-
-	if ((ol_flags & RTE_MBUF_F_TX_TUNNEL_MASK) != 0) {
-		outer_len = mb->outer_l2_len + mb->outer_l3_len;
-		txd.l3_offset += outer_len;
-		txd.l4_offset += outer_len;
-		txd.lso_hdrlen += outer_len;
-	}
-
-	return txd.raw;
 }
 
 uint32_t nfp_flower_nfdk_pkt_add_metadata(struct rte_mbuf *mbuf,
