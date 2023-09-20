@@ -3193,10 +3193,14 @@ dpaa2_sec_set_ipsec_session(struct rte_cryptodev *dev,
 			encap_pdb.options |= PDBHMO_ESP_ENCAP_DTTL;
 		if (ipsec_xform->options.esn)
 			encap_pdb.options |= PDBOPTS_ESP_ESN;
+		if (ipsec_xform->options.copy_dscp)
+			encap_pdb.options |= PDBOPTS_ESP_DIFFSERV;
 		encap_pdb.spi = ipsec_xform->spi;
 		session->dir = DIR_ENC;
 		if (ipsec_xform->tunnel.type ==
 				RTE_SECURITY_IPSEC_TUNNEL_IPV4) {
+			if (ipsec_xform->options.copy_df)
+				encap_pdb.options |= PDBHMO_ESP_DFBIT;
 			encap_pdb.ip_hdr_len = sizeof(struct ip);
 			ip4_hdr.ip_v = IPVERSION;
 			ip4_hdr.ip_hl = 5;
@@ -3261,12 +3265,18 @@ dpaa2_sec_set_ipsec_session(struct rte_cryptodev *dev,
 			break;
 		}
 
-		decap_pdb.options = (ipsec_xform->tunnel.type ==
-				RTE_SECURITY_IPSEC_TUNNEL_IPV4) ?
-				sizeof(struct ip) << 16 :
-				sizeof(struct rte_ipv6_hdr) << 16;
+		if (ipsec_xform->tunnel.type ==
+				RTE_SECURITY_IPSEC_TUNNEL_IPV4) {
+			decap_pdb.options = sizeof(struct ip) << 16;
+			if (ipsec_xform->options.copy_df)
+				decap_pdb.options |= PDBHMO_ESP_DFV;
+		} else {
+			decap_pdb.options = sizeof(struct rte_ipv6_hdr) << 16;
+		}
 		if (ipsec_xform->options.esn)
 			decap_pdb.options |= PDBOPTS_ESP_ESN;
+		if (ipsec_xform->options.copy_dscp)
+			decap_pdb.options |= PDBOPTS_ESP_DIFFSERV;
 
 		if (ipsec_xform->replay_win_sz) {
 			uint32_t win_sz;
