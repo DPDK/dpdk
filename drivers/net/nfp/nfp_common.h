@@ -6,21 +6,13 @@
 #ifndef _NFP_COMMON_H_
 #define _NFP_COMMON_H_
 
+#include <bus_pci_driver.h>
+#include <ethdev_driver.h>
+#include <rte_io.h>
+#include <rte_spinlock.h>
+
 #include "nfp_ctrl.h"
 #include "nfpcore/nfp_dev.h"
-
-#define NFP_NET_PMD_VERSION "0.1"
-
-/* Forward declaration */
-struct nfp_net_adapter;
-
-#define NFP_TX_MAX_SEG     UINT8_MAX
-#define NFP_TX_MAX_MTU_SEG 8
-
-/* Bar allocation */
-#define NFP_NET_CRTL_BAR        0
-#define NFP_NET_TX_BAR          2
-#define NFP_NET_RX_BAR          2
 
 /* Macros for accessing the Queue Controller Peripheral 'CSRs' */
 #define NFP_QCP_QUEUE_OFF(_x)                 ((_x) * 0x800)
@@ -50,26 +42,10 @@ struct nfp_net_adapter;
 /* Alignment for dma zones */
 #define NFP_MEMZONE_ALIGN	128
 
-/*
- * This is used by the reconfig protocol. It sets the maximum time waiting in
- * milliseconds before a reconfig timeout happens.
- */
-#define NFP_NET_POLL_TIMEOUT    5000
-
 #define NFP_QCP_QUEUE_ADDR_SZ   (0x800)
-
-#define NFP_NET_LINK_DOWN_CHECK_TIMEOUT 4000 /* ms */
-#define NFP_NET_LINK_UP_CHECK_TIMEOUT   1000 /* ms */
 
 /* Number of supported physical ports */
 #define NFP_MAX_PHYPORTS	12
-
-/* Maximum supported NFP frame size (MTU + layer 2 headers) */
-#define NFP_FRAME_SIZE_MAX	10048
-#define DEFAULT_FLBUF_SIZE        9216
-
-#include <linux/types.h>
-#include <rte_io.h>
 
 /* Firmware application ID's */
 enum nfp_app_fw_id {
