@@ -14,6 +14,7 @@
 #include "nfp_flow.h"
 #include "nfp_logs.h"
 #include "nfp_rxtx.h"
+#include "nfp_mtr.h"
 #include "flower/nfp_flower.h"
 #include "flower/nfp_flower_cmsg.h"
 #include "flower/nfp_flower_ctrl.h"
