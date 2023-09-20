@@ -97,6 +97,7 @@
 #define		VIRTCHNL2_OP_CONFIG_PROMISCUOUS_MODE	537
 #define		VIRTCHNL2_OP_ADD_QUEUE_GROUPS		538
 #define		VIRTCHNL2_OP_DEL_QUEUE_GROUPS		539
+#define		VIRTCHNL2_OP_GET_PORT_STATS		540
 
 #define VIRTCHNL2_RDMA_INVALID_QUEUE_IDX	0xFFFF
 
@@ -582,6 +583,9 @@ struct virtchnl2_queue_reg_chunks {
 
 VIRTCHNL2_CHECK_STRUCT_LEN(40, virtchnl2_queue_reg_chunks);
 
+/* VIRTCHNL2_VPORT_FLAGS */
+#define VIRTCHNL2_VPORT_UPLINK_PORT	BIT(0)
+
 #define VIRTCHNL2_ETH_LENGTH_OF_ADDRESS  6
 
 /* VIRTCHNL2_OP_CREATE_VPORT
@@ -620,7 +624,8 @@ struct virtchnl2_create_vport {
 	__le16 max_mtu;
 	__le32 vport_id;
 	u8 default_mac_addr[VIRTCHNL2_ETH_LENGTH_OF_ADDRESS];
-	__le16 pad;
+	/* see VIRTCHNL2_VPORT_FLAGS definitions */
+	__le16 vport_flags;
 	/* see VIRTCHNL2_RX_DESC_IDS definitions */
 	__le64 rx_desc_ids;
 	/* see VIRTCHNL2_TX_DESC_IDS definitions */
@@ -1159,6 +1164,74 @@ struct virtchnl2_vport_stats {
 
 VIRTCHNL2_CHECK_STRUCT_LEN(128, virtchnl2_vport_stats);
 
+/* physical port statistics */
+struct virtchnl2_phy_port_stats {
+	__le64 rx_bytes;
+	__le64 rx_unicast_pkts;
+	__le64 rx_multicast_pkts;
+	__le64 rx_broadcast_pkts;
+	__le64 rx_size_64_pkts;
+	__le64 rx_size_127_pkts;
+	__le64 rx_size_255_pkts;
+	__le64 rx_size_511_pkts;
+	__le64 rx_size_1023_pkts;
+	__le64 rx_size_1518_pkts;
+	__le64 rx_size_jumbo_pkts;
+	__le64 rx_xon_events;
+	__le64 rx_xoff_events;
+	__le64 rx_undersized_pkts;
+	__le64 rx_fragmented_pkts;
+	__le64 rx_oversized_pkts;
+	__le64 rx_jabber_pkts;
+	__le64 rx_csum_errors;
+	__le64 rx_length_errors;
+	__le64 rx_dropped_pkts;
+	__le64 rx_crc_errors;
+	/* Frames with length < 64 and a bad CRC */
+	__le64 rx_runt_errors;
+	__le64 rx_illegal_bytes;
+	__le64 rx_total_pkts;
+	u8 rx_reserved[128];
+
+	__le64 tx_bytes;
+	__le64 tx_unicast_pkts;
+	__le64 tx_multicast_pkts;
+	__le64 tx_broadcast_pkts;
+	__le64 tx_errors;
+	__le64 tx_timeout_events;
+	__le64 tx_size_64_pkts;
+	__le64 tx_size_127_pkts;
+	__le64 tx_size_255_pkts;
+	__le64 tx_size_511_pkts;
+	__le64 tx_size_1023_pkts;
+	__le64 tx_size_1518_pkts;
+	__le64 tx_size_jumbo_pkts;
+	__le64 tx_xon_events;
+	__le64 tx_xoff_events;
+	__le64 tx_dropped_link_down_pkts;
+	__le64 tx_total_pkts;
+	u8 tx_reserved[128];
+	__le64 mac_local_faults;
+	__le64 mac_remote_faults;
+};
+
+VIRTCHNL2_CHECK_STRUCT_LEN(600, virtchnl2_phy_port_stats);
+
+/* VIRTCHNL2_OP_GET_PORT_STATS
+ * PF/VF sends this message to CP to get the updated stats by specifying the
+ * vport_id. CP responds with stats in struct virtchnl2_port_stats that
+ * includes both physical port as well as vport statistics.
+ */
+struct virtchnl2_port_stats {
+	__le32 vport_id;
+	u8 pad[4];
+
+	struct virtchnl2_phy_port_stats phy_port_stats;
+	struct virtchnl2_vport_stats virt_port_stats;
+};
+
+VIRTCHNL2_CHECK_STRUCT_LEN(736, virtchnl2_port_stats);
+
 /* VIRTCHNL2_OP_EVENT
  * CP sends this message to inform the PF/VF driver of events that may affect
  * it. No direct response is expected from the driver, though it may generate
@@ -1384,6 +1457,8 @@ static inline const char *virtchnl2_op_str(__le32 v_opcode)
 		return "VIRTCHNL2_OP_ADD_QUEUE_GROUPS";
 	case VIRTCHNL2_OP_DEL_QUEUE_GROUPS:
 		return "VIRTCHNL2_OP_DEL_QUEUE_GROUPS";
+	case VIRTCHNL2_OP_GET_PORT_STATS:
+		return "VIRTCHNL2_OP_GET_PORT_STATS";
 	default:
 		return "Unsupported (update virtchnl2.h)";
 	}
@@ -1647,6 +1722,9 @@ virtchnl2_vc_validate_vf_msg(__rte_unused struct virtchnl2_version_info *ver, u3
 		break;
 	case VIRTCHNL2_OP_GET_STATS:
 		valid_len = sizeof(struct virtchnl2_vport_stats);
+		break;
+	case VIRTCHNL2_OP_GET_PORT_STATS:
+		valid_len = sizeof(struct virtchnl2_port_stats);
 		break;
 	case VIRTCHNL2_OP_RESET_VF:
 		break;
