@@ -226,39 +226,11 @@ uint32_t nfp_cpp_model_autodetect(struct nfp_cpp *cpp, uint32_t *model);
 
 /* NFP CPP core interface for CPP clients */
 struct nfp_cpp *nfp_cpp_from_device_name(struct rte_pci_device *dev,
-		int driver_lock_needed);
+		void *priv, bool driver_lock_needed);
 
 void nfp_cpp_free(struct nfp_cpp *cpp);
 
 #define NFP_CPP_MODEL_INVALID   0xffffffff
-
-/**
- * Retrieve the chip ID from the model ID
- *
- * The chip ID is a 16-bit BCD+A-F encoding for the chip type.
- *
- * @param model
- *   NFP CPP model id
- *
- * @return
- *   NFP CPP chip id
- */
-#define NFP_CPP_MODEL_CHIP_of(model)        (((model) >> 16) & 0xffff)
-
-/**
- * Check for the NFP6000 family of devices
- *
- * NOTE: The NFP4000 series is considered as a NFP6000 series variant.
- *
- * @param model
- *   NFP CPP model id
- *
- * @return
- *   true if model is in the NFP6000 family, false otherwise.
- */
-#define NFP_CPP_MODEL_IS_6000(model)                         \
-		((NFP_CPP_MODEL_CHIP_of(model) >= 0x3800) && \
-		(NFP_CPP_MODEL_CHIP_of(model) < 0x7000))
 
 uint32_t nfp_cpp_model(struct nfp_cpp *cpp);
 
@@ -329,6 +301,12 @@ uint32_t nfp_cpp_model(struct nfp_cpp *cpp);
  *   NFP Interface ID's channel
  */
 #define NFP_CPP_INTERFACE_CHANNEL_of(interface)	(((interface) >>  0) & 0xff)
+
+/*
+ * Use this channel ID for multiple virtual channel interfaces
+ * (ie ARM and PCIe) when setting up the interface field.
+ */
+#define NFP_CPP_INTERFACE_CHANNEL_PEROPENER    255
 
 uint16_t nfp_cpp_interface(struct nfp_cpp *cpp);
 

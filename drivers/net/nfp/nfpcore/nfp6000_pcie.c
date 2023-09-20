@@ -98,6 +98,24 @@ struct nfp_pcie_user {
 	char *cfg;
 };
 
+/* Generic CPP bus access interface. */
+struct nfp6000_area_priv {
+	struct nfp_bar *bar;
+	uint32_t bar_offset;
+
+	int target;
+	int action;
+	int token;
+	uint64_t offset;
+	struct {
+		int read;
+		int write;
+		int bar;
+	} width;
+	size_t size;
+	char *iomem;
+};
+
 static uint32_t
 nfp_bar_maptype(struct nfp_bar *bar)
 {
@@ -333,24 +351,6 @@ nfp_disable_bars(struct nfp_pcie_user *nfp)
 		}
 	}
 }
-
-/* Generic CPP bus access interface. */
-struct nfp6000_area_priv {
-	struct nfp_bar *bar;
-	uint32_t bar_offset;
-
-	uint32_t target;
-	uint32_t action;
-	uint32_t token;
-	uint64_t offset;
-	struct {
-		int read;
-		int write;
-		int bar;
-	} width;
-	size_t size;
-	char *iomem;
-};
 
 static int
 nfp6000_area_init(struct nfp_cpp_area *area,
@@ -625,87 +625,6 @@ nfp_acquire_process_lock(struct nfp_pcie_user *desc)
 }
 
 static int
-nfp6000_set_model(struct rte_pci_device *dev,
-		struct nfp_cpp *cpp)
-{
-	uint32_t model;
-
-	if (rte_pci_read_config(dev, &model, 4, 0x2e) < 0) {
-		PMD_DRV_LOG(ERR, "nfp set model failed");
-		return -1;
-	}
-
-	model  = model << 16;
-	nfp_cpp_model_set(cpp, model);
-
-	return 0;
-}
-
-static int
-nfp6000_set_interface(struct rte_pci_device *dev,
-		struct nfp_cpp *cpp)
-{
-	uint16_t interface;
-
-	if (rte_pci_read_config(dev, &interface, 2, 0x154) < 0) {
-		PMD_DRV_LOG(ERR, "nfp set interface failed");
-		return -1;
-	}
-
-	nfp_cpp_interface_set(cpp, interface);
-
-	return 0;
-}
-
-static int
-nfp6000_set_serial(struct rte_pci_device *dev,
-		struct nfp_cpp *cpp)
-{
-	off_t pos;
-	uint16_t tmp;
-	uint8_t serial[6];
-	int serial_len = 6;
-
-	pos = rte_pci_find_ext_capability(dev, RTE_PCI_EXT_CAP_ID_DSN);
-	if (pos <= 0) {
-		PMD_DRV_LOG(ERR, "PCI_EXT_CAP_ID_DSN not found. nfp set serial failed");
-		return -1;
-	} else {
-		pos += 6;
-	}
-
-	if (rte_pci_read_config(dev, &tmp, 2, pos) < 0) {
-		PMD_DRV_LOG(ERR, "nfp set serial failed");
-		return -1;
-	}
-
-	serial[4] = (uint8_t)((tmp >> 8) & 0xff);
-	serial[5] = (uint8_t)(tmp & 0xff);
-
-	pos += 2;
-	if (rte_pci_read_config(dev, &tmp, 2, pos) < 0) {
-		PMD_DRV_LOG(ERR, "nfp set serial failed");
-		return -1;
-	}
-
-	serial[2] = (uint8_t)((tmp >> 8) & 0xff);
-	serial[3] = (uint8_t)(tmp & 0xff);
-
-	pos += 2;
-	if (rte_pci_read_config(dev, &tmp, 2, pos) < 0) {
-		PMD_DRV_LOG(ERR, "nfp set serial failed");
-		return -1;
-	}
-
-	serial[0] = (uint8_t)((tmp >> 8) & 0xff);
-	serial[1] = (uint8_t)(tmp & 0xff);
-
-	nfp_cpp_serial_set(cpp, serial, serial_len);
-
-	return 0;
-}
-
-static int
 nfp6000_get_dsn(struct rte_pci_device *pci_dev,
 		uint64_t *dsn)
 {
@@ -795,12 +714,7 @@ nfp6000_init(struct nfp_cpp *cpp,
 		struct rte_pci_device *dev)
 {
 	int ret = 0;
-	struct nfp_pcie_user *desc;
-
-	desc = malloc(sizeof(*desc));
-	if (desc == NULL)
-		return -1;
-
+	struct nfp_pcie_user *desc = nfp_cpp_priv(cpp);
 
 	memset(desc->busdev, 0, BUSDEV_SZ);
 	strlcpy(desc->busdev, dev->device.name, sizeof(desc->busdev));
@@ -809,17 +723,11 @@ nfp6000_init(struct nfp_cpp *cpp,
 			nfp_cpp_driver_need_lock(cpp)) {
 		ret = nfp_acquire_process_lock(desc);
 		if (ret != 0)
-			goto error;
+			return -1;
 	}
 
-	if (nfp6000_set_model(dev, cpp) < 0)
-		goto error;
-	if (nfp6000_set_interface(dev, cpp) < 0)
-		goto error;
-	if (nfp6000_set_serial(dev, cpp) < 0)
-		goto error;
 	if (nfp6000_set_barsz(dev, desc) < 0)
-		goto error;
+		return -1;
 
 	desc->cfg = dev->mem_resource[0].addr;
 	desc->dev_id = dev->addr.function & 0x7;
@@ -830,13 +738,7 @@ nfp6000_init(struct nfp_cpp *cpp,
 		return -1;
 	}
 
-	nfp_cpp_priv_set(cpp, desc);
-
 	return 0;
-
-error:
-	free(desc);
-	return -1;
 }
 
 static void
@@ -872,4 +774,61 @@ const struct
 nfp_cpp_operations *nfp_cpp_transport_operations(void)
 {
 	return &nfp6000_pcie_ops;
+}
+
+/**
+ * Build a NFP CPP bus from a NFP6000 PCI device
+ *
+ * @param pdev
+ *   NFP6000 PCI device
+ * @param driver_lock_needed
+ *   driver lock flag
+ *
+ * @return
+ *   NFP CPP handle or NULL
+ */
+struct nfp_cpp *
+nfp_cpp_from_nfp6000_pcie(struct rte_pci_device *pci_dev,
+		bool driver_lock_needed)
+{
+	int ret;
+	struct nfp_cpp *cpp;
+	uint16_t interface = 0;
+	struct nfp_pcie_user *nfp;
+
+	nfp = malloc(sizeof(*nfp));
+	if (nfp == NULL)
+		return NULL;
+
+	memset(nfp, 0, sizeof(*nfp));
+
+	ret = nfp6000_get_interface(pci_dev, &interface);
+	if (ret != 0) {
+		PMD_DRV_LOG(ERR, "Get interface failed.");
+		free(nfp);
+		return NULL;
+	}
+
+	if (NFP_CPP_INTERFACE_TYPE_of(interface) != NFP_CPP_INTERFACE_TYPE_PCI) {
+		PMD_DRV_LOG(ERR, "Interface type is not right.");
+		free(nfp);
+		return NULL;
+	}
+
+	if (NFP_CPP_INTERFACE_CHANNEL_of(interface) !=
+			NFP_CPP_INTERFACE_CHANNEL_PEROPENER) {
+		PMD_DRV_LOG(ERR, "Interface channel is not right");
+		free(nfp);
+		return NULL;
+	}
+
+	/* Probe for all the common NFP devices */
+	cpp = nfp_cpp_from_device_name(pci_dev, nfp, driver_lock_needed);
+	if (cpp == NULL) {
+		PMD_DRV_LOG(ERR, "Get cpp from operation failed");
+		free(nfp);
+		return NULL;
+	}
+
+	return cpp;
 }

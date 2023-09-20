@@ -909,10 +909,13 @@ nfp_xpb_readl(struct nfp_cpp *cpp,
 }
 
 static struct nfp_cpp *
-nfp_cpp_alloc(struct rte_pci_device *dev,
-		int driver_lock_needed)
+nfp_cpp_alloc(struct rte_pci_device *pci_dev,
+		void *priv,
+		bool driver_lock_needed)
 {
 	int err;
+	size_t target;
+	uint32_t xpb_addr;
 	struct nfp_cpp *cpp;
 	const struct nfp_cpp_operations *ops;
 
@@ -925,29 +928,47 @@ nfp_cpp_alloc(struct rte_pci_device *dev,
 		return NULL;
 
 	cpp->op = ops;
+	cpp->priv = priv;
 	cpp->driver_lock_needed = driver_lock_needed;
 
-	if (cpp->op->init) {
-		err = cpp->op->init(cpp, dev);
-		if (err < 0) {
-			free(cpp);
-			return NULL;
-		}
+	err = ops->get_interface(pci_dev, &cpp->interface);
+	if (err != 0) {
+		free(cpp);
+		return NULL;
 	}
 
-	if (NFP_CPP_MODEL_IS_6000(nfp_cpp_model(cpp))) {
-		uint32_t xpb_addr;
-		size_t target;
+	err = ops->get_serial(pci_dev, cpp->serial, NFP_SERIAL_LEN);
+	if (err != 0) {
+		free(cpp);
+		return NULL;
+	}
 
-		for (target = 0; target < RTE_DIM(cpp->imb_cat_table); target++) {
-			/* Hardcoded XPB IMB Base, island 0 */
-			xpb_addr = 0x000a0000 + (target * 4);
-			err = nfp_xpb_readl(cpp, xpb_addr,
-					(uint32_t *)&cpp->imb_cat_table[target]);
-			if (err < 0) {
-				free(cpp);
-				return NULL;
-			}
+	/*
+	 * NOTE: cpp_lock is NOT locked for op->init,
+	 * since it may call NFP CPP API operations
+	 */
+	err = cpp->op->init(cpp, pci_dev);
+	if (err < 0) {
+		PMD_DRV_LOG(ERR, "NFP interface initialization failed");
+		free(cpp);
+		return NULL;
+	}
+
+	err = nfp_cpp_model_autodetect(cpp, &cpp->model);
+	if (err < 0) {
+		PMD_DRV_LOG(ERR, "NFP model detection failed");
+		free(cpp);
+		return NULL;
+	}
+
+	for (target = 0; target < RTE_DIM(cpp->imb_cat_table); target++) {
+		/* Hardcoded XPB IMB Base, island 0 */
+		xpb_addr = 0x000a0000 + (target * 4);
+		err = nfp_xpb_readl(cpp, xpb_addr, &cpp->imb_cat_table[target]);
+		if (err < 0) {
+			PMD_DRV_LOG(ERR, "Can't read CPP mapping from device");
+			free(cpp);
+			return NULL;
 		}
 	}
 
@@ -981,6 +1002,8 @@ nfp_cpp_free(struct nfp_cpp *cpp)
  *
  * @param dev
  *   PCI device
+ * @param priv
+ *   Private data of low-level implementation
  * @param driver_lock_needed
  *   Driver lock flag
  *
@@ -991,9 +1014,10 @@ nfp_cpp_free(struct nfp_cpp *cpp)
  */
 struct nfp_cpp *
 nfp_cpp_from_device_name(struct rte_pci_device *dev,
-		int driver_lock_needed)
+		void *priv,
+		bool driver_lock_needed)
 {
-	return nfp_cpp_alloc(dev, driver_lock_needed);
+	return nfp_cpp_alloc(dev, priv, driver_lock_needed);
 }
 
 /**

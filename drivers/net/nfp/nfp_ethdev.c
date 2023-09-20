@@ -23,6 +23,7 @@
 #include "nfpcore/nfp_mip.h"
 #include "nfpcore/nfp_rtsym.h"
 #include "nfpcore/nfp_nsp.h"
+#include "nfpcore/nfp6000_pcie.h"
 
 #include "nfp_common.h"
 #include "nfp_ctrl.h"
@@ -919,9 +920,9 @@ nfp_pf_init(struct rte_pci_device *pci_dev)
 	 * use a lock file if UIO is being used.
 	 */
 	if (pci_dev->kdrv == RTE_PCI_KDRV_VFIO)
-		cpp = nfp_cpp_from_device_name(pci_dev, 0);
+		cpp = nfp_cpp_from_nfp6000_pcie(pci_dev, false);
 	else
-		cpp = nfp_cpp_from_device_name(pci_dev, 1);
+		cpp = nfp_cpp_from_nfp6000_pcie(pci_dev, true);
 
 	if (cpp == NULL) {
 		PMD_INIT_LOG(ERR, "A CPP handle can not be obtained");
@@ -1120,9 +1121,9 @@ nfp_pf_secondary_init(struct rte_pci_device *pci_dev)
 	 * use a lock file if UIO is being used.
 	 */
 	if (pci_dev->kdrv == RTE_PCI_KDRV_VFIO)
-		cpp = nfp_cpp_from_device_name(pci_dev, 0);
+		cpp = nfp_cpp_from_nfp6000_pcie(pci_dev, false);
 	else
-		cpp = nfp_cpp_from_device_name(pci_dev, 1);
+		cpp = nfp_cpp_from_nfp6000_pcie(pci_dev, true);
 
 	if (cpp == NULL) {
 		PMD_INIT_LOG(ERR, "A CPP handle can not be obtained");
