@@ -89,8 +89,8 @@
 	 * VIRTCHNL2_OP_GET_PTYPE_INFO_RAW
 	 */
 	/* opcodes 529, 530, and 531 are reserved */
-#define		VIRTCHNL2_OP_CREATE_ADI			532
-#define		VIRTCHNL2_OP_DESTROY_ADI		533
+#define		VIRTCHNL2_OP_NON_FLEX_CREATE_ADI	532
+#define		VIRTCHNL2_OP_NON_FLEX_DESTROY_ADI	533
 #define		VIRTCHNL2_OP_LOOPBACK			534
 #define		VIRTCHNL2_OP_ADD_MAC_ADDR		535
 #define		VIRTCHNL2_OP_DEL_MAC_ADDR		536
@@ -294,6 +294,7 @@
 /* These messages are only sent to PF from CP */
 #define VIRTCHNL2_EVENT_START_RESET_ADI		2
 #define VIRTCHNL2_EVENT_FINISH_RESET_ADI	3
+#define VIRTCHNL2_EVENT_ADI_ACTIVE		4
 
 /* VIRTCHNL2_QUEUE_TYPE
  * Transmit and Receive queue types are valid in legacy as well as split queue
@@ -547,7 +548,8 @@ struct virtchnl2_get_capabilities {
 	u8 max_sg_bufs_per_tx_pkt;
 
 	u8 reserved1;
-	__le16 pad1;
+	/* upper bound of number of ADIs supported */
+	__le16 max_adis;
 
 	/* version of Control Plane that is running */
 	__le16 oem_cp_ver_major;
@@ -1059,14 +1061,34 @@ struct virtchnl2_sriov_vfs_info {
 
 VIRTCHNL2_CHECK_STRUCT_LEN(4, virtchnl2_sriov_vfs_info);
 
-/* VIRTCHNL2_OP_CREATE_ADI
+/* structure to specify single chunk of queue */
+/* 'chunks' is fixed size(not flexible) and will be deprecated at some point */
+struct virtchnl2_non_flex_queue_reg_chunks {
+	__le16 num_chunks;
+	u8 reserved[6];
+	struct virtchnl2_queue_reg_chunk chunks[1];
+};
+
+VIRTCHNL2_CHECK_STRUCT_LEN(40, virtchnl2_non_flex_queue_reg_chunks);
+
+/* structure to specify single chunk of interrupt vector */
+/* 'vchunks' is fixed size(not flexible) and will be deprecated at some point */
+struct virtchnl2_non_flex_vector_chunks {
+	__le16 num_vchunks;
+	u8 reserved[14];
+	struct virtchnl2_vector_chunk vchunks[1];
+};
+
+VIRTCHNL2_CHECK_STRUCT_LEN(48, virtchnl2_non_flex_vector_chunks);
+
+/* VIRTCHNL2_OP_NON_FLEX_CREATE_ADI
  * PF sends this message to CP to create ADI by filling in required
- * fields of virtchnl2_create_adi structure.
- * CP responds with the updated virtchnl2_create_adi structure containing the
- * necessary fields followed by chunks which in turn will have an array of
+ * fields of virtchnl2_non_flex_create_adi structure.
+ * CP responds with the updated virtchnl2_non_flex_create_adi structure containing
+ * the necessary fields followed by chunks which in turn will have an array of
  * num_chunks entries of virtchnl2_queue_chunk structures.
  */
-struct virtchnl2_create_adi {
+struct virtchnl2_non_flex_create_adi {
 	/* PF sends PASID to CP */
 	__le32 pasid;
 	/*
@@ -1076,29 +1098,31 @@ struct virtchnl2_create_adi {
 	__le16 mbx_id;
 	/* PF sends mailbox vector id to CP */
 	__le16 mbx_vec_id;
+	/* PF populates this ADI index */
+	__le16 adi_index;
 	/* CP populates ADI id */
 	__le16 adi_id;
 	u8 reserved[64];
-	u8 pad[6];
+	u8 pad[4];
 	/* CP populates queue chunks */
-	struct virtchnl2_queue_reg_chunks chunks;
+	struct virtchnl2_non_flex_queue_reg_chunks chunks;
 	/* PF sends vector chunks to CP */
-	struct virtchnl2_vector_chunks vchunks;
+	struct virtchnl2_non_flex_vector_chunks vchunks;
 };
 
-VIRTCHNL2_CHECK_STRUCT_LEN(168, virtchnl2_create_adi);
+VIRTCHNL2_CHECK_STRUCT_LEN(168, virtchnl2_non_flex_create_adi);
 
 /* VIRTCHNL2_OP_DESTROY_ADI
  * PF sends this message to CP to destroy ADI by filling
  * in the adi_id in virtchnl2_destropy_adi structure.
  * CP responds with the status of the requested operation.
  */
-struct virtchnl2_destroy_adi {
+struct virtchnl2_non_flex_destroy_adi {
 	__le16 adi_id;
 	u8 reserved[2];
 };
 
-VIRTCHNL2_CHECK_STRUCT_LEN(4, virtchnl2_destroy_adi);
+VIRTCHNL2_CHECK_STRUCT_LEN(4, virtchnl2_non_flex_destroy_adi);
 
 /* Based on the descriptor type the PF supports, CP fills ptype_id_10 or
  * ptype_id_8 for flex and base descriptor respectively. If ptype_id_10 value
@@ -1562,10 +1586,10 @@ static inline const char *virtchnl2_op_str(__le32 v_opcode)
 		return "VIRTCHNL2_OP_EVENT";
 	case VIRTCHNL2_OP_RESET_VF:
 		return "VIRTCHNL2_OP_RESET_VF";
-	case VIRTCHNL2_OP_CREATE_ADI:
-		return "VIRTCHNL2_OP_CREATE_ADI";
-	case VIRTCHNL2_OP_DESTROY_ADI:
-		return "VIRTCHNL2_OP_DESTROY_ADI";
+	case VIRTCHNL2_OP_NON_FLEX_CREATE_ADI:
+		return "VIRTCHNL2_OP_NON_FLEX_CREATE_ADI";
+	case VIRTCHNL2_OP_NON_FLEX_DESTROY_ADI:
+		return "VIRTCHNL2_OP_NON_FLEX_DESTROY_ADI";
 	case VIRTCHNL2_OP_ADD_QUEUE_GROUPS:
 		return "VIRTCHNL2_OP_ADD_QUEUE_GROUPS";
 	case VIRTCHNL2_OP_DEL_QUEUE_GROUPS:
@@ -1620,11 +1644,11 @@ virtchnl2_vc_validate_vf_msg(__rte_unused struct virtchnl2_version_info *ver, u3
 				      sizeof(struct virtchnl2_queue_reg_chunk);
 		}
 		break;
-	case VIRTCHNL2_OP_CREATE_ADI:
-		valid_len = sizeof(struct virtchnl2_create_adi);
+	case VIRTCHNL2_OP_NON_FLEX_CREATE_ADI:
+		valid_len = sizeof(struct virtchnl2_non_flex_create_adi);
 		if (msglen >= valid_len) {
-			struct virtchnl2_create_adi *cadi =
-				(struct virtchnl2_create_adi *)msg;
+			struct virtchnl2_non_flex_create_adi *cadi =
+				(struct virtchnl2_non_flex_create_adi *)msg;
 
 			if (cadi->chunks.num_chunks == 0) {
 				/* zero chunks is allowed as input */
@@ -1641,8 +1665,8 @@ virtchnl2_vc_validate_vf_msg(__rte_unused struct virtchnl2_version_info *ver, u3
 				      sizeof(struct virtchnl2_vector_chunk);
 		}
 		break;
-	case VIRTCHNL2_OP_DESTROY_ADI:
-		valid_len = sizeof(struct virtchnl2_destroy_adi);
+	case VIRTCHNL2_OP_NON_FLEX_DESTROY_ADI:
+		valid_len = sizeof(struct virtchnl2_non_flex_destroy_adi);
 		break;
 	case VIRTCHNL2_OP_DESTROY_VPORT:
 	case VIRTCHNL2_OP_ENABLE_VPORT:

@@ -239,8 +239,10 @@ int idpf_clean_arq_element(struct idpf_hw *hw,
 	e->desc.ret_val = msg.status;
 	e->desc.datalen = msg.data_len;
 	if (msg.data_len > 0) {
-		if (!msg.ctx.indirect.payload)
-			return -EINVAL;
+		if (!msg.ctx.indirect.payload || !msg.ctx.indirect.payload->va ||
+		    !e->msg_buf) {
+			return -EFAULT;
+		}
 		e->buf_len = msg.data_len;
 		msg_data_len = msg.data_len;
 		idpf_memcpy(e->msg_buf, msg.ctx.indirect.payload->va, msg_data_len,
