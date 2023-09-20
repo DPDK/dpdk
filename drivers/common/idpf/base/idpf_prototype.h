@@ -20,7 +20,7 @@
 #define APF
 
 int idpf_init_hw(struct idpf_hw *hw, struct idpf_ctlq_size ctlq_size);
-int idpf_deinit_hw(struct idpf_hw *hw);
+void idpf_deinit_hw(struct idpf_hw *hw);
 
 int idpf_clean_arq_element(struct idpf_hw *hw,
 			   struct idpf_arq_event_info *e,

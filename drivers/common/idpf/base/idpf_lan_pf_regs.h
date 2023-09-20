@@ -80,10 +80,11 @@
 /* _ITR is ITR index, _INT is interrupt index, _itrn_indx_spacing is
  * spacing b/w itrn registers of the same vector.
  */
-#define PF_GLINT_ITR_ADDR(_ITR, _reg_start, _itrn_indx_spacing) \
-		((_reg_start) + (((_ITR)) * (_itrn_indx_spacing)))
+#define PF_GLINT_ITR_ADDR(_ITR, _reg_start, _itrn_indx_spacing)	\
+	((_reg_start) + ((_ITR) * (_itrn_indx_spacing)))
 /* For PF, itrn_indx_spacing is 4 and itrn_reg_spacing is 0x1000 */
-#define PF_GLINT_ITR(_ITR, _INT) (PF_GLINT_BASE + (((_ITR) + 1) * 4) + ((_INT) * 0x1000))
+#define PF_GLINT_ITR(_ITR, _INT)	\
+	(PF_GLINT_BASE + (((_ITR) + 1) * 4) + ((_INT) * 0x1000))
 #define PF_GLINT_ITR_MAX_INDEX		2
 #define PF_GLINT_ITR_INTERVAL_S		0
 #define PF_GLINT_ITR_INTERVAL_M		IDPF_M(0xFFF, PF_GLINT_ITR_INTERVAL_S)

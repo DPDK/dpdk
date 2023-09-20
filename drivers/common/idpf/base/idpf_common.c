@@ -262,12 +262,12 @@ exit:
  *  idpf_deinit_hw - shutdown routine
  *  @hw: pointer to the hardware structure
  */
-int idpf_deinit_hw(struct idpf_hw *hw)
+void idpf_deinit_hw(struct idpf_hw *hw)
 {
 	hw->asq = NULL;
 	hw->arq = NULL;
 
-	return idpf_ctlq_deinit(hw);
+	idpf_ctlq_deinit(hw);
 }
 
 /**

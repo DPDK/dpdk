@@ -11,9 +11,8 @@
  * @hw: pointer to hw struct
  * @cq: pointer to the specific Control queue
  */
-static int
-idpf_ctlq_alloc_desc_ring(struct idpf_hw *hw,
-			  struct idpf_ctlq_info *cq)
+static int idpf_ctlq_alloc_desc_ring(struct idpf_hw *hw,
+				     struct idpf_ctlq_info *cq)
 {
 	size_t size = cq->ring_size * sizeof(struct idpf_ctlq_desc);
 

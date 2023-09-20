@@ -9,11 +9,10 @@
  * @cq: pointer to the specific control queue
  * @q_create_info: structs containing info for each queue to be initialized
  */
-static void
-idpf_ctlq_setup_regs(struct idpf_ctlq_info *cq,
-		     struct idpf_ctlq_create_info *q_create_info)
+static void idpf_ctlq_setup_regs(struct idpf_ctlq_info *cq,
+				 struct idpf_ctlq_create_info *q_create_info)
 {
-	/* set head and tail registers in our local struct */
+	/* set control queue registers in our local struct */
 	cq->reg.head = q_create_info->reg.head;
 	cq->reg.tail = q_create_info->reg.tail;
 	cq->reg.len = q_create_info->reg.len;
@@ -75,7 +74,7 @@ static void idpf_ctlq_init_rxq_bufs(struct idpf_ctlq_info *cq)
 		desc->flags =
 			CPU_TO_LE16(IDPF_CTLQ_FLAG_BUF | IDPF_CTLQ_FLAG_RD);
 		desc->opcode = 0;
-		desc->datalen = (__le16)CPU_TO_LE16(bi->size);
+		desc->datalen = CPU_TO_LE16(bi->size);
 		desc->ret_val = 0;
 		desc->cookie_high = 0;
 		desc->cookie_low = 0;
@@ -137,6 +136,7 @@ int idpf_ctlq_add(struct idpf_hw *hw,
 		  struct idpf_ctlq_create_info *qinfo,
 		  struct idpf_ctlq_info **cq_out)
 {
+	struct idpf_ctlq_info *cq;
 	bool is_rxq = false;
 	int status = 0;
 
@@ -145,26 +145,26 @@ int idpf_ctlq_add(struct idpf_hw *hw,
 	    qinfo->buf_size > IDPF_CTLQ_MAX_BUF_LEN)
 		return -EINVAL;
 
-	*cq_out = (struct idpf_ctlq_info *)
-		idpf_calloc(hw, 1, sizeof(struct idpf_ctlq_info));
-	if (!(*cq_out))
+	cq = (struct idpf_ctlq_info *)
+	     idpf_calloc(hw, 1, sizeof(struct idpf_ctlq_info));
+	if (!cq)
 		return -ENOMEM;
 
-	(*cq_out)->cq_type = qinfo->type;
-	(*cq_out)->q_id = qinfo->id;
-	(*cq_out)->buf_size = qinfo->buf_size;
-	(*cq_out)->ring_size = qinfo->len;
+	cq->cq_type = qinfo->type;
+	cq->q_id = qinfo->id;
+	cq->buf_size = qinfo->buf_size;
+	cq->ring_size = qinfo->len;
 
-	(*cq_out)->next_to_use = 0;
-	(*cq_out)->next_to_clean = 0;
-	(*cq_out)->next_to_post = (*cq_out)->ring_size - 1;
+	cq->next_to_use = 0;
+	cq->next_to_clean = 0;
+	cq->next_to_post = cq->ring_size - 1;
 
 	switch (qinfo->type) {
 	case IDPF_CTLQ_TYPE_MAILBOX_RX:
 		is_rxq = true;
 		/* fallthrough */
 	case IDPF_CTLQ_TYPE_MAILBOX_TX:
-		status = idpf_ctlq_alloc_ring_res(hw, *cq_out);
+		status = idpf_ctlq_alloc_ring_res(hw, cq);
 		break;
 	default:
 		status = -EINVAL;
@@ -175,33 +175,35 @@ int idpf_ctlq_add(struct idpf_hw *hw,
 		goto init_free_q;
 
 	if (is_rxq) {
-		idpf_ctlq_init_rxq_bufs(*cq_out);
+		idpf_ctlq_init_rxq_bufs(cq);
 	} else {
 		/* Allocate the array of msg pointers for TX queues */
-		(*cq_out)->bi.tx_msg = (struct idpf_ctlq_msg **)
+		cq->bi.tx_msg = (struct idpf_ctlq_msg **)
 			idpf_calloc(hw, qinfo->len,
 				    sizeof(struct idpf_ctlq_msg *));
-		if (!(*cq_out)->bi.tx_msg) {
+		if (!cq->bi.tx_msg) {
 			status = -ENOMEM;
 			goto init_dealloc_q_mem;
 		}
 	}
 
-	idpf_ctlq_setup_regs(*cq_out, qinfo);
+	idpf_ctlq_setup_regs(cq, qinfo);
 
-	idpf_ctlq_init_regs(hw, *cq_out, is_rxq);
+	idpf_ctlq_init_regs(hw, cq, is_rxq);
 
-	idpf_init_lock(&(*cq_out)->cq_lock);
+	idpf_init_lock(&(cq->cq_lock));
 
-	LIST_INSERT_HEAD(&hw->cq_list_head, (*cq_out), cq_list);
+	LIST_INSERT_HEAD(&hw->cq_list_head, cq, cq_list);
 
+	*cq_out = cq;
 	return status;
 
 init_dealloc_q_mem:
 	/* free ring buffers and the ring itself */
-	idpf_ctlq_dealloc_ring_res(hw, *cq_out);
+	idpf_ctlq_dealloc_ring_res(hw, cq);
 init_free_q:
-	idpf_free(hw, *cq_out);
+	idpf_free(hw, cq);
+	cq = NULL;
 
 	return status;
 }
@@ -261,16 +263,13 @@ init_destroy_qs:
  * idpf_ctlq_deinit - destroy all control queues
  * @hw: pointer to hw struct
  */
-int idpf_ctlq_deinit(struct idpf_hw *hw)
+void idpf_ctlq_deinit(struct idpf_hw *hw)
 {
 	struct idpf_ctlq_info *cq = NULL, *tmp = NULL;
-	int ret_code = 0;
 
 	LIST_FOR_EACH_ENTRY_SAFE(cq, tmp, &hw->cq_list_head,
 				 idpf_ctlq_info, cq_list)
 		idpf_ctlq_remove(hw, cq);
-
-	return ret_code;
 }
 
 /**
@@ -426,11 +425,8 @@ static int __idpf_ctlq_clean_sq(struct idpf_ctlq_info *cq, u16 *clean_count,
 		if (!force && !(LE16_TO_CPU(desc->flags) & IDPF_CTLQ_FLAG_DD))
 			break;
 
-		desc_err = LE16_TO_CPU(desc->ret_val);
-		if (desc_err) {
-			/* strip off FW internal code */
-			desc_err &= 0xff;
-		}
+		/* strip off FW internal code */
+		desc_err = LE16_TO_CPU(desc->ret_val) & 0xff;
 
 		msg_status[i] = cq->bi.tx_msg[ntc];
 		if (!msg_status[i])
