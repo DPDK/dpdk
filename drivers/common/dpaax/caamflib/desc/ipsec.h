@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: (BSD-3-Clause OR GPL-2.0)
  *
  * Copyright 2008-2016 Freescale Semiconductor Inc.
- * Copyright 2016,2019-2020 NXP
+ * Copyright 2016,2019-2022 NXP
  *
  */
 
@@ -1380,7 +1380,7 @@ cnstr_shdsc_ipsec_new_decap(uint32_t *descbuf, bool ps,
  * layers to determine whether keys can be inlined or not. To be used as first
  * parameter of rta_inline_query().
  */
-#define IPSEC_AUTH_VAR_BASE_DESC_LEN	(27 * CAAM_CMD_SZ)
+#define IPSEC_AUTH_VAR_BASE_DESC_LEN	(31 * CAAM_CMD_SZ)
 
 /**
  * IPSEC_AUTH_VAR_AES_DEC_BASE_DESC_LEN - IPsec AES decap shared descriptor
