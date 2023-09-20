@@ -6,6 +6,8 @@
 #ifndef _NFP_CTRL_H_
 #define _NFP_CTRL_H_
 
+#include <stdint.h>
+
 /*
  * Configuration BAR size.
  *
