@@ -15,8 +15,6 @@
  * The max count is 65536 defined by OF_METER_COUNT.
  */
 #define NFP_MAX_MTR_CNT                65536
-#define NFP_MAX_POLICY_CNT             NFP_MAX_MTR_CNT
-#define NFP_MAX_PROFILE_CNT            NFP_MAX_MTR_CNT
 
 /**
  * Struct nfp_mtr_profile - meter profile, stored in driver
