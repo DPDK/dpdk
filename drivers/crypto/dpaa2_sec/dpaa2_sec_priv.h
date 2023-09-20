@@ -933,7 +933,7 @@ static const struct rte_security_capability dpaa2_sec_security_cap[] = {
 				.copy_df = 1,
 				.copy_dscp = 1,
 			},
-			.replay_win_sz_max = 128
+			.replay_win_sz_max = 1024
 		},
 		.crypto_capabilities = dpaa2_sec_capabilities
 	},
@@ -948,7 +948,7 @@ static const struct rte_security_capability dpaa2_sec_security_cap[] = {
 				.copy_df = 1,
 				.copy_dscp = 1,
 			},
-			.replay_win_sz_max = 128
+			.replay_win_sz_max = 1024
 		},
 		.crypto_capabilities = dpaa2_sec_capabilities
 	},
