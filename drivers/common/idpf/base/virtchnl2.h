@@ -98,6 +98,9 @@
 #define		VIRTCHNL2_OP_ADD_QUEUE_GROUPS		538
 #define		VIRTCHNL2_OP_DEL_QUEUE_GROUPS		539
 #define		VIRTCHNL2_OP_GET_PORT_STATS		540
+	/* TimeSync opcodes */
+#define		VIRTCHNL2_OP_GET_PTP_CAPS		541
+#define		VIRTCHNL2_OP_GET_PTP_TX_TSTAMP_LATCHES	542
 
 #define VIRTCHNL2_RDMA_INVALID_QUEUE_IDX	0xFFFF
 
@@ -1395,6 +1398,112 @@ struct virtchnl2_promisc_info {
 
 VIRTCHNL2_CHECK_STRUCT_LEN(8, virtchnl2_promisc_info);
 
+/* VIRTCHNL2_PTP_CAPS
+ * PTP capabilities
+ */
+#define VIRTCHNL2_PTP_CAP_LEGACY_CROSS_TIME	BIT(0)
+#define VIRTCHNL2_PTP_CAP_PTM			BIT(1)
+#define VIRTCHNL2_PTP_CAP_DEVICE_CLOCK_CONTROL	BIT(2)
+#define VIRTCHNL2_PTP_CAP_TX_TSTAMPS_DIRECT	BIT(3)
+#define	VIRTCHNL2_PTP_CAP_TX_TSTAMPS_VIRTCHNL	BIT(4)
+
+/* Legacy cross time registers offsets */
+struct virtchnl2_ptp_legacy_cross_time_reg {
+	__le32 shadow_time_0;
+	__le32 shadow_time_l;
+	__le32 shadow_time_h;
+	__le32 cmd_sync;
+};
+
+VIRTCHNL2_CHECK_STRUCT_LEN(16, virtchnl2_ptp_legacy_cross_time_reg);
+
+/* PTM cross time registers offsets */
+struct virtchnl2_ptp_ptm_cross_time_reg {
+	__le32 art_l;
+	__le32 art_h;
+	__le32 cmd_sync;
+	u8 pad[4];
+};
+
+VIRTCHNL2_CHECK_STRUCT_LEN(16, virtchnl2_ptp_ptm_cross_time_reg);
+
+/* Registers needed to control the main clock */
+struct virtchnl2_ptp_device_clock_control {
+	__le32 cmd;
+	__le32 incval_l;
+	__le32 incval_h;
+	__le32 shadj_l;
+	__le32 shadj_h;
+	u8 pad[4];
+};
+
+VIRTCHNL2_CHECK_STRUCT_LEN(24, virtchnl2_ptp_device_clock_control);
+
+/* Structure that defines tx tstamp entry - index and register offset */
+struct virtchnl2_ptp_tx_tstamp_entry {
+	__le32 tx_latch_register_base;
+	__le32 tx_latch_register_offset;
+	u8 index;
+	u8 pad[7];
+};
+
+VIRTCHNL2_CHECK_STRUCT_LEN(16, virtchnl2_ptp_tx_tstamp_entry);
+
+/* Structure that defines tx tstamp entries - total number of latches
+ * and the array of entries.
+ */
+struct virtchnl2_ptp_tx_tstamp {
+	__le16 num_latches;
+	/* latch size expressed in bits */
+	__le16 latch_size;
+	u8 pad[4];
+	struct virtchnl2_ptp_tx_tstamp_entry ptp_tx_tstamp_entries[1];
+};
+
+VIRTCHNL2_CHECK_STRUCT_LEN(24, virtchnl2_ptp_tx_tstamp);
+
+/* VIRTCHNL2_OP_GET_PTP_CAPS
+ * PV/VF sends this message to negotiate PTP capabilities. CP updates bitmap
+ * with supported features and fulfills appropriate structures.
+ */
+struct virtchnl2_get_ptp_caps {
+	/* PTP capability bitmap */
+	/* see VIRTCHNL2_PTP_CAPS definitions */
+	__le32 ptp_caps;
+	u8 pad[4];
+
+	struct virtchnl2_ptp_legacy_cross_time_reg legacy_cross_time_reg;
+	struct virtchnl2_ptp_ptm_cross_time_reg ptm_cross_time_reg;
+	struct virtchnl2_ptp_device_clock_control device_clock_control;
+	struct virtchnl2_ptp_tx_tstamp tx_tstamp;
+};
+
+VIRTCHNL2_CHECK_STRUCT_LEN(88, virtchnl2_get_ptp_caps);
+
+/* Structure that describes tx tstamp values, index and validity */
+struct virtchnl2_ptp_tx_tstamp_latch {
+	__le32 tstamp_h;
+	__le32 tstamp_l;
+	u8 index;
+	u8 valid;
+	u8 pad[6];
+};
+
+VIRTCHNL2_CHECK_STRUCT_LEN(16, virtchnl2_ptp_tx_tstamp_latch);
+
+/* VIRTCHNL2_OP_GET_PTP_TX_TSTAMP_LATCHES
+ * PF/VF sends this message to receive a specified number of timestamps
+ * entries.
+ */
+struct virtchnl2_ptp_tx_tstamp_latches {
+	__le16 num_latches;
+	/* latch size expressed in bits */
+	__le16 latch_size;
+	u8 pad[4];
+	struct virtchnl2_ptp_tx_tstamp_latch tstamp_latches[1];
+};
+
+VIRTCHNL2_CHECK_STRUCT_LEN(24, virtchnl2_ptp_tx_tstamp_latches);
 
 static inline const char *virtchnl2_op_str(__le32 v_opcode)
 {
@@ -1463,6 +1572,10 @@ static inline const char *virtchnl2_op_str(__le32 v_opcode)
 		return "VIRTCHNL2_OP_DEL_QUEUE_GROUPS";
 	case VIRTCHNL2_OP_GET_PORT_STATS:
 		return "VIRTCHNL2_OP_GET_PORT_STATS";
+	case VIRTCHNL2_OP_GET_PTP_CAPS:
+		return "VIRTCHNL2_OP_GET_PTP_CAPS";
+	case VIRTCHNL2_OP_GET_PTP_TX_TSTAMP_LATCHES:
+		return "VIRTCHNL2_OP_GET_PTP_TX_TSTAMP_LATCHES";
 	default:
 		return "Unsupported (update virtchnl2.h)";
 	}
@@ -1731,6 +1844,38 @@ virtchnl2_vc_validate_vf_msg(__rte_unused struct virtchnl2_version_info *ver, u3
 		valid_len = sizeof(struct virtchnl2_port_stats);
 		break;
 	case VIRTCHNL2_OP_RESET_VF:
+		break;
+	case VIRTCHNL2_OP_GET_PTP_CAPS:
+		valid_len = sizeof(struct virtchnl2_get_ptp_caps);
+
+		if (msglen >= valid_len) {
+			struct virtchnl2_get_ptp_caps *ptp_caps =
+			(struct virtchnl2_get_ptp_caps *)msg;
+
+			if (ptp_caps->tx_tstamp.num_latches == 0) {
+				err_msg_format = true;
+				break;
+			}
+
+			valid_len += ((ptp_caps->tx_tstamp.num_latches - 1) *
+				      sizeof(struct virtchnl2_ptp_tx_tstamp_entry));
+		}
+		break;
+	case VIRTCHNL2_OP_GET_PTP_TX_TSTAMP_LATCHES:
+		valid_len = sizeof(struct virtchnl2_ptp_tx_tstamp_latches);
+
+		if (msglen >= valid_len) {
+			struct virtchnl2_ptp_tx_tstamp_latches *tx_tstamp_latches =
+			(struct virtchnl2_ptp_tx_tstamp_latches *)msg;
+
+			if (tx_tstamp_latches->num_latches == 0) {
+				err_msg_format = true;
+				break;
+			}
+
+			valid_len += ((tx_tstamp_latches->num_latches - 1) *
+				      sizeof(struct virtchnl2_ptp_tx_tstamp_latch));
+		}
 		break;
 	/* These are always errors coming from the VF. */
 	case VIRTCHNL2_OP_EVENT:
