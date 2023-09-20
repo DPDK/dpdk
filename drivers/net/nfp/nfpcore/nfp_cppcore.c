@@ -947,7 +947,7 @@ nfp_cpp_alloc(struct rte_pci_device *pci_dev,
 	 * NOTE: cpp_lock is NOT locked for op->init,
 	 * since it may call NFP CPP API operations
 	 */
-	err = cpp->op->init(cpp, pci_dev);
+	err = cpp->op->init(cpp);
 	if (err < 0) {
 		PMD_DRV_LOG(ERR, "NFP interface initialization failed");
 		free(cpp);

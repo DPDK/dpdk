@@ -18,6 +18,8 @@ struct nfp_cpp_area;
 
 #define NFP_CPP_NUM_TARGETS             16
 
+#define PCI_64BIT_BAR_COUNT             3
+
 /*
  * NFP CPP operations structure
  */
@@ -26,8 +28,7 @@ struct nfp_cpp_operations {
 	size_t area_priv_size;
 
 	/* Instance an NFP CPP */
-	int (*init)(struct nfp_cpp *cpp,
-			struct rte_pci_device *dev);
+	int (*init)(struct nfp_cpp *cpp);
 
 	/*
 	 * Free the bus.

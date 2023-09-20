@@ -14,6 +14,7 @@
 const struct nfp_cpp_operations *nfp_cpp_transport_operations(void);
 
 struct nfp_cpp *nfp_cpp_from_nfp6000_pcie(struct rte_pci_device *pci_dev,
+		const struct nfp_dev_info *dev_info,
 		bool driver_lock_needed);
 
 #endif /* __NFP6000_PCIE_H__ */

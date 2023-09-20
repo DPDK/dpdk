@@ -19,6 +19,8 @@
 #include <unistd.h>
 #include <fcntl.h>
 
+#include <rte_io.h>
+
 #include "nfp_cpp.h"
 #include "nfp_logs.h"
 #include "nfp_target.h"
@@ -59,20 +61,12 @@
 #define NFP_PCIE_P2C_GENERAL_TOKEN_OFFSET(bar, x) ((x) << ((bar)->bitsize - 4))
 #define NFP_PCIE_P2C_GENERAL_SIZE(bar)             (1 << ((bar)->bitsize - 4))
 
-#define NFP_PCIE_CFG_BAR_PCIETOCPPEXPBAR(id, bar, slot) \
-	(NFP_PCIE_BAR(id) + ((bar) * 8 + (slot)) * 4)
-
-#define NFP_PCIE_CPP_BAR_PCIETOCPPEXPBAR(bar, slot) \
-	(((bar) * 8 + (slot)) * 4)
+#define NFP_PCIE_P2C_EXPBAR_OFFSET(bar_index)      ((bar_index) * 4)
 
 struct nfp_pcie_user;
 struct nfp6000_area_priv;
 
 /* Describes BAR configuration and usage */
-#define NFP_BAR_MIN 1
-#define NFP_BAR_MID 5
-#define NFP_BAR_MAX 7
-
 struct nfp_bar {
 	struct nfp_pcie_user *nfp;    /**< Backlink to owner */
 	uint32_t barcfg;     /**< BAR config CSR */
@@ -80,22 +74,26 @@ struct nfp_bar {
 	uint64_t mask;       /**< Mask of the BAR aperture (read only) */
 	uint32_t bitsize;    /**< Bit size of the BAR aperture (read only) */
 	uint32_t index;      /**< Index of the BAR */
-	int lock;            /**< If the BAR has been locked */
+	bool lock;           /**< If the BAR has been locked */
 
-	char *csr;
 	char *iomem;         /**< mapped IO memory */
+	struct rte_mem_resource *resource;    /**< IOMEM resource window */
 };
 
-#define BUSDEV_SZ    13
-struct nfp_pcie_user {
-	struct nfp_bar bar[NFP_BAR_MAX];
+#define NFP_PCI_BAR_MAX    (PCI_64BIT_BAR_COUNT * 8)
 
-	int device;
+struct nfp_pcie_user {
+	struct rte_pci_device *pci_dev;
+	const struct nfp_dev_info *dev_info;
+
 	int lock;
-	char busdev[BUSDEV_SZ];
-	int barsz;
-	int dev_id;
-	char *cfg;
+
+	/* PCI BAR management */
+	uint32_t bars;
+	struct nfp_bar bar[NFP_PCI_BAR_MAX];
+
+	/* Reserved BAR access */
+	char *csr;
 };
 
 /* Generic CPP bus access interface. */
@@ -206,19 +204,19 @@ nfp_bar_write(struct nfp_pcie_user *nfp,
 		struct nfp_bar *bar,
 		uint32_t newcfg)
 {
-	int base;
-	int slot;
+	uint32_t xbar;
 
-	base = bar->index >> 3;
-	slot = bar->index & 7;
+	xbar = NFP_PCIE_P2C_EXPBAR_OFFSET(bar->index);
 
-	if (nfp->cfg == NULL)
-		return (-ENOMEM);
-
-	bar->csr = nfp->cfg +
-			NFP_PCIE_CFG_BAR_PCIETOCPPEXPBAR(nfp->dev_id, base, slot);
-
-	*(uint32_t *)(bar->csr) = newcfg;
+	if (nfp->csr != NULL) {
+		rte_write32(newcfg, nfp->csr + xbar);
+		/* Readback to ensure BAR is flushed */
+		rte_read32(nfp->csr + xbar);
+	} else {
+		xbar += nfp->dev_info->pcie_cfg_expbar_offset;
+		rte_pci_write_config(nfp->pci_dev, &newcfg, sizeof(uint32_t),
+				xbar);
+	}
 
 	bar->barcfg = newcfg;
 
@@ -249,105 +247,323 @@ nfp_reconfigure_bar(struct nfp_pcie_user *nfp,
 	return nfp_bar_write(nfp, bar, newcfg);
 }
 
-/*
- * Map all PCI bars. We assume that the BAR with the PCIe config block is
- * already mapped.
+static uint32_t
+nfp_bitsize_calc(uint64_t mask)
+{
+	uint64_t tmp = mask;
+	uint32_t bit_size = 0;
+
+	if (tmp == 0)
+		return 0;
+
+	for (; tmp != 0; tmp >>= 1)
+		bit_size++;
+
+	return bit_size;
+}
+
+static int
+nfp_cmp_bars(const void *ptr_a,
+		const void *ptr_b)
+{
+	const struct nfp_bar *a = ptr_a;
+	const struct nfp_bar *b = ptr_b;
+
+	if (a->bitsize == b->bitsize)
+		return a->index - b->index;
+	else
+		return a->bitsize - b->bitsize;
+}
+
+static bool
+nfp_bars_for_secondary(uint32_t index)
+{
+	uint8_t tmp = index & 0x07;
+
+	if (tmp == 0x06 || tmp == 0x07)
+		return true;
+	else
+		return false;
+}
+
+/**
+ * Map all PCI bars and fetch the actual BAR configurations from the board.
+ * We assume that the BAR with the PCIe config block is already mapped.
  *
  * BAR0.0: Reserved for General Mapping (for MSI-X access to PCIe SRAM)
+ * BAR0.1: --
+ * BAR0.2: --
+ * BAR0.3: --
+ * BAR0.4: --
+ * BAR0.5: --
+ * BAR0.6: --
+ * BAR0.7: --
  *
- *         Halving PCItoCPPBars for primary and secondary processes.
- *         For CoreNIC firmware:
- *         NFP PMD just requires two fixed slots, one for configuration BAR,
- *         and another for accessing the hw queues. Another slot is needed
- *         for setting the link up or down. Secondary processes do not need
- *         to map the first two slots again, but it requires one slot for
- *         accessing the link, even if it is not likely the secondary process
- *         starting the port.
- *         For Flower firmware:
- *         NFP PMD need another fixed slots, used as the configureation BAR
- *         for ctrl vNIC.
+ * BAR1.0-BAR1.7: --
+ * BAR2.0-BAR2.7: --
  */
 static int
 nfp_enable_bars(struct nfp_pcie_user *nfp)
 {
-	int x;
-	int end;
-	int start;
+	int pf;
+	uint32_t i;
+	uint8_t min_bars;
 	struct nfp_bar *bar;
+	enum rte_proc_type_t type;
+	struct rte_mem_resource *res;
+	const uint32_t barcfg_msix_general = NFP_PCIE_BAR_PCIE2CPP_MAPTYPE
+			(NFP_PCIE_BAR_PCIE2CPP_MAPTYPE_GENERAL) |
+			NFP_PCIE_BAR_PCIE2CPP_LENGTHSELECT_32BIT;
 
-	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
-		start = NFP_BAR_MID;
-		end = NFP_BAR_MIN;
-	} else {
-		start = NFP_BAR_MAX;
-		end = NFP_BAR_MID;
-	}
+	type = rte_eal_process_type();
+	if (type == RTE_PROC_PRIMARY)
+		min_bars = 12;
+	else
+		min_bars = 4;
 
-	for (x = start; x > end; x--) {
-		bar = &nfp->bar[x - 1];
-		bar->barcfg = 0;
-		bar->nfp = nfp;
-		bar->index = x;
-		bar->mask = (1 << (nfp->barsz - 3)) - 1;
-		bar->bitsize = nfp->barsz - 3;
-		bar->base = 0;
-		bar->iomem = NULL;
-		bar->lock = 0;
-		bar->csr = nfp->cfg + NFP_PCIE_CFG_BAR_PCIETOCPPEXPBAR(nfp->dev_id,
-				bar->index >> 3, bar->index & 7);
-		bar->iomem = nfp->cfg + (bar->index << bar->bitsize);
-	}
-	return 0;
-}
+	for (i = 0; i < RTE_DIM(nfp->bar); i++) {
+		if (i != 0) {
+			if (type == RTE_PROC_PRIMARY) {
+				if (nfp_bars_for_secondary(i))
+					continue;
+			} else {
+				if (!nfp_bars_for_secondary(i))
+					continue;
+			}
+		}
 
-static struct nfp_bar *
-nfp_alloc_bar(struct nfp_pcie_user *nfp)
-{
-	int x;
-	int end;
-	int start;
-	struct nfp_bar *bar;
+		/* 24 NFP bars mapping into BAR0, BAR2 and BAR4 */
+		res = &nfp->pci_dev->mem_resource[(i >> 3) * 2];
 
-	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
-		start = NFP_BAR_MID;
-		end = NFP_BAR_MIN;
-	} else {
-		start = NFP_BAR_MAX;
-		end = NFP_BAR_MID;
-	}
+		/* Skip over BARs that are not mapped */
+		if (res->addr != NULL) {
+			bar = &nfp->bar[i];
+			bar->resource = res;
+			bar->barcfg = 0;
 
-	for (x = start; x > end; x--) {
-		bar = &nfp->bar[x - 1];
-		if (bar->lock == 0) {
-			bar->lock = 1;
-			return bar;
+			bar->nfp = nfp;
+			bar->index = i;
+			/* The resource shared by 8 bars */
+			bar->mask = (res->len >> 3) - 1;
+			bar->bitsize = nfp_bitsize_calc(bar->mask);
+			bar->base = 0;
+			bar->lock = false;
+			bar->iomem = (char *)res->addr +
+					((bar->index & 7) << bar->bitsize);
+
+			nfp->bars++;
 		}
 	}
 
-	return NULL;
+	if (nfp->bars < min_bars) {
+		PMD_DRV_LOG(ERR, "Not enough usable BARs found.");
+		return -EINVAL;
+	}
+
+	switch (nfp->pci_dev->id.device_id) {
+	case PCI_DEVICE_ID_NFP3800_PF_NIC:
+		pf = nfp->pci_dev->addr.function & 0x07;
+		nfp->csr = nfp->bar[0].iomem + NFP_PCIE_BAR(pf);
+		break;
+	case PCI_DEVICE_ID_NFP4000_PF_NIC:
+	case PCI_DEVICE_ID_NFP6000_PF_NIC:
+		nfp->csr = nfp->bar[0].iomem + NFP_PCIE_BAR(0);
+		break;
+	default:
+		PMD_DRV_LOG(ERR, "Unsupported device ID: %04hx!",
+				nfp->pci_dev->id.device_id);
+		return -EINVAL;
+	}
+
+	/* Configure, and lock, BAR0.0 for General Target use (MSI-X SRAM) */
+	bar = &nfp->bar[0];
+	bar->lock = true;
+
+	nfp_bar_write(nfp, bar, barcfg_msix_general);
+
+	/* Sort bars by bit size - use the smallest possible first. */
+	qsort(&nfp->bar[0], nfp->bars, sizeof(nfp->bar[0]), nfp_cmp_bars);
+
+	return 0;
+}
+
+/* Check if BAR can be used with the given parameters. */
+static bool
+matching_bar_exist(struct nfp_bar *bar,
+		int target,
+		int action,
+		int token,
+		uint64_t offset,
+		size_t size,
+		int width)
+{
+	int bar_width;
+	int bar_token;
+	int bar_target;
+	int bar_action;
+	uint32_t map_type;
+
+	bar_width = NFP_PCIE_BAR_PCIE2CPP_LENGTHSELECT_OF(bar->barcfg);
+	switch (bar_width) {
+	case NFP_PCIE_BAR_PCIE2CPP_LENGTHSELECT_32BIT:
+		bar_width = 4;
+		break;
+	case NFP_PCIE_BAR_PCIE2CPP_LENGTHSELECT_64BIT:
+		bar_width = 8;
+		break;
+	case NFP_PCIE_BAR_PCIE2CPP_LENGTHSELECT_0BYTE:
+		bar_width = 0;
+		break;
+	default:
+		bar_width = -1;
+		break;
+	}
+
+	/* Make sure to match up the width */
+	if (bar_width != width)
+		return false;
+
+	bar_token = NFP_PCIE_BAR_PCIE2CPP_TOKEN_BASEADDRESS_OF(bar->barcfg);
+	bar_action = NFP_PCIE_BAR_PCIE2CPP_ACTION_BASEADDRESS_OF(bar->barcfg);
+	map_type = NFP_PCIE_BAR_PCIE2CPP_MAPTYPE_OF(bar->barcfg);
+	switch (map_type) {
+	case NFP_PCIE_BAR_PCIE2CPP_MAPTYPE_TARGET:
+		bar_token = -1;
+		/* FALLTHROUGH */
+	case NFP_PCIE_BAR_PCIE2CPP_MAPTYPE_BULK:
+		bar_action = NFP_CPP_ACTION_RW;
+		if (action == 0)
+			action = NFP_CPP_ACTION_RW;
+		/* FALLTHROUGH */
+	case NFP_PCIE_BAR_PCIE2CPP_MAPTYPE_FIXED:
+		break;
+	default:
+		/* We don't match explicit bars through the area interface */
+		return false;
+	}
+
+	bar_target = NFP_PCIE_BAR_PCIE2CPP_TARGET_BASEADDRESS_OF(bar->barcfg);
+	if ((bar_target < 0 || bar_target == target) &&
+			(bar_token < 0 || bar_token == token) &&
+			bar_action == action &&
+			bar->base <= offset &&
+			(bar->base + (1 << bar->bitsize)) >= (offset + size))
+		return true;
+
+	/* No match */
+	return false;
+}
+
+static int
+find_matching_bar(struct nfp_pcie_user *nfp,
+		int target,
+		int action,
+		int token,
+		uint64_t offset,
+		size_t size,
+		int width)
+{
+	uint32_t n;
+
+	for (n = 0; n < nfp->bars; n++) {
+		struct nfp_bar *bar = &nfp->bar[n];
+
+		if (bar->lock)
+			continue;
+
+		if (matching_bar_exist(bar, target, action, token,
+				offset, size, width))
+			return n;
+	}
+
+	return -1;
+}
+
+/* Return EAGAIN if no resource is available */
+static int
+find_unused_bar_noblock(struct nfp_pcie_user *nfp,
+		int target,
+		int action,
+		int token,
+		uint64_t offset,
+		size_t size,
+		int width)
+{
+	int ret;
+	uint32_t n;
+	const struct nfp_bar *bar;
+
+	for (n = 0; n < nfp->bars; n++) {
+		bar = &nfp->bar[n];
+
+		if (bar->bitsize == 0)
+			continue;
+
+		/* Just check to see if we can make it fit... */
+		ret = nfp_compute_bar(bar, NULL, NULL, target, action,
+				token, offset, size, width);
+		if (ret != 0)
+			continue;
+
+		if (!bar->lock)
+			return n;
+	}
+
+	return -EAGAIN;
+}
+
+static int
+nfp_alloc_bar(struct nfp_pcie_user *nfp,
+		struct nfp6000_area_priv *priv)
+{
+	int ret;
+	int bar_num;
+	size_t size = priv->size;
+	int token = priv->token;
+	int target = priv->target;
+	int action = priv->action;
+	int width = priv->width.bar;
+	uint64_t offset = priv->offset;
+
+	/* Bar size should small than 16MB */
+	if (size > (1 << 24))
+		return -EINVAL;
+
+	bar_num = find_matching_bar(nfp, target, action, token,
+			offset, size, width);
+	if (bar_num >= 0) {
+		/* Found a perfect match. */
+		nfp->bar[bar_num].lock = true;
+		return bar_num;
+	}
+
+	bar_num = find_unused_bar_noblock(nfp, target, action, token,
+			offset, size, width);
+	if (bar_num < 0)
+		return bar_num;
+
+	nfp->bar[bar_num].lock = true;
+	ret = nfp_reconfigure_bar(nfp, &nfp->bar[bar_num],
+			target, action, token, offset, size, width);
+	if (ret < 0) {
+		nfp->bar[bar_num].lock = false;
+		return ret;
+	}
+
+	return bar_num;
 }
 
 static void
 nfp_disable_bars(struct nfp_pcie_user *nfp)
 {
-	int x;
-	int end;
-	int start;
+	uint32_t i;
 	struct nfp_bar *bar;
 
-	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
-		start = NFP_BAR_MID;
-		end = NFP_BAR_MIN;
-	} else {
-		start = NFP_BAR_MAX;
-		end = NFP_BAR_MID;
-	}
-
-	for (x = start; x > end; x--) {
-		bar = &nfp->bar[x - 1];
-		if (bar->iomem) {
+	for (i = 0; i < nfp->bars; i++) {
+		bar = &nfp->bar[i];
+		if (bar->iomem != NULL) {
 			bar->iomem = NULL;
-			bar->lock = 0;
+			bar->lock = false;
 		}
 	}
 }
@@ -364,7 +580,6 @@ nfp6000_area_init(struct nfp_cpp_area *area,
 	uint32_t target = NFP_CPP_ID_TARGET_of(dest);
 	uint32_t action = NFP_CPP_ID_ACTION_of(dest);
 	struct nfp6000_area_priv *priv = nfp_cpp_area_priv(area);
-	struct nfp_pcie_user *nfp = nfp_cpp_priv(nfp_cpp_area_cpp(area));
 
 	pp = nfp_target_pushpull(NFP_CPP_ID(target, action, token), address);
 	if (pp < 0)
@@ -383,9 +598,7 @@ nfp6000_area_init(struct nfp_cpp_area *area,
 	else
 		priv->width.bar = priv->width.write;
 
-	priv->bar = nfp_alloc_bar(nfp);
-	if (priv->bar == NULL)
-		return -ENOMEM;
+	priv->bar = NULL;
 
 	priv->target = target;
 	priv->action = action;
@@ -393,17 +606,29 @@ nfp6000_area_init(struct nfp_cpp_area *area,
 	priv->offset = address;
 	priv->size = size;
 
-	ret = nfp_reconfigure_bar(nfp, priv->bar, priv->target, priv->action,
-			priv->token, priv->offset, priv->size,
-			priv->width.bar);
-
 	return ret;
 }
 
 static int
 nfp6000_area_acquire(struct nfp_cpp_area *area)
 {
+	int bar_num;
 	struct nfp6000_area_priv *priv = nfp_cpp_area_priv(area);
+	struct nfp_pcie_user *nfp = nfp_cpp_priv(nfp_cpp_area_cpp(area));
+
+	/* Already allocated. */
+	if (priv->bar != NULL)
+		return 0;
+
+	bar_num = nfp_alloc_bar(nfp, priv);
+	if (bar_num < 0) {
+		PMD_DRV_LOG(ERR, "Failed to allocate bar %d:%d:%d:%#lx: %d",
+				priv->target, priv->action, priv->token,
+				priv->offset, bar_num);
+		return bar_num;
+	}
+
+	priv->bar = &nfp->bar[bar_num];
 
 	/* Calculate offset into BAR. */
 	if (nfp_bar_maptype(priv->bar) ==
@@ -432,7 +657,7 @@ nfp6000_area_release(struct nfp_cpp_area *area)
 {
 	struct nfp6000_area_priv *priv = nfp_cpp_area_priv(area);
 
-	priv->bar->lock = 0;
+	priv->bar->lock = false;
 	priv->bar = NULL;
 	priv->iomem = NULL;
 }
@@ -603,7 +828,8 @@ nfp_acquire_process_lock(struct nfp_pcie_user *desc)
 
 	memset(&lock, 0, sizeof(lock));
 
-	snprintf(lockname, sizeof(lockname), "/var/lock/nfp_%s", desc->busdev);
+	snprintf(lockname, sizeof(lockname), "/var/lock/nfp_%s",
+			desc->pci_dev->device.name);
 	desc->lock = open(lockname, O_RDWR | O_CREAT, 0666);
 	if (desc->lock < 0)
 		return desc->lock;
@@ -693,31 +919,10 @@ nfp6000_get_serial(struct rte_pci_device *dev,
 }
 
 static int
-nfp6000_set_barsz(struct rte_pci_device *dev,
-		struct nfp_pcie_user *desc)
-{
-	int i = 0;
-	uint64_t tmp;
-
-	tmp = dev->mem_resource[0].len;
-
-	while (tmp >>= 1)
-		i++;
-
-	desc->barsz = i;
-
-	return 0;
-}
-
-static int
-nfp6000_init(struct nfp_cpp *cpp,
-		struct rte_pci_device *dev)
+nfp6000_init(struct nfp_cpp *cpp)
 {
 	int ret = 0;
 	struct nfp_pcie_user *desc = nfp_cpp_priv(cpp);
-
-	memset(desc->busdev, 0, BUSDEV_SZ);
-	strlcpy(desc->busdev, dev->device.name, sizeof(desc->busdev));
 
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY &&
 			nfp_cpp_driver_need_lock(cpp)) {
@@ -725,12 +930,6 @@ nfp6000_init(struct nfp_cpp *cpp,
 		if (ret != 0)
 			return -1;
 	}
-
-	if (nfp6000_set_barsz(dev, desc) < 0)
-		return -1;
-
-	desc->cfg = dev->mem_resource[0].addr;
-	desc->dev_id = dev->addr.function & 0x7;
 
 	ret = nfp_enable_bars(desc);
 	if (ret != 0) {
@@ -749,7 +948,6 @@ nfp6000_free(struct nfp_cpp *cpp)
 	nfp_disable_bars(desc);
 	if (nfp_cpp_driver_need_lock(cpp))
 		close(desc->lock);
-	close(desc->device);
 	free(desc);
 }
 
@@ -789,6 +987,7 @@ nfp_cpp_operations *nfp_cpp_transport_operations(void)
  */
 struct nfp_cpp *
 nfp_cpp_from_nfp6000_pcie(struct rte_pci_device *pci_dev,
+		const struct nfp_dev_info *dev_info,
 		bool driver_lock_needed)
 {
 	int ret;
@@ -801,6 +1000,8 @@ nfp_cpp_from_nfp6000_pcie(struct rte_pci_device *pci_dev,
 		return NULL;
 
 	memset(nfp, 0, sizeof(*nfp));
+	nfp->pci_dev = pci_dev;
+	nfp->dev_info = dev_info;
 
 	ret = nfp6000_get_interface(pci_dev, &interface);
 	if (ret != 0) {

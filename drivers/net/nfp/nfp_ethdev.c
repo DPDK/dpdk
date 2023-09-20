@@ -920,9 +920,9 @@ nfp_pf_init(struct rte_pci_device *pci_dev)
 	 * use a lock file if UIO is being used.
 	 */
 	if (pci_dev->kdrv == RTE_PCI_KDRV_VFIO)
-		cpp = nfp_cpp_from_nfp6000_pcie(pci_dev, false);
+		cpp = nfp_cpp_from_nfp6000_pcie(pci_dev, dev_info, false);
 	else
-		cpp = nfp_cpp_from_nfp6000_pcie(pci_dev, true);
+		cpp = nfp_cpp_from_nfp6000_pcie(pci_dev, dev_info, true);
 
 	if (cpp == NULL) {
 		PMD_INIT_LOG(ERR, "A CPP handle can not be obtained");
@@ -1121,9 +1121,9 @@ nfp_pf_secondary_init(struct rte_pci_device *pci_dev)
 	 * use a lock file if UIO is being used.
 	 */
 	if (pci_dev->kdrv == RTE_PCI_KDRV_VFIO)
-		cpp = nfp_cpp_from_nfp6000_pcie(pci_dev, false);
+		cpp = nfp_cpp_from_nfp6000_pcie(pci_dev, dev_info, false);
 	else
-		cpp = nfp_cpp_from_nfp6000_pcie(pci_dev, true);
+		cpp = nfp_cpp_from_nfp6000_pcie(pci_dev, dev_info, true);
 
 	if (cpp == NULL) {
 		PMD_INIT_LOG(ERR, "A CPP handle can not be obtained");
