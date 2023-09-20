@@ -11,6 +11,7 @@
 #include "../nfp_common.h"
 #include "../nfp_rxtx.h"
 #include "../nfpcore/nfp_mip.h"
+#include "../nfpcore/nfp_platform.h"
 #include "../nfpcore/nfp_rtsym.h"
 #include "../flower/nfp_flower.h"
 #include "../flower/nfp_flower_cmsg.h"

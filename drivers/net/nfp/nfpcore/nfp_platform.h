@@ -8,6 +8,8 @@
 
 #include <stdint.h>
 
+#define DIV_ROUND_UP(n, d)             (((n) + (d) - 1) / (d))
+
 #define DMA_BIT_MASK(n)    ((1ULL << (n)) - 1)
 
 #define BITS_PER_LONG      (__SIZEOF_LONG__ * 8)

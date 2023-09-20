@@ -5,18 +5,179 @@
  * Small portions derived from code Copyright(c) 2010-2015 Intel Corporation.
  */
 
-#include <ethdev_driver.h>
+#include "nfp_rxtx.h"
+
 #include <ethdev_pci.h>
 
 #include "nfp_common.h"
-#include "nfp_ctrl.h"
-#include "nfp_rxtx.h"
-#include "nfp_logs.h"
 #include "nfd3/nfp_nfd3.h"
 #include "nfdk/nfp_nfdk.h"
-#include "nfpcore/nfp_mip.h"
-#include "nfpcore/nfp_rtsym.h"
 #include "flower/nfp_flower.h"
+
+#include "nfp_logs.h"
+
+/* Maximum number of supported VLANs in parsed form packet metadata. */
+#define NFP_META_MAX_VLANS       2
+
+/*
+ * struct nfp_meta_parsed - Record metadata parsed from packet
+ *
+ * Parsed NFP packet metadata are recorded in this struct. The content is
+ * read-only after it have been recorded during parsing by nfp_net_parse_meta().
+ *
+ * @port_id: Port id value
+ * @hash: RSS hash value
+ * @hash_type: RSS hash type
+ * @vlan_layer: The layers of VLAN info which are passed from nic.
+ *              Only this number of entries of the @vlan array are valid.
+ *
+ * @vlan: Holds information parses from NFP_NET_META_VLAN. The inner most vlan
+ *        starts at position 0 and only @vlan_layer entries contain valid
+ *        information.
+ *
+ *        Currently only 2 layers of vlan are supported,
+ *        vlan[0] - vlan strip info
+ *        vlan[1] - qinq strip info
+ *
+ * @vlan.offload:  Flag indicates whether VLAN is offloaded
+ * @vlan.tpid: Vlan TPID
+ * @vlan.tci: Vlan TCI including PCP + Priority + VID
+ */
+struct nfp_meta_parsed {
+	uint32_t port_id;
+	uint32_t hash;
+	uint8_t hash_type;
+	uint8_t vlan_layer;
+	struct {
+		uint8_t offload;
+		uint8_t tpid;
+		uint16_t tci;
+	} vlan[NFP_META_MAX_VLANS];
+};
+
+/*
+ * The bit format and map of nfp packet type for rxd.offload_info in Rx descriptor.
+ *
+ * Bit format about nfp packet type refers to the following:
+ * ---------------------------------
+ *            1                   0
+ *  5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |       |ol3|tunnel |  l3 |  l4 |
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *
+ * Bit map about nfp packet type refers to the following:
+ *
+ * L4: bit 0~2, used for layer 4 or inner layer 4.
+ * 000: NFP_NET_PTYPE_L4_NONE
+ * 001: NFP_NET_PTYPE_L4_TCP
+ * 010: NFP_NET_PTYPE_L4_UDP
+ * 011: NFP_NET_PTYPE_L4_FRAG
+ * 100: NFP_NET_PTYPE_L4_NONFRAG
+ * 101: NFP_NET_PTYPE_L4_ICMP
+ * 110: NFP_NET_PTYPE_L4_SCTP
+ * 111: reserved
+ *
+ * L3: bit 3~5, used for layer 3 or inner layer 3.
+ * 000: NFP_NET_PTYPE_L3_NONE
+ * 001: NFP_NET_PTYPE_L3_IPV6
+ * 010: NFP_NET_PTYPE_L3_IPV4
+ * 011: NFP_NET_PTYPE_L3_IPV4_EXT
+ * 100: NFP_NET_PTYPE_L3_IPV6_EXT
+ * 101: NFP_NET_PTYPE_L3_IPV4_EXT_UNKNOWN
+ * 110: NFP_NET_PTYPE_L3_IPV6_EXT_UNKNOWN
+ * 111: reserved
+ *
+ * Tunnel: bit 6~9, used for tunnel.
+ * 0000: NFP_NET_PTYPE_TUNNEL_NONE
+ * 0001: NFP_NET_PTYPE_TUNNEL_VXLAN
+ * 0100: NFP_NET_PTYPE_TUNNEL_NVGRE
+ * 0101: NFP_NET_PTYPE_TUNNEL_GENEVE
+ * 0010, 0011, 0110~1111: reserved
+ *
+ * Outer L3: bit 10~11, used for outer layer 3.
+ * 00: NFP_NET_PTYPE_OUTER_L3_NONE
+ * 01: NFP_NET_PTYPE_OUTER_L3_IPV6
+ * 10: NFP_NET_PTYPE_OUTER_L3_IPV4
+ * 11: reserved
+ *
+ * Reserved: bit 10~15, used for extension.
+ */
+
+/* Mask and offset about nfp packet type based on the bit map above. */
+#define NFP_NET_PTYPE_L4_MASK                  0x0007
+#define NFP_NET_PTYPE_L3_MASK                  0x0038
+#define NFP_NET_PTYPE_TUNNEL_MASK              0x03c0
+#define NFP_NET_PTYPE_OUTER_L3_MASK            0x0c00
+
+#define NFP_NET_PTYPE_L4_OFFSET                0
+#define NFP_NET_PTYPE_L3_OFFSET                3
+#define NFP_NET_PTYPE_TUNNEL_OFFSET            6
+#define NFP_NET_PTYPE_OUTER_L3_OFFSET          10
+
+/* Case about nfp packet type based on the bit map above. */
+#define NFP_NET_PTYPE_L4_NONE                  0
+#define NFP_NET_PTYPE_L4_TCP                   1
+#define NFP_NET_PTYPE_L4_UDP                   2
+#define NFP_NET_PTYPE_L4_FRAG                  3
+#define NFP_NET_PTYPE_L4_NONFRAG               4
+#define NFP_NET_PTYPE_L4_ICMP                  5
+#define NFP_NET_PTYPE_L4_SCTP                  6
+
+#define NFP_NET_PTYPE_L3_NONE                  0
+#define NFP_NET_PTYPE_L3_IPV6                  1
+#define NFP_NET_PTYPE_L3_IPV4                  2
+#define NFP_NET_PTYPE_L3_IPV4_EXT              3
+#define NFP_NET_PTYPE_L3_IPV6_EXT              4
+#define NFP_NET_PTYPE_L3_IPV4_EXT_UNKNOWN      5
+#define NFP_NET_PTYPE_L3_IPV6_EXT_UNKNOWN      6
+
+#define NFP_NET_PTYPE_TUNNEL_NONE              0
+#define NFP_NET_PTYPE_TUNNEL_VXLAN             1
+#define NFP_NET_PTYPE_TUNNEL_NVGRE             4
+#define NFP_NET_PTYPE_TUNNEL_GENEVE            5
+
+#define NFP_NET_PTYPE_OUTER_L3_NONE            0
+#define NFP_NET_PTYPE_OUTER_L3_IPV6            1
+#define NFP_NET_PTYPE_OUTER_L3_IPV4            2
+
+#define NFP_PTYPE2RTE(tunnel, type) ((tunnel) ? RTE_PTYPE_INNER_##type : RTE_PTYPE_##type)
+
+/* Record NFP packet type parsed from rxd.offload_info. */
+struct nfp_ptype_parsed {
+	uint8_t l4_ptype;       /**< Packet type of layer 4, or inner layer 4. */
+	uint8_t l3_ptype;       /**< Packet type of layer 3, or inner layer 3. */
+	uint8_t tunnel_ptype;   /**< Packet type of tunnel. */
+	uint8_t outer_l3_ptype; /**< Packet type of outer layer 3. */
+};
+
+/* set mbuf checksum flags based on RX descriptor flags */
+void
+nfp_net_rx_cksum(struct nfp_net_rxq *rxq, struct nfp_net_rx_desc *rxd,
+		 struct rte_mbuf *mb)
+{
+	struct nfp_net_hw *hw = rxq->hw;
+
+	if (!(hw->ctrl & NFP_NET_CFG_CTRL_RXCSUM))
+		return;
+
+	/* If IPv4 and IP checksum error, fail */
+	if (unlikely((rxd->rxd.flags & PCIE_DESC_RX_IP4_CSUM) &&
+			!(rxd->rxd.flags & PCIE_DESC_RX_IP4_CSUM_OK)))
+		mb->ol_flags |= RTE_MBUF_F_RX_IP_CKSUM_BAD;
+	else
+		mb->ol_flags |= RTE_MBUF_F_RX_IP_CKSUM_GOOD;
+
+	/* If neither UDP nor TCP return */
+	if (!(rxd->rxd.flags & PCIE_DESC_RX_TCP_CSUM) &&
+			!(rxd->rxd.flags & PCIE_DESC_RX_UDP_CSUM))
+		return;
+
+	if (likely(rxd->rxd.flags & PCIE_DESC_RX_L4_CSUM_OK))
+		mb->ol_flags |= RTE_MBUF_F_RX_L4_CKSUM_GOOD;
+	else
+		mb->ol_flags |= RTE_MBUF_F_RX_L4_CKSUM_BAD;
+}
 
 static int
 nfp_net_rx_fill_freelist(struct nfp_net_rxq *rxq)
