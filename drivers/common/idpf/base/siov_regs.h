@@ -4,16 +4,6 @@
 #ifndef _SIOV_REGS_H_
 #define _SIOV_REGS_H_
 #define VDEV_MBX_START			0x20000 /* Begin at 128KB */
-#define VDEV_MBX_ATQBAL			(VDEV_MBX_START + 0x0000)
-#define VDEV_MBX_ATQBAH			(VDEV_MBX_START + 0x0004)
-#define VDEV_MBX_ATQLEN			(VDEV_MBX_START + 0x0008)
-#define VDEV_MBX_ATQH			(VDEV_MBX_START + 0x000C)
-#define VDEV_MBX_ATQT			(VDEV_MBX_START + 0x0010)
-#define VDEV_MBX_ARQBAL			(VDEV_MBX_START + 0x0014)
-#define VDEV_MBX_ARQBAH			(VDEV_MBX_START + 0x0018)
-#define VDEV_MBX_ARQLEN			(VDEV_MBX_START + 0x001C)
-#define VDEV_MBX_ARQH			(VDEV_MBX_START + 0x0020)
-#define VDEV_MBX_ARQT			(VDEV_MBX_START + 0x0024)
 #define VDEV_GET_RSTAT			0x21000 /* 132KB for RSTAT */
 
 /* Begin at offset after 1MB (after 256 4k pages) */
@@ -43,5 +33,6 @@
 #define VDEV_INT_ITR_1(_i)		(VDEV_INT_DYN_START + ((_i) * 0x1000) + 0x08)
 #define VDEV_INT_ITR_2(_i)		(VDEV_INT_DYN_START + ((_i) * 0x1000) + 0x0C)
 
-/* Next offset to begin at 42MB (0x2A00000) */
+#define SIOV_REG_BAR_SIZE               0x2A00000
+/* Next offset to begin at 42MB + 4K (0x2A00000 + 0x1000) */
 #endif /* _SIOV_REGS_H_ */
