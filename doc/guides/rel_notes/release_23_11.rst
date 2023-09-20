@@ -91,6 +91,12 @@ New Features
   Such P4 pipeline, not using the standard blocks of the flow API,
   can be managed with ``RTE_FLOW_ITEM_TYPE_FLEX`` and ``RTE_FLOW_ACTION_TYPE_PROG``.
 
+* **Added flow group set miss actions.**
+
+  Introduced ``rte_flow_group_set_miss_actions()`` API to explicitly set
+  a group's miss actions, which are the actions to be performed on packets
+  that didn't match any of the flow rules in the group.
+
 * **Updated Solarflare net driver.**
 
   * Added support for transfer flow action ``INDIRECT`` with subtype ``VXLAN_ENCAP``.

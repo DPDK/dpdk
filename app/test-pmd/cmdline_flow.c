@@ -86,6 +86,7 @@ enum index {
 	PATTERN_TEMPLATE,
 	ACTIONS_TEMPLATE,
 	TABLE,
+	FLOW_GROUP,
 	INDIRECT_ACTION,
 	VALIDATE,
 	CREATE,
@@ -205,6 +206,13 @@ enum index {
 	TABLE_RULES_NUMBER,
 	TABLE_PATTERN_TEMPLATE,
 	TABLE_ACTIONS_TEMPLATE,
+
+	/* Group arguments */
+	GROUP_ID,
+	GROUP_INGRESS,
+	GROUP_EGRESS,
+	GROUP_TRANSFER,
+	GROUP_SET_MISS_ACTIONS,
 
 	/* Tunnel arguments. */
 	TUNNEL_CREATE,
@@ -1291,6 +1299,14 @@ static const enum index next_at_attr[] = {
 static const enum index next_at_destroy_attr[] = {
 	ACTIONS_TEMPLATE_DESTROY_ID,
 	END,
+	ZERO,
+};
+
+static const enum index next_group_attr[] = {
+	GROUP_INGRESS,
+	GROUP_EGRESS,
+	GROUP_TRANSFER,
+	GROUP_SET_MISS_ACTIONS,
 	ZERO,
 };
 
@@ -2680,6 +2696,9 @@ static int parse_push(struct context *, const struct token *,
 static int parse_pull(struct context *, const struct token *,
 		      const char *, unsigned int,
 		      void *, unsigned int);
+static int parse_group(struct context *, const struct token *,
+		       const char *, unsigned int,
+		       void *, unsigned int);
 static int parse_tunnel(struct context *, const struct token *,
 			const char *, unsigned int,
 			void *, unsigned int);
@@ -3023,6 +3042,7 @@ static const struct token token_list[] = {
 			      PATTERN_TEMPLATE,
 			      ACTIONS_TEMPLATE,
 			      TABLE,
+			      FLOW_GROUP,
 			      INDIRECT_ACTION,
 			      VALIDATE,
 			      CREATE,
@@ -3411,6 +3431,46 @@ static const struct token token_list[] = {
 		.args = ARGS(ARGS_ENTRY_PTR(struct buffer,
 					    args.table.act_templ_id)),
 		.call = parse_table,
+	},
+	/* Top-level command. */
+	[FLOW_GROUP] = {
+		.name = "group",
+		.help = "manage flow groups",
+		.next = NEXT(NEXT_ENTRY(GROUP_ID), NEXT_ENTRY(COMMON_PORT_ID)),
+		.args = ARGS(ARGS_ENTRY(struct buffer, port)),
+		.call = parse_group,
+	},
+	/* Sub-level commands. */
+	[GROUP_SET_MISS_ACTIONS] = {
+		.name = "set_miss_actions",
+		.help = "set group miss actions",
+		.next = NEXT(next_action),
+		.call = parse_group,
+	},
+	/* Group arguments */
+	[GROUP_ID]	= {
+		.name = "group_id",
+		.help = "group id",
+		.next = NEXT(next_group_attr, NEXT_ENTRY(COMMON_GROUP_ID)),
+		.args = ARGS(ARGS_ENTRY(struct buffer, args.vc.attr.group)),
+	},
+	[GROUP_INGRESS] = {
+		.name = "ingress",
+		.help = "group ingress attr",
+		.next = NEXT(next_group_attr),
+		.call = parse_group,
+	},
+	[GROUP_EGRESS] = {
+		.name = "egress",
+		.help = "group egress attr",
+		.next = NEXT(next_group_attr),
+		.call = parse_group,
+	},
+	[GROUP_TRANSFER] = {
+		.name = "transfer",
+		.help = "group transfer attr",
+		.next = NEXT(next_group_attr),
+		.call = parse_group,
 	},
 	/* Top-level command. */
 	[QUEUE] = {
@@ -10459,6 +10519,54 @@ parse_pull(struct context *ctx, const struct token *token,
 }
 
 static int
+parse_group(struct context *ctx, const struct token *token,
+	    const char *str, unsigned int len,
+	    void *buf, unsigned int size)
+{
+	struct buffer *out = buf;
+
+	/* Token name must match. */
+	if (parse_default(ctx, token, str, len, NULL, 0) < 0)
+		return -1;
+	/* Nothing else to do if there is no buffer. */
+	if (!out)
+		return len;
+	if (!out->command) {
+		if (ctx->curr != FLOW_GROUP)
+			return -1;
+		if (sizeof(*out) > size)
+			return -1;
+		out->command = ctx->curr;
+		ctx->objdata = 0;
+		ctx->object = out;
+		ctx->objmask = NULL;
+		out->args.vc.data = (uint8_t *)out + size;
+		return len;
+	}
+	switch (ctx->curr) {
+	case GROUP_INGRESS:
+		out->args.vc.attr.ingress = 1;
+		return len;
+	case GROUP_EGRESS:
+		out->args.vc.attr.egress = 1;
+		return len;
+	case GROUP_TRANSFER:
+		out->args.vc.attr.transfer = 1;
+		return len;
+	case GROUP_SET_MISS_ACTIONS:
+		out->command = ctx->curr;
+		ctx->objdata = 0;
+		ctx->object = out;
+		ctx->objmask = NULL;
+		out->args.vc.actions = (void *)RTE_ALIGN_CEIL((uintptr_t)(out + 1),
+							       sizeof(double));
+		return len;
+	default:
+		return -1;
+	}
+}
+
+static int
 parse_flex(struct context *ctx, const struct token *token,
 	     const char *str, unsigned int len,
 	     void *buf, unsigned int size)
@@ -12337,6 +12445,10 @@ cmd_flow_parsed(const struct buffer *in)
 		port_flow_template_table_destroy(in->port,
 					in->args.table_destroy.table_id_n,
 					in->args.table_destroy.table_id);
+		break;
+	case GROUP_SET_MISS_ACTIONS:
+		port_queue_group_set_miss_actions(in->port, &in->args.vc.attr,
+						  in->args.vc.actions);
 		break;
 	case QUEUE_CREATE:
 		port_queue_flow_create(in->port, in->queue, in->postpone,

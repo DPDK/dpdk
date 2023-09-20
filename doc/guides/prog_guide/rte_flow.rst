@@ -3758,6 +3758,36 @@ Information about the number of available resources can be retrieved via
                      struct rte_flow_queue_info *queue_info,
                      struct rte_flow_error *error);
 
+Group Miss Actions
+~~~~~~~~~~~~~~~~~~
+
+In an application, many flow rules share common group attributes, meaning they can be grouped and
+classified together. A user can explicitly specify a set of actions performed on a packet when it
+did not match any flows rules in a group using the following API:
+
+.. code-block:: c
+
+      int
+      rte_flow_group_set_miss_actions(uint16_t port_id,
+                                      uint32_t group_id,
+                                      const struct rte_flow_group_attr *attr,
+                                      const struct rte_flow_action actions[],
+                                      struct rte_flow_error *error);
+
+For example, to configure a RTE_FLOW_TYPE_JUMP action as a miss action for ingress group 1:
+
+.. code-block:: c
+
+      struct rte_flow_group_attr attr = {.ingress = 1};
+      struct rte_flow_action act[] = {
+      /* Setting miss actions to jump to group 3 */
+          [0] = {.type = RTE_FLOW_ACTION_TYPE_JUMP,
+                 .conf = &(struct rte_flow_action_jump){.group = 3}},
+          [1] = {.type = RTE_FLOW_ACTION_TYPE_END},
+      };
+      struct rte_flow_error err;
+      rte_flow_group_set_miss_actions(port, 1, &attr, act, &err);
+
 Flow templates
 ~~~~~~~~~~~~~~
 

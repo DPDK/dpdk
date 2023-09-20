@@ -315,6 +315,7 @@ EXPERIMENTAL {
 
 	# added in 23.11
 	rte_eth_recycle_rx_queue_info_get;
+	rte_flow_group_set_miss_actions;
 };
 
 INTERNAL {
