@@ -10,7 +10,6 @@
 #include <rte_jhash.h>
 #include <rte_malloc.h>
 
-#include "flower/nfp_flower_cmsg.h"
 #include "flower/nfp_flower_representor.h"
 #include "nfpcore/nfp_rtsym.h"
 #include "nfp_logs.h"

@@ -7,10 +7,8 @@
 
 #include "../nfd3/nfp_nfd3.h"
 #include "../nfpcore/nfp_nsp.h"
-#include "../nfp_flow.h"
 #include "../nfp_logs.h"
 #include "../nfp_mtr.h"
-#include "nfp_flower_cmsg.h"
 
 /*
  * enum nfp_repr_type - type of representor

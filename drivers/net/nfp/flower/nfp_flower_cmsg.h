@@ -6,6 +6,7 @@
 #ifndef _NFP_CMSG_H_
 #define _NFP_CMSG_H_
 
+#include "../nfp_flow.h"
 #include "nfp_flower.h"
 
 struct nfp_flower_cmsg_hdr {
@@ -973,9 +974,6 @@ struct nfp_fl_act_meter {
 	rte_be16_t reserved;
 	rte_be32_t profile_id;
 };
-
-/* Forward declaration */
-struct nfp_fl_rule_metadata;
 
 int nfp_flower_cmsg_mac_repr(struct nfp_app_fw_flower *app_fw_flower);
 int nfp_flower_cmsg_repr_reify(struct nfp_app_fw_flower *app_fw_flower,

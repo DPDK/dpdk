@@ -9,7 +9,6 @@
 
 #include <ethdev_pci.h>
 
-#include "nfp_common.h"
 #include "nfd3/nfp_nfd3.h"
 #include "nfdk/nfp_nfdk.h"
 #include "flower/nfp_flower.h"

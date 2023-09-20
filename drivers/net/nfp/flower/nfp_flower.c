@@ -14,10 +14,8 @@
 #include "../nfpcore/nfp_nsp.h"
 #include "../nfpcore/nfp_rtsym.h"
 #include "../nfp_cpp_bridge.h"
-#include "../nfp_flow.h"
 #include "../nfp_logs.h"
 #include "../nfp_mtr.h"
-#include "nfp_flower_cmsg.h"
 #include "nfp_flower_ctrl.h"
 #include "nfp_flower_representor.h"
 

@@ -6,7 +6,6 @@
 #include "nfp_flower_cmsg.h"
 
 #include "../nfpcore/nfp_nsp.h"
-#include "../nfp_flow.h"
 #include "../nfp_logs.h"
 #include "nfp_flower_ctrl.h"
 #include "nfp_flower_representor.h"

@@ -9,9 +9,7 @@
 
 #include "../nfd3/nfp_nfd3.h"
 #include "../nfdk/nfp_nfdk.h"
-#include "../nfp_flow.h"
 #include "../nfp_logs.h"
-#include "nfp_flower_cmsg.h"
 #include "nfp_flower_representor.h"
 #include "nfp_mtr.h"
 

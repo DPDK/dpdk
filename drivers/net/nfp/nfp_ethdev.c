@@ -5,35 +5,20 @@
  * Small portions derived from code Copyright(c) 2010-2015 Intel Corporation.
  */
 
-#include <rte_common.h>
-#include <ethdev_driver.h>
-#include <ethdev_pci.h>
-#include <dev_driver.h>
-#include <rte_ether.h>
-#include <rte_malloc.h>
-#include <rte_memzone.h>
-#include <rte_mempool.h>
-#include <rte_service_component.h>
+#include <eal_firmware.h>
 #include <rte_alarm.h>
-#include "eal_firmware.h"
 
+#include "flower/nfp_flower.h"
+#include "nfd3/nfp_nfd3.h"
+#include "nfdk/nfp_nfdk.h"
 #include "nfpcore/nfp_cpp.h"
-#include "nfpcore/nfp_nffw.h"
 #include "nfpcore/nfp_hwinfo.h"
-#include "nfpcore/nfp_mip.h"
 #include "nfpcore/nfp_rtsym.h"
 #include "nfpcore/nfp_nsp.h"
 #include "nfpcore/nfp6000_pcie.h"
 
-#include "nfp_common.h"
-#include "nfp_ctrl.h"
-#include "nfp_rxtx.h"
-#include "nfp_logs.h"
 #include "nfp_cpp_bridge.h"
-
-#include "nfd3/nfp_nfd3.h"
-#include "nfdk/nfp_nfdk.h"
-#include "flower/nfp_flower.h"
+#include "nfp_logs.h"
 
 static int
 nfp_net_pf_read_mac(struct nfp_app_fw_nic *app_fw_nic, int port)
