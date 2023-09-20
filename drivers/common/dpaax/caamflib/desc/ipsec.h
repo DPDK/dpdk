@@ -710,6 +710,11 @@ static inline void __gen_auth_key(struct program *program,
 	case OP_PCL_IPSEC_HMAC_SHA2_512_256:
 		dkp_protid = OP_PCLID_DKP_SHA512;
 		break;
+	case OP_PCL_IPSEC_HMAC_SHA2_224_96:
+	case OP_PCL_IPSEC_HMAC_SHA2_224_112:
+	case OP_PCL_IPSEC_HMAC_SHA2_224_224:
+		dkp_protid = OP_PCLID_DKP_SHA224;
+		break;
 	default:
 		KEY(program, KEY2, authdata->key_enc_flags, authdata->key,
 		    authdata->keylen, INLINE_KEY(authdata));

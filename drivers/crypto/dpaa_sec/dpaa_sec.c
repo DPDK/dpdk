@@ -2817,6 +2817,15 @@ dpaa_sec_ipsec_proto_init(struct rte_crypto_cipher_xform *cipher_xform,
 			"+++Using sha256-hmac truncated len is non-standard,"
 			"it will not work with lookaside proto");
 		break;
+	case RTE_CRYPTO_AUTH_SHA224_HMAC:
+		session->auth_key.algmode = OP_ALG_AAI_HMAC;
+		if (session->digest_length == 6)
+			session->auth_key.alg = OP_PCL_IPSEC_HMAC_SHA2_224_96;
+		else if (session->digest_length == 14)
+			session->auth_key.alg = OP_PCL_IPSEC_HMAC_SHA2_224_224;
+		else
+			session->auth_key.alg = OP_PCL_IPSEC_HMAC_SHA2_224_112;
+		break;
 	case RTE_CRYPTO_AUTH_SHA384_HMAC:
 		session->auth_key.alg = OP_PCL_IPSEC_HMAC_SHA2_384_192;
 		session->auth_key.algmode = OP_ALG_AAI_HMAC;
@@ -2836,7 +2845,6 @@ dpaa_sec_ipsec_proto_init(struct rte_crypto_cipher_xform *cipher_xform,
 		session->auth_key.alg = OP_PCL_IPSEC_AES_XCBC_MAC_96;
 		session->auth_key.algmode = OP_ALG_AAI_XCBC_MAC;
 		break;
-	case RTE_CRYPTO_AUTH_SHA224_HMAC:
 	case RTE_CRYPTO_AUTH_SNOW3G_UIA2:
 	case RTE_CRYPTO_AUTH_SHA1:
 	case RTE_CRYPTO_AUTH_SHA256:

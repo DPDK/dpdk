@@ -3005,6 +3005,15 @@ dpaa2_sec_ipsec_proto_init(struct rte_crypto_cipher_xform *cipher_xform,
 		authdata->algtype = OP_PCL_IPSEC_HMAC_MD5_96;
 		authdata->algmode = OP_ALG_AAI_HMAC;
 		break;
+	case RTE_CRYPTO_AUTH_SHA224_HMAC:
+		authdata->algmode = OP_ALG_AAI_HMAC;
+		if (session->digest_length == 6)
+			authdata->algtype = OP_PCL_IPSEC_HMAC_SHA2_224_96;
+		else if (session->digest_length == 14)
+			authdata->algtype = OP_PCL_IPSEC_HMAC_SHA2_224_224;
+		else
+			authdata->algtype = OP_PCL_IPSEC_HMAC_SHA2_224_112;
+		break;
 	case RTE_CRYPTO_AUTH_SHA256_HMAC:
 		authdata->algtype = OP_PCL_IPSEC_HMAC_SHA2_256_128;
 		authdata->algmode = OP_ALG_AAI_HMAC;
@@ -3032,7 +3041,6 @@ dpaa2_sec_ipsec_proto_init(struct rte_crypto_cipher_xform *cipher_xform,
 	case RTE_CRYPTO_AUTH_NULL:
 		authdata->algtype = OP_PCL_IPSEC_HMAC_NULL;
 		break;
-	case RTE_CRYPTO_AUTH_SHA224_HMAC:
 	case RTE_CRYPTO_AUTH_SNOW3G_UIA2:
 	case RTE_CRYPTO_AUTH_SHA1:
 	case RTE_CRYPTO_AUTH_SHA256:
