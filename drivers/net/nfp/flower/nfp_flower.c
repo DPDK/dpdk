@@ -3,27 +3,23 @@
  * All rights reserved.
  */
 
-#include <rte_common.h>
-#include <rte_service_component.h>
-#include <rte_malloc.h>
-#include <rte_alarm.h>
-#include <ethdev_pci.h>
-#include <ethdev_driver.h>
+#include "nfp_flower.h"
 
-#include "../nfp_common.h"
-#include "../nfp_logs.h"
-#include "../nfp_ctrl.h"
-#include "../nfp_cpp_bridge.h"
-#include "../nfp_rxtx.h"
+#include <rte_alarm.h>
+#include <rte_malloc.h>
+#include <rte_service_component.h>
+
 #include "../nfd3/nfp_nfd3.h"
 #include "../nfdk/nfp_nfdk.h"
-#include "../nfpcore/nfp_mip.h"
-#include "../nfpcore/nfp_rtsym.h"
 #include "../nfpcore/nfp_nsp.h"
-#include "nfp_flower.h"
+#include "../nfpcore/nfp_rtsym.h"
+#include "../nfp_cpp_bridge.h"
+#include "../nfp_flow.h"
+#include "../nfp_logs.h"
+#include "../nfp_mtr.h"
+#include "nfp_flower_cmsg.h"
 #include "nfp_flower_ctrl.h"
 #include "nfp_flower_representor.h"
-#include "nfp_flower_cmsg.h"
 
 #define CTRL_VNIC_NB_DESC 512
 

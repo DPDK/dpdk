@@ -34,7 +34,9 @@
 #define MAX_FLOWER_PHYPORTS 8
 #define MAX_FLOWER_VFS 64
 
+/* Forward declaration */
 struct nfp_app_fw_flower;
+struct nfp_flower_representor;
 
 /* The function pointers for different NFD version */
 struct nfp_flower_nfd_func {
