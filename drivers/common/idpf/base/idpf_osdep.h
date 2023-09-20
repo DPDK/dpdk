@@ -48,6 +48,13 @@ typedef struct idpf_lock idpf_lock;
 
 #define IDPF_M(m, s)		((m) << (s))
 
+#define BITS_PER_LONG (8 * sizeof(long))
+#define BITS_PER_LONG_LONG (8 * sizeof(long long))
+#define GENMASK(h, l) \
+	(((~0UL) - (1UL << (l)) + 1) & (~0UL >> (BITS_PER_LONG - 1 - (h))))
+#define GENMASK_ULL(h, l) \
+	(((~0ULL) << (l)) & (~0ULL >> (BITS_PER_LONG_LONG - 1 - (h))))
+
 #ifndef ETH_ADDR_LEN
 #define ETH_ADDR_LEN		6
 #endif
