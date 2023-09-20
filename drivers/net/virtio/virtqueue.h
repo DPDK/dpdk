@@ -114,17 +114,26 @@ virtqueue_store_flags_packed(struct vring_packed_desc *dp,
 
 #define VIRTQUEUE_MAX_NAME_SZ 32
 
+#ifdef RTE_ARCH_32
+#define VIRTIO_MBUF_ADDR_MASK(vq) ((vq)->mbuf_addr_mask)
+#else
+#define VIRTIO_MBUF_ADDR_MASK(vq) UINT64_MAX
+#endif
+
 /**
  * Return the IOVA (or virtual address in case of virtio-user) of mbuf
  * data buffer.
  *
  * The address is firstly casted to the word size (sizeof(uintptr_t))
- * before casting it to uint64_t. This is to make it work with different
- * combination of word size (64 bit and 32 bit) and virtio device
- * (virtio-pci and virtio-user).
+ * before casting it to uint64_t. It is then masked with the expected
+ * address length (64 bits for virtio-pci, word size for virtio-user).
+ *
+ * This is to make it work with different combination of word size (64
+ * bit and 32 bit) and virtio device (virtio-pci and virtio-user).
  */
 #define VIRTIO_MBUF_ADDR(mb, vq) \
-	((uint64_t)(*(uintptr_t *)((uintptr_t)(mb) + (vq)->mbuf_addr_offset)))
+	((*(uint64_t *)((uintptr_t)(mb) + (vq)->mbuf_addr_offset)) & \
+		VIRTIO_MBUF_ADDR_MASK(vq))
 
 /**
  * Return the physical address (or virtual address in case of
@@ -194,6 +203,7 @@ struct virtqueue {
 	void *vq_ring_virt_mem;  /**< linear address of vring*/
 	unsigned int vq_ring_size;
 	uint16_t mbuf_addr_offset;
+	uint64_t mbuf_addr_mask;
 
 	union {
 		struct virtnet_rx rxq;
