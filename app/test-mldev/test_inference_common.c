@@ -826,6 +826,7 @@ ml_inference_iomem_setup(struct ml_test *test, struct ml_options *opt, uint16_t 
 		ml_err("Invalid input file, size = %zu (expected size = %" PRIu64 ")\n", fsize,
 		       t->model[fid].inp_dsize);
 		ret = -EINVAL;
+		free(buffer);
 		goto error;
 	}
 
@@ -843,6 +844,7 @@ ml_inference_iomem_setup(struct ml_test *test, struct ml_options *opt, uint16_t 
 			ml_err("Invalid reference file, size = %zu (expected size = %" PRIu64 ")\n",
 			       fsize, t->model[fid].out_dsize);
 			ret = -EINVAL;
+			free(buffer);
 			goto error;
 		}
 	}
@@ -875,8 +877,6 @@ error:
 		rte_mempool_free(t->model[fid].io_pool);
 		t->model[fid].io_pool = NULL;
 	}
-
-	free(buffer);
 
 	return ret;
 }

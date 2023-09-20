@@ -34,6 +34,7 @@ ml_read_file(char *file, size_t *size, char **buffer)
 
 	if (fstat(fd, &file_stat) != 0) {
 		ml_err("fstat failed for file: %s\n", file);
+		close(fd);
 		return -errno;
 	}
 
