@@ -231,6 +231,10 @@
 #define VIRTCHNL2_CAP_RX_FLEX_DESC		BIT(17)
 #define VIRTCHNL2_CAP_PTYPE			BIT(18)
 #define VIRTCHNL2_CAP_LOOPBACK			BIT(19)
+/* Enable miss completion types plus ability to detect a miss completion if a
+ * reserved bit is set in a standared completion's tag.
+ */
+#define VIRTCHNL2_CAP_MISS_COMPL_TAG		BIT(20)
 /* this must be the last capability */
 #define VIRTCHNL2_CAP_OEM			BIT(63)
 
