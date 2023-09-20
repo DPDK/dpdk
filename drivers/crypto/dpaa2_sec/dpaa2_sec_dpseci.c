@@ -3202,24 +3202,32 @@ dpaa2_sec_set_ipsec_session(struct rte_cryptodev *dev,
 		session->dir = DIR_ENC;
 		if (ipsec_xform->tunnel.type ==
 				RTE_SECURITY_IPSEC_TUNNEL_IPV4) {
+			if (ipsec_xform->options.dec_ttl)
+				encap_pdb.options |= PDBHMO_ESP_ENCAP_DTTL;
 			if (ipsec_xform->options.copy_df)
 				encap_pdb.options |= PDBHMO_ESP_DFBIT;
 			ip4_hdr = (struct rte_ipv4_hdr *)hdr;
 
 			encap_pdb.ip_hdr_len = sizeof(struct rte_ipv4_hdr);
 			ip4_hdr->version_ihl = RTE_IPV4_VHL_DEF;
-			ip4_hdr->time_to_live = ipsec_xform->tunnel.ipv4.ttl;
-			ip4_hdr->type_of_service =
-				ipsec_xform->tunnel.ipv4.dscp;
+			ip4_hdr->time_to_live = ipsec_xform->tunnel.ipv4.ttl ?
+						ipsec_xform->tunnel.ipv4.ttl :  0x40;
+			ip4_hdr->type_of_service = (ipsec_xform->tunnel.ipv4.dscp<<2);
+
 			ip4_hdr->hdr_checksum = 0;
 			ip4_hdr->packet_id = 0;
-			ip4_hdr->fragment_offset = 0;
-			memcpy(&ip4_hdr->src_addr,
-				&ipsec_xform->tunnel.ipv4.src_ip,
-				sizeof(struct in_addr));
-			memcpy(&ip4_hdr->dst_addr,
-				&ipsec_xform->tunnel.ipv4.dst_ip,
-				sizeof(struct in_addr));
+			if (ipsec_xform->tunnel.ipv4.df) {
+				uint16_t frag_off = 0;
+
+				frag_off |= RTE_IPV4_HDR_DF_FLAG;
+				ip4_hdr->fragment_offset = rte_cpu_to_be_16(frag_off);
+			} else
+				ip4_hdr->fragment_offset = 0;
+
+			memcpy(&ip4_hdr->src_addr, &ipsec_xform->tunnel.ipv4.src_ip,
+			       sizeof(struct in_addr));
+			memcpy(&ip4_hdr->dst_addr, &ipsec_xform->tunnel.ipv4.dst_ip,
+			       sizeof(struct in_addr));
 			if (ipsec_xform->options.udp_encap) {
 				uint16_t sport, dport;
 				struct rte_udp_hdr *uh =
@@ -3309,6 +3317,8 @@ dpaa2_sec_set_ipsec_session(struct rte_cryptodev *dev,
 			decap_pdb.options = sizeof(struct ip) << 16;
 			if (ipsec_xform->options.copy_df)
 				decap_pdb.options |= PDBHMO_ESP_DFV;
+			if (ipsec_xform->options.dec_ttl)
+				decap_pdb.options |= PDBHMO_ESP_DECAP_DTTL;
 		} else {
 			decap_pdb.options = sizeof(struct rte_ipv6_hdr) << 16;
 		}
@@ -3318,8 +3328,6 @@ dpaa2_sec_set_ipsec_session(struct rte_cryptodev *dev,
 			decap_pdb.options |= PDBOPTS_ESP_DIFFSERV;
 		if (ipsec_xform->options.ecn)
 			decap_pdb.options |= PDBOPTS_ESP_TECN;
-		if (ipsec_xform->options.dec_ttl)
-			decap_pdb.options |= PDBHMO_ESP_DECAP_DTTL;
 
 		if (ipsec_xform->replay_win_sz) {
 			uint32_t win_sz;
