@@ -6,6 +6,8 @@
 #ifndef _NFP_FLOWER_CTRL_H_
 #define _NFP_FLOWER_CTRL_H_
 
+#include "nfp_flower.h"
+
 void nfp_flower_ctrl_vnic_poll(struct nfp_app_fw_flower *app_fw_flower);
 uint16_t nfp_flower_ctrl_vnic_xmit(struct nfp_app_fw_flower *app_fw_flower,
 		struct rte_mbuf *mbuf);
