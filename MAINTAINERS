@@ -1778,7 +1778,7 @@ F: app/test-pmd/
 F: doc/guides/testpmd_app_ug/
 
 DMA device performance tool
-M: Cheng Jiang <cheng1.jiang@intel.com>
+M: Cheng Jiang <honest.jiang@foxmail.com>
 F: app/test-dma-perf/
 F: doc/guides/tools/dmaperf.rst
 
