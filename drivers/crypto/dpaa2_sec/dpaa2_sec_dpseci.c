@@ -3538,12 +3538,20 @@ dpaa2_sec_set_pdcp_session(struct rte_cryptodev *dev,
 				      session->auth_alg);
 			goto out;
 		}
-
 		p_authdata = &authdata;
-	} else if (pdcp_xform->domain == RTE_SECURITY_PDCP_MODE_CONTROL) {
-		DPAA2_SEC_ERR("Crypto: Integrity must for c-plane");
-		goto out;
+	} else {
+		if (pdcp_xform->domain == RTE_SECURITY_PDCP_MODE_CONTROL) {
+			DPAA2_SEC_ERR("Crypto: Integrity must for c-plane");
+			goto out;
+		}
+		session->auth_key.data = NULL;
+		session->auth_key.length = 0;
+		session->auth_alg = 0;
 	}
+	authdata.key = (size_t)session->auth_key.data;
+	authdata.keylen = session->auth_key.length;
+	authdata.key_enc_flags = 0;
+	authdata.key_type = RTA_DATA_IMM;
 
 	if (pdcp_xform->sdap_enabled) {
 		int nb_keys_to_inline =

@@ -3188,6 +3188,11 @@ dpaa_sec_set_pdcp_session(struct rte_cryptodev *dev,
 		       auth_xform->key.length);
 		session->auth_alg = auth_xform->algo;
 	} else {
+		if (pdcp_xform->domain == RTE_SECURITY_PDCP_MODE_CONTROL) {
+			DPAA_SEC_ERR("Crypto: Integrity must for c-plane");
+			ret = -EINVAL;
+			goto out;
+		}
 		session->auth_key.data = NULL;
 		session->auth_key.length = 0;
 		session->auth_alg = 0;
