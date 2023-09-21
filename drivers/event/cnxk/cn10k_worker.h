@@ -59,9 +59,9 @@ cn10k_process_vwqe(uintptr_t vwqe, uint16_t port_id, const uint32_t flags, struc
 	uint16_t lmt_id, d_off;
 	struct rte_mbuf **wqe;
 	struct rte_mbuf *mbuf;
+	uint64_t sa_base = 0;
 	uintptr_t cpth = 0;
 	uint8_t loff = 0;
-	uint64_t sa_base;
 	int i;
 
 	mbuf_init |= ((uint64_t)port_id) << 48;
@@ -124,6 +124,11 @@ cn10k_process_vwqe(uintptr_t vwqe, uint16_t port_id, const uint32_t flags, struc
 			const uint64_t cq_w5 = *((const uint64_t *)cqe + 5);
 
 			cpth = ((uintptr_t)mbuf + (uint16_t)d_off);
+
+			/* Update mempool pointer for full mode pkt */
+			if ((flags & NIX_RX_REAS_F) && (cq_w1 & BIT(11)) &&
+			    !((*(uint64_t *)cpth) & BIT(15)))
+				mbuf->pool = mp;
 
 			mbuf = nix_sec_meta_to_mbuf_sc(cq_w1, cq_w5, sa_base, laddr,
 						       &loff, mbuf, d_off,
@@ -198,6 +203,11 @@ cn10k_sso_hws_post_process(struct cn10k_sso_hws *ws, uint64_t *u64,
 			cpth = ((uintptr_t)mbuf + (uint16_t)d_off);
 			mp = (struct rte_mempool *)cnxk_nix_inl_metapool_get(port, lookup_mem);
 			meta_aura = mp ? mp->pool_id : m->pool->pool_id;
+
+			/* Update mempool pointer for full mode pkt */
+			if (mp && (flags & NIX_RX_REAS_F) && (cq_w1 & BIT(11)) &&
+			    !((*(uint64_t *)cpth) & BIT(15)))
+				((struct rte_mbuf *)mbuf)->pool = mp;
 
 			mbuf = (uint64_t)nix_sec_meta_to_mbuf_sc(
 				cq_w1, cq_w5, sa_base, (uintptr_t)&iova, &loff,

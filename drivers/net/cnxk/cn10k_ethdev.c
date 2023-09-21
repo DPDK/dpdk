@@ -355,11 +355,13 @@ cn10k_nix_rx_queue_meta_aura_update(struct rte_eth_dev *eth_dev)
 		rq = &dev->rqs[i];
 		rxq = eth_dev->data->rx_queues[i];
 		rxq->meta_aura = rq->meta_aura_handle;
+		rxq->meta_pool = dev->nix.meta_mempool;
 		/* Assume meta packet from normal aura if meta aura is not setup
 		 */
 		if (!rxq->meta_aura) {
 			rxq_sp = cnxk_eth_rxq_to_sp(rxq);
 			rxq->meta_aura = rxq_sp->qconf.mp->pool_id;
+			rxq->meta_pool = (uintptr_t)rxq_sp->qconf.mp;
 		}
 	}
 	/* Store mempool in lookup mem */
@@ -639,14 +641,17 @@ cn10k_nix_reassembly_conf_set(struct rte_eth_dev *eth_dev,
 
 	if (!conf->flags) {
 		/* Clear offload flags on disable */
-		dev->rx_offload_flags &= ~NIX_RX_REAS_F;
+		if (!dev->inb.nb_oop)
+			dev->rx_offload_flags &= ~NIX_RX_REAS_F;
+		dev->inb.reass_en = false;
 		return 0;
 	}
 
-	rc = roc_nix_reassembly_configure(conf->timeout_ms,
-				conf->max_frags);
-	if (!rc && dev->rx_offloads & RTE_ETH_RX_OFFLOAD_SECURITY)
+	rc = roc_nix_reassembly_configure(conf->timeout_ms, conf->max_frags);
+	if (!rc && dev->rx_offloads & RTE_ETH_RX_OFFLOAD_SECURITY) {
 		dev->rx_offload_flags |= NIX_RX_REAS_F;
+		dev->inb.reass_en = true;
+	}
 
 	return rc;
 }

@@ -9,6 +9,7 @@
 #include <rte_pmd_cnxk.h>
 
 #include <cn10k_ethdev.h>
+#include <cn10k_rx.h>
 #include <cnxk_ethdev_mcs.h>
 #include <cnxk_security.h>
 #include <roc_priv.h>
@@ -324,6 +325,7 @@ static const struct rte_security_capability cn10k_eth_sec_ipsec_capabilities[] =
 				.l4_csum_enable = 1,
 				.stats = 1,
 				.esn = 1,
+				.ingress_oop = 1,
 			},
 		},
 		.crypto_capabilities = cn10k_eth_sec_crypto_caps,
@@ -373,6 +375,7 @@ static const struct rte_security_capability cn10k_eth_sec_ipsec_capabilities[] =
 				.l4_csum_enable = 1,
 				.stats = 1,
 				.esn = 1,
+				.ingress_oop = 1,
 			},
 		},
 		.crypto_capabilities = cn10k_eth_sec_crypto_caps,
@@ -396,6 +399,7 @@ static const struct rte_security_capability cn10k_eth_sec_ipsec_capabilities[] =
 				.l4_csum_enable = 1,
 				.stats = 1,
 				.esn = 1,
+				.ingress_oop = 1,
 			},
 		},
 		.crypto_capabilities = cn10k_eth_sec_crypto_caps,
@@ -746,6 +750,20 @@ cn10k_eth_sec_session_create(void *device,
 			return -rte_errno;
 	}
 
+	if (conf->ipsec.options.ingress_oop &&
+	    rte_security_oop_dynfield_offset < 0) {
+		/* Register for security OOP dynfield if required */
+		if (rte_security_oop_dynfield_register() < 0)
+			return -rte_errno;
+	}
+
+	/* We cannot support inbound reassembly and OOP together */
+	if (conf->ipsec.options.ip_reassembly_en &&
+	    conf->ipsec.options.ingress_oop) {
+		plt_err("Cannot support Inbound reassembly and OOP together");
+		return -ENOTSUP;
+	}
+
 	ipsec = &conf->ipsec;
 	crypto = conf->crypto_xform;
 	inbound = !!(ipsec->direction == RTE_SECURITY_IPSEC_SA_DIR_INGRESS);
@@ -832,6 +850,12 @@ cn10k_eth_sec_session_create(void *device,
 			inb_sa_dptr->w0.s.count_mib_bytes = 1;
 			inb_sa_dptr->w0.s.count_mib_pkts = 1;
 		}
+
+		/* Enable out-of-place processing */
+		if (ipsec->options.ingress_oop)
+			inb_sa_dptr->w0.s.pkt_format =
+				ROC_IE_OT_SA_PKT_FMT_FULL;
+
 		/* Prepare session priv */
 		sess_priv.inb_sa = 1;
 		sess_priv.sa_idx = ipsec->spi & spi_mask;
@@ -843,6 +867,7 @@ cn10k_eth_sec_session_create(void *device,
 		eth_sec->spi = ipsec->spi;
 		eth_sec->inl_dev = !!dev->inb.inl_dev;
 		eth_sec->inb = true;
+		eth_sec->inb_oop = !!ipsec->options.ingress_oop;
 
 		TAILQ_INSERT_TAIL(&dev->inb.list, eth_sec, entry);
 		dev->inb.nb_sess++;
@@ -858,6 +883,15 @@ cn10k_eth_sec_session_create(void *device,
 			inb_priv->reass_dynflag_bit = dev->reass_dynflag_bit;
 		}
 
+		if (ipsec->options.ingress_oop)
+			dev->inb.nb_oop++;
+
+		/* Update function pointer to handle OOP sessions */
+		if (dev->inb.nb_oop &&
+		    !(dev->rx_offload_flags & NIX_RX_REAS_F)) {
+			dev->rx_offload_flags |= NIX_RX_REAS_F;
+			cn10k_eth_set_rx_function(eth_dev);
+		}
 	} else {
 		struct roc_ot_ipsec_outb_sa *outb_sa, *outb_sa_dptr;
 		struct cn10k_outb_priv_data *outb_priv;
@@ -1007,6 +1041,15 @@ cn10k_eth_sec_session_destroy(void *device, struct rte_security_session *sess)
 				      sizeof(struct roc_ot_ipsec_inb_sa));
 		TAILQ_REMOVE(&dev->inb.list, eth_sec, entry);
 		dev->inb.nb_sess--;
+		if (eth_sec->inb_oop)
+			dev->inb.nb_oop--;
+
+		/* Clear offload flags if was used by OOP */
+		if (!dev->inb.nb_oop && !dev->inb.reass_en &&
+		    dev->rx_offload_flags & NIX_RX_REAS_F) {
+			dev->rx_offload_flags &= ~NIX_RX_REAS_F;
+			cn10k_eth_set_rx_function(eth_dev);
+		}
 	} else {
 		/* Disable SA */
 		sa_dptr = dev->outb.sa_dptr;

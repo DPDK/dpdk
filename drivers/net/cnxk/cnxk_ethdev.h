@@ -219,6 +219,9 @@ struct cnxk_eth_sec_sess {
 
 	/* Inbound session on inl dev */
 	bool inl_dev;
+
+	/* Out-Of-Place processing */
+	bool inb_oop;
 };
 
 TAILQ_HEAD(cnxk_eth_sec_sess_list, cnxk_eth_sec_sess);
@@ -245,6 +248,12 @@ struct cnxk_eth_dev_sec_inb {
 
 	/* DPTR for WRITE_SA microcode op */
 	void *sa_dptr;
+
+	/* Number of oop sessions */
+	uint16_t nb_oop;
+
+	/* Reassembly enabled */
+	bool reass_en;
 
 	/* Lock to synchronize sa setup/release */
 	rte_spinlock_t lock;
