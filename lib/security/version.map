@@ -23,10 +23,12 @@ EXPERIMENTAL {
 	rte_security_macsec_sc_stats_get;
 	rte_security_session_stats_get;
 	rte_security_session_update;
+	rte_security_oop_dynfield_offset;
 };
 
 INTERNAL {
 	global:
 
 	rte_security_dynfield_register;
+	rte_security_oop_dynfield_register;
 };

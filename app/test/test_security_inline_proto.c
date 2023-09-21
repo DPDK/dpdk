@@ -785,6 +785,51 @@ event_rx_burst(struct rte_mbuf **rx_pkts, uint16_t nb_pkts_to_rx)
 }
 
 static int
+verify_inbound_oop(struct ipsec_test_data *td,
+		   bool silent, struct rte_mbuf *mbuf)
+{
+	int ret = TEST_SUCCESS, rc;
+	struct rte_mbuf *orig;
+	uint32_t len;
+	void *data;
+
+	orig = *rte_security_oop_dynfield(mbuf);
+	if (!orig) {
+		if (!silent)
+			printf("\nUnable to get orig buffer OOP session");
+		return TEST_FAILED;
+	}
+
+	/* Skip Ethernet header comparison */
+	rte_pktmbuf_adj(orig, RTE_ETHER_HDR_LEN);
+
+	len = td->input_text.len;
+	if (orig->pkt_len != len) {
+		if (!silent)
+			printf("\nOriginal packet length mismatch, expected %u, got %u ",
+			       len, orig->pkt_len);
+		ret = TEST_FAILED;
+	}
+
+	data = rte_pktmbuf_mtod(orig, void *);
+	rc = memcmp(data, td->input_text.data, len);
+	if (rc) {
+		ret = TEST_FAILED;
+		if (silent)
+			goto exit;
+
+		printf("TestCase %s line %d: %s\n", __func__, __LINE__,
+		       "output text not as expected\n");
+
+		rte_hexdump(stdout, "expected", td->input_text.data, len);
+		rte_hexdump(stdout, "actual", data, len);
+	}
+exit:
+	rte_pktmbuf_free(orig);
+	return ret;
+}
+
+static int
 test_ipsec_with_reassembly(struct reassembly_vector *vector,
 		const struct ipsec_test_flags *flags)
 {
@@ -1107,6 +1152,12 @@ test_ipsec_inline_proto_process(struct ipsec_test_data *td,
 	if (ret)
 		return ret;
 
+	if (flags->inb_oop && rte_security_oop_dynfield_offset < 0) {
+		printf("\nDynamic field not available for inline inbound OOP");
+		ret = TEST_FAILED;
+		goto out;
+	}
+
 	if (td->ipsec_xform.direction == RTE_SECURITY_IPSEC_SA_DIR_INGRESS) {
 		ret = create_default_flow(port_id);
 		if (ret)
@@ -1196,6 +1247,15 @@ test_ipsec_inline_proto_process(struct ipsec_test_data *td,
 			for ( ; i < nb_rx; i++)
 				rte_pktmbuf_free(rx_pkts_burst[i]);
 			goto out;
+		}
+
+		if (flags->inb_oop) {
+			ret = verify_inbound_oop(td, silent, rx_pkts_burst[i]);
+			if (ret != TEST_SUCCESS) {
+				for ( ; i < nb_rx; i++)
+					rte_pktmbuf_free(rx_pkts_burst[i]);
+				goto out;
+			}
 		}
 
 		rte_pktmbuf_free(rx_pkts_burst[i]);
@@ -2071,6 +2131,26 @@ test_ipsec_inline_proto_known_vec_inb(const void *test_data)
 		test_ipsec_td_in_from_out(td, &td_inb);
 	else
 		memcpy(&td_inb, td, sizeof(td_inb));
+
+	return test_ipsec_inline_proto_process(&td_inb, NULL, 1, false, &flags);
+}
+
+static int
+test_ipsec_inline_proto_oop_inb(const void *test_data)
+{
+	const struct ipsec_test_data *td = test_data;
+	struct ipsec_test_flags flags;
+	struct ipsec_test_data td_inb;
+
+	memset(&flags, 0, sizeof(flags));
+	flags.inb_oop = true;
+
+	if (td->ipsec_xform.direction == RTE_SECURITY_IPSEC_SA_DIR_EGRESS)
+		test_ipsec_td_in_from_out(td, &td_inb);
+	else
+		memcpy(&td_inb, td, sizeof(td_inb));
+
+	td_inb.ipsec_xform.options.ingress_oop = true;
 
 	return test_ipsec_inline_proto_process(&td_inb, NULL, 1, false, &flags);
 }
@@ -3165,6 +3245,11 @@ static struct unit_test_suite inline_ipsec_testsuite  = {
 			"IPv4 Reassembly with burst of 4 fragments",
 			ut_setup_inline_ipsec_reassembly, ut_teardown_inline_ipsec_reassembly,
 			test_inline_ip_reassembly, &ipv4_4frag_burst_vector),
+		TEST_CASE_NAMED_WITH_DATA(
+			"Inbound Out-Of-Place processing",
+			ut_setup_inline_ipsec, ut_teardown_inline_ipsec,
+			test_ipsec_inline_proto_oop_inb,
+			&pkt_aes_128_gcm),
 
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	},

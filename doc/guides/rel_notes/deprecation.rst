@@ -127,11 +127,6 @@ Deprecation Notices
 * security: Hide structures ``rte_security_ops`` and ``rte_security_ctx``
   as these are internal to DPDK library and drivers.
 
-* security: New SA option ``ingress_oop`` would be added in structure
-  ``rte_security_ipsec_sa_options`` to support out of place processing
-  for inline inbound SA from DPDK 23.11. ``reserved_opts`` field in the
-  same struct would be removed as discussed in techboard meeting.
-
 * eventdev: The single-event (non-burst) enqueue and dequeue operations,
   used by static inline burst enqueue and dequeue functions in ``rte_eventdev.h``,
   will be removed in DPDK 23.11.

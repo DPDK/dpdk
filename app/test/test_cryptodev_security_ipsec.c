@@ -213,6 +213,14 @@ test_ipsec_sec_caps_verify(struct rte_security_ipsec_xform *ipsec_xform,
 		}
 	}
 
+	if (ipsec_xform->options.ingress_oop == 1 &&
+	    sec_cap->ipsec.options.ingress_oop == 0) {
+		if (!silent)
+			RTE_LOG(INFO, USER1,
+				"Inline Ingress OOP processing is not supported\n");
+		return -ENOTSUP;
+	}
+
 	return 0;
 }
 

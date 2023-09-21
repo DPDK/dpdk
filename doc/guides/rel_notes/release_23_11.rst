@@ -110,6 +110,11 @@ New Features
 
   * Added 100M and auto-neg support in YT PHY fiber mode.
 
+* **Added out of place processing support for inline ingress security session.**
+
+  Similar to out of place processing support for lookaside security session,
+  added the same support for inline ingress security session.
+
 * **Updated cryptodev scheduler driver.**
 
   * Added support for DOCSIS security protocol
@@ -161,6 +166,9 @@ Removed Items
 * cryptodev: Removed the arrays of algorithm strings ``rte_crypto_cipher_algorithm_strings``,
   ``rte_crypto_auth_algorithm_strings``, ``rte_crypto_aead_algorithm_strings`` and
   ``rte_crypto_asym_xform_strings``.
+
+* security: Removed deprecated field ``reserved_opts``
+  from struct ``rte_security_ipsec_sa_options``.
 
 
 API Changes
@@ -227,6 +235,9 @@ ABI Changes
   ``recycle_tx_mbufs_reuse`` and ``recycle_rx_descriptors_refill``
   fields, to move ``rxq`` and ``txq`` fields, to change the size of
   ``reserved1`` and ``reserved2`` fields.
+
+* security: struct ``rte_security_ipsec_sa_options`` was updated
+  due to inline out-of-place feature addition.
 
 
 Known Issues

@@ -111,6 +111,7 @@ struct ipsec_test_flags {
 	bool ah;
 	uint32_t plaintext_len;
 	int nb_segs_in_mbuf;
+	bool inb_oop;
 };
 
 struct crypto_param {

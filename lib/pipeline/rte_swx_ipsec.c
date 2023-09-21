@@ -1555,7 +1555,6 @@ ipsec_xform_get(struct rte_swx_ipsec_sa_params *p,
 	ipsec_xform->options.ip_csum_enable = 0;
 	ipsec_xform->options.l4_csum_enable = 0;
 	ipsec_xform->options.ip_reassembly_en = 0;
-	ipsec_xform->options.reserved_opts = 0;
 
 	ipsec_xform->direction = p->encrypt ?
 		RTE_SECURITY_IPSEC_SA_DIR_EGRESS :

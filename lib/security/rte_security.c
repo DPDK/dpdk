@@ -27,7 +27,10 @@
 } while (0)
 
 #define RTE_SECURITY_DYNFIELD_NAME "rte_security_dynfield_metadata"
+#define RTE_SECURITY_OOP_DYNFIELD_NAME "rte_security_oop_dynfield_metadata"
+
 int rte_security_dynfield_offset = -1;
+int rte_security_oop_dynfield_offset = -1;
 
 int
 rte_security_dynfield_register(void)
@@ -40,6 +43,20 @@ rte_security_dynfield_register(void)
 	rte_security_dynfield_offset =
 		rte_mbuf_dynfield_register(&dynfield_desc);
 	return rte_security_dynfield_offset;
+}
+
+int
+rte_security_oop_dynfield_register(void)
+{
+	static const struct rte_mbuf_dynfield dynfield_desc = {
+		.name = RTE_SECURITY_OOP_DYNFIELD_NAME,
+		.size = sizeof(rte_security_oop_dynfield_t),
+		.align = __alignof__(rte_security_oop_dynfield_t),
+	};
+
+	rte_security_oop_dynfield_offset =
+		rte_mbuf_dynfield_register(&dynfield_desc);
+	return rte_security_oop_dynfield_offset;
 }
 
 void *

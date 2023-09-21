@@ -273,14 +273,16 @@ struct rte_security_ipsec_sa_options {
 	 */
 	uint32_t ip_reassembly_en : 1;
 
-	/** Reserved bit fields for future extension
+	/** Enable out of place processing on inline inbound packets.
 	 *
-	 * User should ensure reserved_opts is cleared as it may change in
-	 * subsequent releases to support new options.
-	 *
-	 * Note: Reduce number of bits in reserved_opts for every new option.
+	 * * 1: Enable driver to perform Out-of-place(OOP) processing for this inline
+	 *      inbound SA if supported by driver. PMD need to register mbuf
+	 *      dynamic field using rte_security_oop_dynfield_register()
+	 *      and security session creation would fail if dynfield is not
+	 *      registered successfully.
+	 * * 0: Disable OOP processing for this session (default).
 	 */
-	uint32_t reserved_opts : 17;
+	uint32_t ingress_oop : 1;
 };
 
 /** IPSec security association direction */
@@ -825,6 +827,13 @@ typedef uint64_t rte_security_dynfield_t;
 /** Dynamic mbuf field for device-specific metadata */
 extern int rte_security_dynfield_offset;
 
+/** Out-of-Place(OOP) processing field type */
+typedef struct rte_mbuf *rte_security_oop_dynfield_t;
+/** Dynamic mbuf field for pointer to original mbuf for
+ * OOP processing session.
+ */
+extern int rte_security_oop_dynfield_offset;
+
 /**
  * @warning
  * @b EXPERIMENTAL: this API may change without prior notice
@@ -845,6 +854,25 @@ rte_security_dynfield(struct rte_mbuf *mbuf)
 	return RTE_MBUF_DYNFIELD(mbuf,
 		rte_security_dynfield_offset,
 		rte_security_dynfield_t *);
+}
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice
+ *
+ * Get pointer to mbuf field for original mbuf pointer when
+ * Out-Of-Place(OOP) processing is enabled in security session.
+ *
+ * @param       mbuf    packet to access
+ * @return pointer to mbuf field
+ */
+__rte_experimental
+static inline rte_security_oop_dynfield_t *
+rte_security_oop_dynfield(struct rte_mbuf *mbuf)
+{
+	return RTE_MBUF_DYNFIELD(mbuf,
+			rte_security_oop_dynfield_offset,
+			rte_security_oop_dynfield_t *);
 }
 
 /**

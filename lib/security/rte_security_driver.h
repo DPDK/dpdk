@@ -198,6 +198,14 @@ __rte_internal
 int rte_security_dynfield_register(void);
 
 /**
+ * @internal
+ * Register mbuf dynamic field for security inline ingress Out-of-Place(OOP)
+ * processing.
+ */
+__rte_internal
+int rte_security_oop_dynfield_register(void);
+
+/**
  * Update the mbuf with provided metadata.
  *
  * @param	device		Crypto/eth device pointer
