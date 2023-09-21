@@ -646,7 +646,7 @@ eth_dev_start_mp(uint16_t port_id)
 		struct rte_port *port = &ports[port_id];
 
 		/*
-		 * Starting a bonded port also starts all members under the bonded
+		 * Starting a bonding port also starts all members under the bonding
 		 * device. So if this port is bond device, we need to modify the
 		 * port status of these members.
 		 */
@@ -670,7 +670,7 @@ eth_dev_stop_mp(uint16_t port_id)
 		struct rte_port *port = &ports[port_id];
 
 		/*
-		 * Stopping a bonded port also stops all members under the bonded
+		 * Stopping a bonding port also stops all members under the bonding
 		 * device. So if this port is bond device, we need to modify the
 		 * port status of these members.
 		 */
@@ -3044,7 +3044,7 @@ start_port(portid_t pid)
 
 		if (port_is_bonding_member(pi)) {
 			fprintf(stderr,
-				"Please remove port %d from bonded device.\n",
+				"Please remove port %d from bonding device.\n",
 				pi);
 			continue;
 		}
@@ -3366,7 +3366,7 @@ stop_port(portid_t pid)
 
 		if (port_is_bonding_member(pi)) {
 			fprintf(stderr,
-				"Please remove port %d from bonded device.\n",
+				"Please remove port %d from bonding device.\n",
 				pi);
 			continue;
 		}
@@ -3504,7 +3504,7 @@ close_port(portid_t pid)
 
 		if (port_is_bonding_member(pi)) {
 			fprintf(stderr,
-				"Please remove port %d from bonded device.\n",
+				"Please remove port %d from bonding device.\n",
 				pi);
 			continue;
 		}
@@ -3524,7 +3524,7 @@ close_port(portid_t pid)
 #endif
 			rte_eth_dev_close(pi);
 			/*
-			 * If this port is bonded device, all members under the
+			 * If this port is bonding device, all members under the
 			 * device need to be removed or closed.
 			 */
 			if (port->bond_flag == 1 && num_members > 0)
@@ -3571,7 +3571,7 @@ reset_port(portid_t pid)
 
 		if (port_is_bonding_member(pi)) {
 			fprintf(stderr,
-				"Please remove port %d from bonded device.\n",
+				"Please remove port %d from bonding device.\n",
 				pi);
 			continue;
 		}
@@ -4244,7 +4244,7 @@ uint8_t port_is_bonding_member(portid_t member_pid)
 	if (ret != 0) {
 		TESTPMD_LOG(ERR,
 			"Failed to get device info for port id %d,"
-			"cannot determine if the port is a bonded member",
+			"cannot determine if the port is a bonding member",
 			member_pid);
 		return 0;
 	}

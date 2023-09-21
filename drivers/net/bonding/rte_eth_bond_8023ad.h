@@ -191,7 +191,7 @@ rte_eth_bond_8023ad_setup(uint16_t port_id,
  * @return
  *   0 - if ok
  *   -EINVAL if conf is NULL or member id is invalid (not a member of given
- *       bonded device or is not inactive).
+ *       bonding device or is not inactive).
  */
 __rte_experimental
 int
@@ -274,9 +274,9 @@ rte_eth_bond_8023ad_ext_slowtx(uint16_t port_id, uint16_t member_id,
  * dedicated 802.3ad control plane traffic . A flow filtering rule is
  * programmed on each member to redirect all LACP slow packets to that rx queue
  * for processing in the LACP state machine, this removes the need to filter
- * these packets in the bonded devices data path. The additional tx queue is
+ * these packets in the bonding devices data path. The additional tx queue is
  * used to enable the LACP state machine to enqueue LACP packets directly to
- * member hw independently of the bonded devices data path.
+ * member hw independently of the bonding devices data path.
  *
  * To use this feature all members must support the programming of the flow
  * filter rule required for rx and have enough queues that one rx and tx queue

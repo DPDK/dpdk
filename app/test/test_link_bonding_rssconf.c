@@ -32,7 +32,7 @@
 #define RXTX_RING_SIZE			1024
 #define RXTX_QUEUE_COUNT		4
 
-#define BONDED_DEV_NAME         ("net_bonding_rss")
+#define BONDING_DEV_NAME         ("net_bonding_rss")
 
 #define MEMBER_DEV_NAME_FMT      ("net_null%d")
 #define MEMBER_RXTX_QUEUE_FMT      ("rssconf_member%d_q%d")
@@ -173,7 +173,7 @@ remove_members(void)
 }
 
 static int
-remove_members_and_stop_bonded_device(void)
+remove_members_and_stop_bonding_device(void)
 {
 	TEST_ASSERT_SUCCESS(remove_members(), "Removing members");
 	TEST_ASSERT_SUCCESS(rte_eth_dev_stop(test_params.bond_port_id),
@@ -390,7 +390,7 @@ test_propagate(void)
 
 		retval = rte_eth_dev_rss_hash_update(test_params.bond_port_id,
 				&bond_rss_conf);
-		TEST_ASSERT_SUCCESS(retval, "Cannot set bonded port RSS keys");
+		TEST_ASSERT_SUCCESS(retval, "Cannot set bonding port RSS keys");
 
 		FOR_EACH_PORT(n, port) {
 			port = &test_params.member_ports[n];
@@ -424,7 +424,7 @@ test_propagate(void)
 
 		TEST_ASSERT_SUCCESS(reta_set(test_params.bond_port_id,
 				i % RXTX_QUEUE_COUNT, test_params.bond_dev_info.reta_size),
-				"Cannot set bonded port RETA");
+				"Cannot set bonding port RETA");
 
 		bond_reta_fetch();
 
@@ -468,14 +468,14 @@ test_rss(void)
 
 	TEST_ASSERT(member_remove_and_add() == 1, "remove and add members success.");
 
-	remove_members_and_stop_bonded_device();
+	remove_members_and_stop_bonding_device();
 
 	return TEST_SUCCESS;
 }
 
 
 /**
- * Test RSS configuration over bonded and members.
+ * Test RSS configuration over bonding and members.
  */
 static int
 test_rss_config_lazy(void)
@@ -499,7 +499,7 @@ test_rss_config_lazy(void)
 		bond_rss_conf.rss_hf = rss_hf;
 		retval = rte_eth_dev_rss_hash_update(test_params.bond_port_id,
 						     &bond_rss_conf);
-		TEST_ASSERT(retval != 0, "Succeeded in setting bonded port hash function");
+		TEST_ASSERT(retval != 0, "Succeeded in setting bonding port hash function");
 	}
 
 	/* Set all keys to zero for all members */
@@ -516,7 +516,7 @@ test_rss_config_lazy(void)
 		TEST_ASSERT(retval != 0, "Succeeded in setting members RSS keys");
 	}
 
-	/* Set RSS keys for bonded port */
+	/* Set RSS keys for bonding port */
 	memset(rss_key, 1, sizeof(rss_key));
 	bond_rss_conf.rss_hf = rss_hf;
 	bond_rss_conf.rss_key = rss_key;
@@ -524,7 +524,7 @@ test_rss_config_lazy(void)
 
 	retval = rte_eth_dev_rss_hash_update(test_params.bond_port_id,
 					     &bond_rss_conf);
-	TEST_ASSERT(retval != 0, "Succeeded in setting bonded port RSS keys");
+	TEST_ASSERT(retval != 0, "Succeeded in setting bonding port RSS keys");
 
 	/*  Test RETA propagation */
 	for (i = 0; i < RXTX_QUEUE_COUNT; i++) {
@@ -537,7 +537,7 @@ test_rss_config_lazy(void)
 
 		retval = reta_set(test_params.bond_port_id, i % RXTX_QUEUE_COUNT,
 				  test_params.bond_dev_info.reta_size);
-		TEST_ASSERT(retval != 0, "Succeeded in setting bonded port RETA");
+		TEST_ASSERT(retval != 0, "Succeeded in setting bonding port RETA");
 	}
 
 	return TEST_SUCCESS;
@@ -567,7 +567,7 @@ test_rss_lazy(void)
 
 	TEST_ASSERT_SUCCESS(test_rss_config_lazy(), "Succeeded in setting RSS hash when RX_RSS mq_mode is turned off");
 
-	remove_members_and_stop_bonded_device();
+	remove_members_and_stop_bonding_device();
 
 	return TEST_SUCCESS;
 }
@@ -624,10 +624,10 @@ test_setup(void)
 	}
 
 	if (test_params.bond_port_id == INVALID_PORT_ID) {
-		retval = rte_eth_bond_create(BONDED_DEV_NAME, 0, rte_socket_id());
+		retval = rte_eth_bond_create(BONDING_DEV_NAME, 0, rte_socket_id());
 
-		TEST_ASSERT(retval >= 0, "Failed to create bonded ethdev %s",
-				BONDED_DEV_NAME);
+		TEST_ASSERT(retval >= 0, "Failed to create bonding ethdev %s",
+				BONDING_DEV_NAME);
 
 		test_params.bond_port_id = retval;
 
@@ -685,8 +685,8 @@ test_rssconf_executor(int (*test_func)(void))
 
 	/* Reset environment in case test failed to do that. */
 	if (test_result != TEST_SUCCESS) {
-		TEST_ASSERT_SUCCESS(remove_members_and_stop_bonded_device(),
-			"Failed to stop bonded device");
+		TEST_ASSERT_SUCCESS(remove_members_and_stop_bonding_device(),
+			"Failed to stop bonding device");
 	}
 
 	return test_result;

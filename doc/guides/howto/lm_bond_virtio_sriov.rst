@@ -16,9 +16,9 @@ The following sections show an example of how to do this.
 Test Setup
 ----------
 
-A bonded device is created in the VM.
-The virtio and VF PMD's are added as members to the bonded device.
-The VF is set as the primary member of the bonded device.
+A bonding device is created in the VM.
+The virtio and VF PMD's are added as members to the bonding device.
+The VF is set as the primary member of the bonding device.
 
 A bridge must be set up on the Host connecting the tap device, which is the
 backend of the Virtio device and the Physical Function (PF) device.
@@ -102,7 +102,7 @@ The ``mac_addr`` command only works with kernel PF for Niantic
 
 The syntax of the ``testpmd`` command is:
 
-Create bonded device (mode) (socket).
+Create bonding device (mode) (socket).
 
 Mode 1 is active backup.
 
@@ -114,8 +114,8 @@ Bonding is port 2 (P2).
 
 .. code-block:: console
 
-   testpmd> create bonded device 1 0
-   Created new bonded device net_bond_testpmd_0 on (port 2).
+   testpmd> create bonding device 1 0
+   Created new bonding device net_bond_testpmd_0 on (port 2).
    testpmd> add bonding member 0 2
    testpmd> add bonding member 1 2
    testpmd> show bonding config 2

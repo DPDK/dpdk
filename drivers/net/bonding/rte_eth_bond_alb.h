@@ -105,7 +105,7 @@ bond_mode_alb_arp_upd(struct client_data *client_info,
 /**
  * Function updates member indexes of active connections.
  *
- * @param bond_dev		Pointer to bonded device struct.
+ * @param bond_dev		Pointer to bonding device struct.
  */
 void
 bond_mode_alb_client_list_upd(struct rte_eth_dev *bond_dev);

@@ -1907,7 +1907,7 @@ For example, to attach a port created by pcap PMD.
 In this case, identifier is ``net_pcap0``.
 This identifier format is the same as ``--vdev`` format of DPDK applications.
 
-For example, to re-attach a bonded port which has been previously detached,
+For example, to re-attach a bonding port which has been previously detached,
 the mode and slave parameters must be given.
 
 .. code-block:: console
@@ -1915,7 +1915,7 @@ the mode and slave parameters must be given.
    testpmd> port attach net_bond_0,mode=0,slave=1
    Attaching a new port...
    EAL: Initializing pmd_bond for net_bond_0
-   EAL: Create bonded device net_bond_0 on port 0 in mode 0 on socket 0.
+   EAL: Create bonding device net_bond_0 on port 0 in mode 0 on socket 0.
    Port 0 is attached. Now total ports is 1
    Done
 

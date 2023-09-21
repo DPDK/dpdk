@@ -65,7 +65,7 @@ bond_ethdev_rx_burst(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 	uint16_t active_member;
 	int i;
 
-	/* Cast to structure, containing bonded device's port id and queue id */
+	/* Cast to structure, containing bonding device's port id and queue id */
 	struct bond_rx_queue *bd_rx_q = (struct bond_rx_queue *)queue;
 	internals = bd_rx_q->dev_private;
 	member_count = internals->active_member_count;
@@ -99,7 +99,7 @@ bond_ethdev_rx_burst_active_backup(void *queue, struct rte_mbuf **bufs,
 {
 	struct bond_dev_private *internals;
 
-	/* Cast to structure, containing bonded device's port id and queue id */
+	/* Cast to structure, containing bonding device's port id and queue id */
 	struct bond_rx_queue *bd_rx_q = (struct bond_rx_queue *)queue;
 
 	internals = bd_rx_q->dev_private;
@@ -295,12 +295,12 @@ static inline uint16_t
 rx_burst_8023ad(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts,
 		bool dedicated_rxq)
 {
-	/* Cast to structure, containing bonded device's port id and queue id */
+	/* Cast to structure, containing bonding device's port id and queue id */
 	struct bond_rx_queue *bd_rx_q = (struct bond_rx_queue *)queue;
 	struct bond_dev_private *internals = bd_rx_q->dev_private;
-	struct rte_eth_dev *bonded_eth_dev =
+	struct rte_eth_dev *bonding_eth_dev =
 					&rte_eth_devices[internals->port_id];
-	struct rte_ether_addr *bond_mac = bonded_eth_dev->data->mac_addrs;
+	struct rte_ether_addr *bond_mac = bonding_eth_dev->data->mac_addrs;
 	struct rte_ether_hdr *hdr;
 
 	const uint16_t ether_type_slow_be =
@@ -1487,14 +1487,14 @@ static const struct rte_ether_addr null_mac_addr;
  * Add additional MAC addresses to the member
  */
 int
-member_add_mac_addresses(struct rte_eth_dev *bonded_eth_dev,
+member_add_mac_addresses(struct rte_eth_dev *bonding_eth_dev,
 		uint16_t member_port_id)
 {
 	int i, ret;
 	struct rte_ether_addr *mac_addr;
 
 	for (i = 1; i < BOND_MAX_MAC_ADDRS; i++) {
-		mac_addr = &bonded_eth_dev->data->mac_addrs[i];
+		mac_addr = &bonding_eth_dev->data->mac_addrs[i];
 		if (rte_is_same_ether_addr(mac_addr, &null_mac_addr))
 			break;
 
@@ -1503,7 +1503,7 @@ member_add_mac_addresses(struct rte_eth_dev *bonded_eth_dev,
 			/* rollback */
 			for (i--; i > 0; i--)
 				rte_eth_dev_mac_addr_remove(member_port_id,
-					&bonded_eth_dev->data->mac_addrs[i]);
+					&bonding_eth_dev->data->mac_addrs[i]);
 			return ret;
 		}
 	}
@@ -1515,7 +1515,7 @@ member_add_mac_addresses(struct rte_eth_dev *bonded_eth_dev,
  * Remove additional MAC addresses from the member
  */
 int
-member_remove_mac_addresses(struct rte_eth_dev *bonded_eth_dev,
+member_remove_mac_addresses(struct rte_eth_dev *bonding_eth_dev,
 		uint16_t member_port_id)
 {
 	int i, rc, ret;
@@ -1523,7 +1523,7 @@ member_remove_mac_addresses(struct rte_eth_dev *bonded_eth_dev,
 
 	rc = 0;
 	for (i = 1; i < BOND_MAX_MAC_ADDRS; i++) {
-		mac_addr = &bonded_eth_dev->data->mac_addrs[i];
+		mac_addr = &bonding_eth_dev->data->mac_addrs[i];
 		if (rte_is_same_ether_addr(mac_addr, &null_mac_addr))
 			break;
 
@@ -1537,9 +1537,9 @@ member_remove_mac_addresses(struct rte_eth_dev *bonded_eth_dev,
 }
 
 int
-mac_address_members_update(struct rte_eth_dev *bonded_eth_dev)
+mac_address_members_update(struct rte_eth_dev *bonding_eth_dev)
 {
-	struct bond_dev_private *internals = bonded_eth_dev->data->dev_private;
+	struct bond_dev_private *internals = bonding_eth_dev->data->dev_private;
 	bool set;
 	int i;
 
@@ -1554,7 +1554,7 @@ mac_address_members_update(struct rte_eth_dev *bonded_eth_dev)
 		for (i = 0; i < internals->member_count; i++) {
 			if (rte_eth_dev_default_mac_addr_set(
 					internals->members[i].port_id,
-					bonded_eth_dev->data->mac_addrs)) {
+					bonding_eth_dev->data->mac_addrs)) {
 				RTE_BOND_LOG(ERR, "Failed to update port Id %d MAC address",
 						internals->members[i].port_id);
 				return -1;
@@ -1562,7 +1562,7 @@ mac_address_members_update(struct rte_eth_dev *bonded_eth_dev)
 		}
 		break;
 	case BONDING_MODE_8023AD:
-		bond_mode_8023ad_mac_address_update(bonded_eth_dev);
+		bond_mode_8023ad_mac_address_update(bonding_eth_dev);
 		break;
 	case BONDING_MODE_ACTIVE_BACKUP:
 	case BONDING_MODE_TLB:
@@ -1574,7 +1574,7 @@ mac_address_members_update(struct rte_eth_dev *bonded_eth_dev)
 					internals->current_primary_port) {
 				if (rte_eth_dev_default_mac_addr_set(
 						internals->current_primary_port,
-						bonded_eth_dev->data->mac_addrs)) {
+						bonding_eth_dev->data->mac_addrs)) {
 					RTE_BOND_LOG(ERR, "Failed to update port Id %d MAC address",
 							internals->current_primary_port);
 					set = false;
@@ -1659,11 +1659,11 @@ bond_ethdev_mode_set(struct rte_eth_dev *eth_dev, uint8_t mode)
 
 
 static int
-member_configure_slow_queue(struct rte_eth_dev *bonded_eth_dev,
+member_configure_slow_queue(struct rte_eth_dev *bonding_eth_dev,
 		struct rte_eth_dev *member_eth_dev)
 {
 	int errval = 0;
-	struct bond_dev_private *internals = bonded_eth_dev->data->dev_private;
+	struct bond_dev_private *internals = bonding_eth_dev->data->dev_private;
 	struct port *port = &bond_mode_8023ad_ports[member_eth_dev->data->port_id];
 
 	if (port->slow_pool == NULL) {
@@ -1717,7 +1717,7 @@ member_configure_slow_queue(struct rte_eth_dev *bonded_eth_dev,
 }
 
 int
-member_configure(struct rte_eth_dev *bonded_eth_dev,
+member_configure(struct rte_eth_dev *bonding_eth_dev,
 		struct rte_eth_dev *member_eth_dev)
 {
 	uint16_t nb_rx_queues;
@@ -1725,7 +1725,7 @@ member_configure(struct rte_eth_dev *bonded_eth_dev,
 
 	int errval;
 
-	struct bond_dev_private *internals = bonded_eth_dev->data->dev_private;
+	struct bond_dev_private *internals = bonding_eth_dev->data->dev_private;
 
 	/* Stop member */
 	errval = rte_eth_dev_stop(member_eth_dev->data->port_id);
@@ -1738,38 +1738,38 @@ member_configure(struct rte_eth_dev *bonded_eth_dev,
 		member_eth_dev->data->dev_conf.intr_conf.lsc = 1;
 
 	/* If RSS is enabled for bonding, try to enable it for members  */
-	if (bonded_eth_dev->data->dev_conf.rxmode.mq_mode & RTE_ETH_MQ_RX_RSS_FLAG) {
-		/* rss_key won't be empty if RSS is configured in bonded dev */
+	if (bonding_eth_dev->data->dev_conf.rxmode.mq_mode & RTE_ETH_MQ_RX_RSS_FLAG) {
+		/* rss_key won't be empty if RSS is configured in bonding dev */
 		member_eth_dev->data->dev_conf.rx_adv_conf.rss_conf.rss_key_len =
 					internals->rss_key_len;
 		member_eth_dev->data->dev_conf.rx_adv_conf.rss_conf.rss_key =
 					internals->rss_key;
 
 		member_eth_dev->data->dev_conf.rx_adv_conf.rss_conf.rss_hf =
-				bonded_eth_dev->data->dev_conf.rx_adv_conf.rss_conf.rss_hf;
+				bonding_eth_dev->data->dev_conf.rx_adv_conf.rss_conf.rss_hf;
 		member_eth_dev->data->dev_conf.rxmode.mq_mode =
-				bonded_eth_dev->data->dev_conf.rxmode.mq_mode;
+				bonding_eth_dev->data->dev_conf.rxmode.mq_mode;
 	} else {
 		member_eth_dev->data->dev_conf.rx_adv_conf.rss_conf.rss_key_len = 0;
 		member_eth_dev->data->dev_conf.rx_adv_conf.rss_conf.rss_key = NULL;
 		member_eth_dev->data->dev_conf.rx_adv_conf.rss_conf.rss_hf = 0;
 		member_eth_dev->data->dev_conf.rxmode.mq_mode =
-				bonded_eth_dev->data->dev_conf.rxmode.mq_mode;
+				bonding_eth_dev->data->dev_conf.rxmode.mq_mode;
 	}
 
 	member_eth_dev->data->dev_conf.rxmode.mtu =
-			bonded_eth_dev->data->dev_conf.rxmode.mtu;
+			bonding_eth_dev->data->dev_conf.rxmode.mtu;
 	member_eth_dev->data->dev_conf.link_speeds =
-			bonded_eth_dev->data->dev_conf.link_speeds;
+			bonding_eth_dev->data->dev_conf.link_speeds;
 
 	member_eth_dev->data->dev_conf.txmode.offloads =
-			bonded_eth_dev->data->dev_conf.txmode.offloads;
+			bonding_eth_dev->data->dev_conf.txmode.offloads;
 
 	member_eth_dev->data->dev_conf.rxmode.offloads =
-			bonded_eth_dev->data->dev_conf.rxmode.offloads;
+			bonding_eth_dev->data->dev_conf.rxmode.offloads;
 
-	nb_rx_queues = bonded_eth_dev->data->nb_rx_queues;
-	nb_tx_queues = bonded_eth_dev->data->nb_tx_queues;
+	nb_rx_queues = bonding_eth_dev->data->nb_rx_queues;
+	nb_tx_queues = bonding_eth_dev->data->nb_tx_queues;
 
 	if (internals->mode == BONDING_MODE_8023AD) {
 		if (internals->mode4.dedicated_queues.enabled == 1) {
@@ -1789,7 +1789,7 @@ member_configure(struct rte_eth_dev *bonded_eth_dev,
 	}
 
 	errval = rte_eth_dev_set_mtu(member_eth_dev->data->port_id,
-				     bonded_eth_dev->data->mtu);
+				     bonding_eth_dev->data->mtu);
 	if (errval != 0 && errval != -ENOTSUP) {
 		RTE_BOND_LOG(ERR, "rte_eth_dev_set_mtu: port %u, err (%d)",
 				member_eth_dev->data->port_id, errval);
@@ -1799,7 +1799,7 @@ member_configure(struct rte_eth_dev *bonded_eth_dev,
 }
 
 int
-member_start(struct rte_eth_dev *bonded_eth_dev,
+member_start(struct rte_eth_dev *bonding_eth_dev,
 		struct rte_eth_dev *member_eth_dev)
 {
 	int errval = 0;
@@ -1807,12 +1807,12 @@ member_start(struct rte_eth_dev *bonded_eth_dev,
 	struct bond_tx_queue *bd_tx_q;
 	uint16_t q_id;
 	struct rte_flow_error flow_error;
-	struct bond_dev_private *internals = bonded_eth_dev->data->dev_private;
+	struct bond_dev_private *internals = bonding_eth_dev->data->dev_private;
 	uint16_t member_port_id = member_eth_dev->data->port_id;
 
 	/* Setup Rx Queues */
-	for (q_id = 0; q_id < bonded_eth_dev->data->nb_rx_queues; q_id++) {
-		bd_rx_q = (struct bond_rx_queue *)bonded_eth_dev->data->rx_queues[q_id];
+	for (q_id = 0; q_id < bonding_eth_dev->data->nb_rx_queues; q_id++) {
+		bd_rx_q = (struct bond_rx_queue *)bonding_eth_dev->data->rx_queues[q_id];
 
 		errval = rte_eth_rx_queue_setup(member_port_id, q_id,
 				bd_rx_q->nb_rx_desc,
@@ -1827,8 +1827,8 @@ member_start(struct rte_eth_dev *bonded_eth_dev,
 	}
 
 	/* Setup Tx Queues */
-	for (q_id = 0; q_id < bonded_eth_dev->data->nb_tx_queues; q_id++) {
-		bd_tx_q = (struct bond_tx_queue *)bonded_eth_dev->data->tx_queues[q_id];
+	for (q_id = 0; q_id < bonding_eth_dev->data->nb_tx_queues; q_id++) {
+		bd_tx_q = (struct bond_tx_queue *)bonding_eth_dev->data->tx_queues[q_id];
 
 		errval = rte_eth_tx_queue_setup(member_port_id, q_id,
 				bd_tx_q->nb_tx_desc,
@@ -1844,11 +1844,11 @@ member_start(struct rte_eth_dev *bonded_eth_dev,
 
 	if (internals->mode == BONDING_MODE_8023AD &&
 			internals->mode4.dedicated_queues.enabled == 1) {
-		if (member_configure_slow_queue(bonded_eth_dev, member_eth_dev)
+		if (member_configure_slow_queue(bonding_eth_dev, member_eth_dev)
 				!= 0)
 			return errval;
 
-		errval = bond_ethdev_8023ad_flow_verify(bonded_eth_dev,
+		errval = bond_ethdev_8023ad_flow_verify(bonding_eth_dev,
 				member_port_id);
 		if (errval != 0) {
 			RTE_BOND_LOG(ERR,
@@ -1876,7 +1876,7 @@ member_start(struct rte_eth_dev *bonded_eth_dev,
 
 	if (internals->mode == BONDING_MODE_8023AD &&
 			internals->mode4.dedicated_queues.enabled == 1) {
-		errval = bond_ethdev_8023ad_flow_set(bonded_eth_dev,
+		errval = bond_ethdev_8023ad_flow_set(bonding_eth_dev,
 				member_port_id);
 		if (errval != 0) {
 			RTE_BOND_LOG(ERR,
@@ -1887,11 +1887,11 @@ member_start(struct rte_eth_dev *bonded_eth_dev,
 	}
 
 	/* If RSS is enabled for bonding, synchronize RETA */
-	if (bonded_eth_dev->data->dev_conf.rxmode.mq_mode & RTE_ETH_MQ_RX_RSS) {
+	if (bonding_eth_dev->data->dev_conf.rxmode.mq_mode & RTE_ETH_MQ_RX_RSS) {
 		int i;
 		struct bond_dev_private *internals;
 
-		internals = bonded_eth_dev->data->dev_private;
+		internals = bonding_eth_dev->data->dev_private;
 
 		for (i = 0; i < internals->member_count; i++) {
 			if (internals->members[i].port_id == member_port_id) {
@@ -1914,7 +1914,7 @@ member_start(struct rte_eth_dev *bonded_eth_dev,
 	if (member_eth_dev->data->dev_flags & RTE_ETH_DEV_INTR_LSC) {
 		member_eth_dev->dev_ops->link_update(member_eth_dev, 0);
 		bond_ethdev_lsc_event_callback(member_port_id,
-			RTE_ETH_EVENT_INTR_LSC, &bonded_eth_dev->data->port_id,
+			RTE_ETH_EVENT_INTR_LSC, &bonding_eth_dev->data->port_id,
 			NULL);
 	}
 
@@ -1986,7 +1986,7 @@ bond_ethdev_primary_set(struct bond_dev_private *internals,
 	if (internals->active_member_count < 1)
 		internals->current_primary_port = member_port_id;
 	else
-		/* Search bonded device member ports for new proposed primary port */
+		/* Search bonding device member ports for new proposed primary port */
 		for (i = 0; i < internals->active_member_count; i++) {
 			if (internals->active_members[i] == member_port_id)
 				internals->current_primary_port = member_port_id;
@@ -2002,8 +2002,8 @@ bond_ethdev_start(struct rte_eth_dev *eth_dev)
 	struct bond_dev_private *internals;
 	int i;
 
-	/* member eth dev will be started by bonded device */
-	if (check_for_bonded_ethdev(eth_dev)) {
+	/* member eth dev will be started by bonding device */
+	if (check_for_bonding_ethdev(eth_dev)) {
 		RTE_BOND_LOG(ERR, "User tried to explicitly start a member eth_dev (%d)",
 				eth_dev->data->port_id);
 		return -1;
@@ -2030,7 +2030,7 @@ bond_ethdev_start(struct rte_eth_dev *eth_dev)
 			goto out_err;
 
 		if (mac_address_set(eth_dev, new_mac_addr) != 0) {
-			RTE_BOND_LOG(ERR, "bonded port (%d) failed to update MAC address",
+			RTE_BOND_LOG(ERR, "bonding port (%d) failed to update MAC address",
 					eth_dev->data->port_id);
 			goto out_err;
 		}
@@ -2046,20 +2046,20 @@ bond_ethdev_start(struct rte_eth_dev *eth_dev)
 	}
 
 
-	/* Reconfigure each member device if starting bonded device */
+	/* Reconfigure each member device if starting bonding device */
 	for (i = 0; i < internals->member_count; i++) {
 		struct rte_eth_dev *member_ethdev =
 				&(rte_eth_devices[internals->members[i].port_id]);
 		if (member_configure(eth_dev, member_ethdev) != 0) {
 			RTE_BOND_LOG(ERR,
-				"bonded port (%d) failed to reconfigure member device (%d)",
+				"bonding port (%d) failed to reconfigure member device (%d)",
 				eth_dev->data->port_id,
 				internals->members[i].port_id);
 			goto out_err;
 		}
 		if (member_start(eth_dev, member_ethdev) != 0) {
 			RTE_BOND_LOG(ERR,
-				"bonded port (%d) failed to start member device (%d)",
+				"bonding port (%d) failed to start member device (%d)",
 				eth_dev->data->port_id,
 				internals->members[i].port_id);
 			goto out_err;
@@ -2209,7 +2209,7 @@ bond_ethdev_cfg_cleanup(struct rte_eth_dev *dev, bool remove)
 
 		if (rte_eth_bond_member_remove(bond_port_id, port_id) != 0) {
 			RTE_BOND_LOG(ERR,
-				     "Failed to remove port %d from bonded device %s",
+				     "Failed to remove port %d from bonding device %s",
 				     port_id, dev->device->name);
 			skipped++;
 		}
@@ -2224,7 +2224,7 @@ bond_ethdev_close(struct rte_eth_dev *dev)
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
 
-	RTE_BOND_LOG(INFO, "Closing bonded device %s", dev->device->name);
+	RTE_BOND_LOG(INFO, "Closing bonding device %s", dev->device->name);
 
 	bond_ethdev_cfg_cleanup(dev, true);
 
@@ -2262,8 +2262,8 @@ bond_ethdev_info(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 			internals->candidate_max_rx_pktlen :
 			RTE_ETHER_MAX_JUMBO_FRAME_LEN;
 
-	/* Max number of tx/rx queues that the bonded device can support is the
-	 * minimum values of the bonded members, as all members must be capable
+	/* Max number of tx/rx queues that the bonding device can support is the
+	 * minimum values of the bonding members, as all members must be capable
 	 * of supporting the same number of tx/rx queues.
 	 */
 	if (internals->member_count > 0) {
@@ -2430,7 +2430,7 @@ bond_ethdev_tx_queue_release(struct rte_eth_dev *dev, uint16_t queue_id)
 static void
 bond_ethdev_member_link_status_change_monitor(void *cb_arg)
 {
-	struct rte_eth_dev *bonded_ethdev, *member_ethdev;
+	struct rte_eth_dev *bonding_ethdev, *member_ethdev;
 	struct bond_dev_private *internals;
 
 	/* Default value for polling member found is true as we don't want to
@@ -2440,10 +2440,10 @@ bond_ethdev_member_link_status_change_monitor(void *cb_arg)
 	if (cb_arg == NULL)
 		return;
 
-	bonded_ethdev = cb_arg;
-	internals = bonded_ethdev->data->dev_private;
+	bonding_ethdev = cb_arg;
+	internals = bonding_ethdev->data->dev_private;
 
-	if (!bonded_ethdev->data->dev_started ||
+	if (!bonding_ethdev->data->dev_started ||
 		!internals->link_status_polling_enabled)
 		return;
 
@@ -2470,7 +2470,7 @@ bond_ethdev_member_link_status_change_monitor(void *cb_arg)
 					internals->members[i].last_link_status) {
 				bond_ethdev_lsc_event_callback(internals->members[i].port_id,
 						RTE_ETH_EVENT_INTR_LSC,
-						&bonded_ethdev->data->port_id,
+						&bonding_ethdev->data->port_id,
 						NULL);
 			}
 		}
@@ -2958,7 +2958,7 @@ int
 bond_ethdev_lsc_event_callback(uint16_t port_id, enum rte_eth_event_type type,
 		void *param, void *ret_param __rte_unused)
 {
-	struct rte_eth_dev *bonded_eth_dev;
+	struct rte_eth_dev *bonding_eth_dev;
 	struct bond_dev_private *internals;
 	struct rte_eth_link link;
 	int rc = -1;
@@ -2972,18 +2972,18 @@ bond_ethdev_lsc_event_callback(uint16_t port_id, enum rte_eth_event_type type,
 	if (type != RTE_ETH_EVENT_INTR_LSC || param == NULL)
 		return rc;
 
-	bonded_eth_dev = &rte_eth_devices[*(uint16_t *)param];
+	bonding_eth_dev = &rte_eth_devices[*(uint16_t *)param];
 
-	if (check_for_bonded_ethdev(bonded_eth_dev))
+	if (check_for_bonding_ethdev(bonding_eth_dev))
 		return rc;
 
-	internals = bonded_eth_dev->data->dev_private;
+	internals = bonding_eth_dev->data->dev_private;
 
 	/* If the device isn't started don't handle interrupts */
-	if (!bonded_eth_dev->data->dev_started)
+	if (!bonding_eth_dev->data->dev_started)
 		return rc;
 
-	/* verify that port_id is a valid member of bonded port */
+	/* verify that port_id is a valid member of bonding port */
 	for (i = 0; i < internals->member_count; i++) {
 		if (internals->members[i].port_id == port_id) {
 			valid_member = 1;
@@ -3012,15 +3012,15 @@ bond_ethdev_lsc_event_callback(uint16_t port_id, enum rte_eth_event_type type,
 		if (active_pos < internals->active_member_count)
 			goto link_update;
 
-		/* check link state properties if bonded link is up*/
-		if (bonded_eth_dev->data->dev_link.link_status == RTE_ETH_LINK_UP) {
-			if (link_properties_valid(bonded_eth_dev, &link) != 0)
+		/* check link state properties if bonding link is up*/
+		if (bonding_eth_dev->data->dev_link.link_status == RTE_ETH_LINK_UP) {
+			if (link_properties_valid(bonding_eth_dev, &link) != 0)
 				RTE_BOND_LOG(ERR, "Invalid link properties "
 					     "for member %d in bonding mode %d",
 					     port_id, internals->mode);
 		} else {
 			/* inherit member link properties */
-			link_properties_set(bonded_eth_dev, &link);
+			link_properties_set(bonding_eth_dev, &link);
 		}
 
 		/* If no active member ports then set this port to be
@@ -3028,17 +3028,17 @@ bond_ethdev_lsc_event_callback(uint16_t port_id, enum rte_eth_event_type type,
 		 */
 		if (internals->active_member_count < 1) {
 			/* If first active member, then change link status */
-			bonded_eth_dev->data->dev_link.link_status =
+			bonding_eth_dev->data->dev_link.link_status =
 								RTE_ETH_LINK_UP;
 			internals->current_primary_port = port_id;
 			lsc_flag = 1;
 
-			mac_address_members_update(bonded_eth_dev);
-			bond_ethdev_promiscuous_update(bonded_eth_dev);
-			bond_ethdev_allmulticast_update(bonded_eth_dev);
+			mac_address_members_update(bonding_eth_dev);
+			bond_ethdev_promiscuous_update(bonding_eth_dev);
+			bond_ethdev_allmulticast_update(bonding_eth_dev);
 		}
 
-		activate_member(bonded_eth_dev, port_id);
+		activate_member(bonding_eth_dev, port_id);
 
 		/* If the user has defined the primary port then default to
 		 * using it.
@@ -3051,7 +3051,7 @@ bond_ethdev_lsc_event_callback(uint16_t port_id, enum rte_eth_event_type type,
 			goto link_update;
 
 		/* Remove from active member list */
-		deactivate_member(bonded_eth_dev, port_id);
+		deactivate_member(bonding_eth_dev, port_id);
 
 		if (internals->active_member_count < 1)
 			lsc_flag = 1;
@@ -3064,18 +3064,18 @@ bond_ethdev_lsc_event_callback(uint16_t port_id, enum rte_eth_event_type type,
 						internals->active_members[0]);
 			else
 				internals->current_primary_port = internals->primary_port;
-			mac_address_members_update(bonded_eth_dev);
-			bond_ethdev_promiscuous_update(bonded_eth_dev);
-			bond_ethdev_allmulticast_update(bonded_eth_dev);
+			mac_address_members_update(bonding_eth_dev);
+			bond_ethdev_promiscuous_update(bonding_eth_dev);
+			bond_ethdev_allmulticast_update(bonding_eth_dev);
 		}
 	}
 
 link_update:
 	/**
-	 * Update bonded device link properties after any change to active
+	 * Update bonding device link properties after any change to active
 	 * members
 	 */
-	bond_ethdev_link_update(bonded_eth_dev, 0);
+	bond_ethdev_link_update(bonding_eth_dev, 0);
 	internals->members[member_idx].last_link_status = link.link_status;
 
 	if (lsc_flag) {
@@ -3083,15 +3083,15 @@ link_update:
 		if (internals->link_up_delay_ms > 0 ||
 			internals->link_down_delay_ms > 0)
 			rte_eal_alarm_cancel(bond_ethdev_delayed_lsc_propagation,
-					bonded_eth_dev);
+					bonding_eth_dev);
 
-		if (bonded_eth_dev->data->dev_link.link_status) {
+		if (bonding_eth_dev->data->dev_link.link_status) {
 			if (internals->link_up_delay_ms > 0)
 				rte_eal_alarm_set(internals->link_up_delay_ms * 1000,
 						bond_ethdev_delayed_lsc_propagation,
-						(void *)bonded_eth_dev);
+						(void *)bonding_eth_dev);
 			else
-				rte_eth_dev_callback_process(bonded_eth_dev,
+				rte_eth_dev_callback_process(bonding_eth_dev,
 						RTE_ETH_EVENT_INTR_LSC,
 						NULL);
 
@@ -3099,9 +3099,9 @@ link_update:
 			if (internals->link_down_delay_ms > 0)
 				rte_eal_alarm_set(internals->link_down_delay_ms * 1000,
 						bond_ethdev_delayed_lsc_propagation,
-						(void *)bonded_eth_dev);
+						(void *)bonding_eth_dev);
 			else
-				rte_eth_dev_callback_process(bonded_eth_dev,
+				rte_eth_dev_callback_process(bonding_eth_dev,
 						RTE_ETH_EVENT_INTR_LSC,
 						NULL);
 		}
@@ -3543,7 +3543,7 @@ dump_lacp(uint16_t port_id, FILE *f)
 	fprintf(f, "\tIEEE802.3 port: %u\n", port_id);
 	ret = rte_eth_bond_8023ad_conf_get(port_id, &port_conf);
 	if (ret) {
-		fprintf(f, "\tGet bonded device %u 8023ad config failed\n",
+		fprintf(f, "\tGet bonding device %u 8023ad config failed\n",
 			port_id);
 		return;
 	}
@@ -3697,7 +3697,7 @@ bond_alloc(struct rte_vdev_device *dev, uint8_t mode)
 	/* Set mode 4 default configuration */
 	bond_mode_8023ad_setup(eth_dev, NULL);
 	if (bond_ethdev_mode_set(eth_dev, mode)) {
-		RTE_BOND_LOG(ERR, "Failed to set bonded device %u mode to %u",
+		RTE_BOND_LOG(ERR, "Failed to set bonding device %u mode to %u",
 				 eth_dev->data->port_id, mode);
 		goto err;
 	}
@@ -3708,7 +3708,7 @@ bond_alloc(struct rte_vdev_device *dev, uint8_t mode)
 						   RTE_CACHE_LINE_SIZE);
 	if (internals->vlan_filter_bmpmem == NULL) {
 		RTE_BOND_LOG(ERR,
-			     "Failed to allocate vlan bitmap for bonded device %u",
+			     "Failed to allocate vlan bitmap for bonding device %u",
 			     eth_dev->data->port_id);
 		goto err;
 	}
@@ -3717,7 +3717,7 @@ bond_alloc(struct rte_vdev_device *dev, uint8_t mode)
 			internals->vlan_filter_bmpmem, vlan_filter_bmp_size);
 	if (internals->vlan_filter_bmp == NULL) {
 		RTE_BOND_LOG(ERR,
-			     "Failed to init vlan bitmap for bonded device %u",
+			     "Failed to init vlan bitmap for bonding device %u",
 			     eth_dev->data->port_id);
 		rte_free(internals->vlan_filter_bmpmem);
 		goto err;
@@ -3776,12 +3776,12 @@ bond_probe(struct rte_vdev_device *dev)
 		if (rte_kvargs_process(kvlist, PMD_BOND_MODE_KVARG,
 				&bond_ethdev_parse_member_mode_kvarg,
 				&bonding_mode) != 0) {
-			RTE_BOND_LOG(ERR, "Invalid mode for bonded device %s",
+			RTE_BOND_LOG(ERR, "Invalid mode for bonding device %s",
 					name);
 			goto parse_error;
 		}
 	} else {
-		RTE_BOND_LOG(ERR, "Mode must be specified only once for bonded "
+		RTE_BOND_LOG(ERR, "Mode must be specified only once for bonding "
 				"device %s", name);
 		goto parse_error;
 	}
@@ -3793,12 +3793,12 @@ bond_probe(struct rte_vdev_device *dev)
 				&bond_ethdev_parse_socket_id_kvarg, &socket_id)
 				!= 0) {
 			RTE_BOND_LOG(ERR, "Invalid socket Id specified for "
-					"bonded device %s", name);
+					"bonding device %s", name);
 			goto parse_error;
 		}
 	} else if (arg_count > 1) {
 		RTE_BOND_LOG(ERR, "Socket Id can be specified only once for "
-				"bonded device %s", name);
+				"bonding device %s", name);
 		goto parse_error;
 	} else {
 		socket_id = rte_socket_id();
@@ -3822,7 +3822,7 @@ bond_probe(struct rte_vdev_device *dev)
 				&bond_ethdev_parse_member_agg_mode_kvarg,
 				&agg_mode) != 0) {
 			RTE_BOND_LOG(ERR,
-					"Failed to parse agg selection mode for bonded device %s",
+					"Failed to parse agg selection mode for bonding device %s",
 					name);
 			goto parse_error;
 		}
@@ -3834,8 +3834,8 @@ bond_probe(struct rte_vdev_device *dev)
 	}
 
 	rte_eth_dev_probing_finish(&rte_eth_devices[port_id]);
-	RTE_BOND_LOG(INFO, "Create bonded device %s on port %d in mode %u on "
-			"socket %d.",	name, port_id, bonding_mode, socket_id);
+	RTE_BOND_LOG(INFO, "Create bonding device %s on port %d in mode %u on "
+			"socket %u.",	name, port_id, bonding_mode, socket_id);
 	return 0;
 
 parse_error:
@@ -3980,7 +3980,7 @@ bond_ethdev_configure(struct rte_eth_dev *dev)
 	internals->max_rx_pktlen = internals->candidate_max_rx_pktlen;
 
 	/*
-	 * if no kvlist, it means that this bonded device has been created
+	 * if no kvlist, it means that this bonding device has been created
 	 * through the bonding api.
 	 */
 	if (!kvlist || internals->kvargs_processing_is_done)
@@ -3988,14 +3988,14 @@ bond_ethdev_configure(struct rte_eth_dev *dev)
 
 	internals->kvargs_processing_is_done = true;
 
-	/* Parse MAC address for bonded device */
+	/* Parse MAC address for bonding device */
 	arg_count = rte_kvargs_count(kvlist, PMD_BOND_MAC_ADDR_KVARG);
 	if (arg_count == 1) {
 		struct rte_ether_addr bond_mac;
 
 		if (rte_kvargs_process(kvlist, PMD_BOND_MAC_ADDR_KVARG,
 				       &bond_ethdev_parse_bond_mac_addr_kvarg, &bond_mac) < 0) {
-			RTE_BOND_LOG(INFO, "Invalid mac address for bonded device %s",
+			RTE_BOND_LOG(INFO, "Invalid mac address for bonding device %s",
 				     name);
 			return -1;
 		}
@@ -4003,13 +4003,13 @@ bond_ethdev_configure(struct rte_eth_dev *dev)
 		/* Set MAC address */
 		if (rte_eth_bond_mac_address_set(port_id, &bond_mac) != 0) {
 			RTE_BOND_LOG(ERR,
-				     "Failed to set mac address on bonded device %s",
+				     "Failed to set mac address on bonding device %s",
 				     name);
 			return -1;
 		}
 	} else if (arg_count > 1) {
 		RTE_BOND_LOG(ERR,
-			     "MAC address can be specified only once for bonded device %s",
+			     "MAC address can be specified only once for bonding device %s",
 			     name);
 		return -1;
 	}
@@ -4023,7 +4023,7 @@ bond_ethdev_configure(struct rte_eth_dev *dev)
 				       &bond_ethdev_parse_balance_xmit_policy_kvarg, &xmit_policy) !=
 		    0) {
 			RTE_BOND_LOG(INFO,
-				     "Invalid xmit policy specified for bonded device %s",
+				     "Invalid xmit policy specified for bonding device %s",
 				     name);
 			return -1;
 		}
@@ -4031,13 +4031,13 @@ bond_ethdev_configure(struct rte_eth_dev *dev)
 		/* Set balance mode transmit policy*/
 		if (rte_eth_bond_xmit_policy_set(port_id, xmit_policy) != 0) {
 			RTE_BOND_LOG(ERR,
-				     "Failed to set balance xmit policy on bonded device %s",
+				     "Failed to set balance xmit policy on bonding device %s",
 				     name);
 			return -1;
 		}
 	} else if (arg_count > 1) {
 		RTE_BOND_LOG(ERR,
-			     "Transmit policy can be specified only once for bonded device %s",
+			     "Transmit policy can be specified only once for bonding device %s",
 			     name);
 		return -1;
 	}
@@ -4048,7 +4048,7 @@ bond_ethdev_configure(struct rte_eth_dev *dev)
 				       &bond_ethdev_parse_member_agg_mode_kvarg,
 				       &agg_mode) != 0) {
 			RTE_BOND_LOG(ERR,
-				     "Failed to parse agg selection mode for bonded device %s",
+				     "Failed to parse agg selection mode for bonding device %s",
 				     name);
 		}
 		if (internals->mode == BONDING_MODE_8023AD) {
@@ -4056,14 +4056,14 @@ bond_ethdev_configure(struct rte_eth_dev *dev)
 					agg_mode);
 			if (ret < 0) {
 				RTE_BOND_LOG(ERR,
-					"Invalid args for agg selection set for bonded device %s",
+					"Invalid args for agg selection set for bonding device %s",
 					name);
 				return -1;
 			}
 		}
 	}
 
-	/* Parse/add member ports to bonded device */
+	/* Parse/add member ports to bonding device */
 	if (rte_kvargs_count(kvlist, PMD_BOND_MEMBER_PORT_KVARG) > 0) {
 		struct bond_ethdev_member_ports member_ports;
 		unsigned i;
@@ -4073,7 +4073,7 @@ bond_ethdev_configure(struct rte_eth_dev *dev)
 		if (rte_kvargs_process(kvlist, PMD_BOND_MEMBER_PORT_KVARG,
 				       &bond_ethdev_parse_member_port_kvarg, &member_ports) != 0) {
 			RTE_BOND_LOG(ERR,
-				     "Failed to parse member ports for bonded device %s",
+				     "Failed to parse member ports for bonding device %s",
 				     name);
 			return -1;
 		}
@@ -4081,13 +4081,13 @@ bond_ethdev_configure(struct rte_eth_dev *dev)
 		for (i = 0; i < member_ports.member_count; i++) {
 			if (rte_eth_bond_member_add(port_id, member_ports.members[i]) != 0) {
 				RTE_BOND_LOG(ERR,
-					     "Failed to add port %d as member to bonded device %s",
+					     "Failed to add port %d as member to bonding device %s",
 					     member_ports.members[i], name);
 			}
 		}
 
 	} else {
-		RTE_BOND_LOG(INFO, "No members specified for bonded device %s", name);
+		RTE_BOND_LOG(INFO, "No members specified for bonding device %s", name);
 		return -1;
 	}
 
@@ -4101,7 +4101,7 @@ bond_ethdev_configure(struct rte_eth_dev *dev)
 				       &bond_ethdev_parse_primary_member_port_id_kvarg,
 				       &primary_member_port_id) < 0) {
 			RTE_BOND_LOG(INFO,
-				     "Invalid primary member port id specified for bonded device %s",
+				     "Invalid primary member port id specified for bonding device %s",
 				     name);
 			return -1;
 		}
@@ -4110,13 +4110,13 @@ bond_ethdev_configure(struct rte_eth_dev *dev)
 		if (rte_eth_bond_primary_set(port_id, primary_member_port_id)
 		    != 0) {
 			RTE_BOND_LOG(ERR,
-				     "Failed to set primary member port %d on bonded device %s",
+				     "Failed to set primary member port %d on bonding device %s",
 				     primary_member_port_id, name);
 			return -1;
 		}
 	} else if (arg_count > 1) {
 		RTE_BOND_LOG(INFO,
-			     "Primary member can be specified only once for bonded device %s",
+			     "Primary member can be specified only once for bonding device %s",
 			     name);
 		return -1;
 	}
@@ -4131,7 +4131,7 @@ bond_ethdev_configure(struct rte_eth_dev *dev)
 				       &bond_ethdev_parse_time_ms_kvarg,
 				       &lsc_poll_interval_ms) < 0) {
 			RTE_BOND_LOG(INFO,
-				     "Invalid lsc polling interval value specified for bonded"
+				     "Invalid lsc polling interval value specified for bonding"
 				     " device %s", name);
 			return -1;
 		}
@@ -4139,13 +4139,13 @@ bond_ethdev_configure(struct rte_eth_dev *dev)
 		if (rte_eth_bond_link_monitoring_set(port_id, lsc_poll_interval_ms)
 		    != 0) {
 			RTE_BOND_LOG(ERR,
-				     "Failed to set lsc monitor polling interval (%u ms) on bonded device %s",
+				     "Failed to set lsc monitor polling interval (%u ms) on bonding device %s",
 				     lsc_poll_interval_ms, name);
 			return -1;
 		}
 	} else if (arg_count > 1) {
 		RTE_BOND_LOG(INFO,
-			     "LSC polling interval can be specified only once for bonded"
+			     "LSC polling interval can be specified only once for bonding"
 			     " device %s", name);
 		return -1;
 	}
@@ -4161,7 +4161,7 @@ bond_ethdev_configure(struct rte_eth_dev *dev)
 				       &link_up_delay_ms) < 0) {
 			RTE_BOND_LOG(INFO,
 				     "Invalid link up propagation delay value specified for"
-				     " bonded device %s", name);
+				     " bonding device %s", name);
 			return -1;
 		}
 
@@ -4169,14 +4169,14 @@ bond_ethdev_configure(struct rte_eth_dev *dev)
 		if (rte_eth_bond_link_up_prop_delay_set(port_id, link_up_delay_ms)
 		    != 0) {
 			RTE_BOND_LOG(ERR,
-				     "Failed to set link up propagation delay (%u ms) on bonded"
+				     "Failed to set link up propagation delay (%u ms) on bonding"
 				     " device %s", link_up_delay_ms, name);
 			return -1;
 		}
 	} else if (arg_count > 1) {
 		RTE_BOND_LOG(INFO,
 			     "Link up propagation delay can be specified only once for"
-			     " bonded device %s", name);
+			     " bonding device %s", name);
 		return -1;
 	}
 
@@ -4191,7 +4191,7 @@ bond_ethdev_configure(struct rte_eth_dev *dev)
 				       &link_down_delay_ms) < 0) {
 			RTE_BOND_LOG(INFO,
 				     "Invalid link down propagation delay value specified for"
-				     " bonded device %s", name);
+				     " bonding device %s", name);
 			return -1;
 		}
 
@@ -4199,13 +4199,13 @@ bond_ethdev_configure(struct rte_eth_dev *dev)
 		if (rte_eth_bond_link_down_prop_delay_set(port_id, link_down_delay_ms)
 		    != 0) {
 			RTE_BOND_LOG(ERR,
-				     "Failed to set link down propagation delay (%u ms) on bonded device %s",
+				     "Failed to set link down propagation delay (%u ms) on bonding device %s",
 				     link_down_delay_ms, name);
 			return -1;
 		}
 	} else if (arg_count > 1) {
 		RTE_BOND_LOG(INFO,
-			     "Link down propagation delay can be specified only once for  bonded device %s",
+			     "Link down propagation delay can be specified only once for  bonding device %s",
 			     name);
 		return -1;
 	}
@@ -4216,7 +4216,7 @@ bond_ethdev_configure(struct rte_eth_dev *dev)
 				&(rte_eth_devices[internals->members[i].port_id]);
 		if (member_configure(dev, member_ethdev) != 0) {
 			RTE_BOND_LOG(ERR,
-				"bonded port (%d) failed to configure member device (%d)",
+				"bonding port (%d) failed to configure member device (%d)",
 				dev->data->port_id,
 				internals->members[i].port_id);
 			return -1;

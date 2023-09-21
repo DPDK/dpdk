@@ -206,7 +206,7 @@ show_warnings(uint16_t member_id)
 	if (warnings & WRN_RX_QUEUE_FULL) {
 		RTE_BOND_LOG(DEBUG,
 			     "Member %u: failed to enqueue LACP packet into RX ring.\n"
-			     "Receive and transmit functions must be invoked on bonded"
+			     "Receive and transmit functions must be invoked on bonding"
 			     "interface at least 10 times per second or LACP will notwork correctly",
 			     member_id);
 	}
@@ -214,7 +214,7 @@ show_warnings(uint16_t member_id)
 	if (warnings & WRN_TX_QUEUE_FULL) {
 		RTE_BOND_LOG(DEBUG,
 			     "Member %u: failed to enqueue LACP packet into TX ring.\n"
-			     "Receive and transmit functions must be invoked on bonded"
+			     "Receive and transmit functions must be invoked on bonding"
 			     "interface at least 10 times per second or LACP will not work correctly",
 			     member_id);
 	}
@@ -1415,7 +1415,7 @@ rte_eth_bond_8023ad_conf_get(uint16_t port_id,
 {
 	struct rte_eth_dev *bond_dev;
 
-	if (valid_bonded_port_id(port_id) != 0)
+	if (valid_bonding_port_id(port_id) != 0)
 		return -EINVAL;
 
 	if (conf == NULL)
@@ -1434,7 +1434,7 @@ rte_eth_bond_8023ad_agg_selection_set(uint16_t port_id,
 	struct bond_dev_private *internals;
 	struct mode8023ad_private *mode4;
 
-	if (valid_bonded_port_id(port_id) != 0)
+	if (valid_bonding_port_id(port_id) != 0)
 		return -EINVAL;
 
 	bond_dev = &rte_eth_devices[port_id];
@@ -1456,7 +1456,7 @@ int rte_eth_bond_8023ad_agg_selection_get(uint16_t port_id)
 	struct bond_dev_private *internals;
 	struct mode8023ad_private *mode4;
 
-	if (valid_bonded_port_id(port_id) != 0)
+	if (valid_bonding_port_id(port_id) != 0)
 		return -EINVAL;
 
 	bond_dev = &rte_eth_devices[port_id];
@@ -1475,7 +1475,7 @@ static int
 bond_8023ad_setup_validate(uint16_t port_id,
 		struct rte_eth_bond_8023ad_conf *conf)
 {
-	if (valid_bonded_port_id(port_id) != 0)
+	if (valid_bonding_port_id(port_id) != 0)
 		return -EINVAL;
 
 	if (conf != NULL) {
@@ -1526,7 +1526,7 @@ rte_eth_bond_8023ad_member_info(uint16_t port_id, uint16_t member_id,
 	struct bond_dev_private *internals;
 	struct port *port;
 
-	if (info == NULL || valid_bonded_port_id(port_id) != 0 ||
+	if (info == NULL || valid_bonding_port_id(port_id) != 0 ||
 			rte_eth_bond_mode_get(port_id) != BONDING_MODE_8023AD)
 		return -EINVAL;
 
@@ -1717,7 +1717,7 @@ rte_eth_bond_8023ad_dedicated_queues_enable(uint16_t port)
 	struct rte_eth_dev *dev;
 	struct bond_dev_private *internals;
 
-	if (valid_bonded_port_id(port) != 0)
+	if (valid_bonding_port_id(port) != 0)
 		return -EINVAL;
 
 	dev = &rte_eth_devices[port];
@@ -1743,7 +1743,7 @@ rte_eth_bond_8023ad_dedicated_queues_disable(uint16_t port)
 	struct rte_eth_dev *dev;
 	struct bond_dev_private *internals;
 
-	if (valid_bonded_port_id(port) != 0)
+	if (valid_bonding_port_id(port) != 0)
 		return -EINVAL;
 
 	dev = &rte_eth_devices[port];

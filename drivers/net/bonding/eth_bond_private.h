@@ -74,7 +74,7 @@ struct bond_tx_queue {
 	/**< Copy of TX configuration structure for queue */
 };
 
-/** Bonded member devices structure */
+/** Bonding member devices structure */
 struct bond_ethdev_member_ports {
 	uint16_t members[RTE_MAX_ETHPORTS];	/**< Member port id array */
 	uint16_t member_count;				/**< Number of members */
@@ -106,7 +106,7 @@ typedef void (*burst_xmit_hash_t)(struct rte_mbuf **buf, uint16_t nb_pkts,
 
 /** Link Bonding PMD device private configuration Structure */
 struct bond_dev_private {
-	uint16_t port_id;			/**< Port Id of Bonded Port */
+	uint16_t port_id;			/**< Port Id of Bonding Port */
 	uint8_t mode;						/**< Link Bonding Mode */
 
 	rte_spinlock_t lock;
@@ -140,9 +140,9 @@ struct bond_dev_private {
 	uint16_t active_member_count;		/**< Number of active members */
 	uint16_t active_members[RTE_MAX_ETHPORTS];    /**< Active member list */
 
-	uint16_t member_count;			/**< Number of bonded members */
+	uint16_t member_count;			/**< Number of bonding members */
 	struct bond_member_details members[RTE_MAX_ETHPORTS];
-	/**< Array of bonded members details */
+	/**< Array of bonding members details */
 
 	struct mode8023ad_private mode4;
 	uint16_t tlb_members_order[RTE_MAX_ETHPORTS];
@@ -191,10 +191,10 @@ struct bond_dev_private {
 extern const struct eth_dev_ops default_dev_ops;
 
 int
-check_for_main_bonded_ethdev(const struct rte_eth_dev *eth_dev);
+check_for_main_bonding_ethdev(const struct rte_eth_dev *eth_dev);
 
 int
-check_for_bonded_ethdev(const struct rte_eth_dev *eth_dev);
+check_for_bonding_ethdev(const struct rte_eth_dev *eth_dev);
 
 /*
  * Search given member array to find position of given id.
@@ -216,7 +216,7 @@ int
 valid_port_id(uint16_t port_id);
 
 int
-valid_bonded_port_id(uint16_t port_id);
+valid_bonding_port_id(uint16_t port_id);
 
 int
 valid_member_port_id(struct bond_dev_private *internals, uint16_t port_id);
@@ -236,25 +236,25 @@ mac_address_get(struct rte_eth_dev *eth_dev,
 		struct rte_ether_addr *dst_mac_addr);
 
 int
-mac_address_members_update(struct rte_eth_dev *bonded_eth_dev);
+mac_address_members_update(struct rte_eth_dev *bonding_eth_dev);
 
 int
-member_add_mac_addresses(struct rte_eth_dev *bonded_eth_dev,
+member_add_mac_addresses(struct rte_eth_dev *bonding_eth_dev,
 		uint16_t member_port_id);
 
 int
-member_remove_mac_addresses(struct rte_eth_dev *bonded_eth_dev,
+member_remove_mac_addresses(struct rte_eth_dev *bonding_eth_dev,
 		uint16_t member_port_id);
 
 int
 bond_ethdev_mode_set(struct rte_eth_dev *eth_dev, uint8_t mode);
 
 int
-member_configure(struct rte_eth_dev *bonded_eth_dev,
+member_configure(struct rte_eth_dev *bonding_eth_dev,
 		struct rte_eth_dev *member_eth_dev);
 
 int
-member_start(struct rte_eth_dev *bonded_eth_dev,
+member_start(struct rte_eth_dev *bonding_eth_dev,
 		struct rte_eth_dev *member_eth_dev);
 
 void
