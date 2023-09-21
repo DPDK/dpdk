@@ -1369,6 +1369,11 @@ dev_init(struct dev *dev, struct plt_pci_device *pci_dev)
 	if (!dev_cache_line_size_valid())
 		return -EFAULT;
 
+	if (!roc_plt_lmt_validate()) {
+		plt_err("Failed to validate LMT line");
+		return -EFAULT;
+	}
+
 	bar2 = (uintptr_t)pci_dev->mem_resource[2].addr;
 	bar4 = (uintptr_t)pci_dev->mem_resource[4].addr;
 	if (bar2 == 0 || bar4 == 0) {

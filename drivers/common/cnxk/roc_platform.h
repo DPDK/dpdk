@@ -322,6 +322,11 @@ extern int cnxk_logtype_dpi;
 __rte_internal
 int roc_plt_init(void);
 
+__rte_internal
+uint16_t roc_plt_control_lmt_id_get(void);
+__rte_internal
+uint16_t roc_plt_lmt_validate(void);
+
 /* Init callbacks */
 typedef int (*roc_plt_init_cb_t)(void);
 int __roc_api roc_plt_init_cb_register(roc_plt_init_cb_t cb);

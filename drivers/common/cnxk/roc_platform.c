@@ -21,6 +21,31 @@ roc_plt_init_cb_register(roc_plt_init_cb_t cb)
 	return 0;
 }
 
+uint16_t
+roc_plt_control_lmt_id_get(void)
+{
+	uint32_t lcore_id = plt_lcore_id();
+	if (lcore_id != LCORE_ID_ANY)
+		return lcore_id << ROC_LMT_LINES_PER_CORE_LOG2;
+	else
+		/* Return Last LMT ID to be use in control path functionality */
+		return ROC_NUM_LMT_LINES - 1;
+}
+
+uint16_t
+roc_plt_lmt_validate(void)
+{
+	if (!roc_model_is_cn9k()) {
+		/* Last LMT line is reserved for control specific operation and can be
+		 * use from any EAL or non EAL cores.
+		 */
+		if ((RTE_MAX_LCORE << ROC_LMT_LINES_PER_CORE_LOG2) >
+		    (ROC_NUM_LMT_LINES - 1))
+			return 0;
+	}
+	return 1;
+}
+
 int
 roc_plt_init(void)
 {
