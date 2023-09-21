@@ -166,6 +166,97 @@ gdma_post_work_request(struct mana_gdma_queue *queue,
 	return 0;
 }
 
+#ifdef RTE_ARCH_32
+union gdma_short_doorbell_entry {
+	uint32_t     as_uint32;
+
+	struct {
+		uint32_t tail_ptr_incr	: 16; /* Number of CQEs */
+		uint32_t id		: 12;
+		uint32_t reserved	: 3;
+		uint32_t arm		: 1;
+	} cq;
+
+	struct {
+		uint32_t tail_ptr_incr	: 16; /* In number of bytes */
+		uint32_t id		: 12;
+		uint32_t reserved	: 4;
+	} rq;
+
+	struct {
+		uint32_t tail_ptr_incr	: 16; /* In number of bytes */
+		uint32_t id		: 12;
+		uint32_t reserved	: 4;
+	} sq;
+
+	struct {
+		uint32_t tail_ptr_incr	: 16; /* Number of EQEs */
+		uint32_t id		: 12;
+		uint32_t reserved	: 3;
+		uint32_t arm		: 1;
+	} eq;
+}; /* HW DATA */
+
+enum {
+	DOORBELL_SHORT_OFFSET_SQ = 0x10,
+	DOORBELL_SHORT_OFFSET_RQ = 0x410,
+	DOORBELL_SHORT_OFFSET_CQ = 0x810,
+	DOORBELL_SHORT_OFFSET_EQ = 0xFF0,
+};
+
+/*
+ * Write to hardware doorbell to notify new activity.
+ */
+int
+mana_ring_short_doorbell(void *db_page, enum gdma_queue_types queue_type,
+			 uint32_t queue_id, uint32_t tail_incr, uint8_t arm)
+{
+	uint8_t *addr = db_page;
+	union gdma_short_doorbell_entry e = {};
+
+	if ((queue_id & ~GDMA_SHORT_DB_QID_MASK) ||
+	    (tail_incr & ~GDMA_SHORT_DB_INC_MASK)) {
+		DP_LOG(ERR, "%s: queue_id %u or "
+		       "tail_incr %u overflowed, queue type %d",
+		       __func__, queue_id, tail_incr, queue_type);
+		return -EINVAL;
+	}
+
+	switch (queue_type) {
+	case GDMA_QUEUE_SEND:
+		e.sq.id = queue_id;
+		e.sq.tail_ptr_incr = tail_incr;
+		addr += DOORBELL_SHORT_OFFSET_SQ;
+		break;
+
+	case GDMA_QUEUE_RECEIVE:
+		e.rq.id = queue_id;
+		e.rq.tail_ptr_incr = tail_incr;
+		addr += DOORBELL_SHORT_OFFSET_RQ;
+		break;
+
+	case GDMA_QUEUE_COMPLETION:
+		e.cq.id = queue_id;
+		e.cq.tail_ptr_incr = tail_incr;
+		e.cq.arm = arm;
+		addr += DOORBELL_SHORT_OFFSET_CQ;
+		break;
+
+	default:
+		DP_LOG(ERR, "Unsupported queue type %d", queue_type);
+		return -1;
+	}
+
+	/* Ensure all writes are done before ringing doorbell */
+	rte_wmb();
+
+	DP_LOG(DEBUG, "db_page %p addr %p queue_id %u type %u tail %u arm %u",
+	       db_page, addr, queue_id, queue_type, tail_incr, arm);
+
+	rte_write32(e.as_uint32, addr);
+	return 0;
+}
+#else
 union gdma_doorbell_entry {
 	uint64_t     as_uint64;
 
@@ -248,6 +339,7 @@ mana_ring_doorbell(void *db_page, enum gdma_queue_types queue_type,
 	rte_write64(e.as_uint64, addr);
 	return 0;
 }
+#endif
 
 /*
  * Poll completion queue for completions.
