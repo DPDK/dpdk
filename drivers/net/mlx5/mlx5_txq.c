@@ -1381,6 +1381,11 @@ int mlx5_map_aggr_tx_affinity(struct rte_eth_dev *dev, uint16_t tx_queue_id,
 	struct mlx5_priv *priv;
 
 	priv = dev->data->dev_private;
+	if (!mlx5_devx_obj_ops_en(priv->sh)) {
+		DRV_LOG(ERR, "Tx affinity mapping isn't supported by Verbs API.");
+		rte_errno = ENOTSUP;
+		return -rte_errno;
+	}
 	txq = (*priv->txqs)[tx_queue_id];
 	if (!txq)
 		return -1;
