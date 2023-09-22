@@ -511,6 +511,21 @@ resize_hugefile(int fd, uint64_t fa_offset, uint64_t page_sz, bool grow,
 			grow, dirty);
 }
 
+__rte_no_asan
+static inline void
+page_fault(void *addr)
+{
+	/* We need to trigger a write to the page to enforce page fault but we
+	 * can't overwrite value that is already there, so read the old value
+	 * and write it back. Kernel populates the page with zeroes initially.
+	 *
+	 * Disable ASan instrumentation here because if the segment is already
+	 * allocated by another process and is marked as free in the shadow,
+	 * accessing this address will cause an ASan error.
+	 */
+	*(volatile int *)addr = *(volatile int *)addr;
+}
+
 static int
 alloc_seg(struct rte_memseg *ms, void *addr, int socket_id,
 		struct hugepage_info *hi, unsigned int list_idx,
@@ -636,12 +651,8 @@ alloc_seg(struct rte_memseg *ms, void *addr, int socket_id,
 		goto mapped;
 	}
 
-	/* we need to trigger a write to the page to enforce page fault and
-	 * ensure that page is accessible to us, but we can't overwrite value
-	 * that is already there, so read the old value, and write itback.
-	 * kernel populates the page with zeroes initially.
-	 */
-	*(volatile int *)addr = *(volatile int *)addr;
+	/* enforce page fault and ensure that page is accessible to us */
+	page_fault(addr);
 
 	iova = rte_mem_virt2iova(addr);
 	if (iova == RTE_BAD_PHYS_ADDR) {
