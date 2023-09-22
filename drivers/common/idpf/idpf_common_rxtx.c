@@ -871,6 +871,7 @@ idpf_dp_splitq_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	uint16_t nb_to_clean;
 	uint16_t nb_tx = 0;
 	uint64_t ol_flags;
+	uint8_t cmd_dtype;
 	uint16_t nb_ctx;
 
 	if (unlikely(txq == NULL) || unlikely(!txq->q_started))
@@ -902,6 +903,7 @@ idpf_dp_splitq_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		if (txq->nb_free < tx_pkt->nb_segs)
 			break;
 
+		cmd_dtype = 0;
 		ol_flags = tx_pkt->ol_flags;
 		tx_offload.l2_len = tx_pkt->l2_len;
 		tx_offload.l3_len = tx_pkt->l3_len;
@@ -910,6 +912,9 @@ idpf_dp_splitq_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		/* Calculate the number of context descriptors needed. */
 		nb_ctx = idpf_calc_context_desc(ol_flags);
 		nb_used = tx_pkt->nb_segs + nb_ctx;
+
+		if (ol_flags & IDPF_TX_CKSUM_OFFLOAD_MASK)
+			cmd_dtype = IDPF_TXD_FLEX_FLOW_CMD_CS_EN;
 
 		/* context descriptor */
 		if (nb_ctx != 0) {
@@ -933,8 +938,8 @@ idpf_dp_splitq_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 			/* Setup TX descriptor */
 			txd->buf_addr =
 				rte_cpu_to_le_64(rte_mbuf_data_iova(tx_pkt));
-			txd->qw1.cmd_dtype =
-				rte_cpu_to_le_16(IDPF_TX_DESC_DTYPE_FLEX_FLOW_SCHE);
+			cmd_dtype |= IDPF_TX_DESC_DTYPE_FLEX_FLOW_SCHE;
+			txd->qw1.cmd_dtype = cmd_dtype;
 			txd->qw1.rxr_bufsize = tx_pkt->data_len;
 			txd->qw1.compl_tag = sw_id;
 			tx_id++;
@@ -948,8 +953,6 @@ idpf_dp_splitq_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		/* fill the last descriptor with End of Packet (EOP) bit */
 		txd->qw1.cmd_dtype |= IDPF_TXD_FLEX_FLOW_CMD_EOP;
 
-		if (ol_flags & IDPF_TX_CKSUM_OFFLOAD_MASK)
-			txd->qw1.cmd_dtype |= IDPF_TXD_FLEX_FLOW_CMD_CS_EN;
 		txq->nb_free = (uint16_t)(txq->nb_free - nb_used);
 		txq->nb_used = (uint16_t)(txq->nb_used + nb_used);
 
@@ -1424,6 +1427,9 @@ idpf_dp_singleq_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 			}
 		}
 
+		if (ol_flags & IDPF_TX_CKSUM_OFFLOAD_MASK)
+			td_cmd |= IDPF_TX_FLEX_DESC_CMD_CS_EN;
+
 		if (nb_ctx != 0) {
 			/* Setup TX context descriptor if required */
 			volatile union idpf_flex_tx_ctx_desc *ctx_txd =
@@ -1486,9 +1492,6 @@ idpf_dp_singleq_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 			/* Update txq RS bit counters */
 			txq->nb_used = 0;
 		}
-
-		if (ol_flags & IDPF_TX_CKSUM_OFFLOAD_MASK)
-			td_cmd |= IDPF_TX_FLEX_DESC_CMD_CS_EN;
 
 		txd->qw1 |= rte_cpu_to_le_16(td_cmd << IDPF_TXD_QW1_CMD_S);
 	}
