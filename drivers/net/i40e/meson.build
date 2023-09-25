@@ -34,6 +34,7 @@ sources = files(
         'i40e_tm.c',
         'i40e_hash.c',
         'i40e_vf_representor.c',
+        'i40e_recycle_mbufs_vec_common.c',
         'rte_pmd_i40e.c',
 )
 

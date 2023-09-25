@@ -3199,6 +3199,30 @@ i40e_txq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
 	qinfo->conf.offloads = txq->offloads;
 }
 
+void
+i40e_recycle_rxq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
+	struct rte_eth_recycle_rxq_info *recycle_rxq_info)
+{
+	struct i40e_rx_queue *rxq;
+	struct i40e_adapter *ad =
+		I40E_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
+
+	rxq = dev->data->rx_queues[queue_id];
+
+	recycle_rxq_info->mbuf_ring = (void *)rxq->sw_ring;
+	recycle_rxq_info->mp = rxq->mp;
+	recycle_rxq_info->mbuf_ring_size = rxq->nb_rx_desc;
+	recycle_rxq_info->receive_tail = &rxq->rx_tail;
+
+	if (ad->rx_vec_allowed) {
+		recycle_rxq_info->refill_requirement = RTE_I40E_RXQ_REARM_THRESH;
+		recycle_rxq_info->refill_head = &rxq->rxrearm_start;
+	} else {
+		recycle_rxq_info->refill_requirement = rxq->rx_free_thresh;
+		recycle_rxq_info->refill_head = &rxq->rx_free_trigger;
+	}
+}
+
 #ifdef RTE_ARCH_X86
 static inline bool
 get_avx_supported(bool request_avx512)
@@ -3293,6 +3317,8 @@ i40e_set_rx_function(struct rte_eth_dev *dev)
 				dev->rx_pkt_burst = ad->rx_use_avx2 ?
 					i40e_recv_scattered_pkts_vec_avx2 :
 					i40e_recv_scattered_pkts_vec;
+				dev->recycle_rx_descriptors_refill =
+					i40e_recycle_rx_descriptors_refill_vec;
 			}
 		} else {
 			if (ad->rx_use_avx512) {
@@ -3311,9 +3337,12 @@ i40e_set_rx_function(struct rte_eth_dev *dev)
 				dev->rx_pkt_burst = ad->rx_use_avx2 ?
 					i40e_recv_pkts_vec_avx2 :
 					i40e_recv_pkts_vec;
+				dev->recycle_rx_descriptors_refill =
+					i40e_recycle_rx_descriptors_refill_vec;
 			}
 		}
 #else /* RTE_ARCH_X86 */
+		dev->recycle_rx_descriptors_refill = i40e_recycle_rx_descriptors_refill_vec;
 		if (dev->data->scattered_rx) {
 			PMD_INIT_LOG(DEBUG,
 				     "Using Vector Scattered Rx (port %d).",
@@ -3481,15 +3510,18 @@ i40e_set_tx_function(struct rte_eth_dev *dev)
 				dev->tx_pkt_burst = ad->tx_use_avx2 ?
 						    i40e_xmit_pkts_vec_avx2 :
 						    i40e_xmit_pkts_vec;
+				dev->recycle_tx_mbufs_reuse = i40e_recycle_tx_mbufs_reuse_vec;
 			}
 #else /* RTE_ARCH_X86 */
 			PMD_INIT_LOG(DEBUG, "Using Vector Tx (port %d).",
 				     dev->data->port_id);
 			dev->tx_pkt_burst = i40e_xmit_pkts_vec;
+			dev->recycle_tx_mbufs_reuse = i40e_recycle_tx_mbufs_reuse_vec;
 #endif /* RTE_ARCH_X86 */
 		} else {
 			PMD_INIT_LOG(DEBUG, "Simple tx finally be used.");
 			dev->tx_pkt_burst = i40e_xmit_pkts_simple;
+			dev->recycle_tx_mbufs_reuse = i40e_recycle_tx_mbufs_reuse_vec;
 		}
 		dev->tx_pkt_prepare = i40e_simple_prep_pkts;
 	} else {
