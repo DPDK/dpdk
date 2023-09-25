@@ -199,6 +199,7 @@ struct fwd_engine * fwd_engines[] = {
 	&icmp_echo_engine,
 	&noisy_vnf_engine,
 	&five_tuple_swap_fwd_engine,
+	&recycle_mbufs_engine,
 #ifdef RTE_LIBRTE_IEEE1588
 	&ieee1588_fwd_engine,
 #endif

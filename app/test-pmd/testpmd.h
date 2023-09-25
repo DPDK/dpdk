@@ -188,6 +188,8 @@ struct fwd_stream {
 	struct pkt_burst_stats rx_burst_stats;
 	struct pkt_burst_stats tx_burst_stats;
 	struct fwd_lcore *lcore; /**< Lcore being scheduled. */
+	/**< Rx queue information for recycling mbufs */
+	struct rte_eth_recycle_rxq_info recycle_rxq_info;
 };
 
 /**
@@ -449,6 +451,7 @@ extern struct fwd_engine csum_fwd_engine;
 extern struct fwd_engine icmp_echo_engine;
 extern struct fwd_engine noisy_vnf_engine;
 extern struct fwd_engine five_tuple_swap_fwd_engine;
+extern struct fwd_engine recycle_mbufs_engine;
 #ifdef RTE_LIBRTE_IEEE1588
 extern struct fwd_engine ieee1588_fwd_engine;
 #endif

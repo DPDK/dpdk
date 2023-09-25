@@ -318,7 +318,7 @@ set fwd
 Set the packet forwarding mode::
 
    testpmd> set fwd (io|mac|macswap|flowgen| \
-                     rxonly|txonly|csum|icmpecho|noisy|5tswap|shared-rxq) (""|retry)
+                     rxonly|txonly|csum|icmpecho|noisy|5tswap|shared-rxq|recycle_mbufs) (""|retry)
 
 ``retry`` can be specified for forwarding engines except ``rx_only``.
 
@@ -363,6 +363,9 @@ The available information categories are:
 
 * ``shared-rxq``: Receive only for shared Rx queue.
   Resolve packet source port from mbuf and update stream statistics accordingly.
+
+* ``recycle_mbufs``:  Recycle Tx queue used mbufs for Rx queue mbuf ring.
+  This mode uses fast path mbuf recycle feature and forwards packets in I/O mode.
 
 Example::
 
