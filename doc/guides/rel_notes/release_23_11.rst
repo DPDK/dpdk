@@ -72,6 +72,14 @@ New Features
      Also, make sure to start the actual text at the margin.
      =======================================================
 
+* **Added mbuf recycling support.**
+
+  Added ``rte_eth_recycle_rx_queue_info_get`` and ``rte_eth_recycle_mbufs``
+  functions which allow the user to copy used mbufs from the Tx mbuf ring
+  into the Rx mbuf ring. This feature supports the case that the Rx Ethernet
+  device is different from the Tx Ethernet device with respective driver
+  callback functions in ``rte_eth_recycle_mbufs``.
+
 * **Updated Solarflare net driver.**
 
   * Added support for transfer flow action ``INDIRECT`` with subtype ``VXLAN_ENCAP``.
@@ -163,6 +171,14 @@ ABI Changes
    This section is a comment. Do not overwrite or remove it.
    Also, make sure to start the actual text at the margin.
    =======================================================
+
+* ethdev: Added ``recycle_tx_mbufs_reuse`` and ``recycle_rx_descriptors_refill``
+  fields to ``rte_eth_dev`` structure.
+
+* ethdev: Structure ``rte_eth_fp_ops`` was affected to add
+  ``recycle_tx_mbufs_reuse`` and ``recycle_rx_descriptors_refill``
+  fields, to move ``rxq`` and ``txq`` fields, to change the size of
+  ``reserved1`` and ``reserved2`` fields.
 
 
 Known Issues

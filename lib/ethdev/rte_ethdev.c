@@ -5920,6 +5920,28 @@ rte_eth_tx_queue_info_get(uint16_t port_id, uint16_t queue_id,
 }
 
 int
+rte_eth_recycle_rx_queue_info_get(uint16_t port_id, uint16_t queue_id,
+		struct rte_eth_recycle_rxq_info *recycle_rxq_info)
+{
+	struct rte_eth_dev *dev;
+	int ret;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
+	dev = &rte_eth_devices[port_id];
+
+	ret = eth_dev_validate_rx_queue(dev, queue_id);
+	if (unlikely(ret != 0))
+		return ret;
+
+	if (*dev->dev_ops->recycle_rxq_info_get == NULL)
+		return -ENOTSUP;
+
+	dev->dev_ops->recycle_rxq_info_get(dev, queue_id, recycle_rxq_info);
+
+	return 0;
+}
+
+int
 rte_eth_rx_burst_mode_get(uint16_t port_id, uint16_t queue_id,
 			  struct rte_eth_burst_mode *mode)
 {

@@ -312,6 +312,9 @@ EXPERIMENTAL {
 	rte_flow_async_action_list_handle_query_update;
 	rte_flow_async_actions_update;
 	rte_flow_restore_info_dynflag;
+
+	# added in 23.11
+	rte_eth_recycle_rx_queue_info_get;
 };
 
 INTERNAL {
