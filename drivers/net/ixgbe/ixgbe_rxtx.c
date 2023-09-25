@@ -2552,6 +2552,9 @@ ixgbe_set_tx_function(struct rte_eth_dev *dev, struct ixgbe_tx_queue *txq)
 				(rte_eal_process_type() != RTE_PROC_PRIMARY ||
 					ixgbe_txq_vec_setup(txq) == 0)) {
 			PMD_INIT_LOG(DEBUG, "Vector tx enabled.");
+#if defined(RTE_ARCH_X86) || defined(RTE_ARCH_ARM)
+			dev->recycle_tx_mbufs_reuse = ixgbe_recycle_tx_mbufs_reuse_vec;
+#endif
 			dev->tx_pkt_burst = ixgbe_xmit_pkts_vec;
 		} else
 		dev->tx_pkt_burst = ixgbe_xmit_pkts_simple;
@@ -4890,7 +4893,10 @@ ixgbe_set_rx_function(struct rte_eth_dev *dev)
 			PMD_INIT_LOG(DEBUG, "Using Vector Scattered Rx "
 					    "callback (port=%d).",
 				     dev->data->port_id);
-
+#if defined(RTE_ARCH_X86) || defined(RTE_ARCH_ARM)
+			dev->recycle_rx_descriptors_refill =
+				ixgbe_recycle_rx_descriptors_refill_vec;
+#endif
 			dev->rx_pkt_burst = ixgbe_recv_scattered_pkts_vec;
 		} else if (adapter->rx_bulk_alloc_allowed) {
 			PMD_INIT_LOG(DEBUG, "Using a Scattered with bulk "
@@ -4919,7 +4925,9 @@ ixgbe_set_rx_function(struct rte_eth_dev *dev)
 				    "burst size no less than %d (port=%d).",
 			     RTE_IXGBE_DESCS_PER_LOOP,
 			     dev->data->port_id);
-
+#if defined(RTE_ARCH_X86) || defined(RTE_ARCH_ARM)
+		dev->recycle_rx_descriptors_refill = ixgbe_recycle_rx_descriptors_refill_vec;
+#endif
 		dev->rx_pkt_burst = ixgbe_recv_pkts_vec;
 	} else if (adapter->rx_bulk_alloc_allowed) {
 		PMD_INIT_LOG(DEBUG, "Rx Burst Bulk Alloc Preconditions are "
@@ -5689,6 +5697,31 @@ ixgbe_txq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
 	qinfo->conf.tx_rs_thresh = txq->tx_rs_thresh;
 	qinfo->conf.offloads = txq->offloads;
 	qinfo->conf.tx_deferred_start = txq->tx_deferred_start;
+}
+
+void
+ixgbe_recycle_rxq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
+	struct rte_eth_recycle_rxq_info *recycle_rxq_info)
+{
+	struct ixgbe_rx_queue *rxq;
+	struct ixgbe_adapter *adapter = dev->data->dev_private;
+
+	rxq = dev->data->rx_queues[queue_id];
+
+	recycle_rxq_info->mbuf_ring = (void *)rxq->sw_ring;
+	recycle_rxq_info->mp = rxq->mb_pool;
+	recycle_rxq_info->mbuf_ring_size = rxq->nb_rx_desc;
+	recycle_rxq_info->receive_tail = &rxq->rx_tail;
+
+	if (adapter->rx_vec_allowed) {
+#if defined(RTE_ARCH_X86) || defined(RTE_ARCH_ARM)
+		recycle_rxq_info->refill_requirement = RTE_IXGBE_RXQ_REARM_THRESH;
+		recycle_rxq_info->refill_head = &rxq->rxrearm_start;
+#endif
+	} else {
+		recycle_rxq_info->refill_requirement = rxq->rx_free_thresh;
+		recycle_rxq_info->refill_head = &rxq->rx_free_trigger;
+	}
 }
 
 /*
