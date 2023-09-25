@@ -83,4 +83,21 @@ endif
 
 dpdk_conf.set('RTE_CACHE_LINE_SIZE', 64)
 dpdk_conf.set('RTE_MAX_LCORE', 128)
+
+epyc_zen_cores = {
+    '__znver4__':512,
+    '__znver3__':256,
+    '__znver2__':256,
+    '__znver1__':128
+    }
+
+if get_option('platform') == 'native'
+    foreach m:epyc_zen_cores.keys()
+        if cc.get_define(m, args: machine_args) != ''
+            dpdk_conf.set('RTE_MAX_LCORE', epyc_zen_cores[m])
+            break
+        endif
+    endforeach
+endif
+
 dpdk_conf.set('RTE_MAX_NUMA_NODES', 32)
