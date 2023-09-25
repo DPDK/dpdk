@@ -2981,6 +2981,15 @@ enum rte_flow_action_type {
 	 * @see struct rte_flow_action_indirect_list
 	 */
 	RTE_FLOW_ACTION_TYPE_INDIRECT_LIST,
+
+	/**
+	 * Program action. These actions are defined by the program currently
+	 * loaded on the device. For example, these actions are applicable to
+	 * devices that can be programmed through the P4 language.
+	 *
+	 * @see struct rte_flow_action_prog.
+	 */
+	RTE_FLOW_ACTION_TYPE_PROG,
 };
 
 /**
@@ -4060,6 +4069,48 @@ struct rte_flow_update_meter_mark {
 struct rte_flow_indirect_update_flow_meter_mark {
 	/** Updated init color applied to packet */
 	enum rte_color init_color;
+};
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this structure may change without prior notice.
+ *
+ * Program action argument configuration parameters.
+ *
+ * For each action argument, its *size* must be non-zero and its *value* must
+ * point to a valid array of *size* bytes specified in network byte order.
+ *
+ * @see struct rte_flow_action_prog
+ */
+struct rte_flow_action_prog_argument {
+	/** Argument name. */
+	const char *name;
+	/** Argument size in bytes. */
+	uint32_t size;
+	/** Argument value. */
+	const uint8_t *value;
+};
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this structure may change without prior notice.
+ *
+ * RTE_FLOW_ACTION_TYPE_PROG
+ *
+ * Program action configuration parameters.
+ *
+ * Each action can have zero or more arguments. When *args_num* is non-zero, the
+ * *args* parameter must point to a valid array of *args_num* elements.
+ *
+ * @see RTE_FLOW_ACTION_TYPE_PROG
+ */
+struct rte_flow_action_prog {
+	/** Action name. */
+	const char *name;
+	/** Number of action arguments. */
+	uint32_t args_num;
+	/** Action arguments array. */
+	const struct rte_flow_action_prog_argument *args;
 };
 
 /* Mbuf dynamic field offset for metadata. */

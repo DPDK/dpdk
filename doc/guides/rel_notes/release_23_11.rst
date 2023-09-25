@@ -84,6 +84,13 @@ New Features
 
   Added support for amd-pstate driver which works on AMD EPYC processors.
 
+* **Added a flow action type for P4-defined actions.**
+
+  For P4-programmable devices, hardware pipeline can be configured through
+  a new "PROG" action type and its associated custom arguments.
+  Such P4 pipeline, not using the standard blocks of the flow API,
+  can be managed with ``RTE_FLOW_ITEM_TYPE_FLEX`` and ``RTE_FLOW_ACTION_TYPE_PROG``.
+
 * **Updated Solarflare net driver.**
 
   * Added support for transfer flow action ``INDIRECT`` with subtype ``VXLAN_ENCAP``.
