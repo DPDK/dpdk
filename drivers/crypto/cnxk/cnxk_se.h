@@ -3507,14 +3507,23 @@ fill_raw_fc_params(struct cnxk_iov *iov, struct cnxk_se_sess *sess, struct cpt_q
 	fc_params.mac_buf.vaddr = 0;
 	fc_params.iv_buf = NULL;
 
-	if (likely(is_kasumi || sess->iv_length)) {
+	if (likely(sess->iv_length)) {
 		flags |= ROC_SE_VALID_IV_BUF;
-		fc_params.iv_buf = iov->iv_buf;
 
-		if (sess->short_iv) {
-			memcpy((uint8_t *)iv_buf, iov->iv_buf, 12);
-			iv_buf[3] = rte_cpu_to_be_32(0x1);
-			fc_params.iv_buf = iv_buf;
+		if (sess->is_gmac) {
+			fc_params.iv_buf = iov->aad_buf;
+			if (sess->short_iv) {
+				memcpy((void *)iv_buf, iov->aad_buf, 12);
+				iv_buf[3] = rte_cpu_to_be_32(0x1);
+				fc_params.iv_buf = iv_buf;
+			}
+		} else {
+			fc_params.iv_buf = iov->iv_buf;
+			if (sess->short_iv) {
+				memcpy((void *)iv_buf, iov->iv_buf, 12);
+				iv_buf[3] = rte_cpu_to_be_32(0x1);
+				fc_params.iv_buf = iv_buf;
+			}
 		}
 
 		if (sess->aes_ccm) {

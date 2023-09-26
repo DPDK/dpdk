@@ -1485,7 +1485,8 @@ cn10k_sym_configure_raw_dp_ctx(struct rte_cryptodev *dev, uint16_t qp_id,
 
 	if ((sess->dp_thr_type == CPT_DP_THREAD_TYPE_PDCP) ||
 	    (sess->dp_thr_type == CPT_DP_THREAD_TYPE_PDCP_CHAIN) ||
-	    (sess->dp_thr_type == CPT_DP_THREAD_TYPE_KASUMI))
+	    (sess->dp_thr_type == CPT_DP_THREAD_TYPE_KASUMI) ||
+	    (sess->dp_thr_type == CPT_DP_THREAD_TYPE_SM))
 		return -ENOTSUP;
 
 	if ((sess->dp_thr_type == CPT_DP_THREAD_AUTH_ONLY) &&
@@ -1493,8 +1494,7 @@ cn10k_sym_configure_raw_dp_ctx(struct rte_cryptodev *dev, uint16_t qp_id,
 	     (sess->roc_se_ctx.fc_type == ROC_SE_PDCP)))
 		return -ENOTSUP;
 
-	if ((sess->roc_se_ctx.hash_type == ROC_SE_GMAC_TYPE) ||
-	    (sess->roc_se_ctx.hash_type == ROC_SE_SHA1_TYPE))
+	if (sess->roc_se_ctx.hash_type == ROC_SE_SHA1_TYPE)
 		return -ENOTSUP;
 
 	dp_ctx = (struct cnxk_sym_dp_ctx *)raw_dp_ctx->drv_ctx_data;
