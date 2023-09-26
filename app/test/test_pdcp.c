@@ -27,6 +27,8 @@
 #define NB_BASIC_TESTS RTE_DIM(pdcp_test_params)
 #define NB_SDAP_TESTS RTE_DIM(list_pdcp_sdap_tests)
 #define PDCP_IV_LEN 16
+#define PDCP_MBUF_SIZE	(sizeof(struct rte_mbuf) + \
+			 RTE_PKTMBUF_HEADROOM + RTE_PDCP_CTRL_PDU_SIZE_MAX)
 
 /* Assert that condition is true, or goto the mark */
 #define ASSERT_TRUE_OR_GOTO(cond, mark, ...) do {\
@@ -79,8 +81,11 @@ enum pdcp_test_suite_type {
 	PDCP_TEST_SUITE_TY_SDAP,
 };
 
+static bool silent;
+
 static int create_test_conf_from_index(const int index, struct pdcp_test_conf *conf,
 				       enum pdcp_test_suite_type suite_type);
+static void test_conf_input_data_modify(struct pdcp_test_conf *conf, int inp_len);
 
 typedef int (*test_with_conf_t)(struct pdcp_test_conf *conf);
 
@@ -364,7 +369,7 @@ testsuite_setup(void)
 	memset(ts_params, 0, sizeof(*ts_params));
 
 	ts_params->mbuf_pool = rte_pktmbuf_pool_create("mbuf_pool", NUM_MBUFS, MBUF_CACHE_SIZE, 0,
-						       MBUF_SIZE, SOCKET_ID_ANY);
+						       PDCP_MBUF_SIZE, SOCKET_ID_ANY);
 	if (ts_params->mbuf_pool == NULL) {
 		RTE_LOG(ERR, USER1, "Could not create mbuf pool\n");
 		return TEST_FAILED;
@@ -522,8 +527,10 @@ pdcp_known_vec_verify(struct rte_mbuf *m, const uint8_t *expected, uint32_t expe
 	uint8_t *actual = rte_pktmbuf_mtod(m, uint8_t *);
 	uint32_t actual_pkt_len = rte_pktmbuf_pkt_len(m);
 
-	debug_hexdump(stdout, "Received:", actual, actual_pkt_len);
-	debug_hexdump(stdout, "Expected:", expected, expected_pkt_len);
+	if (!silent) {
+		debug_hexdump(stdout, "Received:", actual, actual_pkt_len);
+		debug_hexdump(stdout, "Expected:", expected, expected_pkt_len);
+	}
 
 	TEST_ASSERT_EQUAL(actual_pkt_len, expected_pkt_len,
 			  "Mismatch in packet lengths [expected: %d, received: %d]",
@@ -1036,6 +1043,13 @@ create_test_conf_from_index(const int index, struct pdcp_test_conf *conf,
 	conf->output_len = expected_len;
 
 	return 0;
+}
+
+static void
+test_conf_input_data_modify(struct pdcp_test_conf *conf, int inp_len)
+{
+	conf->input_len = inp_len;
+	memset(conf->input, 0xab, inp_len);
 }
 
 static struct rte_pdcp_entity*
@@ -2055,6 +2069,38 @@ test_combined(struct pdcp_test_conf *ul_conf)
 	return ret;
 }
 
+#define MIN_DATA_LEN 0
+#define MAX_DATA_LEN 9000
+
+static int
+test_combined_data_walkthrough(struct pdcp_test_conf *test_conf)
+{
+	uint32_t data_len;
+	int ret;
+
+	ret = test_combined(test_conf);
+	if (ret != TEST_SUCCESS)
+		return ret;
+
+	if (!silent)
+		silent = true;
+
+	/* With the passing config, perform a data walkthrough test. */
+	for (data_len = MIN_DATA_LEN; data_len <= MAX_DATA_LEN; data_len++) {
+		test_conf_input_data_modify(test_conf, data_len);
+		ret = test_combined(test_conf);
+
+		if (ret == TEST_FAILED) {
+			printf("Data walkthrough failed for input len: %d\n", data_len);
+			return TEST_FAILED;
+		}
+	}
+
+	silent = false;
+
+	return TEST_SUCCESS;
+}
+
 #ifdef RTE_LIB_EVENTDEV
 static inline void
 eventdev_conf_default_set(struct rte_event_dev_config *dev_conf, struct rte_event_dev_info *info)
@@ -2190,6 +2236,9 @@ static struct unit_test_suite combined_mode_cases  = {
 	.unit_test_cases = {
 		TEST_CASE_NAMED_WITH_DATA("combined mode", ut_setup_pdcp, ut_teardown_pdcp,
 			run_test_with_all_known_vec, test_combined),
+		TEST_CASE_NAMED_WITH_DATA("combined mode data walkthrough",
+			ut_setup_pdcp, ut_teardown_pdcp,
+			run_test_with_all_known_vec, test_combined_data_walkthrough),
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}
 };
