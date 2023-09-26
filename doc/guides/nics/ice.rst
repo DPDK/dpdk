@@ -302,6 +302,51 @@ The DCF PMD needs to advertise and acquire DCF capability which allows DCF to
 send AdminQ commands that it would like to execute over to the PF and receive
 responses for the same from PF.
 
+Generic Flow Support
+~~~~~~~~~~~~~~~~~~~~
+
+The ice PMD provides support for the Generic Flow API (RTE_FLOW), enabling
+users to offload various flow classification tasks to the E810 NIC.
+The E810 NIC's  packet processing pipeline consists of the following stages:
+
+Switch: Supports exact match and limited wildcard matching with a large flow
+capacity.
+
+ACL: Supports wildcard matching with a smaller flow capacity (DCF mode only).
+
+FDIR: Supports exact match with a large flow capacity (PF mode only).
+
+Hash: Supports RSS (PF mode only)
+
+The ice PMD utilizes the ice_flow_engine structure to represent each of these
+stages and leverages the rte_flow rule's ``group`` attribute for selecting the
+appropriate engine for Switch, ACL, and FDIR operations:
+
+Group 0 maps to Switch
+Group 1 maps to ACL
+Group 2 maps to FDIR
+
+In the case of RSS, it will only be selected if a ``RTE_FLOW_ACTION_RSS`` action
+is targeted to no queue group, and the group attribute is ignored.
+
+For each engine, a list of supported patterns is maintained in a global array
+named ``ice_<engine>_supported_pattern``. The Ice PMD will reject any rule with
+a pattern that is not included in the supported list.
+
+One notable feature is the ice PMD's ability to leverage the Raw pattern,
+enabling protocol-agnostic flow offloading. Here is an example of creating
+a rule that matches an IPv4 destination address of 1.2.3.4 and redirects it to
+queue 3 using a raw pattern::
+
+  flow create 0 ingress group 2 pattern raw \
+  pattern spec \
+  00000000000000000000000008004500001400004000401000000000000001020304 \
+  pattern mask \
+  000000000000000000000000000000000000000000000000000000000000ffffffff \
+  end actions queue index 3 / mark id 3 / end
+
+Currently, raw pattern support is limited to the FDIR and Hash engines.
+
 Additional Options
 ++++++++++++++++++
 
