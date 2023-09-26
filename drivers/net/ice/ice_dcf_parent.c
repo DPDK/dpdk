@@ -474,6 +474,9 @@ ice_dcf_init_parent_adapter(struct rte_eth_dev *eth_dev)
 	if (ice_devargs_check(eth_dev->device->devargs, ICE_DCF_DEVARG_ACL))
 		parent_adapter->disabled_engine_mask |= BIT(ICE_FLOW_ENGINE_ACL);
 
+	parent_adapter->disabled_engine_mask |= BIT(ICE_FLOW_ENGINE_FDIR);
+	parent_adapter->disabled_engine_mask |= BIT(ICE_FLOW_ENGINE_HASH);
+
 	err = ice_flow_init(parent_adapter);
 	if (err) {
 		PMD_INIT_LOG(ERR, "Failed to initialize flow");

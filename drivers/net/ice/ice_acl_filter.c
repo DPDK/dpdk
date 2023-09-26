@@ -995,9 +995,6 @@ ice_acl_init(struct ice_adapter *ad)
 	struct ice_hw *hw = ICE_PF_TO_HW(pf);
 	struct ice_flow_parser *parser = &ice_acl_parser;
 
-	if (!ad->hw.dcf_enabled)
-		return 0;
-
 	ret = ice_acl_prof_alloc(hw);
 	if (ret) {
 		PMD_DRV_LOG(ERR, "Cannot allocate memory for "

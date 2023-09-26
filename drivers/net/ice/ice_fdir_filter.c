@@ -1150,9 +1150,6 @@ ice_fdir_init(struct ice_adapter *ad)
 	struct ice_flow_parser *parser;
 	int ret;
 
-	if (ad->hw.dcf_enabled)
-		return 0;
-
 	ret = ice_fdir_setup(pf);
 	if (ret)
 		return ret;

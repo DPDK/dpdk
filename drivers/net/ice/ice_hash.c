@@ -591,9 +591,6 @@ ice_hash_init(struct ice_adapter *ad)
 {
 	struct ice_flow_parser *parser = NULL;
 
-	if (ad->hw.dcf_enabled)
-		return 0;
-
 	parser = &ice_hash_parser;
 
 	return ice_register_parser(parser, ad);
