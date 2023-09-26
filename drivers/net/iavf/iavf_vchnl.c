@@ -79,6 +79,15 @@ iavf_dev_event_handle(void *param __rte_unused)
 		struct iavf_event_element *pos, *save_next;
 		TAILQ_FOREACH_SAFE(pos, &pending, next, save_next) {
 			TAILQ_REMOVE(&pending, pos, next);
+
+			struct iavf_adapter *adapter = pos->dev->data->dev_private;
+			if (pos->event == RTE_ETH_EVENT_INTR_RESET &&
+			    adapter->devargs.auto_reset) {
+				iavf_handle_hw_reset(pos->dev);
+				rte_free(pos);
+				continue;
+			}
+
 			rte_eth_dev_callback_process(pos->dev, pos->event, pos->param);
 			rte_free(pos);
 		}
@@ -87,7 +96,7 @@ iavf_dev_event_handle(void *param __rte_unused)
 	return 0;
 }
 
-static void
+void
 iavf_dev_event_post(struct rte_eth_dev *dev,
 		enum rte_eth_event_type event,
 		void *param, size_t param_alloc_size)

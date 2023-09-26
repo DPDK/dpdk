@@ -277,6 +277,8 @@ struct iavf_info {
 
 	struct rte_eth_dev *eth_dev;
 
+	bool in_reset_recovery;
+
 	uint32_t ptp_caps;
 	rte_spinlock_t phc_time_aq_lock;
 };
@@ -305,6 +307,7 @@ struct iavf_devargs {
 	uint8_t proto_xtr[IAVF_MAX_QUEUE_NUM];
 	uint16_t quanta_size;
 	uint32_t watchdog_period;
+	uint8_t  auto_reset;
 };
 
 struct iavf_security_ctx;
@@ -426,6 +429,9 @@ _atomic_set_async_response_cmd(struct iavf_info *vf, enum virtchnl_ops ops)
 }
 int iavf_check_api_version(struct iavf_adapter *adapter);
 int iavf_get_vf_resource(struct iavf_adapter *adapter);
+void iavf_dev_event_post(struct rte_eth_dev *dev,
+		enum rte_eth_event_type event,
+		void *param, size_t param_alloc_size);
 void iavf_dev_event_handler_fini(void);
 int iavf_dev_event_handler_init(void);
 void iavf_handle_virtchnl_msg(struct rte_eth_dev *dev);
@@ -501,4 +507,5 @@ int iavf_flow_sub_check(struct iavf_adapter *adapter,
 			struct iavf_fsub_conf *filter);
 void iavf_dev_watchdog_enable(struct iavf_adapter *adapter);
 void iavf_dev_watchdog_disable(struct iavf_adapter *adapter);
+int iavf_handle_hw_reset(struct rte_eth_dev *dev);
 #endif /* _IAVF_ETHDEV_H_ */

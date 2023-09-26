@@ -131,6 +131,10 @@ New Features
 
   * Added support for port representor.
 
+* **Updated Intel iavf driver.**
+
+  * Added support for iavf auto-reset.
+
 * **Updated Intel i40e driver.**
 
   * Added support for new X722 devices.

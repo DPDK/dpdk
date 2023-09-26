@@ -1101,29 +1101,12 @@ iavf_dev_tx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
 	rte_free(q);
 }
 
-void
-iavf_stop_queues(struct rte_eth_dev *dev)
+static void
+iavf_reset_queues(struct rte_eth_dev *dev)
 {
-	struct iavf_adapter *adapter =
-		IAVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
-	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
 	struct iavf_rx_queue *rxq;
 	struct iavf_tx_queue *txq;
-	int ret, i;
-
-	/* Stop All queues */
-	if (!vf->lv_enabled) {
-		ret = iavf_disable_queues(adapter);
-		if (ret)
-			PMD_DRV_LOG(WARNING, "Fail to stop queues");
-	} else {
-		ret = iavf_disable_queues_lv(adapter);
-		if (ret)
-			PMD_DRV_LOG(WARNING, "Fail to stop queues for large VF");
-	}
-
-	if (ret)
-		PMD_DRV_LOG(WARNING, "Fail to stop queues");
+	int i;
 
 	for (i = 0; i < dev->data->nb_tx_queues; i++) {
 		txq = dev->data->tx_queues[i];
@@ -1141,6 +1124,37 @@ iavf_stop_queues(struct rte_eth_dev *dev)
 		reset_rx_queue(rxq);
 		dev->data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
 	}
+}
+
+void
+iavf_stop_queues(struct rte_eth_dev *dev)
+{
+	struct iavf_adapter *adapter =
+		IAVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
+	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
+	int ret;
+
+	/* adminq will be disabled when vf is resetting. */
+	if (vf->in_reset_recovery) {
+		iavf_reset_queues(dev);
+		return;
+	}
+
+	/* Stop All queues */
+	if (!vf->lv_enabled) {
+		ret = iavf_disable_queues(adapter);
+		if (ret)
+			PMD_DRV_LOG(WARNING, "Fail to stop queues");
+	} else {
+		ret = iavf_disable_queues_lv(adapter);
+		if (ret)
+			PMD_DRV_LOG(WARNING, "Fail to stop queues for large VF");
+	}
+
+	if (ret)
+		PMD_DRV_LOG(WARNING, "Fail to stop queues");
+
+	iavf_reset_queues(dev);
 }
 
 #define IAVF_RX_FLEX_ERR0_BITS	\

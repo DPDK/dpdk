@@ -37,6 +37,7 @@
 #define IAVF_PROTO_XTR_ARG         "proto_xtr"
 #define IAVF_QUANTA_SIZE_ARG       "quanta_size"
 #define IAVF_RESET_WATCHDOG_ARG    "watchdog_period"
+#define IAVF_ENABLE_AUTO_RESET_ARG "auto_reset"
 
 uint64_t iavf_timestamp_dynflag;
 int iavf_timestamp_dynfield_offset = -1;
@@ -45,6 +46,7 @@ static const char * const iavf_valid_args[] = {
 	IAVF_PROTO_XTR_ARG,
 	IAVF_QUANTA_SIZE_ARG,
 	IAVF_RESET_WATCHDOG_ARG,
+	IAVF_ENABLE_AUTO_RESET_ARG,
 	NULL
 };
 
@@ -307,8 +309,8 @@ iavf_dev_watchdog(void *cb_arg)
 			adapter->vf.vf_reset = true;
 			adapter->vf.link_up = false;
 
-			rte_eth_dev_callback_process(adapter->vf.eth_dev,
-				RTE_ETH_EVENT_INTR_RESET, NULL);
+			iavf_dev_event_post(adapter->vf.eth_dev, RTE_ETH_EVENT_INTR_RESET,
+				NULL, 0);
 		}
 	}
 
@@ -1101,12 +1103,15 @@ iavf_dev_stop(struct rte_eth_dev *dev)
 	/* Rx interrupt vector mapping free */
 	rte_intr_vec_list_free(intr_handle);
 
-	/* remove all mac addrs */
-	iavf_add_del_all_mac_addr(adapter, false);
+	/* adminq will be disabled when vf is resetting. */
+	if (!vf->in_reset_recovery) {
+		/* remove all mac addrs */
+		iavf_add_del_all_mac_addr(adapter, false);
 
-	/* remove all multicast addresses */
-	iavf_add_del_mc_addr_list(adapter, vf->mc_addrs, vf->mc_addrs_num,
+		/* remove all multicast addresses */
+		iavf_add_del_mc_addr_list(adapter, vf->mc_addrs, vf->mc_addrs_num,
 				  false);
+	}
 
 	iavf_stop_queues(dev);
 
@@ -2240,6 +2245,26 @@ parse_u16(__rte_unused const char *key, const char *value, void *args)
 }
 
 static int
+parse_bool(const char *key, const char *value, void *args)
+{
+	int *i = (int *)args;
+	char *end;
+	int num;
+
+	num = strtoul(value, &end, 10);
+
+	if (num != 0 && num != 1) {
+		PMD_DRV_LOG(WARNING, "invalid value:\"%s\" for key:\"%s\", "
+			"value must be 0 or 1",
+			value, key);
+		return -1;
+	}
+
+	*i = num;
+	return 0;
+}
+
+static int
 iavf_parse_watchdog_period(__rte_unused const char *key, const char *value, void *args)
 {
 	int *num = (int *)args;
@@ -2306,6 +2331,11 @@ static int iavf_parse_devargs(struct rte_eth_dev *dev)
 		ret = -EINVAL;
 		goto bail;
 	}
+
+	ret = rte_kvargs_process(kvlist, IAVF_ENABLE_AUTO_RESET_ARG,
+				 &parse_bool, &ad->devargs.auto_reset);
+	if (ret)
+		goto bail;
 
 bail:
 	rte_kvargs_free(kvlist);
@@ -2887,12 +2917,15 @@ out:
 static int
 iavf_dev_uninit(struct rte_eth_dev *dev)
 {
+	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
+
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return -EPERM;
 
 	iavf_dev_close(dev);
 
-	iavf_dev_event_handler_fini();
+	if (!vf->in_reset_recovery)
+		iavf_dev_event_handler_fini();
 
 	return 0;
 }
@@ -2905,6 +2938,7 @@ iavf_dev_reset(struct rte_eth_dev *dev)
 {
 	int ret;
 	struct iavf_hw *hw = IAVF_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
 
 	/*
 	 * Check whether the VF reset has been done and inform application,
@@ -2916,6 +2950,7 @@ iavf_dev_reset(struct rte_eth_dev *dev)
 		PMD_DRV_LOG(ERR, "Wait too long for reset done!\n");
 		return ret;
 	}
+	vf->vf_reset = false;
 
 	PMD_DRV_LOG(DEBUG, "Start dev_reset ...\n");
 	ret = iavf_dev_uninit(dev);
@@ -2923,6 +2958,43 @@ iavf_dev_reset(struct rte_eth_dev *dev)
 		return ret;
 
 	return iavf_dev_init(dev);
+}
+
+/*
+ * Handle hardware reset
+ */
+int
+iavf_handle_hw_reset(struct rte_eth_dev *dev)
+{
+	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
+	int ret;
+
+	vf->in_reset_recovery = true;
+
+	ret = iavf_dev_reset(dev);
+	if (ret)
+		goto error;
+
+	/* VF states restore */
+	ret = iavf_dev_configure(dev);
+	if (ret)
+		goto error;
+
+	iavf_dev_xstats_reset(dev);
+
+	/* start the device */
+	ret = iavf_dev_start(dev);
+	if (ret)
+		goto error;
+	dev->data->dev_started = 1;
+
+	vf->in_reset_recovery = false;
+	return 0;
+
+error:
+	PMD_DRV_LOG(DEBUG, "RESET recover with error code=%d\n", ret);
+	vf->in_reset_recovery = false;
+	return ret;
 }
 
 static int

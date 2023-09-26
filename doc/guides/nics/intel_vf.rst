@@ -1,6 +1,8 @@
 ..  SPDX-License-Identifier: BSD-3-Clause
     Copyright(c) 2010-2014 Intel Corporation.
 
+.. include:: <isonum.txt>
+
 Intel Virtual Function Driver
 =============================
 
@@ -100,6 +102,10 @@ For more detail on SR-IOV, please refer to the following documents:
     when link state changes to down. The default period is 2000us, defined by ``IAVF_DEV_WATCHDOG_PERIOD``.
     Set ``devargs`` parameter ``watchdog_period`` to adjust the watchdog period in microseconds, or set it to 0 to disable the watchdog,
     for example, ``-a 18:01.0,watchdog_period=5000`` or ``-a 18:01.0,watchdog_period=0``.
+
+    Enable VF auto-reset by setting the devargs parameter like ``-a 18:01.0,auto_reset=1``
+    when IAVF is backed by an Intel\ |reg| E810 device
+    or an Intel\ |reg| 700 Series Ethernet device.
 
 The PCIE host-interface of Intel Ethernet Switch FM10000 Series VF infrastructure
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
