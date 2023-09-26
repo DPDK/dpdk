@@ -892,7 +892,7 @@ pdcp_chain_sg1_prep(struct roc_se_fc_params *params, struct roc_se_ctx *cpt_ctx,
 	pdcp_iv_copy(iv_d, cipher_iv, pdcp_ci_alg, pack_iv);
 
 	/* Auth IV */
-	iv_d = ((uint8_t *)offset_vaddr + ROC_SE_OFF_CTRL_LEN + 16);
+	iv_d = ((uint8_t *)offset_vaddr + ROC_SE_OFF_CTRL_LEN + params->pdcp_iv_offset);
 	pdcp_iv_copy(iv_d, auth_iv, pdcp_auth_alg, pack_iv);
 
 	/* input data */
@@ -998,7 +998,7 @@ pdcp_chain_sg2_prep(struct roc_se_fc_params *params, struct roc_se_ctx *cpt_ctx,
 	pdcp_iv_copy(iv_d, cipher_iv, pdcp_ci_alg, pack_iv);
 
 	/* Auth IV */
-	iv_d = ((uint8_t *)offset_vaddr + ROC_SE_OFF_CTRL_LEN + 16);
+	iv_d = ((uint8_t *)offset_vaddr + ROC_SE_OFF_CTRL_LEN + params->pdcp_iv_offset);
 	pdcp_iv_copy(iv_d, auth_iv, pdcp_auth_alg, pack_iv);
 
 	/* input data */
@@ -1490,11 +1490,12 @@ cpt_pdcp_chain_alg_prep(uint32_t req_flags, uint64_t d_offs, uint64_t d_lens,
 	uint32_t encr_data_len, auth_data_len, aad_len, passthr_len, pad_len, hdr_len;
 	uint32_t encr_offset, auth_offset, iv_offset = 0;
 	const uint8_t *auth_iv = NULL, *cipher_iv = NULL;
+	uint8_t pdcp_iv_off = params->pdcp_iv_offset;
+	const int iv_len = pdcp_iv_off * 2;
 	uint8_t pdcp_ci_alg, pdcp_auth_alg;
 	union cpt_inst_w4 cpt_inst_w4;
 	struct roc_se_ctx *se_ctx;
 	uint64_t *offset_vaddr;
-	const int iv_len = 32;
 	uint64_t offset_ctrl;
 	uint8_t pack_iv = 0;
 	int32_t inputlen;
@@ -1576,7 +1577,7 @@ cpt_pdcp_chain_alg_prep(uint32_t req_flags, uint64_t d_offs, uint64_t d_lens,
 		iv_d = ((uint8_t *)offset_vaddr + ROC_SE_OFF_CTRL_LEN);
 		pdcp_iv_copy(iv_d, cipher_iv, pdcp_ci_alg, pack_iv);
 
-		iv_d = ((uint8_t *)offset_vaddr + ROC_SE_OFF_CTRL_LEN + 16);
+		iv_d = ((uint8_t *)offset_vaddr + ROC_SE_OFF_CTRL_LEN + pdcp_iv_off);
 		pdcp_iv_copy(iv_d, auth_iv, pdcp_auth_alg, pack_iv);
 
 		inst->w4.u64 = cpt_inst_w4.u64;
@@ -2909,6 +2910,7 @@ fill_pdcp_params(struct rte_crypto_op *cop, struct cnxk_se_sess *sess,
 	fc_params.auth_iv_len = 0;
 	fc_params.iv_buf = NULL;
 	fc_params.auth_iv_buf = NULL;
+	fc_params.pdcp_iv_offset = sess->roc_se_ctx.pdcp_iv_offset;
 
 	if (likely(sess->iv_length))
 		fc_params.iv_buf = rte_crypto_op_ctod_offset(cop, uint8_t *, sess->iv_offset);
@@ -2995,6 +2997,7 @@ fill_pdcp_chain_params(struct rte_crypto_op *cop, struct cnxk_se_sess *sess,
 	fc_params.auth_iv_len = sess->auth_iv_length;
 	fc_params.iv_buf = NULL;
 	fc_params.auth_iv_buf = NULL;
+	fc_params.pdcp_iv_offset = sess->roc_se_ctx.pdcp_iv_offset;
 
 	m_src = sym_op->m_src;
 	m_dst = sym_op->m_dst;
@@ -3197,8 +3200,9 @@ fill_digest_params(struct rte_crypto_op *cop, struct cnxk_se_sess *sess,
 		d_offs = auth_range_off;
 		auth_range_off = 0;
 		params.auth_iv_len = sess->auth_iv_length;
-		params.auth_iv_buf = rte_crypto_op_ctod_offset(
-			cop, uint8_t *, sess->auth_iv_offset);
+		params.auth_iv_buf =
+			rte_crypto_op_ctod_offset(cop, uint8_t *, sess->auth_iv_offset);
+		params.pdcp_iv_offset = sess->roc_se_ctx.pdcp_iv_offset;
 		if (sess->zsk_flag == ROC_SE_K_F9) {
 			uint32_t length_in_bits, num_bytes;
 			uint8_t *src, direction = 0;
