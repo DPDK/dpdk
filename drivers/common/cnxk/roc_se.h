@@ -360,8 +360,8 @@ struct roc_se_fc_params {
 			struct roc_se_iov_ptr *dst_iov;
 		};
 	};
-	void *iv_buf;
-	void *auth_iv_buf;
+	const void *iv_buf;
+	const void *auth_iv_buf;
 	struct roc_se_ctx *ctx;
 	struct roc_se_buf_ptr meta_buf;
 	uint8_t cipher_iv_len;
