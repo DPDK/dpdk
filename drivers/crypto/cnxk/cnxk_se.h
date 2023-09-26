@@ -1070,7 +1070,6 @@ cpt_sm_prep(uint32_t flags, uint64_t d_offs, uint64_t d_lens, struct roc_se_fc_p
 		iv_len = 0;
 
 	encr_offset += iv_len;
-	enc_dlen = encr_data_len + encr_offset;
 	enc_dlen = RTE_ALIGN_CEIL(encr_data_len, 8) + encr_offset;
 
 	inputlen = enc_dlen;
@@ -2543,11 +2542,6 @@ fill_sm_params(struct rte_crypto_op *cop, struct cnxk_se_sess *sess,
 	char src[SRC_IOV_SIZE];
 	char dst[SRC_IOV_SIZE];
 	void *mdata = NULL;
-#ifdef CPT_ALWAYS_USE_SG_MODE
-	uint8_t inplace = 0;
-#else
-	uint8_t inplace = 1;
-#endif
 	uint32_t flags = 0;
 	int ret;
 
@@ -2577,11 +2571,9 @@ fill_sm_params(struct rte_crypto_op *cop, struct cnxk_se_sess *sess,
 
 	fc_params.ctx = &sess->roc_se_ctx;
 
-	if (likely(!m_dst && inplace)) {
+	if (m_dst == NULL) {
 		fc_params.dst_iov = fc_params.src_iov = (void *)src;
-
 		prepare_iov_from_pkt_inplace(m_src, &fc_params, &flags);
-
 	} else {
 		/* Out of place processing */
 		fc_params.src_iov = (void *)src;
@@ -2594,14 +2586,10 @@ fill_sm_params(struct rte_crypto_op *cop, struct cnxk_se_sess *sess,
 			goto err_exit;
 		}
 
-		if (unlikely(m_dst != NULL)) {
-			if (prepare_iov_from_pkt(m_dst, fc_params.dst_iov, 0)) {
-				plt_dp_err("Prepare dst iov failed for m_dst %p", m_dst);
-				ret = -EINVAL;
-				goto err_exit;
-			}
-		} else {
-			fc_params.dst_iov = (void *)src;
+		if (prepare_iov_from_pkt(m_dst, fc_params.dst_iov, 0)) {
+			plt_dp_err("Prepare dst iov failed for m_dst %p", m_dst);
+			ret = -EINVAL;
+			goto err_exit;
 		}
 	}
 
