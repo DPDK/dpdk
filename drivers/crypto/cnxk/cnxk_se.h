@@ -2877,6 +2877,7 @@ fill_passthrough_params(struct rte_crypto_op *cop, struct cpt_inst_s *inst)
 
 	inst->w0.u64 = 0;
 	inst->w5.u64 = 0;
+	inst->w6.u64 = 0;
 	inst->w4.u64 = w4.u64;
 
 	return 0;

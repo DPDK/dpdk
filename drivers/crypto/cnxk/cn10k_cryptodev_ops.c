@@ -414,6 +414,8 @@ cn10k_cpt_vec_inst_fill(struct vec_request *vec_req, struct cpt_inst_s *inst,
 	inst->w2.u64 = vec_req->w2;
 	inst->w3.u64 = CNXK_CPT_INST_W3(1, infl_req);
 	inst->w4.u64 = w4.u64;
+	inst->w5.u64 = 0;
+	inst->w6.u64 = 0;
 	inst->w7.u64 = w7.u64;
 }
 
