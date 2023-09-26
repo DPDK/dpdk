@@ -183,13 +183,15 @@ typedef enum {
 struct roc_se_enc_context {
 	uint64_t iv_source : 1;
 	uint64_t aes_key : 2;
-	uint64_t rsvd_60 : 1;
+	uint64_t rsvd_59 : 1;
 	uint64_t enc_cipher : 4;
 	uint64_t auth_input_type : 1;
-	uint64_t rsvd_52_54 : 3;
+	uint64_t auth_key_src : 1;
+	uint64_t rsvd_50_51 : 2;
 	uint64_t hash_type : 4;
 	uint64_t mac_len : 8;
-	uint64_t rsvd_39_0 : 40;
+	uint64_t rsvd_16_39 : 24;
+	uint64_t hmac_key_sz : 16;
 	uint8_t encr_key[32];
 	uint8_t encr_iv[16];
 };
