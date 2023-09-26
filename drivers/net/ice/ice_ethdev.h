@@ -542,7 +542,6 @@ struct ice_pf {
 	struct ice_flow_list flow_list;
 	rte_spinlock_t flow_ops_lock;
 	struct ice_parser_list rss_parser_list;
-	struct ice_parser_list perm_parser_list;
 	struct ice_parser_list dist_parser_list;
 	bool init_link_up;
 	uint64_t old_rx_bytes;
@@ -563,7 +562,6 @@ struct ice_devargs {
 	int rx_low_latency;
 	int safe_mode_support;
 	uint8_t proto_xtr_dflt;
-	int pipe_mode_support;
 	uint8_t default_mac_disable;
 	uint8_t proto_xtr[ICE_MAX_QUEUE_NUM];
 	uint8_t pin_idx;

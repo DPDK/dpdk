@@ -2467,7 +2467,7 @@ ice_fdir_parse(struct ice_adapter *ad,
 	item = ice_search_pattern_match_item(ad, pattern, array, array_len,
 					     error);
 
-	if (!ad->devargs.pipe_mode_support && priority >= 1)
+	if (priority >= 1)
 		return -rte_errno;
 
 	if (!item)

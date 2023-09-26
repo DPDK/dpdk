@@ -18,16 +18,6 @@
 #include "ice_ethdev.h"
 #include "ice_generic_flow.h"
 
-/**
- * Non-pipeline mode, fdir and switch both used as distributor,
- * fdir used first, switch used as fdir's backup.
- */
-#define ICE_FLOW_CLASSIFY_STAGE_DISTRIBUTOR_ONLY 0
-/*Pipeline mode, switch used at permission stage*/
-#define ICE_FLOW_CLASSIFY_STAGE_PERMISSION 1
-/*Pipeline mode, fdir used at distributor stage*/
-#define ICE_FLOW_CLASSIFY_STAGE_DISTRIBUTOR 2
-
 #define ICE_FLOW_ENGINE_DISABLED(mask, type) ((mask) & BIT(type))
 
 static struct ice_engine_list engine_list =
@@ -1829,7 +1819,6 @@ ice_flow_init(struct ice_adapter *ad)
 
 	TAILQ_INIT(&pf->flow_list);
 	TAILQ_INIT(&pf->rss_parser_list);
-	TAILQ_INIT(&pf->perm_parser_list);
 	TAILQ_INIT(&pf->dist_parser_list);
 	rte_spinlock_init(&pf->flow_ops_lock);
 
@@ -1898,11 +1887,6 @@ ice_flow_uninit(struct ice_adapter *ad)
 		rte_free(p_parser);
 	}
 
-	while ((p_parser = TAILQ_FIRST(&pf->perm_parser_list))) {
-		TAILQ_REMOVE(&pf->perm_parser_list, p_parser, node);
-		rte_free(p_parser);
-	}
-
 	while ((p_parser = TAILQ_FIRST(&pf->dist_parser_list))) {
 		TAILQ_REMOVE(&pf->dist_parser_list, p_parser, node);
 		rte_free(p_parser);
@@ -1924,9 +1908,6 @@ ice_get_parser_list(struct ice_flow_parser *parser,
 	switch (parser->stage) {
 	case ICE_FLOW_STAGE_RSS:
 		list = &pf->rss_parser_list;
-		break;
-	case ICE_FLOW_STAGE_PERMISSION:
-		list = &pf->perm_parser_list;
 		break;
 	case ICE_FLOW_STAGE_DISTRIBUTOR:
 		list = &pf->dist_parser_list;
@@ -1958,38 +1939,34 @@ ice_register_parser(struct ice_flow_parser *parser,
 	if (list == NULL)
 		return -EINVAL;
 
-	if (ad->devargs.pipe_mode_support) {
-		TAILQ_INSERT_TAIL(list, parser_node, node);
-	} else {
-		if (parser->engine->type == ICE_FLOW_ENGINE_SWITCH) {
-			RTE_TAILQ_FOREACH_SAFE(existing_node, list,
-					       node, temp) {
-				if (existing_node->parser->engine->type ==
-				    ICE_FLOW_ENGINE_ACL) {
-					TAILQ_INSERT_AFTER(list, existing_node,
-							   parser_node, node);
-					goto DONE;
-				}
+	if (parser->engine->type == ICE_FLOW_ENGINE_SWITCH) {
+		RTE_TAILQ_FOREACH_SAFE(existing_node, list,
+				       node, temp) {
+			if (existing_node->parser->engine->type ==
+			    ICE_FLOW_ENGINE_ACL) {
+				TAILQ_INSERT_AFTER(list, existing_node,
+						   parser_node, node);
+				goto DONE;
 			}
-			TAILQ_INSERT_HEAD(list, parser_node, node);
-		} else if (parser->engine->type == ICE_FLOW_ENGINE_FDIR) {
-			RTE_TAILQ_FOREACH_SAFE(existing_node, list,
-					       node, temp) {
-				if (existing_node->parser->engine->type ==
-				    ICE_FLOW_ENGINE_SWITCH) {
-					TAILQ_INSERT_AFTER(list, existing_node,
-							   parser_node, node);
-					goto DONE;
-				}
-			}
-			TAILQ_INSERT_HEAD(list, parser_node, node);
-		} else if (parser->engine->type == ICE_FLOW_ENGINE_HASH) {
-			TAILQ_INSERT_TAIL(list, parser_node, node);
-		} else if (parser->engine->type == ICE_FLOW_ENGINE_ACL) {
-			TAILQ_INSERT_HEAD(list, parser_node, node);
-		} else {
-			return -EINVAL;
 		}
+		TAILQ_INSERT_HEAD(list, parser_node, node);
+	} else if (parser->engine->type == ICE_FLOW_ENGINE_FDIR) {
+		RTE_TAILQ_FOREACH_SAFE(existing_node, list,
+				       node, temp) {
+			if (existing_node->parser->engine->type ==
+			    ICE_FLOW_ENGINE_SWITCH) {
+				TAILQ_INSERT_AFTER(list, existing_node,
+						   parser_node, node);
+				goto DONE;
+			}
+		}
+		TAILQ_INSERT_HEAD(list, parser_node, node);
+	} else if (parser->engine->type == ICE_FLOW_ENGINE_HASH) {
+		TAILQ_INSERT_TAIL(list, parser_node, node);
+	} else if (parser->engine->type == ICE_FLOW_ENGINE_ACL) {
+		TAILQ_INSERT_HEAD(list, parser_node, node);
+	} else {
+		return -EINVAL;
 	}
 DONE:
 	return 0;
@@ -2016,10 +1993,8 @@ ice_unregister_parser(struct ice_flow_parser *parser,
 }
 
 static int
-ice_flow_valid_attr(struct ice_adapter *ad,
-		const struct rte_flow_attr *attr,
-		int *ice_pipeline_stage,
-		struct rte_flow_error *error)
+ice_flow_valid_attr(const struct rte_flow_attr *attr,
+		    struct rte_flow_error *error)
 {
 	/* Must be input direction */
 	if (!attr->ingress) {
@@ -2045,23 +2020,11 @@ ice_flow_valid_attr(struct ice_adapter *ad,
 		return -rte_errno;
 	}
 
-	/* Check pipeline mode support to set classification stage */
-	if (ad->devargs.pipe_mode_support) {
-		if (attr->priority == 0)
-			*ice_pipeline_stage =
-				ICE_FLOW_CLASSIFY_STAGE_PERMISSION;
-		else
-			*ice_pipeline_stage =
-				ICE_FLOW_CLASSIFY_STAGE_DISTRIBUTOR;
-	} else {
-		*ice_pipeline_stage =
-			ICE_FLOW_CLASSIFY_STAGE_DISTRIBUTOR_ONLY;
-		if (attr->priority > 1) {
-			rte_flow_error_set(error, EINVAL,
-					RTE_FLOW_ERROR_TYPE_ATTR_PRIORITY,
-					attr, "Only support priority 0 and 1.");
-			return -rte_errno;
-		}
+	if (attr->priority > 1) {
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_ATTR_PRIORITY,
+				   attr, "Only support priority 0 and 1.");
+		return -rte_errno;
 	}
 
 	/* Not supported */
@@ -2407,7 +2370,6 @@ ice_flow_process_filter(struct rte_eth_dev *dev,
 	struct ice_adapter *ad =
 		ICE_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 	struct ice_pf *pf = ICE_DEV_PRIVATE_TO_PF(dev->data->dev_private);
-	int ice_pipeline_stage = 0;
 
 	if (!pattern) {
 		rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM_NUM,
@@ -2429,7 +2391,7 @@ ice_flow_process_filter(struct rte_eth_dev *dev,
 		return -rte_errno;
 	}
 
-	ret = ice_flow_valid_attr(ad, attr, &ice_pipeline_stage, error);
+	ret = ice_flow_valid_attr(attr, error);
 	if (ret)
 		return ret;
 
@@ -2438,20 +2400,8 @@ ice_flow_process_filter(struct rte_eth_dev *dev,
 	if (*engine != NULL)
 		return 0;
 
-	switch (ice_pipeline_stage) {
-	case ICE_FLOW_CLASSIFY_STAGE_DISTRIBUTOR_ONLY:
-	case ICE_FLOW_CLASSIFY_STAGE_DISTRIBUTOR:
-		*engine = ice_parse_engine(ad, flow, &pf->dist_parser_list,
-				attr->priority, pattern, actions, error);
-		break;
-	case ICE_FLOW_CLASSIFY_STAGE_PERMISSION:
-		*engine = ice_parse_engine(ad, flow, &pf->perm_parser_list,
-				attr->priority, pattern, actions, error);
-		break;
-	default:
-		return -EINVAL;
-	}
-
+	*engine = ice_parse_engine(ad, flow, &pf->dist_parser_list,
+				   attr->priority, pattern, actions, error);
 	if (*engine == NULL)
 		return -EINVAL;
 

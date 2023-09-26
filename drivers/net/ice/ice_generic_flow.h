@@ -418,15 +418,13 @@ enum ice_flow_engine_type {
 };
 
 /**
- * classification stages.
- * for non-pipeline mode, we have two classification stages: Distributor/RSS
- * for pipeline-mode we have three classification stages:
+ * Classification stages.
+ * We have two classification stages: Distributor/RSS
  * Permission/Distributor/RSS
  */
 enum ice_flow_classification_stage {
 	ICE_FLOW_STAGE_NONE = 0,
 	ICE_FLOW_STAGE_RSS,
-	ICE_FLOW_STAGE_PERMISSION,
 	ICE_FLOW_STAGE_DISTRIBUTOR,
 	ICE_FLOW_STAGE_MAX,
 };
