@@ -1619,7 +1619,7 @@ static void
 cn10k_crypto_caps_add(struct rte_cryptodev_capabilities cnxk_caps[],
 		     union cpt_eng_caps *hw_caps, int *cur_pos)
 {
-	if (hw_caps->sg_ver2) {
+	if (hw_caps[CPT_ENG_TYPE_SE].sg_ver2) {
 		CPT_CAPS_ADD(cnxk_caps, cur_pos, hw_caps, sm3);
 		CPT_CAPS_ADD(cnxk_caps, cur_pos, hw_caps, sm4);
 	}
