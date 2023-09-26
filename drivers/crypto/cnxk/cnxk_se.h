@@ -45,7 +45,8 @@ struct cnxk_se_sess {
 	uint8_t is_sm3 : 1;
 	uint8_t passthrough : 1;
 	uint8_t is_sm4 : 1;
-	uint8_t rsvd : 2;
+	uint8_t cipher_only : 1;
+	uint8_t rsvd : 1;
 	uint8_t cpt_op : 4;
 	uint8_t zsk_flag : 4;
 	uint8_t zs_cipher : 4;
@@ -2192,6 +2193,7 @@ fill_sess_cipher(struct rte_crypto_sym_xform *xform, struct cnxk_se_sess *sess)
 		}
 	}
 
+	sess->cipher_only = 1;
 	sess->zsk_flag = zsk_flag;
 	sess->zs_cipher = zs_cipher;
 	sess->aes_gcm = 0;
@@ -3308,9 +3310,19 @@ static __rte_always_inline int __rte_hot
 cpt_sym_inst_fill(struct cnxk_cpt_qp *qp, struct rte_crypto_op *op, struct cnxk_se_sess *sess,
 		  struct cpt_inflight_req *infl_req, struct cpt_inst_s *inst, const bool is_sg_ver2)
 {
+	enum cpt_dp_thread_type dp_thr_type;
 	int ret;
 
-	switch (sess->dp_thr_type) {
+	dp_thr_type = sess->dp_thr_type;
+
+	/*
+	 * With cipher only, microcode expects that cipher length is non-zero. To accept such
+	 * instructions, send to CPT as passthrough.
+	 */
+	if (unlikely(sess->cipher_only && op->sym->cipher.data.length == 0))
+		dp_thr_type = CPT_DP_THREAD_TYPE_PT;
+
+	switch (dp_thr_type) {
 	case CPT_DP_THREAD_TYPE_PT:
 		ret = fill_passthrough_params(op, inst);
 		break;
