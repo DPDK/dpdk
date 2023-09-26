@@ -851,8 +851,8 @@ static const struct rte_cryptodev_capabilities sec_caps_aes[] = {
 					.increment = 4
 				},
 				.iv_size = {
-					.min = 12,
-					.max = 12,
+					.min = 11,
+					.max = 11,
 					.increment = 0
 				}
 			}, }
@@ -936,8 +936,8 @@ static const struct rte_cryptodev_capabilities sec_caps_aes[] = {
 					.increment = 4
 				},
 				.iv_size = {
-					.min = 11,
-					.max = 11,
+					.min = 12,
+					.max = 12,
 					.increment = 0
 				}
 			}, }
