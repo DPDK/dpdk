@@ -45,6 +45,7 @@ struct cpt_qp_meta_info {
 struct cpt_inflight_req {
 	union cpt_res_s res;
 	union {
+		void *opaque;
 		struct rte_crypto_op *cop;
 		struct rte_event_vector *vec;
 	};

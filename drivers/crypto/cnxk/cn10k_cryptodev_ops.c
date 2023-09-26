@@ -1066,6 +1066,461 @@ cn10k_cpt_dev_info_get(struct rte_cryptodev *dev,
 	}
 }
 
+static inline int
+cn10k_cpt_raw_fill_inst(struct cnxk_iov *iov, struct cnxk_cpt_qp *qp,
+			struct cnxk_sym_dp_ctx *dp_ctx, struct cpt_inst_s inst[],
+			struct cpt_inflight_req *infl_req, void *opaque, const bool is_sg_ver2)
+{
+	struct cnxk_se_sess *sess;
+	int ret;
+
+	const union cpt_res_s res = {
+		.cn10k.compcode = CPT_COMP_NOT_DONE,
+	};
+
+	inst[0].w0.u64 = 0;
+	inst[0].w2.u64 = 0;
+	inst[0].w3.u64 = 0;
+
+	sess = dp_ctx->sess;
+
+	switch (sess->dp_thr_type) {
+	case CPT_DP_THREAD_TYPE_PT:
+		ret = fill_raw_passthrough_params(iov, inst);
+		break;
+	case CPT_DP_THREAD_TYPE_FC_CHAIN:
+		ret = fill_raw_fc_params(iov, sess, &qp->meta_info, infl_req, &inst[0], false,
+					 false, is_sg_ver2);
+		break;
+	case CPT_DP_THREAD_TYPE_FC_AEAD:
+		ret = fill_raw_fc_params(iov, sess, &qp->meta_info, infl_req, &inst[0], false, true,
+					 is_sg_ver2);
+		break;
+	case CPT_DP_THREAD_AUTH_ONLY:
+		ret = fill_raw_digest_params(iov, sess, &qp->meta_info, infl_req, &inst[0],
+					     is_sg_ver2);
+		break;
+	default:
+		ret = -EINVAL;
+	}
+
+	if (unlikely(ret))
+		return 0;
+
+	inst[0].res_addr = (uint64_t)&infl_req->res;
+	__atomic_store_n(&infl_req->res.u64[0], res.u64[0], __ATOMIC_RELAXED);
+	infl_req->opaque = opaque;
+
+	inst[0].w7.u64 = sess->cpt_inst_w7;
+
+	return 1;
+}
+
+static uint32_t
+cn10k_cpt_raw_enqueue_burst(void *qpair, uint8_t *drv_ctx, struct rte_crypto_sym_vec *vec,
+			    union rte_crypto_sym_ofs ofs, void *user_data[], int *enqueue_status,
+			    const bool is_sgv2)
+{
+	uint16_t lmt_id, nb_allowed, nb_ops = vec->num;
+	uint64_t lmt_base, lmt_arg, io_addr, head;
+	struct cpt_inflight_req *infl_req;
+	struct cnxk_cpt_qp *qp = qpair;
+	struct cnxk_sym_dp_ctx *dp_ctx;
+	struct pending_queue *pend_q;
+	uint32_t count = 0, index;
+	union cpt_fc_write_s fc;
+	struct cpt_inst_s *inst;
+	uint64_t *fc_addr;
+	int ret, i;
+
+	pend_q = &qp->pend_q;
+	const uint64_t pq_mask = pend_q->pq_mask;
+
+	head = pend_q->head;
+	nb_allowed = pending_queue_free_cnt(head, pend_q->tail, pq_mask);
+	nb_ops = RTE_MIN(nb_ops, nb_allowed);
+
+	if (unlikely(nb_ops == 0))
+		return 0;
+
+	lmt_base = qp->lmtline.lmt_base;
+	io_addr = qp->lmtline.io_addr;
+	fc_addr = qp->lmtline.fc_addr;
+
+	const uint32_t fc_thresh = qp->lmtline.fc_thresh;
+
+	ROC_LMT_BASE_ID_GET(lmt_base, lmt_id);
+	inst = (struct cpt_inst_s *)lmt_base;
+
+	dp_ctx = (struct cnxk_sym_dp_ctx *)drv_ctx;
+again:
+	fc.u64[0] = __atomic_load_n(fc_addr, __ATOMIC_RELAXED);
+	if (unlikely(fc.s.qsize > fc_thresh)) {
+		i = 0;
+		goto pend_q_commit;
+	}
+
+	for (i = 0; i < RTE_MIN(PKTS_PER_LOOP, nb_ops); i++) {
+		struct cnxk_iov iov;
+
+		index = count + i;
+		infl_req = &pend_q->req_queue[head];
+		infl_req->op_flags = 0;
+
+		cnxk_raw_burst_to_iov(vec, &ofs, index, &iov);
+		ret = cn10k_cpt_raw_fill_inst(&iov, qp, dp_ctx, &inst[2 * i], infl_req,
+					      user_data[index], is_sgv2);
+		if (unlikely(ret != 1)) {
+			plt_dp_err("Could not process vec: %d", index);
+			if (i == 0 && count == 0)
+				return -1;
+			else if (i == 0)
+				goto pend_q_commit;
+			else
+				break;
+		}
+		pending_queue_advance(&head, pq_mask);
+	}
+
+	if (i > PKTS_PER_STEORL) {
+		lmt_arg = ROC_CN10K_CPT_LMT_ARG | (PKTS_PER_STEORL - 1) << 12 | (uint64_t)lmt_id;
+		roc_lmt_submit_steorl(lmt_arg, io_addr);
+		lmt_arg = ROC_CN10K_CPT_LMT_ARG | (i - PKTS_PER_STEORL - 1) << 12 |
+			  (uint64_t)(lmt_id + PKTS_PER_STEORL);
+		roc_lmt_submit_steorl(lmt_arg, io_addr);
+	} else {
+		lmt_arg = ROC_CN10K_CPT_LMT_ARG | (i - 1) << 12 | (uint64_t)lmt_id;
+		roc_lmt_submit_steorl(lmt_arg, io_addr);
+	}
+
+	rte_io_wmb();
+
+	if (nb_ops - i > 0 && i == PKTS_PER_LOOP) {
+		nb_ops -= i;
+		count += i;
+		goto again;
+	}
+
+pend_q_commit:
+	rte_atomic_thread_fence(__ATOMIC_RELEASE);
+
+	pend_q->head = head;
+	pend_q->time_out = rte_get_timer_cycles() + DEFAULT_COMMAND_TIMEOUT * rte_get_timer_hz();
+
+	*enqueue_status = 1;
+	return count + i;
+}
+
+static uint32_t
+cn10k_cpt_raw_enqueue_burst_sgv2(void *qpair, uint8_t *drv_ctx, struct rte_crypto_sym_vec *vec,
+				 union rte_crypto_sym_ofs ofs, void *user_data[],
+				 int *enqueue_status)
+{
+	return cn10k_cpt_raw_enqueue_burst(qpair, drv_ctx, vec, ofs, user_data, enqueue_status,
+					   true);
+}
+
+static uint32_t
+cn10k_cpt_raw_enqueue_burst_sgv1(void *qpair, uint8_t *drv_ctx, struct rte_crypto_sym_vec *vec,
+				 union rte_crypto_sym_ofs ofs, void *user_data[],
+				 int *enqueue_status)
+{
+	return cn10k_cpt_raw_enqueue_burst(qpair, drv_ctx, vec, ofs, user_data, enqueue_status,
+					   false);
+}
+
+static int
+cn10k_cpt_raw_enqueue(void *qpair, uint8_t *drv_ctx, struct rte_crypto_vec *data_vec,
+		      uint16_t n_data_vecs, union rte_crypto_sym_ofs ofs,
+		      struct rte_crypto_va_iova_ptr *iv, struct rte_crypto_va_iova_ptr *digest,
+		      struct rte_crypto_va_iova_ptr *aad_or_auth_iv, void *user_data,
+		      const bool is_sgv2)
+{
+	uint64_t lmt_base, lmt_arg, io_addr, head;
+	struct cpt_inflight_req *infl_req;
+	struct cnxk_cpt_qp *qp = qpair;
+	struct cnxk_sym_dp_ctx *dp_ctx;
+	uint16_t lmt_id, nb_allowed;
+	struct cpt_inst_s *inst;
+	union cpt_fc_write_s fc;
+	struct cnxk_iov iov;
+	uint64_t *fc_addr;
+	int ret;
+
+	struct pending_queue *pend_q = &qp->pend_q;
+	const uint64_t pq_mask = pend_q->pq_mask;
+	const uint32_t fc_thresh = qp->lmtline.fc_thresh;
+
+	head = pend_q->head;
+	nb_allowed = pending_queue_free_cnt(head, pend_q->tail, pq_mask);
+
+	if (unlikely(nb_allowed == 0))
+		return -1;
+
+	cnxk_raw_to_iov(data_vec, n_data_vecs, &ofs, iv, digest, aad_or_auth_iv, &iov);
+
+	lmt_base = qp->lmtline.lmt_base;
+	io_addr = qp->lmtline.io_addr;
+	fc_addr = qp->lmtline.fc_addr;
+
+	ROC_LMT_BASE_ID_GET(lmt_base, lmt_id);
+	inst = (struct cpt_inst_s *)lmt_base;
+
+	fc.u64[0] = __atomic_load_n(fc_addr, __ATOMIC_RELAXED);
+	if (unlikely(fc.s.qsize > fc_thresh))
+		return -1;
+
+	dp_ctx = (struct cnxk_sym_dp_ctx *)drv_ctx;
+	infl_req = &pend_q->req_queue[head];
+	infl_req->op_flags = 0;
+
+	ret = cn10k_cpt_raw_fill_inst(&iov, qp, dp_ctx, &inst[0], infl_req, user_data, is_sgv2);
+	if (unlikely(ret != 1)) {
+		plt_dp_err("Could not process vec");
+		return -1;
+	}
+
+	pending_queue_advance(&head, pq_mask);
+
+	lmt_arg = ROC_CN10K_CPT_LMT_ARG | (uint64_t)lmt_id;
+	roc_lmt_submit_steorl(lmt_arg, io_addr);
+
+	rte_io_wmb();
+
+	pend_q->head = head;
+	pend_q->time_out = rte_get_timer_cycles() + DEFAULT_COMMAND_TIMEOUT * rte_get_timer_hz();
+
+	return 1;
+}
+
+static int
+cn10k_cpt_raw_enqueue_sgv2(void *qpair, uint8_t *drv_ctx, struct rte_crypto_vec *data_vec,
+			   uint16_t n_data_vecs, union rte_crypto_sym_ofs ofs,
+			   struct rte_crypto_va_iova_ptr *iv, struct rte_crypto_va_iova_ptr *digest,
+			   struct rte_crypto_va_iova_ptr *aad_or_auth_iv, void *user_data)
+{
+	return cn10k_cpt_raw_enqueue(qpair, drv_ctx, data_vec, n_data_vecs, ofs, iv, digest,
+				     aad_or_auth_iv, user_data, true);
+}
+
+static int
+cn10k_cpt_raw_enqueue_sgv1(void *qpair, uint8_t *drv_ctx, struct rte_crypto_vec *data_vec,
+			   uint16_t n_data_vecs, union rte_crypto_sym_ofs ofs,
+			   struct rte_crypto_va_iova_ptr *iv, struct rte_crypto_va_iova_ptr *digest,
+			   struct rte_crypto_va_iova_ptr *aad_or_auth_iv, void *user_data)
+{
+	return cn10k_cpt_raw_enqueue(qpair, drv_ctx, data_vec, n_data_vecs, ofs, iv, digest,
+				     aad_or_auth_iv, user_data, false);
+}
+
+static inline int
+cn10k_cpt_raw_dequeue_post_process(struct cpt_cn10k_res_s *res)
+{
+	const uint8_t uc_compcode = res->uc_compcode;
+	const uint8_t compcode = res->compcode;
+	int ret = 1;
+
+	if (likely(compcode == CPT_COMP_GOOD)) {
+		if (unlikely(uc_compcode))
+			plt_dp_info("Request failed with microcode error: 0x%x", res->uc_compcode);
+		else
+			ret = 0;
+	}
+
+	return ret;
+}
+
+static uint32_t
+cn10k_cpt_sym_raw_dequeue_burst(void *qptr, uint8_t *drv_ctx,
+				rte_cryptodev_raw_get_dequeue_count_t get_dequeue_count,
+				uint32_t max_nb_to_dequeue,
+				rte_cryptodev_raw_post_dequeue_t post_dequeue, void **out_user_data,
+				uint8_t is_user_data_array, uint32_t *n_success,
+				int *dequeue_status)
+{
+	struct cpt_inflight_req *infl_req;
+	struct cnxk_cpt_qp *qp = qptr;
+	struct pending_queue *pend_q;
+	uint64_t infl_cnt, pq_tail;
+	union cpt_res_s res;
+	int is_op_success;
+	uint16_t nb_ops;
+	void *opaque;
+	int i = 0;
+
+	pend_q = &qp->pend_q;
+
+	const uint64_t pq_mask = pend_q->pq_mask;
+
+	RTE_SET_USED(drv_ctx);
+	pq_tail = pend_q->tail;
+	infl_cnt = pending_queue_infl_cnt(pend_q->head, pq_tail, pq_mask);
+
+	/* Ensure infl_cnt isn't read before data lands */
+	rte_atomic_thread_fence(__ATOMIC_ACQUIRE);
+
+	infl_req = &pend_q->req_queue[pq_tail];
+
+	opaque = infl_req->opaque;
+	if (get_dequeue_count)
+		nb_ops = get_dequeue_count(opaque);
+	else
+		nb_ops = max_nb_to_dequeue;
+	nb_ops = RTE_MIN(nb_ops, infl_cnt);
+
+	for (i = 0; i < nb_ops; i++) {
+		is_op_success = 0;
+		infl_req = &pend_q->req_queue[pq_tail];
+
+		res.u64[0] = __atomic_load_n(&infl_req->res.u64[0], __ATOMIC_RELAXED);
+
+		if (unlikely(res.cn10k.compcode == CPT_COMP_NOT_DONE)) {
+			if (unlikely(rte_get_timer_cycles() > pend_q->time_out)) {
+				plt_err("Request timed out");
+				cnxk_cpt_dump_on_err(qp);
+				pend_q->time_out = rte_get_timer_cycles() +
+						   DEFAULT_COMMAND_TIMEOUT * rte_get_timer_hz();
+			}
+			break;
+		}
+
+		pending_queue_advance(&pq_tail, pq_mask);
+
+		if (!cn10k_cpt_raw_dequeue_post_process(&res.cn10k)) {
+			is_op_success = 1;
+			*n_success += 1;
+		}
+
+		if (is_user_data_array) {
+			out_user_data[i] = infl_req->opaque;
+			post_dequeue(out_user_data[i], i, is_op_success);
+		} else {
+			if (i == 0)
+				out_user_data[0] = opaque;
+			post_dequeue(out_user_data[0], i, is_op_success);
+		}
+
+		if (unlikely(infl_req->op_flags & CPT_OP_FLAGS_METABUF))
+			rte_mempool_put(qp->meta_info.pool, infl_req->mdata);
+	}
+
+	pend_q->tail = pq_tail;
+	*dequeue_status = 1;
+
+	return i;
+}
+
+static void *
+cn10k_cpt_sym_raw_dequeue(void *qptr, uint8_t *drv_ctx, int *dequeue_status,
+			  enum rte_crypto_op_status *op_status)
+{
+	struct cpt_inflight_req *infl_req;
+	struct cnxk_cpt_qp *qp = qptr;
+	struct pending_queue *pend_q;
+	uint64_t pq_tail;
+	union cpt_res_s res;
+	void *opaque = NULL;
+
+	pend_q = &qp->pend_q;
+
+	const uint64_t pq_mask = pend_q->pq_mask;
+
+	RTE_SET_USED(drv_ctx);
+
+	pq_tail = pend_q->tail;
+
+	rte_atomic_thread_fence(__ATOMIC_ACQUIRE);
+
+	infl_req = &pend_q->req_queue[pq_tail];
+
+	res.u64[0] = __atomic_load_n(&infl_req->res.u64[0], __ATOMIC_RELAXED);
+
+	if (unlikely(res.cn10k.compcode == CPT_COMP_NOT_DONE)) {
+		if (unlikely(rte_get_timer_cycles() > pend_q->time_out)) {
+			plt_err("Request timed out");
+			cnxk_cpt_dump_on_err(qp);
+			pend_q->time_out = rte_get_timer_cycles() +
+					   DEFAULT_COMMAND_TIMEOUT * rte_get_timer_hz();
+		}
+		goto exit;
+	}
+
+	pending_queue_advance(&pq_tail, pq_mask);
+
+	opaque = infl_req->opaque;
+
+	if (!cn10k_cpt_raw_dequeue_post_process(&res.cn10k))
+		*op_status = RTE_CRYPTO_OP_STATUS_SUCCESS;
+	else
+		*op_status = RTE_CRYPTO_OP_STATUS_ERROR;
+
+	if (unlikely(infl_req->op_flags & CPT_OP_FLAGS_METABUF))
+		rte_mempool_put(qp->meta_info.pool, infl_req->mdata);
+
+	*dequeue_status = 1;
+exit:
+	return opaque;
+}
+
+static int
+cn10k_sym_get_raw_dp_ctx_size(struct rte_cryptodev *dev __rte_unused)
+{
+	return sizeof(struct cnxk_sym_dp_ctx);
+}
+
+static int
+cn10k_sym_configure_raw_dp_ctx(struct rte_cryptodev *dev, uint16_t qp_id,
+			       struct rte_crypto_raw_dp_ctx *raw_dp_ctx,
+			       enum rte_crypto_op_sess_type sess_type,
+			       union rte_cryptodev_session_ctx session_ctx, uint8_t is_update)
+{
+	struct cnxk_se_sess *sess = (struct cnxk_se_sess *)session_ctx.crypto_sess;
+	struct cnxk_sym_dp_ctx *dp_ctx;
+
+	if (sess_type != RTE_CRYPTO_OP_WITH_SESSION)
+		return -ENOTSUP;
+
+	if (sess == NULL)
+		return -EINVAL;
+
+	if ((sess->dp_thr_type == CPT_DP_THREAD_TYPE_PDCP) ||
+	    (sess->dp_thr_type == CPT_DP_THREAD_TYPE_PDCP_CHAIN) ||
+	    (sess->dp_thr_type == CPT_DP_THREAD_TYPE_KASUMI))
+		return -ENOTSUP;
+
+	if ((sess->dp_thr_type == CPT_DP_THREAD_AUTH_ONLY) &&
+	    ((sess->roc_se_ctx.fc_type == ROC_SE_KASUMI) ||
+	     (sess->roc_se_ctx.fc_type == ROC_SE_PDCP)))
+		return -ENOTSUP;
+
+	if ((sess->roc_se_ctx.hash_type == ROC_SE_GMAC_TYPE) ||
+	    (sess->roc_se_ctx.hash_type == ROC_SE_SHA1_TYPE))
+		return -ENOTSUP;
+
+	dp_ctx = (struct cnxk_sym_dp_ctx *)raw_dp_ctx->drv_ctx_data;
+	dp_ctx->sess = sess;
+
+	if (!is_update) {
+		struct cnxk_cpt_vf *vf;
+
+		raw_dp_ctx->qp_data = (struct cnxk_cpt_qp *)dev->data->queue_pairs[qp_id];
+		raw_dp_ctx->dequeue = cn10k_cpt_sym_raw_dequeue;
+		raw_dp_ctx->dequeue_burst = cn10k_cpt_sym_raw_dequeue_burst;
+
+		vf = dev->data->dev_private;
+		if (vf->cpt.hw_caps[CPT_ENG_TYPE_SE].sg_ver2 &&
+		    vf->cpt.hw_caps[CPT_ENG_TYPE_IE].sg_ver2) {
+			raw_dp_ctx->enqueue = cn10k_cpt_raw_enqueue_sgv2;
+			raw_dp_ctx->enqueue_burst = cn10k_cpt_raw_enqueue_burst_sgv2;
+		} else {
+			raw_dp_ctx->enqueue = cn10k_cpt_raw_enqueue_sgv1;
+			raw_dp_ctx->enqueue_burst = cn10k_cpt_raw_enqueue_burst_sgv1;
+		}
+	}
+
+	return 0;
+}
+
 struct rte_cryptodev_ops cn10k_cpt_ops = {
 	/* Device control ops */
 	.dev_configure = cnxk_cpt_dev_config,
@@ -1092,4 +1547,8 @@ struct rte_cryptodev_ops cn10k_cpt_ops = {
 	/* Event crypto ops */
 	.session_ev_mdata_set = cn10k_cpt_crypto_adapter_ev_mdata_set,
 	.queue_pair_event_error_query = cnxk_cpt_queue_pair_event_error_query,
+
+	/* Raw data-path API related operations */
+	.sym_get_raw_dp_ctx_size = cn10k_sym_get_raw_dp_ctx_size,
+	.sym_configure_raw_dp_ctx = cn10k_sym_configure_raw_dp_ctx,
 };

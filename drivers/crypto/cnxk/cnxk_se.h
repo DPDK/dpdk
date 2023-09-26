@@ -66,6 +66,23 @@ struct cnxk_se_sess {
 	struct roc_cpt_lf *lf;
 } __rte_aligned(ROC_ALIGN);
 
+struct cnxk_sym_dp_ctx {
+	struct cnxk_se_sess *sess;
+};
+
+struct cnxk_iov {
+	char src[SRC_IOV_SIZE];
+	char dst[SRC_IOV_SIZE];
+	void *iv_buf;
+	void *aad_buf;
+	void *mac_buf;
+	uint16_t c_head;
+	uint16_t c_tail;
+	uint16_t a_head;
+	uint16_t a_tail;
+	int data_len;
+};
+
 static __rte_always_inline int fill_sess_gmac(struct rte_crypto_sym_xform *xform,
 					      struct cnxk_se_sess *sess);
 
@@ -1817,6 +1834,10 @@ cpt_kasumi_enc_prep(uint32_t req_flags, uint64_t d_offs, uint64_t d_lens,
 	cpt_inst_w4.s.param2 = auth_data_len;
 
 	inst->w4.u64 = cpt_inst_w4.u64;
+
+	if (unlikely(iv_s == NULL))
+		return -1;
+
 	if (is_sg_ver2)
 		sg2_inst_prep(params, inst, offset_ctrl, iv_s, iv_len, 0, 0, inputlen, outputlen, 0,
 			      req_flags, 0, 0);
@@ -1873,6 +1894,10 @@ cpt_kasumi_dec_prep(uint64_t d_offs, uint64_t d_lens, struct roc_se_fc_params *p
 	}
 
 	inst->w4.u64 = cpt_inst_w4.u64;
+
+	if (unlikely(params->iv_buf == NULL))
+		return -1;
+
 	if (is_sg_ver2)
 		sg2_inst_prep(params, inst, offset_ctrl, params->iv_buf, iv_len, 0, 0, inputlen,
 			      outputlen, 0, 0, 0, 1);
@@ -3355,6 +3380,282 @@ cpt_sym_inst_fill(struct cnxk_cpt_qp *qp, struct rte_crypto_op *op, struct cnxk_
 		ret = -EINVAL;
 	}
 
+	return ret;
+}
+
+static __rte_always_inline uint32_t
+prepare_iov_from_raw_vec(struct rte_crypto_vec *vec, struct roc_se_iov_ptr *iovec, uint32_t num)
+{
+	uint32_t i, total_len = 0;
+
+	for (i = 0; i < num; i++) {
+		iovec->bufs[i].vaddr = vec[i].base;
+		iovec->bufs[i].size = vec[i].len;
+
+		total_len += vec[i].len;
+	}
+
+	iovec->buf_cnt = i;
+	return total_len;
+}
+
+static __rte_always_inline void
+cnxk_raw_burst_to_iov(struct rte_crypto_sym_vec *vec, union rte_crypto_sym_ofs *ofs, int index,
+		      struct cnxk_iov *iov)
+{
+	iov->iv_buf = vec->iv[index].va;
+	iov->aad_buf = vec->aad[index].va;
+	iov->mac_buf = vec->digest[index].va;
+
+	iov->data_len =
+		prepare_iov_from_raw_vec(vec->src_sgl[index].vec, (struct roc_se_iov_ptr *)iov->src,
+					 vec->src_sgl[index].num);
+
+	if (vec->dest_sgl == NULL)
+		prepare_iov_from_raw_vec(vec->src_sgl[index].vec, (struct roc_se_iov_ptr *)iov->dst,
+					 vec->src_sgl[index].num);
+	else
+		prepare_iov_from_raw_vec(vec->dest_sgl[index].vec,
+					 (struct roc_se_iov_ptr *)iov->dst,
+					 vec->dest_sgl[index].num);
+
+	iov->c_head = ofs->ofs.cipher.head;
+	iov->c_tail = ofs->ofs.cipher.tail;
+
+	iov->a_head = ofs->ofs.auth.head;
+	iov->a_tail = ofs->ofs.auth.tail;
+}
+
+static __rte_always_inline void
+cnxk_raw_to_iov(struct rte_crypto_vec *data_vec, uint16_t n_vecs, union rte_crypto_sym_ofs *ofs,
+		struct rte_crypto_va_iova_ptr *iv, struct rte_crypto_va_iova_ptr *digest,
+		struct rte_crypto_va_iova_ptr *aad, struct cnxk_iov *iov)
+{
+	iov->iv_buf = iv->va;
+	iov->aad_buf = aad->va;
+	iov->mac_buf = digest->va;
+
+	iov->data_len =
+		prepare_iov_from_raw_vec(data_vec, (struct roc_se_iov_ptr *)iov->src, n_vecs);
+	prepare_iov_from_raw_vec(data_vec, (struct roc_se_iov_ptr *)iov->dst, n_vecs);
+
+	iov->c_head = ofs->ofs.cipher.head;
+	iov->c_tail = ofs->ofs.cipher.tail;
+
+	iov->a_head = ofs->ofs.auth.head;
+	iov->a_tail = ofs->ofs.auth.tail;
+}
+
+static inline void
+raw_memcpy(struct cnxk_iov *iov)
+{
+	struct roc_se_iov_ptr *src = (struct roc_se_iov_ptr *)iov->src;
+	struct roc_se_iov_ptr *dst = (struct roc_se_iov_ptr *)iov->dst;
+	int num = src->buf_cnt;
+	int i;
+
+	/* skip copy in case of inplace */
+	if (dst->bufs[0].vaddr == src->bufs[0].vaddr)
+		return;
+
+	for (i = 0; i < num; i++) {
+		rte_memcpy(dst->bufs[i].vaddr, src->bufs[i].vaddr, src->bufs[i].size);
+		dst->bufs[i].size = src->bufs[i].size;
+	}
+}
+
+static inline int
+fill_raw_passthrough_params(struct cnxk_iov *iov, struct cpt_inst_s *inst)
+{
+	const union cpt_inst_w4 w4 = {
+		.s.opcode_major = ROC_SE_MAJOR_OP_MISC,
+		.s.opcode_minor = ROC_SE_MISC_MINOR_OP_PASSTHROUGH,
+		.s.param1 = 1,
+		.s.param2 = 1,
+		.s.dlen = 0,
+	};
+
+	inst->w0.u64 = 0;
+	inst->w5.u64 = 0;
+	inst->w4.u64 = w4.u64;
+
+	raw_memcpy(iov);
+
+	return 0;
+}
+
+static __rte_always_inline int
+fill_raw_fc_params(struct cnxk_iov *iov, struct cnxk_se_sess *sess, struct cpt_qp_meta_info *m_info,
+		   struct cpt_inflight_req *infl_req, struct cpt_inst_s *inst, const bool is_kasumi,
+		   const bool is_aead, const bool is_sg_ver2)
+{
+	uint32_t cipher_len, auth_len = 0;
+	struct roc_se_fc_params fc_params;
+	uint8_t cpt_op = sess->cpt_op;
+	uint64_t d_offs, d_lens;
+	uint8_t ccm_iv_buf[16];
+	uint32_t flags = 0;
+	void *mdata = NULL;
+	uint32_t iv_buf[4];
+	int ret;
+
+	fc_params.cipher_iv_len = sess->iv_length;
+	fc_params.ctx = &sess->roc_se_ctx;
+	fc_params.auth_iv_buf = NULL;
+	fc_params.auth_iv_len = 0;
+	fc_params.mac_buf.size = 0;
+	fc_params.mac_buf.vaddr = 0;
+	fc_params.iv_buf = NULL;
+
+	if (likely(is_kasumi || sess->iv_length)) {
+		flags |= ROC_SE_VALID_IV_BUF;
+		fc_params.iv_buf = iov->iv_buf;
+
+		if (sess->short_iv) {
+			memcpy((uint8_t *)iv_buf, iov->iv_buf, 12);
+			iv_buf[3] = rte_cpu_to_be_32(0x1);
+			fc_params.iv_buf = iv_buf;
+		}
+
+		if (sess->aes_ccm) {
+			memcpy((uint8_t *)ccm_iv_buf, iov->iv_buf, sess->iv_length + 1);
+			ccm_iv_buf[0] = 14 - sess->iv_length;
+			fc_params.iv_buf = ccm_iv_buf;
+		}
+	}
+
+	fc_params.src_iov = (void *)iov->src;
+	fc_params.dst_iov = (void *)iov->dst;
+
+	cipher_len = iov->data_len - iov->c_head - iov->c_tail;
+	auth_len = iov->data_len - iov->a_head - iov->a_tail;
+
+	d_offs = (iov->c_head << 16) | iov->a_head;
+	d_lens = ((uint64_t)cipher_len << 32) | auth_len;
+
+	if (is_aead) {
+		uint16_t aad_len = sess->aad_length;
+
+		if (likely(aad_len == 0)) {
+			d_offs = (iov->c_head << 16) | iov->c_head;
+			d_lens = ((uint64_t)cipher_len << 32) | cipher_len;
+		} else {
+			flags |= ROC_SE_VALID_AAD_BUF;
+			fc_params.aad_buf.size = sess->aad_length;
+			/* For AES CCM, AAD is written 18B after aad.data as per API */
+			if (sess->aes_ccm)
+				fc_params.aad_buf.vaddr = PLT_PTR_ADD((uint8_t *)iov->aad_buf, 18);
+			else
+				fc_params.aad_buf.vaddr = iov->aad_buf;
+
+			d_offs = (iov->c_head << 16);
+			d_lens = ((uint64_t)cipher_len << 32);
+		}
+	}
+
+	if (likely(sess->mac_len)) {
+		flags |= ROC_SE_VALID_MAC_BUF;
+		fc_params.mac_buf.size = sess->mac_len;
+		fc_params.mac_buf.vaddr = iov->mac_buf;
+	}
+
+	fc_params.meta_buf.vaddr = NULL;
+	mdata = alloc_op_meta(&fc_params.meta_buf, m_info->mlen, m_info->pool, infl_req);
+	if (mdata == NULL) {
+		plt_dp_err("Error allocating meta buffer for request");
+		return -ENOMEM;
+	}
+
+	if (is_kasumi) {
+		if (cpt_op & ROC_SE_OP_ENCODE)
+			ret = cpt_enc_hmac_prep(flags, d_offs, d_lens, &fc_params, inst,
+						is_sg_ver2);
+		else
+			ret = cpt_dec_hmac_prep(flags, d_offs, d_lens, &fc_params, inst,
+						is_sg_ver2);
+	} else {
+		if (cpt_op & ROC_SE_OP_ENCODE)
+			ret = cpt_enc_hmac_prep(flags, d_offs, d_lens, &fc_params, inst,
+						is_sg_ver2);
+		else
+			ret = cpt_dec_hmac_prep(flags, d_offs, d_lens, &fc_params, inst,
+						is_sg_ver2);
+	}
+
+	if (unlikely(ret)) {
+		plt_dp_err("Preparing request failed due to bad input arg");
+		goto free_mdata_and_exit;
+	}
+
+	return 0;
+
+free_mdata_and_exit:
+	rte_mempool_put(m_info->pool, infl_req->mdata);
+	return ret;
+}
+
+static __rte_always_inline int
+fill_raw_digest_params(struct cnxk_iov *iov, struct cnxk_se_sess *sess,
+		       struct cpt_qp_meta_info *m_info, struct cpt_inflight_req *infl_req,
+		       struct cpt_inst_s *inst, const bool is_sg_ver2)
+{
+	uint16_t auth_op = sess->cpt_op & ROC_SE_OP_AUTH_MASK;
+	struct roc_se_fc_params fc_params;
+	uint16_t mac_len = sess->mac_len;
+	uint64_t d_offs, d_lens;
+	uint32_t auth_len = 0;
+	uint32_t flags = 0;
+	void *mdata = NULL;
+	uint32_t space = 0;
+	int ret;
+
+	memset(&fc_params, 0, sizeof(struct roc_se_fc_params));
+	fc_params.cipher_iv_len = sess->iv_length;
+	fc_params.ctx = &sess->roc_se_ctx;
+
+	mdata = alloc_op_meta(&fc_params.meta_buf, m_info->mlen, m_info->pool, infl_req);
+	if (mdata == NULL) {
+		plt_dp_err("Error allocating meta buffer for request");
+		ret = -ENOMEM;
+		goto err_exit;
+	}
+
+	flags |= ROC_SE_VALID_MAC_BUF;
+	fc_params.src_iov = (void *)iov->src;
+	auth_len = iov->data_len - iov->a_head - iov->a_tail;
+	d_lens = auth_len;
+	d_offs = iov->a_head;
+
+	if (auth_op == ROC_SE_OP_AUTH_GENERATE) {
+		fc_params.mac_buf.size = sess->mac_len;
+		fc_params.mac_buf.vaddr = iov->mac_buf;
+	} else {
+		uint64_t *op = mdata;
+
+		/* Need space for storing generated mac */
+		space += 2 * sizeof(uint64_t);
+
+		fc_params.mac_buf.vaddr = (uint8_t *)mdata + space;
+		fc_params.mac_buf.size = mac_len;
+		space += RTE_ALIGN_CEIL(mac_len, 8);
+		op[0] = (uintptr_t)iov->mac_buf;
+		op[1] = mac_len;
+		infl_req->op_flags |= CPT_OP_FLAGS_AUTH_VERIFY;
+	}
+
+	fc_params.meta_buf.vaddr = (uint8_t *)mdata + space;
+	fc_params.meta_buf.size -= space;
+
+	ret = cpt_fc_enc_hmac_prep(flags, d_offs, d_lens, &fc_params, inst, is_sg_ver2);
+	if (ret)
+		goto free_mdata_and_exit;
+
+	return 0;
+
+free_mdata_and_exit:
+	if (infl_req->op_flags & CPT_OP_FLAGS_METABUF)
+		rte_mempool_put(m_info->pool, infl_req->mdata);
+err_exit:
 	return ret;
 }
 

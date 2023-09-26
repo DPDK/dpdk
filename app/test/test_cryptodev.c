@@ -17712,6 +17712,12 @@ test_cryptodev_cn10k(void)
 }
 
 static int
+test_cryptodev_cn10k_raw_api(void)
+{
+	return run_cryptodev_raw_testsuite(RTE_STR(CRYPTODEV_NAME_CN10K_PMD));
+}
+
+static int
 test_cryptodev_dpaa2_sec_raw_api(void)
 {
 	return run_cryptodev_raw_testsuite(RTE_STR(CRYPTODEV_NAME_DPAA2_SEC_PMD));
@@ -17723,6 +17729,8 @@ test_cryptodev_dpaa_sec_raw_api(void)
 	return run_cryptodev_raw_testsuite(RTE_STR(CRYPTODEV_NAME_DPAA_SEC_PMD));
 }
 
+REGISTER_TEST_COMMAND(cryptodev_cn10k_raw_api_autotest,
+		test_cryptodev_cn10k_raw_api);
 REGISTER_TEST_COMMAND(cryptodev_dpaa2_sec_raw_api_autotest,
 		test_cryptodev_dpaa2_sec_raw_api);
 REGISTER_TEST_COMMAND(cryptodev_dpaa_sec_raw_api_autotest,
