@@ -201,8 +201,6 @@ struct ice_switch_filter_conf {
 	struct ice_adv_rule_info rule_info;
 };
 
-static struct ice_flow_parser ice_switch_dist_parser;
-
 static struct
 ice_pattern_match_item ice_switch_pattern_dist_list[] = {
 	{pattern_any,					ICE_INSET_NONE,				ICE_INSET_NONE,				ICE_INSET_NONE},
@@ -2052,15 +2050,14 @@ out:
 }
 
 static int
-ice_switch_init(struct ice_adapter *ad)
+ice_switch_init(struct ice_adapter *ad __rte_unused)
 {
-	return ice_register_parser(&ice_switch_dist_parser, ad);
+	return 0;
 }
 
 static void
-ice_switch_uninit(struct ice_adapter *ad)
+ice_switch_uninit(struct ice_adapter *ad __rte_unused)
 {
-	ice_unregister_parser(&ice_switch_dist_parser, ad);
 }
 
 static struct
@@ -2075,8 +2072,8 @@ ice_flow_engine ice_switch_engine = {
 	.type = ICE_FLOW_ENGINE_SWITCH,
 };
 
-static struct
-ice_flow_parser ice_switch_dist_parser = {
+struct
+ice_flow_parser ice_switch_parser = {
 	.engine = &ice_switch_engine,
 	.array = ice_switch_pattern_dist_list,
 	.array_len = RTE_DIM(ice_switch_pattern_dist_list),

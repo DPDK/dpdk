@@ -1793,15 +1793,13 @@ enum rte_flow_item_type pattern_eth_ipv6_pfcp[] = {
 	RTE_FLOW_ITEM_TYPE_END,
 };
 
-
-
-typedef struct ice_flow_engine * (*parse_engine_t)(struct ice_adapter *ad,
-		struct rte_flow *flow,
-		struct ice_parser_list *parser_list,
-		uint32_t priority,
-		const struct rte_flow_item pattern[],
-		const struct rte_flow_action actions[],
-		struct rte_flow_error *error);
+typedef bool (*parse_engine_t)(struct ice_adapter *ad,
+			       struct rte_flow *flow,
+			       struct ice_flow_parser *parser,
+			       uint32_t priority,
+			       const struct rte_flow_item pattern[],
+			       const struct rte_flow_action actions[],
+			       struct rte_flow_error *error);
 
 void
 ice_register_flow_engine(struct ice_flow_engine *engine)
@@ -1818,8 +1816,6 @@ ice_flow_init(struct ice_adapter *ad)
 	struct ice_flow_engine *engine;
 
 	TAILQ_INIT(&pf->flow_list);
-	TAILQ_INIT(&pf->rss_parser_list);
-	TAILQ_INIT(&pf->dist_parser_list);
 	rte_spinlock_init(&pf->flow_ops_lock);
 
 	if (ice_parser_create(&ad->hw, &ad->psr) != ICE_SUCCESS)
@@ -1860,7 +1856,6 @@ ice_flow_uninit(struct ice_adapter *ad)
 	struct ice_pf *pf = &ad->pf;
 	struct ice_flow_engine *engine;
 	struct rte_flow *p_flow;
-	struct ice_flow_parser_node *p_parser;
 	void *temp;
 
 	RTE_TAILQ_FOREACH_SAFE(engine, &engine_list, node, temp) {
@@ -1881,114 +1876,9 @@ ice_flow_uninit(struct ice_adapter *ad)
 		rte_free(p_flow);
 	}
 
-	/* Cleanup parser list */
-	while ((p_parser = TAILQ_FIRST(&pf->rss_parser_list))) {
-		TAILQ_REMOVE(&pf->rss_parser_list, p_parser, node);
-		rte_free(p_parser);
-	}
-
-	while ((p_parser = TAILQ_FIRST(&pf->dist_parser_list))) {
-		TAILQ_REMOVE(&pf->dist_parser_list, p_parser, node);
-		rte_free(p_parser);
-	}
-
 	if (ad->psr != NULL) {
 		ice_parser_destroy(ad->psr);
 		ad->psr = NULL;
-	}
-}
-
-static struct ice_parser_list *
-ice_get_parser_list(struct ice_flow_parser *parser,
-		struct ice_adapter *ad)
-{
-	struct ice_parser_list *list;
-	struct ice_pf *pf = &ad->pf;
-
-	switch (parser->stage) {
-	case ICE_FLOW_STAGE_RSS:
-		list = &pf->rss_parser_list;
-		break;
-	case ICE_FLOW_STAGE_DISTRIBUTOR:
-		list = &pf->dist_parser_list;
-		break;
-	default:
-		return NULL;
-	}
-
-	return list;
-}
-
-int
-ice_register_parser(struct ice_flow_parser *parser,
-		struct ice_adapter *ad)
-{
-	struct ice_parser_list *list;
-	struct ice_flow_parser_node *parser_node;
-	struct ice_flow_parser_node *existing_node;
-	void *temp;
-
-	parser_node = rte_zmalloc("ice_parser", sizeof(*parser_node), 0);
-	if (parser_node == NULL) {
-		PMD_DRV_LOG(ERR, "Failed to allocate memory.");
-		return -ENOMEM;
-	}
-	parser_node->parser = parser;
-
-	list = ice_get_parser_list(parser, ad);
-	if (list == NULL)
-		return -EINVAL;
-
-	if (parser->engine->type == ICE_FLOW_ENGINE_SWITCH) {
-		RTE_TAILQ_FOREACH_SAFE(existing_node, list,
-				       node, temp) {
-			if (existing_node->parser->engine->type ==
-			    ICE_FLOW_ENGINE_ACL) {
-				TAILQ_INSERT_AFTER(list, existing_node,
-						   parser_node, node);
-				goto DONE;
-			}
-		}
-		TAILQ_INSERT_HEAD(list, parser_node, node);
-	} else if (parser->engine->type == ICE_FLOW_ENGINE_FDIR) {
-		RTE_TAILQ_FOREACH_SAFE(existing_node, list,
-				       node, temp) {
-			if (existing_node->parser->engine->type ==
-			    ICE_FLOW_ENGINE_SWITCH) {
-				TAILQ_INSERT_AFTER(list, existing_node,
-						   parser_node, node);
-				goto DONE;
-			}
-		}
-		TAILQ_INSERT_HEAD(list, parser_node, node);
-	} else if (parser->engine->type == ICE_FLOW_ENGINE_HASH) {
-		TAILQ_INSERT_TAIL(list, parser_node, node);
-	} else if (parser->engine->type == ICE_FLOW_ENGINE_ACL) {
-		TAILQ_INSERT_HEAD(list, parser_node, node);
-	} else {
-		return -EINVAL;
-	}
-DONE:
-	return 0;
-}
-
-void
-ice_unregister_parser(struct ice_flow_parser *parser,
-		struct ice_adapter *ad)
-{
-	struct ice_parser_list *list;
-	struct ice_flow_parser_node *p_parser;
-	void *temp;
-
-	list = ice_get_parser_list(parser, ad);
-	if (list == NULL)
-		return;
-
-	RTE_TAILQ_FOREACH_SAFE(p_parser, list, node, temp) {
-		if (p_parser->parser->engine->type == parser->engine->type) {
-			TAILQ_REMOVE(list, p_parser, node);
-			rte_free(p_parser);
-		}
 	}
 }
 
@@ -2024,14 +1914,6 @@ ice_flow_valid_attr(const struct rte_flow_attr *attr,
 		rte_flow_error_set(error, EINVAL,
 				   RTE_FLOW_ERROR_TYPE_ATTR_PRIORITY,
 				   attr, "Only support priority 0 and 1.");
-		return -rte_errno;
-	}
-
-	/* Not supported */
-	if (attr->group) {
-		rte_flow_error_set(error, EINVAL,
-				RTE_FLOW_ERROR_TYPE_ATTR_GROUP,
-				attr, "Not support group.");
 		return -rte_errno;
 	}
 
@@ -2296,64 +2178,73 @@ unsupported:
 	return NULL;
 }
 
-static struct ice_flow_engine *
+static bool
 ice_parse_engine_create(struct ice_adapter *ad,
 		struct rte_flow *flow,
-		struct ice_parser_list *parser_list,
+		struct ice_flow_parser *parser,
 		uint32_t priority,
 		const struct rte_flow_item pattern[],
 		const struct rte_flow_action actions[],
 		struct rte_flow_error *error)
 {
-	struct ice_flow_engine *engine = NULL;
-	struct ice_flow_parser_node *parser_node;
 	void *meta = NULL;
-	void *temp;
 
-	RTE_TAILQ_FOREACH_SAFE(parser_node, parser_list, node, temp) {
-		int ret;
-
-		if (parser_node->parser->parse_pattern_action(ad,
-				parser_node->parser->array,
-				parser_node->parser->array_len,
-				pattern, actions, priority, &meta, error) < 0)
-			continue;
-
-		engine = parser_node->parser->engine;
-		RTE_ASSERT(engine->create != NULL);
-		ret = engine->create(ad, flow, meta, error);
-		if (ret == 0)
-			return engine;
-		else if (ret == -EEXIST)
-			return NULL;
+	if (ICE_FLOW_ENGINE_DISABLED(ad->disabled_engine_mask,
+				     parser->engine->type)) {
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				   NULL, "engine is not enabled.");
+		return false;
 	}
-	return NULL;
+
+	if (parser->parse_pattern_action(ad,
+					 parser->array,
+					 parser->array_len,
+					 pattern, actions, priority, &meta, error) < 0)
+		return false;
+
+	RTE_ASSERT(parser->engine->create != NULL);
+
+	return parser->engine->create(ad, flow, meta, error) == 0;
 }
 
-static struct ice_flow_engine *
+static bool
 ice_parse_engine_validate(struct ice_adapter *ad,
 		struct rte_flow *flow __rte_unused,
-		struct ice_parser_list *parser_list,
+		struct ice_flow_parser *parser,
 		uint32_t priority,
 		const struct rte_flow_item pattern[],
 		const struct rte_flow_action actions[],
 		struct rte_flow_error *error)
 {
-	struct ice_flow_engine *engine = NULL;
-	struct ice_flow_parser_node *parser_node;
-	void *temp;
 
-	RTE_TAILQ_FOREACH_SAFE(parser_node, parser_list, node, temp) {
-		if (parser_node->parser->parse_pattern_action(ad,
-				parser_node->parser->array,
-				parser_node->parser->array_len,
-				pattern, actions, priority, NULL, error) < 0)
-			continue;
-
-		engine = parser_node->parser->engine;
-		break;
+	if (ICE_FLOW_ENGINE_DISABLED(ad->disabled_engine_mask,
+				     parser->engine->type)) {
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				   NULL, "engine is not enabled.");
+		return false;
 	}
-	return engine;
+
+	return parser->parse_pattern_action(ad,
+					    parser->array,
+					    parser->array_len,
+					    pattern, actions, priority,
+					    NULL, error) >= 0;
+}
+
+static struct ice_flow_parser *get_flow_parser(uint32_t group)
+{
+	switch (group) {
+	case 0:
+		return &ice_switch_parser;
+	case 1:
+		return &ice_acl_parser;
+	case 2:
+		return &ice_fdir_parser;
+	default:
+		return NULL;
+	}
 }
 
 static int
@@ -2369,7 +2260,7 @@ ice_flow_process_filter(struct rte_eth_dev *dev,
 	int ret = ICE_ERR_NOT_SUPPORTED;
 	struct ice_adapter *ad =
 		ICE_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
-	struct ice_pf *pf = ICE_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+	struct ice_flow_parser *parser;
 
 	if (!pattern) {
 		rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM_NUM,
@@ -2395,17 +2286,30 @@ ice_flow_process_filter(struct rte_eth_dev *dev,
 	if (ret)
 		return ret;
 
-	*engine = ice_parse_engine(ad, flow, &pf->rss_parser_list,
-			attr->priority, pattern, actions, error);
-	if (*engine != NULL)
+	*engine = NULL;
+	/* always try hash engine first */
+	if (ice_parse_engine(ad, flow, &ice_hash_parser,
+			     attr->priority, pattern,
+			     actions, error)) {
+		*engine = ice_hash_parser.engine;
 		return 0;
+	}
 
-	*engine = ice_parse_engine(ad, flow, &pf->dist_parser_list,
-				   attr->priority, pattern, actions, error);
-	if (*engine == NULL)
-		return -EINVAL;
+	parser = get_flow_parser(attr->group);
+	if (parser == NULL) {
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_ATTR,
+				   NULL, "NULL attribute.");
+		return -rte_errno;
+	}
 
-	return 0;
+	if (ice_parse_engine(ad, flow, parser, attr->priority,
+			     pattern, actions, error)) {
+		*engine = parser->engine;
+		return 0;
+	} else {
+		return -rte_errno;
+	}
 }
 
 static int

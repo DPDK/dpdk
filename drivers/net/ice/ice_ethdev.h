@@ -541,8 +541,6 @@ struct ice_pf {
 	bool adapter_stopped;
 	struct ice_flow_list flow_list;
 	rte_spinlock_t flow_ops_lock;
-	struct ice_parser_list rss_parser_list;
-	struct ice_parser_list dist_parser_list;
 	bool init_link_up;
 	uint64_t old_rx_bytes;
 	uint64_t old_tx_bytes;

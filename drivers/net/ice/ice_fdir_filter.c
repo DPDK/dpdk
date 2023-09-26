@@ -137,8 +137,6 @@ static struct ice_pattern_match_item ice_fdir_pattern_list[] = {
 	{pattern_eth_ipv6_gtpu_eh,			ICE_FDIR_INSET_IPV6_GTPU_EH,	ICE_FDIR_INSET_IPV6_GTPU_EH,	ICE_INSET_NONE},
 };
 
-static struct ice_flow_parser ice_fdir_parser;
-
 static int
 ice_fdir_is_tunnel_profile(enum ice_fdir_tunnel_type tunnel_type);
 
@@ -1147,30 +1145,17 @@ static int
 ice_fdir_init(struct ice_adapter *ad)
 {
 	struct ice_pf *pf = &ad->pf;
-	struct ice_flow_parser *parser;
-	int ret;
 
-	ret = ice_fdir_setup(pf);
-	if (ret)
-		return ret;
-
-	parser = &ice_fdir_parser;
-
-	return ice_register_parser(parser, ad);
+	return ice_fdir_setup(pf);
 }
 
 static void
 ice_fdir_uninit(struct ice_adapter *ad)
 {
-	struct ice_flow_parser *parser;
 	struct ice_pf *pf = &ad->pf;
 
 	if (ad->hw.dcf_enabled)
 		return;
-
-	parser = &ice_fdir_parser;
-
-	ice_unregister_parser(parser, ad);
 
 	ice_fdir_teardown(pf);
 }
@@ -2507,7 +2492,7 @@ error:
 	return ret;
 }
 
-static struct ice_flow_parser ice_fdir_parser = {
+struct ice_flow_parser ice_fdir_parser = {
 	.engine = &ice_fdir_engine,
 	.array = ice_fdir_pattern_list,
 	.array_len = RTE_DIM(ice_fdir_pattern_list),

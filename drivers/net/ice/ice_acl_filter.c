@@ -41,8 +41,6 @@
 	ICE_ACL_INSET_ETH_IPV4 | \
 	ICE_INSET_SCTP_SRC_PORT | ICE_INSET_SCTP_DST_PORT)
 
-static struct ice_flow_parser ice_acl_parser;
-
 struct acl_rule {
 	enum ice_fltr_ptype flow_type;
 	uint64_t entry_id[4];
@@ -993,7 +991,6 @@ ice_acl_init(struct ice_adapter *ad)
 	int ret = 0;
 	struct ice_pf *pf = &ad->pf;
 	struct ice_hw *hw = ICE_PF_TO_HW(pf);
-	struct ice_flow_parser *parser = &ice_acl_parser;
 
 	ret = ice_acl_prof_alloc(hw);
 	if (ret) {
@@ -1010,11 +1007,7 @@ ice_acl_init(struct ice_adapter *ad)
 	if (ret)
 		return ret;
 
-	ret = ice_acl_prof_init(pf);
-	if (ret)
-		return ret;
-
-	return ice_register_parser(parser, ad);
+	return ice_acl_prof_init(pf);
 }
 
 static void
@@ -1037,10 +1030,8 @@ ice_acl_uninit(struct ice_adapter *ad)
 {
 	struct ice_pf *pf = &ad->pf;
 	struct ice_hw *hw = ICE_PF_TO_HW(pf);
-	struct ice_flow_parser *parser = &ice_acl_parser;
 
 	if (ad->hw.dcf_enabled) {
-		ice_unregister_parser(parser, ad);
 		ice_deinit_acl(pf);
 		ice_acl_prof_free(hw);
 	}
@@ -1056,7 +1047,7 @@ ice_flow_engine ice_acl_engine = {
 	.type = ICE_FLOW_ENGINE_ACL,
 };
 
-static struct
+struct
 ice_flow_parser ice_acl_parser = {
 	.engine = &ice_acl_engine,
 	.array = ice_acl_pattern,

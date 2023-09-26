@@ -515,10 +515,6 @@ struct ice_flow_parser_node {
 void ice_register_flow_engine(struct ice_flow_engine *engine);
 int ice_flow_init(struct ice_adapter *ad);
 void ice_flow_uninit(struct ice_adapter *ad);
-int ice_register_parser(struct ice_flow_parser *parser,
-		struct ice_adapter *ad);
-void ice_unregister_parser(struct ice_flow_parser *parser,
-		struct ice_adapter *ad);
 struct ice_pattern_match_item *
 ice_search_pattern_match_item(struct ice_adapter *ad,
 			      const struct rte_flow_item pattern[],
@@ -528,4 +524,9 @@ ice_search_pattern_match_item(struct ice_adapter *ad,
 int
 ice_flow_redirect(struct ice_adapter *ad,
 		  struct ice_flow_redirect *rd);
+
+extern struct ice_flow_parser ice_switch_parser;
+extern struct ice_flow_parser ice_acl_parser;
+extern struct ice_flow_parser ice_fdir_parser;
+extern struct ice_flow_parser ice_hash_parser;
 #endif
