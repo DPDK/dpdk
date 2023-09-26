@@ -4097,6 +4097,301 @@ flow_hw_table_destroy(struct rte_eth_dev *dev,
 	return 0;
 }
 
+/**
+ * Parse group's miss actions.
+ *
+ * @param[in] dev
+ *   Pointer to the rte_eth_dev structure.
+ * @param[in] cfg
+ *   Pointer to the table_cfg structure.
+ * @param[in] actions
+ *   Array of actions to perform on group miss. Supported types:
+ *   RTE_FLOW_ACTION_TYPE_JUMP, RTE_FLOW_ACTION_TYPE_VOID, RTE_FLOW_ACTION_TYPE_END.
+ * @param[out] dst_group_id
+ *   Pointer to destination group id output. will be set to 0 if actions is END,
+ *   otherwise will be set to destination group id.
+ * @param[out] error
+ *   Pointer to error structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+
+static int
+flow_hw_group_parse_miss_actions(struct rte_eth_dev *dev,
+				 struct mlx5_flow_template_table_cfg *cfg,
+				 const struct rte_flow_action actions[],
+				 uint32_t *dst_group_id,
+				 struct rte_flow_error *error)
+{
+	const struct rte_flow_action_jump *jump_conf;
+	uint32_t temp = 0;
+	uint32_t i;
+
+	for (i = 0; actions[i].type != RTE_FLOW_ACTION_TYPE_END; i++) {
+		switch (actions[i].type) {
+		case RTE_FLOW_ACTION_TYPE_VOID:
+			continue;
+		case RTE_FLOW_ACTION_TYPE_JUMP:
+			if (temp)
+				return rte_flow_error_set(error, ENOTSUP,
+							  RTE_FLOW_ERROR_TYPE_UNSPECIFIED, actions,
+							  "Miss actions can contain only a single JUMP");
+
+			jump_conf = (const struct rte_flow_action_jump *)actions[i].conf;
+			if (!jump_conf)
+				return rte_flow_error_set(error, EINVAL,
+							  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+							  jump_conf, "Jump conf must not be NULL");
+
+			if (flow_hw_translate_group(dev, cfg, jump_conf->group, &temp, error))
+				return -rte_errno;
+
+			if (!temp)
+				return rte_flow_error_set(error, EINVAL,
+							  RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+							  "Failed to set group miss actions - Invalid target group");
+			break;
+		default:
+			return rte_flow_error_set(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ACTION,
+						  &actions[i], "Unsupported default miss action type");
+		}
+	}
+
+	*dst_group_id = temp;
+	return 0;
+}
+
+/**
+ * Set group's miss group.
+ *
+ * @param[in] dev
+ *   Pointer to the rte_eth_dev structure.
+ * @param[in] cfg
+ *   Pointer to the table_cfg structure.
+ * @param[in] src_grp
+ *   Pointer to source group structure.
+ *   if NULL, a new group will be created based on group id from cfg->attr.flow_attr.group.
+ * @param[in] dst_grp
+ *   Pointer to destination group structure.
+ * @param[out] error
+ *   Pointer to error structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+
+static int
+flow_hw_group_set_miss_group(struct rte_eth_dev *dev,
+			     struct mlx5_flow_template_table_cfg *cfg,
+			     struct mlx5_flow_group *src_grp,
+			     struct mlx5_flow_group *dst_grp,
+			     struct rte_flow_error *error)
+{
+	struct rte_flow_error sub_error = {
+		.type = RTE_FLOW_ERROR_TYPE_NONE,
+		.cause = NULL,
+		.message = NULL,
+	};
+	struct mlx5_flow_cb_ctx ctx = {
+		.dev = dev,
+		.error = &sub_error,
+		.data = &cfg->attr.flow_attr,
+	};
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_list_entry *ge;
+	bool ref = false;
+	int ret;
+
+	if (!dst_grp)
+		return -EINVAL;
+
+	/* If group doesn't exist - needs to be created. */
+	if (!src_grp) {
+		ge = mlx5_hlist_register(priv->sh->groups, cfg->attr.flow_attr.group, &ctx);
+		if (!ge)
+			return -rte_errno;
+
+		src_grp = container_of(ge, struct mlx5_flow_group, entry);
+		LIST_INSERT_HEAD(&priv->flow_hw_grp, src_grp, next);
+		ref = true;
+	} else if (!src_grp->miss_group) {
+		/* If group exists, but has no miss actions - need to increase ref_cnt. */
+		LIST_INSERT_HEAD(&priv->flow_hw_grp, src_grp, next);
+		src_grp->entry.ref_cnt++;
+		ref = true;
+	}
+
+	ret = mlx5dr_table_set_default_miss(src_grp->tbl, dst_grp->tbl);
+	if (ret)
+		goto mlx5dr_error;
+
+	/* If group existed and had old miss actions - ref_cnt is already correct.
+	 * However, need to reduce ref counter for old miss group.
+	 */
+	if (src_grp->miss_group)
+		mlx5_hlist_unregister(priv->sh->groups, &src_grp->miss_group->entry);
+
+	src_grp->miss_group = dst_grp;
+	return 0;
+
+mlx5dr_error:
+	/* Reduce src_grp ref_cnt back & remove from grp list in case of mlx5dr error */
+	if (ref) {
+		mlx5_hlist_unregister(priv->sh->groups, &src_grp->entry);
+		LIST_REMOVE(src_grp, next);
+	}
+
+	return rte_flow_error_set(error, -ret, RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				  "Failed to set group miss actions");
+}
+
+/**
+ * Unset group's miss group.
+ *
+ * @param[in] dev
+ *   Pointer to the rte_eth_dev structure.
+ * @param[in] grp
+ *   Pointer to group structure.
+ * @param[out] error
+ *   Pointer to error structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+
+static int
+flow_hw_group_unset_miss_group(struct rte_eth_dev *dev,
+			       struct mlx5_flow_group *grp,
+			       struct rte_flow_error *error)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	int ret;
+
+	/* If group doesn't exist - no need to change anything. */
+	if (!grp)
+		return 0;
+
+	/* If group exists, but miss actions is already default behavior -
+	 * no need to change anything.
+	 */
+	if (!grp->miss_group)
+		return 0;
+
+	ret = mlx5dr_table_set_default_miss(grp->tbl, NULL);
+	if (ret)
+		return rte_flow_error_set(error, -ret, RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+					  "Failed to unset group miss actions");
+
+	mlx5_hlist_unregister(priv->sh->groups, &grp->miss_group->entry);
+	grp->miss_group = NULL;
+
+	LIST_REMOVE(grp, next);
+	mlx5_hlist_unregister(priv->sh->groups, &grp->entry);
+
+	return 0;
+}
+
+/**
+ * Set group miss actions.
+ *
+ * @param[in] dev
+ *   Pointer to the rte_eth_dev structure.
+ * @param[in] group_id
+ *   Group id.
+ * @param[in] attr
+ *   Pointer to group attributes structure.
+ * @param[in] actions
+ *   Array of actions to perform on group miss. Supported types:
+ *   RTE_FLOW_ACTION_TYPE_JUMP, RTE_FLOW_ACTION_TYPE_VOID, RTE_FLOW_ACTION_TYPE_END.
+ * @param[out] error
+ *   Pointer to error structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+
+static int
+flow_hw_group_set_miss_actions(struct rte_eth_dev *dev,
+			       uint32_t group_id,
+			       const struct rte_flow_group_attr *attr,
+			       const struct rte_flow_action actions[],
+			       struct rte_flow_error *error)
+{
+	struct rte_flow_error sub_error = {
+		.type = RTE_FLOW_ERROR_TYPE_NONE,
+		.cause = NULL,
+		.message = NULL,
+	};
+	struct mlx5_flow_template_table_cfg cfg = {
+		.external = true,
+		.attr = {
+			.flow_attr = {
+				.group = group_id,
+				.ingress = attr->ingress,
+				.egress = attr->egress,
+				.transfer = attr->transfer,
+			},
+		},
+	};
+	struct mlx5_flow_cb_ctx ctx = {
+		.dev = dev,
+		.error = &sub_error,
+		.data = &cfg.attr.flow_attr,
+	};
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_flow_group *src_grp = NULL;
+	struct mlx5_flow_group *dst_grp = NULL;
+	struct mlx5_list_entry *ge;
+	uint32_t dst_group_id = 0;
+	int ret;
+
+	if (flow_hw_translate_group(dev, &cfg, group_id, &group_id, error))
+		return -rte_errno;
+
+	if (!group_id)
+		return rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					  NULL, "Failed to set group miss actions - invalid group id");
+
+	ret = flow_hw_group_parse_miss_actions(dev, &cfg, actions, &dst_group_id, error);
+	if (ret)
+		return -rte_errno;
+
+	if (dst_group_id == group_id) {
+		return rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					  NULL, "Failed to set group miss actions - target group id must differ from group_id");
+	}
+
+	cfg.attr.flow_attr.group = group_id;
+	ge = mlx5_hlist_lookup(priv->sh->groups, group_id, &ctx);
+	if (ge)
+		src_grp = container_of(ge, struct mlx5_flow_group, entry);
+
+	if (dst_group_id) {
+		/* Increase ref_cnt for new miss group. */
+		cfg.attr.flow_attr.group = dst_group_id;
+		ge = mlx5_hlist_register(priv->sh->groups, dst_group_id, &ctx);
+		if (!ge)
+			return -rte_errno;
+
+		dst_grp = container_of(ge, struct mlx5_flow_group, entry);
+
+		cfg.attr.flow_attr.group = group_id;
+		ret = flow_hw_group_set_miss_group(dev, &cfg, src_grp, dst_grp, error);
+		if (ret)
+			goto error;
+	} else {
+		return flow_hw_group_unset_miss_group(dev, src_grp, error);
+	}
+
+	return 0;
+
+error:
+	if (dst_grp)
+		mlx5_hlist_unregister(priv->sh->groups, &dst_grp->entry);
+	return -rte_errno;
+}
+
 static bool
 flow_hw_modify_field_is_used(const struct rte_flow_action_modify_field *action,
 			     enum rte_flow_field_id field)
@@ -8458,6 +8753,7 @@ flow_hw_resource_release(struct rte_eth_dev *dev)
 	struct rte_flow_template_table *tbl;
 	struct rte_flow_pattern_template *it;
 	struct rte_flow_actions_template *at;
+	struct mlx5_flow_group *grp;
 	uint32_t i;
 
 	if (!priv->dr_ctx)
@@ -8466,6 +8762,10 @@ flow_hw_resource_release(struct rte_eth_dev *dev)
 	flow_hw_flush_all_ctrl_flows(dev);
 	flow_hw_cleanup_tx_repr_tagging(dev);
 	flow_hw_cleanup_ctrl_rx_tables(dev);
+	while (!LIST_EMPTY(&priv->flow_hw_grp)) {
+		grp = LIST_FIRST(&priv->flow_hw_grp);
+		flow_hw_group_unset_miss_group(dev, grp, NULL);
+	}
 	while (!LIST_EMPTY(&priv->flow_hw_tbl_ongo)) {
 		tbl = LIST_FIRST(&priv->flow_hw_tbl_ongo);
 		flow_hw_table_destroy(dev, tbl, NULL);
@@ -10490,6 +10790,7 @@ const struct mlx5_flow_driver_ops mlx5_flow_hw_drv_ops = {
 	.actions_template_destroy = flow_hw_actions_template_destroy,
 	.template_table_create = flow_hw_template_table_create,
 	.template_table_destroy = flow_hw_table_destroy,
+	.group_set_miss_actions = flow_hw_group_set_miss_actions,
 	.async_flow_create = flow_hw_async_flow_create,
 	.async_flow_create_by_index = flow_hw_async_flow_create_by_index,
 	.async_flow_update = flow_hw_async_flow_update,

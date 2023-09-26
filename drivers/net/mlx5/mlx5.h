@@ -1851,6 +1851,8 @@ struct mlx5_priv {
 	struct mlx5_hw_q *hw_q;
 	/* HW steering rte flow table list header. */
 	LIST_HEAD(flow_hw_tbl, rte_flow_template_table) flow_hw_tbl;
+	/* HW steering rte flow group list header */
+	LIST_HEAD(flow_hw_grp, mlx5_flow_group) flow_hw_grp;
 	struct mlx5dr_action *hw_push_vlan[MLX5DR_TABLE_TYPE_MAX];
 	struct mlx5dr_action *hw_pop_vlan[MLX5DR_TABLE_TYPE_MAX];
 	struct mlx5dr_action **hw_vport;

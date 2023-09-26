@@ -1061,6 +1061,12 @@ static int
 mlx5_flow_table_destroy(struct rte_eth_dev *dev,
 			struct rte_flow_template_table *table,
 			struct rte_flow_error *error);
+static int
+mlx5_flow_group_set_miss_actions(struct rte_eth_dev *dev,
+				 uint32_t group_id,
+				 const struct rte_flow_group_attr *attr,
+				 const struct rte_flow_action actions[],
+				 struct rte_flow_error *error);
 static struct rte_flow *
 mlx5_flow_async_flow_create(struct rte_eth_dev *dev,
 			    uint32_t queue,
@@ -1230,6 +1236,7 @@ static const struct rte_flow_ops mlx5_flow_ops = {
 	.actions_template_destroy = mlx5_flow_actions_template_destroy,
 	.template_table_create = mlx5_flow_table_create,
 	.template_table_destroy = mlx5_flow_table_destroy,
+	.group_set_miss_actions = mlx5_flow_group_set_miss_actions,
 	.async_create = mlx5_flow_async_flow_create,
 	.async_create_by_index = mlx5_flow_async_flow_create_by_index,
 	.async_destroy = mlx5_flow_async_flow_destroy,
@@ -9410,6 +9417,40 @@ mlx5_flow_table_destroy(struct rte_eth_dev *dev,
 				"table destroy with incorrect steering mode");
 	fops = flow_get_drv_ops(MLX5_FLOW_TYPE_HW);
 	return fops->template_table_destroy(dev, table, error);
+}
+
+/**
+ * PMD group set miss actions.
+ *
+ * @param[in] dev
+ *   Pointer to the rte_eth_dev structure.
+ * @param[in] attr
+ *   Pointer to group attributes
+ * @param[in] actions
+ *   Array of actions
+ * @param[out] error
+ *   Pointer to error structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+mlx5_flow_group_set_miss_actions(struct rte_eth_dev *dev,
+				 uint32_t group_id,
+				 const struct rte_flow_group_attr *attr,
+				 const struct rte_flow_action actions[],
+				 struct rte_flow_error *error)
+{
+	const struct mlx5_flow_driver_ops *fops;
+	struct rte_flow_attr fattr = {0};
+
+	if (flow_get_drv_type(dev, &fattr) != MLX5_FLOW_TYPE_HW)
+		return rte_flow_error_set(error, ENOTSUP,
+				RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				NULL,
+				"group set miss actions with incorrect steering mode");
+	fops = flow_get_drv_ops(MLX5_FLOW_TYPE_HW);
+	return fops->group_set_miss_actions(dev, group_id, attr, actions, error);
 }
 
 /**

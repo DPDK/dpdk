@@ -1427,9 +1427,11 @@ struct mlx5_hw_action_template {
 /* mlx5 flow group struct. */
 struct mlx5_flow_group {
 	struct mlx5_list_entry entry;
+	LIST_ENTRY(mlx5_flow_group) next;
 	struct rte_eth_dev *dev; /* Reference to corresponding device. */
 	struct mlx5dr_table *tbl; /* HWS table object. */
 	struct mlx5_hw_jump_action jump; /* Jump action. */
+	struct mlx5_flow_group *miss_group; /* Group pointed to by miss action. */
 	enum mlx5dr_table_type type; /* Table type. */
 	uint32_t group_id; /* Group id. */
 	uint32_t idx; /* Group memory index. */
@@ -1941,6 +1943,12 @@ typedef int (*mlx5_flow_table_destroy_t)
 			(struct rte_eth_dev *dev,
 			 struct rte_flow_template_table *table,
 			 struct rte_flow_error *error);
+typedef int (*mlx5_flow_group_set_miss_actions_t)
+			(struct rte_eth_dev *dev,
+			 uint32_t group_id,
+			 const struct rte_flow_group_attr *attr,
+			 const struct rte_flow_action actions[],
+			 struct rte_flow_error *error);
 typedef struct rte_flow *(*mlx5_flow_async_flow_create_t)
 			(struct rte_eth_dev *dev,
 			 uint32_t queue,
@@ -2109,6 +2117,7 @@ struct mlx5_flow_driver_ops {
 	mlx5_flow_actions_template_destroy_t actions_template_destroy;
 	mlx5_flow_table_create_t template_table_create;
 	mlx5_flow_table_destroy_t template_table_destroy;
+	mlx5_flow_group_set_miss_actions_t group_set_miss_actions;
 	mlx5_flow_async_flow_create_t async_flow_create;
 	mlx5_flow_async_flow_create_by_index_t async_flow_create_by_index;
 	mlx5_flow_async_flow_update_t async_flow_update;
