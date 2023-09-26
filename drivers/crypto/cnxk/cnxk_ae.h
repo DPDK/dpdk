@@ -527,7 +527,7 @@ cnxk_ae_ecdsa_sign_prep(struct rte_crypto_ecdsa_op_param *ecdsa,
 
 	/* Set write offset for order and private key */
 	o_offset = prime_len - order_len;
-	pk_offset = prime_len - pkey_len;
+	pk_offset = p_align - pkey_len;
 
 	/* Input buffer */
 	dptr = meta_buf->vaddr;
@@ -572,7 +572,7 @@ cnxk_ae_ecdsa_sign_prep(struct rte_crypto_ecdsa_op_param *ecdsa,
 	w4.s.opcode_minor = ROC_AE_MINOR_OP_ECDSA_SIGN;
 
 	w4.s.param1 = curveid | (message_len << 8);
-	w4.s.param2 = (pkey_len << 8) | k_len;
+	w4.s.param2 = (p_align << 8) | k_len;
 	w4.s.dlen = dlen;
 
 	inst->w4.u64 = w4.u64;
