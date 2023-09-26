@@ -58,9 +58,6 @@ cpt_ciph_type_set(roc_se_cipher_type type, struct roc_se_ctx *ctx, uint16_t key_
 	int fc_type = 0;
 
 	switch (type) {
-	case ROC_SE_PASSTHROUGH:
-		fc_type = ROC_SE_FC_GEN;
-		break;
 	case ROC_SE_DES3_CBC:
 	case ROC_SE_DES3_ECB:
 	case ROC_SE_DES_DOCSISBPI:
@@ -526,6 +523,10 @@ roc_se_ciph_key_set(struct roc_se_ctx *se_ctx, roc_se_cipher_type type, const ui
 	uint8_t *ci_key;
 	int i, ret;
 
+	/* For NULL cipher, no processing required. */
+	if (type == ROC_SE_PASSTHROUGH)
+		return 0;
+
 	zs_ch_ctx = &se_ctx->se_ctx.zs_ch_ctx;
 
 	if (roc_model_is_cn9k()) {
@@ -555,10 +556,6 @@ roc_se_ciph_key_set(struct roc_se_ctx *se_ctx, roc_se_cipher_type type, const ui
 	}
 
 	switch (type) {
-	case ROC_SE_PASSTHROUGH:
-		se_ctx->enc_cipher = 0;
-		fctx->enc.enc_cipher = 0;
-		goto success;
 	case ROC_SE_DES3_CBC:
 		/* CPT performs DES using 3DES with the 8B DES-key
 		 * replicated 2 more times to match the 24B 3DES-key.
