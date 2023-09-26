@@ -106,7 +106,7 @@
 	ICE_INSET_IPV6_SRC | ICE_INSET_IPV6_DST | \
 	ICE_INSET_NAT_T_ESP_SPI)
 
-static struct ice_pattern_match_item ice_fdir_pattern_list[] = {
+static struct ice_pattern_match_item ice_fdir_supported_pattern[] = {
 	{pattern_raw,					ICE_INSET_NONE,			ICE_INSET_NONE,			ICE_INSET_NONE},
 	{pattern_ethertype,				ICE_FDIR_INSET_ETH,		ICE_INSET_NONE,			ICE_INSET_NONE},
 	{pattern_eth_ipv4,				ICE_FDIR_INSET_ETH_IPV4,	ICE_INSET_NONE,			ICE_INSET_NONE},
@@ -2494,8 +2494,8 @@ error:
 
 struct ice_flow_parser ice_fdir_parser = {
 	.engine = &ice_fdir_engine,
-	.array = ice_fdir_pattern_list,
-	.array_len = RTE_DIM(ice_fdir_pattern_list),
+	.array = ice_fdir_supported_pattern,
+	.array_len = RTE_DIM(ice_fdir_supported_pattern),
 	.parse_pattern_action = ice_fdir_parse,
 	.stage = ICE_FLOW_STAGE_DISTRIBUTOR,
 };

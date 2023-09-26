@@ -202,7 +202,7 @@ struct ice_switch_filter_conf {
 };
 
 static struct
-ice_pattern_match_item ice_switch_pattern_dist_list[] = {
+ice_pattern_match_item ice_switch_supported_pattern[] = {
 	{pattern_any,					ICE_INSET_NONE,				ICE_INSET_NONE,				ICE_INSET_NONE},
 	{pattern_ethertype,				ICE_SW_INSET_ETHER,			ICE_INSET_NONE,				ICE_INSET_NONE},
 	{pattern_ethertype_vlan,			ICE_SW_INSET_MAC_VLAN,			ICE_INSET_NONE,				ICE_INSET_NONE},
@@ -2075,8 +2075,8 @@ ice_flow_engine ice_switch_engine = {
 struct
 ice_flow_parser ice_switch_parser = {
 	.engine = &ice_switch_engine,
-	.array = ice_switch_pattern_dist_list,
-	.array_len = RTE_DIM(ice_switch_pattern_dist_list),
+	.array = ice_switch_supported_pattern,
+	.array_len = RTE_DIM(ice_switch_supported_pattern),
 	.parse_pattern_action = ice_switch_parse_pattern_action,
 	.stage = ICE_FLOW_STAGE_DISTRIBUTOR,
 };

@@ -47,7 +47,7 @@ struct acl_rule {
 };
 
 static struct
-ice_pattern_match_item ice_acl_pattern[] = {
+ice_pattern_match_item ice_acl_supported_pattern[] = {
 	{pattern_eth_ipv4,	ICE_ACL_INSET_ETH_IPV4,		ICE_INSET_NONE,	ICE_INSET_NONE},
 	{pattern_eth_ipv4_udp,	ICE_ACL_INSET_ETH_IPV4_UDP,	ICE_INSET_NONE,	ICE_INSET_NONE},
 	{pattern_eth_ipv4_tcp,	ICE_ACL_INSET_ETH_IPV4_TCP,	ICE_INSET_NONE,	ICE_INSET_NONE},
@@ -1050,8 +1050,8 @@ ice_flow_engine ice_acl_engine = {
 struct
 ice_flow_parser ice_acl_parser = {
 	.engine = &ice_acl_engine,
-	.array = ice_acl_pattern,
-	.array_len = RTE_DIM(ice_acl_pattern),
+	.array = ice_acl_supported_pattern,
+	.array_len = RTE_DIM(ice_acl_supported_pattern),
 	.parse_pattern_action = ice_acl_parse,
 	.stage = ICE_FLOW_STAGE_DISTRIBUTOR,
 };
