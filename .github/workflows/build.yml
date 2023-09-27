@@ -30,6 +30,7 @@ jobs:
       REF_GIT_TAG: none
       RISCV64: ${{ matrix.config.cross == 'riscv64' }}
       RUN_TESTS: ${{ contains(matrix.config.checks, 'tests') }}
+      STDATOMIC: ${{ contains(matrix.config.checks, 'stdatomic') }}
 
     strategy:
       fail-fast: false
@@ -38,6 +39,12 @@ jobs:
           - os: ubuntu-20.04
             compiler: gcc
             mini: mini
+          - os: ubuntu-20.04
+            compiler: gcc
+            checks: stdatomic
+          - os: ubuntu-20.04
+            compiler: clang
+            checks: stdatomic
           - os: ubuntu-20.04
             compiler: gcc
             checks: debug+doc+examples+tests
@@ -241,6 +248,7 @@ jobs:
         > ~/env
         echo CC=ccache ${{ matrix.config.compiler }} >> ~/env
         echo DEF_LIB=${{ matrix.config.library }} >> ~/env
+        echo STDATOMIC=false >> ~/env
     - name: Load the cached image
       run: |
         docker load -i ~/.image/${{ matrix.config.image }}.tar

@@ -92,7 +92,11 @@ fi
 OPTS="$OPTS -Dplatform=generic"
 OPTS="$OPTS -Ddefault_library=$DEF_LIB"
 OPTS="$OPTS -Dbuildtype=$buildtype"
-OPTS="$OPTS -Dcheck_includes=true"
+if [ "$STDATOMIC" = "true" ]; then
+	OPTS="$OPTS -Denable_stdatomic=true"
+else
+	OPTS="$OPTS -Dcheck_includes=true"
+fi
 if [ "$MINI" = "true" ]; then
     OPTS="$OPTS -Denable_drivers=net/null"
     OPTS="$OPTS -Ddisable_libs=*"

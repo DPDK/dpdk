@@ -227,11 +227,13 @@ for c in gcc clang ; do
 	for s in static shared ; do
 		if [ $s = shared ] ; then
 			abicheck=ABI
+			stdatomic=-Denable_stdatomic=true
 		else
 			abicheck=skipABI # save time and disk space
+			stdatomic=-Denable_stdatomic=false
 		fi
 		export CC="$CCACHE $c"
-		build build-$c-$s $c $abicheck --default-library=$s
+		build build-$c-$s $c $abicheck $stdatomic --default-library=$s
 		unset CC
 	done
 done
