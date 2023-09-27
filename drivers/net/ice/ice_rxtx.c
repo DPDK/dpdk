@@ -3233,9 +3233,6 @@ ice_prep_pkts(__rte_unused void *tx_queue, struct rte_mbuf **tx_pkts,
 	int i, ret;
 	uint64_t ol_flags;
 	struct rte_mbuf *m;
-	struct ice_tx_queue *txq = tx_queue;
-	struct rte_eth_dev *dev = &rte_eth_devices[txq->port_id];
-	uint16_t max_frame_size = dev->data->mtu + ICE_ETH_OVERHEAD;
 
 	for (i = 0; i < nb_pkts; i++) {
 		m = tx_pkts[i];
@@ -3252,9 +3249,7 @@ ice_prep_pkts(__rte_unused void *tx_queue, struct rte_mbuf **tx_pkts,
 			return i;
 		}
 
-		/* check the data_len in mbuf */
-		if (m->data_len < ICE_TX_MIN_PKT_LEN ||
-			m->data_len > max_frame_size) {
+		if (m->pkt_len < ICE_TX_MIN_PKT_LEN) {
 			rte_errno = EINVAL;
 			return i;
 		}
