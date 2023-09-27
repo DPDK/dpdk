@@ -1417,7 +1417,7 @@ static int
 mlx5_mempool_get_extmem(struct rte_mempool *mp, struct mlx5_range **out,
 			unsigned int *out_n)
 {
-	unsigned out_size = 1;
+	unsigned int out_size = 1;
 	struct mlx5_range *heap;
 
 	DRV_LOG(DEBUG, "Recovering external pinned pages of mempool %s",
@@ -1426,11 +1426,11 @@ mlx5_mempool_get_extmem(struct rte_mempool *mp, struct mlx5_range **out,
 	if (heap == NULL)
 		return -1;
 	rte_mempool_obj_iter(mp, mlx5_mempool_get_extmem_cb, heap);
-	qsort(heap, mp->size, sizeof heap[0], mlx5_range_compare_start);
+	qsort(heap, mp->size, sizeof(heap[0]), mlx5_range_compare_start);
 	/* remove duplicates */
-	for (unsigned i = 1; i < mp->size; i ++)
+	for (unsigned int i = 1; i < mp->size; i++)
 		if (heap[out_size - 1].start != heap[i].start)
-			heap[out_size ++] = heap[i];
+			heap[out_size++] = heap[i];
 	heap = realloc(heap, out_size * sizeof(struct mlx5_range));
 	if (heap == NULL)
 		return -1;
