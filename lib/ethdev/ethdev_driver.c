@@ -115,6 +115,8 @@ rte_eth_dev_allocate(const char *name)
 	eth_dev->data->backer_port_id = RTE_MAX_ETHPORTS;
 	eth_dev->data->mtu = RTE_ETHER_MTU;
 	pthread_mutex_init(&eth_dev->data->flow_ops_mutex, NULL);
+	RTE_ASSERT(rte_eal_process_type() == RTE_PROC_PRIMARY);
+	eth_dev_shared_data->allocated_ports++;
 
 unlock:
 	rte_spinlock_unlock(rte_mcfg_ethdev_get_lock());
@@ -265,6 +267,10 @@ rte_eth_dev_release_port(struct rte_eth_dev *eth_dev)
 		rte_free(eth_dev->data->dev_private);
 		pthread_mutex_destroy(&eth_dev->data->flow_ops_mutex);
 		memset(eth_dev->data, 0, sizeof(struct rte_eth_dev_data));
+		eth_dev->data = NULL;
+
+		eth_dev_shared_data->allocated_ports--;
+		eth_dev_shared_data_release();
 	}
 
 	rte_spinlock_unlock(rte_mcfg_ethdev_get_lock());

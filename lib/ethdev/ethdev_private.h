@@ -14,7 +14,9 @@
 #include "rte_ethdev.h"
 
 struct eth_dev_shared {
+	uint64_t allocated_owners;
 	uint64_t next_owner_id;
+	uint64_t allocated_ports;
 	struct rte_eth_dev_data data[RTE_MAX_ETHPORTS];
 };
 
@@ -68,6 +70,8 @@ void eth_dev_fp_ops_setup(struct rte_eth_fp_ops *fpo,
 
 
 void *eth_dev_shared_data_prepare(void)
+	__rte_exclusive_locks_required(rte_mcfg_ethdev_get_lock());
+void eth_dev_shared_data_release(void)
 	__rte_exclusive_locks_required(rte_mcfg_ethdev_get_lock());
 
 void eth_dev_rxq_release(struct rte_eth_dev *dev, uint16_t qid);

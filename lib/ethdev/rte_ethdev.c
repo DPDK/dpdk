@@ -444,6 +444,7 @@ rte_eth_dev_owner_new(uint64_t *owner_id)
 
 	if (eth_dev_shared_data_prepare() != NULL) {
 		*owner_id = eth_dev_shared_data->next_owner_id++;
+		eth_dev_shared_data->allocated_owners++;
 		ret = 0;
 	} else {
 		ret = -ENOMEM;
@@ -566,6 +567,8 @@ rte_eth_dev_owner_delete(const uint64_t owner_id)
 		RTE_ETHDEV_LOG(NOTICE,
 			"All port owners owned by %016"PRIx64" identifier have removed\n",
 			owner_id);
+		eth_dev_shared_data->allocated_owners--;
+		eth_dev_shared_data_release();
 	} else {
 		RTE_ETHDEV_LOG(ERR,
 			       "Invalid owner ID=%016"PRIx64"\n",
