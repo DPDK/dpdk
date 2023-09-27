@@ -409,6 +409,7 @@ rte_eth_dev_is_valid_port(uint16_t port_id)
 
 static int
 eth_is_valid_owner_id(uint64_t owner_id)
+	__rte_exclusive_locks_required(rte_mcfg_ethdev_get_lock())
 {
 	if (owner_id == RTE_ETH_DEV_NO_OWNER ||
 	    eth_dev_shared_data->next_owner_id <= owner_id)
@@ -437,13 +438,12 @@ rte_eth_dev_owner_new(uint64_t *owner_id)
 		return -EINVAL;
 	}
 
+	rte_spinlock_lock(rte_mcfg_ethdev_get_lock());
+
 	eth_dev_shared_data_prepare();
-
-	rte_spinlock_lock(&eth_dev_shared_data->ownership_lock);
-
 	*owner_id = eth_dev_shared_data->next_owner_id++;
 
-	rte_spinlock_unlock(&eth_dev_shared_data->ownership_lock);
+	rte_spinlock_unlock(rte_mcfg_ethdev_get_lock());
 
 	rte_ethdev_trace_owner_new(*owner_id);
 
@@ -453,6 +453,7 @@ rte_eth_dev_owner_new(uint64_t *owner_id)
 static int
 eth_dev_owner_set(const uint16_t port_id, const uint64_t old_owner_id,
 		       const struct rte_eth_dev_owner *new_owner)
+	__rte_exclusive_locks_required(rte_mcfg_ethdev_get_lock())
 {
 	struct rte_eth_dev *ethdev = &rte_eth_devices[port_id];
 	struct rte_eth_dev_owner *port_owner;
@@ -503,13 +504,12 @@ rte_eth_dev_owner_set(const uint16_t port_id,
 {
 	int ret;
 
+	rte_spinlock_lock(rte_mcfg_ethdev_get_lock());
+
 	eth_dev_shared_data_prepare();
-
-	rte_spinlock_lock(&eth_dev_shared_data->ownership_lock);
-
 	ret = eth_dev_owner_set(port_id, RTE_ETH_DEV_NO_OWNER, owner);
 
-	rte_spinlock_unlock(&eth_dev_shared_data->ownership_lock);
+	rte_spinlock_unlock(rte_mcfg_ethdev_get_lock());
 
 	rte_ethdev_trace_owner_set(port_id, owner, ret);
 
@@ -523,13 +523,12 @@ rte_eth_dev_owner_unset(const uint16_t port_id, const uint64_t owner_id)
 			{.id = RTE_ETH_DEV_NO_OWNER, .name = ""};
 	int ret;
 
+	rte_spinlock_lock(rte_mcfg_ethdev_get_lock());
+
 	eth_dev_shared_data_prepare();
-
-	rte_spinlock_lock(&eth_dev_shared_data->ownership_lock);
-
 	ret = eth_dev_owner_set(port_id, owner_id, &new_owner);
 
-	rte_spinlock_unlock(&eth_dev_shared_data->ownership_lock);
+	rte_spinlock_unlock(rte_mcfg_ethdev_get_lock());
 
 	rte_ethdev_trace_owner_unset(port_id, owner_id, ret);
 
@@ -542,10 +541,9 @@ rte_eth_dev_owner_delete(const uint64_t owner_id)
 	uint16_t port_id;
 	int ret = 0;
 
+	rte_spinlock_lock(rte_mcfg_ethdev_get_lock());
+
 	eth_dev_shared_data_prepare();
-
-	rte_spinlock_lock(&eth_dev_shared_data->ownership_lock);
-
 	if (eth_is_valid_owner_id(owner_id)) {
 		for (port_id = 0; port_id < RTE_MAX_ETHPORTS; port_id++) {
 			struct rte_eth_dev_data *data =
@@ -564,7 +562,7 @@ rte_eth_dev_owner_delete(const uint64_t owner_id)
 		ret = -EINVAL;
 	}
 
-	rte_spinlock_unlock(&eth_dev_shared_data->ownership_lock);
+	rte_spinlock_unlock(rte_mcfg_ethdev_get_lock());
 
 	rte_ethdev_trace_owner_delete(owner_id, ret);
 
@@ -591,11 +589,12 @@ rte_eth_dev_owner_get(const uint16_t port_id, struct rte_eth_dev_owner *owner)
 		return -EINVAL;
 	}
 
-	eth_dev_shared_data_prepare();
+	rte_spinlock_lock(rte_mcfg_ethdev_get_lock());
 
-	rte_spinlock_lock(&eth_dev_shared_data->ownership_lock);
+	eth_dev_shared_data_prepare();
 	rte_memcpy(owner, &ethdev->data->owner, sizeof(*owner));
-	rte_spinlock_unlock(&eth_dev_shared_data->ownership_lock);
+
+	rte_spinlock_unlock(rte_mcfg_ethdev_get_lock());
 
 	rte_ethdev_trace_owner_get(port_id, owner);
 
@@ -675,9 +674,12 @@ rte_eth_dev_get_name_by_port(uint16_t port_id, char *name)
 		return -EINVAL;
 	}
 
+	rte_spinlock_lock(rte_mcfg_ethdev_get_lock());
 	/* shouldn't check 'rte_eth_devices[i].data',
 	 * because it might be overwritten by VDEV PMD */
 	tmp = eth_dev_shared_data->data[port_id].name;
+	rte_spinlock_unlock(rte_mcfg_ethdev_get_lock());
+
 	strcpy(name, tmp);
 
 	rte_ethdev_trace_get_name_by_port(port_id, name);
@@ -688,6 +690,7 @@ rte_eth_dev_get_name_by_port(uint16_t port_id, char *name)
 int
 rte_eth_dev_get_port_by_name(const char *name, uint16_t *port_id)
 {
+	int ret = -ENODEV;
 	uint16_t pid;
 
 	if (name == NULL) {
@@ -701,16 +704,19 @@ rte_eth_dev_get_port_by_name(const char *name, uint16_t *port_id)
 		return -EINVAL;
 	}
 
-	RTE_ETH_FOREACH_VALID_DEV(pid)
-		if (!strcmp(name, eth_dev_shared_data->data[pid].name)) {
-			*port_id = pid;
+	rte_spinlock_lock(rte_mcfg_ethdev_get_lock());
+	RTE_ETH_FOREACH_VALID_DEV(pid) {
+		if (strcmp(name, eth_dev_shared_data->data[pid].name) != 0)
+			continue;
 
-			rte_ethdev_trace_get_port_by_name(name, *port_id);
+		*port_id = pid;
+		rte_ethdev_trace_get_port_by_name(name, *port_id);
+		ret = 0;
+		break;
+	}
+	rte_spinlock_unlock(rte_mcfg_ethdev_get_lock());
 
-			return 0;
-		}
-
-	return -ENODEV;
+	return ret;
 }
 
 int

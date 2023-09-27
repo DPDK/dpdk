@@ -37,6 +37,7 @@ struct rte_mem_config {
 	rte_rwlock_t qlock;   /**< used by tailqs for thread safety. */
 	rte_rwlock_t mplock;  /**< used by mempool library for thread safety. */
 	rte_spinlock_t tlock; /**< used by timer library for thread safety. */
+	rte_spinlock_t ethdev_lock; /**< used by ethdev library. */
 
 	rte_rwlock_t memory_hotplug_lock;
 	/**< Indicates whether memory hotplug request is in progress. */

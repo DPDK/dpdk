@@ -45,6 +45,7 @@ eth_dev_allocated(const char *name)
 
 static uint16_t
 eth_dev_find_free_port(void)
+	__rte_exclusive_locks_required(rte_mcfg_ethdev_get_lock())
 {
 	uint16_t i;
 
@@ -61,6 +62,7 @@ eth_dev_find_free_port(void)
 
 static struct rte_eth_dev *
 eth_dev_get(uint16_t port_id)
+	__rte_exclusive_locks_required(rte_mcfg_ethdev_get_lock())
 {
 	struct rte_eth_dev *eth_dev = &rte_eth_devices[port_id];
 
@@ -87,10 +89,10 @@ rte_eth_dev_allocate(const char *name)
 		return NULL;
 	}
 
-	eth_dev_shared_data_prepare();
+	/* Synchronize port creation between primary and secondary processes. */
+	rte_spinlock_lock(rte_mcfg_ethdev_get_lock());
 
-	/* Synchronize port creation between primary and secondary threads. */
-	rte_spinlock_lock(&eth_dev_shared_data->ownership_lock);
+	eth_dev_shared_data_prepare();
 
 	if (eth_dev_allocated(name) != NULL) {
 		RTE_ETHDEV_LOG(ERR,
@@ -114,7 +116,7 @@ rte_eth_dev_allocate(const char *name)
 	pthread_mutex_init(&eth_dev->data->flow_ops_mutex, NULL);
 
 unlock:
-	rte_spinlock_unlock(&eth_dev_shared_data->ownership_lock);
+	rte_spinlock_unlock(rte_mcfg_ethdev_get_lock());
 
 	return eth_dev;
 }
@@ -124,13 +126,13 @@ rte_eth_dev_allocated(const char *name)
 {
 	struct rte_eth_dev *ethdev;
 
-	eth_dev_shared_data_prepare();
+	rte_spinlock_lock(rte_mcfg_ethdev_get_lock());
 
-	rte_spinlock_lock(&eth_dev_shared_data->ownership_lock);
+	eth_dev_shared_data_prepare();
 
 	ethdev = eth_dev_allocated(name);
 
-	rte_spinlock_unlock(&eth_dev_shared_data->ownership_lock);
+	rte_spinlock_unlock(rte_mcfg_ethdev_get_lock());
 
 	return ethdev;
 }
@@ -146,10 +148,10 @@ rte_eth_dev_attach_secondary(const char *name)
 	uint16_t i;
 	struct rte_eth_dev *eth_dev = NULL;
 
-	eth_dev_shared_data_prepare();
-
 	/* Synchronize port attachment to primary port creation and release. */
-	rte_spinlock_lock(&eth_dev_shared_data->ownership_lock);
+	rte_spinlock_lock(rte_mcfg_ethdev_get_lock());
+
+	eth_dev_shared_data_prepare();
 
 	for (i = 0; i < RTE_MAX_ETHPORTS; i++) {
 		if (strcmp(eth_dev_shared_data->data[i].name, name) == 0)
@@ -164,7 +166,7 @@ rte_eth_dev_attach_secondary(const char *name)
 		RTE_ASSERT(eth_dev->data->port_id == i);
 	}
 
-	rte_spinlock_unlock(&eth_dev_shared_data->ownership_lock);
+	rte_spinlock_unlock(rte_mcfg_ethdev_get_lock());
 	return eth_dev;
 }
 
@@ -220,7 +222,9 @@ rte_eth_dev_release_port(struct rte_eth_dev *eth_dev)
 	if (eth_dev == NULL)
 		return -EINVAL;
 
+	rte_spinlock_lock(rte_mcfg_ethdev_get_lock());
 	eth_dev_shared_data_prepare();
+	rte_spinlock_unlock(rte_mcfg_ethdev_get_lock());
 
 	if (eth_dev->state != RTE_ETH_DEV_UNUSED)
 		rte_eth_dev_callback_process(eth_dev,
@@ -228,7 +232,7 @@ rte_eth_dev_release_port(struct rte_eth_dev *eth_dev)
 
 	eth_dev_fp_ops_reset(rte_eth_fp_ops + eth_dev->data->port_id);
 
-	rte_spinlock_lock(&eth_dev_shared_data->ownership_lock);
+	rte_spinlock_lock(rte_mcfg_ethdev_get_lock());
 
 	eth_dev->state = RTE_ETH_DEV_UNUSED;
 	eth_dev->device = NULL;
@@ -252,7 +256,7 @@ rte_eth_dev_release_port(struct rte_eth_dev *eth_dev)
 		memset(eth_dev->data, 0, sizeof(struct rte_eth_dev_data));
 	}
 
-	rte_spinlock_unlock(&eth_dev_shared_data->ownership_lock);
+	rte_spinlock_unlock(rte_mcfg_ethdev_get_lock());
 
 	return 0;
 }

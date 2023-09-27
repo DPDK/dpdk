@@ -39,6 +39,10 @@ __rte_internal
 rte_spinlock_t *
 rte_mcfg_timer_get_lock(void);
 
+__rte_internal
+rte_spinlock_t *
+rte_mcfg_ethdev_get_lock(void);
+
 /**
  * Lock the internal EAL shared memory configuration for shared access.
  */

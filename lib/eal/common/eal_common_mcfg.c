@@ -177,6 +177,12 @@ rte_mcfg_timer_unlock(void)
 	rte_spinlock_unlock(rte_mcfg_timer_get_lock());
 }
 
+rte_spinlock_t *
+rte_mcfg_ethdev_get_lock(void)
+{
+	return &rte_eal_get_configuration()->mem_config->ethdev_lock;
+}
+
 bool
 rte_mcfg_get_single_file_segments(void)
 {

@@ -11,11 +11,7 @@
 
 static const char *MZ_RTE_ETH_DEV_DATA = "rte_eth_dev_data";
 
-/* Shared memory between primary and secondary processes. */
 struct eth_dev_shared *eth_dev_shared_data;
-
-/* spinlock for shared data allocation */
-static rte_spinlock_t eth_dev_shared_data_lock = RTE_SPINLOCK_INITIALIZER;
 
 /* spinlock for eth device callbacks */
 rte_spinlock_t eth_dev_cb_lock = RTE_SPINLOCK_INITIALIZER;
@@ -330,8 +326,6 @@ eth_dev_shared_data_prepare(void)
 	const unsigned int flags = 0;
 	const struct rte_memzone *mz;
 
-	rte_spinlock_lock(&eth_dev_shared_data_lock);
-
 	if (eth_dev_shared_data == NULL) {
 		if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
 			/* Allocate port data and ownership shared memory. */
@@ -347,13 +341,10 @@ eth_dev_shared_data_prepare(void)
 		if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
 			eth_dev_shared_data->next_owner_id =
 					RTE_ETH_DEV_NO_OWNER + 1;
-			rte_spinlock_init(&eth_dev_shared_data->ownership_lock);
 			memset(eth_dev_shared_data->data, 0,
 			       sizeof(eth_dev_shared_data->data));
 		}
 	}
-
-	rte_spinlock_unlock(&eth_dev_shared_data_lock);
 }
 
 void
