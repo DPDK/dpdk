@@ -100,6 +100,7 @@ New Features
 * **Updated Solarflare net driver.**
 
   * Added support for transfer flow action ``INDIRECT`` with subtype ``VXLAN_ENCAP``.
+  * Supported packet replay (multi-count / multi-delivery) in transfer flows.
 
 * **Updated Netronome/Corigine nfp driver.**
 

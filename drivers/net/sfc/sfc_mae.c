@@ -220,6 +220,33 @@ sfc_mae_attach(struct sfc_adapter *sa)
 			goto fail_mae_alloc_bounce_eh;
 		}
 
+		sfc_log_init(sa, "allocate bounce action set pointer array");
+		mae->bounce_aset_ptrs = rte_calloc("sfc_mae_bounce_aset_ptrs",
+					EFX_MAE_ACTION_SET_LIST_MAX_NENTRIES,
+					sizeof(*mae->bounce_aset_ptrs), 0);
+		if (mae->bounce_aset_ptrs == NULL) {
+			rc = ENOMEM;
+			goto fail_mae_alloc_bounce_aset_ptrs;
+		}
+
+		sfc_log_init(sa, "allocate bounce action set contexts");
+		mae->bounce_aset_ctxs = rte_calloc("sfc_mae_bounce_aset_ctxs",
+					EFX_MAE_ACTION_SET_LIST_MAX_NENTRIES,
+					sizeof(*mae->bounce_aset_ctxs), 0);
+		if (mae->bounce_aset_ctxs == NULL) {
+			rc = ENOMEM;
+			goto fail_mae_alloc_bounce_aset_ctxs;
+		}
+
+		sfc_log_init(sa, "allocate bounce action set ID array");
+		mae->bounce_aset_ids = rte_calloc("sfc_mae_bounce_aset_ids",
+					EFX_MAE_ACTION_SET_LIST_MAX_NENTRIES,
+					sizeof(*mae->bounce_aset_ids), 0);
+		if (mae->bounce_aset_ids == NULL) {
+			rc = ENOMEM;
+			goto fail_mae_alloc_bounce_aset_ids;
+		}
+
 		mae->nb_outer_rule_prios_max = limits.eml_max_n_outer_prios;
 		mae->nb_action_rule_prios_max = limits.eml_max_n_action_prios;
 		mae->encap_types_supported = limits.eml_encap_types_supported;
@@ -230,6 +257,7 @@ sfc_mae_attach(struct sfc_adapter *sa)
 	TAILQ_INIT(&mae->encap_headers);
 	TAILQ_INIT(&mae->counters);
 	TAILQ_INIT(&mae->action_sets);
+	TAILQ_INIT(&mae->action_set_lists);
 	TAILQ_INIT(&mae->action_rules);
 
 	if (encp->enc_mae_admin)
@@ -240,6 +268,15 @@ sfc_mae_attach(struct sfc_adapter *sa)
 	sfc_log_init(sa, "done");
 
 	return 0;
+
+fail_mae_alloc_bounce_aset_ids:
+	rte_free(mae->bounce_aset_ctxs);
+
+fail_mae_alloc_bounce_aset_ctxs:
+	rte_free(mae->bounce_aset_ptrs);
+
+fail_mae_alloc_bounce_aset_ptrs:
+	rte_free(mae->bounce_eh.buf);
 
 fail_mae_alloc_bounce_eh:
 fail_mae_assign_switch_port:
@@ -274,6 +311,9 @@ sfc_mae_detach(struct sfc_adapter *sa)
 	if (status_prev != SFC_MAE_STATUS_ADMIN)
 		return;
 
+	rte_free(mae->bounce_aset_ids);
+	rte_free(mae->bounce_aset_ctxs);
+	rte_free(mae->bounce_aset_ptrs);
 	rte_free(mae->bounce_eh.buf);
 	sfc_mae_counter_registry_fini(&mae->counter_registry);
 
@@ -1036,15 +1076,6 @@ sfc_mae_counter_disable(struct sfc_adapter *sa, struct sfc_mae_counter *counter)
 	--(fw_rsrc->refcnt);
 }
 
-struct sfc_mae_aset_ctx {
-	struct sfc_mae_encap_header	*encap_header;
-	struct sfc_mae_counter		*counter;
-	struct sfc_mae_mac_addr		*dst_mac;
-	struct sfc_mae_mac_addr		*src_mac;
-
-	efx_mae_actions_t		*spec;
-};
-
 static struct sfc_mae_action_set *
 sfc_mae_action_set_attach(struct sfc_adapter *sa,
 			  const struct sfc_mae_aset_ctx *ctx)
@@ -1272,9 +1303,222 @@ sfc_mae_action_set_disable(struct sfc_adapter *sa,
 	--(fw_rsrc->refcnt);
 }
 
+static struct sfc_mae_action_set_list *
+sfc_mae_action_set_list_attach(struct sfc_adapter *sa)
+{
+	struct sfc_mae_action_set_list *action_set_list;
+	struct sfc_mae *mae = &sa->mae;
+
+	SFC_ASSERT(sfc_adapter_is_locked(sa));
+
+	TAILQ_FOREACH(action_set_list, &mae->action_set_lists, entries) {
+		if (action_set_list->nb_action_sets != mae->nb_bounce_asets)
+			continue;
+
+		if (memcmp(action_set_list->action_sets, mae->bounce_aset_ptrs,
+			   sizeof(struct sfc_mae_action_set *) *
+			   mae->nb_bounce_asets) == 0) {
+			sfc_dbg(sa, "attaching to action_set_list=%p",
+				action_set_list);
+			++(action_set_list->refcnt);
+			return action_set_list;
+		}
+	}
+
+	return NULL;
+}
+
+static int
+sfc_mae_action_set_list_add(struct sfc_adapter *sa,
+			    struct sfc_mae_action_set_list **action_set_listp)
+{
+	struct sfc_mae_action_set_list *action_set_list;
+	struct sfc_mae *mae = &sa->mae;
+
+	SFC_ASSERT(sfc_adapter_is_locked(sa));
+
+	action_set_list = rte_zmalloc("sfc_mae_action_set_list",
+				      sizeof(*action_set_list), 0);
+	if (action_set_list == NULL) {
+		sfc_err(sa, "failed to allocate action set list");
+		return ENOMEM;
+	}
+
+	action_set_list->refcnt = 1;
+	action_set_list->nb_action_sets = mae->nb_bounce_asets;
+	action_set_list->fw_rsrc.aset_list_id.id = EFX_MAE_RSRC_ID_INVALID;
+
+	action_set_list->action_sets =
+		rte_calloc("sfc_mae_action_set_list_action_sets",
+			   sizeof(struct sfc_mae_action_set *),
+			   action_set_list->nb_action_sets, 0);
+	if (action_set_list->action_sets == NULL) {
+		sfc_err(sa, "failed to allocate action set list");
+		rte_free(action_set_list);
+		return ENOMEM;
+	}
+
+	rte_memcpy(action_set_list->action_sets, mae->bounce_aset_ptrs,
+		   sizeof(struct sfc_mae_action_set *) *
+		   action_set_list->nb_action_sets);
+
+	TAILQ_INSERT_TAIL(&mae->action_set_lists, action_set_list, entries);
+
+	*action_set_listp = action_set_list;
+
+	sfc_dbg(sa, "added action_set_list=%p", action_set_list);
+
+	return 0;
+}
+
+static void
+sfc_mae_action_set_list_del(struct sfc_adapter *sa,
+			    struct sfc_mae_action_set_list *action_set_list)
+{
+	struct sfc_mae *mae = &sa->mae;
+	unsigned int i;
+
+	if (action_set_list == NULL)
+		return;
+
+	SFC_ASSERT(sfc_adapter_is_locked(sa));
+	SFC_ASSERT(action_set_list->refcnt != 0);
+
+	--(action_set_list->refcnt);
+
+	if (action_set_list->refcnt != 0)
+		return;
+
+	if (action_set_list->fw_rsrc.aset_list_id.id !=
+	    EFX_MAE_RSRC_ID_INVALID || action_set_list->fw_rsrc.refcnt != 0) {
+		sfc_err(sa, "deleting action_set_list=%p abandons its FW resource: ASL_ID=0x%08x, refcnt=%u",
+			action_set_list,
+			action_set_list->fw_rsrc.aset_list_id.id,
+			action_set_list->fw_rsrc.refcnt);
+	}
+
+	for (i = 0; i < action_set_list->nb_action_sets; ++i)
+		sfc_mae_action_set_del(sa, action_set_list->action_sets[i]);
+
+	TAILQ_REMOVE(&mae->action_set_lists, action_set_list, entries);
+	rte_free(action_set_list->action_sets);
+	rte_free(action_set_list);
+
+	sfc_dbg(sa, "deleted action_set_list=%p", action_set_list);
+}
+
+static int
+sfc_mae_action_set_list_enable(struct sfc_adapter *sa,
+			       struct sfc_mae_action_set_list *action_set_list)
+{
+	struct sfc_mae_fw_rsrc *fw_rsrc;
+	unsigned int i;
+	unsigned int j;
+	int rc;
+
+	if (action_set_list == NULL)
+		return 0;
+
+	SFC_ASSERT(sfc_adapter_is_locked(sa));
+
+	fw_rsrc = &action_set_list->fw_rsrc;
+
+	if (fw_rsrc->refcnt == 0) {
+		struct sfc_mae *mae = &sa->mae;
+
+		SFC_ASSERT(fw_rsrc->aset_list_id.id == EFX_MAE_RSRC_ID_INVALID);
+
+		for (i = 0; i < action_set_list->nb_action_sets; ++i) {
+			const struct sfc_mae_fw_rsrc *as_fw_rsrc;
+
+			rc = sfc_mae_action_set_enable(sa,
+						action_set_list->action_sets[i]);
+			if (rc != 0)
+				goto fail_action_set_enable;
+
+			as_fw_rsrc = &action_set_list->action_sets[i]->fw_rsrc;
+			mae->bounce_aset_ids[i].id = as_fw_rsrc->aset_id.id;
+		}
+
+		rc = efx_mae_action_set_list_alloc(sa->nic,
+						action_set_list->nb_action_sets,
+						mae->bounce_aset_ids,
+						&fw_rsrc->aset_list_id);
+		if (rc != 0) {
+			sfc_err(sa, "failed to enable action_set_list=%p: %s",
+				action_set_list, strerror(rc));
+			goto fail_action_set_list_alloc;
+		}
+
+		sfc_dbg(sa, "enabled action_set_list=%p: ASL_ID=0x%08x",
+			action_set_list, fw_rsrc->aset_list_id.id);
+	}
+
+	++(fw_rsrc->refcnt);
+
+	return 0;
+
+fail_action_set_list_alloc:
+fail_action_set_enable:
+	for (j = 0; j < i; ++j)
+		sfc_mae_action_set_disable(sa, action_set_list->action_sets[j]);
+
+	return rc;
+}
+
+static void
+sfc_mae_action_set_list_disable(struct sfc_adapter *sa,
+				struct sfc_mae_action_set_list *action_set_list)
+{
+	struct sfc_mae_fw_rsrc *fw_rsrc;
+	int rc;
+
+	if (action_set_list == NULL)
+		return;
+
+	SFC_ASSERT(sfc_adapter_is_locked(sa));
+
+	fw_rsrc = &action_set_list->fw_rsrc;
+
+	if (fw_rsrc->aset_list_id.id == EFX_MAE_RSRC_ID_INVALID ||
+	    fw_rsrc->refcnt == 0) {
+		sfc_err(sa, "failed to disable action_set_list=%p: already disabled; ASL_ID=0x%08x, refcnt=%u",
+			action_set_list, fw_rsrc->aset_list_id.id,
+			fw_rsrc->refcnt);
+		return;
+	}
+
+	if (fw_rsrc->refcnt == 1) {
+		unsigned int i;
+
+		rc = efx_mae_action_set_list_free(sa->nic,
+						  &fw_rsrc->aset_list_id);
+		if (rc == 0) {
+			sfc_dbg(sa, "disabled action_set_list=%p with ASL_ID=0x%08x",
+				action_set_list, fw_rsrc->aset_list_id.id);
+		} else {
+			sfc_err(sa, "failed to disable action_set_list=%p with ASL_ID=0x%08x: %s",
+				action_set_list, fw_rsrc->aset_list_id.id,
+				strerror(rc));
+		}
+		fw_rsrc->aset_list_id.id = EFX_MAE_RSRC_ID_INVALID;
+
+		for (i = 0; i < action_set_list->nb_action_sets; ++i) {
+			sfc_mae_action_set_disable(sa,
+					action_set_list->action_sets[i]);
+		}
+	}
+
+	--(fw_rsrc->refcnt);
+}
+
 struct sfc_mae_action_rule_ctx {
 	struct sfc_mae_outer_rule	*outer_rule;
+	/*
+	 * When action_set_list != NULL, action_set is NULL, and vice versa.
+	 */
 	struct sfc_mae_action_set	*action_set;
+	struct sfc_mae_action_set_list	*action_set_list;
 	efx_mae_match_spec_t		*match_spec;
 	uint32_t			ct_mark;
 };
@@ -1305,6 +1549,7 @@ sfc_mae_action_rule_attach(struct sfc_adapter *sa,
 
 		if (rule->outer_rule != ctx->outer_rule ||
 		    rule->action_set != ctx->action_set ||
+		    rule->action_set_list != ctx->action_set_list ||
 		    !!rule->ct_mark != !!ctx->ct_mark)
 			continue;
 
@@ -1380,6 +1625,7 @@ sfc_mae_action_rule_add(struct sfc_adapter *sa,
 
 	rule->outer_rule = ctx->outer_rule;
 	rule->action_set = ctx->action_set;
+	rule->action_set_list = ctx->action_set_list;
 	rule->match_spec = ctx->match_spec;
 
 	rule->fw_rsrc.rule_id.id = EFX_MAE_RSRC_ID_INVALID;
@@ -1416,6 +1662,7 @@ sfc_mae_action_rule_del(struct sfc_adapter *sa,
 	}
 
 	efx_mae_match_spec_fini(sa->nic, rule->match_spec);
+	sfc_mae_action_set_list_del(sa, rule->action_set_list);
 	sfc_mae_action_set_del(sa, rule->action_set);
 	sfc_mae_outer_rule_del(sa, rule->outer_rule);
 
@@ -1429,6 +1676,8 @@ static int
 sfc_mae_action_rule_enable(struct sfc_adapter *sa,
 			   struct sfc_mae_action_rule *rule)
 {
+	const efx_mae_aset_list_id_t *asl_idp = NULL;
+	const efx_mae_aset_id_t *as_idp = NULL;
 	struct sfc_mae_fw_rsrc *fw_rsrc;
 	int rc;
 
@@ -1447,9 +1696,18 @@ sfc_mae_action_rule_enable(struct sfc_adapter *sa,
 	if (rc != 0)
 		goto fail_action_set_enable;
 
-	rc = efx_mae_action_rule_insert(sa->nic, rule->match_spec, NULL,
-					&rule->action_set->fw_rsrc.aset_id,
-					&fw_rsrc->rule_id);
+	rc = sfc_mae_action_set_list_enable(sa, rule->action_set_list);
+	if (rc != 0)
+		goto fail_action_set_list_enable;
+
+	if (rule->action_set_list != NULL)
+		asl_idp = &rule->action_set_list->fw_rsrc.aset_list_id;
+
+	if (rule->action_set != NULL)
+		as_idp = &rule->action_set->fw_rsrc.aset_id;
+
+	rc = efx_mae_action_rule_insert(sa->nic, rule->match_spec, asl_idp,
+					as_idp, &fw_rsrc->rule_id);
 	if (rc != 0) {
 		sfc_err(sa, "failed to enable action_rule=%p: %s",
 			rule, strerror(rc));
@@ -1467,6 +1725,9 @@ success:
 	return 0;
 
 fail_action_rule_insert:
+	sfc_mae_action_set_list_disable(sa, rule->action_set_list);
+
+fail_action_set_list_enable:
 	sfc_mae_action_set_disable(sa, rule->action_set);
 
 fail_action_set_enable:
@@ -1504,6 +1765,8 @@ sfc_mae_action_rule_disable(struct sfc_adapter *sa,
 		}
 
 		fw_rsrc->rule_id.id = EFX_MAE_RSRC_ID_INVALID;
+
+		sfc_mae_action_set_list_disable(sa, rule->action_set_list);
 
 		sfc_mae_action_set_disable(sa, rule->action_set);
 
@@ -4198,7 +4461,7 @@ fail_counter_queue_uninit:
 }
 
 static int
-sfc_mae_rule_parse_action_indirect(struct sfc_adapter *sa,
+sfc_mae_rule_parse_action_indirect(struct sfc_adapter *sa, bool replayable_only,
 				   const struct rte_flow_action_handle *handle,
 				   enum sfc_ft_rule_type ft_rule_type,
 				   struct sfc_mae_aset_ctx *ctx,
@@ -4209,7 +4472,23 @@ sfc_mae_rule_parse_action_indirect(struct sfc_adapter *sa,
 
 	TAILQ_FOREACH(entry, &sa->flow_indir_actions, entries) {
 		if (entry == handle) {
+			bool replayable = false;
+
 			sfc_dbg(sa, "attaching to indirect_action=%p", entry);
+
+			switch (entry->type) {
+			case RTE_FLOW_ACTION_TYPE_COUNT:
+				replayable = true;
+				break;
+			default:
+				break;
+			}
+
+			if (replayable_only && !replayable) {
+				return rte_flow_error_set(error, EINVAL,
+				  RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				  "the indirect action handle cannot be used");
+			}
 
 			switch (entry->type) {
 			case RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP:
@@ -4230,17 +4509,21 @@ sfc_mae_rule_parse_action_indirect(struct sfc_adapter *sa,
 				++(ctx->encap_header->refcnt);
 				break;
 			case RTE_FLOW_ACTION_TYPE_COUNT:
+				if (!replayable_only && ctx->counter != NULL) {
+					/*
+					 * Signal the caller to "replay" the action
+					 * set context and re-invoke this function.
+					 */
+					return EEXIST;
+				}
+
 				if (ft_rule_type != SFC_FT_RULE_NONE) {
 					return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
 					  "cannot use indirect count action in tunnel model");
 				}
 
-				if (ctx->counter != NULL) {
-					return rte_flow_error_set(error, EINVAL,
-					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
-					  "cannot have multiple actions COUNT in one flow");
-				}
+				SFC_ASSERT(ctx->counter == NULL);
 
 				rc = efx_mae_action_set_populate_count(ctx->spec);
 				if (rc != 0) {
@@ -4416,29 +4699,253 @@ static const char * const action_names[] = {
 	[RTE_FLOW_ACTION_TYPE_JUMP] = "JUMP",
 };
 
+static void sfc_mae_bounce_eh_invalidate(struct sfc_mae_bounce_eh *bounce_eh);
+
+static int sfc_mae_process_encap_header(struct sfc_adapter *sa,
+				const struct sfc_mae_bounce_eh *bounce_eh,
+				struct sfc_mae_encap_header **encap_headerp);
+
+static int
+sfc_mae_aset_ctx_replay(struct sfc_adapter *sa, struct sfc_mae_aset_ctx **ctxp)
+{
+	const struct sfc_mae_aset_ctx *ctx_cur;
+	struct sfc_mae_aset_ctx *ctx_new;
+	struct sfc_mae *mae = &sa->mae;
+	int rc;
+
+	RTE_BUILD_BUG_ON(EFX_MAE_ACTION_SET_LIST_MAX_NENTRIES == 0);
+
+	/* Check the number of complete action set contexts. */
+	if (mae->nb_bounce_asets >= (EFX_MAE_ACTION_SET_LIST_MAX_NENTRIES - 1))
+		return ENOSPC;
+
+	ctx_cur = &mae->bounce_aset_ctxs[mae->nb_bounce_asets];
+
+	++(mae->nb_bounce_asets);
+
+	ctx_new = &mae->bounce_aset_ctxs[mae->nb_bounce_asets];
+
+	*ctx_new = *ctx_cur;
+	ctx_new->counter = NULL;
+	ctx_new->fate_set = false;
+
+	/*
+	 * This clones the action set specification and drops
+	 * actions COUNT and DELIVER from the clone so that
+	 * such can be added to it by later action parsing.
+	 */
+	rc = efx_mae_action_set_replay(sa->nic, ctx_cur->spec, &ctx_new->spec);
+	if (rc != 0)
+		return rc;
+
+	*ctxp = ctx_new;
+
+	return 0;
+}
+
+static int
+sfc_mae_rule_parse_action_rc(struct sfc_adapter *sa,
+			     struct sfc_mae_actions_bundle *bundle,
+			     const struct rte_flow_action *action,
+			     struct rte_flow_error *error,
+			     int rc, bool custom_error)
+{
+	if (rc == 0) {
+		bundle->actions_mask |= (1ULL << action->type);
+	} else if (!custom_error) {
+		if (action->type < RTE_DIM(action_names)) {
+			const char *action_name = action_names[action->type];
+
+			if (action_name != NULL) {
+				sfc_err(sa, "action %s was rejected: %s",
+					action_name, strerror(rc));
+			}
+		}
+		rc = rte_flow_error_set(error, rc, RTE_FLOW_ERROR_TYPE_ACTION,
+				NULL, "Failed to request the action");
+	}
+
+	return rc;
+}
+
+static int
+sfc_mae_rule_parse_action_replayable(struct sfc_adapter *sa,
+				     const struct rte_flow *flow,
+				     struct sfc_mae_actions_bundle *bundle,
+				     const struct rte_flow_action *action,
+				     struct sfc_mae_aset_ctx *ctx,
+				     struct rte_flow_error *error)
+{
+	const struct sfc_flow_spec_mae *spec_mae = &flow->spec.mae;
+	efx_mae_actions_t *spec = ctx->spec;
+	unsigned int switch_port_type_mask;
+	bool custom_error = false;
+	bool new_fate_set = false;
+	bool need_replay = false;
+	int rc;
+
+	/*
+	 * Decide whether the current action set context is
+	 * complete. If yes, "replay" it = go to a new one.
+	 */
+	switch (action->type) {
+	case RTE_FLOW_ACTION_TYPE_INDIRECT:
+		if (ctx->fate_set || ctx->counter != NULL)
+			need_replay = true;
+		break;
+	case RTE_FLOW_ACTION_TYPE_PF:
+	case RTE_FLOW_ACTION_TYPE_VF:
+	case RTE_FLOW_ACTION_TYPE_PORT_ID:
+	case RTE_FLOW_ACTION_TYPE_PORT_REPRESENTOR:
+	case RTE_FLOW_ACTION_TYPE_REPRESENTED_PORT:
+		/* FALLTHROUGH */
+	case RTE_FLOW_ACTION_TYPE_DROP:
+		if (ctx->fate_set)
+			need_replay = true;
+
+		new_fate_set = true;
+		break;
+	default:
+		return rte_flow_error_set(error, ENOTSUP,
+				RTE_FLOW_ERROR_TYPE_ACTION, NULL,
+				"Unsupported action");
+	}
+
+	if (need_replay) {
+		if (spec_mae->ft_rule_type != SFC_FT_RULE_NONE) {
+			return rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_ACTION, NULL,
+				"no support for packet replay in tunnel offload");
+		}
+
+		if (!ctx->fate_set) {
+			/*
+			 * With regard to replayable actions, the current action
+			 * set is only needed to hold one of the counters.
+			 * That is, it does not have a fate action, so
+			 * add one to suppress undesired delivery.
+			 */
+			rc = efx_mae_action_set_populate_drop(spec);
+			if (rc != 0) {
+				return rte_flow_error_set(error, rc,
+					RTE_FLOW_ERROR_TYPE_ACTION, NULL,
+					"failed to auto-add action DROP");
+			}
+		}
+
+		rc = sfc_mae_aset_ctx_replay(sa, &ctx);
+		if (rc != 0) {
+			return rte_flow_error_set(error, rc,
+				RTE_FLOW_ERROR_TYPE_ACTION, NULL,
+				"failed to replay the action set");
+		}
+
+		spec = ctx->spec;
+	}
+
+	ctx->fate_set = new_fate_set;
+
+	switch (action->type) {
+	case RTE_FLOW_ACTION_TYPE_INDIRECT:
+		rc = sfc_mae_rule_parse_action_indirect(sa, true, action->conf,
+							spec_mae->ft_rule_type,
+							ctx, error);
+		custom_error = true;
+		break;
+	case RTE_FLOW_ACTION_TYPE_PF:
+		SFC_BUILD_SET_OVERFLOW(RTE_FLOW_ACTION_TYPE_PF,
+				       bundle->actions_mask);
+		rc = sfc_mae_rule_parse_action_pf_vf(sa, NULL, spec);
+		break;
+	case RTE_FLOW_ACTION_TYPE_VF:
+		SFC_BUILD_SET_OVERFLOW(RTE_FLOW_ACTION_TYPE_VF,
+				       bundle->actions_mask);
+		rc = sfc_mae_rule_parse_action_pf_vf(sa, action->conf, spec);
+		break;
+	case RTE_FLOW_ACTION_TYPE_PORT_ID:
+		SFC_BUILD_SET_OVERFLOW(RTE_FLOW_ACTION_TYPE_PORT_ID,
+				       bundle->actions_mask);
+		rc = sfc_mae_rule_parse_action_port_id(sa, action->conf, spec);
+		break;
+	case RTE_FLOW_ACTION_TYPE_PORT_REPRESENTOR:
+		SFC_BUILD_SET_OVERFLOW(RTE_FLOW_ACTION_TYPE_PORT_REPRESENTOR,
+				       bundle->actions_mask);
+
+		switch_port_type_mask = 1U << SFC_MAE_SWITCH_PORT_INDEPENDENT;
+
+		if (flow->internal) {
+			switch_port_type_mask |=
+					1U << SFC_MAE_SWITCH_PORT_REPRESENTOR;
+		}
+
+		rc = sfc_mae_rule_parse_action_port_representor(sa,
+				action->conf, switch_port_type_mask, spec);
+		break;
+	case RTE_FLOW_ACTION_TYPE_REPRESENTED_PORT:
+		SFC_BUILD_SET_OVERFLOW(RTE_FLOW_ACTION_TYPE_REPRESENTED_PORT,
+				       bundle->actions_mask);
+		rc = sfc_mae_rule_parse_action_represented_port(sa,
+				action->conf, spec);
+		break;
+	case RTE_FLOW_ACTION_TYPE_DROP:
+		SFC_BUILD_SET_OVERFLOW(RTE_FLOW_ACTION_TYPE_DROP,
+				       bundle->actions_mask);
+		rc = efx_mae_action_set_populate_drop(spec);
+		break;
+	default:
+		SFC_ASSERT(B_FALSE);
+		break;
+	}
+
+	return sfc_mae_rule_parse_action_rc(sa, bundle, action, error,
+					    rc, custom_error);
+}
+
 static int
 sfc_mae_rule_parse_action(struct sfc_adapter *sa,
 			  const struct rte_flow_action *action,
 			  struct rte_flow *flow, bool ct,
 			  struct sfc_mae_actions_bundle *bundle,
-			  struct sfc_mae_aset_ctx *ctx,
 			  struct rte_flow_error *error)
 {
 	struct sfc_flow_spec_mae *spec_mae = &flow->spec.mae;
 	const struct sfc_mae_outer_rule *outer_rule = spec_mae->outer_rule;
 	efx_counter_type_t mae_counter_type = EFX_COUNTER_TYPE_ACTION;
 	const uint64_t rx_metadata = sa->negotiated_rx_metadata;
-	struct sfc_mae_counter **counterp = &ctx->counter;
-	efx_mae_actions_t *spec = ctx->spec;
-	efx_mae_actions_t *spec_ptr = spec;
-	unsigned int switch_port_type_mask;
+	struct sfc_mae_counter **counterp;
+	bool non_replayable_found = true;
+	struct sfc_mae *mae = &sa->mae;
+	struct sfc_mae_aset_ctx *ctx;
+	efx_mae_actions_t *spec_ptr;
 	bool custom_error = B_FALSE;
+	efx_mae_actions_t *spec;
 	int rc = 0;
+
+	/* Check the number of complete action set contexts. */
+	if (mae->nb_bounce_asets > (EFX_MAE_ACTION_SET_LIST_MAX_NENTRIES - 1)) {
+		return sfc_mae_rule_parse_action_rc(sa, bundle, action, error,
+						    ENOSPC, custom_error);
+	}
+
+	ctx = &mae->bounce_aset_ctxs[mae->nb_bounce_asets];
+	counterp = &ctx->counter;
+	spec = ctx->spec;
+	spec_ptr = spec;
 
 	if (ct) {
 		mae_counter_type = EFX_COUNTER_TYPE_CONNTRACK;
 		counterp = &spec_mae->ct_counter;
 		spec_ptr = NULL;
+	}
+
+	if (mae->nb_bounce_asets != 0 || ctx->fate_set) {
+		/*
+		 * When at least one delivery action has been encountered,
+		 * non-replayable actions (packet edits, for instance)
+		 * will be turned down.
+		 */
+		return sfc_mae_rule_parse_action_replayable(sa, flow, bundle,
+							    action, ctx, error);
 	}
 
 	switch (action->type) {
@@ -4516,10 +5023,18 @@ sfc_mae_rule_parse_action(struct sfc_adapter *sa,
 	case RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP:
 		SFC_BUILD_SET_OVERFLOW(RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP,
 				       bundle->actions_mask);
-		rc = sfc_mae_rule_parse_action_vxlan_encap(&sa->mae,
-							   action->conf,
+
+		/* Cleanup after previous encap. header bounce buffer usage. */
+		sfc_mae_bounce_eh_invalidate(&mae->bounce_eh);
+
+		rc = sfc_mae_rule_parse_action_vxlan_encap(mae, action->conf,
 							   spec, error);
-		custom_error = B_TRUE;
+		if (rc == 0) {
+			rc = sfc_mae_process_encap_header(sa, &mae->bounce_eh,
+							  &ctx->encap_header);
+		} else {
+			custom_error = true;
+		}
 		break;
 	case RTE_FLOW_ACTION_TYPE_COUNT:
 		SFC_BUILD_SET_OVERFLOW(RTE_FLOW_ACTION_TYPE_COUNT,
@@ -4531,9 +5046,13 @@ sfc_mae_rule_parse_action(struct sfc_adapter *sa,
 	case RTE_FLOW_ACTION_TYPE_INDIRECT:
 		SFC_BUILD_SET_OVERFLOW(RTE_FLOW_ACTION_TYPE_INDIRECT,
 				       bundle->actions_mask);
-		rc = sfc_mae_rule_parse_action_indirect(sa, action->conf,
+		rc = sfc_mae_rule_parse_action_indirect(sa, false, action->conf,
 							spec_mae->ft_rule_type,
 							ctx, error);
+		if (rc == EEXIST) {
+			/* Handle the action as a replayable one below. */
+			non_replayable_found = false;
+		}
 		custom_error = B_TRUE;
 		break;
 	case RTE_FLOW_ACTION_TYPE_FLAG:
@@ -4564,46 +5083,6 @@ sfc_mae_rule_parse_action(struct sfc_adapter *sa,
 			custom_error = B_TRUE;
 		}
 		break;
-	case RTE_FLOW_ACTION_TYPE_PF:
-		SFC_BUILD_SET_OVERFLOW(RTE_FLOW_ACTION_TYPE_PF,
-				       bundle->actions_mask);
-		rc = sfc_mae_rule_parse_action_pf_vf(sa, NULL, spec);
-		break;
-	case RTE_FLOW_ACTION_TYPE_VF:
-		SFC_BUILD_SET_OVERFLOW(RTE_FLOW_ACTION_TYPE_VF,
-				       bundle->actions_mask);
-		rc = sfc_mae_rule_parse_action_pf_vf(sa, action->conf, spec);
-		break;
-	case RTE_FLOW_ACTION_TYPE_PORT_ID:
-		SFC_BUILD_SET_OVERFLOW(RTE_FLOW_ACTION_TYPE_PORT_ID,
-				       bundle->actions_mask);
-		rc = sfc_mae_rule_parse_action_port_id(sa, action->conf, spec);
-		break;
-	case RTE_FLOW_ACTION_TYPE_PORT_REPRESENTOR:
-		SFC_BUILD_SET_OVERFLOW(RTE_FLOW_ACTION_TYPE_PORT_REPRESENTOR,
-				       bundle->actions_mask);
-
-		switch_port_type_mask = 1U << SFC_MAE_SWITCH_PORT_INDEPENDENT;
-
-		if (flow->internal) {
-			switch_port_type_mask |=
-					1U << SFC_MAE_SWITCH_PORT_REPRESENTOR;
-		}
-
-		rc = sfc_mae_rule_parse_action_port_representor(sa,
-				action->conf, switch_port_type_mask, spec);
-		break;
-	case RTE_FLOW_ACTION_TYPE_REPRESENTED_PORT:
-		SFC_BUILD_SET_OVERFLOW(RTE_FLOW_ACTION_TYPE_REPRESENTED_PORT,
-				       bundle->actions_mask);
-		rc = sfc_mae_rule_parse_action_represented_port(sa,
-				action->conf, spec);
-		break;
-	case RTE_FLOW_ACTION_TYPE_DROP:
-		SFC_BUILD_SET_OVERFLOW(RTE_FLOW_ACTION_TYPE_DROP,
-				       bundle->actions_mask);
-		rc = efx_mae_action_set_populate_drop(spec);
-		break;
 	case RTE_FLOW_ACTION_TYPE_JUMP:
 		if (spec_mae->ft_rule_type == SFC_FT_RULE_TUNNEL) {
 			/* Workaround. See sfc_flow_parse_rte_to_mae() */
@@ -4611,27 +5090,16 @@ sfc_mae_rule_parse_action(struct sfc_adapter *sa,
 		}
 		/* FALLTHROUGH */
 	default:
-		return rte_flow_error_set(error, ENOTSUP,
-				RTE_FLOW_ERROR_TYPE_ACTION, NULL,
-				"Unsupported action");
+		non_replayable_found = false;
 	}
 
-	if (rc == 0) {
-		bundle->actions_mask |= (1ULL << action->type);
-	} else if (!custom_error) {
-		if (action->type < RTE_DIM(action_names)) {
-			const char *action_name = action_names[action->type];
-
-			if (action_name != NULL) {
-				sfc_err(sa, "action %s was rejected: %s",
-					action_name, strerror(rc));
-			}
-		}
-		rc = rte_flow_error_set(error, rc, RTE_FLOW_ERROR_TYPE_ACTION,
-				NULL, "Failed to request the action");
+	if (non_replayable_found) {
+		return sfc_mae_rule_parse_action_rc(sa, bundle, action, error,
+						    rc, custom_error);
 	}
 
-	return rc;
+	return sfc_mae_rule_parse_action_replayable(sa, flow, bundle,
+						    action, ctx, error);
 }
 
 static void
@@ -4658,6 +5126,78 @@ sfc_mae_process_encap_header(struct sfc_adapter *sa,
 }
 
 static int
+sfc_mae_rule_process_replay(struct sfc_adapter *sa,
+			    struct sfc_mae_action_rule_ctx *action_rule_ctx)
+{
+	struct sfc_mae_action_set *base_aset;
+	struct sfc_mae_action_set **asetp;
+	struct sfc_mae *mae = &sa->mae;
+	struct sfc_mae_aset_ctx *ctx;
+	unsigned int i;
+	unsigned int j;
+	int rc;
+
+	if (mae->nb_bounce_asets == 1)
+		return 0;
+
+	mae->bounce_aset_ptrs[0] = action_rule_ctx->action_set;
+	base_aset = mae->bounce_aset_ptrs[0];
+
+	for (i = 1; i < mae->nb_bounce_asets; ++i) {
+		asetp = &mae->bounce_aset_ptrs[i];
+		ctx = &mae->bounce_aset_ctxs[i];
+
+		*asetp = sfc_mae_action_set_attach(sa, ctx);
+		if (*asetp != NULL) {
+			efx_mae_action_set_spec_fini(sa->nic, ctx->spec);
+			sfc_mae_counter_del(sa, ctx->counter);
+			continue;
+		}
+
+		rc = sfc_mae_action_set_add(sa, ctx, asetp);
+		if (rc != 0)
+			goto fail_action_set_add;
+
+		if (base_aset->encap_header != NULL)
+			++(base_aset->encap_header->refcnt);
+
+		if (base_aset->dst_mac_addr != NULL)
+			++(base_aset->dst_mac_addr->refcnt);
+
+		if (base_aset->src_mac_addr != NULL)
+			++(base_aset->src_mac_addr->refcnt);
+	}
+
+	action_rule_ctx->action_set_list = sfc_mae_action_set_list_attach(sa);
+	if (action_rule_ctx->action_set_list != NULL) {
+		for (i = 0; i < mae->nb_bounce_asets; ++i)
+			sfc_mae_action_set_del(sa, mae->bounce_aset_ptrs[i]);
+	} else {
+		rc = sfc_mae_action_set_list_add(sa,
+					&action_rule_ctx->action_set_list);
+		if (rc != 0)
+			goto fail_action_set_list_add;
+	}
+
+	action_rule_ctx->action_set = NULL;
+
+	return 0;
+
+fail_action_set_list_add:
+fail_action_set_add:
+	for (j = i; j < mae->nb_bounce_asets; ++j) {
+		ctx = &mae->bounce_aset_ctxs[j];
+		efx_mae_action_set_spec_fini(sa->nic, ctx->spec);
+		sfc_mae_counter_del(sa, ctx->counter);
+	}
+
+	while (--i > 0)
+		sfc_mae_action_set_del(sa, mae->bounce_aset_ptrs[i]);
+
+	return rc;
+}
+
+static int
 sfc_mae_rule_parse_actions(struct sfc_adapter *sa,
 			   const struct rte_flow_action actions[],
 			   struct rte_flow *flow,
@@ -4668,8 +5208,9 @@ sfc_mae_rule_parse_actions(struct sfc_adapter *sa,
 	struct sfc_mae_actions_bundle bundle = {0};
 	bool ct = (action_rule_ctx->ct_mark != 0);
 	const struct rte_flow_action *action;
-	struct sfc_mae_aset_ctx ctx = {0};
+	struct sfc_mae_aset_ctx *last_ctx;
 	struct sfc_mae *mae = &sa->mae;
+	struct sfc_mae_aset_ctx *ctx;
 	int rc;
 
 	rte_errno = 0;
@@ -4680,7 +5221,18 @@ sfc_mae_rule_parse_actions(struct sfc_adapter *sa,
 				"NULL actions");
 	}
 
-	rc = efx_mae_action_set_spec_init(sa->nic, &ctx.spec);
+	/*
+	 * Cleanup after action parsing of the previous flow.
+	 *
+	 * This particular variable always points at the
+	 * 1st (base) action set context, which can hold
+	 * both non-replayable and replayable actions.
+	 */
+	ctx = &mae->bounce_aset_ctxs[0];
+	memset(ctx, 0, sizeof(*ctx));
+	mae->nb_bounce_asets = 0;
+
+	rc = efx_mae_action_set_spec_init(sa->nic, &ctx->spec);
 	if (rc != 0)
 		goto fail_action_set_spec_init;
 
@@ -4688,7 +5240,7 @@ sfc_mae_rule_parse_actions(struct sfc_adapter *sa,
 		bool have_user_action_count = false;
 
 		/* TUNNEL rules don't decapsulate packets. SWITCH rules do. */
-		rc = efx_mae_action_set_populate_decap(ctx.spec);
+		rc = efx_mae_action_set_populate_decap(ctx->spec);
 		if (rc != 0)
 			goto fail_enforce_ft_decap;
 
@@ -4708,63 +5260,62 @@ sfc_mae_rule_parse_actions(struct sfc_adapter *sa,
 			 * packets hitting this rule contribute to the tunnel's
 			 * total number of hits. See sfc_mae_counter_get().
 			 */
-			rc = efx_mae_action_set_populate_count(ctx.spec);
+			rc = efx_mae_action_set_populate_count(ctx->spec);
 			if (rc != 0)
 				goto fail_enforce_ft_count;
 
-			rc = sfc_mae_counter_add(sa, NULL, &ctx.counter);
+			rc = sfc_mae_counter_add(sa, NULL, &ctx->counter);
 			if (rc != 0)
 				goto fail_enforce_ft_count;
 		}
 	}
 
-	/* Cleanup after previous encap. header bounce buffer usage. */
-	sfc_mae_bounce_eh_invalidate(&mae->bounce_eh);
-
 	for (action = actions;
 	     action->type != RTE_FLOW_ACTION_TYPE_END; ++action) {
-		rc = sfc_mae_actions_bundle_sync(action, &bundle, spec_mae,
-						 ctx.spec, ct, error);
-		if (rc != 0)
-			goto fail_rule_parse_action;
+		if (mae->nb_bounce_asets == 0) {
+			rc = sfc_mae_actions_bundle_sync(action, &bundle,
+							 spec_mae, ctx->spec,
+							 ct, error);
+			if (rc != 0)
+				goto fail_rule_parse_action;
+		}
 
 		rc = sfc_mae_rule_parse_action(sa, action, flow, ct,
-					       &bundle, &ctx, error);
+					       &bundle, error);
 		if (rc != 0)
 			goto fail_rule_parse_action;
 	}
 
-	rc = sfc_mae_actions_bundle_sync(action, &bundle, spec_mae,
-					 ctx.spec, ct, error);
-	if (rc != 0)
-		goto fail_rule_parse_action;
-
-	rc = sfc_mae_process_encap_header(sa, &mae->bounce_eh,
-					  &ctx.encap_header);
-	if (rc != 0)
-		goto fail_process_encap_header;
+	if (mae->nb_bounce_asets == 0) {
+		rc = sfc_mae_actions_bundle_sync(action, &bundle, spec_mae,
+						 ctx->spec, ct, error);
+		if (rc != 0)
+			goto fail_rule_parse_action;
+	}
 
 	switch (spec_mae->ft_rule_type) {
 	case SFC_FT_RULE_NONE:
 		break;
 	case SFC_FT_RULE_TUNNEL:
 		/* Workaround. See sfc_flow_parse_rte_to_mae() */
-		rc = sfc_mae_rule_parse_action_pf_vf(sa, NULL, ctx.spec);
+		rc = sfc_mae_rule_parse_action_pf_vf(sa, NULL, ctx->spec);
 		if (rc != 0)
 			goto fail_workaround_tunnel_delivery;
 
-		if (ctx.counter != NULL)
-			(ctx.counter)->ft_ctx = spec_mae->ft_ctx;
+		if (ctx->counter != NULL)
+			(ctx->counter)->ft_ctx = spec_mae->ft_ctx;
+
+		ctx->fate_set = true;
 		break;
 	case SFC_FT_RULE_SWITCH:
 		/*
 		 * Packets that go to the rule's AR have FT mark set (from
 		 * the TUNNEL rule OR's RECIRC_ID). Reset the mark to zero.
 		 */
-		efx_mae_action_set_populate_mark_reset(ctx.spec);
+		efx_mae_action_set_populate_mark_reset(ctx->spec);
 
-		if (ctx.counter != NULL) {
-			(ctx.counter)->ft_switch_hit_counter =
+		if (ctx->counter != NULL) {
+			(ctx->counter)->ft_switch_hit_counter =
 				&spec_mae->ft_ctx->switch_hit_counter;
 		} else if (sfc_mae_counter_stream_enabled(sa)) {
 			SFC_ASSERT(ct);
@@ -4777,48 +5328,53 @@ sfc_mae_rule_parse_actions(struct sfc_adapter *sa,
 		SFC_ASSERT(B_FALSE);
 	}
 
-	/*
-	 * A DPDK flow entry must specify a fate action, which the parser
-	 * converts into a DELIVER action in a libefx action set. An
-	 * attempt to replace the action in the action set should
-	 * fail. If it succeeds then report an error, as the
-	 * parsed flow entry did not contain a fate action.
-	 */
-	rc = efx_mae_action_set_populate_drop(ctx.spec);
-	if (rc == 0) {
+	SFC_ASSERT(mae->nb_bounce_asets < EFX_MAE_ACTION_SET_LIST_MAX_NENTRIES);
+	last_ctx = &mae->bounce_aset_ctxs[mae->nb_bounce_asets];
+	++(mae->nb_bounce_asets);
+
+	if (!last_ctx->fate_set) {
 		rc = rte_flow_error_set(error, EINVAL,
 					RTE_FLOW_ERROR_TYPE_ACTION, NULL,
 					"no fate action found");
 		goto fail_check_fate_action;
 	}
 
-	action_rule_ctx->action_set = sfc_mae_action_set_attach(sa, &ctx);
+	action_rule_ctx->action_set = sfc_mae_action_set_attach(sa, ctx);
 	if (action_rule_ctx->action_set != NULL) {
-		sfc_mae_counter_del(sa, ctx.counter);
-		sfc_mae_mac_addr_del(sa, ctx.src_mac);
-		sfc_mae_mac_addr_del(sa, ctx.dst_mac);
-		sfc_mae_encap_header_del(sa, ctx.encap_header);
-		efx_mae_action_set_spec_fini(sa->nic, ctx.spec);
-		return 0;
+		sfc_mae_counter_del(sa, ctx->counter);
+		sfc_mae_mac_addr_del(sa, ctx->src_mac);
+		sfc_mae_mac_addr_del(sa, ctx->dst_mac);
+		sfc_mae_encap_header_del(sa, ctx->encap_header);
+		efx_mae_action_set_spec_fini(sa->nic, ctx->spec);
+	} else {
+		rc = sfc_mae_action_set_add(sa, ctx,
+					    &action_rule_ctx->action_set);
+		if (rc != 0)
+			goto fail_action_set_add;
 	}
 
-	rc = sfc_mae_action_set_add(sa, &ctx, &action_rule_ctx->action_set);
+	memset(ctx, 0, sizeof(*ctx));
+
+	rc = sfc_mae_rule_process_replay(sa, action_rule_ctx);
 	if (rc != 0)
-		goto fail_action_set_add;
+		goto fail_rule_parse_replay;
 
 	return 0;
+
+fail_rule_parse_replay:
+	sfc_mae_action_set_del(sa, action_rule_ctx->action_set);
 
 fail_action_set_add:
 fail_check_fate_action:
 fail_workaround_tunnel_delivery:
-	sfc_mae_encap_header_del(sa, ctx.encap_header);
-
-fail_process_encap_header:
 fail_rule_parse_action:
-	sfc_mae_counter_del(sa, ctx.counter);
-	sfc_mae_mac_addr_del(sa, ctx.src_mac);
-	sfc_mae_mac_addr_del(sa, ctx.dst_mac);
-	efx_mae_action_set_spec_fini(sa->nic, ctx.spec);
+	sfc_mae_encap_header_del(sa, ctx->encap_header);
+	sfc_mae_counter_del(sa, ctx->counter);
+	sfc_mae_mac_addr_del(sa, ctx->src_mac);
+	sfc_mae_mac_addr_del(sa, ctx->dst_mac);
+
+	if (ctx->spec != NULL)
+		efx_mae_action_set_spec_fini(sa->nic, ctx->spec);
 
 fail_enforce_ft_count:
 fail_enforce_ft_decap:
@@ -4875,6 +5431,7 @@ sfc_mae_rule_parse(struct sfc_adapter *sa, const struct rte_flow_item pattern[],
 					error);
 	if (rc == 0) {
 		efx_mae_match_spec_fini(sa->nic, ctx.match_spec);
+		sfc_mae_action_set_list_del(sa, ctx.action_set_list);
 		sfc_mae_action_set_del(sa, ctx.action_set);
 		sfc_mae_outer_rule_del(sa, ctx.outer_rule);
 	} else if (rc == -ENOENT) {
@@ -4902,6 +5459,7 @@ fail:
 	if (ctx.match_spec != NULL)
 		efx_mae_match_spec_fini(sa->nic, ctx.match_spec);
 
+	sfc_mae_action_set_list_del(sa, ctx.action_set_list);
 	sfc_mae_action_set_del(sa, ctx.action_set);
 	sfc_mae_outer_rule_del(sa, ctx.outer_rule);
 
@@ -5120,6 +5678,7 @@ sfc_mae_query_counter(struct sfc_adapter *sa,
 	const struct rte_flow_action_count *conf = action->conf;
 	struct sfc_mae_counter *counters[1 /* action rule counter */ +
 					 1 /* conntrack counter */];
+	struct sfc_mae_counter *counter;
 	unsigned int i;
 	int rc;
 
@@ -5137,7 +5696,7 @@ sfc_mae_query_counter(struct sfc_adapter *sa,
 	counters[1] = spec->ct_counter;
 
 	for (i = 0; i < RTE_DIM(counters); ++i) {
-		struct sfc_mae_counter *counter = counters[i];
+		counter = counters[i];
 
 		if (counter == NULL)
 			continue;
@@ -5155,6 +5714,29 @@ sfc_mae_query_counter(struct sfc_adapter *sa,
 		}
 	}
 
+	if (action_rule == NULL || action_rule->action_set_list == NULL)
+		goto exit;
+
+	for (i = 0; i < action_rule->action_set_list->nb_action_sets; ++i) {
+		counter = action_rule->action_set_list->action_sets[i]->counter;
+
+		if (counter == NULL || counter->indirect)
+			continue;
+
+		if (conf == NULL ||
+		    (counter->rte_id_valid && conf->id == counter->rte_id)) {
+			rc = sfc_mae_counter_get(sa, counter, data);
+			if (rc != 0) {
+				return rte_flow_error_set(error, EINVAL,
+					RTE_FLOW_ERROR_TYPE_ACTION, action,
+					"Queried flow rule counter action is invalid");
+			}
+
+			return 0;
+		}
+	}
+
+exit:
 	return rte_flow_error_set(error, ENOENT,
 				  RTE_FLOW_ERROR_TYPE_ACTION, action,
 				  "no such flow rule action or such count ID");

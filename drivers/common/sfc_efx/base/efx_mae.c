@@ -4273,4 +4273,179 @@ fail1:
 	return (rc);
 }
 
+	__checkReturn		efx_rc_t
+efx_mae_action_set_replay(
+	__in			efx_nic_t *enp,
+	__in			const efx_mae_actions_t *spec_orig,
+	__out			efx_mae_actions_t **spec_clonep)
+{
+	const efx_nic_cfg_t *encp = efx_nic_cfg_get(enp);
+	efx_mae_actions_t *spec_clone;
+	efx_rc_t rc;
+
+	EFSYS_KMEM_ALLOC(enp->en_esip, sizeof (*spec_clone), spec_clone);
+	if (spec_clone == NULL) {
+		rc = ENOMEM;
+		goto fail1;
+	}
+
+	*spec_clone = *spec_orig;
+
+	spec_clone->ema_rsrc.emar_counter_id.id = EFX_MAE_RSRC_ID_INVALID;
+	spec_clone->ema_actions &= ~(1U << EFX_MAE_ACTION_COUNT);
+	spec_clone->ema_n_count_actions = 0;
+
+	(void)efx_mae_mport_invalid(&spec_clone->ema_deliver_mport);
+	spec_clone->ema_actions &= ~(1U << EFX_MAE_ACTION_DELIVER);
+
+	*spec_clonep = spec_clone;
+
+	return (0);
+
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+	return (rc);
+}
+
+	__checkReturn		efx_rc_t
+efx_mae_action_set_list_alloc(
+	__in			efx_nic_t *enp,
+	__in			unsigned int n_asets,
+	__in_ecount(n_asets)	const efx_mae_aset_id_t *aset_ids,
+	__out			efx_mae_aset_list_id_t *aset_list_idp)
+{
+	const efx_nic_cfg_t *encp = efx_nic_cfg_get(enp);
+	EFX_MCDI_DECLARE_BUF(payload,
+	    MC_CMD_MAE_ACTION_SET_LIST_ALLOC_IN_LENMAX_MCDI2,
+	    MC_CMD_MAE_ACTION_SET_LIST_ALLOC_OUT_LEN);
+	efx_mae_aset_list_id_t aset_list_id;
+	efx_mcdi_req_t req;
+	efx_rc_t rc;
+
+	EFX_STATIC_ASSERT(EFX_MAE_ACTION_SET_LIST_MAX_NENTRIES ==
+	    MC_CMD_MAE_ACTION_SET_LIST_ALLOC_IN_AS_IDS_MAXNUM_MCDI2);
+
+	EFX_STATIC_ASSERT(EFX_MAE_RSRC_ID_INVALID ==
+	    MC_CMD_MAE_ACTION_SET_LIST_ALLOC_OUT_ACTION_SET_LIST_ID_NULL);
+
+	EFX_STATIC_ASSERT(sizeof (aset_list_idp->id) ==
+	    MC_CMD_MAE_ACTION_SET_LIST_ALLOC_OUT_ASL_ID_LEN);
+
+	if (encp->enc_mae_supported == B_FALSE) {
+		rc = ENOTSUP;
+		goto fail1;
+	}
+
+	if (MC_CMD_MAE_ACTION_SET_LIST_ALLOC_IN_LEN(n_asets) >
+	    MC_CMD_MAE_ACTION_SET_LIST_ALLOC_IN_LENMAX_MCDI2) {
+		rc = EINVAL;
+		goto fail2;
+	}
+
+	req.emr_cmd = MC_CMD_MAE_ACTION_SET_LIST_ALLOC;
+	req.emr_in_buf = payload;
+	req.emr_in_length = MC_CMD_MAE_ACTION_SET_LIST_ALLOC_IN_LEN(n_asets);
+	req.emr_out_buf = payload;
+	req.emr_out_length = MC_CMD_MAE_ACTION_SET_LIST_ALLOC_OUT_LEN;
+
+	MCDI_IN_SET_DWORD(req,
+	    MAE_ACTION_SET_LIST_ALLOC_IN_COUNT, n_asets);
+
+	memcpy(MCDI_IN2(req, uint8_t, MAE_ACTION_SET_LIST_ALLOC_IN_AS_IDS),
+	    aset_ids, n_asets * sizeof (*aset_ids));
+
+	efx_mcdi_execute(enp, &req);
+
+	if (req.emr_rc != 0) {
+		rc = req.emr_rc;
+		goto fail3;
+	}
+
+	if (req.emr_out_length_used < MC_CMD_MAE_ACTION_SET_LIST_ALLOC_OUT_LEN) {
+		rc = EMSGSIZE;
+		goto fail4;
+	}
+
+	aset_list_id.id =
+	    MCDI_OUT_DWORD(req, MAE_ACTION_SET_LIST_ALLOC_OUT_ASL_ID);
+	if (aset_list_id.id == EFX_MAE_RSRC_ID_INVALID) {
+		rc = ENOENT;
+		goto fail5;
+	}
+
+	aset_list_idp->id = aset_list_id.id;
+
+	return (0);
+
+fail5:
+	EFSYS_PROBE(fail5);
+fail4:
+	EFSYS_PROBE(fail4);
+fail3:
+	EFSYS_PROBE(fail3);
+fail2:
+	EFSYS_PROBE(fail2);
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+	return (rc);
+}
+
+	__checkReturn		efx_rc_t
+efx_mae_action_set_list_free(
+	__in			efx_nic_t *enp,
+	__in			const efx_mae_aset_list_id_t *aset_list_idp)
+{
+	const efx_nic_cfg_t *encp = efx_nic_cfg_get(enp);
+	EFX_MCDI_DECLARE_BUF(payload,
+	    MC_CMD_MAE_ACTION_SET_LIST_FREE_IN_LEN(1),
+	    MC_CMD_MAE_ACTION_SET_LIST_FREE_OUT_LEN(1));
+	efx_mcdi_req_t req;
+	efx_rc_t rc;
+
+	if (encp->enc_mae_supported == B_FALSE) {
+		rc = ENOTSUP;
+		goto fail1;
+	}
+
+	req.emr_cmd = MC_CMD_MAE_ACTION_SET_LIST_FREE;
+	req.emr_in_buf = payload;
+	req.emr_in_length = MC_CMD_MAE_ACTION_SET_LIST_FREE_IN_LEN(1);
+	req.emr_out_buf = payload;
+	req.emr_out_length = MC_CMD_MAE_ACTION_SET_LIST_FREE_OUT_LEN(1);
+
+	MCDI_IN_SET_DWORD(req,
+	    MAE_ACTION_SET_LIST_FREE_IN_ASL_ID, aset_list_idp->id);
+
+	efx_mcdi_execute(enp, &req);
+
+	if (req.emr_rc != 0) {
+		rc = req.emr_rc;
+		goto fail2;
+	}
+
+	if (req.emr_out_length_used < MC_CMD_MAE_ACTION_SET_LIST_FREE_OUT_LENMIN) {
+		rc = EMSGSIZE;
+		goto fail3;
+	}
+
+	if (MCDI_OUT_DWORD(req, MAE_ACTION_SET_LIST_FREE_OUT_FREED_ASL_ID) !=
+	    aset_list_idp->id) {
+		/* Firmware failed to free the action set list. */
+		rc = EAGAIN;
+		goto fail4;
+	}
+
+	return (0);
+
+fail4:
+	EFSYS_PROBE(fail4);
+fail3:
+	EFSYS_PROBE(fail3);
+fail2:
+	EFSYS_PROBE(fail2);
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+	return (rc);
+}
+
 #endif /* EFSYS_OPT_MAE */

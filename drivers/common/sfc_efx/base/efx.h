@@ -5327,6 +5327,38 @@ efx_table_entry_delete(
 	__in_bcount(data_size)		uint8_t *entry_datap,
 	__in				unsigned int data_size);
 
+/*
+ * Clone the given MAE action set specification
+ * and drop actions COUNT and DELIVER from it.
+ */
+LIBEFX_API
+extern	__checkReturn		efx_rc_t
+efx_mae_action_set_replay(
+	__in			efx_nic_t *enp,
+	__in			const efx_mae_actions_t *spec_orig,
+	__out			efx_mae_actions_t **spec_clonep);
+
+/*
+ * The actual limit may be lower than this.
+ * This define merely limits the number of
+ * entries in a single allocation request.
+ */
+#define EFX_MAE_ACTION_SET_LIST_MAX_NENTRIES	254
+
+LIBEFX_API
+extern	__checkReturn		efx_rc_t
+efx_mae_action_set_list_alloc(
+	__in			efx_nic_t *enp,
+	__in			unsigned int n_asets,
+	__in_ecount(n_asets)	const efx_mae_aset_id_t *aset_ids,
+	__out			efx_mae_aset_list_id_t *aset_list_idp);
+
+LIBEFX_API
+extern	__checkReturn		efx_rc_t
+efx_mae_action_set_list_free(
+	__in			efx_nic_t *enp,
+	__in			const efx_mae_aset_list_id_t *aset_list_idp);
+
 #ifdef	__cplusplus
 }
 #endif

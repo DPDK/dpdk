@@ -26,6 +26,7 @@ extern "C" {
 struct sfc_mae_fw_rsrc {
 	unsigned int			refcnt;
 	union {
+		efx_mae_aset_list_id_t	aset_list_id;
 		efx_counter_t		counter_id;
 		efx_mae_aset_id_t	aset_id;
 		efx_mae_rule_id_t	rule_id;
@@ -105,12 +106,27 @@ struct sfc_mae_action_set {
 
 TAILQ_HEAD(sfc_mae_action_sets, sfc_mae_action_set);
 
+/** Action set list registry entry */
+struct sfc_mae_action_set_list {
+	TAILQ_ENTRY(sfc_mae_action_set_list)	entries;
+	unsigned int				refcnt;
+	unsigned int				nb_action_sets;
+	struct sfc_mae_action_set		**action_sets;
+	struct sfc_mae_fw_rsrc			fw_rsrc;
+};
+
+TAILQ_HEAD(sfc_mae_action_set_lists, sfc_mae_action_set_list);
+
 /** Action rule registry entry */
 struct sfc_mae_action_rule {
 	TAILQ_ENTRY(sfc_mae_action_rule)	entries;
 	uint32_t				ct_mark;
 	struct sfc_mae_outer_rule		*outer_rule;
+	/*
+	 * When action_set_list != NULL, action_set is NULL, and vice versa.
+	 */
 	struct sfc_mae_action_set		*action_set;
+	struct sfc_mae_action_set_list		*action_set_list;
 	efx_mae_match_spec_t			*match_spec;
 	struct sfc_mae_fw_rsrc			fw_rsrc;
 	unsigned int				refcnt;
@@ -204,6 +220,18 @@ struct sfc_mae_counter_registry {
 	} polling;
 };
 
+/* Entry format for the action parsing bounce buffer */
+struct sfc_mae_aset_ctx {
+	struct sfc_mae_encap_header	*encap_header;
+	struct sfc_mae_counter		*counter;
+	struct sfc_mae_mac_addr		*dst_mac;
+	struct sfc_mae_mac_addr		*src_mac;
+
+	bool				fate_set;
+
+	efx_mae_actions_t		*spec;
+};
+
 struct sfc_mae {
 	/** Assigned switch domain identifier */
 	uint16_t			switch_domain_id;
@@ -225,10 +253,19 @@ struct sfc_mae {
 	struct sfc_mae_mac_addrs	mac_addrs;
 	/** Action set registry */
 	struct sfc_mae_action_sets	action_sets;
+	/** Action set list registry */
+	struct sfc_mae_action_set_lists	action_set_lists;
 	/** Action rule registry */
 	struct sfc_mae_action_rules	action_rules;
 	/** Encap. header bounce buffer */
 	struct sfc_mae_bounce_eh	bounce_eh;
+	/**
+	 * Action parsing bounce buffers
+	 */
+	struct sfc_mae_action_set	**bounce_aset_ptrs;
+	struct sfc_mae_aset_ctx		*bounce_aset_ctxs;
+	efx_mae_aset_id_t		*bounce_aset_ids;
+	unsigned int			nb_bounce_asets;
 	/** Flag indicating whether counter-only RxQ is running */
 	bool				counter_rxq_running;
 	/** Counter record registry */
