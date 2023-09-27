@@ -388,7 +388,7 @@ rte_eth_find_next_sibling(uint16_t port_id, uint16_t ref_port_id)
 static bool
 eth_dev_is_allocated(const struct rte_eth_dev *ethdev)
 {
-	return ethdev->data->name[0] != '\0';
+	return ethdev->data != NULL && ethdev->data->name[0] != '\0';
 }
 
 int
@@ -433,6 +433,8 @@ rte_eth_find_next_owned_by(uint16_t port_id, const uint64_t owner_id)
 int
 rte_eth_dev_owner_new(uint64_t *owner_id)
 {
+	int ret;
+
 	if (owner_id == NULL) {
 		RTE_ETHDEV_LOG(ERR, "Cannot get new owner ID to NULL\n");
 		return -EINVAL;
@@ -440,14 +442,18 @@ rte_eth_dev_owner_new(uint64_t *owner_id)
 
 	rte_spinlock_lock(rte_mcfg_ethdev_get_lock());
 
-	eth_dev_shared_data_prepare();
-	*owner_id = eth_dev_shared_data->next_owner_id++;
+	if (eth_dev_shared_data_prepare() != NULL) {
+		*owner_id = eth_dev_shared_data->next_owner_id++;
+		ret = 0;
+	} else {
+		ret = -ENOMEM;
+	}
 
 	rte_spinlock_unlock(rte_mcfg_ethdev_get_lock());
 
-	rte_ethdev_trace_owner_new(*owner_id);
+	rte_ethdev_trace_owner_new(*owner_id, ret);
 
-	return 0;
+	return ret;
 }
 
 static int
@@ -506,8 +512,10 @@ rte_eth_dev_owner_set(const uint16_t port_id,
 
 	rte_spinlock_lock(rte_mcfg_ethdev_get_lock());
 
-	eth_dev_shared_data_prepare();
-	ret = eth_dev_owner_set(port_id, RTE_ETH_DEV_NO_OWNER, owner);
+	if (eth_dev_shared_data_prepare() != NULL)
+		ret = eth_dev_owner_set(port_id, RTE_ETH_DEV_NO_OWNER, owner);
+	else
+		ret = -ENOMEM;
 
 	rte_spinlock_unlock(rte_mcfg_ethdev_get_lock());
 
@@ -525,8 +533,10 @@ rte_eth_dev_owner_unset(const uint16_t port_id, const uint64_t owner_id)
 
 	rte_spinlock_lock(rte_mcfg_ethdev_get_lock());
 
-	eth_dev_shared_data_prepare();
-	ret = eth_dev_owner_set(port_id, owner_id, &new_owner);
+	if (eth_dev_shared_data_prepare() != NULL)
+		ret = eth_dev_owner_set(port_id, owner_id, &new_owner);
+	else
+		ret = -ENOMEM;
 
 	rte_spinlock_unlock(rte_mcfg_ethdev_get_lock());
 
@@ -543,8 +553,9 @@ rte_eth_dev_owner_delete(const uint64_t owner_id)
 
 	rte_spinlock_lock(rte_mcfg_ethdev_get_lock());
 
-	eth_dev_shared_data_prepare();
-	if (eth_is_valid_owner_id(owner_id)) {
+	if (eth_dev_shared_data_prepare() == NULL) {
+		ret = -ENOMEM;
+	} else if (eth_is_valid_owner_id(owner_id)) {
 		for (port_id = 0; port_id < RTE_MAX_ETHPORTS; port_id++) {
 			struct rte_eth_dev_data *data =
 				rte_eth_devices[port_id].data;
@@ -573,6 +584,7 @@ int
 rte_eth_dev_owner_get(const uint16_t port_id, struct rte_eth_dev_owner *owner)
 {
 	struct rte_eth_dev *ethdev;
+	int ret;
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
 	ethdev = &rte_eth_devices[port_id];
@@ -591,14 +603,18 @@ rte_eth_dev_owner_get(const uint16_t port_id, struct rte_eth_dev_owner *owner)
 
 	rte_spinlock_lock(rte_mcfg_ethdev_get_lock());
 
-	eth_dev_shared_data_prepare();
-	rte_memcpy(owner, &ethdev->data->owner, sizeof(*owner));
+	if (eth_dev_shared_data_prepare() != NULL) {
+		rte_memcpy(owner, &ethdev->data->owner, sizeof(*owner));
+		ret = 0;
+	} else {
+		ret = -ENOMEM;
+	}
 
 	rte_spinlock_unlock(rte_mcfg_ethdev_get_lock());
 
-	rte_ethdev_trace_owner_get(port_id, owner);
+	rte_ethdev_trace_owner_get(port_id, owner, ret);
 
-	return 0;
+	return ret;
 }
 
 int

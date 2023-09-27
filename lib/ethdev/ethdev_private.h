@@ -67,7 +67,7 @@ void eth_dev_fp_ops_setup(struct rte_eth_fp_ops *fpo,
 		const struct rte_eth_dev *dev);
 
 
-void eth_dev_shared_data_prepare(void)
+void *eth_dev_shared_data_prepare(void)
 	__rte_exclusive_locks_required(rte_mcfg_ethdev_get_lock());
 
 void eth_dev_rxq_release(struct rte_eth_dev *dev, uint16_t qid);

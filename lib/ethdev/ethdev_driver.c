@@ -92,7 +92,8 @@ rte_eth_dev_allocate(const char *name)
 	/* Synchronize port creation between primary and secondary processes. */
 	rte_spinlock_lock(rte_mcfg_ethdev_get_lock());
 
-	eth_dev_shared_data_prepare();
+	if (eth_dev_shared_data_prepare() == NULL)
+		goto unlock;
 
 	if (eth_dev_allocated(name) != NULL) {
 		RTE_ETHDEV_LOG(ERR,
@@ -128,9 +129,10 @@ rte_eth_dev_allocated(const char *name)
 
 	rte_spinlock_lock(rte_mcfg_ethdev_get_lock());
 
-	eth_dev_shared_data_prepare();
-
-	ethdev = eth_dev_allocated(name);
+	if (eth_dev_shared_data_prepare() != NULL)
+		ethdev = eth_dev_allocated(name);
+	else
+		ethdev = NULL;
 
 	rte_spinlock_unlock(rte_mcfg_ethdev_get_lock());
 
@@ -151,7 +153,8 @@ rte_eth_dev_attach_secondary(const char *name)
 	/* Synchronize port attachment to primary port creation and release. */
 	rte_spinlock_lock(rte_mcfg_ethdev_get_lock());
 
-	eth_dev_shared_data_prepare();
+	if (eth_dev_shared_data_prepare() == NULL)
+		goto unlock;
 
 	for (i = 0; i < RTE_MAX_ETHPORTS; i++) {
 		if (strcmp(eth_dev_shared_data->data[i].name, name) == 0)
@@ -166,6 +169,7 @@ rte_eth_dev_attach_secondary(const char *name)
 		RTE_ASSERT(eth_dev->data->port_id == i);
 	}
 
+unlock:
 	rte_spinlock_unlock(rte_mcfg_ethdev_get_lock());
 	return eth_dev;
 }
@@ -219,12 +223,19 @@ rte_eth_dev_probing_finish(struct rte_eth_dev *dev)
 int
 rte_eth_dev_release_port(struct rte_eth_dev *eth_dev)
 {
+	int ret;
+
 	if (eth_dev == NULL)
 		return -EINVAL;
 
 	rte_spinlock_lock(rte_mcfg_ethdev_get_lock());
-	eth_dev_shared_data_prepare();
+	if (eth_dev_shared_data_prepare() == NULL)
+		ret = -EINVAL;
+	else
+		ret = 0;
 	rte_spinlock_unlock(rte_mcfg_ethdev_get_lock());
+	if (ret != 0)
+		return ret;
 
 	if (eth_dev->state != RTE_ETH_DEV_UNUSED)
 		rte_eth_dev_callback_process(eth_dev,

@@ -112,8 +112,9 @@ RTE_TRACE_POINT(
 
 RTE_TRACE_POINT(
 	rte_ethdev_trace_owner_new,
-	RTE_TRACE_POINT_ARGS(uint64_t owner_id),
+	RTE_TRACE_POINT_ARGS(uint64_t owner_id, int ret),
 	rte_trace_point_emit_u64(owner_id);
+	rte_trace_point_emit_int(ret);
 )
 
 RTE_TRACE_POINT(
@@ -377,10 +378,11 @@ RTE_TRACE_POINT(
 RTE_TRACE_POINT(
 	rte_ethdev_trace_owner_get,
 	RTE_TRACE_POINT_ARGS(uint16_t port_id,
-		const struct rte_eth_dev_owner *owner),
+		const struct rte_eth_dev_owner *owner, int ret),
 	rte_trace_point_emit_u16(port_id);
 	rte_trace_point_emit_u64(owner->id);
 	rte_trace_point_emit_string(owner->name);
+	rte_trace_point_emit_int(ret);
 )
 
 RTE_TRACE_POINT(
