@@ -2975,7 +2975,6 @@ iavf_prep_pkts(__rte_unused void *tx_queue, struct rte_mbuf **tx_pkts,
 	struct rte_mbuf *m;
 	struct iavf_tx_queue *txq = tx_queue;
 	struct rte_eth_dev *dev = &rte_eth_devices[txq->port_id];
-	uint16_t max_frame_size = dev->data->mtu + IAVF_ETH_OVERHEAD;
 	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
 	struct iavf_adapter *adapter = IAVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 
@@ -3004,9 +3003,7 @@ iavf_prep_pkts(__rte_unused void *tx_queue, struct rte_mbuf **tx_pkts,
 			return i;
 		}
 
-		/* check the data_len in mbuf */
-		if (m->data_len < IAVF_TX_MIN_PKT_LEN ||
-			m->data_len > max_frame_size) {
+		if (m->pkt_len < IAVF_TX_MIN_PKT_LEN) {
 			rte_errno = EINVAL;
 			return i;
 		}
