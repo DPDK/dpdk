@@ -2039,6 +2039,9 @@ txgbe_dev_close(struct rte_eth_dev *dev)
 
 	PMD_INIT_FUNC_TRACE();
 
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return 0;
+
 	txgbe_pf_reset_hw(hw);
 
 	ret = txgbe_dev_stop(dev);
