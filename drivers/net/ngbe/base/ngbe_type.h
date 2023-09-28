@@ -116,6 +116,46 @@ struct ngbe_fc_info {
 	enum ngbe_fc_mode requested_mode; /* FC mode requested by caller */
 };
 
+/* Flow Control Data Sheet defined values
+ * Calculation and defines taken from 802.1bb Annex O
+ */
+/* BitTimes (BT) conversion */
+#define NGBE_BT2KB(BT)         (((BT) + (8 * 1024 - 1)) / (8 * 1024))
+#define NGBE_B2BT(BT)          ((BT) * 8)
+
+/* Calculate Delay to respond to PFC */
+#define NGBE_PFC_D     672
+
+/* Calculate Cable Delay */
+#define NGBE_CABLE_DC  5556 /* Delay Copper */
+
+/* Calculate Interface Delay */
+#define NGBE_PHY_D     12800
+#define NGBE_MAC_D     4096
+#define NGBE_XAUI_D    (2 * 1024)
+
+#define NGBE_ID        (NGBE_MAC_D + NGBE_XAUI_D + NGBE_PHY_D)
+
+/* Calculate Delay incurred from higher layer */
+#define NGBE_HD        6144
+
+/* Calculate PCI Bus delay for low thresholds */
+#define NGBE_PCI_DELAY 10000
+
+/* Calculate delay value in bit times */
+#define NGBE_DV(_max_frame_link, _max_frame_tc) \
+			((36 * \
+			  (NGBE_B2BT(_max_frame_link) + \
+			   NGBE_PFC_D + \
+			   (2 * NGBE_CABLE_DC) + \
+			   (2 * NGBE_ID) + \
+			   NGBE_HD) / 25 + 1) + \
+			 2 * NGBE_B2BT(_max_frame_tc))
+
+#define NGBE_LOW_DV(_max_frame_tc) \
+			(2 * ((2 * NGBE_B2BT(_max_frame_tc) + \
+			      (36 * NGBE_PCI_DELAY / 25) + 1)))
+
 /* Statistics counters collected by the MAC */
 /* PB[] RxTx */
 struct ngbe_pb_stats {
