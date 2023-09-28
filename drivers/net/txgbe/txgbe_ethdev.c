@@ -1498,6 +1498,19 @@ txgbe_check_mq_mode(struct rte_eth_dev *dev)
 				return -EINVAL;
 			}
 		}
+
+		/*
+		 * When DCB/VT is off, maximum number of queues changes
+		 */
+		if (dev_conf->txmode.mq_mode == RTE_ETH_MQ_TX_NONE) {
+			if (nb_tx_q > TXGBE_NONE_MODE_TX_NB_QUEUES) {
+				PMD_INIT_LOG(ERR,
+					     "Neither VT nor DCB are enabled, "
+					     "nb_tx_q > %d.",
+					     TXGBE_NONE_MODE_TX_NB_QUEUES);
+				return -EINVAL;
+			}
+		}
 	}
 	return 0;
 }
