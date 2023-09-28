@@ -572,7 +572,6 @@ tx_desc_ol_flags_to_ptype(uint64_t oflags)
 		ptype |= RTE_PTYPE_L2_ETHER |
 			 RTE_PTYPE_L3_IPV4 |
 			 RTE_PTYPE_TUNNEL_GRE;
-		ptype |= RTE_PTYPE_INNER_L2_ETHER;
 		break;
 	case RTE_MBUF_F_TX_TUNNEL_GENEVE:
 		ptype |= RTE_PTYPE_L2_ETHER |
@@ -705,22 +704,24 @@ txgbe_get_tun_len(struct rte_mbuf *mbuf)
 static inline uint8_t
 txgbe_parse_tun_ptid(struct rte_mbuf *tx_pkt)
 {
-	uint64_t l2_none, l2_mac, l2_mac_vlan;
+	uint64_t l2_vxlan, l2_vxlan_mac, l2_vxlan_mac_vlan;
+	uint64_t l2_gre, l2_gre_mac, l2_gre_mac_vlan;
 	uint8_t ptid = 0;
 
-	if ((tx_pkt->ol_flags & (RTE_MBUF_F_TX_TUNNEL_VXLAN |
-				RTE_MBUF_F_TX_TUNNEL_VXLAN_GPE)) == 0)
-		return ptid;
+	l2_vxlan = sizeof(struct txgbe_udphdr) + sizeof(struct txgbe_vxlanhdr);
+	l2_vxlan_mac = l2_vxlan + sizeof(struct rte_ether_hdr);
+	l2_vxlan_mac_vlan = l2_vxlan_mac + sizeof(struct rte_vlan_hdr);
 
-	l2_none = sizeof(struct txgbe_udphdr) + sizeof(struct txgbe_vxlanhdr);
-	l2_mac = l2_none + sizeof(struct rte_ether_hdr);
-	l2_mac_vlan = l2_mac + sizeof(struct rte_vlan_hdr);
+	l2_gre = sizeof(struct txgbe_grehdr);
+	l2_gre_mac = l2_gre + sizeof(struct rte_ether_hdr);
+	l2_gre_mac_vlan = l2_gre_mac + sizeof(struct rte_vlan_hdr);
 
-	if (tx_pkt->l2_len == l2_none)
+	if (tx_pkt->l2_len == l2_vxlan || tx_pkt->l2_len == l2_gre)
 		ptid = TXGBE_PTID_TUN_EIG;
-	else if (tx_pkt->l2_len == l2_mac)
+	else if (tx_pkt->l2_len == l2_vxlan_mac || tx_pkt->l2_len == l2_gre_mac)
 		ptid = TXGBE_PTID_TUN_EIGM;
-	else if (tx_pkt->l2_len == l2_mac_vlan)
+	else if (tx_pkt->l2_len == l2_vxlan_mac_vlan ||
+			tx_pkt->l2_len == l2_gre_mac_vlan)
 		ptid = TXGBE_PTID_TUN_EIGMV;
 
 	return ptid;
