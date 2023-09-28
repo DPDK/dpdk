@@ -2875,6 +2875,11 @@ txgbe_dev_link_update_share(struct rte_eth_dev *dev,
 		break;
 	}
 
+	/* Re configure MAC RX */
+	if (hw->mac.type == txgbe_mac_raptor)
+		wr32m(hw, TXGBE_MACRXFLT, TXGBE_MACRXFLT_PROMISC,
+			TXGBE_MACRXFLT_PROMISC);
+
 	return rte_eth_linkstatus_set(dev, &link);
 }
 
