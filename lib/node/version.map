@@ -13,6 +13,8 @@ EXPERIMENTAL {
 
 	# added in 23.11
 	rte_node_ip4_reassembly_configure;
+	rte_node_udp4_dst_port_add;
+	rte_node_udp4_usr_node_add;
 
 	local: *;
 };
