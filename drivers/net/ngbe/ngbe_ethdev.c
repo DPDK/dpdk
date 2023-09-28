@@ -1961,6 +1961,8 @@ ngbe_dev_link_update_share(struct rte_eth_dev *dev,
 			wr32m(hw, NGBE_MACTXCFG, NGBE_MACTXCFG_SPEED_MASK,
 				NGBE_MACTXCFG_SPEED_1G | NGBE_MACTXCFG_TE);
 		}
+		wr32m(hw, NGBE_MACRXFLT, NGBE_MACRXFLT_PROMISC,
+			NGBE_MACRXFLT_PROMISC);
 	}
 
 	return rte_eth_linkstatus_set(dev, &link);
