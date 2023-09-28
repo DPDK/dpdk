@@ -5,6 +5,10 @@
 deps += ['cmdline', 'ring', 'mempool', 'mbuf']
 sources += files('commands.c', 'test.c')
 
+# optional dependencies: some files may use these - and so we should link them in -
+# but do not explicitly require them so they are not listed in the per-file lists below
+optional_deps = []
+
 # some other utility C files, providing functions used by various tests
 # so we need to include these deps in the dependency list for the files using those fns.
 packet_burst_generator_deps = ['net']
@@ -224,6 +228,12 @@ foreach f, f_deps : source_file_deps
     endif
     if has_deps
         sources += files(f)
+    endif
+endforeach
+# add the optional dependencies
+foreach d:optional_deps
+    if is_variable(def_lib + '_rte_' + d) and d not in deps
+        deps += d
     endif
 endforeach
 
