@@ -105,6 +105,10 @@ New Features
 
   * Added inline IPsec offload based on the security framework.
 
+* **Updated Wangxun ngbe driver.**
+
+  * Added 100M and auto-neg support in YT PHY fiber mode.
+
 * build: Enabling deprecated libraries is now done using the new
   ``enable_deprecated_libraries`` build option.
 

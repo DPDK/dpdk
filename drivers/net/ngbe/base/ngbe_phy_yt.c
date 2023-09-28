@@ -205,38 +205,68 @@ skip_an:
 		hw->phy.set_phy_power(hw, true);
 	} else if ((value & YT_CHIP_MODE_MASK) == YT_CHIP_MODE_SEL(1)) {
 		/* fiber to rgmii */
-		hw->phy.autoneg_advertised |= NGBE_LINK_SPEED_1GB_FULL;
+		if (!hw->mac.autoneg) {
+			switch (speed) {
+			case NGBE_LINK_SPEED_1GB_FULL:
+				value = NGBE_LINK_SPEED_1GB_FULL;
+				break;
+			case NGBE_LINK_SPEED_100M_FULL:
+				value = NGBE_LINK_SPEED_100M_FULL;
+				break;
+			default:
+				value = NGBE_LINK_SPEED_1GB_FULL;
+				break;
+			}
+			hw->phy.autoneg_advertised |= value;
+			goto skip_an_fiber;
+		}
+
+		value = 0;
+		if (speed & NGBE_LINK_SPEED_1GB_FULL)
+			hw->phy.autoneg_advertised |= NGBE_LINK_SPEED_1GB_FULL;
+		if (speed & NGBE_LINK_SPEED_100M_FULL)
+			hw->phy.autoneg_advertised |= NGBE_LINK_SPEED_100M_FULL;
+
+skip_an_fiber:
+		rte_spinlock_lock(&hw->phy_lock);
+		ngbe_read_phy_reg_ext_yt(hw, YT_MISC, 0, &value);
+		if (hw->phy.autoneg_advertised & NGBE_LINK_SPEED_1GB_FULL)
+			value |= YT_MISC_RESV;
+		else if (hw->phy.autoneg_advertised & NGBE_LINK_SPEED_100M_FULL)
+			value &= ~YT_MISC_RESV;
+		ngbe_write_phy_reg_ext_yt(hw, YT_MISC, 0, value);
+
+		/* close auto sensing */
+		ngbe_read_phy_reg_sds_ext_yt(hw, YT_AUTO, 0, &value);
+		value &= ~YT_AUTO_SENSING;
+		ngbe_write_phy_reg_sds_ext_yt(hw, YT_AUTO, 0, value);
+
+		ngbe_read_phy_reg_ext_yt(hw, YT_CHIP, 0, &value);
+		value &= ~YT_CHIP_SW_RST;
+		ngbe_write_phy_reg_ext_yt(hw, YT_CHIP, 0, value);
 
 		/* RGMII_Config1 : Config rx and tx training delay */
 		value = YT_RGMII_CONF1_RXDELAY |
 			YT_RGMII_CONF1_TXDELAY_FE |
 			YT_RGMII_CONF1_TXDELAY;
-		rte_spinlock_lock(&hw->phy_lock);
+
 		ngbe_write_phy_reg_ext_yt(hw, YT_RGMII_CONF1, 0, value);
 		value = YT_CHIP_MODE_SEL(1) |
 			YT_CHIP_SW_LDO_EN |
 			YT_CHIP_SW_RST;
 		ngbe_write_phy_reg_ext_yt(hw, YT_CHIP, 0, value);
 
-		ngbe_read_phy_reg_sds_ext_yt(hw, YT_AUTO, 0, &value);
-		value &= ~YT_AUTO_SENSING;
-		ngbe_write_phy_reg_sds_ext_yt(hw, YT_AUTO, 0, value);
-
-		ngbe_read_phy_reg_ext_yt(hw, YT_MISC, 0, &value);
-		value |= YT_MISC_RESV;
-		ngbe_write_phy_reg_ext_yt(hw, YT_MISC, 0, value);
-
-		ngbe_read_phy_reg_ext_yt(hw, YT_CHIP, 0, &value);
-		value &= ~YT_CHIP_SW_RST;
-		ngbe_write_phy_reg_ext_yt(hw, YT_CHIP, 0, value);
-
 		/* software reset */
-		if (hw->mac.autoneg)
+		if (hw->mac.autoneg) {
 			value = YT_BCR_RESET | YT_BCR_ANE | YT_BCR_RESTART_AN |
 				YT_BCR_DUPLEX | YT_BCR_SPEED_SELECT1;
-		else
-			value = YT_BCR_RESET | YT_BCR_DUPLEX |
-				YT_BCR_SPEED_SELECT1;
+		} else {
+			value = YT_BCR_RESET | YT_BCR_DUPLEX;
+			if (speed & NGBE_LINK_SPEED_1GB_FULL)
+				value |= YT_BCR_SPEED_SELECT1;
+			if (speed & NGBE_LINK_SPEED_100M_FULL)
+				value |= YT_BCR_SPEED_SELECT0;
+		}
 		hw->phy.write_reg(hw, YT_BCR, 0, value);
 		rte_spinlock_unlock(&hw->phy_lock);
 
