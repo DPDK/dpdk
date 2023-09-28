@@ -30,8 +30,20 @@ extern "C" {
 enum rte_node_ip4_lookup_next {
 	RTE_NODE_IP4_LOOKUP_NEXT_REWRITE,
 	/**< Rewrite node. */
+	RTE_NODE_IP4_LOOKUP_NEXT_IP4_LOCAL,
+	/** IP Local node. */
 	RTE_NODE_IP4_LOOKUP_NEXT_PKT_DROP,
 	/**< Number of next nodes of lookup node. */
+};
+
+/**
+ * IP4 Local next nodes.
+ */
+enum rte_node_ip4_local_next {
+	RTE_NODE_IP4_LOCAL_NEXT_UDP4_INPUT,
+	/**< ip4 Local node. */
+	RTE_NODE_IP4_LOCAL_NEXT_PKT_DROP,
+	/**< Packet drop node. */
 };
 
 /**

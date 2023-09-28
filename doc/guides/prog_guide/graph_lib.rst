@@ -506,3 +506,43 @@ Uses ``poll`` function to poll on the socket fd
 for ``POLLIN`` events to read the packets from raw socket
 to stream buffer and does ``rte_node_next_stream_move()``
 when there are received packets.
+
+ip4_local
+~~~~~~~~~
+This node is an intermediate node that does ``packet_type`` lookup for
+the received ipv4 packets and the result determines each packets next node.
+
+On successful ``packet_type`` lookup, for any IPv4 protocol the result
+contains the ``next_node`` id and ``next-hop`` id with which the packet
+needs to be further processed.
+
+On packet_type lookup failure, objects are redirected to ``pkt_drop`` node.
+``rte_node_ip4_route_add()`` is control path API to add ipv4 address with 32 bit
+depth to receive to packets.
+To achieve home run, node use ``rte_node_stream_move()`` as mentioned in above
+sections.
+
+udp4_input
+~~~~~~~~~~
+This node is an intermediate node that does udp destination port lookup for
+the received ipv4 packets and the result determines each packets next node.
+
+User registers a new node ``udp4_input`` into graph library during initialization
+and attach user specified node as edege to this node using
+``rte_node_udp4_usr_node_add()``, and create empty hash table with destination
+port and node id as its feilds.
+
+After successful addition of user node as edege, edge id is returned to the user.
+
+User would register ``ip4_lookup`` table with specified ip address and 32 bit as mask
+for ip filtration using api ``rte_node_ip4_route_add()``.
+
+After graph is created user would update hash table with custom port with
+and previously obtained edge id using API ``rte_node_udp4_dst_port_add()``.
+
+When packet is received lpm look up is performed if ip is matched the packet
+is handed over to ip4_local node, then packet is verified for udp proto and
+on success packet is enqueued to ``udp4_input`` node.
+
+Hash lookup is performed in ``udp4_input`` node with registered destination port
+and destination port in UDP packet , on success packet is handed to ``udp_user_node``.
