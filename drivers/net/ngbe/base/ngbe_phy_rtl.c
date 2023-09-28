@@ -148,6 +148,11 @@ s32 ngbe_init_phy_rtl(struct ngbe_hw *hw)
 	hw->phy.write_reg(hw, 27, 0xa42, 0x8011);
 	hw->phy.write_reg(hw, 28, 0xa42, 0x5737);
 
+	/* Disable fall to 100m if signal is not good */
+	hw->phy.read_reg(hw, 17, 0xa44, &value);
+	value &= ~0x8;
+	hw->phy.write_reg(hw, 17, 0xa44, value);
+
 	hw->phy.write_reg(hw, RTL_SCR, 0xa46, RTL_SCR_EXTINI);
 	hw->phy.read_reg(hw, RTL_SCR, 0xa46, &value);
 	if (!(value & RTL_SCR_EXTINI)) {
