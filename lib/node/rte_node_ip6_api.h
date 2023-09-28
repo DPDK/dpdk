@@ -30,8 +30,6 @@ enum rte_node_ip6_lookup_next {
 	/**< Rewrite node. */
 	RTE_NODE_IP6_LOOKUP_NEXT_PKT_DROP,
 	/**< Packet drop node. */
-	RTE_NODE_IP6_LOOKUP_NEXT_MAX,
-	/**< Number of next nodes of lookup node. */
 };
 
 /**

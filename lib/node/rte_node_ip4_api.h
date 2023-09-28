@@ -29,8 +29,6 @@ enum rte_node_ip4_lookup_next {
 	RTE_NODE_IP4_LOOKUP_NEXT_REWRITE,
 	/**< Rewrite node. */
 	RTE_NODE_IP4_LOOKUP_NEXT_PKT_DROP,
-	/**< Packet drop node. */
-	RTE_NODE_IP4_LOOKUP_NEXT_MAX,
 	/**< Number of next nodes of lookup node. */
 };
 

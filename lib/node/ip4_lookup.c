@@ -225,7 +225,7 @@ static struct rte_node_register ip4_lookup_node = {
 
 	.init = ip4_lookup_node_init,
 
-	.nb_edges = RTE_NODE_IP4_LOOKUP_NEXT_MAX,
+	.nb_edges = RTE_NODE_IP4_LOOKUP_NEXT_PKT_DROP + 1,
 	.next_nodes = {
 		[RTE_NODE_IP4_LOOKUP_NEXT_REWRITE] = "ip4_rewrite",
 		[RTE_NODE_IP4_LOOKUP_NEXT_PKT_DROP] = "pkt_drop",

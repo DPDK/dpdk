@@ -362,7 +362,7 @@ static struct rte_node_register ip6_lookup_node = {
 
 	.init = ip6_lookup_node_init,
 
-	.nb_edges = RTE_NODE_IP6_LOOKUP_NEXT_MAX,
+	.nb_edges = RTE_NODE_IP6_LOOKUP_NEXT_PKT_DROP + 1,
 	.next_nodes = {
 		[RTE_NODE_IP6_LOOKUP_NEXT_REWRITE] = "ip6_rewrite",
 		[RTE_NODE_IP6_LOOKUP_NEXT_PKT_DROP] = "pkt_drop",
