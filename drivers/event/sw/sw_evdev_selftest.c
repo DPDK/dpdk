@@ -28,7 +28,7 @@
 
 #define MAX_PORTS 16
 #define MAX_QIDS 16
-#define NUM_PACKETS (1<<18)
+#define NUM_PACKETS (1 << 17)
 #define DEQUEUE_DEPTH 128
 
 static int evdev;
