@@ -1167,7 +1167,7 @@ ngbe_dev_stop(struct rte_eth_dev *dev)
 	int vf;
 
 	if (hw->adapter_stopped)
-		return 0;
+		goto out;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -1188,8 +1188,6 @@ ngbe_dev_stop(struct rte_eth_dev *dev)
 
 	for (vf = 0; vfinfo != NULL && vf < pci_dev->max_vfs; vf++)
 		vfinfo[vf].clear_to_send = false;
-
-	hw->phy.set_phy_power(hw, false);
 
 	ngbe_dev_clear_queues(dev);
 
@@ -1216,6 +1214,10 @@ ngbe_dev_stop(struct rte_eth_dev *dev)
 
 	hw->adapter_stopped = true;
 	dev->data->dev_started = 0;
+
+out:
+	/* close phy to prevent reset in dev_close from restarting physical link */
+	hw->phy.set_phy_power(hw, false);
 
 	return 0;
 }
