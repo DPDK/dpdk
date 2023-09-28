@@ -41,6 +41,7 @@
 /*Default value of Max Rx Queue*/
 #define TXGBE_MAX_RX_QUEUE_NUM	128
 #define TXGBE_VMDQ_DCB_NB_QUEUES     TXGBE_MAX_RX_QUEUE_NUM
+#define TXGBE_NONE_MODE_TX_NB_QUEUES 64
 
 #ifndef NBBY
 #define NBBY	8	/* number of bits in a byte */
