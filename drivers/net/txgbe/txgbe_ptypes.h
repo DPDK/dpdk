@@ -348,4 +348,9 @@ struct txgbe_nvgrehdr {
 	__be32 tni;
 };
 
+struct txgbe_grehdr {
+	__be16 flags;
+	__be16 proto;
+};
+
 #endif /* _TXGBE_PTYPE_H_ */

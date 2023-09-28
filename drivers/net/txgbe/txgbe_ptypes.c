@@ -320,8 +320,6 @@ txgbe_encode_ptype_tunnel(u32 ptype)
 		ptid |= TXGBE_PTID_TUN_EI;
 		break;
 	case RTE_PTYPE_TUNNEL_GRE:
-		ptid |= TXGBE_PTID_TUN_EIG;
-		break;
 	case RTE_PTYPE_TUNNEL_VXLAN:
 	case RTE_PTYPE_TUNNEL_VXLAN_GPE:
 	case RTE_PTYPE_TUNNEL_NVGRE:
@@ -330,20 +328,6 @@ txgbe_encode_ptype_tunnel(u32 ptype)
 		break;
 	default:
 		return ptid;
-	}
-
-	switch (ptype & RTE_PTYPE_INNER_L2_MASK) {
-	case RTE_PTYPE_INNER_L2_ETHER:
-		ptid |= TXGBE_PTID_TUN_EIGM;
-		break;
-	case RTE_PTYPE_INNER_L2_ETHER_VLAN:
-		ptid |= TXGBE_PTID_TUN_EIGMV;
-		break;
-	case RTE_PTYPE_INNER_L2_ETHER_QINQ:
-		ptid |= TXGBE_PTID_TUN_EIGMV;
-		break;
-	default:
-		break;
 	}
 
 	switch (ptype & RTE_PTYPE_INNER_L3_MASK) {
