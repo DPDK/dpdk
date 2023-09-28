@@ -1668,7 +1668,7 @@ txgbe_dev_stop(struct rte_eth_dev *dev)
 	int vf;
 
 	if (hw->adapter_stopped)
-		return 0;
+		goto out;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -1686,14 +1686,6 @@ txgbe_dev_stop(struct rte_eth_dev *dev)
 
 	for (vf = 0; vfinfo != NULL && vf < pci_dev->max_vfs; vf++)
 		vfinfo[vf].clear_to_send = false;
-
-	if (hw->phy.media_type == txgbe_media_type_copper) {
-		/* Turn off the copper */
-		hw->phy.set_phy_power(hw, false);
-	} else {
-		/* Turn off the laser */
-		hw->mac.disable_tx_laser(hw);
-	}
 
 	txgbe_dev_clear_queues(dev);
 
@@ -1723,6 +1715,16 @@ txgbe_dev_stop(struct rte_eth_dev *dev)
 
 	hw->adapter_stopped = true;
 	dev->data->dev_started = 0;
+
+out:
+	/* close phy to prevent reset in dev_close from restarting physical link */
+	if (hw->phy.media_type == txgbe_media_type_copper) {
+		/* Turn off the copper */
+		hw->phy.set_phy_power(hw, false);
+	} else {
+		/* Turn off the laser */
+		hw->mac.disable_tx_laser(hw);
+	}
 
 	return 0;
 }
