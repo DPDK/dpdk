@@ -1137,6 +1137,23 @@ rte_event_dma_adapter_vchan_del(uint8_t id, int16_t dma_dev_id, uint16_t vchan)
 	return ret;
 }
 
+int
+rte_event_dma_adapter_service_id_get(uint8_t id, uint32_t *service_id)
+{
+	struct event_dma_adapter *adapter;
+
+	EVENT_DMA_ADAPTER_ID_VALID_OR_ERR_RET(id, -EINVAL);
+
+	adapter = edma_id_to_adapter(id);
+	if (adapter == NULL || service_id == NULL)
+		return -EINVAL;
+
+	if (adapter->service_initialized)
+		*service_id = adapter->service_id;
+
+	return adapter->service_initialized ? 0 : -ESRCH;
+}
+
 static int
 edma_adapter_ctrl(uint8_t id, int start)
 {
