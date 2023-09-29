@@ -43,5 +43,5 @@ driver_sdk_headers += files(
         'event_timer_adapter_pmd.h',
 )
 
-deps += ['ring', 'ethdev', 'hash', 'mempool', 'mbuf', 'timer', 'cryptodev']
+deps += ['ring', 'ethdev', 'hash', 'mempool', 'mbuf', 'timer', 'cryptodev', 'dmadev']
 deps += ['telemetry']

@@ -20,6 +20,7 @@
 #include <rte_errno.h>
 #include <ethdev_driver.h>
 #include <rte_cryptodev.h>
+#include <rte_dmadev.h>
 #include <cryptodev_pmd.h>
 #include <rte_telemetry.h>
 
@@ -222,6 +223,28 @@ rte_event_eth_tx_adapter_caps_get(uint8_t dev_id, uint16_t eth_port_id,
 								eth_dev,
 								caps)
 			: 0;
+}
+
+int
+rte_event_dma_adapter_caps_get(uint8_t dev_id, uint8_t dma_dev_id, uint32_t *caps)
+{
+	struct rte_eventdev *dev;
+
+	RTE_EVENTDEV_VALID_DEVID_OR_ERR_RET(dev_id, -EINVAL);
+	if (!rte_dma_is_valid(dma_dev_id))
+		return -EINVAL;
+
+	dev = &rte_eventdevs[dev_id];
+
+	if (caps == NULL)
+		return -EINVAL;
+
+	*caps = 0;
+
+	if (dev->dev_ops->dma_adapter_caps_get)
+		return (*dev->dev_ops->dma_adapter_caps_get)(dev, dma_dev_id, caps);
+
+	return 0;
 }
 
 static inline int
