@@ -1403,3 +1403,16 @@ rte_event_dma_adapter_stats_reset(uint8_t id)
 
 	return 0;
 }
+
+uint16_t
+rte_event_dma_adapter_enqueue(uint8_t dev_id, uint8_t port_id, struct rte_event ev[],
+			      uint16_t nb_events)
+{
+	const struct rte_event_fp_ops *fp_ops;
+	void *port;
+
+	fp_ops = &rte_event_fp_ops[dev_id];
+	port = fp_ops->data[port_id];
+
+	return fp_ops->dma_enqueue(port, ev, nb_events);
+}
