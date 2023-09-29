@@ -156,6 +156,7 @@ struct virtqueue_stats {
 	uint64_t iotlb_misses;
 	uint64_t inflight_submitted;
 	uint64_t inflight_completed;
+	uint64_t guest_notifications_suppressed;
 	/* Counters below are atomic, and should be incremented as such. */
 	uint64_t guest_notifications;
 	uint64_t guest_notifications_offloaded;
@@ -346,6 +347,8 @@ struct vhost_virtqueue {
 
 	struct vhost_vring_addr ring_addrs;
 	struct virtqueue_stats	stats;
+
+	bool irq_pending;
 } __rte_cache_aligned;
 
 /* Virtio device status as per Virtio specification */
@@ -908,12 +911,24 @@ vhost_need_event(uint16_t event_idx, uint16_t new_idx, uint16_t old)
 static __rte_always_inline void
 vhost_vring_inject_irq(struct virtio_net *dev, struct vhost_virtqueue *vq)
 {
-	if (dev->notify_ops->guest_notify &&
-	    dev->notify_ops->guest_notify(dev->vid, vq->index)) {
-		if (dev->flags & VIRTIO_DEV_STATS_ENABLED)
-			__atomic_fetch_add(&vq->stats.guest_notifications_offloaded,
-				1, __ATOMIC_RELAXED);
-		return;
+	bool expected = false;
+
+	if (dev->notify_ops->guest_notify) {
+		if (__atomic_compare_exchange_n(&vq->irq_pending, &expected, true, 0,
+				  __ATOMIC_RELEASE, __ATOMIC_RELAXED)) {
+			if (dev->notify_ops->guest_notify(dev->vid, vq->index)) {
+				if (dev->flags & VIRTIO_DEV_STATS_ENABLED)
+					__atomic_fetch_add(&vq->stats.guest_notifications_offloaded,
+						1, __ATOMIC_RELAXED);
+				return;
+			}
+
+			/* Offloading failed, fallback to direct IRQ injection */
+			__atomic_store_n(&vq->irq_pending, false, __ATOMIC_RELEASE);
+		} else {
+			vq->stats.guest_notifications_suppressed++;
+			return;
+		}
 	}
 
 	if (dev->backend_ops->inject_irq(dev, vq)) {

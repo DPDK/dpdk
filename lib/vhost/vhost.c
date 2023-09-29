@@ -49,6 +49,8 @@ static const struct vhost_vq_stats_name_off vhost_vq_stat_strings[] = {
 		stats.guest_notifications_offloaded)},
 	{"guest_notifications_error", offsetof(struct vhost_virtqueue,
 		stats.guest_notifications_error)},
+	{"guest_notifications_suppressed", offsetof(struct vhost_virtqueue,
+		stats.guest_notifications_suppressed)},
 	{"iotlb_hits",             offsetof(struct vhost_virtqueue, stats.iotlb_hits)},
 	{"iotlb_misses",           offsetof(struct vhost_virtqueue, stats.iotlb_misses)},
 	{"inflight_submitted",     offsetof(struct vhost_virtqueue, stats.inflight_submitted)},
@@ -1516,6 +1518,8 @@ rte_vhost_notify_guest(int vid, uint16_t queue_id)
 		return;
 
 	rte_rwlock_read_lock(&vq->access_lock);
+
+	__atomic_store_n(&vq->irq_pending, false, __ATOMIC_RELEASE);
 
 	if (dev->backend_ops->inject_irq(dev, vq)) {
 		if (dev->flags & VIRTIO_DEV_STATS_ENABLED)
