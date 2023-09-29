@@ -42,6 +42,10 @@ typedef uint16_t (*event_crypto_adapter_enqueue_t)(void *port,
 						   uint16_t nb_events);
 /**< @internal Enqueue burst of events on crypto adapter */
 
+typedef uint16_t (*event_dma_adapter_enqueue_t)(void *port, struct rte_event ev[],
+						uint16_t nb_events);
+/**< @internal Enqueue burst of events on DMA adapter */
+
 struct rte_event_fp_ops {
 	void **data;
 	/**< points to array of internal port data pointers */
@@ -65,7 +69,9 @@ struct rte_event_fp_ops {
 	/**< PMD Tx adapter enqueue same destination function. */
 	event_crypto_adapter_enqueue_t ca_enqueue;
 	/**< PMD Crypto adapter enqueue function. */
-	uintptr_t reserved[5];
+	event_dma_adapter_enqueue_t dma_enqueue;
+	/**< PMD DMA adapter enqueue function. */
+	uintptr_t reserved[4];
 } __rte_cache_aligned;
 
 extern struct rte_event_fp_ops rte_event_fp_ops[RTE_EVENT_MAX_DEVS];

@@ -333,7 +333,8 @@ eventdev.
 .. Note::
 
          EventDev needs to be started before starting the event producers such
-         as event_eth_rx_adapter, event_timer_adapter and event_crypto_adapter.
+         as event_eth_rx_adapter, event_timer_adapter, event_crypto_adapter and
+         event_dma_adapter.
 
 Ingress of New Events
 ~~~~~~~~~~~~~~~~~~~~~
@@ -445,8 +446,9 @@ using ``rte_event_dev_stop_flush_callback_register()`` function.
 .. Note::
 
         The event producers such as ``event_eth_rx_adapter``,
-        ``event_timer_adapter`` and ``event_crypto_adapter``
-        need to be stopped before stopping the event device.
+        ``event_timer_adapter``, ``event_crypto_adapter`` and
+        ``event_dma_adapter`` need to be stopped before stopping
+        the event device.
 
 Summary
 -------

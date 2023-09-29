@@ -29,6 +29,7 @@ The public API headers are grouped by topics:
   [event_eth_tx_adapter](@ref rte_event_eth_tx_adapter.h),
   [event_timer_adapter](@ref rte_event_timer_adapter.h),
   [event_crypto_adapter](@ref rte_event_crypto_adapter.h),
+  [event_dma_adapter](@ref rte_event_dma_adapter.h),
   [rawdev](@ref rte_rawdev.h),
   [metrics](@ref rte_metrics.h),
   [bitrate](@ref rte_bitrate.h),

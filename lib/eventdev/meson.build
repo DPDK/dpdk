@@ -25,6 +25,7 @@ sources = files(
 )
 headers = files(
         'rte_event_crypto_adapter.h',
+        'rte_event_dma_adapter.h',
         'rte_event_eth_rx_adapter.h',
         'rte_event_eth_tx_adapter.h',
         'rte_event_ring.h',

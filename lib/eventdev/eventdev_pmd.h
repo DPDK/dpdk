@@ -178,8 +178,12 @@ struct rte_eventdev {
 	event_tx_adapter_enqueue_t txa_enqueue;
 	/**< Pointer to PMD eth Tx adapter enqueue function. */
 	event_crypto_adapter_enqueue_t ca_enqueue;
+	/**< Pointer to PMD crypto adapter enqueue function. */
 
-	uint64_t reserved_64s[4]; /**< Reserved for future fields */
+	event_dma_adapter_enqueue_t dma_enqueue;
+	/**< Pointer to PMD DMA adapter enqueue function. */
+
+	uint64_t reserved_64s[3]; /**< Reserved for future fields */
 	void *reserved_ptrs[3];	  /**< Reserved for future fields */
 } __rte_cache_aligned;
 
@@ -1320,6 +1324,156 @@ typedef int (*eventdev_eth_tx_adapter_queue_stop)
 
 #define eventdev_stop_flush_t rte_eventdev_stop_flush_t
 
+/**
+ * Retrieve the event device's DMA adapter capabilities for the
+ * specified DMA device
+ *
+ * @param dev
+ *   Event device pointer
+ *
+ * @param dma_dev_id
+ *   DMA device identifier
+ *
+ * @param[out] caps
+ *   A pointer to memory filled with event adapter capabilities.
+ *   It is expected to be pre-allocated & initialized by caller.
+ *
+ * @return
+ *   - 0: Success, driver provides event adapter capabilities for the
+ *	dmadev.
+ *   - <0: Error code returned by the driver function.
+ *
+ */
+typedef int (*eventdev_dma_adapter_caps_get_t)(const struct rte_eventdev *dev,
+					       const int16_t dma_dev_id, uint32_t *caps);
+
+/**
+ * Add DMA vchan queue to event device. This callback is invoked if
+ * the caps returned from rte_event_dma_adapter_caps_get(, dmadev_id)
+ * has RTE_EVENT_DMA_ADAPTER_CAP_INTERNAL_PORT_* set.
+ *
+ * @param dev
+ *   Event device pointer
+ *
+ * @param dma_dev_id
+ *   DMA device identifier
+ *
+ * @param vchan_id
+ *   dmadev vchan queue identifier.
+ *
+ * @param event
+ *   Event information required for binding dmadev vchan to event queue.
+ *   This structure will have a valid value for only those HW PMDs supporting
+ *   @see RTE_EVENT_DMA_ADAPTER_CAP_INTERNAL_PORT_VCHAN_EV_BIND capability.
+ *
+ * @return
+ *   - 0: Success, dmadev vchan added successfully.
+ *   - <0: Error code returned by the driver function.
+ *
+ */
+typedef int (*eventdev_dma_adapter_vchan_add_t)(const struct rte_eventdev *dev,
+						const int16_t dma_dev_id,
+						uint16_t vchan_id,
+						const struct rte_event *event);
+
+/**
+ * Delete DMA vhcan to event device. This callback is invoked if
+ * the caps returned from rte_event_dma_adapter_caps_get(, dmadev_id)
+ * has RTE_EVENT_DMA_ADAPTER_CAP_INTERNAL_PORT_* set.
+ *
+ * @param dev
+ *   Event device pointer
+ *
+ * @param dma_dev_id
+ *   DMA device identifier
+ *
+ * @param vchan_id
+ *   dmadev vchan identifier.
+ *
+ * @return
+ *   - 0: Success, dmadev vchan deleted successfully.
+ *   - <0: Error code returned by the driver function.
+ *
+ */
+typedef int (*eventdev_dma_adapter_vchan_del_t)(const struct rte_eventdev *dev,
+						const int16_t dma_dev_id,
+						uint16_t vchan_id);
+
+/**
+ * Start DMA adapter. This callback is invoked if
+ * the caps returned from rte_event_dma_adapter_caps_get(.., dmadev_id)
+ * has RTE_EVENT_DMA_ADAPTER_CAP_INTERNAL_PORT_* set and vchan for dmadev_id
+ * have been added to the event device.
+ *
+ * @param dev
+ *   Event device pointer
+ *
+ * @param dma_dev_id
+ *   DMA device identifier
+ *
+ * @return
+ *   - 0: Success, DMA adapter started successfully.
+ *   - <0: Error code returned by the driver function.
+ */
+typedef int (*eventdev_dma_adapter_start_t)(const struct rte_eventdev *dev,
+					    const int16_t dma_dev_id);
+
+/**
+ * Stop DMA adapter. This callback is invoked if
+ * the caps returned from rte_event_dma_adapter_caps_get(.., dmadev_id)
+ * has RTE_EVENT_DMA_ADAPTER_CAP_INTERNAL_PORT_* set and vchan for dmadev_id
+ * have been added to the event device.
+ *
+ * @param dev
+ *   Event device pointer
+ *
+ * @param dma_dev_id
+ *   DMA device identifier
+ *
+ * @return
+ *   - 0: Success, DMA adapter stopped successfully.
+ *   - <0: Error code returned by the driver function.
+ */
+typedef int (*eventdev_dma_adapter_stop_t)(const struct rte_eventdev *dev,
+					   const int16_t dma_dev_id);
+
+struct rte_event_dma_adapter_stats;
+
+/**
+ * Retrieve DMA adapter statistics.
+ *
+ * @param dev
+ *   Event device pointer
+ *
+ * @param dma_dev_id
+ *   DMA device identifier
+ *
+ * @param[out] stats
+ *   Pointer to stats structure
+ *
+ * @return
+ *   Return 0 on success.
+ */
+typedef int (*eventdev_dma_adapter_stats_get)(const struct rte_eventdev *dev,
+					      const int16_t dma_dev_id,
+					      struct rte_event_dma_adapter_stats *stats);
+
+/**
+ * Reset DMA adapter statistics.
+ *
+ * @param dev
+ *   Event device pointer
+ *
+ * @param dma_dev_id
+ *   DMA device identifier
+ *
+ * @return
+ *   Return 0 on success.
+ */
+typedef int (*eventdev_dma_adapter_stats_reset)(const struct rte_eventdev *dev,
+						const int16_t dma_dev_id);
+
+
 /** Event device operations function pointer table */
 struct eventdev_ops {
 	eventdev_info_get_t dev_infos_get;	/**< Get device info. */
@@ -1439,6 +1593,21 @@ struct eventdev_ops {
 	/**< Start Tx queue assigned to Tx adapter instance */
 	eventdev_eth_tx_adapter_queue_stop eth_tx_adapter_queue_stop;
 	/**< Stop Tx queue assigned to Tx adapter instance */
+
+	eventdev_dma_adapter_caps_get_t dma_adapter_caps_get;
+	/**< Get DMA adapter capabilities */
+	eventdev_dma_adapter_vchan_add_t dma_adapter_vchan_add;
+	/**< Add vchan queue to DMA adapter */
+	eventdev_dma_adapter_vchan_del_t dma_adapter_vchan_del;
+	/**< Delete vchan queue from DMA adapter */
+	eventdev_dma_adapter_start_t dma_adapter_start;
+	/**< Start DMA adapter */
+	eventdev_dma_adapter_stop_t dma_adapter_stop;
+	/**< Stop DMA adapter */
+	eventdev_dma_adapter_stats_get dma_adapter_stats_get;
+	/**< Get DMA stats */
+	eventdev_dma_adapter_stats_reset dma_adapter_stats_reset;
+	/**< Reset DMA stats */
 
 	eventdev_selftest dev_selftest;
 	/**< Start eventdev Selftest */

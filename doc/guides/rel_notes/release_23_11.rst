@@ -184,6 +184,12 @@ New Features
   for creating Rx adapter instance for the applications desire to
   control both the event port allocation and event buffer size.
 
+* **Added event DMA adapter library.**
+
+  * Added the Event DMA Adapter Library. This library extends the event-based
+    model by introducing APIs that allow applications to enqueue/dequeue DMA
+    operations to/from dmadev as events scheduled by an event device.
+
 * **Updated Marvell cnxk eventdev driver.**
 
   * Added support for ``remaining_ticks_get`` timer adapter PMD callback

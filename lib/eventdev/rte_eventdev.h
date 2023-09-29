@@ -1197,6 +1197,8 @@ struct rte_event_vector {
  */
 #define RTE_EVENT_TYPE_ETH_RX_ADAPTER   0x4
 /**< The event generated from event eth Rx adapter */
+#define RTE_EVENT_TYPE_DMADEV           0x5
+/**< The event generated from dma subsystem */
 #define RTE_EVENT_TYPE_VECTOR           0x8
 /**< Indicates that event is a vector.
  * All vector event types should be a logical OR of EVENT_TYPE_VECTOR.
@@ -1461,6 +1463,48 @@ rte_event_timer_adapter_caps_get(uint8_t dev_id, uint32_t *caps);
 int
 rte_event_crypto_adapter_caps_get(uint8_t dev_id, uint8_t cdev_id,
 				  uint32_t *caps);
+
+/* DMA adapter capability bitmap flag */
+#define RTE_EVENT_DMA_ADAPTER_CAP_INTERNAL_PORT_OP_NEW 0x1
+/**< Flag indicates HW is capable of generating events in
+ * RTE_EVENT_OP_NEW enqueue operation. DMADEV will send
+ * packets to the event device as new events using an
+ * internal event port.
+ */
+
+#define RTE_EVENT_DMA_ADAPTER_CAP_INTERNAL_PORT_OP_FWD 0x2
+/**< Flag indicates HW is capable of generating events in
+ * RTE_EVENT_OP_FORWARD enqueue operation. DMADEV will send
+ * packets to the event device as forwarded event using an
+ * internal event port.
+ */
+
+#define RTE_EVENT_DMA_ADAPTER_CAP_INTERNAL_PORT_VCHAN_EV_BIND 0x4
+/**< Flag indicates HW is capable of mapping DMA vchan to event queue. */
+
+/**
+ * Retrieve the event device's DMA adapter capabilities for the
+ * specified dmadev device
+ *
+ * @param dev_id
+ *   The identifier of the device.
+ *
+ * @param dmadev_id
+ *   The identifier of the dmadev device.
+ *
+ * @param[out] caps
+ *   A pointer to memory filled with event adapter capabilities.
+ *   It is expected to be pre-allocated & initialized by caller.
+ *
+ * @return
+ *   - 0: Success, driver provides event adapter capabilities for the
+ *     dmadev device.
+ *   - <0: Error code returned by the driver function.
+ *
+ */
+__rte_experimental
+int
+rte_event_dma_adapter_caps_get(uint8_t dev_id, uint8_t dmadev_id, uint32_t *caps);
 
 /* Ethdev Tx adapter capability bitmap flags */
 #define RTE_EVENT_ETH_TX_ADAPTER_CAP_INTERNAL_PORT	0x1
