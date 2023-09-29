@@ -74,6 +74,13 @@ struct dma_device_info {
 	/* Next queue pair to be processed */
 	uint16_t next_vchan_id;
 
+	/* Set to indicate processing has been started */
+	uint8_t dev_started;
+
+	/* Set to indicate dmadev->eventdev packet
+	 * transfer uses a hardware mechanism
+	 */
+	uint8_t internal_event_port;
 } __rte_cache_aligned;
 
 struct event_dma_adapter {
@@ -1128,4 +1135,66 @@ rte_event_dma_adapter_vchan_del(uint8_t id, int16_t dma_dev_id, uint16_t vchan)
 	}
 
 	return ret;
+}
+
+static int
+edma_adapter_ctrl(uint8_t id, int start)
+{
+	struct event_dma_adapter *adapter;
+	struct dma_device_info *dev_info;
+	struct rte_eventdev *dev;
+	uint16_t num_dma_dev;
+	int stop = !start;
+	int use_service;
+	uint32_t i;
+
+	use_service = 0;
+	EVENT_DMA_ADAPTER_ID_VALID_OR_ERR_RET(id, -EINVAL);
+	adapter = edma_id_to_adapter(id);
+	if (adapter == NULL)
+		return -EINVAL;
+
+	num_dma_dev = rte_dma_count_avail();
+	dev = &rte_eventdevs[adapter->eventdev_id];
+
+	for (i = 0; i < num_dma_dev; i++) {
+		dev_info = &adapter->dma_devs[i];
+		/* start check for num queue pairs */
+		if (start && !dev_info->num_vchanq)
+			continue;
+		/* stop check if dev has been started */
+		if (stop && !dev_info->dev_started)
+			continue;
+		use_service |= !dev_info->internal_event_port;
+		dev_info->dev_started = start;
+		if (dev_info->internal_event_port == 0)
+			continue;
+		start ? (*dev->dev_ops->dma_adapter_start)(dev, i) :
+			(*dev->dev_ops->dma_adapter_stop)(dev, i);
+	}
+
+	if (use_service)
+		rte_service_runstate_set(adapter->service_id, start);
+
+	return 0;
+}
+
+int
+rte_event_dma_adapter_start(uint8_t id)
+{
+	struct event_dma_adapter *adapter;
+
+	EVENT_DMA_ADAPTER_ID_VALID_OR_ERR_RET(id, -EINVAL);
+
+	adapter = edma_id_to_adapter(id);
+	if (adapter == NULL)
+		return -EINVAL;
+
+	return edma_adapter_ctrl(id, 1);
+}
+
+int
+rte_event_dma_adapter_stop(uint8_t id)
+{
+	return edma_adapter_ctrl(id, 0);
 }
