@@ -177,13 +177,16 @@ nfp_net_nfdk_set_meta_data(struct rte_mbuf *pkt,
 	char *meta;
 	uint8_t layer = 0;
 	uint32_t meta_type;
+	uint32_t cap_extend;
 	struct nfp_net_hw *hw;
 	uint32_t header_offset;
 	uint8_t vlan_layer = 0;
+	uint8_t ipsec_layer = 0;
 	struct nfp_net_meta_raw meta_data;
 
 	memset(&meta_data, 0, sizeof(meta_data));
 	hw = txq->hw;
+	cap_extend = nn_cfg_readl(hw, NFP_NET_CFG_CAP_WORD1);
 
 	if ((pkt->ol_flags & RTE_MBUF_F_TX_VLAN) != 0 &&
 			(hw->ctrl & NFP_NET_CFG_CTRL_TXVLAN_V2) != 0) {
@@ -191,6 +194,18 @@ nfp_net_nfdk_set_meta_data(struct rte_mbuf *pkt,
 			meta_data.length = NFP_NET_META_HEADER_SIZE;
 		meta_data.length += NFP_NET_META_FIELD_SIZE;
 		meta_data.header |= NFP_NET_META_VLAN;
+	}
+
+	if ((pkt->ol_flags & RTE_MBUF_F_TX_SEC_OFFLOAD) != 0 &&
+			(cap_extend & NFP_NET_CFG_CTRL_IPSEC) != 0) {
+		uint32_t ipsec_type = NFP_NET_META_IPSEC |
+				NFP_NET_META_IPSEC << NFP_NET_META_FIELD_SIZE |
+				NFP_NET_META_IPSEC << (2 * NFP_NET_META_FIELD_SIZE);
+		if (meta_data.length == 0)
+			meta_data.length = NFP_NET_META_FIELD_SIZE;
+		uint8_t ipsec_offset = meta_data.length - NFP_NET_META_FIELD_SIZE;
+		meta_data.header |= (ipsec_type << ipsec_offset);
+		meta_data.length += 3 * NFP_NET_META_FIELD_SIZE;
 	}
 
 	if (meta_data.length == 0)
@@ -214,6 +229,15 @@ nfp_net_nfdk_set_meta_data(struct rte_mbuf *pkt,
 			}
 			nfp_net_set_meta_vlan(&meta_data, pkt, layer);
 			vlan_layer++;
+			break;
+		case NFP_NET_META_IPSEC:
+			if (ipsec_layer > 2) {
+				PMD_DRV_LOG(ERR, "At most 3 layers of ipsec is supported for now.");
+				return;
+			}
+
+			nfp_net_set_meta_ipsec(&meta_data, txq, pkt, layer, ipsec_layer);
+			ipsec_layer++;
 			break;
 		default:
 			PMD_DRV_LOG(ERR, "The metadata type not supported");

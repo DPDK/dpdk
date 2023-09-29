@@ -348,6 +348,18 @@ Metadata with L2 (1W/4B)
    The vlan[0] is the innermost VLAN
    The vlan[1] is the QinQ info
 
+NFP_NET_META_IPSEC
+The IPsec type requires 4 bit.
+The SA index value is 32 bit which need 1 data field.
+::
+
+   ----------------------------------------------------------------
+      3                   2                   1                   0
+    1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                           sa_idx                              |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
 TX
 ~~
 
@@ -363,3 +375,22 @@ NFP_NET_META_VLAN
                                    ^                               ^
                              NOTE: |             TCI               |
                                    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+NFP_NET_META_IPSEC
+The IPsec type requires 12 bit, because it requires three data fields.
+::
+
+   ----------------------------------------------------------------
+      3                   2                   1                   0
+    1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                            sa_idx                             |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                     nfp_ipsec_force_seq_low                   |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                     nfp_ipsec_force_seq_hi                    |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+   The sa_idx is 32 bit which need 1 data field.
+   The nfp_ipsec_force_seq_low & nfp_ipsec_force_seq_hi is Anti-re-anti-count,
+   which is 64 bit need two data fields.

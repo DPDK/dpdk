@@ -8,11 +8,13 @@
 #include "nfp_rxtx.h"
 
 #include <ethdev_pci.h>
+#include <rte_security.h>
 
 #include "nfd3/nfp_nfd3.h"
 #include "nfdk/nfp_nfdk.h"
 #include "flower/nfp_flower.h"
 
+#include "nfp_ipsec.h"
 #include "nfp_logs.h"
 
 /* Maximum number of supported VLANs in parsed form packet metadata. */
@@ -25,8 +27,10 @@
  * read-only after it have been recorded during parsing by nfp_net_parse_meta().
  *
  * @port_id: Port id value
+ * @sa_idx: IPsec SA index
  * @hash: RSS hash value
  * @hash_type: RSS hash type
+ * @ipsec_type: IPsec type
  * @vlan_layer: The layers of VLAN info which are passed from nic.
  *              Only this number of entries of the @vlan array are valid.
  *
@@ -44,8 +48,10 @@
  */
 struct nfp_meta_parsed {
 	uint32_t port_id;
+	uint32_t sa_idx;
 	uint32_t hash;
 	uint8_t hash_type;
+	uint8_t ipsec_type;
 	uint8_t vlan_layer;
 	struct {
 		uint8_t offload;
@@ -304,6 +310,10 @@ nfp_net_parse_chained_meta(uint8_t *meta_base,
 			meta->vlan[meta->vlan_layer].tpid = NFP_NET_META_TPID(vlan_info);
 			++meta->vlan_layer;
 			break;
+		case NFP_NET_META_IPSEC:
+			meta->sa_idx = rte_be_to_cpu_32(*(rte_be32_t *)meta_offset);
+			meta->ipsec_type = meta_info & NFP_NET_META_FIELD_MASK;
+			break;
 		default:
 			/* Unsupported metadata can be a performance issue */
 			return false;
@@ -429,6 +439,39 @@ nfp_net_parse_meta_qinq(const struct nfp_meta_parsed *meta,
 	mb->ol_flags |= RTE_MBUF_F_RX_QINQ | RTE_MBUF_F_RX_QINQ_STRIPPED;
 }
 
+/*
+ * Set mbuf IPsec Offload features based on metadata info.
+ *
+ * The IPsec Offload features is prepended to the mbuf ol_flags.
+ * Extract and decode metadata info and set the mbuf ol_flags.
+ */
+static void
+nfp_net_parse_meta_ipsec(struct nfp_meta_parsed *meta,
+		struct nfp_net_rxq *rxq,
+		struct rte_mbuf *mbuf)
+{
+	int offset;
+	uint32_t sa_idx;
+	struct nfp_net_hw *hw;
+	struct nfp_tx_ipsec_desc_msg *desc_md;
+
+	hw = rxq->hw;
+	sa_idx = meta->sa_idx;
+
+	if (meta->ipsec_type != NFP_NET_META_IPSEC)
+		return;
+
+	if (sa_idx >= NFP_NET_IPSEC_MAX_SA_CNT) {
+		mbuf->ol_flags |= RTE_MBUF_F_RX_SEC_OFFLOAD_FAILED;
+	} else {
+		mbuf->ol_flags |= RTE_MBUF_F_RX_SEC_OFFLOAD;
+		offset = hw->ipsec_data->pkt_dynfield_offset;
+		desc_md = RTE_MBUF_DYNFIELD(mbuf, offset, struct nfp_tx_ipsec_desc_msg *);
+		desc_md->sa_idx = sa_idx;
+		desc_md->enc = 0;
+	}
+}
+
 /* nfp_net_parse_meta() - Parse the metadata from packet */
 static void
 nfp_net_parse_meta(struct nfp_net_rx_desc *rxds,
@@ -453,6 +496,7 @@ nfp_net_parse_meta(struct nfp_net_rx_desc *rxds,
 			nfp_net_parse_meta_hash(meta, rxq, mb);
 			nfp_net_parse_meta_vlan(meta, rxds, rxq, mb);
 			nfp_net_parse_meta_qinq(meta, rxq, mb);
+			nfp_net_parse_meta_ipsec(meta, rxq, mb);
 		} else {
 			PMD_RX_LOG(DEBUG, "RX chained metadata format is wrong!");
 		}
@@ -1033,6 +1077,36 @@ nfp_net_set_meta_vlan(struct nfp_net_meta_raw *meta_data,
 	vlan_tci = pkt->vlan_tci;
 
 	meta_data->data[layer] = rte_cpu_to_be_32(tpid << 16 | vlan_tci);
+}
+
+void
+nfp_net_set_meta_ipsec(struct nfp_net_meta_raw *meta_data,
+		struct nfp_net_txq *txq,
+		struct rte_mbuf *pkt,
+		uint8_t layer,
+		uint8_t ipsec_layer)
+{
+	int offset;
+	struct nfp_net_hw *hw;
+	struct nfp_tx_ipsec_desc_msg *desc_md;
+
+	hw = txq->hw;
+	offset = hw->ipsec_data->pkt_dynfield_offset;
+	desc_md = RTE_MBUF_DYNFIELD(pkt, offset, struct nfp_tx_ipsec_desc_msg *);
+
+	switch (ipsec_layer) {
+	case NFP_IPSEC_META_SAIDX:
+		meta_data->data[layer] = desc_md->sa_idx;
+		break;
+	case NFP_IPSEC_META_SEQLOW:
+		meta_data->data[layer] = desc_md->esn.low;
+		break;
+	case NFP_IPSEC_META_SEQHI:
+		meta_data->data[layer] = desc_md->esn.hi;
+		break;
+	default:
+		break;
+	}
 }
 
 int

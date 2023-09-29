@@ -1148,6 +1148,47 @@ nfp_crypto_update_session(void *device __rte_unused,
 	return 0;
 }
 
+static int
+nfp_security_set_pkt_metadata(void *device,
+		struct rte_security_session *session,
+		struct rte_mbuf *m,
+		void *params)
+{
+	int offset;
+	uint64_t *sqn;
+	struct nfp_net_hw *hw;
+	struct rte_eth_dev *eth_dev;
+	struct nfp_ipsec_session *priv_session;
+
+	sqn = params;
+	eth_dev = device;
+	priv_session = SECURITY_GET_SESS_PRIV(session);
+	hw = NFP_NET_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
+
+	if (priv_session->ipsec.direction == RTE_SECURITY_IPSEC_SA_DIR_EGRESS) {
+		struct nfp_tx_ipsec_desc_msg *desc_md;
+
+		offset = hw->ipsec_data->pkt_dynfield_offset;
+		desc_md = RTE_MBUF_DYNFIELD(m, offset, struct nfp_tx_ipsec_desc_msg *);
+
+		if (priv_session->msg.ctrl_word.ext_seq != 0 && sqn != NULL) {
+			desc_md->esn.low = rte_cpu_to_be_32(*sqn);
+			desc_md->esn.hi = rte_cpu_to_be_32(*sqn >> 32);
+		} else if (priv_session->msg.ctrl_word.ext_seq != 0) {
+			desc_md->esn.low = rte_cpu_to_be_32(priv_session->ipsec.esn.low);
+			desc_md->esn.hi = rte_cpu_to_be_32(priv_session->ipsec.esn.hi);
+		} else {
+			desc_md->esn.low = rte_cpu_to_be_32(priv_session->ipsec.esn.value);
+			desc_md->esn.hi = 0;
+		}
+
+		desc_md->enc = 1;
+		desc_md->sa_idx = rte_cpu_to_be_32(priv_session->sa_index);
+	}
+
+	return 0;
+}
+
 /**
  * Get discards packet statistics for each SA
  *
@@ -1242,6 +1283,7 @@ static const struct rte_security_ops nfp_security_ops = {
 	.session_update = nfp_crypto_update_session,
 	.session_get_size = nfp_security_session_get_size,
 	.session_stats_get = nfp_security_session_get_stats,
+	.set_pkt_metadata = nfp_security_set_pkt_metadata,
 	.capabilities_get = nfp_crypto_capabilities_get,
 };
 
