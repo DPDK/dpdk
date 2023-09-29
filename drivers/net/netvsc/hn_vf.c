@@ -265,6 +265,10 @@ int hn_vf_add(struct rte_eth_dev *dev, struct hn_data *hv)
 		}
 
 		ret = hn_vf_mtu_set(dev, dev->data->mtu);
+		if (ret) {
+			PMD_DRV_LOG(ERR, "Failed to set VF MTU");
+			goto exit;
+		}
 
 		PMD_DRV_LOG(NOTICE, "Starting VF port %d", port);
 		ret = rte_eth_dev_start(port);
