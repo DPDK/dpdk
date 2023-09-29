@@ -475,6 +475,22 @@ rte_event_dma_adapter_free(uint8_t id)
 	return 0;
 }
 
+int
+rte_event_dma_adapter_event_port_get(uint8_t id, uint8_t *event_port_id)
+{
+	struct event_dma_adapter *adapter;
+
+	EVENT_DMA_ADAPTER_ID_VALID_OR_ERR_RET(id, -EINVAL);
+
+	adapter = edma_id_to_adapter(id);
+	if (adapter == NULL || event_port_id == NULL)
+		return -EINVAL;
+
+	*event_port_id = adapter->event_port_id;
+
+	return 0;
+}
+
 static inline unsigned int
 edma_enq_to_dma_dev(struct event_dma_adapter *adapter, struct rte_event *ev, unsigned int cnt)
 {
