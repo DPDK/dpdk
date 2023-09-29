@@ -549,6 +549,12 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 	if (err != 0)
 		return err;
 
+	err = nfp_net_tlv_caps_parse(eth_dev);
+	if (err != 0) {
+		PMD_INIT_LOG(ERR, "Failed to parser TLV caps");
+		return err;
+	}
+
 	nfp_net_ethdev_ops_mount(hw, eth_dev);
 
 	hw->eth_xstats_base = rte_malloc("rte_eth_xstat", sizeof(struct rte_eth_xstat) *

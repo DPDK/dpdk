@@ -27,6 +27,7 @@ sources = files(
         'nfpcore/nfp_target.c',
         'nfpcore/nfp6000_pcie.c',
         'nfp_common.c',
+        'nfp_ctrl.c',
         'nfp_rxtx.c',
         'nfp_cpp_bridge.c',
         'nfp_ethdev_vf.c',
