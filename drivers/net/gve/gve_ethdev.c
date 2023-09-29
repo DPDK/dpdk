@@ -7,6 +7,7 @@
 #include "base/gve_register.h"
 #include "base/gve_osdep.h"
 #include "gve_version.h"
+#include "rte_ether.h"
 
 static void
 gve_write_version(uint8_t *driver_version_register)
@@ -297,8 +298,8 @@ gve_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->max_tx_queues = priv->max_nb_txq;
 	dev_info->min_rx_bufsize = GVE_MIN_BUF_SIZE;
 	dev_info->max_rx_pktlen = GVE_MAX_RX_PKTLEN;
-	dev_info->max_mtu = GVE_MAX_MTU;
-	dev_info->min_mtu = GVE_MIN_MTU;
+	dev_info->max_mtu = priv->max_mtu;
+	dev_info->min_mtu = RTE_ETHER_MIN_MTU;
 
 	dev_info->rx_offload_capa = 0;
 	dev_info->tx_offload_capa =
