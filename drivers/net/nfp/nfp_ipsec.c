@@ -1278,11 +1278,64 @@ nfp_security_session_get_size(void *device __rte_unused)
 	return sizeof(struct nfp_ipsec_session);
 }
 
+static int
+nfp_crypto_remove_sa(struct rte_eth_dev *eth_dev,
+		struct nfp_ipsec_session *priv_session)
+{
+	int ret;
+	uint32_t sa_index;
+	struct nfp_net_hw *hw;
+	struct nfp_ipsec_msg cfg;
+
+	sa_index = priv_session->sa_index;
+	hw = NFP_NET_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
+
+	cfg.cmd = NFP_IPSEC_CFG_MSG_INV_SA;
+	cfg.sa_idx = sa_index;
+	ret = nfp_ipsec_cfg_cmd_issue(hw, &cfg);
+	if (ret < 0) {
+		PMD_DRV_LOG(ERR, "Failed to remove SA!");
+		return -EINVAL;
+	}
+
+	hw->ipsec_data->sa_free_cnt++;
+	hw->ipsec_data->sa_entries[sa_index] = NULL;
+
+	return 0;
+}
+
+static int
+nfp_crypto_remove_session(void *device,
+		struct rte_security_session *session)
+{
+	int ret;
+	struct rte_eth_dev *eth_dev;
+	struct nfp_ipsec_session *priv_session;
+
+	eth_dev = device;
+	priv_session = SECURITY_GET_SESS_PRIV(session);
+	if (eth_dev != priv_session->dev) {
+		PMD_DRV_LOG(ERR, "Session not bound to this device");
+		return -ENODEV;
+	}
+
+	ret = nfp_crypto_remove_sa(eth_dev, priv_session);
+	if (ret < 0) {
+		PMD_DRV_LOG(ERR, "Failed to remove session");
+		return -EFAULT;
+	}
+
+	memset(priv_session, 0, sizeof(struct nfp_ipsec_session));
+
+	return 0;
+}
+
 static const struct rte_security_ops nfp_security_ops = {
 	.session_create = nfp_crypto_create_session,
 	.session_update = nfp_crypto_update_session,
 	.session_get_size = nfp_security_session_get_size,
 	.session_stats_get = nfp_security_session_get_stats,
+	.session_destroy = nfp_crypto_remove_session,
 	.set_pkt_metadata = nfp_security_set_pkt_metadata,
 	.capabilities_get = nfp_crypto_capabilities_get,
 };
