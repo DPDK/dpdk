@@ -3,6 +3,7 @@
  */
 
 #include <eventdev_pmd.h>
+#include <rte_service_component.h>
 
 #include "rte_event_dma_adapter.h"
 
@@ -69,6 +70,10 @@ struct dma_device_info {
 
 	/* Number of vchans configured for a DMA device. */
 	uint16_t num_dma_dev_vchan;
+
+	/* Next queue pair to be processed */
+	uint16_t next_vchan_id;
+
 } __rte_cache_aligned;
 
 struct event_dma_adapter {
@@ -90,6 +95,9 @@ struct event_dma_adapter {
 	/* Lock to serialize config updates with service function */
 	rte_spinlock_t lock;
 
+	/* Next dma device to be processed */
+	uint16_t next_dmadev_id;
+
 	/* DMA device structure array */
 	struct dma_device_info *dma_devs;
 
@@ -107,6 +115,26 @@ struct event_dma_adapter {
 
 	/* No. of vchan queue configured */
 	uint16_t nb_vchanq;
+
+	/* Per adapter EAL service ID */
+	uint32_t service_id;
+
+	/* Service initialization state */
+	uint8_t service_initialized;
+
+	/* Max DMA ops processed in any service function invocation */
+	uint32_t max_nb;
+
+	/* Store event port's implicit release capability */
+	uint8_t implicit_release_disabled;
+
+	/* Flag to indicate backpressure at dma_dev
+	 * Stop further dequeuing events from eventdev
+	 */
+	bool stop_enq_to_dma_dev;
+
+	/* Loop counter to flush dma ops */
+	uint16_t transmit_loop_count;
 } __rte_cache_aligned;
 
 static struct event_dma_adapter **event_dma_adapter;
@@ -148,6 +176,18 @@ edma_array_init(void)
 	return 0;
 }
 
+static inline bool
+edma_circular_buffer_batch_ready(struct dma_ops_circular_buffer *bufp)
+{
+	return bufp->count >= DMA_BATCH_SIZE;
+}
+
+static inline bool
+edma_circular_buffer_space_for_batch(struct dma_ops_circular_buffer *bufp)
+{
+	return (bufp->size - bufp->count) >= DMA_BATCH_SIZE;
+}
+
 static inline int
 edma_circular_buffer_init(const char *name, struct dma_ops_circular_buffer *buf, uint16_t sz)
 {
@@ -164,6 +204,71 @@ static inline void
 edma_circular_buffer_free(struct dma_ops_circular_buffer *buf)
 {
 	rte_free(buf->op_buffer);
+}
+
+static inline int
+edma_circular_buffer_add(struct dma_ops_circular_buffer *bufp, struct rte_event_dma_adapter_op *op)
+{
+	uint16_t *tail = &bufp->tail;
+
+	bufp->op_buffer[*tail] = op;
+
+	/* circular buffer, go round */
+	*tail = (*tail + 1) % bufp->size;
+	bufp->count++;
+
+	return 0;
+}
+
+static inline int
+edma_circular_buffer_flush_to_dma_dev(struct event_dma_adapter *adapter,
+				      struct dma_ops_circular_buffer *bufp, uint8_t dma_dev_id,
+				      uint16_t vchan, uint16_t *nb_ops_flushed)
+{
+	struct rte_event_dma_adapter_op *op;
+	struct dma_vchan_info *tq;
+	uint16_t *head = &bufp->head;
+	uint16_t *tail = &bufp->tail;
+	uint16_t n;
+	uint16_t i;
+	int ret;
+
+	if (*tail > *head)
+		n = *tail - *head;
+	else if (*tail < *head)
+		n = bufp->size - *head;
+	else {
+		*nb_ops_flushed = 0;
+		return 0; /* buffer empty */
+	}
+
+	tq = &adapter->dma_devs[dma_dev_id].tqmap[vchan];
+
+	for (i = 0; i < n; i++)	{
+		op = bufp->op_buffer[*head];
+		if (op->nb_src == 1 && op->nb_dst == 1)
+			ret = rte_dma_copy(dma_dev_id, vchan, op->src_seg->addr, op->dst_seg->addr,
+					   op->src_seg->length, op->flags);
+		else
+			ret = rte_dma_copy_sg(dma_dev_id, vchan, op->src_seg, op->dst_seg,
+					      op->nb_src, op->nb_dst, op->flags);
+		if (ret < 0)
+			break;
+
+		/* Enqueue in transaction queue. */
+		edma_circular_buffer_add(&tq->dma_buf, op);
+
+		*head = (*head + 1) % bufp->size;
+	}
+
+	*nb_ops_flushed = i;
+	bufp->count -= *nb_ops_flushed;
+	if (!bufp->count) {
+		*head = 0;
+		*tail = 0;
+	}
+
+	return *nb_ops_flushed == n ? 0 : -1;
 }
 
 static int
@@ -360,6 +465,406 @@ rte_event_dma_adapter_free(uint8_t id)
 	return 0;
 }
 
+static inline unsigned int
+edma_enq_to_dma_dev(struct event_dma_adapter *adapter, struct rte_event *ev, unsigned int cnt)
+{
+	struct dma_vchan_info *vchan_qinfo = NULL;
+	struct rte_event_dma_adapter_op *dma_op;
+	uint16_t vchan, nb_enqueued = 0;
+	int16_t dma_dev_id;
+	unsigned int i, n;
+	int ret;
+
+	ret = 0;
+	n = 0;
+
+	for (i = 0; i < cnt; i++) {
+		dma_op = ev[i].event_ptr;
+		if (dma_op == NULL)
+			continue;
+
+		/* Expected to have response info appended to dma_op. */
+
+		dma_dev_id = dma_op->dma_dev_id;
+		vchan = dma_op->vchan;
+		vchan_qinfo = &adapter->dma_devs[dma_dev_id].vchanq[vchan];
+		if (!vchan_qinfo->vq_enabled) {
+			if (dma_op != NULL && dma_op->op_mp != NULL)
+				rte_mempool_put(dma_op->op_mp, dma_op);
+			continue;
+		}
+		edma_circular_buffer_add(&vchan_qinfo->dma_buf, dma_op);
+
+		if (edma_circular_buffer_batch_ready(&vchan_qinfo->dma_buf)) {
+			ret = edma_circular_buffer_flush_to_dma_dev(adapter, &vchan_qinfo->dma_buf,
+								    dma_dev_id, vchan,
+								    &nb_enqueued);
+			n += nb_enqueued;
+
+			/**
+			 * If some dma ops failed to flush to dma_dev and
+			 * space for another batch is not available, stop
+			 * dequeue from eventdev momentarily
+			 */
+			if (unlikely(ret < 0 &&
+				     !edma_circular_buffer_space_for_batch(&vchan_qinfo->dma_buf)))
+				adapter->stop_enq_to_dma_dev = true;
+		}
+	}
+
+	return n;
+}
+
+static unsigned int
+edma_adapter_dev_flush(struct event_dma_adapter *adapter, int16_t dma_dev_id,
+		       uint16_t *nb_ops_flushed)
+{
+	struct dma_vchan_info *vchan_info;
+	struct dma_device_info *dev_info;
+	uint16_t nb = 0, nb_enqueued = 0;
+	uint16_t vchan, nb_vchans;
+
+	dev_info = &adapter->dma_devs[dma_dev_id];
+	nb_vchans = dev_info->num_vchanq;
+
+	for (vchan = 0; vchan < nb_vchans; vchan++) {
+
+		vchan_info = &dev_info->vchanq[vchan];
+		if (unlikely(vchan_info == NULL || !vchan_info->vq_enabled))
+			continue;
+
+		edma_circular_buffer_flush_to_dma_dev(adapter, &vchan_info->dma_buf, dma_dev_id,
+						      vchan, &nb_enqueued);
+		*nb_ops_flushed += vchan_info->dma_buf.count;
+		nb += nb_enqueued;
+	}
+
+	return nb;
+}
+
+static unsigned int
+edma_adapter_enq_flush(struct event_dma_adapter *adapter)
+{
+	int16_t dma_dev_id;
+	uint16_t nb_enqueued = 0;
+	uint16_t nb_ops_flushed = 0;
+	uint16_t num_dma_dev = rte_dma_count_avail();
+
+	for (dma_dev_id = 0; dma_dev_id < num_dma_dev; dma_dev_id++)
+		nb_enqueued += edma_adapter_dev_flush(adapter, dma_dev_id, &nb_ops_flushed);
+	/**
+	 * Enable dequeue from eventdev if all ops from circular
+	 * buffer flushed to dma_dev
+	 */
+	if (!nb_ops_flushed)
+		adapter->stop_enq_to_dma_dev = false;
+
+	return nb_enqueued;
+}
+
+/* Flush an instance's enqueue buffers every DMA_ENQ_FLUSH_THRESHOLD
+ * iterations of edma_adapter_enq_run()
+ */
+#define DMA_ENQ_FLUSH_THRESHOLD 1024
+
+static int
+edma_adapter_enq_run(struct event_dma_adapter *adapter, unsigned int max_enq)
+{
+	uint8_t event_port_id = adapter->event_port_id;
+	uint8_t event_dev_id = adapter->eventdev_id;
+	struct rte_event ev[DMA_BATCH_SIZE];
+	unsigned int nb_enq, nb_enqueued;
+	uint16_t n;
+
+	if (adapter->mode == RTE_EVENT_DMA_ADAPTER_OP_NEW)
+		return 0;
+
+	nb_enqueued = 0;
+	for (nb_enq = 0; nb_enq < max_enq; nb_enq += n) {
+
+		if (unlikely(adapter->stop_enq_to_dma_dev)) {
+			nb_enqueued += edma_adapter_enq_flush(adapter);
+
+			if (unlikely(adapter->stop_enq_to_dma_dev))
+				break;
+		}
+
+		n = rte_event_dequeue_burst(event_dev_id, event_port_id, ev, DMA_BATCH_SIZE, 0);
+
+		if (!n)
+			break;
+
+		nb_enqueued += edma_enq_to_dma_dev(adapter, ev, n);
+	}
+
+	if ((++adapter->transmit_loop_count & (DMA_ENQ_FLUSH_THRESHOLD - 1)) == 0)
+		nb_enqueued += edma_adapter_enq_flush(adapter);
+
+	return nb_enqueued;
+}
+
+#define DMA_ADAPTER_MAX_EV_ENQ_RETRIES 100
+
+static inline uint16_t
+edma_ops_enqueue_burst(struct event_dma_adapter *adapter, struct rte_event_dma_adapter_op **ops,
+		       uint16_t num)
+{
+	uint8_t event_port_id = adapter->event_port_id;
+	uint8_t event_dev_id = adapter->eventdev_id;
+	struct rte_event events[DMA_BATCH_SIZE];
+	struct rte_event *response_info;
+	uint16_t nb_enqueued, nb_ev;
+	uint8_t retry;
+	uint8_t i;
+
+	nb_ev = 0;
+	retry = 0;
+	nb_enqueued = 0;
+	num = RTE_MIN(num, DMA_BATCH_SIZE);
+	for (i = 0; i < num; i++) {
+		struct rte_event *ev = &events[nb_ev++];
+
+		/* Expected to have response info appended to dma_op. */
+		response_info = (struct rte_event *)((uint8_t *)ops[i] +
+							  sizeof(struct rte_event_dma_adapter_op));
+		if (unlikely(response_info == NULL)) {
+			if (ops[i] != NULL && ops[i]->op_mp != NULL)
+				rte_mempool_put(ops[i]->op_mp, ops[i]);
+			continue;
+		}
+
+		rte_memcpy(ev, response_info, sizeof(struct rte_event));
+		ev->event_ptr = ops[i];
+		ev->event_type = RTE_EVENT_TYPE_DMADEV;
+		if (adapter->implicit_release_disabled)
+			ev->op = RTE_EVENT_OP_FORWARD;
+		else
+			ev->op = RTE_EVENT_OP_NEW;
+	}
+
+	do {
+		nb_enqueued += rte_event_enqueue_burst(event_dev_id, event_port_id,
+						       &events[nb_enqueued], nb_ev - nb_enqueued);
+
+	} while (retry++ < DMA_ADAPTER_MAX_EV_ENQ_RETRIES && nb_enqueued < nb_ev);
+
+	return nb_enqueued;
+}
+
+static int
+edma_circular_buffer_flush_to_evdev(struct event_dma_adapter *adapter,
+				    struct dma_ops_circular_buffer *bufp,
+				    uint16_t *enqueue_count)
+{
+	struct rte_event_dma_adapter_op **ops = bufp->op_buffer;
+	uint16_t n = 0, nb_ops_flushed;
+	uint16_t *head = &bufp->head;
+	uint16_t *tail = &bufp->tail;
+
+	if (*tail > *head)
+		n = *tail - *head;
+	else if (*tail < *head)
+		n = bufp->size - *head;
+	else {
+		if (enqueue_count)
+			*enqueue_count = 0;
+		return 0; /* buffer empty */
+	}
+
+	if (enqueue_count && n > *enqueue_count)
+		n = *enqueue_count;
+
+	nb_ops_flushed = edma_ops_enqueue_burst(adapter, &ops[*head], n);
+	if (enqueue_count)
+		*enqueue_count = nb_ops_flushed;
+
+	bufp->count -= nb_ops_flushed;
+	if (!bufp->count) {
+		*head = 0;
+		*tail = 0;
+		return 0; /* buffer empty */
+	}
+
+	*head = (*head + nb_ops_flushed) % bufp->size;
+	return 1;
+}
+
+static void
+edma_ops_buffer_flush(struct event_dma_adapter *adapter)
+{
+	if (likely(adapter->ebuf.count == 0))
+		return;
+
+	while (edma_circular_buffer_flush_to_evdev(adapter, &adapter->ebuf, NULL))
+		;
+}
+
+static inline unsigned int
+edma_adapter_deq_run(struct event_dma_adapter *adapter, unsigned int max_deq)
+{
+	struct dma_vchan_info *vchan_info;
+	struct dma_ops_circular_buffer *tq_buf;
+	struct rte_event_dma_adapter_op *ops;
+	uint16_t n, nb_deq, nb_enqueued, i;
+	struct dma_device_info *dev_info;
+	uint16_t vchan, num_vchan;
+	uint16_t num_dma_dev;
+	int16_t dma_dev_id;
+	uint16_t index;
+	bool done;
+	bool err;
+
+	nb_deq = 0;
+	edma_ops_buffer_flush(adapter);
+
+	num_dma_dev = rte_dma_count_avail();
+	do {
+		done = true;
+
+		for (dma_dev_id = adapter->next_dmadev_id; dma_dev_id < num_dma_dev; dma_dev_id++) {
+			uint16_t queues = 0;
+			dev_info = &adapter->dma_devs[dma_dev_id];
+			num_vchan = dev_info->num_vchanq;
+
+			for (vchan = dev_info->next_vchan_id; queues < num_vchan;
+			     vchan = (vchan + 1) % num_vchan, queues++) {
+
+				vchan_info = &dev_info->vchanq[vchan];
+				if (unlikely(vchan_info == NULL || !vchan_info->vq_enabled))
+					continue;
+
+				n = rte_dma_completed(dma_dev_id, vchan, DMA_BATCH_SIZE,
+						&index, &err);
+				if (!n)
+					continue;
+
+				done = false;
+
+				tq_buf = &dev_info->tqmap[vchan].dma_buf;
+
+				nb_enqueued = n;
+				if (unlikely(!adapter->ebuf.count))
+					edma_circular_buffer_flush_to_evdev(adapter, tq_buf,
+									    &nb_enqueued);
+
+				if (likely(nb_enqueued == n))
+					goto check;
+
+				/* Failed to enqueue events case */
+				for (i = nb_enqueued; i < n; i++) {
+					ops = tq_buf->op_buffer[tq_buf->head];
+					edma_circular_buffer_add(&adapter->ebuf, ops);
+					tq_buf->head = (tq_buf->head + 1) % tq_buf->size;
+				}
+
+check:
+				nb_deq += n;
+				if (nb_deq >= max_deq) {
+					if ((vchan + 1) == num_vchan)
+						adapter->next_dmadev_id =
+								(dma_dev_id + 1) % num_dma_dev;
+
+					dev_info->next_vchan_id = (vchan + 1) % num_vchan;
+
+					return nb_deq;
+				}
+			}
+		}
+		adapter->next_dmadev_id = 0;
+
+	} while (done == false);
+
+	return nb_deq;
+}
+
+static int
+edma_adapter_run(struct event_dma_adapter *adapter, unsigned int max_ops)
+{
+	unsigned int ops_left = max_ops;
+
+	while (ops_left > 0) {
+		unsigned int e_cnt, d_cnt;
+
+		e_cnt = edma_adapter_deq_run(adapter, ops_left);
+		ops_left -= RTE_MIN(ops_left, e_cnt);
+
+		d_cnt = edma_adapter_enq_run(adapter, ops_left);
+		ops_left -= RTE_MIN(ops_left, d_cnt);
+
+		if (e_cnt == 0 && d_cnt == 0)
+			break;
+	}
+
+	if (ops_left == max_ops) {
+		rte_event_maintain(adapter->eventdev_id, adapter->event_port_id, 0);
+		return -EAGAIN;
+	} else
+		return 0;
+}
+
+static int
+edma_service_func(void *args)
+{
+	struct event_dma_adapter *adapter = args;
+	int ret;
+
+	if (rte_spinlock_trylock(&adapter->lock) == 0)
+		return 0;
+	ret = edma_adapter_run(adapter, adapter->max_nb);
+	rte_spinlock_unlock(&adapter->lock);
+
+	return ret;
+}
+
+static int
+edma_init_service(struct event_dma_adapter *adapter, uint8_t id)
+{
+	struct rte_event_dma_adapter_conf adapter_conf;
+	struct rte_service_spec service;
+	uint32_t impl_rel;
+	int ret;
+
+	if (adapter->service_initialized)
+		return 0;
+
+	memset(&service, 0, sizeof(service));
+	snprintf(service.name, DMA_ADAPTER_NAME_LEN, "rte_event_dma_adapter_%d", id);
+	service.socket_id = adapter->socket_id;
+	service.callback = edma_service_func;
+	service.callback_userdata = adapter;
+
+	/* Service function handles locking for queue add/del updates */
+	service.capabilities = RTE_SERVICE_CAP_MT_SAFE;
+	ret = rte_service_component_register(&service, &adapter->service_id);
+	if (ret) {
+		RTE_EDEV_LOG_ERR("failed to register service %s err = %" PRId32, service.name, ret);
+		return ret;
+	}
+
+	ret = adapter->conf_cb(id, adapter->eventdev_id, &adapter_conf, adapter->conf_arg);
+	if (ret) {
+		RTE_EDEV_LOG_ERR("configuration callback failed err = %" PRId32, ret);
+		return ret;
+	}
+
+	adapter->max_nb = adapter_conf.max_nb;
+	adapter->event_port_id = adapter_conf.event_port_id;
+
+	if (rte_event_port_attr_get(adapter->eventdev_id, adapter->event_port_id,
+				    RTE_EVENT_PORT_ATTR_IMPLICIT_RELEASE_DISABLE, &impl_rel)) {
+		RTE_EDEV_LOG_ERR("Failed to get port info for eventdev %" PRId32,
+				 adapter->eventdev_id);
+		edma_circular_buffer_free(&adapter->ebuf);
+		rte_free(adapter);
+		return -EINVAL;
+	}
+
+	adapter->implicit_release_disabled = (uint8_t)impl_rel;
+	adapter->service_initialized = 1;
+
+	return ret;
+}
+
 static void
 edma_update_vchanq_info(struct event_dma_adapter *adapter, struct dma_device_info *dev_info,
 			uint16_t vchan, uint8_t add)
@@ -389,6 +894,60 @@ edma_update_vchanq_info(struct event_dma_adapter *adapter, struct dma_device_inf
 		vchan_info->vq_enabled = !!add;
 		tqmap_info->vq_enabled = !!add;
 	}
+}
+
+static int
+edma_add_vchan(struct event_dma_adapter *adapter, int16_t dma_dev_id, uint16_t vchan)
+{
+	struct dma_device_info *dev_info = &adapter->dma_devs[dma_dev_id];
+	struct dma_vchan_info *vchanq;
+	struct dma_vchan_info *tqmap;
+	uint16_t nb_vchans;
+	uint32_t i;
+
+	if (dev_info->vchanq == NULL) {
+		nb_vchans = dev_info->num_dma_dev_vchan;
+
+		dev_info->vchanq = rte_zmalloc_socket(adapter->mem_name,
+				nb_vchans * sizeof(struct dma_vchan_info),
+				0, adapter->socket_id);
+		if (dev_info->vchanq == NULL)
+			return -ENOMEM;
+
+		dev_info->tqmap = rte_zmalloc_socket(adapter->mem_name,
+				nb_vchans * sizeof(struct dma_vchan_info),
+				0, adapter->socket_id);
+		if (dev_info->tqmap == NULL)
+			return -ENOMEM;
+
+		for (i = 0; i < nb_vchans; i++) {
+			vchanq = &dev_info->vchanq[i];
+
+			if (edma_circular_buffer_init("dma_dev_circular_buffer", &vchanq->dma_buf,
+						DMA_ADAPTER_OPS_BUFFER_SIZE)) {
+				RTE_EDEV_LOG_ERR("Failed to get memory for dma_dev buffer");
+				rte_free(vchanq);
+				return -ENOMEM;
+			}
+
+			tqmap = &dev_info->tqmap[i];
+			if (edma_circular_buffer_init("dma_dev_circular_trans_buf", &tqmap->dma_buf,
+						DMA_ADAPTER_OPS_BUFFER_SIZE)) {
+				RTE_EDEV_LOG_ERR(
+					"Failed to get memory for dma_dev transaction buffer");
+				rte_free(tqmap);
+				return -ENOMEM;
+			}
+		}
+	}
+
+	if (vchan == RTE_DMA_ALL_VCHAN) {
+		for (i = 0; i < dev_info->num_dma_dev_vchan; i++)
+			edma_update_vchanq_info(adapter, dev_info, i, 1);
+	} else
+		edma_update_vchanq_info(adapter, dev_info, vchan, 1);
+
+	return 0;
 }
 
 int
@@ -470,6 +1029,38 @@ rte_event_dma_adapter_vchan_add(uint8_t id, int16_t dma_dev_id, uint16_t vchan,
 			edma_update_vchanq_info(adapter, &adapter->dma_devs[dma_dev_id], vchan, 1);
 	}
 
+	/* In case HW cap is RTE_EVENT_DMA_ADAPTER_CAP_INTERNAL_PORT_OP_NEW, or SW adapter, initiate
+	 * services so the application can choose which ever way it wants to use the adapter.
+	 *
+	 * Case 1: RTE_EVENT_DMA_ADAPTER_CAP_INTERNAL_PORT_OP_NEW. Application may wants to use one
+	 * of below two modes
+	 *
+	 * a. OP_FORWARD mode -> HW Dequeue + SW enqueue
+	 * b. OP_NEW mode -> HW Dequeue
+	 *
+	 * Case 2: No HW caps, use SW adapter
+	 *
+	 * a. OP_FORWARD mode -> SW enqueue & dequeue
+	 * b. OP_NEW mode -> SW Dequeue
+	 */
+	if ((cap & RTE_EVENT_DMA_ADAPTER_CAP_INTERNAL_PORT_OP_NEW &&
+	     !(cap & RTE_EVENT_DMA_ADAPTER_CAP_INTERNAL_PORT_OP_FWD) &&
+	     adapter->mode == RTE_EVENT_DMA_ADAPTER_OP_FORWARD) ||
+	    (!(cap & RTE_EVENT_DMA_ADAPTER_CAP_INTERNAL_PORT_OP_NEW) &&
+	     !(cap & RTE_EVENT_DMA_ADAPTER_CAP_INTERNAL_PORT_OP_FWD) &&
+	     !(cap & RTE_EVENT_DMA_ADAPTER_CAP_INTERNAL_PORT_VCHAN_EV_BIND))) {
+		rte_spinlock_lock(&adapter->lock);
+		ret = edma_init_service(adapter, id);
+		if (ret == 0)
+			ret = edma_add_vchan(adapter, dma_dev_id, vchan);
+		rte_spinlock_unlock(&adapter->lock);
+
+		if (ret)
+			return ret;
+
+		rte_service_component_runstate_set(adapter->service_id, 1);
+	}
+
 	return 0;
 }
 
@@ -533,6 +1124,7 @@ rte_event_dma_adapter_vchan_del(uint8_t id, int16_t dma_dev_id, uint16_t vchan)
 		}
 
 		rte_spinlock_unlock(&adapter->lock);
+		rte_service_component_runstate_set(adapter->service_id, adapter->nb_vchanq);
 	}
 
 	return ret;
