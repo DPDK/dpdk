@@ -356,6 +356,154 @@ static const struct rte_security_capability nfp_security_caps[] = {
 	}
 };
 
+/* IPsec config message cmd codes */
+enum nfp_ipsec_cfg_msg_cmd_codes {
+	NFP_IPSEC_CFG_MSG_ADD_SA,       /**< Add a new SA */
+	NFP_IPSEC_CFG_MSG_INV_SA,       /**< Invalidate an existing SA */
+	NFP_IPSEC_CFG_MSG_MODIFY_SA,    /**< Modify an existing SA */
+	NFP_IPSEC_CFG_MSG_GET_SA_STATS, /**< Report SA counters, flags, etc. */
+	NFP_IPSEC_CFG_MSG_GET_SEQ_NUMS, /**< Allocate sequence numbers */
+	NFP_IPSEC_CFG_MSG_LAST
+};
+
+enum nfp_ipsec_cfg_msg_rsp_codes {
+	NFP_IPSEC_CFG_MSG_OK,
+	NFP_IPSEC_CFG_MSG_FAILED,
+	NFP_IPSEC_CFG_MSG_SA_VALID,
+	NFP_IPSEC_CFG_MSG_SA_HASH_ADD_FAILED,
+	NFP_IPSEC_CFG_MSG_SA_HASH_DEL_FAILED,
+	NFP_IPSEC_CFG_MSG_SA_INVALID_CMD
+};
+
+static int
+nfp_ipsec_cfg_cmd_issue(struct nfp_net_hw *hw,
+		struct nfp_ipsec_msg *msg)
+{
+	int ret;
+	uint32_t i;
+	uint32_t msg_size;
+
+	msg_size = RTE_DIM(msg->raw);
+	msg->rsp = NFP_IPSEC_CFG_MSG_OK;
+
+	for (i = 0; i < msg_size; i++)
+		nn_cfg_writel(hw, NFP_NET_CFG_MBOX_VAL + 4 * i, msg->raw[i]);
+
+	ret = nfp_net_mbox_reconfig(hw, NFP_NET_CFG_MBOX_CMD_IPSEC);
+	if (ret < 0) {
+		PMD_DRV_LOG(ERR, "Failed to IPsec reconfig mbox");
+		return ret;
+	}
+
+	/*
+	 * Not all commands and callers make use of response message data. But
+	 * leave this up to the caller and always read and store the full
+	 * response. One example where the data is needed is for statistics.
+	 */
+	for (i = 0; i < msg_size; i++)
+		msg->raw[i] = nn_cfg_readl(hw, NFP_NET_CFG_MBOX_VAL + 4 * i);
+
+	switch (msg->rsp) {
+	case NFP_IPSEC_CFG_MSG_OK:
+		ret = 0;
+		break;
+	case NFP_IPSEC_CFG_MSG_SA_INVALID_CMD:
+		ret = -EINVAL;
+		break;
+	case NFP_IPSEC_CFG_MSG_SA_VALID:
+		ret = -EEXIST;
+		break;
+	case NFP_IPSEC_CFG_MSG_FAILED:
+		/* FALLTHROUGH */
+	case NFP_IPSEC_CFG_MSG_SA_HASH_ADD_FAILED:
+		/* FALLTHROUGH */
+	case NFP_IPSEC_CFG_MSG_SA_HASH_DEL_FAILED:
+		ret = -EIO;
+		break;
+	default:
+		ret = -EDOM;
+	}
+
+	return ret;
+}
+
+/**
+ * Get discards packet statistics for each SA
+ *
+ * The sa_discard_stats contains the statistics of discards packets
+ * of an SA. This function calculates the sum total of discarded packets.
+ *
+ * @param errors
+ *   The value is SA discards packet sum total
+ * @param sa_discard_stats
+ *   The struct is SA discards packet Statistics
+ */
+static void
+nfp_get_errorstats(uint64_t *errors,
+		struct ipsec_discard_stats *sa_discard_stats)
+{
+	uint32_t i;
+	uint32_t len;
+	uint32_t *perror;
+
+	perror = &sa_discard_stats->discards_auth;
+	len = sizeof(struct ipsec_discard_stats) / sizeof(uint32_t);
+
+	for (i = 0; i < len; i++)
+		*errors += *perror++;
+
+	*errors -= sa_discard_stats->ipv4_id_counter;
+}
+
+static int
+nfp_security_session_get_stats(void *device,
+		struct rte_security_session *session,
+		struct rte_security_stats *stats)
+{
+	int ret;
+	struct nfp_net_hw *hw;
+	struct nfp_ipsec_msg msg;
+	struct rte_eth_dev *eth_dev;
+	struct ipsec_get_sa_stats *cfg_s;
+	struct rte_security_ipsec_stats *ips_s;
+	struct nfp_ipsec_session *priv_session;
+	enum rte_security_ipsec_sa_direction direction;
+
+	eth_dev = device;
+	priv_session = SECURITY_GET_SESS_PRIV(session);
+	memset(&msg, 0, sizeof(msg));
+	msg.cmd = NFP_IPSEC_CFG_MSG_GET_SA_STATS;
+	msg.sa_idx = priv_session->sa_index;
+	hw = NFP_NET_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
+
+	ret = nfp_ipsec_cfg_cmd_issue(hw, &msg);
+	if (ret < 0) {
+		PMD_DRV_LOG(ERR, "Failed to get SA stats");
+		return ret;
+	}
+
+	cfg_s = &msg.cfg_get_stats;
+	direction = priv_session->ipsec.direction;
+	memset(stats, 0, sizeof(struct rte_security_stats)); /* Start with zeros */
+	stats->protocol = RTE_SECURITY_PROTOCOL_IPSEC;
+	ips_s = &stats->ipsec;
+
+	/* Only display SA if any counters are non-zero */
+	if (cfg_s->lifetime_byte_count != 0 || cfg_s->pkt_count != 0) {
+		if (direction == RTE_SECURITY_IPSEC_SA_DIR_INGRESS) {
+			ips_s->ipackets = cfg_s->pkt_count;
+			ips_s->ibytes = cfg_s->lifetime_byte_count;
+			nfp_get_errorstats(&ips_s->ierrors, &cfg_s->sa_discard_stats);
+		} else {
+			ips_s->opackets = cfg_s->pkt_count;
+			ips_s->obytes = cfg_s->lifetime_byte_count;
+			nfp_get_errorstats(&ips_s->oerrors, &cfg_s->sa_discard_stats);
+		}
+	}
+
+	return 0;
+}
+
 static const struct rte_security_capability *
 nfp_crypto_capabilities_get(void *device __rte_unused)
 {
@@ -370,6 +518,7 @@ nfp_security_session_get_size(void *device __rte_unused)
 
 static const struct rte_security_ops nfp_security_ops = {
 	.session_get_size = nfp_security_session_get_size,
+	.session_stats_get = nfp_security_session_get_stats,
 	.capabilities_get = nfp_crypto_capabilities_get,
 };
 
