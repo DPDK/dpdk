@@ -239,7 +239,7 @@ int hn_vf_add(struct rte_eth_dev *dev, struct hn_data *hv)
 
 	port = hv->vf_ctx.vf_port;
 
-	/* If the primary device has started, this is a VF host add.
+	/* If the primary device has started, this is a VF hot add.
 	 * Configure and start VF device.
 	 */
 	if (dev->data->dev_started) {
@@ -263,6 +263,8 @@ int hn_vf_add(struct rte_eth_dev *dev, struct hn_data *hv)
 				    port);
 			goto exit;
 		}
+
+		ret = hn_vf_mtu_set(dev, dev->data->mtu);
 
 		PMD_DRV_LOG(NOTICE, "Starting VF port %d", port);
 		ret = rte_eth_dev_start(port);
