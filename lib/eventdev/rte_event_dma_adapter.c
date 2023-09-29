@@ -42,8 +42,31 @@ struct dma_ops_circular_buffer {
 	struct rte_event_dma_adapter_op **op_buffer;
 } __rte_cache_aligned;
 
+/* Vchan information */
+struct dma_vchan_info {
+	/* Set to indicate vchan queue is enabled */
+	bool vq_enabled;
+
+	/* Circular buffer for batching DMA ops to dma_dev */
+	struct dma_ops_circular_buffer dma_buf;
+} __rte_cache_aligned;
+
 /* DMA device information */
 struct dma_device_info {
+	/* Pointer to vchan queue info */
+	struct dma_vchan_info *vchanq;
+
+	/* Pointer to vchan queue info.
+	 * This holds ops passed by application till the
+	 * dma completion is done.
+	 */
+	struct dma_vchan_info *tqmap;
+
+	/* If num_vchanq > 0, the start callback will
+	 * be invoked if not already invoked
+	 */
+	uint16_t num_vchanq;
+
 	/* Number of vchans configured for a DMA device. */
 	uint16_t num_dma_dev_vchan;
 } __rte_cache_aligned;
@@ -81,6 +104,9 @@ struct event_dma_adapter {
 
 	/* Set if  default_cb is being used */
 	int default_cb_arg;
+
+	/* No. of vchan queue configured */
+	uint16_t nb_vchanq;
 } __rte_cache_aligned;
 
 static struct event_dma_adapter **event_dma_adapter;
@@ -332,4 +358,182 @@ rte_event_dma_adapter_free(uint8_t id)
 	event_dma_adapter[id] = NULL;
 
 	return 0;
+}
+
+static void
+edma_update_vchanq_info(struct event_dma_adapter *adapter, struct dma_device_info *dev_info,
+			uint16_t vchan, uint8_t add)
+{
+	struct dma_vchan_info *vchan_info;
+	struct dma_vchan_info *tqmap_info;
+	int enabled;
+	uint16_t i;
+
+	if (dev_info->vchanq == NULL)
+		return;
+
+	if (vchan == RTE_DMA_ALL_VCHAN) {
+		for (i = 0; i < dev_info->num_dma_dev_vchan; i++)
+			edma_update_vchanq_info(adapter, dev_info, i, add);
+	} else {
+		tqmap_info = &dev_info->tqmap[vchan];
+		vchan_info = &dev_info->vchanq[vchan];
+		enabled = vchan_info->vq_enabled;
+		if (add) {
+			adapter->nb_vchanq += !enabled;
+			dev_info->num_vchanq += !enabled;
+		} else {
+			adapter->nb_vchanq -= enabled;
+			dev_info->num_vchanq -= enabled;
+		}
+		vchan_info->vq_enabled = !!add;
+		tqmap_info->vq_enabled = !!add;
+	}
+}
+
+int
+rte_event_dma_adapter_vchan_add(uint8_t id, int16_t dma_dev_id, uint16_t vchan,
+				const struct rte_event *event)
+{
+	struct event_dma_adapter *adapter;
+	struct dma_device_info *dev_info;
+	struct rte_eventdev *dev;
+	uint32_t cap;
+	int ret;
+
+	EVENT_DMA_ADAPTER_ID_VALID_OR_ERR_RET(id, -EINVAL);
+
+	if (!rte_dma_is_valid(dma_dev_id)) {
+		RTE_EDEV_LOG_ERR("Invalid dma_dev_id = %" PRIu8, dma_dev_id);
+		return -EINVAL;
+	}
+
+	adapter = edma_id_to_adapter(id);
+	if (adapter == NULL)
+		return -EINVAL;
+
+	dev = &rte_eventdevs[adapter->eventdev_id];
+	ret = rte_event_dma_adapter_caps_get(adapter->eventdev_id, dma_dev_id, &cap);
+	if (ret) {
+		RTE_EDEV_LOG_ERR("Failed to get adapter caps dev %u dma_dev %u", id, dma_dev_id);
+		return ret;
+	}
+
+	if ((cap & RTE_EVENT_DMA_ADAPTER_CAP_INTERNAL_PORT_VCHAN_EV_BIND) && (event == NULL)) {
+		RTE_EDEV_LOG_ERR("Event can not be NULL for dma_dev_id = %u", dma_dev_id);
+		return -EINVAL;
+	}
+
+	dev_info = &adapter->dma_devs[dma_dev_id];
+	if (vchan != RTE_DMA_ALL_VCHAN && vchan >= dev_info->num_dma_dev_vchan) {
+		RTE_EDEV_LOG_ERR("Invalid vhcan %u", vchan);
+		return -EINVAL;
+	}
+
+	/* In case HW cap is RTE_EVENT_DMA_ADAPTER_CAP_INTERNAL_PORT_OP_FWD, no
+	 * need of service core as HW supports event forward capability.
+	 */
+	if ((cap & RTE_EVENT_DMA_ADAPTER_CAP_INTERNAL_PORT_OP_FWD) ||
+	    (cap & RTE_EVENT_DMA_ADAPTER_CAP_INTERNAL_PORT_VCHAN_EV_BIND &&
+	     adapter->mode == RTE_EVENT_DMA_ADAPTER_OP_NEW) ||
+	    (cap & RTE_EVENT_DMA_ADAPTER_CAP_INTERNAL_PORT_OP_NEW &&
+	     adapter->mode == RTE_EVENT_DMA_ADAPTER_OP_NEW)) {
+		if (*dev->dev_ops->dma_adapter_vchan_add == NULL)
+			return -ENOTSUP;
+		if (dev_info->vchanq == NULL) {
+			dev_info->vchanq = rte_zmalloc_socket(adapter->mem_name,
+							dev_info->num_dma_dev_vchan *
+							sizeof(struct dma_vchan_info),
+							0, adapter->socket_id);
+			if (dev_info->vchanq == NULL) {
+				printf("Queue pair add not supported\n");
+				return -ENOMEM;
+			}
+		}
+
+		if (dev_info->tqmap == NULL) {
+			dev_info->tqmap = rte_zmalloc_socket(adapter->mem_name,
+						dev_info->num_dma_dev_vchan *
+						sizeof(struct dma_vchan_info),
+						0, adapter->socket_id);
+			if (dev_info->tqmap == NULL) {
+				printf("tq pair add not supported\n");
+				return -ENOMEM;
+			}
+		}
+
+		ret = (*dev->dev_ops->dma_adapter_vchan_add)(dev, dma_dev_id, vchan, event);
+		if (ret)
+			return ret;
+
+		else
+			edma_update_vchanq_info(adapter, &adapter->dma_devs[dma_dev_id], vchan, 1);
+	}
+
+	return 0;
+}
+
+int
+rte_event_dma_adapter_vchan_del(uint8_t id, int16_t dma_dev_id, uint16_t vchan)
+{
+	struct event_dma_adapter *adapter;
+	struct dma_device_info *dev_info;
+	struct rte_eventdev *dev;
+	uint32_t cap;
+	int ret;
+
+	EVENT_DMA_ADAPTER_ID_VALID_OR_ERR_RET(id, -EINVAL);
+
+	if (!rte_dma_is_valid(dma_dev_id)) {
+		RTE_EDEV_LOG_ERR("Invalid dma_dev_id = %" PRIu8, dma_dev_id);
+		return -EINVAL;
+	}
+
+	adapter = edma_id_to_adapter(id);
+	if (adapter == NULL)
+		return -EINVAL;
+
+	dev = &rte_eventdevs[adapter->eventdev_id];
+	ret = rte_event_dma_adapter_caps_get(adapter->eventdev_id, dma_dev_id, &cap);
+	if (ret)
+		return ret;
+
+	dev_info = &adapter->dma_devs[dma_dev_id];
+
+	if (vchan != RTE_DMA_ALL_VCHAN && vchan >= dev_info->num_dma_dev_vchan) {
+		RTE_EDEV_LOG_ERR("Invalid vhcan %" PRIu16, vchan);
+		return -EINVAL;
+	}
+
+	if ((cap & RTE_EVENT_DMA_ADAPTER_CAP_INTERNAL_PORT_OP_FWD) ||
+	    (cap & RTE_EVENT_DMA_ADAPTER_CAP_INTERNAL_PORT_OP_NEW &&
+	     adapter->mode == RTE_EVENT_DMA_ADAPTER_OP_NEW)) {
+		if (*dev->dev_ops->dma_adapter_vchan_del == NULL)
+			return -ENOTSUP;
+		ret = (*dev->dev_ops->dma_adapter_vchan_del)(dev, dma_dev_id, vchan);
+		if (ret == 0) {
+			edma_update_vchanq_info(adapter, dev_info, vchan, 0);
+			if (dev_info->num_vchanq == 0) {
+				rte_free(dev_info->vchanq);
+				dev_info->vchanq = NULL;
+			}
+		}
+	} else {
+		if (adapter->nb_vchanq == 0)
+			return 0;
+
+		rte_spinlock_lock(&adapter->lock);
+		edma_update_vchanq_info(adapter, dev_info, vchan, 0);
+
+		if (dev_info->num_vchanq == 0) {
+			rte_free(dev_info->vchanq);
+			rte_free(dev_info->tqmap);
+			dev_info->vchanq = NULL;
+			dev_info->tqmap = NULL;
+		}
+
+		rte_spinlock_unlock(&adapter->lock);
+	}
+
+	return ret;
 }
