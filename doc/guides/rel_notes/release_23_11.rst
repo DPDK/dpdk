@@ -95,6 +95,10 @@ New Features
 
   * Added support for transfer flow action ``INDIRECT`` with subtype ``VXLAN_ENCAP``.
 
+* **Updated Netronome/Corigine nfp driver.**
+
+  * Added inline IPsec offload based on the security framework.
+
 * build: Enabling deprecated libraries is now done using the new
   ``enable_deprecated_libraries`` build option.
 

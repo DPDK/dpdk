@@ -1200,6 +1200,7 @@ nfp_net_tx_desc_limits(struct nfp_net_hw *hw,
 int
 nfp_net_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 {
+	uint32_t cap_extend;
 	uint16_t min_rx_desc;
 	uint16_t max_rx_desc;
 	uint16_t min_tx_desc;
@@ -1255,6 +1256,12 @@ nfp_net_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 
 	if (hw->cap & NFP_NET_CFG_CTRL_GATHER)
 		dev_info->tx_offload_capa |= RTE_ETH_TX_OFFLOAD_MULTI_SEGS;
+
+	cap_extend = nn_cfg_readl(hw, NFP_NET_CFG_CAP_WORD1);
+	if ((cap_extend & NFP_NET_CFG_CTRL_IPSEC) != 0) {
+		dev_info->tx_offload_capa |= RTE_ETH_TX_OFFLOAD_SECURITY;
+		dev_info->rx_offload_capa |= RTE_ETH_RX_OFFLOAD_SECURITY;
+	}
 
 	dev_info->default_rxconf = (struct rte_eth_rxconf) {
 		.rx_thresh = {

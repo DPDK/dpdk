@@ -238,6 +238,9 @@ struct nfp_net_fw_ver {
  */
 #define NFP_NET_CFG_CTRL_WORD1          0x0098
 #define NFP_NET_CFG_CTRL_PKT_TYPE         (0x1 << 0)
+#define NFP_NET_CFG_CTRL_IPSEC            (0x1 << 1) /**< IPsec offload */
+#define NFP_NET_CFG_CTRL_IPSEC_SM_LOOKUP  (0x1 << 3) /**< SA short match lookup */
+#define NFP_NET_CFG_CTRL_IPSEC_LM_LOOKUP  (0x1 << 4) /**< SA long match lookup */
 
 #define NFP_NET_CFG_CAP_WORD1           0x00a4
 

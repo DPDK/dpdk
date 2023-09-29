@@ -43,6 +43,18 @@ struct nfp_net_dp_buf {
 	struct rte_mbuf *mbuf;
 };
 
+struct nfp_tx_ipsec_desc_msg {
+	uint32_t sa_idx;        /**< SA index in driver table */
+	uint32_t enc;           /**< IPsec enable flag */
+	union {
+		uint64_t value;
+		struct {
+			uint32_t low;
+			uint32_t hi;
+		};
+	} esn;                  /**< Extended Sequence Number */
+};
+
 struct nfp_net_txq {
 	/** Backpointer to nfp_net structure */
 	struct nfp_net_hw *hw;

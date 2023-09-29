@@ -172,6 +172,8 @@ struct nfp_net_hw {
 	uint8_t nfp_idx;
 
 	struct nfp_net_tlv_caps tlv_caps;
+
+	struct nfp_net_ipsec_data *ipsec_data;
 };
 
 struct nfp_net_adapter {

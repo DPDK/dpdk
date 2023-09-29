@@ -18,6 +18,7 @@
 #include "nfpcore/nfp6000_pcie.h"
 
 #include "nfp_cpp_bridge.h"
+#include "nfp_ipsec.h"
 #include "nfp_logs.h"
 
 static int
@@ -139,6 +140,10 @@ nfp_net_start(struct rte_eth_dev *dev)
 	cap_extend = nn_cfg_readl(hw, NFP_NET_CFG_CAP_WORD1);
 	if ((cap_extend & NFP_NET_CFG_CTRL_PKT_TYPE) != 0)
 		ctrl_extend = NFP_NET_CFG_CTRL_PKT_TYPE;
+
+	if ((cap_extend & NFP_NET_CFG_CTRL_IPSEC) != 0)
+		ctrl_extend |= NFP_NET_CFG_CTRL_IPSEC_SM_LOOKUP
+				| NFP_NET_CFG_CTRL_IPSEC_LM_LOOKUP;
 
 	update = NFP_NET_CFG_UPDATE_GEN;
 	if (nfp_net_ext_reconfig(hw, ctrl_extend, update) < 0)
@@ -277,6 +282,9 @@ nfp_net_close(struct rte_eth_dev *dev)
 	nfp_net_close_tx_queue(dev);
 
 	nfp_net_close_rx_queue(dev);
+
+	/* Clear ipsec */
+	nfp_ipsec_uninit(dev);
 
 	/* Cancel possible impending LSC work here before releasing the port*/
 	rte_eal_alarm_cancel(nfp_net_dev_interrupt_delayed_handler,
@@ -552,6 +560,12 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 	err = nfp_net_tlv_caps_parse(eth_dev);
 	if (err != 0) {
 		PMD_INIT_LOG(ERR, "Failed to parser TLV caps");
+		return err;
+	}
+
+	err = nfp_ipsec_init(eth_dev);
+	if (err != 0) {
+		PMD_INIT_LOG(ERR, "Failed to init IPsec module");
 		return err;
 	}
 
@@ -867,6 +881,7 @@ port_cleanup:
 		if (app_fw_nic->ports[i] && app_fw_nic->ports[i]->eth_dev) {
 			struct rte_eth_dev *tmp_dev;
 			tmp_dev = app_fw_nic->ports[i]->eth_dev;
+			nfp_ipsec_uninit(tmp_dev);
 			rte_eth_dev_release_port(tmp_dev);
 			app_fw_nic->ports[i] = NULL;
 		}
