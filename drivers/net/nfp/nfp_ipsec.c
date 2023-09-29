@@ -1124,6 +1124,30 @@ nfp_crypto_create_session(void *device,
 	return 0;
 }
 
+static int
+nfp_crypto_update_session(void *device __rte_unused,
+		struct rte_security_session *session,
+		struct rte_security_session_conf *conf)
+{
+	struct nfp_ipsec_session *priv_session;
+
+	priv_session = SECURITY_GET_SESS_PRIV(session);
+	if (priv_session == NULL)
+		return -EINVAL;
+
+	/* Update IPsec ESN value */
+	if (priv_session->msg.ctrl_word.ext_seq != 0 && conf->ipsec.options.esn != 0) {
+		/*
+		 * Store in nfp_ipsec_session for outbound SA for use
+		 * in nfp_security_set_pkt_metadata() function.
+		 */
+		priv_session->ipsec.esn.hi = conf->ipsec.esn.hi;
+		priv_session->ipsec.esn.low = conf->ipsec.esn.low;
+	}
+
+	return 0;
+}
+
 /**
  * Get discards packet statistics for each SA
  *
@@ -1215,6 +1239,7 @@ nfp_security_session_get_size(void *device __rte_unused)
 
 static const struct rte_security_ops nfp_security_ops = {
 	.session_create = nfp_crypto_create_session,
+	.session_update = nfp_crypto_update_session,
 	.session_get_size = nfp_security_session_get_size,
 	.session_stats_get = nfp_security_session_get_stats,
 	.capabilities_get = nfp_crypto_capabilities_get,
