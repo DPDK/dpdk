@@ -17,6 +17,7 @@ sources = files(
         'eventdev_private.c',
         'eventdev_trace_points.c',
         'rte_event_crypto_adapter.c',
+        'rte_event_dma_adapter.c',
         'rte_event_eth_rx_adapter.c',
         'rte_event_eth_tx_adapter.c',
         'rte_event_ring.c',
