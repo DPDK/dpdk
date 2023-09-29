@@ -142,6 +142,9 @@ struct event_dma_adapter {
 
 	/* Loop counter to flush dma ops */
 	uint16_t transmit_loop_count;
+
+	/* Per instance stats structure */
+	struct rte_event_dma_adapter_stats dma_stats;
 } __rte_cache_aligned;
 
 static struct event_dma_adapter **event_dma_adapter;
@@ -475,6 +478,7 @@ rte_event_dma_adapter_free(uint8_t id)
 static inline unsigned int
 edma_enq_to_dma_dev(struct event_dma_adapter *adapter, struct rte_event *ev, unsigned int cnt)
 {
+	struct rte_event_dma_adapter_stats *stats = &adapter->dma_stats;
 	struct dma_vchan_info *vchan_qinfo = NULL;
 	struct rte_event_dma_adapter_op *dma_op;
 	uint16_t vchan, nb_enqueued = 0;
@@ -484,6 +488,7 @@ edma_enq_to_dma_dev(struct event_dma_adapter *adapter, struct rte_event *ev, uns
 
 	ret = 0;
 	n = 0;
+	stats->event_deq_count += cnt;
 
 	for (i = 0; i < cnt; i++) {
 		dma_op = ev[i].event_ptr;
@@ -506,6 +511,7 @@ edma_enq_to_dma_dev(struct event_dma_adapter *adapter, struct rte_event *ev, uns
 			ret = edma_circular_buffer_flush_to_dma_dev(adapter, &vchan_qinfo->dma_buf,
 								    dma_dev_id, vchan,
 								    &nb_enqueued);
+			stats->dma_enq_count += nb_enqueued;
 			n += nb_enqueued;
 
 			/**
@@ -552,6 +558,7 @@ edma_adapter_dev_flush(struct event_dma_adapter *adapter, int16_t dma_dev_id,
 static unsigned int
 edma_adapter_enq_flush(struct event_dma_adapter *adapter)
 {
+	struct rte_event_dma_adapter_stats *stats = &adapter->dma_stats;
 	int16_t dma_dev_id;
 	uint16_t nb_enqueued = 0;
 	uint16_t nb_ops_flushed = 0;
@@ -566,6 +573,8 @@ edma_adapter_enq_flush(struct event_dma_adapter *adapter)
 	if (!nb_ops_flushed)
 		adapter->stop_enq_to_dma_dev = false;
 
+	stats->dma_enq_count += nb_enqueued;
+
 	return nb_enqueued;
 }
 
@@ -577,6 +586,7 @@ edma_adapter_enq_flush(struct event_dma_adapter *adapter)
 static int
 edma_adapter_enq_run(struct event_dma_adapter *adapter, unsigned int max_enq)
 {
+	struct rte_event_dma_adapter_stats *stats = &adapter->dma_stats;
 	uint8_t event_port_id = adapter->event_port_id;
 	uint8_t event_dev_id = adapter->eventdev_id;
 	struct rte_event ev[DMA_BATCH_SIZE];
@@ -596,6 +606,7 @@ edma_adapter_enq_run(struct event_dma_adapter *adapter, unsigned int max_enq)
 				break;
 		}
 
+		stats->event_poll_count++;
 		n = rte_event_dequeue_burst(event_dev_id, event_port_id, ev, DMA_BATCH_SIZE, 0);
 
 		if (!n)
@@ -616,6 +627,7 @@ static inline uint16_t
 edma_ops_enqueue_burst(struct event_dma_adapter *adapter, struct rte_event_dma_adapter_op **ops,
 		       uint16_t num)
 {
+	struct rte_event_dma_adapter_stats *stats = &adapter->dma_stats;
 	uint8_t event_port_id = adapter->event_port_id;
 	uint8_t event_dev_id = adapter->eventdev_id;
 	struct rte_event events[DMA_BATCH_SIZE];
@@ -654,6 +666,10 @@ edma_ops_enqueue_burst(struct event_dma_adapter *adapter, struct rte_event_dma_a
 						       &events[nb_enqueued], nb_ev - nb_enqueued);
 
 	} while (retry++ < DMA_ADAPTER_MAX_EV_ENQ_RETRIES && nb_enqueued < nb_ev);
+
+	stats->event_enq_fail_count += nb_ev - nb_enqueued;
+	stats->event_enq_count += nb_enqueued;
+	stats->event_enq_retry_count += retry - 1;
 
 	return nb_enqueued;
 }
@@ -709,6 +725,7 @@ edma_ops_buffer_flush(struct event_dma_adapter *adapter)
 static inline unsigned int
 edma_adapter_deq_run(struct event_dma_adapter *adapter, unsigned int max_deq)
 {
+	struct rte_event_dma_adapter_stats *stats = &adapter->dma_stats;
 	struct dma_vchan_info *vchan_info;
 	struct dma_ops_circular_buffer *tq_buf;
 	struct rte_event_dma_adapter_op *ops;
@@ -746,6 +763,7 @@ edma_adapter_deq_run(struct event_dma_adapter *adapter, unsigned int max_deq)
 					continue;
 
 				done = false;
+				stats->dma_deq_count += n;
 
 				tq_buf = &dev_info->tqmap[vchan].dma_buf;
 
@@ -1305,6 +1323,83 @@ rte_event_dma_adapter_runtime_params_get(uint8_t id,
 		return ret;
 
 	params->max_nb = adapter->max_nb;
+
+	return 0;
+}
+
+int
+rte_event_dma_adapter_stats_get(uint8_t id, struct rte_event_dma_adapter_stats *stats)
+{
+	struct rte_event_dma_adapter_stats dev_stats_sum = {0};
+	struct rte_event_dma_adapter_stats dev_stats;
+	struct event_dma_adapter *adapter;
+	struct dma_device_info *dev_info;
+	struct rte_eventdev *dev;
+	uint16_t num_dma_dev;
+	uint32_t i;
+	int ret;
+
+	EVENT_DMA_ADAPTER_ID_VALID_OR_ERR_RET(id, -EINVAL);
+
+	adapter = edma_id_to_adapter(id);
+	if (adapter == NULL || stats == NULL)
+		return -EINVAL;
+
+	num_dma_dev = rte_dma_count_avail();
+	dev = &rte_eventdevs[adapter->eventdev_id];
+	memset(stats, 0, sizeof(*stats));
+	for (i = 0; i < num_dma_dev; i++) {
+		dev_info = &adapter->dma_devs[i];
+
+		if (dev_info->internal_event_port == 0 ||
+		    dev->dev_ops->dma_adapter_stats_get == NULL)
+			continue;
+
+		ret = (*dev->dev_ops->dma_adapter_stats_get)(dev, i, &dev_stats);
+		if (ret)
+			continue;
+
+		dev_stats_sum.dma_deq_count += dev_stats.dma_deq_count;
+		dev_stats_sum.event_enq_count += dev_stats.event_enq_count;
+	}
+
+	if (adapter->service_initialized)
+		*stats = adapter->dma_stats;
+
+	stats->dma_deq_count += dev_stats_sum.dma_deq_count;
+	stats->event_enq_count += dev_stats_sum.event_enq_count;
+
+	return 0;
+}
+
+int
+rte_event_dma_adapter_stats_reset(uint8_t id)
+{
+	struct event_dma_adapter *adapter;
+	struct dma_device_info *dev_info;
+	struct rte_eventdev *dev;
+	uint16_t num_dma_dev;
+	uint32_t i;
+
+	EVENT_DMA_ADAPTER_ID_VALID_OR_ERR_RET(id, -EINVAL);
+
+	adapter = edma_id_to_adapter(id);
+	if (adapter == NULL)
+		return -EINVAL;
+
+	num_dma_dev = rte_dma_count_avail();
+	dev = &rte_eventdevs[adapter->eventdev_id];
+	for (i = 0; i < num_dma_dev; i++) {
+		dev_info = &adapter->dma_devs[i];
+
+		if (dev_info->internal_event_port == 0 ||
+		    dev->dev_ops->dma_adapter_stats_reset == NULL)
+			continue;
+
+		(*dev->dev_ops->dma_adapter_stats_reset)(dev, i);
+	}
+
+	memset(&adapter->dma_stats, 0, sizeof(adapter->dma_stats));
 
 	return 0;
 }
