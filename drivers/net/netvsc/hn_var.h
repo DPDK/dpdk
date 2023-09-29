@@ -287,6 +287,7 @@ int	hn_vf_rss_hash_update(struct rte_eth_dev *dev,
 int	hn_vf_reta_hash_update(struct rte_eth_dev *dev,
 			       struct rte_eth_rss_reta_entry64 *reta_conf,
 			       uint16_t reta_size);
+int hn_vf_mtu_set(struct rte_eth_dev *dev, uint16_t mtu);
 int	hn_eth_rmv_event_callback(uint16_t port_id,
 				  enum rte_eth_event_type event __rte_unused,
 				  void *cb_arg, void *out __rte_unused);

@@ -778,3 +778,18 @@ int hn_vf_reta_hash_update(struct rte_eth_dev *dev,
 
 	return ret;
 }
+
+int hn_vf_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
+{
+	struct hn_data *hv = dev->data->dev_private;
+	struct rte_eth_dev *vf_dev;
+	int ret = 0;
+
+	rte_rwlock_read_lock(&hv->vf_lock);
+	vf_dev = hn_get_vf_dev(hv);
+	if (hv->vf_ctx.vf_vsc_switched && vf_dev)
+		ret = vf_dev->dev_ops->mtu_set(vf_dev, mtu);
+	rte_rwlock_read_unlock(&hv->vf_lock);
+
+	return ret;
+}
