@@ -331,6 +331,7 @@ nfp_qcp_queue_offset(const struct nfp_dev_info *dev_info,
 /* Prototypes for common NFP functions */
 int nfp_net_reconfig(struct nfp_net_hw *hw, uint32_t ctrl, uint32_t update);
 int nfp_net_ext_reconfig(struct nfp_net_hw *hw, uint32_t ctrl_ext, uint32_t update);
+int nfp_net_mbox_reconfig(struct nfp_net_hw *hw, uint32_t mbox_cmd);
 int nfp_net_configure(struct rte_eth_dev *dev);
 int nfp_net_common_init(struct rte_pci_device *pci_dev, struct nfp_net_hw *hw);
 void nfp_net_log_device_information(const struct nfp_net_hw *hw);

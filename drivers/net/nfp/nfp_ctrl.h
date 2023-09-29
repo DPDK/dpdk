@@ -123,6 +123,7 @@
 #define   NFP_NET_CFG_UPDATE_IRQMOD       (0x1 <<  8) /* IRQ mod change */
 #define   NFP_NET_CFG_UPDATE_VXLAN        (0x1 <<  9) /* VXLAN port change */
 #define   NFP_NET_CFG_UPDATE_MACADDR      (0x1 << 11) /* MAC address change */
+#define   NFP_NET_CFG_UPDATE_MBOX         (0x1 << 12) /**< Mailbox update */
 #define   NFP_NET_CFG_UPDATE_ERR          (0x1U << 31) /* A error occurred */
 #define NFP_NET_CFG_TXRS_ENABLE         0x0008
 #define NFP_NET_CFG_RXRS_ENABLE         0x0010
@@ -447,6 +448,11 @@ struct nfp_net_fw_ver {
 #define NFP_NET_CFG_MBOX_BASE                 0x1800
 #define NFP_NET_CFG_MBOX_VAL                  0x1808
 #define NFP_NET_CFG_MBOX_VAL_MAX_SZ           0x1F8
+#define NFP_NET_CFG_MBOX_SIMPLE_CMD           0x0
+#define NFP_NET_CFG_MBOX_SIMPLE_RET           0x4
+#define NFP_NET_CFG_MBOX_SIMPLE_VAL           0x8
+
+#define NFP_NET_CFG_MBOX_CMD_IPSEC            3
 
 /*
  * TLV capabilities

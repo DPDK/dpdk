@@ -320,6 +320,47 @@ nfp_net_ext_reconfig(struct nfp_net_hw *hw, uint32_t ctrl_ext, uint32_t update)
 	return 0;
 }
 
+/**
+ * Reconfigure the firmware via the mailbox
+ *
+ * @param hw
+ *   Device to reconfigure
+ * @param mbox_cmd
+ *   The value for the mailbox command
+ *
+ * @return
+ *   - (0) if OK to reconfigure by the mailbox.
+ *   - (-EIO) if I/O err and fail to reconfigure by the mailbox
+ */
+int
+nfp_net_mbox_reconfig(struct nfp_net_hw *hw,
+		uint32_t mbox_cmd)
+{
+	int ret;
+	uint32_t mbox;
+
+	mbox = hw->tlv_caps.mbox_off;
+
+	rte_spinlock_lock(&hw->reconfig_lock);
+
+	nn_cfg_writeq(hw, mbox + NFP_NET_CFG_MBOX_SIMPLE_CMD, mbox_cmd);
+	nn_cfg_writel(hw, NFP_NET_CFG_UPDATE, NFP_NET_CFG_UPDATE_MBOX);
+
+	rte_wmb();
+
+	ret = __nfp_net_reconfig(hw, NFP_NET_CFG_UPDATE_MBOX);
+
+	rte_spinlock_unlock(&hw->reconfig_lock);
+
+	if (ret != 0) {
+		PMD_DRV_LOG(ERR, "Error nft net mailbox reconfig: mbox=%#08x update=%#08x",
+				mbox_cmd, NFP_NET_CFG_UPDATE_MBOX);
+		return -EIO;
+	}
+
+	return nn_cfg_readl(hw, mbox + NFP_NET_CFG_MBOX_SIMPLE_RET);
+}
+
 /*
  * Configure an Ethernet device. This function must be invoked first
  * before any other function in the Ethernet API. This function can
