@@ -1299,6 +1299,7 @@ eth_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 	unsigned i;
 	unsigned long rx_total = 0, tx_total = 0;
 	unsigned long rx_total_bytes = 0, tx_total_bytes = 0;
+	unsigned long tx_total_errors = 0;
 	struct vhost_queue *vq;
 
 	for (i = 0; i < RTE_ETHDEV_QUEUE_STAT_CNTRS &&
@@ -1323,12 +1324,15 @@ eth_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 
 		stats->q_obytes[i] = vq->stats.bytes;
 		tx_total_bytes += stats->q_obytes[i];
+
+		tx_total_errors += vq->stats.missed_pkts;
 	}
 
 	stats->ipackets = rx_total;
 	stats->opackets = tx_total;
 	stats->ibytes = rx_total_bytes;
 	stats->obytes = tx_total_bytes;
+	stats->oerrors = tx_total_errors;
 
 	return 0;
 }
