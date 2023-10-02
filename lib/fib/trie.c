@@ -452,6 +452,14 @@ get_nxt_net(uint8_t *ip, uint8_t depth)
 }
 
 static int
+v6_addr_is_zero(const uint8_t ip[RTE_FIB6_IPV6_ADDR_SIZE])
+{
+	uint8_t ip_addr[RTE_FIB6_IPV6_ADDR_SIZE] = {0};
+
+	return rte_rib6_is_equal(ip, ip_addr);
+}
+
+static int
 modify_dp(struct rte_trie_tbl *dp, struct rte_rib6 *rib,
 	const uint8_t ip[RTE_FIB6_IPV6_ADDR_SIZE],
 	uint8_t depth, uint64_t next_hop)
@@ -484,11 +492,19 @@ modify_dp(struct rte_trie_tbl *dp, struct rte_rib6 *rib,
 				return ret;
 			get_nxt_net(redge, tmp_depth);
 			rte_rib6_copy_addr(ledge, redge);
+			/*
+			 * we got to the end of address space
+			 * and wrapped around
+			 */
+			if (v6_addr_is_zero(ledge))
+				break;
 		} else {
 			rte_rib6_copy_addr(redge, ip);
 			get_nxt_net(redge, depth);
-			if (rte_rib6_is_equal(ledge, redge))
+			if (rte_rib6_is_equal(ledge, redge) &&
+					!v6_addr_is_zero(ledge))
 				break;
+
 			ret = install_to_dp(dp, ledge, redge,
 				next_hop);
 			if (ret != 0)
