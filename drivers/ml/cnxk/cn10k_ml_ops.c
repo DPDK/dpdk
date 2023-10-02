@@ -471,9 +471,9 @@ cn10k_ml_prep_fp_job_descriptor(struct rte_ml_dev *dev, struct cn10k_ml_req *req
 	req->jd.hdr.sp_flags = 0x0;
 	req->jd.hdr.result = roc_ml_addr_ap2mlip(&mldev->roc, &req->result);
 	req->jd.model_run.input_ddr_addr =
-		PLT_U64_CAST(roc_ml_addr_ap2mlip(&mldev->roc, op->input.addr));
+		PLT_U64_CAST(roc_ml_addr_ap2mlip(&mldev->roc, op->input[0]->addr));
 	req->jd.model_run.output_ddr_addr =
-		PLT_U64_CAST(roc_ml_addr_ap2mlip(&mldev->roc, op->output.addr));
+		PLT_U64_CAST(roc_ml_addr_ap2mlip(&mldev->roc, op->output[0]->addr));
 	req->jd.model_run.num_batches = op->nb_batches;
 }
 
@@ -856,7 +856,11 @@ cn10k_ml_model_xstats_reset(struct rte_ml_dev *dev, int32_t model_id, const uint
 static int
 cn10k_ml_cache_model_data(struct rte_ml_dev *dev, uint16_t model_id)
 {
+	struct rte_ml_model_info *info;
 	struct cn10k_ml_model *model;
+	struct rte_ml_buff_seg seg[2];
+	struct rte_ml_buff_seg *inp;
+	struct rte_ml_buff_seg *out;
 	struct rte_ml_op op;
 
 	char str[RTE_MEMZONE_NAMESIZE];
@@ -864,12 +868,22 @@ cn10k_ml_cache_model_data(struct rte_ml_dev *dev, uint16_t model_id)
 	uint64_t isize = 0;
 	uint64_t osize = 0;
 	int ret = 0;
+	uint32_t i;
 
 	model = dev->data->models[model_id];
+	info = (struct rte_ml_model_info *)model->info;
+	inp = &seg[0];
+	out = &seg[1];
 
 	/* Create input and output buffers. */
-	rte_ml_io_input_size_get(dev->data->dev_id, model_id, model->batch_size, &isize, NULL);
-	rte_ml_io_output_size_get(dev->data->dev_id, model_id, model->batch_size, &osize, NULL);
+	for (i = 0; i < info->nb_inputs; i++)
+		isize += info->input_info[i].size;
+
+	for (i = 0; i < info->nb_outputs; i++)
+		osize += info->output_info[i].size;
+
+	isize = model->batch_size * isize;
+	osize = model->batch_size * osize;
 
 	snprintf(str, RTE_MEMZONE_NAMESIZE, "%s_%u", "ml_dummy_io", model_id);
 	mz = plt_memzone_reserve_aligned(str, isize + osize, 0, ML_CN10K_ALIGN_SIZE);
@@ -877,17 +891,22 @@ cn10k_ml_cache_model_data(struct rte_ml_dev *dev, uint16_t model_id)
 		return -ENOMEM;
 	memset(mz->addr, 0, isize + osize);
 
+	seg[0].addr = mz->addr;
+	seg[0].iova_addr = mz->iova;
+	seg[0].length = isize;
+	seg[0].next = NULL;
+
+	seg[1].addr = PLT_PTR_ADD(mz->addr, isize);
+	seg[1].iova_addr = mz->iova + isize;
+	seg[1].length = osize;
+	seg[1].next = NULL;
+
 	op.model_id = model_id;
 	op.nb_batches = model->batch_size;
 	op.mempool = NULL;
 
-	op.input.addr = mz->addr;
-	op.input.length = isize;
-	op.input.next = NULL;
-
-	op.output.addr = PLT_PTR_ADD(op.input.addr, isize);
-	op.output.length = osize;
-	op.output.next = NULL;
+	op.input = &inp;
+	op.output = &out;
 
 	memset(model->req, 0, sizeof(struct cn10k_ml_req));
 	ret = cn10k_ml_inference_sync(dev, &op);
@@ -919,8 +938,9 @@ cn10k_ml_dev_info_get(struct rte_ml_dev *dev, struct rte_ml_dev_info *dev_info)
 	else if (strcmp(mldev->fw.poll_mem, "ddr") == 0)
 		dev_info->max_desc = ML_CN10K_MAX_DESC_PER_QP;
 
+	dev_info->max_io = ML_CN10K_MAX_INPUT_OUTPUT;
 	dev_info->max_segments = ML_CN10K_MAX_SEGMENTS;
-	dev_info->min_align_size = ML_CN10K_ALIGN_SIZE;
+	dev_info->align_size = ML_CN10K_ALIGN_SIZE;
 
 	return 0;
 }
@@ -2139,15 +2159,14 @@ cn10k_ml_io_output_size_get(struct rte_ml_dev *dev, uint16_t model_id, uint32_t 
 }
 
 static int
-cn10k_ml_io_quantize(struct rte_ml_dev *dev, uint16_t model_id, uint16_t nb_batches, void *dbuffer,
-		     void *qbuffer)
+cn10k_ml_io_quantize(struct rte_ml_dev *dev, uint16_t model_id, struct rte_ml_buff_seg **dbuffer,
+		     struct rte_ml_buff_seg **qbuffer)
 {
 	struct cn10k_ml_model *model;
 	uint8_t model_input_type;
 	uint8_t *lcl_dbuffer;
 	uint8_t *lcl_qbuffer;
 	uint8_t input_type;
-	uint32_t batch_id;
 	float qscale;
 	uint32_t i;
 	uint32_t j;
@@ -2160,11 +2179,9 @@ cn10k_ml_io_quantize(struct rte_ml_dev *dev, uint16_t model_id, uint16_t nb_batc
 		return -EINVAL;
 	}
 
-	lcl_dbuffer = dbuffer;
-	lcl_qbuffer = qbuffer;
-	batch_id = 0;
+	lcl_dbuffer = dbuffer[0]->addr;
+	lcl_qbuffer = qbuffer[0]->addr;
 
-next_batch:
 	for (i = 0; i < model->metadata.model.num_input; i++) {
 		if (i < MRVL_ML_NUM_INPUT_OUTPUT_1) {
 			input_type = model->metadata.input1[i].input_type;
@@ -2218,23 +2235,18 @@ next_batch:
 		lcl_qbuffer += model->addr.input[i].sz_q;
 	}
 
-	batch_id++;
-	if (batch_id < PLT_DIV_CEIL(nb_batches, model->batch_size))
-		goto next_batch;
-
 	return 0;
 }
 
 static int
-cn10k_ml_io_dequantize(struct rte_ml_dev *dev, uint16_t model_id, uint16_t nb_batches,
-		       void *qbuffer, void *dbuffer)
+cn10k_ml_io_dequantize(struct rte_ml_dev *dev, uint16_t model_id, struct rte_ml_buff_seg **qbuffer,
+		       struct rte_ml_buff_seg **dbuffer)
 {
 	struct cn10k_ml_model *model;
 	uint8_t model_output_type;
 	uint8_t *lcl_qbuffer;
 	uint8_t *lcl_dbuffer;
 	uint8_t output_type;
-	uint32_t batch_id;
 	float dscale;
 	uint32_t i;
 	uint32_t j;
@@ -2247,11 +2259,9 @@ cn10k_ml_io_dequantize(struct rte_ml_dev *dev, uint16_t model_id, uint16_t nb_ba
 		return -EINVAL;
 	}
 
-	lcl_dbuffer = dbuffer;
-	lcl_qbuffer = qbuffer;
-	batch_id = 0;
+	lcl_dbuffer = dbuffer[0]->addr;
+	lcl_qbuffer = qbuffer[0]->addr;
 
-next_batch:
 	for (i = 0; i < model->metadata.model.num_output; i++) {
 		if (i < MRVL_ML_NUM_INPUT_OUTPUT_1) {
 			output_type = model->metadata.output1[i].output_type;
@@ -2305,10 +2315,6 @@ next_batch:
 		lcl_qbuffer += model->addr.output[i].sz_q;
 		lcl_dbuffer += model->addr.output[i].sz_d;
 	}
-
-	batch_id++;
-	if (batch_id < PLT_DIV_CEIL(nb_batches, model->batch_size))
-		goto next_batch;
 
 	return 0;
 }

@@ -50,12 +50,6 @@ ml_model_load(struct ml_test *test, struct ml_options *opt, struct ml_model *mod
 		return ret;
 	}
 
-	/* Update number of batches */
-	if (opt->batches == 0)
-		model->nb_batches = model->info.batch_size;
-	else
-		model->nb_batches = opt->batches;
-
 	model->state = MODEL_LOADED;
 
 	return 0;

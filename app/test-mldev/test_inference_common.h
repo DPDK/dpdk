@@ -11,11 +11,16 @@
 
 #include "test_model_common.h"
 
+#define ML_TEST_MAX_IO_SIZE 32
+
 struct ml_request {
 	uint8_t *input;
 	uint8_t *output;
 	uint16_t fid;
 	uint64_t niters;
+
+	struct rte_ml_buff_seg *inp_buf_segs[ML_TEST_MAX_IO_SIZE];
+	struct rte_ml_buff_seg *out_buf_segs[ML_TEST_MAX_IO_SIZE];
 };
 
 struct ml_core_args {
@@ -38,6 +43,7 @@ struct test_inference {
 
 	/* test specific data */
 	struct ml_model model[ML_TEST_MAX_MODELS];
+	struct rte_mempool *buf_seg_pool;
 	struct rte_mempool *op_pool;
 
 	uint64_t nb_used;

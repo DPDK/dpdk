@@ -520,9 +520,11 @@ cn10k_ml_model_info_set(struct rte_ml_dev *dev, struct cn10k_ml_model *model)
 	struct rte_ml_model_info *info;
 	struct rte_ml_io_info *output;
 	struct rte_ml_io_info *input;
+	struct cn10k_ml_dev *mldev;
 	uint8_t i;
 	uint8_t j;
 
+	mldev = dev->data->dev_private;
 	metadata = &model->metadata;
 	info = PLT_PTR_CAST(model->info);
 	input = PLT_PTR_ADD(info, sizeof(struct rte_ml_model_info));
@@ -537,7 +539,9 @@ cn10k_ml_model_info_set(struct rte_ml_dev *dev, struct cn10k_ml_model *model)
 		 metadata->model.version[3]);
 	info->model_id = model->model_id;
 	info->device_id = dev->data->dev_id;
-	info->batch_size = model->batch_size;
+	info->io_layout = RTE_ML_IO_LAYOUT_PACKED;
+	info->min_batches = model->batch_size;
+	info->max_batches = mldev->fw.req->jd.fw_load.cap.s.max_num_batches / model->batch_size;
 	info->nb_inputs = metadata->model.num_input;
 	info->input_info = input;
 	info->nb_outputs = metadata->model.num_output;

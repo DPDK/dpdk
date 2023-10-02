@@ -28,7 +28,6 @@ ml_options_default(struct ml_options *opt)
 	opt->burst_size = 1;
 	opt->queue_pairs = 1;
 	opt->queue_size = 1;
-	opt->batches = 0;
 	opt->tolerance = 0.0;
 	opt->stats = false;
 	opt->debug = false;
@@ -213,18 +212,6 @@ ml_parse_queue_size(struct ml_options *opt, const char *arg)
 }
 
 static int
-ml_parse_batches(struct ml_options *opt, const char *arg)
-{
-	int ret;
-
-	ret = parser_read_uint16(&opt->batches, arg);
-	if (ret != 0)
-		ml_err("Invalid option, batches = %s\n", arg);
-
-	return ret;
-}
-
-static int
 ml_parse_tolerance(struct ml_options *opt, const char *arg)
 {
 	opt->tolerance = fabs(atof(arg));
@@ -254,7 +241,6 @@ ml_dump_test_options(const char *testname)
 		       "\t\t--burst_size       : inference burst size\n"
 		       "\t\t--queue_pairs      : number of queue pairs to create\n"
 		       "\t\t--queue_size       : size of queue-pair\n"
-		       "\t\t--batches          : number of batches of input\n"
 		       "\t\t--tolerance        : maximum tolerance (%%) for output validation\n"
 		       "\t\t--stats            : enable reporting device and model statistics\n");
 		printf("\n");
@@ -286,7 +272,6 @@ static struct option lgopts[] = {
 	{ML_BURST_SIZE, 1, 0, 0},
 	{ML_QUEUE_PAIRS, 1, 0, 0},
 	{ML_QUEUE_SIZE, 1, 0, 0},
-	{ML_BATCHES, 1, 0, 0},
 	{ML_TOLERANCE, 1, 0, 0},
 	{ML_STATS, 0, 0, 0},
 	{ML_DEBUG, 0, 0, 0},
@@ -308,7 +293,6 @@ ml_opts_parse_long(int opt_idx, struct ml_options *opt)
 		{ML_BURST_SIZE, ml_parse_burst_size},
 		{ML_QUEUE_PAIRS, ml_parse_queue_pairs},
 		{ML_QUEUE_SIZE, ml_parse_queue_size},
-		{ML_BATCHES, ml_parse_batches},
 		{ML_TOLERANCE, ml_parse_tolerance},
 	};
 

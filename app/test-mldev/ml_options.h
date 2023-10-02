@@ -21,7 +21,6 @@
 #define ML_BURST_SIZE  ("burst_size")
 #define ML_QUEUE_PAIRS ("queue_pairs")
 #define ML_QUEUE_SIZE  ("queue_size")
-#define ML_BATCHES     ("batches")
 #define ML_TOLERANCE   ("tolerance")
 #define ML_STATS       ("stats")
 #define ML_DEBUG       ("debug")
@@ -44,7 +43,6 @@ struct ml_options {
 	uint16_t burst_size;
 	uint16_t queue_pairs;
 	uint16_t queue_size;
-	uint16_t batches;
 	float tolerance;
 	bool stats;
 	bool debug;

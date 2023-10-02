@@ -523,8 +523,6 @@ typedef int (*mldev_io_output_size_get_t)(struct rte_ml_dev *dev, uint16_t model
  *	ML device pointer.
  * @param model_id
  *	Model ID to use.
- * @param nb_batches
- *	Number of batches.
  * @param dbuffer
  *	Pointer t de-quantized data buffer.
  * @param qbuffer
@@ -534,8 +532,9 @@ typedef int (*mldev_io_output_size_get_t)(struct rte_ml_dev *dev, uint16_t model
  *	- 0 on success.
  *	- <0, error on failure.
  */
-typedef int (*mldev_io_quantize_t)(struct rte_ml_dev *dev, uint16_t model_id, uint16_t nb_batches,
-				   void *dbuffer, void *qbuffer);
+typedef int (*mldev_io_quantize_t)(struct rte_ml_dev *dev, uint16_t model_id,
+				   struct rte_ml_buff_seg **dbuffer,
+				   struct rte_ml_buff_seg **qbuffer);
 
 /**
  * @internal
@@ -546,8 +545,6 @@ typedef int (*mldev_io_quantize_t)(struct rte_ml_dev *dev, uint16_t model_id, ui
  *	ML device pointer.
  * @param model_id
  *	Model ID to use.
- * @param nb_batches
- *	Number of batches.
  * @param qbuffer
  *	Pointer t de-quantized data buffer.
  * @param dbuffer
@@ -557,8 +554,9 @@ typedef int (*mldev_io_quantize_t)(struct rte_ml_dev *dev, uint16_t model_id, ui
  *	- 0 on success.
  *	- <0, error on failure.
  */
-typedef int (*mldev_io_dequantize_t)(struct rte_ml_dev *dev, uint16_t model_id, uint16_t nb_batches,
-				     void *qbuffer, void *dbuffer);
+typedef int (*mldev_io_dequantize_t)(struct rte_ml_dev *dev, uint16_t model_id,
+				     struct rte_ml_buff_seg **qbuffer,
+				     struct rte_ml_buff_seg **dbuffer);
 
 /**
  * @internal

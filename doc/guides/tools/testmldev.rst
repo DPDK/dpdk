@@ -106,11 +106,6 @@ The following are the command-line options supported by the test application.
   Queue size would translate into ``rte_ml_dev_qp_conf::nb_desc`` field during queue-pair creation.
   Default value is ``1``.
 
-``--batches <n>``
-  Set the number batches in the input file provided for inference run.
-  When not specified, the test would assume the number of batches
-  is the batch size of the model.
-
 ``--tolerance <n>``
   Set the tolerance value in percentage to be used for output validation.
   Default value is ``0``.
@@ -282,7 +277,6 @@ Supported command line options for inference tests are following::
    --burst_size
    --queue_pairs
    --queue_size
-   --batches
    --tolerance
    --stats
 

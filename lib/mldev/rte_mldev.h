@@ -228,12 +228,14 @@ struct rte_ml_dev_info {
 	/**< Maximum allowed number of descriptors for queue pair by the device.
 	 * @see struct rte_ml_dev_qp_conf::nb_desc
 	 */
+	uint16_t max_io;
+	/**< Maximum number of inputs/outputs supported per model. */
 	uint16_t max_segments;
 	/**< Maximum number of scatter-gather entries supported by the device.
 	 * @see struct rte_ml_buff_seg  struct rte_ml_buff_seg::next
 	 */
-	uint16_t min_align_size;
-	/**< Minimum alignment size of IO buffers used by the device. */
+	uint16_t align_size;
+	/**< Alignment size of IO buffers used by the device. */
 };
 
 /**
@@ -429,10 +431,28 @@ struct rte_ml_op {
 	/**< Reserved for future use. */
 	struct rte_mempool *mempool;
 	/**< Pool from which operation is allocated. */
-	struct rte_ml_buff_seg input;
-	/**< Input buffer to hold the inference data. */
-	struct rte_ml_buff_seg output;
-	/**< Output buffer to hold the inference output by the driver. */
+	struct rte_ml_buff_seg **input;
+	/**< Array of buffer segments to hold the inference input data.
+	 *
+	 * When the model supports IO layout RTE_ML_IO_LAYOUT_PACKED, size of
+	 * the array is 1.
+	 *
+	 * When the model supports IO layout RTE_ML_IO_LAYOUT_SPLIT, size of
+	 * the array is rte_ml_model_info::nb_inputs.
+	 *
+	 * @see struct rte_ml_dev_info::io_layout
+	 */
+	struct rte_ml_buff_seg **output;
+	/**< Array of buffer segments to hold the inference output data.
+	 *
+	 * When the model supports IO layout RTE_ML_IO_LAYOUT_PACKED, size of
+	 * the array is 1.
+	 *
+	 * When the model supports IO layout RTE_ML_IO_LAYOUT_SPLIT, size of
+	 * the array is rte_ml_model_info::nb_outputs.
+	 *
+	 * @see struct rte_ml_dev_info::io_layout
+	 */
 	union {
 		uint64_t user_u64;
 		/**< User data as uint64_t.*/
@@ -863,7 +883,37 @@ enum rte_ml_io_type {
 	/**< 16-bit brain floating point number. */
 };
 
-/** Input and output data information structure
+/** ML I/O buffer layout */
+enum rte_ml_io_layout {
+	RTE_ML_IO_LAYOUT_PACKED,
+	/**< All inputs for the model should packed in a single buffer with
+	 * no padding between individual inputs. The buffer is expected to
+	 * be aligned to rte_ml_dev_info::align_size.
+	 *
+	 * When I/O segmentation is supported by the device, the packed
+	 * data can be split into multiple segments. In this case, each
+	 * segment is expected to be aligned to rte_ml_dev_info::align_size
+	 *
+	 * Same applies to output.
+	 *
+	 * @see struct rte_ml_dev_info::max_segments
+	 */
+	RTE_ML_IO_LAYOUT_SPLIT
+	/**< Each input for the model should be stored as separate buffers
+	 * and each input should be aligned to rte_ml_dev_info::align_size.
+	 *
+	 * When I/O segmentation is supported, each input can be split into
+	 * multiple segments. In this case, each segment is expected to be
+	 * aligned to rte_ml_dev_info::align_size
+	 *
+	 * Same applies to output.
+	 *
+	 * @see struct rte_ml_dev_info::max_segments
+	 */
+};
+
+/**
+ * Input and output data information structure
  *
  * Specifies the type and shape of input and output data.
  */
@@ -873,7 +923,7 @@ struct rte_ml_io_info {
 	uint32_t nb_dims;
 	/**< Number of dimensions in shape */
 	uint32_t *shape;
-	/**< Shape of the tensor */
+	/**< Shape of the tensor for rte_ml_model_info::min_batches of the model. */
 	enum rte_ml_io_type type;
 	/**< Type of data
 	 * @see enum rte_ml_io_type
@@ -894,8 +944,16 @@ struct rte_ml_model_info {
 	/**< Model ID */
 	uint16_t device_id;
 	/**< Device ID */
-	uint16_t batch_size;
-	/**< Maximum number of batches that the model can process simultaneously */
+	enum rte_ml_io_layout io_layout;
+	/**< I/O buffer layout for the model */
+	uint16_t min_batches;
+	/**< Minimum number of batches that the model can process
+	 * in one inference request
+	 */
+	uint16_t max_batches;
+	/**< Maximum number of batches that the model can process
+	 * in one inference request
+	 */
 	uint32_t nb_inputs;
 	/**< Number of inputs */
 	const struct rte_ml_io_info *input_info;
@@ -1021,8 +1079,6 @@ rte_ml_io_output_size_get(int16_t dev_id, uint16_t model_id, uint32_t nb_batches
  *   The identifier of the device.
  * @param[in] model_id
  *   Identifier for the model
- * @param[in] nb_batches
- *   Number of batches in the dequantized input buffer
  * @param[in] dbuffer
  *   Address of dequantized input data
  * @param[in] qbuffer
@@ -1034,8 +1090,8 @@ rte_ml_io_output_size_get(int16_t dev_id, uint16_t model_id, uint32_t nb_batches
  */
 __rte_experimental
 int
-rte_ml_io_quantize(int16_t dev_id, uint16_t model_id, uint16_t nb_batches, void *dbuffer,
-		   void *qbuffer);
+rte_ml_io_quantize(int16_t dev_id, uint16_t model_id, struct rte_ml_buff_seg **dbuffer,
+		   struct rte_ml_buff_seg **qbuffer);
 
 /**
  * Dequantize output data.
@@ -1047,8 +1103,6 @@ rte_ml_io_quantize(int16_t dev_id, uint16_t model_id, uint16_t nb_batches, void 
  *   The identifier of the device.
  * @param[in] model_id
  *   Identifier for the model
- * @param[in] nb_batches
- *   Number of batches in the dequantized output buffer
  * @param[in] qbuffer
  *   Address of quantized output data
  * @param[in] dbuffer
@@ -1060,8 +1114,8 @@ rte_ml_io_quantize(int16_t dev_id, uint16_t model_id, uint16_t nb_batches, void 
  */
 __rte_experimental
 int
-rte_ml_io_dequantize(int16_t dev_id, uint16_t model_id, uint16_t nb_batches, void *qbuffer,
-		     void *dbuffer);
+rte_ml_io_dequantize(int16_t dev_id, uint16_t model_id, struct rte_ml_buff_seg **qbuffer,
+		     struct rte_ml_buff_seg **dbuffer);
 
 /* ML op pool operations */
 

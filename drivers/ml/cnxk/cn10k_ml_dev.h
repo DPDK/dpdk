@@ -30,6 +30,9 @@
 /* Maximum number of descriptors per queue-pair */
 #define ML_CN10K_MAX_DESC_PER_QP 1024
 
+/* Maximum number of inputs / outputs per model */
+#define ML_CN10K_MAX_INPUT_OUTPUT 32
+
 /* Maximum number of segments for IO data */
 #define ML_CN10K_MAX_SEGMENTS 1
 

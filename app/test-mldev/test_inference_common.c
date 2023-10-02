@@ -47,7 +47,10 @@ ml_enqueue_single(void *arg)
 	uint64_t start_cycle;
 	uint32_t burst_enq;
 	uint32_t lcore_id;
+	uint64_t offset;
+	uint64_t bufsz;
 	uint16_t fid;
+	uint32_t i;
 	int ret;
 
 	lcore_id = rte_lcore_id();
@@ -66,24 +69,64 @@ next_model:
 	if (ret != 0)
 		goto next_model;
 
-retry:
+retry_req:
 	ret = rte_mempool_get(t->model[fid].io_pool, (void **)&req);
 	if (ret != 0)
-		goto retry;
+		goto retry_req;
+
+retry_inp_segs:
+	ret = rte_mempool_get_bulk(t->buf_seg_pool, (void **)req->inp_buf_segs,
+				   t->model[fid].info.nb_inputs);
+	if (ret != 0)
+		goto retry_inp_segs;
+
+retry_out_segs:
+	ret = rte_mempool_get_bulk(t->buf_seg_pool, (void **)req->out_buf_segs,
+				   t->model[fid].info.nb_outputs);
+	if (ret != 0)
+		goto retry_out_segs;
 
 	op->model_id = t->model[fid].id;
-	op->nb_batches = t->model[fid].nb_batches;
+	op->nb_batches = t->model[fid].info.min_batches;
 	op->mempool = t->op_pool;
-
-	op->input.addr = req->input;
-	op->input.length = t->model[fid].inp_qsize;
-	op->input.next = NULL;
-
-	op->output.addr = req->output;
-	op->output.length = t->model[fid].out_qsize;
-	op->output.next = NULL;
-
+	op->input = req->inp_buf_segs;
+	op->output = req->out_buf_segs;
 	op->user_ptr = req;
+
+	if (t->model[fid].info.io_layout == RTE_ML_IO_LAYOUT_PACKED) {
+		op->input[0]->addr = req->input;
+		op->input[0]->iova_addr = rte_mem_virt2iova(req->input);
+		op->input[0]->length = t->model[fid].inp_qsize;
+		op->input[0]->next = NULL;
+
+		op->output[0]->addr = req->output;
+		op->output[0]->iova_addr = rte_mem_virt2iova(req->output);
+		op->output[0]->length = t->model[fid].out_qsize;
+		op->output[0]->next = NULL;
+	} else {
+		offset = 0;
+		for (i = 0; i < t->model[fid].info.nb_inputs; i++) {
+			bufsz = RTE_ALIGN_CEIL(t->model[fid].info.input_info[i].size,
+					       t->cmn.dev_info.align_size);
+			op->input[i]->addr = req->input + offset;
+			op->input[i]->iova_addr = rte_mem_virt2iova(req->input + offset);
+			op->input[i]->length = bufsz;
+			op->input[i]->next = NULL;
+			offset += bufsz;
+		}
+
+		offset = 0;
+		for (i = 0; i < t->model[fid].info.nb_outputs; i++) {
+			bufsz = RTE_ALIGN_CEIL(t->model[fid].info.output_info[i].size,
+					       t->cmn.dev_info.align_size);
+			op->output[i]->addr = req->output + offset;
+			op->output[i]->iova_addr = rte_mem_virt2iova(req->output + offset);
+			op->output[i]->length = bufsz;
+			op->output[i]->next = NULL;
+			offset += bufsz;
+		}
+	}
+
 	req->niters++;
 	req->fid = fid;
 
@@ -143,6 +186,10 @@ dequeue_req:
 		}
 		req = (struct ml_request *)op->user_ptr;
 		rte_mempool_put(t->model[req->fid].io_pool, req);
+		rte_mempool_put_bulk(t->buf_seg_pool, (void **)op->input,
+				     t->model[req->fid].info.nb_inputs);
+		rte_mempool_put_bulk(t->buf_seg_pool, (void **)op->output,
+				     t->model[req->fid].info.nb_outputs);
 		rte_mempool_put(t->op_pool, op);
 	}
 
@@ -164,9 +211,12 @@ ml_enqueue_burst(void *arg)
 	uint16_t burst_enq;
 	uint32_t lcore_id;
 	uint16_t pending;
+	uint64_t offset;
+	uint64_t bufsz;
 	uint16_t idx;
 	uint16_t fid;
 	uint16_t i;
+	uint16_t j;
 	int ret;
 
 	lcore_id = rte_lcore_id();
@@ -186,25 +236,70 @@ next_model:
 	if (ret != 0)
 		goto next_model;
 
-retry:
+retry_reqs:
 	ret = rte_mempool_get_bulk(t->model[fid].io_pool, (void **)args->reqs, ops_count);
 	if (ret != 0)
-		goto retry;
+		goto retry_reqs;
 
 	for (i = 0; i < ops_count; i++) {
+retry_inp_segs:
+		ret = rte_mempool_get_bulk(t->buf_seg_pool, (void **)args->reqs[i]->inp_buf_segs,
+					   t->model[fid].info.nb_inputs);
+		if (ret != 0)
+			goto retry_inp_segs;
+
+retry_out_segs:
+		ret = rte_mempool_get_bulk(t->buf_seg_pool, (void **)args->reqs[i]->out_buf_segs,
+					   t->model[fid].info.nb_outputs);
+		if (ret != 0)
+			goto retry_out_segs;
+
 		args->enq_ops[i]->model_id = t->model[fid].id;
-		args->enq_ops[i]->nb_batches = t->model[fid].nb_batches;
+		args->enq_ops[i]->nb_batches = t->model[fid].info.min_batches;
 		args->enq_ops[i]->mempool = t->op_pool;
-
-		args->enq_ops[i]->input.addr = args->reqs[i]->input;
-		args->enq_ops[i]->input.length = t->model[fid].inp_qsize;
-		args->enq_ops[i]->input.next = NULL;
-
-		args->enq_ops[i]->output.addr = args->reqs[i]->output;
-		args->enq_ops[i]->output.length = t->model[fid].out_qsize;
-		args->enq_ops[i]->output.next = NULL;
-
+		args->enq_ops[i]->input = args->reqs[i]->inp_buf_segs;
+		args->enq_ops[i]->output = args->reqs[i]->out_buf_segs;
 		args->enq_ops[i]->user_ptr = args->reqs[i];
+
+		if (t->model[fid].info.io_layout == RTE_ML_IO_LAYOUT_PACKED) {
+			args->enq_ops[i]->input[0]->addr = args->reqs[i]->input;
+			args->enq_ops[i]->input[0]->iova_addr =
+				rte_mem_virt2iova(args->reqs[i]->input);
+			args->enq_ops[i]->input[0]->length = t->model[fid].inp_qsize;
+			args->enq_ops[i]->input[0]->next = NULL;
+
+			args->enq_ops[i]->output[0]->addr = args->reqs[i]->output;
+			args->enq_ops[i]->output[0]->iova_addr =
+				rte_mem_virt2iova(args->reqs[i]->output);
+			args->enq_ops[i]->output[0]->length = t->model[fid].out_qsize;
+			args->enq_ops[i]->output[0]->next = NULL;
+		} else {
+			offset = 0;
+			for (j = 0; j < t->model[fid].info.nb_inputs; j++) {
+				bufsz = RTE_ALIGN_CEIL(t->model[fid].info.input_info[i].size,
+						       t->cmn.dev_info.align_size);
+
+				args->enq_ops[i]->input[j]->addr = args->reqs[i]->input + offset;
+				args->enq_ops[i]->input[j]->iova_addr =
+					rte_mem_virt2iova(args->reqs[i]->input + offset);
+				args->enq_ops[i]->input[j]->length = t->model[fid].inp_qsize;
+				args->enq_ops[i]->input[j]->next = NULL;
+				offset += bufsz;
+			}
+
+			offset = 0;
+			for (j = 0; j < t->model[fid].info.nb_outputs; j++) {
+				bufsz = RTE_ALIGN_CEIL(t->model[fid].info.output_info[i].size,
+						       t->cmn.dev_info.align_size);
+				args->enq_ops[i]->output[j]->addr = args->reqs[i]->output + offset;
+				args->enq_ops[i]->output[j]->iova_addr =
+					rte_mem_virt2iova(args->reqs[i]->output + offset);
+				args->enq_ops[i]->output[j]->length = t->model[fid].out_qsize;
+				args->enq_ops[i]->output[j]->next = NULL;
+				offset += bufsz;
+			}
+		}
+
 		args->reqs[i]->niters++;
 		args->reqs[i]->fid = fid;
 	}
@@ -275,8 +370,15 @@ dequeue_burst:
 				t->error_count[lcore_id]++;
 			}
 			req = (struct ml_request *)args->deq_ops[i]->user_ptr;
-			if (req != NULL)
+			if (req != NULL) {
 				rte_mempool_put(t->model[req->fid].io_pool, req);
+				rte_mempool_put_bulk(t->buf_seg_pool,
+						     (void **)args->deq_ops[i]->input,
+						     t->model[req->fid].info.nb_inputs);
+				rte_mempool_put_bulk(t->buf_seg_pool,
+						     (void **)args->deq_ops[i]->output,
+						     t->model[req->fid].info.nb_outputs);
+			}
 		}
 		rte_mempool_put_bulk(t->op_pool, (void *)args->deq_ops, burst_deq);
 	}
@@ -312,6 +414,12 @@ test_inference_cap_check(struct ml_options *opt)
 	if (opt->nb_filelist > dev_info.max_models) {
 		ml_err("Insufficient capabilities:  Filelist count exceeded device limit, count = %u > (max limit = %u)",
 		       opt->nb_filelist, dev_info.max_models);
+		return false;
+	}
+
+	if (dev_info.max_io < ML_TEST_MAX_IO_SIZE) {
+		ml_err("Insufficient capabilities:  Max I/O, count = %u > (max limit = %u)",
+		       ML_TEST_MAX_IO_SIZE, dev_info.max_io);
 		return false;
 	}
 
@@ -403,11 +511,6 @@ test_inference_opt_dump(struct ml_options *opt)
 	ml_dump("tolerance", "%-7.3f", opt->tolerance);
 	ml_dump("stats", "%s", (opt->stats ? "true" : "false"));
 
-	if (opt->batches == 0)
-		ml_dump("batches", "%u (default batch size)", opt->batches);
-	else
-		ml_dump("batches", "%u", opt->batches);
-
 	ml_dump_begin("filelist");
 	for (i = 0; i < opt->nb_filelist; i++) {
 		ml_dump_list("model", i, opt->filelist[i].model);
@@ -492,10 +595,18 @@ void
 test_inference_destroy(struct ml_test *test, struct ml_options *opt)
 {
 	struct test_inference *t;
+	uint32_t lcore_id;
 
 	RTE_SET_USED(opt);
 
 	t = ml_test_priv(test);
+
+	for (lcore_id = 0; lcore_id < RTE_MAX_LCORE; lcore_id++) {
+		rte_free(t->args[lcore_id].enq_ops);
+		rte_free(t->args[lcore_id].deq_ops);
+		rte_free(t->args[lcore_id].reqs);
+	}
+
 	rte_free(t);
 }
 
@@ -572,19 +683,62 @@ ml_request_initialize(struct rte_mempool *mp, void *opaque, void *obj, unsigned 
 {
 	struct test_inference *t = ml_test_priv((struct ml_test *)opaque);
 	struct ml_request *req = (struct ml_request *)obj;
+	struct rte_ml_buff_seg dbuff_seg[ML_TEST_MAX_IO_SIZE];
+	struct rte_ml_buff_seg qbuff_seg[ML_TEST_MAX_IO_SIZE];
+	struct rte_ml_buff_seg *q_segs[ML_TEST_MAX_IO_SIZE];
+	struct rte_ml_buff_seg *d_segs[ML_TEST_MAX_IO_SIZE];
+	uint64_t offset;
+	uint64_t bufsz;
+	uint32_t i;
 
 	RTE_SET_USED(mp);
 	RTE_SET_USED(obj_idx);
 
 	req->input = (uint8_t *)obj +
-		     RTE_ALIGN_CEIL(sizeof(struct ml_request), t->cmn.dev_info.min_align_size);
-	req->output = req->input +
-		      RTE_ALIGN_CEIL(t->model[t->fid].inp_qsize, t->cmn.dev_info.min_align_size);
+		     RTE_ALIGN_CEIL(sizeof(struct ml_request), t->cmn.dev_info.align_size);
+	req->output =
+		req->input + RTE_ALIGN_CEIL(t->model[t->fid].inp_qsize, t->cmn.dev_info.align_size);
 	req->niters = 0;
 
+	if (t->model[t->fid].info.io_layout == RTE_ML_IO_LAYOUT_PACKED) {
+		dbuff_seg[0].addr = t->model[t->fid].input;
+		dbuff_seg[0].iova_addr = rte_mem_virt2iova(t->model[t->fid].input);
+		dbuff_seg[0].length = t->model[t->fid].inp_dsize;
+		dbuff_seg[0].next = NULL;
+		d_segs[0] = &dbuff_seg[0];
+
+		qbuff_seg[0].addr = req->input;
+		qbuff_seg[0].iova_addr = rte_mem_virt2iova(req->input);
+		qbuff_seg[0].length = t->model[t->fid].inp_qsize;
+		qbuff_seg[0].next = NULL;
+		q_segs[0] = &qbuff_seg[0];
+	} else {
+		offset = 0;
+		for (i = 0; i < t->model[t->fid].info.nb_inputs; i++) {
+			bufsz = t->model[t->fid].info.input_info[i].nb_elements * sizeof(float);
+			dbuff_seg[i].addr = t->model[t->fid].input + offset;
+			dbuff_seg[i].iova_addr = rte_mem_virt2iova(t->model[t->fid].input + offset);
+			dbuff_seg[i].length = bufsz;
+			dbuff_seg[i].next = NULL;
+			d_segs[i] = &dbuff_seg[i];
+			offset += bufsz;
+		}
+
+		offset = 0;
+		for (i = 0; i < t->model[t->fid].info.nb_inputs; i++) {
+			bufsz = RTE_ALIGN_CEIL(t->model[t->fid].info.input_info[i].size,
+					       t->cmn.dev_info.align_size);
+			qbuff_seg[i].addr = req->input + offset;
+			qbuff_seg[i].iova_addr = rte_mem_virt2iova(req->input + offset);
+			qbuff_seg[i].length = bufsz;
+			qbuff_seg[i].next = NULL;
+			q_segs[i] = &qbuff_seg[i];
+			offset += bufsz;
+		}
+	}
+
 	/* quantize data */
-	rte_ml_io_quantize(t->cmn.opt->dev_id, t->model[t->fid].id, t->model[t->fid].nb_batches,
-			   t->model[t->fid].input, req->input);
+	rte_ml_io_quantize(t->cmn.opt->dev_id, t->model[t->fid].id, d_segs, q_segs);
 }
 
 int
@@ -599,23 +753,38 @@ ml_inference_iomem_setup(struct ml_test *test, struct ml_options *opt, uint16_t 
 	uint32_t buff_size;
 	uint32_t mz_size;
 	size_t fsize;
+	uint32_t i;
 	int ret;
 
 	/* get input buffer size */
-	ret = rte_ml_io_input_size_get(opt->dev_id, t->model[fid].id, t->model[fid].nb_batches,
-				       &t->model[fid].inp_qsize, &t->model[fid].inp_dsize);
-	if (ret != 0) {
-		ml_err("Failed to get input size, model : %s\n", opt->filelist[fid].model);
-		return ret;
+	t->model[fid].inp_qsize = 0;
+	for (i = 0; i < t->model[fid].info.nb_inputs; i++) {
+		if (t->model[fid].info.io_layout == RTE_ML_IO_LAYOUT_PACKED)
+			t->model[fid].inp_qsize += t->model[fid].info.input_info[i].size;
+		else
+			t->model[fid].inp_qsize += RTE_ALIGN_CEIL(
+				t->model[fid].info.input_info[i].size, t->cmn.dev_info.align_size);
 	}
 
 	/* get output buffer size */
-	ret = rte_ml_io_output_size_get(opt->dev_id, t->model[fid].id, t->model[fid].nb_batches,
-					&t->model[fid].out_qsize, &t->model[fid].out_dsize);
-	if (ret != 0) {
-		ml_err("Failed to get input size, model : %s\n", opt->filelist[fid].model);
-		return ret;
+	t->model[fid].out_qsize = 0;
+	for (i = 0; i < t->model[fid].info.nb_outputs; i++) {
+		if (t->model[fid].info.io_layout == RTE_ML_IO_LAYOUT_PACKED)
+			t->model[fid].out_qsize += t->model[fid].info.output_info[i].size;
+		else
+			t->model[fid].out_qsize += RTE_ALIGN_CEIL(
+				t->model[fid].info.output_info[i].size, t->cmn.dev_info.align_size);
 	}
+
+	t->model[fid].inp_dsize = 0;
+	for (i = 0; i < t->model[fid].info.nb_inputs; i++)
+		t->model[fid].inp_dsize +=
+			t->model[fid].info.input_info[i].nb_elements * sizeof(float);
+
+	t->model[fid].out_dsize = 0;
+	for (i = 0; i < t->model[fid].info.nb_outputs; i++)
+		t->model[fid].out_dsize +=
+			t->model[fid].info.output_info[i].nb_elements * sizeof(float);
 
 	/* allocate buffer for user data */
 	mz_size = t->model[fid].inp_dsize + t->model[fid].out_dsize;
@@ -673,9 +842,9 @@ ml_inference_iomem_setup(struct ml_test *test, struct ml_options *opt, uint16_t 
 	/* create mempool for quantized input and output buffers. ml_request_initialize is
 	 * used as a callback for object creation.
 	 */
-	buff_size = RTE_ALIGN_CEIL(sizeof(struct ml_request), t->cmn.dev_info.min_align_size) +
-		    RTE_ALIGN_CEIL(t->model[fid].inp_qsize, t->cmn.dev_info.min_align_size) +
-		    RTE_ALIGN_CEIL(t->model[fid].out_qsize, t->cmn.dev_info.min_align_size);
+	buff_size = RTE_ALIGN_CEIL(sizeof(struct ml_request), t->cmn.dev_info.align_size) +
+		    RTE_ALIGN_CEIL(t->model[fid].inp_qsize, t->cmn.dev_info.align_size) +
+		    RTE_ALIGN_CEIL(t->model[fid].out_qsize, t->cmn.dev_info.align_size);
 	nb_buffers = RTE_MIN((uint64_t)ML_TEST_MAX_POOL_SIZE, opt->repetitions);
 
 	t->fid = fid;
@@ -740,6 +909,18 @@ ml_inference_mem_setup(struct ml_test *test, struct ml_options *opt)
 		return -ENOMEM;
 	}
 
+	/* create buf_segs pool of with element of uint8_t. external buffers are attached to the
+	 * buf_segs while queuing inference requests.
+	 */
+	t->buf_seg_pool = rte_mempool_create("ml_test_mbuf_pool", ML_TEST_MAX_POOL_SIZE * 2,
+					     sizeof(struct rte_ml_buff_seg), 0, 0, NULL, NULL, NULL,
+					     NULL, opt->socket_id, 0);
+	if (t->buf_seg_pool == NULL) {
+		ml_err("Failed to create buf_segs pool : %s\n", "ml_test_mbuf_pool");
+		rte_ml_op_pool_free(t->op_pool);
+		return -ENOMEM;
+	}
+
 	return 0;
 }
 
@@ -752,6 +933,9 @@ ml_inference_mem_destroy(struct ml_test *test, struct ml_options *opt)
 
 	/* release op pool */
 	rte_mempool_free(t->op_pool);
+
+	/* release buf_segs pool */
+	rte_mempool_free(t->buf_seg_pool);
 }
 
 static bool
@@ -781,8 +965,10 @@ next_output:
 		j = 0;
 next_element:
 		match = false;
-		deviation =
-			(*reference == 0 ? 0 : 100 * fabs(*output - *reference) / fabs(*reference));
+		if ((*reference == 0) && (*output == 0))
+			deviation = 0;
+		else
+			deviation = 100 * fabs(*output - *reference) / fabs(*reference);
 		if (deviation <= t->cmn.opt->tolerance)
 			match = true;
 		else
@@ -817,14 +1003,59 @@ ml_request_finish(struct rte_mempool *mp, void *opaque, void *obj, unsigned int 
 	bool error = false;
 	char *dump_path;
 
+	struct rte_ml_buff_seg qbuff_seg[ML_TEST_MAX_IO_SIZE];
+	struct rte_ml_buff_seg dbuff_seg[ML_TEST_MAX_IO_SIZE];
+	struct rte_ml_buff_seg *q_segs[ML_TEST_MAX_IO_SIZE];
+	struct rte_ml_buff_seg *d_segs[ML_TEST_MAX_IO_SIZE];
+	uint64_t offset;
+	uint64_t bufsz;
+	uint32_t i;
+
 	RTE_SET_USED(mp);
 
 	if (req->niters == 0)
 		return;
 
 	t->nb_used++;
-	rte_ml_io_dequantize(t->cmn.opt->dev_id, model->id, t->model[req->fid].nb_batches,
-			     req->output, model->output);
+
+	if (t->model[req->fid].info.io_layout == RTE_ML_IO_LAYOUT_PACKED) {
+		qbuff_seg[0].addr = req->output;
+		qbuff_seg[0].iova_addr = rte_mem_virt2iova(req->output);
+		qbuff_seg[0].length = t->model[req->fid].out_qsize;
+		qbuff_seg[0].next = NULL;
+		q_segs[0] = &qbuff_seg[0];
+
+		dbuff_seg[0].addr = model->output;
+		dbuff_seg[0].iova_addr = rte_mem_virt2iova(model->output);
+		dbuff_seg[0].length = t->model[req->fid].out_dsize;
+		dbuff_seg[0].next = NULL;
+		d_segs[0] = &dbuff_seg[0];
+	} else {
+		offset = 0;
+		for (i = 0; i < t->model[req->fid].info.nb_outputs; i++) {
+			bufsz = RTE_ALIGN_CEIL(t->model[req->fid].info.output_info[i].size,
+					       t->cmn.dev_info.align_size);
+			qbuff_seg[i].addr = req->output + offset;
+			qbuff_seg[i].iova_addr = rte_mem_virt2iova(req->output + offset);
+			qbuff_seg[i].length = bufsz;
+			qbuff_seg[i].next = NULL;
+			q_segs[i] = &qbuff_seg[i];
+			offset += bufsz;
+		}
+
+		offset = 0;
+		for (i = 0; i < t->model[req->fid].info.nb_outputs; i++) {
+			bufsz = t->model[req->fid].info.output_info[i].nb_elements * sizeof(float);
+			dbuff_seg[i].addr = model->output + offset;
+			dbuff_seg[i].iova_addr = rte_mem_virt2iova(model->output + offset);
+			dbuff_seg[i].length = bufsz;
+			dbuff_seg[i].next = NULL;
+			d_segs[i] = &dbuff_seg[i];
+			offset += bufsz;
+		}
+	}
+
+	rte_ml_io_dequantize(t->cmn.opt->dev_id, model->id, q_segs, d_segs);
 
 	if (model->reference == NULL)
 		goto dump_output_pass;
