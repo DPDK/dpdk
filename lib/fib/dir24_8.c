@@ -388,6 +388,12 @@ modify_fib(struct dir24_8_tbl *dp, struct rte_rib *rib, uint32_t ip,
 				return ret;
 			ledge = redge +
 				(uint32_t)(1ULL << (32 - tmp_depth));
+			/*
+			 * we got to the end of address space
+			 * and wrapped around
+			 */
+			if (ledge == 0)
+				break;
 		} else {
 			redge = ip + (uint32_t)(1ULL << (32 - depth));
 			if (ledge == redge && ledge != 0)
