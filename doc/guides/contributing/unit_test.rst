@@ -126,16 +126,15 @@ the build system includes a standard way of executing the Meson test suites.
 After building via ``ninja``, the ``meson test`` command
 with no arguments will execute the Meson test suites.
 
-There are five pre-configured Meson test suites.
+There are a number of pre-configured Meson test suites.
 The first is the **fast** test suite, which is the largest group of test cases.
 These are the bulk of the unit tests to validate functional blocks.
 The second is the **perf** tests.
 These test suites can take longer to run and do performance evaluations.
 The third is the **driver** test suite,
 which is mostly for special hardware related testing (such as `cryptodev`).
-The fourth suite is the **debug** suite.
+The fourth, and currently the last, suite is the **debug** suite.
 These tests mostly are used to dump system information.
-The last suite is the **extra** suite for tests having some known issues.
 
 The Meson test suites can be selected by adding the ``--suite`` option
 to the ``meson test`` command.
@@ -184,10 +183,15 @@ create a new test file for that suite
 (ex: see *app/test/test_version.c* for the ``version_autotest`` test suite).
 There are two important functions for interacting with the test harness:
 
-   ``REGISTER_TEST_COMMAND(command_name, function_to_execute)``
+   ``REGISTER_<MESON_SUITE>_TEST(command_name, function_to_execute)``
       Registers a test command with the name `command_name`
-      and which runs the function `function_to_execute`
-      when `command_name` is invoked.
+      and which runs the function `function_to_execute` when `command_name` is invoked.
+      The test is automatically added to the Meson test suite `<MESON_SUITE>` by this macro.
+      Examples would be ``REGISTER_DRIVER_TEST``, or ``REGISTER_PERF_TEST``.
+      **NOTE:** The ``REGISTER_FAST_TEST`` macro is slightly different,
+      in that it takes two additional parameters,
+      specifying whether the test can be run using ``--no-huge``,
+      and whether the test can be run using Address Sanitization (ASAN)
 
    ``unit_test_suite_runner(struct unit_test_suite *)``
       Returns a runner for a full test suite object,
@@ -248,7 +252,7 @@ An example of both a test suite and a case:
        return unit_test_suite_runner(&example_testsuite);
    }
 
-   REGISTER_TEST_COMMAND(example_autotest, example_tests);
+   REGISTER_PERF_TEST(example_autotest, example_tests);
 
 The above code block is a small example
 that can be used to create a complete test suite with test case.
@@ -315,7 +319,7 @@ of the unit test suite structure, for example:
        return ret;
    }
 
-   REGISTER_TEST_COMMAND(example_autotest, example_tests);
+   REGISTER_FAST_TEST(example_autotest, true /*no-huge*/, false /*ASan*/, example_tests);
 
 
 Designing a test
@@ -392,9 +396,11 @@ This can be used to assist in test development.
 Adding a suite or test case to Meson
 ------------------------------------
 
-Adding to one of the Meson test suites involves
-editing the appropriate Meson build file `app/test/meson.build`
-and adding the command to the correct test suite class.
+Adding to one of the Meson test suites involves using the appropriate macro
+to register the test in dpdk-test, as described above.
+For example,
+defining the test command using ``REGISTER_PERF_TEST`` automatically
+adds the test to the perf-test meson suite.
 Once added, the new test will be run
 as part of the appropriate class (fast, perf, driver, etc.).
 
@@ -409,11 +415,12 @@ by using the ``--list`` option::
 Some of these test suites are run during continuous integration tests,
 making regression checking automatic for new patches submitted to the project.
 
-In general, when a test is added to the `dpdk-test` application,
-it probably should be added to a Meson test suite,
-but the choice is left to maintainers and individual developers.
-Preference is to add tests to the Meson test suites.
+.. note::
 
+   The use of the old ``REGISTER_TEST_COMMAND`` macro
+   to add a command without adding it to a meson test suite is deprecated.
+   All new tests must be added to a test suite
+   using the appropriate ``REGISTER_<SUITE>_TEST`` macro.
 
 Running cryptodev tests
 -----------------------
