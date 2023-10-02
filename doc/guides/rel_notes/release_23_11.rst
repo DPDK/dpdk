@@ -208,6 +208,8 @@ Removed Items
 * security: Removed deprecated field ``reserved_opts``
   from struct ``rte_security_ipsec_sa_options``.
 
+* mldev: Removed functions ``rte_ml_io_input_size_get`` and ``rte_ml_io_output_size_get``.
+
 
 API Changes
 -----------

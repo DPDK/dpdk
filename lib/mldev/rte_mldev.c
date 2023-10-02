@@ -692,44 +692,6 @@ rte_ml_model_params_update(int16_t dev_id, uint16_t model_id, void *buffer)
 }
 
 int
-rte_ml_io_input_size_get(int16_t dev_id, uint16_t model_id, uint32_t nb_batches,
-			 uint64_t *input_qsize, uint64_t *input_dsize)
-{
-	struct rte_ml_dev *dev;
-
-	if (!rte_ml_dev_is_valid_dev(dev_id)) {
-		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d\n", dev_id);
-		return -EINVAL;
-	}
-
-	dev = rte_ml_dev_pmd_get_dev(dev_id);
-	if (*dev->dev_ops->io_input_size_get == NULL)
-		return -ENOTSUP;
-
-	return (*dev->dev_ops->io_input_size_get)(dev, model_id, nb_batches, input_qsize,
-						  input_dsize);
-}
-
-int
-rte_ml_io_output_size_get(int16_t dev_id, uint16_t model_id, uint32_t nb_batches,
-			  uint64_t *output_qsize, uint64_t *output_dsize)
-{
-	struct rte_ml_dev *dev;
-
-	if (!rte_ml_dev_is_valid_dev(dev_id)) {
-		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d\n", dev_id);
-		return -EINVAL;
-	}
-
-	dev = rte_ml_dev_pmd_get_dev(dev_id);
-	if (*dev->dev_ops->io_output_size_get == NULL)
-		return -ENOTSUP;
-
-	return (*dev->dev_ops->io_output_size_get)(dev, model_id, nb_batches, output_qsize,
-						   output_dsize);
-}
-
-int
 rte_ml_io_quantize(int16_t dev_id, uint16_t model_id, struct rte_ml_buff_seg **dbuffer,
 		   struct rte_ml_buff_seg **qbuffer)
 {

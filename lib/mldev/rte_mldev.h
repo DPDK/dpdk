@@ -1009,66 +1009,6 @@ rte_ml_model_params_update(int16_t dev_id, uint16_t model_id, void *buffer);
 /* IO operations */
 
 /**
- * Get size of quantized and dequantized input buffers.
- *
- * Calculate the size of buffers required for quantized and dequantized input data.
- * This API would return the buffer sizes for the number of batches provided and would
- * consider the alignment requirements as per the PMD. Input sizes computed by this API can
- * be used by the application to allocate buffers.
- *
- * @param[in] dev_id
- *   The identifier of the device.
- * @param[in] model_id
- *   Identifier for the model created
- * @param[in] nb_batches
- *   Number of batches of input to be processed in a single inference job
- * @param[out] input_qsize
- *   Quantized input size pointer.
- * NULL value is allowed, in which case input_qsize is not calculated by the driver.
- * @param[out] input_dsize
- *   Dequantized input size pointer.
- * NULL value is allowed, in which case input_dsize is not calculated by the driver.
- *
- * @return
- *   - Returns 0 on success
- *   - Returns negative value on failure
- */
-__rte_experimental
-int
-rte_ml_io_input_size_get(int16_t dev_id, uint16_t model_id, uint32_t nb_batches,
-			 uint64_t *input_qsize, uint64_t *input_dsize);
-
-/**
- * Get size of quantized and dequantized output buffers.
- *
- * Calculate the size of buffers required for quantized and dequantized output data.
- * This API would return the buffer sizes for the number of batches provided and would consider
- * the alignment requirements as per the PMD. Output sizes computed by this API can be used by the
- * application to allocate buffers.
- *
- * @param[in] dev_id
- *   The identifier of the device.
- * @param[in] model_id
- *   Identifier for the model created
- * @param[in] nb_batches
- *   Number of batches of input to be processed in a single inference job
- * @param[out] output_qsize
- *   Quantized output size pointer.
- * NULL value is allowed, in which case output_qsize is not calculated by the driver.
- * @param[out] output_dsize
- *   Dequantized output size pointer.
- * NULL value is allowed, in which case output_dsize is not calculated by the driver.
- *
- * @return
- *   - Returns 0 on success
- *   - Returns negative value on failure
- */
-__rte_experimental
-int
-rte_ml_io_output_size_get(int16_t dev_id, uint16_t model_id, uint32_t nb_batches,
-			  uint64_t *output_qsize, uint64_t *output_dsize);
-
-/**
  * Quantize input data.
  *
  * Quantization converts data from a higher precision types to a lower precision types to improve
