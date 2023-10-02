@@ -90,8 +90,10 @@ sw_schedule_atomic_to_cq(struct sw_evdev *sw, struct sw_qid * const qid,
 		sw->cq_ring_space[cq]--;
 
 		int head = (p->hist_head++ & (SW_PORT_HIST_LIST-1));
-		p->hist_list[head].fid = flow_id;
-		p->hist_list[head].qid = qid_id;
+		p->hist_list[head] = (struct sw_hist_list_entry) {
+			.qid = qid_id,
+			.fid = flow_id,
+		};
 
 		p->stats.tx_pkts++;
 		qid->stats.tx_pkts++;
@@ -162,8 +164,10 @@ sw_schedule_parallel_to_cq(struct sw_evdev *sw, struct sw_qid * const qid,
 		qid->stats.tx_pkts++;
 
 		const int head = (p->hist_head & (SW_PORT_HIST_LIST-1));
-		p->hist_list[head].fid = SW_HASH_FLOWID(qe->flow_id);
-		p->hist_list[head].qid = qid_id;
+		p->hist_list[head] = (struct sw_hist_list_entry) {
+			.qid = qid_id,
+			.fid = SW_HASH_FLOWID(qe->flow_id),
+		};
 
 		if (keep_order)
 			rob_ring_dequeue(qid->reorder_buffer_freelist,
@@ -413,7 +417,6 @@ __pull_port_lb(struct sw_evdev *sw, uint32_t port_id, int allow_reorder)
 				struct reorder_buffer_entry *rob_entry =
 						hist_entry->rob_entry;
 
-				hist_entry->rob_entry = NULL;
 				/* Although fragmentation not currently
 				 * supported by eventdev API, we support it
 				 * here. Open: How do we alert the user that
