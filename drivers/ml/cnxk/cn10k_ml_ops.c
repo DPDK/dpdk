@@ -321,8 +321,8 @@ cn10k_ml_model_print(struct rte_ml_dev *dev, uint16_t model_id, FILE *fp)
 	fprintf(fp, "\n");
 
 	print_line(fp, LINE_LEN);
-	fprintf(fp, "%8s  %16s  %12s  %18s  %12s  %14s\n", "input", "input_name", "input_type",
-		"model_input_type", "quantize", "format");
+	fprintf(fp, "%8s  %16s  %12s  %18s  %12s\n", "input", "input_name", "input_type",
+		"model_input_type", "quantize");
 	print_line(fp, LINE_LEN);
 	for (i = 0; i < model->metadata.model.num_input; i++) {
 		if (i < MRVL_ML_NUM_INPUT_OUTPUT_1) {
@@ -335,12 +335,10 @@ cn10k_ml_model_print(struct rte_ml_dev *dev, uint16_t model_id, FILE *fp)
 			fprintf(fp, "%*s  ", 18, str);
 			fprintf(fp, "%*s", 12,
 				(model->metadata.input1[i].quantize == 1 ? "Yes" : "No"));
-			rte_ml_io_format_to_str(model->metadata.input1[i].shape.format, str,
-						STR_LEN);
-			fprintf(fp, "%*s", 16, str);
 			fprintf(fp, "\n");
 		} else {
 			j = i - MRVL_ML_NUM_INPUT_OUTPUT_1;
+
 			fprintf(fp, "%8u  ", i);
 			fprintf(fp, "%*s  ", 16, model->metadata.input2[j].input_name);
 			rte_ml_io_type_to_str(model->metadata.input2[j].input_type, str, STR_LEN);
@@ -350,9 +348,6 @@ cn10k_ml_model_print(struct rte_ml_dev *dev, uint16_t model_id, FILE *fp)
 			fprintf(fp, "%*s  ", 18, str);
 			fprintf(fp, "%*s", 12,
 				(model->metadata.input2[j].quantize == 1 ? "Yes" : "No"));
-			rte_ml_io_format_to_str(model->metadata.input2[j].shape.format, str,
-						STR_LEN);
-			fprintf(fp, "%*s", 16, str);
 			fprintf(fp, "\n");
 		}
 	}

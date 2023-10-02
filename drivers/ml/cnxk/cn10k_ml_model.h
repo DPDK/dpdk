@@ -409,6 +409,12 @@ struct cn10k_ml_model_addr {
 
 	/* Input address and size */
 	struct {
+		/* Number of dimensions in shape */
+		uint32_t nb_dims;
+
+		/* Shape of input */
+		uint32_t shape[4];
+
 		/* Number of elements */
 		uint32_t nb_elements;
 
@@ -421,6 +427,12 @@ struct cn10k_ml_model_addr {
 
 	/* Output address and size */
 	struct {
+		/* Number of dimensions in shape */
+		uint32_t nb_dims;
+
+		/* Shape of input */
+		uint32_t shape[4];
+
 		/* Number of elements */
 		uint32_t nb_elements;
 

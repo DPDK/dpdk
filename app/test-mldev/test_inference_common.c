@@ -3,6 +3,7 @@
  */
 
 #include <errno.h>
+#include <math.h>
 #include <stdio.h>
 #include <unistd.h>
 
@@ -17,11 +18,6 @@
 
 #include "ml_common.h"
 #include "test_inference_common.h"
-
-#define ML_TEST_READ_TYPE(buffer, type) (*((type *)buffer))
-
-#define ML_TEST_CHECK_OUTPUT(output, reference, tolerance) \
-	(((float)output - (float)reference) <= (((float)reference * tolerance) / 100.0))
 
 #define ML_OPEN_WRITE_GET_ERR(name, buffer, size, err) \
 	do { \
@@ -763,9 +759,9 @@ ml_inference_validation(struct ml_test *test, struct ml_request *req)
 {
 	struct test_inference *t = ml_test_priv((struct ml_test *)test);
 	struct ml_model *model;
-	uint32_t nb_elements;
-	uint8_t *reference;
-	uint8_t *output;
+	float *reference;
+	float *output;
+	float deviation;
 	bool match;
 	uint32_t i;
 	uint32_t j;
@@ -777,89 +773,30 @@ ml_inference_validation(struct ml_test *test, struct ml_request *req)
 		match = (rte_hash_crc(model->output, model->out_dsize, 0) ==
 			 rte_hash_crc(model->reference, model->out_dsize, 0));
 	} else {
-		output = model->output;
-		reference = model->reference;
+		output = (float *)model->output;
+		reference = (float *)model->reference;
 
 		i = 0;
 next_output:
-		nb_elements =
-			model->info.output_info[i].shape.w * model->info.output_info[i].shape.x *
-			model->info.output_info[i].shape.y * model->info.output_info[i].shape.z;
 		j = 0;
 next_element:
 		match = false;
-		switch (model->info.output_info[i].dtype) {
-		case RTE_ML_IO_TYPE_INT8:
-			if (ML_TEST_CHECK_OUTPUT(ML_TEST_READ_TYPE(output, int8_t),
-						 ML_TEST_READ_TYPE(reference, int8_t),
-						 t->cmn.opt->tolerance))
-				match = true;
-
-			output += sizeof(int8_t);
-			reference += sizeof(int8_t);
-			break;
-		case RTE_ML_IO_TYPE_UINT8:
-			if (ML_TEST_CHECK_OUTPUT(ML_TEST_READ_TYPE(output, uint8_t),
-						 ML_TEST_READ_TYPE(reference, uint8_t),
-						 t->cmn.opt->tolerance))
-				match = true;
-
-			output += sizeof(float);
-			reference += sizeof(float);
-			break;
-		case RTE_ML_IO_TYPE_INT16:
-			if (ML_TEST_CHECK_OUTPUT(ML_TEST_READ_TYPE(output, int16_t),
-						 ML_TEST_READ_TYPE(reference, int16_t),
-						 t->cmn.opt->tolerance))
-				match = true;
-
-			output += sizeof(int16_t);
-			reference += sizeof(int16_t);
-			break;
-		case RTE_ML_IO_TYPE_UINT16:
-			if (ML_TEST_CHECK_OUTPUT(ML_TEST_READ_TYPE(output, uint16_t),
-						 ML_TEST_READ_TYPE(reference, uint16_t),
-						 t->cmn.opt->tolerance))
-				match = true;
-
-			output += sizeof(uint16_t);
-			reference += sizeof(uint16_t);
-			break;
-		case RTE_ML_IO_TYPE_INT32:
-			if (ML_TEST_CHECK_OUTPUT(ML_TEST_READ_TYPE(output, int32_t),
-						 ML_TEST_READ_TYPE(reference, int32_t),
-						 t->cmn.opt->tolerance))
-				match = true;
-
-			output += sizeof(int32_t);
-			reference += sizeof(int32_t);
-			break;
-		case RTE_ML_IO_TYPE_UINT32:
-			if (ML_TEST_CHECK_OUTPUT(ML_TEST_READ_TYPE(output, uint32_t),
-						 ML_TEST_READ_TYPE(reference, uint32_t),
-						 t->cmn.opt->tolerance))
-				match = true;
-
-			output += sizeof(uint32_t);
-			reference += sizeof(uint32_t);
-			break;
-		case RTE_ML_IO_TYPE_FP32:
-			if (ML_TEST_CHECK_OUTPUT(ML_TEST_READ_TYPE(output, float),
-						 ML_TEST_READ_TYPE(reference, float),
-						 t->cmn.opt->tolerance))
-				match = true;
-
-			output += sizeof(float);
-			reference += sizeof(float);
-			break;
-		default: /* other types, fp8, fp16, bfloat16 */
+		deviation =
+			(*reference == 0 ? 0 : 100 * fabs(*output - *reference) / fabs(*reference));
+		if (deviation <= t->cmn.opt->tolerance)
 			match = true;
-		}
+		else
+			ml_err("id = %d, element = %d, output = %f, reference = %f, deviation = %f %%\n",
+			       i, j, *output, *reference, deviation);
+
+		output++;
+		reference++;
 
 		if (!match)
 			goto done;
+
 		j++;
-		if (j < nb_elements)
+		if (j < model->info.output_info[i].nb_elements)
 			goto next_element;
 
 		i++;

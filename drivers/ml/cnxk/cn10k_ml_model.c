@@ -366,6 +366,12 @@ cn10k_ml_model_addr_update(struct cn10k_ml_model *model, uint8_t *buffer, uint8_
 	addr->total_input_sz_q = 0;
 	for (i = 0; i < metadata->model.num_input; i++) {
 		if (i < MRVL_ML_NUM_INPUT_OUTPUT_1) {
+			addr->input[i].nb_dims = 4;
+			addr->input[i].shape[0] = metadata->input1[i].shape.w;
+			addr->input[i].shape[1] = metadata->input1[i].shape.x;
+			addr->input[i].shape[2] = metadata->input1[i].shape.y;
+			addr->input[i].shape[3] = metadata->input1[i].shape.z;
+
 			addr->input[i].nb_elements =
 				metadata->input1[i].shape.w * metadata->input1[i].shape.x *
 				metadata->input1[i].shape.y * metadata->input1[i].shape.z;
@@ -386,6 +392,13 @@ cn10k_ml_model_addr_update(struct cn10k_ml_model *model, uint8_t *buffer, uint8_
 				addr->input[i].sz_q);
 		} else {
 			j = i - MRVL_ML_NUM_INPUT_OUTPUT_1;
+
+			addr->input[i].nb_dims = 4;
+			addr->input[i].shape[0] = metadata->input2[j].shape.w;
+			addr->input[i].shape[1] = metadata->input2[j].shape.x;
+			addr->input[i].shape[2] = metadata->input2[j].shape.y;
+			addr->input[i].shape[3] = metadata->input2[j].shape.z;
+
 			addr->input[i].nb_elements =
 				metadata->input2[j].shape.w * metadata->input2[j].shape.x *
 				metadata->input2[j].shape.y * metadata->input2[j].shape.z;
@@ -412,6 +425,8 @@ cn10k_ml_model_addr_update(struct cn10k_ml_model *model, uint8_t *buffer, uint8_
 	addr->total_output_sz_d = 0;
 	for (i = 0; i < metadata->model.num_output; i++) {
 		if (i < MRVL_ML_NUM_INPUT_OUTPUT_1) {
+			addr->output[i].nb_dims = 1;
+			addr->output[i].shape[0] = metadata->output1[i].size;
 			addr->output[i].nb_elements = metadata->output1[i].size;
 			addr->output[i].sz_d =
 				addr->output[i].nb_elements *
@@ -426,6 +441,9 @@ cn10k_ml_model_addr_update(struct cn10k_ml_model *model, uint8_t *buffer, uint8_
 				   model->model_id, i, addr->output[i].sz_d, addr->output[i].sz_q);
 		} else {
 			j = i - MRVL_ML_NUM_INPUT_OUTPUT_1;
+
+			addr->output[i].nb_dims = 1;
+			addr->output[i].shape[0] = metadata->output2[j].size;
 			addr->output[i].nb_elements = metadata->output2[j].size;
 			addr->output[i].sz_d =
 				addr->output[i].nb_elements *
@@ -498,6 +516,7 @@ void
 cn10k_ml_model_info_set(struct rte_ml_dev *dev, struct cn10k_ml_model *model)
 {
 	struct cn10k_ml_model_metadata *metadata;
+	struct cn10k_ml_model_addr *addr;
 	struct rte_ml_model_info *info;
 	struct rte_ml_io_info *output;
 	struct rte_ml_io_info *input;
@@ -508,6 +527,7 @@ cn10k_ml_model_info_set(struct rte_ml_dev *dev, struct cn10k_ml_model *model)
 	info = PLT_PTR_CAST(model->info);
 	input = PLT_PTR_ADD(info, sizeof(struct rte_ml_model_info));
 	output = PLT_PTR_ADD(input, metadata->model.num_input * sizeof(struct rte_ml_io_info));
+	addr = &model->addr;
 
 	/* Set model info */
 	memset(info, 0, sizeof(struct rte_ml_model_info));
@@ -529,24 +549,25 @@ cn10k_ml_model_info_set(struct rte_ml_dev *dev, struct cn10k_ml_model *model)
 		if (i < MRVL_ML_NUM_INPUT_OUTPUT_1) {
 			rte_memcpy(input[i].name, metadata->input1[i].input_name,
 				   MRVL_ML_INPUT_NAME_LEN);
-			input[i].dtype = metadata->input1[i].input_type;
-			input[i].qtype = metadata->input1[i].model_input_type;
-			input[i].shape.format = metadata->input1[i].shape.format;
-			input[i].shape.w = metadata->input1[i].shape.w;
-			input[i].shape.x = metadata->input1[i].shape.x;
-			input[i].shape.y = metadata->input1[i].shape.y;
-			input[i].shape.z = metadata->input1[i].shape.z;
+			input[i].nb_dims = addr->input[i].nb_dims;
+			input[i].shape = addr->input[i].shape;
+			input[i].type = metadata->input1[i].model_input_type;
+			input[i].nb_elements = addr->input[i].nb_elements;
+			input[i].size =
+				addr->input[i].nb_elements *
+				rte_ml_io_type_size_get(metadata->input1[i].model_input_type);
 		} else {
 			j = i - MRVL_ML_NUM_INPUT_OUTPUT_1;
+
 			rte_memcpy(input[i].name, metadata->input2[j].input_name,
 				   MRVL_ML_INPUT_NAME_LEN);
-			input[i].dtype = metadata->input2[j].input_type;
-			input[i].qtype = metadata->input2[j].model_input_type;
-			input[i].shape.format = metadata->input2[j].shape.format;
-			input[i].shape.w = metadata->input2[j].shape.w;
-			input[i].shape.x = metadata->input2[j].shape.x;
-			input[i].shape.y = metadata->input2[j].shape.y;
-			input[i].shape.z = metadata->input2[j].shape.z;
+			input[i].nb_dims = addr->input[i].nb_dims;
+			input[i].shape = addr->input[i].shape;
+			input[i].type = metadata->input2[j].model_input_type;
+			input[i].nb_elements = addr->input[i].nb_elements;
+			input[i].size =
+				addr->input[i].nb_elements *
+				rte_ml_io_type_size_get(metadata->input2[j].model_input_type);
 		}
 	}
 
@@ -555,24 +576,25 @@ cn10k_ml_model_info_set(struct rte_ml_dev *dev, struct cn10k_ml_model *model)
 		if (i < MRVL_ML_NUM_INPUT_OUTPUT_1) {
 			rte_memcpy(output[i].name, metadata->output1[i].output_name,
 				   MRVL_ML_OUTPUT_NAME_LEN);
-			output[i].dtype = metadata->output1[i].output_type;
-			output[i].qtype = metadata->output1[i].model_output_type;
-			output[i].shape.format = RTE_ML_IO_FORMAT_1D;
-			output[i].shape.w = metadata->output1[i].size;
-			output[i].shape.x = 1;
-			output[i].shape.y = 1;
-			output[i].shape.z = 1;
+			output[i].nb_dims = addr->output[i].nb_dims;
+			output[i].shape = addr->output[i].shape;
+			output[i].type = metadata->output1[i].model_output_type;
+			output[i].nb_elements = addr->output[i].nb_elements;
+			output[i].size =
+				addr->output[i].nb_elements *
+				rte_ml_io_type_size_get(metadata->output1[i].model_output_type);
 		} else {
 			j = i - MRVL_ML_NUM_INPUT_OUTPUT_1;
+
 			rte_memcpy(output[i].name, metadata->output2[j].output_name,
 				   MRVL_ML_OUTPUT_NAME_LEN);
-			output[i].dtype = metadata->output2[j].output_type;
-			output[i].qtype = metadata->output2[j].model_output_type;
-			output[i].shape.format = RTE_ML_IO_FORMAT_1D;
-			output[i].shape.w = metadata->output2[j].size;
-			output[i].shape.x = 1;
-			output[i].shape.y = 1;
-			output[i].shape.z = 1;
+			output[i].nb_dims = addr->output[i].nb_dims;
+			output[i].shape = addr->output[i].shape;
+			output[i].type = metadata->output2[j].model_output_type;
+			output[i].nb_elements = addr->output[i].nb_elements;
+			output[i].size =
+				addr->output[i].nb_elements *
+				rte_ml_io_type_size_get(metadata->output2[j].model_output_type);
 		}
 	}
 }

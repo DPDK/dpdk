@@ -863,47 +863,6 @@ enum rte_ml_io_type {
 	/**< 16-bit brain floating point number. */
 };
 
-/**
- * Input and output format. This is used to represent the encoding type of multi-dimensional
- * used by ML models.
- */
-enum rte_ml_io_format {
-	RTE_ML_IO_FORMAT_NCHW = 1,
-	/**< Batch size (N) x channels (C) x height (H) x width (W) */
-	RTE_ML_IO_FORMAT_NHWC,
-	/**< Batch size (N) x height (H) x width (W) x channels (C) */
-	RTE_ML_IO_FORMAT_CHWN,
-	/**< Channels (C) x height (H) x width (W) x batch size (N) */
-	RTE_ML_IO_FORMAT_3D,
-	/**< Format to represent a 3 dimensional data */
-	RTE_ML_IO_FORMAT_2D,
-	/**< Format to represent matrix data */
-	RTE_ML_IO_FORMAT_1D,
-	/**< Format to represent vector data */
-	RTE_ML_IO_FORMAT_SCALAR,
-	/**< Format to represent scalar data */
-};
-
-/**
- * Input and output shape. This structure represents the encoding format and dimensions
- * of the tensor or vector.
- *
- * The data can be a 4D / 3D tensor, matrix, vector or a scalar. Number of dimensions used
- * for the data would depend on the format. Unused dimensions to be set to 1.
- */
-struct rte_ml_io_shape {
-	enum rte_ml_io_format format;
-	/**< Format of the data */
-	uint32_t w;
-	/**< First dimension */
-	uint32_t x;
-	/**< Second dimension */
-	uint32_t y;
-	/**< Third dimension */
-	uint32_t z;
-	/**< Fourth dimension */
-};
-
 /** Input and output data information structure
  *
  * Specifies the type and shape of input and output data.
@@ -911,12 +870,18 @@ struct rte_ml_io_shape {
 struct rte_ml_io_info {
 	char name[RTE_ML_STR_MAX];
 	/**< Name of data */
-	struct rte_ml_io_shape shape;
-	/**< Shape of data */
-	enum rte_ml_io_type qtype;
-	/**< Type of quantized data */
-	enum rte_ml_io_type dtype;
-	/**< Type of de-quantized data */
+	uint32_t nb_dims;
+	/**< Number of dimensions in shape */
+	uint32_t *shape;
+	/**< Shape of the tensor */
+	enum rte_ml_io_type type;
+	/**< Type of data
+	 * @see enum rte_ml_io_type
+	 */
+	uint64_t nb_elements;
+	/** Number of elements in tensor */
+	uint64_t size;
+	/** Size of tensor in bytes */
 };
 
 /** Model information structure */

@@ -252,6 +252,9 @@ API Changes
 * security: Structures ``rte_security_ops`` and ``rte_security_ctx`` were moved to
   internal library headers not visible to application.
 
+* mldev: Updated the structure ``rte_ml_model_info`` to support input and output
+  with arbitrary shapes.
+
 
 ABI Changes
 -----------

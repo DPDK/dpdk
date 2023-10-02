@@ -55,22 +55,6 @@ rte_ml_io_type_to_str(enum rte_ml_io_type type, char *str, int len);
 /**
  * @internal
  *
- * Get the name of an ML IO format.
- *
- * @param[in] type
- *	Enumeration of ML IO format.
- * @param[in] str
- *	Address of character array.
- * @param[in] len
- *	Length of character array.
- */
-__rte_internal
-void
-rte_ml_io_format_to_str(enum rte_ml_io_format format, char *str, int len);
-
-/**
- * @internal
- *
  * Convert a buffer containing numbers in single precision floating format (float32) to signed 8-bit
  * integer format (INT8).
  *
