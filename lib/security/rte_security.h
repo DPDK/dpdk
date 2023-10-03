@@ -597,6 +597,99 @@ struct rte_security_docsis_xform {
 	/**< DOCSIS direction */
 };
 
+/** Implicit nonce length to be used with AEAD algos in TLS 1.2 */
+#define RTE_SECURITY_TLS_1_2_IMP_NONCE_LEN 4
+/** Implicit nonce length to be used with AEAD algos in TLS 1.3 */
+#define RTE_SECURITY_TLS_1_3_IMP_NONCE_LEN 12
+/** Implicit nonce length to be used with AEAD algos in DTLS 1.2 */
+#define RTE_SECURITY_DTLS_1_2_IMP_NONCE_LEN 4
+
+/** TLS version */
+enum rte_security_tls_version {
+	RTE_SECURITY_VERSION_TLS_1_2,	/**< TLS 1.2 */
+	RTE_SECURITY_VERSION_TLS_1_3,	/**< TLS 1.3 */
+	RTE_SECURITY_VERSION_DTLS_1_2,	/**< DTLS 1.2 */
+};
+
+/** TLS session type */
+enum rte_security_tls_sess_type {
+	/** Record read session
+	 * - Decrypt & digest verification.
+	 */
+	RTE_SECURITY_TLS_SESS_TYPE_READ,
+	/** Record write session
+	 * - Encrypt & digest generation.
+	 */
+	RTE_SECURITY_TLS_SESS_TYPE_WRITE,
+};
+
+/**
+ * TLS record session options
+ */
+struct rte_security_tls_record_sess_options {
+	/** Disable IV generation in PMD.
+	 *
+	 * * 1: Disable IV generation in PMD. When disabled, IV provided in rte_crypto_op will be
+	 *      used by the PMD.
+	 *
+	 * * 0: Enable IV generation in PMD. When enabled, PMD generated random value would be used
+	 *      and application is not required to provide IV.
+	 */
+	uint32_t iv_gen_disable : 1;
+};
+
+/**
+ * TLS record protocol session configuration.
+ *
+ * This structure contains data required to create a TLS record security session.
+ */
+struct rte_security_tls_record_xform {
+	/** TLS record version. */
+	enum rte_security_tls_version ver;
+	/** TLS record session type. */
+	enum rte_security_tls_sess_type type;
+	/** TLS record session options. */
+	struct rte_security_tls_record_sess_options options;
+	union {
+		/** TLS 1.2 parameters. */
+		struct {
+			/** Starting sequence number. */
+			uint64_t seq_no;
+			/** Implicit nonce to be used for AEAD algos. */
+			uint8_t imp_nonce[RTE_SECURITY_TLS_1_2_IMP_NONCE_LEN];
+		} tls_1_2;
+
+		/** TLS 1.3 parameters. */
+		struct {
+			/** Starting sequence number. */
+			uint64_t seq_no;
+			/** Implicit nonce to be used for AEAD algos. */
+			uint8_t imp_nonce[RTE_SECURITY_TLS_1_3_IMP_NONCE_LEN];
+			/**
+			 * Minimum payload length (in case of write sessions).
+			 * For shorter inputs, the payload would be padded appropriately
+			 * before performing crypto transformations.
+			 */
+			uint32_t min_payload_len;
+		} tls_1_3;
+
+		/** DTLS 1.2 parameters */
+		struct {
+			/** Epoch value to be used. */
+			uint16_t epoch;
+			/** 6B starting sequence number to be used. */
+			uint64_t seq_no;
+			/** Implicit nonce to be used for AEAD algos. */
+			uint8_t imp_nonce[RTE_SECURITY_DTLS_1_2_IMP_NONCE_LEN];
+			/**
+			 * Anti replay window size to enable sequence replay attack handling.
+			 * Anti replay check is disabled if the window size is 0.
+			 */
+			uint32_t ar_win_sz;
+		} dtls_1_2;
+	};
+};
+
 /**
  * Security session action type.
  */
@@ -634,6 +727,8 @@ enum rte_security_session_protocol {
 	/**< PDCP Protocol */
 	RTE_SECURITY_PROTOCOL_DOCSIS,
 	/**< DOCSIS Protocol */
+	RTE_SECURITY_PROTOCOL_TLS_RECORD,
+	/**< TLS Record Protocol */
 };
 /* >8 End enumeration of rte_security_session_protocol. */
 
@@ -651,6 +746,7 @@ struct rte_security_session_conf {
 		struct rte_security_macsec_xform macsec;
 		struct rte_security_pdcp_xform pdcp;
 		struct rte_security_docsis_xform docsis;
+		struct rte_security_tls_record_xform tls_record;
 	};
 	/**< Configuration parameters for security session */
 	struct rte_crypto_sym_xform *crypto_xform;
@@ -1217,6 +1313,17 @@ struct rte_security_capability {
 			/**< DOCSIS direction */
 		} docsis;
 		/**< DOCSIS capability */
+		struct {
+			enum rte_security_tls_version ver;
+			/**< TLS record version. */
+			enum rte_security_tls_sess_type type;
+			/**< TLS record session type. */
+			uint32_t ar_win_size;
+			/**< Maximum anti replay window size supported for DTLS 1.2 record read
+			 * operation. Value of 0 means anti replay check is not supported.
+			 */
+		} tls_record;
+		/**< TLS record capability */
 	};
 
 	const struct rte_cryptodev_capabilities *crypto_capabilities;
@@ -1280,6 +1387,10 @@ struct rte_security_capability_idx {
 		struct {
 			enum rte_security_macsec_alg alg;
 		} macsec;
+		struct {
+			enum rte_security_tls_version ver;
+			enum rte_security_tls_sess_type type;
+		} tls_record;
 	};
 };
 

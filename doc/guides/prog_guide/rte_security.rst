@@ -399,6 +399,67 @@ The API ``rte_security_macsec_sc_create`` returns a handle for SC,
 and this handle is set in ``rte_security_macsec_xform``
 to create a MACsec session using ``rte_security_session_create``.
 
+TLS-Record Protocol
+~~~~~~~~~~~~~~~~~~~
+
+The Transport Layer Protocol provides communications security over the Internet.
+The protocol allows client/server applications to communicate in a way
+that is designed to prevent eavesdropping, tampering, or message forgery.
+
+TLS protocol is composed of two layers: the TLS Record Protocol and the TLS Handshake Protocol.
+At the lowest level, layered on top of some reliable transport protocol (e.g., TCP),
+is the TLS Record Protocol.
+The TLS Record Protocol provides connection security that has two basic properties:
+
+   - The connection is private.
+     Symmetric cryptography is used for data encryption (e.g., AES, DES, etc.).
+     The keys for this symmetric encryption are generated uniquely
+     for each connection and are based on a secret negotiated during TLS Handshake Protocol.
+     The Record Protocol can also be used without encryption.
+
+   - The connection is reliable.
+     Message transport includes a message integrity check using a keyed MAC.
+     Secure hash functions (e.g., SHA-1, etc.) are used for MAC computations.
+     The Record Protocol can operate without a MAC when it is being used as a transport
+     for negotiating security parameters by another protocol.
+
+.. code-block:: c
+
+             Record Write                   Record Read
+             ------------                   -----------
+
+             TLSPlaintext                  TLSCiphertext
+                  |                              |
+                  ~                              ~
+                  |                              |
+                  V                              V
+       +----------|-----------+       +----------|-----------+
+       | Generate sequence no.|       | Generate sequence no.|
+       +----------|-----------+       +----------------------+
+                  |                   |    AR check (DTLS)   |
+       +----------|-----------+       +----------|-----------+
+       |  Insert TLS header   |                  |
+       |     & trailer.       |       +----------|-----------+
+       | (including padding)  |       | Decrypt & MAC verify |
+       +----------|-----------+       +----------|-----------+
+                  |                              |
+        +---------|-----------+       +----------|-----------+
+        |    MAC generate &   |       |  Remove TLS header   |
+        |      Encrypt        |       |      & trailer.      |
+        +---------|-----------+       | (including padding)  |
+                  |                   +----------|-----------+
+                  |                              |
+                  ~                              ~
+                  |                              |
+                  V                              V
+            TLSCiphertext                  TLSPlaintext
+
+Supported Versions
+^^^^^^^^^^^^^^^^^^
+
+* TLS 1.2
+* TLS 1.3
+* DTLS 1.2
 
 Device Features and Capabilities
 ---------------------------------
@@ -700,6 +761,8 @@ MACsec related configuration parameters are defined in ``rte_security_macsec_xfo
 PDCP related configuration parameters are defined in ``rte_security_pdcp_xform``
 
 DOCSIS related configuration parameters are defined in ``rte_security_docsis_xform``
+
+TLS record related configuration parameters are defined in ``rte_security_tls_record_xform``
 
 
 Security API

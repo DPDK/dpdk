@@ -314,6 +314,10 @@ rte_security_capability_get(void *ctx, struct rte_security_capability_idx *idx)
 						RTE_SECURITY_PROTOCOL_MACSEC) {
 				if (idx->macsec.alg == capability->macsec.alg)
 					return capability;
+			} else if (idx->protocol == RTE_SECURITY_PROTOCOL_TLS_RECORD) {
+				if (capability->tls_record.ver == idx->tls_record.ver &&
+				    capability->tls_record.type == idx->tls_record.type)
+					return capability;
 			}
 		}
 	}
