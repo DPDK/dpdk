@@ -1465,6 +1465,7 @@ M: Olivier Matz <olivier.matz@6wind.com>
 F: lib/net/
 F: app/test/test_cksum.c
 F: app/test/test_cksum_perf.c
+F: app/test/test_net_ether.c
 
 Packet CRC
 M: Jasvinder Singh <jasvinder.singh@intel.com>
