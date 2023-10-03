@@ -317,6 +317,46 @@ can be achieved like this:
         }
         int links_made = rte_event_port_link(dev_id, tx_port_id, &single_link_q, &priority, 1);
 
+Linking Queues to Ports with link profiles
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+An application can use link profiles if supported by the underlying event device to setup up
+multiple link profile per port and change them run time depending up on heuristic data.
+Using Link profiles can reduce the overhead of linking/unlinking and wait for unlinks in progress
+in fast-path and gives applications the ability to switch between preset profiles on the fly.
+
+An example use case could be as follows.
+
+Config path:
+
+.. code-block:: c
+
+   uint8_t lq[4] = {4, 5, 6, 7};
+   uint8_t hq[4] = {0, 1, 2, 3};
+
+   if (rte_event_dev_info.max_profiles_per_port < 2)
+       return -ENOTSUP;
+
+   rte_event_port_profile_links_set(0, 0, hq, NULL, 4, 0);
+   rte_event_port_profile_links_set(0, 0, lq, NULL, 4, 1);
+
+Worker path:
+
+.. code-block:: c
+
+   uint8_t profile_id_to_switch;
+
+   while (1) {
+       deq = rte_event_dequeue_burst(0, 0, &ev, 1, 0);
+       if (deq == 0) {
+           profile_id_to_switch = app_find_profile_id_to_switch();
+           rte_event_port_profile_switch(0, 0, profile_id_to_switch);
+           continue;
+       }
+
+       // Process the event received.
+   }
+
 Starting the EventDev
 ~~~~~~~~~~~~~~~~~~~~~
 

@@ -119,8 +119,8 @@ struct rte_eventdev_data {
 	/**< Array of port configuration structures. */
 	struct rte_event_queue_conf queues_cfg[RTE_EVENT_MAX_QUEUES_PER_DEV];
 	/**< Array of queue configuration structures. */
-	uint16_t links_map[RTE_EVENT_MAX_PORTS_PER_DEV *
-			   RTE_EVENT_MAX_QUEUES_PER_DEV];
+	uint16_t links_map[RTE_EVENT_MAX_PROFILES_PER_PORT]
+			  [RTE_EVENT_MAX_PORTS_PER_DEV * RTE_EVENT_MAX_QUEUES_PER_DEV];
 	/**< Memory to store queues to port connections. */
 	void *dev_private;
 	/**< PMD-specific private data */
@@ -179,9 +179,10 @@ struct rte_eventdev {
 	/**< Pointer to PMD eth Tx adapter enqueue function. */
 	event_crypto_adapter_enqueue_t ca_enqueue;
 	/**< Pointer to PMD crypto adapter enqueue function. */
-
 	event_dma_adapter_enqueue_t dma_enqueue;
 	/**< Pointer to PMD DMA adapter enqueue function. */
+	event_profile_switch_t profile_switch;
+	/**< Pointer to PMD Event switch profile function. */
 
 	uint64_t reserved_64s[3]; /**< Reserved for future fields */
 	void *reserved_ptrs[3];	  /**< Reserved for future fields */
@@ -442,6 +443,32 @@ typedef int (*eventdev_port_link_t)(struct rte_eventdev *dev, void *port,
 		uint16_t nb_links);
 
 /**
+ * Link multiple source event queues associated with a link profile to a
+ * destination event port.
+ *
+ * @param dev
+ *   Event device pointer
+ * @param port
+ *   Event port pointer
+ * @param queues
+ *   Points to an array of *nb_links* event queues to be linked
+ *   to the event port.
+ * @param priorities
+ *   Points to an array of *nb_links* service priorities associated with each
+ *   event queue link to event port.
+ * @param nb_links
+ *   The number of links to establish.
+ * @param profile_id
+ *   The profile ID to associate the links.
+ *
+ * @return
+ *   Returns 0 on success.
+ */
+typedef int (*eventdev_port_link_profile_t)(struct rte_eventdev *dev, void *port,
+					    const uint8_t queues[], const uint8_t priorities[],
+					    uint16_t nb_links, uint8_t profile_id);
+
+/**
  * Unlink multiple source event queues from destination event port.
  *
  * @param dev
@@ -458,6 +485,28 @@ typedef int (*eventdev_port_link_t)(struct rte_eventdev *dev, void *port,
  */
 typedef int (*eventdev_port_unlink_t)(struct rte_eventdev *dev, void *port,
 		uint8_t queues[], uint16_t nb_unlinks);
+
+/**
+ * Unlink multiple source event queues associated with a link profile from
+ * destination event port.
+ *
+ * @param dev
+ *   Event device pointer
+ * @param port
+ *   Event port pointer
+ * @param queues
+ *   An array of *nb_unlinks* event queues to be unlinked from the event port.
+ * @param nb_unlinks
+ *   The number of unlinks to establish
+ * @param profile_id
+ *   The profile ID of the associated links.
+ *
+ * @return
+ *   Returns 0 on success.
+ */
+typedef int (*eventdev_port_unlink_profile_t)(struct rte_eventdev *dev, void *port,
+					      uint8_t queues[], uint16_t nb_unlinks,
+					      uint8_t profile_id);
 
 /**
  * Unlinks in progress. Returns number of unlinks that the PMD is currently
@@ -1502,8 +1551,12 @@ struct eventdev_ops {
 
 	eventdev_port_link_t port_link;
 	/**< Link event queues to an event port. */
+	eventdev_port_link_profile_t port_link_profile;
+	/**< Link event queues associated with a profile to an event port. */
 	eventdev_port_unlink_t port_unlink;
 	/**< Unlink event queues from an event port. */
+	eventdev_port_unlink_profile_t port_unlink_profile;
+	/**< Unlink event queues associated with a profile from an event port. */
 	eventdev_port_unlinks_in_progress_t port_unlinks_in_progress;
 	/**< Unlinks in progress on an event port. */
 	eventdev_dequeue_timeout_ticks_t timeout_ticks;

@@ -293,7 +293,7 @@ event_dev_port_config(struct rte_eventdev *dev, uint8_t nb_ports)
 	void **ports;
 	uint16_t *links_map;
 	struct rte_event_port_conf *ports_cfg;
-	unsigned int i;
+	unsigned int i, j;
 
 	RTE_EDEV_LOG_DEBUG("Setup %d ports on device %u", nb_ports,
 			 dev->data->dev_id);
@@ -304,7 +304,6 @@ event_dev_port_config(struct rte_eventdev *dev, uint8_t nb_ports)
 
 		ports = dev->data->ports;
 		ports_cfg = dev->data->ports_cfg;
-		links_map = dev->data->links_map;
 
 		for (i = nb_ports; i < old_nb_ports; i++)
 			(*dev->dev_ops->port_release)(ports[i]);
@@ -320,9 +319,11 @@ event_dev_port_config(struct rte_eventdev *dev, uint8_t nb_ports)
 				sizeof(ports[0]) * new_ps);
 			memset(ports_cfg + old_nb_ports, 0,
 				sizeof(ports_cfg[0]) * new_ps);
-			for (i = old_links_map_end; i < links_map_end; i++)
-				links_map[i] =
-					EVENT_QUEUE_SERVICE_PRIORITY_INVALID;
+			for (i = 0; i < RTE_EVENT_MAX_PROFILES_PER_PORT; i++) {
+				links_map = dev->data->links_map[i];
+				for (j = old_links_map_end; j < links_map_end; j++)
+					links_map[j] = EVENT_QUEUE_SERVICE_PRIORITY_INVALID;
+			}
 		}
 	} else {
 		if (*dev->dev_ops->port_release == NULL)
@@ -976,16 +977,40 @@ rte_event_port_link(uint8_t dev_id, uint8_t port_id,
 		    const uint8_t queues[], const uint8_t priorities[],
 		    uint16_t nb_links)
 {
-	struct rte_eventdev *dev;
-	uint8_t queues_list[RTE_EVENT_MAX_QUEUES_PER_DEV];
+	return rte_event_port_profile_links_set(dev_id, port_id, queues, priorities, nb_links, 0);
+}
+
+int
+rte_event_port_profile_links_set(uint8_t dev_id, uint8_t port_id, const uint8_t queues[],
+				 const uint8_t priorities[], uint16_t nb_links, uint8_t profile_id)
+{
 	uint8_t priorities_list[RTE_EVENT_MAX_QUEUES_PER_DEV];
+	uint8_t queues_list[RTE_EVENT_MAX_QUEUES_PER_DEV];
+	struct rte_event_dev_info info;
+	struct rte_eventdev *dev;
 	uint16_t *links_map;
 	int i, diag;
 
 	RTE_EVENTDEV_VALID_DEVID_OR_ERRNO_RET(dev_id, EINVAL, 0);
 	dev = &rte_eventdevs[dev_id];
 
+	if (*dev->dev_ops->dev_infos_get == NULL)
+		return -ENOTSUP;
+
+	(*dev->dev_ops->dev_infos_get)(dev, &info);
+	if (profile_id >= RTE_EVENT_MAX_PROFILES_PER_PORT ||
+	    profile_id >= info.max_profiles_per_port) {
+		RTE_EDEV_LOG_ERR("Invalid profile_id=%" PRIu8, profile_id);
+		return -EINVAL;
+	}
+
 	if (*dev->dev_ops->port_link == NULL) {
+		RTE_EDEV_LOG_ERR("Function not supported\n");
+		rte_errno = ENOTSUP;
+		return 0;
+	}
+
+	if (profile_id && *dev->dev_ops->port_link_profile == NULL) {
 		RTE_EDEV_LOG_ERR("Function not supported\n");
 		rte_errno = ENOTSUP;
 		return 0;
@@ -1018,18 +1043,22 @@ rte_event_port_link(uint8_t dev_id, uint8_t port_id,
 			return 0;
 		}
 
-	diag = (*dev->dev_ops->port_link)(dev, dev->data->ports[port_id],
-						queues, priorities, nb_links);
+	if (profile_id)
+		diag = (*dev->dev_ops->port_link_profile)(dev, dev->data->ports[port_id], queues,
+							  priorities, nb_links, profile_id);
+	else
+		diag = (*dev->dev_ops->port_link)(dev, dev->data->ports[port_id], queues,
+						  priorities, nb_links);
 	if (diag < 0)
 		return diag;
 
-	links_map = dev->data->links_map;
+	links_map = dev->data->links_map[profile_id];
 	/* Point links_map to this port specific area */
 	links_map += (port_id * RTE_EVENT_MAX_QUEUES_PER_DEV);
 	for (i = 0; i < diag; i++)
 		links_map[queues[i]] = (uint8_t)priorities[i];
 
-	rte_eventdev_trace_port_link(dev_id, port_id, nb_links, diag);
+	rte_eventdev_trace_port_profile_links_set(dev_id, port_id, nb_links, profile_id, diag);
 	return diag;
 }
 
@@ -1037,15 +1066,39 @@ int
 rte_event_port_unlink(uint8_t dev_id, uint8_t port_id,
 		      uint8_t queues[], uint16_t nb_unlinks)
 {
-	struct rte_eventdev *dev;
+	return rte_event_port_profile_unlink(dev_id, port_id, queues, nb_unlinks, 0);
+}
+
+int
+rte_event_port_profile_unlink(uint8_t dev_id, uint8_t port_id, uint8_t queues[],
+			      uint16_t nb_unlinks, uint8_t profile_id)
+{
 	uint8_t all_queues[RTE_EVENT_MAX_QUEUES_PER_DEV];
-	int i, diag, j;
+	struct rte_event_dev_info info;
+	struct rte_eventdev *dev;
 	uint16_t *links_map;
+	int i, diag, j;
 
 	RTE_EVENTDEV_VALID_DEVID_OR_ERRNO_RET(dev_id, EINVAL, 0);
 	dev = &rte_eventdevs[dev_id];
 
+	if (*dev->dev_ops->dev_infos_get == NULL)
+		return -ENOTSUP;
+
+	(*dev->dev_ops->dev_infos_get)(dev, &info);
+	if (profile_id >= RTE_EVENT_MAX_PROFILES_PER_PORT ||
+	    profile_id >= info.max_profiles_per_port) {
+		RTE_EDEV_LOG_ERR("Invalid profile_id=%" PRIu8, profile_id);
+		return -EINVAL;
+	}
+
 	if (*dev->dev_ops->port_unlink == NULL) {
+		RTE_EDEV_LOG_ERR("Function not supported");
+		rte_errno = ENOTSUP;
+		return 0;
+	}
+
+	if (profile_id && *dev->dev_ops->port_unlink_profile == NULL) {
 		RTE_EDEV_LOG_ERR("Function not supported");
 		rte_errno = ENOTSUP;
 		return 0;
@@ -1057,7 +1110,7 @@ rte_event_port_unlink(uint8_t dev_id, uint8_t port_id,
 		return 0;
 	}
 
-	links_map = dev->data->links_map;
+	links_map = dev->data->links_map[profile_id];
 	/* Point links_map to this port specific area */
 	links_map += (port_id * RTE_EVENT_MAX_QUEUES_PER_DEV);
 
@@ -1086,16 +1139,19 @@ rte_event_port_unlink(uint8_t dev_id, uint8_t port_id,
 			return 0;
 		}
 
-	diag = (*dev->dev_ops->port_unlink)(dev, dev->data->ports[port_id],
-					queues, nb_unlinks);
-
+	if (profile_id)
+		diag = (*dev->dev_ops->port_unlink_profile)(dev, dev->data->ports[port_id], queues,
+							    nb_unlinks, profile_id);
+	else
+		diag = (*dev->dev_ops->port_unlink)(dev, dev->data->ports[port_id], queues,
+						    nb_unlinks);
 	if (diag < 0)
 		return diag;
 
 	for (i = 0; i < diag; i++)
 		links_map[queues[i]] = EVENT_QUEUE_SERVICE_PRIORITY_INVALID;
 
-	rte_eventdev_trace_port_unlink(dev_id, port_id, nb_unlinks, diag);
+	rte_eventdev_trace_port_profile_unlink(dev_id, port_id, nb_unlinks, profile_id, diag);
 	return diag;
 }
 
@@ -1139,7 +1195,8 @@ rte_event_port_links_get(uint8_t dev_id, uint8_t port_id,
 		return -EINVAL;
 	}
 
-	links_map = dev->data->links_map;
+	/* Use the default profile_id. */
+	links_map = dev->data->links_map[0];
 	/* Point links_map to this port specific area */
 	links_map += (port_id * RTE_EVENT_MAX_QUEUES_PER_DEV);
 	for (i = 0; i < dev->data->nb_queues; i++) {
@@ -1151,6 +1208,49 @@ rte_event_port_links_get(uint8_t dev_id, uint8_t port_id,
 	}
 
 	rte_eventdev_trace_port_links_get(dev_id, port_id, count);
+
+	return count;
+}
+
+int
+rte_event_port_profile_links_get(uint8_t dev_id, uint8_t port_id, uint8_t queues[],
+				 uint8_t priorities[], uint8_t profile_id)
+{
+	struct rte_event_dev_info info;
+	struct rte_eventdev *dev;
+	uint16_t *links_map;
+	int i, count = 0;
+
+	RTE_EVENTDEV_VALID_DEVID_OR_ERR_RET(dev_id, -EINVAL);
+
+	dev = &rte_eventdevs[dev_id];
+	if (*dev->dev_ops->dev_infos_get == NULL)
+		return -ENOTSUP;
+
+	(*dev->dev_ops->dev_infos_get)(dev, &info);
+	if (profile_id >= RTE_EVENT_MAX_PROFILES_PER_PORT ||
+	    profile_id >= info.max_profiles_per_port) {
+		RTE_EDEV_LOG_ERR("Invalid profile_id=%" PRIu8, profile_id);
+		return -EINVAL;
+	}
+
+	if (!is_valid_port(dev, port_id)) {
+		RTE_EDEV_LOG_ERR("Invalid port_id=%" PRIu8, port_id);
+		return -EINVAL;
+	}
+
+	links_map = dev->data->links_map[profile_id];
+	/* Point links_map to this port specific area */
+	links_map += (port_id * RTE_EVENT_MAX_QUEUES_PER_DEV);
+	for (i = 0; i < dev->data->nb_queues; i++) {
+		if (links_map[i] != EVENT_QUEUE_SERVICE_PRIORITY_INVALID) {
+			queues[count] = i;
+			priorities[count] = (uint8_t)links_map[i];
+			++count;
+		}
+	}
+
+	rte_eventdev_trace_port_profile_links_get(dev_id, port_id, profile_id, count);
 
 	return count;
 }
@@ -1463,7 +1563,7 @@ eventdev_data_alloc(uint8_t dev_id, struct rte_eventdev_data **data,
 {
 	char mz_name[RTE_EVENTDEV_NAME_MAX_LEN];
 	const struct rte_memzone *mz;
-	int n;
+	int i, n;
 
 	/* Generate memzone name */
 	n = snprintf(mz_name, sizeof(mz_name), "rte_eventdev_data_%u", dev_id);
@@ -1483,11 +1583,10 @@ eventdev_data_alloc(uint8_t dev_id, struct rte_eventdev_data **data,
 	*data = mz->addr;
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
 		memset(*data, 0, sizeof(struct rte_eventdev_data));
-		for (n = 0; n < RTE_EVENT_MAX_PORTS_PER_DEV *
-					RTE_EVENT_MAX_QUEUES_PER_DEV;
-		     n++)
-			(*data)->links_map[n] =
-				EVENT_QUEUE_SERVICE_PRIORITY_INVALID;
+		for (i = 0; i < RTE_EVENT_MAX_PROFILES_PER_PORT; i++)
+			for (n = 0; n < RTE_EVENT_MAX_PORTS_PER_DEV * RTE_EVENT_MAX_QUEUES_PER_DEV;
+			     n++)
+				(*data)->links_map[i][n] = EVENT_QUEUE_SERVICE_PRIORITY_INVALID;
 	}
 
 	return 0;

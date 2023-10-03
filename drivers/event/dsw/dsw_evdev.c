@@ -218,6 +218,7 @@ dsw_info_get(struct rte_eventdev *dev __rte_unused,
 		.max_event_port_dequeue_depth = DSW_MAX_PORT_DEQUEUE_DEPTH,
 		.max_event_port_enqueue_depth = DSW_MAX_PORT_ENQUEUE_DEPTH,
 		.max_num_events = DSW_MAX_EVENTS,
+		.max_profiles_per_port = 1,
 		.event_dev_cap = RTE_EVENT_DEV_CAP_BURST_MODE|
 		RTE_EVENT_DEV_CAP_DISTRIBUTED_SCHED|
 		RTE_EVENT_DEV_CAP_NONSEQ_MODE|

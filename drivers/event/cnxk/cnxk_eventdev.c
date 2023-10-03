@@ -133,7 +133,7 @@ cnxk_sso_restore_links(const struct rte_eventdev *event_dev,
 	for (i = 0; i < dev->nb_event_ports; i++) {
 		uint16_t nb_hwgrp = 0;
 
-		links_map = event_dev->data->links_map;
+		links_map = event_dev->data->links_map[0];
 		/* Point links_map to this port specific area */
 		links_map += (i * RTE_EVENT_MAX_QUEUES_PER_DEV);
 

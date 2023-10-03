@@ -190,6 +190,17 @@ New Features
     model by introducing APIs that allow applications to enqueue/dequeue DMA
     operations to/from dmadev as events scheduled by an event device.
 
+* **Added eventdev support to link queues to port with link profile.**
+
+  Introduced event link profiles that can be used to associated links between
+  event queues and an event port with a unique identifier termed as link profile.
+  The profile can be used to switch between the associated links in fast-path
+  without the additional overhead of linking/unlinking and waiting for unlinking.
+
+  * Added ``rte_event_port_profile_links_set``, ``rte_event_port_profile_unlink``
+    ``rte_event_port_profile_links_get`` and ``rte_event_port_profile_switch``
+    functions to enable this feature.
+
 * **Updated Marvell cnxk eventdev driver.**
 
   * Added support for ``remaining_ticks_get`` timer adapter PMD callback

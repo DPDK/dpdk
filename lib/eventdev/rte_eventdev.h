@@ -320,6 +320,12 @@ struct rte_event;
  * rte_event_queue_setup().
  */
 
+#define RTE_EVENT_DEV_CAP_PROFILE_LINK (1ULL << 12)
+/**< Event device is capable of supporting multiple link profiles per event port
+ * i.e., the value of `rte_event_dev_info::max_profiles_per_port` is greater
+ * than one.
+ */
+
 /* Event device priority levels */
 #define RTE_EVENT_DEV_PRIORITY_HIGHEST   0
 /**< Highest priority expressed across eventdev subsystem
@@ -445,6 +451,10 @@ struct rte_event_dev_info {
 	 * (and only capable of) single-link configurations supported by this
 	 * device. These ports and queues are not accounted for in
 	 * max_event_ports or max_event_queues.
+	 */
+	uint8_t max_profiles_per_port;
+	/**< Maximum number of event queue profiles per event port.
+	 * A device that doesn't support multiple profiles will set this as 1.
 	 */
 };
 
@@ -1580,6 +1590,10 @@ rte_event_dequeue_timeout_ticks(uint8_t dev_id, uint64_t ns,
  * latency of critical work by establishing the link with more event ports
  * at runtime.
  *
+ * When the value of ``rte_event_dev_info::max_profiles_per_port`` is greater
+ * than or equal to one, this function links the event queues to the default
+ * profile_id i.e. profile_id 0 of the event port.
+ *
  * @param dev_id
  *   The identifier of the device.
  *
@@ -1637,6 +1651,10 @@ rte_event_port_link(uint8_t dev_id, uint8_t port_id,
  * Event queue(s) to event port unlink establishment can be changed at runtime
  * without re-configuring the device.
  *
+ * When the value of ``rte_event_dev_info::max_profiles_per_port`` is greater
+ * than or equal to one, this function unlinks the event queues from the default
+ * profile identifier i.e. profile 0 of the event port.
+ *
  * @see rte_event_port_unlinks_in_progress() to poll for completed unlinks.
  *
  * @param dev_id
@@ -1669,6 +1687,136 @@ rte_event_port_link(uint8_t dev_id, uint8_t port_id,
 int
 rte_event_port_unlink(uint8_t dev_id, uint8_t port_id,
 		      uint8_t queues[], uint16_t nb_unlinks);
+
+/**
+ * Link multiple source event queues supplied in *queues* to the destination
+ * event port designated by its *port_id* with associated profile identifier
+ * supplied in *profile_id* with service priorities supplied in *priorities*
+ * on the event device designated by its *dev_id*.
+ *
+ * If *profile_id* is set to 0 then, the links created by the call `rte_event_port_link`
+ * will be overwritten.
+ *
+ * Event ports by default use profile_id 0 unless it is changed using the
+ * call ``rte_event_port_profile_switch()``.
+ *
+ * The link establishment shall enable the event port *port_id* from
+ * receiving events from the specified event queue(s) supplied in *queues*
+ *
+ * An event queue may link to one or more event ports.
+ * The number of links can be established from an event queue to event port is
+ * implementation defined.
+ *
+ * Event queue(s) to event port link establishment can be changed at runtime
+ * without re-configuring the device to support scaling and to reduce the
+ * latency of critical work by establishing the link with more event ports
+ * at runtime.
+ *
+ * @param dev_id
+ *   The identifier of the device.
+ *
+ * @param port_id
+ *   Event port identifier to select the destination port to link.
+ *
+ * @param queues
+ *   Points to an array of *nb_links* event queues to be linked
+ *   to the event port.
+ *   NULL value is allowed, in which case this function links all the configured
+ *   event queues *nb_event_queues* which previously supplied to
+ *   rte_event_dev_configure() to the event port *port_id*
+ *
+ * @param priorities
+ *   Points to an array of *nb_links* service priorities associated with each
+ *   event queue link to event port.
+ *   The priority defines the event port's servicing priority for
+ *   event queue, which may be ignored by an implementation.
+ *   The requested priority should in the range of
+ *   [RTE_EVENT_DEV_PRIORITY_HIGHEST, RTE_EVENT_DEV_PRIORITY_LOWEST].
+ *   The implementation shall normalize the requested priority to
+ *   implementation supported priority value.
+ *   NULL value is allowed, in which case this function links the event queues
+ *   with RTE_EVENT_DEV_PRIORITY_NORMAL servicing priority
+ *
+ * @param nb_links
+ *   The number of links to establish. This parameter is ignored if queues is
+ *   NULL.
+ *
+ * @param profile_id
+ *   The profile identifier associated with the links between event queues and
+ *   event port. Should be less than the max capability reported by
+ *   ``rte_event_dev_info::max_profiles_per_port``
+ *
+ * @return
+ * The number of links actually established. The return value can be less than
+ * the value of the *nb_links* parameter when the implementation has the
+ * limitation on specific queue to port link establishment or if invalid
+ * parameters are specified in *queues*
+ * If the return value is less than *nb_links*, the remaining links at the end
+ * of link[] are not established, and the caller has to take care of them.
+ * If return value is less than *nb_links* then implementation shall update the
+ * rte_errno accordingly, Possible rte_errno values are
+ * (EDQUOT) Quota exceeded(Application tried to link the queue configured with
+ *  RTE_EVENT_QUEUE_CFG_SINGLE_LINK to more than one event ports)
+ * (EINVAL) Invalid parameter
+ *
+ */
+__rte_experimental
+int
+rte_event_port_profile_links_set(uint8_t dev_id, uint8_t port_id, const uint8_t queues[],
+				 const uint8_t priorities[], uint16_t nb_links, uint8_t profile_id);
+
+/**
+ * Unlink multiple source event queues supplied in *queues* that belong to profile
+ * designated by *profile_id* from the destination event port designated by its
+ * *port_id* on the event device designated by its *dev_id*.
+ *
+ * If *profile_id* is set to 0 i.e., the default profile then, then this function
+ * will act as ``rte_event_port_unlink``.
+ *
+ * The unlink call issues an async request to disable the event port *port_id*
+ * from receiving events from the specified event queue *queue_id*.
+ * Event queue(s) to event port unlink establishment can be changed at runtime
+ * without re-configuring the device.
+ *
+ * @see rte_event_port_unlinks_in_progress() to poll for completed unlinks.
+ *
+ * @param dev_id
+ *   The identifier of the device.
+ *
+ * @param port_id
+ *   Event port identifier to select the destination port to unlink.
+ *
+ * @param queues
+ *   Points to an array of *nb_unlinks* event queues to be unlinked
+ *   from the event port.
+ *   NULL value is allowed, in which case this function unlinks all the
+ *   event queue(s) from the event port *port_id*.
+ *
+ * @param nb_unlinks
+ *   The number of unlinks to establish. This parameter is ignored if queues is
+ *   NULL.
+ *
+ * @param profile_id
+ *   The profile identifier associated with the links between event queues and
+ *   event port. Should be less than the max capability reported by
+ *   ``rte_event_dev_info::max_profiles_per_port``
+ *
+ * @return
+ * The number of unlinks successfully requested. The return value can be less
+ * than the value of the *nb_unlinks* parameter when the implementation has the
+ * limitation on specific queue to port unlink establishment or
+ * if invalid parameters are specified.
+ * If the return value is less than *nb_unlinks*, the remaining queues at the
+ * end of queues[] are not unlinked, and the caller has to take care of them.
+ * If return value is less than *nb_unlinks* then implementation shall update
+ * the rte_errno accordingly, Possible rte_errno values are
+ * (EINVAL) Invalid parameter
+ *
+ */
+__rte_experimental
+int
+rte_event_port_profile_unlink(uint8_t dev_id, uint8_t port_id, uint8_t queues[],
+			      uint16_t nb_unlinks, uint8_t profile_id);
 
 /**
  * Returns the number of unlinks in progress.
@@ -1723,6 +1871,42 @@ rte_event_port_unlinks_in_progress(uint8_t dev_id, uint8_t port_id);
 int
 rte_event_port_links_get(uint8_t dev_id, uint8_t port_id,
 			 uint8_t queues[], uint8_t priorities[]);
+
+/**
+ * Retrieve the list of source event queues and its service priority
+ * associated to a *profile_id* and linked to the destination event port
+ * designated by its *port_id* on the event device designated by its *dev_id*.
+ *
+ * @param dev_id
+ *   The identifier of the device.
+ *
+ * @param port_id
+ *   Event port identifier.
+ *
+ * @param[out] queues
+ *   Points to an array of *queues* for output.
+ *   The caller has to allocate *RTE_EVENT_MAX_QUEUES_PER_DEV* bytes to
+ *   store the event queue(s) linked with event port *port_id*
+ *
+ * @param[out] priorities
+ *   Points to an array of *priorities* for output.
+ *   The caller has to allocate *RTE_EVENT_MAX_QUEUES_PER_DEV* bytes to
+ *   store the service priority associated with each event queue linked
+ *
+ * @param profile_id
+ *   The profile identifier associated with the links between event queues and
+ *   event port. Should be less than the max capability reported by
+ *   ``rte_event_dev_info::max_profiles_per_port``
+ *
+ * @return
+ * The number of links established on the event port designated by its
+ *  *port_id*.
+ * - <0 on failure.
+ */
+__rte_experimental
+int
+rte_event_port_profile_links_get(uint8_t dev_id, uint8_t port_id, uint8_t queues[],
+				 uint8_t priorities[], uint8_t profile_id);
 
 /**
  * Retrieve the service ID of the event dev. If the adapter doesn't use
@@ -2307,6 +2491,53 @@ rte_event_maintain(uint8_t dev_id, uint8_t port_id, int op)
 		fp_ops->maintain(port, op);
 
 	return 0;
+}
+
+/**
+ * Change the active profile on an event port.
+ *
+ * This function is used to change the current active profile on an event port
+ * when multiple link profiles are configured on an event port through the
+ * function call ``rte_event_port_profile_links_set``.
+ *
+ * On the subsequent ``rte_event_dequeue_burst`` call, only the event queues
+ * that were associated with the newly active profile will participate in
+ * scheduling.
+ *
+ * @param dev_id
+ *   The identifier of the device.
+ * @param port_id
+ *   The identifier of the event port.
+ * @param profile_id
+ *   The identifier of the profile.
+ * @return
+ *  - 0 on success.
+ *  - -EINVAL if *dev_id*,  *port_id*, or *profile_id* is invalid.
+ */
+__rte_experimental
+static inline uint8_t
+rte_event_port_profile_switch(uint8_t dev_id, uint8_t port_id, uint8_t profile_id)
+{
+	const struct rte_event_fp_ops *fp_ops;
+	void *port;
+
+	fp_ops = &rte_event_fp_ops[dev_id];
+	port = fp_ops->data[port_id];
+
+#ifdef RTE_LIBRTE_EVENTDEV_DEBUG
+	if (dev_id >= RTE_EVENT_MAX_DEVS ||
+	    port_id >= RTE_EVENT_MAX_PORTS_PER_DEV)
+		return -EINVAL;
+
+	if (port == NULL)
+		return -EINVAL;
+
+	if (profile_id >= RTE_EVENT_MAX_PROFILES_PER_PORT)
+		return -EINVAL;
+#endif
+	rte_eventdev_trace_port_profile_switch(dev_id, port_id, profile_id);
+
+	return fp_ops->profile_switch(port, profile_id);
 }
 
 #ifdef __cplusplus
