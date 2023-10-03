@@ -110,6 +110,13 @@ New Features
 
   * Added 100M and auto-neg support in YT PHY fiber mode.
 
+* **Added support for TLS and DTLS record processing.**
+
+  Added TLS and DTLS record transform for security session
+  and added enhancements to ``rte_crypto_op`` fields
+  to handle all datapath requirements of TLS and DTLS.
+  The support was added for TLS 1.2, TLS 1.3 and DTLS 1.2.
+
 * **Added out of place processing support for inline ingress security session.**
 
   Similar to out of place processing support for lookaside security session,

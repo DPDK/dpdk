@@ -454,6 +454,21 @@ The TLS Record Protocol provides connection security that has two basic properti
                   V                              V
             TLSCiphertext                  TLSPlaintext
 
+TLS and DTLS header formation (in record write operation)
+would depend on type of content.
+It is a per packet variable and would need to be handled by the same session.
+Application may pass this info to a cryptodev performing lookaside protocol offload
+by passing the same in ``rte_crypto_op.param1``.
+
+In record read operation, application is required to preserve any info
+it may need from the TLS/DTLS header (such as content type and sequence number)
+as the cryptodev would remove the header and padding
+as part of the lookaside protocol processing.
+With TLS 1.3, the actual content type is part of the trailer (before padding)
+and would be stripped by the PMD.
+For applications that may need this info,
+PMD would return the value in ``rte_crypto_op.param1`` field.
+
 Supported Versions
 ^^^^^^^^^^^^^^^^^^
 

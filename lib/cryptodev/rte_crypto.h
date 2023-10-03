@@ -123,7 +123,30 @@ struct rte_crypto_op {
 			 *
 			 * @see struct rte_security_tls_record_sess_options
 			 */
-			uint8_t reserved[2];
+			union {
+				struct {
+					uint8_t content_type;
+					/**< Content type. The field can act both as input
+					 * and output.
+					 *
+					 * As input, for passing message type in case of record
+					 * write (encrypt) operation. Applicable for,
+					 * 1. TLS 1.2
+					 * 2. TLS 1.3
+					 * 3. DTLS 1.2
+					 *
+					 * As output, for returning message type in case of record
+					 * read (decrypt) operation. Applicable for,
+					 * 1. TLS 1.3
+					 *
+					 * Message types are listed as RTE_TLS_TYPE_* and
+					 * RTE_DTLS_TYPE_*.
+					 */
+				} tls_record;
+				/**< TLS record */
+			} param1;
+			/**< Additional per operation parameter 1. */
+			uint8_t reserved[1];
 			/**< Reserved bytes to fill 64 bits for
 			 * future additions
 			 */
