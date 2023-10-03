@@ -19,6 +19,14 @@ The BPHY CGX/RPM implements following features in the rawdev API:
 - Access to BPHY CGX/RPM via a set of predefined messages
 - Access to BPHY memory
 - Custom interrupt handlers
+- Multiprocess aware
+
+Limitations
+-----------
+
+In multiprocess mode user-space application must ensure
+no resources sharing takes place.
+Otherwise, user-space application should ensure synchronization.
 
 Device Setup
 ------------

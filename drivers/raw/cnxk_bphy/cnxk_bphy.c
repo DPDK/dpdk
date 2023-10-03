@@ -359,10 +359,12 @@ bphy_rawdev_probe(struct rte_pci_driver *pci_drv,
 	bphy_dev->mem.res2 = pci_dev->mem_resource[2];
 	bphy_dev->bphy.pci_dev = pci_dev;
 
-	ret = roc_bphy_dev_init(&bphy_dev->bphy);
-	if (ret) {
-		rte_rawdev_pmd_release(bphy_rawdev);
-		return ret;
+	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
+		ret = roc_bphy_dev_init(&bphy_dev->bphy);
+		if (ret) {
+			rte_rawdev_pmd_release(bphy_rawdev);
+			return ret;
+		}
 	}
 
 	return 0;
@@ -390,8 +392,10 @@ bphy_rawdev_remove(struct rte_pci_device *pci_dev)
 		return -EINVAL;
 	}
 
-	bphy_dev = (struct bphy_device *)rawdev->dev_private;
-	roc_bphy_dev_fini(&bphy_dev->bphy);
+	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
+		bphy_dev = (struct bphy_device *)rawdev->dev_private;
+		roc_bphy_dev_fini(&bphy_dev->bphy);
+	}
 
 	return rte_rawdev_pmd_release(rawdev);
 }
