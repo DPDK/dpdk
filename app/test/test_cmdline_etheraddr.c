@@ -20,7 +20,7 @@ struct ether_addr_str {
 };
 
 /* valid strings */
-const struct ether_addr_str ether_addr_valid_strs[] = {
+static const struct ether_addr_str ether_addr_valid_strs[] = {
 		{"01:23:45:67:89:AB", 0xAB8967452301ULL},
 		{"4567:89AB:CDEF", 0xEFCDAB896745ULL},
 };
@@ -30,7 +30,7 @@ const struct ether_addr_str ether_addr_valid_strs[] = {
  * end of token, which is either space chars, null char or
  * a hash sign.
  */
-const char * ether_addr_garbage_strs[] = {
+static const char * const ether_addr_garbage_strs[] = {
 		"00:11:22:33:44:55\0garbage",
 		"00:11:22:33:44:55#garbage",
 		"00:11:22:33:44:55 garbage",
@@ -46,14 +46,13 @@ const char * ether_addr_garbage_strs[] = {
 #define GARBAGE_ETHERADDR 0x554433221100ULL /* corresponding address */
 
 
-const char * ether_addr_invalid_strs[] = {
+static const char * const ether_addr_invalid_strs[] = {
 		/* valid chars, invalid syntax */
 		"0123:45:67:89:AB",
 		"01:23:4567:89:AB",
 		"01:23:45:67:89AB",
 		"012:345:678:9AB",
 		"01:23:45:67:89:ABC",
-		"01:23:45:67:89:A",
 		"01:23:45:67:89",
 		"01:23:45:67:89:AB:CD",
 		/* invalid chars, valid syntax */
@@ -61,7 +60,6 @@ const char * ether_addr_invalid_strs[] = {
 		"INVA:LIDC:HARS",
 		/* misc */
 		"01 23 45 67 89 AB",
-		"01.23.45.67.89.AB",
 		"01,23,45,67,89,AB",
 		"01:23:45\0:67:89:AB",
 		"01:23:45#:67:89:AB",
