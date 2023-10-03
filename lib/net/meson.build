@@ -5,6 +5,8 @@ headers = files(
         'rte_ip.h',
         'rte_tcp.h',
         'rte_udp.h',
+        'rte_tls.h',
+        'rte_dtls.h',
         'rte_esp.h',
         'rte_sctp.h',
         'rte_icmp.h',
