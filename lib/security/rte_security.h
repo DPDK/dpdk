@@ -655,6 +655,22 @@ struct rte_security_tls_record_sess_options {
 };
 
 /**
+ * Configure soft and hard lifetime of a TLS record session.
+ *
+ * Lifetime of a TLS record session would specify the maximum number of packets that can be
+ * processed. TLS record processing operations would start failing once hard limit is reached.
+ *
+ * Soft limits can be specified to generate notification when the TLS record session is approaching
+ * hard limits for lifetime. This would result in a warning returned in ``rte_crypto_op.aux_flags``.
+ */
+struct rte_security_tls_record_lifetime {
+	/** Soft expiry limit in number of packets */
+	uint64_t packets_soft_limit;
+	/** Hard expiry limit in number of packets */
+	uint64_t packets_hard_limit;
+};
+
+/**
  * TLS record protocol session configuration.
  *
  * This structure contains data required to create a TLS record security session.
@@ -666,6 +682,8 @@ struct rte_security_tls_record_xform {
 	enum rte_security_tls_sess_type type;
 	/** TLS record session options. */
 	struct rte_security_tls_record_sess_options options;
+	/** TLS record session lifetime. */
+	struct rte_security_tls_record_lifetime life;
 	union {
 		/** TLS 1.2 parameters. */
 		struct {

@@ -64,9 +64,18 @@ enum rte_crypto_op_sess_type {
 	RTE_CRYPTO_OP_SECURITY_SESSION	/**< Security session crypto operation */
 };
 
+/* Auxiliary flags related to crypto operation */
+#define RTE_CRYPTO_OP_AUX_FLAGS_SESS_SOFT_EXPIRY (1 << 0)
+/**< Session soft expiry limit has been reached.
+ * Applicable for any session that has a soft lifetime feature supported.
+ *
+ * @see rte_security_ipsec_lifetime
+ * @see rte_security_tls_record_lifetime
+ */
+
 /* Auxiliary flags related to IPsec offload with RTE_SECURITY */
 
-#define RTE_CRYPTO_OP_AUX_FLAGS_IPSEC_SOFT_EXPIRY (1 << 0)
+#define RTE_CRYPTO_OP_AUX_FLAGS_IPSEC_SOFT_EXPIRY RTE_CRYPTO_OP_AUX_FLAGS_SESS_SOFT_EXPIRY
 /**< SA soft expiry limit has been reached */
 
 /**
