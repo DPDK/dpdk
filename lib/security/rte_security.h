@@ -636,6 +636,22 @@ struct rte_security_tls_record_sess_options {
 	 *      and application is not required to provide IV.
 	 */
 	uint32_t iv_gen_disable : 1;
+	/** Enable extra padding
+	 *
+	 *  TLS allows user to pad the plain text to hide the actual size of the record.
+	 *  This is required to achieve traffic flow confidentiality in case of TLS/DTLS flows.
+	 *  This padding is in addition to the default padding performed by PMD
+	 *  (which ensures ciphertext is aligned to block size).
+	 *
+	 *  On supported devices, application may pass the required additional padding via
+	 *  ``rte_crypto_op.aux_flags`` field.
+	 *
+	 * 1 : Enable extra padding of the plain text provided. The extra padding value would be
+	 *     read from ``rte_crypto_op.aux_flags``.
+	 *
+	 * 0 : Disable extra padding
+	 */
+	uint32_t extra_padding_enable : 1;
 };
 
 /**

@@ -99,8 +99,20 @@ struct rte_crypto_op {
 			/**< operation session type */
 			uint8_t aux_flags;
 			/**< Operation specific auxiliary/additional flags.
-			 * These flags carry additional information from the
+			 * These flags carry additional information from/to the
 			 * operation. Processing of the same is optional.
+			 *
+			 * The flags are defined as RTE_CRYPTO_OP_AUX_FLAGS_* and
+			 * would be set by PMD for application consumption when
+			 * the status is RTE_CRYPTO_OP_STATUS_SUCCESS.
+			 * In case of errors, the value of this field is undefined.
+			 *
+			 * With TLS record offload (RTE_SECURITY_PROTOCOL_TLS_RECORD),
+			 * application may provide the extra padding required for the plaintext
+			 * provided. This field can be used for passing the same in units of 8B.
+			 * The value would be set by application for PMD consumption.
+			 *
+			 * @see struct rte_security_tls_record_sess_options
 			 */
 			uint8_t reserved[2];
 			/**< Reserved bytes to fill 64 bits for
