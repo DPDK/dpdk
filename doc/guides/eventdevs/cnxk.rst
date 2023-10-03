@@ -48,6 +48,7 @@ Features of the OCTEON cnxk SSO PMD are:
 - HW managed event vectorization on CN10K for packets enqueued from ethdev to
   eventdev configurable per each Rx queue in Rx adapter.
 - Event vector transmission via Tx adapter.
+- Up to 2 event link profiles.
 
 Prerequisites and Compilation procedure
 ---------------------------------------

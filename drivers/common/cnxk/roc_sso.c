@@ -186,8 +186,8 @@ exit:
 }
 
 void
-sso_hws_link_modify(uint8_t hws, uintptr_t base, struct plt_bitmap *bmp,
-		    uint16_t hwgrp[], uint16_t n, uint16_t enable)
+sso_hws_link_modify(uint8_t hws, uintptr_t base, struct plt_bitmap *bmp, uint16_t hwgrp[],
+		    uint16_t n, uint8_t set, uint16_t enable)
 {
 	uint64_t reg;
 	int i, j, k;
@@ -204,7 +204,7 @@ sso_hws_link_modify(uint8_t hws, uintptr_t base, struct plt_bitmap *bmp,
 		k = n % 4;
 		k = k ? k : 4;
 		for (j = 0; j < k; j++) {
-			mask[j] = hwgrp[i + j] | enable << 14;
+			mask[j] = hwgrp[i + j] | (uint32_t)set << 12 | enable << 14;
 			if (bmp) {
 				enable ? plt_bitmap_set(bmp, hwgrp[i + j]) :
 					 plt_bitmap_clear(bmp, hwgrp[i + j]);
@@ -290,8 +290,8 @@ roc_sso_ns_to_gw(struct roc_sso *roc_sso, uint64_t ns)
 }
 
 int
-roc_sso_hws_link(struct roc_sso *roc_sso, uint8_t hws, uint16_t hwgrp[],
-		 uint16_t nb_hwgrp)
+roc_sso_hws_link(struct roc_sso *roc_sso, uint8_t hws, uint16_t hwgrp[], uint16_t nb_hwgrp,
+		 uint8_t set)
 {
 	struct dev *dev = &roc_sso_to_sso_priv(roc_sso)->dev;
 	struct sso *sso;
@@ -299,14 +299,14 @@ roc_sso_hws_link(struct roc_sso *roc_sso, uint8_t hws, uint16_t hwgrp[],
 
 	sso = roc_sso_to_sso_priv(roc_sso);
 	base = dev->bar2 + (RVU_BLOCK_ADDR_SSOW << 20 | hws << 12);
-	sso_hws_link_modify(hws, base, sso->link_map[hws], hwgrp, nb_hwgrp, 1);
+	sso_hws_link_modify(hws, base, sso->link_map[hws], hwgrp, nb_hwgrp, set, 1);
 
 	return nb_hwgrp;
 }
 
 int
-roc_sso_hws_unlink(struct roc_sso *roc_sso, uint8_t hws, uint16_t hwgrp[],
-		   uint16_t nb_hwgrp)
+roc_sso_hws_unlink(struct roc_sso *roc_sso, uint8_t hws, uint16_t hwgrp[], uint16_t nb_hwgrp,
+		   uint8_t set)
 {
 	struct dev *dev = &roc_sso_to_sso_priv(roc_sso)->dev;
 	struct sso *sso;
@@ -314,7 +314,7 @@ roc_sso_hws_unlink(struct roc_sso *roc_sso, uint8_t hws, uint16_t hwgrp[],
 
 	sso = roc_sso_to_sso_priv(roc_sso);
 	base = dev->bar2 + (RVU_BLOCK_ADDR_SSOW << 20 | hws << 12);
-	sso_hws_link_modify(hws, base, sso->link_map[hws], hwgrp, nb_hwgrp, 0);
+	sso_hws_link_modify(hws, base, sso->link_map[hws], hwgrp, nb_hwgrp, set, 0);
 
 	return nb_hwgrp;
 }

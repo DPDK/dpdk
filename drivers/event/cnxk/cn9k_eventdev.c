@@ -15,7 +15,7 @@
 	enq_op = enq_ops[dev->tx_offloads & (NIX_TX_OFFLOAD_MAX - 1)]
 
 static int
-cn9k_sso_hws_link(void *arg, void *port, uint16_t *map, uint16_t nb_link)
+cn9k_sso_hws_link(void *arg, void *port, uint16_t *map, uint16_t nb_link, uint8_t profile)
 {
 	struct cnxk_sso_evdev *dev = arg;
 	struct cn9k_sso_hws_dual *dws;
@@ -24,22 +24,20 @@ cn9k_sso_hws_link(void *arg, void *port, uint16_t *map, uint16_t nb_link)
 
 	if (dev->dual_ws) {
 		dws = port;
-		rc = roc_sso_hws_link(&dev->sso,
-				      CN9K_DUAL_WS_PAIR_ID(dws->hws_id, 0), map,
-				      nb_link);
-		rc |= roc_sso_hws_link(&dev->sso,
-				       CN9K_DUAL_WS_PAIR_ID(dws->hws_id, 1),
-				       map, nb_link);
+		rc = roc_sso_hws_link(&dev->sso, CN9K_DUAL_WS_PAIR_ID(dws->hws_id, 0), map, nb_link,
+				      profile);
+		rc |= roc_sso_hws_link(&dev->sso, CN9K_DUAL_WS_PAIR_ID(dws->hws_id, 1), map,
+				       nb_link, profile);
 	} else {
 		ws = port;
-		rc = roc_sso_hws_link(&dev->sso, ws->hws_id, map, nb_link);
+		rc = roc_sso_hws_link(&dev->sso, ws->hws_id, map, nb_link, profile);
 	}
 
 	return rc;
 }
 
 static int
-cn9k_sso_hws_unlink(void *arg, void *port, uint16_t *map, uint16_t nb_link)
+cn9k_sso_hws_unlink(void *arg, void *port, uint16_t *map, uint16_t nb_link, uint8_t profile)
 {
 	struct cnxk_sso_evdev *dev = arg;
 	struct cn9k_sso_hws_dual *dws;
@@ -48,15 +46,13 @@ cn9k_sso_hws_unlink(void *arg, void *port, uint16_t *map, uint16_t nb_link)
 
 	if (dev->dual_ws) {
 		dws = port;
-		rc = roc_sso_hws_unlink(&dev->sso,
-					CN9K_DUAL_WS_PAIR_ID(dws->hws_id, 0),
-					map, nb_link);
-		rc |= roc_sso_hws_unlink(&dev->sso,
-					 CN9K_DUAL_WS_PAIR_ID(dws->hws_id, 1),
-					 map, nb_link);
+		rc = roc_sso_hws_unlink(&dev->sso, CN9K_DUAL_WS_PAIR_ID(dws->hws_id, 0), map,
+					nb_link, profile);
+		rc |= roc_sso_hws_unlink(&dev->sso, CN9K_DUAL_WS_PAIR_ID(dws->hws_id, 1), map,
+					 nb_link, profile);
 	} else {
 		ws = port;
-		rc = roc_sso_hws_unlink(&dev->sso, ws->hws_id, map, nb_link);
+		rc = roc_sso_hws_unlink(&dev->sso, ws->hws_id, map, nb_link, profile);
 	}
 
 	return rc;
@@ -97,21 +93,24 @@ cn9k_sso_hws_release(void *arg, void *hws)
 	struct cnxk_sso_evdev *dev = arg;
 	struct cn9k_sso_hws_dual *dws;
 	struct cn9k_sso_hws *ws;
-	uint16_t i;
+	uint16_t i, k;
 
 	if (dev->dual_ws) {
 		dws = hws;
 		for (i = 0; i < dev->nb_event_queues; i++) {
-			roc_sso_hws_unlink(&dev->sso,
-					   CN9K_DUAL_WS_PAIR_ID(dws->hws_id, 0), &i, 1);
-			roc_sso_hws_unlink(&dev->sso,
-					   CN9K_DUAL_WS_PAIR_ID(dws->hws_id, 1), &i, 1);
+			for (k = 0; k < CNXK_SSO_MAX_PROFILES; k++) {
+				roc_sso_hws_unlink(&dev->sso, CN9K_DUAL_WS_PAIR_ID(dws->hws_id, 0),
+						   &i, 1, k);
+				roc_sso_hws_unlink(&dev->sso, CN9K_DUAL_WS_PAIR_ID(dws->hws_id, 1),
+						   &i, 1, k);
+			}
 		}
 		memset(dws, 0, sizeof(*dws));
 	} else {
 		ws = hws;
 		for (i = 0; i < dev->nb_event_queues; i++)
-			roc_sso_hws_unlink(&dev->sso, ws->hws_id, &i, 1);
+			for (k = 0; k < CNXK_SSO_MAX_PROFILES; k++)
+				roc_sso_hws_unlink(&dev->sso, ws->hws_id, &i, 1, k);
 		memset(ws, 0, sizeof(*ws));
 	}
 }
@@ -438,6 +437,7 @@ cn9k_sso_fp_fns_set(struct rte_eventdev *event_dev)
 	event_dev->enqueue_burst = cn9k_sso_hws_enq_burst;
 	event_dev->enqueue_new_burst = cn9k_sso_hws_enq_new_burst;
 	event_dev->enqueue_forward_burst = cn9k_sso_hws_enq_fwd_burst;
+	event_dev->profile_switch = cn9k_sso_hws_profile_switch;
 	if (dev->rx_offloads & NIX_RX_MULTI_SEG_F) {
 		CN9K_SET_EVDEV_DEQ_OP(dev, event_dev->dequeue, sso_hws_deq_seg);
 		CN9K_SET_EVDEV_DEQ_OP(dev, event_dev->dequeue_burst,
@@ -475,6 +475,7 @@ cn9k_sso_fp_fns_set(struct rte_eventdev *event_dev)
 		event_dev->enqueue_forward_burst =
 			cn9k_sso_hws_dual_enq_fwd_burst;
 		event_dev->ca_enqueue = cn9k_sso_hws_dual_ca_enq;
+		event_dev->profile_switch = cn9k_sso_hws_dual_profile_switch;
 
 		if (dev->rx_offloads & NIX_RX_MULTI_SEG_F) {
 			CN9K_SET_EVDEV_DEQ_OP(dev, event_dev->dequeue,
@@ -708,9 +709,8 @@ cn9k_sso_port_quiesce(struct rte_eventdev *event_dev, void *port,
 }
 
 static int
-cn9k_sso_port_link(struct rte_eventdev *event_dev, void *port,
-		   const uint8_t queues[], const uint8_t priorities[],
-		   uint16_t nb_links)
+cn9k_sso_port_link_profile(struct rte_eventdev *event_dev, void *port, const uint8_t queues[],
+			   const uint8_t priorities[], uint16_t nb_links, uint8_t profile)
 {
 	struct cnxk_sso_evdev *dev = cnxk_sso_pmd_priv(event_dev);
 	uint16_t hwgrp_ids[nb_links];
@@ -719,14 +719,14 @@ cn9k_sso_port_link(struct rte_eventdev *event_dev, void *port,
 	RTE_SET_USED(priorities);
 	for (link = 0; link < nb_links; link++)
 		hwgrp_ids[link] = queues[link];
-	nb_links = cn9k_sso_hws_link(dev, port, hwgrp_ids, nb_links);
+	nb_links = cn9k_sso_hws_link(dev, port, hwgrp_ids, nb_links, profile);
 
 	return (int)nb_links;
 }
 
 static int
-cn9k_sso_port_unlink(struct rte_eventdev *event_dev, void *port,
-		     uint8_t queues[], uint16_t nb_unlinks)
+cn9k_sso_port_unlink_profile(struct rte_eventdev *event_dev, void *port, uint8_t queues[],
+			     uint16_t nb_unlinks, uint8_t profile)
 {
 	struct cnxk_sso_evdev *dev = cnxk_sso_pmd_priv(event_dev);
 	uint16_t hwgrp_ids[nb_unlinks];
@@ -734,9 +734,23 @@ cn9k_sso_port_unlink(struct rte_eventdev *event_dev, void *port,
 
 	for (unlink = 0; unlink < nb_unlinks; unlink++)
 		hwgrp_ids[unlink] = queues[unlink];
-	nb_unlinks = cn9k_sso_hws_unlink(dev, port, hwgrp_ids, nb_unlinks);
+	nb_unlinks = cn9k_sso_hws_unlink(dev, port, hwgrp_ids, nb_unlinks, profile);
 
 	return (int)nb_unlinks;
+}
+
+static int
+cn9k_sso_port_link(struct rte_eventdev *event_dev, void *port, const uint8_t queues[],
+		   const uint8_t priorities[], uint16_t nb_links)
+{
+	return cn9k_sso_port_link_profile(event_dev, port, queues, priorities, nb_links, 0);
+}
+
+static int
+cn9k_sso_port_unlink(struct rte_eventdev *event_dev, void *port, uint8_t queues[],
+		     uint16_t nb_unlinks)
+{
+	return cn9k_sso_port_unlink_profile(event_dev, port, queues, nb_unlinks, 0);
 }
 
 static int
@@ -1019,6 +1033,8 @@ static struct eventdev_ops cn9k_sso_dev_ops = {
 	.port_quiesce = cn9k_sso_port_quiesce,
 	.port_link = cn9k_sso_port_link,
 	.port_unlink = cn9k_sso_port_unlink,
+	.port_link_profile = cn9k_sso_port_link_profile,
+	.port_unlink_profile = cn9k_sso_port_unlink_profile,
 	.timeout_ticks = cnxk_sso_timeout_ticks,
 
 	.eth_rx_adapter_caps_get = cn9k_sso_rx_adapter_caps_get,

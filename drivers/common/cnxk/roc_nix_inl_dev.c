@@ -285,7 +285,7 @@ nix_inl_sso_setup(struct nix_inl_dev *inl_dev)
 	}
 
 	/* Setup hwgrp->hws link */
-	sso_hws_link_modify(0, inl_dev->ssow_base, NULL, hwgrp, 1, true);
+	sso_hws_link_modify(0, inl_dev->ssow_base, NULL, hwgrp, 1, 0, true);
 
 	/* Enable HWGRP */
 	plt_write64(0x1, inl_dev->sso_base + SSO_LF_GGRP_QCTL);
@@ -315,7 +315,7 @@ nix_inl_sso_release(struct nix_inl_dev *inl_dev)
 	nix_inl_sso_unregister_irqs(inl_dev);
 
 	/* Unlink hws */
-	sso_hws_link_modify(0, inl_dev->ssow_base, NULL, hwgrp, 1, false);
+	sso_hws_link_modify(0, inl_dev->ssow_base, NULL, hwgrp, 1, 0, false);
 
 	/* Release XAQ aura */
 	sso_hwgrp_release_xaq(&inl_dev->dev, 1);

@@ -33,6 +33,8 @@
 #define CN10K_SSO_GW_MODE  "gw_mode"
 #define CN10K_SSO_STASH	   "stash"
 
+#define CNXK_SSO_MAX_PROFILES 2
+
 #define NSEC2USEC(__ns)		((__ns) / 1E3)
 #define USEC2NSEC(__us)		((__us)*1E3)
 #define NSEC2TICK(__ns, __freq) (((__ns) * (__freq)) / 1E9)
@@ -57,10 +59,10 @@
 typedef void *(*cnxk_sso_init_hws_mem_t)(void *dev, uint8_t port_id);
 typedef void (*cnxk_sso_hws_setup_t)(void *dev, void *ws, uintptr_t grp_base);
 typedef void (*cnxk_sso_hws_release_t)(void *dev, void *ws);
-typedef int (*cnxk_sso_link_t)(void *dev, void *ws, uint16_t *map,
-			       uint16_t nb_link);
-typedef int (*cnxk_sso_unlink_t)(void *dev, void *ws, uint16_t *map,
-				 uint16_t nb_link);
+typedef int (*cnxk_sso_link_t)(void *dev, void *ws, uint16_t *map, uint16_t nb_link,
+			       uint8_t profile);
+typedef int (*cnxk_sso_unlink_t)(void *dev, void *ws, uint16_t *map, uint16_t nb_link,
+				 uint8_t profile);
 typedef void (*cnxk_handle_event_t)(void *arg, struct rte_event ev);
 typedef void (*cnxk_sso_hws_reset_t)(void *arg, void *ws);
 typedef int (*cnxk_sso_hws_flush_t)(void *ws, uint8_t queue_id, uintptr_t base,

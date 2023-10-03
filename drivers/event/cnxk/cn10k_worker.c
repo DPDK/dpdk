@@ -431,3 +431,14 @@ cn10k_sso_hws_enq_fwd_burst(void *port, const struct rte_event ev[],
 
 	return 1;
 }
+
+int __rte_hot
+cn10k_sso_hws_profile_switch(void *port, uint8_t profile)
+{
+	struct cn10k_sso_hws *ws = port;
+
+	ws->gw_wdata &= ~(0xFFUL);
+	ws->gw_wdata |= (profile + 1);
+
+	return 0;
+}

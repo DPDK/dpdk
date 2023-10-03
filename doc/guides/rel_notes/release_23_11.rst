@@ -205,6 +205,7 @@ New Features
 
   * Added support for ``remaining_ticks_get`` timer adapter PMD callback
     to get the remaining ticks to expire for a given event timer.
+  * Added link profiles support, up to two link profiles are supported.
 
 
 Removed Items

@@ -30,7 +30,9 @@ cnxk_sso_info_get(struct cnxk_sso_evdev *dev,
 				  RTE_EVENT_DEV_CAP_NONSEQ_MODE |
 				  RTE_EVENT_DEV_CAP_CARRY_FLOW_ID |
 				  RTE_EVENT_DEV_CAP_MAINTENANCE_FREE |
-				  RTE_EVENT_DEV_CAP_RUNTIME_QUEUE_ATTR;
+				  RTE_EVENT_DEV_CAP_RUNTIME_QUEUE_ATTR |
+				  RTE_EVENT_DEV_CAP_PROFILE_LINK;
+	dev_info->max_profiles_per_port = CNXK_SSO_MAX_PROFILES;
 }
 
 int
@@ -128,23 +130,25 @@ cnxk_sso_restore_links(const struct rte_eventdev *event_dev,
 {
 	struct cnxk_sso_evdev *dev = cnxk_sso_pmd_priv(event_dev);
 	uint16_t *links_map, hwgrp[CNXK_SSO_MAX_HWGRP];
-	int i, j;
+	int i, j, k;
 
 	for (i = 0; i < dev->nb_event_ports; i++) {
-		uint16_t nb_hwgrp = 0;
+		for (k = 0; k < CNXK_SSO_MAX_PROFILES; k++) {
+			uint16_t nb_hwgrp = 0;
 
-		links_map = event_dev->data->links_map[0];
-		/* Point links_map to this port specific area */
-		links_map += (i * RTE_EVENT_MAX_QUEUES_PER_DEV);
+			links_map = event_dev->data->links_map[k];
+			/* Point links_map to this port specific area */
+			links_map += (i * RTE_EVENT_MAX_QUEUES_PER_DEV);
 
-		for (j = 0; j < dev->nb_event_queues; j++) {
-			if (links_map[j] == 0xdead)
-				continue;
-			hwgrp[nb_hwgrp] = j;
-			nb_hwgrp++;
+			for (j = 0; j < dev->nb_event_queues; j++) {
+				if (links_map[j] == 0xdead)
+					continue;
+				hwgrp[nb_hwgrp] = j;
+				nb_hwgrp++;
+			}
+
+			link_fn(dev, event_dev->data->ports[i], hwgrp, nb_hwgrp, k);
 		}
-
-		link_fn(dev, event_dev->data->ports[i], hwgrp, nb_hwgrp);
 	}
 }
 
@@ -435,7 +439,7 @@ cnxk_sso_close(struct rte_eventdev *event_dev, cnxk_sso_unlink_t unlink_fn)
 {
 	struct cnxk_sso_evdev *dev = cnxk_sso_pmd_priv(event_dev);
 	uint16_t all_queues[CNXK_SSO_MAX_HWGRP];
-	uint16_t i;
+	uint16_t i, j;
 	void *ws;
 
 	if (!dev->configured)
@@ -446,7 +450,8 @@ cnxk_sso_close(struct rte_eventdev *event_dev, cnxk_sso_unlink_t unlink_fn)
 
 	for (i = 0; i < dev->nb_event_ports; i++) {
 		ws = event_dev->data->ports[i];
-		unlink_fn(dev, ws, all_queues, dev->nb_event_queues);
+		for (j = 0; j < CNXK_SSO_MAX_PROFILES; j++)
+			unlink_fn(dev, ws, all_queues, dev->nb_event_queues, j);
 		rte_free(cnxk_sso_hws_get_cookie(ws));
 		event_dev->data->ports[i] = NULL;
 	}
