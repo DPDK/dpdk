@@ -2267,29 +2267,6 @@ set_remote_iface(const char *key __rte_unused,
 	return 0;
 }
 
-static int parse_user_mac(struct rte_ether_addr *user_mac,
-		const char *value)
-{
-	unsigned int index = 0;
-	char mac_temp[strlen(ETH_TAP_USR_MAC_FMT) + 1], *mac_byte = NULL;
-
-	if (user_mac == NULL || value == NULL)
-		return 0;
-
-	strlcpy(mac_temp, value, sizeof(mac_temp));
-	mac_byte = strtok(mac_temp, ":");
-
-	while ((mac_byte != NULL) &&
-			(strlen(mac_byte) <= 2) &&
-			(strlen(mac_byte) == strspn(mac_byte,
-					ETH_TAP_CMP_MAC_FMT))) {
-		user_mac->addr_bytes[index++] = strtoul(mac_byte, NULL, 16);
-		mac_byte = strtok(NULL, ":");
-	}
-
-	return index;
-}
-
 static int
 set_mac_type(const char *key __rte_unused,
 	     const char *value,
@@ -2311,7 +2288,7 @@ set_mac_type(const char *key __rte_unused,
 		goto success;
 	}
 
-	if (parse_user_mac(user_mac, value) != 6)
+	if (rte_ether_unformat_addr(value, user_mac) < 0)
 		goto error;
 success:
 	TAP_LOG(DEBUG, "TAP user MAC param (%s)", value);
