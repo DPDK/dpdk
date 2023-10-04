@@ -615,7 +615,7 @@ cn10k_eth_sec_sso_work_cb(uint64_t *gw, void *args, uint32_t soft_exp_event)
 			plt_warn("Outbound error, bad ip pkt, mbuf %p,"
 				 " sa_index %u (total warnings %" PRIu64 ")",
 				 mbuf, sess_priv.sa_idx, warn_cnt);
-		desc.subtype = RTE_ETH_EVENT_IPSEC_UNKNOWN;
+		desc.subtype = -res->uc_compcode;
 		break;
 	default:
 		warn_cnt++;
@@ -625,7 +625,7 @@ cn10k_eth_sec_sso_work_cb(uint64_t *gw, void *args, uint32_t soft_exp_event)
 				 " (total warnings %" PRIu64 ")",
 				 mbuf, sess_priv.sa_idx, res->compcode,
 				 res->uc_compcode, warn_cnt);
-		desc.subtype = RTE_ETH_EVENT_IPSEC_UNKNOWN;
+		desc.subtype = -res->uc_compcode;
 		break;
 	}
 
