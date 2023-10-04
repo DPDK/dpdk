@@ -1166,7 +1166,7 @@ dev_active_vfs(struct dev *dev)
 	int i, count = 0;
 
 	for (i = 0; i < MAX_VFPF_DWORD_BITS; i++)
-		count += rte_popcount32(dev->active_vfs[i]);
+		count += plt_popcount32(dev->active_vfs[i]);
 
 	return count;
 }

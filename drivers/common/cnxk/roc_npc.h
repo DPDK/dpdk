@@ -359,7 +359,7 @@ struct roc_npc_flow_age {
 	uint32_t aged_flows_cnt;
 	uint32_t start_id;
 	uint32_t end_id;
-	rte_thread_t aged_flows_poll_thread;
+	plt_thread_t aged_flows_poll_thread;
 	struct plt_bitmap *aged_flows;
 	void *age_mem;
 	bool aged_flows_get_thread_exit;

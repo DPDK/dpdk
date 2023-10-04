@@ -400,7 +400,7 @@ bitmap_ctzll(uint64_t slab)
 	if (slab == 0)
 		return 0;
 
-	return rte_ctz64(slab);
+	return plt_ctz64(slab);
 }
 
 static int

@@ -137,6 +137,7 @@
 #define plt_seqcount_write_begin	rte_seqcount_write_begin
 #define plt_seqcount_write_end		rte_seqcount_write_end
 
+#define plt_thread_t		     rte_thread_t
 #define plt_intr_callback_register   rte_intr_callback_register
 #define plt_intr_callback_unregister rte_intr_callback_unregister
 #define plt_intr_disable	     rte_intr_disable
@@ -146,7 +147,7 @@
 #define plt_thread_join	             rte_thread_join
 
 static inline bool
-plt_thread_is_valid(rte_thread_t thr)
+plt_thread_is_valid(plt_thread_t thr)
 {
 	return thr.opaque_id ? true : false;
 }
@@ -208,6 +209,11 @@ plt_thread_is_valid(rte_thread_t thr)
 #define plt_bit_relaxed_get64   rte_bit_relaxed_get64
 #define plt_bit_relaxed_set64   rte_bit_relaxed_set64
 #define plt_bit_relaxed_clear64 rte_bit_relaxed_clear64
+
+#define plt_popcount32		rte_popcount32
+#define plt_popcount64		rte_popcount64
+#define plt_clz32		rte_clz32
+#define plt_ctz64		rte_ctz64
 
 #define plt_mmap       mmap
 #define PLT_PROT_READ  PROT_READ
