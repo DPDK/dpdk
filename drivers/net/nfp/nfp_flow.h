@@ -150,6 +150,10 @@ struct nfp_flow_priv {
 	rte_spinlock_t ipv6_off_lock; /**< Lock the ipv6 off list */
 	/* neighbor next */
 	LIST_HEAD(, nfp_fl_tun)nn_list; /**< Store nn entry */
+	/* Conntrack */
+	struct rte_hash *ct_zone_table; /**< Hash table to store ct zone entry */
+	struct nfp_ct_zone_entry *ct_zone_wc; /**< The wildcard ct zone entry */
+	struct rte_hash *ct_map_table; /**< Hash table to store ct map entry */
 };
 
 struct rte_flow {

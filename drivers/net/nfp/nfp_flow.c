@@ -10,6 +10,7 @@
 #include <rte_jhash.h>
 #include <rte_malloc.h>
 
+#include "flower/nfp_conntrack.h"
 #include "flower/nfp_flower_representor.h"
 #include "nfpcore/nfp_rtsym.h"
 #include "nfp_logs.h"
@@ -3748,6 +3749,8 @@ nfp_flow_setup(struct nfp_flower_representor *representor,
 		bool validate_flag)
 {
 	uint64_t cookie;
+	const struct rte_flow_item *item;
+	const struct rte_flow_item *ct_item = NULL;
 
 	if (attr->group != 0)
 		PMD_DRV_LOG(INFO, "Pretend we support group attribute.");
@@ -3758,7 +3761,18 @@ nfp_flow_setup(struct nfp_flower_representor *representor,
 	if (attr->transfer != 0)
 		PMD_DRV_LOG(INFO, "Pretend we support transfer attribute.");
 
+	for (item = items; item->type != RTE_FLOW_ITEM_TYPE_END; ++item) {
+		if (item->type == RTE_FLOW_ITEM_TYPE_CONNTRACK) {
+			ct_item = item;
+			break;
+		}
+	}
+
 	cookie = rte_rand();
+
+	if (ct_item != NULL)
+		return nfp_ct_flow_setup(representor, items, actions,
+				ct_item, validate_flag, cookie);
 
 	return nfp_flow_process(representor, items, actions, validate_flag, cookie, true);
 }
@@ -4235,6 +4249,23 @@ nfp_flow_priv_init(struct nfp_pf_dev *pf_dev)
 		.extra_flag = RTE_HASH_EXTRA_FLAGS_RW_CONCURRENCY,
 	};
 
+	struct rte_hash_parameters ct_zone_hash_params = {
+		.name       = "ct_zone_table",
+		.entries    = 65536,
+		.hash_func  = rte_jhash,
+		.socket_id  = rte_socket_id(),
+		.key_len    = sizeof(uint32_t),
+		.extra_flag = RTE_HASH_EXTRA_FLAGS_RW_CONCURRENCY,
+	};
+
+	struct rte_hash_parameters ct_map_hash_params = {
+		.name       = "ct_map_table",
+		.hash_func  = rte_jhash,
+		.socket_id  = rte_socket_id(),
+		.key_len    = sizeof(uint32_t),
+		.extra_flag = RTE_HASH_EXTRA_FLAGS_RW_CONCURRENCY,
+	};
+
 	ctx_count = nfp_rtsym_read_le(pf_dev->sym_tbl,
 			"CONFIG_FC_HOST_CTX_COUNT", &ret);
 	if (ret < 0) {
@@ -4325,6 +4356,25 @@ nfp_flow_priv_init(struct nfp_pf_dev *pf_dev)
 		goto free_flow_table;
 	}
 
+	/* ct zone table */
+	ct_zone_hash_params.hash_func_init_val = priv->hash_seed;
+	priv->ct_zone_table = rte_hash_create(&ct_zone_hash_params);
+	if (priv->ct_zone_table == NULL) {
+		PMD_INIT_LOG(ERR, "ct zone table creation failed");
+		ret = -ENOMEM;
+		goto free_pre_tnl_table;
+	}
+
+	/* ct map table */
+	ct_map_hash_params.hash_func_init_val = priv->hash_seed;
+	ct_map_hash_params.entries = ctx_count;
+	priv->ct_map_table = rte_hash_create(&ct_map_hash_params);
+	if (priv->ct_map_table == NULL) {
+		PMD_INIT_LOG(ERR, "ct map table creation failed");
+		ret = -ENOMEM;
+		goto free_ct_zone_table;
+	}
+
 	/* ipv4 off list */
 	rte_spinlock_init(&priv->ipv4_off_lock);
 	LIST_INIT(&priv->ipv4_off_list);
@@ -4338,6 +4388,10 @@ nfp_flow_priv_init(struct nfp_pf_dev *pf_dev)
 
 	return 0;
 
+free_ct_zone_table:
+	rte_hash_free(priv->ct_zone_table);
+free_pre_tnl_table:
+	rte_hash_free(priv->pre_tun_table);
 free_flow_table:
 	rte_hash_free(priv->flow_table);
 free_mask_table:
@@ -4363,6 +4417,8 @@ nfp_flow_priv_uninit(struct nfp_pf_dev *pf_dev)
 	app_fw_flower = NFP_PRIV_TO_APP_FW_FLOWER(pf_dev->app_fw_priv);
 	priv = app_fw_flower->flow_priv;
 
+	rte_hash_free(priv->ct_map_table);
+	rte_hash_free(priv->ct_zone_table);
 	rte_hash_free(priv->pre_tun_table);
 	rte_hash_free(priv->flow_table);
 	rte_hash_free(priv->mask_table);
