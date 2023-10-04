@@ -9,8 +9,8 @@
 #include <rte_hash.h>
 #include <rte_jhash.h>
 
-#include "../nfp_flow.h"
 #include "../nfp_logs.h"
+#include "nfp_flower_cmsg.h"
 #include "nfp_flower_representor.h"
 
 struct ct_data {
@@ -59,6 +59,7 @@ struct nfp_ct_merge_entry {
 	LIST_ENTRY(nfp_ct_merge_entry) pre_ct_list;
 	LIST_ENTRY(nfp_ct_merge_entry) post_ct_list;
 	struct nfp_initial_flow rule;
+	struct rte_flow *compiled_rule;
 	struct nfp_ct_zone_entry *ze;
 	struct nfp_ct_flow_entry *pre_ct_parent;
 	struct nfp_ct_flow_entry *post_ct_parent;
@@ -975,6 +976,102 @@ nfp_ct_zone_entry_free(struct nfp_ct_zone_entry *ze,
 	}
 }
 
+static int
+nfp_ct_offload_add(struct nfp_flower_representor *repr,
+		struct nfp_ct_merge_entry *merge_entry)
+{
+	int ret;
+	uint64_t cookie;
+	struct rte_flow *nfp_flow;
+	struct nfp_flow_priv *priv;
+	const struct rte_flow_item *items;
+	const struct rte_flow_action *actions;
+
+	cookie = rte_rand();
+	items = merge_entry->rule.items;
+	actions = merge_entry->rule.actions;
+	nfp_flow = nfp_flow_process(repr, items, actions, false, cookie, true);
+	if (nfp_flow == NULL) {
+		PMD_DRV_LOG(ERR, "Process the merged flow rule failed.");
+		return -EINVAL;
+	}
+
+	/* Add the flow to hardware */
+	priv = repr->app_fw_flower->flow_priv;
+	ret = nfp_flower_cmsg_flow_add(repr->app_fw_flower, nfp_flow);
+	if (ret != 0) {
+		PMD_DRV_LOG(ERR, "Add the merged flow to firmware failed.");
+		goto flow_teardown;
+	}
+
+	/* Add the flow to flow hash table */
+	ret = nfp_flow_table_add(priv, nfp_flow);
+	if (ret != 0) {
+		PMD_DRV_LOG(ERR, "Add the merged flow to flow table failed.");
+		goto flow_teardown;
+	}
+
+	merge_entry->compiled_rule = nfp_flow;
+
+	return 0;
+
+flow_teardown:
+	nfp_flow_teardown(priv, nfp_flow, false);
+	nfp_flow_free(nfp_flow);
+
+	return ret;
+}
+
+int
+nfp_ct_offload_del(struct rte_eth_dev *dev,
+		struct nfp_ct_map_entry *me,
+		struct rte_flow_error *error)
+{
+	int ret;
+	struct nfp_ct_flow_entry *fe;
+	struct nfp_ct_merge_entry *m_ent;
+
+	fe = me->fe;
+
+	if (fe->type == CT_TYPE_PRE_CT) {
+		LIST_FOREACH(m_ent, &fe->children, pre_ct_list) {
+			if (m_ent->compiled_rule != NULL) {
+				ret = nfp_flow_destroy(dev, m_ent->compiled_rule, error);
+				if (ret != 0) {
+					PMD_DRV_LOG(ERR, "Could not alloc ct_flow_item");
+					return -EINVAL;
+				}
+				m_ent->compiled_rule = NULL;
+			}
+
+			m_ent->pre_ct_parent = NULL;
+			LIST_REMOVE(m_ent, pre_ct_list);
+			if (m_ent->post_ct_parent == NULL)
+				nfp_ct_merge_entry_destroy(m_ent);
+		}
+	} else {
+		LIST_FOREACH(m_ent, &fe->children, post_ct_list) {
+			if (m_ent->compiled_rule != NULL) {
+				ret = nfp_flow_destroy(dev, m_ent->compiled_rule, error);
+				if (ret != 0) {
+					PMD_DRV_LOG(ERR, "Could not alloc ct_flow_item");
+					return -EINVAL;
+				}
+				m_ent->compiled_rule = NULL;
+			}
+
+			m_ent->post_ct_parent = NULL;
+			LIST_REMOVE(m_ent, post_ct_list);
+			if (m_ent->pre_ct_parent == NULL)
+				nfp_ct_merge_entry_destroy(m_ent);
+		}
+	}
+
+	nfp_ct_flow_entry_destroy_partly(fe);
+
+	return 0;
+}
+
 static inline bool
 is_item_check_pass(const struct rte_flow_item *item1,
 		const struct rte_flow_item *item2,
@@ -1402,8 +1499,17 @@ nfp_ct_do_flow_merge(struct nfp_ct_zone_entry *ze,
 		goto free_actions;
 	}
 
+	/* Send to firmware */
+	ret = nfp_ct_offload_add(pre_ct_entry->repr, merge_entry);
+	if (ret != 0) {
+		PMD_DRV_LOG(ERR, "Send the merged flow to firmware failed");
+		goto merge_table_del;
+	}
+
 	return true;
 
+merge_table_del:
+	nfp_ct_merge_table_delete(ze, merge_entry);
 free_actions:
 	rte_free(merge_entry->rule.actions);
 free_items:
@@ -1490,7 +1596,7 @@ nfp_flow_handle_pre_ct(const struct rte_flow_item *ct_item,
 		}
 	}
 
-	/* The real offload logic comes in next commit, so here just return false for now */
+	return true;
 
 ct_flow_entry_free:
 	nfp_ct_flow_entry_destroy(fe);
@@ -1559,7 +1665,7 @@ nfp_flow_handle_post_ct(const struct rte_flow_item *ct_item,
 	if (!ret)
 		goto ct_flow_entry_free;
 
-	/* The real offload logic comes in next commit, so here just return false for now */
+	return true;
 
 ct_flow_entry_free:
 	nfp_ct_flow_entry_destroy(fe);

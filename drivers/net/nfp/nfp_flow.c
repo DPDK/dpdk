@@ -3911,14 +3911,22 @@ nfp_flow_destroy(struct rte_eth_dev *dev,
 		struct rte_flow_error *error)
 {
 	int ret;
+	uint64_t cookie;
 	struct rte_flow *flow_find;
 	struct nfp_flow_priv *priv;
+	struct nfp_ct_map_entry *me;
 	struct nfp_app_fw_flower *app_fw_flower;
 	struct nfp_flower_representor *representor;
 
 	representor = dev->data->dev_private;
 	app_fw_flower = representor->app_fw_flower;
 	priv = app_fw_flower->flow_priv;
+
+	/* Find the flow in ct_map_table */
+	cookie = rte_be_to_cpu_64(nfp_flow->payload.meta->host_cookie);
+	me = nfp_ct_map_table_search(priv, (char *)&cookie, sizeof(uint64_t));
+	if (me != NULL)
+		return nfp_ct_offload_del(dev, me, error);
 
 	/* Find the flow in flow hash table */
 	flow_find = nfp_flow_table_search(priv, nfp_flow);
