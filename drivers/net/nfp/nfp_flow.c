@@ -89,17 +89,6 @@
 /* Tunnel ports */
 #define NFP_FL_PORT_TYPE_TUN            0x50000000
 
-/*
- * Maximum number of items in struct rte_flow_action_vxlan_encap.
- * ETH / IPv4(6) / UDP / VXLAN / END
- */
-#define ACTION_VXLAN_ENCAP_ITEMS_NUM 5
-
-struct vxlan_data {
-	struct rte_flow_action_vxlan_encap conf;
-	struct rte_flow_item items[ACTION_VXLAN_ENCAP_ITEMS_NUM];
-};
-
 /* Static initializer for a list of subsequent item types */
 #define NEXT_ITEM(...) \
 	((const enum rte_flow_item_type []){ \
@@ -359,7 +348,7 @@ nfp_check_mask_remove(struct nfp_flow_priv *priv,
 	return true;
 }
 
-static int
+int
 nfp_flow_table_add(struct nfp_flow_priv *priv,
 		struct rte_flow *nfp_flow)
 {
@@ -440,7 +429,7 @@ exit:
 	return NULL;
 }
 
-static void
+void
 nfp_flow_free(struct rte_flow *nfp_flow)
 {
 	rte_free(nfp_flow->payload.meta);
@@ -721,7 +710,8 @@ static void
 nfp_flow_compile_metadata(struct nfp_flow_priv *priv,
 		struct rte_flow *nfp_flow,
 		struct nfp_fl_key_ls *key_layer,
-		uint32_t stats_ctx)
+		uint32_t stats_ctx,
+		uint64_t cookie)
 {
 	struct nfp_fl_rule_metadata *nfp_flow_meta;
 	char *mbuf_off_exact;
@@ -737,7 +727,7 @@ nfp_flow_compile_metadata(struct nfp_flow_priv *priv,
 	nfp_flow_meta->act_len      = key_layer->act_size >> NFP_FL_LW_SIZ;
 	nfp_flow_meta->flags        = 0;
 	nfp_flow_meta->host_ctx_id  = rte_cpu_to_be_32(stats_ctx);
-	nfp_flow_meta->host_cookie  = rte_rand();
+	nfp_flow_meta->host_cookie  = rte_cpu_to_be_64(cookie);
 	nfp_flow_meta->flow_version = rte_cpu_to_be_64(priv->flower_version);
 
 	mbuf_off_exact = nfp_flow->payload.unmasked_data;
@@ -1958,7 +1948,7 @@ nfp_flow_is_tun_item(const struct rte_flow_item *item)
 	return false;
 }
 
-static bool
+bool
 nfp_flow_inner_item_get(const struct rte_flow_item items[],
 		const struct rte_flow_item **inner_item)
 {
@@ -3650,11 +3640,13 @@ nfp_flow_compile_action(struct nfp_flower_representor *representor,
 	return 0;
 }
 
-static struct rte_flow *
+struct rte_flow *
 nfp_flow_process(struct nfp_flower_representor *representor,
 		const struct rte_flow_item items[],
 		const struct rte_flow_action actions[],
-		bool validate_flag)
+		bool validate_flag,
+		uint64_t cookie,
+		bool install_flag)
 {
 	int ret;
 	char *hash_data;
@@ -3690,9 +3682,9 @@ nfp_flow_process(struct nfp_flower_representor *representor,
 		goto free_stats;
 	}
 
-	nfp_flow->install_flag = true;
+	nfp_flow->install_flag = install_flag;
 
-	nfp_flow_compile_metadata(priv, nfp_flow, &key_layer, stats_ctx);
+	nfp_flow_compile_metadata(priv, nfp_flow, &key_layer, stats_ctx, cookie);
 
 	ret = nfp_flow_compile_items(representor, items, nfp_flow);
 	if (ret != 0) {
@@ -3755,6 +3747,8 @@ nfp_flow_setup(struct nfp_flower_representor *representor,
 		__rte_unused struct rte_flow_error *error,
 		bool validate_flag)
 {
+	uint64_t cookie;
+
 	if (attr->group != 0)
 		PMD_DRV_LOG(INFO, "Pretend we support group attribute.");
 
@@ -3764,10 +3758,12 @@ nfp_flow_setup(struct nfp_flower_representor *representor,
 	if (attr->transfer != 0)
 		PMD_DRV_LOG(INFO, "Pretend we support transfer attribute.");
 
-	return nfp_flow_process(representor, items, actions, validate_flag);
+	cookie = rte_rand();
+
+	return nfp_flow_process(representor, items, actions, validate_flag, cookie, true);
 }
 
-static int
+int
 nfp_flow_teardown(struct nfp_flow_priv *priv,
 		struct rte_flow *nfp_flow,
 		bool validate_flag)
@@ -3895,7 +3891,7 @@ flow_teardown:
 	return NULL;
 }
 
-static int
+int
 nfp_flow_destroy(struct rte_eth_dev *dev,
 		struct rte_flow *nfp_flow,
 		struct rte_flow_error *error)
