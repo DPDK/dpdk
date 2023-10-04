@@ -7,12 +7,6 @@ if is_windows
     subdir_done()
 endif
 
-if is_linux
-    cflags += '-DLINUX'
-else
-    cflags += '-DBSD'
-endif
-
 sources = files(
         'eventdev_private.c',
         'eventdev_trace_points.c',

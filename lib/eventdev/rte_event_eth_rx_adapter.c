@@ -5,7 +5,7 @@
 #include <ctype.h>
 #include <stdlib.h>
 #include <pthread.h>
-#if defined(LINUX)
+#if defined(__linux__)
 #include <sys/epoll.h>
 #endif
 #include <unistd.h>
@@ -1567,11 +1567,11 @@ rxa_default_conf_cb(uint8_t id, uint8_t dev_id,
 static int
 rxa_epoll_create1(void)
 {
-#if defined(LINUX)
+#if defined(__linux__)
 	int fd;
 	fd = epoll_create1(EPOLL_CLOEXEC);
 	return fd < 0 ? -errno : fd;
-#elif defined(BSD)
+#else
 	return -ENOTSUP;
 #endif
 }
