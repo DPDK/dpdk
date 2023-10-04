@@ -58,8 +58,11 @@ BEGIN {
 	for (i in deny_folders) {
 		re = "^\\+\\+\\+ b/" deny_folders[i];
 		if ($0 ~ re) {
-			in_file = 1
-			last_file = $0
+			# Check only if the files are not part of SKIP_FILES
+			if (!(length(SKIP_FILES) && ($re ~ SKIP_FILES))) {
+				in_file = 1
+				last_file = $0
+			}
 		}
 	}
 }
