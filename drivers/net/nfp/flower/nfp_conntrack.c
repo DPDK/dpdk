@@ -39,6 +39,7 @@ struct nfp_ct_flow_entry {
 	struct nfp_flower_representor *repr;
 	struct nfp_ct_zone_entry *ze;
 	struct nfp_initial_flow rule;
+	struct nfp_fl_stats stats;
 };
 
 struct nfp_ct_map_entry {
@@ -56,6 +57,7 @@ struct nfp_ct_zone_entry {
 
 struct nfp_ct_merge_entry {
 	uint64_t cookie[2];
+	uint32_t ctx_id;
 	LIST_ENTRY(nfp_ct_merge_entry) pre_ct_list;
 	LIST_ENTRY(nfp_ct_merge_entry) post_ct_list;
 	struct nfp_initial_flow rule;
@@ -990,11 +992,13 @@ nfp_ct_offload_add(struct nfp_flower_representor *repr,
 	cookie = rte_rand();
 	items = merge_entry->rule.items;
 	actions = merge_entry->rule.actions;
-	nfp_flow = nfp_flow_process(repr, items, actions, false, cookie, true);
+	nfp_flow = nfp_flow_process(repr, items, actions, false, cookie, true, true);
 	if (nfp_flow == NULL) {
 		PMD_DRV_LOG(ERR, "Process the merged flow rule failed.");
 		return -EINVAL;
 	}
+
+	merge_entry->ctx_id = rte_be_to_cpu_32(nfp_flow->payload.meta->host_ctx_id);
 
 	/* Add the flow to hardware */
 	priv = repr->app_fw_flower->flow_priv;
@@ -1005,7 +1009,7 @@ nfp_ct_offload_add(struct nfp_flower_representor *repr,
 	}
 
 	/* Add the flow to flow hash table */
-	ret = nfp_flow_table_add(priv, nfp_flow);
+	ret = nfp_flow_table_add_merge(priv, nfp_flow);
 	if (ret != 0) {
 		PMD_DRV_LOG(ERR, "Add the merged flow to flow table failed.");
 		goto flow_teardown;
@@ -1693,14 +1697,14 @@ nfp_ct_flow_setup(struct nfp_flower_representor *representor,
 
 	if (is_ct_commit_flow(ct)) {
 		return nfp_flow_process(representor, &items[1], actions,
-				validate_flag, cookie, false);
+				validate_flag, cookie, false, false);
 	}
 
 	if (is_post_ct_flow(ct)) {
 		if (nfp_flow_handle_post_ct(ct_item, representor, &items[1],
 				actions, cookie)) {
 			return nfp_flow_process(representor, &items[1], actions,
-					validate_flag, cookie, false);
+					validate_flag, cookie, false, false);
 		}
 
 		PMD_DRV_LOG(ERR, "Handle nfp post ct flow failed.");
@@ -1711,7 +1715,7 @@ nfp_ct_flow_setup(struct nfp_flower_representor *representor,
 		if (nfp_flow_handle_pre_ct(ct_item, representor, &items[1],
 				actions, cookie)) {
 			return nfp_flow_process(representor, &items[1], actions,
-					validate_flag, cookie, false);
+					validate_flag, cookie, false, false);
 		}
 
 		PMD_DRV_LOG(ERR, "Handle nfp pre ct flow failed.");
@@ -1720,4 +1724,44 @@ nfp_ct_flow_setup(struct nfp_flower_representor *representor,
 
 	PMD_DRV_LOG(ERR, "Unsupported ct flow type.");
 	return NULL;
+}
+
+static inline void
+nfp_ct_flow_stats_update(struct nfp_flow_priv *priv,
+		struct nfp_ct_merge_entry *m_ent)
+{
+	uint32_t ctx_id;
+	struct nfp_fl_stats *merge_stats;
+
+	ctx_id = m_ent->ctx_id;
+	merge_stats = &priv->stats[ctx_id];
+
+	m_ent->pre_ct_parent->stats.bytes  += merge_stats->bytes;
+	m_ent->pre_ct_parent->stats.pkts   += merge_stats->pkts;
+	m_ent->post_ct_parent->stats.bytes += merge_stats->bytes;
+	m_ent->post_ct_parent->stats.pkts  += merge_stats->pkts;
+
+	merge_stats->bytes = 0;
+	merge_stats->pkts = 0;
+}
+
+struct nfp_fl_stats *
+nfp_ct_flow_stats_get(struct nfp_flow_priv *priv,
+		struct nfp_ct_map_entry *me)
+{
+	struct nfp_ct_merge_entry *m_ent;
+
+	rte_spinlock_lock(&priv->stats_lock);
+
+	if (me->fe->type == CT_TYPE_PRE_CT) {
+		LIST_FOREACH(m_ent, &me->fe->children, pre_ct_list)
+			nfp_ct_flow_stats_update(priv, m_ent);
+	} else {
+		LIST_FOREACH(m_ent, &me->fe->children, post_ct_list)
+			nfp_ct_flow_stats_update(priv, m_ent);
+	}
+
+	rte_spinlock_unlock(&priv->stats_lock);
+
+	return &me->fe->stats;
 }

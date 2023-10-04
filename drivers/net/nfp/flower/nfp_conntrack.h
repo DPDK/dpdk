@@ -34,4 +34,7 @@ struct rte_flow *nfp_ct_flow_setup(struct nfp_flower_representor *representor,
 		bool validate_flag,
 		uint64_t cookie);
 
+struct nfp_fl_stats *nfp_ct_flow_stats_get(struct nfp_flow_priv *priv,
+		struct nfp_ct_map_entry *me);
+
 #endif /* __NFP_CONNTRACK_H__ */

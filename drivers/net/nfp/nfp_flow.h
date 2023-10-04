@@ -165,7 +165,9 @@ struct rte_flow {
 	uint32_t port_id;
 	bool install_flag;
 	bool tcp_flag;    /**< Used in the SET_TP_* action */
+	bool merge_flag;
 	enum nfp_flow_type type;
+	uint16_t ref_cnt;
 };
 
 /* Forward declaration */
@@ -181,8 +183,9 @@ struct rte_flow *nfp_flow_process(struct nfp_flower_representor *representor,
 		const struct rte_flow_action actions[],
 		bool validate_flag,
 		uint64_t cookie,
-		bool install_flag);
-int nfp_flow_table_add(struct nfp_flow_priv *priv,
+		bool install_flag,
+		bool merge_flag);
+int nfp_flow_table_add_merge(struct nfp_flow_priv *priv,
 		struct rte_flow *nfp_flow);
 int nfp_flow_teardown(struct nfp_flow_priv *priv,
 		struct rte_flow *nfp_flow,

@@ -310,13 +310,13 @@ nfp_check_mask_add(struct nfp_flow_priv *priv,
 		ret = nfp_mask_table_add(priv, mask_data, mask_len, mask_id);
 		if (ret != 0)
 			return false;
-
-		*meta_flags |= NFP_FL_META_FLAG_MANAGE_MASK;
 	} else {
 		/* mask entry already exist */
 		mask_entry->ref_cnt++;
 		*mask_id = mask_entry->mask_id;
 	}
+
+	*meta_flags |= NFP_FL_META_FLAG_MANAGE_MASK;
 
 	return true;
 }
@@ -349,7 +349,7 @@ nfp_check_mask_remove(struct nfp_flow_priv *priv,
 	return true;
 }
 
-int
+static int
 nfp_flow_table_add(struct nfp_flow_priv *priv,
 		struct rte_flow *nfp_flow)
 {
@@ -394,6 +394,48 @@ nfp_flow_table_search(struct nfp_flow_priv *priv,
 	}
 
 	return flow_find;
+}
+
+int
+nfp_flow_table_add_merge(struct nfp_flow_priv *priv,
+		struct rte_flow *nfp_flow)
+{
+	struct rte_flow *flow_find;
+
+	flow_find = nfp_flow_table_search(priv, nfp_flow);
+	if (flow_find != NULL) {
+		if (nfp_flow->merge_flag || flow_find->merge_flag) {
+			flow_find->merge_flag = true;
+			flow_find->ref_cnt++;
+			return 0;
+		}
+
+		PMD_DRV_LOG(ERR, "Add to flow table failed.");
+		return -EINVAL;
+	}
+
+	return nfp_flow_table_add(priv, nfp_flow);
+}
+
+static int
+nfp_flow_table_delete_merge(struct nfp_flow_priv *priv,
+		struct rte_flow *nfp_flow)
+{
+	struct rte_flow *flow_find;
+
+	flow_find = nfp_flow_table_search(priv, nfp_flow);
+	if (flow_find == NULL) {
+		PMD_DRV_LOG(ERR, "Can't delete a non-existing flow.");
+		return -EINVAL;
+	}
+
+	if (nfp_flow->merge_flag || flow_find->merge_flag) {
+		flow_find->ref_cnt--;
+		if (flow_find->ref_cnt > 0)
+			return 0;
+	}
+
+	return nfp_flow_table_delete(priv, nfp_flow);
 }
 
 static struct rte_flow *
@@ -1081,6 +1123,9 @@ nfp_flow_key_layers_calculate_actions(const struct rte_flow_action actions[],
 				PMD_DRV_LOG(ERR, "Only support one meter action.");
 				return -ENOTSUP;
 			}
+			break;
+		case RTE_FLOW_ACTION_TYPE_CONNTRACK:
+			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ACTION_TYPE_CONNTRACK detected");
 			break;
 		default:
 			PMD_DRV_LOG(ERR, "Action type %d not supported.", action->type);
@@ -3626,6 +3671,9 @@ nfp_flow_compile_action(struct nfp_flower_representor *representor,
 				return -EINVAL;
 			position += sizeof(struct nfp_fl_act_meter);
 			break;
+		case RTE_FLOW_ACTION_TYPE_CONNTRACK:
+			PMD_DRV_LOG(DEBUG, "Process RTE_FLOW_ACTION_TYPE_CONNTRACK");
+			break;
 		default:
 			PMD_DRV_LOG(ERR, "Unsupported action type: %d", action->type);
 			return -ENOTSUP;
@@ -3647,7 +3695,8 @@ nfp_flow_process(struct nfp_flower_representor *representor,
 		const struct rte_flow_action actions[],
 		bool validate_flag,
 		uint64_t cookie,
-		bool install_flag)
+		bool install_flag,
+		bool merge_flag)
 {
 	int ret;
 	char *hash_data;
@@ -3684,6 +3733,7 @@ nfp_flow_process(struct nfp_flower_representor *representor,
 	}
 
 	nfp_flow->install_flag = install_flag;
+	nfp_flow->merge_flag = merge_flag;
 
 	nfp_flow_compile_metadata(priv, nfp_flow, &key_layer, stats_ctx, cookie);
 
@@ -3717,7 +3767,7 @@ nfp_flow_process(struct nfp_flower_representor *representor,
 
 	/* Find the flow in hash table */
 	flow_find = nfp_flow_table_search(priv, nfp_flow);
-	if (flow_find != NULL) {
+	if (flow_find != NULL && !nfp_flow->merge_flag && !flow_find->merge_flag) {
 		PMD_DRV_LOG(ERR, "This flow is already exist.");
 		if (!nfp_check_mask_remove(priv, mask_data, mask_len,
 				&nfp_flow_meta->flags)) {
@@ -3774,7 +3824,7 @@ nfp_flow_setup(struct nfp_flower_representor *representor,
 		return nfp_ct_flow_setup(representor, items, actions,
 				ct_item, validate_flag, cookie);
 
-	return nfp_flow_process(representor, items, actions, validate_flag, cookie, true);
+	return nfp_flow_process(representor, items, actions, validate_flag, cookie, true, false);
 }
 
 int
@@ -3877,7 +3927,7 @@ nfp_flow_create(struct rte_eth_dev *dev,
 	}
 
 	/* Add the flow to flow hash table */
-	ret = nfp_flow_table_add(priv, nfp_flow);
+	ret = nfp_flow_table_add_merge(priv, nfp_flow);
 	if (ret != 0) {
 		rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 				NULL, "Add flow to the flow table failed.");
@@ -3988,7 +4038,7 @@ nfp_flow_destroy(struct rte_eth_dev *dev,
 	}
 
 	/* Delete the flow from flow hash table */
-	ret = nfp_flow_table_delete(priv, nfp_flow);
+	ret = nfp_flow_table_delete_merge(priv, nfp_flow);
 	if (ret != 0) {
 		rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 				NULL, "Delete flow from the flow table failed.");
@@ -4047,10 +4097,12 @@ nfp_flow_stats_get(struct rte_eth_dev *dev,
 		void *data)
 {
 	bool reset;
+	uint64_t cookie;
 	uint32_t ctx_id;
 	struct rte_flow *flow;
 	struct nfp_flow_priv *priv;
 	struct nfp_fl_stats *stats;
+	struct nfp_ct_map_entry *me;
 	struct rte_flow_query_count *query;
 
 	priv = nfp_flow_dev_to_priv(dev);
@@ -4064,8 +4116,15 @@ nfp_flow_stats_get(struct rte_eth_dev *dev,
 	reset = query->reset;
 	memset(query, 0, sizeof(*query));
 
-	ctx_id = rte_be_to_cpu_32(nfp_flow->payload.meta->host_ctx_id);
-	stats = &priv->stats[ctx_id];
+	/* Find the flow in ct_map_table */
+	cookie = rte_be_to_cpu_64(nfp_flow->payload.meta->host_cookie);
+	me = nfp_ct_map_table_search(priv, (char *)&cookie, sizeof(uint64_t));
+	if (me != NULL) {
+		stats = nfp_ct_flow_stats_get(priv, me);
+	} else {
+		ctx_id = rte_be_to_cpu_32(nfp_flow->payload.meta->host_ctx_id);
+		stats = &priv->stats[ctx_id];
+	}
 
 	rte_spinlock_lock(&priv->stats_lock);
 	if (stats->pkts != 0 && stats->bytes != 0) {
