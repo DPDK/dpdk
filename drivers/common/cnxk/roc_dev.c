@@ -770,14 +770,22 @@ roc_pf_vf_mbox_irq(void *param)
 	 * by 1ms until this region is zeroed mbox_wait_for_zero()
 	 */
 	mbox_data = plt_read64(dev->bar2 + RVU_VF_VFPF_MBOX0);
-	if (mbox_data)
-		plt_write64(!mbox_data, dev->bar2 + RVU_VF_VFPF_MBOX0);
+	/* If interrupt occurred for down message */
+	if (mbox_data & MBOX_DOWN_MSG) {
+		mbox_data &= ~MBOX_DOWN_MSG;
+		plt_write64(mbox_data, dev->bar2 + RVU_VF_VFPF_MBOX0);
 
-	/* First process all configuration messages */
-	process_msgs(dev, dev->mbox);
+		/* First process all configuration messages */
+		process_msgs(dev, dev->mbox);
+	}
+	/* If interrupt occurred for UP message */
+	if (mbox_data & MBOX_UP_MSG) {
+		mbox_data &= ~MBOX_UP_MSG;
+		plt_write64(mbox_data, dev->bar2 + RVU_VF_VFPF_MBOX0);
 
-	/* Process Uplink messages */
-	process_msgs_up(dev, &dev->mbox_up);
+		/* Process Uplink messages */
+		process_msgs_up(dev, &dev->mbox_up);
+	}
 }
 
 /* IRQ to PF from AF - PF context (interrupt thread) */
@@ -799,14 +807,22 @@ roc_af_pf_mbox_irq(void *param)
 	 * by 1ms until this region is zeroed mbox_wait_for_zero()
 	 */
 	mbox_data = plt_read64(dev->bar2 + RVU_PF_PFAF_MBOX0);
-	if (mbox_data)
-		plt_write64(!mbox_data, dev->bar2 + RVU_PF_PFAF_MBOX0);
+	/* If interrupt occurred for down message */
+	if (mbox_data & MBOX_DOWN_MSG) {
+		mbox_data &= ~MBOX_DOWN_MSG;
+		plt_write64(mbox_data, dev->bar2 + RVU_PF_PFAF_MBOX0);
 
-	/* First process all configuration messages */
-	process_msgs(dev, dev->mbox);
+		/* First process all configuration messages */
+		process_msgs(dev, dev->mbox);
+	}
+	/* If interrupt occurred for up message */
+	if (mbox_data & MBOX_UP_MSG) {
+		mbox_data &= ~MBOX_UP_MSG;
+		plt_write64(mbox_data, dev->bar2 + RVU_PF_PFAF_MBOX0);
 
-	/* Process Uplink messages */
-	process_msgs_up(dev, &dev->mbox_up);
+		/* Process Uplink messages */
+		process_msgs_up(dev, &dev->mbox_up);
+	}
 }
 
 static int
