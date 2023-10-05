@@ -209,10 +209,9 @@ static void
 mbox_msg_send_data(struct mbox *mbox, int devid, uint8_t data)
 {
 	struct mbox_dev *mdev = &mbox->dev[devid];
-	struct mbox_hdr *tx_hdr =
-		(struct mbox_hdr *)((uintptr_t)mdev->mbase + mbox->tx_start);
-	struct mbox_hdr *rx_hdr =
-		(struct mbox_hdr *)((uintptr_t)mdev->mbase + mbox->rx_start);
+	struct mbox_hdr *tx_hdr = (struct mbox_hdr *)((uintptr_t)mdev->mbase + mbox->tx_start);
+	struct mbox_hdr *rx_hdr = (struct mbox_hdr *)((uintptr_t)mdev->mbase + mbox->rx_start);
+	uint64_t intr_val;
 
 	/* Reset header for next messages */
 	tx_hdr->msg_size = mdev->msg_size;
@@ -229,11 +228,16 @@ mbox_msg_send_data(struct mbox *mbox, int devid, uint8_t data)
 	/* Sync mbox data into memory */
 	plt_wmb();
 
+	/* Check for any pending interrupt */
+	intr_val = plt_read64(
+		(volatile void *)(mbox->reg_base + (mbox->trigger | (devid << mbox->tr_shift))));
+
+	intr_val |= (uint64_t)data;
 	/* The interrupt should be fired after num_msgs is written
 	 * to the shared memory
 	 */
-	plt_write64(data, (volatile void *)(mbox->reg_base +
-				(mbox->trigger | (devid << mbox->tr_shift))));
+	plt_write64(intr_val, (volatile void *)(mbox->reg_base +
+						(mbox->trigger | (devid << mbox->tr_shift))));
 }
 
 /**
