@@ -7,15 +7,12 @@
 
 #include <rte_alarm.h>
 
-#include "nfpcore/nfp_mip.h"
-#include "nfpcore/nfp_rtsym.h"
-
-#include "nfp_common.h"
-#include "nfp_ctrl.h"
-#include "nfp_rxtx.h"
-#include "nfp_logs.h"
 #include "nfd3/nfp_nfd3.h"
 #include "nfdk/nfp_nfdk.h"
+#include "nfpcore/nfp_cpp.h"
+
+#include "nfp_common.h"
+#include "nfp_logs.h"
 
 static void
 nfp_netvf_read_mac(struct nfp_net_hw *hw)
@@ -268,12 +265,20 @@ nfp_netvf_init(struct rte_eth_dev *eth_dev)
 	uint32_t start_q;
 	int port = 0;
 	int err;
+	const struct nfp_dev_info *dev_info;
 
 	PMD_INIT_FUNC_TRACE();
 
 	pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
 
+	dev_info = nfp_dev_info_get(pci_dev->id.device_id);
+	if (dev_info == NULL) {
+		PMD_INIT_LOG(ERR, "Not supported device ID");
+		return -ENODEV;
+	}
+
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
+	hw->dev_info = dev_info;
 
 	hw->ctrl_bar = pci_dev->mem_resource[0].addr;
 	if (hw->ctrl_bar == NULL) {
@@ -305,19 +310,10 @@ nfp_netvf_init(struct rte_eth_dev *eth_dev)
 	}
 
 	/* Work out where in the BAR the queues start. */
-	switch (pci_dev->id.device_id) {
-	case PCI_DEVICE_ID_NFP3800_VF_NIC:
-	case PCI_DEVICE_ID_NFP6000_VF_NIC:
-		start_q = nn_cfg_readl(hw, NFP_NET_CFG_START_TXQ);
-		tx_bar_off = nfp_pci_queue(pci_dev, start_q);
-		start_q = nn_cfg_readl(hw, NFP_NET_CFG_START_RXQ);
-		rx_bar_off = nfp_pci_queue(pci_dev, start_q);
-		break;
-	default:
-		PMD_DRV_LOG(ERR, "nfp_net: no device ID matching");
-		err = -ENODEV;
-		goto dev_err_ctrl_map;
-	}
+	start_q = nn_cfg_readl(hw, NFP_NET_CFG_START_TXQ);
+	tx_bar_off = nfp_qcp_queue_offset(dev_info, start_q);
+	start_q = nn_cfg_readl(hw, NFP_NET_CFG_START_RXQ);
+	rx_bar_off = nfp_qcp_queue_offset(dev_info, start_q);
 
 	PMD_INIT_LOG(DEBUG, "tx_bar_off: 0x%" PRIx64 "", tx_bar_off);
 	PMD_INIT_LOG(DEBUG, "rx_bar_off: 0x%" PRIx64 "", rx_bar_off);

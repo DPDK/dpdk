@@ -733,4 +733,4 @@ test_fbarray(void)
 	return unit_test_suite_runner(&fbarray_test_suite);
 }
 
-REGISTER_TEST_COMMAND(fbarray_autotest, test_fbarray);
+REGISTER_FAST_TEST(fbarray_autotest, true, true, test_fbarray);

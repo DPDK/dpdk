@@ -2,7 +2,6 @@
  * Copyright (c) 2020 Red Hat, Inc.
  */
 
-#include <pthread.h>
 #include <string.h>
 
 #include <rte_common.h>
@@ -341,7 +340,7 @@ error:
 	return -1;
 }
 
-static void *ctrl_thread_loop(void *arg)
+static uint32_t ctrl_thread_loop(void *arg)
 {
 	struct thread_context *t = arg;
 
@@ -350,7 +349,7 @@ static void *ctrl_thread_loop(void *arg)
 	/* Set the thread state to DONE */
 	t->state = Thread_DONE;
 
-	return NULL;
+	return 0;
 }
 
 static int
@@ -362,8 +361,8 @@ test_ctrl_thread(void)
 	/* Create one control thread */
 	t = &ctrl_thread_context;
 	t->state = Thread_INIT;
-	if (rte_ctrl_thread_create((pthread_t *)&t->id, "test_ctrl_threads",
-					NULL, ctrl_thread_loop, t) != 0)
+	if (rte_thread_create_control(&t->id, "dpdk-test-ctrlt",
+				ctrl_thread_loop, t) != 0)
 		return -1;
 
 	/* Wait till the control thread exits.
@@ -412,4 +411,4 @@ test_lcores(void)
 	return TEST_SUCCESS;
 }
 
-REGISTER_TEST_COMMAND(lcores_autotest, test_lcores);
+REGISTER_FAST_TEST(lcores_autotest, true, true, test_lcores);

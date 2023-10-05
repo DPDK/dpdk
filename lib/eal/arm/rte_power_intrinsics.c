@@ -33,19 +33,19 @@ rte_power_monitor(const struct rte_power_monitor_cond *pmc,
 
 	switch (pmc->size) {
 	case sizeof(uint8_t):
-		__RTE_ARM_LOAD_EXC_8(pmc->addr, cur_value, __ATOMIC_RELAXED)
+		__RTE_ARM_LOAD_EXC_8(pmc->addr, cur_value, rte_memory_order_relaxed)
 		__RTE_ARM_WFE()
 		break;
 	case sizeof(uint16_t):
-		__RTE_ARM_LOAD_EXC_16(pmc->addr, cur_value, __ATOMIC_RELAXED)
+		__RTE_ARM_LOAD_EXC_16(pmc->addr, cur_value, rte_memory_order_relaxed)
 		__RTE_ARM_WFE()
 		break;
 	case sizeof(uint32_t):
-		__RTE_ARM_LOAD_EXC_32(pmc->addr, cur_value, __ATOMIC_RELAXED)
+		__RTE_ARM_LOAD_EXC_32(pmc->addr, cur_value, rte_memory_order_relaxed)
 		__RTE_ARM_WFE()
 		break;
 	case sizeof(uint64_t):
-		__RTE_ARM_LOAD_EXC_64(pmc->addr, cur_value, __ATOMIC_RELAXED)
+		__RTE_ARM_LOAD_EXC_64(pmc->addr, cur_value, rte_memory_order_relaxed)
 		__RTE_ARM_WFE()
 		break;
 	default:

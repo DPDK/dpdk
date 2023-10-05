@@ -3,23 +3,91 @@
  * All rights reserved.
  */
 
+#include "nfp_flow.h"
+
 #include <rte_flow_driver.h>
 #include <rte_hash.h>
 #include <rte_jhash.h>
-#include <bus_pci_driver.h>
 #include <rte_malloc.h>
 
-#include "nfp_common.h"
-#include "nfp_ctrl.h"
-#include "nfp_flow.h"
-#include "nfp_logs.h"
-#include "nfp_rxtx.h"
-#include "flower/nfp_flower.h"
-#include "flower/nfp_flower_cmsg.h"
-#include "flower/nfp_flower_ctrl.h"
 #include "flower/nfp_flower_representor.h"
-#include "nfpcore/nfp_mip.h"
 #include "nfpcore/nfp_rtsym.h"
+#include "nfp_logs.h"
+#include "nfp_mtr.h"
+
+#define NFP_FLOWER_LAYER_EXT_META       RTE_BIT32(0)
+#define NFP_FLOWER_LAYER_PORT           RTE_BIT32(1)
+#define NFP_FLOWER_LAYER_MAC            RTE_BIT32(2)
+#define NFP_FLOWER_LAYER_TP             RTE_BIT32(3)
+#define NFP_FLOWER_LAYER_IPV4           RTE_BIT32(4)
+#define NFP_FLOWER_LAYER_IPV6           RTE_BIT32(5)
+#define NFP_FLOWER_LAYER_CT             RTE_BIT32(6)
+#define NFP_FLOWER_LAYER_VXLAN          RTE_BIT32(7)
+
+#define NFP_FLOWER_LAYER2_GRE           RTE_BIT32(0)
+#define NFP_FLOWER_LAYER2_QINQ          RTE_BIT32(4)
+#define NFP_FLOWER_LAYER2_GENEVE        RTE_BIT32(5)
+#define NFP_FLOWER_LAYER2_GENEVE_OP     RTE_BIT32(6)
+#define NFP_FLOWER_LAYER2_TUN_IPV6      RTE_BIT32(7)
+
+/* Compressed HW representation of TCP Flags */
+#define NFP_FL_TCP_FLAG_FIN             RTE_BIT32(0)
+#define NFP_FL_TCP_FLAG_SYN             RTE_BIT32(1)
+#define NFP_FL_TCP_FLAG_RST             RTE_BIT32(2)
+#define NFP_FL_TCP_FLAG_PSH             RTE_BIT32(3)
+#define NFP_FL_TCP_FLAG_URG             RTE_BIT32(4)
+
+#define NFP_FL_META_FLAG_MANAGE_MASK    RTE_BIT32(7)
+
+#define NFP_FLOWER_MASK_VLAN_CFI        RTE_BIT32(12)
+
+#define NFP_MASK_TABLE_ENTRIES          1024
+
+/* The maximum action list size (in bytes) supported by the NFP. */
+#define NFP_FL_MAX_A_SIZ                1216
+
+#define NFP_FL_SC_ACT_DROP      0x80000000
+#define NFP_FL_SC_ACT_USER      0x7D000000
+#define NFP_FL_SC_ACT_POPV      0x6A000000
+#define NFP_FL_SC_ACT_NULL      0x00000000
+
+/* GRE Tunnel flags */
+#define NFP_FL_GRE_FLAG_KEY         (1 << 2)
+
+/* Action opcodes */
+#define NFP_FL_ACTION_OPCODE_OUTPUT             0
+#define NFP_FL_ACTION_OPCODE_PUSH_VLAN          1
+#define NFP_FL_ACTION_OPCODE_POP_VLAN           2
+#define NFP_FL_ACTION_OPCODE_PUSH_MPLS          3
+#define NFP_FL_ACTION_OPCODE_POP_MPLS           4
+#define NFP_FL_ACTION_OPCODE_USERSPACE          5
+#define NFP_FL_ACTION_OPCODE_SET_TUNNEL         6
+#define NFP_FL_ACTION_OPCODE_SET_ETHERNET       7
+#define NFP_FL_ACTION_OPCODE_SET_MPLS           8
+#define NFP_FL_ACTION_OPCODE_SET_IPV4_ADDRS     9
+#define NFP_FL_ACTION_OPCODE_SET_IPV4_TTL_TOS   10
+#define NFP_FL_ACTION_OPCODE_SET_IPV6_SRC       11
+#define NFP_FL_ACTION_OPCODE_SET_IPV6_DST       12
+#define NFP_FL_ACTION_OPCODE_SET_IPV6_TC_HL_FL  13
+#define NFP_FL_ACTION_OPCODE_SET_UDP            14
+#define NFP_FL_ACTION_OPCODE_SET_TCP            15
+#define NFP_FL_ACTION_OPCODE_PRE_LAG            16
+#define NFP_FL_ACTION_OPCODE_PRE_TUNNEL         17
+#define NFP_FL_ACTION_OPCODE_PRE_GS             18
+#define NFP_FL_ACTION_OPCODE_GS                 19
+#define NFP_FL_ACTION_OPCODE_PUSH_NSH           20
+#define NFP_FL_ACTION_OPCODE_POP_NSH            21
+#define NFP_FL_ACTION_OPCODE_SET_QUEUE          22
+#define NFP_FL_ACTION_OPCODE_CONNTRACK          23
+#define NFP_FL_ACTION_OPCODE_METER              24
+#define NFP_FL_ACTION_OPCODE_CT_NAT_EXT         25
+#define NFP_FL_ACTION_OPCODE_PUSH_GENEVE        26
+#define NFP_FL_ACTION_OPCODE_NUM                32
+
+#define NFP_FL_OUT_FLAGS_LAST            RTE_BIT32(15)
+
+/* Tunnel ports */
+#define NFP_FL_PORT_TYPE_TUN            0x50000000
 
 /*
  * Maximum number of items in struct rte_flow_action_vxlan_encap.

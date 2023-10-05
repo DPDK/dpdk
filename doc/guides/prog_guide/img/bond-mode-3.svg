@@ -209,7 +209,7 @@
          id="shape84-13"
          transform="translate(6.87402,-7.17304)"><title
            id="title5779">Rectangle.16</title><desc
-           id="desc5781">bonded ethdev</desc><g
+           id="desc5781">bonding ethdev</desc><g
            id="shadow84-14"
            transform="translate(0.345598,1.97279)"
            class="st1"
@@ -232,7 +232,7 @@
            y="536.16998"
            class="st4"
            id="text5788"
-           style="fill:#feffff;font-family:Calibri">bonded ethdev</text>
+           style="fill:#feffff;font-family:Calibri">bonding ethdev</text>
 </g><g
          id="shape85-19"
          transform="translate(13.9606,-14.1732)"><title

@@ -966,4 +966,4 @@ test_thash(void)
 	return unit_test_suite_runner(&thash_tests);
 }
 
-REGISTER_TEST_COMMAND(thash_autotest, test_thash);
+REGISTER_FAST_TEST(thash_autotest, true, true, test_thash);

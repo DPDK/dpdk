@@ -606,53 +606,17 @@ gve_teardown_device_resources(struct gve_priv *priv)
 	gve_clear_device_resources_ok(priv);
 }
 
-static uint8_t
-pci_dev_find_capability(struct rte_pci_device *pdev, int cap)
-{
-	uint8_t pos, id;
-	uint16_t ent;
-	int loops;
-	int ret;
-
-	ret = rte_pci_read_config(pdev, &pos, sizeof(pos), PCI_CAPABILITY_LIST);
-	if (ret != sizeof(pos))
-		return 0;
-
-	loops = (PCI_CFG_SPACE_SIZE - PCI_STD_HEADER_SIZEOF) / PCI_CAP_SIZEOF;
-
-	while (pos && loops--) {
-		ret = rte_pci_read_config(pdev, &ent, sizeof(ent), pos);
-		if (ret != sizeof(ent))
-			return 0;
-
-		id = ent & 0xff;
-		if (id == 0xff)
-			break;
-
-		if (id == cap)
-			return pos;
-
-		pos = (ent >> 8);
-	}
-
-	return 0;
-}
-
 static int
 pci_dev_msix_vec_count(struct rte_pci_device *pdev)
 {
-	uint8_t msix_cap = pci_dev_find_capability(pdev, PCI_CAP_ID_MSIX);
+	off_t msix_pos = rte_pci_find_capability(pdev, RTE_PCI_CAP_ID_MSIX);
 	uint16_t control;
-	int ret;
 
-	if (!msix_cap)
-		return 0;
+	if (msix_pos > 0 && rte_pci_read_config(pdev, &control, sizeof(control),
+			msix_pos + RTE_PCI_MSIX_FLAGS) == sizeof(control))
+		return (control & RTE_PCI_MSIX_FLAGS_QSIZE) + 1;
 
-	ret = rte_pci_read_config(pdev, &control, sizeof(control), msix_cap + PCI_MSIX_FLAGS);
-	if (ret != sizeof(control))
-		return 0;
-
-	return (control & PCI_MSIX_FLAGS_QSIZE) + 1;
+	return 0;
 }
 
 static int

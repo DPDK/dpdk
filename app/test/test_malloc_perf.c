@@ -171,4 +171,4 @@ test_malloc_perf(void)
 	return 0;
 }
 
-REGISTER_TEST_COMMAND(malloc_perf_autotest, test_malloc_perf);
+REGISTER_PERF_TEST(malloc_perf_autotest, test_malloc_perf);

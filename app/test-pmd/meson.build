@@ -22,6 +22,7 @@ sources = files(
         'macswap.c',
         'noisy_vnf.c',
         'parameters.c',
+        'recycle_mbufs.c',
         'rxonly.c',
         'shared_rxq_fwd.c',
         'testpmd.c',

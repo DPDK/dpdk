@@ -726,7 +726,6 @@ static const struct rte_flow_item_quota rte_flow_item_quota_mask = {
  * RTE_FLOW_ITEM_TYPE_HIGIG2
  * Matches higig2 header
  */
-RTE_STD_C11
 struct rte_flow_item_higig2_hdr {
 	struct rte_higig2_hdr hdr;
 };
@@ -848,7 +847,6 @@ static const struct rte_flow_item_raw rte_flow_item_raw_mask = {
  * the EtherType/TPID field. Also, it's possible to leave the two fields unused.
  * If this is the case, both tagged and untagged packets will match the pattern.
  */
-RTE_STD_C11
 struct rte_flow_item_eth {
 	union {
 		struct {
@@ -890,7 +888,6 @@ static const struct rte_flow_item_eth rte_flow_item_eth_mask = {
  * If the @p eth_proto of @p hdr and @p has_more_vlan fields are not specified,
  * then any tagged packets will match the pattern.
  */
-RTE_STD_C11
 struct rte_flow_item_vlan {
 	union {
 		struct {
@@ -1075,7 +1072,6 @@ static const struct rte_flow_item_sctp rte_flow_item_sctp_mask = {
  *
  * Matches a VXLAN header (RFC 7348).
  */
-RTE_STD_C11
 struct rte_flow_item_vxlan {
 	union {
 		struct {
@@ -1246,7 +1242,6 @@ static const struct rte_flow_item_fuzzy rte_flow_item_fuzzy_mask = {
  *
  * Matches a GTPv1 header.
  */
-RTE_STD_C11
 struct rte_flow_item_gtp {
 	union {
 		struct {
@@ -1322,7 +1317,6 @@ static const struct rte_flow_item_geneve rte_flow_item_geneve_mask = {
  *
  * Matches a VXLAN-GPE header.
  */
-RTE_STD_C11
 struct rte_flow_item_vxlan_gpe {
 	union {
 		struct {
@@ -1352,7 +1346,6 @@ static const struct rte_flow_item_vxlan_gpe rte_flow_item_vxlan_gpe_mask = {
  *
  * Matches an ARP header for Ethernet/IPv4.
  */
-RTE_STD_C11
 struct rte_flow_item_arp_eth_ipv4 {
 	union {
 		struct {
@@ -1874,7 +1867,6 @@ struct rte_flow_item_integrity {
 	 * @see rte_flow_action_rss
 	 */
 	uint32_t level;
-	RTE_STD_C11
 	union {
 		__extension__
 		struct {
@@ -3204,6 +3196,13 @@ enum rte_eth_hash_function {
 	 * src or dst address will xor with zero pair.
 	 */
 	RTE_ETH_HASH_FUNCTION_SYMMETRIC_TOEPLITZ,
+	/**
+	 * Symmetric Toeplitz: L3 and L4 fields are sorted prior to
+	 * the hash function.
+	 *  If src_ip > dst_ip, swap src_ip and dst_ip.
+	 *  If src_port > dst_port, swap src_port and dst_port.
+	 */
+	RTE_ETH_HASH_FUNCTION_SYMMETRIC_TOEPLITZ_SORT,
 	RTE_ETH_HASH_FUNCTION_MAX,
 };
 
@@ -3893,7 +3892,6 @@ enum rte_flow_field_id {
  */
 struct rte_flow_action_modify_data {
 	enum rte_flow_field_id field; /**< Field or memory type ID. */
-	RTE_STD_C11
 	union {
 		struct {
 			/** Encapsulation level and tag index or flex item handle. */
@@ -4200,7 +4198,6 @@ struct rte_flow_error {
  * @see RTE_FLOW_CONV_OP_RULE
  * @see rte_flow_conv()
  */
-RTE_STD_C11
 struct rte_flow_conv_rule {
 	union {
 		const struct rte_flow_attr *attr_ro; /**< RO attributes. */
@@ -5002,7 +4999,6 @@ struct rte_flow_tunnel {
 	enum rte_flow_item_type	type;
 	uint64_t tun_id; /**< Tunnel identification. */
 
-	RTE_STD_C11
 	union {
 		struct {
 			rte_be32_t src_addr; /**< IPv4 source address. */

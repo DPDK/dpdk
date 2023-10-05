@@ -26,12 +26,13 @@ extern "C" {
 #include <rte_atomic.h>
 #include <rte_branch_prediction.h>
 #include <rte_compat.h>
+#include <rte_stdatomic.h>
 
 /**
  * The RTE seqcount type.
  */
 typedef struct {
-	uint32_t sn; /**< A sequence number for the protected data. */
+	RTE_ATOMIC(uint32_t) sn; /**< A sequence number for the protected data. */
 } rte_seqcount_t;
 
 /**
@@ -105,11 +106,11 @@ __rte_experimental
 static inline uint32_t
 rte_seqcount_read_begin(const rte_seqcount_t *seqcount)
 {
-	/* __ATOMIC_ACQUIRE to prevent loads after (in program order)
+	/* rte_memory_order_acquire to prevent loads after (in program order)
 	 * from happening before the sn load. Synchronizes-with the
 	 * store release in rte_seqcount_write_end().
 	 */
-	return __atomic_load_n(&seqcount->sn, __ATOMIC_ACQUIRE);
+	return rte_atomic_load_explicit(&seqcount->sn, rte_memory_order_acquire);
 }
 
 /**
@@ -160,9 +161,9 @@ rte_seqcount_read_retry(const rte_seqcount_t *seqcount, uint32_t begin_sn)
 		return true;
 
 	/* make sure the data loads happens before the sn load */
-	rte_atomic_thread_fence(__ATOMIC_ACQUIRE);
+	rte_atomic_thread_fence(rte_memory_order_acquire);
 
-	end_sn = __atomic_load_n(&seqcount->sn, __ATOMIC_RELAXED);
+	end_sn = rte_atomic_load_explicit(&seqcount->sn, rte_memory_order_relaxed);
 
 	/* A writer incremented the sequence number during this read
 	 * critical section.
@@ -204,12 +205,12 @@ rte_seqcount_write_begin(rte_seqcount_t *seqcount)
 
 	sn = seqcount->sn + 1;
 
-	__atomic_store_n(&seqcount->sn, sn, __ATOMIC_RELAXED);
+	rte_atomic_store_explicit(&seqcount->sn, sn, rte_memory_order_relaxed);
 
-	/* __ATOMIC_RELEASE to prevent stores after (in program order)
+	/* rte_memory_order_release to prevent stores after (in program order)
 	 * from happening before the sn store.
 	 */
-	rte_atomic_thread_fence(__ATOMIC_RELEASE);
+	rte_atomic_thread_fence(rte_memory_order_release);
 }
 
 /**
@@ -236,7 +237,7 @@ rte_seqcount_write_end(rte_seqcount_t *seqcount)
 	sn = seqcount->sn + 1;
 
 	/* Synchronizes-with the load acquire in rte_seqcount_read_begin(). */
-	__atomic_store_n(&seqcount->sn, sn, __ATOMIC_RELEASE);
+	rte_atomic_store_explicit(&seqcount->sn, sn, rte_memory_order_release);
 }
 
 #ifdef __cplusplus

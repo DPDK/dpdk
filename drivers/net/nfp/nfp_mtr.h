@@ -8,79 +8,13 @@
 
 #include <rte_mtr.h>
 
+#include "flower/nfp_flower_cmsg.h"
+
 /**
  * The max meter count is determined by firmware.
  * The max count is 65536 defined by OF_METER_COUNT.
  */
 #define NFP_MAX_MTR_CNT                65536
-#define NFP_MAX_POLICY_CNT             NFP_MAX_MTR_CNT
-#define NFP_MAX_PROFILE_CNT            NFP_MAX_MTR_CNT
-
-/**
- * See RFC 2698 for more details.
- * Word[0](Flag options):
- * [15] p(pps) 1 for pps, 0 for bps
- *
- * Meter control message
- *  1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0
- * +-------------------------------+-+---+-----+-+---------+-+---+-+
- * |            Reserved           |p| Y |TYPE |E|  TSHFV  |P| PC|R|
- * +-------------------------------+-+---+-----+-+---------+-+---+-+
- * |                           Profile ID                          |
- * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * |                        Token Bucket Peak                      |
- * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * |                     Token Bucket Committed                    |
- * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * |                         Peak Burst Size                       |
- * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * |                      Committed Burst Size                     |
- * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * |                      Peak Information Rate                    |
- * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * |                    Committed Information Rate                 |
- * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- */
-struct nfp_cfg_head {
-	rte_be32_t flags_opts;
-	rte_be32_t profile_id;
-};
-
-/**
- * Struct nfp_profile_conf - profile config, offload to NIC
- * @head:        config head information
- * @bkt_tkn_p:   token bucket peak
- * @bkt_tkn_c:   token bucket committed
- * @pbs:         peak burst size
- * @cbs:         committed burst size
- * @pir:         peak information rate
- * @cir:         committed information rate
- */
-struct nfp_profile_conf {
-	struct nfp_cfg_head head;
-	rte_be32_t bkt_tkn_p;
-	rte_be32_t bkt_tkn_c;
-	rte_be32_t pbs;
-	rte_be32_t cbs;
-	rte_be32_t pir;
-	rte_be32_t cir;
-};
-
-/**
- * Struct nfp_mtr_stats_reply - meter stats, read from firmware
- * @head:          config head information
- * @pass_bytes:    count of passed bytes
- * @pass_pkts:     count of passed packets
- * @drop_bytes:    count of dropped bytes
- * @drop_pkts:     count of dropped packets
- */
-struct nfp_mtr_stats_reply {
-	struct nfp_cfg_head head;
-	rte_be64_t pass_bytes;
-	rte_be64_t pass_pkts;
-	rte_be64_t drop_bytes;
-	rte_be64_t drop_pkts;
-};
 
 /**
  * Struct nfp_mtr_profile - meter profile, stored in driver

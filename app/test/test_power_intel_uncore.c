@@ -298,4 +298,4 @@ fail_all:
 }
 #endif
 
-REGISTER_TEST_COMMAND(power_intel_uncore_autotest, test_power_intel_uncore);
+REGISTER_FAST_TEST(power_intel_uncore_autotest, true, true, test_power_intel_uncore);

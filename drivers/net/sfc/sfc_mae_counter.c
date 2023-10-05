@@ -490,7 +490,7 @@ sfc_mae_counter_service_routine(void *arg)
 	return 0;
 }
 
-static void *
+static uint32_t
 sfc_mae_counter_thread(void *data)
 {
 	struct sfc_adapter *sa = data;
@@ -521,7 +521,7 @@ sfc_mae_counter_thread(void *data)
 		}
 	}
 
-	return NULL;
+	return 0;
 }
 
 static void
@@ -687,7 +687,7 @@ sfc_mae_counter_thread_stop(struct sfc_adapter *sa)
 	__atomic_store_n(&counter_registry->polling.thread.run, false,
 			 __ATOMIC_RELEASE);
 
-	rc = pthread_join(counter_registry->polling.thread.id, NULL);
+	rc = rte_thread_join(counter_registry->polling.thread.id, NULL);
 	if (rc != 0)
 		sfc_err(sa, "failed to join the MAE counter polling thread");
 
@@ -710,9 +710,8 @@ sfc_mae_counter_thread_spawn(struct sfc_adapter *sa,
 	counter_registry->polling_mode = SFC_MAE_COUNTER_POLLING_THREAD;
 	counter_registry->polling.thread.run = true;
 
-	rc = rte_ctrl_thread_create(&sa->mae.counter_registry.polling.thread.id,
-				    "mae_counter_thread", NULL,
-				    sfc_mae_counter_thread, sa);
+	rc = rte_thread_create_internal_control(&sa->mae.counter_registry.polling.thread.id,
+			"sfc-maecnt", sfc_mae_counter_thread, sa);
 
 	return rc;
 }

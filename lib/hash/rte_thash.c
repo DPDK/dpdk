@@ -130,7 +130,7 @@ get_bit_lfsr(struct thash_lfsr *lfsr)
 	 * masking the TAP bits defined by the polynomial and
 	 * calculating parity
 	 */
-	bit = __builtin_popcount(lfsr->state & lfsr->poly) & 0x1;
+	bit = rte_popcount32(lfsr->state & lfsr->poly) & 0x1;
 	ret = lfsr->state & 0x1;
 	lfsr->state = ((lfsr->state >> 1) | (bit << (lfsr->deg - 1))) &
 		((1 << lfsr->deg) - 1);
@@ -144,7 +144,7 @@ get_rev_bit_lfsr(struct thash_lfsr *lfsr)
 {
 	uint32_t bit, ret;
 
-	bit = __builtin_popcount(lfsr->rev_state & lfsr->rev_poly) & 0x1;
+	bit = rte_popcount32(lfsr->rev_state & lfsr->rev_poly) & 0x1;
 	ret = lfsr->rev_state & (1 << (lfsr->deg - 1));
 	lfsr->rev_state = ((lfsr->rev_state << 1) | bit) &
 		((1 << lfsr->deg) - 1);

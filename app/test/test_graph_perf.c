@@ -1073,4 +1073,4 @@ test_graph_perf_func(void)
 
 #endif /* !RTE_EXEC_ENV_WINDOWS */
 
-REGISTER_TEST_COMMAND(graph_perf_autotest, test_graph_perf_func);
+REGISTER_PERF_TEST(graph_perf_autotest, test_graph_perf_func);

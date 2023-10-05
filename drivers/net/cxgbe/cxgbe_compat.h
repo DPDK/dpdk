@@ -198,7 +198,7 @@ static inline uint8_t hweight32(uint32_t word32)
  */
 static inline int cxgbe_fls(int x)
 {
-	return x ? sizeof(x) * 8 - __builtin_clz(x) : 0;
+	return x ? sizeof(x) * 8 - rte_clz32(x) : 0;
 }
 
 static inline unsigned long ilog2(unsigned long n)

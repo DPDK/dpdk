@@ -277,4 +277,4 @@ test_distributor_perf(void)
 
 #endif /* !RTE_EXEC_ENV_WINDOWS */
 
-REGISTER_TEST_COMMAND(distributor_perf_autotest, test_distributor_perf);
+REGISTER_PERF_TEST(distributor_perf_autotest, test_distributor_perf);

@@ -94,7 +94,6 @@ extern "C" {
 /**
  * L2TPv2 Common Header
  */
-RTE_STD_C11
 struct rte_l2tpv2_common_hdr {
 	union {
 		/** header flags and protocol version */
@@ -218,7 +217,6 @@ struct rte_l2tpv2_msg_without_all_options {
 /**
  * L2TPv2 Combined Message Header Format: Common Header + Options
  */
-RTE_STD_C11
 struct rte_l2tpv2_combined_msg_hdr {
 	struct rte_l2tpv2_common_hdr common; /**< common header */
 	union {

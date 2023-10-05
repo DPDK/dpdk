@@ -9,6 +9,7 @@
 # given as a dep, no need to mention ring. This is especially true for the
 # core libs which are widely reused, so their deps are kept to a minimum.
 libraries = [
+        'log',
         'kvargs', # eal depends on kvargs
         'telemetry', # basic info querying
         'eal', # everything depends on eal
@@ -39,7 +40,6 @@ libraries = [
         'gso',
         'ip_frag',
         'jobstats',
-        'kni',
         'latencystats',
         'lpm',
         'member',
@@ -62,48 +62,81 @@ libraries = [
         'pdump', # pdump lib depends on bpf
         'table',
         'pipeline',
-        'flow_classify', # flow_classify lib depends on pkt framework table lib
         'graph',
         'node',
 ]
 
+if is_ms_compiler
+    libraries = [
+            'log',
+            'kvargs',
+            'telemetry',
+    ]
+endif
+
 optional_libs = [
+        'bbdev',
         'bitratestats',
+        'bpf',
         'cfgfile',
-        'flow_classify',
+        'compressdev',
+        'cryptodev',
+        'distributor',
+        'dmadev',
+        'efd',
+        'eventdev',
         'gpudev',
         'graph',
         'gro',
         'gso',
-        'kni',
+        'ip_frag',
+        'ipsec',
         'jobstats',
         'latencystats',
+        'member',
         'metrics',
+        'mldev',
         'node',
+        'pcapng',
+        'pdcp',
         'pdump',
         'pipeline',
         'port',
         'power',
+        'rawdev',
+        'regexdev',
+        'reorder',
+        'sched',
+        'security',
         'table',
         'vhost',
 ]
 
-dpdk_libs_deprecated += [
-        'flow_classify',
-        'kni',
-]
-
-disabled_libs = []
-opt_disabled_libs = run_command(list_dir_globs, get_option('disable_libs'),
-        check: true).stdout().split()
-foreach l:opt_disabled_libs
+always_enable = []
+foreach l:libraries
     if not optional_libs.contains(l)
-        warning('Cannot disable mandatory library "@0@"'.format(l))
-        continue
+        always_enable += l
     endif
-    disabled_libs += l
 endforeach
 
+enable_deprecated_libs = []
+foreach l:run_command(list_dir_globs, get_option('enable_deprecated_libs'),
+        check: true).stdout().split()
+    if not dpdk_libs_deprecated.contains(l)
+        continue
+    endif
+    enable_deprecated_libs += l
+endforeach
+
+disable_libs = run_command(list_dir_globs, get_option('disable_libs'), check: true).stdout().split()
+
+enable_libs = run_command(list_dir_globs, get_option('enable_libs'), check: true).stdout().split()
+require_libs = true
+if enable_libs.length() == 0
+    require_libs = false
+    enable_libs += optional_libs
+endif
+enable_libs += always_enable
 
 default_cflags = machine_args
 default_cflags += ['-DALLOW_EXPERIMENTAL_API']
@@ -137,17 +170,31 @@ foreach l:libraries
         deps += ['eal']
     endif
 
-    if disabled_libs.contains(l)
-        build = false
-        reason = 'explicitly disabled via build config'
-        if dpdk_libs_deprecated.contains(l)
-            reason += ' (deprecated lib)'
-        endif
-    else
-        if dpdk_libs_deprecated.contains(l)
+    if dpdk_libs_deprecated.contains(l)
+        if not enable_deprecated_libs.contains(l)
+            build = false
+            reason = 'not in enabled deprecated libraries build config'
+        else
             warning('Enabling deprecated library, "@0@"'.format(l))
         endif
+    elif not enable_libs.contains(l)
+        build = false
+        reason = 'not in enabled libraries build config'
+    elif disable_libs.contains(l)
+        if always_enable.contains(l)
+            warning('Cannot disable mandatory library "@0@"'.format(l))
+        else
+            build = false
+            reason = 'explicitly disabled via build config'
+        endif
+    endif
+
+    if build
         subdir(l)
+        if not build and require_libs
+            error('Cannot build explicitly requested lib "@0@".\n'.format(name)
+                    +'\tReason: ' + reason)
+        endif
     endif
     if name != l
         warning('Library name, "@0@", and directory name, "@1@", do not match'.format(name, l))
@@ -167,6 +214,10 @@ foreach l:libraries
             endif
             message('Disabling @1@ [@2@]: missing internal dependency "@0@"'
                     .format(d, name, 'lib/' + l))
+            if require_libs
+                error('Cannot build explicitly requested lib "@0@".\n'.format(name)
+                        + '\tPlease add missing dependency "@0@" to "enable_libs" option'.format(d))
+            endif
         else
             shared_deps += [get_variable('shared_rte_' + d)]
             static_deps += [get_variable('static_rte_' + d)]
@@ -238,9 +289,16 @@ foreach l:libraries
                 output: '@0@_exports.def'.format(libname))
         lk_deps += [def_file]
 
-        lk_args = ['-Wl,/def:' + def_file.full_path()]
-        if meson.version().version_compare('<0.54.0')
-            lk_args += ['-Wl,/implib:lib\\librte_' + l + '.dll.a']
+        if is_ms_compiler
+            lk_args = ['/def:' + def_file.full_path()]
+            if meson.version().version_compare('<0.54.0')
+                lk_args += ['/implib:lib\\librte_' + l + '.dll.a']
+            endif
+        else
+            lk_args = ['-Wl,/def:' + def_file.full_path()]
+            if meson.version().version_compare('<0.54.0')
+                lk_args += ['-Wl,/implib:lib\\librte_' + l + '.dll.a']
+            endif
         endif
     else
         if is_windows

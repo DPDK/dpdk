@@ -23,9 +23,10 @@ __umwait_wakeup(volatile void *addr)
 	uint64_t val;
 
 	/* trigger a write but don't change the value */
-	val = __atomic_load_n((volatile uint64_t *)addr, __ATOMIC_RELAXED);
-	__atomic_compare_exchange_n((volatile uint64_t *)addr, &val, val, 0,
-			__ATOMIC_RELAXED, __ATOMIC_RELAXED);
+	val = rte_atomic_load_explicit((volatile __rte_atomic uint64_t *)addr,
+			rte_memory_order_relaxed);
+	rte_atomic_compare_exchange_strong_explicit((volatile __rte_atomic uint64_t *)addr,
+			&val, val, rte_memory_order_relaxed, rte_memory_order_relaxed);
 }
 
 static bool wait_supported;
@@ -103,15 +104,19 @@ rte_power_monitor(const struct rte_power_monitor_cond *pmc,
 	rte_spinlock_lock(&s->lock);
 	s->monitor_addr = pmc->addr;
 
-	/*
-	 * we're using raw byte codes for now as only the newest compiler
-	 * versions support this instruction natively.
-	 */
-
 	/* set address for UMONITOR */
+#if defined(RTE_TOOLCHAIN_MSVC) || defined(__WAITPKG__)
+	/* cast away "volatile" when using the intrinsic */
+	_umonitor((void *)(uintptr_t)pmc->addr);
+#else
+	/*
+	 * we're using raw byte codes for compiler versions which
+	 * don't support this instruction natively.
+	 */
 	asm volatile(".byte 0xf3, 0x0f, 0xae, 0xf7;"
 			:
 			: "D"(pmc->addr));
+#endif
 
 	/* now that we've put this address into monitor, we can unlock */
 	rte_spinlock_unlock(&s->lock);
@@ -123,10 +128,14 @@ rte_power_monitor(const struct rte_power_monitor_cond *pmc,
 		goto end;
 
 	/* execute UMWAIT */
+#if defined(RTE_TOOLCHAIN_MSVC) || defined(__WAITPKG__)
+	_umwait(tsc_l, tsc_h);
+#else
 	asm volatile(".byte 0xf2, 0x0f, 0xae, 0xf7;"
 			: /* ignore rflags */
 			: "D"(0), /* enter C0.2 */
 			  "a"(tsc_l), "d"(tsc_h));
+#endif
 
 end:
 	/* erase sleep address */
@@ -153,10 +162,14 @@ rte_power_pause(const uint64_t tsc_timestamp)
 		return -ENOTSUP;
 
 	/* execute TPAUSE */
+#if defined(RTE_TOOLCHAIN_MSVC) || defined(__WAITPKG__)
+	_tpause(tsc_l, tsc_h);
+#else
 	asm volatile(".byte 0x66, 0x0f, 0xae, 0xf7;"
 			: /* ignore rflags */
 			: "D"(0), /* enter C0.2 */
 			"a"(tsc_l), "d"(tsc_h));
+#endif
 
 	return 0;
 }

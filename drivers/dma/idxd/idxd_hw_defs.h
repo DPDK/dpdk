@@ -31,7 +31,6 @@ struct idxd_hw_desc {
 	uint32_t op_flags;
 	rte_iova_t completion;
 
-	RTE_STD_C11
 	union {
 		rte_iova_t src;      /* source address for copy ops etc. */
 		rte_iova_t desc_addr; /* descriptor pointer for batch */

@@ -17,7 +17,7 @@
 #ifdef RTE_PIPELINE_STATS_COLLECT
 
 #define RTE_PIPELINE_STATS_AH_DROP_WRITE(p, mask)			\
-	({ (p)->n_pkts_ah_drop = __builtin_popcountll(mask); })
+	({ (p)->n_pkts_ah_drop = rte_popcount64(mask); })
 
 #define RTE_PIPELINE_STATS_AH_DROP_READ(p, counter)			\
 	({ (counter) += (p)->n_pkts_ah_drop; (p)->n_pkts_ah_drop = 0; })
@@ -29,7 +29,7 @@
 ({									\
 	uint64_t mask = (p)->action_mask0[RTE_PIPELINE_ACTION_DROP];	\
 	mask ^= (p)->pkts_drop_mask;					\
-	(counter) += __builtin_popcountll(mask);			\
+	(counter) += rte_popcount64(mask);			\
 })
 
 #else
@@ -133,7 +133,7 @@ rte_mask_get_next(uint64_t mask, uint32_t pos)
 {
 	uint64_t mask_rot = (mask << ((63 - pos) & 0x3F)) |
 			(mask >> ((pos + 1) & 0x3F));
-	return (__builtin_ctzll(mask_rot) - (63 - pos)) & 0x3F;
+	return (rte_ctz64(mask_rot) - (63 - pos)) & 0x3F;
 }
 
 static inline uint32_t
@@ -141,7 +141,7 @@ rte_mask_get_prev(uint64_t mask, uint32_t pos)
 {
 	uint64_t mask_rot = (mask >> (pos & 0x3F)) |
 			(mask << ((64 - pos) & 0x3F));
-	return ((63 - __builtin_clzll(mask_rot)) + pos) & 0x3F;
+	return ((63 - rte_clz64(mask_rot)) + pos) & 0x3F;
 }
 
 static void
@@ -1082,7 +1082,7 @@ rte_pipeline_compute_masks(struct rte_pipeline *p, uint64_t pkts_mask)
 	p->action_mask1[RTE_PIPELINE_ACTION_TABLE] = 0;
 
 	if ((pkts_mask & (pkts_mask + 1)) == 0) {
-		uint64_t n_pkts = __builtin_popcountll(pkts_mask);
+		uint64_t n_pkts = rte_popcount64(pkts_mask);
 		uint32_t i;
 
 		for (i = 0; i < n_pkts; i++) {
@@ -1136,7 +1136,7 @@ rte_pipeline_action_handler_port(struct rte_pipeline *p, uint64_t pkts_mask)
 	p->pkts_mask = pkts_mask;
 
 	if ((pkts_mask & (pkts_mask + 1)) == 0) {
-		uint64_t n_pkts = __builtin_popcountll(pkts_mask);
+		uint64_t n_pkts = rte_popcount64(pkts_mask);
 		uint32_t i;
 
 		for (i = 0; i < n_pkts; i++) {
@@ -1209,7 +1209,7 @@ rte_pipeline_action_handler_port_meta(struct rte_pipeline *p,
 	p->pkts_mask = pkts_mask;
 
 	if ((pkts_mask & (pkts_mask + 1)) == 0) {
-		uint64_t n_pkts = __builtin_popcountll(pkts_mask);
+		uint64_t n_pkts = rte_popcount64(pkts_mask);
 		uint32_t i;
 
 		for (i = 0; i < n_pkts; i++) {
@@ -1282,7 +1282,7 @@ static inline void
 rte_pipeline_action_handler_drop(struct rte_pipeline *p, uint64_t pkts_mask)
 {
 	if ((pkts_mask & (pkts_mask + 1)) == 0) {
-		uint64_t n_pkts = __builtin_popcountll(pkts_mask);
+		uint64_t n_pkts = rte_popcount64(pkts_mask);
 		uint32_t i;
 
 		for (i = 0; i < n_pkts; i++)

@@ -28,11 +28,12 @@ extern "C" {
 #include <rte_compat.h>
 #include <rte_cycles.h>
 #include <rte_per_lcore.h>
+#include <rte_stdatomic.h>
 #include <rte_string_fns.h>
 #include <rte_uuid.h>
 
 /** The tracepoint object. */
-typedef uint64_t rte_trace_point_t;
+typedef RTE_ATOMIC(uint64_t) rte_trace_point_t;
 
 /**
  * Macro to define the tracepoint arguments in RTE_TRACE_POINT macro.
@@ -358,7 +359,7 @@ __rte_trace_point_emit_ev_header(void *mem, uint64_t in)
 #define __rte_trace_point_emit_header_generic(t) \
 void *mem; \
 do { \
-	const uint64_t val = __atomic_load_n(t, __ATOMIC_ACQUIRE); \
+	const uint64_t val = rte_atomic_load_explicit(t, rte_memory_order_acquire); \
 	if (likely(!(val & __RTE_TRACE_FIELD_ENABLE_MASK))) \
 		return; \
 	mem = __rte_trace_mem_get(val); \

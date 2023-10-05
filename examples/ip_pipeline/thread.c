@@ -650,7 +650,6 @@ struct pipeline_msg_req {
 	enum pipeline_req_type type;
 	uint32_t id; /* Port IN, port OUT or table ID */
 
-	RTE_STD_C11
 	union {
 		struct pipeline_msg_req_port_in_stats_read port_in_stats_read;
 		struct pipeline_msg_req_port_out_stats_read port_out_stats_read;
@@ -712,7 +711,6 @@ struct pipeline_msg_rsp_table_rule_time_read {
 struct pipeline_msg_rsp {
 	int status;
 
-	RTE_STD_C11
 	union {
 		struct pipeline_msg_rsp_port_in_stats_read port_in_stats_read;
 		struct pipeline_msg_rsp_port_out_stats_read port_out_stats_read;

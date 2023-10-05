@@ -161,4 +161,4 @@ test_lpm6_perf(void)
 	return 0;
 }
 
-REGISTER_TEST_COMMAND(lpm6_perf_autotest, test_lpm6_perf);
+REGISTER_PERF_TEST(lpm6_perf_autotest, test_lpm6_perf);

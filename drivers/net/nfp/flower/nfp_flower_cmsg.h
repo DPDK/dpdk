@@ -6,11 +6,8 @@
 #ifndef _NFP_CMSG_H_
 #define _NFP_CMSG_H_
 
-#include <rte_byteorder.h>
-#include <rte_ether.h>
-
-#include "../nfp_mtr.h"
 #include "../nfp_flow.h"
+#include "nfp_flower.h"
 
 struct nfp_flower_cmsg_hdr {
 	rte_be16_t pad;
@@ -351,6 +348,72 @@ struct nfp_flower_stats_frame {
 	rte_be64_t stats_cookie;
 };
 
+/**
+ * See RFC 2698 for more details.
+ * Word[0](Flag options):
+ * [15] p(pps) 1 for pps, 0 for bps
+ *
+ * Meter control message
+ *  1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0
+ * +-------------------------------+-+---+-----+-+---------+-+---+-+
+ * |            Reserved           |p| Y |TYPE |E|  TSHFV  |P| PC|R|
+ * +-------------------------------+-+---+-----+-+---------+-+---+-+
+ * |                           Profile ID                          |
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |                        Token Bucket Peak                      |
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |                     Token Bucket Committed                    |
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |                         Peak Burst Size                       |
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |                      Committed Burst Size                     |
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |                      Peak Information Rate                    |
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |                    Committed Information Rate                 |
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ */
+struct nfp_cfg_head {
+	rte_be32_t flags_opts;
+	rte_be32_t profile_id;
+};
+
+/**
+ * Struct nfp_profile_conf - profile config, offload to NIC
+ * @head:        config head information
+ * @bkt_tkn_p:   token bucket peak
+ * @bkt_tkn_c:   token bucket committed
+ * @pbs:         peak burst size
+ * @cbs:         committed burst size
+ * @pir:         peak information rate
+ * @cir:         committed information rate
+ */
+struct nfp_profile_conf {
+	struct nfp_cfg_head head;
+	rte_be32_t bkt_tkn_p;
+	rte_be32_t bkt_tkn_c;
+	rte_be32_t pbs;
+	rte_be32_t cbs;
+	rte_be32_t pir;
+	rte_be32_t cir;
+};
+
+/**
+ * Struct nfp_mtr_stats_reply - meter stats, read from firmware
+ * @head:          config head information
+ * @pass_bytes:    count of passed bytes
+ * @pass_pkts:     count of passed packets
+ * @drop_bytes:    count of dropped bytes
+ * @drop_pkts:     count of dropped packets
+ */
+struct nfp_mtr_stats_reply {
+	struct nfp_cfg_head head;
+	rte_be64_t pass_bytes;
+	rte_be64_t pass_pkts;
+	rte_be64_t drop_bytes;
+	rte_be64_t drop_pkts;
+};
+
 enum nfp_flower_cmsg_port_type {
 	NFP_FLOWER_CMSG_PORT_TYPE_UNSPEC,
 	NFP_FLOWER_CMSG_PORT_TYPE_PHYS_PORT,
@@ -377,12 +440,6 @@ enum nfp_flower_cmsg_port_vnic_type {
 #define NFP_FLOWER_CMSG_PORT_VNIC(x)            (((x) >> 6) & 0x3f)  /* [6,11] */
 #define NFP_FLOWER_CMSG_PORT_PCIE_Q(x)          ((x) & 0x3f)         /* [0,5] */
 #define NFP_FLOWER_CMSG_PORT_PHYS_PORT_NUM(x)   ((x) & 0xff)         /* [0,7] */
-
-static inline char*
-nfp_flower_cmsg_get_data(struct rte_mbuf *m)
-{
-	return rte_pktmbuf_mtod(m, char *) + 4 + 4 + NFP_FLOWER_CMSG_HLEN;
-}
 
 /*
  * Metadata with L2 (1W/4B)

@@ -14,7 +14,7 @@ from dataclasses import dataclass
 from enum import auto, unique
 from typing import Any, TypedDict, Union
 
-import warlock  # type: ignore
+import warlock  # type: ignore[import]
 import yaml
 
 from framework.settings import SETTINGS

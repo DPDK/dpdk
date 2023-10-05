@@ -116,7 +116,7 @@ static int mlx5dr_pool_bitmap_get_free_slot(struct rte_bitmap *bitmap, uint32_t 
 	if (!rte_bitmap_scan(bitmap, iidx, &slab))
 		return ENOMEM;
 
-	*iidx += __builtin_ctzll(slab);
+	*iidx += rte_ctz64(slab);
 
 	rte_bitmap_clear(bitmap, *iidx);
 

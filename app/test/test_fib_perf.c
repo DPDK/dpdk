@@ -409,4 +409,4 @@ test_fib_perf(void)
 	return 0;
 }
 
-REGISTER_TEST_COMMAND(fib_perf_autotest, test_fib_perf);
+REGISTER_PERF_TEST(fib_perf_autotest, test_fib_perf);

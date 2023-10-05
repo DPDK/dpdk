@@ -8,26 +8,14 @@
 #include <ethdev_driver.h>
 #include <ethdev_pci.h>
 #include <rte_ether.h>
+#include <rte_pci.h>
 
 #include "base/gve.h"
 
 /* TODO: this is a workaround to ensure that Tx complq is enough */
 #define DQO_TX_MULTIPLIER 4
 
-/*
- * Following macros are derived from linux/pci_regs.h, however,
- * we can't simply include that header here, as there is no such
- * file for non-Linux platform.
- */
-#define PCI_CFG_SPACE_SIZE	256
-#define PCI_CAPABILITY_LIST	0x34	/* Offset of first capability list entry */
-#define PCI_STD_HEADER_SIZEOF	64
-#define PCI_CAP_SIZEOF		4
-#define PCI_CAP_ID_MSIX		0x11	/* MSI-X */
-#define PCI_MSIX_FLAGS		2	/* Message Control */
-#define PCI_MSIX_FLAGS_QSIZE	0x07FF	/* Table size */
-
-#define GVE_DEFAULT_RX_FREE_THRESH  512
+#define GVE_DEFAULT_RX_FREE_THRESH   64
 #define GVE_DEFAULT_TX_FREE_THRESH   32
 #define GVE_DEFAULT_TX_RS_THRESH     32
 #define GVE_TX_MAX_FREE_SZ          512

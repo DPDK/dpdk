@@ -25,7 +25,6 @@ extern "C" {
 /** FW-allocatable resource context */
 struct sfc_mae_fw_rsrc {
 	unsigned int			refcnt;
-	RTE_STD_C11
 	union {
 		efx_counter_t		counter_id;
 		efx_mae_aset_id_t	aset_id;
@@ -60,6 +59,7 @@ TAILQ_HEAD(sfc_mae_mac_addrs, sfc_mae_mac_addr);
 struct sfc_mae_encap_header {
 	TAILQ_ENTRY(sfc_mae_encap_header)	entries;
 	unsigned int				refcnt;
+	bool					indirect;
 	uint8_t					*buf;
 	size_t					size;
 	efx_tunnel_protocol_t			type;
@@ -197,7 +197,7 @@ struct sfc_mae_counter_registry {
 		} service;
 		struct {
 			/** Counter thread ID */
-			pthread_t			id;
+			rte_thread_t			id;
 			/** The thread should keep running */
 			bool				run;
 		} thread;
@@ -420,6 +420,11 @@ int sfc_mae_indir_action_create(struct sfc_adapter *sa,
 int sfc_mae_indir_action_destroy(struct sfc_adapter *sa,
 				 const struct rte_flow_action_handle *handle,
 				 struct rte_flow_error *error);
+
+int sfc_mae_indir_action_update(struct sfc_adapter *sa,
+				struct rte_flow_action_handle *handle,
+				const void *update,
+				struct rte_flow_error *error);
 
 int sfc_mae_indir_action_query(struct sfc_adapter *sa,
 			       const struct rte_flow_action_handle *handle,

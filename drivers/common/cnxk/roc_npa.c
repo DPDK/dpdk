@@ -398,7 +398,7 @@ bitmap_ctzll(uint64_t slab)
 	if (slab == 0)
 		return 0;
 
-	return __builtin_ctzll(slab);
+	return rte_ctz64(slab);
 }
 
 static int

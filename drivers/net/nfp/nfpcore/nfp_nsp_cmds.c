@@ -3,12 +3,8 @@
  * All rights reserved.
  */
 
-#include <stdio.h>
-#include <rte_byteorder.h>
-#include "nfp_cpp.h"
 #include "nfp_logs.h"
 #include "nfp_nsp.h"
-#include "nfp_nffw.h"
 
 struct nsp_identify {
 	uint8_t version[40];
@@ -24,11 +20,11 @@ struct nsp_identify {
 };
 
 struct nfp_nsp_identify *
-__nfp_nsp_identify(struct nfp_nsp *nsp)
+nfp_nsp_identify(struct nfp_nsp *nsp)
 {
-	struct nfp_nsp_identify *nspi = NULL;
-	struct nsp_identify *ni;
 	int ret;
+	struct nsp_identify *ni;
+	struct nfp_nsp_identify *nspi = NULL;
 
 	if (nfp_nsp_get_abi_ver_minor(nsp) < 15)
 		return NULL;
@@ -73,11 +69,13 @@ struct nfp_sensors {
 };
 
 int
-nfp_hwmon_read_sensor(struct nfp_cpp *cpp, enum nfp_nsp_sensor_id id, long *val)
+nfp_hwmon_read_sensor(struct nfp_cpp *cpp,
+		enum nfp_nsp_sensor_id id,
+		uint32_t *val)
 {
-	struct nfp_sensors s;
-	struct nfp_nsp *nsp;
 	int ret;
+	struct nfp_nsp *nsp;
+	struct nfp_sensors s;
 
 	nsp = nfp_nsp_open(cpp);
 	if (nsp == NULL)
@@ -105,5 +103,6 @@ nfp_hwmon_read_sensor(struct nfp_cpp *cpp, enum nfp_nsp_sensor_id id, long *val)
 	default:
 		return -EINVAL;
 	}
+
 	return 0;
 }

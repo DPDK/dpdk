@@ -664,10 +664,10 @@ hns3_get_tm_conf_shaper_info(FILE *file, struct hns3_tm_conf *conf)
 	if (conf->nb_shaper_profile == 0)
 		return;
 
-	fprintf(file, "  shaper_profile:\n");
+	fprintf(file, "\t  -- shaper_profile:\n");
 	TAILQ_FOREACH(shaper_profile, shaper_profile_list, node) {
 		fprintf(file,
-			"    id=%u reference_count=%u peak_rate=%" PRIu64 "Bps\n",
+			"\t       id=%u reference_count=%u peak_rate=%" PRIu64 "Bps\n",
 			shaper_profile->shaper_profile_id,
 			shaper_profile->reference_count,
 			shaper_profile->profile.peak.rate);
@@ -681,8 +681,8 @@ hns3_get_tm_conf_port_node_info(FILE *file, struct hns3_tm_conf *conf)
 		return;
 
 	fprintf(file,
-		"  port_node:\n"
-		"    node_id=%u reference_count=%u shaper_profile_id=%d\n",
+		"\t  -- port_node:\n"
+		"\t       node_id=%u reference_count=%u shaper_profile_id=%d\n",
 		conf->root->id, conf->root->reference_count,
 		conf->root->shaper_profile ?
 		(int)conf->root->shaper_profile->shaper_profile_id : -1);
@@ -699,7 +699,7 @@ hns3_get_tm_conf_tc_node_info(FILE *file, struct hns3_tm_conf *conf)
 	if (conf->nb_tc_node == 0)
 		return;
 
-	fprintf(file, "  tc_node:\n");
+	fprintf(file, "\t  -- tc_node:\n");
 	memset(tc_node, 0, sizeof(tc_node));
 	TAILQ_FOREACH(tm_node, tc_list, node) {
 		tidx = hns3_tm_calc_node_tc_no(conf, tm_node->id);
@@ -712,7 +712,7 @@ hns3_get_tm_conf_tc_node_info(FILE *file, struct hns3_tm_conf *conf)
 		if (tm_node == NULL)
 			continue;
 		fprintf(file,
-			"    id=%u TC%u reference_count=%u parent_id=%d "
+			"\t       id=%u TC%u reference_count=%u parent_id=%d "
 			"shaper_profile_id=%d\n",
 			tm_node->id, hns3_tm_calc_node_tc_no(conf, tm_node->id),
 			tm_node->reference_count,
@@ -738,7 +738,7 @@ hns3_get_tm_conf_queue_format_info(FILE *file, struct hns3_tm_node **queue_node,
 		end_queue_id = (i + 1) * HNS3_PERLINE_QUEUES - 1;
 		if (end_queue_id > nb_tx_queues - 1)
 			end_queue_id = nb_tx_queues - 1;
-		fprintf(file, "    %04u - %04u | ", start_queue_id,
+		fprintf(file, "\t       %04u - %04u | ", start_queue_id,
 			end_queue_id);
 		for (j = start_queue_id; j < nb_tx_queues; j++) {
 			if (j >= end_queue_id + 1)
@@ -767,8 +767,8 @@ hns3_get_tm_conf_queue_node_info(FILE *file, struct hns3_tm_conf *conf,
 		return;
 
 	fprintf(file,
-		"  queue_node:\n"
-		"    tx queue id | mapped tc (8 mean node not exist)\n");
+		"\t  -- queue_node:\n"
+		"\t       tx queue id | mapped tc (8 mean node not exist)\n");
 
 	memset(queue_node, 0, sizeof(queue_node));
 	memset(queue_node_tc, 0, sizeof(queue_node_tc));
@@ -918,6 +918,8 @@ hns3_eth_dev_priv_dump(struct rte_eth_dev *dev, FILE *file)
 	struct hns3_adapter *hns = dev->data->dev_private;
 	struct hns3_hw *hw = &hns->hw;
 
+	rte_spinlock_lock(&hw->lock);
+
 	hns3_get_device_basic_info(file, dev);
 	hns3_get_dev_feature_capability(file, hw);
 	hns3_get_rxtx_queue_info(file, dev);
@@ -927,14 +929,18 @@ hns3_eth_dev_priv_dump(struct rte_eth_dev *dev, FILE *file)
 	 * VF only supports dumping basic info, feature capability and queue
 	 * info.
 	 */
-	if (hns->is_vf)
+	if (hns->is_vf) {
+		rte_spinlock_unlock(&hw->lock);
 		return 0;
+	}
 
 	hns3_get_dev_mac_info(file, hns);
 	hns3_get_vlan_config_info(file, hw);
 	hns3_get_fdir_basic_info(file, &hns->pf);
 	hns3_get_tm_conf_info(file, dev);
 	hns3_get_flow_ctrl_info(file, dev);
+
+	rte_spinlock_unlock(&hw->lock);
 
 	return 0;
 }

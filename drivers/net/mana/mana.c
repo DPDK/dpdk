@@ -1260,7 +1260,7 @@ mana_probe_port(struct ibv_device *ibdev, struct ibv_device_attr_ex *dev_attr,
 	/* Create a parent domain with the port number */
 	attr.pd = priv->ib_pd;
 	attr.comp_mask = IBV_PARENT_DOMAIN_INIT_ATTR_PD_CONTEXT;
-	attr.pd_context = (void *)(uint64_t)port;
+	attr.pd_context = (void *)(uintptr_t)port;
 	priv->ib_parent_pd = ibv_alloc_parent_domain(ctx, &attr);
 	if (!priv->ib_parent_pd) {
 		DRV_LOG(ERR, "ibv_alloc_parent_domain failed port %d", port);

@@ -95,7 +95,7 @@ added to by the developer.
 * **The Programmers Guide**
 
   The Programmers Guide explains how the API components of DPDK such as the EAL, Memzone, Rings and the Hash Library work.
-  It also explains how some higher level functionality such as Packet Distributor, Packet Framework and KNI work.
+  It also describes some of the higher level functionality such as Packet Distributor and Packet Framework.
   It also shows the build system and explains how to add applications.
 
   The Programmers Guide should be expanded when new functionality is added to DPDK.
@@ -182,7 +182,17 @@ To build the documentation::
 
 See :doc:`../linux_gsg/build_dpdk` for more detail on compiling DPDK with meson.
 
-The output is generated in the directories ``build/doc/html/{api,guides}``.
+The output is generated in the directory ``build/doc/``, with:
+
+* HTML versions of the guide docs, e.g. Getting Started Guides, Programmers Guide, in ``build/doc/guides/html``
+* HTML version of the API documentation in ``build/doc/api/html``
+* Man-page version of the API documentation in ``build/doc/api/man``.
+  If not installing DPDK system-wise, these pages can be accessed by adding this directory to the ``MANPATH`` environment variable.
+  For example:
+
+.. code-block:: console
+
+   export MANPATH=:/path/to/build/doc/api/man
 
 .. Note::
 

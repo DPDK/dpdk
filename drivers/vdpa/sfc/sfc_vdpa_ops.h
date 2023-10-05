@@ -6,6 +6,7 @@
 #define _SFC_VDPA_OPS_H
 
 #include <rte_vdpa.h>
+#include <rte_thread.h>
 
 #define SFC_VDPA_MAX_QUEUE_PAIRS		8
 
@@ -48,7 +49,7 @@ struct sfc_vdpa_ops_data {
 	struct rte_vdpa_device		*vdpa_dev;
 	enum sfc_vdpa_context		vdpa_context;
 	enum sfc_vdpa_state		state;
-	pthread_t			notify_tid;
+	rte_thread_t			notify_tid;
 	bool				is_notify_thread_started;
 
 	uint64_t			dev_features;

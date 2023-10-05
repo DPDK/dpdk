@@ -7,7 +7,7 @@ import os, re, subprocess, sys
 
 pattern = re.compile('^Preprocessing (.*)...$')
 out_dir, *doxygen_command = sys.argv[1:]
-out_file = os.path.join(os.path.dirname(out_dir), 'doxygen.out')
+out_file = os.path.join(out_dir + '.out')
 dep_file = f'{out_dir}.d'
 with open(out_file, 'w') as out:
     subprocess.run(doxygen_command, check=True, stdout=out)

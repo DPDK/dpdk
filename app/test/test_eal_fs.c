@@ -185,4 +185,4 @@ test_eal_fs(void)
 
 #endif /* !RTE_EXEC_ENV_WINDOWS */
 
-REGISTER_TEST_COMMAND(eal_fs_autotest, test_eal_fs);
+REGISTER_FAST_TEST(eal_fs_autotest, true, true, test_eal_fs);

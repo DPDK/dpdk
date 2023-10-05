@@ -8,6 +8,7 @@
 #include <stdint.h>
 
 #include <rte_common.h>
+#include <rte_bitops.h>
 
 #include "rte_reciprocal.h"
 
@@ -54,7 +55,7 @@ divide_128_div_64_to_64(uint64_t u1, uint64_t u0, uint64_t v, uint64_t *r)
 	}
 
 	/* Count leading zeros. */
-	s = __builtin_clzll(v);
+	s = rte_clz64(v);
 	if (s > 0) {
 		v = v << s;
 		un64 = (u1 << s) | ((u0 >> (64 - s)) & (-s >> 31));
@@ -106,7 +107,7 @@ rte_reciprocal_value_u64(uint64_t d)
 	uint64_t r;
 	int l;
 
-	l = 63 - __builtin_clzll(d);
+	l = 63 - rte_clz64(d);
 
 	m = divide_128_div_64_to_64((1ULL << l), 0, d, &r) << 1;
 	if (r << 1 < r || r << 1 >= d)

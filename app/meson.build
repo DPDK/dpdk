@@ -1,6 +1,10 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2017-2019 Intel Corporation
 
+if is_ms_compiler
+    subdir_done()
+endif
+
 disable_apps = ',' + get_option('disable_apps')
 disable_apps = run_command(list_dir_globs, disable_apps, check: true).stdout().split()
 
@@ -32,13 +36,16 @@ apps = [
         'test-security-perf',
 ]
 
+if get_option('tests')
+# build the auto test app if enabled.
+    apps += 'test'
+endif
+
 default_cflags = machine_args + ['-DALLOW_EXPERIMENTAL_API']
 default_ldflags = []
 if get_option('default_library') == 'static' and not is_windows
     default_ldflags += ['-Wl,--export-dynamic']
 endif
-
-enabled_apps = [] # used to print summary at the end
 
 foreach app:apps
     name = app
@@ -90,13 +97,13 @@ foreach app:apps
         continue
     endif
 
-    enabled_apps += app
+    dpdk_apps_enabled += app
     link_libs = []
     if get_option('default_library') == 'static'
         link_libs = dpdk_static_libraries + dpdk_drivers
     endif
 
-    executable('dpdk-' + name,
+    exec = executable('dpdk-' + name,
             sources,
             c_args: cflags,
             link_args: ldflags,
@@ -105,7 +112,9 @@ foreach app:apps
             include_directories: includes,
             install_rpath: join_paths(get_option('prefix'), driver_install_path),
             install: true)
+    if name == 'test'
+        dpdk_test = exec
+        autotest_sources = sources
+        subdir('test/suites')  # define the pre-canned test suites
+    endif
 endforeach
-
-# special case the autotests
-subdir('test')

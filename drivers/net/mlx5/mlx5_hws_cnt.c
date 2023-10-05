@@ -9,6 +9,7 @@
 #include <mlx5_devx_cmds.h>
 #include <rte_cycles.h>
 #include <rte_eal_paging.h>
+#include <rte_thread.h>
 
 #if defined(HAVE_IBV_FLOW_DV_SUPPORT) || !defined(HAVE_INFINIBAND_VERBS_H)
 
@@ -286,7 +287,7 @@ error:
 	return NULL;
 }
 
-static void *
+static uint32_t
 mlx5_hws_cnt_svc(void *opaque)
 {
 	struct mlx5_dev_ctx_shared *sh =
@@ -318,7 +319,7 @@ mlx5_hws_cnt_svc(void *opaque)
 		if (interval > query_us)
 			rte_delay_us_sleep(sleep_us);
 	}
-	return NULL;
+	return 0;
 }
 
 static void
@@ -438,38 +439,37 @@ error:
 int
 mlx5_hws_cnt_service_thread_create(struct mlx5_dev_ctx_shared *sh)
 {
-#define CNT_THREAD_NAME_MAX 256
-	char name[CNT_THREAD_NAME_MAX];
-	rte_cpuset_t cpuset;
+	char name[RTE_THREAD_INTERNAL_NAME_SIZE];
+	rte_thread_attr_t attr;
 	int ret;
 	uint32_t service_core = sh->cnt_svc->service_core;
 
-	CPU_ZERO(&cpuset);
+	ret = rte_thread_attr_init(&attr);
+	if (ret != 0)
+		goto error;
+	CPU_SET(service_core, &attr.cpuset);
 	sh->cnt_svc->svc_running = 1;
-	ret = pthread_create(&sh->cnt_svc->service_thread, NULL,
-			mlx5_hws_cnt_svc, sh);
-	if (ret != 0) {
-		DRV_LOG(ERR, "Failed to create HW steering's counter service thread.");
-		return -ENOSYS;
-	}
-	snprintf(name, CNT_THREAD_NAME_MAX - 1, "%s/svc@%d",
-		 sh->ibdev_name, service_core);
-	rte_thread_set_name((rte_thread_t){(uintptr_t)sh->cnt_svc->service_thread},
-		name);
-	CPU_SET(service_core, &cpuset);
-	pthread_setaffinity_np(sh->cnt_svc->service_thread, sizeof(cpuset),
-				&cpuset);
+	ret = rte_thread_create(&sh->cnt_svc->service_thread,
+			&attr, mlx5_hws_cnt_svc, sh);
+	if (ret != 0)
+		goto error;
+	snprintf(name, sizeof(name), "mlx5-cn%d", service_core);
+	rte_thread_set_prefixed_name(sh->cnt_svc->service_thread, name);
+
 	return 0;
+error:
+	DRV_LOG(ERR, "Failed to create HW steering's counter service thread.");
+	return ret;
 }
 
 void
 mlx5_hws_cnt_service_thread_destroy(struct mlx5_dev_ctx_shared *sh)
 {
-	if (sh->cnt_svc->service_thread == 0)
+	if (sh->cnt_svc->service_thread.opaque_id == 0)
 		return;
 	sh->cnt_svc->svc_running = 0;
-	pthread_join(sh->cnt_svc->service_thread, NULL);
-	sh->cnt_svc->service_thread = 0;
+	rte_thread_join(sh->cnt_svc->service_thread, NULL);
+	sh->cnt_svc->service_thread.opaque_id = 0;
 }
 
 static int

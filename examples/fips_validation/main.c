@@ -2034,7 +2034,7 @@ fips_mct_tdes_test(void)
 		}
 
 		for (k = 0; k < 24; k++)
-			val_key.val[k] = (__builtin_popcount(val_key.val[k]) &
+			val_key.val[k] = (rte_popcount32(val_key.val[k]) &
 					0x1) ?
 					val_key.val[k] : (val_key.val[k] ^ 0x1);
 

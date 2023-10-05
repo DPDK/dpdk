@@ -6,6 +6,7 @@
 #include <errno.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <pthread.h>
 
 #include <rte_common.h>
 #include <rte_errno.h>

@@ -3262,7 +3262,7 @@ test_bpf(void)
 
 #endif /* !RTE_LIB_BPF */
 
-REGISTER_TEST_COMMAND(bpf_autotest, test_bpf);
+REGISTER_FAST_TEST(bpf_autotest, true, true, test_bpf);
 
 #ifndef RTE_HAS_LIBPCAP
 
@@ -3473,4 +3473,4 @@ test_bpf_convert(void)
 
 #endif /* RTE_HAS_LIBPCAP */
 
-REGISTER_TEST_COMMAND(bpf_convert_autotest, test_bpf_convert);
+REGISTER_FAST_TEST(bpf_convert_autotest, true, true, test_bpf_convert);

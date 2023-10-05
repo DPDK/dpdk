@@ -12,6 +12,7 @@ Programmer's Guide
     overview
     source_org
     env_abstraction_layer
+    log_lib
     service_cores
     trace_lib
     rcu_lib
@@ -43,7 +44,6 @@ Programmer's Guide
     lpm6_lib
     fib_lib
     rib_lib
-    flow_classify_lib
     packet_distrib_lib
     reorder_lib
     ip_fragment_reassembly_lib
@@ -54,7 +54,6 @@ Programmer's Guide
     pcapng_lib
     pdump_lib
     multi_proc_support
-    kernel_nic_interface
     thread_safety_dpdk_functions
     eventdev
     event_ethernet_rx_adapter

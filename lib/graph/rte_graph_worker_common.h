@@ -59,7 +59,6 @@ struct rte_graph {
 	uint8_t model;		     /**< graph model */
 	uint8_t reserved1;	     /**< Reserved for future use. */
 	uint16_t reserved2;	     /**< Reserved for future use. */
-	RTE_STD_C11
 	union {
 		/* Fast schedule area for mcore dispatch model */
 		struct {
@@ -105,7 +104,6 @@ struct rte_node {
 	/** Original process function when pcap is enabled. */
 	rte_node_process_t original_process;
 
-	RTE_STD_C11
 	union {
 		/* Fast schedule area for mcore dispatch model */
 		struct {
@@ -123,12 +121,10 @@ struct rte_node {
 	uint64_t total_cycles;	/**< Cycles spent in this node. */
 	uint64_t total_calls;	/**< Calls done to this node. */
 	uint64_t total_objs;	/**< Objects processed by this node. */
-	RTE_STD_C11
 		union {
 			void **objs;	   /**< Array of object pointers. */
 			uint64_t objs_u64;
 		};
-	RTE_STD_C11
 		union {
 			rte_node_process_t process; /**< Process function. */
 			uint64_t process_u64;

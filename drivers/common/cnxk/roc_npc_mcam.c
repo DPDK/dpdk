@@ -745,7 +745,7 @@ npc_mcam_alloc_and_write(struct npc *npc, struct roc_npc_flow *flow, struct npc_
 		 * For all other rules, set LA LTYPE to match both 1st pass and 2nd pass ltypes.
 		 */
 		if (pst->is_second_pass_rule || (!pst->is_second_pass_rule && pst->has_eth_type)) {
-			la_offset = __builtin_popcount(npc->keyx_supp_nmask[flow->nix_intf] &
+			la_offset = rte_popcount32(npc->keyx_supp_nmask[flow->nix_intf] &
 						       ((1ULL << 9 /* LA offset */) - 1));
 			la_offset *= 4;
 
@@ -790,7 +790,7 @@ npc_set_vlan_ltype(struct npc_parse_state *pst)
 	uint8_t lb_offset;
 
 	lb_offset =
-		__builtin_popcount(pst->npc->keyx_supp_nmask[pst->nix_intf] &
+		rte_popcount32(pst->npc->keyx_supp_nmask[pst->nix_intf] &
 				   ((1ULL << NPC_LTYPE_LB_OFFSET) - 1));
 	lb_offset *= 4;
 
@@ -812,7 +812,7 @@ npc_set_ipv6ext_ltype_mask(struct npc_parse_state *pst)
 	uint64_t val, mask;
 
 	lc_offset =
-		__builtin_popcount(pst->npc->keyx_supp_nmask[pst->nix_intf] &
+		rte_popcount32(pst->npc->keyx_supp_nmask[pst->nix_intf] &
 				   ((1ULL << NPC_LTYPE_LC_OFFSET) - 1));
 	lc_offset *= 4;
 
@@ -835,7 +835,7 @@ npc_set_ipv6ext_ltype_mask(struct npc_parse_state *pst)
 	 * zero in LFLAG.
 	 */
 	if (pst->npc->keyx_supp_nmask[pst->nix_intf] & (1ULL << NPC_LFLAG_LC_OFFSET)) {
-		lcflag_offset = __builtin_popcount(pst->npc->keyx_supp_nmask[pst->nix_intf] &
+		lcflag_offset = rte_popcount32(pst->npc->keyx_supp_nmask[pst->nix_intf] &
 						   ((1ULL << NPC_LFLAG_LC_OFFSET) - 1));
 		lcflag_offset *= 4;
 

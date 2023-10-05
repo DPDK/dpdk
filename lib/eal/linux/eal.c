@@ -50,10 +50,10 @@
 #include "eal_hugepages.h"
 #include "eal_memcfg.h"
 #include "eal_trace.h"
-#include "eal_log.h"
 #include "eal_options.h"
 #include "eal_vfio.h"
 #include "hotplug_mp.h"
+#include "log_internal.h"
 
 #define MEMSIZE_IF_NO_HUGE_PAGE (64ULL * 1024ULL * 1024ULL)
 
@@ -970,7 +970,7 @@ rte_eal_init(int argc, char **argv)
 	static uint32_t run_once;
 	uint32_t has_run = 0;
 	char cpuset[RTE_CPU_AFFINITY_STR_LEN];
-	char thread_name[RTE_MAX_THREAD_NAME_LEN];
+	char thread_name[RTE_THREAD_NAME_SIZE];
 	bool phys_addrs;
 	const struct rte_config *config = rte_eal_get_configuration();
 	struct internal_config *internal_conf =
@@ -1084,11 +1084,6 @@ rte_eal_init(int argc, char **argv)
 				 */
 				iova_mode = RTE_IOVA_VA;
 				RTE_LOG(DEBUG, EAL, "Physical addresses are unavailable, selecting IOVA as VA mode.\n");
-#if defined(RTE_LIB_KNI) && LINUX_VERSION_CODE >= KERNEL_VERSION(4, 10, 0)
-			} else if (rte_eal_check_module("rte_kni") == 1) {
-				iova_mode = RTE_IOVA_PA;
-				RTE_LOG(DEBUG, EAL, "KNI is loaded, selecting IOVA as PA mode for better KNI performance.\n");
-#endif
 			} else if (is_iommu_enabled()) {
 				/* we have an IOMMU, pick IOVA as VA mode */
 				iova_mode = RTE_IOVA_VA;
@@ -1101,20 +1096,6 @@ rte_eal_init(int argc, char **argv)
 				RTE_LOG(DEBUG, EAL, "IOMMU is not available, selecting IOVA as PA mode.\n");
 			}
 		}
-#if defined(RTE_LIB_KNI) && LINUX_VERSION_CODE < KERNEL_VERSION(4, 10, 0)
-		/* Workaround for KNI which requires physical address to work
-		 * in kernels < 4.10
-		 */
-		if (iova_mode == RTE_IOVA_VA &&
-				rte_eal_check_module("rte_kni") == 1) {
-			if (phys_addrs) {
-				iova_mode = RTE_IOVA_PA;
-				RTE_LOG(WARNING, EAL, "Forcing IOVA as 'PA' because KNI module is loaded\n");
-			} else {
-				RTE_LOG(DEBUG, EAL, "KNI can not work since physical addresses are unavailable\n");
-			}
-		}
-#endif
 		rte_eal_get_configuration()->iova_mode = iova_mode;
 	} else {
 		rte_eal_get_configuration()->iova_mode =
@@ -1272,7 +1253,7 @@ rte_eal_init(int argc, char **argv)
 
 		/* Set thread_name for aid in debugging. */
 		snprintf(thread_name, sizeof(thread_name),
-			"rte-worker-%d", i);
+			"dpdk-worker%d", i);
 		rte_thread_set_name(lcore_config[i].thread_id, thread_name);
 
 		ret = rte_thread_set_affinity_by_id(lcore_config[i].thread_id,
@@ -1333,13 +1314,9 @@ rte_eal_init(int argc, char **argv)
 		return -1;
 	}
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY && !internal_conf->no_telemetry) {
-		int tlog = rte_log_register_type_and_pick_level(
-				"lib.telemetry", RTE_LOG_WARNING);
-		if (tlog < 0)
-			tlog = RTE_LOGTYPE_EAL;
 		if (rte_telemetry_init(rte_eal_get_runtime_dir(),
 				rte_version(),
-				&internal_conf->ctrl_cpuset, rte_log, tlog) != 0)
+				&internal_conf->ctrl_cpuset) != 0)
 			return -1;
 	}
 

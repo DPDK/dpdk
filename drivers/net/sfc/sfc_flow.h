@@ -98,6 +98,7 @@ struct rte_flow_action_handle {
 	enum rte_flow_action_type		type;
 
 	union {
+		struct sfc_mae_encap_header	*encap_header;
 		struct sfc_mae_counter		*counter;
 	};
 };
@@ -109,7 +110,6 @@ struct sfc_flow_spec {
 	/* Flow specification type (engine-based) */
 	enum sfc_flow_spec_type type;
 
-	RTE_STD_C11
 	union {
 		/* Filter-based (VNIC level flows) specification */
 		struct sfc_flow_spec_filter filter;
@@ -149,7 +149,6 @@ enum sfc_flow_parse_ctx_type {
 struct sfc_flow_parse_ctx {
 	enum sfc_flow_parse_ctx_type type;
 
-	RTE_STD_C11
 	union {
 		/* Context pointer valid for filter-based (VNIC) flows */
 		efx_filter_spec_t *filter;

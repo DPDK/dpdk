@@ -496,6 +496,7 @@ static const struct eth_dev_ops i40e_eth_dev_ops = {
 	.flow_ops_get                 = i40e_dev_flow_ops_get,
 	.rxq_info_get                 = i40e_rxq_info_get,
 	.txq_info_get                 = i40e_txq_info_get,
+	.recycle_rxq_info_get         = i40e_recycle_rxq_info_get,
 	.rx_burst_mode_get            = i40e_rx_burst_mode_get,
 	.tx_burst_mode_get            = i40e_tx_burst_mode_get,
 	.timesync_enable              = i40e_timesync_enable,

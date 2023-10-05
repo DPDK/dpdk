@@ -1091,4 +1091,4 @@ test_malloc(void)
 	return 0;
 }
 
-REGISTER_TEST_COMMAND(malloc_autotest, test_malloc);
+REGISTER_FAST_TEST(malloc_autotest, false, true, test_malloc);

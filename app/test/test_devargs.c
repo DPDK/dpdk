@@ -213,4 +213,4 @@ test_devargs(void)
 	return 0;
 }
 
-REGISTER_TEST_COMMAND(devargs_autotest, test_devargs);
+REGISTER_FAST_TEST(devargs_autotest, true, true, test_devargs);

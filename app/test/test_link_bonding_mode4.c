@@ -31,7 +31,7 @@
 
 #include "test.h"
 
-#define SLAVE_COUNT (4)
+#define MEMBER_COUNT (4)
 
 #define RX_RING_SIZE 1024
 #define TX_RING_SIZE 1024
@@ -44,17 +44,17 @@
 #define MAX_PKT_BURST           (32)
 #define DEF_PKT_BURST           (16)
 
-#define BONDED_DEV_NAME         ("net_bonding_m4_bond_dev")
+#define BONDING_DEV_NAME         ("net_bonding_m4_bond_dev")
 
-#define SLAVE_DEV_NAME_FMT      ("net_virt_%d")
-#define SLAVE_RX_QUEUE_FMT      ("net_virt_%d_rx")
-#define SLAVE_TX_QUEUE_FMT      ("net_virt_%d_tx")
+#define MEMBER_DEV_NAME_FMT      ("net_virt_%d")
+#define MEMBER_RX_QUEUE_FMT      ("net_virt_%d_rx")
+#define MEMBER_TX_QUEUE_FMT      ("net_virt_%d_tx")
 
 #define INVALID_SOCKET_ID       (-1)
 #define INVALID_PORT_ID         (0xFF)
 #define INVALID_BONDING_MODE    (-1)
 
-static const struct rte_ether_addr slave_mac_default = {
+static const struct rte_ether_addr member_mac_default = {
 	{ 0x00, 0xFF, 0x00, 0xFF, 0x00, 0x00 }
 };
 
@@ -70,11 +70,11 @@ static const struct rte_ether_addr slow_protocol_mac_addr = {
 	{ 0x01, 0x80, 0xC2, 0x00, 0x00, 0x02 }
 };
 
-struct slave_conf {
+struct member_conf {
 	struct rte_ring *rx_queue;
 	struct rte_ring *tx_queue;
 	uint16_t port_id;
-	uint8_t bonded : 1;
+	uint8_t bonding : 1;
 
 	uint8_t lacp_parnter_state;
 };
@@ -85,22 +85,22 @@ struct ether_vlan_hdr {
 };
 
 struct link_bonding_unittest_params {
-	uint8_t bonded_port_id;
-	struct slave_conf slave_ports[SLAVE_COUNT];
+	uint8_t bonding_port_id;
+	struct member_conf member_ports[MEMBER_COUNT];
 
 	struct rte_mempool *mbuf_pool;
 };
 
-#define TEST_DEFAULT_SLAVE_COUNT     RTE_DIM(test_params.slave_ports)
-#define TEST_RX_SLAVE_COUT           TEST_DEFAULT_SLAVE_COUNT
-#define TEST_TX_SLAVE_COUNT          TEST_DEFAULT_SLAVE_COUNT
-#define TEST_MARKER_SLAVE_COUT       TEST_DEFAULT_SLAVE_COUNT
-#define TEST_EXPIRED_SLAVE_COUNT     TEST_DEFAULT_SLAVE_COUNT
-#define TEST_PROMISC_SLAVE_COUNT     TEST_DEFAULT_SLAVE_COUNT
+#define TEST_DEFAULT_MEMBER_COUNT     RTE_DIM(test_params.member_ports)
+#define TEST_RX_MEMBER_COUT           TEST_DEFAULT_MEMBER_COUNT
+#define TEST_TX_MEMBER_COUNT          TEST_DEFAULT_MEMBER_COUNT
+#define TEST_MARKER_MEMBER_COUT       TEST_DEFAULT_MEMBER_COUNT
+#define TEST_EXPIRED_MEMBER_COUNT     TEST_DEFAULT_MEMBER_COUNT
+#define TEST_PROMISC_MEMBER_COUNT     TEST_DEFAULT_MEMBER_COUNT
 
 static struct link_bonding_unittest_params test_params  = {
-	.bonded_port_id = INVALID_PORT_ID,
-	.slave_ports = { [0 ... SLAVE_COUNT - 1] = { .port_id = INVALID_PORT_ID} },
+	.bonding_port_id = INVALID_PORT_ID,
+	.member_ports = { [0 ... MEMBER_COUNT - 1] = { .port_id = INVALID_PORT_ID} },
 
 	.mbuf_pool = NULL,
 };
@@ -120,71 +120,71 @@ static uint8_t lacpdu_rx_count[RTE_MAX_ETHPORTS] = {0, };
 #define FOR_EACH(_i, _item, _array, _size) \
 	for (_i = 0, _item = &_array[0]; _i < _size && (_item = &_array[_i]); _i++)
 
-/* Macro for iterating over every port that can be used as a slave
+/* Macro for iterating over every port that can be used as a member
  * in this test.
- * _i variable used as an index in test_params->slave_ports
- * _slave pointer to &test_params->slave_ports[_idx]
+ * _i variable used as an index in test_params->member_ports
+ * _member pointer to &test_params->member_ports[_idx]
  */
 #define FOR_EACH_PORT(_i, _port) \
-	FOR_EACH(_i, _port, test_params.slave_ports, \
-		RTE_DIM(test_params.slave_ports))
+	FOR_EACH(_i, _port, test_params.member_ports, \
+		RTE_DIM(test_params.member_ports))
 
-/* Macro for iterating over every port that can be used as a slave
+/* Macro for iterating over every port that can be used as a member
  * in this test and satisfy given condition.
  *
- * _i variable used as an index in test_params->slave_ports
- * _slave pointer to &test_params->slave_ports[_idx]
+ * _i variable used as an index in test_params->member_ports
+ * _member pointer to &test_params->member_ports[_idx]
  * _condition condition that need to be checked
  */
 #define FOR_EACH_PORT_IF(_i, _port, _condition) FOR_EACH_PORT((_i), (_port)) \
 	if (!!(_condition))
 
-/* Macro for iterating over every port that is currently a slave of a bonded
+/* Macro for iterating over every port that is currently a member of a bonding
  * device.
- * _i variable used as an index in test_params->slave_ports
- * _slave pointer to &test_params->slave_ports[_idx]
+ * _i variable used as an index in test_params->member_ports
+ * _member pointer to &test_params->member_ports[_idx]
  * */
-#define FOR_EACH_SLAVE(_i, _slave) \
-	FOR_EACH_PORT_IF(_i, _slave, (_slave)->bonded != 0)
+#define FOR_EACH_MEMBER(_i, _member) \
+	FOR_EACH_PORT_IF(_i, _member, (_member)->bonding != 0)
 
 /*
- * Returns packets from slaves TX queue.
- * slave slave port
+ * Returns packets from members TX queue.
+ * member port
  * buffer for packets
  * size size of buffer
  * return number of packets or negative error number
  */
 static int
-slave_get_pkts(struct slave_conf *slave, struct rte_mbuf **buf, uint16_t size)
+member_get_pkts(struct member_conf *member, struct rte_mbuf **buf, uint16_t size)
 {
-	return rte_ring_dequeue_burst(slave->tx_queue, (void **)buf,
+	return rte_ring_dequeue_burst(member->tx_queue, (void **)buf,
 			size, NULL);
 }
 
 /*
- * Injects given packets into slaves RX queue.
- * slave slave port
+ * Injects given packets into members RX queue.
+ * member port
  * buffer for packets
  * size number of packets to be injected
  * return number of queued packets or negative error number
  */
 static int
-slave_put_pkts(struct slave_conf *slave, struct rte_mbuf **buf, uint16_t size)
+member_put_pkts(struct member_conf *member, struct rte_mbuf **buf, uint16_t size)
 {
-	return rte_ring_enqueue_burst(slave->rx_queue, (void **)buf,
+	return rte_ring_enqueue_burst(member->rx_queue, (void **)buf,
 			size, NULL);
 }
 
 static uint16_t
 bond_rx(struct rte_mbuf **buf, uint16_t size)
 {
-	return rte_eth_rx_burst(test_params.bonded_port_id, 0, buf, size);
+	return rte_eth_rx_burst(test_params.bonding_port_id, 0, buf, size);
 }
 
 static uint16_t
 bond_tx(struct rte_mbuf **buf, uint16_t size)
 {
-	return rte_eth_tx_burst(test_params.bonded_port_id, 0, buf, size);
+	return rte_eth_tx_burst(test_params.bonding_port_id, 0, buf, size);
 }
 
 static void
@@ -219,79 +219,79 @@ configure_ethdev(uint16_t port_id, uint8_t start)
 }
 
 static int
-add_slave(struct slave_conf *slave, uint8_t start)
+add_member(struct member_conf *member, uint8_t start)
 {
 	struct rte_ether_addr addr, addr_check;
 	int retval;
 
 	/* Some sanity check */
-	RTE_VERIFY(test_params.slave_ports <= slave &&
-		slave - test_params.slave_ports < (int)RTE_DIM(test_params.slave_ports));
-	RTE_VERIFY(slave->bonded == 0);
-	RTE_VERIFY(slave->port_id != INVALID_PORT_ID);
+	RTE_VERIFY(test_params.member_ports <= member &&
+		member - test_params.member_ports < (int)RTE_DIM(test_params.member_ports));
+	RTE_VERIFY(member->bonding == 0);
+	RTE_VERIFY(member->port_id != INVALID_PORT_ID);
 
-	rte_ether_addr_copy(&slave_mac_default, &addr);
-	addr.addr_bytes[RTE_ETHER_ADDR_LEN - 1] = slave->port_id;
+	rte_ether_addr_copy(&member_mac_default, &addr);
+	addr.addr_bytes[RTE_ETHER_ADDR_LEN - 1] = member->port_id;
 
-	rte_eth_dev_mac_addr_remove(slave->port_id, &addr);
+	rte_eth_dev_mac_addr_remove(member->port_id, &addr);
 
-	TEST_ASSERT_SUCCESS(rte_eth_dev_mac_addr_add(slave->port_id, &addr, 0),
-		"Failed to set slave MAC address");
+	TEST_ASSERT_SUCCESS(rte_eth_dev_mac_addr_add(member->port_id, &addr, 0),
+		"Failed to set member MAC address");
 
-	TEST_ASSERT_SUCCESS(rte_eth_bond_slave_add(test_params.bonded_port_id,
-		slave->port_id),
-			"Failed to add slave (idx=%u, id=%u) to bonding (id=%u)",
-			(uint8_t)(slave - test_params.slave_ports), slave->port_id,
-			test_params.bonded_port_id);
+	TEST_ASSERT_SUCCESS(rte_eth_bond_member_add(test_params.bonding_port_id,
+		member->port_id),
+			"Failed to add member (idx=%u, id=%u) to bonding (id=%u)",
+			(uint8_t)(member - test_params.member_ports), member->port_id,
+			test_params.bonding_port_id);
 
-	slave->bonded = 1;
+	member->bonding = 1;
 	if (start) {
-		TEST_ASSERT_SUCCESS(rte_eth_dev_start(slave->port_id),
-			"Failed to start slave %u", slave->port_id);
+		TEST_ASSERT_SUCCESS(rte_eth_dev_start(member->port_id),
+			"Failed to start member %u", member->port_id);
 	}
 
-	retval = rte_eth_macaddr_get(slave->port_id, &addr_check);
-	TEST_ASSERT_SUCCESS(retval, "Failed to get slave mac address: %s",
+	retval = rte_eth_macaddr_get(member->port_id, &addr_check);
+	TEST_ASSERT_SUCCESS(retval, "Failed to get member mac address: %s",
 			    strerror(-retval));
 	TEST_ASSERT_EQUAL(rte_is_same_ether_addr(&addr, &addr_check), 1,
-			"Slave MAC address is not as expected");
+			"Member MAC address is not as expected");
 
-	RTE_VERIFY(slave->lacp_parnter_state == 0);
+	RTE_VERIFY(member->lacp_parnter_state == 0);
 	return 0;
 }
 
 static int
-remove_slave(struct slave_conf *slave)
+remove_member(struct member_conf *member)
 {
-	ptrdiff_t slave_idx = slave - test_params.slave_ports;
+	ptrdiff_t member_idx = member - test_params.member_ports;
 
-	RTE_VERIFY(test_params.slave_ports <= slave &&
-		slave_idx < (ptrdiff_t)RTE_DIM(test_params.slave_ports));
+	RTE_VERIFY(test_params.member_ports <= member &&
+		member_idx < (ptrdiff_t)RTE_DIM(test_params.member_ports));
 
-	RTE_VERIFY(slave->bonded == 1);
-	RTE_VERIFY(slave->port_id != INVALID_PORT_ID);
+	RTE_VERIFY(member->bonding == 1);
+	RTE_VERIFY(member->port_id != INVALID_PORT_ID);
 
-	TEST_ASSERT_EQUAL(rte_ring_count(slave->rx_queue), 0,
-		"Slave %u tx queue not empty while removing from bonding.",
-		slave->port_id);
+	TEST_ASSERT_EQUAL(rte_ring_count(member->rx_queue), 0,
+		"Member %u tx queue not empty while removing from bonding.",
+		member->port_id);
 
-	TEST_ASSERT_EQUAL(rte_ring_count(slave->rx_queue), 0,
-		"Slave %u tx queue not empty while removing from bonding.",
-		slave->port_id);
+	TEST_ASSERT_EQUAL(rte_ring_count(member->rx_queue), 0,
+		"Member %u tx queue not empty while removing from bonding.",
+		member->port_id);
 
-	TEST_ASSERT_EQUAL(rte_eth_bond_slave_remove(test_params.bonded_port_id,
-			slave->port_id), 0,
-			"Failed to remove slave (idx=%u, id=%u) from bonding (id=%u)",
-			(uint8_t)slave_idx, slave->port_id,
-			test_params.bonded_port_id);
+	TEST_ASSERT_EQUAL(rte_eth_bond_member_remove(test_params.bonding_port_id,
+			member->port_id), 0,
+			"Failed to remove member (idx=%u, id=%u) from bonding (id=%u)",
+			(uint8_t)member_idx, member->port_id,
+			test_params.bonding_port_id);
 
-	slave->bonded = 0;
-	slave->lacp_parnter_state = 0;
+	member->bonding = 0;
+	member->lacp_parnter_state = 0;
 	return 0;
 }
 
 static void
-lacp_recv_cb(uint16_t slave_id, struct rte_mbuf *lacp_pkt)
+lacp_recv_cb(uint16_t member_id, struct rte_mbuf *lacp_pkt)
 {
 	struct rte_ether_hdr *hdr;
 	struct slow_protocol_frame *slow_hdr;
@@ -304,75 +304,75 @@ lacp_recv_cb(uint16_t slave_id, struct rte_mbuf *lacp_pkt)
 	slow_hdr = rte_pktmbuf_mtod(lacp_pkt, struct slow_protocol_frame *);
 	RTE_VERIFY(slow_hdr->slow_protocol.subtype == SLOW_SUBTYPE_LACP);
 
-	lacpdu_rx_count[slave_id]++;
+	lacpdu_rx_count[member_id]++;
 	rte_pktmbuf_free(lacp_pkt);
 }
 
 static int
-initialize_bonded_device_with_slaves(uint16_t slave_count, uint8_t external_sm)
+initialize_bonding_device_with_members(uint16_t member_count, uint8_t external_sm)
 {
 	uint8_t i;
 	int ret;
 
-	RTE_VERIFY(test_params.bonded_port_id != INVALID_PORT_ID);
+	RTE_VERIFY(test_params.bonding_port_id != INVALID_PORT_ID);
 
-	for (i = 0; i < slave_count; i++) {
-		TEST_ASSERT_SUCCESS(add_slave(&test_params.slave_ports[i], 1),
-			"Failed to add port %u to bonded device.\n",
-			test_params.slave_ports[i].port_id);
+	for (i = 0; i < member_count; i++) {
+		TEST_ASSERT_SUCCESS(add_member(&test_params.member_ports[i], 1),
+			"Failed to add port %u to bonding device.\n",
+			test_params.member_ports[i].port_id);
 	}
 
 	/* Reset mode 4 configuration */
-	rte_eth_bond_8023ad_setup(test_params.bonded_port_id, NULL);
-	ret = rte_eth_promiscuous_disable(test_params.bonded_port_id);
+	rte_eth_bond_8023ad_setup(test_params.bonding_port_id, NULL);
+	ret = rte_eth_promiscuous_disable(test_params.bonding_port_id);
 	TEST_ASSERT_SUCCESS(ret,
 		"Failed disable promiscuous mode for port %d: %s",
-		test_params.bonded_port_id, rte_strerror(-ret));
+		test_params.bonding_port_id, rte_strerror(-ret));
 
 	if (external_sm) {
 		struct rte_eth_bond_8023ad_conf conf;
 
-		rte_eth_bond_8023ad_conf_get(test_params.bonded_port_id, &conf);
+		rte_eth_bond_8023ad_conf_get(test_params.bonding_port_id, &conf);
 		conf.slowrx_cb = lacp_recv_cb;
-		rte_eth_bond_8023ad_setup(test_params.bonded_port_id, &conf);
+		rte_eth_bond_8023ad_setup(test_params.bonding_port_id, &conf);
 
 	}
 
-	TEST_ASSERT_SUCCESS(rte_eth_dev_start(test_params.bonded_port_id),
-		"Failed to start bonded device");
+	TEST_ASSERT_SUCCESS(rte_eth_dev_start(test_params.bonding_port_id),
+		"Failed to start bonding device");
 
 	return TEST_SUCCESS;
 }
 
 static int
-remove_slaves_and_stop_bonded_device(void)
+remove_members_and_stop_bonding_device(void)
 {
-	struct slave_conf *slave;
+	struct member_conf *member;
 	int retval;
-	uint16_t slaves[RTE_MAX_ETHPORTS];
+	uint16_t members[RTE_MAX_ETHPORTS];
 	uint16_t i;
 
-	TEST_ASSERT_SUCCESS(rte_eth_dev_stop(test_params.bonded_port_id),
-			"Failed to stop bonded port %u",
-			test_params.bonded_port_id);
+	TEST_ASSERT_SUCCESS(rte_eth_dev_stop(test_params.bonding_port_id),
+			"Failed to stop bonding port %u",
+			test_params.bonding_port_id);
 
-	FOR_EACH_SLAVE(i, slave)
-		remove_slave(slave);
+	FOR_EACH_MEMBER(i, member)
+		remove_member(member);
 
-	retval = rte_eth_bond_slaves_get(test_params.bonded_port_id, slaves,
-		RTE_DIM(slaves));
+	retval = rte_eth_bond_members_get(test_params.bonding_port_id, members,
+		RTE_DIM(members));
 
 	TEST_ASSERT_EQUAL(retval, 0,
-		"Expected bonded device %u have 0 slaves but returned %d.",
-			test_params.bonded_port_id, retval);
+		"Expected bonding device %u have 0 members but returned %d.",
+			test_params.bonding_port_id, retval);
 
-	FOR_EACH_PORT(i, slave) {
-		TEST_ASSERT_SUCCESS(rte_eth_dev_stop(slave->port_id),
-				"Failed to stop bonded port %u",
-				slave->port_id);
+	FOR_EACH_PORT(i, member) {
+		TEST_ASSERT_SUCCESS(rte_eth_dev_stop(member->port_id),
+				"Failed to stop bonding port %u",
+				member->port_id);
 
-		TEST_ASSERT(slave->bonded == 0,
-			"Port id=%u is still marked as enslaved.", slave->port_id);
+		TEST_ASSERT(member->bonding == 0,
+			"Port id=%u is still marked as enmemberd.", member->port_id);
 	}
 
 	return TEST_SUCCESS;
@@ -383,7 +383,7 @@ test_setup(void)
 {
 	int retval, nb_mbuf_per_pool;
 	char name[RTE_ETH_NAME_MAX_LEN];
-	struct slave_conf *port;
+	struct member_conf *port;
 	const uint8_t socket_id = rte_socket_id();
 	uint16_t i;
 
@@ -400,10 +400,10 @@ test_setup(void)
 
 	/* Create / initialize ring eth devs. */
 	FOR_EACH_PORT(i, port) {
-		port = &test_params.slave_ports[i];
+		port = &test_params.member_ports[i];
 
 		if (port->rx_queue == NULL) {
-			retval = snprintf(name, RTE_DIM(name), SLAVE_RX_QUEUE_FMT, i);
+			retval = snprintf(name, RTE_DIM(name), MEMBER_RX_QUEUE_FMT, i);
 			TEST_ASSERT(retval <= (int)RTE_DIM(name) - 1, "Name too long");
 			port->rx_queue = rte_ring_create(name, RX_RING_SIZE, socket_id, 0);
 			TEST_ASSERT(port->rx_queue != NULL,
@@ -412,7 +412,7 @@ test_setup(void)
 		}
 
 		if (port->tx_queue == NULL) {
-			retval = snprintf(name, RTE_DIM(name), SLAVE_TX_QUEUE_FMT, i);
+			retval = snprintf(name, RTE_DIM(name), MEMBER_TX_QUEUE_FMT, i);
 			TEST_ASSERT(retval <= (int)RTE_DIM(name) - 1, "Name too long");
 			port->tx_queue = rte_ring_create(name, TX_RING_SIZE, socket_id, 0);
 			TEST_ASSERT_NOT_NULL(port->tx_queue,
@@ -421,7 +421,7 @@ test_setup(void)
 		}
 
 		if (port->port_id == INVALID_PORT_ID) {
-			retval = snprintf(name, RTE_DIM(name), SLAVE_DEV_NAME_FMT, i);
+			retval = snprintf(name, RTE_DIM(name), MEMBER_DEV_NAME_FMT, i);
 			TEST_ASSERT(retval < (int)RTE_DIM(name) - 1, "Name too long");
 			retval = rte_eth_from_rings(name, &port->rx_queue, 1,
 					&port->tx_queue, 1, socket_id);
@@ -436,22 +436,22 @@ test_setup(void)
 			name);
 	}
 
-	if (test_params.bonded_port_id == INVALID_PORT_ID) {
-		retval = rte_eth_bond_create(BONDED_DEV_NAME, BONDING_MODE_8023AD,
+	if (test_params.bonding_port_id == INVALID_PORT_ID) {
+		retval = rte_eth_bond_create(BONDING_DEV_NAME, BONDING_MODE_8023AD,
 				socket_id);
 
-		TEST_ASSERT(retval >= 0, "Failed to create bonded ethdev %s",
-				BONDED_DEV_NAME);
+		TEST_ASSERT(retval >= 0, "Failed to create bonding ethdev %s",
+				BONDING_DEV_NAME);
 
-		test_params.bonded_port_id = retval;
-		TEST_ASSERT_SUCCESS(configure_ethdev(test_params.bonded_port_id, 0),
-				"Failed to configure bonded ethdev %s", BONDED_DEV_NAME);
-	} else if (rte_eth_bond_mode_get(test_params.bonded_port_id) !=
+		test_params.bonding_port_id = retval;
+		TEST_ASSERT_SUCCESS(configure_ethdev(test_params.bonding_port_id, 0),
+				"Failed to configure bonding ethdev %s", BONDING_DEV_NAME);
+	} else if (rte_eth_bond_mode_get(test_params.bonding_port_id) !=
 			BONDING_MODE_8023AD) {
-		TEST_ASSERT(rte_eth_bond_mode_set(test_params.bonded_port_id,
+		TEST_ASSERT(rte_eth_bond_mode_set(test_params.bonding_port_id,
 			BONDING_MODE_8023AD) == 0,
 			"Failed to set ethdev %d to mode %d",
-			test_params.bonded_port_id, BONDING_MODE_8023AD);
+			test_params.bonding_port_id, BONDING_MODE_8023AD);
 	}
 
 	return 0;
@@ -460,14 +460,14 @@ test_setup(void)
 static void
 testsuite_teardown(void)
 {
-	struct slave_conf *port;
+	struct member_conf *port;
 	uint8_t i;
 
 	/* Only stop ports.
 	 * Any cleanup/reset state is done when particular test is
 	 * started. */
 
-	rte_eth_dev_stop(test_params.bonded_port_id);
+	rte_eth_dev_stop(test_params.bonding_port_id);
 
 	FOR_EACH_PORT(i, port)
 		rte_eth_dev_stop(port->port_id);
@@ -480,7 +480,7 @@ testsuite_teardown(void)
  * frame but not LACP
  */
 static int
-make_lacp_reply(struct slave_conf *slave, struct rte_mbuf *pkt)
+make_lacp_reply(struct member_conf *member, struct rte_mbuf *pkt)
 {
 	struct rte_ether_hdr *hdr;
 	struct slow_protocol_frame *slow_hdr;
@@ -501,11 +501,11 @@ make_lacp_reply(struct slave_conf *slave, struct rte_mbuf *pkt)
 	/* Change source address to partner address */
 	rte_ether_addr_copy(&parnter_mac_default, &slow_hdr->eth_hdr.src_addr);
 	slow_hdr->eth_hdr.src_addr.addr_bytes[RTE_ETHER_ADDR_LEN - 1] =
-		slave->port_id;
+		member->port_id;
 
 	lacp = (struct lacpdu *) &slow_hdr->slow_protocol;
 	/* Save last received state */
-	slave->lacp_parnter_state = lacp->actor.state;
+	member->lacp_parnter_state = lacp->actor.state;
 	/* Change it into LACP replay by matching parameters. */
 	memcpy(&lacp->partner.port_params, &lacp->actor.port_params,
 		sizeof(struct port_params));
@@ -523,27 +523,27 @@ make_lacp_reply(struct slave_conf *slave, struct rte_mbuf *pkt)
 }
 
 /*
- * Reads packets from given slave, search for LACP packet and reply them.
+ * Reads packets from given member, search for LACP packet and reply them.
  *
- * Receives burst of packets from slave. Looks for LACP packet. Drops
+ * Receives burst of packets from member. Looks for LACP packet. Drops
  * all other packets. Prepares response LACP and sends it back.
  *
  * return number of LACP received and replied, -1 on error.
  */
 static int
-bond_handshake_reply(struct slave_conf *slave)
+bond_handshake_reply(struct member_conf *member)
 {
 	int retval;
 	struct rte_mbuf *rx_buf[MAX_PKT_BURST];
 	struct rte_mbuf *lacp_tx_buf[MAX_PKT_BURST];
 	uint16_t lacp_tx_buf_cnt = 0, i;
 
-	retval = slave_get_pkts(slave, rx_buf, RTE_DIM(rx_buf));
-	TEST_ASSERT(retval >= 0, "Getting slave %u packets failed.",
-			slave->port_id);
+	retval = member_get_pkts(member, rx_buf, RTE_DIM(rx_buf));
+	TEST_ASSERT(retval >= 0, "Getting member %u packets failed.",
+			member->port_id);
 
 	for (i = 0; i < (uint16_t)retval; i++) {
-		if (make_lacp_reply(slave, rx_buf[i]) == 0) {
+		if (make_lacp_reply(member, rx_buf[i]) == 0) {
 			/* reply with actor's LACP */
 			lacp_tx_buf[lacp_tx_buf_cnt++] = rx_buf[i];
 		} else
@@ -553,7 +553,7 @@ bond_handshake_reply(struct slave_conf *slave)
 	if (lacp_tx_buf_cnt == 0)
 		return 0;
 
-	retval = slave_put_pkts(slave, lacp_tx_buf, lacp_tx_buf_cnt);
+	retval = member_put_pkts(member, lacp_tx_buf, lacp_tx_buf_cnt);
 	if (retval <= lacp_tx_buf_cnt) {
 		/* retval might be negative */
 		for (i = RTE_MAX(0, retval); retval < lacp_tx_buf_cnt; retval++)
@@ -561,24 +561,24 @@ bond_handshake_reply(struct slave_conf *slave)
 	}
 
 	TEST_ASSERT_EQUAL(retval, lacp_tx_buf_cnt,
-		"Failed to equeue lacp packets into slave %u tx queue.",
-		slave->port_id);
+		"Failed to equeue lacp packets into member %u tx queue.",
+		member->port_id);
 
 	return lacp_tx_buf_cnt;
 }
 
 /*
- * Function check if given slave tx queue contains packets that make mode 4
- * handshake complete. It will drain slave queue.
+ * Function check if given member tx queue contains packets that make mode 4
+ * handshake complete. It will drain member queue.
  * return 0 if handshake not completed, 1 if handshake was complete,
  */
 static int
-bond_handshake_done(struct slave_conf *slave)
+bond_handshake_done(struct member_conf *member)
 {
 	const uint8_t expected_state = STATE_LACP_ACTIVE | STATE_SYNCHRONIZATION |
 			STATE_AGGREGATION | STATE_COLLECTING | STATE_DISTRIBUTING;
 
-	return slave->lacp_parnter_state == expected_state;
+	return member->lacp_parnter_state == expected_state;
 }
 
 static unsigned
@@ -586,7 +586,7 @@ bond_get_update_timeout_ms(void)
 {
 	struct rte_eth_bond_8023ad_conf conf;
 
-	if (rte_eth_bond_8023ad_conf_get(test_params.bonded_port_id, &conf) < 0) {
+	if (rte_eth_bond_8023ad_conf_get(test_params.bonding_port_id, &conf) < 0) {
 		RTE_LOG(DEBUG, EAL, "Failed to get bonding configuration: "
 				    "%s at %d\n", __func__, __LINE__);
 		RTE_TEST_TRACE_FAILURE(__FILE__, __LINE__, __func__);
@@ -603,32 +603,32 @@ bond_get_update_timeout_ms(void)
 static int
 bond_handshake(void)
 {
-	struct slave_conf *slave;
+	struct member_conf *member;
 	struct rte_mbuf *buf[MAX_PKT_BURST];
 	uint16_t nb_pkts;
-	uint8_t all_slaves_done, i, j;
-	uint8_t status[RTE_DIM(test_params.slave_ports)] = { 0 };
+	uint8_t all_members_done, i, j;
+	uint8_t status[RTE_DIM(test_params.member_ports)] = { 0 };
 	const unsigned delay = bond_get_update_timeout_ms();
 
 	/* Exchange LACP frames */
-	all_slaves_done = 0;
-	for (i = 0; i < 30 && all_slaves_done == 0; ++i) {
+	all_members_done = 0;
+	for (i = 0; i < 30 && all_members_done == 0; ++i) {
 		rte_delay_ms(delay);
 
-		all_slaves_done = 1;
-		FOR_EACH_SLAVE(j, slave) {
-			/* If response already send, skip slave */
+		all_members_done = 1;
+		FOR_EACH_MEMBER(j, member) {
+			/* If response already send, skip member */
 			if (status[j] != 0)
 				continue;
 
-			if (bond_handshake_reply(slave) < 0) {
-				all_slaves_done = 0;
+			if (bond_handshake_reply(member) < 0) {
+				all_members_done = 0;
 				break;
 			}
 
-			status[j] = bond_handshake_done(slave);
+			status[j] = bond_handshake_done(member);
 			if (status[j] == 0)
-				all_slaves_done = 0;
+				all_members_done = 0;
 		}
 
 		nb_pkts = bond_tx(NULL, 0);
@@ -639,26 +639,26 @@ bond_handshake(void)
 		TEST_ASSERT_EQUAL(nb_pkts, 0, "Packets received unexpectedly");
 	}
 	/* If response didn't send - report failure */
-	TEST_ASSERT_EQUAL(all_slaves_done, 1, "Bond handshake failed\n");
+	TEST_ASSERT_EQUAL(all_members_done, 1, "Bond handshake failed\n");
 
 	/* If flags doesn't match - report failure */
-	return all_slaves_done == 1 ? TEST_SUCCESS : TEST_FAILED;
+	return all_members_done == 1 ? TEST_SUCCESS : TEST_FAILED;
 }
 
-#define TEST_LACP_SLAVE_COUT RTE_DIM(test_params.slave_ports)
+#define TEST_LACP_MEMBER_COUT RTE_DIM(test_params.member_ports)
 static int
 test_mode4_lacp(void)
 {
 	int retval;
 
-	retval = initialize_bonded_device_with_slaves(TEST_LACP_SLAVE_COUT, 0);
-	TEST_ASSERT_SUCCESS(retval, "Failed to initialize bonded device");
+	retval = initialize_bonding_device_with_members(TEST_LACP_MEMBER_COUT, 0);
+	TEST_ASSERT_SUCCESS(retval, "Failed to initialize bonding device");
 
 	/* Test LACP handshake function */
 	retval = bond_handshake();
 	TEST_ASSERT_SUCCESS(retval, "Initial handshake failed");
 
-	retval = remove_slaves_and_stop_bonded_device();
+	retval = remove_members_and_stop_bonding_device();
 	TEST_ASSERT_SUCCESS(retval, "Test cleanup failed.");
 
 	return TEST_SUCCESS;
@@ -668,33 +668,33 @@ test_mode4_agg_mode_selection(void)
 {
 	int retval;
 	/* Test and verify for Stable mode */
-	retval = initialize_bonded_device_with_slaves(TEST_LACP_SLAVE_COUT, 0);
-	TEST_ASSERT_SUCCESS(retval, "Failed to initialize bonded device");
+	retval = initialize_bonding_device_with_members(TEST_LACP_MEMBER_COUT, 0);
+	TEST_ASSERT_SUCCESS(retval, "Failed to initialize bonding device");
 
 
 	retval = rte_eth_bond_8023ad_agg_selection_set(
-			test_params.bonded_port_id, AGG_STABLE);
+			test_params.bonding_port_id, AGG_STABLE);
 	TEST_ASSERT_SUCCESS(retval, "Failed to initialize bond aggregation mode");
 	retval = bond_handshake();
 	TEST_ASSERT_SUCCESS(retval, "Initial handshake failed");
 
 
 	retval = rte_eth_bond_8023ad_agg_selection_get(
-			test_params.bonded_port_id);
+			test_params.bonding_port_id);
 	TEST_ASSERT_EQUAL(retval, AGG_STABLE,
 			"Wrong agg mode received from bonding device");
 
-	retval = remove_slaves_and_stop_bonded_device();
+	retval = remove_members_and_stop_bonding_device();
 	TEST_ASSERT_SUCCESS(retval, "Test cleanup failed.");
 
 
 	/* test and verify for Bandwidth mode */
-	retval = initialize_bonded_device_with_slaves(TEST_LACP_SLAVE_COUT, 0);
-	TEST_ASSERT_SUCCESS(retval, "Failed to initialize bonded device");
+	retval = initialize_bonding_device_with_members(TEST_LACP_MEMBER_COUT, 0);
+	TEST_ASSERT_SUCCESS(retval, "Failed to initialize bonding device");
 
 
 	retval = rte_eth_bond_8023ad_agg_selection_set(
-			test_params.bonded_port_id,
+			test_params.bonding_port_id,
 			AGG_BANDWIDTH);
 	TEST_ASSERT_SUCCESS(retval,
 			"Failed to initialize bond aggregation mode");
@@ -702,31 +702,31 @@ test_mode4_agg_mode_selection(void)
 	TEST_ASSERT_SUCCESS(retval, "Initial handshake failed");
 
 	retval = rte_eth_bond_8023ad_agg_selection_get(
-			test_params.bonded_port_id);
+			test_params.bonding_port_id);
 	TEST_ASSERT_EQUAL(retval, AGG_BANDWIDTH,
 			"Wrong agg mode received from bonding device");
 
-	retval = remove_slaves_and_stop_bonded_device();
+	retval = remove_members_and_stop_bonding_device();
 	TEST_ASSERT_SUCCESS(retval, "Test cleanup failed.");
 
 	/* test and verify selection for count mode */
-	retval = initialize_bonded_device_with_slaves(TEST_LACP_SLAVE_COUT, 0);
-	TEST_ASSERT_SUCCESS(retval, "Failed to initialize bonded device");
+	retval = initialize_bonding_device_with_members(TEST_LACP_MEMBER_COUT, 0);
+	TEST_ASSERT_SUCCESS(retval, "Failed to initialize bonding device");
 
 
 	retval = rte_eth_bond_8023ad_agg_selection_set(
-			test_params.bonded_port_id, AGG_COUNT);
+			test_params.bonding_port_id, AGG_COUNT);
 	TEST_ASSERT_SUCCESS(retval,
 			"Failed to initialize bond aggregation mode");
 	retval = bond_handshake();
 	TEST_ASSERT_SUCCESS(retval, "Initial handshake failed");
 
 	retval = rte_eth_bond_8023ad_agg_selection_get(
-			test_params.bonded_port_id);
+			test_params.bonding_port_id);
 	TEST_ASSERT_EQUAL(retval, AGG_COUNT,
 			"Wrong agg mode received from bonding device");
 
-	retval = remove_slaves_and_stop_bonded_device();
+	retval = remove_members_and_stop_bonding_device();
 	TEST_ASSERT_SUCCESS(retval, "Test cleanup failed.");
 
 	return TEST_SUCCESS;
@@ -780,7 +780,7 @@ generate_packets(struct rte_ether_addr *src_mac,
 }
 
 static int
-generate_and_put_packets(struct slave_conf *slave,
+generate_and_put_packets(struct member_conf *member,
 			struct rte_ether_addr *src_mac,
 			struct rte_ether_addr *dst_mac, uint16_t count)
 {
@@ -791,12 +791,12 @@ generate_and_put_packets(struct slave_conf *slave,
 	if (retval != (int)count)
 		return retval;
 
-	retval = slave_put_pkts(slave, pkts, count);
+	retval = member_put_pkts(member, pkts, count);
 	if (retval > 0 && retval != count)
 		free_pkts(&pkts[retval], count - retval);
 
 	TEST_ASSERT_EQUAL(retval, count,
-		"Failed to enqueue packets into slave %u RX queue", slave->port_id);
+		"Failed to enqueue packets into member %u RX queue", member->port_id);
 
 	return TEST_SUCCESS;
 }
@@ -804,7 +804,7 @@ generate_and_put_packets(struct slave_conf *slave,
 static int
 test_mode4_rx(void)
 {
-	struct slave_conf *slave;
+	struct member_conf *member;
 	uint16_t i, j;
 
 	uint16_t expected_pkts_cnt;
@@ -817,19 +817,19 @@ test_mode4_rx(void)
 	struct rte_ether_addr src_mac = {
 		{ 0x00, 0xFF, 0x00, 0xFF, 0x00, 0x00 } };
 	struct rte_ether_addr dst_mac;
-	struct rte_ether_addr bonded_mac;
+	struct rte_ether_addr bonding_mac;
 
-	retval = initialize_bonded_device_with_slaves(TEST_PROMISC_SLAVE_COUNT,
+	retval = initialize_bonding_device_with_members(TEST_PROMISC_MEMBER_COUNT,
 						      0);
-	TEST_ASSERT_SUCCESS(retval, "Failed to initialize bonded device");
+	TEST_ASSERT_SUCCESS(retval, "Failed to initialize bonding device");
 
 	retval = bond_handshake();
 	TEST_ASSERT_SUCCESS(retval, "Initial handshake failed");
 
-	retval = rte_eth_macaddr_get(test_params.bonded_port_id, &bonded_mac);
+	retval = rte_eth_macaddr_get(test_params.bonding_port_id, &bonding_mac);
 	TEST_ASSERT_SUCCESS(retval, "Failed to get mac address: %s",
 			    strerror(-retval));
-	rte_ether_addr_copy(&bonded_mac, &dst_mac);
+	rte_ether_addr_copy(&bonding_mac, &dst_mac);
 
 	/* Assert that dst address is not bonding address.  Do not set the
 	 * least significant bit of the zero byte as this would create a
@@ -838,28 +838,28 @@ test_mode4_rx(void)
 	dst_mac.addr_bytes[0] += 2;
 
 	/* First try with promiscuous mode enabled.
-	 * Add 2 packets to each slave. First with bonding MAC address, second with
+	 * Add 2 packets to each member. First with bonding MAC address, second with
 	 * different. Check if we received all of them. */
-	retval = rte_eth_promiscuous_enable(test_params.bonded_port_id);
+	retval = rte_eth_promiscuous_enable(test_params.bonding_port_id);
 	TEST_ASSERT_SUCCESS(retval,
 			"Failed to enable promiscuous mode for port %d: %s",
-			test_params.bonded_port_id, rte_strerror(-retval));
+			test_params.bonding_port_id, rte_strerror(-retval));
 
 	expected_pkts_cnt = 0;
-	FOR_EACH_SLAVE(i, slave) {
-		retval = generate_and_put_packets(slave, &src_mac, &bonded_mac, 1);
-		TEST_ASSERT_SUCCESS(retval, "Failed to enqueue packets to slave %u",
-			slave->port_id);
+	FOR_EACH_MEMBER(i, member) {
+		retval = generate_and_put_packets(member, &src_mac, &bonding_mac, 1);
+		TEST_ASSERT_SUCCESS(retval, "Failed to enqueue packets to member %u",
+			member->port_id);
 
-		retval = generate_and_put_packets(slave, &src_mac, &dst_mac, 1);
-		TEST_ASSERT_SUCCESS(retval, "Failed to enqueue packets to slave %u",
-			slave->port_id);
+		retval = generate_and_put_packets(member, &src_mac, &dst_mac, 1);
+		TEST_ASSERT_SUCCESS(retval, "Failed to enqueue packets to member %u",
+			member->port_id);
 
-		/* Expect 2 packets per slave */
+		/* Expect 2 packets per member */
 		expected_pkts_cnt += 2;
 	}
 
-	retval = rte_eth_rx_burst(test_params.bonded_port_id, 0, pkts,
+	retval = rte_eth_rx_burst(test_params.bonding_port_id, 0, pkts,
 		RTE_DIM(pkts));
 
 	if (retval == expected_pkts_cnt) {
@@ -868,7 +868,7 @@ test_mode4_rx(void)
 		for (i = 0; i < expected_pkts_cnt; i++) {
 			hdr = rte_pktmbuf_mtod(pkts[i], struct rte_ether_hdr *);
 			cnt[rte_is_same_ether_addr(&hdr->dst_addr,
-							&bonded_mac)]++;
+							&bonding_mac)]++;
 		}
 
 		free_pkts(pkts, expected_pkts_cnt);
@@ -888,26 +888,26 @@ test_mode4_rx(void)
 
 	/* Now, disable promiscuous mode. When promiscuous mode is disabled we
 	 * expect to receive only packets that are directed to bonding port. */
-	retval = rte_eth_promiscuous_disable(test_params.bonded_port_id);
+	retval = rte_eth_promiscuous_disable(test_params.bonding_port_id);
 	TEST_ASSERT_SUCCESS(retval,
 		"Failed to disable promiscuous mode for port %d: %s",
-		test_params.bonded_port_id, rte_strerror(-retval));
+		test_params.bonding_port_id, rte_strerror(-retval));
 
 	expected_pkts_cnt = 0;
-	FOR_EACH_SLAVE(i, slave) {
-		retval = generate_and_put_packets(slave, &src_mac, &bonded_mac, 1);
-		TEST_ASSERT_SUCCESS(retval, "Failed to enqueue packets to slave %u",
-			slave->port_id);
+	FOR_EACH_MEMBER(i, member) {
+		retval = generate_and_put_packets(member, &src_mac, &bonding_mac, 1);
+		TEST_ASSERT_SUCCESS(retval, "Failed to enqueue packets to member %u",
+			member->port_id);
 
-		retval = generate_and_put_packets(slave, &src_mac, &dst_mac, 1);
-		TEST_ASSERT_SUCCESS(retval, "Failed to enqueue packets to slave %u",
-			slave->port_id);
+		retval = generate_and_put_packets(member, &src_mac, &dst_mac, 1);
+		TEST_ASSERT_SUCCESS(retval, "Failed to enqueue packets to member %u",
+			member->port_id);
 
-		/* Expect only one packet per slave */
+		/* Expect only one packet per member */
 		expected_pkts_cnt += 1;
 	}
 
-	retval = rte_eth_rx_burst(test_params.bonded_port_id, 0, pkts,
+	retval = rte_eth_rx_burst(test_params.bonding_port_id, 0, pkts,
 		RTE_DIM(pkts));
 
 	if (retval == expected_pkts_cnt) {
@@ -916,7 +916,7 @@ test_mode4_rx(void)
 		for (i = 0; i < expected_pkts_cnt; i++) {
 			hdr = rte_pktmbuf_mtod(pkts[i], struct rte_ether_hdr *);
 			eq_cnt += rte_is_same_ether_addr(&hdr->dst_addr,
-							&bonded_mac);
+							&bonding_mac);
 		}
 
 		free_pkts(pkts, expected_pkts_cnt);
@@ -927,19 +927,19 @@ test_mode4_rx(void)
 	TEST_ASSERT_EQUAL(retval, expected_pkts_cnt,
 		"Expected %u packets but received only %d", expected_pkts_cnt, retval);
 
-	/* Link down test: simulate link down for first slave. */
+	/* Link down test: simulate link down for first member. */
 	delay = bond_get_update_timeout_ms();
 
-	uint8_t slave_down_id = INVALID_PORT_ID;
+	uint8_t member_down_id = INVALID_PORT_ID;
 
-	/* Find first slave and make link down on it*/
-	FOR_EACH_SLAVE(i, slave) {
-		rte_eth_dev_set_link_down(slave->port_id);
-		slave_down_id = slave->port_id;
+	/* Find first member and make link down on it*/
+	FOR_EACH_MEMBER(i, member) {
+		rte_eth_dev_set_link_down(member->port_id);
+		member_down_id = member->port_id;
 		break;
 	}
 
-	RTE_VERIFY(slave_down_id != INVALID_PORT_ID);
+	RTE_VERIFY(member_down_id != INVALID_PORT_ID);
 
 	/* Give some time to rearrange bonding */
 	for (i = 0; i < 3; i++) {
@@ -949,16 +949,16 @@ test_mode4_rx(void)
 
 	TEST_ASSERT_SUCCESS(bond_handshake(), "Handshake after link down failed");
 
-	/* Put packet to each slave */
-	FOR_EACH_SLAVE(i, slave) {
+	/* Put packet to each member */
+	FOR_EACH_MEMBER(i, member) {
 		void *pkt = NULL;
 
-		dst_mac.addr_bytes[RTE_ETHER_ADDR_LEN - 1] = slave->port_id;
-		retval = generate_and_put_packets(slave, &src_mac, &dst_mac, 1);
+		dst_mac.addr_bytes[RTE_ETHER_ADDR_LEN - 1] = member->port_id;
+		retval = generate_and_put_packets(member, &src_mac, &dst_mac, 1);
 		TEST_ASSERT_SUCCESS(retval, "Failed to generate test packet burst.");
 
-		src_mac.addr_bytes[RTE_ETHER_ADDR_LEN - 1] = slave->port_id;
-		retval = generate_and_put_packets(slave, &src_mac, &bonded_mac, 1);
+		src_mac.addr_bytes[RTE_ETHER_ADDR_LEN - 1] = member->port_id;
+		retval = generate_and_put_packets(member, &src_mac, &bonding_mac, 1);
 		TEST_ASSERT_SUCCESS(retval, "Failed to generate test packet burst.");
 
 		retval = bond_rx(pkts, RTE_DIM(pkts));
@@ -967,36 +967,36 @@ test_mode4_rx(void)
 		if (retval > 0)
 			free_pkts(pkts, retval);
 
-		while (rte_ring_dequeue(slave->rx_queue, (void **)&pkt) == 0)
+		while (rte_ring_dequeue(member->rx_queue, (void **)&pkt) == 0)
 			rte_pktmbuf_free(pkt);
 
-		if (slave_down_id == slave->port_id)
+		if (member_down_id == member->port_id)
 			TEST_ASSERT_EQUAL(retval, 0, "Packets received unexpectedly.");
 		else
 			TEST_ASSERT_NOT_EQUAL(retval, 0,
-				"Expected to receive some packets on slave %u.",
-				slave->port_id);
-		rte_eth_dev_start(slave->port_id);
+				"Expected to receive some packets on member %u.",
+				member->port_id);
+		rte_eth_dev_start(member->port_id);
 
 		for (j = 0; j < 5; j++) {
-			TEST_ASSERT(bond_handshake_reply(slave) >= 0,
+			TEST_ASSERT(bond_handshake_reply(member) >= 0,
 				"Handshake after link up");
 
-			if (bond_handshake_done(slave) == 1)
+			if (bond_handshake_done(member) == 1)
 				break;
 		}
 
-		TEST_ASSERT(j < 5, "Failed to aggregate slave after link up");
+		TEST_ASSERT(j < 5, "Failed to aggregate member after link up");
 	}
 
-	remove_slaves_and_stop_bonded_device();
+	remove_members_and_stop_bonding_device();
 	return TEST_SUCCESS;
 }
 
 static int
 test_mode4_tx_burst(void)
 {
-	struct slave_conf *slave;
+	struct member_conf *member;
 	uint16_t i, j;
 
 	uint16_t exp_pkts_cnt, pkts_cnt = 0;
@@ -1006,21 +1006,21 @@ test_mode4_tx_burst(void)
 
 	struct rte_ether_addr dst_mac = {
 		{ 0x00, 0xFF, 0x00, 0xFF, 0x00, 0x00 } };
-	struct rte_ether_addr bonded_mac;
+	struct rte_ether_addr bonding_mac;
 
-	retval = initialize_bonded_device_with_slaves(TEST_TX_SLAVE_COUNT, 0);
-	TEST_ASSERT_SUCCESS(retval, "Failed to initialize bonded device");
+	retval = initialize_bonding_device_with_members(TEST_TX_MEMBER_COUNT, 0);
+	TEST_ASSERT_SUCCESS(retval, "Failed to initialize bonding device");
 
 	retval = bond_handshake();
 	TEST_ASSERT_SUCCESS(retval, "Initial handshake failed");
 
-	retval = rte_eth_macaddr_get(test_params.bonded_port_id, &bonded_mac);
+	retval = rte_eth_macaddr_get(test_params.bonding_port_id, &bonding_mac);
 	TEST_ASSERT_SUCCESS(retval, "Failed to get mac address: %s",
 			    strerror(-retval));
 	/* Prepare burst */
 	for (pkts_cnt = 0; pkts_cnt < RTE_DIM(pkts); pkts_cnt++) {
 		dst_mac.addr_bytes[RTE_ETHER_ADDR_LEN - 1] = pkts_cnt;
-		retval = generate_packets(&bonded_mac, &dst_mac, 1, &pkts[pkts_cnt]);
+		retval = generate_packets(&bonding_mac, &dst_mac, 1, &pkts[pkts_cnt]);
 
 		if (retval != 1)
 			free_pkts(pkts, pkts_cnt);
@@ -1029,26 +1029,26 @@ test_mode4_tx_burst(void)
 	}
 	exp_pkts_cnt = pkts_cnt;
 
-	/* Transmit packets on bonded device */
+	/* Transmit packets on bonding device */
 	retval = bond_tx(pkts, pkts_cnt);
 	if (retval > 0 && retval < pkts_cnt)
 		free_pkts(&pkts[retval], pkts_cnt - retval);
 
-	TEST_ASSERT_EQUAL(retval, pkts_cnt, "TX on bonded device failed");
+	TEST_ASSERT_EQUAL(retval, pkts_cnt, "TX on bonding device failed");
 
-	/* Check if packets were transmitted properly. Every slave should have
+	/* Check if packets were transmitted properly. Every member should have
 	 * at least one packet, and sum must match. Under normal operation
 	 * there should be no LACP nor MARKER frames. */
 	pkts_cnt = 0;
-	FOR_EACH_SLAVE(i, slave) {
+	FOR_EACH_MEMBER(i, member) {
 		uint16_t normal_cnt, slow_cnt;
 
-		retval = slave_get_pkts(slave, pkts, RTE_DIM(pkts));
+		retval = member_get_pkts(member, pkts, RTE_DIM(pkts));
 		normal_cnt = 0;
 		slow_cnt = 0;
 
 		for (j = 0; j < retval; j++) {
-			if (make_lacp_reply(slave, pkts[j]) == 1)
+			if (make_lacp_reply(member, pkts[j]) == 1)
 				normal_cnt++;
 			else
 				slow_cnt++;
@@ -1056,11 +1056,11 @@ test_mode4_tx_burst(void)
 
 		free_pkts(pkts, normal_cnt + slow_cnt);
 		TEST_ASSERT_EQUAL(slow_cnt, 0,
-			"slave %u unexpectedly transmitted %d SLOW packets", slave->port_id,
+			"member %u unexpectedly transmitted %d SLOW packets", member->port_id,
 			slow_cnt);
 
 		TEST_ASSERT_NOT_EQUAL(normal_cnt, 0,
-			"slave %u did not transmitted any packets", slave->port_id);
+			"member %u did not transmitted any packets", member->port_id);
 
 		pkts_cnt += normal_cnt;
 	}
@@ -1068,19 +1068,21 @@ test_mode4_tx_burst(void)
 	TEST_ASSERT_EQUAL(exp_pkts_cnt, pkts_cnt,
 		"Expected %u packets but transmitted only %d", exp_pkts_cnt, pkts_cnt);
 
-	/* Link down test:
-	 * simulate link down for first slave. */
+	/*
+	 * Link down test:
+	 * simulate link down for first member.
+	 */
 	delay = bond_get_update_timeout_ms();
 
-	uint8_t slave_down_id = INVALID_PORT_ID;
+	uint8_t member_down_id = INVALID_PORT_ID;
 
-	FOR_EACH_SLAVE(i, slave) {
-		rte_eth_dev_set_link_down(slave->port_id);
-		slave_down_id = slave->port_id;
+	FOR_EACH_MEMBER(i, member) {
+		rte_eth_dev_set_link_down(member->port_id);
+		member_down_id = member->port_id;
 		break;
 	}
 
-	RTE_VERIFY(slave_down_id != INVALID_PORT_ID);
+	RTE_VERIFY(member_down_id != INVALID_PORT_ID);
 
 	/* Give some time to rearrange bonding. */
 	for (i = 0; i < 3; i++) {
@@ -1093,7 +1095,7 @@ test_mode4_tx_burst(void)
 	/* Prepare burst. */
 	for (pkts_cnt = 0; pkts_cnt < RTE_DIM(pkts); pkts_cnt++) {
 		dst_mac.addr_bytes[RTE_ETHER_ADDR_LEN - 1] = pkts_cnt;
-		retval = generate_packets(&bonded_mac, &dst_mac, 1, &pkts[pkts_cnt]);
+		retval = generate_packets(&bonding_mac, &dst_mac, 1, &pkts[pkts_cnt]);
 
 		if (retval != 1)
 			free_pkts(pkts, pkts_cnt);
@@ -1103,26 +1105,26 @@ test_mode4_tx_burst(void)
 	}
 	exp_pkts_cnt = pkts_cnt;
 
-	/* Transmit packets on bonded device. */
+	/* Transmit packets on bonding device. */
 	retval = bond_tx(pkts, pkts_cnt);
 	if (retval > 0 && retval < pkts_cnt)
 		free_pkts(&pkts[retval], pkts_cnt - retval);
 
-	TEST_ASSERT_EQUAL(retval, pkts_cnt, "TX on bonded device failed");
+	TEST_ASSERT_EQUAL(retval, pkts_cnt, "TX on bonding device failed");
 
-	/* Check if packets was transmitted properly. Every slave should have
+	/* Check if packets was transmitted properly. Every member should have
 	 * at least one packet, and sum must match. Under normal operation
 	 * there should be no LACP nor MARKER frames. */
 	pkts_cnt = 0;
-	FOR_EACH_SLAVE(i, slave) {
+	FOR_EACH_MEMBER(i, member) {
 		uint16_t normal_cnt, slow_cnt;
 
-		retval = slave_get_pkts(slave, pkts, RTE_DIM(pkts));
+		retval = member_get_pkts(member, pkts, RTE_DIM(pkts));
 		normal_cnt = 0;
 		slow_cnt = 0;
 
 		for (j = 0; j < retval; j++) {
-			if (make_lacp_reply(slave, pkts[j]) == 1)
+			if (make_lacp_reply(member, pkts[j]) == 1)
 				normal_cnt++;
 			else
 				slow_cnt++;
@@ -1130,17 +1132,17 @@ test_mode4_tx_burst(void)
 
 		free_pkts(pkts, normal_cnt + slow_cnt);
 
-		if (slave_down_id == slave->port_id) {
+		if (member_down_id == member->port_id) {
 			TEST_ASSERT_EQUAL(normal_cnt + slow_cnt, 0,
-				"slave %u enexpectedly transmitted %u packets",
-				normal_cnt + slow_cnt, slave->port_id);
+				"member %u enexpectedly transmitted %u packets",
+				normal_cnt + slow_cnt, member->port_id);
 		} else {
 			TEST_ASSERT_EQUAL(slow_cnt, 0,
-				"slave %u unexpectedly transmitted %d SLOW packets",
-				slave->port_id, slow_cnt);
+				"member %u unexpectedly transmitted %d SLOW packets",
+				member->port_id, slow_cnt);
 
 			TEST_ASSERT_NOT_EQUAL(normal_cnt, 0,
-				"slave %u did not transmitted any packets", slave->port_id);
+				"member %u did not transmitted any packets", member->port_id);
 		}
 
 		pkts_cnt += normal_cnt;
@@ -1149,11 +1151,11 @@ test_mode4_tx_burst(void)
 	TEST_ASSERT_EQUAL(exp_pkts_cnt, pkts_cnt,
 		"Expected %u packets but transmitted only %d", exp_pkts_cnt, pkts_cnt);
 
-	return remove_slaves_and_stop_bonded_device();
+	return remove_members_and_stop_bonding_device();
 }
 
 static void
-init_marker(struct rte_mbuf *pkt, struct slave_conf *slave)
+init_marker(struct rte_mbuf *pkt, struct member_conf *member)
 {
 	struct marker_header *marker_hdr = rte_pktmbuf_mtod(pkt,
 			struct marker_header *);
@@ -1166,7 +1168,7 @@ init_marker(struct rte_mbuf *pkt, struct slave_conf *slave)
 	rte_ether_addr_copy(&parnter_mac_default,
 			&marker_hdr->eth_hdr.src_addr);
 	marker_hdr->eth_hdr.src_addr.addr_bytes[RTE_ETHER_ADDR_LEN - 1] =
-		slave->port_id;
+		member->port_id;
 
 	marker_hdr->eth_hdr.ether_type = rte_cpu_to_be_16(RTE_ETHER_TYPE_SLOW);
 
@@ -1177,7 +1179,7 @@ init_marker(struct rte_mbuf *pkt, struct slave_conf *slave)
 			offsetof(struct marker, reserved_90) -
 			offsetof(struct marker, requester_port);
 	RTE_VERIFY(marker_hdr->marker.info_length == 16);
-	marker_hdr->marker.requester_port = slave->port_id + 1;
+	marker_hdr->marker.requester_port = member->port_id + 1;
 	marker_hdr->marker.tlv_type_terminator = TLV_TYPE_TERMINATOR_INFORMATION;
 	marker_hdr->marker.terminator_length = 0;
 }
@@ -1185,7 +1187,7 @@ init_marker(struct rte_mbuf *pkt, struct slave_conf *slave)
 static int
 test_mode4_marker(void)
 {
-	struct slave_conf *slave;
+	struct member_conf *member;
 	struct rte_mbuf *pkts[MAX_PKT_BURST];
 	struct rte_mbuf *marker_pkt;
 	struct marker_header *marker_hdr;
@@ -1196,30 +1198,30 @@ test_mode4_marker(void)
 	uint8_t i, j;
 	const uint16_t ethtype_slow_be = rte_be_to_cpu_16(RTE_ETHER_TYPE_SLOW);
 
-	retval = initialize_bonded_device_with_slaves(TEST_MARKER_SLAVE_COUT,
+	retval = initialize_bonding_device_with_members(TEST_MARKER_MEMBER_COUT,
 						      0);
-	TEST_ASSERT_SUCCESS(retval, "Failed to initialize bonded device");
+	TEST_ASSERT_SUCCESS(retval, "Failed to initialize bonding device");
 
 	/* Test LACP handshake function */
 	retval = bond_handshake();
 	TEST_ASSERT_SUCCESS(retval, "Initial handshake failed");
 
 	delay = bond_get_update_timeout_ms();
-	FOR_EACH_SLAVE(i, slave) {
+	FOR_EACH_MEMBER(i, member) {
 		marker_pkt = rte_pktmbuf_alloc(test_params.mbuf_pool);
 		TEST_ASSERT_NOT_NULL(marker_pkt, "Failed to allocate marker packet");
-		init_marker(marker_pkt, slave);
+		init_marker(marker_pkt, member);
 
-		retval = slave_put_pkts(slave, &marker_pkt, 1);
+		retval = member_put_pkts(member, &marker_pkt, 1);
 		if (retval != 1)
 			rte_pktmbuf_free(marker_pkt);
 
 		TEST_ASSERT_EQUAL(retval, 1,
-			"Failed to send marker packet to slave %u", slave->port_id);
+			"Failed to send marker packet to member %u", member->port_id);
 
 		for (j = 0; j < 20; ++j) {
 			rte_delay_ms(delay);
-			retval = rte_eth_rx_burst(test_params.bonded_port_id, 0, pkts,
+			retval = rte_eth_rx_burst(test_params.bonding_port_id, 0, pkts,
 				RTE_DIM(pkts));
 
 			if (retval > 0)
@@ -1227,19 +1229,19 @@ test_mode4_marker(void)
 
 			TEST_ASSERT_EQUAL(retval, 0, "Received packets unexpectedly");
 
-			retval = rte_eth_tx_burst(test_params.bonded_port_id, 0, NULL, 0);
+			retval = rte_eth_tx_burst(test_params.bonding_port_id, 0, NULL, 0);
 			TEST_ASSERT_EQUAL(retval, 0,
 				"Requested TX of 0 packets but %d transmitted", retval);
 
 			/* Check if LACP packet was send by state machines
 			   First and only packet must be a maker response */
-			retval = slave_get_pkts(slave, pkts, MAX_PKT_BURST);
+			retval = member_get_pkts(member, pkts, MAX_PKT_BURST);
 			if (retval == 0)
 				continue;
 			if (retval > 1)
 				free_pkts(pkts, retval);
 
-			TEST_ASSERT_EQUAL(retval, 1, "failed to get slave packets");
+			TEST_ASSERT_EQUAL(retval, 1, "failed to get member packets");
 			nb_pkts = retval;
 
 			marker_hdr = rte_pktmbuf_mtod(pkts[0], struct marker_header *);
@@ -1263,7 +1265,7 @@ test_mode4_marker(void)
 		TEST_ASSERT(j < 20, "Marker response not found");
 	}
 
-	retval = remove_slaves_and_stop_bonded_device();
+	retval = remove_members_and_stop_bonding_device();
 	TEST_ASSERT_SUCCESS(retval,	"Test cleanup failed.");
 
 	return TEST_SUCCESS;
@@ -1272,7 +1274,7 @@ test_mode4_marker(void)
 static int
 test_mode4_expired(void)
 {
-	struct slave_conf *slave, *exp_slave = NULL;
+	struct member_conf *member, *exp_member = NULL;
 	struct rte_mbuf *pkts[MAX_PKT_BURST];
 	int retval;
 	uint32_t old_delay;
@@ -1282,10 +1284,10 @@ test_mode4_expired(void)
 
 	struct rte_eth_bond_8023ad_conf conf;
 
-	retval = initialize_bonded_device_with_slaves(TEST_EXPIRED_SLAVE_COUNT,
+	retval = initialize_bonding_device_with_members(TEST_EXPIRED_MEMBER_COUNT,
 						      0);
 	/* Set custom timeouts to make test last shorter. */
-	rte_eth_bond_8023ad_conf_get(test_params.bonded_port_id, &conf);
+	rte_eth_bond_8023ad_conf_get(test_params.bonding_port_id, &conf);
 	conf.fast_periodic_ms = 100;
 	conf.slow_periodic_ms = 600;
 	conf.short_timeout_ms = 300;
@@ -1294,12 +1296,12 @@ test_mode4_expired(void)
 	conf.tx_period_ms = 100;
 	old_delay = conf.update_timeout_ms;
 	conf.update_timeout_ms = 10;
-	rte_eth_bond_8023ad_setup(test_params.bonded_port_id, &conf);
+	rte_eth_bond_8023ad_setup(test_params.bonding_port_id, &conf);
 
 	/* Wait for new settings to be applied. */
 	for (i = 0; i < old_delay/conf.update_timeout_ms * 2; i++) {
-		FOR_EACH_SLAVE(j, slave)
-			bond_handshake_reply(slave);
+		FOR_EACH_MEMBER(j, member)
+			bond_handshake_reply(member);
 
 		rte_delay_ms(conf.update_timeout_ms);
 	}
@@ -1307,13 +1309,13 @@ test_mode4_expired(void)
 	retval = bond_handshake();
 	TEST_ASSERT_SUCCESS(retval, "Initial handshake failed");
 
-	/* Find first slave */
-	FOR_EACH_SLAVE(i, slave) {
-		exp_slave = slave;
+	/* Find first member */
+	FOR_EACH_MEMBER(i, member) {
+		exp_member = member;
 		break;
 	}
 
-	RTE_VERIFY(exp_slave != NULL);
+	RTE_VERIFY(exp_member != NULL);
 
 	/* When one of partners do not send or respond to LACP frame in
 	 * conf.long_timeout_ms time, internal state machines should detect this
@@ -1325,16 +1327,16 @@ test_mode4_expired(void)
 		TEST_ASSERT_EQUAL(retval, 0, "Unexpectedly received %d packets",
 			retval);
 
-		FOR_EACH_SLAVE(i, slave) {
-			retval = bond_handshake_reply(slave);
+		FOR_EACH_MEMBER(i, member) {
+			retval = bond_handshake_reply(member);
 			TEST_ASSERT(retval >= 0, "Handshake failed");
 
-			/* Remove replay for slave that suppose to be expired. */
-			if (slave == exp_slave) {
-				while (rte_ring_count(slave->rx_queue) > 0) {
+			/* Remove replay for member that suppose to be expired. */
+			if (member == exp_member) {
+				while (rte_ring_count(member->rx_queue) > 0) {
 					void *pkt = NULL;
 
-					rte_ring_dequeue(slave->rx_queue, &pkt);
+					rte_ring_dequeue(member->rx_queue, &pkt);
 					rte_pktmbuf_free(pkt);
 				}
 			}
@@ -1348,17 +1350,17 @@ test_mode4_expired(void)
 			retval);
 	}
 
-	/* After test only expected slave should be in EXPIRED state */
-	FOR_EACH_SLAVE(i, slave) {
-		if (slave == exp_slave)
-			TEST_ASSERT(slave->lacp_parnter_state & STATE_EXPIRED,
-				"Slave %u should be in expired.", slave->port_id);
+	/* After test only expected member should be in EXPIRED state */
+	FOR_EACH_MEMBER(i, member) {
+		if (member == exp_member)
+			TEST_ASSERT(member->lacp_parnter_state & STATE_EXPIRED,
+				"Member %u should be in expired.", member->port_id);
 		else
-			TEST_ASSERT_EQUAL(bond_handshake_done(slave), 1,
-				"Slave %u should be operational.", slave->port_id);
+			TEST_ASSERT_EQUAL(bond_handshake_done(member), 1,
+				"Member %u should be operational.", member->port_id);
 	}
 
-	retval = remove_slaves_and_stop_bonded_device();
+	retval = remove_members_and_stop_bonding_device();
 	TEST_ASSERT_SUCCESS(retval, "Test cleanup failed.");
 
 	return TEST_SUCCESS;
@@ -1368,21 +1370,21 @@ static int
 test_mode4_ext_ctrl(void)
 {
 	/*
-	 * configure bonded interface without the external sm enabled
+	 * configure bonding interface without the external sm enabled
 	 *   . try to transmit lacpdu (should fail)
 	 *   . try to set collecting and distributing flags (should fail)
 	 * reconfigure w/external sm
-	 *   . transmit one lacpdu on each slave using new api
-	 *   . make sure each slave receives one lacpdu using the callback api
-	 *   . transmit one data pdu on each slave (should fail)
+	 *   . transmit one lacpdu on each member using new api
+	 *   . make sure each member receives one lacpdu using the callback api
+	 *   . transmit one data pdu on each member (should fail)
 	 *   . enable distribution and collection, send one data pdu each again
 	 */
 
 	int retval;
-	struct slave_conf *slave = NULL;
+	struct member_conf *member = NULL;
 	uint8_t i;
 
-	struct rte_mbuf *lacp_tx_buf[SLAVE_COUNT];
+	struct rte_mbuf *lacp_tx_buf[MEMBER_COUNT];
 	struct rte_ether_addr src_mac, dst_mac;
 	struct lacpdu_header lacpdu = {
 		.lacpdu = {
@@ -1396,31 +1398,31 @@ test_mode4_ext_ctrl(void)
 	initialize_eth_header(&lacpdu.eth_hdr, &src_mac, &dst_mac,
 			      RTE_ETHER_TYPE_SLOW, 0, 0);
 
-	for (i = 0; i < SLAVE_COUNT; i++) {
+	for (i = 0; i < MEMBER_COUNT; i++) {
 		lacp_tx_buf[i] = rte_pktmbuf_alloc(test_params.mbuf_pool);
 		rte_memcpy(rte_pktmbuf_mtod(lacp_tx_buf[i], char *),
 			   &lacpdu, sizeof(lacpdu));
 		rte_pktmbuf_pkt_len(lacp_tx_buf[i]) = sizeof(lacpdu);
 	}
 
-	retval = initialize_bonded_device_with_slaves(TEST_TX_SLAVE_COUNT, 0);
-	TEST_ASSERT_SUCCESS(retval, "Failed to initialize bonded device");
+	retval = initialize_bonding_device_with_members(TEST_TX_MEMBER_COUNT, 0);
+	TEST_ASSERT_SUCCESS(retval, "Failed to initialize bonding device");
 
-	FOR_EACH_SLAVE(i, slave) {
+	FOR_EACH_MEMBER(i, member) {
 		TEST_ASSERT_FAIL(rte_eth_bond_8023ad_ext_slowtx(
-						test_params.bonded_port_id,
-						slave->port_id, lacp_tx_buf[i]),
-				 "Slave should not allow manual LACP xmit");
+						test_params.bonding_port_id,
+						member->port_id, lacp_tx_buf[i]),
+				 "Member should not allow manual LACP xmit");
 		TEST_ASSERT_FAIL(rte_eth_bond_8023ad_ext_collect(
-						test_params.bonded_port_id,
-						slave->port_id, 1),
-				 "Slave should not allow external state controls");
+						test_params.bonding_port_id,
+						member->port_id, 1),
+				 "Member should not allow external state controls");
 	}
 
 	free_pkts(lacp_tx_buf, RTE_DIM(lacp_tx_buf));
 
-	retval = remove_slaves_and_stop_bonded_device();
-	TEST_ASSERT_SUCCESS(retval, "Bonded device cleanup failed.");
+	retval = remove_members_and_stop_bonding_device();
+	TEST_ASSERT_SUCCESS(retval, "Bonding device cleanup failed.");
 
 	return TEST_SUCCESS;
 }
@@ -1430,13 +1432,13 @@ static int
 test_mode4_ext_lacp(void)
 {
 	int retval;
-	struct slave_conf *slave = NULL;
-	uint8_t all_slaves_done = 0, i;
+	struct member_conf *member = NULL;
+	uint8_t all_members_done = 0, i;
 	uint16_t nb_pkts;
 	const unsigned int delay = bond_get_update_timeout_ms();
 
-	struct rte_mbuf *lacp_tx_buf[SLAVE_COUNT];
-	struct rte_mbuf *buf[SLAVE_COUNT];
+	struct rte_mbuf *lacp_tx_buf[MEMBER_COUNT];
+	struct rte_mbuf *buf[MEMBER_COUNT];
 	struct rte_ether_addr src_mac, dst_mac;
 	struct lacpdu_header lacpdu = {
 		.lacpdu = {
@@ -1450,15 +1452,15 @@ test_mode4_ext_lacp(void)
 	initialize_eth_header(&lacpdu.eth_hdr, &src_mac, &dst_mac,
 			      RTE_ETHER_TYPE_SLOW, 0, 0);
 
-	for (i = 0; i < SLAVE_COUNT; i++) {
+	for (i = 0; i < MEMBER_COUNT; i++) {
 		lacp_tx_buf[i] = rte_pktmbuf_alloc(test_params.mbuf_pool);
 		rte_memcpy(rte_pktmbuf_mtod(lacp_tx_buf[i], char *),
 			   &lacpdu, sizeof(lacpdu));
 		rte_pktmbuf_pkt_len(lacp_tx_buf[i]) = sizeof(lacpdu);
 	}
 
-	retval = initialize_bonded_device_with_slaves(TEST_TX_SLAVE_COUNT, 1);
-	TEST_ASSERT_SUCCESS(retval, "Failed to initialize bonded device");
+	retval = initialize_bonding_device_with_members(TEST_TX_MEMBER_COUNT, 1);
+	TEST_ASSERT_SUCCESS(retval, "Failed to initialize bonding device");
 
 	memset(lacpdu_rx_count, 0, sizeof(lacpdu_rx_count));
 
@@ -1466,22 +1468,22 @@ test_mode4_ext_lacp(void)
 	for (i = 0; i < 30; ++i)
 		rte_delay_ms(delay);
 
-	FOR_EACH_SLAVE(i, slave) {
+	FOR_EACH_MEMBER(i, member) {
 		retval = rte_eth_bond_8023ad_ext_slowtx(
-						test_params.bonded_port_id,
-						slave->port_id, lacp_tx_buf[i]);
+						test_params.bonding_port_id,
+						member->port_id, lacp_tx_buf[i]);
 		TEST_ASSERT_SUCCESS(retval,
-				    "Slave should allow manual LACP xmit");
+				    "Member should allow manual LACP xmit");
 	}
 
 	nb_pkts = bond_tx(NULL, 0);
 	TEST_ASSERT_EQUAL(nb_pkts, 0, "Packets transmitted unexpectedly");
 
-	FOR_EACH_SLAVE(i, slave) {
-		nb_pkts = slave_get_pkts(slave, buf, RTE_DIM(buf));
-		TEST_ASSERT_EQUAL(nb_pkts, 1, "found %u packets on slave %d\n",
+	FOR_EACH_MEMBER(i, member) {
+		nb_pkts = member_get_pkts(member, buf, RTE_DIM(buf));
+		TEST_ASSERT_EQUAL(nb_pkts, 1, "found %u packets on member %d\n",
 				  nb_pkts, i);
-		slave_put_pkts(slave, buf, nb_pkts);
+		member_put_pkts(member, buf, nb_pkts);
 	}
 
 	nb_pkts = bond_rx(buf, RTE_DIM(buf));
@@ -1489,26 +1491,26 @@ test_mode4_ext_lacp(void)
 	TEST_ASSERT_EQUAL(nb_pkts, 0, "Packets received unexpectedly");
 
 	/* wait for the periodic callback to run */
-	for (i = 0; i < 30 && all_slaves_done == 0; ++i) {
+	for (i = 0; i < 30 && all_members_done == 0; ++i) {
 		uint8_t s, total = 0;
 
 		rte_delay_ms(delay);
-		FOR_EACH_SLAVE(s, slave) {
-			total += lacpdu_rx_count[slave->port_id];
+		FOR_EACH_MEMBER(s, member) {
+			total += lacpdu_rx_count[member->port_id];
 		}
 
-		if (total >= SLAVE_COUNT)
-			all_slaves_done = 1;
+		if (total >= MEMBER_COUNT)
+			all_members_done = 1;
 	}
 
-	FOR_EACH_SLAVE(i, slave) {
-		TEST_ASSERT_EQUAL(lacpdu_rx_count[slave->port_id], 1,
-				  "Slave port %u should have received 1 lacpdu (count=%u)",
-				  slave->port_id,
-				  lacpdu_rx_count[slave->port_id]);
+	FOR_EACH_MEMBER(i, member) {
+		TEST_ASSERT_EQUAL(lacpdu_rx_count[member->port_id], 1,
+				  "Member port %u should have received 1 lacpdu (count=%u)",
+				  member->port_id,
+				  lacpdu_rx_count[member->port_id]);
 	}
 
-	retval = remove_slaves_and_stop_bonded_device();
+	retval = remove_members_and_stop_bonding_device();
 	TEST_ASSERT_SUCCESS(retval, "Test cleanup failed.");
 
 	return TEST_SUCCESS;
@@ -1517,10 +1519,10 @@ test_mode4_ext_lacp(void)
 static int
 check_environment(void)
 {
-	struct slave_conf *port;
+	struct member_conf *port;
 	uint8_t i, env_state;
-	uint16_t slaves[RTE_DIM(test_params.slave_ports)];
-	int slaves_count;
+	uint16_t members[RTE_DIM(test_params.member_ports)];
+	int members_count;
 
 	env_state = 0;
 	FOR_EACH_PORT(i, port) {
@@ -1530,7 +1532,7 @@ check_environment(void)
 		if (rte_ring_count(port->tx_queue) != 0)
 			env_state |= 0x02;
 
-		if (port->bonded != 0)
+		if (port->bonding != 0)
 			env_state |= 0x04;
 
 		if (port->lacp_parnter_state != 0)
@@ -1540,20 +1542,20 @@ check_environment(void)
 			break;
 	}
 
-	slaves_count = rte_eth_bond_slaves_get(test_params.bonded_port_id,
-			slaves, RTE_DIM(slaves));
+	members_count = rte_eth_bond_members_get(test_params.bonding_port_id,
+			members, RTE_DIM(members));
 
-	if (slaves_count != 0)
+	if (members_count != 0)
 		env_state |= 0x10;
 
 	TEST_ASSERT_EQUAL(env_state, 0,
 		"Environment not clean (port %u):%s%s%s%s%s",
 		port->port_id,
-		env_state & 0x01 ? " slave rx queue not clean" : "",
-		env_state & 0x02 ? " slave tx queue not clean" : "",
-		env_state & 0x04 ? " port marked as enslaved" : "",
-		env_state & 0x80 ? " slave state is not reset" : "",
-		env_state & 0x10 ? " slave count not equal 0" : ".");
+		env_state & 0x01 ? " member rx queue not clean" : "",
+		env_state & 0x02 ? " member tx queue not clean" : "",
+		env_state & 0x04 ? " port marked as enmemberd" : "",
+		env_state & 0x80 ? " member state is not reset" : "",
+		env_state & 0x10 ? " member count not equal 0" : ".");
 
 
 	return TEST_SUCCESS;
@@ -1562,7 +1564,7 @@ check_environment(void)
 static int
 test_mode4_executor(int (*test_func)(void))
 {
-	struct slave_conf *port;
+	struct member_conf *port;
 	int test_result;
 	uint8_t i;
 	void *pkt;
@@ -1581,8 +1583,8 @@ test_mode4_executor(int (*test_func)(void))
 
 	/* Reset environment in case test failed to do that. */
 	if (test_result != TEST_SUCCESS) {
-		TEST_ASSERT_SUCCESS(remove_slaves_and_stop_bonded_device(),
-			"Failed to stop bonded device");
+		TEST_ASSERT_SUCCESS(remove_members_and_stop_bonding_device(),
+			"Failed to stop bonding device");
 
 		FOR_EACH_PORT(i, port) {
 			while (rte_ring_count(port->rx_queue) != 0) {
@@ -1674,4 +1676,4 @@ test_link_bonding_mode4(void)
 	return unit_test_suite_runner(&link_bonding_mode4_test_suite);
 }
 
-REGISTER_TEST_COMMAND(link_bonding_mode4_autotest, test_link_bonding_mode4);
+REGISTER_DRIVER_TEST(link_bonding_mode4_autotest, test_link_bonding_mode4);

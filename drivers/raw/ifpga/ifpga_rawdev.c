@@ -74,7 +74,7 @@ static const struct rte_pci_id pci_ifpga_map[] = {
 static struct ifpga_rawdev ifpga_rawdevices[IFPGA_RAWDEV_NUM];
 
 static int ifpga_monitor_refcnt;
-static pthread_t ifpga_monitor_start_thread;
+static rte_thread_t ifpga_monitor_start_thread;
 
 static struct ifpga_rawdev *
 ifpga_rawdev_allocate(struct rte_rawdev *rawdev);
@@ -504,7 +504,7 @@ end:
 	return -EFAULT;
 }
 
-static void *
+static uint32_t
 ifpga_rawdev_gsd_handle(__rte_unused void *param)
 {
 	struct ifpga_rawdev *ifpga_rdev;
@@ -532,7 +532,7 @@ ifpga_rawdev_gsd_handle(__rte_unused void *param)
 		rte_delay_us(100 * MS);
 	}
 
-	return NULL;
+	return 0;
 }
 
 static int
@@ -550,11 +550,10 @@ ifpga_monitor_start_func(struct ifpga_rawdev *dev)
 	dev->poll_enabled = 1;
 
 	if (!__atomic_fetch_add(&ifpga_monitor_refcnt, 1, __ATOMIC_RELAXED)) {
-		ret = rte_ctrl_thread_create(&ifpga_monitor_start_thread,
-					     "ifpga-monitor", NULL,
-					     ifpga_rawdev_gsd_handle, NULL);
+		ret = rte_thread_create_internal_control(&ifpga_monitor_start_thread,
+				"ifpga-mon", ifpga_rawdev_gsd_handle, NULL);
 		if (ret != 0) {
-			ifpga_monitor_start_thread = 0;
+			ifpga_monitor_start_thread.opaque_id = 0;
 			IFPGA_RAWDEV_PMD_ERR(
 				"Fail to create ifpga monitor thread");
 			return -1;
@@ -575,12 +574,12 @@ ifpga_monitor_stop_func(struct ifpga_rawdev *dev)
 	dev->poll_enabled = 0;
 
 	if (!(__atomic_fetch_sub(&ifpga_monitor_refcnt, 1, __ATOMIC_RELAXED) - 1) &&
-		ifpga_monitor_start_thread) {
-		ret = pthread_cancel(ifpga_monitor_start_thread);
+		ifpga_monitor_start_thread.opaque_id != 0) {
+		ret = pthread_cancel((pthread_t)ifpga_monitor_start_thread.opaque_id);
 		if (ret)
 			IFPGA_RAWDEV_PMD_ERR("Can't cancel the thread");
 
-		ret = pthread_join(ifpga_monitor_start_thread, NULL);
+		ret = rte_thread_join(ifpga_monitor_start_thread, NULL);
 		if (ret)
 			IFPGA_RAWDEV_PMD_ERR("Can't join the thread");
 

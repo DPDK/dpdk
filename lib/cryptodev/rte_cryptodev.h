@@ -109,7 +109,6 @@ struct rte_crypto_param_range {
 struct rte_cryptodev_symmetric_capability {
 	enum rte_crypto_sym_xform_type xform_type;
 	/**< Transform type : Authentication / Cipher / AEAD */
-	RTE_STD_C11
 	union {
 		struct {
 			enum rte_crypto_auth_algorithm algo;
@@ -198,7 +197,6 @@ struct rte_cryptodev_capabilities {
 	enum rte_crypto_op_type op;
 	/**< Operation type */
 
-	RTE_STD_C11
 	union {
 		struct rte_cryptodev_symmetric_capability sym;
 		/**< Symmetric operation capability parameters */

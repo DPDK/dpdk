@@ -155,6 +155,7 @@ F: doc/guides/prog_guide/env_abstraction_layer.rst
 F: app/test/test_alarm.c
 F: app/test/test_atomic.c
 F: app/test/test_barrier.c
+F: app/test/test_bitcount.c
 F: app/test/test_byteorder.c
 F: app/test/test_common.c
 F: app/test/test_cpuflags.c
@@ -164,7 +165,6 @@ F: app/test/test_devargs.c
 F: app/test/test_eal*
 F: app/test/test_errno.c
 F: app/test/test_lcores.c
-F: app/test/test_logs.c
 F: app/test/test_memcpy*
 F: app/test/test_per_lcore.c
 F: app/test/test_pflock.c
@@ -176,6 +176,11 @@ F: app/test/test_string_fns.c
 F: app/test/test_tailq.c
 F: app/test/test_threads.c
 F: app/test/test_version.c
+
+Logging
+F: lib/log/
+F: doc/guides/prog_guide/log_lib.rst
+F: app/test/test_logs.c
 
 Trace - EXPERIMENTAL
 M: Jerin Jacob <jerinj@marvell.com>
@@ -316,7 +321,6 @@ M: Bruce Richardson <bruce.richardson@intel.com>
 M: Konstantin Ananyev <konstantin.v.ananyev@yandex.ru>
 F: config/x86/
 F: doc/guides/linux_gsg/nic_perf_intel_platform.rst
-F: buildtools/binutils-avx512-check.py
 F: doc/guides/howto/avx512.rst
 F: lib/eal/x86/
 F: lib/*/*_sse*
@@ -605,8 +609,8 @@ F: drivers/bus/vmbus/
 
 Networking Drivers
 ------------------
-M: Ferruh Yigit <ferruh.yigit@amd.com>
 T: git://dpdk.org/next/dpdk-next-net
+F: drivers/net/meson.build
 F: doc/guides/nics/features/default.ini
 
 Link bonding
@@ -616,12 +620,6 @@ F: drivers/net/bonding/
 F: doc/guides/prog_guide/link_bonding_poll_mode_drv_lib.rst
 F: app/test/test_link_bonding*
 F: examples/bond/
-
-Linux KNI
-F: kernel/linux/kni/
-F: lib/kni/
-F: doc/guides/prog_guide/kernel_nic_interface.rst
-F: app/test/test_kni.c
 
 Linux AF_PACKET
 M: John W. Linville <linville@tuxdriver.com>
@@ -646,7 +644,7 @@ F: doc/guides/nics/ena.rst
 F: doc/guides/nics/features/ena.ini
 
 AMD axgbe
-M: Chandubabu Namburu <chandu@amd.com>
+M: Selwin Sebastian <selwin.sebastian@amd.com>
 F: drivers/net/axgbe/
 F: doc/guides/nics/axgbe.rst
 F: doc/guides/nics/features/axgbe.ini
@@ -1027,10 +1025,6 @@ F: drivers/net/tap/
 F: doc/guides/nics/tap.rst
 F: doc/guides/nics/features/tap.ini
 
-KNI PMD
-F: drivers/net/kni/
-F: doc/guides/nics/kni.rst
-
 Ring PMD
 M: Bruce Richardson <bruce.richardson@intel.com>
 F: drivers/net/ring/
@@ -1063,6 +1057,7 @@ F: doc/guides/nics/features/memif.ini
 Crypto Drivers
 --------------
 T: git://dpdk.org/next/dpdk-next-crypto
+F: drivers/crypto/meson.build
 F: doc/guides/cryptodevs/features/default.ini
 
 AMD CCP Crypto
@@ -1199,6 +1194,7 @@ F: doc/guides/cryptodevs/features/virtio.ini
 Compression Drivers
 -------------------
 T: git://dpdk.org/next/dpdk-next-crypto
+F: drivers/compress/meson.build
 
 Cavium OCTEON TX zipvf
 M: Ashish Gupta <ashish.gupta@marvell.com>
@@ -1250,6 +1246,7 @@ F: doc/guides/dmadevs/hisilicon.rst
 
 Marvell CNXK DPI DMA
 M: Vamsi Attunuru <vattunuru@marvell.com>
+T: git://dpdk.org/next/dpdk-next-net-mrvl
 F: drivers/dma/cnxk/
 F: doc/guides/dmadevs/cnxk.rst
 
@@ -1271,6 +1268,7 @@ RegEx Drivers
 
 Marvell OCTEON CN9K regex
 M: Liron Himi <lironh@marvell.com>
+T: git://dpdk.org/next/dpdk-next-net-mrvl
 F: drivers/regex/cn9k/
 F: doc/guides/regexdevs/cn9k.rst
 F: doc/guides/regexdevs/features/cn9k.ini
@@ -1287,6 +1285,7 @@ MLdev Drivers
 
 Marvell ML CNXK
 M: Srikanth Yalavarthi <syalavarthi@marvell.com>
+T: git://dpdk.org/next/dpdk-next-net-mrvl
 F: drivers/common/cnxk/hw/ml.h
 F: drivers/common/cnxk/roc_ml*
 F: drivers/ml/cnxk/
@@ -1296,6 +1295,7 @@ F: doc/guides/mldevs/cnxk.rst
 vDPA Drivers
 ------------
 T: git://dpdk.org/next/dpdk-next-virtio
+F: drivers/vdpa/meson.build
 
 Intel ifc
 M: Xiao Wang <xiao.w.wang@intel.com>
@@ -1319,8 +1319,8 @@ F: doc/guides/vdpadevs/features/sfc.ini
 
 Eventdev Drivers
 ----------------
-M: Jerin Jacob <jerinj@marvell.com>
 T: git://dpdk.org/next/dpdk-next-eventdev
+F: drivers/event/meson.build
 
 Cavium OCTEON TX ssovf
 M: Jerin Jacob <jerinj@marvell.com>
@@ -1332,7 +1332,7 @@ M: Pavan Nikhilesh <pbhagavatula@marvell.com>
 F: drivers/event/octeontx/timvf_*
 
 Intel DLB2
-M: Timothy McDaniel <timothy.mcdaniel@intel.com>
+M: Abdullah Sevincer <abdullah.sevincer@intel.com>
 F: drivers/event/dlb2/
 F: doc/guides/eventdevs/dlb2.rst
 
@@ -1375,10 +1375,11 @@ F: doc/guides/eventdevs/opdl.rst
 
 Baseband Drivers
 ----------------
+T: git://dpdk.org/next/dpdk-next-baseband
+F: drivers/baseband/meson.build
 
 Intel baseband
 M: Nicolas Chautru <nicolas.chautru@intel.com>
-T: git://dpdk.org/next/dpdk-next-baseband
 F: drivers/baseband/turbo_sw/
 F: doc/guides/bbdevs/turbo_sw.rst
 F: doc/guides/bbdevs/features/turbo_sw.ini
@@ -1397,7 +1398,6 @@ F: doc/guides/bbdevs/features/vrb1.ini
 
 Null baseband
 M: Nicolas Chautru <nicolas.chautru@intel.com>
-T: git://dpdk.org/next/dpdk-next-baseband
 F: drivers/baseband/null/
 F: doc/guides/bbdevs/null.rst
 F: doc/guides/bbdevs/features/null.ini
@@ -1405,7 +1405,6 @@ F: doc/guides/bbdevs/features/null.ini
 NXP LA12xx
 M: Gagandeep Singh <g.singh@nxp.com>
 M: Hemant Agrawal <hemant.agrawal@nxp.com>
-T: git://dpdk.org/next/dpdk-next-baseband
 F: drivers/baseband/la12xx/
 F: doc/guides/bbdevs/la12xx.rst
 F: doc/guides/bbdevs/features/la12xx.ini
@@ -1433,12 +1432,14 @@ F: doc/guides/rawdevs/ifpga.rst
 Marvell CNXK BPHY
 M: Jakub Palider <jpalider@marvell.com>
 M: Tomasz Duszynski <tduszynski@marvell.com>
+T: git://dpdk.org/next/dpdk-next-net-mrvl
 F: doc/guides/rawdevs/cnxk_bphy.rst
 F: drivers/raw/cnxk_bphy/
 
 Marvell CNXK GPIO
 M: Jakub Palider <jpalider@marvell.com>
 M: Tomasz Duszynski <tduszynski@marvell.com>
+T: git://dpdk.org/next/dpdk-next-net-mrvl
 F: doc/guides/rawdevs/cnxk_gpio.rst
 F: drivers/raw/cnxk_gpio/
 
@@ -1510,13 +1511,6 @@ T: git://dpdk.org/next/dpdk-next-crypto
 F: lib/pdcp/
 F: doc/guides/prog_guide/pdcp_lib.rst
 F: app/test/test_pdcp*
-
-Flow Classify - EXPERIMENTAL - UNMAINTAINED
-F: lib/flow_classify/
-F: app/test/test_flow_classify*
-F: doc/guides/prog_guide/flow_classify_lib.rst
-F: examples/flow_classify/
-F: doc/guides/sample_app_ug/flow_classify.rst
 
 Distributor
 M: David Hunt <david.hunt@intel.com>
@@ -1711,6 +1705,7 @@ Telemetry
 M: Ciara Power <ciara.power@intel.com>
 F: lib/telemetry/
 F: app/test/test_telemetry*
+F: app/test/suites/test_telemetry.sh
 F: usertools/dpdk-telemetry*
 F: doc/guides/howto/telemetry.rst
 
@@ -1744,7 +1739,6 @@ Test Applications
 
 Unit tests framework
 F: app/test/commands.c
-F: app/test/has_hugepage.py
 F: app/test/packet_burst_generator.c
 F: app/test/packet_burst_generator.h
 F: app/test/process.h
@@ -1755,6 +1749,8 @@ F: app/test/test_pmd_perf.c
 F: app/test/test_resource.c
 F: app/test/virtual_pmd.c
 F: app/test/virtual_pmd.h
+F: buildtools/has-hugepages.py
+F: buildtools/get-test-suites.py
 
 Sample packet helper functions for unit test
 M: Reshma Pattan <reshma.pattan@intel.com>

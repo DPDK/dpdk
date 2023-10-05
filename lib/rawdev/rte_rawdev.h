@@ -291,7 +291,6 @@ struct rte_rawdev {
 	/**< Driver info. supplied by probing */
 	const char *driver_name;
 
-	RTE_STD_C11
 	/**< Flag indicating the device is attached */
 	uint8_t attached : 1;
 	/**< Device state: STARTED(1)/STOPPED(0) */

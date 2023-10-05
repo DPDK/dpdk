@@ -507,4 +507,4 @@ test_func_reentrancy(void)
 	return 0;
 }
 
-REGISTER_TEST_COMMAND(func_reentrancy_autotest, test_func_reentrancy);
+REGISTER_FAST_TEST(func_reentrancy_autotest, false, true, test_func_reentrancy);

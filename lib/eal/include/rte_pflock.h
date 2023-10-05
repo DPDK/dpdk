@@ -34,14 +34,15 @@ extern "C" {
 #include <rte_compat.h>
 #include <rte_common.h>
 #include <rte_pause.h>
+#include <rte_stdatomic.h>
 
 /**
  * The rte_pflock_t type.
  */
 struct rte_pflock {
 	struct {
-		uint16_t in;
-		uint16_t out;
+		RTE_ATOMIC(uint16_t) in;
+		RTE_ATOMIC(uint16_t) out;
 	} rd, wr;
 };
 typedef struct rte_pflock rte_pflock_t;
@@ -116,14 +117,13 @@ rte_pflock_read_lock(rte_pflock_t *pf)
 	 * If no writer is present, then the operation has completed
 	 * successfully.
 	 */
-	w = __atomic_fetch_add(&pf->rd.in, RTE_PFLOCK_RINC, __ATOMIC_ACQUIRE)
+	w = rte_atomic_fetch_add_explicit(&pf->rd.in, RTE_PFLOCK_RINC, rte_memory_order_acquire)
 		& RTE_PFLOCK_WBITS;
 	if (w == 0)
 		return;
 
 	/* Wait for current write phase to complete. */
-	RTE_WAIT_UNTIL_MASKED(&pf->rd.in, RTE_PFLOCK_WBITS, !=, w,
-		__ATOMIC_ACQUIRE);
+	RTE_WAIT_UNTIL_MASKED(&pf->rd.in, RTE_PFLOCK_WBITS, !=, w, rte_memory_order_acquire);
 }
 
 /**
@@ -139,7 +139,7 @@ __rte_experimental
 static inline void
 rte_pflock_read_unlock(rte_pflock_t *pf)
 {
-	__atomic_fetch_add(&pf->rd.out, RTE_PFLOCK_RINC, __ATOMIC_RELEASE);
+	rte_atomic_fetch_add_explicit(&pf->rd.out, RTE_PFLOCK_RINC, rte_memory_order_release);
 }
 
 /**
@@ -160,8 +160,9 @@ rte_pflock_write_lock(rte_pflock_t *pf)
 	/* Acquire ownership of write-phase.
 	 * This is same as rte_ticketlock_lock().
 	 */
-	ticket = __atomic_fetch_add(&pf->wr.in, 1, __ATOMIC_RELAXED);
-	rte_wait_until_equal_16(&pf->wr.out, ticket, __ATOMIC_ACQUIRE);
+	ticket = rte_atomic_fetch_add_explicit(&pf->wr.in, 1, rte_memory_order_relaxed);
+	rte_wait_until_equal_16((uint16_t *)(uintptr_t)&pf->wr.out, ticket,
+		rte_memory_order_acquire);
 
 	/*
 	 * Acquire ticket on read-side in order to allow them
@@ -172,10 +173,11 @@ rte_pflock_write_lock(rte_pflock_t *pf)
 	 * speculatively.
 	 */
 	w = RTE_PFLOCK_PRES | (ticket & RTE_PFLOCK_PHID);
-	ticket = __atomic_fetch_add(&pf->rd.in, w, __ATOMIC_RELAXED);
+	ticket = rte_atomic_fetch_add_explicit(&pf->rd.in, w, rte_memory_order_relaxed);
 
 	/* Wait for any pending readers to flush. */
-	rte_wait_until_equal_16(&pf->rd.out, ticket, __ATOMIC_ACQUIRE);
+	rte_wait_until_equal_16((uint16_t *)(uintptr_t)&pf->rd.out, ticket,
+		rte_memory_order_acquire);
 }
 
 /**
@@ -192,10 +194,10 @@ static inline void
 rte_pflock_write_unlock(rte_pflock_t *pf)
 {
 	/* Migrate from write phase to read phase. */
-	__atomic_fetch_and(&pf->rd.in, RTE_PFLOCK_LSB, __ATOMIC_RELEASE);
+	rte_atomic_fetch_and_explicit(&pf->rd.in, RTE_PFLOCK_LSB, rte_memory_order_release);
 
 	/* Allow other writers to continue. */
-	__atomic_fetch_add(&pf->wr.out, 1, __ATOMIC_RELEASE);
+	rte_atomic_fetch_add_explicit(&pf->wr.out, 1, rte_memory_order_release);
 }
 
 #ifdef __cplusplus

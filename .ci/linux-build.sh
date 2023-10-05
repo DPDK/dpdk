@@ -97,7 +97,7 @@ if [ "$MINI" = "true" ]; then
     OPTS="$OPTS -Denable_drivers=net/null"
     OPTS="$OPTS -Ddisable_libs=*"
 else
-    OPTS="$OPTS -Ddisable_libs="
+    OPTS="$OPTS -Denable_deprecated_libs=*"
 fi
 OPTS="$OPTS -Dlibdir=lib"
 

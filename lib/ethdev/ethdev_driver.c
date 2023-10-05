@@ -3,6 +3,7 @@
  */
 
 #include <stdlib.h>
+#include <pthread.h>
 
 #include <rte_kvargs.h>
 #include <rte_malloc.h>

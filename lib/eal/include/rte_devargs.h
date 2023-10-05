@@ -78,7 +78,6 @@ struct rte_devargs {
 	enum rte_dev_policy policy;
 	/** Name of the device. */
 	char name[RTE_DEV_NAME_MAX_LEN];
-	RTE_STD_C11
 	union {
 		const char *args; /**< legacy name. */
 		const char *drv_str; /**< driver-related part of device string. */

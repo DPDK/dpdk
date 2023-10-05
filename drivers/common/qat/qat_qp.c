@@ -286,7 +286,7 @@ qat_queue_create(struct qat_pci_device *qat_dev, struct qat_queue *queue,
 	queue->msg_size = desc_size;
 
 	/* For fast calculation of cookie index, relies on msg_size being 2^n */
-	queue->trailz = __builtin_ctz(desc_size);
+	queue->trailz = rte_ctz32(desc_size);
 
 	/*
 	 * Write an unused pattern to the queue memory.

@@ -56,7 +56,7 @@ rte_table_stub_lookup(
 	__rte_unused void **entries)
 {
 	__rte_unused struct rte_table_stub *stub = (struct rte_table_stub *) table;
-	__rte_unused uint32_t n_pkts_in = __builtin_popcountll(pkts_mask);
+	__rte_unused uint32_t n_pkts_in = rte_popcount64(pkts_mask);
 
 	RTE_TABLE_LPM_STATS_PKTS_IN_ADD(stub, n_pkts_in);
 	*lookup_hit_mask = 0;

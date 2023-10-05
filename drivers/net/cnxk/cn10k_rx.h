@@ -1715,7 +1715,7 @@ cn10k_nix_recv_pkts_vector(void *args, struct rte_mbuf **mbufs, uint16_t pkts,
 				 * timestamp.
 				 */
 				tstamp->rx_ready = 1;
-				tstamp->rx_tstamp = ts[31 - __builtin_clz(res)];
+				tstamp->rx_tstamp = ts[31 - rte_clz32(res)];
 			}
 		}
 

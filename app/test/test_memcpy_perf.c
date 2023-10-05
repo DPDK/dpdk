@@ -348,4 +348,4 @@ test_memcpy_perf(void)
 	return 0;
 }
 
-REGISTER_TEST_COMMAND(memcpy_perf_autotest, test_memcpy_perf);
+REGISTER_PERF_TEST(memcpy_perf_autotest, test_memcpy_perf);

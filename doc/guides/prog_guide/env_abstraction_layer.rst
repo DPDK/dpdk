@@ -443,9 +443,7 @@ Per-lcore variables are implemented using *Thread Local Storage* (TLS) to provid
 Logs
 ~~~~
 
-A logging API is provided by EAL.
-By default, in a Linux application, logs are sent to syslog and also to the console.
-However, the log function can be overridden by the user to use a different logging mechanism.
+While originally part of EAL, DPDK logging functionality is now provided by the :doc:`log_lib`.
 
 Trace and Debug Functions
 ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -610,8 +608,6 @@ devices would fail anyway.
     ``RTE_PCI_DRV_NEED_IOVA_AS_VA`` flag is used to dictate that this PCI
     driver can only work in RTE_IOVA_VA mode.
 
-    When the KNI kernel module is detected, RTE_IOVA_PA mode is preferred as a
-    performance penalty is expected in RTE_IOVA_VA mode.
 
 IOVA Mode Configuration
 ~~~~~~~~~~~~~~~~~~~~~~~
@@ -760,7 +756,7 @@ Control Thread API
 ~~~~~~~~~~~~~~~~~~
 
 It is possible to create Control Threads using the public API
-``rte_ctrl_thread_create()``.
+``rte_thread_create_control()``.
 Those threads can be used for management/infrastructure tasks and are used
 internally by DPDK for multi process support and interrupt handling.
 

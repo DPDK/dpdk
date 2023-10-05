@@ -28,6 +28,7 @@
 #include <rte_pause.h>
 #include <rte_dmadev.h>
 #include <rte_vhost_async.h>
+#include <rte_thread.h>
 
 #include "main.h"
 
@@ -1807,7 +1808,7 @@ static const struct rte_vhost_device_ops virtio_net_device_ops =
  * This is a thread will wake up after a period to print stats if the user has
  * enabled them.
  */
-static void *
+static uint32_t
 print_stats(__rte_unused void *arg)
 {
 	struct vhost_dev *vdev;
@@ -1852,7 +1853,7 @@ print_stats(__rte_unused void *arg)
 		fflush(stdout);
 	}
 
-	return NULL;
+	return 0;
 }
 
 static void
@@ -1907,7 +1908,7 @@ main(int argc, char *argv[])
 	unsigned nb_ports, valid_num_ports;
 	int ret, i;
 	uint16_t portid;
-	static pthread_t tid;
+	rte_thread_t tid;
 	uint64_t flags = RTE_VHOST_USER_NET_COMPLIANT_OL_FLAGS;
 
 	signal(SIGINT, sigint_handler);
@@ -1986,11 +1987,11 @@ main(int argc, char *argv[])
 
 	/* Enable stats if the user option is set. */
 	if (enable_stats) {
-		ret = rte_ctrl_thread_create(&tid, "print-stats", NULL,
+		ret = rte_thread_create_control(&tid, "dpdk-vhost-stat",
 					print_stats, NULL);
 		if (ret < 0)
 			rte_exit(EXIT_FAILURE,
-				"Cannot create print-stats thread\n");
+				"Cannot create dpdk-vhost-stat thread\n");
 	}
 
 	/* Launch all data cores. */

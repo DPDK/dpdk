@@ -155,7 +155,7 @@ tbl8_get_idx(struct dir24_8_tbl *dp)
 			(dp->tbl8_idxes[i] == UINT64_MAX); i++)
 		;
 	if (i < (dp->number_tbl8s >> BITMAP_SLAB_BIT_SIZE_LOG2)) {
-		bit_idx = __builtin_ctzll(~dp->tbl8_idxes[i]);
+		bit_idx = rte_ctz64(~dp->tbl8_idxes[i]);
 		dp->tbl8_idxes[i] |= (1ULL << bit_idx);
 		return (i << BITMAP_SLAB_BIT_SIZE_LOG2) + bit_idx;
 	}

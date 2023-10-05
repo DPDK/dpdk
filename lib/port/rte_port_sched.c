@@ -191,7 +191,7 @@ rte_port_sched_writer_tx_bulk(void *port,
 
 	if (expr == 0) {
 		__rte_unused uint32_t nb_tx;
-		uint64_t n_pkts = __builtin_popcountll(pkts_mask);
+		uint64_t n_pkts = rte_popcount64(pkts_mask);
 
 		if (tx_buf_count) {
 			nb_tx = rte_sched_port_enqueue(p->sched, p->tx_buf,
@@ -204,7 +204,7 @@ rte_port_sched_writer_tx_bulk(void *port,
 		RTE_PORT_SCHED_WRITER_STATS_PKTS_DROP_ADD(p, n_pkts - nb_tx);
 	} else {
 		for ( ; pkts_mask; ) {
-			uint32_t pkt_index = __builtin_ctzll(pkts_mask);
+			uint32_t pkt_index = rte_ctz64(pkts_mask);
 			uint64_t pkt_mask = 1LLU << pkt_index;
 			struct rte_mbuf *pkt = pkts[pkt_index];
 

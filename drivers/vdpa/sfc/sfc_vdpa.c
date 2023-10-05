@@ -4,6 +4,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <pthread.h>
 #include <sys/queue.h>
 
 #include <rte_common.h>

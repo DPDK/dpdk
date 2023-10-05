@@ -12,8 +12,8 @@ gve_rx_refill_dqo(struct gve_rx_queue *rxq)
 {
 	volatile struct gve_rx_desc_dqo *rx_buf_ring;
 	volatile struct gve_rx_desc_dqo *rx_buf_desc;
-	struct rte_mbuf *nmb[rxq->free_thresh];
-	uint16_t nb_refill = rxq->free_thresh;
+	struct rte_mbuf *nmb[rxq->nb_rx_hold];
+	uint16_t nb_refill = rxq->nb_rx_hold;
 	uint16_t nb_desc = rxq->nb_rx_desc;
 	uint16_t next_avail = rxq->bufq_tail;
 	struct rte_eth_dev *dev;

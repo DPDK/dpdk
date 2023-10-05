@@ -1,6 +1,10 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2017-2019 Intel Corporation
 
+if is_ms_compiler
+    subdir_done()
+endif
+
 fs = import('fs')
 
 # Defines the order of dependencies evaluation
@@ -37,7 +41,9 @@ disable_drivers = run_command(list_dir_globs, disable_drivers, check: true).stdo
 # add cmdline enabled drivers and meson enabled drivers together
 enable_drivers = ',' + get_option('enable_drivers')
 enable_drivers = run_command(list_dir_globs, enable_drivers, check: true).stdout().split()
+require_drivers = true
 if enable_drivers.length() == 0
+    require_drivers = false
     enable_drivers = run_command(list_dir_globs, '*/*', check: true).stdout().split()
 endif
 
@@ -70,6 +76,25 @@ foreach subpath:subdirs
     else
         class = subpath
         subdir(class)
+        skip_class = false
+        foreach d:std_deps
+            if not is_variable('shared_rte_' + d)
+                skip_class = true
+                reason = 'missing internal dependency, "@0@"'.format(d)
+                if dpdk_libs_deprecated.contains(d)
+                    reason += ' (deprecated lib)'
+                endif
+                message('Disabling @1@/* drivers: missing internal dependency "@0@"'
+                        .format(d, class))
+                break
+            endif
+        endforeach
+        if skip_class
+            drv_path = join_paths(class, '*')
+            dpdk_drvs_disabled += drv_path
+            set_variable(drv_path.underscorify() + '_disable_reason', reason)
+            continue
+        endif
     endif
 
     # save class name on first occurrence
@@ -132,6 +157,12 @@ foreach subpath:subdirs
                 build = false
                 reason = 'requires IOVA in mbuf (set enable_iova_as_pa option)'
             endif
+            # error out if we can't build a driver and that driver was explicitly requested,
+            # i.e. not via wildcard.
+            if not build and require_drivers and get_option('enable_drivers').contains(drv_path)
+                error('Cannot build explicitly requested driver "@0@".\n'.format(drv_path)
+                        +'\tReason: ' + reason)
+            endif
 
             # get dependency objs from strings
             shared_deps = ext_deps
@@ -148,6 +179,12 @@ foreach subpath:subdirs
                     endif
                     message('Disabling @1@ [@2@]: missing internal dependency "@0@"'
                             .format(d, name, 'drivers/' + drv_path))
+                    # error out if we can't build a driver and that driver was explicitly
+                    # requested, i.e. not via wildcard.
+                    if require_drivers and get_option('enable_drivers').contains(drv_path)
+                        error('Cannot build explicitly requested driver "@0@".\n'.format(drv_path)
+                                +'\tPlease enable missing dependency "@0@"'.format(d))
+                    endif
                 else
                     shared_deps += [get_variable('shared_rte_' + d)]
                     static_deps += [get_variable('static_rte_' + d)]

@@ -47,7 +47,6 @@ extern "C" {
  */
 struct rte_memseg {
 	rte_iova_t iova;            /**< Start IO address. */
-	RTE_STD_C11
 	union {
 		void *addr;         /**< Start virtual address. */
 		uint64_t addr_64;   /**< Makes sure addr is always 64 bits */
@@ -65,7 +64,6 @@ struct rte_memseg {
  * together with the array itself.
  */
 struct rte_memseg_list {
-	RTE_STD_C11
 	union {
 		void *base_va;
 		/**< Base virtual address for this memseg list. */

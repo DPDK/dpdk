@@ -3,21 +3,26 @@
  * All rights reserved.
  */
 
-#include <rte_common.h>
-#include <ethdev_pci.h>
-
-#include "../nfp_common.h"
-#include "../nfp_logs.h"
-#include "../nfp_ctrl.h"
-#include "../nfp_rxtx.h"
-#include "../nfd3/nfp_nfd3.h"
-#include "../nfpcore/nfp_mip.h"
-#include "../nfpcore/nfp_rtsym.h"
-#include "../nfpcore/nfp_nsp.h"
-#include "nfp_flower.h"
 #include "nfp_flower_representor.h"
-#include "nfp_flower_ctrl.h"
-#include "nfp_flower_cmsg.h"
+
+#include "../nfd3/nfp_nfd3.h"
+#include "../nfpcore/nfp_nsp.h"
+#include "../nfp_logs.h"
+#include "../nfp_mtr.h"
+
+/*
+ * enum nfp_repr_type - type of representor
+ * @NFP_REPR_TYPE_PHYS_PORT:   external NIC port
+ * @NFP_REPR_TYPE_PF:          physical function
+ * @NFP_REPR_TYPE_VF:          virtual function
+ * @NFP_REPR_TYPE_MAX:         number of representor types
+ */
+enum nfp_repr_type {
+	NFP_REPR_TYPE_PHYS_PORT,
+	NFP_REPR_TYPE_PF,
+	NFP_REPR_TYPE_VF,
+	NFP_REPR_TYPE_MAX,
+};
 
 static int
 nfp_pf_repr_rx_queue_setup(struct rte_eth_dev *dev,
@@ -67,7 +72,8 @@ nfp_pf_repr_rx_queue_setup(struct rte_eth_dev *dev,
 	 * resizing in later calls to the queue setup function.
 	 */
 	tz = rte_eth_dma_zone_reserve(dev, "rx_ring", queue_idx,
-			sizeof(struct nfp_net_rx_desc) * NFP_NET_MAX_RX_DESC,
+			sizeof(struct nfp_net_rx_desc) *
+			hw->dev_info->max_qc_size,
 			NFP_MEMZONE_ALIGN, socket_id);
 	if (tz == NULL) {
 		PMD_DRV_LOG(ERR, "Error allocating rx dma");
@@ -140,7 +146,8 @@ nfp_pf_repr_tx_queue_setup(struct rte_eth_dev *dev,
 	 * resizing in later calls to the queue setup function.
 	 */
 	tz = rte_eth_dma_zone_reserve(dev, "tx_ring", queue_idx,
-			sizeof(struct nfp_net_nfd3_tx_desc) * NFP_NET_MAX_TX_DESC,
+			sizeof(struct nfp_net_nfd3_tx_desc) *
+			hw->dev_info->max_qc_size,
 			NFP_MEMZONE_ALIGN, socket_id);
 	if (tz == NULL) {
 		PMD_DRV_LOG(ERR, "Error allocating tx dma");

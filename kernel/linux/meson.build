@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2018 Intel Corporation
 
-subdirs = ['kni']
+subdirs = []
 
 kernel_build_dir = get_option('kernel_dir')
 kernel_source_dir = get_option('kernel_dir')

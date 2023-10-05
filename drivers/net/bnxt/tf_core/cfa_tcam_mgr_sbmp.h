@@ -39,7 +39,7 @@ struct sbmp {
 #define SBMP_CLEAR(bm)                  (SBMP_WORD_GET(bm, 0) = 0)
 #define SBMP_IS_NULL(bm)		(SBMP_WORD_GET(bm, 0) == 0)
 #define	SBMP_COUNT(bm, count)	\
-	(count = __builtin_popcount(SBMP_WORD_GET(bm, 0)))
+	(count = rte_popcount32(SBMP_WORD_GET(bm, 0)))
 #elif SBMP_WORD_MAX == 2
 #define	SBMP_WENT(session)		((session) / SBMP_WORD_WIDTH)
 #define	SBMP_WBIT(session)		(1U << ((session) % SBMP_WORD_WIDTH))
@@ -53,8 +53,8 @@ struct sbmp {
 #define	SBMP_COUNT(bm, count)						\
 	do {								\
 		typeof(bm) *_bm = &(bm);				\
-		count = __builtin_popcount(SBMP_WORD_GET(*_bm, 0)) +	\
-			__builtin_popcount(SBMP_WORD_GET(*_bm, 1)));	\
+		count = rte_popcount32(SBMP_WORD_GET(*_bm, 0)) +	\
+			rte_popcount32(SBMP_WORD_GET(*_bm, 1)));	\
 	} while (0)
 #elif SBMP_WORD_MAX == 3
 #define	SBMP_WENT(session)		((session) / SBMP_WORD_WIDTH)
@@ -71,9 +71,9 @@ struct sbmp {
 #define	SBMP_COUNT(bm, count)						\
 	do {								\
 		typeof(bm) *_bm = &(bm);				\
-		count = __builtin_popcount(SBMP_WORD_GET(*_bm, 0)) +	\
-			__builtin_popcount(SBMP_WORD_GET(*_bm, 1)) +	\
-			__builtin_popcount(SBMP_WORD_GET(*_bm, 2));	\
+		count = rte_popcount32(SBMP_WORD_GET(*_bm, 0)) +	\
+			rte_popcount32(SBMP_WORD_GET(*_bm, 1)) +	\
+			rte_popcount32(SBMP_WORD_GET(*_bm, 2));	\
 	} while (0)
 #else  /* SBMP_WORD_MAX > 3 */
 #define	SBMP_WENT(session)		((session) / SBMP_WORD_WIDTH)
@@ -93,7 +93,7 @@ struct sbmp {
 		int	_count, _w;					\
 		_count = 0;						\
 		for (_w = 0; _w < SBMP_WORD_MAX; _w++) {		\
-			_count += __builtin_popcount(SBMP_WORD_GET(*_bm, _w)); \
+			_count += rte_popcount32(SBMP_WORD_GET(*_bm, _w)); \
 		}							\
 		count = _count;						\
 	} while (0)

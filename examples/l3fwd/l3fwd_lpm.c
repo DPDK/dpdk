@@ -226,6 +226,7 @@ lpm_main_loop(__rte_unused void *dummy)
 	return 0;
 }
 
+#ifdef RTE_LIB_EVENTDEV
 static __rte_always_inline uint16_t
 lpm_process_event_pkt(const struct lcore_conf *lconf, struct rte_mbuf *mbuf)
 {
@@ -554,6 +555,7 @@ lpm_event_main_loop_tx_q_burst_vector(__rte_unused void *dummy)
 	lpm_event_loop_vector(evt_rsrc, L3FWD_EVENT_TX_ENQ);
 	return 0;
 }
+#endif
 
 void
 setup_lpm(const int socketid)

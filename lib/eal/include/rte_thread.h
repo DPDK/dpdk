@@ -23,6 +23,16 @@
 extern "C" {
 #endif
 
+/** Maximum thread name length (including '\0'). */
+#define RTE_THREAD_NAME_SIZE 16
+/* Old definition, aliased for compatibility. */
+#define RTE_MAX_THREAD_NAME_LEN RTE_THREAD_NAME_SIZE
+
+/** Thread name prefix automatically added to all internal threads. */
+#define RTE_THREAD_INTERNAL_PREFIX "dpdk-"
+/** Maximum internal thread name length (including '\0'). */
+#define RTE_THREAD_INTERNAL_NAME_SIZE 11
+
 /**
  * Thread id descriptor.
  */
@@ -68,9 +78,6 @@ typedef struct {
 typedef struct eal_tls_key *rte_thread_key;
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Create a new thread that will invoke the 'thread_func' routine.
  *
  * @param thread_id
@@ -89,15 +96,11 @@ typedef struct eal_tls_key *rte_thread_key;
  *   On success, return 0.
  *   On failure, return a positive errno-style error number.
  */
-__rte_experimental
 int rte_thread_create(rte_thread_t *thread_id,
 		const rte_thread_attr_t *thread_attr,
 		rte_thread_func thread_func, void *arg);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Create a control thread.
  *
  * Creates a control thread with the given name and attributes. The
@@ -110,27 +113,49 @@ int rte_thread_create(rte_thread_t *thread_id,
  *   Filled with the thread id of the new created thread.
  * @param name
  *   The name of the control thread
- *   (max RTE_MAX_THREAD_NAME_LEN characters including '\0').
- * @param thread_attr
- *   Attributes for the new thread.
+ *   (max RTE_THREAD_NAME_SIZE characters including '\0').
  * @param thread_func
  *   Function to be executed by the new thread.
  * @param arg
- *   Argument passed to start_routine.
+ *   Argument passed to thread_func.
  * @return
  *   On success, returns 0; on error, it returns a negative value
  *   corresponding to the error number.
  */
-__rte_experimental
 int
 rte_thread_create_control(rte_thread_t *thread, const char *name,
-	const rte_thread_attr_t *thread_attr, rte_thread_func thread_func,
-	void *arg);
+		rte_thread_func thread_func, void *arg);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
+ * Create an internal control thread.
  *
+ * Creates a control thread with the given name prefixed.
+ * If setting the name of the thread fails, the error is ignored and logged.
+ *
+ * The affinity of the new thread is based on the CPU affinity retrieved
+ * at the time rte_eal_init() was called, the EAL threads are then excluded.
+ *
+ * @param id
+ *   Filled with the thread ID of the new created thread.
+ * @param name
+ *   The name of the control thread.
+ *   See RTE_THREAD_INTERNAL_NAME_SIZE for maximum length.
+ *   The name of the driver or library should be first,
+ *   then followed by a hyphen and more details.
+ *   It will be prefixed with RTE_THREAD_INTERNAL_PREFIX by this function.
+ * @param func
+ *   Function to be executed by the new thread.
+ * @param arg
+ *   Argument passed to func.
+ * @return
+ *   On success, returns 0; a negative value otherwise.
+ */
+__rte_internal
+int
+rte_thread_create_internal_control(rte_thread_t *id, const char *name,
+		rte_thread_func func, void *arg);
+
+/**
  * Waits for the thread identified by 'thread_id' to terminate
  *
  * @param thread_id
@@ -143,13 +168,9 @@ rte_thread_create_control(rte_thread_t *thread, const char *name,
  *   On success, return 0.
  *   On failure, return a positive errno-style error number.
  */
-__rte_experimental
 int rte_thread_join(rte_thread_t thread_id, uint32_t *value_ptr);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Indicate that the return value of the thread is not needed and
  * all thread resources should be release when the thread terminates.
  *
@@ -160,26 +181,19 @@ int rte_thread_join(rte_thread_t thread_id, uint32_t *value_ptr);
  *   On success, return 0.
  *   On failure, return a positive errno-style error number.
  */
-__rte_experimental
 int rte_thread_detach(rte_thread_t thread_id);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Get the id of the calling thread.
  *
  * @return
  *   Return the thread id of the calling thread.
  */
-__rte_experimental
 rte_thread_t rte_thread_self(void);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Set the name of the thread.
+ *
  * This API is a noop if the underlying platform does not
  * support setting the thread name or the platform-specific
  * API used to set the thread name fails.
@@ -188,17 +202,33 @@ rte_thread_t rte_thread_self(void);
  *    The id of the thread to set name.
  *
  * @param thread_name
- *    The name to set. Truncated to RTE_MAX_THREAD_NAME_LEN,
+ *    The name to set. Truncated to RTE_THREAD_NAME_SIZE,
  *    including terminating NUL if necessary.
  */
-__rte_experimental
 void
 rte_thread_set_name(rte_thread_t thread_id, const char *thread_name);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
+ * Set the name of an internal thread with the common prefix.
  *
+ * This API is a noop if the underlying platform does not support
+ * setting the thread name, or if it fails.
+ *
+ * @param id
+ *   The ID of the thread to set name.
+ *
+ * @param name
+ *   The name to set after being prefixed.
+ *   See RTE_THREAD_INTERNAL_NAME_SIZE for maximum length.
+ *   The name of the driver or library should be first,
+ *   then followed by a hyphen and more details.
+ *   It will be prefixed with RTE_THREAD_INTERNAL_PREFIX by this function.
+ */
+__rte_internal
+void
+rte_thread_set_prefixed_name(rte_thread_t id, const char *name);
+
+/**
  * Check if 2 thread ids are equal.
  *
  * @param t1
@@ -211,13 +241,9 @@ rte_thread_set_name(rte_thread_t thread_id, const char *thread_name);
  *   If the ids are equal, return nonzero.
  *   Otherwise, return 0.
  */
-__rte_experimental
 int rte_thread_equal(rte_thread_t t1, rte_thread_t t2);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Initialize the attributes of a thread.
  * These attributes can be passed to the rte_thread_create() function
  * that will create a new thread and set its attributes according to attr.
@@ -229,13 +255,9 @@ int rte_thread_equal(rte_thread_t t1, rte_thread_t t2);
  *   On success, return 0.
  *   On failure, return a positive errno-style error number.
  */
-__rte_experimental
 int rte_thread_attr_init(rte_thread_attr_t *attr);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Set the thread priority value in the thread attributes pointed to
  * by 'thread_attr'.
  *
@@ -249,16 +271,12 @@ int rte_thread_attr_init(rte_thread_attr_t *attr);
  *   On success, return 0.
  *   On failure, return a positive errno-style error number.
  */
-__rte_experimental
 int rte_thread_attr_set_priority(rte_thread_attr_t *thread_attr,
 		enum rte_thread_priority priority);
 
 #ifdef RTE_HAS_CPUSET
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Set the CPU affinity value in the thread attributes pointed to
  * by 'thread_attr'.
  *
@@ -272,14 +290,10 @@ int rte_thread_attr_set_priority(rte_thread_attr_t *thread_attr,
  *   On success, return 0.
  *   On failure, return a positive errno-style error number.
  */
-__rte_experimental
 int rte_thread_attr_set_affinity(rte_thread_attr_t *thread_attr,
 		rte_cpuset_t *cpuset);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Get the value of CPU affinity that is set in the thread attributes pointed
  * to by 'thread_attr'.
  *
@@ -293,14 +307,10 @@ int rte_thread_attr_set_affinity(rte_thread_attr_t *thread_attr,
  *   On success, return 0.
  *   On failure, return a positive errno-style error number.
  */
-__rte_experimental
 int rte_thread_attr_get_affinity(rte_thread_attr_t *thread_attr,
 		rte_cpuset_t *cpuset);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Set the affinity of thread 'thread_id' to the cpu set
  * specified by 'cpuset'.
  *
@@ -314,14 +324,10 @@ int rte_thread_attr_get_affinity(rte_thread_attr_t *thread_attr,
  *   On success, return 0.
  *   On failure, return a positive errno-style error number.
  */
-__rte_experimental
 int rte_thread_set_affinity_by_id(rte_thread_t thread_id,
 		const rte_cpuset_t *cpuset);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Get the affinity of thread 'thread_id' and store it
  * in 'cpuset'.
  *
@@ -335,7 +341,6 @@ int rte_thread_set_affinity_by_id(rte_thread_t thread_id,
  *   On success, return 0.
  *   On failure, return a positive errno-style error number.
  */
-__rte_experimental
 int rte_thread_get_affinity_by_id(rte_thread_t thread_id,
 		rte_cpuset_t *cpuset);
 
@@ -362,9 +367,6 @@ void rte_thread_get_affinity(rte_cpuset_t *cpusetp);
 #endif /* RTE_HAS_CPUSET */
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Get the priority of a thread.
  *
  * @param thread_id
@@ -377,14 +379,10 @@ void rte_thread_get_affinity(rte_cpuset_t *cpusetp);
  *   On success, return 0.
  *   On failure, return a positive errno-style error number.
  */
-__rte_experimental
 int rte_thread_get_priority(rte_thread_t thread_id,
 		enum rte_thread_priority *priority);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Set the priority of a thread.
  *
  * @param thread_id
@@ -397,7 +395,6 @@ int rte_thread_get_priority(rte_thread_t thread_id,
  *   On success, return 0.
  *   On failure, return a positive errno-style error number.
  */
-__rte_experimental
 int rte_thread_set_priority(rte_thread_t thread_id,
 		enum rte_thread_priority priority);
 
@@ -419,7 +416,6 @@ int rte_thread_set_priority(rte_thread_t thread_id,
  *                     ENOEXEC - Specific OS error.
  */
 
-__rte_experimental
 int rte_thread_key_create(rte_thread_key *key,
 			void (*destructor)(void *));
 
@@ -435,7 +431,6 @@ int rte_thread_key_create(rte_thread_key *key,
  *   rte_errno can be: EINVAL  - Invalid parameter passed.
  *                     ENOEXEC - Specific OS error.
  */
-__rte_experimental
 int rte_thread_key_delete(rte_thread_key key);
 
 /**
@@ -452,7 +447,6 @@ int rte_thread_key_delete(rte_thread_key key);
  *   rte_errno can be: EINVAL  - Invalid parameter passed.
  *                     ENOEXEC - Specific OS error.
  */
-__rte_experimental
 int rte_thread_value_set(rte_thread_key key, const void *value);
 
 /**
@@ -467,7 +461,6 @@ int rte_thread_value_set(rte_thread_key key, const void *value);
  *   rte_errno can be: EINVAL  - Invalid parameter passed.
  *                     ENOEXEC - Specific OS error.
  */
-__rte_experimental
 void *rte_thread_value_get(rte_thread_key key);
 
 #ifdef __cplusplus

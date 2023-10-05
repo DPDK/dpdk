@@ -2,11 +2,20 @@
  * Copyright 2020 Intel Corporation
  */
 
+#ifdef RTE_EXEC_ENV_WINDOWS
+#include "test.h"
+
+static int
+telemetry_data_autotest(void)
+{
+	return TEST_SKIPPED;
+}
+
+#else
+
 #include <string.h>
 #include <sys/socket.h>
-#ifndef RTE_EXEC_ENV_WINDOWS
 #include <sys/un.h>
-#endif
 #include <unistd.h>
 #include <limits.h>
 
@@ -604,5 +613,6 @@ telemetry_data_autotest(void)
 	close(sock);
 	return 0;
 }
+#endif /* !RTE_EXEC_ENV_WINDOWS */
 
-REGISTER_TEST_COMMAND(telemetry_data_autotest, telemetry_data_autotest);
+REGISTER_FAST_TEST(telemetry_data_autotest, true, true, telemetry_data_autotest);

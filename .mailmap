@@ -106,7 +106,7 @@ Andriy Berestovskyy <aber@semihalf.com> <andriy.berestovskyy@caviumnetworks.com>
 Andrzej Ostruszka <amo@semihalf.com> <aostruszka@marvell.com>
 Andy Gospodarek <andrew.gospodarek@broadcom.com> <gospo@broadcom.com>
 Andy Green <andy@warmcat.com>
-Andy Moreton <amoreton@xilinx.com> <amoreton@solarflare.com>
+Andy Moreton <andy.moreton@amd.com> <amoreton@xilinx.com> <amoreton@solarflare.com>
 Andy Pei <andy.pei@intel.com>
 Anirudh Venkataramanan <anirudh.venkataramanan@intel.com>
 Ankur Dwivedi <adwivedi@marvell.com> <ankur.dwivedi@caviumnetworks.com> <ankur.dwivedi@cavium.com>
@@ -1291,6 +1291,7 @@ Simon Ellmann <simon.ellmann@tum.de>
 Simon Horman <simon.horman@corigine.com> <simon.horman@netronome.com>
 Simon Kagstrom <simon.kagstrom@netinsight.net>
 Simon Kuenzer <simon.kuenzer@neclab.eu>
+Sinan Kaya <okaya@kernel.org>
 Siobhan Butler <siobhan.a.butler@intel.com>
 Sirshak Das <sirshak.das@arm.com>
 Sivaprasad Tummala <sivaprasad.tummala@amd.com> <sivaprasad.tummala@intel.com>
@@ -1481,6 +1482,7 @@ Wei Dai <wei.dai@intel.com>
 Weifeng Li <liweifeng96@126.com>
 Weiguo Li <liwg06@foxmail.com>
 Wei Huang <wei.huang@intel.com>
+Wei Hu <weh@microsoft.com>
 Wei Hu (Xavier) <xavier.huwei@huawei.com>
 WeiJie Zhuang <zhuangwj@gmail.com>
 Weiliang Luo <droidluo@gmail.com>

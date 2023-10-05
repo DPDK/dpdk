@@ -4,7 +4,11 @@
 
 #include <fcntl.h>
 #include <unistd.h>
+#ifdef RTE_TOOLCHAIN_MSVC
+#define bit_AVX (1 << 28)
+#else
 #include <cpuid.h>
+#endif
 
 
 #include "eal_private.h"
@@ -82,9 +86,25 @@ check_model_gdm_dnv(uint8_t model)
 	return 0;
 }
 
+#ifdef RTE_TOOLCHAIN_MSVC
+int
+__get_cpuid_max(unsigned int e, unsigned int *s)
+{
+	uint32_t cpuinfo[4];
+
+	__cpuid(cpuinfo, e);
+	if (s)
+		*s = cpuinfo[1];
+	return cpuinfo[0];
+}
+#endif
+
 uint64_t
 get_tsc_freq_arch(void)
 {
+#ifdef RTE_TOOLCHAIN_MSVC
+	int cpuinfo[4];
+#endif
 	uint64_t tsc_hz = 0;
 	uint32_t a, b, c, d, maxleaf;
 	uint8_t mult, model;
@@ -97,14 +117,30 @@ get_tsc_freq_arch(void)
 	maxleaf = __get_cpuid_max(0, NULL);
 
 	if (maxleaf >= 0x15) {
+#ifdef RTE_TOOLCHAIN_MSVC
+		__cpuid(cpuinfo, 0x15);
+		a = cpuinfo[0];
+		b = cpuinfo[1];
+		c = cpuinfo[2];
+		d = cpuinfo[3];
+#else
 		__cpuid(0x15, a, b, c, d);
+#endif
 
 		/* EBX : TSC/Crystal ratio, ECX : Crystal Hz */
 		if (b && c)
 			return c * (b / a);
 	}
 
+#ifdef RTE_TOOLCHAIN_MSVC
+	__cpuid(cpuinfo, 0x1);
+	a = cpuinfo[0];
+	b = cpuinfo[1];
+	c = cpuinfo[2];
+	d = cpuinfo[3];
+#else
 	__cpuid(0x1, a, b, c, d);
+#endif
 	model = rte_cpu_get_model(a);
 
 	if (check_model_wsm_nhm(model))

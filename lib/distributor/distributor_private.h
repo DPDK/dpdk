@@ -52,7 +52,7 @@
  * Only 64-bits of the memory is actually used though.
  */
 union rte_distributor_buffer_single {
-	volatile int64_t bufptr64;
+	volatile RTE_ATOMIC(int64_t) bufptr64;
 	char pad[RTE_CACHE_LINE_SIZE*3];
 } __rte_cache_aligned;
 

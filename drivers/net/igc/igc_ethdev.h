@@ -177,7 +177,6 @@ struct igc_ntuple_info {
 
 /* Structure of n-tuple filter */
 struct igc_ntuple_filter {
-	RTE_STD_C11
 	union {
 		uint64_t hash_val;
 		struct igc_ntuple_info tuple_info;
@@ -215,7 +214,6 @@ enum igc_filter_type {
 struct rte_flow {
 	TAILQ_ENTRY(rte_flow) node;
 	enum igc_filter_type filter_type;
-	RTE_STD_C11
 	char filter[0];		/* filter data */
 };
 

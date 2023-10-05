@@ -9,7 +9,7 @@
 #define NUM_ITR 3
 
 /* sample test to send packets to the pdump client recursively */
-void *send_pkts(void *port);
+uint32_t send_pkts(void *empty);
 
 /* Sample test to create setup for the pdump server tests */
 int test_pdump_init(void);

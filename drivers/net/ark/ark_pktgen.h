@@ -75,6 +75,6 @@ void ark_pktgen_set_hdr_dW(ark_pkt_gen_t handle, uint32_t *hdr);
 void ark_pktgen_set_start_offset(ark_pkt_gen_t handle, uint32_t x);
 void ark_pktgen_parse(char *argv);
 void ark_pktgen_setup(ark_pkt_gen_t handle);
-void *ark_pktgen_delay_start(void *arg);
+uint32_t ark_pktgen_delay_start(void *arg);
 
 #endif

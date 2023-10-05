@@ -19,7 +19,6 @@ struct flow_rule_entry {
 	uint8_t is_eth;
 	uint8_t is_ipv4;
 	uint8_t is_ipv6;
-	RTE_STD_C11
 	union {
 		struct {
 			struct rte_flow_item_ipv4 spec;

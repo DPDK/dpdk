@@ -11,7 +11,6 @@ sources += files(
         'eal_hugepage_info.c',
         'eal_interrupts.c',
         'eal_lcore.c',
-        'eal_log.c',
         'eal_memalloc.c',
         'eal_memory.c',
         'eal_thread.c',

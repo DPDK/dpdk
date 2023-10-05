@@ -594,4 +594,4 @@ test_timer(void)
 	return TEST_SUCCESS;
 }
 
-REGISTER_TEST_COMMAND(timer_autotest, test_timer);
+REGISTER_FAST_TEST(timer_autotest, false, true, test_timer);

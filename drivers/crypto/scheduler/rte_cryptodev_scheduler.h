@@ -24,7 +24,7 @@
 extern "C" {
 #endif
 
-/** Maximum number of bonded devices per device */
+/** Maximum number of bonding devices per device */
 #ifndef RTE_CRYPTODEV_SCHEDULER_MAX_NB_WORKERS
 #define RTE_CRYPTODEV_SCHEDULER_MAX_NB_WORKERS	(8)
 #endif

@@ -16,15 +16,6 @@
 #include "virtqueue.h"
 
 /*
- * Following macros are derived from linux/pci_regs.h, however,
- * we can't simply include that header here, as there is no such
- * file for non-Linux platform.
- */
-#define PCI_CAPABILITY_LIST	0x34
-#define PCI_CAP_ID_VNDR		0x09
-#define PCI_CAP_ID_MSIX		0x11
-
-/*
  * The remaining space is defined by each driver as the per-driver
  * configuration space.
  */
@@ -33,51 +24,19 @@
 
 struct virtio_pci_internal virtio_pci_internal[RTE_MAX_ETHPORTS];
 
-#define PCI_MSIX_ENABLE 0x8000
-
 static enum virtio_msix_status
 vtpci_msix_detect(struct rte_pci_device *dev)
 {
-	uint8_t pos;
-	int ret;
+	uint16_t flags;
+	off_t pos;
 
-	ret = rte_pci_read_config(dev, &pos, 1, PCI_CAPABILITY_LIST);
-	if (ret != 1) {
-		PMD_INIT_LOG(DEBUG,
-			     "failed to read pci capability list, ret %d", ret);
-		return VIRTIO_MSIX_NONE;
-	}
-
-	while (pos) {
-		uint8_t cap[2];
-
-		ret = rte_pci_read_config(dev, cap, sizeof(cap), pos);
-		if (ret != sizeof(cap)) {
-			PMD_INIT_LOG(DEBUG,
-				     "failed to read pci cap at pos: %x ret %d",
-				     pos, ret);
-			break;
-		}
-
-		if (cap[0] == PCI_CAP_ID_MSIX) {
-			uint16_t flags;
-
-			ret = rte_pci_read_config(dev, &flags, sizeof(flags),
-					pos + sizeof(cap));
-			if (ret != sizeof(flags)) {
-				PMD_INIT_LOG(DEBUG,
-					     "failed to read pci cap at pos:"
-					     " %x ret %d", pos + 2, ret);
-				break;
-			}
-
-			if (flags & PCI_MSIX_ENABLE)
-				return VIRTIO_MSIX_ENABLED;
-			else
-				return VIRTIO_MSIX_DISABLED;
-		}
-
-		pos = cap[1];
+	pos = rte_pci_find_capability(dev, RTE_PCI_CAP_ID_MSIX);
+	if (pos > 0 && rte_pci_read_config(dev, &flags, sizeof(flags),
+			pos + RTE_PCI_MSIX_FLAGS) == sizeof(flags)) {
+		if (flags & RTE_PCI_MSIX_FLAGS_ENABLE)
+			return VIRTIO_MSIX_ENABLED;
+		else
+			return VIRTIO_MSIX_DISABLED;
 	}
 
 	return VIRTIO_MSIX_NONE;
@@ -623,8 +582,8 @@ static int
 virtio_read_caps(struct rte_pci_device *pci_dev, struct virtio_hw *hw)
 {
 	struct virtio_pci_dev *dev = virtio_pci_get_dev(hw);
-	uint8_t pos;
 	struct virtio_pci_cap cap;
+	off_t pos;
 	int ret;
 
 	if (rte_pci_map_device(pci_dev)) {
@@ -632,72 +591,27 @@ virtio_read_caps(struct rte_pci_device *pci_dev, struct virtio_hw *hw)
 		return -1;
 	}
 
-	ret = rte_pci_read_config(pci_dev, &pos, 1, PCI_CAPABILITY_LIST);
-	if (ret != 1) {
-		PMD_INIT_LOG(DEBUG,
-			     "failed to read pci capability list, ret %d", ret);
-		return -1;
-	}
+	/*
+	 * Transitional devices would also have this capability,
+	 * that's why we also check if msix is enabled.
+	 */
+	dev->msix_status = vtpci_msix_detect(pci_dev);
 
-	while (pos) {
-		ret = rte_pci_read_config(pci_dev, &cap, 2, pos);
-		if (ret != 2) {
-			PMD_INIT_LOG(DEBUG,
-				     "failed to read pci cap at pos: %x ret %d",
-				     pos, ret);
+	pos = rte_pci_find_capability(pci_dev, RTE_PCI_CAP_ID_VNDR);
+	while (pos > 0) {
+		if (rte_pci_read_config(pci_dev, &cap, sizeof(cap), pos) != sizeof(cap))
 			break;
-		}
-
-		if (cap.cap_vndr == PCI_CAP_ID_MSIX) {
-			/* Transitional devices would also have this capability,
-			 * that's why we also check if msix is enabled.
-			 * 1st byte is cap ID; 2nd byte is the position of next
-			 * cap; next two bytes are the flags.
-			 */
-			uint16_t flags;
-
-			ret = rte_pci_read_config(pci_dev, &flags, sizeof(flags),
-					pos + 2);
-			if (ret != sizeof(flags)) {
-				PMD_INIT_LOG(DEBUG,
-					     "failed to read pci cap at pos:"
-					     " %x ret %d", pos + 2, ret);
-				break;
-			}
-
-			if (flags & PCI_MSIX_ENABLE)
-				dev->msix_status = VIRTIO_MSIX_ENABLED;
-			else
-				dev->msix_status = VIRTIO_MSIX_DISABLED;
-		}
-
-		if (cap.cap_vndr != PCI_CAP_ID_VNDR) {
-			PMD_INIT_LOG(DEBUG,
-				"[%2x] skipping non VNDR cap id: %02x",
-				pos, cap.cap_vndr);
-			goto next;
-		}
-
-		ret = rte_pci_read_config(pci_dev, &cap, sizeof(cap), pos);
-		if (ret != sizeof(cap)) {
-			PMD_INIT_LOG(DEBUG,
-				     "failed to read pci cap at pos: %x ret %d",
-				     pos, ret);
-			break;
-		}
-
 		PMD_INIT_LOG(DEBUG,
 			"[%2x] cfg type: %u, bar: %u, offset: %04x, len: %u",
-			pos, cap.cfg_type, cap.bar, cap.offset, cap.length);
+			(unsigned int)pos, cap.cfg_type, cap.bar, cap.offset, cap.length);
 
 		switch (cap.cfg_type) {
 		case VIRTIO_PCI_CAP_COMMON_CFG:
 			dev->common_cfg = get_cfg_addr(pci_dev, &cap);
 			break;
 		case VIRTIO_PCI_CAP_NOTIFY_CFG:
-			ret = rte_pci_read_config(pci_dev,
-					&dev->notify_off_multiplier,
-					4, pos + sizeof(cap));
+			ret = rte_pci_read_config(pci_dev, &dev->notify_off_multiplier,
+				4, pos + sizeof(cap));
 			if (ret != 4)
 				PMD_INIT_LOG(DEBUG,
 					"failed to read notify_off_multiplier, ret %d",
@@ -713,8 +627,7 @@ virtio_read_caps(struct rte_pci_device *pci_dev, struct virtio_hw *hw)
 			break;
 		}
 
-next:
-		pos = cap.cap_next;
+		pos = rte_pci_find_next_capability(pci_dev, RTE_PCI_CAP_ID_VNDR, pos);
 	}
 
 	if (dev->common_cfg == NULL || dev->notify_base == NULL ||

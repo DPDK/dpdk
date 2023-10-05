@@ -193,7 +193,7 @@ static struct {
 static inline int
 mrvl_reserve_bit(int *bitmap, int max)
 {
-	int n = sizeof(*bitmap) * 8 - __builtin_clz(*bitmap);
+	int n = sizeof(*bitmap) * 8 - rte_clz32(*bitmap);
 
 	if (n >= max)
 		return -1;

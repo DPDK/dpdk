@@ -1,11 +1,22 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2022 University of New Hampshire
+# Copyright(c) 2023 PANTHEON.tech s.r.o.
 
 [tool.poetry]
 name = "dts"
 version = "0.1.0"
-description = ""
-authors = ["Owen Hilyard <ohilyard@iol.unh.edu>", "dts@dpdk.org"]
+description = "DPDK Test Suite."
+license = "BSD-3-Clause"
+authors = [
+    "Owen Hilyard <ohilyard@iol.unh.edu>",
+    "Juraj Linkeš <juraj.linkes@pantheon.tech>",
+    "Jeremy Spewock <jspewock@iol.unh.edu>"
+]
+maintainers = [
+    "Lijuan Tu <lijuan.tu@intel.com>",
+    "Juraj Linkeš <juraj.linkes@pantheon.tech>"
+]
+documentation = "https://doc.dpdk.org/guides/tools/dts.html"
 
 [tool.poetry.dependencies]
 python = "^3.10"
@@ -15,28 +26,28 @@ types-PyYAML = "^6.0.8"
 fabric = "^2.7.1"
 scapy = "^2.5.0"
 
-[tool.poetry.dev-dependencies]
+[tool.poetry.group.dev.dependencies]
 mypy = "^0.961"
 black = "^22.6.0"
 isort = "^5.10.1"
 pylama = "^8.4.1"
-pyflakes = "2.5.0"
+pyflakes = "^2.5.0"
 toml = "^0.10.2"
-
-[tool.poetry.scripts]
-dts = "main:main"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.pylama]
-linters = "pep8,pylint,mccabe,mypy,pycodestyle,pyflakes"
+linters = "mccabe,pycodestyle,pyflakes"
 format = "pylint"
 max_line_length = 88 # https://black.readthedocs.io/en/stable/the_black_code_style/current_style.html#line-length
 
 [tool.mypy]
 python_version = "3.10"
+enable_error_code = ["ignore-without-code"]
+show_error_codes = true
+warn_unused_ignores = true
 
 [tool.isort]
 profile = "black"

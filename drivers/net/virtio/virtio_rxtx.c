@@ -94,7 +94,7 @@ virtio_update_packet_stats(struct virtnet_stats *stats, struct rte_mbuf *mbuf)
 		uint32_t bin;
 
 		/* count zeros, and offset into correct bin */
-		bin = (sizeof(s) * 8) - __builtin_clz(s) - 5;
+		bin = (sizeof(s) * 8) - rte_clz32(s) - 5;
 		stats->size_bins[bin]++;
 	} else {
 		if (s < 64)

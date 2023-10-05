@@ -153,13 +153,6 @@ int rte_eal_tailqs_init(void);
 int rte_eal_intr_init(void);
 
 /**
- * Close the default log stream
- *
- * This function is private to EAL.
- */
-void rte_eal_log_cleanup(void);
-
-/**
  * Init alarm mechanism. This is to allow a callback be called after
  * specific time.
  *

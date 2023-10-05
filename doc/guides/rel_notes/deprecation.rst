@@ -17,10 +17,6 @@ Other API and ABI deprecation notices are to be posted below.
 Deprecation Notices
 -------------------
 
-* build: Enabling deprecated libraries (``flow_classify``, ``kni``)
-  won't be possible anymore through the use of the ``disable_libs`` build option.
-  A new build option for deprecated libraries will be introduced instead.
-
 * kvargs: The function ``rte_kvargs_process`` will get a new parameter
   for returning key match count. It will ease handling of no-match case.
 
@@ -32,15 +28,6 @@ Deprecation Notices
   used by telemetry callbacks for adding unsigned integer values to be returned to the user,
   are renamed to ``rte_tel_data_add_array_uint`` and ``rte_tel_data_add_dict_uint`` respectively.
   As such, the old function names are deprecated and will be removed in a future release.
-
-* eal: RTE_FUNC_PTR_OR_* macros have been marked deprecated and will be removed
-  in the future. Applications can use ``devtools/cocci/func_or_ret.cocci``
-  to update their code.
-
-* eal: The functions ``rte_thread_setname`` and ``rte_ctrl_thread_create``
-  are planned to be deprecated starting with the 23.07 release, subject to
-  the replacement API rte_thread_set_name and rte_thread_create_control being
-  marked as stable, and planned to be removed by the 23.11 release.
 
 * eal: ``RTE_CPUFLAG_NUMFLAGS`` will be removed in DPDK 23.11 release.
   This is to allow new CPU features to be added without ABI breakage.
@@ -59,13 +46,6 @@ Deprecation Notices
   operations and a new wrapper ``rte_atomic_thread_fence`` instead of
   ``__atomic_thread_fence`` must be used for patches that need to be merged in
   20.08 onwards. This change will not introduce any performance degradation.
-
-* kni: The KNI kernel module and library are not recommended for use by new
-  applications - other technologies such as virtio-user are recommended instead.
-  Following the DPDK technical board
-  `decision <https://mails.dpdk.org/archives/dev/2021-January/197077.html>`_
-  and `refinement <https://mails.dpdk.org/archives/dev/2022-June/243596.html>`_,
-  the KNI kernel module, library and PMD will be removed from the DPDK 23.11 release.
 
 * lib: will fix extending some enum/define breaking the ABI. There are multiple
   samples in DPDK that enum/define terminated with a ``.*MAX.*`` value which is
@@ -135,25 +115,6 @@ Deprecation Notices
   The legacy actions should be removed
   once ``MODIFY_FIELD`` alternative is implemented in drivers.
 
-* bonding: The macro ``RTE_ETH_DEV_BONDED_SLAVE`` will be
-  deprecated in DPDK 23.07, and removed in DPDK 23.11.
-  The relevant code can be updated using ``RTE_ETH_DEV_BONDING_MEMBER``.
-  The data structure ``struct rte_eth_bond_8023ad_slave_info`` will be
-  renamed to ``struct rte_eth_bond_8023ad_member_info`` in DPDK 23.11.
-  The following functions will be removed in DPDK 23.11.
-  The old functions:
-  ``rte_eth_bond_8023ad_slave_info``,
-  ``rte_eth_bond_active_slaves_get``,
-  ``rte_eth_bond_slave_add``,
-  ``rte_eth_bond_slave_remove``, and
-  ``rte_eth_bond_slaves_get``
-  will be replaced by:
-  ``rte_eth_bond_8023ad_member_info``,
-  ``rte_eth_bond_active_members_get``,
-  ``rte_eth_bond_member_add``,
-  ``rte_eth_bond_member_remove``, and
-  ``rte_eth_bond_members_get``.
-
 * cryptodev: The function ``rte_cryptodev_cb_fn`` will be updated
   to have another parameter ``qp_id`` to return the queue pair ID
   which got error interrupt to the application,
@@ -181,12 +142,6 @@ Deprecation Notices
   the size of the public ``rte_event_fp_ops`` struct, breaking the ABI.
   Since these functions are not called directly by the application,
   the API remains unaffected.
-
-* flow_classify: The flow_classify library and example have no maintainer.
-  The library is experimental and, as such, it could be removed from DPDK.
-  Its removal has been postponed to let potential users report interest
-  in maintaining it.
-  In the absence of such interest, this library will be removed in DPDK 23.11.
 
 * pipeline: The pipeline library legacy API (functions rte_pipeline_*)
   will be deprecated and subsequently removed in DPDK 24.11 release.

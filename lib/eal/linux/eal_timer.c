@@ -14,6 +14,7 @@
 
 #include <rte_common.h>
 #include <rte_cycles.h>
+#include <rte_thread.h>
 
 #include "eal_private.h"
 
@@ -71,14 +72,14 @@ static uint64_t eal_hpet_resolution_hz = 0;
 /* Incremented 4 times during one 32bits hpet full count */
 static uint32_t eal_hpet_msb;
 
-static pthread_t msb_inc_thread_id;
+static rte_thread_t msb_inc_thread_id;
 
 /*
  * This function runs on a specific thread to update a global variable
  * containing used to process MSB of the HPET (unfortunately, we need
  * this because hpet is 32 bits by default under linux).
  */
-static void *
+static uint32_t
 hpet_msb_inc(__rte_unused void *arg)
 {
 	uint32_t t;
@@ -89,7 +90,7 @@ hpet_msb_inc(__rte_unused void *arg)
 			eal_hpet_msb ++;
 		sleep(10);
 	}
-	return NULL;
+	return 0;
 }
 
 uint64_t
@@ -176,8 +177,8 @@ rte_eal_hpet_init(int make_default)
 
 	/* create a thread that will increment a global variable for
 	 * msb (hpet is 32 bits by default under linux) */
-	ret = rte_ctrl_thread_create(&msb_inc_thread_id, "hpet-msb-inc", NULL,
-				     hpet_msb_inc, NULL);
+	ret = rte_thread_create_internal_control(&msb_inc_thread_id, "hpet-msb",
+			hpet_msb_inc, NULL);
 	if (ret != 0) {
 		RTE_LOG(ERR, EAL, "ERROR: Cannot create HPET timer thread!\n");
 		internal_conf->no_hpet = 1;

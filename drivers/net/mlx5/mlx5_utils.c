@@ -535,7 +535,7 @@ mlx5_ipool_malloc(struct mlx5_indexed_pool *pool, uint32_t *idx)
 		return NULL;
 	}
 	MLX5_ASSERT(slab);
-	iidx += __builtin_ctzll(slab);
+	iidx += rte_ctz64(slab);
 	MLX5_ASSERT(iidx != UINT32_MAX);
 	MLX5_ASSERT(iidx < mlx5_trunk_size_get(pool, trunk->idx));
 	rte_bitmap_clear(trunk->bmp, iidx);
@@ -783,7 +783,7 @@ mlx5_ipool_get_next_cache(struct mlx5_indexed_pool *pool, uint32_t *pos)
 		}
 		return NULL;
 	}
-	iidx += __builtin_ctzll(slab);
+	iidx += rte_ctz64(slab);
 	rte_bitmap_clear(ibmp, iidx);
 	iidx++;
 	*pos = iidx;

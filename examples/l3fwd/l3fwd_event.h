@@ -6,11 +6,13 @@
 #define __L3FWD_EVENTDEV_H__
 
 #include <rte_common.h>
+#include <rte_service.h>
+#include <rte_spinlock.h>
+
+#ifdef RTE_LIB_EVENTDEV
 #include <rte_eventdev.h>
 #include <rte_event_eth_rx_adapter.h>
 #include <rte_event_eth_tx_adapter.h>
-#include <rte_service.h>
-#include <rte_spinlock.h>
 
 #include "l3fwd.h"
 
@@ -164,4 +166,5 @@ void l3fwd_event_worker_cleanup(uint8_t event_d_id, uint8_t event_p_id,
 				struct rte_event events[], uint16_t nb_enq,
 				uint16_t nb_deq, uint8_t is_vector);
 
+#endif /* RTE_LIB_EVENTDEV */
 #endif /* __L3FWD_EVENTDEV_H__ */

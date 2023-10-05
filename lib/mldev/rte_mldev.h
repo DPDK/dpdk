@@ -433,7 +433,6 @@ struct rte_ml_op {
 	/**< Input buffer to hold the inference data. */
 	struct rte_ml_buff_seg output;
 	/**< Output buffer to hold the inference output by the driver. */
-	RTE_STD_C11
 	union {
 		uint64_t user_u64;
 		/**< User data as uint64_t.*/

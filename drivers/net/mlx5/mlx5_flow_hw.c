@@ -6014,7 +6014,7 @@ flow_hw_tx_tag_regc_mask(struct rte_eth_dev *dev)
 	 * Availability of sufficient number of bits in REG_C_0 is verified on initialization.
 	 * Sanity checking here.
 	 */
-	MLX5_ASSERT(__builtin_popcount(mask) >= __builtin_popcount(priv->vport_meta_mask));
+	MLX5_ASSERT(rte_popcount32(mask) >= rte_popcount32(priv->vport_meta_mask));
 	return mask;
 }
 
@@ -6082,7 +6082,7 @@ flow_hw_create_tx_repr_tag_jump_acts_tmpl(struct rte_eth_dev *dev,
 		.src = {
 			.field = RTE_FLOW_FIELD_VALUE,
 		},
-		.width = __builtin_popcount(tag_mask),
+		.width = rte_popcount32(tag_mask),
 	};
 	struct rte_flow_action_modify_field set_tag_m = {
 		.operation = RTE_FLOW_MODIFY_SET,
@@ -6458,7 +6458,7 @@ flow_hw_create_ctrl_regc_jump_actions_template(struct rte_eth_dev *dev,
 		.src = {
 			.field = RTE_FLOW_FIELD_VALUE,
 		},
-		.width = __builtin_popcount(marker_mask),
+		.width = rte_popcount32(marker_mask),
 	};
 	struct rte_flow_action_modify_field set_reg_m = {
 		.operation = RTE_FLOW_MODIFY_SET,

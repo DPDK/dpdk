@@ -8,20 +8,6 @@
 
 #include "nfp_flower.h"
 
-/*
- * enum nfp_repr_type - type of representor
- * @NFP_REPR_TYPE_PHYS_PORT:   external NIC port
- * @NFP_REPR_TYPE_PF:          physical function
- * @NFP_REPR_TYPE_VF:          virtual function
- * @NFP_REPR_TYPE_MAX:         number of representor types
- */
-enum nfp_repr_type {
-	NFP_REPR_TYPE_PHYS_PORT = 0,
-	NFP_REPR_TYPE_PF,
-	NFP_REPR_TYPE_VF,
-	NFP_REPR_TYPE_MAX,
-};
-
 struct nfp_flower_representor {
 	uint16_t vf_id;
 	uint16_t switch_domain_id;

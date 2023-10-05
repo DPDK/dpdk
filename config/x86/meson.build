@@ -4,6 +4,9 @@
 # get binutils version for the workaround of Bug 97
 binutils_ok = true
 if is_linux or cc.get_id() == 'gcc'
+    objdump = find_program('objdump', 'llvm-objdump')
+    binutils_avx512_check = (py3 + files('binutils-avx512-check.py') +
+                            [objdump] + cc.cmd_array())
     binutils_ok = run_command(binutils_avx512_check, check: false).returncode() == 0
     if not binutils_ok and cc.has_argument('-mno-avx512f')
         machine_args += '-mno-avx512f'
@@ -24,10 +27,18 @@ if cc.has_argument('-mavx512f')
     endif
 endif
 
-# we require SSE4.2 for DPDK
-if cc.get_define('__SSE4_2__', args: machine_args) == ''
-    message('SSE 4.2 not enabled by default, explicitly enabling')
-    machine_args += '-msse4'
+if not is_ms_compiler
+    # we require SSE4.2 for DPDK
+    if cc.get_define('__SSE4_2__', args: machine_args) == ''
+        message('SSE 4.2 not enabled by default, explicitly enabling')
+        machine_args += '-msse4'
+    endif
+endif
+
+# enable restricted transactional memory intrinsics
+# https://gcc.gnu.org/onlinedocs/gcc/x86-transactional-memory-intrinsics.html
+if cc.get_id() != 'msvc'
+    machine_args += '-mrtm'
 endif
 
 base_flags = ['SSE', 'SSE2', 'SSE3','SSSE3', 'SSE4_1', 'SSE4_2']

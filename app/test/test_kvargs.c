@@ -292,4 +292,4 @@ test_kvargs(void)
 	return 0;
 }
 
-REGISTER_TEST_COMMAND(kvargs_autotest, test_kvargs);
+REGISTER_FAST_TEST(kvargs_autotest, true, true, test_kvargs);

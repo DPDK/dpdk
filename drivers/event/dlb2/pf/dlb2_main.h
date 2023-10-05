@@ -52,7 +52,6 @@ struct dlb2_dev {
 struct dlb2_pp_thread_data {
 	struct dlb2_hw *hw;
 	int pp;
-	int cpu;
 	bool is_ldb;
 	int cycles;
 };

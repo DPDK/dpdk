@@ -473,4 +473,4 @@ test_efd(void)
 
 #endif /* !RTE_EXEC_ENV_WINDOWS */
 
-REGISTER_TEST_COMMAND(efd_autotest, test_efd);
+REGISTER_PERF_TEST(efd_autotest, test_efd);

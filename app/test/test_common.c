@@ -7,6 +7,7 @@
 #include <string.h>
 #include <math.h>
 #include <rte_common.h>
+#include <rte_bitops.h>
 #include <rte_hexdump.h>
 #include <rte_pause.h>
 
@@ -350,4 +351,4 @@ test_common(void)
 	return ret;
 }
 
-REGISTER_TEST_COMMAND(common_autotest, test_common);
+REGISTER_FAST_TEST(common_autotest, true, true, test_common);

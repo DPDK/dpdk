@@ -72,6 +72,30 @@ New Features
      Also, make sure to start the actual text at the margin.
      =======================================================
 
+* **Added mbuf recycling support.**
+
+  Added ``rte_eth_recycle_rx_queue_info_get`` and ``rte_eth_recycle_mbufs``
+  functions which allow the user to copy used mbufs from the Tx mbuf ring
+  into the Rx mbuf ring. This feature supports the case that the Rx Ethernet
+  device is different from the Tx Ethernet device with respective driver
+  callback functions in ``rte_eth_recycle_mbufs``.
+
+* **Updated Solarflare net driver.**
+
+  * Added support for transfer flow action ``INDIRECT`` with subtype ``VXLAN_ENCAP``.
+
+* build: Enabling deprecated libraries is now done using the new
+  ``enable_deprecated_libraries`` build option.
+
+* build: Optional libraries can now be selected with the new ``enable_libs``
+  build option similarly to the existing ``enable_drivers`` build option.
+
+* eal: Introduced a new API for atomic operations. This new API serves as a
+  wrapper for transitioning to standard atomic operations as described in the
+  C11 standard. This API implementation points at the compiler intrinsics by
+  default. The implementation using C11 standard atomic operations is enabled
+  via the ``enable_stdatomic`` build option.
+
 
 Removed Items
 -------------
@@ -84,6 +108,14 @@ Removed Items
    This section is a comment. Do not overwrite or remove it.
    Also, make sure to start the actual text at the margin.
    =======================================================
+
+* eal: Removed deprecated ``RTE_FUNC_PTR_OR_*`` macros.
+
+* ethdev: Removed deprecated macro ``RTE_ETH_DEV_BONDED_SLAVE``.
+
+* flow_classify: Removed flow classification library and examples.
+
+* kni: Removed the Kernel Network Interface (KNI) library and driver.
 
 
 API Changes
@@ -101,6 +133,29 @@ API Changes
    Also, make sure to start the actual text at the margin.
    =======================================================
 
+* eal: The thread API has changed.
+  The function ``rte_thread_create_control()`` does not take attributes anymore.
+  The whole thread API was promoted to stable level,
+  except ``rte_thread_setname()`` and ``rte_ctrl_thread_create()`` which are
+  replaced with ``rte_thread_set_name()`` and ``rte_thread_create_control()``.
+
+* bonding: Replaced master/slave to main/member. The data structure
+  ``struct rte_eth_bond_8023ad_slave_info`` was renamed to
+  ``struct rte_eth_bond_8023ad_member_info`` in DPDK 23.11.
+  The following functions were removed in DPDK 23.11.
+  The old functions:
+  ``rte_eth_bond_8023ad_slave_info``,
+  ``rte_eth_bond_active_slaves_get``,
+  ``rte_eth_bond_slave_add``,
+  ``rte_eth_bond_slave_remove``, and
+  ``rte_eth_bond_slaves_get``
+  will be replaced by:
+  ``rte_eth_bond_8023ad_member_info``,
+  ``rte_eth_bond_active_members_get``,
+  ``rte_eth_bond_member_add``,
+  ``rte_eth_bond_member_remove``, and
+  ``rte_eth_bond_members_get``.
+
 
 ABI Changes
 -----------
@@ -116,6 +171,14 @@ ABI Changes
    This section is a comment. Do not overwrite or remove it.
    Also, make sure to start the actual text at the margin.
    =======================================================
+
+* ethdev: Added ``recycle_tx_mbufs_reuse`` and ``recycle_rx_descriptors_refill``
+  fields to ``rte_eth_dev`` structure.
+
+* ethdev: Structure ``rte_eth_fp_ops`` was affected to add
+  ``recycle_tx_mbufs_reuse`` and ``recycle_rx_descriptors_refill``
+  fields, to move ``rxq`` and ``txq`` fields, to change the size of
+  ``reserved1`` and ``reserved2`` fields.
 
 
 Known Issues

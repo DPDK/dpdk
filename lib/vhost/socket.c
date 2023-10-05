@@ -13,8 +13,8 @@
 #include <sys/queue.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <pthread.h>
 
+#include <rte_thread.h>
 #include <rte_log.h>
 
 #include "fd_man.h"
@@ -431,7 +431,7 @@ struct vhost_user_reconnect_list {
 };
 
 static struct vhost_user_reconnect_list reconn_list;
-static pthread_t reconn_tid;
+static rte_thread_t reconn_tid;
 
 static int
 vhost_user_connect_nonblock(char *path, int fd, struct sockaddr *un, size_t sz)
@@ -455,7 +455,7 @@ vhost_user_connect_nonblock(char *path, int fd, struct sockaddr *un, size_t sz)
 	return 0;
 }
 
-static void *
+static uint32_t
 vhost_user_client_reconnect(void *arg __rte_unused)
 {
 	int ret;
@@ -496,7 +496,7 @@ remove_fd:
 		sleep(1);
 	}
 
-	return NULL;
+	return 0;
 }
 
 static int
@@ -511,8 +511,8 @@ vhost_user_reconnect_init(void)
 	}
 	TAILQ_INIT(&reconn_list.head);
 
-	ret = rte_ctrl_thread_create(&reconn_tid, "vhost_reconn", NULL,
-			     vhost_user_client_reconnect, NULL);
+	ret = rte_thread_create_internal_control(&reconn_tid, "vhost-reco",
+			vhost_user_client_reconnect, NULL);
 	if (ret != 0) {
 		VHOST_LOG_CONFIG("thread", ERR, "failed to create reconnect thread\n");
 		if (pthread_mutex_destroy(&reconn_list.mutex))
@@ -1004,7 +1004,7 @@ rte_vhost_driver_register(const char *path, uint64_t flags)
 	if (!vsocket->is_vduse) {
 		if ((flags & RTE_VHOST_USER_CLIENT) != 0) {
 			vsocket->reconnect = !(flags & RTE_VHOST_USER_NO_RECONNECT);
-			if (vsocket->reconnect && reconn_tid == 0) {
+			if (vsocket->reconnect && reconn_tid.opaque_id == 0) {
 				if (vhost_user_reconnect_init() != 0)
 					goto out_mutex;
 			}
@@ -1174,7 +1174,7 @@ int
 rte_vhost_driver_start(const char *path)
 {
 	struct vhost_user_socket *vsocket;
-	static pthread_t fdset_tid;
+	static rte_thread_t fdset_tid;
 
 	pthread_mutex_lock(&vhost_user.mutex);
 	vsocket = find_vhost_user_socket(path);
@@ -1186,7 +1186,7 @@ rte_vhost_driver_start(const char *path)
 	if (vsocket->is_vduse)
 		return vduse_device_create(path, vsocket->net_compliant_ol_flags);
 
-	if (fdset_tid == 0) {
+	if (fdset_tid.opaque_id == 0) {
 		/**
 		 * create a pipe which will be waited by poll and notified to
 		 * rebuild the wait list of poll.
@@ -1196,9 +1196,8 @@ rte_vhost_driver_start(const char *path)
 			return -1;
 		}
 
-		int ret = rte_ctrl_thread_create(&fdset_tid,
-			"vhost-events", NULL, fdset_event_dispatch,
-			&vhost_user.fdset);
+		int ret = rte_thread_create_internal_control(&fdset_tid,
+				"vhost-evt", fdset_event_dispatch, &vhost_user.fdset);
 		if (ret != 0) {
 			VHOST_LOG_CONFIG(path, ERR, "failed to create fdset handling thread\n");
 			fdset_pipe_uninit(&vhost_user.fdset);

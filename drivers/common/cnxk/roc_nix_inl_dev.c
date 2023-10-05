@@ -746,7 +746,7 @@ inl_outb_soft_exp_poll(struct nix_inl_dev *inl_dev, uint32_t ring_idx)
 	}
 }
 
-static void *
+static uint32_t
 nix_inl_outb_poll_thread(void *args)
 {
 	struct nix_inl_dev *inl_dev = args;
@@ -816,9 +816,8 @@ nix_inl_outb_poll_thread_setup(struct nix_inl_dev *inl_dev)
 
 	soft_exp_consumer_cnt = 0;
 	soft_exp_poll_thread_exit = false;
-	rc = plt_ctrl_thread_create(&inl_dev->soft_exp_poll_thread,
-				    "OUTB_SOFT_EXP_POLL_THREAD", NULL,
-				    nix_inl_outb_poll_thread, inl_dev);
+	rc = plt_thread_create_control(&inl_dev->soft_exp_poll_thread,
+			"outb-poll", nix_inl_outb_poll_thread, inl_dev);
 	if (rc) {
 		plt_bitmap_free(inl_dev->soft_exp_ring_bmap);
 		plt_free(inl_dev->soft_exp_ring_bmap_mem);
@@ -1020,7 +1019,7 @@ roc_nix_inl_dev_fini(struct roc_nix_inl_dev *roc_inl_dev)
 
 	if (inl_dev->set_soft_exp_poll) {
 		soft_exp_poll_thread_exit = true;
-		pthread_join(inl_dev->soft_exp_poll_thread, NULL);
+		rte_thread_join(inl_dev->soft_exp_poll_thread, NULL);
 		plt_bitmap_free(inl_dev->soft_exp_ring_bmap);
 		plt_free(inl_dev->soft_exp_ring_bmap_mem);
 		plt_free(inl_dev->sa_soft_exp_ring);

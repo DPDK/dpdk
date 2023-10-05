@@ -324,7 +324,7 @@ void
 rte_thread_set_name(rte_thread_t thread_id, const char *thread_name)
 {
 	int ret = 0;
-	wchar_t wname[RTE_MAX_THREAD_NAME_LEN];
+	wchar_t wname[RTE_THREAD_NAME_SIZE];
 	mbstate_t state = {0};
 	size_t rv;
 	HANDLE thread_handle;

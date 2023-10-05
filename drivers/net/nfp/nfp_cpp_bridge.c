@@ -5,17 +5,23 @@
  * Small portions derived from code Copyright(c) 2010-2015 Intel Corporation.
  */
 
+#include "nfp_cpp_bridge.h"
+
 #include <unistd.h>
 #include <sys/ioctl.h>
 
 #include <rte_service_component.h>
 
 #include "nfpcore/nfp_cpp.h"
-#include "nfpcore/nfp_mip.h"
-#include "nfpcore/nfp_nsp.h"
-
 #include "nfp_logs.h"
-#include "nfp_cpp_bridge.h"
+
+#define NFP_CPP_MEMIO_BOUNDARY    (1 << 20)
+#define NFP_BRIDGE_OP_READ        20
+#define NFP_BRIDGE_OP_WRITE       30
+#define NFP_BRIDGE_OP_IOCTL       40
+
+#define NFP_IOCTL 'n'
+#define NFP_IOCTL_CPP_IDENTIFICATION _IOW(NFP_IOCTL, 0x8f, uint32_t)
 
 /* Prototypes */
 static int nfp_cpp_bridge_serve_write(int sockfd, struct nfp_cpp *cpp);
@@ -344,7 +350,7 @@ nfp_cpp_bridge_serve_ioctl(int sockfd, struct nfp_cpp *cpp)
 		return -EIO;
 	}
 
-	tmp = cpp->interface;
+	tmp = nfp_cpp_interface(cpp);
 
 	PMD_CPP_LOG(DEBUG, "%s: sending NFP interface %08x\n", __func__, tmp);
 

@@ -241,7 +241,7 @@ bbdev_parse_args(int argc, char **argv,
 				return -1;
 			}
 			app_params->num_enc_cores =
-				__builtin_popcount(app_params->enc_core_mask);
+				rte_popcount32(app_params->enc_core_mask);
 			break;
 
 		case 'd':
@@ -252,7 +252,7 @@ bbdev_parse_args(int argc, char **argv,
 				return -1;
 			}
 			app_params->num_dec_cores =
-				__builtin_popcount(app_params->dec_core_mask);
+				rte_popcount32(app_params->dec_core_mask);
 			break;
 
 		case 'p':

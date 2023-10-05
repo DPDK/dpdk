@@ -3,27 +3,21 @@
  * All rights reserved.
  */
 
-#include <rte_common.h>
-#include <rte_service_component.h>
-#include <rte_malloc.h>
-#include <rte_alarm.h>
-#include <ethdev_pci.h>
-#include <ethdev_driver.h>
+#include "nfp_flower.h"
 
-#include "../nfp_common.h"
-#include "../nfp_logs.h"
-#include "../nfp_ctrl.h"
-#include "../nfp_cpp_bridge.h"
-#include "../nfp_rxtx.h"
+#include <rte_alarm.h>
+#include <rte_malloc.h>
+#include <rte_service_component.h>
+
 #include "../nfd3/nfp_nfd3.h"
 #include "../nfdk/nfp_nfdk.h"
-#include "../nfpcore/nfp_mip.h"
-#include "../nfpcore/nfp_rtsym.h"
 #include "../nfpcore/nfp_nsp.h"
-#include "nfp_flower.h"
+#include "../nfpcore/nfp_rtsym.h"
+#include "../nfp_cpp_bridge.h"
+#include "../nfp_logs.h"
+#include "../nfp_mtr.h"
 #include "nfp_flower_ctrl.h"
 #include "nfp_flower_representor.h"
-#include "nfp_flower_cmsg.h"
 
 #define CTRL_VNIC_NB_DESC 512
 
@@ -224,7 +218,7 @@ nfp_flower_pf_close(struct rte_eth_dev *dev)
 	/* Now it is safe to free all PF resources */
 	PMD_DRV_LOG(INFO, "Freeing PF resources");
 	nfp_cpp_area_free(pf_dev->ctrl_area);
-	nfp_cpp_area_free(pf_dev->hwqueues_area);
+	nfp_cpp_area_free(pf_dev->qc_area);
 	free(pf_dev->hwinfo);
 	free(pf_dev->sym_tbl);
 	nfp_cpp_free(pf_dev->cpp);
@@ -360,8 +354,8 @@ nfp_flower_init_vnic_common(struct nfp_net_hw *hw, const char *vnic_type)
 	start_q = nn_cfg_readl(hw, NFP_NET_CFG_START_RXQ);
 	rx_bar_off = (uint64_t)start_q * NFP_QCP_QUEUE_ADDR_SZ;
 
-	hw->tx_bar = pf_dev->hw_queues + tx_bar_off;
-	hw->rx_bar = pf_dev->hw_queues + rx_bar_off;
+	hw->tx_bar = pf_dev->qc_bar + tx_bar_off;
+	hw->rx_bar = pf_dev->qc_bar + rx_bar_off;
 
 	/* Set the current MTU to the maximum supported */
 	hw->mtu = hw->max_mtu;
@@ -385,6 +379,7 @@ nfp_flower_init_ctrl_vnic(struct nfp_net_hw *hw)
 	int ret = 0;
 	uint16_t n_txq;
 	uint16_t n_rxq;
+	const char *pci_name;
 	unsigned int numa_node;
 	struct rte_mempool *mp;
 	struct nfp_net_rxq *rxq;
@@ -393,6 +388,8 @@ nfp_flower_init_ctrl_vnic(struct nfp_net_hw *hw)
 	struct rte_eth_dev *eth_dev;
 	const struct rte_memzone *tz;
 	struct nfp_app_fw_flower *app_fw_flower;
+	char ctrl_rxring_name[RTE_MEMZONE_NAMESIZE];
+	char ctrl_txring_name[RTE_MEMZONE_NAMESIZE];
 	char ctrl_pktmbuf_pool_name[RTE_MEMZONE_NAMESIZE];
 
 	/* Set up some pointers here for ease of use */
@@ -425,10 +422,12 @@ nfp_flower_init_ctrl_vnic(struct nfp_net_hw *hw)
 		goto eth_dev_cleanup;
 	}
 
+	pci_name = strchr(pf_dev->pci_dev->name, ':') + 1;
+
 	/* Create a mbuf pool for the ctrl vNIC */
 	numa_node = rte_socket_id();
 	snprintf(ctrl_pktmbuf_pool_name, sizeof(ctrl_pktmbuf_pool_name),
-			"%s_ctrlmp", (strchr(pf_dev->pci_dev->name, ':') + 1));
+			"%s_ctrlmp", pci_name);
 	app_fw_flower->ctrl_pktmbuf_pool =
 			rte_pktmbuf_pool_create(ctrl_pktmbuf_pool_name,
 			4 * CTRL_VNIC_NB_DESC, 64, 0, 9216, numa_node);
@@ -467,6 +466,7 @@ nfp_flower_init_ctrl_vnic(struct nfp_net_hw *hw)
 	eth_dev->data->nb_rx_queues = n_txq;
 	eth_dev->data->dev_private = hw;
 
+	snprintf(ctrl_rxring_name, sizeof(ctrl_rxring_name), "%s_ctrx_ring", pci_name);
 	/* Set up the Rx queues */
 	for (i = 0; i < n_rxq; i++) {
 		rxq = rte_zmalloc_socket("ethdev RX queue",
@@ -502,8 +502,9 @@ nfp_flower_init_ctrl_vnic(struct nfp_net_hw *hw)
 		 * handle the maximum ring size is allocated in order to allow for
 		 * resizing in later calls to the queue setup function.
 		 */
-		tz = rte_eth_dma_zone_reserve(eth_dev, "ctrl_rx_ring", i,
-				sizeof(struct nfp_net_rx_desc) * NFP_NET_MAX_RX_DESC,
+		tz = rte_eth_dma_zone_reserve(eth_dev, ctrl_rxring_name, i,
+				sizeof(struct nfp_net_rx_desc) *
+				hw->dev_info->max_qc_size,
 				NFP_MEMZONE_ALIGN, numa_node);
 		if (tz == NULL) {
 			PMD_DRV_LOG(ERR, "Error allocating rx dma");
@@ -521,7 +522,7 @@ nfp_flower_init_ctrl_vnic(struct nfp_net_hw *hw)
 				sizeof(*rxq->rxbufs) * CTRL_VNIC_NB_DESC,
 				RTE_CACHE_LINE_SIZE, numa_node);
 		if (rxq->rxbufs == NULL) {
-			rte_eth_dma_zone_free(eth_dev, "ctrl_rx_ring", i);
+			rte_eth_dma_zone_free(eth_dev, ctrl_rxring_name, i);
 			rte_free(rxq);
 			ret = -ENOMEM;
 			goto rx_queue_setup_cleanup;
@@ -539,6 +540,7 @@ nfp_flower_init_ctrl_vnic(struct nfp_net_hw *hw)
 		nn_cfg_writeb(hw, NFP_NET_CFG_RXR_SZ(i), rte_log2_u32(CTRL_VNIC_NB_DESC));
 	}
 
+	snprintf(ctrl_txring_name, sizeof(ctrl_txring_name), "%s_cttx_ring", pci_name);
 	/* Set up the Tx queues */
 	for (i = 0; i < n_txq; i++) {
 		txq = rte_zmalloc_socket("ethdev TX queue",
@@ -557,8 +559,9 @@ nfp_flower_init_ctrl_vnic(struct nfp_net_hw *hw)
 		 * handle the maximum ring size is allocated in order to allow for
 		 * resizing in later calls to the queue setup function.
 		 */
-		tz = rte_eth_dma_zone_reserve(eth_dev, "ctrl_tx_ring", i,
-				sizeof(struct nfp_net_nfd3_tx_desc) * NFP_NET_MAX_TX_DESC,
+		tz = rte_eth_dma_zone_reserve(eth_dev, ctrl_txring_name, i,
+				sizeof(struct nfp_net_nfd3_tx_desc) *
+				hw->dev_info->max_qc_size,
 				NFP_MEMZONE_ALIGN, numa_node);
 		if (tz == NULL) {
 			PMD_DRV_LOG(ERR, "Error allocating tx dma");
@@ -584,7 +587,7 @@ nfp_flower_init_ctrl_vnic(struct nfp_net_hw *hw)
 				sizeof(*txq->txbufs) * CTRL_VNIC_NB_DESC,
 				RTE_CACHE_LINE_SIZE, numa_node);
 		if (txq->txbufs == NULL) {
-			rte_eth_dma_zone_free(eth_dev, "ctrl_tx_ring", i);
+			rte_eth_dma_zone_free(eth_dev, ctrl_txring_name, i);
 			rte_free(txq);
 			ret = -ENOMEM;
 			goto tx_queue_setup_cleanup;
@@ -609,7 +612,7 @@ tx_queue_setup_cleanup:
 		txq = eth_dev->data->tx_queues[i];
 		if (txq != NULL) {
 			rte_free(txq->txbufs);
-			rte_eth_dma_zone_free(eth_dev, "ctrl_tx_ring", i);
+			rte_eth_dma_zone_free(eth_dev, ctrl_txring_name, i);
 			rte_free(txq);
 		}
 	}
@@ -618,7 +621,7 @@ rx_queue_setup_cleanup:
 		rxq = eth_dev->data->rx_queues[i];
 		if (rxq != NULL) {
 			rte_free(rxq->rxbufs);
-			rte_eth_dma_zone_free(eth_dev, "ctrl_rx_ring", i);
+			rte_eth_dma_zone_free(eth_dev, ctrl_rxring_name, i);
 			rte_free(rxq);
 		}
 	}
@@ -639,28 +642,35 @@ static void
 nfp_flower_cleanup_ctrl_vnic(struct nfp_net_hw *hw)
 {
 	uint32_t i;
+	const char *pci_name;
 	struct nfp_net_rxq *rxq;
 	struct nfp_net_txq *txq;
 	struct rte_eth_dev *eth_dev;
 	struct nfp_app_fw_flower *app_fw_flower;
+	char ctrl_txring_name[RTE_MEMZONE_NAMESIZE];
+	char ctrl_rxring_name[RTE_MEMZONE_NAMESIZE];
 
 	eth_dev = hw->eth_dev;
 	app_fw_flower = NFP_PRIV_TO_APP_FW_FLOWER(hw->pf_dev->app_fw_priv);
 
+	pci_name = strchr(app_fw_flower->pf_hw->pf_dev->pci_dev->name, ':') + 1;
+
+	snprintf(ctrl_txring_name, sizeof(ctrl_txring_name), "%s_cttx_ring", pci_name);
 	for (i = 0; i < hw->max_tx_queues; i++) {
 		txq = eth_dev->data->tx_queues[i];
 		if (txq != NULL) {
 			rte_free(txq->txbufs);
-			rte_eth_dma_zone_free(eth_dev, "ctrl_tx_ring", i);
+			rte_eth_dma_zone_free(eth_dev, ctrl_txring_name, i);
 			rte_free(txq);
 		}
 	}
 
+	snprintf(ctrl_rxring_name, sizeof(ctrl_rxring_name), "%s_ctrx_ring", pci_name);
 	for (i = 0; i < hw->max_rx_queues; i++) {
 		rxq = eth_dev->data->rx_queues[i];
 		if (rxq != NULL) {
 			rte_free(rxq->rxbufs);
-			rte_eth_dma_zone_free(eth_dev, "ctrl_rx_ring", i);
+			rte_eth_dma_zone_free(eth_dev, ctrl_rxring_name, i);
 			rte_free(rxq);
 		}
 	}
@@ -789,7 +799,8 @@ nfp_flower_nfd_func_register(struct nfp_app_fw_flower *app_fw_flower)
 }
 
 int
-nfp_init_app_fw_flower(struct nfp_pf_dev *pf_dev)
+nfp_init_app_fw_flower(struct nfp_pf_dev *pf_dev,
+		const struct nfp_dev_info *dev_info)
 {
 	int ret;
 	int err;
@@ -858,6 +869,7 @@ nfp_init_app_fw_flower(struct nfp_pf_dev *pf_dev)
 	pf_hw->ctrl_bar = pf_dev->ctrl_bar;
 	pf_hw->pf_dev = pf_dev;
 	pf_hw->cpp = pf_dev->cpp;
+	pf_hw->dev_info = dev_info;
 
 	ret = nfp_flower_init_vnic_common(app_fw_flower->pf_hw, "pf_vnic");
 	if (ret != 0) {
@@ -883,6 +895,7 @@ nfp_init_app_fw_flower(struct nfp_pf_dev *pf_dev)
 	/* Now populate the ctrl vNIC */
 	ctrl_hw->pf_dev = pf_dev;
 	ctrl_hw->cpp = pf_dev->cpp;
+	ctrl_hw->dev_info = dev_info;
 
 	ret = nfp_flower_init_ctrl_vnic(app_fw_flower->ctrl_hw);
 	if (ret != 0) {

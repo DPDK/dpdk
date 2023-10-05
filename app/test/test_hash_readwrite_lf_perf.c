@@ -1579,5 +1579,5 @@ results:
 	return 0;
 }
 
-REGISTER_TEST_COMMAND(hash_readwrite_lf_perf_autotest,
+REGISTER_PERF_TEST(hash_readwrite_lf_perf_autotest,
 	test_hash_readwrite_lf_perf_main);

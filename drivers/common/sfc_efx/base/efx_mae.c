@@ -2949,6 +2949,86 @@ fail1:
 }
 
 	__checkReturn			efx_rc_t
+efx_mae_encap_header_update(
+	__in				efx_nic_t *enp,
+	__in				efx_mae_eh_id_t *eh_idp,
+	__in				efx_tunnel_protocol_t encap_type,
+	__in_bcount(header_size)	const uint8_t *header_data,
+	__in				size_t header_size)
+{
+	const efx_nic_cfg_t *encp = efx_nic_cfg_get(enp);
+	efx_mcdi_req_t req;
+	EFX_MCDI_DECLARE_BUF(payload,
+	    MC_CMD_MAE_ENCAP_HEADER_UPDATE_IN_LENMAX_MCDI2,
+	    MC_CMD_MAE_ENCAP_HEADER_UPDATE_OUT_LEN);
+	uint32_t encap_type_mcdi;
+	efx_rc_t rc;
+
+	if (encp->enc_mae_supported == B_FALSE) {
+		rc = ENOTSUP;
+		goto fail1;
+	}
+
+	switch (encap_type) {
+	case EFX_TUNNEL_PROTOCOL_NONE:
+		encap_type_mcdi = MAE_MCDI_ENCAP_TYPE_NONE;
+		break;
+	case EFX_TUNNEL_PROTOCOL_VXLAN:
+		encap_type_mcdi = MAE_MCDI_ENCAP_TYPE_VXLAN;
+		break;
+	case EFX_TUNNEL_PROTOCOL_GENEVE:
+		encap_type_mcdi = MAE_MCDI_ENCAP_TYPE_GENEVE;
+		break;
+	case EFX_TUNNEL_PROTOCOL_NVGRE:
+		encap_type_mcdi = MAE_MCDI_ENCAP_TYPE_NVGRE;
+		break;
+	default:
+		rc = ENOTSUP;
+		goto fail2;
+	}
+
+	if (header_size >
+	   MC_CMD_MAE_ENCAP_HEADER_UPDATE_IN_HDR_DATA_MAXNUM_MCDI2) {
+		rc = EINVAL;
+		goto fail3;
+	}
+
+	req.emr_cmd = MC_CMD_MAE_ENCAP_HEADER_UPDATE;
+	req.emr_in_buf = payload;
+	req.emr_in_length = MC_CMD_MAE_ENCAP_HEADER_UPDATE_IN_LEN(header_size);
+	req.emr_out_buf = payload;
+	req.emr_out_length = MC_CMD_MAE_ENCAP_HEADER_UPDATE_OUT_LEN;
+
+	MCDI_IN_SET_DWORD(req,
+	    MAE_ENCAP_HEADER_UPDATE_IN_EH_ID, eh_idp->id);
+
+	MCDI_IN_SET_DWORD(req,
+	    MAE_ENCAP_HEADER_UPDATE_IN_ENCAP_TYPE, encap_type_mcdi);
+
+	memcpy(MCDI_IN2(req, uint8_t, MAE_ENCAP_HEADER_UPDATE_IN_HDR_DATA),
+	    header_data, header_size);
+
+	efx_mcdi_execute(enp, &req);
+
+	if (req.emr_rc != 0) {
+		rc = req.emr_rc;
+		goto fail4;
+	}
+
+	return (0);
+
+fail4:
+	EFSYS_PROBE(fail4);
+fail3:
+	EFSYS_PROBE(fail3);
+fail2:
+	EFSYS_PROBE(fail2);
+fail1:
+	EFSYS_PROBE1(fail1, efx_rc_t, rc);
+	return (rc);
+}
+
+	__checkReturn			efx_rc_t
 efx_mae_encap_header_free(
 	__in				efx_nic_t *enp,
 	__in				const efx_mae_eh_id_t *eh_idp)

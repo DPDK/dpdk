@@ -239,8 +239,8 @@ test_thread_control_create_join(void)
 	rte_thread_t thread_main_id;
 
 	thread_id_ready = 0;
-	RTE_TEST_ASSERT(rte_thread_create_control(&thread_id, "test_control_threads",
-		NULL, thread_main, &thread_main_id) == 0,
+	RTE_TEST_ASSERT(rte_thread_create_control(&thread_id, "dpdk-test-thcc",
+		thread_main, &thread_main_id) == 0,
 		"Failed to create thread.");
 
 	while (__atomic_load_n(&thread_id_ready, __ATOMIC_ACQUIRE) == 0)
@@ -279,4 +279,4 @@ test_threads(void)
 	return unit_test_suite_runner(&threads_test_suite);
 }
 
-REGISTER_TEST_COMMAND(threads_autotest, test_threads);
+REGISTER_FAST_TEST(threads_autotest, true, true, test_threads);

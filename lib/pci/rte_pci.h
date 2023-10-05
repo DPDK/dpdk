@@ -28,15 +28,69 @@ extern "C" {
 #define RTE_PCI_CFG_SPACE_SIZE		256
 #define RTE_PCI_CFG_SPACE_EXP_SIZE	4096
 
+#define RTE_PCI_STD_HEADER_SIZEOF	64
+
+/* Standard register offsets in the PCI configuration space */
 #define RTE_PCI_VENDOR_ID	0x00	/* 16 bits */
 #define RTE_PCI_DEVICE_ID	0x02	/* 16 bits */
 #define RTE_PCI_COMMAND		0x04	/* 16 bits */
+#define RTE_PCI_STATUS		0x06	/* 16 bits */
+#define RTE_PCI_BASE_ADDRESS_0	0x10	/* 32 bits */
+#define RTE_PCI_CAPABILITY_LIST	0x34	/* 32 bits */
 
-/* PCI Command Register */
-#define RTE_PCI_COMMAND_MASTER	0x4	/* Bus Master Enable */
+/* PCI Command Register (RTE_PCI_COMMAND) */
+#define RTE_PCI_COMMAND_MEMORY		0x2	/* Enable response in Memory space */
+#define RTE_PCI_COMMAND_MASTER		0x4	/* Bus Master Enable */
+#define RTE_PCI_COMMAND_INTX_DISABLE	0x400	/* INTx Emulation Disable */
 
-/* PCI Express capability registers */
-#define RTE_PCI_EXP_DEVCTL	8	/* Device Control */
+/* PCI Status Register (RTE_PCI_STATUS) */
+#define RTE_PCI_STATUS_CAP_LIST		0x10	/* Support Capability List */
+
+/* Base addresses (RTE_PCI_BASE_ADDRESS_*) */
+#define RTE_PCI_BASE_ADDRESS_SPACE_IO	0x01
+
+/* Capability registers (RTE_PCI_CAPABILITY_LIST) */
+#define RTE_PCI_CAP_ID_PM		0x01	/* Power Management */
+#define RTE_PCI_CAP_ID_MSI		0x05	/* Message Signalled Interrupts */
+#define RTE_PCI_CAP_ID_VNDR		0x09	/* Vendor-Specific */
+#define RTE_PCI_CAP_ID_EXP		0x10	/* PCI Express */
+#define RTE_PCI_CAP_ID_MSIX		0x11	/* MSI-X */
+#define RTE_PCI_CAP_SIZEOF		4
+#define RTE_PCI_CAP_NEXT		1
+
+/* Power Management Registers (RTE_PCI_CAP_ID_PM) */
+#define RTE_PCI_PM_CTRL			4	/* PM control and status register */
+#define RTE_PCI_PM_CTRL_STATE_MASK	0x0003	/* Current power state (D0 to D3) */
+#define RTE_PCI_PM_CTRL_PME_ENABLE	0x0100	/* PME pin enable */
+#define RTE_PCI_PM_CTRL_PME_STATUS	0x8000	/* PME pin status */
+
+/* PCI Express capability registers (RTE_PCI_CAP_ID_EXP) */
+#define RTE_PCI_EXP_TYPE_RC_EC		0xa	/* Root Complex Event Collector */
+#define RTE_PCI_EXP_DEVCTL		0x08	/* Device Control */
+#define RTE_PCI_EXP_DEVCTL_PAYLOAD	0x00e0	/* Max_Payload_Size */
+#define RTE_PCI_EXP_DEVCTL_READRQ	0x7000	/* Max_Read_Request_Size */
+#define RTE_PCI_EXP_DEVCTL_BCR_FLR	0x8000	/* Bridge Configuration Retry / FLR */
+#define RTE_PCI_EXP_DEVSTA		0x0a	/* Device Status */
+#define RTE_PCI_EXP_DEVSTA_TRPND	0x0020	/* Transactions Pending */
+#define RTE_PCI_EXP_LNKCTL		0x10	/* Link Control */
+#define RTE_PCI_EXP_LNKSTA		0x12	/* Link Status */
+#define RTE_PCI_EXP_LNKSTA_CLS		0x000f	/* Current Link Speed */
+#define RTE_PCI_EXP_LNKSTA_NLW		0x03f0	/* Negotiated Link Width */
+#define RTE_PCI_EXP_SLTCTL		0x18	/* Slot Control */
+#define RTE_PCI_EXP_RTCTL		0x1c	/* Root Control */
+#define RTE_PCI_EXP_DEVCTL2		0x28	/* Device Control 2 */
+#define RTE_PCI_EXP_LNKCTL2		0x30	/* Link Control 2 */
+#define RTE_PCI_EXP_SLTCTL2		0x38	/* Slot Control 2 */
+
+/* MSI-X registers (RTE_PCI_CAP_ID_MSIX) */
+#define RTE_PCI_MSIX_FLAGS		2	/* Message Control */
+#define RTE_PCI_MSIX_FLAGS_QSIZE	0x07ff	/* Table size */
+#define RTE_PCI_MSIX_FLAGS_MASKALL	0x4000	/* Mask all vectors for this function */
+#define RTE_PCI_MSIX_FLAGS_ENABLE	0x8000	/* MSI-X enable */
+
+#define RTE_PCI_MSIX_TABLE		4	/* Table offset */
+#define RTE_PCI_MSIX_TABLE_BIR		0x00000007 /* BAR index */
+#define RTE_PCI_MSIX_TABLE_OFFSET	0xfffffff8 /* Offset into specified BAR */
 
 /* Extended Capabilities (PCI-X 2.0 and Express) */
 #define RTE_PCI_EXT_CAP_ID(header)	(header & 0x0000ffff)
@@ -44,9 +98,25 @@ extern "C" {
 
 #define RTE_PCI_EXT_CAP_ID_ERR		0x01	/* Advanced Error Reporting */
 #define RTE_PCI_EXT_CAP_ID_DSN		0x03	/* Device Serial Number */
-#define RTE_PCI_EXT_CAP_ID_SRIOV	0x10	/* SR-IOV*/
+#define RTE_PCI_EXT_CAP_ID_ACS		0x0d	/* Access Control Services */
+#define RTE_PCI_EXT_CAP_ID_SRIOV	0x10	/* SR-IOV */
+#define RTE_PCI_EXT_CAP_ID_PRI		0x13	/* Page Request Interface */
 
-/* Single Root I/O Virtualization */
+/* Advanced Error Reporting (RTE_PCI_EXT_CAP_ID_ERR) */
+#define RTE_PCI_ERR_UNCOR_STATUS	0x04	/* Uncorrectable Error Status */
+#define RTE_PCI_ERR_COR_STATUS		0x10	/* Correctable Error Status */
+#define RTE_PCI_ERR_ROOT_STATUS		0x30
+
+/* Access Control Service (RTE_PCI_EXT_CAP_ID_ACS) */
+#define RTE_PCI_ACS_CAP			0x04	/* ACS Capability Register */
+#define RTE_PCI_ACS_CTRL		0x06	/* ACS Control Register */
+#define RTE_PCI_ACS_SV			0x0001	/* Source Validation */
+#define RTE_PCI_ACS_RR			0x0004	/* P2P Request Redirect */
+#define RTE_PCI_ACS_CR			0x0008	/* P2P Completion Redirect */
+#define RTE_PCI_ACS_UF			0x0010	/* Upstream Forwarding */
+#define RTE_PCI_ACS_EC			0x0020	/* P2P Egress Control */
+
+/* Single Root I/O Virtualization (RTE_PCI_EXT_CAP_ID_SRIOV) */
 #define RTE_PCI_SRIOV_CAP		0x04	/* SR-IOV Capabilities */
 #define RTE_PCI_SRIOV_CTRL		0x08	/* SR-IOV Control */
 #define RTE_PCI_SRIOV_INITIAL_VF	0x0c	/* Initial VFs */
@@ -57,6 +127,11 @@ extern "C" {
 #define RTE_PCI_SRIOV_VF_STRIDE		0x16	/* Following VF Stride */
 #define RTE_PCI_SRIOV_VF_DID		0x1a	/* VF Device ID */
 #define RTE_PCI_SRIOV_SUP_PGSIZE	0x1c	/* Supported Page Sizes */
+
+/* Page Request Interface (RTE_PCI_EXT_CAP_ID_PRI) */
+#define RTE_PCI_PRI_CTRL		0x04	/* PRI control register */
+#define RTE_PCI_PRI_CTRL_ENABLE		0x0001	/* Enable */
+#define RTE_PCI_PRI_ALLOC_REQ		0x0c	/* PRI max reqs allowed */
 
 /** Formatting string for PCI device identifier: Ex: 0000:00:01.0 */
 #define PCI_PRI_FMT "%.4" PRIx32 ":%.2" PRIx8 ":%.2" PRIx8 ".%" PRIx8

@@ -3,103 +3,61 @@
  * All rights reserved.
  */
 
-#include <stdio.h>
-#include <rte_common.h>
-#include <rte_byteorder.h>
-#include "nfp_cpp.h"
 #include "nfp_logs.h"
 #include "nfp_nsp.h"
-#include "nfp6000/nfp6000.h"
+#include "nfp_platform.h"
 
-#define GENMASK_ULL(h, l) \
-	(((~0ULL) - (1ULL << (l)) + 1) & \
-	 (~0ULL >> (64 - 1 - (h))))
+#define NSP_ETH_NBI_PORT_COUNT          24
+#define NSP_ETH_MAX_COUNT               (2 * NSP_ETH_NBI_PORT_COUNT)
+#define NSP_ETH_TABLE_SIZE              (NSP_ETH_MAX_COUNT * sizeof(union eth_table_entry))
 
-#define __bf_shf(x) (__builtin_ffsll(x) - 1)
+#define NSP_ETH_PORT_LANES              GENMASK_ULL(3, 0)
+#define NSP_ETH_PORT_INDEX              GENMASK_ULL(15, 8)
+#define NSP_ETH_PORT_LABEL              GENMASK_ULL(53, 48)
+#define NSP_ETH_PORT_PHYLABEL           GENMASK_ULL(59, 54)
+#define NSP_ETH_PORT_FEC_SUPP_BASER     RTE_BIT64(60)
+#define NSP_ETH_PORT_FEC_SUPP_RS        RTE_BIT64(61)
+#define NSP_ETH_PORT_SUPP_ANEG          RTE_BIT64(63)
 
-#define FIELD_GET(_mask, _reg)						\
-	(__extension__ ({ \
-		typeof(_mask) _x = (_mask); \
-		(typeof(_x))(((_reg) & (_x)) >> __bf_shf(_x));	\
-	}))
+#define NSP_ETH_PORT_LANES_MASK         rte_cpu_to_le_64(NSP_ETH_PORT_LANES)
 
-#define FIELD_FIT(_mask, _val)						\
-	(__extension__ ({ \
-		typeof(_mask) _x = (_mask); \
-		!((((typeof(_x))_val) << __bf_shf(_x)) & ~(_x)); \
-	}))
+#define NSP_ETH_STATE_CONFIGURED        RTE_BIT64(0)
+#define NSP_ETH_STATE_ENABLED           RTE_BIT64(1)
+#define NSP_ETH_STATE_TX_ENABLED        RTE_BIT64(2)
+#define NSP_ETH_STATE_RX_ENABLED        RTE_BIT64(3)
+#define NSP_ETH_STATE_RATE              GENMASK_ULL(11, 8)
+#define NSP_ETH_STATE_INTERFACE         GENMASK_ULL(19, 12)
+#define NSP_ETH_STATE_MEDIA             GENMASK_ULL(21, 20)
+#define NSP_ETH_STATE_OVRD_CHNG         RTE_BIT64(22)
+#define NSP_ETH_STATE_ANEG              GENMASK_ULL(25, 23)
+#define NSP_ETH_STATE_FEC               GENMASK_ULL(27, 26)
+#define NSP_ETH_STATE_ACT_FEC           GENMASK_ULL(29, 28)
 
-#define FIELD_PREP(_mask, _val)						\
-	(__extension__ ({ \
-		typeof(_mask) _x = (_mask); \
-		((typeof(_x))(_val) << __bf_shf(_x)) & (_x);	\
-	}))
-
-#define NSP_ETH_NBI_PORT_COUNT		24
-#define NSP_ETH_MAX_COUNT		(2 * NSP_ETH_NBI_PORT_COUNT)
-#define NSP_ETH_TABLE_SIZE		(NSP_ETH_MAX_COUNT *		\
-					 sizeof(union eth_table_entry))
-
-#define NSP_ETH_PORT_LANES		GENMASK_ULL(3, 0)
-#define NSP_ETH_PORT_INDEX		GENMASK_ULL(15, 8)
-#define NSP_ETH_PORT_LABEL		GENMASK_ULL(53, 48)
-#define NSP_ETH_PORT_PHYLABEL		GENMASK_ULL(59, 54)
-#define NSP_ETH_PORT_FEC_SUPP_BASER	RTE_BIT64(60)
-#define NSP_ETH_PORT_FEC_SUPP_RS	RTE_BIT64(61)
-
-#define NSP_ETH_PORT_LANES_MASK		rte_cpu_to_le_64(NSP_ETH_PORT_LANES)
-
-#define NSP_ETH_STATE_CONFIGURED	RTE_BIT64(0)
-#define NSP_ETH_STATE_ENABLED		RTE_BIT64(1)
-#define NSP_ETH_STATE_TX_ENABLED	RTE_BIT64(2)
-#define NSP_ETH_STATE_RX_ENABLED	RTE_BIT64(3)
-#define NSP_ETH_STATE_RATE		GENMASK_ULL(11, 8)
-#define NSP_ETH_STATE_INTERFACE		GENMASK_ULL(19, 12)
-#define NSP_ETH_STATE_MEDIA		GENMASK_ULL(21, 20)
-#define NSP_ETH_STATE_OVRD_CHNG		RTE_BIT64(22)
-#define NSP_ETH_STATE_ANEG		GENMASK_ULL(25, 23)
-#define NSP_ETH_STATE_FEC		GENMASK_ULL(27, 26)
-
-#define NSP_ETH_CTRL_CONFIGURED		RTE_BIT64(0)
-#define NSP_ETH_CTRL_ENABLED		RTE_BIT64(1)
-#define NSP_ETH_CTRL_TX_ENABLED		RTE_BIT64(2)
-#define NSP_ETH_CTRL_RX_ENABLED		RTE_BIT64(3)
-#define NSP_ETH_CTRL_SET_RATE		RTE_BIT64(4)
-#define NSP_ETH_CTRL_SET_LANES		RTE_BIT64(5)
-#define NSP_ETH_CTRL_SET_ANEG		RTE_BIT64(6)
-#define NSP_ETH_CTRL_SET_FEC		RTE_BIT64(7)
+#define NSP_ETH_CTRL_CONFIGURED         RTE_BIT64(0)
+#define NSP_ETH_CTRL_ENABLED            RTE_BIT64(1)
+#define NSP_ETH_CTRL_TX_ENABLED         RTE_BIT64(2)
+#define NSP_ETH_CTRL_RX_ENABLED         RTE_BIT64(3)
+#define NSP_ETH_CTRL_SET_RATE           RTE_BIT64(4)
+#define NSP_ETH_CTRL_SET_LANES          RTE_BIT64(5)
+#define NSP_ETH_CTRL_SET_ANEG           RTE_BIT64(6)
+#define NSP_ETH_CTRL_SET_FEC            RTE_BIT64(7)
 
 /* Which connector port. */
-#define PORT_TP			0x00
-#define PORT_AUI		0x01
-#define PORT_MII		0x02
-#define PORT_FIBRE		0x03
-#define PORT_BNC		0x04
-#define PORT_DA			0x05
-#define PORT_NONE		0xef
-#define PORT_OTHER		0xff
-
-#define SPEED_10		10
-#define SPEED_100		100
-#define SPEED_1000		1000
-#define SPEED_2500		2500
-#define SPEED_5000		5000
-#define SPEED_10000		10000
-#define SPEED_14000		14000
-#define SPEED_20000		20000
-#define SPEED_25000		25000
-#define SPEED_40000		40000
-#define SPEED_50000		50000
-#define SPEED_56000		56000
-#define SPEED_100000		100000
+#define PORT_TP                 0x00
+#define PORT_AUI                0x01
+#define PORT_MII                0x02
+#define PORT_FIBRE              0x03
+#define PORT_BNC                0x04
+#define PORT_DA                 0x05
+#define PORT_NONE               0xef
+#define PORT_OTHER              0xff
 
 enum nfp_eth_raw {
 	NSP_ETH_RAW_PORT = 0,
 	NSP_ETH_RAW_STATE,
 	NSP_ETH_RAW_MAC,
 	NSP_ETH_RAW_CONTROL,
-
-	NSP_ETH_NUM_RAW
+	NSP_ETH_NUM_RAW,
 };
 
 enum nfp_eth_rate {
@@ -124,34 +82,34 @@ union eth_table_entry {
 
 static const struct {
 	enum nfp_eth_rate rate;
-	unsigned int speed;
+	uint32_t speed;
 } nsp_eth_rate_tbl[] = {
-	{ RATE_INVALID,	0, },
-	{ RATE_10M,	SPEED_10, },
-	{ RATE_100M,	SPEED_100, },
-	{ RATE_1G,	SPEED_1000, },
-	{ RATE_10G,	SPEED_10000, },
-	{ RATE_25G,	SPEED_25000, },
+	{ RATE_INVALID, RTE_ETH_SPEED_NUM_NONE, },
+	{ RATE_10M,     RTE_ETH_SPEED_NUM_10M, },
+	{ RATE_100M,    RTE_ETH_SPEED_NUM_100M, },
+	{ RATE_1G,      RTE_ETH_SPEED_NUM_1G, },
+	{ RATE_10G,     RTE_ETH_SPEED_NUM_10G, },
+	{ RATE_25G,     RTE_ETH_SPEED_NUM_25G, },
 };
 
-static unsigned int
+static uint32_t
 nfp_eth_rate2speed(enum nfp_eth_rate rate)
 {
-	int i;
+	uint32_t i;
 
-	for (i = 0; i < (int)RTE_DIM(nsp_eth_rate_tbl); i++)
+	for (i = 0; i < RTE_DIM(nsp_eth_rate_tbl); i++)
 		if (nsp_eth_rate_tbl[i].rate == rate)
 			return nsp_eth_rate_tbl[i].speed;
 
 	return 0;
 }
 
-static unsigned int
-nfp_eth_speed2rate(unsigned int speed)
+static enum nfp_eth_rate
+nfp_eth_speed2rate(uint32_t speed)
 {
-	int i;
+	uint32_t i;
 
-	for (i = 0; i < (int)RTE_DIM(nsp_eth_rate_tbl); i++)
+	for (i = 0; i < RTE_DIM(nsp_eth_rate_tbl); i++)
 		if (nsp_eth_rate_tbl[i].speed == speed)
 			return nsp_eth_rate_tbl[i].rate;
 
@@ -159,21 +117,25 @@ nfp_eth_speed2rate(unsigned int speed)
 }
 
 static void
-nfp_eth_copy_mac_reverse(uint8_t *dst, const uint8_t *src)
+nfp_eth_copy_mac_reverse(uint8_t *dst,
+		const uint8_t *src)
 {
-	int i;
+	uint32_t i;
 
 	for (i = 0; i < RTE_ETHER_ADDR_LEN; i++)
 		dst[RTE_ETHER_ADDR_LEN - i - 1] = src[i];
 }
 
 static void
-nfp_eth_port_translate(struct nfp_nsp *nsp, const union eth_table_entry *src,
-		       unsigned int index, struct nfp_eth_table_port *dst)
+nfp_eth_port_translate(struct nfp_nsp *nsp,
+		const union eth_table_entry *src,
+		uint32_t index,
+		struct nfp_eth_table_port *dst)
 {
-	unsigned int rate;
-	unsigned int fec;
-	uint64_t port, state;
+	uint32_t fec;
+	uint64_t port;
+	uint32_t rate;
+	uint64_t state;
 
 	port = rte_le_to_cpu_64(src->port);
 	state = rte_le_to_cpu_64(src->state);
@@ -212,36 +174,46 @@ nfp_eth_port_translate(struct nfp_nsp *nsp, const union eth_table_entry *src,
 	dst->fec_modes_supported |= fec << NFP_FEC_BASER_BIT;
 	fec = FIELD_GET(NSP_ETH_PORT_FEC_SUPP_RS, port);
 	dst->fec_modes_supported |= fec << NFP_FEC_REED_SOLOMON_BIT;
-	if (dst->fec_modes_supported)
+	if (dst->fec_modes_supported != 0)
 		dst->fec_modes_supported |= NFP_FEC_AUTO | NFP_FEC_DISABLED;
 
-	dst->fec = 1 << FIELD_GET(NSP_ETH_STATE_FEC, state);
+	dst->fec = FIELD_GET(NSP_ETH_STATE_FEC, state);
+	dst->act_fec = dst->fec;
+
+	if (nfp_nsp_get_abi_ver_minor(nsp) < 33)
+		return;
+
+	dst->act_fec = FIELD_GET(NSP_ETH_STATE_ACT_FEC, state);
+	dst->supp_aneg = FIELD_GET(NSP_ETH_PORT_SUPP_ANEG, port);
 }
 
 static void
 nfp_eth_calc_port_geometry(struct nfp_eth_table *table)
 {
-	unsigned int i, j;
+	uint32_t i;
+	uint32_t j;
 
 	for (i = 0; i < table->count; i++) {
 		table->max_index = RTE_MAX(table->max_index,
-					   table->ports[i].index);
+				table->ports[i].index);
 
 		for (j = 0; j < table->count; j++) {
 			if (table->ports[i].label_port !=
-			    table->ports[j].label_port)
+					table->ports[j].label_port)
 				continue;
+
 			table->ports[i].port_lanes += table->ports[j].lanes;
 
 			if (i == j)
 				continue;
-			if (table->ports[i].label_subport ==
-			    table->ports[j].label_subport)
-				PMD_DRV_LOG(DEBUG, "Port %d subport %d is a duplicate",
-					 table->ports[i].label_port,
-					 table->ports[i].label_subport);
 
-			table->ports[i].is_split = 1;
+			if (table->ports[i].label_subport ==
+					table->ports[j].label_subport)
+				PMD_DRV_LOG(DEBUG, "Port %d subport %d is a duplicate",
+						table->ports[i].label_port,
+						table->ports[i].label_subport);
+
+			table->ports[i].is_split = true;
 		}
 	}
 }
@@ -252,6 +224,9 @@ nfp_eth_calc_port_type(struct nfp_eth_table_port *entry)
 	if (entry->interface == NFP_INTERFACE_NONE) {
 		entry->port_type = PORT_NONE;
 		return;
+	} else if (entry->interface == NFP_INTERFACE_RJ45) {
+		entry->port_type = PORT_TP;
+		return;
 	}
 
 	if (entry->media == NFP_MEDIA_FIBRE)
@@ -261,13 +236,15 @@ nfp_eth_calc_port_type(struct nfp_eth_table_port *entry)
 }
 
 static struct nfp_eth_table *
-__nfp_eth_read_ports(struct nfp_nsp *nsp)
+nfp_eth_read_ports_real(struct nfp_nsp *nsp)
 {
-	union eth_table_entry *entries;
-	struct nfp_eth_table *table;
+	int ret;
+	uint32_t i;
+	uint32_t j;
+	int cnt = 0;
 	uint32_t table_sz;
-	int i, j, ret, cnt = 0;
-	const struct rte_ether_addr *mac;
+	struct nfp_eth_table *table;
+	union eth_table_entry *entries;
 
 	entries = malloc(NSP_ETH_TABLE_SIZE);
 	if (entries == NULL)
@@ -276,27 +253,22 @@ __nfp_eth_read_ports(struct nfp_nsp *nsp)
 	memset(entries, 0, NSP_ETH_TABLE_SIZE);
 	ret = nfp_nsp_read_eth_table(nsp, entries, NSP_ETH_TABLE_SIZE);
 	if (ret < 0) {
-		PMD_DRV_LOG(ERR, "reading port table failed %d", ret);
+		PMD_DRV_LOG(ERR, "Reading port table failed %d", ret);
 		goto err;
 	}
 
-	/* The NFP3800 NIC support 8 ports, but only 2 ports are valid,
-	 * the rest 6 ports mac are all 0, ensure we don't use these port
-	 */
-	for (i = 0; i < NSP_ETH_MAX_COUNT; i++) {
-		mac = (const struct rte_ether_addr *)entries[i].mac_addr;
-		if ((entries[i].port & NSP_ETH_PORT_LANES_MASK) &&
-				!rte_is_zero_ether_addr(mac))
+	for (i = 0; i < NSP_ETH_MAX_COUNT; i++)
+		if ((entries[i].port & NSP_ETH_PORT_LANES_MASK) != 0)
 			cnt++;
-	}
 
-	/* Some versions of flash will give us 0 instead of port count. For
+	/*
+	 * Some versions of flash will give us 0 instead of port count. For
 	 * those that give a port count, verify it against the value calculated
 	 * above.
 	 */
-	if (ret && ret != cnt) {
-		PMD_DRV_LOG(ERR, "table entry count (%d) unmatch entries present (%d)",
-		       ret, cnt);
+	if (ret != 0 && ret != cnt) {
+		PMD_DRV_LOG(ERR, "Table entry count (%d) unmatch entries present (%d)",
+				ret, cnt);
 		goto err;
 	}
 
@@ -308,15 +280,12 @@ __nfp_eth_read_ports(struct nfp_nsp *nsp)
 	memset(table, 0, table_sz);
 	table->count = cnt;
 	for (i = 0, j = 0; i < NSP_ETH_MAX_COUNT; i++) {
-		mac = (const struct rte_ether_addr *)entries[i].mac_addr;
-		if ((entries[i].port & NSP_ETH_PORT_LANES_MASK) &&
-				!rte_is_zero_ether_addr(mac))
-			nfp_eth_port_translate(nsp, &entries[i], i,
-					&table->ports[j++]);
+		if ((entries[i].port & NSP_ETH_PORT_LANES_MASK) != 0)
+			nfp_eth_port_translate(nsp, &entries[i], i, &table->ports[j++]);
 	}
 
 	nfp_eth_calc_port_geometry(table);
-	for (i = 0; i < (int)table->count; i++)
+	for (i = 0; i < table->count; i++)
 		nfp_eth_calc_port_type(&table->ports[i]);
 
 	free(entries);
@@ -328,37 +297,40 @@ err:
 	return NULL;
 }
 
-/*
- * nfp_eth_read_ports() - retrieve port information
- * @cpp:	NFP CPP handle
+/**
+ * Read the port information from the device.
  *
- * Read the port information from the device.  Returned structure should
- * be freed with kfree() once no longer needed.
+ * Returned structure should be freed once no longer needed.
  *
- * Return: populated ETH table or NULL on error.
+ * @param cpp
+ *   NFP CPP handle
+ *
+ * @return
+ *   Populated ETH table or NULL on error.
  */
 struct nfp_eth_table *
 nfp_eth_read_ports(struct nfp_cpp *cpp)
 {
-	struct nfp_eth_table *ret;
 	struct nfp_nsp *nsp;
+	struct nfp_eth_table *ret;
 
 	nsp = nfp_nsp_open(cpp);
 	if (nsp == NULL)
 		return NULL;
 
-	ret = __nfp_eth_read_ports(nsp);
+	ret = nfp_eth_read_ports_real(nsp);
 	nfp_nsp_close(nsp);
 
 	return ret;
 }
 
 struct nfp_nsp *
-nfp_eth_config_start(struct nfp_cpp *cpp, unsigned int idx)
+nfp_eth_config_start(struct nfp_cpp *cpp,
+		uint32_t idx)
 {
-	union eth_table_entry *entries;
-	struct nfp_nsp *nsp;
 	int ret;
+	struct nfp_nsp *nsp;
+	union eth_table_entry *entries;
 
 	entries = malloc(NSP_ETH_TABLE_SIZE);
 	if (entries == NULL)
@@ -373,12 +345,12 @@ nfp_eth_config_start(struct nfp_cpp *cpp, unsigned int idx)
 
 	ret = nfp_nsp_read_eth_table(nsp, entries, NSP_ETH_TABLE_SIZE);
 	if (ret < 0) {
-		PMD_DRV_LOG(ERR, "reading port table failed %d", ret);
+		PMD_DRV_LOG(ERR, "Reading port table failed %d", ret);
 		goto err;
 	}
 
 	if ((entries[idx].port & NSP_ETH_PORT_LANES_MASK) == 0) {
-		PMD_DRV_LOG(ERR, "trying to set port state on disabled port %d", idx);
+		PMD_DRV_LOG(ERR, "Trying to set port state on disabled port %d", idx);
 		goto err;
 	}
 
@@ -402,25 +374,25 @@ nfp_eth_config_cleanup_end(struct nfp_nsp *nsp)
 	free(entries);
 }
 
-/*
- * nfp_eth_config_commit_end() - perform recorded configuration changes
- * @nsp:	NFP NSP handle returned from nfp_eth_config_start()
- *
+/**
  * Perform the configuration which was requested with __nfp_eth_set_*()
- * helpers and recorded in @nsp state.  If device was already configured
- * as requested or no __nfp_eth_set_*() operations were made no NSP command
+ * helpers and recorded in @nsp state. If device was already configured
+ * as requested or no __nfp_eth_set_*() operations were made, no NSP command
  * will be performed.
  *
- * Return:
- * 0 - configuration successful;
- * 1 - no changes were needed;
- * -ERRNO - configuration failed.
+ * @param nsp
+ *   NFP NSP handle returned from nfp_eth_config_start()
+ *
+ * @return
+ *   - (0) Configuration successful
+ *   - (1) No changes were needed
+ *   - (-ERRNO) Configuration failed
  */
 int
 nfp_eth_config_commit_end(struct nfp_nsp *nsp)
 {
-	union eth_table_entry *entries = nfp_nsp_config_entries(nsp);
 	int ret = 1;
+	union eth_table_entry *entries = nfp_nsp_config_entries(nsp);
 
 	if (nfp_nsp_config_modified(nsp)) {
 		ret = nfp_nsp_write_eth_table(nsp, entries, NSP_ETH_TABLE_SIZE);
@@ -432,30 +404,34 @@ nfp_eth_config_commit_end(struct nfp_nsp *nsp)
 	return ret;
 }
 
-/*
- * nfp_eth_set_mod_enable() - set PHY module enable control bit
- * @cpp:	NFP CPP handle
- * @idx:	NFP chip-wide port index
- * @enable:	Desired state
- *
+/**
  * Enable or disable PHY module (this usually means setting the TX lanes
  * disable bits).
  *
- * Return:
- * 0 - configuration successful;
- * 1 - no changes were needed;
- * -ERRNO - configuration failed.
+ * @param cpp
+ *   NFP CPP handle
+ * @param idx
+ *   NFP chip-wide port index
+ * @param enable
+ *   Desired state
+ *
+ * @return
+ *   - (0) Configuration successful
+ *   - (1) No changes were needed
+ *   - (-ERRNO) Configuration failed
  */
 int
-nfp_eth_set_mod_enable(struct nfp_cpp *cpp, unsigned int idx, int enable)
+nfp_eth_set_mod_enable(struct nfp_cpp *cpp,
+		uint32_t idx,
+		bool enable)
 {
-	union eth_table_entry *entries;
-	struct nfp_nsp *nsp;
 	uint64_t reg;
+	struct nfp_nsp *nsp;
+	union eth_table_entry *entries;
 
 	nsp = nfp_eth_config_start(cpp, idx);
 	if (nsp == NULL)
-		return -1;
+		return -EIO;
 
 	entries = nfp_nsp_config_entries(nsp);
 
@@ -467,31 +443,35 @@ nfp_eth_set_mod_enable(struct nfp_cpp *cpp, unsigned int idx, int enable)
 		reg |= FIELD_PREP(NSP_ETH_CTRL_ENABLED, enable);
 		entries[idx].control = rte_cpu_to_le_64(reg);
 
-		nfp_nsp_config_set_modified(nsp, 1);
+		nfp_nsp_config_set_modified(nsp, true);
 	}
 
 	return nfp_eth_config_commit_end(nsp);
 }
 
-/*
- * nfp_eth_set_configured() - set PHY module configured control bit
- * @cpp:	NFP CPP handle
- * @idx:	NFP chip-wide port index
- * @configed:	Desired state
- *
+/**
  * Set the ifup/ifdown state on the PHY.
  *
- * Return:
- * 0 - configuration successful;
- * 1 - no changes were needed;
- * -ERRNO - configuration failed.
+ * @param cpp
+ *   NFP CPP handle
+ * @param idx
+ *   NFP chip-wide port index
+ * @param configured
+ *   Desired state
+ *
+ * @return
+ *   - (0) Configuration successful
+ *   - (1) No changes were needed
+ *   - (-ERRNO) Configuration failed
  */
 int
-nfp_eth_set_configured(struct nfp_cpp *cpp, unsigned int idx, int configed)
+nfp_eth_set_configured(struct nfp_cpp *cpp,
+		uint32_t idx,
+		bool configured)
 {
-	union eth_table_entry *entries;
-	struct nfp_nsp *nsp;
 	uint64_t reg;
+	struct nfp_nsp *nsp;
+	union eth_table_entry *entries;
 
 	nsp = nfp_eth_config_start(cpp, idx);
 	if (nsp == NULL)
@@ -510,30 +490,33 @@ nfp_eth_set_configured(struct nfp_cpp *cpp, unsigned int idx, int configed)
 
 	/* Check if we are already in requested state */
 	reg = rte_le_to_cpu_64(entries[idx].state);
-	if (configed != (int)FIELD_GET(NSP_ETH_STATE_CONFIGURED, reg)) {
+	if (configured != (int)FIELD_GET(NSP_ETH_STATE_CONFIGURED, reg)) {
 		reg = rte_le_to_cpu_64(entries[idx].control);
 		reg &= ~NSP_ETH_CTRL_CONFIGURED;
-		reg |= FIELD_PREP(NSP_ETH_CTRL_CONFIGURED, configed);
+		reg |= FIELD_PREP(NSP_ETH_CTRL_CONFIGURED, configured);
 		entries[idx].control = rte_cpu_to_le_64(reg);
 
-		nfp_nsp_config_set_modified(nsp, 1);
+		nfp_nsp_config_set_modified(nsp, true);
 	}
 
 	return nfp_eth_config_commit_end(nsp);
 }
 
 static int
-nfp_eth_set_bit_config(struct nfp_nsp *nsp, unsigned int raw_idx,
-		       const uint64_t mask, const unsigned int shift,
-		       unsigned int val, const uint64_t ctrl_bit)
+nfp_eth_set_bit_config(struct nfp_nsp *nsp,
+		uint32_t raw_idx,
+		const uint64_t mask,
+		const uint32_t shift,
+		uint32_t val,
+		const uint64_t ctrl_bit)
 {
-	union eth_table_entry *entries = nfp_nsp_config_entries(nsp);
-	unsigned int idx = nfp_nsp_config_idx(nsp);
 	uint64_t reg;
+	uint32_t idx = nfp_nsp_config_idx(nsp);
+	union eth_table_entry *entries = nfp_nsp_config_entries(nsp);
 
 	/*
 	 * Note: set features were added in ABI 0.14 but the error
-	 *	 codes were initially not populated correctly.
+	 * codes were initially not populated correctly.
 	 */
 	if (nfp_nsp_get_abi_ver_minor(nsp) < 17) {
 		PMD_DRV_LOG(ERR, "set operations not supported, please update flash");
@@ -551,77 +534,87 @@ nfp_eth_set_bit_config(struct nfp_nsp *nsp, unsigned int raw_idx,
 
 	entries[idx].control |= rte_cpu_to_le_64(ctrl_bit);
 
-	nfp_nsp_config_set_modified(nsp, 1);
+	nfp_nsp_config_set_modified(nsp, true);
 
 	return 0;
 }
 
-#define NFP_ETH_SET_BIT_CONFIG(nsp, raw_idx, mask, val, ctrl_bit)	\
-	(__extension__ ({ \
-		typeof(mask) _x = (mask); \
+#define NFP_ETH_SET_BIT_CONFIG(nsp, raw_idx, mask, val, ctrl_bit)      \
+	(__extension__ ({                                              \
+		typeof(mask) _x = (mask);                              \
 		nfp_eth_set_bit_config(nsp, raw_idx, _x, __bf_shf(_x), \
-				       val, ctrl_bit);			\
+				val, ctrl_bit);                        \
 	}))
 
-/*
- * __nfp_eth_set_aneg() - set PHY autonegotiation control bit
- * @nsp:	NFP NSP handle returned from nfp_eth_config_start()
- * @mode:	Desired autonegotiation mode
- *
+/**
  * Allow/disallow PHY module to advertise/perform autonegotiation.
  * Will write to hwinfo overrides in the flash (persistent config).
  *
- * Return: 0 or -ERRNO.
+ * @param nsp
+ *   NFP NSP handle returned from nfp_eth_config_start()
+ * @param mode
+ *   Desired autonegotiation mode
+ *
+ * @return
+ *   0 or -ERRNO
  */
 int
-__nfp_eth_set_aneg(struct nfp_nsp *nsp, enum nfp_eth_aneg mode)
+nfp_eth_set_aneg(struct nfp_nsp *nsp,
+		enum nfp_eth_aneg mode)
 {
 	return NFP_ETH_SET_BIT_CONFIG(nsp, NSP_ETH_RAW_STATE,
-				      NSP_ETH_STATE_ANEG, mode,
-				      NSP_ETH_CTRL_SET_ANEG);
+			NSP_ETH_STATE_ANEG, mode, NSP_ETH_CTRL_SET_ANEG);
 }
 
-/*
- * __nfp_eth_set_fec() - set PHY forward error correction control bit
- * @nsp:	NFP NSP handle returned from nfp_eth_config_start()
- * @mode:	Desired fec mode
- *
+/**
  * Set the PHY module forward error correction mode.
  * Will write to hwinfo overrides in the flash (persistent config).
  *
- * Return: 0 or -ERRNO.
+ * @param nsp
+ *   NFP NSP handle returned from nfp_eth_config_start()
+ * @param mode
+ *   Desired fec mode
+ *
+ * @return
+ *   0 or -ERRNO
  */
 static int
-__nfp_eth_set_fec(struct nfp_nsp *nsp, enum nfp_eth_fec mode)
+nfp_eth_set_fec_real(struct nfp_nsp *nsp,
+		enum nfp_eth_fec mode)
 {
 	return NFP_ETH_SET_BIT_CONFIG(nsp, NSP_ETH_RAW_STATE,
-				      NSP_ETH_STATE_FEC, mode,
-				      NSP_ETH_CTRL_SET_FEC);
+			NSP_ETH_STATE_FEC, mode, NSP_ETH_CTRL_SET_FEC);
 }
 
-/*
- * nfp_eth_set_fec() - set PHY forward error correction control mode
- * @cpp:	NFP CPP handle
- * @idx:	NFP chip-wide port index
- * @mode:	Desired fec mode
+/**
+ * Set PHY forward error correction control mode
  *
- * Return:
- * 0 - configuration successful;
- * 1 - no changes were needed;
- * -ERRNO - configuration failed.
+ * @param cpp
+ *   NFP CPP handle
+ * @param idx
+ *   NFP chip-wide port index
+ * @param mode
+ *   Desired fec mode
+ *
+ * @return
+ *   - (0) Configuration successful
+ *   - (1) No changes were needed
+ *   - (-ERRNO) Configuration failed
  */
 int
-nfp_eth_set_fec(struct nfp_cpp *cpp, unsigned int idx, enum nfp_eth_fec mode)
+nfp_eth_set_fec(struct nfp_cpp *cpp,
+		uint32_t idx,
+		enum nfp_eth_fec mode)
 {
-	struct nfp_nsp *nsp;
 	int err;
+	struct nfp_nsp *nsp;
 
 	nsp = nfp_eth_config_start(cpp, idx);
 	if (nsp == NULL)
 		return -EIO;
 
-	err = __nfp_eth_set_fec(nsp, mode);
-	if (err) {
+	err = nfp_eth_set_fec_real(nsp, mode);
+	if (err != 0) {
 		nfp_eth_config_cleanup_end(nsp);
 		return err;
 	}
@@ -629,47 +622,52 @@ nfp_eth_set_fec(struct nfp_cpp *cpp, unsigned int idx, enum nfp_eth_fec mode)
 	return nfp_eth_config_commit_end(nsp);
 }
 
-/*
- * __nfp_eth_set_speed() - set interface speed/rate
- * @nsp:	NFP NSP handle returned from nfp_eth_config_start()
- * @speed:	Desired speed (per lane)
- *
- * Set lane speed.  Provided @speed value should be subport speed divided
- * by number of lanes this subport is spanning (i.e. 10000 for 40G, 25000 for
- * 50G, etc.)
+/**
+ * Set lane speed.
+ * Provided @speed value should be subport speed divided by number of
+ * lanes this subport is spanning (i.e. 10000 for 40G, 25000 for 50G, etc.)
  * Will write to hwinfo overrides in the flash (persistent config).
  *
- * Return: 0 or -ERRNO.
+ * @param nsp
+ *   NFP NSP handle returned from nfp_eth_config_start()
+ * @param speed
+ *   Desired speed (per lane)
+ *
+ * @return
+ *   0 or -ERRNO
  */
 int
-__nfp_eth_set_speed(struct nfp_nsp *nsp, unsigned int speed)
+nfp_eth_set_speed(struct nfp_nsp *nsp,
+		uint32_t speed)
 {
 	enum nfp_eth_rate rate;
 
 	rate = nfp_eth_speed2rate(speed);
 	if (rate == RATE_INVALID) {
-		PMD_DRV_LOG(ERR, "could not find matching lane rate for speed %u", speed);
+		PMD_DRV_LOG(ERR, "Could not find matching lane rate for speed %u", speed);
 		return -EINVAL;
 	}
 
 	return NFP_ETH_SET_BIT_CONFIG(nsp, NSP_ETH_RAW_STATE,
-				      NSP_ETH_STATE_RATE, rate,
-				      NSP_ETH_CTRL_SET_RATE);
+			NSP_ETH_STATE_RATE, rate, NSP_ETH_CTRL_SET_RATE);
 }
 
-/*
- * __nfp_eth_set_split() - set interface lane split
- * @nsp:	NFP NSP handle returned from nfp_eth_config_start()
- * @lanes:	Desired lanes per port
- *
+/**
  * Set number of lanes in the port.
  * Will write to hwinfo overrides in the flash (persistent config).
  *
- * Return: 0 or -ERRNO.
+ * @param nsp
+ *   NFP NSP handle returned from nfp_eth_config_start()
+ * @param lanes
+ *   Desired lanes per port
+ *
+ * @return
+ *   0 or -ERRNO
  */
 int
-__nfp_eth_set_split(struct nfp_nsp *nsp, unsigned int lanes)
+nfp_eth_set_split(struct nfp_nsp *nsp,
+		uint32_t lanes)
 {
-	return NFP_ETH_SET_BIT_CONFIG(nsp, NSP_ETH_RAW_PORT, NSP_ETH_PORT_LANES,
-				      lanes, NSP_ETH_CTRL_SET_LANES);
+	return NFP_ETH_SET_BIT_CONFIG(nsp, NSP_ETH_RAW_PORT,
+			NSP_ETH_PORT_LANES, lanes, NSP_ETH_CTRL_SET_LANES);
 }

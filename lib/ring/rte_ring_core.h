@@ -68,7 +68,6 @@ enum rte_ring_sync_type {
 struct rte_ring_headtail {
 	volatile uint32_t head;      /**< prod/consumer head. */
 	volatile uint32_t tail;      /**< prod/consumer tail. */
-	RTE_STD_C11
 	union {
 		/** sync type of prod/cons */
 		enum rte_ring_sync_type sync_type;
@@ -130,7 +129,6 @@ struct rte_ring {
 	char pad0 __rte_cache_aligned; /**< empty cache line */
 
 	/** Ring producer status. */
-	RTE_STD_C11
 	union {
 		struct rte_ring_headtail prod;
 		struct rte_ring_hts_headtail hts_prod;
@@ -140,7 +138,6 @@ struct rte_ring {
 	char pad1 __rte_cache_aligned; /**< empty cache line */
 
 	/** Ring consumer status. */
-	RTE_STD_C11
 	union {
 		struct rte_ring_headtail cons;
 		struct rte_ring_hts_headtail hts_cons;

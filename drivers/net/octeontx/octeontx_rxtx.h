@@ -28,7 +28,6 @@
 #define PTYPE_SIZE	OCCTX_PKI_LTYPE_LAST
 
 /* octeontx send header sub descriptor structure */
-RTE_STD_C11
 union octeontx_send_hdr_w0_u {
 	uint64_t u;
 	struct {
@@ -53,7 +52,6 @@ union octeontx_send_hdr_w0_u {
 	};
 };
 
-RTE_STD_C11
 union octeontx_send_hdr_w1_u {
 	uint64_t u;
 	struct {

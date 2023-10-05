@@ -26,5 +26,5 @@ if dep_dec5g.found()
     cflags += ['-DRTE_BBDEV_SDK_AVX512']
 endif
 
-deps += ['bbdev', 'bus_vdev', 'ring']
+deps += ['bus_vdev', 'ring']
 sources = files('bbdev_turbo_software.c')

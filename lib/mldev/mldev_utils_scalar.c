@@ -413,7 +413,7 @@ __float16_to_float32_scalar_rtx(uint16_t f16)
 		if (f16_m == 0) { /* zero signed */
 			f32_e = 0;
 		} else { /* subnormal numbers */
-			clz = __builtin_clz((uint32_t)f16_m) - sizeof(uint32_t) * 8 + FP16_LSB_E;
+			clz = rte_clz32((uint32_t)f16_m) - sizeof(uint32_t) * 8 + FP16_LSB_E;
 			e_16 = (int)f16_e - clz;
 			f32_e = FP32_BIAS_E + e_16 - FP16_BIAS_E;
 

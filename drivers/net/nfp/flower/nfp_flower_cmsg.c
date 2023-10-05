@@ -3,13 +3,18 @@
  * All rights reserved.
  */
 
+#include "nfp_flower_cmsg.h"
+
 #include "../nfpcore/nfp_nsp.h"
 #include "../nfp_logs.h"
-#include "../nfp_common.h"
-#include "nfp_flower.h"
-#include "nfp_flower_cmsg.h"
 #include "nfp_flower_ctrl.h"
 #include "nfp_flower_representor.h"
+
+static char*
+nfp_flower_cmsg_get_data(struct rte_mbuf *m)
+{
+	return rte_pktmbuf_mtod(m, char *) + 4 + 4 + NFP_FLOWER_CMSG_HLEN;
+}
 
 static void *
 nfp_flower_cmsg_init(struct nfp_app_fw_flower *app_fw_flower,

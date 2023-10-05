@@ -33,7 +33,6 @@ struct ip_frag {
 struct ip_frag_key {
 	uint64_t src_dst[4];
 	/* src and dst address, only first 8 bytes used for IPv4 */
-	RTE_STD_C11
 	union {
 		uint64_t id_key_len; /* combined for easy fetch */
 		__extension__

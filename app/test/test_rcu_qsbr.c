@@ -1418,4 +1418,4 @@ test_fail:
 	return -1;
 }
 
-REGISTER_TEST_COMMAND(rcu_qsbr_autotest, test_rcu_qsbr_main);
+REGISTER_FAST_TEST(rcu_qsbr_autotest, true, true, test_rcu_qsbr_main);

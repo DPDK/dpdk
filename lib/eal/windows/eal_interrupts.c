@@ -98,7 +98,7 @@ rte_eal_intr_init(void)
 		return -1;
 	}
 
-	ret = rte_thread_create_control(&intr_thread, "eal-intr-thread", NULL,
+	ret = rte_thread_create_internal_control(&intr_thread, "intr",
 			eal_intr_thread_main, NULL);
 	if (ret != 0) {
 		rte_errno = -ret;

@@ -10,8 +10,10 @@
 #include <stdint.h>
 #include <inttypes.h>
 #include <errno.h>
+#include <pthread.h>
 #include <sys/queue.h>
 #include <sys/time.h>
+
 #include <rte_cycles.h>
 #include <rte_byteorder.h>
 #include <rte_common.h>
@@ -52,20 +54,20 @@
 #define MAX_PKT_BURST			(512)
 #define DEF_PKT_BURST			(16)
 
-#define BONDED_DEV_NAME			("net_bonding_ut")
+#define BONDING_DEV_NAME			("net_bonding_ut")
 
 #define INVALID_SOCKET_ID		(-1)
 #define INVALID_PORT_ID			(-1)
 #define INVALID_BONDING_MODE	(-1)
 
 
-uint8_t slave_mac[] = {0x00, 0xFF, 0x00, 0xFF, 0x00, 0x00 };
-uint8_t bonded_mac[] = {0xAA, 0xFF, 0xAA, 0xFF, 0xAA, 0xFF };
+uint8_t member_mac[] = {0x00, 0xFF, 0x00, 0xFF, 0x00, 0x00 };
+uint8_t bonding_mac[] = {0xAA, 0xFF, 0xAA, 0xFF, 0xAA, 0xFF };
 
 struct link_bonding_unittest_params {
-	int16_t bonded_port_id;
-	int16_t slave_port_ids[TEST_MAX_NUMBER_OF_PORTS];
-	uint16_t bonded_slave_count;
+	int16_t bonding_port_id;
+	int16_t member_port_ids[TEST_MAX_NUMBER_OF_PORTS];
+	uint16_t bonding_member_count;
 	uint8_t bonding_mode;
 
 	uint16_t nb_rx_q;
@@ -73,8 +75,8 @@ struct link_bonding_unittest_params {
 
 	struct rte_mempool *mbuf_pool;
 
-	struct rte_ether_addr *default_slave_mac;
-	struct rte_ether_addr *default_bonded_mac;
+	struct rte_ether_addr *default_member_mac;
+	struct rte_ether_addr *default_bonding_mac;
 
 	/* Packet Headers */
 	struct rte_ether_hdr *pkt_eth_hdr;
@@ -89,9 +91,9 @@ static struct rte_ipv6_hdr pkt_ipv6_hdr;
 static struct rte_udp_hdr pkt_udp_hdr;
 
 static struct link_bonding_unittest_params default_params  = {
-	.bonded_port_id = -1,
-	.slave_port_ids = { -1 },
-	.bonded_slave_count = 0,
+	.bonding_port_id = -1,
+	.member_port_ids = { -1 },
+	.bonding_member_count = 0,
 	.bonding_mode = BONDING_MODE_ROUND_ROBIN,
 
 	.nb_rx_q = 1,
@@ -99,8 +101,8 @@ static struct link_bonding_unittest_params default_params  = {
 
 	.mbuf_pool = NULL,
 
-	.default_slave_mac = (struct rte_ether_addr *)slave_mac,
-	.default_bonded_mac = (struct rte_ether_addr *)bonded_mac,
+	.default_member_mac = (struct rte_ether_addr *)member_mac,
+	.default_bonding_mac = (struct rte_ether_addr *)bonding_mac,
 
 	.pkt_eth_hdr = NULL,
 	.pkt_ipv4_hdr = &pkt_ipv4_hdr,
@@ -202,8 +204,8 @@ configure_ethdev(uint16_t port_id, uint8_t start, uint8_t en_isr)
 	return 0;
 }
 
-static int slaves_initialized;
-static int mac_slaves_initialized;
+static int members_initialized;
+static int mac_members_initialized;
 
 static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t cvar = PTHREAD_COND_INITIALIZER;
@@ -213,7 +215,7 @@ static int
 test_setup(void)
 {
 	int i, nb_mbuf_per_pool;
-	struct rte_ether_addr *mac_addr = (struct rte_ether_addr *)slave_mac;
+	struct rte_ether_addr *mac_addr = (struct rte_ether_addr *)member_mac;
 
 	/* Allocate ethernet packet header with space for VLAN header */
 	if (test_params->pkt_eth_hdr == NULL) {
@@ -235,7 +237,7 @@ test_setup(void)
 	}
 
 	/* Create / Initialize virtual eth devs */
-	if (!slaves_initialized) {
+	if (!members_initialized) {
 		for (i = 0; i < TEST_MAX_NUMBER_OF_PORTS; i++) {
 			char pmd_name[RTE_ETH_NAME_MAX_LEN];
 
@@ -243,64 +245,64 @@ test_setup(void)
 
 			snprintf(pmd_name, RTE_ETH_NAME_MAX_LEN, "eth_virt_%d", i);
 
-			test_params->slave_port_ids[i] = virtual_ethdev_create(pmd_name,
+			test_params->member_port_ids[i] = virtual_ethdev_create(pmd_name,
 					mac_addr, rte_socket_id(), 1);
-			TEST_ASSERT(test_params->slave_port_ids[i] >= 0,
+			TEST_ASSERT(test_params->member_port_ids[i] >= 0,
 					"Failed to create virtual virtual ethdev %s", pmd_name);
 
 			TEST_ASSERT_SUCCESS(configure_ethdev(
-					test_params->slave_port_ids[i], 1, 0),
+					test_params->member_port_ids[i], 1, 0),
 					"Failed to configure virtual ethdev %s", pmd_name);
 		}
-		slaves_initialized = 1;
+		members_initialized = 1;
 	}
 
 	return 0;
 }
 
 static int
-test_create_bonded_device(void)
+test_create_bonding_device(void)
 {
-	int current_slave_count;
+	int current_member_count;
 
-	uint16_t slaves[RTE_MAX_ETHPORTS];
+	uint16_t members[RTE_MAX_ETHPORTS];
 
-	/* Don't try to recreate bonded device if re-running test suite*/
-	if (test_params->bonded_port_id == -1) {
-		test_params->bonded_port_id = rte_eth_bond_create(BONDED_DEV_NAME,
+	/* Don't try to recreate bonding device if re-running test suite*/
+	if (test_params->bonding_port_id == -1) {
+		test_params->bonding_port_id = rte_eth_bond_create(BONDING_DEV_NAME,
 				test_params->bonding_mode, rte_socket_id());
 
-		TEST_ASSERT(test_params->bonded_port_id >= 0,
-				"Failed to create bonded ethdev %s", BONDED_DEV_NAME);
+		TEST_ASSERT(test_params->bonding_port_id >= 0,
+				"Failed to create bonding ethdev %s", BONDING_DEV_NAME);
 
-		TEST_ASSERT_SUCCESS(configure_ethdev(test_params->bonded_port_id, 0, 0),
-				"Failed to configure bonded ethdev %s", BONDED_DEV_NAME);
+		TEST_ASSERT_SUCCESS(configure_ethdev(test_params->bonding_port_id, 0, 0),
+				"Failed to configure bonding ethdev %s", BONDING_DEV_NAME);
 	}
 
-	TEST_ASSERT_SUCCESS(rte_eth_bond_mode_set(test_params->bonded_port_id,
+	TEST_ASSERT_SUCCESS(rte_eth_bond_mode_set(test_params->bonding_port_id,
 			test_params->bonding_mode), "Failed to set ethdev %d to mode %d",
-			test_params->bonded_port_id, test_params->bonding_mode);
+			test_params->bonding_port_id, test_params->bonding_mode);
 
-	current_slave_count = rte_eth_bond_slaves_get(test_params->bonded_port_id,
-			slaves, RTE_MAX_ETHPORTS);
+	current_member_count = rte_eth_bond_members_get(test_params->bonding_port_id,
+			members, RTE_MAX_ETHPORTS);
 
-	TEST_ASSERT_EQUAL(current_slave_count, 0,
-			"Number of slaves %d is great than expected %d.",
-			current_slave_count, 0);
+	TEST_ASSERT_EQUAL(current_member_count, 0,
+			"Number of members %d is great than expected %d.",
+			current_member_count, 0);
 
-	current_slave_count = rte_eth_bond_active_slaves_get(
-			test_params->bonded_port_id, slaves, RTE_MAX_ETHPORTS);
+	current_member_count = rte_eth_bond_active_members_get(
+			test_params->bonding_port_id, members, RTE_MAX_ETHPORTS);
 
-	TEST_ASSERT_EQUAL(current_slave_count, 0,
-			"Number of active slaves %d is great than expected %d.",
-			current_slave_count, 0);
+	TEST_ASSERT_EQUAL(current_member_count, 0,
+			"Number of active members %d is great than expected %d.",
+			current_member_count, 0);
 
 	return 0;
 }
 
 
 static int
-test_create_bonded_device_with_invalid_params(void)
+test_create_bonding_device_with_invalid_params(void)
 {
 	int port_id;
 
@@ -309,66 +311,66 @@ test_create_bonded_device_with_invalid_params(void)
 	/* Invalid name */
 	port_id = rte_eth_bond_create(NULL, test_params->bonding_mode,
 			rte_socket_id());
-	TEST_ASSERT(port_id < 0, "Created bonded device unexpectedly");
+	TEST_ASSERT(port_id < 0, "Created bonding device unexpectedly");
 
 	test_params->bonding_mode = INVALID_BONDING_MODE;
 
 	/* Invalid bonding mode */
-	port_id = rte_eth_bond_create(BONDED_DEV_NAME, test_params->bonding_mode,
+	port_id = rte_eth_bond_create(BONDING_DEV_NAME, test_params->bonding_mode,
 			rte_socket_id());
-	TEST_ASSERT(port_id < 0, "Created bonded device unexpectedly.");
+	TEST_ASSERT(port_id < 0, "Created bonding device unexpectedly.");
 
 	test_params->bonding_mode = BONDING_MODE_ROUND_ROBIN;
 
 	/* Invalid socket id */
-	port_id = rte_eth_bond_create(BONDED_DEV_NAME, test_params->bonding_mode,
+	port_id = rte_eth_bond_create(BONDING_DEV_NAME, test_params->bonding_mode,
 			INVALID_SOCKET_ID);
-	TEST_ASSERT(port_id < 0, "Created bonded device unexpectedly.");
+	TEST_ASSERT(port_id < 0, "Created bonding device unexpectedly.");
 
 	return 0;
 }
 
 static int
-test_add_slave_to_bonded_device(void)
+test_add_member_to_bonding_device(void)
 {
-	int current_slave_count;
+	int current_member_count;
 
-	uint16_t slaves[RTE_MAX_ETHPORTS];
+	uint16_t members[RTE_MAX_ETHPORTS];
 
-	TEST_ASSERT_SUCCESS(rte_eth_bond_slave_add(test_params->bonded_port_id,
-			test_params->slave_port_ids[test_params->bonded_slave_count]),
-			"Failed to add slave (%d) to bonded port (%d).",
-			test_params->slave_port_ids[test_params->bonded_slave_count],
-			test_params->bonded_port_id);
+	TEST_ASSERT_SUCCESS(rte_eth_bond_member_add(test_params->bonding_port_id,
+			test_params->member_port_ids[test_params->bonding_member_count]),
+			"Failed to add member (%d) to bonding port (%d).",
+			test_params->member_port_ids[test_params->bonding_member_count],
+			test_params->bonding_port_id);
 
-	current_slave_count = rte_eth_bond_slaves_get(test_params->bonded_port_id,
-			slaves, RTE_MAX_ETHPORTS);
-	TEST_ASSERT_EQUAL(current_slave_count, test_params->bonded_slave_count + 1,
-			"Number of slaves (%d) is greater than expected (%d).",
-			current_slave_count, test_params->bonded_slave_count + 1);
+	current_member_count = rte_eth_bond_members_get(test_params->bonding_port_id,
+			members, RTE_MAX_ETHPORTS);
+	TEST_ASSERT_EQUAL(current_member_count, test_params->bonding_member_count + 1,
+			"Number of members (%d) is greater than expected (%d).",
+			current_member_count, test_params->bonding_member_count + 1);
 
-	current_slave_count = rte_eth_bond_active_slaves_get(
-			test_params->bonded_port_id, slaves, RTE_MAX_ETHPORTS);
-	TEST_ASSERT_EQUAL(current_slave_count, 0,
-					"Number of active slaves (%d) is not as expected (%d).\n",
-					current_slave_count, 0);
+	current_member_count = rte_eth_bond_active_members_get(
+			test_params->bonding_port_id, members, RTE_MAX_ETHPORTS);
+	TEST_ASSERT_EQUAL(current_member_count, 0,
+					"Number of active members (%d) is not as expected (%d).\n",
+					current_member_count, 0);
 
-	test_params->bonded_slave_count++;
+	test_params->bonding_member_count++;
 
 	return 0;
 }
 
 static int
-test_add_slave_to_invalid_bonded_device(void)
+test_add_member_to_invalid_bonding_device(void)
 {
 	/* Invalid port ID */
-	TEST_ASSERT_FAIL(rte_eth_bond_slave_add(test_params->bonded_port_id + 5,
-			test_params->slave_port_ids[test_params->bonded_slave_count]),
+	TEST_ASSERT_FAIL(rte_eth_bond_member_add(test_params->bonding_port_id + 5,
+			test_params->member_port_ids[test_params->bonding_member_count]),
 			"Expected call to failed as invalid port specified.");
 
-	/* Non bonded device */
-	TEST_ASSERT_FAIL(rte_eth_bond_slave_add(test_params->slave_port_ids[0],
-			test_params->slave_port_ids[test_params->bonded_slave_count]),
+	/* Non bonding device */
+	TEST_ASSERT_FAIL(rte_eth_bond_member_add(test_params->member_port_ids[0],
+			test_params->member_port_ids[test_params->bonding_member_count]),
 			"Expected call to failed as invalid port specified.");
 
 	return 0;
@@ -376,287 +378,289 @@ test_add_slave_to_invalid_bonded_device(void)
 
 
 static int
-test_remove_slave_from_bonded_device(void)
+test_remove_member_from_bonding_device(void)
 {
-	int current_slave_count;
+	int current_member_count;
 	struct rte_ether_addr read_mac_addr, *mac_addr;
-	uint16_t slaves[RTE_MAX_ETHPORTS];
+	uint16_t members[RTE_MAX_ETHPORTS];
 
-	TEST_ASSERT_SUCCESS(rte_eth_bond_slave_remove(test_params->bonded_port_id,
-			test_params->slave_port_ids[test_params->bonded_slave_count-1]),
-			"Failed to remove slave %d from bonded port (%d).",
-			test_params->slave_port_ids[test_params->bonded_slave_count-1],
-			test_params->bonded_port_id);
-
-
-	current_slave_count = rte_eth_bond_slaves_get(test_params->bonded_port_id,
-			slaves, RTE_MAX_ETHPORTS);
-
-	TEST_ASSERT_EQUAL(current_slave_count, test_params->bonded_slave_count - 1,
-			"Number of slaves (%d) is great than expected (%d).\n",
-			current_slave_count, test_params->bonded_slave_count - 1);
+	TEST_ASSERT_SUCCESS(rte_eth_bond_member_remove(test_params->bonding_port_id,
+			test_params->member_port_ids[test_params->bonding_member_count-1]),
+			"Failed to remove member %d from bonding port (%d).",
+			test_params->member_port_ids[test_params->bonding_member_count-1],
+			test_params->bonding_port_id);
 
 
-	mac_addr = (struct rte_ether_addr *)slave_mac;
+	current_member_count = rte_eth_bond_members_get(test_params->bonding_port_id,
+			members, RTE_MAX_ETHPORTS);
+
+	TEST_ASSERT_EQUAL(current_member_count, test_params->bonding_member_count - 1,
+			"Number of members (%d) is great than expected (%d).\n",
+			current_member_count, test_params->bonding_member_count - 1);
+
+
+	mac_addr = (struct rte_ether_addr *)member_mac;
 	mac_addr->addr_bytes[RTE_ETHER_ADDR_LEN-1] =
-			test_params->bonded_slave_count-1;
+			test_params->bonding_member_count-1;
 
 	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(
-			test_params->slave_port_ids[test_params->bonded_slave_count-1],
+			test_params->member_port_ids[test_params->bonding_member_count-1],
 			&read_mac_addr),
 			"Failed to get mac address (port %d)",
-			test_params->slave_port_ids[test_params->bonded_slave_count-1]);
+			test_params->member_port_ids[test_params->bonding_member_count-1]);
 	TEST_ASSERT_SUCCESS(memcmp(mac_addr, &read_mac_addr, sizeof(read_mac_addr)),
-			"bonded port mac address not set to that of primary port\n");
+			"bonding port mac address not set to that of primary port\n");
 
 	rte_eth_stats_reset(
-			test_params->slave_port_ids[test_params->bonded_slave_count-1]);
+			test_params->member_port_ids[test_params->bonding_member_count-1]);
 
-	virtual_ethdev_simulate_link_status_interrupt(test_params->bonded_port_id,
+	virtual_ethdev_simulate_link_status_interrupt(test_params->bonding_port_id,
 			0);
 
-	test_params->bonded_slave_count--;
+	test_params->bonding_member_count--;
 
 	return 0;
 }
 
 static int
-test_remove_slave_from_invalid_bonded_device(void)
+test_remove_member_from_invalid_bonding_device(void)
 {
 	/* Invalid port ID */
-	TEST_ASSERT_FAIL(rte_eth_bond_slave_remove(
-			test_params->bonded_port_id + 5,
-			test_params->slave_port_ids[test_params->bonded_slave_count - 1]),
+	TEST_ASSERT_FAIL(rte_eth_bond_member_remove(
+			test_params->bonding_port_id + 5,
+			test_params->member_port_ids[test_params->bonding_member_count - 1]),
 			"Expected call to failed as invalid port specified.");
 
-	/* Non bonded device */
-	TEST_ASSERT_FAIL(rte_eth_bond_slave_remove(
-			test_params->slave_port_ids[0],
-			test_params->slave_port_ids[test_params->bonded_slave_count - 1]),
+	/* Non bonding device */
+	TEST_ASSERT_FAIL(rte_eth_bond_member_remove(
+			test_params->member_port_ids[0],
+			test_params->member_port_ids[test_params->bonding_member_count - 1]),
 			"Expected call to failed as invalid port specified.");
 
 	return 0;
 }
 
-static int bonded_id = 2;
+static int bonding_id = 2;
 
 static int
-test_add_already_bonded_slave_to_bonded_device(void)
+test_add_already_bonding_member_to_bonding_device(void)
 {
-	int port_id, current_slave_count;
-	uint16_t slaves[RTE_MAX_ETHPORTS];
+	int port_id, current_member_count;
+	uint16_t members[RTE_MAX_ETHPORTS];
 	char pmd_name[RTE_ETH_NAME_MAX_LEN];
 
-	test_add_slave_to_bonded_device();
+	test_add_member_to_bonding_device();
 
-	current_slave_count = rte_eth_bond_slaves_get(test_params->bonded_port_id,
-			slaves, RTE_MAX_ETHPORTS);
-	TEST_ASSERT_EQUAL(current_slave_count, 1,
-			"Number of slaves (%d) is not that expected (%d).",
-			current_slave_count, 1);
+	current_member_count = rte_eth_bond_members_get(test_params->bonding_port_id,
+			members, RTE_MAX_ETHPORTS);
+	TEST_ASSERT_EQUAL(current_member_count, 1,
+			"Number of members (%d) is not that expected (%d).",
+			current_member_count, 1);
 
-	snprintf(pmd_name, RTE_ETH_NAME_MAX_LEN, "%s_%d", BONDED_DEV_NAME, ++bonded_id);
+	snprintf(pmd_name, RTE_ETH_NAME_MAX_LEN, "%s_%d", BONDING_DEV_NAME, ++bonding_id);
 
 	port_id = rte_eth_bond_create(pmd_name, test_params->bonding_mode,
 			rte_socket_id());
-	TEST_ASSERT(port_id >= 0, "Failed to create bonded device.");
+	TEST_ASSERT(port_id >= 0, "Failed to create bonding device.");
 
-	TEST_ASSERT(rte_eth_bond_slave_add(port_id,
-			test_params->slave_port_ids[test_params->bonded_slave_count - 1])
+	TEST_ASSERT(rte_eth_bond_member_add(port_id,
+			test_params->member_port_ids[test_params->bonding_member_count - 1])
 			< 0,
-			"Added slave (%d) to bonded port (%d) unexpectedly.",
-			test_params->slave_port_ids[test_params->bonded_slave_count-1],
+			"Added member (%d) to bonding port (%d) unexpectedly.",
+			test_params->member_port_ids[test_params->bonding_member_count-1],
 			port_id);
 
-	return test_remove_slave_from_bonded_device();
+	return test_remove_member_from_bonding_device();
 }
 
 
 static int
-test_get_slaves_from_bonded_device(void)
+test_get_members_from_bonding_device(void)
 {
-	int current_slave_count;
-	uint16_t slaves[RTE_MAX_ETHPORTS];
+	int current_member_count;
+	uint16_t members[RTE_MAX_ETHPORTS];
 
-	TEST_ASSERT_SUCCESS(test_add_slave_to_bonded_device(),
-			"Failed to add slave to bonded device");
+	TEST_ASSERT_SUCCESS(test_add_member_to_bonding_device(),
+			"Failed to add member to bonding device");
 
 	/* Invalid port id */
-	current_slave_count = rte_eth_bond_slaves_get(INVALID_PORT_ID, slaves,
+	current_member_count = rte_eth_bond_members_get(INVALID_PORT_ID, members,
 			RTE_MAX_ETHPORTS);
-	TEST_ASSERT(current_slave_count < 0,
+	TEST_ASSERT(current_member_count < 0,
 			"Invalid port id unexpectedly succeeded");
 
-	current_slave_count = rte_eth_bond_active_slaves_get(INVALID_PORT_ID,
-			slaves, RTE_MAX_ETHPORTS);
-	TEST_ASSERT(current_slave_count < 0,
+	current_member_count = rte_eth_bond_active_members_get(INVALID_PORT_ID,
+			members, RTE_MAX_ETHPORTS);
+	TEST_ASSERT(current_member_count < 0,
 			"Invalid port id unexpectedly succeeded");
 
-	/* Invalid slaves pointer */
-	current_slave_count = rte_eth_bond_slaves_get(test_params->bonded_port_id,
+	/* Invalid members pointer */
+	current_member_count = rte_eth_bond_members_get(test_params->bonding_port_id,
 			NULL, RTE_MAX_ETHPORTS);
-	TEST_ASSERT(current_slave_count < 0,
-			"Invalid slave array unexpectedly succeeded");
+	TEST_ASSERT(current_member_count < 0,
+			"Invalid member array unexpectedly succeeded");
 
-	current_slave_count = rte_eth_bond_active_slaves_get(
-			test_params->bonded_port_id, NULL, RTE_MAX_ETHPORTS);
-	TEST_ASSERT(current_slave_count < 0,
-			"Invalid slave array unexpectedly succeeded");
+	current_member_count = rte_eth_bond_active_members_get(
+			test_params->bonding_port_id, NULL, RTE_MAX_ETHPORTS);
+	TEST_ASSERT(current_member_count < 0,
+			"Invalid member array unexpectedly succeeded");
 
-	/* non bonded device*/
-	current_slave_count = rte_eth_bond_slaves_get(
-			test_params->slave_port_ids[0], NULL, RTE_MAX_ETHPORTS);
-	TEST_ASSERT(current_slave_count < 0,
+	/* non bonding device*/
+	current_member_count = rte_eth_bond_members_get(
+			test_params->member_port_ids[0], NULL, RTE_MAX_ETHPORTS);
+	TEST_ASSERT(current_member_count < 0,
 			"Invalid port id unexpectedly succeeded");
 
-	current_slave_count = rte_eth_bond_active_slaves_get(
-			test_params->slave_port_ids[0],	NULL, RTE_MAX_ETHPORTS);
-	TEST_ASSERT(current_slave_count < 0,
+	current_member_count = rte_eth_bond_active_members_get(
+			test_params->member_port_ids[0],	NULL, RTE_MAX_ETHPORTS);
+	TEST_ASSERT(current_member_count < 0,
 			"Invalid port id unexpectedly succeeded");
 
-	TEST_ASSERT_SUCCESS(test_remove_slave_from_bonded_device(),
-			"Failed to remove slaves from bonded device");
+	TEST_ASSERT_SUCCESS(test_remove_member_from_bonding_device(),
+			"Failed to remove members from bonding device");
 
 	return 0;
 }
 
 
 static int
-test_add_remove_multiple_slaves_to_from_bonded_device(void)
+test_add_remove_multiple_members_to_from_bonding_device(void)
 {
 	int i;
 
 	for (i = 0; i < TEST_MAX_NUMBER_OF_PORTS; i++)
-		TEST_ASSERT_SUCCESS(test_add_slave_to_bonded_device(),
-				"Failed to add slave to bonded device");
+		TEST_ASSERT_SUCCESS(test_add_member_to_bonding_device(),
+				"Failed to add member to bonding device");
 
 	for (i = 0; i < TEST_MAX_NUMBER_OF_PORTS; i++)
-		TEST_ASSERT_SUCCESS(test_remove_slave_from_bonded_device(),
-				"Failed to remove slaves from bonded device");
+		TEST_ASSERT_SUCCESS(test_remove_member_from_bonding_device(),
+				"Failed to remove members from bonding device");
 
 	return 0;
 }
 
 static void
-enable_bonded_slaves(void)
+enable_bonding_members(void)
 {
 	int i;
 
-	for (i = 0; i < test_params->bonded_slave_count; i++) {
-		virtual_ethdev_tx_burst_fn_set_success(test_params->slave_port_ids[i],
+	for (i = 0; i < test_params->bonding_member_count; i++) {
+		virtual_ethdev_tx_burst_fn_set_success(test_params->member_port_ids[i],
 				1);
 
 		virtual_ethdev_simulate_link_status_interrupt(
-				test_params->slave_port_ids[i], 1);
+				test_params->member_port_ids[i], 1);
 	}
 }
 
 static int
-test_start_bonded_device(void)
+test_start_bonding_device(void)
 {
 	struct rte_eth_link link_status;
 
-	int current_slave_count, current_bonding_mode, primary_port;
-	uint16_t slaves[RTE_MAX_ETHPORTS];
+	int current_member_count, current_bonding_mode, primary_port;
+	uint16_t members[RTE_MAX_ETHPORTS];
 	int retval;
 
-	/* Add slave to bonded device*/
-	TEST_ASSERT_SUCCESS(test_add_slave_to_bonded_device(),
-			"Failed to add slave to bonded device");
+	/* Add member to bonding device*/
+	TEST_ASSERT_SUCCESS(test_add_member_to_bonding_device(),
+			"Failed to add member to bonding device");
 
-	TEST_ASSERT_SUCCESS(rte_eth_dev_start(test_params->bonded_port_id),
-		"Failed to start bonded pmd eth device %d.",
-		test_params->bonded_port_id);
+	TEST_ASSERT_SUCCESS(rte_eth_dev_start(test_params->bonding_port_id),
+		"Failed to start bonding pmd eth device %d.",
+		test_params->bonding_port_id);
 
-	/* Change link status of virtual pmd so it will be added to the active
-	 * slave list of the bonded device*/
+	/*
+	 * Change link status of virtual pmd so it will be added to the active
+	 * member list of the bonding device.
+	 */
 	virtual_ethdev_simulate_link_status_interrupt(
-			test_params->slave_port_ids[test_params->bonded_slave_count-1], 1);
+			test_params->member_port_ids[test_params->bonding_member_count-1], 1);
 
-	current_slave_count = rte_eth_bond_slaves_get(test_params->bonded_port_id,
-			slaves, RTE_MAX_ETHPORTS);
-	TEST_ASSERT_EQUAL(current_slave_count, test_params->bonded_slave_count,
-			"Number of slaves (%d) is not expected value (%d).",
-			current_slave_count, test_params->bonded_slave_count);
+	current_member_count = rte_eth_bond_members_get(test_params->bonding_port_id,
+			members, RTE_MAX_ETHPORTS);
+	TEST_ASSERT_EQUAL(current_member_count, test_params->bonding_member_count,
+			"Number of members (%d) is not expected value (%d).",
+			current_member_count, test_params->bonding_member_count);
 
-	current_slave_count = rte_eth_bond_active_slaves_get(
-			test_params->bonded_port_id, slaves, RTE_MAX_ETHPORTS);
-	TEST_ASSERT_EQUAL(current_slave_count, test_params->bonded_slave_count,
-			"Number of active slaves (%d) is not expected value (%d).",
-			current_slave_count, test_params->bonded_slave_count);
+	current_member_count = rte_eth_bond_active_members_get(
+			test_params->bonding_port_id, members, RTE_MAX_ETHPORTS);
+	TEST_ASSERT_EQUAL(current_member_count, test_params->bonding_member_count,
+			"Number of active members (%d) is not expected value (%d).",
+			current_member_count, test_params->bonding_member_count);
 
-	current_bonding_mode = rte_eth_bond_mode_get(test_params->bonded_port_id);
+	current_bonding_mode = rte_eth_bond_mode_get(test_params->bonding_port_id);
 	TEST_ASSERT_EQUAL(current_bonding_mode, test_params->bonding_mode,
-			"Bonded device mode (%d) is not expected value (%d).\n",
+			"Bonding device mode (%d) is not expected value (%d).\n",
 			current_bonding_mode, test_params->bonding_mode);
 
-	primary_port = rte_eth_bond_primary_get(test_params->bonded_port_id);
-	TEST_ASSERT_EQUAL(primary_port, test_params->slave_port_ids[0],
+	primary_port = rte_eth_bond_primary_get(test_params->bonding_port_id);
+	TEST_ASSERT_EQUAL(primary_port, test_params->member_port_ids[0],
 			"Primary port (%d) is not expected value (%d).",
-			primary_port, test_params->slave_port_ids[0]);
+			primary_port, test_params->member_port_ids[0]);
 
-	retval = rte_eth_link_get(test_params->bonded_port_id, &link_status);
+	retval = rte_eth_link_get(test_params->bonding_port_id, &link_status);
 	TEST_ASSERT(retval >= 0,
-			"Bonded port (%d) link get failed: %s\n",
-			test_params->bonded_port_id, rte_strerror(-retval));
+			"Bonding port (%d) link get failed: %s\n",
+			test_params->bonding_port_id, rte_strerror(-retval));
 	TEST_ASSERT_EQUAL(link_status.link_status, 1,
-			"Bonded port (%d) status (%d) is not expected value (%d).\n",
-			test_params->bonded_port_id, link_status.link_status, 1);
+			"Bonding port (%d) status (%d) is not expected value (%d).\n",
+			test_params->bonding_port_id, link_status.link_status, 1);
 
 	return 0;
 }
 
 static int
-test_stop_bonded_device(void)
+test_stop_bonding_device(void)
 {
-	int current_slave_count;
-	uint16_t slaves[RTE_MAX_ETHPORTS];
+	int current_member_count;
+	uint16_t members[RTE_MAX_ETHPORTS];
 
 	struct rte_eth_link link_status;
 	int retval;
 
-	TEST_ASSERT_SUCCESS(rte_eth_dev_stop(test_params->bonded_port_id),
-			"Failed to stop bonded port %u",
-			test_params->bonded_port_id);
+	TEST_ASSERT_SUCCESS(rte_eth_dev_stop(test_params->bonding_port_id),
+			"Failed to stop bonding port %u",
+			test_params->bonding_port_id);
 
-	retval = rte_eth_link_get(test_params->bonded_port_id, &link_status);
+	retval = rte_eth_link_get(test_params->bonding_port_id, &link_status);
 	TEST_ASSERT(retval >= 0,
-			"Bonded port (%d) link get failed: %s\n",
-			test_params->bonded_port_id, rte_strerror(-retval));
+			"Bonding port (%d) link get failed: %s\n",
+			test_params->bonding_port_id, rte_strerror(-retval));
 	TEST_ASSERT_EQUAL(link_status.link_status, 0,
-			"Bonded port (%d) status (%d) is not expected value (%d).",
-			test_params->bonded_port_id, link_status.link_status, 0);
+			"Bonding port (%d) status (%d) is not expected value (%d).",
+			test_params->bonding_port_id, link_status.link_status, 0);
 
-	current_slave_count = rte_eth_bond_slaves_get(test_params->bonded_port_id,
-			slaves, RTE_MAX_ETHPORTS);
-	TEST_ASSERT_EQUAL(current_slave_count, test_params->bonded_slave_count,
-			"Number of slaves (%d) is not expected value (%d).",
-			current_slave_count, test_params->bonded_slave_count);
+	current_member_count = rte_eth_bond_members_get(test_params->bonding_port_id,
+			members, RTE_MAX_ETHPORTS);
+	TEST_ASSERT_EQUAL(current_member_count, test_params->bonding_member_count,
+			"Number of members (%d) is not expected value (%d).",
+			current_member_count, test_params->bonding_member_count);
 
-	current_slave_count = rte_eth_bond_active_slaves_get(
-			test_params->bonded_port_id, slaves, RTE_MAX_ETHPORTS);
-	TEST_ASSERT_EQUAL(current_slave_count, 0,
-			"Number of active slaves (%d) is not expected value (%d).",
-			current_slave_count, 0);
+	current_member_count = rte_eth_bond_active_members_get(
+			test_params->bonding_port_id, members, RTE_MAX_ETHPORTS);
+	TEST_ASSERT_EQUAL(current_member_count, 0,
+			"Number of active members (%d) is not expected value (%d).",
+			current_member_count, 0);
 
 	return 0;
 }
 
 static int
-remove_slaves_and_stop_bonded_device(void)
+remove_members_and_stop_bonding_device(void)
 {
-	/* Clean up and remove slaves from bonded device */
+	/* Clean up and remove members from bonding device */
 	free_virtualpmd_tx_queue();
-	while (test_params->bonded_slave_count > 0)
-		TEST_ASSERT_SUCCESS(test_remove_slave_from_bonded_device(),
-				"test_remove_slave_from_bonded_device failed");
+	while (test_params->bonding_member_count > 0)
+		TEST_ASSERT_SUCCESS(test_remove_member_from_bonding_device(),
+				"test_remove_member_from_bonding_device failed");
 
-	TEST_ASSERT_SUCCESS(rte_eth_dev_stop(test_params->bonded_port_id),
-			"Failed to stop bonded port %u",
-			test_params->bonded_port_id);
+	TEST_ASSERT_SUCCESS(rte_eth_dev_stop(test_params->bonding_port_id),
+			"Failed to stop bonding port %u",
+			test_params->bonding_port_id);
 
-	rte_eth_stats_reset(test_params->bonded_port_id);
-	rte_eth_bond_mac_address_reset(test_params->bonded_port_id);
+	rte_eth_stats_reset(test_params->bonding_port_id);
+	rte_eth_bond_mac_address_reset(test_params->bonding_port_id);
 
 	return 0;
 }
@@ -680,21 +684,21 @@ test_set_bonding_mode(void)
 				"Expected call to failed as invalid port (%d) specified.",
 				INVALID_PORT_ID);
 
-		/* Non bonded device */
-		TEST_ASSERT_FAIL(rte_eth_bond_mode_set(test_params->slave_port_ids[0],
+		/* Non bonding device */
+		TEST_ASSERT_FAIL(rte_eth_bond_mode_set(test_params->member_port_ids[0],
 				bonding_modes[i]),
 				"Expected call to failed as invalid port (%d) specified.",
-				test_params->slave_port_ids[0]);
+				test_params->member_port_ids[0]);
 
-		TEST_ASSERT_SUCCESS(rte_eth_bond_mode_set(test_params->bonded_port_id,
+		TEST_ASSERT_SUCCESS(rte_eth_bond_mode_set(test_params->bonding_port_id,
 				bonding_modes[i]),
 				"Failed to set link bonding mode on port (%d) to (%d).",
-				test_params->bonded_port_id, bonding_modes[i]);
+				test_params->bonding_port_id, bonding_modes[i]);
 
-		bonding_mode = rte_eth_bond_mode_get(test_params->bonded_port_id);
+		bonding_mode = rte_eth_bond_mode_get(test_params->bonding_port_id);
 		TEST_ASSERT_EQUAL(bonding_mode, bonding_modes[i],
 				"Link bonding mode (%d) of port (%d) is not expected value (%d).",
-				bonding_mode, test_params->bonded_port_id,
+				bonding_mode, test_params->bonding_port_id,
 				bonding_modes[i]);
 
 		/* Invalid port ID */
@@ -703,102 +707,105 @@ test_set_bonding_mode(void)
 				"Expected call to failed as invalid port (%d) specified.",
 				INVALID_PORT_ID);
 
-		/* Non bonded device */
-		bonding_mode = rte_eth_bond_mode_get(test_params->slave_port_ids[0]);
+		/* Non bonding device */
+		bonding_mode = rte_eth_bond_mode_get(test_params->member_port_ids[0]);
 		TEST_ASSERT(bonding_mode < 0,
 				"Expected call to failed as invalid port (%d) specified.",
-				test_params->slave_port_ids[0]);
+				test_params->member_port_ids[0]);
 	}
 
-	return remove_slaves_and_stop_bonded_device();
+	return remove_members_and_stop_bonding_device();
 }
 
 static int
-test_set_primary_slave(void)
+test_set_primary_member(void)
 {
 	int i, j, retval;
 	struct rte_ether_addr read_mac_addr;
 	struct rte_ether_addr *expected_mac_addr;
 
-	/* Add 4 slaves to bonded device */
-	for (i = test_params->bonded_slave_count; i < 4; i++)
-		TEST_ASSERT_SUCCESS(test_add_slave_to_bonded_device(),
-				"Failed to add slave to bonded device.");
+	/* Add 4 members to bonding device */
+	for (i = test_params->bonding_member_count; i < 4; i++)
+		TEST_ASSERT_SUCCESS(test_add_member_to_bonding_device(),
+				"Failed to add member to bonding device.");
 
-	TEST_ASSERT_SUCCESS(rte_eth_bond_mode_set(test_params->bonded_port_id,
+	TEST_ASSERT_SUCCESS(rte_eth_bond_mode_set(test_params->bonding_port_id,
 			BONDING_MODE_ROUND_ROBIN),
 			"Failed to set link bonding mode on port (%d) to (%d).",
-			test_params->bonded_port_id, BONDING_MODE_ROUND_ROBIN);
+			test_params->bonding_port_id, BONDING_MODE_ROUND_ROBIN);
 
 	/* Invalid port ID */
 	TEST_ASSERT_FAIL(rte_eth_bond_primary_set(INVALID_PORT_ID,
-			test_params->slave_port_ids[i]),
+			test_params->member_port_ids[i]),
 			"Expected call to failed as invalid port specified.");
 
-	/* Non bonded device */
-	TEST_ASSERT_FAIL(rte_eth_bond_primary_set(test_params->slave_port_ids[i],
-			test_params->slave_port_ids[i]),
+	/* Non bonding device */
+	TEST_ASSERT_FAIL(rte_eth_bond_primary_set(test_params->member_port_ids[i],
+			test_params->member_port_ids[i]),
 			"Expected call to failed as invalid port specified.");
 
-	/* Set slave as primary
-	 * Verify slave it is now primary slave
-	 * Verify that MAC address of bonded device is that of primary slave
-	 * Verify that MAC address of all bonded slaves are that of primary slave
+	/* Set member as primary
+	 * Verify member it is now primary member
+	 * Verify that MAC address of bonding device is that of primary member
+	 * Verify that MAC address of all bonding members are that of primary member
 	 */
 	for (i = 0; i < 4; i++) {
-		TEST_ASSERT_SUCCESS(rte_eth_bond_primary_set(test_params->bonded_port_id,
-				test_params->slave_port_ids[i]),
-				"Failed to set bonded port (%d) primary port to (%d)",
-				test_params->bonded_port_id, test_params->slave_port_ids[i]);
+		TEST_ASSERT_SUCCESS(rte_eth_bond_primary_set(test_params->bonding_port_id,
+				test_params->member_port_ids[i]),
+				"Failed to set bonding port (%d) primary port to (%d)",
+				test_params->bonding_port_id, test_params->member_port_ids[i]);
 
-		retval = rte_eth_bond_primary_get(test_params->bonded_port_id);
+		retval = rte_eth_bond_primary_get(test_params->bonding_port_id);
 		TEST_ASSERT(retval >= 0,
-				"Failed to read primary port from bonded port (%d)\n",
-					test_params->bonded_port_id);
+				"Failed to read primary port from bonding port (%d)\n",
+					test_params->bonding_port_id);
 
-		TEST_ASSERT_EQUAL(retval, test_params->slave_port_ids[i],
-				"Bonded port (%d) primary port (%d) not expected value (%d)\n",
-				test_params->bonded_port_id, retval,
-				test_params->slave_port_ids[i]);
+		TEST_ASSERT_EQUAL(retval, test_params->member_port_ids[i],
+				"Bonding port (%d) primary port (%d) not expected value (%d)\n",
+				test_params->bonding_port_id, retval,
+				test_params->member_port_ids[i]);
 
-		/* stop/start bonded eth dev to apply new MAC */
-		TEST_ASSERT_SUCCESS(rte_eth_dev_stop(test_params->bonded_port_id),
-				"Failed to stop bonded port %u",
-				test_params->bonded_port_id);
+		/* stop/start bonding eth dev to apply new MAC */
+		TEST_ASSERT_SUCCESS(rte_eth_dev_stop(test_params->bonding_port_id),
+				"Failed to stop bonding port %u",
+				test_params->bonding_port_id);
 
-		TEST_ASSERT_SUCCESS(rte_eth_dev_start(test_params->bonded_port_id),
-				"Failed to start bonded port %d",
-				test_params->bonded_port_id);
+		TEST_ASSERT_SUCCESS(rte_eth_dev_start(test_params->bonding_port_id),
+				"Failed to start bonding port %d",
+				test_params->bonding_port_id);
 
-		expected_mac_addr = (struct rte_ether_addr *)&slave_mac;
+		expected_mac_addr = (struct rte_ether_addr *)&member_mac;
 		expected_mac_addr->addr_bytes[RTE_ETHER_ADDR_LEN-1] = i;
 
-		/* Check primary slave MAC */
-		TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->slave_port_ids[i], &read_mac_addr),
+		/* Check primary member MAC */
+		TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->member_port_ids[i],
+				&read_mac_addr),
 				"Failed to get mac address (port %d)",
-				test_params->slave_port_ids[i]);
+				test_params->member_port_ids[i]);
 		TEST_ASSERT_SUCCESS(memcmp(expected_mac_addr, &read_mac_addr,
 				sizeof(read_mac_addr)),
-				"bonded port mac address not set to that of primary port\n");
+				"bonding port mac address not set to that of primary port\n");
 
-		/* Check bonded MAC */
-		TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->bonded_port_id, &read_mac_addr),
+		/* Check bonding MAC */
+		TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->bonding_port_id,
+				&read_mac_addr),
 				"Failed to get mac address (port %d)",
-				test_params->bonded_port_id);
+				test_params->bonding_port_id);
 		TEST_ASSERT_SUCCESS(memcmp(&read_mac_addr, &read_mac_addr,
 				sizeof(read_mac_addr)),
-				"bonded port mac address not set to that of primary port\n");
+				"bonding port mac address not set to that of primary port\n");
 
-		/* Check other slaves MACs */
+		/* Check other members MACs */
 		for (j = 0; j < 4; j++) {
 			if (j != i) {
-				TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->slave_port_ids[j],
+				TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(
+						test_params->member_port_ids[j],
 						&read_mac_addr),
 						"Failed to get mac address (port %d)",
-						test_params->slave_port_ids[j]);
+						test_params->member_port_ids[j]);
 				TEST_ASSERT_SUCCESS(memcmp(expected_mac_addr, &read_mac_addr,
 						sizeof(read_mac_addr)),
-						"slave port mac address not set to that of primary "
+						"member port mac address not set to that of primary "
 						"port");
 			}
 		}
@@ -806,382 +813,383 @@ test_set_primary_slave(void)
 
 
 	/* Test with none existent port */
-	TEST_ASSERT_FAIL(rte_eth_bond_primary_get(test_params->bonded_port_id + 10),
+	TEST_ASSERT_FAIL(rte_eth_bond_primary_get(test_params->bonding_port_id + 10),
 			"read primary port from expectedly");
 
-	/* Test with slave port */
-	TEST_ASSERT_FAIL(rte_eth_bond_primary_get(test_params->slave_port_ids[0]),
+	/* Test with member port */
+	TEST_ASSERT_FAIL(rte_eth_bond_primary_get(test_params->member_port_ids[0]),
 			"read primary port from expectedly\n");
 
-	TEST_ASSERT_SUCCESS(remove_slaves_and_stop_bonded_device(),
-			"Failed to stop and remove slaves from bonded device");
+	TEST_ASSERT_SUCCESS(remove_members_and_stop_bonding_device(),
+			"Failed to stop and remove members from bonding device");
 
-	/* No slaves  */
-	TEST_ASSERT(rte_eth_bond_primary_get(test_params->bonded_port_id)  < 0,
+	/* No members  */
+	TEST_ASSERT(rte_eth_bond_primary_get(test_params->bonding_port_id)  < 0,
 			"read primary port from expectedly\n");
 
 	return 0;
 }
 
 static int
-test_set_explicit_bonded_mac(void)
+test_set_explicit_bonding_mac(void)
 {
 	int i;
 	struct rte_ether_addr read_mac_addr;
 	struct rte_ether_addr *mac_addr;
 
-	uint8_t explicit_bonded_mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0x00, 0x01 };
+	uint8_t explicit_bonding_mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0x00, 0x01 };
 
-	mac_addr = (struct rte_ether_addr *)explicit_bonded_mac;
+	mac_addr = (struct rte_ether_addr *)explicit_bonding_mac;
 
 	/* Invalid port ID */
 	TEST_ASSERT_FAIL(rte_eth_bond_mac_address_set(INVALID_PORT_ID, mac_addr),
 			"Expected call to failed as invalid port specified.");
 
-	/* Non bonded device */
+	/* Non bonding device */
 	TEST_ASSERT_FAIL(rte_eth_bond_mac_address_set(
-			test_params->slave_port_ids[0],	mac_addr),
+			test_params->member_port_ids[0],	mac_addr),
 			"Expected call to failed as invalid port specified.");
 
 	/* NULL MAC address */
 	TEST_ASSERT_FAIL(rte_eth_bond_mac_address_set(
-			test_params->bonded_port_id, NULL),
+			test_params->bonding_port_id, NULL),
 			"Expected call to failed as NULL MAC specified");
 
 	TEST_ASSERT_SUCCESS(rte_eth_bond_mac_address_set(
-			test_params->bonded_port_id, mac_addr),
-			"Failed to set MAC address on bonded port (%d)",
-			test_params->bonded_port_id);
+			test_params->bonding_port_id, mac_addr),
+			"Failed to set MAC address on bonding port (%d)",
+			test_params->bonding_port_id);
 
-	/* Add 4 slaves to bonded device */
-	for (i = test_params->bonded_slave_count; i < 4; i++) {
-		TEST_ASSERT_SUCCESS(test_add_slave_to_bonded_device(),
-				"Failed to add slave to bonded device.\n");
+	/* Add 4 members to bonding device */
+	for (i = test_params->bonding_member_count; i < 4; i++) {
+		TEST_ASSERT_SUCCESS(test_add_member_to_bonding_device(),
+				"Failed to add member to bonding device.\n");
 	}
 
-	/* Check bonded MAC */
-	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->bonded_port_id, &read_mac_addr),
+	/* Check bonding MAC */
+	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->bonding_port_id, &read_mac_addr),
 			"Failed to get mac address (port %d)",
-			test_params->bonded_port_id);
+			test_params->bonding_port_id);
 	TEST_ASSERT_SUCCESS(memcmp(mac_addr, &read_mac_addr, sizeof(read_mac_addr)),
-			"bonded port mac address not set to that of primary port");
+			"bonding port mac address not set to that of primary port");
 
-	/* Check other slaves MACs */
+	/* Check other members MACs */
 	for (i = 0; i < 4; i++) {
-		TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->slave_port_ids[i], &read_mac_addr),
+		TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->member_port_ids[i],
+				&read_mac_addr),
 				"Failed to get mac address (port %d)",
-				test_params->slave_port_ids[i]);
+				test_params->member_port_ids[i]);
 		TEST_ASSERT_SUCCESS(memcmp(mac_addr, &read_mac_addr,
 				sizeof(read_mac_addr)),
-				"slave port mac address not set to that of primary port");
+				"member port mac address not set to that of primary port");
 	}
 
-	/* test resetting mac address on bonded device */
+	/* test resetting mac address on bonding device */
 	TEST_ASSERT_SUCCESS(
-			rte_eth_bond_mac_address_reset(test_params->bonded_port_id),
-			"Failed to reset MAC address on bonded port (%d)",
-			test_params->bonded_port_id);
+			rte_eth_bond_mac_address_reset(test_params->bonding_port_id),
+			"Failed to reset MAC address on bonding port (%d)",
+			test_params->bonding_port_id);
 
 	TEST_ASSERT_FAIL(
-			rte_eth_bond_mac_address_reset(test_params->slave_port_ids[0]),
-			"Reset MAC address on bonded port (%d) unexpectedly",
-			test_params->slave_port_ids[1]);
+			rte_eth_bond_mac_address_reset(test_params->member_port_ids[0]),
+			"Reset MAC address on bonding port (%d) unexpectedly",
+			test_params->member_port_ids[1]);
 
-	/* test resetting mac address on bonded device with no slaves */
-	TEST_ASSERT_SUCCESS(remove_slaves_and_stop_bonded_device(),
-			"Failed to remove slaves and stop bonded device");
+	/* test resetting mac address on bonding device with no members */
+	TEST_ASSERT_SUCCESS(remove_members_and_stop_bonding_device(),
+			"Failed to remove members and stop bonding device");
 
-	TEST_ASSERT_SUCCESS(rte_eth_bond_mac_address_reset(test_params->bonded_port_id),
-			"Failed to reset MAC address on bonded port (%d)",
-				test_params->bonded_port_id);
+	TEST_ASSERT_SUCCESS(rte_eth_bond_mac_address_reset(test_params->bonding_port_id),
+			"Failed to reset MAC address on bonding port (%d)",
+				test_params->bonding_port_id);
 
 	return 0;
 }
 
-#define BONDED_INIT_MAC_ASSIGNMENT_SLAVE_COUNT (3)
+#define BONDING_INIT_MAC_ASSIGNMENT_MEMBER_COUNT (3)
 
 static int
-test_set_bonded_port_initialization_mac_assignment(void)
+test_set_bonding_port_initialization_mac_assignment(void)
 {
-	int i, slave_count;
+	int i, member_count;
 
-	uint16_t slaves[RTE_MAX_ETHPORTS];
-	static int bonded_port_id = -1;
-	static int slave_port_ids[BONDED_INIT_MAC_ASSIGNMENT_SLAVE_COUNT];
+	uint16_t members[RTE_MAX_ETHPORTS];
+	static int bonding_port_id = -1;
+	static int member_port_ids[BONDING_INIT_MAC_ASSIGNMENT_MEMBER_COUNT];
 
-	struct rte_ether_addr slave_mac_addr, bonded_mac_addr, read_mac_addr;
+	struct rte_ether_addr member_mac_addr, bonding_mac_addr, read_mac_addr;
 
 	/* Initialize default values for MAC addresses */
-	memcpy(&slave_mac_addr, slave_mac, sizeof(struct rte_ether_addr));
-	memcpy(&bonded_mac_addr, slave_mac, sizeof(struct rte_ether_addr));
+	memcpy(&member_mac_addr, member_mac, sizeof(struct rte_ether_addr));
+	memcpy(&bonding_mac_addr, member_mac, sizeof(struct rte_ether_addr));
 
 	/*
-	 * 1. a - Create / configure  bonded / slave ethdevs
+	 * 1. a - Create / configure  bonding / member ethdevs
 	 */
-	if (bonded_port_id == -1) {
-		bonded_port_id = rte_eth_bond_create("net_bonding_mac_ass_test",
+	if (bonding_port_id == -1) {
+		bonding_port_id = rte_eth_bond_create("net_bonding_mac_ass_test",
 				BONDING_MODE_ACTIVE_BACKUP, rte_socket_id());
-		TEST_ASSERT(bonded_port_id > 0, "failed to create bonded device");
+		TEST_ASSERT(bonding_port_id > 0, "failed to create bonding device");
 
-		TEST_ASSERT_SUCCESS(configure_ethdev(bonded_port_id, 0, 0),
-					"Failed to configure bonded ethdev");
+		TEST_ASSERT_SUCCESS(configure_ethdev(bonding_port_id, 0, 0),
+					"Failed to configure bonding ethdev");
 	}
 
-	if (!mac_slaves_initialized) {
-		for (i = 0; i < BONDED_INIT_MAC_ASSIGNMENT_SLAVE_COUNT; i++) {
+	if (!mac_members_initialized) {
+		for (i = 0; i < BONDING_INIT_MAC_ASSIGNMENT_MEMBER_COUNT; i++) {
 			char pmd_name[RTE_ETH_NAME_MAX_LEN];
 
-			slave_mac_addr.addr_bytes[RTE_ETHER_ADDR_LEN - 1] =
+			member_mac_addr.addr_bytes[RTE_ETHER_ADDR_LEN - 1] =
 				i + 100;
 
 			snprintf(pmd_name, RTE_ETH_NAME_MAX_LEN,
-				"eth_slave_%d", i);
+				"eth_member_%d", i);
 
-			slave_port_ids[i] = virtual_ethdev_create(pmd_name,
-					&slave_mac_addr, rte_socket_id(), 1);
+			member_port_ids[i] = virtual_ethdev_create(pmd_name,
+					&member_mac_addr, rte_socket_id(), 1);
 
-			TEST_ASSERT(slave_port_ids[i] >= 0,
-					"Failed to create slave ethdev %s",
+			TEST_ASSERT(member_port_ids[i] >= 0,
+					"Failed to create member ethdev %s",
 					pmd_name);
 
-			TEST_ASSERT_SUCCESS(configure_ethdev(slave_port_ids[i], 1, 0),
+			TEST_ASSERT_SUCCESS(configure_ethdev(member_port_ids[i], 1, 0),
 					"Failed to configure virtual ethdev %s",
 					pmd_name);
 		}
-		mac_slaves_initialized = 1;
+		mac_members_initialized = 1;
 	}
 
 
 	/*
-	 * 2. Add slave ethdevs to bonded device
+	 * 2. Add member ethdevs to bonding device
 	 */
-	for (i = 0; i < BONDED_INIT_MAC_ASSIGNMENT_SLAVE_COUNT; i++) {
-		TEST_ASSERT_SUCCESS(rte_eth_bond_slave_add(bonded_port_id,
-				slave_port_ids[i]),
-				"Failed to add slave (%d) to bonded port (%d).",
-				slave_port_ids[i], bonded_port_id);
+	for (i = 0; i < BONDING_INIT_MAC_ASSIGNMENT_MEMBER_COUNT; i++) {
+		TEST_ASSERT_SUCCESS(rte_eth_bond_member_add(bonding_port_id,
+				member_port_ids[i]),
+				"Failed to add member (%d) to bonding port (%d).",
+				member_port_ids[i], bonding_port_id);
 	}
 
-	slave_count = rte_eth_bond_slaves_get(bonded_port_id, slaves,
+	member_count = rte_eth_bond_members_get(bonding_port_id, members,
 			RTE_MAX_ETHPORTS);
-	TEST_ASSERT_EQUAL(BONDED_INIT_MAC_ASSIGNMENT_SLAVE_COUNT, slave_count,
-			"Number of slaves (%d) is not as expected (%d)",
-			slave_count, BONDED_INIT_MAC_ASSIGNMENT_SLAVE_COUNT);
+	TEST_ASSERT_EQUAL(BONDING_INIT_MAC_ASSIGNMENT_MEMBER_COUNT, member_count,
+			"Number of members (%d) is not as expected (%d)",
+			member_count, BONDING_INIT_MAC_ASSIGNMENT_MEMBER_COUNT);
 
 
 	/*
-	 * 3. Set explicit MAC address on bonded ethdev
+	 * 3. Set explicit MAC address on bonding ethdev
 	 */
-	bonded_mac_addr.addr_bytes[RTE_ETHER_ADDR_LEN-2] = 0xFF;
-	bonded_mac_addr.addr_bytes[RTE_ETHER_ADDR_LEN-1] = 0xAA;
+	bonding_mac_addr.addr_bytes[RTE_ETHER_ADDR_LEN-2] = 0xFF;
+	bonding_mac_addr.addr_bytes[RTE_ETHER_ADDR_LEN-1] = 0xAA;
 
 	TEST_ASSERT_SUCCESS(rte_eth_bond_mac_address_set(
-			bonded_port_id, &bonded_mac_addr),
-			"Failed to set MAC address on bonded port (%d)",
-			bonded_port_id);
+			bonding_port_id, &bonding_mac_addr),
+			"Failed to set MAC address on bonding port (%d)",
+			bonding_port_id);
 
 
-	/* 4. a - Start bonded ethdev
-	 *    b - Enable slave devices
-	 *    c - Verify bonded/slaves ethdev MAC addresses
+	/* 4. a - Start bonding ethdev
+	 *    b - Enable member devices
+	 *    c - Verify bonding/members ethdev MAC addresses
 	 */
-	TEST_ASSERT_SUCCESS(rte_eth_dev_start(bonded_port_id),
-			"Failed to start bonded pmd eth device %d.",
-			bonded_port_id);
+	TEST_ASSERT_SUCCESS(rte_eth_dev_start(bonding_port_id),
+			"Failed to start bonding pmd eth device %d.",
+			bonding_port_id);
 
-	for (i = 0; i < BONDED_INIT_MAC_ASSIGNMENT_SLAVE_COUNT; i++) {
+	for (i = 0; i < BONDING_INIT_MAC_ASSIGNMENT_MEMBER_COUNT; i++) {
 		virtual_ethdev_simulate_link_status_interrupt(
-				slave_port_ids[i], 1);
+				member_port_ids[i], 1);
 	}
 
-	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(bonded_port_id, &read_mac_addr),
+	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(bonding_port_id, &read_mac_addr),
 			"Failed to get mac address (port %d)",
-			bonded_port_id);
-	TEST_ASSERT_SUCCESS(memcmp(&bonded_mac_addr, &read_mac_addr,
+			bonding_port_id);
+	TEST_ASSERT_SUCCESS(memcmp(&bonding_mac_addr, &read_mac_addr,
 			sizeof(read_mac_addr)),
-			"bonded port mac address not as expected");
+			"bonding port mac address not as expected");
 
-	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(slave_port_ids[0], &read_mac_addr),
+	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(member_port_ids[0], &read_mac_addr),
 			"Failed to get mac address (port %d)",
-			slave_port_ids[0]);
-	TEST_ASSERT_SUCCESS(memcmp(&bonded_mac_addr, &read_mac_addr,
+			member_port_ids[0]);
+	TEST_ASSERT_SUCCESS(memcmp(&bonding_mac_addr, &read_mac_addr,
 			sizeof(read_mac_addr)),
-			"slave port 0 mac address not as expected");
+			"member port 0 mac address not as expected");
 
-	slave_mac_addr.addr_bytes[RTE_ETHER_ADDR_LEN-1] = 1 + 100;
-	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(slave_port_ids[1], &read_mac_addr),
+	member_mac_addr.addr_bytes[RTE_ETHER_ADDR_LEN-1] = 1 + 100;
+	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(member_port_ids[1], &read_mac_addr),
 			"Failed to get mac address (port %d)",
-			slave_port_ids[1]);
-	TEST_ASSERT_SUCCESS(memcmp(&slave_mac_addr, &read_mac_addr,
+			member_port_ids[1]);
+	TEST_ASSERT_SUCCESS(memcmp(&member_mac_addr, &read_mac_addr,
 			sizeof(read_mac_addr)),
-			"slave port 1 mac address not as expected");
+			"member port 1 mac address not as expected");
 
-	slave_mac_addr.addr_bytes[RTE_ETHER_ADDR_LEN-1] = 2 + 100;
-	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(slave_port_ids[2], &read_mac_addr),
+	member_mac_addr.addr_bytes[RTE_ETHER_ADDR_LEN-1] = 2 + 100;
+	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(member_port_ids[2], &read_mac_addr),
 			"Failed to get mac address (port %d)",
-			slave_port_ids[2]);
-	TEST_ASSERT_SUCCESS(memcmp(&slave_mac_addr, &read_mac_addr,
+			member_port_ids[2]);
+	TEST_ASSERT_SUCCESS(memcmp(&member_mac_addr, &read_mac_addr,
 			sizeof(read_mac_addr)),
-			"slave port 2 mac address not as expected");
+			"member port 2 mac address not as expected");
 
 
 	/* 7. a - Change primary port
-	 *    b - Stop / Start bonded port
-	 *    d - Verify slave ethdev MAC addresses
+	 *    b - Stop / Start bonding port
+	 *    d - Verify member ethdev MAC addresses
 	 */
-	TEST_ASSERT_SUCCESS(rte_eth_bond_primary_set(bonded_port_id,
-			slave_port_ids[2]),
-			"failed to set primary port on bonded device.");
+	TEST_ASSERT_SUCCESS(rte_eth_bond_primary_set(bonding_port_id,
+			member_port_ids[2]),
+			"failed to set primary port on bonding device.");
 
-	TEST_ASSERT_SUCCESS(rte_eth_dev_stop(bonded_port_id),
-			"Failed to stop bonded port %u",
-			bonded_port_id);
+	TEST_ASSERT_SUCCESS(rte_eth_dev_stop(bonding_port_id),
+			"Failed to stop bonding port %u",
+			bonding_port_id);
 
-	TEST_ASSERT_SUCCESS(rte_eth_dev_start(bonded_port_id),
-				"Failed to start bonded pmd eth device %d.",
-				bonded_port_id);
+	TEST_ASSERT_SUCCESS(rte_eth_dev_start(bonding_port_id),
+				"Failed to start bonding pmd eth device %d.",
+				bonding_port_id);
 
-	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(bonded_port_id, &read_mac_addr),
+	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(bonding_port_id, &read_mac_addr),
 			"Failed to get mac address (port %d)",
-			bonded_port_id);
-	TEST_ASSERT_SUCCESS(memcmp(&bonded_mac_addr, &read_mac_addr,
+			bonding_port_id);
+	TEST_ASSERT_SUCCESS(memcmp(&bonding_mac_addr, &read_mac_addr,
 			sizeof(read_mac_addr)),
-			"bonded port mac address not as expected");
+			"bonding port mac address not as expected");
 
-	slave_mac_addr.addr_bytes[RTE_ETHER_ADDR_LEN-1] = 0 + 100;
-	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(slave_port_ids[0], &read_mac_addr),
+	member_mac_addr.addr_bytes[RTE_ETHER_ADDR_LEN-1] = 0 + 100;
+	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(member_port_ids[0], &read_mac_addr),
 			"Failed to get mac address (port %d)",
-			slave_port_ids[0]);
-	TEST_ASSERT_SUCCESS(memcmp(&slave_mac_addr, &read_mac_addr,
+			member_port_ids[0]);
+	TEST_ASSERT_SUCCESS(memcmp(&member_mac_addr, &read_mac_addr,
 			sizeof(read_mac_addr)),
-			"slave port 0 mac address not as expected");
+			"member port 0 mac address not as expected");
 
-	slave_mac_addr.addr_bytes[RTE_ETHER_ADDR_LEN-1] = 1 + 100;
-	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(slave_port_ids[1], &read_mac_addr),
+	member_mac_addr.addr_bytes[RTE_ETHER_ADDR_LEN-1] = 1 + 100;
+	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(member_port_ids[1], &read_mac_addr),
 			"Failed to get mac address (port %d)",
-			slave_port_ids[1]);
-	TEST_ASSERT_SUCCESS(memcmp(&slave_mac_addr, &read_mac_addr,
+			member_port_ids[1]);
+	TEST_ASSERT_SUCCESS(memcmp(&member_mac_addr, &read_mac_addr,
 			sizeof(read_mac_addr)),
-			"slave port 1 mac address not as expected");
+			"member port 1 mac address not as expected");
 
-	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(slave_port_ids[2], &read_mac_addr),
+	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(member_port_ids[2], &read_mac_addr),
 			"Failed to get mac address (port %d)",
-			slave_port_ids[2]);
-	TEST_ASSERT_SUCCESS(memcmp(&bonded_mac_addr, &read_mac_addr,
+			member_port_ids[2]);
+	TEST_ASSERT_SUCCESS(memcmp(&bonding_mac_addr, &read_mac_addr,
 			sizeof(read_mac_addr)),
-			"slave port 2 mac address not as expected");
+			"member port 2 mac address not as expected");
 
-	/* 6. a - Stop bonded ethdev
-	 *    b - remove slave ethdevs
-	 *    c - Verify slave ethdevs MACs are restored
+	/* 6. a - Stop bonding ethdev
+	 *    b - remove member ethdevs
+	 *    c - Verify member ethdevs MACs are restored
 	 */
-	TEST_ASSERT_SUCCESS(rte_eth_dev_stop(bonded_port_id),
-			"Failed to stop bonded port %u",
-			bonded_port_id);
+	TEST_ASSERT_SUCCESS(rte_eth_dev_stop(bonding_port_id),
+			"Failed to stop bonding port %u",
+			bonding_port_id);
 
-	for (i = 0; i < BONDED_INIT_MAC_ASSIGNMENT_SLAVE_COUNT; i++) {
-		TEST_ASSERT_SUCCESS(rte_eth_bond_slave_remove(bonded_port_id,
-				slave_port_ids[i]),
-				"Failed to remove slave %d from bonded port (%d).",
-				slave_port_ids[i], bonded_port_id);
+	for (i = 0; i < BONDING_INIT_MAC_ASSIGNMENT_MEMBER_COUNT; i++) {
+		TEST_ASSERT_SUCCESS(rte_eth_bond_member_remove(bonding_port_id,
+				member_port_ids[i]),
+				"Failed to remove member %d from bonding port (%d).",
+				member_port_ids[i], bonding_port_id);
 	}
 
-	slave_count = rte_eth_bond_slaves_get(bonded_port_id, slaves,
+	member_count = rte_eth_bond_members_get(bonding_port_id, members,
 			RTE_MAX_ETHPORTS);
 
-	TEST_ASSERT_EQUAL(slave_count, 0,
-			"Number of slaves (%d) is great than expected (%d).",
-			slave_count, 0);
+	TEST_ASSERT_EQUAL(member_count, 0,
+			"Number of members (%d) is great than expected (%d).",
+			member_count, 0);
 
-	slave_mac_addr.addr_bytes[RTE_ETHER_ADDR_LEN-1] = 0 + 100;
-	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(slave_port_ids[0], &read_mac_addr),
+	member_mac_addr.addr_bytes[RTE_ETHER_ADDR_LEN-1] = 0 + 100;
+	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(member_port_ids[0], &read_mac_addr),
 			"Failed to get mac address (port %d)",
-			slave_port_ids[0]);
-	TEST_ASSERT_SUCCESS(memcmp(&slave_mac_addr, &read_mac_addr,
+			member_port_ids[0]);
+	TEST_ASSERT_SUCCESS(memcmp(&member_mac_addr, &read_mac_addr,
 			sizeof(read_mac_addr)),
-			"slave port 0 mac address not as expected");
+			"member port 0 mac address not as expected");
 
-	slave_mac_addr.addr_bytes[RTE_ETHER_ADDR_LEN-1] = 1 + 100;
-	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(slave_port_ids[1], &read_mac_addr),
+	member_mac_addr.addr_bytes[RTE_ETHER_ADDR_LEN-1] = 1 + 100;
+	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(member_port_ids[1], &read_mac_addr),
 			"Failed to get mac address (port %d)",
-			slave_port_ids[1]);
-	TEST_ASSERT_SUCCESS(memcmp(&slave_mac_addr, &read_mac_addr,
+			member_port_ids[1]);
+	TEST_ASSERT_SUCCESS(memcmp(&member_mac_addr, &read_mac_addr,
 			sizeof(read_mac_addr)),
-			"slave port 1 mac address not as expected");
+			"member port 1 mac address not as expected");
 
-	slave_mac_addr.addr_bytes[RTE_ETHER_ADDR_LEN-1] = 2 + 100;
-	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(slave_port_ids[2], &read_mac_addr),
+	member_mac_addr.addr_bytes[RTE_ETHER_ADDR_LEN-1] = 2 + 100;
+	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(member_port_ids[2], &read_mac_addr),
 			"Failed to get mac address (port %d)",
-			slave_port_ids[2]);
-	TEST_ASSERT_SUCCESS(memcmp(&slave_mac_addr, &read_mac_addr,
+			member_port_ids[2]);
+	TEST_ASSERT_SUCCESS(memcmp(&member_mac_addr, &read_mac_addr,
 			sizeof(read_mac_addr)),
-			"slave port 2 mac address not as expected");
+			"member port 2 mac address not as expected");
 
 	return 0;
 }
 
 
 static int
-initialize_bonded_device_with_slaves(uint8_t bonding_mode, uint8_t bond_en_isr,
-		uint16_t number_of_slaves, uint8_t enable_slave)
+initialize_bonding_device_with_members(uint8_t bonding_mode, uint8_t bond_en_isr,
+		uint16_t number_of_members, uint8_t enable_member)
 {
-	/* Configure bonded device */
-	TEST_ASSERT_SUCCESS(configure_ethdev(test_params->bonded_port_id, 0,
+	/* Configure bonding device */
+	TEST_ASSERT_SUCCESS(configure_ethdev(test_params->bonding_port_id, 0,
 			bond_en_isr), "Failed to configure bonding port (%d) in mode %d "
-			"with (%d) slaves.", test_params->bonded_port_id, bonding_mode,
-			number_of_slaves);
+			"with (%d) members.", test_params->bonding_port_id, bonding_mode,
+			number_of_members);
 
-	/* Add slaves to bonded device */
-	while (number_of_slaves > test_params->bonded_slave_count)
-		TEST_ASSERT_SUCCESS(test_add_slave_to_bonded_device(),
-				"Failed to add slave (%d to  bonding port (%d).",
-				test_params->bonded_slave_count - 1,
-				test_params->bonded_port_id);
+	/* Add members to bonding device */
+	while (number_of_members > test_params->bonding_member_count)
+		TEST_ASSERT_SUCCESS(test_add_member_to_bonding_device(),
+				"Failed to add member (%d to  bonding port (%d).",
+				test_params->bonding_member_count - 1,
+				test_params->bonding_port_id);
 
 	/* Set link bonding mode  */
-	TEST_ASSERT_SUCCESS(rte_eth_bond_mode_set(test_params->bonded_port_id,
+	TEST_ASSERT_SUCCESS(rte_eth_bond_mode_set(test_params->bonding_port_id,
 			bonding_mode),
 			"Failed to set link bonding mode on port (%d) to (%d).",
-			test_params->bonded_port_id, bonding_mode);
+			test_params->bonding_port_id, bonding_mode);
 
-	TEST_ASSERT_SUCCESS(rte_eth_dev_start(test_params->bonded_port_id),
-		"Failed to start bonded pmd eth device %d.",
-		test_params->bonded_port_id);
+	TEST_ASSERT_SUCCESS(rte_eth_dev_start(test_params->bonding_port_id),
+		"Failed to start bonding pmd eth device %d.",
+		test_params->bonding_port_id);
 
-	if (enable_slave)
-		enable_bonded_slaves();
+	if (enable_member)
+		enable_bonding_members();
 
 	return 0;
 }
 
 static int
-test_adding_slave_after_bonded_device_started(void)
+test_adding_member_after_bonding_device_started(void)
 {
 	int i;
 
-	TEST_ASSERT_SUCCESS(initialize_bonded_device_with_slaves(
+	TEST_ASSERT_SUCCESS(initialize_bonding_device_with_members(
 			BONDING_MODE_ROUND_ROBIN, 0, 4, 0),
-			"Failed to add slaves to bonded device");
+			"Failed to add members to bonding device");
 
-	/* Enabled slave devices */
-	for (i = 0; i < test_params->bonded_slave_count + 1; i++) {
+	/* Enabled member devices */
+	for (i = 0; i < test_params->bonding_member_count + 1; i++) {
 		virtual_ethdev_simulate_link_status_interrupt(
-				test_params->slave_port_ids[i], 1);
+				test_params->member_port_ids[i], 1);
 	}
 
-	TEST_ASSERT_SUCCESS(rte_eth_bond_slave_add(test_params->bonded_port_id,
-			test_params->slave_port_ids[test_params->bonded_slave_count]),
-			"Failed to add slave to bonded port.\n");
+	TEST_ASSERT_SUCCESS(rte_eth_bond_member_add(test_params->bonding_port_id,
+			test_params->member_port_ids[test_params->bonding_member_count]),
+			"Failed to add member to bonding port.\n");
 
 	rte_eth_stats_reset(
-			test_params->slave_port_ids[test_params->bonded_slave_count]);
+			test_params->member_port_ids[test_params->bonding_member_count]);
 
-	test_params->bonded_slave_count++;
+	test_params->bonding_member_count++;
 
-	return remove_slaves_and_stop_bonded_device();
+	return remove_members_and_stop_bonding_device();
 }
 
-#define TEST_STATUS_INTERRUPT_SLAVE_COUNT	4
+#define TEST_STATUS_INTERRUPT_MEMBER_COUNT	4
 #define TEST_LSC_WAIT_TIMEOUT_US	500000
 
 int test_lsc_interrupt_count;
@@ -1237,43 +1245,43 @@ lsc_timeout(int wait_us)
 static int
 test_status_interrupt(void)
 {
-	int slave_count;
-	uint16_t slaves[RTE_MAX_ETHPORTS];
+	int member_count;
+	uint16_t members[RTE_MAX_ETHPORTS];
 
-	/* initialized bonding device with T slaves */
-	TEST_ASSERT_SUCCESS(initialize_bonded_device_with_slaves(
+	/* initialized bonding device with T members */
+	TEST_ASSERT_SUCCESS(initialize_bonding_device_with_members(
 			BONDING_MODE_ROUND_ROBIN, 1,
-			TEST_STATUS_INTERRUPT_SLAVE_COUNT, 1),
-			"Failed to initialise bonded device");
+			TEST_STATUS_INTERRUPT_MEMBER_COUNT, 1),
+			"Failed to initialise bonding device");
 
 	test_lsc_interrupt_count = 0;
 
 	/* register link status change interrupt callback */
-	rte_eth_dev_callback_register(test_params->bonded_port_id,
+	rte_eth_dev_callback_register(test_params->bonding_port_id,
 			RTE_ETH_EVENT_INTR_LSC, test_bonding_lsc_event_callback,
-			&test_params->bonded_port_id);
+			&test_params->bonding_port_id);
 
-	slave_count = rte_eth_bond_active_slaves_get(test_params->bonded_port_id,
-			slaves, RTE_MAX_ETHPORTS);
+	member_count = rte_eth_bond_active_members_get(test_params->bonding_port_id,
+			members, RTE_MAX_ETHPORTS);
 
-	TEST_ASSERT_EQUAL(slave_count, TEST_STATUS_INTERRUPT_SLAVE_COUNT,
-			"Number of active slaves (%d) is not as expected (%d)",
-			slave_count, TEST_STATUS_INTERRUPT_SLAVE_COUNT);
+	TEST_ASSERT_EQUAL(member_count, TEST_STATUS_INTERRUPT_MEMBER_COUNT,
+			"Number of active members (%d) is not as expected (%d)",
+			member_count, TEST_STATUS_INTERRUPT_MEMBER_COUNT);
 
-	/* Bring all 4 slaves link status to down and test that we have received a
+	/* Bring all 4 members link status to down and test that we have received a
 	 * lsc interrupts */
 	virtual_ethdev_simulate_link_status_interrupt(
-			test_params->slave_port_ids[0], 0);
+			test_params->member_port_ids[0], 0);
 	virtual_ethdev_simulate_link_status_interrupt(
-			test_params->slave_port_ids[1], 0);
+			test_params->member_port_ids[1], 0);
 	virtual_ethdev_simulate_link_status_interrupt(
-			test_params->slave_port_ids[2], 0);
+			test_params->member_port_ids[2], 0);
 
 	TEST_ASSERT_EQUAL(test_lsc_interrupt_count, 0,
 			"Received a link status change interrupt unexpectedly");
 
 	virtual_ethdev_simulate_link_status_interrupt(
-			test_params->slave_port_ids[3], 0);
+			test_params->member_port_ids[3], 0);
 
 	TEST_ASSERT(lsc_timeout(TEST_LSC_WAIT_TIMEOUT_US) == 0,
 			"timed out waiting for interrupt");
@@ -1281,18 +1289,18 @@ test_status_interrupt(void)
 	TEST_ASSERT(test_lsc_interrupt_count > 0,
 			"Did not receive link status change interrupt");
 
-	slave_count = rte_eth_bond_active_slaves_get(test_params->bonded_port_id,
-			slaves, RTE_MAX_ETHPORTS);
+	member_count = rte_eth_bond_active_members_get(test_params->bonding_port_id,
+			members, RTE_MAX_ETHPORTS);
 
-	TEST_ASSERT_EQUAL(slave_count, 0,
-			"Number of active slaves (%d) is not as expected (%d)",
-			slave_count, 0);
+	TEST_ASSERT_EQUAL(member_count, 0,
+			"Number of active members (%d) is not as expected (%d)",
+			member_count, 0);
 
-	/* bring one slave port up so link status will change */
+	/* bring one member port up so link status will change */
 	test_lsc_interrupt_count = 0;
 
 	virtual_ethdev_simulate_link_status_interrupt(
-			test_params->slave_port_ids[0], 1);
+			test_params->member_port_ids[0], 1);
 
 	TEST_ASSERT(lsc_timeout(TEST_LSC_WAIT_TIMEOUT_US) == 0,
 			"timed out waiting for interrupt");
@@ -1301,12 +1309,14 @@ test_status_interrupt(void)
 	TEST_ASSERT(test_lsc_interrupt_count > 0,
 			"Did not receive link status change interrupt");
 
-	/* Verify that calling the same slave lsc interrupt doesn't cause another
-	 * lsc interrupt from bonded device */
+	/*
+	 * Verify that calling the same member lsc interrupt doesn't cause another
+	 * lsc interrupt from bonding device.
+	 */
 	test_lsc_interrupt_count = 0;
 
 	virtual_ethdev_simulate_link_status_interrupt(
-			test_params->slave_port_ids[0], 1);
+			test_params->member_port_ids[0], 1);
 
 	TEST_ASSERT(lsc_timeout(TEST_LSC_WAIT_TIMEOUT_US) != 0,
 			"received unexpected interrupt");
@@ -1316,12 +1326,12 @@ test_status_interrupt(void)
 
 
 	/* unregister lsc callback before exiting */
-	rte_eth_dev_callback_unregister(test_params->bonded_port_id,
+	rte_eth_dev_callback_unregister(test_params->bonding_port_id,
 				RTE_ETH_EVENT_INTR_LSC, test_bonding_lsc_event_callback,
-				&test_params->bonded_port_id);
+				&test_params->bonding_port_id);
 
-	/* Clean up and remove slaves from bonded device */
-	return remove_slaves_and_stop_bonded_device();
+	/* Clean up and remove members from bonding device */
+	return remove_members_and_stop_bonding_device();
 }
 
 static int
@@ -1398,11 +1408,11 @@ test_roundrobin_tx_burst(void)
 	struct rte_mbuf *pkt_burst[MAX_PKT_BURST];
 	struct rte_eth_stats port_stats;
 
-	TEST_ASSERT_SUCCESS(initialize_bonded_device_with_slaves(
+	TEST_ASSERT_SUCCESS(initialize_bonding_device_with_members(
 			BONDING_MODE_ROUND_ROBIN, 0, 2, 1),
-			"Failed to initialise bonded device");
+			"Failed to initialise bonding device");
 
-	burst_size = 20 * test_params->bonded_slave_count;
+	burst_size = 20 * test_params->bonding_member_count;
 
 	TEST_ASSERT(burst_size <= MAX_PKT_BURST,
 			"Burst size specified is greater than supported.");
@@ -1411,41 +1421,41 @@ test_roundrobin_tx_burst(void)
 	TEST_ASSERT_EQUAL(generate_test_burst(pkt_burst, burst_size, 0, 1, 0, 0, 0),
 			burst_size, "failed to generate test burst");
 
-	/* Send burst on bonded port */
+	/* Send burst on bonding port */
 	TEST_ASSERT_EQUAL(rte_eth_tx_burst(
-			test_params->bonded_port_id, 0, pkt_burst, burst_size), burst_size,
+			test_params->bonding_port_id, 0, pkt_burst, burst_size), burst_size,
 			"tx burst failed");
 
-	/* Verify bonded port tx stats */
-	rte_eth_stats_get(test_params->bonded_port_id, &port_stats);
+	/* Verify bonding port tx stats */
+	rte_eth_stats_get(test_params->bonding_port_id, &port_stats);
 	TEST_ASSERT_EQUAL(port_stats.opackets, (uint64_t)burst_size,
-			"Bonded Port (%d) opackets value (%u) not as expected (%d)\n",
-			test_params->bonded_port_id, (unsigned int)port_stats.opackets,
+			"Bonding Port (%d) opackets value (%u) not as expected (%d)\n",
+			test_params->bonding_port_id, (unsigned int)port_stats.opackets,
 			burst_size);
 
-	/* Verify slave ports tx stats */
-	for (i = 0; i < test_params->bonded_slave_count; i++) {
-		rte_eth_stats_get(test_params->slave_port_ids[i], &port_stats);
+	/* Verify member ports tx stats */
+	for (i = 0; i < test_params->bonding_member_count; i++) {
+		rte_eth_stats_get(test_params->member_port_ids[i], &port_stats);
 		TEST_ASSERT_EQUAL(port_stats.opackets,
-				(uint64_t)burst_size / test_params->bonded_slave_count,
-				"Slave Port (%d) opackets value (%u) not as expected (%d)\n",
-				test_params->bonded_port_id, (unsigned int)port_stats.opackets,
-				burst_size / test_params->bonded_slave_count);
+				(uint64_t)burst_size / test_params->bonding_member_count,
+				"Member Port (%d) opackets value (%u) not as expected (%d)\n",
+				test_params->bonding_port_id, (unsigned int)port_stats.opackets,
+				burst_size / test_params->bonding_member_count);
 	}
 
-	/* Put all slaves down and try and transmit */
-	for (i = 0; i < test_params->bonded_slave_count; i++) {
+	/* Put all members down and try and transmit */
+	for (i = 0; i < test_params->bonding_member_count; i++) {
 		virtual_ethdev_simulate_link_status_interrupt(
-				test_params->slave_port_ids[i], 0);
+				test_params->member_port_ids[i], 0);
 	}
 
-	/* Send burst on bonded port */
-	TEST_ASSERT_EQUAL(rte_eth_tx_burst(test_params->bonded_port_id, 0,
+	/* Send burst on bonding port */
+	TEST_ASSERT_EQUAL(rte_eth_tx_burst(test_params->bonding_port_id, 0,
 			pkt_burst, burst_size), 0,
 			"tx burst return unexpected value");
 
-	/* Clean up and remove slaves from bonded device */
-	return remove_slaves_and_stop_bonded_device();
+	/* Clean up and remove members from bonding device */
+	return remove_members_and_stop_bonding_device();
 }
 
 static int
@@ -1471,13 +1481,13 @@ free_mbufs(struct rte_mbuf **mbufs, int nb_mbufs)
 		rte_pktmbuf_free(mbufs[i]);
 }
 
-#define TEST_RR_SLAVE_TX_FAIL_SLAVE_COUNT		(2)
-#define TEST_RR_SLAVE_TX_FAIL_BURST_SIZE		(64)
-#define TEST_RR_SLAVE_TX_FAIL_PACKETS_COUNT		(22)
-#define TEST_RR_SLAVE_TX_FAIL_FAILING_SLAVE_IDX	(1)
+#define TEST_RR_MEMBER_TX_FAIL_MEMBER_COUNT		(2)
+#define TEST_RR_MEMBER_TX_FAIL_BURST_SIZE		(64)
+#define TEST_RR_MEMBER_TX_FAIL_PACKETS_COUNT		(22)
+#define TEST_RR_MEMBER_TX_FAIL_FAILING_MEMBER_IDX	(1)
 
 static int
-test_roundrobin_tx_burst_slave_tx_fail(void)
+test_roundrobin_tx_burst_member_tx_fail(void)
 {
 	struct rte_mbuf *pkt_burst[MAX_PKT_BURST];
 	struct rte_mbuf *expected_tx_fail_pkts[MAX_PKT_BURST];
@@ -1486,97 +1496,99 @@ test_roundrobin_tx_burst_slave_tx_fail(void)
 
 	int i, first_fail_idx, tx_count;
 
-	TEST_ASSERT_SUCCESS(initialize_bonded_device_with_slaves(
+	TEST_ASSERT_SUCCESS(initialize_bonding_device_with_members(
 			BONDING_MODE_ROUND_ROBIN, 0,
-			TEST_RR_SLAVE_TX_FAIL_SLAVE_COUNT, 1),
-			"Failed to initialise bonded device");
+			TEST_RR_MEMBER_TX_FAIL_MEMBER_COUNT, 1),
+			"Failed to initialise bonding device");
 
 	/* Generate test bursts of packets to transmit */
 	TEST_ASSERT_EQUAL(generate_test_burst(pkt_burst,
-			TEST_RR_SLAVE_TX_FAIL_BURST_SIZE, 0, 1, 0, 0, 0),
-			TEST_RR_SLAVE_TX_FAIL_BURST_SIZE,
+			TEST_RR_MEMBER_TX_FAIL_BURST_SIZE, 0, 1, 0, 0, 0),
+			TEST_RR_MEMBER_TX_FAIL_BURST_SIZE,
 			"Failed to generate test packet burst");
 
 	/* Copy references to packets which we expect not to be transmitted */
-	first_fail_idx = (TEST_RR_SLAVE_TX_FAIL_BURST_SIZE -
-			(TEST_RR_SLAVE_TX_FAIL_PACKETS_COUNT *
-			TEST_RR_SLAVE_TX_FAIL_SLAVE_COUNT)) +
-			TEST_RR_SLAVE_TX_FAIL_FAILING_SLAVE_IDX;
+	first_fail_idx = (TEST_RR_MEMBER_TX_FAIL_BURST_SIZE -
+			(TEST_RR_MEMBER_TX_FAIL_PACKETS_COUNT *
+			TEST_RR_MEMBER_TX_FAIL_MEMBER_COUNT)) +
+			TEST_RR_MEMBER_TX_FAIL_FAILING_MEMBER_IDX;
 
-	for (i = 0; i < TEST_RR_SLAVE_TX_FAIL_PACKETS_COUNT; i++) {
+	for (i = 0; i < TEST_RR_MEMBER_TX_FAIL_PACKETS_COUNT; i++) {
 		expected_tx_fail_pkts[i] = pkt_burst[first_fail_idx +
-				(i * TEST_RR_SLAVE_TX_FAIL_SLAVE_COUNT)];
+				(i * TEST_RR_MEMBER_TX_FAIL_MEMBER_COUNT)];
 	}
 
-	/* Set virtual slave to only fail transmission of
-	 * TEST_RR_SLAVE_TX_FAIL_PACKETS_COUNT packets in burst */
+	/*
+	 * Set virtual member to only fail transmission of
+	 * TEST_RR_MEMBER_TX_FAIL_PACKETS_COUNT packets in burst.
+	 */
 	virtual_ethdev_tx_burst_fn_set_success(
-			test_params->slave_port_ids[TEST_RR_SLAVE_TX_FAIL_FAILING_SLAVE_IDX],
+			test_params->member_port_ids[TEST_RR_MEMBER_TX_FAIL_FAILING_MEMBER_IDX],
 			0);
 
 	virtual_ethdev_tx_burst_fn_set_tx_pkt_fail_count(
-			test_params->slave_port_ids[TEST_RR_SLAVE_TX_FAIL_FAILING_SLAVE_IDX],
-			TEST_RR_SLAVE_TX_FAIL_PACKETS_COUNT);
+			test_params->member_port_ids[TEST_RR_MEMBER_TX_FAIL_FAILING_MEMBER_IDX],
+			TEST_RR_MEMBER_TX_FAIL_PACKETS_COUNT);
 
-	tx_count = rte_eth_tx_burst(test_params->bonded_port_id, 0, pkt_burst,
-			TEST_RR_SLAVE_TX_FAIL_BURST_SIZE);
+	tx_count = rte_eth_tx_burst(test_params->bonding_port_id, 0, pkt_burst,
+			TEST_RR_MEMBER_TX_FAIL_BURST_SIZE);
 
-	TEST_ASSERT_EQUAL(tx_count, TEST_RR_SLAVE_TX_FAIL_BURST_SIZE -
-			TEST_RR_SLAVE_TX_FAIL_PACKETS_COUNT,
+	TEST_ASSERT_EQUAL(tx_count, TEST_RR_MEMBER_TX_FAIL_BURST_SIZE -
+			TEST_RR_MEMBER_TX_FAIL_PACKETS_COUNT,
 			"Transmitted (%d) an unexpected (%d) number of packets", tx_count,
-			TEST_RR_SLAVE_TX_FAIL_BURST_SIZE -
-			TEST_RR_SLAVE_TX_FAIL_PACKETS_COUNT);
+			TEST_RR_MEMBER_TX_FAIL_BURST_SIZE -
+			TEST_RR_MEMBER_TX_FAIL_PACKETS_COUNT);
 
 	/* Verify that failed packet are expected failed packets */
-	for (i = 0; i < TEST_RR_SLAVE_TX_FAIL_PACKETS_COUNT; i++) {
+	for (i = 0; i < TEST_RR_MEMBER_TX_FAIL_PACKETS_COUNT; i++) {
 		TEST_ASSERT_EQUAL(expected_tx_fail_pkts[i], pkt_burst[i + tx_count],
 				"expected mbuf (%d) pointer %p not expected pointer %p",
 				i, expected_tx_fail_pkts[i], pkt_burst[i + tx_count]);
 	}
 
-	/* Verify bonded port tx stats */
-	rte_eth_stats_get(test_params->bonded_port_id, &port_stats);
+	/* Verify bonding port tx stats */
+	rte_eth_stats_get(test_params->bonding_port_id, &port_stats);
 
 	TEST_ASSERT_EQUAL(port_stats.opackets,
-			(uint64_t)TEST_RR_SLAVE_TX_FAIL_BURST_SIZE -
-			TEST_RR_SLAVE_TX_FAIL_PACKETS_COUNT,
-			"Bonded Port (%d) opackets value (%u) not as expected (%d)",
-			test_params->bonded_port_id, (unsigned int)port_stats.opackets,
-			TEST_RR_SLAVE_TX_FAIL_BURST_SIZE -
-			TEST_RR_SLAVE_TX_FAIL_PACKETS_COUNT);
+			(uint64_t)TEST_RR_MEMBER_TX_FAIL_BURST_SIZE -
+			TEST_RR_MEMBER_TX_FAIL_PACKETS_COUNT,
+			"Bonding Port (%d) opackets value (%u) not as expected (%d)",
+			test_params->bonding_port_id, (unsigned int)port_stats.opackets,
+			TEST_RR_MEMBER_TX_FAIL_BURST_SIZE -
+			TEST_RR_MEMBER_TX_FAIL_PACKETS_COUNT);
 
-	/* Verify slave ports tx stats */
-	for (i = 0; i < test_params->bonded_slave_count; i++) {
-		int slave_expected_tx_count;
+	/* Verify member ports tx stats */
+	for (i = 0; i < test_params->bonding_member_count; i++) {
+		int member_expected_tx_count;
 
-		rte_eth_stats_get(test_params->slave_port_ids[i], &port_stats);
+		rte_eth_stats_get(test_params->member_port_ids[i], &port_stats);
 
-		slave_expected_tx_count = TEST_RR_SLAVE_TX_FAIL_BURST_SIZE /
-				test_params->bonded_slave_count;
+		member_expected_tx_count = TEST_RR_MEMBER_TX_FAIL_BURST_SIZE /
+				test_params->bonding_member_count;
 
-		if (i == TEST_RR_SLAVE_TX_FAIL_FAILING_SLAVE_IDX)
-			slave_expected_tx_count = slave_expected_tx_count -
-					TEST_RR_SLAVE_TX_FAIL_PACKETS_COUNT;
+		if (i == TEST_RR_MEMBER_TX_FAIL_FAILING_MEMBER_IDX)
+			member_expected_tx_count = member_expected_tx_count -
+					TEST_RR_MEMBER_TX_FAIL_PACKETS_COUNT;
 
 		TEST_ASSERT_EQUAL(port_stats.opackets,
-				(uint64_t)slave_expected_tx_count,
-				"Slave Port (%d) opackets value (%u) not as expected (%d)",
-				test_params->slave_port_ids[i],
-				(unsigned int)port_stats.opackets, slave_expected_tx_count);
+				(uint64_t)member_expected_tx_count,
+				"Member Port (%d) opackets value (%u) not as expected (%d)",
+				test_params->member_port_ids[i],
+				(unsigned int)port_stats.opackets, member_expected_tx_count);
 	}
 
 	/* Verify that all mbufs have a ref value of zero */
 	TEST_ASSERT_SUCCESS(verify_mbufs_ref_count(&pkt_burst[tx_count],
-			TEST_RR_SLAVE_TX_FAIL_PACKETS_COUNT, 1),
+			TEST_RR_MEMBER_TX_FAIL_PACKETS_COUNT, 1),
 			"mbufs refcnts not as expected");
-	free_mbufs(&pkt_burst[tx_count], TEST_RR_SLAVE_TX_FAIL_PACKETS_COUNT);
+	free_mbufs(&pkt_burst[tx_count], TEST_RR_MEMBER_TX_FAIL_PACKETS_COUNT);
 
-	/* Clean up and remove slaves from bonded device */
-	return remove_slaves_and_stop_bonded_device();
+	/* Clean up and remove members from bonding device */
+	return remove_members_and_stop_bonding_device();
 }
 
 static int
-test_roundrobin_rx_burst_on_single_slave(void)
+test_roundrobin_rx_burst_on_single_member(void)
 {
 	struct rte_mbuf *gen_pkt_burst[MAX_PKT_BURST] = { NULL };
 	struct rte_mbuf *rx_pkt_burst[MAX_PKT_BURST] = { NULL };
@@ -1585,59 +1597,59 @@ test_roundrobin_rx_burst_on_single_slave(void)
 
 	int i, j, burst_size = 25;
 
-	/* Initialize bonded device with 4 slaves in round robin mode */
-	TEST_ASSERT_SUCCESS(initialize_bonded_device_with_slaves(
+	/* Initialize bonding device with 4 members in round robin mode */
+	TEST_ASSERT_SUCCESS(initialize_bonding_device_with_members(
 			BONDING_MODE_ROUND_ROBIN, 0, 4, 1),
-			"Failed to initialize bonded device with slaves");
+			"Failed to initialize bonding device with members");
 
 	/* Generate test bursts of packets to transmit */
 	TEST_ASSERT_EQUAL(generate_test_burst(
 			gen_pkt_burst, burst_size, 0, 1, 0, 0, 0), burst_size,
 			"burst generation failed");
 
-	for (i = 0; i < test_params->bonded_slave_count; i++) {
-		/* Add rx data to slave */
-		virtual_ethdev_add_mbufs_to_rx_queue(test_params->slave_port_ids[i],
+	for (i = 0; i < test_params->bonding_member_count; i++) {
+		/* Add rx data to member */
+		virtual_ethdev_add_mbufs_to_rx_queue(test_params->member_port_ids[i],
 				&gen_pkt_burst[0], burst_size);
 
-		/* Call rx burst on bonded device */
-		/* Send burst on bonded port */
+		/* Call rx burst on bonding device */
+		/* Send burst on bonding port */
 		TEST_ASSERT_EQUAL(rte_eth_rx_burst(
-				test_params->bonded_port_id, 0, rx_pkt_burst,
+				test_params->bonding_port_id, 0, rx_pkt_burst,
 				MAX_PKT_BURST), burst_size,
 				"round-robin rx burst failed");
 
-		/* Verify bonded device rx count */
-		rte_eth_stats_get(test_params->bonded_port_id, &port_stats);
+		/* Verify bonding device rx count */
+		rte_eth_stats_get(test_params->bonding_port_id, &port_stats);
 		TEST_ASSERT_EQUAL(port_stats.ipackets, (uint64_t)burst_size,
-				"Bonded Port (%d) ipackets value (%u) not as expected (%d)",
-				test_params->bonded_port_id,
+				"Bonding Port (%d) ipackets value (%u) not as expected (%d)",
+				test_params->bonding_port_id,
 				(unsigned int)port_stats.ipackets, burst_size);
 
 
 
-		/* Verify bonded slave devices rx count */
-		/* Verify slave ports tx stats */
-		for (j = 0; j < test_params->bonded_slave_count; j++) {
-			rte_eth_stats_get(test_params->slave_port_ids[j], &port_stats);
+		/* Verify bonding member devices rx count */
+		/* Verify member ports tx stats */
+		for (j = 0; j < test_params->bonding_member_count; j++) {
+			rte_eth_stats_get(test_params->member_port_ids[j], &port_stats);
 
 			if (i == j) {
 				TEST_ASSERT_EQUAL(port_stats.ipackets, (uint64_t)burst_size,
-						"Slave Port (%d) ipackets value (%u) not as expected"
-						" (%d)", test_params->slave_port_ids[i],
+						"Member Port (%d) ipackets value (%u) not as expected"
+						" (%d)", test_params->member_port_ids[i],
 						(unsigned int)port_stats.ipackets, burst_size);
 			} else {
 				TEST_ASSERT_EQUAL(port_stats.ipackets, 0,
-						"Slave Port (%d) ipackets value (%u) not as expected"
-						" (%d)", test_params->slave_port_ids[i],
+						"Member Port (%d) ipackets value (%u) not as expected"
+						" (%d)", test_params->member_port_ids[i],
 						(unsigned int)port_stats.ipackets, 0);
 			}
 
-			/* Reset bonded slaves stats */
-			rte_eth_stats_reset(test_params->slave_port_ids[j]);
+			/* Reset bonding members stats */
+			rte_eth_stats_reset(test_params->member_port_ids[j]);
 		}
-		/* reset bonded device stats */
-		rte_eth_stats_reset(test_params->bonded_port_id);
+		/* reset bonding device stats */
+		rte_eth_stats_reset(test_params->bonding_port_id);
 	}
 
 	/* free mbufs */
@@ -1646,80 +1658,80 @@ test_roundrobin_rx_burst_on_single_slave(void)
 	}
 
 
-	/* Clean up and remove slaves from bonded device */
-	return remove_slaves_and_stop_bonded_device();
+	/* Clean up and remove members from bonding device */
+	return remove_members_and_stop_bonding_device();
 }
 
-#define TEST_ROUNDROBIN_TX_BURST_SLAVE_COUNT (3)
+#define TEST_ROUNDROBIN_TX_BURST_MEMBER_COUNT (3)
 
 static int
-test_roundrobin_rx_burst_on_multiple_slaves(void)
+test_roundrobin_rx_burst_on_multiple_members(void)
 {
-	struct rte_mbuf *gen_pkt_burst[TEST_ROUNDROBIN_TX_BURST_SLAVE_COUNT][MAX_PKT_BURST];
+	struct rte_mbuf *gen_pkt_burst[TEST_ROUNDROBIN_TX_BURST_MEMBER_COUNT][MAX_PKT_BURST];
 
 	struct rte_mbuf *rx_pkt_burst[MAX_PKT_BURST] = { NULL };
 	struct rte_eth_stats port_stats;
 
-	int burst_size[TEST_ROUNDROBIN_TX_BURST_SLAVE_COUNT] = { 15, 13, 36 };
+	int burst_size[TEST_ROUNDROBIN_TX_BURST_MEMBER_COUNT] = { 15, 13, 36 };
 	int i, nb_rx;
 
-	/* Initialize bonded device with 4 slaves in round robin mode */
-	TEST_ASSERT_SUCCESS(initialize_bonded_device_with_slaves(
+	/* Initialize bonding device with 4 members in round robin mode */
+	TEST_ASSERT_SUCCESS(initialize_bonding_device_with_members(
 			BONDING_MODE_ROUND_ROBIN, 0, 4, 1),
-			"Failed to initialize bonded device with slaves");
+			"Failed to initialize bonding device with members");
 
 	/* Generate test bursts of packets to transmit */
-	for (i = 0; i < TEST_ROUNDROBIN_TX_BURST_SLAVE_COUNT; i++) {
+	for (i = 0; i < TEST_ROUNDROBIN_TX_BURST_MEMBER_COUNT; i++) {
 		TEST_ASSERT_EQUAL(generate_test_burst(
 				&gen_pkt_burst[i][0], burst_size[i], 0, 1, 0, 0, 0),
 				burst_size[i], "burst generation failed");
 	}
 
-	/* Add rx data to slaves */
-	for (i = 0; i < TEST_ROUNDROBIN_TX_BURST_SLAVE_COUNT; i++) {
-		virtual_ethdev_add_mbufs_to_rx_queue(test_params->slave_port_ids[i],
+	/* Add rx data to members */
+	for (i = 0; i < TEST_ROUNDROBIN_TX_BURST_MEMBER_COUNT; i++) {
+		virtual_ethdev_add_mbufs_to_rx_queue(test_params->member_port_ids[i],
 				&gen_pkt_burst[i][0], burst_size[i]);
 	}
 
-	/* Call rx burst on bonded device */
-	/* Send burst on bonded port */
-	nb_rx = rte_eth_rx_burst(test_params->bonded_port_id, 0, rx_pkt_burst,
+	/* Call rx burst on bonding device */
+	/* Send burst on bonding port */
+	nb_rx = rte_eth_rx_burst(test_params->bonding_port_id, 0, rx_pkt_burst,
 			MAX_PKT_BURST);
 	TEST_ASSERT_EQUAL(nb_rx , burst_size[0] + burst_size[1] + burst_size[2],
 			"round-robin rx burst failed (%d != %d)\n", nb_rx,
 			burst_size[0] + burst_size[1] + burst_size[2]);
 
-	/* Verify bonded device rx count */
-	rte_eth_stats_get(test_params->bonded_port_id, &port_stats);
+	/* Verify bonding device rx count */
+	rte_eth_stats_get(test_params->bonding_port_id, &port_stats);
 	TEST_ASSERT_EQUAL(port_stats.ipackets,
 			(uint64_t)(burst_size[0] + burst_size[1] + burst_size[2]),
-			"Bonded Port (%d) ipackets value (%u) not as expected (%d)",
-			test_params->bonded_port_id, (unsigned int)port_stats.ipackets,
+			"Bonding Port (%d) ipackets value (%u) not as expected (%d)",
+			test_params->bonding_port_id, (unsigned int)port_stats.ipackets,
 			burst_size[0] + burst_size[1] + burst_size[2]);
 
-	/* Verify bonded slave devices rx counts */
-	rte_eth_stats_get(test_params->slave_port_ids[0], &port_stats);
+	/* Verify bonding member devices rx counts */
+	rte_eth_stats_get(test_params->member_port_ids[0], &port_stats);
 	TEST_ASSERT_EQUAL(port_stats.ipackets, (uint64_t)burst_size[0],
-			"Slave Port (%d) ipackets value (%u) not as expected (%d)",
-			test_params->slave_port_ids[0],
+			"Member Port (%d) ipackets value (%u) not as expected (%d)",
+			test_params->member_port_ids[0],
 			(unsigned int)port_stats.ipackets, burst_size[0]);
 
-	rte_eth_stats_get(test_params->slave_port_ids[1], &port_stats);
+	rte_eth_stats_get(test_params->member_port_ids[1], &port_stats);
 	TEST_ASSERT_EQUAL(port_stats.ipackets, (uint64_t)burst_size[1],
-			"Slave Port (%d) ipackets value (%u) not as expected (%d)",
-			test_params->slave_port_ids[1], (unsigned int)port_stats.ipackets,
+			"Member Port (%d) ipackets value (%u) not as expected (%d)",
+			test_params->member_port_ids[1], (unsigned int)port_stats.ipackets,
 			burst_size[1]);
 
-	rte_eth_stats_get(test_params->slave_port_ids[2], &port_stats);
+	rte_eth_stats_get(test_params->member_port_ids[2], &port_stats);
 	TEST_ASSERT_EQUAL(port_stats.ipackets, (uint64_t)burst_size[2],
-			"Slave Port (%d) ipackets value (%u) not as expected (%d)",
-				test_params->slave_port_ids[2],
+			"Member Port (%d) ipackets value (%u) not as expected (%d)",
+				test_params->member_port_ids[2],
 				(unsigned int)port_stats.ipackets, burst_size[2]);
 
-	rte_eth_stats_get(test_params->slave_port_ids[3], &port_stats);
+	rte_eth_stats_get(test_params->member_port_ids[3], &port_stats);
 	TEST_ASSERT_EQUAL(port_stats.ipackets, 0,
-			"Slave Port (%d) ipackets value (%u) not as expected (%d)",
-			test_params->slave_port_ids[3],
+			"Member Port (%d) ipackets value (%u) not as expected (%d)",
+			test_params->member_port_ids[3],
 			(unsigned int)port_stats.ipackets, 0);
 
 	/* free mbufs */
@@ -1727,8 +1739,8 @@ test_roundrobin_rx_burst_on_multiple_slaves(void)
 		rte_pktmbuf_free(rx_pkt_burst[i]);
 	}
 
-	/* Clean up and remove slaves from bonded device */
-	return remove_slaves_and_stop_bonded_device();
+	/* Clean up and remove members from bonding device */
+	return remove_members_and_stop_bonding_device();
 }
 
 static int
@@ -1739,98 +1751,106 @@ test_roundrobin_verify_mac_assignment(void)
 
 	int i;
 
-	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->slave_port_ids[0], &expected_mac_addr_0),
+	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->member_port_ids[0],
+			&expected_mac_addr_0),
 			"Failed to get mac address (port %d)",
-			test_params->slave_port_ids[0]);
-	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->slave_port_ids[2], &expected_mac_addr_2),
+			test_params->member_port_ids[0]);
+	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->member_port_ids[2],
+			&expected_mac_addr_2),
 			"Failed to get mac address (port %d)",
-			test_params->slave_port_ids[2]);
+			test_params->member_port_ids[2]);
 
-	/* Initialize bonded device with 4 slaves in round robin mode */
-	TEST_ASSERT_SUCCESS(initialize_bonded_device_with_slaves(
+	/* Initialize bonding device with 4 members in round robin mode */
+	TEST_ASSERT_SUCCESS(initialize_bonding_device_with_members(
 				BONDING_MODE_ROUND_ROBIN, 0, 4, 1),
-				"Failed to initialize bonded device with slaves");
+				"Failed to initialize bonding device with members");
 
-	/* Verify that all MACs are the same as first slave added to bonded dev */
-	for (i = 0; i < test_params->bonded_slave_count; i++) {
-		TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->slave_port_ids[i], &read_mac_addr),
+	/* Verify that all MACs are the same as first member added to bonding dev */
+	for (i = 0; i < test_params->bonding_member_count; i++) {
+		TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->member_port_ids[i],
+				&read_mac_addr),
 				"Failed to get mac address (port %d)",
-				test_params->slave_port_ids[i]);
+				test_params->member_port_ids[i]);
 		TEST_ASSERT_SUCCESS(memcmp(&expected_mac_addr_0, &read_mac_addr,
 				sizeof(read_mac_addr)),
-				"slave port (%d) mac address not set to that of primary port",
-				test_params->slave_port_ids[i]);
+				"member port (%d) mac address not set to that of primary port",
+				test_params->member_port_ids[i]);
 	}
 
 	/* change primary and verify that MAC addresses haven't changed */
-	TEST_ASSERT_SUCCESS(rte_eth_bond_primary_set(test_params->bonded_port_id,
-			test_params->slave_port_ids[2]),
-			"Failed to set bonded port (%d) primary port to (%d)",
-			test_params->bonded_port_id, test_params->slave_port_ids[i]);
+	TEST_ASSERT_SUCCESS(rte_eth_bond_primary_set(test_params->bonding_port_id,
+			test_params->member_port_ids[2]),
+			"Failed to set bonding port (%d) primary port to (%d)",
+			test_params->bonding_port_id, test_params->member_port_ids[i]);
 
-	for (i = 0; i < test_params->bonded_slave_count; i++) {
-		TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->slave_port_ids[i], &read_mac_addr),
+	for (i = 0; i < test_params->bonding_member_count; i++) {
+		TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->member_port_ids[i],
+				&read_mac_addr),
 				"Failed to get mac address (port %d)",
-				test_params->slave_port_ids[i]);
+				test_params->member_port_ids[i]);
 		TEST_ASSERT_SUCCESS(memcmp(&expected_mac_addr_0, &read_mac_addr,
 				sizeof(read_mac_addr)),
-				"slave port (%d) mac address has changed to that of primary"
-				" port without stop/start toggle of bonded device",
-				test_params->slave_port_ids[i]);
+				"member port (%d) mac address has changed to that of primary"
+				" port without stop/start toggle of bonding device",
+				test_params->member_port_ids[i]);
 	}
 
-	/* stop / start bonded device and verify that primary MAC address is
-	 * propagate to bonded device and slaves */
-	TEST_ASSERT_SUCCESS(rte_eth_dev_stop(test_params->bonded_port_id),
-			"Failed to stop bonded port %u",
-			test_params->bonded_port_id);
+	/*
+	 * stop / start bonding device and verify that primary MAC address is
+	 * propagate to bonding device and members.
+	 */
+	TEST_ASSERT_SUCCESS(rte_eth_dev_stop(test_params->bonding_port_id),
+			"Failed to stop bonding port %u",
+			test_params->bonding_port_id);
 
-	TEST_ASSERT_SUCCESS(rte_eth_dev_start(test_params->bonded_port_id),
-			"Failed to start bonded device");
+	TEST_ASSERT_SUCCESS(rte_eth_dev_start(test_params->bonding_port_id),
+			"Failed to start bonding device");
 
-	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->bonded_port_id, &read_mac_addr),
+	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->bonding_port_id, &read_mac_addr),
 			"Failed to get mac address (port %d)",
-			test_params->bonded_port_id);
+			test_params->bonding_port_id);
 	TEST_ASSERT_SUCCESS(
 			memcmp(&expected_mac_addr_2, &read_mac_addr, sizeof(read_mac_addr)),
-			"bonded port (%d) mac address not set to that of new primary port",
-			test_params->slave_port_ids[i]);
+			"bonding port (%d) mac address not set to that of new primary port",
+			test_params->member_port_ids[i]);
 
-	for (i = 0; i < test_params->bonded_slave_count; i++) {
-		TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->slave_port_ids[i], &read_mac_addr),
+	for (i = 0; i < test_params->bonding_member_count; i++) {
+		TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->member_port_ids[i],
+				&read_mac_addr),
 				"Failed to get mac address (port %d)",
-				test_params->slave_port_ids[i]);
+				test_params->member_port_ids[i]);
 		TEST_ASSERT_SUCCESS(memcmp(&expected_mac_addr_2, &read_mac_addr,
 				sizeof(read_mac_addr)),
-				"slave port (%d) mac address not set to that of new primary"
-				" port", test_params->slave_port_ids[i]);
+				"member port (%d) mac address not set to that of new primary"
+				" port", test_params->member_port_ids[i]);
 	}
 
 	/* Set explicit MAC address */
 	TEST_ASSERT_SUCCESS(rte_eth_bond_mac_address_set(
-			test_params->bonded_port_id,
-			(struct rte_ether_addr *)bonded_mac),
+			test_params->bonding_port_id,
+			(struct rte_ether_addr *)bonding_mac),
 			"Failed to set MAC");
 
-	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->bonded_port_id, &read_mac_addr),
+	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->bonding_port_id, &read_mac_addr),
 			"Failed to get mac address (port %d)",
-			test_params->bonded_port_id);
-	TEST_ASSERT_SUCCESS(memcmp(bonded_mac, &read_mac_addr,
+			test_params->bonding_port_id);
+	TEST_ASSERT_SUCCESS(memcmp(bonding_mac, &read_mac_addr,
 			sizeof(read_mac_addr)),
-			"bonded port (%d) mac address not set to that of new primary port",
-				test_params->slave_port_ids[i]);
+			"bonding port (%d) mac address not set to that of new primary port",
+				test_params->member_port_ids[i]);
 
-	for (i = 0; i < test_params->bonded_slave_count; i++) {
-		TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->slave_port_ids[i], &read_mac_addr),
+	for (i = 0; i < test_params->bonding_member_count; i++) {
+		TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->member_port_ids[i],
+				&read_mac_addr),
 				"Failed to get mac address (port %d)",
-				test_params->slave_port_ids[i]);
-		TEST_ASSERT_SUCCESS(memcmp(bonded_mac, &read_mac_addr,
-				sizeof(read_mac_addr)), "slave port (%d) mac address not set to"
-				" that of new primary port\n", test_params->slave_port_ids[i]);
+				test_params->member_port_ids[i]);
+		TEST_ASSERT_SUCCESS(memcmp(bonding_mac, &read_mac_addr,
+				sizeof(read_mac_addr)), "member port (%d) mac address not set to"
+				" that of new primary port\n", test_params->member_port_ids[i]);
 	}
 
-	/* Clean up and remove slaves from bonded device */
-	return remove_slaves_and_stop_bonded_device();
+	/* Clean up and remove members from bonding device */
+	return remove_members_and_stop_bonding_device();
 }
 
 static int
@@ -1839,278 +1859,278 @@ test_roundrobin_verify_promiscuous_enable_disable(void)
 	int i, promiscuous_en;
 	int ret;
 
-	/* Initialize bonded device with 4 slaves in round robin mode */
-	TEST_ASSERT_SUCCESS(initialize_bonded_device_with_slaves(
+	/* Initialize bonding device with 4 members in round robin mode */
+	TEST_ASSERT_SUCCESS(initialize_bonding_device_with_members(
 			BONDING_MODE_ROUND_ROBIN, 0, 4, 1),
-			"Failed to initialize bonded device with slaves");
+			"Failed to initialize bonding device with members");
 
-	ret = rte_eth_promiscuous_enable(test_params->bonded_port_id);
+	ret = rte_eth_promiscuous_enable(test_params->bonding_port_id);
 	TEST_ASSERT_SUCCESS(ret,
 		"Failed to enable promiscuous mode for port %d: %s",
-		test_params->bonded_port_id, rte_strerror(-ret));
+		test_params->bonding_port_id, rte_strerror(-ret));
 
-	promiscuous_en = rte_eth_promiscuous_get(test_params->bonded_port_id);
+	promiscuous_en = rte_eth_promiscuous_get(test_params->bonding_port_id);
 	TEST_ASSERT_EQUAL(promiscuous_en, 1,
 			"Port (%d) promiscuous mode not enabled",
-			test_params->bonded_port_id);
+			test_params->bonding_port_id);
 
-	for (i = 0; i < test_params->bonded_slave_count; i++) {
+	for (i = 0; i < test_params->bonding_member_count; i++) {
 		promiscuous_en = rte_eth_promiscuous_get(
-				test_params->slave_port_ids[i]);
+				test_params->member_port_ids[i]);
 		TEST_ASSERT_EQUAL(promiscuous_en, 1,
-				"slave port (%d) promiscuous mode not enabled",
-				test_params->slave_port_ids[i]);
+				"member port (%d) promiscuous mode not enabled",
+				test_params->member_port_ids[i]);
 	}
 
-	ret = rte_eth_promiscuous_disable(test_params->bonded_port_id);
+	ret = rte_eth_promiscuous_disable(test_params->bonding_port_id);
 	TEST_ASSERT_SUCCESS(ret,
 		"Failed to disable promiscuous mode for port %d: %s",
-		test_params->bonded_port_id, rte_strerror(-ret));
+		test_params->bonding_port_id, rte_strerror(-ret));
 
-	promiscuous_en = rte_eth_promiscuous_get(test_params->bonded_port_id);
+	promiscuous_en = rte_eth_promiscuous_get(test_params->bonding_port_id);
 	TEST_ASSERT_EQUAL(promiscuous_en, 0,
 			"Port (%d) promiscuous mode not disabled\n",
-			test_params->bonded_port_id);
+			test_params->bonding_port_id);
 
-	for (i = 0; i < test_params->bonded_slave_count; i++) {
+	for (i = 0; i < test_params->bonding_member_count; i++) {
 		promiscuous_en = rte_eth_promiscuous_get(
-				test_params->slave_port_ids[i]);
+				test_params->member_port_ids[i]);
 		TEST_ASSERT_EQUAL(promiscuous_en, 0,
 				"Port (%d) promiscuous mode not disabled\n",
-				test_params->slave_port_ids[i]);
+				test_params->member_port_ids[i]);
 	}
 
-	/* Clean up and remove slaves from bonded device */
-	return remove_slaves_and_stop_bonded_device();
+	/* Clean up and remove members from bonding device */
+	return remove_members_and_stop_bonding_device();
 }
 
-#define TEST_RR_LINK_STATUS_SLAVE_COUNT (4)
-#define TEST_RR_LINK_STATUS_EXPECTED_ACTIVE_SLAVE_COUNT (2)
+#define TEST_RR_LINK_STATUS_MEMBER_COUNT (4)
+#define TEST_RR_LINK_STATUS_EXPECTED_ACTIVE_MEMBER_COUNT (2)
 
 static int
-test_roundrobin_verify_slave_link_status_change_behaviour(void)
+test_roundrobin_verify_member_link_status_change_behaviour(void)
 {
 	struct rte_mbuf *tx_pkt_burst[MAX_PKT_BURST] = { NULL };
-	struct rte_mbuf *gen_pkt_burst[TEST_RR_LINK_STATUS_SLAVE_COUNT][MAX_PKT_BURST];
+	struct rte_mbuf *gen_pkt_burst[TEST_RR_LINK_STATUS_MEMBER_COUNT][MAX_PKT_BURST];
 	struct rte_mbuf *rx_pkt_burst[MAX_PKT_BURST] = { NULL };
 
 	struct rte_eth_stats port_stats;
-	uint16_t slaves[RTE_MAX_ETHPORTS];
+	uint16_t members[RTE_MAX_ETHPORTS];
 
-	int i, burst_size, slave_count;
+	int i, burst_size, member_count;
 
 	/* NULL all pointers in array to simplify cleanup */
 	memset(gen_pkt_burst, 0, sizeof(gen_pkt_burst));
 
-	/* Initialize bonded device with TEST_RR_LINK_STATUS_SLAVE_COUNT slaves
+	/* Initialize bonding device with TEST_RR_LINK_STATUS_MEMBER_COUNT members
 	 * in round robin mode */
-	TEST_ASSERT_SUCCESS(initialize_bonded_device_with_slaves(
-			BONDING_MODE_ROUND_ROBIN, 0, TEST_RR_LINK_STATUS_SLAVE_COUNT, 1),
-			"Failed to initialize bonded device with slaves");
+	TEST_ASSERT_SUCCESS(initialize_bonding_device_with_members(
+			BONDING_MODE_ROUND_ROBIN, 0, TEST_RR_LINK_STATUS_MEMBER_COUNT, 1),
+			"Failed to initialize bonding device with members");
 
-	/* Verify Current Slaves Count /Active Slave Count is */
-	slave_count = rte_eth_bond_slaves_get(test_params->bonded_port_id, slaves,
+	/* Verify Current Members Count /Active Member Count is */
+	member_count = rte_eth_bond_members_get(test_params->bonding_port_id, members,
 			RTE_MAX_ETHPORTS);
-	TEST_ASSERT_EQUAL(slave_count, TEST_RR_LINK_STATUS_SLAVE_COUNT,
-			"Number of slaves (%d) is not as expected (%d).",
-			slave_count, TEST_RR_LINK_STATUS_SLAVE_COUNT);
+	TEST_ASSERT_EQUAL(member_count, TEST_RR_LINK_STATUS_MEMBER_COUNT,
+			"Number of members (%d) is not as expected (%d).",
+			member_count, TEST_RR_LINK_STATUS_MEMBER_COUNT);
 
-	slave_count = rte_eth_bond_active_slaves_get(test_params->bonded_port_id,
-			slaves, RTE_MAX_ETHPORTS);
-	TEST_ASSERT_EQUAL(slave_count, TEST_RR_LINK_STATUS_SLAVE_COUNT,
-			"Number of active slaves (%d) is not as expected (%d).",
-			slave_count, TEST_RR_LINK_STATUS_SLAVE_COUNT);
+	member_count = rte_eth_bond_active_members_get(test_params->bonding_port_id,
+			members, RTE_MAX_ETHPORTS);
+	TEST_ASSERT_EQUAL(member_count, TEST_RR_LINK_STATUS_MEMBER_COUNT,
+			"Number of active members (%d) is not as expected (%d).",
+			member_count, TEST_RR_LINK_STATUS_MEMBER_COUNT);
 
-	/* Set 2 slaves eth_devs link status to down */
+	/* Set 2 members eth_devs link status to down */
 	virtual_ethdev_simulate_link_status_interrupt(
-			test_params->slave_port_ids[1], 0);
+			test_params->member_port_ids[1], 0);
 	virtual_ethdev_simulate_link_status_interrupt(
-			test_params->slave_port_ids[3], 0);
+			test_params->member_port_ids[3], 0);
 
-	slave_count = rte_eth_bond_active_slaves_get(test_params->bonded_port_id,
-			slaves, RTE_MAX_ETHPORTS);
-	TEST_ASSERT_EQUAL(slave_count,
-			TEST_RR_LINK_STATUS_EXPECTED_ACTIVE_SLAVE_COUNT,
-			"Number of active slaves (%d) is not as expected (%d).\n",
-			slave_count, TEST_RR_LINK_STATUS_EXPECTED_ACTIVE_SLAVE_COUNT);
+	member_count = rte_eth_bond_active_members_get(test_params->bonding_port_id,
+			members, RTE_MAX_ETHPORTS);
+	TEST_ASSERT_EQUAL(member_count,
+			TEST_RR_LINK_STATUS_EXPECTED_ACTIVE_MEMBER_COUNT,
+			"Number of active members (%d) is not as expected (%d).\n",
+			member_count, TEST_RR_LINK_STATUS_EXPECTED_ACTIVE_MEMBER_COUNT);
 
 	burst_size = 20;
 
-	/* Verify that pkts are not sent on slaves with link status down:
+	/* Verify that pkts are not sent on members with link status down:
 	 *
 	 * 1. Generate test burst of traffic
-	 * 2. Transmit burst on bonded eth_dev
-	 * 3. Verify stats for bonded eth_dev (opackets = burst_size)
-	 * 4. Verify stats for slave eth_devs (s0 = 10, s1 = 0, s2 = 10, s3 = 0)
+	 * 2. Transmit burst on bonding eth_dev
+	 * 3. Verify stats for bonding eth_dev (opackets = burst_size)
+	 * 4. Verify stats for member eth_devs (s0 = 10, s1 = 0, s2 = 10, s3 = 0)
 	 */
 	TEST_ASSERT_EQUAL(
 			generate_test_burst(tx_pkt_burst, burst_size, 0, 1, 0, 0, 0),
 			burst_size, "generate_test_burst failed");
 
-	rte_eth_stats_reset(test_params->bonded_port_id);
+	rte_eth_stats_reset(test_params->bonding_port_id);
 
 
 	TEST_ASSERT_EQUAL(
-			rte_eth_tx_burst(test_params->bonded_port_id, 0, tx_pkt_burst,
+			rte_eth_tx_burst(test_params->bonding_port_id, 0, tx_pkt_burst,
 			burst_size), burst_size, "rte_eth_tx_burst failed");
 
-	rte_eth_stats_get(test_params->bonded_port_id, &port_stats);
+	rte_eth_stats_get(test_params->bonding_port_id, &port_stats);
 	TEST_ASSERT_EQUAL(port_stats.opackets, (uint64_t)burst_size,
 			"Port (%d) opackets stats (%d) not expected (%d) value",
-			test_params->bonded_port_id, (int)port_stats.opackets,
+			test_params->bonding_port_id, (int)port_stats.opackets,
 			burst_size);
 
-	rte_eth_stats_get(test_params->slave_port_ids[0], &port_stats);
+	rte_eth_stats_get(test_params->member_port_ids[0], &port_stats);
 	TEST_ASSERT_EQUAL(port_stats.opackets, (uint64_t)10,
 			"Port (%d) opackets stats (%d) not expected (%d) value",
-			test_params->slave_port_ids[0], (int)port_stats.opackets, 10);
+			test_params->member_port_ids[0], (int)port_stats.opackets, 10);
 
-	rte_eth_stats_get(test_params->slave_port_ids[1], &port_stats);
+	rte_eth_stats_get(test_params->member_port_ids[1], &port_stats);
 	TEST_ASSERT_EQUAL(port_stats.opackets, (uint64_t)0,
 			"Port (%d) opackets stats (%d) not expected (%d) value",
-			test_params->slave_port_ids[1], (int)port_stats.opackets, 0);
+			test_params->member_port_ids[1], (int)port_stats.opackets, 0);
 
-	rte_eth_stats_get(test_params->slave_port_ids[2], &port_stats);
+	rte_eth_stats_get(test_params->member_port_ids[2], &port_stats);
 	TEST_ASSERT_EQUAL(port_stats.opackets, (uint64_t)10,
 			"Port (%d) opackets stats (%d) not expected (%d) value",
-			test_params->slave_port_ids[2], (int)port_stats.opackets, 10);
+			test_params->member_port_ids[2], (int)port_stats.opackets, 10);
 
-	rte_eth_stats_get(test_params->slave_port_ids[3], &port_stats);
+	rte_eth_stats_get(test_params->member_port_ids[3], &port_stats);
 	TEST_ASSERT_EQUAL(port_stats.opackets, (uint64_t)0,
 			"Port (%d) opackets stats (%d) not expected (%d) value",
-			test_params->slave_port_ids[3], (int)port_stats.opackets, 0);
+			test_params->member_port_ids[3], (int)port_stats.opackets, 0);
 
-	/* Verify that pkts are not sent on slaves with link status down:
+	/* Verify that pkts are not sent on members with link status down:
 	 *
 	 * 1. Generate test bursts of traffic
 	 * 2. Add bursts on to virtual eth_devs
-	 * 3. Rx burst on bonded eth_dev, expected (burst_ size *
-	 *    TEST_RR_LINK_STATUS_EXPECTED_ACTIVE_SLAVE_COUNT) received
-	 * 4. Verify stats for bonded eth_dev
-	 * 6. Verify stats for slave eth_devs (s0 = 10, s1 = 0, s2 = 10, s3 = 0)
+	 * 3. Rx burst on bonding eth_dev, expected (burst_ size *
+	 *    TEST_RR_LINK_STATUS_EXPECTED_ACTIVE_MEMBER_COUNT) received
+	 * 4. Verify stats for bonding eth_dev
+	 * 6. Verify stats for member eth_devs (s0 = 10, s1 = 0, s2 = 10, s3 = 0)
 	 */
-	for (i = 0; i < TEST_RR_LINK_STATUS_SLAVE_COUNT; i++) {
+	for (i = 0; i < TEST_RR_LINK_STATUS_MEMBER_COUNT; i++) {
 		TEST_ASSERT_EQUAL(generate_test_burst(
 				&gen_pkt_burst[i][0], burst_size, 0, 1, 0, 0, 0),
 				burst_size, "failed to generate packet burst");
 
-		virtual_ethdev_add_mbufs_to_rx_queue(test_params->slave_port_ids[i],
+		virtual_ethdev_add_mbufs_to_rx_queue(test_params->member_port_ids[i],
 				&gen_pkt_burst[i][0], burst_size);
 	}
 
 	TEST_ASSERT_EQUAL(rte_eth_rx_burst(
-			test_params->bonded_port_id, 0, rx_pkt_burst, MAX_PKT_BURST),
+			test_params->bonding_port_id, 0, rx_pkt_burst, MAX_PKT_BURST),
 			burst_size + burst_size,
 			"rte_eth_rx_burst failed");
 
-	/* Verify bonded device rx count */
-	rte_eth_stats_get(test_params->bonded_port_id, &port_stats);
+	/* Verify bonding device rx count */
+	rte_eth_stats_get(test_params->bonding_port_id, &port_stats);
 	TEST_ASSERT_EQUAL(port_stats.ipackets , (uint64_t)(burst_size + burst_size),
 			"(%d) port_stats.ipackets not as expected\n",
-			test_params->bonded_port_id);
+			test_params->bonding_port_id);
 
 	/* free mbufs */
 	for (i = 0; i < MAX_PKT_BURST; i++) {
 		rte_pktmbuf_free(rx_pkt_burst[i]);
 	}
 
-	/* Clean up and remove slaves from bonded device */
-	return remove_slaves_and_stop_bonded_device();
+	/* Clean up and remove members from bonding device */
+	return remove_members_and_stop_bonding_device();
 }
 
-#define TEST_RR_POLLING_LINK_STATUS_SLAVE_COUNT (2)
+#define TEST_RR_POLLING_LINK_STATUS_MEMBER_COUNT (2)
 
-uint8_t polling_slave_mac[] = {0xDE, 0xAD, 0xBE, 0xEF, 0x00, 0x00 };
+uint8_t polling_member_mac[] = {0xDE, 0xAD, 0xBE, 0xEF, 0x00, 0x00 };
 
 
-int polling_test_slaves[TEST_RR_POLLING_LINK_STATUS_SLAVE_COUNT] = { -1, -1 };
+int polling_test_members[TEST_RR_POLLING_LINK_STATUS_MEMBER_COUNT] = { -1, -1 };
 
 static int
-test_roundrobin_verfiy_polling_slave_link_status_change(void)
+test_roundrobin_verify_polling_member_link_status_change(void)
 {
 	struct rte_ether_addr *mac_addr =
-		(struct rte_ether_addr *)polling_slave_mac;
-	char slave_name[RTE_ETH_NAME_MAX_LEN];
+		(struct rte_ether_addr *)polling_member_mac;
+	char member_name[RTE_ETH_NAME_MAX_LEN];
 
 	int i;
 
-	for (i = 0; i < TEST_RR_POLLING_LINK_STATUS_SLAVE_COUNT; i++) {
-		/* Generate slave name / MAC address */
-		snprintf(slave_name, RTE_ETH_NAME_MAX_LEN, "eth_virt_poll_%d", i);
+	for (i = 0; i < TEST_RR_POLLING_LINK_STATUS_MEMBER_COUNT; i++) {
+		/* Generate member name / MAC address */
+		snprintf(member_name, RTE_ETH_NAME_MAX_LEN, "eth_virt_poll_%d", i);
 		mac_addr->addr_bytes[RTE_ETHER_ADDR_LEN-1] = i;
 
-		/* Create slave devices with no ISR Support */
-		if (polling_test_slaves[i] == -1) {
-			polling_test_slaves[i] = virtual_ethdev_create(slave_name, mac_addr,
+		/* Create member devices with no ISR Support */
+		if (polling_test_members[i] == -1) {
+			polling_test_members[i] = virtual_ethdev_create(member_name, mac_addr,
 					rte_socket_id(), 0);
-			TEST_ASSERT(polling_test_slaves[i] >= 0,
-					"Failed to create virtual virtual ethdev %s\n", slave_name);
+			TEST_ASSERT(polling_test_members[i] >= 0,
+					"Failed to create virtual ethdev %s\n", member_name);
 
-			/* Configure slave */
-			TEST_ASSERT_SUCCESS(configure_ethdev(polling_test_slaves[i], 0, 0),
-					"Failed to configure virtual ethdev %s(%d)", slave_name,
-					polling_test_slaves[i]);
+			/* Configure member */
+			TEST_ASSERT_SUCCESS(configure_ethdev(polling_test_members[i], 0, 0),
+					"Failed to configure virtual ethdev %s(%d)", member_name,
+					polling_test_members[i]);
 		}
 
-		/* Add slave to bonded device */
-		TEST_ASSERT_SUCCESS(rte_eth_bond_slave_add(test_params->bonded_port_id,
-				polling_test_slaves[i]),
-				"Failed to add slave %s(%d) to bonded device %d",
-				slave_name, polling_test_slaves[i],
-				test_params->bonded_port_id);
+		/* Add member to bonding device */
+		TEST_ASSERT_SUCCESS(rte_eth_bond_member_add(test_params->bonding_port_id,
+				polling_test_members[i]),
+				"Failed to add member %s(%d) to bonding device %d",
+				member_name, polling_test_members[i],
+				test_params->bonding_port_id);
 	}
 
-	/* Initialize bonded device */
-	TEST_ASSERT_SUCCESS(configure_ethdev(test_params->bonded_port_id, 1, 1),
-			"Failed to configure bonded device %d",
-			test_params->bonded_port_id);
+	/* Initialize bonding device */
+	TEST_ASSERT_SUCCESS(configure_ethdev(test_params->bonding_port_id, 1, 1),
+			"Failed to configure bonding device %d",
+			test_params->bonding_port_id);
 
 
 	/* Register link status change interrupt callback */
-	rte_eth_dev_callback_register(test_params->bonded_port_id,
+	rte_eth_dev_callback_register(test_params->bonding_port_id,
 			RTE_ETH_EVENT_INTR_LSC, test_bonding_lsc_event_callback,
-			&test_params->bonded_port_id);
+			&test_params->bonding_port_id);
 
-	/* link status change callback for first slave link up */
+	/* link status change callback for first member link up */
 	test_lsc_interrupt_count = 0;
 
-	virtual_ethdev_set_link_status(polling_test_slaves[0], 1);
+	virtual_ethdev_set_link_status(polling_test_members[0], 1);
 
 	TEST_ASSERT_SUCCESS(lsc_timeout(15000), "timed out waiting for interrupt");
 
 
-	/* no link status change callback for second slave link up */
+	/* no link status change callback for second member link up */
 	test_lsc_interrupt_count = 0;
 
-	virtual_ethdev_set_link_status(polling_test_slaves[1], 1);
+	virtual_ethdev_set_link_status(polling_test_members[1], 1);
 
 	TEST_ASSERT_FAIL(lsc_timeout(15000), "unexpectedly succeeded");
 
-	/* link status change callback for both slave links down */
+	/* link status change callback for both member links down */
 	test_lsc_interrupt_count = 0;
 
-	virtual_ethdev_set_link_status(polling_test_slaves[0], 0);
-	virtual_ethdev_set_link_status(polling_test_slaves[1], 0);
+	virtual_ethdev_set_link_status(polling_test_members[0], 0);
+	virtual_ethdev_set_link_status(polling_test_members[1], 0);
 
 	TEST_ASSERT_SUCCESS(lsc_timeout(20000), "timed out waiting for interrupt");
 
 	/* Un-Register link status change interrupt callback */
-	rte_eth_dev_callback_unregister(test_params->bonded_port_id,
+	rte_eth_dev_callback_unregister(test_params->bonding_port_id,
 			RTE_ETH_EVENT_INTR_LSC, test_bonding_lsc_event_callback,
-			&test_params->bonded_port_id);
+			&test_params->bonding_port_id);
 
 
-	/* Clean up and remove slaves from bonded device */
-	for (i = 0; i < TEST_RR_POLLING_LINK_STATUS_SLAVE_COUNT; i++) {
+	/* Clean up and remove members from bonding device */
+	for (i = 0; i < TEST_RR_POLLING_LINK_STATUS_MEMBER_COUNT; i++) {
 
 		TEST_ASSERT_SUCCESS(
-				rte_eth_bond_slave_remove(test_params->bonded_port_id,
-						polling_test_slaves[i]),
-				"Failed to remove slave %d from bonded port (%d)",
-				polling_test_slaves[i], test_params->bonded_port_id);
+				rte_eth_bond_member_remove(test_params->bonding_port_id,
+						polling_test_members[i]),
+				"Failed to remove member %d from bonding port (%d)",
+				polling_test_members[i], test_params->bonding_port_id);
 	}
 
-	return remove_slaves_and_stop_bonded_device();
+	return remove_members_and_stop_bonding_device();
 }
 
 
@@ -2123,9 +2143,9 @@ test_activebackup_tx_burst(void)
 	struct rte_mbuf *pkts_burst[MAX_PKT_BURST];
 	struct rte_eth_stats port_stats;
 
-	TEST_ASSERT_SUCCESS(initialize_bonded_device_with_slaves(
+	TEST_ASSERT_SUCCESS(initialize_bonding_device_with_members(
 			BONDING_MODE_ACTIVE_BACKUP, 0, 1, 1),
-			"Failed to initialize bonded device with slaves");
+			"Failed to initialize bonding device with members");
 
 	initialize_eth_header(test_params->pkt_eth_hdr,
 			(struct rte_ether_addr *)src_mac,
@@ -2136,7 +2156,7 @@ test_activebackup_tx_burst(void)
 	pktlen = initialize_ipv4_header(test_params->pkt_ipv4_hdr, src_addr,
 			dst_addr_0, pktlen);
 
-	burst_size = 20 * test_params->bonded_slave_count;
+	burst_size = 20 * test_params->bonding_member_count;
 
 	TEST_ASSERT(burst_size < MAX_PKT_BURST,
 			"Burst size specified is greater than supported.");
@@ -2147,51 +2167,51 @@ test_activebackup_tx_burst(void)
 			test_params->pkt_udp_hdr, burst_size, PACKET_BURST_GEN_PKT_LEN, 1),
 			burst_size,	"failed to generate burst correctly");
 
-	/* Send burst on bonded port */
-	TEST_ASSERT_EQUAL(rte_eth_tx_burst(test_params->bonded_port_id, 0, pkts_burst,
+	/* Send burst on bonding port */
+	TEST_ASSERT_EQUAL(rte_eth_tx_burst(test_params->bonding_port_id, 0, pkts_burst,
 			burst_size),  burst_size, "tx burst failed");
 
-	/* Verify bonded port tx stats */
-	rte_eth_stats_get(test_params->bonded_port_id, &port_stats);
+	/* Verify bonding port tx stats */
+	rte_eth_stats_get(test_params->bonding_port_id, &port_stats);
 	TEST_ASSERT_EQUAL(port_stats.opackets, (uint64_t)burst_size,
-			"Bonded Port (%d) opackets value (%u) not as expected (%d)",
-			test_params->bonded_port_id, (unsigned int)port_stats.opackets,
+			"Bonding Port (%d) opackets value (%u) not as expected (%d)",
+			test_params->bonding_port_id, (unsigned int)port_stats.opackets,
 			burst_size);
 
-	primary_port = rte_eth_bond_primary_get(test_params->bonded_port_id);
+	primary_port = rte_eth_bond_primary_get(test_params->bonding_port_id);
 
-	/* Verify slave ports tx stats */
-	for (i = 0; i < test_params->bonded_slave_count; i++) {
-		rte_eth_stats_get(test_params->slave_port_ids[i], &port_stats);
-		if (test_params->slave_port_ids[i] == primary_port) {
+	/* Verify member ports tx stats */
+	for (i = 0; i < test_params->bonding_member_count; i++) {
+		rte_eth_stats_get(test_params->member_port_ids[i], &port_stats);
+		if (test_params->member_port_ids[i] == primary_port) {
 			TEST_ASSERT_EQUAL(port_stats.opackets, (uint64_t)burst_size,
-					"Slave Port (%d) opackets value (%u) not as expected (%d)",
-					test_params->bonded_port_id,
+					"Member Port (%d) opackets value (%u) not as expected (%d)",
+					test_params->bonding_port_id,
 					(unsigned int)port_stats.opackets,
-					burst_size / test_params->bonded_slave_count);
+					burst_size / test_params->bonding_member_count);
 		} else {
 			TEST_ASSERT_EQUAL(port_stats.opackets, 0,
-					"Slave Port (%d) opackets value (%u) not as expected (%d)",
-					test_params->bonded_port_id,
+					"Member Port (%d) opackets value (%u) not as expected (%d)",
+					test_params->bonding_port_id,
 					(unsigned int)port_stats.opackets, 0);
 		}
 	}
 
-	/* Put all slaves down and try and transmit */
-	for (i = 0; i < test_params->bonded_slave_count; i++) {
+	/* Put all members down and try and transmit */
+	for (i = 0; i < test_params->bonding_member_count; i++) {
 		virtual_ethdev_simulate_link_status_interrupt(
-				test_params->slave_port_ids[i], 0);
+				test_params->member_port_ids[i], 0);
 	}
 
-	/* Send burst on bonded port */
-	TEST_ASSERT_EQUAL(rte_eth_tx_burst(test_params->bonded_port_id, 0,
+	/* Send burst on bonding port */
+	TEST_ASSERT_EQUAL(rte_eth_tx_burst(test_params->bonding_port_id, 0,
 			pkts_burst, burst_size), 0, "Sending empty burst failed");
 
-	/* Clean up and remove slaves from bonded device */
-	return remove_slaves_and_stop_bonded_device();
+	/* Clean up and remove members from bonding device */
+	return remove_members_and_stop_bonding_device();
 }
 
-#define TEST_ACTIVE_BACKUP_RX_BURST_SLAVE_COUNT (4)
+#define TEST_ACTIVE_BACKUP_RX_BURST_MEMBER_COUNT (4)
 
 static int
 test_activebackup_rx_burst(void)
@@ -2205,60 +2225,63 @@ test_activebackup_rx_burst(void)
 
 	int i, j, burst_size = 17;
 
-	TEST_ASSERT_SUCCESS(initialize_bonded_device_with_slaves(
+	TEST_ASSERT_SUCCESS(initialize_bonding_device_with_members(
 			BONDING_MODE_ACTIVE_BACKUP, 0,
-			TEST_ACTIVE_BACKUP_RX_BURST_SLAVE_COUNT, 1),
-			"Failed to initialize bonded device with slaves");
+			TEST_ACTIVE_BACKUP_RX_BURST_MEMBER_COUNT, 1),
+			"Failed to initialize bonding device with members");
 
-	primary_port = rte_eth_bond_primary_get(test_params->bonded_port_id);
+	primary_port = rte_eth_bond_primary_get(test_params->bonding_port_id);
 	TEST_ASSERT(primary_port >= 0,
-			"failed to get primary slave for bonded port (%d)",
-			test_params->bonded_port_id);
+			"failed to get primary member for bonding port (%d)",
+			test_params->bonding_port_id);
 
-	for (i = 0; i < test_params->bonded_slave_count; i++) {
+	for (i = 0; i < test_params->bonding_member_count; i++) {
 		/* Generate test bursts of packets to transmit */
 		TEST_ASSERT_EQUAL(generate_test_burst(
 				&gen_pkt_burst[0], burst_size, 0, 1, 0, 0, 0),
 				burst_size, "burst generation failed");
 
-		/* Add rx data to slave */
-		virtual_ethdev_add_mbufs_to_rx_queue(test_params->slave_port_ids[i],
+		/* Add rx data to member */
+		virtual_ethdev_add_mbufs_to_rx_queue(test_params->member_port_ids[i],
 				&gen_pkt_burst[0], burst_size);
 
-		/* Call rx burst on bonded device */
-		TEST_ASSERT_EQUAL(rte_eth_rx_burst(test_params->bonded_port_id, 0,
+		/* Call rx burst on bonding device */
+		TEST_ASSERT_EQUAL(rte_eth_rx_burst(test_params->bonding_port_id, 0,
 				&rx_pkt_burst[0], MAX_PKT_BURST), burst_size,
 				"rte_eth_rx_burst failed");
 
-		if (test_params->slave_port_ids[i] == primary_port) {
-			/* Verify bonded device rx count */
-			rte_eth_stats_get(test_params->bonded_port_id, &port_stats);
+		if (test_params->member_port_ids[i] == primary_port) {
+			/* Verify bonding device rx count */
+			rte_eth_stats_get(test_params->bonding_port_id, &port_stats);
 			TEST_ASSERT_EQUAL(port_stats.ipackets, (uint64_t)burst_size,
-					"Bonded Port (%d) ipackets value (%u) not as expected (%d)",
-					test_params->bonded_port_id,
+					"Bonding Port (%d) ipackets value (%u) not as expected (%d)",
+					test_params->bonding_port_id,
 					(unsigned int)port_stats.ipackets, burst_size);
 
-			/* Verify bonded slave devices rx count */
-			for (j = 0; j < test_params->bonded_slave_count; j++) {
-				rte_eth_stats_get(test_params->slave_port_ids[j], &port_stats);
+			/* Verify bonding member devices rx count */
+			for (j = 0; j < test_params->bonding_member_count; j++) {
+				rte_eth_stats_get(test_params->member_port_ids[j], &port_stats);
 				if (i == j) {
 					TEST_ASSERT_EQUAL(port_stats.ipackets, (uint64_t)burst_size,
-							"Slave Port (%d) ipackets value (%u) not as "
-							"expected (%d)", test_params->slave_port_ids[i],
-							(unsigned int)port_stats.ipackets, burst_size);
+							"Member Port (%d) ipackets value (%u) not as "
+							"expected (%d)",
+							test_params->member_port_ids[i],
+							(unsigned int)port_stats.ipackets,
+							burst_size);
 				} else {
 					TEST_ASSERT_EQUAL(port_stats.ipackets, 0,
-							"Slave Port (%d) ipackets value (%u) not as "
-							"expected (%d)\n", test_params->slave_port_ids[i],
+							"Member Port (%d) ipackets value (%u) not as "
+							"expected (%d)\n",
+							test_params->member_port_ids[i],
 							(unsigned int)port_stats.ipackets, 0);
 				}
 			}
 		} else {
-			for (j = 0; j < test_params->bonded_slave_count; j++) {
-				rte_eth_stats_get(test_params->slave_port_ids[j], &port_stats);
+			for (j = 0; j < test_params->bonding_member_count; j++) {
+				rte_eth_stats_get(test_params->member_port_ids[j], &port_stats);
 				TEST_ASSERT_EQUAL(port_stats.ipackets, 0,
-						"Slave Port (%d) ipackets value (%u) not as expected "
-						"(%d)", test_params->slave_port_ids[i],
+						"Member Port (%d) ipackets value (%u) not as expected "
+						"(%d)", test_params->member_port_ids[i],
 						(unsigned int)port_stats.ipackets, 0);
 			}
 		}
@@ -2271,12 +2294,12 @@ test_activebackup_rx_burst(void)
 			}
 		}
 
-		/* reset bonded device stats */
-		rte_eth_stats_reset(test_params->bonded_port_id);
+		/* reset bonding device stats */
+		rte_eth_stats_reset(test_params->bonding_port_id);
 	}
 
-	/* Clean up and remove slaves from bonded device */
-	return remove_slaves_and_stop_bonded_device();
+	/* Clean up and remove members from bonding device */
+	return remove_members_and_stop_bonding_device();
 }
 
 static int
@@ -2285,59 +2308,59 @@ test_activebackup_verify_promiscuous_enable_disable(void)
 	int i, primary_port, promiscuous_en;
 	int ret;
 
-	/* Initialize bonded device with 4 slaves in round robin mode */
-	TEST_ASSERT_SUCCESS(initialize_bonded_device_with_slaves(
+	/* Initialize bonding device with 4 members in round robin mode */
+	TEST_ASSERT_SUCCESS(initialize_bonding_device_with_members(
 			BONDING_MODE_ACTIVE_BACKUP, 0, 4, 1),
-			"Failed to initialize bonded device with slaves");
+			"Failed to initialize bonding device with members");
 
-	primary_port = rte_eth_bond_primary_get(test_params->bonded_port_id);
+	primary_port = rte_eth_bond_primary_get(test_params->bonding_port_id);
 	TEST_ASSERT(primary_port >= 0,
-			"failed to get primary slave for bonded port (%d)",
-			test_params->bonded_port_id);
+			"failed to get primary member for bonding port (%d)",
+			test_params->bonding_port_id);
 
-	ret = rte_eth_promiscuous_enable(test_params->bonded_port_id);
+	ret = rte_eth_promiscuous_enable(test_params->bonding_port_id);
 	TEST_ASSERT_SUCCESS(ret,
 		"Failed to enable promiscuous mode for port %d: %s",
-		test_params->bonded_port_id, rte_strerror(-ret));
+		test_params->bonding_port_id, rte_strerror(-ret));
 
-	TEST_ASSERT_EQUAL(rte_eth_promiscuous_get(test_params->bonded_port_id), 1,
+	TEST_ASSERT_EQUAL(rte_eth_promiscuous_get(test_params->bonding_port_id), 1,
 			"Port (%d) promiscuous mode not enabled",
-			test_params->bonded_port_id);
+			test_params->bonding_port_id);
 
-	for (i = 0; i < test_params->bonded_slave_count; i++) {
+	for (i = 0; i < test_params->bonding_member_count; i++) {
 		promiscuous_en = rte_eth_promiscuous_get(
-				test_params->slave_port_ids[i]);
-		if (primary_port == test_params->slave_port_ids[i]) {
+				test_params->member_port_ids[i]);
+		if (primary_port == test_params->member_port_ids[i]) {
 			TEST_ASSERT_EQUAL(promiscuous_en, 1,
-					"slave port (%d) promiscuous mode not enabled",
-					test_params->slave_port_ids[i]);
+					"member port (%d) promiscuous mode not enabled",
+					test_params->member_port_ids[i]);
 		} else {
 			TEST_ASSERT_EQUAL(promiscuous_en, 0,
-					"slave port (%d) promiscuous mode enabled",
-					test_params->slave_port_ids[i]);
+					"member port (%d) promiscuous mode enabled",
+					test_params->member_port_ids[i]);
 		}
 
 	}
 
-	ret = rte_eth_promiscuous_disable(test_params->bonded_port_id);
+	ret = rte_eth_promiscuous_disable(test_params->bonding_port_id);
 	TEST_ASSERT_SUCCESS(ret,
 		"Failed to disable promiscuous mode for port %d: %s",
-		test_params->bonded_port_id, rte_strerror(-ret));
+		test_params->bonding_port_id, rte_strerror(-ret));
 
-	TEST_ASSERT_EQUAL(rte_eth_promiscuous_get(test_params->bonded_port_id), 0,
+	TEST_ASSERT_EQUAL(rte_eth_promiscuous_get(test_params->bonding_port_id), 0,
 			"Port (%d) promiscuous mode not disabled\n",
-			test_params->bonded_port_id);
+			test_params->bonding_port_id);
 
-	for (i = 0; i < test_params->bonded_slave_count; i++) {
+	for (i = 0; i < test_params->bonding_member_count; i++) {
 		promiscuous_en = rte_eth_promiscuous_get(
-				test_params->slave_port_ids[i]);
+				test_params->member_port_ids[i]);
 		TEST_ASSERT_EQUAL(promiscuous_en, 0,
-				"slave port (%d) promiscuous mode not disabled\n",
-				test_params->slave_port_ids[i]);
+				"member port (%d) promiscuous mode not disabled\n",
+				test_params->member_port_ids[i]);
 	}
 
-	/* Clean up and remove slaves from bonded device */
-	return remove_slaves_and_stop_bonded_device();
+	/* Clean up and remove members from bonding device */
+	return remove_members_and_stop_bonding_device();
 }
 
 static int
@@ -2346,152 +2369,156 @@ test_activebackup_verify_mac_assignment(void)
 	struct rte_ether_addr read_mac_addr;
 	struct rte_ether_addr expected_mac_addr_0, expected_mac_addr_1;
 
-	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->slave_port_ids[0], &expected_mac_addr_0),
+	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->member_port_ids[0],
+			&expected_mac_addr_0),
 			"Failed to get mac address (port %d)",
-			test_params->slave_port_ids[0]);
-	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->slave_port_ids[1], &expected_mac_addr_1),
+			test_params->member_port_ids[0]);
+	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->member_port_ids[1],
+			&expected_mac_addr_1),
 			"Failed to get mac address (port %d)",
-			test_params->slave_port_ids[1]);
+			test_params->member_port_ids[1]);
 
-	/* Initialize bonded device with 2 slaves in active backup mode */
-	TEST_ASSERT_SUCCESS(initialize_bonded_device_with_slaves(
+	/* Initialize bonding device with 2 members in active backup mode */
+	TEST_ASSERT_SUCCESS(initialize_bonding_device_with_members(
 			BONDING_MODE_ACTIVE_BACKUP, 0, 2, 1),
-			"Failed to initialize bonded device with slaves");
+			"Failed to initialize bonding device with members");
 
-	/* Verify that bonded MACs is that of first slave and that the other slave
+	/* Verify that bonding MACs is that of first member and that the other member
 	 * MAC hasn't been changed */
-	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->bonded_port_id, &read_mac_addr),
+	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->bonding_port_id, &read_mac_addr),
 			"Failed to get mac address (port %d)",
-			test_params->bonded_port_id);
+			test_params->bonding_port_id);
 	TEST_ASSERT_SUCCESS(memcmp(&expected_mac_addr_0, &read_mac_addr,
 			sizeof(read_mac_addr)),
-			"bonded port (%d) mac address not set to that of primary port",
-			test_params->bonded_port_id);
+			"bonding port (%d) mac address not set to that of primary port",
+			test_params->bonding_port_id);
 
-	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->slave_port_ids[0], &read_mac_addr),
+	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->member_port_ids[0], &read_mac_addr),
 			"Failed to get mac address (port %d)",
-			test_params->slave_port_ids[0]);
+			test_params->member_port_ids[0]);
 	TEST_ASSERT_SUCCESS(memcmp(&expected_mac_addr_0, &read_mac_addr,
 			sizeof(read_mac_addr)),
-			"slave port (%d) mac address not set to that of primary port",
-			test_params->slave_port_ids[0]);
+			"member port (%d) mac address not set to that of primary port",
+			test_params->member_port_ids[0]);
 
-	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->slave_port_ids[1], &read_mac_addr),
+	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->member_port_ids[1], &read_mac_addr),
 			"Failed to get mac address (port %d)",
-			test_params->slave_port_ids[1]);
+			test_params->member_port_ids[1]);
 	TEST_ASSERT_SUCCESS(memcmp(&expected_mac_addr_1, &read_mac_addr,
 			sizeof(read_mac_addr)),
-			"slave port (%d) mac address not as expected",
-			test_params->slave_port_ids[1]);
+			"member port (%d) mac address not as expected",
+			test_params->member_port_ids[1]);
 
 	/* change primary and verify that MAC addresses haven't changed */
-	TEST_ASSERT_EQUAL(rte_eth_bond_primary_set(test_params->bonded_port_id,
-			test_params->slave_port_ids[1]), 0,
-			"Failed to set bonded port (%d) primary port to (%d)",
-			test_params->bonded_port_id, test_params->slave_port_ids[1]);
+	TEST_ASSERT_EQUAL(rte_eth_bond_primary_set(test_params->bonding_port_id,
+			test_params->member_port_ids[1]), 0,
+			"Failed to set bonding port (%d) primary port to (%d)",
+			test_params->bonding_port_id, test_params->member_port_ids[1]);
 
-	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->bonded_port_id, &read_mac_addr),
+	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->bonding_port_id, &read_mac_addr),
 			"Failed to get mac address (port %d)",
-			test_params->bonded_port_id);
+			test_params->bonding_port_id);
 	TEST_ASSERT_SUCCESS(memcmp(&expected_mac_addr_0, &read_mac_addr,
 			sizeof(read_mac_addr)),
-			"bonded port (%d) mac address not set to that of primary port",
-			test_params->bonded_port_id);
+			"bonding port (%d) mac address not set to that of primary port",
+			test_params->bonding_port_id);
 
-	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->slave_port_ids[0], &read_mac_addr),
+	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->member_port_ids[0], &read_mac_addr),
 			"Failed to get mac address (port %d)",
-			test_params->slave_port_ids[0]);
+			test_params->member_port_ids[0]);
 	TEST_ASSERT_SUCCESS(memcmp(&expected_mac_addr_0, &read_mac_addr,
 			sizeof(read_mac_addr)),
-			"slave port (%d) mac address not set to that of primary port",
-			test_params->slave_port_ids[0]);
+			"member port (%d) mac address not set to that of primary port",
+			test_params->member_port_ids[0]);
 
-	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->slave_port_ids[1], &read_mac_addr),
+	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->member_port_ids[1], &read_mac_addr),
 			"Failed to get mac address (port %d)",
-			test_params->slave_port_ids[1]);
+			test_params->member_port_ids[1]);
 	TEST_ASSERT_SUCCESS(memcmp(&expected_mac_addr_1, &read_mac_addr,
 			sizeof(read_mac_addr)),
-			"slave port (%d) mac address not as expected",
-			test_params->slave_port_ids[1]);
+			"member port (%d) mac address not as expected",
+			test_params->member_port_ids[1]);
 
-	/* stop / start bonded device and verify that primary MAC address is
-	 * propagated to bonded device and slaves */
+	/*
+	 * stop / start bonding device and verify that primary MAC address is
+	 * propagated to bonding device and members.
+	 */
 
-	TEST_ASSERT_SUCCESS(rte_eth_dev_stop(test_params->bonded_port_id),
-			"Failed to stop bonded port %u",
-			test_params->bonded_port_id);
+	TEST_ASSERT_SUCCESS(rte_eth_dev_stop(test_params->bonding_port_id),
+			"Failed to stop bonding port %u",
+			test_params->bonding_port_id);
 
-	TEST_ASSERT_SUCCESS(rte_eth_dev_start(test_params->bonded_port_id),
+	TEST_ASSERT_SUCCESS(rte_eth_dev_start(test_params->bonding_port_id),
 			"Failed to start device");
 
-	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->bonded_port_id, &read_mac_addr),
+	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->bonding_port_id, &read_mac_addr),
 			"Failed to get mac address (port %d)",
-			test_params->bonded_port_id);
+			test_params->bonding_port_id);
 	TEST_ASSERT_SUCCESS(memcmp(&expected_mac_addr_1, &read_mac_addr,
 			sizeof(read_mac_addr)),
-			"bonded port (%d) mac address not set to that of primary port",
-			test_params->bonded_port_id);
+			"bonding port (%d) mac address not set to that of primary port",
+			test_params->bonding_port_id);
 
-	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->slave_port_ids[0], &read_mac_addr),
+	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->member_port_ids[0], &read_mac_addr),
 			"Failed to get mac address (port %d)",
-			test_params->slave_port_ids[0]);
+			test_params->member_port_ids[0]);
 	TEST_ASSERT_SUCCESS(memcmp(&expected_mac_addr_0, &read_mac_addr,
 			sizeof(read_mac_addr)),
-			"slave port (%d) mac address not as expected",
-			test_params->slave_port_ids[0]);
+			"member port (%d) mac address not as expected",
+			test_params->member_port_ids[0]);
 
-	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->slave_port_ids[1], &read_mac_addr),
+	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->member_port_ids[1], &read_mac_addr),
 			"Failed to get mac address (port %d)",
-			test_params->slave_port_ids[1]);
+			test_params->member_port_ids[1]);
 	TEST_ASSERT_SUCCESS(memcmp(&expected_mac_addr_1, &read_mac_addr,
 			sizeof(read_mac_addr)),
-			"slave port (%d) mac address not set to that of primary port",
-			test_params->slave_port_ids[1]);
+			"member port (%d) mac address not set to that of primary port",
+			test_params->member_port_ids[1]);
 
 	/* Set explicit MAC address */
 	TEST_ASSERT_SUCCESS(rte_eth_bond_mac_address_set(
-			test_params->bonded_port_id,
-			(struct rte_ether_addr *)bonded_mac),
+			test_params->bonding_port_id,
+			(struct rte_ether_addr *)bonding_mac),
 			"failed to set MAC address");
 
-	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->bonded_port_id, &read_mac_addr),
+	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->bonding_port_id, &read_mac_addr),
 			"Failed to get mac address (port %d)",
-			test_params->bonded_port_id);
-	TEST_ASSERT_SUCCESS(memcmp(&bonded_mac, &read_mac_addr,
+			test_params->bonding_port_id);
+	TEST_ASSERT_SUCCESS(memcmp(&bonding_mac, &read_mac_addr,
 			sizeof(read_mac_addr)),
-			"bonded port (%d) mac address not set to that of bonded port",
-			test_params->bonded_port_id);
+			"bonding port (%d) mac address not set to that of bonding port",
+			test_params->bonding_port_id);
 
-	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->slave_port_ids[0], &read_mac_addr),
+	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->member_port_ids[0], &read_mac_addr),
 			"Failed to get mac address (port %d)",
-			test_params->slave_port_ids[0]);
+			test_params->member_port_ids[0]);
 	TEST_ASSERT_SUCCESS(memcmp(&expected_mac_addr_0, &read_mac_addr,
 			sizeof(read_mac_addr)),
-			"slave port (%d) mac address not as expected",
-			test_params->slave_port_ids[0]);
+			"member port (%d) mac address not as expected",
+			test_params->member_port_ids[0]);
 
-	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->slave_port_ids[1], &read_mac_addr),
+	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->member_port_ids[1], &read_mac_addr),
 			"Failed to get mac address (port %d)",
-			test_params->slave_port_ids[1]);
-	TEST_ASSERT_SUCCESS(memcmp(&bonded_mac, &read_mac_addr,
+			test_params->member_port_ids[1]);
+	TEST_ASSERT_SUCCESS(memcmp(&bonding_mac, &read_mac_addr,
 			sizeof(read_mac_addr)),
-			"slave port (%d) mac address not set to that of bonded port",
-			test_params->slave_port_ids[1]);
+			"member port (%d) mac address not set to that of bonding port",
+			test_params->member_port_ids[1]);
 
-	/* Clean up and remove slaves from bonded device */
-	return remove_slaves_and_stop_bonded_device();
+	/* Clean up and remove members from bonding device */
+	return remove_members_and_stop_bonding_device();
 }
 
 static int
-test_activebackup_verify_slave_link_status_change_failover(void)
+test_activebackup_verify_member_link_status_change_failover(void)
 {
-	struct rte_mbuf *pkt_burst[TEST_ACTIVE_BACKUP_RX_BURST_SLAVE_COUNT][MAX_PKT_BURST];
+	struct rte_mbuf *pkt_burst[TEST_ACTIVE_BACKUP_RX_BURST_MEMBER_COUNT][MAX_PKT_BURST];
 	struct rte_mbuf *rx_pkt_burst[MAX_PKT_BURST] = { NULL };
 	struct rte_eth_stats port_stats;
 
-	uint16_t slaves[RTE_MAX_ETHPORTS];
+	uint16_t members[RTE_MAX_ETHPORTS];
 
-	int i, burst_size, slave_count, primary_port;
+	int i, burst_size, member_count, primary_port;
 
 	burst_size = 21;
 
@@ -2502,130 +2529,130 @@ test_activebackup_verify_slave_link_status_change_failover(void)
 			&pkt_burst[0][0], burst_size, 0, 1, 0, 0, 0), burst_size,
 			"generate_test_burst failed");
 
-	/* Initialize bonded device with 4 slaves in round robin mode */
-	TEST_ASSERT_SUCCESS(initialize_bonded_device_with_slaves(
+	/* Initialize bonding device with 4 members in round robin mode */
+	TEST_ASSERT_SUCCESS(initialize_bonding_device_with_members(
 			BONDING_MODE_ACTIVE_BACKUP, 0,
-			TEST_ACTIVE_BACKUP_RX_BURST_SLAVE_COUNT, 1),
-			"Failed to initialize bonded device with slaves");
+			TEST_ACTIVE_BACKUP_RX_BURST_MEMBER_COUNT, 1),
+			"Failed to initialize bonding device with members");
 
-	/* Verify Current Slaves Count /Active Slave Count is */
-	slave_count = rte_eth_bond_slaves_get(test_params->bonded_port_id, slaves,
+	/* Verify Current Members Count /Active Member Count is */
+	member_count = rte_eth_bond_members_get(test_params->bonding_port_id, members,
 			RTE_MAX_ETHPORTS);
-	TEST_ASSERT_EQUAL(slave_count, 4,
-			"Number of slaves (%d) is not as expected (%d).",
-			slave_count, 4);
+	TEST_ASSERT_EQUAL(member_count, 4,
+			"Number of members (%d) is not as expected (%d).",
+			member_count, 4);
 
-	slave_count = rte_eth_bond_active_slaves_get(test_params->bonded_port_id,
-			slaves, RTE_MAX_ETHPORTS);
-	TEST_ASSERT_EQUAL(slave_count, 4,
-			"Number of active slaves (%d) is not as expected (%d).",
-			slave_count, 4);
+	member_count = rte_eth_bond_active_members_get(test_params->bonding_port_id,
+			members, RTE_MAX_ETHPORTS);
+	TEST_ASSERT_EQUAL(member_count, 4,
+			"Number of active members (%d) is not as expected (%d).",
+			member_count, 4);
 
-	primary_port = rte_eth_bond_primary_get(test_params->bonded_port_id);
-	TEST_ASSERT_EQUAL(primary_port, test_params->slave_port_ids[0],
+	primary_port = rte_eth_bond_primary_get(test_params->bonding_port_id);
+	TEST_ASSERT_EQUAL(primary_port, test_params->member_port_ids[0],
 			"Primary port not as expected");
 
-	/* Bring 2 slaves down and verify active slave count */
+	/* Bring 2 members down and verify active member count */
 	virtual_ethdev_simulate_link_status_interrupt(
-			test_params->slave_port_ids[1], 0);
+			test_params->member_port_ids[1], 0);
 	virtual_ethdev_simulate_link_status_interrupt(
-			test_params->slave_port_ids[3], 0);
+			test_params->member_port_ids[3], 0);
 
-	TEST_ASSERT_EQUAL(rte_eth_bond_active_slaves_get(
-			test_params->bonded_port_id, slaves, RTE_MAX_ETHPORTS), 2,
-			"Number of active slaves (%d) is not as expected (%d).",
-			slave_count, 2);
+	TEST_ASSERT_EQUAL(rte_eth_bond_active_members_get(
+			test_params->bonding_port_id, members, RTE_MAX_ETHPORTS), 2,
+			"Number of active members (%d) is not as expected (%d).",
+			member_count, 2);
 
 	virtual_ethdev_simulate_link_status_interrupt(
-			test_params->slave_port_ids[1], 1);
+			test_params->member_port_ids[1], 1);
 	virtual_ethdev_simulate_link_status_interrupt(
-			test_params->slave_port_ids[3], 1);
+			test_params->member_port_ids[3], 1);
 
 
-	/* Bring primary port down, verify that active slave count is 3 and primary
+	/* Bring primary port down, verify that active member count is 3 and primary
 	 *  has changed */
 	virtual_ethdev_simulate_link_status_interrupt(
-			test_params->slave_port_ids[0], 0);
+			test_params->member_port_ids[0], 0);
 
-	TEST_ASSERT_EQUAL(rte_eth_bond_active_slaves_get(
-			test_params->bonded_port_id, slaves, RTE_MAX_ETHPORTS),
+	TEST_ASSERT_EQUAL(rte_eth_bond_active_members_get(
+			test_params->bonding_port_id, members, RTE_MAX_ETHPORTS),
 			3,
-			"Number of active slaves (%d) is not as expected (%d).",
-			slave_count, 3);
+			"Number of active members (%d) is not as expected (%d).",
+			member_count, 3);
 
-	primary_port = rte_eth_bond_primary_get(test_params->bonded_port_id);
-	TEST_ASSERT_EQUAL(primary_port, test_params->slave_port_ids[2],
+	primary_port = rte_eth_bond_primary_get(test_params->bonding_port_id);
+	TEST_ASSERT_EQUAL(primary_port, test_params->member_port_ids[2],
 			"Primary port not as expected");
 
-	/* Verify that pkts are sent on new primary slave */
+	/* Verify that pkts are sent on new primary member */
 
 	TEST_ASSERT_EQUAL(rte_eth_tx_burst(
-			test_params->bonded_port_id, 0, &pkt_burst[0][0],
+			test_params->bonding_port_id, 0, &pkt_burst[0][0],
 			burst_size), burst_size, "rte_eth_tx_burst failed");
 
-	rte_eth_stats_get(test_params->slave_port_ids[2], &port_stats);
+	rte_eth_stats_get(test_params->member_port_ids[2], &port_stats);
 	TEST_ASSERT_EQUAL(port_stats.opackets, (uint64_t)burst_size,
 			"(%d) port_stats.opackets not as expected",
-			test_params->slave_port_ids[2]);
+			test_params->member_port_ids[2]);
 
-	rte_eth_stats_get(test_params->slave_port_ids[0], &port_stats);
+	rte_eth_stats_get(test_params->member_port_ids[0], &port_stats);
 	TEST_ASSERT_EQUAL(port_stats.opackets, 0,
 			"(%d) port_stats.opackets not as expected\n",
-			test_params->slave_port_ids[0]);
+			test_params->member_port_ids[0]);
 
-	rte_eth_stats_get(test_params->slave_port_ids[1], &port_stats);
+	rte_eth_stats_get(test_params->member_port_ids[1], &port_stats);
 	TEST_ASSERT_EQUAL(port_stats.opackets, 0,
 			"(%d) port_stats.opackets not as expected\n",
-			test_params->slave_port_ids[1]);
+			test_params->member_port_ids[1]);
 
-	rte_eth_stats_get(test_params->slave_port_ids[3], &port_stats);
+	rte_eth_stats_get(test_params->member_port_ids[3], &port_stats);
 	TEST_ASSERT_EQUAL(port_stats.opackets, 0,
 			"(%d) port_stats.opackets not as expected\n",
-			test_params->slave_port_ids[3]);
+			test_params->member_port_ids[3]);
 
 	/* Generate packet burst for testing */
 
-	for (i = 0; i < TEST_ACTIVE_BACKUP_RX_BURST_SLAVE_COUNT; i++) {
+	for (i = 0; i < TEST_ACTIVE_BACKUP_RX_BURST_MEMBER_COUNT; i++) {
 		TEST_ASSERT_EQUAL(generate_test_burst(
 				&pkt_burst[i][0], burst_size, 0, 1, 0, 0, 0), burst_size,
 				"generate_test_burst failed");
 
 		virtual_ethdev_add_mbufs_to_rx_queue(
-			test_params->slave_port_ids[i], &pkt_burst[i][0], burst_size);
+			test_params->member_port_ids[i], &pkt_burst[i][0], burst_size);
 	}
 
 	TEST_ASSERT_EQUAL(rte_eth_rx_burst(
-			test_params->bonded_port_id, 0, rx_pkt_burst, MAX_PKT_BURST),
+			test_params->bonding_port_id, 0, rx_pkt_burst, MAX_PKT_BURST),
 			burst_size, "rte_eth_rx_burst\n");
 
-	/* Verify bonded device rx count */
-	rte_eth_stats_get(test_params->bonded_port_id, &port_stats);
+	/* Verify bonding device rx count */
+	rte_eth_stats_get(test_params->bonding_port_id, &port_stats);
 	TEST_ASSERT_EQUAL(port_stats.ipackets, (uint64_t)burst_size,
 			"(%d) port_stats.ipackets not as expected",
-			test_params->bonded_port_id);
+			test_params->bonding_port_id);
 
-	rte_eth_stats_get(test_params->slave_port_ids[2], &port_stats);
+	rte_eth_stats_get(test_params->member_port_ids[2], &port_stats);
 	TEST_ASSERT_EQUAL(port_stats.opackets, (uint64_t)burst_size,
 			"(%d) port_stats.opackets not as expected",
-			test_params->slave_port_ids[2]);
+			test_params->member_port_ids[2]);
 
-	rte_eth_stats_get(test_params->slave_port_ids[0], &port_stats);
+	rte_eth_stats_get(test_params->member_port_ids[0], &port_stats);
 	TEST_ASSERT_EQUAL(port_stats.opackets, 0,
 			"(%d) port_stats.opackets not as expected",
-			test_params->slave_port_ids[0]);
+			test_params->member_port_ids[0]);
 
-	rte_eth_stats_get(test_params->slave_port_ids[1], &port_stats);
+	rte_eth_stats_get(test_params->member_port_ids[1], &port_stats);
 	TEST_ASSERT_EQUAL(port_stats.opackets, 0,
 			"(%d) port_stats.opackets not as expected",
-			test_params->slave_port_ids[1]);
+			test_params->member_port_ids[1]);
 
-	rte_eth_stats_get(test_params->slave_port_ids[3], &port_stats);
+	rte_eth_stats_get(test_params->member_port_ids[3], &port_stats);
 	TEST_ASSERT_EQUAL(port_stats.opackets, 0,
 			"(%d) port_stats.opackets not as expected",
-			test_params->slave_port_ids[3]);
+			test_params->member_port_ids[3]);
 
-	/* Clean up and remove slaves from bonded device */
-	return remove_slaves_and_stop_bonded_device();
+	/* Clean up and remove members from bonding device */
+	return remove_members_and_stop_bonding_device();
 }
 
 /** Balance Mode Tests */
@@ -2633,43 +2660,43 @@ test_activebackup_verify_slave_link_status_change_failover(void)
 static int
 test_balance_xmit_policy_configuration(void)
 {
-	TEST_ASSERT_SUCCESS(initialize_bonded_device_with_slaves(
+	TEST_ASSERT_SUCCESS(initialize_bonding_device_with_members(
 			BONDING_MODE_ACTIVE_BACKUP, 0, 2, 1),
-			"Failed to initialize_bonded_device_with_slaves.");
+			"Failed to initialize_bonding_device_with_members.");
 
 	/* Invalid port id */
 	TEST_ASSERT_FAIL(rte_eth_bond_xmit_policy_set(
 			INVALID_PORT_ID, BALANCE_XMIT_POLICY_LAYER2),
 			"Expected call to failed as invalid port specified.");
 
-	/* Set xmit policy on non bonded device */
+	/* Set xmit policy on non bonding device */
 	TEST_ASSERT_FAIL(rte_eth_bond_xmit_policy_set(
-			test_params->slave_port_ids[0],	BALANCE_XMIT_POLICY_LAYER2),
+			test_params->member_port_ids[0],	BALANCE_XMIT_POLICY_LAYER2),
 			"Expected call to failed as invalid port specified.");
 
 
 	TEST_ASSERT_SUCCESS(rte_eth_bond_xmit_policy_set(
-			test_params->bonded_port_id, BALANCE_XMIT_POLICY_LAYER2),
+			test_params->bonding_port_id, BALANCE_XMIT_POLICY_LAYER2),
 			"Failed to set balance xmit policy.");
 
-	TEST_ASSERT_EQUAL(rte_eth_bond_xmit_policy_get(test_params->bonded_port_id),
+	TEST_ASSERT_EQUAL(rte_eth_bond_xmit_policy_get(test_params->bonding_port_id),
 			BALANCE_XMIT_POLICY_LAYER2, "balance xmit policy not as expected.");
 
 
 	TEST_ASSERT_SUCCESS(rte_eth_bond_xmit_policy_set(
-			test_params->bonded_port_id, BALANCE_XMIT_POLICY_LAYER23),
+			test_params->bonding_port_id, BALANCE_XMIT_POLICY_LAYER23),
 			"Failed to set balance xmit policy.");
 
-	TEST_ASSERT_EQUAL(rte_eth_bond_xmit_policy_get(test_params->bonded_port_id),
+	TEST_ASSERT_EQUAL(rte_eth_bond_xmit_policy_get(test_params->bonding_port_id),
 			BALANCE_XMIT_POLICY_LAYER23,
 			"balance xmit policy not as expected.");
 
 
 	TEST_ASSERT_SUCCESS(rte_eth_bond_xmit_policy_set(
-			test_params->bonded_port_id, BALANCE_XMIT_POLICY_LAYER34),
+			test_params->bonding_port_id, BALANCE_XMIT_POLICY_LAYER34),
 			"Failed to set balance xmit policy.");
 
-	TEST_ASSERT_EQUAL(rte_eth_bond_xmit_policy_get(test_params->bonded_port_id),
+	TEST_ASSERT_EQUAL(rte_eth_bond_xmit_policy_get(test_params->bonding_port_id),
 			BALANCE_XMIT_POLICY_LAYER34,
 			"balance xmit policy not as expected.");
 
@@ -2677,28 +2704,28 @@ test_balance_xmit_policy_configuration(void)
 	TEST_ASSERT_FAIL(rte_eth_bond_xmit_policy_get(INVALID_PORT_ID),
 			"Expected call to failed as invalid port specified.");
 
-	/* Clean up and remove slaves from bonded device */
-	return remove_slaves_and_stop_bonded_device();
+	/* Clean up and remove members from bonding device */
+	return remove_members_and_stop_bonding_device();
 }
 
-#define TEST_BALANCE_L2_TX_BURST_SLAVE_COUNT (2)
+#define TEST_BALANCE_L2_TX_BURST_MEMBER_COUNT (2)
 
 static int
 test_balance_l2_tx_burst(void)
 {
-	struct rte_mbuf *pkts_burst[TEST_BALANCE_L2_TX_BURST_SLAVE_COUNT][MAX_PKT_BURST];
-	int burst_size[TEST_BALANCE_L2_TX_BURST_SLAVE_COUNT] = { 10, 15 };
+	struct rte_mbuf *pkts_burst[TEST_BALANCE_L2_TX_BURST_MEMBER_COUNT][MAX_PKT_BURST];
+	int burst_size[TEST_BALANCE_L2_TX_BURST_MEMBER_COUNT] = { 10, 15 };
 
 	uint16_t pktlen;
 	int i;
 	struct rte_eth_stats port_stats;
 
-	TEST_ASSERT_SUCCESS(initialize_bonded_device_with_slaves(
-			BONDING_MODE_BALANCE, 0, TEST_BALANCE_L2_TX_BURST_SLAVE_COUNT, 1),
-			"Failed to initialize_bonded_device_with_slaves.");
+	TEST_ASSERT_SUCCESS(initialize_bonding_device_with_members(
+			BONDING_MODE_BALANCE, 0, TEST_BALANCE_L2_TX_BURST_MEMBER_COUNT, 1),
+			"Failed to initialize_bonding_device_with_members.");
 
 	TEST_ASSERT_SUCCESS(rte_eth_bond_xmit_policy_set(
-			test_params->bonded_port_id, BALANCE_XMIT_POLICY_LAYER2),
+			test_params->bonding_port_id, BALANCE_XMIT_POLICY_LAYER2),
 			"Failed to set balance xmit policy.");
 
 	initialize_eth_header(test_params->pkt_eth_hdr,
@@ -2729,49 +2756,49 @@ test_balance_l2_tx_burst(void)
 			PACKET_BURST_GEN_PKT_LEN, 1), burst_size[1],
 			"failed to generate packet burst");
 
-	/* Send burst 1 on bonded port */
-	for (i = 0; i < TEST_BALANCE_L2_TX_BURST_SLAVE_COUNT; i++) {
-		TEST_ASSERT_EQUAL(rte_eth_tx_burst(test_params->bonded_port_id, 0,
+	/* Send burst 1 on bonding port */
+	for (i = 0; i < TEST_BALANCE_L2_TX_BURST_MEMBER_COUNT; i++) {
+		TEST_ASSERT_EQUAL(rte_eth_tx_burst(test_params->bonding_port_id, 0,
 				&pkts_burst[i][0], burst_size[i]),
 				burst_size[i], "Failed to transmit packet burst");
 	}
 
-	/* Verify bonded port tx stats */
-	rte_eth_stats_get(test_params->bonded_port_id, &port_stats);
+	/* Verify bonding port tx stats */
+	rte_eth_stats_get(test_params->bonding_port_id, &port_stats);
 	TEST_ASSERT_EQUAL(port_stats.opackets,
 			(uint64_t)(burst_size[0] + burst_size[1]),
-			"Bonded Port (%d) opackets value (%u) not as expected (%d)",
-			test_params->bonded_port_id, (unsigned int)port_stats.opackets,
+			"Bonding Port (%d) opackets value (%u) not as expected (%d)",
+			test_params->bonding_port_id, (unsigned int)port_stats.opackets,
 			burst_size[0] + burst_size[1]);
 
 
-	/* Verify slave ports tx stats */
-	rte_eth_stats_get(test_params->slave_port_ids[0], &port_stats);
+	/* Verify member ports tx stats */
+	rte_eth_stats_get(test_params->member_port_ids[0], &port_stats);
 	TEST_ASSERT_EQUAL(port_stats.opackets, (uint64_t)burst_size[0],
-			"Slave Port (%d) opackets value (%u) not as expected (%d)",
-			test_params->slave_port_ids[0], (unsigned int)port_stats.opackets,
+			"Member Port (%d) opackets value (%u) not as expected (%d)",
+			test_params->member_port_ids[0], (unsigned int)port_stats.opackets,
 			burst_size[0]);
 
-	rte_eth_stats_get(test_params->slave_port_ids[1], &port_stats);
+	rte_eth_stats_get(test_params->member_port_ids[1], &port_stats);
 	TEST_ASSERT_EQUAL(port_stats.opackets, (uint64_t)burst_size[1],
-			"Slave Port (%d) opackets value (%u) not as expected (%d)\n",
-			test_params->slave_port_ids[1], (unsigned int)port_stats.opackets,
+			"Member Port (%d) opackets value (%u) not as expected (%d)\n",
+			test_params->member_port_ids[1], (unsigned int)port_stats.opackets,
 			burst_size[1]);
 
-	/* Put all slaves down and try and transmit */
-	for (i = 0; i < test_params->bonded_slave_count; i++) {
+	/* Put all members down and try and transmit */
+	for (i = 0; i < test_params->bonding_member_count; i++) {
 
 		virtual_ethdev_simulate_link_status_interrupt(
-				test_params->slave_port_ids[i], 0);
+				test_params->member_port_ids[i], 0);
 	}
 
-	/* Send burst on bonded port */
+	/* Send burst on bonding port */
 	TEST_ASSERT_EQUAL(rte_eth_tx_burst(
-			test_params->bonded_port_id, 0, &pkts_burst[0][0], burst_size[0]),
+			test_params->bonding_port_id, 0, &pkts_burst[0][0], burst_size[0]),
 			0, "Expected zero packet");
 
-	/* Clean up and remove slaves from bonded device */
-	return remove_slaves_and_stop_bonded_device();
+	/* Clean up and remove members from bonding device */
+	return remove_members_and_stop_bonding_device();
 }
 
 static int
@@ -2785,12 +2812,12 @@ balance_l23_tx_burst(uint8_t vlan_enabled, uint8_t ipv4,
 
 	struct rte_eth_stats port_stats;
 
-	TEST_ASSERT_SUCCESS(initialize_bonded_device_with_slaves(
+	TEST_ASSERT_SUCCESS(initialize_bonding_device_with_members(
 			BONDING_MODE_BALANCE, 0, 2, 1),
-			"Failed to initialize_bonded_device_with_slaves.");
+			"Failed to initialize_bonding_device_with_members.");
 
 	TEST_ASSERT_SUCCESS(rte_eth_bond_xmit_policy_set(
-			test_params->bonded_port_id, BALANCE_XMIT_POLICY_LAYER23),
+			test_params->bonding_port_id, BALANCE_XMIT_POLICY_LAYER23),
 			"Failed to set balance xmit policy.");
 
 	burst_size_1 = 20;
@@ -2808,51 +2835,51 @@ balance_l23_tx_burst(uint8_t vlan_enabled, uint8_t ipv4,
 			toggle_mac_addr, toggle_ip_addr, 0), burst_size_2,
 			"failed to generate packet burst");
 
-	/* Send burst 1 on bonded port */
-	nb_tx_1 = rte_eth_tx_burst(test_params->bonded_port_id, 0, pkts_burst_1,
+	/* Send burst 1 on bonding port */
+	nb_tx_1 = rte_eth_tx_burst(test_params->bonding_port_id, 0, pkts_burst_1,
 			burst_size_1);
 	TEST_ASSERT_EQUAL(nb_tx_1, burst_size_1, "tx burst failed");
 
-	/* Send burst 2 on bonded port */
-	nb_tx_2 = rte_eth_tx_burst(test_params->bonded_port_id, 0, pkts_burst_2,
+	/* Send burst 2 on bonding port */
+	nb_tx_2 = rte_eth_tx_burst(test_params->bonding_port_id, 0, pkts_burst_2,
 			burst_size_2);
 	TEST_ASSERT_EQUAL(nb_tx_2, burst_size_2, "tx burst failed");
 
-	/* Verify bonded port tx stats */
-	rte_eth_stats_get(test_params->bonded_port_id, &port_stats);
+	/* Verify bonding port tx stats */
+	rte_eth_stats_get(test_params->bonding_port_id, &port_stats);
 	TEST_ASSERT_EQUAL(port_stats.opackets, (uint64_t)(nb_tx_1 + nb_tx_2),
-			"Bonded Port (%d) opackets value (%u) not as expected (%d)",
-			test_params->bonded_port_id, (unsigned int)port_stats.opackets,
+			"Bonding Port (%d) opackets value (%u) not as expected (%d)",
+			test_params->bonding_port_id, (unsigned int)port_stats.opackets,
 			nb_tx_1 + nb_tx_2);
 
-	/* Verify slave ports tx stats */
-	rte_eth_stats_get(test_params->slave_port_ids[0], &port_stats);
+	/* Verify member ports tx stats */
+	rte_eth_stats_get(test_params->member_port_ids[0], &port_stats);
 	TEST_ASSERT_EQUAL(port_stats.opackets, (uint64_t)nb_tx_1,
-			"Slave Port (%d) opackets value (%u) not as expected (%d)",
-			test_params->slave_port_ids[0], (unsigned int)port_stats.opackets,
+			"Member Port (%d) opackets value (%u) not as expected (%d)",
+			test_params->member_port_ids[0], (unsigned int)port_stats.opackets,
 			nb_tx_1);
 
-	rte_eth_stats_get(test_params->slave_port_ids[1], &port_stats);
+	rte_eth_stats_get(test_params->member_port_ids[1], &port_stats);
 	TEST_ASSERT_EQUAL(port_stats.opackets, (uint64_t)nb_tx_2,
-			"Slave Port (%d) opackets value (%u) not as expected (%d)",
-			test_params->slave_port_ids[1], (unsigned int)port_stats.opackets,
+			"Member Port (%d) opackets value (%u) not as expected (%d)",
+			test_params->member_port_ids[1], (unsigned int)port_stats.opackets,
 			nb_tx_2);
 
-	/* Put all slaves down and try and transmit */
-	for (i = 0; i < test_params->bonded_slave_count; i++) {
+	/* Put all members down and try and transmit */
+	for (i = 0; i < test_params->bonding_member_count; i++) {
 
 		virtual_ethdev_simulate_link_status_interrupt(
-				test_params->slave_port_ids[i], 0);
+				test_params->member_port_ids[i], 0);
 	}
 
-	/* Send burst on bonded port */
+	/* Send burst on bonding port */
 	TEST_ASSERT_EQUAL(rte_eth_tx_burst(
-			test_params->bonded_port_id, 0, pkts_burst_1,
+			test_params->bonding_port_id, 0, pkts_burst_1,
 			burst_size_1), 0, "Expected zero packet");
 
 
-	/* Clean up and remove slaves from bonded device */
-	return remove_slaves_and_stop_bonded_device();
+	/* Clean up and remove members from bonding device */
+	return remove_members_and_stop_bonding_device();
 }
 
 static int
@@ -2897,12 +2924,12 @@ balance_l34_tx_burst(uint8_t vlan_enabled, uint8_t ipv4,
 
 	struct rte_eth_stats port_stats;
 
-	TEST_ASSERT_SUCCESS(initialize_bonded_device_with_slaves(
+	TEST_ASSERT_SUCCESS(initialize_bonding_device_with_members(
 			BONDING_MODE_BALANCE, 0, 2, 1),
-			"Failed to initialize_bonded_device_with_slaves.");
+			"Failed to initialize_bonding_device_with_members.");
 
 	TEST_ASSERT_SUCCESS(rte_eth_bond_xmit_policy_set(
-			test_params->bonded_port_id, BALANCE_XMIT_POLICY_LAYER34),
+			test_params->bonding_port_id, BALANCE_XMIT_POLICY_LAYER34),
 			"Failed to set balance xmit policy.");
 
 	burst_size_1 = 20;
@@ -2920,51 +2947,51 @@ balance_l34_tx_burst(uint8_t vlan_enabled, uint8_t ipv4,
 			vlan_enabled, ipv4, toggle_mac_addr, toggle_ip_addr,
 			toggle_udp_port), burst_size_2, "failed to generate burst");
 
-	/* Send burst 1 on bonded port */
-	nb_tx_1 = rte_eth_tx_burst(test_params->bonded_port_id, 0, pkts_burst_1,
+	/* Send burst 1 on bonding port */
+	nb_tx_1 = rte_eth_tx_burst(test_params->bonding_port_id, 0, pkts_burst_1,
 			burst_size_1);
 	TEST_ASSERT_EQUAL(nb_tx_1, burst_size_1, "tx burst failed");
 
-	/* Send burst 2 on bonded port */
-	nb_tx_2 = rte_eth_tx_burst(test_params->bonded_port_id, 0, pkts_burst_2,
+	/* Send burst 2 on bonding port */
+	nb_tx_2 = rte_eth_tx_burst(test_params->bonding_port_id, 0, pkts_burst_2,
 			burst_size_2);
 	TEST_ASSERT_EQUAL(nb_tx_2, burst_size_2, "tx burst failed");
 
 
-	/* Verify bonded port tx stats */
-	rte_eth_stats_get(test_params->bonded_port_id, &port_stats);
+	/* Verify bonding port tx stats */
+	rte_eth_stats_get(test_params->bonding_port_id, &port_stats);
 	TEST_ASSERT_EQUAL(port_stats.opackets, (uint64_t)(nb_tx_1 + nb_tx_2),
-			"Bonded Port (%d) opackets value (%u) not as expected (%d)",
-			test_params->bonded_port_id, (unsigned int)port_stats.opackets,
+			"Bonding Port (%d) opackets value (%u) not as expected (%d)",
+			test_params->bonding_port_id, (unsigned int)port_stats.opackets,
 			nb_tx_1 + nb_tx_2);
 
-	/* Verify slave ports tx stats */
-	rte_eth_stats_get(test_params->slave_port_ids[0], &port_stats);
+	/* Verify member ports tx stats */
+	rte_eth_stats_get(test_params->member_port_ids[0], &port_stats);
 	TEST_ASSERT_EQUAL(port_stats.opackets, (uint64_t)nb_tx_1,
-			"Slave Port (%d) opackets value (%u) not as expected (%d)",
-			test_params->slave_port_ids[0], (unsigned int)port_stats.opackets,
+			"Member Port (%d) opackets value (%u) not as expected (%d)",
+			test_params->member_port_ids[0], (unsigned int)port_stats.opackets,
 			nb_tx_1);
 
-	rte_eth_stats_get(test_params->slave_port_ids[1], &port_stats);
+	rte_eth_stats_get(test_params->member_port_ids[1], &port_stats);
 	TEST_ASSERT_EQUAL(port_stats.opackets, (uint64_t)nb_tx_2,
-			"Slave Port (%d) opackets value (%u) not as expected (%d)",
-			test_params->slave_port_ids[1], (unsigned int)port_stats.opackets,
+			"Member Port (%d) opackets value (%u) not as expected (%d)",
+			test_params->member_port_ids[1], (unsigned int)port_stats.opackets,
 			nb_tx_2);
 
-	/* Put all slaves down and try and transmit */
-	for (i = 0; i < test_params->bonded_slave_count; i++) {
+	/* Put all members down and try and transmit */
+	for (i = 0; i < test_params->bonding_member_count; i++) {
 
 		virtual_ethdev_simulate_link_status_interrupt(
-				test_params->slave_port_ids[i], 0);
+				test_params->member_port_ids[i], 0);
 	}
 
-	/* Send burst on bonded port */
+	/* Send burst on bonding port */
 	TEST_ASSERT_EQUAL(rte_eth_tx_burst(
-			test_params->bonded_port_id, 0, pkts_burst_1,
+			test_params->bonding_port_id, 0, pkts_burst_1,
 			burst_size_1), 0, "Expected zero packet");
 
-	/* Clean up and remove slaves from bonded device */
-	return remove_slaves_and_stop_bonded_device();
+	/* Clean up and remove members from bonding device */
+	return remove_members_and_stop_bonding_device();
 }
 
 static int
@@ -3003,217 +3030,219 @@ test_balance_l34_tx_burst_ipv6_toggle_udp_port(void)
 	return balance_l34_tx_burst(0, 0, 0, 0, 1);
 }
 
-#define TEST_BAL_SLAVE_TX_FAIL_SLAVE_COUNT			(2)
-#define TEST_BAL_SLAVE_TX_FAIL_BURST_SIZE_1			(40)
-#define TEST_BAL_SLAVE_TX_FAIL_BURST_SIZE_2			(20)
-#define TEST_BAL_SLAVE_TX_FAIL_PACKETS_COUNT		(25)
-#define TEST_BAL_SLAVE_TX_FAIL_FAILING_SLAVE_IDX	(0)
+#define TEST_BAL_MEMBER_TX_FAIL_MEMBER_COUNT			(2)
+#define TEST_BAL_MEMBER_TX_FAIL_BURST_SIZE_1			(40)
+#define TEST_BAL_MEMBER_TX_FAIL_BURST_SIZE_2			(20)
+#define TEST_BAL_MEMBER_TX_FAIL_PACKETS_COUNT		(25)
+#define TEST_BAL_MEMBER_TX_FAIL_FAILING_MEMBER_IDX	(0)
 
 static int
-test_balance_tx_burst_slave_tx_fail(void)
+test_balance_tx_burst_member_tx_fail(void)
 {
-	struct rte_mbuf *pkts_burst_1[TEST_BAL_SLAVE_TX_FAIL_BURST_SIZE_1];
-	struct rte_mbuf *pkts_burst_2[TEST_BAL_SLAVE_TX_FAIL_BURST_SIZE_2];
+	struct rte_mbuf *pkts_burst_1[TEST_BAL_MEMBER_TX_FAIL_BURST_SIZE_1];
+	struct rte_mbuf *pkts_burst_2[TEST_BAL_MEMBER_TX_FAIL_BURST_SIZE_2];
 
-	struct rte_mbuf *expected_fail_pkts[TEST_BAL_SLAVE_TX_FAIL_PACKETS_COUNT];
+	struct rte_mbuf *expected_fail_pkts[TEST_BAL_MEMBER_TX_FAIL_PACKETS_COUNT];
 
 	struct rte_eth_stats port_stats;
 
 	int i, first_tx_fail_idx, tx_count_1, tx_count_2;
 
-	TEST_ASSERT_SUCCESS(initialize_bonded_device_with_slaves(
+	TEST_ASSERT_SUCCESS(initialize_bonding_device_with_members(
 			BONDING_MODE_BALANCE, 0,
-			TEST_BAL_SLAVE_TX_FAIL_SLAVE_COUNT, 1),
-			"Failed to initialise bonded device");
+			TEST_BAL_MEMBER_TX_FAIL_MEMBER_COUNT, 1),
+			"Failed to initialise bonding device");
 
 	TEST_ASSERT_SUCCESS(rte_eth_bond_xmit_policy_set(
-			test_params->bonded_port_id, BALANCE_XMIT_POLICY_LAYER2),
+			test_params->bonding_port_id, BALANCE_XMIT_POLICY_LAYER2),
 			"Failed to set balance xmit policy.");
 
 
 	/* Generate test bursts for transmission */
 	TEST_ASSERT_EQUAL(generate_test_burst(pkts_burst_1,
-			TEST_BAL_SLAVE_TX_FAIL_BURST_SIZE_1, 0, 0, 0, 0, 0),
-			TEST_BAL_SLAVE_TX_FAIL_BURST_SIZE_1,
+			TEST_BAL_MEMBER_TX_FAIL_BURST_SIZE_1, 0, 0, 0, 0, 0),
+			TEST_BAL_MEMBER_TX_FAIL_BURST_SIZE_1,
 			"Failed to generate test packet burst 1");
 
-	first_tx_fail_idx = TEST_BAL_SLAVE_TX_FAIL_BURST_SIZE_1 -
-			TEST_BAL_SLAVE_TX_FAIL_PACKETS_COUNT;
+	first_tx_fail_idx = TEST_BAL_MEMBER_TX_FAIL_BURST_SIZE_1 -
+			TEST_BAL_MEMBER_TX_FAIL_PACKETS_COUNT;
 
 	/* copy mbuf references for expected transmission failures */
-	for (i = 0; i < TEST_BAL_SLAVE_TX_FAIL_PACKETS_COUNT; i++)
+	for (i = 0; i < TEST_BAL_MEMBER_TX_FAIL_PACKETS_COUNT; i++)
 		expected_fail_pkts[i] = pkts_burst_1[i + first_tx_fail_idx];
 
 	TEST_ASSERT_EQUAL(generate_test_burst(pkts_burst_2,
-			TEST_BAL_SLAVE_TX_FAIL_BURST_SIZE_2, 0, 0, 1, 0, 0),
-			TEST_BAL_SLAVE_TX_FAIL_BURST_SIZE_2,
+			TEST_BAL_MEMBER_TX_FAIL_BURST_SIZE_2, 0, 0, 1, 0, 0),
+			TEST_BAL_MEMBER_TX_FAIL_BURST_SIZE_2,
 			"Failed to generate test packet burst 2");
 
 
-	/* Set virtual slave TEST_BAL_SLAVE_TX_FAIL_FAILING_SLAVE_IDX to only fail
-	 * transmission of TEST_BAL_SLAVE_TX_FAIL_PACKETS_COUNT packets of burst */
+	/*
+	 * Set virtual member TEST_BAL_MEMBER_TX_FAIL_FAILING_MEMBER_IDX to only fail
+	 * transmission of TEST_BAL_MEMBER_TX_FAIL_PACKETS_COUNT packets of burst.
+	 */
 	virtual_ethdev_tx_burst_fn_set_success(
-			test_params->slave_port_ids[TEST_BAL_SLAVE_TX_FAIL_FAILING_SLAVE_IDX],
+			test_params->member_port_ids[TEST_BAL_MEMBER_TX_FAIL_FAILING_MEMBER_IDX],
 			0);
 
 	virtual_ethdev_tx_burst_fn_set_tx_pkt_fail_count(
-			test_params->slave_port_ids[TEST_BAL_SLAVE_TX_FAIL_FAILING_SLAVE_IDX],
-			TEST_BAL_SLAVE_TX_FAIL_PACKETS_COUNT);
+			test_params->member_port_ids[TEST_BAL_MEMBER_TX_FAIL_FAILING_MEMBER_IDX],
+			TEST_BAL_MEMBER_TX_FAIL_PACKETS_COUNT);
 
 
 	/* Transmit burst 1 */
-	tx_count_1 = rte_eth_tx_burst(test_params->bonded_port_id, 0, pkts_burst_1,
-			TEST_BAL_SLAVE_TX_FAIL_BURST_SIZE_1);
+	tx_count_1 = rte_eth_tx_burst(test_params->bonding_port_id, 0, pkts_burst_1,
+			TEST_BAL_MEMBER_TX_FAIL_BURST_SIZE_1);
 
-	TEST_ASSERT_EQUAL(tx_count_1, TEST_BAL_SLAVE_TX_FAIL_BURST_SIZE_1 -
-			TEST_BAL_SLAVE_TX_FAIL_PACKETS_COUNT,
+	TEST_ASSERT_EQUAL(tx_count_1, TEST_BAL_MEMBER_TX_FAIL_BURST_SIZE_1 -
+			TEST_BAL_MEMBER_TX_FAIL_PACKETS_COUNT,
 			"Transmitted (%d) packets, expected to transmit (%d) packets",
-			tx_count_1, TEST_BAL_SLAVE_TX_FAIL_BURST_SIZE_1 -
-			TEST_BAL_SLAVE_TX_FAIL_PACKETS_COUNT);
+			tx_count_1, TEST_BAL_MEMBER_TX_FAIL_BURST_SIZE_1 -
+			TEST_BAL_MEMBER_TX_FAIL_PACKETS_COUNT);
 
 	/* Verify that failed packet are expected failed packets */
-	for (i = 0; i < TEST_RR_SLAVE_TX_FAIL_PACKETS_COUNT; i++) {
+	for (i = 0; i < TEST_RR_MEMBER_TX_FAIL_PACKETS_COUNT; i++) {
 		TEST_ASSERT_EQUAL(expected_fail_pkts[i], pkts_burst_1[i + tx_count_1],
 				"expected mbuf (%d) pointer %p not expected pointer %p",
 				i, expected_fail_pkts[i], pkts_burst_1[i + tx_count_1]);
 	}
 
 	/* Transmit burst 2 */
-	tx_count_2 = rte_eth_tx_burst(test_params->bonded_port_id, 0, pkts_burst_2,
-			TEST_BAL_SLAVE_TX_FAIL_BURST_SIZE_2);
+	tx_count_2 = rte_eth_tx_burst(test_params->bonding_port_id, 0, pkts_burst_2,
+			TEST_BAL_MEMBER_TX_FAIL_BURST_SIZE_2);
 
-	TEST_ASSERT_EQUAL(tx_count_2, TEST_BAL_SLAVE_TX_FAIL_BURST_SIZE_2,
+	TEST_ASSERT_EQUAL(tx_count_2, TEST_BAL_MEMBER_TX_FAIL_BURST_SIZE_2,
 			"Transmitted (%d) packets, expected to transmit (%d) packets",
-			tx_count_2, TEST_BAL_SLAVE_TX_FAIL_BURST_SIZE_2);
+			tx_count_2, TEST_BAL_MEMBER_TX_FAIL_BURST_SIZE_2);
 
 
-	/* Verify bonded port tx stats */
-	rte_eth_stats_get(test_params->bonded_port_id, &port_stats);
+	/* Verify bonding port tx stats */
+	rte_eth_stats_get(test_params->bonding_port_id, &port_stats);
 
 	TEST_ASSERT_EQUAL(port_stats.opackets,
-			(uint64_t)((TEST_BAL_SLAVE_TX_FAIL_BURST_SIZE_1 -
-			TEST_BAL_SLAVE_TX_FAIL_PACKETS_COUNT) +
-			TEST_BAL_SLAVE_TX_FAIL_BURST_SIZE_2),
-			"Bonded Port (%d) opackets value (%u) not as expected (%d)",
-			test_params->bonded_port_id, (unsigned int)port_stats.opackets,
-			(TEST_BAL_SLAVE_TX_FAIL_BURST_SIZE_1 -
-			TEST_BAL_SLAVE_TX_FAIL_PACKETS_COUNT) +
-			TEST_BAL_SLAVE_TX_FAIL_BURST_SIZE_2);
+			(uint64_t)((TEST_BAL_MEMBER_TX_FAIL_BURST_SIZE_1 -
+			TEST_BAL_MEMBER_TX_FAIL_PACKETS_COUNT) +
+			TEST_BAL_MEMBER_TX_FAIL_BURST_SIZE_2),
+			"Bonding Port (%d) opackets value (%u) not as expected (%d)",
+			test_params->bonding_port_id, (unsigned int)port_stats.opackets,
+			(TEST_BAL_MEMBER_TX_FAIL_BURST_SIZE_1 -
+			TEST_BAL_MEMBER_TX_FAIL_PACKETS_COUNT) +
+			TEST_BAL_MEMBER_TX_FAIL_BURST_SIZE_2);
 
-	/* Verify slave ports tx stats */
+	/* Verify member ports tx stats */
 
-	rte_eth_stats_get(test_params->slave_port_ids[0], &port_stats);
+	rte_eth_stats_get(test_params->member_port_ids[0], &port_stats);
 
 	TEST_ASSERT_EQUAL(port_stats.opackets, (uint64_t)
-				TEST_BAL_SLAVE_TX_FAIL_BURST_SIZE_1 -
-				TEST_BAL_SLAVE_TX_FAIL_PACKETS_COUNT,
-				"Slave Port (%d) opackets value (%u) not as expected (%d)",
-				test_params->slave_port_ids[0],
+				TEST_BAL_MEMBER_TX_FAIL_BURST_SIZE_1 -
+				TEST_BAL_MEMBER_TX_FAIL_PACKETS_COUNT,
+				"Member Port (%d) opackets value (%u) not as expected (%d)",
+				test_params->member_port_ids[0],
 				(unsigned int)port_stats.opackets,
-				TEST_BAL_SLAVE_TX_FAIL_BURST_SIZE_1 -
-				TEST_BAL_SLAVE_TX_FAIL_PACKETS_COUNT);
+				TEST_BAL_MEMBER_TX_FAIL_BURST_SIZE_1 -
+				TEST_BAL_MEMBER_TX_FAIL_PACKETS_COUNT);
 
 
 
 
-	rte_eth_stats_get(test_params->slave_port_ids[1], &port_stats);
+	rte_eth_stats_get(test_params->member_port_ids[1], &port_stats);
 
 	TEST_ASSERT_EQUAL(port_stats.opackets,
-				(uint64_t)TEST_BAL_SLAVE_TX_FAIL_BURST_SIZE_2,
-				"Slave Port (%d) opackets value (%u) not as expected (%d)",
-				test_params->slave_port_ids[1],
+				(uint64_t)TEST_BAL_MEMBER_TX_FAIL_BURST_SIZE_2,
+				"Member Port (%d) opackets value (%u) not as expected (%d)",
+				test_params->member_port_ids[1],
 				(unsigned int)port_stats.opackets,
-				TEST_BAL_SLAVE_TX_FAIL_BURST_SIZE_2);
+				TEST_BAL_MEMBER_TX_FAIL_BURST_SIZE_2);
 
 	/* Verify that all mbufs have a ref value of zero */
 	TEST_ASSERT_SUCCESS(verify_mbufs_ref_count(&pkts_burst_1[tx_count_1],
-			TEST_BAL_SLAVE_TX_FAIL_PACKETS_COUNT, 1),
+			TEST_BAL_MEMBER_TX_FAIL_PACKETS_COUNT, 1),
 			"mbufs refcnts not as expected");
 
 	free_mbufs(&pkts_burst_1[tx_count_1],
-			TEST_BAL_SLAVE_TX_FAIL_PACKETS_COUNT);
+			TEST_BAL_MEMBER_TX_FAIL_PACKETS_COUNT);
 
-	/* Clean up and remove slaves from bonded device */
-	return remove_slaves_and_stop_bonded_device();
+	/* Clean up and remove members from bonding device */
+	return remove_members_and_stop_bonding_device();
 }
 
-#define TEST_BALANCE_RX_BURST_SLAVE_COUNT (3)
+#define TEST_BALANCE_RX_BURST_MEMBER_COUNT (3)
 
 static int
 test_balance_rx_burst(void)
 {
-	struct rte_mbuf *gen_pkt_burst[TEST_BALANCE_RX_BURST_SLAVE_COUNT][MAX_PKT_BURST];
+	struct rte_mbuf *gen_pkt_burst[TEST_BALANCE_RX_BURST_MEMBER_COUNT][MAX_PKT_BURST];
 
 	struct rte_mbuf *rx_pkt_burst[MAX_PKT_BURST] = { NULL };
 	struct rte_eth_stats port_stats;
 
-	int burst_size[TEST_BALANCE_RX_BURST_SLAVE_COUNT] = { 10, 5, 30 };
+	int burst_size[TEST_BALANCE_RX_BURST_MEMBER_COUNT] = { 10, 5, 30 };
 	int i, j;
 
 	memset(gen_pkt_burst, 0, sizeof(gen_pkt_burst));
 
-	/* Initialize bonded device with 4 slaves in round robin mode */
-	TEST_ASSERT_SUCCESS(initialize_bonded_device_with_slaves(
+	/* Initialize bonding device with 4 members in round robin mode */
+	TEST_ASSERT_SUCCESS(initialize_bonding_device_with_members(
 			BONDING_MODE_BALANCE, 0, 3, 1),
-			"Failed to initialise bonded device");
+			"Failed to initialise bonding device");
 
 	/* Generate test bursts of packets to transmit */
-	for (i = 0; i < TEST_BALANCE_RX_BURST_SLAVE_COUNT; i++) {
+	for (i = 0; i < TEST_BALANCE_RX_BURST_MEMBER_COUNT; i++) {
 		TEST_ASSERT_EQUAL(generate_test_burst(
 				&gen_pkt_burst[i][0], burst_size[i], 0, 0, 1,
 				0, 0), burst_size[i],
 				"failed to generate packet burst");
 	}
 
-	/* Add rx data to slaves */
-	for (i = 0; i < TEST_BALANCE_RX_BURST_SLAVE_COUNT; i++) {
-		virtual_ethdev_add_mbufs_to_rx_queue(test_params->slave_port_ids[i],
+	/* Add rx data to members */
+	for (i = 0; i < TEST_BALANCE_RX_BURST_MEMBER_COUNT; i++) {
+		virtual_ethdev_add_mbufs_to_rx_queue(test_params->member_port_ids[i],
 				&gen_pkt_burst[i][0], burst_size[i]);
 	}
 
-	/* Call rx burst on bonded device */
-	/* Send burst on bonded port */
-	TEST_ASSERT_EQUAL(rte_eth_rx_burst(test_params->bonded_port_id, 0,
+	/* Call rx burst on bonding device */
+	/* Send burst on bonding port */
+	TEST_ASSERT_EQUAL(rte_eth_rx_burst(test_params->bonding_port_id, 0,
 			rx_pkt_burst, MAX_PKT_BURST),
 			burst_size[0] + burst_size[1] + burst_size[2],
 			"balance rx burst failed\n");
 
-	/* Verify bonded device rx count */
-	rte_eth_stats_get(test_params->bonded_port_id, &port_stats);
+	/* Verify bonding device rx count */
+	rte_eth_stats_get(test_params->bonding_port_id, &port_stats);
 	TEST_ASSERT_EQUAL(port_stats.ipackets,
 			(uint64_t)(burst_size[0] + burst_size[1] + burst_size[2]),
-			"Bonded Port (%d) ipackets value (%u) not as expected (%d)",
-			test_params->bonded_port_id, (unsigned int)port_stats.ipackets,
+			"Bonding Port (%d) ipackets value (%u) not as expected (%d)",
+			test_params->bonding_port_id, (unsigned int)port_stats.ipackets,
 			burst_size[0] + burst_size[1] + burst_size[2]);
 
 
-	/* Verify bonded slave devices rx counts */
-	rte_eth_stats_get(test_params->slave_port_ids[0], &port_stats);
+	/* Verify bonding member devices rx counts */
+	rte_eth_stats_get(test_params->member_port_ids[0], &port_stats);
 	TEST_ASSERT_EQUAL(port_stats.ipackets, (uint64_t)burst_size[0],
-			"Slave Port (%d) ipackets value (%u) not as expected (%d)",
-				test_params->slave_port_ids[0],
+			"Member Port (%d) ipackets value (%u) not as expected (%d)",
+				test_params->member_port_ids[0],
 				(unsigned int)port_stats.ipackets, burst_size[0]);
 
-	rte_eth_stats_get(test_params->slave_port_ids[1], &port_stats);
+	rte_eth_stats_get(test_params->member_port_ids[1], &port_stats);
 	TEST_ASSERT_EQUAL(port_stats.ipackets, (uint64_t)burst_size[1],
-			"Slave Port (%d) ipackets value (%u) not as expected (%d)",
-			test_params->slave_port_ids[1], (unsigned int)port_stats.ipackets,
+			"Member Port (%d) ipackets value (%u) not as expected (%d)",
+			test_params->member_port_ids[1], (unsigned int)port_stats.ipackets,
 			burst_size[1]);
 
-	rte_eth_stats_get(test_params->slave_port_ids[2], &port_stats);
+	rte_eth_stats_get(test_params->member_port_ids[2], &port_stats);
 	TEST_ASSERT_EQUAL(port_stats.ipackets, (uint64_t)burst_size[2],
-			"Slave Port (%d) ipackets value (%u) not as expected (%d)",
-			test_params->slave_port_ids[2], (unsigned int)port_stats.ipackets,
+			"Member Port (%d) ipackets value (%u) not as expected (%d)",
+			test_params->member_port_ids[2], (unsigned int)port_stats.ipackets,
 			burst_size[2]);
 
-	rte_eth_stats_get(test_params->slave_port_ids[3], &port_stats);
+	rte_eth_stats_get(test_params->member_port_ids[3], &port_stats);
 	TEST_ASSERT_EQUAL(port_stats.ipackets, 0,
-			"Slave Port (%d) ipackets value (%u) not as expected (%d)",
-			test_params->slave_port_ids[3],	(unsigned int)port_stats.ipackets,
+			"Member Port (%d) ipackets value (%u) not as expected (%d)",
+			test_params->member_port_ids[3],	(unsigned int)port_stats.ipackets,
 			0);
 
 	/* free mbufs */
-	for (i = 0; i < TEST_BALANCE_RX_BURST_SLAVE_COUNT; i++) {
+	for (i = 0; i < TEST_BALANCE_RX_BURST_MEMBER_COUNT; i++) {
 		for (j = 0; j < MAX_PKT_BURST; j++) {
 			if (gen_pkt_burst[i][j] != NULL) {
 				rte_pktmbuf_free(gen_pkt_burst[i][j]);
@@ -3222,8 +3251,8 @@ test_balance_rx_burst(void)
 		}
 	}
 
-	/* Clean up and remove slaves from bonded device */
-	return remove_slaves_and_stop_bonded_device();
+	/* Clean up and remove members from bonding device */
+	return remove_members_and_stop_bonding_device();
 }
 
 static int
@@ -3232,45 +3261,45 @@ test_balance_verify_promiscuous_enable_disable(void)
 	int i;
 	int ret;
 
-	/* Initialize bonded device with 4 slaves in round robin mode */
-	TEST_ASSERT_SUCCESS(initialize_bonded_device_with_slaves(
+	/* Initialize bonding device with 4 members in round robin mode */
+	TEST_ASSERT_SUCCESS(initialize_bonding_device_with_members(
 			BONDING_MODE_BALANCE, 0, 4, 1),
-			"Failed to initialise bonded device");
+			"Failed to initialise bonding device");
 
-	ret = rte_eth_promiscuous_enable(test_params->bonded_port_id);
+	ret = rte_eth_promiscuous_enable(test_params->bonding_port_id);
 	TEST_ASSERT_SUCCESS(ret,
 		"Failed to enable promiscuous mode for port %d: %s",
-		test_params->bonded_port_id, rte_strerror(-ret));
+		test_params->bonding_port_id, rte_strerror(-ret));
 
-	TEST_ASSERT_EQUAL(rte_eth_promiscuous_get(test_params->bonded_port_id), 1,
+	TEST_ASSERT_EQUAL(rte_eth_promiscuous_get(test_params->bonding_port_id), 1,
 			"Port (%d) promiscuous mode not enabled",
-			test_params->bonded_port_id);
+			test_params->bonding_port_id);
 
-	for (i = 0; i < test_params->bonded_slave_count; i++) {
+	for (i = 0; i < test_params->bonding_member_count; i++) {
 		TEST_ASSERT_EQUAL(rte_eth_promiscuous_get(
-				test_params->slave_port_ids[i]), 1,
+				test_params->member_port_ids[i]), 1,
 				"Port (%d) promiscuous mode not enabled",
-				test_params->slave_port_ids[i]);
+				test_params->member_port_ids[i]);
 	}
 
-	ret = rte_eth_promiscuous_disable(test_params->bonded_port_id);
+	ret = rte_eth_promiscuous_disable(test_params->bonding_port_id);
 	TEST_ASSERT_SUCCESS(ret,
 		"Failed to disable promiscuous mode for port %d: %s",
-		test_params->bonded_port_id, rte_strerror(-ret));
+		test_params->bonding_port_id, rte_strerror(-ret));
 
-	TEST_ASSERT_EQUAL(rte_eth_promiscuous_get(test_params->bonded_port_id), 0,
+	TEST_ASSERT_EQUAL(rte_eth_promiscuous_get(test_params->bonding_port_id), 0,
 			"Port (%d) promiscuous mode not disabled",
-			test_params->bonded_port_id);
+			test_params->bonding_port_id);
 
-	for (i = 0; i < test_params->bonded_slave_count; i++) {
+	for (i = 0; i < test_params->bonding_member_count; i++) {
 		TEST_ASSERT_EQUAL(rte_eth_promiscuous_get(
-				test_params->slave_port_ids[i]), 0,
+				test_params->member_port_ids[i]), 0,
 				"Port (%d) promiscuous mode not disabled",
-				test_params->slave_port_ids[i]);
+				test_params->member_port_ids[i]);
 	}
 
-	/* Clean up and remove slaves from bonded device */
-	return remove_slaves_and_stop_bonded_device();
+	/* Clean up and remove members from bonding device */
+	return remove_members_and_stop_bonding_device();
 }
 
 static int
@@ -3279,193 +3308,199 @@ test_balance_verify_mac_assignment(void)
 	struct rte_ether_addr read_mac_addr;
 	struct rte_ether_addr expected_mac_addr_0, expected_mac_addr_1;
 
-	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->slave_port_ids[0], &expected_mac_addr_0),
+	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->member_port_ids[0],
+			&expected_mac_addr_0),
 			"Failed to get mac address (port %d)",
-			test_params->slave_port_ids[0]);
-	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->slave_port_ids[1], &expected_mac_addr_1),
+			test_params->member_port_ids[0]);
+	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->member_port_ids[1],
+			&expected_mac_addr_1),
 			"Failed to get mac address (port %d)",
-			test_params->slave_port_ids[1]);
+			test_params->member_port_ids[1]);
 
-	/* Initialize bonded device with 2 slaves in active backup mode */
-	TEST_ASSERT_SUCCESS(initialize_bonded_device_with_slaves(
+	/* Initialize bonding device with 2 members in active backup mode */
+	TEST_ASSERT_SUCCESS(initialize_bonding_device_with_members(
 			BONDING_MODE_BALANCE, 0, 2, 1),
-			"Failed to initialise bonded device");
+			"Failed to initialise bonding device");
 
-	/* Verify that bonded MACs is that of first slave and that the other slave
+	/* Verify that bonding MACs is that of first member and that the other member
 	 * MAC hasn't been changed */
-	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->bonded_port_id, &read_mac_addr),
+	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->bonding_port_id, &read_mac_addr),
 			"Failed to get mac address (port %d)",
-			test_params->bonded_port_id);
+			test_params->bonding_port_id);
 	TEST_ASSERT_SUCCESS(memcmp(&expected_mac_addr_0, &read_mac_addr,
 			sizeof(read_mac_addr)),
-			"bonded port (%d) mac address not set to that of primary port",
-			test_params->bonded_port_id);
+			"bonding port (%d) mac address not set to that of primary port",
+			test_params->bonding_port_id);
 
-	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->slave_port_ids[0], &read_mac_addr),
+	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->member_port_ids[0], &read_mac_addr),
 			"Failed to get mac address (port %d)",
-			test_params->slave_port_ids[0]);
+			test_params->member_port_ids[0]);
 	TEST_ASSERT_SUCCESS(memcmp(&expected_mac_addr_0, &read_mac_addr,
 			sizeof(read_mac_addr)),
-			"slave port (%d) mac address not set to that of primary port",
-			test_params->slave_port_ids[0]);
+			"member port (%d) mac address not set to that of primary port",
+			test_params->member_port_ids[0]);
 
-	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->slave_port_ids[1], &read_mac_addr),
+	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->member_port_ids[1], &read_mac_addr),
 			"Failed to get mac address (port %d)",
-			test_params->slave_port_ids[1]);
+			test_params->member_port_ids[1]);
 	TEST_ASSERT_SUCCESS(memcmp(&expected_mac_addr_0, &read_mac_addr,
 			sizeof(read_mac_addr)),
-			"slave port (%d) mac address not set to that of primary port",
-			test_params->slave_port_ids[1]);
+			"member port (%d) mac address not set to that of primary port",
+			test_params->member_port_ids[1]);
 
 	/* change primary and verify that MAC addresses haven't changed */
-	TEST_ASSERT_SUCCESS(rte_eth_bond_primary_set(test_params->bonded_port_id,
-			test_params->slave_port_ids[1]),
-			"Failed to set bonded port (%d) primary port to (%d)\n",
-			test_params->bonded_port_id, test_params->slave_port_ids[1]);
+	TEST_ASSERT_SUCCESS(rte_eth_bond_primary_set(test_params->bonding_port_id,
+			test_params->member_port_ids[1]),
+			"Failed to set bonding port (%d) primary port to (%d)\n",
+			test_params->bonding_port_id, test_params->member_port_ids[1]);
 
-	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->bonded_port_id, &read_mac_addr),
+	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->bonding_port_id, &read_mac_addr),
 			"Failed to get mac address (port %d)",
-			test_params->bonded_port_id);
+			test_params->bonding_port_id);
 	TEST_ASSERT_SUCCESS(memcmp(&expected_mac_addr_0, &read_mac_addr,
 			sizeof(read_mac_addr)),
-			"bonded port (%d) mac address not set to that of primary port",
-			test_params->bonded_port_id);
+			"bonding port (%d) mac address not set to that of primary port",
+			test_params->bonding_port_id);
 
-	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->slave_port_ids[0], &read_mac_addr),
+	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->member_port_ids[0], &read_mac_addr),
 			"Failed to get mac address (port %d)",
-			test_params->slave_port_ids[0]);
+			test_params->member_port_ids[0]);
 	TEST_ASSERT_SUCCESS(memcmp(&expected_mac_addr_0, &read_mac_addr,
 			sizeof(read_mac_addr)),
-			"slave port (%d) mac address not set to that of primary port",
-			test_params->slave_port_ids[0]);
+			"member port (%d) mac address not set to that of primary port",
+			test_params->member_port_ids[0]);
 
-	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->slave_port_ids[1], &read_mac_addr),
+	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->member_port_ids[1], &read_mac_addr),
 			"Failed to get mac address (port %d)",
-			test_params->slave_port_ids[1]);
+			test_params->member_port_ids[1]);
 	TEST_ASSERT_SUCCESS(memcmp(&expected_mac_addr_0, &read_mac_addr,
 			sizeof(read_mac_addr)),
-			"slave port (%d) mac address not set to that of primary port",
-			test_params->slave_port_ids[1]);
+			"member port (%d) mac address not set to that of primary port",
+			test_params->member_port_ids[1]);
 
-	/* stop / start bonded device and verify that primary MAC address is
-	 * propagated to bonded device and slaves */
+	/*
+	 * stop / start bonding device and verify that primary MAC address is
+	 * propagated to bonding device and members.
+	 */
 
-	TEST_ASSERT_SUCCESS(rte_eth_dev_stop(test_params->bonded_port_id),
-			"Failed to stop bonded port %u",
-			test_params->bonded_port_id);
+	TEST_ASSERT_SUCCESS(rte_eth_dev_stop(test_params->bonding_port_id),
+			"Failed to stop bonding port %u",
+			test_params->bonding_port_id);
 
-	TEST_ASSERT_SUCCESS(rte_eth_dev_start(test_params->bonded_port_id),
-			"Failed to start bonded device");
+	TEST_ASSERT_SUCCESS(rte_eth_dev_start(test_params->bonding_port_id),
+			"Failed to start bonding device");
 
-	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->bonded_port_id, &read_mac_addr),
+	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->bonding_port_id, &read_mac_addr),
 			"Failed to get mac address (port %d)",
-			test_params->bonded_port_id);
+			test_params->bonding_port_id);
 	TEST_ASSERT_SUCCESS(memcmp(&expected_mac_addr_1, &read_mac_addr,
 			sizeof(read_mac_addr)),
-			"bonded port (%d) mac address not set to that of primary port",
-			test_params->bonded_port_id);
+			"bonding port (%d) mac address not set to that of primary port",
+			test_params->bonding_port_id);
 
-	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->slave_port_ids[0], &read_mac_addr),
+	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->member_port_ids[0], &read_mac_addr),
 			"Failed to get mac address (port %d)",
-			test_params->slave_port_ids[0]);
+			test_params->member_port_ids[0]);
 	TEST_ASSERT_SUCCESS(memcmp(&expected_mac_addr_1, &read_mac_addr,
 			sizeof(read_mac_addr)),
-			"slave port (%d) mac address not set to that of primary port",
-			test_params->slave_port_ids[0]);
+			"member port (%d) mac address not set to that of primary port",
+			test_params->member_port_ids[0]);
 
-	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->slave_port_ids[1], &read_mac_addr),
+	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->member_port_ids[1], &read_mac_addr),
 			"Failed to get mac address (port %d)",
-			test_params->slave_port_ids[1]);
+			test_params->member_port_ids[1]);
 	TEST_ASSERT_SUCCESS(memcmp(&expected_mac_addr_1, &read_mac_addr,
 			sizeof(read_mac_addr)),
-			"slave port (%d) mac address not set to that of primary port",
-			test_params->slave_port_ids[1]);
+			"member port (%d) mac address not set to that of primary port",
+			test_params->member_port_ids[1]);
 
 	/* Set explicit MAC address */
 	TEST_ASSERT_SUCCESS(rte_eth_bond_mac_address_set(
-			test_params->bonded_port_id,
-			(struct rte_ether_addr *)bonded_mac),
+			test_params->bonding_port_id,
+			(struct rte_ether_addr *)bonding_mac),
 			"failed to set MAC");
 
-	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->bonded_port_id, &read_mac_addr),
+	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->bonding_port_id, &read_mac_addr),
 			"Failed to get mac address (port %d)",
-			test_params->bonded_port_id);
-	TEST_ASSERT_SUCCESS(memcmp(&bonded_mac, &read_mac_addr,
+			test_params->bonding_port_id);
+	TEST_ASSERT_SUCCESS(memcmp(&bonding_mac, &read_mac_addr,
 			sizeof(read_mac_addr)),
-			"bonded port (%d) mac address not set to that of bonded port",
-			test_params->bonded_port_id);
+			"bonding port (%d) mac address not set to that of bonding port",
+			test_params->bonding_port_id);
 
-	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->slave_port_ids[0], &read_mac_addr),
+	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->member_port_ids[0], &read_mac_addr),
 			"Failed to get mac address (port %d)",
-			test_params->slave_port_ids[0]);
-	TEST_ASSERT_SUCCESS(memcmp(&bonded_mac, &read_mac_addr,
+			test_params->member_port_ids[0]);
+	TEST_ASSERT_SUCCESS(memcmp(&bonding_mac, &read_mac_addr,
 			sizeof(read_mac_addr)),
-			"slave port (%d) mac address not as expected\n",
-				test_params->slave_port_ids[0]);
+			"member port (%d) mac address not as expected\n",
+				test_params->member_port_ids[0]);
 
-	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->slave_port_ids[1], &read_mac_addr),
+	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->member_port_ids[1], &read_mac_addr),
 			"Failed to get mac address (port %d)",
-			test_params->slave_port_ids[1]);
-	TEST_ASSERT_SUCCESS(memcmp(&bonded_mac, &read_mac_addr,
+			test_params->member_port_ids[1]);
+	TEST_ASSERT_SUCCESS(memcmp(&bonding_mac, &read_mac_addr,
 			sizeof(read_mac_addr)),
-			"slave port (%d) mac address not set to that of bonded port",
-			test_params->slave_port_ids[1]);
+			"member port (%d) mac address not set to that of bonding port",
+			test_params->member_port_ids[1]);
 
-	/* Clean up and remove slaves from bonded device */
-	return remove_slaves_and_stop_bonded_device();
+	/* Clean up and remove members from bonding device */
+	return remove_members_and_stop_bonding_device();
 }
 
-#define TEST_BALANCE_LINK_STATUS_SLAVE_COUNT (4)
+#define TEST_BALANCE_LINK_STATUS_MEMBER_COUNT (4)
 
 static int
-test_balance_verify_slave_link_status_change_behaviour(void)
+test_balance_verify_member_link_status_change_behaviour(void)
 {
-	struct rte_mbuf *pkt_burst[TEST_BALANCE_LINK_STATUS_SLAVE_COUNT][MAX_PKT_BURST];
+	struct rte_mbuf *pkt_burst[TEST_BALANCE_LINK_STATUS_MEMBER_COUNT][MAX_PKT_BURST];
 	struct rte_mbuf *rx_pkt_burst[MAX_PKT_BURST] = { NULL };
 	struct rte_eth_stats port_stats;
 
-	uint16_t slaves[RTE_MAX_ETHPORTS];
+	uint16_t members[RTE_MAX_ETHPORTS];
 
-	int i, burst_size, slave_count;
+	int i, burst_size, member_count;
 
 	memset(pkt_burst, 0, sizeof(pkt_burst));
 
-	/* Initialize bonded device with 4 slaves in round robin mode */
-	TEST_ASSERT_SUCCESS(initialize_bonded_device_with_slaves(
-			BONDING_MODE_BALANCE, 0, TEST_BALANCE_LINK_STATUS_SLAVE_COUNT, 1),
-			"Failed to initialise bonded device");
+	/* Initialize bonding device with 4 members in round robin mode */
+	TEST_ASSERT_SUCCESS(initialize_bonding_device_with_members(
+			BONDING_MODE_BALANCE, 0, TEST_BALANCE_LINK_STATUS_MEMBER_COUNT, 1),
+			"Failed to initialise bonding device");
 
 	TEST_ASSERT_SUCCESS(rte_eth_bond_xmit_policy_set(
-			test_params->bonded_port_id, BALANCE_XMIT_POLICY_LAYER2),
+			test_params->bonding_port_id, BALANCE_XMIT_POLICY_LAYER2),
 			"Failed to set balance xmit policy.");
 
 
-	/* Verify Current Slaves Count /Active Slave Count is */
-	slave_count = rte_eth_bond_slaves_get(test_params->bonded_port_id, slaves,
+	/* Verify Current Members Count /Active Member Count is */
+	member_count = rte_eth_bond_members_get(test_params->bonding_port_id, members,
 			RTE_MAX_ETHPORTS);
-	TEST_ASSERT_EQUAL(slave_count, TEST_BALANCE_LINK_STATUS_SLAVE_COUNT,
-			"Number of slaves (%d) is not as expected (%d).",
-			slave_count, TEST_BALANCE_LINK_STATUS_SLAVE_COUNT);
+	TEST_ASSERT_EQUAL(member_count, TEST_BALANCE_LINK_STATUS_MEMBER_COUNT,
+			"Number of members (%d) is not as expected (%d).",
+			member_count, TEST_BALANCE_LINK_STATUS_MEMBER_COUNT);
 
-	slave_count = rte_eth_bond_active_slaves_get(test_params->bonded_port_id,
-			slaves, RTE_MAX_ETHPORTS);
-	TEST_ASSERT_EQUAL(slave_count, TEST_BALANCE_LINK_STATUS_SLAVE_COUNT,
-			"Number of active slaves (%d) is not as expected (%d).",
-			slave_count, TEST_BALANCE_LINK_STATUS_SLAVE_COUNT);
+	member_count = rte_eth_bond_active_members_get(test_params->bonding_port_id,
+			members, RTE_MAX_ETHPORTS);
+	TEST_ASSERT_EQUAL(member_count, TEST_BALANCE_LINK_STATUS_MEMBER_COUNT,
+			"Number of active members (%d) is not as expected (%d).",
+			member_count, TEST_BALANCE_LINK_STATUS_MEMBER_COUNT);
 
-	/* Set 2 slaves link status to down */
+	/* Set 2 members link status to down */
 	virtual_ethdev_simulate_link_status_interrupt(
-			test_params->slave_port_ids[1], 0);
+			test_params->member_port_ids[1], 0);
 	virtual_ethdev_simulate_link_status_interrupt(
-			test_params->slave_port_ids[3], 0);
+			test_params->member_port_ids[3], 0);
 
-	TEST_ASSERT_EQUAL(rte_eth_bond_active_slaves_get(
-			test_params->bonded_port_id, slaves, RTE_MAX_ETHPORTS), 2,
-			"Number of active slaves (%d) is not as expected (%d).",
-			slave_count, 2);
+	TEST_ASSERT_EQUAL(rte_eth_bond_active_members_get(
+			test_params->bonding_port_id, members, RTE_MAX_ETHPORTS), 2,
+			"Number of active members (%d) is not as expected (%d).",
+			member_count, 2);
 
-	/* Send to sets of packet burst and verify that they are balanced across
-	 *  slaves */
+	/*
+	 * Send to sets of packet burst and verify that they are balanced across
+	 *  members.
+	 */
 	burst_size = 21;
 
 	TEST_ASSERT_EQUAL(generate_test_burst(
@@ -3477,95 +3512,95 @@ test_balance_verify_slave_link_status_change_behaviour(void)
 			"generate_test_burst failed");
 
 	TEST_ASSERT_EQUAL(rte_eth_tx_burst(
-			test_params->bonded_port_id, 0, &pkt_burst[0][0], burst_size),
+			test_params->bonding_port_id, 0, &pkt_burst[0][0], burst_size),
 			burst_size, "rte_eth_tx_burst failed");
 
 	TEST_ASSERT_EQUAL(rte_eth_tx_burst(
-			test_params->bonded_port_id, 0, &pkt_burst[1][0], burst_size),
+			test_params->bonding_port_id, 0, &pkt_burst[1][0], burst_size),
 			burst_size, "rte_eth_tx_burst failed");
 
 
-	rte_eth_stats_get(test_params->bonded_port_id, &port_stats);
+	rte_eth_stats_get(test_params->bonding_port_id, &port_stats);
 	TEST_ASSERT_EQUAL(port_stats.opackets, (uint64_t)(burst_size + burst_size),
 			"(%d) port_stats.opackets (%d) not as expected (%d).",
-			test_params->bonded_port_id, (int)port_stats.opackets,
+			test_params->bonding_port_id, (int)port_stats.opackets,
 			burst_size + burst_size);
 
-	rte_eth_stats_get(test_params->slave_port_ids[0], &port_stats);
+	rte_eth_stats_get(test_params->member_port_ids[0], &port_stats);
 	TEST_ASSERT_EQUAL(port_stats.opackets, (uint64_t)burst_size,
 			"(%d) port_stats.opackets (%d) not as expected (%d).",
-			test_params->slave_port_ids[0], (int)port_stats.opackets,
+			test_params->member_port_ids[0], (int)port_stats.opackets,
 			burst_size);
 
-	rte_eth_stats_get(test_params->slave_port_ids[2], &port_stats);
+	rte_eth_stats_get(test_params->member_port_ids[2], &port_stats);
 	TEST_ASSERT_EQUAL(port_stats.opackets, (uint64_t)burst_size,
 			"(%d) port_stats.opackets (%d) not as expected (%d).",
-			test_params->slave_port_ids[2], (int)port_stats.opackets,
+			test_params->member_port_ids[2], (int)port_stats.opackets,
 			burst_size);
 
-	/* verify that all packets get send on primary slave when no other slaves
+	/* verify that all packets get send on primary member when no other members
 	 * are available */
 	virtual_ethdev_simulate_link_status_interrupt(
-			test_params->slave_port_ids[2], 0);
+			test_params->member_port_ids[2], 0);
 
-	TEST_ASSERT_EQUAL(rte_eth_bond_active_slaves_get(
-			test_params->bonded_port_id, slaves, RTE_MAX_ETHPORTS), 1,
-			"Number of active slaves (%d) is not as expected (%d).",
-			slave_count, 1);
+	TEST_ASSERT_EQUAL(rte_eth_bond_active_members_get(
+			test_params->bonding_port_id, members, RTE_MAX_ETHPORTS), 1,
+			"Number of active members (%d) is not as expected (%d).",
+			member_count, 1);
 
 	TEST_ASSERT_EQUAL(generate_test_burst(
 			&pkt_burst[1][0], burst_size, 0, 1, 1, 0, 0), burst_size,
 			"generate_test_burst failed");
 
 	TEST_ASSERT_EQUAL(rte_eth_tx_burst(
-			test_params->bonded_port_id, 0, &pkt_burst[1][0], burst_size),
+			test_params->bonding_port_id, 0, &pkt_burst[1][0], burst_size),
 			burst_size, "rte_eth_tx_burst failed");
 
-	rte_eth_stats_get(test_params->bonded_port_id, &port_stats);
+	rte_eth_stats_get(test_params->bonding_port_id, &port_stats);
 	TEST_ASSERT_EQUAL(port_stats.opackets,
 			(uint64_t)(burst_size + burst_size + burst_size),
 			"(%d) port_stats.opackets (%d) not as expected (%d).\n",
-			test_params->bonded_port_id, (int)port_stats.opackets,
+			test_params->bonding_port_id, (int)port_stats.opackets,
 			burst_size + burst_size + burst_size);
 
-	rte_eth_stats_get(test_params->slave_port_ids[0], &port_stats);
+	rte_eth_stats_get(test_params->member_port_ids[0], &port_stats);
 	TEST_ASSERT_EQUAL(port_stats.opackets, (uint64_t)(burst_size + burst_size),
 			"(%d) port_stats.opackets (%d) not as expected (%d).",
-			test_params->slave_port_ids[0], (int)port_stats.opackets,
+			test_params->member_port_ids[0], (int)port_stats.opackets,
 			burst_size + burst_size);
 
 	virtual_ethdev_simulate_link_status_interrupt(
-			test_params->slave_port_ids[0], 0);
+			test_params->member_port_ids[0], 0);
 	virtual_ethdev_simulate_link_status_interrupt(
-			test_params->slave_port_ids[1], 1);
+			test_params->member_port_ids[1], 1);
 	virtual_ethdev_simulate_link_status_interrupt(
-			test_params->slave_port_ids[2], 1);
+			test_params->member_port_ids[2], 1);
 	virtual_ethdev_simulate_link_status_interrupt(
-			test_params->slave_port_ids[3], 1);
+			test_params->member_port_ids[3], 1);
 
-	for (i = 0; i < TEST_BALANCE_LINK_STATUS_SLAVE_COUNT; i++) {
+	for (i = 0; i < TEST_BALANCE_LINK_STATUS_MEMBER_COUNT; i++) {
 		TEST_ASSERT_EQUAL(generate_test_burst(
 				&pkt_burst[i][0], burst_size, 0, 1, 0, 0, 0), burst_size,
 				"Failed to generate packet burst");
 
-		virtual_ethdev_add_mbufs_to_rx_queue(test_params->slave_port_ids[i],
+		virtual_ethdev_add_mbufs_to_rx_queue(test_params->member_port_ids[i],
 				&pkt_burst[i][0], burst_size);
 	}
 
-	/* Verify that pkts are not received on slaves with link status down */
+	/* Verify that pkts are not received on members with link status down */
 
-	rte_eth_rx_burst(test_params->bonded_port_id, 0, rx_pkt_burst,
+	rte_eth_rx_burst(test_params->bonding_port_id, 0, rx_pkt_burst,
 			MAX_PKT_BURST);
 
-	/* Verify bonded device rx count */
-	rte_eth_stats_get(test_params->bonded_port_id, &port_stats);
+	/* Verify bonding device rx count */
+	rte_eth_stats_get(test_params->bonding_port_id, &port_stats);
 	TEST_ASSERT_EQUAL(port_stats.ipackets, (uint64_t)(burst_size * 3),
 			"(%d) port_stats.ipackets (%d) not as expected (%d)\n",
-			test_params->bonded_port_id, (int)port_stats.ipackets,
+			test_params->bonding_port_id, (int)port_stats.ipackets,
 			burst_size * 3);
 
-	/* Clean up and remove slaves from bonded device */
-	return remove_slaves_and_stop_bonded_device();
+	/* Clean up and remove members from bonding device */
+	return remove_members_and_stop_bonding_device();
 }
 
 static int
@@ -3576,9 +3611,9 @@ test_broadcast_tx_burst(void)
 
 	struct rte_eth_stats port_stats;
 
-	TEST_ASSERT_SUCCESS(initialize_bonded_device_with_slaves(
+	TEST_ASSERT_SUCCESS(initialize_bonding_device_with_members(
 			BONDING_MODE_BROADCAST, 0, 2, 1),
-			"Failed to initialise bonded device");
+			"Failed to initialise bonding device");
 
 	initialize_eth_header(test_params->pkt_eth_hdr,
 			(struct rte_ether_addr *)src_mac,
@@ -3590,7 +3625,7 @@ test_broadcast_tx_burst(void)
 	pktlen = initialize_ipv4_header(test_params->pkt_ipv4_hdr, src_addr,
 			dst_addr_0, pktlen);
 
-	burst_size = 20 * test_params->bonded_slave_count;
+	burst_size = 20 * test_params->bonding_member_count;
 
 	TEST_ASSERT(burst_size < MAX_PKT_BURST,
 			"Burst size specified is greater than supported.");
@@ -3601,242 +3636,244 @@ test_broadcast_tx_burst(void)
 			1, test_params->pkt_udp_hdr, burst_size, PACKET_BURST_GEN_PKT_LEN,
 			1), burst_size, "Failed to generate packet burst");
 
-	/* Send burst on bonded port */
-	TEST_ASSERT_EQUAL(rte_eth_tx_burst(test_params->bonded_port_id, 0,
+	/* Send burst on bonding port */
+	TEST_ASSERT_EQUAL(rte_eth_tx_burst(test_params->bonding_port_id, 0,
 			pkts_burst, burst_size), burst_size,
-			"Bonded Port (%d) rx burst failed, packets transmitted value "
+			"Bonding Port (%d) rx burst failed, packets transmitted value "
 			"not as expected (%d)",
-			test_params->bonded_port_id, burst_size);
+			test_params->bonding_port_id, burst_size);
 
-	/* Verify bonded port tx stats */
-	rte_eth_stats_get(test_params->bonded_port_id, &port_stats);
+	/* Verify bonding port tx stats */
+	rte_eth_stats_get(test_params->bonding_port_id, &port_stats);
 	TEST_ASSERT_EQUAL(port_stats.opackets,
-			(uint64_t)burst_size * test_params->bonded_slave_count,
-			"Bonded Port (%d) opackets value (%u) not as expected (%d)",
-			test_params->bonded_port_id, (unsigned int)port_stats.opackets,
+			(uint64_t)burst_size * test_params->bonding_member_count,
+			"Bonding Port (%d) opackets value (%u) not as expected (%d)",
+			test_params->bonding_port_id, (unsigned int)port_stats.opackets,
 			burst_size);
 
-	/* Verify slave ports tx stats */
-	for (i = 0; i < test_params->bonded_slave_count; i++) {
-		rte_eth_stats_get(test_params->slave_port_ids[i], &port_stats);
+	/* Verify member ports tx stats */
+	for (i = 0; i < test_params->bonding_member_count; i++) {
+		rte_eth_stats_get(test_params->member_port_ids[i], &port_stats);
 		TEST_ASSERT_EQUAL(port_stats.opackets, (uint64_t)burst_size,
-				"Slave Port (%d) opackets value (%u) not as expected (%d)\n",
-				test_params->bonded_port_id,
+				"Member Port (%d) opackets value (%u) not as expected (%d)\n",
+				test_params->bonding_port_id,
 				(unsigned int)port_stats.opackets, burst_size);
 	}
 
-	/* Put all slaves down and try and transmit */
-	for (i = 0; i < test_params->bonded_slave_count; i++) {
+	/* Put all members down and try and transmit */
+	for (i = 0; i < test_params->bonding_member_count; i++) {
 
 		virtual_ethdev_simulate_link_status_interrupt(
-				test_params->slave_port_ids[i], 0);
+				test_params->member_port_ids[i], 0);
 	}
 
-	/* Send burst on bonded port */
+	/* Send burst on bonding port */
 	TEST_ASSERT_EQUAL(rte_eth_tx_burst(
-			test_params->bonded_port_id, 0, pkts_burst, burst_size),  0,
+			test_params->bonding_port_id, 0, pkts_burst, burst_size),  0,
 			"transmitted an unexpected number of packets");
 
-	/* Clean up and remove slaves from bonded device */
-	return remove_slaves_and_stop_bonded_device();
+	/* Clean up and remove members from bonding device */
+	return remove_members_and_stop_bonding_device();
 }
 
 
-#define TEST_BCAST_SLAVE_TX_FAIL_SLAVE_COUNT		(3)
-#define TEST_BCAST_SLAVE_TX_FAIL_BURST_SIZE			(40)
-#define TEST_BCAST_SLAVE_TX_FAIL_MAX_PACKETS_COUNT	(15)
-#define TEST_BCAST_SLAVE_TX_FAIL_MIN_PACKETS_COUNT	(10)
+#define TEST_BCAST_MEMBER_TX_FAIL_MEMBER_COUNT		(3)
+#define TEST_BCAST_MEMBER_TX_FAIL_BURST_SIZE			(40)
+#define TEST_BCAST_MEMBER_TX_FAIL_MAX_PACKETS_COUNT	(15)
+#define TEST_BCAST_MEMBER_TX_FAIL_MIN_PACKETS_COUNT	(10)
 
 static int
-test_broadcast_tx_burst_slave_tx_fail(void)
+test_broadcast_tx_burst_member_tx_fail(void)
 {
-	struct rte_mbuf *pkts_burst[TEST_BCAST_SLAVE_TX_FAIL_BURST_SIZE];
-	struct rte_mbuf *expected_fail_pkts[TEST_BCAST_SLAVE_TX_FAIL_MIN_PACKETS_COUNT];
+	struct rte_mbuf *pkts_burst[TEST_BCAST_MEMBER_TX_FAIL_BURST_SIZE];
+	struct rte_mbuf *expected_fail_pkts[TEST_BCAST_MEMBER_TX_FAIL_MIN_PACKETS_COUNT];
 
 	struct rte_eth_stats port_stats;
 
 	int i, tx_count;
 
-	TEST_ASSERT_SUCCESS(initialize_bonded_device_with_slaves(
+	TEST_ASSERT_SUCCESS(initialize_bonding_device_with_members(
 			BONDING_MODE_BROADCAST, 0,
-			TEST_BCAST_SLAVE_TX_FAIL_SLAVE_COUNT, 1),
-			"Failed to initialise bonded device");
+			TEST_BCAST_MEMBER_TX_FAIL_MEMBER_COUNT, 1),
+			"Failed to initialise bonding device");
 
 	/* Generate test bursts for transmission */
 	TEST_ASSERT_EQUAL(generate_test_burst(pkts_burst,
-			TEST_BCAST_SLAVE_TX_FAIL_BURST_SIZE, 0, 0, 0, 0, 0),
-			TEST_BCAST_SLAVE_TX_FAIL_BURST_SIZE,
+			TEST_BCAST_MEMBER_TX_FAIL_BURST_SIZE, 0, 0, 0, 0, 0),
+			TEST_BCAST_MEMBER_TX_FAIL_BURST_SIZE,
 			"Failed to generate test packet burst");
 
-	for (i = 0; i < TEST_BCAST_SLAVE_TX_FAIL_MIN_PACKETS_COUNT; i++) {
-		expected_fail_pkts[i] = pkts_burst[TEST_BCAST_SLAVE_TX_FAIL_BURST_SIZE -
-			TEST_BCAST_SLAVE_TX_FAIL_MIN_PACKETS_COUNT + i];
+	for (i = 0; i < TEST_BCAST_MEMBER_TX_FAIL_MIN_PACKETS_COUNT; i++) {
+		expected_fail_pkts[i] = pkts_burst[TEST_BCAST_MEMBER_TX_FAIL_BURST_SIZE -
+			TEST_BCAST_MEMBER_TX_FAIL_MIN_PACKETS_COUNT + i];
 	}
 
-	/* Set virtual slave TEST_BAL_SLAVE_TX_FAIL_FAILING_SLAVE_IDX to only fail
-	 * transmission of TEST_BAL_SLAVE_TX_FAIL_PACKETS_COUNT packets of burst */
+	/*
+	 * Set virtual member TEST_BAL_MEMBER_TX_FAIL_FAILING_MEMBER_IDX to only fail
+	 * transmission of TEST_BAL_MEMBER_TX_FAIL_PACKETS_COUNT packets of burst.
+	 */
 	virtual_ethdev_tx_burst_fn_set_success(
-			test_params->slave_port_ids[0],
+			test_params->member_port_ids[0],
 			0);
 	virtual_ethdev_tx_burst_fn_set_success(
-			test_params->slave_port_ids[1],
+			test_params->member_port_ids[1],
 			0);
 	virtual_ethdev_tx_burst_fn_set_success(
-			test_params->slave_port_ids[2],
+			test_params->member_port_ids[2],
 			0);
 
 	virtual_ethdev_tx_burst_fn_set_tx_pkt_fail_count(
-			test_params->slave_port_ids[0],
-			TEST_BCAST_SLAVE_TX_FAIL_MAX_PACKETS_COUNT);
+			test_params->member_port_ids[0],
+			TEST_BCAST_MEMBER_TX_FAIL_MAX_PACKETS_COUNT);
 
 	virtual_ethdev_tx_burst_fn_set_tx_pkt_fail_count(
-			test_params->slave_port_ids[1],
-			TEST_BCAST_SLAVE_TX_FAIL_MIN_PACKETS_COUNT);
+			test_params->member_port_ids[1],
+			TEST_BCAST_MEMBER_TX_FAIL_MIN_PACKETS_COUNT);
 
 	virtual_ethdev_tx_burst_fn_set_tx_pkt_fail_count(
-			test_params->slave_port_ids[2],
-			TEST_BCAST_SLAVE_TX_FAIL_MAX_PACKETS_COUNT);
+			test_params->member_port_ids[2],
+			TEST_BCAST_MEMBER_TX_FAIL_MAX_PACKETS_COUNT);
 
 	/* Transmit burst */
-	tx_count = rte_eth_tx_burst(test_params->bonded_port_id, 0, pkts_burst,
-			TEST_BCAST_SLAVE_TX_FAIL_BURST_SIZE);
+	tx_count = rte_eth_tx_burst(test_params->bonding_port_id, 0, pkts_burst,
+			TEST_BCAST_MEMBER_TX_FAIL_BURST_SIZE);
 
-	TEST_ASSERT_EQUAL(tx_count, TEST_BCAST_SLAVE_TX_FAIL_BURST_SIZE -
-			TEST_BCAST_SLAVE_TX_FAIL_MIN_PACKETS_COUNT,
+	TEST_ASSERT_EQUAL(tx_count, TEST_BCAST_MEMBER_TX_FAIL_BURST_SIZE -
+			TEST_BCAST_MEMBER_TX_FAIL_MIN_PACKETS_COUNT,
 			"Transmitted (%d) packets, expected to transmit (%d) packets",
-			tx_count, TEST_BCAST_SLAVE_TX_FAIL_BURST_SIZE -
-			TEST_BCAST_SLAVE_TX_FAIL_MIN_PACKETS_COUNT);
+			tx_count, TEST_BCAST_MEMBER_TX_FAIL_BURST_SIZE -
+			TEST_BCAST_MEMBER_TX_FAIL_MIN_PACKETS_COUNT);
 
 	/* Verify that failed packet are expected failed packets */
-	for (i = 0; i < TEST_BCAST_SLAVE_TX_FAIL_MIN_PACKETS_COUNT; i++) {
+	for (i = 0; i < TEST_BCAST_MEMBER_TX_FAIL_MIN_PACKETS_COUNT; i++) {
 		TEST_ASSERT_EQUAL(expected_fail_pkts[i], pkts_burst[i + tx_count],
 				"expected mbuf (%d) pointer %p not expected pointer %p",
 				i, expected_fail_pkts[i], pkts_burst[i + tx_count]);
 	}
 
-	/* Verify slave ports tx stats */
+	/* Verify member ports tx stats */
 
-	rte_eth_stats_get(test_params->slave_port_ids[0], &port_stats);
-
-	TEST_ASSERT_EQUAL(port_stats.opackets,
-			(uint64_t)TEST_BCAST_SLAVE_TX_FAIL_BURST_SIZE -
-			TEST_BCAST_SLAVE_TX_FAIL_MAX_PACKETS_COUNT,
-			"Port (%d) opackets value (%u) not as expected (%d)",
-			test_params->bonded_port_id, (unsigned int)port_stats.opackets,
-			TEST_BCAST_SLAVE_TX_FAIL_BURST_SIZE -
-			TEST_BCAST_SLAVE_TX_FAIL_MAX_PACKETS_COUNT);
-
-
-	rte_eth_stats_get(test_params->slave_port_ids[1], &port_stats);
+	rte_eth_stats_get(test_params->member_port_ids[0], &port_stats);
 
 	TEST_ASSERT_EQUAL(port_stats.opackets,
-			(uint64_t)TEST_BCAST_SLAVE_TX_FAIL_BURST_SIZE -
-			TEST_BCAST_SLAVE_TX_FAIL_MIN_PACKETS_COUNT,
+			(uint64_t)TEST_BCAST_MEMBER_TX_FAIL_BURST_SIZE -
+			TEST_BCAST_MEMBER_TX_FAIL_MAX_PACKETS_COUNT,
 			"Port (%d) opackets value (%u) not as expected (%d)",
-			test_params->bonded_port_id, (unsigned int)port_stats.opackets,
-			TEST_BCAST_SLAVE_TX_FAIL_BURST_SIZE -
-			TEST_BCAST_SLAVE_TX_FAIL_MIN_PACKETS_COUNT);
+			test_params->bonding_port_id, (unsigned int)port_stats.opackets,
+			TEST_BCAST_MEMBER_TX_FAIL_BURST_SIZE -
+			TEST_BCAST_MEMBER_TX_FAIL_MAX_PACKETS_COUNT);
 
-	rte_eth_stats_get(test_params->slave_port_ids[2], &port_stats);
+
+	rte_eth_stats_get(test_params->member_port_ids[1], &port_stats);
 
 	TEST_ASSERT_EQUAL(port_stats.opackets,
-			(uint64_t)TEST_BCAST_SLAVE_TX_FAIL_BURST_SIZE -
-			TEST_BCAST_SLAVE_TX_FAIL_MAX_PACKETS_COUNT,
+			(uint64_t)TEST_BCAST_MEMBER_TX_FAIL_BURST_SIZE -
+			TEST_BCAST_MEMBER_TX_FAIL_MIN_PACKETS_COUNT,
 			"Port (%d) opackets value (%u) not as expected (%d)",
-			test_params->bonded_port_id, (unsigned int)port_stats.opackets,
-			TEST_BCAST_SLAVE_TX_FAIL_BURST_SIZE -
-			TEST_BCAST_SLAVE_TX_FAIL_MAX_PACKETS_COUNT);
+			test_params->bonding_port_id, (unsigned int)port_stats.opackets,
+			TEST_BCAST_MEMBER_TX_FAIL_BURST_SIZE -
+			TEST_BCAST_MEMBER_TX_FAIL_MIN_PACKETS_COUNT);
+
+	rte_eth_stats_get(test_params->member_port_ids[2], &port_stats);
+
+	TEST_ASSERT_EQUAL(port_stats.opackets,
+			(uint64_t)TEST_BCAST_MEMBER_TX_FAIL_BURST_SIZE -
+			TEST_BCAST_MEMBER_TX_FAIL_MAX_PACKETS_COUNT,
+			"Port (%d) opackets value (%u) not as expected (%d)",
+			test_params->bonding_port_id, (unsigned int)port_stats.opackets,
+			TEST_BCAST_MEMBER_TX_FAIL_BURST_SIZE -
+			TEST_BCAST_MEMBER_TX_FAIL_MAX_PACKETS_COUNT);
 
 
 	/* Verify that all mbufs who transmission failed have a ref value of one */
 	TEST_ASSERT_SUCCESS(verify_mbufs_ref_count(&pkts_burst[tx_count],
-			TEST_BCAST_SLAVE_TX_FAIL_MIN_PACKETS_COUNT, 1),
+			TEST_BCAST_MEMBER_TX_FAIL_MIN_PACKETS_COUNT, 1),
 			"mbufs refcnts not as expected");
 
 	free_mbufs(&pkts_burst[tx_count],
-		TEST_BCAST_SLAVE_TX_FAIL_MIN_PACKETS_COUNT);
+		TEST_BCAST_MEMBER_TX_FAIL_MIN_PACKETS_COUNT);
 
-	/* Clean up and remove slaves from bonded device */
-	return remove_slaves_and_stop_bonded_device();
+	/* Clean up and remove members from bonding device */
+	return remove_members_and_stop_bonding_device();
 }
 
-#define BROADCAST_RX_BURST_NUM_OF_SLAVES (3)
+#define BROADCAST_RX_BURST_NUM_OF_MEMBERS (3)
 
 static int
 test_broadcast_rx_burst(void)
 {
-	struct rte_mbuf *gen_pkt_burst[BROADCAST_RX_BURST_NUM_OF_SLAVES][MAX_PKT_BURST];
+	struct rte_mbuf *gen_pkt_burst[BROADCAST_RX_BURST_NUM_OF_MEMBERS][MAX_PKT_BURST];
 
 	struct rte_mbuf *rx_pkt_burst[MAX_PKT_BURST] = { NULL };
 	struct rte_eth_stats port_stats;
 
-	int burst_size[BROADCAST_RX_BURST_NUM_OF_SLAVES] = { 10, 5, 30 };
+	int burst_size[BROADCAST_RX_BURST_NUM_OF_MEMBERS] = { 10, 5, 30 };
 	int i, j;
 
 	memset(gen_pkt_burst, 0, sizeof(gen_pkt_burst));
 
-	/* Initialize bonded device with 4 slaves in round robin mode */
-	TEST_ASSERT_SUCCESS(initialize_bonded_device_with_slaves(
+	/* Initialize bonding device with 4 members in round robin mode */
+	TEST_ASSERT_SUCCESS(initialize_bonding_device_with_members(
 			BONDING_MODE_BROADCAST, 0, 3, 1),
-			"Failed to initialise bonded device");
+			"Failed to initialise bonding device");
 
 	/* Generate test bursts of packets to transmit */
-	for (i = 0; i < BROADCAST_RX_BURST_NUM_OF_SLAVES; i++) {
+	for (i = 0; i < BROADCAST_RX_BURST_NUM_OF_MEMBERS; i++) {
 		TEST_ASSERT_EQUAL(generate_test_burst(
 				&gen_pkt_burst[i][0], burst_size[i], 0, 0, 1, 0, 0),
 				burst_size[i], "failed to generate packet burst");
 	}
 
-	/* Add rx data to slave 0 */
-	for (i = 0; i < BROADCAST_RX_BURST_NUM_OF_SLAVES; i++) {
-		virtual_ethdev_add_mbufs_to_rx_queue(test_params->slave_port_ids[i],
+	/* Add rx data to member 0 */
+	for (i = 0; i < BROADCAST_RX_BURST_NUM_OF_MEMBERS; i++) {
+		virtual_ethdev_add_mbufs_to_rx_queue(test_params->member_port_ids[i],
 				&gen_pkt_burst[i][0], burst_size[i]);
 	}
 
 
-	/* Call rx burst on bonded device */
-	/* Send burst on bonded port */
+	/* Call rx burst on bonding device */
+	/* Send burst on bonding port */
 	TEST_ASSERT_EQUAL(rte_eth_rx_burst(
-			test_params->bonded_port_id, 0, rx_pkt_burst, MAX_PKT_BURST),
+			test_params->bonding_port_id, 0, rx_pkt_burst, MAX_PKT_BURST),
 			burst_size[0] + burst_size[1] + burst_size[2],
 			"rx burst failed");
 
-	/* Verify bonded device rx count */
-	rte_eth_stats_get(test_params->bonded_port_id, &port_stats);
+	/* Verify bonding device rx count */
+	rte_eth_stats_get(test_params->bonding_port_id, &port_stats);
 	TEST_ASSERT_EQUAL(port_stats.ipackets,
 			(uint64_t)(burst_size[0] + burst_size[1] + burst_size[2]),
-			"Bonded Port (%d) ipackets value (%u) not as expected (%d)",
-			test_params->bonded_port_id, (unsigned int)port_stats.ipackets,
+			"Bonding Port (%d) ipackets value (%u) not as expected (%d)",
+			test_params->bonding_port_id, (unsigned int)port_stats.ipackets,
 			burst_size[0] + burst_size[1] + burst_size[2]);
 
 
-	/* Verify bonded slave devices rx counts */
-	rte_eth_stats_get(test_params->slave_port_ids[0], &port_stats);
+	/* Verify bonding member devices rx counts */
+	rte_eth_stats_get(test_params->member_port_ids[0], &port_stats);
 	TEST_ASSERT_EQUAL(port_stats.ipackets, (uint64_t)burst_size[0],
-			"Slave Port (%d) ipackets value (%u) not as expected (%d)",
-			test_params->slave_port_ids[0], (unsigned int)port_stats.ipackets,
+			"Member Port (%d) ipackets value (%u) not as expected (%d)",
+			test_params->member_port_ids[0], (unsigned int)port_stats.ipackets,
 			burst_size[0]);
 
-	rte_eth_stats_get(test_params->slave_port_ids[1], &port_stats);
+	rte_eth_stats_get(test_params->member_port_ids[1], &port_stats);
 	TEST_ASSERT_EQUAL(port_stats.ipackets, (uint64_t)burst_size[1],
-			"Slave Port (%d) ipackets value (%u) not as expected (%d)",
-			test_params->slave_port_ids[0], (unsigned int)port_stats.ipackets,
+			"Member Port (%d) ipackets value (%u) not as expected (%d)",
+			test_params->member_port_ids[0], (unsigned int)port_stats.ipackets,
 			burst_size[1]);
 
-	rte_eth_stats_get(test_params->slave_port_ids[2], &port_stats);
+	rte_eth_stats_get(test_params->member_port_ids[2], &port_stats);
 	TEST_ASSERT_EQUAL(port_stats.ipackets, (uint64_t)burst_size[2],
-			"Slave Port (%d) ipackets value (%u) not as expected (%d)",
-			test_params->slave_port_ids[2], (unsigned int)port_stats.ipackets,
+			"Member Port (%d) ipackets value (%u) not as expected (%d)",
+			test_params->member_port_ids[2], (unsigned int)port_stats.ipackets,
 			burst_size[2]);
 
-	rte_eth_stats_get(test_params->slave_port_ids[3], &port_stats);
+	rte_eth_stats_get(test_params->member_port_ids[3], &port_stats);
 	TEST_ASSERT_EQUAL(port_stats.ipackets, 0,
-			"Slave Port (%d) ipackets value (%u) not as expected (%d)",
-			test_params->slave_port_ids[3], (unsigned int)port_stats.ipackets,
+			"Member Port (%d) ipackets value (%u) not as expected (%d)",
+			test_params->member_port_ids[3], (unsigned int)port_stats.ipackets,
 			0);
 
 	/* free mbufs allocate for rx testing */
-	for (i = 0; i < BROADCAST_RX_BURST_NUM_OF_SLAVES; i++) {
+	for (i = 0; i < BROADCAST_RX_BURST_NUM_OF_MEMBERS; i++) {
 		for (j = 0; j < MAX_PKT_BURST; j++) {
 			if (gen_pkt_burst[i][j] != NULL) {
 				rte_pktmbuf_free(gen_pkt_burst[i][j]);
@@ -3845,8 +3882,8 @@ test_broadcast_rx_burst(void)
 		}
 	}
 
-	/* Clean up and remove slaves from bonded device */
-	return remove_slaves_and_stop_bonded_device();
+	/* Clean up and remove members from bonding device */
+	return remove_members_and_stop_bonding_device();
 }
 
 static int
@@ -3855,46 +3892,46 @@ test_broadcast_verify_promiscuous_enable_disable(void)
 	int i;
 	int ret;
 
-	/* Initialize bonded device with 4 slaves in round robin mode */
-	TEST_ASSERT_SUCCESS(initialize_bonded_device_with_slaves(
+	/* Initialize bonding device with 4 members in round robin mode */
+	TEST_ASSERT_SUCCESS(initialize_bonding_device_with_members(
 			BONDING_MODE_BROADCAST, 0, 4, 1),
-			"Failed to initialise bonded device");
+			"Failed to initialise bonding device");
 
-	ret = rte_eth_promiscuous_enable(test_params->bonded_port_id);
+	ret = rte_eth_promiscuous_enable(test_params->bonding_port_id);
 	TEST_ASSERT_SUCCESS(ret,
 		"Failed to enable promiscuous mode for port %d: %s",
-		test_params->bonded_port_id, rte_strerror(-ret));
+		test_params->bonding_port_id, rte_strerror(-ret));
 
 
-	TEST_ASSERT_EQUAL(rte_eth_promiscuous_get(test_params->bonded_port_id), 1,
+	TEST_ASSERT_EQUAL(rte_eth_promiscuous_get(test_params->bonding_port_id), 1,
 			"Port (%d) promiscuous mode not enabled",
-			test_params->bonded_port_id);
+			test_params->bonding_port_id);
 
-	for (i = 0; i < test_params->bonded_slave_count; i++) {
+	for (i = 0; i < test_params->bonding_member_count; i++) {
 		TEST_ASSERT_EQUAL(rte_eth_promiscuous_get(
-				test_params->slave_port_ids[i]), 1,
+				test_params->member_port_ids[i]), 1,
 				"Port (%d) promiscuous mode not enabled",
-				test_params->slave_port_ids[i]);
+				test_params->member_port_ids[i]);
 	}
 
-	ret = rte_eth_promiscuous_disable(test_params->bonded_port_id);
+	ret = rte_eth_promiscuous_disable(test_params->bonding_port_id);
 	TEST_ASSERT_SUCCESS(ret,
 		"Failed to disable promiscuous mode for port %d: %s",
-		test_params->bonded_port_id, rte_strerror(-ret));
+		test_params->bonding_port_id, rte_strerror(-ret));
 
-	TEST_ASSERT_EQUAL(rte_eth_promiscuous_get(test_params->bonded_port_id), 0,
+	TEST_ASSERT_EQUAL(rte_eth_promiscuous_get(test_params->bonding_port_id), 0,
 			"Port (%d) promiscuous mode not disabled",
-			test_params->bonded_port_id);
+			test_params->bonding_port_id);
 
-	for (i = 0; i < test_params->bonded_slave_count; i++) {
+	for (i = 0; i < test_params->bonding_member_count; i++) {
 		TEST_ASSERT_EQUAL(rte_eth_promiscuous_get(
-				test_params->slave_port_ids[i]), 0,
+				test_params->member_port_ids[i]), 0,
 				"Port (%d) promiscuous mode not disabled",
-				test_params->slave_port_ids[i]);
+				test_params->member_port_ids[i]);
 	}
 
-	/* Clean up and remove slaves from bonded device */
-	return remove_slaves_and_stop_bonded_device();
+	/* Clean up and remove members from bonding device */
+	return remove_members_and_stop_bonding_device();
 }
 
 static int
@@ -3905,238 +3942,246 @@ test_broadcast_verify_mac_assignment(void)
 
 	int i;
 
-	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->slave_port_ids[0], &expected_mac_addr_0),
+	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->member_port_ids[0],
+			&expected_mac_addr_0),
 			"Failed to get mac address (port %d)",
-			test_params->slave_port_ids[0]);
-	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->slave_port_ids[2], &expected_mac_addr_1),
+			test_params->member_port_ids[0]);
+	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->member_port_ids[2],
+			&expected_mac_addr_1),
 			"Failed to get mac address (port %d)",
-			test_params->slave_port_ids[2]);
+			test_params->member_port_ids[2]);
 
-	/* Initialize bonded device with 4 slaves in round robin mode */
-	TEST_ASSERT_SUCCESS(initialize_bonded_device_with_slaves(
+	/* Initialize bonding device with 4 members in round robin mode */
+	TEST_ASSERT_SUCCESS(initialize_bonding_device_with_members(
 			BONDING_MODE_BROADCAST, 0, 4, 1),
-			"Failed to initialise bonded device");
+			"Failed to initialise bonding device");
 
-	/* Verify that all MACs are the same as first slave added to bonded
+	/* Verify that all MACs are the same as first member added to bonding
 	 * device */
-	for (i = 0; i < test_params->bonded_slave_count; i++) {
-		TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->slave_port_ids[i], &read_mac_addr),
+	for (i = 0; i < test_params->bonding_member_count; i++) {
+		TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->member_port_ids[i],
+				&read_mac_addr),
 				"Failed to get mac address (port %d)",
-				test_params->slave_port_ids[i]);
+				test_params->member_port_ids[i]);
 		TEST_ASSERT_SUCCESS(memcmp(&expected_mac_addr_0, &read_mac_addr,
 				sizeof(read_mac_addr)),
-				"slave port (%d) mac address not set to that of primary port",
-				test_params->slave_port_ids[i]);
+				"member port (%d) mac address not set to that of primary port",
+				test_params->member_port_ids[i]);
 	}
 
 	/* change primary and verify that MAC addresses haven't changed */
-	TEST_ASSERT_SUCCESS(rte_eth_bond_primary_set(test_params->bonded_port_id,
-			test_params->slave_port_ids[2]),
-			"Failed to set bonded port (%d) primary port to (%d)",
-			test_params->bonded_port_id, test_params->slave_port_ids[i]);
+	TEST_ASSERT_SUCCESS(rte_eth_bond_primary_set(test_params->bonding_port_id,
+			test_params->member_port_ids[2]),
+			"Failed to set bonding port (%d) primary port to (%d)",
+			test_params->bonding_port_id, test_params->member_port_ids[i]);
 
-	for (i = 0; i < test_params->bonded_slave_count; i++) {
-		TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->slave_port_ids[i], &read_mac_addr),
+	for (i = 0; i < test_params->bonding_member_count; i++) {
+		TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->member_port_ids[i],
+				&read_mac_addr),
 				"Failed to get mac address (port %d)",
-				test_params->slave_port_ids[i]);
+				test_params->member_port_ids[i]);
 		TEST_ASSERT_SUCCESS(memcmp(&expected_mac_addr_0, &read_mac_addr,
 				sizeof(read_mac_addr)),
-				"slave port (%d) mac address has changed to that of primary "
-				"port without stop/start toggle of bonded device",
-				test_params->slave_port_ids[i]);
+				"member port (%d) mac address has changed to that of primary "
+				"port without stop/start toggle of bonding device",
+				test_params->member_port_ids[i]);
 	}
 
-	/* stop / start bonded device and verify that primary MAC address is
-	 * propagated to bonded device and slaves */
+	/*
+	 * stop / start bonding device and verify that primary MAC address is
+	 * propagated to bonding device and members.
+	 */
 
-	TEST_ASSERT_SUCCESS(rte_eth_dev_stop(test_params->bonded_port_id),
-			"Failed to stop bonded port %u",
-			test_params->bonded_port_id);
+	TEST_ASSERT_SUCCESS(rte_eth_dev_stop(test_params->bonding_port_id),
+			"Failed to stop bonding port %u",
+			test_params->bonding_port_id);
 
-	TEST_ASSERT_SUCCESS(rte_eth_dev_start(test_params->bonded_port_id),
-			"Failed to start bonded device");
+	TEST_ASSERT_SUCCESS(rte_eth_dev_start(test_params->bonding_port_id),
+			"Failed to start bonding device");
 
-	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->bonded_port_id, &read_mac_addr),
+	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->bonding_port_id, &read_mac_addr),
 			"Failed to get mac address (port %d)",
-			test_params->bonded_port_id);
+			test_params->bonding_port_id);
 	TEST_ASSERT_SUCCESS(memcmp(&expected_mac_addr_1, &read_mac_addr,
 			sizeof(read_mac_addr)),
-			"bonded port (%d) mac address not set to that of new primary  port",
-			test_params->slave_port_ids[i]);
+			"bonding port (%d) mac address not set to that of new primary  port",
+			test_params->member_port_ids[i]);
 
-	for (i = 0; i < test_params->bonded_slave_count; i++) {
-		TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->slave_port_ids[i], &read_mac_addr),
+	for (i = 0; i < test_params->bonding_member_count; i++) {
+		TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->member_port_ids[i],
+				&read_mac_addr),
 				"Failed to get mac address (port %d)",
-				test_params->slave_port_ids[i]);
+				test_params->member_port_ids[i]);
 		TEST_ASSERT_SUCCESS(memcmp(&expected_mac_addr_1, &read_mac_addr,
 				sizeof(read_mac_addr)),
-				"slave port (%d) mac address not set to that of new primary "
-				"port", test_params->slave_port_ids[i]);
+				"member port (%d) mac address not set to that of new primary "
+				"port", test_params->member_port_ids[i]);
 	}
 
 	/* Set explicit MAC address */
 	TEST_ASSERT_SUCCESS(rte_eth_bond_mac_address_set(
-			test_params->bonded_port_id,
-			(struct rte_ether_addr *)bonded_mac),
+			test_params->bonding_port_id,
+			(struct rte_ether_addr *)bonding_mac),
 			"Failed to set MAC address");
 
-	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->bonded_port_id, &read_mac_addr),
+	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->bonding_port_id, &read_mac_addr),
 			"Failed to get mac address (port %d)",
-			test_params->bonded_port_id);
-	TEST_ASSERT_SUCCESS(memcmp(bonded_mac, &read_mac_addr,
+			test_params->bonding_port_id);
+	TEST_ASSERT_SUCCESS(memcmp(bonding_mac, &read_mac_addr,
 			sizeof(read_mac_addr)),
-			"bonded port (%d) mac address not set to that of new primary port",
-			test_params->slave_port_ids[i]);
+			"bonding port (%d) mac address not set to that of new primary port",
+			test_params->member_port_ids[i]);
 
 
-	for (i = 0; i < test_params->bonded_slave_count; i++) {
-		TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->slave_port_ids[i], &read_mac_addr),
+	for (i = 0; i < test_params->bonding_member_count; i++) {
+		TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->member_port_ids[i],
+				&read_mac_addr),
 				"Failed to get mac address (port %d)",
-				test_params->slave_port_ids[i]);
-		TEST_ASSERT_SUCCESS(memcmp(bonded_mac, &read_mac_addr,
+				test_params->member_port_ids[i]);
+		TEST_ASSERT_SUCCESS(memcmp(bonding_mac, &read_mac_addr,
 				sizeof(read_mac_addr)),
-				"slave port (%d) mac address not set to that of new primary "
-				"port", test_params->slave_port_ids[i]);
+				"member port (%d) mac address not set to that of new primary "
+				"port", test_params->member_port_ids[i]);
 	}
 
-	/* Clean up and remove slaves from bonded device */
-	return remove_slaves_and_stop_bonded_device();
+	/* Clean up and remove members from bonding device */
+	return remove_members_and_stop_bonding_device();
 }
 
-#define BROADCAST_LINK_STATUS_NUM_OF_SLAVES (4)
+#define BROADCAST_LINK_STATUS_NUM_OF_MEMBERS (4)
 static int
-test_broadcast_verify_slave_link_status_change_behaviour(void)
+test_broadcast_verify_member_link_status_change_behaviour(void)
 {
-	struct rte_mbuf *pkt_burst[BROADCAST_LINK_STATUS_NUM_OF_SLAVES][MAX_PKT_BURST];
+	struct rte_mbuf *pkt_burst[BROADCAST_LINK_STATUS_NUM_OF_MEMBERS][MAX_PKT_BURST];
 	struct rte_mbuf *rx_pkt_burst[MAX_PKT_BURST] = { NULL };
 	struct rte_eth_stats port_stats;
 
-	uint16_t slaves[RTE_MAX_ETHPORTS];
+	uint16_t members[RTE_MAX_ETHPORTS];
 
-	int i, burst_size, slave_count;
+	int i, burst_size, member_count;
 
 	memset(pkt_burst, 0, sizeof(pkt_burst));
 
-	/* Initialize bonded device with 4 slaves in round robin mode */
-	TEST_ASSERT_SUCCESS(initialize_bonded_device_with_slaves(
-				BONDING_MODE_BROADCAST, 0, BROADCAST_LINK_STATUS_NUM_OF_SLAVES,
-				1), "Failed to initialise bonded device");
+	/* Initialize bonding device with 4 members in round robin mode */
+	TEST_ASSERT_SUCCESS(initialize_bonding_device_with_members(
+				BONDING_MODE_BROADCAST, 0, BROADCAST_LINK_STATUS_NUM_OF_MEMBERS,
+				1), "Failed to initialise bonding device");
 
-	/* Verify Current Slaves Count /Active Slave Count is */
-	slave_count = rte_eth_bond_slaves_get(test_params->bonded_port_id, slaves,
+	/* Verify Current Members Count /Active Member Count is */
+	member_count = rte_eth_bond_members_get(test_params->bonding_port_id, members,
 			RTE_MAX_ETHPORTS);
-	TEST_ASSERT_EQUAL(slave_count, 4,
-			"Number of slaves (%d) is not as expected (%d).",
-			slave_count, 4);
+	TEST_ASSERT_EQUAL(member_count, 4,
+			"Number of members (%d) is not as expected (%d).",
+			member_count, 4);
 
-	slave_count = rte_eth_bond_active_slaves_get(test_params->bonded_port_id,
-			slaves, RTE_MAX_ETHPORTS);
-	TEST_ASSERT_EQUAL(slave_count, 4,
-			"Number of active slaves (%d) is not as expected (%d).",
-			slave_count, 4);
+	member_count = rte_eth_bond_active_members_get(test_params->bonding_port_id,
+			members, RTE_MAX_ETHPORTS);
+	TEST_ASSERT_EQUAL(member_count, 4,
+			"Number of active members (%d) is not as expected (%d).",
+			member_count, 4);
 
-	/* Set 2 slaves link status to down */
+	/* Set 2 members link status to down */
 	virtual_ethdev_simulate_link_status_interrupt(
-			test_params->slave_port_ids[1], 0);
+			test_params->member_port_ids[1], 0);
 	virtual_ethdev_simulate_link_status_interrupt(
-			test_params->slave_port_ids[3], 0);
+			test_params->member_port_ids[3], 0);
 
-	slave_count = rte_eth_bond_active_slaves_get(test_params->bonded_port_id,
-			slaves, RTE_MAX_ETHPORTS);
-	TEST_ASSERT_EQUAL(slave_count, 2,
-			"Number of active slaves (%d) is not as expected (%d).",
-			slave_count, 2);
+	member_count = rte_eth_bond_active_members_get(test_params->bonding_port_id,
+			members, RTE_MAX_ETHPORTS);
+	TEST_ASSERT_EQUAL(member_count, 2,
+			"Number of active members (%d) is not as expected (%d).",
+			member_count, 2);
 
-	for (i = 0; i < test_params->bonded_slave_count; i++)
-		rte_eth_stats_reset(test_params->slave_port_ids[i]);
+	for (i = 0; i < test_params->bonding_member_count; i++)
+		rte_eth_stats_reset(test_params->member_port_ids[i]);
 
-	/* Verify that pkts are not sent on slaves with link status down */
+	/* Verify that pkts are not sent on members with link status down */
 	burst_size = 21;
 
 	TEST_ASSERT_EQUAL(generate_test_burst(
 			&pkt_burst[0][0], burst_size, 0, 0, 1, 0, 0), burst_size,
 			"generate_test_burst failed");
 
-	TEST_ASSERT_EQUAL(rte_eth_tx_burst(test_params->bonded_port_id, 0,
+	TEST_ASSERT_EQUAL(rte_eth_tx_burst(test_params->bonding_port_id, 0,
 			&pkt_burst[0][0], burst_size), burst_size,
 			"rte_eth_tx_burst failed\n");
 
-	rte_eth_stats_get(test_params->bonded_port_id, &port_stats);
-	TEST_ASSERT_EQUAL(port_stats.opackets, (uint64_t)(burst_size * slave_count),
+	rte_eth_stats_get(test_params->bonding_port_id, &port_stats);
+	TEST_ASSERT_EQUAL(port_stats.opackets, (uint64_t)(burst_size * member_count),
 			"(%d) port_stats.opackets (%d) not as expected (%d)\n",
-			test_params->bonded_port_id, (int)port_stats.opackets,
-			burst_size * slave_count);
+			test_params->bonding_port_id, (int)port_stats.opackets,
+			burst_size * member_count);
 
-	rte_eth_stats_get(test_params->slave_port_ids[0], &port_stats);
+	rte_eth_stats_get(test_params->member_port_ids[0], &port_stats);
 	TEST_ASSERT_EQUAL(port_stats.opackets, (uint64_t)burst_size,
 			"(%d) port_stats.opackets not as expected",
-			test_params->slave_port_ids[0]);
+			test_params->member_port_ids[0]);
 
-	rte_eth_stats_get(test_params->slave_port_ids[1], &port_stats);
+	rte_eth_stats_get(test_params->member_port_ids[1], &port_stats);
 	TEST_ASSERT_EQUAL(port_stats.opackets, 0,
 			"(%d) port_stats.opackets not as expected",
-				test_params->slave_port_ids[1]);
+				test_params->member_port_ids[1]);
 
-	rte_eth_stats_get(test_params->slave_port_ids[2], &port_stats);
+	rte_eth_stats_get(test_params->member_port_ids[2], &port_stats);
 	TEST_ASSERT_EQUAL(port_stats.opackets, (uint64_t)burst_size,
 			"(%d) port_stats.opackets not as expected",
-				test_params->slave_port_ids[2]);
+				test_params->member_port_ids[2]);
 
 
-	rte_eth_stats_get(test_params->slave_port_ids[3], &port_stats);
+	rte_eth_stats_get(test_params->member_port_ids[3], &port_stats);
 	TEST_ASSERT_EQUAL(port_stats.opackets, 0,
 			"(%d) port_stats.opackets not as expected",
-			test_params->slave_port_ids[3]);
+			test_params->member_port_ids[3]);
 
 
-	for (i = 0; i < BROADCAST_LINK_STATUS_NUM_OF_SLAVES; i++) {
+	for (i = 0; i < BROADCAST_LINK_STATUS_NUM_OF_MEMBERS; i++) {
 		TEST_ASSERT_EQUAL(generate_test_burst(
 				&pkt_burst[i][0], burst_size, 0, 0, 1, 0, 0),
 				burst_size, "failed to generate packet burst");
 
-		virtual_ethdev_add_mbufs_to_rx_queue(test_params->slave_port_ids[i],
+		virtual_ethdev_add_mbufs_to_rx_queue(test_params->member_port_ids[i],
 				&pkt_burst[i][0], burst_size);
 	}
 
-	/* Verify that pkts are not received on slaves with link status down */
+	/* Verify that pkts are not received on members with link status down */
 	TEST_ASSERT_EQUAL(rte_eth_rx_burst(
-			test_params->bonded_port_id, 0, rx_pkt_burst, MAX_PKT_BURST),
+			test_params->bonding_port_id, 0, rx_pkt_burst, MAX_PKT_BURST),
 			burst_size + burst_size, "rte_eth_rx_burst failed");
 
 
-	/* Verify bonded device rx count */
-	rte_eth_stats_get(test_params->bonded_port_id, &port_stats);
+	/* Verify bonding device rx count */
+	rte_eth_stats_get(test_params->bonding_port_id, &port_stats);
 	TEST_ASSERT_EQUAL(port_stats.ipackets, (uint64_t)(burst_size + burst_size),
 			"(%d) port_stats.ipackets not as expected\n",
-			test_params->bonded_port_id);
+			test_params->bonding_port_id);
 
-	/* Clean up and remove slaves from bonded device */
-	return remove_slaves_and_stop_bonded_device();
+	/* Clean up and remove members from bonding device */
+	return remove_members_and_stop_bonding_device();
 }
 
 static int
-test_reconfigure_bonded_device(void)
+test_reconfigure_bonding_device(void)
 {
 	test_params->nb_rx_q = 4;
 	test_params->nb_tx_q = 4;
 
-	TEST_ASSERT_SUCCESS(configure_ethdev(test_params->bonded_port_id, 0, 0),
-			"failed to reconfigure bonded device");
+	TEST_ASSERT_SUCCESS(configure_ethdev(test_params->bonding_port_id, 0, 0),
+			"failed to reconfigure bonding device");
 
 	test_params->nb_rx_q = 2;
 	test_params->nb_tx_q = 2;
 
-	TEST_ASSERT_SUCCESS(configure_ethdev(test_params->bonded_port_id, 0, 0),
-			"failed to reconfigure bonded device with less rx/tx queues");
+	TEST_ASSERT_SUCCESS(configure_ethdev(test_params->bonding_port_id, 0, 0),
+			"failed to reconfigure bonding device with less rx/tx queues");
 
 	return 0;
 }
 
 
 static int
-test_close_bonded_device(void)
+test_close_bonding_device(void)
 {
-	rte_eth_dev_close(test_params->bonded_port_id);
+	rte_eth_dev_close(test_params->bonding_port_id);
 	return 0;
 }
 
@@ -4146,21 +4191,21 @@ testsuite_teardown(void)
 	free(test_params->pkt_eth_hdr);
 	test_params->pkt_eth_hdr = NULL;
 
-	/* Clean up and remove slaves from bonded device */
-	remove_slaves_and_stop_bonded_device();
+	/* Clean up and remove members from bonding device */
+	remove_members_and_stop_bonding_device();
 }
 
 static void
 free_virtualpmd_tx_queue(void)
 {
-	int i, slave_port, to_free_cnt;
+	int i, member_port, to_free_cnt;
 	struct rte_mbuf *pkts_to_free[MAX_PKT_BURST];
 
 	/* Free tx queue of virtual pmd */
-	for (slave_port = 0; slave_port < test_params->bonded_slave_count;
-			slave_port++) {
+	for (member_port = 0; member_port < test_params->bonding_member_count;
+			member_port++) {
 		to_free_cnt = virtual_ethdev_get_mbufs_from_tx_queue(
-				test_params->slave_port_ids[slave_port],
+				test_params->member_port_ids[member_port],
 				pkts_to_free, MAX_PKT_BURST);
 		for (i = 0; i < to_free_cnt; i++)
 			rte_pktmbuf_free(pkts_to_free[i]);
@@ -4177,11 +4222,11 @@ test_tlb_tx_burst(void)
 	uint64_t sum_ports_opackets = 0, all_bond_opackets = 0, all_bond_obytes = 0;
 	uint16_t pktlen;
 
-	TEST_ASSERT_SUCCESS(initialize_bonded_device_with_slaves
+	TEST_ASSERT_SUCCESS(initialize_bonding_device_with_members
 			(BONDING_MODE_TLB, 1, 3, 1),
-			"Failed to initialise bonded device");
+			"Failed to initialise bonding device");
 
-	burst_size = 20 * test_params->bonded_slave_count;
+	burst_size = 20 * test_params->bonding_member_count;
 
 	TEST_ASSERT(burst_size < MAX_PKT_BURST,
 			"Burst size specified is greater than supported.\n");
@@ -4197,7 +4242,7 @@ test_tlb_tx_burst(void)
 					RTE_ETHER_TYPE_IPV4, 0, 0);
 		} else {
 			initialize_eth_header(test_params->pkt_eth_hdr,
-					(struct rte_ether_addr *)test_params->default_slave_mac,
+					(struct rte_ether_addr *)test_params->default_member_mac,
 					(struct rte_ether_addr *)dst_mac_0,
 					RTE_ETHER_TYPE_IPV4, 0, 0);
 		}
@@ -4208,8 +4253,8 @@ test_tlb_tx_burst(void)
 		generate_packet_burst(test_params->mbuf_pool, pkt_burst,
 				test_params->pkt_eth_hdr, 0, test_params->pkt_ipv4_hdr,
 				1, test_params->pkt_udp_hdr, burst_size, 60, 1);
-		/* Send burst on bonded port */
-		nb_tx = rte_eth_tx_burst(test_params->bonded_port_id, 0, pkt_burst,
+		/* Send burst on bonding port */
+		nb_tx = rte_eth_tx_burst(test_params->bonding_port_id, 0, pkt_burst,
 				burst_size);
 		nb_tx2 += nb_tx;
 
@@ -4222,50 +4267,50 @@ test_tlb_tx_burst(void)
 	}
 
 
-	/* Verify bonded port tx stats */
-	rte_eth_stats_get(test_params->bonded_port_id, &port_stats[0]);
+	/* Verify bonding port tx stats */
+	rte_eth_stats_get(test_params->bonding_port_id, &port_stats[0]);
 
 	all_bond_opackets = port_stats[0].opackets;
 	all_bond_obytes = port_stats[0].obytes;
 
 	TEST_ASSERT_EQUAL(port_stats[0].opackets, (uint64_t)nb_tx2,
-			"Bonded Port (%d) opackets value (%u) not as expected (%d)\n",
-			test_params->bonded_port_id, (unsigned int)port_stats[0].opackets,
+			"Bonding Port (%d) opackets value (%u) not as expected (%d)\n",
+			test_params->bonding_port_id, (unsigned int)port_stats[0].opackets,
 			burst_size);
 
 
-	/* Verify slave ports tx stats */
-	for (i = 0; i < test_params->bonded_slave_count; i++) {
-		rte_eth_stats_get(test_params->slave_port_ids[i], &port_stats[i]);
+	/* Verify member ports tx stats */
+	for (i = 0; i < test_params->bonding_member_count; i++) {
+		rte_eth_stats_get(test_params->member_port_ids[i], &port_stats[i]);
 		sum_ports_opackets += port_stats[i].opackets;
 	}
 
 	TEST_ASSERT_EQUAL(sum_ports_opackets, (uint64_t)all_bond_opackets,
-			"Total packets sent by slaves is not equal to packets sent by bond interface");
+			"Total packets sent by members is not equal to packets sent by bond interface");
 
-	/* checking if distribution of packets is balanced over slaves */
-	for (i = 0; i < test_params->bonded_slave_count; i++) {
+	/* checking if distribution of packets is balanced over members */
+	for (i = 0; i < test_params->bonding_member_count; i++) {
 		TEST_ASSERT(port_stats[i].obytes > 0 &&
 				port_stats[i].obytes < all_bond_obytes,
-						"Packets are not balanced over slaves");
+						"Packets are not balanced over members");
 	}
 
-	/* Put all slaves down and try and transmit */
-	for (i = 0; i < test_params->bonded_slave_count; i++) {
+	/* Put all members down and try and transmit */
+	for (i = 0; i < test_params->bonding_member_count; i++) {
 		virtual_ethdev_simulate_link_status_interrupt(
-				test_params->slave_port_ids[i], 0);
+				test_params->member_port_ids[i], 0);
 	}
 
-	/* Send burst on bonded port */
-	nb_tx = rte_eth_tx_burst(test_params->bonded_port_id, 0, pkt_burst,
+	/* Send burst on bonding port */
+	nb_tx = rte_eth_tx_burst(test_params->bonding_port_id, 0, pkt_burst,
 			burst_size);
 	TEST_ASSERT_EQUAL(nb_tx, 0, " bad number of packet in burst");
 
-	/* Clean ugit checkout masterp and remove slaves from bonded device */
-	return remove_slaves_and_stop_bonded_device();
+	/* Clean up and remove members from bonding device */
+	return remove_members_and_stop_bonding_device();
 }
 
-#define TEST_ADAPTIVE_TRANSMIT_LOAD_BALANCING_RX_BURST_SLAVE_COUNT (4)
+#define TEST_ADAPTIVE_TLB_RX_BURST_MEMBER_COUNT (4)
 
 static int
 test_tlb_rx_burst(void)
@@ -4279,63 +4324,63 @@ test_tlb_rx_burst(void)
 
 	uint16_t i, j, nb_rx, burst_size = 17;
 
-	/* Initialize bonded device with 4 slaves in transmit load balancing mode */
-	TEST_ASSERT_SUCCESS(initialize_bonded_device_with_slaves(
+	/* Initialize bonding device with 4 members in transmit load balancing mode */
+	TEST_ASSERT_SUCCESS(initialize_bonding_device_with_members(
 			BONDING_MODE_TLB,
-			TEST_ADAPTIVE_TRANSMIT_LOAD_BALANCING_RX_BURST_SLAVE_COUNT, 1, 1),
-			"Failed to initialize bonded device");
+			TEST_ADAPTIVE_TLB_RX_BURST_MEMBER_COUNT, 1, 1),
+			"Failed to initialize bonding device");
 
 
-	primary_port = rte_eth_bond_primary_get(test_params->bonded_port_id);
+	primary_port = rte_eth_bond_primary_get(test_params->bonding_port_id);
 	TEST_ASSERT(primary_port >= 0,
-			"failed to get primary slave for bonded port (%d)",
-			test_params->bonded_port_id);
+			"failed to get primary member for bonding port (%d)",
+			test_params->bonding_port_id);
 
-	for (i = 0; i < test_params->bonded_slave_count; i++) {
+	for (i = 0; i < test_params->bonding_member_count; i++) {
 		/* Generate test bursts of packets to transmit */
 		TEST_ASSERT_EQUAL(generate_test_burst(
 				&gen_pkt_burst[0], burst_size, 0, 1, 0, 0, 0), burst_size,
 				"burst generation failed");
 
-		/* Add rx data to slave */
-		virtual_ethdev_add_mbufs_to_rx_queue(test_params->slave_port_ids[i],
+		/* Add rx data to member */
+		virtual_ethdev_add_mbufs_to_rx_queue(test_params->member_port_ids[i],
 				&gen_pkt_burst[0], burst_size);
 
-		/* Call rx burst on bonded device */
-		nb_rx = rte_eth_rx_burst(test_params->bonded_port_id, 0,
+		/* Call rx burst on bonding device */
+		nb_rx = rte_eth_rx_burst(test_params->bonding_port_id, 0,
 				&rx_pkt_burst[0], MAX_PKT_BURST);
 
 		TEST_ASSERT_EQUAL(nb_rx, burst_size, "rte_eth_rx_burst failed\n");
 
-		if (test_params->slave_port_ids[i] == primary_port) {
-			/* Verify bonded device rx count */
-			rte_eth_stats_get(test_params->bonded_port_id, &port_stats);
+		if (test_params->member_port_ids[i] == primary_port) {
+			/* Verify bonding device rx count */
+			rte_eth_stats_get(test_params->bonding_port_id, &port_stats);
 			TEST_ASSERT_EQUAL(port_stats.ipackets, (uint64_t)burst_size,
-					"Bonded Port (%d) ipackets value (%u) not as expected (%d)\n",
-					test_params->bonded_port_id,
+					"Bonding Port (%d) ipackets value (%u) not as expected (%d)\n",
+					test_params->bonding_port_id,
 					(unsigned int)port_stats.ipackets, burst_size);
 
-			/* Verify bonded slave devices rx count */
-			for (j = 0; j < test_params->bonded_slave_count; j++) {
-				rte_eth_stats_get(test_params->slave_port_ids[j], &port_stats);
+			/* Verify bonding member devices rx count */
+			for (j = 0; j < test_params->bonding_member_count; j++) {
+				rte_eth_stats_get(test_params->member_port_ids[j], &port_stats);
 				if (i == j) {
 					TEST_ASSERT_EQUAL(port_stats.ipackets, (uint64_t)burst_size,
-							"Slave Port (%d) ipackets value (%u) not as expected (%d)\n",
-							test_params->slave_port_ids[i],
+							"Member Port (%d) ipackets value (%u) not as expected (%d)\n",
+							test_params->member_port_ids[i],
 							(unsigned int)port_stats.ipackets, burst_size);
 				} else {
 					TEST_ASSERT_EQUAL(port_stats.ipackets, (uint64_t)0,
-							"Slave Port (%d) ipackets value (%u) not as expected (%d)\n",
-							test_params->slave_port_ids[i],
+							"Member Port (%d) ipackets value (%u) not as expected (%d)\n",
+							test_params->member_port_ids[i],
 							(unsigned int)port_stats.ipackets, 0);
 				}
 			}
 		} else {
-			for (j = 0; j < test_params->bonded_slave_count; j++) {
-				rte_eth_stats_get(test_params->slave_port_ids[j], &port_stats);
+			for (j = 0; j < test_params->bonding_member_count; j++) {
+				rte_eth_stats_get(test_params->member_port_ids[j], &port_stats);
 				TEST_ASSERT_EQUAL(port_stats.ipackets, (uint64_t)0,
-						"Slave Port (%d) ipackets value (%u) not as expected (%d)\n",
-						test_params->slave_port_ids[i],
+						"Member Port (%d) ipackets value (%u) not as expected (%d)\n",
+						test_params->member_port_ids[i],
 						(unsigned int)port_stats.ipackets, 0);
 			}
 		}
@@ -4344,12 +4389,12 @@ test_tlb_rx_burst(void)
 		for (i = 0; i < burst_size; i++)
 			rte_pktmbuf_free(rx_pkt_burst[i]);
 
-		/* reset bonded device stats */
-		rte_eth_stats_reset(test_params->bonded_port_id);
+		/* reset bonding device stats */
+		rte_eth_stats_reset(test_params->bonding_port_id);
 	}
 
-	/* Clean up and remove slaves from bonded device */
-	return remove_slaves_and_stop_bonded_device();
+	/* Clean up and remove members from bonding device */
+	return remove_members_and_stop_bonding_device();
 }
 
 static int
@@ -4358,60 +4403,60 @@ test_tlb_verify_promiscuous_enable_disable(void)
 	int i, primary_port, promiscuous_en;
 	int ret;
 
-	/* Initialize bonded device with 4 slaves in transmit load balancing mode */
-	TEST_ASSERT_SUCCESS( initialize_bonded_device_with_slaves(
+	/* Initialize bonding device with 4 members in transmit load balancing mode */
+	TEST_ASSERT_SUCCESS( initialize_bonding_device_with_members(
 			BONDING_MODE_TLB, 0, 4, 1),
-			"Failed to initialize bonded device");
+			"Failed to initialize bonding device");
 
-	primary_port = rte_eth_bond_primary_get(test_params->bonded_port_id);
+	primary_port = rte_eth_bond_primary_get(test_params->bonding_port_id);
 	TEST_ASSERT(primary_port >= 0,
-			"failed to get primary slave for bonded port (%d)",
-			test_params->bonded_port_id);
+			"failed to get primary member for bonding port (%d)",
+			test_params->bonding_port_id);
 
-	ret = rte_eth_promiscuous_enable(test_params->bonded_port_id);
+	ret = rte_eth_promiscuous_enable(test_params->bonding_port_id);
 	TEST_ASSERT_SUCCESS(ret,
 		"Failed to enable promiscuous mode for port %d: %s",
-		test_params->bonded_port_id, rte_strerror(-ret));
+		test_params->bonding_port_id, rte_strerror(-ret));
 
-	promiscuous_en = rte_eth_promiscuous_get(test_params->bonded_port_id);
+	promiscuous_en = rte_eth_promiscuous_get(test_params->bonding_port_id);
 	TEST_ASSERT_EQUAL(promiscuous_en, (int)1,
 			"Port (%d) promiscuous mode not enabled\n",
-			test_params->bonded_port_id);
-	for (i = 0; i < test_params->bonded_slave_count; i++) {
+			test_params->bonding_port_id);
+	for (i = 0; i < test_params->bonding_member_count; i++) {
 		promiscuous_en = rte_eth_promiscuous_get(
-				test_params->slave_port_ids[i]);
-		if (primary_port == test_params->slave_port_ids[i]) {
+				test_params->member_port_ids[i]);
+		if (primary_port == test_params->member_port_ids[i]) {
 			TEST_ASSERT_EQUAL(promiscuous_en, (int)1,
 					"Port (%d) promiscuous mode not enabled\n",
-					test_params->bonded_port_id);
+					test_params->bonding_port_id);
 		} else {
 			TEST_ASSERT_EQUAL(promiscuous_en, (int)0,
 					"Port (%d) promiscuous mode enabled\n",
-					test_params->bonded_port_id);
+					test_params->bonding_port_id);
 		}
 
 	}
 
-	ret = rte_eth_promiscuous_disable(test_params->bonded_port_id);
+	ret = rte_eth_promiscuous_disable(test_params->bonding_port_id);
 	TEST_ASSERT_SUCCESS(ret,
 		"Failed to disable promiscuous mode for port %d: %s\n",
-		test_params->bonded_port_id, rte_strerror(-ret));
+		test_params->bonding_port_id, rte_strerror(-ret));
 
-	promiscuous_en = rte_eth_promiscuous_get(test_params->bonded_port_id);
+	promiscuous_en = rte_eth_promiscuous_get(test_params->bonding_port_id);
 	TEST_ASSERT_EQUAL(promiscuous_en, (int)0,
 			"Port (%d) promiscuous mode not disabled\n",
-			test_params->bonded_port_id);
+			test_params->bonding_port_id);
 
-	for (i = 0; i < test_params->bonded_slave_count; i++) {
+	for (i = 0; i < test_params->bonding_member_count; i++) {
 		promiscuous_en = rte_eth_promiscuous_get(
-				test_params->slave_port_ids[i]);
+				test_params->member_port_ids[i]);
 		TEST_ASSERT_EQUAL(promiscuous_en, (int)0,
-				"slave port (%d) promiscuous mode not disabled\n",
-				test_params->slave_port_ids[i]);
+				"member port (%d) promiscuous mode not disabled\n",
+				test_params->member_port_ids[i]);
 	}
 
-	/* Clean up and remove slaves from bonded device */
-	return remove_slaves_and_stop_bonded_device();
+	/* Clean up and remove members from bonding device */
+	return remove_members_and_stop_bonding_device();
 }
 
 static int
@@ -4420,153 +4465,159 @@ test_tlb_verify_mac_assignment(void)
 	struct rte_ether_addr read_mac_addr;
 	struct rte_ether_addr expected_mac_addr_0, expected_mac_addr_1;
 
-	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->slave_port_ids[0], &expected_mac_addr_0),
+	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->member_port_ids[0],
+			&expected_mac_addr_0),
 			"Failed to get mac address (port %d)",
-			test_params->slave_port_ids[0]);
-	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->slave_port_ids[1], &expected_mac_addr_1),
+			test_params->member_port_ids[0]);
+	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->member_port_ids[1],
+			&expected_mac_addr_1),
 			"Failed to get mac address (port %d)",
-			test_params->slave_port_ids[1]);
+			test_params->member_port_ids[1]);
 
-	/* Initialize bonded device with 2 slaves in active backup mode */
-	TEST_ASSERT_SUCCESS(initialize_bonded_device_with_slaves(
+	/* Initialize bonding device with 2 members in active backup mode */
+	TEST_ASSERT_SUCCESS(initialize_bonding_device_with_members(
 			BONDING_MODE_TLB, 0, 2, 1),
-			"Failed to initialize bonded device");
+			"Failed to initialize bonding device");
 
-	/* Verify that bonded MACs is that of first slave and that the other slave
-	 * MAC hasn't been changed */
-	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->bonded_port_id, &read_mac_addr),
+	/*
+	 * Verify that bonding MACs is that of first member and that the other member
+	 * MAC hasn't been changed.
+	 */
+	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->bonding_port_id, &read_mac_addr),
 			"Failed to get mac address (port %d)",
-			test_params->bonded_port_id);
+			test_params->bonding_port_id);
 	TEST_ASSERT_SUCCESS(memcmp(&expected_mac_addr_0, &read_mac_addr,
 			sizeof(read_mac_addr)),
-			"bonded port (%d) mac address not set to that of primary port",
-			test_params->bonded_port_id);
+			"bonding port (%d) mac address not set to that of primary port",
+			test_params->bonding_port_id);
 
-	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->slave_port_ids[0], &read_mac_addr),
+	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->member_port_ids[0], &read_mac_addr),
 			"Failed to get mac address (port %d)",
-			test_params->slave_port_ids[0]);
+			test_params->member_port_ids[0]);
 	TEST_ASSERT_SUCCESS(memcmp(&expected_mac_addr_0, &read_mac_addr,
 			sizeof(read_mac_addr)),
-			"slave port (%d) mac address not set to that of primary port",
-			test_params->slave_port_ids[0]);
+			"member port (%d) mac address not set to that of primary port",
+			test_params->member_port_ids[0]);
 
-	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->slave_port_ids[1], &read_mac_addr),
+	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->member_port_ids[1], &read_mac_addr),
 			"Failed to get mac address (port %d)",
-			test_params->slave_port_ids[1]);
+			test_params->member_port_ids[1]);
 	TEST_ASSERT_SUCCESS(memcmp(&expected_mac_addr_1, &read_mac_addr,
 			sizeof(read_mac_addr)),
-			"slave port (%d) mac address not as expected",
-			test_params->slave_port_ids[1]);
+			"member port (%d) mac address not as expected",
+			test_params->member_port_ids[1]);
 
 	/* change primary and verify that MAC addresses haven't changed */
-	TEST_ASSERT_EQUAL(rte_eth_bond_primary_set(test_params->bonded_port_id,
-			test_params->slave_port_ids[1]), 0,
-			"Failed to set bonded port (%d) primary port to (%d)",
-			test_params->bonded_port_id, test_params->slave_port_ids[1]);
+	TEST_ASSERT_EQUAL(rte_eth_bond_primary_set(test_params->bonding_port_id,
+			test_params->member_port_ids[1]), 0,
+			"Failed to set bonding port (%d) primary port to (%d)",
+			test_params->bonding_port_id, test_params->member_port_ids[1]);
 
-	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->bonded_port_id, &read_mac_addr),
+	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->bonding_port_id, &read_mac_addr),
 			"Failed to get mac address (port %d)",
-			test_params->bonded_port_id);
+			test_params->bonding_port_id);
 	TEST_ASSERT_SUCCESS(memcmp(&expected_mac_addr_0, &read_mac_addr,
 			sizeof(read_mac_addr)),
-			"bonded port (%d) mac address not set to that of primary port",
-			test_params->bonded_port_id);
+			"bonding port (%d) mac address not set to that of primary port",
+			test_params->bonding_port_id);
 
-	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->slave_port_ids[0], &read_mac_addr),
+	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->member_port_ids[0], &read_mac_addr),
 			"Failed to get mac address (port %d)",
-			test_params->slave_port_ids[0]);
+			test_params->member_port_ids[0]);
 	TEST_ASSERT_SUCCESS(memcmp(&expected_mac_addr_0, &read_mac_addr,
 			sizeof(read_mac_addr)),
-			"slave port (%d) mac address not set to that of primary port",
-			test_params->slave_port_ids[0]);
+			"member port (%d) mac address not set to that of primary port",
+			test_params->member_port_ids[0]);
 
-	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->slave_port_ids[1], &read_mac_addr),
+	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->member_port_ids[1], &read_mac_addr),
 			"Failed to get mac address (port %d)",
-			test_params->slave_port_ids[1]);
+			test_params->member_port_ids[1]);
 	TEST_ASSERT_SUCCESS(memcmp(&expected_mac_addr_1, &read_mac_addr,
 			sizeof(read_mac_addr)),
-			"slave port (%d) mac address not as expected",
-			test_params->slave_port_ids[1]);
+			"member port (%d) mac address not as expected",
+			test_params->member_port_ids[1]);
 
-	/* stop / start bonded device and verify that primary MAC address is
-	 * propagated to bonded device and slaves */
+	/*
+	 * stop / start bonding device and verify that primary MAC address is
+	 * propagated to bonding device and members.
+	 */
 
-	TEST_ASSERT_SUCCESS(rte_eth_dev_stop(test_params->bonded_port_id),
-			"Failed to stop bonded port %u",
-			test_params->bonded_port_id);
+	TEST_ASSERT_SUCCESS(rte_eth_dev_stop(test_params->bonding_port_id),
+			"Failed to stop bonding port %u",
+			test_params->bonding_port_id);
 
-	TEST_ASSERT_SUCCESS(rte_eth_dev_start(test_params->bonded_port_id),
+	TEST_ASSERT_SUCCESS(rte_eth_dev_start(test_params->bonding_port_id),
 			"Failed to start device");
 
-	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->bonded_port_id, &read_mac_addr),
+	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->bonding_port_id, &read_mac_addr),
 			"Failed to get mac address (port %d)",
-			test_params->bonded_port_id);
+			test_params->bonding_port_id);
 	TEST_ASSERT_SUCCESS(memcmp(&expected_mac_addr_1, &read_mac_addr,
 			sizeof(read_mac_addr)),
-			"bonded port (%d) mac address not set to that of primary port",
-			test_params->bonded_port_id);
+			"bonding port (%d) mac address not set to that of primary port",
+			test_params->bonding_port_id);
 
-	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->slave_port_ids[0], &read_mac_addr),
+	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->member_port_ids[0], &read_mac_addr),
 			"Failed to get mac address (port %d)",
-			test_params->slave_port_ids[0]);
+			test_params->member_port_ids[0]);
 	TEST_ASSERT_SUCCESS(memcmp(&expected_mac_addr_0, &read_mac_addr,
 			sizeof(read_mac_addr)),
-			"slave port (%d) mac address not as expected",
-			test_params->slave_port_ids[0]);
+			"member port (%d) mac address not as expected",
+			test_params->member_port_ids[0]);
 
-	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->slave_port_ids[1], &read_mac_addr),
+	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->member_port_ids[1], &read_mac_addr),
 			"Failed to get mac address (port %d)",
-			test_params->slave_port_ids[1]);
+			test_params->member_port_ids[1]);
 	TEST_ASSERT_SUCCESS(memcmp(&expected_mac_addr_1, &read_mac_addr,
 			sizeof(read_mac_addr)),
-			"slave port (%d) mac address not set to that of primary port",
-			test_params->slave_port_ids[1]);
+			"member port (%d) mac address not set to that of primary port",
+			test_params->member_port_ids[1]);
 
 
 	/* Set explicit MAC address */
 	TEST_ASSERT_SUCCESS(rte_eth_bond_mac_address_set(
-			test_params->bonded_port_id,
-			(struct rte_ether_addr *)bonded_mac),
+			test_params->bonding_port_id,
+			(struct rte_ether_addr *)bonding_mac),
 			"failed to set MAC address");
 
-	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->bonded_port_id, &read_mac_addr),
+	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->bonding_port_id, &read_mac_addr),
 			"Failed to get mac address (port %d)",
-			test_params->bonded_port_id);
-	TEST_ASSERT_SUCCESS(memcmp(&bonded_mac, &read_mac_addr,
+			test_params->bonding_port_id);
+	TEST_ASSERT_SUCCESS(memcmp(&bonding_mac, &read_mac_addr,
 			sizeof(read_mac_addr)),
-			"bonded port (%d) mac address not set to that of bonded port",
-			test_params->bonded_port_id);
+			"bonding port (%d) mac address not set to that of bonding port",
+			test_params->bonding_port_id);
 
-	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->slave_port_ids[0], &read_mac_addr),
+	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->member_port_ids[0], &read_mac_addr),
 			"Failed to get mac address (port %d)",
-			test_params->slave_port_ids[0]);
+			test_params->member_port_ids[0]);
 	TEST_ASSERT_SUCCESS(memcmp(&expected_mac_addr_0, &read_mac_addr,
 			sizeof(read_mac_addr)),
-			"slave port (%d) mac address not as expected",
-			test_params->slave_port_ids[0]);
+			"member port (%d) mac address not as expected",
+			test_params->member_port_ids[0]);
 
-	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->slave_port_ids[1], &read_mac_addr),
+	TEST_ASSERT_SUCCESS(rte_eth_macaddr_get(test_params->member_port_ids[1], &read_mac_addr),
 			"Failed to get mac address (port %d)",
-			test_params->slave_port_ids[1]);
-	TEST_ASSERT_SUCCESS(memcmp(&bonded_mac, &read_mac_addr,
+			test_params->member_port_ids[1]);
+	TEST_ASSERT_SUCCESS(memcmp(&bonding_mac, &read_mac_addr,
 			sizeof(read_mac_addr)),
-			"slave port (%d) mac address not set to that of bonded port",
-			test_params->slave_port_ids[1]);
+			"member port (%d) mac address not set to that of bonding port",
+			test_params->member_port_ids[1]);
 
-	/* Clean up and remove slaves from bonded device */
-	return remove_slaves_and_stop_bonded_device();
+	/* Clean up and remove members from bonding device */
+	return remove_members_and_stop_bonding_device();
 }
 
 static int
-test_tlb_verify_slave_link_status_change_failover(void)
+test_tlb_verify_member_link_status_change_failover(void)
 {
-	struct rte_mbuf *pkt_burst[TEST_ADAPTIVE_TRANSMIT_LOAD_BALANCING_RX_BURST_SLAVE_COUNT][MAX_PKT_BURST];
+	struct rte_mbuf *pkt_burst[TEST_ADAPTIVE_TLB_RX_BURST_MEMBER_COUNT][MAX_PKT_BURST];
 	struct rte_mbuf *rx_pkt_burst[MAX_PKT_BURST] = { NULL };
 	struct rte_eth_stats port_stats;
 
-	uint16_t slaves[RTE_MAX_ETHPORTS];
+	uint16_t members[RTE_MAX_ETHPORTS];
 
-	int i, burst_size, slave_count, primary_port;
+	int i, burst_size, member_count, primary_port;
 
 	burst_size = 21;
 
@@ -4574,121 +4625,124 @@ test_tlb_verify_slave_link_status_change_failover(void)
 
 
 
-	/* Initialize bonded device with 4 slaves in round robin mode */
-	TEST_ASSERT_SUCCESS(initialize_bonded_device_with_slaves(
+	/* Initialize bonding device with 4 members in round robin mode */
+	TEST_ASSERT_SUCCESS(initialize_bonding_device_with_members(
 			BONDING_MODE_TLB, 0,
-			TEST_ADAPTIVE_TRANSMIT_LOAD_BALANCING_RX_BURST_SLAVE_COUNT, 1),
-			"Failed to initialize bonded device with slaves");
+			TEST_ADAPTIVE_TLB_RX_BURST_MEMBER_COUNT, 1),
+			"Failed to initialize bonding device with members");
 
-	/* Verify Current Slaves Count /Active Slave Count is */
-	slave_count = rte_eth_bond_slaves_get(test_params->bonded_port_id, slaves,
+	/* Verify Current Members Count /Active Member Count is */
+	member_count = rte_eth_bond_members_get(test_params->bonding_port_id, members,
 			RTE_MAX_ETHPORTS);
-	TEST_ASSERT_EQUAL(slave_count, 4,
-			"Number of slaves (%d) is not as expected (%d).\n",
-			slave_count, 4);
+	TEST_ASSERT_EQUAL(member_count, 4,
+			"Number of members (%d) is not as expected (%d).\n",
+			member_count, 4);
 
-	slave_count = rte_eth_bond_active_slaves_get(test_params->bonded_port_id,
-			slaves, RTE_MAX_ETHPORTS);
-	TEST_ASSERT_EQUAL(slave_count, (int)4,
-			"Number of slaves (%d) is not as expected (%d).\n",
-			slave_count, 4);
+	member_count = rte_eth_bond_active_members_get(test_params->bonding_port_id,
+			members, RTE_MAX_ETHPORTS);
+	TEST_ASSERT_EQUAL(member_count, 4,
+			"Number of members (%d) is not as expected (%d).\n",
+			member_count, 4);
 
-	primary_port = rte_eth_bond_primary_get(test_params->bonded_port_id);
-	TEST_ASSERT_EQUAL(primary_port, test_params->slave_port_ids[0],
+	primary_port = rte_eth_bond_primary_get(test_params->bonding_port_id);
+	TEST_ASSERT_EQUAL(primary_port, test_params->member_port_ids[0],
 			"Primary port not as expected");
 
-	/* Bring 2 slaves down and verify active slave count */
+	/* Bring 2 members down and verify active member count */
 	virtual_ethdev_simulate_link_status_interrupt(
-			test_params->slave_port_ids[1], 0);
+			test_params->member_port_ids[1], 0);
 	virtual_ethdev_simulate_link_status_interrupt(
-			test_params->slave_port_ids[3], 0);
+			test_params->member_port_ids[3], 0);
 
-	TEST_ASSERT_EQUAL(rte_eth_bond_active_slaves_get(
-			test_params->bonded_port_id, slaves, RTE_MAX_ETHPORTS), 2,
-			"Number of active slaves (%d) is not as expected (%d).",
-			slave_count, 2);
+	TEST_ASSERT_EQUAL(rte_eth_bond_active_members_get(
+			test_params->bonding_port_id, members, RTE_MAX_ETHPORTS), 2,
+			"Number of active members (%d) is not as expected (%d).",
+			member_count, 2);
 
 	virtual_ethdev_simulate_link_status_interrupt(
-			test_params->slave_port_ids[1], 1);
+			test_params->member_port_ids[1], 1);
 	virtual_ethdev_simulate_link_status_interrupt(
-			test_params->slave_port_ids[3], 1);
+			test_params->member_port_ids[3], 1);
 
 
-	/* Bring primary port down, verify that active slave count is 3 and primary
-	 *  has changed */
+	/*
+	 * Bring primary port down, verify that active member count is 3 and primary
+	 *  has changed.
+	 */
 	virtual_ethdev_simulate_link_status_interrupt(
-			test_params->slave_port_ids[0], 0);
+			test_params->member_port_ids[0], 0);
 
-	TEST_ASSERT_EQUAL(rte_eth_bond_active_slaves_get(
-			test_params->bonded_port_id, slaves, RTE_MAX_ETHPORTS), 3,
-			"Number of active slaves (%d) is not as expected (%d).",
-			slave_count, 3);
+	TEST_ASSERT_EQUAL(rte_eth_bond_active_members_get(
+			test_params->bonding_port_id, members, RTE_MAX_ETHPORTS), 3,
+			"Number of active members (%d) is not as expected (%d).",
+			member_count, 3);
 
-	primary_port = rte_eth_bond_primary_get(test_params->bonded_port_id);
-	TEST_ASSERT_EQUAL(primary_port, test_params->slave_port_ids[2],
+	primary_port = rte_eth_bond_primary_get(test_params->bonding_port_id);
+	TEST_ASSERT_EQUAL(primary_port, test_params->member_port_ids[2],
 			"Primary port not as expected");
 	rte_delay_us(500000);
-	/* Verify that pkts are sent on new primary slave */
+	/* Verify that pkts are sent on new primary member */
 	for (i = 0; i < 4; i++) {
 		TEST_ASSERT_EQUAL(generate_test_burst(
 				&pkt_burst[0][0], burst_size, 0, 1, 0, 0, 0), burst_size,
 				"generate_test_burst failed\n");
 		TEST_ASSERT_EQUAL(rte_eth_tx_burst(
-				test_params->bonded_port_id, 0, &pkt_burst[0][0], burst_size), burst_size,
+				test_params->bonding_port_id, 0, &pkt_burst[0][0], burst_size),
+				burst_size,
 				"rte_eth_tx_burst failed\n");
 		rte_delay_us(11000);
 	}
 
-	rte_eth_stats_get(test_params->slave_port_ids[0], &port_stats);
+	rte_eth_stats_get(test_params->member_port_ids[0], &port_stats);
 	TEST_ASSERT_EQUAL(port_stats.opackets, (int8_t)0,
 			"(%d) port_stats.opackets not as expected\n",
-			test_params->slave_port_ids[0]);
+			test_params->member_port_ids[0]);
 
-	rte_eth_stats_get(test_params->slave_port_ids[1], &port_stats);
+	rte_eth_stats_get(test_params->member_port_ids[1], &port_stats);
 	TEST_ASSERT_NOT_EQUAL(port_stats.opackets, (int8_t)0,
 			"(%d) port_stats.opackets not as expected\n",
-			test_params->slave_port_ids[1]);
+			test_params->member_port_ids[1]);
 
-	rte_eth_stats_get(test_params->slave_port_ids[2], &port_stats);
+	rte_eth_stats_get(test_params->member_port_ids[2], &port_stats);
 	TEST_ASSERT_NOT_EQUAL(port_stats.opackets, (int8_t)0,
 			"(%d) port_stats.opackets not as expected\n",
-			test_params->slave_port_ids[2]);
+			test_params->member_port_ids[2]);
 
-	rte_eth_stats_get(test_params->slave_port_ids[3], &port_stats);
+	rte_eth_stats_get(test_params->member_port_ids[3], &port_stats);
 	TEST_ASSERT_NOT_EQUAL(port_stats.opackets, (int8_t)0,
 			"(%d) port_stats.opackets not as expected\n",
-			test_params->slave_port_ids[3]);
+			test_params->member_port_ids[3]);
 
 
 	/* Generate packet burst for testing */
 
-	for (i = 0; i < TEST_ADAPTIVE_TRANSMIT_LOAD_BALANCING_RX_BURST_SLAVE_COUNT; i++) {
+	for (i = 0; i < TEST_ADAPTIVE_TLB_RX_BURST_MEMBER_COUNT; i++) {
 		if (generate_test_burst(&pkt_burst[i][0], burst_size, 0, 1, 0, 0, 0) !=
 				burst_size)
 			return -1;
 
 		virtual_ethdev_add_mbufs_to_rx_queue(
-				test_params->slave_port_ids[i], &pkt_burst[i][0], burst_size);
+				test_params->member_port_ids[i], &pkt_burst[i][0], burst_size);
 	}
 
-	if (rte_eth_rx_burst(test_params->bonded_port_id, 0, rx_pkt_burst,
+	if (rte_eth_rx_burst(test_params->bonding_port_id, 0, rx_pkt_burst,
 			MAX_PKT_BURST) != burst_size) {
 		printf("rte_eth_rx_burst\n");
 		return -1;
 
 	}
 
-	/* Verify bonded device rx count */
-	rte_eth_stats_get(test_params->bonded_port_id, &port_stats);
+	/* Verify bonding device rx count */
+	rte_eth_stats_get(test_params->bonding_port_id, &port_stats);
 	TEST_ASSERT_EQUAL(port_stats.ipackets, (uint64_t)burst_size,
 			"(%d) port_stats.ipackets not as expected\n",
-			test_params->bonded_port_id);
+			test_params->bonding_port_id);
 
-	/* Clean up and remove slaves from bonded device */
-	return remove_slaves_and_stop_bonded_device();
+	/* Clean up and remove members from bonding device */
+	return remove_members_and_stop_bonding_device();
 }
 
-#define TEST_ALB_SLAVE_COUNT	2
+#define TEST_ALB_MEMBER_COUNT	2
 
 static uint8_t mac_client1[] = {0x00, 0xAA, 0x55, 0xFF, 0xCC, 1};
 static uint8_t mac_client2[] = {0x00, 0xAA, 0x55, 0xFF, 0xCC, 2};
@@ -4710,28 +4764,28 @@ test_alb_change_mac_in_reply_sent(void)
 	struct rte_ether_hdr *eth_pkt;
 	struct rte_arp_hdr *arp_pkt;
 
-	int slave_idx, nb_pkts, pkt_idx;
+	int member_idx, nb_pkts, pkt_idx;
 	int retval = 0;
 
 	struct rte_ether_addr bond_mac, client_mac;
-	struct rte_ether_addr *slave_mac1, *slave_mac2;
+	struct rte_ether_addr *member_mac1, *member_mac2;
 
 	TEST_ASSERT_SUCCESS(
-			initialize_bonded_device_with_slaves(BONDING_MODE_ALB,
-					0, TEST_ALB_SLAVE_COUNT, 1),
-			"Failed to initialize_bonded_device_with_slaves.");
+			initialize_bonding_device_with_members(BONDING_MODE_ALB,
+					0, TEST_ALB_MEMBER_COUNT, 1),
+			"Failed to initialize_bonding_device_with_members.");
 
 	/* Flush tx queue */
-	rte_eth_tx_burst(test_params->bonded_port_id, 0, NULL, 0);
-	for (slave_idx = 0; slave_idx < test_params->bonded_slave_count;
-			slave_idx++) {
+	rte_eth_tx_burst(test_params->bonding_port_id, 0, NULL, 0);
+	for (member_idx = 0; member_idx < test_params->bonding_member_count;
+			member_idx++) {
 		nb_pkts = virtual_ethdev_get_mbufs_from_tx_queue(
-				test_params->slave_port_ids[slave_idx], pkts_sent,
+				test_params->member_port_ids[member_idx], pkts_sent,
 				MAX_PKT_BURST);
 	}
 
 	rte_ether_addr_copy(
-			rte_eth_devices[test_params->bonded_port_id].data->mac_addrs,
+			rte_eth_devices[test_params->bonding_port_id].data->mac_addrs,
 			&bond_mac);
 
 	/*
@@ -4747,7 +4801,7 @@ test_alb_change_mac_in_reply_sent(void)
 					sizeof(struct rte_ether_hdr));
 	initialize_arp_header(arp_pkt, &bond_mac, &client_mac, ip_host, ip_client1,
 			RTE_ARP_OP_REPLY);
-	rte_eth_tx_burst(test_params->bonded_port_id, 0, &pkt, 1);
+	rte_eth_tx_burst(test_params->bonding_port_id, 0, &pkt, 1);
 
 	pkt = rte_pktmbuf_alloc(test_params->mbuf_pool);
 	memcpy(client_mac.addr_bytes, mac_client2, RTE_ETHER_ADDR_LEN);
@@ -4758,7 +4812,7 @@ test_alb_change_mac_in_reply_sent(void)
 					sizeof(struct rte_ether_hdr));
 	initialize_arp_header(arp_pkt, &bond_mac, &client_mac, ip_host, ip_client2,
 			RTE_ARP_OP_REPLY);
-	rte_eth_tx_burst(test_params->bonded_port_id, 0, &pkt, 1);
+	rte_eth_tx_burst(test_params->bonding_port_id, 0, &pkt, 1);
 
 	pkt = rte_pktmbuf_alloc(test_params->mbuf_pool);
 	memcpy(client_mac.addr_bytes, mac_client3, RTE_ETHER_ADDR_LEN);
@@ -4769,7 +4823,7 @@ test_alb_change_mac_in_reply_sent(void)
 					sizeof(struct rte_ether_hdr));
 	initialize_arp_header(arp_pkt, &bond_mac, &client_mac, ip_host, ip_client3,
 			RTE_ARP_OP_REPLY);
-	rte_eth_tx_burst(test_params->bonded_port_id, 0, &pkt, 1);
+	rte_eth_tx_burst(test_params->bonding_port_id, 0, &pkt, 1);
 
 	pkt = rte_pktmbuf_alloc(test_params->mbuf_pool);
 	memcpy(client_mac.addr_bytes, mac_client4, RTE_ETHER_ADDR_LEN);
@@ -4780,20 +4834,20 @@ test_alb_change_mac_in_reply_sent(void)
 					sizeof(struct rte_ether_hdr));
 	initialize_arp_header(arp_pkt, &bond_mac, &client_mac, ip_host, ip_client4,
 			RTE_ARP_OP_REPLY);
-	rte_eth_tx_burst(test_params->bonded_port_id, 0, &pkt, 1);
+	rte_eth_tx_burst(test_params->bonding_port_id, 0, &pkt, 1);
 
-	slave_mac1 =
-			rte_eth_devices[test_params->slave_port_ids[0]].data->mac_addrs;
-	slave_mac2 =
-			rte_eth_devices[test_params->slave_port_ids[1]].data->mac_addrs;
+	member_mac1 =
+			rte_eth_devices[test_params->member_port_ids[0]].data->mac_addrs;
+	member_mac2 =
+			rte_eth_devices[test_params->member_port_ids[1]].data->mac_addrs;
 
 	/*
 	 * Checking if packets are properly distributed on bonding ports. Packets
 	 * 0 and 2 should be sent on port 0 and packets 1 and 3 on port 1.
 	 */
-	for (slave_idx = 0; slave_idx < test_params->bonded_slave_count; slave_idx++) {
+	for (member_idx = 0; member_idx < test_params->bonding_member_count; member_idx++) {
 		nb_pkts = virtual_ethdev_get_mbufs_from_tx_queue(
-				test_params->slave_port_ids[slave_idx], pkts_sent,
+				test_params->member_port_ids[member_idx], pkts_sent,
 				MAX_PKT_BURST);
 
 		for (pkt_idx = 0; pkt_idx < nb_pkts; pkt_idx++) {
@@ -4802,14 +4856,14 @@ test_alb_change_mac_in_reply_sent(void)
 			arp_pkt = (struct rte_arp_hdr *)((char *)eth_pkt +
 						sizeof(struct rte_ether_hdr));
 
-			if (slave_idx%2 == 0) {
-				if (!rte_is_same_ether_addr(slave_mac1,
+			if (member_idx%2 == 0) {
+				if (!rte_is_same_ether_addr(member_mac1,
 						&arp_pkt->arp_data.arp_sha)) {
 					retval = -1;
 					goto test_end;
 				}
 			} else {
-				if (!rte_is_same_ether_addr(slave_mac2,
+				if (!rte_is_same_ether_addr(member_mac2,
 						&arp_pkt->arp_data.arp_sha)) {
 					retval = -1;
 					goto test_end;
@@ -4819,7 +4873,7 @@ test_alb_change_mac_in_reply_sent(void)
 	}
 
 test_end:
-	retval += remove_slaves_and_stop_bonded_device();
+	retval += remove_members_and_stop_bonding_device();
 	return retval;
 }
 
@@ -4832,27 +4886,27 @@ test_alb_reply_from_client(void)
 	struct rte_mbuf *pkt;
 	struct rte_mbuf *pkts_sent[MAX_PKT_BURST];
 
-	int slave_idx, nb_pkts, pkt_idx, nb_pkts_sum = 0;
+	int member_idx, nb_pkts, pkt_idx, nb_pkts_sum = 0;
 	int retval = 0;
 
 	struct rte_ether_addr bond_mac, client_mac;
-	struct rte_ether_addr *slave_mac1, *slave_mac2;
+	struct rte_ether_addr *member_mac1, *member_mac2;
 
 	TEST_ASSERT_SUCCESS(
-			initialize_bonded_device_with_slaves(BONDING_MODE_ALB,
-					0, TEST_ALB_SLAVE_COUNT, 1),
-			"Failed to initialize_bonded_device_with_slaves.");
+			initialize_bonding_device_with_members(BONDING_MODE_ALB,
+					0, TEST_ALB_MEMBER_COUNT, 1),
+			"Failed to initialize_bonding_device_with_members.");
 
 	/* Flush tx queue */
-	rte_eth_tx_burst(test_params->bonded_port_id, 0, NULL, 0);
-	for (slave_idx = 0; slave_idx < test_params->bonded_slave_count; slave_idx++) {
+	rte_eth_tx_burst(test_params->bonding_port_id, 0, NULL, 0);
+	for (member_idx = 0; member_idx < test_params->bonding_member_count; member_idx++) {
 		nb_pkts = virtual_ethdev_get_mbufs_from_tx_queue(
-				test_params->slave_port_ids[slave_idx], pkts_sent,
+				test_params->member_port_ids[member_idx], pkts_sent,
 				MAX_PKT_BURST);
 	}
 
 	rte_ether_addr_copy(
-			rte_eth_devices[test_params->bonded_port_id].data->mac_addrs,
+			rte_eth_devices[test_params->bonding_port_id].data->mac_addrs,
 			&bond_mac);
 
 	/*
@@ -4868,7 +4922,7 @@ test_alb_reply_from_client(void)
 					sizeof(struct rte_ether_hdr));
 	initialize_arp_header(arp_pkt, &client_mac, &bond_mac, ip_client1, ip_host,
 			RTE_ARP_OP_REPLY);
-	virtual_ethdev_add_mbufs_to_rx_queue(test_params->slave_port_ids[0], &pkt,
+	virtual_ethdev_add_mbufs_to_rx_queue(test_params->member_port_ids[0], &pkt,
 			1);
 
 	pkt = rte_pktmbuf_alloc(test_params->mbuf_pool);
@@ -4880,7 +4934,7 @@ test_alb_reply_from_client(void)
 					sizeof(struct rte_ether_hdr));
 	initialize_arp_header(arp_pkt, &client_mac, &bond_mac, ip_client2, ip_host,
 			RTE_ARP_OP_REPLY);
-	virtual_ethdev_add_mbufs_to_rx_queue(test_params->slave_port_ids[0], &pkt,
+	virtual_ethdev_add_mbufs_to_rx_queue(test_params->member_port_ids[0], &pkt,
 			1);
 
 	pkt = rte_pktmbuf_alloc(test_params->mbuf_pool);
@@ -4892,7 +4946,7 @@ test_alb_reply_from_client(void)
 					sizeof(struct rte_ether_hdr));
 	initialize_arp_header(arp_pkt, &client_mac, &bond_mac, ip_client3, ip_host,
 			RTE_ARP_OP_REPLY);
-	virtual_ethdev_add_mbufs_to_rx_queue(test_params->slave_port_ids[0], &pkt,
+	virtual_ethdev_add_mbufs_to_rx_queue(test_params->member_port_ids[0], &pkt,
 			1);
 
 	pkt = rte_pktmbuf_alloc(test_params->mbuf_pool);
@@ -4904,25 +4958,25 @@ test_alb_reply_from_client(void)
 					sizeof(struct rte_ether_hdr));
 	initialize_arp_header(arp_pkt, &client_mac, &bond_mac, ip_client4, ip_host,
 			RTE_ARP_OP_REPLY);
-	virtual_ethdev_add_mbufs_to_rx_queue(test_params->slave_port_ids[0], &pkt,
+	virtual_ethdev_add_mbufs_to_rx_queue(test_params->member_port_ids[0], &pkt,
 			1);
 
 	/*
 	 * Issue rx_burst and tx_burst to force bonding driver to send update ARP
 	 * packets to every client in alb table.
 	 */
-	rte_eth_rx_burst(test_params->bonded_port_id, 0, pkts_sent, MAX_PKT_BURST);
-	rte_eth_tx_burst(test_params->bonded_port_id, 0, NULL, 0);
+	rte_eth_rx_burst(test_params->bonding_port_id, 0, pkts_sent, MAX_PKT_BURST);
+	rte_eth_tx_burst(test_params->bonding_port_id, 0, NULL, 0);
 
-	slave_mac1 = rte_eth_devices[test_params->slave_port_ids[0]].data->mac_addrs;
-	slave_mac2 = rte_eth_devices[test_params->slave_port_ids[1]].data->mac_addrs;
+	member_mac1 = rte_eth_devices[test_params->member_port_ids[0]].data->mac_addrs;
+	member_mac2 = rte_eth_devices[test_params->member_port_ids[1]].data->mac_addrs;
 
 	/*
-	 * Checking if update ARP packets were properly send on slave ports.
+	 * Checking if update ARP packets were properly send on member ports.
 	 */
-	for (slave_idx = 0; slave_idx < test_params->bonded_slave_count; slave_idx++) {
+	for (member_idx = 0; member_idx < test_params->bonding_member_count; member_idx++) {
 		nb_pkts = virtual_ethdev_get_mbufs_from_tx_queue(
-				test_params->slave_port_ids[slave_idx], pkts_sent, MAX_PKT_BURST);
+				test_params->member_port_ids[member_idx], pkts_sent, MAX_PKT_BURST);
 		nb_pkts_sum += nb_pkts;
 
 		for (pkt_idx = 0; pkt_idx < nb_pkts; pkt_idx++) {
@@ -4931,14 +4985,14 @@ test_alb_reply_from_client(void)
 			arp_pkt = (struct rte_arp_hdr *)((char *)eth_pkt +
 						sizeof(struct rte_ether_hdr));
 
-			if (slave_idx%2 == 0) {
-				if (!rte_is_same_ether_addr(slave_mac1,
+			if (member_idx%2 == 0) {
+				if (!rte_is_same_ether_addr(member_mac1,
 						&arp_pkt->arp_data.arp_sha)) {
 					retval = -1;
 					goto test_end;
 				}
 			} else {
-				if (!rte_is_same_ether_addr(slave_mac2,
+				if (!rte_is_same_ether_addr(member_mac2,
 						&arp_pkt->arp_data.arp_sha)) {
 					retval = -1;
 					goto test_end;
@@ -4954,7 +5008,7 @@ test_alb_reply_from_client(void)
 	}
 
 test_end:
-	retval += remove_slaves_and_stop_bonded_device();
+	retval += remove_members_and_stop_bonding_device();
 	return retval;
 }
 
@@ -4968,26 +5022,26 @@ test_alb_receive_vlan_reply(void)
 	struct rte_mbuf *pkt;
 	struct rte_mbuf *pkts_sent[MAX_PKT_BURST];
 
-	int slave_idx, nb_pkts, pkt_idx;
+	int member_idx, nb_pkts, pkt_idx;
 	int retval = 0;
 
 	struct rte_ether_addr bond_mac, client_mac;
 
 	TEST_ASSERT_SUCCESS(
-			initialize_bonded_device_with_slaves(BONDING_MODE_ALB,
-					0, TEST_ALB_SLAVE_COUNT, 1),
-			"Failed to initialize_bonded_device_with_slaves.");
+			initialize_bonding_device_with_members(BONDING_MODE_ALB,
+					0, TEST_ALB_MEMBER_COUNT, 1),
+			"Failed to initialize_bonding_device_with_members.");
 
 	/* Flush tx queue */
-	rte_eth_tx_burst(test_params->bonded_port_id, 0, NULL, 0);
-	for (slave_idx = 0; slave_idx < test_params->bonded_slave_count; slave_idx++) {
+	rte_eth_tx_burst(test_params->bonding_port_id, 0, NULL, 0);
+	for (member_idx = 0; member_idx < test_params->bonding_member_count; member_idx++) {
 		nb_pkts = virtual_ethdev_get_mbufs_from_tx_queue(
-				test_params->slave_port_ids[slave_idx], pkts_sent,
+				test_params->member_port_ids[member_idx], pkts_sent,
 				MAX_PKT_BURST);
 	}
 
 	rte_ether_addr_copy(
-			rte_eth_devices[test_params->bonded_port_id].data->mac_addrs,
+			rte_eth_devices[test_params->bonding_port_id].data->mac_addrs,
 			&bond_mac);
 
 	/*
@@ -5007,18 +5061,18 @@ test_alb_receive_vlan_reply(void)
 	arp_pkt = (struct rte_arp_hdr *)((char *)(vlan_pkt + 1));
 	initialize_arp_header(arp_pkt, &client_mac, &bond_mac, ip_client1, ip_host,
 			RTE_ARP_OP_REPLY);
-	virtual_ethdev_add_mbufs_to_rx_queue(test_params->slave_port_ids[0], &pkt,
+	virtual_ethdev_add_mbufs_to_rx_queue(test_params->member_port_ids[0], &pkt,
 			1);
 
-	rte_eth_rx_burst(test_params->bonded_port_id, 0, pkts_sent, MAX_PKT_BURST);
-	rte_eth_tx_burst(test_params->bonded_port_id, 0, NULL, 0);
+	rte_eth_rx_burst(test_params->bonding_port_id, 0, pkts_sent, MAX_PKT_BURST);
+	rte_eth_tx_burst(test_params->bonding_port_id, 0, NULL, 0);
 
 	/*
 	 * Checking if VLAN headers in generated ARP Update packet are correct.
 	 */
-	for (slave_idx = 0; slave_idx < test_params->bonded_slave_count; slave_idx++) {
+	for (member_idx = 0; member_idx < test_params->bonding_member_count; member_idx++) {
 		nb_pkts = virtual_ethdev_get_mbufs_from_tx_queue(
-				test_params->slave_port_ids[slave_idx], pkts_sent,
+				test_params->member_port_ids[member_idx], pkts_sent,
 				MAX_PKT_BURST);
 
 		for (pkt_idx = 0; pkt_idx < nb_pkts; pkt_idx++) {
@@ -5049,7 +5103,7 @@ test_alb_receive_vlan_reply(void)
 	}
 
 test_end:
-	retval += remove_slaves_and_stop_bonded_device();
+	retval += remove_members_and_stop_bonding_device();
 	return retval;
 }
 
@@ -5062,9 +5116,9 @@ test_alb_ipv4_tx(void)
 	retval = 0;
 
 	TEST_ASSERT_SUCCESS(
-			initialize_bonded_device_with_slaves(BONDING_MODE_ALB,
-					0, TEST_ALB_SLAVE_COUNT, 1),
-			"Failed to initialize_bonded_device_with_slaves.");
+			initialize_bonding_device_with_members(BONDING_MODE_ALB,
+					0, TEST_ALB_MEMBER_COUNT, 1),
+			"Failed to initialize_bonding_device_with_members.");
 
 	burst_size = 32;
 
@@ -5078,14 +5132,14 @@ test_alb_ipv4_tx(void)
 	 * Checking if ipv4 traffic is transmitted via TLB policy.
 	 */
 	pkts_send = rte_eth_tx_burst(
-			test_params->bonded_port_id, 0, pkt_burst, burst_size);
+			test_params->bonding_port_id, 0, pkt_burst, burst_size);
 	if (pkts_send != burst_size) {
 		retval = -1;
 		goto test_end;
 	}
 
 test_end:
-	retval += remove_slaves_and_stop_bonded_device();
+	retval += remove_members_and_stop_bonding_device();
 	return retval;
 }
 
@@ -5094,36 +5148,36 @@ static struct unit_test_suite link_bonding_test_suite  = {
 	.setup = test_setup,
 	.teardown = testsuite_teardown,
 	.unit_test_cases = {
-		TEST_CASE(test_create_bonded_device),
-		TEST_CASE(test_create_bonded_device_with_invalid_params),
-		TEST_CASE(test_add_slave_to_bonded_device),
-		TEST_CASE(test_add_slave_to_invalid_bonded_device),
-		TEST_CASE(test_remove_slave_from_bonded_device),
-		TEST_CASE(test_remove_slave_from_invalid_bonded_device),
-		TEST_CASE(test_get_slaves_from_bonded_device),
-		TEST_CASE(test_add_already_bonded_slave_to_bonded_device),
-		TEST_CASE(test_add_remove_multiple_slaves_to_from_bonded_device),
-		TEST_CASE(test_start_bonded_device),
-		TEST_CASE(test_stop_bonded_device),
+		TEST_CASE(test_create_bonding_device),
+		TEST_CASE(test_create_bonding_device_with_invalid_params),
+		TEST_CASE(test_add_member_to_bonding_device),
+		TEST_CASE(test_add_member_to_invalid_bonding_device),
+		TEST_CASE(test_remove_member_from_bonding_device),
+		TEST_CASE(test_remove_member_from_invalid_bonding_device),
+		TEST_CASE(test_get_members_from_bonding_device),
+		TEST_CASE(test_add_already_bonding_member_to_bonding_device),
+		TEST_CASE(test_add_remove_multiple_members_to_from_bonding_device),
+		TEST_CASE(test_start_bonding_device),
+		TEST_CASE(test_stop_bonding_device),
 		TEST_CASE(test_set_bonding_mode),
-		TEST_CASE(test_set_primary_slave),
-		TEST_CASE(test_set_explicit_bonded_mac),
-		TEST_CASE(test_set_bonded_port_initialization_mac_assignment),
+		TEST_CASE(test_set_primary_member),
+		TEST_CASE(test_set_explicit_bonding_mac),
+		TEST_CASE(test_set_bonding_port_initialization_mac_assignment),
 		TEST_CASE(test_status_interrupt),
-		TEST_CASE(test_adding_slave_after_bonded_device_started),
+		TEST_CASE(test_adding_member_after_bonding_device_started),
 		TEST_CASE(test_roundrobin_tx_burst),
-		TEST_CASE(test_roundrobin_tx_burst_slave_tx_fail),
-		TEST_CASE(test_roundrobin_rx_burst_on_single_slave),
-		TEST_CASE(test_roundrobin_rx_burst_on_multiple_slaves),
+		TEST_CASE(test_roundrobin_tx_burst_member_tx_fail),
+		TEST_CASE(test_roundrobin_rx_burst_on_single_member),
+		TEST_CASE(test_roundrobin_rx_burst_on_multiple_members),
 		TEST_CASE(test_roundrobin_verify_promiscuous_enable_disable),
 		TEST_CASE(test_roundrobin_verify_mac_assignment),
-		TEST_CASE(test_roundrobin_verify_slave_link_status_change_behaviour),
-		TEST_CASE(test_roundrobin_verfiy_polling_slave_link_status_change),
+		TEST_CASE(test_roundrobin_verify_member_link_status_change_behaviour),
+		TEST_CASE(test_roundrobin_verify_polling_member_link_status_change),
 		TEST_CASE(test_activebackup_tx_burst),
 		TEST_CASE(test_activebackup_rx_burst),
 		TEST_CASE(test_activebackup_verify_promiscuous_enable_disable),
 		TEST_CASE(test_activebackup_verify_mac_assignment),
-		TEST_CASE(test_activebackup_verify_slave_link_status_change_failover),
+		TEST_CASE(test_activebackup_verify_member_link_status_change_failover),
 		TEST_CASE(test_balance_xmit_policy_configuration),
 		TEST_CASE(test_balance_l2_tx_burst),
 		TEST_CASE(test_balance_l23_tx_burst_ipv4_toggle_ip_addr),
@@ -5137,28 +5191,28 @@ static struct unit_test_suite link_bonding_test_suite  = {
 		TEST_CASE(test_balance_l34_tx_burst_ipv6_toggle_ip_addr),
 		TEST_CASE(test_balance_l34_tx_burst_vlan_ipv6_toggle_ip_addr),
 		TEST_CASE(test_balance_l34_tx_burst_ipv6_toggle_udp_port),
-		TEST_CASE(test_balance_tx_burst_slave_tx_fail),
+		TEST_CASE(test_balance_tx_burst_member_tx_fail),
 		TEST_CASE(test_balance_rx_burst),
 		TEST_CASE(test_balance_verify_promiscuous_enable_disable),
 		TEST_CASE(test_balance_verify_mac_assignment),
-		TEST_CASE(test_balance_verify_slave_link_status_change_behaviour),
+		TEST_CASE(test_balance_verify_member_link_status_change_behaviour),
 		TEST_CASE(test_tlb_tx_burst),
 		TEST_CASE(test_tlb_rx_burst),
 		TEST_CASE(test_tlb_verify_mac_assignment),
 		TEST_CASE(test_tlb_verify_promiscuous_enable_disable),
-		TEST_CASE(test_tlb_verify_slave_link_status_change_failover),
+		TEST_CASE(test_tlb_verify_member_link_status_change_failover),
 		TEST_CASE(test_alb_change_mac_in_reply_sent),
 		TEST_CASE(test_alb_reply_from_client),
 		TEST_CASE(test_alb_receive_vlan_reply),
 		TEST_CASE(test_alb_ipv4_tx),
 		TEST_CASE(test_broadcast_tx_burst),
-		TEST_CASE(test_broadcast_tx_burst_slave_tx_fail),
+		TEST_CASE(test_broadcast_tx_burst_member_tx_fail),
 		TEST_CASE(test_broadcast_rx_burst),
 		TEST_CASE(test_broadcast_verify_promiscuous_enable_disable),
 		TEST_CASE(test_broadcast_verify_mac_assignment),
-		TEST_CASE(test_broadcast_verify_slave_link_status_change_behaviour),
-		TEST_CASE(test_reconfigure_bonded_device),
-		TEST_CASE(test_close_bonded_device),
+		TEST_CASE(test_broadcast_verify_member_link_status_change_behaviour),
+		TEST_CASE(test_reconfigure_bonding_device),
+		TEST_CASE(test_close_bonding_device),
 
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}
@@ -5171,4 +5225,4 @@ test_link_bonding(void)
 	return unit_test_suite_runner(&link_bonding_test_suite);
 }
 
-REGISTER_TEST_COMMAND(link_bonding_autotest, test_link_bonding);
+REGISTER_DRIVER_TEST(link_bonding_autotest, test_link_bonding);

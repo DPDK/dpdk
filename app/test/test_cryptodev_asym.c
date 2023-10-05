@@ -2825,10 +2825,9 @@ test_cryptodev_cn10k_asym(void)
 	return unit_test_suite_runner(&cryptodev_octeontx_asym_testsuite);
 }
 
-REGISTER_TEST_COMMAND(cryptodev_openssl_asym_autotest,
-					  test_cryptodev_openssl_asym);
+REGISTER_DRIVER_TEST(cryptodev_openssl_asym_autotest, test_cryptodev_openssl_asym);
 
-REGISTER_TEST_COMMAND(cryptodev_qat_asym_autotest, test_cryptodev_qat_asym);
+REGISTER_DRIVER_TEST(cryptodev_qat_asym_autotest, test_cryptodev_qat_asym);
 
 REGISTER_TEST_COMMAND(cryptodev_octeontx_asym_autotest,
 					  test_cryptodev_octeontx_asym);

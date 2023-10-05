@@ -18,8 +18,8 @@
 #include "eth_bond_8023ad_private.h"
 #include "rte_eth_bond_alb.h"
 
-#define PMD_BOND_SLAVE_PORT_KVARG			("slave")
-#define PMD_BOND_PRIMARY_SLAVE_KVARG		("primary")
+#define PMD_BOND_MEMBER_PORT_KVARG			("member")
+#define PMD_BOND_PRIMARY_MEMBER_KVARG		("primary")
 #define PMD_BOND_MODE_KVARG					("mode")
 #define PMD_BOND_AGG_MODE_KVARG				("agg_mode")
 #define PMD_BOND_XMIT_POLICY_KVARG			("xmit_policy")
@@ -50,8 +50,8 @@ extern const struct rte_flow_ops bond_flow_ops;
 /** Port Queue Mapping Structure */
 struct bond_rx_queue {
 	uint16_t queue_id;
-	/**< Next active_slave to poll */
-	uint16_t active_slave;
+	/**< Next active_member to poll */
+	uint16_t active_member;
 	/**< Queue Id */
 	struct bond_dev_private *dev_private;
 	/**< Reference to eth_dev private structure */
@@ -74,19 +74,19 @@ struct bond_tx_queue {
 	/**< Copy of TX configuration structure for queue */
 };
 
-/** Bonded slave devices structure */
-struct bond_ethdev_slave_ports {
-	uint16_t slaves[RTE_MAX_ETHPORTS];	/**< Slave port id array */
-	uint16_t slave_count;				/**< Number of slaves */
+/** Bonding member devices structure */
+struct bond_ethdev_member_ports {
+	uint16_t members[RTE_MAX_ETHPORTS];	/**< Member port id array */
+	uint16_t member_count;				/**< Number of members */
 };
 
-struct bond_slave_details {
+struct bond_member_details {
 	uint16_t port_id;
 
 	uint8_t link_status_poll_enabled;
 	uint8_t link_status_wait_to_complete;
 	uint8_t last_link_status;
-	/**< Port Id of slave eth_dev */
+	/**< Port Id of member eth_dev */
 	struct rte_ether_addr persisted_mac_addr;
 
 	uint16_t reta_size;
@@ -94,7 +94,7 @@ struct bond_slave_details {
 
 struct rte_flow {
 	TAILQ_ENTRY(rte_flow) next;
-	/* Slaves flows */
+	/* Members flows */
 	struct rte_flow *flows[RTE_MAX_ETHPORTS];
 	/* Flow description for synchronization */
 	struct rte_flow_conv_rule rule;
@@ -102,18 +102,18 @@ struct rte_flow {
 };
 
 typedef void (*burst_xmit_hash_t)(struct rte_mbuf **buf, uint16_t nb_pkts,
-		uint16_t slave_count, uint16_t *slaves);
+		uint16_t member_count, uint16_t *members);
 
 /** Link Bonding PMD device private configuration Structure */
 struct bond_dev_private {
-	uint16_t port_id;			/**< Port Id of Bonded Port */
+	uint16_t port_id;			/**< Port Id of Bonding Port */
 	uint8_t mode;						/**< Link Bonding Mode */
 
 	rte_spinlock_t lock;
 	rte_spinlock_t lsc_lock;
 
-	uint16_t primary_port;			/**< Primary Slave Port */
-	uint16_t current_primary_port;		/**< Primary Slave Port */
+	uint16_t primary_port;			/**< Primary Member Port */
+	uint16_t current_primary_port;		/**< Primary Member Port */
 	uint16_t user_defined_primary_port;
 	/**< Flag for whether primary port is user defined or not */
 
@@ -137,16 +137,16 @@ struct bond_dev_private {
 	uint16_t nb_rx_queues;			/**< Total number of rx queues */
 	uint16_t nb_tx_queues;			/**< Total number of tx queues*/
 
-	uint16_t active_slave_count;		/**< Number of active slaves */
-	uint16_t active_slaves[RTE_MAX_ETHPORTS];    /**< Active slave list */
+	uint16_t active_member_count;		/**< Number of active members */
+	uint16_t active_members[RTE_MAX_ETHPORTS];    /**< Active member list */
 
-	uint16_t slave_count;			/**< Number of bonded slaves */
-	struct bond_slave_details slaves[RTE_MAX_ETHPORTS];
-	/**< Array of bonded slaves details */
+	uint16_t member_count;			/**< Number of bonding members */
+	struct bond_member_details members[RTE_MAX_ETHPORTS];
+	/**< Array of bonding members details */
 
 	struct mode8023ad_private mode4;
-	uint16_t tlb_slaves_order[RTE_MAX_ETHPORTS];
-	/**< TLB active slaves send order */
+	uint16_t tlb_members_order[RTE_MAX_ETHPORTS];
+	/**< TLB active members send order */
 	struct mode_alb_private mode6;
 
 	uint64_t rx_offload_capa;       /** Rx offload capability */
@@ -177,7 +177,7 @@ struct bond_dev_private {
 	uint8_t rss_key_len;				/**< hash key length in bytes. */
 
 	struct rte_kvargs *kvlist;
-	uint8_t slave_update_idx;
+	uint8_t member_update_idx;
 
 	bool kvargs_processing_is_done;
 
@@ -191,19 +191,21 @@ struct bond_dev_private {
 extern const struct eth_dev_ops default_dev_ops;
 
 int
-check_for_master_bonded_ethdev(const struct rte_eth_dev *eth_dev);
+check_for_main_bonding_ethdev(const struct rte_eth_dev *eth_dev);
 
 int
-check_for_bonded_ethdev(const struct rte_eth_dev *eth_dev);
+check_for_bonding_ethdev(const struct rte_eth_dev *eth_dev);
 
-/* Search given slave array to find position of given id.
- * Return slave pos or slaves_count if not found. */
+/*
+ * Search given member array to find position of given id.
+ * Return member pos or members_count if not found.
+ */
 static inline uint16_t
-find_slave_by_id(uint16_t *slaves, uint16_t slaves_count, uint16_t slave_id) {
+find_member_by_id(uint16_t *members, uint16_t members_count, uint16_t member_id) {
 
 	uint16_t pos;
-	for (pos = 0; pos < slaves_count; pos++) {
-		if (slave_id == slaves[pos])
+	for (pos = 0; pos < members_count; pos++) {
+		if (member_id == members[pos])
 			break;
 	}
 
@@ -214,16 +216,16 @@ int
 valid_port_id(uint16_t port_id);
 
 int
-valid_bonded_port_id(uint16_t port_id);
+valid_bonding_port_id(uint16_t port_id);
 
 int
-valid_slave_port_id(struct bond_dev_private *internals, uint16_t port_id);
+valid_member_port_id(struct bond_dev_private *internals, uint16_t port_id);
 
 void
-deactivate_slave(struct rte_eth_dev *eth_dev, uint16_t port_id);
+deactivate_member(struct rte_eth_dev *eth_dev, uint16_t port_id);
 
 void
-activate_slave(struct rte_eth_dev *eth_dev, uint16_t port_id);
+activate_member(struct rte_eth_dev *eth_dev, uint16_t port_id);
 
 int
 mac_address_set(struct rte_eth_dev *eth_dev,
@@ -234,66 +236,66 @@ mac_address_get(struct rte_eth_dev *eth_dev,
 		struct rte_ether_addr *dst_mac_addr);
 
 int
-mac_address_slaves_update(struct rte_eth_dev *bonded_eth_dev);
+mac_address_members_update(struct rte_eth_dev *bonding_eth_dev);
 
 int
-slave_add_mac_addresses(struct rte_eth_dev *bonded_eth_dev,
-		uint16_t slave_port_id);
+member_add_mac_addresses(struct rte_eth_dev *bonding_eth_dev,
+		uint16_t member_port_id);
 
 int
-slave_remove_mac_addresses(struct rte_eth_dev *bonded_eth_dev,
-		uint16_t slave_port_id);
+member_remove_mac_addresses(struct rte_eth_dev *bonding_eth_dev,
+		uint16_t member_port_id);
 
 int
 bond_ethdev_mode_set(struct rte_eth_dev *eth_dev, uint8_t mode);
 
 int
-slave_configure(struct rte_eth_dev *bonded_eth_dev,
-		struct rte_eth_dev *slave_eth_dev);
+member_configure(struct rte_eth_dev *bonding_eth_dev,
+		struct rte_eth_dev *member_eth_dev);
 
 int
-slave_start(struct rte_eth_dev *bonded_eth_dev,
-		struct rte_eth_dev *slave_eth_dev);
+member_start(struct rte_eth_dev *bonding_eth_dev,
+		struct rte_eth_dev *member_eth_dev);
 
 void
-slave_remove(struct bond_dev_private *internals,
-		struct rte_eth_dev *slave_eth_dev);
+member_remove(struct bond_dev_private *internals,
+		struct rte_eth_dev *member_eth_dev);
 
 void
-slave_add(struct bond_dev_private *internals,
-		struct rte_eth_dev *slave_eth_dev);
+member_add(struct bond_dev_private *internals,
+		struct rte_eth_dev *member_eth_dev);
 
 void
 burst_xmit_l2_hash(struct rte_mbuf **buf, uint16_t nb_pkts,
-		uint16_t slave_count, uint16_t *slaves);
+		uint16_t member_count, uint16_t *members);
 
 void
 burst_xmit_l23_hash(struct rte_mbuf **buf, uint16_t nb_pkts,
-		uint16_t slave_count, uint16_t *slaves);
+		uint16_t member_count, uint16_t *members);
 
 void
 burst_xmit_l34_hash(struct rte_mbuf **buf, uint16_t nb_pkts,
-		uint16_t slave_count, uint16_t *slaves);
+		uint16_t member_count, uint16_t *members);
 
 
 void
 bond_ethdev_primary_set(struct bond_dev_private *internals,
-		uint16_t slave_port_id);
+		uint16_t member_port_id);
 
 int
 bond_ethdev_lsc_event_callback(uint16_t port_id, enum rte_eth_event_type type,
 		void *param, void *ret_param);
 
 int
-bond_ethdev_parse_slave_port_kvarg(const char *key,
+bond_ethdev_parse_member_port_kvarg(const char *key,
 		const char *value, void *extra_args);
 
 int
-bond_ethdev_parse_slave_mode_kvarg(const char *key,
+bond_ethdev_parse_member_mode_kvarg(const char *key,
 		const char *value, void *extra_args);
 
 int
-bond_ethdev_parse_slave_agg_mode_kvarg(const char *key __rte_unused,
+bond_ethdev_parse_member_agg_mode_kvarg(const char *key __rte_unused,
 		const char *value, void *extra_args);
 
 int
@@ -301,7 +303,7 @@ bond_ethdev_parse_socket_id_kvarg(const char *key,
 		const char *value, void *extra_args);
 
 int
-bond_ethdev_parse_primary_slave_port_id_kvarg(const char *key,
+bond_ethdev_parse_primary_member_port_id_kvarg(const char *key,
 		const char *value, void *extra_args);
 
 int
@@ -323,7 +325,7 @@ void
 bond_tlb_enable(struct bond_dev_private *internals);
 
 void
-bond_tlb_activate_slave(struct bond_dev_private *internals);
+bond_tlb_activate_member(struct bond_dev_private *internals);
 
 int
 bond_ethdev_stop(struct rte_eth_dev *eth_dev);

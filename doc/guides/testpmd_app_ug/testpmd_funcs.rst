@@ -318,7 +318,7 @@ set fwd
 Set the packet forwarding mode::
 
    testpmd> set fwd (io|mac|macswap|flowgen| \
-                     rxonly|txonly|csum|icmpecho|noisy|5tswap|shared-rxq) (""|retry)
+                     rxonly|txonly|csum|icmpecho|noisy|5tswap|shared-rxq|recycle_mbufs) (""|retry)
 
 ``retry`` can be specified for forwarding engines except ``rx_only``.
 
@@ -363,6 +363,9 @@ The available information categories are:
 
 * ``shared-rxq``: Receive only for shared Rx queue.
   Resolve packet source port from mbuf and update stream statistics accordingly.
+
+* ``recycle_mbufs``:  Recycle Tx queue used mbufs for Rx queue mbuf ring.
+  This mode uses fast path mbuf recycle feature and forwards packets in I/O mode.
 
 Example::
 
@@ -1907,7 +1910,7 @@ For example, to attach a port created by pcap PMD.
 In this case, identifier is ``net_pcap0``.
 This identifier format is the same as ``--vdev`` format of DPDK applications.
 
-For example, to re-attach a bonded port which has been previously detached,
+For example, to re-attach a bonding port which has been previously detached,
 the mode and slave parameters must be given.
 
 .. code-block:: console
@@ -1915,7 +1918,7 @@ the mode and slave parameters must be given.
    testpmd> port attach net_bond_0,mode=0,slave=1
    Attaching a new port...
    EAL: Initializing pmd_bond for net_bond_0
-   EAL: Create bonded device net_bond_0 on port 0 in mode 0 on socket 0.
+   EAL: Create bonding device net_bond_0 on port 0 in mode 0 on socket 0.
    Port 0 is attached. Now total ports is 1
    Done
 

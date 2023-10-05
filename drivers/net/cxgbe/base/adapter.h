@@ -511,13 +511,7 @@ static inline void t4_write_reg64(struct adapter *adapter, u32 reg_addr,
 	CXGBE_WRITE_REG64(adapter, reg_addr, val);
 }
 
-#define PCI_STATUS              0x06    /* 16 bits */
-#define PCI_STATUS_CAP_LIST     0x10    /* Support Capability List */
-#define PCI_CAPABILITY_LIST     0x34
-/* Offset of first capability list entry */
-#define PCI_CAP_ID_EXP          0x10    /* PCI Express */
-#define PCI_CAP_LIST_ID         0       /* Capability ID */
-#define PCI_CAP_LIST_NEXT       1       /* Next capability in the list */
+#define PCI_CAP_ID_EXP          RTE_PCI_CAP_ID_EXP
 #define PCI_EXP_DEVCTL          0x0008  /* Device control */
 #define PCI_EXP_DEVCTL2         40      /* Device Control 2 */
 #define PCI_EXP_DEVCTL_EXT_TAG  0x0100  /* Extended Tag Field Enable */
@@ -620,31 +614,12 @@ static inline void t4_os_pci_read_cfg(struct adapter *adapter, size_t addr,
  */
 static inline int t4_os_find_pci_capability(struct adapter *adapter, int cap)
 {
-	u16 status;
-	int ttl = 48;
-	u8 pos = 0;
-	u8 id = 0;
-
-	t4_os_pci_read_cfg2(adapter, PCI_STATUS, &status);
-	if (!(status & PCI_STATUS_CAP_LIST)) {
+	if (!rte_pci_has_capability_list(adapter->pdev)) {
 		dev_err(adapter, "PCIe capability reading failed\n");
 		return -1;
 	}
 
-	t4_os_pci_read_cfg(adapter, PCI_CAPABILITY_LIST, &pos);
-	while (ttl-- && pos >= 0x40) {
-		pos &= ~3;
-		t4_os_pci_read_cfg(adapter, (pos + PCI_CAP_LIST_ID), &id);
-
-		if (id == 0xff)
-			break;
-
-		if (id == cap)
-			return (int)pos;
-
-		t4_os_pci_read_cfg(adapter, (pos + PCI_CAP_LIST_NEXT), &pos);
-	}
-	return 0;
+	return rte_pci_find_capability(adapter->pdev, cap);
 }
 
 /**

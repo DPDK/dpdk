@@ -680,11 +680,11 @@ _ice_recv_raw_pkts_vec_avx512(struct ice_rx_queue *rxq,
 		status0_7 = _mm256_packs_epi32(status0_7,
 					       _mm256_setzero_si256());
 
-		uint64_t burst = __builtin_popcountll
+		uint64_t burst = rte_popcount64
 					(_mm_cvtsi128_si64
 						(_mm256_extracti128_si256
 							(status0_7, 1)));
-		burst += __builtin_popcountll
+		burst += rte_popcount64
 				(_mm_cvtsi128_si64
 					(_mm256_castsi256_si128(status0_7)));
 		received += burst;

@@ -692,7 +692,7 @@ ice_align_floor(int n)
 {
 	if (n == 0)
 		return 0;
-	return 1 << (sizeof(n) * CHAR_BIT - 1 - __builtin_clz(n));
+	return 1 << (sizeof(n) * CHAR_BIT - 1 - rte_clz32(n));
 }
 
 #define ICE_PHY_TYPE_SUPPORT_50G(phy_type) \

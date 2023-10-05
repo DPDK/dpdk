@@ -237,7 +237,7 @@ rte_table_hash_cuckoo_lookup(void *table,
 	uint64_t pkts_mask_out = 0;
 	uint32_t i;
 
-	__rte_unused uint32_t n_pkts_in = __builtin_popcountll(pkts_mask);
+	__rte_unused uint32_t n_pkts_in = rte_popcount64(pkts_mask);
 
 	RTE_TABLE_HASH_CUCKOO_STATS_PKTS_IN_ADD(t, n_pkts_in);
 
@@ -268,7 +268,7 @@ rte_table_hash_cuckoo_lookup(void *table,
 		}
 	} else
 		for (i = 0; i < (uint32_t)(RTE_PORT_IN_BURST_SIZE_MAX
-					- __builtin_clzll(pkts_mask)); i++) {
+					- rte_clz64(pkts_mask)); i++) {
 			uint64_t pkt_mask = 1LLU << i;
 
 			if (pkt_mask & pkts_mask) {
@@ -288,7 +288,7 @@ rte_table_hash_cuckoo_lookup(void *table,
 
 	*lookup_hit_mask = pkts_mask_out;
 	RTE_TABLE_HASH_CUCKOO_STATS_PKTS_LOOKUP_MISS(t,
-			n_pkts_in - __builtin_popcountll(pkts_mask_out));
+			n_pkts_in - rte_popcount64(pkts_mask_out));
 
 	return 0;
 

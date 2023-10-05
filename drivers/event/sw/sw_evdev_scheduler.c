@@ -15,7 +15,7 @@
  * CLZ twice is faster than caching the value due to data dependencies
  */
 #define PKT_MASK_TO_IQ(pkts) \
-	(__builtin_ctz(pkts | (1 << SW_IQS_MAX)))
+	(rte_ctz32(pkts | (1 << SW_IQS_MAX)))
 
 #if SW_IQS_MAX != 4
 #error Misconfigured PRIO_TO_IQ caused by SW_IQS_MAX value change

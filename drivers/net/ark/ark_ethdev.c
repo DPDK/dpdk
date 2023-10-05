@@ -598,17 +598,16 @@ eth_ark_dev_start(struct rte_eth_dev *dev)
 		ark_pktchkr_run(ark->pc);
 
 	if (!ark->isvf && ark->start_pg && !ark->pg_running) {
-		pthread_t thread;
+		rte_thread_t thread;
 
-		/* Delay packet generatpr start allow the hardware to be ready
+		/* Delay packet generator start allow the hardware to be ready
 		 * This is only used for sanity checking with internal generator
 		 */
-		char tname[32];
-		snprintf(tname, sizeof(tname), "ark-delay-pg-%d",
-			 dev->data->port_id);
+		char tname[RTE_THREAD_INTERNAL_NAME_SIZE];
+		snprintf(tname, sizeof(tname), "ark-pg%d", dev->data->port_id);
 
-		if (rte_ctrl_thread_create(&thread, tname, NULL,
-					   ark_pktgen_delay_start, ark->pg)) {
+		if (rte_thread_create_internal_control(&thread, tname,
+					ark_pktgen_delay_start, ark->pg)) {
 			ARK_PMD_LOG(ERR, "Could not create pktgen "
 				    "starter thread\n");
 			return -1;

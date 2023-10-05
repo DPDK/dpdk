@@ -255,6 +255,7 @@ l3fwd_em_send_packets(int nb_rx, struct rte_mbuf **pkts_burst, uint16_t portid,
 	send_packets_multi(qconf, pkts_burst, dst_port, nb_rx);
 }
 
+#ifdef RTE_LIB_EVENTDEV
 /*
  * Buffer optimized handling of events, invoked
  * from main_loop.
@@ -347,5 +348,6 @@ l3fwd_em_process_event_vector(struct rte_event_vector *vec,
 
 	process_event_vector(vec, dst_port);
 }
+#endif /* RTE_LIB_EVENTDEV */
 
 #endif /* __L3FWD_EM_HLM_H__ */

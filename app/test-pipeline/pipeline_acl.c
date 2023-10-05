@@ -188,9 +188,9 @@ app_main_loop_worker_pipeline_acl(void) {
 		rule_params.field_value[SRC_FIELD_IPV4].value.u32 = 0;
 		rule_params.field_value[SRC_FIELD_IPV4].mask_range.u32 = 0;
 		rule_params.field_value[DST_FIELD_IPV4].value.u32 =
-			i << (24 - __builtin_popcount(app.n_ports - 1));
+			i << (24 - rte_popcount32(app.n_ports - 1));
 		rule_params.field_value[DST_FIELD_IPV4].mask_range.u32 =
-			8 + __builtin_popcount(app.n_ports - 1);
+			8 + rte_popcount32(app.n_ports - 1);
 		rule_params.field_value[SRCP_FIELD_IPV4].value.u16 = 0;
 		rule_params.field_value[SRCP_FIELD_IPV4].mask_range.u16 =
 			UINT16_MAX;

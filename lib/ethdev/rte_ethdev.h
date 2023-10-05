@@ -1820,6 +1820,30 @@ struct rte_eth_txq_info {
 	uint8_t queue_state;        /**< one of RTE_ETH_QUEUE_STATE_*. */
 } __rte_cache_min_aligned;
 
+/**
+ * @warning
+ * @b EXPERIMENTAL: this structure may change without prior notice.
+ *
+ * Ethernet device Rx queue information structure for recycling mbufs.
+ * Used to retrieve Rx queue information when Tx queue reusing mbufs and moving
+ * them into Rx mbuf ring.
+ */
+struct rte_eth_recycle_rxq_info {
+	struct rte_mbuf **mbuf_ring; /**< mbuf ring of Rx queue. */
+	struct rte_mempool *mp;     /**< mempool of Rx queue. */
+	uint16_t *refill_head;      /**< head of Rx queue refilling mbufs. */
+	uint16_t *receive_tail;     /**< tail of Rx queue receiving pkts. */
+	uint16_t mbuf_ring_size;     /**< configured number of mbuf ring size. */
+	/**
+	 * Requirement on mbuf refilling batch size of Rx mbuf ring.
+	 * For some PMD drivers, the number of Rx mbuf ring refilling mbufs
+	 * should be aligned with mbuf ring size, in order to simplify
+	 * ring wrapping around.
+	 * Value 0 means that PMD drivers have no requirement for this.
+	 */
+	uint16_t refill_requirement;
+} __rte_cache_min_aligned;
+
 /* Generic Burst mode flag definition, values can be ORed. */
 
 /**
@@ -2038,7 +2062,6 @@ struct rte_eth_dev_owner {
 #define RTE_ETH_DEV_INTR_LSC              RTE_BIT32(1)
 /** Device is a bonding member */
 #define RTE_ETH_DEV_BONDING_MEMBER        RTE_BIT32(2)
-#define RTE_ETH_DEV_BONDED_SLAVE RTE_DEPRECATED(RTE_ETH_DEV_BONDED_SLAVE) RTE_ETH_DEV_BONDING_MEMBER
 /** Device supports device removal interrupt */
 #define RTE_ETH_DEV_INTR_RMV              RTE_BIT32(3)
 /** Device is port representor */
@@ -4854,6 +4877,31 @@ int rte_eth_tx_queue_info_get(uint16_t port_id, uint16_t queue_id,
 	struct rte_eth_txq_info *qinfo);
 
 /**
+ * @warning
+ * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
+ *
+ * Retrieve information about given ports's Rx queue for recycling mbufs.
+ *
+ * @param port_id
+ *   The port identifier of the Ethernet device.
+ * @param queue_id
+ *   The Rx queue on the Ethernet devicefor which information
+ *   will be retrieved.
+ * @param recycle_rxq_info
+ *   A pointer to a structure of type *rte_eth_recycle_rxq_info* to be filled.
+ *
+ * @return
+ *   - 0: Success
+ *   - -ENODEV:  If *port_id* is invalid.
+ *   - -ENOTSUP: routine is not supported by the device PMD.
+ *   - -EINVAL:  The queue_id is out of range.
+ */
+__rte_experimental
+int rte_eth_recycle_rx_queue_info_get(uint16_t port_id,
+		uint16_t queue_id,
+		struct rte_eth_recycle_rxq_info *recycle_rxq_info);
+
+/**
  * Retrieve information about the Rx packet burst mode.
  *
  * @param port_id
@@ -6525,6 +6573,137 @@ rte_eth_tx_buffer(uint16_t port_id, uint16_t queue_id,
 		return 0;
 
 	return rte_eth_tx_buffer_flush(port_id, queue_id, buffer);
+}
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
+ *
+ * Recycle used mbufs from a transmit queue of an Ethernet device, and move
+ * these mbufs into a mbuf ring for a receive queue of an Ethernet device.
+ * This can bypass mempool path to save CPU cycles.
+ *
+ * The rte_eth_recycle_mbufs() function loops, with rte_eth_rx_burst() and
+ * rte_eth_tx_burst() functions, freeing Tx used mbufs and replenishing Rx
+ * descriptors. The number of recycling mbufs depends on the request of Rx mbuf
+ * ring, with the constraint of enough used mbufs from Tx mbuf ring.
+ *
+ * For each recycling mbufs, the rte_eth_recycle_mbufs() function performs the
+ * following operations:
+ *
+ * - Copy used *rte_mbuf* buffer pointers from Tx mbuf ring into Rx mbuf ring.
+ *
+ * - Replenish the Rx descriptors with the recycling *rte_mbuf* mbufs freed
+ *   from the Tx mbuf ring.
+ *
+ * This function spilts Rx and Tx path with different callback functions. The
+ * callback function recycle_tx_mbufs_reuse is for Tx driver. The callback
+ * function recycle_rx_descriptors_refill is for Rx driver. rte_eth_recycle_mbufs()
+ * can support the case that Rx Ethernet device is different from Tx Ethernet device.
+ *
+ * It is the responsibility of users to select the Rx/Tx queue pair to recycle
+ * mbufs. Before call this function, users must call rte_eth_recycle_rxq_info_get
+ * function to retrieve selected Rx queue information.
+ * @see rte_eth_recycle_rxq_info_get, struct rte_eth_recycle_rxq_info
+ *
+ * Currently, the rte_eth_recycle_mbufs() function can support to feed 1 Rx queue from
+ * 2 Tx queues in the same thread. Do not pair the Rx queue and Tx queue in different
+ * threads, in order to avoid memory error rewriting.
+ *
+ * @param rx_port_id
+ *   Port identifying the receive side.
+ * @param rx_queue_id
+ *   The index of the receive queue identifying the receive side.
+ *   The value must be in the range [0, nb_rx_queue - 1] previously supplied
+ *   to rte_eth_dev_configure().
+ * @param tx_port_id
+ *   Port identifying the transmit side.
+ * @param tx_queue_id
+ *   The index of the transmit queue identifying the transmit side.
+ *   The value must be in the range [0, nb_tx_queue - 1] previously supplied
+ *   to rte_eth_dev_configure().
+ * @param recycle_rxq_info
+ *   A pointer to a structure of type *rte_eth_recycle_rxq_info* which contains
+ *   the information of the Rx queue mbuf ring.
+ * @return
+ *   The number of recycling mbufs.
+ */
+__rte_experimental
+static inline uint16_t
+rte_eth_recycle_mbufs(uint16_t rx_port_id, uint16_t rx_queue_id,
+		uint16_t tx_port_id, uint16_t tx_queue_id,
+		struct rte_eth_recycle_rxq_info *recycle_rxq_info)
+{
+	struct rte_eth_fp_ops *p1, *p2;
+	void *qd1, *qd2;
+	uint16_t nb_mbufs;
+
+#ifdef RTE_ETHDEV_DEBUG_TX
+	if (tx_port_id >= RTE_MAX_ETHPORTS ||
+			tx_queue_id >= RTE_MAX_QUEUES_PER_PORT) {
+		RTE_ETHDEV_LOG(ERR,
+				"Invalid tx_port_id=%u or tx_queue_id=%u\n",
+				tx_port_id, tx_queue_id);
+		return 0;
+	}
+#endif
+
+	/* fetch pointer to Tx queue data */
+	p1 = &rte_eth_fp_ops[tx_port_id];
+	qd1 = p1->txq.data[tx_queue_id];
+
+#ifdef RTE_ETHDEV_DEBUG_TX
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(tx_port_id, 0);
+
+	if (qd1 == NULL) {
+		RTE_ETHDEV_LOG(ERR, "Invalid Tx queue_id=%u for port_id=%u\n",
+				tx_queue_id, tx_port_id);
+		return 0;
+	}
+#endif
+	if (p1->recycle_tx_mbufs_reuse == NULL)
+		return 0;
+
+#ifdef RTE_ETHDEV_DEBUG_RX
+	if (rx_port_id >= RTE_MAX_ETHPORTS ||
+			rx_queue_id >= RTE_MAX_QUEUES_PER_PORT) {
+		RTE_ETHDEV_LOG(ERR, "Invalid rx_port_id=%u or rx_queue_id=%u\n",
+				rx_port_id, rx_queue_id);
+		return 0;
+	}
+#endif
+
+	/* fetch pointer to Rx queue data */
+	p2 = &rte_eth_fp_ops[rx_port_id];
+	qd2 = p2->rxq.data[rx_queue_id];
+
+#ifdef RTE_ETHDEV_DEBUG_RX
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(rx_port_id, 0);
+
+	if (qd2 == NULL) {
+		RTE_ETHDEV_LOG(ERR, "Invalid Rx queue_id=%u for port_id=%u\n",
+				rx_queue_id, rx_port_id);
+		return 0;
+	}
+#endif
+	if (p2->recycle_rx_descriptors_refill == NULL)
+		return 0;
+
+	/* Copy used *rte_mbuf* buffer pointers from Tx mbuf ring
+	 * into Rx mbuf ring.
+	 */
+	nb_mbufs = p1->recycle_tx_mbufs_reuse(qd1, recycle_rxq_info);
+
+	/* If no recycling mbufs, return 0. */
+	if (nb_mbufs == 0)
+		return 0;
+
+	/* Replenish the Rx descriptors with the recycling
+	 * into Rx mbuf ring.
+	 */
+	p2->recycle_rx_descriptors_refill(qd2, nb_mbufs);
+
+	return nb_mbufs;
 }
 
 /**

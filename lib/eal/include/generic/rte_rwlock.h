@@ -32,6 +32,7 @@ extern "C" {
 #include <rte_common.h>
 #include <rte_lock_annotations.h>
 #include <rte_pause.h>
+#include <rte_stdatomic.h>
 
 /**
  * The rte_rwlock_t type.
@@ -57,7 +58,7 @@ extern "C" {
 #define RTE_RWLOCK_READ	 0x4	/* Reader increment */
 
 typedef struct __rte_lockable {
-	int32_t cnt;
+	RTE_ATOMIC(int32_t) cnt;
 } rte_rwlock_t;
 
 /**
@@ -92,21 +93,21 @@ rte_rwlock_read_lock(rte_rwlock_t *rwl)
 
 	while (1) {
 		/* Wait while writer is present or pending */
-		while (__atomic_load_n(&rwl->cnt, __ATOMIC_RELAXED)
+		while (rte_atomic_load_explicit(&rwl->cnt, rte_memory_order_relaxed)
 		       & RTE_RWLOCK_MASK)
 			rte_pause();
 
 		/* Try to get read lock */
-		x = __atomic_fetch_add(&rwl->cnt, RTE_RWLOCK_READ,
-				       __ATOMIC_ACQUIRE) + RTE_RWLOCK_READ;
+		x = rte_atomic_fetch_add_explicit(&rwl->cnt, RTE_RWLOCK_READ,
+				       rte_memory_order_acquire) + RTE_RWLOCK_READ;
 
 		/* If no writer, then acquire was successful */
 		if (likely(!(x & RTE_RWLOCK_MASK)))
 			return;
 
 		/* Lost race with writer, backout the change. */
-		__atomic_fetch_sub(&rwl->cnt, RTE_RWLOCK_READ,
-				   __ATOMIC_RELAXED);
+		rte_atomic_fetch_sub_explicit(&rwl->cnt, RTE_RWLOCK_READ,
+				   rte_memory_order_relaxed);
 	}
 }
 
@@ -127,20 +128,20 @@ rte_rwlock_read_trylock(rte_rwlock_t *rwl)
 {
 	int32_t x;
 
-	x = __atomic_load_n(&rwl->cnt, __ATOMIC_RELAXED);
+	x = rte_atomic_load_explicit(&rwl->cnt, rte_memory_order_relaxed);
 
 	/* fail if write lock is held or writer is pending */
 	if (x & RTE_RWLOCK_MASK)
 		return -EBUSY;
 
 	/* Try to get read lock */
-	x = __atomic_fetch_add(&rwl->cnt, RTE_RWLOCK_READ,
-			       __ATOMIC_ACQUIRE) + RTE_RWLOCK_READ;
+	x = rte_atomic_fetch_add_explicit(&rwl->cnt, RTE_RWLOCK_READ,
+			       rte_memory_order_acquire) + RTE_RWLOCK_READ;
 
 	/* Back out if writer raced in */
 	if (unlikely(x & RTE_RWLOCK_MASK)) {
-		__atomic_fetch_sub(&rwl->cnt, RTE_RWLOCK_READ,
-				   __ATOMIC_RELEASE);
+		rte_atomic_fetch_sub_explicit(&rwl->cnt, RTE_RWLOCK_READ,
+				   rte_memory_order_release);
 
 		return -EBUSY;
 	}
@@ -158,7 +159,7 @@ rte_rwlock_read_unlock(rte_rwlock_t *rwl)
 	__rte_unlock_function(rwl)
 	__rte_no_thread_safety_analysis
 {
-	__atomic_fetch_sub(&rwl->cnt, RTE_RWLOCK_READ, __ATOMIC_RELEASE);
+	rte_atomic_fetch_sub_explicit(&rwl->cnt, RTE_RWLOCK_READ, rte_memory_order_release);
 }
 
 /**
@@ -178,10 +179,10 @@ rte_rwlock_write_trylock(rte_rwlock_t *rwl)
 {
 	int32_t x;
 
-	x = __atomic_load_n(&rwl->cnt, __ATOMIC_RELAXED);
+	x = rte_atomic_load_explicit(&rwl->cnt, rte_memory_order_relaxed);
 	if (x < RTE_RWLOCK_WRITE &&
-	    __atomic_compare_exchange_n(&rwl->cnt, &x, x + RTE_RWLOCK_WRITE,
-					1, __ATOMIC_ACQUIRE, __ATOMIC_RELAXED))
+	    rte_atomic_compare_exchange_weak_explicit(&rwl->cnt, &x, x + RTE_RWLOCK_WRITE,
+					rte_memory_order_acquire, rte_memory_order_relaxed))
 		return 0;
 	else
 		return -EBUSY;
@@ -201,22 +202,25 @@ rte_rwlock_write_lock(rte_rwlock_t *rwl)
 	int32_t x;
 
 	while (1) {
-		x = __atomic_load_n(&rwl->cnt, __ATOMIC_RELAXED);
+		x = rte_atomic_load_explicit(&rwl->cnt, rte_memory_order_relaxed);
 
 		/* No readers or writers? */
 		if (likely(x < RTE_RWLOCK_WRITE)) {
 			/* Turn off RTE_RWLOCK_WAIT, turn on RTE_RWLOCK_WRITE */
-			if (__atomic_compare_exchange_n(&rwl->cnt, &x, RTE_RWLOCK_WRITE, 1,
-							__ATOMIC_ACQUIRE, __ATOMIC_RELAXED))
+			if (rte_atomic_compare_exchange_weak_explicit(&rwl->cnt, &x,
+					RTE_RWLOCK_WRITE, rte_memory_order_acquire,
+					rte_memory_order_relaxed))
 				return;
 		}
 
 		/* Turn on writer wait bit */
 		if (!(x & RTE_RWLOCK_WAIT))
-			__atomic_fetch_or(&rwl->cnt, RTE_RWLOCK_WAIT, __ATOMIC_RELAXED);
+			rte_atomic_fetch_or_explicit(&rwl->cnt, RTE_RWLOCK_WAIT,
+				rte_memory_order_relaxed);
 
 		/* Wait until no readers before trying again */
-		while (__atomic_load_n(&rwl->cnt, __ATOMIC_RELAXED) > RTE_RWLOCK_WAIT)
+		while (rte_atomic_load_explicit(&rwl->cnt, rte_memory_order_relaxed)
+				> RTE_RWLOCK_WAIT)
 			rte_pause();
 
 	}
@@ -233,7 +237,7 @@ rte_rwlock_write_unlock(rte_rwlock_t *rwl)
 	__rte_unlock_function(rwl)
 	__rte_no_thread_safety_analysis
 {
-	__atomic_fetch_sub(&rwl->cnt, RTE_RWLOCK_WRITE, __ATOMIC_RELEASE);
+	rte_atomic_fetch_sub_explicit(&rwl->cnt, RTE_RWLOCK_WRITE, rte_memory_order_release);
 }
 
 /**
@@ -247,7 +251,7 @@ rte_rwlock_write_unlock(rte_rwlock_t *rwl)
 static inline int
 rte_rwlock_write_is_locked(rte_rwlock_t *rwl)
 {
-	if (__atomic_load_n(&rwl->cnt, __ATOMIC_RELAXED) & RTE_RWLOCK_WRITE)
+	if (rte_atomic_load_explicit(&rwl->cnt, rte_memory_order_relaxed) & RTE_RWLOCK_WRITE)
 		return 1;
 
 	return 0;

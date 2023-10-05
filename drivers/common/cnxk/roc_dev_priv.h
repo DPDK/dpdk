@@ -73,7 +73,7 @@ dev_is_afvf(uint16_t pf_func)
 struct mbox_sync {
 	bool start_thread;
 	uint8_t msg_avail;
-	pthread_t pfvf_msg_thread;
+	rte_thread_t pfvf_msg_thread;
 	pthread_cond_t pfvf_msg_cond;
 	pthread_mutex_t mutex;
 };

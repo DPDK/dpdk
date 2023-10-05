@@ -302,4 +302,4 @@ test_spinlock(void)
 	return ret;
 }
 
-REGISTER_TEST_COMMAND(spinlock_autotest, test_spinlock);
+REGISTER_FAST_TEST(spinlock_autotest, true, true, test_spinlock);

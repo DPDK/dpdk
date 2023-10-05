@@ -239,7 +239,7 @@ rte_port_fd_writer_tx_bulk(void *port,
 	uint32_t tx_buf_count = p->tx_buf_count;
 
 	if ((pkts_mask & (pkts_mask + 1)) == 0) {
-		uint64_t n_pkts = __builtin_popcountll(pkts_mask);
+		uint64_t n_pkts = rte_popcount64(pkts_mask);
 		uint32_t i;
 
 		for (i = 0; i < n_pkts; i++)
@@ -247,7 +247,7 @@ rte_port_fd_writer_tx_bulk(void *port,
 		RTE_PORT_FD_WRITER_STATS_PKTS_IN_ADD(p, n_pkts);
 	} else
 		for ( ; pkts_mask; ) {
-			uint32_t pkt_index = __builtin_ctzll(pkts_mask);
+			uint32_t pkt_index = rte_ctz64(pkts_mask);
 			uint64_t pkt_mask = 1LLU << pkt_index;
 			struct rte_mbuf *pkt = pkts[pkt_index];
 
@@ -424,7 +424,7 @@ rte_port_fd_writer_nodrop_tx_bulk(void *port,
 	uint32_t tx_buf_count = p->tx_buf_count;
 
 	if ((pkts_mask & (pkts_mask + 1)) == 0) {
-		uint64_t n_pkts = __builtin_popcountll(pkts_mask);
+		uint64_t n_pkts = rte_popcount64(pkts_mask);
 		uint32_t i;
 
 		for (i = 0; i < n_pkts; i++)
@@ -432,7 +432,7 @@ rte_port_fd_writer_nodrop_tx_bulk(void *port,
 		RTE_PORT_FD_WRITER_NODROP_STATS_PKTS_IN_ADD(p, n_pkts);
 	} else
 		for ( ; pkts_mask; ) {
-			uint32_t pkt_index = __builtin_ctzll(pkts_mask);
+			uint32_t pkt_index = rte_ctz64(pkts_mask);
 			uint64_t pkt_mask = 1LLU << pkt_index;
 			struct rte_mbuf *pkt = pkts[pkt_index];
 

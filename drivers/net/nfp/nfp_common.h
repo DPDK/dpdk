@@ -6,29 +6,13 @@
 #ifndef _NFP_COMMON_H_
 #define _NFP_COMMON_H_
 
+#include <bus_pci_driver.h>
+#include <ethdev_driver.h>
+#include <rte_io.h>
+#include <rte_spinlock.h>
+
 #include "nfp_ctrl.h"
-
-#define NFP_NET_PMD_VERSION "0.1"
-#define PCI_VENDOR_ID_NETRONOME         0x19ee
-#define PCI_VENDOR_ID_CORIGINE          0x1da8
-
-#define PCI_DEVICE_ID_NFP3800_PF_NIC    0x3800
-#define PCI_DEVICE_ID_NFP3800_VF_NIC    0x3803
-#define PCI_DEVICE_ID_NFP4000_PF_NIC    0x4000
-#define PCI_DEVICE_ID_NFP6000_PF_NIC    0x6000
-#define PCI_DEVICE_ID_NFP6000_VF_NIC    0x6003  /* Include NFP4000VF */
-
-/* Forward declaration */
-struct nfp_net_adapter;
-
-#define NFP_TX_MAX_SEG     UINT8_MAX
-#define NFP_TX_MAX_MTU_SEG 8
-
-/* Bar allocation */
-#define NFP_NET_CRTL_BAR        0
-#define NFP_NET_TX_BAR          2
-#define NFP_NET_RX_BAR          2
-#define NFP_QCP_QUEUE_AREA_SZ			0x80000
+#include "nfpcore/nfp_dev.h"
 
 /* Macros for accessing the Queue Controller Peripheral 'CSRs' */
 #define NFP_QCP_QUEUE_OFF(_x)                 ((_x) * 0x800)
@@ -38,17 +22,6 @@ struct nfp_net_adapter;
 #define NFP_QCP_QUEUE_STS_LO_READPTR_mask     (0x3ffff)
 #define NFP_QCP_QUEUE_STS_HI                    0x000c
 #define NFP_QCP_QUEUE_STS_HI_WRITEPTR_mask    (0x3ffff)
-
-#define NFP_PCIE_QCP_NFP3800_OFFSET            0x400000
-#define NFP_PCIE_QCP_NFP6000_OFFSET            0x80000
-#define NFP_PCIE_QUEUE_NFP3800_MASK            0x1ff
-#define NFP_PCIE_QUEUE_NFP6000_MASK            0xff
-#define NFP_PCIE_QCP_PF_OFFSET                 0x0
-#define NFP_PCIE_QCP_VF_OFFSET                 0x0
-
-/* The offset of the queue controller queues in the PCIe Target */
-#define NFP_PCIE_QUEUE(_offset, _q, _mask)    \
-		((_offset) + (NFP_QCP_QUEUE_ADDR_SZ * ((_q) & (_mask))))
 
 /* Interrupt definitions */
 #define NFP_NET_IRQ_LSC_IDX             0
@@ -69,26 +42,10 @@ struct nfp_net_adapter;
 /* Alignment for dma zones */
 #define NFP_MEMZONE_ALIGN	128
 
-/*
- * This is used by the reconfig protocol. It sets the maximum time waiting in
- * milliseconds before a reconfig timeout happens.
- */
-#define NFP_NET_POLL_TIMEOUT    5000
-
 #define NFP_QCP_QUEUE_ADDR_SZ   (0x800)
-
-#define NFP_NET_LINK_DOWN_CHECK_TIMEOUT 4000 /* ms */
-#define NFP_NET_LINK_UP_CHECK_TIMEOUT   1000 /* ms */
 
 /* Number of supported physical ports */
 #define NFP_MAX_PHYPORTS	12
-
-/* Maximum supported NFP frame size (MTU + layer 2 headers) */
-#define NFP_FRAME_SIZE_MAX	10048
-#define DEFAULT_FLBUF_SIZE        9216
-
-#include <linux/types.h>
-#include <rte_io.h>
 
 /* Firmware application ID's */
 enum nfp_app_fw_id {
@@ -123,9 +80,9 @@ struct nfp_pf_dev {
 
 	struct nfp_cpp *cpp;
 	struct nfp_cpp_area *ctrl_area;
-	struct nfp_cpp_area *hwqueues_area;
+	struct nfp_cpp_area *qc_area;
 
-	uint8_t *hw_queues;
+	uint8_t *qc_bar;
 
 	struct nfp_hwinfo *hwinfo;
 	struct nfp_rtsym_table *sym_tbl;
@@ -162,6 +119,9 @@ struct nfp_net_hw {
 	uint32_t mtu;
 	uint32_t rx_offset;
 	enum nfp_net_meta_format meta_format;
+
+	/** NFP ASIC params */
+	const struct nfp_dev_info *dev_info;
 
 	/* Current values for control */
 	uint32_t ctrl;
@@ -352,23 +312,11 @@ nfp_qcp_read(uint8_t *q, enum nfp_qcp_ptr ptr)
 }
 
 static inline uint32_t
-nfp_pci_queue(struct rte_pci_device *pdev, uint16_t queue)
+nfp_qcp_queue_offset(const struct nfp_dev_info *dev_info,
+		uint16_t queue)
 {
-	switch (pdev->id.device_id) {
-	case PCI_DEVICE_ID_NFP4000_PF_NIC:
-	case PCI_DEVICE_ID_NFP6000_PF_NIC:
-		return NFP_PCIE_QUEUE(NFP_PCIE_QCP_PF_OFFSET, queue,
-				NFP_PCIE_QUEUE_NFP6000_MASK);
-	case PCI_DEVICE_ID_NFP3800_VF_NIC:
-		return NFP_PCIE_QUEUE(NFP_PCIE_QCP_VF_OFFSET, queue,
-				NFP_PCIE_QUEUE_NFP3800_MASK);
-	case PCI_DEVICE_ID_NFP6000_VF_NIC:
-		return NFP_PCIE_QUEUE(NFP_PCIE_QCP_VF_OFFSET, queue,
-				NFP_PCIE_QUEUE_NFP6000_MASK);
-	default:
-		return NFP_PCIE_QUEUE(NFP_PCIE_QCP_PF_OFFSET, queue,
-				NFP_PCIE_QUEUE_NFP3800_MASK);
-	}
+	return dev_info->qc_addr_offset + NFP_QCP_QUEUE_ADDR_SZ *
+			(queue & dev_info->qc_idx_mask);
 }
 
 /* Prototypes for common NFP functions */
@@ -434,10 +382,10 @@ void nfp_net_close_rx_queue(struct rte_eth_dev *dev);
 void nfp_net_stop_tx_queue(struct rte_eth_dev *dev);
 void nfp_net_close_tx_queue(struct rte_eth_dev *dev);
 int nfp_net_set_vxlan_port(struct nfp_net_hw *hw, size_t idx, uint16_t port);
-int nfp_net_rx_desc_limits(struct nfp_net_hw *hw,
+void nfp_net_rx_desc_limits(struct nfp_net_hw *hw,
 		uint16_t *min_rx_desc,
 		uint16_t *max_rx_desc);
-int nfp_net_tx_desc_limits(struct nfp_net_hw *hw,
+void nfp_net_tx_desc_limits(struct nfp_net_hw *hw,
 		uint16_t *min_tx_desc,
 		uint16_t *max_tx_desc);
 int nfp_net_check_dma_mask(struct nfp_net_hw *hw, char *name);

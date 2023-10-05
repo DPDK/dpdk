@@ -67,7 +67,6 @@ struct roc_ether_addr {
 
 struct roc_ether_hdr {
 	struct roc_ether_addr d_addr; /**< Destination address. */
-	PLT_STD_C11
 	union {
 		struct roc_ether_addr s_addr; /**< Source address. */
 		struct {
@@ -77,7 +76,6 @@ struct roc_ether_hdr {
 	uint16_t ether_type; /**< Frame type. */
 } __plt_aligned(2);
 
-PLT_STD_C11
 struct roc_npc_flow_item_eth {
 	union {
 		struct {
@@ -101,7 +99,6 @@ struct roc_vlan_hdr {
 	uint16_t eth_proto; /**< Ethernet type of encapsulated frame. */
 } __plt_packed;
 
-PLT_STD_C11
 struct roc_npc_flow_item_vlan {
 	union {
 		struct {

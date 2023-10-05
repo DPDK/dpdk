@@ -5,47 +5,32 @@
  * Small portions derived from code Copyright(c) 2010-2015 Intel Corporation.
  */
 
-#include <rte_byteorder.h>
-#include <rte_common.h>
-#include <rte_log.h>
-#include <rte_debug.h>
-#include <ethdev_driver.h>
-#include <ethdev_pci.h>
-#include <dev_driver.h>
-#include <rte_ether.h>
-#include <rte_malloc.h>
-#include <rte_memzone.h>
-#include <rte_mempool.h>
-#include <rte_version.h>
-#include <rte_alarm.h>
-#include <rte_spinlock.h>
-#include <rte_service_component.h>
+#include "nfp_common.h"
 
-#include "nfpcore/nfp_cpp.h"
-#include "nfpcore/nfp_nffw.h"
-#include "nfpcore/nfp_hwinfo.h"
-#include "nfpcore/nfp_mip.h"
-#include "nfpcore/nfp_rtsym.h"
-#include "nfpcore/nfp_nsp.h"
+#include <rte_alarm.h>
 
 #include "flower/nfp_flower_representor.h"
-
-#include "nfp_common.h"
-#include "nfp_ctrl.h"
-#include "nfp_rxtx.h"
-#include "nfp_logs.h"
-#include "nfp_cpp_bridge.h"
-
 #include "nfd3/nfp_nfd3.h"
 #include "nfdk/nfp_nfdk.h"
+#include "nfpcore/nfp_mip.h"
+#include "nfpcore/nfp_nsp.h"
+#include "nfp_logs.h"
 
-#include <stdint.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <sys/un.h>
-#include <unistd.h>
-#include <stdio.h>
-#include <sys/ioctl.h>
+#define NFP_TX_MAX_SEG       UINT8_MAX
+#define NFP_TX_MAX_MTU_SEG   8
+
+/*
+ * This is used by the reconfig protocol. It sets the maximum time waiting in
+ * milliseconds before a reconfig timeout happens.
+ */
+#define NFP_NET_POLL_TIMEOUT    5000
+
+#define NFP_NET_LINK_DOWN_CHECK_TIMEOUT 4000 /* ms */
+#define NFP_NET_LINK_UP_CHECK_TIMEOUT   1000 /* ms */
+
+/* Maximum supported NFP frame size (MTU + layer 2 headers) */
+#define NFP_FRAME_SIZE_MAX        10048
+#define DEFAULT_FLBUF_SIZE        9216
 
 enum nfp_xstat_group {
 	NFP_XSTAT_GROUP_NET,
@@ -1146,30 +1131,16 @@ nfp_net_xstats_reset(struct rte_eth_dev *dev)
 	return nfp_net_stats_reset(dev);
 }
 
-int
+void
 nfp_net_rx_desc_limits(struct nfp_net_hw *hw,
 		uint16_t *min_rx_desc,
 		uint16_t *max_rx_desc)
 {
-	*max_rx_desc = NFP_NET_MAX_RX_DESC;
-
-	switch (hw->device_id) {
-	case PCI_DEVICE_ID_NFP3800_PF_NIC:
-	case PCI_DEVICE_ID_NFP3800_VF_NIC:
-		*min_rx_desc = NFP3800_NET_MIN_RX_DESC;
-		return 0;
-	case PCI_DEVICE_ID_NFP4000_PF_NIC:
-	case PCI_DEVICE_ID_NFP6000_PF_NIC:
-	case PCI_DEVICE_ID_NFP6000_VF_NIC:
-		*min_rx_desc = NFP_NET_MIN_RX_DESC;
-		return 0;
-	default:
-		PMD_DRV_LOG(ERR, "Unknown NFP device id.");
-		return -EINVAL;
-	}
+	*max_rx_desc = hw->dev_info->max_qc_size;
+	*min_rx_desc = hw->dev_info->min_qc_size;
 }
 
-int
+void
 nfp_net_tx_desc_limits(struct nfp_net_hw *hw,
 		uint16_t *min_tx_desc,
 		uint16_t *max_tx_desc)
@@ -1181,28 +1152,13 @@ nfp_net_tx_desc_limits(struct nfp_net_hw *hw,
 	else
 		tx_dpp = NFDK_TX_DESC_PER_SIMPLE_PKT;
 
-	*max_tx_desc = NFP_NET_MAX_TX_DESC / tx_dpp;
-
-	switch (hw->device_id) {
-	case PCI_DEVICE_ID_NFP3800_PF_NIC:
-	case PCI_DEVICE_ID_NFP3800_VF_NIC:
-		*min_tx_desc = NFP3800_NET_MIN_TX_DESC / tx_dpp;
-		return 0;
-	case PCI_DEVICE_ID_NFP4000_PF_NIC:
-	case PCI_DEVICE_ID_NFP6000_PF_NIC:
-	case PCI_DEVICE_ID_NFP6000_VF_NIC:
-		*min_tx_desc = NFP_NET_MIN_TX_DESC / tx_dpp;
-		return 0;
-	default:
-		PMD_DRV_LOG(ERR, "Unknown NFP device id.");
-		return -EINVAL;
-	}
+	*max_tx_desc = hw->dev_info->max_qc_size / tx_dpp;
+	*min_tx_desc = hw->dev_info->min_qc_size / tx_dpp;
 }
 
 int
 nfp_net_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 {
-	int ret;
 	uint16_t min_rx_desc;
 	uint16_t max_rx_desc;
 	uint16_t min_tx_desc;
@@ -1211,13 +1167,8 @@ nfp_net_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
-	ret = nfp_net_rx_desc_limits(hw, &min_rx_desc, &max_rx_desc);
-	if (ret != 0)
-		return ret;
-
-	ret = nfp_net_tx_desc_limits(hw, &min_tx_desc, &max_tx_desc);
-	if (ret != 0)
-		return ret;
+	nfp_net_rx_desc_limits(hw, &min_rx_desc, &max_rx_desc);
+	nfp_net_tx_desc_limits(hw, &min_tx_desc, &max_tx_desc);
 
 	dev_info->max_rx_queues = (uint16_t)hw->max_rx_queues;
 	dev_info->max_tx_queues = (uint16_t)hw->max_tx_queues;

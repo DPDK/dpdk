@@ -10,14 +10,6 @@
 
 #include "nfp_common.h"
 
-#define NFP_CPP_MEMIO_BOUNDARY	(1 << 20)
-#define NFP_BRIDGE_OP_READ	20
-#define NFP_BRIDGE_OP_WRITE	30
-#define NFP_BRIDGE_OP_IOCTL	40
-
-#define NFP_IOCTL 'n'
-#define NFP_IOCTL_CPP_IDENTIFICATION _IOW(NFP_IOCTL, 0x8f, uint32_t)
-
 int nfp_enable_cpp_service(struct nfp_pf_dev *pf_dev);
 int nfp_map_service(uint32_t service_id);
 

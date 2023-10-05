@@ -864,7 +864,7 @@ run_v4(void)
 	conf.max_routes = config.nb_routes * 2;
 	conf.rib_ext_sz = 0;
 	if (conf.type == RTE_FIB_DIR24_8) {
-		conf.dir24_8.nh_sz = __builtin_ctz(config.ent_sz);
+		conf.dir24_8.nh_sz = rte_ctz32(config.ent_sz);
 		conf.dir24_8.num_tbl8 = RTE_MIN(config.tbl8,
 			get_max_nh(conf.dir24_8.nh_sz));
 	}
@@ -1065,7 +1065,7 @@ run_v6(void)
 	conf.max_routes = config.nb_routes * 2;
 	conf.rib_ext_sz = 0;
 	if (conf.type == RTE_FIB6_TRIE) {
-		conf.trie.nh_sz = __builtin_ctz(config.ent_sz);
+		conf.trie.nh_sz = rte_ctz32(config.ent_sz);
 		conf.trie.num_tbl8 = RTE_MIN(config.tbl8,
 			get_max_nh(conf.trie.nh_sz));
 	}
@@ -1293,12 +1293,12 @@ main(int argc, char **argv)
 				"Bad routes distribution configuration\n");
 		if (af == AF_INET) {
 			gen_random_rt_4(config.rt,
-				__builtin_ctz(config.ent_sz));
+				rte_ctz32(config.ent_sz));
 			if (config.flags & SHUFFLE_FLAG)
 				shuffle_rt_4(config.rt, config.nb_routes);
 		} else {
 			gen_random_rt_6(config.rt,
-				__builtin_ctz(config.ent_sz));
+				rte_ctz32(config.ent_sz));
 			if (config.flags & SHUFFLE_FLAG)
 				shuffle_rt_6(config.rt, config.nb_routes);
 		}

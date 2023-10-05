@@ -164,4 +164,4 @@ test_reciprocal(void)
 	return result;
 }
 
-REGISTER_TEST_COMMAND(reciprocal_division, test_reciprocal);
+REGISTER_PERF_TEST(reciprocal_division, test_reciprocal);

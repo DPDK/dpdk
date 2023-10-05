@@ -12,13 +12,11 @@ sources += files(
         'eal_hugepages.c',
         'eal_interrupts.c',
         'eal_lcore.c',
-        'eal_log.c',
         'eal_memalloc.c',
         'eal_memory.c',
         'eal_mp.c',
         'eal_thread.c',
         'eal_timer.c',
-        'fnmatch.c',
         'getopt.c',
         'rte_thread.c',
 )

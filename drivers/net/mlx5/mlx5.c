@@ -139,7 +139,7 @@
 /* Enable extensive flow metadata support. */
 #define MLX5_DV_XMETA_EN "dv_xmeta_en"
 
-/* Device parameter to let the user manage the lacp traffic of bonded device */
+/* Device parameter to let the user manage the lacp traffic of bonding device */
 #define MLX5_LACP_BY_USER "lacp_by_user"
 
 /* Activate Netlink support in VF mode. */

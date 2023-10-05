@@ -39,10 +39,18 @@ mana_rq_ring_doorbell(struct mana_rxq *rxq)
 	/* Hardware Spec specifies that software client should set 0 for
 	 * wqe_cnt for Receive Queues.
 	 */
+#ifdef RTE_ARCH_32
+	ret = mana_ring_short_doorbell(db_page, GDMA_QUEUE_RECEIVE,
+			 rxq->gdma_rq.id,
+			 rxq->wqe_cnt_to_short_db *
+				GDMA_WQE_ALIGNMENT_UNIT_SIZE,
+			 0);
+#else
 	ret = mana_ring_doorbell(db_page, GDMA_QUEUE_RECEIVE,
 			 rxq->gdma_rq.id,
 			 rxq->gdma_rq.head * GDMA_WQE_ALIGNMENT_UNIT_SIZE,
 			 0);
+#endif
 
 	if (ret)
 		DP_LOG(ERR, "failed to ring RX doorbell ret %d", ret);
@@ -97,6 +105,9 @@ mana_alloc_and_post_rx_wqe(struct mana_rxq *rxq)
 		/* update queue for tracking pending packets */
 		desc->pkt = mbuf;
 		desc->wqe_size_in_bu = wqe_size_in_bu;
+#ifdef RTE_ARCH_32
+		rxq->wqe_cnt_to_short_db += wqe_size_in_bu;
+#endif
 		rxq->desc_ring_head = (rxq->desc_ring_head + 1) % rxq->num_desc;
 	} else {
 		DP_LOG(DEBUG, "failed to post recv ret %d", ret);
@@ -115,12 +126,22 @@ mana_alloc_and_post_rx_wqes(struct mana_rxq *rxq)
 	int ret;
 	uint32_t i;
 
+#ifdef RTE_ARCH_32
+	rxq->wqe_cnt_to_short_db = 0;
+#endif
 	for (i = 0; i < rxq->num_desc; i++) {
 		ret = mana_alloc_and_post_rx_wqe(rxq);
 		if (ret) {
 			DP_LOG(ERR, "failed to post RX ret = %d", ret);
 			return ret;
 		}
+
+#ifdef RTE_ARCH_32
+		if (rxq->wqe_cnt_to_short_db > RX_WQE_SHORT_DB_THRESHOLD) {
+			mana_rq_ring_doorbell(rxq);
+			rxq->wqe_cnt_to_short_db = 0;
+		}
+#endif
 	}
 
 	mana_rq_ring_doorbell(rxq);
@@ -397,6 +418,10 @@ mana_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 	uint32_t i;
 	int polled = 0;
 
+#ifdef RTE_ARCH_32
+	rxq->wqe_cnt_to_short_db = 0;
+#endif
+
 repoll:
 	/* Polling on new completions if we have no backlog */
 	if (rxq->comp_buf_idx == rxq->comp_buf_len) {
@@ -505,6 +530,16 @@ drop:
 		wqe_posted++;
 		if (pkt_received == pkts_n)
 			break;
+
+#ifdef RTE_ARCH_32
+		/* Ring short doorbell if approaching the wqe increment
+		 * limit.
+		 */
+		if (rxq->wqe_cnt_to_short_db > RX_WQE_SHORT_DB_THRESHOLD) {
+			mana_rq_ring_doorbell(rxq);
+			rxq->wqe_cnt_to_short_db = 0;
+		}
+#endif
 	}
 
 	rxq->backlog_idx = pkt_idx;
@@ -525,6 +560,15 @@ drop:
 	return pkt_received;
 }
 
+#ifdef RTE_ARCH_32
+static int
+mana_arm_cq(struct mana_rxq *rxq __rte_unused, uint8_t arm __rte_unused)
+{
+	DP_LOG(ERR, "Do not support in 32 bit");
+
+	return -ENODEV;
+}
+#else
 static int
 mana_arm_cq(struct mana_rxq *rxq, uint8_t arm)
 {
@@ -538,6 +582,7 @@ mana_arm_cq(struct mana_rxq *rxq, uint8_t arm)
 	return mana_ring_doorbell(priv->db_page, GDMA_QUEUE_COMPLETION,
 				  rxq->gdma_cq.id, head, arm);
 }
+#endif
 
 int
 mana_rx_intr_enable(struct rte_eth_dev *dev, uint16_t rx_queue_id)

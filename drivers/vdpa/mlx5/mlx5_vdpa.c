@@ -844,7 +844,7 @@ mlx5_vdpa_dev_probe(struct mlx5_common_device *cdev,
 	mlx5_vdpa_config_get(mkvlist, priv);
 	if (priv->use_c_thread) {
 		if (conf_thread_mng.initializer_priv == priv)
-			if (mlx5_vdpa_mult_threads_create(priv->event_core))
+			if (mlx5_vdpa_mult_threads_create())
 				goto error;
 		__atomic_fetch_add(&conf_thread_mng.refcnt, 1,
 			__ATOMIC_RELAXED);

@@ -500,7 +500,6 @@ struct rte_tm_level_capabilities {
 	 */
 	int leaf_nodes_identical;
 
-	RTE_STD_C11
 	union {
 		/** Items valid only for the non-leaf nodes on this level. */
 		struct {
@@ -851,7 +850,6 @@ struct rte_tm_node_capabilities {
 	 */
 	int shaper_shared_byte_mode_supported;
 
-	RTE_STD_C11
 	union {
 		/** Items valid only for non-leaf nodes. */
 		struct {
@@ -1108,7 +1106,6 @@ struct rte_tm_node_params {
 	/** Number of shared shaper IDs in the *shared_shaper_id* array. */
 	uint32_t n_shared_shapers;
 
-	RTE_STD_C11
 	union {
 		/** Parameters only valid for non-leaf nodes. */
 		struct {

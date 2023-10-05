@@ -543,6 +543,7 @@ static const struct eth_dev_ops ixgbe_eth_dev_ops = {
 	.set_mc_addr_list     = ixgbe_dev_set_mc_addr_list,
 	.rxq_info_get         = ixgbe_rxq_info_get,
 	.txq_info_get         = ixgbe_txq_info_get,
+	.recycle_rxq_info_get = ixgbe_recycle_rxq_info_get,
 	.timesync_enable      = ixgbe_timesync_enable,
 	.timesync_disable     = ixgbe_timesync_disable,
 	.timesync_read_rx_timestamp = ixgbe_timesync_read_rx_timestamp,
@@ -4328,11 +4329,9 @@ ixgbe_dev_link_update_share(struct rte_eth_dev *dev,
 				 * when there is no link thread running.
 				 */
 				intr->flags |= IXGBE_FLAG_NEED_LINK_CONFIG;
-				if (rte_thread_create_control(&ad->link_thread_tid,
-					"ixgbe-link-handler",
-					NULL,
-					ixgbe_dev_setup_link_thread_handler,
-					dev) < 0) {
+				if (rte_thread_create_internal_control(&ad->link_thread_tid,
+						"ixgbe-link",
+						ixgbe_dev_setup_link_thread_handler, dev) < 0) {
 					PMD_DRV_LOG(ERR,
 						"Create link thread failed!");
 					/* NOTE: review for potential ordering optimization */

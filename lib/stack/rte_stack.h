@@ -78,7 +78,6 @@ struct rte_stack {
 	const struct rte_memzone *memzone;
 	uint32_t capacity; /**< Usable size of the stack. */
 	uint32_t flags; /**< Flags supplied at creation. */
-	RTE_STD_C11
 	union {
 		struct rte_stack_lf stack_lf; /**< Lock-free LIFO structure. */
 		struct rte_stack_std stack_std;	/**< LIFO structure. */

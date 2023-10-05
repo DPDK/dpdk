@@ -3,17 +3,17 @@
  * All rights reserved.
  */
 
-#include <rte_mtr_driver.h>
-#include <bus_pci_driver.h>
-#include <rte_malloc.h>
-#include <rte_alarm.h>
-
-#include "nfp_common.h"
 #include "nfp_mtr.h"
-#include "nfp_logs.h"
-#include "flower/nfp_flower.h"
-#include "flower/nfp_flower_cmsg.h"
+
+#include <rte_alarm.h>
+#include <rte_malloc.h>
+#include <rte_mtr_driver.h>
+
 #include "flower/nfp_flower_representor.h"
+#include "nfp_logs.h"
+
+#define NFP_MAX_POLICY_CNT             NFP_MAX_MTR_CNT
+#define NFP_MAX_PROFILE_CNT            NFP_MAX_MTR_CNT
 
 #define NFP_FL_QOS_PPS          RTE_BIT32(15)
 #define NFP_FL_QOS_METER        RTE_BIT32(10)

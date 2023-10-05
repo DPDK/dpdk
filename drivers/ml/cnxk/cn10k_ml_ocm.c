@@ -494,7 +494,7 @@ cn10k_ml_ocm_print(struct rte_ml_dev *dev, FILE *fp)
 		wb_pages = 0 - ocm->tile_ocm_info[tile_id].scratch_pages;
 		for (word_id = 0; word_id < mldev->ocm.mask_words; word_id++)
 			wb_pages +=
-				__builtin_popcount(ocm->tile_ocm_info[tile_id].ocm_mask[word_id]);
+				rte_popcount32(ocm->tile_ocm_info[tile_id].ocm_mask[word_id]);
 
 		fprintf(fp,
 			"tile = %2u, scratch_pages = %4u,"

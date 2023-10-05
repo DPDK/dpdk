@@ -5853,7 +5853,7 @@ flow_meter_split_prep(struct rte_eth_dev *dev,
 					"Failed to allocate meter flow id.");
 		flow_id = tag_id - 1;
 		flow_id_bits = (!flow_id) ? 1 :
-				(MLX5_REG_BITS - __builtin_clz(flow_id));
+				(MLX5_REG_BITS - rte_clz32(flow_id));
 		if ((flow_id_bits + priv->sh->mtrmng->max_mtr_bits) >
 		    mtr_reg_bits) {
 			mlx5_ipool_free(fm->flow_ipool, tag_id);

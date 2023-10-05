@@ -66,10 +66,14 @@ extern "C" {
 static __rte_always_inline void
 rte_smp_mb(void)
 {
+#ifdef RTE_TOOLCHAIN_MSVC
+	_mm_mfence();
+#else
 #ifdef RTE_ARCH_I686
 	asm volatile("lock addl $0, -128(%%esp); " ::: "memory");
 #else
 	asm volatile("lock addl $0, -128(%%rsp); " ::: "memory");
+#endif
 #endif
 }
 
@@ -79,20 +83,22 @@ rte_smp_mb(void)
 
 #define rte_io_rmb() rte_compiler_barrier()
 
+#ifndef RTE_TOOLCHAIN_MSVC
+
 /**
  * Synchronization fence between threads based on the specified memory order.
  *
- * On x86 the __atomic_thread_fence(__ATOMIC_SEQ_CST) generates full 'mfence'
+ * On x86 the __rte_atomic_thread_fence(rte_memory_order_seq_cst) generates full 'mfence'
  * which is quite expensive. The optimized implementation of rte_smp_mb is
  * used instead.
  */
 static __rte_always_inline void
-rte_atomic_thread_fence(int memorder)
+rte_atomic_thread_fence(rte_memory_order memorder)
 {
-	if (memorder == __ATOMIC_SEQ_CST)
+	if (memorder == rte_memory_order_seq_cst)
 		rte_smp_mb();
 	else
-		__atomic_thread_fence(memorder);
+		__rte_atomic_thread_fence(memorder);
 }
 
 /*------------------------- 16 bit atomic operations -------------------------*/
@@ -273,6 +279,8 @@ static inline int rte_atomic32_dec_and_test(rte_atomic32_t *v)
 #include "rte_atomic_32.h"
 #else
 #include "rte_atomic_64.h"
+#endif
+
 #endif
 
 #ifdef __cplusplus

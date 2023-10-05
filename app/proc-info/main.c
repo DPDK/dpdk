@@ -990,7 +990,7 @@ show_offloads(uint64_t offloads,
 {
 	printf(" offloads :");
 	while (offloads != 0) {
-		uint64_t offload_flag = 1ULL << __builtin_ctzll(offloads);
+		uint64_t offload_flag = 1ULL << rte_ctz64(offloads);
 		printf(" %s", show_offload(offload_flag));
 		offloads &= ~offload_flag;
 	}

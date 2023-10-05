@@ -5,8 +5,6 @@
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE
 #endif
-#include <pthread.h>
-#include <sched.h>
 
 #include <stdint.h>
 #include <stdlib.h>
@@ -529,12 +527,10 @@ process_vq(struct vhost_blk_queue *vq)
 	}
 }
 
-static void *
+static uint32_t
 ctrlr_worker(void *arg)
 {
 	struct vhost_blk_ctrlr *ctrlr = (struct vhost_blk_ctrlr *)arg;
-	cpu_set_t cpuset;
-	pthread_t thread;
 	int i;
 
 	fprintf(stdout, "Ctrlr Worker Thread start\n");
@@ -546,11 +542,6 @@ ctrlr_worker(void *arg)
 		exit(0);
 	}
 
-	thread = pthread_self();
-	CPU_ZERO(&cpuset);
-	CPU_SET(0, &cpuset);
-	pthread_setaffinity_np(thread, sizeof(cpu_set_t), &cpuset);
-
 	for (i = 0; i < NUM_OF_BLK_QUEUES; i++)
 		submit_inflight_vq(&ctrlr->queues[i]);
 
@@ -560,7 +551,7 @@ ctrlr_worker(void *arg)
 
 	fprintf(stdout, "Ctrlr Worker Thread Exiting\n");
 	sem_post(&exit_sem);
-	return NULL;
+	return 0;
 }
 
 static int
@@ -605,7 +596,7 @@ new_device(int vid)
 	struct vhost_blk_queue *vq;
 	char path[PATH_MAX];
 	uint64_t features, protocol_features;
-	pthread_t tid;
+	rte_thread_t tid;
 	int i, ret;
 	bool packed_ring, inflight_shmfd;
 
@@ -686,15 +677,15 @@ new_device(int vid)
 	/* start polling vring */
 	worker_thread_status = WORKER_STATE_START;
 	fprintf(stdout, "New Device %s, Device ID %d\n", path, vid);
-	if (rte_ctrl_thread_create(&tid, "vhostblk-ctrlr", NULL,
-				   &ctrlr_worker, ctrlr) != 0) {
+	if (rte_thread_create_control(&tid, "dpdk-vhost-blk",
+			&ctrlr_worker, ctrlr) != 0) {
 		fprintf(stderr, "Worker Thread Started Failed\n");
 		return -1;
 	}
 
 	/* device has been started */
 	ctrlr->started = 1;
-	pthread_detach(tid);
+	rte_thread_detach(tid);
 	return 0;
 }
 

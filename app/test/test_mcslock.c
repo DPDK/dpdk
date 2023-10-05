@@ -36,9 +36,9 @@
  *   lock multiple times.
  */
 
-rte_mcslock_t *p_ml;
-rte_mcslock_t *p_ml_try;
-rte_mcslock_t *p_ml_perf;
+RTE_ATOMIC(rte_mcslock_t *) p_ml;
+RTE_ATOMIC(rte_mcslock_t *) p_ml_try;
+RTE_ATOMIC(rte_mcslock_t *) p_ml_perf;
 
 static unsigned int count;
 
@@ -241,4 +241,4 @@ test_mcslock(void)
 	return ret;
 }
 
-REGISTER_TEST_COMMAND(mcslock_autotest, test_mcslock);
+REGISTER_FAST_TEST(mcslock_autotest, false, true, test_mcslock);

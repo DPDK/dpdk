@@ -232,6 +232,7 @@ The command line options are:
        noisy
        5tswap
        shared-rxq
+       recycle_mbufs
 
 *   ``--rss-ip``
 

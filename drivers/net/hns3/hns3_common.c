@@ -386,7 +386,7 @@ hns3_set_mc_addr_chk_param(struct hns3_hw *hw,
 		hns3_err(hw, "failed to set mc mac addr, nb_mc_addr(%u) "
 			 "invalid. valid range: 0~%d",
 			 nb_mc_addr, HNS3_MC_MACADDR_NUM);
-		return -EINVAL;
+		return -ENOSPC;
 	}
 
 	/* Check if input mac addresses are valid */
@@ -444,12 +444,22 @@ hns3_set_mc_mac_addr_list(struct rte_eth_dev *dev,
 			  uint32_t nb_mc_addr)
 {
 	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct hns3_adapter *hns = HNS3_DEV_HW_TO_ADAPTER(hw);
 	struct rte_ether_addr *addr;
 	int cur_addr_num;
 	int set_addr_num;
 	int num;
 	int ret;
 	int i;
+
+	if (mc_addr_set == NULL || nb_mc_addr == 0) {
+		rte_spinlock_lock(&hw->lock);
+		ret = hns3_configure_all_mc_mac_addr(hns, true);
+		if (ret == 0)
+			hw->mc_addrs_num = 0;
+		rte_spinlock_unlock(&hw->lock);
+		return ret;
+	}
 
 	/* Check if input parameters are valid */
 	ret = hns3_set_mc_addr_chk_param(hw, mc_addr_set, nb_mc_addr);

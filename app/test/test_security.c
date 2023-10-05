@@ -2314,4 +2314,4 @@ test_security(void)
 	return unit_test_suite_runner(&security_testsuite);
 }
 
-REGISTER_TEST_COMMAND(security_autotest, test_security);
+REGISTER_FAST_TEST(security_autotest, false, true, test_security);

@@ -3,6 +3,8 @@
  * All rights reserved.
  */
 
+#include "nfp_target.h"
+
 #include "nfp_cpp.h"
 #include "nfp6000/nfp6000.h"
 
@@ -315,8 +317,7 @@ nfp6000_mu(uint32_t cpp_id,
 	} else if (island == 1 ||
 			(island >= 4 && island <= 7) ||
 			(island >= 12 && island <= 13) ||
-			(island >= 32 && island <= 47) ||
-			(island >= 48 && island <= 51)) {
+			(island >= 32 && island <= 51)) {
 		pp = nfp6000_mu_ctm(cpp_id);
 	} else {
 		pp = -EINVAL;
@@ -510,7 +511,7 @@ nfp_target_pushpull(uint32_t cpp_id,
 		return nfp6000_cap_xpb(cpp_id);
 	case NFP_CPP_TARGET_CLS:
 		return nfp6000_cls(cpp_id);
-	case 0:
+	case NFP_CPP_TARGET_INVALID:
 		return target_rw(cpp_id, P32, 4, 4);
 	default:
 		return -EINVAL;
@@ -767,7 +768,7 @@ nfp_encode_basic(uint64_t *addr,
 		/*
 		 * Make sure we compare against isldN values by clearing the
 		 * LSB. This is what the silicon does.
-		 **/
+		 */
 		isld[0] &= ~1;
 		isld[1] &= ~1;
 

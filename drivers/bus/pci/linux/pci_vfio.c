@@ -5,7 +5,6 @@
 #include <unistd.h>
 #include <string.h>
 #include <fcntl.h>
-#include <linux/pci_regs.h>
 #include <sys/eventfd.h>
 #include <sys/socket.h>
 #include <sys/ioctl.h>
@@ -107,84 +106,38 @@ pci_vfio_write_config(const struct rte_pci_device *dev,
 
 /* get PCI BAR number where MSI-X interrupts are */
 static int
-pci_vfio_get_msix_bar(const struct rte_pci_device *dev, int fd,
+pci_vfio_get_msix_bar(const struct rte_pci_device *dev,
 	struct pci_msix_table *msix_table)
 {
-	int ret;
-	uint32_t reg;
-	uint16_t flags;
-	uint8_t cap_id, cap_offset;
-	uint64_t size, offset;
+	off_t cap_offset;
 
-	if (pci_vfio_get_region(dev, VFIO_PCI_CONFIG_REGION_INDEX,
-		&size, &offset) != 0) {
-		RTE_LOG(ERR, EAL, "Cannot get offset of CONFIG region.\n");
+	cap_offset = rte_pci_find_capability(dev, RTE_PCI_CAP_ID_MSIX);
+	if (cap_offset < 0)
 		return -1;
-	}
 
-	/* read PCI capability pointer from config space */
-	ret = pread64(fd, &reg, sizeof(reg), offset + PCI_CAPABILITY_LIST);
-	if (ret != sizeof(reg)) {
-		RTE_LOG(ERR, EAL,
-			"Cannot read capability pointer from PCI config space!\n");
-		return -1;
-	}
+	if (cap_offset != 0) {
+		uint16_t flags;
+		uint32_t reg;
 
-	/* we need first byte */
-	cap_offset = reg & 0xFF;
-
-	while (cap_offset) {
-
-		/* read PCI capability ID */
-		ret = pread64(fd, &reg, sizeof(reg), offset + cap_offset);
-		if (ret != sizeof(reg)) {
+		if (rte_pci_read_config(dev, &reg, sizeof(reg), cap_offset +
+				RTE_PCI_MSIX_TABLE) < 0) {
 			RTE_LOG(ERR, EAL,
-				"Cannot read capability ID from PCI config space!\n");
+				"Cannot read MSIX table from PCI config space!\n");
 			return -1;
 		}
 
-		/* we need first byte */
-		cap_id = reg & 0xFF;
-
-		/* if we haven't reached MSI-X, check next capability */
-		if (cap_id != PCI_CAP_ID_MSIX) {
-			ret = pread64(fd, &reg, sizeof(reg), offset + cap_offset);
-			if (ret != sizeof(reg)) {
-				RTE_LOG(ERR, EAL,
-					"Cannot read capability pointer from PCI config space!\n");
-				return -1;
-			}
-
-			/* we need second byte */
-			cap_offset = (reg & 0xFF00) >> 8;
-
-			continue;
+		if (rte_pci_read_config(dev, &flags, sizeof(flags), cap_offset +
+				RTE_PCI_MSIX_FLAGS) < 0) {
+			RTE_LOG(ERR, EAL,
+				"Cannot read MSIX flags from PCI config space!\n");
+			return -1;
 		}
-		/* else, read table offset */
-		else {
-			/* table offset resides in the next 4 bytes */
-			ret = pread64(fd, &reg, sizeof(reg), offset + cap_offset + 4);
-			if (ret != sizeof(reg)) {
-				RTE_LOG(ERR, EAL,
-					"Cannot read table offset from PCI config space!\n");
-				return -1;
-			}
 
-			ret = pread64(fd, &flags, sizeof(flags), offset + cap_offset + 2);
-			if (ret != sizeof(flags)) {
-				RTE_LOG(ERR, EAL,
-					"Cannot read table flags from PCI config space!\n");
-				return -1;
-			}
-
-			msix_table->bar_index = reg & RTE_PCI_MSIX_TABLE_BIR;
-			msix_table->offset = reg & RTE_PCI_MSIX_TABLE_OFFSET;
-			msix_table->size =
-				16 * (1 + (flags & RTE_PCI_MSIX_FLAGS_QSIZE));
-
-			return 0;
-		}
+		msix_table->bar_index = reg & RTE_PCI_MSIX_TABLE_BIR;
+		msix_table->offset = reg & RTE_PCI_MSIX_TABLE_OFFSET;
+		msix_table->size = 16 * (1 + (flags & RTE_PCI_MSIX_FLAGS_QSIZE));
 	}
+
 	return 0;
 }
 
@@ -202,56 +155,20 @@ pci_vfio_enable_bus_memory(struct rte_pci_device *dev, int dev_fd)
 		return -1;
 	}
 
-	ret = pread64(dev_fd, &cmd, sizeof(cmd), offset + PCI_COMMAND);
+	ret = pread64(dev_fd, &cmd, sizeof(cmd), offset + RTE_PCI_COMMAND);
 
 	if (ret != sizeof(cmd)) {
 		RTE_LOG(ERR, EAL, "Cannot read command from PCI config space!\n");
 		return -1;
 	}
 
-	if (cmd & PCI_COMMAND_MEMORY)
+	if (cmd & RTE_PCI_COMMAND_MEMORY)
 		return 0;
 
-	cmd |= PCI_COMMAND_MEMORY;
-	ret = pwrite64(dev_fd, &cmd, sizeof(cmd), offset + PCI_COMMAND);
+	cmd |= RTE_PCI_COMMAND_MEMORY;
+	ret = pwrite64(dev_fd, &cmd, sizeof(cmd), offset + RTE_PCI_COMMAND);
 
 	if (ret != sizeof(cmd)) {
-		RTE_LOG(ERR, EAL, "Cannot write command to PCI config space!\n");
-		return -1;
-	}
-
-	return 0;
-}
-
-/* set PCI bus mastering */
-static int
-pci_vfio_set_bus_master(const struct rte_pci_device *dev, int dev_fd, bool op)
-{
-	uint64_t size, offset;
-	uint16_t reg;
-	int ret;
-
-	if (pci_vfio_get_region(dev, VFIO_PCI_CONFIG_REGION_INDEX,
-		&size, &offset) != 0) {
-		RTE_LOG(ERR, EAL, "Cannot get offset of CONFIG region.\n");
-		return -1;
-	}
-
-	ret = pread64(dev_fd, &reg, sizeof(reg), offset + PCI_COMMAND);
-	if (ret != sizeof(reg)) {
-		RTE_LOG(ERR, EAL, "Cannot read command from PCI config space!\n");
-		return -1;
-	}
-
-	if (op)
-		/* set the master bit */
-		reg |= PCI_COMMAND_MASTER;
-	else
-		reg &= ~(PCI_COMMAND_MASTER);
-
-	ret = pwrite64(dev_fd, &reg, sizeof(reg), offset + PCI_COMMAND);
-
-	if (ret != sizeof(reg)) {
 		RTE_LOG(ERR, EAL, "Cannot write command to PCI config space!\n");
 		return -1;
 	}
@@ -340,9 +257,6 @@ pci_vfio_setup_interrupts(struct rte_pci_device *dev, int vfio_dev_fd)
 		}
 
 		if (rte_intr_fd_set(dev->intr_handle, fd))
-			return -1;
-
-		if (rte_intr_dev_fd_set(dev->intr_handle, vfio_dev_fd))
 			return -1;
 
 		switch (i) {
@@ -512,14 +426,14 @@ pci_vfio_is_ioport_bar(const struct rte_pci_device *dev, int vfio_dev_fd,
 	}
 
 	ret = pread64(vfio_dev_fd, &ioport_bar, sizeof(ioport_bar),
-			  offset + PCI_BASE_ADDRESS_0 + bar_index * 4);
+			  offset + RTE_PCI_BASE_ADDRESS_0 + bar_index * 4);
 	if (ret != sizeof(ioport_bar)) {
 		RTE_LOG(ERR, EAL, "Cannot read command (%x) from config space!\n",
-			PCI_BASE_ADDRESS_0 + bar_index*4);
+			RTE_PCI_BASE_ADDRESS_0 + bar_index*4);
 		return -1;
 	}
 
-	return (ioport_bar & PCI_BASE_ADDRESS_SPACE_IO) != 0;
+	return (ioport_bar & RTE_PCI_BASE_ADDRESS_SPACE_IO) != 0;
 }
 
 static int
@@ -535,8 +449,7 @@ pci_rte_vfio_setup_device(struct rte_pci_device *dev, int vfio_dev_fd)
 		return -1;
 	}
 
-	/* set bus mastering for the device */
-	if (pci_vfio_set_bus_master(dev, vfio_dev_fd, true)) {
+	if (rte_pci_set_bus_master(dev, true)) {
 		RTE_LOG(ERR, EAL, "Cannot set up bus mastering!\n");
 		return -1;
 	}
@@ -875,6 +788,9 @@ pci_vfio_map_resource_primary(struct rte_pci_device *dev)
 	if (ret)
 		return ret;
 
+	if (rte_intr_dev_fd_set(dev->intr_handle, vfio_dev_fd))
+		goto err_vfio_dev_fd;
+
 	/* allocate vfio_res and get region info */
 	vfio_res = rte_zmalloc("VFIO_RES", sizeof(*vfio_res), 0);
 	if (vfio_res == NULL) {
@@ -906,7 +822,7 @@ pci_vfio_map_resource_primary(struct rte_pci_device *dev)
 	/* get MSI-X BAR, if any (we have to know where it is because we can't
 	 * easily mmap it when using VFIO)
 	 */
-	ret = pci_vfio_get_msix_bar(dev, vfio_dev_fd, &vfio_res->msix_table);
+	ret = pci_vfio_get_msix_bar(dev, &vfio_res->msix_table);
 	if (ret < 0) {
 		RTE_LOG(ERR, EAL, "%s cannot get MSI-X BAR number!\n",
 				pci_addr);
@@ -1226,7 +1142,7 @@ pci_vfio_unmap_resource_primary(struct rte_pci_device *dev)
 	if (vfio_dev_fd < 0)
 		return -1;
 
-	if (pci_vfio_set_bus_master(dev, vfio_dev_fd, false)) {
+	if (rte_pci_set_bus_master(dev, false)) {
 		RTE_LOG(ERR, EAL, "%s cannot unset bus mastering for PCI device!\n",
 				pci_addr);
 		return -1;

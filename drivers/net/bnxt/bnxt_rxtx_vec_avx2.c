@@ -261,7 +261,7 @@ recv_burst_vec_avx2(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		valid = _mm_cvtsi128_si64(_mm256_extracti128_si256(info3_v, 1));
 		valid = (valid << CHAR_BIT) |
 			_mm_cvtsi128_si64(_mm256_castsi256_si128(info3_v));
-		num_valid = __builtin_popcountll(valid & desc_valid_mask);
+		num_valid = rte_popcount64(valid & desc_valid_mask);
 
 		if (num_valid == 0)
 			break;

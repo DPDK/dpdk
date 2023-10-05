@@ -8,6 +8,7 @@
 #include <string.h>
 #include <sys/queue.h>
 
+#include <rte_bitops.h>
 #include <rte_byteorder.h>
 #include <rte_common.h>
 #include <rte_cycles.h>

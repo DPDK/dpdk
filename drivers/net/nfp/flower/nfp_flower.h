@@ -34,7 +34,9 @@
 #define MAX_FLOWER_PHYPORTS 8
 #define MAX_FLOWER_VFS 64
 
+/* Forward declaration */
 struct nfp_app_fw_flower;
+struct nfp_flower_representor;
 
 /* The function pointers for different NFD version */
 struct nfp_flower_nfd_func {
@@ -103,7 +105,8 @@ nfp_flower_support_decap_v2(const struct nfp_app_fw_flower *app_fw_flower)
 	return app_fw_flower->ext_features & NFP_FL_FEATS_DECAP_V2;
 }
 
-int nfp_init_app_fw_flower(struct nfp_pf_dev *pf_dev);
+int nfp_init_app_fw_flower(struct nfp_pf_dev *pf_dev,
+		const struct nfp_dev_info *dev_info);
 int nfp_secondary_init_app_fw_flower(struct nfp_cpp *cpp);
 bool nfp_flower_pf_dispatch_pkts(struct nfp_net_hw *hw,
 		struct rte_mbuf *mbuf,

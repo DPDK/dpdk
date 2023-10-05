@@ -69,6 +69,60 @@ void rte_pci_unmap_device(struct rte_pci_device *dev);
 void rte_pci_dump(FILE *f);
 
 /**
+ * Check whether this device has a PCI capability list.
+ *
+ *  @param dev
+ *    A pointer to rte_pci_device structure.
+ *
+ *  @return
+ *    true/false
+ */
+__rte_experimental
+bool rte_pci_has_capability_list(const struct rte_pci_device *dev);
+
+/**
+ * Find device's PCI capability.
+ *
+ *  @param dev
+ *    A pointer to rte_pci_device structure.
+ *
+ *  @param cap
+ *    Capability to be found, which can be any from
+ *    RTE_PCI_CAP_ID_*, defined in librte_pci.
+ *
+ *  @return
+ *  > 0: The offset of the next matching capability structure
+ *       within the device's PCI configuration space.
+ *  < 0: An error in PCI config space read.
+ *  = 0: Device does not support it.
+ */
+__rte_experimental
+off_t rte_pci_find_capability(const struct rte_pci_device *dev, uint8_t cap);
+
+/**
+ * Find device's PCI capability starting from a previous offset in PCI
+ * configuration space.
+ *
+ *  @param dev
+ *    A pointer to rte_pci_device structure.
+ *
+ *  @param cap
+ *    Capability to be found, which can be any from
+ *    RTE_PCI_CAP_ID_*, defined in librte_pci.
+ *  @param offset
+ *    An offset in the PCI configuration space from which the capability is
+ *    looked for.
+ *
+ *  @return
+ *  > 0: The offset of the next matching capability structure
+ *       within the device's PCI configuration space.
+ *  < 0: An error in PCI config space read.
+ *  = 0: Device does not support it.
+ */
+__rte_experimental
+off_t rte_pci_find_next_capability(const struct rte_pci_device *dev, uint8_t cap, off_t offset);
+
+/**
  * Find device's extended PCI capability.
  *
  *  @param dev
@@ -85,7 +139,7 @@ void rte_pci_dump(FILE *f);
  *  = 0: Device does not support it.
  */
 __rte_experimental
-off_t rte_pci_find_ext_capability(struct rte_pci_device *dev, uint32_t cap);
+off_t rte_pci_find_ext_capability(const struct rte_pci_device *dev, uint32_t cap);
 
 /**
  * Enables/Disables Bus Master for device's PCI command register.
@@ -99,7 +153,7 @@ off_t rte_pci_find_ext_capability(struct rte_pci_device *dev, uint32_t cap);
  *  0 on success, -1 on error in PCI config space read/write.
  */
 __rte_experimental
-int rte_pci_set_bus_master(struct rte_pci_device *dev, bool enable);
+int rte_pci_set_bus_master(const struct rte_pci_device *dev, bool enable);
 
 /**
  * Read PCI config space.

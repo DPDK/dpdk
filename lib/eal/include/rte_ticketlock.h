@@ -24,15 +24,16 @@ extern "C" {
 #include <rte_common.h>
 #include <rte_lcore.h>
 #include <rte_pause.h>
+#include <rte_stdatomic.h>
 
 /**
  * The rte_ticketlock_t type.
  */
 typedef union {
-	uint32_t tickets;
+	RTE_ATOMIC(uint32_t) tickets;
 	struct {
-		uint16_t current;
-		uint16_t next;
+		RTE_ATOMIC(uint16_t) current;
+		RTE_ATOMIC(uint16_t) next;
 	} s;
 } rte_ticketlock_t;
 
@@ -50,7 +51,7 @@ typedef union {
 static inline void
 rte_ticketlock_init(rte_ticketlock_t *tl)
 {
-	__atomic_store_n(&tl->tickets, 0, __ATOMIC_RELAXED);
+	rte_atomic_store_explicit(&tl->tickets, 0, rte_memory_order_relaxed);
 }
 
 /**
@@ -62,8 +63,9 @@ rte_ticketlock_init(rte_ticketlock_t *tl)
 static inline void
 rte_ticketlock_lock(rte_ticketlock_t *tl)
 {
-	uint16_t me = __atomic_fetch_add(&tl->s.next, 1, __ATOMIC_RELAXED);
-	rte_wait_until_equal_16(&tl->s.current, me, __ATOMIC_ACQUIRE);
+	uint16_t me = rte_atomic_fetch_add_explicit(&tl->s.next, 1, rte_memory_order_relaxed);
+	rte_wait_until_equal_16((uint16_t *)(uintptr_t)&tl->s.current, me,
+		rte_memory_order_acquire);
 }
 
 /**
@@ -75,8 +77,8 @@ rte_ticketlock_lock(rte_ticketlock_t *tl)
 static inline void
 rte_ticketlock_unlock(rte_ticketlock_t *tl)
 {
-	uint16_t i = __atomic_load_n(&tl->s.current, __ATOMIC_RELAXED);
-	__atomic_store_n(&tl->s.current, i + 1, __ATOMIC_RELEASE);
+	uint16_t i = rte_atomic_load_explicit(&tl->s.current, rte_memory_order_relaxed);
+	rte_atomic_store_explicit(&tl->s.current, i + 1, rte_memory_order_release);
 }
 
 /**
@@ -91,12 +93,13 @@ static inline int
 rte_ticketlock_trylock(rte_ticketlock_t *tl)
 {
 	rte_ticketlock_t oldl, newl;
-	oldl.tickets = __atomic_load_n(&tl->tickets, __ATOMIC_RELAXED);
+	oldl.tickets = rte_atomic_load_explicit(&tl->tickets, rte_memory_order_relaxed);
 	newl.tickets = oldl.tickets;
 	newl.s.next++;
 	if (oldl.s.next == oldl.s.current) {
-		if (__atomic_compare_exchange_n(&tl->tickets, &oldl.tickets,
-		    newl.tickets, 0, __ATOMIC_ACQUIRE, __ATOMIC_RELAXED))
+		if (rte_atomic_compare_exchange_strong_explicit(&tl->tickets,
+				(uint32_t *)(uintptr_t)&oldl.tickets, newl.tickets,
+				rte_memory_order_acquire, rte_memory_order_relaxed))
 			return 1;
 	}
 
@@ -115,7 +118,7 @@ static inline int
 rte_ticketlock_is_locked(rte_ticketlock_t *tl)
 {
 	rte_ticketlock_t tic;
-	tic.tickets = __atomic_load_n(&tl->tickets, __ATOMIC_ACQUIRE);
+	tic.tickets = rte_atomic_load_explicit(&tl->tickets, rte_memory_order_acquire);
 	return (tic.s.current != tic.s.next);
 }
 
@@ -126,7 +129,7 @@ rte_ticketlock_is_locked(rte_ticketlock_t *tl)
 
 typedef struct {
 	rte_ticketlock_t tl; /**< the actual ticketlock */
-	int user; /**< core id using lock, TICKET_LOCK_INVALID_ID for unused */
+	RTE_ATOMIC(int) user; /**< core id using lock, TICKET_LOCK_INVALID_ID for unused */
 	unsigned int count; /**< count of time this lock has been called */
 } rte_ticketlock_recursive_t;
 
@@ -146,7 +149,7 @@ static inline void
 rte_ticketlock_recursive_init(rte_ticketlock_recursive_t *tlr)
 {
 	rte_ticketlock_init(&tlr->tl);
-	__atomic_store_n(&tlr->user, TICKET_LOCK_INVALID_ID, __ATOMIC_RELAXED);
+	rte_atomic_store_explicit(&tlr->user, TICKET_LOCK_INVALID_ID, rte_memory_order_relaxed);
 	tlr->count = 0;
 }
 
@@ -161,9 +164,9 @@ rte_ticketlock_recursive_lock(rte_ticketlock_recursive_t *tlr)
 {
 	int id = rte_gettid();
 
-	if (__atomic_load_n(&tlr->user, __ATOMIC_RELAXED) != id) {
+	if (rte_atomic_load_explicit(&tlr->user, rte_memory_order_relaxed) != id) {
 		rte_ticketlock_lock(&tlr->tl);
-		__atomic_store_n(&tlr->user, id, __ATOMIC_RELAXED);
+		rte_atomic_store_explicit(&tlr->user, id, rte_memory_order_relaxed);
 	}
 	tlr->count++;
 }
@@ -178,8 +181,8 @@ static inline void
 rte_ticketlock_recursive_unlock(rte_ticketlock_recursive_t *tlr)
 {
 	if (--(tlr->count) == 0) {
-		__atomic_store_n(&tlr->user, TICKET_LOCK_INVALID_ID,
-				 __ATOMIC_RELAXED);
+		rte_atomic_store_explicit(&tlr->user, TICKET_LOCK_INVALID_ID,
+				 rte_memory_order_relaxed);
 		rte_ticketlock_unlock(&tlr->tl);
 	}
 }
@@ -197,10 +200,10 @@ rte_ticketlock_recursive_trylock(rte_ticketlock_recursive_t *tlr)
 {
 	int id = rte_gettid();
 
-	if (__atomic_load_n(&tlr->user, __ATOMIC_RELAXED) != id) {
+	if (rte_atomic_load_explicit(&tlr->user, rte_memory_order_relaxed) != id) {
 		if (rte_ticketlock_trylock(&tlr->tl) == 0)
 			return 0;
-		__atomic_store_n(&tlr->user, id, __ATOMIC_RELAXED);
+		rte_atomic_store_explicit(&tlr->user, id, rte_memory_order_relaxed);
 	}
 	tlr->count++;
 	return 1;

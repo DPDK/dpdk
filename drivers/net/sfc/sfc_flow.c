@@ -2865,6 +2865,40 @@ exit:
 }
 
 static int
+sfc_flow_action_handle_update(struct rte_eth_dev *dev,
+			      struct rte_flow_action_handle *handle,
+			      const void *update, struct rte_flow_error *error)
+{
+	struct sfc_adapter *sa = sfc_adapter_by_eth_dev(dev);
+	struct rte_flow_action_handle *entry;
+	int rc = EINVAL;
+
+	sfc_adapter_lock(sa);
+
+	TAILQ_FOREACH(entry, &sa->flow_indir_actions, entries) {
+		if (entry != handle)
+			continue;
+
+		if (entry->transfer) {
+			rc = sfc_mae_indir_action_update(sa, handle,
+							 update, error);
+		} else {
+			SFC_ASSERT(B_FALSE);
+		}
+
+		goto exit;
+	}
+
+	rc = rte_flow_error_set(error, ENOENT,
+				RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				"indirect action handle not found");
+
+exit:
+	sfc_adapter_unlock(sa);
+	return rc;
+}
+
+static int
 sfc_flow_action_handle_query(struct rte_eth_dev *dev,
 			     const struct rte_flow_action_handle *handle,
 			     void *data, struct rte_flow_error *error)
@@ -2907,6 +2941,7 @@ const struct rte_flow_ops sfc_flow_ops = {
 	.isolate = sfc_flow_isolate,
 	.action_handle_create = sfc_flow_action_handle_create,
 	.action_handle_destroy = sfc_flow_action_handle_destroy,
+	.action_handle_update = sfc_flow_action_handle_update,
 	.action_handle_query = sfc_flow_action_handle_query,
 	.tunnel_decap_set = sfc_ft_decap_set,
 	.tunnel_match = sfc_ft_match,

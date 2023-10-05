@@ -759,17 +759,12 @@ static int dlb2_attach_ldb_queues(struct dlb2_hw *hw,
 }
 
 static int
-dlb2_pp_profile(struct dlb2_hw *hw, int port, int cpu, bool is_ldb)
+dlb2_pp_profile(struct dlb2_hw *hw, int port, bool is_ldb)
 {
 	u64 cycle_start = 0ULL, cycle_end = 0ULL;
 	struct dlb2_hcw hcw_mem[DLB2_HCW_MEM_SIZE], *hcw;
 	void __iomem *pp_addr;
-	cpu_set_t cpuset;
 	int i;
-
-	CPU_ZERO(&cpuset);
-	CPU_SET(cpu, &cpuset);
-	sched_setaffinity(0, sizeof(cpuset), &cpuset);
 
 	pp_addr = os_map_producer_port(hw, port, is_ldb);
 
@@ -797,18 +792,15 @@ dlb2_pp_profile(struct dlb2_hw *hw, int port, int cpu, bool is_ldb)
 	return (int)(cycle_end - cycle_start);
 }
 
-static void *
+static uint32_t
 dlb2_pp_profile_func(void *data)
 {
 	struct dlb2_pp_thread_data *thread_data = data;
-	int cycles;
 
-	cycles = dlb2_pp_profile(thread_data->hw, thread_data->pp,
-	thread_data->cpu, thread_data->is_ldb);
+	thread_data->cycles = dlb2_pp_profile(thread_data->hw,
+			thread_data->pp, thread_data->is_ldb);
 
-	thread_data->cycles = cycles;
-
-	return NULL;
+	return 0;
 }
 
 static int dlb2_pp_cycle_comp(const void *a, const void *b)
@@ -831,7 +823,9 @@ dlb2_get_pp_allocation(struct dlb2_hw *hw, int cpu, int port_type)
 	int num_ports_per_sort, num_ports, num_sort, i, err;
 	bool is_ldb = (port_type == DLB2_LDB_PORT);
 	int *port_allocations;
-	pthread_t pthread;
+	rte_thread_t thread;
+	rte_thread_attr_t th_attr;
+	char th_name[RTE_THREAD_INTERNAL_NAME_SIZE];
 
 	if (is_ldb) {
 		port_allocations = hw->ldb_pp_allocations;
@@ -857,16 +851,25 @@ dlb2_get_pp_allocation(struct dlb2_hw *hw, int cpu, int port_type)
 		dlb2_thread_data[i].pp = i;
 		dlb2_thread_data[i].cycles = 0;
 		dlb2_thread_data[i].hw = hw;
-		dlb2_thread_data[i].cpu = cpu;
 
-		err = pthread_create(&pthread, NULL, &dlb2_pp_profile_func,
-				     &dlb2_thread_data[i]);
+		err = rte_thread_attr_init(&th_attr);
+		if (err != 0) {
+			DLB2_LOG_ERR(": thread attribute failed! err=%d", err);
+			return;
+		}
+		CPU_SET(cpu, &th_attr.cpuset);
+
+		err = rte_thread_create(&thread, &th_attr,
+				&dlb2_pp_profile_func, &dlb2_thread_data[i]);
 		if (err) {
 			DLB2_LOG_ERR(": thread creation failed! err=%d", err);
 			return;
 		}
 
-		err = pthread_join(pthread, NULL);
+		snprintf(th_name, sizeof(th_name), "dlb2-pp%d", cpu);
+		rte_thread_set_prefixed_name(thread, th_name);
+
+		err = rte_thread_join(thread, NULL);
 		if (err) {
 			DLB2_LOG_ERR(": thread join failed! err=%d", err);
 			return;

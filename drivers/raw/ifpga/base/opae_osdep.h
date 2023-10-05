@@ -7,6 +7,7 @@
 
 #include <string.h>
 #include <stdbool.h>
+#include <pthread.h>
 
 #ifdef RTE_LIB_EAL
 #include "osdep_rte/osdep_generic.h"

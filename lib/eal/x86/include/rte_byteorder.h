@@ -18,6 +18,7 @@ extern "C" {
 #define RTE_BYTE_ORDER RTE_LITTLE_ENDIAN
 #endif
 
+#ifndef RTE_FORCE_INTRINSICS
 /*
  * An architecture-optimized byte swap for a 16-bit value.
  *
@@ -47,7 +48,6 @@ static inline uint32_t rte_arch_bswap32(uint32_t _x)
 	return x;
 }
 
-#ifndef RTE_FORCE_INTRINSICS
 #define rte_bswap16(x) ((uint16_t)(__builtin_constant_p(x) ?		\
 				   rte_constant_bswap16(x) :		\
 				   rte_arch_bswap16(x)))
@@ -59,14 +59,11 @@ static inline uint32_t rte_arch_bswap32(uint32_t _x)
 #define rte_bswap64(x) ((uint64_t)(__builtin_constant_p(x) ?		\
 				   rte_constant_bswap64(x) :		\
 				   rte_arch_bswap64(x)))
+
+#ifdef RTE_ARCH_I686
+#include "rte_byteorder_32.h"
 #else
-/*
- * __builtin_bswap16 is only available gcc 4.8 and upwards
- */
-#if __GNUC__ < 4 || (__GNUC__ == 4 && __GNUC_MINOR__ < 8)
-#define rte_bswap16(x) ((uint16_t)(__builtin_constant_p(x) ?		\
-				   rte_constant_bswap16(x) :		\
-				   rte_arch_bswap16(x)))
+#include "rte_byteorder_64.h"
 #endif
 #endif
 
@@ -85,12 +82,6 @@ static inline uint32_t rte_arch_bswap32(uint32_t _x)
 #define rte_be_to_cpu_16(x) rte_bswap16(x)
 #define rte_be_to_cpu_32(x) rte_bswap32(x)
 #define rte_be_to_cpu_64(x) rte_bswap64(x)
-
-#ifdef RTE_ARCH_I686
-#include "rte_byteorder_32.h"
-#else
-#include "rte_byteorder_64.h"
-#endif
 
 #ifdef __cplusplus
 }

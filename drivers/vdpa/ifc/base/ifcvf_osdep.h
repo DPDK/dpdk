@@ -6,7 +6,6 @@
 #define _IFCVF_OSDEP_H_
 
 #include <stdint.h>
-#include <linux/pci_regs.h>
 
 #include <rte_cycles.h>
 #include <rte_pci.h>
@@ -34,6 +33,9 @@ typedef struct rte_pci_device PCI_DEV;
 
 #define PCI_READ_CONFIG_DWORD(dev, val, where) \
 	rte_pci_read_config(dev, val, 4, where)
+
+#define PCI_CAPABILITY_LIST RTE_PCI_CAPABILITY_LIST
+#define PCI_CAP_ID_VNDR RTE_PCI_CAP_ID_VNDR
 
 typedef uint8_t    u8;
 typedef int8_t     s8;

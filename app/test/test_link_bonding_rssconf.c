@@ -27,15 +27,15 @@
 
 #include "test.h"
 
-#define SLAVE_COUNT (4)
+#define MEMBER_COUNT (4)
 
 #define RXTX_RING_SIZE			1024
 #define RXTX_QUEUE_COUNT		4
 
-#define BONDED_DEV_NAME         ("net_bonding_rss")
+#define BONDING_DEV_NAME         ("net_bonding_rss")
 
-#define SLAVE_DEV_NAME_FMT      ("net_null%d")
-#define SLAVE_RXTX_QUEUE_FMT      ("rssconf_slave%d_q%d")
+#define MEMBER_DEV_NAME_FMT      ("net_null%d")
+#define MEMBER_RXTX_QUEUE_FMT      ("rssconf_member%d_q%d")
 
 #define NUM_MBUFS 8191
 #define MBUF_SIZE (1600 + RTE_PKTMBUF_HEADROOM)
@@ -46,7 +46,7 @@
 #define INVALID_PORT_ID         (0xFF)
 #define INVALID_BONDING_MODE    (-1)
 
-struct slave_conf {
+struct member_conf {
 	uint16_t port_id;
 	struct rte_eth_dev_info dev_info;
 
@@ -54,7 +54,7 @@ struct slave_conf {
 	uint8_t rss_key[40];
 	struct rte_eth_rss_reta_entry64 reta_conf[512 / RTE_ETH_RETA_GROUP_SIZE];
 
-	uint8_t is_slave;
+	uint8_t is_member;
 	struct rte_ring *rxtx_queue[RXTX_QUEUE_COUNT];
 };
 
@@ -62,15 +62,15 @@ struct link_bonding_rssconf_unittest_params {
 	uint8_t bond_port_id;
 	struct rte_eth_dev_info bond_dev_info;
 	struct rte_eth_rss_reta_entry64 bond_reta_conf[512 / RTE_ETH_RETA_GROUP_SIZE];
-	struct slave_conf slave_ports[SLAVE_COUNT];
+	struct member_conf member_ports[MEMBER_COUNT];
 
 	struct rte_mempool *mbuf_pool;
 };
 
 static struct link_bonding_rssconf_unittest_params test_params  = {
 	.bond_port_id = INVALID_PORT_ID,
-	.slave_ports = {
-		[0 ... SLAVE_COUNT - 1] = { .port_id = INVALID_PORT_ID, .is_slave = 0}
+	.member_ports = {
+		[0 ... MEMBER_COUNT - 1] = { .port_id = INVALID_PORT_ID, .is_member = 0}
 	},
 	.mbuf_pool = NULL,
 };
@@ -107,14 +107,14 @@ static struct rte_eth_conf rss_pmd_conf = {
 #define FOR_EACH(_i, _item, _array, _size) \
 	for (_i = 0, _item = &_array[0]; _i < _size && (_item = &_array[_i]); _i++)
 
-/* Macro for iterating over every port that can be used as a slave
+/* Macro for iterating over every port that can be used as a member
  * in this test.
- * _i variable used as an index in test_params->slave_ports
- * _slave pointer to &test_params->slave_ports[_idx]
+ * _i variable used as an index in test_params->member_ports
+ * _member pointer to &test_params->member_ports[_idx]
  */
 #define FOR_EACH_PORT(_i, _port) \
-	FOR_EACH(_i, _port, test_params.slave_ports, \
-		RTE_DIM(test_params.slave_ports))
+	FOR_EACH(_i, _port, test_params.member_ports, \
+		RTE_DIM(test_params.member_ports))
 
 static int
 configure_ethdev(uint16_t port_id, struct rte_eth_conf *eth_conf,
@@ -151,21 +151,21 @@ configure_ethdev(uint16_t port_id, struct rte_eth_conf *eth_conf,
 }
 
 /**
- * Remove all slaves from bonding
+ * Remove all members from bonding
  */
 static int
-remove_slaves(void)
+remove_members(void)
 {
 	unsigned n;
-	struct slave_conf *port;
+	struct member_conf *port;
 
 	FOR_EACH_PORT(n, port) {
-		port = &test_params.slave_ports[n];
-		if (port->is_slave) {
-			TEST_ASSERT_SUCCESS(rte_eth_bond_slave_remove(
+		port = &test_params.member_ports[n];
+		if (port->is_member) {
+			TEST_ASSERT_SUCCESS(rte_eth_bond_member_remove(
 					test_params.bond_port_id, port->port_id),
-					"Cannot remove slave %d from bonding", port->port_id);
-			port->is_slave = 0;
+					"Cannot remove member %d from bonding", port->port_id);
+			port->is_member = 0;
 		}
 	}
 
@@ -173,30 +173,30 @@ remove_slaves(void)
 }
 
 static int
-remove_slaves_and_stop_bonded_device(void)
+remove_members_and_stop_bonding_device(void)
 {
-	TEST_ASSERT_SUCCESS(remove_slaves(), "Removing slaves");
+	TEST_ASSERT_SUCCESS(remove_members(), "Removing members");
 	TEST_ASSERT_SUCCESS(rte_eth_dev_stop(test_params.bond_port_id),
 			"Failed to stop port %u", test_params.bond_port_id);
 	return TEST_SUCCESS;
 }
 
 /**
- * Add all slaves to bonding
+ * Add all members to bonding
  */
 static int
-bond_slaves(void)
+bond_members(void)
 {
 	unsigned n;
-	struct slave_conf *port;
+	struct member_conf *port;
 
 	FOR_EACH_PORT(n, port) {
-		port = &test_params.slave_ports[n];
-		if (!port->is_slave) {
-			TEST_ASSERT_SUCCESS(rte_eth_bond_slave_add(test_params.bond_port_id,
-					port->port_id), "Cannot attach slave %d to the bonding",
+		port = &test_params.member_ports[n];
+		if (!port->is_member) {
+			TEST_ASSERT_SUCCESS(rte_eth_bond_member_add(test_params.bond_port_id,
+					port->port_id), "Cannot attach member %d to the bonding",
 					port->port_id);
-			port->is_slave = 1;
+			port->is_member = 1;
 		}
 	}
 
@@ -223,11 +223,11 @@ reta_set(uint16_t port_id, uint8_t value, int reta_size)
 }
 
 /**
- * Check if slaves RETA is synchronized with bonding port. Returns 1 if slave
+ * Check if members RETA is synchronized with bonding port. Returns 1 if member
  * port is synced with bonding port.
  */
 static int
-reta_check_synced(struct slave_conf *port)
+reta_check_synced(struct member_conf *port)
 {
 	unsigned i;
 
@@ -264,10 +264,10 @@ bond_reta_fetch(void) {
 }
 
 /**
- * Fetch slaves RETA
+ * Fetch members RETA
  */
 static int
-slave_reta_fetch(struct slave_conf *port) {
+member_reta_fetch(struct member_conf *port) {
 	unsigned j;
 
 	for (j = 0; j < port->dev_info.reta_size / RTE_ETH_RETA_GROUP_SIZE; j++)
@@ -280,49 +280,49 @@ slave_reta_fetch(struct slave_conf *port) {
 }
 
 /**
- * Remove and add slave to check if slaves configuration is synced with
- * the bonding ports values after adding new slave.
+ * Remove and add member to check if members configuration is synced with
+ * the bonding ports values after adding new member.
  */
 static int
-slave_remove_and_add(void)
+member_remove_and_add(void)
 {
-	struct slave_conf *port = &(test_params.slave_ports[0]);
+	struct member_conf *port = &(test_params.member_ports[0]);
 
-	/* 1. Remove first slave from bonding */
-	TEST_ASSERT_SUCCESS(rte_eth_bond_slave_remove(test_params.bond_port_id,
-			port->port_id), "Cannot remove slave #d from bonding");
+	/* 1. Remove first member from bonding */
+	TEST_ASSERT_SUCCESS(rte_eth_bond_member_remove(test_params.bond_port_id,
+			port->port_id), "Cannot remove member #d from bonding");
 
-	/* 2. Change removed (ex-)slave and bonding configuration to different
+	/* 2. Change removed (ex-)member and bonding configuration to different
 	 *    values
 	 */
 	reta_set(test_params.bond_port_id, 1, test_params.bond_dev_info.reta_size);
 	bond_reta_fetch();
 
 	reta_set(port->port_id, 2, port->dev_info.reta_size);
-	slave_reta_fetch(port);
+	member_reta_fetch(port);
 
 	TEST_ASSERT(reta_check_synced(port) == 0,
-			"Removed slave didn't should be synchronized with bonding port");
+			"Removed member didn't should be synchronized with bonding port");
 
-	/* 3. Add (ex-)slave and check if configuration changed*/
-	TEST_ASSERT_SUCCESS(rte_eth_bond_slave_add(test_params.bond_port_id,
-			port->port_id), "Cannot add slave");
+	/* 3. Add (ex-)member and check if configuration changed*/
+	TEST_ASSERT_SUCCESS(rte_eth_bond_member_add(test_params.bond_port_id,
+			port->port_id), "Cannot add member");
 
 	bond_reta_fetch();
-	slave_reta_fetch(port);
+	member_reta_fetch(port);
 
 	return reta_check_synced(port);
 }
 
 /**
- * Test configuration propagation over slaves.
+ * Test configuration propagation over members.
  */
 static int
 test_propagate(void)
 {
 	unsigned i;
 	uint8_t n;
-	struct slave_conf *port;
+	struct member_conf *port;
 	uint8_t bond_rss_key[40];
 	struct rte_eth_rss_conf bond_rss_conf;
 
@@ -349,18 +349,18 @@ test_propagate(void)
 
 			retval = rte_eth_dev_rss_hash_update(test_params.bond_port_id,
 					&bond_rss_conf);
-			TEST_ASSERT_SUCCESS(retval, "Cannot set slaves hash function");
+			TEST_ASSERT_SUCCESS(retval, "Cannot set members hash function");
 
 			FOR_EACH_PORT(n, port) {
-				port = &test_params.slave_ports[n];
+				port = &test_params.member_ports[n];
 
 				retval = rte_eth_dev_rss_hash_conf_get(port->port_id,
 						&port->rss_conf);
 				TEST_ASSERT_SUCCESS(retval,
-						"Cannot take slaves RSS configuration");
+						"Cannot take members RSS configuration");
 
 				TEST_ASSERT(port->rss_conf.rss_hf == rss_hf,
-						"Hash function not propagated for slave %d",
+						"Hash function not propagated for member %d",
 						port->port_id);
 			}
 
@@ -376,11 +376,11 @@ test_propagate(void)
 
 		/* Set all keys to zero */
 		FOR_EACH_PORT(n, port) {
-			port = &test_params.slave_ports[n];
+			port = &test_params.member_ports[n];
 			memset(port->rss_conf.rss_key, 0, 40);
 			retval = rte_eth_dev_rss_hash_update(port->port_id,
 					&port->rss_conf);
-			TEST_ASSERT_SUCCESS(retval, "Cannot set slaves RSS keys");
+			TEST_ASSERT_SUCCESS(retval, "Cannot set members RSS keys");
 		}
 
 		memset(bond_rss_key, i, sizeof(bond_rss_key));
@@ -390,21 +390,21 @@ test_propagate(void)
 
 		retval = rte_eth_dev_rss_hash_update(test_params.bond_port_id,
 				&bond_rss_conf);
-		TEST_ASSERT_SUCCESS(retval, "Cannot set bonded port RSS keys");
+		TEST_ASSERT_SUCCESS(retval, "Cannot set bonding port RSS keys");
 
 		FOR_EACH_PORT(n, port) {
-			port = &test_params.slave_ports[n];
+			port = &test_params.member_ports[n];
 
 			retval = rte_eth_dev_rss_hash_conf_get(port->port_id,
 					&(port->rss_conf));
 
 			TEST_ASSERT_SUCCESS(retval,
-					"Cannot take slaves RSS configuration");
+					"Cannot take members RSS configuration");
 
 			/* compare keys */
 			retval = memcmp(port->rss_conf.rss_key, bond_rss_key,
 					sizeof(bond_rss_key));
-			TEST_ASSERT(retval == 0, "Key value not propagated for slave %d",
+			TEST_ASSERT(retval == 0, "Key value not propagated for member %d",
 					port->port_id);
 		}
 	}
@@ -416,22 +416,22 @@ test_propagate(void)
 
 		/* Set all keys to zero */
 		FOR_EACH_PORT(n, port) {
-			port = &test_params.slave_ports[n];
+			port = &test_params.member_ports[n];
 			retval = reta_set(port->port_id, (i + 1) % RXTX_QUEUE_COUNT,
 					port->dev_info.reta_size);
-			TEST_ASSERT_SUCCESS(retval, "Cannot set slaves RETA");
+			TEST_ASSERT_SUCCESS(retval, "Cannot set members RETA");
 		}
 
 		TEST_ASSERT_SUCCESS(reta_set(test_params.bond_port_id,
 				i % RXTX_QUEUE_COUNT, test_params.bond_dev_info.reta_size),
-				"Cannot set bonded port RETA");
+				"Cannot set bonding port RETA");
 
 		bond_reta_fetch();
 
 		FOR_EACH_PORT(n, port) {
-			port = &test_params.slave_ports[n];
+			port = &test_params.member_ports[n];
 
-			slave_reta_fetch(port);
+			member_reta_fetch(port);
 			TEST_ASSERT(reta_check_synced(port) == 1, "RETAs inconsistent");
 		}
 	}
@@ -459,29 +459,29 @@ test_rss(void)
 			"Error during getting device (port %u) info: %s\n",
 			test_params.bond_port_id, strerror(-ret));
 
-	TEST_ASSERT_SUCCESS(bond_slaves(), "Bonding slaves failed");
+	TEST_ASSERT_SUCCESS(bond_members(), "Bonding members failed");
 
 	TEST_ASSERT_SUCCESS(rte_eth_dev_start(test_params.bond_port_id),
 			"Failed to start bonding port (%d).", test_params.bond_port_id);
 
 	TEST_ASSERT_SUCCESS(test_propagate(), "Propagation test failed");
 
-	TEST_ASSERT(slave_remove_and_add() == 1, "remove and add slaves success.");
+	TEST_ASSERT(member_remove_and_add() == 1, "remove and add members success.");
 
-	remove_slaves_and_stop_bonded_device();
+	remove_members_and_stop_bonding_device();
 
 	return TEST_SUCCESS;
 }
 
 
 /**
- * Test RSS configuration over bonded and slaves.
+ * Test RSS configuration over bonding and members.
  */
 static int
 test_rss_config_lazy(void)
 {
 	struct rte_eth_rss_conf bond_rss_conf = {0};
-	struct slave_conf *port;
+	struct member_conf *port;
 	uint8_t rss_key[40];
 	uint64_t rss_hf;
 	int retval;
@@ -499,24 +499,24 @@ test_rss_config_lazy(void)
 		bond_rss_conf.rss_hf = rss_hf;
 		retval = rte_eth_dev_rss_hash_update(test_params.bond_port_id,
 						     &bond_rss_conf);
-		TEST_ASSERT(retval != 0, "Succeeded in setting bonded port hash function");
+		TEST_ASSERT(retval != 0, "Succeeded in setting bonding port hash function");
 	}
 
-	/* Set all keys to zero for all slaves */
+	/* Set all keys to zero for all members */
 	FOR_EACH_PORT(n, port) {
-		port = &test_params.slave_ports[n];
+		port = &test_params.member_ports[n];
 		retval = rte_eth_dev_rss_hash_conf_get(port->port_id,
 						       &port->rss_conf);
-		TEST_ASSERT_SUCCESS(retval, "Cannot get slaves RSS configuration");
+		TEST_ASSERT_SUCCESS(retval, "Cannot get members RSS configuration");
 		memset(port->rss_key, 0, sizeof(port->rss_key));
 		port->rss_conf.rss_key = port->rss_key;
 		port->rss_conf.rss_key_len = sizeof(port->rss_key);
 		retval = rte_eth_dev_rss_hash_update(port->port_id,
 						     &port->rss_conf);
-		TEST_ASSERT(retval != 0, "Succeeded in setting slaves RSS keys");
+		TEST_ASSERT(retval != 0, "Succeeded in setting members RSS keys");
 	}
 
-	/* Set RSS keys for bonded port */
+	/* Set RSS keys for bonding port */
 	memset(rss_key, 1, sizeof(rss_key));
 	bond_rss_conf.rss_hf = rss_hf;
 	bond_rss_conf.rss_key = rss_key;
@@ -524,20 +524,20 @@ test_rss_config_lazy(void)
 
 	retval = rte_eth_dev_rss_hash_update(test_params.bond_port_id,
 					     &bond_rss_conf);
-	TEST_ASSERT(retval != 0, "Succeeded in setting bonded port RSS keys");
+	TEST_ASSERT(retval != 0, "Succeeded in setting bonding port RSS keys");
 
 	/*  Test RETA propagation */
 	for (i = 0; i < RXTX_QUEUE_COUNT; i++) {
 		FOR_EACH_PORT(n, port) {
-			port = &test_params.slave_ports[n];
+			port = &test_params.member_ports[n];
 			retval = reta_set(port->port_id, (i + 1) % RXTX_QUEUE_COUNT,
 					  port->dev_info.reta_size);
-			TEST_ASSERT(retval != 0, "Succeeded in setting slaves RETA");
+			TEST_ASSERT(retval != 0, "Succeeded in setting members RETA");
 		}
 
 		retval = reta_set(test_params.bond_port_id, i % RXTX_QUEUE_COUNT,
 				  test_params.bond_dev_info.reta_size);
-		TEST_ASSERT(retval != 0, "Succeeded in setting bonded port RETA");
+		TEST_ASSERT(retval != 0, "Succeeded in setting bonding port RETA");
 	}
 
 	return TEST_SUCCESS;
@@ -560,14 +560,14 @@ test_rss_lazy(void)
 			"Error during getting device (port %u) info: %s\n",
 			test_params.bond_port_id, strerror(-ret));
 
-	TEST_ASSERT_SUCCESS(bond_slaves(), "Bonding slaves failed");
+	TEST_ASSERT_SUCCESS(bond_members(), "Bonding members failed");
 
 	TEST_ASSERT_SUCCESS(rte_eth_dev_start(test_params.bond_port_id),
 			"Failed to start bonding port (%d).", test_params.bond_port_id);
 
 	TEST_ASSERT_SUCCESS(test_rss_config_lazy(), "Succeeded in setting RSS hash when RX_RSS mq_mode is turned off");
 
-	remove_slaves_and_stop_bonded_device();
+	remove_members_and_stop_bonding_device();
 
 	return TEST_SUCCESS;
 }
@@ -579,13 +579,13 @@ test_setup(void)
 	int retval;
 	int port_id;
 	char name[256];
-	struct slave_conf *port;
+	struct member_conf *port;
 	struct rte_ether_addr mac_addr = { .addr_bytes = {0} };
 
 	if (test_params.mbuf_pool == NULL) {
 
 		test_params.mbuf_pool = rte_pktmbuf_pool_create(
-			"RSS_MBUF_POOL", NUM_MBUFS * SLAVE_COUNT,
+			"RSS_MBUF_POOL", NUM_MBUFS * MEMBER_COUNT,
 			MBUF_CACHE_SIZE, 0, MBUF_SIZE, rte_socket_id());
 
 		TEST_ASSERT(test_params.mbuf_pool != NULL,
@@ -594,10 +594,10 @@ test_setup(void)
 
 	/* Create / initialize ring eth devs. */
 	FOR_EACH_PORT(n, port) {
-		port = &test_params.slave_ports[n];
+		port = &test_params.member_ports[n];
 
 		port_id = rte_eth_dev_count_avail();
-		snprintf(name, sizeof(name), SLAVE_DEV_NAME_FMT, port_id);
+		snprintf(name, sizeof(name), MEMBER_DEV_NAME_FMT, port_id);
 
 		retval = rte_vdev_init(name, "size=64,copy=0");
 		TEST_ASSERT_SUCCESS(retval, "Failed to create null device '%s'\n",
@@ -624,10 +624,10 @@ test_setup(void)
 	}
 
 	if (test_params.bond_port_id == INVALID_PORT_ID) {
-		retval = rte_eth_bond_create(BONDED_DEV_NAME, 0, rte_socket_id());
+		retval = rte_eth_bond_create(BONDING_DEV_NAME, 0, rte_socket_id());
 
-		TEST_ASSERT(retval >= 0, "Failed to create bonded ethdev %s",
-				BONDED_DEV_NAME);
+		TEST_ASSERT(retval >= 0, "Failed to create bonding ethdev %s",
+				BONDING_DEV_NAME);
 
 		test_params.bond_port_id = retval;
 
@@ -647,7 +647,7 @@ test_setup(void)
 static void
 testsuite_teardown(void)
 {
-	struct slave_conf *port;
+	struct member_conf *port;
 	uint8_t i;
 
 	/* Only stop ports.
@@ -685,8 +685,8 @@ test_rssconf_executor(int (*test_func)(void))
 
 	/* Reset environment in case test failed to do that. */
 	if (test_result != TEST_SUCCESS) {
-		TEST_ASSERT_SUCCESS(remove_slaves_and_stop_bonded_device(),
-			"Failed to stop bonded device");
+		TEST_ASSERT_SUCCESS(remove_members_and_stop_bonding_device(),
+			"Failed to stop bonding device");
 	}
 
 	return test_result;
@@ -728,4 +728,4 @@ test_link_bonding_rssconf(void)
 	return unit_test_suite_runner(&link_bonding_rssconf_test_suite);
 }
 
-REGISTER_TEST_COMMAND(link_bonding_rssconf_autotest, test_link_bonding_rssconf);
+REGISTER_DRIVER_TEST(link_bonding_rssconf_autotest, test_link_bonding_rssconf);

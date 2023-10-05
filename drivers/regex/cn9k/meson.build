@@ -12,5 +12,5 @@ sources = files(
         'cn9k_regexdev.c',
 )
 
-deps += ['bus_pci', 'regexdev']
+deps += ['bus_pci']
 deps += ['common_cnxk', 'mempool_cnxk']

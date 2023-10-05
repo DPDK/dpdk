@@ -354,5 +354,5 @@ test_lf_stack_perf(void)
 #endif
 }
 
-REGISTER_TEST_COMMAND(stack_perf_autotest, test_stack_perf);
-REGISTER_TEST_COMMAND(stack_lf_perf_autotest, test_lf_stack_perf);
+REGISTER_PERF_TEST(stack_perf_autotest, test_stack_perf);
+REGISTER_PERF_TEST(stack_lf_perf_autotest, test_lf_stack_perf);

@@ -235,7 +235,7 @@ rte_port_sym_crypto_writer_tx_bulk(void *port,
 					((pkts_mask & bsz_mask) ^ bsz_mask);
 
 	if (expr == 0) {
-		uint64_t n_pkts = __builtin_popcountll(pkts_mask);
+		uint64_t n_pkts = rte_popcount64(pkts_mask);
 		uint32_t i;
 
 		RTE_PORT_SYM_CRYPTO_WRITER_STATS_PKTS_IN_ADD(p, n_pkts);
@@ -249,7 +249,7 @@ rte_port_sym_crypto_writer_tx_bulk(void *port,
 			send_burst(p);
 	} else {
 		for (; pkts_mask;) {
-			uint32_t pkt_index = __builtin_ctzll(pkts_mask);
+			uint32_t pkt_index = rte_ctz64(pkts_mask);
 			uint64_t pkt_mask = 1LLU << pkt_index;
 			struct rte_mbuf *pkt = pkts[pkt_index];
 
@@ -447,7 +447,7 @@ rte_port_sym_crypto_writer_nodrop_tx_bulk(void *port,
 					((pkts_mask & bsz_mask) ^ bsz_mask);
 
 	if (expr == 0) {
-		uint64_t n_pkts = __builtin_popcountll(pkts_mask);
+		uint64_t n_pkts = rte_popcount64(pkts_mask);
 		uint32_t i;
 
 		RTE_PORT_SYM_CRYPTO_WRITER_NODROP_STATS_PKTS_IN_ADD(p, n_pkts);
@@ -461,7 +461,7 @@ rte_port_sym_crypto_writer_nodrop_tx_bulk(void *port,
 			send_burst_nodrop(p);
 	} else {
 		for ( ; pkts_mask; ) {
-			uint32_t pkt_index = __builtin_ctzll(pkts_mask);
+			uint32_t pkt_index = rte_ctz64(pkts_mask);
 			uint64_t pkt_mask = 1LLU << pkt_index;
 			struct rte_mbuf *pkt = pkts[pkt_index];
 

@@ -1622,7 +1622,6 @@ struct nix_send_crc_s {
 };
 
 /* NIX send extended header sub descriptor structure */
-PLT_STD_C11
 union nix_send_ext_w0_u {
 	uint64_t u;
 	struct {
@@ -1642,7 +1641,6 @@ union nix_send_ext_w0_u {
 	};
 };
 
-PLT_STD_C11
 union nix_send_ext_w1_u {
 	uint64_t u;
 	struct {
@@ -1672,7 +1670,6 @@ struct nix_send_ext_s {
 };
 
 /* NIX send header sub descriptor structure */
-PLT_STD_C11
 union nix_send_hdr_w0_u {
 	uint64_t u;
 	struct {
@@ -1686,7 +1683,6 @@ union nix_send_hdr_w0_u {
 	};
 };
 
-PLT_STD_C11
 union nix_send_hdr_w1_u {
 	uint64_t u;
 	struct {
@@ -1728,7 +1724,6 @@ struct nix_send_jump_s {
 };
 
 /* NIX send memory sub descriptor structure */
-PLT_STD_C11
 union nix_send_mem_w0_u {
 	uint64_t u;
 	struct {
@@ -1756,7 +1751,6 @@ struct nix_send_mem_s {
 };
 
 /* NIX send scatter/gather sub descriptor structure */
-PLT_STD_C11
 union nix_send_sg2_s {
 	uint64_t u;
 	struct {
@@ -1771,7 +1765,6 @@ union nix_send_sg2_s {
 	};
 };
 
-PLT_STD_C11
 union nix_send_sg_s {
 	uint64_t u;
 	struct {

@@ -3,20 +3,15 @@
  * All rights reserved.
  */
 
-#include <rte_common.h>
-#include <rte_service.h>
-#include <ethdev_pci.h>
+#include "nfp_flower_ctrl.h"
 
-#include "../nfp_common.h"
-#include "../nfp_logs.h"
-#include "../nfp_ctrl.h"
-#include "../nfp_rxtx.h"
+#include <rte_service.h>
+
 #include "../nfd3/nfp_nfd3.h"
 #include "../nfdk/nfp_nfdk.h"
-#include "nfp_flower.h"
-#include "nfp_flower_ctrl.h"
-#include "nfp_flower_cmsg.h"
+#include "../nfp_logs.h"
 #include "nfp_flower_representor.h"
+#include "nfp_mtr.h"
 
 #define MAX_PKT_BURST 32
 

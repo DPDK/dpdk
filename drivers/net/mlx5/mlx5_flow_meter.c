@@ -1820,7 +1820,7 @@ mlx5_flow_meter_create(struct rte_eth_dev *dev, uint32_t meter_id,
 		legacy_fm->idx = mtr_idx;
 		fm = &legacy_fm->fm;
 	}
-	mtr_id_bits = MLX5_REG_BITS - __builtin_clz(mtr_idx);
+	mtr_id_bits = MLX5_REG_BITS - rte_clz32(mtr_idx);
 	if ((mtr_id_bits + priv->sh->mtrmng->max_mtr_flow_bits) >
 	    mtr_reg_bits) {
 		DRV_LOG(ERR, "Meter number exceeds max limit.");

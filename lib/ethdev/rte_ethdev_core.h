@@ -5,8 +5,6 @@
 #ifndef _RTE_ETHDEV_CORE_H_
 #define _RTE_ETHDEV_CORE_H_
 
-#include <pthread.h>
-
 /**
  * @file
  *
@@ -55,6 +53,13 @@ typedef int (*eth_rx_descriptor_status_t)(void *rxq, uint16_t offset);
 /** @internal Check the status of a Tx descriptor */
 typedef int (*eth_tx_descriptor_status_t)(void *txq, uint16_t offset);
 
+/** @internal Copy used mbufs from Tx mbuf ring into Rx mbuf ring */
+typedef uint16_t (*eth_recycle_tx_mbufs_reuse_t)(void *txq,
+		struct rte_eth_recycle_rxq_info *recycle_rxq_info);
+
+/** @internal Refill Rx descriptors with the recycling mbufs */
+typedef void (*eth_recycle_rx_descriptors_refill_t)(void *rxq, uint16_t nb);
+
 /**
  * @internal
  * Structure used to hold opaque pointers to internal ethdev Rx/Tx
@@ -83,15 +88,17 @@ struct rte_eth_fp_ops {
 	 * Rx fast-path functions and related data.
 	 * 64-bit systems: occupies first 64B line
 	 */
+	/** Rx queues data. */
+	struct rte_ethdev_qdata rxq;
 	/** PMD receive function. */
 	eth_rx_burst_t rx_pkt_burst;
 	/** Get the number of used Rx descriptors. */
 	eth_rx_queue_count_t rx_queue_count;
 	/** Check the status of a Rx descriptor. */
 	eth_rx_descriptor_status_t rx_descriptor_status;
-	/** Rx queues data. */
-	struct rte_ethdev_qdata rxq;
-	uintptr_t reserved1[3];
+	/** Refill Rx descriptors with the recycling mbufs. */
+	eth_recycle_rx_descriptors_refill_t recycle_rx_descriptors_refill;
+	uintptr_t reserved1[2];
 	/**@}*/
 
 	/**@{*/
@@ -99,15 +106,17 @@ struct rte_eth_fp_ops {
 	 * Tx fast-path functions and related data.
 	 * 64-bit systems: occupies second 64B line
 	 */
+	/** Tx queues data. */
+	struct rte_ethdev_qdata txq;
 	/** PMD transmit function. */
 	eth_tx_burst_t tx_pkt_burst;
 	/** PMD transmit prepare function. */
 	eth_tx_prep_t tx_pkt_prepare;
 	/** Check the status of a Tx descriptor. */
 	eth_tx_descriptor_status_t tx_descriptor_status;
-	/** Tx queues data. */
-	struct rte_ethdev_qdata txq;
-	uintptr_t reserved2[3];
+	/** Copy used mbufs from Tx mbuf ring into Rx. */
+	eth_recycle_tx_mbufs_reuse_t recycle_tx_mbufs_reuse;
+	uintptr_t reserved2[2];
 	/**@}*/
 
 } __rte_cache_aligned;

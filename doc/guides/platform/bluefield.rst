@@ -19,6 +19,7 @@ Supported BlueField Platforms
 -----------------------------
 
 - `BlueField-2 <https://docs.nvidia.com/networking/display/BlueField2DPUENUG/Introduction>`_
+- `BlueField-3 <https://docs.nvidia.com/networking/display/BlueField3DPU/Introduction>`_
 
 
 Common Offload HW Drivers

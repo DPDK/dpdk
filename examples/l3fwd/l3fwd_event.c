@@ -2,6 +2,7 @@
  * Copyright(C) 2019 Marvell International Ltd.
  */
 
+#ifdef RTE_LIB_EVENTDEV
 #include <stdbool.h>
 #include <getopt.h>
 
@@ -341,3 +342,4 @@ l3fwd_event_worker_cleanup(uint8_t event_d_id, uint8_t event_p_id,
 	rte_event_port_quiesce(event_d_id, event_p_id, l3fwd_event_port_flush,
 			       NULL);
 }
+#endif /* RTE_LIB_EVENTDEV */

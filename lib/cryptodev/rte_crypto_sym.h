@@ -594,7 +594,6 @@ struct rte_crypto_sym_xform {
 	/**< next xform in chain */
 	enum rte_crypto_sym_xform_type type
 	; /**< xform type */
-	RTE_STD_C11
 	union {
 		struct rte_crypto_auth_xform auth;
 		/**< Authentication / hash xform */
@@ -641,7 +640,6 @@ struct rte_crypto_sym_op {
 	struct rte_mbuf *m_src;	/**< source mbuf */
 	struct rte_mbuf *m_dst;	/**< destination mbuf */
 
-	RTE_STD_C11
 	union {
 		void *session;
 		/**< Handle for the initialised crypto/security session context */
@@ -649,7 +647,6 @@ struct rte_crypto_sym_op {
 		/**< Session-less API crypto operation parameters */
 	};
 
-	RTE_STD_C11
 	union {
 		struct {
 			struct {

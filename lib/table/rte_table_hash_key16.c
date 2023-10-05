@@ -636,7 +636,7 @@ rte_table_hash_entry_delete_key16_ext(
 	uint64_t pkt_mask;					\
 	uint32_t key_offset = f->key_offset;\
 								\
-	pkt0_index = __builtin_ctzll(pkts_mask);		\
+	pkt0_index = rte_ctz64(pkts_mask);		\
 	pkt_mask = 1LLU << pkt0_index;				\
 	pkts_mask &= ~pkt_mask;					\
 								\
@@ -741,14 +741,14 @@ rte_table_hash_entry_delete_key16_ext(
 	uint64_t pkt00_mask, pkt01_mask;			\
 	uint32_t key_offset = f->key_offset;		\
 								\
-	pkt00_index = __builtin_ctzll(pkts_mask);		\
+	pkt00_index = rte_ctz64(pkts_mask);		\
 	pkt00_mask = 1LLU << pkt00_index;			\
 	pkts_mask &= ~pkt00_mask;				\
 								\
 	mbuf00 = pkts[pkt00_index];				\
 	rte_prefetch0(RTE_MBUF_METADATA_UINT8_PTR(mbuf00, key_offset));\
 								\
-	pkt01_index = __builtin_ctzll(pkts_mask);		\
+	pkt01_index = rte_ctz64(pkts_mask);		\
 	pkt01_mask = 1LLU << pkt01_index;			\
 	pkts_mask &= ~pkt01_mask;				\
 								\
@@ -762,14 +762,14 @@ rte_table_hash_entry_delete_key16_ext(
 	uint64_t pkt00_mask, pkt01_mask;			\
 	uint32_t key_offset = f->key_offset;		\
 								\
-	pkt00_index = __builtin_ctzll(pkts_mask);		\
+	pkt00_index = rte_ctz64(pkts_mask);		\
 	pkt00_mask = 1LLU << pkt00_index;			\
 	pkts_mask &= ~pkt00_mask;				\
 								\
 	mbuf00 = pkts[pkt00_index];				\
 	rte_prefetch0(RTE_MBUF_METADATA_UINT8_PTR(mbuf00, key_offset));	\
 								\
-	pkt01_index = __builtin_ctzll(pkts_mask);		\
+	pkt01_index = rte_ctz64(pkts_mask);		\
 	if (pkts_mask == 0)					\
 		pkt01_index = pkt00_index;			\
 	pkt01_mask = 1LLU << pkt01_index;			\
@@ -882,12 +882,12 @@ rte_table_hash_lookup_key16_lru(
 	uint32_t pkt11_index, pkt20_index, pkt21_index;
 	uint64_t pkts_mask_out = 0;
 
-	__rte_unused uint32_t n_pkts_in = __builtin_popcountll(pkts_mask);
+	__rte_unused uint32_t n_pkts_in = rte_popcount64(pkts_mask);
 
 	RTE_TABLE_HASH_KEY16_STATS_PKTS_IN_ADD(f, n_pkts_in);
 
 	/* Cannot run the pipeline with less than 5 packets */
-	if (__builtin_popcountll(pkts_mask) < 5) {
+	if (rte_popcount64(pkts_mask) < 5) {
 		for ( ; pkts_mask; ) {
 			struct rte_bucket_4_16 *bucket;
 			struct rte_mbuf *mbuf;
@@ -901,7 +901,7 @@ rte_table_hash_lookup_key16_lru(
 
 		*lookup_hit_mask = pkts_mask_out;
 		RTE_TABLE_HASH_KEY16_STATS_PKTS_LOOKUP_MISS(f, n_pkts_in -
-			__builtin_popcountll(pkts_mask_out));
+			rte_popcount64(pkts_mask_out));
 		return 0;
 	}
 
@@ -992,7 +992,7 @@ rte_table_hash_lookup_key16_lru(
 
 	*lookup_hit_mask = pkts_mask_out;
 	RTE_TABLE_HASH_KEY16_STATS_PKTS_LOOKUP_MISS(f, n_pkts_in -
-		__builtin_popcountll(pkts_mask_out));
+		rte_popcount64(pkts_mask_out));
 	return 0;
 } /* lookup LRU */
 
@@ -1013,12 +1013,12 @@ rte_table_hash_lookup_key16_ext(
 	struct rte_bucket_4_16 *buckets[RTE_PORT_IN_BURST_SIZE_MAX];
 	uint64_t *keys[RTE_PORT_IN_BURST_SIZE_MAX];
 
-	__rte_unused uint32_t n_pkts_in = __builtin_popcountll(pkts_mask);
+	__rte_unused uint32_t n_pkts_in = rte_popcount64(pkts_mask);
 
 	RTE_TABLE_HASH_KEY16_STATS_PKTS_IN_ADD(f, n_pkts_in);
 
 	/* Cannot run the pipeline with less than 5 packets */
-	if (__builtin_popcountll(pkts_mask) < 5) {
+	if (rte_popcount64(pkts_mask) < 5) {
 		for ( ; pkts_mask; ) {
 			struct rte_bucket_4_16 *bucket;
 			struct rte_mbuf *mbuf;
@@ -1131,7 +1131,7 @@ grind_next_buckets:
 			uint64_t pkt_mask;
 			uint32_t pkt_index;
 
-			pkt_index = __builtin_ctzll(buckets_mask);
+			pkt_index = rte_ctz64(buckets_mask);
 			pkt_mask = 1LLU << pkt_index;
 			buckets_mask &= ~pkt_mask;
 
@@ -1144,7 +1144,7 @@ grind_next_buckets:
 
 	*lookup_hit_mask = pkts_mask_out;
 	RTE_TABLE_HASH_KEY16_STATS_PKTS_LOOKUP_MISS(f, n_pkts_in -
-		__builtin_popcountll(pkts_mask_out));
+		rte_popcount64(pkts_mask_out));
 	return 0;
 } /* lookup EXT */
 

@@ -67,7 +67,7 @@ struct nix_inl_dev {
 	struct roc_cpt_lf cpt_lf;
 
 	/* OUTB soft expiry poll thread */
-	pthread_t soft_exp_poll_thread;
+	rte_thread_t soft_exp_poll_thread;
 	uint32_t soft_exp_poll_freq;
 	uint64_t *sa_soft_exp_ring;
 	bool set_soft_exp_poll;

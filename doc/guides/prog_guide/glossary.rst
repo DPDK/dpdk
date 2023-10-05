@@ -103,9 +103,6 @@ lcore
    A logical execution unit of the processor, sometimes called a *hardware
    thread*.
 
-KNI
-   Kernel Network Interface
-
 L1
    Layer 1
 

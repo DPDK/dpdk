@@ -4,10 +4,10 @@
 
 #include <stdlib.h>
 #include <unistd.h>
-#include <pthread.h>
 
 #include <rte_string_fns.h>
 #include <rte_malloc.h>
+#include <rte_thread.h>
 
 #include "ark_pktgen.h"
 #include "ark_logs.h"
@@ -467,7 +467,7 @@ ark_pktgen_setup(ark_pkt_gen_t handle)
 	}
 }
 
-void *
+uint32_t
 ark_pktgen_delay_start(void *arg)
 {
 	struct ark_pkt_gen_inst *inst = (struct ark_pkt_gen_inst *)arg;
@@ -476,8 +476,8 @@ ark_pktgen_delay_start(void *arg)
 	 * perform a blind sleep here to ensure that the external test
 	 * application has time to setup the test before we generate packets
 	 */
-	pthread_detach(pthread_self());
+	rte_thread_detach(rte_thread_self());
 	usleep(100000);
 	ark_pktgen_run(inst);
-	return NULL;
+	return 0;
 }

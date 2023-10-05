@@ -164,17 +164,17 @@ virtual_ethdev_tx_queue_setup_fail(struct rte_eth_dev *dev __rte_unused,
 }
 
 static int
-virtual_ethdev_link_update_success(struct rte_eth_dev *bonded_eth_dev,
+virtual_ethdev_link_update_success(struct rte_eth_dev *bonding_eth_dev,
 		int wait_to_complete __rte_unused)
 {
-	if (!bonded_eth_dev->data->dev_started)
-		bonded_eth_dev->data->dev_link.link_status = RTE_ETH_LINK_DOWN;
+	if (!bonding_eth_dev->data->dev_started)
+		bonding_eth_dev->data->dev_link.link_status = RTE_ETH_LINK_DOWN;
 
 	return 0;
 }
 
 static int
-virtual_ethdev_link_update_fail(struct rte_eth_dev *bonded_eth_dev __rte_unused,
+virtual_ethdev_link_update_fail(struct rte_eth_dev *bonding_eth_dev __rte_unused,
 		int wait_to_complete __rte_unused)
 {
 	return -1;

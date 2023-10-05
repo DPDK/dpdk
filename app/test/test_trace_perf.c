@@ -179,4 +179,4 @@ test_trace_perf(void)
 	return TEST_SUCCESS;
 }
 
-REGISTER_TEST_COMMAND(trace_perf_autotest, test_trace_perf);
+REGISTER_PERF_TEST(trace_perf_autotest, test_trace_perf);

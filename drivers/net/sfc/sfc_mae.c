@@ -215,8 +215,10 @@ sfc_mae_attach(struct sfc_adapter *sa)
 		bounce_eh->buf_size = limits.eml_encap_header_size_limit;
 		bounce_eh->buf = rte_malloc("sfc_mae_bounce_eh",
 					    bounce_eh->buf_size, 0);
-		if (bounce_eh->buf == NULL)
+		if (bounce_eh->buf == NULL) {
+			rc = ENOMEM;
 			goto fail_mae_alloc_bounce_eh;
+		}
 
 		mae->nb_outer_rule_prios_max = limits.eml_max_n_outer_prios;
 		mae->nb_action_rule_prios_max = limits.eml_max_n_action_prios;
@@ -663,6 +665,9 @@ sfc_mae_encap_header_attach(struct sfc_adapter *sa,
 	SFC_ASSERT(sfc_adapter_is_locked(sa));
 
 	TAILQ_FOREACH(encap_header, &mae->encap_headers, entries) {
+		if (encap_header->indirect)
+			continue;
+
 		if (encap_header->size == bounce_eh->size &&
 		    memcmp(encap_header->buf, bounce_eh->buf,
 			   bounce_eh->size) == 0) {
@@ -744,6 +749,50 @@ sfc_mae_encap_header_del(struct sfc_adapter *sa,
 	rte_free(encap_header);
 
 	sfc_dbg(sa, "deleted encap_header=%p", encap_header);
+}
+
+static int
+sfc_mae_encap_header_update(struct sfc_adapter *sa,
+			    struct sfc_mae_encap_header *encap_header)
+{
+	const struct sfc_mae_bounce_eh *bounce_eh = &sa->mae.bounce_eh;
+	struct sfc_mae_fw_rsrc *fw_rsrc;
+	uint8_t *buf;
+	int ret;
+
+	if (bounce_eh->type != encap_header->type ||
+	    bounce_eh->size == 0)
+		return EINVAL;
+
+	buf = rte_malloc("sfc_mae_encap_header_buf", bounce_eh->size, 0);
+	if (buf == NULL)
+		return ENOMEM;
+
+	rte_memcpy(buf, bounce_eh->buf, bounce_eh->size);
+
+	fw_rsrc = &encap_header->fw_rsrc;
+
+	if (fw_rsrc->refcnt > 0) {
+		SFC_ASSERT(fw_rsrc->eh_id.id != EFX_MAE_RSRC_ID_INVALID);
+
+		ret = efx_mae_encap_header_update(sa->nic, &fw_rsrc->eh_id,
+						  encap_header->type, buf,
+						  bounce_eh->size);
+		if (ret != 0) {
+			sfc_err(sa, "failed to update encap_header=%p: %s",
+				encap_header, strerror(ret));
+			rte_free(buf);
+			return ret;
+		}
+	}
+
+	encap_header->size = bounce_eh->size;
+	rte_free(encap_header->buf);
+	encap_header->buf = buf;
+
+	sfc_dbg(sa, "updated encap_header=%p", encap_header);
+
+	return 0;
 }
 
 static int
@@ -4057,6 +4106,9 @@ sfc_mae_rule_parse_action_vxlan_encap(
 	/* Take care of the masks. */
 	sfc_mae_header_force_item_masks(buf, parsed_items, nb_parsed_items);
 
+	if (spec == NULL)
+		return 0;
+
 	rc = efx_mae_action_set_populate_encap(spec);
 	if (rc != 0) {
 		rc = rte_flow_error_set(error, rc, RTE_FLOW_ERROR_TYPE_ACTION,
@@ -4160,6 +4212,23 @@ sfc_mae_rule_parse_action_indirect(struct sfc_adapter *sa,
 			sfc_dbg(sa, "attaching to indirect_action=%p", entry);
 
 			switch (entry->type) {
+			case RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP:
+				if (ctx->encap_header != NULL) {
+					return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+					  "cannot have multiple actions VXLAN_ENCAP in one flow");
+				}
+
+				rc = efx_mae_action_set_populate_encap(ctx->spec);
+				if (rc != 0) {
+					return rte_flow_error_set(error, rc,
+					 RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+					 "failed to add ENCAP to MAE action set");
+				}
+
+				ctx->encap_header = entry->encap_header;
+				++(ctx->encap_header->refcnt);
+				break;
 			case RTE_FLOW_ACTION_TYPE_COUNT:
 				if (ft_rule_type != SFC_FT_RULE_NONE) {
 					return rte_flow_error_set(error, EINVAL,
@@ -5182,12 +5251,31 @@ sfc_mae_indir_action_create(struct sfc_adapter *sa,
 			    struct rte_flow_action_handle *handle,
 			    struct rte_flow_error *error)
 {
+	struct sfc_mae *mae = &sa->mae;
+	bool custom_error = false;
 	int ret;
 
 	SFC_ASSERT(sfc_adapter_is_locked(sa));
 	SFC_ASSERT(handle != NULL);
 
 	switch (action->type) {
+	case RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP:
+		/* Cleanup after previous encap. header bounce buffer usage. */
+		sfc_mae_bounce_eh_invalidate(&mae->bounce_eh);
+
+		ret = sfc_mae_rule_parse_action_vxlan_encap(mae, action->conf,
+							    NULL, error);
+		if (ret != 0) {
+			custom_error = true;
+			break;
+		}
+
+		ret = sfc_mae_encap_header_add(sa, &mae->bounce_eh,
+					       &handle->encap_header);
+		if (ret == 0)
+			handle->encap_header->indirect = true;
+		break;
+
 	case RTE_FLOW_ACTION_TYPE_COUNT:
 		ret = sfc_mae_rule_parse_action_count(sa, action->conf,
 						      EFX_COUNTER_TYPE_ACTION,
@@ -5198,6 +5286,9 @@ sfc_mae_indir_action_create(struct sfc_adapter *sa,
 	default:
 		ret = ENOTSUP;
 	}
+
+	if (custom_error)
+		return ret;
 
 	if (ret != 0) {
 		return rte_flow_error_set(error, ret,
@@ -5219,6 +5310,12 @@ sfc_mae_indir_action_destroy(struct sfc_adapter *sa,
 	SFC_ASSERT(handle != NULL);
 
 	switch (handle->type) {
+	case RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP:
+		if (handle->encap_header->refcnt != 1)
+			goto fail;
+
+		sfc_mae_encap_header_del(sa, handle->encap_header);
+		break;
 	case RTE_FLOW_ACTION_TYPE_COUNT:
 		if (handle->counter->refcnt != 1)
 			goto fail;
@@ -5235,6 +5332,50 @@ sfc_mae_indir_action_destroy(struct sfc_adapter *sa,
 fail:
 	return rte_flow_error_set(error, EIO, RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 				  NULL, "indirect action is still in use");
+}
+
+int
+sfc_mae_indir_action_update(struct sfc_adapter *sa,
+			    struct rte_flow_action_handle *handle,
+			    const void *update, struct rte_flow_error *error)
+{
+	const struct rte_flow_action *action = update;
+	struct sfc_mae *mae = &sa->mae;
+	bool custom_error = false;
+	int ret;
+
+	SFC_ASSERT(sfc_adapter_is_locked(sa));
+	SFC_ASSERT(action != NULL);
+	SFC_ASSERT(handle != NULL);
+
+	switch (handle->type) {
+	case RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP:
+		/* Cleanup after previous encap. header bounce buffer usage. */
+		sfc_mae_bounce_eh_invalidate(&mae->bounce_eh);
+
+		ret = sfc_mae_rule_parse_action_vxlan_encap(mae, action->conf,
+							    NULL, error);
+		if (ret != 0) {
+			custom_error = true;
+			break;
+		}
+
+		ret = sfc_mae_encap_header_update(sa, handle->encap_header);
+		break;
+	default:
+		ret = ENOTSUP;
+	}
+
+	if (custom_error)
+		return ret;
+
+	if (ret != 0) {
+		return rte_flow_error_set(error, ret,
+				RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				"failed to parse indirect action to mae object");
+	}
+
+	return 0;
 }
 
 int

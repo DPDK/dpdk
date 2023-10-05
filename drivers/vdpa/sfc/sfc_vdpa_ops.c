@@ -567,7 +567,7 @@ sfc_vdpa_get_protocol_features(struct rte_vdpa_device *vdpa_dev,
 	return 0;
 }
 
-static void *
+static uint32_t
 sfc_vdpa_notify_ctrl(void *arg)
 {
 	struct sfc_vdpa_ops_data *ops_data;
@@ -575,7 +575,7 @@ sfc_vdpa_notify_ctrl(void *arg)
 
 	ops_data = arg;
 	if (ops_data == NULL)
-		return NULL;
+		return 0;
 
 	sfc_vdpa_adapter_lock(sfc_vdpa_adapter_by_dev_handle(ops_data->dev_handle));
 
@@ -588,7 +588,7 @@ sfc_vdpa_notify_ctrl(void *arg)
 
 	sfc_vdpa_adapter_unlock(sfc_vdpa_adapter_by_dev_handle(ops_data->dev_handle));
 
-	return NULL;
+	return 0;
 }
 
 static int
@@ -603,8 +603,8 @@ sfc_vdpa_setup_notify_ctrl(struct sfc_vdpa_ops_data *ops_data)
 	 * dead lock scenario when multiple VFs are used in single vdpa
 	 * application and multiple VFs are passed to a single VM.
 	 */
-	ret = pthread_create(&ops_data->notify_tid, NULL,
-			     sfc_vdpa_notify_ctrl, ops_data);
+	ret = rte_thread_create_internal_control(&ops_data->notify_tid,
+			     "sfc-vdpa", sfc_vdpa_notify_ctrl, ops_data);
 	if (ret != 0) {
 		sfc_vdpa_err(ops_data->dev_handle,
 			     "failed to create notify_ctrl thread: %s",
@@ -690,15 +690,14 @@ sfc_vdpa_dev_close(int vid)
 
 	sfc_vdpa_adapter_lock(sfc_vdpa_adapter_by_dev_handle(ops_data->dev_handle));
 	if (ops_data->is_notify_thread_started == true) {
-		void *status;
-		ret = pthread_cancel(ops_data->notify_tid);
+		ret = pthread_cancel((pthread_t)ops_data->notify_tid.opaque_id);
 		if (ret != 0) {
 			sfc_vdpa_err(ops_data->dev_handle,
 				     "failed to cancel notify_ctrl thread: %s",
 				     rte_strerror(ret));
 		}
 
-		ret = pthread_join(ops_data->notify_tid, &status);
+		ret = rte_thread_join(ops_data->notify_tid, NULL);
 		if (ret != 0) {
 			sfc_vdpa_err(ops_data->dev_handle,
 				     "failed to join terminated notify_ctrl thread: %s",

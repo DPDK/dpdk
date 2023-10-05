@@ -5,7 +5,6 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include <pthread.h>
 #include <sys/queue.h>
 #include <unistd.h>
 #include <string.h>
@@ -19,6 +18,7 @@
 #include <eal_trace_internal.h>
 #include <rte_common.h>
 #include <rte_interrupts.h>
+#include <rte_thread.h>
 #include <rte_per_lcore.h>
 #include <rte_lcore.h>
 #include <rte_branch_prediction.h>
@@ -89,7 +89,7 @@ static union intr_pipefds intr_pipe;
 static struct rte_intr_source_list intr_sources;
 
 /* interrupt handling thread */
-static pthread_t intr_thread;
+static rte_thread_t intr_thread;
 
 /* VFIO interrupts */
 #ifdef VFIO_PRESENT
@@ -1103,7 +1103,7 @@ eal_intr_handle_interrupts(int pfd, unsigned totalfds)
  * @return
  *  never return;
  */
-static __rte_noreturn void *
+static __rte_noreturn uint32_t
 eal_intr_thread_main(__rte_unused void *arg)
 {
 	/* host thread, never break out */
@@ -1188,7 +1188,7 @@ rte_eal_intr_init(void)
 	}
 
 	/* create the host thread to wait/handle the interrupt */
-	ret = rte_ctrl_thread_create(&intr_thread, "eal-intr-thread", NULL,
+	ret = rte_thread_create_internal_control(&intr_thread, "intr",
 			eal_intr_thread_main, NULL);
 	if (ret != 0) {
 		rte_errno = -ret;
@@ -1601,5 +1601,5 @@ rte_intr_cap_multiple(struct rte_intr_handle *intr_handle)
 
 int rte_thread_is_intr(void)
 {
-	return pthread_equal(intr_thread, pthread_self());
+	return rte_thread_equal(intr_thread, rte_thread_self());
 }

@@ -51,7 +51,6 @@ struct rte_memzone {
 	char name[RTE_MEMZONE_NAMESIZE];  /**< Name of the memory zone. */
 
 	rte_iova_t iova;                  /**< Start IO address. */
-	RTE_STD_C11
 	union {
 		void *addr;                   /**< Start virtual address. */
 		uint64_t addr_64;             /**< Makes sure addr is always 64-bits */

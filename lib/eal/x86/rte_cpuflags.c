@@ -165,9 +165,13 @@ rte_cpu_get_flag_enabled(enum rte_cpu_flag_t feature)
 	if (maxleaf < feat->leaf)
 		return 0;
 
-	 __cpuid_count(feat->leaf, feat->subleaf,
+#ifdef RTE_TOOLCHAIN_MSVC
+	__cpuidex(regs, feat->leaf, feat->subleaf);
+#else
+	__cpuid_count(feat->leaf, feat->subleaf,
 			 regs[RTE_REG_EAX], regs[RTE_REG_EBX],
 			 regs[RTE_REG_ECX], regs[RTE_REG_EDX]);
+#endif
 
 	/* check if the feature is enabled */
 	return (regs[feat->reg] >> feat->bit) & 1;

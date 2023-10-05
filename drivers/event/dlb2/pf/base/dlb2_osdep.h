@@ -8,7 +8,6 @@
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
-#include <pthread.h>
 
 #include <rte_string_fns.h>
 #include <rte_cycles.h>
@@ -154,7 +153,7 @@ static inline void os_fence_hcw(struct dlb2_hw *hw, u64 *pp_addr)
  * map and unmap requests. To prevent deadlock, this function gives other
  * threads a chance to grab the resource mutex and configure hardware.
  */
-static void *dlb2_complete_queue_map_unmap(void *__args)
+static uint32_t dlb2_complete_queue_map_unmap(void *__args)
 {
 	struct dlb2_dev *dlb2_dev = (struct dlb2_dev *)__args;
 	int ret;
@@ -180,7 +179,7 @@ static void *dlb2_complete_queue_map_unmap(void *__args)
 
 	rte_spinlock_unlock(&dlb2_dev->resource_mutex);
 
-	return NULL;
+	return 0;
 }
 
 
@@ -194,16 +193,13 @@ static void *dlb2_complete_queue_map_unmap(void *__args)
 static inline void os_schedule_work(struct dlb2_hw *hw)
 {
 	struct dlb2_dev *dlb2_dev;
-	pthread_t complete_queue_map_unmap_thread;
+	rte_thread_t complete_queue_map_unmap_thread;
 	int ret;
 
 	dlb2_dev = container_of(hw, struct dlb2_dev, hw);
 
-	ret = rte_ctrl_thread_create(&complete_queue_map_unmap_thread,
-				     "dlb_queue_unmap_waiter",
-				     NULL,
-				     dlb2_complete_queue_map_unmap,
-				     dlb2_dev);
+	ret = rte_thread_create_internal_control(&complete_queue_map_unmap_thread,
+			"dlb-qunmap", dlb2_complete_queue_map_unmap, dlb2_dev);
 	if (ret)
 		DLB2_ERR(dlb2_dev,
 			 "Could not create queue complete map/unmap thread, err=%d\n",

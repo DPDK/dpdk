@@ -16,6 +16,7 @@
 #include <sys/stat.h>
 
 #include <rte_common.h>
+#include <rte_thread.h>
 
 #include "fd_man.h"
 #include "iotlb.h"
@@ -415,7 +416,7 @@ int
 vduse_device_create(const char *path, bool compliant_ol_flags)
 {
 	int control_fd, dev_fd, vid, ret;
-	pthread_t fdset_tid;
+	rte_thread_t fdset_tid;
 	uint32_t i, max_queue_pairs, total_queues;
 	struct virtio_net *dev;
 	struct virtio_net_config vnet_config = {{ 0 }};
@@ -435,7 +436,7 @@ vduse_device_create(const char *path, bool compliant_ol_flags)
 			return -1;
 		}
 
-		ret = rte_ctrl_thread_create(&fdset_tid, "vduse-events", NULL,
+		ret = rte_thread_create_internal_control(&fdset_tid, "vduse-evt",
 				fdset_event_dispatch, &vduse.fdset);
 		if (ret != 0) {
 			VHOST_LOG_CONFIG(path, ERR, "failed to create vduse fdset handling thread\n");

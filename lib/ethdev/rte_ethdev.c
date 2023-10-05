@@ -1067,7 +1067,7 @@ eth_dev_offload_names(uint64_t bitmask, char *buf, size_t size,
 	}
 
 	while (bitmask != 0) {
-		uint64_t offload = RTE_BIT64(__builtin_ctzll(bitmask));
+		uint64_t offload = RTE_BIT64(rte_ctz64(bitmask));
 		const char *name = offload_name(offload);
 
 		ret = snprintf(&buf[pos], size - pos, "%s,", name);
@@ -1165,7 +1165,7 @@ eth_dev_validate_offloads(uint16_t port_id, uint64_t req_offloads,
 
 	while (offloads_diff != 0) {
 		/* Check if any offload is requested but not enabled. */
-		offload = RTE_BIT64(__builtin_ctzll(offloads_diff));
+		offload = RTE_BIT64(rte_ctz64(offloads_diff));
 		if (offload & req_offloads) {
 			RTE_ETHDEV_LOG(ERR,
 				"Port %u failed to enable %s offload %s\n",
@@ -1291,6 +1291,25 @@ rte_eth_dev_configure(uint16_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 
 	/* Backup mtu for rollback */
 	old_mtu = dev->data->mtu;
+
+	/* fields must be zero to reserve them for future ABI changes */
+	if (dev_conf->rxmode.reserved_64s[0] != 0 ||
+	    dev_conf->rxmode.reserved_64s[1] != 0 ||
+	    dev_conf->rxmode.reserved_ptrs[0] != NULL ||
+	    dev_conf->rxmode.reserved_ptrs[1] != NULL) {
+		RTE_ETHDEV_LOG(ERR, "Rxmode reserved fields not zero\n");
+		ret = -EINVAL;
+		goto rollback;
+	}
+
+	if (dev_conf->txmode.reserved_64s[0] != 0 ||
+	    dev_conf->txmode.reserved_64s[1] != 0 ||
+	    dev_conf->txmode.reserved_ptrs[0] != NULL ||
+	    dev_conf->txmode.reserved_ptrs[1] != NULL) {
+		RTE_ETHDEV_LOG(ERR, "txmode reserved fields not zero\n");
+		ret = -EINVAL;
+		goto rollback;
+	}
 
 	ret = rte_eth_dev_info_get(port_id, &dev_info);
 	if (ret != 0)
@@ -2080,6 +2099,15 @@ rte_eth_rx_queue_setup(uint16_t port_id, uint16_t rx_queue_id,
 	if (*dev->dev_ops->rx_queue_setup == NULL)
 		return -ENOTSUP;
 
+	if (rx_conf != NULL &&
+	   (rx_conf->reserved_64s[0] != 0 ||
+	    rx_conf->reserved_64s[1] != 0 ||
+	    rx_conf->reserved_ptrs[0] != NULL ||
+	    rx_conf->reserved_ptrs[1] != NULL)) {
+		RTE_ETHDEV_LOG(ERR, "Rx conf reserved fields not zero\n");
+		return -EINVAL;
+	}
+
 	ret = rte_eth_dev_info_get(port_id, &dev_info);
 	if (ret != 0)
 		return ret;
@@ -2283,6 +2311,12 @@ rte_eth_rx_hairpin_queue_setup(uint16_t port_id, uint16_t rx_queue_id,
 		return -EINVAL;
 	}
 
+	if (conf->reserved != 0) {
+		RTE_ETHDEV_LOG(ERR,
+			       "Rx hairpin reserved field not zero\n");
+		return -EINVAL;
+	}
+
 	ret = rte_eth_dev_hairpin_capability_get(port_id, &cap);
 	if (ret != 0)
 		return ret;
@@ -2377,6 +2411,15 @@ rte_eth_tx_queue_setup(uint16_t port_id, uint16_t tx_queue_id,
 
 	if (*dev->dev_ops->tx_queue_setup == NULL)
 		return -ENOTSUP;
+
+	if (tx_conf != NULL &&
+	   (tx_conf->reserved_64s[0] != 0 ||
+	    tx_conf->reserved_64s[1] != 0 ||
+	    tx_conf->reserved_ptrs[0] != NULL ||
+	    tx_conf->reserved_ptrs[1] != NULL)) {
+		RTE_ETHDEV_LOG(ERR, "Tx conf reserved fields not zero\n");
+		return -EINVAL;
+	}
 
 	ret = rte_eth_dev_info_get(port_id, &dev_info);
 	if (ret != 0)
@@ -5872,6 +5915,28 @@ rte_eth_tx_queue_info_get(uint16_t port_id, uint16_t queue_id,
 	qinfo->queue_state = dev->data->tx_queue_state[queue_id];
 
 	rte_eth_trace_tx_queue_info_get(port_id, queue_id, qinfo);
+
+	return 0;
+}
+
+int
+rte_eth_recycle_rx_queue_info_get(uint16_t port_id, uint16_t queue_id,
+		struct rte_eth_recycle_rxq_info *recycle_rxq_info)
+{
+	struct rte_eth_dev *dev;
+	int ret;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
+	dev = &rte_eth_devices[port_id];
+
+	ret = eth_dev_validate_rx_queue(dev, queue_id);
+	if (unlikely(ret != 0))
+		return ret;
+
+	if (*dev->dev_ops->recycle_rxq_info_get == NULL)
+		return -ENOTSUP;
+
+	dev->dev_ops->recycle_rxq_info_get(dev, queue_id, recycle_rxq_info);
 
 	return 0;
 }

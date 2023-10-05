@@ -21,5 +21,5 @@ if cc.has_header('gdrapi.h')
         dpdk_conf.set('DRIVERS_GPU_CUDA_GDRCOPY_H', 1)
 endif
 
-deps += ['gpudev', 'pci', 'bus_pci']
+deps += ['pci', 'bus_pci']
 sources = files('cuda.c', 'gdrcopy.c')

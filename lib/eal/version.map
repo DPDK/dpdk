@@ -20,7 +20,6 @@ DPDK_24 {
 	rte_cpu_get_flag_enabled;
 	rte_cpu_get_flag_name;
 	rte_cpu_is_supported; # WINDOWS_NO_EXPORT
-	rte_ctrl_thread_create;
 	rte_cycles_vmware_tsc_map; # WINDOWS_NO_EXPORT
 	rte_delay_us;
 	rte_delay_us_block;
@@ -140,21 +139,6 @@ DPDK_24 {
 	rte_lcore_iterate;
 	rte_lcore_to_cpu_id;
 	rte_lcore_to_socket_id;
-	rte_log;
-	rte_log_can_log;
-	rte_log_cur_msg_loglevel;
-	rte_log_cur_msg_logtype;
-	rte_log_dump;
-	rte_log_get_global_level;
-	rte_log_get_level;
-	rte_log_get_stream;
-	rte_log_list_types;
-	rte_log_register;
-	rte_log_register_type_and_pick_level;
-	rte_log_set_global_level;
-	rte_log_set_level;
-	rte_log_set_level_pattern;
-	rte_log_set_level_regexp;
 	rte_malloc;
 	rte_malloc_dump_heaps;
 	rte_malloc_dump_stats;
@@ -225,7 +209,6 @@ DPDK_24 {
 	rte_mp_request_async;
 	rte_mp_request_sync;
 	rte_mp_sendmsg;
-	rte_openlog_stream;
 	rte_rand;
 	rte_rand_max;
 	rte_realloc;
@@ -273,12 +256,30 @@ DPDK_24 {
 	rte_strscpy;
 	rte_strsplit;
 	rte_sys_gettid;
+	rte_thread_attr_get_affinity;
+	rte_thread_attr_init;
+	rte_thread_attr_set_affinity;
+	rte_thread_attr_set_priority;
+	rte_thread_create;
+	rte_thread_create_control;
+	rte_thread_detach;
+	rte_thread_equal;
 	rte_thread_get_affinity;
+	rte_thread_get_affinity_by_id;
+	rte_thread_get_priority;
 	rte_thread_is_intr;
+	rte_thread_join;
+	rte_thread_key_create;
+	rte_thread_key_delete;
 	rte_thread_register;
+	rte_thread_self;
 	rte_thread_set_affinity;
-	rte_thread_setname;
+	rte_thread_set_affinity_by_id;
+	rte_thread_set_name;
+	rte_thread_set_priority;
 	rte_thread_unregister;
+	rte_thread_value_get;
+	rte_thread_value_set;
 	rte_uuid_compare;
 	rte_uuid_is_null;
 	rte_uuid_parse;
@@ -299,7 +300,6 @@ DPDK_24 {
 	rte_vfio_noiommu_is_enabled; # WINDOWS_NO_EXPORT
 	rte_vfio_release_device; # WINDOWS_NO_EXPORT
 	rte_vfio_setup_device; # WINDOWS_NO_EXPORT
-	rte_vlog;
 	rte_zmalloc;
 	rte_zmalloc_socket;
 
@@ -385,10 +385,6 @@ EXPERIMENTAL {
 	# added in 21.05
 	rte_devargs_reset;
 	rte_intr_callback_unregister_sync;
-	rte_thread_key_create;
-	rte_thread_key_delete;
-	rte_thread_value_get;
-	rte_thread_value_set;
 	rte_version_minor;
 	rte_version_month;
 	rte_version_prefix;
@@ -409,26 +405,9 @@ EXPERIMENTAL {
 
 	# added in 22.07
 	rte_drand;
-	rte_thread_get_affinity_by_id;
-	rte_thread_get_priority;
-	rte_thread_self;
-	rte_thread_set_affinity_by_id;
-	rte_thread_set_priority;
-
-	# added in 22.11
-	rte_thread_attr_get_affinity;
-	rte_thread_attr_init;
-	rte_thread_attr_set_affinity;
-	rte_thread_attr_set_priority;
-	rte_thread_create;
-	rte_thread_detach;
-	rte_thread_equal;
-	rte_thread_join;
 
 	# added in 23.03
 	rte_lcore_register_usage_cb;
-	rte_thread_create_control;
-	rte_thread_set_name;
 	__rte_eal_trace_generic_blob;
 
 	# added in 23.07
@@ -481,4 +460,6 @@ INTERNAL {
 	rte_mem_map;
 	rte_mem_page_size;
 	rte_mem_unmap;
+	rte_thread_create_internal_control;
+	rte_thread_set_prefixed_name;
 };
