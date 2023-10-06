@@ -279,7 +279,7 @@ struct rte_crypto_cipher_xform {
 		 *
 		 * - For block ciphers in CTR mode, this is the length
 		 * of the counter (which must be the same as the block
-		 * length of the cipher).
+		 * length of the cipher) or a 12-byte nonce (AES only)
 		 *
 		 * - For CCM mode, this is the length of the nonce,
 		 * which can be in the range 7 to 13 inclusive.
@@ -643,7 +643,7 @@ struct rte_crypto_sym_op {
 				uint32_t length;
 				 /**< The message length, in bytes, of the source buffer
 				  * on which the cryptographic operation will be
-				  * computed. This must be a multiple of the block size
+				  * computed.
 				  */
 			} data; /**< Data offsets and length for AEAD */
 			struct {
@@ -685,21 +685,11 @@ struct rte_crypto_sym_op {
 				 * and the length encoding in the first two bytes of the
 				 * second block.
 				 *
-				 * - the array should be big enough to hold the above
-				 * fields, plus any padding to round this up to the
-				 * nearest multiple of the block size (16 bytes).
-				 * Padding will be added by the implementation.
-				 *
 				 * - Note that PMDs may modify the memory reserved
 				 * (first 18 bytes and the final padding).
 				 *
 				 * Finally, for GCM (@ref RTE_CRYPTO_AEAD_AES_GCM), the
 				 * caller should setup this field as follows:
-				 *
-				 * - the AAD is written in starting at byte 0
-				 * - the array must be big enough to hold the AAD, plus
-				 * any space to round this up to the nearest multiple
-				 * of the block size (16 bytes).
 				 *
 				 */
 				rte_iova_t phys_addr;	/**< physical address */
@@ -731,8 +721,9 @@ struct rte_crypto_sym_op {
 					  * source buffer on which the cryptographic
 					  * operation will be computed.
 					  * This is also the same as the result length.
-					  * This must be a multiple of the block size
-					  * or a multiple of data-unit length
+					  * For block ciphers, this must be a
+					  * multiple of the block size,
+					  * or for the AES-XTS a multiple of the data-unit length
 					  * as described in xform.
 					  *
 					  * @note
