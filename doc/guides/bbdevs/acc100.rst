@@ -94,7 +94,7 @@ Initialization
 --------------
 
 When the device first powers up, its PCI Physical Functions (PF) can be listed through these
-commands for ACC100 and ACC101 respectively:
+commands for ACC100 (device id ``0d5c``) and ACC101 (device id ``57c4``) respectively:
 
 .. code-block:: console
 
@@ -102,76 +102,11 @@ commands for ACC100 and ACC101 respectively:
   sudo lspci -vd8086:57c4
 
 The physical and virtual functions are compatible with Linux UIO drivers:
-``vfio`` and ``igb_uio``. However, in order to work the 5G/4G
+``vfio_pci`` and ``igb_uio``. However, in order to work the 5G/4G
 FEC device first needs to be bound to one of these linux drivers through DPDK.
 
-
-Bind PF UIO driver(s)
-~~~~~~~~~~~~~~~~~~~~~
-
-Install the DPDK igb_uio driver, bind it with the PF PCI device ID and use
-``lspci`` to confirm the PF device is under use by ``igb_uio`` DPDK UIO driver.
-
-The igb_uio driver may be bound to the PF PCI device using one of two methods for ACC100
-(for ACC101 the device id ``57c4`` should be used in lieu of ``0d5c``):
-
-
-1. PCI functions (physical or virtual, depending on the use case) can be bound to
-the UIO driver by repeating this command for every function.
-
-.. code-block:: console
-
-  cd <dpdk-top-level-directory>
-  insmod ./build/kmod/igb_uio.ko
-  echo "8086 0d5c" > /sys/bus/pci/drivers/igb_uio/new_id
-  lspci -vd8086:0d5c
-
-
-2. Another way to bind PF with DPDK UIO driver is by using the ``dpdk-devbind.py`` tool
-
-.. code-block:: console
-
-  cd <dpdk-top-level-directory>
-  ./usertools/dpdk-devbind.py -b igb_uio 0000:06:00.0
-
-where the PCI device ID (example: 0000:06:00.0) is obtained using lspci -vd8086:0d5c
-
-
-In a similar way the 5G/4G FEC PF may be bound with vfio-pci as any PCIe device.
-
-
-Enable Virtual Functions
-~~~~~~~~~~~~~~~~~~~~~~~~
-
-Now, it should be visible in the printouts that PCI PF is under igb_uio control
-"``Kernel driver in use: igb_uio``"
-
-To show the number of available VFs on the device, read ``sriov_totalvfs`` file..
-
-.. code-block:: console
-
-  cat /sys/bus/pci/devices/0000\:<b>\:<d>.<f>/sriov_totalvfs
-
-  where 0000\:<b>\:<d>.<f> is the PCI device ID
-
-
-To enable VFs via igb_uio, echo the number of virtual functions intended to
-enable to ``max_vfs`` file..
-
-.. code-block:: console
-
-  echo <num-of-vfs> > /sys/bus/pci/devices/0000\:<b>\:<d>.<f>/max_vfs
-
-
-Afterwards, all VFs must be bound to appropriate UIO drivers as required, same
-way it was done with the physical function previously.
-
-Enabling SR-IOV via vfio driver is pretty much the same, except that the file
-name is different:
-
-.. code-block:: console
-
-  echo <num-of-vfs> > /sys/bus/pci/devices/0000\:<b>\:<d>.<f>/sriov_numvfs
+For more details on how to bind the PF device and create VF devices, see
+:ref:`linux_gsg_binding_kernel`.
 
 
 Configure the VFs through PF

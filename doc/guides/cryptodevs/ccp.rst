@@ -70,18 +70,8 @@ This code was verified on Ubuntu 16.04.
 Initialization
 --------------
 
-Bind the CCP devices to DPDK UIO driver module before running the CCP PMD stack.
-e.g. for the 0x1456 device::
-
-	modprobe uio
-	insmod igb_uio.ko
-	echo "1022 1456" > /sys/bus/pci/drivers/igb_uio/new_id
-
-Another way to bind the CCP devices to DPDK UIO driver is by using the ``dpdk-devbind.py`` script.
-The following command assumes ``BFD`` as ``0000:09:00.2``::
-
-	cd to the top-level DPDK directory
-	./usertools/dpdk-devbind.py -b igb_uio 0000:09:00.2
+Bind the CCP devices to ``vfio_pci`` or ``igb_uio`` (see :ref:`linux_gsg_binding_kernel`)
+before running the CCP PMD stack.
 
 To use the PMD in an application, user must:
 

@@ -71,75 +71,11 @@ When the device first powers up, its PCI Physical Functions (PF) can be listed t
   sudo lspci -vd1172:5052
 
 The physical and virtual functions are compatible with Linux UIO drivers:
-``vfio`` and ``igb_uio``. However, in order to work the FPGA LTE FEC device firstly needs
+``vfio_pci`` and ``igb_uio``. However, in order to work the FPGA LTE FEC device firstly needs
 to be bound to one of these linux drivers through DPDK.
 
-
-Bind PF UIO driver(s)
-~~~~~~~~~~~~~~~~~~~~~
-
-Install the DPDK igb_uio driver, bind it with the PF PCI device ID and use
-``lspci`` to confirm the PF device is under use by ``igb_uio`` DPDK UIO driver.
-
-The igb_uio driver may be bound to the PF PCI device using one of two methods:
-
-
-1. PCI functions (physical or virtual, depending on the use case) can be bound to
-the UIO driver by repeating this command for every function.
-
-.. code-block:: console
-
-  insmod igb_uio.ko
-  echo "1172 5052" > /sys/bus/pci/drivers/igb_uio/new_id
-  lspci -vd1172:
-
-
-2. Another way to bind PF with DPDK UIO driver is by using the ``dpdk-devbind.py`` tool
-
-.. code-block:: console
-
-  cd <dpdk-top-level-directory>
-  ./usertools/dpdk-devbind.py -b igb_uio 0000:06:00.0
-
-where the PCI device ID (example: 0000:06:00.0) is obtained using lspci -vd1172:
-
-
-In the same way the FPGA LTE FEC PF can be bound with vfio, but vfio driver does not
-support SR-IOV configuration right out of the box, so it will need to be patched.
-
-
-Enable Virtual Functions
-~~~~~~~~~~~~~~~~~~~~~~~~
-
-Now, it should be visible in the printouts that PCI PF is under igb_uio control
-"``Kernel driver in use: igb_uio``"
-
-To show the number of available VFs on the device, read ``sriov_totalvfs`` file..
-
-.. code-block:: console
-
-  cat /sys/bus/pci/devices/0000\:<b>\:<d>.<f>/sriov_totalvfs
-
-  where 0000\:<b>\:<d>.<f> is the PCI device ID
-
-
-To enable VFs via igb_uio, echo the number of virtual functions intended to
-enable to ``max_vfs`` file..
-
-.. code-block:: console
-
-  echo <num-of-vfs> > /sys/bus/pci/devices/0000\:<b>\:<d>.<f>/max_vfs
-
-
-Afterwards, all VFs must be bound to appropriate UIO drivers as required, same
-way it was done with the physical function previously.
-
-Enabling SR-IOV via vfio driver is pretty much the same, except that the file
-name is different:
-
-.. code-block:: console
-
-  echo <num-of-vfs> > /sys/bus/pci/devices/0000\:<b>\:<d>.<f>/sriov_numvfs
+For more details on how to bind the PF device and create VF devices, see
+:ref:`linux_gsg_binding_kernel`.
 
 
 Configure the VFs through PF
