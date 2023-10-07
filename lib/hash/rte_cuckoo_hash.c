@@ -1868,11 +1868,15 @@ compare_signatures(uint32_t *prim_hash_matches, uint32_t *sec_hash_matches,
 				_mm_load_si128(
 					(__m128i const *)prim_bkt->sig_current),
 				_mm_set1_epi16(sig)));
+		/* Extract the even-index bits only */
+		*prim_hash_matches &= 0x5555;
 		/* Compare all signatures in the bucket */
 		*sec_hash_matches = _mm_movemask_epi8(_mm_cmpeq_epi16(
 				_mm_load_si128(
 					(__m128i const *)sec_bkt->sig_current),
 				_mm_set1_epi16(sig)));
+		/* Extract the even-index bits only */
+		*sec_hash_matches &= 0x5555;
 		break;
 #elif defined(__ARM_NEON)
 	case RTE_HASH_COMPARE_NEON: {
