@@ -1964,7 +1964,9 @@ struct mlx5_ifc_per_protocol_networking_offload_caps_bits {
 	u8 swp_lso[0x1];
 	u8 reserved_at_23[0x8];
 	u8 tunnel_stateless_gtp[0x1];
-	u8 reserved_at_25[0x4];
+	u8 reserved_at_25[0x2];
+	u8 tunnel_stateless_vxlan_gpe_nsh[0x1];
+	u8 reserved_at_28[0x1];
 	u8 max_vxlan_udp_ports[0x8];
 	u8 reserved_at_38[0x6];
 	u8 max_geneve_opt_len[0x1];

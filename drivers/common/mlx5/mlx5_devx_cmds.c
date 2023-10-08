@@ -1313,6 +1313,9 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 	attr->tunnel_stateless_gtp = MLX5_GET
 					(per_protocol_networking_offload_caps,
 					 hcattr, tunnel_stateless_gtp);
+	attr->tunnel_stateless_vxlan_gpe_nsh = MLX5_GET
+					(per_protocol_networking_offload_caps,
+					 hcattr, tunnel_stateless_vxlan_gpe_nsh);
 	attr->rss_ind_tbl_cap = MLX5_GET
 					(per_protocol_networking_offload_caps,
 					 hcattr, rss_ind_tbl_cap);
