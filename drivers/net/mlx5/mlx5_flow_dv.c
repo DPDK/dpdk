@@ -7815,6 +7815,12 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 
 			last_item = MLX5_FLOW_ITEM_IB_BTH;
 			break;
+		case RTE_FLOW_ITEM_TYPE_NSH:
+			ret = mlx5_flow_validate_item_nsh(dev, items, error);
+			if (ret < 0)
+				return ret;
+			last_item = MLX5_FLOW_ITEM_NSH;
+			break;
 		default:
 			return rte_flow_error_set(error, ENOTSUP,
 						  RTE_FLOW_ERROR_TYPE_ITEM,
@@ -9720,7 +9726,9 @@ flow_dv_translate_item_vxlan_gpe(void *key, const struct rte_flow_item *item,
 	v_protocol = vxlan_v->hdr.protocol;
 	if (!m_protocol) {
 		/* Force next protocol to ensure next headers parsing. */
-		if (pattern_flags & MLX5_FLOW_LAYER_INNER_L2)
+		if (pattern_flags & MLX5_FLOW_ITEM_NSH)
+			v_protocol = RTE_VXLAN_GPE_TYPE_NSH;
+		else if (pattern_flags & MLX5_FLOW_LAYER_INNER_L2)
 			v_protocol = RTE_VXLAN_GPE_TYPE_ETH;
 		else if (pattern_flags & MLX5_FLOW_LAYER_INNER_L3_IPV4)
 			v_protocol = RTE_VXLAN_GPE_TYPE_IPV4;
@@ -13914,6 +13922,9 @@ flow_dv_translate_items(struct rte_eth_dev *dev,
 	case RTE_FLOW_ITEM_TYPE_IB_BTH:
 		flow_dv_translate_item_ib_bth(key, items, tunnel, key_type);
 		last_item = MLX5_FLOW_ITEM_IB_BTH;
+		break;
+	case RTE_FLOW_ITEM_TYPE_NSH:
+		last_item = MLX5_FLOW_ITEM_NSH;
 		break;
 	default:
 		break;

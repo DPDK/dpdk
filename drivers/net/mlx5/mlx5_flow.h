@@ -233,6 +233,9 @@ enum mlx5_feature_name {
 /* IB BTH ITEM. */
 #define MLX5_FLOW_ITEM_IB_BTH (1ull << 51)
 
+/* NSH ITEM */
+#define MLX5_FLOW_ITEM_NSH (1ull << 53)
+
 /* Outer Masks. */
 #define MLX5_FLOW_LAYER_OUTER_L3 \
 	(MLX5_FLOW_LAYER_OUTER_L3_IPV4 | MLX5_FLOW_LAYER_OUTER_L3_IPV6)
@@ -2454,6 +2457,9 @@ int mlx5_flow_validate_item_ecpri(const struct rte_flow_item *item,
 				  uint16_t ether_type,
 				  const struct rte_flow_item_ecpri *acc_mask,
 				  struct rte_flow_error *error);
+int mlx5_flow_validate_item_nsh(struct rte_eth_dev *dev,
+				const struct rte_flow_item *item,
+				struct rte_flow_error *error);
 int mlx5_flow_create_mtr_tbls(struct rte_eth_dev *dev,
 			      struct mlx5_flow_meter_info *fm,
 			      uint32_t mtr_idx,

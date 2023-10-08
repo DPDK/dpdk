@@ -3905,6 +3905,45 @@ mlx5_flow_validate_item_ecpri(const struct rte_flow_item *item,
 					 MLX5_ITEM_RANGE_NOT_ACCEPTED, error);
 }
 
+/**
+ * Validate the NSH item.
+ *
+ * @param[in] dev
+ *   Pointer to Ethernet device on which flow rule is being created on.
+ * @param[out] error
+ *   Pointer to error structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+int
+mlx5_flow_validate_item_nsh(struct rte_eth_dev *dev,
+			    const struct rte_flow_item *item,
+			    struct rte_flow_error *error)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+
+	if (item->mask) {
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ITEM, item,
+					  "NSH fields matching is not supported");
+	}
+
+	if (!priv->sh->config.dv_flow_en) {
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					  NULL, "NSH support requires DV flow interface");
+	}
+
+	if (!priv->sh->cdev->config.hca_attr.tunnel_stateless_vxlan_gpe_nsh) {
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ITEM, item,
+					  "Current FW does not support matching on NSH");
+	}
+
+	return 0;
+}
+
 static int
 flow_null_validate(struct rte_eth_dev *dev __rte_unused,
 		   const struct rte_flow_attr *attr __rte_unused,

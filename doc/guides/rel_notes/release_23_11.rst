@@ -145,6 +145,10 @@ New Features
   * Added support for ``RTE_FLOW_ITEM_TYPE_IPV6_ROUTING_EXT`` flow item.
   * Added support for ``RTE_FLOW_ACTION_TYPE_AGE`` flow action.
 
+* **Updated NVIDIA mlx5 net driver.**
+
+  * Added support for Network Service Header (NSH) flow matching.
+
 * **Updated Solarflare net driver.**
 
   * Added support for transfer flow action ``INDIRECT`` with subtype ``VXLAN_ENCAP``.
