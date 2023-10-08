@@ -468,6 +468,12 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"mac_addr add port (port_id) vf (vf_id) (mac_address)\n"
 			"    Add a MAC address for a VF on the port.\n\n"
 
+			"mcast_addr add (port_id) (mcast_addr)\n"
+			"    Add a multicast MAC addresses on port_id.\n\n"
+
+			"mcast_addr remove (port_id) (mcast_addr)\n"
+			"    Remove a multicast MAC address from port_id.\n\n"
+
 			"set vf mac addr (port_id) (vf_id) (XX:XX:XX:XX:XX:XX)\n"
 			"    Set the MAC address for a VF from the PF.\n\n"
 
