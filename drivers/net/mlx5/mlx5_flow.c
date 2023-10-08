@@ -3198,6 +3198,11 @@ mlx5_flow_validate_item_vxlan_gpe(const struct rte_flow_item *item,
 		uint8_t vni[4];
 	} id = { .vlan_id = 0, };
 
+	struct rte_flow_item_vxlan_gpe nic_mask = {
+		.vni = "\xff\xff\xff",
+		.protocol = 0xff,
+	};
+
 	if (!priv->sh->config.l3_vxlan_en)
 		return rte_flow_error_set(error, ENOTSUP,
 					  RTE_FLOW_ERROR_TYPE_ITEM, item,
@@ -3221,18 +3226,12 @@ mlx5_flow_validate_item_vxlan_gpe(const struct rte_flow_item *item,
 		mask = &rte_flow_item_vxlan_gpe_mask;
 	ret = mlx5_flow_item_acceptable
 		(item, (const uint8_t *)mask,
-		 (const uint8_t *)&rte_flow_item_vxlan_gpe_mask,
+		 (const uint8_t *)&nic_mask,
 		 sizeof(struct rte_flow_item_vxlan_gpe),
 		 MLX5_ITEM_RANGE_NOT_ACCEPTED, error);
 	if (ret < 0)
 		return ret;
 	if (spec) {
-		if (spec->hdr.proto)
-			return rte_flow_error_set(error, ENOTSUP,
-						  RTE_FLOW_ERROR_TYPE_ITEM,
-						  item,
-						  "VxLAN-GPE protocol"
-						  " not supported");
 		memcpy(&id.vni[1], spec->hdr.vni, 3);
 		memcpy(&id.vni[1], mask->hdr.vni, 3);
 	}
