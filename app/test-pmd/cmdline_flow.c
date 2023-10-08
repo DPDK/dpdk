@@ -542,6 +542,7 @@ enum index {
 	ITEM_IPV6_PUSH_REMOVE_EXT_TYPE,
 	ITEM_PTYPE,
 	ITEM_PTYPE_VALUE,
+	ITEM_NSH,
 
 	/* Validate/create actions. */
 	ACTIONS,
@@ -1588,6 +1589,7 @@ static const enum index next_item[] = {
 	ITEM_TX_QUEUE,
 	ITEM_IB_BTH,
 	ITEM_PTYPE,
+	ITEM_NSH,
 	END_SET,
 	ZERO,
 };
@@ -2110,6 +2112,11 @@ static const enum index item_ib_bth[] = {
 
 static const enum index item_ptype[] = {
 	ITEM_PTYPE_VALUE,
+	ITEM_NEXT,
+	ZERO,
+};
+
+static const enum index item_nsh[] = {
 	ITEM_NEXT,
 	ZERO,
 };
@@ -5965,6 +5972,14 @@ static const struct token token_list[] = {
 		.next = NEXT(item_ptype, NEXT_ENTRY(COMMON_UNSIGNED),
 			     item_param),
 		.args = ARGS(ARGS_ENTRY(struct rte_flow_item_ptype, packet_type)),
+	},
+	[ITEM_NSH] = {
+		.name = "nsh",
+		.help = "match NSH header",
+		.priv = PRIV_ITEM(NSH,
+				  sizeof(struct rte_flow_item_nsh)),
+		.next = NEXT(item_nsh),
+		.call = parse_vc,
 	},
 
 	/* Validate/create actions. */
