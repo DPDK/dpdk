@@ -6830,6 +6830,24 @@ mcast_addr_remove(portid_t port_id, struct rte_ether_addr *mc_addr)
 }
 
 void
+mcast_addr_flush(portid_t port_id)
+{
+	int ret;
+
+	if (port_id_is_invalid(port_id, ENABLED_WARN))
+		return;
+
+	ret = rte_eth_dev_set_mc_addr_list(port_id, NULL, 0);
+	if (ret != 0) {
+		fprintf(stderr,
+			"Failed to flush all multicast MAC addresses on port_id %u\n",
+			port_id);
+		return;
+	}
+	mcast_addr_pool_destroy(port_id);
+}
+
+void
 port_dcb_info_display(portid_t port_id)
 {
 	struct rte_eth_dcb_info dcb_info;

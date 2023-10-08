@@ -1181,6 +1181,7 @@ void show_mcast_macs(portid_t port_id);
 /* Functions to manage the set of filtered Multicast MAC addresses */
 void mcast_addr_add(portid_t port_id, struct rte_ether_addr *mc_addr);
 void mcast_addr_remove(portid_t port_id, struct rte_ether_addr *mc_addr);
+void mcast_addr_flush(portid_t port_id);
 void port_dcb_info_display(portid_t port_id);
 
 uint8_t *open_file(const char *file_path, uint32_t *size);

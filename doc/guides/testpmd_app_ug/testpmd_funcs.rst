@@ -1323,6 +1323,13 @@ filtered by port::
 
    testpmd> mcast_addr remove (port_id) (mcast_addr)
 
+mcast_addr flush
+~~~~~~~~~~~~~~~~
+
+Flush all multicast MAC addresses on port_id::
+
+   testpmd> mcast_addr flush (port_id)
+
 mac_addr add (for VF)
 ~~~~~~~~~~~~~~~~~~~~~
 

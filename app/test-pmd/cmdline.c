@@ -506,6 +506,9 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"mcast_addr remove (port_id) (mcast_addr)\n"
 			"    Remove a multicast MAC address from port_id.\n\n"
 
+			"mcast_addr flush (port_id)\n"
+			"    Flush all multicast MAC addresses on port_id.\n\n"
+
 			"set vf mac addr (port_id) (vf_id) (XX:XX:XX:XX:XX:XX)\n"
 			"    Set the MAC address for a VF from the PF.\n\n"
 
@@ -8567,6 +8570,45 @@ static cmdline_parse_inst_t cmd_mcast_addr = {
 	},
 };
 
+/* *** FLUSH MULTICAST MAC ADDRESS ON PORT *** */
+struct cmd_mcast_addr_flush_result {
+	cmdline_fixed_string_t mcast_addr_cmd;
+	cmdline_fixed_string_t what;
+	uint16_t port_num;
+};
+
+static void cmd_mcast_addr_flush_parsed(void *parsed_result,
+		__rte_unused struct cmdline *cl,
+		__rte_unused void *data)
+{
+	struct cmd_mcast_addr_flush_result *res = parsed_result;
+
+	mcast_addr_flush(res->port_num);
+}
+
+static cmdline_parse_token_string_t cmd_mcast_addr_flush_cmd =
+	TOKEN_STRING_INITIALIZER(struct cmd_mcast_addr_result,
+				 mcast_addr_cmd, "mcast_addr");
+static cmdline_parse_token_string_t cmd_mcast_addr_flush_what =
+	TOKEN_STRING_INITIALIZER(struct cmd_mcast_addr_result, what,
+				 "flush");
+static cmdline_parse_token_num_t cmd_mcast_addr_flush_portnum =
+	TOKEN_NUM_INITIALIZER(struct cmd_mcast_addr_result, port_num,
+				 RTE_UINT16);
+
+static cmdline_parse_inst_t cmd_mcast_addr_flush = {
+	.f = cmd_mcast_addr_flush_parsed,
+	.data = (void *)0,
+	.help_str = "mcast_addr flush <port_id> : "
+		"flush all multicast MAC addresses on port_id",
+	.tokens = {
+		(void *)&cmd_mcast_addr_flush_cmd,
+		(void *)&cmd_mcast_addr_flush_what,
+		(void *)&cmd_mcast_addr_flush_portnum,
+		NULL,
+	},
+};
+
 /* vf vlan anti spoof configuration */
 
 /* Common result structure for vf vlan anti spoof */
@@ -12935,6 +12977,7 @@ static cmdline_parse_ctx_t builtin_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_set_port_meter_stats_mask,
 	(cmdline_parse_inst_t *)&cmd_show_port_meter_stats,
 	(cmdline_parse_inst_t *)&cmd_mcast_addr,
+	(cmdline_parse_inst_t *)&cmd_mcast_addr_flush,
 	(cmdline_parse_inst_t *)&cmd_set_vf_vlan_anti_spoof,
 	(cmdline_parse_inst_t *)&cmd_set_vf_mac_anti_spoof,
 	(cmdline_parse_inst_t *)&cmd_set_vf_vlan_stripq,
