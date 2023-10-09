@@ -266,6 +266,7 @@ cpfl_fxp_parse_action(struct cpfl_itf *itf,
 	int queue_id = -1;
 	bool fwd_vsi = false;
 	bool fwd_q = false;
+	bool is_vsi;
 	uint32_t i;
 	struct cpfl_rule_info *rinfo = &rim->rules[index];
 	union cpfl_action_set *act_set = (void *)rinfo->act_bytes;
@@ -276,6 +277,7 @@ cpfl_fxp_parse_action(struct cpfl_itf *itf,
 		action_type = action->type;
 		switch (action_type) {
 		case RTE_FLOW_ACTION_TYPE_PORT_REPRESENTOR:
+		case RTE_FLOW_ACTION_TYPE_REPRESENTED_PORT:
 			if (!fwd_vsi)
 				fwd_vsi = true;
 			else
@@ -294,12 +296,20 @@ cpfl_fxp_parse_action(struct cpfl_itf *itf,
 				queue_id = CPFL_INVALID_QUEUE_ID;
 			}
 
-			dev_id = cpfl_get_vsi_id(dst_itf);
+			is_vsi = (action_type == RTE_FLOW_ACTION_TYPE_PORT_REPRESENTOR ||
+				  dst_itf->type == CPFL_ITF_TYPE_REPRESENTOR);
+			if (is_vsi)
+				dev_id = cpfl_get_vsi_id(dst_itf);
+			else
+				dev_id = cpfl_get_port_id(dst_itf);
 
 			if (dev_id == CPFL_INVALID_HW_ID)
 				goto err;
 
-			*act_set = cpfl_act_fwd_vsi(0, priority, 0, dev_id);
+			if (is_vsi)
+				*act_set = cpfl_act_fwd_vsi(0, priority, 0, dev_id);
+			else
+				*act_set = cpfl_act_fwd_port(0, priority, 0, dev_id);
 			act_set++;
 			rinfo->act_byte_len += sizeof(union cpfl_action_set);
 			break;
