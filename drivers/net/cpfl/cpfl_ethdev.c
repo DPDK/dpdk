@@ -16,6 +16,7 @@
 #include <ethdev_private.h>
 #include "cpfl_rxtx.h"
 #include "cpfl_flow.h"
+#include "cpfl_rules.h"
 
 #define CPFL_REPRESENTOR	"representor"
 #define CPFL_TX_SINGLE_Q	"tx_single"
@@ -1127,6 +1128,7 @@ cpfl_dev_close(struct rte_eth_dev *dev)
 	adapter->cur_vport_nb--;
 	dev->data->dev_private = NULL;
 	adapter->vports[vport->sw_idx] = NULL;
+	idpf_free_dma_mem(NULL, &cpfl_vport->itf.flow_dma);
 	rte_free(cpfl_vport);
 
 	return 0;
@@ -2466,6 +2468,26 @@ cpfl_p2p_queue_info_init(struct cpfl_vport *cpfl_vport,
 	return 0;
 }
 
+int
+cpfl_alloc_dma_mem_batch(struct idpf_dma_mem *orig_dma, struct idpf_dma_mem *dma, uint32_t size,
+			 int batch_size)
+{
+	int i;
+
+	if (!idpf_alloc_dma_mem(NULL, orig_dma, size * (1 + batch_size))) {
+		PMD_INIT_LOG(ERR, "Could not alloc dma memory");
+		return -ENOMEM;
+	}
+
+	for (i = 0; i < batch_size; i++) {
+		dma[i].va = (void *)((char *)orig_dma->va + size * (i + 1));
+		dma[i].pa = orig_dma->pa + size * (i + 1);
+		dma[i].size = size;
+		dma[i].zone = NULL;
+	}
+	return 0;
+}
+
 static int
 cpfl_dev_vport_init(struct rte_eth_dev *dev, void *init_params)
 {
@@ -2514,6 +2536,15 @@ cpfl_dev_vport_init(struct rte_eth_dev *dev, void *init_params)
 
 	rte_ether_addr_copy((struct rte_ether_addr *)vport->default_mac_addr,
 			    &dev->data->mac_addrs[0]);
+
+	memset(cpfl_vport->itf.dma, 0, sizeof(cpfl_vport->itf.dma));
+	memset(cpfl_vport->itf.msg, 0, sizeof(cpfl_vport->itf.msg));
+	ret = cpfl_alloc_dma_mem_batch(&cpfl_vport->itf.flow_dma,
+				       cpfl_vport->itf.dma,
+				       sizeof(union cpfl_rule_cfg_pkt_record),
+				       CPFL_FLOW_BATCH_SIZE);
+	if (ret < 0)
+		goto err_mac_addrs;
 
 	if (!adapter->base.is_rx_singleq && !adapter->base.is_tx_singleq) {
 		memset(&p2p_queue_grps_info, 0, sizeof(p2p_queue_grps_info));

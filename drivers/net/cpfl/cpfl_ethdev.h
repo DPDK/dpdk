@@ -147,10 +147,14 @@ enum cpfl_itf_type {
 
 TAILQ_HEAD(cpfl_flow_list, rte_flow);
 
+#define CPFL_FLOW_BATCH_SIZE  490
 struct cpfl_itf {
 	enum cpfl_itf_type type;
 	struct cpfl_adapter_ext *adapter;
 	struct cpfl_flow_list flow_list;
+	struct idpf_dma_mem flow_dma;
+	struct idpf_dma_mem dma[CPFL_FLOW_BATCH_SIZE];
+	struct idpf_ctlq_msg msg[CPFL_FLOW_BATCH_SIZE];
 	void *data;
 };
 
@@ -240,6 +244,8 @@ int cpfl_cc_vport_info_get(struct cpfl_adapter_ext *adapter,
 int cpfl_vc_create_ctrl_vport(struct cpfl_adapter_ext *adapter);
 int cpfl_config_ctlq_rx(struct cpfl_adapter_ext *adapter);
 int cpfl_config_ctlq_tx(struct cpfl_adapter_ext *adapter);
+int cpfl_alloc_dma_mem_batch(struct idpf_dma_mem *orig_dma, struct idpf_dma_mem *dma,
+			     uint32_t size, int batch_size);
 
 #define CPFL_DEV_TO_PCI(eth_dev)		\
 	RTE_DEV_TO_PCI((eth_dev)->device)
