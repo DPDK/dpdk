@@ -214,6 +214,10 @@ API Changes
   ``rte_eth_bond_member_remove``, and
   ``rte_eth_bond_members_get``.
 
+* cryptodev: The elliptic curve asymmetric private and public keys can be maintained
+  per session. These keys are moved from per packet ``rte_crypto_ecdsa_op_param`` and
+  ``rte_crypto_sm2_op_param`` to generic EC xform ``rte_crypto_ec_xform``.
+
 * security: Structures ``rte_security_ops`` and ``rte_security_ctx`` were moved to
   internal library headers not visible to application.
 

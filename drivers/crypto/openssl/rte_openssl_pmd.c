@@ -2673,62 +2673,14 @@ process_openssl_sm2_op_evp(struct rte_crypto_op *cop,
 {
 	EVP_PKEY_CTX *kctx = NULL, *sctx = NULL, *cctx = NULL;
 	struct rte_crypto_asym_op *op = cop->asym;
-	OSSL_PARAM_BLD *param_bld = NULL;
-	OSSL_PARAM *params = NULL;
+	OSSL_PARAM *params = sess->u.sm2.params;
 	EVP_PKEY *pkey = NULL;
-	BIGNUM *pkey_bn = NULL;
-	uint8_t pubkey[64];
-	size_t len = 0;
 	int ret = -1;
 
 	cop->status = RTE_CRYPTO_OP_STATUS_ERROR;
 
 	if (cop->asym->sm2.k.data != NULL)
 		goto err_sm2;
-
-	param_bld = OSSL_PARAM_BLD_new();
-	if (!param_bld) {
-		OPENSSL_LOG(ERR, "failed to allocate params\n");
-		goto err_sm2;
-	}
-
-	ret = OSSL_PARAM_BLD_push_utf8_string(param_bld,
-		OSSL_PKEY_PARAM_GROUP_NAME, "SM2", 0);
-	if (!ret) {
-		OPENSSL_LOG(ERR, "failed to push params\n");
-		goto err_sm2;
-	}
-
-	pkey_bn = BN_bin2bn((const unsigned char *)op->sm2.pkey.data,
-						op->sm2.pkey.length, pkey_bn);
-
-	memset(pubkey, 0, RTE_DIM(pubkey));
-	pubkey[0] = 0x04;
-	len += 1;
-	memcpy(&pubkey[len], op->sm2.q.x.data, op->sm2.q.x.length);
-	len += op->sm2.q.x.length;
-	memcpy(&pubkey[len], op->sm2.q.y.data, op->sm2.q.y.length);
-	len += op->sm2.q.y.length;
-
-	ret = OSSL_PARAM_BLD_push_BN(param_bld, OSSL_PKEY_PARAM_PRIV_KEY,
-								 pkey_bn);
-	if (!ret) {
-		OPENSSL_LOG(ERR, "failed to push params\n");
-		goto err_sm2;
-	}
-
-	ret = OSSL_PARAM_BLD_push_octet_string(param_bld,
-			OSSL_PKEY_PARAM_PUB_KEY, pubkey, len);
-	if (!ret) {
-		OPENSSL_LOG(ERR, "failed to push params\n");
-		goto err_sm2;
-	}
-
-	params = OSSL_PARAM_BLD_to_param(param_bld);
-	if (!params) {
-		OPENSSL_LOG(ERR, "failed to push params\n");
-		goto err_sm2;
-	}
 
 	switch (op->sm2.op_type) {
 	case RTE_CRYPTO_ASYM_OP_ENCRYPT:
@@ -2939,9 +2891,6 @@ err_sm2:
 
 	if (pkey)
 		EVP_PKEY_free(pkey);
-
-	if (param_bld)
-		OSSL_PARAM_BLD_free(param_bld);
 
 	return ret;
 }

@@ -593,7 +593,7 @@ ecdsa_set_input(struct icp_qat_fw_pke_request *qat_req,
 		qat_func_alignsize =
 			RTE_ALIGN_CEIL(qat_function.bytesize, 8);
 
-		SET_PKE_9A_IN(asym_op->ecdsa.pkey, 0);
+		SET_PKE_9A_IN(xform->ec.pkey, 0);
 		SET_PKE_9A_IN(asym_op->ecdsa.message, 1);
 		SET_PKE_9A_IN(asym_op->ecdsa.k, 2);
 		SET_PKE_9A_EC(curve[curve_id], b, 3);
@@ -635,8 +635,8 @@ ecdsa_set_input(struct icp_qat_fw_pke_request *qat_req,
 		SET_PKE_9A_EC(curve[curve_id], n, 7);
 		SET_PKE_9A_EC(curve[curve_id], x, 6);
 		SET_PKE_9A_EC(curve[curve_id], y, 5);
-		SET_PKE_9A_IN(asym_op->ecdsa.q.x, 4);
-		SET_PKE_9A_IN(asym_op->ecdsa.q.y, 3);
+		SET_PKE_9A_IN(xform->ec.q.x, 4);
+		SET_PKE_9A_IN(xform->ec.q.y, 3);
 		SET_PKE_9A_EC(curve[curve_id], a, 2);
 		SET_PKE_9A_EC(curve[curve_id], b, 1);
 		SET_PKE_9A_EC(curve[curve_id], p, 0);

@@ -1006,8 +1006,6 @@ prepare_ecdsa_op(void)
 		asym->ecdsa.op_type = RTE_CRYPTO_ASYM_OP_SIGN;
 		asym->ecdsa.message.data = msg.val;
 		asym->ecdsa.message.length = msg.len;
-		asym->ecdsa.pkey.data = vec.ecdsa.pkey.val;
-		asym->ecdsa.pkey.length = vec.ecdsa.pkey.len;
 		asym->ecdsa.k.data = vec.ecdsa.k.val;
 		asym->ecdsa.k.length = vec.ecdsa.k.len;
 
@@ -1029,10 +1027,6 @@ prepare_ecdsa_op(void)
 		asym->ecdsa.op_type = RTE_CRYPTO_ASYM_OP_VERIFY;
 		asym->ecdsa.message.data = msg.val;
 		asym->ecdsa.message.length = msg.len;
-		asym->ecdsa.q.x.data = vec.ecdsa.qx.val;
-		asym->ecdsa.q.x.length = vec.ecdsa.qx.len;
-		asym->ecdsa.q.y.data = vec.ecdsa.qy.val;
-		asym->ecdsa.q.y.length = vec.ecdsa.qy.len;
 		asym->ecdsa.r.data = vec.ecdsa.r.val;
 		asym->ecdsa.r.length = vec.ecdsa.r.len;
 		asym->ecdsa.s.data = vec.ecdsa.s.val;
@@ -1570,6 +1564,9 @@ prepare_ecdsa_xform(struct rte_crypto_asym_xform *xform)
 				info.device_name, RTE_CRYPTO_ASYM_OP_SIGN);
 			return -EPERM;
 		}
+
+		xform->ec.pkey.data = vec.ecdsa.pkey.val;
+		xform->ec.pkey.length = vec.ecdsa.pkey.len;
 		break;
 	case FIPS_TEST_ASYM_SIGVER:
 		if (!rte_cryptodev_asym_xform_capability_check_optype(cap,
@@ -1578,6 +1575,11 @@ prepare_ecdsa_xform(struct rte_crypto_asym_xform *xform)
 				info.device_name, RTE_CRYPTO_ASYM_OP_VERIFY);
 			return -EPERM;
 		}
+
+		xform->ec.q.x.data = vec.ecdsa.qx.val;
+		xform->ec.q.x.length = vec.ecdsa.qx.len;
+		xform->ec.q.y.data = vec.ecdsa.qy.val;
+		xform->ec.q.y.length = vec.ecdsa.qy.len;
 		break;
 	default:
 		break;

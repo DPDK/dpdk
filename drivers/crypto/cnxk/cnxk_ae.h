@@ -198,6 +198,21 @@ cnxk_ae_fill_ec_params(struct cnxk_ae_sess *sess,
 		return -EINVAL;
 	}
 
+	if (xform->xform_type == RTE_CRYPTO_ASYM_XFORM_ECPM)
+		return 0;
+
+	ec->pkey.length = xform->ec.pkey.length;
+	if (xform->ec.pkey.length)
+		rte_memcpy(ec->pkey.data, xform->ec.pkey.data, xform->ec.pkey.length);
+
+	ec->q.x.length = xform->ec.q.x.length;
+	if (xform->ec.q.x.length)
+		rte_memcpy(ec->q.x.data, xform->ec.q.x.data, xform->ec.q.x.length);
+
+	ec->q.y.length = xform->ec.q.y.length;
+	if (xform->ec.q.y.length)
+		rte_memcpy(ec->q.y.data, xform->ec.q.y.data, xform->ec.q.y.length);
+
 	return 0;
 }
 
@@ -502,10 +517,11 @@ static __rte_always_inline void
 cnxk_ae_ecdsa_sign_prep(struct rte_crypto_ecdsa_op_param *ecdsa,
 			struct roc_ae_buf_ptr *meta_buf,
 			uint64_t fpm_table_iova, struct roc_ae_ec_group *ec_grp,
-			uint8_t curveid, struct cpt_inst_s *inst)
+			struct cnxk_ae_sess *sess, struct cpt_inst_s *inst)
 {
 	uint16_t message_len = ecdsa->message.length;
-	uint16_t pkey_len = ecdsa->pkey.length;
+	uint16_t pkey_len = sess->ec_ctx.pkey.length;
+	uint8_t curveid = sess->ec_ctx.curveid;
 	uint16_t p_align, k_align, m_align;
 	uint16_t k_len = ecdsa->k.length;
 	uint16_t order_len, prime_len;
@@ -555,7 +571,7 @@ cnxk_ae_ecdsa_sign_prep(struct rte_crypto_ecdsa_op_param *ecdsa,
 	memcpy(dptr + o_offset, ec_grp->order.data, order_len);
 	dptr += p_align;
 
-	memcpy(dptr + pk_offset, ecdsa->pkey.data, pkey_len);
+	memcpy(dptr + pk_offset, sess->ec_ctx.pkey.data, pkey_len);
 	dptr += p_align;
 
 	memcpy(dptr, ecdsa->message.data, message_len);
@@ -583,13 +599,14 @@ static __rte_always_inline void
 cnxk_ae_ecdsa_verify_prep(struct rte_crypto_ecdsa_op_param *ecdsa,
 			  struct roc_ae_buf_ptr *meta_buf,
 			  uint64_t fpm_table_iova,
-			  struct roc_ae_ec_group *ec_grp, uint8_t curveid,
+			  struct roc_ae_ec_group *ec_grp, struct cnxk_ae_sess *sess,
 			  struct cpt_inst_s *inst)
 {
 	uint32_t message_len = ecdsa->message.length;
+	uint16_t qx_len = sess->ec_ctx.q.x.length;
+	uint16_t qy_len = sess->ec_ctx.q.y.length;
+	uint8_t curveid = sess->ec_ctx.curveid;
 	uint16_t o_offset, r_offset, s_offset;
-	uint16_t qx_len = ecdsa->q.x.length;
-	uint16_t qy_len = ecdsa->q.y.length;
 	uint16_t r_len = ecdsa->r.length;
 	uint16_t s_len = ecdsa->s.length;
 	uint16_t order_len, prime_len;
@@ -649,10 +666,10 @@ cnxk_ae_ecdsa_verify_prep(struct rte_crypto_ecdsa_op_param *ecdsa,
 	memcpy(dptr, ec_grp->prime.data, prime_len);
 	dptr += p_align;
 
-	memcpy(dptr + qx_offset, ecdsa->q.x.data, qx_len);
+	memcpy(dptr + qx_offset, sess->ec_ctx.q.x.data, qx_len);
 	dptr += p_align;
 
-	memcpy(dptr + qy_offset, ecdsa->q.y.data, qy_len);
+	memcpy(dptr + qy_offset, sess->ec_ctx.q.y.data, qy_len);
 	dptr += p_align;
 
 	memcpy(dptr, ec_grp->consta.data, prime_len);
@@ -685,10 +702,10 @@ cnxk_ae_enqueue_ecdsa_op(struct rte_crypto_op *op,
 
 	if (ecdsa->op_type == RTE_CRYPTO_ASYM_OP_SIGN)
 		cnxk_ae_ecdsa_sign_prep(ecdsa, meta_buf, fpm_iova[curveid],
-					ec_grp[curveid], curveid, inst);
+					ec_grp[curveid], sess, inst);
 	else if (ecdsa->op_type == RTE_CRYPTO_ASYM_OP_VERIFY)
 		cnxk_ae_ecdsa_verify_prep(ecdsa, meta_buf, fpm_iova[curveid],
-					  ec_grp[curveid], curveid, inst);
+					  ec_grp[curveid], sess, inst);
 	else {
 		op->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
 		return -EINVAL;
