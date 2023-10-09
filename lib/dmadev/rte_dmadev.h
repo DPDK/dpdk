@@ -269,6 +269,14 @@ int16_t rte_dma_next_dev(int16_t start_dev_id);
  * must ensure that all memory addresses are valid and accessible by HW.
  */
 #define RTE_DMA_CAPA_HANDLES_ERRORS	RTE_BIT64(6)
+/** Support auto free for source buffer once mem to dev transfer is completed.
+ *
+ * @note Even though the DMA driver has this capability, it may not support all
+ * mempool drivers. If the mempool is not supported by the DMA driver,
+ * rte_dma_vchan_setup() will fail.
+ */
+#define RTE_DMA_CAPA_M2D_AUTO_FREE      RTE_BIT64(7)
+
 /** Support copy operation.
  * This capability start with index of 32, so that it could leave gap between
  * normal capability and ops capability.
@@ -553,6 +561,26 @@ struct rte_dma_port_param {
 };
 
 /**
+ * A structure used for offload auto free params.
+ */
+struct rte_dma_auto_free_param {
+	union {
+		struct {
+			/**
+			 * Mempool from which buffer is allocated. Mempool info
+			 * is used for freeing buffer by hardware.
+			 *
+			 * @note If the mempool is not supported by the DMA device,
+			 * rte_dma_vchan_setup() will fail.
+			 */
+			struct rte_mempool *pool;
+		} m2d;
+	};
+	/** Reserved for future fields. */
+	uint64_t reserved[2];
+};
+
+/**
  * A structure used to configure a virtual DMA channel.
  *
  * @see rte_dma_vchan_setup
@@ -581,6 +609,14 @@ struct rte_dma_vchan_conf {
 	 * @see struct rte_dma_port_param
 	 */
 	struct rte_dma_port_param dst_port;
+	/** Buffer params to auto free buffer by hardware. To free the buffer
+	 * by hardware, RTE_DMA_OP_FLAG_AUTO_FREE must be set while calling
+	 * rte_dma_copy and rte_dma_copy_sg().
+	 *
+	 * @see RTE_DMA_OP_FLAG_AUTO_FREE
+	 * @see struct rte_dma_auto_free_param
+	 */
+	struct rte_dma_auto_free_param auto_free;
 };
 
 /**
@@ -818,6 +854,13 @@ struct rte_dma_sge {
  * capability bit for this, driver should not return error if this flag was set.
  */
 #define RTE_DMA_OP_FLAG_LLC     RTE_BIT64(2)
+/** Auto free buffer flag.
+ * Operation with this flag must issue command to hardware to free the DMA
+ * buffer after DMA transfer is completed.
+ *
+ * @see struct rte_dma_vchan_conf::auto_free
+ */
+#define RTE_DMA_OP_FLAG_AUTO_FREE	RTE_BIT64(3)
 /**@}*/
 
 /**

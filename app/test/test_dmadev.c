@@ -18,10 +18,36 @@
 
 #define ERR_RETURN(...) do { print_err(__func__, __LINE__, __VA_ARGS__); return -1; } while (0)
 
+#define TEST_RINGSIZE 512
 #define COPY_LEN 1024
 
 static struct rte_mempool *pool;
 static uint16_t id_count;
+
+enum {
+	TEST_PARAM_REMOTE_ADDR = 0,
+	TEST_PARAM_MAX,
+};
+
+static const char * const dma_test_param[] = {
+	[TEST_PARAM_REMOTE_ADDR] = "remote_addr",
+};
+
+static uint64_t env_test_param[TEST_PARAM_MAX];
+
+enum {
+	TEST_M2D_AUTO_FREE = 0,
+	TEST_MAX,
+};
+
+struct dma_add_test {
+	const char *name;
+	bool enabled;
+};
+
+struct dma_add_test dma_add_test[] = {
+	[TEST_M2D_AUTO_FREE] = {.name = "m2d_auto_free", .enabled = false},
+};
 
 static void
 __rte_format_printf(3, 4)
@@ -798,9 +824,102 @@ test_burst_capacity(int16_t dev_id, uint16_t vchan)
 }
 
 static int
+test_m2d_auto_free(int16_t dev_id, uint16_t vchan)
+{
+#define NR_MBUF 256
+	struct rte_mbuf *src[NR_MBUF], *dst[NR_MBUF];
+	const struct rte_dma_vchan_conf qconf = {
+		.direction = RTE_DMA_DIR_MEM_TO_DEV,
+		.nb_desc = TEST_RINGSIZE,
+		.auto_free.m2d.pool = pool,
+		.dst_port.port_type = RTE_DMA_PORT_PCIE,
+		.dst_port.pcie.coreid = 0,
+	};
+	uint32_t buf_cnt1, buf_cnt2;
+	struct rte_mempool_ops *ops;
+	static bool dev_init;
+	uint16_t nb_done = 0;
+	bool dma_err = false;
+	int retry = 100;
+	int i, ret = 0;
+
+	if (!dev_init) {
+		/* Stop the device to reconfigure vchan. */
+		if (rte_dma_stop(dev_id) < 0)
+			ERR_RETURN("Error stopping device %u\n", dev_id);
+
+		if (rte_dma_vchan_setup(dev_id, vchan, &qconf) < 0)
+			ERR_RETURN("Error with queue configuration\n");
+
+		if (rte_dma_start(dev_id) != 0)
+			ERR_RETURN("Error with rte_dma_start()\n");
+
+		dev_init = true;
+	}
+
+	if (rte_pktmbuf_alloc_bulk(pool, dst, NR_MBUF) != 0)
+		ERR_RETURN("alloc dst mbufs failed.\n");
+
+	for (i = 0; i < NR_MBUF; i++) {
+		/* Using mbuf structure to hold remote iova address. */
+		rte_mbuf_iova_set(dst[i], (rte_iova_t)env_test_param[TEST_PARAM_REMOTE_ADDR]);
+		dst[i]->data_off = 0;
+	}
+
+	/* Capture buffer count before allocating source buffer. */
+	ops = rte_mempool_get_ops(pool->ops_index);
+	buf_cnt1 = ops->get_count(pool);
+
+	if (rte_pktmbuf_alloc_bulk(pool, src, NR_MBUF) != 0) {
+		printf("alloc src mbufs failed.\n");
+		ret = -1;
+		goto done;
+	}
+
+	if ((buf_cnt1 - NR_MBUF) != ops->get_count(pool)) {
+		printf("Buffer count check failed.\n");
+		ret = -1;
+		goto done;
+	}
+
+	for (i = 0; i < NR_MBUF; i++) {
+		ret = rte_dma_copy(dev_id, vchan, rte_mbuf_data_iova(src[i]),
+				   rte_mbuf_data_iova(dst[i]), COPY_LEN,
+				   RTE_DMA_OP_FLAG_AUTO_FREE);
+
+		if (ret < 0) {
+			printf("rte_dma_copy returned error.\n");
+			goto done;
+		}
+	}
+
+	rte_dma_submit(dev_id, vchan);
+	do {
+		nb_done += rte_dma_completed(dev_id, vchan, (NR_MBUF - nb_done), NULL, &dma_err);
+		if (dma_err)
+			break;
+		/* Sleep for 1 millisecond */
+		rte_delay_us_sleep(1000);
+	} while (retry-- && (nb_done < NR_MBUF));
+
+	buf_cnt2 = ops->get_count(pool);
+	if ((buf_cnt1 != buf_cnt2) || dma_err) {
+		printf("Free mem to dev buffer test failed.\n");
+		ret = -1;
+	}
+
+done:
+	rte_pktmbuf_free_bulk(dst, NR_MBUF);
+	/* If the test passes source buffer will be freed in hardware. */
+	if (ret < 0)
+		rte_pktmbuf_free_bulk(&src[nb_done], (NR_MBUF - nb_done));
+
+	return ret;
+}
+
+static int
 test_dmadev_instance(int16_t dev_id)
 {
-#define TEST_RINGSIZE 512
 #define CHECK_ERRS    true
 	struct rte_dma_stats stats;
 	struct rte_dma_info info;
@@ -890,6 +1009,13 @@ test_dmadev_instance(int16_t dev_id)
 	else if (runtest("fill", test_enqueue_fill, 1, dev_id, vchan, CHECK_ERRS) < 0)
 		goto err;
 
+	if ((info.dev_capa & RTE_DMA_CAPA_M2D_AUTO_FREE) &&
+	    dma_add_test[TEST_M2D_AUTO_FREE].enabled == true) {
+		if (runtest("m2d_auto_free", test_m2d_auto_free, 128, dev_id, vchan,
+			    CHECK_ERRS) < 0)
+			goto err;
+	}
+
 	rte_mempool_free(pool);
 
 	if (rte_dma_stop(dev_id) < 0)
@@ -922,10 +1048,49 @@ test_apis(void)
 	return ret;
 }
 
+static void
+parse_dma_env_var(void)
+{
+	char *dma_env_param_str = getenv("DPDK_ADD_DMA_TEST_PARAM");
+	char *dma_env_test_str = getenv("DPDK_ADD_DMA_TEST");
+	char *params[32] = {0};
+	char *tests[32] = {0};
+	char *var[2] = {0};
+	int n_var = 0;
+	int i, j;
+
+	/* Additional test from commandline. */
+	if (dma_env_test_str && strlen(dma_env_test_str) > 0) {
+		n_var = rte_strsplit(dma_env_test_str, strlen(dma_env_test_str), tests,
+				RTE_DIM(tests), ',');
+		for (i = 0; i < n_var; i++) {
+			for (j = 0; j < TEST_MAX; j++) {
+				if (!strcmp(tests[i], dma_add_test[j].name))
+					dma_add_test[j].enabled = true;
+			}
+		}
+	}
+
+	/* Commandline variables for test */
+	if (dma_env_param_str && strlen(dma_env_param_str) > 0) {
+		n_var = rte_strsplit(dma_env_param_str, strlen(dma_env_param_str), params,
+				       RTE_DIM(params), ',');
+		for (i = 0; i < n_var; i++) {
+			rte_strsplit(params[i], strlen(params[i]), var,	RTE_DIM(var), '=');
+			for (j = 0; j < TEST_PARAM_MAX; j++) {
+				if (!strcmp(var[0], dma_test_param[j]))
+					env_test_param[j] = strtoul(var[1], NULL, 16);
+			}
+		}
+	}
+}
+
 static int
 test_dma(void)
 {
 	int i;
+
+	parse_dma_env_var();
 
 	/* basic sanity on dmadev infrastructure */
 	if (test_apis() < 0)
