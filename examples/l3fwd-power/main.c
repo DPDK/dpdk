@@ -2245,6 +2245,7 @@ init_power_library(void)
 		env = rte_power_get_env();
 		if (env != PM_ENV_ACPI_CPUFREQ &&
 				env != PM_ENV_PSTATE_CPUFREQ &&
+				env != PM_ENV_AMD_PSTATE_CPUFREQ &&
 				env != PM_ENV_CPPC_CPUFREQ) {
 			RTE_LOG(ERR, POWER,
 				"Only ACPI, PSTATE and CPPC mode are supported\n");
@@ -2416,6 +2417,8 @@ autodetect_mode(void)
 	if (rte_power_check_env_supported(PM_ENV_ACPI_CPUFREQ))
 		return APP_MODE_LEGACY;
 	if (rte_power_check_env_supported(PM_ENV_PSTATE_CPUFREQ))
+		return APP_MODE_LEGACY;
+	if (rte_power_check_env_supported(PM_ENV_AMD_PSTATE_CPUFREQ))
 		return APP_MODE_LEGACY;
 	if (rte_power_check_env_supported(PM_ENV_CPPC_CPUFREQ))
 		return APP_MODE_LEGACY;

@@ -80,6 +80,10 @@ New Features
   device is different from the Tx Ethernet device with respective driver
   callback functions in ``rte_eth_recycle_mbufs``.
 
+* **Added amd-pstate driver support to the power management library.**
+
+  Added support for amd-pstate driver which works on AMD EPYC processors.
+
 * **Updated Solarflare net driver.**
 
   * Added support for transfer flow action ``INDIRECT`` with subtype ``VXLAN_ENCAP``.

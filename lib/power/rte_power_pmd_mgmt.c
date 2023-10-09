@@ -421,7 +421,8 @@ check_scale(unsigned int lcore)
 
 	/* only PSTATE and ACPI modes are supported */
 	if (!rte_power_check_env_supported(PM_ENV_ACPI_CPUFREQ) &&
-	    !rte_power_check_env_supported(PM_ENV_PSTATE_CPUFREQ)) {
+			!rte_power_check_env_supported(PM_ENV_PSTATE_CPUFREQ) &&
+			!rte_power_check_env_supported(PM_ENV_AMD_PSTATE_CPUFREQ)) {
 		RTE_LOG(DEBUG, POWER, "Neither ACPI nor PSTATE modes are supported\n");
 		return -ENOTSUP;
 	}
@@ -431,7 +432,8 @@ check_scale(unsigned int lcore)
 
 	/* ensure we initialized the correct env */
 	env = rte_power_get_env();
-	if (env != PM_ENV_ACPI_CPUFREQ && env != PM_ENV_PSTATE_CPUFREQ) {
+	if (env != PM_ENV_ACPI_CPUFREQ && env != PM_ENV_PSTATE_CPUFREQ &&
+			env != PM_ENV_AMD_PSTATE_CPUFREQ) {
 		RTE_LOG(DEBUG, POWER, "Neither ACPI nor PSTATE modes were initialized\n");
 		return -ENOTSUP;
 	}

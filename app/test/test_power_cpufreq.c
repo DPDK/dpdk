@@ -93,6 +93,17 @@ check_cur_freq(unsigned int lcore_id, uint32_t idx, bool turbo)
 			freq_conv = (cur_freq + TEST_FREQ_ROUNDING_DELTA)
 						/ TEST_ROUND_FREQ_TO_N_100000;
 			freq_conv = freq_conv * TEST_ROUND_FREQ_TO_N_100000;
+		} else if (env == PM_ENV_AMD_PSTATE_CPUFREQ) {
+			freq_conv = cur_freq > freqs[idx] ? (cur_freq - freqs[idx]) :
+							(freqs[idx] - cur_freq);
+			if (freq_conv <= TEST_FREQ_ROUNDING_DELTA) {
+				/* workaround: current frequency may deviate from
+				 * nominal freq. Allow deviation of up to 50Mhz.
+				 */
+				printf("Current frequency deviated from nominal "
+					"frequency by %d Khz!\n", freq_conv);
+				freq_conv = freqs[idx];
+			}
 		}
 
 		if (turbo)
@@ -502,7 +513,8 @@ test_power_cpufreq(void)
 	/* Test environment configuration */
 	env = rte_power_get_env();
 	if ((env != PM_ENV_ACPI_CPUFREQ) && (env != PM_ENV_PSTATE_CPUFREQ) &&
-			(env != PM_ENV_CPPC_CPUFREQ)) {
+			(env != PM_ENV_CPPC_CPUFREQ) &&
+			(env != PM_ENV_AMD_PSTATE_CPUFREQ)) {
 		printf("Unexpectedly got an environment other than ACPI/PSTATE\n");
 		goto fail_all;
 	}
