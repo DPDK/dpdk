@@ -72,6 +72,7 @@ cpfl_fxp_create(struct rte_eth_dev *dev,
 	struct cpfl_adapter_ext *ad = itf->adapter;
 	struct cpfl_rule_info_meta *rim = meta;
 	struct cpfl_vport *vport;
+	struct cpfl_repr *repr;
 
 	if (!rim)
 		return ret;
@@ -82,6 +83,10 @@ cpfl_fxp_create(struct rte_eth_dev *dev,
 		 * Even index is tx queue and odd index is rx queue.
 		 */
 		cpq_id = vport->base.devarg_id * 2;
+	} else if (itf->type == CPFL_ITF_TYPE_REPRESENTOR) {
+		repr = (struct cpfl_repr *)itf;
+		cpq_id = ((repr->repr_id.pf_id  + repr->repr_id.vf_id) &
+			  (CPFL_TX_CFGQ_NUM - 1)) * 2;
 	} else {
 		rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
 				   "fail to find correct control queue");
@@ -121,6 +126,7 @@ cpfl_fxp_destroy(struct rte_eth_dev *dev,
 	struct cpfl_rule_info_meta *rim;
 	uint32_t i;
 	struct cpfl_vport *vport;
+	struct cpfl_repr *repr;
 
 	rim = flow->rule;
 	if (!rim) {
@@ -134,6 +140,10 @@ cpfl_fxp_destroy(struct rte_eth_dev *dev,
 	if (itf->type == CPFL_ITF_TYPE_VPORT) {
 		vport = (struct cpfl_vport *)itf;
 		cpq_id = vport->base.devarg_id * 2;
+	} else if (itf->type == CPFL_ITF_TYPE_REPRESENTOR) {
+		repr = (struct cpfl_repr *)itf;
+		cpq_id = ((repr->repr_id.pf_id  + repr->repr_id.vf_id) &
+			  (CPFL_TX_CFGQ_NUM - 1)) * 2;
 	} else {
 		rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
 				   "fail to find correct control queue");
@@ -413,6 +423,64 @@ cpfl_is_mod_action(const struct rte_flow_action actions[])
 	return false;
 }
 
+static bool
+cpfl_fxp_get_metadata_port(struct cpfl_itf *itf,
+			   const struct rte_flow_action actions[])
+{
+	const struct rte_flow_action *action;
+	enum rte_flow_action_type action_type;
+	const struct rte_flow_action_ethdev *ethdev;
+	struct cpfl_itf *target_itf;
+	bool ret;
+
+	if (itf->type == CPFL_ITF_TYPE_VPORT) {
+		ret = cpfl_metadata_write_port_id(itf);
+		if (!ret) {
+			PMD_DRV_LOG(ERR, "fail to write port id");
+			return false;
+		}
+	}
+
+	ret = cpfl_metadata_write_sourcevsi(itf);
+	if (!ret) {
+		PMD_DRV_LOG(ERR, "fail to write source vsi id");
+		return false;
+	}
+
+	ret = cpfl_metadata_write_vsi(itf);
+	if (!ret) {
+		PMD_DRV_LOG(ERR, "fail to write vsi id");
+		return false;
+	}
+
+	if (!actions || actions->type == RTE_FLOW_ACTION_TYPE_END)
+		return false;
+
+	for (action = actions; action->type != RTE_FLOW_ACTION_TYPE_END; action++) {
+		action_type = action->type;
+		switch (action_type) {
+		case RTE_FLOW_ACTION_TYPE_REPRESENTED_PORT:
+		case RTE_FLOW_ACTION_TYPE_PORT_REPRESENTOR:
+			ethdev = (const struct rte_flow_action_ethdev *)action->conf;
+			target_itf = cpfl_get_itf_by_port_id(ethdev->port_id);
+			if (!target_itf) {
+				PMD_DRV_LOG(ERR, "fail to get target_itf by port id");
+				return false;
+			}
+			ret = cpfl_metadata_write_targetvsi(target_itf);
+			if (!ret) {
+				PMD_DRV_LOG(ERR, "fail to write target vsi id");
+				return false;
+			}
+			break;
+		default:
+			continue;
+		}
+	}
+
+	return true;
+}
+
 static int
 cpfl_fxp_parse_pattern_action(struct rte_eth_dev *dev,
 			      const struct rte_flow_attr *attr,
@@ -428,6 +496,12 @@ cpfl_fxp_parse_pattern_action(struct rte_eth_dev *dev,
 	uint32_t mr_num = 0;
 	struct cpfl_rule_info_meta *rim;
 	int ret;
+
+	ret = cpfl_fxp_get_metadata_port(itf, actions);
+	if (!ret) {
+		PMD_DRV_LOG(ERR, "Fail to save metadata.");
+		return -EINVAL;
+	}
 
 	ret = cpfl_flow_parse_items(itf, adapter->flow_parser, pattern, attr, &pr_action);
 	if (ret) {

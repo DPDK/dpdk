@@ -4,6 +4,8 @@
 
 #include "cpfl_representor.h"
 #include "cpfl_rxtx.h"
+#include "cpfl_flow.h"
+#include "cpfl_rules.h"
 
 static int
 cpfl_repr_allowlist_update(struct cpfl_adapter_ext *adapter,
@@ -374,6 +376,22 @@ cpfl_repr_link_update(struct rte_eth_dev *ethdev,
 	return 0;
 }
 
+static int
+cpfl_dev_repr_flow_ops_get(struct rte_eth_dev *dev,
+			   const struct rte_flow_ops **ops)
+{
+	if (!dev)
+		return -EINVAL;
+
+#ifdef RTE_HAS_JANSSON
+	*ops = &cpfl_flow_ops;
+#else
+	*ops = NULL;
+	PMD_DRV_LOG(NOTICE, "not support rte_flow, please install json-c library.");
+#endif
+	return 0;
+}
+
 static const struct eth_dev_ops cpfl_repr_dev_ops = {
 	.dev_start		= cpfl_repr_dev_start,
 	.dev_stop		= cpfl_repr_dev_stop,
@@ -385,6 +403,7 @@ static const struct eth_dev_ops cpfl_repr_dev_ops = {
 	.tx_queue_setup		= cpfl_repr_tx_queue_setup,
 
 	.link_update		= cpfl_repr_link_update,
+	.flow_ops_get		= cpfl_dev_repr_flow_ops_get,
 };
 
 static int
@@ -393,6 +412,7 @@ cpfl_repr_init(struct rte_eth_dev *eth_dev, void *init_param)
 	struct cpfl_repr *repr = CPFL_DEV_TO_REPR(eth_dev);
 	struct cpfl_repr_param *param = init_param;
 	struct cpfl_adapter_ext *adapter = param->adapter;
+	int ret;
 
 	repr->repr_id = param->repr_id;
 	repr->vport_info = param->vport_info;
@@ -401,6 +421,15 @@ cpfl_repr_init(struct rte_eth_dev *eth_dev, void *init_param)
 	repr->itf.data = eth_dev->data;
 	if (repr->vport_info->vport.info.vport_status == CPCHNL2_VPORT_STATUS_ENABLED)
 		repr->func_up = true;
+
+	TAILQ_INIT(&repr->itf.flow_list);
+	memset(repr->itf.dma, 0, sizeof(repr->itf.dma));
+	memset(repr->itf.msg, 0, sizeof(repr->itf.msg));
+	ret = cpfl_alloc_dma_mem_batch(&repr->itf.flow_dma, repr->itf.dma,
+				       sizeof(union cpfl_rule_cfg_pkt_record),
+				       CPFL_FLOW_BATCH_SIZE);
+	if (ret < 0)
+		return ret;
 
 	eth_dev->dev_ops = &cpfl_repr_dev_ops;
 
