@@ -34,7 +34,8 @@ typedef enum {
 	ROC_AE_EC_ID_P160 = 5,
 	ROC_AE_EC_ID_P320 = 6,
 	ROC_AE_EC_ID_P512 = 7,
-	ROC_AE_EC_ID_PMAX = 8
+	ROC_AE_EC_ID_SM2  = 8,
+	ROC_AE_EC_ID_PMAX
 } roc_ae_ec_id;
 
 /* Prime and order fields of built-in elliptic curves */

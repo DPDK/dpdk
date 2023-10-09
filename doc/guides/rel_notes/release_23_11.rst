@@ -128,6 +128,10 @@ New Features
 
   * Enabled support for QAT 2.0c (4944) devices in QAT crypto driver.
 
+* **Updated Marvell cnxk crypto driver.**
+
+  * Added SM2 algorithm support in asymmetric crypto operations.
+
 * build: Enabling deprecated libraries is now done using the new
   ``enable_deprecated_libraries`` build option.
 
