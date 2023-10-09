@@ -51,6 +51,7 @@ EXPERIMENTAL {
 	rte_cryptodev_asym_get_xform_enum;
 	rte_cryptodev_asym_session_create;
 	rte_cryptodev_asym_session_free;
+	rte_cryptodev_asym_xform_capability_check_hash;
 	rte_cryptodev_asym_xform_capability_check_modlen;
 	rte_cryptodev_asym_xform_capability_check_optype;
 	rte_cryptodev_sym_cpu_crypto_process;

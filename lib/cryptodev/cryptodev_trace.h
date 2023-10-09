@@ -521,6 +521,15 @@ RTE_TRACE_POINT(
 )
 
 RTE_TRACE_POINT(
+	rte_cryptodev_trace_asym_xform_capability_check_hash,
+	RTE_TRACE_POINT_ARGS(uint64_t hash_algos,
+		enum rte_crypto_auth_algorithm hash, int ret),
+	rte_trace_point_emit_u64(hash_algos);
+	rte_trace_point_emit_int(hash);
+	rte_trace_point_emit_int(ret);
+)
+
+RTE_TRACE_POINT(
 	rte_cryptodev_trace_count,
 	RTE_TRACE_POINT_ARGS(uint8_t nb_devs),
 	rte_trace_point_emit_u8(nb_devs);

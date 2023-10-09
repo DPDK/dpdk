@@ -610,6 +610,22 @@ done:
 	return ret;
 }
 
+bool
+rte_cryptodev_asym_xform_capability_check_hash(
+	const struct rte_cryptodev_asymmetric_xform_capability *capability,
+	enum rte_crypto_auth_algorithm hash)
+{
+	bool ret = false;
+
+	if (capability->hash_algos & (1 << hash))
+		ret = true;
+
+	rte_cryptodev_trace_asym_xform_capability_check_hash(
+		capability->hash_algos, hash, ret);
+
+	return ret;
+}
+
 /* spinlock for crypto device enq callbacks */
 static rte_spinlock_t rte_cryptodev_callback_lock = RTE_SPINLOCK_INITIALIZER;
 

@@ -1810,8 +1810,10 @@ _test_sm2_sign(bool rnd_secret)
 {
 	struct crypto_testsuite_params_asym *ts_params = &testsuite_params;
 	struct crypto_testsuite_sm2_params input_params = sm2_param_fp256;
+	const struct rte_cryptodev_asymmetric_xform_capability *capa;
 	struct rte_mempool *sess_mpool = ts_params->session_mpool;
 	struct rte_mempool *op_mpool = ts_params->op_mpool;
+	struct rte_cryptodev_asym_capability_idx idx;
 	uint8_t dev_id = ts_params->valid_devs[0];
 	struct rte_crypto_op *result_op = NULL;
 	uint8_t output_buf_r[TEST_DATA_SIZE];
@@ -1821,6 +1823,12 @@ _test_sm2_sign(bool rnd_secret)
 	struct rte_crypto_op *op = NULL;
 	int ret, status = TEST_SUCCESS;
 	void *sess = NULL;
+
+	/* Check SM2 capability */
+	idx.type = RTE_CRYPTO_ASYM_XFORM_SM2;
+	capa = rte_cryptodev_asym_capability_get(dev_id, &idx);
+	if (capa == NULL)
+		return -ENOTSUP;
 
 	/* Setup crypto op data structure */
 	op = rte_crypto_op_alloc(op_mpool, RTE_CRYPTO_OP_TYPE_ASYMMETRIC);
@@ -1838,7 +1846,10 @@ _test_sm2_sign(bool rnd_secret)
 	/* Setup asym xform */
 	xform.next = NULL;
 	xform.xform_type = RTE_CRYPTO_ASYM_XFORM_SM2;
-	xform.sm2.hash = RTE_CRYPTO_AUTH_SM3;
+	if (rte_cryptodev_asym_xform_capability_check_hash(capa, RTE_CRYPTO_AUTH_SM3))
+		xform.sm2.hash = RTE_CRYPTO_AUTH_SM3;
+	else
+		xform.sm2.hash = RTE_CRYPTO_AUTH_NULL;
 
 	ret = rte_cryptodev_asym_session_create(dev_id, &xform, sess_mpool, &sess);
 	if (ret < 0) {
@@ -1993,8 +2004,10 @@ test_sm2_verify(void)
 {
 	struct crypto_testsuite_params_asym *ts_params = &testsuite_params;
 	struct crypto_testsuite_sm2_params input_params = sm2_param_fp256;
+	const struct rte_cryptodev_asymmetric_xform_capability *capa;
 	struct rte_mempool *sess_mpool = ts_params->session_mpool;
 	struct rte_mempool *op_mpool = ts_params->op_mpool;
+	struct rte_cryptodev_asym_capability_idx idx;
 	uint8_t dev_id = ts_params->valid_devs[0];
 	struct rte_crypto_op *result_op = NULL;
 	struct rte_crypto_asym_xform xform;
@@ -2002,6 +2015,12 @@ test_sm2_verify(void)
 	struct rte_crypto_op *op = NULL;
 	int ret, status = TEST_SUCCESS;
 	void *sess = NULL;
+
+	/* Check SM2 capability */
+	idx.type = RTE_CRYPTO_ASYM_XFORM_SM2;
+	capa = rte_cryptodev_asym_capability_get(dev_id, &idx);
+	if (capa == NULL)
+		return -ENOTSUP;
 
 	/* Setup crypto op data structure */
 	op = rte_crypto_op_alloc(op_mpool, RTE_CRYPTO_OP_TYPE_ASYMMETRIC);
@@ -2019,7 +2038,10 @@ test_sm2_verify(void)
 	/* Setup asym xform */
 	xform.next = NULL;
 	xform.xform_type = RTE_CRYPTO_ASYM_XFORM_SM2;
-	xform.sm2.hash = RTE_CRYPTO_AUTH_SM3;
+	if (rte_cryptodev_asym_xform_capability_check_hash(capa, RTE_CRYPTO_AUTH_SM3))
+		xform.sm2.hash = RTE_CRYPTO_AUTH_SM3;
+	else
+		xform.sm2.hash = RTE_CRYPTO_AUTH_NULL;
 
 	ret = rte_cryptodev_asym_session_create(dev_id, &xform, sess_mpool, &sess);
 	if (ret < 0) {
@@ -2094,9 +2116,11 @@ _test_sm2_enc(bool rnd_secret)
 {
 	struct crypto_testsuite_params_asym *ts_params = &testsuite_params;
 	struct crypto_testsuite_sm2_params input_params = sm2_param_fp256;
+	const struct rte_cryptodev_asymmetric_xform_capability *capa;
 	struct rte_mempool *sess_mpool = ts_params->session_mpool;
 	struct rte_mempool *op_mpool = ts_params->op_mpool;
 	uint8_t output_buf[TEST_DATA_SIZE], *pbuf = NULL;
+	struct rte_cryptodev_asym_capability_idx idx;
 	uint8_t dev_id = ts_params->valid_devs[0];
 	struct rte_crypto_op *result_op = NULL;
 	struct rte_crypto_asym_xform xform;
@@ -2104,6 +2128,12 @@ _test_sm2_enc(bool rnd_secret)
 	struct rte_crypto_op *op = NULL;
 	int ret, status = TEST_SUCCESS;
 	void *sess = NULL;
+
+	/* Check SM2 capability */
+	idx.type = RTE_CRYPTO_ASYM_XFORM_SM2;
+	capa = rte_cryptodev_asym_capability_get(dev_id, &idx);
+	if (capa == NULL)
+		return -ENOTSUP;
 
 	/* Setup crypto op data structure */
 	op = rte_crypto_op_alloc(op_mpool, RTE_CRYPTO_OP_TYPE_ASYMMETRIC);
@@ -2120,7 +2150,10 @@ _test_sm2_enc(bool rnd_secret)
 	/* Setup asym xform */
 	xform.next = NULL;
 	xform.xform_type = RTE_CRYPTO_ASYM_XFORM_SM2;
-	xform.sm2.hash = RTE_CRYPTO_AUTH_SM3;
+	if (rte_cryptodev_asym_xform_capability_check_hash(capa, RTE_CRYPTO_AUTH_SM3))
+		xform.sm2.hash = RTE_CRYPTO_AUTH_SM3;
+	else
+		xform.sm2.hash = RTE_CRYPTO_AUTH_NULL;
 
 	ret = rte_cryptodev_asym_session_create(dev_id, &xform, sess_mpool, &sess);
 	if (ret < 0) {
@@ -2273,8 +2306,10 @@ test_sm2_dec(void)
 {
 	struct crypto_testsuite_params_asym *ts_params = &testsuite_params;
 	struct crypto_testsuite_sm2_params input_params = sm2_param_fp256;
+	const struct rte_cryptodev_asymmetric_xform_capability *capa;
 	struct rte_mempool *sess_mpool = ts_params->session_mpool;
 	struct rte_mempool *op_mpool = ts_params->op_mpool;
+	struct rte_cryptodev_asym_capability_idx idx;
 	uint8_t dev_id = ts_params->valid_devs[0];
 	struct rte_crypto_op *result_op = NULL;
 	uint8_t output_buf_m[TEST_DATA_SIZE];
@@ -2283,6 +2318,12 @@ test_sm2_dec(void)
 	struct rte_crypto_op *op = NULL;
 	int ret, status = TEST_SUCCESS;
 	void *sess = NULL;
+
+	/* Check SM2 capability */
+	idx.type = RTE_CRYPTO_ASYM_XFORM_SM2;
+	capa = rte_cryptodev_asym_capability_get(dev_id, &idx);
+	if (capa == NULL)
+		return -ENOTSUP;
 
 	/* Setup crypto op data structure */
 	op = rte_crypto_op_alloc(op_mpool, RTE_CRYPTO_OP_TYPE_ASYMMETRIC);
@@ -2299,7 +2340,10 @@ test_sm2_dec(void)
 	/* Setup asym xform */
 	xform.next = NULL;
 	xform.xform_type = RTE_CRYPTO_ASYM_XFORM_SM2;
-	xform.sm2.hash = RTE_CRYPTO_AUTH_SM3;
+	if (rte_cryptodev_asym_xform_capability_check_hash(capa, RTE_CRYPTO_AUTH_SM3))
+		xform.sm2.hash = RTE_CRYPTO_AUTH_SM3;
+	else
+		xform.sm2.hash = RTE_CRYPTO_AUTH_NULL;
 
 	ret = rte_cryptodev_asym_session_create(dev_id, &xform, sess_mpool, &sess);
 	if (ret < 0) {

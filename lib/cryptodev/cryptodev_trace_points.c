@@ -144,6 +144,9 @@ RTE_TRACE_POINT_REGISTER(rte_cryptodev_trace_asym_xform_capability_check_modlen,
 RTE_TRACE_POINT_REGISTER(rte_cryptodev_trace_asym_xform_capability_check_optype,
 	lib.cryptodev.asym.xform.capability.check.optype)
 
+RTE_TRACE_POINT_REGISTER(rte_cryptodev_trace_asym_xform_capability_check_hash,
+	lib.cryptodev.asym.xform.capability.check.hash)
+
 RTE_TRACE_POINT_REGISTER(rte_cryptodev_trace_sym_cpu_crypto_process,
 	lib.cryptodev.sym.cpu.crypto.process)
 
