@@ -167,6 +167,8 @@ Removed Items
   ``rte_crypto_auth_algorithm_strings``, ``rte_crypto_aead_algorithm_strings`` and
   ``rte_crypto_asym_xform_strings``.
 
+* cryptodev: Removed explicit SM2 xform parameter in asymmetric xform.
+
 * security: Removed deprecated field ``reserved_opts``
   from struct ``rte_security_ipsec_sa_options``.
 

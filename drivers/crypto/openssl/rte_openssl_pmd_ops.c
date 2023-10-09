@@ -1305,9 +1305,6 @@ err_dsa:
 		OSSL_PARAM *params = NULL;
 		int ret = -1;
 
-		if (xform->sm2.hash != RTE_CRYPTO_AUTH_SM3)
-			return -1;
-
 		param_bld = OSSL_PARAM_BLD_new();
 		if (!param_bld) {
 			OPENSSL_LOG(ERR, "failed to allocate params\n");

@@ -17,6 +17,7 @@ struct crypto_testsuite_sm2_params {
 	rte_crypto_param id;
 	rte_crypto_param cipher;
 	rte_crypto_param message;
+	int curve;
 };
 
 static uint8_t fp256_pkey[] = {
@@ -123,7 +124,8 @@ struct crypto_testsuite_sm2_params sm2_param_fp256 = {
 	.cipher = {
 		.data = fp256_cipher,
 		.length = sizeof(fp256_cipher),
-	}
+	},
+	.curve = RTE_CRYPTO_EC_GROUP_SM2
 };
 
 #endif /* __TEST_CRYPTODEV_SM2_TEST_VECTORS_H__ */
