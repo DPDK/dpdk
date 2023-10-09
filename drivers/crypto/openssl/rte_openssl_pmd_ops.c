@@ -593,6 +593,20 @@ static const struct rte_cryptodev_capabilities openssl_pmd_capabilities[] = {
 		},
 		}
 	},
+	{	/* SM2 */
+		.op = RTE_CRYPTO_OP_TYPE_ASYMMETRIC,
+		{.asym = {
+			.xform_capa = {
+				.xform_type = RTE_CRYPTO_ASYM_XFORM_SM2,
+				.op_types =
+				((1<<RTE_CRYPTO_ASYM_OP_SIGN) |
+				 (1 << RTE_CRYPTO_ASYM_OP_VERIFY) |
+				 (1 << RTE_CRYPTO_ASYM_OP_ENCRYPT) |
+				 (1 << RTE_CRYPTO_ASYM_OP_DECRYPT)),
+			}
+		}
+		}
+	},
 
 	RTE_CRYPTODEV_END_OF_CAPABILITIES_LIST()
 };
