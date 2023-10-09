@@ -140,9 +140,12 @@ enum cpfl_itf_type {
 	CPFL_ITF_TYPE_REPRESENTOR,
 };
 
+TAILQ_HEAD(cpfl_flow_list, rte_flow);
+
 struct cpfl_itf {
 	enum cpfl_itf_type type;
 	struct cpfl_adapter_ext *adapter;
+	struct cpfl_flow_list flow_list;
 	void *data;
 };
 
@@ -205,6 +208,8 @@ struct cpfl_adapter_ext {
 
 	rte_spinlock_t repr_lock;
 	struct rte_hash *repr_allowlist_hash;
+
+	struct cpfl_flow_js_parser *flow_parser;
 
 	struct cpfl_metadata meta;
 };

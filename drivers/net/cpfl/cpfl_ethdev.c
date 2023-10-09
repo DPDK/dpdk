@@ -15,6 +15,7 @@
 #include "cpfl_ethdev.h"
 #include <ethdev_private.h>
 #include "cpfl_rxtx.h"
+#include "cpfl_flow.h"
 
 #define CPFL_REPRESENTOR	"representor"
 #define CPFL_TX_SINGLE_Q	"tx_single"
@@ -1074,6 +1075,19 @@ cpfl_dev_stop(struct rte_eth_dev *dev)
 	return 0;
 }
 
+static void
+cpfl_flow_free(struct cpfl_vport *vport)
+{
+	struct rte_flow *p_flow;
+
+	while ((p_flow = TAILQ_FIRST(&vport->itf.flow_list))) {
+		TAILQ_REMOVE(&vport->itf.flow_list, p_flow, next);
+		if (p_flow->engine->free)
+			p_flow->engine->free(p_flow);
+		rte_free(p_flow);
+	}
+}
+
 static int
 cpfl_p2p_queue_grps_del(struct idpf_vport *vport)
 {
@@ -1105,6 +1119,7 @@ cpfl_dev_close(struct rte_eth_dev *dev)
 	if (!adapter->base.is_rx_singleq && !adapter->base.is_tx_singleq)
 		cpfl_p2p_queue_grps_del(vport);
 
+	cpfl_flow_free(cpfl_vport);
 	idpf_vport_deinit(vport);
 	rte_free(cpfl_vport->p2p_q_chunks_info);
 
@@ -1114,6 +1129,29 @@ cpfl_dev_close(struct rte_eth_dev *dev)
 	adapter->vports[vport->sw_idx] = NULL;
 	rte_free(cpfl_vport);
 
+	return 0;
+}
+
+static int
+cpfl_dev_flow_ops_get(struct rte_eth_dev *dev,
+		      const struct rte_flow_ops **ops)
+{
+	struct cpfl_itf *itf;
+
+	if (!dev)
+		return -EINVAL;
+
+	itf = CPFL_DEV_TO_ITF(dev);
+
+	/* only vport support rte_flow */
+	if (itf->type != CPFL_ITF_TYPE_VPORT)
+		return -ENOTSUP;
+#ifdef RTE_HAS_JANSSON
+	*ops = &cpfl_flow_ops;
+#else
+	*ops = NULL;
+	PMD_DRV_LOG(NOTICE, "not support rte_flow, please install json-c library.");
+#endif
 	return 0;
 }
 
@@ -1318,6 +1356,7 @@ static const struct eth_dev_ops cpfl_eth_dev_ops = {
 	.xstats_get			= cpfl_dev_xstats_get,
 	.xstats_get_names		= cpfl_dev_xstats_get_names,
 	.xstats_reset			= cpfl_dev_xstats_reset,
+	.flow_ops_get			= cpfl_dev_flow_ops_get,
 	.hairpin_cap_get		= cpfl_hairpin_cap_get,
 	.rx_hairpin_queue_setup		= cpfl_rx_hairpin_queue_setup,
 	.tx_hairpin_queue_setup		= cpfl_tx_hairpin_queue_setup,
@@ -2021,6 +2060,13 @@ cpfl_adapter_ext_init(struct rte_pci_device *pci_dev, struct cpfl_adapter_ext *a
 		goto err_vports_alloc;
 	}
 
+#ifdef RTE_HAS_JANSSON
+	ret = cpfl_flow_init(adapter);
+	if (ret) {
+		PMD_INIT_LOG(ERR, "Failed to init flow module");
+		goto err_flow_init;
+	}
+#endif
 	adapter->cur_vports = 0;
 	adapter->cur_vport_nb = 0;
 
@@ -2028,6 +2074,9 @@ cpfl_adapter_ext_init(struct rte_pci_device *pci_dev, struct cpfl_adapter_ext *a
 
 	return ret;
 
+#ifdef RTE_HAS_JANSSON
+err_flow_init:
+#endif
 err_vports_alloc:
 	rte_eal_alarm_cancel(cpfl_dev_alarm_handler, adapter);
 	cpfl_repr_allowlist_uninit(adapter);
@@ -2182,6 +2231,7 @@ cpfl_dev_vport_init(struct rte_eth_dev *dev, void *init_params)
 	cpfl_vport->itf.type = CPFL_ITF_TYPE_VPORT;
 	cpfl_vport->itf.adapter = adapter;
 	cpfl_vport->itf.data = dev->data;
+	TAILQ_INIT(&cpfl_vport->itf.flow_list);
 	adapter->vports[param->idx] = cpfl_vport;
 	adapter->cur_vports |= RTE_BIT32(param->devarg_id);
 	adapter->cur_vport_nb++;
@@ -2262,6 +2312,9 @@ cpfl_find_adapter_ext(struct rte_pci_device *pci_dev)
 static void
 cpfl_adapter_ext_deinit(struct cpfl_adapter_ext *adapter)
 {
+#ifdef RTE_HAS_JANSSON
+	cpfl_flow_uninit(adapter);
+#endif
 	rte_eal_alarm_cancel(cpfl_dev_alarm_handler, adapter);
 	cpfl_vport_map_uninit(adapter);
 	idpf_adapter_deinit(&adapter->base);
