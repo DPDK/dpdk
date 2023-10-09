@@ -31,6 +31,7 @@ __umwait_wakeup(volatile void *addr)
 
 static bool wait_supported;
 static bool wait_multi_supported;
+static bool monitor_supported;
 
 static inline uint64_t
 __get_umwait_val(const volatile void *p, const uint8_t sz)
@@ -82,7 +83,7 @@ rte_power_monitor(const struct rte_power_monitor_cond *pmc,
 	uint64_t cur_value;
 
 	/* prevent user from running this instruction if it's not supported */
-	if (!wait_supported)
+	if (!monitor_supported)
 		return -ENOTSUP;
 
 	/* prevent non-EAL thread from using this API */
@@ -183,6 +184,8 @@ RTE_INIT(rte_power_intrinsics_init) {
 		wait_supported = 1;
 	if (i.power_monitor_multi)
 		wait_multi_supported = 1;
+	if (i.power_monitor)
+		monitor_supported = 1;
 }
 
 int
@@ -191,7 +194,7 @@ rte_power_monitor_wakeup(const unsigned int lcore_id)
 	struct power_wait_status *s;
 
 	/* prevent user from running this instruction if it's not supported */
-	if (!wait_supported)
+	if (!monitor_supported)
 		return -ENOTSUP;
 
 	/* prevent buffer overrun */
