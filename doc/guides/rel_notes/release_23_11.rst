@@ -96,6 +96,8 @@ New Features
   default. The implementation using C11 standard atomic operations is enabled
   via the ``enable_stdatomic`` build option.
 
+* eal: Added support for power intrinsics with AMD processors.
+
 
 Removed Items
 -------------

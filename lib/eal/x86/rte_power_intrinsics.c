@@ -17,6 +17,79 @@ static struct power_wait_status {
 	volatile void *monitor_addr; /**< NULL if not currently sleeping */
 } __rte_cache_aligned wait_status[RTE_MAX_LCORE];
 
+/*
+ * This function uses UMONITOR/UMWAIT instructions and will enter C0.2 state.
+ * For more information about usage of these instructions, please refer to
+ * Intel(R) 64 and IA-32 Architectures Software Developer's Manual.
+ */
+static void intel_umonitor(volatile void *addr)
+{
+#if defined(RTE_TOOLCHAIN_MSVC) || defined(__WAITPKG__)
+	/* cast away "volatile" when using the intrinsic */
+	_umonitor((void *)(uintptr_t)addr);
+#else
+	/*
+	 * we're using raw byte codes for compiler versions which
+	 * don't support this instruction natively.
+	 */
+	asm volatile(".byte 0xf3, 0x0f, 0xae, 0xf7;"
+			:
+			: "D"(addr));
+#endif
+}
+
+static void intel_umwait(const uint64_t timeout)
+{
+	const uint32_t tsc_l = (uint32_t)timeout;
+	const uint32_t tsc_h = (uint32_t)(timeout >> 32);
+
+#if defined(RTE_TOOLCHAIN_MSVC) || defined(__WAITPKG__)
+	_umwait(tsc_l, tsc_h);
+#else
+	asm volatile(".byte 0xf2, 0x0f, 0xae, 0xf7;"
+			: /* ignore rflags */
+			: "D"(0), /* enter C0.2 */
+			  "a"(tsc_l), "d"(tsc_h));
+#endif
+}
+
+/*
+ * This function uses MONITORX/MWAITX instructions and will enter C1 state.
+ * For more information about usage of these instructions, please refer to
+ * AMD64 Architecture Programmer’s Manual.
+ */
+static void amd_monitorx(volatile void *addr)
+{
+#if defined(__MWAITX__)
+	/* cast away "volatile" when using the intrinsic */
+	_mm_monitorx((void *)(uintptr_t)addr, 0, 0);
+#else
+	asm volatile(".byte 0x0f, 0x01, 0xfa;"
+			:
+			: "a"(addr),
+			"c"(0),  /* no extensions */
+			"d"(0)); /* no hints */
+#endif
+}
+
+static void amd_mwaitx(const uint64_t timeout)
+{
+	RTE_SET_USED(timeout);
+#if defined(__MWAITX__)
+	_mm_mwaitx(0, 0, 0);
+#else
+	asm volatile(".byte 0x0f, 0x01, 0xfb;"
+			: /* ignore rflags */
+			: "a"(0), /* enter C1 */
+			"c"(0)); /* no time-out */
+#endif
+}
+
+static struct {
+	void (*mmonitor)(volatile void *addr);
+	void (*mwait)(const uint64_t timeout);
+} __rte_cache_aligned power_monitor_ops;
+
 static inline void
 __umwait_wakeup(volatile void *addr)
 {
@@ -76,8 +149,6 @@ int
 rte_power_monitor(const struct rte_power_monitor_cond *pmc,
 		const uint64_t tsc_timestamp)
 {
-	const uint32_t tsc_l = (uint32_t)tsc_timestamp;
-	const uint32_t tsc_h = (uint32_t)(tsc_timestamp >> 32);
 	const unsigned int lcore_id = rte_lcore_id();
 	struct power_wait_status *s;
 	uint64_t cur_value;
@@ -105,19 +176,8 @@ rte_power_monitor(const struct rte_power_monitor_cond *pmc,
 	rte_spinlock_lock(&s->lock);
 	s->monitor_addr = pmc->addr;
 
-	/* set address for UMONITOR */
-#if defined(RTE_TOOLCHAIN_MSVC) || defined(__WAITPKG__)
-	/* cast away "volatile" when using the intrinsic */
-	_umonitor((void *)(uintptr_t)pmc->addr);
-#else
-	/*
-	 * we're using raw byte codes for compiler versions which
-	 * don't support this instruction natively.
-	 */
-	asm volatile(".byte 0xf3, 0x0f, 0xae, 0xf7;"
-			:
-			: "D"(pmc->addr));
-#endif
+	/* set address for memory monitor */
+	power_monitor_ops.mmonitor(pmc->addr);
 
 	/* now that we've put this address into monitor, we can unlock */
 	rte_spinlock_unlock(&s->lock);
@@ -128,15 +188,8 @@ rte_power_monitor(const struct rte_power_monitor_cond *pmc,
 	if (pmc->fn(cur_value, pmc->opaque) != 0)
 		goto end;
 
-	/* execute UMWAIT */
-#if defined(RTE_TOOLCHAIN_MSVC) || defined(__WAITPKG__)
-	_umwait(tsc_l, tsc_h);
-#else
-	asm volatile(".byte 0xf2, 0x0f, 0xae, 0xf7;"
-			: /* ignore rflags */
-			: "D"(0), /* enter C0.2 */
-			  "a"(tsc_l), "d"(tsc_h));
-#endif
+	/* execute mwait */
+	power_monitor_ops.mwait(tsc_timestamp);
 
 end:
 	/* erase sleep address */
@@ -186,6 +239,14 @@ RTE_INIT(rte_power_intrinsics_init) {
 		wait_multi_supported = 1;
 	if (i.power_monitor)
 		monitor_supported = 1;
+
+	if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_MONITORX)) {
+		power_monitor_ops.mmonitor = &amd_monitorx;
+		power_monitor_ops.mwait = &amd_mwaitx;
+	} else {
+		power_monitor_ops.mmonitor = &intel_umonitor;
+		power_monitor_ops.mwait = &intel_umwait;
+	}
 }
 
 int
