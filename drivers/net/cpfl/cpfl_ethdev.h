@@ -22,6 +22,7 @@
 #include "cpfl_logs.h"
 #include "cpfl_cpchnl.h"
 #include "cpfl_representor.h"
+#include "cpfl_controlq.h"
 
 /* Currently, backend supports up to 8 vports */
 #define CPFL_MAX_VPORT_NUM	8
@@ -81,6 +82,10 @@
 #define CPFL_INVALID_HW_ID	UINT16_MAX
 #define CPFL_META_CHUNK_LENGTH	1024
 #define CPFL_META_LENGTH	32
+
+#define CPFL_RX_CFGQ_NUM	4
+#define CPFL_TX_CFGQ_NUM	4
+#define CPFL_CFGQ_NUM		8
 
 /* bit[15:14] type
  * bit[13] host/accelerator core
@@ -212,6 +217,12 @@ struct cpfl_adapter_ext {
 	struct cpfl_flow_js_parser *flow_parser;
 
 	struct cpfl_metadata meta;
+
+	/* ctrl vport and ctrl queues. */
+	struct cpfl_vport ctrl_vport;
+	uint8_t ctrl_vport_recv_info[IDPF_DFLT_MBX_BUF_SIZE];
+	struct idpf_ctlq_info *ctlqp[CPFL_CFGQ_NUM];
+	struct cpfl_ctlq_create_info cfgq_info[CPFL_CFGQ_NUM];
 };
 
 TAILQ_HEAD(cpfl_adapter_list, cpfl_adapter_ext);
@@ -226,6 +237,9 @@ int cpfl_cc_vport_info_get(struct cpfl_adapter_ext *adapter,
 			   struct cpchnl2_vport_id *vport_id,
 			   struct cpfl_vport_id *vi,
 			   struct cpchnl2_get_vport_info_response *response);
+int cpfl_vc_create_ctrl_vport(struct cpfl_adapter_ext *adapter);
+int cpfl_config_ctlq_rx(struct cpfl_adapter_ext *adapter);
+int cpfl_config_ctlq_tx(struct cpfl_adapter_ext *adapter);
 
 #define CPFL_DEV_TO_PCI(eth_dev)		\
 	RTE_DEV_TO_PCI((eth_dev)->device)

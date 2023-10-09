@@ -1698,6 +1698,10 @@ cpfl_handle_vchnl_event_msg(struct cpfl_adapter_ext *adapter, uint8_t *msg, uint
 		return;
 	}
 
+	/* ignore if it is ctrl vport */
+	if (adapter->ctrl_vport.base.vport_id == vc_event->vport_id)
+		return;
+
 	vport = cpfl_find_vport(adapter, vc_event->vport_id);
 	if (!vport) {
 		PMD_DRV_LOG(ERR, "Can't find vport.");
@@ -1893,6 +1897,262 @@ cpfl_dev_alarm_handler(void *param)
 	rte_eal_alarm_set(CPFL_ALARM_INTERVAL, cpfl_dev_alarm_handler, adapter);
 }
 
+static int
+cpfl_stop_cfgqs(struct cpfl_adapter_ext *adapter)
+{
+	int i, ret;
+
+	for (i = 0; i < CPFL_TX_CFGQ_NUM; i++) {
+		ret = idpf_vc_queue_switch(&adapter->ctrl_vport.base, i, false, false);
+		if (ret) {
+			PMD_DRV_LOG(ERR, "Fail to disable Tx config queue.");
+			return ret;
+		}
+	}
+
+	for (i = 0; i < CPFL_RX_CFGQ_NUM; i++) {
+		ret = idpf_vc_queue_switch(&adapter->ctrl_vport.base, i, true, false);
+		if (ret) {
+			PMD_DRV_LOG(ERR, "Fail to disable Rx config queue.");
+			return ret;
+		}
+	}
+
+	return 0;
+}
+
+static int
+cpfl_start_cfgqs(struct cpfl_adapter_ext *adapter)
+{
+	int i, ret;
+
+	ret = cpfl_config_ctlq_tx(adapter);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "Fail to configure Tx config queue.");
+		return ret;
+	}
+
+	ret = cpfl_config_ctlq_rx(adapter);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "Fail to configure Rx config queue.");
+		return ret;
+	}
+
+	for (i = 0; i < CPFL_TX_CFGQ_NUM; i++) {
+		ret = idpf_vc_queue_switch(&adapter->ctrl_vport.base, i, false, true);
+		if (ret) {
+			PMD_DRV_LOG(ERR, "Fail to enable Tx config queue.");
+			return ret;
+		}
+	}
+
+	for (i = 0; i < CPFL_RX_CFGQ_NUM; i++) {
+		ret = idpf_vc_queue_switch(&adapter->ctrl_vport.base, i, true, true);
+		if (ret) {
+			PMD_DRV_LOG(ERR, "Fail to enable Rx config queue.");
+			return ret;
+		}
+	}
+
+	return 0;
+}
+
+static void
+cpfl_remove_cfgqs(struct cpfl_adapter_ext *adapter)
+{
+	struct idpf_hw *hw = (struct idpf_hw *)(&adapter->base.hw);
+	struct cpfl_ctlq_create_info *create_cfgq_info;
+	int i;
+
+	create_cfgq_info = adapter->cfgq_info;
+
+	for (i = 0; i < CPFL_CFGQ_NUM; i++) {
+		if (adapter->ctlqp[i])
+			cpfl_vport_ctlq_remove(hw, adapter->ctlqp[i]);
+		if (create_cfgq_info[i].ring_mem.va)
+			idpf_free_dma_mem(&adapter->base.hw, &create_cfgq_info[i].ring_mem);
+		if (create_cfgq_info[i].buf_mem.va)
+			idpf_free_dma_mem(&adapter->base.hw, &create_cfgq_info[i].buf_mem);
+	}
+}
+
+static int
+cpfl_add_cfgqs(struct cpfl_adapter_ext *adapter)
+{
+	struct idpf_ctlq_info *cfg_cq;
+	int ret = 0;
+	int i = 0;
+
+	for (i = 0; i < CPFL_CFGQ_NUM; i++) {
+		cfg_cq = NULL;
+		ret = cpfl_vport_ctlq_add((struct idpf_hw *)(&adapter->base.hw),
+					  &adapter->cfgq_info[i],
+					  &cfg_cq);
+		if (ret || !cfg_cq) {
+			PMD_DRV_LOG(ERR, "ctlq add failed for queue id: %d",
+				    adapter->cfgq_info[i].id);
+			cpfl_remove_cfgqs(adapter);
+			return ret;
+		}
+		PMD_DRV_LOG(INFO, "added cfgq to hw. queue id: %d",
+			    adapter->cfgq_info[i].id);
+		adapter->ctlqp[i] = cfg_cq;
+	}
+
+	return ret;
+}
+
+#define CPFL_CFGQ_RING_LEN		512
+#define CPFL_CFGQ_DESCRIPTOR_SIZE	32
+#define CPFL_CFGQ_BUFFER_SIZE		256
+#define CPFL_CFGQ_RING_SIZE		512
+
+static int
+cpfl_cfgq_setup(struct cpfl_adapter_ext *adapter)
+{
+	struct cpfl_ctlq_create_info *create_cfgq_info;
+	struct cpfl_vport *vport;
+	int i, err;
+	uint32_t ring_size = CPFL_CFGQ_RING_SIZE * sizeof(struct idpf_ctlq_desc);
+	uint32_t buf_size = CPFL_CFGQ_RING_SIZE * CPFL_CFGQ_BUFFER_SIZE;
+
+	vport = &adapter->ctrl_vport;
+	create_cfgq_info = adapter->cfgq_info;
+
+	for (i = 0; i < CPFL_CFGQ_NUM; i++) {
+		if (i % 2 == 0) {
+			/* Setup Tx config queue */
+			create_cfgq_info[i].id = vport->base.chunks_info.tx_start_qid + i / 2;
+			create_cfgq_info[i].type = IDPF_CTLQ_TYPE_CONFIG_TX;
+			create_cfgq_info[i].len = CPFL_CFGQ_RING_SIZE;
+			create_cfgq_info[i].buf_size = CPFL_CFGQ_BUFFER_SIZE;
+			memset(&create_cfgq_info[i].reg, 0, sizeof(struct idpf_ctlq_reg));
+			create_cfgq_info[i].reg.tail = vport->base.chunks_info.tx_qtail_start +
+				i / 2 * vport->base.chunks_info.tx_qtail_spacing;
+		} else {
+			/* Setup Rx config queue */
+			create_cfgq_info[i].id = vport->base.chunks_info.rx_start_qid + i / 2;
+			create_cfgq_info[i].type = IDPF_CTLQ_TYPE_CONFIG_RX;
+			create_cfgq_info[i].len = CPFL_CFGQ_RING_SIZE;
+			create_cfgq_info[i].buf_size = CPFL_CFGQ_BUFFER_SIZE;
+			memset(&create_cfgq_info[i].reg, 0, sizeof(struct idpf_ctlq_reg));
+			create_cfgq_info[i].reg.tail = vport->base.chunks_info.rx_qtail_start +
+				i / 2 * vport->base.chunks_info.rx_qtail_spacing;
+			if (!idpf_alloc_dma_mem(&adapter->base.hw, &create_cfgq_info[i].buf_mem,
+						buf_size)) {
+				err = -ENOMEM;
+				goto free_mem;
+			}
+		}
+		if (!idpf_alloc_dma_mem(&adapter->base.hw, &create_cfgq_info[i].ring_mem,
+					ring_size)) {
+			err = -ENOMEM;
+			goto free_mem;
+		}
+	}
+	return 0;
+free_mem:
+	for (i = 0; i < CPFL_CFGQ_NUM; i++) {
+		if (create_cfgq_info[i].ring_mem.va)
+			idpf_free_dma_mem(&adapter->base.hw, &create_cfgq_info[i].ring_mem);
+		if (create_cfgq_info[i].buf_mem.va)
+			idpf_free_dma_mem(&adapter->base.hw, &create_cfgq_info[i].buf_mem);
+	}
+	return err;
+}
+
+static int
+cpfl_init_ctrl_vport(struct cpfl_adapter_ext *adapter)
+{
+	struct cpfl_vport *vport = &adapter->ctrl_vport;
+	struct virtchnl2_create_vport *vport_info =
+		(struct virtchnl2_create_vport *)adapter->ctrl_vport_recv_info;
+	int i;
+
+	vport->itf.adapter = adapter;
+	vport->base.adapter = &adapter->base;
+	vport->base.vport_id = vport_info->vport_id;
+
+	for (i = 0; i < vport_info->chunks.num_chunks; i++) {
+		if (vport_info->chunks.chunks[i].type == VIRTCHNL2_QUEUE_TYPE_TX) {
+			vport->base.chunks_info.tx_start_qid =
+				vport_info->chunks.chunks[i].start_queue_id;
+			vport->base.chunks_info.tx_qtail_start =
+			vport_info->chunks.chunks[i].qtail_reg_start;
+			vport->base.chunks_info.tx_qtail_spacing =
+			vport_info->chunks.chunks[i].qtail_reg_spacing;
+		} else if (vport_info->chunks.chunks[i].type == VIRTCHNL2_QUEUE_TYPE_RX) {
+			vport->base.chunks_info.rx_start_qid =
+				vport_info->chunks.chunks[i].start_queue_id;
+			vport->base.chunks_info.rx_qtail_start =
+			vport_info->chunks.chunks[i].qtail_reg_start;
+			vport->base.chunks_info.rx_qtail_spacing =
+			vport_info->chunks.chunks[i].qtail_reg_spacing;
+		} else {
+			PMD_INIT_LOG(ERR, "Unsupported chunk type");
+			return -EINVAL;
+		}
+	}
+
+	return 0;
+}
+
+static void
+cpfl_ctrl_path_close(struct cpfl_adapter_ext *adapter)
+{
+	cpfl_stop_cfgqs(adapter);
+	cpfl_remove_cfgqs(adapter);
+	idpf_vc_vport_destroy(&adapter->ctrl_vport.base);
+}
+
+static int
+cpfl_ctrl_path_open(struct cpfl_adapter_ext *adapter)
+{
+	int ret;
+
+	ret = cpfl_vc_create_ctrl_vport(adapter);
+	if (ret) {
+		PMD_INIT_LOG(ERR, "Failed to create control vport");
+		return ret;
+	}
+
+	ret = cpfl_init_ctrl_vport(adapter);
+	if (ret) {
+		PMD_INIT_LOG(ERR, "Failed to init control vport");
+		goto err_init_ctrl_vport;
+	}
+
+	ret = cpfl_cfgq_setup(adapter);
+	if (ret) {
+		PMD_INIT_LOG(ERR, "Failed to setup control queues");
+		goto err_cfgq_setup;
+	}
+
+	ret = cpfl_add_cfgqs(adapter);
+	if (ret) {
+		PMD_INIT_LOG(ERR, "Failed to add control queues");
+		goto err_add_cfgq;
+	}
+
+	ret = cpfl_start_cfgqs(adapter);
+	if (ret) {
+		PMD_INIT_LOG(ERR, "Failed to start control queues");
+		goto err_start_cfgqs;
+	}
+
+	return 0;
+
+err_start_cfgqs:
+	cpfl_stop_cfgqs(adapter);
+err_add_cfgq:
+	cpfl_remove_cfgqs(adapter);
+err_cfgq_setup:
+err_init_ctrl_vport:
+	idpf_vc_vport_destroy(&adapter->ctrl_vport.base);
+
+	return ret;
+}
+
 static struct virtchnl2_get_capabilities req_caps = {
 	.csum_caps =
 	VIRTCHNL2_CAP_TX_CSUM_L3_IPV4          |
@@ -2060,6 +2320,12 @@ cpfl_adapter_ext_init(struct rte_pci_device *pci_dev, struct cpfl_adapter_ext *a
 		goto err_vports_alloc;
 	}
 
+	ret = cpfl_ctrl_path_open(adapter);
+	if (ret) {
+		PMD_INIT_LOG(ERR, "Failed to setup control path");
+		goto err_create_ctrl_vport;
+	}
+
 #ifdef RTE_HAS_JANSSON
 	ret = cpfl_flow_init(adapter);
 	if (ret) {
@@ -2076,7 +2342,10 @@ cpfl_adapter_ext_init(struct rte_pci_device *pci_dev, struct cpfl_adapter_ext *a
 
 #ifdef RTE_HAS_JANSSON
 err_flow_init:
+	cpfl_ctrl_path_close(adapter);
 #endif
+err_create_ctrl_vport:
+	rte_free(adapter->vports);
 err_vports_alloc:
 	rte_eal_alarm_cancel(cpfl_dev_alarm_handler, adapter);
 	cpfl_repr_allowlist_uninit(adapter);
@@ -2315,6 +2584,7 @@ cpfl_adapter_ext_deinit(struct cpfl_adapter_ext *adapter)
 #ifdef RTE_HAS_JANSSON
 	cpfl_flow_uninit(adapter);
 #endif
+	cpfl_ctrl_path_close(adapter);
 	rte_eal_alarm_cancel(cpfl_dev_alarm_handler, adapter);
 	cpfl_vport_map_uninit(adapter);
 	idpf_adapter_deinit(&adapter->base);
