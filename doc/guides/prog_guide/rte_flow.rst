@@ -1566,6 +1566,13 @@ Matches an InfiniBand base transport header in RoCE packet.
 
 - ``hdr``: InfiniBand base transport header definition (``rte_ib.h``).
 
+Item: ``PTYPE``
+^^^^^^^^^^^^^^^
+
+Matches the packet type as defined in rte_mbuf_ptype.
+
+- ``packet_type``: L2/L3/L4 and tunnel information.
+
 Actions
 ~~~~~~~
 

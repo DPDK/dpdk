@@ -3815,6 +3815,10 @@ This section lists supported pattern items and their attributes, if any.
 
 - ``send_to_kernel``: send packets to kernel.
 
+- ``ptype``: match the packet type (L2/L3/L4 and tunnel information).
+
+        - ``packet_type {unsigned}``: packet type.
+
 
 Actions list
 ^^^^^^^^^^^^

@@ -533,6 +533,8 @@ enum index {
 	ITEM_IB_BTH_PSN,
 	ITEM_IPV6_PUSH_REMOVE_EXT,
 	ITEM_IPV6_PUSH_REMOVE_EXT_TYPE,
+	ITEM_PTYPE,
+	ITEM_PTYPE_VALUE,
 
 	/* Validate/create actions. */
 	ACTIONS,
@@ -1578,6 +1580,7 @@ static const enum index next_item[] = {
 	ITEM_AGGR_AFFINITY,
 	ITEM_TX_QUEUE,
 	ITEM_IB_BTH,
+	ITEM_PTYPE,
 	END_SET,
 	ZERO,
 };
@@ -2093,6 +2096,12 @@ static const enum index item_ib_bth[] = {
 	ITEM_IB_BTH_PKEY,
 	ITEM_IB_BTH_DST_QPN,
 	ITEM_IB_BTH_PSN,
+	ITEM_NEXT,
+	ZERO,
+};
+
+static const enum index item_ptype[] = {
+	ITEM_PTYPE_VALUE,
 	ITEM_NEXT,
 	ZERO,
 };
@@ -5896,6 +5905,22 @@ static const struct token token_list[] = {
 		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_ib_bth,
 						 hdr.psn)),
 	},
+	[ITEM_PTYPE] = {
+		.name = "ptype",
+		.help = "match L2/L3/L4 and tunnel information",
+		.priv = PRIV_ITEM(PTYPE,
+				  sizeof(struct rte_flow_item_ptype)),
+		.next = NEXT(item_ptype),
+		.call = parse_vc,
+	},
+	[ITEM_PTYPE_VALUE] = {
+		.name = "packet_type",
+		.help = "packet type as defined in rte_mbuf_ptype",
+		.next = NEXT(item_ptype, NEXT_ENTRY(COMMON_UNSIGNED),
+			     item_param),
+		.args = ARGS(ARGS_ENTRY(struct rte_flow_item_ptype, packet_type)),
+	},
+
 	/* Validate/create actions. */
 	[ACTIONS] = {
 		.name = "actions",
@@ -12809,6 +12834,9 @@ flow_item_default_mask(const struct rte_flow_item *item)
 		break;
 	case RTE_FLOW_ITEM_TYPE_IB_BTH:
 		mask = &rte_flow_item_ib_bth_mask;
+		break;
+	case RTE_FLOW_ITEM_TYPE_PTYPE:
+		mask = &rte_flow_item_ptype_mask;
 		break;
 	default:
 		break;

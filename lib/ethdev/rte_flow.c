@@ -167,6 +167,7 @@ static const struct rte_flow_desc_data rte_flow_desc_item[] = {
 	MK_FLOW_ITEM(AGGR_AFFINITY, sizeof(struct rte_flow_item_aggr_affinity)),
 	MK_FLOW_ITEM(TX_QUEUE, sizeof(struct rte_flow_item_tx_queue)),
 	MK_FLOW_ITEM(IB_BTH, sizeof(struct rte_flow_item_ib_bth)),
+	MK_FLOW_ITEM(PTYPE, sizeof(struct rte_flow_item_ptype)),
 };
 
 /** Generate flow_action[] entry. */

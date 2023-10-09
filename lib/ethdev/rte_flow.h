@@ -694,6 +694,14 @@ enum rte_flow_item_type {
 	 * @see struct rte_flow_item_ib_bth.
 	 */
 	RTE_FLOW_ITEM_TYPE_IB_BTH,
+
+	/**
+	 * Matches the packet type as defined in rte_mbuf_ptype.
+	 *
+	 * See struct rte_flow_item_ptype.
+	 *
+	 */
+	RTE_FLOW_ITEM_TYPE_PTYPE,
 };
 
 /**
@@ -2306,6 +2314,23 @@ struct rte_flow_item_tx_queue {
 #ifndef __cplusplus
 static const struct rte_flow_item_tx_queue rte_flow_item_tx_queue_mask = {
 	.tx_queue = 0xffff,
+};
+#endif
+
+/**
+ *
+ * RTE_FLOW_ITEM_TYPE_PTYPE
+ *
+ * Matches the packet type as defined in rte_mbuf_ptype.
+ */
+struct rte_flow_item_ptype {
+	uint32_t packet_type; /**< L2/L3/L4 and tunnel information. */
+};
+
+/** Default mask for RTE_FLOW_ITEM_TYPE_PTYPE. */
+#ifndef __cplusplus
+static const struct rte_flow_item_ptype rte_flow_item_ptype_mask = {
+	.packet_type = 0xffffffff,
 };
 #endif
 
