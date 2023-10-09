@@ -19,6 +19,7 @@ sources = files(
         'cpfl_vchnl.c',
         'cpfl_representor.c',
         'cpfl_controlq.c',
+        'cpfl_rules.c',
 )
 
 if arch_subdir == 'x86'
