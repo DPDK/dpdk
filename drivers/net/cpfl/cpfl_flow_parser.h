@@ -106,9 +106,79 @@ struct cpfl_flow_js_pr {
 	uint16_t actions_size;
 };
 
+/* Modification Rules Storage */
+/**
+ * The vxlan_encap action matches RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP
+ * and include a sequence of protocol headers defined in field protocols
+ * of data.
+ */
+struct cpfl_flow_js_mr_key_action_vxlan_encap {
+	enum rte_flow_item_type protocols[CPFL_FLOW_JS_PROTO_SIZE];
+	int proto_size;
+};
+
+/* A set of modification rte_flow_action_xxx objects can be defined as a type / data pair. */
+struct cpfl_flow_js_mr_key_action {
+	enum rte_flow_action_type type;
+	union {
+		struct cpfl_flow_js_mr_key_action_vxlan_encap encap;
+	};
+};
+
+struct cpfl_flow_js_mr_key {
+	struct cpfl_flow_js_mr_key_action *actions;
+	int actions_size;
+};
+
+struct cpfl_flow_js_mr_layout {
+	int index;				/* links to the element of the actions array */
+	char hint[CPFL_FLOW_JSON_STR_SIZE_MAX]; /* where the data to copy from */
+	uint16_t offset;			/* the start byte of the data to copy from */
+	uint16_t size; /*  bytes of the data to be copied to the memory region */
+};
+
+/** For mod data, besides the profile ID, a layout array defines a set of hints that helps
+ * driver composing the MOD memory region when the action need to insert/update some packet
+ * data from user input.
+ */
+struct cpfl_flow_js_mr_action_mod {
+	uint16_t prof;
+	uint16_t byte_len;
+	struct cpfl_flow_js_mr_layout *layout;
+	int layout_size;
+};
+
+enum cpfl_flow_mr_action_type {
+	CPFL_JS_MR_ACTION_TYPE_MOD,
+};
+
+/** Currently, the type can only be mod.
+ *
+ * For mod data, besides the profile ID, a layout array defines a set
+ * of hints that helps driver composing the MOD memory region when the
+ * action need to insert/update some packet data from user input.
+ */
+struct cpfl_flow_js_mr_action {
+	enum cpfl_flow_mr_action_type type;
+	union {
+		struct cpfl_flow_js_mr_action_mod mod;
+	};
+};
+
+/**
+ * This structure defines a set of rules that direct PMD to parse rte_flow modification
+ * actions. Each rule be described by a pair of key and action
+ */
+struct cpfl_flow_js_mr {
+	struct cpfl_flow_js_mr_key key;
+	struct cpfl_flow_js_mr_action action;
+};
+
 struct cpfl_flow_js_parser {
 	struct cpfl_flow_js_pr *patterns;
 	int pr_size;
+	struct cpfl_flow_js_mr *modifications;
+	int mr_size;
 };
 
 /* Pattern Rules */
@@ -126,6 +196,33 @@ struct cpfl_flow_pr_action {
 	};
 };
 
+/* Modification Rules */
+struct cpfl_flow_mr_key_action_vxlan_encap {
+	enum rte_flow_item_type protocols[CPFL_FLOW_JS_PROTO_SIZE];
+	uint16_t proto_size;
+	const struct rte_flow_action *action;
+};
+
+struct cpfl_flow_mr_key_action {
+	enum rte_flow_action_type type;
+	union {
+		struct cpfl_flow_mr_key_action_vxlan_encap encap;
+	};
+};
+
+struct cpfl_flow_mr_action_mod {
+	uint16_t prof;
+	uint16_t byte_len;
+	uint8_t data[256];
+};
+
+struct cpfl_flow_mr_action {
+	enum cpfl_flow_mr_action_type type;
+	union {
+		struct cpfl_flow_mr_action_mod mod;
+	};
+};
+
 int cpfl_parser_create(struct cpfl_flow_js_parser **parser, const char *filename);
 int cpfl_parser_destroy(struct cpfl_flow_js_parser *parser);
 int cpfl_flow_parse_items(struct cpfl_itf *itf,
@@ -133,6 +230,9 @@ int cpfl_flow_parse_items(struct cpfl_itf *itf,
 			  const struct rte_flow_item *items,
 			  const struct rte_flow_attr *attr,
 			  struct cpfl_flow_pr_action *pr_action);
+int cpfl_flow_parse_actions(struct cpfl_flow_js_parser *parser,
+			    const struct rte_flow_action *actions,
+			    struct cpfl_flow_mr_action *mr_action);
 bool cpfl_metadata_write_port_id(struct cpfl_itf *itf);
 bool cpfl_metadata_write_vsi(struct cpfl_itf *itf);
 bool cpfl_metadata_write_targetvsi(struct cpfl_itf *itf);
