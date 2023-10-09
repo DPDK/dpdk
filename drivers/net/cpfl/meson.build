@@ -44,6 +44,7 @@ endif
 if dpdk_conf.has('RTE_HAS_JANSSON')
     sources += files(
             'cpfl_flow.c',
+            'cpfl_flow_engine_fxp.c',
             'cpfl_flow_parser.c',
             'cpfl_fxp_rule.c',
     )

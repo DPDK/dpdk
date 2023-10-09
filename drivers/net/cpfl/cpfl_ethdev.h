@@ -85,6 +85,8 @@
 
 #define CPFL_RX_CFGQ_NUM	4
 #define CPFL_TX_CFGQ_NUM	4
+#define CPFL_FPCP_CFGQ_TX	0
+#define CPFL_FPCP_CFGQ_RX	1
 #define CPFL_CFGQ_NUM		8
 
 /* bit[15:14] type
@@ -219,6 +221,8 @@ struct cpfl_adapter_ext {
 	struct rte_hash *repr_allowlist_hash;
 
 	struct cpfl_flow_js_parser *flow_parser;
+	struct rte_bitmap *mod_bm;
+	void *mod_bm_mem;
 
 	struct cpfl_metadata meta;
 
@@ -312,4 +316,27 @@ err:
 	return CPFL_INVALID_HW_ID;
 }
 
+static inline struct cpfl_itf *
+cpfl_get_itf_by_port_id(uint16_t port_id)
+{
+	struct rte_eth_dev *dev;
+
+	if (port_id >= RTE_MAX_ETHPORTS) {
+		PMD_DRV_LOG(ERR, "port_id should be < %d.", RTE_MAX_ETHPORTS);
+		return NULL;
+	}
+
+	dev = &rte_eth_devices[port_id];
+	if (dev->state == RTE_ETH_DEV_UNUSED) {
+		PMD_DRV_LOG(ERR, "eth_dev[%d] is unused.", port_id);
+		return NULL;
+	}
+
+	if (!dev->data) {
+		PMD_DRV_LOG(ERR, "eth_dev[%d] data not be allocated.", port_id);
+		return NULL;
+	}
+
+	return CPFL_DEV_TO_ITF(dev);
+}
 #endif /* _CPFL_ETHDEV_H_ */

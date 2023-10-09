@@ -130,6 +130,7 @@ New Features
 * **Updated Intel cpfl driver.**
 
   * Added support for port representor.
+  * Added support for flow offload.
 
 * **Updated Intel iavf driver.**
 
