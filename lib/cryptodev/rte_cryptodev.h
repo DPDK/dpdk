@@ -181,6 +181,12 @@ struct rte_cryptodev_asymmetric_xform_capability {
 		/**< Range of modulus length supported by modulus based xform.
 		 * Value 0 mean implementation default
 		 */
+
+		uint8_t internal_rng;
+		/**< Availability of random number generator for Elliptic curve based xform.
+		 * Value 0 means unavailable, and application should pass the required
+		 * random value. Otherwise, PMD would internally compute the random number.
+		 */
 	};
 
 	uint64_t hash_algos;

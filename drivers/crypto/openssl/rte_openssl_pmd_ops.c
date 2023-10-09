@@ -604,6 +604,8 @@ static const struct rte_cryptodev_capabilities openssl_pmd_capabilities[] = {
 				 (1 << RTE_CRYPTO_ASYM_OP_VERIFY) |
 				 (1 << RTE_CRYPTO_ASYM_OP_ENCRYPT) |
 				 (1 << RTE_CRYPTO_ASYM_OP_DECRYPT)),
+				{.internal_rng = 1
+				}
 			}
 		}
 		}
