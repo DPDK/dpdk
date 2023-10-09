@@ -133,6 +133,7 @@ const struct feature_entry rte_cpu_feature_table[] = {
 
 	FEAT_DEF(LAHF_SAHF, 0x80000001, 0, RTE_REG_ECX,  0)
 	FEAT_DEF(LZCNT, 0x80000001, 0, RTE_REG_ECX,  4)
+	FEAT_DEF(MONITORX, 0x80000001, 0, RTE_REG_ECX,  29)
 
 	FEAT_DEF(SYSCALL, 0x80000001, 0, RTE_REG_EDX, 11)
 	FEAT_DEF(XD, 0x80000001, 0, RTE_REG_EDX, 20)
@@ -195,5 +196,7 @@ rte_cpu_get_intrinsics_support(struct rte_cpu_intrinsics *intrinsics)
 		intrinsics->power_pause = 1;
 		if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_RTM))
 			intrinsics->power_monitor_multi = 1;
+	} else if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_MONITORX)) {
+		intrinsics->power_monitor = 1;
 	}
 }
