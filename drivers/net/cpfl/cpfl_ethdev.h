@@ -77,6 +77,11 @@
 #define CPFL_VPORT_LAN_PF	0
 #define CPFL_VPORT_LAN_VF	1
 
+#define CPFL_FLOW_FILE_LEN 100
+#define CPFL_INVALID_HW_ID	UINT16_MAX
+#define CPFL_META_CHUNK_LENGTH	1024
+#define CPFL_META_LENGTH	32
+
 /* bit[15:14] type
  * bit[13] host/accelerator core
  * bit[12] apf/cpf
@@ -99,6 +104,7 @@ struct cpfl_devargs {
 	uint16_t req_vport_nb;
 	uint8_t repr_args_num;
 	struct rte_eth_devargs repr_args[CPFL_REPR_ARG_NUM_MAX];
+	char flow_parser[CPFL_FLOW_FILE_LEN];
 };
 
 struct p2p_queue_chunks_info {
@@ -165,6 +171,20 @@ struct cpfl_repr {
 	bool func_up; /* If the represented function is up */
 };
 
+struct cpfl_metadata_chunk {
+	int type;
+	uint8_t data[CPFL_META_CHUNK_LENGTH];
+};
+
+/**
+ * It is driver's responsibility to simlulate a metadata buffer which
+ * can be used as data source to fill the key of a flow rule.
+ */
+struct cpfl_metadata {
+	int length;
+	struct cpfl_metadata_chunk chunks[CPFL_META_LENGTH];
+};
+
 struct cpfl_adapter_ext {
 	TAILQ_ENTRY(cpfl_adapter_ext) next;
 	struct idpf_adapter base;
@@ -185,6 +205,8 @@ struct cpfl_adapter_ext {
 
 	rte_spinlock_t repr_lock;
 	struct rte_hash *repr_allowlist_hash;
+
+	struct cpfl_metadata meta;
 };
 
 TAILQ_HEAD(cpfl_adapter_list, cpfl_adapter_ext);
@@ -210,5 +232,59 @@ int cpfl_cc_vport_info_get(struct cpfl_adapter_ext *adapter,
 	((struct cpfl_repr *)((dev)->data->dev_private))
 #define CPFL_DEV_TO_ITF(dev)				\
 	((struct cpfl_itf *)((dev)->data->dev_private))
+
+static inline uint16_t
+cpfl_get_port_id(struct cpfl_itf *itf)
+{
+	if (!itf)
+		return CPFL_INVALID_HW_ID;
+
+	if (itf->type == CPFL_ITF_TYPE_VPORT) {
+		struct cpfl_vport *vport = (void *)itf;
+
+		return vport->base.devarg_id;
+	}
+
+	return CPFL_INVALID_HW_ID;
+}
+
+static inline uint16_t
+cpfl_get_vsi_id(struct cpfl_itf *itf)
+{
+	struct cpfl_adapter_ext *adapter = itf->adapter;
+	struct cpfl_vport_info *info;
+	uint32_t vport_id;
+	int ret;
+	struct cpfl_vport_id vport_identity;
+
+	if (!itf)
+		return CPFL_INVALID_HW_ID;
+
+	if (itf->type == CPFL_ITF_TYPE_REPRESENTOR) {
+		struct cpfl_repr *repr = (void *)itf;
+
+		return repr->vport_info->vport.info.vsi_id;
+	} else if (itf->type == CPFL_ITF_TYPE_VPORT) {
+		vport_id = ((struct cpfl_vport *)itf)->base.vport_id;
+
+		vport_identity.func_type = CPCHNL2_FUNC_TYPE_PF;
+		/* host: CPFL_HOST0_CPF_ID, acc: CPFL_ACC_CPF_ID */
+		vport_identity.pf_id = CPFL_ACC_CPF_ID;
+		vport_identity.vf_id = 0;
+		vport_identity.vport_id = vport_id;
+		ret = rte_hash_lookup_data(adapter->vport_map_hash,
+					   &vport_identity,
+					   (void **)&info);
+		if (ret < 0) {
+			PMD_DRV_LOG(ERR, "vport id not exist");
+			goto err;
+		}
+
+		return info->vport.info.vsi_id;
+	}
+
+err:
+	return CPFL_INVALID_HW_ID;
+}
 
 #endif /* _CPFL_ETHDEV_H_ */

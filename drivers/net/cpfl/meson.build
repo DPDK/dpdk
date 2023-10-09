@@ -38,3 +38,10 @@ if arch_subdir == 'x86'
         cflags += ['-DCC_AVX512_SUPPORT']
     endif
 endif
+
+if dpdk_conf.has('RTE_HAS_JANSSON')
+    sources += files(
+            'cpfl_flow_parser.c',
+    )
+    ext_deps += jansson_dep
+endif

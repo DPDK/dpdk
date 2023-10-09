@@ -128,12 +128,32 @@ Runtime Configuration
 
     -a BDF,representor=vf[0-3],representor=c1pf1
 
+- ``flow_parser`` (default ``not enabled``)
+
+  The cpfl PMD supports utilizing a JSON config file to translate rte_flow tokens into
+  low-level hardware resources.
+
+  The JSON configuration file is provided by the hardware vendor and is intended to work
+  exclusively with a specific P4 pipeline configuration, which must be compiled and programmed
+  into the hardware.
+
+  The format of the JSON file strictly follows the internal specifications of the hardware
+  vendor and is not meant to be modified directly by users.
+
+  Using the ``devargs`` option ``flow_parser`` the user can specify the path
+  of a json file, for example::
+
+    -a ca:00.0,flow_parser="refpkg.json"
+
+  Then the PMD will load json file for device ``ca:00.0``.
+  The parameter is optional.
 
 Driver compilation and testing
 ------------------------------
 
 Refer to the document :doc:`build_and_test` for details.
 
+The jansson library must be installed to use rte_flow.
 
 Features
 --------
@@ -164,3 +184,21 @@ Hairpin queue
 E2100 Series can loopback packets from RX port to TX port.
 This feature is called port-to-port or hairpin.
 Currently, the PMD only supports single port hairpin.
+
+Flow offload
+~~~~~~~~~~~~
+
+PMD uses a json file to direct CPF PMD to parse rte_flow tokens into
+low level hardware resources.
+
+- Required Libraries
+
+  * jansson
+
+    * For Ubuntu, it can be installed using `apt install libjansson-dev`
+
+- run testpmd with the json file
+
+   .. code-block:: console
+
+      dpdk-testpmd -c 0x3 -n 4 -a 0000:af:00.6,vport=[0],flow_parser="refpkg.json" -- -i
