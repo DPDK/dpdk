@@ -188,6 +188,11 @@ New Features
 
   * Added SM2 algorithm support in asymmetric crypto operations.
 
+* **Updated Intel vRAN Boost baseband driver.**
+
+  * Added support for the new Intel vRAN Boost v2 device variant (GNR-D)
+    within the unified driver.
+
 * **Added new eventdev Ethernet Rx adapter create API.**
 
   Added new function ``rte_event_eth_rx_adapter_create_ext_with_params()``

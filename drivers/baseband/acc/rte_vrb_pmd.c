@@ -37,6 +37,15 @@ vrb1_queue_offset(bool pf_device, uint8_t vf_id, uint8_t qgrp_id, uint16_t aq_id
 		return ((qgrp_id << 7) + (aq_id << 3) + VRB1_VfQmgrIngressAq);
 }
 
+static inline uint32_t
+vrb2_queue_offset(bool pf_device, uint8_t vf_id, uint8_t qgrp_id, uint16_t aq_id)
+{
+	if (pf_device)
+		return ((vf_id << 14) + (qgrp_id << 9) + (aq_id << 3) + VRB2_PfQmgrIngressAq);
+	else
+		return ((qgrp_id << 9) + (aq_id << 3) + VRB2_VfQmgrIngressAq);
+}
+
 enum {UL_4G = 0, UL_5G, DL_4G, DL_5G, FFT, MLD, NUM_ACC};
 
 /* Return the accelerator enum for a Queue Group Index. */
@@ -228,7 +237,7 @@ fetch_acc_config(struct rte_bbdev *dev)
 	struct acc_device *d = dev->data->dev_private;
 	struct rte_acc_conf *acc_conf = &d->acc_conf;
 	uint8_t acc, qg;
-	uint32_t reg_aq, reg_len0, reg_len1, reg0, reg1;
+	uint32_t reg_aq, reg_len0, reg_len1, reg_len2, reg_len3, reg0, reg1, reg2, reg3;
 	uint32_t reg_mode, idx;
 	struct rte_acc_queue_topology *q_top = NULL;
 	int qman_func_id[VRB_NUM_ACCS] = {ACC_ACCMAP_0, ACC_ACCMAP_1,
@@ -252,32 +261,81 @@ fetch_acc_config(struct rte_bbdev *dev)
 	acc_conf->num_vf_bundles = 1;
 	initQTop(acc_conf);
 
-	reg0 = acc_reg_read(d, d->reg_addr->qman_group_func);
-	reg1 = acc_reg_read(d, d->reg_addr->qman_group_func + 4);
-	for (qg = 0; qg < d->num_qgroups; qg++) {
-		reg_aq = acc_reg_read(d, d->queue_offset(d->pf_device, 0, qg, 0));
-		if (reg_aq & ACC_QUEUE_ENABLE) {
-			if (qg < ACC_NUM_QGRPS_PER_WORD)
-				idx = (reg0 >> (qg * 4)) & 0x7;
-			else
-				idx = (reg1 >> ((qg - ACC_NUM_QGRPS_PER_WORD) * 4)) & 0x7;
-			if (idx < VRB1_NUM_ACCS) {
-				acc = qman_func_id[idx];
-				updateQtop(acc, qg, acc_conf, d);
+	if (d->device_variant == VRB1_VARIANT) {
+		reg0 = acc_reg_read(d, d->reg_addr->qman_group_func);
+		reg1 = acc_reg_read(d, d->reg_addr->qman_group_func + 4);
+		for (qg = 0; qg < d->num_qgroups; qg++) {
+			reg_aq = acc_reg_read(d, d->queue_offset(d->pf_device, 0, qg, 0));
+			if (reg_aq & ACC_QUEUE_ENABLE) {
+				if (qg < ACC_NUM_QGRPS_PER_WORD)
+					idx = (reg0 >> (qg * 4)) & 0x7;
+				else
+					idx = (reg1 >> ((qg - ACC_NUM_QGRPS_PER_WORD) * 4)) & 0x7;
+				if (idx < VRB1_NUM_ACCS) {
+					acc = qman_func_id[idx];
+					updateQtop(acc, qg, acc_conf, d);
+				}
 			}
 		}
-	}
 
-	/* Check the depth of the AQs. */
-	reg_len0 = acc_reg_read(d, d->reg_addr->depth_log0_offset);
-	reg_len1 = acc_reg_read(d, d->reg_addr->depth_log1_offset);
-	for (acc = 0; acc < NUM_ACC; acc++) {
-		qtopFromAcc(&q_top, acc, acc_conf);
-		if (q_top->first_qgroup_index < ACC_NUM_QGRPS_PER_WORD)
-			q_top->aq_depth_log2 = (reg_len0 >> (q_top->first_qgroup_index * 4)) & 0xF;
-		else
-			q_top->aq_depth_log2 = (reg_len1 >> ((q_top->first_qgroup_index -
-					ACC_NUM_QGRPS_PER_WORD) * 4)) & 0xF;
+		/* Check the depth of the AQs. */
+		reg_len0 = acc_reg_read(d, d->reg_addr->depth_log0_offset);
+		reg_len1 = acc_reg_read(d, d->reg_addr->depth_log1_offset);
+		for (acc = 0; acc < NUM_ACC; acc++) {
+			qtopFromAcc(&q_top, acc, acc_conf);
+			if (q_top->first_qgroup_index < ACC_NUM_QGRPS_PER_WORD)
+				q_top->aq_depth_log2 =
+						(reg_len0 >> (q_top->first_qgroup_index * 4)) & 0xF;
+			else
+				q_top->aq_depth_log2 = (reg_len1 >> ((q_top->first_qgroup_index -
+						ACC_NUM_QGRPS_PER_WORD) * 4)) & 0xF;
+		}
+	} else {
+		reg0 = acc_reg_read(d, d->reg_addr->qman_group_func);
+		reg1 = acc_reg_read(d, d->reg_addr->qman_group_func + 4);
+		reg2 = acc_reg_read(d, d->reg_addr->qman_group_func + 8);
+		reg3 = acc_reg_read(d, d->reg_addr->qman_group_func + 12);
+		/* printf("Debug Function %08x %08x %08x %08x\n", reg0, reg1, reg2, reg3);*/
+		for (qg = 0; qg < VRB2_NUM_QGRPS; qg++) {
+			reg_aq = acc_reg_read(d, vrb2_queue_offset(d->pf_device, 0, qg, 0));
+			if (reg_aq & ACC_QUEUE_ENABLE) {
+				/* printf("Qg enabled %d %x\n", qg, reg_aq);*/
+				if (qg / ACC_NUM_QGRPS_PER_WORD == 0)
+					idx = (reg0 >> ((qg % ACC_NUM_QGRPS_PER_WORD) * 4)) & 0x7;
+				else if (qg / ACC_NUM_QGRPS_PER_WORD == 1)
+					idx = (reg1 >> ((qg % ACC_NUM_QGRPS_PER_WORD) * 4)) & 0x7;
+				else if (qg / ACC_NUM_QGRPS_PER_WORD == 2)
+					idx = (reg2 >> ((qg % ACC_NUM_QGRPS_PER_WORD) * 4)) & 0x7;
+				else
+					idx = (reg3 >> ((qg % ACC_NUM_QGRPS_PER_WORD) * 4)) & 0x7;
+				if (idx < VRB_NUM_ACCS) {
+					acc = qman_func_id[idx];
+					updateQtop(acc, qg, acc_conf, d);
+				}
+			}
+		}
+
+		/* Check the depth of the AQs. */
+		reg_len0 = acc_reg_read(d, d->reg_addr->depth_log0_offset);
+		reg_len1 = acc_reg_read(d, d->reg_addr->depth_log0_offset + 4);
+		reg_len2 = acc_reg_read(d, d->reg_addr->depth_log0_offset + 8);
+		reg_len3 = acc_reg_read(d, d->reg_addr->depth_log0_offset + 12);
+
+		for (acc = 0; acc < NUM_ACC; acc++) {
+			qtopFromAcc(&q_top, acc, acc_conf);
+			if (q_top->first_qgroup_index / ACC_NUM_QGRPS_PER_WORD == 0)
+				q_top->aq_depth_log2 = (reg_len0 >> ((q_top->first_qgroup_index %
+						ACC_NUM_QGRPS_PER_WORD) * 4)) & 0xF;
+			else if (q_top->first_qgroup_index / ACC_NUM_QGRPS_PER_WORD == 1)
+				q_top->aq_depth_log2 = (reg_len1 >> ((q_top->first_qgroup_index %
+						ACC_NUM_QGRPS_PER_WORD) * 4)) & 0xF;
+			else if (q_top->first_qgroup_index / ACC_NUM_QGRPS_PER_WORD == 2)
+				q_top->aq_depth_log2 = (reg_len2 >> ((q_top->first_qgroup_index %
+						ACC_NUM_QGRPS_PER_WORD) * 4)) & 0xF;
+			else
+				q_top->aq_depth_log2 = (reg_len3 >> ((q_top->first_qgroup_index %
+						ACC_NUM_QGRPS_PER_WORD) * 4)) & 0xF;
+		}
 	}
 
 	/* Read PF mode. */
@@ -469,7 +527,10 @@ allocate_info_ring(struct rte_bbdev *dev)
 	phys_low  = (uint32_t)(info_ring_iova);
 	acc_reg_write(d, d->reg_addr->info_ring_hi, phys_high);
 	acc_reg_write(d, d->reg_addr->info_ring_lo, phys_low);
-	acc_reg_write(d, d->reg_addr->info_ring_en, VRB1_REG_IRQ_EN_ALL);
+	if (d->device_variant == VRB1_VARIANT)
+		acc_reg_write(d, d->reg_addr->info_ring_en, VRB1_REG_IRQ_EN_ALL);
+	else
+		acc_reg_write(d, d->reg_addr->info_ring_en, VRB2_REG_IRQ_EN_ALL);
 	d->info_ring_head = (acc_reg_read(d, d->reg_addr->info_ring_ptr) &
 			0xFFF) / sizeof(union acc_info_ring_data);
 	return 0;
@@ -548,6 +609,10 @@ vrb_setup_queues(struct rte_bbdev *dev, uint16_t num_queues, int socket_id)
 	acc_reg_write(d, d->reg_addr->dma_ring_dl4g_lo, phys_low);
 	acc_reg_write(d, d->reg_addr->dma_ring_fft_hi, phys_high);
 	acc_reg_write(d, d->reg_addr->dma_ring_fft_lo, phys_low);
+	if (d->device_variant == VRB2_VARIANT) {
+		acc_reg_write(d, d->reg_addr->dma_ring_mld_hi, phys_high);
+		acc_reg_write(d, d->reg_addr->dma_ring_mld_lo, phys_low);
+	}
 	/*
 	 * Configure Ring Size to the max queue ring size
 	 * (used for wrapping purpose).
@@ -581,6 +646,10 @@ vrb_setup_queues(struct rte_bbdev *dev, uint16_t num_queues, int socket_id)
 	acc_reg_write(d, d->reg_addr->tail_ptrs_dl4g_lo, phys_low);
 	acc_reg_write(d, d->reg_addr->tail_ptrs_fft_hi, phys_high);
 	acc_reg_write(d, d->reg_addr->tail_ptrs_fft_lo, phys_low);
+	if (d->device_variant == VRB2_VARIANT) {
+		acc_reg_write(d, d->reg_addr->tail_ptrs_mld_hi, phys_high);
+		acc_reg_write(d, d->reg_addr->tail_ptrs_mld_lo, phys_low);
+	}
 
 	ret = allocate_info_ring(dev);
 	if (ret < 0) {
@@ -678,10 +747,17 @@ vrb_intr_enable(struct rte_bbdev *dev)
 			return ret;
 		}
 
-		if (acc_dev->pf_device)
-			max_queues = VRB1_MAX_PF_MSIX;
-		else
-			max_queues = VRB1_MAX_VF_MSIX;
+		if (d->device_variant == VRB1_VARIANT) {
+			if (acc_dev->pf_device)
+				max_queues = VRB1_MAX_PF_MSIX;
+			else
+				max_queues = VRB1_MAX_VF_MSIX;
+		} else {
+			if (acc_dev->pf_device)
+				max_queues = VRB2_MAX_PF_MSIX;
+			else
+				max_queues = VRB2_MAX_VF_MSIX;
+		}
 
 		if (rte_intr_efd_enable(dev->intr_handle, max_queues)) {
 			rte_bbdev_log(ERR, "Failed to create fds for %u queues",
@@ -1158,6 +1234,10 @@ vrb_dev_info_get(struct rte_bbdev *dev, struct rte_bbdev_driver_info *dev_info)
 		RTE_BBDEV_END_OF_CAPABILITIES_LIST()
 	};
 
+	static const struct rte_bbdev_op_cap vrb2_bbdev_capabilities[] = {
+		RTE_BBDEV_END_OF_CAPABILITIES_LIST()
+	};
+
 	static struct rte_bbdev_queue_conf default_queue_conf;
 	default_queue_conf.socket = dev->data->socket_id;
 	default_queue_conf.queue_size = ACC_MAX_QUEUE_DEPTH;
@@ -1202,7 +1282,10 @@ vrb_dev_info_get(struct rte_bbdev *dev, struct rte_bbdev_driver_info *dev_info)
 	dev_info->default_queue_conf = default_queue_conf;
 	dev_info->cpu_flag_reqs = NULL;
 	dev_info->min_alignment = 1;
-	dev_info->capabilities = vrb1_bbdev_capabilities;
+	if (d->device_variant == VRB1_VARIANT)
+		dev_info->capabilities = vrb1_bbdev_capabilities;
+	else
+		dev_info->capabilities = vrb2_bbdev_capabilities;
 	dev_info->harq_buffer_size = 0;
 
 	vrb_check_ir(d);
@@ -1251,6 +1334,9 @@ static struct rte_pci_id pci_id_vrb_pf_map[] = {
 	{
 		RTE_PCI_DEVICE(RTE_VRB1_VENDOR_ID, RTE_VRB1_PF_DEVICE_ID)
 	},
+	{
+		RTE_PCI_DEVICE(RTE_VRB2_VENDOR_ID, RTE_VRB2_PF_DEVICE_ID)
+	},
 	{.device_id = 0},
 };
 
@@ -1258,6 +1344,9 @@ static struct rte_pci_id pci_id_vrb_pf_map[] = {
 static struct rte_pci_id pci_id_vrb_vf_map[] = {
 	{
 		RTE_PCI_DEVICE(RTE_VRB1_VENDOR_ID, RTE_VRB1_VF_DEVICE_ID)
+	},
+	{
+		RTE_PCI_DEVICE(RTE_VRB2_VENDOR_ID, RTE_VRB2_VF_DEVICE_ID)
 	},
 	{.device_id = 0},
 };
@@ -3444,6 +3533,15 @@ vrb_bbdev_init(struct rte_bbdev *dev, struct rte_pci_driver *drv)
 			d->reg_addr = &vrb1_pf_reg_addr;
 		else
 			d->reg_addr = &vrb1_vf_reg_addr;
+	} else {
+		d->device_variant = VRB2_VARIANT;
+		d->queue_offset = vrb2_queue_offset;
+		d->num_qgroups = VRB2_NUM_QGRPS;
+		d->num_aqs = VRB2_NUM_AQS;
+		if (d->pf_device)
+			d->reg_addr = &vrb2_pf_reg_addr;
+		else
+			d->reg_addr = &vrb2_vf_reg_addr;
 	}
 
 	rte_bbdev_log_debug("Init device %s [%s] @ vaddr %p paddr %#"PRIx64"",
