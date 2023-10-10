@@ -5,6 +5,7 @@
 #ifndef _ARK_EXT_H_
 #define _ARK_EXT_H_
 
+#include <rte_mbuf.h>
 #include <ethdev_driver.h>
 
 /* The following section lists function prototypes for Arkville's
@@ -15,6 +16,14 @@
  * section are optional.
  * See documentation for compiling and use of extensions.
  */
+
+/* private data optionally attached to mempool for rx */
+struct rte_pmd_ark_lmbuf_mempool_priv {
+	struct rte_pktmbuf_pool_private pool_private;
+	char cookie[4];
+	uint32_t dataroom;
+};
+#define ARK_MEMPOOL_COOKIE "ARK1"
 
 /**
  * Extension prototype, required implementation if extensions are used.

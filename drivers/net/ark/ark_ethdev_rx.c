@@ -9,6 +9,7 @@
 #include "ark_logs.h"
 #include "ark_mpu.h"
 #include "ark_udm.h"
+#include "ark_ext.h"
 
 #define ARK_RX_META_SIZE 32
 #define ARK_RX_META_OFFSET (RTE_PKTMBUF_HEADROOM - ARK_RX_META_SIZE)
@@ -166,6 +167,13 @@ eth_ark_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	queue->mb_pool = mb_pool;
 	queue->dataroom = rte_pktmbuf_data_room_size(mb_pool) -
 		RTE_PKTMBUF_HEADROOM;
+
+	/* Check pool's private data to confirm pool structure */
+	if (mb_pool->private_data_size != 0) {
+		struct rte_pmd_ark_lmbuf_mempool_priv *pool_priv = rte_mempool_get_priv(mb_pool);
+		if (strncmp(pool_priv->cookie, ARK_MEMPOOL_COOKIE, sizeof(pool_priv->cookie)) == 0)
+			queue->dataroom = pool_priv->dataroom;
+	}
 	queue->headroom = RTE_PKTMBUF_HEADROOM;
 	queue->phys_qid = qidx;
 	queue->queue_index = queue_idx;

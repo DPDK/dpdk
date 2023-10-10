@@ -334,6 +334,7 @@ with Arkville releases 21.05, 21.08 and 21.11. LTS versions of DPDK remain
 compatible with the corresponding Arkville version.  If other combinations
 are required, please contact Atomic Rules support.
 
+* DPDK 23.11 requires Arkville 23.11.
 * DPDK 22.07 requires Arkville 22.07.
 * DPDK 22.03 requires Arkville 22.03.
 * DPDK 21.05 requires Arkville 21.05.
