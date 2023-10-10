@@ -18,6 +18,7 @@
 #define ACC_DMA_BLKID_OUT_HARQ      3
 #define ACC_DMA_BLKID_IN_HARQ       3
 #define ACC_DMA_BLKID_IN_MLD_R      3
+#define ACC_DMA_BLKID_DEWIN_IN      3
 
 /* Values used in filling in decode FCWs */
 #define ACC_FCW_TD_VER              1
@@ -103,6 +104,9 @@
 #define ACC_MAX_NUM_QGRPS              32
 #define ACC_RING_SIZE_GRANULARITY      64
 #define ACC_MAX_FCW_SIZE              128
+#define ACC_IQ_SIZE                    4
+
+#define ACC_FCW_FFT_BLEN_3             28
 
 /* Constants from K0 computation from 3GPP 38.212 Table 5.4.2.1-2 */
 #define ACC_N_ZC_1 66 /* N = 66 Zc for BG 1 */
@@ -132,6 +136,17 @@
 #define ACC_LIM_21 14 /* 0.21 */
 #define ACC_LIM_31 20 /* 0.31 */
 #define ACC_MAX_E (128 * 1024 - 2)
+#define ACC_MAX_CS 12
+
+#define ACC100_VARIANT          0
+#define VRB1_VARIANT		2
+#define VRB2_VARIANT		3
+
+/* Queue Index Hierarchy */
+#define VRB1_GRP_ID_SHIFT    10
+#define VRB1_VF_ID_SHIFT     4
+#define VRB2_GRP_ID_SHIFT    12
+#define VRB2_VF_ID_SHIFT     6
 
 #define ACC_MAX_FFT_WIN      16
 
@@ -334,6 +349,37 @@ struct __rte_packed acc_fcw_fft {
 		res:19;
 };
 
+/* FFT Frame Control Word. */
+struct __rte_packed acc_fcw_fft_3 {
+	uint32_t in_frame_size:16,
+		leading_pad_size:16;
+	uint32_t out_frame_size:16,
+		leading_depad_size:16;
+	uint32_t cs_window_sel;
+	uint32_t cs_window_sel2:16,
+		cs_enable_bmap:16;
+	uint32_t num_antennas:8,
+		idft_size:8,
+		dft_size:8,
+		cs_offset:8;
+	uint32_t idft_shift:8,
+		dft_shift:8,
+		cs_multiplier:16;
+	uint32_t bypass:2,
+		fp16_in:1,
+		fp16_out:1,
+		exp_adj:4,
+		power_shift:4,
+		power_en:1,
+		enable_dewin:1,
+		freq_resample_mode:2,
+		depad_output_size:16;
+	uint16_t cs_theta_0[ACC_MAX_CS];
+	uint32_t cs_theta_d[ACC_MAX_CS];
+	int8_t cs_time_offset[ACC_MAX_CS];
+};
+
+
 /* MLD-TS Frame Control Word */
 struct __rte_packed acc_fcw_mldts {
 	uint32_t fcw_version:4,
@@ -475,14 +521,14 @@ union acc_info_ring_data {
 		uint16_t valid: 1;
 	};
 	struct {
-		uint32_t aq_id_3: 6;
-		uint32_t qg_id_3: 5;
-		uint32_t vf_id_3: 6;
-		uint32_t int_nb_3: 6;
-		uint32_t msi_0_3: 1;
-		uint32_t vf2pf_3: 6;
-		uint32_t loop_3: 1;
-		uint32_t valid_3: 1;
+		uint32_t aq_id_vrb2: 6;
+		uint32_t qg_id_vrb2: 5;
+		uint32_t vf_id_vrb2: 6;
+		uint32_t int_nb_vrb2: 6;
+		uint32_t msi_0_vrb2: 1;
+		uint32_t vf2pf_vrb2: 6;
+		uint32_t loop_vrb2: 1;
+		uint32_t valid_vrb2: 1;
 	};
 } __rte_packed;
 
@@ -763,22 +809,114 @@ alloc_sw_rings_min_mem(struct rte_bbdev *dev, struct acc_device *d,
 	free_base_addresses(base_addrs, i);
 }
 
+/* Wrapper to provide VF index from ring data. */
+static inline uint16_t
+vf_from_ring(const union acc_info_ring_data ring_data, uint16_t device_variant)
+{
+	if (device_variant == VRB2_VARIANT)
+		return ring_data.vf_id_vrb2;
+	else
+		return ring_data.vf_id;
+}
+
+/* Wrapper to provide QG index from ring data. */
+static inline uint16_t
+qg_from_ring(const union acc_info_ring_data ring_data, uint16_t device_variant)
+{
+	if (device_variant == VRB2_VARIANT)
+		return ring_data.qg_id_vrb2;
+	else
+		return ring_data.qg_id;
+}
+
+/* Wrapper to provide AQ index from ring data. */
+static inline uint16_t
+aq_from_ring(const union acc_info_ring_data ring_data, uint16_t device_variant)
+{
+	if (device_variant == VRB2_VARIANT)
+		return ring_data.aq_id_vrb2;
+	else
+		return ring_data.aq_id;
+}
+
+/* Wrapper to provide int index from ring data. */
+static inline uint16_t
+int_from_ring(const union acc_info_ring_data ring_data, uint16_t device_variant)
+{
+	if (device_variant == VRB2_VARIANT)
+		return ring_data.int_nb_vrb2;
+	else
+		return ring_data.int_nb;
+}
+
+/* Wrapper to provide queue index from group and aq index. */
+static inline int
+queue_index(uint16_t group_idx, uint16_t aq_idx, uint16_t device_variant)
+{
+	if (device_variant == VRB2_VARIANT)
+		return (group_idx << VRB2_GRP_ID_SHIFT) + aq_idx;
+	else
+		return (group_idx << VRB1_GRP_ID_SHIFT) + aq_idx;
+}
+
+/* Wrapper to provide queue group from queue index. */
+static inline int
+qg_from_q(uint32_t q_idx, uint16_t device_variant)
+{
+	if (device_variant == VRB2_VARIANT)
+		return (q_idx >> VRB2_GRP_ID_SHIFT) & 0x1F;
+	else
+		return (q_idx >> VRB1_GRP_ID_SHIFT) & 0xF;
+}
+
+/* Wrapper to provide vf from queue index. */
+static inline int32_t
+vf_from_q(uint32_t q_idx, uint16_t device_variant)
+{
+	if (device_variant == VRB2_VARIANT)
+		return (q_idx >> VRB2_VF_ID_SHIFT)  & 0x3F;
+	else
+		return (q_idx >> VRB1_VF_ID_SHIFT)  & 0x3F;
+}
+
+/* Wrapper to provide aq index from queue index. */
+static inline int32_t
+aq_from_q(uint32_t q_idx, uint16_t device_variant)
+{
+	if (device_variant == VRB2_VARIANT)
+		return q_idx & 0x3F;
+	else
+		return q_idx & 0xF;
+}
+
+/* Wrapper to set VF index in ring data. */
+static inline int32_t
+set_vf_in_ring(volatile union acc_info_ring_data *ring_data,
+		uint16_t device_variant, uint16_t value)
+{
+	if (device_variant == VRB2_VARIANT)
+		return ring_data->vf_id_vrb2 = value;
+	else
+		return ring_data->vf_id = value;
+}
+
 /*
  * Find queue_id of a device queue based on details from the Info Ring.
  * If a queue isn't found UINT16_MAX is returned.
  */
 static inline uint16_t
-get_queue_id_from_ring_info(struct rte_bbdev_data *data,
-		const union acc_info_ring_data ring_data)
+get_queue_id_from_ring_info(struct rte_bbdev_data *data, const union acc_info_ring_data ring_data)
 {
 	uint16_t queue_id;
+	struct acc_queue *acc_q;
+	struct acc_device *d = data->dev_private;
 
 	for (queue_id = 0; queue_id < data->num_queues; ++queue_id) {
-		struct acc_queue *acc_q =
-				data->queues[queue_id].queue_private;
-		if (acc_q != NULL && acc_q->aq_id == ring_data.aq_id &&
-				acc_q->qgrp_id == ring_data.qg_id &&
-				acc_q->vf_id == ring_data.vf_id)
+		acc_q = data->queues[queue_id].queue_private;
+
+		if (acc_q != NULL && acc_q->aq_id == aq_from_ring(ring_data, d->device_variant) &&
+				acc_q->qgrp_id == qg_from_ring(ring_data, d->device_variant) &&
+				acc_q->vf_id == vf_from_ring(ring_data, d->device_variant))
 			return queue_id;
 	}
 
@@ -1438,6 +1576,13 @@ get_num_cbs_in_tb_ldpc_enc(struct rte_bbdev_op_ldpc_enc *ldpc_enc)
 		cbs_in_tb++;
 	}
 	return cbs_in_tb;
+}
+
+static inline void
+acc_reg_fast_write(struct acc_device *d, uint32_t offset, uint32_t value)
+{
+	void *reg_addr = RTE_PTR_ADD(d->mmio_base, offset);
+	mmio_write(reg_addr, value);
 }
 
 #endif /* _ACC_COMMON_H_ */

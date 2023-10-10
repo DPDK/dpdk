@@ -340,17 +340,18 @@ static inline void
 vrb_check_ir(struct acc_device *acc_dev)
 {
 	volatile union acc_info_ring_data *ring_data;
-	uint16_t info_ring_head = acc_dev->info_ring_head;
+	uint16_t info_ring_head = acc_dev->info_ring_head, int_nb;
 	if (unlikely(acc_dev->info_ring == NULL))
 		return;
 
 	ring_data = acc_dev->info_ring + (acc_dev->info_ring_head & ACC_INFO_RING_MASK);
 
 	while (ring_data->valid) {
-		if ((ring_data->int_nb < ACC_PF_INT_DMA_DL_DESC_IRQ) || (
-				ring_data->int_nb > ACC_PF_INT_DMA_MLD_DESC_IRQ)) {
+		int_nb = int_from_ring(*ring_data, acc_dev->device_variant);
+		if ((int_nb < ACC_PF_INT_DMA_DL_DESC_IRQ) || (
+				int_nb > ACC_PF_INT_DMA_MLD_DESC_IRQ)) {
 			rte_bbdev_log(WARNING, "InfoRing: ITR:%d Info:0x%x",
-					ring_data->int_nb, ring_data->detailed_info);
+					int_nb, ring_data->detailed_info);
 			/* Initialize Info Ring entry and move forward. */
 			ring_data->val = 0;
 		}
@@ -367,16 +368,21 @@ vrb_dev_interrupt_handler(void *cb_arg)
 	struct acc_device *acc_dev = dev->data->dev_private;
 	volatile union acc_info_ring_data *ring_data;
 	struct acc_deq_intr_details deq_intr_det;
+	uint16_t vf_id, aq_id, qg_id, int_nb;
 
 	ring_data = acc_dev->info_ring + (acc_dev->info_ring_head & ACC_INFO_RING_MASK);
 
 	while (ring_data->valid) {
+		vf_id = vf_from_ring(*ring_data, acc_dev->device_variant);
+		aq_id = aq_from_ring(*ring_data, acc_dev->device_variant);
+		qg_id = qg_from_ring(*ring_data, acc_dev->device_variant);
+		int_nb = int_from_ring(*ring_data, acc_dev->device_variant);
 		if (acc_dev->pf_device) {
 			rte_bbdev_log_debug(
-					"VRB1 PF Interrupt received, Info Ring data: 0x%x -> %d",
-					ring_data->val, ring_data->int_nb);
+					"PF Interrupt received, Info Ring data: 0x%x -> %d",
+					ring_data->val, int_nb);
 
-			switch (ring_data->int_nb) {
+			switch (int_nb) {
 			case ACC_PF_INT_DMA_DL_DESC_IRQ:
 			case ACC_PF_INT_DMA_UL_DESC_IRQ:
 			case ACC_PF_INT_DMA_FFT_DESC_IRQ:
@@ -388,9 +394,7 @@ vrb_dev_interrupt_handler(void *cb_arg)
 				if (deq_intr_det.queue_id == UINT16_MAX) {
 					rte_bbdev_log(ERR,
 							"Couldn't find queue: aq_id: %u, qg_id: %u, vf_id: %u",
-							ring_data->aq_id,
-							ring_data->qg_id,
-							ring_data->vf_id);
+							aq_id, qg_id, vf_id);
 					return;
 				}
 				rte_bbdev_pmd_callback_process(dev,
@@ -402,9 +406,9 @@ vrb_dev_interrupt_handler(void *cb_arg)
 			}
 		} else {
 			rte_bbdev_log_debug(
-					"VRB1 VF Interrupt received, Info Ring data: 0x%x\n",
+					"VRB VF Interrupt received, Info Ring data: 0x%x\n",
 					ring_data->val);
-			switch (ring_data->int_nb) {
+			switch (int_nb) {
 			case ACC_VF_INT_DMA_DL_DESC_IRQ:
 			case ACC_VF_INT_DMA_UL_DESC_IRQ:
 			case ACC_VF_INT_DMA_FFT_DESC_IRQ:
@@ -412,14 +416,13 @@ vrb_dev_interrupt_handler(void *cb_arg)
 			case ACC_VF_INT_DMA_DL5G_DESC_IRQ:
 			case ACC_VF_INT_DMA_MLD_DESC_IRQ:
 				/* VFs are not aware of their vf_id - it's set to 0.  */
-				ring_data->vf_id = 0;
+				set_vf_in_ring(ring_data, acc_dev->device_variant, 0);
 				deq_intr_det.queue_id = get_queue_id_from_ring_info(
 						dev->data, *ring_data);
 				if (deq_intr_det.queue_id == UINT16_MAX) {
 					rte_bbdev_log(ERR,
 							"Couldn't find queue: aq_id: %u, qg_id: %u",
-							ring_data->aq_id,
-							ring_data->qg_id);
+							aq_id, qg_id);
 					return;
 				}
 				rte_bbdev_pmd_callback_process(dev,
@@ -434,8 +437,7 @@ vrb_dev_interrupt_handler(void *cb_arg)
 		/* Initialize Info Ring entry and move forward. */
 		ring_data->val = 0;
 		++acc_dev->info_ring_head;
-		ring_data = acc_dev->info_ring +
-				(acc_dev->info_ring_head & ACC_INFO_RING_MASK);
+		ring_data = acc_dev->info_ring + (acc_dev->info_ring_head & ACC_INFO_RING_MASK);
 	}
 }
 
@@ -555,8 +557,7 @@ vrb_setup_queues(struct rte_bbdev *dev, uint16_t num_queues, int socket_id)
 
 	/* Configure tail pointer for use when SDONE enabled. */
 	if (d->tail_ptrs == NULL)
-		d->tail_ptrs = rte_zmalloc_socket(
-				dev->device->driver->name,
+		d->tail_ptrs = rte_zmalloc_socket(dev->device->driver->name,
 				VRB_MAX_QGRPS * VRB_MAX_AQS * sizeof(uint32_t),
 				RTE_CACHE_LINE_SIZE, socket_id);
 	if (d->tail_ptrs == NULL) {
@@ -782,7 +783,7 @@ vrb_find_free_queue_idx(struct rte_bbdev *dev,
 			/* Mark the Queue as assigned. */
 			d->q_assigned_bit_map[group_idx] |= (1ULL << aq_idx);
 			/* Report the AQ Index. */
-			return (group_idx << VRB1_GRP_ID_SHIFT) + aq_idx;
+			return queue_index(group_idx, aq_idx, d->device_variant);
 		}
 	}
 	rte_bbdev_log(INFO, "Failed to find free queue on %s, priority %u",
@@ -921,9 +922,10 @@ vrb_queue_setup(struct rte_bbdev *dev, uint16_t queue_id,
 		}
 	}
 
-	q->qgrp_id = (q_idx >> VRB1_GRP_ID_SHIFT) & 0xF;
-	q->vf_id = (q_idx >> VRB1_VF_ID_SHIFT)  & 0x3F;
-	q->aq_id = q_idx & 0xF;
+	q->qgrp_id = qg_from_q(q_idx, d->device_variant);
+	q->vf_id = vf_from_q(q_idx, d->device_variant);
+	q->aq_id = aq_from_q(q_idx, d->device_variant);
+
 	q->aq_depth = 0;
 	if (conf->op_type ==  RTE_BBDEV_OP_TURBO_DEC)
 		q->aq_depth = (1 << d->acc_conf.q_ul_4g.aq_depth_log2);
@@ -1311,7 +1313,7 @@ vrb_fcw_td_fill(const struct rte_bbdev_dec_op *op, struct acc_fcw_td *fcw)
 		fcw->bypass_teq = 0;
 	}
 
-	fcw->code_block_mode = 1; /* FIXME */
+	fcw->code_block_mode = 1;
 	fcw->turbo_crc_type = check_bit(op->turbo_dec.op_flags,
 			RTE_BBDEV_TURBO_CRC_TYPE_24B);
 
@@ -1471,8 +1473,8 @@ vrb_dma_desc_td_fill(struct rte_bbdev_dec_op *op,
 	if (op->turbo_dec.code_block_mode == RTE_BBDEV_TRANSPORT_BLOCK) {
 		k = op->turbo_dec.tb_params.k_pos;
 		e = (r < op->turbo_dec.tb_params.cab)
-			? op->turbo_dec.tb_params.ea
-			: op->turbo_dec.tb_params.eb;
+				? op->turbo_dec.tb_params.ea
+				: op->turbo_dec.tb_params.eb;
 	} else {
 		k = op->turbo_dec.cb_params.k;
 		e = op->turbo_dec.cb_params.e;
@@ -1726,7 +1728,7 @@ vrb_dma_desc_ld_update(struct rte_bbdev_dec_op *op,
 	desc->op_addr = op;
 }
 
-/* Enqueue one encode operations for device in CB mode */
+/* Enqueue one encode operations for device in CB mode. */
 static inline int
 enqueue_enc_one_op_cb(struct acc_queue *q, struct rte_bbdev_enc_op *op,
 		uint16_t total_enqueued_cbs)
@@ -2263,7 +2265,7 @@ vrb_enqueue_ldpc_dec_one_op_tb(struct acc_queue *q, struct rte_bbdev_dec_op *op,
 	return current_enqueued_cbs;
 }
 
-/* Enqueue one decode operations for device in TB mode */
+/* Enqueue one decode operations for device in TB mode. */
 static inline int
 enqueue_dec_one_op_tb(struct acc_queue *q, struct rte_bbdev_dec_op *op,
 		uint16_t total_enqueued_cbs, uint8_t cbs_in_tb)
