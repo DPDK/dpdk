@@ -87,6 +87,7 @@
 #define ACC_FCW_LE_BLEN                32
 #define ACC_FCW_LD_BLEN                36
 #define ACC_FCW_FFT_BLEN               28
+#define ACC_FCW_MLDTS_BLEN             32
 #define ACC_5GUL_SIZE_0                16
 #define ACC_5GUL_SIZE_1                40
 #define ACC_5GUL_OFFSET_0              36

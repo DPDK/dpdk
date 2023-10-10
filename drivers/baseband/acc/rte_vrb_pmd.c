@@ -37,7 +37,7 @@ vrb1_queue_offset(bool pf_device, uint8_t vf_id, uint8_t qgrp_id, uint16_t aq_id
 		return ((qgrp_id << 7) + (aq_id << 3) + VRB1_VfQmgrIngressAq);
 }
 
-enum {UL_4G = 0, UL_5G, DL_4G, DL_5G, FFT, NUM_ACC};
+enum {UL_4G = 0, UL_5G, DL_4G, DL_5G, FFT, MLD, NUM_ACC};
 
 /* Return the accelerator enum for a Queue Group Index. */
 static inline int
@@ -53,6 +53,7 @@ accFromQgid(int qg_idx, const struct rte_acc_conf *acc_conf)
 	NumQGroupsPerFn[DL_4G] = acc_conf->q_dl_4g.num_qgroups;
 	NumQGroupsPerFn[DL_5G] = acc_conf->q_dl_5g.num_qgroups;
 	NumQGroupsPerFn[FFT] = acc_conf->q_fft.num_qgroups;
+	NumQGroupsPerFn[MLD] = acc_conf->q_mld.num_qgroups;
 	for (acc = UL_4G;  acc < NUM_ACC; acc++)
 		for (qgIdx = 0; qgIdx < NumQGroupsPerFn[acc]; qgIdx++)
 			accQg[qgIndex++] = acc;
@@ -82,6 +83,9 @@ qtopFromAcc(struct rte_acc_queue_topology **qtop, int acc_enum, struct rte_acc_c
 		break;
 	case FFT:
 		p_qtop = &(acc_conf->q_fft);
+		break;
+	case MLD:
+		p_qtop = &(acc_conf->q_mld);
 		break;
 	default:
 		/* NOTREACHED. */
@@ -139,6 +143,9 @@ initQTop(struct rte_acc_conf *acc_conf)
 	acc_conf->q_fft.num_aqs_per_groups = 0;
 	acc_conf->q_fft.num_qgroups = 0;
 	acc_conf->q_fft.first_qgroup_index = -1;
+	acc_conf->q_mld.num_aqs_per_groups = 0;
+	acc_conf->q_mld.num_qgroups = 0;
+	acc_conf->q_mld.first_qgroup_index = -1;
 }
 
 static inline void
@@ -283,7 +290,7 @@ fetch_acc_config(struct rte_bbdev *dev)
 	}
 
 	rte_bbdev_log_debug(
-			"%s Config LLR SIGN IN/OUT %s %s QG %u %u %u %u %u AQ %u %u %u %u %u Len %u %u %u %u %u\n",
+			"%s Config LLR SIGN IN/OUT %s %s QG %u %u %u %u %u %u AQ %u %u %u %u %u %u Len %u %u %u %u %u %u\n",
 			(d->pf_device) ? "PF" : "VF",
 			(acc_conf->input_pos_llr_1_bit) ? "POS" : "NEG",
 			(acc_conf->output_pos_llr_1_bit) ? "POS" : "NEG",
@@ -292,16 +299,19 @@ fetch_acc_config(struct rte_bbdev *dev)
 			acc_conf->q_ul_5g.num_qgroups,
 			acc_conf->q_dl_5g.num_qgroups,
 			acc_conf->q_fft.num_qgroups,
+			acc_conf->q_mld.num_qgroups,
 			acc_conf->q_ul_4g.num_aqs_per_groups,
 			acc_conf->q_dl_4g.num_aqs_per_groups,
 			acc_conf->q_ul_5g.num_aqs_per_groups,
 			acc_conf->q_dl_5g.num_aqs_per_groups,
 			acc_conf->q_fft.num_aqs_per_groups,
+			acc_conf->q_mld.num_aqs_per_groups,
 			acc_conf->q_ul_4g.aq_depth_log2,
 			acc_conf->q_dl_4g.aq_depth_log2,
 			acc_conf->q_ul_5g.aq_depth_log2,
 			acc_conf->q_dl_5g.aq_depth_log2,
-			acc_conf->q_fft.aq_depth_log2);
+			acc_conf->q_fft.aq_depth_log2,
+			acc_conf->q_mld.aq_depth_log2);
 }
 
 /* Request device status information. */
@@ -338,7 +348,7 @@ vrb_check_ir(struct acc_device *acc_dev)
 
 	while (ring_data->valid) {
 		if ((ring_data->int_nb < ACC_PF_INT_DMA_DL_DESC_IRQ) || (
-				ring_data->int_nb > ACC_PF_INT_DMA_DL5G_DESC_IRQ)) {
+				ring_data->int_nb > ACC_PF_INT_DMA_MLD_DESC_IRQ)) {
 			rte_bbdev_log(WARNING, "InfoRing: ITR:%d Info:0x%x",
 					ring_data->int_nb, ring_data->detailed_info);
 			/* Initialize Info Ring entry and move forward. */
@@ -372,6 +382,7 @@ vrb_dev_interrupt_handler(void *cb_arg)
 			case ACC_PF_INT_DMA_FFT_DESC_IRQ:
 			case ACC_PF_INT_DMA_UL5G_DESC_IRQ:
 			case ACC_PF_INT_DMA_DL5G_DESC_IRQ:
+			case ACC_PF_INT_DMA_MLD_DESC_IRQ:
 				deq_intr_det.queue_id = get_queue_id_from_ring_info(
 						dev->data, *ring_data);
 				if (deq_intr_det.queue_id == UINT16_MAX) {
@@ -399,6 +410,7 @@ vrb_dev_interrupt_handler(void *cb_arg)
 			case ACC_VF_INT_DMA_FFT_DESC_IRQ:
 			case ACC_VF_INT_DMA_UL5G_DESC_IRQ:
 			case ACC_VF_INT_DMA_DL5G_DESC_IRQ:
+			case ACC_VF_INT_DMA_MLD_DESC_IRQ:
 				/* VFs are not aware of their vf_id - it's set to 0.  */
 				ring_data->vf_id = 0;
 				deq_intr_det.queue_id = get_queue_id_from_ring_info(
@@ -747,7 +759,7 @@ vrb_find_free_queue_idx(struct rte_bbdev *dev,
 		const struct rte_bbdev_queue_conf *conf)
 {
 	struct acc_device *d = dev->data->dev_private;
-	int op_2_acc[6] = {0, UL_4G, DL_4G, UL_5G, DL_5G, FFT};
+	int op_2_acc[7] = {0, UL_4G, DL_4G, UL_5G, DL_5G, FFT, MLD};
 	int acc = op_2_acc[conf->op_type];
 	struct rte_acc_queue_topology *qtop = NULL;
 	uint16_t group_idx;
@@ -810,7 +822,8 @@ vrb_queue_setup(struct rte_bbdev *dev, uint16_t queue_id,
 	int fcw_len = (conf->op_type == RTE_BBDEV_OP_LDPC_ENC ?
 			ACC_FCW_LE_BLEN : (conf->op_type == RTE_BBDEV_OP_TURBO_DEC ?
 			ACC_FCW_TD_BLEN : (conf->op_type == RTE_BBDEV_OP_LDPC_DEC ?
-			ACC_FCW_LD_BLEN : ACC_FCW_FFT_BLEN)));
+			ACC_FCW_LD_BLEN : (conf->op_type == RTE_BBDEV_OP_FFT ?
+			ACC_FCW_FFT_BLEN : ACC_FCW_MLDTS_BLEN))));
 
 	for (desc_idx = 0; desc_idx < d->sw_ring_max_depth; desc_idx++) {
 		desc = q->ring_addr + desc_idx;
@@ -922,6 +935,8 @@ vrb_queue_setup(struct rte_bbdev *dev, uint16_t queue_id,
 		q->aq_depth = (1 << d->acc_conf.q_dl_5g.aq_depth_log2);
 	else if (conf->op_type ==  RTE_BBDEV_OP_FFT)
 		q->aq_depth = (1 << d->acc_conf.q_fft.aq_depth_log2);
+	else if (conf->op_type ==  RTE_BBDEV_OP_MLDTS)
+		q->aq_depth = (1 << d->acc_conf.q_mld.aq_depth_log2);
 
 	q->mmio_reg_enqueue = RTE_PTR_ADD(d->mmio_base,
 			d->queue_offset(d->pf_device, q->vf_id, q->qgrp_id, q->aq_id));
@@ -978,6 +993,13 @@ vrb_print_op(struct rte_bbdev_dec_op *op, enum rte_bbdev_op_type op_type,
 			op_dl->ldpc_enc.n_filler, op_dl->ldpc_enc.cb_params.e,
 			op_dl->ldpc_enc.op_flags, op_dl->ldpc_enc.rv_index
 			);
+	} else if (op_type == RTE_BBDEV_OP_MLDTS) {
+		struct rte_bbdev_mldts_op *op_mldts = (struct rte_bbdev_mldts_op *) op;
+		rte_bbdev_log(INFO, "  Op MLD %d RBs %d NL %d Rp %d %d %x\n",
+				index,
+				op_mldts->mldts.num_rbs, op_mldts->mldts.num_layers,
+				op_mldts->mldts.r_rep,
+				op_mldts->mldts.c_rep, op_mldts->mldts.op_flags);
 	}
 }
 
@@ -1158,13 +1180,16 @@ vrb_dev_info_get(struct rte_bbdev *dev, struct rte_bbdev_driver_info *dev_info)
 			d->acc_conf.q_dl_5g.num_qgroups;
 	dev_info->num_queues[RTE_BBDEV_OP_FFT] = d->acc_conf.q_fft.num_aqs_per_groups *
 			d->acc_conf.q_fft.num_qgroups;
+	dev_info->num_queues[RTE_BBDEV_OP_MLDTS] = d->acc_conf.q_mld.num_aqs_per_groups *
+			d->acc_conf.q_mld.num_qgroups;
 	dev_info->queue_priority[RTE_BBDEV_OP_TURBO_DEC] = d->acc_conf.q_ul_4g.num_qgroups;
 	dev_info->queue_priority[RTE_BBDEV_OP_TURBO_ENC] = d->acc_conf.q_dl_4g.num_qgroups;
 	dev_info->queue_priority[RTE_BBDEV_OP_LDPC_DEC] = d->acc_conf.q_ul_5g.num_qgroups;
 	dev_info->queue_priority[RTE_BBDEV_OP_LDPC_ENC] = d->acc_conf.q_dl_5g.num_qgroups;
 	dev_info->queue_priority[RTE_BBDEV_OP_FFT] = d->acc_conf.q_fft.num_qgroups;
+	dev_info->queue_priority[RTE_BBDEV_OP_MLDTS] = d->acc_conf.q_mld.num_qgroups;
 	dev_info->max_num_queues = 0;
-	for (i = RTE_BBDEV_OP_NONE; i <= RTE_BBDEV_OP_FFT; i++)
+	for (i = RTE_BBDEV_OP_NONE; i <= RTE_BBDEV_OP_MLDTS; i++)
 		dev_info->max_num_queues += dev_info->num_queues[i];
 	dev_info->queue_size_lim = ACC_MAX_QUEUE_DEPTH;
 	dev_info->hardware_accelerated = true;

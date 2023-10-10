@@ -101,6 +101,8 @@ struct acc_registry_addr {
 	unsigned int dma_ring_ul4g_lo;
 	unsigned int dma_ring_fft_hi;
 	unsigned int dma_ring_fft_lo;
+	unsigned int dma_ring_mld_hi;
+	unsigned int dma_ring_mld_lo;
 	unsigned int ring_size;
 	unsigned int info_ring_hi;
 	unsigned int info_ring_lo;
@@ -116,6 +118,8 @@ struct acc_registry_addr {
 	unsigned int tail_ptrs_ul4g_lo;
 	unsigned int tail_ptrs_fft_hi;
 	unsigned int tail_ptrs_fft_lo;
+	unsigned int tail_ptrs_mld_hi;
+	unsigned int tail_ptrs_mld_lo;
 	unsigned int depth_log0_offset;
 	unsigned int depth_log1_offset;
 	unsigned int qman_group_func;
@@ -140,6 +144,8 @@ static const struct acc_registry_addr vrb1_pf_reg_addr = {
 	.dma_ring_ul4g_lo = VRB1_PfDmaFec4GulDescBaseLoRegVf,
 	.dma_ring_fft_hi = VRB1_PfDmaFftDescBaseHiRegVf,
 	.dma_ring_fft_lo = VRB1_PfDmaFftDescBaseLoRegVf,
+	.dma_ring_mld_hi = 0,
+	.dma_ring_mld_lo = 0,
 	.ring_size =      VRB1_PfQmgrRingSizeVf,
 	.info_ring_hi = VRB1_PfHiInfoRingBaseHiRegPf,
 	.info_ring_lo = VRB1_PfHiInfoRingBaseLoRegPf,
@@ -155,6 +161,8 @@ static const struct acc_registry_addr vrb1_pf_reg_addr = {
 	.tail_ptrs_ul4g_lo = VRB1_PfDmaFec4GulRespPtrLoRegVf,
 	.tail_ptrs_fft_hi = VRB1_PfDmaFftRespPtrHiRegVf,
 	.tail_ptrs_fft_lo = VRB1_PfDmaFftRespPtrLoRegVf,
+	.tail_ptrs_mld_hi = 0,
+	.tail_ptrs_mld_lo = 0,
 	.depth_log0_offset = VRB1_PfQmgrGrpDepthLog20Vf,
 	.depth_log1_offset = VRB1_PfQmgrGrpDepthLog21Vf,
 	.qman_group_func = VRB1_PfQmgrGrpFunction0,
@@ -179,6 +187,8 @@ static const struct acc_registry_addr vrb1_vf_reg_addr = {
 	.dma_ring_ul4g_lo = VRB1_VfDmaFec4GulDescBaseLoRegVf,
 	.dma_ring_fft_hi = VRB1_VfDmaFftDescBaseHiRegVf,
 	.dma_ring_fft_lo = VRB1_VfDmaFftDescBaseLoRegVf,
+	.dma_ring_mld_hi = 0,
+	.dma_ring_mld_lo = 0,
 	.ring_size = VRB1_VfQmgrRingSizeVf,
 	.info_ring_hi = VRB1_VfHiInfoRingBaseHiVf,
 	.info_ring_lo = VRB1_VfHiInfoRingBaseLoVf,
@@ -194,6 +204,8 @@ static const struct acc_registry_addr vrb1_vf_reg_addr = {
 	.tail_ptrs_ul4g_lo = VRB1_VfDmaFec4GulRespPtrLoRegVf,
 	.tail_ptrs_fft_hi = VRB1_VfDmaFftRespPtrHiRegVf,
 	.tail_ptrs_fft_lo = VRB1_VfDmaFftRespPtrLoRegVf,
+	.tail_ptrs_mld_hi = 0,
+	.tail_ptrs_mld_lo = 0,
 	.depth_log0_offset = VRB1_VfQmgrGrpDepthLog20Vf,
 	.depth_log1_offset = VRB1_VfQmgrGrpDepthLog21Vf,
 	.qman_group_func = VRB1_VfQmgrGrpFunction0Vf,
