@@ -553,7 +553,8 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 			return -ENODEV;
 		/* Use port offset in pf ctrl_bar for this ports control bar */
 		hw->ctrl_bar = pf_dev->ctrl_bar + (port * NFP_PF_CSR_SLICE_SIZE);
-		hw->mac_stats = app_fw_nic->ports[0]->mac_stats_bar + (port * NFP_MAC_STATS_SIZE);
+		hw->mac_stats = app_fw_nic->ports[0]->mac_stats_bar +
+				(hw->nfp_idx * NFP_MAC_STATS_SIZE);
 	}
 
 	PMD_INIT_LOG(DEBUG, "ctrl bar: %p", hw->ctrl_bar);
