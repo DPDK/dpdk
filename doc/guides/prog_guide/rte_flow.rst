@@ -4171,6 +4171,23 @@ User data may be provided during a flow creation/destruction in order
 to distinguish between multiple operations. User data is returned as part
 of the result to provide a method to detect which operation is completed.
 
+Calculate hash
+~~~~~~~~~~~~~~
+
+Calculating hash of a packet in SW as it would be calculated in HW.
+
+The application can use this function to calculate the hash of a given packet
+as it would be calculated in the HW.
+
+.. code-block:: c
+
+   int
+   rte_flow_calc_table_hash(uint16_t port_id,
+                            const struct rte_flow_template_table *table,
+			                   const struct rte_flow_item pattern[],
+                            uint8_t pattern_template_index,
+			                   uint32_t *hash, struct rte_flow_error *error);
+
 .. _flow_isolated_mode:
 
 Flow isolated mode

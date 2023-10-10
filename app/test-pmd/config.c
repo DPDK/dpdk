@@ -6,6 +6,7 @@
 #include <ctype.h>
 #include <stdarg.h>
 #include <errno.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -3299,6 +3300,59 @@ port_queue_flow_push(portid_t port_id, queueid_t queue_id)
 	}
 	printf("Queue #%u operations pushed\n", queue_id);
 	return ret;
+}
+
+/** Calculate the hash result for a given pattern in a given table. */
+int
+port_flow_hash_calc(portid_t port_id, uint32_t table_id,
+		    uint8_t pattern_template_index, const struct rte_flow_item pattern[])
+{
+	uint32_t hash;
+	bool found;
+	struct port_table *pt;
+	struct rte_port *port;
+	struct rte_flow_error error;
+	int ret = 0;
+
+	if (port_id_is_invalid(port_id, ENABLED_WARN) ||
+	    port_id == (portid_t)RTE_PORT_ALL)
+		return -EINVAL;
+	port = &ports[port_id];
+
+	found = false;
+	pt = port->table_list;
+	while (pt) {
+		if (table_id == pt->id) {
+			found = true;
+			break;
+		}
+		pt = pt->next;
+	}
+	if (!found) {
+		printf("Table #%u is invalid\n", table_id);
+		return -EINVAL;
+	}
+
+	memset(&error, 0x55, sizeof(error));
+	ret = rte_flow_calc_table_hash(port_id, pt->table, pattern,
+				       pattern_template_index, &hash, &error);
+	if (ret < 0) {
+		printf("Failed to calculate hash ");
+		switch (abs(ret)) {
+		case ENODEV:
+			printf("no such device\n");
+			break;
+		case ENOTSUP:
+			printf("device doesn't support this operation\n");
+			break;
+		default:
+			printf("\n");
+			break;
+		}
+		return ret;
+	}
+	printf("Hash results 0x%x\n", hash);
+	return 0;
 }
 
 /** Pull queue operation results from the queue. */

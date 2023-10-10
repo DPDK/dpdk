@@ -6743,6 +6743,38 @@ rte_flow_async_action_list_handle_query_update(uint16_t port_id, uint32_t queue_
 					  void *user_data,
 					  struct rte_flow_error *error);
 
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Calculate the hash for a given pattern in a given table as
+ * calculated by the HW.
+ *
+ * @param port_id
+ *   Port identifier of Ethernet device.
+ * @param table
+ *   The table the SW wishes to simulate.
+ * @param pattern
+ *   The values to be used in the hash calculation.
+ * @param pattern_template_index
+ *   The pattern index in the table to be used for the calculation.
+ * @param hash
+ *   Used to return the calculated hash.
+ * @param error
+ *   Perform verbose error reporting if not NULL.
+ *   PMDs initialize this structure in case of error only.
+ *
+ * @return
+ *   - (0) if success.
+ *   - (-ENODEV) if *port_id* invalid.
+ *   - (-ENOTSUP) if underlying device does not support this functionality.
+ */
+__rte_experimental
+int
+rte_flow_calc_table_hash(uint16_t port_id, const struct rte_flow_template_table *table,
+			 const struct rte_flow_item pattern[], uint8_t pattern_template_index,
+			 uint32_t *hash, struct rte_flow_error *error);
+
 #ifdef __cplusplus
 }
 #endif

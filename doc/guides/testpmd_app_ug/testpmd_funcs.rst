@@ -3283,6 +3283,28 @@ The usual error message is shown when operations results cannot be pulled::
 
    Caught error type [...] ([...]): [...]
 
+Calculating hash
+~~~~~~~~~~~~~~~~
+
+``flow hash`` calculates the hash for a given pattern.
+It is bound to ``rte_flow_calc_table_hash()``::
+
+   flow hash {port_id} template_table {table_id}
+       pattern_template {pattern_template_index}
+       actions_template {actions_template_index}
+       pattern {item} [/ {item} [...]] / end
+
+If successful, it will show the calculated hash result as seen below::
+
+   Hash results 0x[...]
+
+Otherwise, it will show an error message of the form::
+
+   Caught error type [...] ([...]): [...]
+
+This command uses the same pattern items as ``flow create``,
+their format is described in `Creating flow rules`_.
+
 Creating a tunnel stub for offload
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

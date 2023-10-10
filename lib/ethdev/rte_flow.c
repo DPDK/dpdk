@@ -2455,3 +2455,24 @@ rte_flow_async_action_list_handle_query_update(uint16_t port_id, uint32_t queue_
 							     ret);
 	return ret;
 }
+
+int
+rte_flow_calc_table_hash(uint16_t port_id, const struct rte_flow_template_table *table,
+			 const struct rte_flow_item pattern[], uint8_t pattern_template_index,
+			 uint32_t *hash, struct rte_flow_error *error)
+{
+	int ret;
+	struct rte_eth_dev *dev;
+	const struct rte_flow_ops *ops;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
+	ops = rte_flow_ops_get(port_id, error);
+	if (!ops || !ops->flow_calc_table_hash)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+					  "action_list async query_update not supported");
+	dev = &rte_eth_devices[port_id];
+	ret = ops->flow_calc_table_hash(dev, table, pattern, pattern_template_index,
+					hash, error);
+	return flow_err(port_id, ret, error);
+}

@@ -365,6 +365,11 @@ struct rte_flow_ops {
 		 const void **update, void **query,
 		 enum rte_flow_query_update_mode mode,
 		 void *user_data, struct rte_flow_error *error);
+	/** @see rte_flow_calc_table_hash() */
+	int (*flow_calc_table_hash)
+		(struct rte_eth_dev *dev, const struct rte_flow_template_table *table,
+		 const struct rte_flow_item pattern[], uint8_t pattern_template_index,
+		 uint32_t *hash, struct rte_flow_error *error);
 };
 
 /**
