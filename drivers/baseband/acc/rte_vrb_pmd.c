@@ -1235,6 +1235,94 @@ vrb_dev_info_get(struct rte_bbdev *dev, struct rte_bbdev_driver_info *dev_info)
 	};
 
 	static const struct rte_bbdev_op_cap vrb2_bbdev_capabilities[] = {
+		{
+			.type = RTE_BBDEV_OP_TURBO_DEC,
+			.cap.turbo_dec = {
+				.capability_flags =
+					RTE_BBDEV_TURBO_SUBBLOCK_DEINTERLEAVE |
+					RTE_BBDEV_TURBO_CRC_TYPE_24B |
+					RTE_BBDEV_TURBO_DEC_CRC_24B_DROP |
+					RTE_BBDEV_TURBO_EQUALIZER |
+					RTE_BBDEV_TURBO_SOFT_OUT_SATURATE |
+					RTE_BBDEV_TURBO_HALF_ITERATION_EVEN |
+					RTE_BBDEV_TURBO_CONTINUE_CRC_MATCH |
+					RTE_BBDEV_TURBO_SOFT_OUTPUT |
+					RTE_BBDEV_TURBO_EARLY_TERMINATION |
+					RTE_BBDEV_TURBO_DEC_INTERRUPTS |
+					RTE_BBDEV_TURBO_NEG_LLR_1_BIT_IN |
+					RTE_BBDEV_TURBO_NEG_LLR_1_BIT_SOFT_OUT |
+					RTE_BBDEV_TURBO_MAP_DEC |
+					RTE_BBDEV_TURBO_DEC_TB_CRC_24B_KEEP |
+					RTE_BBDEV_TURBO_DEC_SCATTER_GATHER,
+				.max_llr_modulus = INT8_MAX,
+				.num_buffers_src =
+						RTE_BBDEV_TURBO_MAX_CODE_BLOCKS,
+				.num_buffers_hard_out =
+						RTE_BBDEV_TURBO_MAX_CODE_BLOCKS,
+				.num_buffers_soft_out =
+						RTE_BBDEV_TURBO_MAX_CODE_BLOCKS,
+			}
+		},
+		{
+			.type = RTE_BBDEV_OP_TURBO_ENC,
+			.cap.turbo_enc = {
+				.capability_flags =
+					RTE_BBDEV_TURBO_CRC_24B_ATTACH |
+					RTE_BBDEV_TURBO_RV_INDEX_BYPASS |
+					RTE_BBDEV_TURBO_RATE_MATCH |
+					RTE_BBDEV_TURBO_ENC_INTERRUPTS |
+					RTE_BBDEV_TURBO_ENC_SCATTER_GATHER,
+				.num_buffers_src =
+						RTE_BBDEV_TURBO_MAX_CODE_BLOCKS,
+				.num_buffers_dst =
+						RTE_BBDEV_TURBO_MAX_CODE_BLOCKS,
+			}
+		},
+		{
+			.type   = RTE_BBDEV_OP_LDPC_ENC,
+			.cap.ldpc_enc = {
+				.capability_flags =
+					RTE_BBDEV_LDPC_RATE_MATCH |
+					RTE_BBDEV_LDPC_CRC_24B_ATTACH |
+					RTE_BBDEV_LDPC_INTERLEAVER_BYPASS |
+					RTE_BBDEV_LDPC_ENC_INTERRUPTS |
+					RTE_BBDEV_LDPC_ENC_SCATTER_GATHER |
+					RTE_BBDEV_LDPC_ENC_CONCATENATION,
+				.num_buffers_src =
+						RTE_BBDEV_LDPC_MAX_CODE_BLOCKS,
+				.num_buffers_dst =
+						RTE_BBDEV_LDPC_MAX_CODE_BLOCKS,
+			}
+		},
+		{
+			.type   = RTE_BBDEV_OP_LDPC_DEC,
+			.cap.ldpc_dec = {
+			.capability_flags =
+				RTE_BBDEV_LDPC_CRC_TYPE_24B_CHECK |
+				RTE_BBDEV_LDPC_CRC_TYPE_24B_DROP |
+				RTE_BBDEV_LDPC_CRC_TYPE_24A_CHECK |
+				RTE_BBDEV_LDPC_CRC_TYPE_16_CHECK |
+				RTE_BBDEV_LDPC_HQ_COMBINE_IN_ENABLE |
+				RTE_BBDEV_LDPC_HQ_COMBINE_OUT_ENABLE |
+				RTE_BBDEV_LDPC_ITERATION_STOP_ENABLE |
+				RTE_BBDEV_LDPC_DEINTERLEAVER_BYPASS |
+				RTE_BBDEV_LDPC_DEC_SCATTER_GATHER |
+				RTE_BBDEV_LDPC_HARQ_6BIT_COMPRESSION |
+				RTE_BBDEV_LDPC_HARQ_4BIT_COMPRESSION |
+				RTE_BBDEV_LDPC_LLR_COMPRESSION |
+				RTE_BBDEV_LDPC_SOFT_OUT_ENABLE |
+				RTE_BBDEV_LDPC_SOFT_OUT_RM_BYPASS |
+				RTE_BBDEV_LDPC_SOFT_OUT_DEINTERLEAVER_BYPASS |
+				RTE_BBDEV_LDPC_DEC_INTERRUPTS,
+			.llr_size = 8,
+			.llr_decimals = 2,
+			.num_buffers_src =
+					RTE_BBDEV_LDPC_MAX_CODE_BLOCKS,
+			.num_buffers_hard_out =
+					RTE_BBDEV_LDPC_MAX_CODE_BLOCKS,
+			.num_buffers_soft_out = 0,
+			}
+		},
 		RTE_BBDEV_END_OF_CAPABILITIES_LIST()
 	};
 
@@ -1419,8 +1507,8 @@ vrb_fcw_td_fill(const struct rte_bbdev_dec_op *op, struct acc_fcw_td *fcw)
 
 /* Fill in a frame control word for LDPC decoding. */
 static inline void
-vrb1_fcw_ld_fill(struct rte_bbdev_dec_op *op, struct acc_fcw_ld *fcw,
-		union acc_harq_layout_data *harq_layout)
+vrb_fcw_ld_fill(struct rte_bbdev_dec_op *op, struct acc_fcw_ld *fcw,
+		union acc_harq_layout_data *harq_layout, uint16_t device_variant)
 {
 	uint16_t harq_out_length, harq_in_length, ncb_p, k0_p, parity_offset;
 	uint32_t harq_index;
@@ -1466,18 +1554,26 @@ vrb1_fcw_ld_fill(struct rte_bbdev_dec_op *op, struct acc_fcw_ld *fcw,
 		fcw->bypass_intlv = 1;
 		fcw->qm = 2;
 	}
-	fcw->hcin_decomp_mode = check_bit(op->ldpc_dec.op_flags,
-			RTE_BBDEV_LDPC_HARQ_6BIT_COMPRESSION);
-	fcw->hcout_comp_mode = check_bit(op->ldpc_dec.op_flags,
-			RTE_BBDEV_LDPC_HARQ_6BIT_COMPRESSION);
+	if (check_bit(op->ldpc_dec.op_flags, RTE_BBDEV_LDPC_HARQ_6BIT_COMPRESSION)) {
+		fcw->hcin_decomp_mode = 1;
+		fcw->hcout_comp_mode = 1;
+	} else if (check_bit(op->ldpc_dec.op_flags, RTE_BBDEV_LDPC_HARQ_4BIT_COMPRESSION)) {
+		fcw->hcin_decomp_mode = 4;
+		fcw->hcout_comp_mode = 4;
+	} else {
+		fcw->hcin_decomp_mode = 0;
+		fcw->hcout_comp_mode = 0;
+	}
+
 	fcw->llr_pack_mode = check_bit(op->ldpc_dec.op_flags,
 			RTE_BBDEV_LDPC_LLR_COMPRESSION);
 	harq_index = hq_index(op->ldpc_dec.harq_combined_output.offset);
-
 	if (fcw->hcin_en > 0) {
 		harq_in_length = op->ldpc_dec.harq_combined_input.length;
-		if (fcw->hcin_decomp_mode > 0)
+		if (fcw->hcin_decomp_mode == 1)
 			harq_in_length = harq_in_length * 8 / 6;
+		else if (fcw->hcin_decomp_mode == 4)
+			harq_in_length = harq_in_length * 2;
 		harq_in_length = RTE_MIN(harq_in_length, op->ldpc_dec.n_cb
 				- op->ldpc_dec.n_filler);
 		harq_in_length = RTE_ALIGN_CEIL(harq_in_length, 64);
@@ -1491,20 +1587,27 @@ vrb1_fcw_ld_fill(struct rte_bbdev_dec_op *op, struct acc_fcw_ld *fcw,
 	}
 
 	fcw->itmax = op->ldpc_dec.iter_max;
-	fcw->itstop = check_bit(op->ldpc_dec.op_flags,
-			RTE_BBDEV_LDPC_ITERATION_STOP_ENABLE);
+	fcw->itstop = check_bit(op->ldpc_dec.op_flags, RTE_BBDEV_LDPC_ITERATION_STOP_ENABLE);
 	fcw->cnu_algo = ACC_ALGO_MSA;
 	fcw->synd_precoder = fcw->itstop;
+
+	if (device_variant != VRB1_VARIANT) {
+		fcw->so_it = op->ldpc_dec.iter_max;
+		fcw->so_en = check_bit(op->ldpc_dec.op_flags, RTE_BBDEV_LDPC_SOFT_OUT_ENABLE);
+		fcw->so_bypass_intlv = check_bit(op->ldpc_dec.op_flags,
+				RTE_BBDEV_LDPC_SOFT_OUT_DEINTERLEAVER_BYPASS);
+		fcw->so_bypass_rm = check_bit(op->ldpc_dec.op_flags,
+				RTE_BBDEV_LDPC_SOFT_OUT_RM_BYPASS);
+		fcw->minsum_offset = 1;
+		fcw->dec_llrclip   = 2;
+	}
+
 	/*
-	 * These are all implicitly set:
+	 * These are all implicitly set
 	 * fcw->synd_post = 0;
-	 * fcw->so_en = 0;
-	 * fcw->so_bypass_rm = 0;
-	 * fcw->so_bypass_intlv = 0;
 	 * fcw->dec_convllr = 0;
 	 * fcw->hcout_convllr = 0;
 	 * fcw->hcout_size1 = 0;
-	 * fcw->so_it = 0;
 	 * fcw->hcout_offset = 0;
 	 * fcw->negstop_th = 0;
 	 * fcw->negstop_it = 0;
@@ -1515,7 +1618,8 @@ vrb1_fcw_ld_fill(struct rte_bbdev_dec_op *op, struct acc_fcw_ld *fcw,
 	if (fcw->hcout_en > 0) {
 		parity_offset = (op->ldpc_dec.basegraph == 1 ? 20 : 8)
 				* op->ldpc_dec.z_c - op->ldpc_dec.n_filler;
-		k0_p = (fcw->k0 > parity_offset) ? fcw->k0 - op->ldpc_dec.n_filler : fcw->k0;
+		k0_p = (fcw->k0 > parity_offset) ?
+				fcw->k0 - op->ldpc_dec.n_filler : fcw->k0;
 		ncb_p = fcw->ncb - op->ldpc_dec.n_filler;
 		l = k0_p + fcw->rm_e;
 		harq_out_length = (uint16_t) fcw->hcin_size0;
@@ -1658,19 +1762,28 @@ vrb_dma_desc_td_fill(struct rte_bbdev_dec_op *op,
 }
 
 static inline int
-vrb1_dma_desc_ld_fill(struct rte_bbdev_dec_op *op,
+vrb_dma_desc_ld_fill(struct rte_bbdev_dec_op *op,
 		struct acc_dma_req_desc *desc,
 		struct rte_mbuf **input, struct rte_mbuf *h_output,
 		uint32_t *in_offset, uint32_t *h_out_offset,
 		uint32_t *h_out_length, uint32_t *mbuf_total_left,
-		uint32_t *seg_total_left, struct acc_fcw_ld *fcw)
+		uint32_t *seg_total_left, struct acc_fcw_ld *fcw, uint16_t device_variant)
 {
 	struct rte_bbdev_op_ldpc_dec *dec = &op->ldpc_dec;
 	int next_triplet = 1; /* FCW already done. */
 	uint32_t input_length;
 	uint16_t output_length, crc24_overlap = 0;
 	uint16_t sys_cols, K, h_p_size, h_np_size;
-	bool h_comp = check_bit(dec->op_flags, RTE_BBDEV_LDPC_HARQ_6BIT_COMPRESSION);
+
+	if (device_variant == VRB1_VARIANT) {
+		if (check_bit(op->ldpc_dec.op_flags, RTE_BBDEV_LDPC_HARQ_4BIT_COMPRESSION) ||
+				check_bit(op->ldpc_dec.op_flags, RTE_BBDEV_LDPC_SOFT_OUT_ENABLE)) {
+			rte_bbdev_log(ERR,
+					"VRB1 does not support the requested capabilities %x",
+					op->ldpc_dec.op_flags);
+			return -1;
+		}
+	}
 
 	acc_header_init(desc);
 
@@ -1711,8 +1824,10 @@ vrb1_dma_desc_ld_fill(struct rte_bbdev_dec_op *op,
 			return -1;
 		}
 		h_p_size = fcw->hcin_size0 + fcw->hcin_size1;
-		if (h_comp)
+		if (fcw->hcin_decomp_mode == 1)
 			h_p_size = (h_p_size * 3 + 3) / 4;
+		else if (fcw->hcin_decomp_mode == 4)
+			h_p_size = h_p_size / 2;
 		if (op->ldpc_dec.harq_combined_input.data == 0) {
 			rte_bbdev_log(ERR, "HARQ input is not defined");
 			return -1;
@@ -1735,21 +1850,36 @@ vrb1_dma_desc_ld_fill(struct rte_bbdev_dec_op *op,
 			*h_out_offset, output_length >> 3, next_triplet,
 			ACC_DMA_BLKID_OUT_HARD);
 
-	if (check_bit(op->ldpc_dec.op_flags, RTE_BBDEV_LDPC_HQ_COMBINE_OUT_ENABLE)) {
+	if (check_bit(op->ldpc_dec.op_flags, RTE_BBDEV_LDPC_SOFT_OUT_ENABLE)) {
+		if (op->ldpc_dec.soft_output.data == 0) {
+			rte_bbdev_log(ERR, "Soft output is not defined");
+			return -1;
+		}
+		dec->soft_output.length = fcw->rm_e;
+		acc_dma_fill_blk_type(desc, dec->soft_output.data, dec->soft_output.offset,
+				fcw->rm_e, next_triplet, ACC_DMA_BLKID_OUT_SOFT);
+		next_triplet++;
+	}
+
+	if (check_bit(op->ldpc_dec.op_flags,
+				RTE_BBDEV_LDPC_HQ_COMBINE_OUT_ENABLE)) {
 		if (op->ldpc_dec.harq_combined_output.data == 0) {
 			rte_bbdev_log(ERR, "HARQ output is not defined");
 			return -1;
 		}
 
-		/* Pruned size of the HARQ. */
+		/* Pruned size of the HARQ */
 		h_p_size = fcw->hcout_size0 + fcw->hcout_size1;
-		/* Non-Pruned size of the HARQ. */
+		/* Non-Pruned size of the HARQ */
 		h_np_size = fcw->hcout_offset > 0 ?
 				fcw->hcout_offset + fcw->hcout_size1 :
 				h_p_size;
-		if (h_comp) {
+		if (fcw->hcin_decomp_mode == 1) {
 			h_np_size = (h_np_size * 3 + 3) / 4;
 			h_p_size = (h_p_size * 3 + 3) / 4;
+		} else if (fcw->hcin_decomp_mode == 4) {
+			h_np_size = h_np_size / 2;
+			h_p_size = h_p_size / 2;
 		}
 		dec->harq_combined_output.length = h_np_size;
 		acc_dma_fill_blk_type(
@@ -1877,6 +2007,7 @@ enqueue_ldpc_enc_n_op_cb(struct acc_queue *q, struct rte_bbdev_enc_op **ops,
 	/** This could be done at polling. */
 	acc_header_init(&desc->req);
 	desc->req.numCBs = num;
+	desc->req.dltb = 0;
 
 	in_length_in_bytes = ops[0]->ldpc_enc.input.data->data_len;
 	out_length = (enc->cb_params.e + 7) >> 3;
@@ -2102,6 +2233,104 @@ vrb1_enqueue_ldpc_enc_one_op_tb(struct acc_queue *q, struct rte_bbdev_enc_op *op
 	return return_descs;
 }
 
+/* Fill in a frame control word for LDPC encoding. */
+static inline void
+vrb2_fcw_letb_fill(const struct rte_bbdev_enc_op *op, struct acc_fcw_le *fcw)
+{
+	fcw->qm = op->ldpc_enc.q_m;
+	fcw->nfiller = op->ldpc_enc.n_filler;
+	fcw->BG = (op->ldpc_enc.basegraph - 1);
+	fcw->Zc = op->ldpc_enc.z_c;
+	fcw->ncb = op->ldpc_enc.n_cb;
+	fcw->k0 = get_k0(fcw->ncb, fcw->Zc, op->ldpc_enc.basegraph,
+			op->ldpc_enc.rv_index);
+	fcw->rm_e = op->ldpc_enc.tb_params.ea;
+	fcw->rm_e_b = op->ldpc_enc.tb_params.eb;
+	fcw->crc_select = check_bit(op->ldpc_enc.op_flags,
+			RTE_BBDEV_LDPC_CRC_24B_ATTACH);
+	fcw->bypass_intlv = 0;
+	if (op->ldpc_enc.tb_params.c > 1) {
+		fcw->mcb_count = 0;
+		fcw->C = op->ldpc_enc.tb_params.c;
+		fcw->Cab = op->ldpc_enc.tb_params.cab;
+	} else {
+		fcw->mcb_count = 1;
+		fcw->C = 0;
+	}
+}
+
+/* Enqueue one encode operations for device in TB mode.
+ * returns the number of descs used.
+ */
+static inline int
+vrb2_enqueue_ldpc_enc_one_op_tb(struct acc_queue *q, struct rte_bbdev_enc_op *op,
+		uint16_t enq_descs)
+{
+	union acc_dma_desc *desc = NULL;
+	uint32_t in_offset, out_offset, out_length, seg_total_left;
+	struct rte_mbuf *input, *output_head, *output;
+	struct rte_bbdev_op_ldpc_enc *enc = &op->ldpc_enc;
+	int next_triplet = 1; /* FCW already done. */
+	uint32_t in_length_in_bytes;
+	uint16_t K, in_length_in_bits;
+
+	desc = acc_desc(q, enq_descs);
+	vrb2_fcw_letb_fill(op, &desc->req.fcw_le);
+
+	input = enc->input.data;
+	output_head = output = enc->output.data;
+	in_offset = enc->input.offset;
+	out_offset = enc->output.offset;
+	seg_total_left = rte_pktmbuf_data_len(enc->input.data) - in_offset;
+
+	acc_header_init(&desc->req);
+	K = (enc->basegraph == 1 ? 22 : 10) * enc->z_c;
+	in_length_in_bits = K - enc->n_filler;
+	if ((enc->op_flags & RTE_BBDEV_LDPC_CRC_24A_ATTACH) ||
+			(enc->op_flags & RTE_BBDEV_LDPC_CRC_24B_ATTACH))
+		in_length_in_bits -= 24;
+	in_length_in_bytes = (in_length_in_bits >> 3) * enc->tb_params.c;
+
+	next_triplet = acc_dma_fill_blk_type_in(&desc->req, &input, &in_offset,
+			in_length_in_bytes, &seg_total_left, next_triplet,
+			check_bit(enc->op_flags, RTE_BBDEV_LDPC_ENC_SCATTER_GATHER));
+	if (unlikely(next_triplet < 0)) {
+		rte_bbdev_log(ERR,
+				"Mismatch between data to process and mbuf data length in bbdev_op: %p",
+				op);
+		return -1;
+	}
+	desc->req.data_ptrs[next_triplet - 1].last = 1;
+	desc->req.m2dlen = next_triplet;
+
+	/* Set output length */
+	/* Integer round up division by 8 */
+	out_length = (enc->tb_params.ea * enc->tb_params.cab +
+			enc->tb_params.eb * (enc->tb_params.c - enc->tb_params.cab)  + 7) >> 3;
+
+	next_triplet = acc_dma_fill_blk_type(&desc->req, output, out_offset,
+			out_length, next_triplet, ACC_DMA_BLKID_OUT_ENC);
+	enc->output.length = out_length;
+	out_offset += out_length;
+	desc->req.data_ptrs[next_triplet - 1].last = 1;
+	desc->req.data_ptrs[next_triplet - 1].dma_ext = 0;
+	desc->req.d2mlen = next_triplet - desc->req.m2dlen;
+	desc->req.numCBs = enc->tb_params.c;
+	if (desc->req.numCBs > 1)
+		desc->req.dltb = 1;
+	desc->req.op_addr = op;
+
+	if (out_length < ACC_MAX_E_MBUF)
+		mbuf_append(output_head, output, out_length);
+
+#ifdef RTE_LIBRTE_BBDEV_DEBUG
+	rte_memdump(stderr, "FCW", &desc->req.fcw_le, sizeof(desc->req.fcw_le));
+	rte_memdump(stderr, "Req Desc.", desc, sizeof(*desc));
+#endif
+	/* One CB (one op) was successfully prepared to enqueue */
+	return 1;
+}
+
 /** Enqueue one decode operations for device in CB mode. */
 static inline int
 enqueue_dec_one_op_cb(struct acc_queue *q, struct rte_bbdev_dec_op *op,
@@ -2206,7 +2435,7 @@ vrb_enqueue_ldpc_dec_one_op_cb(struct acc_queue *q, struct rte_bbdev_dec_op *op,
 		struct acc_fcw_ld *fcw;
 		uint32_t seg_total_left;
 		fcw = &desc->req.fcw_ld;
-		q->d->fcw_ld_fill(op, fcw, harq_layout);
+		vrb_fcw_ld_fill(op, fcw, harq_layout, q->d->device_variant);
 
 		/* Special handling when using mbuf or not. */
 		if (check_bit(op->ldpc_dec.op_flags,
@@ -2215,10 +2444,10 @@ vrb_enqueue_ldpc_dec_one_op_cb(struct acc_queue *q, struct rte_bbdev_dec_op *op,
 		else
 			seg_total_left = fcw->rm_e;
 
-		ret = vrb1_dma_desc_ld_fill(op, &desc->req, &input, h_output,
+		ret = vrb_dma_desc_ld_fill(op, &desc->req, &input, h_output,
 				&in_offset, &h_out_offset,
 				&h_out_length, &mbuf_total_left,
-				&seg_total_left, fcw);
+				&seg_total_left, fcw, q->d->device_variant);
 		if (unlikely(ret < 0))
 			return ret;
 	}
@@ -2275,7 +2504,8 @@ vrb_enqueue_ldpc_dec_one_op_tb(struct acc_queue *q, struct rte_bbdev_dec_op *op,
 	desc_first = desc;
 	fcw_offset = (desc_idx << 8) + ACC_DESC_FCW_OFFSET;
 	harq_layout = q->d->harq_layout;
-	q->d->fcw_ld_fill(op, &desc->req.fcw_ld, harq_layout);
+
+	vrb_fcw_ld_fill(op, &desc->req.fcw_ld, harq_layout, q->d->device_variant);
 
 	input = op->ldpc_dec.input.data;
 	h_output_head = h_output = op->ldpc_dec.hard_output.data;
@@ -2307,12 +2537,11 @@ vrb_enqueue_ldpc_dec_one_op_tb(struct acc_queue *q, struct rte_bbdev_dec_op *op,
 		desc->req.data_ptrs[0].blen = ACC_FCW_LD_BLEN;
 		rte_memcpy(&desc->req.fcw_ld, &desc_first->req.fcw_ld, ACC_FCW_LD_BLEN);
 		desc->req.fcw_ld.tb_trailer_size = (c - r - 1) * trail_len;
-
-		ret = vrb1_dma_desc_ld_fill(op, &desc->req, &input,
+		ret = vrb_dma_desc_ld_fill(op, &desc->req, &input,
 				h_output, &in_offset, &h_out_offset,
 				&h_out_length,
 				&mbuf_total_left, &seg_total_left,
-				&desc->req.fcw_ld);
+				&desc->req.fcw_ld, q->d->device_variant);
 
 		if (unlikely(ret < 0))
 			return ret;
@@ -2576,14 +2805,22 @@ vrb_enqueue_ldpc_enc_tb(struct rte_bbdev_queue_data *q_data,
 	int descs_used;
 
 	for (i = 0; i < num; ++i) {
-		cbs_in_tb = get_num_cbs_in_tb_ldpc_enc(&ops[i]->ldpc_enc);
-		/* Check if there are available space for further processing. */
-		if (unlikely((avail - cbs_in_tb < 0) || (cbs_in_tb == 0))) {
-			acc_enqueue_ring_full(q_data);
-			break;
+		if (q->d->device_variant == VRB1_VARIANT) {
+			cbs_in_tb = get_num_cbs_in_tb_ldpc_enc(&ops[i]->ldpc_enc);
+			/* Check if there are available space for further processing. */
+			if (unlikely((avail - cbs_in_tb < 0) || (cbs_in_tb == 0))) {
+				acc_enqueue_ring_full(q_data);
+				break;
+			}
+			descs_used = vrb1_enqueue_ldpc_enc_one_op_tb(q, ops[i],
+					enqueued_descs, cbs_in_tb);
+		} else {
+			if (unlikely(avail < 1)) {
+				acc_enqueue_ring_full(q_data);
+				break;
+			}
+			descs_used = vrb2_enqueue_ldpc_enc_one_op_tb(q, ops[i], enqueued_descs);
 		}
-
-		descs_used = vrb1_enqueue_ldpc_enc_one_op_tb(q, ops[i], enqueued_descs, cbs_in_tb);
 		if (descs_used < 0) {
 			acc_enqueue_invalid(q_data);
 			break;
@@ -2863,6 +3100,51 @@ vrb_dequeue_enc_one_op_cb(struct acc_queue *q, struct rte_bbdev_enc_op **ref_op,
 	(*dequeued_descs)++;
 	*dequeued_ops += desc->req.numCBs;
 	return desc->req.numCBs;
+}
+
+/* Dequeue one LDPC encode operations from VRB2 device in TB mode. */
+static inline int
+vrb2_dequeue_ldpc_enc_one_op_tb(struct acc_queue *q, struct rte_bbdev_enc_op **ref_op,
+		uint16_t *dequeued_ops, uint32_t *aq_dequeued,
+		uint16_t *dequeued_descs)
+{
+	union acc_dma_desc *desc, atom_desc;
+	union acc_dma_rsp_desc rsp;
+	struct rte_bbdev_enc_op *op;
+
+	desc = acc_desc_tail(q, *dequeued_descs);
+	atom_desc.atom_hdr = __atomic_load_n((uint64_t *)desc, __ATOMIC_RELAXED);
+
+	/* Check fdone bit. */
+	if (!(atom_desc.rsp.val & ACC_FDONE))
+		return -1;
+
+	rsp.val = atom_desc.rsp.val;
+	rte_bbdev_log_debug("Resp. desc %p: %x", desc, rsp.val);
+
+	/* Dequeue. */
+	op = desc->req.op_addr;
+
+	/* Clearing status, it will be set based on response. */
+	op->status = 0;
+	op->status |= rsp.input_err << RTE_BBDEV_DATA_ERROR;
+	op->status |= rsp.dma_err << RTE_BBDEV_DRV_ERROR;
+	op->status |= rsp.fcw_err << RTE_BBDEV_DRV_ERROR;
+	op->status |= rsp.engine_hung << RTE_BBDEV_ENGINE_ERROR;
+
+	if (desc->req.last_desc_in_batch) {
+		(*aq_dequeued)++;
+		desc->req.last_desc_in_batch = 0;
+	}
+	desc->rsp.val = ACC_DMA_DESC_TYPE;
+	desc->rsp.add_info_0 = 0; /* Reserved bits. */
+	desc->rsp.add_info_1 = 0; /* Reserved bits. */
+
+	/* One op was successfully dequeued */
+	ref_op[0] = op;
+	(*dequeued_descs)++;
+	(*dequeued_ops)++;
+	return 1;
 }
 
 /* Dequeue one LDPC encode operations from device in TB mode.
@@ -3189,9 +3471,14 @@ vrb_dequeue_ldpc_enc(struct rte_bbdev_queue_data *q_data,
 
 	for (i = 0; i < avail; i++) {
 		if (cbm == RTE_BBDEV_TRANSPORT_BLOCK)
-			ret = vrb_dequeue_enc_one_op_tb(q, &ops[dequeued_ops],
-					&dequeued_ops, &aq_dequeued,
-					&dequeued_descs, num);
+			if (q->d->device_variant == VRB1_VARIANT)
+				ret = vrb_dequeue_enc_one_op_tb(q, &ops[dequeued_ops],
+						&dequeued_ops, &aq_dequeued,
+						&dequeued_descs, num);
+			else
+				ret = vrb2_dequeue_ldpc_enc_one_op_tb(q, &ops[dequeued_ops],
+						&dequeued_ops, &aq_dequeued,
+						&dequeued_descs);
 		else
 			ret = vrb_dequeue_enc_one_op_cb(q, &ops[dequeued_ops],
 					&dequeued_ops, &aq_dequeued,
@@ -3526,7 +3813,6 @@ vrb_bbdev_init(struct rte_bbdev *dev, struct rte_pci_driver *drv)
 			(pci_dev->id.device_id == RTE_VRB1_VF_DEVICE_ID)) {
 		d->device_variant = VRB1_VARIANT;
 		d->queue_offset = vrb1_queue_offset;
-		d->fcw_ld_fill = vrb1_fcw_ld_fill;
 		d->num_qgroups = VRB1_NUM_QGRPS;
 		d->num_aqs = VRB1_NUM_AQS;
 		if (d->pf_device)
