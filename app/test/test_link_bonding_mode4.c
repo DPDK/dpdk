@@ -641,8 +641,7 @@ bond_handshake(void)
 	/* If response didn't send - report failure */
 	TEST_ASSERT_EQUAL(all_members_done, 1, "Bond handshake failed\n");
 
-	/* If flags doesn't match - report failure */
-	return all_members_done == 1 ? TEST_SUCCESS : TEST_FAILED;
+	return TEST_SUCCESS;
 }
 
 #define TEST_LACP_MEMBER_COUT RTE_DIM(test_params.member_ports)
