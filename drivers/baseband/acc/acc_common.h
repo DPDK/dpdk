@@ -131,6 +131,8 @@
 #define ACC_LIM_31 20 /* 0.31 */
 #define ACC_MAX_E (128 * 1024 - 2)
 
+#define ACC_MAX_FFT_WIN      16
+
 /* Helper macro for logging */
 #define rte_acc_log(level, fmt, ...) \
 	rte_log(RTE_LOG_ ## level, RTE_LOG_NOTICE, fmt "\n", \
@@ -512,6 +514,8 @@ struct acc_deq_intr_details {
 enum {
 	ACC_VF2PF_STATUS_REQUEST = 1,
 	ACC_VF2PF_USING_VF = 2,
+	ACC_VF2PF_LUT_VER_REQUEST = 3,
+	ACC_VF2PF_FFT_WIN_REQUEST = 4,
 };
 
 
@@ -558,6 +562,7 @@ struct acc_device {
 	queue_offset_fun_t queue_offset;  /* Device specific queue offset */
 	uint16_t num_qgroups;
 	uint16_t num_aqs;
+	uint16_t fft_window_width[ACC_MAX_FFT_WIN]; /* FFT windowing size. */
 };
 
 /* Structure associated with each queue. */

@@ -183,6 +183,37 @@ vrb_check_device_enable(struct rte_bbdev *dev)
 	return false;
 }
 
+static inline void
+vrb_vf2pf(struct acc_device *d, unsigned int payload)
+{
+	acc_reg_write(d, d->reg_addr->vf2pf_doorbell, payload);
+}
+
+/* Request device FFT windowing information. */
+static inline void
+vrb_device_fft_win(struct rte_bbdev *dev)
+{
+	struct acc_device *d = dev->data->dev_private;
+	uint32_t reg, time_out = 0, win;
+
+	if (d->pf_device)
+		return;
+
+	/* Check from the device the first time. */
+	if (d->fft_window_width[0] == 0) {
+		for (win = 0; win < ACC_MAX_FFT_WIN; win++) {
+			vrb_vf2pf(d, ACC_VF2PF_FFT_WIN_REQUEST | win);
+			reg = acc_reg_read(d, d->reg_addr->pf2vf_doorbell);
+			while ((time_out < ACC_STATUS_TO) && (reg == RTE_BBDEV_DEV_NOSTATUS)) {
+				usleep(ACC_STATUS_WAIT); /*< Wait or VF->PF->VF Comms. */
+				reg = acc_reg_read(d, d->reg_addr->pf2vf_doorbell);
+				time_out++;
+			}
+			d->fft_window_width[win] = reg;
+		}
+	}
+}
+
 /* Fetch configuration enabled for the PF/VF using MMIO Read (slow). */
 static inline void
 fetch_acc_config(struct rte_bbdev *dev)
@@ -205,6 +236,8 @@ fetch_acc_config(struct rte_bbdev *dev)
 				dev->data->name);
 		return;
 	}
+
+	vrb_device_fft_win(dev);
 
 	d->ddr_size = 0;
 
@@ -269,12 +302,6 @@ fetch_acc_config(struct rte_bbdev *dev)
 			acc_conf->q_ul_5g.aq_depth_log2,
 			acc_conf->q_dl_5g.aq_depth_log2,
 			acc_conf->q_fft.aq_depth_log2);
-}
-
-static inline void
-vrb_vf2pf(struct acc_device *d, unsigned int payload)
-{
-	acc_reg_write(d, d->reg_addr->vf2pf_doorbell, payload);
 }
 
 /* Request device status information. */
@@ -1085,6 +1112,7 @@ vrb_dev_info_get(struct rte_bbdev *dev, struct rte_bbdev_driver_info *dev_info)
 						RTE_BBDEV_LDPC_MAX_CODE_BLOCKS,
 				.num_buffers_dst =
 						RTE_BBDEV_LDPC_MAX_CODE_BLOCKS,
+				.fft_windows_num = ACC_MAX_FFT_WIN,
 			}
 		},
 		RTE_BBDEV_END_OF_CAPABILITIES_LIST()
@@ -1100,6 +1128,7 @@ vrb_dev_info_get(struct rte_bbdev *dev, struct rte_bbdev_driver_info *dev_info)
 	fetch_acc_config(dev);
 	/* Check the status of device. */
 	dev_info->device_status = vrb_device_status(dev);
+	dev_info->fft_window_width = d->fft_window_width;
 
 	/* Exposed number of queues. */
 	dev_info->num_queues[RTE_BBDEV_OP_NONE] = 0;
