@@ -1341,6 +1341,17 @@ vrb_dev_info_get(struct rte_bbdev *dev, struct rte_bbdev_driver_info *dev_info)
 				.fft_windows_num = ACC_MAX_FFT_WIN,
 			}
 		},
+		{
+			.type	= RTE_BBDEV_OP_MLDTS,
+			.cap.mld = {
+				.capability_flags =
+						RTE_BBDEV_MLDTS_REP,
+				.num_buffers_src =
+						1,
+				.num_buffers_dst =
+						1,
+			}
+		},
 		RTE_BBDEV_END_OF_CAPABILITIES_LIST()
 	};
 
@@ -3878,6 +3889,367 @@ vrb_dequeue_fft(struct rte_bbdev_queue_data *q_data,
 	return i;
 }
 
+/* Fill in a frame control word for MLD-TS processing. */
+static inline void
+vrb2_fcw_mldts_fill(struct rte_bbdev_mldts_op *op, struct acc_fcw_mldts *fcw)
+{
+	fcw->nrb = op->mldts.num_rbs;
+	fcw->NLayers = op->mldts.num_layers - 1;
+	fcw->Qmod0 = (op->mldts.q_m[0] >> 1) - 1;
+	fcw->Qmod1 = (op->mldts.q_m[1] >> 1) - 1;
+	fcw->Qmod2 = (op->mldts.q_m[2] >> 1) - 1;
+	fcw->Qmod3 = (op->mldts.q_m[3] >> 1) - 1;
+	/* Mark some layers as disabled */
+	if (op->mldts.num_layers == 2) {
+		fcw->Qmod2 = 3;
+		fcw->Qmod3 = 3;
+	}
+	if (op->mldts.num_layers == 3)
+		fcw->Qmod3 = 3;
+	fcw->Rrep = op->mldts.r_rep;
+	fcw->Crep = op->mldts.c_rep;
+}
+
+/* Fill in descriptor for one MLD-TS processing operation. */
+static inline int
+vrb2_dma_desc_mldts_fill(struct rte_bbdev_mldts_op *op,
+		struct acc_dma_req_desc *desc,
+		struct rte_mbuf *input_q, struct rte_mbuf *input_r,
+		struct rte_mbuf *output,
+		uint32_t *in_offset, uint32_t *out_offset)
+{
+	uint16_t qsize_per_re[VRB2_MLD_LAY_SIZE] = {8, 12, 16}; /* Layer 2 to 4. */
+	uint16_t rsize_per_re[VRB2_MLD_LAY_SIZE] = {14, 26, 42};
+	uint16_t sc_factor_per_rrep[VRB2_MLD_RREP_SIZE] = {12, 6, 4, 3, 0, 2};
+	uint16_t i, outsize_per_re = 0;
+	uint32_t sc_num, r_num, q_size, r_size, out_size;
+
+	/* Prevent out of range access. */
+	if (op->mldts.r_rep > 5)
+		op->mldts.r_rep = 5;
+	if (op->mldts.num_layers < 2)
+		op->mldts.num_layers = 2;
+	if (op->mldts.num_layers > 4)
+		op->mldts.num_layers = 4;
+	for (i = 0; i < op->mldts.num_layers; i++)
+		outsize_per_re += op->mldts.q_m[i];
+	sc_num = op->mldts.num_rbs * RTE_BBDEV_SCPERRB * (op->mldts.c_rep + 1);
+	r_num = op->mldts.num_rbs * sc_factor_per_rrep[op->mldts.r_rep];
+	q_size = qsize_per_re[op->mldts.num_layers - 2] * sc_num;
+	r_size = rsize_per_re[op->mldts.num_layers - 2] * r_num;
+	out_size =  sc_num * outsize_per_re;
+
+	/* FCW already done. */
+	acc_header_init(desc);
+	desc->data_ptrs[1].address = rte_pktmbuf_iova_offset(input_q, *in_offset);
+	desc->data_ptrs[1].blen = q_size;
+	desc->data_ptrs[1].blkid = ACC_DMA_BLKID_IN;
+	desc->data_ptrs[1].last = 0;
+	desc->data_ptrs[1].dma_ext = 0;
+	desc->data_ptrs[2].address = rte_pktmbuf_iova_offset(input_r, *in_offset);
+	desc->data_ptrs[2].blen = r_size;
+	desc->data_ptrs[2].blkid = ACC_DMA_BLKID_IN_MLD_R;
+	desc->data_ptrs[2].last = 1;
+	desc->data_ptrs[2].dma_ext = 0;
+	desc->data_ptrs[3].address = rte_pktmbuf_iova_offset(output, *out_offset);
+	desc->data_ptrs[3].blen = out_size;
+	desc->data_ptrs[3].blkid = ACC_DMA_BLKID_OUT_HARD;
+	desc->data_ptrs[3].last = 1;
+	desc->data_ptrs[3].dma_ext = 0;
+	desc->m2dlen = 3;
+	desc->d2mlen = 1;
+	desc->op_addr = op;
+	desc->cbs_in_tb = 1;
+
+	return 0;
+}
+
+/* Check whether the MLD operation can be processed as a single operation. */
+static inline bool
+vrb2_check_mld_r_constraint(struct rte_bbdev_mldts_op *op) {
+	uint8_t layer_idx, rrep_idx;
+	uint16_t max_rb[VRB2_MLD_LAY_SIZE][VRB2_MLD_RREP_SIZE] = {
+			{188, 275, 275, 275, 0, 275},
+			{101, 202, 275, 275, 0, 275},
+			{62, 124, 186, 248, 0, 275} };
+
+	if (op->mldts.c_rep == 0)
+		return true;
+
+	layer_idx = RTE_MIN(op->mldts.num_layers - VRB2_MLD_MIN_LAYER,
+			VRB2_MLD_MAX_LAYER - VRB2_MLD_MIN_LAYER);
+	rrep_idx = RTE_MIN(op->mldts.r_rep, VRB2_MLD_MAX_RREP);
+	rte_bbdev_log_debug("RB %d index %d %d max %d\n", op->mldts.num_rbs, layer_idx, rrep_idx,
+			max_rb[layer_idx][rrep_idx]);
+
+	return (op->mldts.num_rbs <= max_rb[layer_idx][rrep_idx]);
+}
+
+/** Enqueue MLDTS operation split across symbols. */
+static inline int
+enqueue_mldts_split_op(struct acc_queue *q, struct rte_bbdev_mldts_op *op,
+		uint16_t total_enqueued_descs)
+{
+	uint16_t qsize_per_re[VRB2_MLD_LAY_SIZE] = {8, 12, 16}; /* Layer 2 to 4. */
+	uint16_t rsize_per_re[VRB2_MLD_LAY_SIZE] = {14, 26, 42};
+	uint16_t sc_factor_per_rrep[VRB2_MLD_RREP_SIZE] = {12, 6, 4, 3, 0, 2};
+	uint32_t i, outsize_per_re = 0, sc_num, r_num, q_size, r_size, out_size, num_syms;
+	union acc_dma_desc *desc, *first_desc;
+	uint16_t desc_idx, symb;
+	struct rte_mbuf *input_q, *input_r, *output;
+	uint32_t in_offset, out_offset;
+	struct acc_fcw_mldts *fcw;
+
+	desc_idx = acc_desc_idx(q, total_enqueued_descs);
+	first_desc = q->ring_addr + desc_idx;
+	input_q = op->mldts.qhy_input.data;
+	input_r = op->mldts.r_input.data;
+	output = op->mldts.output.data;
+	in_offset = op->mldts.qhy_input.offset;
+	out_offset = op->mldts.output.offset;
+	num_syms = op->mldts.c_rep + 1;
+	fcw = &first_desc->req.fcw_mldts;
+	vrb2_fcw_mldts_fill(op, fcw);
+	fcw->Crep = 0; /* C rep forced to zero. */
+
+	/* Prevent out of range access. */
+	if (op->mldts.r_rep > 5)
+		op->mldts.r_rep = 5;
+	if (op->mldts.num_layers < 2)
+		op->mldts.num_layers = 2;
+	if (op->mldts.num_layers > 4)
+		op->mldts.num_layers = 4;
+
+	for (i = 0; i < op->mldts.num_layers; i++)
+		outsize_per_re += op->mldts.q_m[i];
+	sc_num = op->mldts.num_rbs * RTE_BBDEV_SCPERRB; /* C rep forced to zero. */
+	r_num = op->mldts.num_rbs * sc_factor_per_rrep[op->mldts.r_rep];
+	q_size = qsize_per_re[op->mldts.num_layers - 2] * sc_num;
+	r_size = rsize_per_re[op->mldts.num_layers - 2] * r_num;
+	out_size =  sc_num * outsize_per_re;
+
+	for (symb = 0; symb < num_syms; symb++) {
+		desc_idx = ((q->sw_ring_head + total_enqueued_descs + symb) & q->sw_ring_wrap_mask);
+		desc = q->ring_addr + desc_idx;
+		acc_header_init(&desc->req);
+		if (symb == 0)
+			desc->req.cbs_in_tb = num_syms;
+		else
+			rte_memcpy(&desc->req.fcw_mldts, fcw, ACC_FCW_MLDTS_BLEN);
+		desc->req.data_ptrs[1].address = rte_pktmbuf_iova_offset(input_q, in_offset);
+		desc->req.data_ptrs[1].blen = q_size;
+		in_offset += q_size;
+		desc->req.data_ptrs[1].blkid = ACC_DMA_BLKID_IN;
+		desc->req.data_ptrs[1].last = 0;
+		desc->req.data_ptrs[1].dma_ext = 0;
+		desc->req.data_ptrs[2].address = rte_pktmbuf_iova_offset(input_r, 0);
+		desc->req.data_ptrs[2].blen = r_size;
+		desc->req.data_ptrs[2].blkid = ACC_DMA_BLKID_IN_MLD_R;
+		desc->req.data_ptrs[2].last = 1;
+		desc->req.data_ptrs[2].dma_ext = 0;
+		desc->req.data_ptrs[3].address = rte_pktmbuf_iova_offset(output, out_offset);
+		desc->req.data_ptrs[3].blen = out_size;
+		out_offset += out_size;
+		desc->req.data_ptrs[3].blkid = ACC_DMA_BLKID_OUT_HARD;
+		desc->req.data_ptrs[3].last = 1;
+		desc->req.data_ptrs[3].dma_ext = 0;
+		desc->req.m2dlen = VRB2_MLD_M2DLEN;
+		desc->req.d2mlen = 1;
+		desc->req.op_addr = op;
+
+#ifdef RTE_LIBRTE_BBDEV_DEBUG
+		rte_memdump(stderr, "FCW", &desc->req.fcw_mldts, sizeof(desc->req.fcw_mldts));
+		rte_memdump(stderr, "Req Desc.", desc, sizeof(*desc));
+#endif
+	}
+	desc->req.sdone_enable = 0;
+
+	return num_syms;
+}
+
+/** Enqueue one MLDTS operation. */
+static inline int
+enqueue_mldts_one_op(struct acc_queue *q, struct rte_bbdev_mldts_op *op,
+		uint16_t total_enqueued_descs)
+{
+	union acc_dma_desc *desc;
+	struct rte_mbuf *input_q, *input_r, *output;
+	uint32_t in_offset, out_offset;
+	struct acc_fcw_mldts *fcw;
+
+	desc = acc_desc(q, total_enqueued_descs);
+	input_q = op->mldts.qhy_input.data;
+	input_r = op->mldts.r_input.data;
+	output = op->mldts.output.data;
+	in_offset = op->mldts.qhy_input.offset;
+	out_offset = op->mldts.output.offset;
+	fcw = &desc->req.fcw_mldts;
+	vrb2_fcw_mldts_fill(op, fcw);
+	vrb2_dma_desc_mldts_fill(op, &desc->req, input_q, input_r, output,
+			&in_offset, &out_offset);
+#ifdef RTE_LIBRTE_BBDEV_DEBUG
+	rte_memdump(stderr, "FCW", &desc->req.fcw_mldts, sizeof(desc->req.fcw_mldts));
+	rte_memdump(stderr, "Req Desc.", desc, sizeof(*desc));
+#endif
+	return 1;
+}
+
+/* Enqueue MLDTS operations. */
+static uint16_t
+vrb2_enqueue_mldts(struct rte_bbdev_queue_data *q_data,
+		struct rte_bbdev_mldts_op **ops, uint16_t num)
+{
+	int32_t aq_avail, avail;
+	struct acc_queue *q = q_data->queue_private;
+	uint16_t i, enqueued_descs = 0, descs_in_op;
+	int ret;
+	bool as_one_op;
+
+	aq_avail = acc_aq_avail(q_data, num);
+	if (unlikely((aq_avail <= 0) || (num == 0)))
+		return 0;
+	avail = acc_ring_avail_enq(q);
+
+	for (i = 0; i < num; ++i) {
+		as_one_op = vrb2_check_mld_r_constraint(ops[i]);
+		descs_in_op = as_one_op ? 1 : ops[i]->mldts.c_rep + 1;
+
+		/* Check if there are available space for further processing. */
+		if (unlikely(avail < descs_in_op)) {
+			acc_enqueue_ring_full(q_data);
+			break;
+		}
+		avail -= descs_in_op;
+
+		if (as_one_op)
+			ret = enqueue_mldts_one_op(q, ops[i], enqueued_descs);
+		else
+			ret = enqueue_mldts_split_op(q, ops[i], enqueued_descs);
+
+		if (ret < 0) {
+			acc_enqueue_invalid(q_data);
+			break;
+		}
+
+		enqueued_descs += ret;
+	}
+
+	if (unlikely(i == 0))
+		return 0; /* Nothing to enqueue. */
+
+	acc_dma_enqueue(q, enqueued_descs, &q_data->queue_stats);
+
+	/* Update stats. */
+	q_data->queue_stats.enqueued_count += i;
+	q_data->queue_stats.enqueue_err_count += num - i;
+	return i;
+}
+
+/*
+ * Dequeue one MLDTS operation.
+ * This may have been split over multiple descriptors.
+ */
+static inline int
+dequeue_mldts_one_op(struct rte_bbdev_queue_data *q_data,
+		struct acc_queue *q, struct rte_bbdev_mldts_op **ref_op,
+		uint16_t dequeued_ops, uint32_t *aq_dequeued)
+{
+	union acc_dma_desc *desc, atom_desc, *last_desc;
+	union acc_dma_rsp_desc rsp;
+	struct rte_bbdev_mldts_op *op;
+	uint8_t descs_in_op, i;
+
+	desc = acc_desc_tail(q, dequeued_ops);
+	atom_desc.atom_hdr = __atomic_load_n((uint64_t *)desc, __ATOMIC_RELAXED);
+
+	/* Check fdone bit. */
+	if (!(atom_desc.rsp.val & ACC_FDONE))
+		return -1;
+
+	descs_in_op = desc->req.cbs_in_tb;
+	if (descs_in_op > 1) {
+		/* Get last CB. */
+		last_desc = acc_desc_tail(q, dequeued_ops + descs_in_op - 1);
+		/* Check if last op is ready to dequeue by checking fdone bit. If not exit. */
+		atom_desc.atom_hdr = __atomic_load_n((uint64_t *)last_desc, __ATOMIC_RELAXED);
+		if (!(atom_desc.rsp.val & ACC_FDONE))
+			return -1;
+#ifdef RTE_LIBRTE_BBDEV_DEBUG
+		rte_memdump(stderr, "Last Resp", &last_desc->rsp.val, sizeof(desc->rsp.val));
+#endif
+		/* Check each operation iteratively using fdone. */
+		for (i = 1; i < descs_in_op - 1; i++) {
+			last_desc = q->ring_addr + ((q->sw_ring_tail + dequeued_ops + i)
+					& q->sw_ring_wrap_mask);
+			atom_desc.atom_hdr = __atomic_load_n((uint64_t *)last_desc,
+					__ATOMIC_RELAXED);
+			if (!(atom_desc.rsp.val & ACC_FDONE))
+				return -1;
+		}
+	}
+#ifdef RTE_LIBRTE_BBDEV_DEBUG
+	rte_memdump(stderr, "Resp", &desc->rsp.val, sizeof(desc->rsp.val));
+#endif
+	/* Dequeue. */
+	op = desc->req.op_addr;
+
+	/* Clearing status, it will be set based on response. */
+	op->status = 0;
+
+	for (i = 0; i < descs_in_op; i++) {
+		desc = q->ring_addr + ((q->sw_ring_tail + dequeued_ops + i) & q->sw_ring_wrap_mask);
+		atom_desc.atom_hdr = __atomic_load_n((uint64_t *)desc, __ATOMIC_RELAXED);
+		rsp.val = atom_desc.rsp.val;
+		op->status |= rsp.input_err << RTE_BBDEV_DATA_ERROR;
+		op->status |= rsp.dma_err << RTE_BBDEV_DRV_ERROR;
+		op->status |= rsp.fcw_err << RTE_BBDEV_DRV_ERROR;
+		op->status |= rsp.engine_hung << RTE_BBDEV_ENGINE_ERROR;
+	}
+
+	if (op->status != 0)
+		q_data->queue_stats.dequeue_err_count++;
+	if (op->status & (1 << RTE_BBDEV_DRV_ERROR))
+		vrb_check_ir(q->d);
+
+	/* Check if this is the last desc in batch (Atomic Queue). */
+	if (desc->req.last_desc_in_batch) {
+		(*aq_dequeued)++;
+		desc->req.last_desc_in_batch = 0;
+	}
+	desc->rsp.val = ACC_DMA_DESC_TYPE;
+	desc->rsp.add_info_0 = 0;
+	*ref_op = op;
+
+	return descs_in_op;
+}
+
+/* Dequeue MLDTS operations from VRB2 device. */
+static uint16_t
+vrb2_dequeue_mldts(struct rte_bbdev_queue_data *q_data,
+		struct rte_bbdev_mldts_op **ops, uint16_t num)
+{
+	struct acc_queue *q = q_data->queue_private;
+	uint16_t dequeue_num, i, dequeued_cbs = 0;
+	uint32_t avail = acc_ring_avail_deq(q);
+	uint32_t aq_dequeued = 0;
+	int ret;
+
+	dequeue_num = RTE_MIN(avail, num);
+
+	for (i = 0; i < dequeue_num; ++i) {
+		ret = dequeue_mldts_one_op(q_data, q, &ops[i], dequeued_cbs, &aq_dequeued);
+		if (ret <= 0)
+			break;
+		dequeued_cbs += ret;
+	}
+
+	q->aq_dequeued += aq_dequeued;
+	q->sw_ring_tail += dequeued_cbs;
+	/* Update enqueue stats. */
+	q_data->queue_stats.dequeued_count += i;
+	return i;
+}
+
 /* Initialization Function */
 static void
 vrb_bbdev_init(struct rte_bbdev *dev, struct rte_pci_driver *drv)
@@ -3896,6 +4268,8 @@ vrb_bbdev_init(struct rte_bbdev *dev, struct rte_pci_driver *drv)
 	dev->dequeue_ldpc_dec_ops = vrb_dequeue_ldpc_dec;
 	dev->enqueue_fft_ops = vrb_enqueue_fft;
 	dev->dequeue_fft_ops = vrb_dequeue_fft;
+	dev->enqueue_mldts_ops = vrb2_enqueue_mldts;
+	dev->dequeue_mldts_ops = vrb2_dequeue_mldts;
 
 	d->pf_device = !strcmp(drv->driver.name, RTE_STR(VRB_PF_DRIVER_NAME));
 	d->mmio_base = pci_dev->mem_resource[0].addr;
