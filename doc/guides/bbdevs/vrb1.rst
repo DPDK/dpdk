@@ -71,11 +71,7 @@ The Intel vRAN Boost v1.0 PMD supports the following bbdev capabilities:
    - ``RTE_BBDEV_TURBO_EARLY_TERMINATION``: set early termination feature.
    - ``RTE_BBDEV_TURBO_DEC_SCATTER_GATHER``: supports scatter-gather for input/output data.
    - ``RTE_BBDEV_TURBO_HALF_ITERATION_EVEN``: set half iteration granularity.
-   - ``RTE_BBDEV_TURBO_SOFT_OUTPUT``: set the APP LLR soft output.
-   - ``RTE_BBDEV_TURBO_EQUALIZER``: set the turbo equalizer feature.
-   - ``RTE_BBDEV_TURBO_SOFT_OUT_SATURATE``: set the soft output saturation.
    - ``RTE_BBDEV_TURBO_CONTINUE_CRC_MATCH``: set to run an extra odd iteration after CRC match.
-   - ``RTE_BBDEV_TURBO_NEG_LLR_1_BIT_SOFT_OUT``: set if negative APP LLR output supported.
    - ``RTE_BBDEV_TURBO_MAP_DEC``: supports flexible parallel MAP engine decoding.
 
 * For the FFT operation:

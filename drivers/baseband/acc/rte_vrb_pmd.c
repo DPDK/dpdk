@@ -1024,15 +1024,11 @@ vrb_dev_info_get(struct rte_bbdev *dev, struct rte_bbdev_driver_info *dev_info)
 					RTE_BBDEV_TURBO_SUBBLOCK_DEINTERLEAVE |
 					RTE_BBDEV_TURBO_CRC_TYPE_24B |
 					RTE_BBDEV_TURBO_DEC_CRC_24B_DROP |
-					RTE_BBDEV_TURBO_EQUALIZER |
-					RTE_BBDEV_TURBO_SOFT_OUT_SATURATE |
 					RTE_BBDEV_TURBO_HALF_ITERATION_EVEN |
 					RTE_BBDEV_TURBO_CONTINUE_CRC_MATCH |
-					RTE_BBDEV_TURBO_SOFT_OUTPUT |
 					RTE_BBDEV_TURBO_EARLY_TERMINATION |
 					RTE_BBDEV_TURBO_DEC_INTERRUPTS |
 					RTE_BBDEV_TURBO_NEG_LLR_1_BIT_IN |
-					RTE_BBDEV_TURBO_NEG_LLR_1_BIT_SOFT_OUT |
 					RTE_BBDEV_TURBO_MAP_DEC |
 					RTE_BBDEV_TURBO_DEC_TB_CRC_24B_KEEP |
 					RTE_BBDEV_TURBO_DEC_SCATTER_GATHER,
@@ -1981,6 +1977,12 @@ enqueue_dec_one_op_cb(struct acc_queue *q, struct rte_bbdev_dec_op *op,
 		h_out_length, mbuf_total_left, seg_total_left;
 	struct rte_mbuf *input, *h_output_head, *h_output,
 		*s_output_head, *s_output;
+
+	if ((q->d->device_variant == VRB1_VARIANT) &&
+			(check_bit(op->turbo_dec.op_flags, RTE_BBDEV_TURBO_SOFT_OUTPUT))) {
+		/* SO not supported for VRB1. */
+		return -EPERM;
+	}
 
 	desc = acc_desc(q, total_enqueued_cbs);
 	vrb_fcw_td_fill(op, &desc->req.fcw_td);
