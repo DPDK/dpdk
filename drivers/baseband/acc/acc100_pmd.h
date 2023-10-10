@@ -34,6 +34,8 @@
 #define ACC100_VENDOR_ID           (0x8086)
 #define ACC100_PF_DEVICE_ID        (0x0d5c)
 #define ACC100_VF_DEVICE_ID        (0x0d5d)
+#define VRB1_PF_DEVICE_ID          (0x57C0)
+#define VRB2_PF_DEVICE_ID          (0x57C2)
 
 /* Values used in writing to the registers */
 #define ACC100_REG_IRQ_EN_ALL          0x1FF83FF  /* Enable all interrupts */

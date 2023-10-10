@@ -5187,6 +5187,10 @@ rte_acc_configure(const char *dev_name, struct rte_acc_conf *conf)
 		return acc100_configure(dev_name, conf);
 	else if (pci_dev->id.device_id == ACC101_PF_DEVICE_ID)
 		return acc101_configure(dev_name, conf);
-	else
+	else if (pci_dev->id.device_id == VRB1_PF_DEVICE_ID)
 		return vrb1_configure(dev_name, conf);
+	else if (pci_dev->id.device_id == VRB2_PF_DEVICE_ID)
+		return vrb2_configure(dev_name, conf);
+
+	return -ENXIO;
 }

@@ -4774,3 +4774,324 @@ vrb1_configure(const char *dev_name, struct rte_acc_conf *conf)
 	rte_bbdev_log_debug("PF Tip configuration complete for %s", dev_name);
 	return 0;
 }
+
+/* Initial configuration of a VRB2 device prior to running configure(). */
+int
+vrb2_configure(const char *dev_name, struct rte_acc_conf *conf)
+{
+	rte_bbdev_log(INFO, "vrb2_configure");
+	uint32_t value, address, status;
+	int qg_idx, template_idx, vf_idx, acc, i, aq_reg, static_allocation, numEngines;
+	int numQgs, numQqsAcc, totalQgs;
+	int qman_func_id[8] = {0, 2, 1, 3, 4, 5, 0, 0};
+	struct rte_bbdev *bbdev = rte_bbdev_get_named_dev(dev_name);
+	int rlim, alen, timestamp;
+
+	/* Compile time checks. */
+	RTE_BUILD_BUG_ON(sizeof(struct acc_dma_req_desc) != 256);
+	RTE_BUILD_BUG_ON(sizeof(union acc_dma_desc) != 256);
+	RTE_BUILD_BUG_ON(sizeof(struct acc_fcw_td) != 24);
+	RTE_BUILD_BUG_ON(sizeof(struct acc_fcw_te) != 32);
+
+	if (bbdev == NULL) {
+		rte_bbdev_log(ERR,
+		"Invalid dev_name (%s), or device is not yet initialised",
+		dev_name);
+		return -ENODEV;
+	}
+	struct acc_device *d = bbdev->data->dev_private;
+
+	/* Store configuration. */
+	rte_memcpy(&d->acc_conf, conf, sizeof(d->acc_conf));
+
+	/* Explicitly releasing AXI as this may be stopped after PF FLR/BME. */
+	address = VRB2_PfDmaAxiControl;
+	value = 1;
+	acc_reg_write(d, address, value);
+
+	/* Set the fabric mode. */
+	address = VRB2_PfFabricM2iBufferReg;
+	value = VRB2_FABRIC_MODE;
+	acc_reg_write(d, address, value);
+
+	/* Set default descriptor signature. */
+	address = VRB2_PfDmaDescriptorSignature;
+	value = 0;
+	acc_reg_write(d, address, value);
+
+	/* Enable the Error Detection in DMA. */
+	value = VRB2_CFG_DMA_ERROR;
+	address = VRB2_PfDmaErrorDetectionEn;
+	acc_reg_write(d, address, value);
+
+	/* AXI Cache configuration. */
+	value = VRB2_CFG_AXI_CACHE;
+	address = VRB2_PfDmaAxcacheReg;
+	acc_reg_write(d, address, value);
+
+	/* AXI Response configuration. */
+	acc_reg_write(d, VRB2_PfDmaCfgRrespBresp, 0x0);
+
+	/* Default DMA Configuration (Qmgr Enabled) */
+	acc_reg_write(d, VRB2_PfDmaConfig0Reg, 0);
+	acc_reg_write(d, VRB2_PfDmaQmanenSelect, 0xFFFFFFFF);
+	acc_reg_write(d, VRB2_PfDmaQmanen, 0);
+
+	/* Default RLIM/ALEN configuration. */
+	rlim = 0;
+	alen = 3;
+	timestamp = 0;
+	address = VRB2_PfDmaConfig1Reg;
+	value = (1 << 31) + (rlim << 8) + (timestamp << 6) + alen;
+	acc_reg_write(d, address, value);
+
+	/* Default FFT configuration. */
+	for (template_idx = 0; template_idx < VRB2_FFT_NUM; template_idx++) {
+		acc_reg_write(d, VRB2_PfFftConfig0 + template_idx * 0x1000, VRB2_FFT_CFG_0);
+		acc_reg_write(d, VRB2_PfFftParityMask8 + template_idx * 0x1000, VRB2_FFT_ECC);
+	}
+
+	/* Configure DMA Qmanager addresses. */
+	address = VRB2_PfDmaQmgrAddrReg;
+	value = VRB2_PfQmgrEgressQueuesTemplate;
+	acc_reg_write(d, address, value);
+
+	/* ===== Qmgr Configuration ===== */
+	/* Configuration of the AQueue Depth QMGR_GRP_0_DEPTH_LOG2 for UL. */
+	totalQgs = conf->q_ul_4g.num_qgroups + conf->q_ul_5g.num_qgroups +
+			conf->q_dl_4g.num_qgroups + conf->q_dl_5g.num_qgroups +
+			conf->q_fft.num_qgroups + conf->q_mld.num_qgroups;
+	for (qg_idx = 0; qg_idx < VRB2_NUM_QGRPS; qg_idx++) {
+		address = VRB2_PfQmgrDepthLog2Grp + ACC_BYTES_IN_WORD * qg_idx;
+		value = aqDepth(qg_idx, conf);
+		acc_reg_write(d, address, value);
+		address = VRB2_PfQmgrTholdGrp + ACC_BYTES_IN_WORD * qg_idx;
+		value = (1 << 16) + (1 << (aqDepth(qg_idx, conf) - 1));
+		acc_reg_write(d, address, value);
+	}
+
+	/* Template Priority in incremental order. */
+	for (template_idx = 0; template_idx < ACC_NUM_TMPL; template_idx++) {
+		address = VRB2_PfQmgrGrpTmplateReg0Indx + ACC_BYTES_IN_WORD * template_idx;
+		value = ACC_TMPL_PRI_0;
+		acc_reg_write(d, address, value);
+		address = VRB2_PfQmgrGrpTmplateReg1Indx + ACC_BYTES_IN_WORD * template_idx;
+		value = ACC_TMPL_PRI_1;
+		acc_reg_write(d, address, value);
+		address = VRB2_PfQmgrGrpTmplateReg2Indx + ACC_BYTES_IN_WORD * template_idx;
+		value = ACC_TMPL_PRI_2;
+		acc_reg_write(d, address, value);
+		address = VRB2_PfQmgrGrpTmplateReg3Indx + ACC_BYTES_IN_WORD * template_idx;
+		value = ACC_TMPL_PRI_3;
+		acc_reg_write(d, address, value);
+		address = VRB2_PfQmgrGrpTmplateReg4Indx + ACC_BYTES_IN_WORD * template_idx;
+		value = ACC_TMPL_PRI_4;
+		acc_reg_write(d, address, value);
+		address = VRB2_PfQmgrGrpTmplateReg5Indx + ACC_BYTES_IN_WORD * template_idx;
+		value = ACC_TMPL_PRI_5;
+		acc_reg_write(d, address, value);
+		address = VRB2_PfQmgrGrpTmplateReg6Indx + ACC_BYTES_IN_WORD * template_idx;
+		value = ACC_TMPL_PRI_6;
+		acc_reg_write(d, address, value);
+		address = VRB2_PfQmgrGrpTmplateReg7Indx + ACC_BYTES_IN_WORD * template_idx;
+		value = ACC_TMPL_PRI_7;
+		acc_reg_write(d, address, value);
+	}
+
+	address = VRB2_PfQmgrGrpPriority;
+	value = VRB2_CFG_QMGR_HI_P;
+	acc_reg_write(d, address, value);
+
+	/* Template Configuration. */
+	for (template_idx = 0; template_idx < ACC_NUM_TMPL; template_idx++) {
+		value = 0;
+		address = VRB2_PfQmgrGrpTmplateEnRegIndx + ACC_BYTES_IN_WORD * template_idx;
+		acc_reg_write(d, address, value);
+	}
+	/* 4GUL */
+	numQgs = conf->q_ul_4g.num_qgroups;
+	numQqsAcc = 0;
+	value = 0;
+	for (qg_idx = numQqsAcc; qg_idx < (numQgs + numQqsAcc); qg_idx++)
+		value |= (1 << qg_idx);
+	for (template_idx = VRB2_SIG_UL_4G; template_idx <= VRB2_SIG_UL_4G_LAST;
+			template_idx++) {
+		address = VRB2_PfQmgrGrpTmplateEnRegIndx + ACC_BYTES_IN_WORD * template_idx;
+		acc_reg_write(d, address, value);
+	}
+	/* 5GUL */
+	numQqsAcc += numQgs;
+	numQgs = conf->q_ul_5g.num_qgroups;
+	value = 0;
+	numEngines = 0;
+	for (qg_idx = numQqsAcc; qg_idx < (numQgs + numQqsAcc); qg_idx++)
+		value |= (1 << qg_idx);
+	for (template_idx = VRB2_SIG_UL_5G; template_idx <= VRB2_SIG_UL_5G_LAST;
+			template_idx++) {
+		/* Check engine power-on status. */
+		address = VRB2_PfFecUl5gIbDebug0Reg + ACC_ENGINE_OFFSET * template_idx;
+		status = (acc_reg_read(d, address) >> 4) & 0x7;
+		address = VRB2_PfQmgrGrpTmplateEnRegIndx + ACC_BYTES_IN_WORD * template_idx;
+		if (status == 1) {
+			acc_reg_write(d, address, value);
+			numEngines++;
+		} else
+			acc_reg_write(d, address, 0);
+	}
+	rte_bbdev_log(INFO, "Number of 5GUL engines %d", numEngines);
+	/* 4GDL */
+	numQqsAcc += numQgs;
+	numQgs	= conf->q_dl_4g.num_qgroups;
+	value = 0;
+	for (qg_idx = numQqsAcc; qg_idx < (numQgs + numQqsAcc); qg_idx++)
+		value |= (1 << qg_idx);
+	for (template_idx = VRB2_SIG_DL_4G; template_idx <= VRB2_SIG_DL_4G_LAST;
+			template_idx++) {
+		address = VRB2_PfQmgrGrpTmplateEnRegIndx + ACC_BYTES_IN_WORD * template_idx;
+		acc_reg_write(d, address, value);
+	}
+	/* 5GDL */
+	numQqsAcc += numQgs;
+	numQgs	= conf->q_dl_5g.num_qgroups;
+	value = 0;
+	for (qg_idx = numQqsAcc; qg_idx < (numQgs + numQqsAcc); qg_idx++)
+		value |= (1 << qg_idx);
+	for (template_idx = VRB2_SIG_DL_5G; template_idx <= VRB2_SIG_DL_5G_LAST;
+			template_idx++) {
+		address = VRB2_PfQmgrGrpTmplateEnRegIndx + ACC_BYTES_IN_WORD * template_idx;
+		acc_reg_write(d, address, value);
+	}
+	/* FFT */
+	numQqsAcc += numQgs;
+	numQgs	= conf->q_fft.num_qgroups;
+	value = 0;
+	for (qg_idx = numQqsAcc; qg_idx < (numQgs + numQqsAcc); qg_idx++)
+		value |= (1 << qg_idx);
+	for (template_idx = VRB2_SIG_FFT; template_idx <= VRB2_SIG_FFT_LAST;
+			template_idx++) {
+		address = VRB2_PfQmgrGrpTmplateEnRegIndx + ACC_BYTES_IN_WORD * template_idx;
+		acc_reg_write(d, address, value);
+	}
+	/* MLD */
+	numQqsAcc += numQgs;
+	numQgs	= conf->q_mld.num_qgroups;
+	value = 0;
+	for (qg_idx = numQqsAcc; qg_idx < (numQgs + numQqsAcc); qg_idx++)
+		value |= (1 << qg_idx);
+	for (template_idx = VRB2_SIG_MLD; template_idx <= VRB2_SIG_MLD_LAST;
+			template_idx++) {
+		address = VRB2_PfQmgrGrpTmplateEnRegIndx
+				+ ACC_BYTES_IN_WORD * template_idx;
+		acc_reg_write(d, address, value);
+	}
+
+	/* Queue Group Function mapping. */
+	for (i = 0; i < 4; i++) {
+		value = 0;
+		for (qg_idx = 0; qg_idx < ACC_NUM_QGRPS_PER_WORD; qg_idx++) {
+			acc = accFromQgid(qg_idx + i * ACC_NUM_QGRPS_PER_WORD, conf);
+			value |= qman_func_id[acc] << (qg_idx * 4);
+		}
+		acc_reg_write(d, VRB2_PfQmgrGrpFunction0 + i * ACC_BYTES_IN_WORD, value);
+	}
+
+	/* Configuration of the Arbitration QGroup depth to 1. */
+	for (qg_idx = 0; qg_idx < VRB2_NUM_QGRPS; qg_idx++) {
+		address = VRB2_PfQmgrArbQDepthGrp + ACC_BYTES_IN_WORD * qg_idx;
+		value = 0;
+		acc_reg_write(d, address, value);
+	}
+
+	static_allocation = 1;
+	if (static_allocation == 1) {
+		/* This pointer to ARAM (512kB) is shifted by 2 (4B per register). */
+		uint32_t aram_address = 0;
+		for (qg_idx = 0; qg_idx < totalQgs; qg_idx++) {
+			for (vf_idx = 0; vf_idx < conf->num_vf_bundles; vf_idx++) {
+				address = VRB2_PfQmgrVfBaseAddr + vf_idx
+						* ACC_BYTES_IN_WORD + qg_idx
+						* ACC_BYTES_IN_WORD * 64;
+				value = aram_address;
+				acc_reg_fast_write(d, address, value);
+				/* Offset ARAM Address for next memory bank  - increment of 4B. */
+				aram_address += aqNum(qg_idx, conf) *
+						(1 << aqDepth(qg_idx, conf));
+			}
+		}
+		if (aram_address > VRB2_WORDS_IN_ARAM_SIZE) {
+			rte_bbdev_log(ERR, "ARAM Configuration not fitting %d %d\n",
+					aram_address, VRB2_WORDS_IN_ARAM_SIZE);
+			return -EINVAL;
+		}
+	} else {
+		/* Dynamic Qmgr allocation. */
+		acc_reg_write(d, VRB2_PfQmgrAramAllocEn, 1);
+		acc_reg_write(d, VRB2_PfQmgrAramAllocSetupN0, 0x1000);
+		acc_reg_write(d, VRB2_PfQmgrAramAllocSetupN1, 0);
+		acc_reg_write(d, VRB2_PfQmgrAramAllocSetupN2, 0);
+		acc_reg_write(d, VRB2_PfQmgrAramAllocSetupN3, 0);
+		acc_reg_write(d, VRB2_PfQmgrSoftReset, 1);
+		acc_reg_write(d, VRB2_PfQmgrSoftReset, 0);
+	}
+
+	/* ==== HI Configuration ==== */
+
+	/* No Info Ring/MSI by default. */
+	address = VRB2_PfHiInfoRingIntWrEnRegPf;
+	value = 0;
+	acc_reg_write(d, address, value);
+	address = VRB2_PfHiCfgMsiIntWrEnRegPf;
+	value = 0xFFFFFFFF;
+	acc_reg_write(d, address, value);
+	/* Prevent Block on Transmit Error. */
+	address = VRB2_PfHiBlockTransmitOnErrorEn;
+	value = 0;
+	acc_reg_write(d, address, value);
+	/* Prevents to drop MSI */
+	address = VRB2_PfHiMsiDropEnableReg;
+	value = 0;
+	acc_reg_write(d, address, value);
+	/* Set the PF Mode register */
+	address = VRB2_PfHiPfMode;
+	value = ((conf->pf_mode_en) ? ACC_PF_VAL : 0) | 0x1F07F0;
+	acc_reg_write(d, address, value);
+	/* Explicitly releasing AXI after PF Mode. */
+	acc_reg_write(d, VRB2_PfDmaAxiControl, 1);
+
+	/* QoS overflow init. */
+	value = 1;
+	address = VRB2_PfQosmonAEvalOverflow0;
+	acc_reg_write(d, address, value);
+	address = VRB2_PfQosmonBEvalOverflow0;
+	acc_reg_write(d, address, value);
+
+	/* Enabling AQueues through the Queue hierarchy. */
+	unsigned int  en_bitmask[VRB2_AQ_REG_NUM];
+	for (vf_idx = 0; vf_idx < VRB2_NUM_VFS; vf_idx++) {
+		for (qg_idx = 0; qg_idx < VRB2_NUM_QGRPS; qg_idx++) {
+			for (aq_reg = 0;  aq_reg < VRB2_AQ_REG_NUM; aq_reg++)
+				en_bitmask[aq_reg] = 0;
+			if (vf_idx < conf->num_vf_bundles && qg_idx < totalQgs) {
+				for (aq_reg = 0;  aq_reg < VRB2_AQ_REG_NUM; aq_reg++) {
+					if (aqNum(qg_idx, conf) >= 16 * (aq_reg + 1))
+						en_bitmask[aq_reg] = 0xFFFF;
+					else if (aqNum(qg_idx, conf) <= 16 * aq_reg)
+						en_bitmask[aq_reg] = 0x0;
+					else
+						en_bitmask[aq_reg] = (1 << (aqNum(qg_idx,
+								conf) - aq_reg * 16)) - 1;
+				}
+			}
+			for (aq_reg = 0; aq_reg < VRB2_AQ_REG_NUM; aq_reg++) {
+				address = VRB2_PfQmgrAqEnableVf + vf_idx * 16 + aq_reg * 4;
+				value = (qg_idx << 16) + en_bitmask[aq_reg];
+				acc_reg_fast_write(d, address, value);
+			}
+		}
+	}
+
+	rte_bbdev_log(INFO,
+			"VRB2 basic config complete for %s - pf_bb_config should ideally be used instead",
+			dev_name);
+	return 0;
+}
