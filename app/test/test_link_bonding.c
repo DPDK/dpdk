@@ -449,7 +449,8 @@ test_add_already_bonding_member_to_bonding_device(void)
 	uint16_t members[RTE_MAX_ETHPORTS];
 	char pmd_name[RTE_ETH_NAME_MAX_LEN];
 
-	test_add_member_to_bonding_device();
+	TEST_ASSERT_SUCCESS(test_add_member_to_bonding_device(),
+			"Failed to add member to bonding device");
 
 	current_member_count = rte_eth_bond_members_get(test_params->bonding_port_id,
 			members, RTE_MAX_ETHPORTS);
