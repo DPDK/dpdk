@@ -354,8 +354,10 @@ nfp_net_nfdk_xmit_pkts_common(void *tx_queue,
 		 * than packet head len.
 		 */
 		if (dma_len > NFDK_DESC_TX_DMA_LEN_HEAD)
-			dma_len = NFDK_DESC_TX_DMA_LEN_HEAD;
-		dlen_type = dma_len | (NFDK_DESC_TX_TYPE_HEAD & (type << 12));
+			tmp_dlen = NFDK_DESC_TX_DMA_LEN_HEAD;
+		else
+			tmp_dlen = dma_len;
+		dlen_type = tmp_dlen | (NFDK_DESC_TX_TYPE_HEAD & (type << 12));
 		ktxds->dma_len_type = rte_cpu_to_le_16(dlen_type);
 		dma_addr = rte_mbuf_data_iova(pkt);
 		ktxds->dma_addr_hi = rte_cpu_to_le_16(dma_addr >> 32);
@@ -366,7 +368,6 @@ nfp_net_nfdk_xmit_pkts_common(void *tx_queue,
 		 * Preserve the original dlen_type, this way below the EOP logic
 		 * can use dlen_type.
 		 */
-		tmp_dlen = dlen_type & NFDK_DESC_TX_DMA_LEN_HEAD;
 		dma_len -= tmp_dlen;
 		dma_addr += tmp_dlen + 1;
 
