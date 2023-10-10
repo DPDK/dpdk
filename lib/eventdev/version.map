@@ -101,6 +101,7 @@ EXPERIMENTAL {
 	global:
 
 	# added in 21.11
+	__rte_eventdev_trace_maintain;
 	rte_event_eth_rx_adapter_create_with_params;
 	rte_event_eth_rx_adapter_queue_conf_get;
 	rte_event_eth_rx_adapter_queue_stats_get;
