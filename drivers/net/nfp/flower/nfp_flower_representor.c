@@ -646,6 +646,7 @@ nfp_flower_repr_init(struct rte_eth_dev *eth_dev,
 		void *init_params)
 {
 	int ret;
+	uint16_t index;
 	unsigned int numa_node;
 	char ring_name[RTE_ETH_NAME_MAX_LEN];
 	struct nfp_app_fw_flower *app_fw_flower;
@@ -719,10 +720,13 @@ nfp_flower_repr_init(struct rte_eth_dev *eth_dev,
 	}
 
 	/* Add repr to correct array */
-	if (repr->repr_type == NFP_REPR_TYPE_PHYS_PORT)
-		app_fw_flower->phy_reprs[repr->nfp_idx] = repr;
-	else
-		app_fw_flower->vf_reprs[repr->vf_id] = repr;
+	if (repr->repr_type == NFP_REPR_TYPE_PHYS_PORT) {
+		index = NFP_FLOWER_CMSG_PORT_PHYS_PORT_NUM(repr->port_id);
+		app_fw_flower->phy_reprs[index] = repr;
+	} else {
+		index = repr->vf_id;
+		app_fw_flower->vf_reprs[index] = repr;
+	}
 
 	return 0;
 
