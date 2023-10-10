@@ -17,6 +17,7 @@
 
 #include <rte_crypto.h>
 #include <rte_cryptodev.h>
+#include <rte_ethdev.h>
 #include <rte_ip.h>
 #include <rte_string_fns.h>
 #include <rte_tcp.h>
@@ -1426,6 +1427,93 @@ ut_setup_security(void)
 	return dev_configure_and_start(0);
 }
 
+static int
+ut_setup_security_rx_inject(void)
+{
+	struct rte_mempool *mbuf_pool = rte_mempool_lookup("CRYPTO_MBUFPOOL");
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	struct rte_eth_conf port_conf = {
+		.rxmode = {
+			.offloads = RTE_ETH_RX_OFFLOAD_CHECKSUM |
+				    RTE_ETH_RX_OFFLOAD_SECURITY,
+		},
+		.txmode = {
+			.offloads = RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE,
+		},
+		.lpbk_mode = 1,  /* Enable loopback */
+	};
+	struct rte_cryptodev_info dev_info;
+	struct rte_eth_rxconf rx_conf = {
+		.rx_thresh = {
+			.pthresh = 8,
+			.hthresh = 8,
+			.wthresh = 8,
+		},
+		.rx_free_thresh = 32,
+	};
+	uint16_t nb_ports;
+	void *sec_ctx;
+	int ret;
+
+	rte_cryptodev_info_get(ts_params->valid_devs[0], &dev_info);
+	if (!(dev_info.feature_flags & RTE_CRYPTODEV_FF_SECURITY_RX_INJECT) ||
+	    !(dev_info.feature_flags & RTE_CRYPTODEV_FF_SECURITY)) {
+		RTE_LOG(INFO, USER1,
+			"Feature requirements for IPsec Rx inject test case not met\n");
+		return TEST_SKIPPED;
+	}
+
+	sec_ctx = rte_cryptodev_get_sec_ctx(ts_params->valid_devs[0]);
+	if (sec_ctx == NULL)
+		return TEST_SKIPPED;
+
+	nb_ports = rte_eth_dev_count_avail();
+	if (nb_ports == 0)
+		return TEST_SKIPPED;
+
+	ret = rte_eth_dev_configure(0 /* port_id */,
+				    1 /* nb_rx_queue */,
+				    0 /* nb_tx_queue */,
+				    &port_conf);
+	if (ret) {
+		printf("Could not configure ethdev port 0 [err=%d]\n", ret);
+		return TEST_SKIPPED;
+	}
+
+	/* Rx queue setup */
+	ret = rte_eth_rx_queue_setup(0 /* port_id */,
+				     0 /* rx_queue_id */,
+				     1024 /* nb_rx_desc */,
+				     SOCKET_ID_ANY,
+				     &rx_conf,
+				     mbuf_pool);
+	if (ret) {
+		printf("Could not setup eth port 0 queue 0\n");
+		return TEST_SKIPPED;
+	}
+
+	ret = rte_security_rx_inject_configure(sec_ctx, 0, true);
+	if (ret) {
+		printf("Could not enable Rx inject offload");
+		return TEST_SKIPPED;
+	}
+
+	ret = rte_eth_dev_start(0);
+	if (ret) {
+		printf("Could not start ethdev");
+		return TEST_SKIPPED;
+	}
+
+	ret = rte_eth_promiscuous_enable(0);
+	if (ret) {
+		printf("Could not enable promiscuous mode");
+		return TEST_SKIPPED;
+	}
+
+	/* Configure and start cryptodev with no features disabled */
+	return dev_configure_and_start(0);
+}
+
 void
 ut_teardown(void)
 {
@@ -1476,6 +1564,33 @@ ut_teardown(void)
 
 	/* Stop the device */
 	rte_cryptodev_stop(ts_params->valid_devs[0]);
+}
+
+static void
+ut_teardown_rx_inject(void)
+{
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	void *sec_ctx;
+	int ret;
+
+	if  (rte_eth_dev_count_avail() != 0) {
+		ret = rte_eth_dev_reset(0);
+		if (ret)
+			printf("Could not reset eth port 0");
+
+	}
+
+	ut_teardown();
+
+	sec_ctx = rte_cryptodev_get_sec_ctx(ts_params->valid_devs[0]);
+	if (sec_ctx == NULL)
+		return;
+
+	ret = rte_security_rx_inject_configure(sec_ctx, 0, false);
+	if (ret) {
+		printf("Could not disable Rx inject offload");
+		return;
+	}
 }
 
 static int
@@ -9876,6 +9991,136 @@ fail:
 }
 
 static int
+test_ipsec_proto_crypto_op_enq(struct crypto_testsuite_params *ts_params,
+			       struct crypto_unittest_params *ut_params,
+			       struct rte_security_ipsec_xform *ipsec_xform,
+			       const struct ipsec_test_data *td,
+			       const struct ipsec_test_flags *flags,
+			       int pkt_num)
+{
+	uint8_t dev_id = ts_params->valid_devs[0];
+	enum rte_security_ipsec_sa_direction dir;
+	int ret;
+
+	dir = ipsec_xform->direction;
+
+	/* Generate crypto op data structure */
+	ut_params->op = rte_crypto_op_alloc(ts_params->op_mpool,
+				RTE_CRYPTO_OP_TYPE_SYMMETRIC);
+	if (!ut_params->op) {
+		printf("Could not allocate crypto op");
+		return TEST_FAILED;
+	}
+
+	/* Attach session to operation */
+	rte_security_attach_session(ut_params->op, ut_params->sec_session);
+
+	/* Set crypto operation mbufs */
+	ut_params->op->sym->m_src = ut_params->ibuf;
+	ut_params->op->sym->m_dst = NULL;
+
+	/* Copy IV in crypto operation when IV generation is disabled */
+	if (dir == RTE_SECURITY_IPSEC_SA_DIR_EGRESS &&
+	    ipsec_xform->options.iv_gen_disable == 1) {
+		uint8_t *iv = rte_crypto_op_ctod_offset(ut_params->op,
+							uint8_t *,
+							IV_OFFSET);
+		int len;
+
+		if (td->aead)
+			len = td->xform.aead.aead.iv.length;
+		else if (td->aes_gmac)
+			len = td->xform.chain.auth.auth.iv.length;
+		else
+			len = td->xform.chain.cipher.cipher.iv.length;
+
+		memcpy(iv, td->iv.data, len);
+	}
+
+	/* Process crypto operation */
+	process_crypto_request(dev_id, ut_params->op);
+
+	ret = test_ipsec_status_check(td, ut_params->op, flags, dir, pkt_num);
+
+	rte_crypto_op_free(ut_params->op);
+	ut_params->op = NULL;
+
+	return ret;
+}
+
+static int
+test_ipsec_proto_mbuf_enq(struct crypto_testsuite_params *ts_params,
+			  struct crypto_unittest_params *ut_params,
+			  void *ctx)
+{
+	uint64_t timeout, userdata;
+	struct rte_ether_hdr *hdr;
+	struct rte_mbuf *m;
+	void **sec_sess;
+	int ret;
+
+	RTE_SET_USED(ts_params);
+
+	hdr = (void *)rte_pktmbuf_prepend(ut_params->ibuf, sizeof(struct rte_ether_hdr));
+	hdr->ether_type = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV4);
+
+	ut_params->ibuf->l2_len = sizeof(struct rte_ether_hdr);
+
+	sec_sess = &ut_params->sec_session;
+	ret = rte_security_inb_pkt_rx_inject(ctx, &ut_params->ibuf, sec_sess, 1);
+
+	if (ret != 1)
+		return TEST_FAILED;
+
+	ut_params->ibuf = NULL;
+
+	/* Add a timeout for 1 s */
+	timeout = rte_get_tsc_cycles() + rte_get_tsc_hz();
+
+	do {
+		/* Get packet from port 0, queue 0 */
+		ret = rte_eth_rx_burst(0, 0, &m, 1);
+	} while ((ret == 0) && (rte_get_tsc_cycles() > timeout));
+
+	if (ret == 0) {
+		printf("Could not receive packets from ethdev\n");
+		return TEST_FAILED;
+	}
+
+	if (m == NULL) {
+		printf("Received mbuf is NULL\n");
+		return TEST_FAILED;
+	}
+
+	ut_params->ibuf = m;
+
+	if (!(m->ol_flags & RTE_MBUF_F_RX_SEC_OFFLOAD)) {
+		printf("Received packet is not Rx security processed\n");
+		return TEST_FAILED;
+	}
+
+	if (m->ol_flags & RTE_MBUF_F_RX_SEC_OFFLOAD_FAILED) {
+		printf("Received packet has failed Rx security processing\n");
+		return TEST_FAILED;
+	}
+
+	/*
+	 * 'ut_params' is set as userdata. Verify that the field is returned
+	 * correctly.
+	 */
+	userdata = *(uint64_t *)rte_security_dynfield(m);
+	if (userdata != (uint64_t)ut_params) {
+		printf("Userdata retrieved not matching expected\n");
+		return TEST_FAILED;
+	}
+
+	/* Trim L2 header */
+	rte_pktmbuf_adj(m, sizeof(struct rte_ether_hdr));
+
+	return TEST_SUCCESS;
+}
+
+static int
 test_ipsec_proto_process(const struct ipsec_test_data td[],
 			 struct ipsec_test_data res_d[],
 			 int nb_td,
@@ -10064,6 +10309,9 @@ test_ipsec_proto_process(const struct ipsec_test_data td[],
 		}
 	}
 
+	if (dir == RTE_SECURITY_IPSEC_SA_DIR_INGRESS && flags->rx_inject)
+		sess_conf.userdata = ut_params;
+
 	/* Create security session */
 	ut_params->sec_session = rte_security_session_create(ctx, &sess_conf,
 					ts_params->session_mpool);
@@ -10086,8 +10334,10 @@ test_ipsec_proto_process(const struct ipsec_test_data td[],
 
 		/* Copy test data before modification */
 		memcpy(input_text, td[i].input_text.data, td[i].input_text.len);
-		if (test_ipsec_pkt_update(input_text, flags))
-			return TEST_FAILED;
+		if (test_ipsec_pkt_update(input_text, flags)) {
+			ret = TEST_FAILED;
+			goto mbuf_free;
+		}
 
 		/* Setup source mbuf payload */
 		if (flags->use_ext_mbuf) {
@@ -10099,50 +10349,18 @@ test_ipsec_proto_process(const struct ipsec_test_data td[],
 			pktmbuf_write(ut_params->ibuf, 0, td[i].input_text.len, input_text);
 		}
 
-		/* Generate crypto op data structure */
-		ut_params->op = rte_crypto_op_alloc(ts_params->op_mpool,
-					RTE_CRYPTO_OP_TYPE_SYMMETRIC);
-		if (!ut_params->op) {
-			printf("TestCase %s line %d: %s\n",
-				__func__, __LINE__,
-				"failed to allocate crypto op");
-			ret = TEST_FAILED;
-			goto crypto_op_free;
-		}
+		if (dir == RTE_SECURITY_IPSEC_SA_DIR_INGRESS && flags->rx_inject)
+			ret = test_ipsec_proto_mbuf_enq(ts_params, ut_params,
+							ctx);
+		else
+			ret = test_ipsec_proto_crypto_op_enq(ts_params,
+							     ut_params,
+							     &ipsec_xform,
+							     &td[i], flags,
+							     i + 1);
 
-		/* Attach session to operation */
-		rte_security_attach_session(ut_params->op,
-					    ut_params->sec_session);
-
-		/* Set crypto operation mbufs */
-		ut_params->op->sym->m_src = ut_params->ibuf;
-		ut_params->op->sym->m_dst = NULL;
-
-		/* Copy IV in crypto operation when IV generation is disabled */
-		if (dir == RTE_SECURITY_IPSEC_SA_DIR_EGRESS &&
-		    ipsec_xform.options.iv_gen_disable == 1) {
-			uint8_t *iv = rte_crypto_op_ctod_offset(ut_params->op,
-								uint8_t *,
-								IV_OFFSET);
-			int len;
-
-			if (td[i].aead)
-				len = td[i].xform.aead.aead.iv.length;
-			else if (td[i].aes_gmac)
-				len = td[i].xform.chain.auth.auth.iv.length;
-			else
-				len = td[i].xform.chain.cipher.cipher.iv.length;
-
-			memcpy(iv, td[i].iv.data, len);
-		}
-
-		/* Process crypto operation */
-		process_crypto_request(dev_id, ut_params->op);
-
-		ret = test_ipsec_status_check(&td[i], ut_params->op, flags, dir,
-					      i + 1);
 		if (ret != TEST_SUCCESS)
-			goto crypto_op_free;
+			goto mbuf_free;
 
 		if (res_d != NULL)
 			res_d_tmp = &res_d[i];
@@ -10150,24 +10368,18 @@ test_ipsec_proto_process(const struct ipsec_test_data td[],
 		ret = test_ipsec_post_process(ut_params->ibuf, &td[i],
 					      res_d_tmp, silent, flags);
 		if (ret != TEST_SUCCESS)
-			goto crypto_op_free;
+			goto mbuf_free;
 
 		ret = test_ipsec_stats_verify(ctx, ut_params->sec_session,
 					      flags, dir);
 		if (ret != TEST_SUCCESS)
-			goto crypto_op_free;
-
-		rte_crypto_op_free(ut_params->op);
-		ut_params->op = NULL;
+			goto mbuf_free;
 
 		rte_pktmbuf_free(ut_params->ibuf);
 		ut_params->ibuf = NULL;
 	}
 
-crypto_op_free:
-	rte_crypto_op_free(ut_params->op);
-	ut_params->op = NULL;
-
+mbuf_free:
 	if (flags->use_ext_mbuf)
 		ext_mbuf_memzone_free(nb_segs);
 
@@ -10254,6 +10466,24 @@ test_ipsec_proto_known_vec_fragmented(const void *test_data)
 	td_outb.ipsec_xform.options.iv_gen_disable = 1;
 
 	return test_ipsec_proto_process(&td_outb, NULL, 1, false, &flags);
+}
+
+static int
+test_ipsec_proto_known_vec_inb_rx_inject(const void *test_data)
+{
+	const struct ipsec_test_data *td = test_data;
+	struct ipsec_test_flags flags;
+	struct ipsec_test_data td_inb;
+
+	memset(&flags, 0, sizeof(flags));
+	flags.rx_inject = true;
+
+	if (td->ipsec_xform.direction == RTE_SECURITY_IPSEC_SA_DIR_EGRESS)
+		test_ipsec_td_in_from_out(td, &td_inb);
+	else
+		memcpy(&td_inb, td, sizeof(td_inb));
+
+	return test_ipsec_proto_process(&td_inb, NULL, 1, false, &flags);
 }
 
 static int
@@ -16319,6 +16549,10 @@ static struct unit_test_suite ipsec_proto_testsuite  = {
 			"Multi-segmented external mbuf mode",
 			ut_setup_security, ut_teardown,
 			test_ipsec_proto_sgl_ext_mbuf),
+		TEST_CASE_NAMED_WITH_DATA(
+			"Inbound known vector (ESP tunnel mode IPv4 AES-GCM 128) Rx inject",
+			ut_setup_security_rx_inject, ut_teardown_rx_inject,
+			test_ipsec_proto_known_vec_inb_rx_inject, &pkt_aes_128_gcm),
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}
 };
