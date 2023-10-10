@@ -214,8 +214,9 @@ nfp_bar_write(struct nfp_pcie_user *nfp,
 		rte_read32(nfp->csr + xbar);
 	} else {
 		xbar += nfp->dev_info->pcie_cfg_expbar_offset;
-		rte_pci_write_config(nfp->pci_dev, &newcfg, sizeof(uint32_t),
-				xbar);
+		if (rte_pci_write_config(nfp->pci_dev, &newcfg, sizeof(uint32_t),
+				xbar) < 0)
+			return -EIO;
 	}
 
 	bar->barcfg = newcfg;
@@ -379,7 +380,8 @@ nfp_enable_bars(struct nfp_pcie_user *nfp)
 	bar = &nfp->bar[0];
 	bar->lock = true;
 
-	nfp_bar_write(nfp, bar, barcfg_msix_general);
+	if (nfp_bar_write(nfp, bar, barcfg_msix_general) < 0)
+		return -EIO;
 
 	/* Sort bars by bit size - use the smallest possible first. */
 	qsort(&nfp->bar[0], nfp->bars, sizeof(nfp->bar[0]), nfp_cmp_bars);
