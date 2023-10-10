@@ -902,6 +902,9 @@ vrb_queue_setup(struct rte_bbdev *dev, uint16_t queue_id,
 			ACC_FCW_LD_BLEN : (conf->op_type == RTE_BBDEV_OP_FFT ?
 			ACC_FCW_FFT_BLEN : ACC_FCW_MLDTS_BLEN))));
 
+	if ((q->d->device_variant == VRB2_VARIANT) && (conf->op_type == RTE_BBDEV_OP_FFT))
+		fcw_len = ACC_FCW_FFT_BLEN_3;
+
 	for (desc_idx = 0; desc_idx < d->sw_ring_max_depth; desc_idx++) {
 		desc = q->ring_addr + desc_idx;
 		desc->req.word0 = ACC_DMA_DESC_TYPE;
@@ -1224,10 +1227,8 @@ vrb_dev_info_get(struct rte_bbdev *dev, struct rte_bbdev_driver_info *dev_info)
 						RTE_BBDEV_FFT_DFT_BYPASS |
 						RTE_BBDEV_FFT_IDFT_BYPASS |
 						RTE_BBDEV_FFT_WINDOWING_BYPASS,
-				.num_buffers_src =
-						RTE_BBDEV_LDPC_MAX_CODE_BLOCKS,
-				.num_buffers_dst =
-						RTE_BBDEV_LDPC_MAX_CODE_BLOCKS,
+				.num_buffers_src = 1,
+				.num_buffers_dst = 1,
 				.fft_windows_num = ACC_MAX_FFT_WIN,
 			}
 		},
@@ -1321,6 +1322,23 @@ vrb_dev_info_get(struct rte_bbdev *dev, struct rte_bbdev_driver_info *dev_info)
 			.num_buffers_hard_out =
 					RTE_BBDEV_LDPC_MAX_CODE_BLOCKS,
 			.num_buffers_soft_out = 0,
+			}
+		},
+		{
+			.type	= RTE_BBDEV_OP_FFT,
+			.cap.fft = {
+				.capability_flags =
+						RTE_BBDEV_FFT_WINDOWING |
+						RTE_BBDEV_FFT_CS_ADJUSTMENT |
+						RTE_BBDEV_FFT_DFT_BYPASS |
+						RTE_BBDEV_FFT_IDFT_BYPASS |
+						RTE_BBDEV_FFT_FP16_INPUT |
+						RTE_BBDEV_FFT_FP16_OUTPUT |
+						RTE_BBDEV_FFT_POWER_MEAS |
+						RTE_BBDEV_FFT_WINDOWING_BYPASS,
+				.num_buffers_src = 1,
+				.num_buffers_dst = 1,
+				.fft_windows_num = ACC_MAX_FFT_WIN,
 			}
 		},
 		RTE_BBDEV_END_OF_CAPABILITIES_LIST()
@@ -3608,39 +3626,105 @@ vrb1_fcw_fft_fill(struct rte_bbdev_fft_op *op, struct acc_fcw_fft *fcw)
 		fcw->bypass = 0;
 }
 
-static inline int
-vrb1_dma_desc_fft_fill(struct rte_bbdev_fft_op *op,
-		struct acc_dma_req_desc *desc,
-		struct rte_mbuf *input, struct rte_mbuf *output,
-		uint32_t *in_offset, uint32_t *out_offset)
+/* Fill in a frame control word for FFT processing. */
+static inline void
+vrb2_fcw_fft_fill(struct rte_bbdev_fft_op *op, struct acc_fcw_fft_3 *fcw)
 {
-	/* FCW already done. */
+	fcw->in_frame_size = op->fft.input_sequence_size;
+	fcw->leading_pad_size = op->fft.input_leading_padding;
+	fcw->out_frame_size = op->fft.output_sequence_size;
+	fcw->leading_depad_size = op->fft.output_leading_depadding;
+	fcw->cs_window_sel = op->fft.window_index[0] +
+			(op->fft.window_index[1] << 8) +
+			(op->fft.window_index[2] << 16) +
+			(op->fft.window_index[3] << 24);
+	fcw->cs_window_sel2 = op->fft.window_index[4] +
+			(op->fft.window_index[5] << 8);
+	fcw->cs_enable_bmap = op->fft.cs_bitmap;
+	fcw->num_antennas = op->fft.num_antennas_log2;
+	fcw->idft_size = op->fft.idft_log2;
+	fcw->dft_size = op->fft.dft_log2;
+	fcw->cs_offset = op->fft.cs_time_adjustment;
+	fcw->idft_shift = op->fft.idft_shift;
+	fcw->dft_shift = op->fft.dft_shift;
+	fcw->cs_multiplier = op->fft.ncs_reciprocal;
+	fcw->power_shift = op->fft.power_shift;
+	fcw->exp_adj = op->fft.fp16_exp_adjust;
+	fcw->fp16_in = check_bit(op->fft.op_flags, RTE_BBDEV_FFT_FP16_INPUT);
+	fcw->fp16_out = check_bit(op->fft.op_flags, RTE_BBDEV_FFT_FP16_OUTPUT);
+	fcw->power_en = check_bit(op->fft.op_flags, RTE_BBDEV_FFT_POWER_MEAS);
+	if (check_bit(op->fft.op_flags,
+			RTE_BBDEV_FFT_IDFT_BYPASS)) {
+		if (check_bit(op->fft.op_flags,
+				RTE_BBDEV_FFT_WINDOWING_BYPASS))
+			fcw->bypass = 2;
+		else
+			fcw->bypass = 1;
+	} else if (check_bit(op->fft.op_flags,
+			RTE_BBDEV_FFT_DFT_BYPASS))
+		fcw->bypass = 3;
+	else
+		fcw->bypass = 0;
+}
+
+static inline int
+vrb_dma_desc_fft_fill(struct rte_bbdev_fft_op *op,
+		struct acc_dma_req_desc *desc,
+		struct rte_mbuf *input, struct rte_mbuf *output, struct rte_mbuf *win_input,
+		struct rte_mbuf *pwr, uint32_t *in_offset, uint32_t *out_offset,
+		uint32_t *win_offset, uint32_t *pwr_offset, uint16_t device_variant)
+{
+	bool pwr_en = check_bit(op->fft.op_flags, RTE_BBDEV_FFT_POWER_MEAS);
+	bool win_en = check_bit(op->fft.op_flags, RTE_BBDEV_FFT_DEWINDOWING);
+	int num_cs = 0, i, bd_idx = 1;
+
+	if (device_variant == VRB1_VARIANT) {
+		/* Force unsupported descriptor format out. */
+		pwr_en = 0;
+		win_en = 0;
+	}
+
+	/* FCW already done */
 	acc_header_init(desc);
-	desc->data_ptrs[1].address = rte_pktmbuf_iova_offset(input, *in_offset);
-	desc->data_ptrs[1].blen = op->fft.input_sequence_size * 4;
-	desc->data_ptrs[1].blkid = ACC_DMA_BLKID_IN;
-	desc->data_ptrs[1].last = 1;
-	desc->data_ptrs[1].dma_ext = 0;
-	desc->data_ptrs[2].address = rte_pktmbuf_iova_offset(output, *out_offset);
-	desc->data_ptrs[2].blen = op->fft.output_sequence_size * 4;
-	desc->data_ptrs[2].blkid = ACC_DMA_BLKID_OUT_HARD;
-	desc->data_ptrs[2].last = 1;
-	desc->data_ptrs[2].dma_ext = 0;
-	desc->m2dlen = 2;
-	desc->d2mlen = 1;
+
+	RTE_SET_USED(win_input);
+	RTE_SET_USED(win_offset);
+
+	desc->data_ptrs[bd_idx].address = rte_pktmbuf_iova_offset(input, *in_offset);
+	desc->data_ptrs[bd_idx].blen = op->fft.input_sequence_size * ACC_IQ_SIZE;
+	desc->data_ptrs[bd_idx].blkid = ACC_DMA_BLKID_IN;
+	desc->data_ptrs[bd_idx].last = 1;
+	desc->data_ptrs[bd_idx].dma_ext = 0;
+	bd_idx++;
+
+	desc->data_ptrs[bd_idx].address = rte_pktmbuf_iova_offset(output, *out_offset);
+	desc->data_ptrs[bd_idx].blen = op->fft.output_sequence_size * ACC_IQ_SIZE;
+	desc->data_ptrs[bd_idx].blkid = ACC_DMA_BLKID_OUT_HARD;
+	desc->data_ptrs[bd_idx].last = pwr_en ? 0 : 1;
+	desc->data_ptrs[bd_idx].dma_ext = 0;
+	desc->m2dlen = win_en ? 3 : 2;
+	desc->d2mlen = pwr_en ? 2 : 1;
 	desc->ib_ant_offset = op->fft.input_sequence_size;
 	desc->num_ant = op->fft.num_antennas_log2 - 3;
-	int num_cs = 0, i;
-	for (i = 0; i < 12; i++)
+
+	for (i = 0; i < RTE_BBDEV_MAX_CS; i++)
 		if (check_bit(op->fft.cs_bitmap, 1 << i))
 			num_cs++;
 	desc->num_cs = num_cs;
+
+	if (pwr_en && pwr) {
+		bd_idx++;
+		desc->data_ptrs[bd_idx].address = rte_pktmbuf_iova_offset(pwr, *pwr_offset);
+		desc->data_ptrs[bd_idx].blen = num_cs * (1 << op->fft.num_antennas_log2) * 4;
+		desc->data_ptrs[bd_idx].blkid = ACC_DMA_BLKID_OUT_SOFT;
+		desc->data_ptrs[bd_idx].last = 1;
+		desc->data_ptrs[bd_idx].dma_ext = 0;
+	}
 	desc->ob_cyc_offset = op->fft.output_sequence_size;
 	desc->ob_ant_offset = op->fft.output_sequence_size * num_cs;
 	desc->op_addr = op;
 	return 0;
 }
-
 
 /** Enqueue one FFT operation for device. */
 static inline int
@@ -3648,22 +3732,30 @@ vrb_enqueue_fft_one_op(struct acc_queue *q, struct rte_bbdev_fft_op *op,
 		uint16_t total_enqueued_cbs)
 {
 	union acc_dma_desc *desc;
-	struct rte_mbuf *input, *output;
-	uint32_t in_offset, out_offset;
+	struct rte_mbuf *input, *output, *pwr, *win;
+	uint32_t in_offset, out_offset, pwr_offset, win_offset;
 	struct acc_fcw_fft *fcw;
 
 	desc = acc_desc(q, total_enqueued_cbs);
 	input = op->fft.base_input.data;
 	output = op->fft.base_output.data;
+	pwr = op->fft.power_meas_output.data;
+	win = op->fft.dewindowing_input.data;
 	in_offset = op->fft.base_input.offset;
 	out_offset = op->fft.base_output.offset;
+	pwr_offset = op->fft.power_meas_output.offset;
+	win_offset = op->fft.dewindowing_input.offset;
 
 	fcw = (struct acc_fcw_fft *) (q->fcw_ring +
 			((q->sw_ring_head + total_enqueued_cbs) & q->sw_ring_wrap_mask)
 			* ACC_MAX_FCW_SIZE);
 
-	vrb1_fcw_fft_fill(op, fcw);
-	vrb1_dma_desc_fft_fill(op, &desc->req, input, output, &in_offset, &out_offset);
+	if (q->d->device_variant == VRB1_VARIANT)
+		vrb1_fcw_fft_fill(op, fcw);
+	else
+		vrb2_fcw_fft_fill(op, (struct acc_fcw_fft_3 *) fcw);
+	vrb_dma_desc_fft_fill(op, &desc->req, input, output, win, pwr,
+			&in_offset, &out_offset, &win_offset, &pwr_offset, q->d->device_variant);
 #ifdef RTE_LIBRTE_BBDEV_DEBUG
 	rte_memdump(stderr, "FCW", &desc->req.fcw_fft,
 			sizeof(desc->req.fcw_fft));
