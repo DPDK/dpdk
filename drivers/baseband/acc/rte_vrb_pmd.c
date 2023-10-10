@@ -1501,6 +1501,7 @@ vrb_fcw_td_fill(const struct rte_bbdev_dec_op *op, struct acc_fcw_td *fcw)
 				fcw->ea = op->turbo_dec.cb_params.e;
 				fcw->eb = op->turbo_dec.cb_params.e;
 			}
+
 			if (op->turbo_dec.rv_index == 0)
 				fcw->k0_start_col = ACC_FCW_TD_RVIDX_0;
 			else if (op->turbo_dec.rv_index == 1)
@@ -2075,7 +2076,7 @@ enqueue_ldpc_enc_n_op_cb(struct acc_queue *q, struct rte_bbdev_enc_op **ops,
 	return num;
 }
 
-/* Enqueue one encode operations for device for a partial TB
+/* Enqueue one encode operations for VRB1 device for a partial TB
  * all codes blocks have same configuration multiplexed on the same descriptor.
  */
 static inline void
@@ -2419,7 +2420,7 @@ enqueue_dec_one_op_cb(struct acc_queue *q, struct rte_bbdev_dec_op *op,
 	return 1;
 }
 
-/** Enqueue one decode operations for device in CB mode */
+/** Enqueue one decode operations for device in CB mode. */
 static inline int
 vrb_enqueue_ldpc_dec_one_op_cb(struct acc_queue *q, struct rte_bbdev_dec_op *op,
 		uint16_t total_enqueued_cbs, bool same_op)
@@ -2983,7 +2984,6 @@ vrb_enqueue_ldpc_dec_cb(struct rte_bbdev_queue_data *q_data,
 			break;
 		}
 		avail -= 1;
-
 		rte_bbdev_log(INFO, "Op %d %d %d %d %d %d %d %d %d %d %d %d\n",
 			i, ops[i]->ldpc_dec.op_flags, ops[i]->ldpc_dec.rv_index,
 			ops[i]->ldpc_dec.iter_max, ops[i]->ldpc_dec.iter_count,
@@ -3111,6 +3111,7 @@ vrb_dequeue_enc_one_op_cb(struct acc_queue *q, struct rte_bbdev_enc_op **ref_op,
 	op->status |= ((rsp.input_err) ? (1 << RTE_BBDEV_DATA_ERROR) : 0);
 	op->status |= ((rsp.dma_err) ? (1 << RTE_BBDEV_DRV_ERROR) : 0);
 	op->status |= ((rsp.fcw_err) ? (1 << RTE_BBDEV_DRV_ERROR) : 0);
+	op->status |= ((rsp.engine_hung) ? (1 << RTE_BBDEV_ENGINE_ERROR) : 0);
 
 	if (desc->req.last_desc_in_batch) {
 		(*aq_dequeued)++;
@@ -3226,6 +3227,7 @@ vrb_dequeue_enc_one_op_tb(struct acc_queue *q, struct rte_bbdev_enc_op **ref_op,
 		op->status |= ((rsp.input_err) ? (1 << RTE_BBDEV_DATA_ERROR) : 0);
 		op->status |= ((rsp.dma_err) ? (1 << RTE_BBDEV_DRV_ERROR) : 0);
 		op->status |= ((rsp.fcw_err) ? (1 << RTE_BBDEV_DRV_ERROR) : 0);
+		op->status |= ((rsp.engine_hung) ? (1 << RTE_BBDEV_ENGINE_ERROR) : 0);
 
 		if (desc->req.last_desc_in_batch) {
 			(*aq_dequeued)++;
@@ -3272,6 +3274,8 @@ vrb_dequeue_dec_one_op_cb(struct rte_bbdev_queue_data *q_data,
 	op->status |= ((rsp.input_err) ? (1 << RTE_BBDEV_DATA_ERROR) : 0);
 	op->status |= ((rsp.dma_err) ? (1 << RTE_BBDEV_DRV_ERROR) : 0);
 	op->status |= ((rsp.fcw_err) ? (1 << RTE_BBDEV_DRV_ERROR) : 0);
+	op->status |= rsp.engine_hung << RTE_BBDEV_ENGINE_ERROR;
+
 	if (op->status != 0) {
 		/* These errors are not expected. */
 		q_data->queue_stats.dequeue_err_count++;
@@ -3325,6 +3329,7 @@ vrb_dequeue_ldpc_dec_one_op_cb(struct rte_bbdev_queue_data *q_data,
 	op->status |= rsp.input_err << RTE_BBDEV_DATA_ERROR;
 	op->status |= rsp.dma_err << RTE_BBDEV_DRV_ERROR;
 	op->status |= rsp.fcw_err << RTE_BBDEV_DRV_ERROR;
+	op->status |= rsp.engine_hung << RTE_BBDEV_ENGINE_ERROR;
 	if (op->status != 0)
 		q_data->queue_stats.dequeue_err_count++;
 
@@ -3406,6 +3411,7 @@ vrb_dequeue_dec_one_op_tb(struct acc_queue *q, struct rte_bbdev_dec_op **ref_op,
 		op->status |= ((rsp.input_err) ? (1 << RTE_BBDEV_DATA_ERROR) : 0);
 		op->status |= ((rsp.dma_err) ? (1 << RTE_BBDEV_DRV_ERROR) : 0);
 		op->status |= ((rsp.fcw_err) ? (1 << RTE_BBDEV_DRV_ERROR) : 0);
+		op->status |= ((rsp.engine_hung) ? (1 << RTE_BBDEV_ENGINE_ERROR) : 0);
 
 		if (check_bit(op->ldpc_dec.op_flags, RTE_BBDEV_LDPC_CRC_TYPE_24A_CHECK))
 			tb_crc_check ^= desc->rsp.add_info_1;
@@ -3457,7 +3463,6 @@ vrb_dequeue_enc(struct rte_bbdev_queue_data *q_data,
 	if (avail == 0)
 		return 0;
 	op = acc_op_tail(q, 0);
-
 	cbm = op->turbo_enc.code_block_mode;
 
 	for (i = 0; i < avail; i++) {
@@ -3768,9 +3773,8 @@ vrb_enqueue_fft_one_op(struct acc_queue *q, struct rte_bbdev_fft_op *op,
 	vrb_dma_desc_fft_fill(op, &desc->req, input, output, win, pwr,
 			&in_offset, &out_offset, &win_offset, &pwr_offset, q->d->device_variant);
 #ifdef RTE_LIBRTE_BBDEV_DEBUG
-	rte_memdump(stderr, "FCW", &desc->req.fcw_fft,
-			sizeof(desc->req.fcw_fft));
-	rte_memdump(stderr, "Req Desc.", desc, sizeof(*desc));
+	rte_memdump(stderr, "FCW", fcw, 128);
+	rte_memdump(stderr, "Req Desc.", desc, 128);
 #endif
 	return 1;
 }
@@ -3843,6 +3847,7 @@ vrb_dequeue_fft_one_op(struct rte_bbdev_queue_data *q_data,
 	op->status |= rsp.input_err << RTE_BBDEV_DATA_ERROR;
 	op->status |= rsp.dma_err << RTE_BBDEV_DRV_ERROR;
 	op->status |= rsp.fcw_err << RTE_BBDEV_DRV_ERROR;
+	op->status |= rsp.engine_hung << RTE_BBDEV_ENGINE_ERROR;
 	if (op->status != 0)
 		q_data->queue_stats.dequeue_err_count++;
 
