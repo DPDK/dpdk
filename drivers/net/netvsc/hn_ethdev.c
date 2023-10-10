@@ -1059,37 +1059,6 @@ hn_dev_close(struct rte_eth_dev *dev)
 	return ret;
 }
 
-static const struct eth_dev_ops hn_eth_dev_ops = {
-	.dev_configure		= hn_dev_configure,
-	.dev_start		= hn_dev_start,
-	.dev_stop		= hn_dev_stop,
-	.dev_close		= hn_dev_close,
-	.dev_infos_get		= hn_dev_info_get,
-	.txq_info_get		= hn_dev_tx_queue_info,
-	.rxq_info_get		= hn_dev_rx_queue_info,
-	.dev_supported_ptypes_get = hn_vf_supported_ptypes,
-	.promiscuous_enable     = hn_dev_promiscuous_enable,
-	.promiscuous_disable    = hn_dev_promiscuous_disable,
-	.allmulticast_enable    = hn_dev_allmulticast_enable,
-	.allmulticast_disable   = hn_dev_allmulticast_disable,
-	.set_mc_addr_list	= hn_dev_mc_addr_list,
-	.reta_update		= hn_rss_reta_update,
-	.reta_query             = hn_rss_reta_query,
-	.rss_hash_update	= hn_rss_hash_update,
-	.rss_hash_conf_get      = hn_rss_hash_conf_get,
-	.tx_queue_setup		= hn_dev_tx_queue_setup,
-	.tx_queue_release	= hn_dev_tx_queue_release,
-	.tx_done_cleanup        = hn_dev_tx_done_cleanup,
-	.rx_queue_setup		= hn_dev_rx_queue_setup,
-	.rx_queue_release	= hn_dev_rx_queue_release,
-	.link_update		= hn_dev_link_update,
-	.stats_get		= hn_dev_stats_get,
-	.stats_reset            = hn_dev_stats_reset,
-	.xstats_get		= hn_dev_xstats_get,
-	.xstats_get_names	= hn_dev_xstats_get_names,
-	.xstats_reset		= hn_dev_xstats_reset,
-};
-
 /*
  * Setup connection between PMD and kernel.
  */
@@ -1129,12 +1098,158 @@ hn_detach(struct hn_data *hv)
 	hn_rndis_detach(hv);
 }
 
+/*
+ * Connects EXISTING rx/tx queues to NEW vmbus channel(s), and
+ * re-initializes NDIS and RNDIS, including re-sending initial
+ * NDIS/RNDIS configuration. To be used after the underlying vmbus
+ * has been un- and re-mapped, e.g. as must happen when the device
+ * MTU is changed.
+ */
+static int
+hn_reinit(struct rte_eth_dev *dev, uint16_t mtu)
+{
+	struct hn_data *hv = dev->data->dev_private;
+	struct hn_rx_queue **rxqs = (struct hn_rx_queue **)dev->data->rx_queues;
+	struct hn_tx_queue **txqs = (struct hn_tx_queue **)dev->data->tx_queues;
+	int i, ret = 0;
+
+	/* Point primary queues at new primary channel */
+	rxqs[0]->chan = hv->channels[0];
+	txqs[0]->chan = hv->channels[0];
+
+	ret = hn_attach(hv, mtu);
+	if (ret)
+		return ret;
+
+	/* Create vmbus subchannels, additional RNDIS configuration */
+	ret = hn_dev_configure(dev);
+	if (ret)
+		return ret;
+
+	/* Point any additional queues at new subchannels */
+	for (i = 1; i < dev->data->nb_rx_queues; i++)
+		rxqs[i]->chan = hv->channels[i];
+	for (i = 1; i < dev->data->nb_tx_queues; i++)
+		txqs[i]->chan = hv->channels[i];
+
+	return ret;
+}
+
+static int
+hn_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
+{
+	struct hn_data *hv = dev->data->dev_private;
+	unsigned int orig_mtu = dev->data->mtu;
+	uint32_t rndis_mtu;
+	int ret = 0;
+	int i;
+
+	if (dev->data->dev_started) {
+		PMD_DRV_LOG(ERR, "Device must be stopped before changing MTU");
+		return -EBUSY;
+	}
+
+	/* Change MTU of underlying VF dev first, if it exists */
+	ret = hn_vf_mtu_set(dev, mtu);
+	if (ret)
+		return ret;
+
+	/* Release channel resources */
+	hn_detach(hv);
+
+	/* Close any secondary vmbus channels */
+	for (i = 1; i < hv->num_queues; i++)
+		rte_vmbus_chan_close(hv->channels[i]);
+
+	/* Close primary vmbus channel */
+	rte_free(hv->channels[0]);
+
+	/* Unmap and re-map vmbus device */
+	rte_vmbus_unmap_device(hv->vmbus);
+	ret = rte_vmbus_map_device(hv->vmbus);
+	if (ret) {
+		/* This is a catastrophic error - the device is unusable */
+		PMD_DRV_LOG(ERR, "Could not re-map vmbus device!");
+		return ret;
+	}
+
+	/* Update pointers to re-mapped UIO resources */
+	hv->rxbuf_res = hv->vmbus->resource[HV_RECV_BUF_MAP];
+	hv->chim_res  = hv->vmbus->resource[HV_SEND_BUF_MAP];
+
+	/* Re-open the primary vmbus channel */
+	ret = rte_vmbus_chan_open(hv->vmbus, &hv->channels[0]);
+	if (ret) {
+		/* This is a catastrophic error - the device is unusable */
+		PMD_DRV_LOG(ERR, "Could not re-open vmbus channel!");
+		return ret;
+	}
+
+	rte_vmbus_set_latency(hv->vmbus, hv->channels[0], hv->latency);
+
+	ret = hn_reinit(dev, mtu);
+	if (!ret)
+		goto out;
+
+	/* In case of error, attempt to restore original MTU */
+	ret = hn_reinit(dev, orig_mtu);
+	if (ret)
+		PMD_DRV_LOG(ERR, "Restoring original MTU failed for netvsc");
+
+	ret = hn_vf_mtu_set(dev, orig_mtu);
+	if (ret)
+		PMD_DRV_LOG(ERR, "Restoring original MTU failed for VF");
+
+out:
+	if (hn_rndis_get_mtu(hv, &rndis_mtu)) {
+		PMD_DRV_LOG(ERR, "Could not get MTU via RNDIS");
+	} else {
+		dev->data->mtu = (uint16_t)rndis_mtu;
+		PMD_DRV_LOG(DEBUG, "RNDIS MTU is %u", dev->data->mtu);
+	}
+
+	return ret;
+}
+
+static const struct eth_dev_ops hn_eth_dev_ops = {
+	.dev_configure		= hn_dev_configure,
+	.dev_start		= hn_dev_start,
+	.dev_stop		= hn_dev_stop,
+	.dev_close		= hn_dev_close,
+	.dev_infos_get		= hn_dev_info_get,
+	.txq_info_get		= hn_dev_tx_queue_info,
+	.rxq_info_get		= hn_dev_rx_queue_info,
+	.dev_supported_ptypes_get = hn_vf_supported_ptypes,
+	.promiscuous_enable     = hn_dev_promiscuous_enable,
+	.promiscuous_disable    = hn_dev_promiscuous_disable,
+	.allmulticast_enable    = hn_dev_allmulticast_enable,
+	.allmulticast_disable   = hn_dev_allmulticast_disable,
+	.set_mc_addr_list	= hn_dev_mc_addr_list,
+	.mtu_set                = hn_dev_mtu_set,
+	.reta_update		= hn_rss_reta_update,
+	.reta_query             = hn_rss_reta_query,
+	.rss_hash_update	= hn_rss_hash_update,
+	.rss_hash_conf_get      = hn_rss_hash_conf_get,
+	.tx_queue_setup		= hn_dev_tx_queue_setup,
+	.tx_queue_release	= hn_dev_tx_queue_release,
+	.tx_done_cleanup        = hn_dev_tx_done_cleanup,
+	.rx_queue_setup		= hn_dev_rx_queue_setup,
+	.rx_queue_release	= hn_dev_rx_queue_release,
+	.link_update		= hn_dev_link_update,
+	.stats_get		= hn_dev_stats_get,
+	.stats_reset            = hn_dev_stats_reset,
+	.xstats_get		= hn_dev_xstats_get,
+	.xstats_get_names	= hn_dev_xstats_get_names,
+	.xstats_reset		= hn_dev_xstats_reset,
+};
+
 static int
 eth_hn_dev_init(struct rte_eth_dev *eth_dev)
 {
 	struct hn_data *hv = eth_dev->data->dev_private;
 	struct rte_device *device = eth_dev->device;
 	struct rte_vmbus_device *vmbus;
+	uint32_t mtu;
 	unsigned int rxr_cnt;
 	int err, max_chan;
 
@@ -1218,6 +1333,12 @@ eth_hn_dev_init(struct rte_eth_dev *eth_dev)
 	if (err)
 		goto failed;
 
+	err = hn_rndis_get_mtu(hv, &mtu);
+	if (err)
+		goto failed;
+	eth_dev->data->mtu = (uint16_t)mtu;
+	PMD_INIT_LOG(DEBUG, "RNDIS MTU is %u", eth_dev->data->mtu);
+
 	err = hn_rndis_get_eaddr(hv, eth_dev->data->mac_addrs->addr_bytes);
 	if (err)
 		goto failed;
@@ -1272,7 +1393,7 @@ eth_hn_dev_uninit(struct rte_eth_dev *eth_dev)
 
 	hn_detach(hv);
 	hn_chim_uninit(eth_dev);
-	rte_vmbus_chan_close(hv->primary->chan);
+	rte_vmbus_chan_close(hv->channels[0]);
 	rte_free(hv->primary);
 	ret = rte_eth_dev_owner_delete(hv->owner.id);
 	if (ret != 0)
