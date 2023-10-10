@@ -349,6 +349,8 @@ struct rte_bbdev_driver_info {
 	const struct rte_bbdev_op_cap *capabilities;
 	/** Device cpu_flag requirements */
 	const enum rte_cpu_flag_t *cpu_flag_reqs;
+	/** FFT windowing width for 2048 FFT - size defined in capability. */
+	uint16_t *fft_window_width;
 };
 
 /** Macro used at end of bbdev PMD list */

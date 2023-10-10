@@ -905,6 +905,8 @@ struct rte_bbdev_op_cap_fft {
 	uint16_t num_buffers_src;
 	/** Num output code block buffers. */
 	uint16_t num_buffers_dst;
+	/** Number of FFT windows supported. */
+	uint16_t fft_windows_num;
 };
 
 /** List of the capabilities for the MLD */
