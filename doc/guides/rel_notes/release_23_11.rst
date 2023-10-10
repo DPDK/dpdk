@@ -122,6 +122,20 @@ New Features
   Similar to out of place processing support for lookaside security session,
   added the same support for inline ingress security session.
 
+* **Added security Rx inject API.**
+
+  Added Rx inject API to allow applications to submit packets
+  for protocol offload and have them injected back to ethdev Rx
+  so that further ethdev Rx actions (IP reassembly, packet parsing and flow lookups)
+  can happen based on inner packet.
+
+  The API when implemented by an ethdev, application would be able to process
+  packets that are received without/failed inline offload processing
+  (such as fragmented ESP packets with inline IPsec offload).
+  The API when implemented by a cryptodev, can be used for injecting packets
+  to ethdev Rx after IPsec processing and take advantage of ethdev Rx actions
+  for the inner packet which cannot be accelerated in inline protocol offload mode.
+
 * **Updated cryptodev scheduler driver.**
 
   * Added support for DOCSIS security protocol

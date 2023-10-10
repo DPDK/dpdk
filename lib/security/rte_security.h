@@ -1455,6 +1455,90 @@ const struct rte_security_capability *
 rte_security_capability_get(void *instance,
 			    struct rte_security_capability_idx *idx);
 
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
+ *
+ * Configure security device to inject packets to an ethdev port.
+ *
+ * This API must be called only when both security device and the ethdev is in
+ * stopped state. The security device need to be configured before any packets
+ * are submitted to ``rte_security_inb_pkt_rx_inject`` API.
+ *
+ * @param	ctx		Security ctx
+ * @param	port_id		Port identifier of the ethernet device to which
+ *				packets need to be injected.
+ * @param	enable		Flag to enable and disable connection between a
+ *				security device and an ethdev port.
+ * @return
+ *   - 0 if successful.
+ *   - -EINVAL if context NULL or port_id is invalid.
+ *   - -EBUSY if devices are not in stopped state.
+ *   - -ENOTSUP if security device does not support injecting to ethdev port.
+ *
+ * @see rte_security_inb_pkt_rx_inject
+ */
+__rte_experimental
+int
+rte_security_rx_inject_configure(void *ctx, uint16_t port_id, bool enable);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
+ *
+ * Perform security processing of packets and inject the processed packet to
+ * ethdev Rx.
+ *
+ * Rx inject would behave similarly to ethdev loopback but with the additional
+ * security processing. In case of ethdev loopback, application would be
+ * submitting packets to ethdev Tx queues and would be received as is from
+ * ethdev Rx queues. With Rx inject, packets would be received after security
+ * processing from ethdev Rx queues.
+ *
+ * With inline protocol offload capable ethdevs, Rx injection can be used to
+ * handle packets which failed the regular security Rx path. This can be due to
+ * cases such as outer fragmentation, in which case applications can reassemble
+ * the fragments and then subsequently submit for inbound processing and Rx
+ * injection, so that packets are received as regular security processed
+ * packets.
+ *
+ * With lookaside protocol offload capable cryptodevs, Rx injection can be used
+ * to perform packet parsing after security processing. This would allow for
+ * re-classification after security protocol processing is done (ie, inner
+ * packet parsing). The ethdev queue on which the packet would be received would
+ * be based on rte_flow rules matching the packet after security processing.
+ *
+ * The security device which is injecting packets to ethdev Rx need to be
+ * configured using ``rte_security_rx_inject_configure`` with enable flag set
+ * to `true` before any packets are submitted.
+ *
+ * If `hash.fdir.h` field is set in mbuf, it would be treated as the value for
+ * `MARK` pattern for the subsequent rte_flow parsing. The packet would appear
+ * as if it is received from `port` field in mbuf.
+ *
+ * Since the packet would be received back from ethdev Rx queues,
+ * it is expected that application retains/adds L2 header with the
+ * mbuf field 'l2_len' reflecting the size of L2 header in the packet.
+ *
+ * @param	ctx		Security ctx
+ * @param	pkts		The address of an array of *nb_pkts* pointers to
+ *				*rte_mbuf* structures which contain the packets.
+ * @param	sess		The address of an array of *nb_pkts* pointers to
+ *				security sessions corresponding to each packet.
+ * @param	nb_pkts		The maximum number of packets to process.
+ *
+ * @return
+ *   The number of packets successfully injected to ethdev Rx.
+ *   The return value can be less than the value of the *nb_pkts* parameter
+ *   when the PMD internal queues have been filled up.
+ *
+ * @see rte_security_rx_inject_configure
+ */
+__rte_experimental
+uint16_t
+rte_security_inb_pkt_rx_inject(void *ctx, struct rte_mbuf **pkts, void **sess,
+			       uint16_t nb_pkts);
+
 #ifdef __cplusplus
 }
 #endif

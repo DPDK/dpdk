@@ -325,6 +325,28 @@ rte_security_capability_get(void *ctx, struct rte_security_capability_idx *idx)
 	return NULL;
 }
 
+int
+rte_security_rx_inject_configure(void *ctx, uint16_t port_id, bool enable)
+{
+	struct rte_security_ctx *instance = ctx;
+
+	RTE_PTR_OR_ERR_RET(instance, -EINVAL);
+	RTE_PTR_OR_ERR_RET(instance->ops, -ENOTSUP);
+	RTE_PTR_OR_ERR_RET(instance->ops->rx_inject_configure, -ENOTSUP);
+
+	return instance->ops->rx_inject_configure(instance->device, port_id, enable);
+}
+
+uint16_t
+rte_security_inb_pkt_rx_inject(void *ctx, struct rte_mbuf **pkts, void **sess,
+			       uint16_t nb_pkts)
+{
+	struct rte_security_ctx *instance = ctx;
+
+	return instance->ops->inb_pkt_rx_inject(instance->device, pkts,
+						(struct rte_security_session **)sess, nb_pkts);
+}
+
 static int
 security_handle_cryptodev_list(const char *cmd __rte_unused,
 			       const char *params __rte_unused,

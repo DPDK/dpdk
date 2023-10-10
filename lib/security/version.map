@@ -24,6 +24,9 @@ EXPERIMENTAL {
 	rte_security_session_stats_get;
 	rte_security_session_update;
 	rte_security_oop_dynfield_offset;
+
+	rte_security_rx_inject_configure;
+	rte_security_inb_pkt_rx_inject;
 };
 
 INTERNAL {

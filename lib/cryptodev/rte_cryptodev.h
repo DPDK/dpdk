@@ -559,6 +559,8 @@ rte_cryptodev_asym_get_xform_string(enum rte_crypto_asym_xform_type xform_enum);
 /**< Support wrapped key in cipher xform  */
 #define RTE_CRYPTODEV_FF_SECURITY_INNER_CSUM		(1ULL << 27)
 /**< Support inner checksum computation/verification */
+#define RTE_CRYPTODEV_FF_SECURITY_RX_INJECT		(1ULL << 28)
+/**< Support Rx injection after security processing */
 
 /**
  * Get the name of a crypto device feature flag
