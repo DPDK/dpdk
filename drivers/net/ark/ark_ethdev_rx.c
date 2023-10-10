@@ -68,7 +68,7 @@ struct ark_rx_queue {
 static int
 eth_ark_rx_hw_setup(struct rte_eth_dev *dev,
 		    struct ark_rx_queue *queue,
-		    uint16_t rx_queue_id __rte_unused, uint16_t rx_queue_idx)
+		    uint16_t rx_queue_idx)
 {
 	rte_iova_t queue_base;
 	rte_iova_t phys_addr_q_base;
@@ -124,7 +124,7 @@ eth_ark_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	uint32_t i;
 	int status;
 
-	int qidx = queue_idx;
+	int qidx = ark->qbase + queue_idx;
 
 	/* We may already be setup, free memory prior to re-allocation */
 	if (dev->data->rx_queues[queue_idx] != NULL) {
@@ -215,7 +215,7 @@ eth_ark_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	}
 	/* MPU Setup */
 	if (status == 0)
-		status = eth_ark_rx_hw_setup(dev, queue, qidx, queue_idx);
+		status = eth_ark_rx_hw_setup(dev, queue, queue_idx);
 
 	if (unlikely(status != 0)) {
 		struct rte_mbuf **mbuf;

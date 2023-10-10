@@ -229,7 +229,7 @@ eth_ark_tx_queue_setup(struct rte_eth_dev *dev,
 	struct ark_tx_queue *queue;
 	int status;
 
-	int qidx = queue_idx;
+	int qidx = ark->qbase + queue_idx;
 
 	if (!rte_is_power_of_2(nb_desc)) {
 		ARK_PMD_LOG(ERR,
