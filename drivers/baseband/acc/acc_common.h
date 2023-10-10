@@ -101,6 +101,7 @@
 #define ACC_NUM_QGRPS_PER_WORD         8
 #define ACC_MAX_NUM_QGRPS              32
 #define ACC_RING_SIZE_GRANULARITY      64
+#define ACC_MAX_FCW_SIZE              128
 
 /* Constants from K0 computation from 3GPP 38.212 Table 5.4.2.1-2 */
 #define ACC_N_ZC_1 66 /* N = 66 Zc for BG 1 */
@@ -586,13 +587,14 @@ struct __rte_cache_aligned acc_queue {
 	uint32_t aq_enqueued;  /* Count how many "batches" have been enqueued */
 	uint32_t aq_dequeued;  /* Count how many "batches" have been dequeued */
 	uint32_t irq_enable;  /* Enable ops dequeue interrupts if set to 1 */
-	struct rte_mempool *fcw_mempool;  /* FCW mempool */
 	enum rte_bbdev_op_type op_type;  /* Type of this Queue: TE or TD */
 	/* Internal Buffers for loopback input */
 	uint8_t *lb_in;
 	uint8_t *lb_out;
+	uint8_t *fcw_ring;
 	rte_iova_t lb_in_addr_iova;
 	rte_iova_t lb_out_addr_iova;
+	rte_iova_t fcw_ring_addr_iova;
 	int8_t *derm_buffer; /* interim buffer for de-rm in SDK */
 	struct acc_device *d;
 };

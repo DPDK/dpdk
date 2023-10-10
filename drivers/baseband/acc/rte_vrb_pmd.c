@@ -889,6 +889,25 @@ vrb_queue_setup(struct rte_bbdev *dev, uint16_t queue_id,
 		goto free_companion_ring_addr;
 	}
 
+	q->fcw_ring = rte_zmalloc_socket(dev->device->driver->name,
+			ACC_MAX_FCW_SIZE * d->sw_ring_max_depth,
+			RTE_CACHE_LINE_SIZE, conf->socket);
+	if (q->fcw_ring == NULL) {
+		rte_bbdev_log(ERR, "Failed to allocate fcw_ring memory");
+		ret = -ENOMEM;
+		goto free_companion_ring_addr;
+	}
+	q->fcw_ring_addr_iova = rte_malloc_virt2iova(q->fcw_ring);
+
+	/* For FFT we need to store the FCW separately */
+	if (conf->op_type == RTE_BBDEV_OP_FFT) {
+		for (desc_idx = 0; desc_idx < d->sw_ring_max_depth; desc_idx++) {
+			desc = q->ring_addr + desc_idx;
+			desc->req.data_ptrs[0].address = q->fcw_ring_addr_iova +
+					desc_idx * ACC_MAX_FCW_SIZE;
+		}
+	}
+
 	q->qgrp_id = (q_idx >> VRB1_GRP_ID_SHIFT) & 0xF;
 	q->vf_id = (q_idx >> VRB1_VF_ID_SHIFT)  & 0x3F;
 	q->aq_id = q_idx & 0xF;
@@ -1000,6 +1019,7 @@ vrb_queue_release(struct rte_bbdev *dev, uint16_t q_id)
 	if (q != NULL) {
 		/* Mark the Queue as un-assigned. */
 		d->q_assigned_bit_map[q->qgrp_id] &= (~0ULL - (1 << (uint64_t) q->aq_id));
+		rte_free(q->fcw_ring);
 		rte_free(q->companion_ring_addr);
 		rte_free(q->lb_in);
 		rte_free(q->lb_out);
@@ -3234,7 +3254,10 @@ vrb_enqueue_fft_one_op(struct acc_queue *q, struct rte_bbdev_fft_op *op,
 	output = op->fft.base_output.data;
 	in_offset = op->fft.base_input.offset;
 	out_offset = op->fft.base_output.offset;
-	fcw = &desc->req.fcw_fft;
+
+	fcw = (struct acc_fcw_fft *) (q->fcw_ring +
+			((q->sw_ring_head + total_enqueued_cbs) & q->sw_ring_wrap_mask)
+			* ACC_MAX_FCW_SIZE);
 
 	vrb1_fcw_fft_fill(op, fcw);
 	vrb1_dma_desc_fft_fill(op, &desc->req, input, output, &in_offset, &out_offset);
