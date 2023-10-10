@@ -447,7 +447,8 @@ test_add_already_bonded_slave_to_bonded_device(void)
 	uint16_t slaves[RTE_MAX_ETHPORTS];
 	char pmd_name[RTE_ETH_NAME_MAX_LEN];
 
-	test_add_slave_to_bonded_device();
+	TEST_ASSERT_SUCCESS(test_add_slave_to_bonded_device(),
+			"Failed to add member to bonding device");
 
 	current_slave_count = rte_eth_bond_slaves_get(test_params->bonded_port_id,
 			slaves, RTE_MAX_ETHPORTS);
