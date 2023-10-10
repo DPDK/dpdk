@@ -299,6 +299,7 @@ eth_ark_dev_init(struct rte_eth_dev *dev)
 	int ret;
 	int port_count = 1;
 	int p;
+	uint16_t num_queues;
 	bool rqpacing = false;
 
 	ark->eth_dev = dev;
@@ -426,6 +427,7 @@ eth_ark_dev_init(struct rte_eth_dev *dev)
 			ark->user_ext.dev_get_port_count(dev,
 				 ark->user_data[dev->data->port_id]);
 	ark->num_ports = port_count;
+	num_queues = ark_api_num_queues_per_port(ark->mpurx.v, port_count);
 
 	for (p = 0; p < port_count; p++) {
 		struct rte_eth_dev *eth_dev;
@@ -451,7 +453,18 @@ eth_ark_dev_init(struct rte_eth_dev *dev)
 		}
 
 		eth_dev->device = &pci_dev->device;
-		eth_dev->data->dev_private = ark;
+		/* Device requires new dev_private data */
+		eth_dev->data->dev_private =
+			rte_zmalloc_socket(name,
+					   sizeof(struct ark_adapter),
+					   RTE_CACHE_LINE_SIZE,
+					   rte_socket_id());
+
+		memcpy(eth_dev->data->dev_private, ark,
+		       sizeof(struct ark_adapter));
+		ark = eth_dev->data->dev_private;
+		ark->qbase = p * num_queues;
+
 		eth_dev->dev_ops = ark->eth_dev->dev_ops;
 		eth_dev->tx_pkt_burst = ark->eth_dev->tx_pkt_burst;
 		eth_dev->rx_pkt_burst = ark->eth_dev->rx_pkt_burst;

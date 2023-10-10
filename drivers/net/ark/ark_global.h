@@ -112,7 +112,10 @@ struct ark_adapter {
 	ark_pkt_chkr_t pc;
 	ark_pkt_dir_t pd;
 
+	/* For single function, multiple ports */
 	int num_ports;
+	uint16_t qbase;
+
 	bool isvf;
 
 	/* Packet generator/checker args */
