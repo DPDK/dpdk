@@ -337,7 +337,7 @@ nfp_rtsym_read_real(struct nfp_cpp *cpp,
 	size_t length = len;
 	uint64_t sym_size = nfp_rtsym_size(sym);
 
-	if (offset > sym_size) {
+	if (offset >= sym_size) {
 		PMD_DRV_LOG(ERR, "rtsym '%s' read out of bounds", sym->name);
 		return -ENXIO;
 	}
