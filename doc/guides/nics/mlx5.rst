@@ -455,8 +455,12 @@ Limitations
     encapsulation actions.
   - For NIC Rx flow, supports ``MARK``, ``COUNT``, ``QUEUE``, ``RSS`` in the
     sample actions list.
-  - For E-Switch mirroring flow, supports ``RAW ENCAP``, ``Port ID``,
-    ``VXLAN ENCAP``, ``NVGRE ENCAP`` in the sample actions list.
+  - For E-Switch mirroring flow, supports ``RAW_ENCAP``, ``PORT_ID``,
+    ``VXLAN_ENCAP``, ``NVGRE_ENCAP`` in the sample actions list.
+  - For E-Switch mirroring flow with sample ratio = 1, the ``ENCAP`` action
+    supports uplink port only.
+  - For E-Switch mirroring flow with sample ratio = 1, the ``PORT`` and ``JUMP`` actions
+    are not supported without presented ``ENCAP`` action in the sample actions list.
   - For ConnectX-5 trusted device, the application metadata with SET_TAG index 0
     is not supported before ``RTE_FLOW_ACTION_TYPE_SAMPLE`` action.
 

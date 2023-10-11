@@ -5759,6 +5759,7 @@ flow_dv_modify_clone_free_cb(void *tool_ctx, struct mlx5_list_entry *entry)
  */
 static int
 flow_dv_validate_action_sample(uint64_t *action_flags,
+			       uint64_t *sub_action_flags,
 			       const struct rte_flow_action *action,
 			       struct rte_eth_dev *dev,
 			       const struct rte_flow_attr *attr,
@@ -5767,14 +5768,15 @@ flow_dv_validate_action_sample(uint64_t *action_flags,
 			       const struct rte_flow_action_rss **sample_rss,
 			       const struct rte_flow_action_count **count,
 			       int *fdb_mirror,
+			       uint16_t *sample_port_id,
 			       bool root,
 			       struct rte_flow_error *error)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_sh_config *dev_conf = &priv->sh->config;
 	const struct rte_flow_action_sample *sample = action->conf;
+	const struct rte_flow_action_port_id *port = NULL;
 	const struct rte_flow_action *act;
-	uint64_t sub_action_flags = 0;
 	uint16_t queue_index = 0xFFFF;
 	int actions_n = 0;
 	int ret;
@@ -5821,20 +5823,20 @@ flow_dv_validate_action_sample(uint64_t *action_flags,
 		switch (act->type) {
 		case RTE_FLOW_ACTION_TYPE_QUEUE:
 			ret = mlx5_flow_validate_action_queue(act,
-							      sub_action_flags,
+							      *sub_action_flags,
 							      dev,
 							      attr, error);
 			if (ret < 0)
 				return ret;
 			queue_index = ((const struct rte_flow_action_queue *)
 							(act->conf))->index;
-			sub_action_flags |= MLX5_FLOW_ACTION_QUEUE;
+			*sub_action_flags |= MLX5_FLOW_ACTION_QUEUE;
 			++actions_n;
 			break;
 		case RTE_FLOW_ACTION_TYPE_RSS:
 			*sample_rss = act->conf;
 			ret = mlx5_flow_validate_action_rss(act,
-							    sub_action_flags,
+							    *sub_action_flags,
 							    dev, attr,
 							    item_flags,
 							    error);
@@ -5850,48 +5852,57 @@ flow_dv_validate_action_sample(uint64_t *action_flags,
 					"or level in the same flow");
 			if (*sample_rss != NULL && (*sample_rss)->queue_num)
 				queue_index = (*sample_rss)->queue[0];
-			sub_action_flags |= MLX5_FLOW_ACTION_RSS;
+			*sub_action_flags |= MLX5_FLOW_ACTION_RSS;
 			++actions_n;
 			break;
 		case RTE_FLOW_ACTION_TYPE_MARK:
 			ret = flow_dv_validate_action_mark(dev, act,
-							   sub_action_flags,
+							   *sub_action_flags,
 							   attr, error);
 			if (ret < 0)
 				return ret;
 			if (dev_conf->dv_xmeta_en != MLX5_XMETA_MODE_LEGACY)
-				sub_action_flags |= MLX5_FLOW_ACTION_MARK |
+				*sub_action_flags |= MLX5_FLOW_ACTION_MARK |
 						MLX5_FLOW_ACTION_MARK_EXT;
 			else
-				sub_action_flags |= MLX5_FLOW_ACTION_MARK;
+				*sub_action_flags |= MLX5_FLOW_ACTION_MARK;
 			++actions_n;
 			break;
 		case RTE_FLOW_ACTION_TYPE_COUNT:
 			ret = flow_dv_validate_action_count
-				(dev, false, *action_flags | sub_action_flags,
+				(dev, false, *action_flags | *sub_action_flags,
 				 root, error);
 			if (ret < 0)
 				return ret;
 			*count = act->conf;
-			sub_action_flags |= MLX5_FLOW_ACTION_COUNT;
+			*sub_action_flags |= MLX5_FLOW_ACTION_COUNT;
 			*action_flags |= MLX5_FLOW_ACTION_COUNT;
 			++actions_n;
 			break;
 		case RTE_FLOW_ACTION_TYPE_PORT_ID:
 		case RTE_FLOW_ACTION_TYPE_REPRESENTED_PORT:
 			ret = flow_dv_validate_action_port_id(dev,
-							      sub_action_flags,
+							      *sub_action_flags,
 							      act,
 							      attr,
 							      error);
 			if (ret)
 				return ret;
-			sub_action_flags |= MLX5_FLOW_ACTION_PORT_ID;
+			if (act->type == RTE_FLOW_ACTION_TYPE_PORT_ID) {
+				port = (const struct rte_flow_action_port_id *)
+					act->conf;
+				*sample_port_id = port->original ?
+						  dev->data->port_id : port->id;
+			} else {
+				*sample_port_id = ((const struct rte_flow_action_ethdev *)
+						  act->conf)->port_id;
+			}
+			*sub_action_flags |= MLX5_FLOW_ACTION_PORT_ID;
 			++actions_n;
 			break;
 		case RTE_FLOW_ACTION_TYPE_RAW_ENCAP:
 			ret = flow_dv_validate_action_raw_encap_decap
-				(dev, NULL, act->conf, attr, &sub_action_flags,
+				(dev, NULL, act->conf, attr, sub_action_flags,
 				 &actions_n, action, item_flags, error);
 			if (ret < 0)
 				return ret;
@@ -5900,12 +5911,12 @@ flow_dv_validate_action_sample(uint64_t *action_flags,
 		case RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP:
 		case RTE_FLOW_ACTION_TYPE_NVGRE_ENCAP:
 			ret = flow_dv_validate_action_l2_encap(dev,
-							       sub_action_flags,
+							       *sub_action_flags,
 							       act, attr,
 							       error);
 			if (ret < 0)
 				return ret;
-			sub_action_flags |= MLX5_FLOW_ACTION_ENCAP;
+			*sub_action_flags |= MLX5_FLOW_ACTION_ENCAP;
 			++actions_n;
 			break;
 		default:
@@ -5917,7 +5928,7 @@ flow_dv_validate_action_sample(uint64_t *action_flags,
 		}
 	}
 	if (attr->ingress) {
-		if (!(sub_action_flags & (MLX5_FLOW_ACTION_QUEUE |
+		if (!(*sub_action_flags & (MLX5_FLOW_ACTION_QUEUE |
 					  MLX5_FLOW_ACTION_RSS)))
 			return rte_flow_error_set(error, EINVAL,
 						  RTE_FLOW_ERROR_TYPE_ACTION,
@@ -5939,17 +5950,17 @@ flow_dv_validate_action_sample(uint64_t *action_flags,
 						  "E-Switch doesn't support "
 						  "any optional action "
 						  "for sampling");
-		if (sub_action_flags & MLX5_FLOW_ACTION_QUEUE)
+		if (*sub_action_flags & MLX5_FLOW_ACTION_QUEUE)
 			return rte_flow_error_set(error, ENOTSUP,
 						  RTE_FLOW_ERROR_TYPE_ACTION,
 						  NULL,
 						  "unsupported action QUEUE");
-		if (sub_action_flags & MLX5_FLOW_ACTION_RSS)
+		if (*sub_action_flags & MLX5_FLOW_ACTION_RSS)
 			return rte_flow_error_set(error, ENOTSUP,
 						  RTE_FLOW_ERROR_TYPE_ACTION,
 						  NULL,
 						  "unsupported action QUEUE");
-		if (!(sub_action_flags & MLX5_FLOW_ACTION_PORT_ID))
+		if (!(*sub_action_flags & MLX5_FLOW_ACTION_PORT_ID))
 			return rte_flow_error_set(error, EINVAL,
 						  RTE_FLOW_ERROR_TYPE_ACTION,
 						  NULL,
@@ -5958,16 +5969,16 @@ flow_dv_validate_action_sample(uint64_t *action_flags,
 		*fdb_mirror = 1;
 	}
 	/* Continue validation for Xcap actions.*/
-	if ((sub_action_flags & MLX5_FLOW_XCAP_ACTIONS) &&
+	if ((*sub_action_flags & MLX5_FLOW_XCAP_ACTIONS) &&
 	    (queue_index == 0xFFFF || !mlx5_rxq_is_hairpin(dev, queue_index))) {
-		if ((sub_action_flags & MLX5_FLOW_XCAP_ACTIONS) ==
+		if ((*sub_action_flags & MLX5_FLOW_XCAP_ACTIONS) ==
 		     MLX5_FLOW_XCAP_ACTIONS)
 			return rte_flow_error_set(error, ENOTSUP,
 						  RTE_FLOW_ERROR_TYPE_ACTION,
 						  NULL, "encap and decap "
 						  "combination aren't "
 						  "supported");
-		if (attr->ingress && (sub_action_flags & MLX5_FLOW_ACTION_ENCAP))
+		if (attr->ingress && (*sub_action_flags & MLX5_FLOW_ACTION_ENCAP))
 			return rte_flow_error_set(error, ENOTSUP,
 						  RTE_FLOW_ERROR_TYPE_ACTION,
 						  NULL, "encap is not supported"
@@ -7063,9 +7074,14 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 	uint32_t tag_id = 0, tag_bitmap = 0;
 	const struct rte_flow_action_age *non_shared_age = NULL;
 	const struct rte_flow_action_count *count = NULL;
+	const struct rte_flow_action_port_id *port = NULL;
 	const struct mlx5_rte_flow_item_tag *mlx5_tag;
 	struct mlx5_priv *act_priv = NULL;
 	int aso_after_sample = 0;
+	struct mlx5_priv *port_priv = NULL;
+	uint64_t sub_action_flags = 0;
+	uint16_t sample_port_id = 0;
+	uint16_t port_id = 0;
 
 	if (items == NULL)
 		return -1;
@@ -7503,6 +7519,14 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 							      error);
 			if (ret)
 				return ret;
+			if (type == RTE_FLOW_ACTION_TYPE_PORT_ID) {
+				port = (const struct rte_flow_action_port_id *)
+					actions->conf;
+				port_id = port->original ? dev->data->port_id : port->id;
+			} else {
+				port_id = ((const struct rte_flow_action_ethdev *)
+					actions->conf)->port_id;
+			}
 			action_flags |= MLX5_FLOW_ACTION_PORT_ID;
 			++actions_n;
 			break;
@@ -8002,11 +8026,13 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 			break;
 		case RTE_FLOW_ACTION_TYPE_SAMPLE:
 			ret = flow_dv_validate_action_sample(&action_flags,
+							     &sub_action_flags,
 							     actions, dev,
 							     attr, item_flags,
 							     rss, &sample_rss,
 							     &sample_count,
 							     &fdb_mirror,
+							     &sample_port_id,
 							     is_root,
 							     error);
 			if (ret < 0)
@@ -8318,6 +8344,29 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 			return rte_flow_error_set(error, ENOTSUP,
 						  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
 						  "sample before ASO action is not supported");
+		if (sub_action_flags & MLX5_FLOW_ACTION_PORT_ID) {
+			port_priv = mlx5_port_to_eswitch_info(sample_port_id, false);
+			if (flow_source_vport_representor(priv, port_priv)) {
+				if (sub_action_flags & MLX5_FLOW_ACTION_ENCAP)
+					return rte_flow_error_set(error, ENOTSUP,
+								RTE_FLOW_ERROR_TYPE_ACTION, NULL,
+								"mirror to rep port with encap is not supported");
+			} else {
+				if ((sub_action_flags & ~MLX5_FLOW_ACTION_ENCAP) &&
+				    (action_flags & MLX5_FLOW_ACTION_JUMP))
+					return rte_flow_error_set(error, ENOTSUP,
+								RTE_FLOW_ERROR_TYPE_ACTION, NULL,
+								"mirror to wire port without encap is not supported");
+			}
+		}
+		if ((action_flags & MLX5_FLOW_ACTION_PORT_ID) &&
+		    (action_flags & MLX5_FLOW_ACTION_ENCAP)) {
+			port_priv = mlx5_port_to_eswitch_info(port_id, false);
+			if (flow_source_vport_representor(priv, port_priv))
+				return rte_flow_error_set(error, ENOTSUP,
+							RTE_FLOW_ERROR_TYPE_ACTION, NULL,
+							"mirror to rep port with encap is not supported");
+		}
 	}
 	/*
 	 * Validation the NIC Egress flow on representor, except implicit
