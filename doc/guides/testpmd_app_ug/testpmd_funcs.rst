@@ -4130,6 +4130,27 @@ This section lists supported actions and their attributes, if any.
   - ``mtr_init_color {value}``: initial color value (green/yellow/red)
   - ``mtr_state {unsigned}``: meter state (disabled/enabled)
 
+- ``modify_field``:  Modify packet field
+
+  - ``op``: modify operation (set/add/sub)
+  - ``dst_type``: the destination field to be modified, the supported fields as
+    ``enum rte_flow_field_id`` listed.
+  - ``dst_level``: destination field level.
+  - ``dst_tag_index``: destination field tag array.
+  - ``dst_type_id``: destination field type ID.
+  - ``dst_class``: destination field class ID.
+  - ``dst_offset``: destination field bit offset.
+  - ``src_type``: the modify source field, the supported fields as
+    ``enum rte_flow_field_id`` listed.
+  - ``src_level``: source field level.
+  - ``src_tag_index``: source field tag array.
+  - ``src_type_id``: source field type ID.
+  - ``src_class``: source field class ID.
+  - ``src_offset``: source field bit offset.
+  - ``src_value``: source immediate value.
+  - ``src_ptr``: pointer to source immediate value.
+  - ``width``: number of bits to copy.
+
 Destroying flow rules
 ~~~~~~~~~~~~~~~~~~~~~
 
