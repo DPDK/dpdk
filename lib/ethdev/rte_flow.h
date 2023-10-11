@@ -3922,6 +3922,10 @@ enum rte_flow_field_id {
 	RTE_FLOW_FIELD_GENEVE_OPT_CLASS,/**< GENEVE option class. */
 	RTE_FLOW_FIELD_GENEVE_OPT_DATA,	/**< GENEVE option data. */
 	RTE_FLOW_FIELD_MPLS,		/**< MPLS header. */
+	RTE_FLOW_FIELD_TCP_DATA_OFFSET,	/**< TCP data offset. */
+	RTE_FLOW_FIELD_IPV4_IHL,	/**< IPv4 IHL. */
+	RTE_FLOW_FIELD_IPV4_TOTAL_LEN,	/**< IPv4 total length. */
+	RTE_FLOW_FIELD_IPV6_PAYLOAD_LEN	/**< IPv6 payload length. */
 };
 
 /**

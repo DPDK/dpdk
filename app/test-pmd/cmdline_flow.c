@@ -954,6 +954,7 @@ static const char *const modify_field_ids[] = {
 	"flex_item",
 	"hash_result",
 	"geneve_opt_type", "geneve_opt_class", "geneve_opt_data", "mpls",
+	"tcp_data_off", "ipv4_ihl", "ipv4_total_len", "ipv6_payload_len",
 	NULL
 };
 
