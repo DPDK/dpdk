@@ -20,23 +20,6 @@ DPDK Release 23.11
       ninja -C build doc
       xdg-open build/doc/guides/html/rel_notes/release_23_11.html
 
-* Build Requirements: From DPDK 23.11 onwards,
-  building DPDK will require a C compiler which supports the C11 standard,
-  including support for C11 standard atomics.
-
-  More specifically, the requirements will be:
-
-  * Support for flag "-std=c11" (or similar)
-  * __STDC_NO_ATOMICS__ is *not defined* when using c11 flag
-
-  Please note:
-
-  * C11, including standard atomics, is supported from GCC version 5 onwards,
-    and is the default language version in that release
-    (Ref: https://gcc.gnu.org/gcc-5/changes.html)
-  * C11 is the default compilation mode in Clang from version 3.6,
-    which also added support for standard atomics
-    (Ref: https://releases.llvm.org/3.6.0/tools/clang/docs/ReleaseNotes.html)
 
 New Features
 ------------
@@ -71,6 +54,43 @@ New Features
      This section is a comment. Do not overwrite or remove it.
      Also, make sure to start the actual text at the margin.
      =======================================================
+
+* **Build requirements increased for C11.**
+
+  From DPDK 23.11 onwards,
+  building DPDK will require a C compiler which supports the C11 standard,
+  including support for C11 standard atomics.
+
+  More specifically, the requirements will be:
+
+  * Support for flag "-std=c11" (or similar)
+  * __STDC_NO_ATOMICS__ is *not defined* when using c11 flag
+
+  Please note:
+
+  * C11, including standard atomics, is supported from GCC version 5 onwards,
+    and is the default language version in that release
+    (Ref: https://gcc.gnu.org/gcc-5/changes.html)
+  * C11 is the default compilation mode in Clang from version 3.6,
+    which also added support for standard atomics
+    (Ref: https://releases.llvm.org/3.6.0/tools/clang/docs/ReleaseNotes.html)
+
+* **Added new build options.**
+
+  * Enabling deprecated libraries is now done using
+    the new ``enable_deprecated_libraries`` build option.
+  * Optional libraries can now be selected with the new ``enable_libs``
+    build option similarly to the existing ``enable_drivers`` build option.
+
+* **Introduced a new API for atomic operations.**
+
+  This new API serves as a wrapper for transitioning
+  to standard atomic operations as described in the C11 standard.
+  This API implementation points at the compiler intrinsics by default.
+  The implementation using C11 standard atomic operations is enabled
+  via the ``enable_stdatomic`` build option.
+
+* **Added support for power intrinsics with AMD processors.**
 
 * **Added mbuf recycling support.**
 
@@ -152,20 +172,6 @@ New Features
 * **Updated Marvell cnxk crypto driver.**
 
   * Added SM2 algorithm support in asymmetric crypto operations.
-
-* build: Enabling deprecated libraries is now done using the new
-  ``enable_deprecated_libraries`` build option.
-
-* build: Optional libraries can now be selected with the new ``enable_libs``
-  build option similarly to the existing ``enable_drivers`` build option.
-
-* eal: Introduced a new API for atomic operations. This new API serves as a
-  wrapper for transitioning to standard atomic operations as described in the
-  C11 standard. This API implementation points at the compiler intrinsics by
-  default. The implementation using C11 standard atomic operations is enabled
-  via the ``enable_stdatomic`` build option.
-
-* eal: Added support for power intrinsics with AMD processors.
 
 
 Removed Items
