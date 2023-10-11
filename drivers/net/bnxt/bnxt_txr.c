@@ -129,23 +129,26 @@ bnxt_xmit_need_long_bd(struct rte_mbuf *tx_pkt, struct bnxt_tx_queue *txq)
  * segments or fragments in those cases.
  */
 static bool
-bnxt_zero_data_len_tso_segsz(struct rte_mbuf *tx_pkt, uint8_t data_len_chk)
+bnxt_zero_data_len_tso_segsz(struct rte_mbuf *tx_pkt, bool data_len_chk, bool tso_segsz_check)
 {
-	const char *type_str = "Data len";
-	uint16_t len_to_check = tx_pkt->data_len;
+	const char *type_str;
 
-	if (data_len_chk == 0) {
-		type_str = "TSO Seg size";
-		len_to_check = tx_pkt->tso_segsz;
+	/* Minimum TSO seg_size should be 4 */
+	if (tso_segsz_check && tx_pkt->tso_segsz < 4) {
+		type_str = "Unsupported TSO Seg size";
+		goto dump_pkt;
 	}
 
-	if (len_to_check == 0) {
-		PMD_DRV_LOG_LINE(ERR, "Error! Tx pkt %s == 0", type_str);
-		rte_pktmbuf_dump(stdout, tx_pkt, 64);
-		rte_dump_stack();
-		return true;
+	if (data_len_chk && tx_pkt->data_len == 0) {
+		type_str = "Data len == 0";
+		goto dump_pkt;
 	}
 	return false;
+dump_pkt:
+	PMD_DRV_LOG_LINE(ERR, "Error! Tx pkt %s == 0", type_str);
+	rte_pktmbuf_dump(stdout, tx_pkt, 64);
+	rte_dump_stack();
+	return true;
 }
 
 static bool
@@ -248,7 +251,7 @@ static uint16_t bnxt_start_xmit(struct rte_mbuf *tx_pkt,
 	}
 
 	/* Check non zero data_len */
-	if (unlikely(bnxt_zero_data_len_tso_segsz(tx_pkt, 1)))
+	if (unlikely(bnxt_zero_data_len_tso_segsz(tx_pkt, true, false)))
 		return -EIO;
 
 	if (unlikely(txq->bp->ptp_cfg != NULL && txq->bp->ptp_all_rx_tstamp == 1))
@@ -338,7 +341,7 @@ static uint16_t bnxt_start_xmit(struct rte_mbuf *tx_pkt,
 			 */
 			txbd1->kid_or_ts_low_hdr_size = hdr_size >> 1;
 			txbd1->kid_or_ts_high_mss = tx_pkt->tso_segsz;
-			if (unlikely(bnxt_zero_data_len_tso_segsz(tx_pkt, 0)))
+			if (unlikely(bnxt_zero_data_len_tso_segsz(tx_pkt, false, true)))
 				return -EIO;
 
 		} else if ((tx_pkt->ol_flags & PKT_TX_OIP_IIP_TCP_UDP_CKSUM) ==
@@ -413,7 +416,7 @@ static uint16_t bnxt_start_xmit(struct rte_mbuf *tx_pkt,
 	m_seg = tx_pkt->next;
 	while (m_seg) {
 		/* Check non zero data_len */
-		if (unlikely(bnxt_zero_data_len_tso_segsz(m_seg, 1)))
+		if (unlikely(bnxt_zero_data_len_tso_segsz(m_seg, true, false)))
 			return -EIO;
 		txr->tx_raw_prod = RING_NEXT(txr->tx_raw_prod);
 
