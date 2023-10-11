@@ -2552,13 +2552,6 @@ mlx5_os_pci_probe_pf(struct mlx5_common_device *cdev,
 				     list[ns].info.master))
 				ns++;
 		}
-		if (!ns) {
-			DRV_LOG(ERR,
-				"Unable to recognize master/representors on the IB device with multiple ports.");
-			rte_errno = ENOENT;
-			ret = -rte_errno;
-			goto exit;
-		}
 	} else {
 		/*
 		 * The existence of several matching entries (nd > 1) means
