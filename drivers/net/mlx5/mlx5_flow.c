@@ -6159,6 +6159,7 @@ flow_check_match_action(const struct rte_flow_action actions[],
 {
 	const struct rte_flow_action_sample *sample;
 	const struct rte_flow_action_raw_decap *decap;
+	const struct rte_flow_action *action_cur = NULL;
 	int actions_n = 0;
 	uint32_t ratio = 0;
 	int sub_type = 0;
@@ -6219,12 +6220,12 @@ flow_check_match_action(const struct rte_flow_action actions[],
 			break;
 		case RTE_FLOW_ACTION_TYPE_RAW_DECAP:
 			decap = actions->conf;
-			while ((++actions)->type == RTE_FLOW_ACTION_TYPE_VOID)
+			action_cur = actions;
+			while ((++action_cur)->type == RTE_FLOW_ACTION_TYPE_VOID)
 				;
-			actions_n++;
-			if (actions->type == RTE_FLOW_ACTION_TYPE_RAW_ENCAP) {
+			if (action_cur->type == RTE_FLOW_ACTION_TYPE_RAW_ENCAP) {
 				const struct rte_flow_action_raw_encap *encap =
-								actions->conf;
+								action_cur->conf;
 				if (decap->size <=
 					MLX5_ENCAPSULATION_DECISION_SIZE &&
 				    encap->size >
