@@ -159,6 +159,7 @@ The public API headers are grouped by topics:
 
 - **classification**
   [reorder](@ref rte_reorder.h),
+  [dispatcher](@ref rte_dispatcher.h),
   [distributor](@ref rte_distributor.h),
   [EFD](@ref rte_efd.h),
   [ACL](@ref rte_acl.h),

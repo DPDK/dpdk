@@ -61,6 +61,7 @@ Programmer's Guide
     event_timer_adapter
     event_crypto_adapter
     event_dma_adapter
+    dispatcher_lib
     qos_framework
     power_man
     packet_classif_access_ctrl

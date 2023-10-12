@@ -59,6 +59,7 @@ source_file_deps = {
     'test_cycles.c': [],
     'test_debug.c': [],
     'test_devargs.c': ['kvargs'],
+    'test_dispatcher.c': ['dispatcher'],
     'test_distributor.c': ['distributor'],
     'test_distributor_perf.c': ['distributor'],
     'test_dmadev.c': ['dmadev', 'bus_vdev'],

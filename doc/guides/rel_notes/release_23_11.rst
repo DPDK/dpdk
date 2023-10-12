@@ -212,6 +212,11 @@ New Features
     to get the remaining ticks to expire for a given event timer.
   * Added link profiles support, up to two link profiles are supported.
 
+* **Added dispatcher library.**
+
+  Added dispatcher library which purpose is to help decouple different
+  parts (modules) of an eventdev-based application.
+
 
 Removed Items
 -------------

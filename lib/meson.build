@@ -36,6 +36,7 @@ libraries = [
         'dmadev',  # eventdev depends on this
         'efd',
         'eventdev',
+        'dispatcher', # dispatcher depends on eventdev
         'gpudev',
         'gro',
         'gso',
@@ -81,6 +82,7 @@ optional_libs = [
         'cfgfile',
         'compressdev',
         'cryptodev',
+        'dispatcher',
         'distributor',
         'dmadev',
         'efd',

@@ -1691,6 +1691,12 @@ F: app/test/test_timer*
 F: examples/timer/
 F: doc/guides/sample_app_ug/timer.rst
 
+Dispatcher - EXPERIMENTAL
+M: Mattias Rönnblom <mattias.ronnblom@ericsson.com>
+F: lib/dispatcher/
+F: app/test/test_dispatcher.c
+F: doc/guides/prog_guide/dispatcher_lib.rst
+
 Job statistics
 F: lib/jobstats/
 F: examples/l2fwd-jobstats/
