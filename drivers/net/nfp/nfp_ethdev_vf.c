@@ -40,8 +40,6 @@ nfp_netvf_start(struct rte_eth_dev *dev)
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
 
-	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-
 	/* Disabling queues just in case... */
 	nfp_net_disable_queues(dev);
 
@@ -55,7 +53,7 @@ nfp_netvf_start(struct rte_eth_dev *dev)
 			 * Better not to share LSC with RX interrupts.
 			 * Unregistering LSC interrupt handler.
 			 */
-			rte_intr_callback_unregister(pci_dev->intr_handle,
+			rte_intr_callback_unregister(intr_handle,
 					nfp_net_dev_interrupt_handler, (void *)dev);
 
 			if (dev->data->nb_rx_queues > 1) {
@@ -78,6 +76,7 @@ nfp_netvf_start(struct rte_eth_dev *dev)
 	new_ctrl = nfp_check_offloads(dev);
 
 	/* Writing configuration parameters in the device */
+	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	nfp_net_params_setup(hw);
 
 	dev_conf = &dev->data->dev_conf;
@@ -250,15 +249,15 @@ static int
 nfp_netvf_init(struct rte_eth_dev *eth_dev)
 {
 	int err;
+	uint16_t port;
 	uint32_t start_q;
-	uint16_t port = 0;
 	struct nfp_net_hw *hw;
 	uint64_t tx_bar_off = 0;
 	uint64_t rx_bar_off = 0;
 	struct rte_pci_device *pci_dev;
 	const struct nfp_dev_info *dev_info;
-	struct rte_ether_addr *tmp_ether_addr;
 
+	port = eth_dev->data->port_id;
 	pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
 
 	dev_info = nfp_dev_info_get(pci_dev->id.device_id);
@@ -331,9 +330,7 @@ nfp_netvf_init(struct rte_eth_dev *eth_dev)
 	}
 
 	nfp_netvf_read_mac(hw);
-
-	tmp_ether_addr = &hw->mac_addr;
-	if (rte_is_valid_assigned_ether_addr(tmp_ether_addr) == 0) {
+	if (rte_is_valid_assigned_ether_addr(&hw->mac_addr) == 0) {
 		PMD_INIT_LOG(INFO, "Using random mac address for port %hu", port);
 		/* Using random mac addresses for VFs */
 		rte_eth_random_addr(&hw->mac_addr.addr_bytes[0]);
@@ -350,7 +347,7 @@ nfp_netvf_init(struct rte_eth_dev *eth_dev)
 
 	PMD_INIT_LOG(INFO, "port %hu VendorID=%#x DeviceID=%#x "
 			"mac=" RTE_ETHER_ADDR_PRT_FMT,
-			eth_dev->data->port_id, pci_dev->id.vendor_id,
+			port, pci_dev->id.vendor_id,
 			pci_dev->id.device_id,
 			RTE_ETHER_ADDR_BYTES(&hw->mac_addr));
 

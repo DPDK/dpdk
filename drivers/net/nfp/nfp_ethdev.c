@@ -81,7 +81,7 @@ nfp_net_start(struct rte_eth_dev *dev)
 			 * Better not to share LSC with RX interrupts.
 			 * Unregistering LSC interrupt handler.
 			 */
-			rte_intr_callback_unregister(pci_dev->intr_handle,
+			rte_intr_callback_unregister(intr_handle,
 					nfp_net_dev_interrupt_handler, (void *)dev);
 
 			if (dev->data->nb_rx_queues > 1) {
@@ -531,7 +531,7 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 			return -ENODEV;
 
 		/* Use port offset in pf ctrl_bar for this ports control bar */
-		hw->ctrl_bar = pf_dev->ctrl_bar + (port * NFP_PF_CSR_SLICE_SIZE);
+		hw->ctrl_bar = pf_dev->ctrl_bar + (port * NFP_NET_CFG_BAR_SZ);
 		hw->mac_stats = app_fw_nic->ports[0]->mac_stats_bar +
 				(hw->nfp_idx * NFP_MAC_STATS_SIZE);
 	}
@@ -750,8 +750,7 @@ nfp_init_app_fw_nic(struct nfp_pf_dev *pf_dev,
 		const struct nfp_dev_info *dev_info)
 {
 	uint8_t i;
-	int ret;
-	int err = 0;
+	int ret = 0;
 	uint32_t total_vnics;
 	struct nfp_net_hw *hw;
 	unsigned int numa_node;
@@ -772,8 +771,8 @@ nfp_init_app_fw_nic(struct nfp_pf_dev *pf_dev,
 	pf_dev->app_fw_priv = app_fw_nic;
 
 	/* Read the number of vNIC's created for the PF */
-	total_vnics = nfp_rtsym_read_le(pf_dev->sym_tbl, "nfd_cfg_pf0_num_ports", &err);
-	if (err != 0 || total_vnics == 0 || total_vnics > 8) {
+	total_vnics = nfp_rtsym_read_le(pf_dev->sym_tbl, "nfd_cfg_pf0_num_ports", &ret);
+	if (ret != 0 || total_vnics == 0 || total_vnics > 8) {
 		PMD_INIT_LOG(ERR, "nfd_cfg_pf0_num_ports symbol with wrong value");
 		ret = -ENODEV;
 		goto app_cleanup;
@@ -881,8 +880,7 @@ app_cleanup:
 static int
 nfp_pf_init(struct rte_pci_device *pci_dev)
 {
-	int ret;
-	int err = 0;
+	int ret = 0;
 	uint64_t addr;
 	uint32_t cpp_id;
 	struct nfp_cpp *cpp;
@@ -950,8 +948,8 @@ nfp_pf_init(struct rte_pci_device *pci_dev)
 	}
 
 	/* Read the app ID of the firmware loaded */
-	app_fw_id = nfp_rtsym_read_le(sym_tbl, "_pf0_net_app_id", &err);
-	if (err != 0) {
+	app_fw_id = nfp_rtsym_read_le(sym_tbl, "_pf0_net_app_id", &ret);
+	if (ret != 0) {
 		PMD_INIT_LOG(ERR, "Couldn't read app_fw_id from fw");
 		ret = -EIO;
 		goto sym_tbl_cleanup;
@@ -1087,7 +1085,6 @@ nfp_secondary_init_app_fw_nic(struct rte_pci_device *pci_dev,
 static int
 nfp_pf_secondary_init(struct rte_pci_device *pci_dev)
 {
-	int err = 0;
 	int ret = 0;
 	struct nfp_cpp *cpp;
 	enum nfp_app_fw_id app_fw_id;
@@ -1131,8 +1128,8 @@ nfp_pf_secondary_init(struct rte_pci_device *pci_dev)
 	}
 
 	/* Read the app ID of the firmware loaded */
-	app_fw_id = nfp_rtsym_read_le(sym_tbl, "_pf0_net_app_id", &err);
-	if (err != 0) {
+	app_fw_id = nfp_rtsym_read_le(sym_tbl, "_pf0_net_app_id", &ret);
+	if (ret != 0) {
 		PMD_INIT_LOG(ERR, "Couldn't read app_fw_id from fw");
 		goto sym_tbl_cleanup;
 	}

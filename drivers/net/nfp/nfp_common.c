@@ -453,7 +453,7 @@ nfp_net_log_device_information(const struct nfp_net_hw *hw)
 }
 
 static inline void
-nfp_net_enbable_rxvlan_cap(struct nfp_net_hw *hw,
+nfp_net_enable_rxvlan_cap(struct nfp_net_hw *hw,
 		uint32_t *ctrl)
 {
 	if ((hw->cap & NFP_NET_CFG_CTRL_RXVLAN_V2) != 0)
@@ -467,19 +467,19 @@ nfp_net_enable_queues(struct rte_eth_dev *dev)
 {
 	uint16_t i;
 	struct nfp_net_hw *hw;
-	uint64_t enabled_queues = 0;
+	uint64_t enabled_queues;
 
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
 	/* Enabling the required TX queues in the device */
+	enabled_queues = 0;
 	for (i = 0; i < dev->data->nb_tx_queues; i++)
 		enabled_queues |= (1 << i);
 
 	nn_cfg_writeq(hw, NFP_NET_CFG_TXRS_ENABLE, enabled_queues);
 
-	enabled_queues = 0;
-
 	/* Enabling the required RX queues in the device */
+	enabled_queues = 0;
 	for (i = 0; i < dev->data->nb_rx_queues; i++)
 		enabled_queues |= (1 << i);
 
@@ -619,33 +619,33 @@ uint32_t
 nfp_check_offloads(struct rte_eth_dev *dev)
 {
 	uint32_t ctrl = 0;
+	uint64_t rx_offload;
+	uint64_t tx_offload;
 	struct nfp_net_hw *hw;
 	struct rte_eth_conf *dev_conf;
-	struct rte_eth_rxmode *rxmode;
-	struct rte_eth_txmode *txmode;
 
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
 	dev_conf = &dev->data->dev_conf;
-	rxmode = &dev_conf->rxmode;
-	txmode = &dev_conf->txmode;
+	rx_offload = dev_conf->rxmode.offloads;
+	tx_offload = dev_conf->txmode.offloads;
 
-	if ((rxmode->offloads & RTE_ETH_RX_OFFLOAD_IPV4_CKSUM) != 0) {
+	if ((rx_offload & RTE_ETH_RX_OFFLOAD_IPV4_CKSUM) != 0) {
 		if ((hw->cap & NFP_NET_CFG_CTRL_RXCSUM) != 0)
 			ctrl |= NFP_NET_CFG_CTRL_RXCSUM;
 	}
 
-	if ((rxmode->offloads & RTE_ETH_RX_OFFLOAD_VLAN_STRIP) != 0)
-		nfp_net_enbable_rxvlan_cap(hw, &ctrl);
+	if ((rx_offload & RTE_ETH_RX_OFFLOAD_VLAN_STRIP) != 0)
+		nfp_net_enable_rxvlan_cap(hw, &ctrl);
 
-	if ((rxmode->offloads & RTE_ETH_RX_OFFLOAD_QINQ_STRIP) != 0) {
+	if ((rx_offload & RTE_ETH_RX_OFFLOAD_QINQ_STRIP) != 0) {
 		if ((hw->cap & NFP_NET_CFG_CTRL_RXQINQ) != 0)
 			ctrl |= NFP_NET_CFG_CTRL_RXQINQ;
 	}
 
 	hw->mtu = dev->data->mtu;
 
-	if ((txmode->offloads & RTE_ETH_TX_OFFLOAD_VLAN_INSERT) != 0) {
+	if ((tx_offload & RTE_ETH_TX_OFFLOAD_VLAN_INSERT) != 0) {
 		if ((hw->cap & NFP_NET_CFG_CTRL_TXVLAN_V2) != 0)
 			ctrl |= NFP_NET_CFG_CTRL_TXVLAN_V2;
 		else if ((hw->cap & NFP_NET_CFG_CTRL_TXVLAN) != 0)
@@ -661,14 +661,14 @@ nfp_check_offloads(struct rte_eth_dev *dev)
 		ctrl |= NFP_NET_CFG_CTRL_L2MC;
 
 	/* TX checksum offload */
-	if ((txmode->offloads & RTE_ETH_TX_OFFLOAD_IPV4_CKSUM) != 0 ||
-			(txmode->offloads & RTE_ETH_TX_OFFLOAD_UDP_CKSUM) != 0 ||
-			(txmode->offloads & RTE_ETH_TX_OFFLOAD_TCP_CKSUM) != 0)
+	if ((tx_offload & RTE_ETH_TX_OFFLOAD_IPV4_CKSUM) != 0 ||
+			(tx_offload & RTE_ETH_TX_OFFLOAD_UDP_CKSUM) != 0 ||
+			(tx_offload & RTE_ETH_TX_OFFLOAD_TCP_CKSUM) != 0)
 		ctrl |= NFP_NET_CFG_CTRL_TXCSUM;
 
 	/* LSO offload */
-	if ((txmode->offloads & RTE_ETH_TX_OFFLOAD_TCP_TSO) != 0 ||
-			(txmode->offloads & RTE_ETH_TX_OFFLOAD_VXLAN_TNL_TSO) != 0) {
+	if ((tx_offload & RTE_ETH_TX_OFFLOAD_TCP_TSO) != 0 ||
+			(tx_offload & RTE_ETH_TX_OFFLOAD_VXLAN_TNL_TSO) != 0) {
 		if ((hw->cap & NFP_NET_CFG_CTRL_LSO) != 0)
 			ctrl |= NFP_NET_CFG_CTRL_LSO;
 		else
@@ -676,7 +676,7 @@ nfp_check_offloads(struct rte_eth_dev *dev)
 	}
 
 	/* RX gather */
-	if ((txmode->offloads & RTE_ETH_TX_OFFLOAD_MULTI_SEGS) != 0)
+	if ((tx_offload & RTE_ETH_TX_OFFLOAD_MULTI_SEGS) != 0)
 		ctrl |= NFP_NET_CFG_CTRL_GATHER;
 
 	return ctrl;
@@ -766,11 +766,10 @@ nfp_net_link_update(struct rte_eth_dev *dev,
 
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
-	/* Read link status */
-	nn_link_status = nn_cfg_readw(hw, NFP_NET_CFG_STS);
-
 	memset(&link, 0, sizeof(struct rte_eth_link));
 
+	/* Read link status */
+	nn_link_status = nn_cfg_readw(hw, NFP_NET_CFG_STS);
 	if ((nn_link_status & NFP_NET_CFG_STS_LINK) != 0)
 		link.link_status = RTE_ETH_LINK_UP;
 
@@ -827,6 +826,9 @@ nfp_net_stats_get(struct rte_eth_dev *dev,
 	uint16_t i;
 	struct nfp_net_hw *hw;
 	struct rte_eth_stats nfp_dev_stats;
+
+	if (stats == NULL)
+		return -EINVAL;
 
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
@@ -892,11 +894,8 @@ nfp_net_stats_get(struct rte_eth_dev *dev,
 			nn_cfg_readq(hw, NFP_NET_CFG_STATS_RX_DISCARDS);
 	nfp_dev_stats.imissed -= hw->eth_stats_base.imissed;
 
-	if (stats != NULL) {
-		memcpy(stats, &nfp_dev_stats, sizeof(*stats));
-		return 0;
-	}
-	return -EINVAL;
+	memcpy(stats, &nfp_dev_stats, sizeof(*stats));
+	return 0;
 }
 
 /*
@@ -1380,13 +1379,14 @@ nfp_rx_queue_intr_enable(struct rte_eth_dev *dev,
 	struct nfp_net_hw *hw;
 	struct rte_pci_device *pci_dev;
 
-	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	if (rte_intr_type_get(pci_dev->intr_handle) != RTE_INTR_HANDLE_UIO)
 		base = 1;
 
 	/* Make sure all updates are written before un-masking */
 	rte_wmb();
+
+	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	nn_cfg_writeb(hw, NFP_NET_CFG_ICR(base + queue_id),
 			NFP_NET_CFG_ICR_UNMASKED);
 	return 0;
@@ -1400,14 +1400,16 @@ nfp_rx_queue_intr_disable(struct rte_eth_dev *dev,
 	struct nfp_net_hw *hw;
 	struct rte_pci_device *pci_dev;
 
-	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	if (rte_intr_type_get(pci_dev->intr_handle) != RTE_INTR_HANDLE_UIO)
 		base = 1;
 
 	/* Make sure all updates are written before un-masking */
 	rte_wmb();
-	nn_cfg_writeb(hw, NFP_NET_CFG_ICR(base + queue_id), 0x1);
+
+	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	nn_cfg_writeb(hw, NFP_NET_CFG_ICR(base + queue_id), NFP_NET_CFG_ICR_RXTX);
+
 	return 0;
 }
 
@@ -1446,13 +1448,13 @@ nfp_net_irq_unmask(struct rte_eth_dev *dev)
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 
+	/* Make sure all updates are written before un-masking */
+	rte_wmb();
+
 	if ((hw->ctrl & NFP_NET_CFG_CTRL_MSIXAUTO) != 0) {
 		/* If MSI-X auto-masking is used, clear the entry */
-		rte_wmb();
 		rte_intr_ack(pci_dev->intr_handle);
 	} else {
-		/* Make sure all updates are written before un-masking */
-		rte_wmb();
 		nn_cfg_writeb(hw, NFP_NET_CFG_ICR(NFP_NET_IRQ_LSC_IDX),
 				NFP_NET_CFG_ICR_UNMASKED);
 	}
@@ -1549,19 +1551,18 @@ nfp_net_vlan_offload_set(struct rte_eth_dev *dev,
 	int ret;
 	uint32_t update;
 	uint32_t new_ctrl;
+	uint64_t rx_offload;
 	struct nfp_net_hw *hw;
 	uint32_t rxvlan_ctrl = 0;
-	struct rte_eth_conf *dev_conf;
 
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	dev_conf = &dev->data->dev_conf;
+	rx_offload = dev->data->dev_conf.rxmode.offloads;
 	new_ctrl = hw->ctrl;
-
-	nfp_net_enbable_rxvlan_cap(hw, &rxvlan_ctrl);
 
 	/* VLAN stripping setting */
 	if ((mask & RTE_ETH_VLAN_STRIP_MASK) != 0) {
-		if ((dev_conf->rxmode.offloads & RTE_ETH_RX_OFFLOAD_VLAN_STRIP) != 0)
+		nfp_net_enable_rxvlan_cap(hw, &rxvlan_ctrl);
+		if ((rx_offload & RTE_ETH_RX_OFFLOAD_VLAN_STRIP) != 0)
 			new_ctrl |= rxvlan_ctrl;
 		else
 			new_ctrl &= ~rxvlan_ctrl;
@@ -1569,7 +1570,7 @@ nfp_net_vlan_offload_set(struct rte_eth_dev *dev,
 
 	/* QinQ stripping setting */
 	if ((mask & RTE_ETH_QINQ_STRIP_MASK) != 0) {
-		if ((dev_conf->rxmode.offloads & RTE_ETH_RX_OFFLOAD_QINQ_STRIP) != 0)
+		if ((rx_offload & RTE_ETH_RX_OFFLOAD_QINQ_STRIP) != 0)
 			new_ctrl |= NFP_NET_CFG_CTRL_RXQINQ;
 		else
 			new_ctrl &= ~NFP_NET_CFG_CTRL_RXQINQ;
@@ -1581,10 +1582,12 @@ nfp_net_vlan_offload_set(struct rte_eth_dev *dev,
 	update = NFP_NET_CFG_UPDATE_GEN;
 
 	ret = nfp_net_reconfig(hw, new_ctrl, update);
-	if (ret == 0)
-		hw->ctrl = new_ctrl;
+	if (ret != 0)
+		return ret;
 
-	return ret;
+	hw->ctrl = new_ctrl;
+
+	return 0;
 }
 
 static int

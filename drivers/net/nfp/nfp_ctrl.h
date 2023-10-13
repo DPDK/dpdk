@@ -442,8 +442,6 @@ struct nfp_net_fw_ver {
 #define NFP_MAC_STATS_TX_PAUSE_FRAMES_CLASS6    (NFP_MAC_STATS_BASE + 0x1f0)
 #define NFP_MAC_STATS_TX_PAUSE_FRAMES_CLASS7    (NFP_MAC_STATS_BASE + 0x1f8)
 
-#define NFP_PF_CSR_SLICE_SIZE    (32 * 1024)
-
 /*
  * General use mailbox area (0x1800 - 0x19ff)
  * 4B used for update command and 4B return code followed by

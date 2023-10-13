@@ -22,9 +22,6 @@
 #define NFP_IOCTL_CPP_IDENTIFICATION _IOW(NFP_IOCTL, 0x8f, uint32_t)
 
 /* Prototypes */
-static int nfp_cpp_bridge_serve_write(int sockfd, struct nfp_cpp *cpp);
-static int nfp_cpp_bridge_serve_read(int sockfd, struct nfp_cpp *cpp);
-static int nfp_cpp_bridge_serve_ioctl(int sockfd, struct nfp_cpp *cpp);
 static int nfp_cpp_bridge_service_func(void *args);
 
 int
@@ -438,7 +435,7 @@ nfp_cpp_bridge_service_func(void *args)
 			return -EIO;
 		}
 
-		while (1) {
+		for (;;) {
 			ret = recv(datafd, &op, 4, 0);
 			if (ret <= 0) {
 				PMD_CPP_LOG(DEBUG, "%s: socket close", __func__);

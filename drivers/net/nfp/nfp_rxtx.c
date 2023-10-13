@@ -284,7 +284,7 @@ nfp_net_parse_chained_meta(uint8_t *meta_base,
 			meta->vlan[meta->vlan_layer].tci =
 					vlan_info & NFP_NET_META_VLAN_MASK;
 			meta->vlan[meta->vlan_layer].tpid = NFP_NET_META_TPID(vlan_info);
-			++meta->vlan_layer;
+			meta->vlan_layer++;
 			break;
 		case NFP_NET_META_IPSEC:
 			meta->sa_idx = rte_be_to_cpu_32(*(rte_be32_t *)meta_offset);
