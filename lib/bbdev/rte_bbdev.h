@@ -313,6 +313,8 @@ int
 rte_bbdev_stats_reset(uint16_t dev_id);
 
 /** Device information supplied by the device's driver */
+
+/* Structure rte_bbdev_driver_info 8< */
 struct rte_bbdev_driver_info {
 	/** Driver name */
 	const char *driver_name;
@@ -352,6 +354,7 @@ struct rte_bbdev_driver_info {
 	/** FFT windowing width for 2048 FFT - size defined in capability. */
 	uint16_t *fft_window_width;
 };
+/* >8 End of structure rte_bbdev_driver_info. */
 
 /** Macro used at end of bbdev PMD list */
 #define RTE_BBDEV_END_OF_CAPABILITIES_LIST() \
@@ -361,6 +364,8 @@ struct rte_bbdev_driver_info {
  * Device information structure used by an application to discover a devices
  * capabilities and current configuration
  */
+
+/* Structure rte_bbdev_info 8< */
 struct rte_bbdev_info {
 	int socket_id;  /**< NUMA socket that device is on */
 	const char *dev_name;  /**< Unique device name */
@@ -369,6 +374,7 @@ struct rte_bbdev_info {
 	bool started;  /**< Set if device is currently started */
 	struct rte_bbdev_driver_info drv;  /**< Info from device driver */
 };
+/* >8 End of structure rte_bbdev_info. */
 
 /**
  * Retrieve information about a device.

@@ -261,16 +261,66 @@ information:
   structure, this is where capabilities reside along with other specifics like:
   maximum queue sizes and priority level.
 
-.. code-block:: c
+.. literalinclude:: ../../../lib/bbdev/rte_bbdev.h
+   :language: c
+   :start-after: Structure rte_bbdev_driver_info 8<
+   :end-before: >8 End of structure rte_bbdev_driver_info.
 
-    struct rte_bbdev_info {
-        int socket_id;
-        const char *dev_name;
-        const struct rte_device *device;
-        uint16_t num_queues;
-        bool started;
-        struct rte_bbdev_driver_info drv;
-    };
+.. literalinclude:: ../../../lib/bbdev/rte_bbdev.h
+   :language: c
+   :start-after: Structure rte_bbdev_info 8<
+   :end-before: >8 End of structure rte_bbdev_info.
+
+Capabilities details for LDPC Decoder
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+On top of the ``RTE_BBDEV_LDPC_<*>`` capabilities
+the device also exposes the LLR numerical representation
+expected by the decoder as a fractional fixed-point representation.
+For instance, when the representation (``llr_size``, ``llr_decimals``) = (8, 2) respectively,
+this means that each input LLR in the data provided by the application must be computed
+as 8 total bits (including sign bit)
+where 2 of these are fractions bits (also referred to as S8.2 format).
+It is up to the user application during LLR generation to scale the LLR
+according to this optimal numerical representation.
+Any mis-scaled LLR would cause wireless performance degradation.
+
+The ``harq_buffer_size`` exposes the amount of dedicated DDR
+made available for the device operation.
+This is specific for accelerator non-integrated on the CPU (separate PCIe device)
+which may include separate on-card memory.
+
+Capabilities details for FFT function
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The total number of distinct time windows supported
+for the post-FFT point-wise multiplication is exposed as ``fft_windows_num``.
+The ``window_index`` provided for each cyclic shift
+in each ``rte_bbdev_op_fft`` operation is expected to be limited to that size.
+
+The information related to the width of each of these pre-configured window
+is also exposed using the ``fft_window_width`` array.
+This provides the number of non-null samples
+used for each window index when scaling back the size to a reference of 1024 FFT.
+The actual shape size is effectively scaled up or down
+based on the dynamic size of the FFT operation being used.
+
+This allows to distinguish different version of the flexible pointwise windowing
+applied to the FFT and exposes this platform configuration to the application.
+
+Other optional capabilities exposed during device discovery
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The device status can be used to expose additional information
+related to the state of the platform notably based on its configuration state
+or related to error management (correctable or non).
+
+The queue topology exposed to the device is provided on top of the capabilities.
+This provides the number of queues available
+for the exposed bbdev device (the physical device may have more)
+for each operation as well as the different level of priority available for arbitration.
+These are based on the arrays and parameters
+``num_queues``, ``queue_priority``, ``max_num_queues``, ``queue_size_lim``.
 
 
 Operation Processing
