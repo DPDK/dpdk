@@ -462,7 +462,7 @@ extern int mana_logtype_init;
 		__func__, ## args)
 
 #define DP_LOG(level, fmt, args...) \
-	RTE_LOG_DP(level, PMD, fmt, ## args)
+	RTE_LOG_DP(level, PMD, fmt "\n", ## args)
 
 #define PMD_INIT_LOG(level, fmt, args...) \
 	rte_log(RTE_LOG_ ## level, mana_logtype_init, "%s(): " fmt "\n",\
