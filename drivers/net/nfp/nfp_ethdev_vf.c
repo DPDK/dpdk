@@ -29,15 +29,16 @@ nfp_netvf_read_mac(struct nfp_net_hw *hw)
 static int
 nfp_netvf_start(struct rte_eth_dev *dev)
 {
-	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
-	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
-	uint32_t new_ctrl, update = 0;
+	int ret;
+	uint16_t i;
+	uint32_t new_ctrl;
+	uint32_t update = 0;
+	uint32_t intr_vector;
 	struct nfp_net_hw *hw;
 	struct rte_eth_conf *dev_conf;
 	struct rte_eth_rxmode *rxmode;
-	uint32_t intr_vector;
-	uint16_t i;
-	int ret;
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
 
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
@@ -260,15 +261,15 @@ nfp_netvf_ethdev_ops_mount(struct nfp_net_hw *hw,
 static int
 nfp_netvf_init(struct rte_eth_dev *eth_dev)
 {
-	struct rte_pci_device *pci_dev;
-	struct nfp_net_hw *hw;
-	struct rte_ether_addr *tmp_ether_addr;
-
-	uint64_t tx_bar_off = 0, rx_bar_off = 0;
+	int err;
 	uint32_t start_q;
 	uint16_t port = 0;
-	int err;
+	struct nfp_net_hw *hw;
+	uint64_t tx_bar_off = 0;
+	uint64_t rx_bar_off = 0;
+	struct rte_pci_device *pci_dev;
 	const struct nfp_dev_info *dev_info;
+	struct rte_ether_addr *tmp_ether_addr;
 
 	PMD_INIT_FUNC_TRACE();
 

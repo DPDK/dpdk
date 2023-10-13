@@ -24,9 +24,9 @@
 static void
 nfp_pf_repr_enable_queues(struct rte_eth_dev *dev)
 {
+	uint16_t i;
 	struct nfp_net_hw *hw;
 	uint64_t enabled_queues = 0;
-	uint16_t i;
 	struct nfp_flower_representor *repr;
 
 	repr = dev->data->dev_private;
@@ -50,9 +50,9 @@ nfp_pf_repr_enable_queues(struct rte_eth_dev *dev)
 static void
 nfp_pf_repr_disable_queues(struct rte_eth_dev *dev)
 {
-	struct nfp_net_hw *hw;
+	uint32_t update;
 	uint32_t new_ctrl;
-	uint32_t update = 0;
+	struct nfp_net_hw *hw;
 	struct nfp_flower_representor *repr;
 
 	repr = dev->data->dev_private;

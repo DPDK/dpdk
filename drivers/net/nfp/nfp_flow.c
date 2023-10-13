@@ -761,9 +761,9 @@ nfp_flow_compile_metadata(struct nfp_flow_priv *priv,
 		uint32_t stats_ctx,
 		uint64_t cookie)
 {
-	struct nfp_fl_rule_metadata *nfp_flow_meta;
-	char *mbuf_off_exact;
 	char *mbuf_off_mask;
+	char *mbuf_off_exact;
+	struct nfp_fl_rule_metadata *nfp_flow_meta;
 
 	/*
 	 * Convert to long words as firmware expects
@@ -974,9 +974,9 @@ nfp_flow_key_layers_calculate_actions(const struct rte_flow_action actions[],
 	int ret = 0;
 	bool meter_flag = false;
 	bool tc_hl_flag = false;
-	bool mac_set_flag = false;
 	bool ip_set_flag = false;
 	bool tp_set_flag = false;
+	bool mac_set_flag = false;
 	bool ttl_tos_flag = false;
 	const struct rte_flow_action *action;
 
@@ -3201,11 +3201,11 @@ nfp_flow_action_geneve_encap_v4(struct nfp_app_fw_flower *app_fw_flower,
 {
 	uint64_t tun_id;
 	const struct rte_ether_hdr *eth;
+	struct nfp_fl_act_pre_tun *pre_tun;
+	struct nfp_fl_act_set_tun *set_tun;
 	const struct rte_flow_item_udp *udp;
 	const struct rte_flow_item_ipv4 *ipv4;
 	const struct rte_flow_item_geneve *geneve;
-	struct nfp_fl_act_pre_tun *pre_tun;
-	struct nfp_fl_act_set_tun *set_tun;
 	size_t act_pre_size = sizeof(struct nfp_fl_act_pre_tun);
 	size_t act_set_size = sizeof(struct nfp_fl_act_set_tun);
 
@@ -3241,11 +3241,11 @@ nfp_flow_action_geneve_encap_v6(struct nfp_app_fw_flower *app_fw_flower,
 	uint8_t tos;
 	uint64_t tun_id;
 	const struct rte_ether_hdr *eth;
+	struct nfp_fl_act_pre_tun *pre_tun;
+	struct nfp_fl_act_set_tun *set_tun;
 	const struct rte_flow_item_udp *udp;
 	const struct rte_flow_item_ipv6 *ipv6;
 	const struct rte_flow_item_geneve *geneve;
-	struct nfp_fl_act_pre_tun *pre_tun;
-	struct nfp_fl_act_set_tun *set_tun;
 	size_t act_pre_size = sizeof(struct nfp_fl_act_pre_tun);
 	size_t act_set_size = sizeof(struct nfp_fl_act_set_tun);
 
@@ -3281,10 +3281,10 @@ nfp_flow_action_nvgre_encap_v4(struct nfp_app_fw_flower *app_fw_flower,
 {
 	uint64_t tun_id;
 	const struct rte_ether_hdr *eth;
-	const struct rte_flow_item_ipv4 *ipv4;
-	const struct rte_flow_item_gre *gre;
 	struct nfp_fl_act_pre_tun *pre_tun;
 	struct nfp_fl_act_set_tun *set_tun;
+	const struct rte_flow_item_gre *gre;
+	const struct rte_flow_item_ipv4 *ipv4;
 	size_t act_pre_size = sizeof(struct nfp_fl_act_pre_tun);
 	size_t act_set_size = sizeof(struct nfp_fl_act_set_tun);
 
@@ -3319,10 +3319,10 @@ nfp_flow_action_nvgre_encap_v6(struct nfp_app_fw_flower *app_fw_flower,
 	uint8_t tos;
 	uint64_t tun_id;
 	const struct rte_ether_hdr *eth;
-	const struct rte_flow_item_ipv6 *ipv6;
-	const struct rte_flow_item_gre *gre;
 	struct nfp_fl_act_pre_tun *pre_tun;
 	struct nfp_fl_act_set_tun *set_tun;
+	const struct rte_flow_item_gre *gre;
+	const struct rte_flow_item_ipv6 *ipv6;
 	size_t act_pre_size = sizeof(struct nfp_fl_act_pre_tun);
 	size_t act_set_size = sizeof(struct nfp_fl_act_set_tun);
 
@@ -3467,12 +3467,12 @@ nfp_flow_compile_action(struct nfp_flower_representor *representor,
 	uint32_t count;
 	char *position;
 	char *action_data;
-	bool ttl_tos_flag = false;
-	bool tc_hl_flag = false;
 	bool drop_flag = false;
+	bool tc_hl_flag = false;
 	bool ip_set_flag = false;
 	bool tp_set_flag = false;
 	bool mac_set_flag = false;
+	bool ttl_tos_flag = false;
 	uint32_t total_actions = 0;
 	const struct rte_flow_action *action;
 	struct nfp_flower_meta_tci *meta_tci;
@@ -4283,10 +4283,10 @@ nfp_flow_priv_init(struct nfp_pf_dev *pf_dev)
 	size_t stats_size;
 	uint64_t ctx_count;
 	uint64_t ctx_split;
+	struct nfp_flow_priv *priv;
 	char mask_name[RTE_HASH_NAMESIZE];
 	char flow_name[RTE_HASH_NAMESIZE];
 	char pretun_name[RTE_HASH_NAMESIZE];
-	struct nfp_flow_priv *priv;
 	struct nfp_app_fw_flower *app_fw_flower;
 	const char *pci_name = strchr(pf_dev->pci_dev->name, ':') + 1;
 

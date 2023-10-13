@@ -188,9 +188,9 @@ nfp_net_rx_cksum(struct nfp_net_rxq *rxq,
 static int
 nfp_net_rx_fill_freelist(struct nfp_net_rxq *rxq)
 {
-	struct nfp_net_dp_buf *rxe = rxq->rxbufs;
-	uint64_t dma_addr;
 	uint16_t i;
+	uint64_t dma_addr;
+	struct nfp_net_dp_buf *rxe = rxq->rxbufs;
 
 	PMD_RX_LOG(DEBUG, "Fill Rx Freelist for %u descriptors",
 			rxq->rx_count);
@@ -241,16 +241,14 @@ nfp_net_rx_freelist_setup(struct rte_eth_dev *dev)
 uint32_t
 nfp_net_rx_queue_count(void *rx_queue)
 {
+	uint32_t idx;
+	uint32_t count = 0;
 	struct nfp_net_rxq *rxq;
 	struct nfp_net_rx_desc *rxds;
-	uint32_t idx;
-	uint32_t count;
 
 	rxq = rx_queue;
 
 	idx = rxq->rd_p;
-
-	count = 0;
 
 	/*
 	 * Other PMDs are just checking the DD bit in intervals of 4
@@ -282,9 +280,9 @@ nfp_net_parse_chained_meta(uint8_t *meta_base,
 		rte_be32_t meta_header,
 		struct nfp_meta_parsed *meta)
 {
-	uint8_t *meta_offset;
 	uint32_t meta_info;
 	uint32_t vlan_info;
+	uint8_t *meta_offset;
 
 	meta_info = rte_be_to_cpu_32(meta_header);
 	meta_offset = meta_base + 4;
@@ -683,15 +681,15 @@ nfp_net_recv_pkts(void *rx_queue,
 		struct rte_mbuf **rx_pkts,
 		uint16_t nb_pkts)
 {
-	struct nfp_net_rxq *rxq;
-	struct nfp_net_rx_desc *rxds;
-	struct nfp_net_dp_buf *rxb;
-	struct nfp_net_hw *hw;
-	struct rte_mbuf *mb;
-	struct rte_mbuf *new_mb;
-	uint16_t nb_hold;
 	uint64_t dma_addr;
-	uint16_t avail;
+	uint16_t avail = 0;
+	struct rte_mbuf *mb;
+	uint16_t nb_hold = 0;
+	struct nfp_net_hw *hw;
+	struct rte_mbuf *new_mb;
+	struct nfp_net_rxq *rxq;
+	struct nfp_net_dp_buf *rxb;
+	struct nfp_net_rx_desc *rxds;
 	uint16_t avail_multiplexed = 0;
 
 	rxq = rx_queue;
@@ -706,8 +704,6 @@ nfp_net_recv_pkts(void *rx_queue,
 
 	hw = rxq->hw;
 
-	avail = 0;
-	nb_hold = 0;
 	while (avail + avail_multiplexed < nb_pkts) {
 		rxb = &rxq->rxbufs[rxq->rd_p];
 		if (unlikely(rxb == NULL)) {
@@ -883,12 +879,12 @@ nfp_net_rx_queue_setup(struct rte_eth_dev *dev,
 		const struct rte_eth_rxconf *rx_conf,
 		struct rte_mempool *mp)
 {
+	uint32_t rx_desc_sz;
 	uint16_t min_rx_desc;
 	uint16_t max_rx_desc;
-	const struct rte_memzone *tz;
-	struct nfp_net_rxq *rxq;
 	struct nfp_net_hw *hw;
-	uint32_t rx_desc_sz;
+	struct nfp_net_rxq *rxq;
+	const struct rte_memzone *tz;
 
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
@@ -995,8 +991,8 @@ nfp_net_rx_queue_setup(struct rte_eth_dev *dev,
 uint32_t
 nfp_net_tx_free_bufs(struct nfp_net_txq *txq)
 {
-	uint32_t qcp_rd_p;
 	uint32_t todo;
+	uint32_t qcp_rd_p;
 
 	PMD_TX_LOG(DEBUG, "queue %hu. Check for descriptor with a complete"
 			" status", txq->qidx);
@@ -1072,8 +1068,8 @@ nfp_net_set_meta_vlan(struct nfp_net_meta_raw *meta_data,
 		struct rte_mbuf *pkt,
 		uint8_t layer)
 {
-	uint16_t vlan_tci;
 	uint16_t tpid;
+	uint16_t vlan_tci;
 
 	tpid = RTE_ETHER_TYPE_VLAN;
 	vlan_tci = pkt->vlan_tci;

@@ -223,8 +223,9 @@ nn_writew(uint16_t val,
 static inline uint64_t
 nn_readq(volatile void *addr)
 {
+	uint32_t low;
+	uint32_t high;
 	const volatile uint32_t *p = addr;
-	uint32_t low, high;
 
 	high = nn_readl((volatile const void *)(p + 1));
 	low = nn_readl((volatile const void *)p);

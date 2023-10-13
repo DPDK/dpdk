@@ -375,10 +375,10 @@ nfp_net_mbox_reconfig(struct nfp_net_hw *hw,
 int
 nfp_net_configure(struct rte_eth_dev *dev)
 {
+	struct nfp_net_hw *hw;
 	struct rte_eth_conf *dev_conf;
 	struct rte_eth_rxmode *rxmode;
 	struct rte_eth_txmode *txmode;
-	struct nfp_net_hw *hw;
 
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
@@ -464,9 +464,9 @@ nfp_net_enbable_rxvlan_cap(struct nfp_net_hw *hw,
 void
 nfp_net_enable_queues(struct rte_eth_dev *dev)
 {
+	uint16_t i;
 	struct nfp_net_hw *hw;
 	uint64_t enabled_queues = 0;
-	uint16_t i;
 
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
@@ -488,8 +488,9 @@ nfp_net_enable_queues(struct rte_eth_dev *dev)
 void
 nfp_net_disable_queues(struct rte_eth_dev *dev)
 {
+	uint32_t update;
+	uint32_t new_ctrl;
 	struct nfp_net_hw *hw;
-	uint32_t new_ctrl, update = 0;
 
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
@@ -528,9 +529,10 @@ void
 nfp_net_write_mac(struct nfp_net_hw *hw,
 		uint8_t *mac)
 {
-	uint32_t mac0 = *(uint32_t *)mac;
+	uint32_t mac0;
 	uint16_t mac1;
 
+	mac0 = *(uint32_t *)mac;
 	nn_writel(rte_cpu_to_be_32(mac0), hw->ctrl_bar + NFP_NET_CFG_MACADDR);
 
 	mac += 4;
@@ -543,8 +545,9 @@ int
 nfp_net_set_mac_addr(struct rte_eth_dev *dev,
 		struct rte_ether_addr *mac_addr)
 {
+	uint32_t ctrl;
+	uint32_t update;
 	struct nfp_net_hw *hw;
-	uint32_t update, ctrl;
 
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	if ((hw->ctrl & NFP_NET_CFG_CTRL_ENABLE) != 0 &&
@@ -574,8 +577,8 @@ int
 nfp_configure_rx_interrupt(struct rte_eth_dev *dev,
 		struct rte_intr_handle *intr_handle)
 {
-	struct nfp_net_hw *hw;
 	uint16_t i;
+	struct nfp_net_hw *hw;
 
 	if (rte_intr_vec_list_alloc(intr_handle, "intr_vec",
 				dev->data->nb_rx_queues) != 0) {
@@ -615,11 +618,11 @@ nfp_configure_rx_interrupt(struct rte_eth_dev *dev,
 uint32_t
 nfp_check_offloads(struct rte_eth_dev *dev)
 {
+	uint32_t ctrl = 0;
 	struct nfp_net_hw *hw;
 	struct rte_eth_conf *dev_conf;
 	struct rte_eth_rxmode *rxmode;
 	struct rte_eth_txmode *txmode;
-	uint32_t ctrl = 0;
 
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
@@ -682,9 +685,10 @@ nfp_check_offloads(struct rte_eth_dev *dev)
 int
 nfp_net_promisc_enable(struct rte_eth_dev *dev)
 {
-	uint32_t new_ctrl, update = 0;
-	struct nfp_net_hw *hw;
 	int ret;
+	uint32_t new_ctrl;
+	uint32_t update = 0;
+	struct nfp_net_hw *hw;
 	struct nfp_flower_representor *repr;
 
 	PMD_DRV_LOG(DEBUG, "Promiscuous mode enable");
@@ -725,9 +729,10 @@ nfp_net_promisc_enable(struct rte_eth_dev *dev)
 int
 nfp_net_promisc_disable(struct rte_eth_dev *dev)
 {
-	uint32_t new_ctrl, update = 0;
-	struct nfp_net_hw *hw;
 	int ret;
+	uint32_t new_ctrl;
+	uint32_t update = 0;
+	struct nfp_net_hw *hw;
 
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
@@ -764,8 +769,8 @@ nfp_net_link_update(struct rte_eth_dev *dev,
 {
 	int ret;
 	uint32_t i;
-	uint32_t nn_link_status;
 	struct nfp_net_hw *hw;
+	uint32_t nn_link_status;
 	struct rte_eth_link link;
 	struct nfp_eth_table *nfp_eth_table;
 
@@ -988,12 +993,13 @@ nfp_net_stats_reset(struct rte_eth_dev *dev)
 uint32_t
 nfp_net_xstats_size(const struct rte_eth_dev *dev)
 {
-	/* If the device is a VF, then there will be no MAC stats */
-	struct nfp_net_hw *hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint32_t count;
+	struct nfp_net_hw *hw;
 	const uint32_t size = RTE_DIM(nfp_net_xstats);
 
+	/* If the device is a VF, then there will be no MAC stats */
+	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	if (hw->mac_stats == NULL) {
-		uint32_t count;
 		for (count = 0; count < size; count++) {
 			if (nfp_net_xstats[count].group == NFP_XSTAT_GROUP_MAC)
 				break;
@@ -1397,9 +1403,9 @@ int
 nfp_rx_queue_intr_enable(struct rte_eth_dev *dev,
 		uint16_t queue_id)
 {
-	struct rte_pci_device *pci_dev;
-	struct nfp_net_hw *hw;
 	uint16_t base = 0;
+	struct nfp_net_hw *hw;
+	struct rte_pci_device *pci_dev;
 
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	pci_dev = RTE_ETH_DEV_TO_PCI(dev);
@@ -1418,9 +1424,9 @@ int
 nfp_rx_queue_intr_disable(struct rte_eth_dev *dev,
 		uint16_t queue_id)
 {
-	struct rte_pci_device *pci_dev;
-	struct nfp_net_hw *hw;
 	uint16_t base = 0;
+	struct nfp_net_hw *hw;
+	struct rte_pci_device *pci_dev;
 
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	pci_dev = RTE_ETH_DEV_TO_PCI(dev);
@@ -1437,8 +1443,8 @@ nfp_rx_queue_intr_disable(struct rte_eth_dev *dev,
 static void
 nfp_net_dev_link_status_print(struct rte_eth_dev *dev)
 {
-	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	struct rte_eth_link link;
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 
 	rte_eth_linkstatus_get(dev, &link);
 	if (link.link_status != 0)
@@ -1574,16 +1580,16 @@ int
 nfp_net_vlan_offload_set(struct rte_eth_dev *dev,
 		int mask)
 {
-	uint32_t new_ctrl, update;
-	struct nfp_net_hw *hw;
-	struct rte_eth_conf *dev_conf;
-	uint32_t rxvlan_ctrl;
 	int ret;
+	uint32_t update;
+	uint32_t new_ctrl;
+	struct nfp_net_hw *hw;
+	uint32_t rxvlan_ctrl = 0;
+	struct rte_eth_conf *dev_conf;
 
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	dev_conf = &dev->data->dev_conf;
 	new_ctrl = hw->ctrl;
-	rxvlan_ctrl = 0;
 
 	nfp_net_enbable_rxvlan_cap(hw, &rxvlan_ctrl);
 
@@ -1620,12 +1626,15 @@ nfp_net_rss_reta_write(struct rte_eth_dev *dev,
 		struct rte_eth_rss_reta_entry64 *reta_conf,
 		uint16_t reta_size)
 {
+	uint16_t i;
+	uint16_t j;
+	uint16_t idx;
 	uint8_t mask;
 	uint32_t reta;
-	uint16_t i, j;
-	uint16_t idx, shift;
-	struct nfp_net_hw *hw =
-		NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint16_t shift;
+	struct nfp_net_hw *hw;
+
+	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
 	if (reta_size != NFP_NET_CFG_RSS_ITBL_SZ) {
 		PMD_DRV_LOG(ERR, "The size of hash lookup table configured "
@@ -1671,11 +1680,11 @@ nfp_net_reta_update(struct rte_eth_dev *dev,
 		struct rte_eth_rss_reta_entry64 *reta_conf,
 		uint16_t reta_size)
 {
-	struct nfp_net_hw *hw =
-		NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	uint32_t update;
 	int ret;
+	uint32_t update;
+	struct nfp_net_hw *hw;
 
+	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	if ((hw->ctrl & NFP_NET_CFG_CTRL_RSS_ANY) == 0)
 		return -EINVAL;
 
@@ -1697,10 +1706,12 @@ nfp_net_reta_query(struct rte_eth_dev *dev,
 		struct rte_eth_rss_reta_entry64 *reta_conf,
 		uint16_t reta_size)
 {
-	uint16_t i, j;
+	uint16_t i;
+	uint16_t j;
+	uint16_t idx;
 	uint8_t mask;
-	uint16_t idx, shift;
 	uint32_t reta;
+	uint16_t shift;
 	struct nfp_net_hw *hw;
 
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
@@ -1743,11 +1754,11 @@ static int
 nfp_net_rss_hash_write(struct rte_eth_dev *dev,
 		struct rte_eth_rss_conf *rss_conf)
 {
-	struct nfp_net_hw *hw;
-	uint64_t rss_hf;
-	uint32_t cfg_rss_ctrl = 0;
-	uint8_t key;
 	uint8_t i;
+	uint8_t key;
+	uint64_t rss_hf;
+	struct nfp_net_hw *hw;
+	uint32_t cfg_rss_ctrl = 0;
 
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
@@ -1835,10 +1846,10 @@ int
 nfp_net_rss_hash_conf_get(struct rte_eth_dev *dev,
 		struct rte_eth_rss_conf *rss_conf)
 {
+	uint8_t i;
+	uint8_t key;
 	uint64_t rss_hf;
 	uint32_t cfg_rss_ctrl;
-	uint8_t key;
-	uint8_t i;
 	struct nfp_net_hw *hw;
 
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
@@ -1891,13 +1902,14 @@ nfp_net_rss_hash_conf_get(struct rte_eth_dev *dev,
 int
 nfp_net_rss_config_default(struct rte_eth_dev *dev)
 {
+	int ret;
+	uint8_t i;
+	uint8_t j;
+	uint16_t queue = 0;
 	struct rte_eth_conf *dev_conf;
 	struct rte_eth_rss_conf rss_conf;
-	struct rte_eth_rss_reta_entry64 nfp_reta_conf[2];
 	uint16_t rx_queues = dev->data->nb_rx_queues;
-	uint16_t queue;
-	uint8_t i, j;
-	int ret;
+	struct rte_eth_rss_reta_entry64 nfp_reta_conf[2];
 
 	PMD_DRV_LOG(INFO, "setting default RSS conf for %u queues",
 			rx_queues);
@@ -1905,7 +1917,6 @@ nfp_net_rss_config_default(struct rte_eth_dev *dev)
 	nfp_reta_conf[0].mask = ~0x0;
 	nfp_reta_conf[1].mask = ~0x0;
 
-	queue = 0;
 	for (i = 0; i < 0x40; i += 8) {
 		for (j = i; j < (i + 8); j++) {
 			nfp_reta_conf[0].reta[j] = queue;

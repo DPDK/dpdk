@@ -25,8 +25,8 @@ static int
 nfp_net_pf_read_mac(struct nfp_app_fw_nic *app_fw_nic,
 		uint16_t port)
 {
+	struct nfp_net_hw *hw;
 	struct nfp_eth_table *nfp_eth_table;
-	struct nfp_net_hw *hw = NULL;
 
 	/* Grab a pointer to the correct physical port */
 	hw = app_fw_nic->ports[port];
@@ -42,19 +42,20 @@ nfp_net_pf_read_mac(struct nfp_app_fw_nic *app_fw_nic,
 static int
 nfp_net_start(struct rte_eth_dev *dev)
 {
-	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
-	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
-	uint32_t new_ctrl, update = 0;
+	int ret;
+	uint16_t i;
+	uint32_t new_ctrl;
+	uint32_t update = 0;
 	uint32_t cap_extend;
-	uint32_t ctrl_extend = 0;
+	uint32_t intr_vector;
 	struct nfp_net_hw *hw;
+	uint32_t ctrl_extend = 0;
 	struct nfp_pf_dev *pf_dev;
-	struct nfp_app_fw_nic *app_fw_nic;
 	struct rte_eth_conf *dev_conf;
 	struct rte_eth_rxmode *rxmode;
-	uint32_t intr_vector;
-	uint16_t i;
-	int ret;
+	struct nfp_app_fw_nic *app_fw_nic;
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
 
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	pf_dev = NFP_NET_DEV_PRIVATE_TO_PF(dev->data->dev_private);
@@ -257,11 +258,11 @@ nfp_net_set_link_down(struct rte_eth_dev *dev)
 static int
 nfp_net_close(struct rte_eth_dev *dev)
 {
-	struct nfp_net_hw *hw;
-	struct rte_pci_device *pci_dev;
-	struct nfp_pf_dev *pf_dev;
-	struct nfp_app_fw_nic *app_fw_nic;
 	uint8_t i;
+	struct nfp_net_hw *hw;
+	struct nfp_pf_dev *pf_dev;
+	struct rte_pci_device *pci_dev;
+	struct nfp_app_fw_nic *app_fw_nic;
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
@@ -486,15 +487,15 @@ nfp_net_ethdev_ops_mount(struct nfp_net_hw *hw,
 static int
 nfp_net_init(struct rte_eth_dev *eth_dev)
 {
-	struct rte_pci_device *pci_dev;
-	struct nfp_pf_dev *pf_dev;
-	struct nfp_app_fw_nic *app_fw_nic;
-	struct nfp_net_hw *hw;
-	struct rte_ether_addr *tmp_ether_addr;
+	int err;
+	uint16_t port;
 	uint64_t rx_base;
 	uint64_t tx_base;
-	uint16_t port = 0;
-	int err;
+	struct nfp_net_hw *hw;
+	struct nfp_pf_dev *pf_dev;
+	struct rte_pci_device *pci_dev;
+	struct nfp_app_fw_nic *app_fw_nic;
+	struct rte_ether_addr *tmp_ether_addr;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -657,14 +658,14 @@ nfp_fw_upload(struct rte_pci_device *dev,
 		struct nfp_nsp *nsp,
 		char *card)
 {
-	struct nfp_cpp *cpp = nfp_nsp_cpp(nsp);
 	void *fw_buf;
-	char fw_name[125];
-	char serial[40];
 	size_t fsize;
+	char serial[40];
+	char fw_name[125];
 	uint16_t interface;
 	uint32_t cpp_serial_len;
 	const uint8_t *cpp_serial;
+	struct nfp_cpp *cpp = nfp_nsp_cpp(nsp);
 
 	cpp_serial_len = nfp_cpp_serial(cpp, &cpp_serial);
 	if (cpp_serial_len != NFP_SERIAL_LEN)
@@ -720,10 +721,10 @@ nfp_fw_setup(struct rte_pci_device *dev,
 		struct nfp_eth_table *nfp_eth_table,
 		struct nfp_hwinfo *hwinfo)
 {
+	int err;
+	char card_desc[100];
 	struct nfp_nsp *nsp;
 	const char *nfp_fw_model;
-	char card_desc[100];
-	int err = 0;
 
 	nfp_fw_model = nfp_hwinfo_lookup(hwinfo, "nffw.partno");
 	if (nfp_fw_model == NULL)
@@ -904,9 +905,9 @@ nfp_pf_init(struct rte_pci_device *pci_dev)
 	uint64_t addr;
 	uint32_t cpp_id;
 	struct nfp_cpp *cpp;
-	enum nfp_app_fw_id app_fw_id;
 	struct nfp_pf_dev *pf_dev;
 	struct nfp_hwinfo *hwinfo;
+	enum nfp_app_fw_id app_fw_id;
 	char name[RTE_ETH_NAME_MAX_LEN];
 	struct nfp_rtsym_table *sym_tbl;
 	struct nfp_eth_table *nfp_eth_table;
@@ -1227,8 +1228,8 @@ static const struct rte_pci_id pci_id_nfp_pf_net_map[] = {
 static int
 nfp_pci_uninit(struct rte_eth_dev *eth_dev)
 {
-	struct rte_pci_device *pci_dev;
 	uint16_t port_id;
+	struct rte_pci_device *pci_dev;
 
 	pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
 

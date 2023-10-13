@@ -119,12 +119,16 @@ static int
 nfp_cpp_bridge_serve_write(int sockfd,
 		struct nfp_cpp *cpp)
 {
-	struct nfp_cpp_area *area;
-	off_t offset, nfp_offset;
-	uint32_t cpp_id, pos, len;
+	int err;
+	off_t offset;
+	uint32_t pos;
+	uint32_t len;
+	size_t count;
+	size_t curlen;
+	uint32_t cpp_id;
+	off_t nfp_offset;
 	uint32_t tmpbuf[16];
-	size_t count, curlen;
-	int err = 0;
+	struct nfp_cpp_area *area;
 
 	PMD_CPP_LOG(DEBUG, "%s: offset size %zu, count_size: %zu\n", __func__,
 			sizeof(off_t), sizeof(size_t));
@@ -220,12 +224,16 @@ static int
 nfp_cpp_bridge_serve_read(int sockfd,
 		struct nfp_cpp *cpp)
 {
-	struct nfp_cpp_area *area;
-	off_t offset, nfp_offset;
-	uint32_t cpp_id, pos, len;
+	int err;
+	off_t offset;
+	uint32_t pos;
+	uint32_t len;
+	size_t count;
+	size_t curlen;
+	uint32_t cpp_id;
+	off_t nfp_offset;
 	uint32_t tmpbuf[16];
-	size_t count, curlen;
-	int err = 0;
+	struct nfp_cpp_area *area;
 
 	PMD_CPP_LOG(DEBUG, "%s: offset size %zu, count_size: %zu\n", __func__,
 			sizeof(off_t), sizeof(size_t));
@@ -319,8 +327,10 @@ static int
 nfp_cpp_bridge_serve_ioctl(int sockfd,
 		struct nfp_cpp *cpp)
 {
-	uint32_t cmd, ident_size, tmp;
 	int err;
+	uint32_t cmd;
+	uint32_t tmp;
+	uint32_t ident_size;
 
 	/* Reading now the IOCTL command */
 	err = recv(sockfd, &cmd, 4, 0);
@@ -375,10 +385,13 @@ nfp_cpp_bridge_serve_ioctl(int sockfd,
 static int
 nfp_cpp_bridge_service_func(void *args)
 {
-	struct sockaddr address;
+	int op;
+	int ret;
+	int sockfd;
+	int datafd;
 	struct nfp_cpp *cpp;
+	struct sockaddr address;
 	struct nfp_pf_dev *pf_dev;
-	int sockfd, datafd, op, ret;
 	struct timeval timeout = {1, 0};
 
 	unlink("/tmp/nfp_cpp");
