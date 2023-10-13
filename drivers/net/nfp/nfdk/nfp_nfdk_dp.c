@@ -101,9 +101,7 @@ static inline uint16_t
 nfp_net_nfdk_headlen_to_segs(uint16_t headlen)
 {
 	/* First descriptor fits less data, so adjust for that */
-	return DIV_ROUND_UP(headlen +
-			NFDK_TX_MAX_DATA_PER_DESC -
-			NFDK_TX_MAX_DATA_PER_HEAD,
+	return DIV_ROUND_UP(headlen + NFDK_TX_MAX_DATA_PER_DESC - NFDK_TX_MAX_DATA_PER_HEAD,
 			NFDK_TX_MAX_DATA_PER_DESC);
 }
 

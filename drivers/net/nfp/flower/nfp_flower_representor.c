@@ -842,7 +842,7 @@ nfp_flower_repr_alloc(struct nfp_app_fw_flower *app_fw_flower)
 		snprintf(flower_repr.name, sizeof(flower_repr.name),
 				"%s_repr_vf%d", pci_name, i);
 
-		 /* This will also allocate private memory for the device*/
+		/* This will also allocate private memory for the device*/
 		ret = rte_eth_dev_create(eth_dev->device, flower_repr.name,
 				sizeof(struct nfp_flower_representor),
 				NULL, NULL, nfp_flower_repr_init, &flower_repr);

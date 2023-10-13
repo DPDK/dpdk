@@ -181,37 +181,47 @@ struct nfp_net_adapter {
 	struct nfp_net_hw hw;
 };
 
-static inline uint8_t nn_readb(volatile const void *addr)
+static inline uint8_t
+nn_readb(volatile const void *addr)
 {
 	return rte_read8(addr);
 }
 
-static inline void nn_writeb(uint8_t val, volatile void *addr)
+static inline void
+nn_writeb(uint8_t val,
+		volatile void *addr)
 {
 	rte_write8(val, addr);
 }
 
-static inline uint32_t nn_readl(volatile const void *addr)
+static inline uint32_t
+nn_readl(volatile const void *addr)
 {
 	return rte_read32(addr);
 }
 
-static inline void nn_writel(uint32_t val, volatile void *addr)
+static inline void
+nn_writel(uint32_t val,
+		volatile void *addr)
 {
 	rte_write32(val, addr);
 }
 
-static inline uint16_t nn_readw(volatile const void *addr)
+static inline uint16_t
+nn_readw(volatile const void *addr)
 {
 	return rte_read16(addr);
 }
 
-static inline void nn_writew(uint16_t val, volatile void *addr)
+static inline void
+nn_writew(uint16_t val,
+		volatile void *addr)
 {
 	rte_write16(val, addr);
 }
 
-static inline uint64_t nn_readq(volatile void *addr)
+static inline uint64_t
+nn_readq(volatile void *addr)
 {
 	const volatile uint32_t *p = addr;
 	uint32_t low, high;
@@ -222,7 +232,9 @@ static inline uint64_t nn_readq(volatile void *addr)
 	return low + ((uint64_t)high << 32);
 }
 
-static inline void nn_writeq(uint64_t val, volatile void *addr)
+static inline void
+nn_writeq(uint64_t val,
+		volatile void *addr)
 {
 	nn_writel(val >> 32, (volatile char *)addr + 4);
 	nn_writel(val, addr);
@@ -233,49 +245,61 @@ static inline void nn_writeq(uint64_t val, volatile void *addr)
  * Performs any endian conversion necessary.
  */
 static inline uint8_t
-nn_cfg_readb(struct nfp_net_hw *hw, int off)
+nn_cfg_readb(struct nfp_net_hw *hw,
+		int off)
 {
 	return nn_readb(hw->ctrl_bar + off);
 }
 
 static inline void
-nn_cfg_writeb(struct nfp_net_hw *hw, int off, uint8_t val)
+nn_cfg_writeb(struct nfp_net_hw *hw,
+		int off,
+		uint8_t val)
 {
 	nn_writeb(val, hw->ctrl_bar + off);
 }
 
 static inline uint16_t
-nn_cfg_readw(struct nfp_net_hw *hw, int off)
+nn_cfg_readw(struct nfp_net_hw *hw,
+		int off)
 {
 	return rte_le_to_cpu_16(nn_readw(hw->ctrl_bar + off));
 }
 
 static inline void
-nn_cfg_writew(struct nfp_net_hw *hw, int off, uint16_t val)
+nn_cfg_writew(struct nfp_net_hw *hw,
+		int off,
+		uint16_t val)
 {
 	nn_writew(rte_cpu_to_le_16(val), hw->ctrl_bar + off);
 }
 
 static inline uint32_t
-nn_cfg_readl(struct nfp_net_hw *hw, int off)
+nn_cfg_readl(struct nfp_net_hw *hw,
+		int off)
 {
 	return rte_le_to_cpu_32(nn_readl(hw->ctrl_bar + off));
 }
 
 static inline void
-nn_cfg_writel(struct nfp_net_hw *hw, int off, uint32_t val)
+nn_cfg_writel(struct nfp_net_hw *hw,
+		int off,
+		uint32_t val)
 {
 	nn_writel(rte_cpu_to_le_32(val), hw->ctrl_bar + off);
 }
 
 static inline uint64_t
-nn_cfg_readq(struct nfp_net_hw *hw, int off)
+nn_cfg_readq(struct nfp_net_hw *hw,
+		int off)
 {
 	return rte_le_to_cpu_64(nn_readq(hw->ctrl_bar + off));
 }
 
 static inline void
-nn_cfg_writeq(struct nfp_net_hw *hw, int off, uint64_t val)
+nn_cfg_writeq(struct nfp_net_hw *hw,
+		int off,
+		uint64_t val)
 {
 	nn_writeq(rte_cpu_to_le_64(val), hw->ctrl_bar + off);
 }
@@ -287,7 +311,9 @@ nn_cfg_writeq(struct nfp_net_hw *hw, int off, uint64_t val)
  * @val: Value to add to the queue pointer
  */
 static inline void
-nfp_qcp_ptr_add(uint8_t *q, enum nfp_qcp_ptr ptr, uint32_t val)
+nfp_qcp_ptr_add(uint8_t *q,
+		enum nfp_qcp_ptr ptr,
+		uint32_t val)
 {
 	uint32_t off;
 
@@ -305,7 +331,8 @@ nfp_qcp_ptr_add(uint8_t *q, enum nfp_qcp_ptr ptr, uint32_t val)
  * @ptr: Read or Write pointer
  */
 static inline uint32_t
-nfp_qcp_read(uint8_t *q, enum nfp_qcp_ptr ptr)
+nfp_qcp_read(uint8_t *q,
+		enum nfp_qcp_ptr ptr)
 {
 	uint32_t off;
 	uint32_t val;
@@ -344,12 +371,12 @@ void nfp_net_params_setup(struct nfp_net_hw *hw);
 void nfp_net_write_mac(struct nfp_net_hw *hw, uint8_t *mac);
 int nfp_net_set_mac_addr(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr);
 int nfp_configure_rx_interrupt(struct rte_eth_dev *dev,
-			       struct rte_intr_handle *intr_handle);
+		struct rte_intr_handle *intr_handle);
 uint32_t nfp_check_offloads(struct rte_eth_dev *dev);
 int nfp_net_promisc_enable(struct rte_eth_dev *dev);
 int nfp_net_promisc_disable(struct rte_eth_dev *dev);
 int nfp_net_link_update(struct rte_eth_dev *dev,
-			__rte_unused int wait_to_complete);
+		__rte_unused int wait_to_complete);
 int nfp_net_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats);
 int nfp_net_stats_reset(struct rte_eth_dev *dev);
 uint32_t nfp_net_xstats_size(const struct rte_eth_dev *dev);
@@ -369,7 +396,7 @@ int nfp_net_xstats_get_by_id(struct rte_eth_dev *dev,
 		unsigned int n);
 int nfp_net_xstats_reset(struct rte_eth_dev *dev);
 int nfp_net_infos_get(struct rte_eth_dev *dev,
-		      struct rte_eth_dev_info *dev_info);
+		struct rte_eth_dev_info *dev_info);
 const uint32_t *nfp_net_supported_ptypes_get(struct rte_eth_dev *dev);
 int nfp_rx_queue_intr_enable(struct rte_eth_dev *dev, uint16_t queue_id);
 int nfp_rx_queue_intr_disable(struct rte_eth_dev *dev, uint16_t queue_id);
@@ -380,15 +407,15 @@ void nfp_net_dev_interrupt_delayed_handler(void *param);
 int nfp_net_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu);
 int nfp_net_vlan_offload_set(struct rte_eth_dev *dev, int mask);
 int nfp_net_reta_update(struct rte_eth_dev *dev,
-			struct rte_eth_rss_reta_entry64 *reta_conf,
-			uint16_t reta_size);
+		struct rte_eth_rss_reta_entry64 *reta_conf,
+		uint16_t reta_size);
 int nfp_net_reta_query(struct rte_eth_dev *dev,
-		       struct rte_eth_rss_reta_entry64 *reta_conf,
-		       uint16_t reta_size);
+		struct rte_eth_rss_reta_entry64 *reta_conf,
+		uint16_t reta_size);
 int nfp_net_rss_hash_update(struct rte_eth_dev *dev,
-			    struct rte_eth_rss_conf *rss_conf);
+		struct rte_eth_rss_conf *rss_conf);
 int nfp_net_rss_hash_conf_get(struct rte_eth_dev *dev,
-			      struct rte_eth_rss_conf *rss_conf);
+		struct rte_eth_rss_conf *rss_conf);
 int nfp_net_rss_config_default(struct rte_eth_dev *dev);
 void nfp_net_stop_rx_queue(struct rte_eth_dev *dev);
 void nfp_net_close_rx_queue(struct rte_eth_dev *dev);

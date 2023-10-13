@@ -116,7 +116,8 @@ nfp_enable_cpp_service(struct nfp_pf_dev *pf_dev)
  * of CPP interface handler configured by the PMD setup.
  */
 static int
-nfp_cpp_bridge_serve_write(int sockfd, struct nfp_cpp *cpp)
+nfp_cpp_bridge_serve_write(int sockfd,
+		struct nfp_cpp *cpp)
 {
 	struct nfp_cpp_area *area;
 	off_t offset, nfp_offset;
@@ -126,7 +127,7 @@ nfp_cpp_bridge_serve_write(int sockfd, struct nfp_cpp *cpp)
 	int err = 0;
 
 	PMD_CPP_LOG(DEBUG, "%s: offset size %zu, count_size: %zu\n", __func__,
-		sizeof(off_t), sizeof(size_t));
+			sizeof(off_t), sizeof(size_t));
 
 	/* Reading the count param */
 	err = recv(sockfd, &count, sizeof(off_t), 0);
@@ -145,21 +146,21 @@ nfp_cpp_bridge_serve_write(int sockfd, struct nfp_cpp *cpp)
 	nfp_offset = offset & ((1ull << 40) - 1);
 
 	PMD_CPP_LOG(DEBUG, "%s: count %zu and offset %jd\n", __func__, count,
-		offset);
+			offset);
 	PMD_CPP_LOG(DEBUG, "%s: cpp_id %08x and nfp_offset %jd\n", __func__,
-		cpp_id, nfp_offset);
+			cpp_id, nfp_offset);
 
 	/* Adjust length if not aligned */
 	if (((nfp_offset + (off_t)count - 1) & ~(NFP_CPP_MEMIO_BOUNDARY - 1)) !=
-	    (nfp_offset & ~(NFP_CPP_MEMIO_BOUNDARY - 1))) {
+			(nfp_offset & ~(NFP_CPP_MEMIO_BOUNDARY - 1))) {
 		curlen = NFP_CPP_MEMIO_BOUNDARY -
-			(nfp_offset & (NFP_CPP_MEMIO_BOUNDARY - 1));
+				(nfp_offset & (NFP_CPP_MEMIO_BOUNDARY - 1));
 	}
 
 	while (count > 0) {
 		/* configure a CPP PCIe2CPP BAR for mapping the CPP target */
 		area = nfp_cpp_area_alloc_with_name(cpp, cpp_id, "nfp.cdev",
-						    nfp_offset, curlen);
+				nfp_offset, curlen);
 		if (area == NULL) {
 			PMD_CPP_LOG(ERR, "area alloc fail");
 			return -EIO;
@@ -179,12 +180,11 @@ nfp_cpp_bridge_serve_write(int sockfd, struct nfp_cpp *cpp)
 				len = sizeof(tmpbuf);
 
 			PMD_CPP_LOG(DEBUG, "%s: Receive %u of %zu\n", __func__,
-					   len, count);
+					len, count);
 			err = recv(sockfd, tmpbuf, len, MSG_WAITALL);
 			if (err != (int)len) {
-				PMD_CPP_LOG(ERR,
-					"error when receiving, %d of %zu",
-					err, count);
+				PMD_CPP_LOG(ERR, "error when receiving, %d of %zu",
+						err, count);
 				nfp_cpp_area_release(area);
 				nfp_cpp_area_free(area);
 				return -EIO;
@@ -204,7 +204,7 @@ nfp_cpp_bridge_serve_write(int sockfd, struct nfp_cpp *cpp)
 
 		count -= pos;
 		curlen = (count > NFP_CPP_MEMIO_BOUNDARY) ?
-			 NFP_CPP_MEMIO_BOUNDARY : count;
+				NFP_CPP_MEMIO_BOUNDARY : count;
 	}
 
 	return 0;
@@ -217,7 +217,8 @@ nfp_cpp_bridge_serve_write(int sockfd, struct nfp_cpp *cpp)
  * data is sent to the requester using the same socket.
  */
 static int
-nfp_cpp_bridge_serve_read(int sockfd, struct nfp_cpp *cpp)
+nfp_cpp_bridge_serve_read(int sockfd,
+		struct nfp_cpp *cpp)
 {
 	struct nfp_cpp_area *area;
 	off_t offset, nfp_offset;
@@ -227,7 +228,7 @@ nfp_cpp_bridge_serve_read(int sockfd, struct nfp_cpp *cpp)
 	int err = 0;
 
 	PMD_CPP_LOG(DEBUG, "%s: offset size %zu, count_size: %zu\n", __func__,
-		sizeof(off_t), sizeof(size_t));
+			sizeof(off_t), sizeof(size_t));
 
 	/* Reading the count param */
 	err = recv(sockfd, &count, sizeof(off_t), 0);
@@ -246,20 +247,20 @@ nfp_cpp_bridge_serve_read(int sockfd, struct nfp_cpp *cpp)
 	nfp_offset = offset & ((1ull << 40) - 1);
 
 	PMD_CPP_LOG(DEBUG, "%s: count %zu and offset %jd\n", __func__, count,
-			   offset);
+			offset);
 	PMD_CPP_LOG(DEBUG, "%s: cpp_id %08x and nfp_offset %jd\n", __func__,
-			   cpp_id, nfp_offset);
+			cpp_id, nfp_offset);
 
 	/* Adjust length if not aligned */
 	if (((nfp_offset + (off_t)count - 1) & ~(NFP_CPP_MEMIO_BOUNDARY - 1)) !=
-	    (nfp_offset & ~(NFP_CPP_MEMIO_BOUNDARY - 1))) {
+			(nfp_offset & ~(NFP_CPP_MEMIO_BOUNDARY - 1))) {
 		curlen = NFP_CPP_MEMIO_BOUNDARY -
-			(nfp_offset & (NFP_CPP_MEMIO_BOUNDARY - 1));
+				(nfp_offset & (NFP_CPP_MEMIO_BOUNDARY - 1));
 	}
 
 	while (count > 0) {
 		area = nfp_cpp_area_alloc_with_name(cpp, cpp_id, "nfp.cdev",
-						    nfp_offset, curlen);
+				nfp_offset, curlen);
 		if (area == NULL) {
 			PMD_CPP_LOG(ERR, "area alloc failed");
 			return -EIO;
@@ -285,13 +286,12 @@ nfp_cpp_bridge_serve_read(int sockfd, struct nfp_cpp *cpp)
 				return -EIO;
 			}
 			PMD_CPP_LOG(DEBUG, "%s: sending %u of %zu\n", __func__,
-					   len, count);
+					len, count);
 
 			err = send(sockfd, tmpbuf, len, 0);
 			if (err != (int)len) {
-				PMD_CPP_LOG(ERR,
-					"error when sending: %d of %zu",
-					err, count);
+				PMD_CPP_LOG(ERR, "error when sending: %d of %zu",
+						err, count);
 				nfp_cpp_area_release(area);
 				nfp_cpp_area_free(area);
 				return -EIO;
@@ -304,7 +304,7 @@ nfp_cpp_bridge_serve_read(int sockfd, struct nfp_cpp *cpp)
 
 		count -= pos;
 		curlen = (count > NFP_CPP_MEMIO_BOUNDARY) ?
-			NFP_CPP_MEMIO_BOUNDARY : count;
+				NFP_CPP_MEMIO_BOUNDARY : count;
 	}
 	return 0;
 }
@@ -316,7 +316,8 @@ nfp_cpp_bridge_serve_read(int sockfd, struct nfp_cpp *cpp)
  * does not require any CPP access at all.
  */
 static int
-nfp_cpp_bridge_serve_ioctl(int sockfd, struct nfp_cpp *cpp)
+nfp_cpp_bridge_serve_ioctl(int sockfd,
+		struct nfp_cpp *cpp)
 {
 	uint32_t cmd, ident_size, tmp;
 	int err;
@@ -395,7 +396,7 @@ nfp_cpp_bridge_service_func(void *args)
 	strcpy(address.sa_data, "/tmp/nfp_cpp");
 
 	ret = bind(sockfd, (const struct sockaddr *)&address,
-		   sizeof(struct sockaddr));
+			sizeof(struct sockaddr));
 	if (ret < 0) {
 		PMD_CPP_LOG(ERR, "bind error (%d). Service failed", errno);
 		close(sockfd);
@@ -426,8 +427,7 @@ nfp_cpp_bridge_service_func(void *args)
 		while (1) {
 			ret = recv(datafd, &op, 4, 0);
 			if (ret <= 0) {
-				PMD_CPP_LOG(DEBUG, "%s: socket close\n",
-						   __func__);
+				PMD_CPP_LOG(DEBUG, "%s: socket close\n", __func__);
 				break;
 			}
 

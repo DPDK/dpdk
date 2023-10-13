@@ -143,7 +143,7 @@ nfp_net_nfdk_free_tx_desc(struct nfp_net_txq *txq)
 		free_desc = txq->rd_p - txq->wr_p;
 
 	return (free_desc > NFDK_TX_DESC_STOP_CNT) ?
-		(free_desc - NFDK_TX_DESC_STOP_CNT) : 0;
+			(free_desc - NFDK_TX_DESC_STOP_CNT) : 0;
 }
 
 /*

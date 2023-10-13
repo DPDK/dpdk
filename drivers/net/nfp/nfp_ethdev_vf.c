@@ -51,18 +51,17 @@ nfp_netvf_start(struct rte_eth_dev *dev)
 
 	/* check and configure queue intr-vector mapping */
 	if (dev->data->dev_conf.intr_conf.rxq != 0) {
-		if (rte_intr_type_get(intr_handle) ==
-						RTE_INTR_HANDLE_UIO) {
+		if (rte_intr_type_get(intr_handle) == RTE_INTR_HANDLE_UIO) {
 			/*
 			 * Better not to share LSC with RX interrupts.
 			 * Unregistering LSC interrupt handler
 			 */
 			rte_intr_callback_unregister(pci_dev->intr_handle,
-				nfp_net_dev_interrupt_handler, (void *)dev);
+					nfp_net_dev_interrupt_handler, (void *)dev);
 
 			if (dev->data->nb_rx_queues > 1) {
 				PMD_INIT_LOG(ERR, "PMD rx interrupt only "
-					     "supports 1 queue with UIO");
+						"supports 1 queue with UIO");
 				return -EIO;
 			}
 		}
@@ -196,12 +195,10 @@ nfp_netvf_close(struct rte_eth_dev *dev)
 
 	/* unregister callback func from eal lib */
 	rte_intr_callback_unregister(pci_dev->intr_handle,
-				     nfp_net_dev_interrupt_handler,
-				     (void *)dev);
+			nfp_net_dev_interrupt_handler, (void *)dev);
 
 	/* Cancel possible impending LSC work here before releasing the port*/
-	rte_eal_alarm_cancel(nfp_net_dev_interrupt_delayed_handler,
-			     (void *)dev);
+	rte_eal_alarm_cancel(nfp_net_dev_interrupt_delayed_handler, (void *)dev);
 
 	/*
 	 * The ixgbe PMD disables the pcie master on the
@@ -288,8 +285,7 @@ nfp_netvf_init(struct rte_eth_dev *eth_dev)
 
 	hw->ctrl_bar = pci_dev->mem_resource[0].addr;
 	if (hw->ctrl_bar == NULL) {
-		PMD_DRV_LOG(ERR,
-			"hw->ctrl_bar is NULL. BAR0 not configured");
+		PMD_DRV_LOG(ERR, "hw->ctrl_bar is NULL. BAR0 not configured");
 		return -ENODEV;
 	}
 
@@ -307,8 +303,8 @@ nfp_netvf_init(struct rte_eth_dev *eth_dev)
 
 	rte_eth_copy_pci_info(eth_dev, pci_dev);
 
-	hw->eth_xstats_base = rte_malloc("rte_eth_xstat", sizeof(struct rte_eth_xstat) *
-			nfp_net_xstats_size(eth_dev), 0);
+	hw->eth_xstats_base = rte_malloc("rte_eth_xstat",
+			sizeof(struct rte_eth_xstat) * nfp_net_xstats_size(eth_dev), 0);
 	if (hw->eth_xstats_base == NULL) {
 		PMD_INIT_LOG(ERR, "no memory for xstats base values on device %s!",
 				pci_dev->device.name);
@@ -324,13 +320,11 @@ nfp_netvf_init(struct rte_eth_dev *eth_dev)
 	PMD_INIT_LOG(DEBUG, "tx_bar_off: 0x%" PRIx64 "", tx_bar_off);
 	PMD_INIT_LOG(DEBUG, "rx_bar_off: 0x%" PRIx64 "", rx_bar_off);
 
-	hw->tx_bar = (uint8_t *)pci_dev->mem_resource[2].addr +
-		     tx_bar_off;
-	hw->rx_bar = (uint8_t *)pci_dev->mem_resource[2].addr +
-		     rx_bar_off;
+	hw->tx_bar = (uint8_t *)pci_dev->mem_resource[2].addr + tx_bar_off;
+	hw->rx_bar = (uint8_t *)pci_dev->mem_resource[2].addr + rx_bar_off;
 
 	PMD_INIT_LOG(DEBUG, "ctrl_bar: %p, tx_bar: %p, rx_bar: %p",
-		     hw->ctrl_bar, hw->tx_bar, hw->rx_bar);
+			hw->ctrl_bar, hw->tx_bar, hw->rx_bar);
 
 	nfp_net_cfg_queue_setup(hw);
 	hw->mtu = RTE_ETHER_MTU;
@@ -345,8 +339,7 @@ nfp_netvf_init(struct rte_eth_dev *eth_dev)
 	rte_spinlock_init(&hw->reconfig_lock);
 
 	/* Allocating memory for mac addr */
-	eth_dev->data->mac_addrs = rte_zmalloc("mac_addr",
-					       RTE_ETHER_ADDR_LEN, 0);
+	eth_dev->data->mac_addrs = rte_zmalloc("mac_addr", RTE_ETHER_ADDR_LEN, 0);
 	if (eth_dev->data->mac_addrs == NULL) {
 		PMD_INIT_LOG(ERR, "Failed to space for MAC address");
 		err = -ENOMEM;
@@ -357,8 +350,7 @@ nfp_netvf_init(struct rte_eth_dev *eth_dev)
 
 	tmp_ether_addr = &hw->mac_addr;
 	if (rte_is_valid_assigned_ether_addr(tmp_ether_addr) == 0) {
-		PMD_INIT_LOG(INFO, "Using random mac address for port %d",
-				   port);
+		PMD_INIT_LOG(INFO, "Using random mac address for port %d", port);
 		/* Using random mac addresses for VFs */
 		rte_eth_random_addr(&hw->mac_addr.addr_bytes[0]);
 		nfp_net_write_mac(hw, &hw->mac_addr.addr_bytes[0]);
@@ -373,16 +365,15 @@ nfp_netvf_init(struct rte_eth_dev *eth_dev)
 	eth_dev->data->dev_flags |= RTE_ETH_DEV_AUTOFILL_QUEUE_XSTATS;
 
 	PMD_INIT_LOG(INFO, "port %d VendorID=0x%x DeviceID=0x%x "
-		     "mac=" RTE_ETHER_ADDR_PRT_FMT,
-		     eth_dev->data->port_id, pci_dev->id.vendor_id,
-		     pci_dev->id.device_id,
-		     RTE_ETHER_ADDR_BYTES(&hw->mac_addr));
+			"mac=" RTE_ETHER_ADDR_PRT_FMT,
+			eth_dev->data->port_id, pci_dev->id.vendor_id,
+			pci_dev->id.device_id,
+			RTE_ETHER_ADDR_BYTES(&hw->mac_addr));
 
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
 		/* Registering LSC interrupt handler */
 		rte_intr_callback_register(pci_dev->intr_handle,
-					   nfp_net_dev_interrupt_handler,
-					   (void *)eth_dev);
+				nfp_net_dev_interrupt_handler, (void *)eth_dev);
 		/* Telling the firmware about the LSC interrupt entry */
 		nn_cfg_writeb(hw, NFP_NET_CFG_LSC, NFP_NET_IRQ_LSC_IDX);
 		/* Recording current stats counters values */
@@ -400,39 +391,42 @@ dev_err_ctrl_map:
 static const struct rte_pci_id pci_id_nfp_vf_net_map[] = {
 	{
 		RTE_PCI_DEVICE(PCI_VENDOR_ID_NETRONOME,
-			       PCI_DEVICE_ID_NFP3800_VF_NIC)
+				PCI_DEVICE_ID_NFP3800_VF_NIC)
 	},
 	{
 		RTE_PCI_DEVICE(PCI_VENDOR_ID_NETRONOME,
-			       PCI_DEVICE_ID_NFP6000_VF_NIC)
+				PCI_DEVICE_ID_NFP6000_VF_NIC)
 	},
 	{
 		RTE_PCI_DEVICE(PCI_VENDOR_ID_CORIGINE,
-			       PCI_DEVICE_ID_NFP3800_VF_NIC)
+				PCI_DEVICE_ID_NFP3800_VF_NIC)
 	},
 	{
 		RTE_PCI_DEVICE(PCI_VENDOR_ID_CORIGINE,
-			       PCI_DEVICE_ID_NFP6000_VF_NIC)
+				PCI_DEVICE_ID_NFP6000_VF_NIC)
 	},
 	{
 		.vendor_id = 0,
 	},
 };
 
-static int nfp_vf_pci_uninit(struct rte_eth_dev *eth_dev)
+static int
+nfp_vf_pci_uninit(struct rte_eth_dev *eth_dev)
 {
 	/* VF cleanup, just free private port data */
 	return nfp_netvf_close(eth_dev);
 }
 
-static int eth_nfp_vf_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
-	struct rte_pci_device *pci_dev)
+static int
+eth_nfp_vf_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
+		struct rte_pci_device *pci_dev)
 {
 	return rte_eth_dev_pci_generic_probe(pci_dev,
-		sizeof(struct nfp_net_adapter), nfp_netvf_init);
+			sizeof(struct nfp_net_adapter), nfp_netvf_init);
 }
 
-static int eth_nfp_vf_pci_remove(struct rte_pci_device *pci_dev)
+static int
+eth_nfp_vf_pci_remove(struct rte_pci_device *pci_dev)
 {
 	return rte_eth_dev_pci_generic_remove(pci_dev, nfp_vf_pci_uninit);
 }

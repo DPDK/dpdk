@@ -234,17 +234,17 @@ nfp_net_mbuf_alloc_failed(struct nfp_net_rxq *rxq)
 }
 
 void nfp_net_rx_cksum(struct nfp_net_rxq *rxq, struct nfp_net_rx_desc *rxd,
-		 struct rte_mbuf *mb);
+		struct rte_mbuf *mb);
 int nfp_net_rx_freelist_setup(struct rte_eth_dev *dev);
 uint32_t nfp_net_rx_queue_count(void *rx_queue);
 uint16_t nfp_net_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
-				  uint16_t nb_pkts);
+		uint16_t nb_pkts);
 void nfp_net_rx_queue_release(struct rte_eth_dev *dev, uint16_t queue_idx);
 void nfp_net_reset_rx_queue(struct nfp_net_rxq *rxq);
 int nfp_net_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
-				  uint16_t nb_desc, unsigned int socket_id,
-				  const struct rte_eth_rxconf *rx_conf,
-				  struct rte_mempool *mp);
+		uint16_t nb_desc, unsigned int socket_id,
+		const struct rte_eth_rxconf *rx_conf,
+		struct rte_mempool *mp);
 void nfp_net_tx_queue_release(struct rte_eth_dev *dev, uint16_t queue_idx);
 void nfp_net_reset_tx_queue(struct nfp_net_txq *txq);
 

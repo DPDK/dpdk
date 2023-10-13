@@ -63,7 +63,7 @@ nfp_pf_repr_disable_queues(struct rte_eth_dev *dev)
 
 	new_ctrl = hw->ctrl & ~NFP_NET_CFG_CTRL_ENABLE;
 	update = NFP_NET_CFG_UPDATE_GEN | NFP_NET_CFG_UPDATE_RING |
-		 NFP_NET_CFG_UPDATE_MSIX;
+			NFP_NET_CFG_UPDATE_MSIX;
 
 	if (hw->cap & NFP_NET_CFG_CTRL_RINGCFG)
 		new_ctrl &= ~NFP_NET_CFG_CTRL_RINGCFG;
@@ -338,7 +338,8 @@ nfp_flower_pf_xmit_pkts(void *tx_queue,
 }
 
 static int
-nfp_flower_init_vnic_common(struct nfp_net_hw *hw, const char *vnic_type)
+nfp_flower_init_vnic_common(struct nfp_net_hw *hw,
+		const char *vnic_type)
 {
 	int err;
 	uint32_t start_q;

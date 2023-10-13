@@ -158,8 +158,9 @@ struct nfp_ptype_parsed {
 
 /* set mbuf checksum flags based on RX descriptor flags */
 void
-nfp_net_rx_cksum(struct nfp_net_rxq *rxq, struct nfp_net_rx_desc *rxd,
-		 struct rte_mbuf *mb)
+nfp_net_rx_cksum(struct nfp_net_rxq *rxq,
+		struct nfp_net_rx_desc *rxd,
+		struct rte_mbuf *mb)
 {
 	struct nfp_net_hw *hw = rxq->hw;
 
@@ -192,7 +193,7 @@ nfp_net_rx_fill_freelist(struct nfp_net_rxq *rxq)
 	unsigned int i;
 
 	PMD_RX_LOG(DEBUG, "Fill Rx Freelist for %u descriptors",
-		   rxq->rx_count);
+			rxq->rx_count);
 
 	for (i = 0; i < rxq->rx_count; i++) {
 		struct nfp_net_rx_desc *rxd;
@@ -218,8 +219,7 @@ nfp_net_rx_fill_freelist(struct nfp_net_rxq *rxq)
 	rte_wmb();
 
 	/* Not advertising the whole ring as the firmware gets confused if so */
-	PMD_RX_LOG(DEBUG, "Increment FL write pointer in %u",
-		   rxq->rx_count - 1);
+	PMD_RX_LOG(DEBUG, "Increment FL write pointer in %u", rxq->rx_count - 1);
 
 	nfp_qcp_ptr_add(rxq->qcp_fl, NFP_QCP_WRITE_PTR, rxq->rx_count - 1);
 
@@ -521,7 +521,8 @@ nfp_net_parse_meta(struct nfp_net_rx_desc *rxds,
  *   Mbuf to set the packet type.
  */
 static void
-nfp_net_set_ptype(const struct nfp_ptype_parsed *nfp_ptype, struct rte_mbuf *mb)
+nfp_net_set_ptype(const struct nfp_ptype_parsed *nfp_ptype,
+		struct rte_mbuf *mb)
 {
 	uint32_t mbuf_ptype = RTE_PTYPE_L2_ETHER;
 	uint8_t nfp_tunnel_ptype = nfp_ptype->tunnel_ptype;
@@ -678,7 +679,9 @@ nfp_net_parse_ptype(struct nfp_net_rx_desc *rxds,
  */
 
 uint16_t
-nfp_net_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
+nfp_net_recv_pkts(void *rx_queue,
+		struct rte_mbuf **rx_pkts,
+		uint16_t nb_pkts)
 {
 	struct nfp_net_rxq *rxq;
 	struct nfp_net_rx_desc *rxds;
@@ -728,8 +731,7 @@ nfp_net_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		 */
 		new_mb = rte_pktmbuf_alloc(rxq->mem_pool);
 		if (unlikely(new_mb == NULL)) {
-			PMD_RX_LOG(DEBUG,
-			"RX mbuf alloc failed port_id=%u queue_id=%hu",
+			PMD_RX_LOG(DEBUG, "RX mbuf alloc failed port_id=%u queue_id=%hu",
 					rxq->port_id, rxq->qidx);
 			nfp_net_mbuf_alloc_failed(rxq);
 			break;
@@ -743,29 +745,28 @@ nfp_net_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		rxb->mbuf = new_mb;
 
 		PMD_RX_LOG(DEBUG, "Packet len: %u, mbuf_size: %u",
-			   rxds->rxd.data_len, rxq->mbuf_size);
+				rxds->rxd.data_len, rxq->mbuf_size);
 
 		/* Size of this segment */
 		mb->data_len = rxds->rxd.data_len - NFP_DESC_META_LEN(rxds);
 		/* Size of the whole packet. We just support 1 segment */
 		mb->pkt_len = rxds->rxd.data_len - NFP_DESC_META_LEN(rxds);
 
-		if (unlikely((mb->data_len + hw->rx_offset) >
-			     rxq->mbuf_size)) {
+		if (unlikely((mb->data_len + hw->rx_offset) > rxq->mbuf_size)) {
 			/*
 			 * This should not happen and the user has the
 			 * responsibility of avoiding it. But we have
 			 * to give some info about the error
 			 */
 			PMD_RX_LOG(ERR,
-				"mbuf overflow likely due to the RX offset.\n"
-				"\t\tYour mbuf size should have extra space for"
-				" RX offset=%u bytes.\n"
-				"\t\tCurrently you just have %u bytes available"
-				" but the received packet is %u bytes long",
-				hw->rx_offset,
-				rxq->mbuf_size - hw->rx_offset,
-				mb->data_len);
+					"mbuf overflow likely due to the RX offset.\n"
+					"\t\tYour mbuf size should have extra space for"
+					" RX offset=%u bytes.\n"
+					"\t\tCurrently you just have %u bytes available"
+					" but the received packet is %u bytes long",
+					hw->rx_offset,
+					rxq->mbuf_size - hw->rx_offset,
+					mb->data_len);
 			rte_pktmbuf_free(mb);
 			break;
 		}
@@ -774,8 +775,7 @@ nfp_net_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		if (hw->rx_offset != 0)
 			mb->data_off = RTE_PKTMBUF_HEADROOM + hw->rx_offset;
 		else
-			mb->data_off = RTE_PKTMBUF_HEADROOM +
-				       NFP_DESC_META_LEN(rxds);
+			mb->data_off = RTE_PKTMBUF_HEADROOM + NFP_DESC_META_LEN(rxds);
 
 		/* No scatter mode supported */
 		mb->nb_segs = 1;
@@ -817,7 +817,7 @@ nfp_net_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		return nb_hold;
 
 	PMD_RX_LOG(DEBUG, "RX  port_id=%hu queue_id=%hu, %hu packets received",
-		   rxq->port_id, rxq->qidx, avail);
+			rxq->port_id, rxq->qidx, avail);
 
 	nb_hold += rxq->nb_rx_hold;
 
@@ -828,7 +828,7 @@ nfp_net_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 	rte_wmb();
 	if (nb_hold > rxq->rx_free_thresh) {
 		PMD_RX_LOG(DEBUG, "port=%hu queue=%hu nb_hold=%hu avail=%hu",
-			   rxq->port_id, rxq->qidx, nb_hold, avail);
+				rxq->port_id, rxq->qidx, nb_hold, avail);
 		nfp_qcp_ptr_add(rxq->qcp_fl, NFP_QCP_WRITE_PTR, nb_hold);
 		nb_hold = 0;
 	}
@@ -854,7 +854,8 @@ nfp_net_rx_queue_release_mbufs(struct nfp_net_rxq *rxq)
 }
 
 void
-nfp_net_rx_queue_release(struct rte_eth_dev *dev, uint16_t queue_idx)
+nfp_net_rx_queue_release(struct rte_eth_dev *dev,
+		uint16_t queue_idx)
 {
 	struct nfp_net_rxq *rxq = dev->data->rx_queues[queue_idx];
 
@@ -876,10 +877,11 @@ nfp_net_reset_rx_queue(struct nfp_net_rxq *rxq)
 
 int
 nfp_net_rx_queue_setup(struct rte_eth_dev *dev,
-		       uint16_t queue_idx, uint16_t nb_desc,
-		       unsigned int socket_id,
-		       const struct rte_eth_rxconf *rx_conf,
-		       struct rte_mempool *mp)
+		uint16_t queue_idx,
+		uint16_t nb_desc,
+		unsigned int socket_id,
+		const struct rte_eth_rxconf *rx_conf,
+		struct rte_mempool *mp)
 {
 	uint16_t min_rx_desc;
 	uint16_t max_rx_desc;
@@ -897,7 +899,7 @@ nfp_net_rx_queue_setup(struct rte_eth_dev *dev,
 	/* Validating number of descriptors */
 	rx_desc_sz = nb_desc * sizeof(struct nfp_net_rx_desc);
 	if (rx_desc_sz % NFP_ALIGN_RING_DESC != 0 ||
-	    nb_desc > max_rx_desc || nb_desc < min_rx_desc) {
+			nb_desc > max_rx_desc || nb_desc < min_rx_desc) {
 		PMD_DRV_LOG(ERR, "Wrong nb_desc value");
 		return -EINVAL;
 	}
@@ -913,7 +915,7 @@ nfp_net_rx_queue_setup(struct rte_eth_dev *dev,
 
 	/* Allocating rx queue data structure */
 	rxq = rte_zmalloc_socket("ethdev RX queue", sizeof(struct nfp_net_rxq),
-				 RTE_CACHE_LINE_SIZE, socket_id);
+			RTE_CACHE_LINE_SIZE, socket_id);
 	if (rxq == NULL)
 		return -ENOMEM;
 
@@ -943,9 +945,8 @@ nfp_net_rx_queue_setup(struct rte_eth_dev *dev,
 	 * resizing in later calls to the queue setup function.
 	 */
 	tz = rte_eth_dma_zone_reserve(dev, "rx_ring", queue_idx,
-				   sizeof(struct nfp_net_rx_desc) *
-				   max_rx_desc, NFP_MEMZONE_ALIGN,
-				   socket_id);
+			sizeof(struct nfp_net_rx_desc) * max_rx_desc,
+			NFP_MEMZONE_ALIGN, socket_id);
 
 	if (tz == NULL) {
 		PMD_DRV_LOG(ERR, "Error allocating rx dma");
@@ -960,8 +961,8 @@ nfp_net_rx_queue_setup(struct rte_eth_dev *dev,
 
 	/* mbuf pointers array for referencing mbufs linked to RX descriptors */
 	rxq->rxbufs = rte_zmalloc_socket("rxq->rxbufs",
-					 sizeof(*rxq->rxbufs) * nb_desc,
-					 RTE_CACHE_LINE_SIZE, socket_id);
+			sizeof(*rxq->rxbufs) * nb_desc, RTE_CACHE_LINE_SIZE,
+			socket_id);
 	if (rxq->rxbufs == NULL) {
 		nfp_net_rx_queue_release(dev, queue_idx);
 		dev->data->rx_queues[queue_idx] = NULL;
@@ -969,7 +970,7 @@ nfp_net_rx_queue_setup(struct rte_eth_dev *dev,
 	}
 
 	PMD_RX_LOG(DEBUG, "rxbufs=%p hw_ring=%p dma_addr=0x%" PRIx64,
-		   rxq->rxbufs, rxq->rxds, (unsigned long)rxq->dma);
+			rxq->rxbufs, rxq->rxds, (unsigned long)rxq->dma);
 
 	nfp_net_reset_rx_queue(rxq);
 
@@ -998,15 +999,15 @@ nfp_net_tx_free_bufs(struct nfp_net_txq *txq)
 	int todo;
 
 	PMD_TX_LOG(DEBUG, "queue %hu. Check for descriptor with a complete"
-		   " status", txq->qidx);
+			" status", txq->qidx);
 
 	/* Work out how many packets have been sent */
 	qcp_rd_p = nfp_qcp_read(txq->qcp_q, NFP_QCP_READ_PTR);
 
 	if (qcp_rd_p == txq->rd_p) {
 		PMD_TX_LOG(DEBUG, "queue %hu: It seems harrier is not sending "
-			   "packets (%u, %u)", txq->qidx,
-			   qcp_rd_p, txq->rd_p);
+				"packets (%u, %u)", txq->qidx,
+				qcp_rd_p, txq->rd_p);
 		return 0;
 	}
 
@@ -1016,7 +1017,7 @@ nfp_net_tx_free_bufs(struct nfp_net_txq *txq)
 		todo = qcp_rd_p + txq->tx_count - txq->rd_p;
 
 	PMD_TX_LOG(DEBUG, "qcp_rd_p %u, txq->rd_p: %u, qcp->rd_p: %u",
-		   qcp_rd_p, txq->rd_p, txq->rd_p);
+			qcp_rd_p, txq->rd_p, txq->rd_p);
 
 	if (todo == 0)
 		return todo;
@@ -1045,7 +1046,8 @@ nfp_net_tx_queue_release_mbufs(struct nfp_net_txq *txq)
 }
 
 void
-nfp_net_tx_queue_release(struct rte_eth_dev *dev, uint16_t queue_idx)
+nfp_net_tx_queue_release(struct rte_eth_dev *dev,
+		uint16_t queue_idx)
 {
 	struct nfp_net_txq *txq = dev->data->tx_queues[queue_idx];
 
