@@ -88,15 +88,7 @@ nfp_flower_ctrl_vnic_recv(void *rx_queue,
 			 * responsibility of avoiding it. But we have
 			 * to give some info about the error
 			 */
-			PMD_RX_LOG(ERR,
-				"mbuf overflow likely due to the RX offset.\n"
-				"\t\tYour mbuf size should have extra space for"
-				" RX offset=%u bytes.\n"
-				"\t\tCurrently you just have %u bytes available"
-				" but the received packet is %u bytes long",
-				hw->rx_offset,
-				rxq->mbuf_size - hw->rx_offset,
-				mb->data_len);
+			PMD_RX_LOG(ERR, "mbuf overflow likely due to the RX offset.");
 			rte_pktmbuf_free(mb);
 			break;
 		}

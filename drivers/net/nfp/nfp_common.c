@@ -207,7 +207,7 @@ __nfp_net_reconfig(struct nfp_net_hw *hw,
 			hw->qcp_cfg);
 
 	if (hw->qcp_cfg == NULL) {
-		PMD_INIT_LOG(ERR, "Bad configuration queue pointer");
+		PMD_DRV_LOG(ERR, "Bad configuration queue pointer");
 		return -ENXIO;
 	}
 
@@ -224,15 +224,15 @@ __nfp_net_reconfig(struct nfp_net_hw *hw,
 		if (new == 0)
 			break;
 		if ((new & NFP_NET_CFG_UPDATE_ERR) != 0) {
-			PMD_INIT_LOG(ERR, "Reconfig error: 0x%08x", new);
+			PMD_DRV_LOG(ERR, "Reconfig error: %#08x", new);
 			return -1;
 		}
 		if (cnt >= NFP_NET_POLL_TIMEOUT) {
-			PMD_INIT_LOG(ERR, "Reconfig timeout for 0x%08x after"
-					" %ums", update, cnt);
+			PMD_DRV_LOG(ERR, "Reconfig timeout for %#08x after %u ms",
+					update, cnt);
 			return -EIO;
 		}
-		nanosleep(&wait, 0); /* waiting for a 1ms */
+		nanosleep(&wait, 0); /* Waiting for a 1ms */
 	}
 	PMD_DRV_LOG(DEBUG, "Ack DONE");
 	return 0;
@@ -390,8 +390,6 @@ nfp_net_configure(struct rte_eth_dev *dev)
 	 * called after that internal process
 	 */
 
-	PMD_INIT_LOG(DEBUG, "Configure");
-
 	dev_conf = &dev->data->dev_conf;
 	rxmode = &dev_conf->rxmode;
 	txmode = &dev_conf->txmode;
@@ -401,20 +399,20 @@ nfp_net_configure(struct rte_eth_dev *dev)
 
 	/* Checking TX mode */
 	if (txmode->mq_mode != RTE_ETH_MQ_TX_NONE) {
-		PMD_INIT_LOG(INFO, "TX mq_mode DCB and VMDq not supported");
+		PMD_DRV_LOG(ERR, "TX mq_mode DCB and VMDq not supported");
 		return -EINVAL;
 	}
 
 	/* Checking RX mode */
 	if ((rxmode->mq_mode & RTE_ETH_MQ_RX_RSS_FLAG) != 0 &&
 			(hw->cap & NFP_NET_CFG_CTRL_RSS_ANY) == 0) {
-		PMD_INIT_LOG(INFO, "RSS not supported");
+		PMD_DRV_LOG(ERR, "RSS not supported");
 		return -EINVAL;
 	}
 
 	/* Checking MTU set */
 	if (rxmode->mtu > NFP_FRAME_SIZE_MAX) {
-		PMD_INIT_LOG(ERR, "MTU (%u) larger than NFP_FRAME_SIZE_MAX (%u) not supported",
+		PMD_DRV_LOG(ERR, "MTU (%u) larger than NFP_FRAME_SIZE_MAX (%u)",
 				rxmode->mtu, NFP_FRAME_SIZE_MAX);
 		return -ERANGE;
 	}
@@ -552,8 +550,7 @@ nfp_net_set_mac_addr(struct rte_eth_dev *dev,
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	if ((hw->ctrl & NFP_NET_CFG_CTRL_ENABLE) != 0 &&
 			(hw->cap & NFP_NET_CFG_CTRL_LIVE_ADDR) == 0) {
-		PMD_INIT_LOG(INFO, "MAC address unable to change when"
-				" port enabled");
+		PMD_DRV_LOG(ERR, "MAC address unable to change when port enabled");
 		return -EBUSY;
 	}
 
@@ -567,7 +564,7 @@ nfp_net_set_mac_addr(struct rte_eth_dev *dev,
 			(hw->cap & NFP_NET_CFG_CTRL_LIVE_ADDR) != 0)
 		ctrl |= NFP_NET_CFG_CTRL_LIVE_ADDR;
 	if (nfp_net_reconfig(hw, ctrl, update) != 0) {
-		PMD_INIT_LOG(INFO, "MAC address update failed");
+		PMD_DRV_LOG(ERR, "MAC address update failed");
 		return -EIO;
 	}
 	return 0;
@@ -582,21 +579,21 @@ nfp_configure_rx_interrupt(struct rte_eth_dev *dev,
 
 	if (rte_intr_vec_list_alloc(intr_handle, "intr_vec",
 				dev->data->nb_rx_queues) != 0) {
-		PMD_INIT_LOG(ERR, "Failed to allocate %d rx_queues"
-				" intr_vec", dev->data->nb_rx_queues);
+		PMD_DRV_LOG(ERR, "Failed to allocate %d rx_queues intr_vec",
+				dev->data->nb_rx_queues);
 		return -ENOMEM;
 	}
 
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
 	if (rte_intr_type_get(intr_handle) == RTE_INTR_HANDLE_UIO) {
-		PMD_INIT_LOG(INFO, "VF: enabling RX interrupt with UIO");
+		PMD_DRV_LOG(INFO, "VF: enabling RX interrupt with UIO");
 		/* UIO just supports one queue and no LSC*/
 		nn_cfg_writeb(hw, NFP_NET_CFG_RXR_VEC(0), 0);
 		if (rte_intr_vec_list_index_set(intr_handle, 0, 0) != 0)
 			return -1;
 	} else {
-		PMD_INIT_LOG(INFO, "VF: enabling RX interrupt with VFIO");
+		PMD_DRV_LOG(INFO, "VF: enabling RX interrupt with VFIO");
 		for (i = 0; i < dev->data->nb_rx_queues; i++) {
 			/*
 			 * The first msix vector is reserved for non
@@ -605,8 +602,6 @@ nfp_configure_rx_interrupt(struct rte_eth_dev *dev,
 			nn_cfg_writeb(hw, NFP_NET_CFG_RXR_VEC(i), i + 1);
 			if (rte_intr_vec_list_index_set(intr_handle, i, i + 1) != 0)
 				return -1;
-			PMD_INIT_LOG(DEBUG, "intr_vec[%d]= %d", i,
-					rte_intr_vec_list_index_get(intr_handle, i));
 		}
 	}
 
@@ -691,8 +686,6 @@ nfp_net_promisc_enable(struct rte_eth_dev *dev)
 	struct nfp_net_hw *hw;
 	struct nfp_flower_representor *repr;
 
-	PMD_DRV_LOG(DEBUG, "Promiscuous mode enable");
-
 	if ((dev->data->dev_flags & RTE_ETH_DEV_REPRESENTOR) != 0) {
 		repr = dev->data->dev_private;
 		hw = repr->app_fw_flower->pf_hw;
@@ -701,7 +694,7 @@ nfp_net_promisc_enable(struct rte_eth_dev *dev)
 	}
 
 	if ((hw->cap & NFP_NET_CFG_CTRL_PROMISC) == 0) {
-		PMD_INIT_LOG(INFO, "Promiscuous mode not supported");
+		PMD_DRV_LOG(ERR, "Promiscuous mode not supported");
 		return -ENOTSUP;
 	}
 
@@ -773,9 +766,6 @@ nfp_net_link_update(struct rte_eth_dev *dev,
 	uint32_t nn_link_status;
 	struct rte_eth_link link;
 	struct nfp_eth_table *nfp_eth_table;
-
-
-	PMD_DRV_LOG(DEBUG, "Link update");
 
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
@@ -1637,9 +1627,9 @@ nfp_net_rss_reta_write(struct rte_eth_dev *dev,
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
 	if (reta_size != NFP_NET_CFG_RSS_ITBL_SZ) {
-		PMD_DRV_LOG(ERR, "The size of hash lookup table configured "
-				"(%d) doesn't match the number hardware can supported "
-				"(%d)", reta_size, NFP_NET_CFG_RSS_ITBL_SZ);
+		PMD_DRV_LOG(ERR, "The size of hash lookup table configured (%hu)"
+				" doesn't match hardware can supported (%d)",
+				reta_size, NFP_NET_CFG_RSS_ITBL_SZ);
 		return -EINVAL;
 	}
 
@@ -1720,9 +1710,9 @@ nfp_net_reta_query(struct rte_eth_dev *dev,
 		return -EINVAL;
 
 	if (reta_size != NFP_NET_CFG_RSS_ITBL_SZ) {
-		PMD_DRV_LOG(ERR, "The size of hash lookup table configured "
-				"(%d) doesn't match the number hardware can supported "
-				"(%d)", reta_size, NFP_NET_CFG_RSS_ITBL_SZ);
+		PMD_DRV_LOG(ERR, "The size of hash lookup table configured (%d)"
+				" doesn't match hardware can supported (%d)",
+				reta_size, NFP_NET_CFG_RSS_ITBL_SZ);
 		return -EINVAL;
 	}
 
@@ -1828,7 +1818,7 @@ nfp_net_rss_hash_update(struct rte_eth_dev *dev,
 	}
 
 	if (rss_conf->rss_key_len > NFP_NET_CFG_RSS_KEY_SZ) {
-		PMD_DRV_LOG(ERR, "hash key too long");
+		PMD_DRV_LOG(ERR, "RSS hash key too long");
 		return -EINVAL;
 	}
 
@@ -1911,9 +1901,6 @@ nfp_net_rss_config_default(struct rte_eth_dev *dev)
 	uint16_t rx_queues = dev->data->nb_rx_queues;
 	struct rte_eth_rss_reta_entry64 nfp_reta_conf[2];
 
-	PMD_DRV_LOG(INFO, "setting default RSS conf for %u queues",
-			rx_queues);
-
 	nfp_reta_conf[0].mask = ~0x0;
 	nfp_reta_conf[1].mask = ~0x0;
 
@@ -1930,7 +1917,7 @@ nfp_net_rss_config_default(struct rte_eth_dev *dev)
 
 	dev_conf = &dev->data->dev_conf;
 	if (dev_conf == NULL) {
-		PMD_DRV_LOG(INFO, "wrong rss conf");
+		PMD_DRV_LOG(ERR, "Wrong rss conf");
 		return -EINVAL;
 	}
 	rss_conf = dev_conf->rx_adv_conf.rss_conf;

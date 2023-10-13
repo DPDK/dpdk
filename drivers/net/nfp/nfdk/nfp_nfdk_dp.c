@@ -456,8 +456,6 @@ nfp_net_nfdk_tx_queue_setup(struct rte_eth_dev *dev,
 
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
-	PMD_INIT_FUNC_TRACE();
-
 	nfp_net_tx_desc_limits(hw, &min_tx_desc, &max_tx_desc);
 
 	/* Validating number of descriptors */

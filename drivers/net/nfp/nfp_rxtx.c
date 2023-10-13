@@ -192,7 +192,7 @@ nfp_net_rx_fill_freelist(struct nfp_net_rxq *rxq)
 	uint64_t dma_addr;
 	struct nfp_net_dp_buf *rxe = rxq->rxbufs;
 
-	PMD_RX_LOG(DEBUG, "Fill Rx Freelist for %u descriptors",
+	PMD_RX_LOG(DEBUG, "Fill Rx Freelist for %hu descriptors",
 			rxq->rx_count);
 
 	for (i = 0; i < rxq->rx_count; i++) {
@@ -212,14 +212,13 @@ nfp_net_rx_fill_freelist(struct nfp_net_rxq *rxq)
 		rxd->fld.dma_addr_hi = (dma_addr >> 32) & 0xffff;
 		rxd->fld.dma_addr_lo = dma_addr & 0xffffffff;
 		rxe[i].mbuf = mbuf;
-		PMD_RX_LOG(DEBUG, "[%d]: %" PRIx64, i, dma_addr);
 	}
 
 	/* Make sure all writes are flushed before telling the hardware */
 	rte_wmb();
 
 	/* Not advertising the whole ring as the firmware gets confused if so */
-	PMD_RX_LOG(DEBUG, "Increment FL write pointer in %u", rxq->rx_count - 1);
+	PMD_RX_LOG(DEBUG, "Increment FL write pointer in %hu", rxq->rx_count - 1);
 
 	nfp_qcp_ptr_add(rxq->qcp_fl, NFP_QCP_WRITE_PTR, rxq->rx_count - 1);
 
@@ -432,7 +431,7 @@ nfp_net_parse_meta_qinq(const struct nfp_meta_parsed *meta,
 	if (meta->vlan[0].offload == 0)
 		mb->vlan_tci = rte_cpu_to_le_16(meta->vlan[0].tci);
 	mb->vlan_tci_outer = rte_cpu_to_le_16(meta->vlan[1].tci);
-	PMD_RX_LOG(DEBUG, "Received outer vlan is %u inter vlan is %u",
+	PMD_RX_LOG(DEBUG, "Received outer vlan TCI is %u inner vlan TCI is %u",
 			mb->vlan_tci_outer, mb->vlan_tci);
 	mb->ol_flags |= RTE_MBUF_F_RX_QINQ | RTE_MBUF_F_RX_QINQ_STRIPPED;
 }
@@ -754,15 +753,7 @@ nfp_net_recv_pkts(void *rx_queue,
 			 * responsibility of avoiding it. But we have
 			 * to give some info about the error
 			 */
-			PMD_RX_LOG(ERR,
-					"mbuf overflow likely due to the RX offset.\n"
-					"\t\tYour mbuf size should have extra space for"
-					" RX offset=%u bytes.\n"
-					"\t\tCurrently you just have %u bytes available"
-					" but the received packet is %u bytes long",
-					hw->rx_offset,
-					rxq->mbuf_size - hw->rx_offset,
-					mb->data_len);
+			PMD_RX_LOG(ERR, "mbuf overflow likely due to the RX offset.");
 			rte_pktmbuf_free(mb);
 			break;
 		}
@@ -888,8 +879,6 @@ nfp_net_rx_queue_setup(struct rte_eth_dev *dev,
 
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
-	PMD_INIT_FUNC_TRACE();
-
 	nfp_net_rx_desc_limits(hw, &min_rx_desc, &max_rx_desc);
 
 	/* Validating number of descriptors */
@@ -964,9 +953,6 @@ nfp_net_rx_queue_setup(struct rte_eth_dev *dev,
 		dev->data->rx_queues[queue_idx] = NULL;
 		return -ENOMEM;
 	}
-
-	PMD_RX_LOG(DEBUG, "rxbufs=%p hw_ring=%p dma_addr=0x%" PRIx64,
-			rxq->rxbufs, rxq->rxds, (unsigned long)rxq->dma);
 
 	nfp_net_reset_rx_queue(rxq);
 

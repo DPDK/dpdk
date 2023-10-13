@@ -42,8 +42,6 @@ nfp_netvf_start(struct rte_eth_dev *dev)
 
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
-	PMD_INIT_LOG(DEBUG, "Start");
-
 	/* Disabling queues just in case... */
 	nfp_net_disable_queues(dev);
 
@@ -142,8 +140,6 @@ error:
 static int
 nfp_netvf_stop(struct rte_eth_dev *dev)
 {
-	PMD_INIT_LOG(DEBUG, "Stop");
-
 	nfp_net_disable_queues(dev);
 
 	/* Clear queues */
@@ -175,8 +171,6 @@ nfp_netvf_close(struct rte_eth_dev *dev)
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
-
-	PMD_INIT_LOG(DEBUG, "Close");
 
 	pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 
@@ -271,8 +265,6 @@ nfp_netvf_init(struct rte_eth_dev *eth_dev)
 	const struct nfp_dev_info *dev_info;
 	struct rte_ether_addr *tmp_ether_addr;
 
-	PMD_INIT_FUNC_TRACE();
-
 	pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
 
 	dev_info = nfp_dev_info_get(pci_dev->id.device_id);
@@ -307,7 +299,7 @@ nfp_netvf_init(struct rte_eth_dev *eth_dev)
 	hw->eth_xstats_base = rte_malloc("rte_eth_xstat",
 			sizeof(struct rte_eth_xstat) * nfp_net_xstats_size(eth_dev), 0);
 	if (hw->eth_xstats_base == NULL) {
-		PMD_INIT_LOG(ERR, "no memory for xstats base values on device %s!",
+		PMD_INIT_LOG(ERR, "No memory for xstats base values on device %s!",
 				pci_dev->device.name);
 		return -ENOMEM;
 	}
@@ -317,9 +309,6 @@ nfp_netvf_init(struct rte_eth_dev *eth_dev)
 	tx_bar_off = nfp_qcp_queue_offset(dev_info, start_q);
 	start_q = nn_cfg_readl(hw, NFP_NET_CFG_START_RXQ);
 	rx_bar_off = nfp_qcp_queue_offset(dev_info, start_q);
-
-	PMD_INIT_LOG(DEBUG, "tx_bar_off: 0x%" PRIx64 "", tx_bar_off);
-	PMD_INIT_LOG(DEBUG, "rx_bar_off: 0x%" PRIx64 "", rx_bar_off);
 
 	hw->tx_bar = (uint8_t *)pci_dev->mem_resource[2].addr + tx_bar_off;
 	hw->rx_bar = (uint8_t *)pci_dev->mem_resource[2].addr + rx_bar_off;
@@ -351,7 +340,7 @@ nfp_netvf_init(struct rte_eth_dev *eth_dev)
 
 	tmp_ether_addr = &hw->mac_addr;
 	if (rte_is_valid_assigned_ether_addr(tmp_ether_addr) == 0) {
-		PMD_INIT_LOG(INFO, "Using random mac address for port %d", port);
+		PMD_INIT_LOG(INFO, "Using random mac address for port %hu", port);
 		/* Using random mac addresses for VFs */
 		rte_eth_random_addr(&hw->mac_addr.addr_bytes[0]);
 		nfp_net_write_mac(hw, &hw->mac_addr.addr_bytes[0]);
@@ -365,7 +354,7 @@ nfp_netvf_init(struct rte_eth_dev *eth_dev)
 
 	eth_dev->data->dev_flags |= RTE_ETH_DEV_AUTOFILL_QUEUE_XSTATS;
 
-	PMD_INIT_LOG(INFO, "port %d VendorID=0x%x DeviceID=0x%x "
+	PMD_INIT_LOG(INFO, "port %hu VendorID=%#x DeviceID=%#x "
 			"mac=" RTE_ETHER_ADDR_PRT_FMT,
 			eth_dev->data->port_id, pci_dev->id.vendor_id,
 			pci_dev->id.device_id,

@@ -61,8 +61,6 @@ nfp_net_start(struct rte_eth_dev *dev)
 	pf_dev = NFP_NET_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	app_fw_nic = NFP_PRIV_TO_APP_FW_NIC(pf_dev->app_fw_priv);
 
-	PMD_INIT_LOG(DEBUG, "Start");
-
 	/* Disabling queues just in case... */
 	nfp_net_disable_queues(dev);
 
@@ -200,8 +198,6 @@ nfp_net_stop(struct rte_eth_dev *dev)
 {
 	struct nfp_net_hw *hw;
 
-	PMD_INIT_LOG(DEBUG, "Stop");
-
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
 	nfp_net_disable_queues(dev);
@@ -226,8 +222,6 @@ nfp_net_set_link_up(struct rte_eth_dev *dev)
 {
 	struct nfp_net_hw *hw;
 
-	PMD_DRV_LOG(DEBUG, "Set link up");
-
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
@@ -242,8 +236,6 @@ static int
 nfp_net_set_link_down(struct rte_eth_dev *dev)
 {
 	struct nfp_net_hw *hw;
-
-	PMD_DRV_LOG(DEBUG, "Set link down");
 
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
@@ -266,8 +258,6 @@ nfp_net_close(struct rte_eth_dev *dev)
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
-
-	PMD_INIT_LOG(DEBUG, "Close");
 
 	pf_dev = NFP_NET_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
@@ -497,8 +487,6 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 	struct nfp_app_fw_nic *app_fw_nic;
 	struct rte_ether_addr *tmp_ether_addr;
 
-	PMD_INIT_FUNC_TRACE();
-
 	pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
 
 	/* Use backpointer here to the PF of this eth_dev */
@@ -519,7 +507,7 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 	 */
 	hw = app_fw_nic->ports[port];
 
-	PMD_INIT_LOG(DEBUG, "Working with physical port number: %d, "
+	PMD_INIT_LOG(DEBUG, "Working with physical port number: %hu, "
 			"NFP internal port number: %d", port, hw->nfp_idx);
 
 	rte_eth_copy_pci_info(eth_dev, pci_dev);
@@ -586,9 +574,6 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 	tx_base = nn_cfg_readl(hw, NFP_NET_CFG_START_TXQ);
 	rx_base = nn_cfg_readl(hw, NFP_NET_CFG_START_RXQ);
 
-	PMD_INIT_LOG(DEBUG, "tx_base: 0x%" PRIx64 "", tx_base);
-	PMD_INIT_LOG(DEBUG, "rx_base: 0x%" PRIx64 "", rx_base);
-
 	hw->tx_bar = pf_dev->qc_bar + tx_base * NFP_QCP_QUEUE_ADDR_SZ;
 	hw->rx_bar = pf_dev->qc_bar + rx_base * NFP_QCP_QUEUE_ADDR_SZ;
 	eth_dev->data->dev_private = hw;
@@ -634,7 +619,7 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 
 	eth_dev->data->dev_flags |= RTE_ETH_DEV_AUTOFILL_QUEUE_XSTATS;
 
-	PMD_INIT_LOG(INFO, "port %d VendorID=0x%x DeviceID=0x%x "
+	PMD_INIT_LOG(INFO, "port %d VendorID=%#x DeviceID=%#x "
 			"mac=" RTE_ETHER_ADDR_PRT_FMT,
 			eth_dev->data->port_id, pci_dev->id.vendor_id,
 			pci_dev->id.device_id,
@@ -1004,7 +989,7 @@ nfp_pf_init(struct rte_pci_device *pci_dev)
 		goto pf_cleanup;
 	}
 
-	PMD_INIT_LOG(DEBUG, "qc_bar address: 0x%p", pf_dev->qc_bar);
+	PMD_INIT_LOG(DEBUG, "qc_bar address: %p", pf_dev->qc_bar);
 
 	/*
 	 * PF initialization has been done at this point. Call app specific

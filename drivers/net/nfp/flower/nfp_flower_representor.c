@@ -476,7 +476,7 @@ nfp_flower_repr_rx_burst(void *rx_queue,
 	total_dequeue = rte_ring_dequeue_burst(repr->ring, (void *)rx_pkts,
 			nb_pkts, &available);
 	if (total_dequeue != 0) {
-		PMD_RX_LOG(DEBUG, "Representor Rx burst for %s, port_id: 0x%x, "
+		PMD_RX_LOG(DEBUG, "Representor Rx burst for %s, port_id: %#x, "
 				"received: %u, available: %u", repr->name,
 				repr->port_id, total_dequeue, available);
 
@@ -522,7 +522,7 @@ nfp_flower_repr_tx_burst(void *tx_queue,
 	pf_tx_queue = dev->data->tx_queues[0];
 	sent = nfp_flower_pf_xmit_pkts(pf_tx_queue, tx_pkts, nb_pkts);
 	if (sent != 0) {
-		PMD_TX_LOG(DEBUG, "Representor Tx burst for %s, port_id: 0x%x transmitted: %u",
+		PMD_TX_LOG(DEBUG, "Representor Tx burst for %s, port_id: %#x transmitted: %hu",
 				repr->name, repr->port_id, sent);
 		repr->repr_stats.opackets += sent;
 	}
