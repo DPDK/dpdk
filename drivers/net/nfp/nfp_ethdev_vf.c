@@ -64,6 +64,7 @@ nfp_netvf_start(struct rte_eth_dev *dev)
 				return -EIO;
 			}
 		}
+
 		intr_vector = dev->data->nb_rx_queues;
 		if (rte_intr_efd_enable(intr_handle, intr_vector) != 0)
 			return -1;
@@ -178,12 +179,10 @@ nfp_netvf_close(struct rte_eth_dev *dev)
 	 * We assume that the DPDK application is stopping all the
 	 * threads/queues before calling the device close function.
 	 */
-
 	nfp_net_disable_queues(dev);
 
 	/* Clear queues */
 	nfp_net_close_tx_queue(dev);
-
 	nfp_net_close_rx_queue(dev);
 
 	rte_intr_disable(pci_dev->intr_handle);
@@ -200,35 +199,35 @@ nfp_netvf_close(struct rte_eth_dev *dev)
 
 /* Initialise and register VF driver with DPDK Application */
 static const struct eth_dev_ops nfp_netvf_eth_dev_ops = {
-	.dev_configure		= nfp_net_configure,
-	.dev_start		= nfp_netvf_start,
-	.dev_stop		= nfp_netvf_stop,
-	.dev_set_link_up	= nfp_netvf_set_link_up,
-	.dev_set_link_down	= nfp_netvf_set_link_down,
-	.dev_close		= nfp_netvf_close,
-	.promiscuous_enable	= nfp_net_promisc_enable,
-	.promiscuous_disable	= nfp_net_promisc_disable,
-	.link_update		= nfp_net_link_update,
-	.stats_get		= nfp_net_stats_get,
-	.stats_reset		= nfp_net_stats_reset,
+	.dev_configure          = nfp_net_configure,
+	.dev_start              = nfp_netvf_start,
+	.dev_stop               = nfp_netvf_stop,
+	.dev_set_link_up        = nfp_netvf_set_link_up,
+	.dev_set_link_down      = nfp_netvf_set_link_down,
+	.dev_close              = nfp_netvf_close,
+	.promiscuous_enable     = nfp_net_promisc_enable,
+	.promiscuous_disable    = nfp_net_promisc_disable,
+	.link_update            = nfp_net_link_update,
+	.stats_get              = nfp_net_stats_get,
+	.stats_reset            = nfp_net_stats_reset,
 	.xstats_get             = nfp_net_xstats_get,
 	.xstats_reset           = nfp_net_xstats_reset,
 	.xstats_get_names       = nfp_net_xstats_get_names,
 	.xstats_get_by_id       = nfp_net_xstats_get_by_id,
 	.xstats_get_names_by_id = nfp_net_xstats_get_names_by_id,
-	.dev_infos_get		= nfp_net_infos_get,
+	.dev_infos_get          = nfp_net_infos_get,
 	.dev_supported_ptypes_get = nfp_net_supported_ptypes_get,
-	.mtu_set		= nfp_net_dev_mtu_set,
-	.mac_addr_set		= nfp_net_set_mac_addr,
-	.vlan_offload_set	= nfp_net_vlan_offload_set,
-	.reta_update		= nfp_net_reta_update,
-	.reta_query		= nfp_net_reta_query,
-	.rss_hash_update	= nfp_net_rss_hash_update,
-	.rss_hash_conf_get	= nfp_net_rss_hash_conf_get,
-	.rx_queue_setup		= nfp_net_rx_queue_setup,
-	.rx_queue_release	= nfp_net_rx_queue_release,
-	.tx_queue_setup		= nfp_net_tx_queue_setup,
-	.tx_queue_release	= nfp_net_tx_queue_release,
+	.mtu_set                = nfp_net_dev_mtu_set,
+	.mac_addr_set           = nfp_net_set_mac_addr,
+	.vlan_offload_set       = nfp_net_vlan_offload_set,
+	.reta_update            = nfp_net_reta_update,
+	.reta_query             = nfp_net_reta_query,
+	.rss_hash_update        = nfp_net_rss_hash_update,
+	.rss_hash_conf_get      = nfp_net_rss_hash_conf_get,
+	.rx_queue_setup         = nfp_net_rx_queue_setup,
+	.rx_queue_release       = nfp_net_rx_queue_release,
+	.tx_queue_setup         = nfp_net_tx_queue_setup,
+	.tx_queue_release       = nfp_net_tx_queue_release,
 	.rx_queue_intr_enable   = nfp_rx_queue_intr_enable,
 	.rx_queue_intr_disable  = nfp_rx_queue_intr_disable,
 };

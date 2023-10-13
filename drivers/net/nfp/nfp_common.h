@@ -32,7 +32,7 @@
 #define DEFAULT_RX_HTHRESH      8
 #define DEFAULT_RX_WTHRESH      0
 
-#define DEFAULT_TX_RS_THRESH	32
+#define DEFAULT_TX_RS_THRESH    32
 #define DEFAULT_TX_FREE_THRESH  32
 #define DEFAULT_TX_PTHRESH      32
 #define DEFAULT_TX_HTHRESH      0
@@ -40,12 +40,12 @@
 #define DEFAULT_TX_RSBIT_THRESH 32
 
 /* Alignment for dma zones */
-#define NFP_MEMZONE_ALIGN	128
+#define NFP_MEMZONE_ALIGN       128
 
 #define NFP_QCP_QUEUE_ADDR_SZ   (0x800)
 
 /* Number of supported physical ports */
-#define NFP_MAX_PHYPORTS	12
+#define NFP_MAX_PHYPORTS        12
 
 /* Firmware application ID's */
 enum nfp_app_fw_id {

@@ -191,6 +191,7 @@ nfp_cpp_bridge_serve_write(int sockfd,
 				nfp_cpp_area_free(area);
 				return -EIO;
 			}
+
 			err = nfp_cpp_area_write(area, pos, tmpbuf, len);
 			if (err < 0) {
 				PMD_CPP_LOG(ERR, "nfp_cpp_area_write error");
@@ -312,6 +313,7 @@ nfp_cpp_bridge_serve_read(int sockfd,
 		curlen = (count > NFP_CPP_MEMIO_BOUNDARY) ?
 				NFP_CPP_MEMIO_BOUNDARY : count;
 	}
+
 	return 0;
 }
 
@@ -393,6 +395,7 @@ nfp_cpp_bridge_service_func(void *args)
 	struct timeval timeout = {1, 0};
 
 	unlink("/tmp/nfp_cpp");
+
 	sockfd = socket(AF_UNIX, SOCK_STREAM, 0);
 	if (sockfd < 0) {
 		PMD_CPP_LOG(ERR, "socket creation error. Service failed");
@@ -456,8 +459,10 @@ nfp_cpp_bridge_service_func(void *args)
 			if (op == 0)
 				break;
 		}
+
 		close(datafd);
 	}
+
 	close(sockfd);
 
 	return 0;

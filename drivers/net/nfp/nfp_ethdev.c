@@ -36,6 +36,7 @@ nfp_net_pf_read_mac(struct nfp_app_fw_nic *app_fw_nic,
 	rte_ether_addr_copy(&nfp_eth_table->ports[port].mac_addr, &hw->mac_addr);
 
 	free(nfp_eth_table);
+
 	return 0;
 }
 
@@ -74,6 +75,7 @@ nfp_net_start(struct rte_eth_dev *dev)
 					"with NFP multiport PF");
 				return -EINVAL;
 		}
+
 		if (rte_intr_type_get(intr_handle) == RTE_INTR_HANDLE_UIO) {
 			/*
 			 * Better not to share LSC with RX interrupts.
@@ -88,6 +90,7 @@ nfp_net_start(struct rte_eth_dev *dev)
 				return -EIO;
 			}
 		}
+
 		intr_vector = dev->data->nb_rx_queues;
 		if (rte_intr_efd_enable(intr_handle, intr_vector) != 0)
 			return -1;
@@ -204,7 +207,6 @@ nfp_net_stop(struct rte_eth_dev *dev)
 
 	/* Clear queues */
 	nfp_net_stop_tx_queue(dev);
-
 	nfp_net_stop_rx_queue(dev);
 
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
@@ -268,12 +270,10 @@ nfp_net_close(struct rte_eth_dev *dev)
 	 * We assume that the DPDK application is stopping all the
 	 * threads/queues before calling the device close function.
 	 */
-
 	nfp_net_disable_queues(dev);
 
 	/* Clear queues */
 	nfp_net_close_tx_queue(dev);
-
 	nfp_net_close_rx_queue(dev);
 
 	/* Clear ipsec */
@@ -419,35 +419,35 @@ nfp_udp_tunnel_port_del(struct rte_eth_dev *dev,
 
 /* Initialise and register driver with DPDK Application */
 static const struct eth_dev_ops nfp_net_eth_dev_ops = {
-	.dev_configure		= nfp_net_configure,
-	.dev_start		= nfp_net_start,
-	.dev_stop		= nfp_net_stop,
-	.dev_set_link_up	= nfp_net_set_link_up,
-	.dev_set_link_down	= nfp_net_set_link_down,
-	.dev_close		= nfp_net_close,
-	.promiscuous_enable	= nfp_net_promisc_enable,
-	.promiscuous_disable	= nfp_net_promisc_disable,
-	.link_update		= nfp_net_link_update,
-	.stats_get		= nfp_net_stats_get,
-	.stats_reset		= nfp_net_stats_reset,
+	.dev_configure          = nfp_net_configure,
+	.dev_start              = nfp_net_start,
+	.dev_stop               = nfp_net_stop,
+	.dev_set_link_up        = nfp_net_set_link_up,
+	.dev_set_link_down      = nfp_net_set_link_down,
+	.dev_close              = nfp_net_close,
+	.promiscuous_enable     = nfp_net_promisc_enable,
+	.promiscuous_disable    = nfp_net_promisc_disable,
+	.link_update            = nfp_net_link_update,
+	.stats_get              = nfp_net_stats_get,
+	.stats_reset            = nfp_net_stats_reset,
 	.xstats_get             = nfp_net_xstats_get,
 	.xstats_reset           = nfp_net_xstats_reset,
 	.xstats_get_names       = nfp_net_xstats_get_names,
 	.xstats_get_by_id       = nfp_net_xstats_get_by_id,
 	.xstats_get_names_by_id = nfp_net_xstats_get_names_by_id,
-	.dev_infos_get		= nfp_net_infos_get,
+	.dev_infos_get          = nfp_net_infos_get,
 	.dev_supported_ptypes_get = nfp_net_supported_ptypes_get,
-	.mtu_set		= nfp_net_dev_mtu_set,
-	.mac_addr_set		= nfp_net_set_mac_addr,
-	.vlan_offload_set	= nfp_net_vlan_offload_set,
-	.reta_update		= nfp_net_reta_update,
-	.reta_query		= nfp_net_reta_query,
-	.rss_hash_update	= nfp_net_rss_hash_update,
-	.rss_hash_conf_get	= nfp_net_rss_hash_conf_get,
-	.rx_queue_setup		= nfp_net_rx_queue_setup,
-	.rx_queue_release	= nfp_net_rx_queue_release,
-	.tx_queue_setup		= nfp_net_tx_queue_setup,
-	.tx_queue_release	= nfp_net_tx_queue_release,
+	.mtu_set                = nfp_net_dev_mtu_set,
+	.mac_addr_set           = nfp_net_set_mac_addr,
+	.vlan_offload_set       = nfp_net_vlan_offload_set,
+	.reta_update            = nfp_net_reta_update,
+	.reta_query             = nfp_net_reta_query,
+	.rss_hash_update        = nfp_net_rss_hash_update,
+	.rss_hash_conf_get      = nfp_net_rss_hash_conf_get,
+	.rx_queue_setup         = nfp_net_rx_queue_setup,
+	.rx_queue_release       = nfp_net_rx_queue_release,
+	.tx_queue_setup         = nfp_net_tx_queue_setup,
+	.tx_queue_release       = nfp_net_tx_queue_release,
 	.rx_queue_intr_enable   = nfp_rx_queue_intr_enable,
 	.rx_queue_intr_disable  = nfp_rx_queue_intr_disable,
 	.udp_tunnel_port_add    = nfp_udp_tunnel_port_add,
@@ -507,7 +507,6 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 
 	rte_eth_copy_pci_info(eth_dev, pci_dev);
 
-
 	hw->ctrl_bar = pci_dev->mem_resource[0].addr;
 	if (hw->ctrl_bar == NULL) {
 		PMD_DRV_LOG(ERR, "hw->ctrl_bar is NULL. BAR0 not configured");
@@ -525,10 +524,12 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 			PMD_INIT_LOG(ERR, "nfp_rtsym_map fails for _mac_stats_bar");
 			return -EIO;
 		}
+
 		hw->mac_stats = hw->mac_stats_bar;
 	} else {
 		if (pf_dev->ctrl_bar == NULL)
 			return -ENODEV;
+
 		/* Use port offset in pf ctrl_bar for this ports control bar */
 		hw->ctrl_bar = pf_dev->ctrl_bar + (port * NFP_PF_CSR_SLICE_SIZE);
 		hw->mac_stats = app_fw_nic->ports[0]->mac_stats_bar +
@@ -563,7 +564,6 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 				pci_dev->device.name);
 		return -ENOMEM;
 	}
-
 
 	/* Work out where in the BAR the queues start. */
 	tx_base = nn_cfg_readl(hw, NFP_NET_CFG_START_TXQ);
@@ -660,12 +660,12 @@ nfp_fw_upload(struct rte_pci_device *dev,
 			"serial-%02x-%02x-%02x-%02x-%02x-%02x-%02x-%02x",
 			cpp_serial[0], cpp_serial[1], cpp_serial[2], cpp_serial[3],
 			cpp_serial[4], cpp_serial[5], interface >> 8, interface & 0xff);
-
 	snprintf(fw_name, sizeof(fw_name), "%s/%s.nffw", DEFAULT_FW_PATH, serial);
 
 	PMD_DRV_LOG(DEBUG, "Trying with fw file: %s", fw_name);
 	if (rte_firmware_read(fw_name, &fw_buf, &fsize) == 0)
 		goto load_fw;
+
 	/* Then try the PCI name */
 	snprintf(fw_name, sizeof(fw_name), "%s/pci-%s.nffw", DEFAULT_FW_PATH,
 			dev->name);

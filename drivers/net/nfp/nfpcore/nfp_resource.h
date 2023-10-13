@@ -15,7 +15,7 @@
 #define NFP_RESOURCE_NFP_HWINFO         "nfp.info"
 
 /* Service Processor */
-#define NFP_RESOURCE_NSP		"nfp.sp"
+#define NFP_RESOURCE_NSP                "nfp.sp"
 
 /* Opaque handle to a NFP Resource */
 struct nfp_resource;

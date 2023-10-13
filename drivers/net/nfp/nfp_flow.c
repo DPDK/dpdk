@@ -496,6 +496,7 @@ nfp_stats_id_alloc(struct nfp_flow_priv *priv, uint32_t *ctx)
 			priv->stats_ids.init_unallocated--;
 			priv->active_mem_unit = 0;
 		}
+
 		return 0;
 	}
 
@@ -622,6 +623,7 @@ nfp_tun_add_ipv6_off(struct nfp_app_fw_flower *app_fw_flower,
 		PMD_DRV_LOG(ERR, "Mem error when offloading IP6 address.");
 		return -ENOMEM;
 	}
+
 	memcpy(tmp_entry->ipv6_addr, ipv6, sizeof(tmp_entry->ipv6_addr));
 	tmp_entry->ref_count = 1;
 
@@ -1796,7 +1798,7 @@ static const struct nfp_flow_item_proc nfp_flow_item_proc_list[] = {
 		.next_item = NEXT_ITEM(RTE_FLOW_ITEM_TYPE_VLAN,
 			RTE_FLOW_ITEM_TYPE_IPV4,
 			RTE_FLOW_ITEM_TYPE_IPV6),
-		.mask_support = &(const struct rte_flow_item_eth){
+		.mask_support = &(const struct rte_flow_item_eth) {
 			.hdr = {
 				.dst_addr.addr_bytes = "\xff\xff\xff\xff\xff\xff",
 				.src_addr.addr_bytes = "\xff\xff\xff\xff\xff\xff",
@@ -1811,7 +1813,7 @@ static const struct nfp_flow_item_proc nfp_flow_item_proc_list[] = {
 	[RTE_FLOW_ITEM_TYPE_VLAN] = {
 		.next_item = NEXT_ITEM(RTE_FLOW_ITEM_TYPE_IPV4,
 			RTE_FLOW_ITEM_TYPE_IPV6),
-		.mask_support = &(const struct rte_flow_item_vlan){
+		.mask_support = &(const struct rte_flow_item_vlan) {
 			.hdr = {
 				.vlan_tci  = RTE_BE16(0xefff),
 				.eth_proto = RTE_BE16(0xffff),
@@ -1827,7 +1829,7 @@ static const struct nfp_flow_item_proc nfp_flow_item_proc_list[] = {
 			RTE_FLOW_ITEM_TYPE_UDP,
 			RTE_FLOW_ITEM_TYPE_SCTP,
 			RTE_FLOW_ITEM_TYPE_GRE),
-		.mask_support = &(const struct rte_flow_item_ipv4){
+		.mask_support = &(const struct rte_flow_item_ipv4) {
 			.hdr = {
 				.type_of_service = 0xff,
 				.fragment_offset = RTE_BE16(0xffff),
@@ -1846,7 +1848,7 @@ static const struct nfp_flow_item_proc nfp_flow_item_proc_list[] = {
 			RTE_FLOW_ITEM_TYPE_UDP,
 			RTE_FLOW_ITEM_TYPE_SCTP,
 			RTE_FLOW_ITEM_TYPE_GRE),
-		.mask_support = &(const struct rte_flow_item_ipv6){
+		.mask_support = &(const struct rte_flow_item_ipv6) {
 			.hdr = {
 				.vtc_flow   = RTE_BE32(0x0ff00000),
 				.proto      = 0xff,
@@ -1863,7 +1865,7 @@ static const struct nfp_flow_item_proc nfp_flow_item_proc_list[] = {
 		.merge = nfp_flow_merge_ipv6,
 	},
 	[RTE_FLOW_ITEM_TYPE_TCP] = {
-		.mask_support = &(const struct rte_flow_item_tcp){
+		.mask_support = &(const struct rte_flow_item_tcp) {
 			.hdr = {
 				.tcp_flags = 0xff,
 				.src_port  = RTE_BE16(0xffff),
@@ -1877,7 +1879,7 @@ static const struct nfp_flow_item_proc nfp_flow_item_proc_list[] = {
 	[RTE_FLOW_ITEM_TYPE_UDP] = {
 		.next_item = NEXT_ITEM(RTE_FLOW_ITEM_TYPE_VXLAN,
 			RTE_FLOW_ITEM_TYPE_GENEVE),
-		.mask_support = &(const struct rte_flow_item_udp){
+		.mask_support = &(const struct rte_flow_item_udp) {
 			.hdr = {
 				.src_port = RTE_BE16(0xffff),
 				.dst_port = RTE_BE16(0xffff),
@@ -1888,7 +1890,7 @@ static const struct nfp_flow_item_proc nfp_flow_item_proc_list[] = {
 		.merge = nfp_flow_merge_udp,
 	},
 	[RTE_FLOW_ITEM_TYPE_SCTP] = {
-		.mask_support = &(const struct rte_flow_item_sctp){
+		.mask_support = &(const struct rte_flow_item_sctp) {
 			.hdr = {
 				.src_port  = RTE_BE16(0xffff),
 				.dst_port  = RTE_BE16(0xffff),
@@ -1900,7 +1902,7 @@ static const struct nfp_flow_item_proc nfp_flow_item_proc_list[] = {
 	},
 	[RTE_FLOW_ITEM_TYPE_VXLAN] = {
 		.next_item = NEXT_ITEM(RTE_FLOW_ITEM_TYPE_ETH),
-		.mask_support = &(const struct rte_flow_item_vxlan){
+		.mask_support = &(const struct rte_flow_item_vxlan) {
 			.hdr = {
 				.vx_vni = RTE_BE32(0xffffff00),
 			},
@@ -1911,7 +1913,7 @@ static const struct nfp_flow_item_proc nfp_flow_item_proc_list[] = {
 	},
 	[RTE_FLOW_ITEM_TYPE_GENEVE] = {
 		.next_item = NEXT_ITEM(RTE_FLOW_ITEM_TYPE_ETH),
-		.mask_support = &(const struct rte_flow_item_geneve){
+		.mask_support = &(const struct rte_flow_item_geneve) {
 			.vni = "\xff\xff\xff",
 		},
 		.mask_default = &rte_flow_item_geneve_mask,
@@ -1920,7 +1922,7 @@ static const struct nfp_flow_item_proc nfp_flow_item_proc_list[] = {
 	},
 	[RTE_FLOW_ITEM_TYPE_GRE] = {
 		.next_item = NEXT_ITEM(RTE_FLOW_ITEM_TYPE_GRE_KEY),
-		.mask_support = &(const struct rte_flow_item_gre){
+		.mask_support = &(const struct rte_flow_item_gre) {
 			.c_rsvd0_ver = RTE_BE16(0xa000),
 			.protocol = RTE_BE16(0xffff),
 		},
@@ -1952,6 +1954,7 @@ nfp_flow_item_check(const struct rte_flow_item *item,
 					" without a corresponding 'spec'.");
 			return -EINVAL;
 		}
+
 		/* No spec, no mask, no problem. */
 		return 0;
 	}
@@ -3031,6 +3034,7 @@ nfp_pre_tun_table_check_add(struct nfp_flower_representor *repr,
 	for (i = 1; i < NFP_TUN_PRE_TUN_RULE_LIMIT; i++) {
 		if (priv->pre_tun_bitmap[i] == 0)
 			continue;
+
 		entry->mac_index = i;
 		find_entry = nfp_pre_tun_table_search(priv, (char *)entry, entry_size);
 		if (find_entry != NULL) {
@@ -3057,6 +3061,7 @@ nfp_pre_tun_table_check_add(struct nfp_flower_representor *repr,
 
 	*index = entry->mac_index;
 	priv->pre_tun_cnt++;
+
 	return 0;
 }
 
@@ -3091,12 +3096,14 @@ nfp_pre_tun_table_check_del(struct nfp_flower_representor *repr,
 	for (i = 1; i < NFP_TUN_PRE_TUN_RULE_LIMIT; i++) {
 		if (priv->pre_tun_bitmap[i] == 0)
 			continue;
+
 		entry->mac_index = i;
 		find_entry = nfp_pre_tun_table_search(priv, (char *)entry, entry_size);
 		if (find_entry != NULL) {
 			find_entry->ref_cnt--;
 			if (find_entry->ref_cnt != 0)
 				goto free_entry;
+
 			priv->pre_tun_bitmap[i] = 0;
 			break;
 		}

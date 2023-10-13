@@ -126,11 +126,14 @@ struct nfp_ipv6_addr_entry {
 struct nfp_flow_priv {
 	uint32_t hash_seed; /**< Hash seed for hash tables in this structure. */
 	uint64_t flower_version; /**< Flow version, always increase. */
+
 	/* Mask hash table */
 	struct nfp_fl_mask_id mask_ids; /**< Entry for mask hash table */
 	struct rte_hash *mask_table; /**< Hash table to store mask ids. */
+
 	/* Flow hash table */
 	struct rte_hash *flow_table; /**< Hash table to store flow rules. */
+
 	/* Flow stats */
 	uint32_t active_mem_unit; /**< The size of active mem units. */
 	uint32_t total_mem_units; /**< The size of total mem units. */
@@ -138,16 +141,20 @@ struct nfp_flow_priv {
 	struct nfp_fl_stats_id stats_ids; /**< The stats id ring. */
 	struct nfp_fl_stats *stats; /**< Store stats of flow. */
 	rte_spinlock_t stats_lock; /** < Lock the update of 'stats' field. */
+
 	/* Pre tunnel rule */
 	uint16_t pre_tun_cnt; /**< The size of pre tunnel rule */
 	uint8_t pre_tun_bitmap[NFP_TUN_PRE_TUN_RULE_LIMIT]; /**< Bitmap of pre tunnel rule */
 	struct rte_hash *pre_tun_table; /**< Hash table to store pre tunnel rule */
+
 	/* IPv4 off */
 	LIST_HEAD(, nfp_ipv4_addr_entry) ipv4_off_list; /**< Store ipv4 off */
 	rte_spinlock_t ipv4_off_lock; /**< Lock the ipv4 off list */
+
 	/* IPv6 off */
 	LIST_HEAD(, nfp_ipv6_addr_entry) ipv6_off_list; /**< Store ipv6 off */
 	rte_spinlock_t ipv6_off_lock; /**< Lock the ipv6 off list */
+
 	/* Neighbor next */
 	LIST_HEAD(, nfp_fl_tun)nn_list; /**< Store nn entry */
 	/* Conntrack */

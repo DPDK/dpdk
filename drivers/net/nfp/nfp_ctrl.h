@@ -208,8 +208,8 @@ struct nfp_net_fw_ver {
 /*
  * NFP6000/NFP4000 - Prepend configuration
  */
-#define NFP_NET_CFG_RX_OFFSET		0x0050
-#define NFP_NET_CFG_RX_OFFSET_DYNAMIC		0	/* Prepend mode */
+#define NFP_NET_CFG_RX_OFFSET           0x0050
+#define NFP_NET_CFG_RX_OFFSET_DYNAMIC          0    /* Prepend mode */
 
 /* Start anchor of the TLV area */
 #define NFP_NET_CFG_TLV_BASE            0x0058
@@ -442,7 +442,7 @@ struct nfp_net_fw_ver {
 #define NFP_MAC_STATS_TX_PAUSE_FRAMES_CLASS6    (NFP_MAC_STATS_BASE + 0x1f0)
 #define NFP_MAC_STATS_TX_PAUSE_FRAMES_CLASS7    (NFP_MAC_STATS_BASE + 0x1f8)
 
-#define NFP_PF_CSR_SLICE_SIZE	(32 * 1024)
+#define NFP_PF_CSR_SLICE_SIZE    (32 * 1024)
 
 /*
  * General use mailbox area (0x1800 - 0x19ff)

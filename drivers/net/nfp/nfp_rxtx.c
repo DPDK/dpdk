@@ -190,6 +190,7 @@ nfp_net_rx_fill_freelist(struct nfp_net_rxq *rxq)
 		rxd->fld.dd = 0;
 		rxd->fld.dma_addr_hi = (dma_addr >> 32) & 0xffff;
 		rxd->fld.dma_addr_lo = dma_addr & 0xffffffff;
+
 		rxe[i].mbuf = mbuf;
 	}
 
@@ -213,6 +214,7 @@ nfp_net_rx_freelist_setup(struct rte_eth_dev *dev)
 		if (nfp_net_rx_fill_freelist(dev->data->rx_queues[i]) != 0)
 			return -1;
 	}
+
 	return 0;
 }
 
@@ -225,7 +227,6 @@ nfp_net_rx_queue_count(void *rx_queue)
 	struct nfp_net_rx_desc *rxds;
 
 	rxq = rx_queue;
-
 	idx = rxq->rd_p;
 
 	/*
@@ -235,7 +236,6 @@ nfp_net_rx_queue_count(void *rx_queue)
 	 * performance. But ideally that should be done in descriptors
 	 * chunks belonging to the same cache line.
 	 */
-
 	while (count < rxq->rx_count) {
 		rxds = &rxq->rxds[idx];
 		if ((rxds->rxd.meta_len_dd & PCIE_DESC_RX_DD) == 0)
@@ -394,6 +394,7 @@ nfp_net_parse_meta_qinq(const struct nfp_meta_parsed *meta,
 
 	if (meta->vlan[0].offload == 0)
 		mb->vlan_tci = rte_cpu_to_le_16(meta->vlan[0].tci);
+
 	mb->vlan_tci_outer = rte_cpu_to_le_16(meta->vlan[1].tci);
 	PMD_RX_LOG(DEBUG, "Received outer vlan TCI is %u inner vlan TCI is %u",
 			mb->vlan_tci_outer, mb->vlan_tci);
@@ -638,7 +639,6 @@ nfp_net_parse_ptype(struct nfp_net_rx_desc *rxds,
  * so looking at the implications of this type of allocation should be studied
  * deeply.
  */
-
 uint16_t
 nfp_net_recv_pkts(void *rx_queue,
 		struct rte_mbuf **rx_pkts,
@@ -896,7 +896,6 @@ nfp_net_rx_queue_setup(struct rte_eth_dev *dev,
 	tz = rte_eth_dma_zone_reserve(dev, "rx_ring", queue_idx,
 			sizeof(struct nfp_net_rx_desc) * max_rx_desc,
 			NFP_MEMZONE_ALIGN, socket_id);
-
 	if (tz == NULL) {
 		PMD_DRV_LOG(ERR, "Error allocating rx dma");
 		nfp_net_rx_queue_release(dev, queue_idx);
