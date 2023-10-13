@@ -2812,6 +2812,9 @@ int rte_eth_dev_tx_queue_stop(uint16_t port_id, uint16_t tx_queue_id);
  * Device RTE_ETH_DEV_NOLIVE_MAC_ADDR flag causes MAC address to be set before
  * PMD port start callback function is invoked.
  *
+ * All device queues (except form deferred start queues) status should be
+ * `RTE_ETH_QUEUE_STATE_STARTED` after start.
+ *
  * On success, all basic functions exported by the Ethernet API (link status,
  * receive/transmit, and so on) can be invoked.
  *
@@ -2827,6 +2830,8 @@ int rte_eth_dev_start(uint16_t port_id);
 /**
  * Stop an Ethernet device. The device can be restarted with a call to
  * rte_eth_dev_start()
+ *
+ * All device queues status should be `RTE_ETH_QUEUE_STATE_STOPPED` after stop.
  *
  * @param port_id
  *   The port identifier of the Ethernet device.
