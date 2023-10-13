@@ -667,8 +667,8 @@ nfp_ct_flow_entry_get(struct nfp_ct_zone_entry *ze,
 {
 	bool ret;
 	uint8_t loop;
-	uint8_t item_cnt = 1;      /* the RTE_FLOW_ITEM_TYPE_END */
-	uint8_t action_cnt = 1;    /* the RTE_FLOW_ACTION_TYPE_END */
+	uint8_t item_cnt = 1;      /* The RTE_FLOW_ITEM_TYPE_END */
+	uint8_t action_cnt = 1;    /* The RTE_FLOW_ACTION_TYPE_END */
 	struct nfp_flow_priv *priv;
 	struct nfp_ct_map_entry *me;
 	struct nfp_ct_flow_entry *fe;

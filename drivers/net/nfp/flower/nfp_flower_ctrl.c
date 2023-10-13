@@ -34,7 +34,7 @@ nfp_flower_ctrl_vnic_recv(void *rx_queue,
 	if (unlikely(rxq == NULL)) {
 		/*
 		 * DPDK just checks the queue is lower than max queues
-		 * enabled. But the queue needs to be configured
+		 * enabled. But the queue needs to be configured.
 		 */
 		PMD_RX_LOG(ERR, "RX Bad queue");
 		return 0;
@@ -60,7 +60,7 @@ nfp_flower_ctrl_vnic_recv(void *rx_queue,
 
 		/*
 		 * We got a packet. Let's alloc a new mbuf for refilling the
-		 * free descriptor ring as soon as possible
+		 * free descriptor ring as soon as possible.
 		 */
 		new_mb = rte_pktmbuf_alloc(rxq->mem_pool);
 		if (unlikely(new_mb == NULL)) {
@@ -72,7 +72,7 @@ nfp_flower_ctrl_vnic_recv(void *rx_queue,
 
 		/*
 		 * Grab the mbuf and refill the descriptor with the
-		 * previously allocated mbuf
+		 * previously allocated mbuf.
 		 */
 		mb = rxb->mbuf;
 		rxb->mbuf = new_mb;
@@ -86,7 +86,7 @@ nfp_flower_ctrl_vnic_recv(void *rx_queue,
 			/*
 			 * This should not happen and the user has the
 			 * responsibility of avoiding it. But we have
-			 * to give some info about the error
+			 * to give some info about the error.
 			 */
 			PMD_RX_LOG(ERR, "mbuf overflow likely due to the RX offset.");
 			rte_pktmbuf_free(mb);
@@ -116,7 +116,7 @@ nfp_flower_ctrl_vnic_recv(void *rx_queue,
 		nb_hold++;
 
 		rxq->rd_p++;
-		if (unlikely(rxq->rd_p == rxq->rx_count)) /* wrapping?*/
+		if (unlikely(rxq->rd_p == rxq->rx_count)) /* Wrapping */
 			rxq->rd_p = 0;
 	}
 
@@ -163,7 +163,7 @@ nfp_flower_ctrl_vnic_nfd3_xmit(struct nfp_app_fw_flower *app_fw_flower,
 	if (unlikely(txq == NULL)) {
 		/*
 		 * DPDK just checks the queue is lower than max queues
-		 * enabled. But the queue needs to be configured
+		 * enabled. But the queue needs to be configured.
 		 */
 		PMD_TX_LOG(ERR, "ctrl dev TX Bad queue");
 		goto xmit_end;
@@ -199,7 +199,7 @@ nfp_flower_ctrl_vnic_nfd3_xmit(struct nfp_app_fw_flower *app_fw_flower,
 	txds->offset_eop = FLOWER_PKT_DATA_OFFSET | NFD3_DESC_TX_EOP;
 
 	txq->wr_p++;
-	if (unlikely(txq->wr_p == txq->tx_count)) /* wrapping?*/
+	if (unlikely(txq->wr_p == txq->tx_count)) /* Wrapping */
 		txq->wr_p = 0;
 
 	cnt++;
@@ -513,7 +513,7 @@ nfp_flower_ctrl_vnic_poll(struct nfp_app_fw_flower *app_fw_flower)
 	ctrl_hw = app_fw_flower->ctrl_hw;
 	ctrl_eth_dev = ctrl_hw->eth_dev;
 
-	/* ctrl vNIC only has a single Rx queue */
+	/* Ctrl vNIC only has a single Rx queue */
 	rxq = ctrl_eth_dev->data->rx_queues[0];
 
 	while (rte_service_runstate_get(app_fw_flower->ctrl_vnic_id) != 0) {

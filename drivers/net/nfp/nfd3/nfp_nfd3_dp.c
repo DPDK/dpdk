@@ -113,14 +113,12 @@ nfp_flower_nfd3_pkt_add_metadata(struct rte_mbuf *mbuf,
 }
 
 /*
- * nfp_net_nfd3_tx_vlan() - Set vlan info in the nfd3 tx desc
+ * Set vlan info in the nfd3 tx desc
  *
  * If enable NFP_NET_CFG_CTRL_TXVLAN_V2
- *	Vlan_info is stored in the meta and
- *	is handled in the nfp_net_nfd3_set_meta_vlan()
+ *   Vlan_info is stored in the meta and is handled in the @nfp_net_nfd3_set_meta_vlan()
  * else if enable NFP_NET_CFG_CTRL_TXVLAN
- *	Vlan_info is stored in the tx_desc and
- *	is handled in the nfp_net_nfd3_tx_vlan()
+ *   Vlan_info is stored in the tx_desc and is handled in the @nfp_net_nfd3_tx_vlan()
  */
 static inline void
 nfp_net_nfd3_tx_vlan(struct nfp_net_txq *txq,
@@ -299,9 +297,9 @@ nfp_net_nfd3_xmit_pkts_common(void *tx_queue,
 		nfp_net_nfd3_tx_vlan(txq, &txd, pkt);
 
 		/*
-		 * mbuf data_len is the data in one segment and pkt_len data
+		 * Mbuf data_len is the data in one segment and pkt_len data
 		 * in the whole packet. When the packet is just one segment,
-		 * then data_len = pkt_len
+		 * then data_len = pkt_len.
 		 */
 		pkt_size = pkt->pkt_len;
 
@@ -315,7 +313,7 @@ nfp_net_nfd3_xmit_pkts_common(void *tx_queue,
 
 			/*
 			 * Linking mbuf with descriptor for being released
-			 * next time descriptor is used
+			 * next time descriptor is used.
 			 */
 			*lmbuf = pkt;
 
@@ -330,14 +328,14 @@ nfp_net_nfd3_xmit_pkts_common(void *tx_queue,
 			free_descs--;
 
 			txq->wr_p++;
-			if (unlikely(txq->wr_p == txq->tx_count)) /* wrapping */
+			if (unlikely(txq->wr_p == txq->tx_count)) /* Wrapping */
 				txq->wr_p = 0;
 
 			pkt_size -= dma_size;
 
 			/*
 			 * Making the EOP, packets with just one segment
-			 * the priority
+			 * the priority.
 			 */
 			if (likely(pkt_size == 0))
 				txds->offset_eop = NFD3_DESC_TX_EOP;
@@ -439,7 +437,7 @@ nfp_net_nfd3_tx_queue_setup(struct rte_eth_dev *dev,
 	txq->tx_count = nb_desc * NFD3_TX_DESC_PER_PKT;
 	txq->tx_free_thresh = tx_free_thresh;
 
-	/* queue mapping based on firmware configuration */
+	/* Queue mapping based on firmware configuration */
 	txq->qidx = queue_idx;
 	txq->tx_qcidx = queue_idx * hw->stride_tx;
 	txq->qcp_q = hw->tx_bar + NFP_QCP_QUEUE_OFF(txq->tx_qcidx);
@@ -449,7 +447,7 @@ nfp_net_nfd3_tx_queue_setup(struct rte_eth_dev *dev,
 	txq->dma = tz->iova;
 	txq->txds = tz->addr;
 
-	/* mbuf pointers array for referencing mbufs linked to TX descriptors */
+	/* Mbuf pointers array for referencing mbufs linked to TX descriptors */
 	txq->txbufs = rte_zmalloc_socket("txq->txbufs",
 			sizeof(*txq->txbufs) * txq->tx_count,
 			RTE_CACHE_LINE_SIZE, socket_id);
@@ -465,7 +463,7 @@ nfp_net_nfd3_tx_queue_setup(struct rte_eth_dev *dev,
 
 	/*
 	 * Telling the HW about the physical address of the TX ring and number
-	 * of descriptors in log2 format
+	 * of descriptors in log2 format.
 	 */
 	nn_cfg_writeq(hw, NFP_NET_CFG_TXR_ADDR(queue_idx), txq->dma);
 	nn_cfg_writeb(hw, NFP_NET_CFG_TXR_SZ(queue_idx), rte_log2_u32(txq->tx_count));

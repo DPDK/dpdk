@@ -82,7 +82,7 @@ struct ipsec_discard_stats {
 	uint32_t discards_alignment;             /**< Alignment error */
 	uint32_t discards_hard_bytelimit;        /**< Hard byte Count limit */
 	uint32_t discards_seq_num_wrap;          /**< Sequ Number wrap */
-	uint32_t discards_pmtu_exceeded;         /**< PMTU Limit exceeded*/
+	uint32_t discards_pmtu_exceeded;         /**< PMTU Limit exceeded */
 	uint32_t discards_arw_old_seq;           /**< Anti-Replay seq small */
 	uint32_t discards_arw_replay;            /**< Anti-Replay seq rcvd */
 	uint32_t discards_ctrl_word;             /**< Bad SA Control word */
@@ -99,16 +99,16 @@ struct ipsec_discard_stats {
 
 struct ipsec_get_sa_stats {
 	uint32_t seq_lo;                         /**< Sequence Number (low 32bits) */
-	uint32_t seq_high;                       /**< Sequence Number (high 32bits)*/
+	uint32_t seq_high;                       /**< Sequence Number (high 32bits) */
 	uint32_t arw_counter_lo;                 /**< Anti-replay wndw cntr */
 	uint32_t arw_counter_high;               /**< Anti-replay wndw cntr */
 	uint32_t arw_bitmap_lo;                  /**< Anti-replay wndw bitmap */
 	uint32_t arw_bitmap_high;                /**< Anti-replay wndw bitmap */
 	uint32_t spare:1;
-	uint32_t soft_byte_exceeded :1;          /**< Soft lifetime byte cnt exceeded*/
-	uint32_t hard_byte_exceeded :1;          /**< Hard lifetime byte cnt exceeded*/
-	uint32_t soft_time_exceeded :1;          /**< Soft lifetime time limit exceeded*/
-	uint32_t hard_time_exceeded :1;          /**< Hard lifetime time limit exceeded*/
+	uint32_t soft_byte_exceeded :1;          /**< Soft lifetime byte cnt exceeded */
+	uint32_t hard_byte_exceeded :1;          /**< Hard lifetime byte cnt exceeded */
+	uint32_t soft_time_exceeded :1;          /**< Soft lifetime time limit exceeded */
+	uint32_t hard_time_exceeded :1;          /**< Hard lifetime time limit exceeded */
 	uint32_t spare1:27;
 	uint32_t lifetime_byte_count;
 	uint32_t pkt_count;

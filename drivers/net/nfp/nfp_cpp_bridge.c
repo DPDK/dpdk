@@ -1,8 +1,6 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  * Copyright (c) 2014-2021 Netronome Systems, Inc.
  * All rights reserved.
- *
- * Small portions derived from code Copyright(c) 2010-2015 Intel Corporation.
  */
 
 #include "nfp_cpp_bridge.h"
@@ -48,7 +46,7 @@ nfp_map_service(uint32_t service_id)
 
 	/*
 	 * Find a service core with the least number of services already
-	 * registered to it
+	 * registered to it.
 	 */
 	while (slcore_count--) {
 		service_count = rte_service_lcore_count_services(slcore_array[slcore_count]);
@@ -100,7 +98,7 @@ nfp_enable_cpp_service(struct nfp_pf_dev *pf_dev)
 	pf_dev->cpp_bridge_id = service_id;
 	PMD_INIT_LOG(INFO, "NFP cpp service registered");
 
-	/* Map it to available service core*/
+	/* Map it to available service core */
 	ret = nfp_map_service(service_id);
 	if (ret != 0) {
 		PMD_INIT_LOG(DEBUG, "Could not map nfp cpp service");

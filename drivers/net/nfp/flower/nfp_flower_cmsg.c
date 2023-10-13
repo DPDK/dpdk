@@ -230,7 +230,7 @@ nfp_flower_cmsg_flow_add(struct nfp_app_fw_flower *app_fw_flower,
 		return -ENOMEM;
 	}
 
-	/* copy the flow to mbuf */
+	/* Copy the flow to mbuf */
 	nfp_flow_meta = flow->payload.meta;
 	msg_len = (nfp_flow_meta->key_len + nfp_flow_meta->mask_len +
 			nfp_flow_meta->act_len) << NFP_FL_LW_SIZ;

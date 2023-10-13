@@ -20,7 +20,7 @@
 /* Offset in Freelist buffer where packet starts on RX */
 #define NFP_NET_RX_OFFSET               32
 
-/* working with metadata api (NFD version > 3.0) */
+/* Working with metadata api (NFD version > 3.0) */
 #define NFP_NET_META_FIELD_SIZE         4
 #define NFP_NET_META_FIELD_MASK ((1 << NFP_NET_META_FIELD_SIZE) - 1)
 #define NFP_NET_META_HEADER_SIZE        4
@@ -36,14 +36,14 @@
 						NFP_NET_META_VLAN_TPID_MASK)
 
 /* Prepend field types */
-#define NFP_NET_META_HASH               1 /* next field carries hash type */
+#define NFP_NET_META_HASH               1 /* Next field carries hash type */
 #define NFP_NET_META_VLAN               4
 #define NFP_NET_META_PORTID             5
 #define NFP_NET_META_IPSEC              9
 
 #define NFP_META_PORT_ID_CTRL           ~0U
 
-/* Hash type pre-pended when a RSS hash was computed */
+/* Hash type prepended when a RSS hash was computed */
 #define NFP_NET_RSS_NONE                0
 #define NFP_NET_RSS_IPV4                1
 #define NFP_NET_RSS_IPV6                2
@@ -102,7 +102,7 @@
 #define   NFP_NET_CFG_CTRL_IRQMOD         (0x1 << 18) /* Interrupt moderation */
 #define   NFP_NET_CFG_CTRL_RINGPRIO       (0x1 << 19) /* Ring priorities */
 #define   NFP_NET_CFG_CTRL_MSIXAUTO       (0x1 << 20) /* MSI-X auto-masking */
-#define   NFP_NET_CFG_CTRL_TXRWB          (0x1 << 21) /* Write-back of TX ring*/
+#define   NFP_NET_CFG_CTRL_TXRWB          (0x1 << 21) /* Write-back of TX ring */
 #define   NFP_NET_CFG_CTRL_L2SWITCH       (0x1 << 22) /* L2 Switch */
 #define   NFP_NET_CFG_CTRL_TXVLAN_V2      (0x1 << 23) /* Enable VLAN insert with metadata */
 #define   NFP_NET_CFG_CTRL_VXLAN          (0x1 << 24) /* Enable VXLAN */
@@ -111,7 +111,7 @@
 #define   NFP_NET_CFG_CTRL_LSO2           (0x1 << 28) /* LSO/TSO (version 2) */
 #define   NFP_NET_CFG_CTRL_RSS2           (0x1 << 29) /* RSS (version 2) */
 #define   NFP_NET_CFG_CTRL_CSUM_COMPLETE  (0x1 << 30) /* Checksum complete */
-#define   NFP_NET_CFG_CTRL_LIVE_ADDR      (0x1U << 31)/* live MAC addr change */
+#define   NFP_NET_CFG_CTRL_LIVE_ADDR      (0x1U << 31) /* Live MAC addr change */
 #define NFP_NET_CFG_UPDATE              0x0004
 #define   NFP_NET_CFG_UPDATE_GEN          (0x1 <<  0) /* General update */
 #define   NFP_NET_CFG_UPDATE_RING         (0x1 <<  1) /* Ring config change */
@@ -124,7 +124,7 @@
 #define   NFP_NET_CFG_UPDATE_IRQMOD       (0x1 <<  8) /* IRQ mod change */
 #define   NFP_NET_CFG_UPDATE_VXLAN        (0x1 <<  9) /* VXLAN port change */
 #define   NFP_NET_CFG_UPDATE_MACADDR      (0x1 << 11) /* MAC address change */
-#define   NFP_NET_CFG_UPDATE_MBOX         (0x1 << 12) /**< Mailbox update */
+#define   NFP_NET_CFG_UPDATE_MBOX         (0x1 << 12) /* Mailbox update */
 #define   NFP_NET_CFG_UPDATE_ERR          (0x1U << 31) /* A error occurred */
 #define NFP_NET_CFG_TXRS_ENABLE         0x0008
 #define NFP_NET_CFG_RXRS_ENABLE         0x0010
@@ -205,7 +205,7 @@ struct nfp_net_fw_ver {
  * @NFP_NET_CFG_SPARE_ADDR:  DMA address for ME code to use (e.g. YDS-155 fix)
  */
 #define NFP_NET_CFG_SPARE_ADDR          0x0050
-/**
+/*
  * NFP6000/NFP4000 - Prepend configuration
  */
 #define NFP_NET_CFG_RX_OFFSET		0x0050
@@ -280,7 +280,7 @@ struct nfp_net_fw_ver {
  * @NFP_NET_CFG_TXR_BASE:    Base offset for TX ring configuration
  * @NFP_NET_CFG_TXR_ADDR:    Per TX ring DMA address (8B entries)
  * @NFP_NET_CFG_TXR_WB_ADDR: Per TX ring write back DMA address (8B entries)
- * @NFP_NET_CFG_TXR_SZ:      Per TX ring ring size (1B entries)
+ * @NFP_NET_CFG_TXR_SZ:      Per TX ring size (1B entries)
  * @NFP_NET_CFG_TXR_VEC:     Per TX ring MSI-X table entry (1B entries)
  * @NFP_NET_CFG_TXR_PRIO:    Per TX ring priority (1B entries)
  * @NFP_NET_CFG_TXR_IRQ_MOD: Per TX ring interrupt moderation (4B entries)
@@ -299,7 +299,7 @@ struct nfp_net_fw_ver {
  * RX ring configuration (0x0800 - 0x0c00)
  * @NFP_NET_CFG_RXR_BASE:    Base offset for RX ring configuration
  * @NFP_NET_CFG_RXR_ADDR:    Per TX ring DMA address (8B entries)
- * @NFP_NET_CFG_RXR_SZ:      Per TX ring ring size (1B entries)
+ * @NFP_NET_CFG_RXR_SZ:      Per TX ring size (1B entries)
  * @NFP_NET_CFG_RXR_VEC:     Per TX ring MSI-X table entry (1B entries)
  * @NFP_NET_CFG_RXR_PRIO:    Per TX ring priority (1B entries)
  * @NFP_NET_CFG_RXR_IRQ_MOD: Per TX ring interrupt moderation (4B entries)
@@ -330,7 +330,7 @@ struct nfp_net_fw_ver {
 
 /*
  * General device stats (0x0d00 - 0x0d90)
- * all counters are 64bit.
+ * All counters are 64bit.
  */
 #define NFP_NET_CFG_STATS_BASE          0x0d00
 #define NFP_NET_CFG_STATS_RX_DISCARDS   (NFP_NET_CFG_STATS_BASE + 0x00)
@@ -364,7 +364,7 @@ struct nfp_net_fw_ver {
 
 /*
  * Per ring stats (0x1000 - 0x1800)
- * options, 64bit per entry
+ * Options, 64bit per entry
  * @NFP_NET_CFG_TXR_STATS:   TX ring statistics (Packet and Byte count)
  * @NFP_NET_CFG_RXR_STATS:   RX ring statistics (Packet and Byte count)
  */
@@ -375,9 +375,9 @@ struct nfp_net_fw_ver {
 #define NFP_NET_CFG_RXR_STATS(_x)       (NFP_NET_CFG_RXR_STATS_BASE + \
 					 ((_x) * 0x10))
 
-/**
+/*
  * Mac stats (0x0000 - 0x0200)
- * all counters are 64bit.
+ * All counters are 64bit.
  */
 #define NFP_MAC_STATS_BASE                0x0000
 #define NFP_MAC_STATS_SIZE                0x0200
@@ -558,9 +558,11 @@ struct nfp_net_fw_ver {
 
 int nfp_net_tlv_caps_parse(struct rte_eth_dev *dev);
 
-/*
- * nfp_net_cfg_ctrl_rss() - Get RSS flag based on firmware's capability
- * @hw_cap: The firmware's capabilities
+/**
+ * Get RSS flag based on firmware's capability
+ *
+ * @param hw_cap
+ *   The firmware's capabilities
  */
 static inline uint32_t
 nfp_net_cfg_ctrl_rss(uint32_t hw_cap)

@@ -75,7 +75,7 @@
  * dma_addr_hi - bits [47:32] of host memory address
  * dma_addr_lo - bits [31:0] of host memory address
  *
- * --> metadata descriptor
+ * --> Metadata descriptor
  * Bit     3 3 2 2 2 2 2 2 2 2 2 2 1 1 1 1 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0 0
  * -----\  1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0
  * Word   +-------+-----------------------+---------------------+---+-----+
@@ -104,27 +104,27 @@
  */
 struct nfp_net_nfdk_tx_desc {
 	union {
-		/* Address descriptor */
+		/** Address descriptor */
 		struct {
-			uint16_t dma_addr_hi;  /* High bits of host buf address */
-			uint16_t dma_len_type; /* Length to DMA for this desc */
-			uint32_t dma_addr_lo;  /* Low 32bit of host buf addr */
+			uint16_t dma_addr_hi;  /**< High bits of host buf address */
+			uint16_t dma_len_type; /**< Length to DMA for this desc */
+			uint32_t dma_addr_lo;  /**< Low 32bit of host buf addr */
 		};
 
-		/* TSO descriptor */
+		/** TSO descriptor */
 		struct {
-			uint16_t mss;          /* MSS to be used for LSO */
-			uint8_t lso_hdrlen;    /* LSO, TCP payload offset */
-			uint8_t lso_totsegs;   /* LSO, total segments */
-			uint8_t l3_offset;     /* L3 header offset */
-			uint8_t l4_offset;     /* L4 header offset */
-			uint16_t lso_meta_res; /* Rsvd bits in TSO metadata */
+			uint16_t mss;          /**< MSS to be used for LSO */
+			uint8_t lso_hdrlen;    /**< LSO, TCP payload offset */
+			uint8_t lso_totsegs;   /**< LSO, total segments */
+			uint8_t l3_offset;     /**< L3 header offset */
+			uint8_t l4_offset;     /**< L4 header offset */
+			uint16_t lso_meta_res; /**< Rsvd bits in TSO metadata */
 		};
 
-		/* Metadata descriptor */
+		/** Metadata descriptor */
 		struct {
-			uint8_t flags;         /* TX Flags, see @NFDK_DESC_TX_* */
-			uint8_t reserved[7];   /* meta byte placeholder */
+			uint8_t flags;         /**< TX Flags, see @NFDK_DESC_TX_* */
+			uint8_t reserved[7];   /**< Meta byte place holder */
 		};
 
 		uint32_t vals[2];
@@ -146,13 +146,14 @@ nfp_net_nfdk_free_tx_desc(struct nfp_net_txq *txq)
 			(free_desc - NFDK_TX_DESC_STOP_CNT) : 0;
 }
 
-/*
- * nfp_net_nfdk_txq_full() - Check if the TX queue free descriptors
- * is below tx_free_threshold for firmware of nfdk
- *
- * @txq: TX queue to check
+/**
+ * Check if the TX queue free descriptors is below tx_free_threshold
+ * for firmware of nfdk
  *
  * This function uses the host copy* of read/write pointers.
+ *
+ * @param txq
+ *   TX queue to check
  */
 static inline bool
 nfp_net_nfdk_txq_full(struct nfp_net_txq *txq)

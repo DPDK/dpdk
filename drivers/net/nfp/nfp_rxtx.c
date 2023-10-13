@@ -20,43 +20,22 @@
 /* Maximum number of supported VLANs in parsed form packet metadata. */
 #define NFP_META_MAX_VLANS       2
 
-/*
- * struct nfp_meta_parsed - Record metadata parsed from packet
- *
- * Parsed NFP packet metadata are recorded in this struct. The content is
- * read-only after it have been recorded during parsing by nfp_net_parse_meta().
- *
- * @port_id: Port id value
- * @sa_idx: IPsec SA index
- * @hash: RSS hash value
- * @hash_type: RSS hash type
- * @ipsec_type: IPsec type
- * @vlan_layer: The layers of VLAN info which are passed from nic.
- *              Only this number of entries of the @vlan array are valid.
- *
- * @vlan: Holds information parses from NFP_NET_META_VLAN. The inner most vlan
- *        starts at position 0 and only @vlan_layer entries contain valid
- *        information.
- *
- *        Currently only 2 layers of vlan are supported,
- *        vlan[0] - vlan strip info
- *        vlan[1] - qinq strip info
- *
- * @vlan.offload:  Flag indicates whether VLAN is offloaded
- * @vlan.tpid: Vlan TPID
- * @vlan.tci: Vlan TCI including PCP + Priority + VID
- */
+/* Record metadata parsed from packet */
 struct nfp_meta_parsed {
-	uint32_t port_id;
-	uint32_t sa_idx;
-	uint32_t hash;
-	uint8_t hash_type;
-	uint8_t ipsec_type;
-	uint8_t vlan_layer;
+	uint32_t port_id;         /**< Port id value */
+	uint32_t sa_idx;          /**< IPsec SA index */
+	uint32_t hash;            /**< RSS hash value */
+	uint8_t hash_type;        /**< RSS hash type */
+	uint8_t ipsec_type;       /**< IPsec type */
+	uint8_t vlan_layer;       /**< The valid number of value in @vlan[] */
+	/**
+	 * Holds information parses from NFP_NET_META_VLAN.
+	 * The inner most vlan starts at position 0
+	 */
 	struct {
-		uint8_t offload;
-		uint8_t tpid;
-		uint16_t tci;
+		uint8_t offload;  /**< Flag indicates whether VLAN is offloaded */
+		uint8_t tpid;     /**< Vlan TPID */
+		uint16_t tci;     /**< Vlan TCI (PCP + Priority + VID) */
 	} vlan[NFP_META_MAX_VLANS];
 };
 
@@ -156,7 +135,7 @@ struct nfp_ptype_parsed {
 	uint8_t outer_l3_ptype; /**< Packet type of outer layer 3. */
 };
 
-/* set mbuf checksum flags based on RX descriptor flags */
+/* Set mbuf checksum flags based on RX descriptor flags */
 void
 nfp_net_rx_cksum(struct nfp_net_rxq *rxq,
 		struct nfp_net_rx_desc *rxd,
@@ -254,7 +233,7 @@ nfp_net_rx_queue_count(void *rx_queue)
 	 * descriptors and counting all four if the first has the DD
 	 * bit on. Of course, this is not accurate but can be good for
 	 * performance. But ideally that should be done in descriptors
-	 * chunks belonging to the same cache line
+	 * chunks belonging to the same cache line.
 	 */
 
 	while (count < rxq->rx_count) {
@@ -265,7 +244,7 @@ nfp_net_rx_queue_count(void *rx_queue)
 		count++;
 		idx++;
 
-		/* Wrapping? */
+		/* Wrapping */
 		if ((idx) == rxq->rx_count)
 			idx = 0;
 	}
@@ -273,7 +252,7 @@ nfp_net_rx_queue_count(void *rx_queue)
 	return count;
 }
 
-/* nfp_net_parse_chained_meta() - Parse the chained metadata from packet */
+/* Parse the chained metadata from packet */
 static bool
 nfp_net_parse_chained_meta(uint8_t *meta_base,
 		rte_be32_t meta_header,
@@ -320,12 +299,7 @@ nfp_net_parse_chained_meta(uint8_t *meta_base,
 	return true;
 }
 
-/*
- * nfp_net_parse_meta_hash() - Set mbuf hash data based on the metadata info
- *
- * The RSS hash and hash-type are prepended to the packet data.
- * Extract and decode it and set the mbuf fields.
- */
+/* Set mbuf hash data based on the metadata info */
 static void
 nfp_net_parse_meta_hash(const struct nfp_meta_parsed *meta,
 		struct nfp_net_rxq *rxq,
@@ -341,7 +315,7 @@ nfp_net_parse_meta_hash(const struct nfp_meta_parsed *meta,
 }
 
 /*
- * nfp_net_parse_single_meta() - Parse the single metadata
+ * Parse the single metadata
  *
  * The RSS hash and hash-type are prepended to the packet data.
  * Get it from metadata area.
@@ -355,12 +329,7 @@ nfp_net_parse_single_meta(uint8_t *meta_base,
 	meta->hash = rte_be_to_cpu_32(*(rte_be32_t *)(meta_base + 4));
 }
 
-/*
- * nfp_net_parse_meta_vlan() - Set mbuf vlan_strip data based on metadata info
- *
- * The VLAN info TPID and TCI are prepended to the packet data.
- * Extract and decode it and set the mbuf fields.
- */
+/* Set mbuf vlan_strip data based on metadata info */
 static void
 nfp_net_parse_meta_vlan(const struct nfp_meta_parsed *meta,
 		struct nfp_net_rx_desc *rxd,
@@ -369,19 +338,14 @@ nfp_net_parse_meta_vlan(const struct nfp_meta_parsed *meta,
 {
 	struct nfp_net_hw *hw = rxq->hw;
 
-	/* Skip if hardware don't support setting vlan. */
+	/* Skip if firmware don't support setting vlan. */
 	if ((hw->ctrl & (NFP_NET_CFG_CTRL_RXVLAN | NFP_NET_CFG_CTRL_RXVLAN_V2)) == 0)
 		return;
 
 	/*
-	 * The nic support the two way to send the VLAN info,
-	 * 1. According the metadata to send the VLAN info when NFP_NET_CFG_CTRL_RXVLAN_V2
-	 * is set
-	 * 2. According the descriptor to sned the VLAN info when NFP_NET_CFG_CTRL_RXVLAN
-	 * is set
-	 *
-	 * If the nic doesn't send the VLAN info, it is not necessary
-	 * to do anything.
+	 * The firmware support two ways to send the VLAN info (with priority) :
+	 * 1. Using the metadata when NFP_NET_CFG_CTRL_RXVLAN_V2 is set,
+	 * 2. Using the descriptor when NFP_NET_CFG_CTRL_RXVLAN is set.
 	 */
 	if ((hw->ctrl & NFP_NET_CFG_CTRL_RXVLAN_V2) != 0) {
 		if (meta->vlan_layer > 0 && meta->vlan[0].offload != 0) {
@@ -397,7 +361,7 @@ nfp_net_parse_meta_vlan(const struct nfp_meta_parsed *meta,
 }
 
 /*
- * nfp_net_parse_meta_qinq() - Set mbuf qinq_strip data based on metadata info
+ * Set mbuf qinq_strip data based on metadata info
  *
  * The out VLAN tci are prepended to the packet data.
  * Extract and decode it and set the mbuf fields.
@@ -469,7 +433,7 @@ nfp_net_parse_meta_ipsec(struct nfp_meta_parsed *meta,
 	}
 }
 
-/* nfp_net_parse_meta() - Parse the metadata from packet */
+/* Parse the metadata from packet */
 static void
 nfp_net_parse_meta(struct nfp_net_rx_desc *rxds,
 		struct nfp_net_rxq *rxq,
@@ -672,7 +636,7 @@ nfp_net_parse_ptype(struct nfp_net_rx_desc *rxds,
  * doing now have any benefit at all. Again, tests with this change have not
  * shown any improvement. Also, rte_mempool_get_bulk returns all or nothing
  * so looking at the implications of this type of allocation should be studied
- * deeply
+ * deeply.
  */
 
 uint16_t
@@ -695,7 +659,7 @@ nfp_net_recv_pkts(void *rx_queue,
 	if (unlikely(rxq == NULL)) {
 		/*
 		 * DPDK just checks the queue is lower than max queues
-		 * enabled. But the queue needs to be configured
+		 * enabled. But the queue needs to be configured.
 		 */
 		PMD_RX_LOG(ERR, "RX Bad queue");
 		return 0;
@@ -722,7 +686,7 @@ nfp_net_recv_pkts(void *rx_queue,
 
 		/*
 		 * We got a packet. Let's alloc a new mbuf for refilling the
-		 * free descriptor ring as soon as possible
+		 * free descriptor ring as soon as possible.
 		 */
 		new_mb = rte_pktmbuf_alloc(rxq->mem_pool);
 		if (unlikely(new_mb == NULL)) {
@@ -734,7 +698,7 @@ nfp_net_recv_pkts(void *rx_queue,
 
 		/*
 		 * Grab the mbuf and refill the descriptor with the
-		 * previously allocated mbuf
+		 * previously allocated mbuf.
 		 */
 		mb = rxb->mbuf;
 		rxb->mbuf = new_mb;
@@ -751,7 +715,7 @@ nfp_net_recv_pkts(void *rx_queue,
 			/*
 			 * This should not happen and the user has the
 			 * responsibility of avoiding it. But we have
-			 * to give some info about the error
+			 * to give some info about the error.
 			 */
 			PMD_RX_LOG(ERR, "mbuf overflow likely due to the RX offset.");
 			rte_pktmbuf_free(mb);
@@ -796,7 +760,7 @@ nfp_net_recv_pkts(void *rx_queue,
 		nb_hold++;
 
 		rxq->rd_p++;
-		if (unlikely(rxq->rd_p == rxq->rx_count)) /* wrapping?*/
+		if (unlikely(rxq->rd_p == rxq->rx_count)) /* Wrapping */
 			rxq->rd_p = 0;
 	}
 
@@ -810,7 +774,7 @@ nfp_net_recv_pkts(void *rx_queue,
 
 	/*
 	 * FL descriptors needs to be written before incrementing the
-	 * FL queue WR pointer
+	 * FL queue WR pointer.
 	 */
 	rte_wmb();
 	if (nb_hold > rxq->rx_free_thresh) {
@@ -891,7 +855,7 @@ nfp_net_rx_queue_setup(struct rte_eth_dev *dev,
 
 	/*
 	 * Free memory prior to re-allocation if needed. This is the case after
-	 * calling nfp_net_stop
+	 * calling @nfp_net_stop().
 	 */
 	if (dev->data->rx_queues[queue_idx] != NULL) {
 		nfp_net_rx_queue_release(dev, queue_idx);
@@ -913,7 +877,7 @@ nfp_net_rx_queue_setup(struct rte_eth_dev *dev,
 
 	/*
 	 * Tracking mbuf size for detecting a potential mbuf overflow due to
-	 * RX offset
+	 * RX offset.
 	 */
 	rxq->mem_pool = mp;
 	rxq->mbuf_size = rxq->mem_pool->elt_size;
@@ -944,7 +908,7 @@ nfp_net_rx_queue_setup(struct rte_eth_dev *dev,
 	rxq->dma = (uint64_t)tz->iova;
 	rxq->rxds = tz->addr;
 
-	/* mbuf pointers array for referencing mbufs linked to RX descriptors */
+	/* Mbuf pointers array for referencing mbufs linked to RX descriptors */
 	rxq->rxbufs = rte_zmalloc_socket("rxq->rxbufs",
 			sizeof(*rxq->rxbufs) * nb_desc, RTE_CACHE_LINE_SIZE,
 			socket_id);
@@ -960,7 +924,7 @@ nfp_net_rx_queue_setup(struct rte_eth_dev *dev,
 
 	/*
 	 * Telling the HW about the physical address of the RX ring and number
-	 * of descriptors in log2 format
+	 * of descriptors in log2 format.
 	 */
 	nn_cfg_writeq(hw, NFP_NET_CFG_RXR_ADDR(queue_idx), rxq->dma);
 	nn_cfg_writeb(hw, NFP_NET_CFG_RXR_SZ(queue_idx), rte_log2_u32(nb_desc));
@@ -968,11 +932,14 @@ nfp_net_rx_queue_setup(struct rte_eth_dev *dev,
 	return 0;
 }
 
-/*
- * nfp_net_tx_free_bufs - Check for descriptors with a complete
- * status
- * @txq: TX queue to work with
- * Returns number of descriptors freed
+/**
+ * Check for descriptors with a complete status
+ *
+ * @param txq
+ *   TX queue to work with
+ *
+ * @return
+ *   Number of descriptors freed
  */
 uint32_t
 nfp_net_tx_free_bufs(struct nfp_net_txq *txq)

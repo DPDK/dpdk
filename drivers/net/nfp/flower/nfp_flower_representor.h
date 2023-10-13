@@ -13,7 +13,7 @@ struct nfp_flower_representor {
 	uint16_t switch_domain_id;
 	uint32_t repr_type;
 	uint32_t port_id;
-	uint32_t nfp_idx;    /* only valid for the repr of physical port */
+	uint32_t nfp_idx;    /**< Only valid for the repr of physical port */
 	char name[RTE_ETH_NAME_MAX_LEN];
 	struct rte_ether_addr mac_addr;
 	struct nfp_app_fw_flower *app_fw_flower;

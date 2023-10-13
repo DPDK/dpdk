@@ -19,21 +19,11 @@
 /* Maximum number of NFP packet metadata fields. */
 #define NFP_META_MAX_FIELDS      8
 
-/*
- * struct nfp_net_meta_raw - Raw memory representation of packet metadata
- *
- * Describe the raw metadata format, useful when preparing metadata for a
- * transmission mbuf.
- *
- * @header: NFD3 or NFDk field type header (see format in nfp.rst)
- * @data: Array of each fields data member
- * @length: Keep track of number of valid fields in @header and data. Not part
- *          of the raw metadata.
- */
+/* Describe the raw metadata format. */
 struct nfp_net_meta_raw {
-	uint32_t header;
-	uint32_t data[NFP_META_MAX_FIELDS];
-	uint8_t length;
+	uint32_t header; /**< Field type header (see format in nfp.rst) */
+	uint32_t data[NFP_META_MAX_FIELDS]; /**< Array of each fields data member */
+	uint8_t length; /**< Number of valid fields in @header */
 };
 
 /* Descriptor alignment */

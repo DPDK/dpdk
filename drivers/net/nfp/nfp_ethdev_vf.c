@@ -48,12 +48,12 @@ nfp_netvf_start(struct rte_eth_dev *dev)
 	/* Enabling the required queues in the device */
 	nfp_net_enable_queues(dev);
 
-	/* check and configure queue intr-vector mapping */
+	/* Check and configure queue intr-vector mapping */
 	if (dev->data->dev_conf.intr_conf.rxq != 0) {
 		if (rte_intr_type_get(intr_handle) == RTE_INTR_HANDLE_UIO) {
 			/*
 			 * Better not to share LSC with RX interrupts.
-			 * Unregistering LSC interrupt handler
+			 * Unregistering LSC interrupt handler.
 			 */
 			rte_intr_callback_unregister(pci_dev->intr_handle,
 					nfp_net_dev_interrupt_handler, (void *)dev);
@@ -102,7 +102,7 @@ nfp_netvf_start(struct rte_eth_dev *dev)
 
 	/*
 	 * Allocating rte mbufs for configured rx queues.
-	 * This requires queues being enabled before
+	 * This requires queues being enabled before.
 	 */
 	if (nfp_net_rx_freelist_setup(dev) != 0) {
 		ret = -ENOMEM;
@@ -188,17 +188,12 @@ nfp_netvf_close(struct rte_eth_dev *dev)
 
 	rte_intr_disable(pci_dev->intr_handle);
 
-	/* unregister callback func from eal lib */
+	/* Unregister callback func from eal lib */
 	rte_intr_callback_unregister(pci_dev->intr_handle,
 			nfp_net_dev_interrupt_handler, (void *)dev);
 
-	/* Cancel possible impending LSC work here before releasing the port*/
+	/* Cancel possible impending LSC work here before releasing the port */
 	rte_eal_alarm_cancel(nfp_net_dev_interrupt_delayed_handler, (void *)dev);
-
-	/*
-	 * The ixgbe PMD disables the pcie master on the
-	 * device. The i40e does not...
-	 */
 
 	return 0;
 }

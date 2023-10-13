@@ -108,21 +108,21 @@
 #define NVGRE_V4_LEN     (sizeof(struct rte_ether_hdr) + \
 				sizeof(struct rte_ipv4_hdr) + \
 				sizeof(struct rte_flow_item_gre) + \
-				sizeof(rte_be32_t))    /* gre key */
+				sizeof(rte_be32_t))    /* Gre key */
 #define NVGRE_V6_LEN     (sizeof(struct rte_ether_hdr) + \
 				sizeof(struct rte_ipv6_hdr) + \
 				sizeof(struct rte_flow_item_gre) + \
-				sizeof(rte_be32_t))    /* gre key */
+				sizeof(rte_be32_t))    /* Gre key */
 
 /* Process structure associated with a flow item */
 struct nfp_flow_item_proc {
-	/* Bit-mask for fields supported by this PMD. */
+	/** Bit-mask for fields supported by this PMD. */
 	const void *mask_support;
-	/* Bit-mask to use when @p item->mask is not provided. */
+	/** Bit-mask to use when @p item->mask is not provided. */
 	const void *mask_default;
-	/* Size in bytes for @p mask_support and @p mask_default. */
+	/** Size in bytes for @p mask_support and @p mask_default. */
 	const size_t mask_sz;
-	/* Merge a pattern item into a flow rule handle. */
+	/** Merge a pattern item into a flow rule handle. */
 	int (*merge)(struct nfp_app_fw_flower *app_fw_flower,
 			struct rte_flow *nfp_flow,
 			char **mbuf_off,
@@ -130,7 +130,7 @@ struct nfp_flow_item_proc {
 			const struct nfp_flow_item_proc *proc,
 			bool is_mask,
 			bool is_outer_layer);
-	/* List of possible subsequent items. */
+	/** List of possible subsequent items. */
 	const enum rte_flow_item_type *const next_item;
 };
 
@@ -308,12 +308,12 @@ nfp_check_mask_add(struct nfp_flow_priv *priv,
 
 	mask_entry = nfp_mask_table_search(priv, mask_data, mask_len);
 	if (mask_entry == NULL) {
-		/* mask entry does not exist, let's create one */
+		/* Mask entry does not exist, let's create one */
 		ret = nfp_mask_table_add(priv, mask_data, mask_len, mask_id);
 		if (ret != 0)
 			return false;
 	} else {
-		/* mask entry already exist */
+		/* Mask entry already exist */
 		mask_entry->ref_cnt++;
 		*mask_id = mask_entry->mask_id;
 	}
@@ -818,7 +818,7 @@ nfp_flow_key_layers_calculate_items(const struct rte_flow_item items[],
 		case RTE_FLOW_ITEM_TYPE_ETH:
 			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ITEM_TYPE_ETH detected");
 			/*
-			 * eth is set with no specific params.
+			 * Eth is set with no specific params.
 			 * NFP does not need this.
 			 */
 			if (item->spec == NULL)
@@ -879,7 +879,7 @@ nfp_flow_key_layers_calculate_items(const struct rte_flow_item items[],
 				key_ls->key_size += sizeof(struct nfp_flower_ipv4_udp_tun);
 				/*
 				 * The outer l3 layer information is
-				 * in `struct nfp_flower_ipv4_udp_tun`
+				 * in `struct nfp_flower_ipv4_udp_tun`.
 				 */
 				key_ls->key_size -= sizeof(struct nfp_flower_ipv4);
 			} else if (outer_ip6_flag) {
@@ -889,7 +889,7 @@ nfp_flow_key_layers_calculate_items(const struct rte_flow_item items[],
 				key_ls->key_size += sizeof(struct nfp_flower_ipv6_udp_tun);
 				/*
 				 * The outer l3 layer information is
-				 * in `struct nfp_flower_ipv6_udp_tun`
+				 * in `struct nfp_flower_ipv6_udp_tun`.
 				 */
 				key_ls->key_size -= sizeof(struct nfp_flower_ipv6);
 			} else {
@@ -910,7 +910,7 @@ nfp_flow_key_layers_calculate_items(const struct rte_flow_item items[],
 				key_ls->key_size += sizeof(struct nfp_flower_ipv4_udp_tun);
 				/*
 				 * The outer l3 layer information is
-				 * in `struct nfp_flower_ipv4_udp_tun`
+				 * in `struct nfp_flower_ipv4_udp_tun`.
 				 */
 				key_ls->key_size -= sizeof(struct nfp_flower_ipv4);
 			} else if (outer_ip6_flag) {
@@ -918,7 +918,7 @@ nfp_flow_key_layers_calculate_items(const struct rte_flow_item items[],
 				key_ls->key_size += sizeof(struct nfp_flower_ipv6_udp_tun);
 				/*
 				 * The outer l3 layer information is
-				 * in `struct nfp_flower_ipv6_udp_tun`
+				 * in `struct nfp_flower_ipv6_udp_tun`.
 				 */
 				key_ls->key_size -= sizeof(struct nfp_flower_ipv6);
 			} else {
@@ -939,7 +939,7 @@ nfp_flow_key_layers_calculate_items(const struct rte_flow_item items[],
 				key_ls->key_size += sizeof(struct nfp_flower_ipv4_gre_tun);
 				/*
 				 * The outer l3 layer information is
-				 * in `struct nfp_flower_ipv4_gre_tun`
+				 * in `struct nfp_flower_ipv4_gre_tun`.
 				 */
 				key_ls->key_size -= sizeof(struct nfp_flower_ipv4);
 			} else if (outer_ip6_flag) {
@@ -947,7 +947,7 @@ nfp_flow_key_layers_calculate_items(const struct rte_flow_item items[],
 				key_ls->key_size += sizeof(struct nfp_flower_ipv6_gre_tun);
 				/*
 				 * The outer l3 layer information is
-				 * in `struct nfp_flower_ipv6_gre_tun`
+				 * in `struct nfp_flower_ipv6_gre_tun`.
 				 */
 				key_ls->key_size -= sizeof(struct nfp_flower_ipv6);
 			} else {
@@ -1309,8 +1309,8 @@ nfp_flow_merge_ipv4(__rte_unused struct nfp_app_fw_flower *app_fw_flower,
 		}
 
 		/*
-		 * reserve space for L4 info.
-		 * rte_flow has ipv4 before L4 but NFP flower fw requires L4 before ipv4
+		 * Reserve space for L4 info.
+		 * rte_flow has ipv4 before L4 but NFP flower fw requires L4 before ipv4.
 		 */
 		if ((meta_tci->nfp_flow_key_layer & NFP_FLOWER_LAYER_TP) != 0)
 			*mbuf_off += sizeof(struct nfp_flower_tp_ports);
@@ -1392,8 +1392,8 @@ nfp_flow_merge_ipv6(__rte_unused struct nfp_app_fw_flower *app_fw_flower,
 		}
 
 		/*
-		 * reserve space for L4 info.
-		 * rte_flow has ipv4 before L4 but NFP flower fw requires L4 before ipv6
+		 * Reserve space for L4 info.
+		 * rte_flow has ipv6 before L4 but NFP flower fw requires L4 before ipv6.
 		 */
 		if ((meta_tci->nfp_flow_key_layer & NFP_FLOWER_LAYER_TP) != 0)
 			*mbuf_off += sizeof(struct nfp_flower_tp_ports);
@@ -2127,7 +2127,7 @@ nfp_flow_compile_items(struct nfp_flower_representor *representor,
 	if (nfp_flow_tcp_flag_check(items))
 		nfp_flow->tcp_flag = true;
 
-	/* Check if this is a tunnel flow and get the inner item*/
+	/* Check if this is a tunnel flow and get the inner item */
 	is_tun_flow = nfp_flow_inner_item_get(items, &loop_item);
 	if (is_tun_flow)
 		is_outer_layer = false;
@@ -3366,9 +3366,9 @@ nfp_flow_action_raw_encap(struct nfp_app_fw_flower *app_fw_flower,
 		return -EINVAL;
 	}
 
-	/* Pre_tunnel action must be the first on action list.
-	 * If other actions already exist, they need to be
-	 * pushed forward.
+	/*
+	 * Pre_tunnel action must be the first on action list.
+	 * If other actions already exist, they need to be pushed forward.
 	 */
 	act_len = act_data - actions;
 	if (act_len != 0) {
@@ -4384,7 +4384,7 @@ nfp_flow_priv_init(struct nfp_pf_dev *pf_dev)
 		goto free_mask_id;
 	}
 
-	/* flow stats */
+	/* Flow stats */
 	rte_spinlock_init(&priv->stats_lock);
 	stats_size = (ctx_count & NFP_FL_STAT_ID_STAT) |
 			((ctx_split - 1) & NFP_FL_STAT_ID_MU_NUM);
@@ -4398,7 +4398,7 @@ nfp_flow_priv_init(struct nfp_pf_dev *pf_dev)
 		goto free_stats_id;
 	}
 
-	/* mask table */
+	/* Mask table */
 	mask_hash_params.hash_func_init_val = priv->hash_seed;
 	priv->mask_table = rte_hash_create(&mask_hash_params);
 	if (priv->mask_table == NULL) {
@@ -4407,7 +4407,7 @@ nfp_flow_priv_init(struct nfp_pf_dev *pf_dev)
 		goto free_stats;
 	}
 
-	/* flow table */
+	/* Flow table */
 	flow_hash_params.hash_func_init_val = priv->hash_seed;
 	flow_hash_params.entries = ctx_count;
 	priv->flow_table = rte_hash_create(&flow_hash_params);
@@ -4417,7 +4417,7 @@ nfp_flow_priv_init(struct nfp_pf_dev *pf_dev)
 		goto free_mask_table;
 	}
 
-	/* pre tunnel table */
+	/* Pre tunnel table */
 	priv->pre_tun_cnt = 1;
 	pre_tun_hash_params.hash_func_init_val = priv->hash_seed;
 	priv->pre_tun_table = rte_hash_create(&pre_tun_hash_params);
@@ -4446,15 +4446,15 @@ nfp_flow_priv_init(struct nfp_pf_dev *pf_dev)
 		goto free_ct_zone_table;
 	}
 
-	/* ipv4 off list */
+	/* IPv4 off list */
 	rte_spinlock_init(&priv->ipv4_off_lock);
 	LIST_INIT(&priv->ipv4_off_list);
 
-	/* ipv6 off list */
+	/* IPv6 off list */
 	rte_spinlock_init(&priv->ipv6_off_lock);
 	LIST_INIT(&priv->ipv6_off_list);
 
-	/* neighbor next list */
+	/* Neighbor next list */
 	LIST_INIT(&priv->nn_list);
 
 	return 0;

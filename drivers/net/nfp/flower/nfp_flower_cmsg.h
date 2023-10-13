@@ -348,7 +348,7 @@ struct nfp_flower_stats_frame {
 	rte_be64_t stats_cookie;
 };
 
-/**
+/*
  * See RFC 2698 for more details.
  * Word[0](Flag options):
  * [15] p(pps) 1 for pps, 0 for bps
@@ -378,40 +378,24 @@ struct nfp_cfg_head {
 	rte_be32_t profile_id;
 };
 
-/**
- * Struct nfp_profile_conf - profile config, offload to NIC
- * @head:        config head information
- * @bkt_tkn_p:   token bucket peak
- * @bkt_tkn_c:   token bucket committed
- * @pbs:         peak burst size
- * @cbs:         committed burst size
- * @pir:         peak information rate
- * @cir:         committed information rate
- */
+/* Profile config, offload to NIC */
 struct nfp_profile_conf {
-	struct nfp_cfg_head head;
-	rte_be32_t bkt_tkn_p;
-	rte_be32_t bkt_tkn_c;
-	rte_be32_t pbs;
-	rte_be32_t cbs;
-	rte_be32_t pir;
-	rte_be32_t cir;
+	struct nfp_cfg_head head;    /**< Config head information */
+	rte_be32_t bkt_tkn_p;        /**< Token bucket peak */
+	rte_be32_t bkt_tkn_c;        /**< Token bucket committed */
+	rte_be32_t pbs;              /**< Peak burst size */
+	rte_be32_t cbs;              /**< Committed burst size */
+	rte_be32_t pir;              /**< Peak information rate */
+	rte_be32_t cir;              /**< Committed information rate */
 };
 
-/**
- * Struct nfp_mtr_stats_reply - meter stats, read from firmware
- * @head:          config head information
- * @pass_bytes:    count of passed bytes
- * @pass_pkts:     count of passed packets
- * @drop_bytes:    count of dropped bytes
- * @drop_pkts:     count of dropped packets
- */
+/* Meter stats, read from firmware */
 struct nfp_mtr_stats_reply {
-	struct nfp_cfg_head head;
-	rte_be64_t pass_bytes;
-	rte_be64_t pass_pkts;
-	rte_be64_t drop_bytes;
-	rte_be64_t drop_pkts;
+	struct nfp_cfg_head head;    /**< Config head information */
+	rte_be64_t pass_bytes;       /**< Count of passed bytes */
+	rte_be64_t pass_pkts;        /**< Count of passed packets */
+	rte_be64_t drop_bytes;       /**< Count of dropped bytes */
+	rte_be64_t drop_pkts;        /**< Count of dropped packets */
 };
 
 enum nfp_flower_cmsg_port_type {
@@ -851,7 +835,7 @@ struct nfp_fl_act_set_ipv6_addr {
 };
 
 /*
- * ipv6 tc hl fl
+ * Ipv6 tc hl fl
  *    3                   2                   1
  *  1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0
  * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -954,9 +938,9 @@ struct nfp_fl_act_set_tun {
 	uint8_t    tos;
 	rte_be16_t outer_vlan_tpid;
 	rte_be16_t outer_vlan_tci;
-	uint8_t    tun_len;      /* Only valid for NFP_FL_TUNNEL_GENEVE */
+	uint8_t    tun_len;      /**< Only valid for NFP_FL_TUNNEL_GENEVE */
 	uint8_t    reserved2;
-	rte_be16_t tun_proto;    /* Only valid for NFP_FL_TUNNEL_GENEVE */
+	rte_be16_t tun_proto;    /**< Only valid for NFP_FL_TUNNEL_GENEVE */
 } __rte_packed;
 
 /*

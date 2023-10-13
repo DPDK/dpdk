@@ -53,49 +53,49 @@ struct nfp_flower_nfd_func {
 
 /* The flower application's private structure */
 struct nfp_app_fw_flower {
-	/* switch domain for this app */
+	/** Switch domain for this app */
 	uint16_t switch_domain_id;
 
-	/* Number of VF representors */
+	/** Number of VF representors */
 	uint8_t num_vf_reprs;
 
-	/* Number of phyport representors */
+	/** Number of phyport representors */
 	uint8_t num_phyport_reprs;
 
-	/* Pointer to the PF vNIC */
+	/** Pointer to the PF vNIC */
 	struct nfp_net_hw *pf_hw;
 
-	/* Pointer to a mempool for the ctrlvNIC */
+	/** Pointer to a mempool for the Ctrl vNIC */
 	struct rte_mempool *ctrl_pktmbuf_pool;
 
-	/* Pointer to the ctrl vNIC */
+	/** Pointer to the ctrl vNIC */
 	struct nfp_net_hw *ctrl_hw;
 
-	/* Ctrl vNIC Rx counter */
+	/** Ctrl vNIC Rx counter */
 	uint64_t ctrl_vnic_rx_count;
 
-	/* Ctrl vNIC Tx counter */
+	/** Ctrl vNIC Tx counter */
 	uint64_t ctrl_vnic_tx_count;
 
-	/* Array of phyport representors */
+	/** Array of phyport representors */
 	struct nfp_flower_representor *phy_reprs[MAX_FLOWER_PHYPORTS];
 
-	/* Array of VF representors */
+	/** Array of VF representors */
 	struct nfp_flower_representor *vf_reprs[MAX_FLOWER_VFS];
 
-	/* PF representor */
+	/** PF representor */
 	struct nfp_flower_representor *pf_repr;
 
-	/* service id of ctrl vnic service */
+	/** Service id of Ctrl vNIC service */
 	uint32_t ctrl_vnic_id;
 
-	/* Flower extra features */
+	/** Flower extra features */
 	uint64_t ext_features;
 
 	struct nfp_flow_priv *flow_priv;
 	struct nfp_mtr_priv *mtr_priv;
 
-	/* Function pointers for different NFD version */
+	/** Function pointers for different NFD version */
 	struct nfp_flower_nfd_func nfd_func;
 };
 

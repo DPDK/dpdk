@@ -67,7 +67,7 @@ nfp_net_start(struct rte_eth_dev *dev)
 	/* Enabling the required queues in the device */
 	nfp_net_enable_queues(dev);
 
-	/* check and configure queue intr-vector mapping */
+	/* Check and configure queue intr-vector mapping */
 	if (dev->data->dev_conf.intr_conf.rxq != 0) {
 		if (app_fw_nic->multiport) {
 			PMD_INIT_LOG(ERR, "PMD rx interrupt is not supported "
@@ -77,7 +77,7 @@ nfp_net_start(struct rte_eth_dev *dev)
 		if (rte_intr_type_get(intr_handle) == RTE_INTR_HANDLE_UIO) {
 			/*
 			 * Better not to share LSC with RX interrupts.
-			 * Unregistering LSC interrupt handler
+			 * Unregistering LSC interrupt handler.
 			 */
 			rte_intr_callback_unregister(pci_dev->intr_handle,
 					nfp_net_dev_interrupt_handler, (void *)dev);
@@ -151,7 +151,7 @@ nfp_net_start(struct rte_eth_dev *dev)
 
 	/*
 	 * Allocating rte mbufs for configured rx queues.
-	 * This requires queues being enabled before
+	 * This requires queues being enabled before.
 	 */
 	if (nfp_net_rx_freelist_setup(dev) != 0) {
 		ret = -ENOMEM;
@@ -279,11 +279,11 @@ nfp_net_close(struct rte_eth_dev *dev)
 	/* Clear ipsec */
 	nfp_ipsec_uninit(dev);
 
-	/* Cancel possible impending LSC work here before releasing the port*/
+	/* Cancel possible impending LSC work here before releasing the port */
 	rte_eal_alarm_cancel(nfp_net_dev_interrupt_delayed_handler, (void *)dev);
 
 	/* Only free PF resources after all physical ports have been closed */
-	/* Mark this port as unused and free device priv resources*/
+	/* Mark this port as unused and free device priv resources */
 	nn_cfg_writeb(hw, NFP_NET_CFG_LSC, 0xff);
 	app_fw_nic->ports[hw->idx] = NULL;
 	rte_eth_dev_release_port(dev);
@@ -306,14 +306,9 @@ nfp_net_close(struct rte_eth_dev *dev)
 
 	rte_intr_disable(pci_dev->intr_handle);
 
-	/* unregister callback func from eal lib */
+	/* Unregister callback func from eal lib */
 	rte_intr_callback_unregister(pci_dev->intr_handle,
 			nfp_net_dev_interrupt_handler, (void *)dev);
-
-	/*
-	 * The ixgbe PMD disables the pcie master on the
-	 * device. The i40e does not...
-	 */
 
 	return 0;
 }
@@ -503,7 +498,7 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 
 	/*
 	 * Use PF array of physical ports to get pointer to
-	 * this specific port
+	 * this specific port.
 	 */
 	hw = app_fw_nic->ports[port];
 
@@ -786,7 +781,7 @@ nfp_init_app_fw_nic(struct nfp_pf_dev *pf_dev,
 
 	/*
 	 * For coreNIC the number of vNICs exposed should be the same as the
-	 * number of physical ports
+	 * number of physical ports.
 	 */
 	if (total_vnics != nfp_eth_table->count) {
 		PMD_INIT_LOG(ERR, "Total physical ports do not match number of vNICs");
@@ -794,7 +789,7 @@ nfp_init_app_fw_nic(struct nfp_pf_dev *pf_dev,
 		goto app_cleanup;
 	}
 
-	/* Populate coreNIC app properties*/
+	/* Populate coreNIC app properties */
 	app_fw_nic->total_phyports = total_vnics;
 	app_fw_nic->pf_dev = pf_dev;
 	if (total_vnics > 1)
@@ -849,8 +844,9 @@ nfp_init_app_fw_nic(struct nfp_pf_dev *pf_dev,
 
 		eth_dev->device = &pf_dev->pci_dev->device;
 
-		/* ctrl/tx/rx BAR mappings and remaining init happens in
-		 * nfp_net_init
+		/*
+		 * Ctrl/tx/rx BAR mappings and remaining init happens in
+		 * @nfp_net_init()
 		 */
 		ret = nfp_net_init(eth_dev);
 		if (ret != 0) {
@@ -977,7 +973,7 @@ nfp_pf_init(struct rte_pci_device *pci_dev)
 	pf_dev->pci_dev = pci_dev;
 	pf_dev->nfp_eth_table = nfp_eth_table;
 
-	/* configure access to tx/rx vNIC BARs */
+	/* Configure access to tx/rx vNIC BARs */
 	addr = nfp_qcp_queue_offset(dev_info, 0);
 	cpp_id = NFP_CPP_ISLAND_ID(0, NFP_CPP_ACTION_RW, 0, 0);
 
@@ -993,7 +989,7 @@ nfp_pf_init(struct rte_pci_device *pci_dev)
 
 	/*
 	 * PF initialization has been done at this point. Call app specific
-	 * init code now
+	 * init code now.
 	 */
 	switch (pf_dev->app_fw_id) {
 	case NFP_APP_FW_CORE_NIC:
@@ -1018,7 +1014,7 @@ nfp_pf_init(struct rte_pci_device *pci_dev)
 		goto hwqueues_cleanup;
 	}
 
-	/* register the CPP bridge service here for primary use */
+	/* Register the CPP bridge service here for primary use */
 	ret = nfp_enable_cpp_service(pf_dev);
 	if (ret != 0)
 		PMD_INIT_LOG(INFO, "Enable cpp service failed.");
@@ -1086,7 +1082,7 @@ nfp_secondary_init_app_fw_nic(struct rte_pci_device *pci_dev,
 /*
  * When attaching to the NFP4000/6000 PF on a secondary process there
  * is no need to initialise the PF again. Only minimal work is required
- * here
+ * here.
  */
 static int
 nfp_pf_secondary_init(struct rte_pci_device *pci_dev)
@@ -1126,7 +1122,7 @@ nfp_pf_secondary_init(struct rte_pci_device *pci_dev)
 
 	/*
 	 * We don't have access to the PF created in the primary process
-	 * here so we have to read the number of ports from firmware
+	 * here so we have to read the number of ports from firmware.
 	 */
 	sym_tbl = nfp_rtsym_table_read(cpp);
 	if (sym_tbl == NULL) {
@@ -1223,7 +1219,7 @@ nfp_pci_uninit(struct rte_eth_dev *eth_dev)
 		rte_eth_dev_close(port_id);
 	/*
 	 * Ports can be closed and freed but hotplugging is not
-	 * currently supported
+	 * currently supported.
 	 */
 	return -ENOTSUP;
 }

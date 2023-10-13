@@ -53,7 +53,7 @@ enum nfp_app_fw_id {
 	NFP_APP_FW_FLOWER_NIC             = 0x3,
 };
 
-/* nfp_qcp_ptr - Read or Write Pointer of a queue */
+/* Read or Write Pointer of a queue */
 enum nfp_qcp_ptr {
 	NFP_QCP_READ_PTR = 0,
 	NFP_QCP_WRITE_PTR
@@ -72,15 +72,15 @@ struct nfp_net_tlv_caps {
 };
 
 struct nfp_pf_dev {
-	/* Backpointer to associated pci device */
+	/** Backpointer to associated pci device */
 	struct rte_pci_device *pci_dev;
 
 	enum nfp_app_fw_id app_fw_id;
 
-	/* Pointer to the app running on the PF */
+	/** Pointer to the app running on the PF */
 	void *app_fw_priv;
 
-	/* The eth table reported by firmware */
+	/** The eth table reported by firmware */
 	struct nfp_eth_table *nfp_eth_table;
 
 	uint8_t *ctrl_bar;
@@ -94,17 +94,17 @@ struct nfp_pf_dev {
 	struct nfp_hwinfo *hwinfo;
 	struct nfp_rtsym_table *sym_tbl;
 
-	/* service id of cpp bridge service */
+	/** Service id of cpp bridge service */
 	uint32_t cpp_bridge_id;
 };
 
 struct nfp_app_fw_nic {
-	/* Backpointer to the PF device */
+	/** Backpointer to the PF device */
 	struct nfp_pf_dev *pf_dev;
 
-	/*
-	 * Array of physical ports belonging to the this CoreNIC app
-	 * This is really a list of vNIC's. One for each physical port
+	/**
+	 * Array of physical ports belonging to this CoreNIC app.
+	 * This is really a list of vNIC's, one for each physical port.
 	 */
 	struct nfp_net_hw *ports[NFP_MAX_PHYPORTS];
 
@@ -113,13 +113,13 @@ struct nfp_app_fw_nic {
 };
 
 struct nfp_net_hw {
-	/* Backpointer to the PF this port belongs to */
+	/** Backpointer to the PF this port belongs to */
 	struct nfp_pf_dev *pf_dev;
 
-	/* Backpointer to the eth_dev of this port*/
+	/** Backpointer to the eth_dev of this port */
 	struct rte_eth_dev *eth_dev;
 
-	/* Info from the firmware */
+	/** Info from the firmware */
 	uint32_t cap_ext;
 	struct nfp_net_fw_ver ver;
 	uint32_t cap;
@@ -131,7 +131,7 @@ struct nfp_net_hw {
 	/** NFP ASIC params */
 	const struct nfp_dev_info *dev_info;
 
-	/* Current values for control */
+	/** Current values for control */
 	uint32_t ctrl;
 
 	uint8_t *ctrl_bar;
@@ -157,7 +157,7 @@ struct nfp_net_hw {
 
 	struct rte_ether_addr mac_addr;
 
-	/* Records starting point for counters */
+	/** Records starting point for counters */
 	struct rte_eth_stats eth_stats_base;
 	struct rte_eth_xstat *eth_xstats_base;
 
@@ -167,9 +167,9 @@ struct nfp_net_hw {
 	uint8_t *mac_stats_bar;
 	uint8_t *mac_stats;
 
-	/* Sequential physical port number, only valid for CoreNIC firmware */
+	/** Sequential physical port number, only valid for CoreNIC firmware */
 	uint8_t idx;
-	/* Internal port number as seen from NFP */
+	/** Internal port number as seen from NFP */
 	uint8_t nfp_idx;
 
 	struct nfp_net_tlv_caps tlv_caps;
@@ -241,10 +241,6 @@ nn_writeq(uint64_t val,
 	nn_writel(val, addr);
 }
 
-/*
- * Functions to read/write from/to Config BAR
- * Performs any endian conversion necessary.
- */
 static inline uint8_t
 nn_cfg_readb(struct nfp_net_hw *hw,
 		uint32_t off)
@@ -305,11 +301,15 @@ nn_cfg_writeq(struct nfp_net_hw *hw,
 	nn_writeq(rte_cpu_to_le_64(val), hw->ctrl_bar + off);
 }
 
-/*
- * nfp_qcp_ptr_add - Add the value to the selected pointer of a queue
- * @q: Base address for queue structure
- * @ptr: Add to the Read or Write pointer
- * @val: Value to add to the queue pointer
+/**
+ * Add the value to the selected pointer of a queue.
+ *
+ * @param q
+ *   Base address for queue structure
+ * @param ptr
+ *   Add to the read or write pointer
+ * @param val
+ *   Value to add to the queue pointer
  */
 static inline void
 nfp_qcp_ptr_add(uint8_t *q,
@@ -326,10 +326,13 @@ nfp_qcp_ptr_add(uint8_t *q,
 	nn_writel(rte_cpu_to_le_32(val), q + off);
 }
 
-/*
- * nfp_qcp_read - Read the current Read/Write pointer value for a queue
- * @q:  Base address for queue structure
- * @ptr: Read or Write pointer
+/**
+ * Read the current read/write pointer value for a queue.
+ *
+ * @param q
+ *   Base address for queue structure
+ * @param ptr
+ *   Read or Write pointer
  */
 static inline uint32_t
 nfp_qcp_read(uint8_t *q,

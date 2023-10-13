@@ -216,7 +216,7 @@ nfp_flower_pf_close(struct rte_eth_dev *dev)
 		nfp_net_reset_rx_queue(this_rx_q);
 	}
 
-	/* Cancel possible impending LSC work here before releasing the port*/
+	/* Cancel possible impending LSC work here before releasing the port */
 	rte_eal_alarm_cancel(nfp_net_dev_interrupt_delayed_handler, (void *)dev);
 
 	nn_cfg_writeb(hw, NFP_NET_CFG_LSC, 0xff);
@@ -496,7 +496,7 @@ nfp_flower_init_ctrl_vnic(struct nfp_net_hw *hw)
 
 		/*
 		 * Tracking mbuf size for detecting a potential mbuf overflow due to
-		 * RX offset
+		 * RX offset.
 		 */
 		rxq->mem_pool = mp;
 		rxq->mbuf_size = rxq->mem_pool->elt_size;
@@ -543,7 +543,7 @@ nfp_flower_init_ctrl_vnic(struct nfp_net_hw *hw)
 
 		/*
 		 * Telling the HW about the physical address of the RX ring and number
-		 * of descriptors in log2 format
+		 * of descriptors in log2 format.
 		 */
 		nn_cfg_writeq(hw, NFP_NET_CFG_RXR_ADDR(i), rxq->dma);
 		nn_cfg_writeb(hw, NFP_NET_CFG_RXR_SZ(i), rte_log2_u32(CTRL_VNIC_NB_DESC));
@@ -608,7 +608,7 @@ nfp_flower_init_ctrl_vnic(struct nfp_net_hw *hw)
 
 		/*
 		 * Telling the HW about the physical address of the TX ring and number
-		 * of descriptors in log2 format
+		 * of descriptors in log2 format.
 		 */
 		nn_cfg_writeq(hw, NFP_NET_CFG_TXR_ADDR(i), txq->dma);
 		nn_cfg_writeb(hw, NFP_NET_CFG_TXR_SZ(i), rte_log2_u32(CTRL_VNIC_NB_DESC));
@@ -766,7 +766,7 @@ nfp_flower_enable_services(struct nfp_app_fw_flower *app_fw_flower)
 	app_fw_flower->ctrl_vnic_id = service_id;
 	PMD_INIT_LOG(INFO, "%s registered", flower_service.name);
 
-	/* Map them to available service cores*/
+	/* Map them to available service cores */
 	ret = nfp_map_service(service_id);
 	if (ret != 0) {
 		PMD_INIT_LOG(ERR, "Could not map %s", flower_service.name);

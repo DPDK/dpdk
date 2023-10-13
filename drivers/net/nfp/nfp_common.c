@@ -55,7 +55,7 @@ struct nfp_xstat {
 }
 
 static const struct nfp_xstat nfp_net_xstats[] = {
-	/**
+	/*
 	 * Basic xstats available on both VF and PF.
 	 * Note that in case new statistics of group NFP_XSTAT_GROUP_NET
 	 * are added to this array, they must appear before any statistics
@@ -80,7 +80,7 @@ static const struct nfp_xstat nfp_net_xstats[] = {
 	NFP_XSTAT_NET("bpf_app2_bytes", APP2_BYTES),
 	NFP_XSTAT_NET("bpf_app3_pkts", APP3_FRAMES),
 	NFP_XSTAT_NET("bpf_app3_bytes", APP3_BYTES),
-	/**
+	/*
 	 * MAC xstats available only on PF. These statistics are not available for VFs as the
 	 * PF is not initialized when the VF is initialized as it is still bound to the kernel
 	 * driver. As such, the PMD cannot obtain a CPP handle and access the rtsym_table in order
@@ -175,7 +175,7 @@ static void
 nfp_net_notify_port_speed(struct nfp_net_hw *hw,
 		struct rte_eth_link *link)
 {
-	/**
+	/*
 	 * Read the link status from NFP_NET_CFG_STS. If the link is down
 	 * then write the link speed NFP_NET_CFG_STS_LINK_RATE_UNKNOWN to
 	 * NFP_NET_CFG_STS_NSP_LINK_RATE.
@@ -184,7 +184,7 @@ nfp_net_notify_port_speed(struct nfp_net_hw *hw,
 		nn_cfg_writew(hw, NFP_NET_CFG_STS_NSP_LINK_RATE, NFP_NET_CFG_STS_LINK_RATE_UNKNOWN);
 		return;
 	}
-	/**
+	/*
 	 * Link is up so write the link speed from the eth_table to
 	 * NFP_NET_CFG_STS_NSP_LINK_RATE.
 	 */
@@ -214,7 +214,7 @@ __nfp_net_reconfig(struct nfp_net_hw *hw,
 	nfp_qcp_ptr_add(hw->qcp_cfg, NFP_QCP_WRITE_PTR, 1);
 
 	wait.tv_sec = 0;
-	wait.tv_nsec = 1000000;
+	wait.tv_nsec = 1000000; /* 1ms */
 
 	PMD_DRV_LOG(DEBUG, "Polling for update ack...");
 
@@ -253,7 +253,7 @@ __nfp_net_reconfig(struct nfp_net_hw *hw,
  *
  * @return
  *   - (0) if OK to reconfigure the device.
- *   - (EIO) if I/O err and fail to reconfigure the device.
+ *   - (-EIO) if I/O err and fail to reconfigure the device.
  */
 int
 nfp_net_reconfig(struct nfp_net_hw *hw,
@@ -297,7 +297,7 @@ nfp_net_reconfig(struct nfp_net_hw *hw,
  *
  * @return
  *   - (0) if OK to reconfigure the device.
- *   - (EIO) if I/O err and fail to reconfigure the device.
+ *   - (-EIO) if I/O err and fail to reconfigure the device.
  */
 int
 nfp_net_ext_reconfig(struct nfp_net_hw *hw,
@@ -368,9 +368,15 @@ nfp_net_mbox_reconfig(struct nfp_net_hw *hw,
 }
 
 /*
- * Configure an Ethernet device. This function must be invoked first
- * before any other function in the Ethernet API. This function can
- * also be re-invoked when a device is in the stopped state.
+ * Configure an Ethernet device.
+ *
+ * This function must be invoked first before any other function in the Ethernet API.
+ * This function can also be re-invoked when a device is in the stopped state.
+ *
+ * A DPDK app sends info about how many queues to use and how  those queues
+ * need to be configured. This is used by the DPDK core and it makes sure no
+ * more queues than those advertised by the driver are requested.
+ * This function is called after that internal process.
  */
 int
 nfp_net_configure(struct rte_eth_dev *dev)
@@ -381,14 +387,6 @@ nfp_net_configure(struct rte_eth_dev *dev)
 	struct rte_eth_txmode *txmode;
 
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-
-	/*
-	 * A DPDK app sends info about how many queues to use and how
-	 * those queues need to be configured. This is used by the
-	 * DPDK core and it makes sure no more queues than those
-	 * advertised by the driver are requested. This function is
-	 * called after that internal process
-	 */
 
 	dev_conf = &dev->data->dev_conf;
 	rxmode = &dev_conf->rxmode;
@@ -557,12 +555,12 @@ nfp_net_set_mac_addr(struct rte_eth_dev *dev,
 	/* Writing new MAC to the specific port BAR address */
 	nfp_net_write_mac(hw, (uint8_t *)mac_addr);
 
-	/* Signal the NIC about the change */
 	update = NFP_NET_CFG_UPDATE_MACADDR;
 	ctrl = hw->ctrl;
 	if ((hw->ctrl & NFP_NET_CFG_CTRL_ENABLE) != 0 &&
 			(hw->cap & NFP_NET_CFG_CTRL_LIVE_ADDR) != 0)
 		ctrl |= NFP_NET_CFG_CTRL_LIVE_ADDR;
+	/* Signal the NIC about the change */
 	if (nfp_net_reconfig(hw, ctrl, update) != 0) {
 		PMD_DRV_LOG(ERR, "MAC address update failed");
 		return -EIO;
@@ -588,7 +586,7 @@ nfp_configure_rx_interrupt(struct rte_eth_dev *dev,
 
 	if (rte_intr_type_get(intr_handle) == RTE_INTR_HANDLE_UIO) {
 		PMD_DRV_LOG(INFO, "VF: enabling RX interrupt with UIO");
-		/* UIO just supports one queue and no LSC*/
+		/* UIO just supports one queue and no LSC */
 		nn_cfg_writeb(hw, NFP_NET_CFG_RXR_VEC(0), 0);
 		if (rte_intr_vec_list_index_set(intr_handle, 0, 0) != 0)
 			return -1;
@@ -597,8 +595,8 @@ nfp_configure_rx_interrupt(struct rte_eth_dev *dev,
 		for (i = 0; i < dev->data->nb_rx_queues; i++) {
 			/*
 			 * The first msix vector is reserved for non
-			 * efd interrupts
-			*/
+			 * efd interrupts.
+			 */
 			nn_cfg_writeb(hw, NFP_NET_CFG_RXR_VEC(i), i + 1);
 			if (rte_intr_vec_list_index_set(intr_handle, i, i + 1) != 0)
 				return -1;
@@ -706,10 +704,6 @@ nfp_net_promisc_enable(struct rte_eth_dev *dev)
 	new_ctrl = hw->ctrl | NFP_NET_CFG_CTRL_PROMISC;
 	update = NFP_NET_CFG_UPDATE_GEN;
 
-	/*
-	 * DPDK sets promiscuous mode on just after this call assuming
-	 * it can not fail ...
-	 */
 	ret = nfp_net_reconfig(hw, new_ctrl, update);
 	if (ret != 0)
 		return ret;
@@ -737,10 +731,6 @@ nfp_net_promisc_disable(struct rte_eth_dev *dev)
 	new_ctrl = hw->ctrl & ~NFP_NET_CFG_CTRL_PROMISC;
 	update = NFP_NET_CFG_UPDATE_GEN;
 
-	/*
-	 * DPDK sets promiscuous mode off just before this call
-	 * assuming it can not fail ...
-	 */
 	ret = nfp_net_reconfig(hw, new_ctrl, update);
 	if (ret != 0)
 		return ret;
@@ -751,7 +741,7 @@ nfp_net_promisc_disable(struct rte_eth_dev *dev)
 }
 
 /*
- * return 0 means link status changed, -1 means not changed
+ * Return 0 means link status changed, -1 means not changed
  *
  * Wait to complete is needed as it can take up to 9 seconds to get the Link
  * status.
@@ -793,7 +783,7 @@ nfp_net_link_update(struct rte_eth_dev *dev,
 				}
 			}
 		} else {
-			/**
+			/*
 			 * Shift and mask nn_link_status so that it is effectively the value
 			 * at offset NFP_NET_CFG_STS_NSP_LINK_RATE.
 			 */
@@ -812,7 +802,7 @@ nfp_net_link_update(struct rte_eth_dev *dev,
 			PMD_DRV_LOG(INFO, "NIC Link is Down");
 	}
 
-	/**
+	/*
 	 * Notify the port to update the speed value in the CTRL BAR from NSP.
 	 * Not applicable for VFs as the associated PF is still attached to the
 	 * kernel driver.
@@ -833,11 +823,9 @@ nfp_net_stats_get(struct rte_eth_dev *dev,
 
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
-	/* RTE_ETHDEV_QUEUE_STAT_CNTRS default value is 16 */
-
 	memset(&nfp_dev_stats, 0, sizeof(nfp_dev_stats));
 
-	/* reading per RX ring stats */
+	/* Reading per RX ring stats */
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
 		if (i == RTE_ETHDEV_QUEUE_STAT_CNTRS)
 			break;
@@ -855,7 +843,7 @@ nfp_net_stats_get(struct rte_eth_dev *dev,
 				hw->eth_stats_base.q_ibytes[i];
 	}
 
-	/* reading per TX ring stats */
+	/* Reading per TX ring stats */
 	for (i = 0; i < dev->data->nb_tx_queues; i++) {
 		if (i == RTE_ETHDEV_QUEUE_STAT_CNTRS)
 			break;
@@ -889,7 +877,7 @@ nfp_net_stats_get(struct rte_eth_dev *dev,
 
 	nfp_dev_stats.obytes -= hw->eth_stats_base.obytes;
 
-	/* reading general device stats */
+	/* Reading general device stats */
 	nfp_dev_stats.ierrors =
 			nn_cfg_readq(hw, NFP_NET_CFG_STATS_RX_ERRORS);
 
@@ -915,6 +903,10 @@ nfp_net_stats_get(struct rte_eth_dev *dev,
 	return -EINVAL;
 }
 
+/*
+ * hw->eth_stats_base records the per counter starting point.
+ * Lets update it now.
+ */
 int
 nfp_net_stats_reset(struct rte_eth_dev *dev)
 {
@@ -923,12 +915,7 @@ nfp_net_stats_reset(struct rte_eth_dev *dev)
 
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
-	/*
-	 * hw->eth_stats_base records the per counter starting point.
-	 * Lets update it now
-	 */
-
-	/* reading per RX ring stats */
+	/* Reading per RX ring stats */
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
 		if (i == RTE_ETHDEV_QUEUE_STAT_CNTRS)
 			break;
@@ -940,7 +927,7 @@ nfp_net_stats_reset(struct rte_eth_dev *dev)
 				nn_cfg_readq(hw, NFP_NET_CFG_RXR_STATS(i) + 0x8);
 	}
 
-	/* reading per TX ring stats */
+	/* Reading per TX ring stats */
 	for (i = 0; i < dev->data->nb_tx_queues; i++) {
 		if (i == RTE_ETHDEV_QUEUE_STAT_CNTRS)
 			break;
@@ -964,7 +951,7 @@ nfp_net_stats_reset(struct rte_eth_dev *dev)
 	hw->eth_stats_base.obytes =
 			nn_cfg_readq(hw, NFP_NET_CFG_STATS_TX_OCTETS);
 
-	/* reading general device stats */
+	/* Reading general device stats */
 	hw->eth_stats_base.ierrors =
 			nn_cfg_readq(hw, NFP_NET_CFG_STATS_RX_ERRORS);
 
@@ -1032,7 +1019,7 @@ nfp_net_xstats_value(const struct rte_eth_dev *dev,
 	if (raw)
 		return value;
 
-	/**
+	/*
 	 * A baseline value of each statistic counter is recorded when stats are "reset".
 	 * Thus, the value returned by this function need to be decremented by this
 	 * baseline value. The result is the count of this statistic since the last time
@@ -1041,12 +1028,12 @@ nfp_net_xstats_value(const struct rte_eth_dev *dev,
 	return value - hw->eth_xstats_base[index].value;
 }
 
+/* NOTE: All callers ensure dev is always set. */
 int
 nfp_net_xstats_get_names(struct rte_eth_dev *dev,
 		struct rte_eth_xstat_name *xstats_names,
 		unsigned int size)
 {
-	/* NOTE: All callers ensure dev is always set. */
 	uint32_t id;
 	uint32_t nfp_size;
 	uint32_t read_size;
@@ -1066,12 +1053,12 @@ nfp_net_xstats_get_names(struct rte_eth_dev *dev,
 	return read_size;
 }
 
+/* NOTE: All callers ensure dev is always set. */
 int
 nfp_net_xstats_get(struct rte_eth_dev *dev,
 		struct rte_eth_xstat *xstats,
 		unsigned int n)
 {
-	/* NOTE: All callers ensure dev is always set. */
 	uint32_t id;
 	uint32_t nfp_size;
 	uint32_t read_size;
@@ -1092,16 +1079,16 @@ nfp_net_xstats_get(struct rte_eth_dev *dev,
 	return read_size;
 }
 
+/*
+ * NOTE: The only caller rte_eth_xstats_get_names_by_id() ensures dev,
+ * ids, xstats_names and size are valid, and non-NULL.
+ */
 int
 nfp_net_xstats_get_names_by_id(struct rte_eth_dev *dev,
 		const uint64_t *ids,
 		struct rte_eth_xstat_name *xstats_names,
 		unsigned int size)
 {
-	/**
-	 * NOTE: The only caller rte_eth_xstats_get_names_by_id() ensures dev,
-	 * ids, xstats_names and size are valid, and non-NULL.
-	 */
 	uint32_t i;
 	uint32_t read_size;
 
@@ -1123,16 +1110,16 @@ nfp_net_xstats_get_names_by_id(struct rte_eth_dev *dev,
 	return read_size;
 }
 
+/*
+ * NOTE: The only caller rte_eth_xstats_get_by_id() ensures dev,
+ * ids, values and n are valid, and non-NULL.
+ */
 int
 nfp_net_xstats_get_by_id(struct rte_eth_dev *dev,
 		const uint64_t *ids,
 		uint64_t *values,
 		unsigned int n)
 {
-	/**
-	 * NOTE: The only caller rte_eth_xstats_get_by_id() ensures dev,
-	 * ids, values and n are valid, and non-NULL.
-	 */
 	uint32_t i;
 	uint32_t read_size;
 
@@ -1167,10 +1154,7 @@ nfp_net_xstats_reset(struct rte_eth_dev *dev)
 		hw->eth_xstats_base[id].id = id;
 		hw->eth_xstats_base[id].value = nfp_net_xstats_value(dev, id, true);
 	}
-	/**
-	 * Successfully reset xstats, now call function to reset basic stats
-	 * return value is then based on the success of that function
-	 */
+	/* Successfully reset xstats, now call function to reset basic stats. */
 	return nfp_net_stats_reset(dev);
 }
 
@@ -1217,7 +1201,7 @@ nfp_net_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->max_rx_queues = (uint16_t)hw->max_rx_queues;
 	dev_info->max_tx_queues = (uint16_t)hw->max_tx_queues;
 	dev_info->min_rx_bufsize = RTE_ETHER_MIN_MTU;
-	/*
+	/**
 	 * The maximum rx packet length (max_rx_pktlen) is set to the
 	 * maximum supported frame size that the NFP can handle. This
 	 * includes layer 2 headers, CRC and other metadata that can
@@ -1359,7 +1343,7 @@ nfp_net_common_init(struct rte_pci_device *pci_dev,
 
 	nfp_net_init_metadata_format(hw);
 
-	/* read the Rx offset configured from firmware */
+	/* Read the Rx offset configured from firmware */
 	if (hw->ver.major < 2)
 		hw->rx_offset = NFP_NET_RX_OFFSET;
 	else
@@ -1376,7 +1360,6 @@ const uint32_t *
 nfp_net_supported_ptypes_get(struct rte_eth_dev *dev)
 {
 	static const uint32_t ptypes[] = {
-		/* refers to nfp_net_set_hash() */
 		RTE_PTYPE_INNER_L3_IPV4,
 		RTE_PTYPE_INNER_L3_IPV6,
 		RTE_PTYPE_INNER_L3_IPV6_EXT,
@@ -1450,10 +1433,8 @@ nfp_net_dev_link_status_print(struct rte_eth_dev *dev)
 			pci_dev->addr.devid, pci_dev->addr.function);
 }
 
-/* Interrupt configuration and handling */
-
 /*
- * nfp_net_irq_unmask - Unmask an interrupt
+ * Unmask an interrupt
  *
  * If MSI-X auto-masking is enabled clear the mask bit, otherwise
  * clear the ICR for the entry.
@@ -1479,16 +1460,14 @@ nfp_net_irq_unmask(struct rte_eth_dev *dev)
 	}
 }
 
-/*
+/**
  * Interrupt handler which shall be registered for alarm callback for delayed
  * handling specific interrupt to wait for the stable nic state. As the NIC
  * interrupt state is not stable for nfp after link is just down, it needs
  * to wait 4 seconds to get the stable status.
  *
- * @param handle   Pointer to interrupt handle.
- * @param param    The address of parameter (struct rte_eth_dev *)
- *
- * @return  void
+ * @param param
+ *   The address of parameter (struct rte_eth_dev *)
  */
 void
 nfp_net_dev_interrupt_delayed_handler(void *param)
@@ -1517,13 +1496,12 @@ nfp_net_dev_interrupt_handler(void *param)
 
 	nfp_net_link_update(dev, 0);
 
-	/* likely to up */
+	/* Likely to up */
 	if (link.link_status == 0) {
-		/* handle it 1 sec later, wait it being stable */
+		/* Handle it 1 sec later, wait it being stable */
 		timeout = NFP_NET_LINK_UP_CHECK_TIMEOUT;
-		/* likely to down */
-	} else {
-		/* handle it 4 sec later, wait it being stable */
+	} else {  /* Likely to down */
+		/* Handle it 4 sec later, wait it being stable */
 		timeout = NFP_NET_LINK_DOWN_CHECK_TIMEOUT;
 	}
 
@@ -1544,7 +1522,7 @@ nfp_net_dev_mtu_set(struct rte_eth_dev *dev,
 
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
-	/* mtu setting is forbidden if port is started */
+	/* MTU setting is forbidden if port is started */
 	if (dev->data->dev_started) {
 		PMD_DRV_LOG(ERR, "port %d must be stopped before configuration",
 				dev->data->port_id);
@@ -1558,7 +1536,7 @@ nfp_net_dev_mtu_set(struct rte_eth_dev *dev,
 		return -ERANGE;
 	}
 
-	/* writing to configuration space */
+	/* Writing to configuration space */
 	nn_cfg_writel(hw, NFP_NET_CFG_MTU, mtu);
 
 	hw->mtu = mtu;
@@ -1635,7 +1613,7 @@ nfp_net_rss_reta_write(struct rte_eth_dev *dev,
 
 	/*
 	 * Update Redirection Table. There are 128 8bit-entries which can be
-	 * manage as 32 32bit-entries
+	 * manage as 32 32bit-entries.
 	 */
 	for (i = 0; i < reta_size; i += 4) {
 		/* Handling 4 RSS entries per loop */
@@ -1654,8 +1632,8 @@ nfp_net_rss_reta_write(struct rte_eth_dev *dev,
 		for (j = 0; j < 4; j++) {
 			if ((mask & (0x1 << j)) == 0)
 				continue;
+			/* Clearing the entry bits */
 			if (mask != 0xF)
-				/* Clearing the entry bits */
 				reta &= ~(0xFF << (8 * j));
 			reta |= reta_conf[idx].reta[shift + j] << (8 * j);
 		}
@@ -1690,7 +1668,7 @@ nfp_net_reta_update(struct rte_eth_dev *dev,
 	return 0;
 }
 
- /* Query Redirection Table(RETA) of Receive Side Scaling of Ethernet device. */
+/* Query Redirection Table(RETA) of Receive Side Scaling of Ethernet device. */
 int
 nfp_net_reta_query(struct rte_eth_dev *dev,
 		struct rte_eth_rss_reta_entry64 *reta_conf,
@@ -1718,7 +1696,7 @@ nfp_net_reta_query(struct rte_eth_dev *dev,
 
 	/*
 	 * Reading Redirection Table. There are 128 8bit-entries which can be
-	 * manage as 32 32bit-entries
+	 * manage as 32 32bit-entries.
 	 */
 	for (i = 0; i < reta_size; i += 4) {
 		/* Handling 4 RSS entries per loop */
@@ -1752,7 +1730,7 @@ nfp_net_rss_hash_write(struct rte_eth_dev *dev,
 
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
-	/* Writing the key byte a byte */
+	/* Writing the key byte by byte */
 	for (i = 0; i < rss_conf->rss_key_len; i++) {
 		memcpy(&key, &rss_conf->rss_key[i], 1);
 		nn_cfg_writeb(hw, NFP_NET_CFG_RSS_KEY + i, key);
@@ -1787,7 +1765,7 @@ nfp_net_rss_hash_write(struct rte_eth_dev *dev,
 	cfg_rss_ctrl |= NFP_NET_CFG_RSS_MASK;
 	cfg_rss_ctrl |= NFP_NET_CFG_RSS_TOEPLITZ;
 
-	/* configuring where to apply the RSS hash */
+	/* Configuring where to apply the RSS hash */
 	nn_cfg_writel(hw, NFP_NET_CFG_RSS_CTRL, cfg_rss_ctrl);
 
 	/* Writing the key size */
@@ -1810,7 +1788,7 @@ nfp_net_rss_hash_update(struct rte_eth_dev *dev,
 
 	/* Checking if RSS is enabled */
 	if ((hw->ctrl & NFP_NET_CFG_CTRL_RSS_ANY) == 0) {
-		if (rss_hf != 0) { /* Enable RSS? */
+		if (rss_hf != 0) {
 			PMD_DRV_LOG(ERR, "RSS unsupported");
 			return -EINVAL;
 		}
@@ -2013,7 +1991,7 @@ nfp_net_set_vxlan_port(struct nfp_net_hw *hw,
 
 /*
  * The firmware with NFD3 can not handle DMA address requiring more
- * than 40 bits
+ * than 40 bits.
  */
 int
 nfp_net_check_dma_mask(struct nfp_net_hw *hw,
