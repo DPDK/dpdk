@@ -138,7 +138,7 @@ nfp_net_start(struct rte_eth_dev *dev)
 		return -EIO;
 
 	/* Enable packet type offload by extend ctrl word1. */
-	cap_extend = nn_cfg_readl(hw, NFP_NET_CFG_CAP_WORD1);
+	cap_extend = hw->cap_ext;
 	if ((cap_extend & NFP_NET_CFG_CTRL_PKT_TYPE) != 0)
 		ctrl_extend = NFP_NET_CFG_CTRL_PKT_TYPE;
 

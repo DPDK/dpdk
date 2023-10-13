@@ -120,6 +120,7 @@ struct nfp_net_hw {
 	struct rte_eth_dev *eth_dev;
 
 	/* Info from the firmware */
+	uint32_t cap_ext;
 	struct nfp_net_fw_ver ver;
 	uint32_t cap;
 	uint32_t max_mtu;

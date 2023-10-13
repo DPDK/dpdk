@@ -1257,7 +1257,7 @@ nfp_net_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	if (hw->cap & NFP_NET_CFG_CTRL_GATHER)
 		dev_info->tx_offload_capa |= RTE_ETH_TX_OFFLOAD_MULTI_SEGS;
 
-	cap_extend = nn_cfg_readl(hw, NFP_NET_CFG_CAP_WORD1);
+	cap_extend = hw->cap_ext;
 	if ((cap_extend & NFP_NET_CFG_CTRL_IPSEC) != 0) {
 		dev_info->tx_offload_capa |= RTE_ETH_TX_OFFLOAD_SECURITY;
 		dev_info->rx_offload_capa |= RTE_ETH_RX_OFFLOAD_SECURITY;
@@ -1348,6 +1348,7 @@ nfp_net_common_init(struct rte_pci_device *pci_dev,
 
 	/* Get some of the read-only fields from the config BAR */
 	hw->cap = nn_cfg_readl(hw, NFP_NET_CFG_CAP);
+	hw->cap_ext = nn_cfg_readl(hw, NFP_NET_CFG_CAP_WORD1);
 	hw->max_mtu = nn_cfg_readl(hw, NFP_NET_CFG_MAX_MTU);
 	hw->flbufsz = DEFAULT_FLBUF_SIZE;
 

@@ -153,7 +153,7 @@ nfp_net_nfd3_set_meta_data(struct nfp_net_meta_raw *meta_data,
 	uint8_t ipsec_layer = 0;
 
 	hw = txq->hw;
-	cap_extend = nn_cfg_readl(hw, NFP_NET_CFG_CAP_WORD1);
+	cap_extend = hw->cap_ext;
 
 	if ((pkt->ol_flags & RTE_MBUF_F_TX_VLAN) != 0 &&
 			(hw->ctrl & NFP_NET_CFG_CTRL_TXVLAN_V2) != 0) {

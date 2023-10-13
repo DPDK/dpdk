@@ -186,7 +186,7 @@ nfp_net_nfdk_set_meta_data(struct rte_mbuf *pkt,
 
 	memset(&meta_data, 0, sizeof(meta_data));
 	hw = txq->hw;
-	cap_extend = nn_cfg_readl(hw, NFP_NET_CFG_CAP_WORD1);
+	cap_extend = hw->cap_ext;
 
 	if ((pkt->ol_flags & RTE_MBUF_F_TX_VLAN) != 0 &&
 			(hw->ctrl & NFP_NET_CFG_CTRL_TXVLAN_V2) != 0) {
