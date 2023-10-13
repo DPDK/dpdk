@@ -402,7 +402,7 @@ nfp_vf_pci_uninit(struct rte_eth_dev *eth_dev)
 }
 
 static int
-eth_nfp_vf_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
+nfp_vf_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		struct rte_pci_device *pci_dev)
 {
 	return rte_eth_dev_pci_generic_probe(pci_dev,
@@ -410,7 +410,7 @@ eth_nfp_vf_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 }
 
 static int
-eth_nfp_vf_pci_remove(struct rte_pci_device *pci_dev)
+nfp_vf_pci_remove(struct rte_pci_device *pci_dev)
 {
 	return rte_eth_dev_pci_generic_remove(pci_dev, nfp_vf_pci_uninit);
 }
@@ -418,8 +418,8 @@ eth_nfp_vf_pci_remove(struct rte_pci_device *pci_dev)
 static struct rte_pci_driver rte_nfp_net_vf_pmd = {
 	.id_table = pci_id_nfp_vf_net_map,
 	.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_INTR_LSC,
-	.probe = eth_nfp_vf_pci_probe,
-	.remove = eth_nfp_vf_pci_remove,
+	.probe = nfp_vf_pci_probe,
+	.remove = nfp_vf_pci_remove,
 };
 
 RTE_PMD_REGISTER_PCI(net_nfp_vf, rte_nfp_net_vf_pmd);

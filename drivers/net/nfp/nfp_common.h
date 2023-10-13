@@ -19,9 +19,9 @@
 #define NFP_QCP_QUEUE_ADD_RPTR                  0x0000
 #define NFP_QCP_QUEUE_ADD_WPTR                  0x0004
 #define NFP_QCP_QUEUE_STS_LO                    0x0008
-#define NFP_QCP_QUEUE_STS_LO_READPTR_mask     (0x3ffff)
+#define NFP_QCP_QUEUE_STS_LO_READPTR_MASK     (0x3ffff)
 #define NFP_QCP_QUEUE_STS_HI                    0x000c
-#define NFP_QCP_QUEUE_STS_HI_WRITEPTR_mask    (0x3ffff)
+#define NFP_QCP_QUEUE_STS_HI_WRITEPTR_MASK    (0x3ffff)
 
 /* Interrupt definitions */
 #define NFP_NET_IRQ_LSC_IDX             0
@@ -304,7 +304,7 @@ nn_cfg_writeq(struct nfp_net_hw *hw,
 /**
  * Add the value to the selected pointer of a queue.
  *
- * @param q
+ * @param queue
  *   Base address for queue structure
  * @param ptr
  *   Add to the read or write pointer
@@ -312,7 +312,7 @@ nn_cfg_writeq(struct nfp_net_hw *hw,
  *   Value to add to the queue pointer
  */
 static inline void
-nfp_qcp_ptr_add(uint8_t *q,
+nfp_qcp_ptr_add(uint8_t *queue,
 		enum nfp_qcp_ptr ptr,
 		uint32_t val)
 {
@@ -323,19 +323,19 @@ nfp_qcp_ptr_add(uint8_t *q,
 	else
 		off = NFP_QCP_QUEUE_ADD_WPTR;
 
-	nn_writel(rte_cpu_to_le_32(val), q + off);
+	nn_writel(rte_cpu_to_le_32(val), queue + off);
 }
 
 /**
  * Read the current read/write pointer value for a queue.
  *
- * @param q
+ * @param queue
  *   Base address for queue structure
  * @param ptr
  *   Read or Write pointer
  */
 static inline uint32_t
-nfp_qcp_read(uint8_t *q,
+nfp_qcp_read(uint8_t *queue,
 		enum nfp_qcp_ptr ptr)
 {
 	uint32_t off;
@@ -346,12 +346,12 @@ nfp_qcp_read(uint8_t *q,
 	else
 		off = NFP_QCP_QUEUE_STS_HI;
 
-	val = rte_cpu_to_le_32(nn_readl(q + off));
+	val = rte_cpu_to_le_32(nn_readl(queue + off));
 
 	if (ptr == NFP_QCP_READ_PTR)
-		return val & NFP_QCP_QUEUE_STS_LO_READPTR_mask;
+		return val & NFP_QCP_QUEUE_STS_LO_READPTR_MASK;
 	else
-		return val & NFP_QCP_QUEUE_STS_HI_WRITEPTR_mask;
+		return val & NFP_QCP_QUEUE_STS_HI_WRITEPTR_MASK;
 }
 
 static inline uint32_t
