@@ -190,7 +190,7 @@ nfp_net_rx_fill_freelist(struct nfp_net_rxq *rxq)
 {
 	struct nfp_net_dp_buf *rxe = rxq->rxbufs;
 	uint64_t dma_addr;
-	unsigned int i;
+	uint16_t i;
 
 	PMD_RX_LOG(DEBUG, "Fill Rx Freelist for %u descriptors",
 			rxq->rx_count);
@@ -229,7 +229,7 @@ nfp_net_rx_fill_freelist(struct nfp_net_rxq *rxq)
 int
 nfp_net_rx_freelist_setup(struct rte_eth_dev *dev)
 {
-	int i;
+	uint16_t i;
 
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
 		if (nfp_net_rx_fill_freelist(dev->data->rx_queues[i]) != 0)
@@ -840,7 +840,7 @@ nfp_net_recv_pkts(void *rx_queue,
 static void
 nfp_net_rx_queue_release_mbufs(struct nfp_net_rxq *rxq)
 {
-	unsigned int i;
+	uint16_t i;
 
 	if (rxq->rxbufs == NULL)
 		return;
@@ -992,11 +992,11 @@ nfp_net_rx_queue_setup(struct rte_eth_dev *dev,
  * @txq: TX queue to work with
  * Returns number of descriptors freed
  */
-int
+uint32_t
 nfp_net_tx_free_bufs(struct nfp_net_txq *txq)
 {
 	uint32_t qcp_rd_p;
-	int todo;
+	uint32_t todo;
 
 	PMD_TX_LOG(DEBUG, "queue %hu. Check for descriptor with a complete"
 			" status", txq->qidx);
@@ -1032,7 +1032,7 @@ nfp_net_tx_free_bufs(struct nfp_net_txq *txq)
 static void
 nfp_net_tx_queue_release_mbufs(struct nfp_net_txq *txq)
 {
-	unsigned int i;
+	uint32_t i;
 
 	if (txq->txbufs == NULL)
 		return;

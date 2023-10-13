@@ -266,7 +266,7 @@ nfp_netvf_init(struct rte_eth_dev *eth_dev)
 
 	uint64_t tx_bar_off = 0, rx_bar_off = 0;
 	uint32_t start_q;
-	int port = 0;
+	uint16_t port = 0;
 	int err;
 	const struct nfp_dev_info *dev_info;
 

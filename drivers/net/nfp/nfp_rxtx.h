@@ -253,7 +253,7 @@ int nfp_net_tx_queue_setup(struct rte_eth_dev *dev,
 		uint16_t nb_desc,
 		unsigned int socket_id,
 		const struct rte_eth_txconf *tx_conf);
-int nfp_net_tx_free_bufs(struct nfp_net_txq *txq);
+uint32_t nfp_net_tx_free_bufs(struct nfp_net_txq *txq);
 void nfp_net_set_meta_vlan(struct nfp_net_meta_raw *meta_data,
 		struct rte_mbuf *pkt,
 		uint8_t layer);

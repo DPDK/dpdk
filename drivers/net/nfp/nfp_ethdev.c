@@ -23,7 +23,7 @@
 
 static int
 nfp_net_pf_read_mac(struct nfp_app_fw_nic *app_fw_nic,
-		int port)
+		uint16_t port)
 {
 	struct nfp_eth_table *nfp_eth_table;
 	struct nfp_net_hw *hw = NULL;
@@ -261,7 +261,7 @@ nfp_net_close(struct rte_eth_dev *dev)
 	struct rte_pci_device *pci_dev;
 	struct nfp_pf_dev *pf_dev;
 	struct nfp_app_fw_nic *app_fw_nic;
-	int i;
+	uint8_t i;
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
@@ -493,7 +493,7 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 	struct rte_ether_addr *tmp_ether_addr;
 	uint64_t rx_base;
 	uint64_t tx_base;
-	int port = 0;
+	uint16_t port = 0;
 	int err;
 
 	PMD_INIT_FUNC_TRACE();
@@ -507,7 +507,7 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 	app_fw_nic = NFP_PRIV_TO_APP_FW_NIC(pf_dev->app_fw_priv);
 
 	port = ((struct nfp_net_hw *)eth_dev->data->dev_private)->idx;
-	if (port < 0 || port > 7) {
+	if (port > 7) {
 		PMD_DRV_LOG(ERR, "Port value is wrong");
 		return -ENODEV;
 	}
@@ -768,10 +768,10 @@ static int
 nfp_init_app_fw_nic(struct nfp_pf_dev *pf_dev,
 		const struct nfp_dev_info *dev_info)
 {
-	int i;
+	uint8_t i;
 	int ret;
 	int err = 0;
-	int total_vnics;
+	uint32_t total_vnics;
 	struct nfp_net_hw *hw;
 	unsigned int numa_node;
 	struct rte_eth_dev *eth_dev;
@@ -792,7 +792,7 @@ nfp_init_app_fw_nic(struct nfp_pf_dev *pf_dev,
 
 	/* Read the number of vNIC's created for the PF */
 	total_vnics = nfp_rtsym_read_le(pf_dev->sym_tbl, "nfd_cfg_pf0_num_ports", &err);
-	if (err != 0 || total_vnics <= 0 || total_vnics > 8) {
+	if (err != 0 || total_vnics == 0 || total_vnics > 8) {
 		PMD_INIT_LOG(ERR, "nfd_cfg_pf0_num_ports symbol with wrong value");
 		ret = -ENODEV;
 		goto app_cleanup;
@@ -802,7 +802,7 @@ nfp_init_app_fw_nic(struct nfp_pf_dev *pf_dev,
 	 * For coreNIC the number of vNICs exposed should be the same as the
 	 * number of physical ports
 	 */
-	if (total_vnics != (int)nfp_eth_table->count) {
+	if (total_vnics != nfp_eth_table->count) {
 		PMD_INIT_LOG(ERR, "Total physical ports do not match number of vNICs");
 		ret = -ENODEV;
 		goto app_cleanup;
@@ -1060,15 +1060,15 @@ nfp_secondary_init_app_fw_nic(struct rte_pci_device *pci_dev,
 		struct nfp_rtsym_table *sym_tbl,
 		struct nfp_cpp *cpp)
 {
-	int i;
+	uint32_t i;
 	int err = 0;
 	int ret = 0;
-	int total_vnics;
+	uint32_t total_vnics;
 	struct nfp_net_hw *hw;
 
 	/* Read the number of vNIC's created for the PF */
 	total_vnics = nfp_rtsym_read_le(sym_tbl, "nfd_cfg_pf0_num_ports", &err);
-	if (err != 0 || total_vnics <= 0 || total_vnics > 8) {
+	if (err != 0 || total_vnics == 0 || total_vnics > 8) {
 		PMD_INIT_LOG(ERR, "nfd_cfg_pf0_num_ports symbol with wrong value");
 		return -ENODEV;
 	}
@@ -1076,7 +1076,7 @@ nfp_secondary_init_app_fw_nic(struct rte_pci_device *pci_dev,
 	for (i = 0; i < total_vnics; i++) {
 		struct rte_eth_dev *eth_dev;
 		char port_name[RTE_ETH_NAME_MAX_LEN];
-		snprintf(port_name, sizeof(port_name), "%s_port%d",
+		snprintf(port_name, sizeof(port_name), "%s_port%u",
 				pci_dev->device.name, i);
 
 		PMD_INIT_LOG(DEBUG, "Secondary attaching to port %s", port_name);

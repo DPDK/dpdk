@@ -64,10 +64,10 @@ nfp_flower_cmsg_mac_repr_init(struct rte_mbuf *mbuf,
 
 static void
 nfp_flower_cmsg_mac_repr_fill(struct rte_mbuf *m,
-		unsigned int idx,
-		unsigned int nbi,
-		unsigned int nbi_port,
-		unsigned int phys_port)
+		uint8_t idx,
+		uint32_t nbi,
+		uint32_t nbi_port,
+		uint32_t phys_port)
 {
 	struct nfp_flower_cmsg_mac_repr *msg;
 
@@ -81,11 +81,11 @@ nfp_flower_cmsg_mac_repr_fill(struct rte_mbuf *m,
 int
 nfp_flower_cmsg_mac_repr(struct nfp_app_fw_flower *app_fw_flower)
 {
-	int i;
+	uint8_t i;
 	uint16_t cnt;
-	unsigned int nbi;
-	unsigned int nbi_port;
-	unsigned int phys_port;
+	uint32_t nbi;
+	uint32_t nbi_port;
+	uint32_t phys_port;
 	struct rte_mbuf *mbuf;
 	struct nfp_eth_table *nfp_eth_table;
 

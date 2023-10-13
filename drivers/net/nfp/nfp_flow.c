@@ -121,7 +121,7 @@ struct nfp_flow_item_proc {
 	/* Bit-mask to use when @p item->mask is not provided. */
 	const void *mask_default;
 	/* Size in bytes for @p mask_support and @p mask_default. */
-	const unsigned int mask_sz;
+	const size_t mask_sz;
 	/* Merge a pattern item into a flow rule handle. */
 	int (*merge)(struct nfp_app_fw_flower *app_fw_flower,
 			struct rte_flow *nfp_flow,
@@ -1941,8 +1941,8 @@ static int
 nfp_flow_item_check(const struct rte_flow_item *item,
 		const struct nfp_flow_item_proc *proc)
 {
+	size_t i;
 	int ret = 0;
-	unsigned int i;
 	const uint8_t *mask;
 
 	/* item->last and item->mask cannot exist without item->spec. */
@@ -2037,7 +2037,7 @@ nfp_flow_compile_item_proc(struct nfp_flower_representor *repr,
 		char **mbuf_off_mask,
 		bool is_outer_layer)
 {
-	int i;
+	uint32_t i;
 	int ret = 0;
 	bool continue_flag = true;
 	const struct rte_flow_item *item;
@@ -2271,7 +2271,7 @@ nfp_flow_action_set_ipv6(char *act_data,
 		const struct rte_flow_action *action,
 		bool ip_src_flag)
 {
-	int i;
+	uint32_t i;
 	rte_be32_t tmp;
 	size_t act_size;
 	struct nfp_fl_act_set_ipv6_addr *set_ip;

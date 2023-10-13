@@ -227,9 +227,9 @@ nfp_net_nfd3_xmit_pkts_common(void *tx_queue,
 		uint16_t nb_pkts,
 		bool repr_flag)
 {
-	int i;
-	int pkt_size;
-	int dma_size;
+	uint16_t i;
+	uint32_t pkt_size;
+	uint16_t dma_size;
 	uint8_t offset;
 	uint64_t dma_addr;
 	uint16_t free_descs;

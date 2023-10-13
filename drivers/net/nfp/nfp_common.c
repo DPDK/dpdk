@@ -199,7 +199,7 @@ static int
 __nfp_net_reconfig(struct nfp_net_hw *hw,
 		uint32_t update)
 {
-	int cnt;
+	uint32_t cnt;
 	uint32_t new;
 	struct timespec wait;
 
@@ -229,7 +229,7 @@ __nfp_net_reconfig(struct nfp_net_hw *hw,
 		}
 		if (cnt >= NFP_NET_POLL_TIMEOUT) {
 			PMD_INIT_LOG(ERR, "Reconfig timeout for 0x%08x after"
-					" %dms", update, cnt);
+					" %ums", update, cnt);
 			return -EIO;
 		}
 		nanosleep(&wait, 0); /* waiting for a 1ms */
@@ -466,7 +466,7 @@ nfp_net_enable_queues(struct rte_eth_dev *dev)
 {
 	struct nfp_net_hw *hw;
 	uint64_t enabled_queues = 0;
-	int i;
+	uint16_t i;
 
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
@@ -575,7 +575,7 @@ nfp_configure_rx_interrupt(struct rte_eth_dev *dev,
 		struct rte_intr_handle *intr_handle)
 {
 	struct nfp_net_hw *hw;
-	int i;
+	uint16_t i;
 
 	if (rte_intr_vec_list_alloc(intr_handle, "intr_vec",
 				dev->data->nb_rx_queues) != 0) {
@@ -832,7 +832,7 @@ int
 nfp_net_stats_get(struct rte_eth_dev *dev,
 		struct rte_eth_stats *stats)
 {
-	int i;
+	uint16_t i;
 	struct nfp_net_hw *hw;
 	struct rte_eth_stats nfp_dev_stats;
 
@@ -923,7 +923,7 @@ nfp_net_stats_get(struct rte_eth_dev *dev,
 int
 nfp_net_stats_reset(struct rte_eth_dev *dev)
 {
-	int i;
+	uint16_t i;
 	struct nfp_net_hw *hw;
 
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
@@ -1399,7 +1399,7 @@ nfp_rx_queue_intr_enable(struct rte_eth_dev *dev,
 {
 	struct rte_pci_device *pci_dev;
 	struct nfp_net_hw *hw;
-	int base = 0;
+	uint16_t base = 0;
 
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	pci_dev = RTE_ETH_DEV_TO_PCI(dev);
@@ -1420,7 +1420,7 @@ nfp_rx_queue_intr_disable(struct rte_eth_dev *dev,
 {
 	struct rte_pci_device *pci_dev;
 	struct nfp_net_hw *hw;
-	int base = 0;
+	uint16_t base = 0;
 
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	pci_dev = RTE_ETH_DEV_TO_PCI(dev);
@@ -1620,9 +1620,10 @@ nfp_net_rss_reta_write(struct rte_eth_dev *dev,
 		struct rte_eth_rss_reta_entry64 *reta_conf,
 		uint16_t reta_size)
 {
-	uint32_t reta, mask;
-	int i, j;
-	int idx, shift;
+	uint8_t mask;
+	uint32_t reta;
+	uint16_t i, j;
+	uint16_t idx, shift;
 	struct nfp_net_hw *hw =
 		NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
@@ -1696,8 +1697,9 @@ nfp_net_reta_query(struct rte_eth_dev *dev,
 		struct rte_eth_rss_reta_entry64 *reta_conf,
 		uint16_t reta_size)
 {
-	uint8_t i, j, mask;
-	int idx, shift;
+	uint16_t i, j;
+	uint8_t mask;
+	uint16_t idx, shift;
 	uint32_t reta;
 	struct nfp_net_hw *hw;
 
@@ -1721,7 +1723,7 @@ nfp_net_reta_query(struct rte_eth_dev *dev,
 		/* Handling 4 RSS entries per loop */
 		idx = i / RTE_ETH_RETA_GROUP_SIZE;
 		shift = i % RTE_ETH_RETA_GROUP_SIZE;
-		mask = (uint8_t)((reta_conf[idx].mask >> shift) & 0xF);
+		mask = (reta_conf[idx].mask >> shift) & 0xF;
 
 		if (mask == 0)
 			continue;
@@ -1745,7 +1747,7 @@ nfp_net_rss_hash_write(struct rte_eth_dev *dev,
 	uint64_t rss_hf;
 	uint32_t cfg_rss_ctrl = 0;
 	uint8_t key;
-	int i;
+	uint8_t i;
 
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
@@ -1836,7 +1838,7 @@ nfp_net_rss_hash_conf_get(struct rte_eth_dev *dev,
 	uint64_t rss_hf;
 	uint32_t cfg_rss_ctrl;
 	uint8_t key;
-	int i;
+	uint8_t i;
 	struct nfp_net_hw *hw;
 
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
@@ -1894,7 +1896,8 @@ nfp_net_rss_config_default(struct rte_eth_dev *dev)
 	struct rte_eth_rss_reta_entry64 nfp_reta_conf[2];
 	uint16_t rx_queues = dev->data->nb_rx_queues;
 	uint16_t queue;
-	int i, j, ret;
+	uint8_t i, j;
+	int ret;
 
 	PMD_DRV_LOG(INFO, "setting default RSS conf for %u queues",
 			rx_queues);
