@@ -3,8 +3,8 @@
  * All rights reserved.
  */
 
-#ifndef _NFP_NFD3_H_
-#define _NFP_NFD3_H_
+#ifndef __NFP_NFD3_H__
+#define __NFP_NFD3_H__
 
 #include "../nfp_rxtx.h"
 
@@ -84,4 +84,4 @@ int nfp_net_nfd3_tx_queue_setup(struct rte_eth_dev *dev,
 		unsigned int socket_id,
 		const struct rte_eth_txconf *tx_conf);
 
-#endif /* _NFP_NFD3_H_ */
+#endif /* __NFP_NFD3_H__ */

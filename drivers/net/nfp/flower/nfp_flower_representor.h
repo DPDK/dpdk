@@ -3,8 +3,8 @@
  * All rights reserved.
  */
 
-#ifndef _NFP_FLOWER_REPRESENTOR_H_
-#define _NFP_FLOWER_REPRESENTOR_H_
+#ifndef __NFP_FLOWER_REPRESENTOR_H__
+#define __NFP_FLOWER_REPRESENTOR_H__
 
 #include "nfp_flower.h"
 
@@ -24,4 +24,4 @@ struct nfp_flower_representor {
 
 int nfp_flower_repr_create(struct nfp_app_fw_flower *app_fw_flower);
 
-#endif /* _NFP_FLOWER_REPRESENTOR_H_ */
+#endif /* __NFP_FLOWER_REPRESENTOR_H__ */

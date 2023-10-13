@@ -3,8 +3,8 @@
  * All rights reserved.
  */
 
-#ifndef _NFP_FLOWER_H_
-#define _NFP_FLOWER_H_
+#ifndef __NFP_FLOWER_H__
+#define __NFP_FLOWER_H__
 
 #include "../nfp_common.h"
 
@@ -118,4 +118,4 @@ int nfp_flower_pf_stop(struct rte_eth_dev *dev);
 uint32_t nfp_flower_pkt_add_metadata(struct nfp_app_fw_flower *app_fw_flower,
 		struct rte_mbuf *mbuf, uint32_t port_id);
 
-#endif /* _NFP_FLOWER_H_ */
+#endif /* __NFP_FLOWER_H__ */

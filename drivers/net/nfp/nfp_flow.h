@@ -3,8 +3,8 @@
  * All rights reserved.
  */
 
-#ifndef _NFP_FLOW_H_
-#define _NFP_FLOW_H_
+#ifndef __NFP_FLOW_H__
+#define __NFP_FLOW_H__
 
 #include "nfp_common.h"
 
@@ -202,4 +202,4 @@ int nfp_flow_destroy(struct rte_eth_dev *dev,
 		struct rte_flow *nfp_flow,
 		struct rte_flow_error *error);
 
-#endif /* _NFP_FLOW_H_ */
+#endif /* __NFP_FLOW_H__ */

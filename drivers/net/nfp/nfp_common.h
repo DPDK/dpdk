@@ -3,8 +3,8 @@
  * All rights reserved.
  */
 
-#ifndef _NFP_COMMON_H_
-#define _NFP_COMMON_H_
+#ifndef __NFP_COMMON_H__
+#define __NFP_COMMON_H__
 
 #include <bus_pci_driver.h>
 #include <ethdev_driver.h>
@@ -451,4 +451,4 @@ bool nfp_net_is_valid_nfd_version(struct nfp_net_fw_ver version);
 #define NFP_PRIV_TO_APP_FW_FLOWER(app_fw_priv)\
 	((struct nfp_app_fw_flower *)app_fw_priv)
 
-#endif /* _NFP_COMMON_H_ */
+#endif /* __NFP_COMMON_H__ */

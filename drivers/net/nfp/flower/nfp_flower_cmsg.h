@@ -3,8 +3,8 @@
  * All rights reserved.
  */
 
-#ifndef _NFP_CMSG_H_
-#define _NFP_CMSG_H_
+#ifndef __NFP_CMSG_H__
+#define __NFP_CMSG_H__
 
 #include "../nfp_flow.h"
 #include "nfp_flower.h"
@@ -989,4 +989,4 @@ int nfp_flower_cmsg_qos_delete(struct nfp_app_fw_flower *app_fw_flower,
 int nfp_flower_cmsg_qos_stats(struct nfp_app_fw_flower *app_fw_flower,
 		struct nfp_cfg_head *head);
 
-#endif /* _NFP_CMSG_H_ */
+#endif /* __NFP_CMSG_H__ */

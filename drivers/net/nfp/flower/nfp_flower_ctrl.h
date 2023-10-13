@@ -3,8 +3,8 @@
  * All rights reserved.
  */
 
-#ifndef _NFP_FLOWER_CTRL_H_
-#define _NFP_FLOWER_CTRL_H_
+#ifndef __NFP_FLOWER_CTRL_H__
+#define __NFP_FLOWER_CTRL_H__
 
 #include "nfp_flower.h"
 
@@ -13,4 +13,4 @@ uint16_t nfp_flower_ctrl_vnic_xmit(struct nfp_app_fw_flower *app_fw_flower,
 		struct rte_mbuf *mbuf);
 void nfp_flower_ctrl_vnic_xmit_register(struct nfp_app_fw_flower *app_fw_flower);
 
-#endif /* _NFP_FLOWER_CTRL_H_ */
+#endif /* __NFP_FLOWER_CTRL_H__ */

@@ -3,8 +3,8 @@
  * All rights reserved.
  */
 
-#ifndef _NFP_NFDK_H_
-#define _NFP_NFDK_H_
+#ifndef __NFP_NFDK_H__
+#define __NFP_NFDK_H__
 
 #include "../nfp_rxtx.h"
 
@@ -178,4 +178,4 @@ int nfp_net_nfdk_tx_queue_setup(struct rte_eth_dev *dev,
 int nfp_net_nfdk_tx_maybe_close_block(struct nfp_net_txq *txq,
 		struct rte_mbuf *pkt);
 
-#endif /* _NFP_NFDK_H_ */
+#endif /* __NFP_NFDK_H__ */

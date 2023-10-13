@@ -3,8 +3,8 @@
  * All rights reserved.
  */
 
-#ifndef _NFP_RXTX_H_
-#define _NFP_RXTX_H_
+#ifndef __NFP_RXTX_H__
+#define __NFP_RXTX_H__
 
 #include <ethdev_driver.h>
 
@@ -253,4 +253,4 @@ void nfp_net_set_meta_ipsec(struct nfp_net_meta_raw *meta_data,
 		uint8_t layer,
 		uint8_t ipsec_layer);
 
-#endif /* _NFP_RXTX_H_ */
+#endif /* __NFP_RXTX_H__ */
