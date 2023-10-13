@@ -90,7 +90,7 @@ nfp_net_start(struct rte_eth_dev *dev)
 			}
 		}
 		intr_vector = dev->data->nb_rx_queues;
-		if (rte_intr_efd_enable(intr_handle, intr_vector))
+		if (rte_intr_efd_enable(intr_handle, intr_vector) != 0)
 			return -1;
 
 		nfp_configure_rx_interrupt(dev, intr_handle);
@@ -114,7 +114,7 @@ nfp_net_start(struct rte_eth_dev *dev)
 	dev_conf = &dev->data->dev_conf;
 	rxmode = &dev_conf->rxmode;
 
-	if (rxmode->mq_mode & RTE_ETH_MQ_RX_RSS) {
+	if ((rxmode->mq_mode & RTE_ETH_MQ_RX_RSS) != 0) {
 		nfp_net_rss_config_default(dev);
 		update |= NFP_NET_CFG_UPDATE_RSS;
 		new_ctrl |= nfp_net_cfg_ctrl_rss(hw->cap);
@@ -126,15 +126,15 @@ nfp_net_start(struct rte_eth_dev *dev)
 	update |= NFP_NET_CFG_UPDATE_GEN | NFP_NET_CFG_UPDATE_RING;
 
 	/* Enable vxlan */
-	if (hw->cap & NFP_NET_CFG_CTRL_VXLAN) {
+	if ((hw->cap & NFP_NET_CFG_CTRL_VXLAN) != 0) {
 		new_ctrl |= NFP_NET_CFG_CTRL_VXLAN;
 		update |= NFP_NET_CFG_UPDATE_VXLAN;
 	}
 
-	if (hw->cap & NFP_NET_CFG_CTRL_RINGCFG)
+	if ((hw->cap & NFP_NET_CFG_CTRL_RINGCFG) != 0)
 		new_ctrl |= NFP_NET_CFG_CTRL_RINGCFG;
 
-	if (nfp_net_reconfig(hw, new_ctrl, update) < 0)
+	if (nfp_net_reconfig(hw, new_ctrl, update) != 0)
 		return -EIO;
 
 	/* Enable packet type offload by extend ctrl word1. */
@@ -147,14 +147,14 @@ nfp_net_start(struct rte_eth_dev *dev)
 				| NFP_NET_CFG_CTRL_IPSEC_LM_LOOKUP;
 
 	update = NFP_NET_CFG_UPDATE_GEN;
-	if (nfp_net_ext_reconfig(hw, ctrl_extend, update) < 0)
+	if (nfp_net_ext_reconfig(hw, ctrl_extend, update) != 0)
 		return -EIO;
 
 	/*
 	 * Allocating rte mbufs for configured rx queues.
 	 * This requires queues being enabled before
 	 */
-	if (nfp_net_rx_freelist_setup(dev) < 0) {
+	if (nfp_net_rx_freelist_setup(dev) != 0) {
 		ret = -ENOMEM;
 		goto error;
 	}
@@ -304,7 +304,7 @@ nfp_net_close(struct rte_eth_dev *dev)
 
 	for (i = 0; i < app_fw_nic->total_phyports; i++) {
 		/* Check to see if ports are still in use */
-		if (app_fw_nic->ports[i])
+		if (app_fw_nic->ports[i] != NULL)
 			return 0;
 	}
 
@@ -605,7 +605,7 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 	hw->mtu = RTE_ETHER_MTU;
 
 	/* VLAN insertion is incompatible with LSOv2 */
-	if (hw->cap & NFP_NET_CFG_CTRL_LSO2)
+	if ((hw->cap & NFP_NET_CFG_CTRL_LSO2) != 0)
 		hw->cap &= ~NFP_NET_CFG_CTRL_TXVLAN;
 
 	nfp_net_log_device_information(hw);
@@ -625,7 +625,7 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 	nfp_net_write_mac(hw, &hw->mac_addr.addr_bytes[0]);
 
 	tmp_ether_addr = &hw->mac_addr;
-	if (!rte_is_valid_assigned_ether_addr(tmp_ether_addr)) {
+	if (rte_is_valid_assigned_ether_addr(tmp_ether_addr) == 0) {
 		PMD_INIT_LOG(INFO, "Using random mac address for port %d", port);
 		/* Using random mac addresses for VFs */
 		rte_eth_random_addr(&hw->mac_addr.addr_bytes[0]);
@@ -702,10 +702,11 @@ nfp_fw_upload(struct rte_pci_device *dev, struct nfp_nsp *nsp, char *card)
 	/* Finally try the card type and media */
 	snprintf(fw_name, sizeof(fw_name), "%s/%s", DEFAULT_FW_PATH, card);
 	PMD_DRV_LOG(DEBUG, "Trying with fw file: %s", fw_name);
-	if (rte_firmware_read(fw_name, &fw_buf, &fsize) < 0) {
-		PMD_DRV_LOG(INFO, "Firmware file %s not found.", fw_name);
-		return -ENOENT;
-	}
+	if (rte_firmware_read(fw_name, &fw_buf, &fsize) == 0)
+		goto load_fw;
+
+	PMD_DRV_LOG(ERR, "Can't find suitable firmware.");
+	return -ENOENT;
 
 load_fw:
 	PMD_DRV_LOG(INFO, "Firmware file found at %s with size: %zu",
@@ -734,7 +735,7 @@ nfp_fw_setup(struct rte_pci_device *dev,
 	if (nfp_fw_model == NULL)
 		nfp_fw_model = nfp_hwinfo_lookup(hwinfo, "assembly.partno");
 
-	if (nfp_fw_model) {
+	if (nfp_fw_model != NULL) {
 		PMD_DRV_LOG(INFO, "firmware model found: %s", nfp_fw_model);
 	} else {
 		PMD_DRV_LOG(ERR, "firmware model NOT found");
@@ -872,7 +873,7 @@ nfp_init_app_fw_nic(struct nfp_pf_dev *pf_dev,
 		 * nfp_net_init
 		 */
 		ret = nfp_net_init(eth_dev);
-		if (ret) {
+		if (ret != 0) {
 			ret = -ENODEV;
 			goto port_cleanup;
 		}
@@ -885,7 +886,8 @@ nfp_init_app_fw_nic(struct nfp_pf_dev *pf_dev,
 
 port_cleanup:
 	for (i = 0; i < app_fw_nic->total_phyports; i++) {
-		if (app_fw_nic->ports[i] && app_fw_nic->ports[i]->eth_dev) {
+		if (app_fw_nic->ports[i] != NULL &&
+				app_fw_nic->ports[i]->eth_dev != NULL) {
 			struct rte_eth_dev *tmp_dev;
 			tmp_dev = app_fw_nic->ports[i]->eth_dev;
 			nfp_ipsec_uninit(tmp_dev);
@@ -957,7 +959,7 @@ nfp_pf_init(struct rte_pci_device *pci_dev)
 		goto hwinfo_cleanup;
 	}
 
-	if (nfp_fw_setup(pci_dev, cpp, nfp_eth_table, hwinfo)) {
+	if (nfp_fw_setup(pci_dev, cpp, nfp_eth_table, hwinfo) != 0) {
 		PMD_INIT_LOG(ERR, "Error when uploading firmware");
 		ret = -EIO;
 		goto eth_table_cleanup;

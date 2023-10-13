@@ -163,22 +163,22 @@ nfp_net_rx_cksum(struct nfp_net_rxq *rxq, struct nfp_net_rx_desc *rxd,
 {
 	struct nfp_net_hw *hw = rxq->hw;
 
-	if (!(hw->ctrl & NFP_NET_CFG_CTRL_RXCSUM))
+	if ((hw->ctrl & NFP_NET_CFG_CTRL_RXCSUM) == 0)
 		return;
 
 	/* If IPv4 and IP checksum error, fail */
-	if (unlikely((rxd->rxd.flags & PCIE_DESC_RX_IP4_CSUM) &&
-			!(rxd->rxd.flags & PCIE_DESC_RX_IP4_CSUM_OK)))
+	if (unlikely((rxd->rxd.flags & PCIE_DESC_RX_IP4_CSUM) != 0 &&
+			(rxd->rxd.flags & PCIE_DESC_RX_IP4_CSUM_OK) == 0))
 		mb->ol_flags |= RTE_MBUF_F_RX_IP_CKSUM_BAD;
 	else
 		mb->ol_flags |= RTE_MBUF_F_RX_IP_CKSUM_GOOD;
 
 	/* If neither UDP nor TCP return */
-	if (!(rxd->rxd.flags & PCIE_DESC_RX_TCP_CSUM) &&
-			!(rxd->rxd.flags & PCIE_DESC_RX_UDP_CSUM))
+	if ((rxd->rxd.flags & PCIE_DESC_RX_TCP_CSUM) == 0 &&
+			(rxd->rxd.flags & PCIE_DESC_RX_UDP_CSUM) == 0)
 		return;
 
-	if (likely(rxd->rxd.flags & PCIE_DESC_RX_L4_CSUM_OK))
+	if (likely(rxd->rxd.flags & PCIE_DESC_RX_L4_CSUM_OK) != 0)
 		mb->ol_flags |= RTE_MBUF_F_RX_L4_CKSUM_GOOD;
 	else
 		mb->ol_flags |= RTE_MBUF_F_RX_L4_CKSUM_BAD;
@@ -232,7 +232,7 @@ nfp_net_rx_freelist_setup(struct rte_eth_dev *dev)
 	int i;
 
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
-		if (nfp_net_rx_fill_freelist(dev->data->rx_queues[i]) < 0)
+		if (nfp_net_rx_fill_freelist(dev->data->rx_queues[i]) != 0)
 			return -1;
 	}
 	return 0;
@@ -387,7 +387,7 @@ nfp_net_parse_meta_vlan(const struct nfp_meta_parsed *meta,
 	 * to do anything.
 	 */
 	if ((hw->ctrl & NFP_NET_CFG_CTRL_RXVLAN_V2) != 0) {
-		if (meta->vlan_layer >= 1 && meta->vlan[0].offload != 0) {
+		if (meta->vlan_layer > 0 && meta->vlan[0].offload != 0) {
 			mb->vlan_tci = rte_cpu_to_le_32(meta->vlan[0].tci);
 			mb->ol_flags |= RTE_MBUF_F_RX_VLAN | RTE_MBUF_F_RX_VLAN_STRIPPED;
 		}
@@ -771,7 +771,7 @@ nfp_net_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		}
 
 		/* Filling the received mbuf with packet info */
-		if (hw->rx_offset)
+		if (hw->rx_offset != 0)
 			mb->data_off = RTE_PKTMBUF_HEADROOM + hw->rx_offset;
 		else
 			mb->data_off = RTE_PKTMBUF_HEADROOM +
@@ -846,7 +846,7 @@ nfp_net_rx_queue_release_mbufs(struct nfp_net_rxq *rxq)
 		return;
 
 	for (i = 0; i < rxq->rx_count; i++) {
-		if (rxq->rxbufs[i].mbuf) {
+		if (rxq->rxbufs[i].mbuf != NULL) {
 			rte_pktmbuf_free_seg(rxq->rxbufs[i].mbuf);
 			rxq->rxbufs[i].mbuf = NULL;
 		}
@@ -858,7 +858,7 @@ nfp_net_rx_queue_release(struct rte_eth_dev *dev, uint16_t queue_idx)
 {
 	struct nfp_net_rxq *rxq = dev->data->rx_queues[queue_idx];
 
-	if (rxq) {
+	if (rxq != NULL) {
 		nfp_net_rx_queue_release_mbufs(rxq);
 		rte_eth_dma_zone_free(dev, "rx_ring", queue_idx);
 		rte_free(rxq->rxbufs);
@@ -906,7 +906,7 @@ nfp_net_rx_queue_setup(struct rte_eth_dev *dev,
 	 * Free memory prior to re-allocation if needed. This is the case after
 	 * calling nfp_net_stop
 	 */
-	if (dev->data->rx_queues[queue_idx]) {
+	if (dev->data->rx_queues[queue_idx] != NULL) {
 		nfp_net_rx_queue_release(dev, queue_idx);
 		dev->data->rx_queues[queue_idx] = NULL;
 	}
@@ -1037,7 +1037,7 @@ nfp_net_tx_queue_release_mbufs(struct nfp_net_txq *txq)
 		return;
 
 	for (i = 0; i < txq->tx_count; i++) {
-		if (txq->txbufs[i].mbuf) {
+		if (txq->txbufs[i].mbuf != NULL) {
 			rte_pktmbuf_free_seg(txq->txbufs[i].mbuf);
 			txq->txbufs[i].mbuf = NULL;
 		}
@@ -1049,7 +1049,7 @@ nfp_net_tx_queue_release(struct rte_eth_dev *dev, uint16_t queue_idx)
 {
 	struct nfp_net_txq *txq = dev->data->tx_queues[queue_idx];
 
-	if (txq) {
+	if (txq != NULL) {
 		nfp_net_tx_queue_release_mbufs(txq);
 		rte_eth_dma_zone_free(dev, "tx_ring", queue_idx);
 		rte_free(txq->txbufs);

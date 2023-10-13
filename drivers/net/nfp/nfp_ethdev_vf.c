@@ -67,7 +67,7 @@ nfp_netvf_start(struct rte_eth_dev *dev)
 			}
 		}
 		intr_vector = dev->data->nb_rx_queues;
-		if (rte_intr_efd_enable(intr_handle, intr_vector))
+		if (rte_intr_efd_enable(intr_handle, intr_vector) != 0)
 			return -1;
 
 		nfp_configure_rx_interrupt(dev, intr_handle);
@@ -84,7 +84,7 @@ nfp_netvf_start(struct rte_eth_dev *dev)
 	dev_conf = &dev->data->dev_conf;
 	rxmode = &dev_conf->rxmode;
 
-	if (rxmode->mq_mode & RTE_ETH_MQ_RX_RSS) {
+	if ((rxmode->mq_mode & RTE_ETH_MQ_RX_RSS) != 0) {
 		nfp_net_rss_config_default(dev);
 		update |= NFP_NET_CFG_UPDATE_RSS;
 		new_ctrl |= nfp_net_cfg_ctrl_rss(hw->cap);
@@ -95,18 +95,18 @@ nfp_netvf_start(struct rte_eth_dev *dev)
 
 	update |= NFP_NET_CFG_UPDATE_GEN | NFP_NET_CFG_UPDATE_RING;
 
-	if (hw->cap & NFP_NET_CFG_CTRL_RINGCFG)
+	if ((hw->cap & NFP_NET_CFG_CTRL_RINGCFG) != 0)
 		new_ctrl |= NFP_NET_CFG_CTRL_RINGCFG;
 
 	nn_cfg_writel(hw, NFP_NET_CFG_CTRL, new_ctrl);
-	if (nfp_net_reconfig(hw, new_ctrl, update) < 0)
+	if (nfp_net_reconfig(hw, new_ctrl, update) != 0)
 		return -EIO;
 
 	/*
 	 * Allocating rte mbufs for configured rx queues.
 	 * This requires queues being enabled before
 	 */
-	if (nfp_net_rx_freelist_setup(dev) < 0) {
+	if (nfp_net_rx_freelist_setup(dev) != 0) {
 		ret = -ENOMEM;
 		goto error;
 	}
@@ -336,7 +336,7 @@ nfp_netvf_init(struct rte_eth_dev *eth_dev)
 	hw->mtu = RTE_ETHER_MTU;
 
 	/* VLAN insertion is incompatible with LSOv2 */
-	if (hw->cap & NFP_NET_CFG_CTRL_LSO2)
+	if ((hw->cap & NFP_NET_CFG_CTRL_LSO2) != 0)
 		hw->cap &= ~NFP_NET_CFG_CTRL_TXVLAN;
 
 	nfp_net_log_device_information(hw);
@@ -356,7 +356,7 @@ nfp_netvf_init(struct rte_eth_dev *eth_dev)
 	nfp_netvf_read_mac(hw);
 
 	tmp_ether_addr = &hw->mac_addr;
-	if (!rte_is_valid_assigned_ether_addr(tmp_ether_addr)) {
+	if (rte_is_valid_assigned_ether_addr(tmp_ether_addr) == 0) {
 		PMD_INIT_LOG(INFO, "Using random mac address for port %d",
 				   port);
 		/* Using random mac addresses for VFs */

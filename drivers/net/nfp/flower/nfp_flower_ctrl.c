@@ -103,7 +103,7 @@ nfp_flower_ctrl_vnic_recv(void *rx_queue,
 		}
 
 		/* Filling the received mbuf with packet info */
-		if (hw->rx_offset)
+		if (hw->rx_offset != 0)
 			mb->data_off = RTE_PKTMBUF_HEADROOM + hw->rx_offset;
 		else
 			mb->data_off = RTE_PKTMBUF_HEADROOM + NFP_DESC_META_LEN(rxds);
@@ -195,7 +195,7 @@ nfp_flower_ctrl_vnic_nfd3_xmit(struct nfp_app_fw_flower *app_fw_flower,
 
 	lmbuf = &txq->txbufs[txq->wr_p].mbuf;
 	RTE_MBUF_PREFETCH_TO_FREE(*lmbuf);
-	if (*lmbuf)
+	if (*lmbuf != NULL)
 		rte_pktmbuf_free_seg(*lmbuf);
 
 	*lmbuf = mbuf;
@@ -337,7 +337,7 @@ nfp_flower_ctrl_vnic_nfdk_xmit(struct nfp_app_fw_flower *app_fw_flower,
 	}
 
 	txq->wr_p = D_IDX(txq, txq->wr_p + used_descs);
-	if (txq->wr_p % NFDK_TX_DESC_BLOCK_CNT)
+	if (txq->wr_p % NFDK_TX_DESC_BLOCK_CNT != 0)
 		txq->data_pending += mbuf->pkt_len;
 	else
 		txq->data_pending = 0;

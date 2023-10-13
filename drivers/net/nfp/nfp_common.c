@@ -221,7 +221,7 @@ __nfp_net_reconfig(struct nfp_net_hw *hw, uint32_t update)
 		new = nn_cfg_readl(hw, NFP_NET_CFG_UPDATE);
 		if (new == 0)
 			break;
-		if (new & NFP_NET_CFG_UPDATE_ERR) {
+		if ((new & NFP_NET_CFG_UPDATE_ERR) != 0) {
 			PMD_INIT_LOG(ERR, "Reconfig error: 0x%08x", new);
 			return -1;
 		}
@@ -390,18 +390,18 @@ nfp_net_configure(struct rte_eth_dev *dev)
 	rxmode = &dev_conf->rxmode;
 	txmode = &dev_conf->txmode;
 
-	if (rxmode->mq_mode & RTE_ETH_MQ_RX_RSS_FLAG)
+	if ((rxmode->mq_mode & RTE_ETH_MQ_RX_RSS_FLAG) != 0)
 		rxmode->offloads |= RTE_ETH_RX_OFFLOAD_RSS_HASH;
 
 	/* Checking TX mode */
-	if (txmode->mq_mode) {
+	if (txmode->mq_mode != RTE_ETH_MQ_TX_NONE) {
 		PMD_INIT_LOG(INFO, "TX mq_mode DCB and VMDq not supported");
 		return -EINVAL;
 	}
 
 	/* Checking RX mode */
-	if (rxmode->mq_mode & RTE_ETH_MQ_RX_RSS_FLAG &&
-	    !(hw->cap & NFP_NET_CFG_CTRL_RSS_ANY)) {
+	if ((rxmode->mq_mode & RTE_ETH_MQ_RX_RSS_FLAG) != 0 &&
+	    (hw->cap & NFP_NET_CFG_CTRL_RSS_ANY) == 0) {
 		PMD_INIT_LOG(INFO, "RSS not supported");
 		return -EINVAL;
 	}
@@ -493,11 +493,11 @@ nfp_net_disable_queues(struct rte_eth_dev *dev)
 	update = NFP_NET_CFG_UPDATE_GEN | NFP_NET_CFG_UPDATE_RING |
 		 NFP_NET_CFG_UPDATE_MSIX;
 
-	if (hw->cap & NFP_NET_CFG_CTRL_RINGCFG)
+	if ((hw->cap & NFP_NET_CFG_CTRL_RINGCFG) != 0)
 		new_ctrl &= ~NFP_NET_CFG_CTRL_RINGCFG;
 
 	/* If an error when reconfig we avoid to change hw state */
-	if (nfp_net_reconfig(hw, new_ctrl, update) < 0)
+	if (nfp_net_reconfig(hw, new_ctrl, update) != 0)
 		return;
 
 	hw->ctrl = new_ctrl;
@@ -537,8 +537,8 @@ nfp_net_set_mac_addr(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr)
 	uint32_t update, ctrl;
 
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	if ((hw->ctrl & NFP_NET_CFG_CTRL_ENABLE) &&
-	    !(hw->cap & NFP_NET_CFG_CTRL_LIVE_ADDR)) {
+	if ((hw->ctrl & NFP_NET_CFG_CTRL_ENABLE) != 0 &&
+	    (hw->cap & NFP_NET_CFG_CTRL_LIVE_ADDR) == 0) {
 		PMD_INIT_LOG(INFO, "MAC address unable to change when"
 				  " port enabled");
 		return -EBUSY;
@@ -550,10 +550,10 @@ nfp_net_set_mac_addr(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr)
 	/* Signal the NIC about the change */
 	update = NFP_NET_CFG_UPDATE_MACADDR;
 	ctrl = hw->ctrl;
-	if ((hw->ctrl & NFP_NET_CFG_CTRL_ENABLE) &&
-	    (hw->cap & NFP_NET_CFG_CTRL_LIVE_ADDR))
+	if ((hw->ctrl & NFP_NET_CFG_CTRL_ENABLE) != 0 &&
+	    (hw->cap & NFP_NET_CFG_CTRL_LIVE_ADDR) != 0)
 		ctrl |= NFP_NET_CFG_CTRL_LIVE_ADDR;
-	if (nfp_net_reconfig(hw, ctrl, update) < 0) {
+	if (nfp_net_reconfig(hw, ctrl, update) != 0) {
 		PMD_INIT_LOG(INFO, "MAC address update failed");
 		return -EIO;
 	}
@@ -568,7 +568,7 @@ nfp_configure_rx_interrupt(struct rte_eth_dev *dev,
 	int i;
 
 	if (rte_intr_vec_list_alloc(intr_handle, "intr_vec",
-				    dev->data->nb_rx_queues)) {
+				    dev->data->nb_rx_queues) != 0) {
 		PMD_INIT_LOG(ERR, "Failed to allocate %d rx_queues"
 			     " intr_vec", dev->data->nb_rx_queues);
 		return -ENOMEM;
@@ -580,7 +580,7 @@ nfp_configure_rx_interrupt(struct rte_eth_dev *dev,
 		PMD_INIT_LOG(INFO, "VF: enabling RX interrupt with UIO");
 		/* UIO just supports one queue and no LSC*/
 		nn_cfg_writeb(hw, NFP_NET_CFG_RXR_VEC(0), 0);
-		if (rte_intr_vec_list_index_set(intr_handle, 0, 0))
+		if (rte_intr_vec_list_index_set(intr_handle, 0, 0) != 0)
 			return -1;
 	} else {
 		PMD_INIT_LOG(INFO, "VF: enabling RX interrupt with VFIO");
@@ -591,7 +591,7 @@ nfp_configure_rx_interrupt(struct rte_eth_dev *dev,
 			*/
 			nn_cfg_writeb(hw, NFP_NET_CFG_RXR_VEC(i), i + 1);
 			if (rte_intr_vec_list_index_set(intr_handle, i,
-							       i + 1))
+							       i + 1) != 0)
 				return -1;
 			PMD_INIT_LOG(DEBUG, "intr_vec[%d]= %d", i,
 				rte_intr_vec_list_index_get(intr_handle,
@@ -619,53 +619,53 @@ nfp_check_offloads(struct rte_eth_dev *dev)
 	rxmode = &dev_conf->rxmode;
 	txmode = &dev_conf->txmode;
 
-	if (rxmode->offloads & RTE_ETH_RX_OFFLOAD_IPV4_CKSUM) {
-		if (hw->cap & NFP_NET_CFG_CTRL_RXCSUM)
+	if ((rxmode->offloads & RTE_ETH_RX_OFFLOAD_IPV4_CKSUM) != 0) {
+		if ((hw->cap & NFP_NET_CFG_CTRL_RXCSUM) != 0)
 			ctrl |= NFP_NET_CFG_CTRL_RXCSUM;
 	}
 
-	if (rxmode->offloads & RTE_ETH_RX_OFFLOAD_VLAN_STRIP)
+	if ((rxmode->offloads & RTE_ETH_RX_OFFLOAD_VLAN_STRIP) != 0)
 		nfp_net_enbable_rxvlan_cap(hw, &ctrl);
 
-	if (rxmode->offloads & RTE_ETH_RX_OFFLOAD_QINQ_STRIP) {
-		if (hw->cap & NFP_NET_CFG_CTRL_RXQINQ)
+	if ((rxmode->offloads & RTE_ETH_RX_OFFLOAD_QINQ_STRIP) != 0) {
+		if ((hw->cap & NFP_NET_CFG_CTRL_RXQINQ) != 0)
 			ctrl |= NFP_NET_CFG_CTRL_RXQINQ;
 	}
 
 	hw->mtu = dev->data->mtu;
 
-	if (txmode->offloads & RTE_ETH_TX_OFFLOAD_VLAN_INSERT) {
-		if (hw->cap & NFP_NET_CFG_CTRL_TXVLAN_V2)
+	if ((txmode->offloads & RTE_ETH_TX_OFFLOAD_VLAN_INSERT) != 0) {
+		if ((hw->cap & NFP_NET_CFG_CTRL_TXVLAN_V2) != 0)
 			ctrl |= NFP_NET_CFG_CTRL_TXVLAN_V2;
-		else if (hw->cap & NFP_NET_CFG_CTRL_TXVLAN)
+		else if ((hw->cap & NFP_NET_CFG_CTRL_TXVLAN) != 0)
 			ctrl |= NFP_NET_CFG_CTRL_TXVLAN;
 	}
 
 	/* L2 broadcast */
-	if (hw->cap & NFP_NET_CFG_CTRL_L2BC)
+	if ((hw->cap & NFP_NET_CFG_CTRL_L2BC) != 0)
 		ctrl |= NFP_NET_CFG_CTRL_L2BC;
 
 	/* L2 multicast */
-	if (hw->cap & NFP_NET_CFG_CTRL_L2MC)
+	if ((hw->cap & NFP_NET_CFG_CTRL_L2MC) != 0)
 		ctrl |= NFP_NET_CFG_CTRL_L2MC;
 
 	/* TX checksum offload */
-	if (txmode->offloads & RTE_ETH_TX_OFFLOAD_IPV4_CKSUM ||
-	    txmode->offloads & RTE_ETH_TX_OFFLOAD_UDP_CKSUM ||
-	    txmode->offloads & RTE_ETH_TX_OFFLOAD_TCP_CKSUM)
+	if ((txmode->offloads & RTE_ETH_TX_OFFLOAD_IPV4_CKSUM) != 0 ||
+	    (txmode->offloads & RTE_ETH_TX_OFFLOAD_UDP_CKSUM) != 0 ||
+	    (txmode->offloads & RTE_ETH_TX_OFFLOAD_TCP_CKSUM) != 0)
 		ctrl |= NFP_NET_CFG_CTRL_TXCSUM;
 
 	/* LSO offload */
-	if (txmode->offloads & RTE_ETH_TX_OFFLOAD_TCP_TSO ||
-	    txmode->offloads & RTE_ETH_TX_OFFLOAD_VXLAN_TNL_TSO) {
-		if (hw->cap & NFP_NET_CFG_CTRL_LSO)
+	if ((txmode->offloads & RTE_ETH_TX_OFFLOAD_TCP_TSO) != 0 ||
+	    (txmode->offloads & RTE_ETH_TX_OFFLOAD_VXLAN_TNL_TSO) != 0) {
+		if ((hw->cap & NFP_NET_CFG_CTRL_LSO) != 0)
 			ctrl |= NFP_NET_CFG_CTRL_LSO;
 		else
 			ctrl |= NFP_NET_CFG_CTRL_LSO2;
 	}
 
 	/* RX gather */
-	if (txmode->offloads & RTE_ETH_TX_OFFLOAD_MULTI_SEGS)
+	if ((txmode->offloads & RTE_ETH_TX_OFFLOAD_MULTI_SEGS) != 0)
 		ctrl |= NFP_NET_CFG_CTRL_GATHER;
 
 	return ctrl;
@@ -693,7 +693,7 @@ nfp_net_promisc_enable(struct rte_eth_dev *dev)
 		return -ENOTSUP;
 	}
 
-	if (hw->ctrl & NFP_NET_CFG_CTRL_PROMISC) {
+	if ((hw->ctrl & NFP_NET_CFG_CTRL_PROMISC) != 0) {
 		PMD_DRV_LOG(INFO, "Promiscuous mode already enabled");
 		return 0;
 	}
@@ -706,7 +706,7 @@ nfp_net_promisc_enable(struct rte_eth_dev *dev)
 	 * it can not fail ...
 	 */
 	ret = nfp_net_reconfig(hw, new_ctrl, update);
-	if (ret < 0)
+	if (ret != 0)
 		return ret;
 
 	hw->ctrl = new_ctrl;
@@ -736,7 +736,7 @@ nfp_net_promisc_disable(struct rte_eth_dev *dev)
 	 * assuming it can not fail ...
 	 */
 	ret = nfp_net_reconfig(hw, new_ctrl, update);
-	if (ret < 0)
+	if (ret != 0)
 		return ret;
 
 	hw->ctrl = new_ctrl;
@@ -770,7 +770,7 @@ nfp_net_link_update(struct rte_eth_dev *dev, __rte_unused int wait_to_complete)
 
 	memset(&link, 0, sizeof(struct rte_eth_link));
 
-	if (nn_link_status & NFP_NET_CFG_STS_LINK)
+	if ((nn_link_status & NFP_NET_CFG_STS_LINK) != 0)
 		link.link_status = RTE_ETH_LINK_UP;
 
 	link.link_duplex = RTE_ETH_LINK_FULL_DUPLEX;
@@ -802,7 +802,7 @@ nfp_net_link_update(struct rte_eth_dev *dev, __rte_unused int wait_to_complete)
 
 	ret = rte_eth_linkstatus_set(dev, &link);
 	if (ret == 0) {
-		if (link.link_status)
+		if (link.link_status != 0)
 			PMD_DRV_LOG(INFO, "NIC Link is Up");
 		else
 			PMD_DRV_LOG(INFO, "NIC Link is Down");
@@ -907,7 +907,7 @@ nfp_net_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 
 	nfp_dev_stats.imissed -= hw->eth_stats_base.imissed;
 
-	if (stats) {
+	if (stats != NULL) {
 		memcpy(stats, &nfp_dev_stats, sizeof(*stats));
 		return 0;
 	}
@@ -1229,32 +1229,32 @@ nfp_net_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	/* Next should change when PF support is implemented */
 	dev_info->max_mac_addrs = 1;
 
-	if (hw->cap & (NFP_NET_CFG_CTRL_RXVLAN | NFP_NET_CFG_CTRL_RXVLAN_V2))
+	if ((hw->cap & (NFP_NET_CFG_CTRL_RXVLAN | NFP_NET_CFG_CTRL_RXVLAN_V2)) != 0)
 		dev_info->rx_offload_capa = RTE_ETH_RX_OFFLOAD_VLAN_STRIP;
 
-	if (hw->cap & NFP_NET_CFG_CTRL_RXQINQ)
+	if ((hw->cap & NFP_NET_CFG_CTRL_RXQINQ) != 0)
 		dev_info->rx_offload_capa |= RTE_ETH_RX_OFFLOAD_QINQ_STRIP;
 
-	if (hw->cap & NFP_NET_CFG_CTRL_RXCSUM)
+	if ((hw->cap & NFP_NET_CFG_CTRL_RXCSUM) != 0)
 		dev_info->rx_offload_capa |= RTE_ETH_RX_OFFLOAD_IPV4_CKSUM |
 					     RTE_ETH_RX_OFFLOAD_UDP_CKSUM |
 					     RTE_ETH_RX_OFFLOAD_TCP_CKSUM;
 
-	if (hw->cap & (NFP_NET_CFG_CTRL_TXVLAN | NFP_NET_CFG_CTRL_TXVLAN_V2))
+	if ((hw->cap & (NFP_NET_CFG_CTRL_TXVLAN | NFP_NET_CFG_CTRL_TXVLAN_V2)) != 0)
 		dev_info->tx_offload_capa = RTE_ETH_TX_OFFLOAD_VLAN_INSERT;
 
-	if (hw->cap & NFP_NET_CFG_CTRL_TXCSUM)
+	if ((hw->cap & NFP_NET_CFG_CTRL_TXCSUM) != 0)
 		dev_info->tx_offload_capa |= RTE_ETH_TX_OFFLOAD_IPV4_CKSUM |
 					     RTE_ETH_TX_OFFLOAD_UDP_CKSUM |
 					     RTE_ETH_TX_OFFLOAD_TCP_CKSUM;
 
-	if (hw->cap & NFP_NET_CFG_CTRL_LSO_ANY) {
+	if ((hw->cap & NFP_NET_CFG_CTRL_LSO_ANY) != 0) {
 		dev_info->tx_offload_capa |= RTE_ETH_TX_OFFLOAD_TCP_TSO;
-		if (hw->cap & NFP_NET_CFG_CTRL_VXLAN)
+		if ((hw->cap & NFP_NET_CFG_CTRL_VXLAN) != 0)
 			dev_info->tx_offload_capa |= RTE_ETH_TX_OFFLOAD_VXLAN_TNL_TSO;
 	}
 
-	if (hw->cap & NFP_NET_CFG_CTRL_GATHER)
+	if ((hw->cap & NFP_NET_CFG_CTRL_GATHER) != 0)
 		dev_info->tx_offload_capa |= RTE_ETH_TX_OFFLOAD_MULTI_SEGS;
 
 	cap_extend = hw->cap_ext;
@@ -1297,7 +1297,7 @@ nfp_net_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 		.nb_mtu_seg_max = NFP_TX_MAX_MTU_SEG,
 	};
 
-	if (hw->cap & NFP_NET_CFG_CTRL_RSS_ANY) {
+	if ((hw->cap & NFP_NET_CFG_CTRL_RSS_ANY) != 0) {
 		dev_info->rx_offload_capa |= RTE_ETH_RX_OFFLOAD_RSS_HASH;
 
 		dev_info->flow_type_rss_offloads = RTE_ETH_RSS_IPV4 |
@@ -1432,7 +1432,7 @@ nfp_net_dev_link_status_print(struct rte_eth_dev *dev)
 	struct rte_eth_link link;
 
 	rte_eth_linkstatus_get(dev, &link);
-	if (link.link_status)
+	if (link.link_status != 0)
 		PMD_DRV_LOG(INFO, "Port %d: Link Up - speed %u Mbps - %s",
 			    dev->data->port_id, link.link_speed,
 			    link.link_duplex == RTE_ETH_LINK_FULL_DUPLEX
@@ -1463,7 +1463,7 @@ nfp_net_irq_unmask(struct rte_eth_dev *dev)
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 
-	if (hw->ctrl & NFP_NET_CFG_CTRL_MSIXAUTO) {
+	if ((hw->ctrl & NFP_NET_CFG_CTRL_MSIXAUTO) != 0) {
 		/* If MSI-X auto-masking is used, clear the entry */
 		rte_wmb();
 		rte_intr_ack(pci_dev->intr_handle);
@@ -1525,7 +1525,7 @@ nfp_net_dev_interrupt_handler(void *param)
 
 	if (rte_eal_alarm_set(timeout * 1000,
 			      nfp_net_dev_interrupt_delayed_handler,
-			      (void *)dev) < 0) {
+			      (void *)dev) != 0) {
 		PMD_INIT_LOG(ERR, "Error setting alarm");
 		/* Unmasking */
 		nfp_net_irq_unmask(dev);
@@ -1578,16 +1578,16 @@ nfp_net_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 	nfp_net_enbable_rxvlan_cap(hw, &rxvlan_ctrl);
 
 	/* VLAN stripping setting */
-	if (mask & RTE_ETH_VLAN_STRIP_MASK) {
-		if (dev_conf->rxmode.offloads & RTE_ETH_RX_OFFLOAD_VLAN_STRIP)
+	if ((mask & RTE_ETH_VLAN_STRIP_MASK) != 0) {
+		if ((dev_conf->rxmode.offloads & RTE_ETH_RX_OFFLOAD_VLAN_STRIP) != 0)
 			new_ctrl |= rxvlan_ctrl;
 		else
 			new_ctrl &= ~rxvlan_ctrl;
 	}
 
 	/* QinQ stripping setting */
-	if (mask & RTE_ETH_QINQ_STRIP_MASK) {
-		if (dev_conf->rxmode.offloads & RTE_ETH_RX_OFFLOAD_QINQ_STRIP)
+	if ((mask & RTE_ETH_QINQ_STRIP_MASK) != 0) {
+		if ((dev_conf->rxmode.offloads & RTE_ETH_RX_OFFLOAD_QINQ_STRIP) != 0)
 			new_ctrl |= NFP_NET_CFG_CTRL_RXQINQ;
 		else
 			new_ctrl &= ~NFP_NET_CFG_CTRL_RXQINQ;
@@ -1675,7 +1675,7 @@ nfp_net_reta_update(struct rte_eth_dev *dev,
 
 	update = NFP_NET_CFG_UPDATE_RSS;
 
-	if (nfp_net_reconfig(hw, hw->ctrl, update) < 0)
+	if (nfp_net_reconfig(hw, hw->ctrl, update) != 0)
 		return -EIO;
 
 	return 0;
@@ -1749,28 +1749,28 @@ nfp_net_rss_hash_write(struct rte_eth_dev *dev,
 
 	rss_hf = rss_conf->rss_hf;
 
-	if (rss_hf & RTE_ETH_RSS_IPV4)
+	if ((rss_hf & RTE_ETH_RSS_IPV4) != 0)
 		cfg_rss_ctrl |= NFP_NET_CFG_RSS_IPV4;
 
-	if (rss_hf & RTE_ETH_RSS_NONFRAG_IPV4_TCP)
+	if ((rss_hf & RTE_ETH_RSS_NONFRAG_IPV4_TCP) != 0)
 		cfg_rss_ctrl |= NFP_NET_CFG_RSS_IPV4_TCP;
 
-	if (rss_hf & RTE_ETH_RSS_NONFRAG_IPV4_UDP)
+	if ((rss_hf & RTE_ETH_RSS_NONFRAG_IPV4_UDP) != 0)
 		cfg_rss_ctrl |= NFP_NET_CFG_RSS_IPV4_UDP;
 
-	if (rss_hf & RTE_ETH_RSS_NONFRAG_IPV4_SCTP)
+	if ((rss_hf & RTE_ETH_RSS_NONFRAG_IPV4_SCTP) != 0)
 		cfg_rss_ctrl |= NFP_NET_CFG_RSS_IPV4_SCTP;
 
-	if (rss_hf & RTE_ETH_RSS_IPV6)
+	if ((rss_hf & RTE_ETH_RSS_IPV6) != 0)
 		cfg_rss_ctrl |= NFP_NET_CFG_RSS_IPV6;
 
-	if (rss_hf & RTE_ETH_RSS_NONFRAG_IPV6_TCP)
+	if ((rss_hf & RTE_ETH_RSS_NONFRAG_IPV6_TCP) != 0)
 		cfg_rss_ctrl |= NFP_NET_CFG_RSS_IPV6_TCP;
 
-	if (rss_hf & RTE_ETH_RSS_NONFRAG_IPV6_UDP)
+	if ((rss_hf & RTE_ETH_RSS_NONFRAG_IPV6_UDP) != 0)
 		cfg_rss_ctrl |= NFP_NET_CFG_RSS_IPV6_UDP;
 
-	if (rss_hf & RTE_ETH_RSS_NONFRAG_IPV6_SCTP)
+	if ((rss_hf & RTE_ETH_RSS_NONFRAG_IPV6_SCTP) != 0)
 		cfg_rss_ctrl |= NFP_NET_CFG_RSS_IPV6_SCTP;
 
 	cfg_rss_ctrl |= NFP_NET_CFG_RSS_MASK;
@@ -1815,7 +1815,7 @@ nfp_net_rss_hash_update(struct rte_eth_dev *dev,
 
 	update = NFP_NET_CFG_UPDATE_RSS;
 
-	if (nfp_net_reconfig(hw, hw->ctrl, update) < 0)
+	if (nfp_net_reconfig(hw, hw->ctrl, update) != 0)
 		return -EIO;
 
 	return 0;
@@ -1839,28 +1839,28 @@ nfp_net_rss_hash_conf_get(struct rte_eth_dev *dev,
 	rss_hf = rss_conf->rss_hf;
 	cfg_rss_ctrl = nn_cfg_readl(hw, NFP_NET_CFG_RSS_CTRL);
 
-	if (cfg_rss_ctrl & NFP_NET_CFG_RSS_IPV4)
+	if ((cfg_rss_ctrl & NFP_NET_CFG_RSS_IPV4) != 0)
 		rss_hf |= RTE_ETH_RSS_IPV4;
 
-	if (cfg_rss_ctrl & NFP_NET_CFG_RSS_IPV4_TCP)
+	if ((cfg_rss_ctrl & NFP_NET_CFG_RSS_IPV4_TCP) != 0)
 		rss_hf |= RTE_ETH_RSS_NONFRAG_IPV4_TCP;
 
-	if (cfg_rss_ctrl & NFP_NET_CFG_RSS_IPV6_TCP)
+	if ((cfg_rss_ctrl & NFP_NET_CFG_RSS_IPV6_TCP) != 0)
 		rss_hf |= RTE_ETH_RSS_NONFRAG_IPV6_TCP;
 
-	if (cfg_rss_ctrl & NFP_NET_CFG_RSS_IPV4_UDP)
+	if ((cfg_rss_ctrl & NFP_NET_CFG_RSS_IPV4_UDP) != 0)
 		rss_hf |= RTE_ETH_RSS_NONFRAG_IPV4_UDP;
 
-	if (cfg_rss_ctrl & NFP_NET_CFG_RSS_IPV6_UDP)
+	if ((cfg_rss_ctrl & NFP_NET_CFG_RSS_IPV6_UDP) != 0)
 		rss_hf |= RTE_ETH_RSS_NONFRAG_IPV6_UDP;
 
-	if (cfg_rss_ctrl & NFP_NET_CFG_RSS_IPV6)
+	if ((cfg_rss_ctrl & NFP_NET_CFG_RSS_IPV6) != 0)
 		rss_hf |= RTE_ETH_RSS_IPV6;
 
-	if (cfg_rss_ctrl & NFP_NET_CFG_RSS_IPV4_SCTP)
+	if ((cfg_rss_ctrl & NFP_NET_CFG_RSS_IPV4_SCTP) != 0)
 		rss_hf |= RTE_ETH_RSS_NONFRAG_IPV4_SCTP;
 
-	if (cfg_rss_ctrl & NFP_NET_CFG_RSS_IPV6_SCTP)
+	if ((cfg_rss_ctrl & NFP_NET_CFG_RSS_IPV6_SCTP) != 0)
 		rss_hf |= RTE_ETH_RSS_NONFRAG_IPV6_SCTP;
 
 	/* Propagate current RSS hash functions to caller */

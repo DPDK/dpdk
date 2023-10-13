@@ -70,7 +70,7 @@ nfp_map_service(uint32_t service_id)
 	rte_service_runstate_set(service_id, 1);
 	rte_service_component_runstate_set(service_id, 1);
 	rte_service_lcore_start(slcore);
-	if (rte_service_may_be_active(slcore))
+	if (rte_service_may_be_active(slcore) != 0)
 		PMD_INIT_LOG(INFO, "The service %s is running", service_name);
 	else
 		PMD_INIT_LOG(ERR, "The service %s is not running", service_name);
