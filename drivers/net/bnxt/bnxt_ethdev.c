@@ -1407,6 +1407,8 @@ bnxt_receive_function(struct rte_eth_dev *eth_dev)
 			    "Using AVX2 vector mode receive for port %d\n",
 			    eth_dev->data->port_id);
 		bp->flags |= BNXT_FLAG_RX_VECTOR_PKT_MODE;
+		if (bnxt_compressed_rx_cqe_mode_enabled(bp))
+			return bnxt_crx_pkts_vec_avx2;
 		return bnxt_recv_pkts_vec_avx2;
 	}
  #endif
@@ -3125,6 +3127,9 @@ static const struct {
 	{bnxt_recv_pkts,		"Scalar"},
 #if defined(RTE_ARCH_X86)
 	{bnxt_recv_pkts_vec,		"Vector SSE"},
+#endif
+#if defined(RTE_ARCH_X86) && defined(CC_AVX2_SUPPORT)
+	{bnxt_crx_pkts_vec_avx2,	"Vector AVX2"},
 	{bnxt_recv_pkts_vec_avx2,	"Vector AVX2"},
 #endif
 #if defined(RTE_ARCH_ARM64)
