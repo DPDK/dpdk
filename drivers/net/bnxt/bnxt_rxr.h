@@ -156,6 +156,8 @@ int bnxt_flush_rx_cmp(struct bnxt_cp_ring_info *cpr);
 #if defined(RTE_ARCH_X86) || defined(RTE_ARCH_ARM64)
 uint16_t bnxt_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
 			    uint16_t nb_pkts);
+uint16_t bnxt_crx_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
+			   uint16_t nb_pkts);
 int bnxt_rxq_vec_setup(struct bnxt_rx_queue *rxq);
 #endif
 

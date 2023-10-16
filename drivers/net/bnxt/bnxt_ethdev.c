@@ -1378,7 +1378,8 @@ bnxt_receive_function(struct rte_eth_dev *eth_dev)
 	 * asynchronous completions and receive completions can be placed in
 	 * the same completion ring.
 	 */
-	if (BNXT_TRUFLOW_EN(bp) || !BNXT_NUM_ASYNC_CPR(bp))
+	if ((BNXT_TRUFLOW_EN(bp) && !BNXT_CHIP_P7(bp)) ||
+	    !BNXT_NUM_ASYNC_CPR(bp))
 		goto use_scalar_rx;
 
 	/*
@@ -1411,12 +1412,19 @@ bnxt_receive_function(struct rte_eth_dev *eth_dev)
 			return bnxt_crx_pkts_vec_avx2;
 		return bnxt_recv_pkts_vec_avx2;
 	}
- #endif
+#endif
 	if (rte_vect_get_max_simd_bitwidth() >= RTE_VECT_SIMD_128) {
 		PMD_DRV_LOG(INFO,
 			    "Using SSE vector mode receive for port %d\n",
 			    eth_dev->data->port_id);
 		bp->flags |= BNXT_FLAG_RX_VECTOR_PKT_MODE;
+		if (bnxt_compressed_rx_cqe_mode_enabled(bp)) {
+#if defined(RTE_ARCH_ARM64)
+			goto use_scalar_rx;
+#else
+			return bnxt_crx_pkts_vec;
+#endif
+		}
 		return bnxt_recv_pkts_vec;
 	}
 
@@ -1446,7 +1454,8 @@ bnxt_transmit_function(__rte_unused struct rte_eth_dev *eth_dev)
 	 */
 	if (eth_dev->data->scattered_rx ||
 	    (offloads & ~RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE) ||
-	    BNXT_TRUFLOW_EN(bp) || bp->ieee_1588)
+	    (BNXT_TRUFLOW_EN(bp) && !BNXT_CHIP_P7(bp)) ||
+	    bp->ieee_1588)
 		goto use_scalar_tx;
 
 #if defined(RTE_ARCH_X86)
@@ -3126,6 +3135,7 @@ static const struct {
 } bnxt_rx_burst_info[] = {
 	{bnxt_recv_pkts,		"Scalar"},
 #if defined(RTE_ARCH_X86)
+	{bnxt_crx_pkts_vec,		"Vector SSE"},
 	{bnxt_recv_pkts_vec,		"Vector SSE"},
 #endif
 #if defined(RTE_ARCH_X86) && defined(CC_AVX2_SUPPORT)
