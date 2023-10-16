@@ -1184,6 +1184,24 @@ rte_pmd_cnxk_hw_sa_write(void *device, struct rte_security_session *sess,
 	return 0;
 }
 
+void *
+rte_pmd_cnxk_inl_ipsec_res(struct rte_mbuf *mbuf)
+{
+	const union nix_rx_parse_u *rx;
+	uint16_t desc_size;
+	uintptr_t wqe;
+
+	if (!mbuf || !(mbuf->ol_flags & RTE_MBUF_F_RX_SEC_OFFLOAD))
+		return NULL;
+
+	wqe = (uintptr_t)(mbuf + 1);
+	rx = (const union nix_rx_parse_u *)(wqe + 8);
+	desc_size = (rx->desc_sizem1 + 1) * 16;
+
+	/* cpt_res_s sits after SG list at 16B aligned address */
+	return (void *)(wqe + 64 + desc_size);
+}
+
 static int
 cn10k_eth_sec_session_stats_get(void *device, struct rte_security_session *sess,
 			    struct rte_security_stats *stats)

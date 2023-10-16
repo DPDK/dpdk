@@ -96,4 +96,21 @@ int rte_pmd_cnxk_hw_sa_read(void *device, struct rte_security_session *sess,
 __rte_experimental
 int rte_pmd_cnxk_hw_sa_write(void *device, struct rte_security_session *sess,
 			     void *data, uint32_t len);
+
+/**
+ * Get pointer to CPT result info for inline inbound processed pkt.
+ *
+ * It is recommended to use this API only when mbuf indicates packet
+ * was processed with inline IPsec and there was a failure with the same i.e
+ * mbuf->ol_flags indicates (RTE_MBUF_F_RX_SEC_OFFLOAD | RTE_MBUF_F_RX_SEC_OFFLOAD_FAILED).
+ *
+ * @param mbuf
+ *   Pointer to packet that was just received and was processed with Inline IPsec.
+ *
+ * @return
+ *   - Pointer to mbuf location where CPT result info is stored on success.
+ *   - NULL on failure.
+ */
+__rte_experimental
+void *rte_pmd_cnxk_inl_ipsec_res(struct rte_mbuf *mbuf);
 #endif /* _PMD_CNXK_H_ */

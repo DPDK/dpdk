@@ -3,10 +3,14 @@ DPDK_24 {
 };
 
 EXPERIMENTAL {
-	# added in 22.07
 	global:
+
+	# added in 22.07
 	rte_pmd_cnxk_hw_sa_read;
 	rte_pmd_cnxk_hw_sa_write;
+
+	# added in 23.11
+	rte_pmd_cnxk_inl_ipsec_res;
 };
 
 INTERNAL {
