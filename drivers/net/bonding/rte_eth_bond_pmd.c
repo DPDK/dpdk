@@ -2114,6 +2114,10 @@ bond_ethdev_stop(struct rte_eth_dev *eth_dev)
 	eth_dev->data->dev_link.link_status = ETH_LINK_DOWN;
 	eth_dev->data->dev_started = 0;
 
+	if (internals->link_status_polling_enabled) {
+		rte_eal_alarm_cancel(bond_ethdev_slave_link_status_change_monitor,
+			(void *)&rte_eth_devices[internals->port_id]);
+	}
 	internals->link_status_polling_enabled = 0;
 	for (i = 0; i < internals->slave_count; i++) {
 		uint16_t slave_id = internals->slaves[i].port_id;
