@@ -276,7 +276,7 @@ gve_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->max_rx_queues = priv->max_nb_rxq;
 	dev_info->max_tx_queues = priv->max_nb_txq;
 	dev_info->min_rx_bufsize = GVE_MIN_BUF_SIZE;
-	dev_info->max_rx_pktlen = GVE_MAX_RX_PKTLEN;
+	dev_info->max_rx_pktlen = priv->max_mtu + RTE_ETHER_HDR_LEN;
 	dev_info->max_mtu = priv->max_mtu;
 	dev_info->min_mtu = RTE_ETHER_MIN_MTU;
 

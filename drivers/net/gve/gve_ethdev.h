@@ -29,7 +29,6 @@
 #define GVE_TX_MAX_FREE_SZ          512
 
 #define GVE_MIN_BUF_SIZE	    1024
-#define GVE_MAX_RX_PKTLEN	    65535
 
 /* A list of pages registered with the device during setup and used by a queue
  * as buffers
