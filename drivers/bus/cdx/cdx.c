@@ -383,10 +383,12 @@ cdx_probe_one_driver(struct rte_cdx_driver *dr,
 	CDX_BUS_DEBUG("  probe device %s using driver: %s", dev_name,
 		dr->driver.name);
 
-	ret = cdx_vfio_map_resource(dev);
-	if (ret != 0) {
-		CDX_BUS_ERR("CDX map device failed: %d", ret);
-		goto error_map_device;
+	if (dr->drv_flags & RTE_CDX_DRV_NEED_MAPPING) {
+		ret = cdx_vfio_map_resource(dev);
+		if (ret != 0) {
+			CDX_BUS_ERR("CDX map device failed: %d", ret);
+			goto error_map_device;
+		}
 	}
 
 	/* call the driver probe() function */

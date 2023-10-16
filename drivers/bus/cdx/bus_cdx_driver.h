@@ -37,6 +37,9 @@ struct rte_cdx_bus;
 static const char DRV_EXP_TAG(name, cdx_tbl_export)[] __rte_used = \
 RTE_STR(table)
 
+/** Device needs resource mapping */
+#define RTE_CDX_DRV_NEED_MAPPING 0x0001
+
 /**
  * A structure describing an ID for a CDX driver. Each driver provides a
  * table of these IDs for each device that it supports.
