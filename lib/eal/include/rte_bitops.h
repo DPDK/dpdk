@@ -574,7 +574,7 @@ rte_combine64ms1b(uint64_t v)
 static inline uint32_t
 rte_bsf32(uint32_t v)
 {
-	return (uint32_t)__builtin_ctz(v);
+	return (uint32_t)rte_ctz32(v);
 }
 
 /**
@@ -615,7 +615,7 @@ rte_bsf32_safe(uint32_t v, uint32_t *pos)
 static inline uint32_t
 rte_bsf64(uint64_t v)
 {
-	return (uint32_t)__builtin_ctzll(v);
+	return (uint32_t)rte_ctz64(v);
 }
 
 /**
@@ -656,7 +656,7 @@ rte_bsf64_safe(uint64_t v, uint32_t *pos)
 static inline uint32_t
 rte_fls_u32(uint32_t x)
 {
-	return (x == 0) ? 0 : 32 - __builtin_clz(x);
+	return (x == 0) ? 0 : 32 - rte_clz32(x);
 }
 
 /**
@@ -674,7 +674,7 @@ rte_fls_u32(uint32_t x)
 static inline uint32_t
 rte_fls_u64(uint64_t x)
 {
-	return (x == 0) ? 0 : 64 - __builtin_clzll(x);
+	return (x == 0) ? 0 : 64 - rte_clz64(x);
 }
 
 /*********** Macros to work with powers of 2 ********/

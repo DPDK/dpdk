@@ -505,8 +505,8 @@ service_runner_func(void *arg)
 		if (service_mask == 0)
 			continue;
 
-		start_id = __builtin_ctzl(service_mask);
-		end_id = 64 - __builtin_clzl(service_mask);
+		start_id = rte_ctz64(service_mask);
+		end_id = 64 - rte_clz64(service_mask);
 
 		for (i = start_id; i < end_id; i++) {
 			/* return value ignored as no change to code flow */

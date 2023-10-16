@@ -386,7 +386,7 @@ malloc_elem_free_list_index(size_t size)
 		return 0;
 
 	/* Find next power of 2 > size. */
-	log2 = sizeof(size) * 8 - __builtin_clzl(size);
+	log2 = sizeof(size) * 8 - rte_clz64(size);
 
 	/* Compute freelist index, based on log2(size). */
 	index = (log2 - MALLOC_MINSIZE_LOG2 + MALLOC_LOG2_INCREMENT - 1) /
