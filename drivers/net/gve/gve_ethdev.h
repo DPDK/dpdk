@@ -21,7 +21,6 @@
 #define GVE_TX_MAX_FREE_SZ          512
 
 #define GVE_MIN_BUF_SIZE	    1024
-#define GVE_MAX_RX_PKTLEN	    65535
 
 #define GVE_TX_CKSUM_OFFLOAD_MASK (		\
 		RTE_MBUF_F_TX_L4_MASK  |	\
