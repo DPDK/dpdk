@@ -24,26 +24,35 @@ cn10k_sso_hws_xtract_meta(struct rte_mbuf *m, const uint64_t *txq_data)
 static __rte_always_inline void
 cn10k_sso_txq_fc_wait(const struct cn10k_eth_txq *txq)
 {
+	int64_t avail;
+
 #ifdef RTE_ARCH_ARM64
-	uint64_t space;
+	int64_t val;
 
 	asm volatile(PLT_CPU_FEATURE_PREAMBLE
-		     "		ldxr %[space], [%[addr]]		\n"
-		     "		cmp %[adj], %[space] 			\n"
-		     "		b.hi .Ldne%=				\n"
+		     "		ldxr %[val], [%[addr]]			\n"
+		     "		sub %[val], %[adj], %[val]		\n"
+		     "		lsl %[refill], %[val], %[shft]		\n"
+		     "		sub %[refill], %[refill], %[val]	\n"
+		     "		cmp %[refill], #0x0			\n"
+		     "		b.gt .Ldne%=				\n"
 		     "		sevl					\n"
 		     ".Lrty%=:	wfe					\n"
-		     "		ldxr %[space], [%[addr]]		\n"
-		     "		cmp %[adj], %[space]			\n"
-		     "		b.ls .Lrty%=				\n"
+		     "		ldxr %[val], [%[addr]]			\n"
+		     "		sub %[val], %[adj], %[val]		\n"
+		     "		lsl %[refill], %[val], %[shft]		\n"
+		     "		sub %[refill], %[refill], %[val]	\n"
+		     "		cmp %[refill], #0x0			\n"
+		     "		b.le .Lrty%=				\n"
 		     ".Ldne%=:						\n"
-		     : [space] "=&r"(space)
-		     : [adj] "r"(txq->nb_sqb_bufs_adj), [addr] "r"(txq->fc_mem)
+		     : [refill] "=&r"(avail), [val] "=&r" (val)
+		     : [addr] "r"(txq->fc_mem), [adj] "r"(txq->nb_sqb_bufs_adj),
+		       [shft] "r"(txq->sqes_per_sqb_log2)
 		     : "memory");
 #else
-	while ((uint64_t)txq->nb_sqb_bufs_adj <=
-	       __atomic_load_n(txq->fc_mem, __ATOMIC_RELAXED))
-		;
+	do {
+		avail = txq->nb_sqb_bufs_adj - __atomic_load_n(txq->fc_mem, __ATOMIC_RELAXED);
+	} while (((avail << txq->sqes_per_sqb_log2) - avail) <= 0);
 #endif
 }
 
