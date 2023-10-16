@@ -193,7 +193,7 @@ cnxk_tim_remaining_ticks_get(const struct rte_event_timer_adapter *adapter,
 		return -ENOENT;
 
 	bkt = (struct cnxk_tim_bkt *)evtim->impl_opaque[1];
-	sema = rte_atomic_load_explicit(&bkt->w1, rte_memory_order_acquire);
+	sema = __atomic_load_n(&bkt->w1, rte_memory_order_acquire);
 	if (cnxk_tim_bkt_get_hbt(sema) || !cnxk_tim_bkt_get_nent(sema))
 		return -ENOENT;
 
