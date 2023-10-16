@@ -22,6 +22,13 @@ pick_rx_func(struct rte_eth_dev *eth_dev,
 	rte_atomic_thread_fence(__ATOMIC_RELEASE);
 }
 
+static uint16_t __rte_noinline __rte_hot __rte_unused
+cn10k_nix_flush_rx(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t pkts)
+{
+	const uint16_t flags = NIX_RX_MULTI_SEG_F | NIX_RX_REAS_F | NIX_RX_OFFLOAD_SECURITY_F;
+	return cn10k_nix_flush_recv_pkts(rx_queue, rx_pkts, pkts, flags);
+}
+
 void
 cn10k_eth_set_rx_function(struct rte_eth_dev *eth_dev)
 {
@@ -82,8 +89,7 @@ cn10k_eth_set_rx_function(struct rte_eth_dev *eth_dev)
 
 	/* Copy multi seg version with security for tear down sequence */
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
-		dev->rx_pkt_burst_no_offload =
-			nix_eth_rx_burst_mseg_reas[NIX_RX_OFFLOAD_SECURITY_F];
+		dev->rx_pkt_burst_no_offload = cn10k_nix_flush_rx;
 
 	if (dev->scalar_ena) {
 		if (dev->rx_offloads & RTE_ETH_RX_OFFLOAD_SCATTER) {

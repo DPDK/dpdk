@@ -1098,6 +1098,99 @@ cn10k_nix_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t pkts,
 	return nb_pkts;
 }
 
+static __rte_always_inline uint16_t
+cn10k_nix_flush_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t pkts,
+			  const uint16_t flags)
+{
+	struct cn10k_eth_rxq *rxq = rx_queue;
+	const uint64_t mbuf_init = rxq->mbuf_initializer;
+	const void *lookup_mem = rxq->lookup_mem;
+	const uint64_t data_off = rxq->data_off;
+	struct rte_mempool *meta_pool = NULL;
+	const uint64_t wdata = rxq->wdata;
+	const uint32_t qmask = rxq->qmask;
+	const uintptr_t desc = rxq->desc;
+	uint64_t lbase = rxq->lmt_base;
+	uint16_t packets = 0, nb_pkts;
+	uint16_t lmt_id __rte_unused;
+	uint32_t head = rxq->head;
+	struct nix_cqe_hdr_s *cq;
+	struct rte_mbuf *mbuf;
+	uint64_t sa_base = 0;
+	uintptr_t cpth = 0;
+	uint8_t loff = 0;
+	uint64_t laddr;
+
+	nb_pkts = nix_rx_nb_pkts(rxq, wdata, pkts, qmask);
+
+	if (flags & NIX_RX_OFFLOAD_SECURITY_F) {
+		sa_base = rxq->sa_base;
+		sa_base &= ~(ROC_NIX_INL_SA_BASE_ALIGN - 1);
+		ROC_LMT_BASE_ID_GET(lbase, lmt_id);
+		laddr = lbase;
+		laddr += 8;
+		if (flags & NIX_RX_REAS_F)
+			meta_pool = (struct rte_mempool *)rxq->meta_pool;
+	}
+
+	while (packets < nb_pkts) {
+		/* Prefetch N desc ahead */
+		rte_prefetch_non_temporal((void *)(desc + (CQE_SZ((head + 2) & qmask))));
+		cq = (struct nix_cqe_hdr_s *)(desc + CQE_SZ(head));
+
+		mbuf = nix_get_mbuf_from_cqe(cq, data_off);
+
+		/* Mark mempool obj as "get" as it is alloc'ed by NIX */
+		RTE_MEMPOOL_CHECK_COOKIES(mbuf->pool, (void **)&mbuf, 1, 1);
+
+		/* Translate meta to mbuf */
+		if (flags & NIX_RX_OFFLOAD_SECURITY_F) {
+			const uint64_t cq_w1 = *((const uint64_t *)cq + 1);
+			const uint64_t cq_w5 = *((const uint64_t *)cq + 5);
+			struct rte_mbuf *meta_buf = mbuf;
+
+			cpth = ((uintptr_t)meta_buf + (uint16_t)data_off);
+
+			/* Update mempool pointer for full mode pkt */
+			if ((flags & NIX_RX_REAS_F) && (cq_w1 & BIT(11)) &&
+			    !((*(uint64_t *)cpth) & BIT(15)))
+				meta_buf->pool = meta_pool;
+
+			mbuf = nix_sec_meta_to_mbuf_sc(cq_w1, cq_w5, sa_base, laddr, &loff,
+						       meta_buf, data_off, flags, mbuf_init);
+			/* Free Meta mbuf, not use LMT line for flush as this will be called
+			 * from non-datapath i.e. dev_stop case.
+			 */
+			if (loff) {
+				roc_npa_aura_op_free(meta_buf->pool->pool_id, 0,
+						     (uint64_t)meta_buf);
+				loff = 0;
+			}
+		}
+
+		cn10k_nix_cqe_to_mbuf(cq, cq->tag, mbuf, lookup_mem, mbuf_init,
+				      cpth, sa_base, flags);
+		cn10k_nix_mbuf_to_tstamp(mbuf, rxq->tstamp,
+					(flags & NIX_RX_OFFLOAD_TSTAMP_F),
+					(uint64_t *)((uint8_t *)mbuf + data_off));
+		rx_pkts[packets++] = mbuf;
+		roc_prefetch_store_keep(mbuf);
+		head++;
+		head &= qmask;
+	}
+
+	rxq->head = head;
+	rxq->available -= nb_pkts;
+
+	/* Free all the CQs that we've processed */
+	plt_write64((wdata | nb_pkts), rxq->cq_door);
+
+	if (flags & NIX_RX_OFFLOAD_SECURITY_F)
+		rte_io_wmb();
+
+	return nb_pkts;
+}
+
 #if defined(RTE_ARCH_ARM64)
 
 static __rte_always_inline uint64_t
