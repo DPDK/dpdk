@@ -21,6 +21,7 @@ Following features are available:
 - set GPIO edge that triggers interrupt
 - set GPIO active low
 - register interrupt handler for specific GPIO
+- multiprocess aware
 
 Requirements
 ------------
@@ -29,6 +30,12 @@ PMD relies on modified kernel GPIO driver which exposes ``ioctl()`` interface
 for installing interrupt handlers for low latency signal processing.
 
 Driver is shipped with Marvell SDK.
+
+Limitations
+-----------
+
+In multiprocess mode, user-space application must ensure
+no GPIO sharing across processes takes place.
 
 Device Setup
 ------------
