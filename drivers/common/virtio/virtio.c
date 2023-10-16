@@ -93,7 +93,7 @@ virtio_pci_dev_queues_free(struct virtio_pci_dev *vpdev, uint16_t nr_vq)
 	struct virtqueue *vq;
 	uint16_t i;
 
-	if (hw->vqs == NULL)
+	if (hw == NULL || hw->vqs == NULL)
 		return;
 
 	for (i = 0; i < nr_vq; i++) {

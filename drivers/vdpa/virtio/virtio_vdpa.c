@@ -1465,7 +1465,7 @@ virtio_vdpa_dev_do_remove(struct rte_pci_device *pci_dev, struct virtio_vdpa_pri
 		DRV_LOG(ERR, "%s is dev close work had err", pci_dev->name);
 	}
 
-	if (priv->dev_ops->unreg_dev_intr) {
+	if (priv->dev_ops && priv->dev_ops->unreg_dev_intr) {
 		ret = virtio_pci_dev_interrupt_disable(priv->vpdev, 0);
 		if (ret) {
 			DRV_LOG(ERR, "%s error disabling virtio dev interrupts: %d (%s)",
