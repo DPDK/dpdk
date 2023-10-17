@@ -12,8 +12,10 @@ extern "C" {
 #endif
 
 #ifdef RTE_ENABLE_STDATOMIC
+#ifndef _MSC_VER
 #ifdef __STDC_NO_ATOMICS__
 #error enable_stdatomic=true but atomics not supported by toolchain
+#endif
 #endif
 
 #include <stdatomic.h>
