@@ -41,13 +41,13 @@ mem_free(void *addr, const bool trace_ena)
 void
 rte_free(void *addr)
 {
-	return mem_free(addr, true);
+	mem_free(addr, true);
 }
 
 void
 eal_free_no_trace(void *addr)
 {
-	return mem_free(addr, false);
+	mem_free(addr, false);
 }
 
 static void *
