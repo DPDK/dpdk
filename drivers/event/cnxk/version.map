@@ -1,9 +1,11 @@
- DPDK_23 {
+DPDK_24 {
 	local: *;
- };
+};
 
- EXPERIMENTAL {
+EXPERIMENTAL {
 	global:
-	rte_pmd_cnxk_eventdev_wait_head;
+
+	# added in 23.11
 	rte_pmd_cnxk_eventdev_is_head;
- };
+	rte_pmd_cnxk_eventdev_wait_head;
+};
