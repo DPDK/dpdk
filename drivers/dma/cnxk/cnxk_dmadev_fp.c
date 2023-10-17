@@ -252,7 +252,7 @@ cnxk_dmadev_copy(void *dev_private, uint16_t vchan, rte_iova_t src, rte_iova_t d
 	CNXK_DPI_STRM_INC(dpi_conf->c_desc, tail);
 
 	cmd[0] = (1UL << 54) | (1UL << 48);
-	cmd[1] = dpi_conf->cmd.u;
+	cmd[1] = dpi_conf->cmd.u | ((flags & RTE_DMA_OP_FLAG_AUTO_FREE) << 37);
 	cmd[2] = (uint64_t)comp_ptr;
 	cmd[4] = length;
 	cmd[6] = length;
@@ -308,7 +308,7 @@ cnxk_dmadev_copy_sg(void *dev_private, uint16_t vchan, const struct rte_dma_sge 
 	comp_ptr = dpi_conf->c_desc.compl_ptr[dpi_conf->c_desc.tail];
 	CNXK_DPI_STRM_INC(dpi_conf->c_desc, tail);
 
-	hdr[1] = dpi_conf->cmd.u;
+	hdr[1] = dpi_conf->cmd.u | ((flags & RTE_DMA_OP_FLAG_AUTO_FREE) << 37);
 	hdr[2] = (uint64_t)comp_ptr;
 
 	/*
@@ -365,7 +365,7 @@ cn10k_dmadev_copy(void *dev_private, uint16_t vchan, rte_iova_t src, rte_iova_t 
 
 	cmd[0] = dpi_conf->cmd.u | (1U << 6) | 1U;
 	cmd[1] = (uint64_t)comp_ptr;
-	cmd[2] = 0;
+	cmd[2] = (1UL << 47) | ((flags & RTE_DMA_OP_FLAG_AUTO_FREE) << 43);
 	cmd[4] = length;
 	cmd[5] = src;
 	cmd[6] = length;
@@ -412,7 +412,7 @@ cn10k_dmadev_copy_sg(void *dev_private, uint16_t vchan, const struct rte_dma_sge
 
 	hdr[0] = dpi_conf->cmd.u | (nb_dst << 6) | nb_src;
 	hdr[1] = (uint64_t)comp_ptr;
-	hdr[2] = 0;
+	hdr[2] = (1UL << 47) | ((flags & RTE_DMA_OP_FLAG_AUTO_FREE) << 43);
 
 	rc = __dpi_queue_write_sg(dpivf, hdr, src, dst, nb_src, nb_dst);
 	if (unlikely(rc)) {

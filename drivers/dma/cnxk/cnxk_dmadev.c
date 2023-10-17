@@ -16,7 +16,8 @@ cnxk_dmadev_info_get(const struct rte_dma_dev *dev, struct rte_dma_info *dev_inf
 	dev_info->nb_vchans = dpivf->num_vchans;
 	dev_info->dev_capa = RTE_DMA_CAPA_MEM_TO_MEM | RTE_DMA_CAPA_MEM_TO_DEV |
 			     RTE_DMA_CAPA_DEV_TO_MEM | RTE_DMA_CAPA_DEV_TO_DEV |
-			     RTE_DMA_CAPA_OPS_COPY | RTE_DMA_CAPA_OPS_COPY_SG;
+			     RTE_DMA_CAPA_OPS_COPY | RTE_DMA_CAPA_OPS_COPY_SG |
+			     RTE_DMA_CAPA_M2D_AUTO_FREE;
 	dev_info->max_desc = CNXK_DPI_MAX_DESC;
 	dev_info->min_desc = CNXK_DPI_MIN_DESC;
 	dev_info->max_sges = CNXK_DPI_MAX_POINTER;
@@ -115,9 +116,26 @@ cnxk_dmadev_configure(struct rte_dma_dev *dev, const struct rte_dma_conf *conf, 
 	return 0;
 }
 
-static void
+static int
+dmadev_src_buf_aura_get(struct rte_mempool *sb_mp, const char *mp_ops_name)
+{
+	struct rte_mempool_ops *ops;
+
+	if (sb_mp == NULL)
+		return 0;
+
+	ops = rte_mempool_get_ops(sb_mp->ops_index);
+	if (strcmp(ops->name, mp_ops_name) != 0)
+		return -EINVAL;
+
+	return roc_npa_aura_handle_to_aura(sb_mp->pool_id);
+}
+
+static int
 cn9k_dmadev_setup_hdr(union cnxk_dpi_instr_cmd *header, const struct rte_dma_vchan_conf *conf)
 {
+	int aura;
+
 	header->cn9k.pt = DPI_HDR_PT_ZBW_CA;
 
 	switch (conf->direction) {
@@ -140,6 +158,11 @@ cn9k_dmadev_setup_hdr(union cnxk_dpi_instr_cmd *header, const struct rte_dma_vch
 			header->cn9k.func = conf->dst_port.pcie.pfid << 12;
 			header->cn9k.func |= conf->dst_port.pcie.vfid;
 		}
+		aura = dmadev_src_buf_aura_get(conf->auto_free.m2d.pool, "cn9k_mempool_ops");
+		if (aura < 0)
+			return aura;
+		header->cn9k.aura = aura;
+		header->cn9k.ii = 1;
 		break;
 	case RTE_DMA_DIR_MEM_TO_MEM:
 		header->cn9k.xtype = DPI_XTYPE_INTERNAL_ONLY;
@@ -153,11 +176,15 @@ cn9k_dmadev_setup_hdr(union cnxk_dpi_instr_cmd *header, const struct rte_dma_vch
 		header->cn9k.fport = conf->dst_port.pcie.coreid;
 		header->cn9k.pvfe = 0;
 	};
+
+	return 0;
 }
 
-static void
+static int
 cn10k_dmadev_setup_hdr(union cnxk_dpi_instr_cmd *header, const struct rte_dma_vchan_conf *conf)
 {
+	int aura;
+
 	header->cn10k.pt = DPI_HDR_PT_ZBW_CA;
 
 	switch (conf->direction) {
@@ -180,6 +207,10 @@ cn10k_dmadev_setup_hdr(union cnxk_dpi_instr_cmd *header, const struct rte_dma_vc
 			header->cn10k.func = conf->dst_port.pcie.pfid << 12;
 			header->cn10k.func |= conf->dst_port.pcie.vfid;
 		}
+		aura = dmadev_src_buf_aura_get(conf->auto_free.m2d.pool, "cn10k_mempool_ops");
+		if (aura < 0)
+			return aura;
+		header->cn10k.aura = aura;
 		break;
 	case RTE_DMA_DIR_MEM_TO_MEM:
 		header->cn10k.xtype = DPI_XTYPE_INTERNAL_ONLY;
@@ -193,6 +224,8 @@ cn10k_dmadev_setup_hdr(union cnxk_dpi_instr_cmd *header, const struct rte_dma_vc
 		header->cn10k.fport = conf->dst_port.pcie.coreid;
 		header->cn10k.pvfe = 0;
 	};
+
+	return 0;
 }
 
 static int
@@ -204,16 +237,19 @@ cnxk_dmadev_vchan_setup(struct rte_dma_dev *dev, uint16_t vchan,
 	union cnxk_dpi_instr_cmd *header;
 	uint16_t max_desc;
 	uint32_t size;
-	int i;
+	int i, ret;
 
 	RTE_SET_USED(conf_sz);
 
 	header = (union cnxk_dpi_instr_cmd *)&dpi_conf->cmd.u;
 
 	if (dpivf->is_cn10k)
-		cn10k_dmadev_setup_hdr(header, conf);
+		ret = cn10k_dmadev_setup_hdr(header, conf);
 	else
-		cn9k_dmadev_setup_hdr(header, conf);
+		ret = cn9k_dmadev_setup_hdr(header, conf);
+
+	if (ret)
+		return ret;
 
 	/* Free up descriptor memory before allocating. */
 	cnxk_dmadev_vchan_free(dpivf, vchan);

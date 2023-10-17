@@ -238,6 +238,10 @@ New Features
     to get the remaining ticks to expire for a given event timer.
   * Added link profiles support, up to two link profiles are supported.
 
+* **Updated Marvell cnxk dmadev driver.**
+
+  * Added support for source buffer auto free for memory to device DMA.
+
 * **Added dispatcher library.**
 
   Added dispatcher library which purpose is to help decouple different
