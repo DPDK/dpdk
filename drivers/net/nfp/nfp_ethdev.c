@@ -286,7 +286,6 @@ nfp_net_close(struct rte_eth_dev *dev)
 	/* Mark this port as unused and free device priv resources */
 	nn_cfg_writeb(hw, NFP_NET_CFG_LSC, 0xff);
 	app_fw_nic->ports[hw->idx] = NULL;
-	rte_eth_dev_release_port(dev);
 
 	for (i = 0; i < app_fw_nic->total_phyports; i++) {
 		/* Check to see if ports are still in use */
