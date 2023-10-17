@@ -36,6 +36,11 @@ if is_ms_compiler
     # the MSVC compiler regards as unsafe but are used by DPDK
     dpdk_conf.set('_CRT_SECURE_NO_WARNINGS', 1)
 
+    # temporarily disable msvc specific warnings
+    # - 4244 compiler detected conversion of integer to smaller type
+    # - 4267 compiler detected conversion of size_t to smaller type
+    add_project_arguments('/wd4244', '/wd4267', language: 'c')
+
     # enable non-locking atomic operations
     add_project_arguments('/experimental:c11atomics', language: 'c')
 
