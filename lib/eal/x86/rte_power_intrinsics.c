@@ -60,7 +60,7 @@ static void intel_umwait(const uint64_t timeout)
  */
 static void amd_monitorx(volatile void *addr)
 {
-#if defined(__MWAITX__)
+#if defined(RTE_TOOLCHAIN_MSVC) || defined(__MWAITX__)
 	/* cast away "volatile" when using the intrinsic */
 	_mm_monitorx((void *)(uintptr_t)addr, 0, 0);
 #else
@@ -75,7 +75,7 @@ static void amd_monitorx(volatile void *addr)
 static void amd_mwaitx(const uint64_t timeout)
 {
 	RTE_SET_USED(timeout);
-#if defined(__MWAITX__)
+#if defined(RTE_TOOLCHAIN_MSVC) || defined(__MWAITX__)
 	_mm_mwaitx(0, 0, 0);
 #else
 	asm volatile(".byte 0x0f, 0x01, 0xfb;"
