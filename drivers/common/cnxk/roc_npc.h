@@ -320,6 +320,7 @@ struct roc_npc_flow {
 	uint64_t timeout_cycles;
 	void *age_context;
 	uint32_t timeout;
+	bool has_age_action;
 
 	TAILQ_ENTRY(roc_npc_flow) next;
 };

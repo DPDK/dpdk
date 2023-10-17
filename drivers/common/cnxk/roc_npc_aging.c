@@ -273,6 +273,7 @@ npc_aging_ctrl_thread_create(struct roc_npc *roc_npc,
 	flow->age_context = age->context == NULL ? flow : age->context;
 	flow->timeout = age->timeout;
 	flow->timeout_cycles = plt_tsc_cycles() + age->timeout * plt_tsc_hz();
+	flow->has_age_action = true;
 
 	if (flow_age->age_flow_refcnt == 0) {
 		flow_age->aged_flows_get_thread_exit = false;
