@@ -682,6 +682,7 @@ virtqueue_enqueue_xmit_packed(struct virtnet_tx *txvq, struct rte_mbuf *cookie,
 		 */
 		start_dp[idx].addr = txvq->hdr_mem + RTE_PTR_DIFF(&txr[idx].tx_hdr, txr);
 		start_dp[idx].len = vq->hw->vtnet_hdr_size;
+		head_flags |= VRING_DESC_F_NEXT;
 		hdr = (struct virtio_net_hdr *)&txr[idx].tx_hdr;
 		idx++;
 		if (idx >= vq->vq_nentries) {
