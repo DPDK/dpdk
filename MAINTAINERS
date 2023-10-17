@@ -378,7 +378,6 @@ Core Libraries
 T: git://dpdk.org/dpdk
 
 Memory pool
-M: Olivier Matz <olivier.matz@6wind.com>
 M: Andrew Rybchenko <andrew.rybchenko@oktetlabs.ru>
 F: lib/mempool/
 F: drivers/mempool/ring/
@@ -395,14 +394,12 @@ F: app/test/test_ring*
 F: app/test/test_func_reentrancy.c
 
 Stack
-M: Olivier Matz <olivier.matz@6wind.com>
 F: lib/stack/
 F: drivers/mempool/stack/
 F: app/test/test_stack*
 F: doc/guides/prog_guide/stack_lib.rst
 
 Packet buffer
-M: Olivier Matz <olivier.matz@6wind.com>
 F: lib/mbuf/
 F: doc/guides/prog_guide/mbuf_lib.rst
 F: app/test/test_mbuf.c
@@ -1467,7 +1464,6 @@ Packet processing
 -----------------
 
 Network headers
-M: Olivier Matz <olivier.matz@6wind.com>
 F: lib/net/
 F: app/test/test_cksum.c
 F: app/test/test_cksum_perf.c
@@ -1648,7 +1644,6 @@ F: app/test/test_cfgfile.c
 F: app/test/test_cfgfiles/
 
 Interactive command line
-M: Olivier Matz <olivier.matz@6wind.com>
 F: lib/cmdline/
 F: app/test-cmdline/
 F: app/test/test_cmdline*
@@ -1656,7 +1651,6 @@ F: examples/cmdline/
 F: doc/guides/sample_app_ug/cmd_line.rst
 
 Key/Value parsing
-M: Olivier Matz <olivier.matz@6wind.com>
 F: lib/kvargs/
 F: app/test/test_kvargs.c
 
