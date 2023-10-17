@@ -1887,6 +1887,8 @@ rte_flow_async_action_handle_query(uint16_t port_id,
 	const struct rte_flow_ops *ops = rte_flow_ops_get(port_id, error);
 	int ret;
 
+	if (unlikely(!ops))
+		return -rte_errno;
 	ret = ops->async_action_handle_query(dev, queue_id, op_attr,
 					  action_handle, data, user_data, error);
 	return flow_err(port_id, ret, error);
