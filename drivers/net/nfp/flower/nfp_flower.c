@@ -224,8 +224,6 @@ nfp_flower_pf_close(struct rte_eth_dev *dev)
 
 	nn_cfg_writeb(hw, NFP_NET_CFG_LSC, 0xff);
 
-	rte_eth_dev_release_port(dev);
-
 	/* Now it is safe to free all PF resources */
 	PMD_DRV_LOG(INFO, "Freeing PF resources");
 	nfp_cpp_area_free(pf_dev->ctrl_area);
