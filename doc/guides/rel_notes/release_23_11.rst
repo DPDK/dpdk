@@ -24,11 +24,6 @@ DPDK Release 23.11
 New Features
 ------------
 
-   * **Added support for models with multiple I/O in mldev library.**
-
-     Added support in mldev library for models with multiple inputs and outputs.
-
-
 .. This section should contain new features added in this release.
    Sample format:
 
@@ -209,6 +204,10 @@ New Features
 
   * Added support for the new Intel vRAN Boost v2 device variant (GNR-D)
     within the unified driver.
+
+* **Added support for models with multiple I/O in mldev library.**
+
+  Added support in mldev library for models with multiple inputs and outputs.
 
 * **Added new eventdev Ethernet Rx adapter create API.**
 
