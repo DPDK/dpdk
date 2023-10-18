@@ -106,6 +106,14 @@ cnxk_ep_vf_setup_iq_regs(struct otx_ep_device *otx_ep, uint32_t iq_no)
 		return -EIO;
 	}
 
+	/* Configure input queue instruction size. */
+	if (otx_ep->conf->iq.instr_type == OTX_EP_32BYTE_INSTR)
+		reg_val &= ~(CNXK_EP_R_IN_CTL_IS_64B);
+	else
+		reg_val |= CNXK_EP_R_IN_CTL_IS_64B;
+	oct_ep_write64(reg_val, otx_ep->hw_addr + CNXK_EP_R_IN_CONTROL(iq_no));
+	iq->desc_size = otx_ep->conf->iq.instr_type;
+
 	/* Write the start of the input queue's ring and its size  */
 	oct_ep_write64(iq->base_addr_dma, otx_ep->hw_addr + CNXK_EP_R_IN_INSTR_BADDR(iq_no));
 	oct_ep_write64(iq->nb_desc, otx_ep->hw_addr + CNXK_EP_R_IN_INSTR_RSIZE(iq_no));
@@ -354,7 +362,7 @@ static const struct otx_ep_config default_cnxk_ep_conf = {
 	/* IQ attributes */
 	.iq                        = {
 		.max_iqs           = OTX_EP_CFG_IO_QUEUES,
-		.instr_type        = OTX_EP_64BYTE_INSTR,
+		.instr_type        = OTX_EP_32BYTE_INSTR,
 		.pending_list_size = (OTX_EP_MAX_IQ_DESCRIPTORS *
 				      OTX_EP_CFG_IO_QUEUES),
 	},

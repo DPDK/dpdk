@@ -11,6 +11,7 @@
 
 #define OTX_EP_MAX_RINGS_PER_VF        (8)
 #define OTX_EP_CFG_IO_QUEUES        OTX_EP_MAX_RINGS_PER_VF
+#define OTX_EP_32BYTE_INSTR         (32)
 #define OTX_EP_64BYTE_INSTR         (64)
 /*
  * Backpressure for SDP is configured on Octeon, and the minimum queue sizes
@@ -214,6 +215,9 @@ struct otx_ep_instr_queue {
 
 	/* Number of  descriptors in this ring. */
 	uint32_t nb_desc;
+
+	/* Size of the descriptor. */
+	uint8_t desc_size;
 
 	/* Input ring index, where the driver should write the next packet */
 	uint32_t host_write_index;

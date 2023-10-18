@@ -120,6 +120,14 @@ otx_ep_setup_iq_regs(struct otx_ep_device *otx_ep, uint32_t iq_no)
 			return -EIO;
 	}
 
+	/* Configure input queue instruction size. */
+	if (iq->desc_size == OTX_EP_32BYTE_INSTR)
+		reg_val &= ~(OTX_EP_R_IN_CTL_IS_64B);
+	else
+		reg_val |= OTX_EP_R_IN_CTL_IS_64B;
+	oct_ep_write64(reg_val, otx_ep->hw_addr + OTX_EP_R_IN_CONTROL(iq_no));
+	iq->desc_size = otx_ep->conf->iq.instr_type;
+
 	/* Write the start of the input queue's ring and its size  */
 	otx_ep_write64(iq->base_addr_dma, otx_ep->hw_addr,
 		       OTX_EP_R_IN_INSTR_BADDR(iq_no));
