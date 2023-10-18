@@ -27,6 +27,46 @@ static const struct rte_eth_desc_lim otx_ep_tx_desc_lim = {
 	.nb_align	= OTX_EP_TXD_ALIGN,
 };
 
+static void
+otx_ep_set_tx_func(struct rte_eth_dev *eth_dev)
+{
+	struct otx_ep_device *otx_epvf = OTX_EP_DEV(eth_dev);
+
+	if (otx_epvf->chip_gen == OTX_EP_CN10XX || otx_epvf->chip_gen == OTX_EP_CN9XX) {
+		eth_dev->tx_pkt_burst = &cnxk_ep_xmit_pkts;
+		if (otx_epvf->tx_offloads & RTE_ETH_TX_OFFLOAD_MULTI_SEGS)
+			eth_dev->tx_pkt_burst = &cnxk_ep_xmit_pkts_mseg;
+	} else {
+		eth_dev->tx_pkt_burst = &otx_ep_xmit_pkts;
+	}
+
+	if (eth_dev->data->dev_started)
+		rte_eth_fp_ops[eth_dev->data->port_id].tx_pkt_burst =
+			eth_dev->tx_pkt_burst;
+}
+
+static void
+otx_ep_set_rx_func(struct rte_eth_dev *eth_dev)
+{
+	struct otx_ep_device *otx_epvf = OTX_EP_DEV(eth_dev);
+
+	if (otx_epvf->chip_gen == OTX_EP_CN10XX) {
+		eth_dev->rx_pkt_burst = &cnxk_ep_recv_pkts;
+		if (otx_epvf->rx_offloads & RTE_ETH_RX_OFFLOAD_SCATTER)
+			eth_dev->rx_pkt_burst = &cnxk_ep_recv_pkts_mseg;
+	} else if (otx_epvf->chip_gen == OTX_EP_CN9XX) {
+		eth_dev->rx_pkt_burst = &cn9k_ep_recv_pkts;
+		if (otx_epvf->rx_offloads & RTE_ETH_RX_OFFLOAD_SCATTER)
+			eth_dev->rx_pkt_burst = &cn9k_ep_recv_pkts_mseg;
+	} else {
+		eth_dev->rx_pkt_burst = &otx_ep_recv_pkts;
+	}
+
+	if (eth_dev->data->dev_started)
+		rte_eth_fp_ops[eth_dev->data->port_id].rx_pkt_burst =
+			eth_dev->rx_pkt_burst;
+}
+
 static int
 otx_ep_dev_info_get(struct rte_eth_dev *eth_dev,
 		    struct rte_eth_dev_info *devinfo)
@@ -154,6 +194,10 @@ otx_ep_dev_start(struct rte_eth_dev *eth_dev)
 	}
 
 	otx_ep_dev_link_update(eth_dev, 0);
+
+	otx_ep_set_tx_func(eth_dev);
+	otx_ep_set_rx_func(eth_dev);
+
 	otx_ep_info("dev started\n");
 
 	for (q = 0; q < eth_dev->data->nb_rx_queues; q++)
@@ -266,18 +310,23 @@ otx_epdev_init(struct otx_ep_device *otx_epvf)
 
 	otx_epvf->fn_list.setup_device_regs(otx_epvf);
 
+	otx_epvf->eth_dev->tx_pkt_burst = &cnxk_ep_xmit_pkts;
 	otx_epvf->eth_dev->rx_pkt_burst = &otx_ep_recv_pkts;
-	if (otx_epvf->chip_id == PCI_DEVID_OCTEONTX_EP_VF)
+	if (otx_epvf->chip_id == PCI_DEVID_OCTEONTX_EP_VF) {
 		otx_epvf->eth_dev->tx_pkt_burst = &otx_ep_xmit_pkts;
-	else if (otx_epvf->chip_id == PCI_DEVID_CN9K_EP_NET_VF ||
+		otx_epvf->chip_gen = OTX_EP_CN8XX;
+	} else if (otx_epvf->chip_id == PCI_DEVID_CN9K_EP_NET_VF ||
 		 otx_epvf->chip_id == PCI_DEVID_CN98XX_EP_NET_VF ||
 		 otx_epvf->chip_id == PCI_DEVID_CNF95N_EP_NET_VF ||
-		 otx_epvf->chip_id == PCI_DEVID_CNF95O_EP_NET_VF ||
-		 otx_epvf->chip_id == PCI_DEVID_CN10KA_EP_NET_VF ||
-		 otx_epvf->chip_id == PCI_DEVID_CN10KB_EP_NET_VF ||
-		 otx_epvf->chip_id == PCI_DEVID_CNF10KA_EP_NET_VF ||
-		 otx_epvf->chip_id == PCI_DEVID_CNF10KB_EP_NET_VF) {
-		otx_epvf->eth_dev->tx_pkt_burst = &otx2_ep_xmit_pkts;
+		 otx_epvf->chip_id == PCI_DEVID_CNF95O_EP_NET_VF) {
+		otx_epvf->eth_dev->rx_pkt_burst = &cn9k_ep_recv_pkts;
+		otx_epvf->chip_gen = OTX_EP_CN9XX;
+	} else if (otx_epvf->chip_id == PCI_DEVID_CN10KA_EP_NET_VF ||
+		   otx_epvf->chip_id == PCI_DEVID_CN10KB_EP_NET_VF ||
+		   otx_epvf->chip_id == PCI_DEVID_CNF10KA_EP_NET_VF ||
+		   otx_epvf->chip_id == PCI_DEVID_CNF10KB_EP_NET_VF) {
+		otx_epvf->eth_dev->rx_pkt_burst = &cnxk_ep_recv_pkts;
+		otx_epvf->chip_gen = OTX_EP_CN10XX;
 	} else {
 		otx_ep_err("Invalid chip_id\n");
 		ret = -EINVAL;
@@ -667,8 +716,8 @@ otx_ep_eth_dev_init(struct rte_eth_dev *eth_dev)
 	/* Single process support */
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
 		eth_dev->dev_ops = &otx_ep_eth_dev_ops;
-		eth_dev->rx_pkt_burst = &otx_ep_recv_pkts;
-		eth_dev->tx_pkt_burst = &otx2_ep_xmit_pkts;
+		otx_ep_set_tx_func(eth_dev);
+		otx_ep_set_rx_func(eth_dev);
 		return 0;
 	}
 

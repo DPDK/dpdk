@@ -4,7 +4,20 @@
 #ifndef _OTX_EP_COMMON_H_
 #define _OTX_EP_COMMON_H_
 
+#include <rte_bitops.h>
 #include <rte_spinlock.h>
+#include <unistd.h>
+#include <assert.h>
+#include <rte_eal.h>
+#include <rte_mempool.h>
+#include <rte_mbuf.h>
+#include <rte_io.h>
+#include <rte_net.h>
+#include <ethdev_pci.h>
+
+#define OTX_EP_CN8XX  RTE_BIT32(0)
+#define OTX_EP_CN9XX  RTE_BIT32(1)
+#define OTX_EP_CN10XX RTE_BIT32(2)
 
 #define OTX_EP_NW_PKT_OP               0x1220
 #define OTX_EP_NW_CMD_OP               0x1221
@@ -38,7 +51,7 @@
 #define OTX_EP_NORESP_OHSM_SEND     (4)
 #define OTX_EP_NORESP_LAST          (4)
 #define OTX_EP_PCI_RING_ALIGN   65536
-#define OTX_EP_MAX_SG_LISTS 4
+#define OTX_EP_MAX_SG_LISTS 6
 #define OTX_EP_NUM_SG_PTRS 4
 #define SDP_PKIND 40
 #define SDP_OTX2_PKIND 57
@@ -203,6 +216,38 @@ struct otx_ep_iq_config {
  *  such structure to represent it.
  */
 struct otx_ep_instr_queue {
+	/* Location in memory updated by SDP ISM */
+	uint32_t *inst_cnt_ism;
+	struct rte_mbuf **mbuf_list;
+	/* Pointer to the Virtual Base addr of the input ring. */
+	uint8_t *base_addr;
+
+	/* track inst count locally to consolidate HW counter updates */
+	uint32_t inst_cnt_ism_prev;
+
+	/* Input ring index, where the driver should write the next packet */
+	uint32_t host_write_index;
+
+	/* Input ring index, where the OCTEON 9 should read the next packet */
+	uint32_t otx_read_index;
+	/** This index aids in finding the window in the queue where OCTEON 9
+	 *  has read the commands.
+	 */
+	uint32_t flush_index;
+	/* This keeps track of the instructions pending in this queue. */
+	uint64_t instr_pending;
+
+	/* Memory zone */
+	const struct rte_memzone *iq_mz;
+	/* OTX_EP doorbell register for the ring. */
+	void *doorbell_reg;
+
+	/* OTX_EP instruction count register for this ring. */
+	void *inst_cnt_reg;
+
+	/* Number of instructions pending to be posted to OCTEON 9. */
+	uint32_t fill_cnt;
+
 	struct otx_ep_device *otx_ep_dev;
 
 	uint32_t q_no;
@@ -219,54 +264,21 @@ struct otx_ep_instr_queue {
 	/* Size of the descriptor. */
 	uint8_t desc_size;
 
-	/* Input ring index, where the driver should write the next packet */
-	uint32_t host_write_index;
-
-	/* Input ring index, where the OCTEON 9 should read the next packet */
-	uint32_t otx_read_index;
-
 	uint32_t reset_instr_cnt;
-
-	/** This index aids in finding the window in the queue where OCTEON 9
-	 *  has read the commands.
-	 */
-	uint32_t flush_index;
 
 	/* Free-running/wrapping instruction counter for IQ. */
 	uint32_t inst_cnt;
 
-	/* This keeps track of the instructions pending in this queue. */
-	uint64_t instr_pending;
-
-	/* Pointer to the Virtual Base addr of the input ring. */
-	uint8_t *base_addr;
+	uint64_t partial_ih;
 
 	/* This IQ request list */
 	struct otx_ep_instr_list *req_list;
-
-	/* OTX_EP doorbell register for the ring. */
-	void *doorbell_reg;
-
-	/* OTX_EP instruction count register for this ring. */
-	void *inst_cnt_reg;
-
-	/* Number of instructions pending to be posted to OCTEON 9. */
-	uint32_t fill_cnt;
 
 	/* Statistics for this input queue. */
 	struct otx_ep_iq_stats stats;
 
 	/* DMA mapped base address of the input descriptor ring. */
 	uint64_t base_addr_dma;
-
-	/* Memory zone */
-	const struct rte_memzone *iq_mz;
-
-	/* Location in memory updated by SDP ISM */
-	uint32_t *inst_cnt_ism;
-
-	/* track inst count locally to consolidate HW counter updates */
-	uint32_t inst_cnt_ism_prev;
 };
 
 /** Descriptor format.
@@ -344,14 +356,17 @@ struct otx_ep_oq_config {
 
 /* The Descriptor Ring Output Queue(DROQ) structure. */
 struct otx_ep_droq {
-	struct otx_ep_device *otx_ep_dev;
 	/* The 8B aligned descriptor ring starts at this address. */
 	struct otx_ep_droq_desc *desc_ring;
 
-	uint32_t q_no;
-	uint64_t last_pkt_count;
+	/* The 8B aligned info ptrs begin from this address. */
+	struct otx_ep_droq_info *info_list;
 
-	struct rte_mempool *mpool;
+	/* receive buffer list contains mbuf ptr list */
+	struct rte_mbuf **recv_buf_list;
+
+	/* Packets pending to be processed */
+	uint64_t pkts_pending;
 
 	/* Driver should read the next packet at this index */
 	uint32_t read_idx;
@@ -362,22 +377,17 @@ struct otx_ep_droq {
 	/* At this index, the driver will refill the descriptor's buffer */
 	uint32_t refill_idx;
 
-	/* Packets pending to be processed */
-	uint64_t pkts_pending;
+	/* The number of descriptors pending to refill. */
+	uint32_t refill_count;
 
 	/* Number of descriptors in this ring. */
 	uint32_t nb_desc;
 
-	/* The number of descriptors pending to refill. */
-	uint32_t refill_count;
-
 	uint32_t refill_threshold;
 
-	/* The 8B aligned info ptrs begin from this address. */
-	struct otx_ep_droq_info *info_list;
+	uint64_t last_pkt_count;
 
-	/* receive buffer list contains mbuf ptr list */
-	struct rte_mbuf **recv_buf_list;
+	struct rte_mempool *mpool;
 
 	/* The size of each buffer pointed by the buffer pointer. */
 	uint32_t buffer_size;
@@ -392,6 +402,13 @@ struct otx_ep_droq {
 	 */
 	void *pkts_sent_reg;
 
+	/* Pointer to host memory copy of output packet count, set by ISM */
+	uint32_t *pkts_sent_ism;
+	uint32_t pkts_sent_ism_prev;
+
+	/* Statistics for this DROQ. */
+	struct otx_ep_droq_stats stats;
+
 	/** Handle DMA incompletion during pkt reads.
 	 * This variable is used to initiate a sent_reg_read
 	 * that completes pending dma
@@ -400,8 +417,9 @@ struct otx_ep_droq {
 	 */
 	uint32_t sent_reg_val;
 
-	/* Statistics for this DROQ. */
-	struct otx_ep_droq_stats stats;
+	uint32_t q_no;
+
+	struct otx_ep_device *otx_ep_dev;
 
 	/* DMA mapped address of the DROQ descriptor ring. */
 	size_t desc_ring_dma;
@@ -419,10 +437,6 @@ struct otx_ep_droq {
 	const struct rte_memzone *desc_ring_mz;
 
 	const struct rte_memzone *info_mz;
-
-	/* Pointer to host memory copy of output packet count, set by ISM */
-	uint32_t *pkts_sent_ism;
-	uint32_t pkts_sent_ism_prev;
 };
 #define OTX_EP_DROQ_SIZE		(sizeof(struct otx_ep_droq))
 
@@ -545,6 +559,9 @@ struct otx_ep_device {
 
 	/* Negotiated Mbox version */
 	uint32_t mbox_neg_ver;
+
+	/* Generation */
+	uint32_t chip_gen;
 };
 
 int otx_ep_setup_iqs(struct otx_ep_device *otx_ep, uint32_t iq_no,

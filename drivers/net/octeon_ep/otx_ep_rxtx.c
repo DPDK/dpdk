@@ -13,14 +13,7 @@
 
 #include "otx_ep_common.h"
 #include "otx_ep_vf.h"
-#include "otx2_ep_vf.h"
 #include "otx_ep_rxtx.h"
-
-/* SDP_LENGTH_S specifies packet length and is of 8-byte size */
-#define OTX_EP_INFO_SIZE 8
-#define OTX_EP_FSZ_FS0 0
-#define DROQ_REFILL_THRESHOLD 16
-#define OTX2_SDP_REQUEST_ISM   (0x1ULL << 63)
 
 static void
 otx_ep_dmazone_free(const struct rte_memzone *mz)
@@ -143,6 +136,13 @@ otx_ep_init_instr_queue(struct otx_ep_device *otx_ep, int iq_no, int num_descs,
 	otx_ep_info("IQ[%d]: base: %p basedma: %lx count: %d\n",
 		     iq_no, iq->base_addr, (unsigned long)iq->base_addr_dma,
 		     iq->nb_desc);
+
+	iq->mbuf_list = rte_zmalloc_socket("mbuf_list",	(iq->nb_desc * sizeof(struct rte_mbuf *)),
+					   RTE_CACHE_LINE_SIZE, rte_socket_id());
+	if (!iq->mbuf_list) {
+		otx_ep_err("IQ[%d] mbuf_list alloc failed\n", iq_no);
+		goto iq_init_fail;
+	}
 
 	iq->otx_ep_dev = otx_ep;
 	iq->q_no = iq_no;
@@ -660,85 +660,6 @@ otx_ep_xmit_pkts(void *tx_queue, struct rte_mbuf **pkts, uint16_t nb_pkts)
 		dbell = (i == (unsigned int)(nb_pkts - 1)) ? 1 : 0;
 		index = iq->host_write_index;
 		if (otx_ep_send_data(otx_ep, iq, &iqcmd, dbell))
-			goto xmit_fail;
-		otx_ep_iqreq_add(iq, m, iqreq_type, index);
-		iq->stats.tx_pkts++;
-		iq->stats.tx_bytes += pkt_len;
-		count++;
-	}
-
-xmit_fail:
-	if (iq->instr_pending >= OTX_EP_MAX_INSTR)
-		otx_ep_flush_iq(iq);
-
-	/* Return no# of instructions posted successfully. */
-	return count;
-}
-
-/* Enqueue requests/packets to OTX_EP IQ queue.
- * returns number of requests enqueued successfully
- */
-uint16_t
-otx2_ep_xmit_pkts(void *tx_queue, struct rte_mbuf **pkts, uint16_t nb_pkts)
-{
-	struct otx_ep_instr_queue *iq = (struct otx_ep_instr_queue *)tx_queue;
-	struct otx_ep_device *otx_ep = iq->otx_ep_dev;
-	struct otx2_ep_instr_64B iqcmd2;
-	uint32_t iqreq_type;
-	struct rte_mbuf *m;
-	uint32_t pkt_len;
-	int count = 0;
-	uint16_t i;
-	int dbell;
-	int index;
-
-	iqcmd2.ih.u64 = 0;
-	iqcmd2.irh.u64 = 0;
-
-	/* ih invars */
-	iqcmd2.ih.s.fsz = OTX_EP_FSZ_FS0;
-	iqcmd2.ih.s.pkind = otx_ep->pkind; /* The SDK decided PKIND value */
-	/* irh invars */
-	iqcmd2.irh.s.opcode = OTX_EP_NW_PKT_OP;
-
-	for (i = 0; i < nb_pkts; i++) {
-		m = pkts[i];
-		if (m->nb_segs == 1) {
-			pkt_len = rte_pktmbuf_data_len(m);
-			iqcmd2.ih.s.tlen = pkt_len + iqcmd2.ih.s.fsz;
-			iqcmd2.dptr = rte_mbuf_data_iova(m); /*dptr*/
-			iqcmd2.ih.s.gather = 0;
-			iqcmd2.ih.s.gsz = 0;
-			iqreq_type = OTX_EP_REQTYPE_NORESP_NET;
-		} else {
-			if (!(otx_ep->tx_offloads & RTE_ETH_TX_OFFLOAD_MULTI_SEGS))
-				goto xmit_fail;
-
-			if (unlikely(prepare_xmit_gather_list(iq, m, &iqcmd2.dptr, &iqcmd2.ih) < 0))
-				goto xmit_fail;
-
-			pkt_len = rte_pktmbuf_pkt_len(m);
-			iqreq_type = OTX_EP_REQTYPE_NORESP_GATHER;
-		}
-
-		iqcmd2.irh.u64 = rte_bswap64(iqcmd2.irh.u64);
-
-#ifdef OTX_EP_IO_DEBUG
-		otx_ep_dbg("After swapping\n");
-		otx_ep_dbg("Word0 [dptr]: 0x%016lx\n",
-			   (unsigned long)iqcmd.dptr);
-		otx_ep_dbg("Word1 [ihtx]: 0x%016lx\n", (unsigned long)iqcmd.ih);
-		otx_ep_dbg("Word2 [pki_ih3]: 0x%016lx\n",
-			   (unsigned long)iqcmd.pki_ih3);
-		otx_ep_dbg("Word3 [rptr]: 0x%016lx\n",
-			   (unsigned long)iqcmd.rptr);
-		otx_ep_dbg("Word4 [irh]: 0x%016lx\n", (unsigned long)iqcmd.irh);
-		otx_ep_dbg("Word5 [exhdr[0]]: 0x%016lx\n",
-			   (unsigned long)iqcmd.exhdr[0]);
-#endif
-		index = iq->host_write_index;
-		dbell = (i == (unsigned int)(nb_pkts - 1)) ? 1 : 0;
-		if (otx_ep_send_data(otx_ep, iq, &iqcmd2, dbell))
 			goto xmit_fail;
 		otx_ep_iqreq_add(iq, m, iqreq_type, index);
 		iq->stats.tx_pkts++;

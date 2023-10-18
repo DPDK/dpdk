@@ -156,6 +156,8 @@ cnxk_ep_vf_setup_iq_regs(struct otx_ep_device *otx_ep, uint32_t iq_no)
 		   (void *)iq->inst_cnt_ism, ism_addr);
 	*iq->inst_cnt_ism = 0;
 	iq->inst_cnt_ism_prev = 0;
+	iq->partial_ih = ((uint64_t)otx_ep->pkind) << 36;
+
 	return 0;
 }
 

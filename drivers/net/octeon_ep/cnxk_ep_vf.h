@@ -6,6 +6,8 @@
 
 #include <rte_io.h>
 
+#include "otx_ep_common.h"
+
 #define CNXK_CONFIG_XPANSION_BAR             0x38
 #define CNXK_CONFIG_PCIE_CAP                 0x70
 #define CNXK_CONFIG_PCIE_DEVCAP              0x74
@@ -176,6 +178,17 @@ struct cnxk_ep_instr_64B {
 
 	/* Additional headers available in a 64-byte instruction. */
 	uint64_t exhdr[4];
+};
+
+struct cnxk_ep_instr_32B {
+	/* Pointer where the input data is available. */
+	uint64_t dptr;
+
+	/* OTX_EP Instruction Header. */
+	union otx_ep_instr_ih ih;
+
+	/* Misc data bytes that can be passed as front data */
+	uint64_t rsvd[2];
 };
 
 #define CNXK_EP_IQ_ISM_OFFSET(queue)    (RTE_CACHE_LINE_SIZE * (queue) + 4)
