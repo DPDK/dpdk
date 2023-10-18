@@ -7,13 +7,6 @@ if not is_linux or not dpdk_conf.get('RTE_ARCH_64')
     subdir_done()
 endif
 
-driver_sdk_headers = files(
-        'cn10k_ml_dev.h',
-        'cn10k_ml_ops.h',
-        'cn10k_ml_model.h',
-        'cn10k_ml_ocm.h',
-)
-
 sources = files(
         'cn10k_ml_dev.c',
         'cn10k_ml_ops.c',
