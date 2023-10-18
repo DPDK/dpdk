@@ -47,7 +47,7 @@ extern "C" {
  */
 static inline struct rte_eventdev *
 rte_event_pmd_vdev_init(const char *name, size_t dev_private_size,
-		int socket_id)
+		int socket_id, struct rte_vdev_device *vdev)
 {
 
 	struct rte_eventdev *eventdev;
@@ -69,6 +69,7 @@ rte_event_pmd_vdev_init(const char *name, size_t dev_private_size,
 			rte_panic("Cannot allocate memzone for private device"
 					" data");
 	}
+	eventdev->dev = &vdev->device;
 
 	return eventdev;
 }
