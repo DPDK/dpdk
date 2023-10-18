@@ -12,8 +12,6 @@ gen_c_files = generator(gen_c_file_for_header,
         arguments: ['@INPUT@', '@OUTPUT@'])
 
 cflags = machine_args
-cflags += '-DALLOW_EXPERIMENTAL_API'
-cflags += '-DALLOW_INTERNAL_API'
 
 sources = files('main.c')
 sources += gen_c_files.process(dpdk_chkinc_headers)
@@ -32,6 +30,18 @@ executable('chkincs', sources,
         dependencies: deps,
         install: false)
 
+executable('chkincs-exp', sources,
+        c_args: [cflags, '-DALLOW_EXPERIMENTAL_API'],
+        include_directories: includes,
+        dependencies: deps,
+        install: false)
+
+executable('chkincs-all', sources,
+        c_args: [cflags, '-DALLOW_EXPERIMENTAL_API', '-DALLOW_INTERNAL_API'],
+        include_directories: includes,
+        dependencies: deps,
+        install: false)
+
 # run tests for c++ builds also
 if not add_languages('cpp', required: false)
     subdir_done()
@@ -46,6 +56,19 @@ cpp_sources += gen_cpp_files.process(dpdk_chkinc_headers)
 
 executable('chkincs-cpp', cpp_sources,
         cpp_args: ['-include', 'rte_config.h', cflags],
+        include_directories: includes,
+        dependencies: deps,
+        install: false)
+
+executable('chkincs-cpp-exp', cpp_sources,
+        cpp_args: ['-include', 'rte_config.h', cflags, '-DALLOW_EXPERIMENTAL_API'],
+        include_directories: includes,
+        dependencies: deps,
+        install: false)
+
+executable('chkincs-cpp-all', cpp_sources,
+        cpp_args: ['-include', 'rte_config.h', cflags, '-DALLOW_EXPERIMENTAL_API',
+                   '-DALLOW_INTERNAL_API'],
         include_directories: includes,
         dependencies: deps,
         install: false)
