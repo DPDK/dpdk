@@ -104,6 +104,8 @@ rte_event_dev_info_get(uint8_t dev_id, struct rte_event_dev_info *dev_info)
 	dev_info->dequeue_timeout_ns = dev->data->dev_conf.dequeue_timeout_ns;
 
 	dev_info->dev = dev->dev;
+	if (dev->dev != NULL && dev->dev->driver != NULL)
+		dev_info->driver_name = dev->dev->driver->name;
 
 	rte_eventdev_trace_info_get(dev_id, dev_info, dev_info->dev);
 
