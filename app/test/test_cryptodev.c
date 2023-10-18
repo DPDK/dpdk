@@ -17963,11 +17963,11 @@ test_cryptodev_dpaa_sec_raw_api(void)
 	return run_cryptodev_raw_testsuite(RTE_STR(CRYPTODEV_NAME_DPAA_SEC_PMD));
 }
 
-REGISTER_TEST_COMMAND(cryptodev_cn10k_raw_api_autotest,
+REGISTER_DRIVER_TEST(cryptodev_cn10k_raw_api_autotest,
 		test_cryptodev_cn10k_raw_api);
-REGISTER_TEST_COMMAND(cryptodev_dpaa2_sec_raw_api_autotest,
+REGISTER_DRIVER_TEST(cryptodev_dpaa2_sec_raw_api_autotest,
 		test_cryptodev_dpaa2_sec_raw_api);
-REGISTER_TEST_COMMAND(cryptodev_dpaa_sec_raw_api_autotest,
+REGISTER_DRIVER_TEST(cryptodev_dpaa_sec_raw_api_autotest,
 		test_cryptodev_dpaa_sec_raw_api);
 REGISTER_DRIVER_TEST(cryptodev_qat_raw_api_autotest,
 		test_cryptodev_qat_raw_api);
@@ -17981,7 +17981,7 @@ REGISTER_DRIVER_TEST(cryptodev_openssl_autotest, test_cryptodev_openssl);
 REGISTER_DRIVER_TEST(cryptodev_aesni_gcm_autotest, test_cryptodev_aesni_gcm);
 REGISTER_DRIVER_TEST(cryptodev_cpu_aesni_gcm_autotest,
 	test_cryptodev_cpu_aesni_gcm);
-REGISTER_TEST_COMMAND(cryptodev_mlx5_autotest, test_cryptodev_mlx5);
+REGISTER_DRIVER_TEST(cryptodev_mlx5_autotest, test_cryptodev_mlx5);
 REGISTER_DRIVER_TEST(cryptodev_null_autotest, test_cryptodev_null);
 REGISTER_DRIVER_TEST(cryptodev_sw_snow3g_autotest, test_cryptodev_sw_snow3g);
 REGISTER_DRIVER_TEST(cryptodev_sw_kasumi_autotest, test_cryptodev_sw_kasumi);
@@ -17990,12 +17990,12 @@ REGISTER_DRIVER_TEST(cryptodev_sw_armv8_autotest, test_cryptodev_armv8);
 REGISTER_DRIVER_TEST(cryptodev_sw_mvsam_autotest, test_cryptodev_mrvl);
 REGISTER_DRIVER_TEST(cryptodev_dpaa2_sec_autotest, test_cryptodev_dpaa2_sec);
 REGISTER_DRIVER_TEST(cryptodev_dpaa_sec_autotest, test_cryptodev_dpaa_sec);
-REGISTER_TEST_COMMAND(cryptodev_ccp_autotest, test_cryptodev_ccp);
+REGISTER_DRIVER_TEST(cryptodev_ccp_autotest, test_cryptodev_ccp);
 REGISTER_DRIVER_TEST(cryptodev_uadk_autotest, test_cryptodev_uadk);
-REGISTER_TEST_COMMAND(cryptodev_virtio_autotest, test_cryptodev_virtio);
-REGISTER_TEST_COMMAND(cryptodev_octeontx_autotest, test_cryptodev_octeontx);
-REGISTER_TEST_COMMAND(cryptodev_caam_jr_autotest, test_cryptodev_caam_jr);
-REGISTER_TEST_COMMAND(cryptodev_nitrox_autotest, test_cryptodev_nitrox);
-REGISTER_TEST_COMMAND(cryptodev_bcmfs_autotest, test_cryptodev_bcmfs);
+REGISTER_DRIVER_TEST(cryptodev_virtio_autotest, test_cryptodev_virtio);
+REGISTER_DRIVER_TEST(cryptodev_octeontx_autotest, test_cryptodev_octeontx);
+REGISTER_DRIVER_TEST(cryptodev_caam_jr_autotest, test_cryptodev_caam_jr);
+REGISTER_DRIVER_TEST(cryptodev_nitrox_autotest, test_cryptodev_nitrox);
+REGISTER_DRIVER_TEST(cryptodev_bcmfs_autotest, test_cryptodev_bcmfs);
 REGISTER_DRIVER_TEST(cryptodev_cn9k_autotest, test_cryptodev_cn9k);
 REGISTER_DRIVER_TEST(cryptodev_cn10k_autotest, test_cryptodev_cn10k);
