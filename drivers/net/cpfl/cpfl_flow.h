@@ -63,7 +63,7 @@ struct cpfl_flow_engine *cpfl_flow_engine_match(struct rte_eth_dev *dev,
 						void **meta);
 int cpfl_flow_engine_init(struct cpfl_adapter_ext *adapter);
 void cpfl_flow_engine_uninit(struct cpfl_adapter_ext *adapter);
-int cpfl_flow_init(struct cpfl_adapter_ext *ad);
+int cpfl_flow_init(struct cpfl_adapter_ext *ad, struct cpfl_devargs *devargs);
 void cpfl_flow_uninit(struct cpfl_adapter_ext *ad);
 struct rte_flow *cpfl_flow_create(struct rte_eth_dev *dev,
 				  const struct rte_flow_attr *attr,

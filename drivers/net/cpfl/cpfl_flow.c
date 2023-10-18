@@ -300,11 +300,11 @@ const struct rte_flow_ops cpfl_flow_ops = {
 };
 
 int
-cpfl_flow_init(struct cpfl_adapter_ext *ad)
+cpfl_flow_init(struct cpfl_adapter_ext *ad, struct cpfl_devargs *devargs)
 {
 	int ret;
 
-	if (ad->devargs.flow_parser[0] == '\0') {
+	if (devargs->flow_parser[0] == '\0') {
 		PMD_INIT_LOG(WARNING, "flow module is not initialized");
 		return 0;
 	}
@@ -315,7 +315,7 @@ cpfl_flow_init(struct cpfl_adapter_ext *ad)
 		goto err;
 	}
 
-	ret = cpfl_parser_create(&ad->flow_parser, ad->devargs.flow_parser);
+	ret = cpfl_parser_create(&ad->flow_parser, devargs->flow_parser);
 	if (ret) {
 		PMD_DRV_LOG(ERR, "Failed to create flow parser");
 		goto err;
@@ -331,7 +331,7 @@ err:
 void
 cpfl_flow_uninit(struct cpfl_adapter_ext *ad)
 {
-	if (ad->devargs.flow_parser[0] == '\0')
+	if (ad->flow_parser == NULL)
 		return;
 
 	cpfl_parser_destroy(ad->flow_parser);

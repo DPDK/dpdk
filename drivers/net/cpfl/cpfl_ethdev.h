@@ -212,7 +212,6 @@ struct cpfl_adapter_ext {
 	uint16_t cur_vport_nb;
 
 	uint16_t used_vecs_num;
-	struct cpfl_devargs devargs;
 
 	rte_spinlock_t vport_map_lock;
 	struct rte_hash *vport_map_hash;

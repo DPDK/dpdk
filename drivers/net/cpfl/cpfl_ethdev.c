@@ -1604,18 +1604,15 @@ parse_file(const char *key, const char *value, void *args)
 #endif
 
 static int
-cpfl_parse_devargs(struct rte_pci_device *pci_dev, struct cpfl_adapter_ext *adapter, bool first)
+cpfl_parse_devargs(struct rte_pci_device *pci_dev, struct cpfl_adapter_ext *adapter,
+		   bool first, struct cpfl_devargs *cpfl_args)
 {
 	struct rte_devargs *devargs = pci_dev->device.devargs;
-	struct cpfl_devargs *cpfl_args = &adapter->devargs;
 	struct rte_kvargs *kvlist;
 	int ret;
 
 	if (devargs == NULL)
 		return 0;
-
-	if (first)
-		memset(cpfl_args, 0, sizeof(struct cpfl_devargs));
 
 	kvlist = rte_kvargs_parse(devargs->args,
 			first ? cpfl_valid_args_first : cpfl_valid_args_again);
@@ -2274,11 +2271,16 @@ cpfl_repr_allowlist_uninit(struct cpfl_adapter_ext *adapter)
 
 
 static int
-cpfl_adapter_ext_init(struct rte_pci_device *pci_dev, struct cpfl_adapter_ext *adapter)
+cpfl_adapter_ext_init(struct rte_pci_device *pci_dev, struct cpfl_adapter_ext *adapter,
+		      struct cpfl_devargs *devargs)
 {
 	struct idpf_adapter *base = &adapter->base;
 	struct idpf_hw *hw = &base->hw;
 	int ret = 0;
+
+#ifndef RTE_HAS_JANSSON
+	RTE_SET_USED(devargs);
+#endif
 
 	hw->hw_addr = (void *)pci_dev->mem_resource[0].addr;
 	hw->hw_addr_len = pci_dev->mem_resource[0].len;
@@ -2331,7 +2333,7 @@ cpfl_adapter_ext_init(struct rte_pci_device *pci_dev, struct cpfl_adapter_ext *a
 	}
 
 #ifdef RTE_HAS_JANSSON
-	ret = cpfl_flow_init(adapter);
+	ret = cpfl_flow_init(adapter, devargs);
 	if (ret) {
 		PMD_INIT_LOG(ERR, "Failed to init flow module");
 		goto err_flow_init;
@@ -2627,9 +2629,8 @@ cpfl_adapter_ext_deinit(struct cpfl_adapter_ext *adapter)
 }
 
 static int
-cpfl_vport_devargs_process(struct cpfl_adapter_ext *adapter)
+cpfl_vport_devargs_process(struct cpfl_adapter_ext *adapter, struct cpfl_devargs *devargs)
 {
-	struct cpfl_devargs *devargs = &adapter->devargs;
 	int i;
 
 	/* refine vport number, at least 1 vport */
@@ -2664,15 +2665,16 @@ cpfl_vport_devargs_process(struct cpfl_adapter_ext *adapter)
 }
 
 static int
-cpfl_vport_create(struct rte_pci_device *pci_dev, struct cpfl_adapter_ext *adapter)
+cpfl_vport_create(struct rte_pci_device *pci_dev, struct cpfl_adapter_ext *adapter,
+		  struct cpfl_devargs *devargs)
 {
 	struct cpfl_vport_param vport_param;
 	char name[RTE_ETH_NAME_MAX_LEN];
 	int ret, i;
 
-	for (i = 0; i < adapter->devargs.req_vport_nb; i++) {
+	for (i = 0; i < devargs->req_vport_nb; i++) {
 		vport_param.adapter = adapter;
-		vport_param.devarg_id = adapter->devargs.req_vports[i];
+		vport_param.devarg_id = devargs->req_vports[i];
 		vport_param.idx = cpfl_vport_idx_alloc(adapter);
 		if (vport_param.idx == CPFL_INVALID_VPORT_IDX) {
 			PMD_INIT_LOG(ERR, "No space for vport %u", vport_param.devarg_id);
@@ -2680,7 +2682,7 @@ cpfl_vport_create(struct rte_pci_device *pci_dev, struct cpfl_adapter_ext *adapt
 		}
 		snprintf(name, sizeof(name), "net_%s_vport_%d",
 			 pci_dev->device.name,
-			 adapter->devargs.req_vports[i]);
+			 devargs->req_vports[i]);
 		ret = rte_eth_dev_create(&pci_dev->device, name,
 					    sizeof(struct cpfl_vport),
 					    NULL, NULL, cpfl_dev_vport_init,
@@ -2697,6 +2699,7 @@ static int
 cpfl_pci_probe_first(struct rte_pci_device *pci_dev)
 {
 	struct cpfl_adapter_ext *adapter;
+	struct cpfl_devargs devargs;
 	int retval;
 	uint16_t port_id;
 
@@ -2707,13 +2710,15 @@ cpfl_pci_probe_first(struct rte_pci_device *pci_dev)
 		return -ENOMEM;
 	}
 
-	retval = cpfl_parse_devargs(pci_dev, adapter, true);
+	memset(&devargs, 0, sizeof(devargs));
+
+	retval = cpfl_parse_devargs(pci_dev, adapter, true, &devargs);
 	if (retval != 0) {
 		PMD_INIT_LOG(ERR, "Failed to parse private devargs");
 		return retval;
 	}
 
-	retval = cpfl_adapter_ext_init(pci_dev, adapter);
+	retval = cpfl_adapter_ext_init(pci_dev, adapter, &devargs);
 	if (retval != 0) {
 		PMD_INIT_LOG(ERR, "Failed to init adapter.");
 		return retval;
@@ -2723,19 +2728,19 @@ cpfl_pci_probe_first(struct rte_pci_device *pci_dev)
 	TAILQ_INSERT_TAIL(&cpfl_adapter_list, adapter, next);
 	rte_spinlock_unlock(&cpfl_adapter_lock);
 
-	retval = cpfl_vport_devargs_process(adapter);
+	retval = cpfl_vport_devargs_process(adapter, &devargs);
 	if (retval != 0) {
 		PMD_INIT_LOG(ERR, "Failed to process vport devargs");
 		goto err;
 	}
 
-	retval = cpfl_vport_create(pci_dev, adapter);
+	retval = cpfl_vport_create(pci_dev, adapter, &devargs);
 	if (retval != 0) {
 		PMD_INIT_LOG(ERR, "Failed to create vports.");
 		goto err;
 	}
 
-	retval = cpfl_repr_devargs_process(adapter);
+	retval = cpfl_repr_devargs_process(adapter, &devargs);
 	if (retval != 0) {
 		PMD_INIT_LOG(ERR, "Failed to process repr devargs");
 		goto close_ethdev;
@@ -2767,15 +2772,17 @@ err:
 static int
 cpfl_pci_probe_again(struct rte_pci_device *pci_dev, struct cpfl_adapter_ext *adapter)
 {
+	struct cpfl_devargs devargs;
 	int ret;
 
-	ret = cpfl_parse_devargs(pci_dev, adapter, false);
+	memset(&devargs, 0, sizeof(devargs));
+	ret = cpfl_parse_devargs(pci_dev, adapter, false, &devargs);
 	if (ret != 0) {
 		PMD_INIT_LOG(ERR, "Failed to parse private devargs");
 		return ret;
 	}
 
-	ret = cpfl_repr_devargs_process(adapter);
+	ret = cpfl_repr_devargs_process(adapter, &devargs);
 	if (ret != 0) {
 		PMD_INIT_LOG(ERR, "Failed to process reprenstor devargs");
 		return ret;

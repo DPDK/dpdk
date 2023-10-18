@@ -93,9 +93,8 @@ cpfl_repr_devargs_process_one(struct cpfl_adapter_ext *adapter,
 }
 
 int
-cpfl_repr_devargs_process(struct cpfl_adapter_ext *adapter)
+cpfl_repr_devargs_process(struct cpfl_adapter_ext *adapter, struct cpfl_devargs *devargs)
 {
-	struct cpfl_devargs *devargs = &adapter->devargs;
 	int ret, i, j;
 
 	/* check and refine repr args */
