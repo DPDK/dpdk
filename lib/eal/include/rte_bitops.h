@@ -280,9 +280,6 @@ rte_bit_relaxed_test_and_clear64(unsigned int nr, volatile uint64_t *addr)
 #ifdef RTE_TOOLCHAIN_MSVC
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
- *
  * Get the count of leading 0-bits in v.
  *
  * @param v
@@ -290,7 +287,6 @@ rte_bit_relaxed_test_and_clear64(unsigned int nr, volatile uint64_t *addr)
  * @return
  *   The count of leading zero bits.
  */
-__rte_experimental
 static inline unsigned int
 rte_clz32(uint32_t v)
 {
@@ -302,9 +298,6 @@ rte_clz32(uint32_t v)
 }
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
- *
  * Get the count of leading 0-bits in v.
  *
  * @param v
@@ -312,7 +305,6 @@ rte_clz32(uint32_t v)
  * @return
  *   The count of leading zero bits.
  */
-__rte_experimental
 static inline unsigned int
 rte_clz64(uint64_t v)
 {
@@ -324,9 +316,6 @@ rte_clz64(uint64_t v)
 }
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
- *
  * Get the count of trailing 0-bits in v.
  *
  * @param v
@@ -334,7 +323,6 @@ rte_clz64(uint64_t v)
  * @return
  *   The count of trailing zero bits.
  */
-__rte_experimental
 static inline unsigned int
 rte_ctz32(uint32_t v)
 {
@@ -346,9 +334,6 @@ rte_ctz32(uint32_t v)
 }
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
- *
  * Get the count of trailing 0-bits in v.
  *
  * @param v
@@ -356,7 +341,6 @@ rte_ctz32(uint32_t v)
  * @return
  *   The count of trailing zero bits.
  */
-__rte_experimental
 static inline unsigned int
 rte_ctz64(uint64_t v)
 {
@@ -368,9 +352,6 @@ rte_ctz64(uint64_t v)
 }
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
- *
  * Get the count of 1-bits in v.
  *
  * @param v
@@ -378,7 +359,6 @@ rte_ctz64(uint64_t v)
  * @return
  *   The count of 1-bits.
  */
-__rte_experimental
 static inline unsigned int
 rte_popcount32(uint32_t v)
 {
@@ -386,9 +366,6 @@ rte_popcount32(uint32_t v)
 }
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
- *
  * Get the count of 1-bits in v.
  *
  * @param v
@@ -396,7 +373,6 @@ rte_popcount32(uint32_t v)
  * @return
  *   The count of 1-bits.
  */
-__rte_experimental
 static inline unsigned int
 rte_popcount64(uint64_t v)
 {
@@ -406,9 +382,6 @@ rte_popcount64(uint64_t v)
 #else
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
- *
  * Get the count of leading 0-bits in v.
  *
  * @param v
@@ -416,7 +389,6 @@ rte_popcount64(uint64_t v)
  * @return
  *   The count of leading zero bits.
  */
-__rte_experimental
 static inline unsigned int
 rte_clz32(uint32_t v)
 {
@@ -424,9 +396,6 @@ rte_clz32(uint32_t v)
 }
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
- *
  * Get the count of leading 0-bits in v.
  *
  * @param v
@@ -434,7 +403,6 @@ rte_clz32(uint32_t v)
  * @return
  *   The count of leading zero bits.
  */
-__rte_experimental
 static inline unsigned int
 rte_clz64(uint64_t v)
 {
@@ -442,9 +410,6 @@ rte_clz64(uint64_t v)
 }
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
- *
  * Get the count of trailing 0-bits in v.
  *
  * @param v
@@ -452,7 +417,6 @@ rte_clz64(uint64_t v)
  * @return
  *   The count of trailing zero bits.
  */
-__rte_experimental
 static inline unsigned int
 rte_ctz32(uint32_t v)
 {
@@ -460,9 +424,6 @@ rte_ctz32(uint32_t v)
 }
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
- *
  * Get the count of trailing 0-bits in v.
  *
  * @param v
@@ -470,7 +431,6 @@ rte_ctz32(uint32_t v)
  * @return
  *   The count of trailing zero bits.
  */
-__rte_experimental
 static inline unsigned int
 rte_ctz64(uint64_t v)
 {
@@ -478,9 +438,6 @@ rte_ctz64(uint64_t v)
 }
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
- *
  * Get the count of 1-bits in v.
  *
  * @param v
@@ -488,7 +445,6 @@ rte_ctz64(uint64_t v)
  * @return
  *   The count of 1-bits.
  */
-__rte_experimental
 static inline unsigned int
 rte_popcount32(uint32_t v)
 {
@@ -496,9 +452,6 @@ rte_popcount32(uint32_t v)
 }
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
- *
  * Get the count of 1-bits in v.
  *
  * @param v
@@ -506,7 +459,6 @@ rte_popcount32(uint32_t v)
  * @return
  *   The count of 1-bits.
  */
-__rte_experimental
 static inline unsigned int
 rte_popcount64(uint64_t v)
 {
