@@ -1293,6 +1293,108 @@ eth_dev_handle_port_tm_level_caps(const char *cmd __rte_unused,
 	return 0;
 }
 
+static void
+eth_dev_add_tm_node_basic_caps(struct rte_tel_data *node_data,
+		struct rte_tm_node_capabilities *capnode)
+{
+	rte_tel_data_add_dict_int(node_data, "shaper_private_supported",
+		capnode->shaper_private_supported);
+	rte_tel_data_add_dict_int(node_data, "shaper_private_dual_rate_supported",
+		capnode->shaper_private_dual_rate_supported);
+	rte_tel_data_add_dict_uint(node_data, "shaper_private_rate_min",
+		capnode->shaper_private_rate_min);
+	rte_tel_data_add_dict_uint(node_data, "shaper_private_rate_max",
+		capnode->shaper_private_rate_max);
+	rte_tel_data_add_dict_int(node_data, "shaper_private_packet_mode_supported",
+		capnode->shaper_private_packet_mode_supported);
+	rte_tel_data_add_dict_int(node_data, "shaper_private_byte_mode_supported",
+		capnode->shaper_private_byte_mode_supported);
+	rte_tel_data_add_dict_uint(node_data, "shaper_shared_n_max",
+		capnode->shaper_shared_n_max);
+	rte_tel_data_add_dict_int(node_data, "shaper_shared_packet_mode_supported",
+		capnode->shaper_shared_packet_mode_supported);
+	rte_tel_data_add_dict_int(node_data, "shaper_shared_byte_mode_supported",
+		capnode->shaper_shared_byte_mode_supported);
+	rte_tel_data_add_dict_uint_hex(node_data, "stats_mask",
+		capnode->stats_mask, 0);
+}
+
+static void
+eth_dev_add_tm_type_node_caps(struct rte_tel_data *d, int is_leaf,
+		struct rte_tm_node_capabilities *cap)
+{
+	rte_tel_data_add_dict_string(d, "node_type",
+				is_leaf == 0 ? "nonleaf" : "leaf");
+	if (is_leaf == 0) {
+		rte_tel_data_add_dict_uint(d, "children_max",
+			cap->nonleaf.sched_n_children_max);
+		rte_tel_data_add_dict_uint(d, "priorities_max",
+			cap->nonleaf.sched_sp_n_priorities_max);
+		rte_tel_data_add_dict_uint(d, "sched_wfq_n_children_per_group_max",
+			cap->nonleaf.sched_wfq_n_children_per_group_max);
+		rte_tel_data_add_dict_uint(d, "sched_wfq_n_groups_max",
+			cap->nonleaf.sched_wfq_n_groups_max);
+		rte_tel_data_add_dict_uint(d, "sched_wfq_weight_max",
+			cap->nonleaf.sched_wfq_weight_max);
+		rte_tel_data_add_dict_int(d, "sched_wfq_packet_mode_supported",
+			cap->nonleaf.sched_wfq_packet_mode_supported);
+		rte_tel_data_add_dict_int(d, "sched_wfq_byte_mode_supported",
+			cap->nonleaf.sched_wfq_byte_mode_supported);
+	} else {
+		rte_tel_data_add_dict_int(d, "cman_wred_packet_mode_supported",
+			cap->leaf.cman_wred_packet_mode_supported);
+		rte_tel_data_add_dict_int(d, "cman_wred_byte_mode_supported",
+			cap->leaf.cman_wred_byte_mode_supported);
+		rte_tel_data_add_dict_int(d, "cman_head_drop_supported",
+			cap->leaf.cman_head_drop_supported);
+		rte_tel_data_add_dict_int(d, "cman_wred_context_private_supported",
+			cap->leaf.cman_wred_context_private_supported);
+		rte_tel_data_add_dict_uint(d, "cman_wred_context_shared_n_max",
+			cap->leaf.cman_wred_context_shared_n_max);
+	}
+}
+
+static int
+eth_dev_handle_port_tm_node_caps(const char *cmd __rte_unused,
+		const char *params,
+		struct rte_tel_data *d)
+{
+	struct rte_tm_node_capabilities cap = {0};
+	struct rte_tm_error error = {0};
+	uint32_t node_id;
+	uint16_t port_id;
+	char *end_param;
+	int is_leaf;
+	int ret;
+
+	ret = eth_dev_parse_port_params(params, &port_id, &end_param, true);
+	if (ret != 0)
+		return ret;
+
+	ret = eth_dev_parse_tm_params(end_param, &node_id);
+	if (ret != 0)
+		return ret;
+
+	ret = rte_tm_node_capabilities_get(port_id, node_id, &cap, &error);
+	if (ret != 0)
+		goto out;
+
+	ret = rte_tm_node_type_get(port_id, node_id, &is_leaf, &error);
+	if (ret != 0)
+		goto out;
+
+	rte_tel_data_start_dict(d);
+	eth_dev_add_tm_node_basic_caps(d, &cap);
+	eth_dev_add_tm_type_node_caps(d, is_leaf, &cap);
+
+	return 0;
+out:
+	RTE_ETHDEV_LOG(WARNING, "error: %s, error type: %u\n",
+		error.message ? error.message : "no stated reason",
+		error.type);
+	return ret;
+}
+
 RTE_INIT(ethdev_init_telemetry)
 {
 	rte_telemetry_register_cmd("/ethdev/list", eth_dev_handle_port_list,
@@ -1332,4 +1434,6 @@ RTE_INIT(ethdev_init_telemetry)
 			"Returns TM Capabilities info for a port. Parameters: int port_id");
 	rte_telemetry_register_cmd("/ethdev/tm_level_capability", eth_dev_handle_port_tm_level_caps,
 			"Returns TM Level Capabilities info for a port. Parameters: int port_id, int level_id (see tm_capability for the max)");
+	rte_telemetry_register_cmd("/ethdev/tm_node_capability", eth_dev_handle_port_tm_node_caps,
+			"Returns TM Node Capabilities info for a port. Parameters: int port_id, int node_id (see tm_capability for the max)");
 }
