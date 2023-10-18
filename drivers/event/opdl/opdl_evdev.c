@@ -697,7 +697,7 @@ opdl_probe(struct rte_vdev_device *vdev)
 		}
 	}
 	dev = rte_event_pmd_vdev_init(name,
-			sizeof(struct opdl_evdev), socket_id);
+			sizeof(struct opdl_evdev), socket_id, vdev);
 
 	if (dev == NULL) {
 		PMD_DRV_LOG(ERR, "eventdev vdev init() failed");

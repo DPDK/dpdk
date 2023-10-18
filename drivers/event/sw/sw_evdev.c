@@ -1075,7 +1075,7 @@ sw_probe(struct rte_vdev_device *vdev)
 			min_burst_size, deq_burst_size, refill_once);
 
 	dev = rte_event_pmd_vdev_init(name,
-			sizeof(struct sw_evdev), socket_id);
+			sizeof(struct sw_evdev), socket_id, vdev);
 	if (dev == NULL) {
 		SW_LOG_ERR("eventdev vdev init() failed");
 		return -EFAULT;

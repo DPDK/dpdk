@@ -994,14 +994,14 @@ dpaa_event_check_flags(const char *params)
 }
 
 static int
-dpaa_event_dev_create(const char *name, const char *params)
+dpaa_event_dev_create(const char *name, const char *params, struct rte_vdev_device *vdev)
 {
 	struct rte_eventdev *eventdev;
 	struct dpaa_eventdev *priv;
 
 	eventdev = rte_event_pmd_vdev_init(name,
 					   sizeof(struct dpaa_eventdev),
-					   rte_socket_id());
+					   rte_socket_id(), vdev);
 	if (eventdev == NULL) {
 		DPAA_EVENTDEV_ERR("Failed to create eventdev vdev %s", name);
 		goto fail;
@@ -1051,7 +1051,7 @@ dpaa_event_dev_probe(struct rte_vdev_device *vdev)
 
 	params = rte_vdev_device_args(vdev);
 
-	return dpaa_event_dev_create(name, params);
+	return dpaa_event_dev_create(name, params, vdev);
 }
 
 static int

@@ -435,7 +435,7 @@ dsw_probe(struct rte_vdev_device *vdev)
 	name = rte_vdev_device_name(vdev);
 
 	dev = rte_event_pmd_vdev_init(name, sizeof(struct dsw_evdev),
-				      rte_socket_id());
+				      rte_socket_id(), vdev);
 	if (dev == NULL)
 		return -EFAULT;
 
