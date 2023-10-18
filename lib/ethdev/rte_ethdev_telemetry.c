@@ -1127,6 +1127,172 @@ eth_dev_handle_port_tm_caps(const char *cmd __rte_unused,
 	return 0;
 }
 
+static void
+eth_dev_add_tm_level_basic_caps(struct rte_tel_data *d,
+		struct rte_tm_level_capabilities *cap)
+{
+	rte_tel_data_add_dict_uint(d, "n_nodes_max", cap->n_nodes_max);
+	rte_tel_data_add_dict_uint(d, "n_nodes_nonleaf_max",
+		cap->n_nodes_nonleaf_max);
+	rte_tel_data_add_dict_uint(d, "n_nodes_leaf_max", cap->n_nodes_leaf_max);
+	rte_tel_data_add_dict_int(d, "non_leaf_nodes_identical",
+		cap->non_leaf_nodes_identical);
+	rte_tel_data_add_dict_int(d, "leaf_nodes_identical",
+		cap->leaf_nodes_identical);
+}
+
+static void
+eth_dev_add_tm_level_nonleaf_caps(struct rte_tel_data *nonleaf,
+		struct rte_tm_level_capabilities *cap)
+{
+	rte_tel_data_add_dict_int(nonleaf, "shaper_private_supported",
+		cap->nonleaf.shaper_private_supported);
+	rte_tel_data_add_dict_int(nonleaf, "shaper_private_dual_rate_supported",
+		cap->nonleaf.shaper_private_dual_rate_supported);
+	rte_tel_data_add_dict_uint(nonleaf, "shaper_private_rate_min",
+		cap->nonleaf.shaper_private_rate_min);
+	rte_tel_data_add_dict_uint(nonleaf, "shaper_private_rate_max",
+		cap->nonleaf.shaper_private_rate_max);
+	rte_tel_data_add_dict_int(nonleaf, "shaper_private_packet_mode_supported",
+		cap->nonleaf.shaper_private_packet_mode_supported);
+	rte_tel_data_add_dict_int(nonleaf, "shaper_private_byte_mode_supported",
+		cap->nonleaf.shaper_private_byte_mode_supported);
+	rte_tel_data_add_dict_uint(nonleaf, "shaper_shared_n_max",
+		cap->nonleaf.shaper_shared_n_max);
+	rte_tel_data_add_dict_int(nonleaf, "shaper_shared_packet_mode_supported",
+		cap->nonleaf.shaper_shared_packet_mode_supported);
+	rte_tel_data_add_dict_int(nonleaf, "shaper_shared_byte_mode_supported",
+		cap->nonleaf.shaper_shared_byte_mode_supported);
+	rte_tel_data_add_dict_uint(nonleaf, "sched_n_children_max",
+		cap->nonleaf.sched_n_children_max);
+	rte_tel_data_add_dict_uint(nonleaf, "sched_sp_n_priorities_max",
+		cap->nonleaf.sched_sp_n_priorities_max);
+	rte_tel_data_add_dict_uint(nonleaf, "sched_wfq_n_children_per_group_max",
+		cap->nonleaf.sched_wfq_n_children_per_group_max);
+	rte_tel_data_add_dict_uint(nonleaf, "sched_wfq_n_groups_max",
+		cap->nonleaf.sched_wfq_n_groups_max);
+	rte_tel_data_add_dict_uint(nonleaf, "sched_wfq_weight_max",
+		cap->nonleaf.sched_wfq_weight_max);
+	rte_tel_data_add_dict_int(nonleaf, "sched_wfq_packet_mode_supported",
+		cap->nonleaf.sched_wfq_packet_mode_supported);
+	rte_tel_data_add_dict_int(nonleaf, "sched_wfq_byte_mode_supported",
+		cap->nonleaf.sched_wfq_byte_mode_supported);
+	rte_tel_data_add_dict_uint_hex(nonleaf, "stats_mask",
+		cap->nonleaf.stats_mask, 0);
+}
+
+static void
+eth_dev_add_tm_level_leaf_caps(struct rte_tel_data *leaf,
+		struct rte_tm_level_capabilities *cap)
+{
+	rte_tel_data_add_dict_int(leaf, "shaper_private_supported",
+		cap->leaf.shaper_private_supported);
+	rte_tel_data_add_dict_int(leaf, "shaper_private_dual_rate_supported",
+		cap->leaf.shaper_private_dual_rate_supported);
+	rte_tel_data_add_dict_uint(leaf, "shaper_private_rate_min",
+		cap->leaf.shaper_private_rate_min);
+	rte_tel_data_add_dict_uint(leaf, "shaper_private_rate_max",
+		cap->leaf.shaper_private_rate_max);
+	rte_tel_data_add_dict_int(leaf, "shaper_private_packet_mode_supported",
+		cap->leaf.shaper_private_packet_mode_supported);
+	rte_tel_data_add_dict_int(leaf, "shaper_private_byte_mode_supported",
+		cap->leaf.shaper_private_byte_mode_supported);
+	rte_tel_data_add_dict_uint(leaf, "shaper_shared_n_max",
+		cap->leaf.shaper_shared_n_max);
+	rte_tel_data_add_dict_int(leaf, "shaper_shared_packet_mode_supported",
+		cap->leaf.shaper_shared_packet_mode_supported);
+	rte_tel_data_add_dict_int(leaf, "shaper_shared_byte_mode_supported",
+		cap->leaf.shaper_shared_byte_mode_supported);
+	rte_tel_data_add_dict_int(leaf, "cman_wred_packet_mode_supported",
+		cap->leaf.cman_wred_packet_mode_supported);
+	rte_tel_data_add_dict_int(leaf, "cman_wred_byte_mode_supported",
+		cap->leaf.cman_wred_byte_mode_supported);
+	rte_tel_data_add_dict_int(leaf, "cman_head_drop_supported",
+		cap->leaf.cman_head_drop_supported);
+	rte_tel_data_add_dict_int(leaf, "cman_wred_context_private_supported",
+		cap->leaf.cman_wred_context_private_supported);
+	rte_tel_data_add_dict_uint(leaf, "cman_wred_context_shared_n_max",
+		cap->leaf.cman_wred_context_shared_n_max);
+	rte_tel_data_add_dict_uint_hex(leaf, "stats_mask",
+		cap->leaf.stats_mask, 0);
+}
+
+static int
+eth_dev_parse_tm_params(char *params, uint32_t *result)
+{
+	const char *splited_param;
+	uint64_t ret;
+
+	splited_param = strtok(params, ",");
+	if (!splited_param || strlen(splited_param) == 0 || !isdigit(*splited_param))
+		return -EINVAL;
+
+	ret = strtoul(splited_param, &params, 0);
+	if (*params != '\0')
+		RTE_ETHDEV_LOG(NOTICE,
+			"Extra parameters passed to ethdev telemetry command, ignoring\n");
+
+	if (ret >= UINT32_MAX)
+		return -EINVAL;
+
+	*result = ret;
+	return 0;
+}
+
+static int
+eth_dev_handle_port_tm_level_caps(const char *cmd __rte_unused,
+		const char *params,
+		struct rte_tel_data *d)
+{
+	struct rte_tm_level_capabilities cap = {0};
+	struct rte_tm_error error = {0};
+	struct rte_tel_data *nonleaf;
+	struct rte_tel_data *leaf;
+	uint32_t level_id;
+	uint16_t port_id;
+	char *end_param;
+	int ret;
+
+	ret = eth_dev_parse_port_params(params, &port_id, &end_param, true);
+	if (ret != 0)
+		return ret;
+
+	ret = eth_dev_parse_tm_params(end_param, &level_id);
+	if (ret != 0)
+		return ret;
+
+	ret = rte_tm_level_capabilities_get(port_id, level_id, &cap, &error);
+	if (ret != 0) {
+		RTE_ETHDEV_LOG(ERR, "error: %s, error type: %u\n",
+			error.message ? error.message : "no stated reason",
+			error.type);
+		return ret;
+	}
+
+	rte_tel_data_start_dict(d);
+	eth_dev_add_tm_level_basic_caps(d, &cap);
+
+	nonleaf = rte_tel_data_alloc();
+	if (nonleaf == NULL)
+		return -ENOMEM;
+
+	rte_tel_data_start_dict(nonleaf);
+	eth_dev_add_tm_level_nonleaf_caps(nonleaf, &cap);
+	rte_tel_data_add_dict_container(d, "nonleaf_cap", nonleaf, 0);
+
+	leaf = rte_tel_data_alloc();
+	if (leaf == NULL) {
+		rte_tel_data_free(nonleaf);
+		return -ENOMEM;
+	}
+
+	rte_tel_data_start_dict(leaf);
+	eth_dev_add_tm_level_leaf_caps(leaf, &cap);
+	rte_tel_data_add_dict_container(d, "leaf_cap", leaf, 0);
+
+	return 0;
+}
+
 RTE_INIT(ethdev_init_telemetry)
 {
 	rte_telemetry_register_cmd("/ethdev/list", eth_dev_handle_port_list,
@@ -1164,4 +1330,6 @@ RTE_INIT(ethdev_init_telemetry)
 			"Returns VLAN info for a port. Parameters: int port_id");
 	rte_telemetry_register_cmd("/ethdev/tm_capability", eth_dev_handle_port_tm_caps,
 			"Returns TM Capabilities info for a port. Parameters: int port_id");
+	rte_telemetry_register_cmd("/ethdev/tm_level_capability", eth_dev_handle_port_tm_level_caps,
+			"Returns TM Level Capabilities info for a port. Parameters: int port_id, int level_id (see tm_capability for the max)");
 }
