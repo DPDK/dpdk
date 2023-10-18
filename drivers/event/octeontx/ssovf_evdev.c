@@ -880,7 +880,7 @@ ssovf_vdev_probe(struct rte_vdev_device *vdev)
 	}
 
 	eventdev = rte_event_pmd_vdev_init(name, sizeof(struct ssovf_evdev),
-				rte_socket_id());
+				rte_socket_id(), vdev);
 	if (eventdev == NULL) {
 		ssovf_log_err("Failed to create eventdev vdev %s", name);
 		return -ENOMEM;
