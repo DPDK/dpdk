@@ -288,10 +288,11 @@ do_cpu_mem_copy(void *p)
 
 	while (1) {
 		for (i = 0; i < nr_buf; i++) {
+			const void *src = rte_pktmbuf_mtod(dsts[i], void *);
+			void *dst = rte_pktmbuf_mtod(srcs[i], void *);
+
 			/* copy buffer form src to dst */
-			rte_memcpy((void *)(uintptr_t)rte_mbuf_data_iova(dsts[i]),
-				(void *)(uintptr_t)rte_mbuf_data_iova(srcs[i]),
-				(size_t)buf_size);
+			rte_memcpy(dst, src, (size_t)buf_size);
 			worker_info->total_cpl++;
 		}
 		if (worker_info->stop_flag)
