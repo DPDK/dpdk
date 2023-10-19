@@ -124,6 +124,15 @@ file to express the requested use case configuration.
    | help ipv4_lookup                     | | Command to dump ``ipv4_lookup`` |   Yes   |    Yes   |
    |                                      | | help message.                   |         |          |
    +--------------------------------------+-----------------------------------+---------+----------+
+   | | ipv6_lookup route add ipv6 <ip>    | | Command to add a route into     |   Yes   |    Yes   |
+   | |  netmask <mask> via <ip>           | | ``ipv6_lookup`` LPM table. It is|         |          |
+   |                                      | | needed if user wishes to route  |         |          |
+   |                                      | | the packets based on LPM6 lookup|         |          |
+   |                                      | | table.                          |         |          |
+   +--------------------------------------+-----------------------------------+---------+----------+
+   | help ipv6_lookup                     | | Command to dump ``ipv6_lookup`` |   Yes   |    Yes   |
+   |                                      | | help message.                   |         |          |
+   +--------------------------------------+-----------------------------------+---------+----------+
 
 
 Runtime configuration

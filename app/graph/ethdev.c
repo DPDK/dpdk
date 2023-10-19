@@ -165,6 +165,7 @@ ethdev_stop(void)
 
 	ethdev_list_clean();
 	route_ip4_list_clean();
+	route_ip6_list_clean();
 	printf("Bye...\n");
 }
 
