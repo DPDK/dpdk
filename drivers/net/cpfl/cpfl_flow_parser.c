@@ -844,8 +844,6 @@ cpfl_parser_destroy(struct cpfl_flow_js_parser *parser)
 	for (i = 0; i < parser->pr_size; i++) {
 		struct cpfl_flow_js_pr *pattern = &parser->patterns[i];
 
-		if (!pattern)
-			continue;
 		for (j = 0; j < pattern->key.proto_size; j++)
 			rte_free(pattern->key.protocols[j].fields);
 		rte_free(pattern->key.protocols);
@@ -863,8 +861,6 @@ cpfl_parser_destroy(struct cpfl_flow_js_parser *parser)
 	for (i = 0; i < parser->mr_size; i++) {
 		struct cpfl_flow_js_mr *mr = &parser->modifications[i];
 
-		if (!mr)
-			continue;
 		rte_free(mr->key.actions);
 		rte_free(mr->action.mod.layout);
 	}

@@ -279,7 +279,6 @@ cpfl_get_port_id(struct cpfl_itf *itf)
 static inline uint16_t
 cpfl_get_vsi_id(struct cpfl_itf *itf)
 {
-	struct cpfl_adapter_ext *adapter = itf->adapter;
 	struct cpfl_vport_info *info;
 	uint32_t vport_id;
 	int ret;
@@ -300,7 +299,7 @@ cpfl_get_vsi_id(struct cpfl_itf *itf)
 		vport_identity.pf_id = CPFL_ACC_CPF_ID;
 		vport_identity.vf_id = 0;
 		vport_identity.vport_id = vport_id;
-		ret = rte_hash_lookup_data(adapter->vport_map_hash,
+		ret = rte_hash_lookup_data(itf->adapter->vport_map_hash,
 					   &vport_identity,
 					   (void **)&info);
 		if (ret < 0) {
