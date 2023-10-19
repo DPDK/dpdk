@@ -1952,7 +1952,7 @@ mlx5_device_bond_pci_match(const char *ibdev_name,
 				ifindex, bond_info->ifindex, bond_info->ifname);
 	}
 	if (owner == 0 && pf != 0) {
-		DRV_LOG(INFO, "PCIe instance %04x:%02x:%02x.%x isn't bonding owner",
+		DRV_LOG(INFO, "PCIe instance " PCI_PRI_FMT " isn't bonding owner",
 				pci_dev->domain, pci_dev->bus, pci_dev->devid,
 				pci_dev->function);
 	}

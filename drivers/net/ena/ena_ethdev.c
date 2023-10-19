@@ -2125,7 +2125,7 @@ static int eth_ena_dev_init(struct rte_eth_dev *eth_dev)
 
 	pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
 
-	PMD_INIT_LOG(INFO, "Initializing %x:%x:%x.%d\n",
+	PMD_INIT_LOG(INFO, "Initializing " PCI_PRI_FMT "\n",
 		     pci_dev->addr.domain,
 		     pci_dev->addr.bus,
 		     pci_dev->addr.devid,

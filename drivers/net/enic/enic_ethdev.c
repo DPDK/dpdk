@@ -1274,7 +1274,7 @@ static int eth_enic_dev_init(struct rte_eth_dev *eth_dev,
 	enic->pdev = pdev;
 	addr = &pdev->addr;
 
-	snprintf(enic->bdf_name, ENICPMD_BDF_LENGTH, "%04x:%02x:%02x.%x",
+	snprintf(enic->bdf_name, PCI_PRI_STR_SIZE, PCI_PRI_FMT,
 		addr->domain, addr->bus, addr->devid, addr->function);
 
 	err = enic_check_devargs(eth_dev);

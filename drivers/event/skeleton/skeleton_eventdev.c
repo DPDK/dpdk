@@ -373,7 +373,7 @@ skeleton_eventdev_init(struct rte_eventdev *eventdev)
 	skel->subsystem_device_id = pci_dev->id.subsystem_device_id;
 	skel->subsystem_vendor_id = pci_dev->id.subsystem_vendor_id;
 
-	PMD_DRV_LOG(DEBUG, "pci device (%x:%x) %u:%u:%u:%u",
+	PMD_DRV_LOG(DEBUG, "PCI device (%x:%x) " PCI_PRI_FMT,
 			pci_dev->id.vendor_id, pci_dev->id.device_id,
 			pci_dev->addr.domain, pci_dev->addr.bus,
 			pci_dev->addr.devid, pci_dev->addr.function);

@@ -32,7 +32,6 @@
 
 #define ENICPMD_SETTING(enic, f) ((enic->config.flags & VENETF_##f) ? 1 : 0)
 
-#define ENICPMD_BDF_LENGTH      13   /* 0000:00:00.0'\0' */
 #define ENIC_CALC_IP_CKSUM      1
 #define ENIC_CALC_TCP_UDP_CKSUM 2
 #define ENIC_MAX_MTU            9000
@@ -101,7 +100,7 @@ struct enic {
 	bool overlay_offload;
 	struct rte_eth_dev *rte_dev;
 	struct rte_eth_dev_data *dev_data;
-	char bdf_name[ENICPMD_BDF_LENGTH];
+	char bdf_name[PCI_PRI_STR_SIZE];
 	int dev_fd;
 	int iommu_group_fd;
 	int iommu_groupid;

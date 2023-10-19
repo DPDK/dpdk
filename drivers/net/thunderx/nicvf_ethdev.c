@@ -2218,7 +2218,7 @@ nicvf_eth_dev_init(struct rte_eth_dev *eth_dev)
 	nic->subsystem_device_id = pci_dev->id.subsystem_device_id;
 	nic->subsystem_vendor_id = pci_dev->id.subsystem_vendor_id;
 
-	PMD_INIT_LOG(DEBUG, "nicvf: device (%x:%x) %u:%u:%u:%u",
+	PMD_INIT_LOG(DEBUG, "nicvf: device (%x:%x) " PCI_PRI_FMT,
 			pci_dev->id.vendor_id, pci_dev->id.device_id,
 			pci_dev->addr.domain, pci_dev->addr.bus,
 			pci_dev->addr.devid, pci_dev->addr.function);
