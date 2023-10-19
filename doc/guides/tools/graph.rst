@@ -81,7 +81,39 @@ file to express the requested use case configuration.
    +--------------------------------------+-----------------------------------+---------+----------+
    | help mempool                         | | Command to dump mempool help    |   Yes   |    Yes   |
    |                                      | | message.                        |         |          |
-   |                                      |                                   |         |          |
+   +--------------------------------------+-----------------------------------+---------+----------+
+   | | ethdev <ethdev_name> rxq <n_queues>| | Command to create DPDK port with|   No    |    No    |
+   | | txq <n_queues> <mempool_name>      | | given number of Rx and Tx queues|         |          |
+   |                                      | | . Also attach RxQ with given    |         |          |
+   |                                      | | mempool. Each port can have     |         |          |
+   |                                      | | single mempool only i.e. all    |         |          |
+   |                                      | | RxQs will share the same mempool|         |          |
+   |                                      | | .                               |         |          |
+   +--------------------------------------+-----------------------------------+---------+----------+
+   | ethdev <ethdev_name> mtu <mtu_sz>    | | Command to configure MTU of DPDK|   Yes   |    Yes   |
+   |                                      | | port.                           |         |          |
+   +--------------------------------------+-----------------------------------+---------+----------+
+   |  | ethdev <ethdev_name> promiscuous  | | Command to enable/disable       |   Yes   |    Yes   |
+   |  | <on/off>                          | | promiscuous mode on DPDK port.  |         |          |
+   +--------------------------------------+-----------------------------------+---------+----------+
+   | ethdev <ethdev_name> show            | | Command to dump current ethdev  |   Yes   |    Yes   |
+   |                                      | | configuration.                  |         |          |
+   +--------------------------------------+-----------------------------------+---------+----------+
+   | ethdev <ethdev_name> stats           | | Command to dump current ethdev  |   Yes   |    Yes   |
+   |                                      | | statistics.                     |         |          |
+   +--------------------------------------+-----------------------------------+---------+----------+
+   | | ethdev <ethdev_name> ip4 addr add  | | Command to configure IPv4       |   Yes   |    Yes   |
+   | | <ip> netmask <mask>                | | address on given PCI device. It |         |          |
+   |                                      | | is needed if user wishes to use |         |          |
+   |                                      | | ``ipv4_lookup`` node.           |         |          |
+   +--------------------------------------+-----------------------------------+---------+----------+
+   | | ethdev <ethdev_name> ip6 addr add  | | Command to configure IPv6       |   Yes   |    Yes   |
+   | | <ip> netmask <mask>                | | address on given PCI device. It |         |          |
+   |                                      | | is needed if user wishes to use |         |          |
+   |                                      | | ``ipv6_lookup`` node.           |         |          |
+   +--------------------------------------+-----------------------------------+---------+----------+
+   | help ethdev                          | | Command to dump ethdev help     |   Yes   |    Yes   |
+   |                                      | | message.                        |         |          |
    +--------------------------------------+-----------------------------------+---------+----------+
 
 
@@ -118,6 +150,22 @@ Example: ``dpdk-graph`` is started with ``-h 10.28.35.207`` and ``-p 50000`` the
 
    graph>
    graph>
+   graph> help ethdev
+
+   ----------------------------- ethdev command help -----------------------------
+   ethdev <ethdev_name> rxq <n_queues> txq <n_queues> <mempool_name>
+   ethdev <ethdev_name> ip4 addr add <ip> netmask <mask>
+   ethdev <ethdev_name> ip6 addr add <ip> netmask <mask>
+   ethdev <ethdev_name> promiscuous <on/off>
+   ethdev <ethdev_name> mtu <mtu_sz>
+   ethdev <ethdev_name> stats
+   ethdev <ethdev_name> show
+   graph>
+
+To exit the telnet session, type ``Ctrl + ]``.
+This changes the ``graph>`` command prompt to ``telnet>`` command prompt.
+Now running ``close`` or ``quit`` command on ``telnet>`` prompt
+will terminate the telnet session.
 
 
 Created graph for use case

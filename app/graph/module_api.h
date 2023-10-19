@@ -10,6 +10,7 @@
 
 #include "cli.h"
 #include "conn.h"
+#include "ethdev.h"
 #include "mempool.h"
 #include "utils.h"
 /*

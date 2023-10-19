@@ -22,6 +22,14 @@
 cmdline_parse_ctx_t modules_ctx[] = {
 	(cmdline_parse_inst_t *)&mempool_config_cmd_ctx,
 	(cmdline_parse_inst_t *)&mempool_help_cmd_ctx,
+	(cmdline_parse_inst_t *)&ethdev_show_cmd_ctx,
+	(cmdline_parse_inst_t *)&ethdev_stats_cmd_ctx,
+	(cmdline_parse_inst_t *)&ethdev_mtu_cmd_ctx,
+	(cmdline_parse_inst_t *)&ethdev_prom_mode_cmd_ctx,
+	(cmdline_parse_inst_t *)&ethdev_ip4_cmd_ctx,
+	(cmdline_parse_inst_t *)&ethdev_ip6_cmd_ctx,
+	(cmdline_parse_inst_t *)&ethdev_cmd_ctx,
+	(cmdline_parse_inst_t *)&ethdev_help_cmd_ctx,
 	NULL,
 };
 
