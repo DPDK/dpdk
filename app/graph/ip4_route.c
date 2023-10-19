@@ -97,11 +97,14 @@ route_ip4_add(struct route_ipv4_config *route)
 	ipv4route->via = route->via;
 	ipv4route->is_used = true;
 
-	/* FIXME: Get graph status here and then update table */
+	if (!graph_status_get())
+		goto exit;
+
 	rc = route4_rewirte_table_update(ipv4route);
 	if (rc)
 		goto free;
 
+exit:
 	TAILQ_INSERT_TAIL(&route4, ipv4route, next);
 	return 0;
 free:

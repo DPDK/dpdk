@@ -69,7 +69,7 @@ ethdev_rx_map_add(char *name, uint32_t queue, uint32_t core)
 	if (rc)
 		return -EINVAL;
 
-	coremask = 0xff; /* FIXME: Read from graph configuration */
+	coremask = graph_coremask_get();
 
 	if (!(coremask & (1 << core)))
 		return -EINVAL;

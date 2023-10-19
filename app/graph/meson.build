@@ -14,6 +14,7 @@ sources = files(
         'conn.c',
         'ethdev_rx.c',
         'ethdev.c',
+        'graph.c',
         'ip4_route.c',
         'ip6_route.c',
         'main.c',

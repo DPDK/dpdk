@@ -12,6 +12,7 @@
 #include "conn.h"
 #include "ethdev.h"
 #include "ethdev_rx.h"
+#include "graph.h"
 #include "mempool.h"
 #include "neigh.h"
 #include "route.h"

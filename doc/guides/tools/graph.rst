@@ -74,6 +74,25 @@ file to express the requested use case configuration.
    +--------------------------------------+-----------------------------------+---------+----------+
    |               Command                |             Description           | Dynamic | Optional |
    +======================================+===================================+=========+==========+
+   | | graph <usecases> [bsz <size>]      | | Command to express the desired  |   No    |    No    |
+   | | [tmo <ns>] [coremask <bitmask>]    | | use case. Also enables/disable  |         |          |
+   | | model <rtc/mcd/default> pcap_enable| | pcap capturing.                 |         |          |
+   | | <0/1> num_pcap_pkts <num> pcap_file|                                   |         |          |
+   | | <output_capture_file>              |                                   |         |          |
+   +--------------------------------------+-----------------------------------+---------+----------+
+   | graph start                          | | Command to start the graph.     |   No    |    No    |
+   |                                      | | This command triggers that no   |         |          |
+   |                                      | | more commands are left to be    |         |          |
+   |                                      | | parsed and graph initialization |         |          |
+   |                                      | | can be started now. It must be  |         |          |
+   |                                      | | the last command in usecase.cli |         |          |
+   +--------------------------------------+-----------------------------------+---------+----------+
+   | graph stats show                     | | Command to dump current graph   |   Yes   |    Yes   |
+   |                                      | | statistics.                     |         |          |
+   +--------------------------------------+-----------------------------------+---------+----------+
+   | help graph                           | | Command to dump graph help      |   Yes   |    Yes   |
+   |                                      | | message.                        |         |          |
+   +--------------------------------------+-----------------------------------+---------+----------+
    | | mempool <mempool_name> size        | | Command to create mempool which |   No    |    No    |
    | | <mbuf_size> buffers                | | will be further associated to   |         |          |
    | | <number_of_buffers>                | | RxQ to dequeue the packets.     |         |          |

@@ -154,11 +154,14 @@ neigh_ip4_add(uint32_t ip, uint64_t mac)
 	v4_config->mac = mac;
 	v4_config->is_used = true;
 
-	/* FIXME: Get graph status here and then update table */
+	if (!graph_status_get())
+		goto exit;
+
 	rc = ip4_rewrite_node_add(v4_config);
 	if (rc)
 		goto free;
 
+exit:
 	TAILQ_INSERT_TAIL(&neigh4, v4_config, next);
 	return 0;
 free:
@@ -187,11 +190,14 @@ neigh_ip6_add(uint8_t *ip, uint64_t mac)
 	v6_config->mac = mac;
 	v6_config->is_used = true;
 
-	/* FIXME: Get graph status here and then update table */
+	if (!graph_status_get())
+		goto exit;
+
 	rc =  ip6_rewrite_node_add(v6_config);
 	if (rc)
 		goto free;
 
+exit:
 	TAILQ_INSERT_TAIL(&neigh6, v6_config, next);
 	return 0;
 free:

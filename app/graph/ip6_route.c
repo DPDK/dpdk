@@ -102,11 +102,14 @@ route_ip6_add(struct route_ipv6_config *route)
 	}
 	ipv6route->is_used = true;
 
-	/* FIXME: Get graph status here and then update table */
+	if (!graph_status_get())
+		goto exit;
+
 	rc = route6_rewirte_table_update(ipv6route);
 	if (rc)
 		goto free;
 
+exit:
 	TAILQ_INSERT_TAIL(&route6, ipv6route, next);
 	return 0;
 free:
