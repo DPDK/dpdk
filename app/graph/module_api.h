@@ -7,10 +7,13 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+
 #include "cli.h"
+#include "conn.h"
 /*
  * Externs
  */
 extern volatile bool force_quit;
 
+bool app_graph_exit(void);
 #endif
