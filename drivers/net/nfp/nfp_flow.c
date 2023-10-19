@@ -1007,6 +1007,10 @@ nfp_flow_key_layers_calculate_actions(const struct rte_flow_action actions[],
 			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ACTION_TYPE_PORT_ID detected");
 			key_ls->act_size += sizeof(struct nfp_fl_act_output);
 			break;
+		case RTE_FLOW_ACTION_TYPE_REPRESENTED_PORT:
+			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ACTION_TYPE_REPRESENTED_PORT detected");
+			key_ls->act_size += sizeof(struct nfp_fl_act_output);
+			break;
 		case RTE_FLOW_ACTION_TYPE_SET_MAC_SRC:
 			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ACTION_TYPE_SET_MAC_SRC detected");
 			if (!mac_set_flag) {
@@ -2173,6 +2177,38 @@ nfp_flow_action_output(char *act_data,
 		return -ERANGE;
 
 	ethdev = &rte_eth_devices[port_id->id];
+	representor = ethdev->data->dev_private;
+	act_size = sizeof(struct nfp_fl_act_output);
+
+	output = (struct nfp_fl_act_output *)act_data;
+	output->head.jump_id = NFP_FL_ACTION_OPCODE_OUTPUT;
+	output->head.len_lw  = act_size >> NFP_FL_LW_SIZ;
+	output->port         = rte_cpu_to_be_32(representor->port_id);
+	if (output_cnt == 0)
+		output->flags = rte_cpu_to_be_16(NFP_FL_OUT_FLAGS_LAST);
+
+	nfp_flow_meta->shortcut = rte_cpu_to_be_32(representor->port_id);
+
+	return 0;
+}
+
+static int
+nfp_flow_action_output_stage(char *act_data,
+		const struct rte_flow_action *action,
+		struct nfp_fl_rule_metadata *nfp_flow_meta,
+		uint32_t output_cnt)
+{
+	size_t act_size;
+	struct rte_eth_dev *ethdev;
+	struct nfp_fl_act_output *output;
+	struct nfp_flower_representor *representor;
+	const struct rte_flow_action_ethdev *action_ethdev;
+
+	action_ethdev = action->conf;
+	if (action_ethdev == NULL || action_ethdev->port_id >= RTE_MAX_ETHPORTS)
+		return -ERANGE;
+
+	ethdev = &rte_eth_devices[action_ethdev->port_id];
 	representor = ethdev->data->dev_private;
 	act_size = sizeof(struct nfp_fl_act_output);
 
@@ -3458,7 +3494,8 @@ nfp_flow_count_output(const struct rte_flow_action actions[])
 	const struct rte_flow_action *action;
 
 	for (action = actions; action->type != RTE_FLOW_ACTION_TYPE_END; ++action) {
-		if (action->type == RTE_FLOW_ACTION_TYPE_PORT_ID)
+		if (action->type == RTE_FLOW_ACTION_TYPE_PORT_ID ||
+				action->type == RTE_FLOW_ACTION_TYPE_REPRESENTED_PORT)
 			count++;
 	}
 
@@ -3505,6 +3542,18 @@ nfp_flow_compile_action(struct nfp_flower_representor *representor,
 			break;
 		case RTE_FLOW_ACTION_TYPE_JUMP:
 			PMD_DRV_LOG(DEBUG, "Process RTE_FLOW_ACTION_TYPE_JUMP");
+			break;
+		case RTE_FLOW_ACTION_TYPE_REPRESENTED_PORT:
+			PMD_DRV_LOG(DEBUG, "Process RTE_FLOW_ACTION_TYPE_REPRESENTED_PORT");
+			count--;
+			ret = nfp_flow_action_output_stage(position, action, nfp_flow_meta, count);
+			if (ret != 0) {
+				PMD_DRV_LOG(ERR, "Failed when process"
+						" RTE_FLOW_ACTION_TYPE_REPRESENTED_PORT");
+				return ret;
+			}
+
+			position += sizeof(struct nfp_fl_act_output);
 			break;
 		case RTE_FLOW_ACTION_TYPE_PORT_ID:
 			PMD_DRV_LOG(DEBUG, "Process RTE_FLOW_ACTION_TYPE_PORT_ID");
