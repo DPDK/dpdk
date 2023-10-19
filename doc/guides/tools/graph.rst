@@ -133,6 +133,17 @@ file to express the requested use case configuration.
    | help ipv6_lookup                     | | Command to dump ``ipv6_lookup`` |   Yes   |    Yes   |
    |                                      | | help message.                   |         |          |
    +--------------------------------------+-----------------------------------+---------+----------+
+   | neigh add ipv4 <ip> <mac>            | | Command to add a neighbour      |   Yes   |    Yes   |
+   |                                      | | information into                |         |          |
+   |                                      | | ``ipv4_rewrite`` node.          |         |          |
+   +--------------------------------------+-----------------------------------+---------+----------+
+   | neigh add ipv6 <ip> <mac>            | | Command to add a neighbour      |   Yes   |    Yes   |
+   |                                      | | information into                |         |          |
+   |                                      | | ``ipv6_rewrite`` node.          |         |          |
+   +--------------------------------------+-----------------------------------+---------+----------+
+   | help neigh                           | | Command to dump neigh help      |   Yes   |    Yes   |
+   |                                      | | message.                        |         |          |
+   +--------------------------------------+-----------------------------------+---------+----------+
 
 
 Runtime configuration

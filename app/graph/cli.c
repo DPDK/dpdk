@@ -34,6 +34,9 @@ cmdline_parse_ctx_t modules_ctx[] = {
 	(cmdline_parse_inst_t *)&ipv4_lookup_help_cmd_ctx,
 	(cmdline_parse_inst_t *)&ipv6_lookup_cmd_ctx,
 	(cmdline_parse_inst_t *)&ipv6_lookup_help_cmd_ctx,
+	(cmdline_parse_inst_t *)&neigh_v4_cmd_ctx,
+	(cmdline_parse_inst_t *)&neigh_v6_cmd_ctx,
+	(cmdline_parse_inst_t *)&neigh_help_cmd_ctx,
 	NULL,
 };
 
