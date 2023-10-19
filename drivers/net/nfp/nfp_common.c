@@ -1357,18 +1357,47 @@ nfp_net_common_init(struct rte_pci_device *pci_dev,
 const uint32_t *
 nfp_net_supported_ptypes_get(struct rte_eth_dev *dev)
 {
+	struct nfp_net_hw *net_hw;
 	static const uint32_t ptypes[] = {
+		RTE_PTYPE_L2_ETHER,
+		RTE_PTYPE_L3_IPV4,
+		RTE_PTYPE_L3_IPV4_EXT,
+		RTE_PTYPE_L3_IPV6,
+		RTE_PTYPE_L3_IPV6_EXT,
+		RTE_PTYPE_L3_IPV4_EXT_UNKNOWN,
+		RTE_PTYPE_L3_IPV6_EXT_UNKNOWN,
+		RTE_PTYPE_L4_TCP,
+		RTE_PTYPE_L4_UDP,
+		RTE_PTYPE_L4_FRAG,
+		RTE_PTYPE_L4_NONFRAG,
+		RTE_PTYPE_L4_ICMP,
+		RTE_PTYPE_L4_SCTP,
+		RTE_PTYPE_TUNNEL_VXLAN,
+		RTE_PTYPE_TUNNEL_NVGRE,
+		RTE_PTYPE_TUNNEL_GENEVE,
+		RTE_PTYPE_INNER_L2_ETHER,
 		RTE_PTYPE_INNER_L3_IPV4,
+		RTE_PTYPE_INNER_L3_IPV4_EXT,
 		RTE_PTYPE_INNER_L3_IPV6,
 		RTE_PTYPE_INNER_L3_IPV6_EXT,
-		RTE_PTYPE_INNER_L4_MASK,
-		RTE_PTYPE_UNKNOWN
+		RTE_PTYPE_INNER_L3_IPV4_EXT_UNKNOWN,
+		RTE_PTYPE_INNER_L3_IPV6_EXT_UNKNOWN,
+		RTE_PTYPE_INNER_L4_TCP,
+		RTE_PTYPE_INNER_L4_UDP,
+		RTE_PTYPE_INNER_L4_FRAG,
+		RTE_PTYPE_INNER_L4_NONFRAG,
+		RTE_PTYPE_INNER_L4_ICMP,
+		RTE_PTYPE_INNER_L4_SCTP,
 	};
 
-	if (dev->rx_pkt_burst == nfp_net_recv_pkts)
-		return ptypes;
+	if (dev->rx_pkt_burst != nfp_net_recv_pkts)
+		return NULL;
 
-	return NULL;
+	net_hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	if ((net_hw->cap_ext & NFP_NET_CFG_CTRL_PKT_TYPE) == 0)
+		return NULL;
+
+	return ptypes;
 }
 
 int
