@@ -817,10 +817,7 @@ mlx4_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		DEBUG("checking device \"%s\"", list[i]->name);
 		if (mlx4_ibv_device_to_pci_addr(list[i], &pci_addr))
 			continue;
-		if ((pci_dev->addr.domain != pci_addr.domain) ||
-		    (pci_dev->addr.bus != pci_addr.bus) ||
-		    (pci_dev->addr.devid != pci_addr.devid) ||
-		    (pci_dev->addr.function != pci_addr.function))
+		if (rte_pci_addr_cmp(&pci_dev->addr, &pci_addr) != 0)
 			continue;
 		vf = (pci_dev->id.device_id ==
 		      PCI_DEVICE_ID_MELLANOX_CONNECTX3VF);

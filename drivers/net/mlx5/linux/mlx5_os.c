@@ -2065,10 +2065,7 @@ mlx5_os_pci_probe_pf(struct mlx5_common_device *cdev,
 			if (mlx5_get_pci_addr(ibv_list[ret]->ibdev_path,
 					      &pci_addr))
 				continue;
-			if (owner_pci.domain != pci_addr.domain ||
-			    owner_pci.bus != pci_addr.bus ||
-			    owner_pci.devid != pci_addr.devid ||
-			    owner_pci.function != pci_addr.function)
+			if (rte_pci_addr_cmp(&owner_pci, &pci_addr) != 0)
 				continue;
 			DRV_LOG(INFO, "PCI information matches for device \"%s\"",
 				ibv_list[ret]->name);

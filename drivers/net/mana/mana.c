@@ -13,6 +13,7 @@
 #include <ethdev_pci.h>
 #include <rte_kvargs.h>
 #include <rte_eal_paging.h>
+#include <rte_pci.h>
 
 #include <infiniband/verbs.h>
 #include <infiniband/manadv.h>
@@ -1464,10 +1465,7 @@ mana_pci_probe_mac(struct rte_pci_device *pci_dev,
 			continue;
 
 		/* Ignore if this IB device is not this PCI device */
-		if (pci_dev->addr.domain != pci_addr.domain ||
-		    pci_dev->addr.bus != pci_addr.bus ||
-		    pci_dev->addr.devid != pci_addr.devid ||
-		    pci_dev->addr.function != pci_addr.function)
+		if (rte_pci_addr_cmp(&pci_dev->addr, &pci_addr) != 0)
 			continue;
 
 		ctx = ibv_open_device(ibdev);
