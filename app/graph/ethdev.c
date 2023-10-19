@@ -164,7 +164,7 @@ ethdev_stop(void)
 	}
 
 	ethdev_list_clean();
-	rte_eal_cleanup();
+	route_ip4_list_clean();
 	printf("Bye...\n");
 }
 

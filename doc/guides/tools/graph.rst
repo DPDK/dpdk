@@ -115,6 +115,15 @@ file to express the requested use case configuration.
    | help ethdev                          | | Command to dump ethdev help     |   Yes   |    Yes   |
    |                                      | | message.                        |         |          |
    +--------------------------------------+-----------------------------------+---------+----------+
+   | | ipv4_lookup route add ipv4 <ip>    | | Command to add a route into     |   Yes   |    Yes   |
+   | |  netmask <mask> via <ip>           | | ``ipv4_lookup`` LPM table. It is|         |          |
+   |                                      | | needed if user wishes to route  |         |          |
+   |                                      | | the packets based on LPM lookup |         |          |
+   |                                      | | table.                          |         |          |
+   +--------------------------------------+-----------------------------------+---------+----------+
+   | help ipv4_lookup                     | | Command to dump ``ipv4_lookup`` |   Yes   |    Yes   |
+   |                                      | | help message.                   |         |          |
+   +--------------------------------------+-----------------------------------+---------+----------+
 
 
 Runtime configuration

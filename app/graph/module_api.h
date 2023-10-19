@@ -12,6 +12,7 @@
 #include "conn.h"
 #include "ethdev.h"
 #include "mempool.h"
+#include "route.h"
 #include "utils.h"
 /*
  * Externs
