@@ -11,6 +11,7 @@
 #include "cli.h"
 #include "conn.h"
 #include "ethdev.h"
+#include "ethdev_rx.h"
 #include "mempool.h"
 #include "neigh.h"
 #include "route.h"

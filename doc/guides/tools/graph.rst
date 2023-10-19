@@ -144,6 +144,16 @@ file to express the requested use case configuration.
    | help neigh                           | | Command to dump neigh help      |   Yes   |    Yes   |
    |                                      | | message.                        |         |          |
    +--------------------------------------+-----------------------------------+---------+----------+
+   | | ethdev_rx map port <ethdev_name>   | | Command to add port-queue-core  |   No    |    No    |
+   | | queue <q_num> core <core_id>       | | mapping to ``ethdev_rx`` node.  |         |          |
+   |                                      | | ``ethdev_rx`` node instance will|         |          |
+   |                                      | | be pinned on given core and will|         |          |
+   |                                      | | poll on requested port/queue    |         |          |
+   |                                      | | pair.                           |         |          |
+   +--------------------------------------+-----------------------------------+---------+----------+
+   | help ethdev_rx                       | | Command to dump ethdev_rx help  |   Yes   |    Yes   |
+   |                                      | | message.                        |         |          |
+   +--------------------------------------+-----------------------------------+---------+----------+
 
 
 Runtime configuration
