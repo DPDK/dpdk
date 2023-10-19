@@ -10,6 +10,7 @@
 
 #include "cli.h"
 #include "conn.h"
+#include "utils.h"
 /*
  * Externs
  */

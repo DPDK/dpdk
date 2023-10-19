@@ -13,4 +13,5 @@ sources = files(
         'cli.c',
         'conn.c',
         'main.c',
+        'utils.c',
 )
