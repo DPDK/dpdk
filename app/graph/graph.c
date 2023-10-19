@@ -269,7 +269,7 @@ cli_graph_start(__rte_unused void *parsed_result, __rte_unused struct cmdline *c
 	for (i = 0; i < MAX_GRAPH_USECASES; i++) {
 		if (!strcmp(graph_config.usecases[i].name, "l3fwd")) {
 			if (graph_config.usecases[i].enabled) {
-				RTE_SET_USED(conf);
+				rc  = usecase_l3fwd_configure(conf, nb_conf, nb_graphs);
 				break;
 			}
 		}

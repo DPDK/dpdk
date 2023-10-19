@@ -1,0 +1,73 @@
+; SPDX-License-Identifier: BSD-3-Clause
+; Copyright(c) 2023 Marvell.
+
+;
+; Graph configuration for given usecase
+;
+graph l3fwd coremask 0xff bsz 32 tmo 10 model default pcap_enable 1 num_pcap_pkts 100000 pcap_file /tmp/output.pcap
+
+;
+; Mempools to be attached with ethdev
+;
+mempool mempool0 size 8192 buffers 4000 cache 256 numa 0
+
+;
+; DPDK devices and configuration.
+;
+; Note: Customize the parameters below to match your setup.
+;
+ethdev 0002:02:00.0 rxq 1 txq 8 mempool0
+ethdev 0002:03:00.0 rxq 1 txq 8 mempool0
+ethdev 0002:02:00.0 mtu 1700
+ethdev 0002:03:00.0 mtu 1700
+ethdev 0002:02:00.0 promiscuous on
+ethdev 0002:03:00.0 promiscuous on
+
+;
+; IPv4 addresses assigned to DPDK devices
+;
+ethdev 0002:02:00.0 ip4 addr add 10.0.2.1 netmask 255.255.255.0
+ethdev 0002:03:00.0 ip4 addr add 20.0.2.1 netmask 255.255.255.0
+
+;
+; IPv6 addresses assigned to DPDK devices
+;
+ethdev 0002:02:00.0 ip6 addr add 52:20:DA:4F:68:70:52:20:DA:4F:68:70:52:20:DA:4A netmask FF:FF:FF:FF:FF:FF:FF:FF:FF:00:00:00:00:00:00:00
+ethdev 0002:03:00.0 ip6 addr add 62:20:DA:4F:68:70:52:20:DA:4F:68:70:52:20:DA:4B netmask FF:FF:FF:FF:FF:FF:FF:FF:FF:00:00:00:00:00:00:00
+
+;
+; IPv4 routes which are installed to ipv4_lookup node for LPM processing
+;
+ipv4_lookup route add ipv4 10.0.2.0 netmask 255.255.255.0 via 10.0.2.1
+ipv4_lookup route add ipv4 20.0.2.0 netmask 255.255.255.0 via 20.0.2.1
+
+;
+; IPv6 routes which are installed to ipv6_lookup node for LPM processing
+;
+ipv6_lookup route add ipv6 52:20:DA:4F:68:70:52:20:DA:4F:68:70:52:20:DA:4A netmask FF:FF:FF:FF:FF:FF:FF:FF:FF:00:00:00:00:00:00:00 via 52:20:DA:4F:68:70:52:20:DA:4F:68:70:52:20:DA:4A
+ipv6_lookup route add ipv6 62:20:DA:4F:68:70:52:20:DA:4F:68:70:52:20:DA:4B netmask FF:FF:FF:FF:FF:FF:FF:FF:FF:00:00:00:00:00:00:00 via 62:20:DA:4F:68:70:52:20:DA:4F:68:70:52:20:DA:4B
+
+;
+; Peer MAC and IPv4 address mapping
+;
+neigh add ipv4 10.0.2.2 52:20:DA:4F:68:70
+neigh add ipv4 20.0.2.2 62:20:DA:4F:68:70
+
+;
+; Peer MAC and IPv6 address mapping
+;
+neigh add ipv6 52:20:DA:4F:68:70:52:20:DA:4F:68:70:52:20:DA:4A 52:20:DA:4F:68:70
+neigh add ipv6 62:20:DA:4F:68:70:52:20:DA:4F:68:70:52:20:DA:4B 62:20:DA:4F:68:70
+
+;
+; Port-Queue-Core mapping for ethdev_rx node
+;
+ethdev_rx map port 0002:02:00.0 queue 0 core 1
+ethdev_rx map port 0002:03:00.0 queue 0 core 2
+
+;
+; Graph start command to create graph.
+;
+; Note: No more command should come after this.
+;
+graph start

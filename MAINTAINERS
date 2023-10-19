@@ -1811,6 +1811,7 @@ M: Sunil Kumar Kori <skori@marvell.com>
 M: Rakesh Kudurumalla <rkudurumalla@marvell.com>
 F: app/graph/
 F: doc/guides/tools/graph.rst
+F: doc/guides/tools/img/graph-*
 
 Procinfo tool
 M: Reshma Pattan <reshma.pattan@intel.com>
