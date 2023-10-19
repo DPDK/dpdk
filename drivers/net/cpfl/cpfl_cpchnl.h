@@ -22,9 +22,6 @@ enum cpchnl2_ops {
 
 #define CPCHNL2_ETH_LENGTH_OF_ADDRESS	6
 
-#define CPCHNL2_FUNC_TYPE_PF		0
-#define CPCHNL2_FUNC_TYPE_SRIOV		1
-
 /* vport statuses - must match the DB ones - see enum cp_vport_status*/
 #define CPCHNL2_VPORT_STATUS_CREATED	0
 #define CPCHNL2_VPORT_STATUS_ENABLED	1
@@ -136,8 +133,10 @@ CPCHNL2_CHECK_STRUCT_LEN(3792, cpchnl2_queue_groups);
  * @brief function types
  */
 enum cpchnl2_func_type {
-	CPCHNL2_FTYPE_LAN_PF = 0,
-	CPCHNL2_FTYPE_LAN_VF = 1,
+	CPCHNL2_FTYPE_LAN_VF = 0x0,
+	CPCHNL2_FTYPE_LAN_RSV1 = 0x1,
+	CPCHNL2_FTYPE_LAN_PF = 0x2,
+	CPCHNL2_FTYPE_LAN_RSV2 = 0x3,
 	CPCHNL2_FTYPE_LAN_MAX
 };
 
@@ -176,7 +175,7 @@ struct cpchnl2_vport_info {
 	 */
 	u16 vsi_id;
 	u8 vport_status;	/* enum cpchnl2_vport_status */
-	/* 0 - LAN PF, 1 - LAN VF. Rest - reserved. Can be later expanded to other PEs */
+	/* 0 - LAN VF, 2 - LAN PF. Rest - reserved. Can be later expanded to other PEs */
 	u8 func_type;
 	/* Valid only if "type" above is VF, indexing is relative to PF specified above. */
 	u16 vf_id;
@@ -216,7 +215,9 @@ struct cpchnl2_vport_info {
 	u16 default_rx_qid;	/* Default LAN RX Queue ID */
 	u16 vport_flags; /* see: VPORT_FLAGS */
 	u8 egress_port;
-	u8 pad_reserved[5];
+	/* Host LAN APF: 0; ACC LAN APF: 4; IMC LAN APF: 5; ACC LAN CPF: 4; IMC LAN CPF: 5 */
+	u8 host_id;
+	u8 pad_reserved[4];
 };
 CPCHNL2_CHECK_STRUCT_LEN(96, cpchnl2_vport_info);
 
@@ -226,7 +227,7 @@ CPCHNL2_CHECK_STRUCT_LEN(96, cpchnl2_vport_info);
 
 /**
  * @brief Used for CPCHNL2_OP_GET_VPORT_LIST opcode request
- * @param func_type Func type: 0 - LAN_PF, 1 - LAN_VF. Rest - reserved (see enum cpchnl2_func_type)
+ * @param func_type Func type: 0 - LAN_VF, 2 - LAN_PF. Rest - reserved (see enum cpchnl2_func_type)
  * @param pf_id Always relevant, indexing is according to LAN PE 0-15, while only 0-4 APFs and 8-12
  *        CPFs are valid
  * @param vf_id Valid only if "type" above is VF, indexing is relative to PF specified above
@@ -241,7 +242,7 @@ CPCHNL2_CHECK_STRUCT_LEN(8, cpchnl2_get_vport_list_request);
 
 /**
  * @brief Used for CPCHNL2_OP_GET_VPORT_LIST opcode response
- * @param func_type Func type: 0 - LAN_PF, 1 - LAN_VF. Rest - reserved. Can be later extended to
+ * @param func_type Func type: 0 - LAN_VF, 2 - LAN_PF. Rest - reserved. Can be later extended to
  *        other PE types
  * @param pf_id Always relevant, indexing is according to LAN PE 0-15, while only 0-4 APFs and 8-12
  *        CPFs are valid

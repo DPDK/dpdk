@@ -347,12 +347,12 @@ cpfl_repr_link_update(struct rte_eth_dev *ethdev,
 	if (wait_to_complete) {
 		if (repr->repr_id.type == RTE_ETH_REPRESENTOR_PF) {
 			/* PF */
-			vi.func_type = CPCHNL2_FUNC_TYPE_PF;
+			vi.func_type = CPCHNL2_FTYPE_LAN_PF;
 			vi.pf_id = cpfl_func_id_get(repr->repr_id.host_id, repr->repr_id.pf_id);
 			vi.vf_id = 0;
 		} else {
 			/* VF */
-			vi.func_type = CPCHNL2_FUNC_TYPE_SRIOV;
+			vi.func_type = CPCHNL2_FTYPE_LAN_VF;
 			vi.pf_id = CPFL_HOST0_APF;
 			vi.vf_id = repr->repr_id.vf_id;
 		}
@@ -454,14 +454,14 @@ cpfl_match_repr_with_vport(const struct cpfl_repr_id *repr_id,
 	int func_id;
 
 	if (repr_id->type == RTE_ETH_REPRESENTOR_PF &&
-	    info->func_type == CPFL_VPORT_LAN_PF) {
+	    info->func_type == CPCHNL2_FTYPE_LAN_PF) {
 		func_id = cpfl_func_id_get(repr_id->host_id, repr_id->pf_id);
 		if (func_id < 0 || func_id != info->pf_id)
 			return false;
 		else
 			return true;
 	} else if (repr_id->type == RTE_ETH_REPRESENTOR_VF &&
-		   info->func_type == CPFL_VPORT_LAN_VF) {
+		   info->func_type == CPCHNL2_FTYPE_LAN_VF) {
 		if (repr_id->vf_id == info->vf_id)
 			return true;
 	}
@@ -479,12 +479,12 @@ cpfl_repr_vport_list_query(struct cpfl_adapter_ext *adapter,
 
 	if (repr_id->type == RTE_ETH_REPRESENTOR_PF) {
 		/* PF */
-		vi.func_type = CPCHNL2_FUNC_TYPE_PF;
+		vi.func_type = CPCHNL2_FTYPE_LAN_PF;
 		vi.pf_id = cpfl_func_id_get(repr_id->host_id, repr_id->pf_id);
 		vi.vf_id = 0;
 	} else {
 		/* VF */
-		vi.func_type = CPCHNL2_FUNC_TYPE_SRIOV;
+		vi.func_type = CPCHNL2_FTYPE_LAN_VF;
 		vi.pf_id = CPFL_HOST0_APF;
 		vi.vf_id = repr_id->vf_id;
 	}
@@ -505,12 +505,12 @@ cpfl_repr_vport_info_query(struct cpfl_adapter_ext *adapter,
 
 	if (repr_id->type == RTE_ETH_REPRESENTOR_PF) {
 		/* PF */
-		vi.func_type = CPCHNL2_FUNC_TYPE_PF;
+		vi.func_type = CPCHNL2_FTYPE_LAN_PF;
 		vi.pf_id = cpfl_func_id_get(repr_id->host_id, repr_id->pf_id);
 		vi.vf_id = 0;
 	} else {
 		/* VF */
-		vi.func_type = CPCHNL2_FUNC_TYPE_SRIOV;
+		vi.func_type = CPCHNL2_FTYPE_LAN_VF;
 		vi.pf_id = CPFL_HOST0_APF;
 		vi.vf_id = repr_id->vf_id;
 	}
@@ -531,11 +531,11 @@ cpfl_repr_vport_map_update(struct cpfl_adapter_ext *adapter,
 	vi.vport_id = vport_id;
 	if (repr_id->type == RTE_ETH_REPRESENTOR_PF) {
 		/* PF */
-		vi.func_type = CPCHNL2_FUNC_TYPE_PF;
+		vi.func_type = CPCHNL2_FTYPE_LAN_VF;
 		vi.pf_id = cpfl_func_id_get(repr_id->host_id, repr_id->pf_id);
 	} else {
 		/* VF */
-		vi.func_type = CPCHNL2_FUNC_TYPE_SRIOV;
+		vi.func_type = CPCHNL2_FTYPE_LAN_VF;
 		vi.pf_id = CPFL_HOST0_APF;
 		vi.vf_id = repr_id->vf_id;
 	}
