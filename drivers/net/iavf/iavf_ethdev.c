@@ -38,7 +38,7 @@
 #define IAVF_QUANTA_SIZE_ARG       "quanta_size"
 #define IAVF_RESET_WATCHDOG_ARG    "watchdog_period"
 #define IAVF_ENABLE_AUTO_RESET_ARG "auto_reset"
-
+#define IAVF_NO_POLL_ON_LINK_DOWN_ARG "no-poll-on-link-down"
 uint64_t iavf_timestamp_dynflag;
 int iavf_timestamp_dynfield_offset = -1;
 
@@ -47,6 +47,7 @@ static const char * const iavf_valid_args[] = {
 	IAVF_QUANTA_SIZE_ARG,
 	IAVF_RESET_WATCHDOG_ARG,
 	IAVF_ENABLE_AUTO_RESET_ARG,
+	IAVF_NO_POLL_ON_LINK_DOWN_ARG,
 	NULL
 };
 
@@ -2291,6 +2292,7 @@ static int iavf_parse_devargs(struct rte_eth_dev *dev)
 	struct rte_kvargs *kvlist;
 	int ret;
 	int watchdog_period = -1;
+	uint16_t no_poll_on_link_down;
 
 	if (!devargs)
 		return 0;
@@ -2324,6 +2326,15 @@ static int iavf_parse_devargs(struct rte_eth_dev *dev)
 	else
 		ad->devargs.watchdog_period = watchdog_period;
 
+	ret = rte_kvargs_process(kvlist, IAVF_NO_POLL_ON_LINK_DOWN_ARG,
+				 &parse_u16, &no_poll_on_link_down);
+	if (ret)
+		goto bail;
+	if (no_poll_on_link_down == 0)
+		ad->devargs.no_poll_on_link_down = 0;
+	else
+		ad->devargs.no_poll_on_link_down = 1;
+
 	if (ad->devargs.quanta_size != 0 &&
 	    (ad->devargs.quanta_size < 256 || ad->devargs.quanta_size > 4096 ||
 	     ad->devargs.quanta_size & 0x40)) {
@@ -2336,6 +2347,9 @@ static int iavf_parse_devargs(struct rte_eth_dev *dev)
 				 &parse_bool, &ad->devargs.auto_reset);
 	if (ret)
 		goto bail;
+
+	if (ad->devargs.auto_reset != 0)
+		ad->devargs.no_poll_on_link_down = 1;
 
 bail:
 	rte_kvargs_free(kvlist);

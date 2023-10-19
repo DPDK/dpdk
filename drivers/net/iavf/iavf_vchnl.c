@@ -272,6 +272,16 @@ iavf_read_msg_from_pf(struct iavf_adapter *adapter, uint16_t buf_len,
 				if (!vf->link_up)
 					iavf_dev_watchdog_enable(adapter);
 			}
+			if (adapter->devargs.no_poll_on_link_down) {
+				if (vf->link_up && adapter->no_poll) {
+					adapter->no_poll = false;
+					PMD_DRV_LOG(DEBUG, "VF no poll turned off");
+				}
+				if (!vf->link_up) {
+					adapter->no_poll = true;
+					PMD_DRV_LOG(DEBUG, "VF no poll turned on");
+				}
+			}
 			PMD_DRV_LOG(INFO, "Link status update:%s",
 					vf->link_up ? "up" : "down");
 			break;
@@ -473,6 +483,16 @@ iavf_handle_pf_event_msg(struct rte_eth_dev *dev, uint8_t *msg,
 		} else {
 			if (!vf->link_up)
 				iavf_dev_watchdog_enable(adapter);
+		}
+		if (adapter->devargs.no_poll_on_link_down) {
+			if (vf->link_up && adapter->no_poll) {
+				adapter->no_poll = false;
+				PMD_DRV_LOG(DEBUG, "VF no poll turned off");
+			}
+			if (!vf->link_up) {
+				adapter->no_poll = true;
+				PMD_DRV_LOG(DEBUG, "VF no poll turned on");
+			}
 		}
 		iavf_dev_event_post(dev, RTE_ETH_EVENT_INTR_LSC, NULL, 0);
 		break;

@@ -308,6 +308,7 @@ struct iavf_devargs {
 	uint16_t quanta_size;
 	uint32_t watchdog_period;
 	uint8_t  auto_reset;
+	uint16_t no_poll_on_link_down;
 };
 
 struct iavf_security_ctx;
@@ -326,6 +327,9 @@ struct iavf_adapter {
 	uint32_t ptype_tbl[IAVF_MAX_PKT_TYPE] __rte_cache_min_aligned;
 	bool stopped;
 	bool closed;
+	bool no_poll;
+	eth_rx_burst_t rx_pkt_burst;
+	eth_tx_burst_t tx_pkt_burst;
 	uint16_t fdir_ref_cnt;
 	struct iavf_devargs devargs;
 };

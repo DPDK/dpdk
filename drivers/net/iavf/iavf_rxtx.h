@@ -288,6 +288,7 @@ struct iavf_tx_queue {
 	uint16_t free_thresh;
 	uint16_t rs_thresh;
 	uint8_t rel_mbufs_type;
+	struct iavf_vsi *vsi; /**< the VSI this queue belongs to */
 
 	uint16_t port_id;
 	uint16_t queue_id;

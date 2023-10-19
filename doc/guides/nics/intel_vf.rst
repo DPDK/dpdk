@@ -107,6 +107,10 @@ For more detail on SR-IOV, please refer to the following documents:
     when IAVF is backed by an Intel\ |reg| E810 device
     or an Intel\ |reg| 700 Series Ethernet device.
 
+    Stop polling Rx/Tx hardware queue when link is down
+    by setting the ``devargs`` parameter like ``-a 18:01.0,no-poll-on-link-down=1``
+    when IAVF is backed by an Intel\ |reg| E810 device or an Intel\ |reg| 700 Series Ethernet device.
+
 The PCIE host-interface of Intel Ethernet Switch FM10000 Series VF infrastructure
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
