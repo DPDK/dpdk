@@ -57,6 +57,11 @@ Following are the application command-line options:
    It is a mandatory parameter which will be used
    to create desired graph for a given use case.
 
+``--enable-graph-stats``
+
+   Enable graph statistics printing on console.
+   By default, graph statistics are disabled.
+
 ``--help``
 
    Dumps application usage.
