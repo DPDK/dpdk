@@ -23,4 +23,5 @@ DPDK Tools User Guides
     testeventdev
     testregex
     testmldev
+    graph
     dts

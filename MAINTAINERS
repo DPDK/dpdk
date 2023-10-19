@@ -1806,6 +1806,12 @@ F: doc/guides/tools/testeventdev.rst
 F: doc/guides/tools/img/eventdev_*
 F: app/test/test_event_ring.c
 
+Graph application
+M: Sunil Kumar Kori <skori@marvell.com>
+M: Rakesh Kudurumalla <rkudurumalla@marvell.com>
+F: app/graph/
+F: doc/guides/tools/graph.rst
+
 Procinfo tool
 M: Reshma Pattan <reshma.pattan@intel.com>
 F: app/proc-info/
