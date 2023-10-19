@@ -74,6 +74,13 @@ file to express the requested use case configuration.
    +--------------------------------------+-----------------------------------+---------+----------+
    |               Command                |             Description           | Dynamic | Optional |
    +======================================+===================================+=========+==========+
+   | | mempool <mempool_name> size        | | Command to create mempool which |   No    |    No    |
+   | | <mbuf_size> buffers                | | will be further associated to   |         |          |
+   | | <number_of_buffers>                | | RxQ to dequeue the packets.     |         |          |
+   | | cache <cache_size> numa <numa_id>  |                                   |         |          |
+   +--------------------------------------+-----------------------------------+---------+----------+
+   | help mempool                         | | Command to dump mempool help    |   Yes   |    Yes   |
+   |                                      | | message.                        |         |          |
    |                                      |                                   |         |          |
    +--------------------------------------+-----------------------------------+---------+----------+
 

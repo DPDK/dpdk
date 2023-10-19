@@ -10,11 +10,13 @@
 
 #include "cli.h"
 #include "conn.h"
+#include "mempool.h"
 #include "utils.h"
 /*
  * Externs
  */
 extern volatile bool force_quit;
+extern struct conn *conn;
 
 bool app_graph_exit(void);
 #endif

@@ -20,6 +20,8 @@
 #define MAX_LINE_SIZE 2048
 
 cmdline_parse_ctx_t modules_ctx[] = {
+	(cmdline_parse_inst_t *)&mempool_config_cmd_ctx,
+	(cmdline_parse_inst_t *)&mempool_help_cmd_ctx,
 	NULL,
 };
 
