@@ -137,8 +137,15 @@ DPDK_24 {
 	rte_intr_callback_register;
 	rte_intr_callback_unregister;
 	rte_intr_callback_unregister_pending;
+	rte_intr_callback_unregister_sync;
 	rte_intr_disable;
 	rte_intr_enable;
+	rte_intr_fd_get;
+	rte_intr_fd_set;
+	rte_intr_instance_alloc;
+	rte_intr_instance_free;
+	rte_intr_type_get;
+	rte_intr_type_set;
 	rte_keepalive_create; # WINDOWS_NO_EXPORT
 	rte_keepalive_dispatch_pings; # WINDOWS_NO_EXPORT
 	rte_keepalive_mark_alive; # WINDOWS_NO_EXPORT
@@ -377,7 +384,6 @@ EXPERIMENTAL {
 	rte_power_pause; # WINDOWS_NO_EXPORT
 
 	# added in 21.05
-	rte_intr_callback_unregister_sync;
 	rte_version_minor;
 	rte_version_month;
 	rte_version_prefix;
@@ -387,14 +393,6 @@ EXPERIMENTAL {
 
 	# added in 21.08
 	rte_power_monitor_multi; # WINDOWS_NO_EXPORT
-
-	# added in 21.11
-	rte_intr_fd_get;
-	rte_intr_fd_set;
-	rte_intr_instance_alloc;
-	rte_intr_instance_free;
-	rte_intr_type_get;
-	rte_intr_type_set;
 
 	# added in 23.03
 	rte_lcore_register_usage_cb;
