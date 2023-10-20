@@ -92,7 +92,6 @@ extern "C" {
 
 #include <rte_atomic.h>
 #include <rte_branch_prediction.h>
-#include <rte_compat.h>
 #include <rte_seqcount.h>
 #include <rte_spinlock.h>
 
@@ -114,9 +113,6 @@ typedef struct {
 	}
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Initialize the seqlock.
  *
  * This function initializes the seqlock, and leaves the writer-side
@@ -125,7 +121,6 @@ typedef struct {
  * @param seqlock
  *   A pointer to the seqlock.
  */
-__rte_experimental
 static inline void
 rte_seqlock_init(rte_seqlock_t *seqlock)
 {
@@ -134,9 +129,6 @@ rte_seqlock_init(rte_seqlock_t *seqlock)
 }
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Begin a read-side critical section.
  *
  * See rte_seqcount_read_retry() for details.
@@ -150,8 +142,6 @@ rte_seqlock_init(rte_seqlock_t *seqlock)
  * @see rte_seqlock_read_retry()
  * @see rte_seqcount_read_retry()
  */
-
-__rte_experimental
 static inline uint32_t
 rte_seqlock_read_begin(const rte_seqlock_t *seqlock)
 {
@@ -159,9 +149,6 @@ rte_seqlock_read_begin(const rte_seqlock_t *seqlock)
 }
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * End a read-side critical section.
  *
  * See rte_seqcount_read_retry() for details.
@@ -177,7 +164,6 @@ rte_seqlock_read_begin(const rte_seqlock_t *seqlock)
  *
  * @see rte_seqlock_read_begin()
  */
-__rte_experimental
 static inline bool
 rte_seqlock_read_retry(const rte_seqlock_t *seqlock, uint32_t begin_sn)
 {
@@ -185,9 +171,6 @@ rte_seqlock_read_retry(const rte_seqlock_t *seqlock, uint32_t begin_sn)
 }
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Begin a write-side critical section.
  *
  * A call to this function acquires the write lock associated @p
@@ -212,7 +195,6 @@ rte_seqlock_read_retry(const rte_seqlock_t *seqlock, uint32_t begin_sn)
  *
  * @see rte_seqlock_write_unlock()
  */
-__rte_experimental
 static inline void
 rte_seqlock_write_lock(rte_seqlock_t *seqlock)
 	__rte_exclusive_lock_function(&seqlock->lock)
@@ -224,9 +206,6 @@ rte_seqlock_write_lock(rte_seqlock_t *seqlock)
 }
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * End a write-side critical section.
  *
  * A call to this function marks the end of the write-side critical
@@ -238,7 +217,6 @@ rte_seqlock_write_lock(rte_seqlock_t *seqlock)
  *
  * @see rte_seqlock_write_lock()
  */
-__rte_experimental
 static inline void
 rte_seqlock_write_unlock(rte_seqlock_t *seqlock)
 	__rte_unlock_function(&seqlock->lock)

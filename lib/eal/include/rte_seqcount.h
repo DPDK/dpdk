@@ -25,7 +25,6 @@ extern "C" {
 
 #include <rte_atomic.h>
 #include <rte_branch_prediction.h>
-#include <rte_compat.h>
 #include <rte_stdatomic.h>
 
 /**
@@ -41,15 +40,11 @@ typedef struct {
 #define RTE_SEQCOUNT_INITIALIZER { .sn = 0 }
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Initialize the sequence counter.
  *
  * @param seqcount
  *   A pointer to the sequence counter.
  */
-__rte_experimental
 static inline void
 rte_seqcount_init(rte_seqcount_t *seqcount)
 {
@@ -57,9 +52,6 @@ rte_seqcount_init(rte_seqcount_t *seqcount)
 }
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Begin a read-side critical section.
  *
  * A call to this function marks the beginning of a read-side critical
@@ -101,8 +93,6 @@ rte_seqcount_init(rte_seqcount_t *seqcount)
  *
  * @see rte_seqcount_read_retry()
  */
-
-__rte_experimental
 static inline uint32_t
 rte_seqcount_read_begin(const rte_seqcount_t *seqcount)
 {
@@ -114,9 +104,6 @@ rte_seqcount_read_begin(const rte_seqcount_t *seqcount)
 }
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * End a read-side critical section.
  *
  * A call to this function marks the end of a read-side critical
@@ -146,8 +133,6 @@ rte_seqcount_read_begin(const rte_seqcount_t *seqcount)
  *
  * @see rte_seqcount_read_begin()
  */
-
-__rte_experimental
 static inline bool
 rte_seqcount_read_retry(const rte_seqcount_t *seqcount, uint32_t begin_sn)
 {
@@ -172,9 +157,6 @@ rte_seqcount_read_retry(const rte_seqcount_t *seqcount, uint32_t begin_sn)
 }
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Begin a write-side critical section.
  *
  * A call to this function marks the beginning of a write-side
@@ -196,8 +178,6 @@ rte_seqcount_read_retry(const rte_seqcount_t *seqcount, uint32_t begin_sn)
  *
  * @see rte_seqcount_write_end()
  */
-
-__rte_experimental
 static inline void
 rte_seqcount_write_begin(rte_seqcount_t *seqcount)
 {
@@ -214,9 +194,6 @@ rte_seqcount_write_begin(rte_seqcount_t *seqcount)
 }
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * End a write-side critical section.
  *
  * A call to this function marks the end of the write-side critical
@@ -228,7 +205,6 @@ rte_seqcount_write_begin(rte_seqcount_t *seqcount)
  *
  * @see rte_seqcount_write_begin()
  */
-__rte_experimental
 static inline void
 rte_seqcount_write_end(rte_seqcount_t *seqcount)
 {
