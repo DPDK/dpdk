@@ -324,17 +324,18 @@ rte_eth_call_tx_callbacks(uint16_t port_id, uint16_t queue_id,
 void *
 eth_dev_shared_data_prepare(void)
 {
-	const unsigned int flags = 0;
 	const struct rte_memzone *mz;
 
-	if (eth_dev_shared_mz == NULL) {
-		if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
-			/* Allocate port data and ownership shared memory. */
-			mz = rte_memzone_reserve(MZ_RTE_ETH_DEV_DATA,
-					sizeof(*eth_dev_shared_data),
-					rte_socket_id(), flags);
-		} else
-			mz = rte_memzone_lookup(MZ_RTE_ETH_DEV_DATA);
+	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
+		const unsigned int flags = 0;
+
+		if (eth_dev_shared_mz != NULL)
+			goto out;
+
+		/* Allocate port data and ownership shared memory. */
+		mz = rte_memzone_reserve(MZ_RTE_ETH_DEV_DATA,
+				sizeof(*eth_dev_shared_data),
+				rte_socket_id(), flags);
 		if (mz == NULL) {
 			RTE_ETHDEV_LOG(ERR, "Cannot allocate ethdev shared data\n");
 			goto out;
@@ -342,14 +343,27 @@ eth_dev_shared_data_prepare(void)
 
 		eth_dev_shared_mz = mz;
 		eth_dev_shared_data = mz->addr;
-		if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
-			eth_dev_shared_data->allocated_owners = 0;
-			eth_dev_shared_data->next_owner_id =
-					RTE_ETH_DEV_NO_OWNER + 1;
-			eth_dev_shared_data->allocated_ports = 0;
-			memset(eth_dev_shared_data->data, 0,
-			       sizeof(eth_dev_shared_data->data));
+		eth_dev_shared_data->allocated_owners = 0;
+		eth_dev_shared_data->next_owner_id =
+			RTE_ETH_DEV_NO_OWNER + 1;
+		eth_dev_shared_data->allocated_ports = 0;
+		memset(eth_dev_shared_data->data, 0,
+		       sizeof(eth_dev_shared_data->data));
+	} else {
+		mz = rte_memzone_lookup(MZ_RTE_ETH_DEV_DATA);
+		if (mz == NULL) {
+			/* Clean remaining any traces of a previous shared mem */
+			eth_dev_shared_mz = NULL;
+			eth_dev_shared_data = NULL;
+			RTE_ETHDEV_LOG(ERR, "Cannot lookup ethdev shared data\n");
+			goto out;
 		}
+		if (mz == eth_dev_shared_mz && mz->addr == eth_dev_shared_data)
+			goto out;
+
+		/* Shared mem changed in primary process, refresh pointers */
+		eth_dev_shared_mz = mz;
+		eth_dev_shared_data = mz->addr;
 	}
 out:
 	return eth_dev_shared_data;
