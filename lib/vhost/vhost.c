@@ -1859,7 +1859,15 @@ rte_vhost_async_channel_register(int vid, uint16_t queue_id)
 		return -1;
 
 	rte_rwlock_write_lock(&vq->access_lock);
+
+	if (unlikely(!vq->access_ok)) {
+		ret = -1;
+		goto out_unlock;
+	}
+
 	ret = async_channel_register(dev, vq);
+
+out_unlock:
 	rte_rwlock_write_unlock(&vq->access_lock);
 
 	return ret;
@@ -1911,6 +1919,11 @@ rte_vhost_async_channel_unregister(int vid, uint16_t queue_id)
 		return ret;
 	}
 
+	if (unlikely(!vq->access_ok)) {
+		ret = -1;
+		goto out_unlock;
+	}
+
 	if (!vq->async) {
 		ret = 0;
 	} else if (vq->async->pkts_inflight_n) {
@@ -1922,6 +1935,7 @@ rte_vhost_async_channel_unregister(int vid, uint16_t queue_id)
 		ret = 0;
 	}
 
+out_unlock:
 	rte_rwlock_write_unlock(&vq->access_lock);
 
 	return ret;
