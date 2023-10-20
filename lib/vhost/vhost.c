@@ -2070,6 +2070,12 @@ rte_vhost_get_monitor_addr(int vid, uint16_t queue_id,
 	if (vq == NULL)
 		return -1;
 
+	if (!rte_spinlock_trylock(&vq->access_lock))
+		return -1;
+
+	if (unlikely(!vq->access_ok))
+		goto out_unlock;
+
 	if (vq_is_packed(dev)) {
 		struct vring_packed_desc *desc;
 		desc = vq->desc_packed;
@@ -2090,6 +2096,11 @@ rte_vhost_get_monitor_addr(int vid, uint16_t queue_id,
 	}
 
 	return 0;
+
+out_unlock:
+	rte_spinlock_unlock(&vq->access_lock);
+
+	return -1;
 }
 
 
@@ -2157,6 +2168,7 @@ int rte_vhost_vring_stats_reset(int vid, uint16_t queue_id)
 {
 	struct virtio_net *dev = get_device(vid);
 	struct vhost_virtqueue *vq;
+	int ret = 0;
 
 	if (dev == NULL)
 		return -1;
