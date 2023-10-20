@@ -57,6 +57,7 @@ DPDK_24 {
 	rte_devargs_parsef;
 	rte_devargs_remove;
 	rte_devargs_type_count;
+	rte_drand;
 	rte_driver_name;
 	rte_dump_physmem_layout;
 	rte_dump_stack;
@@ -394,9 +395,6 @@ EXPERIMENTAL {
 	rte_intr_instance_free;
 	rte_intr_type_get;
 	rte_intr_type_set;
-
-	# added in 22.07
-	rte_drand;
 
 	# added in 23.03
 	rte_lcore_register_usage_cb;
