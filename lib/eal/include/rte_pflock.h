@@ -31,7 +31,6 @@
 extern "C" {
 #endif
 
-#include <rte_compat.h>
 #include <rte_common.h>
 #include <rte_pause.h>
 #include <rte_stdatomic.h>
@@ -80,15 +79,11 @@ typedef struct rte_pflock rte_pflock_t;
 #define RTE_PFLOCK_INITIALIZER {  }
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Initialize the pflock to an unlocked state.
  *
  * @param pf
  *   A pointer to the pflock.
  */
-__rte_experimental
 static inline void
 rte_pflock_init(struct rte_pflock *pf)
 {
@@ -99,15 +94,11 @@ rte_pflock_init(struct rte_pflock *pf)
 }
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Take a pflock for read.
  *
  * @param pf
  *   A pointer to a pflock structure.
  */
-__rte_experimental
 static inline void
 rte_pflock_read_lock(rte_pflock_t *pf)
 {
@@ -127,15 +118,11 @@ rte_pflock_read_lock(rte_pflock_t *pf)
 }
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Release a pflock locked for reading.
  *
  * @param pf
  *   A pointer to the pflock structure.
  */
-__rte_experimental
 static inline void
 rte_pflock_read_unlock(rte_pflock_t *pf)
 {
@@ -143,15 +130,11 @@ rte_pflock_read_unlock(rte_pflock_t *pf)
 }
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Take the pflock for write.
  *
  * @param pf
  *   A pointer to the pflock structure.
  */
-__rte_experimental
 static inline void
 rte_pflock_write_lock(rte_pflock_t *pf)
 {
@@ -181,15 +164,11 @@ rte_pflock_write_lock(rte_pflock_t *pf)
 }
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Release a pflock held for writing.
  *
  * @param pf
  *   A pointer to a pflock structure.
  */
-__rte_experimental
 static inline void
 rte_pflock_write_unlock(rte_pflock_t *pf)
 {
