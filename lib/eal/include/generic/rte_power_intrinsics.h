@@ -7,7 +7,6 @@
 
 #include <inttypes.h>
 
-#include <rte_compat.h>
 #include <rte_spinlock.h>
 
 /**
@@ -54,9 +53,6 @@ struct rte_power_monitor_cond {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Monitor specific address for changes. This will cause the CPU to enter an
  * architecture-defined optimized power state until either the specified
  * memory address is written to, a certain TSC timestamp is reached, or other
@@ -84,14 +80,10 @@ struct rte_power_monitor_cond {
  *   -EINVAL on invalid parameters
  *   -ENOTSUP if unsupported
  */
-__rte_experimental
 int rte_power_monitor(const struct rte_power_monitor_cond *pmc,
 		const uint64_t tsc_timestamp);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Wake up a specific lcore that is in a power optimized state and is monitoring
  * an address.
  *
@@ -104,13 +96,9 @@ int rte_power_monitor(const struct rte_power_monitor_cond *pmc,
  * @param lcore_id
  *   Lcore ID of a sleeping thread.
  */
-__rte_experimental
 int rte_power_monitor_wakeup(const unsigned int lcore_id);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * Enter an architecture-defined optimized power state until a certain TSC
  * timestamp is reached.
  *
@@ -126,13 +114,9 @@ int rte_power_monitor_wakeup(const unsigned int lcore_id);
  *   -EINVAL on invalid parameters
  *   -ENOTSUP if unsupported
  */
-__rte_experimental
 int rte_power_pause(const uint64_t tsc_timestamp);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Monitor a set of addresses for changes. This will cause the CPU to enter an
  * architecture-defined optimized power state until either one of the specified
  * memory addresses is written to, a certain TSC timestamp is reached, or other
@@ -160,7 +144,6 @@ int rte_power_pause(const uint64_t tsc_timestamp);
  *   -EINVAL on invalid parameters
  *   -ENOTSUP if unsupported
  */
-__rte_experimental
 int rte_power_monitor_multi(const struct rte_power_monitor_cond pmc[],
 		const uint32_t num, const uint64_t tsc_timestamp);
 
