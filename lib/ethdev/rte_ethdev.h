@@ -3637,7 +3637,7 @@ rte_eth_tx_buffer_init(struct rte_eth_dev_tx_buffer *buffer, uint16_t size);
  * for example, to count dropped packets, or to retry transmission of packets
  * which cannot be sent, this function should be used to register a suitable
  * callback function to implement the desired behaviour.
- * The example callback "rte_eth_count_unsent_packet_callback()" is also
+ * The example callback "rte_eth_tx_buffer_count_callback()" is also
  * provided as reference.
  *
  * @param buffer
