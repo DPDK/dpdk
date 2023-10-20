@@ -1375,7 +1375,10 @@ rte_vhost_avail_entries(int vid, uint16_t queue_id)
 
 	rte_spinlock_lock(&vq->access_lock);
 
-	if (unlikely(!vq->enabled || vq->avail == NULL))
+	if (unlikely(!vq->access_ok))
+		goto out;
+
+	if (unlikely(!vq->enabled))
 		goto out;
 
 	ret = *(volatile uint16_t *)&vq->avail->idx - vq->last_used_idx;
@@ -1467,9 +1470,15 @@ rte_vhost_enable_guest_notification(int vid, uint16_t queue_id, int enable)
 
 	rte_spinlock_lock(&vq->access_lock);
 
+	if (unlikely(!vq->access_ok)) {
+		ret = -1;
+		goto out_unlock;
+	}
+
 	vq->notif_enable = enable;
 	ret = vhost_enable_guest_notification(dev, vq, enable);
 
+out_unlock:
 	rte_spinlock_unlock(&vq->access_lock);
 
 	return ret;
@@ -1529,7 +1538,10 @@ rte_vhost_rx_queue_count(int vid, uint16_t qid)
 
 	rte_spinlock_lock(&vq->access_lock);
 
-	if (unlikely(!vq->enabled || vq->avail == NULL))
+	if (unlikely(!vq->access_ok))
+		goto out;
+
+	if (unlikely(!vq->enabled))
 		goto out;
 
 	ret = *((volatile uint16_t *)&vq->avail->idx) - vq->last_avail_idx;
