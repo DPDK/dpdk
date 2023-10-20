@@ -409,16 +409,12 @@ int rte_eal_create_uio_dev(void);
 enum rte_intr_mode rte_eal_vfio_intr_mode(void);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Copy the user-configured vfio VF token.
  *
  * @param vf_token
  *   vfio VF token configured with the command line is copied
  *   into this parameter, zero uuid by default.
  */
-__rte_experimental
 void rte_eal_vfio_get_vf_token(rte_uuid_t vf_token);
 
 /**

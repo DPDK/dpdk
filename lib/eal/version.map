@@ -88,6 +88,7 @@ DPDK_24 {
 	rte_eal_tailq_lookup;
 	rte_eal_tailq_register;
 	rte_eal_using_phys_addrs;
+	rte_eal_vfio_get_vf_token; # WINDOWS_NO_EXPORT
 	rte_eal_vfio_intr_mode; # WINDOWS_NO_EXPORT
 	rte_eal_wait_lcore;
 	rte_epoll_ctl;
@@ -372,9 +373,6 @@ EXPERIMENTAL {
 	rte_trace_point_lookup; # WINDOWS_NO_EXPORT
 	rte_trace_regexp; # WINDOWS_NO_EXPORT
 	rte_trace_save; # WINDOWS_NO_EXPORT
-
-	# added in 20.08
-	rte_eal_vfio_get_vf_token; # WINDOWS_NO_EXPORT
 
 	# added in 20.11
 	__rte_eal_trace_generic_size_t; # WINDOWS_NO_EXPORT
