@@ -126,6 +126,14 @@ but may be considered in some cases where:
 * It is fixing a performance regression that occurred previously.
 * An existing feature in LTS is not usable as intended without it.
 
+APIs marked as ``experimental`` are not considered part of the ABI version
+and can be changed without prior notice. This is necessary for the API to be
+improved and stabilized and become part of the ABI version in the future.
+
+However, in LTS releases ``experimental`` API should not be changed as there
+will not be a future ABI version on the branch and compatibility with previous
+release of an LTS version is of the highest importance.
+
 The Stable Mailing List
 -----------------------
 
