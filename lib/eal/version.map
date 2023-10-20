@@ -314,6 +314,8 @@ DPDK_24 {
 	rte_uuid_is_null;
 	rte_uuid_parse;
 	rte_uuid_unparse;
+	rte_vect_get_max_simd_bitwidth;
+	rte_vect_set_max_simd_bitwidth;
 	rte_version;
 	rte_vfio_clear_group; # WINDOWS_NO_EXPORT
 	rte_vfio_container_create; # WINDOWS_NO_EXPORT
@@ -377,8 +379,6 @@ EXPERIMENTAL {
 	# added in 20.11
 	__rte_eal_trace_generic_size_t; # WINDOWS_NO_EXPORT
 	rte_cpu_get_intrinsics_support; # WINDOWS_NO_EXPORT
-	rte_vect_get_max_simd_bitwidth;
-	rte_vect_set_max_simd_bitwidth;
 
 	# added in 21.05
 	rte_version_minor;
