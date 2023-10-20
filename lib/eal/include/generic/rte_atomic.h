@@ -14,7 +14,6 @@
 
 #include <stdint.h>
 
-#include <rte_compat.h>
 #include <rte_common.h>
 #include <rte_stdatomic.h>
 
@@ -1147,7 +1146,6 @@ typedef struct {
  * @return
  *   Non-zero on success; 0 on failure.
  */
-__rte_experimental
 static inline int
 rte_atomic128_cmp_exchange(rte_int128_t *dst,
 			   rte_int128_t *exp,

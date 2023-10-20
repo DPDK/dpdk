@@ -16,7 +16,6 @@ extern "C" {
 
 #include "generic/rte_atomic.h"
 #include <rte_branch_prediction.h>
-#include <rte_compat.h>
 #include <rte_debug.h>
 
 #define rte_mb() asm volatile("dmb osh" : : : "memory")
@@ -94,7 +93,6 @@ __ATOMIC128_CAS_OP(__cas_128_acq_rel, "caspal")
 
 #endif
 
-__rte_experimental
 static inline int
 rte_atomic128_cmp_exchange(rte_int128_t *dst, rte_int128_t *exp,
 		const rte_int128_t *src, unsigned int weak, int success,
