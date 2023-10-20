@@ -28,8 +28,19 @@ DPDK_24 {
 	rte_dev_bus;
 	rte_dev_bus_info;
 	rte_dev_devargs;
+	rte_dev_dma_map;
+	rte_dev_dma_unmap;
 	rte_dev_driver;
+	rte_dev_event_callback_process;
+	rte_dev_event_callback_register;
+	rte_dev_event_callback_unregister;
+	rte_dev_event_monitor_start;
+	rte_dev_event_monitor_stop;
+	rte_dev_hotplug_handle_disable;
+	rte_dev_hotplug_handle_enable;
 	rte_dev_is_probed;
+	rte_dev_iterator_init;
+	rte_dev_iterator_next;
 	rte_dev_name;
 	rte_dev_numa_node;
 	rte_dev_probe;
@@ -309,28 +320,11 @@ DPDK_24 {
 EXPERIMENTAL {
 	global:
 
-	# added in 18.05
-	rte_dev_event_callback_register;
-	rte_dev_event_callback_unregister;
-	rte_dev_event_monitor_start;
-	rte_dev_event_monitor_stop;
-
 	# added in 18.08
 	rte_class_find;
 	rte_class_find_by_name;
 	rte_class_register;
 	rte_class_unregister;
-	rte_dev_iterator_init;
-	rte_dev_iterator_next;
-
-	# added in 18.11
-	rte_dev_event_callback_process;
-	rte_dev_hotplug_handle_disable;
-	rte_dev_hotplug_handle_enable;
-
-	# added in 19.05
-	rte_dev_dma_map;
-	rte_dev_dma_unmap;
 
 	# added in 20.05
 	__rte_eal_trace_generic_double;
