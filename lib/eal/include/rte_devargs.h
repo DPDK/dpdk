@@ -21,7 +21,7 @@ extern "C" {
 #endif
 
 #include <stdio.h>
-#include <rte_compat.h>
+
 #include <rte_dev.h>
 
 struct rte_bus;
@@ -168,7 +168,6 @@ __rte_format_printf(2, 0);
  * @param da
  *   The devargs structure holding the device information.
  */
-__rte_experimental
 void
 rte_devargs_reset(struct rte_devargs *da);
 

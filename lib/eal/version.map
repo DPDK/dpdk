@@ -56,6 +56,7 @@ DPDK_24 {
 	rte_devargs_parse;
 	rte_devargs_parsef;
 	rte_devargs_remove;
+	rte_devargs_reset;
 	rte_devargs_type_count;
 	rte_drand;
 	rte_driver_name;
@@ -376,7 +377,6 @@ EXPERIMENTAL {
 	rte_power_pause; # WINDOWS_NO_EXPORT
 
 	# added in 21.05
-	rte_devargs_reset;
 	rte_intr_callback_unregister_sync;
 	rte_version_minor;
 	rte_version_month;
