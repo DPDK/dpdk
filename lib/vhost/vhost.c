@@ -2008,9 +2008,15 @@ rte_vhost_async_get_inflight(int vid, uint16_t queue_id)
 		return ret;
 	}
 
+	if (unlikely(!vq->access_ok)) {
+		ret = -1;
+		goto out_unlock;
+	}
+
 	if (vq->async)
 		ret = vq->async->pkts_inflight_n;
 
+out_unlock:
 	rte_spinlock_unlock(&vq->access_lock);
 
 	return ret;
