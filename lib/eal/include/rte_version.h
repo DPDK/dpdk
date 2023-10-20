@@ -16,7 +16,6 @@ extern "C" {
 
 #include <string.h>
 #include <stdio.h>
-#include <rte_compat.h>
 
 /**
  * Macro to compute a version number usable for comparisons
@@ -35,37 +34,31 @@ extern "C" {
 /**
  * Function to return DPDK version prefix string
  */
-__rte_experimental
 const char *rte_version_prefix(void);
 
 /**
  * Function to return DPDK version year
  */
-__rte_experimental
 unsigned int rte_version_year(void);
 
 /**
  * Function to return DPDK version month
  */
-__rte_experimental
 unsigned int rte_version_month(void);
 
 /**
  * Function to return DPDK minor version number
  */
-__rte_experimental
 unsigned int rte_version_minor(void);
 
 /**
  * Function to return DPDK version suffix for any release candidates
  */
-__rte_experimental
 const char *rte_version_suffix(void);
 
 /**
  * Function to return DPDK version release candidate value
  */
-__rte_experimental
 unsigned int rte_version_release(void);
 
 /**
