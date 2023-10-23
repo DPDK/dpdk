@@ -16,6 +16,7 @@ extern "C" {
 #endif /* __cplusplus */
 
 #include <rte_compat.h>
+#include <dev_driver.h>
 #include <rte_pci.h>
 #include <rte_interrupts.h>
 #include <rte_spinlock.h>
