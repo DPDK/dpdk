@@ -1575,7 +1575,7 @@ Enable or disable a per port Rx offloading on all Rx queues of a port::
    testpmd> port config (port_id) rx_offload (offloading) on|off
 
 * ``offloading``: can be any of these offloading capability:
-                  vlan_strip, ipv4_cksum, udp_cksum, tcp_cksum, tcp_lro,
+                  all, vlan_strip, ipv4_cksum, udp_cksum, tcp_cksum, tcp_lro,
                   qinq_strip, outer_ipv4_cksum, macsec_strip,
                   vlan_filter, vlan_extend, scatter, timestamp, security,
                   keep_crc, rss_hash
@@ -1590,7 +1590,7 @@ Enable or disable a per queue Rx offloading only on a specific Rx queue::
    testpmd> port (port_id) rxq (queue_id) rx_offload (offloading) on|off
 
 * ``offloading``: can be any of these offloading capability:
-                  vlan_strip, ipv4_cksum, udp_cksum, tcp_cksum, tcp_lro,
+                  all, vlan_strip, ipv4_cksum, udp_cksum, tcp_cksum, tcp_lro,
                   qinq_strip, outer_ipv4_cksum, macsec_strip,
                   vlan_filter, vlan_extend, scatter, timestamp, security,
                   keep_crc
@@ -1605,7 +1605,7 @@ Enable or disable a per port Tx offloading on all Tx queues of a port::
    testpmd> port config (port_id) tx_offload (offloading) on|off
 
 * ``offloading``: can be any of these offloading capability:
-                  vlan_insert, ipv4_cksum, udp_cksum, tcp_cksum,
+                  all, vlan_insert, ipv4_cksum, udp_cksum, tcp_cksum,
                   sctp_cksum, tcp_tso, udp_tso, outer_ipv4_cksum,
                   qinq_insert, vxlan_tnl_tso, gre_tnl_tso,
                   ipip_tnl_tso, geneve_tnl_tso, macsec_insert,
@@ -1621,7 +1621,7 @@ Enable or disable a per queue Tx offloading only on a specific Tx queue::
    testpmd> port (port_id) txq (queue_id) tx_offload (offloading) on|off
 
 * ``offloading``: can be any of these offloading capability:
-                  vlan_insert, ipv4_cksum, udp_cksum, tcp_cksum,
+                  all, vlan_insert, ipv4_cksum, udp_cksum, tcp_cksum,
                   sctp_cksum, tcp_tso, udp_tso, outer_ipv4_cksum,
                   qinq_insert, vxlan_tnl_tso, gre_tnl_tso,
                   ipip_tnl_tso, geneve_tnl_tso, macsec_insert,
