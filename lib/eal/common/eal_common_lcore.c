@@ -446,6 +446,13 @@ rte_lcore_register_usage_cb(rte_lcore_usage_cb cb)
 	lcore_usage_cb = cb;
 }
 
+static float
+calc_usage_ratio(const struct rte_lcore_usage *usage)
+{
+	return usage->total_cycles != 0 ?
+		(usage->busy_cycles * 100.0) / usage->total_cycles : (float)0;
+}
+
 static int
 lcore_dump_cb(unsigned int lcore_id, void *arg)
 {
@@ -462,8 +469,9 @@ lcore_dump_cb(unsigned int lcore_id, void *arg)
 	/* Guard against concurrent modification of lcore_usage_cb. */
 	usage_cb = lcore_usage_cb;
 	if (usage_cb != NULL && usage_cb(lcore_id, &usage) == 0) {
-		if (asprintf(&usage_str, ", busy cycles %"PRIu64"/%"PRIu64,
-				usage.busy_cycles, usage.total_cycles) < 0) {
+		if (asprintf(&usage_str, ", busy cycles %"PRIu64"/%"PRIu64" (ratio %.02f%%)",
+				usage.busy_cycles, usage.total_cycles,
+				calc_usage_ratio(&usage)) < 0) {
 			return -ENOMEM;
 		}
 	}
@@ -511,11 +519,19 @@ struct lcore_telemetry_info {
 	struct rte_tel_data *d;
 };
 
+static void
+format_usage_ratio(char *buf, uint16_t size, const struct rte_lcore_usage *usage)
+{
+	float ratio = calc_usage_ratio(usage);
+	snprintf(buf, size, "%.02f%%", ratio);
+}
+
 static int
 lcore_telemetry_info_cb(unsigned int lcore_id, void *arg)
 {
 	struct rte_config *cfg = rte_eal_get_configuration();
 	struct lcore_telemetry_info *info = arg;
+	char ratio_str[RTE_TEL_MAX_STRING_LEN];
 	struct rte_lcore_usage usage;
 	struct rte_tel_data *cpuset;
 	rte_lcore_usage_cb usage_cb;
@@ -544,6 +560,8 @@ lcore_telemetry_info_cb(unsigned int lcore_id, void *arg)
 	if (usage_cb != NULL && usage_cb(lcore_id, &usage) == 0) {
 		rte_tel_data_add_dict_uint(info->d, "total_cycles", usage.total_cycles);
 		rte_tel_data_add_dict_uint(info->d, "busy_cycles", usage.busy_cycles);
+		format_usage_ratio(ratio_str, sizeof(ratio_str), &usage);
+		rte_tel_data_add_dict_string(info->d, "usage_ratio", ratio_str);
 	}
 
 	return 0;
@@ -574,11 +592,13 @@ struct lcore_telemetry_usage {
 	struct rte_tel_data *lcore_ids;
 	struct rte_tel_data *total_cycles;
 	struct rte_tel_data *busy_cycles;
+	struct rte_tel_data *usage_ratio;
 };
 
 static int
 lcore_telemetry_usage_cb(unsigned int lcore_id, void *arg)
 {
+	char ratio_str[RTE_TEL_MAX_STRING_LEN];
 	struct lcore_telemetry_usage *u = arg;
 	struct rte_lcore_usage usage;
 	rte_lcore_usage_cb usage_cb;
@@ -591,6 +611,8 @@ lcore_telemetry_usage_cb(unsigned int lcore_id, void *arg)
 		rte_tel_data_add_array_uint(u->lcore_ids, lcore_id);
 		rte_tel_data_add_array_uint(u->total_cycles, usage.total_cycles);
 		rte_tel_data_add_array_uint(u->busy_cycles, usage.busy_cycles);
+		format_usage_ratio(ratio_str, sizeof(ratio_str), &usage);
+		rte_tel_data_add_array_string(u->usage_ratio, ratio_str);
 	}
 
 	return 0;
@@ -603,15 +625,19 @@ handle_lcore_usage(const char *cmd __rte_unused, const char *params __rte_unused
 	struct lcore_telemetry_usage usage;
 	struct rte_tel_data *total_cycles;
 	struct rte_tel_data *busy_cycles;
+	struct rte_tel_data *usage_ratio;
 	struct rte_tel_data *lcore_ids;
 
 	lcore_ids = rte_tel_data_alloc();
 	total_cycles = rte_tel_data_alloc();
 	busy_cycles = rte_tel_data_alloc();
-	if (lcore_ids == NULL || total_cycles == NULL || busy_cycles == NULL) {
+	usage_ratio = rte_tel_data_alloc();
+	if (lcore_ids == NULL || total_cycles == NULL || busy_cycles == NULL ||
+	    usage_ratio == NULL) {
 		rte_tel_data_free(lcore_ids);
 		rte_tel_data_free(total_cycles);
 		rte_tel_data_free(busy_cycles);
+		rte_tel_data_free(usage_ratio);
 		return -ENOMEM;
 	}
 
@@ -619,12 +645,15 @@ handle_lcore_usage(const char *cmd __rte_unused, const char *params __rte_unused
 	rte_tel_data_start_array(lcore_ids, RTE_TEL_UINT_VAL);
 	rte_tel_data_start_array(total_cycles, RTE_TEL_UINT_VAL);
 	rte_tel_data_start_array(busy_cycles, RTE_TEL_UINT_VAL);
+	rte_tel_data_start_array(usage_ratio, RTE_TEL_STRING_VAL);
 	rte_tel_data_add_dict_container(d, "lcore_ids", lcore_ids, 0);
 	rte_tel_data_add_dict_container(d, "total_cycles", total_cycles, 0);
 	rte_tel_data_add_dict_container(d, "busy_cycles", busy_cycles, 0);
+	rte_tel_data_add_dict_container(d, "usage_ratio", usage_ratio, 0);
 	usage.lcore_ids = lcore_ids;
 	usage.total_cycles = total_cycles;
 	usage.busy_cycles = busy_cycles;
+	usage.usage_ratio = usage_ratio;
 
 	return rte_lcore_iterate(lcore_telemetry_usage_cb, &usage);
 }
