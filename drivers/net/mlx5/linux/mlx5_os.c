@@ -1629,6 +1629,7 @@ err_secondary:
 					 "matching is disabled",
 				eth_dev->data->port_id);
 		}
+		eth_dev->data->dev_flags |= RTE_ETH_DEV_FLOW_OPS_THREAD_SAFE;
 		return eth_dev;
 #else
 		DRV_LOG(ERR, "DV support is missing for HWS.");
