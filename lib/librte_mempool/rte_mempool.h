@@ -1402,7 +1402,7 @@ rte_mempool_put(struct rte_mempool *mp, void *obj)
  * @param cache
  *   A pointer to a mempool cache structure. May be NULL if not needed.
  * @return
- *   - >=0: Success; number of objects supplied.
+ *   - 0: Success.
  *   - <0: Error; code of driver dequeue function.
  */
 static __rte_always_inline int
