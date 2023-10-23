@@ -1912,6 +1912,14 @@ virtio_init_device(struct rte_eth_dev *eth_dev, uint64_t req_features)
 		}
 	}
 
+	if (eth_dev->data->dev_flags & RTE_ETH_DEV_INTR_LSC)
+		/* Enable vector (0) for Link State Interrupt */
+		if (VIRTIO_OPS(hw)->set_config_irq(hw, 0) ==
+				VIRTIO_MSI_NO_VECTOR) {
+			PMD_DRV_LOG(ERR, "failed to set config vector");
+			return -EBUSY;
+		}
+
 	virtio_reinit_complete(hw);
 
 	return 0;
@@ -2236,14 +2244,6 @@ virtio_dev_configure(struct rte_eth_dev *dev)
 
 	hw->has_tx_offload = tx_offload_enabled(hw);
 	hw->has_rx_offload = rx_offload_enabled(hw);
-
-	if (dev->data->dev_flags & RTE_ETH_DEV_INTR_LSC)
-		/* Enable vector (0) for Link State Interrupt */
-		if (VIRTIO_OPS(hw)->set_config_irq(hw, 0) ==
-				VIRTIO_MSI_NO_VECTOR) {
-			PMD_DRV_LOG(ERR, "failed to set config vector");
-			return -EBUSY;
-		}
 
 	if (virtio_with_packed_queue(hw)) {
 #if defined(RTE_ARCH_X86_64) && defined(CC_AVX512_SUPPORT)
