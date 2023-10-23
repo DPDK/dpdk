@@ -440,13 +440,19 @@ typedef int (*rte_mempool_alloc_t)(struct rte_mempool *mp);
 typedef void (*rte_mempool_free_t)(struct rte_mempool *mp);
 
 /**
- * Enqueue an object into the external pool.
+ * Enqueue 'n' objects into the external pool.
+ * @return
+ *   - 0: Success
+ *   - <0: Error
  */
 typedef int (*rte_mempool_enqueue_t)(struct rte_mempool *mp,
 		void * const *obj_table, unsigned int n);
 
 /**
- * Dequeue an object from the external pool.
+ * Dequeue 'n' objects from the external pool.
+ * @return
+ *   - 0: Success
+ *   - <0: Error
  */
 typedef int (*rte_mempool_dequeue_t)(struct rte_mempool *mp,
 		void **obj_table, unsigned int n);
