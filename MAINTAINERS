@@ -1676,6 +1676,7 @@ F: lib/pci/
 Power management
 M: Anatoly Burakov <anatoly.burakov@intel.com>
 M: David Hunt <david.hunt@intel.com>
+M: Sivaprasad Tummala <sivaprasad.tummala@amd.com>
 F: lib/power/
 F: doc/guides/prog_guide/power_man.rst
 F: app/test/test_power*
