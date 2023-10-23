@@ -50,7 +50,7 @@ T: git://dpdk.org/next/dpdk-next-net-mlx
 
 Next-virtio Tree
 M: Maxime Coquelin <maxime.coquelin@redhat.com>
-M: Chenbo Xia <chenbo.xia@intel.com>
+M: Chenbo Xia <chenbox@nvidia.com>
 T: git://dpdk.org/next/dpdk-next-virtio
 
 Next-crypto Tree
@@ -595,7 +595,7 @@ F: drivers/bus/dpaa/
 F: drivers/bus/fslmc/
 
 PCI bus driver
-M: Chenbo Xia <chenbo.xia@intel.com>
+M: Chenbo Xia <chenbox@nvidia.com>
 M: Nipun Gupta <nipun.gupta@amd.com>
 F: drivers/bus/pci/
 
@@ -985,7 +985,7 @@ F: doc/guides/nics/features/vmxnet3.ini
 
 Vhost-user
 M: Maxime Coquelin <maxime.coquelin@redhat.com>
-M: Chenbo Xia <chenbo.xia@intel.com>
+M: Chenbo Xia <chenbox@nvidia.com>
 T: git://dpdk.org/next/dpdk-next-virtio
 F: lib/vhost/
 F: doc/guides/prog_guide/vhost_lib.rst
@@ -999,7 +999,7 @@ F: doc/guides/sample_app_ug/vdpa.rst
 
 Vhost PMD
 M: Maxime Coquelin <maxime.coquelin@redhat.com>
-M: Chenbo Xia <chenbo.xia@intel.com>
+M: Chenbo Xia <chenbox@nvidia.com>
 T: git://dpdk.org/next/dpdk-next-virtio
 F: drivers/net/vhost/
 F: doc/guides/nics/vhost.rst
@@ -1007,7 +1007,7 @@ F: doc/guides/nics/features/vhost.ini
 
 Virtio PMD
 M: Maxime Coquelin <maxime.coquelin@redhat.com>
-M: Chenbo Xia <chenbo.xia@intel.com>
+M: Chenbo Xia <chenbox@nvidia.com>
 T: git://dpdk.org/next/dpdk-next-virtio
 F: drivers/net/virtio/
 F: doc/guides/nics/virtio.rst
@@ -1669,7 +1669,7 @@ F: app/test/test_rcu*
 F: doc/guides/prog_guide/rcu_lib.rst
 
 PCI
-M: Chenbo Xia <chenbo.xia@intel.com>
+M: Chenbo Xia <chenbox@nvidia.com>
 M: Gaetan Rivet <grive@u256.net>
 F: lib/pci/
 
