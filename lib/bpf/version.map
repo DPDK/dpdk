@@ -1,7 +1,9 @@
 DPDK_24 {
 	global:
 
+	rte_bpf_convert;
 	rte_bpf_destroy;
+	rte_bpf_dump;
 	rte_bpf_elf_load;
 	rte_bpf_eth_rx_elf_load;
 	rte_bpf_eth_rx_unload;
@@ -13,11 +15,4 @@ DPDK_24 {
 	rte_bpf_load;
 
 	local: *;
-};
-
-EXPERIMENTAL {
-	global:
-
-	rte_bpf_convert;
-	rte_bpf_dump;
 };
