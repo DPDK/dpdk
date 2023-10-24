@@ -10,6 +10,7 @@ DPDK_24 {
 	rte_timer_dump_stats;
 	rte_timer_init;
 	rte_timer_manage;
+	rte_timer_next_ticks;
 	rte_timer_pending;
 	rte_timer_reset;
 	rte_timer_reset_sync;
@@ -20,10 +21,4 @@ DPDK_24 {
 	rte_timer_subsystem_init;
 
 	local: *;
-};
-
-EXPERIMENTAL {
-	global:
-
-	rte_timer_next_ticks;
 };

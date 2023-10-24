@@ -36,7 +36,7 @@
 
 #include <stdio.h>
 #include <stdint.h>
-#include <rte_compat.h>
+
 #include <rte_common.h>
 #include <rte_spinlock.h>
 
@@ -331,9 +331,6 @@ void rte_timer_stop_sync(struct rte_timer *tim);
 int rte_timer_pending(struct rte_timer *tim);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Time until the next timer on the current lcore
  * This function gives the ticks until the next timer will be active.
  *
@@ -343,7 +340,6 @@ int rte_timer_pending(struct rte_timer *tim);
  *   - 0: a timer is pending and will run at next rte_timer_manage()
  *   - >0: ticks until the next timer is ready
  */
-__rte_experimental
 int64_t rte_timer_next_ticks(void);
 
 /**
