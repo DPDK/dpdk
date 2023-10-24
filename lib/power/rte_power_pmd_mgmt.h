@@ -12,7 +12,6 @@
 
 #include <stdint.h>
 
-#include <rte_compat.h>
 #include <rte_log.h>
 #include <rte_power.h>
 
@@ -33,9 +32,6 @@ enum rte_power_pmd_mgmt_type {
 };
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change, or be removed, without prior notice.
- *
  * Enable power management on a specified Ethernet device Rx queue and lcore.
  *
  * @note This function is not thread-safe.
@@ -55,16 +51,12 @@ enum rte_power_pmd_mgmt_type {
  *   0 on success
  *   <0 on error
  */
-__rte_experimental
 int
 rte_power_ethdev_pmgmt_queue_enable(unsigned int lcore_id,
 		uint16_t port_id, uint16_t queue_id,
 		enum rte_power_pmd_mgmt_type mode);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change, or be removed, without prior notice.
- *
  * Disable power management on a specified Ethernet device Rx queue and lcore.
  *
  * @note This function is not thread-safe.
@@ -82,42 +74,30 @@ rte_power_ethdev_pmgmt_queue_enable(unsigned int lcore_id,
  *   0 on success
  *   <0 on error
  */
-__rte_experimental
 int
 rte_power_ethdev_pmgmt_queue_disable(unsigned int lcore_id,
 		uint16_t port_id, uint16_t queue_id);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change, or be removed, without prior notice.
- *
  * Set a emptypoll_max to specified value. Used to specify the number of empty
  * polls to wait before entering sleep state.
  *
  * @param max
  *   The value to set emptypoll_max to.
  */
-__rte_experimental
 void
 rte_power_pmd_mgmt_set_emptypoll_max(unsigned int max);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change, or be removed, without prior notice.
- *
  * Get the current value of emptypoll_max.
  *
  * @return
  *   The current emptypoll_max value
  */
-__rte_experimental
 unsigned int
 rte_power_pmd_mgmt_get_emptypoll_max(void);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change, or be removed, without prior notice.
- *
  * Set the pause_duration. Used to adjust the pause mode callback duration.
  *
  * @note Duration must be greater than zero.
@@ -128,27 +108,19 @@ rte_power_pmd_mgmt_get_emptypoll_max(void);
  *   0 on success
  *   <0 on error
  */
-__rte_experimental
 int
 rte_power_pmd_mgmt_set_pause_duration(unsigned int duration);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change, or be removed, without prior notice.
- *
  * Get the current value of pause_duration.
  *
  * @return
  *   The current pause_duration value.
  */
-__rte_experimental
 unsigned int
 rte_power_pmd_mgmt_get_pause_duration(void);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change, or be removed, without prior notice.
- *
  * Set the min frequency to be used for frequency scaling or zero to use defaults.
  *
  * @note Supported by: Pstate mode.
@@ -161,14 +133,10 @@ rte_power_pmd_mgmt_get_pause_duration(void);
  *   0 on success
  *   <0 on error
  */
-__rte_experimental
 int
 rte_power_pmd_mgmt_set_scaling_freq_min(unsigned int lcore, unsigned int min);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change, or be removed, without prior notice.
- *
  * Set the max frequency to be used for frequency scaling or zero to use defaults.
  *
  * @note Supported by: Pstate mode.
@@ -182,14 +150,10 @@ rte_power_pmd_mgmt_set_scaling_freq_min(unsigned int lcore, unsigned int min);
  *   0 on success
  *   <0 on error
  */
-__rte_experimental
 int
 rte_power_pmd_mgmt_set_scaling_freq_max(unsigned int lcore, unsigned int max);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change, or be removed, without prior notice.
- *
  * Get the current configured min frequency used for frequency scaling.
  *
  * @note Supported by: Pstate mode.
@@ -202,14 +166,10 @@ rte_power_pmd_mgmt_set_scaling_freq_max(unsigned int lcore, unsigned int max);
  *   , in KiloHertz, used for frequency scaling.
  *   <0 on error
  */
-__rte_experimental
 int
 rte_power_pmd_mgmt_get_scaling_freq_min(unsigned int lcore);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change, or be removed, without prior notice.
- *
  * Get the current configured max frequency used for frequency scaling.
  *
  * @note Supported by: Pstate mode.
@@ -222,7 +182,6 @@ rte_power_pmd_mgmt_get_scaling_freq_min(unsigned int lcore);
  *   , in KiloHertz, used for frequency scaling.
  *   <0 on error
  */
-__rte_experimental
 int
 rte_power_pmd_mgmt_get_scaling_freq_max(unsigned int lcore);
 

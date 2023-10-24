@@ -10,7 +10,6 @@
  * RTE Power Management
  */
 
-#include <rte_compat.h>
 #include <rte_common.h>
 #include <rte_log.h>
 #include <rte_power_guest_channel.h>
@@ -25,9 +24,6 @@ enum power_management_env {PM_ENV_NOT_SET, PM_ENV_ACPI_CPUFREQ, PM_ENV_KVM_VM,
 		PM_ENV_AMD_PSTATE_CPUFREQ};
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
- *
  * Check if a specific power management environment type is supported on a
  * currently running system.
  *
@@ -39,7 +35,6 @@ enum power_management_env {PM_ENV_NOT_SET, PM_ENV_ACPI_CPUFREQ, PM_ENV_KVM_VM,
  *   - 0 if unsupported
  *   - -1 if error, with rte_errno indicating reason for error.
  */
-__rte_experimental
 int rte_power_check_env_supported(enum power_management_env env);
 
 /**

@@ -1,6 +1,9 @@
 DPDK_24 {
 	global:
 
+	rte_power_check_env_supported;
+	rte_power_ethdev_pmgmt_queue_disable;
+	rte_power_ethdev_pmgmt_queue_enable;
 	rte_power_exit;
 	rte_power_freq_disable_turbo;
 	rte_power_freq_down;
@@ -12,27 +15,10 @@ DPDK_24 {
 	rte_power_get_capabilities;
 	rte_power_get_env;
 	rte_power_get_freq;
+	rte_power_get_uncore_freq;
+	rte_power_guest_channel_receive_msg;
 	rte_power_guest_channel_send_msg;
 	rte_power_init;
-	rte_power_set_env;
-	rte_power_set_freq;
-	rte_power_turbo_status;
-	rte_power_unset_env;
-
-	local: *;
-};
-
-EXPERIMENTAL {
-	global:
-
-	rte_power_check_env_supported;
-	rte_power_guest_channel_receive_msg;
-
-	# added in 21.02
-	rte_power_ethdev_pmgmt_queue_disable;
-	rte_power_ethdev_pmgmt_queue_enable;
-
-	# added in 22.07
 	rte_power_pmd_mgmt_get_emptypoll_max;
 	rte_power_pmd_mgmt_get_pause_duration;
 	rte_power_pmd_mgmt_get_scaling_freq_max;
@@ -41,10 +27,10 @@ EXPERIMENTAL {
 	rte_power_pmd_mgmt_set_pause_duration;
 	rte_power_pmd_mgmt_set_scaling_freq_max;
 	rte_power_pmd_mgmt_set_scaling_freq_min;
-
-	# added in 22.11
-	rte_power_get_uncore_freq;
+	rte_power_set_env;
+	rte_power_set_freq;
 	rte_power_set_uncore_freq;
+	rte_power_turbo_status;
 	rte_power_uncore_exit;
 	rte_power_uncore_freq_max;
 	rte_power_uncore_freq_min;
@@ -52,6 +38,13 @@ EXPERIMENTAL {
 	rte_power_uncore_get_num_freqs;
 	rte_power_uncore_get_num_pkgs;
 	rte_power_uncore_init;
+	rte_power_unset_env;
+
+	local: *;
+};
+
+EXPERIMENTAL {
+	global:
 
 	# added in 23.11
 	rte_power_get_uncore_env;
