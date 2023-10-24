@@ -1415,8 +1415,7 @@ ipsec_cleanup:
 static void
 nfp_ipsec_ctx_destroy(struct rte_eth_dev *dev)
 {
-	if (dev->security_ctx != NULL)
-		rte_free(dev->security_ctx);
+	rte_free(dev->security_ctx);
 }
 
 void

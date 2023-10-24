@@ -108,8 +108,7 @@ mvtvm_ml_model_blob_parse(struct rte_ml_model_params *params, struct mvtvm_ml_mo
 
 error:
 	for (i = 0; i < ML_MVTVM_MODEL_OBJECT_MAX; i++) {
-		if (object[i].buffer != NULL)
-			rte_free(object[i].buffer);
+		rte_free(object[i].buffer);
 	}
 
 	return -EINVAL;

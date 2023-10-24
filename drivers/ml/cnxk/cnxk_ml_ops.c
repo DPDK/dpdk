@@ -715,8 +715,7 @@ cnxk_ml_dev_close(struct rte_ml_dev *dev)
 			plt_err("Failed to close CN10K ML Device");
 	}
 
-	if (cnxk_mldev->index_map)
-		rte_free(cnxk_mldev->index_map);
+	rte_free(cnxk_mldev->index_map);
 
 	/* Stop and unload all models */
 	for (model_id = 0; model_id < dev->data->nb_models; model_id++) {

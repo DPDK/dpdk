@@ -565,8 +565,7 @@ ut_teardown_asym(void)
 
 	if (self->sess != NULL)
 		rte_cryptodev_asym_session_free(dev_id, self->sess);
-	if (self->op != NULL)
-		rte_crypto_op_free(self->op);
+	rte_crypto_op_free(self->op);
 	self->sess = NULL;
 	self->op = NULL;
 	self->result_op = NULL;

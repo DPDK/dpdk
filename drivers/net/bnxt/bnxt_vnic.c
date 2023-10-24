@@ -847,8 +847,7 @@ bnxt_vnic_rss_hash_algo_update(struct bnxt *bp,
 
 int32_t bnxt_vnic_queue_db_deinit(struct bnxt *bp)
 {
-	if (bp->vnic_queue_db.rss_q_db != NULL)
-		rte_hash_free(bp->vnic_queue_db.rss_q_db);
+	rte_hash_free(bp->vnic_queue_db.rss_q_db);
 	return 0;
 }
 

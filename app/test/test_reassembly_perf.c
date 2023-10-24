@@ -81,8 +81,7 @@ reassembly_test_teardown(void)
 	if (frag_tbl != NULL)
 		rte_ip_frag_table_destroy(frag_tbl);
 
-	if (pkt_pool != NULL)
-		rte_mempool_free(pkt_pool);
+	rte_mempool_free(pkt_pool);
 }
 
 static void

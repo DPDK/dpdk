@@ -69,8 +69,7 @@ int ecore_mz_mapping_alloc(void)
 void ecore_mz_mapping_free(void)
 {
 	if (__atomic_fetch_sub(&ref_cnt, 1, __ATOMIC_RELAXED) - 1 == 0) {
-		if (ecore_mz_mapping)
-			rte_free(ecore_mz_mapping);
+		rte_free(ecore_mz_mapping);
 		ecore_mz_mapping = NULL;
 	}
 }

@@ -6004,8 +6004,7 @@ static void bnxt_free_ctx_mem_buf(struct bnxt_ctx_mem_buf_info *ctx)
 	if (!ctx)
 		return;
 
-	if (ctx->va)
-		rte_free(ctx->va);
+	rte_free(ctx->va);
 
 	ctx->va = NULL;
 	ctx->dma = RTE_BAD_IOVA;

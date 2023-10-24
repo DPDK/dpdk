@@ -55,8 +55,7 @@ cpfl_send_ctlq_msg(struct idpf_hw *hw, struct idpf_ctlq_info *cq, u16 num_q_msg,
 	}
 
 send_err:
-	if (msg_ptr_list)
-		free(msg_ptr_list);
+	free(msg_ptr_list);
 err:
 	return ret;
 }
