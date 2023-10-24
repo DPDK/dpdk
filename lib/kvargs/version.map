@@ -4,16 +4,10 @@ DPDK_24 {
 	rte_kvargs_count;
 	rte_kvargs_free;
 	rte_kvargs_get;
+	rte_kvargs_get_with_value;
 	rte_kvargs_parse;
 	rte_kvargs_parse_delim;
 	rte_kvargs_process;
 
 	local: *;
-};
-
-EXPERIMENTAL {
-	global:
-
-	# added in 21.11
-	rte_kvargs_get_with_value;
 };

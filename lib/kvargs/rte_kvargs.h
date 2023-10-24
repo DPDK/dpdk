@@ -25,8 +25,6 @@
 extern "C" {
 #endif
 
-#include <rte_compat.h>
-
 /** Maximum number of key/value associations */
 #define RTE_KVARGS_MAX 32
 
@@ -145,9 +143,6 @@ void rte_kvargs_free(struct rte_kvargs *kvlist);
 const char *rte_kvargs_get(const struct rte_kvargs *kvlist, const char *key);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Get the value associated with a given key and value.
  *
  * Find the first entry in the kvlist whose key and value match the
@@ -167,7 +162,6 @@ const char *rte_kvargs_get(const struct rte_kvargs *kvlist, const char *key);
  *   NULL if no key matches the input,
  *   a value associated with a matching key otherwise.
  */
-__rte_experimental
 const char *rte_kvargs_get_with_value(const struct rte_kvargs *kvlist,
 				      const char *key, const char *value);
 
