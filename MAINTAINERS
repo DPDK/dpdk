@@ -422,7 +422,7 @@ F: app/test-pmd/cmdline_flow.c
 F: doc/guides/prog_guide/rte_flow.rst
 F: lib/ethdev/rte_flow*
 
-Traffic Management API - EXPERIMENTAL
+Traffic Management API
 M: Cristian Dumitrescu <cristian.dumitrescu@intel.com>
 T: git://dpdk.org/next/dpdk-next-net
 F: lib/ethdev/rte_tm*
