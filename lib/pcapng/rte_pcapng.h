@@ -6,10 +6,6 @@
  * @file
  * RTE pcapng
  *
- * @warning
- * @b EXPERIMENTAL:
- * All functions in this file may be changed or removed without prior notice.
- *
  * Pcapng is an evolution from the pcap format, created to address some of
  * its deficiencies. Namely, the lack of extensibility and inability to store
  * additional information.
@@ -25,7 +21,7 @@
 
 #include <stdint.h>
 #include <sys/types.h>
-#include <rte_compat.h>
+
 #include <rte_mempool.h>
 
 #ifdef __cplusplus
@@ -54,7 +50,6 @@ typedef struct rte_pcapng rte_pcapng_t;
  * @return
  *   handle to library, or NULL in case of error (and rte_errno is set).
  */
-__rte_experimental
 rte_pcapng_t *
 rte_pcapng_fdopen(int fd,
 		  const char *osname, const char *hardware,
@@ -66,7 +61,6 @@ rte_pcapng_fdopen(int fd,
  * @param self
  *  handle to library
  */
-__rte_experimental
 void
 rte_pcapng_close(rte_pcapng_t *self);
 
@@ -89,7 +83,6 @@ rte_pcapng_close(rte_pcapng_t *self);
  * and before any packet record. All ports used in packet capture
  * must be added.
  */
-__rte_experimental
 int
 rte_pcapng_add_interface(rte_pcapng_t *self, uint16_t port,
 			 const char *ifname, const char *ifdescr,
@@ -132,7 +125,6 @@ enum rte_pcapng_direction {
  *   - The pointer to the new mbuf formatted for pcapng_write
  *   - NULL if allocation fails.
  */
-__rte_experimental
 struct rte_mbuf *
 rte_pcapng_copy(uint16_t port_id, uint32_t queue,
 		const struct rte_mbuf *m, struct rte_mempool *mp,
@@ -149,7 +141,6 @@ rte_pcapng_copy(uint16_t port_id, uint32_t queue,
  *   The minimum size of mbuf data to handle packet with length bytes.
  *   Accounting for required header and trailer fields
  */
-__rte_experimental
 uint32_t
 rte_pcapng_mbuf_size(uint32_t length);
 
@@ -174,7 +165,6 @@ rte_pcapng_mbuf_size(uint32_t length);
  *  The number of bytes written to file, -1 on failure to write file.
  *  The mbuf's in *pkts* are always freed.
  */
-__rte_experimental
 ssize_t
 rte_pcapng_write_packets(rte_pcapng_t *self,
 			 struct rte_mbuf *pkts[], uint16_t nb_pkts);
@@ -205,7 +195,6 @@ rte_pcapng_write_packets(rte_pcapng_t *self,
  * @return
  *  number of bytes written to file, -1 on failure to write file
  */
-__rte_experimental
 ssize_t
 rte_pcapng_write_stats(rte_pcapng_t *self, uint16_t port,
 		       const char *comment,
