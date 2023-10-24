@@ -1130,7 +1130,6 @@ rte_bbdev_dec_op_alloc_bulk(struct rte_mempool *mempool,
  *   - 0 on success.
  *   - EINVAL if invalid mempool is provided.
  */
-__rte_experimental
 static inline int
 rte_bbdev_fft_op_alloc_bulk(struct rte_mempool *mempool,
 		struct rte_bbdev_fft_op **ops, unsigned int num_ops)
@@ -1220,7 +1219,6 @@ rte_bbdev_enc_op_free_bulk(struct rte_bbdev_enc_op **ops, unsigned int num_ops)
  * @param num_ops
  *   Number of structures.
  */
-__rte_experimental
 static inline void
 rte_bbdev_fft_op_free_bulk(struct rte_bbdev_fft_op **ops, unsigned int num_ops)
 {
