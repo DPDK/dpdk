@@ -30,11 +30,13 @@ DPDK_24 {
 	cmdline_get_help_num;
 	cmdline_get_help_portlist;
 	cmdline_get_help_string;
+	cmdline_get_rdline;
 	cmdline_in;
 	cmdline_interact;
 	cmdline_isendoftoken;
 	cmdline_new;
 	cmdline_parse;
+	cmdline_parse_check;
 	cmdline_parse_etheraddr;
 	cmdline_parse_ipaddr;
 	cmdline_parse_num;
@@ -54,8 +56,12 @@ DPDK_24 {
 	rdline_add_history;
 	rdline_char_in;
 	rdline_clear_history;
+	rdline_free;
 	rdline_get_buffer;
+	rdline_get_history_buffer_size;
 	rdline_get_history_item;
+	rdline_get_opaque;
+	rdline_new;
 	rdline_newline;
 	rdline_quit;
 	rdline_redisplay;
@@ -64,24 +70,6 @@ DPDK_24 {
 	rdline_stop;
 	vt100_init;
 	vt100_parser;
-
-	local: *;
-};
-
-EXPERIMENTAL {
-	global:
-
-	# added in 20.11
-	cmdline_get_rdline;
-
-	# added in 21.11
-	rdline_new;
-	rdline_free;
-	rdline_get_history_buffer_size;
-	rdline_get_opaque;
-
-	# added in 22.07
-	cmdline_parse_check;
 
 	local: *;
 };
