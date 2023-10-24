@@ -1,4 +1,4 @@
-EXPERIMENTAL {
+DPDK_24 {
 	global:
 
 	rte_dma_close;
