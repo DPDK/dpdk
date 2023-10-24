@@ -10,9 +10,11 @@ DPDK_24 {
 	rte_vdpa_get_stats_names;
 	rte_vdpa_reset_stats;
 	rte_vhost_avail_entries;
+	rte_vhost_backend_config_change;
 	rte_vhost_clr_inflight_desc_packed;
 	rte_vhost_clr_inflight_desc_split;
 	rte_vhost_crypto_create;
+	rte_vhost_crypto_driver_start;
 	rte_vhost_crypto_fetch_requests;
 	rte_vhost_crypto_finalize_requests;
 	rte_vhost_crypto_free;
@@ -26,6 +28,7 @@ DPDK_24 {
 	rte_vhost_driver_get_features;
 	rte_vhost_driver_get_protocol_features;
 	rte_vhost_driver_get_queue_num;
+	rte_vhost_driver_get_vdpa_dev_type;
 	rte_vhost_driver_get_vdpa_device;
 	rte_vhost_driver_register;
 	rte_vhost_driver_set_features;
@@ -38,8 +41,10 @@ DPDK_24 {
 	rte_vhost_get_ifname;
 	rte_vhost_get_log_base;
 	rte_vhost_get_mem_table;
+	rte_vhost_get_monitor_addr;
 	rte_vhost_get_mtu;
 	rte_vhost_get_negotiated_features;
+	rte_vhost_get_negotiated_protocol_features;
 	rte_vhost_get_numa_node;
 	rte_vhost_get_vdpa_device;
 	rte_vhost_get_vhost_ring_inflight;
@@ -57,6 +62,7 @@ DPDK_24 {
 	rte_vhost_set_vring_base;
 	rte_vhost_va_from_guest_pa;
 	rte_vhost_vring_call;
+	rte_vhost_vring_call_nonblock;
 	rte_vhost_vring_stats_get;
 	rte_vhost_vring_stats_get_names;
 	rte_vhost_vring_stats_reset;
@@ -67,15 +73,11 @@ DPDK_24 {
 EXPERIMENTAL {
 	global:
 
-	rte_vhost_crypto_driver_start;
-	rte_vhost_backend_config_change;
+	# added in 20.08
 	rte_vhost_async_channel_register;
 	rte_vhost_async_channel_unregister;
 	rte_vhost_submit_enqueue_burst;
 	rte_vhost_poll_enqueue_completed;
-
-	# added in 21.05
-	rte_vhost_get_negotiated_protocol_features;
 
 	# added in 21.08
 	rte_vhost_async_get_inflight;
@@ -83,21 +85,16 @@ EXPERIMENTAL {
 	rte_vhost_async_channel_unregister_thread_unsafe;
 	rte_vhost_clear_queue_thread_unsafe;
 
-	# added in 21.11
-	rte_vhost_get_monitor_addr;
-
 	# added in 22.03
 	rte_vhost_async_dma_configure;
 
 	# added in 22.07
 	rte_vhost_async_get_inflight_thread_unsafe;
 	rte_vhost_async_try_dequeue_burst;
-	rte_vhost_driver_get_vdpa_dev_type;
 	rte_vhost_clear_queue;
 
 	# added in 22.11
 	rte_vhost_async_dma_unconfigure;
-	rte_vhost_vring_call_nonblock;
 
 	# added in 23.07
 	rte_vhost_driver_set_max_queue_num;

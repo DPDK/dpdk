@@ -509,7 +509,6 @@ rte_vhost_driver_get_vdpa_device(const char *path);
  * @return
  *  0 on success, -1 on failure
  */
-__rte_experimental
 int
 rte_vhost_driver_get_vdpa_dev_type(const char *path, uint32_t *type);
 
@@ -648,7 +647,6 @@ int rte_vhost_get_negotiated_features(int vid, uint64_t *features);
  * @return
  *  0 on success, -1 on failure
  */
-__rte_experimental
 int
 rte_vhost_get_negotiated_protocol_features(int vid,
 					   uint64_t *protocol_features);
@@ -960,7 +958,6 @@ int rte_vhost_vring_call(int vid, uint16_t vring_idx);
  * @return
  *  0 on success, -1 on failure, -EAGAIN for another retry
  */
-__rte_experimental
 int rte_vhost_vring_call_nonblock(int vid, uint16_t vring_idx);
 
 /**
@@ -987,7 +984,6 @@ uint32_t rte_vhost_rx_queue_count(int vid, uint16_t qid);
  * @return
  *  0 on success, -1 on failure
  */
-__rte_experimental
 int
 rte_vhost_get_monitor_addr(int vid, uint16_t queue_id,
 		struct rte_vhost_power_monitor_cond *pmc);
@@ -1102,7 +1098,6 @@ rte_vhost_get_vdpa_device(int vid);
  * @return
  *  0 on success, < 0 on failure
  */
-__rte_experimental
 int
 rte_vhost_backend_config_change(int vid, bool need_reply);
 

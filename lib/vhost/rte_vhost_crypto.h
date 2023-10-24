@@ -11,8 +11,6 @@ extern "C" {
 
 #include <stdint.h>
 
-#include <rte_compat.h>
-
 /* pre-declare structs to avoid including full headers */
 struct rte_mempool;
 struct rte_crypto_op;
@@ -40,7 +38,6 @@ enum rte_vhost_crypto_zero_copy {
  * @return
  *  0 on success, -1 on failure
  */
-__rte_experimental
 int
 rte_vhost_crypto_driver_start(const char *path);
 
