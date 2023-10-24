@@ -9,7 +9,6 @@
 extern "C" {
 #endif
 
-#include <rte_compat.h>
 #include <rte_log.h>
 
 #ifdef RTE_ARCH_X86
@@ -24,9 +23,6 @@ extern "C" {
  * Calculate Toeplitz hash.
  * Dummy implementation.
  *
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
- *
  * @param m
  *  Pointer to the matrices generated from the corresponding
  *  RSS hash key using rte_thash_complete_matrix().
@@ -37,7 +33,6 @@ extern "C" {
  * @return
  *  Calculated Toeplitz hash value.
  */
-__rte_experimental
 static inline uint32_t
 rte_thash_gfni(const uint64_t *mtrx __rte_unused,
 	const uint8_t *key __rte_unused, int len __rte_unused)
@@ -49,9 +44,6 @@ rte_thash_gfni(const uint64_t *mtrx __rte_unused,
 /**
  * Bulk implementation for Toeplitz hash.
  * Dummy implementation.
- *
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice.
  *
  * @param m
  *  Pointer to the matrices generated from the corresponding
@@ -66,7 +58,6 @@ rte_thash_gfni(const uint64_t *mtrx __rte_unused,
  * @param num
  *  Number of tuples to hash.
  */
-__rte_experimental
 static inline void
 rte_thash_gfni_bulk(const uint64_t *mtrx __rte_unused,
 	int len __rte_unused, uint8_t *tuple[] __rte_unused,
