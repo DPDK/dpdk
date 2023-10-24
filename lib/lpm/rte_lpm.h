@@ -13,7 +13,7 @@
 
 #include <errno.h>
 #include <stdint.h>
-#include <rte_compat.h>
+
 #include <rte_branch_prediction.h>
 #include <rte_byteorder.h>
 #include <rte_common.h>
@@ -186,9 +186,6 @@ void
 rte_lpm_free(struct rte_lpm *lpm);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Associate RCU QSBR variable with an LPM object.
  *
  * @param lpm
@@ -203,7 +200,6 @@ rte_lpm_free(struct rte_lpm *lpm);
  *   - EEXIST - already added QSBR
  *   - ENOMEM - memory allocation failure
  */
-__rte_experimental
 int rte_lpm_rcu_qsbr_add(struct rte_lpm *lpm, struct rte_lpm_rcu_config *cfg);
 
 /**

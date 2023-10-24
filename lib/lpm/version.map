@@ -18,12 +18,7 @@ DPDK_24 {
 	rte_lpm_find_existing;
 	rte_lpm_free;
 	rte_lpm_is_rule_present;
+	rte_lpm_rcu_qsbr_add;
 
 	local: *;
-};
-
-EXPERIMENTAL {
-	global:
-
-	rte_lpm_rcu_qsbr_add;
 };
