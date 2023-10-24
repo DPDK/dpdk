@@ -32,7 +32,7 @@
  */
 
 #include <stdint.h>
-#include <rte_compat.h>
+
 #include <rte_common.h>
 #include <rte_config.h>
 #include <rte_mempool.h>
@@ -800,7 +800,6 @@ struct rte_pktmbuf_extmem {
  *    - EEXIST - a memzone with the same name already exists
  *    - ENOMEM - no appropriate memory area found in which to create memzone
  */
-__rte_experimental
 struct rte_mempool *
 rte_pktmbuf_pool_create_extbuf(const char *name, unsigned int n,
 	unsigned int cache_size, uint16_t priv_size,
