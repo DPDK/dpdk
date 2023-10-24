@@ -2,6 +2,7 @@ DPDK_24 {
 	global:
 
 	rte_member_add;
+	rte_member_add_byte_count;
 	rte_member_create;
 	rte_member_delete;
 	rte_member_find_existing;
@@ -10,16 +11,9 @@ DPDK_24 {
 	rte_member_lookup_bulk;
 	rte_member_lookup_multi;
 	rte_member_lookup_multi_bulk;
+	rte_member_query_count;
+	rte_member_report_heavyhitter;
 	rte_member_reset;
 
 	local: *;
-};
-
-EXPERIMENTAL {
-	global:
-
-	# added in 22.11
-	rte_member_add_byte_count;
-	rte_member_query_count;
-	rte_member_report_heavyhitter;
 };
