@@ -2,6 +2,8 @@ DPDK_24 {
 	global:
 
 	rte_approx;
+	rte_pie_config_init;
+	rte_pie_rt_data_init;
 	rte_red_config_init;
 	rte_red_log2_1_minus_Wq;
 	rte_red_pow2_frac_inv;
@@ -17,24 +19,12 @@ DPDK_24 {
 	rte_sched_port_pkt_read_color;
 	rte_sched_port_pkt_read_tree_path;
 	rte_sched_port_pkt_write;
+	rte_sched_port_subport_profile_add;
 	rte_sched_queue_read_stats;
 	rte_sched_subport_config;
 	rte_sched_subport_pipe_profile_add;
 	rte_sched_subport_read_stats;
+	rte_sched_subport_tc_ov_config;
 
 	local: *;
-};
-
-EXPERIMENTAL {
-	global:
-
-	# added in 20.11
-	rte_sched_port_subport_profile_add;
-
-	# added in 21.11
-	rte_pie_rt_data_init;
-	rte_pie_config_init;
-
-	# added in 22.07
-	rte_sched_subport_tc_ov_config;
 };
