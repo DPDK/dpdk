@@ -5,6 +5,7 @@ DPDK_24 {
 	__rte_eventdev_trace_deq_burst;
 	__rte_eventdev_trace_enq_burst;
 	__rte_eventdev_trace_eth_tx_adapter_enqueue;
+	__rte_eventdev_trace_maintain;
 	__rte_eventdev_trace_timer_arm_burst;
 	__rte_eventdev_trace_timer_arm_tmo_tick_burst;
 	__rte_eventdev_trace_timer_cancel_burst;
@@ -20,6 +21,7 @@ DPDK_24 {
 	rte_event_crypto_adapter_stats_get;
 	rte_event_crypto_adapter_stats_reset;
 	rte_event_crypto_adapter_stop;
+	rte_event_crypto_adapter_vector_limits_get;
 	rte_event_dequeue_timeout_ticks;
 	rte_event_dev_attr_get;
 	rte_event_dev_close;
@@ -42,9 +44,15 @@ DPDK_24 {
 	rte_event_eth_rx_adapter_cb_register;
 	rte_event_eth_rx_adapter_create;
 	rte_event_eth_rx_adapter_create_ext;
+	rte_event_eth_rx_adapter_create_with_params;
+	rte_event_eth_rx_adapter_event_port_get;
 	rte_event_eth_rx_adapter_free;
+	rte_event_eth_rx_adapter_instance_get;
 	rte_event_eth_rx_adapter_queue_add;
+	rte_event_eth_rx_adapter_queue_conf_get;
 	rte_event_eth_rx_adapter_queue_del;
+	rte_event_eth_rx_adapter_queue_stats_get;
+	rte_event_eth_rx_adapter_queue_stats_reset;
 	rte_event_eth_rx_adapter_service_id_get;
 	rte_event_eth_rx_adapter_start;
 	rte_event_eth_rx_adapter_stats_get;
@@ -56,8 +64,11 @@ DPDK_24 {
 	rte_event_eth_tx_adapter_create_ext;
 	rte_event_eth_tx_adapter_event_port_get;
 	rte_event_eth_tx_adapter_free;
+	rte_event_eth_tx_adapter_instance_get;
 	rte_event_eth_tx_adapter_queue_add;
 	rte_event_eth_tx_adapter_queue_del;
+	rte_event_eth_tx_adapter_queue_start;
+	rte_event_eth_tx_adapter_queue_stop;
 	rte_event_eth_tx_adapter_service_id_get;
 	rte_event_eth_tx_adapter_start;
 	rte_event_eth_tx_adapter_stats_get;
@@ -68,10 +79,12 @@ DPDK_24 {
 	rte_event_port_default_conf_get;
 	rte_event_port_link;
 	rte_event_port_links_get;
+	rte_event_port_quiesce;
 	rte_event_port_setup;
 	rte_event_port_unlink;
 	rte_event_port_unlinks_in_progress;
 	rte_event_queue_attr_get;
+	rte_event_queue_attr_set;
 	rte_event_queue_default_conf_get;
 	rte_event_queue_setup;
 	rte_event_ring_create;
@@ -99,27 +112,6 @@ DPDK_24 {
 
 EXPERIMENTAL {
 	global:
-
-	# added in 21.11
-	__rte_eventdev_trace_maintain;
-	rte_event_eth_rx_adapter_create_with_params;
-	rte_event_eth_rx_adapter_queue_conf_get;
-	rte_event_eth_rx_adapter_queue_stats_get;
-	rte_event_eth_rx_adapter_queue_stats_reset;
-
-	# added in 22.03
-	rte_event_eth_rx_adapter_event_port_get;
-
-	# added in 22.07
-	rte_event_crypto_adapter_vector_limits_get;
-	rte_event_port_quiesce;
-	rte_event_queue_attr_set;
-
-	# added in 22.11
-	rte_event_eth_rx_adapter_instance_get;
-	rte_event_eth_tx_adapter_instance_get;
-	rte_event_eth_tx_adapter_queue_start;
-	rte_event_eth_tx_adapter_queue_stop;
 
 	# added in 23.03
 	rte_event_crypto_adapter_runtime_params_get;

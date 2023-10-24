@@ -689,9 +689,6 @@ rte_event_timer_cancel_burst(const struct rte_event_timer_adapter *adapter,
 }
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Get the number of ticks remaining until event timer expiry.
  *
  * @param adapter

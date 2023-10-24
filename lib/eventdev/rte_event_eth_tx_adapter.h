@@ -492,7 +492,6 @@ rte_event_eth_tx_adapter_service_id_get(uint8_t id, uint32_t *service_id);
  *  -  0: Success
  *  - <0: Error code on failure
  */
-__rte_experimental
 int
 rte_event_eth_tx_adapter_instance_get(uint16_t eth_dev_id,
 				      uint16_t tx_queue_id,
@@ -527,7 +526,6 @@ rte_event_eth_tx_adapter_instance_get(uint16_t eth_dev_id,
  *   - 0: Success
  *   - <0: Error code on failure
  */
-__rte_experimental
 int
 rte_event_eth_tx_adapter_queue_start(uint16_t eth_dev_id, uint16_t tx_queue_id);
 
@@ -546,7 +544,6 @@ rte_event_eth_tx_adapter_queue_start(uint16_t eth_dev_id, uint16_t tx_queue_id);
  *   - 0: Success
  *   - <0: Error code on failure
  */
-__rte_experimental
 int
 rte_event_eth_tx_adapter_queue_stop(uint16_t eth_dev_id, uint16_t tx_queue_id);
 

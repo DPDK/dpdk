@@ -785,7 +785,6 @@ rte_event_queue_attr_get(uint8_t dev_id, uint8_t queue_id, uint32_t attr_id,
  *   - -ENOTSUP: device does not support setting the event attribute.
  *   - <0: failed to set event queue attribute
  */
-__rte_experimental
 int
 rte_event_queue_attr_set(uint8_t dev_id, uint8_t queue_id, uint32_t attr_id,
 			 uint64_t attr_value);
@@ -948,7 +947,6 @@ typedef void (*rte_eventdev_port_flush_t)(uint8_t dev_id,
  * @param args
  *   Argument supplied to callback.
  */
-__rte_experimental
 void
 rte_event_port_quiesce(uint8_t dev_id, uint8_t port_id,
 		       rte_eventdev_port_flush_t release_cb, void *args);
@@ -2465,7 +2463,6 @@ rte_event_dequeue_burst(uint8_t dev_id, uint8_t port_id, struct rte_event ev[],
  *
  * @see RTE_EVENT_DEV_CAP_MAINTENANCE_FREE
  */
-__rte_experimental
 static inline int
 rte_event_maintain(uint8_t dev_id, uint8_t port_id, int op)
 {
@@ -2514,7 +2511,6 @@ rte_event_maintain(uint8_t dev_id, uint8_t port_id, int op)
  *  - 0 on success.
  *  - -EINVAL if *dev_id*,  *port_id*, or *profile_id* is invalid.
  */
-__rte_experimental
 static inline uint8_t
 rte_event_port_profile_switch(uint8_t dev_id, uint8_t port_id, uint8_t profile_id)
 {

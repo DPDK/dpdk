@@ -466,7 +466,6 @@ int rte_event_eth_rx_adapter_create(uint8_t id, uint8_t dev_id,
  *   - 0: Success
  *   - <0: Error code on failure
  */
-__rte_experimental
 int rte_event_eth_rx_adapter_create_with_params(uint8_t id, uint8_t dev_id,
 			struct rte_event_port_conf *port_config,
 			struct rte_event_eth_rx_adapter_params *rxa_params);
@@ -711,7 +710,6 @@ int rte_event_eth_rx_adapter_vector_limits_get(
  *  - 0: Success, Receive queue added correctly.
  *  - <0: Error code on failure.
  */
-__rte_experimental
 int rte_event_eth_rx_adapter_queue_conf_get(uint8_t id,
 			uint16_t eth_dev_id,
 			uint16_t rx_queue_id,
@@ -736,7 +734,6 @@ int rte_event_eth_rx_adapter_queue_conf_get(uint8_t id,
  *  - 0: Success, queue buffer stats retrieved.
  *  - <0: Error code on failure.
  */
-__rte_experimental
 int
 rte_event_eth_rx_adapter_queue_stats_get(uint8_t id,
 		uint16_t eth_dev_id,
@@ -759,7 +756,6 @@ rte_event_eth_rx_adapter_queue_stats_get(uint8_t id,
  *  - 0: Success, queue buffer stats retrieved.
  *  - <0: Error code on failure.
  */
-__rte_experimental
 int
 rte_event_eth_rx_adapter_queue_stats_reset(uint8_t id,
 		uint16_t eth_dev_id,
@@ -780,7 +776,6 @@ rte_event_eth_rx_adapter_queue_stats_reset(uint8_t id,
  *  - <0: Error code on failure, if the adapter doesn't use a rte_service
  * function, this function returns -ESRCH.
  */
-__rte_experimental
 int
 rte_event_eth_rx_adapter_event_port_get(uint8_t id, uint8_t *event_port_id);
 
@@ -801,7 +796,6 @@ rte_event_eth_rx_adapter_event_port_get(uint8_t id, uint8_t *event_port_id);
  *  -  0: Success
  *  - <0: Error code on failure
  */
-__rte_experimental
 int
 rte_event_eth_rx_adapter_instance_get(uint16_t eth_dev_id,
 				      uint16_t rx_queue_id,
