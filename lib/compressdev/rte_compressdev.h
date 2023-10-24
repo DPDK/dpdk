@@ -10,10 +10,6 @@
  *
  * RTE Compression Device APIs.
  *
- * @warning
- * @b EXPERIMENTAL:
- * All functions in this file may be changed or removed without prior notice.
- *
  * Defines comp device APIs for the provisioning of compression operations.
  */
 
@@ -22,7 +18,6 @@ extern "C" {
 #endif
 
 
-#include <rte_compat.h>
 #include "rte_comp.h"
 
 /**
@@ -54,7 +49,6 @@ struct rte_compressdev_capabilities {
 #define RTE_COMP_END_OF_CAPABILITIES_LIST() \
 	{ RTE_COMP_ALGO_UNSPECIFIED }
 
-__rte_experimental
 const struct rte_compressdev_capabilities *
 rte_compressdev_capability_get(uint8_t dev_id,
 			enum rte_comp_algorithm algo);
@@ -94,7 +88,6 @@ rte_compressdev_capability_get(uint8_t dev_id,
  * @return
  *   The name of this flag, or NULL if it's not a valid feature flag.
  */
-__rte_experimental
 const char *
 rte_compressdev_get_feature_name(uint64_t flag);
 
@@ -133,7 +126,6 @@ struct rte_compressdev_stats {
  *   - Returns compress device identifier on success.
  *   - Return -1 on failure to find named compress device.
  */
-__rte_experimental
 int
 rte_compressdev_get_dev_id(const char *name);
 
@@ -146,7 +138,6 @@ rte_compressdev_get_dev_id(const char *name);
  *   - Returns compress device name.
  *   - Returns NULL if compress device is not present.
  */
-__rte_experimental
 const char *
 rte_compressdev_name_get(uint8_t dev_id);
 
@@ -157,7 +148,6 @@ rte_compressdev_name_get(uint8_t dev_id);
  * @return
  *   - The total number of usable compress devices.
  */
-__rte_experimental
 uint8_t
 rte_compressdev_count(void);
 
@@ -175,7 +165,6 @@ rte_compressdev_count(void);
  * @return
  *   Returns number of attached compress devices.
  */
-__rte_experimental
 uint8_t
 rte_compressdev_devices_get(const char *driver_name, uint8_t *devices,
 		uint8_t nb_devices);
@@ -190,7 +179,6 @@ rte_compressdev_devices_get(const char *driver_name, uint8_t *devices,
  *   a default of zero if the socket could not be determined.
  *   -1 if returned is the dev_id value is out of range.
  */
-__rte_experimental
 int
 rte_compressdev_socket_id(uint8_t dev_id);
 
@@ -221,7 +209,6 @@ struct rte_compressdev_config {
  *   - 0: Success, device configured.
  *   - <0: Error code returned by the driver configuration function.
  */
-__rte_experimental
 int
 rte_compressdev_configure(uint8_t dev_id,
 			struct rte_compressdev_config *config);
@@ -240,7 +227,6 @@ rte_compressdev_configure(uint8_t dev_id,
  *   - 0: Success, device started.
  *   - <0: Error code of the driver device start function.
  */
-__rte_experimental
 int
 rte_compressdev_start(uint8_t dev_id);
 
@@ -251,7 +237,6 @@ rte_compressdev_start(uint8_t dev_id);
  * @param dev_id
  *   Compress device identifier
  */
-__rte_experimental
 void
 rte_compressdev_stop(uint8_t dev_id);
 
@@ -269,7 +254,6 @@ rte_compressdev_stop(uint8_t dev_id);
  *  - 0 on successfully closing device
  *  - <0 on failure to close device
  */
-__rte_experimental
 int
 rte_compressdev_close(uint8_t dev_id);
 
@@ -296,7 +280,6 @@ rte_compressdev_close(uint8_t dev_id);
  *   - 0: Success, queue pair correctly set up.
  *   - <0: Queue pair configuration failed
  */
-__rte_experimental
 int
 rte_compressdev_queue_pair_setup(uint8_t dev_id, uint16_t queue_pair_id,
 		uint32_t max_inflight_ops, int socket_id);
@@ -309,7 +292,6 @@ rte_compressdev_queue_pair_setup(uint8_t dev_id, uint16_t queue_pair_id,
  * @return
  *   - The number of configured queue pairs.
  */
-__rte_experimental
 uint16_t
 rte_compressdev_queue_pair_count(uint8_t dev_id);
 
@@ -327,7 +309,6 @@ rte_compressdev_queue_pair_count(uint8_t dev_id);
  *   - Zero if successful.
  *   - Non-zero otherwise.
  */
-__rte_experimental
 int
 rte_compressdev_stats_get(uint8_t dev_id, struct rte_compressdev_stats *stats);
 
@@ -337,7 +318,6 @@ rte_compressdev_stats_get(uint8_t dev_id, struct rte_compressdev_stats *stats);
  * @param dev_id
  *   The identifier of the device.
  */
-__rte_experimental
 void
 rte_compressdev_stats_reset(uint8_t dev_id);
 
@@ -355,7 +335,6 @@ rte_compressdev_stats_reset(uint8_t dev_id);
  * The element after the last valid element has it's op field set to
  * RTE_COMP_ALGO_UNSPECIFIED.
  */
-__rte_experimental
 void
 rte_compressdev_info_get(uint8_t dev_id, struct rte_compressdev_info *dev_info);
 
@@ -413,7 +392,6 @@ rte_compressdev_info_get(uint8_t dev_id, struct rte_compressdev_info *dev_info);
  *   of pointers to *rte_comp_op* structures effectively supplied to the
  *   *ops* array.
  */
-__rte_experimental
 uint16_t
 rte_compressdev_dequeue_burst(uint8_t dev_id, uint16_t qp_id,
 		struct rte_comp_op **ops, uint16_t nb_ops);
@@ -468,7 +446,6 @@ rte_compressdev_dequeue_burst(uint8_t dev_id, uint16_t qp_id,
  *   comp devices queue is full or if invalid parameters are specified in
  *   a *rte_comp_op*.
  */
-__rte_experimental
 uint16_t
 rte_compressdev_enqueue_burst(uint8_t dev_id, uint16_t qp_id,
 		struct rte_comp_op **ops, uint16_t nb_ops);
@@ -496,7 +473,6 @@ rte_compressdev_enqueue_burst(uint8_t dev_id, uint16_t qp_id,
  *  - Returns -ENOTSUP if comp device does not support the comp transform.
  *  - Returns -ENOMEM if the private stream could not be allocated.
  */
-__rte_experimental
 int
 rte_compressdev_stream_create(uint8_t dev_id,
 		const struct rte_comp_xform *xform,
@@ -518,7 +494,6 @@ rte_compressdev_stream_create(uint8_t dev_id,
  *  - Returns -ENOTSUP if comp device does not support STATEFUL operations.
  *  - Returns -EBUSY if can't free stream as there are inflight operations
  */
-__rte_experimental
 int
 rte_compressdev_stream_free(uint8_t dev_id, void *stream);
 
@@ -545,7 +520,6 @@ rte_compressdev_stream_free(uint8_t dev_id, void *stream);
  *  - Returns -ENOTSUP if comp device does not support the comp transform.
  *  - Returns -ENOMEM if the private_xform could not be allocated.
  */
-__rte_experimental
 int
 rte_compressdev_private_xform_create(uint8_t dev_id,
 		const struct rte_comp_xform *xform,
@@ -567,7 +541,6 @@ rte_compressdev_private_xform_create(uint8_t dev_id,
  *  - <0 in error cases
  *  - Returns -EINVAL if input parameters are invalid.
  */
-__rte_experimental
 int
 rte_compressdev_private_xform_free(uint8_t dev_id, void *private_xform);
 

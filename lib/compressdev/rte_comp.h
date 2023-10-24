@@ -15,7 +15,6 @@
 extern "C" {
 #endif
 
-#include <rte_compat.h>
 #include <rte_mbuf.h>
 
 /**
@@ -499,7 +498,6 @@ struct rte_comp_op {
  *  - On success pointer to mempool
  *  - On failure NULL
  */
-__rte_experimental
 struct rte_mempool *
 rte_comp_op_pool_create(const char *name,
 		unsigned int nb_elts, unsigned int cache_size,
@@ -515,7 +513,6 @@ rte_comp_op_pool_create(const char *name,
  * - On success returns a valid rte_comp_op structure
  * - On failure returns NULL
  */
-__rte_experimental
 struct rte_comp_op *
 rte_comp_op_alloc(struct rte_mempool *mempool);
 
@@ -532,7 +529,6 @@ rte_comp_op_alloc(struct rte_mempool *mempool);
  *   - nb_ops: Success, the nb_ops requested was allocated
  *   - 0: Not enough entries in the mempool; no ops are retrieved.
  */
-__rte_experimental
 int
 rte_comp_op_bulk_alloc(struct rte_mempool *mempool,
 		struct rte_comp_op **ops, uint16_t nb_ops);
@@ -546,7 +542,6 @@ rte_comp_op_bulk_alloc(struct rte_mempool *mempool,
  *   Compress operation pointer allocated from rte_comp_op_alloc()
  *   If op is NULL, no operation is performed.
  */
-__rte_experimental
 void
 rte_comp_op_free(struct rte_comp_op *op);
 
@@ -561,7 +556,6 @@ rte_comp_op_free(struct rte_comp_op *op);
  * @param nb_ops
  *   Number of operations to free
  */
-__rte_experimental
 void
 rte_comp_op_bulk_free(struct rte_comp_op **ops, uint16_t nb_ops);
 
@@ -574,7 +568,6 @@ rte_comp_op_bulk_free(struct rte_comp_op **ops, uint16_t nb_ops);
  * @return
  *   The name of this flag, or NULL if it's not a valid feature flag.
  */
-__rte_experimental
 const char *
 rte_comp_get_feature_name(uint64_t flag);
 

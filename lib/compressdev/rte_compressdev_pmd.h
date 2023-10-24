@@ -21,7 +21,6 @@ extern "C" {
 
 #include <dev_driver.h>
 
-#include <rte_compat.h>
 #include "rte_compressdev.h"
 #include "rte_compressdev_internal.h"
 
@@ -59,7 +58,6 @@ struct rte_compressdev_global {
  * @return
  *   - The rte_compressdev structure pointer for the given device identifier.
  */
-__rte_experimental
 struct rte_compressdev *
 rte_compressdev_pmd_get_named_dev(const char *name);
 
@@ -292,7 +290,6 @@ struct rte_compressdev_ops {
  * @return
  *   - Slot in the rte_dev_devices array for a new device;
  */
-__rte_experimental
 struct rte_compressdev *
 rte_compressdev_pmd_allocate(const char *name, int socket_id);
 
@@ -308,7 +305,6 @@ rte_compressdev_pmd_allocate(const char *name, int socket_id);
  * @return
  *   - 0 on success, negative on error
  */
-__rte_experimental
 int
 rte_compressdev_pmd_release_device(struct rte_compressdev *dev);
 
@@ -331,7 +327,6 @@ rte_compressdev_pmd_release_device(struct rte_compressdev *dev);
  *  - 0 on success
  *  - errno on failure
  */
-__rte_experimental
 int
 rte_compressdev_pmd_parse_input_args(
 		struct rte_compressdev_pmd_init_params *params,
@@ -353,7 +348,6 @@ rte_compressdev_pmd_parse_input_args(
  *  - comp device instance on success
  *  - NULL on creation failure
  */
-__rte_experimental
 struct rte_compressdev *
 rte_compressdev_pmd_create(const char *name,
 		struct rte_device *device,
@@ -372,7 +366,6 @@ rte_compressdev_pmd_create(const char *name,
  *  - 0 on success
  *  - errno on failure
  */
-__rte_experimental
 int
 rte_compressdev_pmd_destroy(struct rte_compressdev *dev);
 

@@ -1,6 +1,12 @@
-EXPERIMENTAL {
+DPDK_24 {
 	global:
 
+	rte_comp_get_feature_name;
+	rte_comp_op_alloc;
+	rte_comp_op_bulk_alloc;
+	rte_comp_op_bulk_free;
+	rte_comp_op_free;
+	rte_comp_op_pool_create;
 	rte_compressdev_capability_get;
 	rte_compressdev_close;
 	rte_compressdev_configure;
@@ -29,12 +35,6 @@ EXPERIMENTAL {
 	rte_compressdev_stop;
 	rte_compressdev_stream_create;
 	rte_compressdev_stream_free;
-	rte_comp_get_feature_name;
-	rte_comp_op_alloc;
-	rte_comp_op_bulk_alloc;
-	rte_comp_op_bulk_free;
-	rte_comp_op_free;
-	rte_comp_op_pool_create;
 
 	local: *;
 };
