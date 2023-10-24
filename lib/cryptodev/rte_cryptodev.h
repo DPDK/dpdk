@@ -257,7 +257,6 @@ rte_cryptodev_sym_capability_get(uint8_t dev_id,
  *   - Return description of the asymmetric crypto capability if exist.
  *   - Return NULL if the capability not exist.
  */
-__rte_experimental
 const struct rte_cryptodev_asymmetric_xform_capability *
 rte_cryptodev_asym_capability_get(uint8_t dev_id,
 		const struct rte_cryptodev_asym_capability_idx *idx);
@@ -327,7 +326,6 @@ rte_cryptodev_sym_capability_check_aead(
  *   - Return 1 if the op type is supported
  *   - Return 0 if unsupported
  */
-__rte_experimental
 int
 rte_cryptodev_asym_xform_capability_check_optype(
 	const struct rte_cryptodev_asymmetric_xform_capability *capability,
@@ -343,7 +341,6 @@ rte_cryptodev_asym_xform_capability_check_optype(
  *   - Return 0 if the parameters are in range of the capability.
  *   - Return -1 if the parameters are out of range of the capability.
  */
-__rte_experimental
 int
 rte_cryptodev_asym_xform_capability_check_modlen(
 	const struct rte_cryptodev_asymmetric_xform_capability *capability,
@@ -359,7 +356,6 @@ rte_cryptodev_asym_xform_capability_check_modlen(
  *   - Return true if the hash algorithm is supported.
  *   - Return false if the hash algorithm is not supported.
  */
-__rte_experimental
 bool
 rte_cryptodev_asym_xform_capability_check_hash(
 	const struct rte_cryptodev_asymmetric_xform_capability *capability,
@@ -421,7 +417,6 @@ rte_cryptodev_get_aead_algo_enum(enum rte_crypto_aead_algorithm *algo_enum,
  * - Return -1 if string is not valid
  * - Return 0 if the string is valid
  */
-__rte_experimental
 int
 rte_cryptodev_asym_get_xform_enum(enum rte_crypto_asym_xform_type *xform_enum,
 		const char *xform_string);
@@ -860,7 +855,6 @@ rte_cryptodev_queue_pair_setup(uint8_t dev_id, uint16_t queue_pair_id,
  *	 - 1: qp was configured
  *	 - -EINVAL: device was not configured
  */
-__rte_experimental
 int
 rte_cryptodev_get_qp_status(uint8_t dev_id, uint16_t queue_pair_id);
 
@@ -1039,7 +1033,6 @@ rte_cryptodev_get_sec_ctx(uint8_t dev_id);
  *  - On success returns the created session mempool pointer
  *  - On failure returns NULL
  */
-__rte_experimental
 struct rte_mempool *
 rte_cryptodev_sym_session_pool_create(const char *name, uint32_t nb_elts,
 	uint32_t elt_size, uint32_t cache_size, uint16_t priv_size,
@@ -1066,7 +1059,6 @@ rte_cryptodev_sym_session_pool_create(const char *name, uint32_t nb_elts,
  *  - On success return mempool
  *  - On failure returns NULL
  */
-__rte_experimental
 struct rte_mempool *
 rte_cryptodev_asym_session_pool_create(const char *name, uint32_t nb_elts,
 	uint32_t cache_size, uint16_t user_data_size, int socket_id);
@@ -1108,7 +1100,6 @@ rte_cryptodev_sym_session_create(uint8_t dev_id,
  *  - -ENOMEM on memory error for session allocation.
  *  - -ENOTSUP if device doesn't support session configuration.
  */
-__rte_experimental
 int
 rte_cryptodev_asym_session_create(uint8_t dev_id,
 		struct rte_crypto_asym_xform *xforms, struct rte_mempool *mp,
@@ -1141,7 +1132,6 @@ rte_cryptodev_sym_session_free(uint8_t dev_id,
  *  - 0 if successful.
  *  - -EINVAL if device is invalid or session is NULL.
  */
-__rte_experimental
 int
 rte_cryptodev_asym_session_free(uint8_t dev_id, void *sess);
 
@@ -1151,7 +1141,6 @@ rte_cryptodev_asym_session_free(uint8_t dev_id, void *sess);
  * @return
  *   Size of the asymmetric header session.
  */
-__rte_experimental
 unsigned int
 rte_cryptodev_asym_get_header_session_size(void);
 
@@ -1179,7 +1168,6 @@ rte_cryptodev_sym_get_private_session_size(uint8_t dev_id);
  *   - Size of the asymmetric private data, if successful
  *   - 0 if device is invalid or does not have private session
  */
-__rte_experimental
 unsigned int
 rte_cryptodev_asym_get_private_session_size(uint8_t dev_id);
 
@@ -1226,7 +1214,6 @@ const char *rte_cryptodev_driver_name_get(uint8_t driver_id);
  *  - On success, zero.
  *  - On failure, a negative value.
  */
-__rte_experimental
 int
 rte_cryptodev_sym_session_set_user_data(void *sess,
 					void *data,
@@ -1263,7 +1250,6 @@ rte_cryptodev_sym_session_opaque_data_set(void *sess, uint64_t opaque)
  *  - On success return pointer to user data.
  *  - On failure returns NULL.
  */
-__rte_experimental
 void *
 rte_cryptodev_sym_session_get_user_data(void *sess);
 
@@ -1280,7 +1266,6 @@ rte_cryptodev_sym_session_get_user_data(void *sess);
  *  - -EINVAL if the session pointer is invalid.
  *  - -ENOMEM if the available user data size is smaller than the size parameter.
  */
-__rte_experimental
 int
 rte_cryptodev_asym_session_set_user_data(void *sess, void *data, uint16_t size);
 
@@ -1294,7 +1279,6 @@ rte_cryptodev_asym_session_set_user_data(void *sess, void *data, uint16_t size);
  *  - On success return pointer to user data.
  *  - On failure returns NULL.
  */
-__rte_experimental
 void *
 rte_cryptodev_asym_session_get_user_data(void *sess);
 
@@ -1310,7 +1294,6 @@ rte_cryptodev_asym_session_get_user_data(void *sess);
  * @return
  *  - Returns number of successfully processed packets.
  */
-__rte_experimental
 uint32_t
 rte_cryptodev_sym_cpu_crypto_process(uint8_t dev_id,
 	void *sess, union rte_crypto_sym_ofs ofs,
@@ -1325,7 +1308,6 @@ rte_cryptodev_sym_cpu_crypto_process(uint8_t dev_id,
  *   - If the device supports raw data-path APIs, return the context size.
  *   - If the device does not support the APIs, return -1.
  */
-__rte_experimental
 int
 rte_cryptodev_get_raw_dp_ctx_size(uint8_t dev_id);
 
@@ -1344,7 +1326,6 @@ rte_cryptodev_get_raw_dp_ctx_size(uint8_t dev_id);
  *  - On success, zero.
  *  - On failure, a negative value.
  */
-__rte_experimental
 int
 rte_cryptodev_session_event_mdata_set(uint8_t dev_id, void *sess,
 	enum rte_crypto_op_type op_type,
@@ -1570,7 +1551,6 @@ struct rte_crypto_raw_dp_ctx {
  *     - -ENOTSUP if crypto device does not support raw DP operations with the
  *        provided session.
  */
-__rte_experimental
 int
 rte_cryptodev_configure_raw_dp_ctx(uint8_t dev_id, uint16_t qp_id,
 	struct rte_crypto_raw_dp_ctx *ctx,
@@ -1602,7 +1582,6 @@ rte_cryptodev_configure_raw_dp_ctx(uint8_t dev_id, uint16_t qp_id,
  *     cached into the queue but not enqueued yet, depends on the
  *     "enqueue_status" value.
  */
-__rte_experimental
 uint32_t
 rte_cryptodev_raw_enqueue_burst(struct rte_crypto_raw_dp_ctx *ctx,
 	struct rte_crypto_sym_vec *vec, union rte_crypto_sym_ofs ofs,
@@ -1652,7 +1631,6 @@ rte_cryptodev_raw_enqueue(struct rte_crypto_raw_dp_ctx *ctx,
  *   - On success return 0.
  *   - On failure return negative integer.
  */
-__rte_experimental
 int
 rte_cryptodev_raw_enqueue_done(struct rte_crypto_raw_dp_ctx *ctx,
 		uint32_t n);
@@ -1698,7 +1676,6 @@ rte_cryptodev_raw_enqueue_done(struct rte_crypto_raw_dp_ctx *ctx,
  *   - The number of operations dequeued or completed but not freed from the
  *     queue, depends on "dequeue_status" value.
  */
-__rte_experimental
 uint32_t
 rte_cryptodev_raw_dequeue_burst(struct rte_crypto_raw_dp_ctx *ctx,
 	rte_cryptodev_raw_get_dequeue_count_t get_dequeue_count,
@@ -1748,7 +1725,6 @@ rte_cryptodev_raw_dequeue(struct rte_crypto_raw_dp_ctx *ctx,
  *   - On success return 0.
  *   - On failure return negative integer.
  */
-__rte_experimental
 int
 rte_cryptodev_raw_dequeue_done(struct rte_crypto_raw_dp_ctx *ctx,
 		uint32_t n);
@@ -1788,8 +1764,6 @@ rte_cryptodev_raw_dequeue_done(struct rte_crypto_raw_dp_ctx *ctx,
  *  - On success, a pointer value which can later be used to remove the
  *    callback.
  */
-
-__rte_experimental
 struct rte_cryptodev_cb *
 rte_cryptodev_add_enq_callback(uint8_t dev_id,
 			       uint16_t qp_id,
@@ -1817,8 +1791,6 @@ rte_cryptodev_add_enq_callback(uint8_t dev_id,
  *   - <0: The dev_id or the qp_id is out of range, or the callback
  *         is NULL or not found for the crypto device queue pair.
  */
-
-__rte_experimental
 int rte_cryptodev_remove_enq_callback(uint8_t dev_id,
 				      uint16_t qp_id,
 				      struct rte_cryptodev_cb *cb);
@@ -1857,8 +1829,6 @@ int rte_cryptodev_remove_enq_callback(uint8_t dev_id,
  *   - On success, a pointer value which can later be used to remove the
  *     callback.
  */
-
-__rte_experimental
 struct rte_cryptodev_cb *
 rte_cryptodev_add_deq_callback(uint8_t dev_id,
 			       uint16_t qp_id,
@@ -1886,7 +1856,6 @@ rte_cryptodev_add_deq_callback(uint8_t dev_id,
  *   - <0: The dev_id or the qp_id is out of range, or the callback
  *         is NULL or not found for the crypto device queue pair.
  */
-__rte_experimental
 int rte_cryptodev_remove_deq_callback(uint8_t dev_id,
 				      uint16_t qp_id,
 				      struct rte_cryptodev_cb *cb);

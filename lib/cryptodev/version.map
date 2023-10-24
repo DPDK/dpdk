@@ -1,15 +1,34 @@
 DPDK_24 {
 	global:
 
+	__rte_cryptodev_trace_dequeue_burst;
+	__rte_cryptodev_trace_enqueue_burst;
 	rte_crypto_aead_operation_strings;
+	rte_crypto_asym_ke_strings;
+	rte_crypto_asym_op_strings;
 	rte_crypto_auth_operation_strings;
 	rte_crypto_cipher_operation_strings;
 	rte_crypto_fp_ops;
 	rte_crypto_op_pool_create;
+	rte_cryptodev_add_deq_callback;
+	rte_cryptodev_add_enq_callback;
+	rte_cryptodev_asym_capability_get;
+	rte_cryptodev_asym_get_header_session_size;
+	rte_cryptodev_asym_get_private_session_size;
+	rte_cryptodev_asym_get_xform_enum;
+	rte_cryptodev_asym_session_create;
+	rte_cryptodev_asym_session_free;
+	rte_cryptodev_asym_session_get_user_data;
+	rte_cryptodev_asym_session_pool_create;
+	rte_cryptodev_asym_session_set_user_data;
+	rte_cryptodev_asym_xform_capability_check_hash;
+	rte_cryptodev_asym_xform_capability_check_modlen;
+	rte_cryptodev_asym_xform_capability_check_optype;
 	rte_cryptodev_callback_register;
 	rte_cryptodev_callback_unregister;
 	rte_cryptodev_close;
 	rte_cryptodev_configure;
+	rte_cryptodev_configure_raw_dp_ctx;
 	rte_cryptodev_count;
 	rte_cryptodev_device_count_by_driver;
 	rte_cryptodev_devices_get;
@@ -20,12 +39,21 @@ DPDK_24 {
 	rte_cryptodev_get_cipher_algo_enum;
 	rte_cryptodev_get_dev_id;
 	rte_cryptodev_get_feature_name;
+	rte_cryptodev_get_qp_status;
+	rte_cryptodev_get_raw_dp_ctx_size;
 	rte_cryptodev_get_sec_ctx;
 	rte_cryptodev_info_get;
 	rte_cryptodev_is_valid_dev;
 	rte_cryptodev_name_get;
 	rte_cryptodev_queue_pair_count;
 	rte_cryptodev_queue_pair_setup;
+	rte_cryptodev_raw_dequeue_burst;
+	rte_cryptodev_raw_dequeue_done;
+	rte_cryptodev_raw_enqueue_burst;
+	rte_cryptodev_raw_enqueue_done;
+	rte_cryptodev_remove_deq_callback;
+	rte_cryptodev_remove_enq_callback;
+	rte_cryptodev_session_event_mdata_set;
 	rte_cryptodev_socket_id;
 	rte_cryptodev_start;
 	rte_cryptodev_stats_get;
@@ -35,60 +63,19 @@ DPDK_24 {
 	rte_cryptodev_sym_capability_check_auth;
 	rte_cryptodev_sym_capability_check_cipher;
 	rte_cryptodev_sym_capability_get;
+	rte_cryptodev_sym_cpu_crypto_process;
 	rte_cryptodev_sym_get_private_session_size;
 	rte_cryptodev_sym_session_create;
 	rte_cryptodev_sym_session_free;
+	rte_cryptodev_sym_session_get_user_data;
+	rte_cryptodev_sym_session_pool_create;
+	rte_cryptodev_sym_session_set_user_data;
 
 	local: *;
 };
 
 EXPERIMENTAL {
 	global:
-
-	rte_cryptodev_asym_capability_get;
-	rte_cryptodev_asym_get_header_session_size;
-	rte_cryptodev_asym_get_private_session_size;
-	rte_cryptodev_asym_get_xform_enum;
-	rte_cryptodev_asym_session_create;
-	rte_cryptodev_asym_session_free;
-	rte_cryptodev_asym_xform_capability_check_hash;
-	rte_cryptodev_asym_xform_capability_check_modlen;
-	rte_cryptodev_asym_xform_capability_check_optype;
-	rte_cryptodev_sym_cpu_crypto_process;
-	rte_cryptodev_sym_session_get_user_data;
-	rte_cryptodev_sym_session_pool_create;
-	rte_cryptodev_sym_session_set_user_data;
-	rte_crypto_asym_op_strings;
-
-	# added in 20.05
-	__rte_cryptodev_trace_dequeue_burst;
-	__rte_cryptodev_trace_enqueue_burst;
-
-	# added in 20.08
-	rte_cryptodev_get_qp_status;
-
-	# added in 20.11
-	rte_cryptodev_configure_raw_dp_ctx;
-	rte_cryptodev_get_raw_dp_ctx_size;
-	rte_cryptodev_raw_dequeue_burst;
-	rte_cryptodev_raw_dequeue_done;
-	rte_cryptodev_raw_enqueue_burst;
-	rte_cryptodev_raw_enqueue_done;
-
-	# added in 21.02
-	rte_cryptodev_add_deq_callback;
-	rte_cryptodev_add_enq_callback;
-	rte_cryptodev_remove_deq_callback;
-	rte_cryptodev_remove_enq_callback;
-
-	# added in 22.03
-	rte_cryptodev_asym_session_get_user_data;
-	rte_cryptodev_asym_session_pool_create;
-	rte_cryptodev_asym_session_set_user_data;
-
-	# added in 22.07
-	rte_cryptodev_session_event_mdata_set;
-	rte_crypto_asym_ke_strings;
 
 	# added in 23.03
 	rte_cryptodev_asym_get_xform_string;
