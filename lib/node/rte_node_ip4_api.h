@@ -82,7 +82,6 @@ struct rte_node_ip4_reassembly_cfg {
  * @return
  *   0 on success, negative otherwise.
  */
-__rte_experimental
 int rte_node_ip4_route_add(uint32_t ip, uint8_t depth, uint16_t next_hop,
 			   enum rte_node_ip4_lookup_next next_node);
 
@@ -101,7 +100,6 @@ int rte_node_ip4_route_add(uint32_t ip, uint8_t depth, uint16_t next_hop,
  * @return
  *   0 on success, negative otherwise.
  */
-__rte_experimental
 int rte_node_ip4_rewrite_add(uint16_t next_hop, uint8_t *rewrite_data,
 			     uint8_t rewrite_len, uint16_t dst_port);
 

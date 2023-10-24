@@ -1,11 +1,15 @@
-EXPERIMENTAL {
+DPDK_24 {
 	global:
 
-	# added in 20.05
 	rte_node_eth_config;
-	rte_node_ip4_route_add;
 	rte_node_ip4_rewrite_add;
-	rte_node_logtype;
+	rte_node_ip4_route_add;
+
+	local: *;
+};
+
+EXPERIMENTAL {
+	global:
 
 	# added in 23.07
 	rte_node_ip6_rewrite_add;
@@ -15,6 +19,4 @@ EXPERIMENTAL {
 	rte_node_ip4_reassembly_configure;
 	rte_node_udp4_dst_port_add;
 	rte_node_udp4_usr_node_add;
-
-	local: *;
 };

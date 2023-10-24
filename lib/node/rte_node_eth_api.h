@@ -55,7 +55,6 @@ struct rte_node_ethdev_config {
  * @return
  *   0 on successful initialization, negative otherwise.
  */
-__rte_experimental
 int rte_node_eth_config(struct rte_node_ethdev_config *cfg,
 			uint16_t cnt, uint16_t nb_graphs);
 #ifdef __cplusplus
