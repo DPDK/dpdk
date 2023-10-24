@@ -10,10 +10,6 @@
  *
  * RTE Quiescent State Based Reclamation (QSBR).
  *
- * @warning
- * @b EXPERIMENTAL:
- * All functions in this file may be changed or removed without prior notice.
- *
  * Quiescent State (QS) is any point in the thread execution
  * where the thread does not hold a reference to a data structure
  * in shared memory. While using lock-less data structures, the writer
@@ -33,7 +29,7 @@ extern "C" {
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdint.h>
-#include <rte_compat.h>
+
 #include <rte_common.h>
 #include <rte_debug.h>
 #include <rte_atomic.h>
@@ -727,9 +723,6 @@ int
 rte_rcu_qsbr_dump(FILE *f, struct rte_rcu_qsbr *v);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Create a queue used to store the data structure elements that can
  * be freed later. This queue is referred to as 'defer queue'.
  *
@@ -742,14 +735,10 @@ rte_rcu_qsbr_dump(FILE *f, struct rte_rcu_qsbr *v);
  *   - EINVAL - NULL parameters are passed
  *   - ENOMEM - Not enough memory
  */
-__rte_experimental
 struct rte_rcu_qsbr_dq *
 rte_rcu_qsbr_dq_create(const struct rte_rcu_qsbr_dq_parameters *params);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Enqueue one resource to the defer queue and start the grace period.
  * The resource will be freed later after at least one grace period
  * is over.
@@ -777,14 +766,10 @@ rte_rcu_qsbr_dq_create(const struct rte_rcu_qsbr_dq_parameters *params);
  *		if the defer queue size is equal (or larger) than the
  *		number of elements in the data structure.
  */
-__rte_experimental
 int
 rte_rcu_qsbr_dq_enqueue(struct rte_rcu_qsbr_dq *dq, void *e);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Free resources from the defer queue.
  *
  * This API is multi-thread safe.
@@ -806,15 +791,11 @@ rte_rcu_qsbr_dq_enqueue(struct rte_rcu_qsbr_dq *dq, void *e);
  *   On error - 1 with rte_errno set to
  *   - EINVAL - NULL parameters are passed
  */
-__rte_experimental
 int
 rte_rcu_qsbr_dq_reclaim(struct rte_rcu_qsbr_dq *dq, unsigned int n,
 	unsigned int *freed, unsigned int *pending, unsigned int *available);
 
 /**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
  * Delete a defer queue.
  *
  * It tries to reclaim all the resources on the defer queue.
@@ -832,7 +813,6 @@ rte_rcu_qsbr_dq_reclaim(struct rte_rcu_qsbr_dq *dq, unsigned int n,
  *   - EAGAIN - Some of the resources have not completed at least 1 grace
  *		period, try again.
  */
-__rte_experimental
 int
 rte_rcu_qsbr_dq_delete(struct rte_rcu_qsbr_dq *dq);
 

@@ -2,23 +2,16 @@ DPDK_24 {
 	global:
 
 	rte_rcu_log_type;
+	rte_rcu_qsbr_dq_create;
+	rte_rcu_qsbr_dq_delete;
+	rte_rcu_qsbr_dq_enqueue;
+	rte_rcu_qsbr_dq_reclaim;
 	rte_rcu_qsbr_dump;
 	rte_rcu_qsbr_get_memsize;
 	rte_rcu_qsbr_init;
 	rte_rcu_qsbr_synchronize;
 	rte_rcu_qsbr_thread_register;
 	rte_rcu_qsbr_thread_unregister;
-
-	local: *;
-};
-
-EXPERIMENTAL {
-	global:
-
-	rte_rcu_qsbr_dq_create;
-	rte_rcu_qsbr_dq_enqueue;
-	rte_rcu_qsbr_dq_reclaim;
-	rte_rcu_qsbr_dq_delete;
 
 	local: *;
 };
