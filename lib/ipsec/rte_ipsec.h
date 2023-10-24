@@ -14,7 +14,6 @@
  * processing (ESP/AH).
  */
 
-#include <rte_compat.h>
 #include <rte_ipsec_sa.h>
 #include <rte_mbuf.h>
 
@@ -168,7 +167,6 @@ rte_ipsec_pkt_process(const struct rte_ipsec_session *ss, struct rte_mbuf *mb[],
  * @return
  *   0 on success, negative value otherwise.
  */
-__rte_experimental
 int
 rte_ipsec_telemetry_sa_add(const struct rte_ipsec_sa *sa);
 
@@ -178,7 +176,6 @@ rte_ipsec_telemetry_sa_add(const struct rte_ipsec_sa *sa);
  * @param sa
  *   Pointer to the *rte_ipsec_sa* object that will have telemetry disabled.
  */
-__rte_experimental
 void
 rte_ipsec_telemetry_sa_del(const struct rte_ipsec_sa *sa);
 
