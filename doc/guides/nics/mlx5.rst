@@ -646,6 +646,23 @@ Limitations
   - When using HWS flow engine (``dv_flow_en`` = 2),
     only meter mark action is supported.
 
+- Ptype:
+
+  - Only supports HW steering (``dv_flow_en=2``).
+  - The supported values are:
+    L2: ``RTE_PTYPE_L2_ETHER``, ``RTE_PTYPE_L2_ETHER_VLAN``, ``RTE_PTYPE_L2_ETHER_QINQ``
+    L3: ``RTE_PTYPE_L3_IPV4``, ``RTE_PTYPE_L3_IPV6``
+    L4: ``RTE_PTYPE_L4_TCP``, ``RTE_PTYPE_L4_UDP``, ``RTE_PTYPE_L4_ICMP``
+    and their ``RTE_PTYPE_INNER_XXX`` counterparts as well as ``RTE_PTYPE_TUNNEL_ESP``.
+    Any other values are not supported. Using them as a value will cause unexpected behavior.
+  - Matching on both outer and inner IP fragmented is supported
+    using ``RTE_PTYPE_L4_FRAG`` and ``RTE_PTYPE_INNER_L4_FRAG`` values.
+    They are not part of L4 types, so they should be provided explicitly
+    as a mask value during pattern template creation.
+    Providing ``RTE_PTYPE_L4_MASK`` during pattern template creation
+    and ``RTE_PTYPE_L4_FRAG`` during flow rule creation
+    will cause unexpected behavior.
+
 - Integrity:
 
   - Integrity offload is enabled starting from **ConnectX-6 Dx**.

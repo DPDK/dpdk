@@ -270,6 +270,9 @@ enum mlx5_feature_name {
 /* IB BTH ITEM. */
 #define MLX5_FLOW_ITEM_IB_BTH (1ull << 51)
 
+/* PTYPE ITEM */
+#define MLX5_FLOW_ITEM_PTYPE (1ull << 52)
+
 /* NSH ITEM */
 #define MLX5_FLOW_ITEM_NSH (1ull << 53)
 

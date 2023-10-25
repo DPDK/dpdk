@@ -16,11 +16,15 @@
 #define STE_NO_VLAN	0x0
 #define STE_SVLAN	0x1
 #define STE_CVLAN	0x2
+#define STE_NO_L3	0x0
 #define STE_IPV4	0x1
 #define STE_IPV6	0x2
+#define STE_NO_L4	0x0
 #define STE_TCP		0x1
 #define STE_UDP		0x2
 #define STE_ICMP	0x3
+#define STE_NO_TUN	0x0
+#define STE_ESP		0x3
 
 #define MLX5DR_DEFINER_QUOTA_BLOCK 0
 #define MLX5DR_DEFINER_QUOTA_PASS  2
@@ -275,6 +279,82 @@ mlx5dr_definer_conntrack_tag(struct mlx5dr_definer_fc *fc,
 		reg_value |= MLX5_CT_SYNDROME_BAD_PACKET;
 
 	DR_SET(tag, reg_value, fc->byte_off, fc->bit_off, fc->bit_mask);
+}
+
+static void
+mlx5dr_definer_ptype_l2_set(struct mlx5dr_definer_fc *fc,
+			    const void *item_spec,
+			    uint8_t *tag)
+{
+	bool inner = (fc->fname == MLX5DR_DEFINER_FNAME_PTYPE_L2_I);
+	const struct rte_flow_item_ptype *v = item_spec;
+	uint32_t packet_type = v->packet_type &
+		(inner ? RTE_PTYPE_INNER_L2_MASK : RTE_PTYPE_L2_MASK);
+	uint8_t l2_type = STE_NO_VLAN;
+
+	if (packet_type == (inner ? RTE_PTYPE_INNER_L2_ETHER : RTE_PTYPE_L2_ETHER))
+		l2_type = STE_NO_VLAN;
+	else if (packet_type == (inner ? RTE_PTYPE_INNER_L2_ETHER_VLAN : RTE_PTYPE_L2_ETHER_VLAN))
+		l2_type = STE_CVLAN;
+	else if (packet_type == (inner ? RTE_PTYPE_INNER_L2_ETHER_QINQ : RTE_PTYPE_L2_ETHER_QINQ))
+		l2_type = STE_SVLAN;
+
+	DR_SET(tag, l2_type, fc->byte_off, fc->bit_off, fc->bit_mask);
+}
+
+static void
+mlx5dr_definer_ptype_l3_set(struct mlx5dr_definer_fc *fc,
+			    const void *item_spec,
+			    uint8_t *tag)
+{
+	bool inner = (fc->fname == MLX5DR_DEFINER_FNAME_PTYPE_L3_I);
+	const struct rte_flow_item_ptype *v = item_spec;
+	uint32_t packet_type = v->packet_type &
+		(inner ? RTE_PTYPE_INNER_L3_MASK : RTE_PTYPE_L3_MASK);
+	uint8_t l3_type = STE_NO_L3;
+
+	if (packet_type == (inner ? RTE_PTYPE_INNER_L3_IPV4 : RTE_PTYPE_L3_IPV4))
+		l3_type = STE_IPV4;
+	else if (packet_type == (inner ? RTE_PTYPE_INNER_L3_IPV6 : RTE_PTYPE_L3_IPV6))
+		l3_type = STE_IPV6;
+
+	DR_SET(tag, l3_type, fc->byte_off, fc->bit_off, fc->bit_mask);
+}
+
+static void
+mlx5dr_definer_ptype_l4_set(struct mlx5dr_definer_fc *fc,
+			    const void *item_spec,
+			    uint8_t *tag)
+{
+	bool inner = (fc->fname == MLX5DR_DEFINER_FNAME_PTYPE_L4_I);
+	const struct rte_flow_item_ptype *v = item_spec;
+	uint32_t packet_type = v->packet_type &
+		(inner ? RTE_PTYPE_INNER_L4_MASK : RTE_PTYPE_L4_MASK);
+	uint8_t l4_type = STE_NO_L4;
+
+	if (packet_type == (inner ? RTE_PTYPE_INNER_L4_TCP : RTE_PTYPE_L4_TCP))
+		l4_type = STE_TCP;
+	else if (packet_type == (inner ? RTE_PTYPE_INNER_L4_UDP : RTE_PTYPE_L4_UDP))
+		l4_type = STE_UDP;
+	else if (packet_type == (inner ? RTE_PTYPE_INNER_L4_ICMP : RTE_PTYPE_L4_ICMP))
+		l4_type = STE_ICMP;
+
+	DR_SET(tag, l4_type, fc->byte_off, fc->bit_off, fc->bit_mask);
+}
+
+static void
+mlx5dr_definer_ptype_tunnel_set(struct mlx5dr_definer_fc *fc,
+				const void *item_spec,
+				uint8_t *tag)
+{
+	const struct rte_flow_item_ptype *v = item_spec;
+	uint32_t packet_type = v->packet_type & RTE_PTYPE_TUNNEL_MASK;
+	uint8_t tun_type = STE_NO_TUN;
+
+	if (packet_type == RTE_PTYPE_TUNNEL_ESP)
+		tun_type = STE_ESP;
+
+	DR_SET(tag, tun_type, fc->byte_off, fc->bit_off, fc->bit_mask);
 }
 
 static void
@@ -1710,6 +1790,83 @@ mlx5dr_definer_conv_item_gre_key(struct mlx5dr_definer_conv_data *cd,
 }
 
 static int
+mlx5dr_definer_conv_item_ptype(struct mlx5dr_definer_conv_data *cd,
+			       struct rte_flow_item *item,
+			       int item_idx)
+{
+	const struct rte_flow_item_ptype *m = item->mask;
+	struct mlx5dr_definer_fc *fc;
+
+	if (!m)
+		return 0;
+
+	if (!(m->packet_type &
+	      (RTE_PTYPE_L2_MASK | RTE_PTYPE_L3_MASK | RTE_PTYPE_L4_MASK | RTE_PTYPE_TUNNEL_MASK |
+	       RTE_PTYPE_INNER_L2_MASK | RTE_PTYPE_INNER_L3_MASK | RTE_PTYPE_INNER_L4_MASK))) {
+		rte_errno = ENOTSUP;
+		return rte_errno;
+	}
+
+	if (m->packet_type & RTE_PTYPE_L2_MASK) {
+		fc = &cd->fc[DR_CALC_FNAME(PTYPE_L2, false)];
+		fc->item_idx = item_idx;
+		fc->tag_set = &mlx5dr_definer_ptype_l2_set;
+		fc->tag_mask_set = &mlx5dr_definer_ones_set;
+		DR_CALC_SET(fc, eth_l2, first_vlan_qualifier, false);
+	}
+
+	if (m->packet_type & RTE_PTYPE_INNER_L2_MASK) {
+		fc = &cd->fc[DR_CALC_FNAME(PTYPE_L2, true)];
+		fc->item_idx = item_idx;
+		fc->tag_set = &mlx5dr_definer_ptype_l2_set;
+		fc->tag_mask_set = &mlx5dr_definer_ones_set;
+		DR_CALC_SET(fc, eth_l2, first_vlan_qualifier, true);
+	}
+
+	if (m->packet_type & RTE_PTYPE_L3_MASK) {
+		fc = &cd->fc[DR_CALC_FNAME(PTYPE_L3, false)];
+		fc->item_idx = item_idx;
+		fc->tag_set = &mlx5dr_definer_ptype_l3_set;
+		fc->tag_mask_set = &mlx5dr_definer_ones_set;
+		DR_CALC_SET(fc, eth_l2, l3_type, false);
+	}
+
+	if (m->packet_type & RTE_PTYPE_INNER_L3_MASK) {
+		fc = &cd->fc[DR_CALC_FNAME(PTYPE_L3, true)];
+		fc->item_idx = item_idx;
+		fc->tag_set = &mlx5dr_definer_ptype_l3_set;
+		fc->tag_mask_set = &mlx5dr_definer_ones_set;
+		DR_CALC_SET(fc, eth_l2, l3_type, true);
+	}
+
+	if (m->packet_type & RTE_PTYPE_L4_MASK) {
+		fc = &cd->fc[DR_CALC_FNAME(PTYPE_L4, false)];
+		fc->item_idx = item_idx;
+		fc->tag_set = &mlx5dr_definer_ptype_l4_set;
+		fc->tag_mask_set = &mlx5dr_definer_ones_set;
+		DR_CALC_SET(fc, eth_l2, l4_type, false);
+	}
+
+	if (m->packet_type & RTE_PTYPE_INNER_L4_MASK) {
+		fc = &cd->fc[DR_CALC_FNAME(PTYPE_L4, true)];
+		fc->item_idx = item_idx;
+		fc->tag_set = &mlx5dr_definer_ptype_l4_set;
+		fc->tag_mask_set = &mlx5dr_definer_ones_set;
+		DR_CALC_SET(fc, eth_l2, l4_type, true);
+	}
+
+	if (m->packet_type & RTE_PTYPE_TUNNEL_MASK) {
+		fc = &cd->fc[MLX5DR_DEFINER_FNAME_PTYPE_TUNNEL];
+		fc->item_idx = item_idx;
+		fc->tag_set = &mlx5dr_definer_ptype_tunnel_set;
+		fc->tag_mask_set = &mlx5dr_definer_ones_set;
+		DR_CALC_SET(fc, eth_l2, l4_type_bwc, false);
+	}
+
+	return 0;
+}
+
+static int
 mlx5dr_definer_conv_item_integrity(struct mlx5dr_definer_conv_data *cd,
 				   struct rte_flow_item *item,
 				   int item_idx)
@@ -2331,6 +2488,10 @@ mlx5dr_definer_conv_items_to_hl(struct mlx5dr_context *ctx,
 		case RTE_FLOW_ITEM_TYPE_IB_BTH:
 			ret = mlx5dr_definer_conv_item_ib_l4(&cd, items, i);
 			item_flags |= MLX5_FLOW_ITEM_IB_BTH;
+			break;
+		case RTE_FLOW_ITEM_TYPE_PTYPE:
+			ret = mlx5dr_definer_conv_item_ptype(&cd, items, i);
+			item_flags |= MLX5_FLOW_ITEM_PTYPE;
 			break;
 		default:
 			DR_LOG(ERR, "Unsupported item type %d", items->type);

@@ -124,6 +124,11 @@ New Features
   * Added new function ``rte_eth_dev_rss_algo_name``
     to get name of RSS hash algorithm.
 
+* **Added packet type flow matching criteria.**
+
+  Added ``RTE_FLOW_ITEM_TYPE_PTYPE`` to allow matching on L2/L3/L4
+  and tunnel information as defined in mbuf packet type.
+
 * **Added a flow action type for P4-defined actions.**
 
   For P4-programmable devices, hardware pipeline can be configured through
@@ -174,6 +179,7 @@ New Features
 * **Updated NVIDIA mlx5 net driver.**
 
   * Added support for Network Service Header (NSH) flow matching.
+  * Added support for ``RTE_FLOW_ITEM_TYPE_PTYPE`` flow item.
   * Added support for ``RTE_FLOW_ACTION_TYPE_INDIRECT_LIST`` flow action.
 
 * **Updated Solarflare net driver.**
