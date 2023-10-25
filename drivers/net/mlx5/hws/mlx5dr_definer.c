@@ -1909,7 +1909,6 @@ mlx5dr_definer_conv_item_integrity(struct mlx5dr_definer_conv_data *cd,
 {
 	const struct rte_flow_item_integrity *m = item->mask;
 	struct mlx5dr_definer_fc *fc;
-	bool inner = cd->tunnel;
 
 	if (!m)
 		return 0;
@@ -1920,7 +1919,7 @@ mlx5dr_definer_conv_item_integrity(struct mlx5dr_definer_conv_data *cd,
 	}
 
 	if (m->l3_ok || m->ipv4_csum_ok || m->l4_ok || m->l4_csum_ok) {
-		fc = &cd->fc[DR_CALC_FNAME(INTEGRITY, inner)];
+		fc = &cd->fc[DR_CALC_FNAME(INTEGRITY, m->level)];
 		fc->item_idx = item_idx;
 		fc->tag_set = &mlx5dr_definer_integrity_set;
 		DR_CALC_SET_HDR(fc, oks1, oks1_bits);
@@ -2477,8 +2476,7 @@ mlx5dr_definer_conv_items_to_hl(struct mlx5dr_context *ctx,
 			break;
 		case RTE_FLOW_ITEM_TYPE_INTEGRITY:
 			ret = mlx5dr_definer_conv_item_integrity(&cd, items, i);
-			item_flags |= cd.tunnel ? MLX5_FLOW_ITEM_INNER_INTEGRITY :
-						  MLX5_FLOW_ITEM_OUTER_INTEGRITY;
+			item_flags |= MLX5_FLOW_ITEM_INTEGRITY;
 			break;
 		case RTE_FLOW_ITEM_TYPE_CONNTRACK:
 			ret = mlx5dr_definer_conv_item_conntrack(&cd, items, i);
