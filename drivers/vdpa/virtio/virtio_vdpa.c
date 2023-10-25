@@ -411,6 +411,16 @@ virtio_vdpa_virtq_disable(struct virtio_vdpa_priv *priv, int vq_idx)
 	struct rte_vhost_vring vq;
 	int ret;
 
+    if (priv->configured) {
+		uint64_t features;
+		virtio_pci_dev_features_get(priv->vpdev, &features);
+		if (!(features & VIRTIO_F_RING_RESET)) {
+			DRV_LOG(WARNING, "%s can't disable queue after driver ok without queue reset support",
+					priv->vdev->device->name);
+			return 0;
+		}
+	}
+
 	ret = virtio_vdpa_virtq_doorbell_relay_disable(priv, vq_idx);
 	if (ret) {
 		DRV_LOG(ERR, "%s doorbell relay disable failed ret:%d",
