@@ -380,10 +380,8 @@ mlx5dr_definer_integrity_set(struct mlx5dr_definer_fc *fc,
 	uint32_t ok1_bits = 0;
 
 	if (v->l3_ok)
-		ok1_bits |= inner ? BIT(MLX5DR_DEFINER_OKS1_SECOND_L3_OK) |
-				    BIT(MLX5DR_DEFINER_OKS1_SECOND_IPV4_CSUM_OK) :
-				    BIT(MLX5DR_DEFINER_OKS1_FIRST_L3_OK) |
-				    BIT(MLX5DR_DEFINER_OKS1_FIRST_IPV4_CSUM_OK);
+		ok1_bits |= inner ? BIT(MLX5DR_DEFINER_OKS1_SECOND_L3_OK) :
+				    BIT(MLX5DR_DEFINER_OKS1_FIRST_L3_OK);
 
 	if (v->ipv4_csum_ok)
 		ok1_bits |= inner ? BIT(MLX5DR_DEFINER_OKS1_SECOND_IPV4_CSUM_OK) :

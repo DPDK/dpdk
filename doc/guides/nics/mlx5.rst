@@ -669,18 +669,26 @@ Limitations
 
 - Integrity:
 
-  - Integrity offload is enabled starting from **ConnectX-6 Dx**.
   - Verification bits provided by the hardware are ``l3_ok``, ``ipv4_csum_ok``, ``l4_ok``, ``l4_csum_ok``.
   - ``level`` value 0 references outer headers.
   - Negative integrity item verification is not supported.
-  - Multiple integrity items not supported in a single flow rule.
-  - Flow rule items supplied by application must explicitly specify network headers referred by integrity item.
-    For example, if integrity item mask sets ``l4_ok`` or ``l4_csum_ok`` bits, reference to L4 network header,
-    TCP or UDP, must be in the rule pattern as well::
 
-      flow create 0 ingress pattern integrity level is 0 value mask l3_ok value spec l3_ok / eth / ipv6 / end …
+  - With SW steering (``dv_flow_en=1``)
 
-      flow create 0 ingress pattern integrity level is 0 value mask l4_ok value spec l4_ok / eth / ipv4 proto is udp / end …
+    - Integrity offload is enabled starting from **ConnectX-6 Dx**.
+    - Multiple integrity items not supported in a single flow rule.
+    - Flow rule items supplied by application must explicitly specify
+      network headers referred by integrity item.
+
+      For example, if integrity item mask sets ``l4_ok`` or ``l4_csum_ok`` bits,
+      reference to L4 network header, TCP or UDP, must be in the rule pattern as well::
+
+         flow create 0 ingress pattern integrity level is 0 value mask l3_ok value spec l3_ok / eth / ipv6 / end ...
+         flow create 0 ingress pattern integrity level is 0 value mask l4_ok value spec l4_ok / eth / ipv4 proto is udp / end ...
+
+  - With HW steering (``dv_flow_en=2``)
+    - The ``l3_ok`` field represents all L3 checks, but nothing about IPv4 checksum.
+    - The ``l4_ok`` field represents all L4 checks including L4 checksum.
 
 - Connection tracking:
 
