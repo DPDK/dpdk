@@ -540,12 +540,12 @@ static int bnxt_vfr_free(struct bnxt_representor *vfr)
 		return -ENOMEM;
 	}
 
-	parent_bp = vfr->parent_dev->data->dev_private;
-	if (!parent_bp) {
+	if (!bnxt_rep_check_parent(vfr)) {
 		PMD_DRV_LOG_LINE(DEBUG, "BNXT Port:%d VFR already freed",
 			    vfr->dpdk_port_id);
 		return 0;
 	}
+	parent_bp = vfr->parent_dev->data->dev_private;
 
 	/* Check if representor has been already freed in FW */
 	if (!vfr->vfr_tx_cfa_action)

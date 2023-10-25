@@ -4336,12 +4336,25 @@ int bnxt_hwrm_get_dflt_vnic_svif(struct bnxt *bp, uint16_t fid,
 
 	HWRM_CHECK_RESULT();
 
-	if (vnic_id)
-		*vnic_id = rte_le_to_cpu_16(resp->dflt_vnic_id);
-
 	svif_info = rte_le_to_cpu_16(resp->svif_info);
-	if (svif && (svif_info & HWRM_FUNC_QCFG_OUTPUT_SVIF_INFO_SVIF_VALID))
+	if (svif && (svif_info & HWRM_FUNC_QCFG_OUTPUT_SVIF_INFO_SVIF_VALID)) {
 		*svif = svif_info & HWRM_FUNC_QCFG_OUTPUT_SVIF_INFO_SVIF_MASK;
+		/* When the VF corresponding to the VFR is down at the time of
+		 * VFR conduit creation, the VFR rule will be programmed with
+		 * invalid vnic id because FW will return default vnic id as
+		 * INVALID when queried through FUNC_QCFG. As a result, when
+		 * the VF is brought up, VF won't receive packets because
+		 * INVALID vnic id is already programmed.
+		 *
+		 * Hence, use svif value as vnic id during VFR conduit creation
+		 * as both svif and default vnic id values are same and will
+		 * never change.
+		 */
+		if (vnic_id)
+			*vnic_id = *svif;
+	} else {
+		rc = -EINVAL;
+	}
 
 	HWRM_UNLOCK();
 
