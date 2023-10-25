@@ -25,6 +25,29 @@
 
 static uint8_t host_shaper_avail_thresh_triggered[RTE_MAX_ETHPORTS];
 #define SHAPER_DISABLE_DELAY_US 100000 /* 100ms */
+#define PARSE_DELIMITER " \f\n\r\t\v"
+
+static int
+parse_uint(uint64_t *value, const char *str)
+{
+	char *next = NULL;
+	uint64_t n;
+
+	errno = 0;
+	/* Parse number string */
+	if (!strncasecmp(str, "0x", 2)) {
+		str += 2;
+		n = strtol(str, &next, 16);
+	} else {
+		n = strtol(str, &next, 10);
+	}
+	if (errno != 0 || str == next || *next != '\0')
+		return -1;
+
+	*value = n;
+
+	return 0;
+}
 
 /**
  * Disable the host shaper and re-arm available descriptor threshold event.
@@ -561,6 +584,102 @@ cmdline_parse_inst_t mlx5_cmd_unmap_ext_rxq = {
 	}
 };
 
+/* Set flow engine mode with flags command. */
+struct mlx5_cmd_set_flow_engine_mode {
+	cmdline_fixed_string_t mlx5;
+	cmdline_fixed_string_t set;
+	cmdline_fixed_string_t flow_engine;
+	cmdline_multi_string_t mode;
+};
+
+static int
+parse_multi_token_flow_engine_mode(char *t_str, enum mlx5_flow_engine_mode *mode,
+				   uint32_t *flag)
+{
+	uint64_t val;
+	char *token;
+	int ret;
+
+	*flag = 0;
+	/* First token: mode string */
+	token = strtok_r(t_str, PARSE_DELIMITER, &t_str);
+	if (token ==  NULL)
+		return -1;
+
+	if (!strcmp(token, "active"))
+		*mode = MLX5_FLOW_ENGINE_MODE_ACTIVE;
+	else if (!strcmp(token, "standby"))
+		*mode = MLX5_FLOW_ENGINE_MODE_STANDBY;
+	else
+		return -1;
+
+	/* Second token: flag */
+	token = strtok_r(t_str, PARSE_DELIMITER, &t_str);
+	if (token == NULL)
+		return 0;
+
+	ret = parse_uint(&val, token);
+	if (ret != 0 || val > UINT32_MAX)
+		return -1;
+
+	*flag = val;
+	return 0;
+}
+
+static void
+mlx5_cmd_set_flow_engine_mode_parsed(void *parsed_result,
+				     __rte_unused struct cmdline *cl,
+				     __rte_unused void *data)
+{
+	struct mlx5_cmd_set_flow_engine_mode *res = parsed_result;
+	enum mlx5_flow_engine_mode mode;
+	uint32_t flag;
+	int ret;
+
+	ret = parse_multi_token_flow_engine_mode(res->mode, &mode, &flag);
+
+	if (ret < 0) {
+		fprintf(stderr, "Bad input\n");
+		return;
+	}
+
+	ret = rte_pmd_mlx5_flow_engine_set_mode(mode, flag);
+
+	if (ret < 0)
+		fprintf(stderr, "Fail to set flow_engine to %s mode with flag 0x%x, error %s\n",
+			mode == MLX5_FLOW_ENGINE_MODE_ACTIVE ? "active" : "standby", flag,
+			strerror(-ret));
+	else
+		TESTPMD_LOG(DEBUG, "Set %d ports flow_engine to %s mode with flag 0x%x\n", ret,
+			    mode == MLX5_FLOW_ENGINE_MODE_ACTIVE ? "active" : "standby", flag);
+}
+
+cmdline_parse_token_string_t mlx5_cmd_set_flow_engine_mode_mlx5 =
+	TOKEN_STRING_INITIALIZER(struct mlx5_cmd_set_flow_engine_mode, mlx5,
+				 "mlx5");
+cmdline_parse_token_string_t mlx5_cmd_set_flow_engine_mode_set =
+	TOKEN_STRING_INITIALIZER(struct mlx5_cmd_set_flow_engine_mode, set,
+				 "set");
+cmdline_parse_token_string_t mlx5_cmd_set_flow_engine_mode_flow_engine =
+	TOKEN_STRING_INITIALIZER(struct mlx5_cmd_set_flow_engine_mode, flow_engine,
+				 "flow_engine");
+cmdline_parse_token_string_t mlx5_cmd_set_flow_engine_mode_mode =
+	TOKEN_STRING_INITIALIZER(struct mlx5_cmd_set_flow_engine_mode, mode,
+				 TOKEN_STRING_MULTI);
+
+cmdline_parse_inst_t mlx5_cmd_set_flow_engine_mode = {
+	.f = &mlx5_cmd_set_flow_engine_mode_parsed,
+	.data = NULL,
+	.help_str = "mlx5 set flow_engine <active|standby> [<flag>]",
+	.tokens = {
+		(void *)&mlx5_cmd_set_flow_engine_mode_mlx5,
+		(void *)&mlx5_cmd_set_flow_engine_mode_set,
+		(void *)&mlx5_cmd_set_flow_engine_mode_flow_engine,
+		(void *)&mlx5_cmd_set_flow_engine_mode_mode,
+		NULL,
+	}
+};
+
 static struct testpmd_driver_commands mlx5_driver_cmds = {
 	.commands = {
 		{
@@ -587,6 +706,11 @@ static struct testpmd_driver_commands mlx5_driver_cmds = {
 			.ctx = &mlx5_cmd_unmap_ext_rxq,
 			.help = "mlx5 port (port_id) ext_rxq unmap (sw_queue_id)\n"
 				"    Unmap external Rx queue ethdev index mapping\n\n",
+		},
+		{
+			.ctx = &mlx5_cmd_set_flow_engine_mode,
+			.help = "mlx5 set flow_engine (active|standby) [(flag)]\n"
+				"    Set flow_engine to the specific mode with flag.\n\n"
 		},
 		{
 			.ctx = NULL,

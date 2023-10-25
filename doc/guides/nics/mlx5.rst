@@ -2180,3 +2180,18 @@ where:
 * ``sw_queue_id``: queue index in range [64536, 65535].
   This range is the highest 1000 numbers.
 * ``hw_queue_id``: queue index given by HW in queue creation.
+
+Set Flow Engine Mode
+~~~~~~~~~~~~~~~~~~~~
+
+Set the flow engine to active or standby mode with specific flags (bitmap style).
+See ``MLX5_FLOW_ENGINE_FLAG_*`` for the flag definitions.
+
+.. code-block:: console
+
+   testpmd> mlx5 set flow_engine <active|standby> [<flags>]
+
+This command is used for testing live migration,
+and works for software steering only.
+Default FDB jump should be disabled if switchdev is enabled.
+The mode will propagate to all the probed ports.
