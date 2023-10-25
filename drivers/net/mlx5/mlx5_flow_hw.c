@@ -5957,8 +5957,11 @@ flow_hw_create_send_to_kernel_actions(struct mlx5_priv *priv __rte_unused)
 #ifdef HAVE_MLX5DV_DR_ACTION_CREATE_DEST_ROOT_TABLE
 	int action_flag;
 	int i;
+	bool is_vf_sf_dev = priv->sh->dev_cap.vf || priv->sh->dev_cap.sf;
 
 	for (i = MLX5DR_TABLE_TYPE_NIC_RX; i < MLX5DR_TABLE_TYPE_MAX; i++) {
+		if (is_vf_sf_dev && MLX5DR_TABLE_TYPE_FDB == i)
+			continue;
 		action_flag = mlx5_hw_act_flag[1][i];
 		priv->hw_send_to_kernel[i] =
 				mlx5dr_action_create_dest_root(priv->dr_ctx,
