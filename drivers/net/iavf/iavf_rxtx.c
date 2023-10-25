@@ -2440,7 +2440,8 @@ iavf_build_data_desc_cmd_offset_fields(volatile uint64_t *qw1,
 		l2tag1 |= m->vlan_tci;
 	}
 
-	if ((m->ol_flags & IAVF_TX_CKSUM_OFFLOAD_MASK) == 0)
+	if ((m->ol_flags &
+	    (IAVF_TX_CKSUM_OFFLOAD_MASK | RTE_MBUF_F_TX_SEC_OFFLOAD)) == 0)
 		goto skip_cksum;
 
 	/* Set MACLEN */
