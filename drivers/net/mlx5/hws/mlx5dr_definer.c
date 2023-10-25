@@ -358,6 +358,19 @@ mlx5dr_definer_ptype_tunnel_set(struct mlx5dr_definer_fc *fc,
 }
 
 static void
+mlx5dr_definer_ptype_frag_set(struct mlx5dr_definer_fc *fc,
+			      const void *item_spec,
+			      uint8_t *tag)
+{
+	bool inner = (fc->fname == MLX5DR_DEFINER_FNAME_PTYPE_FRAG_I);
+	const struct rte_flow_item_ptype *v = item_spec;
+	uint32_t packet_type = v->packet_type &
+		(inner ? RTE_PTYPE_INNER_L4_FRAG : RTE_PTYPE_L4_FRAG);
+
+	DR_SET(tag, !!packet_type, fc->byte_off, fc->bit_off, fc->bit_mask);
+}
+
+static void
 mlx5dr_definer_integrity_set(struct mlx5dr_definer_fc *fc,
 			     const void *item_spec,
 			     uint8_t *tag)
@@ -1840,19 +1853,40 @@ mlx5dr_definer_conv_item_ptype(struct mlx5dr_definer_conv_data *cd,
 	}
 
 	if (m->packet_type & RTE_PTYPE_L4_MASK) {
-		fc = &cd->fc[DR_CALC_FNAME(PTYPE_L4, false)];
-		fc->item_idx = item_idx;
-		fc->tag_set = &mlx5dr_definer_ptype_l4_set;
-		fc->tag_mask_set = &mlx5dr_definer_ones_set;
-		DR_CALC_SET(fc, eth_l2, l4_type, false);
+		/*
+		 * Fragmented IP (Internet Protocol) packet type.
+		 * Cannot be combined with Layer 4 Types (TCP/UDP).
+		 * The exact value must be specified in the mask.
+		 */
+		if (m->packet_type == RTE_PTYPE_L4_FRAG) {
+			fc = &cd->fc[DR_CALC_FNAME(PTYPE_FRAG, false)];
+			fc->item_idx = item_idx;
+			fc->tag_set = &mlx5dr_definer_ptype_frag_set;
+			fc->tag_mask_set = &mlx5dr_definer_ones_set;
+			DR_CALC_SET(fc, eth_l2, ip_fragmented, false);
+		} else {
+			fc = &cd->fc[DR_CALC_FNAME(PTYPE_L4, false)];
+			fc->item_idx = item_idx;
+			fc->tag_set = &mlx5dr_definer_ptype_l4_set;
+			fc->tag_mask_set = &mlx5dr_definer_ones_set;
+			DR_CALC_SET(fc, eth_l2, l4_type, false);
+		}
 	}
 
 	if (m->packet_type & RTE_PTYPE_INNER_L4_MASK) {
-		fc = &cd->fc[DR_CALC_FNAME(PTYPE_L4, true)];
-		fc->item_idx = item_idx;
-		fc->tag_set = &mlx5dr_definer_ptype_l4_set;
-		fc->tag_mask_set = &mlx5dr_definer_ones_set;
-		DR_CALC_SET(fc, eth_l2, l4_type, true);
+		if (m->packet_type == RTE_PTYPE_INNER_L4_FRAG) {
+			fc = &cd->fc[DR_CALC_FNAME(PTYPE_FRAG, true)];
+			fc->item_idx = item_idx;
+			fc->tag_set = &mlx5dr_definer_ptype_frag_set;
+			fc->tag_mask_set = &mlx5dr_definer_ones_set;
+			DR_CALC_SET(fc, eth_l2, ip_fragmented, true);
+		} else {
+			fc = &cd->fc[DR_CALC_FNAME(PTYPE_L4, true)];
+			fc->item_idx = item_idx;
+			fc->tag_set = &mlx5dr_definer_ptype_l4_set;
+			fc->tag_mask_set = &mlx5dr_definer_ones_set;
+			DR_CALC_SET(fc, eth_l2, l4_type, true);
+		}
 	}
 
 	if (m->packet_type & RTE_PTYPE_TUNNEL_MASK) {
