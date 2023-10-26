@@ -498,7 +498,7 @@ struct rte_event_timer {
 	 * implementation specific values to share between the arm and cancel
 	 * operations.  The application should not modify this field.
 	 */
-	enum rte_event_timer_state state;
+	RTE_ATOMIC(enum rte_event_timer_state) state;
 	/**< State of the event timer. */
 	uint8_t user_meta[];
 	/**< Memory to store user specific metadata.

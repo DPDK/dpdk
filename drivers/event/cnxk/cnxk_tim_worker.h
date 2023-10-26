@@ -314,7 +314,7 @@ __retry:
 
 	tim->impl_opaque[0] = (uintptr_t)chunk;
 	tim->impl_opaque[1] = (uintptr_t)bkt;
-	__atomic_store_n(&tim->state, RTE_EVENT_TIMER_ARMED, __ATOMIC_RELEASE);
+	rte_atomic_store_explicit(&tim->state, RTE_EVENT_TIMER_ARMED, rte_memory_order_release);
 	cnxk_tim_bkt_inc_nent(bkt);
 	cnxk_tim_bkt_dec_lock_relaxed(bkt);
 
@@ -425,7 +425,7 @@ __retry:
 
 	tim->impl_opaque[0] = (uintptr_t)chunk;
 	tim->impl_opaque[1] = (uintptr_t)bkt;
-	__atomic_store_n(&tim->state, RTE_EVENT_TIMER_ARMED, __ATOMIC_RELEASE);
+	rte_atomic_store_explicit(&tim->state, RTE_EVENT_TIMER_ARMED, rte_memory_order_release);
 	cnxk_tim_bkt_inc_nent(bkt);
 	cnxk_tim_bkt_dec_lock_relaxed(bkt);
 
