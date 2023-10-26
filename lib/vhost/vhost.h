@@ -158,9 +158,9 @@ struct virtqueue_stats {
 	uint64_t inflight_completed;
 	uint64_t guest_notifications_suppressed;
 	/* Counters below are atomic, and should be incremented as such. */
-	uint64_t guest_notifications;
-	uint64_t guest_notifications_offloaded;
-	uint64_t guest_notifications_error;
+	RTE_ATOMIC(uint64_t) guest_notifications;
+	RTE_ATOMIC(uint64_t) guest_notifications_offloaded;
+	RTE_ATOMIC(uint64_t) guest_notifications_error;
 };
 
 /**
@@ -348,7 +348,7 @@ struct vhost_virtqueue {
 	struct vhost_vring_addr ring_addrs;
 	struct virtqueue_stats	stats;
 
-	bool irq_pending;
+	RTE_ATOMIC(bool) irq_pending;
 } __rte_cache_aligned;
 
 /* Virtio device status as per Virtio specification */
@@ -486,7 +486,7 @@ struct virtio_net {
 	uint32_t		flags;
 	uint16_t		vhost_hlen;
 	/* to tell if we need broadcast rarp packet */
-	int16_t			broadcast_rarp;
+	RTE_ATOMIC(int16_t)	broadcast_rarp;
 	uint32_t		nr_vring;
 	int			async_copy;
 
@@ -557,7 +557,8 @@ vq_is_packed(struct virtio_net *dev)
 static inline bool
 desc_is_avail(struct vring_packed_desc *desc, bool wrap_counter)
 {
-	uint16_t flags = __atomic_load_n(&desc->flags, __ATOMIC_ACQUIRE);
+	uint16_t flags = rte_atomic_load_explicit((unsigned short __rte_atomic *)&desc->flags,
+		rte_memory_order_acquire);
 
 	return wrap_counter == !!(flags & VRING_DESC_F_AVAIL) &&
 		wrap_counter != !!(flags & VRING_DESC_F_USED);
@@ -914,17 +915,19 @@ vhost_vring_inject_irq(struct virtio_net *dev, struct vhost_virtqueue *vq)
 	bool expected = false;
 
 	if (dev->notify_ops->guest_notify) {
-		if (__atomic_compare_exchange_n(&vq->irq_pending, &expected, true, 0,
-				  __ATOMIC_RELEASE, __ATOMIC_RELAXED)) {
+		if (rte_atomic_compare_exchange_strong_explicit(&vq->irq_pending, &expected, true,
+				  rte_memory_order_release, rte_memory_order_relaxed)) {
 			if (dev->notify_ops->guest_notify(dev->vid, vq->index)) {
 				if (dev->flags & VIRTIO_DEV_STATS_ENABLED)
-					__atomic_fetch_add(&vq->stats.guest_notifications_offloaded,
-						1, __ATOMIC_RELAXED);
+					rte_atomic_fetch_add_explicit(
+						&vq->stats.guest_notifications_offloaded,
+						1, rte_memory_order_relaxed);
 				return;
 			}
 
 			/* Offloading failed, fallback to direct IRQ injection */
-			__atomic_store_n(&vq->irq_pending, false, __ATOMIC_RELEASE);
+			rte_atomic_store_explicit(&vq->irq_pending, false,
+				rte_memory_order_release);
 		} else {
 			vq->stats.guest_notifications_suppressed++;
 			return;
@@ -933,14 +936,14 @@ vhost_vring_inject_irq(struct virtio_net *dev, struct vhost_virtqueue *vq)
 
 	if (dev->backend_ops->inject_irq(dev, vq)) {
 		if (dev->flags & VIRTIO_DEV_STATS_ENABLED)
-			__atomic_fetch_add(&vq->stats.guest_notifications_error,
-				1, __ATOMIC_RELAXED);
+			rte_atomic_fetch_add_explicit(&vq->stats.guest_notifications_error,
+				1, rte_memory_order_relaxed);
 		return;
 	}
 
 	if (dev->flags & VIRTIO_DEV_STATS_ENABLED)
-		__atomic_fetch_add(&vq->stats.guest_notifications,
-			1, __ATOMIC_RELAXED);
+		rte_atomic_fetch_add_explicit(&vq->stats.guest_notifications,
+			1, rte_memory_order_relaxed);
 	if (dev->notify_ops->guest_notified)
 		dev->notify_ops->guest_notified(dev->vid);
 }
@@ -949,7 +952,7 @@ static __rte_always_inline void
 vhost_vring_call_split(struct virtio_net *dev, struct vhost_virtqueue *vq)
 {
 	/* Flush used->idx update before we read avail->flags. */
-	rte_atomic_thread_fence(__ATOMIC_SEQ_CST);
+	rte_atomic_thread_fence(rte_memory_order_seq_cst);
 
 	/* Don't kick guest if we don't reach index specified by guest. */
 	if (dev->features & (1ULL << VIRTIO_RING_F_EVENT_IDX)) {
@@ -981,7 +984,7 @@ vhost_vring_call_packed(struct virtio_net *dev, struct vhost_virtqueue *vq)
 	bool signalled_used_valid, kick = false;
 
 	/* Flush used desc update. */
-	rte_atomic_thread_fence(__ATOMIC_SEQ_CST);
+	rte_atomic_thread_fence(rte_memory_order_seq_cst);
 
 	if (!(dev->features & (1ULL << VIRTIO_RING_F_EVENT_IDX))) {
 		if (vq->driver_event->flags !=
@@ -1007,7 +1010,7 @@ vhost_vring_call_packed(struct virtio_net *dev, struct vhost_virtqueue *vq)
 		goto kick;
 	}
 
-	rte_atomic_thread_fence(__ATOMIC_ACQUIRE);
+	rte_atomic_thread_fence(rte_memory_order_acquire);
 
 	off_wrap = vq->driver_event->off_wrap;
 	off = off_wrap & ~(1 << 15);

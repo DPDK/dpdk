@@ -128,12 +128,13 @@ vhost_set_bit(unsigned int nr, volatile uint8_t *addr)
 {
 #if defined(RTE_TOOLCHAIN_GCC) && (GCC_VERSION < 70100)
 	/*
-	 * __sync_ built-ins are deprecated, but __atomic_ ones
+	 * __sync_ built-ins are deprecated, but rte_atomic_ ones
 	 * are sub-optimized in older GCC versions.
 	 */
 	__sync_fetch_and_or_1(addr, (1U << nr));
 #else
-	__atomic_fetch_or(addr, (1U << nr), __ATOMIC_RELAXED);
+	rte_atomic_fetch_or_explicit((volatile uint8_t __rte_atomic *)addr, (1U << nr),
+		rte_memory_order_relaxed);
 #endif
 }
 
@@ -155,7 +156,7 @@ __vhost_log_write(struct virtio_net *dev, uint64_t addr, uint64_t len)
 		return;
 
 	/* To make sure guest memory updates are committed before logging */
-	rte_atomic_thread_fence(__ATOMIC_RELEASE);
+	rte_atomic_thread_fence(rte_memory_order_release);
 
 	page = addr / VHOST_LOG_PAGE;
 	while (page * VHOST_LOG_PAGE < addr + len) {
@@ -197,7 +198,7 @@ __vhost_log_cache_sync(struct virtio_net *dev, struct vhost_virtqueue *vq)
 	if (unlikely(!vq->log_cache))
 		return;
 
-	rte_atomic_thread_fence(__ATOMIC_RELEASE);
+	rte_atomic_thread_fence(rte_memory_order_release);
 
 	log_base = (unsigned long *)(uintptr_t)dev->log_base;
 
@@ -206,17 +207,18 @@ __vhost_log_cache_sync(struct virtio_net *dev, struct vhost_virtqueue *vq)
 
 #if defined(RTE_TOOLCHAIN_GCC) && (GCC_VERSION < 70100)
 		/*
-		 * '__sync' builtins are deprecated, but '__atomic' ones
+		 * '__sync' builtins are deprecated, but 'rte_atomic' ones
 		 * are sub-optimized in older GCC versions.
 		 */
 		__sync_fetch_and_or(log_base + elem->offset, elem->val);
 #else
-		__atomic_fetch_or(log_base + elem->offset, elem->val,
-				__ATOMIC_RELAXED);
+		rte_atomic_fetch_or_explicit(
+			(unsigned long __rte_atomic *)(log_base + elem->offset),
+			elem->val, rte_memory_order_relaxed);
 #endif
 	}
 
-	rte_atomic_thread_fence(__ATOMIC_RELEASE);
+	rte_atomic_thread_fence(rte_memory_order_release);
 
 	vq->log_cache_nb_elem = 0;
 }
@@ -231,7 +233,7 @@ vhost_log_cache_page(struct virtio_net *dev, struct vhost_virtqueue *vq,
 
 	if (unlikely(!vq->log_cache)) {
 		/* No logging cache allocated, write dirty log map directly */
-		rte_atomic_thread_fence(__ATOMIC_RELEASE);
+		rte_atomic_thread_fence(rte_memory_order_release);
 		vhost_log_page((uint8_t *)(uintptr_t)dev->log_base, page);
 
 		return;
@@ -251,7 +253,7 @@ vhost_log_cache_page(struct virtio_net *dev, struct vhost_virtqueue *vq,
 		 * No more room for a new log cache entry,
 		 * so write the dirty log map directly.
 		 */
-		rte_atomic_thread_fence(__ATOMIC_RELEASE);
+		rte_atomic_thread_fence(rte_memory_order_release);
 		vhost_log_page((uint8_t *)(uintptr_t)dev->log_base, page);
 
 		return;
@@ -1184,11 +1186,11 @@ rte_vhost_clr_inflight_desc_split(int vid, uint16_t vring_idx,
 	if (unlikely(idx >= vq->size))
 		return -1;
 
-	rte_atomic_thread_fence(__ATOMIC_SEQ_CST);
+	rte_atomic_thread_fence(rte_memory_order_seq_cst);
 
 	vq->inflight_split->desc[idx].inflight = 0;
 
-	rte_atomic_thread_fence(__ATOMIC_SEQ_CST);
+	rte_atomic_thread_fence(rte_memory_order_seq_cst);
 
 	vq->inflight_split->used_idx = last_used_idx;
 	return 0;
@@ -1227,11 +1229,11 @@ rte_vhost_clr_inflight_desc_packed(int vid, uint16_t vring_idx,
 	if (unlikely(head >= vq->size))
 		return -1;
 
-	rte_atomic_thread_fence(__ATOMIC_SEQ_CST);
+	rte_atomic_thread_fence(rte_memory_order_seq_cst);
 
 	inflight_info->desc[head].inflight = 0;
 
-	rte_atomic_thread_fence(__ATOMIC_SEQ_CST);
+	rte_atomic_thread_fence(rte_memory_order_seq_cst);
 
 	inflight_info->old_free_head = inflight_info->free_head;
 	inflight_info->old_used_idx = inflight_info->used_idx;
@@ -1454,7 +1456,7 @@ vhost_enable_notify_packed(struct virtio_net *dev,
 			vq->avail_wrap_counter << 15;
 	}
 
-	rte_atomic_thread_fence(__ATOMIC_RELEASE);
+	rte_atomic_thread_fence(rte_memory_order_release);
 
 	vq->device_event->flags = flags;
 	return 0;
@@ -1519,16 +1521,16 @@ rte_vhost_notify_guest(int vid, uint16_t queue_id)
 
 	rte_rwlock_read_lock(&vq->access_lock);
 
-	__atomic_store_n(&vq->irq_pending, false, __ATOMIC_RELEASE);
+	rte_atomic_store_explicit(&vq->irq_pending, false, rte_memory_order_release);
 
 	if (dev->backend_ops->inject_irq(dev, vq)) {
 		if (dev->flags & VIRTIO_DEV_STATS_ENABLED)
-			__atomic_fetch_add(&vq->stats.guest_notifications_error,
-					1, __ATOMIC_RELAXED);
+			rte_atomic_fetch_add_explicit(&vq->stats.guest_notifications_error,
+					1, rte_memory_order_relaxed);
 	} else {
 		if (dev->flags & VIRTIO_DEV_STATS_ENABLED)
-			__atomic_fetch_add(&vq->stats.guest_notifications,
-					1, __ATOMIC_RELAXED);
+			rte_atomic_fetch_add_explicit(&vq->stats.guest_notifications,
+					1, rte_memory_order_relaxed);
 		if (dev->notify_ops->guest_notified)
 			dev->notify_ops->guest_notified(dev->vid);
 	}

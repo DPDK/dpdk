@@ -298,8 +298,8 @@ flush_shadow_used_ring_split(struct virtio_net *dev, struct vhost_virtqueue *vq)
 
 	vhost_log_cache_sync(dev, vq);
 
-	__atomic_fetch_add(&vq->used->idx, vq->shadow_used_idx,
-			   __ATOMIC_RELEASE);
+	rte_atomic_fetch_add_explicit((unsigned short __rte_atomic *)&vq->used->idx,
+		vq->shadow_used_idx, rte_memory_order_release);
 	vq->shadow_used_idx = 0;
 	vhost_log_used_vring(dev, vq, offsetof(struct vring_used, idx),
 		sizeof(vq->used->idx));
@@ -335,7 +335,7 @@ vhost_flush_enqueue_shadow_packed(struct virtio_net *dev,
 	}
 
 	/* The ordering for storing desc flags needs to be enforced. */
-	rte_atomic_thread_fence(__ATOMIC_RELEASE);
+	rte_atomic_thread_fence(rte_memory_order_release);
 
 	for (i = 0; i < vq->shadow_used_idx; i++) {
 		uint16_t flags;
@@ -387,8 +387,9 @@ vhost_flush_dequeue_shadow_packed(struct virtio_net *dev,
 
 	vq->desc_packed[vq->shadow_last_used_idx].id = used_elem->id;
 	/* desc flags is the synchronization point for virtio packed vring */
-	__atomic_store_n(&vq->desc_packed[vq->shadow_last_used_idx].flags,
-			 used_elem->flags, __ATOMIC_RELEASE);
+	rte_atomic_store_explicit(
+		(unsigned short __rte_atomic *)&vq->desc_packed[vq->shadow_last_used_idx].flags,
+		used_elem->flags, rte_memory_order_release);
 
 	vhost_log_cache_used_vring(dev, vq, vq->shadow_last_used_idx *
 				   sizeof(struct vring_packed_desc),
@@ -418,7 +419,7 @@ vhost_flush_enqueue_batch_packed(struct virtio_net *dev,
 		desc_base[i].len = lens[i];
 	}
 
-	rte_atomic_thread_fence(__ATOMIC_RELEASE);
+	rte_atomic_thread_fence(rte_memory_order_release);
 
 	vhost_for_each_try_unroll(i, 0, PACKED_BATCH_SIZE) {
 		desc_base[i].flags = flags;
@@ -515,7 +516,7 @@ vhost_shadow_dequeue_batch_packed(struct virtio_net *dev,
 		vq->desc_packed[vq->last_used_idx + i].len = 0;
 	}
 
-	rte_atomic_thread_fence(__ATOMIC_RELEASE);
+	rte_atomic_thread_fence(rte_memory_order_release);
 	vhost_for_each_try_unroll(i, begin, PACKED_BATCH_SIZE)
 		vq->desc_packed[vq->last_used_idx + i].flags = flags;
 
@@ -1415,7 +1416,8 @@ virtio_dev_rx_split(struct virtio_net *dev, struct vhost_virtqueue *vq,
 	 * The ordering between avail index and
 	 * desc reads needs to be enforced.
 	 */
-	avail_head = __atomic_load_n(&vq->avail->idx, __ATOMIC_ACQUIRE);
+	avail_head = rte_atomic_load_explicit((unsigned short __rte_atomic *)&vq->avail->idx,
+		rte_memory_order_acquire);
 
 	rte_prefetch0(&vq->avail->ring[vq->last_avail_idx & (vq->size - 1)]);
 
@@ -1806,7 +1808,8 @@ virtio_dev_rx_async_submit_split(struct virtio_net *dev, struct vhost_virtqueue 
 	/*
 	 * The ordering between avail index and desc reads need to be enforced.
 	 */
-	avail_head = __atomic_load_n(&vq->avail->idx, __ATOMIC_ACQUIRE);
+	avail_head = rte_atomic_load_explicit((unsigned short __rte_atomic *)&vq->avail->idx,
+		rte_memory_order_acquire);
 
 	rte_prefetch0(&vq->avail->ring[vq->last_avail_idx & (vq->size - 1)]);
 
@@ -2222,7 +2225,7 @@ write_back_completed_descs_packed(struct vhost_virtqueue *vq,
 	}
 
 	/* The ordering for storing desc flags needs to be enforced. */
-	rte_atomic_thread_fence(__ATOMIC_RELEASE);
+	rte_atomic_thread_fence(rte_memory_order_release);
 
 	from = async->last_buffer_idx_packed;
 
@@ -2311,7 +2314,9 @@ vhost_poll_enqueue_completed(struct virtio_net *dev, struct vhost_virtqueue *vq,
 			vhost_vring_call_packed(dev, vq);
 		} else {
 			write_back_completed_descs_split(vq, n_descs);
-			__atomic_fetch_add(&vq->used->idx, n_descs, __ATOMIC_RELEASE);
+			rte_atomic_fetch_add_explicit(
+				(unsigned short __rte_atomic *)&vq->used->idx,
+				n_descs, rte_memory_order_release);
 			vhost_vring_call_split(dev, vq);
 		}
 	} else {
@@ -3085,8 +3090,8 @@ virtio_dev_tx_split(struct virtio_net *dev, struct vhost_virtqueue *vq,
 	 * The ordering between avail index and
 	 * desc reads needs to be enforced.
 	 */
-	avail_entries = __atomic_load_n(&vq->avail->idx, __ATOMIC_ACQUIRE) -
-			vq->last_avail_idx;
+	avail_entries = rte_atomic_load_explicit((unsigned short __rte_atomic *)&vq->avail->idx,
+		rte_memory_order_acquire) - vq->last_avail_idx;
 	if (avail_entries == 0)
 		return 0;
 
@@ -3224,7 +3229,7 @@ vhost_reserve_avail_batch_packed(struct virtio_net *dev,
 			return -1;
 	}
 
-	rte_atomic_thread_fence(__ATOMIC_ACQUIRE);
+	rte_atomic_thread_fence(rte_memory_order_acquire);
 
 	vhost_for_each_try_unroll(i, 0, PACKED_BATCH_SIZE)
 		lens[i] = descs[avail_idx + i].len;
@@ -3297,7 +3302,7 @@ vhost_async_tx_batch_packed_check(struct virtio_net *dev,
 			return -1;
 	}
 
-	rte_atomic_thread_fence(__ATOMIC_ACQUIRE);
+	rte_atomic_thread_fence(rte_memory_order_acquire);
 
 	vhost_for_each_try_unroll(i, 0, PACKED_BATCH_SIZE)
 		lens[i] = descs[avail_idx + i].len;
@@ -3590,7 +3595,7 @@ rte_vhost_dequeue_burst(int vid, uint16_t queue_id,
 	 *
 	 * broadcast_rarp shares a cacheline in the virtio_net structure
 	 * with some fields that are accessed during enqueue and
-	 * __atomic_compare_exchange_n causes a write if performed compare
+	 * rte_atomic_compare_exchange_strong_explicit causes a write if performed compare
 	 * and exchange. This could result in false sharing between enqueue
 	 * and dequeue.
 	 *
@@ -3598,9 +3603,9 @@ rte_vhost_dequeue_burst(int vid, uint16_t queue_id,
 	 * and only performing compare and exchange if the read indicates it
 	 * is likely to be set.
 	 */
-	if (unlikely(__atomic_load_n(&dev->broadcast_rarp, __ATOMIC_ACQUIRE) &&
-			__atomic_compare_exchange_n(&dev->broadcast_rarp,
-			&success, 0, 0, __ATOMIC_RELEASE, __ATOMIC_RELAXED))) {
+	if (unlikely(rte_atomic_load_explicit(&dev->broadcast_rarp, rte_memory_order_acquire) &&
+			rte_atomic_compare_exchange_strong_explicit(&dev->broadcast_rarp,
+			&success, 0, rte_memory_order_release, rte_memory_order_relaxed))) {
 
 		rarp_mbuf = rte_net_make_rarp_packet(mbuf_pool, &dev->mac);
 		if (rarp_mbuf == NULL) {
@@ -3683,7 +3688,8 @@ async_poll_dequeue_completed(struct virtio_net *dev, struct vhost_virtqueue *vq,
 		vhost_vring_call_packed(dev, vq);
 	} else {
 		write_back_completed_descs_split(vq, nr_cpl_pkts);
-		__atomic_fetch_add(&vq->used->idx, nr_cpl_pkts, __ATOMIC_RELEASE);
+		rte_atomic_fetch_add_explicit((unsigned short __rte_atomic *)&vq->used->idx,
+			nr_cpl_pkts, rte_memory_order_release);
 		vhost_vring_call_split(dev, vq);
 	}
 	vq->async->pkts_inflight_n -= nr_cpl_pkts;
@@ -3714,8 +3720,8 @@ virtio_dev_tx_async_split(struct virtio_net *dev, struct vhost_virtqueue *vq,
 	 * The ordering between avail index and
 	 * desc reads needs to be enforced.
 	 */
-	avail_entries = __atomic_load_n(&vq->avail->idx, __ATOMIC_ACQUIRE) -
-			vq->last_avail_idx;
+	avail_entries = rte_atomic_load_explicit((unsigned short __rte_atomic *)&vq->avail->idx,
+		rte_memory_order_acquire) - vq->last_avail_idx;
 	if (avail_entries == 0)
 		goto out;
 
@@ -4204,7 +4210,7 @@ rte_vhost_async_try_dequeue_burst(int vid, uint16_t queue_id,
 	 *
 	 * broadcast_rarp shares a cacheline in the virtio_net structure
 	 * with some fields that are accessed during enqueue and
-	 * __atomic_compare_exchange_n causes a write if performed compare
+	 * rte_atomic_compare_exchange_strong_explicit causes a write if performed compare
 	 * and exchange. This could result in false sharing between enqueue
 	 * and dequeue.
 	 *
@@ -4212,9 +4218,9 @@ rte_vhost_async_try_dequeue_burst(int vid, uint16_t queue_id,
 	 * and only performing compare and exchange if the read indicates it
 	 * is likely to be set.
 	 */
-	if (unlikely(__atomic_load_n(&dev->broadcast_rarp, __ATOMIC_ACQUIRE) &&
-			__atomic_compare_exchange_n(&dev->broadcast_rarp,
-			&success, 0, 0, __ATOMIC_RELEASE, __ATOMIC_RELAXED))) {
+	if (unlikely(rte_atomic_load_explicit(&dev->broadcast_rarp, rte_memory_order_acquire) &&
+			rte_atomic_compare_exchange_strong_explicit(&dev->broadcast_rarp,
+			&success, 0, rte_memory_order_release, rte_memory_order_relaxed))) {
 
 		rarp_mbuf = rte_net_make_rarp_packet(mbuf_pool, &dev->mac);
 		if (rarp_mbuf == NULL) {

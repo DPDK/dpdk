@@ -33,7 +33,8 @@ virtio_net_ctrl_pop(struct virtio_net *dev, struct vhost_virtqueue *cvq,
 	uint8_t *ctrl_req;
 	struct vring_desc *descs;
 
-	avail_idx = __atomic_load_n(&cvq->avail->idx, __ATOMIC_ACQUIRE);
+	avail_idx = rte_atomic_load_explicit((unsigned short __rte_atomic *)&cvq->avail->idx,
+		rte_memory_order_acquire);
 	if (avail_idx == cvq->last_avail_idx) {
 		VHOST_LOG_CONFIG(dev->ifname, DEBUG, "Control queue empty\n");
 		return 0;
@@ -236,7 +237,8 @@ virtio_net_ctrl_push(struct virtio_net *dev, struct virtio_net_ctrl_elem *ctrl_e
 	if (cvq->last_used_idx >= cvq->size)
 		cvq->last_used_idx -= cvq->size;
 
-	__atomic_store_n(&cvq->used->idx, cvq->last_used_idx, __ATOMIC_RELEASE);
+	rte_atomic_store_explicit((unsigned short __rte_atomic *)&cvq->used->idx,
+		cvq->last_used_idx, rte_memory_order_release);
 
 	vhost_vring_call_split(dev, dev->cvq);
 

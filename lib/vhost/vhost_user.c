@@ -1914,7 +1914,7 @@ vhost_check_queue_inflights_split(struct virtio_net *dev,
 
 	if (inflight_split->used_idx != used->idx) {
 		inflight_split->desc[last_io].inflight = 0;
-		rte_atomic_thread_fence(__ATOMIC_SEQ_CST);
+		rte_atomic_thread_fence(rte_memory_order_seq_cst);
 		inflight_split->used_idx = used->idx;
 	}
 
@@ -2418,10 +2418,10 @@ vhost_user_send_rarp(struct virtio_net **pdev,
 	 * Set the flag to inject a RARP broadcast packet at
 	 * rte_vhost_dequeue_burst().
 	 *
-	 * __ATOMIC_RELEASE ordering is for making sure the mac is
+	 * rte_memory_order_release ordering is for making sure the mac is
 	 * copied before the flag is set.
 	 */
-	__atomic_store_n(&dev->broadcast_rarp, 1, __ATOMIC_RELEASE);
+	rte_atomic_store_explicit(&dev->broadcast_rarp, 1, rte_memory_order_release);
 	vdpa_dev = dev->vdpa_dev;
 	if (vdpa_dev && vdpa_dev->ops->migration_done)
 		vdpa_dev->ops->migration_done(dev->vid);

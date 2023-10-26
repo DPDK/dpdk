@@ -235,7 +235,8 @@ rte_vdpa_relay_vring_used(int vid, uint16_t qid, void *vring_m)
 	}
 
 	/* used idx is the synchronization point for the split vring */
-	__atomic_store_n(&vq->used->idx, idx_m, __ATOMIC_RELEASE);
+	rte_atomic_store_explicit((unsigned short __rte_atomic *)&vq->used->idx,
+		idx_m, rte_memory_order_release);
 
 	if (dev->features & (1ULL << VIRTIO_RING_F_EVENT_IDX))
 		vring_used_event(s_vring) = idx_m;
