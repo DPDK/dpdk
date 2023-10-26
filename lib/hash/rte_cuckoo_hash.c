@@ -149,7 +149,7 @@ rte_hash_create(const struct rte_hash_parameters *params)
 	unsigned int writer_takes_lock = 0;
 	unsigned int no_free_on_del = 0;
 	uint32_t *ext_bkt_to_free = NULL;
-	uint32_t *tbl_chng_cnt = NULL;
+	RTE_ATOMIC(uint32_t) *tbl_chng_cnt = NULL;
 	struct lcore_cache *local_free_slots = NULL;
 	unsigned int readwrite_concur_lf_support = 0;
 	uint32_t i;
@@ -713,9 +713,9 @@ search_and_update(const struct rte_hash *h, void *data, const void *key,
 				 * variable. Release the application data
 				 * to the readers.
 				 */
-				__atomic_store_n(&k->pdata,
+				rte_atomic_store_explicit(&k->pdata,
 					data,
-					__ATOMIC_RELEASE);
+					rte_memory_order_release);
 				/*
 				 * Return index where key is stored,
 				 * subtracting the first dummy index
@@ -776,9 +776,9 @@ rte_hash_cuckoo_insert_mw(const struct rte_hash *h,
 			 * key_idx is the guard variable for signature
 			 * and key.
 			 */
-			__atomic_store_n(&prim_bkt->key_idx[i],
+			rte_atomic_store_explicit(&prim_bkt->key_idx[i],
 					 new_idx,
-					 __ATOMIC_RELEASE);
+					 rte_memory_order_release);
 			break;
 		}
 	}
@@ -851,9 +851,9 @@ rte_hash_cuckoo_move_insert_mw(const struct rte_hash *h,
 		if (unlikely(&h->buckets[prev_alt_bkt_idx]
 				!= curr_bkt)) {
 			/* revert it to empty, otherwise duplicated keys */
-			__atomic_store_n(&curr_bkt->key_idx[curr_slot],
+			rte_atomic_store_explicit(&curr_bkt->key_idx[curr_slot],
 				EMPTY_SLOT,
-				__ATOMIC_RELEASE);
+				rte_memory_order_release);
 			__hash_rw_writer_unlock(h);
 			return -1;
 		}
@@ -865,13 +865,13 @@ rte_hash_cuckoo_move_insert_mw(const struct rte_hash *h,
 			 * Since there is one writer, load acquires on
 			 * tbl_chng_cnt are not required.
 			 */
-			__atomic_store_n(h->tbl_chng_cnt,
+			rte_atomic_store_explicit(h->tbl_chng_cnt,
 					 *h->tbl_chng_cnt + 1,
-					 __ATOMIC_RELEASE);
+					 rte_memory_order_release);
 			/* The store to sig_current should not
 			 * move above the store to tbl_chng_cnt.
 			 */
-			__atomic_thread_fence(__ATOMIC_RELEASE);
+			__atomic_thread_fence(rte_memory_order_release);
 		}
 
 		/* Need to swap current/alt sig to allow later
@@ -881,9 +881,9 @@ rte_hash_cuckoo_move_insert_mw(const struct rte_hash *h,
 		curr_bkt->sig_current[curr_slot] =
 			prev_bkt->sig_current[prev_slot];
 		/* Release the updated bucket entry */
-		__atomic_store_n(&curr_bkt->key_idx[curr_slot],
+		rte_atomic_store_explicit(&curr_bkt->key_idx[curr_slot],
 			prev_bkt->key_idx[prev_slot],
-			__ATOMIC_RELEASE);
+			rte_memory_order_release);
 
 		curr_slot = prev_slot;
 		curr_node = prev_node;
@@ -897,20 +897,20 @@ rte_hash_cuckoo_move_insert_mw(const struct rte_hash *h,
 		 * Since there is one writer, load acquires on
 		 * tbl_chng_cnt are not required.
 		 */
-		__atomic_store_n(h->tbl_chng_cnt,
+		rte_atomic_store_explicit(h->tbl_chng_cnt,
 				 *h->tbl_chng_cnt + 1,
-				 __ATOMIC_RELEASE);
+				 rte_memory_order_release);
 		/* The store to sig_current should not
 		 * move above the store to tbl_chng_cnt.
 		 */
-		__atomic_thread_fence(__ATOMIC_RELEASE);
+		__atomic_thread_fence(rte_memory_order_release);
 	}
 
 	curr_bkt->sig_current[curr_slot] = sig;
 	/* Release the new bucket entry */
-	__atomic_store_n(&curr_bkt->key_idx[curr_slot],
+	rte_atomic_store_explicit(&curr_bkt->key_idx[curr_slot],
 			 new_idx,
-			 __ATOMIC_RELEASE);
+			 rte_memory_order_release);
 
 	__hash_rw_writer_unlock(h);
 
@@ -1076,9 +1076,9 @@ __rte_hash_add_key_with_hash(const struct rte_hash *h, const void *key,
 	 * not leak after the store of pdata in the key store. i.e. pdata is
 	 * the guard variable. Release the application data to the readers.
 	 */
-	__atomic_store_n(&new_k->pdata,
+	rte_atomic_store_explicit(&new_k->pdata,
 		data,
-		__ATOMIC_RELEASE);
+		rte_memory_order_release);
 	/* Copy key */
 	memcpy(new_k->key, key, h->key_len);
 
@@ -1149,9 +1149,9 @@ __rte_hash_add_key_with_hash(const struct rte_hash *h, const void *key,
 				 * key_idx is the guard variable for signature
 				 * and key.
 				 */
-				__atomic_store_n(&cur_bkt->key_idx[i],
+				rte_atomic_store_explicit(&cur_bkt->key_idx[i],
 						 slot_id,
-						 __ATOMIC_RELEASE);
+						 rte_memory_order_release);
 				__hash_rw_writer_unlock(h);
 				return slot_id - 1;
 			}
@@ -1185,9 +1185,9 @@ __rte_hash_add_key_with_hash(const struct rte_hash *h, const void *key,
 	 * the store to key_idx. i.e. key_idx is the guard variable
 	 * for signature and key.
 	 */
-	__atomic_store_n(&(h->buckets_ext[ext_bkt_id - 1]).key_idx[0],
+	rte_atomic_store_explicit(&(h->buckets_ext[ext_bkt_id - 1]).key_idx[0],
 			 slot_id,
-			 __ATOMIC_RELEASE);
+			 rte_memory_order_release);
 	/* Link the new bucket to sec bucket linked list */
 	last = rte_hash_get_last_bkt(sec_bkt);
 	last->next = &h->buckets_ext[ext_bkt_id - 1];
@@ -1290,17 +1290,17 @@ search_one_bucket_lf(const struct rte_hash *h, const void *key, uint16_t sig,
 		 * key comparison will ensure that the lookup fails.
 		 */
 		if (bkt->sig_current[i] == sig) {
-			key_idx = __atomic_load_n(&bkt->key_idx[i],
-					  __ATOMIC_ACQUIRE);
+			key_idx = rte_atomic_load_explicit(&bkt->key_idx[i],
+					  rte_memory_order_acquire);
 			if (key_idx != EMPTY_SLOT) {
 				k = (struct rte_hash_key *) ((char *)keys +
 						key_idx * h->key_entry_size);
 
 				if (rte_hash_cmp_eq(key, k->key, h) == 0) {
 					if (data != NULL) {
-						*data = __atomic_load_n(
+						*data = rte_atomic_load_explicit(
 							&k->pdata,
-							__ATOMIC_ACQUIRE);
+							rte_memory_order_acquire);
 					}
 					/*
 					 * Return index where key is stored,
@@ -1374,8 +1374,8 @@ __rte_hash_lookup_with_hash_lf(const struct rte_hash *h, const void *key,
 		 * starts. Acquire semantics will make sure that
 		 * loads in search_one_bucket are not hoisted.
 		 */
-		cnt_b = __atomic_load_n(h->tbl_chng_cnt,
-				__ATOMIC_ACQUIRE);
+		cnt_b = rte_atomic_load_explicit(h->tbl_chng_cnt,
+				rte_memory_order_acquire);
 
 		/* Check if key is in primary location */
 		bkt = &h->buckets[prim_bucket_idx];
@@ -1396,7 +1396,7 @@ __rte_hash_lookup_with_hash_lf(const struct rte_hash *h, const void *key,
 		/* The loads of sig_current in search_one_bucket
 		 * should not move below the load from tbl_chng_cnt.
 		 */
-		__atomic_thread_fence(__ATOMIC_ACQUIRE);
+		__atomic_thread_fence(rte_memory_order_acquire);
 		/* Re-read the table change counter to check if the
 		 * table has changed during search. If yes, re-do
 		 * the search.
@@ -1405,8 +1405,8 @@ __rte_hash_lookup_with_hash_lf(const struct rte_hash *h, const void *key,
 		 * and key index in secondary bucket will make sure
 		 * that it does not get hoisted.
 		 */
-		cnt_a = __atomic_load_n(h->tbl_chng_cnt,
-					__ATOMIC_ACQUIRE);
+		cnt_a = rte_atomic_load_explicit(h->tbl_chng_cnt,
+					rte_memory_order_acquire);
 	} while (cnt_b != cnt_a);
 
 	return -ENOENT;
@@ -1611,26 +1611,26 @@ __rte_hash_compact_ll(const struct rte_hash *h,
 	for (i = RTE_HASH_BUCKET_ENTRIES - 1; i >= 0; i--) {
 		if (last_bkt->key_idx[i] != EMPTY_SLOT) {
 			cur_bkt->sig_current[pos] = last_bkt->sig_current[i];
-			__atomic_store_n(&cur_bkt->key_idx[pos],
+			rte_atomic_store_explicit(&cur_bkt->key_idx[pos],
 					 last_bkt->key_idx[i],
-					 __ATOMIC_RELEASE);
+					 rte_memory_order_release);
 			if (h->readwrite_concur_lf_support) {
 				/* Inform the readers that the table has changed
 				 * Since there is one writer, load acquire on
 				 * tbl_chng_cnt is not required.
 				 */
-				__atomic_store_n(h->tbl_chng_cnt,
+				rte_atomic_store_explicit(h->tbl_chng_cnt,
 					 *h->tbl_chng_cnt + 1,
-					 __ATOMIC_RELEASE);
+					 rte_memory_order_release);
 				/* The store to sig_current should
 				 * not move above the store to tbl_chng_cnt.
 				 */
-				__atomic_thread_fence(__ATOMIC_RELEASE);
+				__atomic_thread_fence(rte_memory_order_release);
 			}
 			last_bkt->sig_current[i] = NULL_SIGNATURE;
-			__atomic_store_n(&last_bkt->key_idx[i],
+			rte_atomic_store_explicit(&last_bkt->key_idx[i],
 					 EMPTY_SLOT,
-					 __ATOMIC_RELEASE);
+					 rte_memory_order_release);
 			return;
 		}
 	}
@@ -1650,8 +1650,8 @@ search_and_remove(const struct rte_hash *h, const void *key,
 
 	/* Check if key is in bucket */
 	for (i = 0; i < RTE_HASH_BUCKET_ENTRIES; i++) {
-		key_idx = __atomic_load_n(&bkt->key_idx[i],
-					  __ATOMIC_ACQUIRE);
+		key_idx = rte_atomic_load_explicit(&bkt->key_idx[i],
+					  rte_memory_order_acquire);
 		if (bkt->sig_current[i] == sig && key_idx != EMPTY_SLOT) {
 			k = (struct rte_hash_key *) ((char *)keys +
 					key_idx * h->key_entry_size);
@@ -1663,9 +1663,9 @@ search_and_remove(const struct rte_hash *h, const void *key,
 				if (!h->no_free_on_del)
 					remove_entry(h, bkt, i);
 
-				__atomic_store_n(&bkt->key_idx[i],
+				rte_atomic_store_explicit(&bkt->key_idx[i],
 						 EMPTY_SLOT,
-						 __ATOMIC_RELEASE);
+						 rte_memory_order_release);
 
 				*pos = i;
 				/*
@@ -2077,8 +2077,8 @@ __bulk_lookup_lf(const struct rte_hash *h, const void **keys,
 		 * starts. Acquire semantics will make sure that
 		 * loads in compare_signatures are not hoisted.
 		 */
-		cnt_b = __atomic_load_n(h->tbl_chng_cnt,
-					__ATOMIC_ACQUIRE);
+		cnt_b = rte_atomic_load_explicit(h->tbl_chng_cnt,
+					rte_memory_order_acquire);
 
 		/* Compare signatures and prefetch key slot of first hit */
 		for (i = 0; i < num_keys; i++) {
@@ -2121,9 +2121,9 @@ __bulk_lookup_lf(const struct rte_hash *h, const void **keys,
 						__builtin_ctzl(prim_hitmask[i])
 						>> 1;
 				uint32_t key_idx =
-				__atomic_load_n(
+				rte_atomic_load_explicit(
 					&primary_bkt[i]->key_idx[hit_index],
-					__ATOMIC_ACQUIRE);
+					rte_memory_order_acquire);
 				const struct rte_hash_key *key_slot =
 					(const struct rte_hash_key *)(
 					(const char *)h->key_store +
@@ -2137,9 +2137,9 @@ __bulk_lookup_lf(const struct rte_hash *h, const void **keys,
 					!rte_hash_cmp_eq(
 						key_slot->key, keys[i], h)) {
 					if (data != NULL)
-						data[i] = __atomic_load_n(
+						data[i] = rte_atomic_load_explicit(
 							&key_slot->pdata,
-							__ATOMIC_ACQUIRE);
+							rte_memory_order_acquire);
 
 					hits |= 1ULL << i;
 					positions[i] = key_idx - 1;
@@ -2153,9 +2153,9 @@ __bulk_lookup_lf(const struct rte_hash *h, const void **keys,
 						__builtin_ctzl(sec_hitmask[i])
 						>> 1;
 				uint32_t key_idx =
-				__atomic_load_n(
+				rte_atomic_load_explicit(
 					&secondary_bkt[i]->key_idx[hit_index],
-					__ATOMIC_ACQUIRE);
+					rte_memory_order_acquire);
 				const struct rte_hash_key *key_slot =
 					(const struct rte_hash_key *)(
 					(const char *)h->key_store +
@@ -2170,9 +2170,9 @@ __bulk_lookup_lf(const struct rte_hash *h, const void **keys,
 					!rte_hash_cmp_eq(
 						key_slot->key, keys[i], h)) {
 					if (data != NULL)
-						data[i] = __atomic_load_n(
+						data[i] = rte_atomic_load_explicit(
 							&key_slot->pdata,
-							__ATOMIC_ACQUIRE);
+							rte_memory_order_acquire);
 
 					hits |= 1ULL << i;
 					positions[i] = key_idx - 1;
@@ -2216,7 +2216,7 @@ next_key:
 		/* The loads of sig_current in compare_signatures
 		 * should not move below the load from tbl_chng_cnt.
 		 */
-		__atomic_thread_fence(__ATOMIC_ACQUIRE);
+		__atomic_thread_fence(rte_memory_order_acquire);
 		/* Re-read the table change counter to check if the
 		 * table has changed during search. If yes, re-do
 		 * the search.
@@ -2225,8 +2225,8 @@ next_key:
 		 * key index will make sure that it does not get
 		 * hoisted.
 		 */
-		cnt_a = __atomic_load_n(h->tbl_chng_cnt,
-					__ATOMIC_ACQUIRE);
+		cnt_a = rte_atomic_load_explicit(h->tbl_chng_cnt,
+					rte_memory_order_acquire);
 	} while (cnt_b != cnt_a);
 
 	if (hit_mask != NULL)
@@ -2498,8 +2498,8 @@ rte_hash_iterate(const struct rte_hash *h, const void **key, void **data, uint32
 	idx = *next % RTE_HASH_BUCKET_ENTRIES;
 
 	/* If current position is empty, go to the next one */
-	while ((position = __atomic_load_n(&h->buckets[bucket_idx].key_idx[idx],
-					__ATOMIC_ACQUIRE)) == EMPTY_SLOT) {
+	while ((position = rte_atomic_load_explicit(&h->buckets[bucket_idx].key_idx[idx],
+					rte_memory_order_acquire)) == EMPTY_SLOT) {
 		(*next)++;
 		/* End of table */
 		if (*next == total_entries_main)

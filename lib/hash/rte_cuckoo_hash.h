@@ -137,7 +137,7 @@ struct lcore_cache {
 struct rte_hash_key {
 	union {
 		uintptr_t idata;
-		void *pdata;
+		RTE_ATOMIC(void *) pdata;
 	};
 	/* Variable key size */
 	char key[0];
@@ -155,7 +155,7 @@ enum rte_hash_sig_compare_function {
 struct rte_hash_bucket {
 	uint16_t sig_current[RTE_HASH_BUCKET_ENTRIES];
 
-	uint32_t key_idx[RTE_HASH_BUCKET_ENTRIES];
+	RTE_ATOMIC(uint32_t) key_idx[RTE_HASH_BUCKET_ENTRIES];
 
 	uint8_t flag[RTE_HASH_BUCKET_ENTRIES];
 
@@ -229,7 +229,7 @@ struct rte_hash {
 	 * is piggy-backed to freeing of the key index.
 	 */
 	uint32_t *ext_bkt_to_free;
-	uint32_t *tbl_chng_cnt;
+	RTE_ATOMIC(uint32_t) *tbl_chng_cnt;
 	/**< Indicates if the hash table changed from last read. */
 } __rte_cache_aligned;
 
