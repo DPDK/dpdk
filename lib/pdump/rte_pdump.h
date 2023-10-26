@@ -233,10 +233,10 @@ rte_pdump_disable_by_deviceid(char *device_id, uint16_t queue,
  * The statistics are sum of both receive and transmit queues.
  */
 struct rte_pdump_stats {
-	uint64_t accepted; /**< Number of packets accepted by filter. */
-	uint64_t filtered; /**< Number of packets rejected by filter. */
-	uint64_t nombuf;   /**< Number of mbuf allocation failures. */
-	uint64_t ringfull; /**< Number of missed packets due to ring full. */
+	RTE_ATOMIC(uint64_t) accepted; /**< Number of packets accepted by filter. */
+	RTE_ATOMIC(uint64_t) filtered; /**< Number of packets rejected by filter. */
+	RTE_ATOMIC(uint64_t) nombuf;   /**< Number of mbuf allocation failures. */
+	RTE_ATOMIC(uint64_t) ringfull; /**< Number of missed packets due to ring full. */
 
 	uint64_t reserved[4]; /**< Reserved and pad to cache line */
 };

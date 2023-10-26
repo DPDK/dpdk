@@ -110,8 +110,8 @@ pdump_copy(uint16_t port_id, uint16_t queue,
 		 * then packet doesn't match the filter (will be ignored).
 		 */
 		if (cbs->filter && rcs[i] == 0) {
-			__atomic_fetch_add(&stats->filtered,
-					   1, __ATOMIC_RELAXED);
+			rte_atomic_fetch_add_explicit(&stats->filtered,
+					   1, rte_memory_order_relaxed);
 			continue;
 		}
 
@@ -127,18 +127,18 @@ pdump_copy(uint16_t port_id, uint16_t queue,
 			p = rte_pktmbuf_copy(pkts[i], mp, 0, cbs->snaplen);
 
 		if (unlikely(p == NULL))
-			__atomic_fetch_add(&stats->nombuf, 1, __ATOMIC_RELAXED);
+			rte_atomic_fetch_add_explicit(&stats->nombuf, 1, rte_memory_order_relaxed);
 		else
 			dup_bufs[d_pkts++] = p;
 	}
 
-	__atomic_fetch_add(&stats->accepted, d_pkts, __ATOMIC_RELAXED);
+	rte_atomic_fetch_add_explicit(&stats->accepted, d_pkts, rte_memory_order_relaxed);
 
 	ring_enq = rte_ring_enqueue_burst(ring, (void *)&dup_bufs[0], d_pkts, NULL);
 	if (unlikely(ring_enq < d_pkts)) {
 		unsigned int drops = d_pkts - ring_enq;
 
-		__atomic_fetch_add(&stats->ringfull, drops, __ATOMIC_RELAXED);
+		rte_atomic_fetch_add_explicit(&stats->ringfull, drops, rte_memory_order_relaxed);
 		rte_pktmbuf_free_bulk(&dup_bufs[ring_enq], drops);
 	}
 }
@@ -720,10 +720,10 @@ pdump_sum_stats(uint16_t port, uint16_t nq,
 	uint16_t qid;
 
 	for (qid = 0; qid < nq; qid++) {
-		const uint64_t *perq = (const uint64_t *)&stats[port][qid];
+		const RTE_ATOMIC(uint64_t) *perq = (const uint64_t __rte_atomic *)&stats[port][qid];
 
 		for (i = 0; i < sizeof(*total) / sizeof(uint64_t); i++) {
-			val = __atomic_load_n(&perq[i], __ATOMIC_RELAXED);
+			val = rte_atomic_load_explicit(&perq[i], rte_memory_order_relaxed);
 			sum[i] += val;
 		}
 	}
