@@ -371,10 +371,6 @@ cn10k_ml_dev_configure(struct cnxk_ml_dev *cnxk_mldev, const struct rte_ml_dev_c
 	else
 		cn10k_mldev->ml_jcmdq_enqueue = roc_ml_jcmdq_enqueue_lf;
 
-	cnxk_mldev->mldev->enqueue_burst = cnxk_ml_enqueue_burst;
-	cnxk_mldev->mldev->dequeue_burst = cnxk_ml_dequeue_burst;
-	cnxk_mldev->mldev->op_error_get = cn10k_ml_op_error_get;
-
 	return 0;
 }
 

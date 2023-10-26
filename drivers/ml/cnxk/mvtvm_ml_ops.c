@@ -19,6 +19,12 @@
 /* ML model macros */
 #define MVTVM_ML_MODEL_MEMZONE_NAME "ml_mvtvm_model_mz"
 
+__rte_hot static void
+mvtvm_ml_set_poll_addr(struct cnxk_ml_req *req)
+{
+	req->status = &req->mvtvm_req.status;
+}
+
 void
 mvtvm_ml_model_xstat_name_set(struct cnxk_ml_dev *cnxk_mldev, struct cnxk_ml_model *model,
 			      uint16_t stat_id, uint16_t entry, char *suffix)
@@ -242,6 +248,7 @@ mvtvm_ml_model_load(struct cnxk_ml_dev *cnxk_mldev, struct rte_ml_model_params *
 		callback->tvmrt_free = cn10k_ml_free;
 		callback->tvmrt_quantize = mvtvm_ml_io_quantize;
 		callback->tvmrt_dequantize = mvtvm_ml_io_dequantize;
+		callback->tvmrt_inference = cn10k_ml_inference_sync;
 	} else {
 		callback = NULL;
 	}
@@ -283,6 +290,19 @@ mvtvm_ml_model_load(struct cnxk_ml_dev *cnxk_mldev, struct rte_ml_model_params *
 		model->mvtvm.burst_xstats[qp_id].tvm_rt_latency_max = 0;
 		model->mvtvm.burst_xstats[qp_id].tvm_rt_reset_count = 0;
 		model->mvtvm.burst_xstats[qp_id].dequeued_count = 0;
+	}
+
+	/* Set model specific fast path functions */
+	if (model->subtype == ML_CNXK_MODEL_SUBTYPE_TVM_MRVL) {
+		model->enqueue_single = cn10k_ml_enqueue_single;
+		model->result_update = cn10k_ml_result_update;
+		model->set_error_code = cn10k_ml_set_error_code;
+		model->set_poll_addr = cn10k_ml_set_poll_addr;
+	} else {
+		model->enqueue_single = mvtvm_ml_enqueue_single;
+		model->result_update = mvtvm_ml_result_update;
+		model->set_error_code = mvtvm_ml_set_error_code;
+		model->set_poll_addr = mvtvm_ml_set_poll_addr;
 	}
 
 	return 0;
@@ -494,4 +514,108 @@ mvtvm_ml_io_dequantize(void *device, uint16_t model_id, const char *layer_name, 
 	}
 
 	return 0;
+}
+
+static int
+mvtvm_ml_model_run(struct cnxk_ml_model *model, struct rte_ml_op *op, struct cnxk_ml_req *req)
+{
+	uint8_t i;
+
+	rte_memcpy(req->mvtvm_req.input_tensor, model->mvtvm.input_tensor,
+		   model->mvtvm.metadata.model.num_input * sizeof(DLTensor));
+	for (i = 0; i < model->mvtvm.metadata.model.num_input; i++) {
+		req->mvtvm_req.input_tensor[i].data = op->input[i]->addr;
+		req->mvtvm_req.input_tensor[i].byte_offset = 0;
+	}
+
+	rte_memcpy(req->mvtvm_req.output_tensor, model->mvtvm.output_tensor,
+		   model->mvtvm.metadata.model.num_output * sizeof(DLTensor));
+	for (i = 0; i < model->mvtvm.metadata.model.num_output; i++) {
+		req->mvtvm_req.output_tensor[i].data = op->output[i]->addr;
+		req->mvtvm_req.output_tensor[i].byte_offset = 0;
+	}
+
+	tvmdp_model_run(model->model_id, model->mvtvm.metadata.model.num_input,
+			req->mvtvm_req.input_tensor, model->mvtvm.metadata.model.num_output,
+			req->mvtvm_req.output_tensor, &req->mvtvm_req.result,
+			&req->mvtvm_req.status);
+
+	plt_write64(ML_CNXK_POLL_JOB_FINISH, req->status);
+
+	return 0;
+}
+
+__rte_hot void
+mvtvm_ml_set_error_code(struct cnxk_ml_req *req, uint64_t etype, uint64_t stype)
+{
+	RTE_SET_USED(stype);
+
+	req->mvtvm_req.result.error_code = etype;
+}
+
+__rte_hot bool
+mvtvm_ml_enqueue_single(struct cnxk_ml_dev *cnxk_mldev, struct rte_ml_op *op, uint16_t layer_id,
+			struct cnxk_ml_qp *qp, uint64_t head)
+{
+	struct cnxk_ml_model *model;
+	struct cnxk_ml_queue *queue;
+	struct cnxk_ml_req *req;
+
+	RTE_SET_USED(layer_id);
+
+	queue = &qp->queue;
+	req = &queue->reqs[head];
+	model = cnxk_mldev->mldev->data->models[op->model_id];
+
+	model->set_poll_addr(req);
+	memset(&req->mvtvm_req.result, 0, sizeof(struct mvtvm_ml_result));
+	req->mvtvm_req.result.error_code = 0x0;
+	req->mvtvm_req.result.user_ptr = op->user_ptr;
+
+	cnxk_ml_set_poll_ptr(req);
+	mvtvm_ml_model_run(model, op, req);
+	req->timeout = plt_tsc_cycles() + queue->wait_cycles;
+	req->op = op;
+
+	return true;
+}
+
+__rte_hot void
+mvtvm_ml_result_update(struct cnxk_ml_dev *cnxk_mldev, int qp_id, void *request)
+{
+	struct mvtvm_ml_model_xstats *xstats;
+	struct mvtvm_ml_result *result;
+	struct cnxk_ml_model *model;
+	struct cnxk_ml_req *req;
+	uint64_t tvm_rt_latency;
+	struct cnxk_ml_qp *qp;
+	struct rte_ml_op *op;
+
+	req = (struct cnxk_ml_req *)request;
+	result = &req->mvtvm_req.result;
+	op = req->op;
+	qp = cnxk_mldev->mldev->data->queue_pairs[qp_id];
+	op->impl_opaque = result->error_code;
+
+	if (likely(result->error_code == 0)) {
+		qp->stats.dequeued_count++;
+		op->status = RTE_ML_OP_STATUS_SUCCESS;
+
+		model = cnxk_mldev->mldev->data->models[op->model_id];
+		xstats = &model->mvtvm.burst_xstats[qp_id];
+
+		if (unlikely(xstats->dequeued_count == xstats->tvm_rt_reset_count)) {
+			xstats->tvm_rt_latency_min = UINT64_MAX;
+			xstats->tvm_rt_latency_max = 0;
+		}
+		tvm_rt_latency = result->stats.end_ns - result->stats.start_ns;
+		xstats->tvm_rt_latency = tvm_rt_latency;
+		xstats->tvm_rt_latency_tot += tvm_rt_latency;
+		xstats->tvm_rt_latency_min = RTE_MIN(xstats->tvm_rt_latency_min, tvm_rt_latency);
+		xstats->tvm_rt_latency_max = RTE_MAX(xstats->tvm_rt_latency_max, tvm_rt_latency);
+		xstats->dequeued_count++;
+	} else {
+		qp->stats.dequeue_err_count++;
+		op->status = RTE_ML_OP_STATUS_ERROR;
+	}
 }

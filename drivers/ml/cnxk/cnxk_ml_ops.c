@@ -632,6 +632,10 @@ cnxk_ml_dev_configure(struct rte_ml_dev *dev, const struct rte_ml_dev_config *co
 	cnxk_mldev->max_nb_layers =
 		cnxk_mldev->cn10k_mldev.fw.req->cn10k_req.jd.fw_load.cap.s.max_models;
 
+	cnxk_mldev->mldev->enqueue_burst = cnxk_ml_enqueue_burst;
+	cnxk_mldev->mldev->dequeue_burst = cnxk_ml_dequeue_burst;
+	cnxk_mldev->mldev->op_error_get = cn10k_ml_op_error_get;
+
 	/* Allocate and initialize index_map */
 	if (cnxk_mldev->index_map == NULL) {
 		cnxk_mldev->index_map =

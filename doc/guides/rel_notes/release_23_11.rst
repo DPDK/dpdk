@@ -209,6 +209,10 @@ New Features
 
   Added support in mldev library for models with multiple inputs and outputs.
 
+* **Updated Marvell cnxk mldev driver.**
+
+  * Added support for models compiled using TVM framework.
+
 * **Added new eventdev Ethernet Rx adapter create API.**
 
   Added new function ``rte_event_eth_rx_adapter_create_ext_with_params()``

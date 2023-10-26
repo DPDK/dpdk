@@ -220,6 +220,13 @@ mvtvm_ml_model_io_info_set(struct cnxk_ml_model *model)
 		model->mvtvm.info.total_input_sz_d += model->mvtvm.info.input[i].sz_d;
 		model->mvtvm.info.total_input_sz_q += model->mvtvm.info.input[i].sz_q;
 
+		model->mvtvm.input_tensor[i].device = metadata->input[i].device;
+		model->mvtvm.input_tensor[i].ndim = metadata->input[i].ndim;
+		model->mvtvm.input_tensor[i].dtype = metadata->input[i].datatype;
+		model->mvtvm.input_tensor[i].shape = metadata->input[i].shape;
+		model->mvtvm.input_tensor[i].strides = NULL;
+		model->mvtvm.input_tensor[i].byte_offset = 0;
+
 		plt_ml_dbg("model_id = %u, input[%u] - sz_d = %u sz_q = %u", model->model_id, i,
 			   model->mvtvm.info.input[i].sz_d, model->mvtvm.info.input[i].sz_q);
 	}
@@ -252,6 +259,13 @@ mvtvm_ml_model_io_info_set(struct cnxk_ml_model *model)
 
 		model->mvtvm.info.total_output_sz_d += model->mvtvm.info.output[i].sz_d;
 		model->mvtvm.info.total_output_sz_q += model->mvtvm.info.output[i].sz_q;
+
+		model->mvtvm.output_tensor[i].device = metadata->output[i].device;
+		model->mvtvm.output_tensor[i].ndim = metadata->output[i].ndim;
+		model->mvtvm.output_tensor[i].dtype = metadata->output[i].datatype;
+		model->mvtvm.output_tensor[i].shape = metadata->output[i].shape;
+		model->mvtvm.output_tensor[i].strides = NULL;
+		model->mvtvm.output_tensor[i].byte_offset = 0;
 
 		plt_ml_dbg("model_id = %u, output[%u] - sz_d = %u sz_q = %u", model->model_id, i,
 			   model->mvtvm.info.output[i].sz_d, model->mvtvm.info.output[i].sz_q);

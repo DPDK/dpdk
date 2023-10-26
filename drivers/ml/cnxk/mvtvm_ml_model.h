@@ -69,6 +69,12 @@ struct mvtvm_ml_model_data {
 
 	/* Stats for burst ops */
 	struct mvtvm_ml_model_xstats *burst_xstats;
+
+	/* Input Tensor */
+	DLTensor input_tensor[ML_CNXK_MODEL_MAX_INPUT_OUTPUT];
+
+	/* Output Tensor */
+	DLTensor output_tensor[ML_CNXK_MODEL_MAX_INPUT_OUTPUT];
 };
 
 enum cnxk_ml_model_type mvtvm_ml_model_type_get(struct rte_ml_model_params *params);
