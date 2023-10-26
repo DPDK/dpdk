@@ -2,10 +2,14 @@
  * Copyright (c) 2023 Marvell.
  */
 
+#include <dlpack/dlpack.h>
+
 #include <rte_common.h>
 #include <rte_cycles.h>
 #include <rte_mldev.h>
 #include <rte_mldev_pmd.h>
+
+#include <mldev_utils.h>
 
 #include "cnxk_ml_dev.h"
 #include "cnxk_ml_model.h"
@@ -236,6 +240,8 @@ mvtvm_ml_model_load(struct cnxk_ml_dev *cnxk_mldev, struct rte_ml_model_params *
 		callback->tvmrt_io_free = cn10k_ml_io_free;
 		callback->tvmrt_malloc = cn10k_ml_malloc;
 		callback->tvmrt_free = cn10k_ml_free;
+		callback->tvmrt_quantize = mvtvm_ml_io_quantize;
+		callback->tvmrt_dequantize = mvtvm_ml_io_dequantize;
 	} else {
 		callback = NULL;
 	}
@@ -363,6 +369,129 @@ next_layer:
 
 	if (layer_id < model->nb_layers)
 		goto next_layer;
+
+	return 0;
+}
+
+int
+mvtvm_ml_io_quantize(void *device, uint16_t model_id, const char *layer_name,
+		     const DLTensor **deq_tensor, void *qbuffer)
+{
+	struct cnxk_ml_io_info *info = NULL;
+	struct cnxk_ml_dev *cnxk_mldev;
+	struct cnxk_ml_model *model;
+	uint16_t layer_id = 0;
+	uint8_t *lcl_dbuffer;
+	uint8_t *lcl_qbuffer;
+	uint32_t i;
+	int ret;
+
+#ifdef CNXK_ML_DEV_DEBUG
+	if ((device == NULL) || (deq_tensor == NULL) || (qbuffer == NULL))
+		return -EINVAL;
+#endif
+
+	cnxk_mldev = (struct cnxk_ml_dev *)device;
+
+	model = cnxk_mldev->mldev->data->models[model_id];
+#ifdef CNXK_ML_DEV_DEBUG
+	if (model == NULL) {
+		plt_err("Invalid model_id = %u", model_id);
+		return -EINVAL;
+	}
+#endif
+
+	/* Get layer id */
+	for (layer_id = 0; layer_id < model->mvtvm.metadata.model.nb_layers; layer_id++) {
+		if (strcmp(model->layer[layer_id].name, layer_name) == 0)
+			break;
+	}
+
+#ifdef CNXK_ML_DEV_DEBUG
+	if (layer_id == model->mvtvm.metadata.model.nb_layers) {
+		plt_err("Invalid layer name: %s", layer_name);
+		return -EINVAL;
+	}
+
+	if (model->layer[layer_id].type != ML_CNXK_LAYER_TYPE_MRVL) {
+		plt_err("Invalid layer name / type: %s", layer_name);
+		return -EINVAL;
+	}
+#endif
+
+	info = &model->layer[layer_id].info;
+	lcl_qbuffer = (uint8_t *)qbuffer;
+
+	for (i = 0; i < info->nb_inputs; i++) {
+		lcl_dbuffer = PLT_PTR_ADD(deq_tensor[i]->data, deq_tensor[i]->byte_offset);
+
+		ret = cnxk_ml_io_quantize_single(&info->input[i], lcl_dbuffer, lcl_qbuffer);
+		if (ret < 0)
+			return ret;
+
+		lcl_qbuffer += info->input[i].sz_q;
+	}
+
+	return 0;
+}
+
+int
+mvtvm_ml_io_dequantize(void *device, uint16_t model_id, const char *layer_name, void *qbuffer,
+		       const DLTensor **deq_tensor)
+{
+	struct cnxk_ml_io_info *info = NULL;
+	struct cnxk_ml_dev *cnxk_mldev;
+	struct cnxk_ml_model *model;
+	uint16_t layer_id = 0;
+	uint8_t *lcl_dbuffer;
+	uint8_t *lcl_qbuffer;
+	uint32_t i;
+	int ret;
+
+#ifdef CNXK_ML_DEV_DEBUG
+	if ((device == NULL) || (deq_tensor == NULL) || (qbuffer == NULL))
+		return -EINVAL;
+#endif
+
+	cnxk_mldev = (struct cnxk_ml_dev *)device;
+
+	model = cnxk_mldev->mldev->data->models[model_id];
+#ifdef CNXK_ML_DEV_DEBUG
+	if (model == NULL) {
+		plt_err("Invalid model_id = %u", model_id);
+		return -EINVAL;
+	}
+#endif
+
+	for (layer_id = 0; layer_id < model->mvtvm.metadata.model.nb_layers; layer_id++) {
+		if (strcmp(model->layer[layer_id].name, layer_name) == 0)
+			break;
+	}
+
+#ifdef CNXK_ML_DEV_DEBUG
+	if (layer_id == model->mvtvm.metadata.model.nb_layers) {
+		plt_err("Invalid layer name: %s", layer_name);
+		return -EINVAL;
+	}
+
+	if (model->layer[layer_id].type != ML_CNXK_LAYER_TYPE_MRVL) {
+		plt_err("Invalid layer name / type: %s", layer_name);
+		return -EINVAL;
+	}
+#endif
+
+	info = &model->layer[layer_id].info;
+	lcl_qbuffer = (uint8_t *)qbuffer;
+
+	for (i = 0; i < info->nb_outputs; i++) {
+		lcl_dbuffer = PLT_PTR_ADD(deq_tensor[i]->data, deq_tensor[i]->byte_offset);
+
+		ret = cnxk_ml_io_dequantize_single(&info->output[i], lcl_qbuffer, lcl_dbuffer);
+		if (ret < 0)
+			return ret;
+
+		lcl_qbuffer += info->output[i].sz_q;
+	}
 
 	return 0;
 }
