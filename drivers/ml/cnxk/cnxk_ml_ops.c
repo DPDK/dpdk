@@ -240,7 +240,7 @@ cnxk_ml_dev_configure(struct rte_ml_dev *dev, const struct rte_ml_dev_config *co
 			model = dev->data->models[model_id];
 			if (model != NULL) {
 				if (model->state == ML_CNXK_MODEL_STATE_STARTED) {
-					if (cn10k_ml_model_stop(dev, model_id) != 0)
+					if (cnxk_ml_model_stop(dev, model_id) != 0)
 						plt_err("Could not stop model %u", model_id);
 				}
 				if (model->state == ML_CNXK_MODEL_STATE_LOADED) {
@@ -332,7 +332,7 @@ cnxk_ml_dev_close(struct rte_ml_dev *dev)
 		model = dev->data->models[model_id];
 		if (model != NULL) {
 			if (model->state == ML_CNXK_MODEL_STATE_STARTED) {
-				if (cn10k_ml_model_stop(dev, model_id) != 0)
+				if (cnxk_ml_model_stop(dev, model_id) != 0)
 					plt_err("Could not stop model %u", model_id);
 			}
 			if (model->state == ML_CNXK_MODEL_STATE_LOADED) {
@@ -564,6 +564,46 @@ cnxk_ml_model_unload(struct rte_ml_dev *dev, uint16_t model_id)
 	return plt_memzone_free(plt_memzone_lookup(str));
 }
 
+static int
+cnxk_ml_model_start(struct rte_ml_dev *dev, uint16_t model_id)
+{
+	struct cnxk_ml_dev *cnxk_mldev;
+	struct cnxk_ml_model *model;
+
+	if (dev == NULL)
+		return -EINVAL;
+
+	cnxk_mldev = dev->data->dev_private;
+
+	model = dev->data->models[model_id];
+	if (model == NULL) {
+		plt_err("Invalid model_id = %u", model_id);
+		return -EINVAL;
+	}
+
+	return cn10k_ml_model_start(cnxk_mldev, model);
+}
+
+int
+cnxk_ml_model_stop(struct rte_ml_dev *dev, uint16_t model_id)
+{
+	struct cnxk_ml_dev *cnxk_mldev;
+	struct cnxk_ml_model *model;
+
+	if (dev == NULL)
+		return -EINVAL;
+
+	cnxk_mldev = dev->data->dev_private;
+
+	model = dev->data->models[model_id];
+	if (model == NULL) {
+		plt_err("Invalid model_id = %u", model_id);
+		return -EINVAL;
+	}
+
+	return cn10k_ml_model_stop(cnxk_mldev, model);
+}
+
 struct rte_ml_dev_ops cnxk_ml_ops = {
 	/* Device control ops */
 	.dev_info_get = cnxk_ml_dev_info_get,
@@ -589,8 +629,8 @@ struct rte_ml_dev_ops cnxk_ml_ops = {
 	/* Model ops */
 	.model_load = cnxk_ml_model_load,
 	.model_unload = cnxk_ml_model_unload,
-	.model_start = cn10k_ml_model_start,
-	.model_stop = cn10k_ml_model_stop,
+	.model_start = cnxk_ml_model_start,
+	.model_stop = cnxk_ml_model_stop,
 	.model_info_get = cn10k_ml_model_info_get,
 	.model_params_update = cn10k_ml_model_params_update,
 

@@ -215,11 +215,10 @@ cn10k_ml_ocm_tilecount(uint64_t tilemask, int *start, int *end)
  * scratch & WB pages and OCM allocation mode.
  */
 int
-cn10k_ml_ocm_tilemask_find(struct rte_ml_dev *dev, uint8_t num_tiles, uint16_t wb_pages,
+cn10k_ml_ocm_tilemask_find(struct cnxk_ml_dev *cnxk_mldev, uint8_t num_tiles, uint16_t wb_pages,
 			   uint16_t scratch_pages, uint64_t *tilemask)
 {
 	struct cn10k_ml_dev *cn10k_mldev;
-	struct cnxk_ml_dev *cnxk_mldev;
 	struct cn10k_ml_ocm *ocm;
 
 	uint16_t used_scratch_pages_max;
@@ -238,7 +237,6 @@ cn10k_ml_ocm_tilemask_find(struct rte_ml_dev *dev, uint8_t num_tiles, uint16_t w
 	int max_slot_sz;
 	int page_id;
 
-	cnxk_mldev = dev->data->dev_private;
 	cn10k_mldev = &cnxk_mldev->cn10k_mldev;
 	ocm = &cn10k_mldev->ocm;
 
@@ -333,12 +331,10 @@ found:
 }
 
 void
-cn10k_ml_ocm_reserve_pages(struct rte_ml_dev *dev, uint16_t model_id, uint16_t layer_id,
+cn10k_ml_ocm_reserve_pages(struct cnxk_ml_dev *cnxk_mldev, uint16_t model_id, uint16_t layer_id,
 			   uint64_t tilemask, int wb_page_start, uint16_t wb_pages,
 			   uint16_t scratch_pages)
 {
-	struct cn10k_ml_dev *cn10k_mldev;
-	struct cnxk_ml_dev *cnxk_mldev;
 	struct cnxk_ml_model *model;
 	struct cnxk_ml_layer *layer;
 	struct cn10k_ml_ocm *ocm;
@@ -351,10 +347,8 @@ cn10k_ml_ocm_reserve_pages(struct rte_ml_dev *dev, uint16_t model_id, uint16_t l
 	int tile_id;
 	int page_id;
 
-	cnxk_mldev = dev->data->dev_private;
-	cn10k_mldev = &cnxk_mldev->cn10k_mldev;
-	ocm = &cn10k_mldev->ocm;
-	model = dev->data->models[model_id];
+	ocm = &cnxk_mldev->cn10k_mldev.ocm;
+	model = cnxk_mldev->mldev->data->models[model_id];
 	layer = &model->layer[layer_id];
 
 	/* Get first set bit, tile_start */
@@ -396,12 +390,10 @@ cn10k_ml_ocm_reserve_pages(struct rte_ml_dev *dev, uint16_t model_id, uint16_t l
 }
 
 void
-cn10k_ml_ocm_free_pages(struct rte_ml_dev *dev, uint16_t model_id, uint16_t layer_id)
+cn10k_ml_ocm_free_pages(struct cnxk_ml_dev *cnxk_mldev, uint16_t model_id, uint16_t layer_id)
 {
 	struct cnxk_ml_model *local_model;
 	struct cnxk_ml_layer *local_layer;
-	struct cn10k_ml_dev *cn10k_mldev;
-	struct cnxk_ml_dev *cnxk_mldev;
 	struct cnxk_ml_model *model;
 	struct cnxk_ml_layer *layer;
 	struct cn10k_ml_ocm *ocm;
@@ -416,10 +408,8 @@ cn10k_ml_ocm_free_pages(struct rte_ml_dev *dev, uint16_t model_id, uint16_t laye
 	uint16_t i;
 	uint16_t j;
 
-	cnxk_mldev = dev->data->dev_private;
-	cn10k_mldev = &cnxk_mldev->cn10k_mldev;
-	ocm = &cn10k_mldev->ocm;
-	model = dev->data->models[model_id];
+	ocm = &cnxk_mldev->cn10k_mldev.ocm;
+	model = cnxk_mldev->mldev->data->models[model_id];
 	layer = &model->layer[layer_id];
 
 	/* Update OCM info for WB memory */
@@ -438,8 +428,8 @@ cn10k_ml_ocm_free_pages(struct rte_ml_dev *dev, uint16_t model_id, uint16_t laye
 
 		/* Get max scratch pages required, excluding the current model */
 		scratch_resize_pages = 0;
-		for (i = 0; i < dev->data->nb_models; i++) {
-			local_model = dev->data->models[i];
+		for (i = 0; i < cnxk_mldev->mldev->data->nb_models; i++) {
+			local_model = cnxk_mldev->mldev->data->models[i];
 			if (local_model == NULL)
 				continue;
 

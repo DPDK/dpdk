@@ -315,8 +315,8 @@ int cn10k_ml_dev_xstats_reset(struct rte_ml_dev *dev, enum rte_ml_dev_xstats_mod
 int cn10k_ml_model_load(struct cnxk_ml_dev *cnxk_mldev, struct rte_ml_model_params *params,
 			struct cnxk_ml_model *model);
 int cn10k_ml_model_unload(struct cnxk_ml_dev *cnxk_mldev, struct cnxk_ml_model *model);
-int cn10k_ml_model_start(struct rte_ml_dev *dev, uint16_t model_id);
-int cn10k_ml_model_stop(struct rte_ml_dev *dev, uint16_t model_id);
+int cn10k_ml_model_start(struct cnxk_ml_dev *cnxk_mldev, struct cnxk_ml_model *model);
+int cn10k_ml_model_stop(struct cnxk_ml_dev *cnxk_mldev, struct cnxk_ml_model *model);
 int cn10k_ml_model_info_get(struct rte_ml_dev *dev, uint16_t model_id,
 			    struct rte_ml_model_info *model_info);
 int cn10k_ml_model_params_update(struct rte_ml_dev *dev, uint16_t model_id, void *buffer);
@@ -335,7 +335,7 @@ __rte_hot uint16_t cn10k_ml_dequeue_burst(struct rte_ml_dev *dev, uint16_t qp_id
 					  struct rte_ml_op **ops, uint16_t nb_ops);
 __rte_hot int cn10k_ml_op_error_get(struct rte_ml_dev *dev, struct rte_ml_op *op,
 				    struct rte_ml_op_error *error);
-__rte_hot int cn10k_ml_inference_sync(struct rte_ml_dev *dev, struct rte_ml_op *op);
+__rte_hot int cn10k_ml_inference_sync(struct cnxk_ml_dev *cnxk_mldev, struct rte_ml_op *op);
 
 /* Misc ops */
 void cn10k_ml_qp_initialize(struct cnxk_ml_dev *cnxk_mldev, struct cnxk_ml_qp *qp);
@@ -344,5 +344,7 @@ void cn10k_ml_qp_initialize(struct cnxk_ml_dev *cnxk_mldev, struct cnxk_ml_qp *q
 int cn10k_ml_layer_load(void *device, uint16_t model_id, const char *layer_name, uint8_t *buffer,
 			size_t size, uint16_t *index);
 int cn10k_ml_layer_unload(void *device, uint16_t model_id, const char *layer_name);
+int cn10k_ml_layer_start(void *device, uint16_t model_id, const char *layer_name);
+int cn10k_ml_layer_stop(void *device, uint16_t model_id, const char *layer_name);
 
 #endif /* _CN10K_ML_OPS_H_ */
