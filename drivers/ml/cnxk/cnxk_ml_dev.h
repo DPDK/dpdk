@@ -9,6 +9,8 @@
 
 #include "cn10k_ml_dev.h"
 
+#include "cnxk_ml_xstats.h"
+
 /* ML command timeout in seconds */
 #define ML_CNXK_CMD_TIMEOUT 5
 
@@ -50,6 +52,9 @@ struct cnxk_ml_dev {
 
 	/* Configuration state */
 	enum cnxk_ml_dev_state state;
+
+	/* Extended stats data */
+	struct cnxk_ml_xstats xstats;
 
 	/* Number of models loaded */
 	uint16_t nb_models_loaded;

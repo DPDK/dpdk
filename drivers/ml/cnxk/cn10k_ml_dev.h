@@ -10,7 +10,6 @@
 #include "cn10k_ml_ocm.h"
 
 #include "cnxk_ml_io.h"
-#include "cnxk_ml_xstats.h"
 
 /* Dummy Device ops */
 extern struct rte_ml_dev_ops ml_dev_dummy_ops;
@@ -132,9 +131,6 @@ struct cn10k_ml_dev {
 
 	/* OCM info */
 	struct cn10k_ml_ocm ocm;
-
-	/* Extended stats data */
-	struct cnxk_ml_xstats xstats;
 
 	/* Enable / disable model data caching */
 	int cache_model_data;

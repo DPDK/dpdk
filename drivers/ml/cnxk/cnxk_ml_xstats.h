@@ -7,6 +7,8 @@
 
 #include "cnxk_ml_io.h"
 
+struct cnxk_ml_dev;
+
 /* Extended stats types enum */
 enum cnxk_ml_xstats_type {
 	/* Number of models loaded */
@@ -58,9 +60,21 @@ enum cnxk_ml_xstats_fn_type {
 	CNXK_ML_XSTATS_FN_MODEL,
 };
 
+/* Extended stats group */
+enum cnxk_ml_xstats_group {
+	/* Device stats */
+	CNXK_ML_XSTATS_GROUP_DEVICE,
+
+	/* Model stats */
+	CNXK_ML_XSTATS_GROUP_MODEL,
+
+	/* Layer stats */
+	CNXK_ML_XSTATS_GROUP_LAYER,
+};
+
 /* Function pointer to get xstats for a type */
-typedef uint64_t (*cnxk_ml_xstats_fn)(struct rte_ml_dev *cnxk_mldev, uint16_t obj_idx,
-				      enum cnxk_ml_xstats_type stat);
+typedef uint64_t (*cnxk_ml_xstats_fn)(struct cnxk_ml_dev *cnxk_mldev, uint16_t obj_idx,
+				      int32_t layer_id, enum cnxk_ml_xstats_type stat);
 
 /* Extended stats entry structure */
 struct cnxk_ml_xstats_entry {
@@ -69,6 +83,9 @@ struct cnxk_ml_xstats_entry {
 
 	/* xstats mode, device or model */
 	enum rte_ml_dev_xstats_mode mode;
+
+	/* xstats group */
+	enum cnxk_ml_xstats_group group;
 
 	/* Type of xstats */
 	enum cnxk_ml_xstats_type type;

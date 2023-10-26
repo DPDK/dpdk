@@ -13,6 +13,7 @@
 struct cnxk_ml_dev;
 struct cnxk_ml_qp;
 struct cnxk_ml_model;
+struct cnxk_ml_layer;
 
 /* Firmware version string length */
 #define MLDEV_FIRMWARE_VERSION_LENGTH 32
@@ -298,17 +299,6 @@ int cn10k_ml_dev_stop(struct cnxk_ml_dev *cnxk_mldev);
 int cn10k_ml_dev_dump(struct cnxk_ml_dev *cnxk_mldev, FILE *fp);
 int cn10k_ml_dev_selftest(struct cnxk_ml_dev *cnxk_mldev);
 
-int cn10k_ml_dev_xstats_names_get(struct rte_ml_dev *dev, enum rte_ml_dev_xstats_mode mode,
-				  int32_t model_id, struct rte_ml_dev_xstats_map *xstats_map,
-				  uint32_t size);
-int cn10k_ml_dev_xstats_by_name_get(struct rte_ml_dev *dev, const char *name, uint16_t *stat_id,
-				    uint64_t *value);
-int cn10k_ml_dev_xstats_get(struct rte_ml_dev *dev, enum rte_ml_dev_xstats_mode mode,
-			    int32_t model_id, const uint16_t stat_ids[], uint64_t values[],
-			    uint16_t nb_ids);
-int cn10k_ml_dev_xstats_reset(struct rte_ml_dev *dev, enum rte_ml_dev_xstats_mode mode,
-			      int32_t model_id, const uint16_t stat_ids[], uint16_t nb_ids);
-
 /* Slow-path ops */
 int cn10k_ml_model_load(struct cnxk_ml_dev *cnxk_mldev, struct rte_ml_model_params *params,
 			struct cnxk_ml_model *model);
@@ -336,5 +326,9 @@ int cn10k_ml_layer_load(void *device, uint16_t model_id, const char *layer_name,
 int cn10k_ml_layer_unload(void *device, uint16_t model_id, const char *layer_name);
 int cn10k_ml_layer_start(void *device, uint16_t model_id, const char *layer_name);
 int cn10k_ml_layer_stop(void *device, uint16_t model_id, const char *layer_name);
+
+/* xstats ops */
+uint64_t cn10k_ml_model_xstat_get(struct cnxk_ml_dev *cnxk_mldev, struct cnxk_ml_layer *layer,
+				  enum cnxk_ml_xstats_type type);
 
 #endif /* _CN10K_ML_OPS_H_ */
