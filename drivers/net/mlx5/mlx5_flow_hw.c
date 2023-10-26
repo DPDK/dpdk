@@ -61,16 +61,23 @@
 #define MLX5_MIRROR_MAX_CLONES_NUM 3
 #define MLX5_MIRROR_MAX_SAMPLE_ACTIONS_LEN 4
 
+#define MLX5_HW_PORT_IS_PROXY(priv) \
+	(!!((priv)->sh->esw_mode && (priv)->master))
+
+
+struct mlx5_indlst_legacy {
+	struct mlx5_indirect_list indirect;
+	struct rte_flow_action_handle *handle;
+	enum rte_flow_action_type legacy_type;
+};
+
 struct mlx5_mirror_clone {
 	enum rte_flow_action_type type;
 	void *action_ctx;
 };
 
 struct mlx5_mirror {
-	/* type field MUST be the first */
-	enum mlx5_indirect_list_type type;
-	LIST_ENTRY(mlx5_indirect_list) entry;
-
+	struct mlx5_indirect_list indirect;
 	uint32_t clones_num;
 	struct mlx5dr_action *mirror_action;
 	struct mlx5_mirror_clone clone[MLX5_MIRROR_MAX_CLONES_NUM];
@@ -598,7 +605,7 @@ flow_hw_act_data_indirect_list_append(struct mlx5_priv *priv,
 	act_data = __flow_hw_act_data_alloc(priv, type, action_src, action_dst);
 	if (!act_data)
 		return -1;
-	act_data->indirect_list.cb = cb;
+	act_data->indirect_list_cb = cb;
 	LIST_INSERT_HEAD(&acts->act_list, act_data, next);
 	return 0;
 }
@@ -1416,46 +1423,211 @@ flow_hw_meter_mark_compile(struct rte_eth_dev *dev,
 	return 0;
 }
 
-static struct mlx5dr_action *
-flow_hw_mirror_action(const struct rte_flow_action *action)
+static int
+flow_hw_translate_indirect_mirror(__rte_unused struct rte_eth_dev *dev,
+				  __rte_unused const struct mlx5_action_construct_data *act_data,
+				  const struct rte_flow_action *action,
+				  struct mlx5dr_rule_action *dr_rule)
 {
-	struct mlx5_mirror *mirror = (void *)(uintptr_t)action->conf;
+	const struct rte_flow_action_indirect_list *list_conf = action->conf;
+	const struct mlx5_mirror *mirror = (typeof(mirror))list_conf->handle;
 
-	return mirror->mirror_action;
+	dr_rule->action = mirror->mirror_action;
+	return 0;
 }
 
+/**
+ * HWS mirror implemented as FW island.
+ * The action does not support indirect list flow configuration.
+ * If template handle was masked, use handle mirror action in flow rules.
+ * Otherwise let flow rule specify mirror handle.
+ */
+static int
+hws_table_tmpl_translate_indirect_mirror(struct rte_eth_dev *dev,
+					 const struct rte_flow_action *action,
+					 const struct rte_flow_action *mask,
+					 struct mlx5_hw_actions *acts,
+					 uint16_t action_src, uint16_t action_dst)
+{
+	int ret = 0;
+	const struct rte_flow_action_indirect_list *mask_conf = mask->conf;
+
+	if (mask_conf && mask_conf->handle) {
+		/**
+		 * If mirror handle was masked, assign fixed DR5 mirror action.
+		 */
+		flow_hw_translate_indirect_mirror(dev, NULL, action,
+						  &acts->rule_acts[action_dst]);
+	} else {
+		struct mlx5_priv *priv = dev->data->dev_private;
+		ret = flow_hw_act_data_indirect_list_append
+			(priv, acts, RTE_FLOW_ACTION_TYPE_INDIRECT_LIST,
+			 action_src, action_dst,
+			 flow_hw_translate_indirect_mirror);
+	}
+	return ret;
+}
+
+static int
+flow_dr_set_meter(struct mlx5_priv *priv,
+		  struct mlx5dr_rule_action *dr_rule,
+		  const struct rte_flow_action_indirect_list *action_conf)
+{
+	const struct mlx5_indlst_legacy *legacy_obj =
+		(typeof(legacy_obj))action_conf->handle;
+	struct mlx5_aso_mtr_pool *mtr_pool = priv->hws_mpool;
+	uint32_t act_idx = (uint32_t)(uintptr_t)legacy_obj->handle;
+	uint32_t mtr_id = act_idx & (RTE_BIT32(MLX5_INDIRECT_ACTION_TYPE_OFFSET) - 1);
+	struct mlx5_aso_mtr *aso_mtr = mlx5_ipool_get(mtr_pool->idx_pool, mtr_id);
+
+	if (!aso_mtr)
+		return -EINVAL;
+	dr_rule->action = mtr_pool->action;
+	dr_rule->aso_meter.offset = aso_mtr->offset;
+	return 0;
+}
+
+__rte_always_inline static void
+flow_dr_mtr_flow_color(struct mlx5dr_rule_action *dr_rule, enum rte_color init_color)
+{
+	dr_rule->aso_meter.init_color =
+		(enum mlx5dr_action_aso_meter_color)rte_col_2_mlx5_col(init_color);
+}
+
+static int
+flow_hw_translate_indirect_meter(struct rte_eth_dev *dev,
+				 const struct mlx5_action_construct_data *act_data,
+				 const struct rte_flow_action *action,
+				 struct mlx5dr_rule_action *dr_rule)
+{
+	int ret;
+	struct mlx5_priv *priv = dev->data->dev_private;
+	const struct rte_flow_action_indirect_list *action_conf = action->conf;
+	const struct rte_flow_indirect_update_flow_meter_mark **flow_conf =
+		(typeof(flow_conf))action_conf->conf;
+
+	/*
+	 * Masked indirect handle set dr5 action during template table
+	 * translation.
+	 */
+	if (!dr_rule->action) {
+		ret = flow_dr_set_meter(priv, dr_rule, action_conf);
+		if (ret)
+			return ret;
+	}
+	if (!act_data->shared_meter.conf_masked) {
+		if (flow_conf && flow_conf[0] && flow_conf[0]->init_color < RTE_COLORS)
+			flow_dr_mtr_flow_color(dr_rule, flow_conf[0]->init_color);
+	}
+	return 0;
+}
+
+static int
+hws_table_tmpl_translate_indirect_meter(struct rte_eth_dev *dev,
+					const struct rte_flow_action *action,
+					const struct rte_flow_action *mask,
+					struct mlx5_hw_actions *acts,
+					uint16_t action_src, uint16_t action_dst)
+{
+	int ret;
+	struct mlx5_priv *priv = dev->data->dev_private;
+	const struct rte_flow_action_indirect_list *action_conf = action->conf;
+	const struct rte_flow_action_indirect_list *mask_conf = mask->conf;
+	bool is_handle_masked = mask_conf && mask_conf->handle;
+	bool is_conf_masked = mask_conf && mask_conf->conf && mask_conf->conf[0];
+	struct mlx5dr_rule_action *dr_rule = &acts->rule_acts[action_dst];
+
+	if (is_handle_masked) {
+		ret = flow_dr_set_meter(priv, dr_rule, action->conf);
+		if (ret)
+			return ret;
+	}
+	if (is_conf_masked) {
+		const struct
+			rte_flow_indirect_update_flow_meter_mark **flow_conf =
+			(typeof(flow_conf))action_conf->conf;
+		flow_dr_mtr_flow_color(dr_rule,
+				       flow_conf[0]->init_color);
+	}
+	if (!is_handle_masked || !is_conf_masked) {
+		struct mlx5_action_construct_data *act_data;
+
+		ret = flow_hw_act_data_indirect_list_append
+			(priv, acts, RTE_FLOW_ACTION_TYPE_INDIRECT_LIST,
+			 action_src, action_dst, flow_hw_translate_indirect_meter);
+		if (ret)
+			return ret;
+		act_data = LIST_FIRST(&acts->act_list);
+		act_data->shared_meter.conf_masked = is_conf_masked;
+	}
+	return 0;
+}
+
+static int
+hws_table_tmpl_translate_indirect_legacy(struct rte_eth_dev *dev,
+					 const struct rte_flow_action *action,
+					 const struct rte_flow_action *mask,
+					 struct mlx5_hw_actions *acts,
+					 uint16_t action_src, uint16_t action_dst)
+{
+	int ret;
+	const struct rte_flow_action_indirect_list *indlst_conf = action->conf;
+	struct mlx5_indlst_legacy *indlst_obj = (typeof(indlst_obj))indlst_conf->handle;
+	uint32_t act_idx = (uint32_t)(uintptr_t)indlst_obj->handle;
+	uint32_t type = act_idx >> MLX5_INDIRECT_ACTION_TYPE_OFFSET;
+
+	switch (type) {
+	case MLX5_INDIRECT_ACTION_TYPE_METER_MARK:
+		ret = hws_table_tmpl_translate_indirect_meter(dev, action, mask,
+							      acts, action_src,
+							      action_dst);
+		break;
+	default:
+		ret = -EINVAL;
+		break;
+	}
+	return ret;
+}
+
+/*
+ * template .. indirect_list handle Ht conf Ct ..
+ * mask     .. indirect_list handle Hm conf Cm ..
+ *
+ * PMD requires Ht != 0 to resolve handle type.
+ * If Ht was masked (Hm != 0) DR5 action will be set according to Ht and will
+ * not change. Otherwise, DR5 action will be resolved during flow rule build.
+ * If Ct was masked (Cm != 0), table template processing updates base
+ * indirect action configuration with Ct parameters.
+ */
 static int
 table_template_translate_indirect_list(struct rte_eth_dev *dev,
 				       const struct rte_flow_action *action,
 				       const struct rte_flow_action *mask,
 				       struct mlx5_hw_actions *acts,
-				       uint16_t action_src,
-				       uint16_t action_dst)
+				       uint16_t action_src, uint16_t action_dst)
 {
-	int ret;
-	bool is_masked = action->conf && mask->conf;
-	struct mlx5_priv *priv = dev->data->dev_private;
+	int ret = 0;
 	enum mlx5_indirect_list_type type;
+	const struct rte_flow_action_indirect_list *list_conf = action->conf;
 
-	if (!action->conf)
+	if (!list_conf || !list_conf->handle)
 		return -EINVAL;
-	type = mlx5_get_indirect_list_type(action->conf);
+	type = mlx5_get_indirect_list_type(list_conf->handle);
 	switch (type) {
+	case MLX5_INDIRECT_ACTION_LIST_TYPE_LEGACY:
+		ret = hws_table_tmpl_translate_indirect_legacy(dev, action, mask,
+							       acts, action_src,
+							       action_dst);
+		break;
 	case MLX5_INDIRECT_ACTION_LIST_TYPE_MIRROR:
-		if (is_masked) {
-			acts->rule_acts[action_dst].action = flow_hw_mirror_action(action);
-		} else {
-			ret = flow_hw_act_data_indirect_list_append
-				(priv, acts, RTE_FLOW_ACTION_TYPE_INDIRECT_LIST,
-				 action_src, action_dst, flow_hw_mirror_action);
-			if (ret)
-				return ret;
-		}
+		ret = hws_table_tmpl_translate_indirect_mirror(dev, action, mask,
+							       acts, action_src,
+							       action_dst);
 		break;
 	default:
 		return -EINVAL;
 	}
-	return 0;
+	return ret;
 }
 
 /**
@@ -2366,8 +2538,8 @@ flow_hw_actions_construct(struct rte_eth_dev *dev,
 				    (int)action->type == act_data->type);
 		switch ((int)act_data->type) {
 		case RTE_FLOW_ACTION_TYPE_INDIRECT_LIST:
-			rule_acts[act_data->action_dst].action =
-				act_data->indirect_list.cb(action);
+			act_data->indirect_list_cb(dev, act_data, actions,
+						   &rule_acts[act_data->action_dst]);
 			break;
 		case RTE_FLOW_ACTION_TYPE_INDIRECT:
 			if (flow_hw_shared_action_construct
@@ -4664,20 +4836,11 @@ action_template_set_type(struct rte_flow_actions_template *at,
 }
 
 static int
-flow_hw_dr_actions_template_handle_shared(const struct rte_flow_action *mask,
-					  unsigned int action_src,
+flow_hw_dr_actions_template_handle_shared(int type, uint32_t action_src,
 					  enum mlx5dr_action_type *action_types,
 					  uint16_t *curr_off, uint16_t *cnt_off,
 					  struct rte_flow_actions_template *at)
 {
-	uint32_t type;
-
-	if (!mask) {
-		DRV_LOG(WARNING, "Unable to determine indirect action type "
-			"without a mask specified");
-		return -EINVAL;
-	}
-	type = mask->type;
 	switch (type) {
 	case RTE_FLOW_ACTION_TYPE_RSS:
 		action_template_set_type(at, action_types, action_src, curr_off,
@@ -4718,12 +4881,24 @@ static int
 flow_hw_template_actions_list(struct rte_flow_actions_template *at,
 			      unsigned int action_src,
 			      enum mlx5dr_action_type *action_types,
-			      uint16_t *curr_off)
+			      uint16_t *curr_off, uint16_t *cnt_off)
 {
-	enum mlx5_indirect_list_type list_type;
+	int ret;
+	const struct rte_flow_action_indirect_list *indlst_conf = at->actions[action_src].conf;
+	enum mlx5_indirect_list_type list_type = mlx5_get_indirect_list_type(indlst_conf->handle);
+	const union {
+		struct mlx5_indlst_legacy *legacy;
+		struct rte_flow_action_list_handle *handle;
+	} indlst_obj = { .handle = indlst_conf->handle };
 
-	list_type = mlx5_get_indirect_list_type(at->actions[action_src].conf);
 	switch (list_type) {
+	case MLX5_INDIRECT_ACTION_LIST_TYPE_LEGACY:
+		ret = flow_hw_dr_actions_template_handle_shared
+			(indlst_obj.legacy->legacy_type, action_src,
+			 action_types, curr_off, cnt_off, at);
+		if (ret)
+			return ret;
+		break;
 	case MLX5_INDIRECT_ACTION_LIST_TYPE_MIRROR:
 		action_template_set_type(at, action_types, action_src, curr_off,
 					 MLX5DR_ACTION_TYP_DEST_ARRAY);
@@ -4769,17 +4944,14 @@ flow_hw_dr_actions_template_create(struct rte_flow_actions_template *at)
 			break;
 		case RTE_FLOW_ACTION_TYPE_INDIRECT_LIST:
 			ret = flow_hw_template_actions_list(at, i, action_types,
-							    &curr_off);
+							    &curr_off, &cnt_off);
 			if (ret)
 				return NULL;
 			break;
 		case RTE_FLOW_ACTION_TYPE_INDIRECT:
 			ret = flow_hw_dr_actions_template_handle_shared
-								 (&at->masks[i],
-								  i,
-								  action_types,
-								  &curr_off,
-								  &cnt_off, at);
+				(at->masks[i].type, i, action_types,
+				 &curr_off, &cnt_off, at);
 			if (ret)
 				return NULL;
 			break;
@@ -5259,9 +5431,8 @@ flow_hw_actions_template_create(struct rte_eth_dev *dev,
 		 * Need to restore the indirect action index from action conf here.
 		 */
 		case RTE_FLOW_ACTION_TYPE_INDIRECT:
-		case RTE_FLOW_ACTION_TYPE_INDIRECT_LIST:
-			at->actions[i].conf = actions->conf;
-			at->masks[i].conf = masks->conf;
+			at->actions[i].conf = ra[i].conf;
+			at->masks[i].conf = rm[i].conf;
 			break;
 		case RTE_FLOW_ACTION_TYPE_MODIFY_FIELD:
 			info = actions->conf;
@@ -9522,18 +9693,16 @@ mlx5_mirror_destroy_clone(struct rte_eth_dev *dev,
 }
 
 void
-mlx5_hw_mirror_destroy(struct rte_eth_dev *dev, struct mlx5_mirror *mirror, bool release)
+mlx5_hw_mirror_destroy(struct rte_eth_dev *dev, struct mlx5_mirror *mirror)
 {
 	uint32_t i;
 
-	if (mirror->entry.le_prev)
-		LIST_REMOVE(mirror, entry);
+	mlx5_indirect_list_remove_entry(&mirror->indirect);
 	for (i = 0; i < mirror->clones_num; i++)
 		mlx5_mirror_destroy_clone(dev, &mirror->clone[i]);
 	if (mirror->mirror_action)
 		mlx5dr_action_destroy(mirror->mirror_action);
-	if (release)
-		mlx5_free(mirror);
+	mlx5_free(mirror);
 }
 
 static inline enum mlx5dr_table_type
@@ -9828,7 +9997,8 @@ mlx5_hw_mirror_handle_create(struct rte_eth_dev *dev,
 				   actions, "Failed to allocate mirror context");
 		return NULL;
 	}
-	mirror->type = MLX5_INDIRECT_ACTION_LIST_TYPE_MIRROR;
+
+	mirror->indirect.type = MLX5_INDIRECT_ACTION_LIST_TYPE_MIRROR;
 	mirror->clones_num = clones_num;
 	for (i = 0; i < clones_num; i++) {
 		const struct rte_flow_action *clone_actions;
@@ -9859,13 +10029,70 @@ mlx5_hw_mirror_handle_create(struct rte_eth_dev *dev,
 		goto error;
 	}
 
-	LIST_INSERT_HEAD(&priv->indirect_list_head,
-			 (struct mlx5_indirect_list *)mirror, entry);
+	mlx5_indirect_list_add_entry(&priv->indirect_list_head, &mirror->indirect);
 	return (struct rte_flow_action_list_handle *)mirror;
 
 error:
-	mlx5_hw_mirror_destroy(dev, mirror, true);
+	mlx5_hw_mirror_destroy(dev, mirror);
 	return NULL;
+}
+
+void
+mlx5_destroy_legacy_indirect(__rte_unused struct rte_eth_dev *dev,
+			     struct mlx5_indirect_list *ptr)
+{
+	struct mlx5_indlst_legacy *obj = (typeof(obj))ptr;
+
+	switch (obj->legacy_type) {
+	case RTE_FLOW_ACTION_TYPE_METER_MARK:
+		break; /* ASO meters were released in mlx5_flow_meter_flush() */
+	default:
+		break;
+	}
+	mlx5_free(obj);
+}
+
+static struct rte_flow_action_list_handle *
+mlx5_create_legacy_indlst(struct rte_eth_dev *dev, uint32_t queue,
+			  const struct rte_flow_op_attr *attr,
+			  const struct rte_flow_indir_action_conf *conf,
+			  const struct rte_flow_action *actions,
+			  void *user_data, struct rte_flow_error *error)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_indlst_legacy *indlst_obj = mlx5_malloc(MLX5_MEM_ZERO,
+							    sizeof(*indlst_obj),
+							    0, SOCKET_ID_ANY);
+
+	if (!indlst_obj)
+		return NULL;
+	indlst_obj->handle = flow_hw_action_handle_create(dev, queue, attr, conf,
+							  actions, user_data,
+							  error);
+	if (!indlst_obj->handle) {
+		mlx5_free(indlst_obj);
+		return NULL;
+	}
+	indlst_obj->legacy_type = actions[0].type;
+	indlst_obj->indirect.type = MLX5_INDIRECT_ACTION_LIST_TYPE_LEGACY;
+	mlx5_indirect_list_add_entry(&priv->indirect_list_head, &indlst_obj->indirect);
+	return (struct rte_flow_action_list_handle *)indlst_obj;
+}
+
+static __rte_always_inline enum mlx5_indirect_list_type
+flow_hw_inlist_type_get(const struct rte_flow_action *actions)
+{
+	switch (actions[0].type) {
+	case RTE_FLOW_ACTION_TYPE_SAMPLE:
+		return MLX5_INDIRECT_ACTION_LIST_TYPE_MIRROR;
+	case RTE_FLOW_ACTION_TYPE_METER_MARK:
+		return actions[1].type == RTE_FLOW_ACTION_TYPE_END ?
+		       MLX5_INDIRECT_ACTION_LIST_TYPE_LEGACY :
+		       MLX5_INDIRECT_ACTION_LIST_TYPE_ERR;
+	default:
+		break;
+	}
+	return MLX5_INDIRECT_ACTION_LIST_TYPE_ERR;
 }
 
 static struct rte_flow_action_list_handle *
@@ -9878,6 +10105,7 @@ flow_hw_async_action_list_handle_create(struct rte_eth_dev *dev, uint32_t queue,
 {
 	struct mlx5_hw_q_job *job = NULL;
 	bool push = flow_hw_action_push(attr);
+	enum mlx5_indirect_list_type list_type;
 	struct rte_flow_action_list_handle *handle;
 	struct mlx5_priv *priv = dev->data->dev_private;
 	const struct mlx5_flow_template_table_cfg table_cfg = {
@@ -9896,6 +10124,16 @@ flow_hw_async_action_list_handle_create(struct rte_eth_dev *dev, uint32_t queue,
 				   NULL, "No action list");
 		return NULL;
 	}
+	list_type = flow_hw_inlist_type_get(actions);
+	if (list_type == MLX5_INDIRECT_ACTION_LIST_TYPE_LEGACY) {
+		/*
+		 * Legacy indirect actions already have
+		 * async resources management. No need to do it twice.
+		 */
+		handle = mlx5_create_legacy_indlst(dev, queue, attr, conf,
+						   actions, user_data, error);
+		goto end;
+	}
 	if (attr) {
 		job = flow_hw_action_job_init(priv, queue, NULL, user_data,
 					      NULL, MLX5_HW_Q_JOB_TYPE_CREATE,
@@ -9903,8 +10141,8 @@ flow_hw_async_action_list_handle_create(struct rte_eth_dev *dev, uint32_t queue,
 		if (!job)
 			return NULL;
 	}
-	switch (actions[0].type) {
-	case RTE_FLOW_ACTION_TYPE_SAMPLE:
+	switch (list_type) {
+	case MLX5_INDIRECT_ACTION_LIST_TYPE_MIRROR:
 		handle = mlx5_hw_mirror_handle_create(dev, &table_cfg,
 						      actions, error);
 		break;
@@ -9918,6 +10156,7 @@ flow_hw_async_action_list_handle_create(struct rte_eth_dev *dev, uint32_t queue,
 		flow_hw_action_finalize(dev, queue, job, push, false,
 					handle != NULL);
 	}
+end:
 	return handle;
 }
 
@@ -9946,6 +10185,15 @@ flow_hw_async_action_list_handle_destroy
 	enum mlx5_indirect_list_type type =
 		mlx5_get_indirect_list_type((void *)handle);
 
+	if (type == MLX5_INDIRECT_ACTION_LIST_TYPE_LEGACY) {
+		struct mlx5_indlst_legacy *legacy = (typeof(legacy))handle;
+
+		ret = flow_hw_action_handle_destroy(dev, queue, attr,
+						    legacy->handle,
+						    user_data, error);
+		mlx5_indirect_list_remove_entry(&legacy->indirect);
+		goto end;
+	}
 	if (attr) {
 		job = flow_hw_action_job_init(priv, queue, NULL, user_data,
 					      NULL, MLX5_HW_Q_JOB_TYPE_DESTROY,
@@ -9955,20 +10203,17 @@ flow_hw_async_action_list_handle_destroy
 	}
 	switch (type) {
 	case MLX5_INDIRECT_ACTION_LIST_TYPE_MIRROR:
-		mlx5_hw_mirror_destroy(dev, (struct mlx5_mirror *)handle, false);
+		mlx5_hw_mirror_destroy(dev, (struct mlx5_mirror *)handle);
 		break;
 	default:
-		handle = NULL;
 		ret = rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ACTION,
 					  NULL, "Invalid indirect list handle");
 	}
 	if (job) {
-		job->action = handle;
-		flow_hw_action_finalize(dev, queue, job, push, false,
-				       handle != NULL);
+		flow_hw_action_finalize(dev, queue, job, push, false, true);
 	}
-	mlx5_free(handle);
+end:
 	return ret;
 }
 
@@ -9980,6 +10225,53 @@ flow_hw_action_list_handle_destroy(struct rte_eth_dev *dev,
 	return flow_hw_async_action_list_handle_destroy(dev, MLX5_HW_INV_QUEUE,
 							NULL, handle, NULL,
 							error);
+}
+
+static int
+flow_hw_async_action_list_handle_query_update
+		(struct rte_eth_dev *dev, uint32_t queue_id,
+		 const struct rte_flow_op_attr *attr,
+		 const struct rte_flow_action_list_handle *handle,
+		 const void **update, void **query,
+		 enum rte_flow_query_update_mode mode,
+		 void *user_data, struct rte_flow_error *error)
+{
+	enum mlx5_indirect_list_type type =
+		mlx5_get_indirect_list_type((const void *)handle);
+
+	if (type == MLX5_INDIRECT_ACTION_LIST_TYPE_LEGACY) {
+		struct mlx5_indlst_legacy *legacy = (void *)(uintptr_t)handle;
+
+		if (update && query)
+			return flow_hw_async_action_handle_query_update
+				(dev, queue_id, attr, legacy->handle,
+				 update, query, mode, user_data, error);
+		else if (update && update[0])
+			return flow_hw_action_handle_update(dev, queue_id, attr,
+							    legacy->handle, update[0],
+							    user_data, error);
+		else if (query && query[0])
+			return flow_hw_action_handle_query(dev, queue_id, attr,
+							   legacy->handle, query[0],
+							   user_data, error);
+		else
+			return rte_flow_error_set(error, EINVAL,
+						  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+						  NULL, "invalid legacy handle query_update parameters");
+	}
+	return -ENOTSUP;
+}
+
+static int
+flow_hw_action_list_handle_query_update(struct rte_eth_dev *dev,
+					const struct rte_flow_action_list_handle *handle,
+					const void **update, void **query,
+					enum rte_flow_query_update_mode mode,
+					struct rte_flow_error *error)
+{
+	return flow_hw_async_action_list_handle_query_update
+					(dev, MLX5_HW_INV_QUEUE, NULL, handle,
+					 update, query, mode, NULL, error);
 }
 
 const struct mlx5_flow_driver_ops mlx5_flow_hw_drv_ops = {
@@ -10012,10 +10304,14 @@ const struct mlx5_flow_driver_ops mlx5_flow_hw_drv_ops = {
 	.action_query_update = flow_hw_action_query_update,
 	.action_list_handle_create = flow_hw_action_list_handle_create,
 	.action_list_handle_destroy = flow_hw_action_list_handle_destroy,
+	.action_list_handle_query_update =
+		flow_hw_action_list_handle_query_update,
 	.async_action_list_handle_create =
 		flow_hw_async_action_list_handle_create,
 	.async_action_list_handle_destroy =
 		flow_hw_async_action_list_handle_destroy,
+	.async_action_list_handle_query_update =
+		flow_hw_async_action_list_handle_query_update,
 	.query = flow_hw_query,
 	.get_aged_flows = flow_hw_get_aged_flows,
 	.get_q_aged_flows = flow_hw_get_q_aged_flows,

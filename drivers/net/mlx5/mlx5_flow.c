@@ -75,8 +75,11 @@ mlx5_indirect_list_handles_release(struct rte_eth_dev *dev)
 		switch (e->type) {
 #ifdef HAVE_MLX5_HWS_SUPPORT
 		case MLX5_INDIRECT_ACTION_LIST_TYPE_MIRROR:
-			mlx5_hw_mirror_destroy(dev, (struct mlx5_mirror *)e, true);
+			mlx5_hw_mirror_destroy(dev, (struct mlx5_mirror *)e);
 		break;
+		case MLX5_INDIRECT_ACTION_LIST_TYPE_LEGACY:
+			mlx5_destroy_legacy_indirect(dev, e);
+			break;
 #endif
 		default:
 			DRV_LOG(ERR, "invalid indirect list type");
@@ -1169,7 +1172,24 @@ mlx5_flow_async_action_list_handle_destroy
 			 const struct rte_flow_op_attr *op_attr,
 			 struct rte_flow_action_list_handle *action_handle,
 			 void *user_data, struct rte_flow_error *error);
-
+static int
+mlx5_flow_action_list_handle_query_update(struct rte_eth_dev *dev,
+					  const
+					  struct rte_flow_action_list_handle *handle,
+					  const void **update, void **query,
+					  enum rte_flow_query_update_mode mode,
+					  struct rte_flow_error *error);
+static int
+mlx5_flow_async_action_list_handle_query_update(struct rte_eth_dev *dev,
+						uint32_t queue_id,
+						const struct rte_flow_op_attr *attr,
+						const struct
+						rte_flow_action_list_handle *handle,
+						const void **update,
+						void **query,
+						enum rte_flow_query_update_mode mode,
+						void *user_data,
+						struct rte_flow_error *error);
 static const struct rte_flow_ops mlx5_flow_ops = {
 	.validate = mlx5_flow_validate,
 	.create = mlx5_flow_create,
@@ -1219,6 +1239,10 @@ static const struct rte_flow_ops mlx5_flow_ops = {
 		mlx5_flow_async_action_list_handle_create,
 	.async_action_list_handle_destroy =
 		mlx5_flow_async_action_list_handle_destroy,
+	.action_list_handle_query_update =
+		mlx5_flow_action_list_handle_query_update,
+	.async_action_list_handle_query_update =
+		mlx5_flow_async_action_list_handle_query_update,
 };
 
 /* Tunnel information. */
@@ -11003,6 +11027,47 @@ mlx5_flow_async_action_list_handle_destroy
 						      action_handle, user_data,
 						      error);
 }
+
+static int
+mlx5_flow_action_list_handle_query_update(struct rte_eth_dev *dev,
+					  const
+					  struct rte_flow_action_list_handle *handle,
+					  const void **update, void **query,
+					  enum rte_flow_query_update_mode mode,
+					  struct rte_flow_error *error)
+{
+	const struct mlx5_flow_driver_ops *fops;
+
+	MLX5_DRV_FOPS_OR_ERR(dev, fops,
+			     action_list_handle_query_update, ENOTSUP);
+	return fops->action_list_handle_query_update(dev, handle, update, query,
+						     mode, error);
+}
+
+static int
+mlx5_flow_async_action_list_handle_query_update(struct rte_eth_dev *dev,
+						uint32_t queue_id,
+						const
+						struct rte_flow_op_attr *op_attr,
+						const struct
+						rte_flow_action_list_handle *handle,
+						const void **update,
+						void **query,
+						enum
+						rte_flow_query_update_mode mode,
+						void *user_data,
+						struct rte_flow_error *error)
+{
+	const struct mlx5_flow_driver_ops *fops;
+
+	MLX5_DRV_FOPS_OR_ERR(dev, fops,
+			     async_action_list_handle_query_update, ENOTSUP);
+	return fops->async_action_list_handle_query_update(dev, queue_id, op_attr,
+							   handle, update,
+							   query, mode,
+							   user_data, error);
+}
+
 
 /**
  * Destroy all indirect actions (shared RSS).
