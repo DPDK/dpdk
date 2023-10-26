@@ -286,7 +286,29 @@ struct cn10k_ml_req {
 };
 
 /* Device ops */
-extern struct rte_ml_dev_ops cn10k_ml_ops;
+int cn10k_ml_dev_info_get(struct rte_ml_dev *dev, struct rte_ml_dev_info *dev_info);
+int cn10k_ml_dev_configure(struct rte_ml_dev *dev, const struct rte_ml_dev_config *conf);
+int cn10k_ml_dev_close(struct rte_ml_dev *dev);
+int cn10k_ml_dev_start(struct rte_ml_dev *dev);
+int cn10k_ml_dev_stop(struct rte_ml_dev *dev);
+int cn10k_ml_dev_dump(struct rte_ml_dev *dev, FILE *fp);
+int cn10k_ml_dev_selftest(struct rte_ml_dev *dev);
+int cn10k_ml_dev_queue_pair_setup(struct rte_ml_dev *dev, uint16_t queue_pair_id,
+				  const struct rte_ml_dev_qp_conf *qp_conf, int socket_id);
+int cn10k_ml_dev_queue_pair_release(struct rte_ml_dev *dev, uint16_t queue_pair_id);
+
+int cn10k_ml_dev_stats_get(struct rte_ml_dev *dev, struct rte_ml_dev_stats *stats);
+void cn10k_ml_dev_stats_reset(struct rte_ml_dev *dev);
+int cn10k_ml_dev_xstats_names_get(struct rte_ml_dev *dev, enum rte_ml_dev_xstats_mode mode,
+				  int32_t model_id, struct rte_ml_dev_xstats_map *xstats_map,
+				  uint32_t size);
+int cn10k_ml_dev_xstats_by_name_get(struct rte_ml_dev *dev, const char *name, uint16_t *stat_id,
+				    uint64_t *value);
+int cn10k_ml_dev_xstats_get(struct rte_ml_dev *dev, enum rte_ml_dev_xstats_mode mode,
+			    int32_t model_id, const uint16_t stat_ids[], uint64_t values[],
+			    uint16_t nb_ids);
+int cn10k_ml_dev_xstats_reset(struct rte_ml_dev *dev, enum rte_ml_dev_xstats_mode mode,
+			      int32_t model_id, const uint16_t stat_ids[], uint16_t nb_ids);
 
 /* Slow-path ops */
 int cn10k_ml_model_load(struct rte_ml_dev *dev, struct rte_ml_model_params *params,
@@ -294,6 +316,16 @@ int cn10k_ml_model_load(struct rte_ml_dev *dev, struct rte_ml_model_params *para
 int cn10k_ml_model_unload(struct rte_ml_dev *dev, uint16_t model_id);
 int cn10k_ml_model_start(struct rte_ml_dev *dev, uint16_t model_id);
 int cn10k_ml_model_stop(struct rte_ml_dev *dev, uint16_t model_id);
+int cn10k_ml_model_info_get(struct rte_ml_dev *dev, uint16_t model_id,
+			    struct rte_ml_model_info *model_info);
+int cn10k_ml_model_params_update(struct rte_ml_dev *dev, uint16_t model_id, void *buffer);
+
+/* I/O ops */
+int cn10k_ml_io_quantize(struct rte_ml_dev *dev, uint16_t model_id,
+			 struct rte_ml_buff_seg **dbuffer, struct rte_ml_buff_seg **qbuffer);
+
+int cn10k_ml_io_dequantize(struct rte_ml_dev *dev, uint16_t model_id,
+			   struct rte_ml_buff_seg **qbuffer, struct rte_ml_buff_seg **dbuffer);
 
 /* Fast-path ops */
 __rte_hot uint16_t cn10k_ml_enqueue_burst(struct rte_ml_dev *dev, uint16_t qp_id,

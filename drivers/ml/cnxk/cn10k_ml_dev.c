@@ -345,7 +345,7 @@ cn10k_ml_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_de
 			goto pmd_destroy;
 		}
 
-		dev->dev_ops = &cn10k_ml_ops;
+		dev->dev_ops = &cnxk_ml_ops;
 	} else {
 		plt_err("CN10K ML Ops are not supported on secondary process");
 		dev->dev_ops = &ml_dev_dummy_ops;

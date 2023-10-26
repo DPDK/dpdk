@@ -60,4 +60,6 @@ struct cnxk_ml_qp {
 	struct rte_ml_dev_stats stats;
 };
 
+extern struct rte_ml_dev_ops cnxk_ml_ops;
+
 #endif /* _CNXK_ML_OPS_H_ */
