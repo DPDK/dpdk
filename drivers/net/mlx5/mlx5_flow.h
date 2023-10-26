@@ -2162,7 +2162,6 @@ struct mlx5_flow_driver_ops {
 struct mlx5_flow_workspace *mlx5_flow_push_thread_workspace(void);
 void mlx5_flow_pop_thread_workspace(void);
 struct mlx5_flow_workspace *mlx5_flow_get_thread_workspace(void);
-void mlx5_flow_workspace_gc_release(void);
 
 __extension__
 struct flow_grp_info {

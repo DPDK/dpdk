@@ -417,6 +417,12 @@ mlx5_flow_os_set_specific_workspace(struct mlx5_flow_workspace *data)
 	return err;
 }
 
+void
+mlx5_flow_os_workspace_gc_add(struct mlx5_flow_workspace *ws)
+{
+	RTE_SET_USED(ws);
+}
+
 int
 mlx5_flow_os_validate_item_esp(const struct rte_flow_item *item,
 			    uint64_t item_flags,

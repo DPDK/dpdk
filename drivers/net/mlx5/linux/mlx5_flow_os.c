@@ -8,6 +8,10 @@
 
 /* Key of thread specific flow workspace data. */
 static rte_thread_key key_workspace;
+/* Flow workspace global list head for garbage collector. */
+static struct mlx5_flow_workspace *gc_head;
+/* Spinlock for operating flow workspace list. */
+static rte_spinlock_t mlx5_flow_workspace_lock = RTE_SPINLOCK_INITIALIZER;
 
 int
 mlx5_flow_os_validate_item_esp(const struct rte_flow_item *item,
@@ -48,6 +52,26 @@ mlx5_flow_os_validate_item_esp(const struct rte_flow_item *item,
 	return 0;
 }
 
+void
+mlx5_flow_os_workspace_gc_add(struct mlx5_flow_workspace *ws)
+{
+	rte_spinlock_lock(&mlx5_flow_workspace_lock);
+	ws->gc = gc_head;
+	gc_head = ws;
+	rte_spinlock_unlock(&mlx5_flow_workspace_lock);
+}
+
+static void
+mlx5_flow_os_workspace_gc_release(void)
+{
+	while (gc_head) {
+		struct mlx5_flow_workspace *wks = gc_head;
+
+		gc_head = wks->gc;
+		flow_release_workspace(wks);
+	}
+}
+
 int
 mlx5_flow_os_init_workspace_once(void)
 {
@@ -75,4 +99,5 @@ void
 mlx5_flow_os_release_workspace(void)
 {
 	rte_thread_key_delete(key_workspace);
+	mlx5_flow_os_workspace_gc_release();
 }
