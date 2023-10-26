@@ -10,6 +10,9 @@
 
 #include <roc_api.h>
 
+struct cnxk_ml_dev;
+struct cnxk_ml_qp;
+
 /* Firmware version string length */
 #define MLDEV_FIRMWARE_VERSION_LENGTH 32
 
@@ -286,11 +289,11 @@ struct cn10k_ml_req {
 };
 
 /* Device ops */
-int cn10k_ml_dev_info_get(struct rte_ml_dev *dev, struct rte_ml_dev_info *dev_info);
-int cn10k_ml_dev_configure(struct rte_ml_dev *dev, const struct rte_ml_dev_config *conf);
-int cn10k_ml_dev_close(struct rte_ml_dev *dev);
-int cn10k_ml_dev_start(struct rte_ml_dev *dev);
-int cn10k_ml_dev_stop(struct rte_ml_dev *dev);
+int cn10k_ml_dev_info_get(struct cnxk_ml_dev *cnxk_mldev, struct rte_ml_dev_info *dev_info);
+int cn10k_ml_dev_configure(struct cnxk_ml_dev *cnxk_mldev, const struct rte_ml_dev_config *conf);
+int cn10k_ml_dev_close(struct cnxk_ml_dev *cnxk_mldev);
+int cn10k_ml_dev_start(struct cnxk_ml_dev *cnxk_mldev);
+int cn10k_ml_dev_stop(struct cnxk_ml_dev *cnxk_mldev);
 int cn10k_ml_dev_dump(struct rte_ml_dev *dev, FILE *fp);
 int cn10k_ml_dev_selftest(struct rte_ml_dev *dev);
 int cn10k_ml_dev_queue_pair_setup(struct rte_ml_dev *dev, uint16_t queue_pair_id,
@@ -335,5 +338,8 @@ __rte_hot uint16_t cn10k_ml_dequeue_burst(struct rte_ml_dev *dev, uint16_t qp_id
 __rte_hot int cn10k_ml_op_error_get(struct rte_ml_dev *dev, struct rte_ml_op *op,
 				    struct rte_ml_op_error *error);
 __rte_hot int cn10k_ml_inference_sync(struct rte_ml_dev *dev, struct rte_ml_op *op);
+
+/* Temporarily set below functions as non-static */
+int cnxk_ml_qp_destroy(const struct rte_ml_dev *dev, struct cnxk_ml_qp *qp);
 
 #endif /* _CN10K_ML_OPS_H_ */

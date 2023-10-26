@@ -53,6 +53,9 @@ struct cnxk_ml_dev {
 
 	/* CN10K device structure */
 	struct cn10k_ml_dev cn10k_mldev;
+
+	/* Maximum number of layers */
+	uint64_t max_nb_layers;
 };
 
 #endif /* _CNXK_ML_DEV_H_ */
