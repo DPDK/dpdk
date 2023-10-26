@@ -309,6 +309,12 @@ cn10k_ml_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_de
 
 	PLT_SET_USED(pci_drv);
 
+	if (cnxk_ml_dev_initialized == 1) {
+		plt_err("ML CNXK device already initialized!");
+		plt_err("Cannot initialize CN10K PCI dev");
+		return -EINVAL;
+	}
+
 	init_params = (struct rte_ml_dev_pmd_init_params){
 		.socket_id = rte_socket_id(), .private_data_size = sizeof(struct cnxk_ml_dev)};
 
@@ -355,6 +361,8 @@ cn10k_ml_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_de
 	dev->dequeue_burst = NULL;
 	dev->op_error_get = NULL;
 
+	cnxk_ml_dev_initialized = 1;
+	cnxk_mldev->type = CNXK_ML_DEV_TYPE_PCI;
 	cnxk_mldev->state = ML_CNXK_DEV_STATE_PROBED;
 
 	return 0;

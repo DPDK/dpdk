@@ -9,6 +9,10 @@
 
 #include "cn10k_ml_dev.h"
 
+#ifdef RTE_MLDEV_CNXK_ENABLE_MVTVM
+#include "mvtvm_ml_dev.h"
+#endif
+
 #include "cnxk_ml_xstats.h"
 
 /* ML command timeout in seconds */
@@ -32,6 +36,15 @@ enum cnxk_ml_error_etype {
 struct cnxk_ml_error_db {
 	uint64_t code;
 	char str[RTE_ML_STR_MAX];
+};
+
+/* Device type */
+enum cnxk_ml_dev_type {
+	/* PCI based Marvell's ML HW accelerator device */
+	CNXK_ML_DEV_TYPE_PCI,
+
+	/* Generic Virtual device */
+	CNXK_ML_DEV_TYPE_VDEV,
 };
 
 /* Device configuration state enum */
@@ -66,6 +79,9 @@ struct cnxk_ml_dev {
 	/* RTE device */
 	struct rte_ml_dev *mldev;
 
+	/* Device type */
+	enum cnxk_ml_dev_type type;
+
 	/* Configuration state */
 	enum cnxk_ml_dev_state state;
 
@@ -86,6 +102,11 @@ struct cnxk_ml_dev {
 
 	/* CN10K device structure */
 	struct cn10k_ml_dev cn10k_mldev;
+
+#ifdef RTE_MLDEV_CNXK_ENABLE_MVTVM
+	/* MVTVM device structure */
+	struct mvtvm_ml_dev mvtvm_mldev;
+#endif
 
 	/* Maximum number of layers */
 	uint64_t max_nb_layers;

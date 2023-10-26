@@ -117,7 +117,8 @@ cnxk_ml_qp_create(const struct rte_ml_dev *dev, uint16_t qp_id, uint32_t nb_desc
 	qp->stats.enqueue_err_count = 0;
 	qp->stats.dequeue_err_count = 0;
 
-	cn10k_ml_qp_initialize(cnxk_mldev, qp);
+	if (cnxk_mldev->type == CNXK_ML_DEV_TYPE_PCI)
+		cn10k_ml_qp_initialize(cnxk_mldev, qp);
 
 	return qp;
 
@@ -480,7 +481,12 @@ cnxk_ml_dev_info_get(struct rte_ml_dev *dev, struct rte_ml_dev_info *dev_info)
 	dev_info->driver_name = dev->device->driver->name;
 	dev_info->max_models = ML_CNXK_MAX_MODELS;
 
-	return cn10k_ml_dev_info_get(cnxk_mldev, dev_info);
+	if (cnxk_mldev->type == CNXK_ML_DEV_TYPE_PCI)
+		return cn10k_ml_dev_info_get(cnxk_mldev, dev_info);
+	else
+		return mvtvm_ml_dev_info_get(cnxk_mldev, dev_info);
+
+	return 0;
 }
 
 static int
@@ -518,9 +524,11 @@ cnxk_ml_dev_configure(struct rte_ml_dev *dev, const struct rte_ml_dev_config *co
 			   conf->nb_queue_pairs, conf->nb_models);
 
 		/* Load firmware */
-		ret = cn10k_ml_fw_load(cnxk_mldev);
-		if (ret != 0)
-			return ret;
+		if (cnxk_mldev->type == CNXK_ML_DEV_TYPE_PCI) {
+			ret = cn10k_ml_fw_load(cnxk_mldev);
+			if (ret != 0)
+				return ret;
+		}
 	} else if (cnxk_mldev->state == ML_CNXK_DEV_STATE_CONFIGURED) {
 		plt_ml_dbg("Re-configuring ML device, nb_queue_pairs = %u, nb_models = %u",
 			   conf->nb_queue_pairs, conf->nb_models);
@@ -618,10 +626,12 @@ cnxk_ml_dev_configure(struct rte_ml_dev *dev, const struct rte_ml_dev_config *co
 	}
 	dev->data->nb_models = conf->nb_models;
 
-	ret = cn10k_ml_dev_configure(cnxk_mldev, conf);
-	if (ret != 0) {
-		plt_err("Failed to configure CN10K ML Device");
-		goto error;
+	if (cnxk_mldev->type == CNXK_ML_DEV_TYPE_PCI) {
+		ret = cn10k_ml_dev_configure(cnxk_mldev, conf);
+		if (ret != 0) {
+			plt_err("Failed to configure CN10K ML Device");
+			goto error;
+		}
 	}
 
 	ret = mvtvm_ml_dev_configure(cnxk_mldev, conf);
@@ -629,12 +639,17 @@ cnxk_ml_dev_configure(struct rte_ml_dev *dev, const struct rte_ml_dev_config *co
 		goto error;
 
 	/* Set device capabilities */
-	cnxk_mldev->max_nb_layers =
-		cnxk_mldev->cn10k_mldev.fw.req->cn10k_req.jd.fw_load.cap.s.max_models;
+	if (cnxk_mldev->type == CNXK_ML_DEV_TYPE_PCI)
+		cnxk_mldev->max_nb_layers =
+			cnxk_mldev->cn10k_mldev.fw.req->cn10k_req.jd.fw_load.cap.s.max_models;
+	else
+		cnxk_mldev->max_nb_layers = ML_CNXK_MAX_MODELS;
 
 	cnxk_mldev->mldev->enqueue_burst = cnxk_ml_enqueue_burst;
 	cnxk_mldev->mldev->dequeue_burst = cnxk_ml_dequeue_burst;
-	cnxk_mldev->mldev->op_error_get = cn10k_ml_op_error_get;
+
+	if (cnxk_mldev->type == CNXK_ML_DEV_TYPE_PCI)
+		cnxk_mldev->mldev->op_error_get = cn10k_ml_op_error_get;
 
 	/* Allocate and initialize index_map */
 	if (cnxk_mldev->index_map == NULL) {
@@ -695,8 +710,10 @@ cnxk_ml_dev_close(struct rte_ml_dev *dev)
 	if (mvtvm_ml_dev_close(cnxk_mldev) != 0)
 		plt_err("Failed to close MVTVM ML Device");
 
-	if (cn10k_ml_dev_close(cnxk_mldev) != 0)
-		plt_err("Failed to close CN10K ML Device");
+	if (cnxk_mldev->type == CNXK_ML_DEV_TYPE_PCI) {
+		if (cn10k_ml_dev_close(cnxk_mldev) != 0)
+			plt_err("Failed to close CN10K ML Device");
+	}
 
 	if (cnxk_mldev->index_map)
 		rte_free(cnxk_mldev->index_map);
@@ -748,10 +765,12 @@ cnxk_ml_dev_start(struct rte_ml_dev *dev)
 
 	cnxk_mldev = dev->data->dev_private;
 
-	ret = cn10k_ml_dev_start(cnxk_mldev);
-	if (ret != 0) {
-		plt_err("Failed to start CN10K ML Device");
-		return ret;
+	if (cnxk_mldev->type == CNXK_ML_DEV_TYPE_PCI) {
+		ret = cn10k_ml_dev_start(cnxk_mldev);
+		if (ret != 0) {
+			plt_err("Failed to start CN10K ML Device");
+			return ret;
+		}
 	}
 
 	cnxk_mldev->state = ML_CNXK_DEV_STATE_STARTED;
@@ -770,10 +789,12 @@ cnxk_ml_dev_stop(struct rte_ml_dev *dev)
 
 	cnxk_mldev = dev->data->dev_private;
 
-	ret = cn10k_ml_dev_stop(cnxk_mldev);
-	if (ret != 0) {
-		plt_err("Failed to stop CN10K ML Device");
-		return ret;
+	if (cnxk_mldev->type == CNXK_ML_DEV_TYPE_PCI) {
+		ret = cn10k_ml_dev_stop(cnxk_mldev);
+		if (ret != 0) {
+			plt_err("Failed to stop CN10K ML Device");
+			return ret;
+		}
 	}
 
 	cnxk_mldev->state = ML_CNXK_DEV_STATE_CONFIGURED;
@@ -800,7 +821,12 @@ cnxk_ml_dev_dump(struct rte_ml_dev *dev, FILE *fp)
 			cnxk_ml_model_dump(cnxk_mldev, model, fp);
 	}
 
-	return cn10k_ml_dev_dump(cnxk_mldev, fp);
+	if (cnxk_mldev->type == CNXK_ML_DEV_TYPE_PCI)
+		return cn10k_ml_dev_dump(cnxk_mldev, fp);
+	else
+		return mvtvm_ml_dev_dump(cnxk_mldev, fp);
+
+	return 0;
 }
 
 static int
@@ -812,6 +838,9 @@ cnxk_ml_dev_selftest(struct rte_ml_dev *dev)
 		return -EINVAL;
 
 	cnxk_mldev = dev->data->dev_private;
+
+	if (cnxk_mldev->type == CNXK_ML_DEV_TYPE_VDEV)
+		return -ENOTSUP;
 
 	return cn10k_ml_dev_selftest(cnxk_mldev);
 }
@@ -1145,6 +1174,11 @@ cnxk_ml_model_load(struct rte_ml_dev *dev, struct rte_ml_model_params *params, u
 		return -EINVAL;
 	}
 
+	if (cnxk_mldev->type == CNXK_ML_DEV_TYPE_VDEV && type != ML_CNXK_MODEL_TYPE_TVM) {
+		plt_err("Unsupported model type");
+		return -ENOTSUP;
+	}
+
 	/* Find model ID */
 	found = false;
 	for (lcl_model_id = 0; lcl_model_id < dev->data->nb_models; lcl_model_id++) {
@@ -1384,6 +1418,8 @@ cnxk_ml_model_params_update(struct rte_ml_dev *dev, uint16_t model_id, void *buf
 		return -EINVAL;
 
 	cnxk_mldev = dev->data->dev_private;
+	if (cnxk_mldev->type == CNXK_ML_DEV_TYPE_VDEV)
+		return -ENOTSUP;
 
 	model = dev->data->models[model_id];
 	if (model == NULL) {

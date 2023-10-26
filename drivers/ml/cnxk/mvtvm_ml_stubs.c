@@ -68,6 +68,15 @@ mvtvm_ml_model_xstat_get(struct cnxk_ml_dev *cnxk_mldev, struct cnxk_ml_model *m
 }
 
 int
+mvtvm_ml_dev_info_get(struct cnxk_ml_dev *cnxk_mldev, struct rte_ml_dev_info *dev_info)
+{
+	RTE_SET_USED(cnxk_mldev);
+	RTE_SET_USED(dev_info);
+
+	return -ENOTSUP;
+}
+
+int
 mvtvm_ml_dev_configure(struct cnxk_ml_dev *cnxk_mldev, const struct rte_ml_dev_config *conf)
 {
 	RTE_SET_USED(cnxk_mldev);
@@ -82,6 +91,15 @@ mvtvm_ml_dev_close(struct cnxk_ml_dev *cnxk_mldev)
 	RTE_SET_USED(cnxk_mldev);
 
 	return 0;
+}
+
+int
+mvtvm_ml_dev_dump(struct cnxk_ml_dev *cnxk_mldev, FILE *fp)
+{
+	RTE_SET_USED(cnxk_mldev);
+	RTE_SET_USED(fp);
+
+	return -EINVAL;
 }
 
 int

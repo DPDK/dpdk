@@ -11,6 +11,9 @@
 
 #include "cnxk_ml_io.h"
 
+/* Device status */
+extern int cnxk_ml_dev_initialized;
+
 /* Dummy Device ops */
 extern struct rte_ml_dev_ops ml_dev_dummy_ops;
 

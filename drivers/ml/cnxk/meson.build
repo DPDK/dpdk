@@ -62,6 +62,7 @@ if enable_mvtvm
 dpdk_conf.set('RTE_MLDEV_CNXK_ENABLE_MVTVM', 1)
 
 sources += files(
+        'mvtvm_ml_dev.c',
         'mvtvm_ml_ops.c',
         'mvtvm_ml_model.c',
 )

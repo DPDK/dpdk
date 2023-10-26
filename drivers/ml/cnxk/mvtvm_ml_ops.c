@@ -98,6 +98,22 @@ mvtvm_ml_model_xstat_get(struct cnxk_ml_dev *cnxk_mldev, struct cnxk_ml_model *m
 }
 
 int
+mvtvm_ml_dev_info_get(struct cnxk_ml_dev *cnxk_mldev, struct rte_ml_dev_info *dev_info)
+{
+	struct mvtvm_ml_dev *mvtvm_mldev;
+
+	mvtvm_mldev = &cnxk_mldev->mvtvm_mldev;
+
+	dev_info->max_queue_pairs = mvtvm_mldev->max_nb_qpairs;
+	dev_info->max_desc = ML_MVTVM_MAX_DESC_PER_QP;
+	dev_info->max_io = ML_MVTVM_MAX_INPUT_OUTPUT;
+	dev_info->max_segments = ML_MVTVM_MAX_SEGMENTS;
+	dev_info->align_size = RTE_CACHE_LINE_SIZE;
+
+	return 0;
+}
+
+int
 mvtvm_ml_dev_configure(struct cnxk_ml_dev *cnxk_mldev, const struct rte_ml_dev_config *conf)
 {
 	int ret;
@@ -125,6 +141,15 @@ mvtvm_ml_dev_close(struct cnxk_ml_dev *cnxk_mldev)
 		plt_err("TVMDP close failed, error = %d\n", ret);
 
 	return ret;
+}
+
+int
+mvtvm_ml_dev_dump(struct cnxk_ml_dev *cnxk_mldev, FILE *fp)
+{
+	RTE_SET_USED(cnxk_mldev);
+	RTE_SET_USED(fp);
+
+	return 0;
 }
 
 int
@@ -236,6 +261,12 @@ mvtvm_ml_model_load(struct cnxk_ml_dev *cnxk_mldev, struct rte_ml_model_params *
 		model->subtype = ML_CNXK_MODEL_SUBTYPE_TVM_LLVM;
 	else
 		model->subtype = ML_CNXK_MODEL_SUBTYPE_TVM_HYBRID;
+
+	if (cnxk_mldev->type == CNXK_ML_DEV_TYPE_VDEV &&
+	    model->subtype != ML_CNXK_MODEL_SUBTYPE_TVM_LLVM) {
+		plt_err("Unsupported model sub-type");
+		return -ENOTSUP;
+	}
 
 	/* Set callback function array */
 	if (model->subtype != ML_CNXK_MODEL_SUBTYPE_TVM_LLVM) {

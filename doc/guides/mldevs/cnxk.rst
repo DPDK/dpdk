@@ -215,6 +215,24 @@ Bind the ML PF device to the vfio_pci driver:
    usertools/dpdk-devbind.py -b vfio-pci 0000:00:10.0
 
 
+VDEV support
+------------
+
+On platforms which don't support ML hardware acceleration through PCI device,
+the Marvell ML CNXK PMD can execute inference operations on a vdev
+with the ML models compiled using Apache TVM framework.
+
+VDEV can be enabled by passing the EAL arguments
+
+.. code-block:: console
+
+   --vdev ml_mvtvm
+
+VDEV can also be used on platforms with ML HW accelerator.
+However to use vdev in this case, the PCI device has to be unbound.
+When PCI device is bound, creation of vdev is skipped.
+
+
 Runtime Config Options
 ----------------------
 
@@ -223,6 +241,8 @@ Runtime Config Options
   Path to the firmware binary to be loaded during device configuration.
   The parameter ``fw_path`` can be used by the user
   to load ML firmware from a custom path.
+
+  This option is supported only on PCI HW accelerator.
 
   For example::
 
@@ -238,6 +258,8 @@ Runtime Config Options
   by ML inference engine.
   When enabled, firmware would mask the DPE non-fatal hardware errors as warnings.
   The parameter ``enable_dpe_warnings`` is used fo this configuration.
+
+  This option is supported only on PCI HW accelerator.
 
   For example::
 
@@ -255,11 +277,19 @@ Runtime Config Options
   Caching of model data improves the inferencing throughput / latency for the model.
   The parameter ``cache_model_data`` is used to enable data caching.
 
+  This option is supported on PCI HW accelerator and vdev.
+
   For example::
 
      -a 0000:00:10.0,cache_model_data=0
 
-  With the above configuration, model data caching is disabled.
+  With the above configuration, model data caching is disabled on HW accelerator.
+
+  For example::
+
+     --vdev ml_mvtvm,cache_model_data=0
+
+  With the above configuration, model data caching is disabled on vdev.
 
 
 **OCM allocation mode** (default ``lowest``)
@@ -274,6 +304,8 @@ Runtime Config Options
     Search for the free slot is done starting from the lowest tile ID and lowest page ID.
   ``largest``
     Allocate OCM for the model from the slot with largest amount of free space.
+
+  This option is supported only on PCI HW accelerator.
 
   For example::
 
@@ -291,6 +323,8 @@ Runtime Config Options
 
   Supported page sizes by the driver are 1 KB, 2 KB, 4 KB, 8 KB and 16 KB.
   Default page size is 16 KB.
+
+  This option is supported only on PCI HW accelerator.
 
   For example::
 
@@ -316,12 +350,27 @@ Runtime Config Options
     Enabling spinlock version would disable restrictions on the number of queue-pairs
     that can be supported by the driver.
 
+  This option is supported only on PCI HW accelerator.
+
   For example::
 
      -a 0000:00:10.0,hw_queue_lock=1
 
   With the above configuration, spinlock version of hardware enqueue function is used
   in the fast path enqueue burst operation.
+
+**Maximum queue pairs** (default ``1``)
+
+  VDEV supports additional EAL arguments to configure the maximum number
+  of queue-pairs on the ML device through the option ``max_qps``.
+
+  This option is supported only on vdev.
+
+  For example::
+
+     --vdev ml_mvtvm,max_qps=4
+
+  With the above configuration, 4 queue-pairs are created on the vdev.
 
 
 Debugging Options
