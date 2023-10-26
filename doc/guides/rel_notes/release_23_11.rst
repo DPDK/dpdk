@@ -125,6 +125,7 @@ New Features
 * **Updated Amazon ena (Elastic Network Adapter) net driver.**
 
   * Upgraded ENA HAL to latest version.
+  * Added support for connection tracking allowance utilization metric.
 
 * **Added a new vDPA PMD for Corigine NFP devices.**
 

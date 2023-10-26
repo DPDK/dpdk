@@ -12,9 +12,9 @@
 #include <ethdev_pci.h>
 #include <rte_cycles.h>
 #include <rte_pci.h>
-#include <bus_pci_driver.h>
+#include <rte_bus_pci.h>
 #include <rte_timer.h>
-#include <dev_driver.h>
+#include <rte_dev.h>
 #include <rte_net.h>
 
 #include "ena_com.h"
@@ -53,6 +53,12 @@
  */
 #define ENA_REFILL_THRESH_DIVIDER      8
 #define ENA_REFILL_THRESH_PACKET       256
+
+/*
+ * The max customer metrics is equal or bigger than the ENI metrics. That
+ * assumption simplifies the fallback to the legacy metrics mechanism.
+ */
+#define ENA_MAX_CUSTOMER_METRICS	6
 
 #define ENA_IDX_NEXT_MASKED(idx, mask) (((idx) + 1) & (mask))
 #define ENA_IDX_ADD_MASKED(idx, n, mask) (((idx) + (n)) & (mask))
@@ -215,7 +221,7 @@ struct ena_stats_dev {
 	u64 tx_drops;
 };
 
-struct ena_stats_eni {
+struct ena_stats_metrics {
 	/*
 	 * The number of packets shaped due to inbound aggregate BW
 	 * allowance being exceeded
@@ -239,6 +245,10 @@ struct ena_stats_eni {
 	 * allowance being exceeded
 	 */
 	uint64_t linklocal_allowance_exceeded;
+	 /*
+	  * The number of available connections
+	  */
+	uint64_t conntrack_allowance_available;
 };
 
 struct ena_offloads {
@@ -293,7 +303,6 @@ struct ena_adapter {
 	uint64_t keep_alive_timeout;
 
 	struct ena_stats_dev dev_stats;
-	struct ena_stats_eni eni_stats;
 	struct ena_admin_basic_stats basic_stats;
 
 	u32 indirect_table[ENA_RX_RSS_TABLE_SIZE];
@@ -312,6 +321,13 @@ struct ena_adapter {
 	uint64_t tx_cleanup_stall_delay;
 
 	uint64_t memzone_cnt;
+
+	/*
+	 * Helper variables for holding the information about the supported
+	 * metrics.
+	 */
+	uint64_t metrics_stats[ENA_MAX_CUSTOMER_METRICS] __rte_cache_aligned;
+	uint16_t metrics_num;
 };
 
 int ena_mp_indirect_table_set(struct ena_adapter *adapter);

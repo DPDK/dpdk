@@ -60,8 +60,8 @@ struct ena_stats {
 #define ENA_STAT_TX_ENTRY(stat) \
 	ENA_STAT_ENTRY(stat, tx)
 
-#define ENA_STAT_ENI_ENTRY(stat) \
-	ENA_STAT_ENTRY(stat, eni)
+#define ENA_STAT_METRICS_ENTRY(stat) \
+	ENA_STAT_ENTRY(stat, metrics)
 
 #define ENA_STAT_GLOBAL_ENTRY(stat) \
 	ENA_STAT_ENTRY(stat, dev)
@@ -92,12 +92,17 @@ static const struct ena_stats ena_stats_global_strings[] = {
 	ENA_STAT_GLOBAL_ENTRY(tx_drops),
 };
 
-static const struct ena_stats ena_stats_eni_strings[] = {
-	ENA_STAT_ENI_ENTRY(bw_in_allowance_exceeded),
-	ENA_STAT_ENI_ENTRY(bw_out_allowance_exceeded),
-	ENA_STAT_ENI_ENTRY(pps_allowance_exceeded),
-	ENA_STAT_ENI_ENTRY(conntrack_allowance_exceeded),
-	ENA_STAT_ENI_ENTRY(linklocal_allowance_exceeded),
+/*
+ * The legacy metrics (also known as eni stats) consisted of 5 stats, while the reworked
+ * metrics (also known as customer metrics) support an additional stat.
+ */
+static struct ena_stats ena_stats_metrics_strings[] = {
+	ENA_STAT_METRICS_ENTRY(bw_in_allowance_exceeded),
+	ENA_STAT_METRICS_ENTRY(bw_out_allowance_exceeded),
+	ENA_STAT_METRICS_ENTRY(pps_allowance_exceeded),
+	ENA_STAT_METRICS_ENTRY(conntrack_allowance_exceeded),
+	ENA_STAT_METRICS_ENTRY(linklocal_allowance_exceeded),
+	ENA_STAT_METRICS_ENTRY(conntrack_allowance_available),
 };
 
 static const struct ena_stats ena_stats_tx_strings[] = {
@@ -124,7 +129,8 @@ static const struct ena_stats ena_stats_rx_strings[] = {
 };
 
 #define ENA_STATS_ARRAY_GLOBAL	ARRAY_SIZE(ena_stats_global_strings)
-#define ENA_STATS_ARRAY_ENI	ARRAY_SIZE(ena_stats_eni_strings)
+#define ENA_STATS_ARRAY_METRICS	ARRAY_SIZE(ena_stats_metrics_strings)
+#define ENA_STATS_ARRAY_METRICS_LEGACY	(ENA_STATS_ARRAY_METRICS - 1)
 #define ENA_STATS_ARRAY_TX	ARRAY_SIZE(ena_stats_tx_strings)
 #define ENA_STATS_ARRAY_RX	ARRAY_SIZE(ena_stats_rx_strings)
 
@@ -262,8 +268,9 @@ static int ena_process_bool_devarg(const char *key,
 				   void *opaque);
 static int ena_parse_devargs(struct ena_adapter *adapter,
 			     struct rte_devargs *devargs);
-static int ena_copy_eni_stats(struct ena_adapter *adapter,
-			      struct ena_stats_eni *stats);
+static void ena_copy_customer_metrics(struct ena_adapter *adapter,
+					uint64_t *buf,
+					size_t buf_size);
 static int ena_setup_rx_intr(struct rte_eth_dev *dev);
 static int ena_rx_queue_intr_enable(struct rte_eth_dev *dev,
 				    uint16_t queue_id);
@@ -314,7 +321,8 @@ enum ena_mp_req {
 	ENA_MP_ENI_STATS_GET,
 	ENA_MP_MTU_SET,
 	ENA_MP_IND_TBL_GET,
-	ENA_MP_IND_TBL_SET
+	ENA_MP_IND_TBL_SET,
+	ENA_MP_CUSTOMER_METRICS_GET,
 };
 
 /** Proxy message body. Shared between requests and responses. */
@@ -507,8 +515,8 @@ ENA_PROXY_DESC(ena_com_get_eni_stats, ENA_MP_ENI_STATS_GET,
 ({
 	ENA_TOUCH(rsp);
 	ENA_TOUCH(ena_dev);
-	if (stats != (struct ena_admin_eni_stats *)&adapter->eni_stats)
-		rte_memcpy(stats, &adapter->eni_stats, sizeof(*stats));
+	if (stats != (struct ena_admin_eni_stats *)&adapter->metrics_stats)
+		rte_memcpy(stats, &adapter->metrics_stats, sizeof(*stats));
 }),
 	struct ena_com_dev *ena_dev, struct ena_admin_eni_stats *stats);
 
@@ -554,6 +562,24 @@ ENA_PROXY_DESC(ena_com_indirect_table_get, ENA_MP_IND_TBL_GET,
 			   sizeof(adapter->indirect_table));
 }),
 	struct ena_com_dev *ena_dev, u32 *ind_tbl);
+
+ENA_PROXY_DESC(ena_com_get_customer_metrics, ENA_MP_CUSTOMER_METRICS_GET,
+({
+	ENA_TOUCH(adapter);
+	ENA_TOUCH(req);
+	ENA_TOUCH(ena_dev);
+	ENA_TOUCH(buf);
+	ENA_TOUCH(buf_size);
+}),
+({
+	ENA_TOUCH(rsp);
+	ENA_TOUCH(ena_dev);
+	ENA_TOUCH(buf_size);
+	if (buf != (char *)&adapter->metrics_stats)
+		rte_memcpy(buf, &adapter->metrics_stats, adapter->metrics_num * sizeof(uint64_t));
+}),
+	struct ena_com_dev *ena_dev, char *buf, size_t buf_size);
+
 
 static inline void ena_trigger_reset(struct ena_adapter *adapter,
 				     enum ena_regs_reset_reason_types reason)
@@ -756,7 +782,10 @@ err:
 /* This function calculates the number of xstats based on the current config */
 static unsigned int ena_xstats_calc_num(struct rte_eth_dev_data *data)
 {
-	return ENA_STATS_ARRAY_GLOBAL + ENA_STATS_ARRAY_ENI +
+	struct ena_adapter *adapter = data->dev_private;
+
+	return ENA_STATS_ARRAY_GLOBAL +
+		adapter->metrics_num +
 		(data->nb_tx_queues * ENA_STATS_ARRAY_TX) +
 		(data->nb_rx_queues * ENA_STATS_ARRAY_RX);
 }
@@ -1699,6 +1728,23 @@ static int ena_populate_rx_queue(struct ena_ring *rxq, unsigned int count)
 	return i;
 }
 
+static size_t ena_get_metrics_entries(struct ena_adapter *adapter)
+{
+	struct ena_com_dev *ena_dev = &adapter->ena_dev;
+	size_t metrics_num = 0;
+
+	if (ena_com_get_cap(ena_dev, ENA_ADMIN_CUSTOMER_METRICS))
+		metrics_num = ENA_STATS_ARRAY_METRICS;
+	else if (ena_com_get_cap(ena_dev, ENA_ADMIN_ENI_STATS))
+		metrics_num = ENA_STATS_ARRAY_METRICS_LEGACY;
+	PMD_DRV_LOG(NOTICE, "0x%x customer metrics are supported\n", (unsigned int)metrics_num);
+	if (metrics_num > ENA_MAX_CUSTOMER_METRICS) {
+		PMD_DRV_LOG(NOTICE, "Not enough space for the requested customer metrics\n");
+		metrics_num = ENA_MAX_CUSTOMER_METRICS;
+	}
+	return metrics_num;
+}
+
 static int ena_device_init(struct ena_adapter *adapter,
 			   struct rte_pci_device *pdev,
 			   struct ena_com_dev_get_features_ctx *get_feat_ctx)
@@ -1770,6 +1816,8 @@ static int ena_device_init(struct ena_adapter *adapter,
 	aenq_groups &= get_feat_ctx->aenq.supported_groups;
 
 	adapter->all_aenq_groups = aenq_groups;
+	/* The actual supported number of metrics is negotiated with the device at runtime */
+	adapter->metrics_num = ena_get_metrics_entries(adapter);
 
 	return 0;
 
@@ -2163,12 +2211,17 @@ static int eth_ena_dev_init(struct rte_eth_dev *eth_dev)
 		PMD_INIT_LOG(CRIT, "Failed to parse devargs\n");
 		goto err;
 	}
+	rc = ena_com_allocate_customer_metrics_buffer(ena_dev);
+	if (rc != 0) {
+		PMD_INIT_LOG(CRIT, "Failed to allocate customer metrics buffer\n");
+		goto err;
+	}
 
 	/* device specific initialization routine */
 	rc = ena_device_init(adapter, pci_dev, &get_feat_ctx);
 	if (rc) {
 		PMD_INIT_LOG(CRIT, "Failed to init ENA device\n");
-		goto err;
+		goto err_metrics_delete;
 	}
 
 	/* Check if device supports LSC */
@@ -2271,7 +2324,8 @@ err_delete_debug_area:
 err_device_destroy:
 	ena_com_delete_host_info(ena_dev);
 	ena_com_admin_destroy(ena_dev);
-
+err_metrics_delete:
+	ena_com_delete_customer_metrics_buffer(ena_dev);
 err:
 	return rc;
 }
@@ -2298,6 +2352,7 @@ static void ena_destroy_device(struct rte_eth_dev *eth_dev)
 	ena_com_wait_for_abort_completion(ena_dev);
 	ena_com_admin_destroy(ena_dev);
 	ena_com_mmio_reg_read_request_destroy(ena_dev);
+	ena_com_delete_customer_metrics_buffer(ena_dev);
 
 	adapter->state = ENA_ADAPTER_STATE_FREE;
 }
@@ -3151,29 +3206,47 @@ static uint16_t eth_ena_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	return sent_idx;
 }
 
-int ena_copy_eni_stats(struct ena_adapter *adapter, struct ena_stats_eni *stats)
+static void ena_copy_customer_metrics(struct ena_adapter *adapter, uint64_t *buf,
+					     size_t num_metrics)
 {
+	struct ena_com_dev *ena_dev = &adapter->ena_dev;
 	int rc;
 
-	rte_spinlock_lock(&adapter->admin_lock);
-	/* Retrieve and store the latest statistics from the AQ. This ensures
-	 * that previous value is returned in case of a com error.
-	 */
-	rc = ENA_PROXY(adapter, ena_com_get_eni_stats, &adapter->ena_dev,
-		(struct ena_admin_eni_stats *)stats);
-	rte_spinlock_unlock(&adapter->admin_lock);
-	if (rc != 0) {
-		if (rc == ENA_COM_UNSUPPORTED) {
-			PMD_DRV_LOG(DEBUG,
-				"Retrieving ENI metrics is not supported\n");
-		} else {
+	if (ena_com_get_cap(ena_dev, ENA_ADMIN_CUSTOMER_METRICS)) {
+		if (num_metrics != ENA_STATS_ARRAY_METRICS) {
+			PMD_DRV_LOG(ERR, "Detected discrepancy in the number of customer metrics");
+			return;
+		}
+		rte_spinlock_lock(&adapter->admin_lock);
+		rc = ENA_PROXY(adapter,
+					ena_com_get_customer_metrics,
+					&adapter->ena_dev,
+					(char *)buf,
+					num_metrics * sizeof(uint64_t));
+		rte_spinlock_unlock(&adapter->admin_lock);
+		if (rc != 0) {
+			PMD_DRV_LOG(WARNING, "Failed to get customer metrics, rc: %d\n", rc);
+			return;
+		}
+
+	} else if (ena_com_get_cap(ena_dev, ENA_ADMIN_ENI_STATS)) {
+		if (num_metrics != ENA_STATS_ARRAY_METRICS_LEGACY) {
+			PMD_DRV_LOG(ERR, "Detected discrepancy in the number of legacy metrics");
+			return;
+		}
+
+		rte_spinlock_lock(&adapter->admin_lock);
+		rc = ENA_PROXY(adapter,
+			       ena_com_get_eni_stats,
+			       &adapter->ena_dev,
+			       (struct ena_admin_eni_stats *)buf);
+		rte_spinlock_unlock(&adapter->admin_lock);
+		if (rc != 0) {
 			PMD_DRV_LOG(WARNING,
 				"Failed to get ENI metrics, rc: %d\n", rc);
+			return;
 		}
-		return rc;
 	}
-
-	return 0;
 }
 
 /**
@@ -3193,6 +3266,7 @@ static int ena_xstats_get_names(struct rte_eth_dev *dev,
 				struct rte_eth_xstat_name *xstats_names,
 				unsigned int n)
 {
+	struct ena_adapter *adapter = dev->data->dev_private;
 	unsigned int xstats_count = ena_xstats_calc_num(dev->data);
 	unsigned int stat, i, count = 0;
 
@@ -3203,9 +3277,10 @@ static int ena_xstats_get_names(struct rte_eth_dev *dev,
 		strcpy(xstats_names[count].name,
 			ena_stats_global_strings[stat].name);
 
-	for (stat = 0; stat < ENA_STATS_ARRAY_ENI; stat++, count++)
-		strcpy(xstats_names[count].name,
-			ena_stats_eni_strings[stat].name);
+	for (stat = 0; stat < adapter->metrics_num; stat++, count++)
+		rte_strscpy(xstats_names[count].name,
+			    ena_stats_metrics_strings[stat].name,
+			    RTE_ETH_XSTATS_NAME_SIZE);
 
 	for (stat = 0; stat < ENA_STATS_ARRAY_RX; stat++)
 		for (i = 0; i < dev->data->nb_rx_queues; i++, count++)
@@ -3245,6 +3320,7 @@ static int ena_xstats_get_names_by_id(struct rte_eth_dev *dev,
 				      struct rte_eth_xstat_name *xstats_names,
 				      unsigned int size)
 {
+	struct ena_adapter *adapter = dev->data->dev_private;
 	uint64_t xstats_count = ena_xstats_calc_num(dev->data);
 	uint64_t id, qid;
 	unsigned int i;
@@ -3268,13 +3344,14 @@ static int ena_xstats_get_names_by_id(struct rte_eth_dev *dev,
 		}
 
 		id -= ENA_STATS_ARRAY_GLOBAL;
-		if (id < ENA_STATS_ARRAY_ENI) {
-			strcpy(xstats_names[i].name,
-			       ena_stats_eni_strings[id].name);
+		if (id < adapter->metrics_num) {
+			rte_strscpy(xstats_names[i].name,
+				    ena_stats_metrics_strings[id].name,
+				    RTE_ETH_XSTATS_NAME_SIZE);
 			continue;
 		}
 
-		id -= ENA_STATS_ARRAY_ENI;
+		id -= adapter->metrics_num;
 		if (id < ENA_STATS_ARRAY_RX) {
 			qid = id / dev->data->nb_rx_queues;
 			id %= dev->data->nb_rx_queues;
@@ -3322,10 +3399,10 @@ static int ena_xstats_get(struct rte_eth_dev *dev,
 {
 	struct ena_adapter *adapter = dev->data->dev_private;
 	unsigned int xstats_count = ena_xstats_calc_num(dev->data);
-	struct ena_stats_eni eni_stats;
 	unsigned int stat, i, count = 0;
 	int stat_offset;
 	void *stats_begin;
+	uint64_t metrics_stats[ENA_MAX_CUSTOMER_METRICS];
 
 	if (n < xstats_count)
 		return xstats_count;
@@ -3342,13 +3419,10 @@ static int ena_xstats_get(struct rte_eth_dev *dev,
 			((char *)stats_begin + stat_offset));
 	}
 
-	/* Even if the function below fails, we should copy previous (or initial
-	 * values) to keep structure of rte_eth_xstat consistent.
-	 */
-	ena_copy_eni_stats(adapter, &eni_stats);
-	for (stat = 0; stat < ENA_STATS_ARRAY_ENI; stat++, count++) {
-		stat_offset = ena_stats_eni_strings[stat].stat_offset;
-		stats_begin = &eni_stats;
+	ena_copy_customer_metrics(adapter, metrics_stats, adapter->metrics_num);
+	stats_begin = metrics_stats;
+	for (stat = 0; stat < adapter->metrics_num; stat++, count++) {
+		stat_offset = ena_stats_metrics_strings[stat].stat_offset;
 
 		xstats[count].id = count;
 		xstats[count].value = *((uint64_t *)
@@ -3386,13 +3460,13 @@ static int ena_xstats_get_by_id(struct rte_eth_dev *dev,
 				unsigned int n)
 {
 	struct ena_adapter *adapter = dev->data->dev_private;
-	struct ena_stats_eni eni_stats;
 	uint64_t id;
 	uint64_t rx_entries, tx_entries;
 	unsigned int i;
 	int qid;
 	int valid = 0;
-	bool was_eni_copied = false;
+	bool were_metrics_copied = false;
+	uint64_t metrics_stats[ENA_MAX_CUSTOMER_METRICS];
 
 	for (i = 0; i < n; ++i) {
 		id = ids[i];
@@ -3405,22 +3479,25 @@ static int ena_xstats_get_by_id(struct rte_eth_dev *dev,
 
 		/* Check if id belongs to ENI statistics */
 		id -= ENA_STATS_ARRAY_GLOBAL;
-		if (id < ENA_STATS_ARRAY_ENI) {
-			/* Avoid reading ENI stats multiple times in a single
+		if (id < adapter->metrics_num) {
+			/* Avoid reading metrics multiple times in a single
 			 * function call, as it requires communication with the
 			 * admin queue.
 			 */
-			if (!was_eni_copied) {
-				was_eni_copied = true;
-				ena_copy_eni_stats(adapter, &eni_stats);
+			if (!were_metrics_copied) {
+				were_metrics_copied = true;
+				ena_copy_customer_metrics(adapter,
+						metrics_stats,
+						adapter->metrics_num);
 			}
-			values[i] = *((uint64_t *)&eni_stats + id);
+
+			values[i] = *((uint64_t *)&metrics_stats + id);
 			++valid;
 			continue;
 		}
 
 		/* Check if id belongs to rx queue statistics */
-		id -= ENA_STATS_ARRAY_ENI;
+		id -= adapter->metrics_num;
 		rx_entries = ENA_STATS_ARRAY_RX * dev->data->nb_rx_queues;
 		if (id < rx_entries) {
 			qid = id % dev->data->nb_rx_queues;
@@ -3895,7 +3972,7 @@ ena_mp_primary_handle(const struct rte_mp_msg *mp_msg, const void *peer)
 		break;
 	case ENA_MP_ENI_STATS_GET:
 		res = ena_com_get_eni_stats(ena_dev,
-			(struct ena_admin_eni_stats *)&adapter->eni_stats);
+			(struct ena_admin_eni_stats *)&adapter->metrics_stats);
 		break;
 	case ENA_MP_MTU_SET:
 		res = ena_com_set_dev_mtu(ena_dev, req->args.mtu);
@@ -3906,6 +3983,11 @@ ena_mp_primary_handle(const struct rte_mp_msg *mp_msg, const void *peer)
 		break;
 	case ENA_MP_IND_TBL_SET:
 		res = ena_com_indirect_table_set(ena_dev);
+		break;
+	case ENA_MP_CUSTOMER_METRICS_GET:
+		res = ena_com_get_customer_metrics(ena_dev,
+				(char *)adapter->metrics_stats,
+				sizeof(uint64_t) * adapter->metrics_num);
 		break;
 	default:
 		PMD_DRV_LOG(ERR, "Unknown request type %d\n", req->type);
