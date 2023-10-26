@@ -7,10 +7,10 @@
 
 #include <mldev_utils.h>
 
-#include "cn10k_ml_model.h"
 #include "cn10k_ml_ops.h"
 
 #include "cnxk_ml_dev.h"
+#include "cnxk_ml_model.h"
 
 /* ML model macros */
 #define CN10K_ML_MODEL_MEMZONE_NAME "ml_cn10k_model_mz"
@@ -202,7 +202,7 @@ cn10k_ml_model_print(struct rte_ml_dev *dev, uint16_t model_id, FILE *fp)
 {
 	struct cn10k_ml_dev *cn10k_mldev;
 	struct cnxk_ml_dev *cnxk_mldev;
-	struct cn10k_ml_model *model;
+	struct cnxk_ml_model *model;
 	struct cn10k_ml_ocm *ocm;
 	char str[STR_LEN];
 	uint8_t i;
@@ -215,77 +215,80 @@ cn10k_ml_model_print(struct rte_ml_dev *dev, uint16_t model_id, FILE *fp)
 
 	/* Print debug info */
 	print_line(fp, LINE_LEN);
-	fprintf(fp, " Model Information (%s)\n", model->metadata.model.name);
+	fprintf(fp, " Model Information (%s)\n", model->glow.metadata.model.name);
 	print_line(fp, LINE_LEN);
-	fprintf(fp, "%*s : %s\n", FIELD_LEN, "name", model->metadata.model.name);
-	fprintf(fp, "%*s : %u.%u.%u.%u\n", FIELD_LEN, "version", model->metadata.model.version[0],
-		model->metadata.model.version[1], model->metadata.model.version[2],
-		model->metadata.model.version[3]);
+	fprintf(fp, "%*s : %s\n", FIELD_LEN, "name", model->glow.metadata.model.name);
+	fprintf(fp, "%*s : %u.%u.%u.%u\n", FIELD_LEN, "version",
+		model->glow.metadata.model.version[0], model->glow.metadata.model.version[1],
+		model->glow.metadata.model.version[2], model->glow.metadata.model.version[3]);
 	if (strlen(model->name) != 0)
 		fprintf(fp, "%*s : %s\n", FIELD_LEN, "debug_name", model->name);
 	fprintf(fp, "%*s : 0x%016lx\n", FIELD_LEN, "model", PLT_U64_CAST(model));
 	fprintf(fp, "%*s : %u\n", FIELD_LEN, "model_id", model->model_id);
-	fprintf(fp, "%*s : %u\n", FIELD_LEN, "batch_size", model->metadata.model.batch_size);
-	fprintf(fp, "%*s : %u\n", FIELD_LEN, "num_layers", model->metadata.model.num_layers);
+	fprintf(fp, "%*s : %u\n", FIELD_LEN, "batch_size", model->glow.metadata.model.batch_size);
+	fprintf(fp, "%*s : %u\n", FIELD_LEN, "num_layers", model->glow.metadata.model.num_layers);
 
 	/* Print model state */
-	if (model->state == ML_CN10K_MODEL_STATE_LOADED)
+	if (model->state == ML_CNXK_MODEL_STATE_LOADED)
 		fprintf(fp, "%*s : %s\n", FIELD_LEN, "state", "loaded");
-	if (model->state == ML_CN10K_MODEL_STATE_JOB_ACTIVE)
+	if (model->state == ML_CNXK_MODEL_STATE_JOB_ACTIVE)
 		fprintf(fp, "%*s : %s\n", FIELD_LEN, "state", "job_active");
-	if (model->state == ML_CN10K_MODEL_STATE_STARTED)
+	if (model->state == ML_CNXK_MODEL_STATE_STARTED)
 		fprintf(fp, "%*s : %s\n", FIELD_LEN, "state", "started");
 
 	/* Print OCM status */
 	fprintf(fp, "%*s : %" PRIu64 " bytes\n", FIELD_LEN, "wb_size",
-		model->metadata.model.ocm_wb_range_end - model->metadata.model.ocm_wb_range_start +
-			1);
-	fprintf(fp, "%*s : %u\n", FIELD_LEN, "wb_pages", model->model_mem_map.wb_pages);
+		model->glow.metadata.model.ocm_wb_range_end -
+			model->glow.metadata.model.ocm_wb_range_start + 1);
+	fprintf(fp, "%*s : %u\n", FIELD_LEN, "wb_pages", model->layer[0].glow.ocm_map.wb_pages);
 	fprintf(fp, "%*s : %" PRIu64 " bytes\n", FIELD_LEN, "scratch_size",
-		ocm->size_per_tile - model->metadata.model.ocm_tmp_range_floor);
-	fprintf(fp, "%*s : %u\n", FIELD_LEN, "scratch_pages", model->model_mem_map.scratch_pages);
+		ocm->size_per_tile - model->glow.metadata.model.ocm_tmp_range_floor);
+	fprintf(fp, "%*s : %u\n", FIELD_LEN, "scratch_pages",
+		model->layer[0].glow.ocm_map.scratch_pages);
 	fprintf(fp, "%*s : %u\n", FIELD_LEN, "num_tiles",
-		model->metadata.model.tile_end - model->metadata.model.tile_start + 1);
+		model->glow.metadata.model.tile_end - model->glow.metadata.model.tile_start + 1);
 
-	if (model->state == ML_CN10K_MODEL_STATE_STARTED) {
+	if (model->state == ML_CNXK_MODEL_STATE_STARTED) {
 		fprintf(fp, "%*s : 0x%0*" PRIx64 "\n", FIELD_LEN, "tilemask",
-			ML_CN10K_OCM_NUMTILES / 4, model->model_mem_map.tilemask);
+			ML_CN10K_OCM_NUMTILES / 4, model->layer[0].glow.ocm_map.tilemask);
 		fprintf(fp, "%*s : 0x%" PRIx64 "\n", FIELD_LEN, "ocm_wb_start",
-			model->model_mem_map.wb_page_start * cn10k_mldev->ocm.page_size);
+			model->layer[0].glow.ocm_map.wb_page_start * cn10k_mldev->ocm.page_size);
 	}
 
-	fprintf(fp, "%*s : %u\n", FIELD_LEN, "num_inputs", model->metadata.model.num_input);
-	fprintf(fp, "%*s : %u\n", FIELD_LEN, "num_outputs", model->metadata.model.num_output);
+	fprintf(fp, "%*s : %u\n", FIELD_LEN, "num_inputs", model->glow.metadata.model.num_input);
+	fprintf(fp, "%*s : %u\n", FIELD_LEN, "num_outputs", model->glow.metadata.model.num_output);
 	fprintf(fp, "\n");
 
 	print_line(fp, LINE_LEN);
 	fprintf(fp, "%8s  %16s  %12s  %18s  %12s\n", "input", "input_name", "input_type",
 		"model_input_type", "quantize");
 	print_line(fp, LINE_LEN);
-	for (i = 0; i < model->metadata.model.num_input; i++) {
+	for (i = 0; i < model->glow.metadata.model.num_input; i++) {
 		if (i < MRVL_ML_NUM_INPUT_OUTPUT_1) {
 			fprintf(fp, "%8u  ", i);
-			fprintf(fp, "%*s  ", 16, model->metadata.input1[i].input_name);
-			rte_ml_io_type_to_str(model->metadata.input1[i].input_type, str, STR_LEN);
+			fprintf(fp, "%*s  ", 16, model->glow.metadata.input1[i].input_name);
+			rte_ml_io_type_to_str(model->glow.metadata.input1[i].input_type, str,
+					      STR_LEN);
 			fprintf(fp, "%*s  ", 12, str);
-			rte_ml_io_type_to_str(model->metadata.input1[i].model_input_type, str,
+			rte_ml_io_type_to_str(model->glow.metadata.input1[i].model_input_type, str,
 					      STR_LEN);
 			fprintf(fp, "%*s  ", 18, str);
 			fprintf(fp, "%*s", 12,
-				(model->metadata.input1[i].quantize == 1 ? "Yes" : "No"));
+				(model->glow.metadata.input1[i].quantize == 1 ? "Yes" : "No"));
 			fprintf(fp, "\n");
 		} else {
 			j = i - MRVL_ML_NUM_INPUT_OUTPUT_1;
 
 			fprintf(fp, "%8u  ", i);
-			fprintf(fp, "%*s  ", 16, model->metadata.input2[j].input_name);
-			rte_ml_io_type_to_str(model->metadata.input2[j].input_type, str, STR_LEN);
+			fprintf(fp, "%*s  ", 16, model->glow.metadata.input2[j].input_name);
+			rte_ml_io_type_to_str(model->glow.metadata.input2[j].input_type, str,
+					      STR_LEN);
 			fprintf(fp, "%*s  ", 12, str);
-			rte_ml_io_type_to_str(model->metadata.input2[j].model_input_type, str,
+			rte_ml_io_type_to_str(model->glow.metadata.input2[j].model_input_type, str,
 					      STR_LEN);
 			fprintf(fp, "%*s  ", 18, str);
 			fprintf(fp, "%*s", 12,
-				(model->metadata.input2[j].quantize == 1 ? "Yes" : "No"));
+				(model->glow.metadata.input2[j].quantize == 1 ? "Yes" : "No"));
 			fprintf(fp, "\n");
 		}
 	}
@@ -295,29 +298,31 @@ cn10k_ml_model_print(struct rte_ml_dev *dev, uint16_t model_id, FILE *fp)
 	fprintf(fp, "%8s  %16s  %12s  %18s  %12s\n", "output", "output_name", "output_type",
 		"model_output_type", "dequantize");
 	print_line(fp, LINE_LEN);
-	for (i = 0; i < model->metadata.model.num_output; i++) {
+	for (i = 0; i < model->glow.metadata.model.num_output; i++) {
 		if (i < MRVL_ML_NUM_INPUT_OUTPUT_1) {
 			fprintf(fp, "%8u  ", i);
-			fprintf(fp, "%*s  ", 16, model->metadata.output1[i].output_name);
-			rte_ml_io_type_to_str(model->metadata.output1[i].output_type, str, STR_LEN);
-			fprintf(fp, "%*s  ", 12, str);
-			rte_ml_io_type_to_str(model->metadata.output1[i].model_output_type, str,
+			fprintf(fp, "%*s  ", 16, model->glow.metadata.output1[i].output_name);
+			rte_ml_io_type_to_str(model->glow.metadata.output1[i].output_type, str,
 					      STR_LEN);
+			fprintf(fp, "%*s  ", 12, str);
+			rte_ml_io_type_to_str(model->glow.metadata.output1[i].model_output_type,
+					      str, STR_LEN);
 			fprintf(fp, "%*s  ", 18, str);
 			fprintf(fp, "%*s", 12,
-				(model->metadata.output1[i].dequantize == 1 ? "Yes" : "No"));
+				(model->glow.metadata.output1[i].dequantize == 1 ? "Yes" : "No"));
 			fprintf(fp, "\n");
 		} else {
 			j = i - MRVL_ML_NUM_INPUT_OUTPUT_1;
 			fprintf(fp, "%8u  ", i);
-			fprintf(fp, "%*s  ", 16, model->metadata.output2[j].output_name);
-			rte_ml_io_type_to_str(model->metadata.output2[j].output_type, str, STR_LEN);
-			fprintf(fp, "%*s  ", 12, str);
-			rte_ml_io_type_to_str(model->metadata.output2[j].model_output_type, str,
+			fprintf(fp, "%*s  ", 16, model->glow.metadata.output2[j].output_name);
+			rte_ml_io_type_to_str(model->glow.metadata.output2[j].output_type, str,
 					      STR_LEN);
+			fprintf(fp, "%*s  ", 12, str);
+			rte_ml_io_type_to_str(model->glow.metadata.output2[j].model_output_type,
+					      str, STR_LEN);
 			fprintf(fp, "%*s  ", 18, str);
 			fprintf(fp, "%*s", 12,
-				(model->metadata.output2[j].dequantize == 1 ? "Yes" : "No"));
+				(model->glow.metadata.output2[j].dequantize == 1 ? "Yes" : "No"));
 			fprintf(fp, "\n");
 		}
 	}
@@ -327,14 +332,14 @@ cn10k_ml_model_print(struct rte_ml_dev *dev, uint16_t model_id, FILE *fp)
 }
 
 static void
-cn10k_ml_prep_sp_job_descriptor(struct cn10k_ml_dev *cn10k_mldev, struct cn10k_ml_model *model,
+cn10k_ml_prep_sp_job_descriptor(struct cn10k_ml_dev *cn10k_mldev, struct cnxk_ml_model *model,
 				struct cn10k_ml_req *req, enum cn10k_ml_job_type job_type)
 {
 	struct cn10k_ml_model_metadata *metadata;
-	struct cn10k_ml_model_addr *addr;
+	struct cn10k_ml_layer_addr *addr;
 
-	metadata = &model->metadata;
-	addr = &model->addr;
+	metadata = &model->glow.metadata;
+	addr = &model->layer[0].glow.addr;
 
 	memset(&req->jd, 0, sizeof(struct cn10k_ml_jd));
 	req->jd.hdr.jce.w0.u64 = 0;
@@ -345,7 +350,7 @@ cn10k_ml_prep_sp_job_descriptor(struct cn10k_ml_dev *cn10k_mldev, struct cn10k_m
 	req->jd.hdr.result = roc_ml_addr_ap2mlip(&cn10k_mldev->roc, &req->result);
 
 	if (job_type == ML_CN10K_JOB_TYPE_MODEL_START) {
-		if (!model->metadata.model.ocm_relocatable)
+		if (!model->glow.metadata.model.ocm_relocatable)
 			req->jd.hdr.sp_flags = ML_CN10K_SP_FLAGS_OCM_NONRELOCATABLE;
 		else
 			req->jd.hdr.sp_flags = 0x0;
@@ -385,7 +390,7 @@ cn10k_ml_prep_sp_job_descriptor(struct cn10k_ml_dev *cn10k_mldev, struct cn10k_m
 		req->jd.model_start.output.s.ddr_range_end = metadata->model.ddr_output_range_end;
 
 		req->extended_args.start.ddr_scratch_base_address = PLT_U64_CAST(
-			roc_ml_addr_ap2mlip(&cn10k_mldev->roc, model->addr.scratch_base_addr));
+			roc_ml_addr_ap2mlip(&cn10k_mldev->roc, addr->scratch_base_addr));
 		req->extended_args.start.ddr_scratch_range_start =
 			metadata->model.ddr_scratch_range_start;
 		req->extended_args.start.ddr_scratch_range_end =
@@ -445,7 +450,7 @@ cn10k_ml_xstats_init(struct rte_ml_dev *dev)
 	cn10k_mldev = &cnxk_mldev->cn10k_mldev;
 
 	/* Allocate memory for xstats entries. Don't allocate during reconfigure */
-	nb_stats = RTE_DIM(device_stats) + ML_CN10K_MAX_MODELS * RTE_DIM(model_stats);
+	nb_stats = RTE_DIM(device_stats) + ML_CNXK_MAX_MODELS * RTE_DIM(model_stats);
 	if (cn10k_mldev->xstats.entries == NULL)
 		cn10k_mldev->xstats.entries = rte_zmalloc(
 			"cn10k_ml_xstats", sizeof(struct cn10k_ml_xstats_entry) * nb_stats,
@@ -472,7 +477,7 @@ cn10k_ml_xstats_init(struct rte_ml_dev *dev)
 	cn10k_mldev->xstats.count_mode_device = stat_id;
 
 	/* Initialize model xstats */
-	for (model = 0; model < ML_CN10K_MAX_MODELS; model++) {
+	for (model = 0; model < ML_CNXK_MAX_MODELS; model++) {
 		cn10k_mldev->xstats.offset_for_model[model] = stat_id;
 
 		for (i = 0; i < RTE_DIM(model_stats); i++) {
@@ -521,7 +526,7 @@ cn10k_ml_xstats_model_name_update(struct rte_ml_dev *dev, uint16_t model_id)
 {
 	struct cn10k_ml_dev *cn10k_mldev;
 	struct cnxk_ml_dev *cnxk_mldev;
-	struct cn10k_ml_model *model;
+	struct cnxk_ml_model *model;
 	uint16_t rclk_freq;
 	uint16_t sclk_freq;
 	uint16_t stat_id;
@@ -543,7 +548,7 @@ cn10k_ml_xstats_model_name_update(struct rte_ml_dev *dev, uint16_t model_id)
 	for (i = 0; i < RTE_DIM(model_stats); i++) {
 		snprintf(cn10k_mldev->xstats.entries[stat_id].map.name,
 			 sizeof(cn10k_mldev->xstats.entries[stat_id].map.name), "%s-%s-%s",
-			 model->metadata.model.name, model_stats[i].name, suffix);
+			 model->layer[0].glow.metadata.model.name, model_stats[i].name, suffix);
 		stat_id++;
 	}
 }
@@ -576,9 +581,9 @@ cn10k_ml_dev_xstat_get(struct rte_ml_dev *dev, uint16_t obj_idx __rte_unused,
 	do {                                                                                       \
 		value = 0;                                                                         \
 		for (qp_id = 0; qp_id < dev->data->nb_queue_pairs; qp_id++) {                      \
-			value += model->burst_stats[qp_id].str##_latency_tot;                      \
-			count += model->burst_stats[qp_id].dequeued_count -                        \
-				 model->burst_stats[qp_id].str##_reset_count;                      \
+			value += model->layer[0].glow.burst_stats[qp_id].str##_latency_tot;        \
+			count += model->layer[0].glow.burst_stats[qp_id].dequeued_count -          \
+				 model->layer[0].glow.burst_stats[qp_id].str##_reset_count;        \
 		}                                                                                  \
 		if (count != 0)                                                                    \
 			value = value / count;                                                     \
@@ -588,9 +593,10 @@ cn10k_ml_dev_xstat_get(struct rte_ml_dev *dev, uint16_t obj_idx __rte_unused,
 	do {                                                                                       \
 		value = UINT64_MAX;                                                                \
 		for (qp_id = 0; qp_id < dev->data->nb_queue_pairs; qp_id++) {                      \
-			value = PLT_MIN(value, model->burst_stats[qp_id].str##_latency_min);       \
-			count += model->burst_stats[qp_id].dequeued_count -                        \
-				 model->burst_stats[qp_id].str##_reset_count;                      \
+			value = PLT_MIN(                                                           \
+				value, model->layer[0].glow.burst_stats[qp_id].str##_latency_min); \
+			count += model->layer[0].glow.burst_stats[qp_id].dequeued_count -          \
+				 model->layer[0].glow.burst_stats[qp_id].str##_reset_count;        \
 		}                                                                                  \
 		if (count == 0)                                                                    \
 			value = 0;                                                                 \
@@ -600,9 +606,10 @@ cn10k_ml_dev_xstat_get(struct rte_ml_dev *dev, uint16_t obj_idx __rte_unused,
 	do {                                                                                       \
 		value = 0;                                                                         \
 		for (qp_id = 0; qp_id < dev->data->nb_queue_pairs; qp_id++) {                      \
-			value = PLT_MAX(value, model->burst_stats[qp_id].str##_latency_max);       \
-			count += model->burst_stats[qp_id].dequeued_count -                        \
-				 model->burst_stats[qp_id].str##_reset_count;                      \
+			value = PLT_MAX(                                                           \
+				value, model->layer[0].glow.burst_stats[qp_id].str##_latency_max); \
+			count += model->layer[0].glow.burst_stats[qp_id].dequeued_count -          \
+				 model->layer[0].glow.burst_stats[qp_id].str##_reset_count;        \
 		}                                                                                  \
 		if (count == 0)                                                                    \
 			value = 0;                                                                 \
@@ -611,7 +618,7 @@ cn10k_ml_dev_xstat_get(struct rte_ml_dev *dev, uint16_t obj_idx __rte_unused,
 static uint64_t
 cn10k_ml_model_xstat_get(struct rte_ml_dev *dev, uint16_t obj_idx, enum cn10k_ml_xstats_type type)
 {
-	struct cn10k_ml_model *model;
+	struct cnxk_ml_model *model;
 	uint16_t rclk_freq; /* MHz */
 	uint16_t sclk_freq; /* MHz */
 	uint64_t count = 0;
@@ -692,28 +699,28 @@ cn10k_ml_device_xstats_reset(struct rte_ml_dev *dev, const uint16_t stat_ids[], 
 #define ML_AVG_RESET_FOREACH_QP(dev, model, qp_id, str)                                            \
 	do {                                                                                       \
 		for (qp_id = 0; qp_id < dev->data->nb_queue_pairs; qp_id++) {                      \
-			model->burst_stats[qp_id].str##_latency_tot = 0;                           \
-			model->burst_stats[qp_id].str##_reset_count =                              \
-				model->burst_stats[qp_id].dequeued_count;                          \
+			model->layer[0].glow.burst_stats[qp_id].str##_latency_tot = 0;             \
+			model->layer[0].glow.burst_stats[qp_id].str##_reset_count =                \
+				model->layer[0].glow.burst_stats[qp_id].dequeued_count;            \
 		}                                                                                  \
 	} while (0)
 
 #define ML_MIN_RESET_FOREACH_QP(dev, model, qp_id, str)                                            \
 	do {                                                                                       \
 		for (qp_id = 0; qp_id < dev->data->nb_queue_pairs; qp_id++)                        \
-			model->burst_stats[qp_id].str##_latency_min = UINT64_MAX;                  \
+			model->layer[0].glow.burst_stats[qp_id].str##_latency_min = UINT64_MAX;    \
 	} while (0)
 
 #define ML_MAX_RESET_FOREACH_QP(dev, model, qp_id, str)                                            \
 	do {                                                                                       \
 		for (qp_id = 0; qp_id < dev->data->nb_queue_pairs; qp_id++)                        \
-			model->burst_stats[qp_id].str##_latency_max = 0;                           \
+			model->layer[0].glow.burst_stats[qp_id].str##_latency_max = 0;             \
 	} while (0)
 
 static void
 cn10k_ml_reset_model_stat(struct rte_ml_dev *dev, uint16_t model_id, enum cn10k_ml_xstats_type type)
 {
-	struct cn10k_ml_model *model;
+	struct cnxk_ml_model *model;
 	uint32_t qp_id;
 
 	model = dev->data->models[model_id];
@@ -749,7 +756,7 @@ cn10k_ml_model_xstats_reset(struct rte_ml_dev *dev, int32_t model_id, const uint
 	struct cn10k_ml_xstats_entry *xs;
 	struct cn10k_ml_dev *cn10k_mldev;
 	struct cnxk_ml_dev *cnxk_mldev;
-	struct cn10k_ml_model *model;
+	struct cnxk_ml_model *model;
 	int32_t lcl_model_id = 0;
 	uint16_t start_id;
 	uint16_t end_id;
@@ -758,7 +765,7 @@ cn10k_ml_model_xstats_reset(struct rte_ml_dev *dev, int32_t model_id, const uint
 
 	cnxk_mldev = dev->data->dev_private;
 	cn10k_mldev = &cnxk_mldev->cn10k_mldev;
-	for (i = 0; i < ML_CN10K_MAX_MODELS; i++) {
+	for (i = 0; i < ML_CNXK_MAX_MODELS; i++) {
 		if (model_id == -1) {
 			model = dev->data->models[i];
 			if (model == NULL) /* Skip inactive models */
@@ -803,7 +810,7 @@ static int
 cn10k_ml_cache_model_data(struct rte_ml_dev *dev, uint16_t model_id)
 {
 	struct rte_ml_model_info *info;
-	struct cn10k_ml_model *model;
+	struct cnxk_ml_model *model;
 	struct rte_ml_buff_seg seg[2];
 	struct rte_ml_buff_seg *inp;
 	struct rte_ml_buff_seg *out;
@@ -854,7 +861,7 @@ cn10k_ml_cache_model_data(struct rte_ml_dev *dev, uint16_t model_id)
 	op.input = &inp;
 	op.output = &out;
 
-	memset(model->req, 0, sizeof(struct cn10k_ml_req));
+	memset(model->layer[0].glow.req, 0, sizeof(struct cn10k_ml_req));
 	ret = cn10k_ml_inference_sync(dev, &op);
 	plt_memzone_free(mz);
 
@@ -875,7 +882,7 @@ cn10k_ml_dev_info_get(struct rte_ml_dev *dev, struct rte_ml_dev_info *dev_info)
 
 	memset(dev_info, 0, sizeof(struct rte_ml_dev_info));
 	dev_info->driver_name = dev->device->driver->name;
-	dev_info->max_models = ML_CN10K_MAX_MODELS;
+	dev_info->max_models = ML_CNXK_MAX_MODELS;
 	if (cn10k_mldev->hw_queue_lock)
 		dev_info->max_queue_pairs = ML_CN10K_MAX_QP_PER_DEVICE_SL;
 	else
@@ -895,7 +902,7 @@ cn10k_ml_dev_configure(struct rte_ml_dev *dev, const struct rte_ml_dev_config *c
 	struct rte_ml_dev_info dev_info;
 	struct cn10k_ml_dev *cn10k_mldev;
 	struct cnxk_ml_dev *cnxk_mldev;
-	struct cn10k_ml_model *model;
+	struct cnxk_ml_model *model;
 	struct cn10k_ml_ocm *ocm;
 	struct cn10k_ml_qp *qp;
 	uint16_t model_id;
@@ -1001,11 +1008,11 @@ cn10k_ml_dev_configure(struct rte_ml_dev *dev, const struct rte_ml_dev_config *c
 		for (model_id = 0; model_id < dev->data->nb_models; model_id++) {
 			model = dev->data->models[model_id];
 			if (model != NULL) {
-				if (model->state == ML_CN10K_MODEL_STATE_STARTED) {
+				if (model->state == ML_CNXK_MODEL_STATE_STARTED) {
 					if (cn10k_ml_model_stop(dev, model_id) != 0)
 						plt_err("Could not stop model %u", model_id);
 				}
-				if (model->state == ML_CN10K_MODEL_STATE_LOADED) {
+				if (model->state == ML_CNXK_MODEL_STATE_LOADED) {
 					if (cn10k_ml_model_unload(dev, model_id) != 0)
 						plt_err("Could not unload model %u", model_id);
 				}
@@ -1093,7 +1100,7 @@ cn10k_ml_dev_close(struct rte_ml_dev *dev)
 {
 	struct cn10k_ml_dev *cn10k_mldev;
 	struct cnxk_ml_dev *cnxk_mldev;
-	struct cn10k_ml_model *model;
+	struct cnxk_ml_model *model;
 	struct cn10k_ml_qp *qp;
 	uint16_t model_id;
 	uint16_t qp_id;
@@ -1111,11 +1118,11 @@ cn10k_ml_dev_close(struct rte_ml_dev *dev)
 	for (model_id = 0; model_id < dev->data->nb_models; model_id++) {
 		model = dev->data->models[model_id];
 		if (model != NULL) {
-			if (model->state == ML_CN10K_MODEL_STATE_STARTED) {
+			if (model->state == ML_CNXK_MODEL_STATE_STARTED) {
 				if (cn10k_ml_model_stop(dev, model_id) != 0)
 					plt_err("Could not stop model %u", model_id);
 			}
-			if (model->state == ML_CN10K_MODEL_STATE_LOADED) {
+			if (model->state == ML_CNXK_MODEL_STATE_LOADED) {
 				if (cn10k_ml_model_unload(dev, model_id) != 0)
 					plt_err("Could not unload model %u", model_id);
 			}
@@ -1294,7 +1301,7 @@ cn10k_ml_dev_xstats_names_get(struct rte_ml_dev *dev, enum rte_ml_dev_xstats_mod
 		xstats_mode_count = cn10k_mldev->xstats.count_mode_device;
 		break;
 	case RTE_ML_DEV_XSTATS_MODEL:
-		if (model_id >= ML_CN10K_MAX_MODELS)
+		if (model_id >= ML_CNXK_MAX_MODELS)
 			break;
 		xstats_mode_count = cn10k_mldev->xstats.count_per_model[model_id];
 		break;
@@ -1386,7 +1393,7 @@ cn10k_ml_dev_xstats_get(struct rte_ml_dev *dev, enum rte_ml_dev_xstats_mode mode
 		xstats_mode_count = cn10k_mldev->xstats.count_mode_device;
 		break;
 	case RTE_ML_DEV_XSTATS_MODEL:
-		if (model_id >= ML_CN10K_MAX_MODELS)
+		if (model_id >= ML_CNXK_MAX_MODELS)
 			return -EINVAL;
 		xstats_mode_count = cn10k_mldev->xstats.count_per_model[model_id];
 		break;
@@ -1447,7 +1454,7 @@ cn10k_ml_dev_dump(struct rte_ml_dev *dev, FILE *fp)
 {
 	struct cn10k_ml_dev *cn10k_mldev;
 	struct cnxk_ml_dev *cnxk_mldev;
-	struct cn10k_ml_model *model;
+	struct cnxk_ml_model *model;
 	struct cn10k_ml_fw *fw;
 
 	uint32_t head_loc;
@@ -1588,7 +1595,7 @@ cn10k_ml_model_load(struct rte_ml_dev *dev, struct rte_ml_model_params *params, 
 {
 	struct cn10k_ml_model_metadata *metadata;
 	struct cnxk_ml_dev *cnxk_mldev;
-	struct cn10k_ml_model *model;
+	struct cnxk_ml_model *model;
 
 	char str[RTE_MEMZONE_NAMESIZE];
 	const struct plt_memzone *mz;
@@ -1643,9 +1650,9 @@ cn10k_ml_model_load(struct rte_ml_dev *dev, struct rte_ml_model_params *params, 
 			  metadata->model.num_input * sizeof(struct rte_ml_io_info) +
 			  metadata->model.num_output * sizeof(struct rte_ml_io_info);
 	model_info_size = PLT_ALIGN_CEIL(model_info_size, ML_CN10K_ALIGN_SIZE);
-	model_stats_size = (dev->data->nb_queue_pairs + 1) * sizeof(struct cn10k_ml_model_stats);
+	model_stats_size = (dev->data->nb_queue_pairs + 1) * sizeof(struct cn10k_ml_layer_stats);
 
-	mz_size = PLT_ALIGN_CEIL(sizeof(struct cn10k_ml_model), ML_CN10K_ALIGN_SIZE) +
+	mz_size = PLT_ALIGN_CEIL(sizeof(struct cnxk_ml_model), ML_CN10K_ALIGN_SIZE) +
 		  2 * model_data_size + model_scratch_size + model_info_size +
 		  PLT_ALIGN_CEIL(sizeof(struct cn10k_ml_req), ML_CN10K_ALIGN_SIZE) +
 		  model_stats_size;
@@ -1659,62 +1666,85 @@ cn10k_ml_model_load(struct rte_ml_dev *dev, struct rte_ml_model_params *params, 
 	}
 
 	model = mz->addr;
-	model->mldev = cnxk_mldev;
+	model->cnxk_mldev = cnxk_mldev;
 	model->model_id = idx;
+	dev->data->models[idx] = model;
 
-	rte_memcpy(&model->metadata, params->addr, sizeof(struct cn10k_ml_model_metadata));
-	cn10k_ml_model_metadata_update(&model->metadata);
+	rte_memcpy(&model->glow.metadata, params->addr, sizeof(struct cn10k_ml_model_metadata));
+	cn10k_ml_model_metadata_update(&model->glow.metadata);
+
+	/* Set model name */
+	rte_memcpy(model->name, (char *)model->glow.metadata.model.name, 64);
 
 	/* Enable support for batch_size of 256 */
-	if (model->metadata.model.batch_size == 0)
+	if (model->glow.metadata.model.batch_size == 0)
 		model->batch_size = 256;
 	else
-		model->batch_size = model->metadata.model.batch_size;
+		model->batch_size = model->glow.metadata.model.batch_size;
+
+	/* Since the number of layers that the driver would be handling for glow models is
+	 * always 1. consider the entire model as a model with single layer. This would
+	 * ignore the num_layers from metadata.
+	 */
+	model->nb_layers = 1;
+
+	/* Copy metadata to internal buffer */
+	rte_memcpy(&model->layer[0].glow.metadata, params->addr,
+		   sizeof(struct cn10k_ml_model_metadata));
+	cn10k_ml_model_metadata_update(&model->layer[0].glow.metadata);
+	model->layer[0].model = model;
 
 	/* Set DMA base address */
 	base_dma_addr = PLT_PTR_ADD(
-		mz->addr, PLT_ALIGN_CEIL(sizeof(struct cn10k_ml_model), ML_CN10K_ALIGN_SIZE));
-	cn10k_ml_model_addr_update(model, params->addr, base_dma_addr);
-	model->addr.scratch_base_addr = PLT_PTR_ADD(base_dma_addr, 2 * model_data_size);
+		mz->addr, PLT_ALIGN_CEIL(sizeof(struct cnxk_ml_model), ML_CN10K_ALIGN_SIZE));
+	cn10k_ml_layer_addr_update(&model->layer[0], params->addr, base_dma_addr);
+	model->layer[0].glow.addr.scratch_base_addr =
+		PLT_PTR_ADD(base_dma_addr, 2 * model_data_size);
 
 	/* Copy data from load to run. run address to be used by MLIP */
-	rte_memcpy(model->addr.base_dma_addr_run, model->addr.base_dma_addr_load, model_data_size);
+	rte_memcpy(model->layer[0].glow.addr.base_dma_addr_run,
+		   model->layer[0].glow.addr.base_dma_addr_load, model_data_size);
+
+	/* Update internal I/O data structure */
+	cn10k_ml_layer_info_update(&model->layer[0]);
 
 	/* Initialize model_mem_map */
-	memset(&model->model_mem_map, 0, sizeof(struct cn10k_ml_ocm_model_map));
-	model->model_mem_map.ocm_reserved = false;
-	model->model_mem_map.tilemask = 0;
-	model->model_mem_map.wb_page_start = -1;
-	model->model_mem_map.wb_pages = wb_pages;
-	model->model_mem_map.scratch_pages = scratch_pages;
+	memset(&model->layer[0].glow.ocm_map, 0, sizeof(struct cn10k_ml_ocm_layer_map));
+	model->layer[0].glow.ocm_map.ocm_reserved = false;
+	model->layer[0].glow.ocm_map.tilemask = 0;
+	model->layer[0].glow.ocm_map.wb_page_start = -1;
+	model->layer[0].glow.ocm_map.wb_pages = wb_pages;
+	model->layer[0].glow.ocm_map.scratch_pages = scratch_pages;
 
 	/* Set model info */
-	model->info = PLT_PTR_ADD(model->addr.scratch_base_addr, model_scratch_size);
+	model->info = PLT_PTR_ADD(model->layer[0].glow.addr.scratch_base_addr, model_scratch_size);
 	cn10k_ml_model_info_set(dev, model);
 
 	/* Set slow-path request address and state */
-	model->req = PLT_PTR_ADD(model->info, model_info_size);
+	model->layer[0].glow.req = PLT_PTR_ADD(model->info, model_info_size);
 
 	/* Reset burst and sync stats */
-	model->burst_stats = PLT_PTR_ADD(
-		model->req, PLT_ALIGN_CEIL(sizeof(struct cn10k_ml_req), ML_CN10K_ALIGN_SIZE));
+	model->layer[0].glow.burst_stats =
+		PLT_PTR_ADD(model->layer[0].glow.req,
+			    PLT_ALIGN_CEIL(sizeof(struct cn10k_ml_req), ML_CN10K_ALIGN_SIZE));
 	for (qp_id = 0; qp_id < dev->data->nb_queue_pairs + 1; qp_id++) {
-		model->burst_stats[qp_id].hw_latency_tot = 0;
-		model->burst_stats[qp_id].hw_latency_min = UINT64_MAX;
-		model->burst_stats[qp_id].hw_latency_max = 0;
-		model->burst_stats[qp_id].fw_latency_tot = 0;
-		model->burst_stats[qp_id].fw_latency_min = UINT64_MAX;
-		model->burst_stats[qp_id].fw_latency_max = 0;
-		model->burst_stats[qp_id].hw_reset_count = 0;
-		model->burst_stats[qp_id].fw_reset_count = 0;
-		model->burst_stats[qp_id].dequeued_count = 0;
+		model->layer[0].glow.burst_stats[qp_id].hw_latency_tot = 0;
+		model->layer[0].glow.burst_stats[qp_id].hw_latency_min = UINT64_MAX;
+		model->layer[0].glow.burst_stats[qp_id].hw_latency_max = 0;
+		model->layer[0].glow.burst_stats[qp_id].fw_latency_tot = 0;
+		model->layer[0].glow.burst_stats[qp_id].fw_latency_min = UINT64_MAX;
+		model->layer[0].glow.burst_stats[qp_id].fw_latency_max = 0;
+		model->layer[0].glow.burst_stats[qp_id].hw_reset_count = 0;
+		model->layer[0].glow.burst_stats[qp_id].fw_reset_count = 0;
+		model->layer[0].glow.burst_stats[qp_id].dequeued_count = 0;
 	}
-	model->sync_stats =
-		PLT_PTR_ADD(model->burst_stats,
-			    dev->data->nb_queue_pairs * sizeof(struct cn10k_ml_model_stats));
+
+	model->layer[0].glow.sync_stats =
+		PLT_PTR_ADD(model->layer[0].glow.burst_stats,
+			    dev->data->nb_queue_pairs * sizeof(struct cn10k_ml_layer_stats));
 
 	plt_spinlock_init(&model->lock);
-	model->state = ML_CN10K_MODEL_STATE_LOADED;
+	model->state = ML_CNXK_MODEL_STATE_LOADED;
 	dev->data->models[idx] = model;
 	cnxk_mldev->nb_models_loaded++;
 
@@ -1730,7 +1760,7 @@ int
 cn10k_ml_model_unload(struct rte_ml_dev *dev, uint16_t model_id)
 {
 	char str[RTE_MEMZONE_NAMESIZE];
-	struct cn10k_ml_model *model;
+	struct cnxk_ml_model *model;
 	struct cnxk_ml_dev *cnxk_mldev;
 
 	cnxk_mldev = dev->data->dev_private;
@@ -1741,7 +1771,7 @@ cn10k_ml_model_unload(struct rte_ml_dev *dev, uint16_t model_id)
 		return -EINVAL;
 	}
 
-	if (model->state != ML_CN10K_MODEL_STATE_LOADED) {
+	if (model->state != ML_CNXK_MODEL_STATE_LOADED) {
 		plt_err("Cannot unload. Model in use.");
 		return -EBUSY;
 	}
@@ -1758,7 +1788,7 @@ cn10k_ml_model_start(struct rte_ml_dev *dev, uint16_t model_id)
 {
 	struct cn10k_ml_dev *cn10k_mldev;
 	struct cnxk_ml_dev *cnxk_mldev;
-	struct cn10k_ml_model *model;
+	struct cnxk_ml_model *model;
 	struct cn10k_ml_ocm *ocm;
 	struct cn10k_ml_req *req;
 
@@ -1783,7 +1813,7 @@ cn10k_ml_model_start(struct rte_ml_dev *dev, uint16_t model_id)
 	}
 
 	/* Prepare JD */
-	req = model->req;
+	req = model->layer[0].glow.req;
 	cn10k_ml_prep_sp_job_descriptor(cn10k_mldev, model, req, ML_CN10K_JOB_TYPE_MODEL_START);
 	req->result.error_code.u64 = 0x0;
 	req->result.user_ptr = NULL;
@@ -1791,63 +1821,66 @@ cn10k_ml_model_start(struct rte_ml_dev *dev, uint16_t model_id)
 	plt_write64(ML_CNXK_POLL_JOB_START, &req->status);
 	plt_wmb();
 
-	num_tiles = model->metadata.model.tile_end - model->metadata.model.tile_start + 1;
+	num_tiles = model->layer[0].glow.metadata.model.tile_end -
+		    model->layer[0].glow.metadata.model.tile_start + 1;
 
 	locked = false;
 	while (!locked) {
 		if (plt_spinlock_trylock(&model->lock) != 0) {
-			if (model->state == ML_CN10K_MODEL_STATE_STARTED) {
+			if (model->state == ML_CNXK_MODEL_STATE_STARTED) {
 				plt_ml_dbg("Model already started, model = 0x%016lx",
 					   PLT_U64_CAST(model));
 				plt_spinlock_unlock(&model->lock);
 				return 1;
 			}
 
-			if (model->state == ML_CN10K_MODEL_STATE_JOB_ACTIVE) {
+			if (model->state == ML_CNXK_MODEL_STATE_JOB_ACTIVE) {
 				plt_err("A slow-path job is active for the model = 0x%016lx",
 					PLT_U64_CAST(model));
 				plt_spinlock_unlock(&model->lock);
 				return -EBUSY;
 			}
 
-			model->state = ML_CN10K_MODEL_STATE_JOB_ACTIVE;
+			model->state = ML_CNXK_MODEL_STATE_JOB_ACTIVE;
 			plt_spinlock_unlock(&model->lock);
 			locked = true;
 		}
 	}
 
-	while (!model->model_mem_map.ocm_reserved) {
+	while (!model->layer[0].glow.ocm_map.ocm_reserved) {
 		if (plt_spinlock_trylock(&ocm->lock) != 0) {
 			wb_page_start = cn10k_ml_ocm_tilemask_find(
-				dev, num_tiles, model->model_mem_map.wb_pages,
-				model->model_mem_map.scratch_pages, &tilemask);
+				dev, num_tiles, model->layer[0].glow.ocm_map.wb_pages,
+				model->layer[0].glow.ocm_map.scratch_pages, &tilemask);
 
 			if (wb_page_start == -1) {
 				plt_err("Free pages not available on OCM tiles");
 				plt_err("Failed to start model = 0x%016lx, name = %s",
-					PLT_U64_CAST(model), model->metadata.model.name);
+					PLT_U64_CAST(model),
+					model->layer[0].glow.metadata.model.name);
 
 				plt_spinlock_unlock(&ocm->lock);
 				return -ENOMEM;
 			}
 
-			model->model_mem_map.tilemask = tilemask;
-			model->model_mem_map.wb_page_start = wb_page_start;
+			model->layer[0].glow.ocm_map.tilemask = tilemask;
+			model->layer[0].glow.ocm_map.wb_page_start = wb_page_start;
 
-			cn10k_ml_ocm_reserve_pages(
-				dev, model->model_id, model->model_mem_map.tilemask,
-				model->model_mem_map.wb_page_start, model->model_mem_map.wb_pages,
-				model->model_mem_map.scratch_pages);
-			model->model_mem_map.ocm_reserved = true;
+			cn10k_ml_ocm_reserve_pages(dev, model->model_id, 0,
+						   model->layer[0].glow.ocm_map.tilemask,
+						   model->layer[0].glow.ocm_map.wb_page_start,
+						   model->layer[0].glow.ocm_map.wb_pages,
+						   model->layer[0].glow.ocm_map.scratch_pages);
+			model->layer[0].glow.ocm_map.ocm_reserved = true;
 			plt_spinlock_unlock(&ocm->lock);
 		}
 	}
 
 	/* Update JD */
-	cn10k_ml_ocm_tilecount(model->model_mem_map.tilemask, &tile_start, &tile_end);
+	cn10k_ml_ocm_tilecount(model->layer[0].glow.ocm_map.tilemask, &tile_start, &tile_end);
 	req->jd.model_start.tilemask = GENMASK_ULL(tile_end, tile_start);
 	req->jd.model_start.ocm_wb_base_address =
-		model->model_mem_map.wb_page_start * ocm->page_size;
+		model->layer[0].glow.ocm_map.wb_page_start * ocm->page_size;
 
 	job_enqueued = false;
 	job_dequeued = false;
@@ -1880,10 +1913,10 @@ cn10k_ml_model_start(struct rte_ml_dev *dev, uint16_t model_id)
 	while (!locked) {
 		if (plt_spinlock_trylock(&model->lock) != 0) {
 			if (ret == 0) {
-				model->state = ML_CN10K_MODEL_STATE_STARTED;
+				model->state = ML_CNXK_MODEL_STATE_STARTED;
 				cnxk_mldev->nb_models_started++;
 			} else {
-				model->state = ML_CN10K_MODEL_STATE_UNKNOWN;
+				model->state = ML_CNXK_MODEL_STATE_UNKNOWN;
 			}
 
 			plt_spinlock_unlock(&model->lock);
@@ -1891,12 +1924,12 @@ cn10k_ml_model_start(struct rte_ml_dev *dev, uint16_t model_id)
 		}
 	}
 
-	if (model->state == ML_CN10K_MODEL_STATE_UNKNOWN) {
-		while (model->model_mem_map.ocm_reserved) {
+	if (model->state == ML_CNXK_MODEL_STATE_UNKNOWN) {
+		while (model->layer[0].glow.ocm_map.ocm_reserved) {
 			if (plt_spinlock_trylock(&ocm->lock) != 0) {
-				cn10k_ml_ocm_free_pages(dev, model->model_id);
-				model->model_mem_map.ocm_reserved = false;
-				model->model_mem_map.tilemask = 0x0;
+				cn10k_ml_ocm_free_pages(dev, model->model_id, 0);
+				model->layer[0].glow.ocm_map.ocm_reserved = false;
+				model->layer[0].glow.ocm_map.tilemask = 0x0;
 				plt_spinlock_unlock(&ocm->lock);
 			}
 		}
@@ -1917,7 +1950,7 @@ cn10k_ml_model_stop(struct rte_ml_dev *dev, uint16_t model_id)
 {
 	struct cn10k_ml_dev *cn10k_mldev;
 	struct cnxk_ml_dev *cnxk_mldev;
-	struct cn10k_ml_model *model;
+	struct cnxk_ml_model *model;
 	struct cn10k_ml_ocm *ocm;
 	struct cn10k_ml_req *req;
 
@@ -1937,7 +1970,7 @@ cn10k_ml_model_stop(struct rte_ml_dev *dev, uint16_t model_id)
 	}
 
 	/* Prepare JD */
-	req = model->req;
+	req = model->layer[0].glow.req;
 	cn10k_ml_prep_sp_job_descriptor(cn10k_mldev, model, req, ML_CN10K_JOB_TYPE_MODEL_STOP);
 	req->result.error_code.u64 = 0x0;
 	req->result.user_ptr = NULL;
@@ -1948,31 +1981,31 @@ cn10k_ml_model_stop(struct rte_ml_dev *dev, uint16_t model_id)
 	locked = false;
 	while (!locked) {
 		if (plt_spinlock_trylock(&model->lock) != 0) {
-			if (model->state == ML_CN10K_MODEL_STATE_LOADED) {
+			if (model->state == ML_CNXK_MODEL_STATE_LOADED) {
 				plt_ml_dbg("Model not started, model = 0x%016lx",
 					   PLT_U64_CAST(model));
 				plt_spinlock_unlock(&model->lock);
 				return 1;
 			}
 
-			if (model->state == ML_CN10K_MODEL_STATE_JOB_ACTIVE) {
+			if (model->state == ML_CNXK_MODEL_STATE_JOB_ACTIVE) {
 				plt_err("A slow-path job is active for the model = 0x%016lx",
 					PLT_U64_CAST(model));
 				plt_spinlock_unlock(&model->lock);
 				return -EBUSY;
 			}
 
-			model->state = ML_CN10K_MODEL_STATE_JOB_ACTIVE;
+			model->state = ML_CNXK_MODEL_STATE_JOB_ACTIVE;
 			plt_spinlock_unlock(&model->lock);
 			locked = true;
 		}
 	}
 
-	while (model->model_mem_map.ocm_reserved) {
+	while (model->layer[0].glow.ocm_map.ocm_reserved) {
 		if (plt_spinlock_trylock(&ocm->lock) != 0) {
-			cn10k_ml_ocm_free_pages(dev, model->model_id);
-			model->model_mem_map.ocm_reserved = false;
-			model->model_mem_map.tilemask = 0x0;
+			cn10k_ml_ocm_free_pages(dev, model->model_id, 0);
+			model->layer[0].glow.ocm_map.ocm_reserved = false;
+			model->layer[0].glow.ocm_map.tilemask = 0x0;
 			plt_spinlock_unlock(&ocm->lock);
 		}
 	}
@@ -2008,7 +2041,7 @@ cn10k_ml_model_stop(struct rte_ml_dev *dev, uint16_t model_id)
 	while (!locked) {
 		if (plt_spinlock_trylock(&model->lock) != 0) {
 			cnxk_mldev->nb_models_stopped++;
-			model->state = ML_CN10K_MODEL_STATE_LOADED;
+			model->state = ML_CNXK_MODEL_STATE_LOADED;
 			plt_spinlock_unlock(&model->lock);
 			locked = true;
 		}
@@ -2021,7 +2054,7 @@ static int
 cn10k_ml_model_info_get(struct rte_ml_dev *dev, uint16_t model_id,
 			struct rte_ml_model_info *model_info)
 {
-	struct cn10k_ml_model *model;
+	struct cnxk_ml_model *model;
 
 	model = dev->data->models[model_id];
 
@@ -2040,7 +2073,7 @@ cn10k_ml_model_info_get(struct rte_ml_dev *dev, uint16_t model_id,
 static int
 cn10k_ml_model_params_update(struct rte_ml_dev *dev, uint16_t model_id, void *buffer)
 {
-	struct cn10k_ml_model *model;
+	struct cnxk_ml_model *model;
 	size_t size;
 
 	model = dev->data->models[model_id];
@@ -2050,19 +2083,23 @@ cn10k_ml_model_params_update(struct rte_ml_dev *dev, uint16_t model_id, void *bu
 		return -EINVAL;
 	}
 
-	if (model->state == ML_CN10K_MODEL_STATE_UNKNOWN)
+	if (model->state == ML_CNXK_MODEL_STATE_UNKNOWN)
 		return -1;
-	else if (model->state != ML_CN10K_MODEL_STATE_LOADED)
+	else if (model->state != ML_CNXK_MODEL_STATE_LOADED)
 		return -EBUSY;
 
-	size = model->metadata.init_model.file_size + model->metadata.main_model.file_size +
-	       model->metadata.finish_model.file_size + model->metadata.weights_bias.file_size;
+	size = model->layer[0].glow.metadata.init_model.file_size +
+	       model->layer[0].glow.metadata.main_model.file_size +
+	       model->layer[0].glow.metadata.finish_model.file_size +
+	       model->layer[0].glow.metadata.weights_bias.file_size;
 
 	/* Update model weights & bias */
-	rte_memcpy(model->addr.wb_load_addr, buffer, model->metadata.weights_bias.file_size);
+	rte_memcpy(model->layer[0].glow.addr.wb_load_addr, buffer,
+		   model->layer[0].glow.metadata.weights_bias.file_size);
 
 	/* Copy data from load to run. run address to be used by MLIP */
-	rte_memcpy(model->addr.base_dma_addr_run, model->addr.base_dma_addr_load, size);
+	rte_memcpy(model->layer[0].glow.addr.base_dma_addr_run,
+		   model->layer[0].glow.addr.base_dma_addr_load, size);
 
 	return 0;
 }
@@ -2071,7 +2108,7 @@ static int
 cn10k_ml_io_quantize(struct rte_ml_dev *dev, uint16_t model_id, struct rte_ml_buff_seg **dbuffer,
 		     struct rte_ml_buff_seg **qbuffer)
 {
-	struct cn10k_ml_model *model;
+	struct cnxk_ml_model *model;
 	uint8_t model_input_type;
 	uint8_t *lcl_dbuffer;
 	uint8_t *lcl_qbuffer;
@@ -2091,57 +2128,58 @@ cn10k_ml_io_quantize(struct rte_ml_dev *dev, uint16_t model_id, struct rte_ml_bu
 	lcl_dbuffer = dbuffer[0]->addr;
 	lcl_qbuffer = qbuffer[0]->addr;
 
-	for (i = 0; i < model->metadata.model.num_input; i++) {
+	for (i = 0; i < model->layer[0].glow.metadata.model.num_input; i++) {
 		if (i < MRVL_ML_NUM_INPUT_OUTPUT_1) {
-			input_type = model->metadata.input1[i].input_type;
-			model_input_type = model->metadata.input1[i].model_input_type;
-			qscale = model->metadata.input1[i].qscale;
+			input_type = model->layer[0].glow.metadata.input1[i].input_type;
+			model_input_type = model->layer[0].glow.metadata.input1[i].model_input_type;
+			qscale = model->layer[0].glow.metadata.input1[i].qscale;
 		} else {
 			j = i - MRVL_ML_NUM_INPUT_OUTPUT_1;
-			input_type = model->metadata.input2[j].input_type;
-			model_input_type = model->metadata.input2[j].model_input_type;
-			qscale = model->metadata.input2[j].qscale;
+			input_type = model->layer[0].glow.metadata.input2[j].input_type;
+			model_input_type = model->layer[0].glow.metadata.input2[j].model_input_type;
+			qscale = model->layer[0].glow.metadata.input2[j].qscale;
 		}
 
 		if (input_type == model_input_type) {
-			rte_memcpy(lcl_qbuffer, lcl_dbuffer, model->addr.input[i].sz_d);
+			rte_memcpy(lcl_qbuffer, lcl_dbuffer, model->layer[0].info.input[i].sz_d);
 		} else {
-			switch (model->metadata.input1[i].model_input_type) {
+			switch (model->layer[0].glow.metadata.input1[i].model_input_type) {
 			case RTE_ML_IO_TYPE_INT8:
-				ret = rte_ml_io_float32_to_int8(qscale,
-								model->addr.input[i].nb_elements,
-								lcl_dbuffer, lcl_qbuffer);
+				ret = rte_ml_io_float32_to_int8(
+					qscale, model->layer[0].info.input[i].nb_elements,
+					lcl_dbuffer, lcl_qbuffer);
 				break;
 			case RTE_ML_IO_TYPE_UINT8:
-				ret = rte_ml_io_float32_to_uint8(qscale,
-								 model->addr.input[i].nb_elements,
-								 lcl_dbuffer, lcl_qbuffer);
+				ret = rte_ml_io_float32_to_uint8(
+					qscale, model->layer[0].info.input[i].nb_elements,
+					lcl_dbuffer, lcl_qbuffer);
 				break;
 			case RTE_ML_IO_TYPE_INT16:
-				ret = rte_ml_io_float32_to_int16(qscale,
-								 model->addr.input[i].nb_elements,
-								 lcl_dbuffer, lcl_qbuffer);
+				ret = rte_ml_io_float32_to_int16(
+					qscale, model->layer[0].info.input[i].nb_elements,
+					lcl_dbuffer, lcl_qbuffer);
 				break;
 			case RTE_ML_IO_TYPE_UINT16:
-				ret = rte_ml_io_float32_to_uint16(qscale,
-								  model->addr.input[i].nb_elements,
-								  lcl_dbuffer, lcl_qbuffer);
+				ret = rte_ml_io_float32_to_uint16(
+					qscale, model->layer[0].info.input[i].nb_elements,
+					lcl_dbuffer, lcl_qbuffer);
 				break;
 			case RTE_ML_IO_TYPE_FP16:
-				ret = rte_ml_io_float32_to_float16(model->addr.input[i].nb_elements,
-								   lcl_dbuffer, lcl_qbuffer);
+				ret = rte_ml_io_float32_to_float16(
+					model->layer[0].info.input[i].nb_elements, lcl_dbuffer,
+					lcl_qbuffer);
 				break;
 			default:
 				plt_err("Unsupported model_input_type[%u] : %u", i,
-					model->metadata.input1[i].model_input_type);
+					model->layer[0].glow.metadata.input1[i].model_input_type);
 				ret = -ENOTSUP;
 			}
 			if (ret < 0)
 				return ret;
 		}
 
-		lcl_dbuffer += model->addr.input[i].sz_d;
-		lcl_qbuffer += model->addr.input[i].sz_q;
+		lcl_dbuffer += model->layer[0].info.input[i].sz_d;
+		lcl_qbuffer += model->layer[0].info.input[i].sz_q;
 	}
 
 	return 0;
@@ -2151,7 +2189,7 @@ static int
 cn10k_ml_io_dequantize(struct rte_ml_dev *dev, uint16_t model_id, struct rte_ml_buff_seg **qbuffer,
 		       struct rte_ml_buff_seg **dbuffer)
 {
-	struct cn10k_ml_model *model;
+	struct cnxk_ml_model *model;
 	uint8_t model_output_type;
 	uint8_t *lcl_qbuffer;
 	uint8_t *lcl_dbuffer;
@@ -2171,58 +2209,60 @@ cn10k_ml_io_dequantize(struct rte_ml_dev *dev, uint16_t model_id, struct rte_ml_
 	lcl_dbuffer = dbuffer[0]->addr;
 	lcl_qbuffer = qbuffer[0]->addr;
 
-	for (i = 0; i < model->metadata.model.num_output; i++) {
+	for (i = 0; i < model->layer[0].glow.metadata.model.num_output; i++) {
 		if (i < MRVL_ML_NUM_INPUT_OUTPUT_1) {
-			output_type = model->metadata.output1[i].output_type;
-			model_output_type = model->metadata.output1[i].model_output_type;
-			dscale = model->metadata.output1[i].dscale;
+			output_type = model->layer[0].glow.metadata.output1[i].output_type;
+			model_output_type =
+				model->layer[0].glow.metadata.output1[i].model_output_type;
+			dscale = model->layer[0].glow.metadata.output1[i].dscale;
 		} else {
 			j = i - MRVL_ML_NUM_INPUT_OUTPUT_1;
-			output_type = model->metadata.output2[j].output_type;
-			model_output_type = model->metadata.output2[j].model_output_type;
-			dscale = model->metadata.output2[j].dscale;
+			output_type = model->layer[0].glow.metadata.output2[j].output_type;
+			model_output_type =
+				model->layer[0].glow.metadata.output2[j].model_output_type;
+			dscale = model->layer[0].glow.metadata.output2[j].dscale;
 		}
 
 		if (output_type == model_output_type) {
-			rte_memcpy(lcl_dbuffer, lcl_qbuffer, model->addr.output[i].sz_q);
+			rte_memcpy(lcl_dbuffer, lcl_qbuffer, model->layer[0].info.output[i].sz_q);
 		} else {
-			switch (model->metadata.output1[i].model_output_type) {
+			switch (model->layer[0].glow.metadata.output1[i].model_output_type) {
 			case RTE_ML_IO_TYPE_INT8:
-				ret = rte_ml_io_int8_to_float32(dscale,
-								model->addr.output[i].nb_elements,
-								lcl_qbuffer, lcl_dbuffer);
+				ret = rte_ml_io_int8_to_float32(
+					dscale, model->layer[0].info.output[i].nb_elements,
+					lcl_qbuffer, lcl_dbuffer);
 				break;
 			case RTE_ML_IO_TYPE_UINT8:
-				ret = rte_ml_io_uint8_to_float32(dscale,
-								 model->addr.output[i].nb_elements,
-								 lcl_qbuffer, lcl_dbuffer);
+				ret = rte_ml_io_uint8_to_float32(
+					dscale, model->layer[0].info.output[i].nb_elements,
+					lcl_qbuffer, lcl_dbuffer);
 				break;
 			case RTE_ML_IO_TYPE_INT16:
-				ret = rte_ml_io_int16_to_float32(dscale,
-								 model->addr.output[i].nb_elements,
-								 lcl_qbuffer, lcl_dbuffer);
+				ret = rte_ml_io_int16_to_float32(
+					dscale, model->layer[0].info.output[i].nb_elements,
+					lcl_qbuffer, lcl_dbuffer);
 				break;
 			case RTE_ML_IO_TYPE_UINT16:
-				ret = rte_ml_io_uint16_to_float32(dscale,
-								  model->addr.output[i].nb_elements,
-								  lcl_qbuffer, lcl_dbuffer);
+				ret = rte_ml_io_uint16_to_float32(
+					dscale, model->layer[0].info.output[i].nb_elements,
+					lcl_qbuffer, lcl_dbuffer);
 				break;
 			case RTE_ML_IO_TYPE_FP16:
 				ret = rte_ml_io_float16_to_float32(
-					model->addr.output[i].nb_elements, lcl_qbuffer,
+					model->layer[0].info.output[i].nb_elements, lcl_qbuffer,
 					lcl_dbuffer);
 				break;
 			default:
 				plt_err("Unsupported model_output_type[%u] : %u", i,
-					model->metadata.output1[i].model_output_type);
+					model->layer[0].glow.metadata.output1[i].model_output_type);
 				ret = -ENOTSUP;
 			}
 			if (ret < 0)
 				return ret;
 		}
 
-		lcl_qbuffer += model->addr.output[i].sz_q;
-		lcl_dbuffer += model->addr.output[i].sz_d;
+		lcl_qbuffer += model->layer[0].info.output[i].sz_q;
+		lcl_dbuffer += model->layer[0].info.output[i].sz_d;
 	}
 
 	return 0;
@@ -2250,10 +2290,10 @@ static __rte_always_inline void
 cn10k_ml_result_update(struct rte_ml_dev *dev, int qp_id, struct cn10k_ml_result *result,
 		       struct rte_ml_op *op)
 {
-	struct cn10k_ml_model_stats *stats;
+	struct cn10k_ml_layer_stats *stats;
 	struct cn10k_ml_dev *cn10k_mldev;
 	struct cnxk_ml_dev *cnxk_mldev;
-	struct cn10k_ml_model *model;
+	struct cnxk_ml_model *model;
 	struct cn10k_ml_qp *qp;
 	uint64_t hw_latency;
 	uint64_t fw_latency;
@@ -2263,9 +2303,9 @@ cn10k_ml_result_update(struct rte_ml_dev *dev, int qp_id, struct cn10k_ml_result
 		if (likely(qp_id >= 0)) {
 			qp = dev->data->queue_pairs[qp_id];
 			qp->stats.dequeued_count++;
-			stats = &model->burst_stats[qp_id];
+			stats = &model->layer[0].glow.burst_stats[qp_id];
 		} else {
-			stats = model->sync_stats;
+			stats = model->layer[0].glow.sync_stats;
 		}
 
 		if (unlikely(stats->dequeued_count == stats->hw_reset_count)) {
@@ -2469,7 +2509,7 @@ cn10k_ml_inference_sync(struct rte_ml_dev *dev, struct rte_ml_op *op)
 {
 	struct cn10k_ml_dev *cn10k_mldev;
 	struct cnxk_ml_dev *cnxk_mldev;
-	struct cn10k_ml_model *model;
+	struct cnxk_ml_model *model;
 	struct cn10k_ml_req *req;
 	bool timeout;
 	int ret = 0;
@@ -2477,7 +2517,7 @@ cn10k_ml_inference_sync(struct rte_ml_dev *dev, struct rte_ml_op *op)
 	cnxk_mldev = dev->data->dev_private;
 	cn10k_mldev = &cnxk_mldev->cn10k_mldev;
 	model = dev->data->models[op->model_id];
-	req = model->req;
+	req = model->layer[0].glow.req;
 
 	cn10k_ml_set_poll_addr(req);
 	cn10k_ml_prep_fp_job_descriptor(cn10k_mldev, req, op);

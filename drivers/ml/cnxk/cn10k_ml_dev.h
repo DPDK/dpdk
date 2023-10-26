@@ -9,6 +9,8 @@
 
 #include "cn10k_ml_ocm.h"
 
+#include "cnxk_ml_io.h"
+
 /* Dummy Device ops */
 extern struct rte_ml_dev_ops ml_dev_dummy_ops;
 
@@ -20,9 +22,6 @@ extern struct rte_ml_dev_ops ml_dev_dummy_ops;
 
 /* Device alignment size */
 #define ML_CN10K_ALIGN_SIZE 128
-
-/* Maximum number of models per device */
-#define ML_CN10K_MAX_MODELS 16
 
 /* Maximum number of queue-pairs per device, spinlock version */
 #define ML_CN10K_MAX_QP_PER_DEVICE_SL 16
@@ -455,8 +454,8 @@ struct cn10k_ml_xstats {
 	struct cn10k_ml_xstats_entry *entries;
 
 	/* Store num stats and offset of the stats for each model */
-	uint16_t count_per_model[ML_CN10K_MAX_MODELS];
-	uint16_t offset_for_model[ML_CN10K_MAX_MODELS];
+	uint16_t count_per_model[ML_CNXK_MAX_MODELS];
+	uint16_t offset_for_model[ML_CNXK_MAX_MODELS];
 	uint16_t count_mode_device;
 	uint16_t count_mode_model;
 	uint16_t count;

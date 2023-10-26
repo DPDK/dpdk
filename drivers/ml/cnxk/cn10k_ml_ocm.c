@@ -6,10 +6,10 @@
 
 #include <roc_api.h>
 
-#include "cn10k_ml_model.h"
 #include "cn10k_ml_ocm.h"
 
 #include "cnxk_ml_dev.h"
+#include "cnxk_ml_model.h"
 
 /* OCM macros */
 #define BYTE_LEN	   8
@@ -333,12 +333,14 @@ found:
 }
 
 void
-cn10k_ml_ocm_reserve_pages(struct rte_ml_dev *dev, uint16_t model_id, uint64_t tilemask,
-			   int wb_page_start, uint16_t wb_pages, uint16_t scratch_pages)
+cn10k_ml_ocm_reserve_pages(struct rte_ml_dev *dev, uint16_t model_id, uint16_t layer_id,
+			   uint64_t tilemask, int wb_page_start, uint16_t wb_pages,
+			   uint16_t scratch_pages)
 {
 	struct cn10k_ml_dev *cn10k_mldev;
 	struct cnxk_ml_dev *cnxk_mldev;
-	struct cn10k_ml_model *model;
+	struct cnxk_ml_model *model;
+	struct cnxk_ml_layer *layer;
 	struct cn10k_ml_ocm *ocm;
 
 	int scratch_page_start;
@@ -353,6 +355,7 @@ cn10k_ml_ocm_reserve_pages(struct rte_ml_dev *dev, uint16_t model_id, uint64_t t
 	cn10k_mldev = &cnxk_mldev->cn10k_mldev;
 	ocm = &cn10k_mldev->ocm;
 	model = dev->data->models[model_id];
+	layer = &model->layer[layer_id];
 
 	/* Get first set bit, tile_start */
 	tile_start = 0;
@@ -382,8 +385,8 @@ cn10k_ml_ocm_reserve_pages(struct rte_ml_dev *dev, uint16_t model_id, uint64_t t
 				PLT_MAX(ocm->tile_ocm_info[tile_id].last_wb_page, wb_page_end);
 	}
 
-	model->addr.tile_start = tile_start;
-	model->addr.tile_end = tile_end;
+	layer->glow.addr.tile_start = tile_start;
+	layer->glow.addr.tile_end = tile_end;
 
 	plt_ml_dbg("model_id = %u, tilemask = 0x%016lx", model_id, tilemask);
 	plt_ml_dbg("model_id = %u, wb_page_start = %d, wb_page_end = %d", model_id, wb_page_start,
@@ -393,12 +396,14 @@ cn10k_ml_ocm_reserve_pages(struct rte_ml_dev *dev, uint16_t model_id, uint64_t t
 }
 
 void
-cn10k_ml_ocm_free_pages(struct rte_ml_dev *dev, uint16_t model_id)
+cn10k_ml_ocm_free_pages(struct rte_ml_dev *dev, uint16_t model_id, uint16_t layer_id)
 {
-	struct cn10k_ml_model *local_model;
+	struct cnxk_ml_model *local_model;
+	struct cnxk_ml_layer *local_layer;
 	struct cn10k_ml_dev *cn10k_mldev;
 	struct cnxk_ml_dev *cnxk_mldev;
-	struct cn10k_ml_model *model;
+	struct cnxk_ml_model *model;
+	struct cnxk_ml_layer *layer;
 	struct cn10k_ml_ocm *ocm;
 
 	int scratch_resize_pages;
@@ -409,16 +414,19 @@ cn10k_ml_ocm_free_pages(struct rte_ml_dev *dev, uint16_t model_id)
 	int tile_id;
 	int page_id;
 	uint16_t i;
+	uint16_t j;
 
 	cnxk_mldev = dev->data->dev_private;
 	cn10k_mldev = &cnxk_mldev->cn10k_mldev;
 	ocm = &cn10k_mldev->ocm;
 	model = dev->data->models[model_id];
+	layer = &model->layer[layer_id];
 
 	/* Update OCM info for WB memory */
-	wb_page_start = model->model_mem_map.wb_page_start;
-	wb_page_end = wb_page_start + model->model_mem_map.wb_pages - 1;
-	for (tile_id = model->addr.tile_start; tile_id <= model->addr.tile_end; tile_id++) {
+	wb_page_start = layer->glow.ocm_map.wb_page_start;
+	wb_page_end = wb_page_start + layer->glow.ocm_map.wb_pages - 1;
+	for (tile_id = layer->glow.addr.tile_start; tile_id <= layer->glow.addr.tile_end;
+	     tile_id++) {
 		for (page_id = wb_page_start; page_id <= wb_page_end; page_id++) {
 			CLEAR_BIT(ocm->tile_ocm_info[tile_id].ocm_mask[page_id / OCM_MAP_WORD_SIZE],
 				  page_id % OCM_MAP_WORD_SIZE);
@@ -432,11 +440,19 @@ cn10k_ml_ocm_free_pages(struct rte_ml_dev *dev, uint16_t model_id)
 		scratch_resize_pages = 0;
 		for (i = 0; i < dev->data->nb_models; i++) {
 			local_model = dev->data->models[i];
-			if ((i != model_id) && (local_model != NULL)) {
-				if (IS_BIT_SET(local_model->model_mem_map.tilemask, tile_id))
-					scratch_resize_pages = PLT_MAX(
-						(int)local_model->model_mem_map.scratch_pages,
-						scratch_resize_pages);
+			if (local_model == NULL)
+				continue;
+
+			for (j = 0; j < local_model->nb_layers; j++) {
+				local_layer = &local_model->layer[j];
+				if (local_layer != layer &&
+				    local_layer->glow.ocm_map.ocm_reserved) {
+					if (IS_BIT_SET(local_layer->glow.ocm_map.tilemask, tile_id))
+						scratch_resize_pages =
+							PLT_MAX((int)local_layer->glow.ocm_map
+									.scratch_pages,
+								scratch_resize_pages);
+				}
 			}
 		}
 
