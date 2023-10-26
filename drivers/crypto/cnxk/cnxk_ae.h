@@ -236,6 +236,7 @@ cnxk_ae_fill_session_parameters(struct cnxk_ae_sess *sess,
 		break;
 	case RTE_CRYPTO_ASYM_XFORM_ECDSA:
 		/* Fall through */
+	case RTE_CRYPTO_ASYM_XFORM_ECDH:
 	case RTE_CRYPTO_ASYM_XFORM_ECPM:
 	case RTE_CRYPTO_ASYM_XFORM_ECFPM:
 	case RTE_CRYPTO_ASYM_XFORM_SM2:
@@ -920,7 +921,7 @@ cnxk_ae_enqueue_sm2_op(struct rte_crypto_op *op,
 }
 
 static __rte_always_inline int
-cnxk_ae_ecfpm_prep(struct rte_crypto_ecpm_op_param *ecpm,
+cnxk_ae_ecfpm_prep(rte_crypto_param *scalar,
 		   struct roc_ae_buf_ptr *meta_buf, uint64_t *fpm_iova,
 		   struct roc_ae_ec_group *ec_grp, uint8_t curveid,
 		   struct cpt_inst_s *inst)
@@ -939,7 +940,7 @@ cnxk_ae_ecfpm_prep(struct rte_crypto_ecpm_op_param *ecpm,
 	inst->dptr = (uintptr_t)dptr;
 
 	p_align = RTE_ALIGN_CEIL(prime_len, 8);
-	scalar_align = RTE_ALIGN_CEIL(ecpm->scalar.length, 8);
+	scalar_align = RTE_ALIGN_CEIL(scalar->length, 8);
 
 	/*
 	 * Set dlen = sum(ROUNDUP8(input point(x and y coordinates), prime,
@@ -954,7 +955,7 @@ cnxk_ae_ecfpm_prep(struct rte_crypto_ecpm_op_param *ecpm,
 	dptr += sizeof(fpm_table_iova);
 
 	/* Copy scalar, prime */
-	memcpy(dptr, ecpm->scalar.data, ecpm->scalar.length);
+	memcpy(dptr, scalar->data, scalar->length);
 	dptr += scalar_align;
 	memcpy(dptr, ec_grp->prime.data, ec_grp->prime.length);
 	dptr += p_align;
@@ -968,7 +969,7 @@ cnxk_ae_ecfpm_prep(struct rte_crypto_ecpm_op_param *ecpm,
 	w4.s.opcode_minor = ROC_AE_MINOR_OP_ECC_FPM;
 
 	w4.s.param1 = curveid | (1 << 8);
-	w4.s.param2 = ecpm->scalar.length;
+	w4.s.param2 = scalar->length;
 	w4.s.dlen = dlen;
 
 	inst->w4.u64 = w4.u64;
@@ -978,13 +979,13 @@ cnxk_ae_ecfpm_prep(struct rte_crypto_ecpm_op_param *ecpm,
 }
 
 static __rte_always_inline int
-cnxk_ae_ecpm_prep(struct rte_crypto_ecpm_op_param *ecpm,
+cnxk_ae_ecpm_prep(rte_crypto_param *scalar, struct rte_crypto_ec_point *p,
 		  struct roc_ae_buf_ptr *meta_buf,
 		  struct roc_ae_ec_group *ec_grp, uint8_t curveid,
 		  struct cpt_inst_s *inst)
 {
-	uint16_t x1_len = ecpm->p.x.length;
-	uint16_t y1_len = ecpm->p.y.length;
+	uint16_t x1_len = p->x.length;
+	uint16_t y1_len = p->y.length;
 	uint16_t scalar_align, p_align;
 	uint16_t x1_offset, y1_offset;
 	uint16_t dlen, prime_len;
@@ -998,7 +999,7 @@ cnxk_ae_ecpm_prep(struct rte_crypto_ecpm_op_param *ecpm,
 	inst->dptr = (uintptr_t)dptr;
 
 	p_align = RTE_ALIGN_CEIL(prime_len, 8);
-	scalar_align = RTE_ALIGN_CEIL(ecpm->scalar.length, 8);
+	scalar_align = RTE_ALIGN_CEIL(scalar->length, 8);
 
 	/*
 	 * Set dlen = sum(ROUNDUP8(input point(x and y coordinates), prime,
@@ -1013,11 +1014,11 @@ cnxk_ae_ecpm_prep(struct rte_crypto_ecpm_op_param *ecpm,
 	memset(dptr, 0, dlen);
 
 	/* Copy input point, scalar, prime */
-	memcpy(dptr + x1_offset, ecpm->p.x.data, x1_len);
+	memcpy(dptr + x1_offset, p->x.data, x1_len);
 	dptr += p_align;
-	memcpy(dptr + y1_offset, ecpm->p.y.data, y1_len);
+	memcpy(dptr + y1_offset, p->y.data, y1_len);
 	dptr += p_align;
-	memcpy(dptr, ecpm->scalar.data, ecpm->scalar.length);
+	memcpy(dptr, scalar->data, scalar->length);
 	dptr += scalar_align;
 	memcpy(dptr, ec_grp->prime.data, ec_grp->prime.length);
 	dptr += p_align;
@@ -1031,13 +1032,85 @@ cnxk_ae_ecpm_prep(struct rte_crypto_ecpm_op_param *ecpm,
 	w4.s.opcode_minor = ROC_AE_MINOR_OP_ECC_UMP;
 
 	w4.s.param1 = curveid;
-	w4.s.param2 = ecpm->scalar.length;
+	w4.s.param2 = scalar->length;
 	w4.s.dlen = dlen;
 
 	inst->w4.u64 = w4.u64;
 	inst->rptr = (uintptr_t)dptr;
 
 	return 0;
+}
+
+static __rte_always_inline int
+cnxk_ae_random_prep(uint16_t len, struct roc_ae_buf_ptr *meta_buf,
+		   struct cpt_inst_s *inst)
+{
+	union cpt_inst_w4 w4;
+	uint8_t *dptr;
+
+	/* Input buffer */
+	dptr = meta_buf->vaddr;
+	inst->dptr = (uintptr_t)dptr;
+
+	/* Setup opcodes */
+	w4.s.opcode_major = ROC_AE_MAJOR_OP_RANDOM;
+	w4.s.opcode_minor = ROC_AE_MINOR_OP_RANDOM;
+
+	w4.s.param1 = len;
+	w4.s.param2 = 0;
+	w4.s.dlen = 0;
+
+	inst->w4.u64 = w4.u64;
+	inst->rptr = (uintptr_t)dptr;
+
+	return 0;
+}
+
+static __rte_always_inline int __rte_hot
+cnxk_ae_enqueue_ecdh_op(struct rte_crypto_op *op,
+			 struct roc_ae_buf_ptr *meta_buf,
+			 struct cnxk_ae_sess *sess, uint64_t *fpm_iova,
+			 struct roc_ae_ec_group **ec_grp,
+			 struct cpt_inst_s *inst)
+{
+	struct rte_crypto_ecdh_op_param *ecdh = &op->asym->ecdh;
+	uint8_t curveid = sess->ec_ctx.curveid;
+	struct rte_crypto_ec_point point;
+	rte_crypto_uint scalar;
+	int ret = 0;
+
+	switch (ecdh->ke_type) {
+	case RTE_CRYPTO_ASYM_KE_PRIV_KEY_GENERATE:
+		cnxk_ae_random_prep(ecdh->priv_key.length, meta_buf, inst);
+		break;
+	case RTE_CRYPTO_ASYM_KE_PUB_KEY_GENERATE:
+		scalar.data = sess->ec_ctx.pkey.data;
+		scalar.length = sess->ec_ctx.pkey.length;
+		cnxk_ae_ecfpm_prep(&scalar, meta_buf, fpm_iova, ec_grp[curveid],
+			curveid, inst);
+		break;
+	case RTE_CRYPTO_ASYM_KE_PUB_KEY_VERIFY:
+		scalar.data = ec_grp[curveid]->order.data;
+		scalar.length = ec_grp[curveid]->order.length;
+		cnxk_ae_ecpm_prep(&scalar, &ecdh->pub_key, meta_buf,
+			ec_grp[curveid], curveid, inst);
+		break;
+	case RTE_CRYPTO_ASYM_KE_SHARED_SECRET_COMPUTE:
+		scalar.data = sess->ec_ctx.pkey.data;
+		scalar.length = sess->ec_ctx.pkey.length;
+		point.x.data = sess->ec_ctx.q.x.data;
+		point.x.length = sess->ec_ctx.q.x.length;
+		point.y.data = sess->ec_ctx.q.y.data;
+		point.y.length = sess->ec_ctx.q.y.length;
+		cnxk_ae_ecpm_prep(&scalar, &point, meta_buf,
+			ec_grp[curveid], curveid, inst);
+		break;
+	default:
+		op->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
+		ret = -EINVAL;
+	}
+
+	return ret;
 }
 
 static __rte_always_inline void
@@ -1143,6 +1216,37 @@ cnxk_ae_dequeue_ecpm_op(struct rte_crypto_ecpm_op_param *ecpm, uint8_t *rptr,
 	ecpm->r.y.length = prime_len;
 }
 
+static __rte_always_inline void
+cnxk_ae_dequeue_ecdh_op(struct rte_crypto_ecdh_op_param *ecdh, uint8_t *rptr,
+			struct roc_ae_ec_ctx *ec,
+			struct roc_ae_ec_group **ec_grp)
+{
+	int prime_len = ec_grp[ec->curveid]->prime.length;
+
+	switch (ecdh->ke_type) {
+	case RTE_CRYPTO_ASYM_KE_PRIV_KEY_GENERATE:
+		memcpy(ecdh->priv_key.data, rptr, prime_len);
+		ecdh->priv_key.length = prime_len;
+		break;
+	case RTE_CRYPTO_ASYM_KE_PUB_KEY_GENERATE:
+		memcpy(ecdh->pub_key.x.data, rptr, prime_len);
+		memcpy(ecdh->pub_key.y.data, rptr + RTE_ALIGN_CEIL(prime_len, 8), prime_len);
+		ecdh->pub_key.x.length = prime_len;
+		ecdh->pub_key.y.length = prime_len;
+		break;
+	case RTE_CRYPTO_ASYM_KE_PUB_KEY_VERIFY:
+		break;
+	case RTE_CRYPTO_ASYM_KE_SHARED_SECRET_COMPUTE:
+		memcpy(ecdh->shared_secret.x.data, rptr, prime_len);
+		memcpy(ecdh->shared_secret.y.data, rptr + RTE_ALIGN_CEIL(prime_len, 8), prime_len);
+		ecdh->shared_secret.x.length = prime_len;
+		ecdh->shared_secret.y.length = prime_len;
+		break;
+	default:
+		break;
+	}
+}
+
 static __rte_always_inline void *
 cnxk_ae_alloc_meta(struct roc_ae_buf_ptr *buf,
 		   struct rte_mempool *cpt_meta_pool,
@@ -1206,17 +1310,24 @@ cnxk_ae_enqueue(struct cnxk_cpt_qp *qp, struct rte_crypto_op *op,
 			goto req_fail;
 		break;
 	case RTE_CRYPTO_ASYM_XFORM_ECPM:
-		ret = cnxk_ae_ecpm_prep(&asym_op->ecpm, &meta_buf,
+		ret = cnxk_ae_ecpm_prep(&asym_op->ecpm.scalar, &asym_op->ecpm.p, &meta_buf,
 					sess->ec_grp[sess->ec_ctx.curveid],
 					sess->ec_ctx.curveid, inst);
 		if (unlikely(ret))
 			goto req_fail;
 		break;
 	case RTE_CRYPTO_ASYM_XFORM_ECFPM:
-		ret = cnxk_ae_ecfpm_prep(&asym_op->ecpm, &meta_buf,
+		ret = cnxk_ae_ecfpm_prep(&asym_op->ecpm.scalar, &meta_buf,
 					 sess->cnxk_fpm_iova,
 					 sess->ec_grp[sess->ec_ctx.curveid],
 					 sess->ec_ctx.curveid, inst);
+		if (unlikely(ret))
+			goto req_fail;
+		break;
+	case RTE_CRYPTO_ASYM_XFORM_ECDH:
+		ret = cnxk_ae_enqueue_ecdh_op(op, &meta_buf, sess,
+					       sess->cnxk_fpm_iova,
+					       sess->ec_grp, inst);
 		if (unlikely(ret))
 			goto req_fail;
 		break;
@@ -1260,6 +1371,10 @@ cnxk_ae_post_process(struct rte_crypto_op *cop, struct cnxk_ae_sess *sess,
 	case RTE_CRYPTO_ASYM_XFORM_ECPM:
 	case RTE_CRYPTO_ASYM_XFORM_ECFPM:
 		cnxk_ae_dequeue_ecpm_op(&op->ecpm, rptr, &sess->ec_ctx,
+					sess->ec_grp);
+		break;
+	case RTE_CRYPTO_ASYM_XFORM_ECDH:
+		cnxk_ae_dequeue_ecdh_op(&op->ecdh, rptr, &sess->ec_ctx,
 					sess->ec_grp);
 		break;
 	default:

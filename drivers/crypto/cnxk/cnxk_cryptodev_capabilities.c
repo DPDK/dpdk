@@ -92,6 +92,20 @@ static const struct rte_cryptodev_capabilities caps_mul[] = {
 			},
 		}
 	},
+	{	/* ECDH */
+		.op = RTE_CRYPTO_OP_TYPE_ASYMMETRIC,
+		{.asym = {
+			.xform_capa = {
+				.xform_type = RTE_CRYPTO_ASYM_XFORM_ECDH,
+				.op_types = ((1 << RTE_CRYPTO_ASYM_KE_PRIV_KEY_GENERATE) |
+						(1 << RTE_CRYPTO_ASYM_KE_PUB_KEY_GENERATE) |
+						(1 << RTE_CRYPTO_ASYM_KE_PUB_KEY_VERIFY) |
+						(1 << RTE_CRYPTO_ASYM_KE_SHARED_SECRET_COMPUTE)
+						),
+				}
+			},
+		}
+	},
 };
 
 static const struct rte_cryptodev_capabilities caps_sha1_sha2[] = {

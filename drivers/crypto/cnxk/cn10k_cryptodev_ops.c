@@ -860,6 +860,18 @@ cn10k_cpt_dequeue_post_process(struct cnxk_cpt_qp *qp,
 		}
 
 		return;
+	} else if (cop->type == RTE_CRYPTO_OP_TYPE_ASYMMETRIC &&
+			   cop->sess_type == RTE_CRYPTO_OP_WITH_SESSION &&
+			   cop->asym->ecdh.ke_type == RTE_CRYPTO_ASYM_KE_PUB_KEY_VERIFY) {
+		if (likely(compcode == CPT_COMP_GOOD)) {
+			if (uc_compcode == ROC_AE_ERR_ECC_POINT_NOT_ON_CURVE) {
+				cop->status = RTE_CRYPTO_OP_STATUS_ERROR;
+				return;
+			} else if (uc_compcode == ROC_AE_ERR_ECC_PAI) {
+				cop->status = RTE_CRYPTO_OP_STATUS_SUCCESS;
+				return;
+			}
+		}
 	}
 
 	if (likely(compcode == CPT_COMP_GOOD)) {

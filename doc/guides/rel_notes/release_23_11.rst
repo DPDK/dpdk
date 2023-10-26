@@ -237,6 +237,7 @@ New Features
 * **Updated Marvell cnxk crypto driver.**
 
   * Added SM2 algorithm support in asymmetric crypto operations.
+  * Added asymmetric crypto ECDH support.
 
 * **Updated Marvell Nitrox symmetric crypto driver.**
 
