@@ -780,10 +780,8 @@ cn10k_ml_layer_unload(void *device, uint16_t model_id, const char *layer_name)
 	struct cnxk_ml_layer *layer;
 
 	char str[RTE_MEMZONE_NAMESIZE];
-	uint16_t layer_id = 0;
+	uint16_t layer_id;
 	int ret;
-
-	PLT_SET_USED(layer_name);
 
 	cnxk_mldev = (struct cnxk_ml_dev *)device;
 	if (cnxk_mldev == NULL) {
@@ -796,6 +794,10 @@ cn10k_ml_layer_unload(void *device, uint16_t model_id, const char *layer_name)
 		plt_err("Invalid model_id = %u", model_id);
 		return -EINVAL;
 	}
+
+	ret = cn10k_ml_model_get_layer_id(model, layer_name, &layer_id);
+	if (ret != 0)
+		return ret;
 
 	layer = &model->layer[layer_id];
 

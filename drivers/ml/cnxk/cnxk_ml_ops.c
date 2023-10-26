@@ -1107,7 +1107,7 @@ cnxk_ml_model_unload(struct rte_ml_dev *dev, uint16_t model_id)
 	struct cnxk_ml_model *model;
 
 	char str[RTE_MEMZONE_NAMESIZE];
-	int ret;
+	int ret = 0;
 
 	if (dev == NULL)
 		return -EINVAL;
@@ -1125,7 +1125,10 @@ cnxk_ml_model_unload(struct rte_ml_dev *dev, uint16_t model_id)
 		return -EBUSY;
 	}
 
-	ret = cn10k_ml_model_unload(cnxk_mldev, model);
+	if (model->type == ML_CNXK_MODEL_TYPE_GLOW)
+		ret = cn10k_ml_model_unload(cnxk_mldev, model);
+	else
+		ret = mvtvm_ml_model_unload(cnxk_mldev, model);
 	if (ret != 0)
 		return ret;
 

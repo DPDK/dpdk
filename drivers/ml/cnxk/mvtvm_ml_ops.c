@@ -185,3 +185,31 @@ error:
 
 	return ret;
 }
+
+int
+mvtvm_ml_model_unload(struct cnxk_ml_dev *cnxk_mldev, struct cnxk_ml_model *model)
+{
+	char str[RTE_MEMZONE_NAMESIZE];
+	const struct plt_memzone *mz;
+	int ret;
+
+	RTE_SET_USED(cnxk_mldev);
+
+	/* Initialize model in TVMDP */
+	ret = tvmdp_model_unload(model->model_id);
+	if (ret != 0) {
+		plt_err("TVMDP: Model unload failed, model_id = %u, error = %d", model->model_id,
+			ret);
+		return ret;
+	}
+
+	snprintf(str, RTE_MEMZONE_NAMESIZE, "%s_%u", MVTVM_ML_MODEL_MEMZONE_NAME, model->model_id);
+	mz = rte_memzone_lookup(str);
+	if (mz == NULL) {
+		plt_err("Memzone lookup failed for TVM model: model_id = %u, mz = %s",
+			model->model_id, str);
+		return -EINVAL;
+	}
+
+	return plt_memzone_free(mz);
+}
