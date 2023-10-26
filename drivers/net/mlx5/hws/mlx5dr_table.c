@@ -68,7 +68,6 @@ static void mlx5dr_table_down_default_fdb_miss_tbl(struct mlx5dr_table *tbl)
 		return;
 
 	mlx5dr_cmd_forward_tbl_destroy(default_miss);
-
 	ctx->common_res[tbl_type].default_miss = NULL;
 }
 

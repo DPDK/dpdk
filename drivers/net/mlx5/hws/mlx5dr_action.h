@@ -148,6 +148,9 @@ struct mlx5dr_action {
 				struct {
 					struct mlx5dv_steering_anchor *sa;
 				} root_tbl;
+				struct {
+					struct mlx5dr_devx_obj *devx_obj;
+				} devx_dest;
 			};
 		};
 

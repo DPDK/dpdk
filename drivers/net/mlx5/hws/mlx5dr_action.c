@@ -787,6 +787,8 @@ mlx5dr_action_create_dest_table(struct mlx5dr_context *ctx,
 		ret = mlx5dr_action_create_stcs(action, tbl->ft);
 		if (ret)
 			goto free_action;
+
+		action->devx_dest.devx_obj = tbl->ft;
 	}
 
 	return action;
@@ -864,6 +866,8 @@ mlx5dr_action_create_dest_tir(struct mlx5dr_context *ctx,
 		ret = mlx5dr_action_create_stcs(action, cur_obj);
 		if (ret)
 			goto clean_obj;
+
+		action->devx_dest.devx_obj = cur_obj;
 	}
 
 	return action;
