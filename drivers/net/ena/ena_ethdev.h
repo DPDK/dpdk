@@ -252,6 +252,23 @@ struct ena_stats_metrics {
 	uint64_t conntrack_allowance_available;
 };
 
+struct ena_stats_srd {
+	/* Describes which ENA Express features are enabled */
+	uint64_t ena_srd_mode;
+
+	/* Number of packets transmitted over ENA SRD */
+	uint64_t ena_srd_tx_pkts;
+
+	/* Number of packets transmitted or could have been transmitted over ENA SRD */
+	uint64_t ena_srd_eligible_tx_pkts;
+
+	/* Number of packets received over ENA SRD */
+	uint64_t ena_srd_rx_pkts;
+
+	/* Percentage of the ENA SRD resources that is in use */
+	uint64_t ena_srd_resource_utilization;
+};
+
 struct ena_offloads {
 	uint32_t tx_offloads;
 	uint32_t rx_offloads;
@@ -329,6 +346,7 @@ struct ena_adapter {
 	 */
 	uint64_t metrics_stats[ENA_MAX_CUSTOMER_METRICS] __rte_cache_aligned;
 	uint16_t metrics_num;
+	struct ena_stats_srd srd_stats __rte_cache_aligned;
 };
 
 int ena_mp_indirect_table_set(struct ena_adapter *adapter);
