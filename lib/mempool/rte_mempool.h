@@ -327,8 +327,8 @@ struct rte_mempool {
 		if (likely(__lcore_id < RTE_MAX_LCORE))                         \
 			(mp)->stats[__lcore_id].name += (n);                    \
 		else                                                            \
-			__atomic_fetch_add(&((mp)->stats[RTE_MAX_LCORE].name),  \
-					   (n), __ATOMIC_RELAXED);              \
+			rte_atomic_fetch_add_explicit(&((mp)->stats[RTE_MAX_LCORE].name),  \
+					   (n), rte_memory_order_relaxed);              \
 	} while (0)
 #else
 #define RTE_MEMPOOL_STAT_ADD(mp, name, n) do {} while (0)
