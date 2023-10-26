@@ -7544,29 +7544,6 @@ flow_release_workspace(void *data)
 	}
 }
 
-static struct mlx5_flow_workspace *gc_head;
-static rte_spinlock_t mlx5_flow_workspace_lock = RTE_SPINLOCK_INITIALIZER;
-
-static void
-mlx5_flow_workspace_gc_add(struct mlx5_flow_workspace *ws)
-{
-	rte_spinlock_lock(&mlx5_flow_workspace_lock);
-	ws->gc = gc_head;
-	gc_head = ws;
-	rte_spinlock_unlock(&mlx5_flow_workspace_lock);
-}
-
-void
-mlx5_flow_workspace_gc_release(void)
-{
-	while (gc_head) {
-		struct mlx5_flow_workspace *wks = gc_head;
-
-		gc_head = wks->gc;
-		flow_release_workspace(wks);
-	}
-}
-
 /**
  * Get thread specific current flow workspace.
  *
@@ -7623,7 +7600,7 @@ mlx5_flow_push_thread_workspace(void)
 		data = flow_alloc_thread_workspace();
 		if (!data)
 			return NULL;
-		mlx5_flow_workspace_gc_add(data);
+		mlx5_flow_os_workspace_gc_add(data);
 	} else if (!curr->inuse) {
 		data = curr;
 	} else if (curr->next) {

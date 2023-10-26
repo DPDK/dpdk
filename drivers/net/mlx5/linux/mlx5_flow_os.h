@@ -526,4 +526,12 @@ mlx5_flow_os_validate_item_esp(const struct rte_flow_item *item,
 			    uint8_t target_protocol,
 			    struct rte_flow_error *error);
 
+/**
+ * Add per thread workspace to the global list for garbage collection.
+ *
+ * @param[in] ws
+ *   Pointer to the flow workspace.
+ */
+void mlx5_flow_os_workspace_gc_add(struct mlx5_flow_workspace *ws);
+
 #endif /* RTE_PMD_MLX5_FLOW_OS_H_ */
