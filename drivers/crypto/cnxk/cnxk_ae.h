@@ -588,8 +588,8 @@ cnxk_ae_ecdsa_sign_prep(struct rte_crypto_ecdsa_op_param *ecdsa,
 	dptr += p_align;
 
 	/* Setup opcodes */
-	w4.s.opcode_major = ROC_AE_MAJOR_OP_ECDSA;
-	w4.s.opcode_minor = ROC_AE_MINOR_OP_ECDSA_SIGN;
+	w4.s.opcode_major = ROC_AE_MAJOR_OP_EC;
+	w4.s.opcode_minor = ROC_AE_MINOR_OP_EC_SIGN;
 
 	w4.s.param1 = curveid | (message_len << 8);
 	w4.s.param2 = (p_align << 8) | k_len;
@@ -683,8 +683,8 @@ cnxk_ae_ecdsa_verify_prep(struct rte_crypto_ecdsa_op_param *ecdsa,
 	dptr += p_align;
 
 	/* Setup opcodes */
-	w4.s.opcode_major = ROC_AE_MAJOR_OP_ECDSA;
-	w4.s.opcode_minor = ROC_AE_MINOR_OP_ECDSA_VERIFY;
+	w4.s.opcode_major = ROC_AE_MAJOR_OP_EC;
+	w4.s.opcode_minor = ROC_AE_MINOR_OP_EC_VERIFY;
 
 	w4.s.param1 = curveid | (message_len << 8);
 	w4.s.param2 = 0;
@@ -719,9 +719,9 @@ cnxk_ae_enqueue_ecdsa_op(struct rte_crypto_op *op,
 
 static __rte_always_inline void
 cnxk_ae_sm2_sign_prep(struct rte_crypto_sm2_op_param *sm2,
-			 struct roc_ae_buf_ptr *meta_buf,
-			 uint64_t fpm_table_iova, struct roc_ae_ec_group *ec_grp,
-			 struct cnxk_ae_sess *sess, struct cpt_inst_s *inst)
+			struct roc_ae_buf_ptr *meta_buf,
+			uint64_t fpm_table_iova, struct roc_ae_ec_group *ec_grp,
+			struct cnxk_ae_sess *sess, struct cpt_inst_s *inst)
 {
 	uint16_t message_len = sm2->message.length;
 	uint16_t pkey_len = sess->ec_ctx.pkey.length;
@@ -787,10 +787,12 @@ cnxk_ae_sm2_sign_prep(struct rte_crypto_sm2_op_param *sm2,
 	dptr += p_align;
 
 	/* Setup opcodes */
-	w4.s.opcode_major = ROC_AE_MAJOR_OP_ECDSA;
-	w4.s.opcode_minor = ROC_AE_MINOR_OP_ECDSA_SIGN;
+	w4.s.opcode_major = ROC_AE_MAJOR_OP_EC;
+	w4.s.opcode_minor = ROC_AE_MINOR_OP_EC_SIGN;
 
-	w4.s.param1 = 2 | 1 << 7 | 1 << 6 | (message_len << 8);
+	/* prime length of SM2 curve is same as that of P256. */
+	w4.s.param1 = ROC_AE_EC_ID_P256 |
+		ROC_AE_EC_PARAM1_SM2 | ROC_AE_EC_PARAM1_NONNIST | (message_len << 8);
 	w4.s.param2 = (p_align << 8) | k_len;
 	w4.s.dlen = dlen;
 
@@ -800,10 +802,10 @@ cnxk_ae_sm2_sign_prep(struct rte_crypto_sm2_op_param *sm2,
 
 static __rte_always_inline void
 cnxk_ae_sm2_verify_prep(struct rte_crypto_sm2_op_param *sm2,
-			 struct roc_ae_buf_ptr *meta_buf,
-			 uint64_t fpm_table_iova,
-			 struct roc_ae_ec_group *ec_grp, struct cnxk_ae_sess *sess,
-			 struct cpt_inst_s *inst)
+			  struct roc_ae_buf_ptr *meta_buf,
+			  uint64_t fpm_table_iova,
+			  struct roc_ae_ec_group *ec_grp, struct cnxk_ae_sess *sess,
+			  struct cpt_inst_s *inst)
 {
 	uint32_t message_len = sm2->message.length;
 	uint16_t o_offset, r_offset, s_offset;
@@ -881,10 +883,12 @@ cnxk_ae_sm2_verify_prep(struct rte_crypto_sm2_op_param *sm2,
 	dptr += p_align;
 
 	/* Setup opcodes */
-	w4.s.opcode_major = ROC_AE_MAJOR_OP_ECDSA;
-	w4.s.opcode_minor = ROC_AE_MINOR_OP_ECDSA_VERIFY;
+	w4.s.opcode_major = ROC_AE_MAJOR_OP_EC;
+	w4.s.opcode_minor = ROC_AE_MINOR_OP_EC_VERIFY;
 
-	w4.s.param1 = 2 | 1 << 7 | 1 << 6 | (message_len << 8);
+	/* prime length of SM2 curve is same as that of P256. */
+	w4.s.param1 = ROC_AE_EC_ID_P256 |
+		ROC_AE_EC_PARAM1_SM2 | ROC_AE_EC_PARAM1_NONNIST | (message_len << 8);
 	w4.s.param2 = 0;
 	w4.s.dlen = dlen;
 
@@ -894,20 +898,20 @@ cnxk_ae_sm2_verify_prep(struct rte_crypto_sm2_op_param *sm2,
 
 static __rte_always_inline int __rte_hot
 cnxk_ae_enqueue_sm2_op(struct rte_crypto_op *op,
-					   struct roc_ae_buf_ptr *meta_buf,
-					   struct cnxk_ae_sess *sess, uint64_t *fpm_iova,
-					   struct roc_ae_ec_group **ec_grp,
-					   struct cpt_inst_s *inst)
+			 struct roc_ae_buf_ptr *meta_buf,
+			 struct cnxk_ae_sess *sess, uint64_t *fpm_iova,
+			 struct roc_ae_ec_group **ec_grp,
+			 struct cpt_inst_s *inst)
 {
 	struct rte_crypto_sm2_op_param *sm2 = &op->asym->sm2;
 	uint8_t curveid = sess->ec_ctx.curveid;
 
 	if (sm2->op_type == RTE_CRYPTO_ASYM_OP_SIGN)
 		cnxk_ae_sm2_sign_prep(sm2, meta_buf, fpm_iova[curveid],
-							  ec_grp[curveid], sess, inst);
+					ec_grp[curveid], sess, inst);
 	else if (sm2->op_type == RTE_CRYPTO_ASYM_OP_VERIFY)
 		cnxk_ae_sm2_verify_prep(sm2, meta_buf, fpm_iova[curveid],
-								ec_grp[curveid], sess, inst);
+					  ec_grp[curveid], sess, inst);
 	else {
 		op->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
 		return -EINVAL;
