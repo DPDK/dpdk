@@ -671,6 +671,7 @@ enum index {
 	ACTION_DEC_TCP_ACK_VALUE,
 	ACTION_RAW_ENCAP,
 	ACTION_RAW_DECAP,
+	ACTION_RAW_ENCAP_SIZE,
 	ACTION_RAW_ENCAP_INDEX,
 	ACTION_RAW_ENCAP_INDEX_VALUE,
 	ACTION_RAW_DECAP_INDEX,
@@ -2461,6 +2462,7 @@ static const enum index action_dec_tcp_ack[] = {
 };
 
 static const enum index action_raw_encap[] = {
+	ACTION_RAW_ENCAP_SIZE,
 	ACTION_RAW_ENCAP_INDEX,
 	ACTION_NEXT,
 	ZERO,
@@ -7041,6 +7043,14 @@ static const struct token token_list[] = {
 		.next = NEXT(action_raw_encap),
 		.call = parse_vc_action_raw_encap,
 	},
+	[ACTION_RAW_ENCAP_SIZE] = {
+		.name = "size",
+		.help = "raw encap size",
+		.next = NEXT(NEXT_ENTRY(ACTION_NEXT),
+			     NEXT_ENTRY(COMMON_UNSIGNED)),
+		.args = ARGS(ARGS_ENTRY(struct rte_flow_action_raw_encap, size)),
+		.call = parse_vc_conf,
+	},
 	[ACTION_RAW_ENCAP_INDEX] = {
 		.name = "index",
 		.help = "the index of raw_encap_confs",
@@ -9866,8 +9876,6 @@ parse_vc_action_raw_encap(struct context *ctx, const struct token *token,
 			  unsigned int size)
 {
 	struct buffer *out = buf;
-	struct rte_flow_action *action;
-	struct action_raw_encap_data *action_raw_encap_data = NULL;
 	int ret;
 
 	ret = parse_vc(ctx, token, str, len, buf, size);
@@ -9878,16 +9886,9 @@ parse_vc_action_raw_encap(struct context *ctx, const struct token *token,
 		return ret;
 	if (!out->args.vc.actions_n)
 		return -1;
-	action = &out->args.vc.actions[out->args.vc.actions_n - 1];
 	/* Point to selected object. */
 	ctx->object = out->args.vc.data;
 	ctx->objmask = NULL;
-	/* Copy the headers to the buffer. */
-	action_raw_encap_data = ctx->object;
-	action_raw_encap_data->conf.data = raw_encap_confs[0].data;
-	action_raw_encap_data->conf.preserve = NULL;
-	action_raw_encap_data->conf.size = raw_encap_confs[0].size;
-	action->conf = &action_raw_encap_data->conf;
 	return ret;
 }
 
