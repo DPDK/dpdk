@@ -45,7 +45,7 @@ struct socket {
 	int sock;
 	char path[sizeof(((struct sockaddr_un *)0)->sun_path)];
 	handler fn;
-	uint16_t *num_clients;
+	RTE_ATOMIC(uint16_t) *num_clients;
 };
 static struct socket v2_socket; /* socket for v2 telemetry */
 static struct socket v1_socket; /* socket for v1 telemetry */
@@ -64,7 +64,7 @@ static int num_callbacks; /* How many commands are registered */
 /* Used when accessing or modifying list of command callbacks */
 static rte_spinlock_t callback_sl = RTE_SPINLOCK_INITIALIZER;
 #ifndef RTE_EXEC_ENV_WINDOWS
-static uint16_t v2_clients;
+static RTE_ATOMIC(uint16_t) v2_clients;
 #endif /* !RTE_EXEC_ENV_WINDOWS */
 
 int
@@ -404,7 +404,7 @@ client_handler(void *sock_id)
 		bytes = read(s, buffer, sizeof(buffer) - 1);
 	}
 	close(s);
-	__atomic_fetch_sub(&v2_clients, 1, __ATOMIC_RELAXED);
+	rte_atomic_fetch_sub_explicit(&v2_clients, 1, rte_memory_order_relaxed);
 	return NULL;
 }
 
@@ -421,14 +421,14 @@ socket_listener(void *socket)
 			return NULL;
 		}
 		if (s->num_clients != NULL) {
-			uint16_t conns = __atomic_load_n(s->num_clients,
-					__ATOMIC_RELAXED);
+			uint16_t conns = rte_atomic_load_explicit(s->num_clients,
+					rte_memory_order_relaxed);
 			if (conns >= MAX_CONNECTIONS) {
 				close(s_accepted);
 				continue;
 			}
-			__atomic_fetch_add(s->num_clients, 1,
-					__ATOMIC_RELAXED);
+			rte_atomic_fetch_add_explicit(s->num_clients, 1,
+					rte_memory_order_relaxed);
 		}
 		rc = pthread_create(&th, NULL, s->fn,
 				    (void *)(uintptr_t)s_accepted);
@@ -437,8 +437,8 @@ socket_listener(void *socket)
 				 strerror(rc));
 			close(s_accepted);
 			if (s->num_clients != NULL)
-				__atomic_fetch_sub(s->num_clients, 1,
-						   __ATOMIC_RELAXED);
+				rte_atomic_fetch_sub_explicit(s->num_clients, 1,
+						   rte_memory_order_relaxed);
 			continue;
 		}
 		pthread_detach(th);
