@@ -2751,6 +2751,30 @@ static struct unit_test_suite cryptodev_openssl_asym_testsuite  = {
 				test_rsa_sign_verify_crt),
 		TEST_CASE_ST(ut_setup_asym, ut_teardown_asym, test_mod_inv),
 		TEST_CASE_ST(ut_setup_asym, ut_teardown_asym, test_mod_exp),
+		TEST_CASE_NAMED_WITH_DATA(
+			"Modex Group 5 test",
+			ut_setup_asym, ut_teardown_asym,
+			modular_exponentiation, &modex_group_test_cases[0]),
+		TEST_CASE_NAMED_WITH_DATA(
+			"Modex Group 14 test",
+			ut_setup_asym, ut_teardown_asym,
+			modular_exponentiation, &modex_group_test_cases[1]),
+		TEST_CASE_NAMED_WITH_DATA(
+			"Modex Group 15 test",
+			ut_setup_asym, ut_teardown_asym,
+			modular_exponentiation, &modex_group_test_cases[2]),
+		TEST_CASE_NAMED_WITH_DATA(
+			"Modex Group 16 test",
+			ut_setup_asym, ut_teardown_asym,
+			modular_exponentiation, &modex_group_test_cases[3]),
+		TEST_CASE_NAMED_WITH_DATA(
+			"Modex Group 17 test",
+			ut_setup_asym, ut_teardown_asym,
+			modular_exponentiation, &modex_group_test_cases[4]),
+		TEST_CASE_NAMED_WITH_DATA(
+			"Modex Group 18 test",
+			ut_setup_asym, ut_teardown_asym,
+			modular_exponentiation, &modex_group_test_cases[5]),
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}
 };
@@ -2802,6 +2826,30 @@ static struct unit_test_suite cryptodev_octeontx_asym_testsuite  = {
 		TEST_CASE_ST(ut_setup_asym, ut_teardown_asym,
 				test_rsa_sign_verify_crt),
 		TEST_CASE_ST(ut_setup_asym, ut_teardown_asym, test_mod_exp),
+		TEST_CASE_NAMED_WITH_DATA(
+			"Modex Group 5 test",
+			ut_setup_asym, ut_teardown_asym,
+			modular_exponentiation, &modex_group_test_cases[0]),
+		TEST_CASE_NAMED_WITH_DATA(
+			"Modex Group 14 test",
+			ut_setup_asym, ut_teardown_asym,
+			modular_exponentiation, &modex_group_test_cases[1]),
+		TEST_CASE_NAMED_WITH_DATA(
+			"Modex Group 15 test",
+			ut_setup_asym, ut_teardown_asym,
+			modular_exponentiation, &modex_group_test_cases[2]),
+		TEST_CASE_NAMED_WITH_DATA(
+			"Modex Group 16 test",
+			ut_setup_asym, ut_teardown_asym,
+			modular_exponentiation, &modex_group_test_cases[3]),
+		TEST_CASE_NAMED_WITH_DATA(
+			"Modex Group 17 test",
+			ut_setup_asym, ut_teardown_asym,
+			modular_exponentiation, &modex_group_test_cases[4]),
+		TEST_CASE_NAMED_WITH_DATA(
+			"Modex Group 18 test",
+			ut_setup_asym, ut_teardown_asym,
+			modular_exponentiation, &modex_group_test_cases[5]),
 		TEST_CASE_ST(ut_setup_asym, ut_teardown_asym,
 			     test_ecdsa_sign_verify_all_curve),
 		TEST_CASE_ST(ut_setup_asym, ut_teardown_asym, test_sm2_sign),
