@@ -482,7 +482,7 @@ struct rte_bbdev_data {
 	uint16_t dev_id;  /**< Device ID */
 	int socket_id;  /**< NUMA socket that device is on */
 	bool started;  /**< Device run-time state */
-	uint16_t process_cnt;  /** Counter of processes using the device */
+	RTE_ATOMIC(uint16_t) process_cnt;  /** Counter of processes using the device */
 };
 
 /* Forward declarations */

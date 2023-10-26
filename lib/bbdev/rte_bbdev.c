@@ -208,7 +208,7 @@ rte_bbdev_allocate(const char *name)
 		return NULL;
 	}
 
-	__atomic_fetch_add(&bbdev->data->process_cnt, 1, __ATOMIC_RELAXED);
+	rte_atomic_fetch_add_explicit(&bbdev->data->process_cnt, 1, rte_memory_order_relaxed);
 	bbdev->data->dev_id = dev_id;
 	bbdev->state = RTE_BBDEV_INITIALIZED;
 
@@ -250,8 +250,8 @@ rte_bbdev_release(struct rte_bbdev *bbdev)
 	}
 
 	/* clear shared BBDev Data if no process is using the device anymore */
-	if (__atomic_fetch_sub(&bbdev->data->process_cnt, 1,
-			      __ATOMIC_RELAXED) - 1 == 0)
+	if (rte_atomic_fetch_sub_explicit(&bbdev->data->process_cnt, 1,
+			      rte_memory_order_relaxed) - 1 == 0)
 		memset(bbdev->data, 0, sizeof(*bbdev->data));
 
 	memset(bbdev, 0, sizeof(*bbdev));
