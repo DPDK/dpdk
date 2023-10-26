@@ -261,7 +261,8 @@ struct ena_eth_io_intr_reg {
 	/* 14:0 : rx_intr_delay
 	 * 29:15 : tx_intr_delay
 	 * 30 : intr_unmask
-	 * 31 : reserved
+	 * 31 : no_moderation_update - 0 - moderation
+	 *    updated, 1 - moderation not updated
 	 */
 	uint32_t intr_control;
 };
@@ -381,6 +382,8 @@ struct ena_eth_io_numa_node_cfg_reg {
 #define ENA_ETH_IO_INTR_REG_TX_INTR_DELAY_MASK              GENMASK(29, 15)
 #define ENA_ETH_IO_INTR_REG_INTR_UNMASK_SHIFT               30
 #define ENA_ETH_IO_INTR_REG_INTR_UNMASK_MASK                BIT(30)
+#define ENA_ETH_IO_INTR_REG_NO_MODERATION_UPDATE_SHIFT      31
+#define ENA_ETH_IO_INTR_REG_NO_MODERATION_UPDATE_MASK       BIT(31)
 
 /* numa_node_cfg_reg */
 #define ENA_ETH_IO_NUMA_NODE_CFG_REG_NUMA_MASK              GENMASK(7, 0)
@@ -916,6 +919,19 @@ static inline uint32_t get_ena_eth_io_intr_reg_intr_unmask(const struct ena_eth_
 static inline void set_ena_eth_io_intr_reg_intr_unmask(struct ena_eth_io_intr_reg *p, uint32_t val)
 {
 	p->intr_control |= (val << ENA_ETH_IO_INTR_REG_INTR_UNMASK_SHIFT) & ENA_ETH_IO_INTR_REG_INTR_UNMASK_MASK;
+}
+
+static inline uint32_t get_ena_eth_io_intr_reg_no_mod_update(const struct ena_eth_io_intr_reg *p)
+{
+	return (p->intr_control & ENA_ETH_IO_INTR_REG_NO_MODERATION_UPDATE_MASK) >>
+			ENA_ETH_IO_INTR_REG_NO_MODERATION_UPDATE_SHIFT;
+}
+
+static inline void set_ena_eth_io_intr_reg_no_mod_update(struct ena_eth_io_intr_reg *p,
+									     uint32_t val)
+{
+	p->intr_control |= (val << ENA_ETH_IO_INTR_REG_NO_MODERATION_UPDATE_SHIFT) &
+			ENA_ETH_IO_INTR_REG_NO_MODERATION_UPDATE_MASK;
 }
 
 static inline uint32_t get_ena_eth_io_numa_node_cfg_reg_numa(const struct ena_eth_io_numa_node_cfg_reg *p)

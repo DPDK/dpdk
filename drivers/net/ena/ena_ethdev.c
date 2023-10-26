@@ -2687,7 +2687,6 @@ static uint16_t eth_ena_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 
 	/* Burst refill to save doorbells, memory barriers, const interval */
 	if (free_queue_entries >= rx_ring->rx_free_thresh) {
-		ena_com_update_dev_comp_head(rx_ring->ena_com_io_cq);
 		ena_populate_rx_queue(rx_ring, free_queue_entries);
 	}
 
@@ -3096,7 +3095,6 @@ static int ena_tx_cleanup(void *txp, uint32_t free_pkt_cnt)
 		/* acknowledge completion of sent packets */
 		tx_ring->next_to_clean = next_to_clean;
 		ena_com_comp_ack(tx_ring->ena_com_io_sq, total_tx_descs);
-		ena_com_update_dev_comp_head(tx_ring->ena_com_io_cq);
 	}
 
 	if (mbuf_cnt != 0)
@@ -3629,7 +3627,7 @@ static void ena_rx_queue_intr_set(struct rte_eth_dev *dev,
 	struct ena_ring *rxq = &adapter->rx_ring[queue_id];
 	struct ena_eth_io_intr_reg intr_reg;
 
-	ena_com_update_intr_reg(&intr_reg, 0, 0, unmask);
+	ena_com_update_intr_reg(&intr_reg, 0, 0, unmask, 1);
 	ena_com_unmask_intr(rxq->ena_com_io_cq, &intr_reg);
 }
 

@@ -40,7 +40,7 @@ typedef uint64_t dma_addr_t;
 #define ETIME ETIMEDOUT
 #endif
 
-#define ENA_PRIu64 PRIu64
+#define ENA_PRIU64 PRIu64
 #define ena_atomic32_t rte_atomic32_t
 #define ena_mem_handle_t const struct rte_memzone *
 
@@ -57,8 +57,11 @@ typedef uint64_t dma_addr_t;
 #define ENA_COM_TRY_AGAIN	-EAGAIN
 #define ENA_COM_UNSUPPORTED    -EOPNOTSUPP
 #define ENA_COM_EIO    -EIO
+#define ENA_COM_DEVICE_BUSY	-EBUSY
 
 #define ____cacheline_aligned __rte_cache_aligned
+
+#define ENA_CDESC_RING_SIZE_ALIGNMENT  (1 << 12) /* 4K */
 
 #define ENA_ABORT() abort()
 
@@ -106,7 +109,8 @@ extern int ena_logtype_com;
 
 #define BITS_PER_LONG_LONG (__SIZEOF_LONG_LONG__ * 8)
 #define U64_C(x) x ## ULL
-#define BIT(nr)         (1UL << (nr))
+#define BIT(nr)	RTE_BIT32(nr)
+#define BIT64(nr)	RTE_BIT64(nr)
 #define BITS_PER_LONG	(__SIZEOF_LONG__ * 8)
 #define GENMASK(h, l)	(((~0UL) << (l)) & (~0UL >> (BITS_PER_LONG - 1 - (h))))
 #define GENMASK_ULL(h, l) (((~0ULL) - (1ULL << (l)) + 1) &		       \
@@ -121,8 +125,7 @@ extern int ena_logtype_com;
 
 #define ena_trc_dbg(dev, format, arg...) ena_trc_log(dev, DEBUG, format, ##arg)
 #define ena_trc_info(dev, format, arg...) ena_trc_log(dev, INFO, format, ##arg)
-#define ena_trc_warn(dev, format, arg...)				       \
-	ena_trc_log(dev, WARNING, format, ##arg)
+#define ena_trc_warn(dev, format, arg...) ena_trc_log(dev, WARNING, format, ##arg)
 #define ena_trc_err(dev, format, arg...) ena_trc_log(dev, ERR, format, ##arg)
 
 #define ENA_WARN(cond, dev, format, arg...)				       \
@@ -138,9 +141,9 @@ extern int ena_logtype_com;
 #define ena_spinlock_t rte_spinlock_t
 #define ENA_SPINLOCK_INIT(spinlock) rte_spinlock_init(&(spinlock))
 #define ENA_SPINLOCK_LOCK(spinlock, flags)				       \
-	({(void)flags; rte_spinlock_lock(&(spinlock)); })
+	({(void)(flags); rte_spinlock_lock(&(spinlock)); })
 #define ENA_SPINLOCK_UNLOCK(spinlock, flags)				       \
-	({(void)flags; rte_spinlock_unlock(&(spinlock)); })
+	({(void)(flags); rte_spinlock_unlock(&(spinlock)); })
 #define ENA_SPINLOCK_DESTROY(spinlock) ((void)(spinlock))
 
 typedef struct {
@@ -199,9 +202,21 @@ typedef struct {
 #define ENA_MIGHT_SLEEP()
 
 #define ena_time_t uint64_t
-#define ENA_TIME_EXPIRE(timeout)  (timeout < rte_get_timer_cycles())
-#define ENA_GET_SYSTEM_TIMEOUT(timeout_us)				       \
+#define ena_time_high_res_t uint64_t
+
+/* Note that high resolution timers are not used by the ENA PMD for now.
+ * Although these macro definitions compile, it shall fail the
+ * compilation in case the unimplemented API is called prematurely.
+ */
+#define ENA_TIME_EXPIRE(timeout)  ((timeout) < rte_get_timer_cycles())
+#define ENA_TIME_EXPIRE_HIGH_RES(timeout) (RTE_SET_USED(timeout), 0)
+#define ENA_TIME_INIT_HIGH_RES() 0
+#define ENA_TIME_COMPARE_HIGH_RES(time1, time2) (RTE_SET_USED(time1), RTE_SET_USED(time2), 0)
+#define ENA_GET_SYSTEM_TIMEOUT(timeout_us) \
 	((timeout_us) * rte_get_timer_hz() / 1000000 + rte_get_timer_cycles())
+#define ENA_GET_SYSTEM_TIMEOUT_HIGH_RES(current_time, timeout_us) \
+	(RTE_SET_USED(current_time), RTE_SET_USED(timeout_us), 0)
+#define ENA_GET_SYSTEM_TIME_HIGH_RES() 0
 
 const struct rte_memzone *
 ena_mem_alloc_coherent(struct rte_eth_dev_data *data, size_t size,
@@ -281,7 +296,6 @@ ena_mem_alloc_coherent(struct rte_eth_dev_data *data, size_t size,
 #define lower_32_bits(x) ((uint32_t)(x))
 #define upper_32_bits(x) ((uint32_t)(((x) >> 16) >> 16))
 
-#define ENA_TIME_EXPIRE(timeout)  (timeout < rte_get_timer_cycles())
 #define ENA_GET_SYSTEM_TIMEOUT(timeout_us)				       \
 	((timeout_us) * rte_get_timer_hz() / 1000000 + rte_get_timer_cycles())
 #define ENA_WAIT_EVENTS_DESTROY(admin_queue) ((void)(admin_queue))
@@ -306,6 +320,25 @@ void ena_rss_key_fill(void *key, size_t size);
 #define ENA_RSS_FILL_KEY(key, size) ena_rss_key_fill(key, size)
 
 #define ENA_INTR_INITIAL_TX_INTERVAL_USECS_PLAT 0
+#define ENA_INTR_INITIAL_RX_INTERVAL_USECS_PLAT 0
 
 #include "ena_includes.h"
+
+#define ENA_BITS_PER_U64(bitmap) (ena_bits_per_u64(bitmap))
+
+#define ENA_FIELD_GET(value, mask, offset) (((value) & (mask)) >> (offset))
+
+static __rte_always_inline int ena_bits_per_u64(uint64_t bitmap)
+{
+	int count = 0;
+
+	while (bitmap) {
+		bitmap &= (bitmap - 1);
+		count++;
+	}
+
+	return count;
+}
+
+
 #endif /* DPDK_ENA_COM_ENA_PLAT_DPDK_H_ */

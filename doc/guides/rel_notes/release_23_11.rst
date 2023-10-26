@@ -122,6 +122,10 @@ New Features
   a group's miss actions, which are the actions to be performed on packets
   that didn't match any of the flow rules in the group.
 
+* **Updated Amazon ena (Elastic Network Adapter) net driver.**
+
+  * Upgraded ENA HAL to latest version.
+
 * **Added a new vDPA PMD for Corigine NFP devices.**
 
   Added a new Corigine NFP vDPA (``nfp_vdpa``) PMD.

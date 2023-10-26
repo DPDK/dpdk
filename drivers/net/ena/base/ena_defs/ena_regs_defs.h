@@ -21,6 +21,8 @@ enum ena_regs_reset_reason_types {
 	ENA_REGS_RESET_USER_TRIGGER                 = 12,
 	ENA_REGS_RESET_GENERIC                      = 13,
 	ENA_REGS_RESET_MISS_INTERRUPT               = 14,
+	ENA_REGS_RESET_SUSPECTED_POLL_STARVATION    = 15,
+	ENA_REGS_RESET_RX_DESCRIPTOR_MALFORMED	    = 16,
 	ENA_REGS_RESET_LAST,
 };
 
@@ -51,6 +53,11 @@ enum ena_regs_reset_reason_types {
 #define ENA_REGS_MMIO_RESP_LO_OFF                           0x60
 #define ENA_REGS_MMIO_RESP_HI_OFF                           0x64
 #define ENA_REGS_RSS_IND_ENTRY_UPDATE_OFF                   0x68
+
+/* phc_registers offsets */
+
+/* 100 base */
+#define ENA_REGS_PHC_DB_OFF                                 0x100
 
 /* version register */
 #define ENA_REGS_VERSION_MINOR_VERSION_MASK                 0xff
@@ -98,6 +105,8 @@ enum ena_regs_reset_reason_types {
 #define ENA_REGS_DEV_CTL_QUIESCENT_MASK                     0x4
 #define ENA_REGS_DEV_CTL_IO_RESUME_SHIFT                    3
 #define ENA_REGS_DEV_CTL_IO_RESUME_MASK                     0x8
+#define ENA_REGS_DEV_CTL_RESET_REASON_EXT_SHIFT             24
+#define ENA_REGS_DEV_CTL_RESET_REASON_EXT_MASK              0xf000000
 #define ENA_REGS_DEV_CTL_RESET_REASON_SHIFT                 28
 #define ENA_REGS_DEV_CTL_RESET_REASON_MASK                  0xf0000000
 
@@ -127,5 +136,8 @@ enum ena_regs_reset_reason_types {
 #define ENA_REGS_RSS_IND_ENTRY_UPDATE_INDEX_MASK            0xffff
 #define ENA_REGS_RSS_IND_ENTRY_UPDATE_CQ_IDX_SHIFT          16
 #define ENA_REGS_RSS_IND_ENTRY_UPDATE_CQ_IDX_MASK           0xffff0000
+
+/* phc_db_req_id register */
+#define ENA_REGS_PHC_DB_REQ_ID_MASK                         0xffff
 
 #endif /* _ENA_REGS_H_ */

@@ -11,8 +11,10 @@ extern "C" {
 #endif
 #include "ena_com.h"
 
-/* head update threshold in units of (queue size / ENA_COMP_HEAD_THRESH) */
-#define ENA_COMP_HEAD_THRESH 4
+/* we allow 2 DMA descriptors per LLQ entry */
+#define ENA_LLQ_ENTRY_DESC_CHUNK_SIZE	(2 * sizeof(struct ena_eth_io_tx_desc))
+#define ENA_LLQ_HEADER		(128UL - ENA_LLQ_ENTRY_DESC_CHUNK_SIZE)
+#define ENA_LLQ_LARGE_HEADER	(256UL - ENA_LLQ_ENTRY_DESC_CHUNK_SIZE)
 
 struct ena_com_tx_ctx {
 	struct ena_com_tx_meta ena_meta;
@@ -48,7 +50,7 @@ struct ena_com_rx_ctx {
 	bool frag;
 	u32 hash;
 	u16 descs;
-	int max_bufs;
+	u16 max_bufs;
 	u8 pkt_offset;
 };
 
@@ -166,28 +168,6 @@ static inline int ena_com_write_sq_doorbell(struct ena_com_io_sq *io_sq)
 			    "Reset available entries in tx burst for queue %d to %d\n",
 			    io_sq->qid, max_entries_in_tx_burst);
 		io_sq->entries_in_tx_burst_left = max_entries_in_tx_burst;
-	}
-
-	return 0;
-}
-
-static inline int ena_com_update_dev_comp_head(struct ena_com_io_cq *io_cq)
-{
-	u16 unreported_comp, head;
-	bool need_update;
-
-	if (unlikely(io_cq->cq_head_db_reg)) {
-		head = io_cq->head;
-		unreported_comp = head - io_cq->last_head_update;
-		need_update = unreported_comp > (io_cq->q_depth / ENA_COMP_HEAD_THRESH);
-
-		if (unlikely(need_update)) {
-			ena_trc_dbg(ena_com_io_cq_to_ena_dev(io_cq),
-				    "Write completion queue doorbell for queue %d: head: %d\n",
-				    io_cq->qid, head);
-			ENA_REG_WRITE32(io_cq->bus, head, io_cq->cq_head_db_reg);
-			io_cq->last_head_update = head;
-		}
 	}
 
 	return 0;
