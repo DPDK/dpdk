@@ -1535,12 +1535,12 @@ rte_cryptodev_add_enq_callback(uint8_t dev_id,
 		/* Stores to cb->fn and cb->param should complete before
 		 * cb is visible to data plane.
 		 */
-		__atomic_store_n(&tail->next, cb, __ATOMIC_RELEASE);
+		rte_atomic_store_explicit(&tail->next, cb, rte_memory_order_release);
 	} else {
 		/* Stores to cb->fn and cb->param should complete before
 		 * cb is visible to data plane.
 		 */
-		__atomic_store_n(&list->next, cb, __ATOMIC_RELEASE);
+		rte_atomic_store_explicit(&list->next, cb, rte_memory_order_release);
 	}
 
 	rte_spinlock_unlock(&rte_cryptodev_callback_lock);
@@ -1555,7 +1555,8 @@ rte_cryptodev_remove_enq_callback(uint8_t dev_id,
 				  struct rte_cryptodev_cb *cb)
 {
 	struct rte_cryptodev *dev;
-	struct rte_cryptodev_cb **prev_cb, *curr_cb;
+	RTE_ATOMIC(struct rte_cryptodev_cb *) *prev_cb;
+	struct rte_cryptodev_cb *curr_cb;
 	struct rte_cryptodev_cb_rcu *list;
 	int ret;
 
@@ -1601,8 +1602,8 @@ rte_cryptodev_remove_enq_callback(uint8_t dev_id,
 		curr_cb = *prev_cb;
 		if (curr_cb == cb) {
 			/* Remove the user cb from the callback list. */
-			__atomic_store_n(prev_cb, curr_cb->next,
-				__ATOMIC_RELAXED);
+			rte_atomic_store_explicit(prev_cb, curr_cb->next,
+				rte_memory_order_relaxed);
 			ret = 0;
 			break;
 		}
@@ -1673,12 +1674,12 @@ rte_cryptodev_add_deq_callback(uint8_t dev_id,
 		/* Stores to cb->fn and cb->param should complete before
 		 * cb is visible to data plane.
 		 */
-		__atomic_store_n(&tail->next, cb, __ATOMIC_RELEASE);
+		rte_atomic_store_explicit(&tail->next, cb, rte_memory_order_release);
 	} else {
 		/* Stores to cb->fn and cb->param should complete before
 		 * cb is visible to data plane.
 		 */
-		__atomic_store_n(&list->next, cb, __ATOMIC_RELEASE);
+		rte_atomic_store_explicit(&list->next, cb, rte_memory_order_release);
 	}
 
 	rte_spinlock_unlock(&rte_cryptodev_callback_lock);
@@ -1694,7 +1695,8 @@ rte_cryptodev_remove_deq_callback(uint8_t dev_id,
 				  struct rte_cryptodev_cb *cb)
 {
 	struct rte_cryptodev *dev;
-	struct rte_cryptodev_cb **prev_cb, *curr_cb;
+	RTE_ATOMIC(struct rte_cryptodev_cb *) *prev_cb;
+	struct rte_cryptodev_cb *curr_cb;
 	struct rte_cryptodev_cb_rcu *list;
 	int ret;
 
@@ -1740,8 +1742,8 @@ rte_cryptodev_remove_deq_callback(uint8_t dev_id,
 		curr_cb = *prev_cb;
 		if (curr_cb == cb) {
 			/* Remove the user cb from the callback list. */
-			__atomic_store_n(prev_cb, curr_cb->next,
-				__ATOMIC_RELAXED);
+			rte_atomic_store_explicit(prev_cb, curr_cb->next,
+				rte_memory_order_relaxed);
 			ret = 0;
 			break;
 		}

@@ -979,7 +979,7 @@ RTE_TAILQ_HEAD(rte_cryptodev_cb_list, rte_cryptodev_callback);
  * queue pair on enqueue/dequeue.
  */
 struct rte_cryptodev_cb {
-	struct rte_cryptodev_cb *next;
+	RTE_ATOMIC(struct rte_cryptodev_cb *) next;
 	/**< Pointer to next callback */
 	rte_cryptodev_callback_fn fn;
 	/**< Pointer to callback function */
@@ -992,7 +992,7 @@ struct rte_cryptodev_cb {
  * Structure used to hold information about the RCU for a queue pair.
  */
 struct rte_cryptodev_cb_rcu {
-	struct rte_cryptodev_cb *next;
+	RTE_ATOMIC(struct rte_cryptodev_cb *) next;
 	/**< Pointer to next callback */
 	struct rte_rcu_qsbr *qsbr;
 	/**< RCU QSBR variable per queue pair */
@@ -1947,15 +1947,15 @@ rte_cryptodev_dequeue_burst(uint8_t dev_id, uint16_t qp_id,
 		struct rte_cryptodev_cb_rcu *list;
 		struct rte_cryptodev_cb *cb;
 
-		/* __ATOMIC_RELEASE memory order was used when the
+		/* rte_memory_order_release memory order was used when the
 		 * call back was inserted into the list.
 		 * Since there is a clear dependency between loading
-		 * cb and cb->fn/cb->next, __ATOMIC_ACQUIRE memory order is
+		 * cb and cb->fn/cb->next, rte_memory_order_acquire memory order is
 		 * not required.
 		 */
 		list = &fp_ops->qp.deq_cb[qp_id];
 		rte_rcu_qsbr_thread_online(list->qsbr, 0);
-		cb = __atomic_load_n(&list->next, __ATOMIC_RELAXED);
+		cb = rte_atomic_load_explicit(&list->next, rte_memory_order_relaxed);
 
 		while (cb != NULL) {
 			nb_ops = cb->fn(dev_id, qp_id, ops, nb_ops,
@@ -2014,15 +2014,15 @@ rte_cryptodev_enqueue_burst(uint8_t dev_id, uint16_t qp_id,
 		struct rte_cryptodev_cb_rcu *list;
 		struct rte_cryptodev_cb *cb;
 
-		/* __ATOMIC_RELEASE memory order was used when the
+		/* rte_memory_order_release memory order was used when the
 		 * call back was inserted into the list.
 		 * Since there is a clear dependency between loading
-		 * cb and cb->fn/cb->next, __ATOMIC_ACQUIRE memory order is
+		 * cb and cb->fn/cb->next, rte_memory_order_acquire memory order is
 		 * not required.
 		 */
 		list = &fp_ops->qp.enq_cb[qp_id];
 		rte_rcu_qsbr_thread_online(list->qsbr, 0);
-		cb = __atomic_load_n(&list->next, __ATOMIC_RELAXED);
+		cb = rte_atomic_load_explicit(&list->next, rte_memory_order_relaxed);
 
 		while (cb != NULL) {
 			nb_ops = cb->fn(dev_id, qp_id, ops, nb_ops,
