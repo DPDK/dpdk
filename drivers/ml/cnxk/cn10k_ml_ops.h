@@ -298,8 +298,6 @@ int cn10k_ml_dev_stop(struct cnxk_ml_dev *cnxk_mldev);
 int cn10k_ml_dev_dump(struct cnxk_ml_dev *cnxk_mldev, FILE *fp);
 int cn10k_ml_dev_selftest(struct cnxk_ml_dev *cnxk_mldev);
 
-int cn10k_ml_dev_stats_get(struct rte_ml_dev *dev, struct rte_ml_dev_stats *stats);
-void cn10k_ml_dev_stats_reset(struct rte_ml_dev *dev);
 int cn10k_ml_dev_xstats_names_get(struct rte_ml_dev *dev, enum rte_ml_dev_xstats_mode mode,
 				  int32_t model_id, struct rte_ml_dev_xstats_map *xstats_map,
 				  uint32_t size);

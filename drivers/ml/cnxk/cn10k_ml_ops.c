@@ -771,38 +771,6 @@ cn10k_ml_dev_stop(struct cnxk_ml_dev *cnxk_mldev)
 }
 
 int
-cn10k_ml_dev_stats_get(struct rte_ml_dev *dev, struct rte_ml_dev_stats *stats)
-{
-	struct cnxk_ml_qp *qp;
-	int qp_id;
-
-	for (qp_id = 0; qp_id < dev->data->nb_queue_pairs; qp_id++) {
-		qp = dev->data->queue_pairs[qp_id];
-		stats->enqueued_count += qp->stats.enqueued_count;
-		stats->dequeued_count += qp->stats.dequeued_count;
-		stats->enqueue_err_count += qp->stats.enqueue_err_count;
-		stats->dequeue_err_count += qp->stats.dequeue_err_count;
-	}
-
-	return 0;
-}
-
-void
-cn10k_ml_dev_stats_reset(struct rte_ml_dev *dev)
-{
-	struct cnxk_ml_qp *qp;
-	int qp_id;
-
-	for (qp_id = 0; qp_id < dev->data->nb_queue_pairs; qp_id++) {
-		qp = dev->data->queue_pairs[qp_id];
-		qp->stats.enqueued_count = 0;
-		qp->stats.dequeued_count = 0;
-		qp->stats.enqueue_err_count = 0;
-		qp->stats.dequeue_err_count = 0;
-	}
-}
-
-int
 cn10k_ml_dev_xstats_names_get(struct rte_ml_dev *dev, enum rte_ml_dev_xstats_mode mode,
 			      int32_t model_id, struct rte_ml_dev_xstats_map *xstats_map,
 			      uint32_t size)

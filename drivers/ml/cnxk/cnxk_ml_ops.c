@@ -490,6 +490,38 @@ cnxk_ml_dev_queue_pair_setup(struct rte_ml_dev *dev, uint16_t queue_pair_id,
 }
 
 static int
+cnxk_ml_dev_stats_get(struct rte_ml_dev *dev, struct rte_ml_dev_stats *stats)
+{
+	struct cnxk_ml_qp *qp;
+	int qp_id;
+
+	for (qp_id = 0; qp_id < dev->data->nb_queue_pairs; qp_id++) {
+		qp = dev->data->queue_pairs[qp_id];
+		stats->enqueued_count += qp->stats.enqueued_count;
+		stats->dequeued_count += qp->stats.dequeued_count;
+		stats->enqueue_err_count += qp->stats.enqueue_err_count;
+		stats->dequeue_err_count += qp->stats.dequeue_err_count;
+	}
+
+	return 0;
+}
+
+static void
+cnxk_ml_dev_stats_reset(struct rte_ml_dev *dev)
+{
+	struct cnxk_ml_qp *qp;
+	int qp_id;
+
+	for (qp_id = 0; qp_id < dev->data->nb_queue_pairs; qp_id++) {
+		qp = dev->data->queue_pairs[qp_id];
+		qp->stats.enqueued_count = 0;
+		qp->stats.dequeued_count = 0;
+		qp->stats.enqueue_err_count = 0;
+		qp->stats.dequeue_err_count = 0;
+	}
+}
+
+static int
 cnxk_ml_model_load(struct rte_ml_dev *dev, struct rte_ml_model_params *params, uint16_t *model_id)
 {
 	struct rte_ml_dev_info dev_info;
@@ -772,8 +804,8 @@ struct rte_ml_dev_ops cnxk_ml_ops = {
 	.dev_queue_pair_release = cnxk_ml_dev_queue_pair_release,
 
 	/* Stats ops */
-	.dev_stats_get = cn10k_ml_dev_stats_get,
-	.dev_stats_reset = cn10k_ml_dev_stats_reset,
+	.dev_stats_get = cnxk_ml_dev_stats_get,
+	.dev_stats_reset = cnxk_ml_dev_stats_reset,
 	.dev_xstats_names_get = cn10k_ml_dev_xstats_names_get,
 	.dev_xstats_by_name_get = cn10k_ml_dev_xstats_by_name_get,
 	.dev_xstats_get = cn10k_ml_dev_xstats_get,
