@@ -22,6 +22,7 @@ mlx5dr_table_up_default_fdb_miss_tbl(struct mlx5dr_table *tbl)
 	struct mlx5dr_cmd_ft_create_attr ft_attr = {0};
 	struct mlx5dr_cmd_set_fte_attr fte_attr = {0};
 	struct mlx5dr_cmd_forward_tbl *default_miss;
+	struct mlx5dr_cmd_set_fte_dest dest = {0};
 	struct mlx5dr_context *ctx = tbl->ctx;
 	uint8_t tbl_type = tbl->type;
 
@@ -37,9 +38,11 @@ mlx5dr_table_up_default_fdb_miss_tbl(struct mlx5dr_table *tbl)
 	ft_attr.level = tbl->ctx->caps->fdb_ft.max_level; /* The last level */
 	ft_attr.rtc_valid = false;
 
+	dest.destination_type = MLX5_FLOW_DESTINATION_TYPE_VPORT;
+	dest.destination_id = ctx->caps->eswitch_manager_vport_number;
 	fte_attr.action_flags = MLX5_FLOW_CONTEXT_ACTION_FWD_DEST;
-	fte_attr.destination_type = MLX5_FLOW_DESTINATION_TYPE_VPORT;
-	fte_attr.destination_id = ctx->caps->eswitch_manager_vport_number;
+	fte_attr.dests_num = 1;
+	fte_attr.dests = &dest;
 
 	default_miss = mlx5dr_cmd_forward_tbl_create(mlx5dr_context_get_local_ibv(ctx),
 						     &ft_attr, &fte_attr);

@@ -34,7 +34,8 @@ static const uint32_t action_order_arr[MLX5DR_TABLE_TYPE_MAX][MLX5DR_ACTION_TYP_
 		BIT(MLX5DR_ACTION_TYP_MISS) |
 		BIT(MLX5DR_ACTION_TYP_TIR) |
 		BIT(MLX5DR_ACTION_TYP_DROP) |
-		BIT(MLX5DR_ACTION_TYP_DEST_ROOT),
+		BIT(MLX5DR_ACTION_TYP_DEST_ROOT) |
+		BIT(MLX5DR_ACTION_TYP_DEST_ARRAY),
 		BIT(MLX5DR_ACTION_TYP_LAST),
 	},
 	[MLX5DR_TABLE_TYPE_NIC_TX] = {
@@ -71,7 +72,8 @@ static const uint32_t action_order_arr[MLX5DR_TABLE_TYPE_MAX][MLX5DR_ACTION_TYP_
 		BIT(MLX5DR_ACTION_TYP_MISS) |
 		BIT(MLX5DR_ACTION_TYP_VPORT) |
 		BIT(MLX5DR_ACTION_TYP_DROP) |
-		BIT(MLX5DR_ACTION_TYP_DEST_ROOT),
+		BIT(MLX5DR_ACTION_TYP_DEST_ROOT) |
+		BIT(MLX5DR_ACTION_TYP_DEST_ARRAY),
 		BIT(MLX5DR_ACTION_TYP_LAST),
 	},
 };
@@ -535,6 +537,7 @@ static void mlx5dr_action_fill_stc_attr(struct mlx5dr_action *action,
 		}
 		break;
 	case MLX5DR_ACTION_TYP_TBL:
+	case MLX5DR_ACTION_TYP_DEST_ARRAY:
 		attr->action_type = MLX5_IFC_STC_ACTION_TYPE_JUMP_TO_FT;
 		attr->action_offset = MLX5DR_ACTION_OFFSET_HIT;
 		attr->dest_table_id = obj->id;
@@ -1701,6 +1704,124 @@ free_action:
 }
 
 struct mlx5dr_action *
+mlx5dr_action_create_dest_array(struct mlx5dr_context *ctx,
+				size_t num_dest,
+				struct mlx5dr_action_dest_attr *dests,
+				uint32_t flags)
+{
+	struct mlx5dr_cmd_set_fte_dest *dest_list = NULL;
+	struct mlx5dr_cmd_ft_create_attr ft_attr = {0};
+	struct mlx5dr_cmd_set_fte_attr fte_attr = {0};
+	struct mlx5dr_cmd_forward_tbl *fw_island;
+	enum mlx5dr_table_type table_type;
+	struct mlx5dr_action *action;
+	uint32_t i;
+	int ret;
+
+	if (num_dest <= 1) {
+		rte_errno = EINVAL;
+		DR_LOG(ERR, "Action must have multiple dests");
+		return NULL;
+	}
+
+	if (flags == (MLX5DR_ACTION_FLAG_HWS_RX | MLX5DR_ACTION_FLAG_SHARED)) {
+		ft_attr.type = FS_FT_NIC_RX;
+		ft_attr.level = MLX5_IFC_MULTI_PATH_FT_MAX_LEVEL - 1;
+		table_type = MLX5DR_TABLE_TYPE_NIC_RX;
+	} else if (flags == (MLX5DR_ACTION_FLAG_HWS_FDB | MLX5DR_ACTION_FLAG_SHARED)) {
+		ft_attr.type = FS_FT_FDB;
+		ft_attr.level = ctx->caps->fdb_ft.max_level - 1;
+		table_type = MLX5DR_TABLE_TYPE_FDB;
+	} else {
+		DR_LOG(ERR, "Action flags not supported");
+		rte_errno = ENOTSUP;
+		return NULL;
+	}
+
+	if (mlx5dr_context_shared_gvmi_used(ctx)) {
+		DR_LOG(ERR, "Cannot use this action in shared GVMI context");
+		rte_errno = ENOTSUP;
+		return NULL;
+	}
+
+	dest_list = simple_calloc(num_dest, sizeof(*dest_list));
+	if (!dest_list) {
+		DR_LOG(ERR, "Failed to allocate memory for destinations");
+		rte_errno = ENOMEM;
+		return NULL;
+	}
+
+	for (i = 0; i < num_dest; i++) {
+		enum mlx5dr_action_type *action_type = dests[i].action_type;
+
+		if (!mlx5dr_action_check_combo(dests[i].action_type, table_type)) {
+			DR_LOG(ERR, "Invalid combination of actions");
+			rte_errno = EINVAL;
+			goto free_dest_list;
+		}
+
+		for (; *action_type != MLX5DR_ACTION_TYP_LAST; action_type++) {
+			switch (*action_type) {
+			case MLX5DR_ACTION_TYP_TBL:
+				dest_list[i].destination_type =
+					MLX5_FLOW_DESTINATION_TYPE_FLOW_TABLE;
+				dest_list[i].destination_id = dests[i].dest->devx_dest.devx_obj->id;
+				fte_attr.action_flags |= MLX5_FLOW_CONTEXT_ACTION_FWD_DEST;
+				fte_attr.ignore_flow_level = 1;
+				break;
+			case MLX5DR_ACTION_TYP_VPORT:
+				dest_list[i].destination_type = MLX5_FLOW_DESTINATION_TYPE_VPORT;
+				dest_list[i].destination_id = dests[i].dest->vport.vport_num;
+				fte_attr.action_flags |= MLX5_FLOW_CONTEXT_ACTION_FWD_DEST;
+				if (ctx->caps->merged_eswitch) {
+					dest_list[i].ext_flags |=
+						MLX5DR_CMD_EXT_DEST_ESW_OWNER_VHCA_ID;
+					dest_list[i].esw_owner_vhca_id =
+						dests[i].dest->vport.esw_owner_vhca_id;
+				}
+				break;
+			case MLX5DR_ACTION_TYP_TIR:
+				dest_list[i].destination_type = MLX5_FLOW_DESTINATION_TYPE_TIR;
+				dest_list[i].destination_id = dests[i].dest->devx_dest.devx_obj->id;
+				fte_attr.action_flags |= MLX5_FLOW_CONTEXT_ACTION_FWD_DEST;
+				break;
+			default:
+				DR_LOG(ERR, "Unsupported action in dest_array");
+				rte_errno = ENOTSUP;
+				goto free_dest_list;
+			}
+		}
+	}
+	fte_attr.dests_num = num_dest;
+	fte_attr.dests = dest_list;
+
+	fw_island = mlx5dr_cmd_forward_tbl_create(ctx->ibv_ctx, &ft_attr, &fte_attr);
+	if (!fw_island)
+		goto free_dest_list;
+
+	action = mlx5dr_action_create_generic(ctx, flags, MLX5DR_ACTION_TYP_DEST_ARRAY);
+	if (!action)
+		goto destroy_fw_island;
+
+	ret = mlx5dr_action_create_stcs(action, fw_island->ft);
+	if (ret)
+		goto free_action;
+
+	action->dest_array.fw_island = fw_island;
+
+	simple_free(dest_list);
+	return action;
+
+free_action:
+	simple_free(action);
+destroy_fw_island:
+	mlx5dr_cmd_forward_tbl_destroy(fw_island);
+free_dest_list:
+	simple_free(dest_list);
+	return NULL;
+}
+
+struct mlx5dr_action *
 mlx5dr_action_create_dest_root(struct mlx5dr_context *ctx,
 			       uint16_t priority,
 			       uint32_t flags)
@@ -1781,6 +1902,10 @@ static void mlx5dr_action_destroy_hws(struct mlx5dr_action *action)
 	case MLX5DR_ACTION_TYP_POP_VLAN:
 		mlx5dr_action_destroy_stcs(action);
 		mlx5dr_action_put_shared_stc(action, MLX5DR_CONTEXT_SHARED_STC_POP);
+		break;
+	case MLX5DR_ACTION_TYP_DEST_ARRAY:
+		mlx5dr_action_destroy_stcs(action);
+		mlx5dr_cmd_forward_tbl_destroy(action->dest_array.fw_island);
 		break;
 	case MLX5DR_ACTION_TYP_REFORMAT_TNL_L3_TO_L2:
 	case MLX5DR_ACTION_TYP_MODIFY_HDR:
@@ -2291,6 +2416,7 @@ int mlx5dr_action_template_process(struct mlx5dr_action_template *at)
 		case MLX5DR_ACTION_TYP_TIR:
 		case MLX5DR_ACTION_TYP_TBL:
 		case MLX5DR_ACTION_TYP_DEST_ROOT:
+		case MLX5DR_ACTION_TYP_DEST_ARRAY:
 		case MLX5DR_ACTION_TYP_VPORT:
 		case MLX5DR_ACTION_TYP_MISS:
 			/* Hit action */

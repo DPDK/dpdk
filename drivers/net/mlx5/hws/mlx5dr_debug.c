@@ -23,6 +23,7 @@ const char *mlx5dr_debug_action_type_str[] = {
 	[MLX5DR_ACTION_TYP_ASO_METER] = "ASO_METER",
 	[MLX5DR_ACTION_TYP_ASO_CT] = "ASO_CT",
 	[MLX5DR_ACTION_TYP_DEST_ROOT] = "DEST_ROOT",
+	[MLX5DR_ACTION_TYP_DEST_ARRAY] = "DEST_ARRAY",
 };
 
 static_assert(ARRAY_SIZE(mlx5dr_debug_action_type_str) == MLX5DR_ACTION_TYP_MAX,

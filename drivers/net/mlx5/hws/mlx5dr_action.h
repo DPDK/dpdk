@@ -151,6 +151,9 @@ struct mlx5dr_action {
 				struct {
 					struct mlx5dr_devx_obj *devx_obj;
 				} devx_dest;
+				struct {
+					struct mlx5dr_cmd_forward_tbl *fw_island;
+				} dest_array;
 			};
 		};
 

@@ -46,6 +46,7 @@ enum mlx5dr_action_type {
 	MLX5DR_ACTION_TYP_ASO_METER,
 	MLX5DR_ACTION_TYP_ASO_CT,
 	MLX5DR_ACTION_TYP_DEST_ROOT,
+	MLX5DR_ACTION_TYP_DEST_ARRAY,
 	MLX5DR_ACTION_TYP_MAX,
 };
 
@@ -211,6 +212,20 @@ struct mlx5dr_rule_action {
 			enum mlx5dr_action_aso_ct_flags direction;
 		} aso_ct;
 	};
+};
+
+struct mlx5dr_action_dest_attr {
+	/* Required action combination */
+	enum mlx5dr_action_type *action_type;
+
+	/* Required destination action to forward the packet */
+	struct mlx5dr_action *dest;
+
+	/* Optional reformat data */
+	struct {
+		size_t reformat_data_sz;
+		void *reformat_data;
+	} reformat;
 };
 
 /* Open a context used for direct rule insertion using hardware steering.
@@ -615,6 +630,25 @@ mlx5dr_action_create_pop_vlan(struct mlx5dr_context *ctx, uint32_t flags);
  */
 struct mlx5dr_action *
 mlx5dr_action_create_push_vlan(struct mlx5dr_context *ctx, uint32_t flags);
+
+/* Create a dest array action, this action can duplicate packets and forward to
+ * multiple destinations in the destination list.
+ * @param[in] ctx
+ *     The context in which the new action will be created.
+ * @param[in] num_dest
+ *     The number of dests attributes.
+ * @param[in] dests
+ *     The destination array. Each contains a destination action and can have
+ *     additional actions.
+ * @param[in] flags
+ *     Action creation flags. (enum mlx5dr_action_flags)
+ * @return pointer to mlx5dr_action on success NULL otherwise.
+ */
+struct mlx5dr_action *
+mlx5dr_action_create_dest_array(struct mlx5dr_context *ctx,
+				size_t num_dest,
+				struct mlx5dr_action_dest_attr *dests,
+				uint32_t flags);
 
 /* Create dest root table, this action will jump to root table according
  * the given priority.

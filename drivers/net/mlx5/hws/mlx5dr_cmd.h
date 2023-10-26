@@ -5,15 +5,27 @@
 #ifndef MLX5DR_CMD_H_
 #define MLX5DR_CMD_H_
 
+enum mlx5dr_cmd_ext_dest_flags {
+	MLX5DR_CMD_EXT_DEST_REFORMAT = 1 << 0,
+	MLX5DR_CMD_EXT_DEST_ESW_OWNER_VHCA_ID = 1 << 1,
+};
+
+struct mlx5dr_cmd_set_fte_dest {
+	uint8_t destination_type;
+	uint32_t destination_id;
+	enum mlx5dr_cmd_ext_dest_flags ext_flags;
+	uint16_t esw_owner_vhca_id;
+};
+
 struct mlx5dr_cmd_set_fte_attr {
 	uint32_t action_flags;
+	uint8_t ignore_flow_level;
+	uint8_t flow_source;
 	uint8_t encrypt_decrypt_type;
 	uint32_t encrypt_decrypt_obj_id;
 	uint32_t packet_reformat_id;
-	uint8_t destination_type;
-	uint32_t destination_id;
-	uint8_t ignore_flow_level;
-	uint8_t flow_source;
+	uint32_t dests_num;
+	struct mlx5dr_cmd_set_fte_dest *dests;
 };
 
 struct mlx5dr_cmd_ft_create_attr {
@@ -216,6 +228,7 @@ struct mlx5dr_cmd_query_caps {
 	struct mlx5dr_cmd_query_ft_caps nic_ft;
 	struct mlx5dr_cmd_query_ft_caps fdb_ft;
 	bool eswitch_manager;
+	uint8_t merged_eswitch;
 	uint32_t eswitch_manager_vport_number;
 	uint8_t log_header_modify_argument_granularity;
 	uint8_t log_header_modify_argument_max_alloc;

@@ -158,18 +158,31 @@ mlx5dr_cmd_set_fte(struct ibv_context *ctx,
 		   uint32_t group_id,
 		   struct mlx5dr_cmd_set_fte_attr *fte_attr)
 {
-	uint32_t in[MLX5_ST_SZ_DW(set_fte_in) + MLX5_ST_SZ_DW(dest_format)] = {0};
 	uint32_t out[MLX5_ST_SZ_DW(set_fte_out)] = {0};
 	struct mlx5dr_devx_obj *devx_obj;
+	uint32_t dest_entry_sz;
+	uint32_t total_dest_sz;
 	void *in_flow_context;
 	uint32_t action_flags;
-	void *in_dests;
+	uint8_t *in_dests;
+	uint32_t inlen;
+	uint32_t *in;
+	uint32_t i;
+
+	dest_entry_sz = MLX5_ST_SZ_BYTES(dest_format);
+	total_dest_sz = dest_entry_sz * fte_attr->dests_num;
+	inlen = align((MLX5_ST_SZ_BYTES(set_fte_in) + total_dest_sz), DW_SIZE);
+	in = simple_calloc(1, inlen);
+	if (!in) {
+		rte_errno = ENOMEM;
+		return NULL;
+	}
 
 	devx_obj = simple_malloc(sizeof(*devx_obj));
 	if (!devx_obj) {
 		DR_LOG(ERR, "Failed to allocate memory for fte object");
 		rte_errno = ENOMEM;
-		return NULL;
+		goto free_in;
 	}
 
 	MLX5_SET(set_fte_in, in, opcode, MLX5_CMD_OP_SET_FLOW_TABLE_ENTRY);
@@ -179,6 +192,7 @@ mlx5dr_cmd_set_fte(struct ibv_context *ctx,
 	in_flow_context = MLX5_ADDR_OF(set_fte_in, in, flow_context);
 	MLX5_SET(flow_context, in_flow_context, group_id, group_id);
 	MLX5_SET(flow_context, in_flow_context, flow_source, fte_attr->flow_source);
+	MLX5_SET(set_fte_in, in, ignore_flow_level, fte_attr->ignore_flow_level);
 
 	action_flags = fte_attr->action_flags;
 	MLX5_SET(flow_context, in_flow_context, action, action_flags);
@@ -195,15 +209,39 @@ mlx5dr_cmd_set_fte(struct ibv_context *ctx,
 	}
 
 	if (action_flags & MLX5_FLOW_CONTEXT_ACTION_FWD_DEST) {
-		/* Only destination_list_size of size 1 is supported */
-		MLX5_SET(flow_context, in_flow_context, destination_list_size, 1);
-		in_dests = MLX5_ADDR_OF(flow_context, in_flow_context, destination);
-		MLX5_SET(dest_format, in_dests, destination_type, fte_attr->destination_type);
-		MLX5_SET(dest_format, in_dests, destination_id, fte_attr->destination_id);
-		MLX5_SET(set_fte_in, in, ignore_flow_level, fte_attr->ignore_flow_level);
+		in_dests = (uint8_t *)MLX5_ADDR_OF(flow_context, in_flow_context, destination);
+
+		for (i = 0; i < fte_attr->dests_num; i++) {
+			struct mlx5dr_cmd_set_fte_dest *dest = &fte_attr->dests[i];
+
+			switch (dest->destination_type) {
+			case MLX5_FLOW_DESTINATION_TYPE_VPORT:
+				if (dest->ext_flags & MLX5DR_CMD_EXT_DEST_ESW_OWNER_VHCA_ID) {
+					MLX5_SET(dest_format, in_dests,
+						 destination_eswitch_owner_vhca_id_valid, 1);
+					MLX5_SET(dest_format, in_dests,
+						 destination_eswitch_owner_vhca_id,
+						 dest->esw_owner_vhca_id);
+				}
+				/* Fall through */
+			case MLX5_FLOW_DESTINATION_TYPE_TIR:
+			case MLX5_FLOW_DESTINATION_TYPE_FLOW_TABLE:
+				MLX5_SET(dest_format, in_dests, destination_type,
+					 dest->destination_type);
+				MLX5_SET(dest_format, in_dests, destination_id,
+					 dest->destination_id);
+				break;
+			default:
+				rte_errno = EOPNOTSUPP;
+				goto free_devx;
+			}
+
+			in_dests = in_dests + dest_entry_sz;
+		}
+		MLX5_SET(flow_context, in_flow_context, destination_list_size, fte_attr->dests_num);
 	}
 
-	devx_obj->obj = mlx5_glue->devx_obj_create(ctx, in, sizeof(in), out, sizeof(out));
+	devx_obj->obj = mlx5_glue->devx_obj_create(ctx, in, inlen, out, sizeof(out));
 	if (!devx_obj->obj) {
 		DR_LOG(ERR, "Failed to create FTE (syndrome: %#x)",
 		       mlx5dr_cmd_get_syndrome(out));
@@ -211,10 +249,13 @@ mlx5dr_cmd_set_fte(struct ibv_context *ctx,
 		goto free_devx;
 	}
 
+	simple_free(in);
 	return devx_obj;
 
 free_devx:
 	simple_free(devx_obj);
+free_in:
+	simple_free(in);
 	return NULL;
 }
 
@@ -1244,6 +1285,9 @@ int mlx5dr_cmd_query_caps(struct ibv_context *ctx,
 			caps->eswitch_manager_vport_number =
 			MLX5_GET(query_hca_cap_out, out,
 				 capability.esw_cap.esw_manager_vport_number);
+
+		caps->merged_eswitch = MLX5_GET(query_hca_cap_out, out,
+						capability.esw_cap.merged_eswitch);
 	}
 
 	ret = mlx5_glue->query_device_ex(ctx, NULL, &attr_ex);

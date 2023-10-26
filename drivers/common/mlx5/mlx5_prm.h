@@ -2320,7 +2320,11 @@ struct mlx5_ifc_cmd_hca_cap_2_bits {
 };
 
 struct mlx5_ifc_esw_cap_bits {
-	u8 reserved_at_0[0x60];
+	u8 reserved_at_0[0x1d];
+	u8 merged_eswitch[0x1];
+	u8 reserved_at_1e[0x2];
+
+	u8 reserved_at_20[0x40];
 
 	u8 esw_manager_vport_number_valid[0x1];
 	u8 reserved_at_61[0xf];
@@ -5045,6 +5049,7 @@ struct mlx5_ifc_query_flow_table_out_bits {
 enum mlx5_flow_destination_type {
 	MLX5_FLOW_DESTINATION_TYPE_VPORT = 0x0,
 	MLX5_FLOW_DESTINATION_TYPE_FLOW_TABLE = 0x1,
+	MLX5_FLOW_DESTINATION_TYPE_TIR = 0x2,
 };
 
 enum mlx5_flow_context_action {
@@ -5088,6 +5093,19 @@ union mlx5_ifc_dest_format_flow_counter_list_auto_bits {
 	u8 reserved_at_0[0x40];
 };
 
+struct mlx5_ifc_extended_dest_format_bits {
+	struct mlx5_ifc_dest_format_bits destination_entry;
+
+	u8 packet_reformat_id[0x20];
+
+	u8 reserved_at_60[0x20];
+};
+
+#define MLX5_IFC_MULTI_PATH_FT_MAX_LEVEL 64
+
+#ifdef PEDANTIC
+#pragma GCC diagnostic ignored "-Wpedantic"
+#endif
 struct mlx5_ifc_flow_context_bits {
 	u8 reserved_at_00[0x20];
 	u8 group_id[0x20];
@@ -5106,8 +5124,7 @@ struct mlx5_ifc_flow_context_bits {
 	u8 reserved_at_e0[0x40];
 	u8 encrypt_decrypt_obj_id[0x20];
 	u8 reserved_at_140[0x16c0];
-	/* Currently only one destnation */
-	union mlx5_ifc_dest_format_flow_counter_list_auto_bits destination[1];
+	union mlx5_ifc_dest_format_flow_counter_list_auto_bits destination[0];
 };
 
 struct mlx5_ifc_set_fte_in_bits {
