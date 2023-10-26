@@ -67,12 +67,6 @@ struct cn10k_ml_qp {
 
 	/* Statistics per queue-pair */
 	struct rte_ml_dev_stats stats;
-
-	/* Register block start for polling */
-	uint32_t block_start;
-
-	/* Register block end for polling */
-	uint32_t block_size;
 };
 
 /* Device ops */

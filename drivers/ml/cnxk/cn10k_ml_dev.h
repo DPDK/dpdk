@@ -390,9 +390,6 @@ struct cn10k_ml_fw {
 	/* Report DPE warnings */
 	int report_dpe_warnings;
 
-	/* Memory to be used for polling in fast-path requests */
-	const char *poll_mem;
-
 	/* Data buffer */
 	uint8_t *data;
 
@@ -525,13 +522,9 @@ struct cn10k_ml_dev {
 	bool (*ml_jcmdq_enqueue)(struct roc_ml *roc_ml, struct ml_job_cmd_s *job_cmd);
 
 	/* Poll handling function pointers */
-	void (*set_poll_addr)(struct cn10k_ml_qp *qp, struct cn10k_ml_req *req, uint64_t idx);
-	void (*set_poll_ptr)(struct roc_ml *roc_ml, struct cn10k_ml_req *req);
-	uint64_t (*get_poll_ptr)(struct roc_ml *roc_ml, struct cn10k_ml_req *req);
-
-	/* Memory barrier function pointers to handle synchronization */
-	void (*set_enq_barrier)(void);
-	void (*set_deq_barrier)(void);
+	void (*set_poll_addr)(struct cn10k_ml_req *req);
+	void (*set_poll_ptr)(struct cn10k_ml_req *req);
+	uint64_t (*get_poll_ptr)(struct cn10k_ml_req *req);
 };
 
 uint64_t cn10k_ml_fw_flags_get(struct cn10k_ml_fw *fw);
