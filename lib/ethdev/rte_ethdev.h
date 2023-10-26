@@ -6023,14 +6023,14 @@ rte_eth_rx_burst(uint16_t port_id, uint16_t queue_id,
 	{
 		void *cb;
 
-		/* __ATOMIC_RELEASE memory order was used when the
+		/* rte_memory_order_release memory order was used when the
 		 * call back was inserted into the list.
 		 * Since there is a clear dependency between loading
-		 * cb and cb->fn/cb->next, __ATOMIC_ACQUIRE memory order is
+		 * cb and cb->fn/cb->next, rte_memory_order_acquire memory order is
 		 * not required.
 		 */
-		cb = __atomic_load_n((void **)&p->rxq.clbk[queue_id],
-				__ATOMIC_RELAXED);
+		cb = rte_atomic_load_explicit(&p->rxq.clbk[queue_id],
+				rte_memory_order_relaxed);
 		if (unlikely(cb != NULL))
 			nb_rx = rte_eth_call_rx_callbacks(port_id, queue_id,
 					rx_pkts, nb_rx, nb_pkts, cb);
@@ -6360,14 +6360,14 @@ rte_eth_tx_burst(uint16_t port_id, uint16_t queue_id,
 	{
 		void *cb;
 
-		/* __ATOMIC_RELEASE memory order was used when the
+		/* rte_memory_order_release memory order was used when the
 		 * call back was inserted into the list.
 		 * Since there is a clear dependency between loading
-		 * cb and cb->fn/cb->next, __ATOMIC_ACQUIRE memory order is
+		 * cb and cb->fn/cb->next, rte_memory_order_acquire memory order is
 		 * not required.
 		 */
-		cb = __atomic_load_n((void **)&p->txq.clbk[queue_id],
-				__ATOMIC_RELAXED);
+		cb = rte_atomic_load_explicit(&p->txq.clbk[queue_id],
+				rte_memory_order_relaxed);
 		if (unlikely(cb != NULL))
 			nb_pkts = rte_eth_call_tx_callbacks(port_id, queue_id,
 					tx_pkts, nb_pkts, cb);

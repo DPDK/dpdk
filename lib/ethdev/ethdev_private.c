@@ -245,7 +245,7 @@ dummy_eth_tx_burst(void *txq,
 void
 eth_dev_fp_ops_reset(struct rte_eth_fp_ops *fpo)
 {
-	static void *dummy_data[RTE_MAX_QUEUES_PER_PORT];
+	static RTE_ATOMIC(void *) dummy_data[RTE_MAX_QUEUES_PER_PORT];
 	uintptr_t port_id = fpo - rte_eth_fp_ops;
 
 	per_port_queues[port_id].rx_warn_once = false;
@@ -278,10 +278,10 @@ eth_dev_fp_ops_setup(struct rte_eth_fp_ops *fpo,
 	fpo->recycle_rx_descriptors_refill = dev->recycle_rx_descriptors_refill;
 
 	fpo->rxq.data = dev->data->rx_queues;
-	fpo->rxq.clbk = (void **)(uintptr_t)dev->post_rx_burst_cbs;
+	fpo->rxq.clbk = (void * __rte_atomic *)(uintptr_t)dev->post_rx_burst_cbs;
 
 	fpo->txq.data = dev->data->tx_queues;
-	fpo->txq.clbk = (void **)(uintptr_t)dev->pre_tx_burst_cbs;
+	fpo->txq.clbk = (void * __rte_atomic *)(uintptr_t)dev->pre_tx_burst_cbs;
 }
 
 uint16_t

@@ -30,7 +30,7 @@ extern "C" {
  * queue on Rx and Tx.
  */
 struct rte_eth_rxtx_callback {
-	struct rte_eth_rxtx_callback *next;
+	RTE_ATOMIC(struct rte_eth_rxtx_callback *) next;
 	union{
 		rte_rx_callback_fn rx;
 		rte_tx_callback_fn tx;
@@ -80,12 +80,12 @@ struct rte_eth_dev {
 	 * User-supplied functions called from rx_burst to post-process
 	 * received packets before passing them to the user
 	 */
-	struct rte_eth_rxtx_callback *post_rx_burst_cbs[RTE_MAX_QUEUES_PER_PORT];
+	RTE_ATOMIC(struct rte_eth_rxtx_callback *) post_rx_burst_cbs[RTE_MAX_QUEUES_PER_PORT];
 	/**
 	 * User-supplied functions called from tx_burst to pre-process
 	 * received packets before passing them to the driver for transmission
 	 */
-	struct rte_eth_rxtx_callback *pre_tx_burst_cbs[RTE_MAX_QUEUES_PER_PORT];
+	RTE_ATOMIC(struct rte_eth_rxtx_callback *) pre_tx_burst_cbs[RTE_MAX_QUEUES_PER_PORT];
 
 	enum rte_eth_dev_state state; /**< Flag indicating the port state */
 	void *security_ctx; /**< Context for security ops */
@@ -1655,7 +1655,7 @@ static inline int
 rte_eth_linkstatus_set(struct rte_eth_dev *dev,
 		       const struct rte_eth_link *new_link)
 {
-	uint64_t *dev_link = (uint64_t *)&(dev->data->dev_link);
+	RTE_ATOMIC(uint64_t) *dev_link = (uint64_t __rte_atomic *)&(dev->data->dev_link);
 	union {
 		uint64_t val64;
 		struct rte_eth_link link;
@@ -1663,8 +1663,8 @@ rte_eth_linkstatus_set(struct rte_eth_dev *dev,
 
 	RTE_BUILD_BUG_ON(sizeof(*new_link) != sizeof(uint64_t));
 
-	orig.val64 = __atomic_exchange_n(dev_link, *(const uint64_t *)new_link,
-					__ATOMIC_SEQ_CST);
+	orig.val64 = rte_atomic_exchange_explicit(dev_link, *(const uint64_t *)new_link,
+					rte_memory_order_seq_cst);
 
 	return (orig.link.link_status == new_link->link_status) ? -1 : 0;
 }
@@ -1682,12 +1682,12 @@ static inline void
 rte_eth_linkstatus_get(const struct rte_eth_dev *dev,
 		       struct rte_eth_link *link)
 {
-	uint64_t *src = (uint64_t *)&(dev->data->dev_link);
+	RTE_ATOMIC(uint64_t) *src = (uint64_t __rte_atomic *)&(dev->data->dev_link);
 	uint64_t *dst = (uint64_t *)link;
 
 	RTE_BUILD_BUG_ON(sizeof(*link) != sizeof(uint64_t));
 
-	*dst = __atomic_load_n(src, __ATOMIC_SEQ_CST);
+	*dst = rte_atomic_load_explicit(src, rte_memory_order_seq_cst);
 }
 
 /**

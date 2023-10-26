@@ -71,7 +71,7 @@ struct rte_ethdev_qdata {
 	/** points to array of internal queue data pointers */
 	void **data;
 	/** points to array of queue callback data pointers */
-	void **clbk;
+	RTE_ATOMIC(void *) *clbk;
 };
 
 /**
