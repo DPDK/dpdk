@@ -4548,6 +4548,17 @@ static enum mlx5dr_action_type mlx5_hw_dr_action_types[] = {
 	[RTE_FLOW_ACTION_TYPE_SEND_TO_KERNEL] = MLX5DR_ACTION_TYP_DEST_ROOT,
 };
 
+static inline void
+action_template_set_type(struct rte_flow_actions_template *at,
+			 enum mlx5dr_action_type *action_types,
+			 unsigned int action_src, uint16_t *curr_off,
+			 enum mlx5dr_action_type type)
+{
+	at->actions_off[action_src] = *curr_off;
+	action_types[*curr_off] = type;
+	*curr_off = *curr_off + 1;
+}
+
 static int
 flow_hw_dr_actions_template_handle_shared(const struct rte_flow_action *mask,
 					  unsigned int action_src,
@@ -4565,9 +4576,8 @@ flow_hw_dr_actions_template_handle_shared(const struct rte_flow_action *mask,
 	type = mask->type;
 	switch (type) {
 	case RTE_FLOW_ACTION_TYPE_RSS:
-		at->actions_off[action_src] = *curr_off;
-		action_types[*curr_off] = MLX5DR_ACTION_TYP_TIR;
-		*curr_off = *curr_off + 1;
+		action_template_set_type(at, action_types, action_src, curr_off,
+					 MLX5DR_ACTION_TYP_TIR);
 		break;
 	case RTE_FLOW_ACTION_TYPE_AGE:
 	case RTE_FLOW_ACTION_TYPE_COUNT:
@@ -4575,23 +4585,20 @@ flow_hw_dr_actions_template_handle_shared(const struct rte_flow_action *mask,
 		 * Both AGE and COUNT action need counter, the first one fills
 		 * the action_types array, and the second only saves the offset.
 		 */
-		if (*cnt_off == UINT16_MAX) {
-			*cnt_off = *curr_off;
-			action_types[*cnt_off] = MLX5DR_ACTION_TYP_CTR;
-			*curr_off = *curr_off + 1;
-		}
+		if (*cnt_off == UINT16_MAX)
+			action_template_set_type(at, action_types,
+						 action_src, curr_off,
+						 MLX5DR_ACTION_TYP_CTR);
 		at->actions_off[action_src] = *cnt_off;
 		break;
 	case RTE_FLOW_ACTION_TYPE_CONNTRACK:
-		at->actions_off[action_src] = *curr_off;
-		action_types[*curr_off] = MLX5DR_ACTION_TYP_ASO_CT;
-		*curr_off = *curr_off + 1;
+		action_template_set_type(at, action_types, action_src, curr_off,
+					 MLX5DR_ACTION_TYP_ASO_CT);
 		break;
 	case RTE_FLOW_ACTION_TYPE_QUOTA:
 	case RTE_FLOW_ACTION_TYPE_METER_MARK:
-		at->actions_off[action_src] = *curr_off;
-		action_types[*curr_off] = MLX5DR_ACTION_TYP_ASO_METER;
-		*curr_off = *curr_off + 1;
+		action_template_set_type(at, action_types, action_src, curr_off,
+					 MLX5DR_ACTION_TYP_ASO_METER);
 		break;
 	default:
 		DRV_LOG(WARNING, "Unsupported shared action type: %d", type);
@@ -5101,31 +5108,32 @@ flow_hw_actions_template_create(struct rte_eth_dev *dev,
 	at->reformat_off = UINT16_MAX;
 	at->mhdr_off = UINT16_MAX;
 	at->rx_cpy_pos = pos;
-	/*
-	 * mlx5 PMD hacks indirect action index directly to the action conf.
-	 * The rte_flow_conv() function copies the content from conf pointer.
-	 * Need to restore the indirect action index from action conf here.
-	 */
 	for (i = 0; actions->type != RTE_FLOW_ACTION_TYPE_END;
 	     actions++, masks++, i++) {
-		if (actions->type == RTE_FLOW_ACTION_TYPE_INDIRECT) {
+		const struct rte_flow_action_modify_field *info;
+
+		switch (actions->type) {
+		/*
+		 * mlx5 PMD hacks indirect action index directly to the action conf.
+		 * The rte_flow_conv() function copies the content from conf pointer.
+		 * Need to restore the indirect action index from action conf here.
+		 */
+		case RTE_FLOW_ACTION_TYPE_INDIRECT:
 			at->actions[i].conf = actions->conf;
 			at->masks[i].conf = masks->conf;
-		}
-		if (actions->type == RTE_FLOW_ACTION_TYPE_MODIFY_FIELD) {
-			const struct rte_flow_action_modify_field *info = actions->conf;
-
+			break;
+		case RTE_FLOW_ACTION_TYPE_MODIFY_FIELD:
+			info = actions->conf;
 			if ((info->dst.field == RTE_FLOW_FIELD_FLEX_ITEM &&
 			     flow_hw_flex_item_acquire(dev, info->dst.flex_handle,
 						       &at->flex_item)) ||
-			     (info->src.field == RTE_FLOW_FIELD_FLEX_ITEM &&
-			      flow_hw_flex_item_acquire(dev, info->src.flex_handle,
-							&at->flex_item))) {
-				rte_flow_error_set(error, rte_errno,
-						   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
-						   "Failed to acquire flex item");
+			    (info->src.field == RTE_FLOW_FIELD_FLEX_ITEM &&
+			     flow_hw_flex_item_acquire(dev, info->src.flex_handle,
+						       &at->flex_item)))
 				goto error;
-			}
+			break;
+		default:
+			break;
 		}
 	}
 	at->tmpl = flow_hw_dr_actions_template_create(at);
