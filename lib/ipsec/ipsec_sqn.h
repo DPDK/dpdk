@@ -128,7 +128,7 @@ esn_outb_update_sqn(struct rte_ipsec_sa *sa, uint32_t *num)
 
 	n = *num;
 	if (SQN_ATOMIC(sa))
-		sqn = __atomic_fetch_add(&sa->sqn.outb, n, __ATOMIC_RELAXED) + n;
+		sqn = rte_atomic_fetch_add_explicit(&sa->sqn.outb, n, rte_memory_order_relaxed) + n;
 	else {
 		sqn = sa->sqn.outb + n;
 		sa->sqn.outb = sqn;
