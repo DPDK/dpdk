@@ -410,6 +410,41 @@ cnxk_ml_dev_stop(struct rte_ml_dev *dev)
 }
 
 static int
+cnxk_ml_dev_dump(struct rte_ml_dev *dev, FILE *fp)
+{
+	struct cnxk_ml_dev *cnxk_mldev;
+	struct cnxk_ml_model *model;
+	uint16_t model_id;
+
+	if ((dev == NULL) || (fp == NULL))
+		return -EINVAL;
+
+	cnxk_mldev = dev->data->dev_private;
+
+	/* Dump model info */
+	for (model_id = 0; model_id < cnxk_mldev->mldev->data->nb_models; model_id++) {
+		model = cnxk_mldev->mldev->data->models[model_id];
+		if (model != NULL)
+			cnxk_ml_model_dump(cnxk_mldev, model, fp);
+	}
+
+	return cn10k_ml_dev_dump(cnxk_mldev, fp);
+}
+
+static int
+cnxk_ml_dev_selftest(struct rte_ml_dev *dev)
+{
+	struct cnxk_ml_dev *cnxk_mldev;
+
+	if (dev == NULL)
+		return -EINVAL;
+
+	cnxk_mldev = dev->data->dev_private;
+
+	return cn10k_ml_dev_selftest(cnxk_mldev);
+}
+
+static int
 cnxk_ml_dev_queue_pair_setup(struct rte_ml_dev *dev, uint16_t queue_pair_id,
 			     const struct rte_ml_dev_qp_conf *qp_conf, int socket_id)
 {
@@ -729,8 +764,8 @@ struct rte_ml_dev_ops cnxk_ml_ops = {
 	.dev_close = cnxk_ml_dev_close,
 	.dev_start = cnxk_ml_dev_start,
 	.dev_stop = cnxk_ml_dev_stop,
-	.dev_dump = cn10k_ml_dev_dump,
-	.dev_selftest = cn10k_ml_dev_selftest,
+	.dev_dump = cnxk_ml_dev_dump,
+	.dev_selftest = cnxk_ml_dev_selftest,
 
 	/* Queue-pair handling ops */
 	.dev_queue_pair_setup = cnxk_ml_dev_queue_pair_setup,

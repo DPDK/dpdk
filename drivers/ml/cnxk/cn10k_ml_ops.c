@@ -18,11 +18,6 @@
 /* ML layer macros */
 #define CN10K_ML_LAYER_MEMZONE_NAME "ml_cn10k_layer_mz"
 
-/* Debug print width */
-#define STR_LEN	  12
-#define FIELD_LEN 16
-#define LINE_LEN  90
-
 /* ML Job descriptor flags */
 #define ML_FLAGS_POLL_COMPL BIT(0)
 #define ML_FLAGS_SSO_COMPL  BIT(1)
@@ -70,16 +65,6 @@ static const struct cn10k_ml_stype_db_driver {
 	{ML_DRIVER_ERR_FW_ERROR, "UNKNOWN FIRMWARE ERROR"},
 };
 
-static void
-print_line(FILE *fp, int len)
-{
-	int i;
-
-	for (i = 0; i < len; i++)
-		fprintf(fp, "-");
-	fprintf(fp, "\n");
-}
-
 static inline void
 cn10k_ml_set_poll_addr(struct cnxk_ml_req *req)
 {
@@ -111,140 +96,6 @@ cn10k_ml_qp_initialize(struct cnxk_ml_dev *cnxk_mldev, struct cnxk_ml_qp *qp)
 		qp->queue.reqs[i].cn10k_req.jcmd.w1.s.jobptr =
 			PLT_U64_CAST(&qp->queue.reqs[i].cn10k_req.jd);
 	}
-}
-
-static void
-cn10k_ml_model_print(struct rte_ml_dev *dev, uint16_t model_id, FILE *fp)
-{
-	struct cn10k_ml_dev *cn10k_mldev;
-	struct cnxk_ml_dev *cnxk_mldev;
-	struct cnxk_ml_model *model;
-	struct cn10k_ml_ocm *ocm;
-	char str[STR_LEN];
-	uint8_t i;
-	uint8_t j;
-
-	cnxk_mldev = dev->data->dev_private;
-	cn10k_mldev = &cnxk_mldev->cn10k_mldev;
-	ocm = &cn10k_mldev->ocm;
-	model = dev->data->models[model_id];
-
-	/* Print debug info */
-	print_line(fp, LINE_LEN);
-	fprintf(fp, " Model Information (%s)\n", model->glow.metadata.model.name);
-	print_line(fp, LINE_LEN);
-	fprintf(fp, "%*s : %s\n", FIELD_LEN, "name", model->glow.metadata.model.name);
-	fprintf(fp, "%*s : %u.%u.%u.%u\n", FIELD_LEN, "version",
-		model->glow.metadata.model.version[0], model->glow.metadata.model.version[1],
-		model->glow.metadata.model.version[2], model->glow.metadata.model.version[3]);
-	if (strlen(model->name) != 0)
-		fprintf(fp, "%*s : %s\n", FIELD_LEN, "debug_name", model->name);
-	fprintf(fp, "%*s : 0x%016lx\n", FIELD_LEN, "model", PLT_U64_CAST(model));
-	fprintf(fp, "%*s : %u\n", FIELD_LEN, "model_id", model->model_id);
-	fprintf(fp, "%*s : %u\n", FIELD_LEN, "batch_size", model->glow.metadata.model.batch_size);
-	fprintf(fp, "%*s : %u\n", FIELD_LEN, "num_layers", model->glow.metadata.model.num_layers);
-
-	/* Print model state */
-	if (model->state == ML_CNXK_MODEL_STATE_LOADED)
-		fprintf(fp, "%*s : %s\n", FIELD_LEN, "state", "loaded");
-	if (model->state == ML_CNXK_MODEL_STATE_JOB_ACTIVE)
-		fprintf(fp, "%*s : %s\n", FIELD_LEN, "state", "job_active");
-	if (model->state == ML_CNXK_MODEL_STATE_STARTED)
-		fprintf(fp, "%*s : %s\n", FIELD_LEN, "state", "started");
-
-	/* Print OCM status */
-	fprintf(fp, "%*s : %" PRIu64 " bytes\n", FIELD_LEN, "wb_size",
-		model->glow.metadata.model.ocm_wb_range_end -
-			model->glow.metadata.model.ocm_wb_range_start + 1);
-	fprintf(fp, "%*s : %u\n", FIELD_LEN, "wb_pages", model->layer[0].glow.ocm_map.wb_pages);
-	fprintf(fp, "%*s : %" PRIu64 " bytes\n", FIELD_LEN, "scratch_size",
-		ocm->size_per_tile - model->glow.metadata.model.ocm_tmp_range_floor);
-	fprintf(fp, "%*s : %u\n", FIELD_LEN, "scratch_pages",
-		model->layer[0].glow.ocm_map.scratch_pages);
-	fprintf(fp, "%*s : %u\n", FIELD_LEN, "num_tiles",
-		model->glow.metadata.model.tile_end - model->glow.metadata.model.tile_start + 1);
-
-	if (model->state == ML_CNXK_MODEL_STATE_STARTED) {
-		fprintf(fp, "%*s : 0x%0*" PRIx64 "\n", FIELD_LEN, "tilemask",
-			ML_CN10K_OCM_NUMTILES / 4, model->layer[0].glow.ocm_map.tilemask);
-		fprintf(fp, "%*s : 0x%" PRIx64 "\n", FIELD_LEN, "ocm_wb_start",
-			model->layer[0].glow.ocm_map.wb_page_start * cn10k_mldev->ocm.page_size);
-	}
-
-	fprintf(fp, "%*s : %u\n", FIELD_LEN, "num_inputs", model->glow.metadata.model.num_input);
-	fprintf(fp, "%*s : %u\n", FIELD_LEN, "num_outputs", model->glow.metadata.model.num_output);
-	fprintf(fp, "\n");
-
-	print_line(fp, LINE_LEN);
-	fprintf(fp, "%8s  %16s  %12s  %18s  %12s\n", "input", "input_name", "input_type",
-		"model_input_type", "quantize");
-	print_line(fp, LINE_LEN);
-	for (i = 0; i < model->glow.metadata.model.num_input; i++) {
-		if (i < MRVL_ML_NUM_INPUT_OUTPUT_1) {
-			fprintf(fp, "%8u  ", i);
-			fprintf(fp, "%*s  ", 16, model->glow.metadata.input1[i].input_name);
-			rte_ml_io_type_to_str(model->glow.metadata.input1[i].input_type, str,
-					      STR_LEN);
-			fprintf(fp, "%*s  ", 12, str);
-			rte_ml_io_type_to_str(model->glow.metadata.input1[i].model_input_type, str,
-					      STR_LEN);
-			fprintf(fp, "%*s  ", 18, str);
-			fprintf(fp, "%*s", 12,
-				(model->glow.metadata.input1[i].quantize == 1 ? "Yes" : "No"));
-			fprintf(fp, "\n");
-		} else {
-			j = i - MRVL_ML_NUM_INPUT_OUTPUT_1;
-
-			fprintf(fp, "%8u  ", i);
-			fprintf(fp, "%*s  ", 16, model->glow.metadata.input2[j].input_name);
-			rte_ml_io_type_to_str(model->glow.metadata.input2[j].input_type, str,
-					      STR_LEN);
-			fprintf(fp, "%*s  ", 12, str);
-			rte_ml_io_type_to_str(model->glow.metadata.input2[j].model_input_type, str,
-					      STR_LEN);
-			fprintf(fp, "%*s  ", 18, str);
-			fprintf(fp, "%*s", 12,
-				(model->glow.metadata.input2[j].quantize == 1 ? "Yes" : "No"));
-			fprintf(fp, "\n");
-		}
-	}
-	fprintf(fp, "\n");
-
-	print_line(fp, LINE_LEN);
-	fprintf(fp, "%8s  %16s  %12s  %18s  %12s\n", "output", "output_name", "output_type",
-		"model_output_type", "dequantize");
-	print_line(fp, LINE_LEN);
-	for (i = 0; i < model->glow.metadata.model.num_output; i++) {
-		if (i < MRVL_ML_NUM_INPUT_OUTPUT_1) {
-			fprintf(fp, "%8u  ", i);
-			fprintf(fp, "%*s  ", 16, model->glow.metadata.output1[i].output_name);
-			rte_ml_io_type_to_str(model->glow.metadata.output1[i].output_type, str,
-					      STR_LEN);
-			fprintf(fp, "%*s  ", 12, str);
-			rte_ml_io_type_to_str(model->glow.metadata.output1[i].model_output_type,
-					      str, STR_LEN);
-			fprintf(fp, "%*s  ", 18, str);
-			fprintf(fp, "%*s", 12,
-				(model->glow.metadata.output1[i].dequantize == 1 ? "Yes" : "No"));
-			fprintf(fp, "\n");
-		} else {
-			j = i - MRVL_ML_NUM_INPUT_OUTPUT_1;
-			fprintf(fp, "%8u  ", i);
-			fprintf(fp, "%*s  ", 16, model->glow.metadata.output2[j].output_name);
-			rte_ml_io_type_to_str(model->glow.metadata.output2[j].output_type, str,
-					      STR_LEN);
-			fprintf(fp, "%*s  ", 12, str);
-			rte_ml_io_type_to_str(model->glow.metadata.output2[j].model_output_type,
-					      str, STR_LEN);
-			fprintf(fp, "%*s  ", 18, str);
-			fprintf(fp, "%*s", 12,
-				(model->glow.metadata.output2[j].dequantize == 1 ? "Yes" : "No"));
-			fprintf(fp, "\n");
-		}
-	}
-	fprintf(fp, "\n");
-	print_line(fp, LINE_LEN);
-	fprintf(fp, "\n");
 }
 
 static void
@@ -1120,38 +971,25 @@ cn10k_ml_dev_xstats_reset(struct rte_ml_dev *dev, enum rte_ml_dev_xstats_mode mo
 }
 
 int
-cn10k_ml_dev_dump(struct rte_ml_dev *dev, FILE *fp)
+cn10k_ml_dev_dump(struct cnxk_ml_dev *cnxk_mldev, FILE *fp)
 {
 	struct cn10k_ml_dev *cn10k_mldev;
-	struct cnxk_ml_dev *cnxk_mldev;
-	struct cnxk_ml_model *model;
 	struct cn10k_ml_fw *fw;
 
 	uint32_t head_loc;
 	uint32_t tail_loc;
-	uint16_t model_id;
 	uint32_t bufsize;
 	char *head_ptr;
 	int core_id;
 
-	if (roc_env_is_asim())
-		return 0;
-
-	cnxk_mldev = dev->data->dev_private;
 	cn10k_mldev = &cnxk_mldev->cn10k_mldev;
 	fw = &cn10k_mldev->fw;
 
-	/* Dump model info */
-	for (model_id = 0; model_id < dev->data->nb_models; model_id++) {
-		model = dev->data->models[model_id];
-		if (model != NULL) {
-			cn10k_ml_model_print(dev, model_id, fp);
-			fprintf(fp, "\n");
-		}
-	}
-
 	/* Dump OCM state */
-	cn10k_ml_ocm_print(dev, fp);
+	cn10k_ml_ocm_print(cnxk_mldev, fp);
+
+	if (roc_env_is_asim())
+		return 0;
 
 	/* Dump debug buffer */
 	for (core_id = 0; core_id <= 1; core_id++) {
@@ -1207,17 +1045,15 @@ cn10k_ml_dev_dump(struct rte_ml_dev *dev, FILE *fp)
 }
 
 int
-cn10k_ml_dev_selftest(struct rte_ml_dev *dev)
+cn10k_ml_dev_selftest(struct cnxk_ml_dev *cnxk_mldev)
 {
 	struct cn10k_ml_dev *cn10k_mldev;
-	struct cnxk_ml_dev *cnxk_mldev;
 	const struct plt_memzone *mz;
 	struct cnxk_ml_req *req;
 	uint64_t timeout_cycle;
 	bool timeout;
 	int ret;
 
-	cnxk_mldev = dev->data->dev_private;
 	cn10k_mldev = &cnxk_mldev->cn10k_mldev;
 	mz = plt_memzone_reserve_aligned("dev_selftest", sizeof(struct cnxk_ml_req), 0,
 					 ML_CN10K_ALIGN_SIZE);

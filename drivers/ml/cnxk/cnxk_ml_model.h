@@ -108,4 +108,6 @@ struct cnxk_ml_model {
 	plt_spinlock_t lock;
 };
 
+void cnxk_ml_model_dump(struct cnxk_ml_dev *cnxk_mldev, struct cnxk_ml_model *model, FILE *fp);
+
 #endif /* _CNXK_ML_MODEL_H_ */

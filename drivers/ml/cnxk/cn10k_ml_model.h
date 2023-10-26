@@ -460,5 +460,6 @@ int cn10k_ml_model_ocm_pages_count(struct cnxk_ml_dev *cnxk_mldev, struct cnxk_m
 void cn10k_ml_model_info_set(struct cnxk_ml_dev *cnxk_mldev, struct cnxk_ml_model *model,
 			     struct cnxk_ml_io_info *io_info,
 			     struct cn10k_ml_model_metadata *metadata);
+void cn10k_ml_layer_print(struct cnxk_ml_dev *cnxk_mldev, struct cnxk_ml_layer *layer, FILE *fp);
 
 #endif /* _CN10K_ML_MODEL_H_ */

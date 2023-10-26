@@ -481,19 +481,15 @@ cn10k_ml_ocm_pagemask_to_str(struct cn10k_ml_ocm_tile_info *tile_info, uint16_t 
 }
 
 void
-cn10k_ml_ocm_print(struct rte_ml_dev *dev, FILE *fp)
+cn10k_ml_ocm_print(struct cnxk_ml_dev *cnxk_mldev, FILE *fp)
 {
-	struct cn10k_ml_dev *cn10k_mldev;
-	struct cnxk_ml_dev *cnxk_mldev;
 	struct cn10k_ml_ocm *ocm;
 	uint8_t tile_id;
 	uint8_t word_id;
 	int wb_pages;
 	char *str;
 
-	cnxk_mldev = dev->data->dev_private;
-	cn10k_mldev = &cnxk_mldev->cn10k_mldev;
-	ocm = &cn10k_mldev->ocm;
+	ocm = &cnxk_mldev->cn10k_mldev.ocm;
 
 	/* Nibbles + prefix '0x' */
 	str = rte_zmalloc("ocm_mask_str", ocm->num_pages / 4 + 2, RTE_CACHE_LINE_SIZE);

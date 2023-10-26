@@ -83,6 +83,6 @@ void cn10k_ml_ocm_reserve_pages(struct cnxk_ml_dev *cnxk_mldev, uint16_t model_i
 				uint16_t layer_id, uint64_t tilemask, int wb_page_start,
 				uint16_t wb_pages, uint16_t scratch_pages);
 void cn10k_ml_ocm_free_pages(struct cnxk_ml_dev *cnxk_mldev, uint16_t model_id, uint16_t layer_id);
-void cn10k_ml_ocm_print(struct rte_ml_dev *dev, FILE *fp);
+void cn10k_ml_ocm_print(struct cnxk_ml_dev *cnxk_mldev, FILE *fp);
 
 #endif /* _CN10K_ML_OCM_H_ */

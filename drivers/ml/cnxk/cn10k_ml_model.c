@@ -11,6 +11,7 @@
 #include "cnxk_ml_dev.h"
 #include "cnxk_ml_model.h"
 #include "cnxk_ml_ops.h"
+#include "cnxk_ml_utils.h"
 
 static enum rte_ml_io_type
 cn10k_ml_io_type_map(uint8_t type)
@@ -597,4 +598,121 @@ cn10k_ml_model_info_set(struct cnxk_ml_dev *cnxk_mldev, struct cnxk_ml_model *mo
 		output[i].size = io_info->output[i].nb_elements *
 				 rte_ml_io_type_size_get(io_info->output[i].qtype);
 	}
+}
+
+void
+cn10k_ml_layer_print(struct cnxk_ml_dev *cnxk_mldev, struct cnxk_ml_layer *layer, FILE *fp)
+{
+	struct cn10k_ml_ocm *ocm;
+	char str[STR_LEN];
+	uint8_t i;
+	uint8_t j;
+
+	ocm = &cnxk_mldev->cn10k_mldev.ocm;
+
+	/* Print debug info */
+	cnxk_ml_print_line(fp, LINE_LEN);
+	fprintf(fp, " Layer Information (Layer ID: %u, Name: %s)\n",
+		cnxk_mldev->index_map[layer->index].layer_id, layer->name);
+	cnxk_ml_print_line(fp, LINE_LEN);
+	fprintf(fp, "%*s : %u\n", FIELD_LEN, "index", layer->index);
+	fprintf(fp, "%*s : %s\n", FIELD_LEN, "name", layer->name);
+	fprintf(fp, "%*s : %u.%u.%u.%u\n", FIELD_LEN, "version",
+		layer->glow.metadata.model.version[0], layer->glow.metadata.model.version[1],
+		layer->glow.metadata.model.version[2], layer->glow.metadata.model.version[3]);
+	fprintf(fp, "%*s : 0x%016lx\n", FIELD_LEN, "layer", PLT_U64_CAST(layer));
+	fprintf(fp, "%*s : %u\n", FIELD_LEN, "batch_size", layer->batch_size);
+
+	/* Print model state */
+	if (layer->state == ML_CNXK_LAYER_STATE_LOADED)
+		fprintf(fp, "%*s : %s\n", FIELD_LEN, "state", "loaded");
+	if (layer->state == ML_CNXK_LAYER_STATE_JOB_ACTIVE)
+		fprintf(fp, "%*s : %s\n", FIELD_LEN, "state", "job_active");
+	if (layer->state == ML_CNXK_LAYER_STATE_STARTED)
+		fprintf(fp, "%*s : %s\n", FIELD_LEN, "state", "started");
+
+	/* Print OCM status */
+	fprintf(fp, "%*s : %" PRIu64 " bytes\n", FIELD_LEN, "wb_size",
+		layer->glow.metadata.model.ocm_wb_range_end -
+			layer->glow.metadata.model.ocm_wb_range_start + 1);
+	fprintf(fp, "%*s : %u\n", FIELD_LEN, "wb_pages", layer->glow.ocm_map.wb_pages);
+	fprintf(fp, "%*s : %" PRIu64 " bytes\n", FIELD_LEN, "scratch_size",
+		ocm->size_per_tile - layer->glow.metadata.model.ocm_tmp_range_floor);
+	fprintf(fp, "%*s : %u\n", FIELD_LEN, "scratch_pages", layer->glow.ocm_map.scratch_pages);
+	fprintf(fp, "%*s : %u\n", FIELD_LEN, "num_tiles",
+		layer->glow.metadata.model.tile_end - layer->glow.metadata.model.tile_start + 1);
+
+	if (layer->state == ML_CNXK_LAYER_STATE_STARTED) {
+		fprintf(fp, "%*s : 0x%0*" PRIx64 "\n", FIELD_LEN, "tilemask",
+			ML_CN10K_OCM_NUMTILES / 4, layer->glow.ocm_map.tilemask);
+		fprintf(fp, "%*s : 0x%" PRIx64 "\n", FIELD_LEN, "ocm_wb_start",
+			layer->glow.ocm_map.wb_page_start * ocm->page_size);
+	}
+
+	fprintf(fp, "%*s : %u\n", FIELD_LEN, "num_inputs", layer->glow.metadata.model.num_input);
+	fprintf(fp, "%*s : %u\n", FIELD_LEN, "num_outputs", layer->glow.metadata.model.num_output);
+	fprintf(fp, "\n");
+
+	cnxk_ml_print_line(fp, LINE_LEN);
+	fprintf(fp, "%8s  %16s  %12s  %18s\n", "input", "input_name", "input_type",
+		"model_input_type");
+	cnxk_ml_print_line(fp, LINE_LEN);
+	for (i = 0; i < layer->glow.metadata.model.num_input; i++) {
+		if (i < MRVL_ML_NUM_INPUT_OUTPUT_1) {
+			fprintf(fp, "%8u  ", i);
+			fprintf(fp, "%*s  ", 16, layer->glow.metadata.input1[i].input_name);
+			rte_ml_io_type_to_str(layer->glow.metadata.input1[i].input_type, str,
+					      STR_LEN);
+			fprintf(fp, "%*s  ", 12, str);
+			rte_ml_io_type_to_str(layer->glow.metadata.input1[i].model_input_type, str,
+					      STR_LEN);
+			fprintf(fp, "%*s  ", 18, str);
+			fprintf(fp, "\n");
+		} else {
+			j = i - MRVL_ML_NUM_INPUT_OUTPUT_1;
+
+			fprintf(fp, "%8u  ", i);
+			fprintf(fp, "%*s  ", 16, layer->glow.metadata.input2[j].input_name);
+			rte_ml_io_type_to_str(layer->glow.metadata.input2[j].input_type, str,
+					      STR_LEN);
+			fprintf(fp, "%*s  ", 12, str);
+			rte_ml_io_type_to_str(layer->glow.metadata.input2[j].model_input_type, str,
+					      STR_LEN);
+			fprintf(fp, "%*s  ", 18, str);
+			fprintf(fp, "\n");
+		}
+	}
+	fprintf(fp, "\n");
+
+	cnxk_ml_print_line(fp, LINE_LEN);
+	fprintf(fp, "%8s  %16s  %12s  %18s\n", "output", "output_name", "output_type",
+		"model_output_type");
+	cnxk_ml_print_line(fp, LINE_LEN);
+	for (i = 0; i < layer->glow.metadata.model.num_output; i++) {
+		if (i < MRVL_ML_NUM_INPUT_OUTPUT_1) {
+			fprintf(fp, "%8u  ", i);
+			fprintf(fp, "%*s  ", 16, layer->glow.metadata.output1[i].output_name);
+			rte_ml_io_type_to_str(layer->glow.metadata.output1[i].output_type, str,
+					      STR_LEN);
+			fprintf(fp, "%*s  ", 12, str);
+			rte_ml_io_type_to_str(layer->glow.metadata.output1[i].model_output_type,
+					      str, STR_LEN);
+			fprintf(fp, "%*s  ", 18, str);
+			fprintf(fp, "\n");
+		} else {
+			j = i - MRVL_ML_NUM_INPUT_OUTPUT_1;
+			fprintf(fp, "%8u  ", i);
+			fprintf(fp, "%*s  ", 16, layer->glow.metadata.output2[j].output_name);
+			rte_ml_io_type_to_str(layer->glow.metadata.output2[j].output_type, str,
+					      STR_LEN);
+			fprintf(fp, "%*s  ", 12, str);
+			rte_ml_io_type_to_str(layer->glow.metadata.output2[j].model_output_type,
+					      str, STR_LEN);
+			fprintf(fp, "%*s  ", 18, str);
+			fprintf(fp, "\n");
+		}
+	}
+	fprintf(fp, "\n");
+	cnxk_ml_print_line(fp, LINE_LEN);
+	fprintf(fp, "\n");
 }

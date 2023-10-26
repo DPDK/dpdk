@@ -295,8 +295,8 @@ int cn10k_ml_dev_configure(struct cnxk_ml_dev *cnxk_mldev, const struct rte_ml_d
 int cn10k_ml_dev_close(struct cnxk_ml_dev *cnxk_mldev);
 int cn10k_ml_dev_start(struct cnxk_ml_dev *cnxk_mldev);
 int cn10k_ml_dev_stop(struct cnxk_ml_dev *cnxk_mldev);
-int cn10k_ml_dev_dump(struct rte_ml_dev *dev, FILE *fp);
-int cn10k_ml_dev_selftest(struct rte_ml_dev *dev);
+int cn10k_ml_dev_dump(struct cnxk_ml_dev *cnxk_mldev, FILE *fp);
+int cn10k_ml_dev_selftest(struct cnxk_ml_dev *cnxk_mldev);
 
 int cn10k_ml_dev_stats_get(struct rte_ml_dev *dev, struct rte_ml_dev_stats *stats);
 void cn10k_ml_dev_stats_reset(struct rte_ml_dev *dev);
