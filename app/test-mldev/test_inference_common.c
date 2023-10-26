@@ -777,14 +777,22 @@ ml_inference_iomem_setup(struct ml_test *test, struct ml_options *opt, uint16_t 
 	}
 
 	t->model[fid].inp_dsize = 0;
-	for (i = 0; i < t->model[fid].info.nb_inputs; i++)
-		t->model[fid].inp_dsize +=
-			t->model[fid].info.input_info[i].nb_elements * sizeof(float);
+	for (i = 0; i < t->model[fid].info.nb_inputs; i++) {
+		if (opt->quantized_io)
+			t->model[fid].inp_dsize += t->model[fid].info.input_info[i].size;
+		else
+			t->model[fid].inp_dsize +=
+				t->model[fid].info.input_info[i].nb_elements * sizeof(float);
+	}
 
 	t->model[fid].out_dsize = 0;
-	for (i = 0; i < t->model[fid].info.nb_outputs; i++)
-		t->model[fid].out_dsize +=
-			t->model[fid].info.output_info[i].nb_elements * sizeof(float);
+	for (i = 0; i < t->model[fid].info.nb_outputs; i++) {
+		if (opt->quantized_io)
+			t->model[fid].out_dsize += t->model[fid].info.output_info[i].size;
+		else
+			t->model[fid].out_dsize +=
+				t->model[fid].info.output_info[i].nb_elements * sizeof(float);
+	}
 
 	/* allocate buffer for user data */
 	mz_size = t->model[fid].inp_dsize + t->model[fid].out_dsize;

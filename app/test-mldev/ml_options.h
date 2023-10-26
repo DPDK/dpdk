@@ -12,19 +12,20 @@
 #define ML_TEST_MAX_MODELS   8
 
 /* Options names */
-#define ML_TEST	       ("test")
-#define ML_DEVICE_ID   ("dev_id")
-#define ML_SOCKET_ID   ("socket_id")
-#define ML_MODELS      ("models")
-#define ML_FILELIST    ("filelist")
-#define ML_REPETITIONS ("repetitions")
-#define ML_BURST_SIZE  ("burst_size")
-#define ML_QUEUE_PAIRS ("queue_pairs")
-#define ML_QUEUE_SIZE  ("queue_size")
-#define ML_TOLERANCE   ("tolerance")
-#define ML_STATS       ("stats")
-#define ML_DEBUG       ("debug")
-#define ML_HELP	       ("help")
+#define ML_TEST		("test")
+#define ML_DEVICE_ID	("dev_id")
+#define ML_SOCKET_ID	("socket_id")
+#define ML_MODELS	("models")
+#define ML_FILELIST	("filelist")
+#define ML_QUANTIZED_IO ("quantized_io")
+#define ML_REPETITIONS	("repetitions")
+#define ML_BURST_SIZE	("burst_size")
+#define ML_QUEUE_PAIRS	("queue_pairs")
+#define ML_QUEUE_SIZE	("queue_size")
+#define ML_TOLERANCE	("tolerance")
+#define ML_STATS	("stats")
+#define ML_DEBUG	("debug")
+#define ML_HELP		("help")
 
 struct ml_filelist {
 	char model[PATH_MAX];
@@ -46,6 +47,7 @@ struct ml_options {
 	float tolerance;
 	bool stats;
 	bool debug;
+	bool quantized_io;
 };
 
 void ml_options_default(struct ml_options *opt);

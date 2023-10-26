@@ -89,6 +89,9 @@ The following are the command-line options supported by the test application.
   A suffix ``.q`` is appended to quantized output filename.
   Maximum number of filelist entries supported by the test is ``8``.
 
+``--quantized_io``
+  Disable IO quantization and dequantization.
+
 ``--repetitions <n>``
   Set the number of inference repetitions to be executed in the test per each model.
   Default value is ``1``.
