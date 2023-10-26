@@ -14,9 +14,8 @@
 
 #include <roc_api.h>
 
-#include "cn10k_ml_ops.h"
-
 #include "cnxk_ml_dev.h"
+#include "cnxk_ml_ops.h"
 
 #define CN10K_ML_FW_PATH		"fw_path"
 #define CN10K_ML_FW_ENABLE_DPE_WARNINGS "enable_dpe_warnings"
@@ -400,20 +399,23 @@ cn10k_ml_pci_remove(struct rte_pci_device *pci_dev)
 static void
 cn10k_ml_fw_print_info(struct cn10k_ml_fw *fw)
 {
-	plt_info("ML Firmware Version = %s", fw->req->jd.fw_load.version);
+	plt_info("ML Firmware Version = %s", fw->req->cn10k_req.jd.fw_load.version);
 
-	plt_ml_dbg("Firmware capabilities = 0x%016lx", fw->req->jd.fw_load.cap.u64);
-	plt_ml_dbg("Version = %s", fw->req->jd.fw_load.version);
-	plt_ml_dbg("core0_debug_ptr = 0x%016lx", fw->req->jd.fw_load.debug.core0_debug_ptr);
-	plt_ml_dbg("core1_debug_ptr = 0x%016lx", fw->req->jd.fw_load.debug.core1_debug_ptr);
-	plt_ml_dbg("debug_buffer_size = %u bytes", fw->req->jd.fw_load.debug.debug_buffer_size);
+	plt_ml_dbg("Firmware capabilities = 0x%016lx", fw->req->cn10k_req.jd.fw_load.cap.u64);
+	plt_ml_dbg("Version = %s", fw->req->cn10k_req.jd.fw_load.version);
+	plt_ml_dbg("core0_debug_ptr = 0x%016lx",
+		   fw->req->cn10k_req.jd.fw_load.debug.core0_debug_ptr);
+	plt_ml_dbg("core1_debug_ptr = 0x%016lx",
+		   fw->req->cn10k_req.jd.fw_load.debug.core1_debug_ptr);
+	plt_ml_dbg("debug_buffer_size = %u bytes",
+		   fw->req->cn10k_req.jd.fw_load.debug.debug_buffer_size);
 	plt_ml_dbg("core0_exception_buffer = 0x%016lx",
-		   fw->req->jd.fw_load.debug.core0_exception_buffer);
+		   fw->req->cn10k_req.jd.fw_load.debug.core0_exception_buffer);
 	plt_ml_dbg("core1_exception_buffer = 0x%016lx",
-		   fw->req->jd.fw_load.debug.core1_exception_buffer);
+		   fw->req->cn10k_req.jd.fw_load.debug.core1_exception_buffer);
 	plt_ml_dbg("exception_state_size = %u bytes",
-		   fw->req->jd.fw_load.debug.exception_state_size);
-	plt_ml_dbg("flags = 0x%016lx", fw->req->jd.fw_load.flags);
+		   fw->req->cn10k_req.jd.fw_load.debug.exception_state_size);
+	plt_ml_dbg("flags = 0x%016lx", fw->req->cn10k_req.jd.fw_load.flags);
 }
 
 uint64_t
@@ -458,29 +460,30 @@ cn10k_ml_fw_load_asim(struct cn10k_ml_fw *fw)
 	roc_ml_reg_save(&cn10k_mldev->roc, ML_MLR_BASE);
 
 	/* Update FW load completion structure */
-	fw->req->jd.hdr.jce.w1.u64 = PLT_U64_CAST(&fw->req->status);
-	fw->req->jd.hdr.job_type = ML_CN10K_JOB_TYPE_FIRMWARE_LOAD;
-	fw->req->jd.hdr.result = roc_ml_addr_ap2mlip(&cn10k_mldev->roc, &fw->req->result);
-	fw->req->jd.fw_load.flags = cn10k_ml_fw_flags_get(fw);
-	plt_write64(ML_CNXK_POLL_JOB_START, &fw->req->status);
+	fw->req->cn10k_req.jd.hdr.jce.w1.u64 = PLT_U64_CAST(&fw->req->cn10k_req.status);
+	fw->req->cn10k_req.jd.hdr.job_type = ML_CN10K_JOB_TYPE_FIRMWARE_LOAD;
+	fw->req->cn10k_req.jd.hdr.result =
+		roc_ml_addr_ap2mlip(&cn10k_mldev->roc, &fw->req->cn10k_req.result);
+	fw->req->cn10k_req.jd.fw_load.flags = cn10k_ml_fw_flags_get(fw);
+	plt_write64(ML_CNXK_POLL_JOB_START, &fw->req->cn10k_req.status);
 	plt_wmb();
 
 	/* Enqueue FW load through scratch registers */
 	timeout = true;
 	timeout_cycle = plt_tsc_cycles() + ML_CNXK_CMD_TIMEOUT * plt_tsc_hz();
-	roc_ml_scratch_enqueue(&cn10k_mldev->roc, &fw->req->jd);
+	roc_ml_scratch_enqueue(&cn10k_mldev->roc, &fw->req->cn10k_req.jd);
 
 	plt_rmb();
 	do {
 		if (roc_ml_scratch_is_done_bit_set(&cn10k_mldev->roc) &&
-		    (plt_read64(&fw->req->status) == ML_CNXK_POLL_JOB_FINISH)) {
+		    (plt_read64(&fw->req->cn10k_req.status) == ML_CNXK_POLL_JOB_FINISH)) {
 			timeout = false;
 			break;
 		}
 	} while (plt_tsc_cycles() < timeout_cycle);
 
 	/* Check firmware load status, clean-up and exit on failure. */
-	if ((!timeout) && (fw->req->result.error_code.u64 == 0)) {
+	if ((!timeout) && (fw->req->cn10k_req.result.error_code == 0)) {
 		cn10k_ml_fw_print_info(fw);
 	} else {
 		/* Set ML to disable new jobs */
@@ -654,29 +657,30 @@ cn10k_ml_fw_load_cn10ka(struct cn10k_ml_fw *fw, void *buffer, uint64_t size)
 	plt_ml_dbg("ML_SW_RST_CTRL => 0x%08x", reg_val32);
 
 	/* (12) Wait for notification from firmware that ML is ready for job execution. */
-	fw->req->jd.hdr.jce.w1.u64 = PLT_U64_CAST(&fw->req->status);
-	fw->req->jd.hdr.job_type = ML_CN10K_JOB_TYPE_FIRMWARE_LOAD;
-	fw->req->jd.hdr.result = roc_ml_addr_ap2mlip(&cn10k_mldev->roc, &fw->req->result);
-	fw->req->jd.fw_load.flags = cn10k_ml_fw_flags_get(fw);
-	plt_write64(ML_CNXK_POLL_JOB_START, &fw->req->status);
+	fw->req->cn10k_req.jd.hdr.jce.w1.u64 = PLT_U64_CAST(&fw->req->cn10k_req.status);
+	fw->req->cn10k_req.jd.hdr.job_type = ML_CN10K_JOB_TYPE_FIRMWARE_LOAD;
+	fw->req->cn10k_req.jd.hdr.result =
+		roc_ml_addr_ap2mlip(&cn10k_mldev->roc, &fw->req->cn10k_req.result);
+	fw->req->cn10k_req.jd.fw_load.flags = cn10k_ml_fw_flags_get(fw);
+	plt_write64(ML_CNXK_POLL_JOB_START, &fw->req->cn10k_req.status);
 	plt_wmb();
 
 	/* Enqueue FW load through scratch registers */
 	timeout = true;
 	timeout_cycle = plt_tsc_cycles() + ML_CNXK_CMD_TIMEOUT * plt_tsc_hz();
-	roc_ml_scratch_enqueue(&cn10k_mldev->roc, &fw->req->jd);
+	roc_ml_scratch_enqueue(&cn10k_mldev->roc, &fw->req->cn10k_req.jd);
 
 	plt_rmb();
 	do {
 		if (roc_ml_scratch_is_done_bit_set(&cn10k_mldev->roc) &&
-		    (plt_read64(&fw->req->status) == ML_CNXK_POLL_JOB_FINISH)) {
+		    (plt_read64(&fw->req->cn10k_req.status) == ML_CNXK_POLL_JOB_FINISH)) {
 			timeout = false;
 			break;
 		}
 	} while (plt_tsc_cycles() < timeout_cycle);
 
 	/* Check firmware load status, clean-up and exit on failure. */
-	if ((!timeout) && (fw->req->result.error_code.u64 == 0)) {
+	if ((!timeout) && (fw->req->cn10k_req.result.error_code == 0)) {
 		cn10k_ml_fw_print_info(fw);
 	} else {
 		/* Set ML to disable new jobs */
@@ -766,11 +770,11 @@ cn10k_ml_fw_load(struct cnxk_ml_dev *cnxk_mldev)
 		}
 
 		/* Reserve memzone for firmware load completion and data */
-		mz_size = sizeof(struct cn10k_ml_req) + fw_size + FW_STACK_BUFFER_SIZE +
+		mz_size = sizeof(struct cnxk_ml_req) + fw_size + FW_STACK_BUFFER_SIZE +
 			  FW_DEBUG_BUFFER_SIZE + FW_EXCEPTION_BUFFER_SIZE;
 	} else if (roc_env_is_asim()) {
 		/* Reserve memzone for firmware load completion */
-		mz_size = sizeof(struct cn10k_ml_req);
+		mz_size = sizeof(struct cnxk_ml_req);
 	}
 
 	mz = plt_memzone_reserve_aligned(FW_MEMZONE_NAME, mz_size, 0, ML_CN10K_ALIGN_SIZE);
@@ -782,8 +786,8 @@ cn10k_ml_fw_load(struct cnxk_ml_dev *cnxk_mldev)
 	fw->req = mz->addr;
 
 	/* Reset firmware load completion structure */
-	memset(&fw->req->jd, 0, sizeof(struct cn10k_ml_jd));
-	memset(&fw->req->jd.fw_load.version[0], '\0', MLDEV_FIRMWARE_VERSION_LENGTH);
+	memset(&fw->req->cn10k_req.jd, 0, sizeof(struct cn10k_ml_jd));
+	memset(&fw->req->cn10k_req.jd.fw_load.version[0], '\0', MLDEV_FIRMWARE_VERSION_LENGTH);
 
 	/* Reset device, if in active state */
 	if (roc_ml_mlip_is_enabled(&cn10k_mldev->roc))
@@ -791,7 +795,7 @@ cn10k_ml_fw_load(struct cnxk_ml_dev *cnxk_mldev)
 
 	/* Load firmware */
 	if (roc_env_is_emulator() || roc_env_is_hw()) {
-		fw->data = PLT_PTR_ADD(mz->addr, sizeof(struct cn10k_ml_req));
+		fw->data = PLT_PTR_ADD(mz->addr, sizeof(struct cnxk_ml_req));
 		ret = cn10k_ml_fw_load_cn10ka(fw, fw_buffer, fw_size);
 		free(fw_buffer);
 	} else if (roc_env_is_asim()) {

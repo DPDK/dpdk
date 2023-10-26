@@ -10,6 +10,7 @@
 
 #include "cnxk_ml_dev.h"
 #include "cnxk_ml_model.h"
+#include "cnxk_ml_ops.h"
 
 static enum rte_ml_io_type
 cn10k_ml_io_type_map(uint8_t type)
@@ -551,7 +552,6 @@ void
 cn10k_ml_model_info_set(struct rte_ml_dev *dev, struct cnxk_ml_model *model)
 {
 	struct cn10k_ml_model_metadata *metadata;
-	struct cn10k_ml_dev *cn10k_mldev;
 	struct cnxk_ml_dev *cnxk_mldev;
 	struct rte_ml_model_info *info;
 	struct rte_ml_io_info *output;
@@ -560,7 +560,6 @@ cn10k_ml_model_info_set(struct rte_ml_dev *dev, struct cnxk_ml_model *model)
 	uint8_t i;
 
 	cnxk_mldev = dev->data->dev_private;
-	cn10k_mldev = &cnxk_mldev->cn10k_mldev;
 	metadata = &model->glow.metadata;
 	info = PLT_PTR_CAST(model->info);
 	input = PLT_PTR_ADD(info, sizeof(struct rte_ml_model_info));
@@ -577,7 +576,8 @@ cn10k_ml_model_info_set(struct rte_ml_dev *dev, struct cnxk_ml_model *model)
 	info->io_layout = RTE_ML_IO_LAYOUT_PACKED;
 	info->min_batches = model->batch_size;
 	info->max_batches =
-		cn10k_mldev->fw.req->jd.fw_load.cap.s.max_num_batches / model->batch_size;
+		cnxk_mldev->cn10k_mldev.fw.req->cn10k_req.jd.fw_load.cap.s.max_num_batches /
+		model->batch_size;
 	info->nb_inputs = metadata->model.num_input;
 	info->input_info = input;
 	info->nb_outputs = metadata->model.num_output;

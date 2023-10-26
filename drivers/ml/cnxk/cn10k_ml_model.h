@@ -11,10 +11,10 @@
 
 #include "cn10k_ml_dev.h"
 #include "cn10k_ml_ocm.h"
-#include "cn10k_ml_ops.h"
 
 struct cnxk_ml_model;
 struct cnxk_ml_layer;
+struct cnxk_ml_req;
 
 /* Model Metadata : v 2.3.0.1 */
 #define MRVL_ML_MODEL_MAGIC_STRING "MRVL"
@@ -444,7 +444,7 @@ struct cn10k_ml_layer_data {
 	struct cn10k_ml_ocm_layer_map ocm_map;
 
 	/* Layer: Slow-path operations request pointer */
-	struct cn10k_ml_req *req;
+	struct cnxk_ml_req *req;
 
 	/* Layer: Stats for burst ops */
 	struct cn10k_ml_layer_stats *burst_stats;

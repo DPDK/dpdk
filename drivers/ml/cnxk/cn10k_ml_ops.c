@@ -7,10 +7,9 @@
 
 #include <mldev_utils.h>
 
-#include "cn10k_ml_ops.h"
-
 #include "cnxk_ml_dev.h"
 #include "cnxk_ml_model.h"
+#include "cnxk_ml_ops.h"
 
 /* ML model macros */
 #define CN10K_ML_MODEL_MEMZONE_NAME "ml_cn10k_model_mz"
@@ -78,31 +77,31 @@ print_line(FILE *fp, int len)
 }
 
 static inline void
-cn10k_ml_set_poll_addr(struct cn10k_ml_req *req)
+cn10k_ml_set_poll_addr(struct cnxk_ml_req *req)
 {
-	req->compl_W1 = PLT_U64_CAST(&req->status);
+	req->status = &req->cn10k_req.status;
 }
 
 static inline void
-cn10k_ml_set_poll_ptr(struct cn10k_ml_req *req)
+cn10k_ml_set_poll_ptr(struct cnxk_ml_req *req)
 {
-	plt_write64(ML_CNXK_POLL_JOB_START, req->compl_W1);
+	plt_write64(ML_CNXK_POLL_JOB_START, req->status);
 }
 
 static inline uint64_t
-cn10k_ml_get_poll_ptr(struct cn10k_ml_req *req)
+cn10k_ml_get_poll_ptr(struct cnxk_ml_req *req)
 {
-	return plt_read64(req->compl_W1);
+	return plt_read64(req->status);
 }
 
 static void
 qp_memzone_name_get(char *name, int size, int dev_id, int qp_id)
 {
-	snprintf(name, size, "cn10k_ml_qp_mem_%u:%u", dev_id, qp_id);
+	snprintf(name, size, "cnxk_ml_qp_mem_%u:%u", dev_id, qp_id);
 }
 
 static int
-cn10k_ml_qp_destroy(const struct rte_ml_dev *dev, struct cn10k_ml_qp *qp)
+cnxk_ml_qp_destroy(const struct rte_ml_dev *dev, struct cnxk_ml_qp *qp)
 {
 	const struct rte_memzone *qp_mem;
 	char name[RTE_MEMZONE_NAMESIZE];
@@ -122,14 +121,14 @@ cn10k_ml_qp_destroy(const struct rte_ml_dev *dev, struct cn10k_ml_qp *qp)
 static int
 cn10k_ml_dev_queue_pair_release(struct rte_ml_dev *dev, uint16_t queue_pair_id)
 {
-	struct cn10k_ml_qp *qp;
+	struct cnxk_ml_qp *qp;
 	int ret;
 
 	qp = dev->data->queue_pairs[queue_pair_id];
 	if (qp == NULL)
 		return -EINVAL;
 
-	ret = cn10k_ml_qp_destroy(dev, qp);
+	ret = cnxk_ml_qp_destroy(dev, qp);
 	if (ret) {
 		plt_err("Could not destroy queue pair %u", queue_pair_id);
 		return ret;
@@ -140,18 +139,18 @@ cn10k_ml_dev_queue_pair_release(struct rte_ml_dev *dev, uint16_t queue_pair_id)
 	return 0;
 }
 
-static struct cn10k_ml_qp *
-cn10k_ml_qp_create(const struct rte_ml_dev *dev, uint16_t qp_id, uint32_t nb_desc, int socket_id)
+static struct cnxk_ml_qp *
+cnxk_ml_qp_create(const struct rte_ml_dev *dev, uint16_t qp_id, uint32_t nb_desc, int socket_id)
 {
 	const struct rte_memzone *qp_mem;
 	char name[RTE_MEMZONE_NAMESIZE];
-	struct cn10k_ml_qp *qp;
+	struct cnxk_ml_qp *qp;
 	uint32_t len;
 	uint8_t *va;
 	uint64_t i;
 
 	/* Allocate queue pair */
-	qp = rte_zmalloc_socket("cn10k_ml_pmd_queue_pair", sizeof(struct cn10k_ml_qp), ROC_ALIGN,
+	qp = rte_zmalloc_socket("cn10k_ml_pmd_queue_pair", sizeof(struct cnxk_ml_qp), ROC_ALIGN,
 				socket_id);
 	if (qp == NULL) {
 		plt_err("Could not allocate queue pair");
@@ -159,7 +158,7 @@ cn10k_ml_qp_create(const struct rte_ml_dev *dev, uint16_t qp_id, uint32_t nb_des
 	}
 
 	/* For request queue */
-	len = nb_desc * sizeof(struct cn10k_ml_req);
+	len = nb_desc * sizeof(struct cnxk_ml_req);
 	qp_memzone_name_get(name, RTE_MEMZONE_NAMESIZE, dev->data->dev_id, qp_id);
 	qp_mem = rte_memzone_reserve_aligned(
 		name, len, socket_id, RTE_MEMZONE_SIZE_HINT_ONLY | RTE_MEMZONE_256MB, ROC_ALIGN);
@@ -173,7 +172,7 @@ cn10k_ml_qp_create(const struct rte_ml_dev *dev, uint16_t qp_id, uint32_t nb_des
 
 	/* Initialize Request queue */
 	qp->id = qp_id;
-	qp->queue.reqs = (struct cn10k_ml_req *)va;
+	qp->queue.reqs = (struct cnxk_ml_req *)va;
 	qp->queue.head = 0;
 	qp->queue.tail = 0;
 	qp->queue.wait_cycles = ML_CNXK_CMD_TIMEOUT * plt_tsc_hz();
@@ -185,8 +184,9 @@ cn10k_ml_qp_create(const struct rte_ml_dev *dev, uint16_t qp_id, uint32_t nb_des
 
 	/* Initialize job command */
 	for (i = 0; i < qp->nb_desc; i++) {
-		memset(&qp->queue.reqs[i].jd, 0, sizeof(struct cn10k_ml_jd));
-		qp->queue.reqs[i].jcmd.w1.s.jobptr = PLT_U64_CAST(&qp->queue.reqs[i].jd);
+		memset(&qp->queue.reqs[i].cn10k_req.jd, 0, sizeof(struct cn10k_ml_jd));
+		qp->queue.reqs[i].cn10k_req.jcmd.w1.s.jobptr =
+			PLT_U64_CAST(&qp->queue.reqs[i].cn10k_req.jd);
 	}
 
 	return qp;
@@ -333,7 +333,7 @@ cn10k_ml_model_print(struct rte_ml_dev *dev, uint16_t model_id, FILE *fp)
 
 static void
 cn10k_ml_prep_sp_job_descriptor(struct cn10k_ml_dev *cn10k_mldev, struct cnxk_ml_model *model,
-				struct cn10k_ml_req *req, enum cn10k_ml_job_type job_type)
+				struct cnxk_ml_req *req, enum cn10k_ml_job_type job_type)
 {
 	struct cn10k_ml_model_metadata *metadata;
 	struct cn10k_ml_layer_addr *addr;
@@ -341,79 +341,88 @@ cn10k_ml_prep_sp_job_descriptor(struct cn10k_ml_dev *cn10k_mldev, struct cnxk_ml
 	metadata = &model->glow.metadata;
 	addr = &model->layer[0].glow.addr;
 
-	memset(&req->jd, 0, sizeof(struct cn10k_ml_jd));
-	req->jd.hdr.jce.w0.u64 = 0;
-	req->jd.hdr.jce.w1.u64 = PLT_U64_CAST(&req->status);
-	req->jd.hdr.model_id = model->model_id;
-	req->jd.hdr.job_type = job_type;
-	req->jd.hdr.fp_flags = 0x0;
-	req->jd.hdr.result = roc_ml_addr_ap2mlip(&cn10k_mldev->roc, &req->result);
+	memset(&req->cn10k_req.jd, 0, sizeof(struct cn10k_ml_jd));
+	req->cn10k_req.jd.hdr.jce.w0.u64 = 0;
+	req->cn10k_req.jd.hdr.jce.w1.u64 = PLT_U64_CAST(&req->cn10k_req.status);
+	req->cn10k_req.jd.hdr.model_id = model->model_id;
+	req->cn10k_req.jd.hdr.job_type = job_type;
+	req->cn10k_req.jd.hdr.fp_flags = 0x0;
+	req->cn10k_req.jd.hdr.result =
+		roc_ml_addr_ap2mlip(&cn10k_mldev->roc, &req->cn10k_req.result);
 
 	if (job_type == ML_CN10K_JOB_TYPE_MODEL_START) {
 		if (!model->glow.metadata.model.ocm_relocatable)
-			req->jd.hdr.sp_flags = ML_CN10K_SP_FLAGS_OCM_NONRELOCATABLE;
+			req->cn10k_req.jd.hdr.sp_flags = ML_CN10K_SP_FLAGS_OCM_NONRELOCATABLE;
 		else
-			req->jd.hdr.sp_flags = 0x0;
+			req->cn10k_req.jd.hdr.sp_flags = 0x0;
 
-		req->jd.hdr.sp_flags |= ML_CN10K_SP_FLAGS_EXTENDED_LOAD_JD;
-		req->jd.model_start.extended_args =
-			PLT_U64_CAST(roc_ml_addr_ap2mlip(&cn10k_mldev->roc, &req->extended_args));
-		req->jd.model_start.model_dst_ddr_addr =
+		req->cn10k_req.jd.hdr.sp_flags |= ML_CN10K_SP_FLAGS_EXTENDED_LOAD_JD;
+		req->cn10k_req.jd.model_start.extended_args = PLT_U64_CAST(
+			roc_ml_addr_ap2mlip(&cn10k_mldev->roc, &req->cn10k_req.extended_args));
+		req->cn10k_req.jd.model_start.model_dst_ddr_addr =
 			PLT_U64_CAST(roc_ml_addr_ap2mlip(&cn10k_mldev->roc, addr->init_run_addr));
-		req->jd.model_start.model_init_offset = 0x0;
-		req->jd.model_start.model_main_offset = metadata->init_model.file_size;
-		req->jd.model_start.model_finish_offset =
+		req->cn10k_req.jd.model_start.model_init_offset = 0x0;
+		req->cn10k_req.jd.model_start.model_main_offset = metadata->init_model.file_size;
+		req->cn10k_req.jd.model_start.model_finish_offset =
 			metadata->init_model.file_size + metadata->main_model.file_size;
-		req->jd.model_start.model_init_size = metadata->init_model.file_size;
-		req->jd.model_start.model_main_size = metadata->main_model.file_size;
-		req->jd.model_start.model_finish_size = metadata->finish_model.file_size;
-		req->jd.model_start.model_wb_offset = metadata->init_model.file_size +
-						      metadata->main_model.file_size +
-						      metadata->finish_model.file_size;
-		req->jd.model_start.num_layers = metadata->model.num_layers;
-		req->jd.model_start.num_gather_entries = 0;
-		req->jd.model_start.num_scatter_entries = 0;
-		req->jd.model_start.tilemask = 0; /* Updated after reserving pages */
-		req->jd.model_start.batch_size = model->batch_size;
-		req->jd.model_start.ocm_wb_base_address = 0; /* Updated after reserving pages */
-		req->jd.model_start.ocm_wb_range_start = metadata->model.ocm_wb_range_start;
-		req->jd.model_start.ocm_wb_range_end = metadata->model.ocm_wb_range_end;
-		req->jd.model_start.ddr_wb_base_address = PLT_U64_CAST(roc_ml_addr_ap2mlip(
-			&cn10k_mldev->roc,
-			PLT_PTR_ADD(addr->finish_load_addr, metadata->finish_model.file_size)));
-		req->jd.model_start.ddr_wb_range_start = metadata->model.ddr_wb_range_start;
-		req->jd.model_start.ddr_wb_range_end = metadata->model.ddr_wb_range_end;
-		req->jd.model_start.input.s.ddr_range_start = metadata->model.ddr_input_range_start;
-		req->jd.model_start.input.s.ddr_range_end = metadata->model.ddr_input_range_end;
-		req->jd.model_start.output.s.ddr_range_start =
+		req->cn10k_req.jd.model_start.model_init_size = metadata->init_model.file_size;
+		req->cn10k_req.jd.model_start.model_main_size = metadata->main_model.file_size;
+		req->cn10k_req.jd.model_start.model_finish_size = metadata->finish_model.file_size;
+		req->cn10k_req.jd.model_start.model_wb_offset = metadata->init_model.file_size +
+								metadata->main_model.file_size +
+								metadata->finish_model.file_size;
+		req->cn10k_req.jd.model_start.num_layers = metadata->model.num_layers;
+		req->cn10k_req.jd.model_start.num_gather_entries = 0;
+		req->cn10k_req.jd.model_start.num_scatter_entries = 0;
+		req->cn10k_req.jd.model_start.tilemask = 0; /* Updated after reserving pages */
+		req->cn10k_req.jd.model_start.batch_size = model->batch_size;
+		req->cn10k_req.jd.model_start.ocm_wb_base_address =
+			0; /* Updated after reserving pages */
+		req->cn10k_req.jd.model_start.ocm_wb_range_start =
+			metadata->model.ocm_wb_range_start;
+		req->cn10k_req.jd.model_start.ocm_wb_range_end = metadata->model.ocm_wb_range_end;
+		req->cn10k_req.jd.model_start.ddr_wb_base_address =
+			PLT_U64_CAST(roc_ml_addr_ap2mlip(
+				&cn10k_mldev->roc, PLT_PTR_ADD(addr->finish_load_addr,
+							       metadata->finish_model.file_size)));
+		req->cn10k_req.jd.model_start.ddr_wb_range_start =
+			metadata->model.ddr_wb_range_start;
+		req->cn10k_req.jd.model_start.ddr_wb_range_end = metadata->model.ddr_wb_range_end;
+		req->cn10k_req.jd.model_start.input.s.ddr_range_start =
+			metadata->model.ddr_input_range_start;
+		req->cn10k_req.jd.model_start.input.s.ddr_range_end =
+			metadata->model.ddr_input_range_end;
+		req->cn10k_req.jd.model_start.output.s.ddr_range_start =
 			metadata->model.ddr_output_range_start;
-		req->jd.model_start.output.s.ddr_range_end = metadata->model.ddr_output_range_end;
+		req->cn10k_req.jd.model_start.output.s.ddr_range_end =
+			metadata->model.ddr_output_range_end;
 
-		req->extended_args.start.ddr_scratch_base_address = PLT_U64_CAST(
+		req->cn10k_req.extended_args.start.ddr_scratch_base_address = PLT_U64_CAST(
 			roc_ml_addr_ap2mlip(&cn10k_mldev->roc, addr->scratch_base_addr));
-		req->extended_args.start.ddr_scratch_range_start =
+		req->cn10k_req.extended_args.start.ddr_scratch_range_start =
 			metadata->model.ddr_scratch_range_start;
-		req->extended_args.start.ddr_scratch_range_end =
+		req->cn10k_req.extended_args.start.ddr_scratch_range_end =
 			metadata->model.ddr_scratch_range_end;
 	}
 }
 
 static __rte_always_inline void
-cn10k_ml_prep_fp_job_descriptor(struct cn10k_ml_dev *cn10k_mldev, struct cn10k_ml_req *req,
+cn10k_ml_prep_fp_job_descriptor(struct cn10k_ml_dev *cn10k_mldev, struct cnxk_ml_req *req,
 				struct rte_ml_op *op)
 {
-	req->jd.hdr.jce.w0.u64 = 0;
-	req->jd.hdr.jce.w1.u64 = req->compl_W1;
-	req->jd.hdr.model_id = op->model_id;
-	req->jd.hdr.job_type = ML_CN10K_JOB_TYPE_MODEL_RUN;
-	req->jd.hdr.fp_flags = ML_FLAGS_POLL_COMPL;
-	req->jd.hdr.sp_flags = 0x0;
-	req->jd.hdr.result = roc_ml_addr_ap2mlip(&cn10k_mldev->roc, &req->result);
-	req->jd.model_run.input_ddr_addr =
+	req->cn10k_req.jd.hdr.jce.w0.u64 = 0;
+	req->cn10k_req.jd.hdr.jce.w1.u64 = PLT_U64_CAST(req->status);
+	req->cn10k_req.jd.hdr.model_id = op->model_id;
+	req->cn10k_req.jd.hdr.job_type = ML_CN10K_JOB_TYPE_MODEL_RUN;
+	req->cn10k_req.jd.hdr.fp_flags = ML_FLAGS_POLL_COMPL;
+	req->cn10k_req.jd.hdr.sp_flags = 0x0;
+	req->cn10k_req.jd.hdr.result =
+		roc_ml_addr_ap2mlip(&cn10k_mldev->roc, &req->cn10k_req.result);
+	req->cn10k_req.jd.model_run.input_ddr_addr =
 		PLT_U64_CAST(roc_ml_addr_ap2mlip(&cn10k_mldev->roc, op->input[0]->addr));
-	req->jd.model_run.output_ddr_addr =
+	req->cn10k_req.jd.model_run.output_ddr_addr =
 		PLT_U64_CAST(roc_ml_addr_ap2mlip(&cn10k_mldev->roc, op->output[0]->addr));
-	req->jd.model_run.num_batches = op->nb_batches;
+	req->cn10k_req.jd.model_run.num_batches = op->nb_batches;
 }
 
 struct xstat_info {
@@ -861,7 +870,7 @@ cn10k_ml_cache_model_data(struct rte_ml_dev *dev, uint16_t model_id)
 	op.input = &inp;
 	op.output = &out;
 
-	memset(model->layer[0].glow.req, 0, sizeof(struct cn10k_ml_req));
+	memset(model->layer[0].glow.req, 0, sizeof(struct cnxk_ml_req));
 	ret = cn10k_ml_inference_sync(dev, &op);
 	plt_memzone_free(mz);
 
@@ -904,7 +913,7 @@ cn10k_ml_dev_configure(struct rte_ml_dev *dev, const struct rte_ml_dev_config *c
 	struct cnxk_ml_dev *cnxk_mldev;
 	struct cnxk_ml_model *model;
 	struct cn10k_ml_ocm *ocm;
-	struct cn10k_ml_qp *qp;
+	struct cnxk_ml_qp *qp;
 	uint16_t model_id;
 	uint32_t mz_size;
 	uint16_t tile_id;
@@ -1101,7 +1110,7 @@ cn10k_ml_dev_close(struct rte_ml_dev *dev)
 	struct cn10k_ml_dev *cn10k_mldev;
 	struct cnxk_ml_dev *cnxk_mldev;
 	struct cnxk_ml_model *model;
-	struct cn10k_ml_qp *qp;
+	struct cnxk_ml_qp *qp;
 	uint16_t model_id;
 	uint16_t qp_id;
 
@@ -1136,7 +1145,7 @@ cn10k_ml_dev_close(struct rte_ml_dev *dev)
 	for (qp_id = 0; qp_id < dev->data->nb_queue_pairs; qp_id++) {
 		qp = dev->data->queue_pairs[qp_id];
 		if (qp != NULL) {
-			if (cn10k_ml_qp_destroy(dev, qp) != 0)
+			if (cnxk_ml_qp_destroy(dev, qp) != 0)
 				plt_err("Could not destroy queue pair %u", qp_id);
 			dev->data->queue_pairs[qp_id] = NULL;
 		}
@@ -1213,7 +1222,7 @@ cn10k_ml_dev_queue_pair_setup(struct rte_ml_dev *dev, uint16_t queue_pair_id,
 			      const struct rte_ml_dev_qp_conf *qp_conf, int socket_id)
 {
 	struct rte_ml_dev_info dev_info;
-	struct cn10k_ml_qp *qp;
+	struct cnxk_ml_qp *qp;
 	uint32_t nb_desc;
 
 	if (queue_pair_id >= dev->data->nb_queue_pairs) {
@@ -1239,7 +1248,7 @@ cn10k_ml_dev_queue_pair_setup(struct rte_ml_dev *dev, uint16_t queue_pair_id,
 	 */
 	nb_desc =
 		(qp_conf->nb_desc == dev_info.max_desc) ? dev_info.max_desc : qp_conf->nb_desc + 1;
-	qp = cn10k_ml_qp_create(dev, queue_pair_id, nb_desc, socket_id);
+	qp = cnxk_ml_qp_create(dev, queue_pair_id, nb_desc, socket_id);
 	if (qp == NULL) {
 		plt_err("Could not create queue pair %u", queue_pair_id);
 		return -ENOMEM;
@@ -1252,7 +1261,7 @@ cn10k_ml_dev_queue_pair_setup(struct rte_ml_dev *dev, uint16_t queue_pair_id,
 static int
 cn10k_ml_dev_stats_get(struct rte_ml_dev *dev, struct rte_ml_dev_stats *stats)
 {
-	struct cn10k_ml_qp *qp;
+	struct cnxk_ml_qp *qp;
 	int qp_id;
 
 	for (qp_id = 0; qp_id < dev->data->nb_queue_pairs; qp_id++) {
@@ -1269,7 +1278,7 @@ cn10k_ml_dev_stats_get(struct rte_ml_dev *dev, struct rte_ml_dev_stats *stats)
 static void
 cn10k_ml_dev_stats_reset(struct rte_ml_dev *dev)
 {
-	struct cn10k_ml_qp *qp;
+	struct cnxk_ml_qp *qp;
 	int qp_id;
 
 	for (qp_id = 0; qp_id < dev->data->nb_queue_pairs; qp_id++) {
@@ -1485,20 +1494,22 @@ cn10k_ml_dev_dump(struct rte_ml_dev *dev, FILE *fp)
 
 	/* Dump debug buffer */
 	for (core_id = 0; core_id <= 1; core_id++) {
-		bufsize = fw->req->jd.fw_load.debug.debug_buffer_size;
+		bufsize = fw->req->cn10k_req.jd.fw_load.debug.debug_buffer_size;
 		if (core_id == 0) {
 			head_loc =
 				roc_ml_reg_read64(&cn10k_mldev->roc, ML_SCRATCH_DBG_BUFFER_HEAD_C0);
 			tail_loc =
 				roc_ml_reg_read64(&cn10k_mldev->roc, ML_SCRATCH_DBG_BUFFER_TAIL_C0);
-			head_ptr = PLT_PTR_CAST(fw->req->jd.fw_load.debug.core0_debug_ptr);
+			head_ptr =
+				PLT_PTR_CAST(fw->req->cn10k_req.jd.fw_load.debug.core0_debug_ptr);
 			head_ptr = roc_ml_addr_mlip2ap(&cn10k_mldev->roc, head_ptr);
 		} else {
 			head_loc =
 				roc_ml_reg_read64(&cn10k_mldev->roc, ML_SCRATCH_DBG_BUFFER_HEAD_C1);
 			tail_loc =
 				roc_ml_reg_read64(&cn10k_mldev->roc, ML_SCRATCH_DBG_BUFFER_TAIL_C1);
-			head_ptr = PLT_PTR_CAST(fw->req->jd.fw_load.debug.core1_debug_ptr);
+			head_ptr =
+				PLT_PTR_CAST(fw->req->cn10k_req.jd.fw_load.debug.core1_debug_ptr);
 			head_ptr = roc_ml_addr_mlip2ap(&cn10k_mldev->roc, head_ptr);
 		}
 		if (head_loc < tail_loc) {
@@ -1511,17 +1522,19 @@ cn10k_ml_dev_dump(struct rte_ml_dev *dev, FILE *fp)
 
 	/* Dump exception info */
 	for (core_id = 0; core_id <= 1; core_id++) {
-		bufsize = fw->req->jd.fw_load.debug.exception_state_size;
+		bufsize = fw->req->cn10k_req.jd.fw_load.debug.exception_state_size;
 		if ((core_id == 0) &&
 		    (roc_ml_reg_read64(&cn10k_mldev->roc, ML_SCRATCH_EXCEPTION_SP_C0) != 0)) {
-			head_ptr = PLT_PTR_CAST(fw->req->jd.fw_load.debug.core0_exception_buffer);
+			head_ptr = PLT_PTR_CAST(
+				fw->req->cn10k_req.jd.fw_load.debug.core0_exception_buffer);
 			fprintf(fp, "ML_SCRATCH_EXCEPTION_SP_C0 = 0x%016lx",
 				roc_ml_reg_read64(&cn10k_mldev->roc, ML_SCRATCH_EXCEPTION_SP_C0));
 			head_ptr = roc_ml_addr_mlip2ap(&cn10k_mldev->roc, head_ptr);
 			fprintf(fp, "%.*s", bufsize, head_ptr);
 		} else if ((core_id == 1) && (roc_ml_reg_read64(&cn10k_mldev->roc,
 								ML_SCRATCH_EXCEPTION_SP_C1) != 0)) {
-			head_ptr = PLT_PTR_CAST(fw->req->jd.fw_load.debug.core1_exception_buffer);
+			head_ptr = PLT_PTR_CAST(
+				fw->req->cn10k_req.jd.fw_load.debug.core1_exception_buffer);
 			fprintf(fp, "ML_SCRATCH_EXCEPTION_SP_C1 = 0x%016lx",
 				roc_ml_reg_read64(&cn10k_mldev->roc, ML_SCRATCH_EXCEPTION_SP_C1));
 			head_ptr = roc_ml_addr_mlip2ap(&cn10k_mldev->roc, head_ptr);
@@ -1538,14 +1551,14 @@ cn10k_ml_dev_selftest(struct rte_ml_dev *dev)
 	struct cn10k_ml_dev *cn10k_mldev;
 	struct cnxk_ml_dev *cnxk_mldev;
 	const struct plt_memzone *mz;
-	struct cn10k_ml_req *req;
+	struct cnxk_ml_req *req;
 	uint64_t timeout_cycle;
 	bool timeout;
 	int ret;
 
 	cnxk_mldev = dev->data->dev_private;
 	cn10k_mldev = &cnxk_mldev->cn10k_mldev;
-	mz = plt_memzone_reserve_aligned("dev_selftest", sizeof(struct cn10k_ml_req), 0,
+	mz = plt_memzone_reserve_aligned("dev_selftest", sizeof(struct cnxk_ml_req), 0,
 					 ML_CN10K_ALIGN_SIZE);
 	if (mz == NULL) {
 		plt_err("Could not allocate reserved memzone");
@@ -1554,23 +1567,24 @@ cn10k_ml_dev_selftest(struct rte_ml_dev *dev)
 	req = mz->addr;
 
 	/* Prepare load completion structure */
-	memset(&req->jd, 0, sizeof(struct cn10k_ml_jd));
-	req->jd.hdr.jce.w1.u64 = PLT_U64_CAST(&req->status);
-	req->jd.hdr.job_type = ML_CN10K_JOB_TYPE_FIRMWARE_SELFTEST;
-	req->jd.hdr.result = roc_ml_addr_ap2mlip(&cn10k_mldev->roc, &req->result);
-	req->jd.fw_load.flags = cn10k_ml_fw_flags_get(&cn10k_mldev->fw);
-	plt_write64(ML_CNXK_POLL_JOB_START, &req->status);
+	memset(&req->cn10k_req.jd, 0, sizeof(struct cn10k_ml_jd));
+	req->cn10k_req.jd.hdr.jce.w1.u64 = PLT_U64_CAST(&req->cn10k_req.status);
+	req->cn10k_req.jd.hdr.job_type = ML_CN10K_JOB_TYPE_FIRMWARE_SELFTEST;
+	req->cn10k_req.jd.hdr.result =
+		roc_ml_addr_ap2mlip(&cn10k_mldev->roc, &req->cn10k_req.result);
+	req->cn10k_req.jd.fw_load.flags = cn10k_ml_fw_flags_get(&cn10k_mldev->fw);
+	plt_write64(ML_CNXK_POLL_JOB_START, &req->cn10k_req.status);
 	plt_wmb();
 
 	/* Enqueue firmware selftest request through scratch registers */
 	timeout = true;
 	timeout_cycle = plt_tsc_cycles() + ML_CNXK_CMD_TIMEOUT * plt_tsc_hz();
-	roc_ml_scratch_enqueue(&cn10k_mldev->roc, &req->jd);
+	roc_ml_scratch_enqueue(&cn10k_mldev->roc, &req->cn10k_req.jd);
 
 	plt_rmb();
 	do {
 		if (roc_ml_scratch_is_done_bit_set(&cn10k_mldev->roc) &&
-		    (plt_read64(&req->status) == ML_CNXK_POLL_JOB_FINISH)) {
+		    (plt_read64(&req->cn10k_req.status) == ML_CNXK_POLL_JOB_FINISH)) {
 			timeout = false;
 			break;
 		}
@@ -1581,7 +1595,7 @@ cn10k_ml_dev_selftest(struct rte_ml_dev *dev)
 	if (timeout) {
 		ret = -ETIME;
 	} else {
-		if (req->result.error_code.u64 != 0)
+		if (req->cn10k_req.result.error_code != 0)
 			ret = -1;
 	}
 
@@ -1654,7 +1668,7 @@ cn10k_ml_model_load(struct rte_ml_dev *dev, struct rte_ml_model_params *params, 
 
 	mz_size = PLT_ALIGN_CEIL(sizeof(struct cnxk_ml_model), ML_CN10K_ALIGN_SIZE) +
 		  2 * model_data_size + model_scratch_size + model_info_size +
-		  PLT_ALIGN_CEIL(sizeof(struct cn10k_ml_req), ML_CN10K_ALIGN_SIZE) +
+		  PLT_ALIGN_CEIL(sizeof(struct cnxk_ml_req), ML_CN10K_ALIGN_SIZE) +
 		  model_stats_size;
 
 	/* Allocate memzone for model object and model data */
@@ -1726,7 +1740,7 @@ cn10k_ml_model_load(struct rte_ml_dev *dev, struct rte_ml_model_params *params, 
 	/* Reset burst and sync stats */
 	model->layer[0].glow.burst_stats =
 		PLT_PTR_ADD(model->layer[0].glow.req,
-			    PLT_ALIGN_CEIL(sizeof(struct cn10k_ml_req), ML_CN10K_ALIGN_SIZE));
+			    PLT_ALIGN_CEIL(sizeof(struct cnxk_ml_req), ML_CN10K_ALIGN_SIZE));
 	for (qp_id = 0; qp_id < dev->data->nb_queue_pairs + 1; qp_id++) {
 		model->layer[0].glow.burst_stats[qp_id].hw_latency_tot = 0;
 		model->layer[0].glow.burst_stats[qp_id].hw_latency_min = UINT64_MAX;
@@ -1790,7 +1804,7 @@ cn10k_ml_model_start(struct rte_ml_dev *dev, uint16_t model_id)
 	struct cnxk_ml_dev *cnxk_mldev;
 	struct cnxk_ml_model *model;
 	struct cn10k_ml_ocm *ocm;
-	struct cn10k_ml_req *req;
+	struct cnxk_ml_req *req;
 
 	bool job_enqueued;
 	bool job_dequeued;
@@ -1815,10 +1829,10 @@ cn10k_ml_model_start(struct rte_ml_dev *dev, uint16_t model_id)
 	/* Prepare JD */
 	req = model->layer[0].glow.req;
 	cn10k_ml_prep_sp_job_descriptor(cn10k_mldev, model, req, ML_CN10K_JOB_TYPE_MODEL_START);
-	req->result.error_code.u64 = 0x0;
-	req->result.user_ptr = NULL;
+	req->cn10k_req.result.error_code = 0x0;
+	req->cn10k_req.result.user_ptr = NULL;
 
-	plt_write64(ML_CNXK_POLL_JOB_START, &req->status);
+	plt_write64(ML_CNXK_POLL_JOB_START, &req->cn10k_req.status);
 	plt_wmb();
 
 	num_tiles = model->layer[0].glow.metadata.model.tile_end -
@@ -1878,8 +1892,8 @@ cn10k_ml_model_start(struct rte_ml_dev *dev, uint16_t model_id)
 
 	/* Update JD */
 	cn10k_ml_ocm_tilecount(model->layer[0].glow.ocm_map.tilemask, &tile_start, &tile_end);
-	req->jd.model_start.tilemask = GENMASK_ULL(tile_end, tile_start);
-	req->jd.model_start.ocm_wb_base_address =
+	req->cn10k_req.jd.model_start.tilemask = GENMASK_ULL(tile_end, tile_start);
+	req->cn10k_req.jd.model_start.ocm_wb_base_address =
 		model->layer[0].glow.ocm_map.wb_page_start * ocm->page_size;
 
 	job_enqueued = false;
@@ -1887,19 +1901,21 @@ cn10k_ml_model_start(struct rte_ml_dev *dev, uint16_t model_id)
 	do {
 		if (!job_enqueued) {
 			req->timeout = plt_tsc_cycles() + ML_CNXK_CMD_TIMEOUT * plt_tsc_hz();
-			job_enqueued = roc_ml_scratch_enqueue(&cn10k_mldev->roc, &req->jd);
+			job_enqueued =
+				roc_ml_scratch_enqueue(&cn10k_mldev->roc, &req->cn10k_req.jd);
 		}
 
 		if (job_enqueued && !job_dequeued)
-			job_dequeued = roc_ml_scratch_dequeue(&cn10k_mldev->roc, &req->jd);
+			job_dequeued =
+				roc_ml_scratch_dequeue(&cn10k_mldev->roc, &req->cn10k_req.jd);
 
 		if (job_dequeued)
 			break;
 	} while (plt_tsc_cycles() < req->timeout);
 
 	if (job_dequeued) {
-		if (plt_read64(&req->status) == ML_CNXK_POLL_JOB_FINISH) {
-			if (req->result.error_code.u64 == 0)
+		if (plt_read64(&req->cn10k_req.status) == ML_CNXK_POLL_JOB_FINISH) {
+			if (req->cn10k_req.result.error_code == 0)
 				ret = 0;
 			else
 				ret = -1;
@@ -1952,7 +1968,7 @@ cn10k_ml_model_stop(struct rte_ml_dev *dev, uint16_t model_id)
 	struct cnxk_ml_dev *cnxk_mldev;
 	struct cnxk_ml_model *model;
 	struct cn10k_ml_ocm *ocm;
-	struct cn10k_ml_req *req;
+	struct cnxk_ml_req *req;
 
 	bool job_enqueued;
 	bool job_dequeued;
@@ -1972,10 +1988,10 @@ cn10k_ml_model_stop(struct rte_ml_dev *dev, uint16_t model_id)
 	/* Prepare JD */
 	req = model->layer[0].glow.req;
 	cn10k_ml_prep_sp_job_descriptor(cn10k_mldev, model, req, ML_CN10K_JOB_TYPE_MODEL_STOP);
-	req->result.error_code.u64 = 0x0;
-	req->result.user_ptr = NULL;
+	req->cn10k_req.result.error_code = 0x0;
+	req->cn10k_req.result.user_ptr = NULL;
 
-	plt_write64(ML_CNXK_POLL_JOB_START, &req->status);
+	plt_write64(ML_CNXK_POLL_JOB_START, &req->cn10k_req.status);
 	plt_wmb();
 
 	locked = false;
@@ -2015,19 +2031,21 @@ cn10k_ml_model_stop(struct rte_ml_dev *dev, uint16_t model_id)
 	do {
 		if (!job_enqueued) {
 			req->timeout = plt_tsc_cycles() + ML_CNXK_CMD_TIMEOUT * plt_tsc_hz();
-			job_enqueued = roc_ml_scratch_enqueue(&cn10k_mldev->roc, &req->jd);
+			job_enqueued =
+				roc_ml_scratch_enqueue(&cn10k_mldev->roc, &req->cn10k_req.jd);
 		}
 
 		if (job_enqueued && !job_dequeued)
-			job_dequeued = roc_ml_scratch_dequeue(&cn10k_mldev->roc, &req->jd);
+			job_dequeued =
+				roc_ml_scratch_dequeue(&cn10k_mldev->roc, &req->cn10k_req.jd);
 
 		if (job_dequeued)
 			break;
 	} while (plt_tsc_cycles() < req->timeout);
 
 	if (job_dequeued) {
-		if (plt_read64(&req->status) == ML_CNXK_POLL_JOB_FINISH) {
-			if (req->result.error_code.u64 == 0x0)
+		if (plt_read64(&req->cn10k_req.status) == ML_CNXK_POLL_JOB_FINISH) {
+			if (req->cn10k_req.result.error_code == 0x0)
 				ret = 0;
 			else
 				ret = -1;
@@ -2287,18 +2305,23 @@ queue_free_count(uint64_t head, uint64_t tail, uint64_t nb_desc)
 }
 
 static __rte_always_inline void
-cn10k_ml_result_update(struct rte_ml_dev *dev, int qp_id, struct cn10k_ml_result *result,
-		       struct rte_ml_op *op)
+cn10k_ml_result_update(struct rte_ml_dev *dev, int qp_id, struct cnxk_ml_req *req)
 {
+	union cn10k_ml_error_code *error_code;
 	struct cn10k_ml_layer_stats *stats;
 	struct cn10k_ml_dev *cn10k_mldev;
 	struct cnxk_ml_dev *cnxk_mldev;
+	struct cn10k_ml_result *result;
 	struct cnxk_ml_model *model;
-	struct cn10k_ml_qp *qp;
+	struct cnxk_ml_qp *qp;
+	struct rte_ml_op *op;
 	uint64_t hw_latency;
 	uint64_t fw_latency;
 
-	if (likely(result->error_code.u64 == 0)) {
+	result = &req->cn10k_req.result;
+	op = req->op;
+
+	if (likely(result->error_code == 0)) {
 		model = dev->data->models[op->model_id];
 		if (likely(qp_id >= 0)) {
 			qp = dev->data->queue_pairs[qp_id];
@@ -2329,7 +2352,7 @@ cn10k_ml_result_update(struct rte_ml_dev *dev, int qp_id, struct cn10k_ml_result
 		stats->fw_latency_max = PLT_MAX(stats->fw_latency_max, fw_latency);
 		stats->dequeued_count++;
 
-		op->impl_opaque = result->error_code.u64;
+		op->impl_opaque = result->error_code;
 		op->status = RTE_ML_OP_STATUS_SUCCESS;
 	} else {
 		if (likely(qp_id >= 0)) {
@@ -2338,7 +2361,8 @@ cn10k_ml_result_update(struct rte_ml_dev *dev, int qp_id, struct cn10k_ml_result
 		}
 
 		/* Handle driver error */
-		if (result->error_code.s.etype == ML_ETYPE_DRIVER) {
+		error_code = (union cn10k_ml_error_code *)&result->error_code;
+		if (error_code->s.etype == ML_ETYPE_DRIVER) {
 			cnxk_mldev = dev->data->dev_private;
 			cn10k_mldev = &cnxk_mldev->cn10k_mldev;
 
@@ -2346,15 +2370,15 @@ cn10k_ml_result_update(struct rte_ml_dev *dev, int qp_id, struct cn10k_ml_result
 			if ((roc_ml_reg_read64(&cn10k_mldev->roc, ML_SCRATCH_EXCEPTION_SP_C0) !=
 			     0) ||
 			    (roc_ml_reg_read64(&cn10k_mldev->roc, ML_SCRATCH_EXCEPTION_SP_C1) != 0))
-				result->error_code.s.stype = ML_DRIVER_ERR_EXCEPTION;
+				error_code->s.stype = ML_DRIVER_ERR_EXCEPTION;
 			else if ((roc_ml_reg_read64(&cn10k_mldev->roc, ML_CORE_INT_LO) != 0) ||
 				 (roc_ml_reg_read64(&cn10k_mldev->roc, ML_CORE_INT_HI) != 0))
-				result->error_code.s.stype = ML_DRIVER_ERR_FW_ERROR;
+				error_code->s.stype = ML_DRIVER_ERR_FW_ERROR;
 			else
-				result->error_code.s.stype = ML_DRIVER_ERR_UNKNOWN;
+				error_code->s.stype = ML_DRIVER_ERR_UNKNOWN;
 		}
 
-		op->impl_opaque = result->error_code.u64;
+		op->impl_opaque = result->error_code;
 		op->status = RTE_ML_OP_STATUS_ERROR;
 	}
 
@@ -2365,11 +2389,12 @@ __rte_hot uint16_t
 cn10k_ml_enqueue_burst(struct rte_ml_dev *dev, uint16_t qp_id, struct rte_ml_op **ops,
 		       uint16_t nb_ops)
 {
+	union cn10k_ml_error_code *error_code;
 	struct cn10k_ml_dev *cn10k_mldev;
 	struct cnxk_ml_dev *cnxk_mldev;
-	struct cn10k_ml_queue *queue;
-	struct cn10k_ml_req *req;
-	struct cn10k_ml_qp *qp;
+	struct cnxk_ml_queue *queue;
+	struct cnxk_ml_req *req;
+	struct cnxk_ml_qp *qp;
 	struct rte_ml_op *op;
 
 	uint16_t count;
@@ -2395,12 +2420,13 @@ enqueue_req:
 	cn10k_mldev->set_poll_addr(req);
 	cn10k_ml_prep_fp_job_descriptor(cn10k_mldev, req, op);
 
-	memset(&req->result, 0, sizeof(struct cn10k_ml_result));
-	req->result.error_code.s.etype = ML_ETYPE_UNKNOWN;
-	req->result.user_ptr = op->user_ptr;
+	memset(&req->cn10k_req.result, 0, sizeof(struct cn10k_ml_result));
+	error_code = (union cn10k_ml_error_code *)&req->cn10k_req.result.error_code;
+	error_code->s.etype = ML_ETYPE_UNKNOWN;
+	req->cn10k_req.result.user_ptr = op->user_ptr;
 
 	cn10k_mldev->set_poll_ptr(req);
-	enqueued = cn10k_mldev->ml_jcmdq_enqueue(&cn10k_mldev->roc, &req->jcmd);
+	enqueued = cn10k_mldev->ml_jcmdq_enqueue(&cn10k_mldev->roc, &req->cn10k_req.jcmd);
 	if (unlikely(!enqueued))
 		goto jcmdq_full;
 
@@ -2424,11 +2450,12 @@ __rte_hot uint16_t
 cn10k_ml_dequeue_burst(struct rte_ml_dev *dev, uint16_t qp_id, struct rte_ml_op **ops,
 		       uint16_t nb_ops)
 {
+	union cn10k_ml_error_code *error_code;
 	struct cn10k_ml_dev *cn10k_mldev;
 	struct cnxk_ml_dev *cnxk_mldev;
-	struct cn10k_ml_queue *queue;
-	struct cn10k_ml_req *req;
-	struct cn10k_ml_qp *qp;
+	struct cnxk_ml_queue *queue;
+	struct cnxk_ml_req *req;
+	struct cnxk_ml_qp *qp;
 
 	uint64_t status;
 	uint16_t count;
@@ -2450,13 +2477,15 @@ dequeue_req:
 	req = &queue->reqs[tail];
 	status = cn10k_mldev->get_poll_ptr(req);
 	if (unlikely(status != ML_CNXK_POLL_JOB_FINISH)) {
-		if (plt_tsc_cycles() < req->timeout)
+		if (plt_tsc_cycles() < req->timeout) {
 			goto empty_or_active;
-		else /* Timeout, set indication of driver error */
-			req->result.error_code.s.etype = ML_ETYPE_DRIVER;
+		} else { /* Timeout, set indication of driver error */
+			error_code = (union cn10k_ml_error_code *)&req->cn10k_req.result.error_code;
+			error_code->s.etype = ML_ETYPE_DRIVER;
+		}
 	}
 
-	cn10k_ml_result_update(dev, qp_id, &req->result, req->op);
+	cn10k_ml_result_update(dev, qp_id, req);
 	ops[count] = req->op;
 
 	queue_index_advance(&tail, qp->nb_desc);
@@ -2507,10 +2536,11 @@ cn10k_ml_op_error_get(struct rte_ml_dev *dev, struct rte_ml_op *op, struct rte_m
 __rte_hot int
 cn10k_ml_inference_sync(struct rte_ml_dev *dev, struct rte_ml_op *op)
 {
+	union cn10k_ml_error_code *error_code;
 	struct cn10k_ml_dev *cn10k_mldev;
 	struct cnxk_ml_dev *cnxk_mldev;
 	struct cnxk_ml_model *model;
-	struct cn10k_ml_req *req;
+	struct cnxk_ml_req *req;
 	bool timeout;
 	int ret = 0;
 
@@ -2522,17 +2552,18 @@ cn10k_ml_inference_sync(struct rte_ml_dev *dev, struct rte_ml_op *op)
 	cn10k_ml_set_poll_addr(req);
 	cn10k_ml_prep_fp_job_descriptor(cn10k_mldev, req, op);
 
-	memset(&req->result, 0, sizeof(struct cn10k_ml_result));
-	req->result.error_code.s.etype = ML_ETYPE_UNKNOWN;
-	req->result.user_ptr = op->user_ptr;
+	memset(&req->cn10k_req.result, 0, sizeof(struct cn10k_ml_result));
+	error_code = (union cn10k_ml_error_code *)&req->cn10k_req.result.error_code;
+	error_code->s.etype = ML_ETYPE_UNKNOWN;
+	req->cn10k_req.result.user_ptr = op->user_ptr;
 
 	cn10k_mldev->set_poll_ptr(req);
-	req->jcmd.w1.s.jobptr = PLT_U64_CAST(&req->jd);
+	req->cn10k_req.jcmd.w1.s.jobptr = PLT_U64_CAST(&req->cn10k_req.jd);
 
 	timeout = true;
 	req->timeout = plt_tsc_cycles() + ML_CNXK_CMD_TIMEOUT * plt_tsc_hz();
 	do {
-		if (cn10k_mldev->ml_jcmdq_enqueue(&cn10k_mldev->roc, &req->jcmd)) {
+		if (cn10k_mldev->ml_jcmdq_enqueue(&cn10k_mldev->roc, &req->cn10k_req.jcmd)) {
 			req->op = op;
 			timeout = false;
 			break;
@@ -2555,7 +2586,7 @@ cn10k_ml_inference_sync(struct rte_ml_dev *dev, struct rte_ml_op *op)
 	if (timeout)
 		ret = -ETIME;
 	else
-		cn10k_ml_result_update(dev, -1, &req->result, req->op);
+		cn10k_ml_result_update(dev, -1, req);
 
 error_enqueue:
 	return ret;
