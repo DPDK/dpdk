@@ -3168,15 +3168,15 @@ static uint16_t bnxt_parse_eth_link_speed(uint32_t conf_link_speed,
 	case RTE_ETH_LINK_SPEED_100M_HD:
 		/* FALLTHROUGH */
 		eth_link_speed =
-			HWRM_PORT_PHY_CFG_INPUT_AUTO_LINK_SPEED_100MB;
+			HWRM_PORT_PHY_CFG_INPUT_FORCE_LINK_SPEED_100MB;
 		break;
 	case RTE_ETH_LINK_SPEED_1G:
 		eth_link_speed =
-			HWRM_PORT_PHY_CFG_INPUT_AUTO_LINK_SPEED_1GB;
+			HWRM_PORT_PHY_CFG_INPUT_FORCE_LINK_SPEED_1GB;
 		break;
 	case RTE_ETH_LINK_SPEED_2_5G:
 		eth_link_speed =
-			HWRM_PORT_PHY_CFG_INPUT_AUTO_LINK_SPEED_2_5GB;
+			HWRM_PORT_PHY_CFG_INPUT_FORCE_LINK_SPEED_2_5GB;
 		break;
 	case RTE_ETH_LINK_SPEED_10G:
 		eth_link_speed =
@@ -3184,11 +3184,11 @@ static uint16_t bnxt_parse_eth_link_speed(uint32_t conf_link_speed,
 		break;
 	case RTE_ETH_LINK_SPEED_20G:
 		eth_link_speed =
-			HWRM_PORT_PHY_CFG_INPUT_AUTO_LINK_SPEED_20GB;
+			HWRM_PORT_PHY_CFG_INPUT_FORCE_LINK_SPEED_20GB;
 		break;
 	case RTE_ETH_LINK_SPEED_25G:
 		eth_link_speed =
-			HWRM_PORT_PHY_CFG_INPUT_AUTO_LINK_SPEED_25GB;
+			HWRM_PORT_PHY_CFG_INPUT_FORCE_LINK_SPEED_25GB;
 		break;
 	case RTE_ETH_LINK_SPEED_40G:
 		eth_link_speed =
