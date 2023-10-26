@@ -44,7 +44,7 @@ struct rte_stack_lf_list {
 	/** List head */
 	struct rte_stack_lf_head head __rte_aligned(16);
 	/** List len */
-	uint64_t len;
+	RTE_ATOMIC(uint64_t) len;
 };
 
 /* Structure containing two lock-free LIFO lists: the stack itself and a list

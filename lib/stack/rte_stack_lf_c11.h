@@ -26,8 +26,8 @@ __rte_stack_lf_count(struct rte_stack *s)
 	 * elements. If the mempool is near-empty to the point that this is a
 	 * concern, the user should consider increasing the mempool size.
 	 */
-	return (unsigned int)__atomic_load_n(&s->stack_lf.used.len,
-					     __ATOMIC_RELAXED);
+	return (unsigned int)rte_atomic_load_explicit(&s->stack_lf.used.len,
+					     rte_memory_order_relaxed);
 }
 
 static __rte_always_inline void
@@ -59,14 +59,14 @@ __rte_stack_lf_push_elems(struct rte_stack_lf_list *list,
 				(rte_int128_t *)&list->head,
 				(rte_int128_t *)&old_head,
 				(rte_int128_t *)&new_head,
-				1, __ATOMIC_RELEASE,
-				__ATOMIC_RELAXED);
+				1, rte_memory_order_release,
+				rte_memory_order_relaxed);
 	} while (success == 0);
 
 	/* Ensure the stack modifications are not reordered with respect
 	 * to the LIFO len update.
 	 */
-	__atomic_fetch_add(&list->len, num, __ATOMIC_RELEASE);
+	rte_atomic_fetch_add_explicit(&list->len, num, rte_memory_order_release);
 }
 
 static __rte_always_inline struct rte_stack_lf_elem *
@@ -80,7 +80,7 @@ __rte_stack_lf_pop_elems(struct rte_stack_lf_list *list,
 	int success;
 
 	/* Reserve num elements, if available */
-	len = __atomic_load_n(&list->len, __ATOMIC_RELAXED);
+	len = rte_atomic_load_explicit(&list->len, rte_memory_order_relaxed);
 
 	while (1) {
 		/* Does the list contain enough elements? */
@@ -88,10 +88,10 @@ __rte_stack_lf_pop_elems(struct rte_stack_lf_list *list,
 			return NULL;
 
 		/* len is updated on failure */
-		if (__atomic_compare_exchange_n(&list->len,
+		if (rte_atomic_compare_exchange_weak_explicit(&list->len,
 						&len, len - num,
-						1, __ATOMIC_ACQUIRE,
-						__ATOMIC_RELAXED))
+						rte_memory_order_acquire,
+						rte_memory_order_relaxed))
 			break;
 	}
 
@@ -110,7 +110,7 @@ __rte_stack_lf_pop_elems(struct rte_stack_lf_list *list,
 		 * elements are properly ordered with respect to the head
 		 * pointer read.
 		 */
-		__atomic_thread_fence(__ATOMIC_ACQUIRE);
+		__atomic_thread_fence(rte_memory_order_acquire);
 
 		rte_prefetch0(old_head.top);
 
@@ -159,8 +159,8 @@ __rte_stack_lf_pop_elems(struct rte_stack_lf_list *list,
 				(rte_int128_t *)&list->head,
 				(rte_int128_t *)&old_head,
 				(rte_int128_t *)&new_head,
-				0, __ATOMIC_RELAXED,
-				__ATOMIC_RELAXED);
+				0, rte_memory_order_relaxed,
+				rte_memory_order_relaxed);
 	} while (success == 0);
 
 	return old_head.top;

@@ -27,7 +27,7 @@ __rte_stack_lf_count(struct rte_stack *s)
 	 * concern, the user should consider increasing the mempool size.
 	 */
 	/* NOTE: review for potential ordering optimization */
-	return __atomic_load_n(&s->stack_lf.used.len, __ATOMIC_SEQ_CST);
+	return rte_atomic_load_explicit(&s->stack_lf.used.len, rte_memory_order_seq_cst);
 }
 
 static __rte_always_inline void
@@ -64,11 +64,11 @@ __rte_stack_lf_push_elems(struct rte_stack_lf_list *list,
 				(rte_int128_t *)&list->head,
 				(rte_int128_t *)&old_head,
 				(rte_int128_t *)&new_head,
-				1, __ATOMIC_RELEASE,
-				__ATOMIC_RELAXED);
+				1, rte_memory_order_release,
+				rte_memory_order_relaxed);
 	} while (success == 0);
 	/* NOTE: review for potential ordering optimization */
-	__atomic_fetch_add(&list->len, num, __ATOMIC_SEQ_CST);
+	rte_atomic_fetch_add_explicit(&list->len, num, rte_memory_order_seq_cst);
 }
 
 static __rte_always_inline struct rte_stack_lf_elem *
@@ -83,15 +83,15 @@ __rte_stack_lf_pop_elems(struct rte_stack_lf_list *list,
 	/* Reserve num elements, if available */
 	while (1) {
 		/* NOTE: review for potential ordering optimization */
-		uint64_t len = __atomic_load_n(&list->len, __ATOMIC_SEQ_CST);
+		uint64_t len = rte_atomic_load_explicit(&list->len, rte_memory_order_seq_cst);
 
 		/* Does the list contain enough elements? */
 		if (unlikely(len < num))
 			return NULL;
 
 		/* NOTE: review for potential ordering optimization */
-		if (__atomic_compare_exchange_n(&list->len, &len, len - num,
-				0, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST))
+		if (rte_atomic_compare_exchange_strong_explicit(&list->len, &len, len - num,
+				rte_memory_order_seq_cst, rte_memory_order_seq_cst))
 			break;
 	}
 
@@ -143,8 +143,8 @@ __rte_stack_lf_pop_elems(struct rte_stack_lf_list *list,
 				(rte_int128_t *)&list->head,
 				(rte_int128_t *)&old_head,
 				(rte_int128_t *)&new_head,
-				1, __ATOMIC_RELEASE,
-				__ATOMIC_RELAXED);
+				1, rte_memory_order_release,
+				rte_memory_order_relaxed);
 	} while (success == 0);
 
 	return old_head.top;
