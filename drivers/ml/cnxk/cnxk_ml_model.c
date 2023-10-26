@@ -2,10 +2,59 @@
  * Copyright (c) 2023 Marvell.
  */
 
+#include <rte_hash_crc.h>
 #include <rte_mldev.h>
 
 #include "cnxk_ml_model.h"
 #include "cnxk_ml_utils.h"
+
+enum cnxk_ml_model_type
+cnxk_ml_model_get_type(struct rte_ml_model_params *params)
+{
+	struct cn10k_ml_model_metadata_header *metadata_header;
+	enum cnxk_ml_model_type type;
+	uint32_t payload_crc32c;
+	uint32_t header_crc32c;
+
+	type = mvtvm_ml_model_type_get(params);
+	if (type == ML_CNXK_MODEL_TYPE_TVM)
+		return ML_CNXK_MODEL_TYPE_TVM;
+	else if (type == ML_CNXK_MODEL_TYPE_INVALID)
+		return ML_CNXK_MODEL_TYPE_INVALID;
+
+	/* Check model magic string */
+	metadata_header = (struct cn10k_ml_model_metadata_header *)params->addr;
+	if (strncmp((char *)metadata_header->magic, MRVL_ML_MODEL_MAGIC_STRING, 4) != 0) {
+		plt_err("Invalid Glow model, magic = %s", metadata_header->magic);
+		return ML_CNXK_MODEL_TYPE_INVALID;
+	}
+
+	/* Header CRC check */
+	if (metadata_header->header_crc32c != 0) {
+		header_crc32c = rte_hash_crc(
+			params->addr,
+			sizeof(struct cn10k_ml_model_metadata_header) - sizeof(uint32_t), 0);
+
+		if (header_crc32c != metadata_header->header_crc32c) {
+			plt_err("Invalid Glow model, Header CRC mismatch");
+			return ML_CNXK_MODEL_TYPE_INVALID;
+		}
+	}
+
+	/* Payload CRC check */
+	if (metadata_header->payload_crc32c != 0) {
+		payload_crc32c = rte_hash_crc(
+			PLT_PTR_ADD(params->addr, sizeof(struct cn10k_ml_model_metadata_header)),
+			params->size - sizeof(struct cn10k_ml_model_metadata_header), 0);
+
+		if (payload_crc32c != metadata_header->payload_crc32c) {
+			plt_err("Invalid Glow model, Payload CRC mismatch");
+			return ML_CNXK_MODEL_TYPE_INVALID;
+		}
+	}
+
+	return ML_CNXK_MODEL_TYPE_GLOW;
+}
 
 void
 cnxk_ml_model_dump(struct cnxk_ml_dev *cnxk_mldev, struct cnxk_ml_model *model, FILE *fp)

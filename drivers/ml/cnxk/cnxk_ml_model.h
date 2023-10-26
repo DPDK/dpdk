@@ -13,6 +13,8 @@
 
 #ifdef RTE_MLDEV_CNXK_ENABLE_MVTVM
 #include "mvtvm_ml_model.h"
+#else
+#include "mvtvm_ml_stubs.h"
 #endif
 
 #include "cnxk_ml_io.h"
@@ -184,6 +186,7 @@ struct cnxk_ml_model {
 	set_poll_addr_t set_poll_addr;
 };
 
+enum cnxk_ml_model_type cnxk_ml_model_get_type(struct rte_ml_model_params *params);
 void cnxk_ml_model_dump(struct cnxk_ml_dev *cnxk_mldev, struct cnxk_ml_model *model, FILE *fp);
 
 #endif /* _CNXK_ML_MODEL_H_ */

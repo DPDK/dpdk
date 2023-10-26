@@ -9,6 +9,7 @@
 
 struct cnxk_ml_dev;
 
+enum cnxk_ml_model_type mvtvm_ml_model_type_get(struct rte_ml_model_params *params);
 int mvtvm_ml_dev_configure(struct cnxk_ml_dev *cnxk_mldev, const struct rte_ml_dev_config *conf);
 int mvtvm_ml_dev_close(struct cnxk_ml_dev *cnxk_mldev);
 
