@@ -113,12 +113,12 @@ enum rte_distributor_match_function {
  * There is a separate cacheline for returns in the burst API.
  */
 struct rte_distributor_buffer {
-	volatile int64_t bufptr64[RTE_DIST_BURST_SIZE]
+	volatile RTE_ATOMIC(int64_t) bufptr64[RTE_DIST_BURST_SIZE]
 		__rte_cache_aligned; /* <= outgoing to worker */
 
 	int64_t pad1 __rte_cache_aligned;    /* <= one cache line  */
 
-	volatile int64_t retptr64[RTE_DIST_BURST_SIZE]
+	volatile RTE_ATOMIC(int64_t) retptr64[RTE_DIST_BURST_SIZE]
 		__rte_cache_aligned; /* <= incoming from worker */
 
 	int64_t pad2 __rte_cache_aligned;    /* <= one cache line  */
