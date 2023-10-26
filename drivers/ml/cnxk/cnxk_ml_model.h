@@ -15,6 +15,8 @@
 
 struct cnxk_ml_dev;
 struct cnxk_ml_model;
+struct cnxk_ml_qp;
+struct cnxk_ml_req;
 
 /* Model state */
 enum cnxk_ml_model_state {
@@ -70,6 +72,12 @@ struct cnxk_ml_layer {
 	struct cn10k_ml_layer_data glow;
 };
 
+typedef bool (*enqueue_single_t)(struct cnxk_ml_dev *cnxk_mldev, struct rte_ml_op *op,
+				 uint16_t layer_id, struct cnxk_ml_qp *qp, uint64_t head);
+typedef void (*result_update_t)(struct cnxk_ml_dev *cnxk_mldev, int qp_id, void *request);
+typedef void (*set_error_code_t)(struct cnxk_ml_req *req, uint64_t etype, uint64_t stype);
+typedef void (*set_poll_addr_t)(struct cnxk_ml_req *req);
+
 /* Model Object */
 struct cnxk_ml_model {
 	/* Device reference */
@@ -106,6 +114,12 @@ struct cnxk_ml_model {
 
 	/* Spinlock, used to update model state */
 	plt_spinlock_t lock;
+
+	/* Fast-path functions */
+	enqueue_single_t enqueue_single;
+	result_update_t result_update;
+	set_error_code_t set_error_code;
+	set_poll_addr_t set_poll_addr;
 };
 
 void cnxk_ml_model_dump(struct cnxk_ml_dev *cnxk_mldev, struct cnxk_ml_model *model, FILE *fp);

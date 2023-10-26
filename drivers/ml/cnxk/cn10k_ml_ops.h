@@ -14,6 +14,7 @@ struct cnxk_ml_dev;
 struct cnxk_ml_qp;
 struct cnxk_ml_model;
 struct cnxk_ml_layer;
+struct cnxk_ml_req;
 
 /* Firmware version string length */
 #define MLDEV_FIRMWARE_VERSION_LENGTH 32
@@ -309,13 +310,15 @@ int cn10k_ml_model_params_update(struct cnxk_ml_dev *cnxk_mldev, struct cnxk_ml_
 				 void *buffer);
 
 /* Fast-path ops */
-__rte_hot uint16_t cn10k_ml_enqueue_burst(struct rte_ml_dev *dev, uint16_t qp_id,
-					  struct rte_ml_op **ops, uint16_t nb_ops);
-__rte_hot uint16_t cn10k_ml_dequeue_burst(struct rte_ml_dev *dev, uint16_t qp_id,
-					  struct rte_ml_op **ops, uint16_t nb_ops);
+__rte_hot bool cn10k_ml_enqueue_single(struct cnxk_ml_dev *cnxk_mldev, struct rte_ml_op *op,
+				       uint16_t layer_id, struct cnxk_ml_qp *qp, uint64_t head);
 __rte_hot int cn10k_ml_op_error_get(struct rte_ml_dev *dev, struct rte_ml_op *op,
 				    struct rte_ml_op_error *error);
-__rte_hot int cn10k_ml_inference_sync(struct cnxk_ml_dev *cnxk_mldev, struct rte_ml_op *op);
+__rte_hot int cn10k_ml_inference_sync(void *device, uint16_t index, void *input, void *output,
+				      uint16_t nb_batches);
+__rte_hot void cn10k_ml_result_update(struct cnxk_ml_dev *cnxk_mldev, int qp_id, void *request);
+__rte_hot void cn10k_ml_set_error_code(struct cnxk_ml_req *req, uint64_t etype, uint64_t stype);
+__rte_hot void cn10k_ml_set_poll_addr(struct cnxk_ml_req *req);
 
 /* Misc ops */
 void cn10k_ml_qp_initialize(struct cnxk_ml_dev *cnxk_mldev, struct cnxk_ml_qp *qp);

@@ -143,11 +143,6 @@ struct cn10k_ml_dev {
 
 	/* JCMD enqueue function handler */
 	bool (*ml_jcmdq_enqueue)(struct roc_ml *roc_ml, struct ml_job_cmd_s *job_cmd);
-
-	/* Poll handling function pointers */
-	void (*set_poll_addr)(struct cnxk_ml_req *req);
-	void (*set_poll_ptr)(struct cnxk_ml_req *req);
-	uint64_t (*get_poll_ptr)(struct cnxk_ml_req *req);
 };
 
 uint64_t cn10k_ml_fw_flags_get(struct cn10k_ml_fw *fw);

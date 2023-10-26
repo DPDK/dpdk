@@ -65,4 +65,11 @@ extern struct rte_ml_dev_ops cnxk_ml_ops;
 int cnxk_ml_model_unload(struct rte_ml_dev *dev, uint16_t model_id);
 int cnxk_ml_model_stop(struct rte_ml_dev *dev, uint16_t model_id);
 
+__rte_hot uint16_t cnxk_ml_enqueue_burst(struct rte_ml_dev *dev, uint16_t qp_id,
+					 struct rte_ml_op **ops, uint16_t nb_ops);
+__rte_hot uint16_t cnxk_ml_dequeue_burst(struct rte_ml_dev *dev, uint16_t qp_id,
+					 struct rte_ml_op **ops, uint16_t nb_ops);
+__rte_hot void cnxk_ml_set_poll_ptr(struct cnxk_ml_req *req);
+__rte_hot uint64_t cnxk_ml_get_poll_ptr(struct cnxk_ml_req *req);
+
 #endif /* _CNXK_ML_OPS_H_ */

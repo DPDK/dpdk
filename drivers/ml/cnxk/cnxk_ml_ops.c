@@ -15,6 +15,18 @@
 /* ML model macros */
 #define CNXK_ML_MODEL_MEMZONE_NAME "ml_cnxk_model_mz"
 
+__rte_hot void
+cnxk_ml_set_poll_ptr(struct cnxk_ml_req *req)
+{
+	plt_write64(ML_CNXK_POLL_JOB_START, req->status);
+}
+
+__rte_hot uint64_t
+cnxk_ml_get_poll_ptr(struct cnxk_ml_req *req)
+{
+	return plt_read64(req->status);
+}
+
 static void
 qp_memzone_name_get(char *name, int size, int dev_id, int qp_id)
 {
@@ -1260,6 +1272,122 @@ cnxk_ml_io_dequantize(struct rte_ml_dev *dev, uint16_t model_id, struct rte_ml_b
 	}
 
 	return 0;
+}
+
+static __rte_always_inline void
+queue_index_advance(uint64_t *index, uint64_t nb_desc)
+{
+	*index = (*index + 1) % nb_desc;
+}
+
+static __rte_always_inline uint64_t
+queue_pending_count(uint64_t head, uint64_t tail, uint64_t nb_desc)
+{
+	return (nb_desc + head - tail) % nb_desc;
+}
+
+static __rte_always_inline uint64_t
+queue_free_count(uint64_t head, uint64_t tail, uint64_t nb_desc)
+{
+	return nb_desc - queue_pending_count(head, tail, nb_desc) - 1;
+}
+
+__rte_hot uint16_t
+cnxk_ml_enqueue_burst(struct rte_ml_dev *dev, uint16_t qp_id, struct rte_ml_op **ops,
+		      uint16_t nb_ops)
+{
+	struct cnxk_ml_dev *cnxk_mldev;
+	struct cnxk_ml_model *model;
+	struct cnxk_ml_queue *queue;
+	struct cnxk_ml_qp *qp;
+	struct rte_ml_op *op;
+
+	uint16_t layer_id = 0;
+	uint16_t count;
+	uint64_t head;
+
+	cnxk_mldev = dev->data->dev_private;
+	qp = dev->data->queue_pairs[qp_id];
+	queue = &qp->queue;
+
+	head = queue->head;
+	nb_ops = PLT_MIN(nb_ops, queue_free_count(head, queue->tail, qp->nb_desc));
+	count = 0;
+
+	if (unlikely(nb_ops == 0))
+		return 0;
+
+enqueue_req:
+	op = ops[count];
+	model = cnxk_mldev->mldev->data->models[op->model_id];
+
+	if (unlikely(!model->enqueue_single(cnxk_mldev, op, layer_id, qp, head)))
+		goto jcmdq_full;
+
+	queue_index_advance(&head, qp->nb_desc);
+	count++;
+
+	if (count < nb_ops)
+		goto enqueue_req;
+
+jcmdq_full:
+	queue->head = head;
+	qp->stats.enqueued_count += count;
+
+	return count;
+}
+
+__rte_hot uint16_t
+cnxk_ml_dequeue_burst(struct rte_ml_dev *dev, uint16_t qp_id, struct rte_ml_op **ops,
+		      uint16_t nb_ops)
+{
+	struct cnxk_ml_dev *cnxk_mldev;
+	struct cnxk_ml_queue *queue;
+	struct cnxk_ml_model *model;
+	struct cnxk_ml_req *req;
+	struct cnxk_ml_qp *qp;
+
+	uint64_t status;
+	uint16_t count;
+	uint64_t tail;
+
+	cnxk_mldev = dev->data->dev_private;
+	qp = dev->data->queue_pairs[qp_id];
+	queue = &qp->queue;
+
+	tail = queue->tail;
+	nb_ops = PLT_MIN(nb_ops, queue_pending_count(queue->head, tail, qp->nb_desc));
+	count = 0;
+
+	if (unlikely(nb_ops == 0))
+		goto empty_or_active;
+
+dequeue_req:
+
+	req = &queue->reqs[tail];
+	model = cnxk_mldev->mldev->data->models[req->op->model_id];
+
+	status = cnxk_ml_get_poll_ptr(req);
+	if (unlikely(status != ML_CNXK_POLL_JOB_FINISH)) {
+		if (plt_tsc_cycles() < req->timeout)
+			goto empty_or_active;
+		else /* Timeout, set indication of driver error */
+			model->set_error_code(req, ML_ETYPE_DRIVER, 0);
+	}
+
+	model->result_update(cnxk_mldev, qp->id, req);
+
+	ops[count] = req->op;
+	queue_index_advance(&tail, qp->nb_desc);
+	count++;
+
+	if (count < nb_ops)
+		goto dequeue_req;
+
+empty_or_active:
+	queue->tail = tail;
+
+	return count;
 }
 
 struct rte_ml_dev_ops cnxk_ml_ops = {
