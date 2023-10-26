@@ -296,9 +296,6 @@ int cn10k_ml_dev_start(struct cnxk_ml_dev *cnxk_mldev);
 int cn10k_ml_dev_stop(struct cnxk_ml_dev *cnxk_mldev);
 int cn10k_ml_dev_dump(struct rte_ml_dev *dev, FILE *fp);
 int cn10k_ml_dev_selftest(struct rte_ml_dev *dev);
-int cn10k_ml_dev_queue_pair_setup(struct rte_ml_dev *dev, uint16_t queue_pair_id,
-				  const struct rte_ml_dev_qp_conf *qp_conf, int socket_id);
-int cn10k_ml_dev_queue_pair_release(struct rte_ml_dev *dev, uint16_t queue_pair_id);
 
 int cn10k_ml_dev_stats_get(struct rte_ml_dev *dev, struct rte_ml_dev_stats *stats);
 void cn10k_ml_dev_stats_reset(struct rte_ml_dev *dev);
@@ -339,7 +336,7 @@ __rte_hot int cn10k_ml_op_error_get(struct rte_ml_dev *dev, struct rte_ml_op *op
 				    struct rte_ml_op_error *error);
 __rte_hot int cn10k_ml_inference_sync(struct rte_ml_dev *dev, struct rte_ml_op *op);
 
-/* Temporarily set below functions as non-static */
-int cnxk_ml_qp_destroy(const struct rte_ml_dev *dev, struct cnxk_ml_qp *qp);
+/* Misc ops */
+void cn10k_ml_qp_initialize(struct cnxk_ml_dev *cnxk_mldev, struct cnxk_ml_qp *qp);
 
 #endif /* _CN10K_ML_OPS_H_ */

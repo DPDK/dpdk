@@ -10,7 +10,107 @@
 #include "cnxk_ml_model.h"
 #include "cnxk_ml_ops.h"
 
-int
+static void
+qp_memzone_name_get(char *name, int size, int dev_id, int qp_id)
+{
+	snprintf(name, size, "cnxk_ml_qp_mem_%u:%u", dev_id, qp_id);
+}
+
+static int
+cnxk_ml_qp_destroy(const struct rte_ml_dev *dev, struct cnxk_ml_qp *qp)
+{
+	const struct rte_memzone *qp_mem;
+	char name[RTE_MEMZONE_NAMESIZE];
+	int ret;
+
+	qp_memzone_name_get(name, RTE_MEMZONE_NAMESIZE, dev->data->dev_id, qp->id);
+	qp_mem = rte_memzone_lookup(name);
+	ret = rte_memzone_free(qp_mem);
+	if (ret)
+		return ret;
+
+	rte_free(qp);
+
+	return 0;
+}
+
+static int
+cnxk_ml_dev_queue_pair_release(struct rte_ml_dev *dev, uint16_t queue_pair_id)
+{
+	struct cnxk_ml_qp *qp;
+	int ret;
+
+	qp = dev->data->queue_pairs[queue_pair_id];
+	if (qp == NULL)
+		return -EINVAL;
+
+	ret = cnxk_ml_qp_destroy(dev, qp);
+	if (ret) {
+		plt_err("Could not destroy queue pair %u", queue_pair_id);
+		return ret;
+	}
+
+	dev->data->queue_pairs[queue_pair_id] = NULL;
+
+	return 0;
+}
+
+static struct cnxk_ml_qp *
+cnxk_ml_qp_create(const struct rte_ml_dev *dev, uint16_t qp_id, uint32_t nb_desc, int socket_id)
+{
+	const struct rte_memzone *qp_mem;
+	char name[RTE_MEMZONE_NAMESIZE];
+	struct cnxk_ml_dev *cnxk_mldev;
+	struct cnxk_ml_qp *qp;
+	uint32_t len;
+	uint8_t *va;
+
+	cnxk_mldev = dev->data->dev_private;
+
+	/* Allocate queue pair */
+	qp = rte_zmalloc_socket("cnxk_ml_pmd_queue_pair", sizeof(struct cnxk_ml_qp), ROC_ALIGN,
+				socket_id);
+	if (qp == NULL) {
+		plt_err("Could not allocate queue pair");
+		return NULL;
+	}
+
+	/* For request queue */
+	len = nb_desc * sizeof(struct cnxk_ml_req);
+	qp_memzone_name_get(name, RTE_MEMZONE_NAMESIZE, dev->data->dev_id, qp_id);
+	qp_mem = rte_memzone_reserve_aligned(
+		name, len, socket_id, RTE_MEMZONE_SIZE_HINT_ONLY | RTE_MEMZONE_256MB, ROC_ALIGN);
+	if (qp_mem == NULL) {
+		plt_err("Could not reserve memzone: %s", name);
+		goto qp_free;
+	}
+
+	va = qp_mem->addr;
+	memset(va, 0, len);
+
+	/* Initialize Request queue */
+	qp->id = qp_id;
+	qp->queue.reqs = (struct cnxk_ml_req *)va;
+	qp->queue.head = 0;
+	qp->queue.tail = 0;
+	qp->queue.wait_cycles = ML_CNXK_CMD_TIMEOUT * plt_tsc_hz();
+	qp->nb_desc = nb_desc;
+	qp->stats.enqueued_count = 0;
+	qp->stats.dequeued_count = 0;
+	qp->stats.enqueue_err_count = 0;
+	qp->stats.dequeue_err_count = 0;
+
+	cn10k_ml_qp_initialize(cnxk_mldev, qp);
+
+	return qp;
+
+qp_free:
+	rte_free(qp);
+
+	return NULL;
+}
+
+static int
 cnxk_ml_dev_info_get(struct rte_ml_dev *dev, struct rte_ml_dev_info *dev_info)
 {
 	struct cnxk_ml_dev *cnxk_mldev;
@@ -93,7 +193,7 @@ cnxk_ml_dev_configure(struct rte_ml_dev *dev, const struct rte_ml_dev_config *co
 		for (qp_id = 0; qp_id < dev->data->nb_queue_pairs; qp_id++) {
 			qp = dev->data->queue_pairs[qp_id];
 			if (qp != NULL) {
-				ret = cn10k_ml_dev_queue_pair_release(dev, qp_id);
+				ret = cnxk_ml_dev_queue_pair_release(dev, qp_id);
 				if (ret < 0)
 					return ret;
 			}
@@ -283,6 +383,51 @@ cnxk_ml_dev_stop(struct rte_ml_dev *dev)
 	return 0;
 }
 
+static int
+cnxk_ml_dev_queue_pair_setup(struct rte_ml_dev *dev, uint16_t queue_pair_id,
+			     const struct rte_ml_dev_qp_conf *qp_conf, int socket_id)
+{
+	struct rte_ml_dev_info dev_info;
+	struct cnxk_ml_qp *qp;
+	uint32_t nb_desc;
+
+	if (queue_pair_id >= dev->data->nb_queue_pairs) {
+		plt_err("Queue-pair id = %u (>= max queue pairs supported, %u)\n", queue_pair_id,
+			dev->data->nb_queue_pairs);
+		return -EINVAL;
+	}
+
+	if (dev->data->queue_pairs[queue_pair_id] != NULL)
+		cnxk_ml_dev_queue_pair_release(dev, queue_pair_id);
+
+	cnxk_ml_dev_info_get(dev, &dev_info);
+	if (qp_conf->nb_desc == 0) {
+		plt_err("Could not setup queue pair for %u descriptors", qp_conf->nb_desc);
+		return -EINVAL;
+	} else if (qp_conf->nb_desc > dev_info.max_desc) {
+		plt_err("Could not setup queue pair for %u descriptors (> %u)", qp_conf->nb_desc,
+			dev_info.max_desc);
+		return -EINVAL;
+	}
+	plt_ml_dbg("Creating queue-pair, queue_pair_id = %u, nb_desc = %u", queue_pair_id,
+		   qp_conf->nb_desc);
+
+	/* As the number of usable descriptors is 1 less than the queue size being created, we
+	 * increment the size of queue by 1 than the requested size, except when the requested size
+	 * is equal to the maximum possible size.
+	 */
+	nb_desc =
+		(qp_conf->nb_desc == dev_info.max_desc) ? dev_info.max_desc : qp_conf->nb_desc + 1;
+	qp = cnxk_ml_qp_create(dev, queue_pair_id, nb_desc, socket_id);
+	if (qp == NULL) {
+		plt_err("Could not create queue pair %u", queue_pair_id);
+		return -ENOMEM;
+	}
+	dev->data->queue_pairs[queue_pair_id] = qp;
+
+	return 0;
+}
+
 struct rte_ml_dev_ops cnxk_ml_ops = {
 	/* Device control ops */
 	.dev_info_get = cnxk_ml_dev_info_get,
@@ -294,8 +439,8 @@ struct rte_ml_dev_ops cnxk_ml_ops = {
 	.dev_selftest = cn10k_ml_dev_selftest,
 
 	/* Queue-pair handling ops */
-	.dev_queue_pair_setup = cn10k_ml_dev_queue_pair_setup,
-	.dev_queue_pair_release = cn10k_ml_dev_queue_pair_release,
+	.dev_queue_pair_setup = cnxk_ml_dev_queue_pair_setup,
+	.dev_queue_pair_release = cnxk_ml_dev_queue_pair_release,
 
 	/* Stats ops */
 	.dev_stats_get = cn10k_ml_dev_stats_get,

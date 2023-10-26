@@ -62,7 +62,4 @@ struct cnxk_ml_qp {
 
 extern struct rte_ml_dev_ops cnxk_ml_ops;
 
-/* Temporarily set cnxk driver functions as non-static */
-int cnxk_ml_dev_info_get(struct rte_ml_dev *dev, struct rte_ml_dev_info *dev_info);
-
 #endif /* _CNXK_ML_OPS_H_ */
