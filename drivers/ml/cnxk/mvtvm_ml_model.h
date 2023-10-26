@@ -11,6 +11,8 @@
 
 #include "cnxk_ml_io.h"
 
+struct cnxk_ml_model;
+
 /* Maximum number of objects per model */
 #define ML_MVTVM_MODEL_OBJECT_MAX 3
 
@@ -46,5 +48,7 @@ struct mvtvm_ml_model_data {
 enum cnxk_ml_model_type mvtvm_ml_model_type_get(struct rte_ml_model_params *params);
 int mvtvm_ml_model_blob_parse(struct rte_ml_model_params *params,
 			      struct mvtvm_ml_model_object *object);
+int mvtvm_ml_model_get_layer_id(struct cnxk_ml_model *model, const char *layer_name,
+				uint16_t *layer_id);
 
 #endif /* _MVTVM_ML_MODEL_H_ */

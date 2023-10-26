@@ -716,3 +716,14 @@ cn10k_ml_layer_print(struct cnxk_ml_dev *cnxk_mldev, struct cnxk_ml_layer *layer
 	cnxk_ml_print_line(fp, LINE_LEN);
 	fprintf(fp, "\n");
 }
+
+int
+cn10k_ml_model_get_layer_id(struct cnxk_ml_model *model, const char *layer_name, uint16_t *layer_id)
+{
+	if (model->type == ML_CNXK_MODEL_TYPE_TVM)
+		return mvtvm_ml_model_get_layer_id(model, layer_name, layer_id);
+
+	*layer_id = 0;
+
+	return 0;
+}

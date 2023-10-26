@@ -576,7 +576,7 @@ cn10k_ml_layer_load(void *device, uint16_t model_id, const char *layer_name, uin
 	size_t layer_xstats_size;
 	uint8_t *base_dma_addr;
 	uint16_t scratch_pages;
-	uint16_t layer_id = 0;
+	uint16_t layer_id;
 	uint16_t wb_pages;
 	uint64_t mz_size;
 	uint16_t idx;
@@ -584,7 +584,6 @@ cn10k_ml_layer_load(void *device, uint16_t model_id, const char *layer_name, uin
 	int ret;
 
 	PLT_SET_USED(size);
-	PLT_SET_USED(layer_name);
 
 	cnxk_mldev = (struct cnxk_ml_dev *)device;
 	if (cnxk_mldev == NULL) {
@@ -597,6 +596,10 @@ cn10k_ml_layer_load(void *device, uint16_t model_id, const char *layer_name, uin
 		plt_err("Invalid model_id = %u", model_id);
 		return -EINVAL;
 	}
+
+	ret = cn10k_ml_model_get_layer_id(model, layer_name, &layer_id);
+	if (ret != 0)
+		return ret;
 
 	layer = &model->layer[layer_id];
 

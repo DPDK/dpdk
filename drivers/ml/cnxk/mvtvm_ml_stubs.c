@@ -18,6 +18,16 @@ mvtvm_ml_model_type_get(struct rte_ml_model_params *params)
 }
 
 int
+mvtvm_ml_model_get_layer_id(struct cnxk_ml_model *model, const char *layer_name, uint16_t *layer_id)
+{
+	RTE_SET_USED(model);
+	RTE_SET_USED(layer_name);
+	RTE_SET_USED(layer_id);
+
+	return -EINVAL;
+}
+
+int
 mvtvm_ml_dev_configure(struct cnxk_ml_dev *cnxk_mldev, const struct rte_ml_dev_config *conf)
 {
 	RTE_SET_USED(cnxk_mldev);

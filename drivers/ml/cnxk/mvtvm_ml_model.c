@@ -110,3 +110,28 @@ error:
 
 	return -EINVAL;
 }
+
+int
+mvtvm_ml_model_get_layer_id(struct cnxk_ml_model *model, const char *layer_name, uint16_t *layer_id)
+{
+	uint16_t i;
+
+	for (i = 0; i < model->mvtvm.metadata.model.nb_layers; i++) {
+		if (strcmp(model->layer[i].name, layer_name) == 0)
+			break;
+	}
+
+	if (i == model->mvtvm.metadata.model.nb_layers) {
+		plt_err("Invalid layer name: %s", layer_name);
+		return -EINVAL;
+	}
+
+	if (model->layer[i].type != ML_CNXK_LAYER_TYPE_MRVL) {
+		plt_err("Invalid layer type, name: %s type: %d", layer_name, model->layer[i].type);
+		return -EINVAL;
+	}
+
+	*layer_id = i;
+
+	return 0;
+}

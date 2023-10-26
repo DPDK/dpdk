@@ -5,13 +5,21 @@
 #ifndef _CNXK_ML_IO_H_
 #define _CNXK_ML_IO_H_
 
+#ifdef RTE_MLDEV_CNXK_ENABLE_MVTVM
+#include <tvmdp.h>
+#endif
+
 #include <rte_mldev.h>
 
 /* Maximum number of models per device */
 #define ML_CNXK_MAX_MODELS 16
 
 /* Maximum number of layers per model */
+#ifdef RTE_MLDEV_CNXK_ENABLE_MVTVM
+#define ML_CNXK_MODEL_MAX_LAYERS TVMDP_MODEL_LAYERS_MAX
+#else
 #define ML_CNXK_MODEL_MAX_LAYERS 1
+#endif
 
 /* Maximum number of inputs or outputs per layer or model */
 #define ML_CNXK_MODEL_MAX_INPUT_OUTPUT 32

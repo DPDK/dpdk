@@ -16,4 +16,7 @@ int mvtvm_ml_dev_close(struct cnxk_ml_dev *cnxk_mldev);
 int mvtvm_ml_model_load(struct cnxk_ml_dev *cnxk_mldev, struct rte_ml_model_params *params,
 			struct cnxk_ml_model *model);
 
+int mvtvm_ml_model_get_layer_id(struct cnxk_ml_model *model, const char *layer_name,
+				uint16_t *layer_id);
+
 #endif /* _MVTVM_ML_STUBS_H_ */
