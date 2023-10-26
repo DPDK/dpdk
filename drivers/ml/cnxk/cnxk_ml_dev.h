@@ -31,6 +31,18 @@ enum cnxk_ml_dev_state {
 	ML_CNXK_DEV_STATE_CLOSED
 };
 
+/* Index to model and layer ID map */
+struct cnxk_ml_index_map {
+	/* Model ID */
+	uint16_t model_id;
+
+	/* Layer ID */
+	uint16_t layer_id;
+
+	/* Layer status */
+	bool active;
+};
+
 /* Device private data */
 struct cnxk_ml_dev {
 	/* RTE device */
@@ -56,6 +68,9 @@ struct cnxk_ml_dev {
 
 	/* Maximum number of layers */
 	uint64_t max_nb_layers;
+
+	/* Index map */
+	struct cnxk_ml_index_map *index_map;
 };
 
 #endif /* _CNXK_ML_DEV_H_ */

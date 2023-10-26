@@ -316,42 +316,31 @@ cn10k_ml_layer_addr_update(struct cnxk_ml_layer *layer, uint8_t *buffer, uint8_t
 {
 	struct cn10k_ml_model_metadata *metadata;
 	struct cn10k_ml_layer_addr *addr;
-	size_t model_data_size;
 	uint8_t *dma_addr_load;
-	uint8_t *dma_addr_run;
 	int fpos;
 
 	metadata = &layer->glow.metadata;
 	addr = &layer->glow.addr;
-	model_data_size = metadata->init_model.file_size + metadata->main_model.file_size +
-			  metadata->finish_model.file_size + metadata->weights_bias.file_size;
 
 	/* Base address */
 	addr->base_dma_addr_load = base_dma_addr;
-	addr->base_dma_addr_run = PLT_PTR_ADD(addr->base_dma_addr_load, model_data_size);
 
 	/* Init section */
 	dma_addr_load = addr->base_dma_addr_load;
-	dma_addr_run = addr->base_dma_addr_run;
 	fpos = sizeof(struct cn10k_ml_model_metadata);
 	addr->init_load_addr = dma_addr_load;
-	addr->init_run_addr = dma_addr_run;
 	rte_memcpy(dma_addr_load, PLT_PTR_ADD(buffer, fpos), metadata->init_model.file_size);
 
 	/* Main section */
 	dma_addr_load += metadata->init_model.file_size;
-	dma_addr_run += metadata->init_model.file_size;
 	fpos += metadata->init_model.file_size;
 	addr->main_load_addr = dma_addr_load;
-	addr->main_run_addr = dma_addr_run;
 	rte_memcpy(dma_addr_load, PLT_PTR_ADD(buffer, fpos), metadata->main_model.file_size);
 
 	/* Finish section */
 	dma_addr_load += metadata->main_model.file_size;
-	dma_addr_run += metadata->main_model.file_size;
 	fpos += metadata->main_model.file_size;
 	addr->finish_load_addr = dma_addr_load;
-	addr->finish_run_addr = dma_addr_run;
 	rte_memcpy(dma_addr_load, PLT_PTR_ADD(buffer, fpos), metadata->finish_model.file_size);
 
 	/* Weights and Bias section */
@@ -363,142 +352,148 @@ cn10k_ml_layer_addr_update(struct cnxk_ml_layer *layer, uint8_t *buffer, uint8_t
 }
 
 void
-cn10k_ml_layer_info_update(struct cnxk_ml_layer *layer)
+cn10k_ml_layer_io_info_set(struct cnxk_ml_io_info *io_info,
+			   struct cn10k_ml_model_metadata *metadata)
 {
-	struct cn10k_ml_model_metadata *metadata;
 	uint8_t i;
 	uint8_t j;
 
-	metadata = &layer->glow.metadata;
-
 	/* Inputs */
-	layer->info.nb_inputs = metadata->model.num_input;
-	layer->info.total_input_sz_d = 0;
-	layer->info.total_input_sz_q = 0;
+	io_info->nb_inputs = metadata->model.num_input;
+	io_info->total_input_sz_d = 0;
+	io_info->total_input_sz_q = 0;
 	for (i = 0; i < metadata->model.num_input; i++) {
 		if (i < MRVL_ML_NUM_INPUT_OUTPUT_1) {
-			rte_strscpy(layer->info.input[i].name,
-				    (char *)metadata->input1[i].input_name, MRVL_ML_INPUT_NAME_LEN);
-			layer->info.input[i].dtype = metadata->input1[i].input_type;
-			layer->info.input[i].qtype = metadata->input1[i].model_input_type;
-			layer->info.input[i].nb_dims = 4;
-			layer->info.input[i].shape[0] = metadata->input1[i].shape.w;
-			layer->info.input[i].shape[1] = metadata->input1[i].shape.x;
-			layer->info.input[i].shape[2] = metadata->input1[i].shape.y;
-			layer->info.input[i].shape[3] = metadata->input1[i].shape.z;
-			layer->info.input[i].nb_elements =
+			rte_strscpy(io_info->input[i].name, (char *)metadata->input1[i].input_name,
+				    MRVL_ML_INPUT_NAME_LEN);
+			io_info->input[i].dtype = metadata->input1[i].input_type;
+			io_info->input[i].qtype = metadata->input1[i].model_input_type;
+			io_info->input[i].nb_dims = 4;
+			io_info->input[i].shape[0] = metadata->input1[i].shape.w;
+			io_info->input[i].shape[1] = metadata->input1[i].shape.x;
+			io_info->input[i].shape[2] = metadata->input1[i].shape.y;
+			io_info->input[i].shape[3] = metadata->input1[i].shape.z;
+			io_info->input[i].nb_elements =
 				metadata->input1[i].shape.w * metadata->input1[i].shape.x *
 				metadata->input1[i].shape.y * metadata->input1[i].shape.z;
-			layer->info.input[i].sz_d =
-				layer->info.input[i].nb_elements *
+			io_info->input[i].sz_d =
+				io_info->input[i].nb_elements *
 				rte_ml_io_type_size_get(metadata->input1[i].input_type);
-			layer->info.input[i].sz_q =
-				layer->info.input[i].nb_elements *
+			io_info->input[i].sz_q =
+				io_info->input[i].nb_elements *
 				rte_ml_io_type_size_get(metadata->input1[i].model_input_type);
-			layer->info.input[i].scale = metadata->input1[i].qscale;
+			io_info->input[i].scale = metadata->input1[i].qscale;
 
-			layer->info.total_input_sz_d += layer->info.input[i].sz_d;
-			layer->info.total_input_sz_q += layer->info.input[i].sz_q;
+			io_info->total_input_sz_d += io_info->input[i].sz_d;
+			io_info->total_input_sz_q += io_info->input[i].sz_q;
 
 			plt_ml_dbg(
-				"index = %u, input1[%u] - w:%u x:%u y:%u z:%u, sz_d = %u sz_q = %u",
-				layer->index, i, metadata->input1[i].shape.w,
+				"layer_name = %s, input1[%u] - w:%u x:%u y:%u z:%u, sz_d = %u sz_q = %u",
+				metadata->model.name, i, metadata->input1[i].shape.w,
 				metadata->input1[i].shape.x, metadata->input1[i].shape.y,
-				metadata->input1[i].shape.z, layer->info.input[i].sz_d,
-				layer->info.input[i].sz_q);
+				metadata->input1[i].shape.z, io_info->input[i].sz_d,
+				io_info->input[i].sz_q);
 		} else {
 			j = i - MRVL_ML_NUM_INPUT_OUTPUT_1;
 
-			rte_strscpy(layer->info.input[i].name,
-				    (char *)metadata->input2[j].input_name, MRVL_ML_INPUT_NAME_LEN);
-			layer->info.input[i].dtype = metadata->input2[j].input_type;
-			layer->info.input[i].qtype = metadata->input2[j].model_input_type;
-			layer->info.input[i].nb_dims = 4;
-			layer->info.input[i].shape[0] = metadata->input2[j].shape.w;
-			layer->info.input[i].shape[1] = metadata->input2[j].shape.x;
-			layer->info.input[i].shape[2] = metadata->input2[j].shape.y;
-			layer->info.input[i].shape[3] = metadata->input2[j].shape.z;
-			layer->info.input[i].nb_elements =
+			rte_strscpy(io_info->input[i].name, (char *)metadata->input2[j].input_name,
+				    MRVL_ML_INPUT_NAME_LEN);
+			io_info->input[i].dtype = metadata->input2[j].input_type;
+			io_info->input[i].qtype = metadata->input2[j].model_input_type;
+			io_info->input[i].nb_dims = 4;
+			io_info->input[i].shape[0] = metadata->input2[j].shape.w;
+			io_info->input[i].shape[1] = metadata->input2[j].shape.x;
+			io_info->input[i].shape[2] = metadata->input2[j].shape.y;
+			io_info->input[i].shape[3] = metadata->input2[j].shape.z;
+			io_info->input[i].nb_elements =
 				metadata->input2[j].shape.w * metadata->input2[j].shape.x *
 				metadata->input2[j].shape.y * metadata->input2[j].shape.z;
-			layer->info.input[i].sz_d =
-				layer->info.input[i].nb_elements *
+			io_info->input[i].sz_d =
+				io_info->input[i].nb_elements *
 				rte_ml_io_type_size_get(metadata->input2[j].input_type);
-			layer->info.input[i].sz_q =
-				layer->info.input[i].nb_elements *
+			io_info->input[i].sz_q =
+				io_info->input[i].nb_elements *
 				rte_ml_io_type_size_get(metadata->input2[j].model_input_type);
-			layer->info.input[i].scale = metadata->input2[j].qscale;
+			io_info->input[i].scale = metadata->input2[j].qscale;
 
-			layer->info.total_input_sz_d += layer->info.input[i].sz_d;
-			layer->info.total_input_sz_q += layer->info.input[i].sz_q;
+			io_info->total_input_sz_d += io_info->input[i].sz_d;
+			io_info->total_input_sz_q += io_info->input[i].sz_q;
 
 			plt_ml_dbg(
-				"index = %u, input2[%u] - w:%u x:%u y:%u z:%u, sz_d = %u sz_q = %u",
-				layer->index, j, metadata->input2[j].shape.w,
+				"layer_name = %s, input2[%u] - w:%u x:%u y:%u z:%u, sz_d = %u sz_q = %u",
+				metadata->model.name, j, metadata->input2[j].shape.w,
 				metadata->input2[j].shape.x, metadata->input2[j].shape.y,
-				metadata->input2[j].shape.z, layer->info.input[i].sz_d,
-				layer->info.input[i].sz_q);
+				metadata->input2[j].shape.z, io_info->input[i].sz_d,
+				io_info->input[i].sz_q);
 		}
 	}
 
 	/* Outputs */
-	layer->info.nb_outputs = metadata->model.num_output;
-	layer->info.total_output_sz_q = 0;
-	layer->info.total_output_sz_d = 0;
+	io_info->nb_outputs = metadata->model.num_output;
+	io_info->total_output_sz_q = 0;
+	io_info->total_output_sz_d = 0;
 	for (i = 0; i < metadata->model.num_output; i++) {
 		if (i < MRVL_ML_NUM_INPUT_OUTPUT_1) {
-			rte_strscpy(layer->info.output[i].name,
+			rte_strscpy(io_info->output[i].name,
 				    (char *)metadata->output1[i].output_name,
 				    MRVL_ML_OUTPUT_NAME_LEN);
-			layer->info.output[i].dtype = metadata->output1[i].output_type;
-			layer->info.output[i].qtype = metadata->output1[i].model_output_type;
-			layer->info.output[i].nb_dims = 1;
-			layer->info.output[i].shape[0] = metadata->output1[i].size;
-			layer->info.output[i].nb_elements = metadata->output1[i].size;
-			layer->info.output[i].sz_d =
-				layer->info.output[i].nb_elements *
+			io_info->output[i].dtype = metadata->output1[i].output_type;
+			io_info->output[i].qtype = metadata->output1[i].model_output_type;
+			io_info->output[i].nb_dims = 1;
+			io_info->output[i].shape[0] = metadata->output1[i].size;
+			io_info->output[i].nb_elements = metadata->output1[i].size;
+			io_info->output[i].sz_d =
+				io_info->output[i].nb_elements *
 				rte_ml_io_type_size_get(metadata->output1[i].output_type);
-			layer->info.output[i].sz_q =
-				layer->info.output[i].nb_elements *
+			io_info->output[i].sz_q =
+				io_info->output[i].nb_elements *
 				rte_ml_io_type_size_get(metadata->output1[i].model_output_type);
-			layer->info.output[i].scale = metadata->output1[i].dscale;
+			io_info->output[i].scale = metadata->output1[i].dscale;
 
-			layer->info.total_output_sz_q += layer->info.output[i].sz_q;
-			layer->info.total_output_sz_d += layer->info.output[i].sz_d;
+			io_info->total_output_sz_q += io_info->output[i].sz_q;
+			io_info->total_output_sz_d += io_info->output[i].sz_d;
 
-			plt_ml_dbg("index = %u, output1[%u] - sz_d = %u, sz_q = %u", layer->index,
-				   i, layer->info.output[i].sz_d, layer->info.output[i].sz_q);
+			plt_ml_dbg("layer_name = %s, output1[%u] - sz_d = %u, sz_q = %u",
+				   metadata->model.name, i, io_info->output[i].sz_d,
+				   io_info->output[i].sz_q);
 		} else {
 			j = i - MRVL_ML_NUM_INPUT_OUTPUT_1;
 
-			rte_strscpy(layer->info.output[i].name,
+			rte_strscpy(io_info->output[i].name,
 				    (char *)metadata->output2[j].output_name,
 				    MRVL_ML_OUTPUT_NAME_LEN);
-			layer->info.output[i].dtype = metadata->output2[j].output_type;
-			layer->info.output[i].qtype = metadata->output2[j].model_output_type;
-			layer->info.output[i].nb_dims = 1;
-			layer->info.output[i].shape[0] = metadata->output2[j].size;
-			layer->info.output[i].nb_elements = metadata->output2[j].size;
-			layer->info.output[i].sz_d =
-				layer->info.output[i].nb_elements *
+			io_info->output[i].dtype = metadata->output2[j].output_type;
+			io_info->output[i].qtype = metadata->output2[j].model_output_type;
+			io_info->output[i].nb_dims = 1;
+			io_info->output[i].shape[0] = metadata->output2[j].size;
+			io_info->output[i].nb_elements = metadata->output2[j].size;
+			io_info->output[i].sz_d =
+				io_info->output[i].nb_elements *
 				rte_ml_io_type_size_get(metadata->output2[j].output_type);
-			layer->info.output[i].sz_q =
-				layer->info.output[i].nb_elements *
+			io_info->output[i].sz_q =
+				io_info->output[i].nb_elements *
 				rte_ml_io_type_size_get(metadata->output2[j].model_output_type);
-			layer->info.output[i].scale = metadata->output2[j].dscale;
+			io_info->output[i].scale = metadata->output2[j].dscale;
 
-			layer->info.total_output_sz_q += layer->info.output[i].sz_q;
-			layer->info.total_output_sz_d += layer->info.output[i].sz_d;
+			io_info->total_output_sz_q += io_info->output[i].sz_q;
+			io_info->total_output_sz_d += io_info->output[i].sz_d;
 
-			plt_ml_dbg("index = %u, output2[%u] - sz_d = %u, sz_q = %u", layer->index,
-				   j, layer->info.output[i].sz_d, layer->info.output[i].sz_q);
+			plt_ml_dbg("layer_name = %s, output2[%u] - sz_d = %u, sz_q = %u",
+				   metadata->model.name, j, io_info->output[i].sz_d,
+				   io_info->output[i].sz_q);
 		}
 	}
 }
 
+struct cnxk_ml_io_info *
+cn10k_ml_model_io_info_get(struct cnxk_ml_model *model, uint16_t layer_id)
+{
+	return &model->layer[layer_id].info;
+}
+
 int
-cn10k_ml_model_ocm_pages_count(struct cn10k_ml_dev *cn10k_mldev, uint16_t model_id, uint8_t *buffer,
-			       uint16_t *wb_pages, uint16_t *scratch_pages)
+cn10k_ml_model_ocm_pages_count(struct cnxk_ml_dev *cnxk_mldev, struct cnxk_ml_layer *layer,
+			       uint8_t *buffer, uint16_t *wb_pages, uint16_t *scratch_pages)
 {
 	struct cn10k_ml_model_metadata *metadata;
 	struct cn10k_ml_ocm *ocm;
@@ -506,7 +501,7 @@ cn10k_ml_model_ocm_pages_count(struct cn10k_ml_dev *cn10k_mldev, uint16_t model_
 	uint64_t wb_size;
 
 	metadata = (struct cn10k_ml_model_metadata *)buffer;
-	ocm = &cn10k_mldev->ocm;
+	ocm = &cnxk_mldev->cn10k_mldev.ocm;
 
 	/* Assume wb_size is zero for non-relocatable models */
 	if (metadata->model.ocm_relocatable)
@@ -518,7 +513,7 @@ cn10k_ml_model_ocm_pages_count(struct cn10k_ml_dev *cn10k_mldev, uint16_t model_
 		*wb_pages = wb_size / ocm->page_size + 1;
 	else
 		*wb_pages = wb_size / ocm->page_size;
-	plt_ml_dbg("model_id = %u, wb_size = %" PRIu64 ", wb_pages = %u", model_id, wb_size,
+	plt_ml_dbg("index = %u, wb_size = %" PRIu64 ", wb_pages = %u", layer->index, wb_size,
 		   *wb_pages);
 
 	scratch_size = ocm->size_per_tile - metadata->model.ocm_tmp_range_floor;
@@ -526,15 +521,15 @@ cn10k_ml_model_ocm_pages_count(struct cn10k_ml_dev *cn10k_mldev, uint16_t model_
 		*scratch_pages = scratch_size / ocm->page_size + 1;
 	else
 		*scratch_pages = scratch_size / ocm->page_size;
-	plt_ml_dbg("model_id = %u, scratch_size = %" PRIu64 ", scratch_pages = %u", model_id,
+	plt_ml_dbg("index = %u, scratch_size = %" PRIu64 ", scratch_pages = %u", layer->index,
 		   scratch_size, *scratch_pages);
 
 	/* Check if the model can be loaded on OCM */
-	if ((*wb_pages + *scratch_pages) > cn10k_mldev->ocm.num_pages) {
+	if ((*wb_pages + *scratch_pages) > ocm->num_pages) {
 		plt_err("Cannot create the model, OCM relocatable = %u",
 			metadata->model.ocm_relocatable);
 		plt_err("wb_pages (%u) + scratch_pages (%u) > %u", *wb_pages, *scratch_pages,
-			cn10k_mldev->ocm.num_pages);
+			ocm->num_pages);
 		return -ENOMEM;
 	}
 
@@ -542,28 +537,25 @@ cn10k_ml_model_ocm_pages_count(struct cn10k_ml_dev *cn10k_mldev, uint16_t model_
 	 * prevent the library from allocating the remaining space on the tile to other models.
 	 */
 	if (!metadata->model.ocm_relocatable)
-		*scratch_pages = PLT_MAX(PLT_U64_CAST(*scratch_pages),
-					 PLT_U64_CAST(cn10k_mldev->ocm.num_pages));
+		*scratch_pages =
+			PLT_MAX(PLT_U64_CAST(*scratch_pages), PLT_U64_CAST(ocm->num_pages));
 
 	return 0;
 }
 
 void
-cn10k_ml_model_info_set(struct rte_ml_dev *dev, struct cnxk_ml_model *model)
+cn10k_ml_model_info_set(struct cnxk_ml_dev *cnxk_mldev, struct cnxk_ml_model *model,
+			struct cnxk_ml_io_info *io_info, struct cn10k_ml_model_metadata *metadata)
 {
-	struct cn10k_ml_model_metadata *metadata;
-	struct cnxk_ml_dev *cnxk_mldev;
 	struct rte_ml_model_info *info;
 	struct rte_ml_io_info *output;
 	struct rte_ml_io_info *input;
-	struct cnxk_ml_layer *layer;
 	uint8_t i;
 
-	cnxk_mldev = dev->data->dev_private;
 	metadata = &model->glow.metadata;
 	info = PLT_PTR_CAST(model->info);
 	input = PLT_PTR_ADD(info, sizeof(struct rte_ml_model_info));
-	output = PLT_PTR_ADD(input, metadata->model.num_input * sizeof(struct rte_ml_io_info));
+	output = PLT_PTR_ADD(input, ML_CNXK_MODEL_MAX_INPUT_OUTPUT * sizeof(struct rte_ml_io_info));
 
 	/* Set model info */
 	memset(info, 0, sizeof(struct rte_ml_model_info));
@@ -572,39 +564,37 @@ cn10k_ml_model_info_set(struct rte_ml_dev *dev, struct cnxk_ml_model *model)
 		 metadata->model.version[1], metadata->model.version[2],
 		 metadata->model.version[3]);
 	info->model_id = model->model_id;
-	info->device_id = dev->data->dev_id;
+	info->device_id = cnxk_mldev->mldev->data->dev_id;
 	info->io_layout = RTE_ML_IO_LAYOUT_PACKED;
 	info->min_batches = model->batch_size;
 	info->max_batches =
 		cnxk_mldev->cn10k_mldev.fw.req->cn10k_req.jd.fw_load.cap.s.max_num_batches /
 		model->batch_size;
-	info->nb_inputs = metadata->model.num_input;
+	info->nb_inputs = io_info->nb_inputs;
 	info->input_info = input;
-	info->nb_outputs = metadata->model.num_output;
+	info->nb_outputs = io_info->nb_outputs;
 	info->output_info = output;
 	info->wb_size = metadata->weights_bias.file_size;
 
 	/* Set input info */
-	layer = &model->layer[0];
 	for (i = 0; i < info->nb_inputs; i++) {
-		rte_memcpy(input[i].name, layer->info.input[i].name, MRVL_ML_INPUT_NAME_LEN);
-		input[i].nb_dims = layer->info.input[i].nb_dims;
-		input[i].shape = &layer->info.input[i].shape[0];
-		input[i].type = layer->info.input[i].qtype;
-		input[i].nb_elements = layer->info.input[i].nb_elements;
-		input[i].size = layer->info.input[i].nb_elements *
-				rte_ml_io_type_size_get(layer->info.input[i].qtype);
+		rte_memcpy(input[i].name, io_info->input[i].name, MRVL_ML_INPUT_NAME_LEN);
+		input[i].nb_dims = io_info->input[i].nb_dims;
+		input[i].shape = &io_info->input[i].shape[0];
+		input[i].type = io_info->input[i].qtype;
+		input[i].nb_elements = io_info->input[i].nb_elements;
+		input[i].size = io_info->input[i].nb_elements *
+				rte_ml_io_type_size_get(io_info->input[i].qtype);
 	}
 
 	/* Set output info */
-	layer = &model->layer[0];
 	for (i = 0; i < info->nb_outputs; i++) {
-		rte_memcpy(output[i].name, layer->info.output[i].name, MRVL_ML_INPUT_NAME_LEN);
-		output[i].nb_dims = layer->info.output[i].nb_dims;
-		output[i].shape = &layer->info.output[i].shape[0];
-		output[i].type = layer->info.output[i].qtype;
-		output[i].nb_elements = layer->info.output[i].nb_elements;
-		output[i].size = layer->info.output[i].nb_elements *
-				 rte_ml_io_type_size_get(layer->info.output[i].qtype);
+		rte_memcpy(output[i].name, io_info->output[i].name, MRVL_ML_INPUT_NAME_LEN);
+		output[i].nb_dims = io_info->output[i].nb_dims;
+		output[i].shape = &io_info->output[i].shape[0];
+		output[i].type = io_info->output[i].qtype;
+		output[i].nb_elements = io_info->output[i].nb_elements;
+		output[i].size = io_info->output[i].nb_elements *
+				 rte_ml_io_type_size_get(io_info->output[i].qtype);
 	}
 }

@@ -62,4 +62,6 @@ struct cnxk_ml_qp {
 
 extern struct rte_ml_dev_ops cnxk_ml_ops;
 
+int cnxk_ml_model_unload(struct rte_ml_dev *dev, uint16_t model_id);
+
 #endif /* _CNXK_ML_OPS_H_ */

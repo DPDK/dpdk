@@ -10,6 +10,9 @@
 #include "cnxk_ml_model.h"
 #include "cnxk_ml_ops.h"
 
+/* ML model macros */
+#define CNXK_ML_MODEL_MEMZONE_NAME "ml_cnxk_model_mz"
+
 static void
 qp_memzone_name_get(char *name, int size, int dev_id, int qp_id)
 {
@@ -137,6 +140,7 @@ cnxk_ml_dev_configure(struct rte_ml_dev *dev, const struct rte_ml_dev_config *co
 	uint16_t model_id;
 	uint32_t mz_size;
 	uint16_t qp_id;
+	uint64_t i;
 	int ret;
 
 	if (dev == NULL)
@@ -240,7 +244,7 @@ cnxk_ml_dev_configure(struct rte_ml_dev *dev, const struct rte_ml_dev_config *co
 						plt_err("Could not stop model %u", model_id);
 				}
 				if (model->state == ML_CNXK_MODEL_STATE_LOADED) {
-					if (cn10k_ml_model_unload(dev, model_id) != 0)
+					if (cnxk_ml_model_unload(dev, model_id) != 0)
 						plt_err("Could not unload model %u", model_id);
 				}
 				dev->data->models[model_id] = NULL;
@@ -270,6 +274,23 @@ cnxk_ml_dev_configure(struct rte_ml_dev *dev, const struct rte_ml_dev_config *co
 	/* Set device capabilities */
 	cnxk_mldev->max_nb_layers =
 		cnxk_mldev->cn10k_mldev.fw.req->cn10k_req.jd.fw_load.cap.s.max_models;
+
+	/* Allocate and initialize index_map */
+	if (cnxk_mldev->index_map == NULL) {
+		cnxk_mldev->index_map =
+			rte_zmalloc("cnxk_ml_index_map",
+				    sizeof(struct cnxk_ml_index_map) * cnxk_mldev->max_nb_layers,
+				    RTE_CACHE_LINE_SIZE);
+		if (cnxk_mldev->index_map == NULL) {
+			plt_err("Failed to get memory for index_map, nb_layers %" PRIu64,
+				cnxk_mldev->max_nb_layers);
+			ret = -ENOMEM;
+			goto error;
+		}
+	}
+
+	for (i = 0; i < cnxk_mldev->max_nb_layers; i++)
+		cnxk_mldev->index_map[i].active = false;
 
 	cnxk_mldev->nb_models_loaded = 0;
 	cnxk_mldev->nb_models_started = 0;
@@ -303,6 +324,9 @@ cnxk_ml_dev_close(struct rte_ml_dev *dev)
 	if (cn10k_ml_dev_close(cnxk_mldev) != 0)
 		plt_err("Failed to close CN10K ML Device");
 
+	if (cnxk_mldev->index_map)
+		rte_free(cnxk_mldev->index_map);
+
 	/* Stop and unload all models */
 	for (model_id = 0; model_id < dev->data->nb_models; model_id++) {
 		model = dev->data->models[model_id];
@@ -312,7 +336,7 @@ cnxk_ml_dev_close(struct rte_ml_dev *dev)
 					plt_err("Could not stop model %u", model_id);
 			}
 			if (model->state == ML_CNXK_MODEL_STATE_LOADED) {
-				if (cn10k_ml_model_unload(dev, model_id) != 0)
+				if (cnxk_ml_model_unload(dev, model_id) != 0)
 					plt_err("Could not unload model %u", model_id);
 			}
 			dev->data->models[model_id] = NULL;
@@ -428,6 +452,118 @@ cnxk_ml_dev_queue_pair_setup(struct rte_ml_dev *dev, uint16_t queue_pair_id,
 	return 0;
 }
 
+static int
+cnxk_ml_model_load(struct rte_ml_dev *dev, struct rte_ml_model_params *params, uint16_t *model_id)
+{
+	struct rte_ml_dev_info dev_info;
+	struct cnxk_ml_dev *cnxk_mldev;
+	struct cnxk_ml_model *model;
+
+	char str[RTE_MEMZONE_NAMESIZE];
+	const struct plt_memzone *mz;
+	uint64_t model_info_size;
+	uint16_t lcl_model_id;
+	uint64_t mz_size;
+	bool found;
+	int ret;
+
+	if (dev == NULL)
+		return -EINVAL;
+
+	cnxk_mldev = dev->data->dev_private;
+
+	/* Find model ID */
+	found = false;
+	for (lcl_model_id = 0; lcl_model_id < dev->data->nb_models; lcl_model_id++) {
+		if (dev->data->models[lcl_model_id] == NULL) {
+			found = true;
+			break;
+		}
+	}
+
+	if (!found) {
+		plt_err("No slots available to load new model");
+		return -ENOMEM;
+	}
+
+	/* Compute memzone size */
+	cnxk_ml_dev_info_get(dev, &dev_info);
+	mz_size = PLT_ALIGN_CEIL(sizeof(struct cnxk_ml_model), dev_info.align_size);
+	model_info_size = sizeof(struct rte_ml_model_info) +
+			  ML_CNXK_MODEL_MAX_INPUT_OUTPUT * sizeof(struct rte_ml_io_info) +
+			  ML_CNXK_MODEL_MAX_INPUT_OUTPUT * sizeof(struct rte_ml_io_info);
+	model_info_size = PLT_ALIGN_CEIL(model_info_size, dev_info.align_size);
+	mz_size += model_info_size;
+
+	/* Allocate memzone for model object */
+	snprintf(str, RTE_MEMZONE_NAMESIZE, "%s_%u", CNXK_ML_MODEL_MEMZONE_NAME, lcl_model_id);
+	mz = plt_memzone_reserve_aligned(str, mz_size, 0, dev_info.align_size);
+	if (!mz) {
+		plt_err("Failed to allocate memory for cnxk_ml_model: %s", str);
+		return -ENOMEM;
+	}
+
+	model = mz->addr;
+	model->cnxk_mldev = cnxk_mldev;
+	model->model_id = lcl_model_id;
+	model->info = PLT_PTR_ADD(
+		model, PLT_ALIGN_CEIL(sizeof(struct cnxk_ml_model), dev_info.align_size));
+	dev->data->models[lcl_model_id] = model;
+
+	ret = cn10k_ml_model_load(cnxk_mldev, params, model);
+	if (ret != 0)
+		goto error;
+
+	plt_spinlock_init(&model->lock);
+	model->state = ML_CNXK_MODEL_STATE_LOADED;
+	cnxk_mldev->nb_models_loaded++;
+
+	*model_id = lcl_model_id;
+
+	return 0;
+
+error:
+	rte_memzone_free(mz);
+
+	return ret;
+}
+
+int
+cnxk_ml_model_unload(struct rte_ml_dev *dev, uint16_t model_id)
+{
+	struct cnxk_ml_dev *cnxk_mldev;
+	struct cnxk_ml_model *model;
+
+	char str[RTE_MEMZONE_NAMESIZE];
+	int ret;
+
+	if (dev == NULL)
+		return -EINVAL;
+
+	cnxk_mldev = dev->data->dev_private;
+
+	model = dev->data->models[model_id];
+	if (model == NULL) {
+		plt_err("Invalid model_id = %u", model_id);
+		return -EINVAL;
+	}
+
+	if (model->state != ML_CNXK_MODEL_STATE_LOADED) {
+		plt_err("Cannot unload. Model in use.");
+		return -EBUSY;
+	}
+
+	ret = cn10k_ml_model_unload(cnxk_mldev, model);
+	if (ret != 0)
+		return ret;
+
+	dev->data->models[model_id] = NULL;
+	cnxk_mldev->nb_models_unloaded++;
+
+	snprintf(str, RTE_MEMZONE_NAMESIZE, "%s_%u", CNXK_ML_MODEL_MEMZONE_NAME, model_id);
+	return plt_memzone_free(plt_memzone_lookup(str));
+}
+
 struct rte_ml_dev_ops cnxk_ml_ops = {
 	/* Device control ops */
 	.dev_info_get = cnxk_ml_dev_info_get,
@@ -451,8 +587,8 @@ struct rte_ml_dev_ops cnxk_ml_ops = {
 	.dev_xstats_reset = cn10k_ml_dev_xstats_reset,
 
 	/* Model ops */
-	.model_load = cn10k_ml_model_load,
-	.model_unload = cn10k_ml_model_unload,
+	.model_load = cnxk_ml_model_load,
+	.model_unload = cnxk_ml_model_unload,
 	.model_start = cn10k_ml_model_start,
 	.model_stop = cn10k_ml_model_stop,
 	.model_info_get = cn10k_ml_model_info_get,

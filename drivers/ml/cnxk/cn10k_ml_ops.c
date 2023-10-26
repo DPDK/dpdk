@@ -15,6 +15,9 @@
 /* ML model macros */
 #define CN10K_ML_MODEL_MEMZONE_NAME "ml_cn10k_model_mz"
 
+/* ML layer macros */
+#define CN10K_ML_LAYER_MEMZONE_NAME "ml_cn10k_layer_mz"
+
 /* Debug print width */
 #define STR_LEN	  12
 #define FIELD_LEN 16
@@ -273,7 +276,7 @@ cn10k_ml_prep_sp_job_descriptor(struct cn10k_ml_dev *cn10k_mldev, struct cnxk_ml
 		req->cn10k_req.jd.model_start.extended_args = PLT_U64_CAST(
 			roc_ml_addr_ap2mlip(&cn10k_mldev->roc, &req->cn10k_req.extended_args));
 		req->cn10k_req.jd.model_start.model_dst_ddr_addr =
-			PLT_U64_CAST(roc_ml_addr_ap2mlip(&cn10k_mldev->roc, addr->init_run_addr));
+			PLT_U64_CAST(roc_ml_addr_ap2mlip(&cn10k_mldev->roc, addr->init_load_addr));
 		req->cn10k_req.jd.model_start.model_init_offset = 0x0;
 		req->cn10k_req.jd.model_start.model_main_offset = metadata->init_model.file_size;
 		req->cn10k_req.jd.model_start.model_finish_offset =
@@ -1261,85 +1264,171 @@ cn10k_ml_dev_selftest(struct rte_ml_dev *dev)
 }
 
 int
-cn10k_ml_model_load(struct rte_ml_dev *dev, struct rte_ml_model_params *params, uint16_t *model_id)
+cn10k_ml_layer_load(void *device, uint16_t model_id, const char *layer_name, uint8_t *buffer,
+		    size_t size, uint16_t *index)
 {
 	struct cn10k_ml_model_metadata *metadata;
 	struct cnxk_ml_dev *cnxk_mldev;
 	struct cnxk_ml_model *model;
+	struct cnxk_ml_layer *layer;
 
 	char str[RTE_MEMZONE_NAMESIZE];
 	const struct plt_memzone *mz;
-	size_t model_scratch_size;
-	size_t model_stats_size;
-	size_t model_data_size;
-	size_t model_info_size;
+	size_t layer_object_size = 0;
+	size_t layer_scratch_size;
+	size_t layer_xstats_size;
 	uint8_t *base_dma_addr;
 	uint16_t scratch_pages;
+	uint16_t layer_id = 0;
 	uint16_t wb_pages;
 	uint64_t mz_size;
 	uint16_t idx;
-	bool found;
 	int qp_id;
 	int ret;
 
-	ret = cn10k_ml_model_metadata_check(params->addr, params->size);
+	PLT_SET_USED(size);
+	PLT_SET_USED(layer_name);
+
+	cnxk_mldev = (struct cnxk_ml_dev *)device;
+	if (cnxk_mldev == NULL) {
+		plt_err("Invalid device = %p", device);
+		return -EINVAL;
+	}
+
+	model = cnxk_mldev->mldev->data->models[model_id];
+	if (model == NULL) {
+		plt_err("Invalid model_id = %u", model_id);
+		return -EINVAL;
+	}
+
+	layer = &model->layer[layer_id];
+
+	ret = cn10k_ml_model_metadata_check(buffer, size);
 	if (ret != 0)
 		return ret;
 
-	cnxk_mldev = dev->data->dev_private;
-
-	/* Find model ID */
-	found = false;
-	for (idx = 0; idx < dev->data->nb_models; idx++) {
-		if (dev->data->models[idx] == NULL) {
-			found = true;
+	/* Get index */
+	for (idx = 0; idx < cnxk_mldev->max_nb_layers; idx++) {
+		if (!cnxk_mldev->index_map[idx].active) {
+			layer->index = idx;
 			break;
 		}
 	}
 
-	if (!found) {
-		plt_err("No slots available to load new model");
-		return -ENOMEM;
+	if (idx >= cnxk_mldev->max_nb_layers) {
+		plt_err("No slots available for model layers, model_id = %u, layer_id = %u",
+			model->model_id, layer_id);
+		return -1;
 	}
 
+	layer->model = model;
+
 	/* Get WB and scratch pages, check if model can be loaded. */
-	ret = cn10k_ml_model_ocm_pages_count(&cnxk_mldev->cn10k_mldev, idx, params->addr, &wb_pages,
-					     &scratch_pages);
+	ret = cn10k_ml_model_ocm_pages_count(cnxk_mldev, layer, buffer, &wb_pages, &scratch_pages);
 	if (ret < 0)
 		return ret;
 
-	/* Compute memzone size */
-	metadata = (struct cn10k_ml_model_metadata *)params->addr;
-	model_data_size = metadata->init_model.file_size + metadata->main_model.file_size +
-			  metadata->finish_model.file_size + metadata->weights_bias.file_size;
-	model_scratch_size = PLT_ALIGN_CEIL(metadata->model.ddr_scratch_range_end -
+	/* Compute layer memzone size */
+	metadata = (struct cn10k_ml_model_metadata *)buffer;
+	layer_object_size = metadata->init_model.file_size + metadata->main_model.file_size +
+			    metadata->finish_model.file_size + metadata->weights_bias.file_size;
+	layer_object_size = PLT_ALIGN_CEIL(layer_object_size, ML_CN10K_ALIGN_SIZE);
+	layer_scratch_size = PLT_ALIGN_CEIL(metadata->model.ddr_scratch_range_end -
 						    metadata->model.ddr_scratch_range_start + 1,
 					    ML_CN10K_ALIGN_SIZE);
-	model_data_size = PLT_ALIGN_CEIL(model_data_size, ML_CN10K_ALIGN_SIZE);
-	model_info_size = sizeof(struct rte_ml_model_info) +
-			  metadata->model.num_input * sizeof(struct rte_ml_io_info) +
-			  metadata->model.num_output * sizeof(struct rte_ml_io_info);
-	model_info_size = PLT_ALIGN_CEIL(model_info_size, ML_CN10K_ALIGN_SIZE);
-	model_stats_size = (dev->data->nb_queue_pairs + 1) * sizeof(struct cn10k_ml_layer_xstats);
+	layer_xstats_size = (cnxk_mldev->mldev->data->nb_queue_pairs + 1) *
+			    sizeof(struct cn10k_ml_layer_xstats);
 
-	mz_size = PLT_ALIGN_CEIL(sizeof(struct cnxk_ml_model), ML_CN10K_ALIGN_SIZE) +
-		  2 * model_data_size + model_scratch_size + model_info_size +
+	/* Allocate memzone for model data */
+	mz_size = layer_object_size + layer_scratch_size +
 		  PLT_ALIGN_CEIL(sizeof(struct cnxk_ml_req), ML_CN10K_ALIGN_SIZE) +
-		  model_stats_size;
-
-	/* Allocate memzone for model object and model data */
-	snprintf(str, RTE_MEMZONE_NAMESIZE, "%s_%u", CN10K_ML_MODEL_MEMZONE_NAME, idx);
+		  layer_xstats_size;
+	snprintf(str, RTE_MEMZONE_NAMESIZE, "%s_%u_%u", CN10K_ML_LAYER_MEMZONE_NAME,
+		 model->model_id, layer_id);
 	mz = plt_memzone_reserve_aligned(str, mz_size, 0, ML_CN10K_ALIGN_SIZE);
 	if (!mz) {
 		plt_err("plt_memzone_reserve failed : %s", str);
 		return -ENOMEM;
 	}
 
-	model = mz->addr;
-	model->cnxk_mldev = cnxk_mldev;
-	model->model_id = idx;
-	dev->data->models[idx] = model;
+	/* Copy metadata to internal buffer */
+	rte_memcpy(&layer->glow.metadata, buffer, sizeof(struct cn10k_ml_model_metadata));
+	cn10k_ml_model_metadata_update(&layer->glow.metadata);
 
+	/* Set layer name */
+	rte_memcpy(layer->name, layer->glow.metadata.model.name, MRVL_ML_MODEL_NAME_LEN);
+
+	/* Enable support for batch_size of 256 */
+	if (layer->glow.metadata.model.batch_size == 0)
+		layer->batch_size = 256;
+	else
+		layer->batch_size = layer->glow.metadata.model.batch_size;
+
+	/* Set DMA base address */
+	base_dma_addr = mz->addr;
+	cn10k_ml_layer_addr_update(layer, buffer, base_dma_addr);
+
+	/* Set scratch base address */
+	layer->glow.addr.scratch_base_addr = PLT_PTR_ADD(base_dma_addr, layer_object_size);
+
+	/* Update internal I/O data structure */
+	cn10k_ml_layer_io_info_set(&layer->info, &layer->glow.metadata);
+
+	/* Initialize model_mem_map */
+	memset(&layer->glow.ocm_map, 0, sizeof(struct cn10k_ml_ocm_layer_map));
+	layer->glow.ocm_map.ocm_reserved = false;
+	layer->glow.ocm_map.tilemask = 0;
+	layer->glow.ocm_map.wb_page_start = -1;
+	layer->glow.ocm_map.wb_pages = wb_pages;
+	layer->glow.ocm_map.scratch_pages = scratch_pages;
+
+	/* Set slow-path request address and state */
+	layer->glow.req = PLT_PTR_ADD(mz->addr, layer_object_size + layer_scratch_size);
+
+	/* Reset burst and sync stats */
+	layer->glow.burst_xstats = PLT_PTR_ADD(
+		layer->glow.req, PLT_ALIGN_CEIL(sizeof(struct cnxk_ml_req), ML_CN10K_ALIGN_SIZE));
+	for (qp_id = 0; qp_id < cnxk_mldev->mldev->data->nb_queue_pairs + 1; qp_id++) {
+		layer->glow.burst_xstats[qp_id].hw_latency_tot = 0;
+		layer->glow.burst_xstats[qp_id].hw_latency_min = UINT64_MAX;
+		layer->glow.burst_xstats[qp_id].hw_latency_max = 0;
+		layer->glow.burst_xstats[qp_id].fw_latency_tot = 0;
+		layer->glow.burst_xstats[qp_id].fw_latency_min = UINT64_MAX;
+		layer->glow.burst_xstats[qp_id].fw_latency_max = 0;
+		layer->glow.burst_xstats[qp_id].hw_reset_count = 0;
+		layer->glow.burst_xstats[qp_id].fw_reset_count = 0;
+		layer->glow.burst_xstats[qp_id].dequeued_count = 0;
+	}
+
+	layer->glow.sync_xstats =
+		PLT_PTR_ADD(layer->glow.burst_xstats, cnxk_mldev->mldev->data->nb_queue_pairs *
+							      sizeof(struct cn10k_ml_layer_xstats));
+
+	/* Update xstats names */
+	cn10k_ml_xstats_model_name_update(cnxk_mldev->mldev, idx);
+
+	layer->state = ML_CNXK_LAYER_STATE_LOADED;
+	cnxk_mldev->index_map[idx].model_id = model->model_id;
+	cnxk_mldev->index_map[idx].layer_id = layer_id;
+	cnxk_mldev->index_map[idx].active = true;
+	*index = idx;
+
+	return 0;
+}
+
+int
+cn10k_ml_model_load(struct cnxk_ml_dev *cnxk_mldev, struct rte_ml_model_params *params,
+		    struct cnxk_ml_model *model)
+{
+	struct cnxk_ml_layer *layer;
+	int ret;
+
+	/* Metadata check */
+	ret = cn10k_ml_model_metadata_check(params->addr, params->size);
+	if (ret != 0)
+		return ret;
+
+	/* Copy metadata to internal buffer */
 	rte_memcpy(&model->glow.metadata, params->addr, sizeof(struct cn10k_ml_model_metadata));
 	cn10k_ml_model_metadata_update(&model->glow.metadata);
 
@@ -1358,99 +1447,62 @@ cn10k_ml_model_load(struct rte_ml_dev *dev, struct rte_ml_model_params *params, 
 	 */
 	model->nb_layers = 1;
 
-	/* Copy metadata to internal buffer */
-	rte_memcpy(&model->layer[0].glow.metadata, params->addr,
-		   sizeof(struct cn10k_ml_model_metadata));
-	cn10k_ml_model_metadata_update(&model->layer[0].glow.metadata);
-	model->layer[0].model = model;
-
-	/* Set DMA base address */
-	base_dma_addr = PLT_PTR_ADD(
-		mz->addr, PLT_ALIGN_CEIL(sizeof(struct cnxk_ml_model), ML_CN10K_ALIGN_SIZE));
-	cn10k_ml_layer_addr_update(&model->layer[0], params->addr, base_dma_addr);
-	model->layer[0].glow.addr.scratch_base_addr =
-		PLT_PTR_ADD(base_dma_addr, 2 * model_data_size);
-
-	/* Copy data from load to run. run address to be used by MLIP */
-	rte_memcpy(model->layer[0].glow.addr.base_dma_addr_run,
-		   model->layer[0].glow.addr.base_dma_addr_load, model_data_size);
-
-	/* Update internal I/O data structure */
-	cn10k_ml_layer_info_update(&model->layer[0]);
-
-	/* Initialize model_mem_map */
-	memset(&model->layer[0].glow.ocm_map, 0, sizeof(struct cn10k_ml_ocm_layer_map));
-	model->layer[0].glow.ocm_map.ocm_reserved = false;
-	model->layer[0].glow.ocm_map.tilemask = 0;
-	model->layer[0].glow.ocm_map.wb_page_start = -1;
-	model->layer[0].glow.ocm_map.wb_pages = wb_pages;
-	model->layer[0].glow.ocm_map.scratch_pages = scratch_pages;
-
-	/* Set model info */
-	model->info = PLT_PTR_ADD(model->layer[0].glow.addr.scratch_base_addr, model_scratch_size);
-	cn10k_ml_model_info_set(dev, model);
-
-	/* Set slow-path request address and state */
-	model->layer[0].glow.req = PLT_PTR_ADD(model->info, model_info_size);
-
-	/* Reset burst and sync stats */
-	model->layer[0].glow.burst_xstats =
-		PLT_PTR_ADD(model->layer[0].glow.req,
-			    PLT_ALIGN_CEIL(sizeof(struct cnxk_ml_req), ML_CN10K_ALIGN_SIZE));
-	for (qp_id = 0; qp_id < dev->data->nb_queue_pairs + 1; qp_id++) {
-		model->layer[0].glow.burst_xstats[qp_id].hw_latency_tot = 0;
-		model->layer[0].glow.burst_xstats[qp_id].hw_latency_min = UINT64_MAX;
-		model->layer[0].glow.burst_xstats[qp_id].hw_latency_max = 0;
-		model->layer[0].glow.burst_xstats[qp_id].fw_latency_tot = 0;
-		model->layer[0].glow.burst_xstats[qp_id].fw_latency_min = UINT64_MAX;
-		model->layer[0].glow.burst_xstats[qp_id].fw_latency_max = 0;
-		model->layer[0].glow.burst_xstats[qp_id].hw_reset_count = 0;
-		model->layer[0].glow.burst_xstats[qp_id].fw_reset_count = 0;
-		model->layer[0].glow.burst_xstats[qp_id].dequeued_count = 0;
+	/* Load layer and get the index */
+	layer = &model->layer[0];
+	ret = cn10k_ml_layer_load(cnxk_mldev, model->model_id, NULL, params->addr, params->size,
+				  &layer->index);
+	if (ret != 0) {
+		plt_err("Model layer load failed: model_id = %u, layer_id = %u", model->model_id,
+			0);
+		return ret;
 	}
 
-	model->layer[0].glow.sync_xstats =
-		PLT_PTR_ADD(model->layer[0].glow.burst_xstats,
-			    dev->data->nb_queue_pairs * sizeof(struct cn10k_ml_layer_xstats));
-
-	plt_spinlock_init(&model->lock);
-	model->state = ML_CNXK_MODEL_STATE_LOADED;
-	dev->data->models[idx] = model;
-	cnxk_mldev->nb_models_loaded++;
-
-	/* Update xstats names */
-	cn10k_ml_xstats_model_name_update(dev, idx);
-
-	*model_id = idx;
+	cn10k_ml_model_info_set(cnxk_mldev, model, &model->layer[0].info, &model->glow.metadata);
 
 	return 0;
 }
 
 int
-cn10k_ml_model_unload(struct rte_ml_dev *dev, uint16_t model_id)
+cn10k_ml_layer_unload(void *device, uint16_t model_id, const char *layer_name)
 {
-	char str[RTE_MEMZONE_NAMESIZE];
-	struct cnxk_ml_model *model;
 	struct cnxk_ml_dev *cnxk_mldev;
+	struct cnxk_ml_model *model;
+	struct cnxk_ml_layer *layer;
 
-	cnxk_mldev = dev->data->dev_private;
-	model = dev->data->models[model_id];
+	char str[RTE_MEMZONE_NAMESIZE];
+	uint16_t layer_id = 0;
+	int ret;
 
+	PLT_SET_USED(layer_name);
+
+	cnxk_mldev = (struct cnxk_ml_dev *)device;
+	if (cnxk_mldev == NULL) {
+		plt_err("Invalid device = %p", device);
+		return -EINVAL;
+	}
+
+	model = cnxk_mldev->mldev->data->models[model_id];
 	if (model == NULL) {
 		plt_err("Invalid model_id = %u", model_id);
 		return -EINVAL;
 	}
 
-	if (model->state != ML_CNXK_MODEL_STATE_LOADED) {
-		plt_err("Cannot unload. Model in use.");
-		return -EBUSY;
-	}
+	layer = &model->layer[layer_id];
 
-	dev->data->models[model_id] = NULL;
-	cnxk_mldev->nb_models_unloaded++;
+	snprintf(str, RTE_MEMZONE_NAMESIZE, "%s_%u_%u", CN10K_ML_LAYER_MEMZONE_NAME,
+		 model->model_id, layer_id);
+	ret = plt_memzone_free(plt_memzone_lookup(str));
 
-	snprintf(str, RTE_MEMZONE_NAMESIZE, "%s_%u", CN10K_ML_MODEL_MEMZONE_NAME, model_id);
-	return plt_memzone_free(plt_memzone_lookup(str));
+	layer->state = ML_CNXK_LAYER_STATE_UNKNOWN;
+	cnxk_mldev->index_map[layer->index].active = false;
+
+	return ret;
+}
+
+int
+cn10k_ml_model_unload(struct cnxk_ml_dev *cnxk_mldev, struct cnxk_ml_model *model)
+{
+	return cn10k_ml_layer_unload(cnxk_mldev, model->model_id, NULL);
 }
 
 int
@@ -1748,7 +1800,6 @@ int
 cn10k_ml_model_params_update(struct rte_ml_dev *dev, uint16_t model_id, void *buffer)
 {
 	struct cnxk_ml_model *model;
-	size_t size;
 
 	model = dev->data->models[model_id];
 
@@ -1762,18 +1813,9 @@ cn10k_ml_model_params_update(struct rte_ml_dev *dev, uint16_t model_id, void *bu
 	else if (model->state != ML_CNXK_MODEL_STATE_LOADED)
 		return -EBUSY;
 
-	size = model->layer[0].glow.metadata.init_model.file_size +
-	       model->layer[0].glow.metadata.main_model.file_size +
-	       model->layer[0].glow.metadata.finish_model.file_size +
-	       model->layer[0].glow.metadata.weights_bias.file_size;
-
 	/* Update model weights & bias */
 	rte_memcpy(model->layer[0].glow.addr.wb_load_addr, buffer,
 		   model->layer[0].glow.metadata.weights_bias.file_size);
-
-	/* Copy data from load to run. run address to be used by MLIP */
-	rte_memcpy(model->layer[0].glow.addr.base_dma_addr_run,
-		   model->layer[0].glow.addr.base_dma_addr_load, size);
 
 	return 0;
 }

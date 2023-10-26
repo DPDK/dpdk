@@ -9,9 +9,11 @@
 
 #include <roc_api.h>
 
-#include "cn10k_ml_dev.h"
 #include "cn10k_ml_ocm.h"
 
+#include "cnxk_ml_io.h"
+
+struct cnxk_ml_dev;
 struct cnxk_ml_model;
 struct cnxk_ml_layer;
 struct cnxk_ml_req;
@@ -366,26 +368,14 @@ struct cn10k_ml_layer_addr {
 	/* Base DMA address for load */
 	void *base_dma_addr_load;
 
-	/* Base DMA address for run */
-	void *base_dma_addr_run;
-
 	/* Init section load address */
 	void *init_load_addr;
-
-	/* Init section run address */
-	void *init_run_addr;
 
 	/* Main section load address */
 	void *main_load_addr;
 
-	/* Main section run address */
-	void *main_run_addr;
-
 	/* Finish section load address */
 	void *finish_load_addr;
-
-	/* Finish section run address */
-	void *finish_run_addr;
 
 	/* Weights and Bias base address */
 	void *wb_base_addr;
@@ -462,9 +452,13 @@ int cn10k_ml_model_metadata_check(uint8_t *buffer, uint64_t size);
 void cn10k_ml_model_metadata_update(struct cn10k_ml_model_metadata *metadata);
 void cn10k_ml_layer_addr_update(struct cnxk_ml_layer *layer, uint8_t *buffer,
 				uint8_t *base_dma_addr);
-void cn10k_ml_layer_info_update(struct cnxk_ml_layer *layer);
-int cn10k_ml_model_ocm_pages_count(struct cn10k_ml_dev *cn10k_mldev, uint16_t model_id,
+void cn10k_ml_layer_io_info_set(struct cnxk_ml_io_info *io_info,
+				struct cn10k_ml_model_metadata *metadata);
+struct cnxk_ml_io_info *cn10k_ml_model_io_info_get(struct cnxk_ml_model *model, uint16_t layer_id);
+int cn10k_ml_model_ocm_pages_count(struct cnxk_ml_dev *cnxk_mldev, struct cnxk_ml_layer *layer,
 				   uint8_t *buffer, uint16_t *wb_pages, uint16_t *scratch_pages);
-void cn10k_ml_model_info_set(struct rte_ml_dev *dev, struct cnxk_ml_model *model);
+void cn10k_ml_model_info_set(struct cnxk_ml_dev *cnxk_mldev, struct cnxk_ml_model *model,
+			     struct cnxk_ml_io_info *io_info,
+			     struct cn10k_ml_model_metadata *metadata);
 
 #endif /* _CN10K_ML_MODEL_H_ */
