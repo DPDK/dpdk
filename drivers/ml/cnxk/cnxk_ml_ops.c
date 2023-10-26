@@ -1372,7 +1372,7 @@ dequeue_req:
 		if (plt_tsc_cycles() < req->timeout)
 			goto empty_or_active;
 		else /* Timeout, set indication of driver error */
-			model->set_error_code(req, ML_ETYPE_DRIVER, 0);
+			model->set_error_code(req, ML_CNXK_ETYPE_DRIVER, 0);
 	}
 
 	model->result_update(cnxk_mldev, qp->id, req);
