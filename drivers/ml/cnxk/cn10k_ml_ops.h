@@ -317,9 +317,8 @@ int cn10k_ml_model_load(struct cnxk_ml_dev *cnxk_mldev, struct rte_ml_model_para
 int cn10k_ml_model_unload(struct cnxk_ml_dev *cnxk_mldev, struct cnxk_ml_model *model);
 int cn10k_ml_model_start(struct cnxk_ml_dev *cnxk_mldev, struct cnxk_ml_model *model);
 int cn10k_ml_model_stop(struct cnxk_ml_dev *cnxk_mldev, struct cnxk_ml_model *model);
-int cn10k_ml_model_info_get(struct rte_ml_dev *dev, uint16_t model_id,
-			    struct rte_ml_model_info *model_info);
-int cn10k_ml_model_params_update(struct rte_ml_dev *dev, uint16_t model_id, void *buffer);
+int cn10k_ml_model_params_update(struct cnxk_ml_dev *cnxk_mldev, struct cnxk_ml_model *model,
+				 void *buffer);
 
 /* I/O ops */
 int cn10k_ml_io_quantize(struct rte_ml_dev *dev, uint16_t model_id,

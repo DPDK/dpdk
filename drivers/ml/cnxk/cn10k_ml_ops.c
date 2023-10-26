@@ -1835,45 +1835,23 @@ cn10k_ml_model_stop(struct cnxk_ml_dev *cnxk_mldev, struct cnxk_ml_model *model)
 }
 
 int
-cn10k_ml_model_info_get(struct rte_ml_dev *dev, uint16_t model_id,
-			struct rte_ml_model_info *model_info)
+cn10k_ml_model_params_update(struct cnxk_ml_dev *cnxk_mldev, struct cnxk_ml_model *model,
+			     void *buffer)
 {
-	struct cnxk_ml_model *model;
+	struct cnxk_ml_layer *layer;
 
-	model = dev->data->models[model_id];
-
-	if (model == NULL) {
-		plt_err("Invalid model_id = %u", model_id);
-		return -EINVAL;
-	}
-
-	rte_memcpy(model_info, model->info, sizeof(struct rte_ml_model_info));
-	model_info->input_info = ((struct rte_ml_model_info *)model->info)->input_info;
-	model_info->output_info = ((struct rte_ml_model_info *)model->info)->output_info;
-
-	return 0;
-}
-
-int
-cn10k_ml_model_params_update(struct rte_ml_dev *dev, uint16_t model_id, void *buffer)
-{
-	struct cnxk_ml_model *model;
-
-	model = dev->data->models[model_id];
-
-	if (model == NULL) {
-		plt_err("Invalid model_id = %u", model_id);
-		return -EINVAL;
-	}
+	RTE_SET_USED(cnxk_mldev);
 
 	if (model->state == ML_CNXK_MODEL_STATE_UNKNOWN)
 		return -1;
 	else if (model->state != ML_CNXK_MODEL_STATE_LOADED)
 		return -EBUSY;
 
+	layer = &model->layer[0];
+
 	/* Update model weights & bias */
-	rte_memcpy(model->layer[0].glow.addr.wb_load_addr, buffer,
-		   model->layer[0].glow.metadata.weights_bias.file_size);
+	rte_memcpy(layer->glow.addr.wb_load_addr, buffer,
+		   layer->glow.metadata.weights_bias.file_size);
 
 	return 0;
 }
