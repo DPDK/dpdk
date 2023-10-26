@@ -1218,6 +1218,8 @@ enum {
 	MLX5_CMD_OP_CREATE_FLOW_GROUP = 0x933,
 	MLX5_CMD_OP_SET_FLOW_TABLE_ENTRY = 0x936,
 	MLX5_CMD_OP_MODIFY_FLOW_TABLE = 0x93c,
+	MLX5_CMD_OP_ALLOC_PACKET_REFORMAT_CONTEXT = 0x93d,
+	MLX5_CMD_OP_DEALLOC_PACKET_REFORMAT_CONTEXT = 0x93e,
 	MLX5_CMD_OP_ALLOC_FLOW_COUNTER = 0x939,
 	MLX5_CMD_OP_QUERY_FLOW_COUNTER = 0x93b,
 	MLX5_CMD_OP_CREATE_GENERAL_OBJECT = 0xa00,
@@ -5189,6 +5191,43 @@ struct mlx5_ifc_modify_flow_table_out_bits {
 	u8 syndrome[0x20];
 
 	u8 reserved_at_40[0x60];
+};
+
+struct mlx5_ifc_packet_reformat_context_in_bits {
+	u8 reformat_type[0x8];
+	u8 reserved_at_8[0x4];
+	u8 reformat_param_0[0x4];
+	u8 reserved_at_16[0x6];
+	u8 reformat_data_size[0xa];
+
+	u8 reformat_param_1[0x8];
+	u8 reserved_at_40[0x8];
+	u8 reformat_data[6][0x8];
+
+	u8 more_reformat_data[][0x8];
+};
+
+struct mlx5_ifc_alloc_packet_reformat_context_in_bits {
+	u8 opcode[0x10];
+	u8 uid[0x10];
+
+	u8 reserved_at_20[0x10];
+	u8 op_mod[0x10];
+
+	u8 reserved_at_40[0xa0];
+
+	u8 packet_reformat_context[];
+};
+
+struct mlx5_ifc_alloc_packet_reformat_out_bits {
+	u8 status[0x8];
+	u8 reserved_at_8[0x18];
+
+	u8 syndrome[0x20];
+
+	u8 packet_reformat_id[0x20];
+
+	u8 reserved_at_60[0x20];
 };
 
 /* CQE format mask. */

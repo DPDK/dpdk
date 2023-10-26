@@ -780,6 +780,66 @@ mlx5dr_cmd_sq_create(struct ibv_context *ctx,
 	return devx_obj;
 }
 
+struct mlx5dr_devx_obj *
+mlx5dr_cmd_packet_reformat_create(struct ibv_context *ctx,
+				  struct mlx5dr_cmd_packet_reformat_create_attr *attr)
+{
+	uint32_t out[MLX5_ST_SZ_DW(alloc_packet_reformat_out)] = {0};
+	size_t insz, cmd_data_sz, cmd_total_sz;
+	struct mlx5dr_devx_obj *devx_obj;
+	void *prctx;
+	void *pdata;
+	void *in;
+
+	cmd_total_sz = MLX5_ST_SZ_BYTES(alloc_packet_reformat_context_in);
+	cmd_total_sz += MLX5_ST_SZ_BYTES(packet_reformat_context_in);
+	cmd_data_sz = MLX5_FLD_SZ_BYTES(packet_reformat_context_in, reformat_data);
+	insz = align(cmd_total_sz + attr->data_sz - cmd_data_sz, DW_SIZE);
+	in = simple_calloc(1, insz);
+	if (!in) {
+		rte_errno = ENOMEM;
+		return NULL;
+	}
+
+	MLX5_SET(alloc_packet_reformat_context_in, in, opcode,
+		 MLX5_CMD_OP_ALLOC_PACKET_REFORMAT_CONTEXT);
+
+	prctx = MLX5_ADDR_OF(alloc_packet_reformat_context_in, in,
+			     packet_reformat_context);
+	pdata = MLX5_ADDR_OF(packet_reformat_context_in, prctx, reformat_data);
+
+	MLX5_SET(packet_reformat_context_in, prctx, reformat_type, attr->type);
+	MLX5_SET(packet_reformat_context_in, prctx, reformat_param_0, attr->reformat_param_0);
+	MLX5_SET(packet_reformat_context_in, prctx, reformat_data_size, attr->data_sz);
+	memcpy(pdata, attr->data, attr->data_sz);
+
+	devx_obj = simple_malloc(sizeof(*devx_obj));
+	if (!devx_obj) {
+		DR_LOG(ERR, "Failed to allocate memory for packet reformat object");
+		rte_errno = ENOMEM;
+		goto out_free_in;
+	}
+
+	devx_obj->obj = mlx5_glue->devx_obj_create(ctx, in, insz, out, sizeof(out));
+	if (!devx_obj->obj) {
+		DR_LOG(ERR, "Failed to create packet reformat");
+		rte_errno = errno;
+		goto out_free_devx;
+	}
+
+	devx_obj->id = MLX5_GET(alloc_packet_reformat_out, out, packet_reformat_id);
+
+	simple_free(in);
+
+	return devx_obj;
+
+out_free_devx:
+	simple_free(devx_obj);
+out_free_in:
+	simple_free(in);
+	return NULL;
+}
+
 int mlx5dr_cmd_sq_modify_rdy(struct mlx5dr_devx_obj *devx_obj)
 {
 	uint32_t out[MLX5_ST_SZ_DW(modify_sq_out)] = {0};

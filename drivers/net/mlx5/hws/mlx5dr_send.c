@@ -668,11 +668,6 @@ free_sq:
 	return err;
 }
 
-static inline unsigned long align(unsigned long val, unsigned long align)
-{
-	return (val + align - 1) & ~(align - 1);
-}
-
 static int mlx5dr_send_ring_open_sq(struct mlx5dr_context *ctx,
 				    struct mlx5dr_send_engine *queue,
 				    struct mlx5dr_send_ring_sq *sq,

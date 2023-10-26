@@ -155,6 +155,13 @@ struct mlx5dr_cmd_allow_other_vhca_access_attr {
 	uint8_t access_key[ACCESS_KEY_LEN];
 };
 
+struct mlx5dr_cmd_packet_reformat_create_attr {
+	uint8_t type;
+	size_t data_sz;
+	void *data;
+	uint8_t reformat_param_0;
+};
+
 struct mlx5dr_cmd_query_ft_caps {
 	uint8_t max_level;
 	uint8_t reparse;
@@ -284,6 +291,10 @@ mlx5dr_cmd_forward_tbl_create(struct ibv_context *ctx,
 			      struct mlx5dr_cmd_set_fte_attr *fte_attr);
 
 void mlx5dr_cmd_forward_tbl_destroy(struct mlx5dr_cmd_forward_tbl *tbl);
+
+struct mlx5dr_devx_obj *
+mlx5dr_cmd_packet_reformat_create(struct ibv_context *ctx,
+				  struct mlx5dr_cmd_packet_reformat_create_attr *attr);
 
 struct mlx5dr_devx_obj *
 mlx5dr_cmd_alias_obj_create(struct ibv_context *ctx,

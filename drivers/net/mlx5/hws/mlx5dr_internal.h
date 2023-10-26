@@ -91,4 +91,9 @@ static inline uint64_t roundup_pow_of_two(uint64_t n)
 	return n == 1 ? 1 : 1ULL << log2above(n);
 }
 
+static inline unsigned long align(unsigned long val, unsigned long align)
+{
+	return (val + align - 1) & ~(align - 1);
+}
+
 #endif /* MLX5DR_INTERNAL_H_ */
