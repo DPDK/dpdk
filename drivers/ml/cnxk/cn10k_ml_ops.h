@@ -333,6 +333,9 @@ int cn10k_ml_io_alloc(void *device, uint16_t model_id, const char *layer_name,
 		      uint64_t **input_qbuffer, uint64_t **output_qbuffer);
 int cn10k_ml_io_free(void *device, uint16_t model_id, const char *layer_name);
 
+int cn10k_ml_malloc(const char *name, size_t size, uint32_t align, void **addr);
+int cn10k_ml_free(const char *name);
+
 /* xstats ops */
 void cn10k_ml_xstat_model_name_set(struct cnxk_ml_dev *cnxk_mldev, struct cnxk_ml_model *model,
 				   uint16_t stat_id, uint16_t entry, char *suffix);

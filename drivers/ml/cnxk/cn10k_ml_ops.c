@@ -1497,3 +1497,33 @@ cn10k_ml_io_free(void *device, uint16_t model_id, const char *layer_name)
 
 	return plt_memzone_free(mz);
 }
+
+int
+cn10k_ml_malloc(const char *name, size_t size, uint32_t align, void **addr)
+{
+	const struct plt_memzone *mz;
+
+	mz = plt_memzone_reserve_aligned(name, size, 0, align);
+	if (mz == NULL) {
+		plt_err("ml_malloc failed: Unable to allocate memory: name = %s", name);
+		return -ENOMEM;
+	}
+
+	*addr = mz->addr;
+
+	return 0;
+}
+
+int
+cn10k_ml_free(const char *name)
+{
+	const struct plt_memzone *mz;
+
+	mz = plt_memzone_lookup(name);
+	if (mz == NULL) {
+		plt_err("ml_free failed: Memzone not found: name = %s", name);
+		return -EINVAL;
+	}
+
+	return plt_memzone_free(mz);
+}
