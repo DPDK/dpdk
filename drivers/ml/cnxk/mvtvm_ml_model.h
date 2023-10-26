@@ -33,6 +33,27 @@ struct mvtvm_ml_model_object {
 	int64_t size;
 };
 
+/* Model fast-path stats */
+struct mvtvm_ml_model_xstats {
+	/* Total TVM runtime latency, sum of all inferences */
+	uint64_t tvm_rt_latency_tot;
+
+	/* TVM runtime latency */
+	uint64_t tvm_rt_latency;
+
+	/* Minimum TVM runtime latency */
+	uint64_t tvm_rt_latency_min;
+
+	/* Maximum TVM runtime latency */
+	uint64_t tvm_rt_latency_max;
+
+	/* Total jobs dequeued */
+	uint64_t dequeued_count;
+
+	/* Hardware stats reset index */
+	uint64_t tvm_rt_reset_count;
+};
+
 struct mvtvm_ml_model_data {
 	/* Model metadata */
 	struct tvmdp_model_metadata metadata;
@@ -45,6 +66,9 @@ struct mvtvm_ml_model_data {
 
 	/* Model I/O info */
 	struct cnxk_ml_io_info info;
+
+	/* Stats for burst ops */
+	struct mvtvm_ml_model_xstats *burst_xstats;
 };
 
 enum cnxk_ml_model_type mvtvm_ml_model_type_get(struct rte_ml_model_params *params);

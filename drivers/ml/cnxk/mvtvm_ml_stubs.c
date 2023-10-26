@@ -8,6 +8,7 @@
 
 #include "cnxk_ml_dev.h"
 #include "cnxk_ml_model.h"
+#include "cnxk_ml_xstats.h"
 
 enum cnxk_ml_model_type
 mvtvm_ml_model_type_get(struct rte_ml_model_params *params)
@@ -42,6 +43,28 @@ mvtvm_ml_layer_print(struct cnxk_ml_dev *cnxk_mldev, struct cnxk_ml_layer *layer
 	RTE_SET_USED(cnxk_mldev);
 	RTE_SET_USED(layer);
 	RTE_SET_USED(fp);
+}
+
+void
+mvtvm_ml_model_xstat_name_set(struct cnxk_ml_dev *cnxk_mldev, struct cnxk_ml_model *model,
+			      uint16_t stat_id, uint16_t entry, char *suffix)
+{
+	RTE_SET_USED(cnxk_mldev);
+	RTE_SET_USED(model);
+	RTE_SET_USED(stat_id);
+	RTE_SET_USED(entry);
+	RTE_SET_USED(suffix);
+}
+
+uint64_t
+mvtvm_ml_model_xstat_get(struct cnxk_ml_dev *cnxk_mldev, struct cnxk_ml_model *model,
+			 enum cnxk_ml_xstats_type type)
+{
+	RTE_SET_USED(cnxk_mldev);
+	RTE_SET_USED(model);
+	RTE_SET_USED(type);
+
+	return 0;
 }
 
 int

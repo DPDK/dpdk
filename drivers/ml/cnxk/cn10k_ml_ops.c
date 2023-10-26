@@ -197,6 +197,15 @@ cn10k_ml_xstats_layer_name_update(struct cnxk_ml_dev *cnxk_mldev, uint16_t model
 	}
 }
 
+void
+cn10k_ml_xstat_model_name_set(struct cnxk_ml_dev *cnxk_mldev, struct cnxk_ml_model *model,
+			      uint16_t stat_id, uint16_t entry, char *suffix)
+{
+	snprintf(cnxk_mldev->xstats.entries[stat_id].map.name,
+		 sizeof(cnxk_mldev->xstats.entries[stat_id].map.name), "%s-%s-%s",
+		 model->glow.metadata.model.name, model_xstats[entry].name, suffix);
+}
+
 #define ML_AVG_FOREACH_QP(cnxk_mldev, layer, qp_id, str, value, count)                             \
 	do {                                                                                       \
 		value = 0;                                                                         \

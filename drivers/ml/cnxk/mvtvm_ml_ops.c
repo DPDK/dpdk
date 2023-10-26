@@ -10,9 +10,82 @@
 #include "cnxk_ml_dev.h"
 #include "cnxk_ml_model.h"
 #include "cnxk_ml_ops.h"
+#include "cnxk_ml_xstats.h"
 
 /* ML model macros */
 #define MVTVM_ML_MODEL_MEMZONE_NAME "ml_mvtvm_model_mz"
+
+void
+mvtvm_ml_model_xstat_name_set(struct cnxk_ml_dev *cnxk_mldev, struct cnxk_ml_model *model,
+			      uint16_t stat_id, uint16_t entry, char *suffix)
+{
+	snprintf(cnxk_mldev->xstats.entries[stat_id].map.name,
+		 sizeof(cnxk_mldev->xstats.entries[stat_id].map.name), "%s-%s-%s",
+		 model->mvtvm.metadata.model.name, model_xstats[entry].name, suffix);
+}
+
+#define ML_AVG_FOREACH_QP_MVTVM(cnxk_mldev, model, qp_id, value, count)                            \
+	do {                                                                                       \
+		value = 0;                                                                         \
+		for (qp_id = 0; qp_id < cnxk_mldev->mldev->data->nb_queue_pairs; qp_id++) {        \
+			value += model->mvtvm.burst_xstats[qp_id].tvm_rt_latency_tot;              \
+			count += model->mvtvm.burst_xstats[qp_id].dequeued_count -                 \
+				 model->mvtvm.burst_xstats[qp_id].tvm_rt_reset_count;              \
+		}                                                                                  \
+		if (count != 0)                                                                    \
+			value = value / count;                                                     \
+	} while (0)
+
+#define ML_MIN_FOREACH_QP_MVTVM(cnxk_mldev, model, qp_id, value, count)                            \
+	do {                                                                                       \
+		value = UINT64_MAX;                                                                \
+		for (qp_id = 0; qp_id < cnxk_mldev->mldev->data->nb_queue_pairs; qp_id++) {        \
+			value = PLT_MIN(value,                                                     \
+					model->mvtvm.burst_xstats[qp_id].tvm_rt_latency_min);      \
+			count += model->mvtvm.burst_xstats[qp_id].dequeued_count -                 \
+				 model->mvtvm.burst_xstats[qp_id].tvm_rt_reset_count;              \
+		}                                                                                  \
+		if (count == 0)                                                                    \
+			value = 0;                                                                 \
+	} while (0)
+
+#define ML_MAX_FOREACH_QP_MVTVM(cnxk_mldev, model, qp_id, value, count)                            \
+	do {                                                                                       \
+		value = 0;                                                                         \
+		for (qp_id = 0; qp_id < cnxk_mldev->mldev->data->nb_queue_pairs; qp_id++) {        \
+			value = PLT_MAX(value,                                                     \
+					model->mvtvm.burst_xstats[qp_id].tvm_rt_latency_max);      \
+			count += model->mvtvm.burst_xstats[qp_id].dequeued_count -                 \
+				 model->mvtvm.burst_xstats[qp_id].tvm_rt_reset_count;              \
+		}                                                                                  \
+		if (count == 0)                                                                    \
+			value = 0;                                                                 \
+	} while (0)
+
+uint64_t
+mvtvm_ml_model_xstat_get(struct cnxk_ml_dev *cnxk_mldev, struct cnxk_ml_model *model,
+			 enum cnxk_ml_xstats_type type)
+{
+	uint64_t count = 0;
+	uint64_t value = 0;
+	uint32_t qp_id;
+
+	switch (type) {
+	case avg_rt_latency:
+		ML_AVG_FOREACH_QP_MVTVM(cnxk_mldev, model, qp_id, value, count);
+		break;
+	case min_rt_latency:
+		ML_MIN_FOREACH_QP_MVTVM(cnxk_mldev, model, qp_id, value, count);
+		break;
+	case max_rt_latency:
+		ML_MAX_FOREACH_QP_MVTVM(cnxk_mldev, model, qp_id, value, count);
+		break;
+	default:
+		value = 0;
+	}
+
+	return value;
+}
 
 int
 mvtvm_ml_dev_configure(struct cnxk_ml_dev *cnxk_mldev, const struct rte_ml_dev_config *conf)
@@ -53,6 +126,7 @@ mvtvm_ml_model_load(struct cnxk_ml_dev *cnxk_mldev, struct rte_ml_model_params *
 	char str[RTE_MEMZONE_NAMESIZE];
 	const struct plt_memzone *mz;
 	size_t model_object_size = 0;
+	size_t model_xstats_size = 0;
 	uint16_t nb_mrvl_layers;
 	uint16_t nb_llvm_layers;
 	uint8_t layer_id = 0;
@@ -68,7 +142,11 @@ mvtvm_ml_model_load(struct cnxk_ml_dev *cnxk_mldev, struct rte_ml_model_params *
 	model_object_size = RTE_ALIGN_CEIL(object[0].size, RTE_CACHE_LINE_MIN_SIZE) +
 			    RTE_ALIGN_CEIL(object[1].size, RTE_CACHE_LINE_MIN_SIZE) +
 			    RTE_ALIGN_CEIL(object[2].size, RTE_CACHE_LINE_MIN_SIZE);
-	mz_size += model_object_size;
+
+	model_xstats_size =
+		cnxk_mldev->mldev->data->nb_queue_pairs * sizeof(struct mvtvm_ml_model_xstats);
+
+	mz_size += model_object_size + model_xstats_size;
 
 	/* Allocate memzone for model object */
 	snprintf(str, RTE_MEMZONE_NAMESIZE, "%s_%u", MVTVM_ML_MODEL_MEMZONE_NAME, model->model_id);
@@ -180,6 +258,22 @@ mvtvm_ml_model_load(struct cnxk_ml_dev *cnxk_mldev, struct rte_ml_model_params *
 
 	/* Set model info */
 	mvtvm_ml_model_info_set(cnxk_mldev, model);
+
+	/* Update model xstats name */
+	cnxk_ml_xstats_model_name_update(cnxk_mldev, model->model_id);
+
+	model->mvtvm.burst_xstats = RTE_PTR_ADD(
+		model->mvtvm.object.params.addr,
+		RTE_ALIGN_CEIL(model->mvtvm.object.params.size, RTE_CACHE_LINE_MIN_SIZE));
+
+	for (int qp_id = 0; qp_id < cnxk_mldev->mldev->data->nb_queue_pairs; qp_id++) {
+		model->mvtvm.burst_xstats[qp_id].tvm_rt_latency_tot = 0;
+		model->mvtvm.burst_xstats[qp_id].tvm_rt_latency = 0;
+		model->mvtvm.burst_xstats[qp_id].tvm_rt_latency_min = UINT64_MAX;
+		model->mvtvm.burst_xstats[qp_id].tvm_rt_latency_max = 0;
+		model->mvtvm.burst_xstats[qp_id].tvm_rt_reset_count = 0;
+		model->mvtvm.burst_xstats[qp_id].dequeued_count = 0;
+	}
 
 	return 0;
 

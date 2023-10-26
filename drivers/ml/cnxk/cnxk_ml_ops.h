@@ -70,6 +70,7 @@ extern struct rte_ml_dev_ops cnxk_ml_ops;
 
 int cnxk_ml_model_unload(struct rte_ml_dev *dev, uint16_t model_id);
 int cnxk_ml_model_stop(struct rte_ml_dev *dev, uint16_t model_id);
+void cnxk_ml_xstats_model_name_update(struct cnxk_ml_dev *cnxk_mldev, uint16_t model_id);
 
 __rte_hot uint16_t cnxk_ml_enqueue_burst(struct rte_ml_dev *dev, uint16_t qp_id,
 					 struct rte_ml_op **ops, uint16_t nb_ops);

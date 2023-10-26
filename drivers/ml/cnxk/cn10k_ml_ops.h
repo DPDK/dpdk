@@ -331,6 +331,8 @@ int cn10k_ml_layer_start(void *device, uint16_t model_id, const char *layer_name
 int cn10k_ml_layer_stop(void *device, uint16_t model_id, const char *layer_name);
 
 /* xstats ops */
+void cn10k_ml_xstat_model_name_set(struct cnxk_ml_dev *cnxk_mldev, struct cnxk_ml_model *model,
+				   uint16_t stat_id, uint16_t entry, char *suffix);
 uint64_t cn10k_ml_model_xstat_get(struct cnxk_ml_dev *cnxk_mldev, struct cnxk_ml_layer *layer,
 				  enum cnxk_ml_xstats_type type);
 

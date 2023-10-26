@@ -138,7 +138,8 @@ cnxk_ml_xstats_init(struct cnxk_ml_dev *cnxk_mldev)
 
 	/* Allocate memory for xstats entries. Don't allocate during reconfigure */
 	nb_stats = RTE_DIM(device_xstats) +
-		   RTE_DIM(layer_xstats) * ML_CNXK_MAX_MODELS * ML_CNXK_MODEL_MAX_LAYERS;
+		   RTE_DIM(layer_xstats) * ML_CNXK_MAX_MODELS * ML_CNXK_MODEL_MAX_LAYERS +
+		   RTE_DIM(model_xstats) * ML_CNXK_MAX_MODELS;
 	if (cnxk_mldev->xstats.entries == NULL)
 		cnxk_mldev->xstats.entries = rte_zmalloc(
 			"cnxk_ml_xstats", sizeof(struct cnxk_ml_xstats_entry) * nb_stats,
@@ -169,6 +170,25 @@ cnxk_ml_xstats_init(struct cnxk_ml_dev *cnxk_mldev)
 	for (model = 0; model < ML_CNXK_MAX_MODELS; model++) {
 		cnxk_mldev->xstats.offset_for_model[model] = stat_id;
 
+		for (i = 0; i < RTE_DIM(model_xstats); i++) {
+			cnxk_mldev->xstats.entries[stat_id].map.id = stat_id;
+			cnxk_mldev->xstats.entries[stat_id].mode = RTE_ML_DEV_XSTATS_MODEL;
+			cnxk_mldev->xstats.entries[stat_id].group = CNXK_ML_XSTATS_GROUP_MODEL;
+			cnxk_mldev->xstats.entries[stat_id].type = model_xstats[i].type;
+			cnxk_mldev->xstats.entries[stat_id].fn_id = CNXK_ML_XSTATS_FN_MODEL;
+			cnxk_mldev->xstats.entries[stat_id].obj_idx = model;
+			cnxk_mldev->xstats.entries[stat_id].layer_id = -1;
+			cnxk_mldev->xstats.entries[stat_id].reset_allowed =
+				model_xstats[i].reset_allowed;
+
+			/* Name of xstat is updated during model load */
+			snprintf(cnxk_mldev->xstats.entries[stat_id].map.name,
+				 sizeof(cnxk_mldev->xstats.entries[stat_id].map.name),
+				 "Model-%u-%s", model, model_xstats[i].name);
+
+			stat_id++;
+		}
+
 		for (layer = 0; layer < ML_CNXK_MODEL_MAX_LAYERS; layer++) {
 			cnxk_mldev->xstats.offset_for_layer[model][layer] = stat_id;
 
@@ -195,13 +215,44 @@ cnxk_ml_xstats_init(struct cnxk_ml_dev *cnxk_mldev)
 			cnxk_mldev->xstats.count_per_layer[model][layer] = RTE_DIM(layer_xstats);
 		}
 
-		cnxk_mldev->xstats.count_per_model[model] = RTE_DIM(layer_xstats);
+		cnxk_mldev->xstats.count_per_model[model] =
+			RTE_DIM(layer_xstats) + ML_CNXK_MODEL_MAX_LAYERS * RTE_DIM(model_xstats);
 	}
 
 	cnxk_mldev->xstats.count_mode_model = stat_id - cnxk_mldev->xstats.count_mode_device;
 	cnxk_mldev->xstats.count = stat_id;
 
 	return 0;
+}
+
+void
+cnxk_ml_xstats_model_name_update(struct cnxk_ml_dev *cnxk_mldev, uint16_t model_id)
+{
+	struct cnxk_ml_model *model;
+	uint16_t rclk_freq;
+	uint16_t sclk_freq;
+	uint16_t stat_id;
+	char suffix[8];
+	uint16_t i;
+
+	model = cnxk_mldev->mldev->data->models[model_id];
+	stat_id = cnxk_mldev->xstats.offset_for_model[model_id];
+
+	roc_clk_freq_get(&rclk_freq, &sclk_freq);
+	if (sclk_freq == 0)
+		rte_strscpy(suffix, "cycles", 7);
+	else
+		rte_strscpy(suffix, "ns", 3);
+
+	/* Update xstat name based on layer name and sclk availability */
+	for (i = 0; i < RTE_DIM(model_xstats); i++) {
+		if (model->type == ML_CNXK_MODEL_TYPE_GLOW)
+			cn10k_ml_xstat_model_name_set(cnxk_mldev, model, stat_id, i, suffix);
+		else
+			mvtvm_ml_model_xstat_name_set(cnxk_mldev, model, stat_id, i, suffix);
+
+		stat_id++;
+	}
 }
 
 static void
@@ -247,13 +298,22 @@ cnxk_ml_model_xstat_get(struct cnxk_ml_dev *cnxk_mldev, uint16_t obj_idx, int32_
 	if (model == NULL)
 		return 0;
 
-	if (layer_id >= 0)
+	if (layer_id >= 0) {
 		layer = &model->layer[layer_id];
-	else
-		return 0;
+		goto layer_xstats;
+	} else {
+		layer = NULL;
+		goto model_xstats;
+	}
 
+layer_xstats:
 	value = cn10k_ml_model_xstat_get(cnxk_mldev, layer, type);
+	goto exit_xstats;
 
+model_xstats:
+	value = mvtvm_ml_model_xstat_get(cnxk_mldev, model, type);
+
+exit_xstats:
 	roc_clk_freq_get(&rclk_freq, &sclk_freq);
 	if (sclk_freq != 0) /* return in ns */
 		value = (value * 1000ULL) / sclk_freq;
@@ -836,8 +896,9 @@ cnxk_ml_dev_xstats_names_get(struct rte_ml_dev *dev, enum rte_ml_dev_xstats_mode
 {
 	struct cnxk_ml_xstats_entry *xs;
 	struct cnxk_ml_dev *cnxk_mldev;
+	struct cnxk_ml_model *model;
 	uint32_t xstats_mode_count;
-	uint16_t layer_id = 0;
+	uint16_t layer_id;
 	uint32_t idx = 0;
 	uint32_t i;
 
@@ -854,7 +915,17 @@ cnxk_ml_dev_xstats_names_get(struct rte_ml_dev *dev, enum rte_ml_dev_xstats_mode
 	case RTE_ML_DEV_XSTATS_MODEL:
 		if (model_id >= ML_CNXK_MAX_MODELS)
 			break;
-		xstats_mode_count = cnxk_mldev->xstats.count_per_layer[model_id][layer_id];
+
+		model = cnxk_mldev->mldev->data->models[model_id];
+		for (layer_id = 0; layer_id < model->nb_layers; layer_id++) {
+			if (model->layer[layer_id].type == ML_CNXK_LAYER_TYPE_MRVL)
+				xstats_mode_count +=
+					cnxk_mldev->xstats.count_per_layer[model_id][layer_id];
+		}
+
+		if ((model->type == ML_CNXK_MODEL_TYPE_TVM) &&
+		    (model->subtype != ML_CNXK_MODEL_SUBTYPE_TVM_MRVL))
+			xstats_mode_count += RTE_DIM(model_xstats);
 		break;
 	default:
 		return -EINVAL;
@@ -868,9 +939,20 @@ cnxk_ml_dev_xstats_names_get(struct rte_ml_dev *dev, enum rte_ml_dev_xstats_mode
 		if (xs->mode != mode)
 			continue;
 
-		if (mode == RTE_ML_DEV_XSTATS_MODEL &&
-		    (model_id != xs->obj_idx || layer_id != xs->layer_id))
-			continue;
+		if (mode == RTE_ML_DEV_XSTATS_MODEL) {
+			if (model_id != xs->obj_idx)
+				continue;
+
+			model = cnxk_mldev->mldev->data->models[model_id];
+			if ((model->type == ML_CNXK_MODEL_TYPE_GLOW ||
+			     model->subtype == ML_CNXK_MODEL_SUBTYPE_TVM_MRVL) &&
+			    xs->group == CNXK_ML_XSTATS_GROUP_MODEL)
+				continue;
+
+			if (model->type == ML_CNXK_MODEL_TYPE_TVM &&
+			    model->layer[xs->layer_id].type == ML_CNXK_LAYER_TYPE_LLVM)
+				continue;
+		}
 
 		rte_strscpy(xstats_map[idx].name, xs->map.name, RTE_ML_STR_MAX);
 		xstats_map[idx].id = xs->map.id;
@@ -931,9 +1013,10 @@ cnxk_ml_dev_xstats_get(struct rte_ml_dev *dev, enum rte_ml_dev_xstats_mode mode,
 {
 	struct cnxk_ml_xstats_entry *xs;
 	struct cnxk_ml_dev *cnxk_mldev;
+	struct cnxk_ml_model *model;
 	uint32_t xstats_mode_count;
-	uint16_t layer_id = 0;
 	cnxk_ml_xstats_fn fn;
+	uint16_t layer_id;
 	uint64_t val;
 	uint32_t idx;
 	uint32_t i;
@@ -951,7 +1034,14 @@ cnxk_ml_dev_xstats_get(struct rte_ml_dev *dev, enum rte_ml_dev_xstats_mode mode,
 	case RTE_ML_DEV_XSTATS_MODEL:
 		if (model_id >= ML_CNXK_MAX_MODELS)
 			return -EINVAL;
-		xstats_mode_count = cnxk_mldev->xstats.count_per_layer[model_id][layer_id];
+
+		model = cnxk_mldev->mldev->data->models[model_id];
+		for (layer_id = 0; layer_id < model->nb_layers; layer_id++)
+			xstats_mode_count += cnxk_mldev->xstats.count_per_layer[model_id][layer_id];
+
+		if ((model->type == ML_CNXK_MODEL_TYPE_TVM) &&
+		    (model->subtype != ML_CNXK_MODEL_SUBTYPE_TVM_MRVL))
+			xstats_mode_count += RTE_DIM(model_xstats);
 		break;
 	default:
 		return -EINVAL;
@@ -963,11 +1053,18 @@ cnxk_ml_dev_xstats_get(struct rte_ml_dev *dev, enum rte_ml_dev_xstats_mode mode,
 		if (stat_ids[i] > cnxk_mldev->xstats.count || xs->mode != mode)
 			continue;
 
-		if (mode == RTE_ML_DEV_XSTATS_MODEL &&
-		    (model_id != xs->obj_idx || layer_id != xs->layer_id)) {
-			plt_err("Invalid stats_id[%d] = %d for model_id = %d\n", i, stat_ids[i],
-				model_id);
-			return -EINVAL;
+		if (mode == RTE_ML_DEV_XSTATS_MODEL) {
+			if (model_id != xs->obj_idx)
+				continue;
+
+			model = cnxk_mldev->mldev->data->models[xs->obj_idx];
+			if ((model->type == ML_CNXK_MODEL_TYPE_GLOW ||
+			     model->subtype == ML_CNXK_MODEL_SUBTYPE_TVM_MRVL) &&
+			    xs->group == CNXK_ML_XSTATS_GROUP_MODEL)
+				continue;
+
+			if (xs->layer_id == -1 && xs->group == CNXK_ML_XSTATS_GROUP_LAYER)
+				continue;
 		}
 
 		switch (xs->fn_id) {

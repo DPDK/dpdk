@@ -142,4 +142,11 @@ static const struct cnxk_ml_xstat_info layer_xstats[] = {
 	{"Min-FW-Latency", min_fw_latency, 1}, {"Max-FW-Latency", max_fw_latency, 1},
 };
 
+/* Model xstats */
+static const struct cnxk_ml_xstat_info model_xstats[] = {
+	{"Avg-RT-Latency", avg_rt_latency, 1},
+	{"Min-RT-Latency", min_rt_latency, 1},
+	{"Max-RT-Latency", max_rt_latency, 1},
+};
+
 #endif /* _CNXK_ML_XSTATS_H_ */
