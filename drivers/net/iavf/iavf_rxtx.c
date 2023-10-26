@@ -2829,7 +2829,7 @@ iavf_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 			txe->last_id = desc_idx_last;
 			desc_idx = txe->next_id;
 			txe = txn;
-			}
+		}
 
 		if (nb_desc_ipsec) {
 			volatile struct iavf_tx_ipsec_desc *ipsec_desc =
@@ -2842,7 +2842,7 @@ iavf_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 			if (txe->mbuf) {
 				rte_pktmbuf_free_seg(txe->mbuf);
 				txe->mbuf = NULL;
-		}
+			}
 
 			iavf_fill_ipsec_desc(ipsec_desc, ipsec_md, &ipseclen);
 
