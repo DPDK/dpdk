@@ -72,3 +72,21 @@ mvtvm_ml_model_unload(struct cnxk_ml_dev *cnxk_mldev, struct cnxk_ml_model *mode
 
 	return -EINVAL;
 }
+
+int
+mvtvm_ml_model_start(struct cnxk_ml_dev *cnxk_mldev, struct cnxk_ml_model *model)
+{
+	RTE_SET_USED(cnxk_mldev);
+	RTE_SET_USED(model);
+
+	return -EINVAL;
+}
+
+int
+mvtvm_ml_model_stop(struct cnxk_ml_dev *cnxk_mldev, struct cnxk_ml_model *model)
+{
+	RTE_SET_USED(cnxk_mldev);
+	RTE_SET_USED(model);
+
+	return -EINVAL;
+}

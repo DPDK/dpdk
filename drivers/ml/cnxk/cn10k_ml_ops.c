@@ -827,7 +827,7 @@ cn10k_ml_layer_start(void *device, uint16_t model_id, const char *layer_name)
 	struct cn10k_ml_ocm *ocm;
 	struct cnxk_ml_req *req;
 
-	uint16_t layer_id = 0;
+	uint16_t layer_id;
 	bool job_enqueued;
 	bool job_dequeued;
 	uint8_t num_tiles;
@@ -837,8 +837,6 @@ cn10k_ml_layer_start(void *device, uint16_t model_id, const char *layer_name)
 	int tile_end;
 	bool locked;
 	int ret = 0;
-
-	PLT_SET_USED(layer_name);
 
 	cnxk_mldev = (struct cnxk_ml_dev *)device;
 	if (cnxk_mldev == NULL) {
@@ -851,6 +849,10 @@ cn10k_ml_layer_start(void *device, uint16_t model_id, const char *layer_name)
 		plt_err("Invalid model_id = %u", model_id);
 		return -EINVAL;
 	}
+
+	ret = cn10k_ml_model_get_layer_id(model, layer_name, &layer_id);
+	if (ret != 0)
+		return ret;
 
 	layer = &model->layer[layer_id];
 	cn10k_mldev = &cnxk_mldev->cn10k_mldev;
@@ -1015,13 +1017,11 @@ cn10k_ml_layer_stop(void *device, uint16_t model_id, const char *layer_name)
 	struct cn10k_ml_ocm *ocm;
 	struct cnxk_ml_req *req;
 
-	uint16_t layer_id = 0;
+	uint16_t layer_id;
 	bool job_enqueued;
 	bool job_dequeued;
 	bool locked;
 	int ret = 0;
-
-	PLT_SET_USED(layer_name);
 
 	cnxk_mldev = (struct cnxk_ml_dev *)device;
 	if (cnxk_mldev == NULL) {
@@ -1034,6 +1034,10 @@ cn10k_ml_layer_stop(void *device, uint16_t model_id, const char *layer_name)
 		plt_err("Invalid model_id = %u", model_id);
 		return -EINVAL;
 	}
+
+	ret = cn10k_ml_model_get_layer_id(model, layer_name, &layer_id);
+	if (ret != 0)
+		return ret;
 
 	layer = &model->layer[layer_id];
 	cn10k_mldev = &cnxk_mldev->cn10k_mldev;

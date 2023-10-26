@@ -213,3 +213,55 @@ mvtvm_ml_model_unload(struct cnxk_ml_dev *cnxk_mldev, struct cnxk_ml_model *mode
 
 	return plt_memzone_free(mz);
 }
+
+int
+mvtvm_ml_model_start(struct cnxk_ml_dev *cnxk_mldev, struct cnxk_ml_model *model)
+{
+	struct cnxk_ml_layer *layer;
+
+	uint16_t layer_id = 0;
+	int ret = 0;
+
+next_layer:
+	layer = &model->layer[layer_id];
+	if (layer->type == ML_CNXK_LAYER_TYPE_MRVL) {
+		ret = cn10k_ml_layer_start(cnxk_mldev, model->model_id, layer->name);
+		if (ret != 0) {
+			plt_err("Layer start failed, model_id = %u, layer_name = %s, error = %d",
+				model->model_id, layer->name, ret);
+			return ret;
+		}
+	}
+	layer_id++;
+
+	if (layer_id < model->nb_layers)
+		goto next_layer;
+
+	return 0;
+}
+
+int
+mvtvm_ml_model_stop(struct cnxk_ml_dev *cnxk_mldev, struct cnxk_ml_model *model)
+{
+	struct cnxk_ml_layer *layer;
+
+	uint16_t layer_id = 0;
+	int ret = 0;
+
+next_layer:
+	layer = &model->layer[layer_id];
+	if (layer->type == ML_CNXK_LAYER_TYPE_MRVL) {
+		ret = cn10k_ml_layer_stop(cnxk_mldev, model->model_id, layer->name);
+		if (ret != 0) {
+			plt_err("Layer stop failed, model_id = %u, layer_name = %s, error = %d",
+				model->model_id, layer->name, ret);
+			return ret;
+		}
+	}
+	layer_id++;
+
+	if (layer_id < model->nb_layers)
+		goto next_layer;
+
+	return 0;
+}
