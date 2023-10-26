@@ -69,7 +69,7 @@ struct rte_gpu_mpshared {
 	/* Device info structure. */
 	struct rte_gpu_info info;
 	/* Counter of processes using the device. */
-	uint16_t process_refcnt; /* Updated by this library. */
+	RTE_ATOMIC(uint16_t) process_refcnt; /* Updated by this library. */
 };
 
 struct rte_gpu {

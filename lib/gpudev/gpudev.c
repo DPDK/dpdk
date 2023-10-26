@@ -228,7 +228,7 @@ rte_gpu_allocate(const char *name)
 	dev->mpshared->info.numa_node = -1;
 	dev->mpshared->info.parent = RTE_GPU_ID_NONE;
 	TAILQ_INIT(&dev->callbacks);
-	__atomic_fetch_add(&dev->mpshared->process_refcnt, 1, __ATOMIC_RELAXED);
+	rte_atomic_fetch_add_explicit(&dev->mpshared->process_refcnt, 1, rte_memory_order_relaxed);
 
 	gpu_count++;
 	GPU_LOG(DEBUG, "new device %s (id %d) of total %d",
@@ -277,7 +277,7 @@ rte_gpu_attach(const char *name)
 
 	TAILQ_INIT(&dev->callbacks);
 	dev->mpshared = shared_dev;
-	__atomic_fetch_add(&dev->mpshared->process_refcnt, 1, __ATOMIC_RELAXED);
+	rte_atomic_fetch_add_explicit(&dev->mpshared->process_refcnt, 1, rte_memory_order_relaxed);
 
 	gpu_count++;
 	GPU_LOG(DEBUG, "attached device %s (id %d) of total %d",
@@ -340,7 +340,7 @@ rte_gpu_release(struct rte_gpu *dev)
 
 	gpu_free_callbacks(dev);
 	dev->process_state = RTE_GPU_STATE_UNUSED;
-	__atomic_fetch_sub(&dev->mpshared->process_refcnt, 1, __ATOMIC_RELAXED);
+	rte_atomic_fetch_sub_explicit(&dev->mpshared->process_refcnt, 1, rte_memory_order_relaxed);
 	gpu_count--;
 
 	return 0;
