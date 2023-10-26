@@ -169,7 +169,9 @@ mlx5dr_cmd_set_fte(struct ibv_context *ctx,
 	uint32_t *in;
 	uint32_t i;
 
-	dest_entry_sz = MLX5_ST_SZ_BYTES(dest_format);
+	dest_entry_sz = fte_attr->extended_dest ?
+			MLX5_ST_SZ_BYTES(extended_dest_format) :
+			MLX5_ST_SZ_BYTES(dest_format);
 	total_dest_sz = dest_entry_sz * fte_attr->dests_num;
 	inlen = align((MLX5_ST_SZ_BYTES(set_fte_in) + total_dest_sz), DW_SIZE);
 	in = simple_calloc(1, inlen);
@@ -192,6 +194,7 @@ mlx5dr_cmd_set_fte(struct ibv_context *ctx,
 	in_flow_context = MLX5_ADDR_OF(set_fte_in, in, flow_context);
 	MLX5_SET(flow_context, in_flow_context, group_id, group_id);
 	MLX5_SET(flow_context, in_flow_context, flow_source, fte_attr->flow_source);
+	MLX5_SET(flow_context, in_flow_context, extended_destination, fte_attr->extended_dest);
 	MLX5_SET(set_fte_in, in, ignore_flow_level, fte_attr->ignore_flow_level);
 
 	action_flags = fte_attr->action_flags;
@@ -230,6 +233,11 @@ mlx5dr_cmd_set_fte(struct ibv_context *ctx,
 					 dest->destination_type);
 				MLX5_SET(dest_format, in_dests, destination_id,
 					 dest->destination_id);
+				if (dest->ext_flags & MLX5DR_CMD_EXT_DEST_REFORMAT) {
+					MLX5_SET(dest_format, in_dests, packet_reformat, 1);
+					MLX5_SET(extended_dest_format, in_dests, packet_reformat_id,
+						 dest->ext_reformat->id);
+				}
 				break;
 			default:
 				rte_errno = EOPNOTSUPP;

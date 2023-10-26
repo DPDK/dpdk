@@ -153,6 +153,8 @@ struct mlx5dr_action {
 				} devx_dest;
 				struct {
 					struct mlx5dr_cmd_forward_tbl *fw_island;
+					size_t num_dest;
+					struct mlx5dr_cmd_set_fte_dest *dest_list;
 				} dest_array;
 			};
 		};

@@ -1703,6 +1703,44 @@ free_action:
 	return NULL;
 }
 
+static struct mlx5dr_devx_obj *
+mlx5dr_action_dest_array_process_reformat(struct mlx5dr_context *ctx,
+					  enum mlx5dr_action_type type,
+					  void *reformat_data,
+					  size_t reformat_data_sz)
+{
+	struct mlx5dr_cmd_packet_reformat_create_attr pr_attr = {0};
+	struct mlx5dr_devx_obj *reformat_devx_obj;
+
+	if (!reformat_data || !reformat_data_sz) {
+		DR_LOG(ERR, "Empty reformat action or data");
+		rte_errno = EINVAL;
+		return NULL;
+	}
+
+	switch (type) {
+	case MLX5DR_ACTION_TYP_REFORMAT_L2_TO_TNL_L2:
+		pr_attr.type = MLX5_PACKET_REFORMAT_CONTEXT_REFORMAT_TYPE_L2_TO_L2_TUNNEL;
+		break;
+	case MLX5DR_ACTION_TYP_REFORMAT_L2_TO_TNL_L3:
+		pr_attr.type = MLX5_PACKET_REFORMAT_CONTEXT_REFORMAT_TYPE_L2_TO_L3_TUNNEL;
+		break;
+	default:
+		DR_LOG(ERR, "Invalid value for reformat type");
+		rte_errno = EINVAL;
+		return NULL;
+	}
+	pr_attr.reformat_param_0 = 0;
+	pr_attr.data_sz = reformat_data_sz;
+	pr_attr.data = reformat_data;
+
+	reformat_devx_obj = mlx5dr_cmd_packet_reformat_create(ctx->ibv_ctx, &pr_attr);
+	if (!reformat_devx_obj)
+		return NULL;
+
+	return reformat_devx_obj;
+}
+
 struct mlx5dr_action *
 mlx5dr_action_create_dest_array(struct mlx5dr_context *ctx,
 				size_t num_dest,
@@ -1710,6 +1748,7 @@ mlx5dr_action_create_dest_array(struct mlx5dr_context *ctx,
 				uint32_t flags)
 {
 	struct mlx5dr_cmd_set_fte_dest *dest_list = NULL;
+	struct mlx5dr_devx_obj *packet_reformat = NULL;
 	struct mlx5dr_cmd_ft_create_attr ft_attr = {0};
 	struct mlx5dr_cmd_set_fte_attr fte_attr = {0};
 	struct mlx5dr_cmd_forward_tbl *fw_island;
@@ -1796,6 +1835,21 @@ mlx5dr_action_create_dest_array(struct mlx5dr_context *ctx,
 				dest_list[i].destination_id = dests[i].dest->devx_dest.devx_obj->id;
 				fte_attr.action_flags |= MLX5_FLOW_CONTEXT_ACTION_FWD_DEST;
 				break;
+			case MLX5DR_ACTION_TYP_REFORMAT_L2_TO_TNL_L2:
+			case MLX5DR_ACTION_TYP_REFORMAT_L2_TO_TNL_L3:
+				packet_reformat = mlx5dr_action_dest_array_process_reformat
+							(ctx,
+							 *action_type,
+							 dests[i].reformat.reformat_data,
+							 dests[i].reformat.reformat_data_sz);
+				if (!packet_reformat)
+					goto free_dest_list;
+
+				dest_list[i].ext_flags |= MLX5DR_CMD_EXT_DEST_REFORMAT;
+				dest_list[i].ext_reformat = packet_reformat;
+				ft_attr.reformat_en = true;
+				fte_attr.extended_dest = 1;
+				break;
 			default:
 				DR_LOG(ERR, "Unsupported action in dest_array");
 				rte_errno = ENOTSUP;
@@ -1819,8 +1873,9 @@ mlx5dr_action_create_dest_array(struct mlx5dr_context *ctx,
 		goto free_action;
 
 	action->dest_array.fw_island = fw_island;
+	action->dest_array.num_dest = num_dest;
+	action->dest_array.dest_list = dest_list;
 
-	simple_free(dest_list);
 	return action;
 
 free_action:
@@ -1828,6 +1883,10 @@ free_action:
 destroy_fw_island:
 	mlx5dr_cmd_forward_tbl_destroy(fw_island);
 free_dest_list:
+	for (i = 0; i < num_dest; i++) {
+		if (dest_list[i].ext_reformat)
+			mlx5dr_cmd_destroy_obj(dest_list[i].ext_reformat);
+	}
 	simple_free(dest_list);
 	return NULL;
 }
@@ -1917,6 +1976,12 @@ static void mlx5dr_action_destroy_hws(struct mlx5dr_action *action)
 	case MLX5DR_ACTION_TYP_DEST_ARRAY:
 		mlx5dr_action_destroy_stcs(action);
 		mlx5dr_cmd_forward_tbl_destroy(action->dest_array.fw_island);
+		for (i = 0; i < action->dest_array.num_dest; i++) {
+			if (action->dest_array.dest_list[i].ext_reformat)
+				mlx5dr_cmd_destroy_obj
+					(action->dest_array.dest_list[i].ext_reformat);
+		}
+		simple_free(action->dest_array.dest_list);
 		break;
 	case MLX5DR_ACTION_TYP_REFORMAT_TNL_L3_TO_L2:
 	case MLX5DR_ACTION_TYP_MODIFY_HDR:

@@ -14,6 +14,7 @@ struct mlx5dr_cmd_set_fte_dest {
 	uint8_t destination_type;
 	uint32_t destination_id;
 	enum mlx5dr_cmd_ext_dest_flags ext_flags;
+	struct mlx5dr_devx_obj *ext_reformat;
 	uint16_t esw_owner_vhca_id;
 };
 
@@ -21,6 +22,7 @@ struct mlx5dr_cmd_set_fte_attr {
 	uint32_t action_flags;
 	uint8_t ignore_flow_level;
 	uint8_t flow_source;
+	uint8_t extended_dest;
 	uint8_t encrypt_decrypt_type;
 	uint32_t encrypt_decrypt_obj_id;
 	uint32_t packet_reformat_id;
