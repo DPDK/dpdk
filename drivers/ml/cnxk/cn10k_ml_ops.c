@@ -725,6 +725,9 @@ cn10k_ml_model_load(struct cnxk_ml_dev *cnxk_mldev, struct rte_ml_model_params *
 	if (ret != 0)
 		return ret;
 
+	/* Set model sub type */
+	model->subtype = ML_CNXK_MODEL_SUBTYPE_GLOW_MRVL;
+
 	/* Copy metadata to internal buffer */
 	rte_memcpy(&model->glow.metadata, params->addr, sizeof(struct cn10k_ml_model_metadata));
 	cn10k_ml_model_metadata_update(&model->glow.metadata);
@@ -746,6 +749,7 @@ cn10k_ml_model_load(struct cnxk_ml_dev *cnxk_mldev, struct rte_ml_model_params *
 
 	/* Load layer and get the index */
 	layer = &model->layer[0];
+	layer->type = ML_CNXK_LAYER_TYPE_MRVL;
 	ret = cn10k_ml_layer_load(cnxk_mldev, model->model_id, NULL, params->addr, params->size,
 				  &layer->index);
 	if (ret != 0) {
@@ -969,7 +973,7 @@ cn10k_ml_layer_start(void *device, uint16_t model_id, const char *layer_name)
 	if (ret < 0) {
 		cn10k_ml_layer_stop(device, model_id, layer_name);
 	} else {
-		if (cn10k_mldev->cache_model_data)
+		if (cn10k_mldev->cache_model_data && model->type == ML_CNXK_MODEL_TYPE_GLOW)
 			ret = cn10k_ml_cache_model_data(cnxk_mldev, layer);
 	}
 

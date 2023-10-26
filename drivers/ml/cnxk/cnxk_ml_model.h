@@ -11,12 +11,58 @@
 
 #include "cn10k_ml_model.h"
 
+#ifdef RTE_MLDEV_CNXK_ENABLE_MVTVM
+#include "mvtvm_ml_model.h"
+#endif
+
 #include "cnxk_ml_io.h"
 
 struct cnxk_ml_dev;
 struct cnxk_ml_model;
 struct cnxk_ml_qp;
 struct cnxk_ml_req;
+
+/* Model type */
+enum cnxk_ml_model_type {
+	/* Unknown model type */
+	ML_CNXK_MODEL_TYPE_UNKNOWN,
+
+	/* Invalid model type */
+	ML_CNXK_MODEL_TYPE_INVALID,
+
+	/* Glow compiled model, for MLIP target */
+	ML_CNXK_MODEL_TYPE_GLOW,
+
+	/* TVM compiled model, for ARM64 / ARM64 + MLIP target */
+	ML_CNXK_MODEL_TYPE_TVM,
+};
+
+/* Model subtype */
+enum cnxk_ml_model_subtype {
+	/* Marvell Glow model */
+	ML_CNXK_MODEL_SUBTYPE_GLOW_MRVL,
+
+	/* TVM model with single MRVL region */
+	ML_CNXK_MODEL_SUBTYPE_TVM_MRVL,
+
+	/* TVM model with LLVM regions only */
+	ML_CNXK_MODEL_SUBTYPE_TVM_LLVM,
+
+	/* TVM hybrid model, with both MRVL and LLVM regions or (> 1) MRVL regions*/
+	ML_CNXK_MODEL_SUBTYPE_TVM_HYBRID,
+};
+
+/* Layer type */
+enum cnxk_ml_layer_type {
+	/* MRVL layer, for MLIP target*/
+	ML_CNXK_LAYER_TYPE_UNKNOWN = 0,
+
+	/* MRVL layer, for MLIP target*/
+	ML_CNXK_LAYER_TYPE_MRVL,
+
+	/* LLVM layer, for ARM64 target*/
+	ML_CNXK_LAYER_TYPE_LLVM,
+};
 
 /* Model state */
 enum cnxk_ml_model_state {
@@ -53,6 +99,9 @@ struct cnxk_ml_layer {
 	/* Name*/
 	char name[RTE_ML_STR_MAX];
 
+	/* Type */
+	enum cnxk_ml_layer_type type;
+
 	/* Model handle */
 	struct cnxk_ml_model *model;
 
@@ -83,14 +132,27 @@ struct cnxk_ml_model {
 	/* Device reference */
 	struct cnxk_ml_dev *cnxk_mldev;
 
+	/* Type */
+	enum cnxk_ml_model_type type;
+
+	/* Model subtype */
+	enum cnxk_ml_model_subtype subtype;
+
 	/* ID */
 	uint16_t model_id;
 
 	/* Name */
 	char name[RTE_ML_STR_MAX];
 
-	/* Model specific data - glow */
-	struct cn10k_ml_model_data glow;
+	union {
+		/* Model specific data - glow */
+		struct cn10k_ml_model_data glow;
+
+#ifdef RTE_MLDEV_CNXK_ENABLE_MVTVM
+		/* Model type specific data - mvtvm */
+		struct mvtvm_ml_model_data mvtvm;
+#endif
+	};
 
 	/* Batch size */
 	uint32_t batch_size;

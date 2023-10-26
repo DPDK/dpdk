@@ -1217,6 +1217,8 @@ cnxk_ml_io_quantize(struct rte_ml_dev *dev, uint16_t model_id, struct rte_ml_buf
 	struct cnxk_ml_model *model;
 	uint8_t *lcl_dbuffer;
 	uint8_t *lcl_qbuffer;
+	uint64_t d_offset;
+	uint64_t q_offset;
 	uint32_t i;
 	int ret;
 
@@ -1229,17 +1231,31 @@ cnxk_ml_io_quantize(struct rte_ml_dev *dev, uint16_t model_id, struct rte_ml_buf
 		return -EINVAL;
 	}
 
-	info = &model->layer[0].info;
+	if (model->type == ML_CNXK_MODEL_TYPE_GLOW)
+		info = cn10k_ml_model_io_info_get(model, 0);
 
-	lcl_dbuffer = dbuffer[0]->addr;
-	lcl_qbuffer = qbuffer[0]->addr;
+	if (info == NULL)
+		return -EINVAL;
+
+	d_offset = 0;
+	q_offset = 0;
 	for (i = 0; i < info->nb_inputs; i++) {
+		if (model->type == ML_CNXK_MODEL_TYPE_TVM) {
+			lcl_dbuffer = dbuffer[i]->addr;
+			lcl_qbuffer = qbuffer[i]->addr;
+		} else {
+			lcl_dbuffer = RTE_PTR_ADD(dbuffer[0]->addr, d_offset);
+			lcl_qbuffer = RTE_PTR_ADD(qbuffer[0]->addr, q_offset);
+		}
+
 		ret = cnxk_ml_io_quantize_single(&info->input[i], lcl_dbuffer, lcl_qbuffer);
 		if (ret < 0)
 			return ret;
 
-		lcl_dbuffer += info->input[i].sz_d;
-		lcl_qbuffer += info->input[i].sz_q;
+		if (model->type == ML_CNXK_MODEL_TYPE_GLOW) {
+			d_offset += info->input[i].sz_d;
+			q_offset += info->input[i].sz_q;
+		}
 	}
 
 	return 0;
@@ -1253,6 +1269,8 @@ cnxk_ml_io_dequantize(struct rte_ml_dev *dev, uint16_t model_id, struct rte_ml_b
 	struct cnxk_ml_model *model;
 	uint8_t *lcl_qbuffer;
 	uint8_t *lcl_dbuffer;
+	uint64_t q_offset;
+	uint64_t d_offset;
 	uint32_t i;
 	int ret;
 
@@ -1265,17 +1283,31 @@ cnxk_ml_io_dequantize(struct rte_ml_dev *dev, uint16_t model_id, struct rte_ml_b
 		return -EINVAL;
 	}
 
-	info = &model->layer[model->nb_layers - 1].info;
+	if (model->type == ML_CNXK_MODEL_TYPE_GLOW)
+		info = cn10k_ml_model_io_info_get(model, model->nb_layers - 1);
 
-	lcl_qbuffer = qbuffer[0]->addr;
-	lcl_dbuffer = dbuffer[0]->addr;
+	if (info == NULL)
+		return -EINVAL;
+
+	q_offset = 0;
+	d_offset = 0;
 	for (i = 0; i < info->nb_outputs; i++) {
+		if (model->type == ML_CNXK_MODEL_TYPE_TVM) {
+			lcl_qbuffer = qbuffer[i]->addr;
+			lcl_dbuffer = dbuffer[i]->addr;
+		} else {
+			lcl_qbuffer = RTE_PTR_ADD(qbuffer[0]->addr, q_offset);
+			lcl_dbuffer = RTE_PTR_ADD(dbuffer[0]->addr, d_offset);
+		}
+
 		ret = cnxk_ml_io_dequantize_single(&info->output[i], lcl_qbuffer, lcl_dbuffer);
 		if (ret < 0)
 			return ret;
 
-		lcl_qbuffer += info->output[i].sz_q;
-		lcl_dbuffer += info->output[i].sz_d;
+		if (model->type == ML_CNXK_MODEL_TYPE_GLOW) {
+			q_offset += info->output[i].sz_q;
+			d_offset += info->output[i].sz_d;
+		}
 	}
 
 	return 0;

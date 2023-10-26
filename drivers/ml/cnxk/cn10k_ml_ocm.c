@@ -435,6 +435,9 @@ cn10k_ml_ocm_free_pages(struct cnxk_ml_dev *cnxk_mldev, uint16_t model_id, uint1
 
 			for (j = 0; j < local_model->nb_layers; j++) {
 				local_layer = &local_model->layer[j];
+				if (local_layer->type != ML_CNXK_LAYER_TYPE_MRVL)
+					continue;
+
 				if (local_layer != layer &&
 				    local_layer->glow.ocm_map.ocm_reserved) {
 					if (IS_BIT_SET(local_layer->glow.ocm_map.tilemask, tile_id))
