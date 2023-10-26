@@ -68,6 +68,8 @@ cnxk_ml_model_dump(struct cnxk_ml_dev *cnxk_mldev, struct cnxk_ml_model *model, 
 	cnxk_ml_print_line(fp, LINE_LEN);
 	fprintf(fp, "%*s : %u\n", FIELD_LEN, "model_id", model->model_id);
 	fprintf(fp, "%*s : %s\n", FIELD_LEN, "name", model->name);
+	fprintf(fp, "%*s : %d\n", FIELD_LEN, "type", model->type);
+	fprintf(fp, "%*s : %d\n", FIELD_LEN, "subtype", model->subtype);
 	fprintf(fp, "%*s : 0x%016lx\n", FIELD_LEN, "model", PLT_U64_CAST(model));
 	fprintf(fp, "%*s : %u\n", FIELD_LEN, "batch_size", model->batch_size);
 	fprintf(fp, "%*s : %u\n", FIELD_LEN, "nb_layers", model->nb_layers);
@@ -84,6 +86,9 @@ cnxk_ml_model_dump(struct cnxk_ml_dev *cnxk_mldev, struct cnxk_ml_model *model, 
 
 	for (layer_id = 0; layer_id < model->nb_layers; layer_id++) {
 		layer = &model->layer[layer_id];
-		cn10k_ml_layer_print(cnxk_mldev, layer, fp);
+		if (layer->type == ML_CNXK_LAYER_TYPE_MRVL)
+			cn10k_ml_layer_print(cnxk_mldev, layer, fp);
+		else
+			mvtvm_ml_layer_print(cnxk_mldev, layer, fp);
 	}
 }

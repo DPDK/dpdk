@@ -13,6 +13,7 @@
 
 #include "cnxk_ml_dev.h"
 #include "cnxk_ml_model.h"
+#include "cnxk_ml_utils.h"
 
 /* Objects list */
 char mvtvm_object_list[ML_MVTVM_MODEL_OBJECT_MAX][RTE_ML_STR_MAX] = {"mod.so", "mod.json",
@@ -333,4 +334,62 @@ tvm_mrvl_model:
 	cn10k_ml_model_info_set(cnxk_mldev, model, &model->mvtvm.info,
 				&model->layer[0].glow.metadata);
 	info->io_layout = RTE_ML_IO_LAYOUT_SPLIT;
+}
+
+void
+mvtvm_ml_layer_print(struct cnxk_ml_dev *cnxk_mldev, struct cnxk_ml_layer *layer, FILE *fp)
+{
+	char str[STR_LEN];
+	uint8_t i;
+
+	/* Print debug info */
+	cnxk_ml_print_line(fp, LINE_LEN);
+	fprintf(fp, " Layer Information (Layer ID: %u, Name: %s)\n",
+		cnxk_mldev->index_map[layer->index].layer_id, layer->name);
+	cnxk_ml_print_line(fp, LINE_LEN);
+	fprintf(fp, "%*s : %u\n", FIELD_LEN, "layer_id",
+		cnxk_mldev->index_map[layer->index].layer_id);
+	fprintf(fp, "%*s : %s\n", FIELD_LEN, "name", layer->name);
+	fprintf(fp, "%*s : %d\n", FIELD_LEN, "type", layer->type);
+	fprintf(fp, "%*s : 0x%016lx\n", FIELD_LEN, "layer", PLT_U64_CAST(layer));
+	fprintf(fp, "%*s : %u\n", FIELD_LEN, "batch_size", layer->batch_size);
+
+	/* Print model state */
+	if (layer->state == ML_CNXK_LAYER_STATE_LOADED)
+		fprintf(fp, "%*s : %s\n", FIELD_LEN, "state", "loaded");
+	if (layer->state == ML_CNXK_LAYER_STATE_JOB_ACTIVE)
+		fprintf(fp, "%*s : %s\n", FIELD_LEN, "state", "job_active");
+	if (layer->state == ML_CNXK_LAYER_STATE_STARTED)
+		fprintf(fp, "%*s : %s\n", FIELD_LEN, "state", "started");
+
+	fprintf(fp, "%*s : %u\n", FIELD_LEN, "num_inputs", layer->info.nb_inputs);
+	fprintf(fp, "%*s : %u\n", FIELD_LEN, "num_outputs", layer->info.nb_outputs);
+	fprintf(fp, "\n");
+
+	cnxk_ml_print_line(fp, LINE_LEN);
+	fprintf(fp, "%8s  %16s  %12s\n", "input", "input_name", "input_type");
+	cnxk_ml_print_line(fp, LINE_LEN);
+	for (i = 0; i < layer->info.nb_inputs; i++) {
+		fprintf(fp, "%8u  ", i);
+		fprintf(fp, "%*s  ", 16, layer->info.input[i].name);
+		rte_ml_io_type_to_str(layer->info.input[i].qtype, str, STR_LEN);
+		fprintf(fp, "%*s  ", 12, str);
+	}
+	fprintf(fp, "\n");
+	cnxk_ml_print_line(fp, LINE_LEN);
+	fprintf(fp, "\n");
+
+	cnxk_ml_print_line(fp, LINE_LEN);
+	fprintf(fp, "%8s  %16s  %12s\n", "output", "output_name", "output_type");
+	cnxk_ml_print_line(fp, LINE_LEN);
+	for (i = 0; i < layer->info.nb_outputs; i++) {
+		fprintf(fp, "%8u  ", i);
+		fprintf(fp, "%*s  ", 16, layer->info.output[i].name);
+		rte_ml_io_type_to_str(layer->info.output[i].qtype, str, STR_LEN);
+		fprintf(fp, "%*s  ", 12, str);
+		fprintf(fp, "\n");
+	}
+	fprintf(fp, "\n");
+	cnxk_ml_print_line(fp, LINE_LEN);
+	fprintf(fp, "\n");
 }

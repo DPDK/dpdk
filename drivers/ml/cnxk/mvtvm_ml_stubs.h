@@ -9,6 +9,7 @@
 
 struct cnxk_ml_dev;
 struct cnxk_ml_model;
+struct cnxk_ml_layer;
 
 enum cnxk_ml_model_type mvtvm_ml_model_type_get(struct rte_ml_model_params *params);
 int mvtvm_ml_dev_configure(struct cnxk_ml_dev *cnxk_mldev, const struct rte_ml_dev_config *conf);
@@ -22,5 +23,6 @@ int mvtvm_ml_model_stop(struct cnxk_ml_dev *cnxk_mldev, struct cnxk_ml_model *mo
 int mvtvm_ml_model_get_layer_id(struct cnxk_ml_model *model, const char *layer_name,
 				uint16_t *layer_id);
 struct cnxk_ml_io_info *mvtvm_ml_model_io_info_get(struct cnxk_ml_model *model, uint16_t layer_id);
+void mvtvm_ml_layer_print(struct cnxk_ml_dev *cnxk_mldev, struct cnxk_ml_layer *layer, FILE *fp);
 
 #endif /* _MVTVM_ML_STUBS_H_ */
