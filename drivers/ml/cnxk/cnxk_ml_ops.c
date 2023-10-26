@@ -5,6 +5,8 @@
 #include <rte_mldev.h>
 #include <rte_mldev_pmd.h>
 
+#include <mldev_utils.h>
+
 #include "cnxk_ml_dev.h"
 #include "cnxk_ml_io.h"
 #include "cnxk_ml_model.h"
@@ -648,6 +650,78 @@ cnxk_ml_model_params_update(struct rte_ml_dev *dev, uint16_t model_id, void *buf
 	return cn10k_ml_model_params_update(cnxk_mldev, model, buffer);
 }
 
+static int
+cnxk_ml_io_quantize(struct rte_ml_dev *dev, uint16_t model_id, struct rte_ml_buff_seg **dbuffer,
+		    struct rte_ml_buff_seg **qbuffer)
+{
+	struct cnxk_ml_io_info *info = NULL;
+	struct cnxk_ml_model *model;
+	uint8_t *lcl_dbuffer;
+	uint8_t *lcl_qbuffer;
+	uint32_t i;
+	int ret;
+
+	if ((dev == NULL) || (dbuffer == NULL) || (qbuffer == NULL))
+		return -EINVAL;
+
+	model = dev->data->models[model_id];
+	if (model == NULL) {
+		plt_err("Invalid model_id = %u", model_id);
+		return -EINVAL;
+	}
+
+	info = &model->layer[0].info;
+
+	lcl_dbuffer = dbuffer[0]->addr;
+	lcl_qbuffer = qbuffer[0]->addr;
+	for (i = 0; i < info->nb_inputs; i++) {
+		ret = cnxk_ml_io_quantize_single(&info->input[i], lcl_dbuffer, lcl_qbuffer);
+		if (ret < 0)
+			return ret;
+
+		lcl_dbuffer += info->input[i].sz_d;
+		lcl_qbuffer += info->input[i].sz_q;
+	}
+
+	return 0;
+}
+
+static int
+cnxk_ml_io_dequantize(struct rte_ml_dev *dev, uint16_t model_id, struct rte_ml_buff_seg **qbuffer,
+		      struct rte_ml_buff_seg **dbuffer)
+{
+	struct cnxk_ml_io_info *info = NULL;
+	struct cnxk_ml_model *model;
+	uint8_t *lcl_qbuffer;
+	uint8_t *lcl_dbuffer;
+	uint32_t i;
+	int ret;
+
+	if ((dev == NULL) || (qbuffer == NULL) || (dbuffer == NULL))
+		return -EINVAL;
+
+	model = dev->data->models[model_id];
+	if (model == NULL) {
+		plt_err("Invalid model_id = %u", model_id);
+		return -EINVAL;
+	}
+
+	info = &model->layer[model->nb_layers - 1].info;
+
+	lcl_qbuffer = qbuffer[0]->addr;
+	lcl_dbuffer = dbuffer[0]->addr;
+	for (i = 0; i < info->nb_outputs; i++) {
+		ret = cnxk_ml_io_dequantize_single(&info->output[i], lcl_qbuffer, lcl_dbuffer);
+		if (ret < 0)
+			return ret;
+
+		lcl_qbuffer += info->output[i].sz_q;
+		lcl_dbuffer += info->output[i].sz_d;
+	}
+
+	return 0;
+}
+
 struct rte_ml_dev_ops cnxk_ml_ops = {
 	/* Device control ops */
 	.dev_info_get = cnxk_ml_dev_info_get,
@@ -679,6 +753,6 @@ struct rte_ml_dev_ops cnxk_ml_ops = {
 	.model_params_update = cnxk_ml_model_params_update,
 
 	/* I/O ops */
-	.io_quantize = cn10k_ml_io_quantize,
-	.io_dequantize = cn10k_ml_io_dequantize,
+	.io_quantize = cnxk_ml_io_quantize,
+	.io_dequantize = cnxk_ml_io_dequantize,
 };

@@ -13,6 +13,7 @@ sources = files(
         'cn10k_ml_model.c',
         'cn10k_ml_ocm.c',
         'cnxk_ml_dev.c',
+        'cnxk_ml_io.c',
         'cnxk_ml_model.c',
         'cnxk_ml_ops.c',
 )

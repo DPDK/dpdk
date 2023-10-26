@@ -76,4 +76,7 @@ struct cnxk_ml_io_info {
 	uint32_t total_output_sz_d;
 };
 
+int cnxk_ml_io_quantize_single(struct cnxk_ml_io *input, uint8_t *dbuffer, uint8_t *qbuffer);
+int cnxk_ml_io_dequantize_single(struct cnxk_ml_io *output, uint8_t *qbuffer, uint8_t *dbuffer);
+
 #endif /* _CNXK_ML_IO_H_ */

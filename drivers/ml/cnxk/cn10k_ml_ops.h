@@ -320,13 +320,6 @@ int cn10k_ml_model_stop(struct cnxk_ml_dev *cnxk_mldev, struct cnxk_ml_model *mo
 int cn10k_ml_model_params_update(struct cnxk_ml_dev *cnxk_mldev, struct cnxk_ml_model *model,
 				 void *buffer);
 
-/* I/O ops */
-int cn10k_ml_io_quantize(struct rte_ml_dev *dev, uint16_t model_id,
-			 struct rte_ml_buff_seg **dbuffer, struct rte_ml_buff_seg **qbuffer);
-
-int cn10k_ml_io_dequantize(struct rte_ml_dev *dev, uint16_t model_id,
-			   struct rte_ml_buff_seg **qbuffer, struct rte_ml_buff_seg **dbuffer);
-
 /* Fast-path ops */
 __rte_hot uint16_t cn10k_ml_enqueue_burst(struct rte_ml_dev *dev, uint16_t qp_id,
 					  struct rte_ml_op **ops, uint16_t nb_ops);
