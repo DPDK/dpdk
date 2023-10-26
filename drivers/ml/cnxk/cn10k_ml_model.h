@@ -404,7 +404,7 @@ struct cn10k_ml_layer_addr {
 };
 
 /* Model fast-path stats */
-struct cn10k_ml_layer_stats {
+struct cn10k_ml_layer_xstats {
 	/* Total hardware latency, sum of all inferences */
 	uint64_t hw_latency_tot;
 
@@ -447,10 +447,10 @@ struct cn10k_ml_layer_data {
 	struct cnxk_ml_req *req;
 
 	/* Layer: Stats for burst ops */
-	struct cn10k_ml_layer_stats *burst_stats;
+	struct cn10k_ml_layer_xstats *burst_xstats;
 
 	/* Layer: Stats for sync ops */
-	struct cn10k_ml_layer_stats *sync_stats;
+	struct cn10k_ml_layer_xstats *sync_xstats;
 };
 
 struct cn10k_ml_model_data {
