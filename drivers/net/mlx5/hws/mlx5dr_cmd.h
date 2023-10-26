@@ -7,8 +7,12 @@
 
 struct mlx5dr_cmd_set_fte_attr {
 	uint32_t action_flags;
+	uint8_t encrypt_decrypt_type;
+	uint32_t encrypt_decrypt_obj_id;
+	uint32_t packet_reformat_id;
 	uint8_t destination_type;
 	uint32_t destination_id;
+	uint8_t ignore_flow_level;
 	uint8_t flow_source;
 };
 
@@ -16,6 +20,7 @@ struct mlx5dr_cmd_ft_create_attr {
 	uint8_t type;
 	uint8_t level;
 	bool rtc_valid;
+	uint8_t reformat_en;
 };
 
 #define ACCESS_KEY_LEN	32
@@ -295,6 +300,20 @@ void mlx5dr_cmd_forward_tbl_destroy(struct mlx5dr_cmd_forward_tbl *tbl);
 struct mlx5dr_devx_obj *
 mlx5dr_cmd_packet_reformat_create(struct ibv_context *ctx,
 				  struct mlx5dr_cmd_packet_reformat_create_attr *attr);
+
+struct mlx5dr_devx_obj *
+mlx5dr_cmd_set_fte(struct ibv_context *ctx,
+		   uint32_t table_type,
+		   uint32_t table_id,
+		   uint32_t group_id,
+		   struct mlx5dr_cmd_set_fte_attr *fte_attr);
+
+struct mlx5dr_cmd_forward_tbl *
+mlx5dr_cmd_forward_tbl_create(struct ibv_context *ctx,
+			      struct mlx5dr_cmd_ft_create_attr *ft_attr,
+			      struct mlx5dr_cmd_set_fte_attr *fte_attr);
+
+void mlx5dr_cmd_forward_tbl_destroy(struct mlx5dr_cmd_forward_tbl *tbl);
 
 struct mlx5dr_devx_obj *
 mlx5dr_cmd_alias_obj_create(struct ibv_context *ctx,

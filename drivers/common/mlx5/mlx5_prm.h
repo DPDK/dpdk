@@ -5048,7 +5048,11 @@ enum mlx5_flow_destination_type {
 };
 
 enum mlx5_flow_context_action {
+	MLX5_FLOW_CONTEXT_ACTION_DROP = 1 << 1,
 	MLX5_FLOW_CONTEXT_ACTION_FWD_DEST = 1 << 2,
+	MLX5_FLOW_CONTEXT_ACTION_REFORMAT = 1 << 4,
+	MLX5_FLOW_CONTEXT_ACTION_DECRYPT = 1 << 12,
+	MLX5_FLOW_CONTEXT_ACTION_ENCRYPT = 1 << 13,
 };
 
 enum mlx5_flow_context_flow_source {

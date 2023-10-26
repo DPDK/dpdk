@@ -42,6 +42,7 @@ mlx5dr_cmd_flow_table_create(struct ibv_context *ctx,
 	ft_ctx = MLX5_ADDR_OF(create_flow_table_in, in, flow_table_context);
 	MLX5_SET(flow_table_context, ft_ctx, level, ft_attr->level);
 	MLX5_SET(flow_table_context, ft_ctx, rtc_valid, ft_attr->rtc_valid);
+	MLX5_SET(flow_table_context, ft_ctx, reformat_en, ft_attr->reformat_en);
 
 	devx_obj->obj = mlx5_glue->devx_obj_create(ctx, in, sizeof(in), out, sizeof(out));
 	if (!devx_obj->obj) {
@@ -182,12 +183,24 @@ mlx5dr_cmd_set_fte(struct ibv_context *ctx,
 	action_flags = fte_attr->action_flags;
 	MLX5_SET(flow_context, in_flow_context, action, action_flags);
 
+	if (action_flags & MLX5_FLOW_CONTEXT_ACTION_REFORMAT)
+		MLX5_SET(flow_context, in_flow_context,
+			 packet_reformat_id, fte_attr->packet_reformat_id);
+
+	if (action_flags & (MLX5_FLOW_CONTEXT_ACTION_DECRYPT | MLX5_FLOW_CONTEXT_ACTION_ENCRYPT)) {
+		MLX5_SET(flow_context, in_flow_context,
+			 encrypt_decrypt_type, fte_attr->encrypt_decrypt_type);
+		MLX5_SET(flow_context, in_flow_context,
+			 encrypt_decrypt_obj_id, fte_attr->encrypt_decrypt_obj_id);
+	}
+
 	if (action_flags & MLX5_FLOW_CONTEXT_ACTION_FWD_DEST) {
 		/* Only destination_list_size of size 1 is supported */
 		MLX5_SET(flow_context, in_flow_context, destination_list_size, 1);
 		in_dests = MLX5_ADDR_OF(flow_context, in_flow_context, destination);
 		MLX5_SET(dest_format, in_dests, destination_type, fte_attr->destination_type);
 		MLX5_SET(dest_format, in_dests, destination_id, fte_attr->destination_id);
+		MLX5_SET(set_fte_in, in, ignore_flow_level, fte_attr->ignore_flow_level);
 	}
 
 	devx_obj->obj = mlx5_glue->devx_obj_create(ctx, in, sizeof(in), out, sizeof(out));
