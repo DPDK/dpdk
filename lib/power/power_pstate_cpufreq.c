@@ -12,6 +12,7 @@
 #include <inttypes.h>
 
 #include <rte_memcpy.h>
+#include <rte_stdatomic.h>
 
 #include "rte_power_pmd_mgmt.h"
 #include "power_pstate_cpufreq.h"
@@ -59,7 +60,7 @@ struct pstate_power_info {
 	uint32_t non_turbo_max_ratio;        /**< Non Turbo Max ratio  */
 	uint32_t sys_max_freq;               /**< system wide max freq  */
 	uint32_t core_base_freq;             /**< core base freq  */
-	uint32_t state;                      /**< Power in use state */
+	RTE_ATOMIC(uint32_t) state;          /**< Power in use state */
 	uint16_t turbo_available;            /**< Turbo Boost available */
 	uint16_t turbo_enable;               /**< Turbo Boost enable/disable */
 	uint16_t priority_core;              /**< High Performance core */
@@ -555,9 +556,9 @@ power_pstate_cpufreq_init(unsigned int lcore_id)
 	 * ordering below as lock to make sure the frequency operations
 	 * in the critical section are done under the correct state.
 	 */
-	if (!__atomic_compare_exchange_n(&(pi->state), &exp_state,
-					POWER_ONGOING, 0,
-					__ATOMIC_ACQUIRE, __ATOMIC_RELAXED)) {
+	if (!rte_atomic_compare_exchange_strong_explicit(&(pi->state), &exp_state,
+					POWER_ONGOING,
+					rte_memory_order_acquire, rte_memory_order_relaxed)) {
 		RTE_LOG(INFO, POWER, "Power management of lcore %u is "
 				"in use\n", lcore_id);
 		return -1;
@@ -600,15 +601,15 @@ power_pstate_cpufreq_init(unsigned int lcore_id)
 	RTE_LOG(INFO, POWER, "Initialized successfully for lcore %u "
 			"power management\n", lcore_id);
 	exp_state = POWER_ONGOING;
-	__atomic_compare_exchange_n(&(pi->state), &exp_state, POWER_USED,
-				    0, __ATOMIC_RELEASE, __ATOMIC_RELAXED);
+	rte_atomic_compare_exchange_strong_explicit(&(pi->state), &exp_state, POWER_USED,
+				    rte_memory_order_release, rte_memory_order_relaxed);
 
 	return 0;
 
 fail:
 	exp_state = POWER_ONGOING;
-	__atomic_compare_exchange_n(&(pi->state), &exp_state, POWER_UNKNOWN,
-				    0, __ATOMIC_RELEASE, __ATOMIC_RELAXED);
+	rte_atomic_compare_exchange_strong_explicit(&(pi->state), &exp_state, POWER_UNKNOWN,
+				    rte_memory_order_release, rte_memory_order_relaxed);
 
 	return -1;
 }
@@ -633,9 +634,9 @@ power_pstate_cpufreq_exit(unsigned int lcore_id)
 	 * ordering below as lock to make sure the frequency operations
 	 * in the critical section are under done the correct state.
 	 */
-	if (!__atomic_compare_exchange_n(&(pi->state), &exp_state,
-					POWER_ONGOING, 0,
-					__ATOMIC_ACQUIRE, __ATOMIC_RELAXED)) {
+	if (!rte_atomic_compare_exchange_strong_explicit(&(pi->state), &exp_state,
+					POWER_ONGOING,
+					rte_memory_order_acquire, rte_memory_order_relaxed)) {
 		RTE_LOG(INFO, POWER, "Power management of lcore %u is "
 				"not used\n", lcore_id);
 		return -1;
@@ -658,15 +659,15 @@ power_pstate_cpufreq_exit(unsigned int lcore_id)
 			"'performance' mode and been set back to the "
 			"original\n", lcore_id);
 	exp_state = POWER_ONGOING;
-	__atomic_compare_exchange_n(&(pi->state), &exp_state, POWER_IDLE,
-				    0, __ATOMIC_RELEASE, __ATOMIC_RELAXED);
+	rte_atomic_compare_exchange_strong_explicit(&(pi->state), &exp_state, POWER_IDLE,
+				    rte_memory_order_release, rte_memory_order_relaxed);
 
 	return 0;
 
 fail:
 	exp_state = POWER_ONGOING;
-	__atomic_compare_exchange_n(&(pi->state), &exp_state, POWER_UNKNOWN,
-				    0, __ATOMIC_RELEASE, __ATOMIC_RELAXED);
+	rte_atomic_compare_exchange_strong_explicit(&(pi->state), &exp_state, POWER_UNKNOWN,
+				    rte_memory_order_release, rte_memory_order_relaxed);
 
 	return -1;
 }

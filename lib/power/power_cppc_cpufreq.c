@@ -6,6 +6,7 @@
 #include <stdlib.h>
 
 #include <rte_memcpy.h>
+#include <rte_stdatomic.h>
 
 #include "power_cppc_cpufreq.h"
 #include "power_common.h"
@@ -49,8 +50,8 @@ enum power_state {
  * Power info per lcore.
  */
 struct cppc_power_info {
-	unsigned int lcore_id;                   /**< Logical core id */
-	uint32_t state;                      /**< Power in use state */
+	unsigned int lcore_id;               /**< Logical core id */
+	RTE_ATOMIC(uint32_t) state;          /**< Power in use state */
 	FILE *f;                             /**< FD of scaling_setspeed */
 	char governor_ori[32];               /**< Original governor name */
 	uint32_t curr_idx;                   /**< Freq index in freqs array */
@@ -353,9 +354,9 @@ power_cppc_cpufreq_init(unsigned int lcore_id)
 	 * ordering below as lock to make sure the frequency operations
 	 * in the critical section are done under the correct state.
 	 */
-	if (!__atomic_compare_exchange_n(&(pi->state), &exp_state,
-					POWER_ONGOING, 0,
-					__ATOMIC_ACQUIRE, __ATOMIC_RELAXED)) {
+	if (!rte_atomic_compare_exchange_strong_explicit(&(pi->state), &exp_state,
+					POWER_ONGOING,
+					rte_memory_order_acquire, rte_memory_order_relaxed)) {
 		RTE_LOG(INFO, POWER, "Power management of lcore %u is "
 				"in use\n", lcore_id);
 		return -1;
@@ -393,12 +394,12 @@ power_cppc_cpufreq_init(unsigned int lcore_id)
 	RTE_LOG(INFO, POWER, "Initialized successfully for lcore %u "
 			"power management\n", lcore_id);
 
-	__atomic_store_n(&(pi->state), POWER_USED, __ATOMIC_RELEASE);
+	rte_atomic_store_explicit(&(pi->state), POWER_USED, rte_memory_order_release);
 
 	return 0;
 
 fail:
-	__atomic_store_n(&(pi->state), POWER_UNKNOWN, __ATOMIC_RELEASE);
+	rte_atomic_store_explicit(&(pi->state), POWER_UNKNOWN, rte_memory_order_release);
 	return -1;
 }
 
@@ -431,9 +432,9 @@ power_cppc_cpufreq_exit(unsigned int lcore_id)
 	 * ordering below as lock to make sure the frequency operations
 	 * in the critical section are done under the correct state.
 	 */
-	if (!__atomic_compare_exchange_n(&(pi->state), &exp_state,
-					POWER_ONGOING, 0,
-					__ATOMIC_ACQUIRE, __ATOMIC_RELAXED)) {
+	if (!rte_atomic_compare_exchange_strong_explicit(&(pi->state), &exp_state,
+					POWER_ONGOING,
+					rte_memory_order_acquire, rte_memory_order_relaxed)) {
 		RTE_LOG(INFO, POWER, "Power management of lcore %u is "
 				"not used\n", lcore_id);
 		return -1;
@@ -453,12 +454,12 @@ power_cppc_cpufreq_exit(unsigned int lcore_id)
 	RTE_LOG(INFO, POWER, "Power management of lcore %u has exited from "
 			"'userspace' mode and been set back to the "
 			"original\n", lcore_id);
-	__atomic_store_n(&(pi->state), POWER_IDLE, __ATOMIC_RELEASE);
+	rte_atomic_store_explicit(&(pi->state), POWER_IDLE, rte_memory_order_release);
 
 	return 0;
 
 fail:
-	__atomic_store_n(&(pi->state), POWER_UNKNOWN, __ATOMIC_RELEASE);
+	rte_atomic_store_explicit(&(pi->state), POWER_UNKNOWN, rte_memory_order_release);
 
 	return -1;
 }
