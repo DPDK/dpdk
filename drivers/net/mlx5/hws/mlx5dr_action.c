@@ -1769,6 +1769,17 @@ mlx5dr_action_create_dest_array(struct mlx5dr_context *ctx,
 				fte_attr.action_flags |= MLX5_FLOW_CONTEXT_ACTION_FWD_DEST;
 				fte_attr.ignore_flow_level = 1;
 				break;
+			case MLX5DR_ACTION_TYP_MISS:
+				if (table_type != MLX5DR_TABLE_TYPE_FDB) {
+					DR_LOG(ERR, "Miss action supported for FDB only");
+					rte_errno = ENOTSUP;
+					goto free_dest_list;
+				}
+				dest_list[i].destination_type = MLX5_FLOW_DESTINATION_TYPE_VPORT;
+				dest_list[i].destination_id =
+					ctx->caps->eswitch_manager_vport_number;
+				fte_attr.action_flags |= MLX5_FLOW_CONTEXT_ACTION_FWD_DEST;
+				break;
 			case MLX5DR_ACTION_TYP_VPORT:
 				dest_list[i].destination_type = MLX5_FLOW_DESTINATION_TYPE_VPORT;
 				dest_list[i].destination_id = dests[i].dest->vport.vport_num;
