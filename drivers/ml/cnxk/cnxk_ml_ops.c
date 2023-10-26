@@ -1079,7 +1079,10 @@ cnxk_ml_model_load(struct rte_ml_dev *dev, struct rte_ml_model_params *params, u
 		model, PLT_ALIGN_CEIL(sizeof(struct cnxk_ml_model), dev_info.align_size));
 	dev->data->models[lcl_model_id] = model;
 
-	ret = cn10k_ml_model_load(cnxk_mldev, params, model);
+	if (type == ML_CNXK_MODEL_TYPE_GLOW)
+		ret = cn10k_ml_model_load(cnxk_mldev, params, model);
+	else
+		ret = mvtvm_ml_model_load(cnxk_mldev, params, model);
 	if (ret != 0)
 		goto error;
 

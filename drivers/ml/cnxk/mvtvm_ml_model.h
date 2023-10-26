@@ -44,5 +44,7 @@ struct mvtvm_ml_model_data {
 };
 
 enum cnxk_ml_model_type mvtvm_ml_model_type_get(struct rte_ml_model_params *params);
+int mvtvm_ml_model_blob_parse(struct rte_ml_model_params *params,
+			      struct mvtvm_ml_model_object *object);
 
 #endif /* _MVTVM_ML_MODEL_H_ */

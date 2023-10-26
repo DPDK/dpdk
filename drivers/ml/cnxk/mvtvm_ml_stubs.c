@@ -33,3 +33,14 @@ mvtvm_ml_dev_close(struct cnxk_ml_dev *cnxk_mldev)
 
 	return 0;
 }
+
+int
+mvtvm_ml_model_load(struct cnxk_ml_dev *cnxk_mldev, struct rte_ml_model_params *params,
+		    struct cnxk_ml_model *model)
+{
+	RTE_SET_USED(cnxk_mldev);
+	RTE_SET_USED(params);
+	RTE_SET_USED(model);
+
+	return -EINVAL;
+}
