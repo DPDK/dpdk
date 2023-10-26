@@ -65,7 +65,7 @@ enum mlx5_rte_flow_field_id {
 	(((uint32_t)(uintptr_t)(handle)) & \
 	 ((1u << MLX5_INDIRECT_ACTION_TYPE_OFFSET) - 1))
 
-enum {
+enum mlx5_indirect_type {
 	MLX5_INDIRECT_ACTION_TYPE_RSS,
 	MLX5_INDIRECT_ACTION_TYPE_AGE,
 	MLX5_INDIRECT_ACTION_TYPE_COUNT,
@@ -96,6 +96,28 @@ enum {
 #define MLX5_ACTION_CTX_CT_GET_IDX  MLX5_INDIRECT_ACT_CT_GET_IDX
 #define MLX5_ACTION_CTX_CT_GET_OWNER MLX5_INDIRECT_ACT_CT_GET_OWNER
 #define MLX5_ACTION_CTX_CT_GEN_IDX MLX5_INDIRECT_ACT_CT_GEN_IDX
+
+enum mlx5_indirect_list_type {
+	MLX5_INDIRECT_ACTION_LIST_TYPE_MIRROR = 1,
+};
+
+/*
+ * Base type for indirect list type.
+ * Actual indirect list type MUST override that type and put type spec data
+ * after the `chain`.
+ */
+struct mlx5_indirect_list {
+	/* type field MUST be the first */
+	enum mlx5_indirect_list_type type;
+	LIST_ENTRY(mlx5_indirect_list) entry;
+	/* put type specific data after chain */
+};
+
+static __rte_always_inline enum mlx5_indirect_list_type
+mlx5_get_indirect_list_type(const struct mlx5_indirect_list *obj)
+{
+	return obj->type;
+}
 
 /* Matches on selected register. */
 struct mlx5_rte_flow_item_tag {
@@ -1218,6 +1240,10 @@ struct rte_flow_hw {
 #pragma GCC diagnostic error "-Wpedantic"
 #endif
 
+struct mlx5dr_action;
+typedef struct mlx5dr_action *
+(*indirect_list_callback_t)(const struct rte_flow_action *);
+
 /* rte flow action translate to DR action struct. */
 struct mlx5_action_construct_data {
 	LIST_ENTRY(mlx5_action_construct_data) next;
@@ -1266,6 +1292,9 @@ struct mlx5_action_construct_data {
 		struct {
 			uint32_t id;
 		} shared_meter;
+		struct {
+			indirect_list_callback_t cb;
+		} indirect_list;
 	};
 };
 
@@ -1776,6 +1805,17 @@ typedef int (*mlx5_flow_action_query_update_t)
 			 const void *update, void *data,
 			 enum rte_flow_query_update_mode qu_mode,
 			 struct rte_flow_error *error);
+typedef struct rte_flow_action_list_handle *
+(*mlx5_flow_action_list_handle_create_t)
+			(struct rte_eth_dev *dev,
+			 const struct rte_flow_indir_action_conf *conf,
+			 const struct rte_flow_action *actions,
+			 struct rte_flow_error *error);
+typedef int
+(*mlx5_flow_action_list_handle_destroy_t)
+			(struct rte_eth_dev *dev,
+			 struct rte_flow_action_list_handle *handle,
+			 struct rte_flow_error *error);
 typedef int (*mlx5_flow_sync_domain_t)
 			(struct rte_eth_dev *dev,
 			 uint32_t domains,
@@ -1964,6 +2004,20 @@ typedef int (*mlx5_flow_async_action_handle_destroy_t)
 			 struct rte_flow_action_handle *handle,
 			 void *user_data,
 			 struct rte_flow_error *error);
+typedef struct rte_flow_action_list_handle *
+(*mlx5_flow_async_action_list_handle_create_t)
+			(struct rte_eth_dev *dev, uint32_t queue_id,
+			 const struct rte_flow_op_attr *attr,
+			 const struct rte_flow_indir_action_conf *conf,
+			 const struct rte_flow_action *actions,
+			 void *user_data, struct rte_flow_error *error);
+typedef int
+(*mlx5_flow_async_action_list_handle_destroy_t)
+			(struct rte_eth_dev *dev, uint32_t queue_id,
+			 const struct rte_flow_op_attr *op_attr,
+			 struct rte_flow_action_list_handle *action_handle,
+			 void *user_data, struct rte_flow_error *error);
+
 
 struct mlx5_flow_driver_ops {
 	mlx5_flow_validate_t validate;
@@ -1999,6 +2053,8 @@ struct mlx5_flow_driver_ops {
 	mlx5_flow_action_update_t action_update;
 	mlx5_flow_action_query_t action_query;
 	mlx5_flow_action_query_update_t action_query_update;
+	mlx5_flow_action_list_handle_create_t action_list_handle_create;
+	mlx5_flow_action_list_handle_destroy_t action_list_handle_destroy;
 	mlx5_flow_sync_domain_t sync_domain;
 	mlx5_flow_discover_priorities_t discover_priorities;
 	mlx5_flow_item_create_t item_create;
@@ -2025,6 +2081,10 @@ struct mlx5_flow_driver_ops {
 	mlx5_flow_async_action_handle_query_update_t async_action_query_update;
 	mlx5_flow_async_action_handle_query_t async_action_query;
 	mlx5_flow_async_action_handle_destroy_t async_action_destroy;
+	mlx5_flow_async_action_list_handle_create_t
+		async_action_list_handle_create;
+	mlx5_flow_async_action_list_handle_destroy_t
+		async_action_list_handle_destroy;
 };
 
 /* mlx5_flow.c */
@@ -2755,4 +2815,11 @@ flow_hw_get_srh_flex_parser_byte_off_from_ctx(void *dr_ctx __rte_unused)
 #endif
 	return UINT32_MAX;
 }
+void
+mlx5_indirect_list_handles_release(struct rte_eth_dev *dev);
+#ifdef HAVE_MLX5_HWS_SUPPORT
+struct mlx5_mirror;
+void
+mlx5_hw_mirror_destroy(struct rte_eth_dev *dev, struct mlx5_mirror *mirror, bool release);
+#endif
 #endif /* RTE_PMD_MLX5_FLOW_H_ */

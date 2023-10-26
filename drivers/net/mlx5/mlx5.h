@@ -1791,6 +1791,8 @@ struct mlx5_priv {
 	LIST_HEAD(ind_tables, mlx5_ind_table_obj) ind_tbls;
 	/* Standalone indirect tables. */
 	LIST_HEAD(stdl_ind_tables, mlx5_ind_table_obj) standalone_ind_tbls;
+	/* Objects created with indirect list action */
+	LIST_HEAD(indirect_list, mlx5_indirect_list) indirect_list_head;
 	/* Pointer to next element. */
 	rte_rwlock_t ind_tbls_lock;
 	uint32_t refcnt; /**< Reference counter. */

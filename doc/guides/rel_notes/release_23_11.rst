@@ -174,6 +174,7 @@ New Features
 * **Updated NVIDIA mlx5 net driver.**
 
   * Added support for Network Service Header (NSH) flow matching.
+  * Added support for ``RTE_FLOW_ACTION_TYPE_INDIRECT_LIST`` flow action.
 
 * **Updated Solarflare net driver.**
 

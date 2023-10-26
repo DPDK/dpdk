@@ -58,6 +58,24 @@
 #define MLX5_HW_VLAN_PUSH_VID_IDX 1
 #define MLX5_HW_VLAN_PUSH_PCP_IDX 2
 
+#define MLX5_MIRROR_MAX_CLONES_NUM 3
+#define MLX5_MIRROR_MAX_SAMPLE_ACTIONS_LEN 4
+
+struct mlx5_mirror_clone {
+	enum rte_flow_action_type type;
+	void *action_ctx;
+};
+
+struct mlx5_mirror {
+	/* type field MUST be the first */
+	enum mlx5_indirect_list_type type;
+	LIST_ENTRY(mlx5_indirect_list) entry;
+
+	uint32_t clones_num;
+	struct mlx5dr_action *mirror_action;
+	struct mlx5_mirror_clone clone[MLX5_MIRROR_MAX_CLONES_NUM];
+};
+
 static int flow_hw_flush_all_ctrl_flows(struct rte_eth_dev *dev);
 static int flow_hw_translate_group(struct rte_eth_dev *dev,
 				   const struct mlx5_flow_template_table_cfg *cfg,
@@ -568,6 +586,22 @@ __flow_hw_act_data_general_append(struct mlx5_priv *priv,
 	return 0;
 }
 
+static __rte_always_inline int
+flow_hw_act_data_indirect_list_append(struct mlx5_priv *priv,
+				      struct mlx5_hw_actions *acts,
+				      enum rte_flow_action_type type,
+				      uint16_t action_src, uint16_t action_dst,
+				      indirect_list_callback_t cb)
+{
+	struct mlx5_action_construct_data *act_data;
+
+	act_data = __flow_hw_act_data_alloc(priv, type, action_src, action_dst);
+	if (!act_data)
+		return -1;
+	act_data->indirect_list.cb = cb;
+	LIST_INSERT_HEAD(&acts->act_list, act_data, next);
+	return 0;
+}
 /**
  * Append dynamic encap action to the dynamic action list.
  *
@@ -1383,6 +1417,48 @@ flow_hw_meter_mark_compile(struct rte_eth_dev *dev,
 	return 0;
 }
 
+static struct mlx5dr_action *
+flow_hw_mirror_action(const struct rte_flow_action *action)
+{
+	struct mlx5_mirror *mirror = (void *)(uintptr_t)action->conf;
+
+	return mirror->mirror_action;
+}
+
+static int
+table_template_translate_indirect_list(struct rte_eth_dev *dev,
+				       const struct rte_flow_action *action,
+				       const struct rte_flow_action *mask,
+				       struct mlx5_hw_actions *acts,
+				       uint16_t action_src,
+				       uint16_t action_dst)
+{
+	int ret;
+	bool is_masked = action->conf && mask->conf;
+	struct mlx5_priv *priv = dev->data->dev_private;
+	enum mlx5_indirect_list_type type;
+
+	if (!action->conf)
+		return -EINVAL;
+	type = mlx5_get_indirect_list_type(action->conf);
+	switch (type) {
+	case MLX5_INDIRECT_ACTION_LIST_TYPE_MIRROR:
+		if (is_masked) {
+			acts->rule_acts[action_dst].action = flow_hw_mirror_action(action);
+		} else {
+			ret = flow_hw_act_data_indirect_list_append
+				(priv, acts, RTE_FLOW_ACTION_TYPE_INDIRECT_LIST,
+				 action_src, action_dst, flow_hw_mirror_action);
+			if (ret)
+				return ret;
+		}
+		break;
+	default:
+		return -EINVAL;
+	}
+	return 0;
+}
+
 /**
  * Translate rte_flow actions to DR action.
  *
@@ -1419,7 +1495,7 @@ __flow_hw_actions_translate(struct rte_eth_dev *dev,
 	struct rte_flow_action *actions = at->actions;
 	struct rte_flow_action *action_start = actions;
 	struct rte_flow_action *masks = at->masks;
-	enum mlx5dr_action_type refmt_type = 0;
+	enum mlx5dr_action_type refmt_type = MLX5DR_ACTION_TYP_LAST;
 	const struct rte_flow_action_raw_encap *raw_encap_data;
 	const struct rte_flow_item *enc_item = NULL, *enc_item_m = NULL;
 	uint16_t reformat_src = 0;
@@ -1433,7 +1509,7 @@ __flow_hw_actions_translate(struct rte_eth_dev *dev,
 	uint16_t action_pos;
 	uint16_t jump_pos;
 	uint32_t ct_idx;
-	int err;
+	int ret, err;
 	uint32_t target_grp = 0;
 	int table_type;
 
@@ -1445,7 +1521,20 @@ __flow_hw_actions_translate(struct rte_eth_dev *dev,
 	else
 		type = MLX5DR_TABLE_TYPE_NIC_RX;
 	for (; !actions_end; actions++, masks++) {
-		switch (actions->type) {
+		switch ((int)actions->type) {
+		case RTE_FLOW_ACTION_TYPE_INDIRECT_LIST:
+			action_pos = at->actions_off[actions - at->actions];
+			if (!attr->group) {
+				DRV_LOG(ERR, "Indirect action is not supported in root table.");
+				goto err;
+			}
+			ret = table_template_translate_indirect_list
+				(dev, actions, masks, acts,
+				 actions - action_start,
+				 action_pos);
+			if (ret)
+				goto err;
+			break;
 		case RTE_FLOW_ACTION_TYPE_INDIRECT:
 			action_pos = at->actions_off[actions - at->actions];
 			if (!attr->group) {
@@ -2301,7 +2390,11 @@ flow_hw_actions_construct(struct rte_eth_dev *dev,
 			MLX5_ASSERT(action->type ==
 				    RTE_FLOW_ACTION_TYPE_INDIRECT ||
 				    (int)action->type == act_data->type);
-		switch (act_data->type) {
+		switch ((int)act_data->type) {
+		case RTE_FLOW_ACTION_TYPE_INDIRECT_LIST:
+			rule_acts[act_data->action_dst].action =
+				act_data->indirect_list.cb(action);
+			break;
 		case RTE_FLOW_ACTION_TYPE_INDIRECT:
 			if (flow_hw_shared_action_construct
 					(dev, queue, action, table, it_idx,
@@ -4366,6 +4459,8 @@ mlx5_flow_hw_actions_validate(struct rte_eth_dev *dev,
 		switch (action->type) {
 		case RTE_FLOW_ACTION_TYPE_VOID:
 			break;
+		case RTE_FLOW_ACTION_TYPE_INDIRECT_LIST:
+			break;
 		case RTE_FLOW_ACTION_TYPE_INDIRECT:
 			ret = flow_hw_validate_action_indirect(dev, action,
 							       mask,
@@ -4607,6 +4702,28 @@ flow_hw_dr_actions_template_handle_shared(const struct rte_flow_action *mask,
 	return 0;
 }
 
+
+static int
+flow_hw_template_actions_list(struct rte_flow_actions_template *at,
+			      unsigned int action_src,
+			      enum mlx5dr_action_type *action_types,
+			      uint16_t *curr_off)
+{
+	enum mlx5_indirect_list_type list_type;
+
+	list_type = mlx5_get_indirect_list_type(at->actions[action_src].conf);
+	switch (list_type) {
+	case MLX5_INDIRECT_ACTION_LIST_TYPE_MIRROR:
+		action_template_set_type(at, action_types, action_src, curr_off,
+					 MLX5DR_ACTION_TYP_DEST_ARRAY);
+		break;
+	default:
+		DRV_LOG(ERR, "Unsupported indirect list type");
+		return -EINVAL;
+	}
+	return 0;
+}
+
 /**
  * Create DR action template based on a provided sequence of flow actions.
  *
@@ -4638,6 +4755,12 @@ flow_hw_dr_actions_template_create(struct rte_flow_actions_template *at)
 			goto err_actions_num;
 		switch (at->actions[i].type) {
 		case RTE_FLOW_ACTION_TYPE_VOID:
+			break;
+		case RTE_FLOW_ACTION_TYPE_INDIRECT_LIST:
+			ret = flow_hw_template_actions_list(at, i, action_types,
+							    &curr_off);
+			if (ret)
+				return NULL;
 			break;
 		case RTE_FLOW_ACTION_TYPE_INDIRECT:
 			ret = flow_hw_dr_actions_template_handle_shared
@@ -5119,6 +5242,7 @@ flow_hw_actions_template_create(struct rte_eth_dev *dev,
 		 * Need to restore the indirect action index from action conf here.
 		 */
 		case RTE_FLOW_ACTION_TYPE_INDIRECT:
+		case RTE_FLOW_ACTION_TYPE_INDIRECT_LIST:
 			at->actions[i].conf = actions->conf;
 			at->masks[i].conf = masks->conf;
 			break;
@@ -9357,6 +9481,484 @@ flow_hw_get_aged_flows(struct rte_eth_dev *dev, void **contexts,
 	return flow_hw_get_q_aged_flows(dev, 0, contexts, nb_contexts, error);
 }
 
+static void
+mlx5_mirror_destroy_clone(struct rte_eth_dev *dev,
+			  struct mlx5_mirror_clone *clone)
+{
+	switch (clone->type) {
+	case RTE_FLOW_ACTION_TYPE_RSS:
+	case RTE_FLOW_ACTION_TYPE_QUEUE:
+		mlx5_hrxq_release(dev,
+				  ((struct mlx5_hrxq *)(clone->action_ctx))->idx);
+		break;
+	case RTE_FLOW_ACTION_TYPE_JUMP:
+		flow_hw_jump_release(dev, clone->action_ctx);
+		break;
+	case RTE_FLOW_ACTION_TYPE_REPRESENTED_PORT:
+	case RTE_FLOW_ACTION_TYPE_RAW_ENCAP:
+	case RTE_FLOW_ACTION_TYPE_RAW_DECAP:
+	case RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP:
+	case RTE_FLOW_ACTION_TYPE_NVGRE_ENCAP:
+	default:
+		break;
+	}
+}
+
+void
+mlx5_hw_mirror_destroy(struct rte_eth_dev *dev, struct mlx5_mirror *mirror, bool release)
+{
+	uint32_t i;
+
+	if (mirror->entry.le_prev)
+		LIST_REMOVE(mirror, entry);
+	for (i = 0; i < mirror->clones_num; i++)
+		mlx5_mirror_destroy_clone(dev, &mirror->clone[i]);
+	if (mirror->mirror_action)
+		mlx5dr_action_destroy(mirror->mirror_action);
+	if (release)
+		mlx5_free(mirror);
+}
+
+static inline enum mlx5dr_table_type
+get_mlx5dr_table_type(const struct rte_flow_attr *attr)
+{
+	enum mlx5dr_table_type type;
+
+	if (attr->transfer)
+		type = MLX5DR_TABLE_TYPE_FDB;
+	else if (attr->egress)
+		type = MLX5DR_TABLE_TYPE_NIC_TX;
+	else
+		type = MLX5DR_TABLE_TYPE_NIC_RX;
+	return type;
+}
+
+static __rte_always_inline bool
+mlx5_mirror_terminal_action(const struct rte_flow_action *action)
+{
+	switch (action->type) {
+	case RTE_FLOW_ACTION_TYPE_JUMP:
+	case RTE_FLOW_ACTION_TYPE_RSS:
+	case RTE_FLOW_ACTION_TYPE_QUEUE:
+	case RTE_FLOW_ACTION_TYPE_REPRESENTED_PORT:
+		return true;
+	default:
+		break;
+	}
+	return false;
+}
+
+static bool
+mlx5_mirror_validate_sample_action(struct rte_eth_dev *dev,
+	const struct rte_flow_action *action)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+
+	switch (action->type) {
+	case RTE_FLOW_ACTION_TYPE_QUEUE:
+	case RTE_FLOW_ACTION_TYPE_RSS:
+		if (priv->sh->esw_mode)
+			return false;
+		break;
+	case RTE_FLOW_ACTION_TYPE_REPRESENTED_PORT:
+	case RTE_FLOW_ACTION_TYPE_RAW_ENCAP:
+	case RTE_FLOW_ACTION_TYPE_RAW_DECAP:
+	case RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP:
+	case RTE_FLOW_ACTION_TYPE_NVGRE_ENCAP:
+		if (!priv->sh->esw_mode)
+			return false;
+		if (action[0].type == RTE_FLOW_ACTION_TYPE_RAW_DECAP &&
+		    action[1].type != RTE_FLOW_ACTION_TYPE_RAW_ENCAP)
+			return false;
+		break;
+	default:
+		return false;
+	}
+	return true;
+}
+
+/**
+ * Valid mirror actions list includes one or two SAMPLE actions
+ * followed by JUMP.
+ *
+ * @return
+ * Number of mirrors *action* list was valid.
+ * -EINVAL otherwise.
+ */
+static int
+mlx5_hw_mirror_actions_list_validate(struct rte_eth_dev *dev,
+				     const struct rte_flow_action *actions)
+{
+	if (actions[0].type == RTE_FLOW_ACTION_TYPE_SAMPLE) {
+		int i = 1;
+		bool valid;
+		const struct rte_flow_action_sample *sample = actions[0].conf;
+		valid = mlx5_mirror_validate_sample_action(dev, sample->actions);
+		if (!valid)
+			return -EINVAL;
+		if (actions[1].type == RTE_FLOW_ACTION_TYPE_SAMPLE) {
+			i = 2;
+			sample = actions[1].conf;
+			valid = mlx5_mirror_validate_sample_action(dev, sample->actions);
+			if (!valid)
+				return -EINVAL;
+		}
+		return mlx5_mirror_terminal_action(actions + i) ? i + 1 : -EINVAL;
+	}
+	return -EINVAL;
+}
+
+static int
+mirror_format_tir(struct rte_eth_dev *dev,
+		  struct mlx5_mirror_clone *clone,
+		  const struct mlx5_flow_template_table_cfg *table_cfg,
+		  const struct rte_flow_action *action,
+		  struct mlx5dr_action_dest_attr *dest_attr,
+		  struct rte_flow_error *error)
+{
+	uint32_t hws_flags;
+	enum mlx5dr_table_type table_type;
+	struct mlx5_hrxq *tir_ctx;
+
+	table_type = get_mlx5dr_table_type(&table_cfg->attr.flow_attr);
+	hws_flags = mlx5_hw_act_flag[MLX5_HW_ACTION_FLAG_NONE_ROOT][table_type];
+	tir_ctx = flow_hw_tir_action_register(dev, hws_flags, action);
+	if (!tir_ctx)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ACTION,
+					  action, "failed to create QUEUE action for mirror clone");
+	dest_attr->dest = tir_ctx->action;
+	clone->action_ctx = tir_ctx;
+	return 0;
+}
+
+static int
+mirror_format_jump(struct rte_eth_dev *dev,
+		   struct mlx5_mirror_clone *clone,
+		   const struct mlx5_flow_template_table_cfg *table_cfg,
+		   const struct rte_flow_action *action,
+		   struct mlx5dr_action_dest_attr *dest_attr,
+		   struct rte_flow_error *error)
+{
+	const struct rte_flow_action_jump *jump_conf = action->conf;
+	struct mlx5_hw_jump_action *jump = flow_hw_jump_action_register
+						(dev, table_cfg,
+						 jump_conf->group, error);
+
+	if (!jump)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ACTION,
+					  action, "failed to create JUMP action for mirror clone");
+	dest_attr->dest = jump->hws_action;
+	clone->action_ctx = jump;
+	return 0;
+}
+
+static int
+mirror_format_port(struct rte_eth_dev *dev,
+		   const struct rte_flow_action *action,
+		   struct mlx5dr_action_dest_attr *dest_attr,
+		   struct rte_flow_error __rte_unused *error)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	const struct rte_flow_action_ethdev *port_action = action->conf;
+
+	dest_attr->dest = priv->hw_vport[port_action->port_id];
+	return 0;
+}
+
+#define MLX5_CONST_ENCAP_ITEM(encap_type, ptr) \
+(((const struct encap_type *)(ptr))->definition)
+
+static int
+hw_mirror_clone_reformat(const struct rte_flow_action *actions,
+			 struct mlx5dr_action_dest_attr *dest_attr,
+			 enum mlx5dr_action_type *action_type,
+			 uint8_t *reformat_buf, bool decap)
+{
+	int ret;
+	const struct rte_flow_item *encap_item = NULL;
+	const struct rte_flow_action_raw_encap *encap_conf = NULL;
+	typeof(dest_attr->reformat) *reformat = &dest_attr->reformat;
+
+	switch (actions[0].type) {
+	case RTE_FLOW_ACTION_TYPE_RAW_ENCAP:
+		encap_conf = actions[0].conf;
+		break;
+	case RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP:
+		encap_item = MLX5_CONST_ENCAP_ITEM(rte_flow_action_vxlan_encap,
+						   actions);
+		break;
+	case RTE_FLOW_ACTION_TYPE_NVGRE_ENCAP:
+		encap_item = MLX5_CONST_ENCAP_ITEM(rte_flow_action_nvgre_encap,
+						   actions);
+		break;
+	default:
+		return -EINVAL;
+	}
+	*action_type = decap ?
+		       MLX5DR_ACTION_TYP_REFORMAT_L2_TO_TNL_L3 :
+		       MLX5DR_ACTION_TYP_REFORMAT_L2_TO_TNL_L2;
+	if (encap_item) {
+		ret = flow_dv_convert_encap_data(encap_item, reformat_buf,
+						 &reformat->reformat_data_sz, NULL);
+		if (ret)
+			return -EINVAL;
+		reformat->reformat_data = reformat_buf;
+	} else {
+		reformat->reformat_data = (void *)(uintptr_t)encap_conf->data;
+		reformat->reformat_data_sz = encap_conf->size;
+	}
+	return 0;
+}
+
+static int
+hw_mirror_format_clone(struct rte_eth_dev *dev,
+			struct mlx5_mirror_clone *clone,
+			const struct mlx5_flow_template_table_cfg *table_cfg,
+			const struct rte_flow_action *actions,
+			struct mlx5dr_action_dest_attr *dest_attr,
+			uint8_t *reformat_buf, struct rte_flow_error *error)
+{
+	int ret;
+	uint32_t i;
+	bool decap_seen = false;
+
+	for (i = 0; actions[i].type != RTE_FLOW_ACTION_TYPE_END; i++) {
+		dest_attr->action_type[i] = mlx5_hw_dr_action_types[actions[i].type];
+		switch (actions[i].type) {
+		case RTE_FLOW_ACTION_TYPE_QUEUE:
+		case RTE_FLOW_ACTION_TYPE_RSS:
+			ret = mirror_format_tir(dev, clone, table_cfg,
+						&actions[i], dest_attr, error);
+			if (ret)
+				return ret;
+			break;
+		case RTE_FLOW_ACTION_TYPE_REPRESENTED_PORT:
+			ret = mirror_format_port(dev, &actions[i],
+						 dest_attr, error);
+			if (ret)
+				return ret;
+			break;
+		case RTE_FLOW_ACTION_TYPE_JUMP:
+			ret = mirror_format_jump(dev, clone, table_cfg,
+						 &actions[i], dest_attr, error);
+			if (ret)
+				return ret;
+			break;
+		case RTE_FLOW_ACTION_TYPE_RAW_DECAP:
+			decap_seen = true;
+			break;
+		case RTE_FLOW_ACTION_TYPE_RAW_ENCAP:
+		case RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP:
+		case RTE_FLOW_ACTION_TYPE_NVGRE_ENCAP:
+			ret = hw_mirror_clone_reformat(&actions[i], dest_attr,
+						       &dest_attr->action_type[i],
+						       reformat_buf, decap_seen);
+			if (ret < 0)
+				return rte_flow_error_set(error, EINVAL,
+							  RTE_FLOW_ERROR_TYPE_ACTION,
+							  &actions[i],
+							  "failed to create reformat action");
+			break;
+		default:
+			return rte_flow_error_set(error, EINVAL,
+						  RTE_FLOW_ERROR_TYPE_ACTION,
+						  &actions[i], "unsupported sample action");
+		}
+		clone->type = actions->type;
+	}
+	dest_attr->action_type[i] = MLX5DR_ACTION_TYP_LAST;
+	return 0;
+}
+
+static struct rte_flow_action_list_handle *
+mlx5_hw_mirror_handle_create(struct rte_eth_dev *dev,
+			     const struct mlx5_flow_template_table_cfg *table_cfg,
+			     const struct rte_flow_action *actions,
+			     struct rte_flow_error *error)
+{
+	uint32_t hws_flags;
+	int ret = 0, i, clones_num;
+	struct mlx5_mirror *mirror;
+	enum mlx5dr_table_type table_type;
+	struct mlx5_priv *priv = dev->data->dev_private;
+	uint8_t reformat_buf[MLX5_MIRROR_MAX_CLONES_NUM][MLX5_ENCAP_MAX_LEN];
+	struct mlx5dr_action_dest_attr mirror_attr[MLX5_MIRROR_MAX_CLONES_NUM + 1];
+	enum mlx5dr_action_type array_action_types[MLX5_MIRROR_MAX_CLONES_NUM + 1]
+						  [MLX5_MIRROR_MAX_SAMPLE_ACTIONS_LEN + 1];
+
+	memset(mirror_attr, 0, sizeof(mirror_attr));
+	memset(array_action_types, 0, sizeof(array_action_types));
+	table_type = get_mlx5dr_table_type(&table_cfg->attr.flow_attr);
+	hws_flags = mlx5_hw_act_flag[MLX5_HW_ACTION_FLAG_NONE_ROOT][table_type];
+	clones_num = mlx5_hw_mirror_actions_list_validate(dev, actions);
+	if (clones_num < 0) {
+		rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ACTION,
+				   actions, "Invalid mirror list format");
+		return NULL;
+	}
+	mirror = mlx5_malloc(MLX5_MEM_ZERO, sizeof(*mirror),
+			     0, SOCKET_ID_ANY);
+	if (!mirror) {
+		rte_flow_error_set(error, ENOMEM, RTE_FLOW_ERROR_TYPE_ACTION,
+				   actions, "Failed to allocate mirror context");
+		return NULL;
+	}
+	mirror->type = MLX5_INDIRECT_ACTION_LIST_TYPE_MIRROR;
+	mirror->clones_num = clones_num;
+	for (i = 0; i < clones_num; i++) {
+		const struct rte_flow_action *clone_actions;
+
+		mirror_attr[i].action_type = array_action_types[i];
+		if (actions[i].type == RTE_FLOW_ACTION_TYPE_SAMPLE) {
+			const struct rte_flow_action_sample *sample = actions[i].conf;
+
+			clone_actions = sample->actions;
+		} else {
+			clone_actions = &actions[i];
+		}
+		ret = hw_mirror_format_clone(dev, &mirror->clone[i], table_cfg,
+					     clone_actions, &mirror_attr[i],
+					     reformat_buf[i], error);
+
+		if (ret)
+			goto error;
+	}
+	hws_flags |= MLX5DR_ACTION_FLAG_SHARED;
+	mirror->mirror_action = mlx5dr_action_create_dest_array(priv->dr_ctx,
+								clones_num,
+								mirror_attr,
+								hws_flags);
+	if (!mirror->mirror_action) {
+		rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ACTION,
+				   actions, "Failed to create HWS mirror action");
+		goto error;
+	}
+
+	LIST_INSERT_HEAD(&priv->indirect_list_head,
+			 (struct mlx5_indirect_list *)mirror, entry);
+	return (struct rte_flow_action_list_handle *)mirror;
+
+error:
+	mlx5_hw_mirror_destroy(dev, mirror, true);
+	return NULL;
+}
+
+static struct rte_flow_action_list_handle *
+flow_hw_async_action_list_handle_create(struct rte_eth_dev *dev, uint32_t queue,
+					const struct rte_flow_op_attr *attr,
+					const struct rte_flow_indir_action_conf *conf,
+					const struct rte_flow_action *actions,
+					void *user_data,
+					struct rte_flow_error *error)
+{
+	struct mlx5_hw_q_job *job = NULL;
+	bool push = flow_hw_action_push(attr);
+	struct rte_flow_action_list_handle *handle;
+	struct mlx5_priv *priv = dev->data->dev_private;
+	const struct mlx5_flow_template_table_cfg table_cfg = {
+		.external = true,
+		.attr = {
+			.flow_attr = {
+				.ingress = conf->ingress,
+				.egress = conf->egress,
+				.transfer = conf->transfer
+			}
+		}
+	};
+
+	if (!actions) {
+		rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ACTION,
+				   NULL, "No action list");
+		return NULL;
+	}
+	if (attr) {
+		job = flow_hw_action_job_init(priv, queue, NULL, user_data,
+					      NULL, MLX5_HW_Q_JOB_TYPE_CREATE,
+					      error);
+		if (!job)
+			return NULL;
+	}
+	switch (actions[0].type) {
+	case RTE_FLOW_ACTION_TYPE_SAMPLE:
+		handle = mlx5_hw_mirror_handle_create(dev, &table_cfg,
+						      actions, error);
+		break;
+	default:
+		handle = NULL;
+		rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ACTION,
+				   actions, "Invalid list");
+	}
+	if (job) {
+		job->action = handle;
+		flow_hw_action_finalize(dev, queue, job, push, false,
+					handle != NULL);
+	}
+	return handle;
+}
+
+static struct rte_flow_action_list_handle *
+flow_hw_action_list_handle_create(struct rte_eth_dev *dev,
+				  const struct rte_flow_indir_action_conf *conf,
+				  const struct rte_flow_action *actions,
+				  struct rte_flow_error *error)
+{
+	return flow_hw_async_action_list_handle_create(dev, MLX5_HW_INV_QUEUE,
+						       NULL, conf, actions,
+						       NULL, error);
+}
+
+static int
+flow_hw_async_action_list_handle_destroy
+			(struct rte_eth_dev *dev, uint32_t queue,
+			 const struct rte_flow_op_attr *attr,
+			 struct rte_flow_action_list_handle *handle,
+			 void *user_data, struct rte_flow_error *error)
+{
+	int ret = 0;
+	struct mlx5_hw_q_job *job = NULL;
+	bool push = flow_hw_action_push(attr);
+	struct mlx5_priv *priv = dev->data->dev_private;
+	enum mlx5_indirect_list_type type =
+		mlx5_get_indirect_list_type((void *)handle);
+
+	if (attr) {
+		job = flow_hw_action_job_init(priv, queue, NULL, user_data,
+					      NULL, MLX5_HW_Q_JOB_TYPE_DESTROY,
+					      error);
+		if (!job)
+			return rte_errno;
+	}
+	switch (type) {
+	case MLX5_INDIRECT_ACTION_LIST_TYPE_MIRROR:
+		mlx5_hw_mirror_destroy(dev, (struct mlx5_mirror *)handle, false);
+		break;
+	default:
+		handle = NULL;
+		ret = rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ACTION,
+					  NULL, "Invalid indirect list handle");
+	}
+	if (job) {
+		job->action = handle;
+		flow_hw_action_finalize(dev, queue, job, push, false,
+				       handle != NULL);
+	}
+	mlx5_free(handle);
+	return ret;
+}
+
+static int
+flow_hw_action_list_handle_destroy(struct rte_eth_dev *dev,
+				   struct rte_flow_action_list_handle *handle,
+				   struct rte_flow_error *error)
+{
+	return flow_hw_async_action_list_handle_destroy(dev, MLX5_HW_INV_QUEUE,
+							NULL, handle, NULL,
+							error);
+}
+
 const struct mlx5_flow_driver_ops mlx5_flow_hw_drv_ops = {
 	.info_get = flow_hw_info_get,
 	.configure = flow_hw_configure,
@@ -9385,6 +9987,12 @@ const struct mlx5_flow_driver_ops mlx5_flow_hw_drv_ops = {
 	.action_update = flow_hw_action_update,
 	.action_query = flow_hw_action_query,
 	.action_query_update = flow_hw_action_query_update,
+	.action_list_handle_create = flow_hw_action_list_handle_create,
+	.action_list_handle_destroy = flow_hw_action_list_handle_destroy,
+	.async_action_list_handle_create =
+		flow_hw_async_action_list_handle_create,
+	.async_action_list_handle_destroy =
+		flow_hw_async_action_list_handle_destroy,
 	.query = flow_hw_query,
 	.get_aged_flows = flow_hw_get_aged_flows,
 	.get_q_aged_flows = flow_hw_get_q_aged_flows,

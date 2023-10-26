@@ -62,6 +62,30 @@ struct tunnel_default_miss_ctx {
 	};
 };
 
+void
+mlx5_indirect_list_handles_release(struct rte_eth_dev *dev)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+
+	while (!LIST_EMPTY(&priv->indirect_list_head)) {
+		struct mlx5_indirect_list *e =
+			LIST_FIRST(&priv->indirect_list_head);
+
+		LIST_REMOVE(e, entry);
+		switch (e->type) {
+#ifdef HAVE_MLX5_HWS_SUPPORT
+		case MLX5_INDIRECT_ACTION_LIST_TYPE_MIRROR:
+			mlx5_hw_mirror_destroy(dev, (struct mlx5_mirror *)e, true);
+		break;
+#endif
+		default:
+			DRV_LOG(ERR, "invalid indirect list type");
+			MLX5_ASSERT(false);
+			break;
+		}
+	}
+}
+
 static int
 flow_tunnel_add_default_miss(struct rte_eth_dev *dev,
 			     struct rte_flow *flow,
@@ -1120,6 +1144,32 @@ mlx5_flow_async_action_handle_query_update
 	 enum rte_flow_query_update_mode qu_mode,
 	 void *user_data, struct rte_flow_error *error);
 
+static struct rte_flow_action_list_handle *
+mlx5_action_list_handle_create(struct rte_eth_dev *dev,
+			       const struct rte_flow_indir_action_conf *conf,
+			       const struct rte_flow_action *actions,
+			       struct rte_flow_error *error);
+
+static int
+mlx5_action_list_handle_destroy(struct rte_eth_dev *dev,
+				struct rte_flow_action_list_handle *handle,
+				struct rte_flow_error *error);
+
+static struct rte_flow_action_list_handle *
+mlx5_flow_async_action_list_handle_create(struct rte_eth_dev *dev, uint32_t queue_id,
+					  const struct rte_flow_op_attr *attr,
+					  const struct
+					  rte_flow_indir_action_conf *conf,
+					  const struct rte_flow_action *actions,
+					  void *user_data,
+					  struct rte_flow_error *error);
+static int
+mlx5_flow_async_action_list_handle_destroy
+			(struct rte_eth_dev *dev, uint32_t queue_id,
+			 const struct rte_flow_op_attr *op_attr,
+			 struct rte_flow_action_list_handle *action_handle,
+			 void *user_data, struct rte_flow_error *error);
+
 static const struct rte_flow_ops mlx5_flow_ops = {
 	.validate = mlx5_flow_validate,
 	.create = mlx5_flow_create,
@@ -1135,6 +1185,8 @@ static const struct rte_flow_ops mlx5_flow_ops = {
 	.action_handle_update = mlx5_action_handle_update,
 	.action_handle_query = mlx5_action_handle_query,
 	.action_handle_query_update = mlx5_action_handle_query_update,
+	.action_list_handle_create = mlx5_action_list_handle_create,
+	.action_list_handle_destroy = mlx5_action_list_handle_destroy,
 	.tunnel_decap_set = mlx5_flow_tunnel_decap_set,
 	.tunnel_match = mlx5_flow_tunnel_match,
 	.tunnel_action_decap_release = mlx5_flow_tunnel_action_release,
@@ -1163,6 +1215,10 @@ static const struct rte_flow_ops mlx5_flow_ops = {
 	.async_action_handle_query = mlx5_flow_async_action_handle_query,
 	.async_action_handle_destroy = mlx5_flow_async_action_handle_destroy,
 	.async_actions_update = mlx5_flow_async_flow_update,
+	.async_action_list_handle_create =
+		mlx5_flow_async_action_list_handle_create,
+	.async_action_list_handle_destroy =
+		mlx5_flow_async_action_list_handle_destroy,
 };
 
 /* Tunnel information. */
@@ -10868,6 +10924,84 @@ mlx5_action_handle_query_update(struct rte_eth_dev *dev,
 					  NULL, "no query_update handler");
 	return fops->action_query_update(dev, handle, update,
 					 query, qu_mode, error);
+}
+
+
+#define MLX5_DRV_FOPS_OR_ERR(dev, fops, drv_cb, ret)                           \
+{                                                                              \
+	struct rte_flow_attr attr = { .transfer = 0 };                         \
+	enum mlx5_flow_drv_type drv_type = flow_get_drv_type((dev), &attr);    \
+	if (drv_type == MLX5_FLOW_TYPE_MIN ||                                  \
+	    drv_type == MLX5_FLOW_TYPE_MAX) {                                  \
+		rte_flow_error_set(error, ENOTSUP,                             \
+				   RTE_FLOW_ERROR_TYPE_ACTION,                 \
+				   NULL, "invalid driver type");               \
+		return ret;                                                    \
+	}                                                                      \
+	(fops) = flow_get_drv_ops(drv_type);                                   \
+	if (!(fops) || !(fops)->drv_cb) {                                      \
+		rte_flow_error_set(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ACTION, \
+				   NULL, "no action_list handler");            \
+		return ret;                                                    \
+	}                                                                      \
+}
+
+static struct rte_flow_action_list_handle *
+mlx5_action_list_handle_create(struct rte_eth_dev *dev,
+			       const struct rte_flow_indir_action_conf *conf,
+			       const struct rte_flow_action *actions,
+			       struct rte_flow_error *error)
+{
+	const struct mlx5_flow_driver_ops *fops;
+
+	MLX5_DRV_FOPS_OR_ERR(dev, fops, action_list_handle_create, NULL);
+	return fops->action_list_handle_create(dev, conf, actions, error);
+}
+
+static int
+mlx5_action_list_handle_destroy(struct rte_eth_dev *dev,
+				struct rte_flow_action_list_handle *handle,
+				struct rte_flow_error *error)
+{
+	const struct mlx5_flow_driver_ops *fops;
+
+	MLX5_DRV_FOPS_OR_ERR(dev, fops, action_list_handle_destroy, ENOTSUP);
+	return fops->action_list_handle_destroy(dev, handle, error);
+}
+
+static struct rte_flow_action_list_handle *
+mlx5_flow_async_action_list_handle_create(struct rte_eth_dev *dev,
+					  uint32_t queue_id,
+					  const struct
+					  rte_flow_op_attr *op_attr,
+					  const struct
+					  rte_flow_indir_action_conf *conf,
+					  const struct rte_flow_action *actions,
+					  void *user_data,
+					  struct rte_flow_error *error)
+{
+	const struct mlx5_flow_driver_ops *fops;
+
+	MLX5_DRV_FOPS_OR_ERR(dev, fops, async_action_list_handle_create, NULL);
+	return fops->async_action_list_handle_create(dev, queue_id, op_attr,
+						     conf, actions, user_data,
+						     error);
+}
+
+static int
+mlx5_flow_async_action_list_handle_destroy
+	(struct rte_eth_dev *dev, uint32_t queue_id,
+	 const struct rte_flow_op_attr *op_attr,
+	 struct rte_flow_action_list_handle *action_handle,
+	 void *user_data, struct rte_flow_error *error)
+{
+	const struct mlx5_flow_driver_ops *fops;
+
+	MLX5_DRV_FOPS_OR_ERR(dev, fops,
+			     async_action_list_handle_destroy, ENOTSUP);
+	return fops->async_action_list_handle_destroy(dev, queue_id, op_attr,
+						      action_handle, user_data,
+						      error);
 }
 
 /**
