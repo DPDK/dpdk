@@ -11,6 +11,7 @@
 
 #include <roc_api.h>
 
+#include "cnxk_ml_dev.h"
 #include "cnxk_ml_model.h"
 
 /* Objects list */
@@ -267,4 +268,69 @@ mvtvm_ml_model_io_info_get(struct cnxk_ml_model *model, uint16_t layer_id)
 	RTE_SET_USED(layer_id);
 
 	return &model->mvtvm.info;
+}
+
+void
+mvtvm_ml_model_info_set(struct cnxk_ml_dev *cnxk_mldev, struct cnxk_ml_model *model)
+{
+	struct tvmdp_model_metadata *metadata;
+	struct rte_ml_model_info *info;
+	struct rte_ml_io_info *output;
+	struct rte_ml_io_info *input;
+	uint8_t i;
+
+	info = PLT_PTR_CAST(model->info);
+	input = PLT_PTR_ADD(info, sizeof(struct rte_ml_model_info));
+	output = PLT_PTR_ADD(input, ML_CNXK_MODEL_MAX_INPUT_OUTPUT * sizeof(struct rte_ml_io_info));
+
+	/* Reset model info */
+	memset(info, 0, sizeof(struct rte_ml_model_info));
+
+	if (model->subtype == ML_CNXK_MODEL_SUBTYPE_TVM_MRVL)
+		goto tvm_mrvl_model;
+
+	metadata = &model->mvtvm.metadata;
+	rte_memcpy(info->name, metadata->model.name, TVMDP_NAME_STRLEN);
+	snprintf(info->version, RTE_ML_STR_MAX, "%u.%u.%u.%u", metadata->model.version[0],
+		 metadata->model.version[1], metadata->model.version[2],
+		 metadata->model.version[3]);
+	info->model_id = model->model_id;
+	info->device_id = cnxk_mldev->mldev->data->dev_id;
+	info->io_layout = RTE_ML_IO_LAYOUT_SPLIT;
+	info->min_batches = model->batch_size;
+	info->max_batches = model->batch_size;
+	info->nb_inputs = metadata->model.num_input;
+	info->input_info = input;
+	info->nb_outputs = metadata->model.num_output;
+	info->output_info = output;
+	info->wb_size = 0;
+
+	/* Set input info */
+	for (i = 0; i < info->nb_inputs; i++) {
+		rte_memcpy(input[i].name, metadata->input[i].name, MRVL_ML_INPUT_NAME_LEN);
+		input[i].nb_dims = metadata->input[i].ndim;
+		input[i].shape = &model->mvtvm.info.input[i].shape[0];
+		input[i].type = model->mvtvm.info.input[i].qtype;
+		input[i].nb_elements = model->mvtvm.info.input[i].nb_elements;
+		input[i].size = model->mvtvm.info.input[i].nb_elements *
+				rte_ml_io_type_size_get(model->mvtvm.info.input[i].qtype);
+	}
+
+	/* Set output info */
+	for (i = 0; i < info->nb_outputs; i++) {
+		rte_memcpy(output[i].name, metadata->output[i].name, MRVL_ML_OUTPUT_NAME_LEN);
+		output[i].nb_dims = metadata->output[i].ndim;
+		output[i].shape = &model->mvtvm.info.output[i].shape[0];
+		output[i].type = model->mvtvm.info.output[i].qtype;
+		output[i].nb_elements = model->mvtvm.info.output[i].nb_elements;
+		output[i].size = model->mvtvm.info.output[i].nb_elements *
+				 rte_ml_io_type_size_get(model->mvtvm.info.output[i].qtype);
+	}
+
+	return;
+
+tvm_mrvl_model:
+	cn10k_ml_model_info_set(cnxk_mldev, model, &model->mvtvm.info,
+				&model->layer[0].glow.metadata);
+	info->io_layout = RTE_ML_IO_LAYOUT_SPLIT;
 }

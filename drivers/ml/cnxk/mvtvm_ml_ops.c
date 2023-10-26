@@ -178,6 +178,9 @@ mvtvm_ml_model_load(struct cnxk_ml_dev *cnxk_mldev, struct rte_ml_model_params *
 	/* Update model I/O data */
 	mvtvm_ml_model_io_info_set(model);
 
+	/* Set model info */
+	mvtvm_ml_model_info_set(cnxk_mldev, model);
+
 	return 0;
 
 error:
