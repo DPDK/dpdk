@@ -19,6 +19,7 @@
 #include <stdint.h>
 
 #include <rte_byteorder.h>
+#include <rte_stdatomic.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -497,7 +498,7 @@ struct rte_mbuf {
 	 * rte_mbuf_refcnt_set(). The functionality of these functions (atomic,
 	 * or non-atomic) is controlled by the RTE_MBUF_REFCNT_ATOMIC flag.
 	 */
-	uint16_t refcnt;
+	RTE_ATOMIC(uint16_t) refcnt;
 
 	/**
 	 * Number of segments. Only valid for the first segment of an mbuf
@@ -674,7 +675,7 @@ typedef void (*rte_mbuf_extbuf_free_callback_t)(void *addr, void *opaque);
 struct rte_mbuf_ext_shared_info {
 	rte_mbuf_extbuf_free_callback_t free_cb; /**< Free callback function */
 	void *fcb_opaque;                        /**< Free callback argument */
-	uint16_t refcnt;
+	RTE_ATOMIC(uint16_t) refcnt;
 };
 
 /** Maximum number of nb_segs allowed. */

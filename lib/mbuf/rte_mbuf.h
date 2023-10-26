@@ -361,7 +361,7 @@ rte_pktmbuf_priv_flags(struct rte_mempool *mp)
 static inline uint16_t
 rte_mbuf_refcnt_read(const struct rte_mbuf *m)
 {
-	return __atomic_load_n(&m->refcnt, __ATOMIC_RELAXED);
+	return rte_atomic_load_explicit(&m->refcnt, rte_memory_order_relaxed);
 }
 
 /**
@@ -374,15 +374,15 @@ rte_mbuf_refcnt_read(const struct rte_mbuf *m)
 static inline void
 rte_mbuf_refcnt_set(struct rte_mbuf *m, uint16_t new_value)
 {
-	__atomic_store_n(&m->refcnt, new_value, __ATOMIC_RELAXED);
+	rte_atomic_store_explicit(&m->refcnt, new_value, rte_memory_order_relaxed);
 }
 
 /* internal */
 static inline uint16_t
 __rte_mbuf_refcnt_update(struct rte_mbuf *m, int16_t value)
 {
-	return __atomic_fetch_add(&m->refcnt, value,
-				 __ATOMIC_ACQ_REL) + value;
+	return rte_atomic_fetch_add_explicit(&m->refcnt, value,
+				 rte_memory_order_acq_rel) + value;
 }
 
 /**
@@ -463,7 +463,7 @@ rte_mbuf_refcnt_set(struct rte_mbuf *m, uint16_t new_value)
 static inline uint16_t
 rte_mbuf_ext_refcnt_read(const struct rte_mbuf_ext_shared_info *shinfo)
 {
-	return __atomic_load_n(&shinfo->refcnt, __ATOMIC_RELAXED);
+	return rte_atomic_load_explicit(&shinfo->refcnt, rte_memory_order_relaxed);
 }
 
 /**
@@ -478,7 +478,7 @@ static inline void
 rte_mbuf_ext_refcnt_set(struct rte_mbuf_ext_shared_info *shinfo,
 	uint16_t new_value)
 {
-	__atomic_store_n(&shinfo->refcnt, new_value, __ATOMIC_RELAXED);
+	rte_atomic_store_explicit(&shinfo->refcnt, new_value, rte_memory_order_relaxed);
 }
 
 /**
@@ -502,8 +502,8 @@ rte_mbuf_ext_refcnt_update(struct rte_mbuf_ext_shared_info *shinfo,
 		return (uint16_t)value;
 	}
 
-	return __atomic_fetch_add(&shinfo->refcnt, value,
-				 __ATOMIC_ACQ_REL) + value;
+	return rte_atomic_fetch_add_explicit(&shinfo->refcnt, value,
+				 rte_memory_order_acq_rel) + value;
 }
 
 /** Mbuf prefetch */
@@ -1315,8 +1315,8 @@ static inline int __rte_pktmbuf_pinned_extbuf_decref(struct rte_mbuf *m)
 	 * Direct usage of add primitive to avoid
 	 * duplication of comparing with one.
 	 */
-	if (likely(__atomic_fetch_add(&shinfo->refcnt, -1,
-				     __ATOMIC_ACQ_REL) - 1))
+	if (likely(rte_atomic_fetch_add_explicit(&shinfo->refcnt, -1,
+				     rte_memory_order_acq_rel) - 1))
 		return 1;
 
 	/* Reinitialize counter before mbuf freeing. */
