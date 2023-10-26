@@ -12,6 +12,12 @@
 
 #include "cn10k_ml_ops.h"
 
+#ifdef RTE_MLDEV_CNXK_ENABLE_MVTVM
+#include "mvtvm_ml_ops.h"
+#else
+#include "mvtvm_ml_stubs.h"
+#endif
+
 /* Request structure */
 struct cnxk_ml_req {
 	/* Device specific request */

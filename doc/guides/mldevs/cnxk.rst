@@ -38,11 +38,155 @@ Fast-path Inference:
 * Error handling
 
 
+Compilation Prerequisites
+-------------------------
+
+This driver requires external libraries
+to optionally enable support for models compiled using Apache TVM framework.
+The following dependencies are not part of DPDK and must be installed separately:
+
+Jansson
+~~~~~~~
+
+This library enables support to parse and read JSON files.
+
+DLPack
+~~~~~~
+
+This library provides headers for open in-memory tensor structures.
+
+.. note::
+
+   DPDK CNXK ML driver requires DLPack version 0.7
+
+.. code-block:: console
+
+   git clone https://github.com/dmlc/dlpack.git
+   cd dlpack
+   git checkout v0.7 -b v0.7
+   cmake -S ./ -B build \
+      -DCMAKE_INSTALL_PREFIX=<install_prefix> \
+      -DBUILD_MOCK=OFF
+   make -C build
+   make -C build install
+
+When cross-compiling, compiler must be provided to CMake:
+
+.. code-block:: console
+
+   -DCMAKE_C_COMPILER=aarch64-linux-gnu-gcc \
+   -DCMAKE_CXX_COMPILER=aarch64-linux-gnu-g++
+
+DMLC
+~~~~
+
+  This is a common bricks library for building scalable
+  and portable distributed machine learning.
+
+.. code-block:: console
+
+   git clone https://github.com/dmlc/dmlc-core.git
+   cd dmlc-core
+   git checkout main
+   cmake -S ./ -B build \
+      -DCMAKE_INSTALL_PREFIX=<install_prefix> \
+      -DCMAKE_C_FLAGS="-fpermissive" \
+      -DCMAKE_CXX_FLAGS="-fpermissive" \
+      -DUSE_OPENMP=OFF
+    make -C build
+    make -C build install
+
+When cross-compiling, compiler must be provided to CMake:
+
+.. code-block:: console
+
+   -DCMAKE_C_COMPILER=aarch64-linux-gnu-gcc \
+   -DCMAKE_CXX_COMPILER=aarch64-linux-gnu-g++
+
+TVM
+~~~
+
+Apache TVM provides a runtime libraries used to execute models
+on CPU cores or hardware accelerators.
+
+.. note::
+
+   DPDK CNXK ML driver requires TVM version 0.10.0
+
+.. code-block:: console
+
+   git clone https://github.com/apache/tvm.git
+   cd tvm
+   git checkout v0.11.0 -b v0.11.0
+   git submodule update --init
+   cmake -S ./ -B build \
+      -DCMAKE_INSTALL_PREFIX=<install_prefix> \
+      -DBUILD_STATIC_RUNTIME=OFF
+   make -C build
+   make -C build install
+
+When cross-compiling, more options must be provided to CMake:
+
+.. code-block:: console
+
+   -DCMAKE_C_COMPILER=aarch64-linux-gnu-gcc \
+   -DCMAKE_CXX_COMPILER=aarch64-linux-gnu-g++ \
+   -DMACHINE_NAME=aarch64-linux-gnu \
+   -DCMAKE_FIND_ROOT_PATH_MODE_PROGRAM=NEVER \
+   -DCMAKE_FIND_ROOT_PATH_MODE_LIBRARY=ONLY
+
+TVMDP
+~~~~~
+
+  Marvell's `TVM Dataplane Library <https://github.com/MarvellEmbeddedProcessors/tvmdp>`_
+  works as an interface between TVM runtime and DPDK drivers.
+  TVMDP library provides a simplified C interface
+  for TVM's runtime based on C++.
+
+.. note::
+
+   TVMDP library is dependent on TVM, dlpack, jansson and dmlc-core libraries.
+
+.. code-block:: console
+
+   git clone https://github.com/MarvellEmbeddedProcessors/tvmdp.git
+   cd tvmdp
+   git checkout main
+   cmake -S ./ -B build \
+      -DCMAKE_INSTALL_PREFIX=<install_prefix> \
+      -DBUILD_SHARED_LIBS=ON
+   make -C build
+   make -C build install
+
+When cross-compiling, more options must be provided to CMake:
+
+.. code-block:: console
+
+   -DCMAKE_C_COMPILER=aarch64-linux-gnu-gcc \
+   -DCMAKE_CXX_COMPILER=aarch64-linux-gnu-g++ \
+   -DCMAKE_FIND_ROOT_PATH=<install_prefix>
+
+libarchive
+~~~~~~~~~~
+
+Apache TVM framework generates compiled models as tar archives.
+This library enables support to decompress and read archive files
+in tar, xz and other formats.
+
+
 Installation
 ------------
 
 The OCTEON cnxk ML PMD may be compiled natively on an OCTEON cnxk platform
 or cross-compiled on an x86 platform.
+
+In order for Meson to find the dependencies above during the configure stage,
+it is required to update environment variables as below:
+
+.. code-block:: console
+
+   CMAKE_PREFIX_PATH='<install_prefix>/lib/cmake/tvm:<install_prefix>/lib/cmake/dlpack:<install_prefix>/lib/cmake/dmlc'
+   PKG_CONFIG_PATH='<install_prefix>/lib/pkgconfig'
 
 Refer to :doc:`../platform/cnxk` for instructions to build your DPDK application.
 

@@ -564,6 +564,10 @@ cnxk_ml_dev_configure(struct rte_ml_dev *dev, const struct rte_ml_dev_config *co
 		goto error;
 	}
 
+	ret = mvtvm_ml_dev_configure(cnxk_mldev, conf);
+	if (ret != 0)
+		goto error;
+
 	/* Set device capabilities */
 	cnxk_mldev->max_nb_layers =
 		cnxk_mldev->cn10k_mldev.fw.req->cn10k_req.jd.fw_load.cap.s.max_models;
@@ -623,6 +627,9 @@ cnxk_ml_dev_close(struct rte_ml_dev *dev)
 
 	/* Un-initialize xstats */
 	cnxk_ml_xstats_uninit(cnxk_mldev);
+
+	if (mvtvm_ml_dev_close(cnxk_mldev) != 0)
+		plt_err("Failed to close MVTVM ML Device");
 
 	if (cn10k_ml_dev_close(cnxk_mldev) != 0)
 		plt_err("Failed to close CN10K ML Device");
