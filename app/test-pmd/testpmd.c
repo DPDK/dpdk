@@ -10,7 +10,6 @@
 #include <time.h>
 #include <fcntl.h>
 #include <sys/mman.h>
-#include <sys/select.h>
 #include <sys/types.h>
 #include <errno.h>
 #include <stdbool.h>
@@ -4059,25 +4058,17 @@ main(int argc, char** argv)
 			}
 		} else {
 			char c;
-			fd_set fds;
 
 			printf("Press enter to exit\n");
-
-			FD_ZERO(&fds);
-			FD_SET(0, &fds);
-
-			/* wait for signal or enter */
-			ret = select(1, &fds, NULL, NULL, NULL);
-			if (ret < 0 && errno != EINTR)
-				rte_exit(EXIT_FAILURE,
-					 "Select failed: %s\n",
+			while (f_quit == 0) {
+				/* end-of-file or any character exits loop */
+				if (read(0, &c, 1) >= 0)
+					break;
+				if (errno == EINTR)
+					continue;
+				rte_exit(EXIT_FAILURE, "Read failed: %s\n",
 					 strerror(errno));
-
-			/* if got enter then consume it */
-			if (ret == 1 && read(0, &c, 1) < 0)
-				rte_exit(EXIT_FAILURE,
-					 "Read failed: %s\n",
-					 strerror(errno));
+			}
 		}
 	}
 
