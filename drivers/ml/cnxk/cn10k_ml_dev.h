@@ -9,6 +9,9 @@
 
 #include "cn10k_ml_ocm.h"
 
+/* Dummy Device ops */
+extern struct rte_ml_dev_ops ml_dev_dummy_ops;
+
 /* Marvell OCTEON CN10K ML PMD device name */
 #define MLDEV_NAME_CN10K_PMD ml_cn10k
 
@@ -36,16 +39,9 @@
 /* Maximum number of segments for IO data */
 #define ML_CN10K_MAX_SEGMENTS 1
 
-/* ML command timeout in seconds */
-#define ML_CN10K_CMD_TIMEOUT 5
-
 /* ML slow-path job flags */
 #define ML_CN10K_SP_FLAGS_OCM_NONRELOCATABLE BIT(0)
 #define ML_CN10K_SP_FLAGS_EXTENDED_LOAD_JD   BIT(1)
-
-/* Poll mode job state */
-#define ML_CN10K_POLL_JOB_START	 0
-#define ML_CN10K_POLL_JOB_FINISH 1
 
 /* Memory barrier macros */
 #if defined(RTE_ARCH_ARM)
@@ -56,6 +52,7 @@
 #define dsb_st
 #endif
 
+struct cnxk_ml_dev;
 struct cn10k_ml_req;
 struct cn10k_ml_qp;
 
@@ -66,21 +63,6 @@ enum cn10k_ml_job_type {
 	ML_CN10K_JOB_TYPE_MODEL_START,
 	ML_CN10K_JOB_TYPE_FIRMWARE_LOAD,
 	ML_CN10K_JOB_TYPE_FIRMWARE_SELFTEST,
-};
-
-/* Device configuration state enum */
-enum cn10k_ml_dev_state {
-	/* Probed and not configured */
-	ML_CN10K_DEV_STATE_PROBED = 0,
-
-	/* Configured */
-	ML_CN10K_DEV_STATE_CONFIGURED,
-
-	/* Started */
-	ML_CN10K_DEV_STATE_STARTED,
-
-	/* Closed */
-	ML_CN10K_DEV_STATE_CLOSED
 };
 
 /* Error types enumeration */
@@ -379,7 +361,7 @@ struct cn10k_ml_jd {
 /* ML firmware structure */
 struct cn10k_ml_fw {
 	/* Device reference */
-	struct cn10k_ml_dev *mldev;
+	struct cn10k_ml_dev *cn10k_mldev;
 
 	/* Firmware file path */
 	const char *path;
@@ -485,26 +467,11 @@ struct cn10k_ml_dev {
 	/* Device ROC */
 	struct roc_ml roc;
 
-	/* Configuration state */
-	enum cn10k_ml_dev_state state;
-
 	/* Firmware */
 	struct cn10k_ml_fw fw;
 
 	/* OCM info */
 	struct cn10k_ml_ocm ocm;
-
-	/* Number of models loaded */
-	uint16_t nb_models_loaded;
-
-	/* Number of models unloaded */
-	uint16_t nb_models_unloaded;
-
-	/* Number of models started */
-	uint16_t nb_models_started;
-
-	/* Number of models stopped */
-	uint16_t nb_models_stopped;
 
 	/* Extended stats data */
 	struct cn10k_ml_xstats xstats;
@@ -528,7 +495,7 @@ struct cn10k_ml_dev {
 };
 
 uint64_t cn10k_ml_fw_flags_get(struct cn10k_ml_fw *fw);
-int cn10k_ml_fw_load(struct cn10k_ml_dev *mldev);
-void cn10k_ml_fw_unload(struct cn10k_ml_dev *mldev);
+int cn10k_ml_fw_load(struct cnxk_ml_dev *cnxk_mldev);
+void cn10k_ml_fw_unload(struct cnxk_ml_dev *cnxk_mldev);
 
 #endif /* _CN10K_ML_DEV_H_ */

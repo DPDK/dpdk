@@ -10,12 +10,13 @@
 #include <rte_mldev_pmd.h>
 #include <rte_pci.h>
 
-#include <roc_api.h>
-
 #include <eal_firmware.h>
 
-#include "cn10k_ml_dev.h"
+#include <roc_api.h>
+
 #include "cn10k_ml_ops.h"
+
+#include "cnxk_ml_dev.h"
 
 #define CN10K_ML_FW_PATH		"fw_path"
 #define CN10K_ML_FW_ENABLE_DPE_WARNINGS "enable_dpe_warnings"
@@ -58,9 +59,6 @@ static const char *const valid_args[] = {CN10K_ML_FW_PATH,
 /* Supported OCM page sizes: 1KB, 2KB, 4KB, 8KB and 16KB */
 static const int valid_ocm_page_size[] = {1024, 2048, 4096, 8192, 16384};
 
-/* Dummy operations for ML device */
-struct rte_ml_dev_ops ml_dev_dummy_ops = {0};
-
 static int
 parse_string_arg(const char *key __rte_unused, const char *value, void *extra_args)
 {
@@ -90,7 +88,7 @@ parse_integer_arg(const char *key __rte_unused, const char *value, void *extra_a
 }
 
 static int
-cn10k_mldev_parse_devargs(struct rte_devargs *devargs, struct cn10k_ml_dev *mldev)
+cn10k_mldev_parse_devargs(struct rte_devargs *devargs, struct cn10k_ml_dev *cn10k_mldev)
 {
 	bool enable_dpe_warnings_set = false;
 	bool report_dpe_warnings_set = false;
@@ -127,7 +125,7 @@ cn10k_mldev_parse_devargs(struct rte_devargs *devargs, struct cn10k_ml_dev *mlde
 
 	if (rte_kvargs_count(kvlist, CN10K_ML_FW_ENABLE_DPE_WARNINGS) == 1) {
 		ret = rte_kvargs_process(kvlist, CN10K_ML_FW_ENABLE_DPE_WARNINGS,
-					 &parse_integer_arg, &mldev->fw.enable_dpe_warnings);
+					 &parse_integer_arg, &cn10k_mldev->fw.enable_dpe_warnings);
 		if (ret < 0) {
 			plt_err("Error processing arguments, key = %s\n",
 				CN10K_ML_FW_ENABLE_DPE_WARNINGS);
@@ -139,7 +137,7 @@ cn10k_mldev_parse_devargs(struct rte_devargs *devargs, struct cn10k_ml_dev *mlde
 
 	if (rte_kvargs_count(kvlist, CN10K_ML_FW_REPORT_DPE_WARNINGS) == 1) {
 		ret = rte_kvargs_process(kvlist, CN10K_ML_FW_REPORT_DPE_WARNINGS,
-					 &parse_integer_arg, &mldev->fw.report_dpe_warnings);
+					 &parse_integer_arg, &cn10k_mldev->fw.report_dpe_warnings);
 		if (ret < 0) {
 			plt_err("Error processing arguments, key = %s\n",
 				CN10K_ML_FW_REPORT_DPE_WARNINGS);
@@ -151,7 +149,7 @@ cn10k_mldev_parse_devargs(struct rte_devargs *devargs, struct cn10k_ml_dev *mlde
 
 	if (rte_kvargs_count(kvlist, CN10K_ML_DEV_CACHE_MODEL_DATA) == 1) {
 		ret = rte_kvargs_process(kvlist, CN10K_ML_DEV_CACHE_MODEL_DATA, &parse_integer_arg,
-					 &mldev->cache_model_data);
+					 &cn10k_mldev->cache_model_data);
 		if (ret < 0) {
 			plt_err("Error processing arguments, key = %s\n",
 				CN10K_ML_DEV_CACHE_MODEL_DATA);
@@ -174,7 +172,7 @@ cn10k_mldev_parse_devargs(struct rte_devargs *devargs, struct cn10k_ml_dev *mlde
 
 	if (rte_kvargs_count(kvlist, CN10K_ML_DEV_HW_QUEUE_LOCK) == 1) {
 		ret = rte_kvargs_process(kvlist, CN10K_ML_DEV_HW_QUEUE_LOCK, &parse_integer_arg,
-					 &mldev->hw_queue_lock);
+					 &cn10k_mldev->hw_queue_lock);
 		if (ret < 0) {
 			plt_err("Error processing arguments, key = %s\n",
 				CN10K_ML_DEV_HW_QUEUE_LOCK);
@@ -186,7 +184,7 @@ cn10k_mldev_parse_devargs(struct rte_devargs *devargs, struct cn10k_ml_dev *mlde
 
 	if (rte_kvargs_count(kvlist, CN10K_ML_OCM_PAGE_SIZE) == 1) {
 		ret = rte_kvargs_process(kvlist, CN10K_ML_OCM_PAGE_SIZE, &parse_integer_arg,
-					 &mldev->ocm_page_size);
+					 &cn10k_mldev->ocm_page_size);
 		if (ret < 0) {
 			plt_err("Error processing arguments, key = %s\n", CN10K_ML_OCM_PAGE_SIZE);
 			ret = -EINVAL;
@@ -197,49 +195,53 @@ cn10k_mldev_parse_devargs(struct rte_devargs *devargs, struct cn10k_ml_dev *mlde
 
 check_args:
 	if (!fw_path_set)
-		mldev->fw.path = CN10K_ML_FW_PATH_DEFAULT;
+		cn10k_mldev->fw.path = CN10K_ML_FW_PATH_DEFAULT;
 	else
-		mldev->fw.path = fw_path;
-	plt_info("ML: %s = %s", CN10K_ML_FW_PATH, mldev->fw.path);
+		cn10k_mldev->fw.path = fw_path;
+	plt_info("ML: %s = %s", CN10K_ML_FW_PATH, cn10k_mldev->fw.path);
 
 	if (!enable_dpe_warnings_set) {
-		mldev->fw.enable_dpe_warnings = CN10K_ML_FW_ENABLE_DPE_WARNINGS_DEFAULT;
+		cn10k_mldev->fw.enable_dpe_warnings = CN10K_ML_FW_ENABLE_DPE_WARNINGS_DEFAULT;
 	} else {
-		if ((mldev->fw.enable_dpe_warnings < 0) || (mldev->fw.enable_dpe_warnings > 1)) {
+		if ((cn10k_mldev->fw.enable_dpe_warnings < 0) ||
+		    (cn10k_mldev->fw.enable_dpe_warnings > 1)) {
 			plt_err("Invalid argument, %s = %d\n", CN10K_ML_FW_ENABLE_DPE_WARNINGS,
-				mldev->fw.enable_dpe_warnings);
+				cn10k_mldev->fw.enable_dpe_warnings);
 			ret = -EINVAL;
 			goto exit;
 		}
 	}
-	plt_info("ML: %s = %d", CN10K_ML_FW_ENABLE_DPE_WARNINGS, mldev->fw.enable_dpe_warnings);
+	plt_info("ML: %s = %d", CN10K_ML_FW_ENABLE_DPE_WARNINGS,
+		 cn10k_mldev->fw.enable_dpe_warnings);
 
 	if (!report_dpe_warnings_set) {
-		mldev->fw.report_dpe_warnings = CN10K_ML_FW_REPORT_DPE_WARNINGS_DEFAULT;
+		cn10k_mldev->fw.report_dpe_warnings = CN10K_ML_FW_REPORT_DPE_WARNINGS_DEFAULT;
 	} else {
-		if ((mldev->fw.report_dpe_warnings < 0) || (mldev->fw.report_dpe_warnings > 1)) {
+		if ((cn10k_mldev->fw.report_dpe_warnings < 0) ||
+		    (cn10k_mldev->fw.report_dpe_warnings > 1)) {
 			plt_err("Invalid argument, %s = %d\n", CN10K_ML_FW_REPORT_DPE_WARNINGS,
-				mldev->fw.report_dpe_warnings);
+				cn10k_mldev->fw.report_dpe_warnings);
 			ret = -EINVAL;
 			goto exit;
 		}
 	}
-	plt_info("ML: %s = %d", CN10K_ML_FW_REPORT_DPE_WARNINGS, mldev->fw.report_dpe_warnings);
+	plt_info("ML: %s = %d", CN10K_ML_FW_REPORT_DPE_WARNINGS,
+		 cn10k_mldev->fw.report_dpe_warnings);
 
 	if (!cache_model_data_set) {
-		mldev->cache_model_data = CN10K_ML_DEV_CACHE_MODEL_DATA_DEFAULT;
+		cn10k_mldev->cache_model_data = CN10K_ML_DEV_CACHE_MODEL_DATA_DEFAULT;
 	} else {
-		if ((mldev->cache_model_data < 0) || (mldev->cache_model_data > 1)) {
+		if ((cn10k_mldev->cache_model_data < 0) || (cn10k_mldev->cache_model_data > 1)) {
 			plt_err("Invalid argument, %s = %d\n", CN10K_ML_DEV_CACHE_MODEL_DATA,
-				mldev->cache_model_data);
+				cn10k_mldev->cache_model_data);
 			ret = -EINVAL;
 			goto exit;
 		}
 	}
-	plt_info("ML: %s = %d", CN10K_ML_DEV_CACHE_MODEL_DATA, mldev->cache_model_data);
+	plt_info("ML: %s = %d", CN10K_ML_DEV_CACHE_MODEL_DATA, cn10k_mldev->cache_model_data);
 
 	if (!ocm_alloc_mode_set) {
-		mldev->ocm.alloc_mode = CN10K_ML_OCM_ALLOC_MODE_DEFAULT;
+		cn10k_mldev->ocm.alloc_mode = CN10K_ML_OCM_ALLOC_MODE_DEFAULT;
 	} else {
 		if (!((strcmp(ocm_alloc_mode, "lowest") == 0) ||
 		      (strcmp(ocm_alloc_mode, "largest") == 0))) {
@@ -248,47 +250,47 @@ check_args:
 			ret = -EINVAL;
 			goto exit;
 		}
-		mldev->ocm.alloc_mode = ocm_alloc_mode;
+		cn10k_mldev->ocm.alloc_mode = ocm_alloc_mode;
 	}
-	plt_info("ML: %s = %s", CN10K_ML_OCM_ALLOC_MODE, mldev->ocm.alloc_mode);
+	plt_info("ML: %s = %s", CN10K_ML_OCM_ALLOC_MODE, cn10k_mldev->ocm.alloc_mode);
 
 	if (!hw_queue_lock_set) {
-		mldev->hw_queue_lock = CN10K_ML_DEV_HW_QUEUE_LOCK_DEFAULT;
+		cn10k_mldev->hw_queue_lock = CN10K_ML_DEV_HW_QUEUE_LOCK_DEFAULT;
 	} else {
-		if ((mldev->hw_queue_lock < 0) || (mldev->hw_queue_lock > 1)) {
+		if ((cn10k_mldev->hw_queue_lock < 0) || (cn10k_mldev->hw_queue_lock > 1)) {
 			plt_err("Invalid argument, %s = %d\n", CN10K_ML_DEV_HW_QUEUE_LOCK,
-				mldev->hw_queue_lock);
+				cn10k_mldev->hw_queue_lock);
 			ret = -EINVAL;
 			goto exit;
 		}
 	}
-	plt_info("ML: %s = %d", CN10K_ML_DEV_HW_QUEUE_LOCK, mldev->hw_queue_lock);
+	plt_info("ML: %s = %d", CN10K_ML_DEV_HW_QUEUE_LOCK, cn10k_mldev->hw_queue_lock);
 
 	if (!ocm_page_size_set) {
-		mldev->ocm_page_size = CN10K_ML_OCM_PAGE_SIZE_DEFAULT;
+		cn10k_mldev->ocm_page_size = CN10K_ML_OCM_PAGE_SIZE_DEFAULT;
 	} else {
-		if (mldev->ocm_page_size < 0) {
+		if (cn10k_mldev->ocm_page_size < 0) {
 			plt_err("Invalid argument, %s = %d\n", CN10K_ML_OCM_PAGE_SIZE,
-				mldev->ocm_page_size);
+				cn10k_mldev->ocm_page_size);
 			ret = -EINVAL;
 			goto exit;
 		}
 
 		found = false;
 		for (i = 0; i < PLT_DIM(valid_ocm_page_size); i++) {
-			if (mldev->ocm_page_size == valid_ocm_page_size[i]) {
+			if (cn10k_mldev->ocm_page_size == valid_ocm_page_size[i]) {
 				found = true;
 				break;
 			}
 		}
 
 		if (!found) {
-			plt_err("Unsupported ocm_page_size = %d\n", mldev->ocm_page_size);
+			plt_err("Unsupported ocm_page_size = %d\n", cn10k_mldev->ocm_page_size);
 			ret = -EINVAL;
 			goto exit;
 		}
 	}
-	plt_info("ML: %s = %d", CN10K_ML_OCM_PAGE_SIZE, mldev->ocm_page_size);
+	plt_info("ML: %s = %d", CN10K_ML_OCM_PAGE_SIZE, cn10k_mldev->ocm_page_size);
 
 exit:
 	rte_kvargs_free(kvlist);
@@ -300,7 +302,8 @@ static int
 cn10k_ml_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 {
 	struct rte_ml_dev_pmd_init_params init_params;
-	struct cn10k_ml_dev *mldev;
+	struct cn10k_ml_dev *cn10k_mldev;
+	struct cnxk_ml_dev *cnxk_mldev;
 	char name[RTE_ML_STR_MAX];
 	struct rte_ml_dev *dev;
 	int ret;
@@ -308,7 +311,7 @@ cn10k_ml_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_de
 	PLT_SET_USED(pci_drv);
 
 	init_params = (struct rte_ml_dev_pmd_init_params){
-		.socket_id = rte_socket_id(), .private_data_size = sizeof(struct cn10k_ml_dev)};
+		.socket_id = rte_socket_id(), .private_data_size = sizeof(struct cnxk_ml_dev)};
 
 	ret = roc_plt_init();
 	if (ret < 0) {
@@ -324,18 +327,20 @@ cn10k_ml_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_de
 	}
 
 	/* Get private data space allocated */
-	mldev = dev->data->dev_private;
+	cnxk_mldev = dev->data->dev_private;
+	cnxk_mldev->mldev = dev;
+	cn10k_mldev = &cnxk_mldev->cn10k_mldev;
 
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
-		mldev->roc.pci_dev = pci_dev;
+		cn10k_mldev->roc.pci_dev = pci_dev;
 
-		ret = cn10k_mldev_parse_devargs(dev->device->devargs, mldev);
+		ret = cn10k_mldev_parse_devargs(dev->device->devargs, cn10k_mldev);
 		if (ret) {
 			plt_err("Failed to parse devargs ret = %d", ret);
 			goto pmd_destroy;
 		}
 
-		ret = roc_ml_dev_init(&mldev->roc);
+		ret = roc_ml_dev_init(&cn10k_mldev->roc);
 		if (ret) {
 			plt_err("Failed to initialize ML ROC, ret = %d", ret);
 			goto pmd_destroy;
@@ -351,7 +356,7 @@ cn10k_ml_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_de
 	dev->dequeue_burst = NULL;
 	dev->op_error_get = NULL;
 
-	mldev->state = ML_CN10K_DEV_STATE_PROBED;
+	cnxk_mldev->state = ML_CNXK_DEV_STATE_PROBED;
 
 	return 0;
 
@@ -368,7 +373,7 @@ error_exit:
 static int
 cn10k_ml_pci_remove(struct rte_pci_device *pci_dev)
 {
-	struct cn10k_ml_dev *mldev;
+	struct cnxk_ml_dev *cnxk_mldev;
 	char name[RTE_ML_STR_MAX];
 	struct rte_ml_dev *dev;
 	int ret;
@@ -383,8 +388,8 @@ cn10k_ml_pci_remove(struct rte_pci_device *pci_dev)
 		return -ENODEV;
 
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
-		mldev = dev->data->dev_private;
-		ret = roc_ml_dev_fini(&mldev->roc);
+		cnxk_mldev = dev->data->dev_private;
+		ret = roc_ml_dev_fini(&cnxk_mldev->cn10k_mldev.roc);
 		if (ret)
 			return ret;
 	}
@@ -430,45 +435,45 @@ cn10k_ml_fw_flags_get(struct cn10k_ml_fw *fw)
 static int
 cn10k_ml_fw_load_asim(struct cn10k_ml_fw *fw)
 {
-	struct cn10k_ml_dev *mldev;
+	struct cn10k_ml_dev *cn10k_mldev;
 	uint64_t timeout_cycle;
 	uint64_t reg_val64;
 	bool timeout;
 	int ret = 0;
 
-	mldev = fw->mldev;
+	cn10k_mldev = fw->cn10k_mldev;
 
 	/* Reset HEAD and TAIL debug pointer registers */
-	roc_ml_reg_write64(&mldev->roc, 0, ML_SCRATCH_DBG_BUFFER_HEAD_C0);
-	roc_ml_reg_write64(&mldev->roc, 0, ML_SCRATCH_DBG_BUFFER_TAIL_C0);
-	roc_ml_reg_write64(&mldev->roc, 0, ML_SCRATCH_DBG_BUFFER_HEAD_C1);
-	roc_ml_reg_write64(&mldev->roc, 0, ML_SCRATCH_DBG_BUFFER_TAIL_C1);
-	roc_ml_reg_write64(&mldev->roc, 0, ML_SCRATCH_EXCEPTION_SP_C0);
-	roc_ml_reg_write64(&mldev->roc, 0, ML_SCRATCH_EXCEPTION_SP_C1);
+	roc_ml_reg_write64(&cn10k_mldev->roc, 0, ML_SCRATCH_DBG_BUFFER_HEAD_C0);
+	roc_ml_reg_write64(&cn10k_mldev->roc, 0, ML_SCRATCH_DBG_BUFFER_TAIL_C0);
+	roc_ml_reg_write64(&cn10k_mldev->roc, 0, ML_SCRATCH_DBG_BUFFER_HEAD_C1);
+	roc_ml_reg_write64(&cn10k_mldev->roc, 0, ML_SCRATCH_DBG_BUFFER_TAIL_C1);
+	roc_ml_reg_write64(&cn10k_mldev->roc, 0, ML_SCRATCH_EXCEPTION_SP_C0);
+	roc_ml_reg_write64(&cn10k_mldev->roc, 0, ML_SCRATCH_EXCEPTION_SP_C1);
 
 	/* Set ML_MLR_BASE to base IOVA of the ML region in LLC/DRAM. */
 	reg_val64 = rte_eal_get_baseaddr();
-	roc_ml_reg_write64(&mldev->roc, reg_val64, ML_MLR_BASE);
-	plt_ml_dbg("ML_MLR_BASE = 0x%016lx", roc_ml_reg_read64(&mldev->roc, ML_MLR_BASE));
-	roc_ml_reg_save(&mldev->roc, ML_MLR_BASE);
+	roc_ml_reg_write64(&cn10k_mldev->roc, reg_val64, ML_MLR_BASE);
+	plt_ml_dbg("ML_MLR_BASE = 0x%016lx", roc_ml_reg_read64(&cn10k_mldev->roc, ML_MLR_BASE));
+	roc_ml_reg_save(&cn10k_mldev->roc, ML_MLR_BASE);
 
 	/* Update FW load completion structure */
 	fw->req->jd.hdr.jce.w1.u64 = PLT_U64_CAST(&fw->req->status);
 	fw->req->jd.hdr.job_type = ML_CN10K_JOB_TYPE_FIRMWARE_LOAD;
-	fw->req->jd.hdr.result = roc_ml_addr_ap2mlip(&mldev->roc, &fw->req->result);
+	fw->req->jd.hdr.result = roc_ml_addr_ap2mlip(&cn10k_mldev->roc, &fw->req->result);
 	fw->req->jd.fw_load.flags = cn10k_ml_fw_flags_get(fw);
-	plt_write64(ML_CN10K_POLL_JOB_START, &fw->req->status);
+	plt_write64(ML_CNXK_POLL_JOB_START, &fw->req->status);
 	plt_wmb();
 
 	/* Enqueue FW load through scratch registers */
 	timeout = true;
-	timeout_cycle = plt_tsc_cycles() + ML_CN10K_CMD_TIMEOUT * plt_tsc_hz();
-	roc_ml_scratch_enqueue(&mldev->roc, &fw->req->jd);
+	timeout_cycle = plt_tsc_cycles() + ML_CNXK_CMD_TIMEOUT * plt_tsc_hz();
+	roc_ml_scratch_enqueue(&cn10k_mldev->roc, &fw->req->jd);
 
 	plt_rmb();
 	do {
-		if (roc_ml_scratch_is_done_bit_set(&mldev->roc) &&
-		    (plt_read64(&fw->req->status) == ML_CN10K_POLL_JOB_FINISH)) {
+		if (roc_ml_scratch_is_done_bit_set(&cn10k_mldev->roc) &&
+		    (plt_read64(&fw->req->status) == ML_CNXK_POLL_JOB_FINISH)) {
 			timeout = false;
 			break;
 		}
@@ -480,11 +485,11 @@ cn10k_ml_fw_load_asim(struct cn10k_ml_fw *fw)
 	} else {
 		/* Set ML to disable new jobs */
 		reg_val64 = (ROC_ML_CFG_JD_SIZE | ROC_ML_CFG_MLIP_ENA);
-		roc_ml_reg_write64(&mldev->roc, reg_val64, ML_CFG);
+		roc_ml_reg_write64(&cn10k_mldev->roc, reg_val64, ML_CFG);
 
 		/* Clear scratch registers */
-		roc_ml_reg_write64(&mldev->roc, 0, ML_SCRATCH_WORK_PTR);
-		roc_ml_reg_write64(&mldev->roc, 0, ML_SCRATCH_FW_CTRL);
+		roc_ml_reg_write64(&cn10k_mldev->roc, 0, ML_SCRATCH_WORK_PTR);
+		roc_ml_reg_write64(&cn10k_mldev->roc, 0, ML_SCRATCH_FW_CTRL);
 
 		if (timeout) {
 			plt_err("Firmware load timeout");
@@ -498,14 +503,14 @@ cn10k_ml_fw_load_asim(struct cn10k_ml_fw *fw)
 	}
 
 	/* Reset scratch registers */
-	roc_ml_reg_write64(&mldev->roc, 0, ML_SCRATCH_FW_CTRL);
-	roc_ml_reg_write64(&mldev->roc, 0, ML_SCRATCH_WORK_PTR);
+	roc_ml_reg_write64(&cn10k_mldev->roc, 0, ML_SCRATCH_FW_CTRL);
+	roc_ml_reg_write64(&cn10k_mldev->roc, 0, ML_SCRATCH_WORK_PTR);
 
 	/* Disable job execution, to be enabled in start */
-	reg_val64 = roc_ml_reg_read64(&mldev->roc, ML_CFG);
+	reg_val64 = roc_ml_reg_read64(&cn10k_mldev->roc, ML_CFG);
 	reg_val64 &= ~ROC_ML_CFG_ENA;
-	roc_ml_reg_write64(&mldev->roc, reg_val64, ML_CFG);
-	plt_ml_dbg("ML_CFG => 0x%016lx", roc_ml_reg_read64(&mldev->roc, ML_CFG));
+	roc_ml_reg_write64(&cn10k_mldev->roc, reg_val64, ML_CFG);
+	plt_ml_dbg("ML_CFG => 0x%016lx", roc_ml_reg_read64(&cn10k_mldev->roc, ML_CFG));
 
 	return ret;
 }
@@ -515,7 +520,7 @@ cn10k_ml_fw_load_cn10ka(struct cn10k_ml_fw *fw, void *buffer, uint64_t size)
 {
 	union ml_a35_0_rst_vector_base_s a35_0_rst_vector_base;
 	union ml_a35_0_rst_vector_base_s a35_1_rst_vector_base;
-	struct cn10k_ml_dev *mldev;
+	struct cn10k_ml_dev *cn10k_mldev;
 	uint64_t timeout_cycle;
 	uint64_t reg_val64;
 	uint32_t reg_val32;
@@ -524,24 +529,24 @@ cn10k_ml_fw_load_cn10ka(struct cn10k_ml_fw *fw, void *buffer, uint64_t size)
 	int ret = 0;
 	uint8_t i;
 
-	mldev = fw->mldev;
+	cn10k_mldev = fw->cn10k_mldev;
 
 	/* Reset HEAD and TAIL debug pointer registers */
-	roc_ml_reg_write64(&mldev->roc, 0, ML_SCRATCH_DBG_BUFFER_HEAD_C0);
-	roc_ml_reg_write64(&mldev->roc, 0, ML_SCRATCH_DBG_BUFFER_TAIL_C0);
-	roc_ml_reg_write64(&mldev->roc, 0, ML_SCRATCH_DBG_BUFFER_HEAD_C1);
-	roc_ml_reg_write64(&mldev->roc, 0, ML_SCRATCH_DBG_BUFFER_TAIL_C1);
-	roc_ml_reg_write64(&mldev->roc, 0, ML_SCRATCH_EXCEPTION_SP_C0);
-	roc_ml_reg_write64(&mldev->roc, 0, ML_SCRATCH_EXCEPTION_SP_C1);
+	roc_ml_reg_write64(&cn10k_mldev->roc, 0, ML_SCRATCH_DBG_BUFFER_HEAD_C0);
+	roc_ml_reg_write64(&cn10k_mldev->roc, 0, ML_SCRATCH_DBG_BUFFER_TAIL_C0);
+	roc_ml_reg_write64(&cn10k_mldev->roc, 0, ML_SCRATCH_DBG_BUFFER_HEAD_C1);
+	roc_ml_reg_write64(&cn10k_mldev->roc, 0, ML_SCRATCH_DBG_BUFFER_TAIL_C1);
+	roc_ml_reg_write64(&cn10k_mldev->roc, 0, ML_SCRATCH_EXCEPTION_SP_C0);
+	roc_ml_reg_write64(&cn10k_mldev->roc, 0, ML_SCRATCH_EXCEPTION_SP_C1);
 
 	/* (1) Write firmware images for ACC's two A35 cores to the ML region in LLC / DRAM. */
 	rte_memcpy(PLT_PTR_ADD(fw->data, FW_LINKER_OFFSET), buffer, size);
 
 	/* (2) Set ML(0)_MLR_BASE = Base IOVA of the ML region in LLC/DRAM. */
 	reg_val64 = PLT_PTR_SUB_U64_CAST(fw->data, rte_eal_get_baseaddr());
-	roc_ml_reg_write64(&mldev->roc, reg_val64, ML_MLR_BASE);
-	plt_ml_dbg("ML_MLR_BASE => 0x%016lx", roc_ml_reg_read64(&mldev->roc, ML_MLR_BASE));
-	roc_ml_reg_save(&mldev->roc, ML_MLR_BASE);
+	roc_ml_reg_write64(&cn10k_mldev->roc, reg_val64, ML_MLR_BASE);
+	plt_ml_dbg("ML_MLR_BASE => 0x%016lx", roc_ml_reg_read64(&cn10k_mldev->roc, ML_MLR_BASE));
+	roc_ml_reg_save(&cn10k_mldev->roc, ML_MLR_BASE);
 
 	/* (3) Set ML(0)_AXI_BRIDGE_CTRL(1) = 0x184003 to remove back-pressure check on DMA AXI
 	 * bridge.
@@ -549,9 +554,9 @@ cn10k_ml_fw_load_cn10ka(struct cn10k_ml_fw *fw, void *buffer, uint64_t size)
 	reg_val64 = (ROC_ML_AXI_BRIDGE_CTRL_AXI_RESP_CTRL |
 		     ROC_ML_AXI_BRIDGE_CTRL_BRIDGE_CTRL_MODE | ROC_ML_AXI_BRIDGE_CTRL_NCB_WR_BLK |
 		     ROC_ML_AXI_BRIDGE_CTRL_FORCE_WRESP_OK | ROC_ML_AXI_BRIDGE_CTRL_FORCE_RRESP_OK);
-	roc_ml_reg_write64(&mldev->roc, reg_val64, ML_AXI_BRIDGE_CTRL(1));
+	roc_ml_reg_write64(&cn10k_mldev->roc, reg_val64, ML_AXI_BRIDGE_CTRL(1));
 	plt_ml_dbg("ML_AXI_BRIDGE_CTRL(1) => 0x%016lx",
-		   roc_ml_reg_read64(&mldev->roc, ML_AXI_BRIDGE_CTRL(1)));
+		   roc_ml_reg_read64(&cn10k_mldev->roc, ML_AXI_BRIDGE_CTRL(1)));
 
 	/* (4) Set ML(0)_ANB(0..2)_BACKP_DISABLE = 0x3 to remove back-pressure on the AXI to NCB
 	 * bridges.
@@ -559,9 +564,9 @@ cn10k_ml_fw_load_cn10ka(struct cn10k_ml_fw *fw, void *buffer, uint64_t size)
 	for (i = 0; i < ML_ANBX_NR; i++) {
 		reg_val64 = (ROC_ML_ANBX_BACKP_DISABLE_EXTMSTR_B_BACKP_DISABLE |
 			     ROC_ML_ANBX_BACKP_DISABLE_EXTMSTR_R_BACKP_DISABLE);
-		roc_ml_reg_write64(&mldev->roc, reg_val64, ML_ANBX_BACKP_DISABLE(i));
+		roc_ml_reg_write64(&cn10k_mldev->roc, reg_val64, ML_ANBX_BACKP_DISABLE(i));
 		plt_ml_dbg("ML_ANBX_BACKP_DISABLE(%u) => 0x%016lx", i,
-			   roc_ml_reg_read64(&mldev->roc, ML_ANBX_BACKP_DISABLE(i)));
+			   roc_ml_reg_read64(&cn10k_mldev->roc, ML_ANBX_BACKP_DISABLE(i)));
 	}
 
 	/* (5) Set ML(0)_ANB(0..2)_NCBI_P_OVR = 0x3000 and ML(0)_ANB(0..2)_NCBI_NP_OVR = 0x3000 to
@@ -570,39 +575,40 @@ cn10k_ml_fw_load_cn10ka(struct cn10k_ml_fw *fw, void *buffer, uint64_t size)
 	for (i = 0; i < ML_ANBX_NR; i++) {
 		reg_val64 = (ML_ANBX_NCBI_P_OVR_ANB_NCBI_P_NS_OVR |
 			     ML_ANBX_NCBI_P_OVR_ANB_NCBI_P_NS_OVR_VLD);
-		roc_ml_reg_write64(&mldev->roc, reg_val64, ML_ANBX_NCBI_P_OVR(i));
+		roc_ml_reg_write64(&cn10k_mldev->roc, reg_val64, ML_ANBX_NCBI_P_OVR(i));
 		plt_ml_dbg("ML_ANBX_NCBI_P_OVR(%u) => 0x%016lx", i,
-			   roc_ml_reg_read64(&mldev->roc, ML_ANBX_NCBI_P_OVR(i)));
+			   roc_ml_reg_read64(&cn10k_mldev->roc, ML_ANBX_NCBI_P_OVR(i)));
 
 		reg_val64 |= (ML_ANBX_NCBI_NP_OVR_ANB_NCBI_NP_NS_OVR |
 			      ML_ANBX_NCBI_NP_OVR_ANB_NCBI_NP_NS_OVR_VLD);
-		roc_ml_reg_write64(&mldev->roc, reg_val64, ML_ANBX_NCBI_NP_OVR(i));
+		roc_ml_reg_write64(&cn10k_mldev->roc, reg_val64, ML_ANBX_NCBI_NP_OVR(i));
 		plt_ml_dbg("ML_ANBX_NCBI_NP_OVR(%u) => 0x%016lx", i,
-			   roc_ml_reg_read64(&mldev->roc, ML_ANBX_NCBI_NP_OVR(i)));
+			   roc_ml_reg_read64(&cn10k_mldev->roc, ML_ANBX_NCBI_NP_OVR(i)));
 	}
 
 	/* (6) Set ML(0)_CFG[MLIP_CLK_FORCE] = 1, to force turning on the MLIP clock. */
-	reg_val64 = roc_ml_reg_read64(&mldev->roc, ML_CFG);
+	reg_val64 = roc_ml_reg_read64(&cn10k_mldev->roc, ML_CFG);
 	reg_val64 |= ROC_ML_CFG_MLIP_CLK_FORCE;
-	roc_ml_reg_write64(&mldev->roc, reg_val64, ML_CFG);
-	plt_ml_dbg("ML_CFG => 0x%016lx", roc_ml_reg_read64(&mldev->roc, ML_CFG));
+	roc_ml_reg_write64(&cn10k_mldev->roc, reg_val64, ML_CFG);
+	plt_ml_dbg("ML_CFG => 0x%016lx", roc_ml_reg_read64(&cn10k_mldev->roc, ML_CFG));
 
 	/* (7) Set ML(0)_JOB_MGR_CTRL[STALL_ON_IDLE] = 0, to make sure the boot request is accepted
 	 * when there is no job in the command queue.
 	 */
-	reg_val64 = roc_ml_reg_read64(&mldev->roc, ML_JOB_MGR_CTRL);
+	reg_val64 = roc_ml_reg_read64(&cn10k_mldev->roc, ML_JOB_MGR_CTRL);
 	reg_val64 &= ~ROC_ML_JOB_MGR_CTRL_STALL_ON_IDLE;
-	roc_ml_reg_write64(&mldev->roc, reg_val64, ML_JOB_MGR_CTRL);
-	plt_ml_dbg("ML_JOB_MGR_CTRL => 0x%016lx", roc_ml_reg_read64(&mldev->roc, ML_JOB_MGR_CTRL));
+	roc_ml_reg_write64(&cn10k_mldev->roc, reg_val64, ML_JOB_MGR_CTRL);
+	plt_ml_dbg("ML_JOB_MGR_CTRL => 0x%016lx",
+		   roc_ml_reg_read64(&cn10k_mldev->roc, ML_JOB_MGR_CTRL));
 
 	/* (8) Set ML(0)_CFG[ENA] = 0 and ML(0)_CFG[MLIP_ENA] = 1 to bring MLIP out of reset while
 	 * keeping the job manager disabled.
 	 */
-	reg_val64 = roc_ml_reg_read64(&mldev->roc, ML_CFG);
+	reg_val64 = roc_ml_reg_read64(&cn10k_mldev->roc, ML_CFG);
 	reg_val64 |= ROC_ML_CFG_MLIP_ENA;
 	reg_val64 &= ~ROC_ML_CFG_ENA;
-	roc_ml_reg_write64(&mldev->roc, reg_val64, ML_CFG);
-	plt_ml_dbg("ML_CFG => 0x%016lx", roc_ml_reg_read64(&mldev->roc, ML_CFG));
+	roc_ml_reg_write64(&cn10k_mldev->roc, reg_val64, ML_CFG);
+	plt_ml_dbg("ML_CFG => 0x%016lx", roc_ml_reg_read64(&cn10k_mldev->roc, ML_CFG));
 
 	/* (9) Wait at least 70 coprocessor clock cycles. */
 	plt_delay_us(FW_WAIT_CYCLES);
@@ -613,53 +619,57 @@ cn10k_ml_fw_load_cn10ka(struct cn10k_ml_fw *fw, void *buffer, uint64_t size)
 	 * AXI outbound address divided by 4. Read after write.
 	 */
 	offset = PLT_PTR_ADD_U64_CAST(
-		fw->data, FW_LINKER_OFFSET - roc_ml_reg_read64(&mldev->roc, ML_MLR_BASE));
+		fw->data, FW_LINKER_OFFSET - roc_ml_reg_read64(&cn10k_mldev->roc, ML_MLR_BASE));
 	a35_0_rst_vector_base.s.addr = (offset + ML_AXI_START_ADDR) / 4;
 	a35_1_rst_vector_base.s.addr = (offset + ML_AXI_START_ADDR) / 4;
 
-	roc_ml_reg_write32(&mldev->roc, a35_0_rst_vector_base.w.w0, ML_A35_0_RST_VECTOR_BASE_W(0));
-	reg_val32 = roc_ml_reg_read32(&mldev->roc, ML_A35_0_RST_VECTOR_BASE_W(0));
+	roc_ml_reg_write32(&cn10k_mldev->roc, a35_0_rst_vector_base.w.w0,
+			   ML_A35_0_RST_VECTOR_BASE_W(0));
+	reg_val32 = roc_ml_reg_read32(&cn10k_mldev->roc, ML_A35_0_RST_VECTOR_BASE_W(0));
 	plt_ml_dbg("ML_A35_0_RST_VECTOR_BASE_W(0) => 0x%08x", reg_val32);
 
-	roc_ml_reg_write32(&mldev->roc, a35_0_rst_vector_base.w.w1, ML_A35_0_RST_VECTOR_BASE_W(1));
-	reg_val32 = roc_ml_reg_read32(&mldev->roc, ML_A35_0_RST_VECTOR_BASE_W(1));
+	roc_ml_reg_write32(&cn10k_mldev->roc, a35_0_rst_vector_base.w.w1,
+			   ML_A35_0_RST_VECTOR_BASE_W(1));
+	reg_val32 = roc_ml_reg_read32(&cn10k_mldev->roc, ML_A35_0_RST_VECTOR_BASE_W(1));
 	plt_ml_dbg("ML_A35_0_RST_VECTOR_BASE_W(1) => 0x%08x", reg_val32);
 
-	roc_ml_reg_write32(&mldev->roc, a35_1_rst_vector_base.w.w0, ML_A35_1_RST_VECTOR_BASE_W(0));
-	reg_val32 = roc_ml_reg_read32(&mldev->roc, ML_A35_1_RST_VECTOR_BASE_W(0));
+	roc_ml_reg_write32(&cn10k_mldev->roc, a35_1_rst_vector_base.w.w0,
+			   ML_A35_1_RST_VECTOR_BASE_W(0));
+	reg_val32 = roc_ml_reg_read32(&cn10k_mldev->roc, ML_A35_1_RST_VECTOR_BASE_W(0));
 	plt_ml_dbg("ML_A35_1_RST_VECTOR_BASE_W(0) => 0x%08x", reg_val32);
 
-	roc_ml_reg_write32(&mldev->roc, a35_1_rst_vector_base.w.w1, ML_A35_1_RST_VECTOR_BASE_W(1));
-	reg_val32 = roc_ml_reg_read32(&mldev->roc, ML_A35_1_RST_VECTOR_BASE_W(1));
+	roc_ml_reg_write32(&cn10k_mldev->roc, a35_1_rst_vector_base.w.w1,
+			   ML_A35_1_RST_VECTOR_BASE_W(1));
+	reg_val32 = roc_ml_reg_read32(&cn10k_mldev->roc, ML_A35_1_RST_VECTOR_BASE_W(1));
 	plt_ml_dbg("ML_A35_1_RST_VECTOR_BASE_W(1) => 0x%08x", reg_val32);
 
 	/* (11) Clear MLIP's ML(0)_SW_RST_CTRL[ACC_RST]. This will bring the ACC cores and other
 	 * MLIP components out of reset. The cores will execute firmware from the ML region as
 	 * written in step 1.
 	 */
-	reg_val32 = roc_ml_reg_read32(&mldev->roc, ML_SW_RST_CTRL);
+	reg_val32 = roc_ml_reg_read32(&cn10k_mldev->roc, ML_SW_RST_CTRL);
 	reg_val32 &= ~ROC_ML_SW_RST_CTRL_ACC_RST;
-	roc_ml_reg_write32(&mldev->roc, reg_val32, ML_SW_RST_CTRL);
-	reg_val32 = roc_ml_reg_read32(&mldev->roc, ML_SW_RST_CTRL);
+	roc_ml_reg_write32(&cn10k_mldev->roc, reg_val32, ML_SW_RST_CTRL);
+	reg_val32 = roc_ml_reg_read32(&cn10k_mldev->roc, ML_SW_RST_CTRL);
 	plt_ml_dbg("ML_SW_RST_CTRL => 0x%08x", reg_val32);
 
 	/* (12) Wait for notification from firmware that ML is ready for job execution. */
 	fw->req->jd.hdr.jce.w1.u64 = PLT_U64_CAST(&fw->req->status);
 	fw->req->jd.hdr.job_type = ML_CN10K_JOB_TYPE_FIRMWARE_LOAD;
-	fw->req->jd.hdr.result = roc_ml_addr_ap2mlip(&mldev->roc, &fw->req->result);
+	fw->req->jd.hdr.result = roc_ml_addr_ap2mlip(&cn10k_mldev->roc, &fw->req->result);
 	fw->req->jd.fw_load.flags = cn10k_ml_fw_flags_get(fw);
-	plt_write64(ML_CN10K_POLL_JOB_START, &fw->req->status);
+	plt_write64(ML_CNXK_POLL_JOB_START, &fw->req->status);
 	plt_wmb();
 
 	/* Enqueue FW load through scratch registers */
 	timeout = true;
-	timeout_cycle = plt_tsc_cycles() + ML_CN10K_CMD_TIMEOUT * plt_tsc_hz();
-	roc_ml_scratch_enqueue(&mldev->roc, &fw->req->jd);
+	timeout_cycle = plt_tsc_cycles() + ML_CNXK_CMD_TIMEOUT * plt_tsc_hz();
+	roc_ml_scratch_enqueue(&cn10k_mldev->roc, &fw->req->jd);
 
 	plt_rmb();
 	do {
-		if (roc_ml_scratch_is_done_bit_set(&mldev->roc) &&
-		    (plt_read64(&fw->req->status) == ML_CN10K_POLL_JOB_FINISH)) {
+		if (roc_ml_scratch_is_done_bit_set(&cn10k_mldev->roc) &&
+		    (plt_read64(&fw->req->status) == ML_CNXK_POLL_JOB_FINISH)) {
 			timeout = false;
 			break;
 		}
@@ -671,11 +681,11 @@ cn10k_ml_fw_load_cn10ka(struct cn10k_ml_fw *fw, void *buffer, uint64_t size)
 	} else {
 		/* Set ML to disable new jobs */
 		reg_val64 = (ROC_ML_CFG_JD_SIZE | ROC_ML_CFG_MLIP_ENA);
-		roc_ml_reg_write64(&mldev->roc, reg_val64, ML_CFG);
+		roc_ml_reg_write64(&cn10k_mldev->roc, reg_val64, ML_CFG);
 
 		/* Clear scratch registers */
-		roc_ml_reg_write64(&mldev->roc, 0, ML_SCRATCH_WORK_PTR);
-		roc_ml_reg_write64(&mldev->roc, 0, ML_SCRATCH_FW_CTRL);
+		roc_ml_reg_write64(&cn10k_mldev->roc, 0, ML_SCRATCH_WORK_PTR);
+		roc_ml_reg_write64(&cn10k_mldev->roc, 0, ML_SCRATCH_FW_CTRL);
 
 		if (timeout) {
 			plt_err("Firmware load timeout");
@@ -691,49 +701,51 @@ cn10k_ml_fw_load_cn10ka(struct cn10k_ml_fw *fw, void *buffer, uint64_t size)
 	/* (13) Set ML(0)_JOB_MGR_CTRL[STALL_ON_IDLE] = 0x1; this is needed to shut down the MLIP
 	 * clock when there are no more jobs to process.
 	 */
-	reg_val64 = roc_ml_reg_read64(&mldev->roc, ML_JOB_MGR_CTRL);
+	reg_val64 = roc_ml_reg_read64(&cn10k_mldev->roc, ML_JOB_MGR_CTRL);
 	reg_val64 |= ROC_ML_JOB_MGR_CTRL_STALL_ON_IDLE;
-	roc_ml_reg_write64(&mldev->roc, reg_val64, ML_JOB_MGR_CTRL);
-	plt_ml_dbg("ML_JOB_MGR_CTRL => 0x%016lx", roc_ml_reg_read64(&mldev->roc, ML_JOB_MGR_CTRL));
+	roc_ml_reg_write64(&cn10k_mldev->roc, reg_val64, ML_JOB_MGR_CTRL);
+	plt_ml_dbg("ML_JOB_MGR_CTRL => 0x%016lx",
+		   roc_ml_reg_read64(&cn10k_mldev->roc, ML_JOB_MGR_CTRL));
 
 	/* (14) Set ML(0)_CFG[MLIP_CLK_FORCE] = 0; the MLIP clock will be turned on/off based on job
 	 * activities.
 	 */
-	reg_val64 = roc_ml_reg_read64(&mldev->roc, ML_CFG);
+	reg_val64 = roc_ml_reg_read64(&cn10k_mldev->roc, ML_CFG);
 	reg_val64 &= ~ROC_ML_CFG_MLIP_CLK_FORCE;
-	roc_ml_reg_write64(&mldev->roc, reg_val64, ML_CFG);
-	plt_ml_dbg("ML_CFG => 0x%016lx", roc_ml_reg_read64(&mldev->roc, ML_CFG));
+	roc_ml_reg_write64(&cn10k_mldev->roc, reg_val64, ML_CFG);
+	plt_ml_dbg("ML_CFG => 0x%016lx", roc_ml_reg_read64(&cn10k_mldev->roc, ML_CFG));
 
 	/* (15) Set ML(0)_CFG[ENA] to enable ML job execution. */
-	reg_val64 = roc_ml_reg_read64(&mldev->roc, ML_CFG);
+	reg_val64 = roc_ml_reg_read64(&cn10k_mldev->roc, ML_CFG);
 	reg_val64 |= ROC_ML_CFG_ENA;
-	roc_ml_reg_write64(&mldev->roc, reg_val64, ML_CFG);
-	plt_ml_dbg("ML_CFG => 0x%016lx", roc_ml_reg_read64(&mldev->roc, ML_CFG));
+	roc_ml_reg_write64(&cn10k_mldev->roc, reg_val64, ML_CFG);
+	plt_ml_dbg("ML_CFG => 0x%016lx", roc_ml_reg_read64(&cn10k_mldev->roc, ML_CFG));
 
 	/* Reset scratch registers */
-	roc_ml_reg_write64(&mldev->roc, 0, ML_SCRATCH_FW_CTRL);
-	roc_ml_reg_write64(&mldev->roc, 0, ML_SCRATCH_WORK_PTR);
+	roc_ml_reg_write64(&cn10k_mldev->roc, 0, ML_SCRATCH_FW_CTRL);
+	roc_ml_reg_write64(&cn10k_mldev->roc, 0, ML_SCRATCH_WORK_PTR);
 
 	/* Disable job execution, to be enabled in start */
-	reg_val64 = roc_ml_reg_read64(&mldev->roc, ML_CFG);
+	reg_val64 = roc_ml_reg_read64(&cn10k_mldev->roc, ML_CFG);
 	reg_val64 &= ~ROC_ML_CFG_ENA;
-	roc_ml_reg_write64(&mldev->roc, reg_val64, ML_CFG);
-	plt_ml_dbg("ML_CFG => 0x%016lx", roc_ml_reg_read64(&mldev->roc, ML_CFG));
+	roc_ml_reg_write64(&cn10k_mldev->roc, reg_val64, ML_CFG);
+	plt_ml_dbg("ML_CFG => 0x%016lx", roc_ml_reg_read64(&cn10k_mldev->roc, ML_CFG));
 
 	/* Additional fixes: Set RO bit to fix O2D DMA bandwidth issue on cn10ka */
 	for (i = 0; i < ML_ANBX_NR; i++) {
-		reg_val64 = roc_ml_reg_read64(&mldev->roc, ML_ANBX_NCBI_P_OVR(i));
+		reg_val64 = roc_ml_reg_read64(&cn10k_mldev->roc, ML_ANBX_NCBI_P_OVR(i));
 		reg_val64 |= (ML_ANBX_NCBI_P_OVR_ANB_NCBI_P_RO_OVR |
 			      ML_ANBX_NCBI_P_OVR_ANB_NCBI_P_RO_OVR_VLD);
-		roc_ml_reg_write64(&mldev->roc, reg_val64, ML_ANBX_NCBI_P_OVR(i));
+		roc_ml_reg_write64(&cn10k_mldev->roc, reg_val64, ML_ANBX_NCBI_P_OVR(i));
 	}
 
 	return ret;
 }
 
 int
-cn10k_ml_fw_load(struct cn10k_ml_dev *mldev)
+cn10k_ml_fw_load(struct cnxk_ml_dev *cnxk_mldev)
 {
+	struct cn10k_ml_dev *cn10k_mldev;
 	const struct plt_memzone *mz;
 	struct cn10k_ml_fw *fw;
 	void *fw_buffer = NULL;
@@ -741,8 +753,9 @@ cn10k_ml_fw_load(struct cn10k_ml_dev *mldev)
 	uint64_t fw_size = 0;
 	int ret = 0;
 
-	fw = &mldev->fw;
-	fw->mldev = mldev;
+	cn10k_mldev = &cnxk_mldev->cn10k_mldev;
+	fw = &cn10k_mldev->fw;
+	fw->cn10k_mldev = cn10k_mldev;
 
 	if (roc_env_is_emulator() || roc_env_is_hw()) {
 		/* Read firmware image to a buffer */
@@ -773,8 +786,8 @@ cn10k_ml_fw_load(struct cn10k_ml_dev *mldev)
 	memset(&fw->req->jd.fw_load.version[0], '\0', MLDEV_FIRMWARE_VERSION_LENGTH);
 
 	/* Reset device, if in active state */
-	if (roc_ml_mlip_is_enabled(&mldev->roc))
-		roc_ml_mlip_reset(&mldev->roc, true);
+	if (roc_ml_mlip_is_enabled(&cn10k_mldev->roc))
+		roc_ml_mlip_reset(&cn10k_mldev->roc, true);
 
 	/* Load firmware */
 	if (roc_env_is_emulator() || roc_env_is_hw()) {
@@ -787,22 +800,25 @@ cn10k_ml_fw_load(struct cn10k_ml_dev *mldev)
 	}
 
 	if (ret < 0)
-		cn10k_ml_fw_unload(mldev);
+		cn10k_ml_fw_unload(cnxk_mldev);
 
 	return ret;
 }
 
 void
-cn10k_ml_fw_unload(struct cn10k_ml_dev *mldev)
+cn10k_ml_fw_unload(struct cnxk_ml_dev *cnxk_mldev)
 {
+	struct cn10k_ml_dev *cn10k_mldev;
 	const struct plt_memzone *mz;
 	uint64_t reg_val;
 
+	cn10k_mldev = &cnxk_mldev->cn10k_mldev;
+
 	/* Disable and reset device */
-	reg_val = roc_ml_reg_read64(&mldev->roc, ML_CFG);
+	reg_val = roc_ml_reg_read64(&cn10k_mldev->roc, ML_CFG);
 	reg_val &= ~ROC_ML_CFG_MLIP_ENA;
-	roc_ml_reg_write64(&mldev->roc, reg_val, ML_CFG);
-	roc_ml_mlip_reset(&mldev->roc, true);
+	roc_ml_reg_write64(&cn10k_mldev->roc, reg_val, ML_CFG);
+	roc_ml_mlip_reset(&cn10k_mldev->roc, true);
 
 	mz = plt_memzone_lookup(FW_MEMZONE_NAME);
 	if (mz != NULL)

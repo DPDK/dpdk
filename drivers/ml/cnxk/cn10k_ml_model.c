@@ -6,9 +6,10 @@
 
 #include <mldev_utils.h>
 
-#include "cn10k_ml_dev.h"
 #include "cn10k_ml_model.h"
 #include "cn10k_ml_ocm.h"
+
+#include "cnxk_ml_dev.h"
 
 static enum rte_ml_io_type
 cn10k_ml_io_type_map(uint8_t type)
@@ -461,7 +462,7 @@ cn10k_ml_model_addr_update(struct cn10k_ml_model *model, uint8_t *buffer, uint8_
 }
 
 int
-cn10k_ml_model_ocm_pages_count(struct cn10k_ml_dev *mldev, uint16_t model_id, uint8_t *buffer,
+cn10k_ml_model_ocm_pages_count(struct cn10k_ml_dev *cn10k_mldev, uint16_t model_id, uint8_t *buffer,
 			       uint16_t *wb_pages, uint16_t *scratch_pages)
 {
 	struct cn10k_ml_model_metadata *metadata;
@@ -470,7 +471,7 @@ cn10k_ml_model_ocm_pages_count(struct cn10k_ml_dev *mldev, uint16_t model_id, ui
 	uint64_t wb_size;
 
 	metadata = (struct cn10k_ml_model_metadata *)buffer;
-	ocm = &mldev->ocm;
+	ocm = &cn10k_mldev->ocm;
 
 	/* Assume wb_size is zero for non-relocatable models */
 	if (metadata->model.ocm_relocatable)
@@ -494,11 +495,11 @@ cn10k_ml_model_ocm_pages_count(struct cn10k_ml_dev *mldev, uint16_t model_id, ui
 		   scratch_size, *scratch_pages);
 
 	/* Check if the model can be loaded on OCM */
-	if ((*wb_pages + *scratch_pages) > mldev->ocm.num_pages) {
+	if ((*wb_pages + *scratch_pages) > cn10k_mldev->ocm.num_pages) {
 		plt_err("Cannot create the model, OCM relocatable = %u",
 			metadata->model.ocm_relocatable);
 		plt_err("wb_pages (%u) + scratch_pages (%u) > %u", *wb_pages, *scratch_pages,
-			mldev->ocm.num_pages);
+			cn10k_mldev->ocm.num_pages);
 		return -ENOMEM;
 	}
 
@@ -506,8 +507,8 @@ cn10k_ml_model_ocm_pages_count(struct cn10k_ml_dev *mldev, uint16_t model_id, ui
 	 * prevent the library from allocating the remaining space on the tile to other models.
 	 */
 	if (!metadata->model.ocm_relocatable)
-		*scratch_pages =
-			PLT_MAX(PLT_U64_CAST(*scratch_pages), PLT_U64_CAST(mldev->ocm.num_pages));
+		*scratch_pages = PLT_MAX(PLT_U64_CAST(*scratch_pages),
+					 PLT_U64_CAST(cn10k_mldev->ocm.num_pages));
 
 	return 0;
 }

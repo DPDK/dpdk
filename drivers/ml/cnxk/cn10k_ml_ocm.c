@@ -4,11 +4,12 @@
 
 #include <rte_mldev_pmd.h>
 
-#include "cn10k_ml_dev.h"
+#include <roc_api.h>
+
 #include "cn10k_ml_model.h"
 #include "cn10k_ml_ocm.h"
 
-#include "roc_api.h"
+#include "cnxk_ml_dev.h"
 
 /* OCM macros */
 #define BYTE_LEN	   8
@@ -217,7 +218,8 @@ int
 cn10k_ml_ocm_tilemask_find(struct rte_ml_dev *dev, uint8_t num_tiles, uint16_t wb_pages,
 			   uint16_t scratch_pages, uint64_t *tilemask)
 {
-	struct cn10k_ml_dev *mldev;
+	struct cn10k_ml_dev *cn10k_mldev;
+	struct cnxk_ml_dev *cnxk_mldev;
 	struct cn10k_ml_ocm *ocm;
 
 	uint16_t used_scratch_pages_max;
@@ -236,8 +238,9 @@ cn10k_ml_ocm_tilemask_find(struct rte_ml_dev *dev, uint8_t num_tiles, uint16_t w
 	int max_slot_sz;
 	int page_id;
 
-	mldev = dev->data->dev_private;
-	ocm = &mldev->ocm;
+	cnxk_mldev = dev->data->dev_private;
+	cn10k_mldev = &cnxk_mldev->cn10k_mldev;
+	ocm = &cn10k_mldev->ocm;
 
 	if (num_tiles > ML_CN10K_OCM_NUMTILES) {
 		plt_err("Invalid num_tiles = %u (> %u)", num_tiles, ML_CN10K_OCM_NUMTILES);
@@ -254,8 +257,8 @@ cn10k_ml_ocm_tilemask_find(struct rte_ml_dev *dev, uint8_t num_tiles, uint16_t w
 	tile_start = 0;
 	search_end_tile = ocm->num_tiles - num_tiles;
 
-	/* allocate for local ocm mask */
-	local_ocm_mask = rte_zmalloc("local_ocm_mask", mldev->ocm.mask_words, RTE_CACHE_LINE_SIZE);
+	/* Allocate for local ocm mask */
+	local_ocm_mask = rte_zmalloc("local_ocm_mask", ocm->mask_words, RTE_CACHE_LINE_SIZE);
 	if (local_ocm_mask == NULL) {
 		plt_err("Unable to allocate memory for local_ocm_mask");
 		return -1;
@@ -271,7 +274,7 @@ start_search:
 			PLT_MAX(ocm->tile_ocm_info[tile_id].last_wb_page, used_last_wb_page_max);
 	}
 
-	memset(local_ocm_mask, 0, mldev->ocm.mask_words);
+	memset(local_ocm_mask, 0, ocm->mask_words);
 	for (tile_id = tile_start; tile_id < tile_start + num_tiles; tile_id++) {
 		for (word_id = 0; word_id < ocm->mask_words; word_id++)
 			local_ocm_mask[word_id] |= ocm->tile_ocm_info[tile_id].ocm_mask[word_id];
@@ -333,8 +336,9 @@ void
 cn10k_ml_ocm_reserve_pages(struct rte_ml_dev *dev, uint16_t model_id, uint64_t tilemask,
 			   int wb_page_start, uint16_t wb_pages, uint16_t scratch_pages)
 {
+	struct cn10k_ml_dev *cn10k_mldev;
+	struct cnxk_ml_dev *cnxk_mldev;
 	struct cn10k_ml_model *model;
-	struct cn10k_ml_dev *mldev;
 	struct cn10k_ml_ocm *ocm;
 
 	int scratch_page_start;
@@ -345,8 +349,9 @@ cn10k_ml_ocm_reserve_pages(struct rte_ml_dev *dev, uint16_t model_id, uint64_t t
 	int tile_id;
 	int page_id;
 
-	mldev = dev->data->dev_private;
-	ocm = &mldev->ocm;
+	cnxk_mldev = dev->data->dev_private;
+	cn10k_mldev = &cnxk_mldev->cn10k_mldev;
+	ocm = &cn10k_mldev->ocm;
 	model = dev->data->models[model_id];
 
 	/* Get first set bit, tile_start */
@@ -391,8 +396,9 @@ void
 cn10k_ml_ocm_free_pages(struct rte_ml_dev *dev, uint16_t model_id)
 {
 	struct cn10k_ml_model *local_model;
+	struct cn10k_ml_dev *cn10k_mldev;
+	struct cnxk_ml_dev *cnxk_mldev;
 	struct cn10k_ml_model *model;
-	struct cn10k_ml_dev *mldev;
 	struct cn10k_ml_ocm *ocm;
 
 	int scratch_resize_pages;
@@ -404,8 +410,9 @@ cn10k_ml_ocm_free_pages(struct rte_ml_dev *dev, uint16_t model_id)
 	int page_id;
 	uint16_t i;
 
-	mldev = dev->data->dev_private;
-	ocm = &mldev->ocm;
+	cnxk_mldev = dev->data->dev_private;
+	cn10k_mldev = &cnxk_mldev->cn10k_mldev;
+	ocm = &cn10k_mldev->ocm;
 	model = dev->data->models[model_id];
 
 	/* Update OCM info for WB memory */
@@ -453,35 +460,37 @@ cn10k_ml_ocm_pagemask_to_str(struct cn10k_ml_ocm_tile_info *tile_info, uint16_t 
 	char *p = str;
 	int word;
 
-	/* add prefix 0x */
+	/* Add prefix 0x */
 	*p++ = '0';
 	*p++ = 'x';
 
-	/* build one word at a time */
+	/* Build hex string */
 	for (word = nwords - 1; word >= 0; word--) {
 		sprintf(p, "%02X", tile_info->ocm_mask[word]);
 		p += 2;
 	}
 
-	/* terminate */
+	/* Terminate */
 	*p++ = 0;
 }
 
 void
 cn10k_ml_ocm_print(struct rte_ml_dev *dev, FILE *fp)
 {
-	char *str;
-	struct cn10k_ml_dev *mldev;
+	struct cn10k_ml_dev *cn10k_mldev;
+	struct cnxk_ml_dev *cnxk_mldev;
 	struct cn10k_ml_ocm *ocm;
 	uint8_t tile_id;
 	uint8_t word_id;
 	int wb_pages;
+	char *str;
 
-	mldev = dev->data->dev_private;
-	ocm = &mldev->ocm;
+	cnxk_mldev = dev->data->dev_private;
+	cn10k_mldev = &cnxk_mldev->cn10k_mldev;
+	ocm = &cn10k_mldev->ocm;
 
-	/* nibbles + prefix '0x' */
-	str = rte_zmalloc("ocm_mask_str", mldev->ocm.num_pages / 4 + 2, RTE_CACHE_LINE_SIZE);
+	/* Nibbles + prefix '0x' */
+	str = rte_zmalloc("ocm_mask_str", ocm->num_pages / 4 + 2, RTE_CACHE_LINE_SIZE);
 	if (str == NULL) {
 		plt_err("Unable to allocate memory for ocm_mask_str");
 		return;
@@ -492,9 +501,8 @@ cn10k_ml_ocm_print(struct rte_ml_dev *dev, FILE *fp)
 		cn10k_ml_ocm_pagemask_to_str(&ocm->tile_ocm_info[tile_id], ocm->mask_words, str);
 
 		wb_pages = 0 - ocm->tile_ocm_info[tile_id].scratch_pages;
-		for (word_id = 0; word_id < mldev->ocm.mask_words; word_id++)
-			wb_pages +=
-				rte_popcount32(ocm->tile_ocm_info[tile_id].ocm_mask[word_id]);
+		for (word_id = 0; word_id < ocm->mask_words; word_id++)
+			wb_pages += rte_popcount32(ocm->tile_ocm_info[tile_id].ocm_mask[word_id]);
 
 		fprintf(fp,
 			"tile = %2u, scratch_pages = %4u,"

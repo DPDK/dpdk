@@ -13,6 +13,8 @@
 #include "cn10k_ml_ocm.h"
 #include "cn10k_ml_ops.h"
 
+struct cnxk_ml_dev;
+
 /* Model state */
 enum cn10k_ml_model_state {
 	ML_CN10K_MODEL_STATE_LOADED,
@@ -489,7 +491,7 @@ struct cn10k_ml_model_stats {
 /* Model Object */
 struct cn10k_ml_model {
 	/* Device reference */
-	struct cn10k_ml_dev *mldev;
+	struct cnxk_ml_dev *mldev;
 
 	/* Name */
 	char name[RTE_ML_STR_MAX];
@@ -537,8 +539,8 @@ int cn10k_ml_model_metadata_check(uint8_t *buffer, uint64_t size);
 void cn10k_ml_model_metadata_update(struct cn10k_ml_model_metadata *metadata);
 void cn10k_ml_model_addr_update(struct cn10k_ml_model *model, uint8_t *buffer,
 				uint8_t *base_dma_addr);
-int cn10k_ml_model_ocm_pages_count(struct cn10k_ml_dev *mldev, uint16_t model_id, uint8_t *buffer,
-				   uint16_t *wb_pages, uint16_t *scratch_pages);
+int cn10k_ml_model_ocm_pages_count(struct cn10k_ml_dev *cn10k_mldev, uint16_t model_id,
+				   uint8_t *buffer, uint16_t *wb_pages, uint16_t *scratch_pages);
 void cn10k_ml_model_info_set(struct rte_ml_dev *dev, struct cn10k_ml_model *model);
 
 #endif /* _CN10K_ML_MODEL_H_ */
