@@ -90,6 +90,7 @@ static const struct ena_stats ena_stats_global_strings[] = {
 	ENA_STAT_GLOBAL_ENTRY(dev_start),
 	ENA_STAT_GLOBAL_ENTRY(dev_stop),
 	ENA_STAT_GLOBAL_ENTRY(tx_drops),
+	ENA_STAT_GLOBAL_ENTRY(rx_overruns),
 };
 
 /*
@@ -3906,15 +3907,18 @@ static void ena_keep_alive(void *adapter_data,
 	struct ena_admin_aenq_keep_alive_desc *desc;
 	uint64_t rx_drops;
 	uint64_t tx_drops;
+	uint64_t rx_overruns;
 
 	adapter->timestamp_wd = rte_get_timer_cycles();
 
 	desc = (struct ena_admin_aenq_keep_alive_desc *)aenq_e;
 	rx_drops = ((uint64_t)desc->rx_drops_high << 32) | desc->rx_drops_low;
 	tx_drops = ((uint64_t)desc->tx_drops_high << 32) | desc->tx_drops_low;
+	rx_overruns = ((uint64_t)desc->rx_overruns_high << 32) | desc->rx_overruns_low;
 
 	adapter->drv_stats->rx_drops = rx_drops;
 	adapter->dev_stats.tx_drops = tx_drops;
+	adapter->dev_stats.rx_overruns = rx_overruns;
 }
 
 /**

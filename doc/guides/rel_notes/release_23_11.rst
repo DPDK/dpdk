@@ -126,6 +126,7 @@ New Features
 
   * Upgraded ENA HAL to latest version.
   * Added support for connection tracking allowance utilization metric.
+  * Added support for reporting Rx overrun errors in xstats.
 
 * **Added a new vDPA PMD for Corigine NFP devices.**
 
