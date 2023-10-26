@@ -65,10 +65,10 @@ enum rte_timer_type {
  */
 union rte_timer_status {
 	struct {
-		uint16_t state;  /**< Stop, pending, running, config. */
-		int16_t owner;   /**< The lcore that owns the timer. */
+		RTE_ATOMIC(uint16_t) state;  /**< Stop, pending, running, config. */
+		RTE_ATOMIC(int16_t) owner;   /**< The lcore that owns the timer. */
 	};
-	uint32_t u32;            /**< To atomic-set status + owner. */
+	RTE_ATOMIC(uint32_t) u32;            /**< To atomic-set status + owner. */
 };
 
 #ifdef RTE_LIBRTE_TIMER_DEBUG
