@@ -329,6 +329,9 @@ int cn10k_ml_layer_load(void *device, uint16_t model_id, const char *layer_name,
 int cn10k_ml_layer_unload(void *device, uint16_t model_id, const char *layer_name);
 int cn10k_ml_layer_start(void *device, uint16_t model_id, const char *layer_name);
 int cn10k_ml_layer_stop(void *device, uint16_t model_id, const char *layer_name);
+int cn10k_ml_io_alloc(void *device, uint16_t model_id, const char *layer_name,
+		      uint64_t **input_qbuffer, uint64_t **output_qbuffer);
+int cn10k_ml_io_free(void *device, uint16_t model_id, const char *layer_name);
 
 /* xstats ops */
 void cn10k_ml_xstat_model_name_set(struct cnxk_ml_dev *cnxk_mldev, struct cnxk_ml_model *model,

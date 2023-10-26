@@ -1410,3 +1410,90 @@ cn10k_ml_inference_sync(void *device, uint16_t index, void *input, void *output,
 error_enqueue:
 	return ret;
 }
+
+int
+cn10k_ml_io_alloc(void *device, uint16_t model_id, const char *layer_name, uint64_t **input_qbuffer,
+		  uint64_t **output_qbuffer)
+{
+	struct cnxk_ml_dev *cnxk_mldev;
+	struct cnxk_ml_model *model;
+	struct cnxk_ml_layer *layer;
+
+	char str[RTE_MEMZONE_NAMESIZE];
+	const struct plt_memzone *mz;
+	uint64_t output_size;
+	uint64_t input_size;
+	uint16_t layer_id;
+	int ret;
+
+	cnxk_mldev = (struct cnxk_ml_dev *)device;
+	if (cnxk_mldev == NULL) {
+		plt_err("Invalid device = %p", device);
+		return -EINVAL;
+	}
+
+	model = cnxk_mldev->mldev->data->models[model_id];
+	if (model == NULL) {
+		plt_err("Invalid model_id = %u", model_id);
+		return -EINVAL;
+	}
+
+	ret = cn10k_ml_model_get_layer_id(model, layer_name, &layer_id);
+	if (ret != 0)
+		return ret;
+
+	layer = &model->layer[layer_id];
+	input_size = PLT_ALIGN_CEIL(layer->info.total_input_sz_q, ML_CN10K_ALIGN_SIZE);
+	output_size = PLT_ALIGN_CEIL(layer->info.total_output_sz_q, ML_CN10K_ALIGN_SIZE);
+
+	sprintf(str, "cn10k_ml_io_mz_%u_%u", model_id, layer_id);
+	mz = plt_memzone_reserve_aligned(str, input_size + output_size, 0, ML_CN10K_ALIGN_SIZE);
+	if (mz == NULL) {
+		plt_err("io_alloc failed: Unable to allocate memory: model_id = %u, layer_name = %s",
+			model_id, layer_name);
+		return -ENOMEM;
+	}
+
+	*input_qbuffer = mz->addr;
+	*output_qbuffer = PLT_PTR_ADD(mz->addr, input_size);
+
+	return 0;
+}
+
+int
+cn10k_ml_io_free(void *device, uint16_t model_id, const char *layer_name)
+{
+	struct cnxk_ml_dev *cnxk_mldev;
+	struct cnxk_ml_model *model;
+
+	char str[RTE_MEMZONE_NAMESIZE];
+	const struct plt_memzone *mz;
+	uint16_t layer_id;
+	int ret;
+
+	cnxk_mldev = (struct cnxk_ml_dev *)device;
+	if (cnxk_mldev == NULL) {
+		plt_err("Invalid device = %p", device);
+		return -EINVAL;
+	}
+
+	model = cnxk_mldev->mldev->data->models[model_id];
+	if (model == NULL) {
+		plt_err("Invalid model_id = %u", model_id);
+		return -EINVAL;
+	}
+
+	ret = cn10k_ml_model_get_layer_id(model, layer_name, &layer_id);
+	if (ret != 0)
+		return ret;
+
+	sprintf(str, "cn10k_ml_io_mz_%u_%u", model_id, layer_id);
+	mz = plt_memzone_lookup(str);
+	if (mz == NULL) {
+		plt_err("io_free failed: Memzone not found: model_id = %u, layer_name = %s",
+			model_id, layer_name);
+		return -EINVAL;
+	}
+
+	return plt_memzone_free(mz);
+}

@@ -232,6 +232,8 @@ mvtvm_ml_model_load(struct cnxk_ml_dev *cnxk_mldev, struct rte_ml_model_params *
 		callback = &model->mvtvm.cb;
 		callback->tvmrt_glow_layer_load = cn10k_ml_layer_load;
 		callback->tvmrt_glow_layer_unload = cn10k_ml_layer_unload;
+		callback->tvmrt_io_alloc = cn10k_ml_io_alloc;
+		callback->tvmrt_io_free = cn10k_ml_io_free;
 	} else {
 		callback = NULL;
 	}
