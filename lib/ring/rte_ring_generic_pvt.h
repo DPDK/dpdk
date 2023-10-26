@@ -23,7 +23,8 @@ __rte_ring_update_tail(struct rte_ring_headtail *ht, uint32_t old_val,
 	 * we need to wait for them to complete
 	 */
 	if (!single)
-		rte_wait_until_equal_32(&ht->tail, old_val, __ATOMIC_RELAXED);
+		rte_wait_until_equal_32((volatile uint32_t *)(uintptr_t)&ht->tail, old_val,
+			rte_memory_order_relaxed);
 
 	ht->tail = new_val;
 }
@@ -89,10 +90,11 @@ __rte_ring_move_prod_head(struct rte_ring *r, unsigned int is_sp,
 			return 0;
 
 		*new_head = *old_head + n;
-		if (is_sp)
-			r->prod.head = *new_head, success = 1;
-		else
-			success = rte_atomic32_cmpset(&r->prod.head,
+		if (is_sp) {
+			r->prod.head = *new_head;
+			success = 1;
+		} else
+			success = rte_atomic32_cmpset((uint32_t *)(uintptr_t)&r->prod.head,
 					*old_head, *new_head);
 	} while (unlikely(success == 0));
 	return n;
@@ -162,8 +164,8 @@ __rte_ring_move_cons_head(struct rte_ring *r, unsigned int is_sc,
 			rte_smp_rmb();
 			success = 1;
 		} else {
-			success = rte_atomic32_cmpset(&r->cons.head, *old_head,
-					*new_head);
+			success = rte_atomic32_cmpset((uint32_t *)(uintptr_t)&r->cons.head,
+					*old_head, *new_head);
 		}
 	} while (unlikely(success == 0));
 	return n;

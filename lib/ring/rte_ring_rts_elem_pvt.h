@@ -31,18 +31,19 @@ __rte_ring_rts_update_tail(struct rte_ring_rts_headtail *ht)
 	 * might preceded us, then don't update tail with new value.
 	 */
 
-	ot.raw = __atomic_load_n(&ht->tail.raw, __ATOMIC_ACQUIRE);
+	ot.raw = rte_atomic_load_explicit(&ht->tail.raw, rte_memory_order_acquire);
 
 	do {
 		/* on 32-bit systems we have to do atomic read here */
-		h.raw = __atomic_load_n(&ht->head.raw, __ATOMIC_RELAXED);
+		h.raw = rte_atomic_load_explicit(&ht->head.raw, rte_memory_order_relaxed);
 
 		nt.raw = ot.raw;
 		if (++nt.val.cnt == h.val.cnt)
 			nt.val.pos = h.val.pos;
 
-	} while (__atomic_compare_exchange_n(&ht->tail.raw, &ot.raw, nt.raw,
-			0, __ATOMIC_RELEASE, __ATOMIC_ACQUIRE) == 0);
+	} while (rte_atomic_compare_exchange_strong_explicit(&ht->tail.raw,
+			(uint64_t *)(uintptr_t)&ot.raw, nt.raw,
+			rte_memory_order_release, rte_memory_order_acquire) == 0);
 }
 
 /**
@@ -59,7 +60,7 @@ __rte_ring_rts_head_wait(const struct rte_ring_rts_headtail *ht,
 
 	while (h->val.pos - ht->tail.val.pos > max) {
 		rte_pause();
-		h->raw = __atomic_load_n(&ht->head.raw, __ATOMIC_ACQUIRE);
+		h->raw = rte_atomic_load_explicit(&ht->head.raw, rte_memory_order_acquire);
 	}
 }
 
@@ -76,7 +77,7 @@ __rte_ring_rts_move_prod_head(struct rte_ring *r, uint32_t num,
 
 	const uint32_t capacity = r->capacity;
 
-	oh.raw = __atomic_load_n(&r->rts_prod.head.raw, __ATOMIC_ACQUIRE);
+	oh.raw = rte_atomic_load_explicit(&r->rts_prod.head.raw, rte_memory_order_acquire);
 
 	do {
 		/* Reset n to the initial burst count */
@@ -113,9 +114,9 @@ __rte_ring_rts_move_prod_head(struct rte_ring *r, uint32_t num,
 	 *  - OOO reads of cons tail value
 	 *  - OOO copy of elems to the ring
 	 */
-	} while (__atomic_compare_exchange_n(&r->rts_prod.head.raw,
-			&oh.raw, nh.raw,
-			0, __ATOMIC_ACQUIRE, __ATOMIC_ACQUIRE) == 0);
+	} while (rte_atomic_compare_exchange_strong_explicit(&r->rts_prod.head.raw,
+			(uint64_t *)(uintptr_t)&oh.raw, nh.raw,
+			rte_memory_order_acquire, rte_memory_order_acquire) == 0);
 
 	*old_head = oh.val.pos;
 	return n;
@@ -132,7 +133,7 @@ __rte_ring_rts_move_cons_head(struct rte_ring *r, uint32_t num,
 	uint32_t n;
 	union __rte_ring_rts_poscnt nh, oh;
 
-	oh.raw = __atomic_load_n(&r->rts_cons.head.raw, __ATOMIC_ACQUIRE);
+	oh.raw = rte_atomic_load_explicit(&r->rts_cons.head.raw, rte_memory_order_acquire);
 
 	/* move cons.head atomically */
 	do {
@@ -168,9 +169,9 @@ __rte_ring_rts_move_cons_head(struct rte_ring *r, uint32_t num,
 	 *  - OOO reads of prod tail value
 	 *  - OOO copy of elems from the ring
 	 */
-	} while (__atomic_compare_exchange_n(&r->rts_cons.head.raw,
-			&oh.raw, nh.raw,
-			0, __ATOMIC_ACQUIRE, __ATOMIC_ACQUIRE) == 0);
+	} while (rte_atomic_compare_exchange_strong_explicit(&r->rts_cons.head.raw,
+			(uint64_t *)(uintptr_t)&oh.raw, nh.raw,
+			rte_memory_order_acquire, rte_memory_order_acquire) == 0);
 
 	*old_head = oh.val.pos;
 	return n;

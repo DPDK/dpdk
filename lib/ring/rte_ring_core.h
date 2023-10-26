@@ -66,8 +66,8 @@ enum rte_ring_sync_type {
  * but offset for *sync_type* and *tail* values should remain the same.
  */
 struct rte_ring_headtail {
-	volatile uint32_t head;      /**< prod/consumer head. */
-	volatile uint32_t tail;      /**< prod/consumer tail. */
+	volatile RTE_ATOMIC(uint32_t) head;      /**< prod/consumer head. */
+	volatile RTE_ATOMIC(uint32_t) tail;      /**< prod/consumer tail. */
 	union {
 		/** sync type of prod/cons */
 		enum rte_ring_sync_type sync_type;
@@ -78,7 +78,7 @@ struct rte_ring_headtail {
 
 union __rte_ring_rts_poscnt {
 	/** raw 8B value to read/write *cnt* and *pos* as one atomic op */
-	uint64_t raw __rte_aligned(8);
+	RTE_ATOMIC(uint64_t) raw __rte_aligned(8);
 	struct {
 		uint32_t cnt; /**< head/tail reference counter */
 		uint32_t pos; /**< head/tail position */
@@ -94,10 +94,10 @@ struct rte_ring_rts_headtail {
 
 union __rte_ring_hts_pos {
 	/** raw 8B value to read/write *head* and *tail* as one atomic op */
-	uint64_t raw __rte_aligned(8);
+	RTE_ATOMIC(uint64_t) raw __rte_aligned(8);
 	struct {
-		uint32_t head; /**< head position */
-		uint32_t tail; /**< tail position */
+		RTE_ATOMIC(uint32_t) head; /**< head position */
+		RTE_ATOMIC(uint32_t) tail; /**< tail position */
 	} pos;
 };
 

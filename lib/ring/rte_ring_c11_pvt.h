@@ -22,9 +22,10 @@ __rte_ring_update_tail(struct rte_ring_headtail *ht, uint32_t old_val,
 	 * we need to wait for them to complete
 	 */
 	if (!single)
-		rte_wait_until_equal_32(&ht->tail, old_val, __ATOMIC_RELAXED);
+		rte_wait_until_equal_32((uint32_t *)(uintptr_t)&ht->tail, old_val,
+			rte_memory_order_relaxed);
 
-	__atomic_store_n(&ht->tail, new_val, __ATOMIC_RELEASE);
+	rte_atomic_store_explicit(&ht->tail, new_val, rte_memory_order_release);
 }
 
 /**
@@ -61,19 +62,19 @@ __rte_ring_move_prod_head(struct rte_ring *r, unsigned int is_sp,
 	unsigned int max = n;
 	int success;
 
-	*old_head = __atomic_load_n(&r->prod.head, __ATOMIC_RELAXED);
+	*old_head = rte_atomic_load_explicit(&r->prod.head, rte_memory_order_relaxed);
 	do {
 		/* Reset n to the initial burst count */
 		n = max;
 
 		/* Ensure the head is read before tail */
-		__atomic_thread_fence(__ATOMIC_ACQUIRE);
+		__atomic_thread_fence(rte_memory_order_acquire);
 
 		/* load-acquire synchronize with store-release of ht->tail
 		 * in update_tail.
 		 */
-		cons_tail = __atomic_load_n(&r->cons.tail,
-					__ATOMIC_ACQUIRE);
+		cons_tail = rte_atomic_load_explicit(&r->cons.tail,
+					rte_memory_order_acquire);
 
 		/* The subtraction is done between two unsigned 32bits value
 		 * (the result is always modulo 32 bits even if we have
@@ -91,14 +92,15 @@ __rte_ring_move_prod_head(struct rte_ring *r, unsigned int is_sp,
 			return 0;
 
 		*new_head = *old_head + n;
-		if (is_sp)
-			r->prod.head = *new_head, success = 1;
-		else
+		if (is_sp) {
+			r->prod.head = *new_head;
+			success = 1;
+		} else
 			/* on failure, *old_head is updated */
-			success = __atomic_compare_exchange_n(&r->prod.head,
+			success = rte_atomic_compare_exchange_strong_explicit(&r->prod.head,
 					old_head, *new_head,
-					0, __ATOMIC_RELAXED,
-					__ATOMIC_RELAXED);
+					rte_memory_order_relaxed,
+					rte_memory_order_relaxed);
 	} while (unlikely(success == 0));
 	return n;
 }
@@ -137,19 +139,19 @@ __rte_ring_move_cons_head(struct rte_ring *r, int is_sc,
 	int success;
 
 	/* move cons.head atomically */
-	*old_head = __atomic_load_n(&r->cons.head, __ATOMIC_RELAXED);
+	*old_head = rte_atomic_load_explicit(&r->cons.head, rte_memory_order_relaxed);
 	do {
 		/* Restore n as it may change every loop */
 		n = max;
 
 		/* Ensure the head is read before tail */
-		__atomic_thread_fence(__ATOMIC_ACQUIRE);
+		__atomic_thread_fence(rte_memory_order_acquire);
 
 		/* this load-acquire synchronize with store-release of ht->tail
 		 * in update_tail.
 		 */
-		prod_tail = __atomic_load_n(&r->prod.tail,
-					__ATOMIC_ACQUIRE);
+		prod_tail = rte_atomic_load_explicit(&r->prod.tail,
+					rte_memory_order_acquire);
 
 		/* The subtraction is done between two unsigned 32bits value
 		 * (the result is always modulo 32 bits even if we have
@@ -166,14 +168,15 @@ __rte_ring_move_cons_head(struct rte_ring *r, int is_sc,
 			return 0;
 
 		*new_head = *old_head + n;
-		if (is_sc)
-			r->cons.head = *new_head, success = 1;
-		else
+		if (is_sc) {
+			r->cons.head = *new_head;
+			success = 1;
+		} else
 			/* on failure, *old_head will be updated */
-			success = __atomic_compare_exchange_n(&r->cons.head,
+			success = rte_atomic_compare_exchange_strong_explicit(&r->cons.head,
 							old_head, *new_head,
-							0, __ATOMIC_RELAXED,
-							__ATOMIC_RELAXED);
+							rte_memory_order_relaxed,
+							rte_memory_order_relaxed);
 	} while (unlikely(success == 0));
 	return n;
 }

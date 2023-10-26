@@ -10,6 +10,8 @@
 #ifndef _RTE_RING_HTS_ELEM_PVT_H_
 #define _RTE_RING_HTS_ELEM_PVT_H_
 
+#include <rte_stdatomic.h>
+
 /**
  * @file rte_ring_hts_elem_pvt.h
  * It is not recommended to include this file directly,
@@ -30,7 +32,7 @@ __rte_ring_hts_update_tail(struct rte_ring_hts_headtail *ht, uint32_t old_tail,
 	RTE_SET_USED(enqueue);
 
 	tail = old_tail + num;
-	__atomic_store_n(&ht->ht.pos.tail, tail, __ATOMIC_RELEASE);
+	rte_atomic_store_explicit(&ht->ht.pos.tail, tail, rte_memory_order_release);
 }
 
 /**
@@ -44,7 +46,7 @@ __rte_ring_hts_head_wait(const struct rte_ring_hts_headtail *ht,
 {
 	while (p->pos.head != p->pos.tail) {
 		rte_pause();
-		p->raw = __atomic_load_n(&ht->ht.raw, __ATOMIC_ACQUIRE);
+		p->raw = rte_atomic_load_explicit(&ht->ht.raw, rte_memory_order_acquire);
 	}
 }
 
@@ -61,7 +63,7 @@ __rte_ring_hts_move_prod_head(struct rte_ring *r, unsigned int num,
 
 	const uint32_t capacity = r->capacity;
 
-	op.raw = __atomic_load_n(&r->hts_prod.ht.raw, __ATOMIC_ACQUIRE);
+	op.raw = rte_atomic_load_explicit(&r->hts_prod.ht.raw, rte_memory_order_acquire);
 
 	do {
 		/* Reset n to the initial burst count */
@@ -98,9 +100,9 @@ __rte_ring_hts_move_prod_head(struct rte_ring *r, unsigned int num,
 	 *  - OOO reads of cons tail value
 	 *  - OOO copy of elems from the ring
 	 */
-	} while (__atomic_compare_exchange_n(&r->hts_prod.ht.raw,
-			&op.raw, np.raw,
-			0, __ATOMIC_ACQUIRE, __ATOMIC_ACQUIRE) == 0);
+	} while (rte_atomic_compare_exchange_strong_explicit(&r->hts_prod.ht.raw,
+			(uint64_t *)(uintptr_t)&op.raw, np.raw,
+			rte_memory_order_acquire, rte_memory_order_acquire) == 0);
 
 	*old_head = op.pos.head;
 	return n;
@@ -117,7 +119,7 @@ __rte_ring_hts_move_cons_head(struct rte_ring *r, unsigned int num,
 	uint32_t n;
 	union __rte_ring_hts_pos np, op;
 
-	op.raw = __atomic_load_n(&r->hts_cons.ht.raw, __ATOMIC_ACQUIRE);
+	op.raw = rte_atomic_load_explicit(&r->hts_cons.ht.raw, rte_memory_order_acquire);
 
 	/* move cons.head atomically */
 	do {
@@ -153,9 +155,9 @@ __rte_ring_hts_move_cons_head(struct rte_ring *r, unsigned int num,
 	 *  - OOO reads of prod tail value
 	 *  - OOO copy of elems from the ring
 	 */
-	} while (__atomic_compare_exchange_n(&r->hts_cons.ht.raw,
-			&op.raw, np.raw,
-			0, __ATOMIC_ACQUIRE, __ATOMIC_ACQUIRE) == 0);
+	} while (rte_atomic_compare_exchange_strong_explicit(&r->hts_cons.ht.raw,
+			(uint64_t *)(uintptr_t)&op.raw, np.raw,
+			rte_memory_order_acquire, rte_memory_order_acquire) == 0);
 
 	*old_head = op.pos.head;
 	return n;
