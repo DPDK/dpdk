@@ -24,11 +24,11 @@ struct lcore_config {
 	int pipe_main2worker[2];   /**< communication pipe with main */
 	int pipe_worker2main[2];   /**< communication pipe with main */
 
-	lcore_function_t * volatile f; /**< function to call */
+	RTE_ATOMIC(lcore_function_t *) volatile f; /**< function to call */
 	void * volatile arg;       /**< argument of function */
 	volatile int ret;          /**< return value of function */
 
-	volatile enum rte_lcore_state_t state; /**< lcore state */
+	volatile RTE_ATOMIC(enum rte_lcore_state_t) state; /**< lcore state */
 	unsigned int socket_id;    /**< physical socket id for this lcore */
 	unsigned int core_id;      /**< core number on socket for this lcore */
 	int core_index;            /**< relative index, starting from 0 */

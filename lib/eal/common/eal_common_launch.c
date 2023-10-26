@@ -18,8 +18,8 @@
 int
 rte_eal_wait_lcore(unsigned worker_id)
 {
-	while (__atomic_load_n(&lcore_config[worker_id].state,
-			__ATOMIC_ACQUIRE) != WAIT)
+	while (rte_atomic_load_explicit(&lcore_config[worker_id].state,
+			rte_memory_order_acquire) != WAIT)
 		rte_pause();
 
 	return lcore_config[worker_id].ret;
@@ -38,8 +38,8 @@ rte_eal_remote_launch(lcore_function_t *f, void *arg, unsigned int worker_id)
 	/* Check if the worker is in 'WAIT' state. Use acquire order
 	 * since 'state' variable is used as the guard variable.
 	 */
-	if (__atomic_load_n(&lcore_config[worker_id].state,
-			__ATOMIC_ACQUIRE) != WAIT)
+	if (rte_atomic_load_explicit(&lcore_config[worker_id].state,
+			rte_memory_order_acquire) != WAIT)
 		goto finish;
 
 	lcore_config[worker_id].arg = arg;
@@ -47,7 +47,7 @@ rte_eal_remote_launch(lcore_function_t *f, void *arg, unsigned int worker_id)
 	 * before the worker thread starts running the function.
 	 * Use worker thread function as the guard variable.
 	 */
-	__atomic_store_n(&lcore_config[worker_id].f, f, __ATOMIC_RELEASE);
+	rte_atomic_store_explicit(&lcore_config[worker_id].f, f, rte_memory_order_release);
 
 	rc = eal_thread_wake_worker(worker_id);
 

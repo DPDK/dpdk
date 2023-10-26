@@ -361,10 +361,10 @@ rte_trace_metadata_dump(FILE *f)
 	if (ctf_meta == NULL)
 		return -EINVAL;
 
-	if (!__atomic_load_n(&trace->ctf_fixup_done, __ATOMIC_SEQ_CST) &&
+	if (!rte_atomic_load_explicit(&trace->ctf_fixup_done, rte_memory_order_seq_cst) &&
 				rte_get_timer_hz()) {
 		meta_fixup(trace, ctf_meta);
-		__atomic_store_n(&trace->ctf_fixup_done, 1, __ATOMIC_SEQ_CST);
+		rte_atomic_store_explicit(&trace->ctf_fixup_done, 1, rte_memory_order_seq_cst);
 	}
 
 	rc = fprintf(f, "%s", ctf_meta);

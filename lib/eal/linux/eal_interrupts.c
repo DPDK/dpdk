@@ -1266,9 +1266,9 @@ eal_epoll_process_event(struct epoll_event *evs, unsigned int n,
 		 * ordering below acting as a lock to synchronize
 		 * the event data updating.
 		 */
-		if (!rev || !__atomic_compare_exchange_n(&rev->status,
-				    &valid_status, RTE_EPOLL_EXEC, 0,
-				    __ATOMIC_ACQUIRE, __ATOMIC_RELAXED))
+		if (!rev || !rte_atomic_compare_exchange_strong_explicit(&rev->status,
+				    &valid_status, RTE_EPOLL_EXEC,
+				    rte_memory_order_acquire, rte_memory_order_relaxed))
 			continue;
 
 		events[count].status        = RTE_EPOLL_VALID;
@@ -1283,8 +1283,8 @@ eal_epoll_process_event(struct epoll_event *evs, unsigned int n,
 		/* the status update should be observed after
 		 * the other fields change.
 		 */
-		__atomic_store_n(&rev->status, RTE_EPOLL_VALID,
-				__ATOMIC_RELEASE);
+		rte_atomic_store_explicit(&rev->status, RTE_EPOLL_VALID,
+				rte_memory_order_release);
 		count++;
 	}
 	return count;
@@ -1374,10 +1374,10 @@ eal_epoll_data_safe_free(struct rte_epoll_event *ev)
 {
 	uint32_t valid_status = RTE_EPOLL_VALID;
 
-	while (!__atomic_compare_exchange_n(&ev->status, &valid_status,
-		    RTE_EPOLL_INVALID, 0, __ATOMIC_ACQUIRE, __ATOMIC_RELAXED)) {
-		while (__atomic_load_n(&ev->status,
-				__ATOMIC_RELAXED) != RTE_EPOLL_VALID)
+	while (!rte_atomic_compare_exchange_strong_explicit(&ev->status, &valid_status,
+		    RTE_EPOLL_INVALID, rte_memory_order_acquire, rte_memory_order_relaxed)) {
+		while (rte_atomic_load_explicit(&ev->status,
+				rte_memory_order_relaxed) != RTE_EPOLL_VALID)
 			rte_pause();
 		valid_status = RTE_EPOLL_VALID;
 	}
@@ -1402,8 +1402,8 @@ rte_epoll_ctl(int epfd, int op, int fd,
 		epfd = rte_intr_tls_epfd();
 
 	if (op == EPOLL_CTL_ADD) {
-		__atomic_store_n(&event->status, RTE_EPOLL_VALID,
-				__ATOMIC_RELAXED);
+		rte_atomic_store_explicit(&event->status, RTE_EPOLL_VALID,
+				rte_memory_order_relaxed);
 		event->fd = fd;  /* ignore fd in event */
 		event->epfd = epfd;
 		ev.data.ptr = (void *)event;
@@ -1415,13 +1415,13 @@ rte_epoll_ctl(int epfd, int op, int fd,
 			op, fd, strerror(errno));
 		if (op == EPOLL_CTL_ADD)
 			/* rollback status when CTL_ADD fail */
-			__atomic_store_n(&event->status, RTE_EPOLL_INVALID,
-					__ATOMIC_RELAXED);
+			rte_atomic_store_explicit(&event->status, RTE_EPOLL_INVALID,
+					rte_memory_order_relaxed);
 		return -1;
 	}
 
-	if (op == EPOLL_CTL_DEL && __atomic_load_n(&event->status,
-			__ATOMIC_RELAXED) != RTE_EPOLL_INVALID)
+	if (op == EPOLL_CTL_DEL && rte_atomic_load_explicit(&event->status,
+			rte_memory_order_relaxed) != RTE_EPOLL_INVALID)
 		eal_epoll_data_safe_free(event);
 
 	return 0;
@@ -1450,8 +1450,8 @@ rte_intr_rx_ctl(struct rte_intr_handle *intr_handle, int epfd,
 	case RTE_INTR_EVENT_ADD:
 		epfd_op = EPOLL_CTL_ADD;
 		rev = rte_intr_elist_index_get(intr_handle, efd_idx);
-		if (__atomic_load_n(&rev->status,
-				__ATOMIC_RELAXED) != RTE_EPOLL_INVALID) {
+		if (rte_atomic_load_explicit(&rev->status,
+				rte_memory_order_relaxed) != RTE_EPOLL_INVALID) {
 			RTE_LOG(INFO, EAL, "Event already been added.\n");
 			return -EEXIST;
 		}
@@ -1474,8 +1474,8 @@ rte_intr_rx_ctl(struct rte_intr_handle *intr_handle, int epfd,
 	case RTE_INTR_EVENT_DEL:
 		epfd_op = EPOLL_CTL_DEL;
 		rev = rte_intr_elist_index_get(intr_handle, efd_idx);
-		if (__atomic_load_n(&rev->status,
-				__ATOMIC_RELAXED) == RTE_EPOLL_INVALID) {
+		if (rte_atomic_load_explicit(&rev->status,
+				rte_memory_order_relaxed) == RTE_EPOLL_INVALID) {
 			RTE_LOG(INFO, EAL, "Event does not exist.\n");
 			return -EPERM;
 		}
@@ -1500,8 +1500,8 @@ rte_intr_free_epoll_fd(struct rte_intr_handle *intr_handle)
 
 	for (i = 0; i < (uint32_t)rte_intr_nb_efd_get(intr_handle); i++) {
 		rev = rte_intr_elist_index_get(intr_handle, i);
-		if (__atomic_load_n(&rev->status,
-				__ATOMIC_RELAXED) == RTE_EPOLL_INVALID)
+		if (rte_atomic_load_explicit(&rev->status,
+				rte_memory_order_relaxed) == RTE_EPOLL_INVALID)
 			continue;
 		if (rte_epoll_ctl(rev->epfd, EPOLL_CTL_DEL, rev->fd, rev)) {
 			/* force free if the entry valid */

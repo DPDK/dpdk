@@ -597,8 +597,8 @@ rte_eal_init(int argc, char **argv)
 		return -1;
 	}
 
-	if (!__atomic_compare_exchange_n(&run_once, &has_run, 1, 0,
-					__ATOMIC_RELAXED, __ATOMIC_RELAXED)) {
+	if (!rte_atomic_compare_exchange_strong_explicit(&run_once, &has_run, 1,
+					rte_memory_order_relaxed, rte_memory_order_relaxed)) {
 		rte_eal_init_alert("already called initialization.");
 		rte_errno = EALREADY;
 		return -1;
@@ -622,7 +622,7 @@ rte_eal_init(int argc, char **argv)
 	if (fctret < 0) {
 		rte_eal_init_alert("Invalid 'command line' arguments.");
 		rte_errno = EINVAL;
-		__atomic_store_n(&run_once, 0, __ATOMIC_RELAXED);
+		rte_atomic_store_explicit(&run_once, 0, rte_memory_order_relaxed);
 		return -1;
 	}
 
@@ -636,20 +636,20 @@ rte_eal_init(int argc, char **argv)
 	if (eal_plugins_init() < 0) {
 		rte_eal_init_alert("Cannot init plugins");
 		rte_errno = EINVAL;
-		__atomic_store_n(&run_once, 0, __ATOMIC_RELAXED);
+		rte_atomic_store_explicit(&run_once, 0, rte_memory_order_relaxed);
 		return -1;
 	}
 
 	if (eal_trace_init() < 0) {
 		rte_eal_init_alert("Cannot init trace");
 		rte_errno = EFAULT;
-		__atomic_store_n(&run_once, 0, __ATOMIC_RELAXED);
+		rte_atomic_store_explicit(&run_once, 0, rte_memory_order_relaxed);
 		return -1;
 	}
 
 	if (eal_option_device_parse()) {
 		rte_errno = ENODEV;
-		__atomic_store_n(&run_once, 0, __ATOMIC_RELAXED);
+		rte_atomic_store_explicit(&run_once, 0, rte_memory_order_relaxed);
 		return -1;
 	}
 
@@ -683,7 +683,7 @@ rte_eal_init(int argc, char **argv)
 	if (rte_bus_scan()) {
 		rte_eal_init_alert("Cannot scan the buses for devices");
 		rte_errno = ENODEV;
-		__atomic_store_n(&run_once, 0, __ATOMIC_RELAXED);
+		rte_atomic_store_explicit(&run_once, 0, rte_memory_order_relaxed);
 		return -1;
 	}
 
@@ -736,7 +736,7 @@ rte_eal_init(int argc, char **argv)
 		if (ret < 0) {
 			rte_eal_init_alert("Cannot get hugepage information.");
 			rte_errno = EACCES;
-			__atomic_store_n(&run_once, 0, __ATOMIC_RELAXED);
+			rte_atomic_store_explicit(&run_once, 0, rte_memory_order_relaxed);
 			return -1;
 		}
 	}
@@ -915,8 +915,8 @@ rte_eal_cleanup(void)
 	static uint32_t run_once;
 	uint32_t has_run = 0;
 
-	if (!__atomic_compare_exchange_n(&run_once, &has_run, 1, 0,
-			__ATOMIC_RELAXED, __ATOMIC_RELAXED)) {
+	if (!rte_atomic_compare_exchange_strong_explicit(&run_once, &has_run, 1,
+			rte_memory_order_relaxed, rte_memory_order_relaxed)) {
 		RTE_LOG(WARNING, EAL, "Already called cleanup\n");
 		rte_errno = EALREADY;
 		return -1;

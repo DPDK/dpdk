@@ -33,7 +33,7 @@
 #include "eal_filesystem.h"
 #include "eal_internal_cfg.h"
 
-static int mp_fd = -1;
+static RTE_ATOMIC(int) mp_fd = -1;
 static rte_thread_t mp_handle_tid;
 static char mp_filter[PATH_MAX];   /* Filter for secondary process sockets */
 static char mp_dir_path[PATH_MAX]; /* The directory path for all mp sockets */
@@ -404,7 +404,7 @@ mp_handle(void *arg __rte_unused)
 	struct sockaddr_un sa;
 	int fd;
 
-	while ((fd = __atomic_load_n(&mp_fd, __ATOMIC_RELAXED)) >= 0) {
+	while ((fd = rte_atomic_load_explicit(&mp_fd, rte_memory_order_relaxed)) >= 0) {
 		int ret;
 
 		ret = read_msg(fd, &msg, &sa);
@@ -652,7 +652,7 @@ rte_mp_channel_init(void)
 		RTE_LOG(ERR, EAL, "failed to create mp thread: %s\n",
 			strerror(errno));
 		close(dir_fd);
-		close(__atomic_exchange_n(&mp_fd, -1, __ATOMIC_RELAXED));
+		close(rte_atomic_exchange_explicit(&mp_fd, -1, rte_memory_order_relaxed));
 		return -1;
 	}
 
@@ -668,7 +668,7 @@ rte_mp_channel_cleanup(void)
 {
 	int fd;
 
-	fd = __atomic_exchange_n(&mp_fd, -1, __ATOMIC_RELAXED);
+	fd = rte_atomic_exchange_explicit(&mp_fd, -1, rte_memory_order_relaxed);
 	if (fd < 0)
 		return;
 
@@ -1282,11 +1282,11 @@ set_mp_status(enum mp_status status)
 
 	expected = MP_STATUS_UNKNOWN;
 	desired = status;
-	if (__atomic_compare_exchange_n(&mcfg->mp_status, &expected, desired,
-			false, __ATOMIC_RELAXED, __ATOMIC_RELAXED))
+	if (rte_atomic_compare_exchange_strong_explicit(&mcfg->mp_status, &expected, desired,
+			rte_memory_order_relaxed, rte_memory_order_relaxed))
 		return true;
 
-	return __atomic_load_n(&mcfg->mp_status, __ATOMIC_RELAXED) == desired;
+	return rte_atomic_load_explicit(&mcfg->mp_status, rte_memory_order_relaxed) == desired;
 }
 
 bool

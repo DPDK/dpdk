@@ -43,8 +43,8 @@ struct rte_service_spec_impl {
 	rte_spinlock_t execute_lock;
 
 	/* API set/get-able variables */
-	int8_t app_runstate;
-	int8_t comp_runstate;
+	RTE_ATOMIC(int8_t) app_runstate;
+	RTE_ATOMIC(int8_t) comp_runstate;
 	uint8_t internal_flags;
 
 	/* per service statistics */
@@ -52,24 +52,24 @@ struct rte_service_spec_impl {
 	 * It does not indicate the number of cores the service is running
 	 * on currently.
 	 */
-	uint32_t num_mapped_cores;
+	RTE_ATOMIC(uint32_t) num_mapped_cores;
 } __rte_cache_aligned;
 
 struct service_stats {
-	uint64_t calls;
-	uint64_t cycles;
+	RTE_ATOMIC(uint64_t) calls;
+	RTE_ATOMIC(uint64_t) cycles;
 };
 
 /* the internal values of a service core */
 struct core_state {
 	/* map of services IDs are run on this core */
 	uint64_t service_mask;
-	uint8_t runstate; /* running or stopped */
-	uint8_t thread_active; /* indicates when thread is in service_run() */
+	RTE_ATOMIC(uint8_t) runstate; /* running or stopped */
+	RTE_ATOMIC(uint8_t) thread_active; /* indicates when thread is in service_run() */
 	uint8_t is_service_core; /* set if core is currently a service core */
 	uint8_t service_active_on_lcore[RTE_SERVICE_NUM_MAX];
-	uint64_t loops;
-	uint64_t cycles;
+	RTE_ATOMIC(uint64_t) loops;
+	RTE_ATOMIC(uint64_t) cycles;
 	struct service_stats service_stats[RTE_SERVICE_NUM_MAX];
 } __rte_cache_aligned;
 
@@ -314,11 +314,11 @@ rte_service_component_runstate_set(uint32_t id, uint32_t runstate)
 	 * service_run and service_runstate_get function.
 	 */
 	if (runstate)
-		__atomic_store_n(&s->comp_runstate, RUNSTATE_RUNNING,
-			__ATOMIC_RELEASE);
+		rte_atomic_store_explicit(&s->comp_runstate, RUNSTATE_RUNNING,
+			rte_memory_order_release);
 	else
-		__atomic_store_n(&s->comp_runstate, RUNSTATE_STOPPED,
-			__ATOMIC_RELEASE);
+		rte_atomic_store_explicit(&s->comp_runstate, RUNSTATE_STOPPED,
+			rte_memory_order_release);
 
 	return 0;
 }
@@ -334,11 +334,11 @@ rte_service_runstate_set(uint32_t id, uint32_t runstate)
 	 * service_run runstate_get function.
 	 */
 	if (runstate)
-		__atomic_store_n(&s->app_runstate, RUNSTATE_RUNNING,
-			__ATOMIC_RELEASE);
+		rte_atomic_store_explicit(&s->app_runstate, RUNSTATE_RUNNING,
+			rte_memory_order_release);
 	else
-		__atomic_store_n(&s->app_runstate, RUNSTATE_STOPPED,
-			__ATOMIC_RELEASE);
+		rte_atomic_store_explicit(&s->app_runstate, RUNSTATE_STOPPED,
+			rte_memory_order_release);
 
 	rte_eal_trace_service_runstate_set(id, runstate);
 	return 0;
@@ -354,14 +354,14 @@ rte_service_runstate_get(uint32_t id)
 	 * Use load-acquire memory order. This synchronizes with
 	 * store-release in service state set functions.
 	 */
-	if (__atomic_load_n(&s->comp_runstate, __ATOMIC_ACQUIRE) ==
+	if (rte_atomic_load_explicit(&s->comp_runstate, rte_memory_order_acquire) ==
 			RUNSTATE_RUNNING &&
-	    __atomic_load_n(&s->app_runstate, __ATOMIC_ACQUIRE) ==
+	    rte_atomic_load_explicit(&s->app_runstate, rte_memory_order_acquire) ==
 			RUNSTATE_RUNNING) {
 		int check_disabled = !(s->internal_flags &
 			SERVICE_F_START_CHECK);
-		int lcore_mapped = (__atomic_load_n(&s->num_mapped_cores,
-			__ATOMIC_RELAXED) > 0);
+		int lcore_mapped = (rte_atomic_load_explicit(&s->num_mapped_cores,
+			rte_memory_order_relaxed) > 0);
 
 		return (check_disabled | lcore_mapped);
 	} else
@@ -392,15 +392,15 @@ service_runner_do_callback(struct rte_service_spec_impl *s,
 			uint64_t end = rte_rdtsc();
 			uint64_t cycles = end - start;
 
-			__atomic_store_n(&cs->cycles, cs->cycles + cycles,
-				__ATOMIC_RELAXED);
-			__atomic_store_n(&service_stats->cycles,
+			rte_atomic_store_explicit(&cs->cycles, cs->cycles + cycles,
+				rte_memory_order_relaxed);
+			rte_atomic_store_explicit(&service_stats->cycles,
 				service_stats->cycles + cycles,
-				__ATOMIC_RELAXED);
+				rte_memory_order_relaxed);
 		}
 
-		__atomic_store_n(&service_stats->calls,
-			service_stats->calls + 1, __ATOMIC_RELAXED);
+		rte_atomic_store_explicit(&service_stats->calls,
+			service_stats->calls + 1, rte_memory_order_relaxed);
 	} else {
 		s->spec.callback(userdata);
 	}
@@ -420,9 +420,9 @@ service_run(uint32_t i, struct core_state *cs, uint64_t service_mask,
 	 * Use load-acquire memory order. This synchronizes with
 	 * store-release in service state set functions.
 	 */
-	if (__atomic_load_n(&s->comp_runstate, __ATOMIC_ACQUIRE) !=
+	if (rte_atomic_load_explicit(&s->comp_runstate, rte_memory_order_acquire) !=
 			RUNSTATE_RUNNING ||
-	    __atomic_load_n(&s->app_runstate, __ATOMIC_ACQUIRE) !=
+	    rte_atomic_load_explicit(&s->app_runstate, rte_memory_order_acquire) !=
 			RUNSTATE_RUNNING ||
 	    !(service_mask & (UINT64_C(1) << i))) {
 		cs->service_active_on_lcore[i] = 0;
@@ -472,11 +472,11 @@ rte_service_run_iter_on_app_lcore(uint32_t id, uint32_t serialize_mt_unsafe)
 	/* Increment num_mapped_cores to reflect that this core is
 	 * now mapped capable of running the service.
 	 */
-	__atomic_fetch_add(&s->num_mapped_cores, 1, __ATOMIC_RELAXED);
+	rte_atomic_fetch_add_explicit(&s->num_mapped_cores, 1, rte_memory_order_relaxed);
 
 	int ret = service_run(id, cs, UINT64_MAX, s, serialize_mt_unsafe);
 
-	__atomic_fetch_sub(&s->num_mapped_cores, 1, __ATOMIC_RELAXED);
+	rte_atomic_fetch_sub_explicit(&s->num_mapped_cores, 1, rte_memory_order_relaxed);
 
 	return ret;
 }
@@ -489,13 +489,13 @@ service_runner_func(void *arg)
 	const int lcore = rte_lcore_id();
 	struct core_state *cs = &lcore_states[lcore];
 
-	__atomic_store_n(&cs->thread_active, 1, __ATOMIC_SEQ_CST);
+	rte_atomic_store_explicit(&cs->thread_active, 1, rte_memory_order_seq_cst);
 
 	/* runstate act as the guard variable. Use load-acquire
 	 * memory order here to synchronize with store-release
 	 * in runstate update functions.
 	 */
-	while (__atomic_load_n(&cs->runstate, __ATOMIC_ACQUIRE) ==
+	while (rte_atomic_load_explicit(&cs->runstate, rte_memory_order_acquire) ==
 			RUNSTATE_RUNNING) {
 
 		const uint64_t service_mask = cs->service_mask;
@@ -513,7 +513,7 @@ service_runner_func(void *arg)
 			service_run(i, cs, service_mask, service_get(i), 1);
 		}
 
-		__atomic_store_n(&cs->loops, cs->loops + 1, __ATOMIC_RELAXED);
+		rte_atomic_store_explicit(&cs->loops, cs->loops + 1, rte_memory_order_relaxed);
 	}
 
 	/* Switch off this core for all services, to ensure that future
@@ -526,7 +526,7 @@ service_runner_func(void *arg)
 	 * this store, ensuring that once this store is visible, the service
 	 * lcore thread really is done in service cores code.
 	 */
-	__atomic_store_n(&cs->thread_active, 0, __ATOMIC_SEQ_CST);
+	rte_atomic_store_explicit(&cs->thread_active, 0, rte_memory_order_seq_cst);
 	return 0;
 }
 
@@ -539,8 +539,8 @@ rte_service_lcore_may_be_active(uint32_t lcore)
 	/* Load thread_active using ACQUIRE to avoid instructions dependent on
 	 * the result being re-ordered before this load completes.
 	 */
-	return __atomic_load_n(&lcore_states[lcore].thread_active,
-			       __ATOMIC_ACQUIRE);
+	return rte_atomic_load_explicit(&lcore_states[lcore].thread_active,
+			       rte_memory_order_acquire);
 }
 
 int32_t
@@ -646,13 +646,13 @@ service_update(uint32_t sid, uint32_t lcore, uint32_t *set, uint32_t *enabled)
 
 		if (*set && !lcore_mapped) {
 			lcore_states[lcore].service_mask |= sid_mask;
-			__atomic_fetch_add(&rte_services[sid].num_mapped_cores,
-				1, __ATOMIC_RELAXED);
+			rte_atomic_fetch_add_explicit(&rte_services[sid].num_mapped_cores,
+				1, rte_memory_order_relaxed);
 		}
 		if (!*set && lcore_mapped) {
 			lcore_states[lcore].service_mask &= ~(sid_mask);
-			__atomic_fetch_sub(&rte_services[sid].num_mapped_cores,
-				1, __ATOMIC_RELAXED);
+			rte_atomic_fetch_sub_explicit(&rte_services[sid].num_mapped_cores,
+				1, rte_memory_order_relaxed);
 		}
 	}
 
@@ -709,13 +709,13 @@ rte_service_lcore_reset_all(void)
 			 * store-release memory order here to synchronize
 			 * with load-acquire in runstate read functions.
 			 */
-			__atomic_store_n(&lcore_states[i].runstate,
-				RUNSTATE_STOPPED, __ATOMIC_RELEASE);
+			rte_atomic_store_explicit(&lcore_states[i].runstate,
+				RUNSTATE_STOPPED, rte_memory_order_release);
 		}
 	}
 	for (i = 0; i < RTE_SERVICE_NUM_MAX; i++)
-		__atomic_store_n(&rte_services[i].num_mapped_cores, 0,
-			__ATOMIC_RELAXED);
+		rte_atomic_store_explicit(&rte_services[i].num_mapped_cores, 0,
+			rte_memory_order_relaxed);
 
 	return 0;
 }
@@ -735,8 +735,8 @@ rte_service_lcore_add(uint32_t lcore)
 	/* Use store-release memory order here to synchronize with
 	 * load-acquire in runstate read functions.
 	 */
-	__atomic_store_n(&lcore_states[lcore].runstate, RUNSTATE_STOPPED,
-		__ATOMIC_RELEASE);
+	rte_atomic_store_explicit(&lcore_states[lcore].runstate, RUNSTATE_STOPPED,
+		rte_memory_order_release);
 
 	return rte_eal_wait_lcore(lcore);
 }
@@ -755,7 +755,7 @@ rte_service_lcore_del(uint32_t lcore)
 	 * memory order here to synchronize with store-release
 	 * in runstate update functions.
 	 */
-	if (__atomic_load_n(&cs->runstate, __ATOMIC_ACQUIRE) !=
+	if (rte_atomic_load_explicit(&cs->runstate, rte_memory_order_acquire) !=
 			RUNSTATE_STOPPED)
 		return -EBUSY;
 
@@ -779,7 +779,7 @@ rte_service_lcore_start(uint32_t lcore)
 	 * memory order here to synchronize with store-release
 	 * in runstate update functions.
 	 */
-	if (__atomic_load_n(&cs->runstate, __ATOMIC_ACQUIRE) ==
+	if (rte_atomic_load_explicit(&cs->runstate, rte_memory_order_acquire) ==
 			RUNSTATE_RUNNING)
 		return -EALREADY;
 
@@ -789,7 +789,7 @@ rte_service_lcore_start(uint32_t lcore)
 	/* Use load-acquire memory order here to synchronize with
 	 * store-release in runstate update functions.
 	 */
-	__atomic_store_n(&cs->runstate, RUNSTATE_RUNNING, __ATOMIC_RELEASE);
+	rte_atomic_store_explicit(&cs->runstate, RUNSTATE_RUNNING, rte_memory_order_release);
 
 	rte_eal_trace_service_lcore_start(lcore);
 
@@ -808,7 +808,7 @@ rte_service_lcore_stop(uint32_t lcore)
 	 * memory order here to synchronize with store-release
 	 * in runstate update functions.
 	 */
-	if (__atomic_load_n(&lcore_states[lcore].runstate, __ATOMIC_ACQUIRE) ==
+	if (rte_atomic_load_explicit(&lcore_states[lcore].runstate, rte_memory_order_acquire) ==
 			RUNSTATE_STOPPED)
 		return -EALREADY;
 
@@ -820,8 +820,8 @@ rte_service_lcore_stop(uint32_t lcore)
 		int32_t enabled = service_mask & (UINT64_C(1) << i);
 		int32_t service_running = rte_service_runstate_get(i);
 		int32_t only_core = (1 ==
-			__atomic_load_n(&rte_services[i].num_mapped_cores,
-				__ATOMIC_RELAXED));
+			rte_atomic_load_explicit(&rte_services[i].num_mapped_cores,
+				rte_memory_order_relaxed));
 
 		/* if the core is mapped, and the service is running, and this
 		 * is the only core that is mapped, the service would cease to
@@ -834,8 +834,8 @@ rte_service_lcore_stop(uint32_t lcore)
 	/* Use store-release memory order here to synchronize with
 	 * load-acquire in runstate read functions.
 	 */
-	__atomic_store_n(&lcore_states[lcore].runstate, RUNSTATE_STOPPED,
-		__ATOMIC_RELEASE);
+	rte_atomic_store_explicit(&lcore_states[lcore].runstate, RUNSTATE_STOPPED,
+		rte_memory_order_release);
 
 	rte_eal_trace_service_lcore_stop(lcore);
 
@@ -847,7 +847,7 @@ lcore_attr_get_loops(unsigned int lcore)
 {
 	struct core_state *cs = &lcore_states[lcore];
 
-	return __atomic_load_n(&cs->loops, __ATOMIC_RELAXED);
+	return rte_atomic_load_explicit(&cs->loops, rte_memory_order_relaxed);
 }
 
 static uint64_t
@@ -855,7 +855,7 @@ lcore_attr_get_cycles(unsigned int lcore)
 {
 	struct core_state *cs = &lcore_states[lcore];
 
-	return __atomic_load_n(&cs->cycles, __ATOMIC_RELAXED);
+	return rte_atomic_load_explicit(&cs->cycles, rte_memory_order_relaxed);
 }
 
 static uint64_t
@@ -863,8 +863,8 @@ lcore_attr_get_service_calls(uint32_t service_id, unsigned int lcore)
 {
 	struct core_state *cs = &lcore_states[lcore];
 
-	return __atomic_load_n(&cs->service_stats[service_id].calls,
-		__ATOMIC_RELAXED);
+	return rte_atomic_load_explicit(&cs->service_stats[service_id].calls,
+		rte_memory_order_relaxed);
 }
 
 static uint64_t
@@ -872,8 +872,8 @@ lcore_attr_get_service_cycles(uint32_t service_id, unsigned int lcore)
 {
 	struct core_state *cs = &lcore_states[lcore];
 
-	return __atomic_load_n(&cs->service_stats[service_id].cycles,
-		__ATOMIC_RELAXED);
+	return rte_atomic_load_explicit(&cs->service_stats[service_id].cycles,
+		rte_memory_order_relaxed);
 }
 
 typedef uint64_t (*lcore_attr_get_fun)(uint32_t service_id,

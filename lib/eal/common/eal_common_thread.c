@@ -191,8 +191,8 @@ eal_thread_loop(void *arg)
 		/* Set the state to 'RUNNING'. Use release order
 		 * since 'state' variable is used as the guard variable.
 		 */
-		__atomic_store_n(&lcore_config[lcore_id].state, RUNNING,
-			__ATOMIC_RELEASE);
+		rte_atomic_store_explicit(&lcore_config[lcore_id].state, RUNNING,
+			rte_memory_order_release);
 
 		eal_thread_ack_command();
 
@@ -201,8 +201,8 @@ eal_thread_loop(void *arg)
 		 * are accessed only after update to 'f' is visible.
 		 * Wait till the update to 'f' is visible to the worker.
 		 */
-		while ((f = __atomic_load_n(&lcore_config[lcore_id].f,
-				__ATOMIC_ACQUIRE)) == NULL)
+		while ((f = rte_atomic_load_explicit(&lcore_config[lcore_id].f,
+				rte_memory_order_acquire)) == NULL)
 			rte_pause();
 
 		rte_eal_trace_thread_lcore_running(lcore_id, f);
@@ -219,8 +219,8 @@ eal_thread_loop(void *arg)
 		 * are completed before the state is updated.
 		 * Use 'state' as the guard variable.
 		 */
-		__atomic_store_n(&lcore_config[lcore_id].state, WAIT,
-			__ATOMIC_RELEASE);
+		rte_atomic_store_explicit(&lcore_config[lcore_id].state, WAIT,
+			rte_memory_order_release);
 
 		rte_eal_trace_thread_lcore_stopped(lcore_id);
 	}
@@ -242,7 +242,7 @@ struct control_thread_params {
 	/* Control thread status.
 	 * If the status is CTRL_THREAD_ERROR, 'ret' has the error code.
 	 */
-	enum __rte_ctrl_thread_status status;
+	RTE_ATOMIC(enum __rte_ctrl_thread_status) status;
 };
 
 static int control_thread_init(void *arg)
@@ -259,13 +259,13 @@ static int control_thread_init(void *arg)
 	RTE_PER_LCORE(_socket_id) = SOCKET_ID_ANY;
 	params->ret = rte_thread_set_affinity_by_id(rte_thread_self(), cpuset);
 	if (params->ret != 0) {
-		__atomic_store_n(&params->status,
-			CTRL_THREAD_ERROR, __ATOMIC_RELEASE);
+		rte_atomic_store_explicit(&params->status,
+			CTRL_THREAD_ERROR, rte_memory_order_release);
 		return 1;
 	}
 
-	__atomic_store_n(&params->status,
-		CTRL_THREAD_RUNNING, __ATOMIC_RELEASE);
+	rte_atomic_store_explicit(&params->status,
+		CTRL_THREAD_RUNNING, rte_memory_order_release);
 
 	return 0;
 }
@@ -310,8 +310,8 @@ rte_thread_create_control(rte_thread_t *thread, const char *name,
 
 	/* Wait for the control thread to initialize successfully */
 	while ((ctrl_thread_status =
-			__atomic_load_n(&params->status,
-			__ATOMIC_ACQUIRE)) == CTRL_THREAD_LAUNCHING) {
+			rte_atomic_load_explicit(&params->status,
+			rte_memory_order_acquire)) == CTRL_THREAD_LAUNCHING) {
 		rte_delay_us_sleep(1);
 	}
 

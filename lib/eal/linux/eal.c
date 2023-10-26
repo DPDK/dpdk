@@ -967,7 +967,7 @@ int
 rte_eal_init(int argc, char **argv)
 {
 	int i, fctret, ret;
-	static uint32_t run_once;
+	static RTE_ATOMIC(uint32_t) run_once;
 	uint32_t has_run = 0;
 	char cpuset[RTE_CPU_AFFINITY_STR_LEN];
 	char thread_name[RTE_THREAD_NAME_SIZE];
@@ -983,8 +983,8 @@ rte_eal_init(int argc, char **argv)
 		return -1;
 	}
 
-	if (!__atomic_compare_exchange_n(&run_once, &has_run, 1, 0,
-					__ATOMIC_RELAXED, __ATOMIC_RELAXED)) {
+	if (!rte_atomic_compare_exchange_strong_explicit(&run_once, &has_run, 1,
+					rte_memory_order_relaxed, rte_memory_order_relaxed)) {
 		rte_eal_init_alert("already called initialization.");
 		rte_errno = EALREADY;
 		return -1;
@@ -1008,14 +1008,14 @@ rte_eal_init(int argc, char **argv)
 	if (fctret < 0) {
 		rte_eal_init_alert("Invalid 'command line' arguments.");
 		rte_errno = EINVAL;
-		__atomic_store_n(&run_once, 0, __ATOMIC_RELAXED);
+		rte_atomic_store_explicit(&run_once, 0, rte_memory_order_relaxed);
 		return -1;
 	}
 
 	if (eal_plugins_init() < 0) {
 		rte_eal_init_alert("Cannot init plugins");
 		rte_errno = EINVAL;
-		__atomic_store_n(&run_once, 0, __ATOMIC_RELAXED);
+		rte_atomic_store_explicit(&run_once, 0, rte_memory_order_relaxed);
 		return -1;
 	}
 
@@ -1027,7 +1027,7 @@ rte_eal_init(int argc, char **argv)
 
 	if (eal_option_device_parse()) {
 		rte_errno = ENODEV;
-		__atomic_store_n(&run_once, 0, __ATOMIC_RELAXED);
+		rte_atomic_store_explicit(&run_once, 0, rte_memory_order_relaxed);
 		return -1;
 	}
 
@@ -1061,7 +1061,7 @@ rte_eal_init(int argc, char **argv)
 	if (rte_bus_scan()) {
 		rte_eal_init_alert("Cannot scan the buses for devices");
 		rte_errno = ENODEV;
-		__atomic_store_n(&run_once, 0, __ATOMIC_RELAXED);
+		rte_atomic_store_explicit(&run_once, 0, rte_memory_order_relaxed);
 		return -1;
 	}
 
@@ -1125,7 +1125,7 @@ rte_eal_init(int argc, char **argv)
 		if (ret < 0) {
 			rte_eal_init_alert("Cannot get hugepage information.");
 			rte_errno = EACCES;
-			__atomic_store_n(&run_once, 0, __ATOMIC_RELAXED);
+			rte_atomic_store_explicit(&run_once, 0, rte_memory_order_relaxed);
 			return -1;
 		}
 	}
@@ -1150,7 +1150,7 @@ rte_eal_init(int argc, char **argv)
 			 internal_conf->syslog_facility) < 0) {
 		rte_eal_init_alert("Cannot init logging.");
 		rte_errno = ENOMEM;
-		__atomic_store_n(&run_once, 0, __ATOMIC_RELAXED);
+		rte_atomic_store_explicit(&run_once, 0, rte_memory_order_relaxed);
 		return -1;
 	}
 
@@ -1158,7 +1158,7 @@ rte_eal_init(int argc, char **argv)
 	if (rte_eal_vfio_setup() < 0) {
 		rte_eal_init_alert("Cannot init VFIO");
 		rte_errno = EAGAIN;
-		__atomic_store_n(&run_once, 0, __ATOMIC_RELAXED);
+		rte_atomic_store_explicit(&run_once, 0, rte_memory_order_relaxed);
 		return -1;
 	}
 #endif
@@ -1345,11 +1345,11 @@ mark_freeable(const struct rte_memseg_list *msl, const struct rte_memseg *ms,
 int
 rte_eal_cleanup(void)
 {
-	static uint32_t run_once;
+	static RTE_ATOMIC(uint32_t) run_once;
 	uint32_t has_run = 0;
 
-	if (!__atomic_compare_exchange_n(&run_once, &has_run, 1, 0,
-					__ATOMIC_RELAXED, __ATOMIC_RELAXED)) {
+	if (!rte_atomic_compare_exchange_strong_explicit(&run_once, &has_run, 1,
+					rte_memory_order_relaxed, rte_memory_order_relaxed)) {
 		RTE_LOG(WARNING, EAL, "Already called cleanup\n");
 		rte_errno = EALREADY;
 		return -1;

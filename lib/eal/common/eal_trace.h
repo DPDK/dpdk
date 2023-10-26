@@ -50,7 +50,7 @@ struct trace_arg {
 struct trace {
 	char *dir;
 	int register_errno;
-	uint32_t status;
+	RTE_ATOMIC(uint32_t) status;
 	enum rte_trace_mode mode;
 	rte_uuid_t uuid;
 	uint32_t buff_len;
@@ -65,7 +65,7 @@ struct trace {
 	uint32_t ctf_meta_offset_freq;
 	uint32_t ctf_meta_offset_freq_off_s;
 	uint32_t ctf_meta_offset_freq_off;
-	uint16_t ctf_fixup_done;
+	RTE_ATOMIC(uint16_t) ctf_fixup_done;
 	rte_spinlock_t lock;
 };
 

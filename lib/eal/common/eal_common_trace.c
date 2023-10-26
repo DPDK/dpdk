@@ -97,7 +97,7 @@ eal_trace_fini(void)
 bool
 rte_trace_is_enabled(void)
 {
-	return __atomic_load_n(&trace.status, __ATOMIC_ACQUIRE) != 0;
+	return rte_atomic_load_explicit(&trace.status, rte_memory_order_acquire) != 0;
 }
 
 static void
@@ -157,7 +157,7 @@ rte_trace_point_enable(rte_trace_point_t *t)
 	prev = rte_atomic_fetch_or_explicit(t, __RTE_TRACE_FIELD_ENABLE_MASK,
 		rte_memory_order_release);
 	if ((prev & __RTE_TRACE_FIELD_ENABLE_MASK) == 0)
-		__atomic_fetch_add(&trace.status, 1, __ATOMIC_RELEASE);
+		rte_atomic_fetch_add_explicit(&trace.status, 1, rte_memory_order_release);
 	return 0;
 }
 
@@ -172,7 +172,7 @@ rte_trace_point_disable(rte_trace_point_t *t)
 	prev = rte_atomic_fetch_and_explicit(t, ~__RTE_TRACE_FIELD_ENABLE_MASK,
 		rte_memory_order_release);
 	if ((prev & __RTE_TRACE_FIELD_ENABLE_MASK) != 0)
-		__atomic_fetch_sub(&trace.status, 1, __ATOMIC_RELEASE);
+		rte_atomic_fetch_sub_explicit(&trace.status, 1, rte_memory_order_release);
 	return 0;
 }
 
@@ -526,7 +526,7 @@ __rte_trace_point_register(rte_trace_point_t *handle, const char *name,
 
 	/* Add the trace point at tail */
 	STAILQ_INSERT_TAIL(&tp_list, tp, next);
-	__atomic_thread_fence(__ATOMIC_RELEASE);
+	__atomic_thread_fence(rte_memory_order_release);
 
 	/* All Good !!! */
 	return 0;

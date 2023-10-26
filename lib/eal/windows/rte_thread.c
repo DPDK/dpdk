@@ -9,6 +9,7 @@
 #include <rte_eal.h>
 #include <rte_common.h>
 #include <rte_errno.h>
+#include <rte_stdatomic.h>
 #include <rte_thread.h>
 
 #include "eal_windows.h"
@@ -19,7 +20,7 @@ struct eal_tls_key {
 
 struct thread_routine_ctx {
 	rte_thread_func thread_func;
-	bool thread_init_failed;
+	RTE_ATOMIC(bool) thread_init_failed;
 	void *routine_args;
 };
 
@@ -168,7 +169,8 @@ static DWORD
 thread_func_wrapper(void *arg)
 {
 	struct thread_routine_ctx ctx = *(struct thread_routine_ctx *)arg;
-	const bool thread_exit = __atomic_load_n(&ctx.thread_init_failed, __ATOMIC_ACQUIRE);
+	const bool thread_exit = rte_atomic_load_explicit(
+		&ctx.thread_init_failed, rte_memory_order_acquire);
 
 	free(arg);
 
@@ -237,7 +239,7 @@ rte_thread_create(rte_thread_t *thread_id,
 	}
 
 resume_thread:
-	__atomic_store_n(&ctx->thread_init_failed, thread_exit, __ATOMIC_RELEASE);
+	rte_atomic_store_explicit(&ctx->thread_init_failed, thread_exit, rte_memory_order_release);
 
 	if (ResumeThread(thread_handle) == (DWORD)-1) {
 		ret = thread_log_last_error("ResumeThread()");

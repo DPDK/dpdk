@@ -48,7 +48,7 @@ rte_atomic_thread_fence(rte_memory_order memorder)
 static inline int
 rte_atomic16_cmpset(volatile uint16_t *dst, uint16_t exp, uint16_t src)
 {
-	return __atomic_compare_exchange(dst, &exp, &src, 0, rte_memory_order_acquire,
+	return rte_atomic_compare_exchange_strong_explicit(dst, &exp, src, rte_memory_order_acquire,
 		rte_memory_order_acquire) ? 1 : 0;
 }
 
@@ -90,7 +90,7 @@ rte_atomic16_exchange(volatile uint16_t *dst, uint16_t val)
 static inline int
 rte_atomic32_cmpset(volatile uint32_t *dst, uint32_t exp, uint32_t src)
 {
-	return __atomic_compare_exchange(dst, &exp, &src, 0, rte_memory_order_acquire,
+	return rte_atomic_compare_exchange_strong_explicit(dst, &exp, src, rte_memory_order_acquire,
 		rte_memory_order_acquire) ? 1 : 0;
 }
 
@@ -132,7 +132,7 @@ rte_atomic32_exchange(volatile uint32_t *dst, uint32_t val)
 static inline int
 rte_atomic64_cmpset(volatile uint64_t *dst, uint64_t exp, uint64_t src)
 {
-	return __atomic_compare_exchange(dst, &exp, &src, 0, rte_memory_order_acquire,
+	return rte_atomic_compare_exchange_strong_explicit(dst, &exp, src, rte_memory_order_acquire,
 		rte_memory_order_acquire) ? 1 : 0;
 }
 
