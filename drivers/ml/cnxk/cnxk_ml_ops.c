@@ -1244,6 +1244,8 @@ cnxk_ml_io_quantize(struct rte_ml_dev *dev, uint16_t model_id, struct rte_ml_buf
 
 	if (model->type == ML_CNXK_MODEL_TYPE_GLOW)
 		info = cn10k_ml_model_io_info_get(model, 0);
+	else
+		info = mvtvm_ml_model_io_info_get(model, 0);
 
 	if (info == NULL)
 		return -EINVAL;
@@ -1296,6 +1298,8 @@ cnxk_ml_io_dequantize(struct rte_ml_dev *dev, uint16_t model_id, struct rte_ml_b
 
 	if (model->type == ML_CNXK_MODEL_TYPE_GLOW)
 		info = cn10k_ml_model_io_info_get(model, model->nb_layers - 1);
+	else
+		info = mvtvm_ml_model_io_info_get(model, model->nb_layers - 1);
 
 	if (info == NULL)
 		return -EINVAL;

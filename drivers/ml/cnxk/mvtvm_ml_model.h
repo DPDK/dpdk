@@ -50,5 +50,7 @@ int mvtvm_ml_model_blob_parse(struct rte_ml_model_params *params,
 			      struct mvtvm_ml_model_object *object);
 int mvtvm_ml_model_get_layer_id(struct cnxk_ml_model *model, const char *layer_name,
 				uint16_t *layer_id);
+void mvtvm_ml_model_io_info_set(struct cnxk_ml_model *model);
+struct cnxk_ml_io_info *mvtvm_ml_model_io_info_get(struct cnxk_ml_model *model, uint16_t layer_id);
 
 #endif /* _MVTVM_ML_MODEL_H_ */
