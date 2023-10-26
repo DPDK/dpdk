@@ -177,7 +177,7 @@ parse_lcore(struct test_configure *test_case, const char *value)
 
 	char *token = strtok(input, ", ");
 	while (token != NULL) {
-		if (lcore_dma_map->cnt >= MAX_LCORE_NB) {
+		if (lcore_dma_map->cnt >= MAX_WORKER_NB) {
 			free(input);
 			return -1;
 		}
@@ -248,7 +248,7 @@ parse_lcore_dma(struct test_configure *test_case, const char *value)
 		}
 
 		lcore_dma_map = &test_case->lcore_dma_map;
-		if (lcore_dma_map->cnt >= MAX_LCORE_NB) {
+		if (lcore_dma_map->cnt >= MAX_WORKER_NB) {
 			fprintf(stderr, "lcores count error\n");
 			ret = -1;
 			break;

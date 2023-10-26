@@ -14,7 +14,6 @@
 #define MAX_OUTPUT_STR_LEN 512
 
 #define MAX_DMA_NB 128
-#define MAX_LCORE_NB 256
 
 extern char output_str[MAX_WORKER_NB + 1][MAX_OUTPUT_STR_LEN];
 
