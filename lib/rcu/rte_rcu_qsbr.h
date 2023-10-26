@@ -63,11 +63,11 @@ extern int rte_rcu_log_type;
  * Given thread id needs to be converted to index into the array and
  * the id within the array element.
  */
-#define __RTE_QSBR_THRID_ARRAY_ELM_SIZE (sizeof(uint64_t) * 8)
+#define __RTE_QSBR_THRID_ARRAY_ELM_SIZE (sizeof(RTE_ATOMIC(uint64_t)) * 8)
 #define __RTE_QSBR_THRID_ARRAY_SIZE(max_threads) \
 	RTE_ALIGN(RTE_ALIGN_MUL_CEIL(max_threads, \
 		__RTE_QSBR_THRID_ARRAY_ELM_SIZE) >> 3, RTE_CACHE_LINE_SIZE)
-#define __RTE_QSBR_THRID_ARRAY_ELM(v, i) ((uint64_t *) \
+#define __RTE_QSBR_THRID_ARRAY_ELM(v, i) ((uint64_t __rte_atomic *) \
 	((struct rte_rcu_qsbr_cnt *)(v + 1) + v->max_threads) + i)
 #define __RTE_QSBR_THRID_INDEX_SHIFT 6
 #define __RTE_QSBR_THRID_MASK 0x3f
@@ -75,13 +75,13 @@ extern int rte_rcu_log_type;
 
 /* Worker thread counter */
 struct rte_rcu_qsbr_cnt {
-	uint64_t cnt;
+	RTE_ATOMIC(uint64_t) cnt;
 	/**< Quiescent state counter. Value 0 indicates the thread is offline
 	 *   64b counter is used to avoid adding more code to address
 	 *   counter overflow. Changing this to 32b would require additional
 	 *   changes to various APIs.
 	 */
-	uint32_t lock_cnt;
+	RTE_ATOMIC(uint32_t) lock_cnt;
 	/**< Lock counter. Used when RTE_LIBRTE_RCU_DEBUG is enabled */
 } __rte_cache_aligned;
 
@@ -97,16 +97,16 @@ struct rte_rcu_qsbr_cnt {
  * 2) Register thread ID array
  */
 struct rte_rcu_qsbr {
-	uint64_t token __rte_cache_aligned;
+	RTE_ATOMIC(uint64_t) token __rte_cache_aligned;
 	/**< Counter to allow for multiple concurrent quiescent state queries */
-	uint64_t acked_token;
+	RTE_ATOMIC(uint64_t) acked_token;
 	/**< Least token acked by all the threads in the last call to
 	 *   rte_rcu_qsbr_check API.
 	 */
 
 	uint32_t num_elems __rte_cache_aligned;
 	/**< Number of elements in the thread ID array */
-	uint32_t num_threads;
+	RTE_ATOMIC(uint32_t) num_threads;
 	/**< Number of threads currently using this QS variable */
 	uint32_t max_threads;
 	/**< Maximum number of threads using this QS variable */
@@ -311,13 +311,13 @@ rte_rcu_qsbr_thread_online(struct rte_rcu_qsbr *v, unsigned int thread_id)
 	 * the following will not move down after the load of any shared
 	 * data structure.
 	 */
-	t = __atomic_load_n(&v->token, __ATOMIC_RELAXED);
+	t = rte_atomic_load_explicit(&v->token, rte_memory_order_relaxed);
 
-	/* __atomic_store_n(cnt, __ATOMIC_RELAXED) is used to ensure
+	/* rte_atomic_store_explicit(cnt, rte_memory_order_relaxed) is used to ensure
 	 * 'cnt' (64b) is accessed atomically.
 	 */
-	__atomic_store_n(&v->qsbr_cnt[thread_id].cnt,
-		t, __ATOMIC_RELAXED);
+	rte_atomic_store_explicit(&v->qsbr_cnt[thread_id].cnt,
+		t, rte_memory_order_relaxed);
 
 	/* The subsequent load of the data structure should not
 	 * move above the store. Hence a store-load barrier
@@ -326,7 +326,7 @@ rte_rcu_qsbr_thread_online(struct rte_rcu_qsbr *v, unsigned int thread_id)
 	 * writer might not see that the reader is online, even though
 	 * the reader is referencing the shared data structure.
 	 */
-	rte_atomic_thread_fence(__ATOMIC_SEQ_CST);
+	rte_atomic_thread_fence(rte_memory_order_seq_cst);
 }
 
 /**
@@ -362,8 +362,8 @@ rte_rcu_qsbr_thread_offline(struct rte_rcu_qsbr *v, unsigned int thread_id)
 	 * data structure can not move after this store.
 	 */
 
-	__atomic_store_n(&v->qsbr_cnt[thread_id].cnt,
-		__RTE_QSBR_CNT_THR_OFFLINE, __ATOMIC_RELEASE);
+	rte_atomic_store_explicit(&v->qsbr_cnt[thread_id].cnt,
+		__RTE_QSBR_CNT_THR_OFFLINE, rte_memory_order_release);
 }
 
 /**
@@ -394,8 +394,8 @@ rte_rcu_qsbr_lock(__rte_unused struct rte_rcu_qsbr *v,
 
 #if defined(RTE_LIBRTE_RCU_DEBUG)
 	/* Increment the lock counter */
-	__atomic_fetch_add(&v->qsbr_cnt[thread_id].lock_cnt,
-				1, __ATOMIC_ACQUIRE);
+	rte_atomic_fetch_add_explicit(&v->qsbr_cnt[thread_id].lock_cnt,
+				1, rte_memory_order_acquire);
 #endif
 }
 
@@ -427,8 +427,8 @@ rte_rcu_qsbr_unlock(__rte_unused struct rte_rcu_qsbr *v,
 
 #if defined(RTE_LIBRTE_RCU_DEBUG)
 	/* Decrement the lock counter */
-	__atomic_fetch_sub(&v->qsbr_cnt[thread_id].lock_cnt,
-				1, __ATOMIC_RELEASE);
+	rte_atomic_fetch_sub_explicit(&v->qsbr_cnt[thread_id].lock_cnt,
+				1, rte_memory_order_release);
 
 	__RTE_RCU_IS_LOCK_CNT_ZERO(v, thread_id, WARNING,
 				"Lock counter %u. Nested locks?\n",
@@ -461,7 +461,7 @@ rte_rcu_qsbr_start(struct rte_rcu_qsbr *v)
 	 * structure are visible to the workers before the token
 	 * update is visible.
 	 */
-	t = __atomic_fetch_add(&v->token, 1, __ATOMIC_RELEASE) + 1;
+	t = rte_atomic_fetch_add_explicit(&v->token, 1, rte_memory_order_release) + 1;
 
 	return t;
 }
@@ -493,16 +493,16 @@ rte_rcu_qsbr_quiescent(struct rte_rcu_qsbr *v, unsigned int thread_id)
 	 * Later loads of the shared data structure should not move
 	 * above this load. Hence, use load-acquire.
 	 */
-	t = __atomic_load_n(&v->token, __ATOMIC_ACQUIRE);
+	t = rte_atomic_load_explicit(&v->token, rte_memory_order_acquire);
 
 	/* Check if there are updates available from the writer.
 	 * Inform the writer that updates are visible to this reader.
 	 * Prior loads of the shared data structure should not move
 	 * beyond this store. Hence use store-release.
 	 */
-	if (t != __atomic_load_n(&v->qsbr_cnt[thread_id].cnt, __ATOMIC_RELAXED))
-		__atomic_store_n(&v->qsbr_cnt[thread_id].cnt,
-					 t, __ATOMIC_RELEASE);
+	if (t != rte_atomic_load_explicit(&v->qsbr_cnt[thread_id].cnt, rte_memory_order_relaxed))
+		rte_atomic_store_explicit(&v->qsbr_cnt[thread_id].cnt,
+					 t, rte_memory_order_release);
 
 	__RTE_RCU_DP_LOG(DEBUG, "%s: update: token = %" PRIu64 ", Thread ID = %d",
 		__func__, t, thread_id);
@@ -517,7 +517,7 @@ __rte_rcu_qsbr_check_selective(struct rte_rcu_qsbr *v, uint64_t t, bool wait)
 	uint32_t i, j, id;
 	uint64_t bmap;
 	uint64_t c;
-	uint64_t *reg_thread_id;
+	RTE_ATOMIC(uint64_t) *reg_thread_id;
 	uint64_t acked_token = __RTE_QSBR_CNT_MAX;
 
 	for (i = 0, reg_thread_id = __RTE_QSBR_THRID_ARRAY_ELM(v, 0);
@@ -526,7 +526,7 @@ __rte_rcu_qsbr_check_selective(struct rte_rcu_qsbr *v, uint64_t t, bool wait)
 		/* Load the current registered thread bit map before
 		 * loading the reader thread quiescent state counters.
 		 */
-		bmap = __atomic_load_n(reg_thread_id, __ATOMIC_ACQUIRE);
+		bmap = rte_atomic_load_explicit(reg_thread_id, rte_memory_order_acquire);
 		id = i << __RTE_QSBR_THRID_INDEX_SHIFT;
 
 		while (bmap) {
@@ -534,9 +534,9 @@ __rte_rcu_qsbr_check_selective(struct rte_rcu_qsbr *v, uint64_t t, bool wait)
 			__RTE_RCU_DP_LOG(DEBUG,
 				"%s: check: token = %" PRIu64 ", wait = %d, Bit Map = 0x%" PRIx64 ", Thread ID = %d",
 				__func__, t, wait, bmap, id + j);
-			c = __atomic_load_n(
+			c = rte_atomic_load_explicit(
 					&v->qsbr_cnt[id + j].cnt,
-					__ATOMIC_ACQUIRE);
+					rte_memory_order_acquire);
 			__RTE_RCU_DP_LOG(DEBUG,
 				"%s: status: token = %" PRIu64 ", wait = %d, Thread QS cnt = %" PRIu64 ", Thread ID = %d",
 				__func__, t, wait, c, id+j);
@@ -554,8 +554,8 @@ __rte_rcu_qsbr_check_selective(struct rte_rcu_qsbr *v, uint64_t t, bool wait)
 				/* This thread might have unregistered.
 				 * Re-read the bitmap.
 				 */
-				bmap = __atomic_load_n(reg_thread_id,
-						__ATOMIC_ACQUIRE);
+				bmap = rte_atomic_load_explicit(reg_thread_id,
+						rte_memory_order_acquire);
 
 				continue;
 			}
@@ -576,8 +576,8 @@ __rte_rcu_qsbr_check_selective(struct rte_rcu_qsbr *v, uint64_t t, bool wait)
 	 * no need to update this very accurately using compare-and-swap.
 	 */
 	if (acked_token != __RTE_QSBR_CNT_MAX)
-		__atomic_store_n(&v->acked_token, acked_token,
-			__ATOMIC_RELAXED);
+		rte_atomic_store_explicit(&v->acked_token, acked_token,
+			rte_memory_order_relaxed);
 
 	return 1;
 }
@@ -598,7 +598,7 @@ __rte_rcu_qsbr_check_all(struct rte_rcu_qsbr *v, uint64_t t, bool wait)
 			"%s: check: token = %" PRIu64 ", wait = %d, Thread ID = %d",
 			__func__, t, wait, i);
 		while (1) {
-			c = __atomic_load_n(&cnt->cnt, __ATOMIC_ACQUIRE);
+			c = rte_atomic_load_explicit(&cnt->cnt, rte_memory_order_acquire);
 			__RTE_RCU_DP_LOG(DEBUG,
 				"%s: status: token = %" PRIu64 ", wait = %d, Thread QS cnt = %" PRIu64 ", Thread ID = %d",
 				__func__, t, wait, c, i);
@@ -628,8 +628,8 @@ __rte_rcu_qsbr_check_all(struct rte_rcu_qsbr *v, uint64_t t, bool wait)
 	 * no need to update this very accurately using compare-and-swap.
 	 */
 	if (acked_token != __RTE_QSBR_CNT_MAX)
-		__atomic_store_n(&v->acked_token, acked_token,
-			__ATOMIC_RELAXED);
+		rte_atomic_store_explicit(&v->acked_token, acked_token,
+			rte_memory_order_relaxed);
 
 	return 1;
 }

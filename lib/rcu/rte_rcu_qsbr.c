@@ -102,21 +102,21 @@ rte_rcu_qsbr_thread_register(struct rte_rcu_qsbr *v, unsigned int thread_id)
 	 * go out of sync. Hence, additional checks are required.
 	 */
 	/* Check if the thread is already registered */
-	old_bmap = __atomic_load_n(__RTE_QSBR_THRID_ARRAY_ELM(v, i),
-					__ATOMIC_RELAXED);
+	old_bmap = rte_atomic_load_explicit(__RTE_QSBR_THRID_ARRAY_ELM(v, i),
+					rte_memory_order_relaxed);
 	if (old_bmap & 1UL << id)
 		return 0;
 
 	do {
 		new_bmap = old_bmap | (1UL << id);
-		success = __atomic_compare_exchange(
+		success = rte_atomic_compare_exchange_strong_explicit(
 					__RTE_QSBR_THRID_ARRAY_ELM(v, i),
-					&old_bmap, &new_bmap, 0,
-					__ATOMIC_RELEASE, __ATOMIC_RELAXED);
+					&old_bmap, new_bmap,
+					rte_memory_order_release, rte_memory_order_relaxed);
 
 		if (success)
-			__atomic_fetch_add(&v->num_threads,
-						1, __ATOMIC_RELAXED);
+			rte_atomic_fetch_add_explicit(&v->num_threads,
+						1, rte_memory_order_relaxed);
 		else if (old_bmap & (1UL << id))
 			/* Someone else registered this thread.
 			 * Counter should not be incremented.
@@ -154,8 +154,8 @@ rte_rcu_qsbr_thread_unregister(struct rte_rcu_qsbr *v, unsigned int thread_id)
 	 * go out of sync. Hence, additional checks are required.
 	 */
 	/* Check if the thread is already unregistered */
-	old_bmap = __atomic_load_n(__RTE_QSBR_THRID_ARRAY_ELM(v, i),
-					__ATOMIC_RELAXED);
+	old_bmap = rte_atomic_load_explicit(__RTE_QSBR_THRID_ARRAY_ELM(v, i),
+					rte_memory_order_relaxed);
 	if (!(old_bmap & (1UL << id)))
 		return 0;
 
@@ -165,14 +165,14 @@ rte_rcu_qsbr_thread_unregister(struct rte_rcu_qsbr *v, unsigned int thread_id)
 		 * completed before removal of the thread from the list of
 		 * reporting threads.
 		 */
-		success = __atomic_compare_exchange(
+		success = rte_atomic_compare_exchange_strong_explicit(
 					__RTE_QSBR_THRID_ARRAY_ELM(v, i),
-					&old_bmap, &new_bmap, 0,
-					__ATOMIC_RELEASE, __ATOMIC_RELAXED);
+					&old_bmap, new_bmap,
+					rte_memory_order_release, rte_memory_order_relaxed);
 
 		if (success)
-			__atomic_fetch_sub(&v->num_threads,
-						1, __ATOMIC_RELAXED);
+			rte_atomic_fetch_sub_explicit(&v->num_threads,
+						1, rte_memory_order_relaxed);
 		else if (!(old_bmap & (1UL << id)))
 			/* Someone else unregistered this thread.
 			 * Counter should not be incremented.
@@ -227,8 +227,8 @@ rte_rcu_qsbr_dump(FILE *f, struct rte_rcu_qsbr *v)
 
 	fprintf(f, "  Registered thread IDs = ");
 	for (i = 0; i < v->num_elems; i++) {
-		bmap = __atomic_load_n(__RTE_QSBR_THRID_ARRAY_ELM(v, i),
-					__ATOMIC_ACQUIRE);
+		bmap = rte_atomic_load_explicit(__RTE_QSBR_THRID_ARRAY_ELM(v, i),
+					rte_memory_order_acquire);
 		id = i << __RTE_QSBR_THRID_INDEX_SHIFT;
 		while (bmap) {
 			t = __builtin_ctzl(bmap);
@@ -241,26 +241,26 @@ rte_rcu_qsbr_dump(FILE *f, struct rte_rcu_qsbr *v)
 	fprintf(f, "\n");
 
 	fprintf(f, "  Token = %" PRIu64 "\n",
-			__atomic_load_n(&v->token, __ATOMIC_ACQUIRE));
+			rte_atomic_load_explicit(&v->token, rte_memory_order_acquire));
 
 	fprintf(f, "  Least Acknowledged Token = %" PRIu64 "\n",
-			__atomic_load_n(&v->acked_token, __ATOMIC_ACQUIRE));
+			rte_atomic_load_explicit(&v->acked_token, rte_memory_order_acquire));
 
 	fprintf(f, "Quiescent State Counts for readers:\n");
 	for (i = 0; i < v->num_elems; i++) {
-		bmap = __atomic_load_n(__RTE_QSBR_THRID_ARRAY_ELM(v, i),
-					__ATOMIC_ACQUIRE);
+		bmap = rte_atomic_load_explicit(__RTE_QSBR_THRID_ARRAY_ELM(v, i),
+					rte_memory_order_acquire);
 		id = i << __RTE_QSBR_THRID_INDEX_SHIFT;
 		while (bmap) {
 			t = __builtin_ctzl(bmap);
 			fprintf(f, "thread ID = %u, count = %" PRIu64 ", lock count = %u\n",
 				id + t,
-				__atomic_load_n(
+				rte_atomic_load_explicit(
 					&v->qsbr_cnt[id + t].cnt,
-					__ATOMIC_RELAXED),
-				__atomic_load_n(
+					rte_memory_order_relaxed),
+				rte_atomic_load_explicit(
 					&v->qsbr_cnt[id + t].lock_cnt,
-					__ATOMIC_RELAXED));
+					rte_memory_order_relaxed));
 			bmap &= ~(1UL << t);
 		}
 	}
