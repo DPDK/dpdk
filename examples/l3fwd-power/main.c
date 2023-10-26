@@ -1561,6 +1561,12 @@ parse_uncore_options(enum uncore_choice choice, const char *argument)
 {
 	unsigned int die, pkg, max_pkg, max_die;
 	int ret = 0;
+	ret = rte_power_set_uncore_env(RTE_UNCORE_PM_ENV_AUTO_DETECT);
+	if (ret < 0) {
+		RTE_LOG(INFO, L3FWD_POWER, "Failed to set uncore env\n");
+		return ret;
+	}
+
 	max_pkg = rte_power_uncore_get_num_pkgs();
 	if (max_pkg == 0)
 		return -1;

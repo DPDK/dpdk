@@ -105,6 +105,13 @@ rte_power_set_uncore_env(enum rte_uncore_power_mgmt_env env)
 		return -1;
 	}
 
+	if (env == RTE_UNCORE_PM_ENV_AUTO_DETECT)
+		/* Currently only intel_uncore is supported.
+		 * This will be extended with auto-detection support
+		 * for multiple uncore implementations.
+		 */
+		env = RTE_UNCORE_PM_ENV_INTEL_UNCORE;
+
 	ret = 0;
 	if (env == RTE_UNCORE_PM_ENV_INTEL_UNCORE) {
 		rte_power_get_uncore_freq = power_get_intel_uncore_freq;

@@ -21,15 +21,16 @@ extern "C" {
 /* Uncore Power Management Environment */
 enum rte_uncore_power_mgmt_env {
 	RTE_UNCORE_PM_ENV_NOT_SET,
+	RTE_UNCORE_PM_ENV_AUTO_DETECT,
 	RTE_UNCORE_PM_ENV_INTEL_UNCORE,
 	RTE_UNCORE_PM_ENV_AMD_HSMP
 };
 
 /**
- * Set the default uncore power management implementation. If this is not called prior
- * to rte_power_uncore_init(), then auto-detect of the environment will take place.
- * It is thread safe. New env can be set only in uninitialized state
- * (thus rte_power_unset_uncore_env must be called if different env was already set).
+ * Set the default uncore power management implementation.
+ * This has to be called prior to calling any other rte_power_uncore_*() API.
+ * It is thread safe. New env can be set only in uninitialized state.
+ * rte_power_unset_uncore_env must be called if different env was already set.
  *
  * @param env
  *  env. The environment in which to initialise Uncore Power Management for.
