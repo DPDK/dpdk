@@ -32,6 +32,7 @@ static const struct {
 	enum nfp_class drv_class;
 } nfp_classes[] = {
 	{ .name = "eth",      .drv_class = NFP_CLASS_ETH },
+	{ .name = "vdpa",     .drv_class = NFP_CLASS_VDPA },
 };
 
 static enum nfp_class

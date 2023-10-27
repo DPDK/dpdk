@@ -7,7 +7,8 @@ if not is_linux or not dpdk_conf.get('RTE_ARCH_64')
 endif
 
 sources = files(
+        'nfp_vdpa.c',
         'nfp_vdpa_log.c',
 )
 
-deps += ['vhost']
+deps += ['vhost', 'common_nfp']

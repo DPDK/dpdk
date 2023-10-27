@@ -16,6 +16,7 @@ typedef int (nfp_class_driver_remove_t)(struct rte_pci_device *dev);
 
 enum nfp_class {
 	NFP_CLASS_ETH,
+	NFP_CLASS_VDPA,
 	NFP_CLASS_INVALID,
 };
 
