@@ -113,6 +113,7 @@ struct nfp_app_fw_nic {
 };
 
 struct nfp_hw {
+	uint8_t *qcp_cfg;
 	uint32_t cap;
 	uint32_t cap_ext;
 };
@@ -150,7 +151,6 @@ struct nfp_net_hw {
 	uint16_t vxlan_ports[NFP_NET_N_VXLAN_PORTS];
 	uint8_t vxlan_usecnt[NFP_NET_N_VXLAN_PORTS];
 
-	uint8_t *qcp_cfg;
 	rte_spinlock_t reconfig_lock;
 
 	uint32_t max_tx_queues;

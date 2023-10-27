@@ -206,14 +206,14 @@ __nfp_net_reconfig(struct nfp_net_hw *hw,
 	struct timespec wait;
 
 	PMD_DRV_LOG(DEBUG, "Writing to the configuration queue (%p)...",
-			hw->qcp_cfg);
+			hw->super.qcp_cfg);
 
-	if (hw->qcp_cfg == NULL) {
+	if (hw->super.qcp_cfg == NULL) {
 		PMD_DRV_LOG(ERR, "Bad configuration queue pointer");
 		return -ENXIO;
 	}
 
-	nfp_qcp_ptr_add(hw->qcp_cfg, NFP_QCP_WRITE_PTR, 1);
+	nfp_qcp_ptr_add(hw->super.qcp_cfg, NFP_QCP_WRITE_PTR, 1);
 
 	wait.tv_sec = 0;
 	wait.tv_nsec = 1000000; /* 1ms */
@@ -525,7 +525,7 @@ nfp_net_params_setup(struct nfp_net_hw *hw)
 void
 nfp_net_cfg_queue_setup(struct nfp_net_hw *hw)
 {
-	hw->qcp_cfg = hw->tx_bar + NFP_QCP_QUEUE_ADDR_SZ;
+	hw->super.qcp_cfg = hw->tx_bar + NFP_QCP_QUEUE_ADDR_SZ;
 }
 
 void
