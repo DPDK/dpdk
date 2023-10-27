@@ -12,8 +12,8 @@
 #include "nfdk/nfp_nfdk.h"
 #include "nfpcore/nfp_cpp.h"
 
-#include "nfp_common.h"
 #include "nfp_logs.h"
+#include "nfp_net_common.h"
 
 static void
 nfp_netvf_read_mac(struct nfp_net_hw *hw)

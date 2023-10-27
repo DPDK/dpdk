@@ -6,7 +6,7 @@
 #ifndef __NFP_FLOWER_H__
 #define __NFP_FLOWER_H__
 
-#include "../nfp_common.h"
+#include "../nfp_net_common.h"
 
 /* Extra features bitmap. */
 #define NFP_FL_FEATS_GENEVE             RTE_BIT64(0)

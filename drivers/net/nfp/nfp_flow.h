@@ -6,7 +6,7 @@
 #ifndef __NFP_FLOW_H__
 #define __NFP_FLOW_H__
 
-#include "nfp_common.h"
+#include "nfp_net_common.h"
 
 /* The firmware expects lengths in units of long words */
 #define NFP_FL_LW_SIZ                   2

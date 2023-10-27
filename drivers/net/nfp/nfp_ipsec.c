@@ -12,9 +12,9 @@
 #include <ethdev_driver.h>
 #include <ethdev_pci.h>
 
-#include "nfp_common.h"
 #include "nfp_ctrl.h"
 #include "nfp_logs.h"
+#include "nfp_net_common.h"
 #include "nfp_rxtx.h"
 
 #define NFP_UDP_ESP_PORT            4500

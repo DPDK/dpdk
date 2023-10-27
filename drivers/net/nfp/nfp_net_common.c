@@ -5,7 +5,7 @@
  * Small portions derived from code Copyright(c) 2010-2015 Intel Corporation.
  */
 
-#include "nfp_common.h"
+#include "nfp_net_common.h"
 
 #include <rte_alarm.h>
 

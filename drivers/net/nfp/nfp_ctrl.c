@@ -9,8 +9,8 @@
 
 #include "nfpcore/nfp_platform.h"
 
-#include "nfp_common.h"
 #include "nfp_logs.h"
+#include "nfp_net_common.h"
 
 static void
 nfp_net_tlv_caps_reset(struct nfp_net_tlv_caps *caps)
