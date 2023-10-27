@@ -1655,6 +1655,7 @@ Interactive command line
 F: lib/cmdline/
 F: app/test-cmdline/
 F: app/test/test_cmdline*
+F: buildtools/dpdk-cmdline-gen.py
 F: examples/cmdline/
 F: doc/guides/prog_guide/cmdline.rst
 F: doc/guides/sample_app_ug/cmd_line.rst
