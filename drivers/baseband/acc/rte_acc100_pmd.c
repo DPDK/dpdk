@@ -22,6 +22,10 @@
 #include "acc101_pmd.h"
 #include "vrb_cfg.h"
 
+#ifdef RTE_BBDEV_SDK_AVX512
+#include <phy_rate_dematching_5gnr.h>
+#endif
+
 #ifdef RTE_LIBRTE_BBDEV_DEBUG
 RTE_LOG_REGISTER_DEFAULT(acc100_logtype, DEBUG);
 #else
@@ -3058,7 +3062,8 @@ derm_workaround_recommended(struct rte_bbdev_op_ldpc_dec *ldpc_dec, struct acc_q
 /** Enqueue one decode operations for ACC100 device in CB mode */
 static inline int
 enqueue_ldpc_dec_one_op_cb(struct acc_queue *q, struct rte_bbdev_dec_op *op,
-		uint16_t total_enqueued_cbs, bool same_op)
+		uint16_t total_enqueued_cbs, bool same_op,
+		struct rte_bbdev_queue_data *q_data)
 {
 	int ret;
 	if (unlikely(check_bit(op->ldpc_dec.op_flags,
@@ -3113,8 +3118,54 @@ enqueue_ldpc_dec_one_op_cb(struct acc_queue *q, struct rte_bbdev_dec_op *op,
 		struct acc_fcw_ld *fcw;
 		uint32_t seg_total_left;
 
-		if (derm_workaround_recommended(&op->ldpc_dec, q))
-			rte_bbdev_log(INFO, "Corner case may require deRM pre-processing");
+		if (derm_workaround_recommended(&op->ldpc_dec, q)) {
+			#ifdef RTE_BBDEV_SDK_AVX512
+			struct rte_bbdev_op_ldpc_dec *dec = &op->ldpc_dec;
+			struct bblib_rate_dematching_5gnr_request derm_req;
+			struct bblib_rate_dematching_5gnr_response derm_resp;
+			uint8_t *in;
+
+			/* Checking input size is matching with E */
+			if (dec->input.data->data_len < (dec->cb_params.e % 65536)) {
+				rte_bbdev_log(ERR, "deRM: Input size mismatch");
+				return -EFAULT;
+			}
+			/* Run first deRM processing in SW */
+			in = rte_pktmbuf_mtod_offset(dec->input.data, uint8_t *, in_offset);
+			derm_req.p_in = (int8_t *) in;
+			derm_req.p_harq = (int8_t *) q->derm_buffer;
+			derm_req.base_graph = dec->basegraph;
+			derm_req.zc = dec->z_c;
+			derm_req.ncb = dec->n_cb;
+			derm_req.e = dec->cb_params.e;
+			if (derm_req.e > ACC_MAX_E) {
+				rte_bbdev_log(WARNING,
+						"deRM: E %d > %d max",
+						derm_req.e, ACC_MAX_E);
+				derm_req.e = ACC_MAX_E;
+			}
+			derm_req.k0 = 0; /* Actual output from SDK */
+			derm_req.isretx = false;
+			derm_req.rvid = dec->rv_index;
+			derm_req.modulation_order = dec->q_m;
+			derm_req.start_null_index =
+					(dec->basegraph == 1 ? 22 : 10)
+					* dec->z_c - 2 * dec->z_c
+					- dec->n_filler;
+			derm_req.num_of_null = dec->n_filler;
+			bblib_rate_dematching_5gnr(&derm_req, &derm_resp);
+			/* Force back the HW DeRM */
+			dec->q_m = 1;
+			dec->cb_params.e = dec->n_cb - dec->n_filler;
+			dec->rv_index = 0;
+			rte_memcpy(in, q->derm_buffer, dec->cb_params.e);
+			/* Capture counter when pre-processing is used */
+			q_data->queue_stats.enqueue_warn_count++;
+			#else
+			RTE_SET_USED(q_data);
+			rte_bbdev_log(INFO, "Corner case may require deRM pre-processing in SDK");
+			#endif
+		}
 
 		fcw = &desc->req.fcw_ld;
 		q->d->fcw_ld_fill(op, fcw, harq_layout);
@@ -3647,7 +3698,7 @@ acc100_enqueue_ldpc_dec_cb(struct rte_bbdev_queue_data *q_data,
 			ops[i]->ldpc_dec.n_cb, ops[i]->ldpc_dec.q_m,
 			ops[i]->ldpc_dec.n_filler, ops[i]->ldpc_dec.cb_params.e,
 			same_op);
-		ret = enqueue_ldpc_dec_one_op_cb(q, ops[i], i, same_op);
+		ret = enqueue_ldpc_dec_one_op_cb(q, ops[i], i, same_op, q_data);
 		if (ret < 0) {
 			acc_enqueue_invalid(q_data);
 			break;
