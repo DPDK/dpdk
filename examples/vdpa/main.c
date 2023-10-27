@@ -16,11 +16,8 @@
 #include <rte_pci.h>
 #include <rte_string_fns.h>
 
-#include <cmdline_parse.h>
 #include <cmdline_socket.h>
-#include <cmdline_parse_string.h>
-#include <cmdline_parse_num.h>
-#include <cmdline.h>
+#include "commands.h"  /* auto-generated file from commands.list */
 #include "vdpa_blk_compact.h"
 
 #define MAX_PATH_LEN 128
@@ -301,14 +298,9 @@ signal_handler(int signum)
 	}
 }
 
-/* interactive cmds */
+/* interactive cmd functions */
 
-/* *** Help command with introduction. *** */
-struct cmd_help_result {
-	cmdline_fixed_string_t help;
-};
-
-static void cmd_help_parsed(__rte_unused void *parsed_result,
+void cmd_help_parsed(__rte_unused void *parsed_result,
 		struct cmdline *cl,
 		__rte_unused void *data)
 {
@@ -325,25 +317,7 @@ static void cmd_help_parsed(__rte_unused void *parsed_result,
 	);
 }
 
-cmdline_parse_token_string_t cmd_help_help =
-	TOKEN_STRING_INITIALIZER(struct cmd_help_result, help, "help");
-
-cmdline_parse_inst_t cmd_help = {
-	.f = cmd_help_parsed,
-	.data = NULL,
-	.help_str = "show help",
-	.tokens = {
-		(void *)&cmd_help_help,
-		NULL,
-	},
-};
-
-/* *** List all available vdpa devices *** */
-struct cmd_list_result {
-	cmdline_fixed_string_t action;
-};
-
-static void cmd_list_vdpa_devices_parsed(
+void cmd_list_parsed(
 		__rte_unused void *parsed_result,
 		struct cmdline *cl,
 		__rte_unused void *data)
@@ -376,27 +350,7 @@ static void cmd_list_vdpa_devices_parsed(
 	}
 }
 
-cmdline_parse_token_string_t cmd_action_list =
-	TOKEN_STRING_INITIALIZER(struct cmd_list_result, action, "list");
-
-cmdline_parse_inst_t cmd_list_vdpa_devices = {
-	.f = cmd_list_vdpa_devices_parsed,
-	.data = NULL,
-	.help_str = "list all available vdpa devices",
-	.tokens = {
-		(void *)&cmd_action_list,
-		NULL,
-	},
-};
-
-/* *** Create new vdpa port *** */
-struct cmd_create_result {
-	cmdline_fixed_string_t action;
-	cmdline_fixed_string_t socket_path;
-	cmdline_fixed_string_t bdf;
-};
-
-static void cmd_create_vdpa_port_parsed(void *parsed_result,
+void cmd_create_parsed(void *parsed_result,
 		struct cmdline *cl,
 		__rte_unused void *data)
 {
@@ -417,33 +371,7 @@ static void cmd_create_vdpa_port_parsed(void *parsed_result,
 		devcnt++;
 }
 
-cmdline_parse_token_string_t cmd_action_create =
-	TOKEN_STRING_INITIALIZER(struct cmd_create_result, action, "create");
-cmdline_parse_token_string_t cmd_socket_path =
-	TOKEN_STRING_INITIALIZER(struct cmd_create_result, socket_path, NULL);
-cmdline_parse_token_string_t cmd_bdf =
-	TOKEN_STRING_INITIALIZER(struct cmd_create_result, bdf, NULL);
-
-cmdline_parse_inst_t cmd_create_vdpa_port = {
-	.f = cmd_create_vdpa_port_parsed,
-	.data = NULL,
-	.help_str = "create a new vdpa port",
-	.tokens = {
-		(void *)&cmd_action_create,
-		(void *)&cmd_socket_path,
-		(void *)&cmd_bdf,
-		NULL,
-	},
-};
-
-/* *** STATS *** */
-struct cmd_stats_result {
-	cmdline_fixed_string_t stats;
-	cmdline_fixed_string_t bdf;
-	uint16_t qid;
-};
-
-static void cmd_device_stats_parsed(void *parsed_result, struct cmdline *cl,
+void cmd_stats_parsed(void *parsed_result, struct cmdline *cl,
 				    __rte_unused void *data)
 {
 	struct cmd_stats_result *res = parsed_result;
@@ -525,58 +453,13 @@ static void cmd_device_stats_parsed(void *parsed_result, struct cmdline *cl,
 	}
 }
 
-cmdline_parse_token_string_t cmd_device_stats_ =
-	TOKEN_STRING_INITIALIZER(struct cmd_stats_result, stats, "stats");
-cmdline_parse_token_string_t cmd_device_bdf =
-	TOKEN_STRING_INITIALIZER(struct cmd_stats_result, bdf, NULL);
-cmdline_parse_token_num_t cmd_queue_id =
-	TOKEN_NUM_INITIALIZER(struct cmd_stats_result, qid, RTE_UINT32);
-
-cmdline_parse_inst_t cmd_device_stats = {
-	.f = cmd_device_stats_parsed,
-	.data = NULL,
-	.help_str = "stats: show device statistics",
-	.tokens = {
-		(void *)&cmd_device_stats_,
-		(void *)&cmd_device_bdf,
-		(void *)&cmd_queue_id,
-		NULL,
-	},
-};
-
-/* *** QUIT *** */
-struct cmd_quit_result {
-	cmdline_fixed_string_t quit;
-};
-
-static void cmd_quit_parsed(__rte_unused void *parsed_result,
+void cmd_quit_parsed(__rte_unused void *parsed_result,
 		struct cmdline *cl,
 		__rte_unused void *data)
 {
 	vdpa_sample_quit();
 	cmdline_quit(cl);
 }
-
-cmdline_parse_token_string_t cmd_quit_quit =
-	TOKEN_STRING_INITIALIZER(struct cmd_quit_result, quit, "quit");
-
-cmdline_parse_inst_t cmd_quit = {
-	.f = cmd_quit_parsed,
-	.data = NULL,
-	.help_str = "quit: exit application",
-	.tokens = {
-		(void *)&cmd_quit_quit,
-		NULL,
-	},
-};
-cmdline_parse_ctx_t main_ctx[] = {
-	(cmdline_parse_inst_t *)&cmd_help,
-	(cmdline_parse_inst_t *)&cmd_list_vdpa_devices,
-	(cmdline_parse_inst_t *)&cmd_create_vdpa_port,
-	(cmdline_parse_inst_t *)&cmd_device_stats,
-	(cmdline_parse_inst_t *)&cmd_quit,
-	NULL,
-};
 
 int
 main(int argc, char *argv[])
