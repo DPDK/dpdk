@@ -178,6 +178,7 @@ fi
 if [ "$BUILD_EXAMPLES" = "true" ]; then
     [ -d install ] || DESTDIR=$(pwd)/install meson install -C build
     export LD_LIBRARY_PATH=$(dirname $(find $(pwd)/install -name librte_eal.so)):$LD_LIBRARY_PATH
+    export PATH=$(dirname $(find $(pwd)/install -name dpdk-devbind.py)):$PATH
     export PKG_CONFIG_PATH=$(dirname $(find $(pwd)/install -name libdpdk.pc)):$PKG_CONFIG_PATH
     export PKGCONF="pkg-config --define-prefix"
     find build/examples -maxdepth 1 -type f -name "dpdk-*" |

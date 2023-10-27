@@ -303,6 +303,7 @@ pc_file=$(find $DESTDIR -name libdpdk.pc)
 export PKG_CONFIG_PATH=$(dirname $pc_file):$PKG_CONFIG_PATH
 libdir=$(dirname $(find $DESTDIR -name librte_eal.so))
 export LD_LIBRARY_PATH=$libdir:$LD_LIBRARY_PATH
+export PATH=$(dirname $(find $DESTDIR -name dpdk-devbind.py)):$PATH
 examples=${DPDK_BUILD_TEST_EXAMPLES:-"cmdline helloworld l2fwd l3fwd skeleton timer"}
 if [ "$examples" = 'all' ]; then
 	examples=$(find $build_path/examples -maxdepth 1 -type f -name "dpdk-*" |
