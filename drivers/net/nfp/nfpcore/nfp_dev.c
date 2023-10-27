@@ -5,9 +5,8 @@
 
 #include "nfp_dev.h"
 
+#include <nfp_platform.h>
 #include <rte_bitops.h>
-
-#include "nfp_platform.h"
 
 /*
  * Note: The value of 'max_qc_size' is different from kernel driver,

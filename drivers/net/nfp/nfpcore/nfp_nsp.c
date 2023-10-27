@@ -5,10 +5,10 @@
 
 #include "nfp_nsp.h"
 
+#include <nfp_platform.h>
 #include <rte_common.h>
 
 #include "nfp_logs.h"
-#include "nfp_platform.h"
 #include "nfp_resource.h"
 
 /* Offsets relative to the CSR base */

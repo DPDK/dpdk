@@ -6,10 +6,10 @@
 #include "nfp_nfdk.h"
 
 #include <bus_pci_driver.h>
+#include <nfp_platform.h>
 #include <rte_malloc.h>
 
 #include "../flower/nfp_flower.h"
-#include "../nfpcore/nfp_platform.h"
 #include "../nfp_logs.h"
 
 #define NFDK_TX_DESC_GATHER_MAX         17

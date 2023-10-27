@@ -3,9 +3,10 @@
  * All rights reserved.
  */
 
+#include <nfp_platform.h>
+
 #include "nfp_logs.h"
 #include "nfp_nsp.h"
-#include "nfp_platform.h"
 
 #define NSP_ETH_NBI_PORT_COUNT          24
 #define NSP_ETH_MAX_COUNT               (2 * NSP_ETH_NBI_PORT_COUNT)
