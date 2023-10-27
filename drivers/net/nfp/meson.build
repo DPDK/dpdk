@@ -29,7 +29,6 @@ sources = files(
         'nfpcore/nfp_target.c',
         'nfpcore/nfp6000_pcie.c',
         'nfp_cpp_bridge.c',
-        'nfp_ctrl.c',
         'nfp_ethdev.c',
         'nfp_ethdev_vf.c',
         'nfp_flow.c',
@@ -37,6 +36,7 @@ sources = files(
         'nfp_logs.c',
         'nfp_mtr.c',
         'nfp_net_common.c',
+        'nfp_net_ctrl.c',
         'nfp_rxtx.c',
 )
 

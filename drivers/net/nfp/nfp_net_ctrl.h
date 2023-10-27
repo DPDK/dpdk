@@ -3,8 +3,8 @@
  * All rights reserved.
  */
 
-#ifndef __NFP_CTRL_H__
-#define __NFP_CTRL_H__
+#ifndef __NFP_NET_CTRL_H__
+#define __NFP_NET_CTRL_H__
 
 #include <stdint.h>
 
@@ -571,4 +571,4 @@ nfp_net_cfg_ctrl_rss(uint32_t hw_cap)
 	return NFP_NET_CFG_CTRL_RSS;
 }
 
-#endif /* __NFP_CTRL_H__ */
+#endif /* __NFP_NET_CTRL_H__ */

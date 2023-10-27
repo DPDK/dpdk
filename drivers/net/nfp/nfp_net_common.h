@@ -11,7 +11,7 @@
 #include <rte_io.h>
 #include <rte_spinlock.h>
 
-#include "nfp_ctrl.h"
+#include "nfp_net_ctrl.h"
 #include "nfpcore/nfp_dev.h"
 
 /* Macros for accessing the Queue Controller Peripheral 'CSRs' */

@@ -3,7 +3,7 @@
  * All rights reserved.
  */
 
-#include "nfp_ctrl.h"
+#include "nfp_net_ctrl.h"
 
 #include <ethdev_pci.h>
 
