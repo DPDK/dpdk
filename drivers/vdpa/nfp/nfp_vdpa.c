@@ -10,6 +10,7 @@
 #include <rte_vfio.h>
 #include <vdpa_driver.h>
 
+#include "nfp_vdpa_core.h"
 #include "nfp_vdpa_log.h"
 
 #define NFP_VDPA_DRIVER_NAME nfp_vdpa
@@ -17,11 +18,14 @@
 struct nfp_vdpa_dev {
 	struct rte_pci_device *pci_dev;
 	struct rte_vdpa_device *vdev;
+	struct nfp_vdpa_hw hw;
 
 	int vfio_container_fd;
 	int vfio_group_fd;
 	int vfio_dev_fd;
 	int iommu_group;
+
+	uint16_t max_queues;
 };
 
 struct nfp_vdpa_dev_node {
@@ -134,6 +138,12 @@ nfp_vdpa_pci_probe(struct rte_pci_device *pci_dev)
 	ret = nfp_vdpa_vfio_setup(device);
 	if (ret != 0)
 		goto free_device;
+
+	ret = nfp_vdpa_hw_init(&device->hw, pci_dev);
+	if (ret != 0)
+		goto vfio_teardown;
+
+	device->max_queues = NFP_VDPA_MAX_QUEUES;
 
 	device->vdev = rte_vdpa_register_device(&pci_dev->device, &nfp_vdpa_ops);
 	if (device->vdev == NULL) {

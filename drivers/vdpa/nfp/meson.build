@@ -8,6 +8,7 @@ endif
 
 sources = files(
         'nfp_vdpa.c',
+        'nfp_vdpa_core.c',
         'nfp_vdpa_log.c',
 )
 
