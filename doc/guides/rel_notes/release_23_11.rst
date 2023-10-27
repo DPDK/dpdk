@@ -122,6 +122,15 @@ New Features
   a group's miss actions, which are the actions to be performed on packets
   that didn't match any of the flow rules in the group.
 
+* **Added a new vDPA PMD for Corigine NFP devices.**
+
+  Added a new Corigine NFP vDPA (``nfp_vdpa``) PMD.
+  See the :doc:`../vdpadevs/nfp` guide for more details on this driver.
+
+* **Updated Corigine/Netronome nfp driver.**
+
+  * Added inline IPsec offload based on the security framework.
+
 * **Updated Intel cpfl driver.**
 
   * Added support for port representor.
@@ -148,10 +157,6 @@ New Features
 
   * Added support for transfer flow action ``INDIRECT`` with subtype ``VXLAN_ENCAP``.
   * Supported packet replay (multi-count / multi-delivery) in transfer flows.
-
-* **Updated Netronome/Corigine nfp driver.**
-
-  * Added inline IPsec offload based on the security framework.
 
 * **Updated Wangxun ngbe driver.**
 

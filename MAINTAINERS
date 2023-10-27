@@ -1301,6 +1301,12 @@ vDPA Drivers
 T: git://dpdk.org/next/dpdk-next-virtio
 F: drivers/vdpa/meson.build
 
+Corigine nfp vDPA
+M: Chaoyong He <chaoyong.he@corigine.com>
+F: drivers/vdpa/nfp/
+F: doc/guides/vdpadevs/nfp.rst
+F: doc/guides/vdpadevs/features/nfp.ini
+
 Intel ifc
 M: Xiao Wang <xiao.w.wang@intel.com>
 F: drivers/vdpa/ifc/
