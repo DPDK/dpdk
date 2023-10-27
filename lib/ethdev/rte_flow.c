@@ -267,6 +267,8 @@ static const struct rte_flow_desc_data rte_flow_desc_action[] = {
 	MK_FLOW_ACTION(IPV6_EXT_REMOVE, sizeof(struct rte_flow_action_ipv6_ext_remove)),
 	MK_FLOW_ACTION(INDIRECT_LIST,
 		       sizeof(struct rte_flow_action_indirect_list)),
+	MK_FLOW_ACTION(PROG,
+		       sizeof(struct rte_flow_action_prog)),
 };
 
 int
