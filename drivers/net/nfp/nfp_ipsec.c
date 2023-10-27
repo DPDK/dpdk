@@ -434,7 +434,7 @@ enum nfp_ipsec_df_type {
 };
 
 static int
-nfp_ipsec_cfg_cmd_issue(struct nfp_net_hw *hw,
+nfp_ipsec_cfg_cmd_issue(struct nfp_net_hw *net_hw,
 		struct nfp_ipsec_msg *msg)
 {
 	int ret;
@@ -445,9 +445,9 @@ nfp_ipsec_cfg_cmd_issue(struct nfp_net_hw *hw,
 	msg->rsp = NFP_IPSEC_CFG_MSG_OK;
 
 	for (i = 0; i < msg_size; i++)
-		nn_cfg_writel(&hw->super, NFP_NET_CFG_MBOX_VAL + 4 * i, msg->raw[i]);
+		nn_cfg_writel(&net_hw->super, NFP_NET_CFG_MBOX_VAL + 4 * i, msg->raw[i]);
 
-	ret = nfp_net_mbox_reconfig(hw, NFP_NET_CFG_MBOX_CMD_IPSEC);
+	ret = nfp_net_mbox_reconfig(net_hw, NFP_NET_CFG_MBOX_CMD_IPSEC);
 	if (ret < 0) {
 		PMD_DRV_LOG(ERR, "Failed to IPsec reconfig mbox");
 		return ret;
@@ -459,7 +459,7 @@ nfp_ipsec_cfg_cmd_issue(struct nfp_net_hw *hw,
 	 * response. One example where the data is needed is for statistics.
 	 */
 	for (i = 0; i < msg_size; i++)
-		msg->raw[i] = nn_cfg_readl(&hw->super, NFP_NET_CFG_MBOX_VAL + 4 * i);
+		msg->raw[i] = nn_cfg_readl(&net_hw->super, NFP_NET_CFG_MBOX_VAL + 4 * i);
 
 	switch (msg->rsp) {
 	case NFP_IPSEC_CFG_MSG_OK:
@@ -577,10 +577,10 @@ nfp_aead_map(struct rte_eth_dev *eth_dev,
 	uint32_t device_id;
 	const char *iv_str;
 	const uint32_t *key;
-	struct nfp_net_hw *hw;
+	struct nfp_net_hw *net_hw;
 
-	hw = NFP_NET_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
-	device_id = hw->device_id;
+	net_hw = NFP_NET_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
+	device_id = net_hw->device_id;
 	offset = 0;
 
 	switch (aead->algo) {
@@ -665,10 +665,10 @@ nfp_cipher_map(struct rte_eth_dev *eth_dev,
 	uint32_t i;
 	uint32_t device_id;
 	const uint32_t *key;
-	struct nfp_net_hw *hw;
+	struct nfp_net_hw *net_hw;
 
-	hw = NFP_NET_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
-	device_id = hw->device_id;
+	net_hw = NFP_NET_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
+	device_id = net_hw->device_id;
 
 	switch (cipher->algo) {
 	case RTE_CRYPTO_CIPHER_NULL:
@@ -801,15 +801,15 @@ nfp_auth_map(struct rte_eth_dev *eth_dev,
 	uint8_t key_length;
 	uint32_t device_id;
 	const uint32_t *key;
-	struct nfp_net_hw *hw;
+	struct nfp_net_hw *net_hw;
 
 	if (digest_length == 0) {
 		PMD_DRV_LOG(ERR, "Auth digest length is illegal!");
 		return -EINVAL;
 	}
 
-	hw = NFP_NET_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
-	device_id = hw->device_id;
+	net_hw = NFP_NET_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
+	device_id = net_hw->device_id;
 	digest_length = digest_length << 3;
 
 	switch (auth->algo) {
@@ -1068,7 +1068,7 @@ nfp_crypto_create_session(void *device,
 {
 	int ret;
 	int sa_idx;
-	struct nfp_net_hw *hw;
+	struct nfp_net_hw *net_hw;
 	struct nfp_ipsec_msg msg;
 	struct rte_eth_dev *eth_dev;
 	struct nfp_ipsec_session *priv_session;
@@ -1082,14 +1082,14 @@ nfp_crypto_create_session(void *device,
 	sa_idx = -1;
 	eth_dev = device;
 	priv_session = SECURITY_GET_SESS_PRIV(session);
-	hw = NFP_NET_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
+	net_hw = NFP_NET_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
 
-	if (hw->ipsec_data->sa_free_cnt == 0) {
+	if (net_hw->ipsec_data->sa_free_cnt == 0) {
 		PMD_DRV_LOG(ERR, "No space in SA table, spi: %d", conf->ipsec.spi);
 		return -EINVAL;
 	}
 
-	nfp_get_sa_entry(hw->ipsec_data, &sa_idx);
+	nfp_get_sa_entry(net_hw->ipsec_data, &sa_idx);
 
 	if (sa_idx < 0) {
 		PMD_DRV_LOG(ERR, "Failed to get SA entry!");
@@ -1105,7 +1105,7 @@ nfp_crypto_create_session(void *device,
 
 	msg.cmd = NFP_IPSEC_CFG_MSG_ADD_SA;
 	msg.sa_idx = sa_idx;
-	ret = nfp_ipsec_cfg_cmd_issue(hw, &msg);
+	ret = nfp_ipsec_cfg_cmd_issue(net_hw, &msg);
 	if (ret < 0) {
 		PMD_DRV_LOG(ERR, "Failed to add SA to nic");
 		return -EINVAL;
@@ -1118,8 +1118,8 @@ nfp_crypto_create_session(void *device,
 	priv_session->dev = eth_dev;
 	priv_session->user_data = conf->userdata;
 
-	hw->ipsec_data->sa_free_cnt--;
-	hw->ipsec_data->sa_entries[sa_idx] = priv_session;
+	net_hw->ipsec_data->sa_free_cnt--;
+	net_hw->ipsec_data->sa_entries[sa_idx] = priv_session;
 
 	return 0;
 }
@@ -1156,19 +1156,19 @@ nfp_security_set_pkt_metadata(void *device,
 {
 	int offset;
 	uint64_t *sqn;
-	struct nfp_net_hw *hw;
+	struct nfp_net_hw *net_hw;
 	struct rte_eth_dev *eth_dev;
 	struct nfp_ipsec_session *priv_session;
 
 	sqn = params;
 	eth_dev = device;
 	priv_session = SECURITY_GET_SESS_PRIV(session);
-	hw = NFP_NET_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
+	net_hw = NFP_NET_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
 
 	if (priv_session->ipsec.direction == RTE_SECURITY_IPSEC_SA_DIR_EGRESS) {
 		struct nfp_tx_ipsec_desc_msg *desc_md;
 
-		offset = hw->ipsec_data->pkt_dynfield_offset;
+		offset = net_hw->ipsec_data->pkt_dynfield_offset;
 		desc_md = RTE_MBUF_DYNFIELD(m, offset, struct nfp_tx_ipsec_desc_msg *);
 
 		if (priv_session->msg.ctrl_word.ext_seq != 0 && sqn != NULL) {
@@ -1223,7 +1223,7 @@ nfp_security_session_get_stats(void *device,
 		struct rte_security_stats *stats)
 {
 	int ret;
-	struct nfp_net_hw *hw;
+	struct nfp_net_hw *net_hw;
 	struct nfp_ipsec_msg msg;
 	struct rte_eth_dev *eth_dev;
 	struct ipsec_get_sa_stats *cfg_s;
@@ -1236,9 +1236,9 @@ nfp_security_session_get_stats(void *device,
 	memset(&msg, 0, sizeof(msg));
 	msg.cmd = NFP_IPSEC_CFG_MSG_GET_SA_STATS;
 	msg.sa_idx = priv_session->sa_index;
-	hw = NFP_NET_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
+	net_hw = NFP_NET_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
 
-	ret = nfp_ipsec_cfg_cmd_issue(hw, &msg);
+	ret = nfp_ipsec_cfg_cmd_issue(net_hw, &msg);
 	if (ret < 0) {
 		PMD_DRV_LOG(ERR, "Failed to get SA stats");
 		return ret;
@@ -1284,22 +1284,22 @@ nfp_crypto_remove_sa(struct rte_eth_dev *eth_dev,
 {
 	int ret;
 	uint32_t sa_index;
-	struct nfp_net_hw *hw;
+	struct nfp_net_hw *net_hw;
 	struct nfp_ipsec_msg cfg;
 
 	sa_index = priv_session->sa_index;
-	hw = NFP_NET_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
+	net_hw = NFP_NET_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
 
 	cfg.cmd = NFP_IPSEC_CFG_MSG_INV_SA;
 	cfg.sa_idx = sa_index;
-	ret = nfp_ipsec_cfg_cmd_issue(hw, &cfg);
+	ret = nfp_ipsec_cfg_cmd_issue(net_hw, &cfg);
 	if (ret < 0) {
 		PMD_DRV_LOG(ERR, "Failed to remove SA!");
 		return -EINVAL;
 	}
 
-	hw->ipsec_data->sa_free_cnt++;
-	hw->ipsec_data->sa_entries[sa_index] = NULL;
+	net_hw->ipsec_data->sa_free_cnt++;
+	net_hw->ipsec_data->sa_entries[sa_index] = NULL;
 
 	return 0;
 }
@@ -1377,12 +1377,12 @@ nfp_ipsec_init(struct rte_eth_dev *dev)
 {
 	int ret;
 	uint32_t cap_extend;
-	struct nfp_net_hw *hw;
+	struct nfp_net_hw *net_hw;
 	struct nfp_net_ipsec_data *data;
 
-	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	net_hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
-	cap_extend = hw->super.cap_ext;
+	cap_extend = net_hw->super.cap_ext;
 	if ((cap_extend & NFP_NET_CFG_CTRL_IPSEC) == 0) {
 		PMD_INIT_LOG(INFO, "Unsupported IPsec extend capability");
 		return 0;
@@ -1396,7 +1396,7 @@ nfp_ipsec_init(struct rte_eth_dev *dev)
 
 	data->pkt_dynfield_offset = -1;
 	data->sa_free_cnt = NFP_NET_IPSEC_MAX_SA_CNT;
-	hw->ipsec_data = data;
+	net_hw->ipsec_data = data;
 
 	ret = nfp_ipsec_ctx_create(dev, data);
 	if (ret != 0) {
@@ -1424,12 +1424,12 @@ nfp_ipsec_uninit(struct rte_eth_dev *dev)
 {
 	uint16_t i;
 	uint32_t cap_extend;
-	struct nfp_net_hw *hw;
+	struct nfp_net_hw *net_hw;
 	struct nfp_ipsec_session *priv_session;
 
-	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	net_hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
-	cap_extend = hw->super.cap_ext;
+	cap_extend = net_hw->super.cap_ext;
 	if ((cap_extend & NFP_NET_CFG_CTRL_IPSEC) == 0) {
 		PMD_INIT_LOG(INFO, "Unsupported IPsec extend capability");
 		return;
@@ -1437,17 +1437,17 @@ nfp_ipsec_uninit(struct rte_eth_dev *dev)
 
 	nfp_ipsec_ctx_destroy(dev);
 
-	if (hw->ipsec_data == NULL) {
+	if (net_hw->ipsec_data == NULL) {
 		PMD_INIT_LOG(INFO, "IPsec data is NULL!");
 		return;
 	}
 
 	for (i = 0; i < NFP_NET_IPSEC_MAX_SA_CNT; i++) {
-		priv_session = hw->ipsec_data->sa_entries[i];
+		priv_session = net_hw->ipsec_data->sa_entries[i];
 		if (priv_session != NULL)
 			memset(priv_session, 0, sizeof(struct nfp_ipsec_session));
 	}
 
-	rte_free(hw->ipsec_data);
+	rte_free(net_hw->ipsec_data);
 }
 

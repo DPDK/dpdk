@@ -336,7 +336,7 @@ nfp_ext_reconfig(struct nfp_hw *hw,
 /**
  * Reconfigure the firmware via the mailbox
  *
- * @param hw
+ * @param net_hw
  *   Device to reconfigure
  * @param mbox_cmd
  *   The value for the mailbox command
@@ -346,24 +346,24 @@ nfp_ext_reconfig(struct nfp_hw *hw,
  *   - (-EIO) if I/O err and fail to reconfigure by the mailbox
  */
 int
-nfp_net_mbox_reconfig(struct nfp_net_hw *hw,
+nfp_net_mbox_reconfig(struct nfp_net_hw *net_hw,
 		uint32_t mbox_cmd)
 {
 	int ret;
 	uint32_t mbox;
 
-	mbox = hw->tlv_caps.mbox_off;
+	mbox = net_hw->tlv_caps.mbox_off;
 
-	rte_spinlock_lock(&hw->super.reconfig_lock);
+	rte_spinlock_lock(&net_hw->super.reconfig_lock);
 
-	nn_cfg_writeq(&hw->super, mbox + NFP_NET_CFG_MBOX_SIMPLE_CMD, mbox_cmd);
-	nn_cfg_writel(&hw->super, NFP_NET_CFG_UPDATE, NFP_NET_CFG_UPDATE_MBOX);
+	nn_cfg_writeq(&net_hw->super, mbox + NFP_NET_CFG_MBOX_SIMPLE_CMD, mbox_cmd);
+	nn_cfg_writel(&net_hw->super, NFP_NET_CFG_UPDATE, NFP_NET_CFG_UPDATE_MBOX);
 
 	rte_wmb();
 
-	ret = nfp_reconfig_real(&hw->super, NFP_NET_CFG_UPDATE_MBOX);
+	ret = nfp_reconfig_real(&net_hw->super, NFP_NET_CFG_UPDATE_MBOX);
 
-	rte_spinlock_unlock(&hw->super.reconfig_lock);
+	rte_spinlock_unlock(&net_hw->super.reconfig_lock);
 
 	if (ret != 0) {
 		PMD_DRV_LOG(ERR, "Error nft net mailbox reconfig: mbox=%#08x update=%#08x",
@@ -371,7 +371,7 @@ nfp_net_mbox_reconfig(struct nfp_net_hw *hw,
 		return -EIO;
 	}
 
-	return nn_cfg_readl(&hw->super, mbox + NFP_NET_CFG_MBOX_SIMPLE_RET);
+	return nn_cfg_readl(&net_hw->super, mbox + NFP_NET_CFG_MBOX_SIMPLE_RET);
 }
 
 /*
@@ -625,6 +625,7 @@ nfp_configure_rx_interrupt(struct rte_eth_dev *dev,
 uint32_t
 nfp_check_offloads(struct rte_eth_dev *dev)
 {
+	uint32_t cap;
 	uint32_t ctrl = 0;
 	uint64_t rx_offload;
 	uint64_t tx_offload;
@@ -632,13 +633,14 @@ nfp_check_offloads(struct rte_eth_dev *dev)
 	struct rte_eth_conf *dev_conf;
 
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	cap = hw->super.cap;
 
 	dev_conf = &dev->data->dev_conf;
 	rx_offload = dev_conf->rxmode.offloads;
 	tx_offload = dev_conf->txmode.offloads;
 
 	if ((rx_offload & RTE_ETH_RX_OFFLOAD_IPV4_CKSUM) != 0) {
-		if ((hw->super.cap & NFP_NET_CFG_CTRL_RXCSUM) != 0)
+		if ((cap & NFP_NET_CFG_CTRL_RXCSUM) != 0)
 			ctrl |= NFP_NET_CFG_CTRL_RXCSUM;
 	}
 
@@ -646,25 +648,25 @@ nfp_check_offloads(struct rte_eth_dev *dev)
 		nfp_net_enable_rxvlan_cap(hw, &ctrl);
 
 	if ((rx_offload & RTE_ETH_RX_OFFLOAD_QINQ_STRIP) != 0) {
-		if ((hw->super.cap & NFP_NET_CFG_CTRL_RXQINQ) != 0)
+		if ((cap & NFP_NET_CFG_CTRL_RXQINQ) != 0)
 			ctrl |= NFP_NET_CFG_CTRL_RXQINQ;
 	}
 
 	hw->mtu = dev->data->mtu;
 
 	if ((tx_offload & RTE_ETH_TX_OFFLOAD_VLAN_INSERT) != 0) {
-		if ((hw->super.cap & NFP_NET_CFG_CTRL_TXVLAN_V2) != 0)
+		if ((cap & NFP_NET_CFG_CTRL_TXVLAN_V2) != 0)
 			ctrl |= NFP_NET_CFG_CTRL_TXVLAN_V2;
-		else if ((hw->super.cap & NFP_NET_CFG_CTRL_TXVLAN) != 0)
+		else if ((cap & NFP_NET_CFG_CTRL_TXVLAN) != 0)
 			ctrl |= NFP_NET_CFG_CTRL_TXVLAN;
 	}
 
 	/* L2 broadcast */
-	if ((hw->super.cap & NFP_NET_CFG_CTRL_L2BC) != 0)
+	if ((cap & NFP_NET_CFG_CTRL_L2BC) != 0)
 		ctrl |= NFP_NET_CFG_CTRL_L2BC;
 
 	/* L2 multicast */
-	if ((hw->super.cap & NFP_NET_CFG_CTRL_L2MC) != 0)
+	if ((cap & NFP_NET_CFG_CTRL_L2MC) != 0)
 		ctrl |= NFP_NET_CFG_CTRL_L2MC;
 
 	/* TX checksum offload */
@@ -676,7 +678,7 @@ nfp_check_offloads(struct rte_eth_dev *dev)
 	/* LSO offload */
 	if ((tx_offload & RTE_ETH_TX_OFFLOAD_TCP_TSO) != 0 ||
 			(tx_offload & RTE_ETH_TX_OFFLOAD_VXLAN_TNL_TSO) != 0) {
-		if ((hw->super.cap & NFP_NET_CFG_CTRL_LSO) != 0)
+		if ((cap & NFP_NET_CFG_CTRL_LSO) != 0)
 			ctrl |= NFP_NET_CFG_CTRL_LSO;
 		else
 			ctrl |= NFP_NET_CFG_CTRL_LSO2;
@@ -1194,6 +1196,7 @@ nfp_net_tx_desc_limits(struct nfp_net_hw *hw,
 int
 nfp_net_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 {
+	uint32_t cap;
 	uint32_t cap_extend;
 	uint16_t min_rx_desc;
 	uint16_t max_rx_desc;
@@ -1224,32 +1227,34 @@ nfp_net_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	/* Next should change when PF support is implemented */
 	dev_info->max_mac_addrs = 1;
 
-	if ((hw->super.cap & (NFP_NET_CFG_CTRL_RXVLAN | NFP_NET_CFG_CTRL_RXVLAN_V2)) != 0)
+	cap = hw->super.cap;
+
+	if ((cap & (NFP_NET_CFG_CTRL_RXVLAN | NFP_NET_CFG_CTRL_RXVLAN_V2)) != 0)
 		dev_info->rx_offload_capa = RTE_ETH_RX_OFFLOAD_VLAN_STRIP;
 
-	if ((hw->super.cap & NFP_NET_CFG_CTRL_RXQINQ) != 0)
+	if ((cap & NFP_NET_CFG_CTRL_RXQINQ) != 0)
 		dev_info->rx_offload_capa |= RTE_ETH_RX_OFFLOAD_QINQ_STRIP;
 
-	if ((hw->super.cap & NFP_NET_CFG_CTRL_RXCSUM) != 0)
+	if ((cap & NFP_NET_CFG_CTRL_RXCSUM) != 0)
 		dev_info->rx_offload_capa |= RTE_ETH_RX_OFFLOAD_IPV4_CKSUM |
 				RTE_ETH_RX_OFFLOAD_UDP_CKSUM |
 				RTE_ETH_RX_OFFLOAD_TCP_CKSUM;
 
-	if ((hw->super.cap & (NFP_NET_CFG_CTRL_TXVLAN | NFP_NET_CFG_CTRL_TXVLAN_V2)) != 0)
+	if ((cap & (NFP_NET_CFG_CTRL_TXVLAN | NFP_NET_CFG_CTRL_TXVLAN_V2)) != 0)
 		dev_info->tx_offload_capa = RTE_ETH_TX_OFFLOAD_VLAN_INSERT;
 
-	if ((hw->super.cap & NFP_NET_CFG_CTRL_TXCSUM) != 0)
+	if ((cap & NFP_NET_CFG_CTRL_TXCSUM) != 0)
 		dev_info->tx_offload_capa |= RTE_ETH_TX_OFFLOAD_IPV4_CKSUM |
 				RTE_ETH_TX_OFFLOAD_UDP_CKSUM |
 				RTE_ETH_TX_OFFLOAD_TCP_CKSUM;
 
-	if ((hw->super.cap & NFP_NET_CFG_CTRL_LSO_ANY) != 0) {
+	if ((cap & NFP_NET_CFG_CTRL_LSO_ANY) != 0) {
 		dev_info->tx_offload_capa |= RTE_ETH_TX_OFFLOAD_TCP_TSO;
-		if ((hw->super.cap & NFP_NET_CFG_CTRL_VXLAN) != 0)
+		if ((cap & NFP_NET_CFG_CTRL_VXLAN) != 0)
 			dev_info->tx_offload_capa |= RTE_ETH_TX_OFFLOAD_VXLAN_TNL_TSO;
 	}
 
-	if ((hw->super.cap & NFP_NET_CFG_CTRL_GATHER) != 0)
+	if ((cap & NFP_NET_CFG_CTRL_GATHER) != 0)
 		dev_info->tx_offload_capa |= RTE_ETH_TX_OFFLOAD_MULTI_SEGS;
 
 	cap_extend = hw->super.cap_ext;
@@ -1292,7 +1297,7 @@ nfp_net_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 		.nb_mtu_seg_max = NFP_TX_MAX_MTU_SEG,
 	};
 
-	if ((hw->super.cap & NFP_NET_CFG_CTRL_RSS_ANY) != 0) {
+	if ((cap & NFP_NET_CFG_CTRL_RSS_ANY) != 0) {
 		dev_info->rx_offload_capa |= RTE_ETH_RX_OFFLOAD_RSS_HASH;
 
 		dev_info->flow_type_rss_offloads = RTE_ETH_RSS_IPV4 |
@@ -1644,9 +1649,11 @@ nfp_net_rss_reta_write(struct rte_eth_dev *dev,
 	uint8_t mask;
 	uint32_t reta;
 	uint16_t shift;
-	struct nfp_net_hw *hw;
+	struct nfp_hw *hw;
+	struct nfp_net_hw *net_hw;
 
-	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	net_hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	hw = &net_hw->super;
 
 	if (reta_size != NFP_NET_CFG_RSS_ITBL_SZ) {
 		PMD_DRV_LOG(ERR, "The size of hash lookup table configured (%hu)"
@@ -1671,7 +1678,7 @@ nfp_net_rss_reta_write(struct rte_eth_dev *dev,
 
 		/* If all 4 entries were set, don't need read RETA register */
 		if (mask != 0xF)
-			reta = nn_cfg_readl(&hw->super, NFP_NET_CFG_RSS_ITBL + i);
+			reta = nn_cfg_readl(hw, NFP_NET_CFG_RSS_ITBL + i);
 
 		for (j = 0; j < 4; j++) {
 			if ((mask & (0x1 << j)) == 0)
@@ -1684,7 +1691,7 @@ nfp_net_rss_reta_write(struct rte_eth_dev *dev,
 			reta |= reta_conf[idx].reta[shift + j] << (8 * j);
 		}
 
-		nn_cfg_writel(&hw->super, NFP_NET_CFG_RSS_ITBL + (idx * 64) + shift, reta);
+		nn_cfg_writel(hw, NFP_NET_CFG_RSS_ITBL + (idx * 64) + shift, reta);
 	}
 
 	return 0;
@@ -1731,10 +1738,13 @@ nfp_net_reta_query(struct rte_eth_dev *dev,
 	uint8_t mask;
 	uint32_t reta;
 	uint16_t shift;
-	struct nfp_net_hw *hw;
+	struct nfp_hw *hw;
+	struct nfp_net_hw *net_hw;
 
-	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	if ((hw->super.ctrl & NFP_NET_CFG_CTRL_RSS_ANY) == 0)
+	net_hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	hw = &net_hw->super;
+
+	if ((hw->ctrl & NFP_NET_CFG_CTRL_RSS_ANY) == 0)
 		return -EINVAL;
 
 	if (reta_size != NFP_NET_CFG_RSS_ITBL_SZ) {
@@ -1757,7 +1767,7 @@ nfp_net_reta_query(struct rte_eth_dev *dev,
 		if (mask == 0)
 			continue;
 
-		reta = nn_cfg_readl(&hw->super, NFP_NET_CFG_RSS_ITBL + (idx * 64) + shift);
+		reta = nn_cfg_readl(hw, NFP_NET_CFG_RSS_ITBL + (idx * 64) + shift);
 		for (j = 0; j < 4; j++) {
 			if ((mask & (0x1 << j)) == 0)
 				continue;
@@ -1777,15 +1787,17 @@ nfp_net_rss_hash_write(struct rte_eth_dev *dev,
 	uint8_t i;
 	uint8_t key;
 	uint64_t rss_hf;
-	struct nfp_net_hw *hw;
+	struct nfp_hw *hw;
+	struct nfp_net_hw *net_hw;
 	uint32_t cfg_rss_ctrl = 0;
 
-	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	net_hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	hw = &net_hw->super;
 
 	/* Writing the key byte by byte */
 	for (i = 0; i < rss_conf->rss_key_len; i++) {
 		memcpy(&key, &rss_conf->rss_key[i], 1);
-		nn_cfg_writeb(&hw->super, NFP_NET_CFG_RSS_KEY + i, key);
+		nn_cfg_writeb(hw, NFP_NET_CFG_RSS_KEY + i, key);
 	}
 
 	rss_hf = rss_conf->rss_hf;
@@ -1818,10 +1830,10 @@ nfp_net_rss_hash_write(struct rte_eth_dev *dev,
 	cfg_rss_ctrl |= NFP_NET_CFG_RSS_TOEPLITZ;
 
 	/* Configuring where to apply the RSS hash */
-	nn_cfg_writel(&hw->super, NFP_NET_CFG_RSS_CTRL, cfg_rss_ctrl);
+	nn_cfg_writel(hw, NFP_NET_CFG_RSS_CTRL, cfg_rss_ctrl);
 
 	/* Writing the key size */
-	nn_cfg_writeb(&hw->super, NFP_NET_CFG_RSS_KEY_SZ, rss_conf->rss_key_len);
+	nn_cfg_writeb(hw, NFP_NET_CFG_RSS_KEY_SZ, rss_conf->rss_key_len);
 
 	return 0;
 }
@@ -1872,16 +1884,18 @@ nfp_net_rss_hash_conf_get(struct rte_eth_dev *dev,
 	uint8_t i;
 	uint8_t key;
 	uint64_t rss_hf;
+	struct nfp_hw *hw;
 	uint32_t cfg_rss_ctrl;
-	struct nfp_net_hw *hw;
+	struct nfp_net_hw *net_hw;
 
-	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	net_hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	hw = &net_hw->super;
 
-	if ((hw->super.ctrl & NFP_NET_CFG_CTRL_RSS_ANY) == 0)
+	if ((hw->ctrl & NFP_NET_CFG_CTRL_RSS_ANY) == 0)
 		return -EINVAL;
 
 	rss_hf = rss_conf->rss_hf;
-	cfg_rss_ctrl = nn_cfg_readl(&hw->super, NFP_NET_CFG_RSS_CTRL);
+	cfg_rss_ctrl = nn_cfg_readl(hw, NFP_NET_CFG_RSS_CTRL);
 
 	if ((cfg_rss_ctrl & NFP_NET_CFG_RSS_IPV4) != 0)
 		rss_hf |= RTE_ETH_RSS_IPV4;
@@ -1911,11 +1925,11 @@ nfp_net_rss_hash_conf_get(struct rte_eth_dev *dev,
 	rss_conf->rss_hf = rss_hf;
 
 	/* Reading the key size */
-	rss_conf->rss_key_len = nn_cfg_readl(&hw->super, NFP_NET_CFG_RSS_KEY_SZ);
+	rss_conf->rss_key_len = nn_cfg_readl(hw, NFP_NET_CFG_RSS_KEY_SZ);
 
 	/* Reading the key byte a byte */
 	for (i = 0; i < rss_conf->rss_key_len; i++) {
-		key = nn_cfg_readb(&hw->super, NFP_NET_CFG_RSS_KEY + i);
+		key = nn_cfg_readb(hw, NFP_NET_CFG_RSS_KEY + i);
 		memcpy(&rss_conf->rss_key[i], &key, 1);
 	}
 

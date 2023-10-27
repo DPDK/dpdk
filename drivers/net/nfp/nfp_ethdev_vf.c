@@ -254,7 +254,8 @@ nfp_netvf_init(struct rte_eth_dev *eth_dev)
 	int err;
 	uint16_t port;
 	uint32_t start_q;
-	struct nfp_net_hw *hw;
+	struct nfp_hw *hw;
+	struct nfp_net_hw *net_hw;
 	uint64_t tx_bar_off = 0;
 	uint64_t rx_bar_off = 0;
 	struct rte_pci_device *pci_dev;
@@ -269,22 +270,23 @@ nfp_netvf_init(struct rte_eth_dev *eth_dev)
 		return -ENODEV;
 	}
 
-	hw = NFP_NET_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
-	hw->dev_info = dev_info;
+	net_hw = NFP_NET_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
+	net_hw->dev_info = dev_info;
+	hw = &net_hw->super;
 
-	hw->super.ctrl_bar = pci_dev->mem_resource[0].addr;
-	if (hw->super.ctrl_bar == NULL) {
+	hw->ctrl_bar = pci_dev->mem_resource[0].addr;
+	if (hw->ctrl_bar == NULL) {
 		PMD_DRV_LOG(ERR, "hw->super.ctrl_bar is NULL. BAR0 not configured");
 		return -ENODEV;
 	}
 
-	PMD_INIT_LOG(DEBUG, "ctrl bar: %p", hw->super.ctrl_bar);
+	PMD_INIT_LOG(DEBUG, "ctrl bar: %p", hw->ctrl_bar);
 
-	err = nfp_net_common_init(pci_dev, hw);
+	err = nfp_net_common_init(pci_dev, net_hw);
 	if (err != 0)
 		return err;
 
-	nfp_netvf_ethdev_ops_mount(hw, eth_dev);
+	nfp_netvf_ethdev_ops_mount(net_hw, eth_dev);
 
 	/* For secondary processes, the primary has done all the work */
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
@@ -292,37 +294,37 @@ nfp_netvf_init(struct rte_eth_dev *eth_dev)
 
 	rte_eth_copy_pci_info(eth_dev, pci_dev);
 
-	hw->eth_xstats_base = rte_malloc("rte_eth_xstat",
+	net_hw->eth_xstats_base = rte_malloc("rte_eth_xstat",
 			sizeof(struct rte_eth_xstat) * nfp_net_xstats_size(eth_dev), 0);
-	if (hw->eth_xstats_base == NULL) {
+	if (net_hw->eth_xstats_base == NULL) {
 		PMD_INIT_LOG(ERR, "No memory for xstats base values on device %s!",
 				pci_dev->device.name);
 		return -ENOMEM;
 	}
 
 	/* Work out where in the BAR the queues start. */
-	start_q = nn_cfg_readl(&hw->super, NFP_NET_CFG_START_TXQ);
+	start_q = nn_cfg_readl(hw, NFP_NET_CFG_START_TXQ);
 	tx_bar_off = nfp_qcp_queue_offset(dev_info, start_q);
-	start_q = nn_cfg_readl(&hw->super, NFP_NET_CFG_START_RXQ);
+	start_q = nn_cfg_readl(hw, NFP_NET_CFG_START_RXQ);
 	rx_bar_off = nfp_qcp_queue_offset(dev_info, start_q);
 
-	hw->tx_bar = (uint8_t *)pci_dev->mem_resource[2].addr + tx_bar_off;
-	hw->rx_bar = (uint8_t *)pci_dev->mem_resource[2].addr + rx_bar_off;
+	net_hw->tx_bar = (uint8_t *)pci_dev->mem_resource[2].addr + tx_bar_off;
+	net_hw->rx_bar = (uint8_t *)pci_dev->mem_resource[2].addr + rx_bar_off;
 
 	PMD_INIT_LOG(DEBUG, "ctrl_bar: %p, tx_bar: %p, rx_bar: %p",
-			hw->super.ctrl_bar, hw->tx_bar, hw->rx_bar);
+			hw->ctrl_bar, net_hw->tx_bar, net_hw->rx_bar);
 
-	nfp_net_cfg_queue_setup(hw);
-	hw->mtu = RTE_ETHER_MTU;
+	nfp_net_cfg_queue_setup(net_hw);
+	net_hw->mtu = RTE_ETHER_MTU;
 
 	/* VLAN insertion is incompatible with LSOv2 */
-	if ((hw->super.cap & NFP_NET_CFG_CTRL_LSO2) != 0)
-		hw->super.cap &= ~NFP_NET_CFG_CTRL_TXVLAN;
+	if ((hw->cap & NFP_NET_CFG_CTRL_LSO2) != 0)
+		hw->cap &= ~NFP_NET_CFG_CTRL_TXVLAN;
 
-	nfp_net_log_device_information(hw);
+	nfp_net_log_device_information(net_hw);
 
 	/* Initializing spinlock for reconfigs */
-	rte_spinlock_init(&hw->super.reconfig_lock);
+	rte_spinlock_init(&hw->reconfig_lock);
 
 	/* Allocating memory for mac addr */
 	eth_dev->data->mac_addrs = rte_zmalloc("mac_addr", RTE_ETHER_ADDR_LEN, 0);
@@ -332,18 +334,18 @@ nfp_netvf_init(struct rte_eth_dev *eth_dev)
 		goto dev_err_ctrl_map;
 	}
 
-	nfp_netvf_read_mac(&hw->super);
-	if (rte_is_valid_assigned_ether_addr(&hw->super.mac_addr) == 0) {
+	nfp_netvf_read_mac(hw);
+	if (rte_is_valid_assigned_ether_addr(&hw->mac_addr) == 0) {
 		PMD_INIT_LOG(INFO, "Using random mac address for port %hu", port);
 		/* Using random mac addresses for VFs */
-		rte_eth_random_addr(&hw->super.mac_addr.addr_bytes[0]);
-		nfp_net_write_mac(&hw->super, &hw->super.mac_addr.addr_bytes[0]);
+		rte_eth_random_addr(&hw->mac_addr.addr_bytes[0]);
+		nfp_net_write_mac(hw, &hw->mac_addr.addr_bytes[0]);
 	}
 
 	/* Copying mac address to DPDK eth_dev struct */
-	rte_ether_addr_copy(&hw->super.mac_addr, eth_dev->data->mac_addrs);
+	rte_ether_addr_copy(&hw->mac_addr, eth_dev->data->mac_addrs);
 
-	if ((hw->super.cap & NFP_NET_CFG_CTRL_LIVE_ADDR) == 0)
+	if ((hw->cap & NFP_NET_CFG_CTRL_LIVE_ADDR) == 0)
 		eth_dev->data->dev_flags |= RTE_ETH_DEV_NOLIVE_MAC_ADDR;
 
 	eth_dev->data->dev_flags |= RTE_ETH_DEV_AUTOFILL_QUEUE_XSTATS;
@@ -352,14 +354,14 @@ nfp_netvf_init(struct rte_eth_dev *eth_dev)
 			"mac=" RTE_ETHER_ADDR_PRT_FMT,
 			port, pci_dev->id.vendor_id,
 			pci_dev->id.device_id,
-			RTE_ETHER_ADDR_BYTES(&hw->super.mac_addr));
+			RTE_ETHER_ADDR_BYTES(&hw->mac_addr));
 
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
 		/* Registering LSC interrupt handler */
 		rte_intr_callback_register(pci_dev->intr_handle,
 				nfp_net_dev_interrupt_handler, (void *)eth_dev);
 		/* Telling the firmware about the LSC interrupt entry */
-		nn_cfg_writeb(&hw->super, NFP_NET_CFG_LSC, NFP_NET_IRQ_LSC_IDX);
+		nn_cfg_writeb(hw, NFP_NET_CFG_LSC, NFP_NET_IRQ_LSC_IDX);
 		/* Recording current stats counters values */
 		nfp_net_stats_reset(eth_dev);
 	}
@@ -367,7 +369,7 @@ nfp_netvf_init(struct rte_eth_dev *eth_dev)
 	return 0;
 
 dev_err_ctrl_map:
-		nfp_cpp_area_free(hw->ctrl_area);
+		nfp_cpp_area_free(net_hw->ctrl_area);
 
 	return err;
 }

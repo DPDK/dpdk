@@ -25,18 +25,18 @@ static void
 nfp_pf_repr_enable_queues(struct rte_eth_dev *dev)
 {
 	uint16_t i;
-	struct nfp_net_hw *hw;
+	struct nfp_hw *hw;
 	uint64_t enabled_queues = 0;
 	struct nfp_flower_representor *repr;
 
 	repr = dev->data->dev_private;
-	hw = repr->app_fw_flower->pf_hw;
+	hw = &repr->app_fw_flower->pf_hw->super;
 
 	/* Enabling the required TX queues in the device */
 	for (i = 0; i < dev->data->nb_tx_queues; i++)
 		enabled_queues |= (1 << i);
 
-	nn_cfg_writeq(&hw->super, NFP_NET_CFG_TXRS_ENABLE, enabled_queues);
+	nn_cfg_writeq(hw, NFP_NET_CFG_TXRS_ENABLE, enabled_queues);
 
 	enabled_queues = 0;
 
@@ -44,7 +44,7 @@ nfp_pf_repr_enable_queues(struct rte_eth_dev *dev)
 	for (i = 0; i < dev->data->nb_rx_queues; i++)
 		enabled_queues |= (1 << i);
 
-	nn_cfg_writeq(&hw->super, NFP_NET_CFG_RXRS_ENABLE, enabled_queues);
+	nn_cfg_writeq(hw, NFP_NET_CFG_RXRS_ENABLE, enabled_queues);
 }
 
 static void
