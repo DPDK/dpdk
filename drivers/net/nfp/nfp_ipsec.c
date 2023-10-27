@@ -1382,7 +1382,7 @@ nfp_ipsec_init(struct rte_eth_dev *dev)
 
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
-	cap_extend = hw->cap_ext;
+	cap_extend = hw->super.cap_ext;
 	if ((cap_extend & NFP_NET_CFG_CTRL_IPSEC) == 0) {
 		PMD_INIT_LOG(INFO, "Unsupported IPsec extend capability");
 		return 0;
@@ -1429,7 +1429,7 @@ nfp_ipsec_uninit(struct rte_eth_dev *dev)
 
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
-	cap_extend = hw->cap_ext;
+	cap_extend = hw->super.cap_ext;
 	if ((cap_extend & NFP_NET_CFG_CTRL_IPSEC) == 0) {
 		PMD_INIT_LOG(INFO, "Unsupported IPsec extend capability");
 		return;

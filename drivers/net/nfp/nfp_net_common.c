@@ -408,7 +408,7 @@ nfp_net_configure(struct rte_eth_dev *dev)
 
 	/* Checking RX mode */
 	if ((rxmode->mq_mode & RTE_ETH_MQ_RX_RSS_FLAG) != 0 &&
-			(hw->cap & NFP_NET_CFG_CTRL_RSS_ANY) == 0) {
+			(hw->super.cap & NFP_NET_CFG_CTRL_RSS_ANY) == 0) {
 		PMD_DRV_LOG(ERR, "RSS not supported");
 		return -EINVAL;
 	}
@@ -426,27 +426,29 @@ nfp_net_configure(struct rte_eth_dev *dev)
 void
 nfp_net_log_device_information(const struct nfp_net_hw *hw)
 {
+	uint32_t cap = hw->super.cap;
+
 	PMD_INIT_LOG(INFO, "VER: %u.%u, Maximum supported MTU: %d",
 			hw->ver.major, hw->ver.minor, hw->max_mtu);
 
-	PMD_INIT_LOG(INFO, "CAP: %#x, %s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s", hw->cap,
-			hw->cap & NFP_NET_CFG_CTRL_PROMISC   ? "PROMISC "   : "",
-			hw->cap & NFP_NET_CFG_CTRL_L2BC      ? "L2BCFILT "  : "",
-			hw->cap & NFP_NET_CFG_CTRL_L2MC      ? "L2MCFILT "  : "",
-			hw->cap & NFP_NET_CFG_CTRL_RXCSUM    ? "RXCSUM "    : "",
-			hw->cap & NFP_NET_CFG_CTRL_TXCSUM    ? "TXCSUM "    : "",
-			hw->cap & NFP_NET_CFG_CTRL_RXVLAN    ? "RXVLAN "    : "",
-			hw->cap & NFP_NET_CFG_CTRL_TXVLAN    ? "TXVLAN "    : "",
-			hw->cap & NFP_NET_CFG_CTRL_RXVLAN_V2 ? "RXVLANv2 "  : "",
-			hw->cap & NFP_NET_CFG_CTRL_TXVLAN_V2 ? "TXVLANv2 "  : "",
-			hw->cap & NFP_NET_CFG_CTRL_RXQINQ    ? "RXQINQ "    : "",
-			hw->cap & NFP_NET_CFG_CTRL_SCATTER   ? "SCATTER "   : "",
-			hw->cap & NFP_NET_CFG_CTRL_GATHER    ? "GATHER "    : "",
-			hw->cap & NFP_NET_CFG_CTRL_LIVE_ADDR ? "LIVE_ADDR " : "",
-			hw->cap & NFP_NET_CFG_CTRL_LSO       ? "TSO "       : "",
-			hw->cap & NFP_NET_CFG_CTRL_LSO2      ? "TSOv2 "     : "",
-			hw->cap & NFP_NET_CFG_CTRL_RSS       ? "RSS "       : "",
-			hw->cap & NFP_NET_CFG_CTRL_RSS2      ? "RSSv2 "     : "");
+	PMD_INIT_LOG(INFO, "CAP: %#x, %s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s", cap,
+			cap & NFP_NET_CFG_CTRL_PROMISC   ? "PROMISC "   : "",
+			cap & NFP_NET_CFG_CTRL_L2BC      ? "L2BCFILT "  : "",
+			cap & NFP_NET_CFG_CTRL_L2MC      ? "L2MCFILT "  : "",
+			cap & NFP_NET_CFG_CTRL_RXCSUM    ? "RXCSUM "    : "",
+			cap & NFP_NET_CFG_CTRL_TXCSUM    ? "TXCSUM "    : "",
+			cap & NFP_NET_CFG_CTRL_RXVLAN    ? "RXVLAN "    : "",
+			cap & NFP_NET_CFG_CTRL_TXVLAN    ? "TXVLAN "    : "",
+			cap & NFP_NET_CFG_CTRL_RXVLAN_V2 ? "RXVLANv2 "  : "",
+			cap & NFP_NET_CFG_CTRL_TXVLAN_V2 ? "TXVLANv2 "  : "",
+			cap & NFP_NET_CFG_CTRL_RXQINQ    ? "RXQINQ "    : "",
+			cap & NFP_NET_CFG_CTRL_SCATTER   ? "SCATTER "   : "",
+			cap & NFP_NET_CFG_CTRL_GATHER    ? "GATHER "    : "",
+			cap & NFP_NET_CFG_CTRL_LIVE_ADDR ? "LIVE_ADDR " : "",
+			cap & NFP_NET_CFG_CTRL_LSO       ? "TSO "       : "",
+			cap & NFP_NET_CFG_CTRL_LSO2      ? "TSOv2 "     : "",
+			cap & NFP_NET_CFG_CTRL_RSS       ? "RSS "       : "",
+			cap & NFP_NET_CFG_CTRL_RSS2      ? "RSSv2 "     : "");
 
 	PMD_INIT_LOG(INFO, "max_rx_queues: %u, max_tx_queues: %u",
 			hw->max_rx_queues, hw->max_tx_queues);
@@ -456,9 +458,9 @@ static inline void
 nfp_net_enable_rxvlan_cap(struct nfp_net_hw *hw,
 		uint32_t *ctrl)
 {
-	if ((hw->cap & NFP_NET_CFG_CTRL_RXVLAN_V2) != 0)
+	if ((hw->super.cap & NFP_NET_CFG_CTRL_RXVLAN_V2) != 0)
 		*ctrl |= NFP_NET_CFG_CTRL_RXVLAN_V2;
-	else if ((hw->cap & NFP_NET_CFG_CTRL_RXVLAN) != 0)
+	else if ((hw->super.cap & NFP_NET_CFG_CTRL_RXVLAN) != 0)
 		*ctrl |= NFP_NET_CFG_CTRL_RXVLAN;
 }
 
@@ -503,7 +505,7 @@ nfp_net_disable_queues(struct rte_eth_dev *dev)
 			NFP_NET_CFG_UPDATE_RING |
 			NFP_NET_CFG_UPDATE_MSIX;
 
-	if ((hw->cap & NFP_NET_CFG_CTRL_RINGCFG) != 0)
+	if ((hw->super.cap & NFP_NET_CFG_CTRL_RINGCFG) != 0)
 		new_ctrl &= ~NFP_NET_CFG_CTRL_RINGCFG;
 
 	/* If an error when reconfig we avoid to change hw state */
@@ -552,7 +554,7 @@ nfp_net_set_mac_addr(struct rte_eth_dev *dev,
 
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	if ((hw->ctrl & NFP_NET_CFG_CTRL_ENABLE) != 0 &&
-			(hw->cap & NFP_NET_CFG_CTRL_LIVE_ADDR) == 0) {
+			(hw->super.cap & NFP_NET_CFG_CTRL_LIVE_ADDR) == 0) {
 		PMD_DRV_LOG(ERR, "MAC address unable to change when port enabled");
 		return -EBUSY;
 	}
@@ -563,7 +565,7 @@ nfp_net_set_mac_addr(struct rte_eth_dev *dev,
 	update = NFP_NET_CFG_UPDATE_MACADDR;
 	ctrl = hw->ctrl;
 	if ((hw->ctrl & NFP_NET_CFG_CTRL_ENABLE) != 0 &&
-			(hw->cap & NFP_NET_CFG_CTRL_LIVE_ADDR) != 0)
+			(hw->super.cap & NFP_NET_CFG_CTRL_LIVE_ADDR) != 0)
 		ctrl |= NFP_NET_CFG_CTRL_LIVE_ADDR;
 
 	/* Signal the NIC about the change */
@@ -631,7 +633,7 @@ nfp_check_offloads(struct rte_eth_dev *dev)
 	tx_offload = dev_conf->txmode.offloads;
 
 	if ((rx_offload & RTE_ETH_RX_OFFLOAD_IPV4_CKSUM) != 0) {
-		if ((hw->cap & NFP_NET_CFG_CTRL_RXCSUM) != 0)
+		if ((hw->super.cap & NFP_NET_CFG_CTRL_RXCSUM) != 0)
 			ctrl |= NFP_NET_CFG_CTRL_RXCSUM;
 	}
 
@@ -639,25 +641,25 @@ nfp_check_offloads(struct rte_eth_dev *dev)
 		nfp_net_enable_rxvlan_cap(hw, &ctrl);
 
 	if ((rx_offload & RTE_ETH_RX_OFFLOAD_QINQ_STRIP) != 0) {
-		if ((hw->cap & NFP_NET_CFG_CTRL_RXQINQ) != 0)
+		if ((hw->super.cap & NFP_NET_CFG_CTRL_RXQINQ) != 0)
 			ctrl |= NFP_NET_CFG_CTRL_RXQINQ;
 	}
 
 	hw->mtu = dev->data->mtu;
 
 	if ((tx_offload & RTE_ETH_TX_OFFLOAD_VLAN_INSERT) != 0) {
-		if ((hw->cap & NFP_NET_CFG_CTRL_TXVLAN_V2) != 0)
+		if ((hw->super.cap & NFP_NET_CFG_CTRL_TXVLAN_V2) != 0)
 			ctrl |= NFP_NET_CFG_CTRL_TXVLAN_V2;
-		else if ((hw->cap & NFP_NET_CFG_CTRL_TXVLAN) != 0)
+		else if ((hw->super.cap & NFP_NET_CFG_CTRL_TXVLAN) != 0)
 			ctrl |= NFP_NET_CFG_CTRL_TXVLAN;
 	}
 
 	/* L2 broadcast */
-	if ((hw->cap & NFP_NET_CFG_CTRL_L2BC) != 0)
+	if ((hw->super.cap & NFP_NET_CFG_CTRL_L2BC) != 0)
 		ctrl |= NFP_NET_CFG_CTRL_L2BC;
 
 	/* L2 multicast */
-	if ((hw->cap & NFP_NET_CFG_CTRL_L2MC) != 0)
+	if ((hw->super.cap & NFP_NET_CFG_CTRL_L2MC) != 0)
 		ctrl |= NFP_NET_CFG_CTRL_L2MC;
 
 	/* TX checksum offload */
@@ -669,7 +671,7 @@ nfp_check_offloads(struct rte_eth_dev *dev)
 	/* LSO offload */
 	if ((tx_offload & RTE_ETH_TX_OFFLOAD_TCP_TSO) != 0 ||
 			(tx_offload & RTE_ETH_TX_OFFLOAD_VXLAN_TNL_TSO) != 0) {
-		if ((hw->cap & NFP_NET_CFG_CTRL_LSO) != 0)
+		if ((hw->super.cap & NFP_NET_CFG_CTRL_LSO) != 0)
 			ctrl |= NFP_NET_CFG_CTRL_LSO;
 		else
 			ctrl |= NFP_NET_CFG_CTRL_LSO2;
@@ -698,7 +700,7 @@ nfp_net_promisc_enable(struct rte_eth_dev *dev)
 		hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	}
 
-	if ((hw->cap & NFP_NET_CFG_CTRL_PROMISC) == 0) {
+	if ((hw->super.cap & NFP_NET_CFG_CTRL_PROMISC) == 0) {
 		PMD_DRV_LOG(ERR, "Promiscuous mode not supported");
 		return -ENOTSUP;
 	}
@@ -1213,35 +1215,35 @@ nfp_net_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	/* Next should change when PF support is implemented */
 	dev_info->max_mac_addrs = 1;
 
-	if ((hw->cap & (NFP_NET_CFG_CTRL_RXVLAN | NFP_NET_CFG_CTRL_RXVLAN_V2)) != 0)
+	if ((hw->super.cap & (NFP_NET_CFG_CTRL_RXVLAN | NFP_NET_CFG_CTRL_RXVLAN_V2)) != 0)
 		dev_info->rx_offload_capa = RTE_ETH_RX_OFFLOAD_VLAN_STRIP;
 
-	if ((hw->cap & NFP_NET_CFG_CTRL_RXQINQ) != 0)
+	if ((hw->super.cap & NFP_NET_CFG_CTRL_RXQINQ) != 0)
 		dev_info->rx_offload_capa |= RTE_ETH_RX_OFFLOAD_QINQ_STRIP;
 
-	if ((hw->cap & NFP_NET_CFG_CTRL_RXCSUM) != 0)
+	if ((hw->super.cap & NFP_NET_CFG_CTRL_RXCSUM) != 0)
 		dev_info->rx_offload_capa |= RTE_ETH_RX_OFFLOAD_IPV4_CKSUM |
 				RTE_ETH_RX_OFFLOAD_UDP_CKSUM |
 				RTE_ETH_RX_OFFLOAD_TCP_CKSUM;
 
-	if ((hw->cap & (NFP_NET_CFG_CTRL_TXVLAN | NFP_NET_CFG_CTRL_TXVLAN_V2)) != 0)
+	if ((hw->super.cap & (NFP_NET_CFG_CTRL_TXVLAN | NFP_NET_CFG_CTRL_TXVLAN_V2)) != 0)
 		dev_info->tx_offload_capa = RTE_ETH_TX_OFFLOAD_VLAN_INSERT;
 
-	if ((hw->cap & NFP_NET_CFG_CTRL_TXCSUM) != 0)
+	if ((hw->super.cap & NFP_NET_CFG_CTRL_TXCSUM) != 0)
 		dev_info->tx_offload_capa |= RTE_ETH_TX_OFFLOAD_IPV4_CKSUM |
 				RTE_ETH_TX_OFFLOAD_UDP_CKSUM |
 				RTE_ETH_TX_OFFLOAD_TCP_CKSUM;
 
-	if ((hw->cap & NFP_NET_CFG_CTRL_LSO_ANY) != 0) {
+	if ((hw->super.cap & NFP_NET_CFG_CTRL_LSO_ANY) != 0) {
 		dev_info->tx_offload_capa |= RTE_ETH_TX_OFFLOAD_TCP_TSO;
-		if ((hw->cap & NFP_NET_CFG_CTRL_VXLAN) != 0)
+		if ((hw->super.cap & NFP_NET_CFG_CTRL_VXLAN) != 0)
 			dev_info->tx_offload_capa |= RTE_ETH_TX_OFFLOAD_VXLAN_TNL_TSO;
 	}
 
-	if ((hw->cap & NFP_NET_CFG_CTRL_GATHER) != 0)
+	if ((hw->super.cap & NFP_NET_CFG_CTRL_GATHER) != 0)
 		dev_info->tx_offload_capa |= RTE_ETH_TX_OFFLOAD_MULTI_SEGS;
 
-	cap_extend = hw->cap_ext;
+	cap_extend = hw->super.cap_ext;
 	if ((cap_extend & NFP_NET_CFG_CTRL_IPSEC) != 0) {
 		dev_info->tx_offload_capa |= RTE_ETH_TX_OFFLOAD_SECURITY;
 		dev_info->rx_offload_capa |= RTE_ETH_RX_OFFLOAD_SECURITY;
@@ -1281,7 +1283,7 @@ nfp_net_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 		.nb_mtu_seg_max = NFP_TX_MAX_MTU_SEG,
 	};
 
-	if ((hw->cap & NFP_NET_CFG_CTRL_RSS_ANY) != 0) {
+	if ((hw->super.cap & NFP_NET_CFG_CTRL_RSS_ANY) != 0) {
 		dev_info->rx_offload_capa |= RTE_ETH_RX_OFFLOAD_RSS_HASH;
 
 		dev_info->flow_type_rss_offloads = RTE_ETH_RSS_IPV4 |
@@ -1334,8 +1336,8 @@ nfp_net_common_init(struct rte_pci_device *pci_dev,
 		return -ENODEV;
 
 	/* Get some of the read-only fields from the config BAR */
-	hw->cap = nn_cfg_readl(hw, NFP_NET_CFG_CAP);
-	hw->cap_ext = nn_cfg_readl(hw, NFP_NET_CFG_CAP_WORD1);
+	hw->super.cap = nn_cfg_readl(hw, NFP_NET_CFG_CAP);
+	hw->super.cap_ext = nn_cfg_readl(hw, NFP_NET_CFG_CAP_WORD1);
 	hw->max_mtu = nn_cfg_readl(hw, NFP_NET_CFG_MAX_MTU);
 	hw->flbufsz = DEFAULT_FLBUF_SIZE;
 
@@ -1394,7 +1396,7 @@ nfp_net_supported_ptypes_get(struct rte_eth_dev *dev)
 		return NULL;
 
 	net_hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	if ((net_hw->cap_ext & NFP_NET_CFG_CTRL_PKT_TYPE) == 0)
+	if ((net_hw->super.cap_ext & NFP_NET_CFG_CTRL_PKT_TYPE) == 0)
 		return NULL;
 
 	return ptypes;
@@ -2054,14 +2056,14 @@ nfp_net_init_metadata_format(struct nfp_net_hw *hw)
 	 */
 	if (hw->ver.major == 4) {
 		hw->meta_format = NFP_NET_METAFORMAT_CHAINED;
-	} else if ((hw->cap & NFP_NET_CFG_CTRL_CHAIN_META) != 0) {
+	} else if ((hw->super.cap & NFP_NET_CFG_CTRL_CHAIN_META) != 0) {
 		hw->meta_format = NFP_NET_METAFORMAT_CHAINED;
 		/*
-		 * RSS is incompatible with chained metadata. hw->cap just represents
+		 * RSS is incompatible with chained metadata. hw->super.cap just represents
 		 * firmware's ability rather than the firmware's configuration. We decide
-		 * to reduce the confusion to allow us can use hw->cap to identify RSS later.
+		 * to reduce the confusion to allow us can use hw->super.cap to identify RSS later.
 		 */
-		hw->cap &= ~NFP_NET_CFG_CTRL_RSS;
+		hw->super.cap &= ~NFP_NET_CFG_CTRL_RSS;
 	} else {
 		hw->meta_format = NFP_NET_METAFORMAT_SINGLE;
 	}

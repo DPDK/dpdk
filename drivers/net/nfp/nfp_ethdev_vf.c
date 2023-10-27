@@ -86,7 +86,7 @@ nfp_netvf_start(struct rte_eth_dev *dev)
 	if ((rxmode->mq_mode & RTE_ETH_MQ_RX_RSS) != 0) {
 		nfp_net_rss_config_default(dev);
 		update |= NFP_NET_CFG_UPDATE_RSS;
-		new_ctrl |= nfp_net_cfg_ctrl_rss(hw->cap);
+		new_ctrl |= nfp_net_cfg_ctrl_rss(hw->super.cap);
 	}
 
 	/* Enable device */
@@ -94,7 +94,7 @@ nfp_netvf_start(struct rte_eth_dev *dev)
 
 	update |= NFP_NET_CFG_UPDATE_GEN | NFP_NET_CFG_UPDATE_RING;
 
-	if ((hw->cap & NFP_NET_CFG_CTRL_RINGCFG) != 0)
+	if ((hw->super.cap & NFP_NET_CFG_CTRL_RINGCFG) != 0)
 		new_ctrl |= NFP_NET_CFG_CTRL_RINGCFG;
 
 	nn_cfg_writel(hw, NFP_NET_CFG_CTRL, new_ctrl);
@@ -314,8 +314,8 @@ nfp_netvf_init(struct rte_eth_dev *eth_dev)
 	hw->mtu = RTE_ETHER_MTU;
 
 	/* VLAN insertion is incompatible with LSOv2 */
-	if ((hw->cap & NFP_NET_CFG_CTRL_LSO2) != 0)
-		hw->cap &= ~NFP_NET_CFG_CTRL_TXVLAN;
+	if ((hw->super.cap & NFP_NET_CFG_CTRL_LSO2) != 0)
+		hw->super.cap &= ~NFP_NET_CFG_CTRL_TXVLAN;
 
 	nfp_net_log_device_information(hw);
 
@@ -341,7 +341,7 @@ nfp_netvf_init(struct rte_eth_dev *eth_dev)
 	/* Copying mac address to DPDK eth_dev struct */
 	rte_ether_addr_copy(&hw->mac_addr, eth_dev->data->mac_addrs);
 
-	if ((hw->cap & NFP_NET_CFG_CTRL_LIVE_ADDR) == 0)
+	if ((hw->super.cap & NFP_NET_CFG_CTRL_LIVE_ADDR) == 0)
 		eth_dev->data->dev_flags |= RTE_ETH_DEV_NOLIVE_MAC_ADDR;
 
 	eth_dev->data->dev_flags |= RTE_ETH_DEV_AUTOFILL_QUEUE_XSTATS;

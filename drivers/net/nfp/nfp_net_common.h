@@ -112,7 +112,15 @@ struct nfp_app_fw_nic {
 	uint8_t total_phyports;
 };
 
+struct nfp_hw {
+	uint32_t cap;
+	uint32_t cap_ext;
+};
+
 struct nfp_net_hw {
+	/** The parent class */
+	struct nfp_hw super;
+
 	/** Backpointer to the PF this port belongs to */
 	struct nfp_pf_dev *pf_dev;
 
@@ -120,9 +128,7 @@ struct nfp_net_hw {
 	struct rte_eth_dev *eth_dev;
 
 	/** Info from the firmware */
-	uint32_t cap_ext;
 	struct nfp_net_fw_ver ver;
-	uint32_t cap;
 	uint32_t max_mtu;
 	uint32_t mtu;
 	uint32_t rx_offset;

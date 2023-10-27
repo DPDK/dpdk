@@ -30,7 +30,7 @@ nfp_net_nfd3_tx_tso(struct nfp_net_txq *txq,
 	uint64_t ol_flags;
 	struct nfp_net_hw *hw = txq->hw;
 
-	if ((hw->cap & NFP_NET_CFG_CTRL_LSO_ANY) == 0)
+	if ((hw->super.cap & NFP_NET_CFG_CTRL_LSO_ANY) == 0)
 		goto clean_txd;
 
 	ol_flags = mb->ol_flags;
@@ -69,7 +69,7 @@ nfp_net_nfd3_tx_cksum(struct nfp_net_txq *txq,
 	uint64_t ol_flags;
 	struct nfp_net_hw *hw = txq->hw;
 
-	if ((hw->cap & NFP_NET_CFG_CTRL_TXCSUM) == 0)
+	if ((hw->super.cap & NFP_NET_CFG_CTRL_TXCSUM) == 0)
 		return;
 
 	ol_flags = mb->ol_flags;
@@ -127,8 +127,8 @@ nfp_net_nfd3_tx_vlan(struct nfp_net_txq *txq,
 {
 	struct nfp_net_hw *hw = txq->hw;
 
-	if ((hw->cap & NFP_NET_CFG_CTRL_TXVLAN_V2) != 0 ||
-			(hw->cap & NFP_NET_CFG_CTRL_TXVLAN) == 0)
+	if ((hw->super.cap & NFP_NET_CFG_CTRL_TXVLAN_V2) != 0 ||
+			(hw->super.cap & NFP_NET_CFG_CTRL_TXVLAN) == 0)
 		return;
 
 	if ((mb->ol_flags & RTE_MBUF_F_TX_VLAN) != 0) {
@@ -151,7 +151,7 @@ nfp_net_nfd3_set_meta_data(struct nfp_net_meta_raw *meta_data,
 	uint8_t ipsec_layer = 0;
 
 	hw = txq->hw;
-	cap_extend = hw->cap_ext;
+	cap_extend = hw->super.cap_ext;
 
 	if ((pkt->ol_flags & RTE_MBUF_F_TX_VLAN) != 0 &&
 			(hw->ctrl & NFP_NET_CFG_CTRL_TXVLAN_V2) != 0) {
@@ -278,7 +278,7 @@ nfp_net_nfd3_xmit_pkts_common(void *tx_queue,
 		}
 
 		if (unlikely(pkt->nb_segs > 1 &&
-				(hw->cap & NFP_NET_CFG_CTRL_GATHER) == 0)) {
+				(hw->super.cap & NFP_NET_CFG_CTRL_GATHER) == 0)) {
 			PMD_TX_LOG(ERR, "Multisegment packet not supported");
 			goto xmit_end;
 		}

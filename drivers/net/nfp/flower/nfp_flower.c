@@ -65,7 +65,7 @@ nfp_pf_repr_disable_queues(struct rte_eth_dev *dev)
 	update = NFP_NET_CFG_UPDATE_GEN | NFP_NET_CFG_UPDATE_RING |
 			NFP_NET_CFG_UPDATE_MSIX;
 
-	if (hw->cap & NFP_NET_CFG_CTRL_RINGCFG)
+	if (hw->super.cap & NFP_NET_CFG_CTRL_RINGCFG)
 		new_ctrl &= ~NFP_NET_CFG_CTRL_RINGCFG;
 
 	/* If an error when reconfig we avoid to change hw state */
@@ -101,7 +101,7 @@ nfp_flower_pf_start(struct rte_eth_dev *dev)
 
 	update |= NFP_NET_CFG_UPDATE_RSS;
 
-	if ((hw->cap & NFP_NET_CFG_CTRL_RSS2) != 0)
+	if ((hw->super.cap & NFP_NET_CFG_CTRL_RSS2) != 0)
 		new_ctrl |= NFP_NET_CFG_CTRL_RSS2;
 	else
 		new_ctrl |= NFP_NET_CFG_CTRL_RSS;
@@ -111,7 +111,7 @@ nfp_flower_pf_start(struct rte_eth_dev *dev)
 
 	update |= NFP_NET_CFG_UPDATE_GEN | NFP_NET_CFG_UPDATE_RING;
 
-	if ((hw->cap & NFP_NET_CFG_CTRL_RINGCFG) != 0)
+	if ((hw->super.cap & NFP_NET_CFG_CTRL_RINGCFG) != 0)
 		new_ctrl |= NFP_NET_CFG_CTRL_RINGCFG;
 
 	nn_cfg_writel(hw, NFP_NET_CFG_CTRL, new_ctrl);
