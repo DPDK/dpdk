@@ -7,6 +7,7 @@
 
 #include <nfp_common_pci.h>
 #include <nfp_dev.h>
+#include <rte_vfio.h>
 #include <vdpa_driver.h>
 
 #include "nfp_vdpa_log.h"
@@ -16,6 +17,11 @@
 struct nfp_vdpa_dev {
 	struct rte_pci_device *pci_dev;
 	struct rte_vdpa_device *vdev;
+
+	int vfio_container_fd;
+	int vfio_group_fd;
+	int vfio_dev_fd;
+	int iommu_group;
 };
 
 struct nfp_vdpa_dev_node {
@@ -53,12 +59,62 @@ nfp_vdpa_find_node_by_pdev(struct rte_pci_device *pdev)
 	return NULL;
 }
 
+static int
+nfp_vdpa_vfio_setup(struct nfp_vdpa_dev *device)
+{
+	int ret;
+	char dev_name[RTE_DEV_NAME_MAX_LEN] = {0};
+	struct rte_pci_device *pci_dev = device->pci_dev;
+
+	rte_pci_unmap_device(pci_dev);
+
+	rte_pci_device_name(&pci_dev->addr, dev_name, RTE_DEV_NAME_MAX_LEN);
+	rte_vfio_get_group_num(rte_pci_get_sysfs_path(), dev_name,
+			&device->iommu_group);
+
+	device->vfio_container_fd = rte_vfio_container_create();
+	if (device->vfio_container_fd < 0)
+		return -1;
+
+	device->vfio_group_fd = rte_vfio_container_group_bind(
+			device->vfio_container_fd, device->iommu_group);
+	if (device->vfio_group_fd < 0)
+		goto container_destroy;
+
+	DRV_VDPA_LOG(DEBUG, "container_fd=%d, group_fd=%d,\n",
+			device->vfio_container_fd, device->vfio_group_fd);
+
+	ret = rte_pci_map_device(pci_dev);
+	if (ret != 0)
+		goto group_unbind;
+
+	device->vfio_dev_fd = rte_intr_dev_fd_get(pci_dev->intr_handle);
+
+	return 0;
+
+group_unbind:
+	rte_vfio_container_group_unbind(device->vfio_container_fd, device->iommu_group);
+container_destroy:
+	rte_vfio_container_destroy(device->vfio_container_fd);
+
+	return -1;
+}
+
+static void
+nfp_vdpa_vfio_teardown(struct nfp_vdpa_dev *device)
+{
+	rte_pci_unmap_device(device->pci_dev);
+	rte_vfio_container_group_unbind(device->vfio_container_fd, device->iommu_group);
+	rte_vfio_container_destroy(device->vfio_container_fd);
+}
+
 struct rte_vdpa_dev_ops nfp_vdpa_ops = {
 };
 
 static int
 nfp_vdpa_pci_probe(struct rte_pci_device *pci_dev)
 {
+	int ret;
 	struct nfp_vdpa_dev *device;
 	struct nfp_vdpa_dev_node *node;
 
@@ -75,10 +131,14 @@ nfp_vdpa_pci_probe(struct rte_pci_device *pci_dev)
 
 	device->pci_dev = pci_dev;
 
+	ret = nfp_vdpa_vfio_setup(device);
+	if (ret != 0)
+		goto free_device;
+
 	device->vdev = rte_vdpa_register_device(&pci_dev->device, &nfp_vdpa_ops);
 	if (device->vdev == NULL) {
 		DRV_VDPA_LOG(ERR, "Failed to register device %s", pci_dev->name);
-		goto free_device;
+		goto vfio_teardown;
 	}
 
 	node->device = device;
@@ -88,6 +148,8 @@ nfp_vdpa_pci_probe(struct rte_pci_device *pci_dev)
 
 	return 0;
 
+vfio_teardown:
+	nfp_vdpa_vfio_teardown(device);
 free_device:
 	free(device);
 free_node:
@@ -118,6 +180,7 @@ nfp_vdpa_pci_remove(struct rte_pci_device *pci_dev)
 	pthread_mutex_unlock(&vdpa_list_lock);
 
 	rte_vdpa_unregister_device(device->vdev);
+	nfp_vdpa_vfio_teardown(device);
 
 	free(device);
 	free(node);
