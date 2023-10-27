@@ -1,0 +1,7 @@
+INTERNAL {
+	global:
+
+	nfp_class_driver_register;
+
+	local: *;
+};

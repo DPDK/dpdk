@@ -900,6 +900,7 @@ F: doc/guides/nics/features/nfb.ini
 
 Netronome nfp
 M: Chaoyong He <chaoyong.he@corigine.com>
+F: drivers/common/nfp/
 F: drivers/net/nfp/
 F: doc/guides/nics/nfp.rst
 F: doc/guides/nics/features/nfp*.ini
