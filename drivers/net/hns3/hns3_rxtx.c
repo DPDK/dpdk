@@ -1788,6 +1788,12 @@ hns3_rx_queue_conf_check(struct hns3_hw *hw, const struct rte_eth_rxconf *conf,
 		return -EINVAL;
 	}
 
+	if (conf->rx_free_thresh >= nb_desc) {
+		hns3_err(hw, "rx_free_thresh (%u) must be less than %u",
+			 conf->rx_free_thresh, nb_desc);
+		return -EINVAL;
+	}
+
 	if (conf->rx_drop_en == 0)
 		hns3_warn(hw, "if no descriptors available, packets are always "
 			  "dropped and rx_drop_en (1) is fixed on");
