@@ -327,54 +327,22 @@ nfp_net_enable_rxvlan_cap(struct nfp_net_hw *hw,
 void
 nfp_net_enable_queues(struct rte_eth_dev *dev)
 {
-	uint16_t i;
 	struct nfp_net_hw *hw;
-	uint64_t enabled_queues;
 
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
-	/* Enabling the required TX queues in the device */
-	enabled_queues = 0;
-	for (i = 0; i < dev->data->nb_tx_queues; i++)
-		enabled_queues |= (1 << i);
-
-	nn_cfg_writeq(&hw->super, NFP_NET_CFG_TXRS_ENABLE, enabled_queues);
-
-	/* Enabling the required RX queues in the device */
-	enabled_queues = 0;
-	for (i = 0; i < dev->data->nb_rx_queues; i++)
-		enabled_queues |= (1 << i);
-
-	nn_cfg_writeq(&hw->super, NFP_NET_CFG_RXRS_ENABLE, enabled_queues);
+	nfp_enable_queues(&hw->super, dev->data->nb_rx_queues,
+			dev->data->nb_tx_queues);
 }
 
 void
 nfp_net_disable_queues(struct rte_eth_dev *dev)
 {
-	uint32_t update;
-	uint32_t new_ctrl;
-	struct nfp_hw *hw;
 	struct nfp_net_hw *net_hw;
 
 	net_hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	hw = &net_hw->super;
 
-	nn_cfg_writeq(hw, NFP_NET_CFG_TXRS_ENABLE, 0);
-	nn_cfg_writeq(hw, NFP_NET_CFG_RXRS_ENABLE, 0);
-
-	new_ctrl = hw->ctrl & ~NFP_NET_CFG_CTRL_ENABLE;
-	update = NFP_NET_CFG_UPDATE_GEN |
-			NFP_NET_CFG_UPDATE_RING |
-			NFP_NET_CFG_UPDATE_MSIX;
-
-	if ((hw->cap & NFP_NET_CFG_CTRL_RINGCFG) != 0)
-		new_ctrl &= ~NFP_NET_CFG_CTRL_RINGCFG;
-
-	/* If an error when reconfig we avoid to change hw state */
-	if (nfp_reconfig(hw, new_ctrl, update) != 0)
-		return;
-
-	hw->ctrl = new_ctrl;
+	nfp_disable_queues(&net_hw->super);
 }
 
 void

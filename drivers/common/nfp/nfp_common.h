@@ -229,4 +229,11 @@ void nfp_read_mac(struct nfp_hw *hw);
 __rte_internal
 void nfp_write_mac(struct nfp_hw *hw, uint8_t *mac);
 
+__rte_internal
+void nfp_enable_queues(struct nfp_hw *hw, uint16_t nb_rx_queues,
+		uint16_t nb_tx_queues);
+
+__rte_internal
+void nfp_disable_queues(struct nfp_hw *hw);
+
 #endif/* __NFP_COMMON_H__ */

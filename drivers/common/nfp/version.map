@@ -8,6 +8,8 @@ INTERNAL {
 	nfp_reconfig_real;
 	nfp_read_mac;
 	nfp_write_mac;
+	nfp_enable_queues;
+	nfp_disable_queues;
 
 	local: *;
 };

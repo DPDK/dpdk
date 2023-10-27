@@ -175,3 +175,52 @@ nfp_write_mac(struct nfp_hw *hw,
 	nn_writew(rte_cpu_to_be_16(mac1),
 			hw->ctrl_bar + NFP_NET_CFG_MACADDR + 6);
 }
+
+void
+nfp_enable_queues(struct nfp_hw *hw,
+		uint16_t nb_rx_queues,
+		uint16_t nb_tx_queues)
+{
+	int i;
+	uint64_t enabled_queues;
+
+	/* Enabling the required TX queues in the device */
+	enabled_queues = 0;
+	for (i = 0; i < nb_tx_queues; i++)
+		enabled_queues |= (1 << i);
+
+	nn_cfg_writeq(hw, NFP_NET_CFG_TXRS_ENABLE, enabled_queues);
+
+	/* Enabling the required RX queues in the device */
+	enabled_queues = 0;
+	for (i = 0; i < nb_rx_queues; i++)
+		enabled_queues |= (1 << i);
+
+	nn_cfg_writeq(hw, NFP_NET_CFG_RXRS_ENABLE, enabled_queues);
+}
+
+void
+nfp_disable_queues(struct nfp_hw *hw)
+{
+	int ret;
+	uint32_t update;
+	uint32_t new_ctrl;
+
+	nn_cfg_writeq(hw, NFP_NET_CFG_TXRS_ENABLE, 0);
+	nn_cfg_writeq(hw, NFP_NET_CFG_RXRS_ENABLE, 0);
+
+	new_ctrl = hw->ctrl & ~NFP_NET_CFG_CTRL_ENABLE;
+	update = NFP_NET_CFG_UPDATE_GEN |
+			NFP_NET_CFG_UPDATE_RING |
+			NFP_NET_CFG_UPDATE_MSIX;
+
+	if ((hw->cap & NFP_NET_CFG_CTRL_RINGCFG) != 0)
+		new_ctrl &= ~NFP_NET_CFG_CTRL_RINGCFG;
+
+	/* If an error when reconfig we avoid to change hw state */
+	ret = nfp_reconfig(hw, new_ctrl, update);
+	if (ret < 0)
+		return;
+
+	hw->ctrl = new_ctrl;
+}
