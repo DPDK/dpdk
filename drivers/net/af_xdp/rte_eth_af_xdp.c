@@ -2399,7 +2399,7 @@ rte_pmd_af_xdp_probe(struct rte_vdev_device *dev)
 
 		snprintf(numa_path, sizeof(numa_path), "/sys/class/net/%s/device/numa_node",
 			 if_name);
-		if (eal_parse_sysfs_value(numa_path, &numa) != 0)
+		if (access(numa_path, R_OK) != 0 || eal_parse_sysfs_value(numa_path, &numa) != 0)
 			dev->device.numa_node = rte_socket_id();
 		else
 			dev->device.numa_node = numa;
