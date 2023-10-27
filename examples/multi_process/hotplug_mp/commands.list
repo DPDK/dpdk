@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright(c) 2023 Intel Corporation
+#
+attach <STRING>devargs     # attach a device
+detach <STRING>devargs     # detach a device
+list                       # list all devices
+help                       # show help
+quit                       # quit

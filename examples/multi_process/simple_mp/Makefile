@@ -6,6 +6,7 @@ APP = simple_mp
 
 # all source are stored in SRCS-y
 SRCS-y := main.c mp_commands.c
+SRC-DEPS := build/commands.h
 
 PKGCONF ?= pkg-config
 
@@ -22,9 +23,12 @@ static: build/$(APP)-static
 	ln -sf $(APP)-static build/$(APP)
 
 PC_FILE := $(shell $(PKGCONF) --path libdpdk 2>/dev/null)
-CFLAGS += -O3 $(shell $(PKGCONF) --cflags libdpdk)
+CFLAGS += -O3 $(shell $(PKGCONF) --cflags libdpdk) -I build/
 LDFLAGS_SHARED = $(shell $(PKGCONF) --libs libdpdk)
 LDFLAGS_STATIC = $(shell $(PKGCONF) --static --libs libdpdk)
+
+build/commands.h: commands.list Makefile
+	dpdk-cmdline-gen.py -o $@ --context-name=simple_mp_ctx $<
 
 ifeq ($(MAKECMDGOALS),static)
 # check for broken pkg-config
@@ -36,10 +40,10 @@ endif
 
 CFLAGS += -DALLOW_EXPERIMENTAL_API
 
-build/$(APP)-shared: $(SRCS-y) Makefile $(PC_FILE) | build
+build/$(APP)-shared: $(SRCS-y) Makefile $(PC_FILE) | build $(SRC-DEPS)
 	$(CC) $(CFLAGS) $(SRCS-y) -o $@ $(LDFLAGS) $(LDFLAGS_SHARED)
 
-build/$(APP)-static: $(SRCS-y) Makefile $(PC_FILE) | build
+build/$(APP)-static: $(SRCS-y) Makefile $(PC_FILE) | build $(SRC-DEPS)
 	$(CC) $(CFLAGS) $(SRCS-y) -o $@ $(LDFLAGS) $(LDFLAGS_STATIC)
 
 build:
@@ -47,5 +51,5 @@ build:
 
 .PHONY: clean
 clean:
-	rm -f build/$(APP) build/$(APP)-static build/$(APP)-shared
+	rm -f build/$(APP) build/$(APP)-static build/$(APP)-shared build/*.h
 	test -d build && rmdir -p build || true
