@@ -925,8 +925,8 @@ nfp_net_rx_queue_setup(struct rte_eth_dev *dev,
 	 * Telling the HW about the physical address of the RX ring and number
 	 * of descriptors in log2 format.
 	 */
-	nn_cfg_writeq(hw, NFP_NET_CFG_RXR_ADDR(queue_idx), rxq->dma);
-	nn_cfg_writeb(hw, NFP_NET_CFG_RXR_SZ(queue_idx), rte_log2_u32(nb_desc));
+	nn_cfg_writeq(&hw->super, NFP_NET_CFG_RXR_ADDR(queue_idx), rxq->dma);
+	nn_cfg_writeb(&hw->super, NFP_NET_CFG_RXR_SZ(queue_idx), rte_log2_u32(nb_desc));
 
 	return 0;
 }

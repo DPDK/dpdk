@@ -182,7 +182,8 @@ nfp_net_notify_port_speed(struct nfp_net_hw *hw,
 	 * NFP_NET_CFG_STS_NSP_LINK_RATE.
 	 */
 	if (link->link_status == RTE_ETH_LINK_DOWN) {
-		nn_cfg_writew(hw, NFP_NET_CFG_STS_NSP_LINK_RATE, NFP_NET_CFG_STS_LINK_RATE_UNKNOWN);
+		nn_cfg_writew(&hw->super, NFP_NET_CFG_STS_NSP_LINK_RATE,
+				NFP_NET_CFG_STS_LINK_RATE_UNKNOWN);
 		return;
 	}
 
@@ -190,7 +191,7 @@ nfp_net_notify_port_speed(struct nfp_net_hw *hw,
 	 * Link is up so write the link speed from the eth_table to
 	 * NFP_NET_CFG_STS_NSP_LINK_RATE.
 	 */
-	nn_cfg_writew(hw, NFP_NET_CFG_STS_NSP_LINK_RATE,
+	nn_cfg_writew(&hw->super, NFP_NET_CFG_STS_NSP_LINK_RATE,
 			nfp_net_link_speed_rte2nfp(link->link_speed));
 }
 
@@ -222,7 +223,7 @@ __nfp_net_reconfig(struct nfp_net_hw *hw,
 
 	/* Poll update field, waiting for NFP to ack the config */
 	for (cnt = 0; ; cnt++) {
-		new = nn_cfg_readl(hw, NFP_NET_CFG_UPDATE);
+		new = nn_cfg_readl(&hw->super, NFP_NET_CFG_UPDATE);
 		if (new == 0)
 			break;
 
@@ -270,8 +271,8 @@ nfp_net_reconfig(struct nfp_net_hw *hw,
 
 	rte_spinlock_lock(&hw->reconfig_lock);
 
-	nn_cfg_writel(hw, NFP_NET_CFG_CTRL, ctrl);
-	nn_cfg_writel(hw, NFP_NET_CFG_UPDATE, update);
+	nn_cfg_writel(&hw->super, NFP_NET_CFG_CTRL, ctrl);
+	nn_cfg_writel(&hw->super, NFP_NET_CFG_UPDATE, update);
 
 	rte_wmb();
 
@@ -314,8 +315,8 @@ nfp_net_ext_reconfig(struct nfp_net_hw *hw,
 
 	rte_spinlock_lock(&hw->reconfig_lock);
 
-	nn_cfg_writel(hw, NFP_NET_CFG_CTRL_WORD1, ctrl_ext);
-	nn_cfg_writel(hw, NFP_NET_CFG_UPDATE, update);
+	nn_cfg_writel(&hw->super, NFP_NET_CFG_CTRL_WORD1, ctrl_ext);
+	nn_cfg_writel(&hw->super, NFP_NET_CFG_UPDATE, update);
 
 	rte_wmb();
 
@@ -355,8 +356,8 @@ nfp_net_mbox_reconfig(struct nfp_net_hw *hw,
 
 	rte_spinlock_lock(&hw->reconfig_lock);
 
-	nn_cfg_writeq(hw, mbox + NFP_NET_CFG_MBOX_SIMPLE_CMD, mbox_cmd);
-	nn_cfg_writel(hw, NFP_NET_CFG_UPDATE, NFP_NET_CFG_UPDATE_MBOX);
+	nn_cfg_writeq(&hw->super, mbox + NFP_NET_CFG_MBOX_SIMPLE_CMD, mbox_cmd);
+	nn_cfg_writel(&hw->super, NFP_NET_CFG_UPDATE, NFP_NET_CFG_UPDATE_MBOX);
 
 	rte_wmb();
 
@@ -370,7 +371,7 @@ nfp_net_mbox_reconfig(struct nfp_net_hw *hw,
 		return -EIO;
 	}
 
-	return nn_cfg_readl(hw, mbox + NFP_NET_CFG_MBOX_SIMPLE_RET);
+	return nn_cfg_readl(&hw->super, mbox + NFP_NET_CFG_MBOX_SIMPLE_RET);
 }
 
 /*
@@ -478,14 +479,14 @@ nfp_net_enable_queues(struct rte_eth_dev *dev)
 	for (i = 0; i < dev->data->nb_tx_queues; i++)
 		enabled_queues |= (1 << i);
 
-	nn_cfg_writeq(hw, NFP_NET_CFG_TXRS_ENABLE, enabled_queues);
+	nn_cfg_writeq(&hw->super, NFP_NET_CFG_TXRS_ENABLE, enabled_queues);
 
 	/* Enabling the required RX queues in the device */
 	enabled_queues = 0;
 	for (i = 0; i < dev->data->nb_rx_queues; i++)
 		enabled_queues |= (1 << i);
 
-	nn_cfg_writeq(hw, NFP_NET_CFG_RXRS_ENABLE, enabled_queues);
+	nn_cfg_writeq(&hw->super, NFP_NET_CFG_RXRS_ENABLE, enabled_queues);
 }
 
 void
@@ -497,8 +498,8 @@ nfp_net_disable_queues(struct rte_eth_dev *dev)
 
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
-	nn_cfg_writeq(hw, NFP_NET_CFG_TXRS_ENABLE, 0);
-	nn_cfg_writeq(hw, NFP_NET_CFG_RXRS_ENABLE, 0);
+	nn_cfg_writeq(&hw->super, NFP_NET_CFG_TXRS_ENABLE, 0);
+	nn_cfg_writeq(&hw->super, NFP_NET_CFG_RXRS_ENABLE, 0);
 
 	new_ctrl = hw->super.ctrl & ~NFP_NET_CFG_CTRL_ENABLE;
 	update = NFP_NET_CFG_UPDATE_GEN |
@@ -518,8 +519,8 @@ nfp_net_disable_queues(struct rte_eth_dev *dev)
 void
 nfp_net_params_setup(struct nfp_net_hw *hw)
 {
-	nn_cfg_writel(hw, NFP_NET_CFG_MTU, hw->mtu);
-	nn_cfg_writel(hw, NFP_NET_CFG_FLBUFSZ, hw->flbufsz);
+	nn_cfg_writel(&hw->super, NFP_NET_CFG_MTU, hw->mtu);
+	nn_cfg_writel(&hw->super, NFP_NET_CFG_FLBUFSZ, hw->flbufsz);
 }
 
 void
@@ -596,7 +597,7 @@ nfp_configure_rx_interrupt(struct rte_eth_dev *dev,
 	if (rte_intr_type_get(intr_handle) == RTE_INTR_HANDLE_UIO) {
 		PMD_DRV_LOG(INFO, "VF: enabling RX interrupt with UIO");
 		/* UIO just supports one queue and no LSC */
-		nn_cfg_writeb(hw, NFP_NET_CFG_RXR_VEC(0), 0);
+		nn_cfg_writeb(&hw->super, NFP_NET_CFG_RXR_VEC(0), 0);
 		if (rte_intr_vec_list_index_set(intr_handle, 0, 0) != 0)
 			return -1;
 	} else {
@@ -606,7 +607,7 @@ nfp_configure_rx_interrupt(struct rte_eth_dev *dev,
 			 * The first msix vector is reserved for non
 			 * efd interrupts.
 			 */
-			nn_cfg_writeb(hw, NFP_NET_CFG_RXR_VEC(i), i + 1);
+			nn_cfg_writeb(&hw->super, NFP_NET_CFG_RXR_VEC(i), i + 1);
 			if (rte_intr_vec_list_index_set(intr_handle, i, i + 1) != 0)
 				return -1;
 		}
@@ -771,7 +772,7 @@ nfp_net_link_update(struct rte_eth_dev *dev,
 	memset(&link, 0, sizeof(struct rte_eth_link));
 
 	/* Read link status */
-	nn_link_status = nn_cfg_readw(hw, NFP_NET_CFG_STS);
+	nn_link_status = nn_cfg_readw(&hw->super, NFP_NET_CFG_STS);
 	if ((nn_link_status & NFP_NET_CFG_STS_LINK) != 0)
 		link.link_status = RTE_ETH_LINK_UP;
 
@@ -842,12 +843,12 @@ nfp_net_stats_get(struct rte_eth_dev *dev,
 			break;
 
 		nfp_dev_stats.q_ipackets[i] =
-				nn_cfg_readq(hw, NFP_NET_CFG_RXR_STATS(i));
+				nn_cfg_readq(&hw->super, NFP_NET_CFG_RXR_STATS(i));
 		nfp_dev_stats.q_ipackets[i] -=
 				hw->eth_stats_base.q_ipackets[i];
 
 		nfp_dev_stats.q_ibytes[i] =
-				nn_cfg_readq(hw, NFP_NET_CFG_RXR_STATS(i) + 0x8);
+				nn_cfg_readq(&hw->super, NFP_NET_CFG_RXR_STATS(i) + 0x8);
 		nfp_dev_stats.q_ibytes[i] -=
 				hw->eth_stats_base.q_ibytes[i];
 	}
@@ -858,42 +859,42 @@ nfp_net_stats_get(struct rte_eth_dev *dev,
 			break;
 
 		nfp_dev_stats.q_opackets[i] =
-				nn_cfg_readq(hw, NFP_NET_CFG_TXR_STATS(i));
+				nn_cfg_readq(&hw->super, NFP_NET_CFG_TXR_STATS(i));
 		nfp_dev_stats.q_opackets[i] -= hw->eth_stats_base.q_opackets[i];
 
 		nfp_dev_stats.q_obytes[i] =
-				nn_cfg_readq(hw, NFP_NET_CFG_TXR_STATS(i) + 0x8);
+				nn_cfg_readq(&hw->super, NFP_NET_CFG_TXR_STATS(i) + 0x8);
 		nfp_dev_stats.q_obytes[i] -= hw->eth_stats_base.q_obytes[i];
 	}
 
-	nfp_dev_stats.ipackets = nn_cfg_readq(hw, NFP_NET_CFG_STATS_RX_FRAMES);
+	nfp_dev_stats.ipackets = nn_cfg_readq(&hw->super, NFP_NET_CFG_STATS_RX_FRAMES);
 	nfp_dev_stats.ipackets -= hw->eth_stats_base.ipackets;
 
-	nfp_dev_stats.ibytes = nn_cfg_readq(hw, NFP_NET_CFG_STATS_RX_OCTETS);
+	nfp_dev_stats.ibytes = nn_cfg_readq(&hw->super, NFP_NET_CFG_STATS_RX_OCTETS);
 	nfp_dev_stats.ibytes -= hw->eth_stats_base.ibytes;
 
 	nfp_dev_stats.opackets =
-			nn_cfg_readq(hw, NFP_NET_CFG_STATS_TX_FRAMES);
+			nn_cfg_readq(&hw->super, NFP_NET_CFG_STATS_TX_FRAMES);
 	nfp_dev_stats.opackets -= hw->eth_stats_base.opackets;
 
 	nfp_dev_stats.obytes =
-			nn_cfg_readq(hw, NFP_NET_CFG_STATS_TX_OCTETS);
+			nn_cfg_readq(&hw->super, NFP_NET_CFG_STATS_TX_OCTETS);
 	nfp_dev_stats.obytes -= hw->eth_stats_base.obytes;
 
 	/* Reading general device stats */
 	nfp_dev_stats.ierrors =
-			nn_cfg_readq(hw, NFP_NET_CFG_STATS_RX_ERRORS);
+			nn_cfg_readq(&hw->super, NFP_NET_CFG_STATS_RX_ERRORS);
 	nfp_dev_stats.ierrors -= hw->eth_stats_base.ierrors;
 
 	nfp_dev_stats.oerrors =
-			nn_cfg_readq(hw, NFP_NET_CFG_STATS_TX_ERRORS);
+			nn_cfg_readq(&hw->super, NFP_NET_CFG_STATS_TX_ERRORS);
 	nfp_dev_stats.oerrors -= hw->eth_stats_base.oerrors;
 
 	/* RX ring mbuf allocation failures */
 	nfp_dev_stats.rx_nombuf = dev->data->rx_mbuf_alloc_failed;
 
 	nfp_dev_stats.imissed =
-			nn_cfg_readq(hw, NFP_NET_CFG_STATS_RX_DISCARDS);
+			nn_cfg_readq(&hw->super, NFP_NET_CFG_STATS_RX_DISCARDS);
 	nfp_dev_stats.imissed -= hw->eth_stats_base.imissed;
 
 	memcpy(stats, &nfp_dev_stats, sizeof(*stats));
@@ -918,10 +919,10 @@ nfp_net_stats_reset(struct rte_eth_dev *dev)
 			break;
 
 		hw->eth_stats_base.q_ipackets[i] =
-				nn_cfg_readq(hw, NFP_NET_CFG_RXR_STATS(i));
+				nn_cfg_readq(&hw->super, NFP_NET_CFG_RXR_STATS(i));
 
 		hw->eth_stats_base.q_ibytes[i] =
-				nn_cfg_readq(hw, NFP_NET_CFG_RXR_STATS(i) + 0x8);
+				nn_cfg_readq(&hw->super, NFP_NET_CFG_RXR_STATS(i) + 0x8);
 	}
 
 	/* Reading per TX ring stats */
@@ -930,36 +931,36 @@ nfp_net_stats_reset(struct rte_eth_dev *dev)
 			break;
 
 		hw->eth_stats_base.q_opackets[i] =
-				nn_cfg_readq(hw, NFP_NET_CFG_TXR_STATS(i));
+				nn_cfg_readq(&hw->super, NFP_NET_CFG_TXR_STATS(i));
 
 		hw->eth_stats_base.q_obytes[i] =
-				nn_cfg_readq(hw, NFP_NET_CFG_TXR_STATS(i) + 0x8);
+				nn_cfg_readq(&hw->super, NFP_NET_CFG_TXR_STATS(i) + 0x8);
 	}
 
 	hw->eth_stats_base.ipackets =
-			nn_cfg_readq(hw, NFP_NET_CFG_STATS_RX_FRAMES);
+			nn_cfg_readq(&hw->super, NFP_NET_CFG_STATS_RX_FRAMES);
 
 	hw->eth_stats_base.ibytes =
-			nn_cfg_readq(hw, NFP_NET_CFG_STATS_RX_OCTETS);
+			nn_cfg_readq(&hw->super, NFP_NET_CFG_STATS_RX_OCTETS);
 
 	hw->eth_stats_base.opackets =
-			nn_cfg_readq(hw, NFP_NET_CFG_STATS_TX_FRAMES);
+			nn_cfg_readq(&hw->super, NFP_NET_CFG_STATS_TX_FRAMES);
 
 	hw->eth_stats_base.obytes =
-			nn_cfg_readq(hw, NFP_NET_CFG_STATS_TX_OCTETS);
+			nn_cfg_readq(&hw->super, NFP_NET_CFG_STATS_TX_OCTETS);
 
 	/* Reading general device stats */
 	hw->eth_stats_base.ierrors =
-			nn_cfg_readq(hw, NFP_NET_CFG_STATS_RX_ERRORS);
+			nn_cfg_readq(&hw->super, NFP_NET_CFG_STATS_RX_ERRORS);
 
 	hw->eth_stats_base.oerrors =
-			nn_cfg_readq(hw, NFP_NET_CFG_STATS_TX_ERRORS);
+			nn_cfg_readq(&hw->super, NFP_NET_CFG_STATS_TX_ERRORS);
 
 	/* RX ring mbuf allocation failures */
 	dev->data->rx_mbuf_alloc_failed = 0;
 
 	hw->eth_stats_base.imissed =
-			nn_cfg_readq(hw, NFP_NET_CFG_STATS_RX_DISCARDS);
+			nn_cfg_readq(&hw->super, NFP_NET_CFG_STATS_RX_DISCARDS);
 
 	return 0;
 }
@@ -1012,7 +1013,7 @@ nfp_net_xstats_value(const struct rte_eth_dev *dev,
 	if (xstat.group == NFP_XSTAT_GROUP_MAC)
 		value = nn_readq(hw->mac_stats + xstat.offset);
 	else
-		value = nn_cfg_readq(hw, xstat.offset);
+		value = nn_cfg_readq(&hw->super, xstat.offset);
 
 	if (raw)
 		return value;
@@ -1320,8 +1321,8 @@ nfp_net_common_init(struct rte_pci_device *pci_dev,
 	hw->subsystem_device_id = pci_dev->id.subsystem_device_id;
 	hw->subsystem_vendor_id = pci_dev->id.subsystem_vendor_id;
 
-	hw->max_rx_queues = nn_cfg_readl(hw, NFP_NET_CFG_MAX_RXRINGS);
-	hw->max_tx_queues = nn_cfg_readl(hw, NFP_NET_CFG_MAX_TXRINGS);
+	hw->max_rx_queues = nn_cfg_readl(&hw->super, NFP_NET_CFG_MAX_RXRINGS);
+	hw->max_tx_queues = nn_cfg_readl(&hw->super, NFP_NET_CFG_MAX_TXRINGS);
 	if (hw->max_rx_queues == 0 || hw->max_tx_queues == 0) {
 		PMD_INIT_LOG(ERR, "Device %s can not be used, there are no valid queue "
 				"pairs for use", pci_dev->name);
@@ -1336,9 +1337,9 @@ nfp_net_common_init(struct rte_pci_device *pci_dev,
 		return -ENODEV;
 
 	/* Get some of the read-only fields from the config BAR */
-	hw->super.cap = nn_cfg_readl(hw, NFP_NET_CFG_CAP);
-	hw->super.cap_ext = nn_cfg_readl(hw, NFP_NET_CFG_CAP_WORD1);
-	hw->max_mtu = nn_cfg_readl(hw, NFP_NET_CFG_MAX_MTU);
+	hw->super.cap = nn_cfg_readl(&hw->super, NFP_NET_CFG_CAP);
+	hw->super.cap_ext = nn_cfg_readl(&hw->super, NFP_NET_CFG_CAP_WORD1);
+	hw->max_mtu = nn_cfg_readl(&hw->super, NFP_NET_CFG_MAX_MTU);
 	hw->flbufsz = DEFAULT_FLBUF_SIZE;
 
 	nfp_net_init_metadata_format(hw);
@@ -1347,7 +1348,7 @@ nfp_net_common_init(struct rte_pci_device *pci_dev,
 	if (hw->ver.major < 2)
 		hw->rx_offset = NFP_NET_RX_OFFSET;
 	else
-		hw->rx_offset = nn_cfg_readl(hw, NFP_NET_CFG_RX_OFFSET_ADDR);
+		hw->rx_offset = nn_cfg_readl(&hw->super, NFP_NET_CFG_RX_OFFSET_ADDR);
 
 	hw->super.ctrl = 0;
 	hw->stride_rx = stride;
@@ -1418,7 +1419,7 @@ nfp_rx_queue_intr_enable(struct rte_eth_dev *dev,
 	rte_wmb();
 
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	nn_cfg_writeb(hw, NFP_NET_CFG_ICR(base + queue_id),
+	nn_cfg_writeb(&hw->super, NFP_NET_CFG_ICR(base + queue_id),
 			NFP_NET_CFG_ICR_UNMASKED);
 	return 0;
 }
@@ -1439,7 +1440,7 @@ nfp_rx_queue_intr_disable(struct rte_eth_dev *dev,
 	rte_wmb();
 
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	nn_cfg_writeb(hw, NFP_NET_CFG_ICR(base + queue_id), NFP_NET_CFG_ICR_RXTX);
+	nn_cfg_writeb(&hw->super, NFP_NET_CFG_ICR(base + queue_id), NFP_NET_CFG_ICR_RXTX);
 
 	return 0;
 }
@@ -1486,7 +1487,7 @@ nfp_net_irq_unmask(struct rte_eth_dev *dev)
 		/* If MSI-X auto-masking is used, clear the entry */
 		rte_intr_ack(pci_dev->intr_handle);
 	} else {
-		nn_cfg_writeb(hw, NFP_NET_CFG_ICR(NFP_NET_IRQ_LSC_IDX),
+		nn_cfg_writeb(&hw->super, NFP_NET_CFG_ICR(NFP_NET_IRQ_LSC_IDX),
 				NFP_NET_CFG_ICR_UNMASKED);
 	}
 }
@@ -1568,7 +1569,7 @@ nfp_net_dev_mtu_set(struct rte_eth_dev *dev,
 	}
 
 	/* Writing to configuration space */
-	nn_cfg_writel(hw, NFP_NET_CFG_MTU, mtu);
+	nn_cfg_writel(&hw->super, NFP_NET_CFG_MTU, mtu);
 
 	hw->mtu = mtu;
 
@@ -1659,7 +1660,7 @@ nfp_net_rss_reta_write(struct rte_eth_dev *dev,
 
 		/* If all 4 entries were set, don't need read RETA register */
 		if (mask != 0xF)
-			reta = nn_cfg_readl(hw, NFP_NET_CFG_RSS_ITBL + i);
+			reta = nn_cfg_readl(&hw->super, NFP_NET_CFG_RSS_ITBL + i);
 
 		for (j = 0; j < 4; j++) {
 			if ((mask & (0x1 << j)) == 0)
@@ -1672,7 +1673,7 @@ nfp_net_rss_reta_write(struct rte_eth_dev *dev,
 			reta |= reta_conf[idx].reta[shift + j] << (8 * j);
 		}
 
-		nn_cfg_writel(hw, NFP_NET_CFG_RSS_ITBL + (idx * 64) + shift, reta);
+		nn_cfg_writel(&hw->super, NFP_NET_CFG_RSS_ITBL + (idx * 64) + shift, reta);
 	}
 
 	return 0;
@@ -1742,7 +1743,7 @@ nfp_net_reta_query(struct rte_eth_dev *dev,
 		if (mask == 0)
 			continue;
 
-		reta = nn_cfg_readl(hw, NFP_NET_CFG_RSS_ITBL + (idx * 64) + shift);
+		reta = nn_cfg_readl(&hw->super, NFP_NET_CFG_RSS_ITBL + (idx * 64) + shift);
 		for (j = 0; j < 4; j++) {
 			if ((mask & (0x1 << j)) == 0)
 				continue;
@@ -1770,7 +1771,7 @@ nfp_net_rss_hash_write(struct rte_eth_dev *dev,
 	/* Writing the key byte by byte */
 	for (i = 0; i < rss_conf->rss_key_len; i++) {
 		memcpy(&key, &rss_conf->rss_key[i], 1);
-		nn_cfg_writeb(hw, NFP_NET_CFG_RSS_KEY + i, key);
+		nn_cfg_writeb(&hw->super, NFP_NET_CFG_RSS_KEY + i, key);
 	}
 
 	rss_hf = rss_conf->rss_hf;
@@ -1803,10 +1804,10 @@ nfp_net_rss_hash_write(struct rte_eth_dev *dev,
 	cfg_rss_ctrl |= NFP_NET_CFG_RSS_TOEPLITZ;
 
 	/* Configuring where to apply the RSS hash */
-	nn_cfg_writel(hw, NFP_NET_CFG_RSS_CTRL, cfg_rss_ctrl);
+	nn_cfg_writel(&hw->super, NFP_NET_CFG_RSS_CTRL, cfg_rss_ctrl);
 
 	/* Writing the key size */
-	nn_cfg_writeb(hw, NFP_NET_CFG_RSS_KEY_SZ, rss_conf->rss_key_len);
+	nn_cfg_writeb(&hw->super, NFP_NET_CFG_RSS_KEY_SZ, rss_conf->rss_key_len);
 
 	return 0;
 }
@@ -1864,7 +1865,7 @@ nfp_net_rss_hash_conf_get(struct rte_eth_dev *dev,
 		return -EINVAL;
 
 	rss_hf = rss_conf->rss_hf;
-	cfg_rss_ctrl = nn_cfg_readl(hw, NFP_NET_CFG_RSS_CTRL);
+	cfg_rss_ctrl = nn_cfg_readl(&hw->super, NFP_NET_CFG_RSS_CTRL);
 
 	if ((cfg_rss_ctrl & NFP_NET_CFG_RSS_IPV4) != 0)
 		rss_hf |= RTE_ETH_RSS_IPV4;
@@ -1894,11 +1895,11 @@ nfp_net_rss_hash_conf_get(struct rte_eth_dev *dev,
 	rss_conf->rss_hf = rss_hf;
 
 	/* Reading the key size */
-	rss_conf->rss_key_len = nn_cfg_readl(hw, NFP_NET_CFG_RSS_KEY_SZ);
+	rss_conf->rss_key_len = nn_cfg_readl(&hw->super, NFP_NET_CFG_RSS_KEY_SZ);
 
 	/* Reading the key byte a byte */
 	for (i = 0; i < rss_conf->rss_key_len; i++) {
-		key = nn_cfg_readb(hw, NFP_NET_CFG_RSS_KEY + i);
+		key = nn_cfg_readb(&hw->super, NFP_NET_CFG_RSS_KEY + i);
 		memcpy(&rss_conf->rss_key[i], &key, 1);
 	}
 
@@ -2012,13 +2013,13 @@ nfp_net_set_vxlan_port(struct nfp_net_hw *hw,
 	hw->vxlan_ports[idx] = port;
 
 	for (i = 0; i < NFP_NET_N_VXLAN_PORTS; i += 2) {
-		nn_cfg_writel(hw, NFP_NET_CFG_VXLAN_PORT + i * sizeof(port),
+		nn_cfg_writel(&hw->super, NFP_NET_CFG_VXLAN_PORT + i * sizeof(port),
 				(hw->vxlan_ports[i + 1] << 16) | hw->vxlan_ports[i]);
 	}
 
 	rte_spinlock_lock(&hw->reconfig_lock);
 
-	nn_cfg_writel(hw, NFP_NET_CFG_UPDATE, NFP_NET_CFG_UPDATE_VXLAN);
+	nn_cfg_writel(&hw->super, NFP_NET_CFG_UPDATE, NFP_NET_CFG_UPDATE_VXLAN);
 	rte_wmb();
 
 	ret = __nfp_net_reconfig(hw, NFP_NET_CFG_UPDATE_VXLAN);
@@ -2077,7 +2078,7 @@ nfp_net_cfg_read_version(struct nfp_net_hw *hw)
 		struct nfp_net_fw_ver split;
 	} version;
 
-	version.whole = nn_cfg_readl(hw, NFP_NET_CFG_VERSION);
+	version.whole = nn_cfg_readl(&hw->super, NFP_NET_CFG_VERSION);
 	hw->ver = version.split;
 }
 

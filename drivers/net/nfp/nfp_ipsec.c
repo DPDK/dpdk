@@ -445,7 +445,7 @@ nfp_ipsec_cfg_cmd_issue(struct nfp_net_hw *hw,
 	msg->rsp = NFP_IPSEC_CFG_MSG_OK;
 
 	for (i = 0; i < msg_size; i++)
-		nn_cfg_writel(hw, NFP_NET_CFG_MBOX_VAL + 4 * i, msg->raw[i]);
+		nn_cfg_writel(&hw->super, NFP_NET_CFG_MBOX_VAL + 4 * i, msg->raw[i]);
 
 	ret = nfp_net_mbox_reconfig(hw, NFP_NET_CFG_MBOX_CMD_IPSEC);
 	if (ret < 0) {
@@ -459,7 +459,7 @@ nfp_ipsec_cfg_cmd_issue(struct nfp_net_hw *hw,
 	 * response. One example where the data is needed is for statistics.
 	 */
 	for (i = 0; i < msg_size; i++)
-		msg->raw[i] = nn_cfg_readl(hw, NFP_NET_CFG_MBOX_VAL + 4 * i);
+		msg->raw[i] = nn_cfg_readl(&hw->super, NFP_NET_CFG_MBOX_VAL + 4 * i);
 
 	switch (msg->rsp) {
 	case NFP_IPSEC_CFG_MSG_OK:

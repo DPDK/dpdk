@@ -20,10 +20,10 @@ nfp_netvf_read_mac(struct nfp_net_hw *hw)
 {
 	uint32_t tmp;
 
-	tmp = rte_be_to_cpu_32(nn_cfg_readl(hw, NFP_NET_CFG_MACADDR));
+	tmp = rte_be_to_cpu_32(nn_cfg_readl(&hw->super, NFP_NET_CFG_MACADDR));
 	memcpy(&hw->mac_addr.addr_bytes[0], &tmp, 4);
 
-	tmp = rte_be_to_cpu_32(nn_cfg_readl(hw, NFP_NET_CFG_MACADDR + 4));
+	tmp = rte_be_to_cpu_32(nn_cfg_readl(&hw->super, NFP_NET_CFG_MACADDR + 4));
 	memcpy(&hw->mac_addr.addr_bytes[4], &tmp, 2);
 }
 
@@ -97,7 +97,7 @@ nfp_netvf_start(struct rte_eth_dev *dev)
 	if ((hw->super.cap & NFP_NET_CFG_CTRL_RINGCFG) != 0)
 		new_ctrl |= NFP_NET_CFG_CTRL_RINGCFG;
 
-	nn_cfg_writel(hw, NFP_NET_CFG_CTRL, new_ctrl);
+	nn_cfg_writel(&hw->super, NFP_NET_CFG_CTRL, new_ctrl);
 	if (nfp_net_reconfig(hw, new_ctrl, update) != 0)
 		return -EIO;
 
@@ -299,9 +299,9 @@ nfp_netvf_init(struct rte_eth_dev *eth_dev)
 	}
 
 	/* Work out where in the BAR the queues start. */
-	start_q = nn_cfg_readl(hw, NFP_NET_CFG_START_TXQ);
+	start_q = nn_cfg_readl(&hw->super, NFP_NET_CFG_START_TXQ);
 	tx_bar_off = nfp_qcp_queue_offset(dev_info, start_q);
-	start_q = nn_cfg_readl(hw, NFP_NET_CFG_START_RXQ);
+	start_q = nn_cfg_readl(&hw->super, NFP_NET_CFG_START_RXQ);
 	rx_bar_off = nfp_qcp_queue_offset(dev_info, start_q);
 
 	hw->tx_bar = (uint8_t *)pci_dev->mem_resource[2].addr + tx_bar_off;
@@ -357,7 +357,7 @@ nfp_netvf_init(struct rte_eth_dev *eth_dev)
 		rte_intr_callback_register(pci_dev->intr_handle,
 				nfp_net_dev_interrupt_handler, (void *)eth_dev);
 		/* Telling the firmware about the LSC interrupt entry */
-		nn_cfg_writeb(hw, NFP_NET_CFG_LSC, NFP_NET_IRQ_LSC_IDX);
+		nn_cfg_writeb(&hw->super, NFP_NET_CFG_LSC, NFP_NET_IRQ_LSC_IDX);
 		/* Recording current stats counters values */
 		nfp_net_stats_reset(eth_dev);
 	}

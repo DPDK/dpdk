@@ -36,7 +36,7 @@ nfp_pf_repr_enable_queues(struct rte_eth_dev *dev)
 	for (i = 0; i < dev->data->nb_tx_queues; i++)
 		enabled_queues |= (1 << i);
 
-	nn_cfg_writeq(hw, NFP_NET_CFG_TXRS_ENABLE, enabled_queues);
+	nn_cfg_writeq(&hw->super, NFP_NET_CFG_TXRS_ENABLE, enabled_queues);
 
 	enabled_queues = 0;
 
@@ -44,7 +44,7 @@ nfp_pf_repr_enable_queues(struct rte_eth_dev *dev)
 	for (i = 0; i < dev->data->nb_rx_queues; i++)
 		enabled_queues |= (1 << i);
 
-	nn_cfg_writeq(hw, NFP_NET_CFG_RXRS_ENABLE, enabled_queues);
+	nn_cfg_writeq(&hw->super, NFP_NET_CFG_RXRS_ENABLE, enabled_queues);
 }
 
 static void
@@ -58,8 +58,8 @@ nfp_pf_repr_disable_queues(struct rte_eth_dev *dev)
 	repr = dev->data->dev_private;
 	hw = repr->app_fw_flower->pf_hw;
 
-	nn_cfg_writeq(hw, NFP_NET_CFG_TXRS_ENABLE, 0);
-	nn_cfg_writeq(hw, NFP_NET_CFG_RXRS_ENABLE, 0);
+	nn_cfg_writeq(&hw->super, NFP_NET_CFG_TXRS_ENABLE, 0);
+	nn_cfg_writeq(&hw->super, NFP_NET_CFG_RXRS_ENABLE, 0);
 
 	new_ctrl = hw->super.ctrl & ~NFP_NET_CFG_CTRL_ENABLE;
 	update = NFP_NET_CFG_UPDATE_GEN | NFP_NET_CFG_UPDATE_RING |
@@ -114,7 +114,7 @@ nfp_flower_pf_start(struct rte_eth_dev *dev)
 	if ((hw->super.cap & NFP_NET_CFG_CTRL_RINGCFG) != 0)
 		new_ctrl |= NFP_NET_CFG_CTRL_RINGCFG;
 
-	nn_cfg_writel(hw, NFP_NET_CFG_CTRL, new_ctrl);
+	nn_cfg_writel(&hw->super, NFP_NET_CFG_CTRL, new_ctrl);
 
 	/* If an error when reconfig we avoid to change hw state */
 	ret = nfp_net_reconfig(hw, new_ctrl, update);
@@ -219,7 +219,7 @@ nfp_flower_pf_close(struct rte_eth_dev *dev)
 	/* Cancel possible impending LSC work here before releasing the port */
 	rte_eal_alarm_cancel(nfp_net_dev_interrupt_delayed_handler, (void *)dev);
 
-	nn_cfg_writeb(hw, NFP_NET_CFG_LSC, 0xff);
+	nn_cfg_writeb(&hw->super, NFP_NET_CFG_LSC, 0xff);
 
 	/* Now it is safe to free all PF resources */
 	PMD_DRV_LOG(INFO, "Freeing PF resources");
@@ -356,9 +356,9 @@ nfp_flower_init_vnic_common(struct nfp_net_hw *hw,
 		return err;
 
 	/* Work out where in the BAR the queues start */
-	start_q = nn_cfg_readl(hw, NFP_NET_CFG_START_TXQ);
+	start_q = nn_cfg_readl(&hw->super, NFP_NET_CFG_START_TXQ);
 	tx_bar_off = (uint64_t)start_q * NFP_QCP_QUEUE_ADDR_SZ;
-	start_q = nn_cfg_readl(hw, NFP_NET_CFG_START_RXQ);
+	start_q = nn_cfg_readl(&hw->super, NFP_NET_CFG_START_RXQ);
 	rx_bar_off = (uint64_t)start_q * NFP_QCP_QUEUE_ADDR_SZ;
 
 	hw->tx_bar = pf_dev->qc_bar + tx_bar_off;
@@ -543,8 +543,8 @@ nfp_flower_init_ctrl_vnic(struct nfp_net_hw *hw)
 		 * Telling the HW about the physical address of the RX ring and number
 		 * of descriptors in log2 format.
 		 */
-		nn_cfg_writeq(hw, NFP_NET_CFG_RXR_ADDR(i), rxq->dma);
-		nn_cfg_writeb(hw, NFP_NET_CFG_RXR_SZ(i), rte_log2_u32(CTRL_VNIC_NB_DESC));
+		nn_cfg_writeq(&hw->super, NFP_NET_CFG_RXR_ADDR(i), rxq->dma);
+		nn_cfg_writeb(&hw->super, NFP_NET_CFG_RXR_SZ(i), rte_log2_u32(CTRL_VNIC_NB_DESC));
 	}
 
 	snprintf(ctrl_txring_name, sizeof(ctrl_txring_name), "%s_cttx_ring", pci_name);
@@ -608,8 +608,8 @@ nfp_flower_init_ctrl_vnic(struct nfp_net_hw *hw)
 		 * Telling the HW about the physical address of the TX ring and number
 		 * of descriptors in log2 format.
 		 */
-		nn_cfg_writeq(hw, NFP_NET_CFG_TXR_ADDR(i), txq->dma);
-		nn_cfg_writeb(hw, NFP_NET_CFG_TXR_SZ(i), rte_log2_u32(CTRL_VNIC_NB_DESC));
+		nn_cfg_writeq(&hw->super, NFP_NET_CFG_TXR_ADDR(i), txq->dma);
+		nn_cfg_writeb(&hw->super, NFP_NET_CFG_TXR_SZ(i), rte_log2_u32(CTRL_VNIC_NB_DESC));
 	}
 
 	return 0;

@@ -286,7 +286,7 @@ nfp_net_close(struct rte_eth_dev *dev)
 
 	/* Only free PF resources after all physical ports have been closed */
 	/* Mark this port as unused and free device priv resources */
-	nn_cfg_writeb(hw, NFP_NET_CFG_LSC, 0xff);
+	nn_cfg_writeb(&hw->super, NFP_NET_CFG_LSC, 0xff);
 	app_fw_nic->ports[hw->idx] = NULL;
 
 	for (i = 0; i < app_fw_nic->total_phyports; i++) {
@@ -567,8 +567,8 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 	}
 
 	/* Work out where in the BAR the queues start. */
-	tx_base = nn_cfg_readl(hw, NFP_NET_CFG_START_TXQ);
-	rx_base = nn_cfg_readl(hw, NFP_NET_CFG_START_RXQ);
+	tx_base = nn_cfg_readl(&hw->super, NFP_NET_CFG_START_TXQ);
+	rx_base = nn_cfg_readl(&hw->super, NFP_NET_CFG_START_RXQ);
 
 	hw->tx_bar = pf_dev->qc_bar + tx_base * NFP_QCP_QUEUE_ADDR_SZ;
 	hw->rx_bar = pf_dev->qc_bar + rx_base * NFP_QCP_QUEUE_ADDR_SZ;
@@ -625,7 +625,7 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 	rte_intr_callback_register(pci_dev->intr_handle,
 			nfp_net_dev_interrupt_handler, (void *)eth_dev);
 	/* Telling the firmware about the LSC interrupt entry */
-	nn_cfg_writeb(hw, NFP_NET_CFG_LSC, NFP_NET_IRQ_LSC_IDX);
+	nn_cfg_writeb(&hw->super, NFP_NET_CFG_LSC, NFP_NET_IRQ_LSC_IDX);
 	/* Recording current stats counters values */
 	nfp_net_stats_reset(eth_dev);
 

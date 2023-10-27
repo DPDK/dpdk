@@ -97,8 +97,8 @@ nfp_pf_repr_rx_queue_setup(struct rte_eth_dev *dev,
 	 * Telling the HW about the physical address of the RX ring and number
 	 * of descriptors in log2 format.
 	 */
-	nn_cfg_writeq(hw, NFP_NET_CFG_RXR_ADDR(queue_idx), rxq->dma);
-	nn_cfg_writeb(hw, NFP_NET_CFG_RXR_SZ(queue_idx), rte_log2_u32(nb_desc));
+	nn_cfg_writeq(&hw->super, NFP_NET_CFG_RXR_ADDR(queue_idx), rxq->dma);
+	nn_cfg_writeb(&hw->super, NFP_NET_CFG_RXR_SZ(queue_idx), rte_log2_u32(nb_desc));
 
 	return 0;
 }
@@ -181,8 +181,8 @@ nfp_pf_repr_tx_queue_setup(struct rte_eth_dev *dev,
 	 * Telling the HW about the physical address of the TX ring and number
 	 * of descriptors in log2 format.
 	 */
-	nn_cfg_writeq(hw, NFP_NET_CFG_TXR_ADDR(queue_idx), txq->dma);
-	nn_cfg_writeb(hw, NFP_NET_CFG_TXR_SZ(queue_idx), rte_log2_u32(nb_desc));
+	nn_cfg_writeq(&hw->super, NFP_NET_CFG_TXR_ADDR(queue_idx), txq->dma);
+	nn_cfg_writeb(&hw->super, NFP_NET_CFG_TXR_SZ(queue_idx), rte_log2_u32(nb_desc));
 
 	return 0;
 }
@@ -228,7 +228,7 @@ nfp_flower_repr_link_update(struct rte_eth_dev *dev,
 				}
 			}
 		} else {
-			nn_link_status = nn_cfg_readw(pf_hw, NFP_NET_CFG_STS);
+			nn_link_status = nn_cfg_readw(&pf_hw->super, NFP_NET_CFG_STS);
 			nn_link_status = (nn_link_status >> NFP_NET_CFG_STS_LINK_RATE_SHIFT) &
 					NFP_NET_CFG_STS_LINK_RATE_MASK;
 
