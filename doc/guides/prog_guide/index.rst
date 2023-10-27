@@ -13,6 +13,7 @@ Programmer's Guide
     source_org
     env_abstraction_layer
     log_lib
+    cmdline
     service_cores
     trace_lib
     rcu_lib
