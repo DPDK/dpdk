@@ -15,18 +15,6 @@
 #include "nfp_logs.h"
 #include "nfp_net_common.h"
 
-static void
-nfp_netvf_read_mac(struct nfp_hw *hw)
-{
-	uint32_t tmp;
-
-	tmp = rte_be_to_cpu_32(nn_cfg_readl(hw, NFP_NET_CFG_MACADDR));
-	memcpy(&hw->mac_addr.addr_bytes[0], &tmp, 4);
-
-	tmp = rte_be_to_cpu_32(nn_cfg_readl(hw, NFP_NET_CFG_MACADDR + 4));
-	memcpy(&hw->mac_addr.addr_bytes[4], &tmp, 2);
-}
-
 static int
 nfp_netvf_start(struct rte_eth_dev *dev)
 {
@@ -334,12 +322,12 @@ nfp_netvf_init(struct rte_eth_dev *eth_dev)
 		goto dev_err_ctrl_map;
 	}
 
-	nfp_netvf_read_mac(hw);
+	nfp_read_mac(hw);
 	if (rte_is_valid_assigned_ether_addr(&hw->mac_addr) == 0) {
 		PMD_INIT_LOG(INFO, "Using random mac address for port %hu", port);
 		/* Using random mac addresses for VFs */
 		rte_eth_random_addr(&hw->mac_addr.addr_bytes[0]);
-		nfp_net_write_mac(hw, &hw->mac_addr.addr_bytes[0]);
+		nfp_write_mac(hw, &hw->mac_addr.addr_bytes[0]);
 	}
 
 	/* Copying mac address to DPDK eth_dev struct */

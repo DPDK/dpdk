@@ -19,12 +19,6 @@
 #define NFP_TX_MAX_SEG       UINT8_MAX
 #define NFP_TX_MAX_MTU_SEG   8
 
-/*
- * This is used by the reconfig protocol. It sets the maximum time waiting in
- * milliseconds before a reconfig timeout happens.
- */
-#define NFP_NET_POLL_TIMEOUT    5000
-
 #define NFP_NET_LINK_DOWN_CHECK_TIMEOUT 4000 /* ms */
 #define NFP_NET_LINK_UP_CHECK_TIMEOUT   1000 /* ms */
 
@@ -197,141 +191,6 @@ nfp_net_notify_port_speed(struct nfp_net_hw *hw,
 
 /* The length of firmware version string */
 #define FW_VER_LEN        32
-
-static int
-nfp_reconfig_real(struct nfp_hw *hw,
-		uint32_t update)
-{
-	uint32_t cnt;
-	uint32_t new;
-	struct timespec wait;
-
-	PMD_DRV_LOG(DEBUG, "Writing to the configuration queue (%p)...",
-			hw->qcp_cfg);
-
-	if (hw->qcp_cfg == NULL) {
-		PMD_DRV_LOG(ERR, "Bad configuration queue pointer");
-		return -ENXIO;
-	}
-
-	nfp_qcp_ptr_add(hw->qcp_cfg, NFP_QCP_WRITE_PTR, 1);
-
-	wait.tv_sec = 0;
-	wait.tv_nsec = 1000000; /* 1ms */
-
-	PMD_DRV_LOG(DEBUG, "Polling for update ack...");
-
-	/* Poll update field, waiting for NFP to ack the config */
-	for (cnt = 0; ; cnt++) {
-		new = nn_cfg_readl(hw, NFP_NET_CFG_UPDATE);
-		if (new == 0)
-			break;
-
-		if ((new & NFP_NET_CFG_UPDATE_ERR) != 0) {
-			PMD_DRV_LOG(ERR, "Reconfig error: %#08x", new);
-			return -1;
-		}
-
-		if (cnt >= NFP_NET_POLL_TIMEOUT) {
-			PMD_DRV_LOG(ERR, "Reconfig timeout for %#08x after %u ms",
-					update, cnt);
-			return -EIO;
-		}
-
-		nanosleep(&wait, 0); /* Waiting for a 1ms */
-	}
-
-	PMD_DRV_LOG(DEBUG, "Ack DONE");
-	return 0;
-}
-
-/**
- * Reconfigure the NIC.
- *
- * Write the update word to the BAR and ping the reconfig queue. Then poll
- * until the firmware has acknowledged the update by zeroing the update word.
- *
- * @param hw
- *   Device to reconfigure.
- * @param ctrl
- *   The value for the ctrl field in the BAR config.
- * @param update
- *   The value for the update field in the BAR config.
- *
- * @return
- *   - (0) if OK to reconfigure the device.
- *   - (-EIO) if I/O err and fail to reconfigure the device.
- */
-int
-nfp_reconfig(struct nfp_hw *hw,
-		uint32_t ctrl,
-		uint32_t update)
-{
-	int ret;
-
-	rte_spinlock_lock(&hw->reconfig_lock);
-
-	nn_cfg_writel(hw, NFP_NET_CFG_CTRL, ctrl);
-	nn_cfg_writel(hw, NFP_NET_CFG_UPDATE, update);
-
-	rte_wmb();
-
-	ret = nfp_reconfig_real(hw, update);
-
-	rte_spinlock_unlock(&hw->reconfig_lock);
-
-	if (ret != 0) {
-		PMD_DRV_LOG(ERR, "Error nfp reconfig: ctrl=%#08x update=%#08x",
-				ctrl, update);
-		return -EIO;
-	}
-
-	return 0;
-}
-
-/**
- * Reconfigure the NIC for the extend ctrl BAR.
- *
- * Write the update word to the BAR and ping the reconfig queue. Then poll
- * until the firmware has acknowledged the update by zeroing the update word.
- *
- * @param hw
- *   Device to reconfigure.
- * @param ctrl_ext
- *   The value for the first word of extend ctrl field in the BAR config.
- * @param update
- *   The value for the update field in the BAR config.
- *
- * @return
- *   - (0) if OK to reconfigure the device.
- *   - (-EIO) if I/O err and fail to reconfigure the device.
- */
-int
-nfp_ext_reconfig(struct nfp_hw *hw,
-		uint32_t ctrl_ext,
-		uint32_t update)
-{
-	int ret;
-
-	rte_spinlock_lock(&hw->reconfig_lock);
-
-	nn_cfg_writel(hw, NFP_NET_CFG_CTRL_WORD1, ctrl_ext);
-	nn_cfg_writel(hw, NFP_NET_CFG_UPDATE, update);
-
-	rte_wmb();
-
-	ret = nfp_reconfig_real(hw, update);
-
-	rte_spinlock_unlock(&hw->reconfig_lock);
-
-	if (ret != 0) {
-		PMD_DRV_LOG(ERR, "Error nfp ext reconfig: ctrl_ext=%#08x update=%#08x",
-				ctrl_ext, update);
-		return -EIO;
-	}
-
-	return 0;
-}
 
 /**
  * Reconfigure the firmware via the mailbox
@@ -531,22 +390,6 @@ nfp_net_cfg_queue_setup(struct nfp_net_hw *hw)
 	hw->super.qcp_cfg = hw->tx_bar + NFP_QCP_QUEUE_ADDR_SZ;
 }
 
-void
-nfp_net_write_mac(struct nfp_hw *hw,
-		uint8_t *mac)
-{
-	uint32_t mac0;
-	uint16_t mac1;
-
-	mac0 = *(uint32_t *)mac;
-	nn_writel(rte_cpu_to_be_32(mac0), hw->ctrl_bar + NFP_NET_CFG_MACADDR);
-
-	mac += 4;
-	mac1 = *(uint16_t *)mac;
-	nn_writew(rte_cpu_to_be_16(mac1),
-			hw->ctrl_bar + NFP_NET_CFG_MACADDR + 6);
-}
-
 int
 nfp_net_set_mac_addr(struct rte_eth_dev *dev,
 		struct rte_ether_addr *mac_addr)
@@ -565,7 +408,7 @@ nfp_net_set_mac_addr(struct rte_eth_dev *dev,
 	}
 
 	/* Writing new MAC to the specific port BAR address */
-	nfp_net_write_mac(hw, (uint8_t *)mac_addr);
+	nfp_write_mac(hw, (uint8_t *)mac_addr);
 
 	update = NFP_NET_CFG_UPDATE_MACADDR;
 	ctrl = hw->ctrl;

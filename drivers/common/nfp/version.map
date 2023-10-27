@@ -3,5 +3,11 @@ INTERNAL {
 
 	nfp_class_driver_register;
 
+	nfp_reconfig;
+	nfp_ext_reconfig;
+	nfp_reconfig_real;
+	nfp_read_mac;
+	nfp_write_mac;
+
 	local: *;
 };

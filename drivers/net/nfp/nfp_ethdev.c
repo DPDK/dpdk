@@ -600,13 +600,13 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 	}
 
 	nfp_net_pf_read_mac(app_fw_nic, port);
-	nfp_net_write_mac(hw, &hw->mac_addr.addr_bytes[0]);
+	nfp_write_mac(hw, &hw->mac_addr.addr_bytes[0]);
 
 	if (rte_is_valid_assigned_ether_addr(&hw->mac_addr) == 0) {
 		PMD_INIT_LOG(INFO, "Using random mac address for port %d", port);
 		/* Using random mac addresses for VFs */
 		rte_eth_random_addr(&hw->mac_addr.addr_bytes[0]);
-		nfp_net_write_mac(hw, &hw->mac_addr.addr_bytes[0]);
+		nfp_write_mac(hw, &hw->mac_addr.addr_bytes[0]);
 	}
 
 	/* Copying mac address to DPDK eth_dev struct */

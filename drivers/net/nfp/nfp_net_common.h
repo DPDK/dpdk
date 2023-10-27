@@ -8,20 +8,11 @@
 
 #include <bus_pci_driver.h>
 #include <ethdev_driver.h>
-#include <rte_io.h>
+#include <nfp_common.h>
 #include <rte_spinlock.h>
 
 #include "nfp_net_ctrl.h"
 #include "nfpcore/nfp_dev.h"
-
-/* Macros for accessing the Queue Controller Peripheral 'CSRs' */
-#define NFP_QCP_QUEUE_OFF(_x)                 ((_x) * 0x800)
-#define NFP_QCP_QUEUE_ADD_RPTR                  0x0000
-#define NFP_QCP_QUEUE_ADD_WPTR                  0x0004
-#define NFP_QCP_QUEUE_STS_LO                    0x0008
-#define NFP_QCP_QUEUE_STS_LO_READPTR_MASK     (0x3ffff)
-#define NFP_QCP_QUEUE_STS_HI                    0x000c
-#define NFP_QCP_QUEUE_STS_HI_WRITEPTR_MASK    (0x3ffff)
 
 /* Interrupt definitions */
 #define NFP_NET_IRQ_LSC_IDX             0
@@ -42,8 +33,6 @@
 /* Alignment for dma zones */
 #define NFP_MEMZONE_ALIGN       128
 
-#define NFP_QCP_QUEUE_ADDR_SZ   (0x800)
-
 /* Number of supported physical ports */
 #define NFP_MAX_PHYPORTS        12
 
@@ -51,12 +40,6 @@
 enum nfp_app_fw_id {
 	NFP_APP_FW_CORE_NIC               = 0x1,
 	NFP_APP_FW_FLOWER_NIC             = 0x3,
-};
-
-/* Read or Write Pointer of a queue */
-enum nfp_qcp_ptr {
-	NFP_QCP_READ_PTR = 0,
-	NFP_QCP_WRITE_PTR
 };
 
 enum nfp_net_meta_format {
@@ -110,17 +93,6 @@ struct nfp_app_fw_nic {
 
 	bool multiport;
 	uint8_t total_phyports;
-};
-
-struct nfp_hw {
-	uint8_t *ctrl_bar;
-	uint8_t *qcp_cfg;
-	uint32_t cap;
-	uint32_t cap_ext;
-	uint32_t ctrl;
-	uint32_t ctrl_ext;
-	rte_spinlock_t reconfig_lock;
-	struct rte_ether_addr mac_addr;
 };
 
 struct nfp_net_hw {
@@ -184,179 +156,6 @@ struct nfp_net_adapter {
 	struct nfp_net_hw hw;
 };
 
-static inline uint8_t
-nn_readb(volatile const void *addr)
-{
-	return rte_read8(addr);
-}
-
-static inline void
-nn_writeb(uint8_t val,
-		volatile void *addr)
-{
-	rte_write8(val, addr);
-}
-
-static inline uint32_t
-nn_readl(volatile const void *addr)
-{
-	return rte_read32(addr);
-}
-
-static inline void
-nn_writel(uint32_t val,
-		volatile void *addr)
-{
-	rte_write32(val, addr);
-}
-
-static inline uint16_t
-nn_readw(volatile const void *addr)
-{
-	return rte_read16(addr);
-}
-
-static inline void
-nn_writew(uint16_t val,
-		volatile void *addr)
-{
-	rte_write16(val, addr);
-}
-
-static inline uint64_t
-nn_readq(volatile void *addr)
-{
-	uint32_t low;
-	uint32_t high;
-	const volatile uint32_t *p = addr;
-
-	high = nn_readl((volatile const void *)(p + 1));
-	low = nn_readl((volatile const void *)p);
-
-	return low + ((uint64_t)high << 32);
-}
-
-static inline void
-nn_writeq(uint64_t val,
-		volatile void *addr)
-{
-	nn_writel(val >> 32, (volatile char *)addr + 4);
-	nn_writel(val, addr);
-}
-
-static inline uint8_t
-nn_cfg_readb(struct nfp_hw *hw,
-		uint32_t off)
-{
-	return nn_readb(hw->ctrl_bar + off);
-}
-
-static inline void
-nn_cfg_writeb(struct nfp_hw *hw,
-		uint32_t off,
-		uint8_t val)
-{
-	nn_writeb(val, hw->ctrl_bar + off);
-}
-
-static inline uint16_t
-nn_cfg_readw(struct nfp_hw *hw,
-		uint32_t off)
-{
-	return rte_le_to_cpu_16(nn_readw(hw->ctrl_bar + off));
-}
-
-static inline void
-nn_cfg_writew(struct nfp_hw *hw,
-		uint32_t off,
-		uint16_t val)
-{
-	nn_writew(rte_cpu_to_le_16(val), hw->ctrl_bar + off);
-}
-
-static inline uint32_t
-nn_cfg_readl(struct nfp_hw *hw,
-		uint32_t off)
-{
-	return rte_le_to_cpu_32(nn_readl(hw->ctrl_bar + off));
-}
-
-static inline void
-nn_cfg_writel(struct nfp_hw *hw,
-		uint32_t off,
-		uint32_t val)
-{
-	nn_writel(rte_cpu_to_le_32(val), hw->ctrl_bar + off);
-}
-
-static inline uint64_t
-nn_cfg_readq(struct nfp_hw *hw,
-		uint32_t off)
-{
-	return rte_le_to_cpu_64(nn_readq(hw->ctrl_bar + off));
-}
-
-static inline void
-nn_cfg_writeq(struct nfp_hw *hw,
-		uint32_t off,
-		uint64_t val)
-{
-	nn_writeq(rte_cpu_to_le_64(val), hw->ctrl_bar + off);
-}
-
-/**
- * Add the value to the selected pointer of a queue.
- *
- * @param queue
- *   Base address for queue structure
- * @param ptr
- *   Add to the read or write pointer
- * @param val
- *   Value to add to the queue pointer
- */
-static inline void
-nfp_qcp_ptr_add(uint8_t *queue,
-		enum nfp_qcp_ptr ptr,
-		uint32_t val)
-{
-	uint32_t off;
-
-	if (ptr == NFP_QCP_READ_PTR)
-		off = NFP_QCP_QUEUE_ADD_RPTR;
-	else
-		off = NFP_QCP_QUEUE_ADD_WPTR;
-
-	nn_writel(rte_cpu_to_le_32(val), queue + off);
-}
-
-/**
- * Read the current read/write pointer value for a queue.
- *
- * @param queue
- *   Base address for queue structure
- * @param ptr
- *   Read or Write pointer
- */
-static inline uint32_t
-nfp_qcp_read(uint8_t *queue,
-		enum nfp_qcp_ptr ptr)
-{
-	uint32_t off;
-	uint32_t val;
-
-	if (ptr == NFP_QCP_READ_PTR)
-		off = NFP_QCP_QUEUE_STS_LO;
-	else
-		off = NFP_QCP_QUEUE_STS_HI;
-
-	val = rte_cpu_to_le_32(nn_readl(queue + off));
-
-	if (ptr == NFP_QCP_READ_PTR)
-		return val & NFP_QCP_QUEUE_STS_LO_READPTR_MASK;
-	else
-		return val & NFP_QCP_QUEUE_STS_HI_WRITEPTR_MASK;
-}
-
 static inline uint32_t
 nfp_qcp_queue_offset(const struct nfp_dev_info *dev_info,
 		uint16_t queue)
@@ -366,8 +165,6 @@ nfp_qcp_queue_offset(const struct nfp_dev_info *dev_info,
 }
 
 /* Prototypes for common NFP functions */
-int nfp_reconfig(struct nfp_hw *hw, uint32_t ctrl, uint32_t update);
-int nfp_ext_reconfig(struct nfp_hw *hw, uint32_t ctrl_ext, uint32_t update);
 int nfp_net_mbox_reconfig(struct nfp_net_hw *hw, uint32_t mbox_cmd);
 int nfp_net_configure(struct rte_eth_dev *dev);
 int nfp_net_common_init(struct rte_pci_device *pci_dev, struct nfp_net_hw *hw);
@@ -375,7 +172,6 @@ void nfp_net_log_device_information(const struct nfp_net_hw *hw);
 void nfp_net_enable_queues(struct rte_eth_dev *dev);
 void nfp_net_disable_queues(struct rte_eth_dev *dev);
 void nfp_net_params_setup(struct nfp_net_hw *hw);
-void nfp_net_write_mac(struct nfp_hw *hw, uint8_t *mac);
 int nfp_net_set_mac_addr(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr);
 int nfp_configure_rx_interrupt(struct rte_eth_dev *dev,
 		struct rte_intr_handle *intr_handle);

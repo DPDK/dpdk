@@ -7,8 +7,9 @@ if not is_linux or not dpdk_conf.get('RTE_ARCH_64')
 endif
 
 sources = files(
+        'nfp_common.c',
         'nfp_common_log.c',
         'nfp_common_pci.c',
 )
 
-deps += ['bus_pci']
+deps += ['bus_pci', 'net']
