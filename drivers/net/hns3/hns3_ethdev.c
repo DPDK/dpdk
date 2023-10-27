@@ -128,42 +128,29 @@ hns3_pf_enable_irq0(struct hns3_hw *hw)
 }
 
 static enum hns3_evt_cause
-hns3_proc_imp_reset_event(struct hns3_adapter *hns, bool is_delay,
-			  uint32_t *vec_val)
+hns3_proc_imp_reset_event(struct hns3_adapter *hns, uint32_t *vec_val)
 {
 	struct hns3_hw *hw = &hns->hw;
 
 	__atomic_store_n(&hw->reset.disable_cmd, 1, __ATOMIC_RELAXED);
 	hns3_atomic_set_bit(HNS3_IMP_RESET, &hw->reset.pending);
 	*vec_val = BIT(HNS3_VECTOR0_IMPRESET_INT_B);
-	if (!is_delay) {
-		hw->reset.stats.imp_cnt++;
-		hns3_warn(hw, "IMP reset detected, clear reset status");
-	} else {
-		hns3_schedule_delayed_reset(hns);
-		hns3_warn(hw, "IMP reset detected, don't clear reset status");
-	}
+	hw->reset.stats.imp_cnt++;
+	hns3_warn(hw, "IMP reset detected, clear reset status");
 
 	return HNS3_VECTOR0_EVENT_RST;
 }
 
 static enum hns3_evt_cause
-hns3_proc_global_reset_event(struct hns3_adapter *hns, bool is_delay,
-			     uint32_t *vec_val)
+hns3_proc_global_reset_event(struct hns3_adapter *hns, uint32_t *vec_val)
 {
 	struct hns3_hw *hw = &hns->hw;
 
 	__atomic_store_n(&hw->reset.disable_cmd, 1, __ATOMIC_RELAXED);
 	hns3_atomic_set_bit(HNS3_GLOBAL_RESET, &hw->reset.pending);
 	*vec_val = BIT(HNS3_VECTOR0_GLOBALRESET_INT_B);
-	if (!is_delay) {
-		hw->reset.stats.global_cnt++;
-		hns3_warn(hw, "Global reset detected, clear reset status");
-	} else {
-		hns3_schedule_delayed_reset(hns);
-		hns3_warn(hw,
-			  "Global reset detected, don't clear reset status");
-	}
+	hw->reset.stats.global_cnt++;
+	hns3_warn(hw, "Global reset detected, clear reset status");
 
 	return HNS3_VECTOR0_EVENT_RST;
 }
@@ -177,14 +164,12 @@ hns3_check_event_cause(struct hns3_adapter *hns, uint32_t *clearval)
 	uint32_t hw_err_src_reg;
 	uint32_t val;
 	enum hns3_evt_cause ret;
-	bool is_delay;
 
 	/* fetch the events from their corresponding regs */
 	vector0_int_stats = hns3_read_dev(hw, HNS3_VECTOR0_OTHER_INT_STS_REG);
 	cmdq_src_val = hns3_read_dev(hw, HNS3_VECTOR0_CMDQ_SRC_REG);
 	hw_err_src_reg = hns3_read_dev(hw, HNS3_RAS_PF_OTHER_INT_STS_REG);
 
-	is_delay = clearval == NULL ? true : false;
 	/*
 	 * Assumption: If by any chance reset and mailbox events are reported
 	 * together then we will only process reset event and defer the
@@ -193,13 +178,13 @@ hns3_check_event_cause(struct hns3_adapter *hns, uint32_t *clearval)
 	 * from H/W just for the mailbox.
 	 */
 	if (BIT(HNS3_VECTOR0_IMPRESET_INT_B) & vector0_int_stats) { /* IMP */
-		ret = hns3_proc_imp_reset_event(hns, is_delay, &val);
+		ret = hns3_proc_imp_reset_event(hns, &val);
 		goto out;
 	}
 
 	/* Global reset */
 	if (BIT(HNS3_VECTOR0_GLOBALRESET_INT_B) & vector0_int_stats) {
-		ret = hns3_proc_global_reset_event(hns, is_delay, &val);
+		ret = hns3_proc_global_reset_event(hns, &val);
 		goto out;
 	}
 
@@ -228,10 +213,9 @@ hns3_check_event_cause(struct hns3_adapter *hns, uint32_t *clearval)
 
 	val = vector0_int_stats;
 	ret = HNS3_VECTOR0_EVENT_OTHER;
-out:
 
-	if (clearval)
-		*clearval = val;
+out:
+	*clearval = val;
 	return ret;
 }
 
@@ -5539,6 +5523,32 @@ is_pf_reset_done(struct hns3_hw *hw)
 		return true;
 }
 
+static void
+hns3_detect_reset_event(struct hns3_hw *hw)
+{
+	struct hns3_adapter *hns = HNS3_DEV_HW_TO_ADAPTER(hw);
+	enum hns3_reset_level new_req = HNS3_NONE_RESET;
+	enum hns3_reset_level last_req;
+	uint32_t vector0_intr_state;
+
+	last_req = hns3_get_reset_level(hns, &hw->reset.pending);
+	vector0_intr_state = hns3_read_dev(hw, HNS3_VECTOR0_OTHER_INT_STS_REG);
+	if (BIT(HNS3_VECTOR0_IMPRESET_INT_B) & vector0_intr_state) {
+		__atomic_store_n(&hw->reset.disable_cmd, 1, __ATOMIC_RELAXED);
+		hns3_atomic_set_bit(HNS3_IMP_RESET, &hw->reset.pending);
+		new_req = HNS3_IMP_RESET;
+	} else if (BIT(HNS3_VECTOR0_GLOBALRESET_INT_B) & vector0_intr_state) {
+		__atomic_store_n(&hw->reset.disable_cmd, 1, __ATOMIC_RELAXED);
+		hns3_atomic_set_bit(HNS3_GLOBAL_RESET, &hw->reset.pending);
+		new_req = HNS3_GLOBAL_RESET;
+	}
+
+	if (new_req != HNS3_NONE_RESET && last_req < new_req) {
+		hns3_schedule_delayed_reset(hns);
+		hns3_warn(hw, "High level reset detected, delay do reset");
+	}
+}
+
 bool
 hns3_is_reset_pending(struct hns3_adapter *hns)
 {
@@ -5552,7 +5562,7 @@ hns3_is_reset_pending(struct hns3_adapter *hns)
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return false;
 
-	hns3_check_event_cause(hns, NULL);
+	hns3_detect_reset_event(hw);
 	reset = hns3_get_reset_level(hns, &hw->reset.pending);
 	if (reset != HNS3_NONE_RESET && hw->reset.level != HNS3_NONE_RESET &&
 	    hw->reset.level < reset) {
