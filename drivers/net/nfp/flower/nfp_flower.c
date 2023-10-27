@@ -349,7 +349,7 @@ nfp_flower_init_vnic_common(struct nfp_net_hw *hw,
 	pf_dev = hw->pf_dev;
 	pci_dev = hw->pf_dev->pci_dev;
 
-	PMD_INIT_LOG(DEBUG, "%s vNIC ctrl bar: %p", vnic_type, hw->ctrl_bar);
+	PMD_INIT_LOG(DEBUG, "%s vNIC ctrl bar: %p", vnic_type, hw->super.ctrl_bar);
 
 	err = nfp_net_common_init(pci_dev, hw);
 	if (err != 0)
@@ -873,7 +873,7 @@ nfp_init_app_fw_flower(struct nfp_pf_dev *pf_dev,
 
 	/* Fill in the PF vNIC and populate app struct */
 	app_fw_flower->pf_hw = pf_hw;
-	pf_hw->ctrl_bar = pf_dev->ctrl_bar;
+	pf_hw->super.ctrl_bar = pf_dev->ctrl_bar;
 	pf_hw->pf_dev = pf_dev;
 	pf_hw->cpp = pf_dev->cpp;
 	pf_hw->dev_info = dev_info;
@@ -891,9 +891,9 @@ nfp_init_app_fw_flower(struct nfp_pf_dev *pf_dev,
 	ctrl_hw = app_fw_flower->ctrl_hw;
 
 	/* Map the ctrl vNIC ctrl bar */
-	ctrl_hw->ctrl_bar = nfp_rtsym_map(pf_dev->sym_tbl, "_pf0_net_ctrl_bar",
+	ctrl_hw->super.ctrl_bar = nfp_rtsym_map(pf_dev->sym_tbl, "_pf0_net_ctrl_bar",
 			NFP_NET_CFG_BAR_SZ, &ctrl_hw->ctrl_area);
-	if (ctrl_hw->ctrl_bar == NULL) {
+	if (ctrl_hw->super.ctrl_bar == NULL) {
 		PMD_INIT_LOG(ERR, "Cloud not map the ctrl vNIC ctrl bar");
 		ret = -ENODEV;
 		goto pf_cpp_area_cleanup;

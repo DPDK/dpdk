@@ -113,6 +113,7 @@ struct nfp_app_fw_nic {
 };
 
 struct nfp_hw {
+	uint8_t *ctrl_bar;
 	uint8_t *qcp_cfg;
 	uint32_t cap;
 	uint32_t cap_ext;
@@ -141,7 +142,6 @@ struct nfp_net_hw {
 	/** Current values for control */
 	uint32_t ctrl;
 
-	uint8_t *ctrl_bar;
 	uint8_t *tx_bar;
 	uint8_t *rx_bar;
 
@@ -251,7 +251,7 @@ static inline uint8_t
 nn_cfg_readb(struct nfp_net_hw *hw,
 		uint32_t off)
 {
-	return nn_readb(hw->ctrl_bar + off);
+	return nn_readb(hw->super.ctrl_bar + off);
 }
 
 static inline void
@@ -259,14 +259,14 @@ nn_cfg_writeb(struct nfp_net_hw *hw,
 		uint32_t off,
 		uint8_t val)
 {
-	nn_writeb(val, hw->ctrl_bar + off);
+	nn_writeb(val, hw->super.ctrl_bar + off);
 }
 
 static inline uint16_t
 nn_cfg_readw(struct nfp_net_hw *hw,
 		uint32_t off)
 {
-	return rte_le_to_cpu_16(nn_readw(hw->ctrl_bar + off));
+	return rte_le_to_cpu_16(nn_readw(hw->super.ctrl_bar + off));
 }
 
 static inline void
@@ -274,14 +274,14 @@ nn_cfg_writew(struct nfp_net_hw *hw,
 		uint32_t off,
 		uint16_t val)
 {
-	nn_writew(rte_cpu_to_le_16(val), hw->ctrl_bar + off);
+	nn_writew(rte_cpu_to_le_16(val), hw->super.ctrl_bar + off);
 }
 
 static inline uint32_t
 nn_cfg_readl(struct nfp_net_hw *hw,
 		uint32_t off)
 {
-	return rte_le_to_cpu_32(nn_readl(hw->ctrl_bar + off));
+	return rte_le_to_cpu_32(nn_readl(hw->super.ctrl_bar + off));
 }
 
 static inline void
@@ -289,14 +289,14 @@ nn_cfg_writel(struct nfp_net_hw *hw,
 		uint32_t off,
 		uint32_t val)
 {
-	nn_writel(rte_cpu_to_le_32(val), hw->ctrl_bar + off);
+	nn_writel(rte_cpu_to_le_32(val), hw->super.ctrl_bar + off);
 }
 
 static inline uint64_t
 nn_cfg_readq(struct nfp_net_hw *hw,
 		uint32_t off)
 {
-	return rte_le_to_cpu_64(nn_readq(hw->ctrl_bar + off));
+	return rte_le_to_cpu_64(nn_readq(hw->super.ctrl_bar + off));
 }
 
 static inline void
@@ -304,7 +304,7 @@ nn_cfg_writeq(struct nfp_net_hw *hw,
 		uint32_t off,
 		uint64_t val)
 {
-	nn_writeq(rte_cpu_to_le_64(val), hw->ctrl_bar + off);
+	nn_writeq(rte_cpu_to_le_64(val), hw->super.ctrl_bar + off);
 }
 
 /**

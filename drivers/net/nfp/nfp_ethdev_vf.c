@@ -270,13 +270,13 @@ nfp_netvf_init(struct rte_eth_dev *eth_dev)
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
 	hw->dev_info = dev_info;
 
-	hw->ctrl_bar = pci_dev->mem_resource[0].addr;
-	if (hw->ctrl_bar == NULL) {
-		PMD_DRV_LOG(ERR, "hw->ctrl_bar is NULL. BAR0 not configured");
+	hw->super.ctrl_bar = pci_dev->mem_resource[0].addr;
+	if (hw->super.ctrl_bar == NULL) {
+		PMD_DRV_LOG(ERR, "hw->super.ctrl_bar is NULL. BAR0 not configured");
 		return -ENODEV;
 	}
 
-	PMD_INIT_LOG(DEBUG, "ctrl bar: %p", hw->ctrl_bar);
+	PMD_INIT_LOG(DEBUG, "ctrl bar: %p", hw->super.ctrl_bar);
 
 	err = nfp_net_common_init(pci_dev, hw);
 	if (err != 0)
@@ -308,7 +308,7 @@ nfp_netvf_init(struct rte_eth_dev *eth_dev)
 	hw->rx_bar = (uint8_t *)pci_dev->mem_resource[2].addr + rx_bar_off;
 
 	PMD_INIT_LOG(DEBUG, "ctrl_bar: %p, tx_bar: %p, rx_bar: %p",
-			hw->ctrl_bar, hw->tx_bar, hw->rx_bar);
+			hw->super.ctrl_bar, hw->tx_bar, hw->rx_bar);
 
 	nfp_net_cfg_queue_setup(hw);
 	hw->mtu = RTE_ETHER_MTU;

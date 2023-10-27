@@ -506,16 +506,16 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 
 	rte_eth_copy_pci_info(eth_dev, pci_dev);
 
-	hw->ctrl_bar = pci_dev->mem_resource[0].addr;
-	if (hw->ctrl_bar == NULL) {
-		PMD_DRV_LOG(ERR, "hw->ctrl_bar is NULL. BAR0 not configured");
+	hw->super.ctrl_bar = pci_dev->mem_resource[0].addr;
+	if (hw->super.ctrl_bar == NULL) {
+		PMD_DRV_LOG(ERR, "hw->super.ctrl_bar is NULL. BAR0 not configured");
 		return -ENODEV;
 	}
 
 	if (port == 0) {
 		uint32_t min_size;
 
-		hw->ctrl_bar = pf_dev->ctrl_bar;
+		hw->super.ctrl_bar = pf_dev->ctrl_bar;
 		min_size = NFP_MAC_STATS_SIZE * hw->pf_dev->nfp_eth_table->max_index;
 		hw->mac_stats_bar = nfp_rtsym_map(hw->pf_dev->sym_tbl, "_mac_stats",
 				min_size, &hw->mac_stats_area);
@@ -530,12 +530,12 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 			return -ENODEV;
 
 		/* Use port offset in pf ctrl_bar for this ports control bar */
-		hw->ctrl_bar = pf_dev->ctrl_bar + (port * NFP_NET_CFG_BAR_SZ);
+		hw->super.ctrl_bar = pf_dev->ctrl_bar + (port * NFP_NET_CFG_BAR_SZ);
 		hw->mac_stats = app_fw_nic->ports[0]->mac_stats_bar +
 				(hw->nfp_idx * NFP_MAC_STATS_SIZE);
 	}
 
-	PMD_INIT_LOG(DEBUG, "ctrl bar: %p", hw->ctrl_bar);
+	PMD_INIT_LOG(DEBUG, "ctrl bar: %p", hw->super.ctrl_bar);
 	PMD_INIT_LOG(DEBUG, "MAC stats: %p", hw->mac_stats);
 
 	err = nfp_net_common_init(pci_dev, hw);
@@ -573,7 +573,7 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 	eth_dev->data->dev_private = hw;
 
 	PMD_INIT_LOG(DEBUG, "ctrl_bar: %p, tx_bar: %p, rx_bar: %p",
-			hw->ctrl_bar, hw->tx_bar, hw->rx_bar);
+			hw->super.ctrl_bar, hw->tx_bar, hw->rx_bar);
 
 	nfp_net_cfg_queue_setup(hw);
 	hw->mtu = RTE_ETHER_MTU;

@@ -36,8 +36,8 @@ nfp_net_tlv_caps_parse(struct rte_eth_dev *dev)
 	caps = &hw->tlv_caps;
 	nfp_net_tlv_caps_reset(caps);
 
-	data = hw->ctrl_bar + NFP_NET_CFG_TLV_BASE;
-	end = hw->ctrl_bar + NFP_NET_CFG_BAR_SZ;
+	data = hw->super.ctrl_bar + NFP_NET_CFG_TLV_BASE;
+	end = hw->super.ctrl_bar + NFP_NET_CFG_BAR_SZ;
 
 	hdr = rte_read32(data);
 	if (hdr == 0) {
@@ -46,7 +46,7 @@ nfp_net_tlv_caps_parse(struct rte_eth_dev *dev)
 	}
 
 	for (; ; data += length) {
-		offset = data - hw->ctrl_bar;
+		offset = data - hw->super.ctrl_bar;
 
 		if (data + NFP_NET_CFG_TLV_VALUE > end) {
 			PMD_DRV_LOG(ERR, "Reached end of BAR without END TLV");
@@ -87,7 +87,7 @@ nfp_net_tlv_caps_parse(struct rte_eth_dev *dev)
 			caps->mbox_len = length;
 
 			if (length != 0)
-				caps->mbox_off = data - hw->ctrl_bar;
+				caps->mbox_off = data - hw->super.ctrl_bar;
 			else
 				caps->mbox_off = 0;
 			break;
