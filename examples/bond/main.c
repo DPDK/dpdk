@@ -45,16 +45,8 @@
 #include <rte_cpuflags.h>
 #include <rte_eth_bond.h>
 
-#include <cmdline_rdline.h>
-#include <cmdline_parse.h>
-#include <cmdline_parse_num.h>
-#include <cmdline_parse_string.h>
-#include <cmdline_parse_ipaddr.h>
-#include <cmdline_parse_etheraddr.h>
 #include <cmdline_socket.h>
-#include <cmdline.h>
-
-#include "main.h"
+#include "commands.h"
 
 #define RTE_LOGTYPE_DCB RTE_LOGTYPE_USER1
 
@@ -462,11 +454,7 @@ static int lcore_main(__rte_unused void *arg1)
 	return 0;
 }
 
-struct cmd_obj_send_result {
-	cmdline_fixed_string_t action;
-	cmdline_ipaddr_t ip;
-};
-static inline void get_string(struct cmd_obj_send_result *res, char *buf, uint8_t size)
+static inline void get_string(struct cmd_send_result *res, char *buf, uint8_t size)
 {
 	snprintf(buf, size, NIPQUAD_FMT,
 		((unsigned)((unsigned char *)&(res->ip.addr.ipv4))[0]),
@@ -475,12 +463,11 @@ static inline void get_string(struct cmd_obj_send_result *res, char *buf, uint8_
 		((unsigned)((unsigned char *)&(res->ip.addr.ipv4))[3])
 		);
 }
-static void cmd_obj_send_parsed(void *parsed_result,
-		__rte_unused struct cmdline *cl,
-			       __rte_unused void *data)
+void
+cmd_send_parsed(void *parsed_result, __rte_unused struct cmdline *cl, __rte_unused void *data)
 {
 
-	struct cmd_obj_send_result *res = parsed_result;
+	struct cmd_send_result *res = parsed_result;
 	char ip_str[INET6_ADDRSTRLEN];
 
 	struct rte_ether_addr bond_mac_addr;
@@ -544,29 +531,8 @@ static void cmd_obj_send_parsed(void *parsed_result,
 	cmdline_printf(cl, "\n");
 }
 
-cmdline_parse_token_string_t cmd_obj_action_send =
-	TOKEN_STRING_INITIALIZER(struct cmd_obj_send_result, action, "send");
-cmdline_parse_token_ipaddr_t cmd_obj_ip =
-	TOKEN_IPV4_INITIALIZER(struct cmd_obj_send_result, ip);
-
-cmdline_parse_inst_t cmd_obj_send = {
-	.f = cmd_obj_send_parsed,  /* function to call */
-	.data = NULL,      /* 2nd arg of func */
-	.help_str = "send client_ip",
-	.tokens = {        /* token list, NULL terminated */
-		(void *)&cmd_obj_action_send,
-		(void *)&cmd_obj_ip,
-		NULL,
-	},
-};
-
-struct cmd_start_result {
-	cmdline_fixed_string_t start;
-};
-
-static void cmd_start_parsed(__rte_unused void *parsed_result,
-			       struct cmdline *cl,
-			       __rte_unused void *data)
+void
+cmd_start_parsed(__rte_unused void *parsed_result, struct cmdline *cl, __rte_unused void *data)
 {
 	int worker_core_id = rte_lcore_id();
 
@@ -605,26 +571,8 @@ static void cmd_start_parsed(__rte_unused void *parsed_result,
 		);
 }
 
-cmdline_parse_token_string_t cmd_start_start =
-	TOKEN_STRING_INITIALIZER(struct cmd_start_result, start, "start");
-
-cmdline_parse_inst_t cmd_start = {
-	.f = cmd_start_parsed,  /* function to call */
-	.data = NULL,      /* 2nd arg of func */
-	.help_str = "starts listening if not started at startup",
-	.tokens = {        /* token list, NULL terminated */
-		(void *)&cmd_start_start,
-		NULL,
-	},
-};
-
-struct cmd_help_result {
-	cmdline_fixed_string_t help;
-};
-
-static void cmd_help_parsed(__rte_unused void *parsed_result,
-			    struct cmdline *cl,
-			    __rte_unused void *data)
+void
+cmd_help_parsed(__rte_unused void *parsed_result, struct cmdline *cl, __rte_unused void *data)
 {
 	cmdline_printf(cl,
 			"ALB - link bonding mode 6 example\n"
@@ -637,26 +585,8 @@ static void cmd_help_parsed(__rte_unused void *parsed_result,
 		       );
 }
 
-cmdline_parse_token_string_t cmd_help_help =
-	TOKEN_STRING_INITIALIZER(struct cmd_help_result, help, "help");
-
-cmdline_parse_inst_t cmd_help = {
-	.f = cmd_help_parsed,  /* function to call */
-	.data = NULL,      /* 2nd arg of func */
-	.help_str = "show help",
-	.tokens = {        /* token list, NULL terminated */
-		(void *)&cmd_help_help,
-		NULL,
-	},
-};
-
-struct cmd_stop_result {
-	cmdline_fixed_string_t stop;
-};
-
-static void cmd_stop_parsed(__rte_unused void *parsed_result,
-			    struct cmdline *cl,
-			    __rte_unused void *data)
+void
+cmd_stop_parsed(__rte_unused void *parsed_result, struct cmdline *cl, __rte_unused void *data)
 {
 	rte_spinlock_lock(&global_flag_stru_p->lock);
 	if (global_flag_stru_p->LcoreMainIsRunning == 0)	{
@@ -678,26 +608,8 @@ static void cmd_stop_parsed(__rte_unused void *parsed_result,
 	rte_spinlock_unlock(&global_flag_stru_p->lock);
 }
 
-cmdline_parse_token_string_t cmd_stop_stop =
-	TOKEN_STRING_INITIALIZER(struct cmd_stop_result, stop, "stop");
-
-cmdline_parse_inst_t cmd_stop = {
-	.f = cmd_stop_parsed,  /* function to call */
-	.data = NULL,      /* 2nd arg of func */
-	.help_str = "this command do not handle any arguments",
-	.tokens = {        /* token list, NULL terminated */
-		(void *)&cmd_stop_stop,
-		NULL,
-	},
-};
-
-struct cmd_quit_result {
-	cmdline_fixed_string_t quit;
-};
-
-static void cmd_quit_parsed(__rte_unused void *parsed_result,
-			    struct cmdline *cl,
-			    __rte_unused void *data)
+void
+cmd_quit_parsed(__rte_unused void *parsed_result, struct cmdline *cl, __rte_unused void *data)
 {
 	rte_spinlock_lock(&global_flag_stru_p->lock);
 	if (global_flag_stru_p->LcoreMainIsRunning == 0)	{
@@ -721,26 +633,8 @@ static void cmd_quit_parsed(__rte_unused void *parsed_result,
 	cmdline_quit(cl);
 }
 
-cmdline_parse_token_string_t cmd_quit_quit =
-	TOKEN_STRING_INITIALIZER(struct cmd_quit_result, quit, "quit");
-
-cmdline_parse_inst_t cmd_quit = {
-	.f = cmd_quit_parsed,  /* function to call */
-	.data = NULL,      /* 2nd arg of func */
-	.help_str = "this command do not handle any arguments",
-	.tokens = {        /* token list, NULL terminated */
-		(void *)&cmd_quit_quit,
-		NULL,
-	},
-};
-
-struct cmd_show_result {
-	cmdline_fixed_string_t show;
-};
-
-static void cmd_show_parsed(__rte_unused void *parsed_result,
-			    struct cmdline *cl,
-			    __rte_unused void *data)
+void
+cmd_show_parsed(__rte_unused void *parsed_result, struct cmdline *cl, __rte_unused void *data)
 {
 	uint16_t members[16] = {0};
 	uint8_t len = 16;
@@ -771,31 +665,6 @@ static void cmd_show_parsed(__rte_unused void *parsed_result,
 			global_flag_stru_p->port_packets[2]);
 	rte_spinlock_unlock(&global_flag_stru_p->lock);
 }
-
-cmdline_parse_token_string_t cmd_show_show =
-	TOKEN_STRING_INITIALIZER(struct cmd_show_result, show, "show");
-
-cmdline_parse_inst_t cmd_show = {
-	.f = cmd_show_parsed,  /* function to call */
-	.data = NULL,      /* 2nd arg of func */
-	.help_str = "this command do not handle any arguments",
-	.tokens = {        /* token list, NULL terminated */
-		(void *)&cmd_show_show,
-		NULL,
-	},
-};
-
-/****** CONTEXT (list of instruction) */
-
-cmdline_parse_ctx_t main_ctx[] = {
-	(cmdline_parse_inst_t *)&cmd_start,
-	(cmdline_parse_inst_t *)&cmd_obj_send,
-	(cmdline_parse_inst_t *)&cmd_stop,
-	(cmdline_parse_inst_t *)&cmd_show,
-	(cmdline_parse_inst_t *)&cmd_quit,
-	(cmdline_parse_inst_t *)&cmd_help,
-	NULL,
-};
 
 /* prompt function, called from main on MAIN lcore */
 static void prompt(__rte_unused void *arg1)
