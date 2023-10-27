@@ -532,19 +532,19 @@ nfp_net_cfg_queue_setup(struct nfp_net_hw *hw)
 }
 
 void
-nfp_net_write_mac(struct nfp_net_hw *hw,
+nfp_net_write_mac(struct nfp_hw *hw,
 		uint8_t *mac)
 {
 	uint32_t mac0;
 	uint16_t mac1;
 
 	mac0 = *(uint32_t *)mac;
-	nn_writel(rte_cpu_to_be_32(mac0), hw->super.ctrl_bar + NFP_NET_CFG_MACADDR);
+	nn_writel(rte_cpu_to_be_32(mac0), hw->ctrl_bar + NFP_NET_CFG_MACADDR);
 
 	mac += 4;
 	mac1 = *(uint16_t *)mac;
 	nn_writew(rte_cpu_to_be_16(mac1),
-			hw->super.ctrl_bar + NFP_NET_CFG_MACADDR + 6);
+			hw->ctrl_bar + NFP_NET_CFG_MACADDR + 6);
 }
 
 int
@@ -565,7 +565,7 @@ nfp_net_set_mac_addr(struct rte_eth_dev *dev,
 	}
 
 	/* Writing new MAC to the specific port BAR address */
-	nfp_net_write_mac(net_hw, (uint8_t *)mac_addr);
+	nfp_net_write_mac(hw, (uint8_t *)mac_addr);
 
 	update = NFP_NET_CFG_UPDATE_MACADDR;
 	ctrl = hw->ctrl;

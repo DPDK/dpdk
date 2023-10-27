@@ -120,6 +120,7 @@ struct nfp_hw {
 	uint32_t ctrl;
 	uint32_t ctrl_ext;
 	rte_spinlock_t reconfig_lock;
+	struct rte_ether_addr mac_addr;
 };
 
 struct nfp_net_hw {
@@ -158,8 +159,6 @@ struct nfp_net_hw {
 	uint16_t vendor_id;
 	uint16_t subsystem_device_id;
 	uint16_t subsystem_vendor_id;
-
-	struct rte_ether_addr mac_addr;
 
 	/** Records starting point for counters */
 	struct rte_eth_stats eth_stats_base;
@@ -376,7 +375,7 @@ void nfp_net_log_device_information(const struct nfp_net_hw *hw);
 void nfp_net_enable_queues(struct rte_eth_dev *dev);
 void nfp_net_disable_queues(struct rte_eth_dev *dev);
 void nfp_net_params_setup(struct nfp_net_hw *hw);
-void nfp_net_write_mac(struct nfp_net_hw *hw, uint8_t *mac);
+void nfp_net_write_mac(struct nfp_hw *hw, uint8_t *mac);
 int nfp_net_set_mac_addr(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr);
 int nfp_configure_rx_interrupt(struct rte_eth_dev *dev,
 		struct rte_intr_handle *intr_handle);
