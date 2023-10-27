@@ -4,6 +4,7 @@
  */
 
 #include <pthread.h>
+#include <sys/ioctl.h>
 
 #include <nfp_common_pci.h>
 #include <nfp_dev.h>
@@ -15,6 +16,9 @@
 
 #define NFP_VDPA_DRIVER_NAME nfp_vdpa
 
+#define MSIX_IRQ_SET_BUF_LEN (sizeof(struct vfio_irq_set) + \
+		sizeof(int) * (NFP_VDPA_MAX_QUEUES * 2 + 1))
+
 struct nfp_vdpa_dev {
 	struct rte_pci_device *pci_dev;
 	struct rte_vdpa_device *vdev;
@@ -25,7 +29,15 @@ struct nfp_vdpa_dev {
 	int vfio_dev_fd;
 	int iommu_group;
 
+	int vid;
 	uint16_t max_queues;
+	RTE_ATOMIC(uint32_t) started;
+	RTE_ATOMIC(uint32_t) dev_attached;
+	RTE_ATOMIC(uint32_t) running;
+	rte_spinlock_t lock;
+
+	/** Eventfd for used ring interrupt */
+	int intr_fd[NFP_VDPA_MAX_QUEUES * 2];
 };
 
 struct nfp_vdpa_dev_node {
@@ -112,6 +124,305 @@ nfp_vdpa_vfio_teardown(struct nfp_vdpa_dev *device)
 	rte_vfio_container_destroy(device->vfio_container_fd);
 }
 
+static int
+nfp_vdpa_dma_do_unmap(struct rte_vhost_memory *mem,
+		uint32_t times,
+		int vfio_container_fd)
+{
+	uint32_t i;
+	int ret = 0;
+	struct rte_vhost_mem_region *region;
+
+	for (i = 0; i < times; i++) {
+		region = &mem->regions[i];
+
+		ret = rte_vfio_container_dma_unmap(vfio_container_fd,
+				region->host_user_addr, region->guest_phys_addr,
+				region->size);
+		if (ret < 0) {
+			/* Here should not return, even error happened. */
+			DRV_VDPA_LOG(ERR, "DMA unmap failed. Times: %u", i);
+		}
+	}
+
+	return ret;
+}
+
+static int
+nfp_vdpa_dma_do_map(struct rte_vhost_memory *mem,
+		uint32_t times,
+		int vfio_container_fd)
+{
+	int ret;
+	uint32_t i;
+	struct rte_vhost_mem_region *region;
+
+	for (i = 0; i < times; i++) {
+		region = &mem->regions[i];
+
+		ret = rte_vfio_container_dma_map(vfio_container_fd,
+				region->host_user_addr, region->guest_phys_addr,
+				region->size);
+		if (ret < 0) {
+			DRV_VDPA_LOG(ERR, "DMA map failed.");
+			nfp_vdpa_dma_do_unmap(mem, i, vfio_container_fd);
+			return ret;
+		}
+	}
+
+	return 0;
+}
+
+static int
+nfp_vdpa_dma_map(struct nfp_vdpa_dev *device,
+		bool do_map)
+{
+	int ret;
+	int vfio_container_fd;
+	struct rte_vhost_memory *mem = NULL;
+
+	ret = rte_vhost_get_mem_table(device->vid, &mem);
+	if (ret < 0) {
+		DRV_VDPA_LOG(ERR, "Failed to get memory layout.");
+		return ret;
+	}
+
+	vfio_container_fd = device->vfio_container_fd;
+	DRV_VDPA_LOG(DEBUG, "vfio_container_fd %d", vfio_container_fd);
+
+	if (do_map)
+		ret = nfp_vdpa_dma_do_map(mem, mem->nregions, vfio_container_fd);
+	else
+		ret = nfp_vdpa_dma_do_unmap(mem, mem->nregions, vfio_container_fd);
+
+	free(mem);
+
+	return ret;
+}
+
+static uint64_t
+nfp_vdpa_qva_to_gpa(int vid,
+		uint64_t qva)
+{
+	int ret;
+	uint32_t i;
+	uint64_t gpa = 0;
+	struct rte_vhost_memory *mem = NULL;
+	struct rte_vhost_mem_region *region;
+
+	ret = rte_vhost_get_mem_table(vid, &mem);
+	if (ret < 0) {
+		DRV_VDPA_LOG(ERR, "Failed to get memory layout.");
+		return gpa;
+	}
+
+	for (i = 0; i < mem->nregions; i++) {
+		region = &mem->regions[i];
+
+		if (qva >= region->host_user_addr &&
+				qva < region->host_user_addr + region->size) {
+			gpa = qva - region->host_user_addr + region->guest_phys_addr;
+			break;
+		}
+	}
+
+	free(mem);
+
+	return gpa;
+}
+
+static int
+nfp_vdpa_start(struct nfp_vdpa_dev *device)
+{
+	int ret;
+	int vid;
+	uint16_t i;
+	uint64_t gpa;
+	struct rte_vhost_vring vring;
+	struct nfp_vdpa_hw *vdpa_hw = &device->hw;
+
+	vid = device->vid;
+	vdpa_hw->nr_vring = rte_vhost_get_vring_num(vid);
+
+	ret = rte_vhost_get_negotiated_features(vid, &vdpa_hw->req_features);
+	if (ret != 0)
+		return ret;
+
+	for (i = 0; i < vdpa_hw->nr_vring; i++) {
+		ret = rte_vhost_get_vhost_vring(vid, i, &vring);
+		if (ret != 0)
+			return ret;
+
+		gpa = nfp_vdpa_qva_to_gpa(vid, (uint64_t)(uintptr_t)vring.desc);
+		if (gpa == 0) {
+			DRV_VDPA_LOG(ERR, "Fail to get GPA for descriptor ring.");
+			return -1;
+		}
+
+		vdpa_hw->vring[i].desc = gpa;
+
+		gpa = nfp_vdpa_qva_to_gpa(vid, (uint64_t)(uintptr_t)vring.avail);
+		if (gpa == 0) {
+			DRV_VDPA_LOG(ERR, "Fail to get GPA for available ring.");
+			return -1;
+		}
+
+		vdpa_hw->vring[i].avail = gpa;
+
+		gpa = nfp_vdpa_qva_to_gpa(vid, (uint64_t)(uintptr_t)vring.used);
+		if (gpa == 0) {
+			DRV_VDPA_LOG(ERR, "Fail to get GPA for used ring.");
+			return -1;
+		}
+
+		vdpa_hw->vring[i].used = gpa;
+
+		vdpa_hw->vring[i].size = vring.size;
+
+		ret = rte_vhost_get_vring_base(vid, i,
+				&vdpa_hw->vring[i].last_avail_idx,
+				&vdpa_hw->vring[i].last_used_idx);
+		if (ret != 0)
+			return ret;
+	}
+
+	return nfp_vdpa_hw_start(&device->hw, vid);
+}
+
+static void
+nfp_vdpa_stop(struct nfp_vdpa_dev *device)
+{
+	int vid;
+	uint32_t i;
+	struct nfp_vdpa_hw *vdpa_hw = &device->hw;
+
+	nfp_vdpa_hw_stop(vdpa_hw);
+
+	vid = device->vid;
+	for (i = 0; i < vdpa_hw->nr_vring; i++)
+		rte_vhost_set_vring_base(vid, i,
+				vdpa_hw->vring[i].last_avail_idx,
+				vdpa_hw->vring[i].last_used_idx);
+}
+
+static int
+nfp_vdpa_enable_vfio_intr(struct nfp_vdpa_dev *device)
+{
+	int ret;
+	uint16_t i;
+	int *fd_ptr;
+	uint16_t nr_vring;
+	struct vfio_irq_set *irq_set;
+	struct rte_vhost_vring vring;
+	char irq_set_buf[MSIX_IRQ_SET_BUF_LEN];
+
+	nr_vring = rte_vhost_get_vring_num(device->vid);
+
+	irq_set = (struct vfio_irq_set *)irq_set_buf;
+	irq_set->argsz = sizeof(irq_set_buf);
+	irq_set->count = nr_vring + 1;
+	irq_set->flags = VFIO_IRQ_SET_DATA_EVENTFD | VFIO_IRQ_SET_ACTION_TRIGGER;
+	irq_set->index = VFIO_PCI_MSIX_IRQ_INDEX;
+	irq_set->start = 0;
+
+	fd_ptr = (int *)&irq_set->data;
+	fd_ptr[RTE_INTR_VEC_ZERO_OFFSET] = rte_intr_fd_get(device->pci_dev->intr_handle);
+
+	for (i = 0; i < nr_vring; i++)
+		device->intr_fd[i] = -1;
+
+	for (i = 0; i < nr_vring; i++) {
+		rte_vhost_get_vhost_vring(device->vid, i, &vring);
+		fd_ptr[RTE_INTR_VEC_RXTX_OFFSET + i] = vring.callfd;
+	}
+
+	ret = ioctl(device->vfio_dev_fd, VFIO_DEVICE_SET_IRQS, irq_set);
+	if (ret != 0) {
+		DRV_VDPA_LOG(ERR, "Error enabling MSI-X interrupts.");
+		return -EIO;
+	}
+
+	return 0;
+}
+
+static int
+nfp_vdpa_disable_vfio_intr(struct nfp_vdpa_dev *device)
+{
+	int ret;
+	struct vfio_irq_set *irq_set;
+	char irq_set_buf[MSIX_IRQ_SET_BUF_LEN];
+
+	irq_set = (struct vfio_irq_set *)irq_set_buf;
+	irq_set->argsz = sizeof(irq_set_buf);
+	irq_set->count = 0;
+	irq_set->flags = VFIO_IRQ_SET_DATA_NONE | VFIO_IRQ_SET_ACTION_TRIGGER;
+	irq_set->index = VFIO_PCI_MSIX_IRQ_INDEX;
+	irq_set->start = 0;
+
+	ret = ioctl(device->vfio_dev_fd, VFIO_DEVICE_SET_IRQS, irq_set);
+	if (ret != 0) {
+		DRV_VDPA_LOG(ERR, "Error disabling MSI-X interrupts.");
+		return -EIO;
+	}
+
+	return 0;
+}
+
+static int
+update_datapath(struct nfp_vdpa_dev *device)
+{
+	int ret;
+
+	rte_spinlock_lock(&device->lock);
+
+	if ((rte_atomic_load_explicit(&device->running, rte_memory_order_relaxed) == 0) &&
+			(rte_atomic_load_explicit(&device->started,
+					rte_memory_order_relaxed) != 0) &&
+			(rte_atomic_load_explicit(&device->dev_attached,
+					rte_memory_order_relaxed) != 0)) {
+		ret = nfp_vdpa_dma_map(device, true);
+		if (ret != 0)
+			goto unlock_exit;
+
+		ret = nfp_vdpa_enable_vfio_intr(device);
+		if (ret != 0)
+			goto dma_map_rollback;
+
+		ret = nfp_vdpa_start(device);
+		if (ret != 0)
+			goto disable_vfio_intr;
+
+		rte_atomic_store_explicit(&device->running, 1, rte_memory_order_relaxed);
+	} else if ((rte_atomic_load_explicit(&device->running, rte_memory_order_relaxed) != 0) &&
+			((rte_atomic_load_explicit(&device->started,
+					rte_memory_order_relaxed) != 0) ||
+			(rte_atomic_load_explicit(&device->dev_attached,
+					rte_memory_order_relaxed) != 0))) {
+		nfp_vdpa_stop(device);
+
+		ret = nfp_vdpa_disable_vfio_intr(device);
+		if (ret != 0)
+			goto unlock_exit;
+
+		ret = nfp_vdpa_dma_map(device, false);
+		if (ret != 0)
+			goto unlock_exit;
+
+		rte_atomic_store_explicit(&device->running, 0, rte_memory_order_relaxed);
+	}
+
+	rte_spinlock_unlock(&device->lock);
+	return 0;
+
+disable_vfio_intr:
+	nfp_vdpa_disable_vfio_intr(device);
+dma_map_rollback:
+	nfp_vdpa_dma_map(device, false);
+unlock_exit:
+	rte_spinlock_unlock(&device->lock);
+	return ret;
+}
+
 struct rte_vdpa_dev_ops nfp_vdpa_ops = {
 };
 
@@ -156,6 +467,10 @@ nfp_vdpa_pci_probe(struct rte_pci_device *pci_dev)
 	TAILQ_INSERT_TAIL(&vdpa_dev_list, node, next);
 	pthread_mutex_unlock(&vdpa_list_lock);
 
+	rte_spinlock_init(&device->lock);
+	rte_atomic_store_explicit(&device->started, 1, rte_memory_order_relaxed);
+	update_datapath(device);
+
 	return 0;
 
 vfio_teardown:
@@ -184,6 +499,9 @@ nfp_vdpa_pci_remove(struct rte_pci_device *pci_dev)
 	}
 
 	device = node->device;
+
+	rte_atomic_store_explicit(&device->started, 0, rte_memory_order_relaxed);
+	update_datapath(device);
 
 	pthread_mutex_lock(&vdpa_list_lock);
 	TAILQ_REMOVE(&vdpa_dev_list, node, next);
