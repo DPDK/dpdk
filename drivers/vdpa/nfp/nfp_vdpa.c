@@ -58,6 +58,29 @@ static struct vdpa_dev_list_head vdpa_dev_list =
 static pthread_mutex_t vdpa_list_lock = PTHREAD_MUTEX_INITIALIZER;
 
 static struct nfp_vdpa_dev_node *
+nfp_vdpa_find_node_by_vdev(struct rte_vdpa_device *vdev)
+{
+	bool found = false;
+	struct nfp_vdpa_dev_node *node;
+
+	pthread_mutex_lock(&vdpa_list_lock);
+
+	TAILQ_FOREACH(node, &vdpa_dev_list, next) {
+		if (vdev == node->device->vdev) {
+			found = true;
+			break;
+		}
+	}
+
+	pthread_mutex_unlock(&vdpa_list_lock);
+
+	if (found)
+		return node;
+
+	return NULL;
+}
+
+static struct nfp_vdpa_dev_node *
 nfp_vdpa_find_node_by_pdev(struct rte_pci_device *pdev)
 {
 	bool found = false;
@@ -578,7 +601,197 @@ unlock_exit:
 	return ret;
 }
 
+static int
+nfp_vdpa_dev_config(int vid)
+{
+	int ret;
+	struct nfp_vdpa_dev *device;
+	struct rte_vdpa_device *vdev;
+	struct nfp_vdpa_dev_node *node;
+
+	vdev = rte_vhost_get_vdpa_device(vid);
+	node = nfp_vdpa_find_node_by_vdev(vdev);
+	if (node == NULL) {
+		DRV_VDPA_LOG(ERR, "Invalid vDPA device: %p", vdev);
+		return -ENODEV;
+	}
+
+	device = node->device;
+	device->vid = vid;
+	rte_atomic_store_explicit(&device->dev_attached, 1, rte_memory_order_relaxed);
+	update_datapath(device);
+
+	ret = rte_vhost_host_notifier_ctrl(vid, RTE_VHOST_QUEUE_ALL, true);
+	if (ret != 0)
+		DRV_VDPA_LOG(INFO, "vDPA (%s): software relay is used.",
+				vdev->device->name);
+
+	return 0;
+}
+
+static int
+nfp_vdpa_dev_close(int vid)
+{
+	struct nfp_vdpa_dev *device;
+	struct rte_vdpa_device *vdev;
+	struct nfp_vdpa_dev_node *node;
+
+	vdev = rte_vhost_get_vdpa_device(vid);
+	node = nfp_vdpa_find_node_by_vdev(vdev);
+	if (node == NULL) {
+		DRV_VDPA_LOG(ERR, "Invalid vDPA device: %p", vdev);
+		return -ENODEV;
+	}
+
+	device = node->device;
+	rte_atomic_store_explicit(&device->dev_attached, 0, rte_memory_order_relaxed);
+	update_datapath(device);
+
+	return 0;
+}
+
+static int
+nfp_vdpa_get_vfio_group_fd(int vid)
+{
+	struct rte_vdpa_device *vdev;
+	struct nfp_vdpa_dev_node *node;
+
+	vdev = rte_vhost_get_vdpa_device(vid);
+	node = nfp_vdpa_find_node_by_vdev(vdev);
+	if (node == NULL) {
+		DRV_VDPA_LOG(ERR, "Invalid vDPA device: %p", vdev);
+		return -ENODEV;
+	}
+
+	return node->device->vfio_group_fd;
+}
+
+static int
+nfp_vdpa_get_vfio_device_fd(int vid)
+{
+	struct rte_vdpa_device *vdev;
+	struct nfp_vdpa_dev_node *node;
+
+	vdev = rte_vhost_get_vdpa_device(vid);
+	node = nfp_vdpa_find_node_by_vdev(vdev);
+	if (node == NULL) {
+		DRV_VDPA_LOG(ERR, "Invalid vDPA device: %p", vdev);
+		return -ENODEV;
+	}
+
+	return node->device->vfio_dev_fd;
+}
+
+static int
+nfp_vdpa_get_notify_area(int vid,
+		int qid,
+		uint64_t *offset,
+		uint64_t *size)
+{
+	int ret;
+	struct nfp_vdpa_dev *device;
+	struct rte_vdpa_device *vdev;
+	struct nfp_vdpa_dev_node *node;
+	struct vfio_region_info region = {
+		.argsz = sizeof(region)
+	};
+
+	vdev = rte_vhost_get_vdpa_device(vid);
+	node = nfp_vdpa_find_node_by_vdev(vdev);
+	if (node == NULL) {
+		DRV_VDPA_LOG(ERR,  "Invalid vDPA device: %p", vdev);
+		return -ENODEV;
+	}
+
+	device = node->device;
+	region.index = device->hw.notify_region;
+
+	ret = ioctl(device->vfio_dev_fd, VFIO_DEVICE_GET_REGION_INFO, &region);
+	if (ret != 0) {
+		DRV_VDPA_LOG(ERR, "Get not get device region info.");
+		return -EIO;
+	}
+
+	*offset = nfp_vdpa_get_queue_notify_offset(&device->hw, qid) + region.offset;
+	*size = NFP_VDPA_NOTIFY_ADDR_INTERVAL;
+
+	return 0;
+}
+
+static int
+nfp_vdpa_get_queue_num(struct rte_vdpa_device *vdev,
+		uint32_t *queue_num)
+{
+	struct nfp_vdpa_dev_node *node;
+
+	node = nfp_vdpa_find_node_by_vdev(vdev);
+	if (node == NULL) {
+		DRV_VDPA_LOG(ERR, "Invalid vDPA device: %p", vdev);
+		return -ENODEV;
+	}
+
+	*queue_num = node->device->max_queues;
+
+	return 0;
+}
+
+static int
+nfp_vdpa_get_vdpa_features(struct rte_vdpa_device *vdev,
+		uint64_t *features)
+{
+	struct nfp_vdpa_dev_node *node;
+
+	node = nfp_vdpa_find_node_by_vdev(vdev);
+	if (node == NULL) {
+		DRV_VDPA_LOG(ERR,  "Invalid vDPA device: %p", vdev);
+		return -ENODEV;
+	}
+
+	*features = node->device->hw.features;
+
+	return 0;
+}
+
+static int
+nfp_vdpa_get_protocol_features(struct rte_vdpa_device *vdev __rte_unused,
+		uint64_t *features)
+{
+	*features = 1ULL << VHOST_USER_PROTOCOL_F_LOG_SHMFD |
+			1ULL << VHOST_USER_PROTOCOL_F_REPLY_ACK |
+			1ULL << VHOST_USER_PROTOCOL_F_BACKEND_REQ |
+			1ULL << VHOST_USER_PROTOCOL_F_BACKEND_SEND_FD |
+			1ULL << VHOST_USER_PROTOCOL_F_HOST_NOTIFIER;
+
+	return 0;
+}
+
+static int
+nfp_vdpa_set_features(int32_t vid)
+{
+	DRV_VDPA_LOG(DEBUG, "Start vid=%d", vid);
+	return 0;
+}
+
+static int
+nfp_vdpa_set_vring_state(int vid,
+		int vring,
+		int state)
+{
+	DRV_VDPA_LOG(DEBUG, "Start vid=%d, vring=%d, state=%d", vid, vring, state);
+	return 0;
+}
+
 struct rte_vdpa_dev_ops nfp_vdpa_ops = {
+	.get_queue_num = nfp_vdpa_get_queue_num,
+	.get_features = nfp_vdpa_get_vdpa_features,
+	.get_protocol_features = nfp_vdpa_get_protocol_features,
+	.dev_conf = nfp_vdpa_dev_config,
+	.dev_close = nfp_vdpa_dev_close,
+	.set_vring_state = nfp_vdpa_set_vring_state,
+	.set_features = nfp_vdpa_set_features,
+	.get_vfio_group_fd = nfp_vdpa_get_vfio_group_fd,
+	.get_vfio_device_fd = nfp_vdpa_get_vfio_device_fd,
+	.get_notify_area = nfp_vdpa_get_notify_area,
 };
 
 static int
