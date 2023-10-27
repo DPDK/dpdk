@@ -106,6 +106,11 @@ hns3_rxq_rearm_mbuf(struct hns3_rx_queue *rxq)
 
 	if (unlikely(rte_mempool_get_bulk(rxq->mb_pool, (void *)rxep,
 					  HNS3_DEFAULT_RXQ_REARM_THRESH) < 0)) {
+		/*
+		 * Clear VLD bit for the first descriptor rearmed in case
+		 * of going to receive packets later.
+		 */
+		rxdp[0].rx.bd_base_info = 0;
 		rte_eth_devices[rxq->port_id].data->rx_mbuf_alloc_failed++;
 		return;
 	}
