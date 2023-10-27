@@ -5572,14 +5572,13 @@ hns3_is_reset_pending(struct hns3_adapter *hns)
 	enum hns3_reset_level reset;
 
 	/*
-	 * Check the registers to confirm whether there is reset pending.
-	 * Note: This check may lead to schedule reset task, but only primary
-	 *       process can process the reset event. Therefore, limit the
-	 *       checking under only primary process.
+	 * Only primary can process can process the reset event,
+	 * so don't check reset event in secondary.
 	 */
-	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
-		hns3_check_event_cause(hns, NULL);
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return false;
 
+	hns3_check_event_cause(hns, NULL);
 	reset = hns3_get_reset_level(hns, &hw->reset.pending);
 	if (reset != HNS3_NONE_RESET && hw->reset.level != HNS3_NONE_RESET &&
 	    hw->reset.level < reset) {
