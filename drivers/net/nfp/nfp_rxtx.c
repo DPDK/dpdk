@@ -143,7 +143,7 @@ nfp_net_rx_cksum(struct nfp_net_rxq *rxq,
 {
 	struct nfp_net_hw *hw = rxq->hw;
 
-	if ((hw->ctrl & NFP_NET_CFG_CTRL_RXCSUM) == 0)
+	if ((hw->super.ctrl & NFP_NET_CFG_CTRL_RXCSUM) == 0)
 		return;
 
 	/* If IPv4 and IP checksum error, fail */
@@ -307,7 +307,7 @@ nfp_net_parse_meta_hash(const struct nfp_meta_parsed *meta,
 {
 	struct nfp_net_hw *hw = rxq->hw;
 
-	if ((hw->ctrl & NFP_NET_CFG_CTRL_RSS_ANY) == 0)
+	if ((hw->super.ctrl & NFP_NET_CFG_CTRL_RSS_ANY) == 0)
 		return;
 
 	mbuf->hash.rss = meta->hash;
@@ -339,7 +339,7 @@ nfp_net_parse_meta_vlan(const struct nfp_meta_parsed *meta,
 	struct nfp_net_hw *hw = rxq->hw;
 
 	/* Skip if firmware don't support setting vlan. */
-	if ((hw->ctrl & (NFP_NET_CFG_CTRL_RXVLAN | NFP_NET_CFG_CTRL_RXVLAN_V2)) == 0)
+	if ((hw->super.ctrl & (NFP_NET_CFG_CTRL_RXVLAN | NFP_NET_CFG_CTRL_RXVLAN_V2)) == 0)
 		return;
 
 	/*
@@ -347,12 +347,12 @@ nfp_net_parse_meta_vlan(const struct nfp_meta_parsed *meta,
 	 * 1. Using the metadata when NFP_NET_CFG_CTRL_RXVLAN_V2 is set,
 	 * 2. Using the descriptor when NFP_NET_CFG_CTRL_RXVLAN is set.
 	 */
-	if ((hw->ctrl & NFP_NET_CFG_CTRL_RXVLAN_V2) != 0) {
+	if ((hw->super.ctrl & NFP_NET_CFG_CTRL_RXVLAN_V2) != 0) {
 		if (meta->vlan_layer > 0 && meta->vlan[0].offload != 0) {
 			mb->vlan_tci = rte_cpu_to_le_32(meta->vlan[0].tci);
 			mb->ol_flags |= RTE_MBUF_F_RX_VLAN | RTE_MBUF_F_RX_VLAN_STRIPPED;
 		}
-	} else if ((hw->ctrl & NFP_NET_CFG_CTRL_RXVLAN) != 0) {
+	} else if ((hw->super.ctrl & NFP_NET_CFG_CTRL_RXVLAN) != 0) {
 		if ((rxd->rxd.flags & PCIE_DESC_RX_VLAN) != 0) {
 			mb->vlan_tci = rte_cpu_to_le_32(rxd->rxd.offload_info);
 			mb->ol_flags |= RTE_MBUF_F_RX_VLAN | RTE_MBUF_F_RX_VLAN_STRIPPED;
@@ -385,7 +385,7 @@ nfp_net_parse_meta_qinq(const struct nfp_meta_parsed *meta,
 {
 	struct nfp_net_hw *hw = rxq->hw;
 
-	if ((hw->ctrl & NFP_NET_CFG_CTRL_RXQINQ) == 0 ||
+	if ((hw->super.ctrl & NFP_NET_CFG_CTRL_RXQINQ) == 0 ||
 			(hw->super.cap & NFP_NET_CFG_CTRL_RXQINQ) == 0)
 		return;
 

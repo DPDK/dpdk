@@ -117,6 +117,8 @@ struct nfp_hw {
 	uint8_t *qcp_cfg;
 	uint32_t cap;
 	uint32_t cap_ext;
+	uint32_t ctrl;
+	uint32_t ctrl_ext;
 };
 
 struct nfp_net_hw {
@@ -138,9 +140,6 @@ struct nfp_net_hw {
 
 	/** NFP ASIC params */
 	const struct nfp_dev_info *dev_info;
-
-	/** Current values for control */
-	uint32_t ctrl;
 
 	uint8_t *tx_bar;
 	uint8_t *rx_bar;

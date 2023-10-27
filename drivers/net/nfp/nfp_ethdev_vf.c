@@ -110,7 +110,7 @@ nfp_netvf_start(struct rte_eth_dev *dev)
 		goto error;
 	}
 
-	hw->ctrl = new_ctrl;
+	hw->super.ctrl = new_ctrl;
 
 	for (i = 0; i < dev->data->nb_rx_queues; i++)
 		dev->data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STARTED;

@@ -500,7 +500,7 @@ nfp_net_disable_queues(struct rte_eth_dev *dev)
 	nn_cfg_writeq(hw, NFP_NET_CFG_TXRS_ENABLE, 0);
 	nn_cfg_writeq(hw, NFP_NET_CFG_RXRS_ENABLE, 0);
 
-	new_ctrl = hw->ctrl & ~NFP_NET_CFG_CTRL_ENABLE;
+	new_ctrl = hw->super.ctrl & ~NFP_NET_CFG_CTRL_ENABLE;
 	update = NFP_NET_CFG_UPDATE_GEN |
 			NFP_NET_CFG_UPDATE_RING |
 			NFP_NET_CFG_UPDATE_MSIX;
@@ -512,7 +512,7 @@ nfp_net_disable_queues(struct rte_eth_dev *dev)
 	if (nfp_net_reconfig(hw, new_ctrl, update) != 0)
 		return;
 
-	hw->ctrl = new_ctrl;
+	hw->super.ctrl = new_ctrl;
 }
 
 void
@@ -553,7 +553,7 @@ nfp_net_set_mac_addr(struct rte_eth_dev *dev,
 	struct nfp_net_hw *hw;
 
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	if ((hw->ctrl & NFP_NET_CFG_CTRL_ENABLE) != 0 &&
+	if ((hw->super.ctrl & NFP_NET_CFG_CTRL_ENABLE) != 0 &&
 			(hw->super.cap & NFP_NET_CFG_CTRL_LIVE_ADDR) == 0) {
 		PMD_DRV_LOG(ERR, "MAC address unable to change when port enabled");
 		return -EBUSY;
@@ -563,8 +563,8 @@ nfp_net_set_mac_addr(struct rte_eth_dev *dev,
 	nfp_net_write_mac(hw, (uint8_t *)mac_addr);
 
 	update = NFP_NET_CFG_UPDATE_MACADDR;
-	ctrl = hw->ctrl;
-	if ((hw->ctrl & NFP_NET_CFG_CTRL_ENABLE) != 0 &&
+	ctrl = hw->super.ctrl;
+	if ((hw->super.ctrl & NFP_NET_CFG_CTRL_ENABLE) != 0 &&
 			(hw->super.cap & NFP_NET_CFG_CTRL_LIVE_ADDR) != 0)
 		ctrl |= NFP_NET_CFG_CTRL_LIVE_ADDR;
 
@@ -613,7 +613,7 @@ nfp_configure_rx_interrupt(struct rte_eth_dev *dev,
 	}
 
 	/* Avoiding TX interrupts */
-	hw->ctrl |= NFP_NET_CFG_CTRL_MSIX_TX_OFF;
+	hw->super.ctrl |= NFP_NET_CFG_CTRL_MSIX_TX_OFF;
 	return 0;
 }
 
@@ -705,19 +705,19 @@ nfp_net_promisc_enable(struct rte_eth_dev *dev)
 		return -ENOTSUP;
 	}
 
-	if ((hw->ctrl & NFP_NET_CFG_CTRL_PROMISC) != 0) {
+	if ((hw->super.ctrl & NFP_NET_CFG_CTRL_PROMISC) != 0) {
 		PMD_DRV_LOG(INFO, "Promiscuous mode already enabled");
 		return 0;
 	}
 
-	new_ctrl = hw->ctrl | NFP_NET_CFG_CTRL_PROMISC;
+	new_ctrl = hw->super.ctrl | NFP_NET_CFG_CTRL_PROMISC;
 	update = NFP_NET_CFG_UPDATE_GEN;
 
 	ret = nfp_net_reconfig(hw, new_ctrl, update);
 	if (ret != 0)
 		return ret;
 
-	hw->ctrl = new_ctrl;
+	hw->super.ctrl = new_ctrl;
 
 	return 0;
 }
@@ -732,19 +732,19 @@ nfp_net_promisc_disable(struct rte_eth_dev *dev)
 
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
-	if ((hw->ctrl & NFP_NET_CFG_CTRL_PROMISC) == 0) {
+	if ((hw->super.ctrl & NFP_NET_CFG_CTRL_PROMISC) == 0) {
 		PMD_DRV_LOG(INFO, "Promiscuous mode already disabled");
 		return 0;
 	}
 
-	new_ctrl = hw->ctrl & ~NFP_NET_CFG_CTRL_PROMISC;
+	new_ctrl = hw->super.ctrl & ~NFP_NET_CFG_CTRL_PROMISC;
 	update = NFP_NET_CFG_UPDATE_GEN;
 
 	ret = nfp_net_reconfig(hw, new_ctrl, update);
 	if (ret != 0)
 		return ret;
 
-	hw->ctrl = new_ctrl;
+	hw->super.ctrl = new_ctrl;
 
 	return 0;
 }
@@ -1349,7 +1349,7 @@ nfp_net_common_init(struct rte_pci_device *pci_dev,
 	else
 		hw->rx_offset = nn_cfg_readl(hw, NFP_NET_CFG_RX_OFFSET_ADDR);
 
-	hw->ctrl = 0;
+	hw->super.ctrl = 0;
 	hw->stride_rx = stride;
 	hw->stride_tx = stride;
 
@@ -1482,7 +1482,7 @@ nfp_net_irq_unmask(struct rte_eth_dev *dev)
 	/* Make sure all updates are written before un-masking */
 	rte_wmb();
 
-	if ((hw->ctrl & NFP_NET_CFG_CTRL_MSIXAUTO) != 0) {
+	if ((hw->super.ctrl & NFP_NET_CFG_CTRL_MSIXAUTO) != 0) {
 		/* If MSI-X auto-masking is used, clear the entry */
 		rte_intr_ack(pci_dev->intr_handle);
 	} else {
@@ -1588,7 +1588,7 @@ nfp_net_vlan_offload_set(struct rte_eth_dev *dev,
 
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	rx_offload = dev->data->dev_conf.rxmode.offloads;
-	new_ctrl = hw->ctrl;
+	new_ctrl = hw->super.ctrl;
 
 	/* VLAN stripping setting */
 	if ((mask & RTE_ETH_VLAN_STRIP_MASK) != 0) {
@@ -1607,7 +1607,7 @@ nfp_net_vlan_offload_set(struct rte_eth_dev *dev,
 			new_ctrl &= ~NFP_NET_CFG_CTRL_RXQINQ;
 	}
 
-	if (new_ctrl == hw->ctrl)
+	if (new_ctrl == hw->super.ctrl)
 		return 0;
 
 	update = NFP_NET_CFG_UPDATE_GEN;
@@ -1616,7 +1616,7 @@ nfp_net_vlan_offload_set(struct rte_eth_dev *dev,
 	if (ret != 0)
 		return ret;
 
-	hw->ctrl = new_ctrl;
+	hw->super.ctrl = new_ctrl;
 
 	return 0;
 }
@@ -1689,7 +1689,7 @@ nfp_net_reta_update(struct rte_eth_dev *dev,
 	struct nfp_net_hw *hw;
 
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	if ((hw->ctrl & NFP_NET_CFG_CTRL_RSS_ANY) == 0)
+	if ((hw->super.ctrl & NFP_NET_CFG_CTRL_RSS_ANY) == 0)
 		return -EINVAL;
 
 	ret = nfp_net_rss_reta_write(dev, reta_conf, reta_size);
@@ -1698,7 +1698,7 @@ nfp_net_reta_update(struct rte_eth_dev *dev,
 
 	update = NFP_NET_CFG_UPDATE_RSS;
 
-	if (nfp_net_reconfig(hw, hw->ctrl, update) != 0)
+	if (nfp_net_reconfig(hw, hw->super.ctrl, update) != 0)
 		return -EIO;
 
 	return 0;
@@ -1719,7 +1719,7 @@ nfp_net_reta_query(struct rte_eth_dev *dev,
 	struct nfp_net_hw *hw;
 
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	if ((hw->ctrl & NFP_NET_CFG_CTRL_RSS_ANY) == 0)
+	if ((hw->super.ctrl & NFP_NET_CFG_CTRL_RSS_ANY) == 0)
 		return -EINVAL;
 
 	if (reta_size != NFP_NET_CFG_RSS_ITBL_SZ) {
@@ -1824,7 +1824,7 @@ nfp_net_rss_hash_update(struct rte_eth_dev *dev,
 	rss_hf = rss_conf->rss_hf;
 
 	/* Checking if RSS is enabled */
-	if ((hw->ctrl & NFP_NET_CFG_CTRL_RSS_ANY) == 0) {
+	if ((hw->super.ctrl & NFP_NET_CFG_CTRL_RSS_ANY) == 0) {
 		if (rss_hf != 0) {
 			PMD_DRV_LOG(ERR, "RSS unsupported");
 			return -EINVAL;
@@ -1842,7 +1842,7 @@ nfp_net_rss_hash_update(struct rte_eth_dev *dev,
 
 	update = NFP_NET_CFG_UPDATE_RSS;
 
-	if (nfp_net_reconfig(hw, hw->ctrl, update) != 0)
+	if (nfp_net_reconfig(hw, hw->super.ctrl, update) != 0)
 		return -EIO;
 
 	return 0;
@@ -1860,7 +1860,7 @@ nfp_net_rss_hash_conf_get(struct rte_eth_dev *dev,
 
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
-	if ((hw->ctrl & NFP_NET_CFG_CTRL_RSS_ANY) == 0)
+	if ((hw->super.ctrl & NFP_NET_CFG_CTRL_RSS_ANY) == 0)
 		return -EINVAL;
 
 	rss_hf = rss_conf->rss_hf;

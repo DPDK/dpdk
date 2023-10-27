@@ -61,7 +61,7 @@ nfp_pf_repr_disable_queues(struct rte_eth_dev *dev)
 	nn_cfg_writeq(hw, NFP_NET_CFG_TXRS_ENABLE, 0);
 	nn_cfg_writeq(hw, NFP_NET_CFG_RXRS_ENABLE, 0);
 
-	new_ctrl = hw->ctrl & ~NFP_NET_CFG_CTRL_ENABLE;
+	new_ctrl = hw->super.ctrl & ~NFP_NET_CFG_CTRL_ENABLE;
 	update = NFP_NET_CFG_UPDATE_GEN | NFP_NET_CFG_UPDATE_RING |
 			NFP_NET_CFG_UPDATE_MSIX;
 
@@ -72,7 +72,7 @@ nfp_pf_repr_disable_queues(struct rte_eth_dev *dev)
 	if (nfp_net_reconfig(hw, new_ctrl, update) != 0)
 		return;
 
-	hw->ctrl = new_ctrl;
+	hw->super.ctrl = new_ctrl;
 }
 
 int
@@ -123,7 +123,7 @@ nfp_flower_pf_start(struct rte_eth_dev *dev)
 		return -EIO;
 	}
 
-	hw->ctrl = new_ctrl;
+	hw->super.ctrl = new_ctrl;
 
 	/* Setup the freelist ring */
 	ret = nfp_net_rx_freelist_setup(dev);
@@ -721,7 +721,7 @@ nfp_flower_start_ctrl_vnic(struct nfp_net_hw *hw)
 		return -EIO;
 	}
 
-	hw->ctrl = new_ctrl;
+	hw->super.ctrl = new_ctrl;
 
 	/* Setup the freelist ring */
 	ret = nfp_net_rx_freelist_setup(dev);

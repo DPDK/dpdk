@@ -154,7 +154,7 @@ nfp_net_nfd3_set_meta_data(struct nfp_net_meta_raw *meta_data,
 	cap_extend = hw->super.cap_ext;
 
 	if ((pkt->ol_flags & RTE_MBUF_F_TX_VLAN) != 0 &&
-			(hw->ctrl & NFP_NET_CFG_CTRL_TXVLAN_V2) != 0) {
+			(hw->super.ctrl & NFP_NET_CFG_CTRL_TXVLAN_V2) != 0) {
 		if (meta_data->length == 0)
 			meta_data->length = NFP_NET_META_HEADER_SIZE;
 		meta_data->length += NFP_NET_META_FIELD_SIZE;
