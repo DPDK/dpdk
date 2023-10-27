@@ -6,6 +6,7 @@
  */
 
 #include <rte_alarm.h>
+#include <nfp_common_pci.h>
 
 #include "nfd3/nfp_nfd3.h"
 #include "nfdk/nfp_nfdk.h"
@@ -399,8 +400,7 @@ nfp_vf_pci_uninit(struct rte_eth_dev *eth_dev)
 }
 
 static int
-nfp_vf_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
-		struct rte_pci_device *pci_dev)
+nfp_vf_pci_probe(struct rte_pci_device *pci_dev)
 {
 	return rte_eth_dev_pci_generic_probe(pci_dev,
 			sizeof(struct nfp_net_adapter), nfp_netvf_init);
@@ -412,13 +412,19 @@ nfp_vf_pci_remove(struct rte_pci_device *pci_dev)
 	return rte_eth_dev_pci_generic_remove(pci_dev, nfp_vf_pci_uninit);
 }
 
-static struct rte_pci_driver rte_nfp_net_vf_pmd = {
+static struct nfp_class_driver rte_nfp_net_vf_pmd = {
+	.drv_class = NFP_CLASS_ETH,
+	.name = RTE_STR(net_nfp_vf),
 	.id_table = pci_id_nfp_vf_net_map,
 	.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_INTR_LSC,
 	.probe = nfp_vf_pci_probe,
 	.remove = nfp_vf_pci_remove,
 };
 
-RTE_PMD_REGISTER_PCI(net_nfp_vf, rte_nfp_net_vf_pmd);
+RTE_INIT(rte_nfp_vf_pmd_init)
+{
+	nfp_class_driver_register(&rte_nfp_net_vf_pmd);
+}
+
 RTE_PMD_REGISTER_PCI_TABLE(net_nfp_vf, pci_id_nfp_vf_net_map);
 RTE_PMD_REGISTER_KMOD_DEP(net_nfp_vf, "* igb_uio | uio_pci_generic | vfio");

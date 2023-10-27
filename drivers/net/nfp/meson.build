@@ -40,4 +40,4 @@ sources = files(
         'nfp_rxtx.c',
 )
 
-deps += ['hash', 'security']
+deps += ['hash', 'security', 'common_nfp']
