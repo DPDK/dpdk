@@ -4,10 +4,12 @@
 
 #define OPENSSL_API_COMPAT 0x10100000L
 
+#ifdef RTE_QAT_OPENSSL
 #include <openssl/sha.h>	/* Needed to calculate pre-compute values */
 #include <openssl/aes.h>	/* Needed to calculate pre-compute values */
 #include <openssl/md5.h>	/* Needed to calculate pre-compute values */
 #include <openssl/evp.h>	/* Needed for bpi runt block processing */
+#endif
 
 #ifndef RTE_QAT_OPENSSL
 #ifndef RTE_ARCH_ARM
@@ -1272,24 +1274,21 @@ static int qat_hash_get_block_size(enum icp_qat_hw_auth_algo qat_hash_alg)
 {
 	switch (qat_hash_alg) {
 	case ICP_QAT_HW_AUTH_ALGO_SHA1:
-		return SHA_CBLOCK;
 	case ICP_QAT_HW_AUTH_ALGO_SHA224:
-		return SHA256_CBLOCK;
 	case ICP_QAT_HW_AUTH_ALGO_SHA256:
-		return SHA256_CBLOCK;
+		return QAT_SHA_CBLOCK;
 	case ICP_QAT_HW_AUTH_ALGO_SHA384:
-		return SHA512_CBLOCK;
 	case ICP_QAT_HW_AUTH_ALGO_SHA512:
-		return SHA512_CBLOCK;
+		return QAT_SHA512_CBLOCK;
 	case ICP_QAT_HW_AUTH_ALGO_GALOIS_128:
 		return 16;
 	case ICP_QAT_HW_AUTH_ALGO_AES_XCBC_MAC:
 		return ICP_QAT_HW_AES_BLK_SZ;
 	case ICP_QAT_HW_AUTH_ALGO_MD5:
-		return MD5_CBLOCK;
+		return QAT_MD5_CBLOCK;
 	case ICP_QAT_HW_AUTH_ALGO_DELIMITER:
 		/* return maximum block size in this case */
-		return SHA512_CBLOCK;
+		return QAT_SHA512_CBLOCK;
 	case ICP_QAT_HW_AUTH_ALGO_SM3:
 		return QAT_SM3_BLOCK_SIZE;
 	default:

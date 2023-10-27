@@ -69,6 +69,9 @@
 	(!!((flags) & (flag)))
 
 #define QAT_SM3_BLOCK_SIZE	64
+#define QAT_SHA_CBLOCK 64
+#define QAT_SHA512_CBLOCK 128
+#define QAT_MD5_CBLOCK 64
 
 enum qat_sym_proto_flag {
 	QAT_CRYPTO_PROTO_FLAG_NONE = 0,

@@ -2,7 +2,9 @@
  * Copyright(c) 2015-2023 Intel Corporation
  */
 
+#ifdef RTE_QAT_OPENSSL
 #include <openssl/evp.h>
+#endif
 
 #include <rte_mempool.h>
 #include <rte_mbuf.h>

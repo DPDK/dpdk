@@ -24,6 +24,7 @@
 	(ICP_QAT_FW_COMN_STATUS_FLAG_OK == \
 	ICP_QAT_FW_COMN_RESP_CRYPTO_STAT_GET(resp->comn_hdr.comn_status))
 
+#ifdef RTE_QAT_OPENSSL
 static __rte_always_inline int
 op_bpi_cipher_decrypt(uint8_t *src, uint8_t *dst,
 		uint8_t *iv, int ivlen, int srclen,
@@ -48,6 +49,7 @@ cipher_decrypt_err:
 	QAT_DP_LOG(ERR, "libcrypto ECB cipher decrypt for BPI IV failed");
 	return -EINVAL;
 }
+#endif
 
 static __rte_always_inline uint32_t
 qat_bpicipher_preprocess(struct qat_sym_session *ctx,

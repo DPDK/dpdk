@@ -9,7 +9,9 @@
 #include <rte_net_crc.h>
 
 #ifdef BUILD_QAT_SYM
+#ifdef RTE_QAT_OPENSSL
 #include <openssl/evp.h>
+#endif
 #include <rte_security_driver.h>
 
 #include "qat_common.h"
@@ -133,6 +135,7 @@ uint16_t
 qat_sym_dequeue_burst(void *qp, struct rte_crypto_op **ops,
 		uint16_t nb_ops);
 
+#ifdef RTE_QAT_OPENSSL
 /** Encrypt a single partial block
  *  Depends on openssl libcrypto
  *  Uses ECB+XOR to do CFB encryption, same result, more performant
@@ -161,8 +164,7 @@ cipher_encrypt_err:
 	QAT_DP_LOG(ERR, "libcrypto ECB cipher encrypt failed");
 	return -EINVAL;
 }
-
-#ifndef RTE_QAT_OPENSSL
+#else
 static __rte_always_inline void
 bpi_cipher_ipsec(uint8_t *src, uint8_t *dst, uint8_t *iv, int srclen,
 		uint64_t *expkey, IMB_MGR *m, uint8_t docsis_key_len)
