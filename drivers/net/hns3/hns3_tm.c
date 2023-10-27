@@ -739,7 +739,7 @@ hns3_tm_node_type_get(struct rte_eth_dev *dev, uint32_t node_id,
 }
 
 static void
-hns3_tm_nonleaf_level_capsbilities_get(struct rte_eth_dev *dev,
+hns3_tm_nonleaf_level_capabilities_get(struct rte_eth_dev *dev,
 				       uint32_t level_id,
 				       struct rte_tm_level_capabilities *cap)
 {
@@ -818,7 +818,7 @@ hns3_tm_level_capabilities_get(struct rte_eth_dev *dev,
 	memset(cap, 0, sizeof(struct rte_tm_level_capabilities));
 
 	if (level_id != HNS3_TM_NODE_LEVEL_QUEUE)
-		hns3_tm_nonleaf_level_capsbilities_get(dev, level_id, cap);
+		hns3_tm_nonleaf_level_capabilities_get(dev, level_id, cap);
 	else
 		hns3_tm_leaf_level_capabilities_get(dev, cap);
 
