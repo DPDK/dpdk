@@ -70,6 +70,12 @@ The format of the list file must be:
 
   * ``<IP>src_ip``
 
+* Variable fields, which take their values from a list of options,
+  have the comma-separated option list placed in braces, rather than a the type name.
+  For example,
+
+  * ``<(rx,tx,rxtx)>mode``
+
 * The help text for a command is given in the form of a comment on the same line as the command
 
 An example list file, with a variety of (unrelated) commands, is shown below::
@@ -79,6 +85,7 @@ An example list file, with a variety of (unrelated) commands, is shown below::
    add <UINT16>x <UINT16>y  # add x and y
    echo <STRING>message     # print message to screen
    add socket <STRING>path  # add unix socket with the given path
+   set mode <(rx,tx)>rxtx   # set Rx-only or Tx-only mode
    quit                     # close the application
 
 Running the Generator Script

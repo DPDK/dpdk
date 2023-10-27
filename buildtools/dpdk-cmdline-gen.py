@@ -73,6 +73,13 @@ def process_command(lineno, tokens, comment):
                 f"cmdline_parse_token_ipaddr_t cmd_{name}_{t_name}_tok =\n"
                 f"\tTOKEN_IPV4_INITIALIZER(struct cmd_{name}_result, {t_name});"
             )
+        elif t_type.startswith("(") and t_type.endswith(")"):
+            result_struct.append(f"\tcmdline_fixed_string_t {t_name};")
+            t_val = f'"{t_type[1:-1].replace(",","#")}"'
+            initializers.append(
+                f"static cmdline_parse_token_string_t cmd_{name}_{t_name}_tok =\n"
+                f"\tTOKEN_STRING_INITIALIZER(struct cmd_{name}_result, {t_name}, {t_val});"
+            )
         else:
             raise TypeError(f"Error line {lineno + 1}: unknown token type '{t_type}'")
         token_list.append(f"cmd_{name}_{t_name}_tok")
