@@ -44,4 +44,8 @@ int nfp_vdpa_hw_start(struct nfp_vdpa_hw *vdpa_hw, int vid);
 
 void nfp_vdpa_hw_stop(struct nfp_vdpa_hw *vdpa_hw);
 
+void nfp_vdpa_notify_queue(struct nfp_vdpa_hw *vdpa_hw, uint16_t qid);
+
+uint64_t nfp_vdpa_get_queue_notify_offset(struct nfp_vdpa_hw *vdpa_hw, int qid);
+
 #endif /* __NFP_VDPA_CORE_H__ */

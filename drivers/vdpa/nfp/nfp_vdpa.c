@@ -4,7 +4,9 @@
  */
 
 #include <pthread.h>
+#include <sys/epoll.h>
 #include <sys/ioctl.h>
+#include <unistd.h>
 
 #include <nfp_common_pci.h>
 #include <nfp_dev.h>
@@ -28,6 +30,9 @@ struct nfp_vdpa_dev {
 	int vfio_group_fd;
 	int vfio_dev_fd;
 	int iommu_group;
+
+	rte_thread_t tid;    /**< Thread for notify relay */
+	int epoll_fd;
 
 	int vid;
 	uint16_t max_queues;
@@ -368,6 +373,148 @@ nfp_vdpa_disable_vfio_intr(struct nfp_vdpa_dev *device)
 	return 0;
 }
 
+static void
+nfp_vdpa_read_kickfd(int kickfd)
+{
+	int bytes;
+	uint64_t buf;
+
+	for (;;) {
+		bytes = read(kickfd, &buf, 8);
+		if (bytes >= 0)
+			break;
+
+		if (errno != EINTR && errno != EWOULDBLOCK &&
+				errno != EAGAIN) {
+			DRV_VDPA_LOG(ERR, "Error reading kickfd");
+			break;
+		}
+	}
+}
+
+static int
+nfp_vdpa_notify_epoll_ctl(uint32_t queue_num,
+		struct nfp_vdpa_dev *device)
+{
+	int ret;
+	uint32_t qid;
+
+	for (qid = 0; qid < queue_num; qid++) {
+		struct epoll_event ev;
+		struct rte_vhost_vring vring;
+
+		ev.events = EPOLLIN | EPOLLPRI;
+		rte_vhost_get_vhost_vring(device->vid, qid, &vring);
+		ev.data.u64 = qid | (uint64_t)vring.kickfd << 32;
+		ret = epoll_ctl(device->epoll_fd, EPOLL_CTL_ADD, vring.kickfd, &ev);
+		if (ret < 0) {
+			DRV_VDPA_LOG(ERR, "Epoll add error for queue %d", qid);
+			return ret;
+		}
+	}
+
+	return 0;
+}
+
+static int
+nfp_vdpa_notify_epoll_wait(uint32_t queue_num,
+		struct nfp_vdpa_dev *device)
+{
+	int i;
+	int fds;
+	int kickfd;
+	uint32_t qid;
+	struct epoll_event events[NFP_VDPA_MAX_QUEUES * 2];
+
+	for (;;) {
+		fds = epoll_wait(device->epoll_fd, events, queue_num, -1);
+		if (fds < 0) {
+			if (errno == EINTR)
+				continue;
+
+			DRV_VDPA_LOG(ERR, "Epoll wait fail");
+			return -EACCES;
+		}
+
+		for (i = 0; i < fds; i++) {
+			qid = events[i].data.u32;
+			kickfd = (uint32_t)(events[i].data.u64 >> 32);
+
+			nfp_vdpa_read_kickfd(kickfd);
+			nfp_vdpa_notify_queue(&device->hw, qid);
+		}
+	}
+
+	return 0;
+}
+
+static uint32_t
+nfp_vdpa_notify_relay(void *arg)
+{
+	int ret;
+	int epoll_fd;
+	uint32_t queue_num;
+	struct nfp_vdpa_dev *device = arg;
+
+	epoll_fd = epoll_create(NFP_VDPA_MAX_QUEUES * 2);
+	if (epoll_fd < 0) {
+		DRV_VDPA_LOG(ERR, "failed to create epoll instance.");
+		return 1;
+	}
+
+	device->epoll_fd = epoll_fd;
+
+	queue_num = rte_vhost_get_vring_num(device->vid);
+
+	ret = nfp_vdpa_notify_epoll_ctl(queue_num, device);
+	if (ret != 0)
+		goto notify_exit;
+
+	ret = nfp_vdpa_notify_epoll_wait(queue_num, device);
+	if (ret != 0)
+		goto notify_exit;
+
+	return 0;
+
+notify_exit:
+	close(device->epoll_fd);
+	device->epoll_fd = -1;
+
+	return 1;
+}
+
+static int
+nfp_vdpa_setup_notify_relay(struct nfp_vdpa_dev *device)
+{
+	int ret;
+	char name[RTE_THREAD_INTERNAL_NAME_SIZE];
+
+	snprintf(name, sizeof(name), "nfp-noti%d", device->vid);
+	ret = rte_thread_create_internal_control(&device->tid, name,
+			nfp_vdpa_notify_relay, (void *)device);
+	if (ret != 0) {
+		DRV_VDPA_LOG(ERR, "Failed to create notify relay pthread.");
+		return -1;
+	}
+
+	return 0;
+}
+
+static void
+nfp_vdpa_unset_notify_relay(struct nfp_vdpa_dev *device)
+{
+	if (device->tid.opaque_id != 0) {
+		pthread_cancel((pthread_t)device->tid.opaque_id);
+		rte_thread_join(device->tid, NULL);
+		device->tid.opaque_id = 0;
+	}
+
+	if (device->epoll_fd >= 0) {
+		close(device->epoll_fd);
+		device->epoll_fd = -1;
+	}
+}
+
 static int
 update_datapath(struct nfp_vdpa_dev *device)
 {
@@ -392,12 +539,18 @@ update_datapath(struct nfp_vdpa_dev *device)
 		if (ret != 0)
 			goto disable_vfio_intr;
 
+		ret = nfp_vdpa_setup_notify_relay(device);
+		if (ret != 0)
+			goto vdpa_stop;
+
 		rte_atomic_store_explicit(&device->running, 1, rte_memory_order_relaxed);
 	} else if ((rte_atomic_load_explicit(&device->running, rte_memory_order_relaxed) != 0) &&
 			((rte_atomic_load_explicit(&device->started,
 					rte_memory_order_relaxed) != 0) ||
 			(rte_atomic_load_explicit(&device->dev_attached,
 					rte_memory_order_relaxed) != 0))) {
+		nfp_vdpa_unset_notify_relay(device);
+
 		nfp_vdpa_stop(device);
 
 		ret = nfp_vdpa_disable_vfio_intr(device);
@@ -414,6 +567,8 @@ update_datapath(struct nfp_vdpa_dev *device)
 	rte_spinlock_unlock(&device->lock);
 	return 0;
 
+vdpa_stop:
+	nfp_vdpa_stop(device);
 disable_vfio_intr:
 	nfp_vdpa_disable_vfio_intr(device);
 dma_map_rollback:

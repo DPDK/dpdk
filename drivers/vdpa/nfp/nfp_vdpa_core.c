@@ -15,6 +15,41 @@
 #define VIRTIO_F_IN_ORDER      35
 #endif
 
+#define NFP_QCP_NOTIFY_MAX_ADD    0x7f
+
+enum nfp_qcp_notify_ptr {
+	NFP_QCP_NOTIFY_WRITE_PTR = 0,
+	NFP_QCP_NOTIFY_READ_PTR
+};
+
+/**
+ * Add the value to the selected pointer of a queue
+ *
+ * @param queue
+ *   Base address for queue structure
+ * @param ptr
+ *   Add to the Read or Write pointer
+ * @param val
+ *   Value to add to the queue pointer
+ */
+static inline void
+nfp_qcp_notify_ptr_add(uint8_t *q,
+		enum nfp_qcp_notify_ptr ptr,
+		uint32_t val)
+{
+	uint32_t off;
+
+	if (ptr == NFP_QCP_NOTIFY_WRITE_PTR)
+		off = NFP_QCP_QUEUE_ADD_RPTR;
+	else
+		off = NFP_QCP_QUEUE_ADD_WPTR;
+
+	for (; val > NFP_QCP_NOTIFY_MAX_ADD; val -= NFP_QCP_NOTIFY_MAX_ADD)
+		nn_writel(rte_cpu_to_le_32(NFP_QCP_NOTIFY_MAX_ADD), q + off);
+
+	nn_writel(rte_cpu_to_le_32(val), q + off);
+}
+
 int
 nfp_vdpa_hw_init(struct nfp_vdpa_hw *vdpa_hw,
 		struct rte_pci_device *pci_dev)
@@ -129,4 +164,30 @@ void
 nfp_vdpa_hw_stop(struct nfp_vdpa_hw *vdpa_hw)
 {
 	nfp_disable_queues(&vdpa_hw->super);
+}
+
+/*
+ * This offset is used for mmaping the notify area. It implies it needs
+ * to be a multiple of PAGE_SIZE.
+ * For debugging, using notify region 0 with an offset of 4K. This should
+ * point to the conf bar.
+ */
+uint64_t
+nfp_vdpa_get_queue_notify_offset(struct nfp_vdpa_hw *vdpa_hw __rte_unused,
+		int qid)
+{
+	return NFP_VDPA_NOTIFY_ADDR_BASE + (qid * NFP_VDPA_NOTIFY_ADDR_INTERVAL);
+}
+
+/*
+ * With just one queue the increment is 0, which does not
+ * incremente the counter but will raise a queue event due
+ * to queue configured for watermark events.
+ */
+void
+nfp_vdpa_notify_queue(struct nfp_vdpa_hw *vdpa_hw,
+		uint16_t qid)
+{
+	nfp_qcp_notify_ptr_add(vdpa_hw->notify_addr[qid],
+			NFP_QCP_NOTIFY_WRITE_PTR, qid);
 }
