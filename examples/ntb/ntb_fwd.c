@@ -21,6 +21,7 @@
 #include <rte_cycles.h>
 #include <rte_pmd_ntb.h>
 #include <rte_mbuf_pool_ops.h>
+#include "commands.h"
 
 /* Per-port statistics struct */
 struct ntb_port_statistics {
@@ -103,12 +104,7 @@ static struct rte_eth_conf eth_port_conf = {
 	},
 };
 
-/* *** Help command with introduction. *** */
-struct cmd_help_result {
-	cmdline_fixed_string_t help;
-};
-
-static void
+void
 cmd_help_parsed(__rte_unused void *parsed_result,
 		struct cmdline *cl,
 		__rte_unused void *data)
@@ -134,26 +130,7 @@ cmd_help_parsed(__rte_unused void *parsed_result,
 	);
 
 }
-
-cmdline_parse_token_string_t cmd_help_help =
-	TOKEN_STRING_INITIALIZER(struct cmd_help_result, help, "help");
-
-cmdline_parse_inst_t cmd_help = {
-	.f = cmd_help_parsed,
-	.data = NULL,
-	.help_str = "show help",
-	.tokens = {
-		(void *)&cmd_help_help,
-		NULL,
-	},
-};
-
-/* *** QUIT *** */
-struct cmd_quit_result {
-	cmdline_fixed_string_t quit;
-};
-
-static void
+void
 cmd_quit_parsed(__rte_unused void *parsed_result,
 		struct cmdline *cl,
 		__rte_unused void *data)
@@ -188,31 +165,12 @@ cmd_quit_parsed(__rte_unused void *parsed_result,
 	cmdline_quit(cl);
 }
 
-cmdline_parse_token_string_t cmd_quit_quit =
-		TOKEN_STRING_INITIALIZER(struct cmd_quit_result, quit, "quit");
-
-cmdline_parse_inst_t cmd_quit = {
-	.f = cmd_quit_parsed,
-	.data = NULL,
-	.help_str = "exit application",
-	.tokens = {
-		(void *)&cmd_quit_quit,
-		NULL,
-	},
-};
-
-/* *** SEND FILE PARAMETERS *** */
-struct cmd_sendfile_result {
-	cmdline_fixed_string_t send_string;
-	char filepath[];
-};
-
-static void
-cmd_sendfile_parsed(void *parsed_result,
+void
+cmd_send_parsed(void *parsed_result,
 		    __rte_unused struct cmdline *cl,
 		    __rte_unused void *data)
 {
-	struct cmd_sendfile_result *res = parsed_result;
+	struct cmd_send_result *res = parsed_result;
 	struct rte_rawdev_buf *pkts_send[NTB_MAX_PKT_BURST];
 	struct rte_mbuf *mbuf_send[NTB_MAX_PKT_BURST];
 	uint64_t size, count, i, j, nb_burst;
@@ -326,24 +284,6 @@ clean:
 		free(pkts_send[i]);
 	fclose(file);
 }
-
-cmdline_parse_token_string_t cmd_send_file_send =
-	TOKEN_STRING_INITIALIZER(struct cmd_sendfile_result, send_string,
-				 "send");
-cmdline_parse_token_string_t cmd_send_file_filepath =
-	TOKEN_STRING_INITIALIZER(struct cmd_sendfile_result, filepath, NULL);
-
-
-cmdline_parse_inst_t cmd_send_file = {
-	.f = cmd_sendfile_parsed,
-	.data = NULL,
-	.help_str = "send <file_path>",
-	.tokens = {
-		(void *)&cmd_send_file_send,
-		(void *)&cmd_send_file_filepath,
-		NULL,
-	},
-};
 
 #define RECV_FILE_LEN 30
 static int
@@ -788,12 +728,7 @@ start_pkt_fwd(void)
 	}
 }
 
-/* *** START FWD PARAMETERS *** */
-struct cmd_start_result {
-	cmdline_fixed_string_t start;
-};
-
-static void
+void
 cmd_start_parsed(__rte_unused void *parsed_result,
 			    __rte_unused struct cmdline *cl,
 			    __rte_unused void *data)
@@ -801,25 +736,7 @@ cmd_start_parsed(__rte_unused void *parsed_result,
 	start_pkt_fwd();
 }
 
-cmdline_parse_token_string_t cmd_start_start =
-		TOKEN_STRING_INITIALIZER(struct cmd_start_result, start, "start");
-
-cmdline_parse_inst_t cmd_start = {
-	.f = cmd_start_parsed,
-	.data = NULL,
-	.help_str = "start pkt fwd between ntb and ethdev",
-	.tokens = {
-		(void *)&cmd_start_start,
-		NULL,
-	},
-};
-
-/* *** STOP *** */
-struct cmd_stop_result {
-	cmdline_fixed_string_t stop;
-};
-
-static void
+void
 cmd_stop_parsed(__rte_unused void *parsed_result,
 		__rte_unused struct cmdline *cl,
 		__rte_unused void *data)
@@ -843,19 +760,6 @@ cmd_stop_parsed(__rte_unused void *parsed_result,
 	in_test = 0;
 	printf("\nDone.\n");
 }
-
-cmdline_parse_token_string_t cmd_stop_stop =
-		TOKEN_STRING_INITIALIZER(struct cmd_stop_result, stop, "stop");
-
-cmdline_parse_inst_t cmd_stop = {
-	.f = cmd_stop_parsed,
-	.data = NULL,
-	.help_str = "stop: Stop packet forwarding",
-	.tokens = {
-		(void *)&cmd_stop_stop,
-		NULL,
-	},
-};
 
 static void
 ntb_stats_clear(void)
@@ -975,58 +879,28 @@ ntb_stats_display(void)
 	free(ids);
 }
 
-/* *** SHOW/CLEAR PORT STATS *** */
-struct cmd_stats_result {
-	cmdline_fixed_string_t show;
-	cmdline_fixed_string_t port;
-	cmdline_fixed_string_t stats;
-};
-
-static void
-cmd_stats_parsed(void *parsed_result,
+void
+cmd_show_port_stats_parsed(__rte_unused void *parsed_result,
 		 __rte_unused struct cmdline *cl,
 		 __rte_unused void *data)
 {
-	struct cmd_stats_result *res = parsed_result;
-	if (!strcmp(res->show, "clear"))
-		ntb_stats_clear();
-	else
-		ntb_stats_display();
+	ntb_stats_display();
 }
 
-cmdline_parse_token_string_t cmd_stats_show =
-	TOKEN_STRING_INITIALIZER(struct cmd_stats_result, show, "show#clear");
-cmdline_parse_token_string_t cmd_stats_port =
-	TOKEN_STRING_INITIALIZER(struct cmd_stats_result, port, "port");
-cmdline_parse_token_string_t cmd_stats_stats =
-	TOKEN_STRING_INITIALIZER(struct cmd_stats_result, stats, "stats");
+void
+cmd_clear_port_stats_parsed(__rte_unused void *parsed_result,
+		 __rte_unused struct cmdline *cl,
+		 __rte_unused void *data)
+{
+	ntb_stats_clear();
+}
 
-
-cmdline_parse_inst_t cmd_stats = {
-	.f = cmd_stats_parsed,
-	.data = NULL,
-	.help_str = "show|clear port stats",
-	.tokens = {
-		(void *)&cmd_stats_show,
-		(void *)&cmd_stats_port,
-		(void *)&cmd_stats_stats,
-		NULL,
-	},
-};
-
-/* *** SET FORWARDING MODE *** */
-struct cmd_set_fwd_mode_result {
-	cmdline_fixed_string_t set;
-	cmdline_fixed_string_t fwd;
-	cmdline_fixed_string_t mode;
-};
-
-static void
-cmd_set_fwd_mode_parsed(__rte_unused void *parsed_result,
+void
+cmd_set_fwd_parsed(void *parsed_result,
 			__rte_unused struct cmdline *cl,
 			__rte_unused void *data)
 {
-	struct cmd_set_fwd_mode_result *res = parsed_result;
+	struct cmd_set_fwd_result *res = parsed_result;
 	int i;
 
 	if (in_test) {
@@ -1042,38 +916,6 @@ cmd_set_fwd_mode_parsed(__rte_unused void *parsed_result,
 	}
 	printf("Invalid %s packet forwarding mode.\n", res->mode);
 }
-
-cmdline_parse_token_string_t cmd_setfwd_set =
-	TOKEN_STRING_INITIALIZER(struct cmd_set_fwd_mode_result, set, "set");
-cmdline_parse_token_string_t cmd_setfwd_fwd =
-	TOKEN_STRING_INITIALIZER(struct cmd_set_fwd_mode_result, fwd, "fwd");
-cmdline_parse_token_string_t cmd_setfwd_mode =
-	TOKEN_STRING_INITIALIZER(struct cmd_set_fwd_mode_result, mode,
-				"file-trans#iofwd#txonly#rxonly");
-
-cmdline_parse_inst_t cmd_set_fwd_mode = {
-	.f = cmd_set_fwd_mode_parsed,
-	.data = NULL,
-	.help_str = "set forwarding mode as file-trans|rxonly|txonly|iofwd",
-	.tokens = {
-		(void *)&cmd_setfwd_set,
-		(void *)&cmd_setfwd_fwd,
-		(void *)&cmd_setfwd_mode,
-		NULL,
-	},
-};
-
-/* list of instructions */
-cmdline_parse_ctx_t main_ctx[] = {
-	(cmdline_parse_inst_t *)&cmd_help,
-	(cmdline_parse_inst_t *)&cmd_send_file,
-	(cmdline_parse_inst_t *)&cmd_start,
-	(cmdline_parse_inst_t *)&cmd_stop,
-	(cmdline_parse_inst_t *)&cmd_stats,
-	(cmdline_parse_inst_t *)&cmd_set_fwd_mode,
-	(cmdline_parse_inst_t *)&cmd_quit,
-	NULL,
-};
 
 /* prompt function, called from main on MAIN lcore */
 static void

@@ -1,0 +1,11 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright(c) 2023 Intel Corporation
+#
+help                   # show help
+quit                   # exit application
+send <STRING>filepath  # send <file_path>
+start                  # start pkt fwd between ntb and ethdev
+stop                   # stop packet forwarding
+show port stats        # show statistics for all ports
+clear port stats       # clear all port statistics
+set fwd <(file-trans,iofwd,txonly,rxonly)>mode  # set forwarding mode as file-trans|rxonly|txonly|iofwd
