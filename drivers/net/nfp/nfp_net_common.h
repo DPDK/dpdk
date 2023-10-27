@@ -119,6 +119,7 @@ struct nfp_hw {
 	uint32_t cap_ext;
 	uint32_t ctrl;
 	uint32_t ctrl_ext;
+	rte_spinlock_t reconfig_lock;
 };
 
 struct nfp_net_hw {
@@ -149,8 +150,6 @@ struct nfp_net_hw {
 
 	uint16_t vxlan_ports[NFP_NET_N_VXLAN_PORTS];
 	uint8_t vxlan_usecnt[NFP_NET_N_VXLAN_PORTS];
-
-	rte_spinlock_t reconfig_lock;
 
 	uint32_t max_tx_queues;
 	uint32_t max_rx_queues;
@@ -368,8 +367,8 @@ nfp_qcp_queue_offset(const struct nfp_dev_info *dev_info,
 }
 
 /* Prototypes for common NFP functions */
-int nfp_net_reconfig(struct nfp_net_hw *hw, uint32_t ctrl, uint32_t update);
-int nfp_net_ext_reconfig(struct nfp_net_hw *hw, uint32_t ctrl_ext, uint32_t update);
+int nfp_reconfig(struct nfp_hw *hw, uint32_t ctrl, uint32_t update);
+int nfp_ext_reconfig(struct nfp_hw *hw, uint32_t ctrl_ext, uint32_t update);
 int nfp_net_mbox_reconfig(struct nfp_net_hw *hw, uint32_t mbox_cmd);
 int nfp_net_configure(struct rte_eth_dev *dev);
 int nfp_net_common_init(struct rte_pci_device *pci_dev, struct nfp_net_hw *hw);

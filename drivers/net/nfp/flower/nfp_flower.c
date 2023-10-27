@@ -52,27 +52,29 @@ nfp_pf_repr_disable_queues(struct rte_eth_dev *dev)
 {
 	uint32_t update;
 	uint32_t new_ctrl;
-	struct nfp_net_hw *hw;
+	struct nfp_hw *hw;
+	struct nfp_net_hw *net_hw;
 	struct nfp_flower_representor *repr;
 
 	repr = dev->data->dev_private;
-	hw = repr->app_fw_flower->pf_hw;
+	net_hw = repr->app_fw_flower->pf_hw;
+	hw = &net_hw->super;
 
-	nn_cfg_writeq(&hw->super, NFP_NET_CFG_TXRS_ENABLE, 0);
-	nn_cfg_writeq(&hw->super, NFP_NET_CFG_RXRS_ENABLE, 0);
+	nn_cfg_writeq(hw, NFP_NET_CFG_TXRS_ENABLE, 0);
+	nn_cfg_writeq(hw, NFP_NET_CFG_RXRS_ENABLE, 0);
 
-	new_ctrl = hw->super.ctrl & ~NFP_NET_CFG_CTRL_ENABLE;
+	new_ctrl = hw->ctrl & ~NFP_NET_CFG_CTRL_ENABLE;
 	update = NFP_NET_CFG_UPDATE_GEN | NFP_NET_CFG_UPDATE_RING |
 			NFP_NET_CFG_UPDATE_MSIX;
 
-	if (hw->super.cap & NFP_NET_CFG_CTRL_RINGCFG)
+	if (hw->cap & NFP_NET_CFG_CTRL_RINGCFG)
 		new_ctrl &= ~NFP_NET_CFG_CTRL_RINGCFG;
 
 	/* If an error when reconfig we avoid to change hw state */
-	if (nfp_net_reconfig(hw, new_ctrl, update) != 0)
+	if (nfp_reconfig(hw, new_ctrl, update) < 0)
 		return;
 
-	hw->super.ctrl = new_ctrl;
+	hw->ctrl = new_ctrl;
 }
 
 int
@@ -80,13 +82,15 @@ nfp_flower_pf_start(struct rte_eth_dev *dev)
 {
 	int ret;
 	uint16_t i;
+	struct nfp_hw *hw;
 	uint32_t new_ctrl;
 	uint32_t update = 0;
-	struct nfp_net_hw *hw;
+	struct nfp_net_hw *net_hw;
 	struct nfp_flower_representor *repr;
 
 	repr = dev->data->dev_private;
-	hw = repr->app_fw_flower->pf_hw;
+	net_hw = repr->app_fw_flower->pf_hw;
+	hw = &net_hw->super;
 
 	/* Disabling queues just in case... */
 	nfp_pf_repr_disable_queues(dev);
@@ -97,11 +101,11 @@ nfp_flower_pf_start(struct rte_eth_dev *dev)
 	new_ctrl = nfp_check_offloads(dev);
 
 	/* Writing configuration parameters in the device */
-	nfp_net_params_setup(hw);
+	nfp_net_params_setup(net_hw);
 
 	update |= NFP_NET_CFG_UPDATE_RSS;
 
-	if ((hw->super.cap & NFP_NET_CFG_CTRL_RSS2) != 0)
+	if ((hw->cap & NFP_NET_CFG_CTRL_RSS2) != 0)
 		new_ctrl |= NFP_NET_CFG_CTRL_RSS2;
 	else
 		new_ctrl |= NFP_NET_CFG_CTRL_RSS;
@@ -111,19 +115,19 @@ nfp_flower_pf_start(struct rte_eth_dev *dev)
 
 	update |= NFP_NET_CFG_UPDATE_GEN | NFP_NET_CFG_UPDATE_RING;
 
-	if ((hw->super.cap & NFP_NET_CFG_CTRL_RINGCFG) != 0)
+	if ((hw->cap & NFP_NET_CFG_CTRL_RINGCFG) != 0)
 		new_ctrl |= NFP_NET_CFG_CTRL_RINGCFG;
 
-	nn_cfg_writel(&hw->super, NFP_NET_CFG_CTRL, new_ctrl);
+	nn_cfg_writel(hw, NFP_NET_CFG_CTRL, new_ctrl);
 
 	/* If an error when reconfig we avoid to change hw state */
-	ret = nfp_net_reconfig(hw, new_ctrl, update);
+	ret = nfp_reconfig(hw, new_ctrl, update);
 	if (ret != 0) {
 		PMD_INIT_LOG(ERR, "Failed to reconfig PF vnic");
 		return -EIO;
 	}
 
-	hw->super.ctrl = new_ctrl;
+	hw->ctrl = new_ctrl;
 
 	/* Setup the freelist ring */
 	ret = nfp_net_rx_freelist_setup(dev);
@@ -374,7 +378,7 @@ nfp_flower_init_vnic_common(struct nfp_net_hw *hw,
 			vnic_type, hw->max_rx_queues, hw->max_tx_queues);
 
 	/* Initializing spinlock for reconfigs */
-	rte_spinlock_init(&hw->reconfig_lock);
+	rte_spinlock_init(&hw->super.reconfig_lock);
 
 	return 0;
 }
@@ -690,14 +694,16 @@ nfp_flower_cleanup_ctrl_vnic(struct nfp_net_hw *hw)
 }
 
 static int
-nfp_flower_start_ctrl_vnic(struct nfp_net_hw *hw)
+nfp_flower_start_ctrl_vnic(struct nfp_net_hw *net_hw)
 {
 	int ret;
 	uint32_t update;
 	uint32_t new_ctrl;
+	struct nfp_hw *hw;
 	struct rte_eth_dev *dev;
 
-	dev = hw->eth_dev;
+	dev = net_hw->eth_dev;
+	hw = &net_hw->super;
 
 	/* Disabling queues just in case... */
 	nfp_net_disable_queues(dev);
@@ -706,7 +712,7 @@ nfp_flower_start_ctrl_vnic(struct nfp_net_hw *hw)
 	nfp_net_enable_queues(dev);
 
 	/* Writing configuration parameters in the device */
-	nfp_net_params_setup(hw);
+	nfp_net_params_setup(net_hw);
 
 	new_ctrl = NFP_NET_CFG_CTRL_ENABLE;
 	update = NFP_NET_CFG_UPDATE_GEN | NFP_NET_CFG_UPDATE_RING |
@@ -715,13 +721,13 @@ nfp_flower_start_ctrl_vnic(struct nfp_net_hw *hw)
 	rte_wmb();
 
 	/* If an error when reconfig we avoid to change hw state */
-	ret = nfp_net_reconfig(hw, new_ctrl, update);
+	ret = nfp_reconfig(hw, new_ctrl, update);
 	if (ret != 0) {
 		PMD_INIT_LOG(ERR, "Failed to reconfig ctrl vnic");
 		return -EIO;
 	}
 
-	hw->super.ctrl = new_ctrl;
+	hw->ctrl = new_ctrl;
 
 	/* Setup the freelist ring */
 	ret = nfp_net_rx_freelist_setup(dev);

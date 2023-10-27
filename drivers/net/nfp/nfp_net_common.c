@@ -199,7 +199,7 @@ nfp_net_notify_port_speed(struct nfp_net_hw *hw,
 #define FW_VER_LEN        32
 
 static int
-__nfp_net_reconfig(struct nfp_net_hw *hw,
+nfp_reconfig_real(struct nfp_hw *hw,
 		uint32_t update)
 {
 	uint32_t cnt;
@@ -207,14 +207,14 @@ __nfp_net_reconfig(struct nfp_net_hw *hw,
 	struct timespec wait;
 
 	PMD_DRV_LOG(DEBUG, "Writing to the configuration queue (%p)...",
-			hw->super.qcp_cfg);
+			hw->qcp_cfg);
 
-	if (hw->super.qcp_cfg == NULL) {
+	if (hw->qcp_cfg == NULL) {
 		PMD_DRV_LOG(ERR, "Bad configuration queue pointer");
 		return -ENXIO;
 	}
 
-	nfp_qcp_ptr_add(hw->super.qcp_cfg, NFP_QCP_WRITE_PTR, 1);
+	nfp_qcp_ptr_add(hw->qcp_cfg, NFP_QCP_WRITE_PTR, 1);
 
 	wait.tv_sec = 0;
 	wait.tv_nsec = 1000000; /* 1ms */
@@ -223,7 +223,7 @@ __nfp_net_reconfig(struct nfp_net_hw *hw,
 
 	/* Poll update field, waiting for NFP to ack the config */
 	for (cnt = 0; ; cnt++) {
-		new = nn_cfg_readl(&hw->super, NFP_NET_CFG_UPDATE);
+		new = nn_cfg_readl(hw, NFP_NET_CFG_UPDATE);
 		if (new == 0)
 			break;
 
@@ -263,7 +263,7 @@ __nfp_net_reconfig(struct nfp_net_hw *hw,
  *   - (-EIO) if I/O err and fail to reconfigure the device.
  */
 int
-nfp_net_reconfig(struct nfp_net_hw *hw,
+nfp_reconfig(struct nfp_hw *hw,
 		uint32_t ctrl,
 		uint32_t update)
 {
@@ -271,17 +271,17 @@ nfp_net_reconfig(struct nfp_net_hw *hw,
 
 	rte_spinlock_lock(&hw->reconfig_lock);
 
-	nn_cfg_writel(&hw->super, NFP_NET_CFG_CTRL, ctrl);
-	nn_cfg_writel(&hw->super, NFP_NET_CFG_UPDATE, update);
+	nn_cfg_writel(hw, NFP_NET_CFG_CTRL, ctrl);
+	nn_cfg_writel(hw, NFP_NET_CFG_UPDATE, update);
 
 	rte_wmb();
 
-	ret = __nfp_net_reconfig(hw, update);
+	ret = nfp_reconfig_real(hw, update);
 
 	rte_spinlock_unlock(&hw->reconfig_lock);
 
 	if (ret != 0) {
-		PMD_DRV_LOG(ERR, "Error nfp net reconfig: ctrl=%#08x update=%#08x",
+		PMD_DRV_LOG(ERR, "Error nfp reconfig: ctrl=%#08x update=%#08x",
 				ctrl, update);
 		return -EIO;
 	}
@@ -307,7 +307,7 @@ nfp_net_reconfig(struct nfp_net_hw *hw,
  *   - (-EIO) if I/O err and fail to reconfigure the device.
  */
 int
-nfp_net_ext_reconfig(struct nfp_net_hw *hw,
+nfp_ext_reconfig(struct nfp_hw *hw,
 		uint32_t ctrl_ext,
 		uint32_t update)
 {
@@ -315,17 +315,17 @@ nfp_net_ext_reconfig(struct nfp_net_hw *hw,
 
 	rte_spinlock_lock(&hw->reconfig_lock);
 
-	nn_cfg_writel(&hw->super, NFP_NET_CFG_CTRL_WORD1, ctrl_ext);
-	nn_cfg_writel(&hw->super, NFP_NET_CFG_UPDATE, update);
+	nn_cfg_writel(hw, NFP_NET_CFG_CTRL_WORD1, ctrl_ext);
+	nn_cfg_writel(hw, NFP_NET_CFG_UPDATE, update);
 
 	rte_wmb();
 
-	ret = __nfp_net_reconfig(hw, update);
+	ret = nfp_reconfig_real(hw, update);
 
 	rte_spinlock_unlock(&hw->reconfig_lock);
 
 	if (ret != 0) {
-		PMD_DRV_LOG(ERR, "Error nft net ext reconfig: ctrl_ext=%#08x update=%#08x",
+		PMD_DRV_LOG(ERR, "Error nfp ext reconfig: ctrl_ext=%#08x update=%#08x",
 				ctrl_ext, update);
 		return -EIO;
 	}
@@ -354,16 +354,16 @@ nfp_net_mbox_reconfig(struct nfp_net_hw *hw,
 
 	mbox = hw->tlv_caps.mbox_off;
 
-	rte_spinlock_lock(&hw->reconfig_lock);
+	rte_spinlock_lock(&hw->super.reconfig_lock);
 
 	nn_cfg_writeq(&hw->super, mbox + NFP_NET_CFG_MBOX_SIMPLE_CMD, mbox_cmd);
 	nn_cfg_writel(&hw->super, NFP_NET_CFG_UPDATE, NFP_NET_CFG_UPDATE_MBOX);
 
 	rte_wmb();
 
-	ret = __nfp_net_reconfig(hw, NFP_NET_CFG_UPDATE_MBOX);
+	ret = nfp_reconfig_real(&hw->super, NFP_NET_CFG_UPDATE_MBOX);
 
-	rte_spinlock_unlock(&hw->reconfig_lock);
+	rte_spinlock_unlock(&hw->super.reconfig_lock);
 
 	if (ret != 0) {
 		PMD_DRV_LOG(ERR, "Error nft net mailbox reconfig: mbox=%#08x update=%#08x",
@@ -494,26 +494,28 @@ nfp_net_disable_queues(struct rte_eth_dev *dev)
 {
 	uint32_t update;
 	uint32_t new_ctrl;
-	struct nfp_net_hw *hw;
+	struct nfp_hw *hw;
+	struct nfp_net_hw *net_hw;
 
-	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	net_hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	hw = &net_hw->super;
 
-	nn_cfg_writeq(&hw->super, NFP_NET_CFG_TXRS_ENABLE, 0);
-	nn_cfg_writeq(&hw->super, NFP_NET_CFG_RXRS_ENABLE, 0);
+	nn_cfg_writeq(hw, NFP_NET_CFG_TXRS_ENABLE, 0);
+	nn_cfg_writeq(hw, NFP_NET_CFG_RXRS_ENABLE, 0);
 
-	new_ctrl = hw->super.ctrl & ~NFP_NET_CFG_CTRL_ENABLE;
+	new_ctrl = hw->ctrl & ~NFP_NET_CFG_CTRL_ENABLE;
 	update = NFP_NET_CFG_UPDATE_GEN |
 			NFP_NET_CFG_UPDATE_RING |
 			NFP_NET_CFG_UPDATE_MSIX;
 
-	if ((hw->super.cap & NFP_NET_CFG_CTRL_RINGCFG) != 0)
+	if ((hw->cap & NFP_NET_CFG_CTRL_RINGCFG) != 0)
 		new_ctrl &= ~NFP_NET_CFG_CTRL_RINGCFG;
 
 	/* If an error when reconfig we avoid to change hw state */
-	if (nfp_net_reconfig(hw, new_ctrl, update) != 0)
+	if (nfp_reconfig(hw, new_ctrl, update) != 0)
 		return;
 
-	hw->super.ctrl = new_ctrl;
+	hw->ctrl = new_ctrl;
 }
 
 void
@@ -551,26 +553,28 @@ nfp_net_set_mac_addr(struct rte_eth_dev *dev,
 {
 	uint32_t ctrl;
 	uint32_t update;
-	struct nfp_net_hw *hw;
+	struct nfp_hw *hw;
+	struct nfp_net_hw *net_hw;
 
-	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	if ((hw->super.ctrl & NFP_NET_CFG_CTRL_ENABLE) != 0 &&
-			(hw->super.cap & NFP_NET_CFG_CTRL_LIVE_ADDR) == 0) {
+	net_hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	hw = &net_hw->super;
+	if ((hw->ctrl & NFP_NET_CFG_CTRL_ENABLE) != 0 &&
+			(hw->cap & NFP_NET_CFG_CTRL_LIVE_ADDR) == 0) {
 		PMD_DRV_LOG(ERR, "MAC address unable to change when port enabled");
 		return -EBUSY;
 	}
 
 	/* Writing new MAC to the specific port BAR address */
-	nfp_net_write_mac(hw, (uint8_t *)mac_addr);
+	nfp_net_write_mac(net_hw, (uint8_t *)mac_addr);
 
 	update = NFP_NET_CFG_UPDATE_MACADDR;
-	ctrl = hw->super.ctrl;
-	if ((hw->super.ctrl & NFP_NET_CFG_CTRL_ENABLE) != 0 &&
-			(hw->super.cap & NFP_NET_CFG_CTRL_LIVE_ADDR) != 0)
+	ctrl = hw->ctrl;
+	if ((hw->ctrl & NFP_NET_CFG_CTRL_ENABLE) != 0 &&
+			(hw->cap & NFP_NET_CFG_CTRL_LIVE_ADDR) != 0)
 		ctrl |= NFP_NET_CFG_CTRL_LIVE_ADDR;
 
 	/* Signal the NIC about the change */
-	if (nfp_net_reconfig(hw, ctrl, update) != 0) {
+	if (nfp_reconfig(hw, ctrl, update) != 0) {
 		PMD_DRV_LOG(ERR, "MAC address update failed");
 		return -EIO;
 	}
@@ -689,36 +693,38 @@ int
 nfp_net_promisc_enable(struct rte_eth_dev *dev)
 {
 	int ret;
+	uint32_t update;
 	uint32_t new_ctrl;
-	uint32_t update = 0;
-	struct nfp_net_hw *hw;
+	struct nfp_hw *hw;
+	struct nfp_net_hw *net_hw;
 	struct nfp_flower_representor *repr;
 
 	if ((dev->data->dev_flags & RTE_ETH_DEV_REPRESENTOR) != 0) {
 		repr = dev->data->dev_private;
-		hw = repr->app_fw_flower->pf_hw;
+		net_hw = repr->app_fw_flower->pf_hw;
 	} else {
-		hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+		net_hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	}
 
-	if ((hw->super.cap & NFP_NET_CFG_CTRL_PROMISC) == 0) {
+	hw = &net_hw->super;
+	if ((hw->cap & NFP_NET_CFG_CTRL_PROMISC) == 0) {
 		PMD_DRV_LOG(ERR, "Promiscuous mode not supported");
 		return -ENOTSUP;
 	}
 
-	if ((hw->super.ctrl & NFP_NET_CFG_CTRL_PROMISC) != 0) {
+	if ((hw->ctrl & NFP_NET_CFG_CTRL_PROMISC) != 0) {
 		PMD_DRV_LOG(INFO, "Promiscuous mode already enabled");
 		return 0;
 	}
 
-	new_ctrl = hw->super.ctrl | NFP_NET_CFG_CTRL_PROMISC;
+	new_ctrl = hw->ctrl | NFP_NET_CFG_CTRL_PROMISC;
 	update = NFP_NET_CFG_UPDATE_GEN;
 
-	ret = nfp_net_reconfig(hw, new_ctrl, update);
+	ret = nfp_reconfig(hw, new_ctrl, update);
 	if (ret != 0)
 		return ret;
 
-	hw->super.ctrl = new_ctrl;
+	hw->ctrl = new_ctrl;
 
 	return 0;
 }
@@ -727,25 +733,27 @@ int
 nfp_net_promisc_disable(struct rte_eth_dev *dev)
 {
 	int ret;
+	uint32_t update;
 	uint32_t new_ctrl;
-	uint32_t update = 0;
-	struct nfp_net_hw *hw;
+	struct nfp_hw *hw;
+	struct nfp_net_hw *net_hw;
 
-	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	net_hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	hw = &net_hw->super;
 
-	if ((hw->super.ctrl & NFP_NET_CFG_CTRL_PROMISC) == 0) {
+	if ((hw->ctrl & NFP_NET_CFG_CTRL_PROMISC) == 0) {
 		PMD_DRV_LOG(INFO, "Promiscuous mode already disabled");
 		return 0;
 	}
 
-	new_ctrl = hw->super.ctrl & ~NFP_NET_CFG_CTRL_PROMISC;
+	new_ctrl = hw->ctrl & ~NFP_NET_CFG_CTRL_PROMISC;
 	update = NFP_NET_CFG_UPDATE_GEN;
 
-	ret = nfp_net_reconfig(hw, new_ctrl, update);
+	ret = nfp_reconfig(hw, new_ctrl, update);
 	if (ret != 0)
 		return ret;
 
-	hw->super.ctrl = new_ctrl;
+	hw->ctrl = new_ctrl;
 
 	return 0;
 }
@@ -1583,17 +1591,20 @@ nfp_net_vlan_offload_set(struct rte_eth_dev *dev,
 	int ret;
 	uint32_t update;
 	uint32_t new_ctrl;
+	struct nfp_hw *hw;
 	uint64_t rx_offload;
-	struct nfp_net_hw *hw;
+	struct nfp_net_hw *net_hw;
 	uint32_t rxvlan_ctrl = 0;
 
-	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	net_hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	hw = &net_hw->super;
+
 	rx_offload = dev->data->dev_conf.rxmode.offloads;
-	new_ctrl = hw->super.ctrl;
+	new_ctrl = hw->ctrl;
 
 	/* VLAN stripping setting */
 	if ((mask & RTE_ETH_VLAN_STRIP_MASK) != 0) {
-		nfp_net_enable_rxvlan_cap(hw, &rxvlan_ctrl);
+		nfp_net_enable_rxvlan_cap(net_hw, &rxvlan_ctrl);
 		if ((rx_offload & RTE_ETH_RX_OFFLOAD_VLAN_STRIP) != 0)
 			new_ctrl |= rxvlan_ctrl;
 		else
@@ -1608,16 +1619,16 @@ nfp_net_vlan_offload_set(struct rte_eth_dev *dev,
 			new_ctrl &= ~NFP_NET_CFG_CTRL_RXQINQ;
 	}
 
-	if (new_ctrl == hw->super.ctrl)
+	if (new_ctrl == hw->ctrl)
 		return 0;
 
 	update = NFP_NET_CFG_UPDATE_GEN;
 
-	ret = nfp_net_reconfig(hw, new_ctrl, update);
+	ret = nfp_reconfig(hw, new_ctrl, update);
 	if (ret != 0)
 		return ret;
 
-	hw->super.ctrl = new_ctrl;
+	hw->ctrl = new_ctrl;
 
 	return 0;
 }
@@ -1687,10 +1698,13 @@ nfp_net_reta_update(struct rte_eth_dev *dev,
 {
 	int ret;
 	uint32_t update;
-	struct nfp_net_hw *hw;
+	struct nfp_hw *hw;
+	struct nfp_net_hw *net_hw;
 
-	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	if ((hw->super.ctrl & NFP_NET_CFG_CTRL_RSS_ANY) == 0)
+	net_hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	hw = &net_hw->super;
+
+	if ((hw->ctrl & NFP_NET_CFG_CTRL_RSS_ANY) == 0)
 		return -EINVAL;
 
 	ret = nfp_net_rss_reta_write(dev, reta_conf, reta_size);
@@ -1699,7 +1713,7 @@ nfp_net_reta_update(struct rte_eth_dev *dev,
 
 	update = NFP_NET_CFG_UPDATE_RSS;
 
-	if (nfp_net_reconfig(hw, hw->super.ctrl, update) != 0)
+	if (nfp_reconfig(hw, hw->ctrl, update) != 0)
 		return -EIO;
 
 	return 0;
@@ -1818,14 +1832,16 @@ nfp_net_rss_hash_update(struct rte_eth_dev *dev,
 {
 	uint32_t update;
 	uint64_t rss_hf;
-	struct nfp_net_hw *hw;
+	struct nfp_hw *hw;
+	struct nfp_net_hw *net_hw;
 
-	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	net_hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	hw = &net_hw->super;
 
 	rss_hf = rss_conf->rss_hf;
 
 	/* Checking if RSS is enabled */
-	if ((hw->super.ctrl & NFP_NET_CFG_CTRL_RSS_ANY) == 0) {
+	if ((hw->ctrl & NFP_NET_CFG_CTRL_RSS_ANY) == 0) {
 		if (rss_hf != 0) {
 			PMD_DRV_LOG(ERR, "RSS unsupported");
 			return -EINVAL;
@@ -1843,7 +1859,7 @@ nfp_net_rss_hash_update(struct rte_eth_dev *dev,
 
 	update = NFP_NET_CFG_UPDATE_RSS;
 
-	if (nfp_net_reconfig(hw, hw->super.ctrl, update) != 0)
+	if (nfp_reconfig(hw, hw->ctrl, update) != 0)
 		return -EIO;
 
 	return 0;
@@ -1998,31 +2014,32 @@ nfp_net_close_tx_queue(struct rte_eth_dev *dev)
 }
 
 int
-nfp_net_set_vxlan_port(struct nfp_net_hw *hw,
+nfp_net_set_vxlan_port(struct nfp_net_hw *net_hw,
 		size_t idx,
 		uint16_t port)
 {
 	int ret;
 	uint32_t i;
+	struct nfp_hw *hw = &net_hw->super;
 
 	if (idx >= NFP_NET_N_VXLAN_PORTS) {
 		PMD_DRV_LOG(ERR, "The idx value is out of range.");
 		return -ERANGE;
 	}
 
-	hw->vxlan_ports[idx] = port;
+	net_hw->vxlan_ports[idx] = port;
 
 	for (i = 0; i < NFP_NET_N_VXLAN_PORTS; i += 2) {
-		nn_cfg_writel(&hw->super, NFP_NET_CFG_VXLAN_PORT + i * sizeof(port),
-				(hw->vxlan_ports[i + 1] << 16) | hw->vxlan_ports[i]);
+		nn_cfg_writel(hw, NFP_NET_CFG_VXLAN_PORT + i * sizeof(port),
+				(net_hw->vxlan_ports[i + 1] << 16) | net_hw->vxlan_ports[i]);
 	}
 
 	rte_spinlock_lock(&hw->reconfig_lock);
 
-	nn_cfg_writel(&hw->super, NFP_NET_CFG_UPDATE, NFP_NET_CFG_UPDATE_VXLAN);
+	nn_cfg_writel(hw, NFP_NET_CFG_UPDATE, NFP_NET_CFG_UPDATE_VXLAN);
 	rte_wmb();
 
-	ret = __nfp_net_reconfig(hw, NFP_NET_CFG_UPDATE_VXLAN);
+	ret = nfp_reconfig_real(hw, NFP_NET_CFG_UPDATE_VXLAN);
 
 	rte_spinlock_unlock(&hw->reconfig_lock);
 

@@ -32,10 +32,11 @@ nfp_netvf_start(struct rte_eth_dev *dev)
 {
 	int ret;
 	uint16_t i;
+	struct nfp_hw *hw;
 	uint32_t new_ctrl;
 	uint32_t update = 0;
 	uint32_t intr_vector;
-	struct nfp_net_hw *hw;
+	struct nfp_net_hw *net_hw;
 	struct rte_eth_conf *dev_conf;
 	struct rte_eth_rxmode *rxmode;
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
@@ -77,8 +78,9 @@ nfp_netvf_start(struct rte_eth_dev *dev)
 	new_ctrl = nfp_check_offloads(dev);
 
 	/* Writing configuration parameters in the device */
-	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	nfp_net_params_setup(hw);
+	net_hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	hw = &net_hw->super;
+	nfp_net_params_setup(net_hw);
 
 	dev_conf = &dev->data->dev_conf;
 	rxmode = &dev_conf->rxmode;
@@ -86,7 +88,7 @@ nfp_netvf_start(struct rte_eth_dev *dev)
 	if ((rxmode->mq_mode & RTE_ETH_MQ_RX_RSS) != 0) {
 		nfp_net_rss_config_default(dev);
 		update |= NFP_NET_CFG_UPDATE_RSS;
-		new_ctrl |= nfp_net_cfg_ctrl_rss(hw->super.cap);
+		new_ctrl |= nfp_net_cfg_ctrl_rss(hw->cap);
 	}
 
 	/* Enable device */
@@ -94,11 +96,11 @@ nfp_netvf_start(struct rte_eth_dev *dev)
 
 	update |= NFP_NET_CFG_UPDATE_GEN | NFP_NET_CFG_UPDATE_RING;
 
-	if ((hw->super.cap & NFP_NET_CFG_CTRL_RINGCFG) != 0)
+	if ((hw->cap & NFP_NET_CFG_CTRL_RINGCFG) != 0)
 		new_ctrl |= NFP_NET_CFG_CTRL_RINGCFG;
 
-	nn_cfg_writel(&hw->super, NFP_NET_CFG_CTRL, new_ctrl);
-	if (nfp_net_reconfig(hw, new_ctrl, update) != 0)
+	nn_cfg_writel(hw, NFP_NET_CFG_CTRL, new_ctrl);
+	if (nfp_reconfig(hw, new_ctrl, update) != 0)
 		return -EIO;
 
 	/*
@@ -110,7 +112,7 @@ nfp_netvf_start(struct rte_eth_dev *dev)
 		goto error;
 	}
 
-	hw->super.ctrl = new_ctrl;
+	hw->ctrl = new_ctrl;
 
 	for (i = 0; i < dev->data->nb_rx_queues; i++)
 		dev->data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STARTED;
@@ -320,7 +322,7 @@ nfp_netvf_init(struct rte_eth_dev *eth_dev)
 	nfp_net_log_device_information(hw);
 
 	/* Initializing spinlock for reconfigs */
-	rte_spinlock_init(&hw->reconfig_lock);
+	rte_spinlock_init(&hw->super.reconfig_lock);
 
 	/* Allocating memory for mac addr */
 	eth_dev->data->mac_addrs = rte_zmalloc("mac_addr", RTE_ETHER_ADDR_LEN, 0);

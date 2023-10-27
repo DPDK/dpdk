@@ -45,12 +45,13 @@ nfp_net_start(struct rte_eth_dev *dev)
 {
 	int ret;
 	uint16_t i;
+	struct nfp_hw *hw;
 	uint32_t new_ctrl;
 	uint32_t update = 0;
 	uint32_t cap_extend;
 	uint32_t intr_vector;
-	struct nfp_net_hw *hw;
 	uint32_t ctrl_extend = 0;
+	struct nfp_net_hw *net_hw;
 	struct nfp_pf_dev *pf_dev;
 	struct rte_eth_conf *dev_conf;
 	struct rte_eth_rxmode *rxmode;
@@ -58,9 +59,10 @@ nfp_net_start(struct rte_eth_dev *dev)
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
 
-	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	net_hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	pf_dev = NFP_NET_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	app_fw_nic = NFP_PRIV_TO_APP_FW_NIC(pf_dev->app_fw_priv);
+	hw = &net_hw->super;
 
 	/* Disabling queues just in case... */
 	nfp_net_disable_queues(dev);
@@ -100,9 +102,9 @@ nfp_net_start(struct rte_eth_dev *dev)
 	}
 
 	/* Checking MTU set */
-	if (dev->data->mtu > hw->flbufsz) {
+	if (dev->data->mtu > net_hw->flbufsz) {
 		PMD_INIT_LOG(ERR, "MTU (%u) can't be larger than the current NFP_FRAME_SIZE (%u)",
-				dev->data->mtu, hw->flbufsz);
+				dev->data->mtu, net_hw->flbufsz);
 		return -ERANGE;
 	}
 
@@ -111,7 +113,7 @@ nfp_net_start(struct rte_eth_dev *dev)
 	new_ctrl = nfp_check_offloads(dev);
 
 	/* Writing configuration parameters in the device */
-	nfp_net_params_setup(hw);
+	nfp_net_params_setup(net_hw);
 
 	dev_conf = &dev->data->dev_conf;
 	rxmode = &dev_conf->rxmode;
@@ -119,7 +121,7 @@ nfp_net_start(struct rte_eth_dev *dev)
 	if ((rxmode->mq_mode & RTE_ETH_MQ_RX_RSS) != 0) {
 		nfp_net_rss_config_default(dev);
 		update |= NFP_NET_CFG_UPDATE_RSS;
-		new_ctrl |= nfp_net_cfg_ctrl_rss(hw->super.cap);
+		new_ctrl |= nfp_net_cfg_ctrl_rss(hw->cap);
 	}
 
 	/* Enable device */
@@ -128,19 +130,19 @@ nfp_net_start(struct rte_eth_dev *dev)
 	update |= NFP_NET_CFG_UPDATE_GEN | NFP_NET_CFG_UPDATE_RING;
 
 	/* Enable vxlan */
-	if ((hw->super.cap & NFP_NET_CFG_CTRL_VXLAN) != 0) {
+	if ((hw->cap & NFP_NET_CFG_CTRL_VXLAN) != 0) {
 		new_ctrl |= NFP_NET_CFG_CTRL_VXLAN;
 		update |= NFP_NET_CFG_UPDATE_VXLAN;
 	}
 
-	if ((hw->super.cap & NFP_NET_CFG_CTRL_RINGCFG) != 0)
+	if ((hw->cap & NFP_NET_CFG_CTRL_RINGCFG) != 0)
 		new_ctrl |= NFP_NET_CFG_CTRL_RINGCFG;
 
-	if (nfp_net_reconfig(hw, new_ctrl, update) != 0)
+	if (nfp_reconfig(hw, new_ctrl, update) != 0)
 		return -EIO;
 
 	/* Enable packet type offload by extend ctrl word1. */
-	cap_extend = hw->super.cap_ext;
+	cap_extend = hw->cap_ext;
 	if ((cap_extend & NFP_NET_CFG_CTRL_PKT_TYPE) != 0)
 		ctrl_extend = NFP_NET_CFG_CTRL_PKT_TYPE;
 
@@ -149,10 +151,10 @@ nfp_net_start(struct rte_eth_dev *dev)
 				| NFP_NET_CFG_CTRL_IPSEC_LM_LOOKUP;
 
 	update = NFP_NET_CFG_UPDATE_GEN;
-	if (nfp_net_ext_reconfig(hw, ctrl_extend, update) != 0)
+	if (nfp_ext_reconfig(hw, ctrl_extend, update) != 0)
 		return -EIO;
 
-	hw->super.ctrl_ext = ctrl_extend;
+	hw->ctrl_ext = ctrl_extend;
 
 	/*
 	 * Allocating rte mbufs for configured rx queues.
@@ -165,11 +167,11 @@ nfp_net_start(struct rte_eth_dev *dev)
 
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
 		/* Configure the physical port up */
-		nfp_eth_set_configured(hw->cpp, hw->nfp_idx, 1);
+		nfp_eth_set_configured(net_hw->cpp, net_hw->nfp_idx, 1);
 	else
-		nfp_eth_set_configured(dev->process_private, hw->nfp_idx, 1);
+		nfp_eth_set_configured(dev->process_private, net_hw->nfp_idx, 1);
 
-	hw->super.ctrl = new_ctrl;
+	hw->ctrl = new_ctrl;
 
 	for (i = 0; i < dev->data->nb_rx_queues; i++)
 		dev->data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STARTED;
@@ -587,7 +589,7 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 	nfp_net_log_device_information(hw);
 
 	/* Initializing spinlock for reconfigs */
-	rte_spinlock_init(&hw->reconfig_lock);
+	rte_spinlock_init(&hw->super.reconfig_lock);
 
 	/* Allocating memory for mac addr */
 	eth_dev->data->mac_addrs = rte_zmalloc("mac_addr", RTE_ETHER_ADDR_LEN, 0);
