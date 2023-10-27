@@ -10,6 +10,7 @@ INTERNAL {
 	nfp_write_mac;
 	nfp_enable_queues;
 	nfp_disable_queues;
+	nfp_dev_info_get;
 
 	local: *;
 };

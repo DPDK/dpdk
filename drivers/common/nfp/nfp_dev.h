@@ -8,6 +8,8 @@
 
 #include <stdint.h>
 
+#include <rte_compat.h>
+
 #define PCI_VENDOR_ID_NETRONOME         0x19ee
 #define PCI_VENDOR_ID_CORIGINE          0x1da8
 
@@ -39,6 +41,7 @@ struct nfp_dev_info {
 	uint8_t pf_num_per_unit;
 };
 
+__rte_internal
 const struct nfp_dev_info *nfp_dev_info_get(uint16_t device_id);
 
 #endif /* __NFP_DEV_H__ */

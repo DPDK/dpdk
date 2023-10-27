@@ -10,6 +10,7 @@ sources = files(
         'nfp_common.c',
         'nfp_common_log.c',
         'nfp_common_pci.c',
+        'nfp_dev.c',
 )
 
 deps += ['bus_pci', 'net']

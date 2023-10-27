@@ -7,9 +7,9 @@
 #define __NFP6000_PCIE_H__
 
 #include <ethdev_pci.h>
+#include <nfp_dev.h>
 
 #include "nfp_cpp.h"
-#include "nfp_dev.h"
 
 const struct nfp_cpp_operations *nfp_cpp_transport_operations(void);
 

@@ -9,10 +9,10 @@
 #include <bus_pci_driver.h>
 #include <ethdev_driver.h>
 #include <nfp_common.h>
+#include <nfp_dev.h>
 #include <rte_spinlock.h>
 
 #include "nfp_net_ctrl.h"
-#include "nfpcore/nfp_dev.h"
 
 /* Interrupt definitions */
 #define NFP_NET_IRQ_LSC_IDX             0
