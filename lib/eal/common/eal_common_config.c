@@ -8,7 +8,14 @@
 #include "eal_memcfg.h"
 
 /* early configuration structure, when memory config is not mmapped */
-static struct rte_mem_config early_mem_config;
+static struct rte_mem_config early_mem_config = {
+	.mlock = RTE_RWLOCK_INITIALIZER,
+	.qlock = RTE_RWLOCK_INITIALIZER,
+	.mplock = RTE_RWLOCK_INITIALIZER,
+	.tlock = RTE_SPINLOCK_INITIALIZER,
+	.ethdev_lock = RTE_SPINLOCK_INITIALIZER,
+	.memory_hotplug_lock = RTE_RWLOCK_INITIALIZER,
+};
 
 /* Address of global and public configuration */
 static struct rte_config rte_config = {
