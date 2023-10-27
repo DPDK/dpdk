@@ -57,6 +57,12 @@ enum hns3_evt_cause {
 	HNS3_VECTOR0_EVENT_OTHER,
 };
 
+struct hns3_intr_state {
+	uint32_t vector0_state;
+	uint32_t cmdq_state;
+	uint32_t hw_err_state;
+};
+
 #define HNS3_SPEEDS_SUPP_FEC (RTE_ETH_LINK_SPEED_10G | \
 			      RTE_ETH_LINK_SPEED_25G | \
 			      RTE_ETH_LINK_SPEED_40G | \
@@ -151,20 +157,23 @@ hns3_proc_global_reset_event(struct hns3_adapter *hns, uint32_t *vec_val)
 	return HNS3_VECTOR0_EVENT_RST;
 }
 
+static void
+hns3_query_intr_state(struct hns3_hw *hw, struct hns3_intr_state *state)
+{
+	state->vector0_state = hns3_read_dev(hw, HNS3_VECTOR0_OTHER_INT_STS_REG);
+	state->cmdq_state = hns3_read_dev(hw, HNS3_VECTOR0_CMDQ_SRC_REG);
+	state->hw_err_state = hns3_read_dev(hw, HNS3_RAS_PF_OTHER_INT_STS_REG);
+}
+
 static enum hns3_evt_cause
 hns3_check_event_cause(struct hns3_adapter *hns, uint32_t *clearval)
 {
 	struct hns3_hw *hw = &hns->hw;
-	uint32_t vector0_int_stats;
-	uint32_t cmdq_src_val;
-	uint32_t hw_err_src_reg;
+	struct hns3_intr_state state;
 	uint32_t val;
 	enum hns3_evt_cause ret;
 
-	/* fetch the events from their corresponding regs */
-	vector0_int_stats = hns3_read_dev(hw, HNS3_VECTOR0_OTHER_INT_STS_REG);
-	cmdq_src_val = hns3_read_dev(hw, HNS3_VECTOR0_CMDQ_SRC_REG);
-	hw_err_src_reg = hns3_read_dev(hw, HNS3_RAS_PF_OTHER_INT_STS_REG);
+	hns3_query_intr_state(hw, &state);
 
 	/*
 	 * Assumption: If by any chance reset and mailbox events are reported
@@ -173,41 +182,41 @@ hns3_check_event_cause(struct hns3_adapter *hns, uint32_t *clearval)
 	 * RX CMDQ event this time we would receive again another interrupt
 	 * from H/W just for the mailbox.
 	 */
-	if (BIT(HNS3_VECTOR0_IMPRESET_INT_B) & vector0_int_stats) { /* IMP */
+	if (BIT(HNS3_VECTOR0_IMPRESET_INT_B) & state.vector0_state) { /* IMP */
 		ret = hns3_proc_imp_reset_event(hns, &val);
 		goto out;
 	}
 
 	/* Global reset */
-	if (BIT(HNS3_VECTOR0_GLOBALRESET_INT_B) & vector0_int_stats) {
+	if (BIT(HNS3_VECTOR0_GLOBALRESET_INT_B) & state.vector0_state) {
 		ret = hns3_proc_global_reset_event(hns, &val);
 		goto out;
 	}
 
 	/* Check for vector0 1588 event source */
-	if (BIT(HNS3_VECTOR0_1588_INT_B) & vector0_int_stats) {
+	if (BIT(HNS3_VECTOR0_1588_INT_B) & state.vector0_state) {
 		val = BIT(HNS3_VECTOR0_1588_INT_B);
 		ret = HNS3_VECTOR0_EVENT_PTP;
 		goto out;
 	}
 
 	/* check for vector0 msix event source */
-	if (vector0_int_stats & HNS3_VECTOR0_REG_MSIX_MASK ||
-	    hw_err_src_reg & HNS3_RAS_REG_NFE_MASK) {
-		val = vector0_int_stats | hw_err_src_reg;
+	if (state.vector0_state & HNS3_VECTOR0_REG_MSIX_MASK ||
+	    state.hw_err_state & HNS3_RAS_REG_NFE_MASK) {
+		val = state.vector0_state | state.hw_err_state;
 		ret = HNS3_VECTOR0_EVENT_ERR;
 		goto out;
 	}
 
 	/* check for vector0 mailbox(=CMDQ RX) event source */
-	if (BIT(HNS3_VECTOR0_RX_CMDQ_INT_B) & cmdq_src_val) {
-		cmdq_src_val &= ~BIT(HNS3_VECTOR0_RX_CMDQ_INT_B);
-		val = cmdq_src_val;
+	if (BIT(HNS3_VECTOR0_RX_CMDQ_INT_B) & state.cmdq_state) {
+		state.cmdq_state &= ~BIT(HNS3_VECTOR0_RX_CMDQ_INT_B);
+		val = state.cmdq_state;
 		ret = HNS3_VECTOR0_EVENT_MBX;
 		goto out;
 	}
 
-	val = vector0_int_stats;
+	val = state.vector0_state;
 	ret = HNS3_VECTOR0_EVENT_OTHER;
 
 out:
@@ -346,10 +355,8 @@ hns3_interrupt_handler(void *param)
 	struct hns3_adapter *hns = dev->data->dev_private;
 	struct hns3_hw *hw = &hns->hw;
 	enum hns3_evt_cause event_cause;
+	struct hns3_intr_state state;
 	uint32_t clearval = 0;
-	uint32_t vector0_int;
-	uint32_t ras_int;
-	uint32_t cmdq_int;
 
 	if (!hns3_reset_event_valid(hw))
 		return;
@@ -358,16 +365,15 @@ hns3_interrupt_handler(void *param)
 	hns3_pf_disable_irq0(hw);
 
 	event_cause = hns3_check_event_cause(hns, &clearval);
-	vector0_int = hns3_read_dev(hw, HNS3_VECTOR0_OTHER_INT_STS_REG);
-	ras_int = hns3_read_dev(hw, HNS3_RAS_PF_OTHER_INT_STS_REG);
-	cmdq_int = hns3_read_dev(hw, HNS3_VECTOR0_CMDQ_SRC_REG);
+	hns3_query_intr_state(hw, &state);
 	hns3_delay_before_clear_event_cause(hw, event_cause, clearval);
 	hns3_clear_event_cause(hw, event_cause, clearval);
 	/* vector 0 interrupt is shared with reset and mailbox source events. */
 	if (event_cause == HNS3_VECTOR0_EVENT_ERR) {
 		hns3_warn(hw, "received interrupt: vector0_int_stat:0x%x "
 			  "ras_int_stat:0x%x cmdq_int_stat:0x%x",
-			  vector0_int, ras_int, cmdq_int);
+			  state.vector0_state, state.hw_err_state,
+			  state.cmdq_state);
 		hns3_handle_mac_tnl(hw);
 		hns3_handle_error(hns);
 	} else if (event_cause == HNS3_VECTOR0_EVENT_RST) {
@@ -378,7 +384,8 @@ hns3_interrupt_handler(void *param)
 	} else if (event_cause != HNS3_VECTOR0_EVENT_PTP) {
 		hns3_warn(hw, "received unknown event: vector0_int_stat:0x%x "
 			  "ras_int_stat:0x%x cmdq_int_stat:0x%x",
-			  vector0_int, ras_int, cmdq_int);
+			  state.vector0_state, state.hw_err_state,
+			  state.cmdq_state);
 	}
 
 	/* Enable interrupt if it is not cause by reset */
