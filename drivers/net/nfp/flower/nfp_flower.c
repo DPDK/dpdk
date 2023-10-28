@@ -21,62 +21,6 @@
 
 #define CTRL_VNIC_NB_DESC 512
 
-static void
-nfp_pf_repr_enable_queues(struct rte_eth_dev *dev)
-{
-	uint16_t i;
-	struct nfp_hw *hw;
-	uint64_t enabled_queues = 0;
-	struct nfp_flower_representor *repr;
-
-	repr = dev->data->dev_private;
-	hw = &repr->app_fw_flower->pf_hw->super;
-
-	/* Enabling the required TX queues in the device */
-	for (i = 0; i < dev->data->nb_tx_queues; i++)
-		enabled_queues |= (1 << i);
-
-	nn_cfg_writeq(hw, NFP_NET_CFG_TXRS_ENABLE, enabled_queues);
-
-	enabled_queues = 0;
-
-	/* Enabling the required RX queues in the device */
-	for (i = 0; i < dev->data->nb_rx_queues; i++)
-		enabled_queues |= (1 << i);
-
-	nn_cfg_writeq(hw, NFP_NET_CFG_RXRS_ENABLE, enabled_queues);
-}
-
-static void
-nfp_pf_repr_disable_queues(struct rte_eth_dev *dev)
-{
-	uint32_t update;
-	uint32_t new_ctrl;
-	struct nfp_hw *hw;
-	struct nfp_net_hw *net_hw;
-	struct nfp_flower_representor *repr;
-
-	repr = dev->data->dev_private;
-	net_hw = repr->app_fw_flower->pf_hw;
-	hw = &net_hw->super;
-
-	nn_cfg_writeq(hw, NFP_NET_CFG_TXRS_ENABLE, 0);
-	nn_cfg_writeq(hw, NFP_NET_CFG_RXRS_ENABLE, 0);
-
-	new_ctrl = hw->ctrl & ~NFP_NET_CFG_CTRL_ENABLE;
-	update = NFP_NET_CFG_UPDATE_GEN | NFP_NET_CFG_UPDATE_RING |
-			NFP_NET_CFG_UPDATE_MSIX;
-
-	if (hw->cap & NFP_NET_CFG_CTRL_RINGCFG)
-		new_ctrl &= ~NFP_NET_CFG_CTRL_RINGCFG;
-
-	/* If an error when reconfig we avoid to change hw state */
-	if (nfp_reconfig(hw, new_ctrl, update) < 0)
-		return;
-
-	hw->ctrl = new_ctrl;
-}
-
 int
 nfp_flower_pf_start(struct rte_eth_dev *dev)
 {
@@ -93,10 +37,10 @@ nfp_flower_pf_start(struct rte_eth_dev *dev)
 	hw = &net_hw->super;
 
 	/* Disabling queues just in case... */
-	nfp_pf_repr_disable_queues(dev);
+	nfp_net_disable_queues(dev);
 
 	/* Enabling the required queues in the device */
-	nfp_pf_repr_enable_queues(dev);
+	nfp_net_enable_queues(dev);
 
 	new_ctrl = nfp_check_offloads(dev);
 
@@ -157,7 +101,7 @@ nfp_flower_pf_stop(struct rte_eth_dev *dev)
 	repr = dev->data->dev_private;
 	hw = repr->app_fw_flower->pf_hw;
 
-	nfp_pf_repr_disable_queues(dev);
+	nfp_net_disable_queues(dev);
 
 	/* Clear queues */
 	for (i = 0; i < dev->data->nb_tx_queues; i++) {
@@ -207,7 +151,7 @@ nfp_flower_pf_close(struct rte_eth_dev *dev)
 	 * We assume that the DPDK application is stopping all the
 	 * threads/queues before calling the device close function.
 	 */
-	nfp_pf_repr_disable_queues(dev);
+	nfp_net_disable_queues(dev);
 
 	/* Clear queues */
 	for (i = 0; i < dev->data->nb_tx_queues; i++) {
