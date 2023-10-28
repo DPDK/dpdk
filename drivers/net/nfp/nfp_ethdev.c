@@ -21,7 +21,7 @@
 #include "nfp_ipsec.h"
 #include "nfp_logs.h"
 
-static int
+static void
 nfp_net_pf_read_mac(struct nfp_app_fw_nic *app_fw_nic,
 		uint16_t port)
 {
@@ -31,13 +31,9 @@ nfp_net_pf_read_mac(struct nfp_app_fw_nic *app_fw_nic,
 	/* Grab a pointer to the correct physical port */
 	hw = app_fw_nic->ports[port];
 
-	nfp_eth_table = nfp_eth_read_ports(app_fw_nic->pf_dev->cpp);
+	nfp_eth_table = app_fw_nic->pf_dev->nfp_eth_table;
 
 	rte_ether_addr_copy(&nfp_eth_table->ports[port].mac_addr, &hw->super.mac_addr);
-
-	free(nfp_eth_table);
-
-	return 0;
 }
 
 static int
