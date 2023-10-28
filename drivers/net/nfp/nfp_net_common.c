@@ -22,9 +22,9 @@
 #define NFP_NET_LINK_DOWN_CHECK_TIMEOUT 4000 /* ms */
 #define NFP_NET_LINK_UP_CHECK_TIMEOUT   1000 /* ms */
 
-/* Maximum supported NFP frame size (MTU + layer 2 headers) */
-#define NFP_FRAME_SIZE_MAX        10048
 #define DEFAULT_FLBUF_SIZE        9216
+#define NFP_ETH_OVERHEAD \
+	(RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN + RTE_VLAN_HLEN * 2)
 
 enum nfp_xstat_group {
 	NFP_XSTAT_GROUP_NET,
@@ -274,9 +274,9 @@ nfp_net_configure(struct rte_eth_dev *dev)
 	}
 
 	/* Checking MTU set */
-	if (rxmode->mtu > NFP_FRAME_SIZE_MAX) {
-		PMD_DRV_LOG(ERR, "MTU (%u) larger than NFP_FRAME_SIZE_MAX (%u)",
-				rxmode->mtu, NFP_FRAME_SIZE_MAX);
+	if (rxmode->mtu > hw->max_mtu + NFP_ETH_OVERHEAD) {
+		PMD_DRV_LOG(ERR, "MTU (%u) larger than the maximum possible frame size (%u)",
+				rxmode->mtu, hw->max_mtu + NFP_ETH_OVERHEAD);
 		return -ERANGE;
 	}
 
@@ -1025,16 +1025,13 @@ nfp_net_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->max_rx_queues = (uint16_t)hw->max_rx_queues;
 	dev_info->max_tx_queues = (uint16_t)hw->max_tx_queues;
 	dev_info->min_rx_bufsize = RTE_ETHER_MIN_MTU;
-
-	/**
-	 * The maximum rx packet length (max_rx_pktlen) is set to the
-	 * maximum supported frame size that the NFP can handle. This
-	 * includes layer 2 headers, CRC and other metadata that can
-	 * optionally be used.
+	/*
+	 * The maximum rx packet length is set to the maximum layer 3 MTU,
+	 * plus layer 2, CRC and VLAN headers.
 	 * The maximum layer 3 MTU (max_mtu) is read from hardware,
 	 * which was set by the firmware loaded onto the card.
 	 */
-	dev_info->max_rx_pktlen = NFP_FRAME_SIZE_MAX;
+	dev_info->max_rx_pktlen = hw->max_mtu + NFP_ETH_OVERHEAD;
 	dev_info->max_mtu = hw->max_mtu;
 	dev_info->min_mtu = RTE_ETHER_MIN_MTU;
 	/* Next should change when PF support is implemented */
