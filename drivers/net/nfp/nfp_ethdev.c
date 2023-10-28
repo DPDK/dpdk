@@ -21,6 +21,8 @@
 #include "nfp_ipsec.h"
 #include "nfp_logs.h"
 
+#define NFP_PF_DRIVER_NAME net_nfp_pf
+
 static void
 nfp_net_pf_read_mac(struct nfp_app_fw_nic *app_fw_nic,
 		uint16_t port)
@@ -1233,6 +1235,6 @@ static struct rte_pci_driver rte_nfp_net_pf_pmd = {
 	.remove = eth_nfp_pci_remove,
 };
 
-RTE_PMD_REGISTER_PCI(net_nfp_pf, rte_nfp_net_pf_pmd);
-RTE_PMD_REGISTER_PCI_TABLE(net_nfp_pf, pci_id_nfp_pf_net_map);
-RTE_PMD_REGISTER_KMOD_DEP(net_nfp_pf, "* igb_uio | uio_pci_generic | vfio");
+RTE_PMD_REGISTER_PCI(NFP_PF_DRIVER_NAME, rte_nfp_net_pf_pmd);
+RTE_PMD_REGISTER_PCI_TABLE(NFP_PF_DRIVER_NAME, pci_id_nfp_pf_net_map);
+RTE_PMD_REGISTER_KMOD_DEP(NFP_PF_DRIVER_NAME, "* igb_uio | uio_pci_generic | vfio");

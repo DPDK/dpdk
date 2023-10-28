@@ -15,6 +15,8 @@
 #include "nfp_logs.h"
 #include "nfp_net_common.h"
 
+#define NFP_VF_DRIVER_NAME net_nfp_vf
+
 static int
 nfp_netvf_start(struct rte_eth_dev *dev)
 {
@@ -416,5 +418,5 @@ RTE_INIT(rte_nfp_vf_pmd_init)
 	nfp_class_driver_register(&rte_nfp_net_vf_pmd);
 }
 
-RTE_PMD_REGISTER_PCI_TABLE(net_nfp_vf, pci_id_nfp_vf_net_map);
-RTE_PMD_REGISTER_KMOD_DEP(net_nfp_vf, "* igb_uio | uio_pci_generic | vfio");
+RTE_PMD_REGISTER_PCI_TABLE(NFP_VF_DRIVER_NAME, pci_id_nfp_vf_net_map);
+RTE_PMD_REGISTER_KMOD_DEP(NFP_VF_DRIVER_NAME, "* igb_uio | uio_pci_generic | vfio");
