@@ -141,6 +141,8 @@ nfp_net_start(struct rte_eth_dev *dev)
 	if (nfp_reconfig(hw, new_ctrl, update) != 0)
 		return -EIO;
 
+	hw->ctrl = new_ctrl;
+
 	/* Enable packet type offload by extend ctrl word1. */
 	cap_extend = hw->cap_ext;
 	if ((cap_extend & NFP_NET_CFG_CTRL_PKT_TYPE) != 0)
@@ -170,8 +172,6 @@ nfp_net_start(struct rte_eth_dev *dev)
 		nfp_eth_set_configured(net_hw->cpp, net_hw->nfp_idx, 1);
 	else
 		nfp_eth_set_configured(dev->process_private, net_hw->nfp_idx, 1);
-
-	hw->ctrl = new_ctrl;
 
 	for (i = 0; i < dev->data->nb_rx_queues; i++)
 		dev->data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STARTED;
