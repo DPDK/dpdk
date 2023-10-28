@@ -454,7 +454,7 @@ nfp_net_nfdk_tx_queue_setup(struct rte_eth_dev *dev,
 	struct nfp_net_txq *txq;
 	const struct rte_memzone *tz;
 
-	hw = dev->data->dev_private;
+	hw = nfp_net_get_hw(dev);
 
 	nfp_net_tx_desc_limits(hw, &min_tx_desc, &max_tx_desc);
 

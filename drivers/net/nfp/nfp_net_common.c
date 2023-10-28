@@ -583,6 +583,54 @@ nfp_net_promisc_disable(struct rte_eth_dev *dev)
 	return 0;
 }
 
+int
+nfp_net_link_update_common(struct rte_eth_dev *dev,
+		struct nfp_net_hw *hw,
+		struct rte_eth_link *link,
+		uint32_t link_status)
+{
+	int ret;
+	uint32_t i;
+	uint32_t nn_link_status;
+	struct nfp_eth_table *nfp_eth_table;
+
+	link->link_speed = RTE_ETH_SPEED_NUM_NONE;
+
+	if (link->link_status == RTE_ETH_LINK_UP) {
+		if (hw->pf_dev != NULL) {
+			nfp_eth_table = hw->pf_dev->nfp_eth_table;
+			if (nfp_eth_table != NULL) {
+				uint32_t speed = nfp_eth_table->ports[hw->idx].speed;
+				for (i = 0; i < RTE_DIM(nfp_net_link_speed_nfp2rte); i++) {
+					if (nfp_net_link_speed_nfp2rte[i] == speed) {
+						link->link_speed = speed;
+						break;
+					}
+				}
+			}
+		} else {
+			/*
+			 * Shift and mask nn_link_status so that it is effectively the value
+			 * at offset NFP_NET_CFG_STS_NSP_LINK_RATE.
+			 */
+			nn_link_status = (link_status >> NFP_NET_CFG_STS_LINK_RATE_SHIFT) &
+					NFP_NET_CFG_STS_LINK_RATE_MASK;
+			if (nn_link_status < RTE_DIM(nfp_net_link_speed_nfp2rte))
+				link->link_speed = nfp_net_link_speed_nfp2rte[nn_link_status];
+		}
+	}
+
+	ret = rte_eth_linkstatus_set(dev, link);
+	if (ret == 0) {
+		if (link->link_status != 0)
+			PMD_DRV_LOG(INFO, "NIC Link is Up");
+		else
+			PMD_DRV_LOG(INFO, "NIC Link is Down");
+	}
+
+	return ret;
+}
+
 /*
  * Return 0 means link status changed, -1 means not changed
  *
@@ -594,11 +642,9 @@ nfp_net_link_update(struct rte_eth_dev *dev,
 		__rte_unused int wait_to_complete)
 {
 	int ret;
-	uint32_t i;
 	struct nfp_net_hw *hw;
 	uint32_t nn_link_status;
 	struct rte_eth_link link;
-	struct nfp_eth_table *nfp_eth_table;
 
 	hw = nfp_net_get_hw(dev);
 
@@ -610,39 +656,8 @@ nfp_net_link_update(struct rte_eth_dev *dev,
 		link.link_status = RTE_ETH_LINK_UP;
 
 	link.link_duplex = RTE_ETH_LINK_FULL_DUPLEX;
-	link.link_speed = RTE_ETH_SPEED_NUM_NONE;
 
-	if (link.link_status == RTE_ETH_LINK_UP) {
-		if (hw->pf_dev != NULL) {
-			nfp_eth_table = hw->pf_dev->nfp_eth_table;
-			if (nfp_eth_table != NULL) {
-				uint32_t speed = nfp_eth_table->ports[hw->idx].speed;
-				for (i = 0; i < RTE_DIM(nfp_net_link_speed_nfp2rte); i++) {
-					if (nfp_net_link_speed_nfp2rte[i] == speed) {
-						link.link_speed = speed;
-						break;
-					}
-				}
-			}
-		} else {
-			/*
-			 * Shift and mask nn_link_status so that it is effectively the value
-			 * at offset NFP_NET_CFG_STS_NSP_LINK_RATE.
-			 */
-			nn_link_status = (nn_link_status >> NFP_NET_CFG_STS_LINK_RATE_SHIFT) &
-					NFP_NET_CFG_STS_LINK_RATE_MASK;
-			if (nn_link_status < RTE_DIM(nfp_net_link_speed_nfp2rte))
-				link.link_speed = nfp_net_link_speed_nfp2rte[nn_link_status];
-		}
-	}
-
-	ret = rte_eth_linkstatus_set(dev, &link);
-	if (ret == 0) {
-		if (link.link_status != 0)
-			PMD_DRV_LOG(INFO, "NIC Link is Up");
-		else
-			PMD_DRV_LOG(INFO, "NIC Link is Down");
-	}
+	ret = nfp_net_link_update_common(dev, hw, &link, nn_link_status);
 
 	/*
 	 * Notify the port to update the speed value in the CTRL BAR from NSP.
@@ -1995,11 +2010,15 @@ nfp_net_firmware_version_get(struct rte_eth_dev *dev,
 	if (fw_size < FW_VER_LEN)
 		return FW_VER_LEN;
 
-	hw = dev->data->dev_private;
+	hw = nfp_net_get_hw(dev);
 
-	snprintf(vnic_version, FW_VER_LEN, "%d.%d.%d.%d",
+	if ((dev->data->dev_flags & RTE_ETH_DEV_REPRESENTOR) != 0) {
+		snprintf(vnic_version, FW_VER_LEN, "%d.%d.%d.%d",
 			hw->ver.extend, hw->ver.class,
 			hw->ver.major, hw->ver.minor);
+	} else {
+		snprintf(vnic_version, FW_VER_LEN, "*");
+	}
 
 	nfp_net_get_nsp_info(hw, nsp_version);
 	nfp_net_get_mip_name(hw, mip_name);
@@ -2007,33 +2026,6 @@ nfp_net_firmware_version_get(struct rte_eth_dev *dev,
 
 	snprintf(fw_version, FW_VER_LEN, "%s %s %s %s",
 			vnic_version, nsp_version, mip_name, app_name);
-
-	return 0;
-}
-
-int
-nfp_repr_firmware_version_get(struct rte_eth_dev *dev,
-		char *fw_version,
-		size_t fw_size)
-{
-	struct nfp_net_hw *hw;
-	char mip_name[FW_VER_LEN];
-	char app_name[FW_VER_LEN];
-	char nsp_version[FW_VER_LEN];
-	struct nfp_flower_representor *repr;
-
-	if (fw_size < FW_VER_LEN)
-		return FW_VER_LEN;
-
-	repr = dev->data->dev_private;
-	hw = repr->app_fw_flower->pf_hw;
-
-	nfp_net_get_nsp_info(hw, nsp_version);
-	nfp_net_get_mip_name(hw, mip_name);
-	nfp_net_get_app_name(hw, app_name);
-
-	snprintf(fw_version, FW_VER_LEN, "* %s %s %s",
-			nsp_version, mip_name, app_name);
 
 	return 0;
 }
@@ -2057,4 +2049,27 @@ nfp_net_is_valid_nfd_version(struct nfp_net_fw_ver version)
 	}
 
 	return false;
+}
+
+/* Disable rx and tx functions to allow for reconfiguring. */
+int
+nfp_net_stop(struct rte_eth_dev *dev)
+{
+	struct nfp_net_hw *hw;
+
+	hw = nfp_net_get_hw(dev);
+
+	nfp_net_disable_queues(dev);
+
+	/* Clear queues */
+	nfp_net_stop_tx_queue(dev);
+	nfp_net_stop_rx_queue(dev);
+
+	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
+		/* Configure the physical port down */
+		nfp_eth_set_configured(hw->cpp, hw->nfp_idx, 0);
+	else
+		nfp_eth_set_configured(dev->process_private, hw->nfp_idx, 0);
+
+	return 0;
 }

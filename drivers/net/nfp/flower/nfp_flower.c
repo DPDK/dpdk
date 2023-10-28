@@ -48,11 +48,7 @@ nfp_flower_pf_start(struct rte_eth_dev *dev)
 	nfp_net_params_setup(net_hw);
 
 	update |= NFP_NET_CFG_UPDATE_RSS;
-
-	if ((hw->cap & NFP_NET_CFG_CTRL_RSS2) != 0)
-		new_ctrl |= NFP_NET_CFG_CTRL_RSS2;
-	else
-		new_ctrl |= NFP_NET_CFG_CTRL_RSS;
+	new_ctrl |= nfp_net_cfg_ctrl_rss(hw->cap);
 
 	/* Enable device */
 	new_ctrl |= NFP_NET_CFG_CTRL_ENABLE;
@@ -61,8 +57,6 @@ nfp_flower_pf_start(struct rte_eth_dev *dev)
 
 	if ((hw->cap & NFP_NET_CFG_CTRL_RINGCFG) != 0)
 		new_ctrl |= NFP_NET_CFG_CTRL_RINGCFG;
-
-	nn_cfg_writel(hw, NFP_NET_CFG_CTRL, new_ctrl);
 
 	/* If an error when reconfig we avoid to change hw state */
 	ret = nfp_reconfig(hw, new_ctrl, update);
@@ -84,43 +78,6 @@ nfp_flower_pf_start(struct rte_eth_dev *dev)
 		dev->data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STARTED;
 	for (i = 0; i < dev->data->nb_tx_queues; i++)
 		dev->data->tx_queue_state[i] = RTE_ETH_QUEUE_STATE_STARTED;
-
-	return 0;
-}
-
-/* Stop device: disable rx and tx functions to allow for reconfiguring. */
-int
-nfp_flower_pf_stop(struct rte_eth_dev *dev)
-{
-	uint16_t i;
-	struct nfp_net_hw *hw;
-	struct nfp_net_txq *this_tx_q;
-	struct nfp_net_rxq *this_rx_q;
-	struct nfp_flower_representor *repr;
-
-	repr = dev->data->dev_private;
-	hw = repr->app_fw_flower->pf_hw;
-
-	nfp_net_disable_queues(dev);
-
-	/* Clear queues */
-	for (i = 0; i < dev->data->nb_tx_queues; i++) {
-		this_tx_q = dev->data->tx_queues[i];
-		nfp_net_reset_tx_queue(this_tx_q);
-		dev->data->tx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
-	}
-
-	for (i = 0; i < dev->data->nb_rx_queues; i++) {
-		this_rx_q = dev->data->rx_queues[i];
-		nfp_net_reset_rx_queue(this_rx_q);
-		dev->data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
-	}
-
-	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
-		/* Configure the physical port down */
-		nfp_eth_set_configured(hw->cpp, hw->nfp_idx, 0);
-	else
-		nfp_eth_set_configured(dev->process_private, hw->nfp_idx, 0);
 
 	return 0;
 }
@@ -188,7 +145,7 @@ static const struct eth_dev_ops nfp_flower_pf_vnic_ops = {
 	.dev_configure          = nfp_net_configure,
 
 	.dev_start              = nfp_flower_pf_start,
-	.dev_stop               = nfp_flower_pf_stop,
+	.dev_stop               = nfp_net_stop,
 	.dev_close              = nfp_flower_pf_close,
 };
 

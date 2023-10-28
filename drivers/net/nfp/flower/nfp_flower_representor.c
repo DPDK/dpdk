@@ -19,231 +19,22 @@ enum nfp_repr_type {
 };
 
 static int
-nfp_pf_repr_rx_queue_setup(struct rte_eth_dev *dev,
-		uint16_t queue_idx,
-		uint16_t nb_desc,
-		unsigned int socket_id,
-		const struct rte_eth_rxconf *rx_conf,
-		struct rte_mempool *mp)
-{
-	struct nfp_net_hw *hw;
-	struct nfp_net_rxq *rxq;
-	const struct rte_memzone *tz;
-	struct nfp_flower_representor *repr;
-
-	repr = dev->data->dev_private;
-	hw = repr->app_fw_flower->pf_hw;
-
-	/* Allocating rx queue data structure */
-	rxq = rte_zmalloc_socket("ethdev RX queue", sizeof(struct nfp_net_rxq),
-			RTE_CACHE_LINE_SIZE, socket_id);
-	if (rxq == NULL)
-		return -ENOMEM;
-
-	dev->data->rx_queues[queue_idx] = rxq;
-
-	/* Hw queues mapping based on firmware configuration */
-	rxq->qidx = queue_idx;
-	rxq->fl_qcidx = queue_idx * hw->stride_rx;
-	rxq->qcp_fl = hw->rx_bar + NFP_QCP_QUEUE_OFF(rxq->fl_qcidx);
-
-	/*
-	 * Tracking mbuf size for detecting a potential mbuf overflow due to
-	 * RX offset.
-	 */
-	rxq->mem_pool = mp;
-	rxq->mbuf_size = rxq->mem_pool->elt_size;
-	rxq->mbuf_size -= (sizeof(struct rte_mbuf) + RTE_PKTMBUF_HEADROOM);
-	hw->flbufsz = rxq->mbuf_size;
-
-	rxq->rx_count = nb_desc;
-	rxq->port_id = dev->data->port_id;
-	rxq->rx_free_thresh = rx_conf->rx_free_thresh;
-
-	/*
-	 * Allocate RX ring hardware descriptors. A memzone large enough to
-	 * handle the maximum ring size is allocated in order to allow for
-	 * resizing in later calls to the queue setup function.
-	 */
-	tz = rte_eth_dma_zone_reserve(dev, "rx_ring", queue_idx,
-			sizeof(struct nfp_net_rx_desc) *
-			hw->dev_info->max_qc_size,
-			NFP_MEMZONE_ALIGN, socket_id);
-	if (tz == NULL) {
-		PMD_DRV_LOG(ERR, "Error allocating rx dma");
-		nfp_net_rx_queue_release(dev, queue_idx);
-		dev->data->rx_queues[queue_idx] = NULL;
-		return -ENOMEM;
-	}
-
-	/* Saving physical and virtual addresses for the RX ring */
-	rxq->dma = (uint64_t)tz->iova;
-	rxq->rxds = tz->addr;
-
-	/* Mbuf pointers array for referencing mbufs linked to RX descriptors */
-	rxq->rxbufs = rte_zmalloc_socket("rxq->rxbufs",
-			sizeof(*rxq->rxbufs) * nb_desc,
-			RTE_CACHE_LINE_SIZE, socket_id);
-	if (rxq->rxbufs == NULL) {
-		nfp_net_rx_queue_release(dev, queue_idx);
-		dev->data->rx_queues[queue_idx] = NULL;
-		return -ENOMEM;
-	}
-
-	nfp_net_reset_rx_queue(rxq);
-	rxq->hw = hw;
-
-	/*
-	 * Telling the HW about the physical address of the RX ring and number
-	 * of descriptors in log2 format.
-	 */
-	nn_cfg_writeq(&hw->super, NFP_NET_CFG_RXR_ADDR(queue_idx), rxq->dma);
-	nn_cfg_writeb(&hw->super, NFP_NET_CFG_RXR_SZ(queue_idx), rte_log2_u32(nb_desc));
-
-	return 0;
-}
-
-static int
-nfp_pf_repr_tx_queue_setup(struct rte_eth_dev *dev,
-		uint16_t queue_idx,
-		uint16_t nb_desc,
-		unsigned int socket_id,
-		const struct rte_eth_txconf *tx_conf)
-{
-	struct nfp_net_hw *hw;
-	struct nfp_net_txq *txq;
-	uint16_t tx_free_thresh;
-	const struct rte_memzone *tz;
-	struct nfp_flower_representor *repr;
-
-	repr = dev->data->dev_private;
-	hw = repr->app_fw_flower->pf_hw;
-
-	tx_free_thresh = (tx_conf->tx_free_thresh) ? tx_conf->tx_free_thresh :
-			DEFAULT_TX_FREE_THRESH;
-	if (tx_free_thresh > nb_desc)
-		return -EINVAL;
-
-	/* Allocating tx queue data structure */
-	txq = rte_zmalloc_socket("ethdev TX queue", sizeof(struct nfp_net_txq),
-			RTE_CACHE_LINE_SIZE, socket_id);
-	if (txq == NULL) {
-		PMD_DRV_LOG(ERR, "Error allocating tx dma");
-		return -ENOMEM;
-	}
-
-	dev->data->tx_queues[queue_idx] = txq;
-
-	/*
-	 * Allocate TX ring hardware descriptors. A memzone large enough to
-	 * handle the maximum ring size is allocated in order to allow for
-	 * resizing in later calls to the queue setup function.
-	 */
-	tz = rte_eth_dma_zone_reserve(dev, "tx_ring", queue_idx,
-			sizeof(struct nfp_net_nfd3_tx_desc) *
-			hw->dev_info->max_qc_size,
-			NFP_MEMZONE_ALIGN, socket_id);
-	if (tz == NULL) {
-		PMD_DRV_LOG(ERR, "Error allocating tx dma");
-		nfp_net_tx_queue_release(dev, queue_idx);
-		dev->data->tx_queues[queue_idx] = NULL;
-		return -ENOMEM;
-	}
-
-	txq->tx_count = nb_desc;
-	txq->tx_free_thresh = tx_free_thresh;
-
-	/* Queue mapping based on firmware configuration */
-	txq->qidx = queue_idx;
-	txq->tx_qcidx = queue_idx * hw->stride_tx;
-	txq->qcp_q = hw->tx_bar + NFP_QCP_QUEUE_OFF(txq->tx_qcidx);
-
-	txq->port_id = dev->data->port_id;
-
-	/* Saving physical and virtual addresses for the TX ring */
-	txq->dma = (uint64_t)tz->iova;
-	txq->txds = tz->addr;
-
-	/* Mbuf pointers array for referencing mbufs linked to TX descriptors */
-	txq->txbufs = rte_zmalloc_socket("txq->txbufs",
-			sizeof(*txq->txbufs) * nb_desc,
-			RTE_CACHE_LINE_SIZE, socket_id);
-	if (txq->txbufs == NULL) {
-		nfp_net_tx_queue_release(dev, queue_idx);
-		dev->data->tx_queues[queue_idx] = NULL;
-		return -ENOMEM;
-	}
-
-	nfp_net_reset_tx_queue(txq);
-	txq->hw = hw;
-
-	/*
-	 * Telling the HW about the physical address of the TX ring and number
-	 * of descriptors in log2 format.
-	 */
-	nn_cfg_writeq(&hw->super, NFP_NET_CFG_TXR_ADDR(queue_idx), txq->dma);
-	nn_cfg_writeb(&hw->super, NFP_NET_CFG_TXR_SZ(queue_idx), rte_log2_u32(nb_desc));
-
-	return 0;
-}
-
-static int
 nfp_flower_repr_link_update(struct rte_eth_dev *dev,
 		__rte_unused int wait_to_complete)
 {
 	int ret;
-	uint32_t i;
 	uint32_t nn_link_status;
 	struct nfp_net_hw *pf_hw;
 	struct rte_eth_link *link;
-	struct nfp_eth_table *nfp_eth_table;
 	struct nfp_flower_representor *repr;
-
-	static const uint32_t ls_to_ethtool[] = {
-		[NFP_NET_CFG_STS_LINK_RATE_UNSUPPORTED] = RTE_ETH_SPEED_NUM_NONE,
-		[NFP_NET_CFG_STS_LINK_RATE_UNKNOWN]     = RTE_ETH_SPEED_NUM_NONE,
-		[NFP_NET_CFG_STS_LINK_RATE_1G]          = RTE_ETH_SPEED_NUM_1G,
-		[NFP_NET_CFG_STS_LINK_RATE_10G]         = RTE_ETH_SPEED_NUM_10G,
-		[NFP_NET_CFG_STS_LINK_RATE_25G]         = RTE_ETH_SPEED_NUM_25G,
-		[NFP_NET_CFG_STS_LINK_RATE_40G]         = RTE_ETH_SPEED_NUM_40G,
-		[NFP_NET_CFG_STS_LINK_RATE_50G]         = RTE_ETH_SPEED_NUM_50G,
-		[NFP_NET_CFG_STS_LINK_RATE_100G]        = RTE_ETH_SPEED_NUM_100G,
-	};
 
 	repr = dev->data->dev_private;
 	link = &repr->link;
-	link->link_speed = RTE_ETH_SPEED_NUM_NONE;
+
 	pf_hw = repr->app_fw_flower->pf_hw;
+	nn_link_status = nn_cfg_readw(&pf_hw->super, NFP_NET_CFG_STS);
 
-	if (link->link_status == RTE_ETH_LINK_UP) {
-		if (pf_hw->pf_dev != NULL) {
-			nfp_eth_table = pf_hw->pf_dev->nfp_eth_table;
-			if (nfp_eth_table != NULL) {
-				uint32_t speed = nfp_eth_table->ports[pf_hw->idx].speed;
-				for (i = 0; i < RTE_DIM(ls_to_ethtool); i++) {
-					if (ls_to_ethtool[i] == speed) {
-						link->link_speed = speed;
-						break;
-					}
-				}
-			}
-		} else {
-			nn_link_status = nn_cfg_readw(&pf_hw->super, NFP_NET_CFG_STS);
-			nn_link_status = (nn_link_status >> NFP_NET_CFG_STS_LINK_RATE_SHIFT) &
-					NFP_NET_CFG_STS_LINK_RATE_MASK;
-
-			if (nn_link_status < RTE_DIM(ls_to_ethtool))
-				link->link_speed = ls_to_ethtool[nn_link_status];
-		}
-	}
-
-	ret = rte_eth_linkstatus_set(dev, link);
-	if (ret == 0) {
-		if (link->link_status)
-			PMD_DRV_LOG(INFO, "NIC Link is Up");
-		else
-			PMD_DRV_LOG(INFO, "NIC Link is Down");
-	}
+	ret = nfp_net_link_update_common(dev, pf_hw, link, nn_link_status);
 
 	return ret;
 }
@@ -271,30 +62,6 @@ nfp_flower_repr_dev_infos_get(__rte_unused struct rte_eth_dev *dev,
 	dev_info->tx_offload_capa |= RTE_ETH_TX_OFFLOAD_MULTI_SEGS;
 
 	dev_info->max_mac_addrs = 1;
-
-	return 0;
-}
-
-static int
-nfp_flower_repr_dev_configure(struct rte_eth_dev *dev)
-{
-	struct nfp_net_hw *pf_hw;
-	struct rte_eth_conf *dev_conf;
-	struct rte_eth_rxmode *rxmode;
-	struct nfp_flower_representor *repr;
-
-	repr = dev->data->dev_private;
-	pf_hw = repr->app_fw_flower->pf_hw;
-
-	dev_conf = &dev->data->dev_conf;
-	rxmode = &dev_conf->rxmode;
-
-	/* Checking MTU set */
-	if (rxmode->mtu > pf_hw->flbufsz) {
-		PMD_DRV_LOG(INFO, "MTU (%u) larger then current mbufsize (%u) not supported",
-				rxmode->mtu, pf_hw->flbufsz);
-		return -ERANGE;
-	}
 
 	return 0;
 }
@@ -528,11 +295,11 @@ static const struct eth_dev_ops nfp_flower_pf_repr_dev_ops = {
 	.dev_infos_get        = nfp_flower_repr_dev_infos_get,
 
 	.dev_start            = nfp_flower_pf_start,
-	.dev_configure        = nfp_flower_repr_dev_configure,
-	.dev_stop             = nfp_flower_pf_stop,
+	.dev_configure        = nfp_net_configure,
+	.dev_stop             = nfp_net_stop,
 
-	.rx_queue_setup       = nfp_pf_repr_rx_queue_setup,
-	.tx_queue_setup       = nfp_pf_repr_tx_queue_setup,
+	.rx_queue_setup       = nfp_net_rx_queue_setup,
+	.tx_queue_setup       = nfp_net_tx_queue_setup,
 
 	.link_update          = nfp_flower_repr_link_update,
 
@@ -543,14 +310,14 @@ static const struct eth_dev_ops nfp_flower_pf_repr_dev_ops = {
 	.promiscuous_disable  = nfp_net_promisc_disable,
 
 	.mac_addr_set         = nfp_flower_repr_mac_addr_set,
-	.fw_version_get       = nfp_repr_firmware_version_get,
+	.fw_version_get       = nfp_net_firmware_version_get,
 };
 
 static const struct eth_dev_ops nfp_flower_repr_dev_ops = {
 	.dev_infos_get        = nfp_flower_repr_dev_infos_get,
 
 	.dev_start            = nfp_flower_repr_dev_start,
-	.dev_configure        = nfp_flower_repr_dev_configure,
+	.dev_configure        = nfp_net_configure,
 	.dev_stop             = nfp_flower_repr_dev_stop,
 
 	.rx_queue_setup       = nfp_flower_repr_rx_queue_setup,
@@ -565,7 +332,7 @@ static const struct eth_dev_ops nfp_flower_repr_dev_ops = {
 	.promiscuous_disable  = nfp_net_promisc_disable,
 
 	.mac_addr_set         = nfp_flower_repr_mac_addr_set,
-	.fw_version_get       = nfp_repr_firmware_version_get,
+	.fw_version_get       = nfp_net_firmware_version_get,
 
 	.flow_ops_get         = nfp_net_flow_ops_get,
 	.mtr_ops_get          = nfp_net_mtr_ops_get,

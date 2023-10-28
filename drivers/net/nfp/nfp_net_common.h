@@ -174,6 +174,10 @@ int nfp_configure_rx_interrupt(struct rte_eth_dev *dev,
 uint32_t nfp_check_offloads(struct rte_eth_dev *dev);
 int nfp_net_promisc_enable(struct rte_eth_dev *dev);
 int nfp_net_promisc_disable(struct rte_eth_dev *dev);
+int nfp_net_link_update_common(struct rte_eth_dev *dev,
+		struct nfp_net_hw *hw,
+		struct rte_eth_link *link,
+		uint32_t link_status);
 int nfp_net_link_update(struct rte_eth_dev *dev,
 		__rte_unused int wait_to_complete);
 int nfp_net_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats);
@@ -231,9 +235,9 @@ int nfp_net_check_dma_mask(struct nfp_net_hw *hw, char *name);
 void nfp_net_init_metadata_format(struct nfp_net_hw *hw);
 void nfp_net_cfg_read_version(struct nfp_net_hw *hw);
 int nfp_net_firmware_version_get(struct rte_eth_dev *dev, char *fw_version, size_t fw_size);
-int nfp_repr_firmware_version_get(struct rte_eth_dev *dev, char *fw_version, size_t fw_size);
 bool nfp_net_is_valid_nfd_version(struct nfp_net_fw_ver version);
 struct nfp_net_hw *nfp_net_get_hw(const struct rte_eth_dev *dev);
+int nfp_net_stop(struct rte_eth_dev *dev);
 
 #define NFP_PRIV_TO_APP_FW_NIC(app_fw_priv)\
 	((struct nfp_app_fw_nic *)app_fw_priv)

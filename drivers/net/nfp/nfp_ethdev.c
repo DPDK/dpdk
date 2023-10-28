@@ -51,7 +51,6 @@ nfp_net_start(struct rte_eth_dev *dev)
 	uint32_t ctrl_extend = 0;
 	struct nfp_net_hw *net_hw;
 	struct nfp_pf_dev *pf_dev;
-	struct rte_eth_conf *dev_conf;
 	struct rte_eth_rxmode *rxmode;
 	struct nfp_app_fw_nic *app_fw_nic;
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
@@ -113,9 +112,7 @@ nfp_net_start(struct rte_eth_dev *dev)
 	/* Writing configuration parameters in the device */
 	nfp_net_params_setup(net_hw);
 
-	dev_conf = &dev->data->dev_conf;
-	rxmode = &dev_conf->rxmode;
-
+	rxmode = &dev->data->dev_conf.rxmode;
 	if ((rxmode->mq_mode & RTE_ETH_MQ_RX_RSS) != 0) {
 		nfp_net_rss_config_default(dev);
 		update |= NFP_NET_CFG_UPDATE_RSS;
@@ -195,29 +192,6 @@ error:
 	nfp_net_disable_queues(dev);
 
 	return ret;
-}
-
-/* Stop device: disable rx and tx functions to allow for reconfiguring. */
-static int
-nfp_net_stop(struct rte_eth_dev *dev)
-{
-	struct nfp_net_hw *hw;
-
-	hw = dev->data->dev_private;
-
-	nfp_net_disable_queues(dev);
-
-	/* Clear queues */
-	nfp_net_stop_tx_queue(dev);
-	nfp_net_stop_rx_queue(dev);
-
-	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
-		/* Configure the physical port down */
-		nfp_eth_set_configured(hw->cpp, hw->nfp_idx, 0);
-	else
-		nfp_eth_set_configured(dev->process_private, hw->nfp_idx, 0);
-
-	return 0;
 }
 
 /* Set the link up. */
