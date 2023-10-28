@@ -13,7 +13,8 @@
 static char*
 nfp_flower_cmsg_get_data(struct rte_mbuf *m)
 {
-	return rte_pktmbuf_mtod_offset(m, char *, 4 + 4 + NFP_FLOWER_CMSG_HLEN);
+	return rte_pktmbuf_mtod_offset(m, char *, NFP_NET_META_HEADER_SIZE +
+			NFP_NET_META_FIELD_SIZE + NFP_FLOWER_CMSG_HLEN);
 }
 
 static void *
