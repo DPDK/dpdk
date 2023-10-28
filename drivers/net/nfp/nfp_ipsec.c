@@ -579,7 +579,7 @@ nfp_aead_map(struct rte_eth_dev *eth_dev,
 	const uint32_t *key;
 	struct nfp_net_hw *net_hw;
 
-	net_hw = NFP_NET_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
+	net_hw = eth_dev->data->dev_private;
 	device_id = net_hw->device_id;
 	offset = 0;
 
@@ -667,7 +667,7 @@ nfp_cipher_map(struct rte_eth_dev *eth_dev,
 	const uint32_t *key;
 	struct nfp_net_hw *net_hw;
 
-	net_hw = NFP_NET_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
+	net_hw = eth_dev->data->dev_private;
 	device_id = net_hw->device_id;
 
 	switch (cipher->algo) {
@@ -808,7 +808,7 @@ nfp_auth_map(struct rte_eth_dev *eth_dev,
 		return -EINVAL;
 	}
 
-	net_hw = NFP_NET_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
+	net_hw = eth_dev->data->dev_private;
 	device_id = net_hw->device_id;
 	digest_length = digest_length << 3;
 
@@ -1082,7 +1082,7 @@ nfp_crypto_create_session(void *device,
 	sa_idx = -1;
 	eth_dev = device;
 	priv_session = SECURITY_GET_SESS_PRIV(session);
-	net_hw = NFP_NET_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
+	net_hw = eth_dev->data->dev_private;
 
 	if (net_hw->ipsec_data->sa_free_cnt == 0) {
 		PMD_DRV_LOG(ERR, "No space in SA table, spi: %d", conf->ipsec.spi);
@@ -1163,7 +1163,7 @@ nfp_security_set_pkt_metadata(void *device,
 	sqn = params;
 	eth_dev = device;
 	priv_session = SECURITY_GET_SESS_PRIV(session);
-	net_hw = NFP_NET_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
+	net_hw = eth_dev->data->dev_private;
 
 	if (priv_session->ipsec.direction == RTE_SECURITY_IPSEC_SA_DIR_EGRESS) {
 		struct nfp_tx_ipsec_desc_msg *desc_md;
@@ -1236,7 +1236,7 @@ nfp_security_session_get_stats(void *device,
 	memset(&msg, 0, sizeof(msg));
 	msg.cmd = NFP_IPSEC_CFG_MSG_GET_SA_STATS;
 	msg.sa_idx = priv_session->sa_index;
-	net_hw = NFP_NET_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
+	net_hw = eth_dev->data->dev_private;
 
 	ret = nfp_ipsec_cfg_cmd_issue(net_hw, &msg);
 	if (ret < 0) {
@@ -1288,7 +1288,7 @@ nfp_crypto_remove_sa(struct rte_eth_dev *eth_dev,
 	struct nfp_ipsec_msg cfg;
 
 	sa_index = priv_session->sa_index;
-	net_hw = NFP_NET_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
+	net_hw = eth_dev->data->dev_private;
 
 	cfg.cmd = NFP_IPSEC_CFG_MSG_INV_SA;
 	cfg.sa_idx = sa_index;
@@ -1380,7 +1380,7 @@ nfp_ipsec_init(struct rte_eth_dev *dev)
 	struct nfp_net_hw *net_hw;
 	struct nfp_net_ipsec_data *data;
 
-	net_hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	net_hw = dev->data->dev_private;
 
 	cap_extend = net_hw->super.cap_ext;
 	if ((cap_extend & NFP_NET_CFG_CTRL_IPSEC) == 0) {
@@ -1427,7 +1427,7 @@ nfp_ipsec_uninit(struct rte_eth_dev *dev)
 	struct nfp_net_hw *net_hw;
 	struct nfp_ipsec_session *priv_session;
 
-	net_hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	net_hw = dev->data->dev_private;
 
 	cap_extend = net_hw->super.cap_ext;
 	if ((cap_extend & NFP_NET_CFG_CTRL_IPSEC) == 0) {

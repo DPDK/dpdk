@@ -55,7 +55,7 @@ nfp_net_start(struct rte_eth_dev *dev)
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
 
-	net_hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	net_hw = dev->data->dev_private;
 	pf_dev = NFP_NET_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	app_fw_nic = NFP_PRIV_TO_APP_FW_NIC(pf_dev->app_fw_priv);
 	hw = &net_hw->super;
@@ -201,7 +201,7 @@ nfp_net_stop(struct rte_eth_dev *dev)
 {
 	struct nfp_net_hw *hw;
 
-	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	hw = dev->data->dev_private;
 
 	nfp_net_disable_queues(dev);
 
@@ -224,7 +224,7 @@ nfp_net_set_link_up(struct rte_eth_dev *dev)
 {
 	struct nfp_net_hw *hw;
 
-	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	hw = dev->data->dev_private;
 
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
 		/* Configure the physical port down */
@@ -239,7 +239,7 @@ nfp_net_set_link_down(struct rte_eth_dev *dev)
 {
 	struct nfp_net_hw *hw;
 
-	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	hw = dev->data->dev_private;
 
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
 		/* Configure the physical port down */
@@ -262,7 +262,7 @@ nfp_net_close(struct rte_eth_dev *dev)
 		return 0;
 
 	pf_dev = NFP_NET_DEV_PRIVATE_TO_PF(dev->data->dev_private);
-	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	hw = dev->data->dev_private;
 	pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	app_fw_nic = NFP_PRIV_TO_APP_FW_NIC(pf_dev->app_fw_priv);
 
@@ -350,7 +350,7 @@ nfp_udp_tunnel_port_add(struct rte_eth_dev *dev,
 	struct nfp_net_hw *hw;
 	enum rte_eth_tunnel_type tnl_type;
 
-	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	hw = dev->data->dev_private;
 	vxlan_port = tunnel_udp->udp_port;
 	tnl_type   = tunnel_udp->prot_type;
 
@@ -388,7 +388,7 @@ nfp_udp_tunnel_port_del(struct rte_eth_dev *dev,
 	struct nfp_net_hw *hw;
 	enum rte_eth_tunnel_type tnl_type;
 
-	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	hw = dev->data->dev_private;
 	vxlan_port = tunnel_udp->udp_port;
 	tnl_type   = tunnel_udp->prot_type;
 
@@ -828,7 +828,7 @@ nfp_init_app_fw_nic(struct nfp_pf_dev *pf_dev,
 			goto port_cleanup;
 		}
 
-		hw = NFP_NET_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
+		hw = eth_dev->data->dev_private;
 
 		/* Add this device to the PF's array of physical ports */
 		app_fw_nic->ports[i] = hw;
@@ -1067,7 +1067,7 @@ nfp_secondary_init_app_fw_nic(struct rte_pci_device *pci_dev,
 		}
 
 		eth_dev->process_private = cpp;
-		hw = NFP_NET_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
+		hw = eth_dev->data->dev_private;
 		nfp_net_ethdev_ops_mount(hw, eth_dev);
 
 		rte_eth_dev_probing_finish(eth_dev);

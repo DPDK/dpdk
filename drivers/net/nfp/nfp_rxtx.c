@@ -840,7 +840,7 @@ nfp_net_rx_queue_setup(struct rte_eth_dev *dev,
 	struct nfp_net_rxq *rxq;
 	const struct rte_memzone *tz;
 
-	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	hw = dev->data->dev_private;
 
 	nfp_net_rx_desc_limits(hw, &min_rx_desc, &max_rx_desc);
 
@@ -1067,7 +1067,7 @@ nfp_net_tx_queue_setup(struct rte_eth_dev *dev,
 {
 	struct nfp_net_hw *hw;
 
-	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	hw = dev->data->dev_private;
 
 	if (hw->ver.extend == NFP_NET_CFG_VERSION_DP_NFD3)
 		return nfp_net_nfd3_tx_queue_setup(dev, queue_idx,

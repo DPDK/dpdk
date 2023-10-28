@@ -252,7 +252,7 @@ nfp_net_configure(struct rte_eth_dev *dev)
 	struct rte_eth_rxmode *rxmode;
 	struct rte_eth_txmode *txmode;
 
-	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	hw = dev->data->dev_private;
 	dev_conf = &dev->data->dev_conf;
 	rxmode = &dev_conf->rxmode;
 	txmode = &dev_conf->txmode;
@@ -329,7 +329,7 @@ nfp_net_enable_queues(struct rte_eth_dev *dev)
 {
 	struct nfp_net_hw *hw;
 
-	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	hw = dev->data->dev_private;
 
 	nfp_enable_queues(&hw->super, dev->data->nb_rx_queues,
 			dev->data->nb_tx_queues);
@@ -340,7 +340,7 @@ nfp_net_disable_queues(struct rte_eth_dev *dev)
 {
 	struct nfp_net_hw *net_hw;
 
-	net_hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	net_hw = dev->data->dev_private;
 
 	nfp_disable_queues(&net_hw->super);
 }
@@ -367,7 +367,7 @@ nfp_net_set_mac_addr(struct rte_eth_dev *dev,
 	struct nfp_hw *hw;
 	struct nfp_net_hw *net_hw;
 
-	net_hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	net_hw = dev->data->dev_private;
 	hw = &net_hw->super;
 	if ((hw->ctrl & NFP_NET_CFG_CTRL_ENABLE) != 0 &&
 			(hw->cap & NFP_NET_CFG_CTRL_LIVE_ADDR) == 0) {
@@ -409,7 +409,7 @@ nfp_configure_rx_interrupt(struct rte_eth_dev *dev,
 		return -ENOMEM;
 	}
 
-	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	hw = dev->data->dev_private;
 
 	if (rte_intr_type_get(intr_handle) == RTE_INTR_HANDLE_UIO) {
 		PMD_DRV_LOG(INFO, "VF: enabling RX interrupt with UIO");
@@ -445,7 +445,7 @@ nfp_check_offloads(struct rte_eth_dev *dev)
 	struct nfp_net_hw *hw;
 	struct rte_eth_conf *dev_conf;
 
-	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	hw = dev->data->dev_private;
 	cap = hw->super.cap;
 
 	dev_conf = &dev->data->dev_conf;
@@ -518,7 +518,7 @@ nfp_net_promisc_enable(struct rte_eth_dev *dev)
 		repr = dev->data->dev_private;
 		net_hw = repr->app_fw_flower->pf_hw;
 	} else {
-		net_hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+		net_hw = dev->data->dev_private;
 	}
 
 	hw = &net_hw->super;
@@ -553,7 +553,7 @@ nfp_net_promisc_disable(struct rte_eth_dev *dev)
 	struct nfp_hw *hw;
 	struct nfp_net_hw *net_hw;
 
-	net_hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	net_hw = dev->data->dev_private;
 	hw = &net_hw->super;
 
 	if ((hw->ctrl & NFP_NET_CFG_CTRL_PROMISC) == 0) {
@@ -590,7 +590,7 @@ nfp_net_link_update(struct rte_eth_dev *dev,
 	struct rte_eth_link link;
 	struct nfp_eth_table *nfp_eth_table;
 
-	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	hw = dev->data->dev_private;
 
 	memset(&link, 0, sizeof(struct rte_eth_link));
 
@@ -656,7 +656,7 @@ nfp_net_stats_get(struct rte_eth_dev *dev,
 	if (stats == NULL)
 		return -EINVAL;
 
-	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	hw = dev->data->dev_private;
 
 	memset(&nfp_dev_stats, 0, sizeof(nfp_dev_stats));
 
@@ -734,7 +734,7 @@ nfp_net_stats_reset(struct rte_eth_dev *dev)
 	uint16_t i;
 	struct nfp_net_hw *hw;
 
-	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	hw = dev->data->dev_private;
 
 	/* Reading per RX ring stats */
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
@@ -796,7 +796,7 @@ nfp_net_xstats_size(const struct rte_eth_dev *dev)
 	const uint32_t size = RTE_DIM(nfp_net_xstats);
 
 	/* If the device is a VF, then there will be no MAC stats */
-	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	hw = dev->data->dev_private;
 	if (hw->mac_stats == NULL) {
 		for (count = 0; count < size; count++) {
 			if (nfp_net_xstats[count].group == NFP_XSTAT_GROUP_MAC)
@@ -830,7 +830,7 @@ nfp_net_xstats_value(const struct rte_eth_dev *dev,
 	struct nfp_net_hw *hw;
 	struct nfp_xstat xstat;
 
-	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	hw = dev->data->dev_private;
 	xstat = nfp_net_xstats[index];
 
 	if (xstat.group == NFP_XSTAT_GROUP_MAC)
@@ -969,7 +969,7 @@ nfp_net_xstats_reset(struct rte_eth_dev *dev)
 	uint32_t read_size;
 	struct nfp_net_hw *hw;
 
-	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	hw = dev->data->dev_private;
 	read_size = nfp_net_xstats_size(dev);
 
 	for (id = 0; id < read_size; id++) {
@@ -1017,7 +1017,7 @@ nfp_net_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	uint16_t max_tx_desc;
 	struct nfp_net_hw *hw;
 
-	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	hw = dev->data->dev_private;
 
 	nfp_net_rx_desc_limits(hw, &min_rx_desc, &max_rx_desc);
 	nfp_net_tx_desc_limits(hw, &min_tx_desc, &max_tx_desc);
@@ -1219,7 +1219,7 @@ nfp_net_supported_ptypes_get(struct rte_eth_dev *dev)
 	if (dev->rx_pkt_burst != nfp_net_recv_pkts)
 		return NULL;
 
-	net_hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	net_hw = dev->data->dev_private;
 	if ((net_hw->super.cap_ext & NFP_NET_CFG_CTRL_PKT_TYPE) == 0)
 		return NULL;
 
@@ -1241,7 +1241,7 @@ nfp_rx_queue_intr_enable(struct rte_eth_dev *dev,
 	/* Make sure all updates are written before un-masking */
 	rte_wmb();
 
-	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	hw = dev->data->dev_private;
 	nn_cfg_writeb(&hw->super, NFP_NET_CFG_ICR(base + queue_id),
 			NFP_NET_CFG_ICR_UNMASKED);
 	return 0;
@@ -1262,7 +1262,7 @@ nfp_rx_queue_intr_disable(struct rte_eth_dev *dev,
 	/* Make sure all updates are written before un-masking */
 	rte_wmb();
 
-	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	hw = dev->data->dev_private;
 	nn_cfg_writeb(&hw->super, NFP_NET_CFG_ICR(base + queue_id), NFP_NET_CFG_ICR_RXTX);
 
 	return 0;
@@ -1300,7 +1300,7 @@ nfp_net_irq_unmask(struct rte_eth_dev *dev)
 	struct nfp_net_hw *hw;
 	struct rte_pci_device *pci_dev;
 
-	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	hw = dev->data->dev_private;
 	pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 
 	/* Make sure all updates are written before un-masking */
@@ -1375,7 +1375,7 @@ nfp_net_dev_mtu_set(struct rte_eth_dev *dev,
 {
 	struct nfp_net_hw *hw;
 
-	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	hw = dev->data->dev_private;
 
 	/* MTU setting is forbidden if port is started */
 	if (dev->data->dev_started) {
@@ -1411,9 +1411,8 @@ nfp_net_vlan_offload_set(struct rte_eth_dev *dev,
 	struct nfp_net_hw *net_hw;
 	uint32_t rxvlan_ctrl = 0;
 
-	net_hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	net_hw = dev->data->dev_private;
 	hw = &net_hw->super;
-
 	rx_offload = dev->data->dev_conf.rxmode.offloads;
 	new_ctrl = hw->ctrl;
 
@@ -1462,7 +1461,7 @@ nfp_net_rss_reta_write(struct rte_eth_dev *dev,
 	struct nfp_hw *hw;
 	struct nfp_net_hw *net_hw;
 
-	net_hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	net_hw = dev->data->dev_private;
 	hw = &net_hw->super;
 
 	if (reta_size != NFP_NET_CFG_RSS_ITBL_SZ) {
@@ -1518,7 +1517,7 @@ nfp_net_reta_update(struct rte_eth_dev *dev,
 	struct nfp_hw *hw;
 	struct nfp_net_hw *net_hw;
 
-	net_hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	net_hw = dev->data->dev_private;
 	hw = &net_hw->super;
 
 	if ((hw->ctrl & NFP_NET_CFG_CTRL_RSS_ANY) == 0)
@@ -1551,7 +1550,7 @@ nfp_net_reta_query(struct rte_eth_dev *dev,
 	struct nfp_hw *hw;
 	struct nfp_net_hw *net_hw;
 
-	net_hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	net_hw = dev->data->dev_private;
 	hw = &net_hw->super;
 
 	if ((hw->ctrl & NFP_NET_CFG_CTRL_RSS_ANY) == 0)
@@ -1601,7 +1600,7 @@ nfp_net_rss_hash_write(struct rte_eth_dev *dev,
 	struct nfp_net_hw *net_hw;
 	uint32_t cfg_rss_ctrl = 0;
 
-	net_hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	net_hw = dev->data->dev_private;
 	hw = &net_hw->super;
 
 	/* Writing the key byte by byte */
@@ -1657,7 +1656,7 @@ nfp_net_rss_hash_update(struct rte_eth_dev *dev,
 	struct nfp_hw *hw;
 	struct nfp_net_hw *net_hw;
 
-	net_hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	net_hw = dev->data->dev_private;
 	hw = &net_hw->super;
 
 	rss_hf = rss_conf->rss_hf;
@@ -1698,7 +1697,7 @@ nfp_net_rss_hash_conf_get(struct rte_eth_dev *dev,
 	uint32_t cfg_rss_ctrl;
 	struct nfp_net_hw *net_hw;
 
-	net_hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	net_hw = dev->data->dev_private;
 	hw = &net_hw->super;
 
 	if ((hw->ctrl & NFP_NET_CFG_CTRL_RSS_ANY) == 0)
@@ -1986,7 +1985,7 @@ nfp_net_firmware_version_get(struct rte_eth_dev *dev,
 	if (fw_size < FW_VER_LEN)
 		return FW_VER_LEN;
 
-	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	hw = dev->data->dev_private;
 
 	snprintf(vnic_version, FW_VER_LEN, "%d.%d.%d.%d",
 			hw->ver.extend, hw->ver.class,

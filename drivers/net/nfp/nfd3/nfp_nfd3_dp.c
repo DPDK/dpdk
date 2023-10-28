@@ -377,7 +377,7 @@ nfp_net_nfd3_tx_queue_setup(struct rte_eth_dev *dev,
 	uint16_t tx_free_thresh;
 	const struct rte_memzone *tz;
 
-	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	hw = dev->data->dev_private;
 
 	nfp_net_tx_desc_limits(hw, &min_tx_desc, &max_tx_desc);
 

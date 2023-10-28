@@ -152,10 +152,6 @@ struct nfp_net_hw {
 	struct nfp_net_ipsec_data *ipsec_data;
 };
 
-struct nfp_net_adapter {
-	struct nfp_net_hw hw;
-};
-
 static inline uint32_t
 nfp_qcp_queue_offset(const struct nfp_dev_info *dev_info,
 		uint16_t queue)
@@ -237,9 +233,6 @@ void nfp_net_cfg_read_version(struct nfp_net_hw *hw);
 int nfp_net_firmware_version_get(struct rte_eth_dev *dev, char *fw_version, size_t fw_size);
 int nfp_repr_firmware_version_get(struct rte_eth_dev *dev, char *fw_version, size_t fw_size);
 bool nfp_net_is_valid_nfd_version(struct nfp_net_fw_ver version);
-
-#define NFP_NET_DEV_PRIVATE_TO_HW(adapter)\
-	(&((struct nfp_net_adapter *)adapter)->hw)
 
 #define NFP_NET_DEV_PRIVATE_TO_PF(dev_priv)\
 	(((struct nfp_net_hw *)dev_priv)->pf_dev)

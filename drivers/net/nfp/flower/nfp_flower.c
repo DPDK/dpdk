@@ -848,7 +848,7 @@ nfp_init_app_fw_flower(struct nfp_pf_dev *pf_dev,
 	}
 
 	/* Allocate memory for the PF AND ctrl vNIC here (hence the * 2) */
-	pf_hw = rte_zmalloc_socket("nfp_pf_vnic", 2 * sizeof(struct nfp_net_adapter),
+	pf_hw = rte_zmalloc_socket("nfp_pf_vnic", 2 * sizeof(struct nfp_net_hw),
 			RTE_CACHE_LINE_SIZE, numa_node);
 	if (pf_hw == NULL) {
 		PMD_INIT_LOG(ERR, "Could not malloc nfp pf vnic");

@@ -31,7 +31,7 @@ nfp_net_tlv_caps_parse(struct rte_eth_dev *dev)
 	struct nfp_net_hw *net_hw;
 	struct nfp_net_tlv_caps *caps;
 
-	net_hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	net_hw = dev->data->dev_private;
 	caps = &net_hw->tlv_caps;
 	nfp_net_tlv_caps_reset(caps);
 

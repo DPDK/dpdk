@@ -66,7 +66,7 @@ nfp_netvf_start(struct rte_eth_dev *dev)
 	new_ctrl = nfp_check_offloads(dev);
 
 	/* Writing configuration parameters in the device */
-	net_hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	net_hw = dev->data->dev_private;
 	hw = &net_hw->super;
 	nfp_net_params_setup(net_hw);
 
@@ -258,7 +258,7 @@ nfp_netvf_init(struct rte_eth_dev *eth_dev)
 		return -ENODEV;
 	}
 
-	net_hw = NFP_NET_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
+	net_hw = eth_dev->data->dev_private;
 	net_hw->dev_info = dev_info;
 	hw = &net_hw->super;
 
@@ -393,7 +393,7 @@ static int
 nfp_vf_pci_probe(struct rte_pci_device *pci_dev)
 {
 	return rte_eth_dev_pci_generic_probe(pci_dev,
-			sizeof(struct nfp_net_adapter), nfp_netvf_init);
+			sizeof(struct nfp_net_hw), nfp_netvf_init);
 }
 
 static int
