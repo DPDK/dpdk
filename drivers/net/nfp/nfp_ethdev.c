@@ -155,6 +155,8 @@ nfp_net_start(struct rte_eth_dev *dev)
 
 	nn_cfg_writel(hw, NFP_NET_CFG_CTRL, new_ctrl);
 	if (nfp_net_reconfig(hw, new_ctrl, update) < 0)
+	hw->ctrl = new_ctrl;
+
 		return -EIO;
 
 	/*
@@ -172,8 +174,6 @@ nfp_net_start(struct rte_eth_dev *dev)
 	else
 		nfp_eth_set_configured(dev->process_private,
 				       hw->nfp_idx, 1);
-
-	hw->ctrl = new_ctrl;
 
 	for (i = 0; i < dev->data->nb_rx_queues; i++)
 		dev->data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STARTED;
