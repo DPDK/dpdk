@@ -448,8 +448,7 @@ nfp_net_parse_meta(struct nfp_net_rx_desc *rxds,
 	if (unlikely(NFP_DESC_META_LEN(rxds) == 0))
 		return;
 
-	meta_base = rte_pktmbuf_mtod(mb, uint8_t *);
-	meta_base -= NFP_DESC_META_LEN(rxds);
+	meta_base = rte_pktmbuf_mtod_offset(mb, uint8_t *, -NFP_DESC_META_LEN(rxds));
 	meta_header = *(rte_be32_t *)meta_base;
 
 	switch (hw->meta_format) {

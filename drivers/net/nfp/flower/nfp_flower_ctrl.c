@@ -375,7 +375,7 @@ nfp_flower_cmsg_rx_stats(struct nfp_flow_priv *flow_priv,
 	uint32_t ctx_id;
 	struct nfp_flower_stats_frame *stats;
 
-	msg = rte_pktmbuf_mtod(mbuf, char *) + NFP_FLOWER_CMSG_HLEN;
+	msg = rte_pktmbuf_mtod_offset(mbuf, char *, NFP_FLOWER_CMSG_HLEN);
 	msg_len = mbuf->data_len - NFP_FLOWER_CMSG_HLEN;
 	count = msg_len / sizeof(struct nfp_flower_stats_frame);
 
@@ -398,7 +398,7 @@ nfp_flower_cmsg_rx_qos_stats(struct nfp_mtr_priv *mtr_priv,
 	struct nfp_mtr *mtr;
 	struct nfp_mtr_stats_reply *mtr_stats;
 
-	msg = rte_pktmbuf_mtod(mbuf, char *) + NFP_FLOWER_CMSG_HLEN;
+	msg = rte_pktmbuf_mtod_offset(mbuf, char *, NFP_FLOWER_CMSG_HLEN);
 
 	mtr_stats = (struct nfp_mtr_stats_reply *)msg;
 	profile_id = rte_be_to_cpu_32(mtr_stats->head.profile_id);
