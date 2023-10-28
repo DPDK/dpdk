@@ -184,7 +184,7 @@ nfp_net_rx_fill_freelist(struct nfp_net_rxq *rxq)
 			return -ENOMEM;
 		}
 
-		dma_addr = rte_cpu_to_le_64(RTE_MBUF_DMA_ADDR_DEFAULT(mbuf));
+		dma_addr = rte_cpu_to_le_64(rte_mbuf_data_iova_default(mbuf));
 
 		rxd = &rxq->rxds[i];
 		rxd->fld.dd = 0;
@@ -752,7 +752,7 @@ nfp_net_recv_pkts(void *rx_queue,
 		/* Now resetting and updating the descriptor */
 		rxds->vals[0] = 0;
 		rxds->vals[1] = 0;
-		dma_addr = rte_cpu_to_le_64(RTE_MBUF_DMA_ADDR_DEFAULT(new_mb));
+		dma_addr = rte_cpu_to_le_64(rte_mbuf_data_iova_default(new_mb));
 		rxds->fld.dd = 0;
 		rxds->fld.dma_addr_hi = (dma_addr >> 32) & 0xffff;
 		rxds->fld.dma_addr_lo = dma_addr & 0xffffffff;

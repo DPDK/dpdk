@@ -10,9 +10,6 @@
 
 #define NFP_DESC_META_LEN(d) ((d)->rxd.meta_len_dd & PCIE_DESC_RX_META_LEN_MASK)
 
-#define RTE_MBUF_DMA_ADDR_DEFAULT(mb) \
-	((uint64_t)((mb)->buf_iova + RTE_PKTMBUF_HEADROOM))
-
 /* Maximum number of NFP packet metadata fields. */
 #define NFP_META_MAX_FIELDS      8
 
