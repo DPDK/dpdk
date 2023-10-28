@@ -242,7 +242,8 @@ static const struct rte_security_capability nfp_security_caps[] = {
 				.esn = 1
 				}
 		},
-		.crypto_capabilities = nfp_crypto_caps
+		.crypto_capabilities = nfp_crypto_caps,
+		.ol_flags = RTE_SECURITY_TX_OLOAD_NEED_MDATA
 	},
 	{ /* IPsec Inline Crypto Tunnel Ingress */
 		.action = RTE_SECURITY_ACTION_TYPE_INLINE_CRYPTO,
@@ -257,8 +258,7 @@ static const struct rte_security_capability nfp_security_caps[] = {
 				.esn = 1
 				}
 		},
-		.crypto_capabilities = nfp_crypto_caps,
-		.ol_flags = RTE_SECURITY_TX_OLOAD_NEED_MDATA
+		.crypto_capabilities = nfp_crypto_caps
 	},
 	{ /* IPsec Inline Crypto Transport Egress */
 		.action = RTE_SECURITY_ACTION_TYPE_INLINE_CRYPTO,
@@ -273,7 +273,8 @@ static const struct rte_security_capability nfp_security_caps[] = {
 				.esn = 1
 				}
 		},
-		.crypto_capabilities = nfp_crypto_caps
+		.crypto_capabilities = nfp_crypto_caps,
+		.ol_flags = RTE_SECURITY_TX_OLOAD_NEED_MDATA
 	},
 	{ /* IPsec Inline Crypto Transport Ingress */
 		.action = RTE_SECURITY_ACTION_TYPE_INLINE_CRYPTO,
@@ -288,8 +289,7 @@ static const struct rte_security_capability nfp_security_caps[] = {
 				.esn = 1
 				}
 		},
-		.crypto_capabilities = nfp_crypto_caps,
-		.ol_flags = RTE_SECURITY_TX_OLOAD_NEED_MDATA
+		.crypto_capabilities = nfp_crypto_caps
 	},
 	{ /* IPsec Inline Protocol Tunnel Egress */
 		.action = RTE_SECURITY_ACTION_TYPE_INLINE_PROTOCOL,
@@ -304,7 +304,8 @@ static const struct rte_security_capability nfp_security_caps[] = {
 				.esn = 1
 				}
 		},
-		.crypto_capabilities = nfp_crypto_caps
+		.crypto_capabilities = nfp_crypto_caps,
+		.ol_flags = RTE_SECURITY_TX_OLOAD_NEED_MDATA
 	},
 	{ /* IPsec Inline Protocol Tunnel Ingress */
 		.action = RTE_SECURITY_ACTION_TYPE_INLINE_PROTOCOL,
@@ -319,8 +320,7 @@ static const struct rte_security_capability nfp_security_caps[] = {
 				.esn = 1
 				}
 		},
-		.crypto_capabilities = nfp_crypto_caps,
-		.ol_flags = RTE_SECURITY_TX_OLOAD_NEED_MDATA
+		.crypto_capabilities = nfp_crypto_caps
 	},
 	{ /* IPsec Inline Protocol Transport Egress */
 		.action = RTE_SECURITY_ACTION_TYPE_INLINE_PROTOCOL,
@@ -335,7 +335,8 @@ static const struct rte_security_capability nfp_security_caps[] = {
 				.esn = 1
 				}
 		},
-		.crypto_capabilities = nfp_crypto_caps
+		.crypto_capabilities = nfp_crypto_caps,
+		.ol_flags = RTE_SECURITY_TX_OLOAD_NEED_MDATA
 	},
 	{ /* IPsec Inline Protocol Transport Ingress */
 		.action = RTE_SECURITY_ACTION_TYPE_INLINE_PROTOCOL,
@@ -350,8 +351,7 @@ static const struct rte_security_capability nfp_security_caps[] = {
 				.esn = 1
 				}
 		},
-		.crypto_capabilities = nfp_crypto_caps,
-		.ol_flags = RTE_SECURITY_TX_OLOAD_NEED_MDATA
+		.crypto_capabilities = nfp_crypto_caps
 	},
 	{
 		.action = RTE_SECURITY_ACTION_TYPE_NONE
