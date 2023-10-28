@@ -503,12 +503,6 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 
 	rte_eth_copy_pci_info(eth_dev, pci_dev);
 
-	hw->ctrl_bar = pci_dev->mem_resource[0].addr;
-	if (hw->ctrl_bar == NULL) {
-		PMD_DRV_LOG(ERR, "hw->ctrl_bar is NULL. BAR0 not configured");
-		return -ENODEV;
-	}
-
 	if (port == 0) {
 		uint32_t min_size;
 
@@ -890,6 +884,11 @@ nfp_pf_init(struct rte_pci_device *pci_dev)
 	if (pci_dev == NULL)
 		return -ENODEV;
 
+	if (pci_dev->mem_resource[0].addr == NULL) {
+		PMD_INIT_LOG(ERR, "The address of BAR0 is NULL.");
+		return -ENODEV;
+	}
+
 	dev_info = nfp_dev_info_get(pci_dev->id.device_id);
 	if (dev_info == NULL) {
 		PMD_INIT_LOG(ERR, "Not supported device ID");
@@ -1088,6 +1087,11 @@ nfp_pf_secondary_init(struct rte_pci_device *pci_dev)
 
 	if (pci_dev == NULL)
 		return -ENODEV;
+
+	if (pci_dev->mem_resource[0].addr == NULL) {
+		PMD_INIT_LOG(ERR, "The address of BAR0 is NULL.");
+		return -ENODEV;
+	}
 
 	dev_info = nfp_dev_info_get(pci_dev->id.device_id);
 	if (dev_info == NULL) {
