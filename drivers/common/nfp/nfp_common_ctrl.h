@@ -197,11 +197,6 @@ struct nfp_net_fw_ver {
 #define NFP_NET_CFG_START_RXQ           0x004c
 
 /*
- * NFP-3200 workaround (0x0050 - 0x0058)
- * @NFP_NET_CFG_SPARE_ADDR:  DMA address for ME code to use (e.g. YDS-155 fix)
- */
-#define NFP_NET_CFG_SPARE_ADDR          0x0050
-/*
  * NFP6000/NFP4000 - Prepend configuration
  */
 #define NFP_NET_CFG_RX_OFFSET           0x0050
@@ -209,18 +204,6 @@ struct nfp_net_fw_ver {
 
 /* Start anchor of the TLV area */
 #define NFP_NET_CFG_TLV_BASE            0x0058
-
-/**
- * Reuse spare address to contain the offset from the start of
- * the host buffer where the first byte of the received frame
- * will land.  Any metadata will come prior to that offset.  If the
- * value in this field is 0, it means that the metadata will
- * always land starting at the first byte of the host buffer and
- * packet data will immediately follow the metadata.  As always,
- * the RX descriptor indicates the presence or absence of metadata
- * along with the length thereof.
- */
-#define NFP_NET_CFG_RX_OFFSET_ADDR      0x0050
 
 #define NFP_NET_CFG_VXLAN_PORT          0x0060
 #define NFP_NET_CFG_VXLAN_SZ            0x0008

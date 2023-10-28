@@ -56,7 +56,7 @@ nfp_net_start(struct rte_eth_dev *dev)
 	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
 
 	net_hw = dev->data->dev_private;
-	pf_dev = NFP_NET_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+	pf_dev = net_hw->pf_dev;
 	app_fw_nic = NFP_PRIV_TO_APP_FW_NIC(pf_dev->app_fw_priv);
 	hw = &net_hw->super;
 
@@ -261,8 +261,8 @@ nfp_net_close(struct rte_eth_dev *dev)
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
 
-	pf_dev = NFP_NET_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	hw = dev->data->dev_private;
+	pf_dev = hw->pf_dev;
 	pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	app_fw_nic = NFP_PRIV_TO_APP_FW_NIC(pf_dev->app_fw_priv);
 
@@ -482,9 +482,10 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 	struct nfp_app_fw_nic *app_fw_nic;
 
 	pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
+	net_hw = eth_dev->data->dev_private;
 
 	/* Use backpointer here to the PF of this eth_dev */
-	pf_dev = NFP_NET_DEV_PRIVATE_TO_PF(eth_dev->data->dev_private);
+	pf_dev = net_hw->pf_dev;
 
 	/* Use backpointer to the CoreNIC app struct */
 	app_fw_nic = NFP_PRIV_TO_APP_FW_NIC(pf_dev->app_fw_priv);
@@ -495,11 +496,6 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 		return -ENODEV;
 	}
 
-	/*
-	 * Use PF array of physical ports to get pointer to
-	 * this specific port.
-	 */
-	net_hw = app_fw_nic->ports[port];
 	hw = &net_hw->super;
 
 	PMD_INIT_LOG(DEBUG, "Working with physical port number: %hu, "

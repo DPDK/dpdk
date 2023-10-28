@@ -31,7 +31,6 @@
  */
 #define FLOWER_PKT_DATA_OFFSET (NFP_NET_META_HEADER_SIZE + NFP_NET_META_FIELD_SIZE)
 
-#define MAX_FLOWER_PHYPORTS 8
 #define MAX_FLOWER_VFS 64
 
 /* Forward declaration */
@@ -78,7 +77,7 @@ struct nfp_app_fw_flower {
 	uint64_t ctrl_vnic_tx_count;
 
 	/** Array of phyport representors */
-	struct nfp_flower_representor *phy_reprs[MAX_FLOWER_PHYPORTS];
+	struct nfp_flower_representor *phy_reprs[NFP_MAX_PHYPORTS];
 
 	/** Array of VF representors */
 	struct nfp_flower_representor *vf_reprs[MAX_FLOWER_VFS];

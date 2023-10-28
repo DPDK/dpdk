@@ -1171,7 +1171,7 @@ nfp_net_common_init(struct rte_pci_device *pci_dev,
 	if (hw->ver.major < 2)
 		hw->rx_offset = NFP_NET_RX_OFFSET;
 	else
-		hw->rx_offset = nn_cfg_readl(&hw->super, NFP_NET_CFG_RX_OFFSET_ADDR);
+		hw->rx_offset = nn_cfg_readl(&hw->super, NFP_NET_CFG_RX_OFFSET);
 
 	hw->super.ctrl = 0;
 	hw->stride_rx = stride;

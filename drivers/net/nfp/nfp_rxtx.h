@@ -10,9 +10,6 @@
 
 #define NFP_DESC_META_LEN(d) ((d)->rxd.meta_len_dd & PCIE_DESC_RX_META_LEN_MASK)
 
-#define NFP_HASH_OFFSET      ((uint8_t *)mbuf->buf_addr + mbuf->data_off - 4)
-#define NFP_HASH_TYPE_OFFSET ((uint8_t *)mbuf->buf_addr + mbuf->data_off - 8)
-
 #define RTE_MBUF_DMA_ADDR_DEFAULT(mb) \
 	((uint64_t)((mb)->buf_iova + RTE_PKTMBUF_HEADROOM))
 
