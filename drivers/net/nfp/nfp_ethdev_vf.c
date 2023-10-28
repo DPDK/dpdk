@@ -344,15 +344,13 @@ nfp_netvf_init(struct rte_eth_dev *eth_dev)
 			pci_dev->id.device_id,
 			RTE_ETHER_ADDR_BYTES(&hw->mac_addr));
 
-	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
-		/* Registering LSC interrupt handler */
-		rte_intr_callback_register(pci_dev->intr_handle,
-				nfp_net_dev_interrupt_handler, (void *)eth_dev);
-		/* Telling the firmware about the LSC interrupt entry */
-		nn_cfg_writeb(hw, NFP_NET_CFG_LSC, NFP_NET_IRQ_LSC_IDX);
-		/* Recording current stats counters values */
-		nfp_net_stats_reset(eth_dev);
-	}
+	/* Registering LSC interrupt handler */
+	rte_intr_callback_register(pci_dev->intr_handle,
+			nfp_net_dev_interrupt_handler, (void *)eth_dev);
+	/* Telling the firmware about the LSC interrupt entry */
+	nn_cfg_writeb(hw, NFP_NET_CFG_LSC, NFP_NET_IRQ_LSC_IDX);
+	/* Recording current stats counters values */
+	nfp_net_stats_reset(eth_dev);
 
 	return 0;
 
