@@ -1737,9 +1737,6 @@ flow_hw_get_reg_id_from_ctx(void *dr_ctx,
 
 void flow_hw_set_port_info(struct rte_eth_dev *dev);
 void flow_hw_clear_port_info(struct rte_eth_dev *dev);
-
-void flow_hw_init_tags_set(struct rte_eth_dev *dev);
-
 int flow_hw_create_vport_action(struct rte_eth_dev *dev);
 void flow_hw_destroy_vport_action(struct rte_eth_dev *dev);
 

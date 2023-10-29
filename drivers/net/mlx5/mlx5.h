@@ -1380,6 +1380,12 @@ struct mlx5_dev_registers {
 	enum modify_reg hw_avl_tags[MLX5_FLOW_HW_TAGS_MAX];
 };
 
+#if defined(HAVE_MLX5DV_DR) && \
+	(defined(HAVE_MLX5_DR_CREATE_ACTION_FLOW_METER) || \
+	 defined(HAVE_MLX5_DR_CREATE_ACTION_ASO))
+#define HAVE_MLX5_DR_CREATE_ACTION_ASO_EXT
+#endif
+
 /*
  * Shared Infiniband device context for Master/Representors
  * which belong to same IB device with multiple IB ports.

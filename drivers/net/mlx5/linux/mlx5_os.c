@@ -1304,38 +1304,12 @@ err_secondary:
 		struct mlx5_hca_attr *hca_attr = &sh->cdev->config.hca_attr;
 
 		sh->steering_format_version = hca_attr->steering_format_version;
-#if defined(HAVE_MLX5DV_DR) && \
-	(defined(HAVE_MLX5_DR_CREATE_ACTION_FLOW_METER) || \
-	 defined(HAVE_MLX5_DR_CREATE_ACTION_ASO))
+#if defined(HAVE_MLX5_DR_CREATE_ACTION_ASO_EXT)
 		if (hca_attr->qos.sup && hca_attr->qos.flow_meter_old &&
 		    sh->config.dv_flow_en) {
-			uint8_t reg_c_mask = hca_attr->qos.flow_meter_reg_c_ids;
-			/*
-			 * Meter needs two REG_C's for color match and pre-sfx
-			 * flow match. Here get the REG_C for color match.
-			 * REG_C_0 and REG_C_1 is reserved for metadata feature.
-			 */
-			reg_c_mask &= 0xfc;
-			if (rte_popcount32(reg_c_mask) < 1) {
-				priv->mtr_en = 0;
-				DRV_LOG(WARNING, "No available register for"
-					" meter.");
-			} else {
-				/*
-				 * The meter color register is used by the
-				 * flow-hit feature as well.
-				 * The flow-hit feature must use REG_C_3
-				 * Prefer REG_C_3 if it is available.
-				 */
-				if (reg_c_mask & (1 << (REG_C_3 - REG_C_0)))
-					sh->registers.aso_reg = REG_C_3;
-				else
-					sh->registers.aso_reg =
-						ffs(reg_c_mask) - 1 + REG_C_0;
+			if (sh->registers.aso_reg != REG_NON) {
 				priv->mtr_en = 1;
 				priv->mtr_reg_share = hca_attr->qos.flow_meter;
-				DRV_LOG(DEBUG, "The REG_C meter uses is %d",
-					sh->registers.aso_reg);
 			}
 		}
 		if (hca_attr->qos.sup && hca_attr->qos.flow_meter_aso_sup) {
@@ -1358,7 +1332,7 @@ err_secondary:
 			sh->tunnel_header_0_1 = 1;
 		if (hca_attr->flow.tunnel_header_2_3)
 			sh->tunnel_header_2_3 = 1;
-#endif
+#endif /* HAVE_MLX5_DR_CREATE_ACTION_ASO_EXT */
 #ifdef HAVE_MLX5_DR_CREATE_ACTION_ASO
 		if (hca_attr->flow_hit_aso && sh->registers.aso_reg == REG_C_3) {
 			sh->flow_hit_aso_en = 1;
@@ -1617,9 +1591,6 @@ err_secondary:
 				err = ENOTSUP;
 				goto error;
 		}
-		/* Only HWS requires this information. */
-		if (sh->refcnt == 1)
-			flow_hw_init_tags_set(eth_dev);
 		if (priv->sh->config.dv_esw_en &&
 		    flow_hw_create_vport_action(eth_dev)) {
 			DRV_LOG(ERR, "port %u failed to create vport action",

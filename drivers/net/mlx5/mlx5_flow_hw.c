@@ -8860,40 +8860,6 @@ flow_hw_clear_port_info(struct rte_eth_dev *dev)
 	info->is_wire = 0;
 }
 
-/*
- * Initialize the information of available tag registers and an intersection
- * of all the probed devices' REG_C_Xs.
- * PS. No port concept in steering part, right now it cannot be per port level.
- *
- * @param[in] dev
- *   Pointer to the rte_eth_dev structure.
- */
-void flow_hw_init_tags_set(struct rte_eth_dev *dev)
-{
-	struct mlx5_dev_ctx_shared *sh = MLX5_SH(dev);
-	struct mlx5_dev_registers *reg = &sh->registers;
-	uint32_t meta_mode = sh->config.dv_xmeta_en;
-	uint8_t masks = (uint8_t)sh->cdev->config.hca_attr.set_reg_c;
-	uint8_t unset = 0;
-	uint32_t i, j;
-
-	/*
-	 * The CAPA is global for common device but only used in net.
-	 * It is shared per eswitch domain.
-	 */
-	unset |= 1 << mlx5_regc_index(reg->aso_reg);
-	unset |= 1 << mlx5_regc_index(REG_C_6);
-	if (sh->config.dv_esw_en)
-		unset |= 1 << mlx5_regc_index(REG_C_0);
-	if (meta_mode == MLX5_XMETA_MODE_META32_HWS)
-		unset |= 1 << mlx5_regc_index(REG_C_1);
-	masks &= ~unset;
-	for (i = 0, j = 0; i < MLX5_FLOW_HW_TAGS_MAX; i++) {
-		if (!!((1 << i) & masks))
-			reg->hw_avl_tags[j++] = mlx5_regc_value(i);
-	}
-}
-
 static int
 flow_hw_conntrack_destroy(struct rte_eth_dev *dev __rte_unused,
 			  uint32_t idx,

@@ -1599,6 +1599,80 @@ mlx5_rt_timestamp_config(struct mlx5_dev_ctx_shared *sh,
 	}
 }
 
+static void
+mlx5_init_hws_flow_tags_registers(struct mlx5_dev_ctx_shared *sh)
+{
+	struct mlx5_dev_registers *reg = &sh->registers;
+	uint32_t meta_mode = sh->config.dv_xmeta_en;
+	uint8_t masks = (uint8_t)sh->cdev->config.hca_attr.set_reg_c;
+	uint8_t unset = 0;
+	uint32_t i, j;
+
+	/*
+	 * The CAPA is global for common device but only used in net.
+	 * It is shared per eswitch domain.
+	 */
+	if (reg->aso_reg != REG_NON)
+		unset |= 1 << mlx5_regc_index(reg->aso_reg);
+	unset |= 1 << mlx5_regc_index(REG_C_6);
+	if (sh->config.dv_esw_en)
+		unset |= 1 << mlx5_regc_index(REG_C_0);
+	if (meta_mode == MLX5_XMETA_MODE_META32_HWS)
+		unset |= 1 << mlx5_regc_index(REG_C_1);
+	masks &= ~unset;
+	for (i = 0, j = 0; i < MLX5_FLOW_HW_TAGS_MAX; i++) {
+		if (!!((1 << i) & masks))
+			reg->hw_avl_tags[j++] = mlx5_regc_value(i);
+	}
+}
+
+static void
+mlx5_init_aso_register(struct mlx5_dev_ctx_shared *sh)
+{
+#if defined(HAVE_MLX5_DR_CREATE_ACTION_ASO_EXT)
+	const struct mlx5_hca_attr *hca_attr = &sh->cdev->config.hca_attr;
+	const struct mlx5_hca_qos_attr *qos =  &hca_attr->qos;
+	uint8_t reg_c_mask = qos->flow_meter_reg_c_ids & 0xfc;
+
+	if (!(qos->sup && qos->flow_meter_old && sh->config.dv_flow_en))
+		return;
+	/*
+	 * Meter needs two REG_C's for color match and pre-sfx
+	 * flow match. Here get the REG_C for color match.
+	 * REG_C_0 and REG_C_1 is reserved for metadata feature.
+	 */
+	if (rte_popcount32(reg_c_mask) > 0) {
+		/*
+		 * The meter color register is used by the
+		 * flow-hit feature as well.
+		 * The flow-hit feature must use REG_C_3
+		 * Prefer REG_C_3 if it is available.
+		 */
+		if (reg_c_mask & (1 << mlx5_regc_index(REG_C_3)))
+			sh->registers.aso_reg = REG_C_3;
+		else
+			sh->registers.aso_reg =
+				mlx5_regc_value(ffs(reg_c_mask) - 1);
+	}
+#else
+	RTE_SET_USED(sh);
+#endif
+}
+
+static void
+mlx5_init_shared_dev_registers(struct mlx5_dev_ctx_shared *sh)
+{
+	if (sh->cdev->config.devx)
+		mlx5_init_aso_register(sh);
+	if (sh->registers.aso_reg != REG_NON) {
+		DRV_LOG(DEBUG, "ASO register: REG_C%d",
+			mlx5_regc_index(sh->registers.aso_reg));
+	} else {
+		DRV_LOG(DEBUG, "ASO register: NONE");
+	}
+	mlx5_init_hws_flow_tags_registers(sh);
+}
+
 /**
  * Allocate shared device context. If there is multiport device the
  * master and representors will share this context, if there is single
@@ -1720,6 +1794,7 @@ mlx5_alloc_shared_dev_ctx(const struct mlx5_dev_spawn_data *spawn,
 	/* Add context to the global device list. */
 	LIST_INSERT_HEAD(&mlx5_dev_ctx_list, sh, next);
 	rte_spinlock_init(&sh->geneve_tlv_opt_sl);
+	mlx5_init_shared_dev_registers(sh);
 exit:
 	pthread_mutex_unlock(&mlx5_dev_ctx_list_mutex);
 	return sh;
