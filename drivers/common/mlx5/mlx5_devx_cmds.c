@@ -1082,6 +1082,7 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 	attr->striding_rq = MLX5_GET(cmd_hca_cap, hcattr, striding_rq);
 	attr->ext_stride_num_range =
 		MLX5_GET(cmd_hca_cap, hcattr, ext_stride_num_range);
+	attr->nic_flow_table = MLX5_GET(cmd_hca_cap, hcattr, nic_flow_table);
 	attr->max_flow_counter_15_0 = MLX5_GET(cmd_hca_cap, hcattr,
 			max_flow_counter_15_0);
 	attr->max_flow_counter_31_16 = MLX5_GET(cmd_hca_cap, hcattr,
