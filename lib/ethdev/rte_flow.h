@@ -5366,6 +5366,13 @@ rte_flow_flex_item_release(uint16_t port_id,
 #define RTE_FLOW_PORT_FLAG_STRICT_QUEUE RTE_BIT32(0)
 
 /**
+ * Indicate all steering objects should be created on contexts
+ * of the host port, providing indirect object sharing between
+ * ports.
+ */
+#define RTE_FLOW_PORT_FLAG_SHARE_INDIRECT RTE_BIT32(1)
+
+/**
  * @warning
  * @b EXPERIMENTAL: this API may change without prior notice.
  *
@@ -5449,13 +5456,6 @@ rte_flow_info_get(uint16_t port_id,
 		  struct rte_flow_port_info *port_info,
 		  struct rte_flow_queue_info *queue_info,
 		  struct rte_flow_error *error);
-
-/**
- * Indicate all steering objects should be created on contexts
- * of the host port, providing indirect object sharing between
- * ports.
- */
-#define RTE_FLOW_PORT_FLAG_SHARE_INDIRECT RTE_BIT32(0)
 
 /**
  * @warning
