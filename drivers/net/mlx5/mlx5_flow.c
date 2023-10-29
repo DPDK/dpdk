@@ -1191,6 +1191,13 @@ mlx5_flow_async_action_list_handle_query_update(struct rte_eth_dev *dev,
 						enum rte_flow_query_update_mode mode,
 						void *user_data,
 						struct rte_flow_error *error);
+static int
+mlx5_flow_calc_table_hash(struct rte_eth_dev *dev,
+			  const struct rte_flow_template_table *table,
+			  const struct rte_flow_item pattern[],
+			  uint8_t pattern_template_index,
+			  uint32_t *hash, struct rte_flow_error *error);
+
 static const struct rte_flow_ops mlx5_flow_ops = {
 	.validate = mlx5_flow_validate,
 	.create = mlx5_flow_create,
@@ -1245,6 +1252,7 @@ static const struct rte_flow_ops mlx5_flow_ops = {
 		mlx5_flow_action_list_handle_query_update,
 	.async_action_list_handle_query_update =
 		mlx5_flow_async_action_list_handle_query_update,
+	.flow_calc_table_hash = mlx5_flow_calc_table_hash,
 };
 
 /* Tunnel information. */
@@ -11105,6 +11113,30 @@ mlx5_flow_async_action_list_handle_query_update(struct rte_eth_dev *dev,
 							   user_data, error);
 }
 
+
+static int
+mlx5_flow_calc_table_hash(struct rte_eth_dev *dev,
+			  const struct rte_flow_template_table *table,
+			  const struct rte_flow_item pattern[],
+			  uint8_t pattern_template_index,
+			  uint32_t *hash, struct rte_flow_error *error)
+{
+	struct rte_flow_attr attr = { .transfer = 0 };
+	enum mlx5_flow_drv_type drv_type = flow_get_drv_type(dev, &attr);
+	const struct mlx5_flow_driver_ops *fops;
+
+	if (drv_type == MLX5_FLOW_TYPE_MIN || drv_type == MLX5_FLOW_TYPE_MAX)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ACTION,
+					  NULL, "invalid driver type");
+	fops = flow_get_drv_ops(drv_type);
+	if (!fops || !fops->action_query_update)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ACTION,
+					  NULL, "no query_update handler");
+	return fops->flow_calc_table_hash(dev, table, pattern, pattern_template_index,
+					  hash, error);
+}
 
 /**
  * Destroy all indirect actions (shared RSS).

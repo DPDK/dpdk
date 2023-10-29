@@ -2830,7 +2830,7 @@ flow_hw_actions_construct(struct rte_eth_dev *dev,
 
 static const struct rte_flow_item *
 flow_hw_get_rule_items(struct rte_eth_dev *dev,
-		       struct rte_flow_template_table *table,
+		       const struct rte_flow_template_table *table,
 		       const struct rte_flow_item items[],
 		       uint8_t pattern_template_index,
 		       struct mlx5_hw_q_job *job)
@@ -10648,6 +10648,34 @@ flow_hw_action_list_handle_query_update(struct rte_eth_dev *dev,
 					 update, query, mode, NULL, error);
 }
 
+static int
+flow_hw_calc_table_hash(struct rte_eth_dev *dev,
+			 const struct rte_flow_template_table *table,
+			 const struct rte_flow_item pattern[],
+			 uint8_t pattern_template_index,
+			 uint32_t *hash, struct rte_flow_error *error)
+{
+	const struct rte_flow_item *items;
+	/* Temp job to allow adding missing items */
+	static struct rte_flow_item tmp_items[MLX5_HW_MAX_ITEMS];
+	static struct mlx5_hw_q_job job = {.items = tmp_items};
+	int res;
+
+	items = flow_hw_get_rule_items(dev, table, pattern,
+				       pattern_template_index,
+				       &job);
+	res = mlx5dr_rule_hash_calculate(table->matcher, items,
+					 pattern_template_index,
+					 MLX5DR_RULE_HASH_CALC_MODE_RAW,
+					 hash);
+	if (res)
+		return rte_flow_error_set(error, res,
+					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					  NULL,
+					  "hash could not be calculated");
+	return 0;
+}
+
 const struct mlx5_flow_driver_ops mlx5_flow_hw_drv_ops = {
 	.info_get = flow_hw_info_get,
 	.configure = flow_hw_configure,
@@ -10692,6 +10720,7 @@ const struct mlx5_flow_driver_ops mlx5_flow_hw_drv_ops = {
 	.get_q_aged_flows = flow_hw_get_q_aged_flows,
 	.item_create = flow_dv_item_create,
 	.item_release = flow_dv_item_release,
+	.flow_calc_table_hash = flow_hw_calc_table_hash,
 };
 
 /**
