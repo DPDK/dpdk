@@ -66,6 +66,9 @@ void
 mlx5_indirect_list_handles_release(struct rte_eth_dev *dev)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
+#ifdef HAVE_MLX5_HWS_SUPPORT
+	struct rte_flow_error error;
+#endif
 
 	while (!LIST_EMPTY(&priv->indirect_list_head)) {
 		struct mlx5_indirect_list *e =
@@ -79,6 +82,10 @@ mlx5_indirect_list_handles_release(struct rte_eth_dev *dev)
 		break;
 		case MLX5_INDIRECT_ACTION_LIST_TYPE_LEGACY:
 			mlx5_destroy_legacy_indirect(dev, e);
+			break;
+		case MLX5_INDIRECT_ACTION_LIST_TYPE_REFORMAT:
+			mlx5_reformat_action_destroy(dev,
+				(struct rte_flow_action_list_handle *)e, &error);
 			break;
 #endif
 		default:

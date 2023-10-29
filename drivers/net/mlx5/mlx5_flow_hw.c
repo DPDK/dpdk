@@ -1469,6 +1469,49 @@ hws_table_tmpl_translate_indirect_mirror(struct rte_eth_dev *dev,
 }
 
 static int
+flow_hw_reformat_action(__rte_unused struct rte_eth_dev *dev,
+			__rte_unused const struct mlx5_action_construct_data *data,
+			const struct rte_flow_action *action,
+			struct mlx5dr_rule_action *dr_rule)
+{
+	const struct rte_flow_action_indirect_list *indlst_conf = action->conf;
+
+	dr_rule->action = ((struct mlx5_hw_encap_decap_action *)
+			   (indlst_conf->handle))->action;
+	if (!dr_rule->action)
+		return -EINVAL;
+	return 0;
+}
+
+/**
+ * Template conf must not be masked. If handle is masked, use the one in template,
+ * otherwise update per flow rule.
+ */
+static int
+hws_table_tmpl_translate_indirect_reformat(struct rte_eth_dev *dev,
+					   const struct rte_flow_action *action,
+					   const struct rte_flow_action *mask,
+					   struct mlx5_hw_actions *acts,
+					   uint16_t action_src, uint16_t action_dst)
+{
+	int ret = -1;
+	const struct rte_flow_action_indirect_list *mask_conf = mask->conf;
+	struct mlx5_priv *priv = dev->data->dev_private;
+
+	if (mask_conf && mask_conf->handle && !mask_conf->conf)
+		/**
+		 * If handle was masked, assign fixed DR action.
+		 */
+		ret = flow_hw_reformat_action(dev, NULL, action,
+					      &acts->rule_acts[action_dst]);
+	else if (mask_conf && !mask_conf->handle && !mask_conf->conf)
+		ret = flow_hw_act_data_indirect_list_append
+			(priv, acts, RTE_FLOW_ACTION_TYPE_INDIRECT_LIST,
+			 action_src, action_dst, flow_hw_reformat_action);
+	return ret;
+}
+
+static int
 flow_dr_set_meter(struct mlx5_priv *priv,
 		  struct mlx5dr_rule_action *dr_rule,
 		  const struct rte_flow_action_indirect_list *action_conf)
@@ -1623,6 +1666,13 @@ table_template_translate_indirect_list(struct rte_eth_dev *dev,
 		ret = hws_table_tmpl_translate_indirect_mirror(dev, action, mask,
 							       acts, action_src,
 							       action_dst);
+		break;
+	case MLX5_INDIRECT_ACTION_LIST_TYPE_REFORMAT:
+		if (list_conf->conf)
+			return -EINVAL;
+		ret = hws_table_tmpl_translate_indirect_reformat(dev, action, mask,
+								 acts, action_src,
+								 action_dst);
 		break;
 	default:
 		return -EINVAL;
@@ -4890,6 +4940,7 @@ flow_hw_template_actions_list(struct rte_flow_actions_template *at,
 		struct mlx5_indlst_legacy *legacy;
 		struct rte_flow_action_list_handle *handle;
 	} indlst_obj = { .handle = indlst_conf->handle };
+	enum mlx5dr_action_type type;
 
 	switch (list_type) {
 	case MLX5_INDIRECT_ACTION_LIST_TYPE_LEGACY:
@@ -4902,6 +4953,11 @@ flow_hw_template_actions_list(struct rte_flow_actions_template *at,
 	case MLX5_INDIRECT_ACTION_LIST_TYPE_MIRROR:
 		action_template_set_type(at, action_types, action_src, curr_off,
 					 MLX5DR_ACTION_TYP_DEST_ARRAY);
+		break;
+	case MLX5_INDIRECT_ACTION_LIST_TYPE_REFORMAT:
+		type = ((struct mlx5_hw_encap_decap_action *)
+			(indlst_conf->handle))->action_type;
+		action_template_set_type(at, action_types, action_src, curr_off, type);
 		break;
 	default:
 		DRV_LOG(ERR, "Unsupported indirect list type");
@@ -10090,10 +10146,77 @@ flow_hw_inlist_type_get(const struct rte_flow_action *actions)
 		return actions[1].type == RTE_FLOW_ACTION_TYPE_END ?
 		       MLX5_INDIRECT_ACTION_LIST_TYPE_LEGACY :
 		       MLX5_INDIRECT_ACTION_LIST_TYPE_ERR;
+	case RTE_FLOW_ACTION_TYPE_RAW_DECAP:
+	case RTE_FLOW_ACTION_TYPE_RAW_ENCAP:
+		return MLX5_INDIRECT_ACTION_LIST_TYPE_REFORMAT;
 	default:
 		break;
 	}
 	return MLX5_INDIRECT_ACTION_LIST_TYPE_ERR;
+}
+
+static struct rte_flow_action_list_handle*
+mlx5_hw_decap_encap_handle_create(struct rte_eth_dev *dev,
+				  const struct mlx5_flow_template_table_cfg *table_cfg,
+				  const struct rte_flow_action *actions,
+				  struct rte_flow_error *error)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	const struct rte_flow_attr *flow_attr = &table_cfg->attr.flow_attr;
+	const struct rte_flow_action *encap = NULL;
+	const struct rte_flow_action *decap = NULL;
+	struct rte_flow_indir_action_conf indirect_conf = {
+		.ingress = flow_attr->ingress,
+		.egress = flow_attr->egress,
+		.transfer = flow_attr->transfer,
+	};
+	struct mlx5_hw_encap_decap_action *handle;
+	uint64_t action_flags = 0;
+
+	/*
+	 * Allow
+	 * 1. raw_decap / raw_encap / end
+	 * 2. raw_encap / end
+	 * 3. raw_decap / end
+	 */
+	while (actions->type != RTE_FLOW_ACTION_TYPE_END) {
+		if (actions->type == RTE_FLOW_ACTION_TYPE_RAW_DECAP) {
+			if (action_flags) {
+				rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ACTION,
+						   actions, "Invalid indirect action list sequence");
+				return NULL;
+			}
+			action_flags |= MLX5_FLOW_ACTION_DECAP;
+			decap = actions;
+		} else if (actions->type == RTE_FLOW_ACTION_TYPE_RAW_ENCAP) {
+			if (action_flags & MLX5_FLOW_ACTION_ENCAP) {
+				rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ACTION,
+						   actions, "Invalid indirect action list sequence");
+				return NULL;
+			}
+			action_flags |= MLX5_FLOW_ACTION_ENCAP;
+			encap = actions;
+		} else {
+			rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ACTION,
+					   actions, "Invalid indirect action type in list");
+			return NULL;
+		}
+		actions++;
+	}
+	if (!decap && !encap) {
+		rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ACTION,
+				   actions, "Invalid indirect action combinations");
+		return NULL;
+	}
+	handle = mlx5_reformat_action_create(dev, &indirect_conf, encap, decap, error);
+	if (!handle) {
+		rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ACTION,
+				   actions, "Failed to create HWS decap_encap action");
+		return NULL;
+	}
+	handle->indirect.type = MLX5_INDIRECT_ACTION_LIST_TYPE_REFORMAT;
+	LIST_INSERT_HEAD(&priv->indirect_list_head, &handle->indirect, entry);
+	return (struct rte_flow_action_list_handle *)handle;
 }
 
 static struct rte_flow_action_list_handle *
@@ -10146,6 +10269,10 @@ flow_hw_async_action_list_handle_create(struct rte_eth_dev *dev, uint32_t queue,
 	case MLX5_INDIRECT_ACTION_LIST_TYPE_MIRROR:
 		handle = mlx5_hw_mirror_handle_create(dev, &table_cfg,
 						      actions, error);
+		break;
+	case MLX5_INDIRECT_ACTION_LIST_TYPE_REFORMAT:
+		handle = mlx5_hw_decap_encap_handle_create(dev, &table_cfg,
+							   actions, error);
 		break;
 	default:
 		handle = NULL;
@@ -10205,6 +10332,11 @@ flow_hw_async_action_list_handle_destroy
 	switch (type) {
 	case MLX5_INDIRECT_ACTION_LIST_TYPE_MIRROR:
 		mlx5_hw_mirror_destroy(dev, (struct mlx5_mirror *)handle);
+		break;
+	case MLX5_INDIRECT_ACTION_LIST_TYPE_REFORMAT:
+		LIST_REMOVE(&((struct mlx5_hw_encap_decap_action *)handle)->indirect,
+			    entry);
+		mlx5_reformat_action_destroy(dev, handle, error);
 		break;
 	default:
 		ret = rte_flow_error_set(error, EINVAL,
@@ -11430,4 +11562,195 @@ err:
 	return ret;
 }
 
+static __rte_always_inline uint32_t
+mlx5_reformat_domain_to_tbl_type(const struct rte_flow_indir_action_conf *domain)
+{
+	uint32_t tbl_type;
+
+	if (domain->transfer)
+		tbl_type = MLX5DR_ACTION_FLAG_HWS_FDB;
+	else if (domain->egress)
+		tbl_type = MLX5DR_ACTION_FLAG_HWS_TX;
+	else if (domain->ingress)
+		tbl_type = MLX5DR_ACTION_FLAG_HWS_RX;
+	else
+		tbl_type = UINT32_MAX;
+	return tbl_type;
+}
+
+static struct mlx5_hw_encap_decap_action *
+__mlx5_reformat_create(struct rte_eth_dev *dev,
+		       const struct rte_flow_action_raw_encap *encap_conf,
+		       const struct rte_flow_indir_action_conf *domain,
+		       enum mlx5dr_action_type type)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_hw_encap_decap_action *handle;
+	struct mlx5dr_action_reformat_header hdr;
+	uint32_t flags;
+
+	flags = mlx5_reformat_domain_to_tbl_type(domain);
+	flags |= (uint32_t)MLX5DR_ACTION_FLAG_SHARED;
+	if (flags == UINT32_MAX) {
+		DRV_LOG(ERR, "Reformat: invalid indirect action configuration");
+		return NULL;
+	}
+	/* Allocate new list entry. */
+	handle = mlx5_malloc(MLX5_MEM_ZERO, sizeof(*handle), 0, SOCKET_ID_ANY);
+	if (!handle) {
+		DRV_LOG(ERR, "Reformat: failed to allocate reformat entry");
+		return NULL;
+	}
+	handle->action_type = type;
+	hdr.sz = encap_conf ? encap_conf->size : 0;
+	hdr.data = encap_conf ? encap_conf->data : NULL;
+	handle->action = mlx5dr_action_create_reformat(priv->dr_ctx,
+					type, 1, &hdr, 0, flags);
+	if (!handle->action) {
+		DRV_LOG(ERR, "Reformat: failed to create reformat action");
+		mlx5_free(handle);
+		return NULL;
+	}
+	return handle;
+}
+
+/**
+ * Create mlx5 reformat action.
+ *
+ * @param[in] dev
+ *   Pointer to rte_eth_dev structure.
+ * @param[in] conf
+ *   Pointer to the indirect action parameters.
+ * @param[in] encap_action
+ *   Pointer to the raw_encap action configuration.
+ * @param[in] decap_action
+ *   Pointer to the raw_decap action configuration.
+ * @param[out] error
+ *   Pointer to error structure.
+ *
+ * @return
+ *   A valid shared action handle in case of success, NULL otherwise and
+ *   rte_errno is set.
+ */
+struct mlx5_hw_encap_decap_action*
+mlx5_reformat_action_create(struct rte_eth_dev *dev,
+			    const struct rte_flow_indir_action_conf *conf,
+			    const struct rte_flow_action *encap_action,
+			    const struct rte_flow_action *decap_action,
+			    struct rte_flow_error *error)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_hw_encap_decap_action *handle;
+	const struct rte_flow_action_raw_encap *encap = NULL;
+	const struct rte_flow_action_raw_decap *decap = NULL;
+	enum mlx5dr_action_type type = MLX5DR_ACTION_TYP_LAST;
+
+	MLX5_ASSERT(!encap_action || encap_action->type == RTE_FLOW_ACTION_TYPE_RAW_ENCAP);
+	MLX5_ASSERT(!decap_action || decap_action->type == RTE_FLOW_ACTION_TYPE_RAW_DECAP);
+	if (priv->sh->config.dv_flow_en != 2) {
+		rte_flow_error_set(error, ENOTSUP,
+				   RTE_FLOW_ERROR_TYPE_ACTION, encap_action,
+				   "Reformat: hardware does not support");
+		return NULL;
+	}
+	if (!conf || (conf->transfer + conf->egress + conf->ingress != 1)) {
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_ACTION, encap_action,
+				   "Reformat: domain should be specified");
+		return NULL;
+	}
+	if ((encap_action && !encap_action->conf) || (decap_action && !decap_action->conf)) {
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_ACTION, encap_action,
+				   "Reformat: missed action configuration");
+		return NULL;
+	}
+	if (encap_action && !decap_action) {
+		encap = (const struct rte_flow_action_raw_encap *)encap_action->conf;
+		if (!encap->size || encap->size > MLX5_ENCAP_MAX_LEN ||
+		    encap->size < MLX5_ENCAPSULATION_DECISION_SIZE) {
+			rte_flow_error_set(error, EINVAL,
+					   RTE_FLOW_ERROR_TYPE_ACTION, encap_action,
+					   "Reformat: Invalid encap length");
+			return NULL;
+		}
+		type = MLX5DR_ACTION_TYP_REFORMAT_L2_TO_TNL_L2;
+	} else if (decap_action && !encap_action) {
+		decap = (const struct rte_flow_action_raw_decap *)decap_action->conf;
+		if (!decap->size || decap->size < MLX5_ENCAPSULATION_DECISION_SIZE) {
+			rte_flow_error_set(error, EINVAL,
+					   RTE_FLOW_ERROR_TYPE_ACTION, encap_action,
+					   "Reformat: Invalid decap length");
+			return NULL;
+		}
+		type = MLX5DR_ACTION_TYP_REFORMAT_TNL_L2_TO_L2;
+	} else if (encap_action && decap_action) {
+		decap = (const struct rte_flow_action_raw_decap *)decap_action->conf;
+		encap = (const struct rte_flow_action_raw_encap *)encap_action->conf;
+		if (decap->size < MLX5_ENCAPSULATION_DECISION_SIZE &&
+		    encap->size >= MLX5_ENCAPSULATION_DECISION_SIZE &&
+		    encap->size <= MLX5_ENCAP_MAX_LEN) {
+			type = MLX5DR_ACTION_TYP_REFORMAT_L2_TO_TNL_L3;
+		} else if (decap->size >= MLX5_ENCAPSULATION_DECISION_SIZE &&
+			   encap->size < MLX5_ENCAPSULATION_DECISION_SIZE) {
+			type = MLX5DR_ACTION_TYP_REFORMAT_TNL_L3_TO_L2;
+		} else {
+			rte_flow_error_set(error, EINVAL,
+					   RTE_FLOW_ERROR_TYPE_ACTION, encap_action,
+					   "Reformat: Invalid decap & encap length");
+			return NULL;
+		}
+	} else if (!encap_action && !decap_action) {
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_ACTION, encap_action,
+				   "Reformat: Invalid decap & encap configurations");
+		return NULL;
+	}
+	if (!priv->dr_ctx) {
+		rte_flow_error_set(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ACTION,
+				   encap_action, "Reformat: HWS not supported");
+		return NULL;
+	}
+	handle = __mlx5_reformat_create(dev, encap, conf, type);
+	if (!handle) {
+		rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ACTION, encap_action,
+				   "Reformat: failed to create indirect action");
+		return NULL;
+	}
+	return handle;
+}
+
+/**
+ * Destroy the indirect reformat action.
+ * Release action related resources on the NIC and the memory.
+ * Lock free, (mutex should be acquired by caller).
+ *
+ * @param[in] dev
+ *   Pointer to the Ethernet device structure.
+ * @param[in] handle
+ *   The indirect action list handle to be removed.
+ * @param[out] error
+ *   Perform verbose error reporting if not NULL. Initialized in case of
+ *   error only.
+ *
+ * @return
+ *   0 on success, otherwise negative errno value.
+ */
+int
+mlx5_reformat_action_destroy(struct rte_eth_dev *dev,
+			     struct rte_flow_action_list_handle *handle,
+			     struct rte_flow_error *error)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_hw_encap_decap_action *action;
+
+	action = (struct mlx5_hw_encap_decap_action *)handle;
+	if (!priv->dr_ctx || !action)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ACTION, handle,
+					  "Reformat: invalid action handle");
+	mlx5dr_action_destroy(action->action);
+	mlx5_free(handle);
+	return 0;
+}
 #endif

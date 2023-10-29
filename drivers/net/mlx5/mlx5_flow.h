@@ -101,6 +101,7 @@ enum mlx5_indirect_list_type {
 	MLX5_INDIRECT_ACTION_LIST_TYPE_ERR = 0,
 	MLX5_INDIRECT_ACTION_LIST_TYPE_LEGACY = 1,
 	MLX5_INDIRECT_ACTION_LIST_TYPE_MIRROR = 2,
+	MLX5_INDIRECT_ACTION_LIST_TYPE_REFORMAT = 3,
 };
 
 /**
@@ -1369,6 +1370,8 @@ struct mlx5_hw_jump_action {
 
 /* Encap decap action struct. */
 struct mlx5_hw_encap_decap_action {
+	struct mlx5_indirect_list indirect;
+	enum mlx5dr_action_type action_type;
 	struct mlx5dr_action *action; /* Action object. */
 	/* Is header_reformat action shared across flows in table. */
 	bool shared;
@@ -2429,6 +2432,16 @@ const struct rte_flow_action *mlx5_flow_find_action
 int mlx5_validate_action_rss(struct rte_eth_dev *dev,
 			     const struct rte_flow_action *action,
 			     struct rte_flow_error *error);
+
+struct mlx5_hw_encap_decap_action*
+mlx5_reformat_action_create(struct rte_eth_dev *dev,
+			    const struct rte_flow_indir_action_conf *conf,
+			    const struct rte_flow_action *encap_action,
+			    const struct rte_flow_action *decap_action,
+			    struct rte_flow_error *error);
+int mlx5_reformat_action_destroy(struct rte_eth_dev *dev,
+				 struct rte_flow_action_list_handle *handle,
+				 struct rte_flow_error *error);
 int mlx5_flow_validate_action_count(struct rte_eth_dev *dev,
 				    const struct rte_flow_attr *attr,
 				    struct rte_flow_error *error);
@@ -2862,5 +2875,8 @@ mlx5_hw_mirror_destroy(struct rte_eth_dev *dev, struct mlx5_mirror *mirror);
 void
 mlx5_destroy_legacy_indirect(struct rte_eth_dev *dev,
 			     struct mlx5_indirect_list *ptr);
+void
+mlx5_hw_decap_encap_destroy(struct rte_eth_dev *dev,
+			    struct mlx5_indirect_list *reformat);
 #endif
 #endif /* RTE_PMD_MLX5_FLOW_H_ */
