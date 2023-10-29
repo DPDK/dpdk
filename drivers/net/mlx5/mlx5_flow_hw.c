@@ -5992,9 +5992,8 @@ flow_hw_pattern_validate(struct rte_eth_dev *dev,
 			if (tag == NULL)
 				return rte_flow_error_set(error, EINVAL,
 							  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
-							  NULL,
-							  "Tag spec is NULL");
-			tag_idx = flow_hw_get_reg_id(RTE_FLOW_ITEM_TYPE_TAG, tag->index);
+							  NULL, "Tag spec is NULL");
+			tag_idx = flow_hw_get_reg_id(dev, RTE_FLOW_ITEM_TYPE_TAG, tag->index);
 			if (tag_idx == REG_NON)
 				return rte_flow_error_set(error, EINVAL,
 							  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
@@ -6052,7 +6051,9 @@ flow_hw_pattern_validate(struct rte_eth_dev *dev,
 			break;
 		case RTE_FLOW_ITEM_TYPE_METER_COLOR:
 		{
-			int reg = flow_hw_get_reg_id(RTE_FLOW_ITEM_TYPE_METER_COLOR, 0);
+			int reg = flow_hw_get_reg_id(dev,
+						     RTE_FLOW_ITEM_TYPE_METER_COLOR,
+						     0);
 			if (reg == REG_NON)
 				return rte_flow_error_set(error, EINVAL,
 							  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
@@ -8869,126 +8870,29 @@ flow_hw_clear_port_info(struct rte_eth_dev *dev)
  */
 void flow_hw_init_tags_set(struct rte_eth_dev *dev)
 {
-	struct mlx5_priv *priv = dev->data->dev_private;
-	uint32_t meta_mode = priv->sh->config.dv_xmeta_en;
-	uint8_t masks = (uint8_t)priv->sh->cdev->config.hca_attr.set_reg_c;
-	uint32_t i, j;
-	uint8_t reg_off;
+	struct mlx5_dev_ctx_shared *sh = MLX5_SH(dev);
+	struct mlx5_dev_registers *reg = &sh->registers;
+	uint32_t meta_mode = sh->config.dv_xmeta_en;
+	uint8_t masks = (uint8_t)sh->cdev->config.hca_attr.set_reg_c;
 	uint8_t unset = 0;
-	uint8_t common_masks = 0;
+	uint32_t i, j;
 
 	/*
 	 * The CAPA is global for common device but only used in net.
 	 * It is shared per eswitch domain.
 	 */
-	if (!!priv->sh->hws_tags)
-		return;
-	unset |= 1 << (priv->mtr_color_reg - REG_C_0);
-	unset |= 1 << (REG_C_6 - REG_C_0);
-	if (priv->sh->config.dv_esw_en)
-		unset |= 1 << (REG_C_0 - REG_C_0);
+	unset |= 1 << mlx5_regc_index(reg->mtr_color_reg);
+	unset |= 1 << mlx5_regc_index(REG_C_6);
+	if (sh->config.dv_esw_en)
+		unset |= 1 << mlx5_regc_index(REG_C_0);
 	if (meta_mode == MLX5_XMETA_MODE_META32_HWS)
-		unset |= 1 << (REG_C_1 - REG_C_0);
+		unset |= 1 << mlx5_regc_index(REG_C_1);
 	masks &= ~unset;
-	/*
-	 * If available tag registers were previously calculated,
-	 * calculate a bitmask with an intersection of sets of:
-	 * - registers supported by current port,
-	 * - previously calculated available tag registers.
-	 */
-	if (mlx5_flow_hw_avl_tags_init_cnt) {
-		MLX5_ASSERT(mlx5_flow_hw_aso_tag == priv->mtr_color_reg);
-		for (i = 0; i < MLX5_FLOW_HW_TAGS_MAX; i++) {
-			if (mlx5_flow_hw_avl_tags[i] == REG_NON)
-				continue;
-			reg_off = mlx5_flow_hw_avl_tags[i] - REG_C_0;
-			if ((1 << reg_off) & masks)
-				common_masks |= (1 << reg_off);
-		}
-		if (common_masks != masks)
-			masks = common_masks;
-		else
-			goto after_avl_tags;
+	for (i = 0, j = 0; i < MLX5_FLOW_HW_TAGS_MAX; i++) {
+		if (!!((1 << i) & masks))
+			reg->hw_avl_tags[j++] = mlx5_regc_value(i);
 	}
-	j = 0;
-	for (i = 0; i < MLX5_FLOW_HW_TAGS_MAX; i++) {
-		if ((1 << i) & masks)
-			mlx5_flow_hw_avl_tags[j++] = (enum modify_reg)(i + (uint32_t)REG_C_0);
-	}
-	/* Clear the rest of unusable tag indexes. */
-	for (; j < MLX5_FLOW_HW_TAGS_MAX; j++)
-		mlx5_flow_hw_avl_tags[j] = REG_NON;
-after_avl_tags:
-	priv->sh->hws_tags = 1;
-	mlx5_flow_hw_aso_tag = (enum modify_reg)priv->mtr_color_reg;
-	mlx5_flow_hw_avl_tags_init_cnt++;
-}
-
-/*
- * Reset the available tag registers information to NONE.
- *
- * @param[in] dev
- *   Pointer to the rte_eth_dev structure.
- */
-void flow_hw_clear_tags_set(struct rte_eth_dev *dev)
-{
-	struct mlx5_priv *priv = dev->data->dev_private;
-
-	if (!priv->sh->hws_tags)
-		return;
-	priv->sh->hws_tags = 0;
-	mlx5_flow_hw_avl_tags_init_cnt--;
-	if (!mlx5_flow_hw_avl_tags_init_cnt)
-		memset(mlx5_flow_hw_avl_tags, REG_NON,
-		       sizeof(enum modify_reg) * MLX5_FLOW_HW_TAGS_MAX);
-}
-
-uint32_t mlx5_flow_hw_flow_metadata_config_refcnt;
-uint8_t mlx5_flow_hw_flow_metadata_esw_en;
-uint8_t mlx5_flow_hw_flow_metadata_xmeta_en;
-
-/**
- * Initializes static configuration of META flow items.
- *
- * As a temporary workaround, META flow item is translated to a register,
- * based on statically saved dv_esw_en and dv_xmeta_en device arguments.
- * It is a workaround for flow_hw_get_reg_id() where port specific information
- * is not available at runtime.
- *
- * Values of dv_esw_en and dv_xmeta_en device arguments are taken from the first opened port.
- * This means that each mlx5 port will use the same configuration for translation
- * of META flow items.
- *
- * @param[in] dev
- *    Pointer to Ethernet device.
- */
-void
-flow_hw_init_flow_metadata_config(struct rte_eth_dev *dev)
-{
-	uint32_t refcnt;
-
-	refcnt = __atomic_fetch_add(&mlx5_flow_hw_flow_metadata_config_refcnt, 1,
-				    __ATOMIC_RELAXED);
-	if (refcnt > 0)
-		return;
-	mlx5_flow_hw_flow_metadata_esw_en = MLX5_SH(dev)->config.dv_esw_en;
-	mlx5_flow_hw_flow_metadata_xmeta_en = MLX5_SH(dev)->config.dv_xmeta_en;
-}
-
-/**
- * Clears statically stored configuration related to META flow items.
- */
-void
-flow_hw_clear_flow_metadata_config(void)
-{
-	uint32_t refcnt;
-
-	refcnt = __atomic_fetch_sub(&mlx5_flow_hw_flow_metadata_config_refcnt, 1,
-				    __ATOMIC_RELAXED) - 1;
-	if (refcnt > 0)
-		return;
-	mlx5_flow_hw_flow_metadata_esw_en = 0;
-	mlx5_flow_hw_flow_metadata_xmeta_en = 0;
+	reg->mlx5_flow_hw_aso_tag = reg->mtr_color_reg;
 }
 
 static int

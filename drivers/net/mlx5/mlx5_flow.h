@@ -1628,11 +1628,6 @@ struct flow_hw_port_info {
 
 extern struct flow_hw_port_info mlx5_flow_hw_port_infos[RTE_MAX_ETHPORTS];
 
-#define MLX5_FLOW_HW_TAGS_MAX 8
-extern uint32_t mlx5_flow_hw_avl_tags_init_cnt;
-extern enum modify_reg mlx5_flow_hw_avl_tags[];
-extern enum modify_reg mlx5_flow_hw_aso_tag;
-
 /*
  * Get metadata match tag and mask for given rte_eth_dev port.
  * Used in HWS rule creation.
@@ -1674,13 +1669,6 @@ flow_hw_get_wire_port(struct ibv_context *ibctx)
 }
 #endif
 
-extern uint32_t mlx5_flow_hw_flow_metadata_config_refcnt;
-extern uint8_t mlx5_flow_hw_flow_metadata_esw_en;
-extern uint8_t mlx5_flow_hw_flow_metadata_xmeta_en;
-
-void flow_hw_init_flow_metadata_config(struct rte_eth_dev *dev);
-void flow_hw_clear_flow_metadata_config(void);
-
 /*
  * Convert metadata or tag to the actual register.
  * META: Can only be used to match in the FDB in this stage, fixed C_1.
@@ -1688,13 +1676,17 @@ void flow_hw_clear_flow_metadata_config(void);
  * TODO: Per port / device, FDB or NIC for Meta matching.
  */
 static __rte_always_inline int
-flow_hw_get_reg_id(enum rte_flow_item_type type, uint32_t id)
+flow_hw_get_reg_id(struct rte_eth_dev *dev,
+		   enum rte_flow_item_type type, uint32_t id)
 {
+	struct mlx5_dev_ctx_shared *sh = MLX5_SH(dev);
+	struct mlx5_dev_registers *reg = &sh->registers;
+
 	switch (type) {
 	case RTE_FLOW_ITEM_TYPE_META:
 #ifdef HAVE_MLX5_HWS_SUPPORT
-		if (mlx5_flow_hw_flow_metadata_esw_en &&
-		    mlx5_flow_hw_flow_metadata_xmeta_en == MLX5_XMETA_MODE_META32_HWS) {
+		if (sh->config.dv_esw_en &&
+		    sh->config.dv_xmeta_en == MLX5_XMETA_MODE_META32_HWS) {
 			return REG_C_1;
 		}
 #endif
@@ -1710,22 +1702,44 @@ flow_hw_get_reg_id(enum rte_flow_item_type type, uint32_t id)
 		return REG_A;
 	case RTE_FLOW_ITEM_TYPE_CONNTRACK:
 	case RTE_FLOW_ITEM_TYPE_METER_COLOR:
-		return mlx5_flow_hw_aso_tag;
+		return reg->mlx5_flow_hw_aso_tag;
 	case RTE_FLOW_ITEM_TYPE_TAG:
 		if (id == MLX5_LINEAR_HASH_TAG_INDEX)
 			return REG_C_3;
 		MLX5_ASSERT(id < MLX5_FLOW_HW_TAGS_MAX);
-		return mlx5_flow_hw_avl_tags[id];
+		return reg->hw_avl_tags[id];
 	default:
 		return REG_NON;
 	}
+}
+
+static __rte_always_inline int
+flow_hw_get_reg_id_from_ctx(void *dr_ctx,
+			    enum rte_flow_item_type type, uint32_t id)
+{
+#ifdef HAVE_IBV_FLOW_DV_SUPPORT
+	uint16_t port;
+
+	MLX5_ETH_FOREACH_DEV(port, NULL) {
+		struct mlx5_priv *priv;
+
+		priv = rte_eth_devices[port].data->dev_private;
+		if (priv->dr_ctx == dr_ctx)
+			return flow_hw_get_reg_id(&rte_eth_devices[port],
+						  type, id);
+	}
+#else
+	RTE_SET_USED(dr_ctx);
+	RTE_SET_USED(type);
+	RTE_SET_USED(id);
+#endif
+	return REG_NON;
 }
 
 void flow_hw_set_port_info(struct rte_eth_dev *dev);
 void flow_hw_clear_port_info(struct rte_eth_dev *dev);
 
 void flow_hw_init_tags_set(struct rte_eth_dev *dev);
-void flow_hw_clear_tags_set(struct rte_eth_dev *dev);
 
 int flow_hw_create_vport_action(struct rte_eth_dev *dev);
 void flow_hw_destroy_vport_action(struct rte_eth_dev *dev);

@@ -1328,14 +1328,14 @@ err_secondary:
 				 * Prefer REG_C_3 if it is available.
 				 */
 				if (reg_c_mask & (1 << (REG_C_3 - REG_C_0)))
-					priv->mtr_color_reg = REG_C_3;
+					sh->registers.mtr_color_reg = REG_C_3;
 				else
-					priv->mtr_color_reg = ffs(reg_c_mask)
-							      - 1 + REG_C_0;
+					sh->registers.mtr_color_reg =
+						ffs(reg_c_mask) - 1 + REG_C_0;
 				priv->mtr_en = 1;
 				priv->mtr_reg_share = hca_attr->qos.flow_meter;
 				DRV_LOG(DEBUG, "The REG_C meter uses is %d",
-					priv->mtr_color_reg);
+					sh->registers.mtr_color_reg);
 			}
 		}
 		if (hca_attr->qos.sup && hca_attr->qos.flow_meter_aso_sup) {
@@ -1360,7 +1360,7 @@ err_secondary:
 			sh->tunnel_header_2_3 = 1;
 #endif
 #ifdef HAVE_MLX5_DR_CREATE_ACTION_ASO
-		if (hca_attr->flow_hit_aso && priv->mtr_color_reg == REG_C_3) {
+		if (hca_attr->flow_hit_aso && sh->registers.mtr_color_reg == REG_C_3) {
 			sh->flow_hit_aso_en = 1;
 			err = mlx5_flow_aso_age_mng_init(sh);
 			if (err) {
@@ -1374,7 +1374,7 @@ err_secondary:
     defined (HAVE_MLX5_DR_ACTION_ASO_CT)
 		/* HWS create CT ASO SQ based on HWS configure queue number. */
 		if (sh->config.dv_flow_en != 2 &&
-		    hca_attr->ct_offload && priv->mtr_color_reg == REG_C_3) {
+		    hca_attr->ct_offload && sh->registers.mtr_color_reg == REG_C_3) {
 			err = mlx5_flow_aso_ct_mng_init(sh);
 			if (err) {
 				err = -err;
@@ -1618,8 +1618,8 @@ err_secondary:
 				goto error;
 		}
 		/* Only HWS requires this information. */
-		flow_hw_init_tags_set(eth_dev);
-		flow_hw_init_flow_metadata_config(eth_dev);
+		if (sh->refcnt == 1)
+			flow_hw_init_tags_set(eth_dev);
 		if (priv->sh->config.dv_esw_en &&
 		    flow_hw_create_vport_action(eth_dev)) {
 			DRV_LOG(ERR, "port %u failed to create vport action",

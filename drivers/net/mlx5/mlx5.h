@@ -1373,6 +1373,14 @@ struct mlx5_hws_cnt_svc_mng {
 	struct mlx5_hws_aso_mng aso_mng __rte_cache_aligned;
 };
 
+#define MLX5_FLOW_HW_TAGS_MAX 8
+
+struct mlx5_dev_registers {
+	enum modify_reg mlx5_flow_hw_aso_tag;
+	enum modify_reg mtr_color_reg; /* Meter color match REG_C. */
+	enum modify_reg hw_avl_tags[MLX5_FLOW_HW_TAGS_MAX];
+};
+
 /*
  * Shared Infiniband device context for Master/Representors
  * which belong to same IB device with multiple IB ports.
@@ -1393,7 +1401,6 @@ struct mlx5_dev_ctx_shared {
 	uint32_t drop_action_check_flag:1; /* Check Flag for drop action. */
 	uint32_t flow_priority_check_flag:1; /* Check Flag for flow priority. */
 	uint32_t metadata_regc_check_flag:1; /* Check Flag for metadata REGC. */
-	uint32_t hws_tags:1; /* Check if tags info for HWS initialized. */
 	uint32_t shared_mark_enabled:1;
 	/* If mark action is enabled on Rxqs (shared E-Switch domain). */
 	uint32_t lag_rx_port_affinity_en:1;
@@ -1482,6 +1489,7 @@ struct mlx5_dev_ctx_shared {
 	uint32_t host_shaper_rate:8;
 	uint32_t lwm_triggered:1;
 	struct mlx5_hws_cnt_svc_mng *cnt_svc;
+	struct mlx5_dev_registers registers;
 	struct mlx5_dev_shared_port port[]; /* per device port data array. */
 };
 
@@ -1811,7 +1819,6 @@ struct mlx5_priv {
 	/* Hash table of Rx metadata register copy table. */
 	struct mlx5_mtr_config mtr_config; /* Meter configuration */
 	uint8_t mtr_sfx_reg; /* Meter prefix-suffix flow match REG_C. */
-	uint8_t mtr_color_reg; /* Meter color match REG_C. */
 	struct mlx5_legacy_flow_meters flow_meters; /* MTR list. */
 	struct mlx5_l3t_tbl *mtr_profile_tbl; /* Meter index lookup table. */
 	struct mlx5_flow_meter_profile *mtr_profile_arr; /* Profile array. */

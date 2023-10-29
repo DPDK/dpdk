@@ -67,7 +67,7 @@ mlx5_flow_meter_action_create(struct mlx5_priv *priv,
 	val = (ebs_eir >> ASO_DSEG_EBS_MAN_OFFSET) & ASO_DSEG_MAN_MASK;
 	MLX5_SET(flow_meter_parameters, fmp, ebs_mantissa, val);
 	mtr_init.next_table = def_policy->sub_policy.tbl_rsc->obj;
-	mtr_init.reg_c_index = priv->mtr_color_reg - REG_C_0;
+	mtr_init.reg_c_index = priv->sh->registers.mtr_color_reg - REG_C_0;
 	mtr_init.flow_meter_parameter = fmp;
 	mtr_init.flow_meter_parameter_sz =
 		MLX5_ST_SZ_BYTES(flow_meter_parameters);
@@ -1597,6 +1597,7 @@ mlx5_flow_meter_action_modify(struct mlx5_priv *priv,
 		uint64_t modify_bits, uint32_t active_state, uint32_t is_enable)
 {
 #ifdef HAVE_MLX5_DR_CREATE_ACTION_FLOW_METER
+	struct mlx5_dev_ctx_shared *sh = priv->sh;
 	uint32_t in[MLX5_ST_SZ_DW(flow_meter_parameters)] = { 0 };
 	uint32_t *attr;
 	struct mlx5dv_dr_flow_meter_attr mod_attr = { 0 };
@@ -1604,19 +1605,20 @@ mlx5_flow_meter_action_modify(struct mlx5_priv *priv,
 	struct mlx5_aso_mtr *aso_mtr = NULL;
 	uint32_t cbs_cir, ebs_eir, val;
 
-	if (priv->sh->meter_aso_en) {
+	if (sh->meter_aso_en) {
 		fm->is_enable = !!is_enable;
 		aso_mtr = container_of(fm, struct mlx5_aso_mtr, fm);
-		ret = mlx5_aso_meter_update_by_wqe(priv->sh, MLX5_HW_INV_QUEUE,
-						   aso_mtr, &priv->mtr_bulk, NULL, true);
+		ret = mlx5_aso_meter_update_by_wqe(sh, MLX5_HW_INV_QUEUE,
+						   aso_mtr, &priv->mtr_bulk,
+						   NULL, true);
 		if (ret)
 			return ret;
-		ret = mlx5_aso_mtr_wait(priv->sh, MLX5_HW_INV_QUEUE, aso_mtr);
+		ret = mlx5_aso_mtr_wait(sh, MLX5_HW_INV_QUEUE, aso_mtr);
 		if (ret)
 			return ret;
 	} else {
 		/* Fill command parameters. */
-		mod_attr.reg_c_index = priv->mtr_color_reg - REG_C_0;
+		mod_attr.reg_c_index = sh->registers.mtr_color_reg - REG_C_0;
 		mod_attr.flow_meter_parameter = in;
 		mod_attr.flow_meter_parameter_sz =
 				MLX5_ST_SZ_BYTES(flow_meter_parameters);

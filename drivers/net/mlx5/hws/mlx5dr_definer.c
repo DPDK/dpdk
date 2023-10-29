@@ -1541,7 +1541,9 @@ mlx5dr_definer_conv_item_tag(struct mlx5dr_definer_conv_data *cd,
 		return 0;
 
 	if (item->type == RTE_FLOW_ITEM_TYPE_TAG)
-		reg = flow_hw_get_reg_id(RTE_FLOW_ITEM_TYPE_TAG, v->index);
+		reg = flow_hw_get_reg_id_from_ctx(cd->ctx,
+						  RTE_FLOW_ITEM_TYPE_TAG,
+						  v->index);
 	else
 		reg = (int)v->index;
 
@@ -1601,7 +1603,9 @@ mlx5dr_definer_conv_item_quota(struct mlx5dr_definer_conv_data *cd,
 			       __rte_unused struct rte_flow_item *item,
 			       int item_idx)
 {
-	int mtr_reg = flow_hw_get_reg_id(RTE_FLOW_ITEM_TYPE_METER_COLOR, 0);
+	int mtr_reg =
+	flow_hw_get_reg_id_from_ctx(cd->ctx, RTE_FLOW_ITEM_TYPE_METER_COLOR,
+				    0);
 	struct mlx5dr_definer_fc *fc;
 
 	if (mtr_reg < 0) {
@@ -1631,7 +1635,7 @@ mlx5dr_definer_conv_item_metadata(struct mlx5dr_definer_conv_data *cd,
 	if (!m)
 		return 0;
 
-	reg = flow_hw_get_reg_id(RTE_FLOW_ITEM_TYPE_META, -1);
+	reg = flow_hw_get_reg_id_from_ctx(cd->ctx, RTE_FLOW_ITEM_TYPE_META, -1);
 	if (reg <= 0) {
 		DR_LOG(ERR, "Invalid register for item metadata");
 		rte_errno = EINVAL;
@@ -1939,7 +1943,8 @@ mlx5dr_definer_conv_item_conntrack(struct mlx5dr_definer_conv_data *cd,
 	if (!m)
 		return 0;
 
-	reg = flow_hw_get_reg_id(RTE_FLOW_ITEM_TYPE_CONNTRACK, -1);
+	reg = flow_hw_get_reg_id_from_ctx(cd->ctx, RTE_FLOW_ITEM_TYPE_CONNTRACK,
+					  -1);
 	if (reg <= 0) {
 		DR_LOG(ERR, "Invalid register for item conntrack");
 		rte_errno = EINVAL;
@@ -2080,7 +2085,8 @@ mlx5dr_definer_conv_item_meter_color(struct mlx5dr_definer_conv_data *cd,
 	if (!m)
 		return 0;
 
-	reg = flow_hw_get_reg_id(RTE_FLOW_ITEM_TYPE_METER_COLOR, 0);
+	reg = flow_hw_get_reg_id_from_ctx(cd->ctx,
+					  RTE_FLOW_ITEM_TYPE_METER_COLOR, 0);
 	MLX5_ASSERT(reg > 0);
 
 	fc = mlx5dr_definer_get_register_fc(cd, reg);

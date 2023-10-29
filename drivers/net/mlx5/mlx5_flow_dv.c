@@ -1919,8 +1919,9 @@ mlx5_flow_field_id_to_modify_info
 			off_be = (tag_index == MLX5_LINEAR_HASH_TAG_INDEX) ?
 				 16 - (data->offset + width) + 16 : data->offset;
 			if (priv->sh->config.dv_flow_en == 2)
-				reg = flow_hw_get_reg_id(RTE_FLOW_ITEM_TYPE_TAG,
-							 tag_index);
+				reg = flow_hw_get_reg_id(dev,
+							 RTE_FLOW_ITEM_TYPE_TAG,
+							 data->level);
 			else
 				reg = mlx5_flow_get_reg_id(dev, MLX5_APP_TAG,
 							   tag_index, error);
@@ -2025,7 +2026,7 @@ mlx5_flow_field_id_to_modify_info
 
 			if (priv->sh->config.dv_flow_en == 2)
 				reg = flow_hw_get_reg_id
-					(RTE_FLOW_ITEM_TYPE_METER_COLOR, 0);
+				(dev, RTE_FLOW_ITEM_TYPE_METER_COLOR, 0);
 			else
 				reg = mlx5_flow_get_reg_id(dev, MLX5_MTR_COLOR,
 						       0, error);
@@ -3922,7 +3923,7 @@ flow_dv_validate_item_meter_color(struct rte_eth_dev *dev,
 	};
 	int ret;
 
-	if (priv->mtr_color_reg == REG_NON)
+	if (priv->sh->registers.mtr_color_reg == REG_NON)
 		return rte_flow_error_set(error, ENOTSUP,
 					  RTE_FLOW_ERROR_TYPE_ITEM, item,
 					  "meter color register"
@@ -8373,7 +8374,8 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 			if (ret < 0)
 				return ret;
 			if ((action_flags & MLX5_FLOW_ACTION_SET_TAG) &&
-			    tag_id == 0 && priv->mtr_color_reg == REG_NON)
+			    tag_id == 0 &&
+			    priv->sh->registers.mtr_color_reg == REG_NON)
 				return rte_flow_error_set(error, EINVAL,
 					RTE_FLOW_ERROR_TYPE_ACTION, NULL,
 					"sample after tag action causes metadata tag index 0 corruption");
@@ -10256,7 +10258,7 @@ flow_dv_translate_item_meta(struct rte_eth_dev *dev,
 	if (!!(key_type & MLX5_SET_MATCHER_SW))
 		reg = flow_dv_get_metadata_reg(dev, attr, NULL);
 	else
-		reg = flow_hw_get_reg_id(RTE_FLOW_ITEM_TYPE_META, 0);
+		reg = flow_hw_get_reg_id(dev, RTE_FLOW_ITEM_TYPE_META, 0);
 	if (reg < 0)
 		return;
 	MLX5_ASSERT(reg != REG_NON);
@@ -10359,7 +10361,7 @@ flow_dv_translate_item_tag(struct rte_eth_dev *dev, void *key,
 	if (!!(key_type & MLX5_SET_MATCHER_SW))
 		reg = mlx5_flow_get_reg_id(dev, MLX5_APP_TAG, index, NULL);
 	else
-		reg = flow_hw_get_reg_id(RTE_FLOW_ITEM_TYPE_TAG, index);
+		reg = flow_hw_get_reg_id(dev, RTE_FLOW_ITEM_TYPE_TAG, index);
 	MLX5_ASSERT(reg > 0);
 	flow_dv_match_meta_reg(key, (enum modify_reg)reg, tag_v->data, tag_m->data);
 }
@@ -11057,7 +11059,8 @@ flow_dv_translate_item_meter_color(struct rte_eth_dev *dev, void *key,
 	if (!!(key_type & MLX5_SET_MATCHER_SW))
 		reg = mlx5_flow_get_reg_id(dev, MLX5_MTR_COLOR, 0, NULL);
 	else
-		reg = flow_hw_get_reg_id(RTE_FLOW_ITEM_TYPE_METER_COLOR, 0);
+		reg = flow_hw_get_reg_id(dev,
+					 RTE_FLOW_ITEM_TYPE_METER_COLOR, 0);
 	if (reg == REG_NON)
 		return;
 	flow_dv_match_meta_reg(key, (enum modify_reg)reg, value, mask);

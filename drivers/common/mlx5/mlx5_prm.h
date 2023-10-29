@@ -864,6 +864,18 @@ enum modify_reg {
 	REG_C_11,
 };
 
+static __rte_always_inline uint8_t
+mlx5_regc_index(enum modify_reg regc_val)
+{
+	return (uint8_t)(regc_val - REG_C_0);
+}
+
+static __rte_always_inline enum modify_reg
+mlx5_regc_value(uint8_t regc_ix)
+{
+	return REG_C_0 + regc_ix;
+}
+
 /* Modification sub command. */
 struct mlx5_modification_cmd {
 	union {
