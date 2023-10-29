@@ -10,6 +10,7 @@ enum {
 	MLX5DR_ACTIONS_SZ = 12,
 	MLX5DR_MATCH_TAG_SZ = 32,
 	MLX5DR_JUMBO_TAG_SZ = 44,
+	MLX5DR_STE_SZ = 64,
 };
 
 enum mlx5dr_rule_status {

@@ -2279,6 +2279,9 @@ enum {
 	MLX5_GENERATE_WQE_TYPE_FLOW_UPDATE = 1 << 1,
 };
 
+enum {
+	MLX5_FLOW_TABLE_HASH_TYPE_CRC32,
+};
 /*
  *  HCA Capabilities 2
  */
@@ -2328,7 +2331,10 @@ struct mlx5_ifc_cmd_hca_cap_2_bits {
 	u8 format_select_dw_gtpu_dw_2[0x8];
 	u8 format_select_dw_gtpu_first_ext_dw_0[0x8];
 	u8 generate_wqe_type[0x20];
-	u8 reserved_at_2c0[0x540];
+	u8 reserved_at_2c0[0x160];
+	u8 reserved_at_420[0x1c];
+	u8 flow_table_hash_type[0x4];
+	u8 reserved_at_440[0x3c0];
 };
 
 struct mlx5_ifc_esw_cap_bits {

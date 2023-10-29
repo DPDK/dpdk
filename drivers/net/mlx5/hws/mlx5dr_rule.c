@@ -770,3 +770,40 @@ size_t mlx5dr_rule_get_handle_size(void)
 {
 	return sizeof(struct mlx5dr_rule);
 }
+
+int mlx5dr_rule_hash_calculate(struct mlx5dr_matcher *matcher,
+			       const struct rte_flow_item items[],
+			       uint8_t mt_idx,
+			       enum mlx5dr_rule_hash_calc_mode mode,
+			       uint32_t *ret_hash)
+{
+	uint8_t tag[MLX5DR_STE_SZ] = {0};
+	struct mlx5dr_match_template *mt;
+
+	if (!matcher || !matcher->mt) {
+		rte_errno = EINVAL;
+		return -rte_errno;
+	}
+
+	mt = &matcher->mt[mt_idx];
+
+	if (mlx5dr_matcher_req_fw_wqe(matcher) ||
+	    mlx5dr_table_is_root(matcher->tbl) ||
+	    matcher->tbl->ctx->caps->access_index_mode == MLX5DR_MATCHER_INSERT_BY_HASH ||
+	    matcher->tbl->ctx->caps->flow_table_hash_type != MLX5_FLOW_TABLE_HASH_TYPE_CRC32) {
+		rte_errno = ENOTSUP;
+		return -rte_errno;
+	}
+
+	mlx5dr_definer_create_tag(items, mt->fc, mt->fc_sz, tag);
+	if (mlx5dr_matcher_mt_is_jumbo(mt))
+		*ret_hash = mlx5dr_crc32_calc(tag, MLX5DR_JUMBO_TAG_SZ);
+	else
+		*ret_hash = mlx5dr_crc32_calc(tag + MLX5DR_ACTIONS_SZ,
+					      MLX5DR_MATCH_TAG_SZ);
+
+	if (mode == MLX5DR_RULE_HASH_CALC_MODE_IDX)
+		*ret_hash = *ret_hash & (BIT(matcher->attr.rule.num_log) - 1);
+
+	return 0;
+}

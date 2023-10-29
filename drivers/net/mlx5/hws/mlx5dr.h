@@ -118,6 +118,11 @@ enum mlx5dr_matcher_distribute_mode {
 	MLX5DR_MATCHER_DISTRIBUTE_BY_LINEAR = 0x1,
 };
 
+enum mlx5dr_rule_hash_calc_mode {
+	MLX5DR_RULE_HASH_CALC_MODE_RAW,
+	MLX5DR_RULE_HASH_CALC_MODE_IDX,
+};
+
 struct mlx5dr_matcher_attr {
 	/* Processing priority inside table */
 	uint32_t priority;
@@ -429,6 +434,27 @@ int mlx5dr_rule_action_update(struct mlx5dr_rule *rule_handle,
 			      uint8_t at_idx,
 			      struct mlx5dr_rule_action rule_actions[],
 			      struct mlx5dr_rule_attr *attr);
+
+/* Calculate hash for a given set of items, which indicates rule location in
+ * the hash table.
+ *
+ * @param[in] matcher
+ *	The matcher of the created rule.
+ * @param[in] items
+ *	Matching pattern item definition.
+ * @param[in] mt_idx
+ *	Match template index that the match was created with.
+ * @param[in] mode
+ *	Hash calculation mode
+ * @param[in, out] ret_hash
+ *	Returned calculated hash result
+ * @return zero on success non zero otherwise.
+ */
+int mlx5dr_rule_hash_calculate(struct mlx5dr_matcher *matcher,
+			       const struct rte_flow_item items[],
+			       uint8_t mt_idx,
+			       enum mlx5dr_rule_hash_calc_mode mode,
+			       uint32_t *ret_hash);
 
 /* Create direct rule drop action.
  *

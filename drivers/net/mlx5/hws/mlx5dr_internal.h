@@ -38,6 +38,7 @@
 #include "mlx5dr_matcher.h"
 #include "mlx5dr_debug.h"
 #include "mlx5dr_pat_arg.h"
+#include "mlx5dr_crc32.h"
 
 #define DW_SIZE		4
 #define BITS_IN_BYTE	8

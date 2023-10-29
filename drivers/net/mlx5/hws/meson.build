@@ -19,4 +19,5 @@ sources += files(
         'mlx5dr_definer.c',
         'mlx5dr_debug.c',
         'mlx5dr_pat_arg.c',
+        'mlx5dr_crc32.c',
 )
