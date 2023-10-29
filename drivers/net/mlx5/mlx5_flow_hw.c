@@ -3044,6 +3044,7 @@ flow_hw_async_flow_create_by_index(struct rte_eth_dev *dev,
 			  void *user_data,
 			  struct rte_flow_error *error)
 {
+	struct rte_flow_item items[] = {{.type = RTE_FLOW_ITEM_TYPE_END,}};
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5dr_rule_attr rule_attr = {
 		.queue_id = queue,
@@ -3107,7 +3108,7 @@ flow_hw_async_flow_create_by_index(struct rte_eth_dev *dev,
 		goto free;
 	}
 	ret = mlx5dr_rule_create(table->matcher,
-				 0, NULL, action_template_index, rule_acts,
+				 0, items, action_template_index, rule_acts,
 				 &rule_attr, (struct mlx5dr_rule *)flow->rule);
 	if (likely(!ret))
 		return (struct rte_flow *)flow;
