@@ -4401,7 +4401,8 @@ flow_hw_modify_field_is_used(const struct rte_flow_action_modify_field *action,
 }
 
 static int
-flow_hw_validate_action_modify_field(const struct rte_flow_action *action,
+flow_hw_validate_action_modify_field(struct rte_eth_dev *dev,
+				     const struct rte_flow_action *action,
 				     const struct rte_flow_action *mask,
 				     struct rte_flow_error *error)
 {
@@ -4470,6 +4471,22 @@ flow_hw_validate_action_modify_field(const struct rte_flow_action *action,
 		if (ret)
 			return ret;
 	}
+	if ((action_conf->dst.field == RTE_FLOW_FIELD_TAG &&
+	     action_conf->dst.tag_index >= MLX5_FLOW_HW_TAGS_MAX &&
+	     action_conf->dst.tag_index != MLX5_LINEAR_HASH_TAG_INDEX) ||
+	    (action_conf->src.field == RTE_FLOW_FIELD_TAG &&
+	     action_conf->src.tag_index >= MLX5_FLOW_HW_TAGS_MAX &&
+	     action_conf->src.tag_index != MLX5_LINEAR_HASH_TAG_INDEX))
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ACTION, action,
+				 "tag index is out of range");
+	if ((action_conf->dst.field == RTE_FLOW_FIELD_TAG &&
+	     flow_hw_get_reg_id(dev, RTE_FLOW_ITEM_TYPE_TAG, action_conf->dst.tag_index) == REG_NON) ||
+	    (action_conf->src.field == RTE_FLOW_FIELD_TAG &&
+	     flow_hw_get_reg_id(dev, RTE_FLOW_ITEM_TYPE_TAG, action_conf->src.tag_index) == REG_NON))
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ACTION, action,
+					  "tag index is out of range");
 	if (mask_conf->width != UINT32_MAX)
 		return rte_flow_error_set(error, EINVAL,
 				RTE_FLOW_ERROR_TYPE_ACTION, action,
@@ -5111,7 +5128,7 @@ mlx5_flow_hw_actions_validate(struct rte_eth_dev *dev,
 			action_flags |= MLX5_FLOW_ACTION_METER;
 			break;
 		case RTE_FLOW_ACTION_TYPE_MODIFY_FIELD:
-			ret = flow_hw_validate_action_modify_field(action, mask,
+			ret = flow_hw_validate_action_modify_field(dev, action, mask,
 								   error);
 			if (ret < 0)
 				return ret;
@@ -5993,7 +6010,14 @@ flow_hw_pattern_validate(struct rte_eth_dev *dev,
 			if (tag == NULL)
 				return rte_flow_error_set(error, EINVAL,
 							  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
-							  NULL, "Tag spec is NULL");
+							  NULL,
+							  "Tag spec is NULL");
+			if (tag->index >= MLX5_FLOW_HW_TAGS_MAX &&
+			    tag->index != MLX5_LINEAR_HASH_TAG_INDEX)
+				return rte_flow_error_set(error, EINVAL,
+							  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+							  NULL,
+							  "Invalid tag index");
 			tag_idx = flow_hw_get_reg_id(dev, RTE_FLOW_ITEM_TYPE_TAG, tag->index);
 			if (tag_idx == REG_NON)
 				return rte_flow_error_set(error, EINVAL,
