@@ -840,6 +840,14 @@ enum mlx5_modification_field {
 	MLX5_MODI_IN_MPLS_LABEL_3,
 	MLX5_MODI_IN_MPLS_LABEL_4,
 	MLX5_MODI_OUT_IPV6_NEXT_HDR = 0x4A,
+	MLX5_MODI_META_REG_C_8 = 0x8F,
+	MLX5_MODI_META_REG_C_9 = 0x90,
+	MLX5_MODI_META_REG_C_10 = 0x91,
+	MLX5_MODI_META_REG_C_11 = 0x92,
+	MLX5_MODI_META_REG_C_12 = 0x93,
+	MLX5_MODI_META_REG_C_13 = 0x94,
+	MLX5_MODI_META_REG_C_14 = 0x95,
+	MLX5_MODI_META_REG_C_15 = 0x96,
 	MLX5_MODI_INVALID = INT_MAX,
 };
 
@@ -2227,8 +2235,22 @@ struct mlx5_ifc_ft_fields_support_2_bits {
 	u8 inner_ipv4_checksum_ok[0x1];
 	u8 inner_l4_checksum_ok[0x1];
 	u8 outer_ipv4_checksum_ok[0x1];
-	u8 outer_l4_checksum_ok[0x1];
-	u8 reserved_at_20[0x60];
+	u8 outer_l4_checksum_ok[0x1]; /* end of DW0 */
+	u8 reserved_at_20[0x18];
+	union {
+		struct {
+			u8 metadata_reg_c_15[0x1];
+			u8 metadata_reg_c_14[0x1];
+			u8 metadata_reg_c_13[0x1];
+			u8 metadata_reg_c_12[0x1];
+			u8 metadata_reg_c_11[0x1];
+			u8 metadata_reg_c_10[0x1];
+			u8 metadata_reg_c_9[0x1];
+			u8 metadata_reg_c_8[0x1];
+		};
+		u8 metadata_reg_c_8_15[0x8];
+	}; /* end of DW1 */
+	u8 reserved_at_40[0x40];
 };
 
 struct mlx5_ifc_flow_table_nic_cap_bits {
@@ -2250,7 +2272,10 @@ struct mlx5_ifc_flow_table_nic_cap_bits {
 		ft_header_modify_nic_receive;
 	struct mlx5_ifc_ft_fields_support_2_bits
 		ft_field_support_2_nic_receive;
-	u8 reserved_at_1480[0x780];
+	u8 reserved_at_1480[0x280];
+	struct mlx5_ifc_ft_fields_support_2_bits
+		ft_field_support_2_nic_transmit;
+	u8 reserved_at_1780[0x480];
 	struct mlx5_ifc_ft_fields_support_bits
 		ft_header_modify_nic_transmit;
 	u8 reserved_at_2000[0x6000];
@@ -2259,7 +2284,10 @@ struct mlx5_ifc_flow_table_nic_cap_bits {
 struct mlx5_ifc_flow_table_esw_cap_bits {
 	u8 reserved_at_0[0x800];
 	struct mlx5_ifc_ft_fields_support_bits ft_header_modify_esw_fdb;
-	u8 reserved_at_C00[0x7400];
+	u8 reserved_at_C00[0x800];
+	struct mlx5_ifc_ft_fields_support_2_bits
+		ft_field_support_2_esw_fdb;
+	u8 reserved_at_1480[0x6b80];
 };
 
 enum mlx5_ifc_cross_vhca_object_to_object_supported_types {

@@ -1373,7 +1373,7 @@ struct mlx5_hws_cnt_svc_mng {
 	struct mlx5_hws_aso_mng aso_mng __rte_cache_aligned;
 };
 
-#define MLX5_FLOW_HW_TAGS_MAX 8
+#define MLX5_FLOW_HW_TAGS_MAX 12
 
 struct mlx5_dev_registers {
 	enum modify_reg aso_reg;

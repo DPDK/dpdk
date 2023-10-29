@@ -6012,7 +6012,7 @@ flow_hw_pattern_validate(struct rte_eth_dev *dev,
 		{
 			const struct rte_flow_item_tag *tag =
 				(const struct rte_flow_item_tag *)items[i].spec;
-			uint8_t regcs = (uint8_t)priv->sh->cdev->config.hca_attr.set_reg_c;
+			uint16_t regcs = (uint8_t)priv->sh->cdev->config.hca_attr.set_reg_c;
 
 			if (!((1 << (tag->index - REG_C_0)) & regcs))
 				return rte_flow_error_set(error, EINVAL,

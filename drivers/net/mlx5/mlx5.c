@@ -1604,8 +1604,8 @@ mlx5_init_hws_flow_tags_registers(struct mlx5_dev_ctx_shared *sh)
 {
 	struct mlx5_dev_registers *reg = &sh->registers;
 	uint32_t meta_mode = sh->config.dv_xmeta_en;
-	uint8_t masks = (uint8_t)sh->cdev->config.hca_attr.set_reg_c;
-	uint8_t unset = 0;
+	uint16_t masks = (uint16_t)sh->cdev->config.hca_attr.set_reg_c;
+	uint16_t unset = 0;
 	uint32_t i, j;
 
 	/*

@@ -970,6 +970,10 @@ static enum mlx5_modification_field reg_to_field[] = {
 	[REG_C_5] = MLX5_MODI_META_REG_C_5,
 	[REG_C_6] = MLX5_MODI_META_REG_C_6,
 	[REG_C_7] = MLX5_MODI_META_REG_C_7,
+	[REG_C_8] = MLX5_MODI_META_REG_C_8,
+	[REG_C_9] = MLX5_MODI_META_REG_C_9,
+	[REG_C_10] = MLX5_MODI_META_REG_C_10,
+	[REG_C_11] = MLX5_MODI_META_REG_C_11,
 };
 
 /**

@@ -1229,7 +1229,7 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 	attr->modify_outer_ip_ecn = MLX5_GET
 		(flow_table_nic_cap, hcattr,
 		 ft_header_modify_nic_receive.outer_ip_ecn);
-	attr->set_reg_c = 0xff;
+	attr->set_reg_c = 0xffff;
 	if (attr->nic_flow_table) {
 #define GET_RX_REG_X_BITS \
 		MLX5_GET(flow_table_nic_cap, hcattr, \
@@ -1238,10 +1238,16 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 		MLX5_GET(flow_table_nic_cap, hcattr, \
 			 ft_header_modify_nic_transmit.metadata_reg_c_x)
 
-		uint32_t tx_reg, rx_reg;
+		uint32_t tx_reg, rx_reg, reg_c_8_15;
 
 		tx_reg = GET_TX_REG_X_BITS;
+		reg_c_8_15 = MLX5_GET(flow_table_nic_cap, hcattr,
+				      ft_field_support_2_nic_transmit.metadata_reg_c_8_15);
+		tx_reg |= ((0xff & reg_c_8_15) << 8);
 		rx_reg = GET_RX_REG_X_BITS;
+		reg_c_8_15 = MLX5_GET(flow_table_nic_cap, hcattr,
+				      ft_field_support_2_nic_receive.metadata_reg_c_8_15);
+		rx_reg |= ((0xff & reg_c_8_15) << 8);
 		attr->set_reg_c &= (rx_reg & tx_reg);
 
 #undef GET_RX_REG_X_BITS
@@ -1371,7 +1377,7 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 			MLX5_GET(esw_cap, hcattr, esw_manager_vport_number);
 	}
 	if (attr->eswitch_manager) {
-		uint32_t esw_reg;
+		uint32_t esw_reg, reg_c_8_15;
 
 		hcattr = mlx5_devx_get_hca_cap(ctx, in, out, &rc,
 				MLX5_GET_HCA_CAP_OP_MOD_ESW_FLOW_TABLE |
@@ -1380,7 +1386,9 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 			return rc;
 		esw_reg = MLX5_GET(flow_table_esw_cap, hcattr,
 				   ft_header_modify_esw_fdb.metadata_reg_c_x);
-		attr->set_reg_c &= esw_reg;
+		reg_c_8_15 = MLX5_GET(flow_table_esw_cap, hcattr,
+				      ft_field_support_2_esw_fdb.metadata_reg_c_8_15);
+		attr->set_reg_c &= ((0xff & reg_c_8_15) << 8) | esw_reg;
 	}
 	return 0;
 error:
