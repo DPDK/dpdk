@@ -1673,7 +1673,6 @@ flow_hw_get_wire_port(struct ibv_context *ibctx)
  * Convert metadata or tag to the actual register.
  * META: Can only be used to match in the FDB in this stage, fixed C_1.
  * TAG: C_x expect meter color reg and the reserved ones.
- * TODO: Per port / device, FDB or NIC for Meta matching.
  */
 static __rte_always_inline int
 flow_hw_get_reg_id(struct rte_eth_dev *dev,
@@ -1702,7 +1701,7 @@ flow_hw_get_reg_id(struct rte_eth_dev *dev,
 		return REG_A;
 	case RTE_FLOW_ITEM_TYPE_CONNTRACK:
 	case RTE_FLOW_ITEM_TYPE_METER_COLOR:
-		return reg->mlx5_flow_hw_aso_tag;
+		return reg->aso_reg;
 	case RTE_FLOW_ITEM_TYPE_TAG:
 		if (id == MLX5_LINEAR_HASH_TAG_INDEX)
 			return REG_C_3;

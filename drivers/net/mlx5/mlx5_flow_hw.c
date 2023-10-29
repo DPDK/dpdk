@@ -8881,7 +8881,7 @@ void flow_hw_init_tags_set(struct rte_eth_dev *dev)
 	 * The CAPA is global for common device but only used in net.
 	 * It is shared per eswitch domain.
 	 */
-	unset |= 1 << mlx5_regc_index(reg->mtr_color_reg);
+	unset |= 1 << mlx5_regc_index(reg->aso_reg);
 	unset |= 1 << mlx5_regc_index(REG_C_6);
 	if (sh->config.dv_esw_en)
 		unset |= 1 << mlx5_regc_index(REG_C_0);
@@ -8892,7 +8892,6 @@ void flow_hw_init_tags_set(struct rte_eth_dev *dev)
 		if (!!((1 << i) & masks))
 			reg->hw_avl_tags[j++] = mlx5_regc_value(i);
 	}
-	reg->mlx5_flow_hw_aso_tag = reg->mtr_color_reg;
 }
 
 static int

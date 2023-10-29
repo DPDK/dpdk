@@ -67,7 +67,7 @@ mlx5_flow_meter_action_create(struct mlx5_priv *priv,
 	val = (ebs_eir >> ASO_DSEG_EBS_MAN_OFFSET) & ASO_DSEG_MAN_MASK;
 	MLX5_SET(flow_meter_parameters, fmp, ebs_mantissa, val);
 	mtr_init.next_table = def_policy->sub_policy.tbl_rsc->obj;
-	mtr_init.reg_c_index = priv->sh->registers.mtr_color_reg - REG_C_0;
+	mtr_init.reg_c_index = priv->sh->registers.aso_reg - REG_C_0;
 	mtr_init.flow_meter_parameter = fmp;
 	mtr_init.flow_meter_parameter_sz =
 		MLX5_ST_SZ_BYTES(flow_meter_parameters);
@@ -1618,7 +1618,7 @@ mlx5_flow_meter_action_modify(struct mlx5_priv *priv,
 			return ret;
 	} else {
 		/* Fill command parameters. */
-		mod_attr.reg_c_index = sh->registers.mtr_color_reg - REG_C_0;
+		mod_attr.reg_c_index = sh->registers.aso_reg - REG_C_0;
 		mod_attr.flow_meter_parameter = in;
 		mod_attr.flow_meter_parameter_sz =
 				MLX5_ST_SZ_BYTES(flow_meter_parameters);

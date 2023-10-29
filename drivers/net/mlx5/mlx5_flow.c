@@ -1378,23 +1378,23 @@ mlx5_flow_get_reg_id(struct rte_eth_dev *dev,
 		 * should use the meter color register for match.
 		 */
 		if (priv->mtr_reg_share)
-			return reg->mtr_color_reg;
+			return reg->aso_reg;
 		else
-			return reg->mtr_color_reg != REG_C_2 ? REG_C_2 :
+			return reg->aso_reg != REG_C_2 ? REG_C_2 :
 			       REG_C_3;
 	case MLX5_MTR_COLOR:
 	case MLX5_ASO_FLOW_HIT:
 	case MLX5_ASO_CONNTRACK:
 	case MLX5_SAMPLE_ID:
 		/* All features use the same REG_C. */
-		MLX5_ASSERT(reg->mtr_color_reg != REG_NON);
-		return reg->mtr_color_reg;
+		MLX5_ASSERT(reg->aso_reg != REG_NON);
+		return reg->aso_reg;
 	case MLX5_COPY_MARK:
 		/*
 		 * Metadata COPY_MARK register using is in meter suffix sub
 		 * flow while with meter. It's safe to share the same register.
 		 */
-		return reg->mtr_color_reg != REG_C_2 ? REG_C_2 : REG_C_3;
+		return reg->aso_reg != REG_C_2 ? REG_C_2 : REG_C_3;
 	case MLX5_APP_TAG:
 		/*
 		 * If meter is enable, it will engage the register for color
@@ -1403,7 +1403,7 @@ mlx5_flow_get_reg_id(struct rte_eth_dev *dev,
 		 * match.
 		 * If meter is disable, free to use all available registers.
 		 */
-		start_reg = reg->mtr_color_reg != REG_C_2 ? REG_C_2 :
+		start_reg = reg->aso_reg != REG_C_2 ? REG_C_2 :
 			    (priv->mtr_reg_share ? REG_C_3 : REG_C_4);
 		skip_mtr_reg = !!(priv->mtr_en && start_reg == REG_C_2);
 		if (id > (uint32_t)(REG_C_7 - start_reg))
@@ -1421,7 +1421,7 @@ mlx5_flow_get_reg_id(struct rte_eth_dev *dev,
 		 * color register.
 		 */
 		if (skip_mtr_reg && priv->sh->flow_mreg_c
-		    [id + start_reg - REG_C_0] >= reg->mtr_color_reg) {
+		    [id + start_reg - REG_C_0] >= reg->aso_reg) {
 			if (id >= (uint32_t)(REG_C_7 - start_reg))
 				return rte_flow_error_set(error, EINVAL,
 						       RTE_FLOW_ERROR_TYPE_ITEM,
@@ -6494,7 +6494,7 @@ flow_sample_split_prep(struct rte_eth_dev *dev,
 		 * metadata regC is REG_NON, back to use application tag
 		 * index 0.
 		 */
-		if (unlikely(priv->sh->registers.mtr_color_reg == REG_NON))
+		if (unlikely(priv->sh->registers.aso_reg == REG_NON))
 			ret = mlx5_flow_get_reg_id(dev, MLX5_APP_TAG, 0, error);
 		else
 			ret = mlx5_flow_get_reg_id(dev, MLX5_SAMPLE_ID, 0, error);
