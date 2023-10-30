@@ -9795,6 +9795,7 @@ mlx5_mirror_destroy_clone(struct rte_eth_dev *dev,
 		flow_hw_jump_release(dev, clone->action_ctx);
 		break;
 	case RTE_FLOW_ACTION_TYPE_REPRESENTED_PORT:
+	case RTE_FLOW_ACTION_TYPE_PORT_REPRESENTOR:
 	case RTE_FLOW_ACTION_TYPE_RAW_ENCAP:
 	case RTE_FLOW_ACTION_TYPE_RAW_DECAP:
 	case RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP:
@@ -9839,6 +9840,7 @@ mlx5_mirror_terminal_action(const struct rte_flow_action *action)
 	case RTE_FLOW_ACTION_TYPE_RSS:
 	case RTE_FLOW_ACTION_TYPE_QUEUE:
 	case RTE_FLOW_ACTION_TYPE_REPRESENTED_PORT:
+	case RTE_FLOW_ACTION_TYPE_PORT_REPRESENTOR:
 		return true;
 	default:
 		break;
@@ -9852,11 +9854,22 @@ mlx5_mirror_validate_sample_action(struct rte_eth_dev *dev,
 				   const struct rte_flow_action *action)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
+	const struct rte_flow_action_ethdev *port = NULL;
+	bool is_proxy = MLX5_HW_PORT_IS_PROXY(priv);
 
+	if (!action)
+		return false;
 	switch (action->type) {
 	case RTE_FLOW_ACTION_TYPE_QUEUE:
 	case RTE_FLOW_ACTION_TYPE_RSS:
 		if (flow_attr->transfer)
+			return false;
+		break;
+	case RTE_FLOW_ACTION_TYPE_PORT_REPRESENTOR:
+		if (!is_proxy || !flow_attr->transfer)
+			return false;
+		port = action->conf;
+		if (!port || port->port_id != MLX5_REPRESENTED_PORT_ESW_MGR)
 			return false;
 		break;
 	case RTE_FLOW_ACTION_TYPE_REPRESENTED_PORT:
@@ -9864,7 +9877,7 @@ mlx5_mirror_validate_sample_action(struct rte_eth_dev *dev,
 	case RTE_FLOW_ACTION_TYPE_RAW_DECAP:
 	case RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP:
 	case RTE_FLOW_ACTION_TYPE_NVGRE_ENCAP:
-		if (!priv->sh->esw_mode && !flow_attr->transfer)
+		if (!is_proxy || !flow_attr->transfer)
 			return false;
 		if (action[0].type == RTE_FLOW_ACTION_TYPE_RAW_DECAP &&
 		    action[1].type != RTE_FLOW_ACTION_TYPE_RAW_ENCAP)
@@ -10022,6 +10035,7 @@ hw_mirror_format_clone(struct rte_eth_dev *dev,
 			struct mlx5dr_action_dest_attr *dest_attr,
 			uint8_t *reformat_buf, struct rte_flow_error *error)
 {
+	struct mlx5_priv *priv = dev->data->dev_private;
 	int ret;
 	uint32_t i;
 	bool decap_seen = false;
@@ -10047,6 +10061,9 @@ hw_mirror_format_clone(struct rte_eth_dev *dev,
 						 &actions[i], dest_attr, error);
 			if (ret)
 				return ret;
+			break;
+		case RTE_FLOW_ACTION_TYPE_PORT_REPRESENTOR:
+			dest_attr->dest = priv->hw_def_miss;
 			break;
 		case RTE_FLOW_ACTION_TYPE_RAW_DECAP:
 			decap_seen = true;

@@ -180,7 +180,7 @@ New Features
 
   * Added support for Network Service Header (NSH) flow matching.
   * Added support for ``RTE_FLOW_ITEM_TYPE_PTYPE`` flow item.
-  * Added support for ``RTE_FLOW_ACTION_TYPE_PORT_REPRESENTOR`` flow action.
+  * Added support for ``RTE_FLOW_ACTION_TYPE_PORT_REPRESENTOR`` flow action and mirror.
   * Added support for ``RTE_FLOW_ACTION_TYPE_INDIRECT_LIST`` flow action.
 
 * **Updated Solarflare net driver.**
