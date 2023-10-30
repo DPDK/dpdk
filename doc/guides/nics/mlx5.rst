@@ -730,6 +730,13 @@ Limitations
 
 - The NIC egress flow rules on representor port are not supported.
 
+- A driver limitation for ``RTE_FLOW_ACTION_TYPE_PORT_REPRESENTOR`` action
+  restricts the ``port_id`` configuration to only accept the value ``0xffff``,
+  indicating the E-Switch manager.
+  If the ``repr_matching_en`` flag is enabled, the traffic will be directed
+  to the representor of the source virtual port (SF/VF), while if it is disabled,
+  the traffic will be routed based on the steering rules in the ingress domain.
+
 - Send to kernel action (``RTE_FLOW_ACTION_TYPE_SEND_TO_KERNEL``):
 
   - Supported on non-root table.

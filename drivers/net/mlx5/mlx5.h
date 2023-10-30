@@ -1858,6 +1858,8 @@ struct mlx5_priv {
 	struct mlx5dr_action *hw_drop[2];
 	/* HW steering global tag action. */
 	struct mlx5dr_action *hw_tag[2];
+	/* HW steering global default miss action. */
+	struct mlx5dr_action *hw_def_miss;
 	/* HW steering global send to kernel action. */
 	struct mlx5dr_action *hw_send_to_kernel[MLX5DR_TABLE_TYPE_MAX];
 	/* HW steering create ongoing rte flow table list header. */

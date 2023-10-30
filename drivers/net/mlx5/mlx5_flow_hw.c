@@ -1776,6 +1776,13 @@ __flow_hw_actions_translate(struct rte_eth_dev *dev,
 			acts->rule_acts[dr_pos].action =
 				priv->hw_drop[!!attr->group];
 			break;
+		case RTE_FLOW_ACTION_TYPE_PORT_REPRESENTOR:
+			if (!attr->group) {
+				DRV_LOG(ERR, "Port representor is not supported in root table.");
+				goto err;
+			}
+			acts->rule_acts[dr_pos].action = priv->hw_def_miss;
+			break;
 		case RTE_FLOW_ACTION_TYPE_MARK:
 			acts->mark = true;
 			if (masks->conf &&
@@ -4190,6 +4197,36 @@ flow_hw_validate_action_modify_field(const struct rte_flow_action *action,
 				"MPLS cannot be used as destination");
 	return 0;
 }
+static int
+flow_hw_validate_action_port_representor(struct rte_eth_dev *dev __rte_unused,
+					 const struct rte_flow_actions_template_attr *attr,
+					 const struct rte_flow_action *action,
+					 const struct rte_flow_action *mask,
+					 struct rte_flow_error *error)
+{
+	const struct rte_flow_action_ethdev *action_conf = NULL;
+	const struct rte_flow_action_ethdev *mask_conf = NULL;
+
+	/* If transfer is set, port has been validated as proxy port. */
+	if (!attr->transfer)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+					  "cannot use port_representor actions"
+					  " without an E-Switch");
+	if (!action || !mask)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+					  "actiona and mask configuration must be set");
+	action_conf = action->conf;
+	mask_conf = mask->conf;
+	if (!mask_conf || mask_conf->port_id != MLX5_REPRESENTED_PORT_ESW_MGR ||
+	    !action_conf || action_conf->port_id != MLX5_REPRESENTED_PORT_ESW_MGR)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+					  "only eswitch manager port 0xffff is"
+					  " supported");
+	return 0;
+}
 
 static int
 flow_hw_validate_action_represented_port(struct rte_eth_dev *dev,
@@ -4554,6 +4591,7 @@ flow_hw_template_expand_modify_field(struct rte_flow_action actions[],
 		case RTE_FLOW_ACTION_TYPE_QUEUE:
 		case RTE_FLOW_ACTION_TYPE_RSS:
 		case RTE_FLOW_ACTION_TYPE_REPRESENTED_PORT:
+		case RTE_FLOW_ACTION_TYPE_PORT_REPRESENTOR:
 		case RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_VID:
 		case RTE_FLOW_ACTION_TYPE_VOID:
 		case RTE_FLOW_ACTION_TYPE_END:
@@ -4790,6 +4828,13 @@ mlx5_flow_hw_actions_validate(struct rte_eth_dev *dev,
 				return ret;
 			action_flags |= MLX5_FLOW_ACTION_PORT_ID;
 			break;
+		case RTE_FLOW_ACTION_TYPE_PORT_REPRESENTOR:
+			ret = flow_hw_validate_action_port_representor
+					(dev, attr, action, mask, error);
+			if (ret < 0)
+				return ret;
+			action_flags |= MLX5_FLOW_ACTION_PORT_REPRESENTOR;
+			break;
 		case RTE_FLOW_ACTION_TYPE_AGE:
 			if (count_mask && count_mask->id)
 				fixed_cnt = true;
@@ -4868,6 +4913,7 @@ static enum mlx5dr_action_type mlx5_hw_dr_action_types[] = {
 	[RTE_FLOW_ACTION_TYPE_NVGRE_DECAP] = MLX5DR_ACTION_TYP_REFORMAT_TNL_L2_TO_L2,
 	[RTE_FLOW_ACTION_TYPE_MODIFY_FIELD] = MLX5DR_ACTION_TYP_MODIFY_HDR,
 	[RTE_FLOW_ACTION_TYPE_REPRESENTED_PORT] = MLX5DR_ACTION_TYP_VPORT,
+	[RTE_FLOW_ACTION_TYPE_PORT_REPRESENTOR] = MLX5DR_ACTION_TYP_MISS,
 	[RTE_FLOW_ACTION_TYPE_CONNTRACK] = MLX5DR_ACTION_TYP_ASO_CT,
 	[RTE_FLOW_ACTION_TYPE_OF_POP_VLAN] = MLX5DR_ACTION_TYP_POP_VLAN,
 	[RTE_FLOW_ACTION_TYPE_OF_PUSH_VLAN] = MLX5DR_ACTION_TYP_PUSH_VLAN,
@@ -8275,6 +8321,11 @@ flow_hw_configure(struct rte_eth_dev *dev,
 			goto err;
 	}
 	if (is_proxy) {
+		/* Only supported on proxy port. */
+		priv->hw_def_miss = mlx5dr_action_create_default_miss
+			(priv->dr_ctx, MLX5DR_ACTION_FLAG_HWS_FDB);
+		if (!priv->hw_def_miss)
+			goto err;
 		ret = flow_hw_create_vport_actions(priv);
 		if (ret) {
 			rte_flow_error_set(error, -ret, RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
@@ -8363,6 +8414,8 @@ err:
 		if (priv->hw_tag[i])
 			mlx5dr_action_destroy(priv->hw_tag[i]);
 	}
+	if (priv->hw_def_miss)
+		mlx5dr_action_destroy(priv->hw_def_miss);
 	flow_hw_destroy_vlan(dev);
 	if (dr_ctx)
 		claim_zero(mlx5dr_context_close(dr_ctx));
@@ -8435,6 +8488,8 @@ flow_hw_resource_release(struct rte_eth_dev *dev)
 		if (priv->hw_tag[i])
 			mlx5dr_action_destroy(priv->hw_tag[i]);
 	}
+	if (priv->hw_def_miss)
+		mlx5dr_action_destroy(priv->hw_def_miss);
 	flow_hw_destroy_vlan(dev);
 	flow_hw_destroy_send_to_kernel_action(priv);
 	flow_hw_free_vport_actions(priv);
