@@ -10065,6 +10065,7 @@ test_ipsec_proto_mbuf_enq(struct crypto_testsuite_params *ts_params,
 	hdr->ether_type = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV4);
 
 	ut_params->ibuf->l2_len = sizeof(struct rte_ether_hdr);
+	ut_params->ibuf->port = 0;
 
 	sec_sess = &ut_params->sec_session;
 	ret = rte_security_inb_pkt_rx_inject(ctx, &ut_params->ibuf, sec_sess, 1);
