@@ -58,6 +58,7 @@ implementer_generic = {
 part_number_config_arm = {
     '0xd03': {'compiler_options':  ['-mcpu=cortex-a53']},
     '0xd04': {'compiler_options':  ['-mcpu=cortex-a35']},
+    '0xd05': {'compiler_options':  ['-mcpu=cortex-a55']},
     '0xd07': {'compiler_options':  ['-mcpu=cortex-a57']},
     '0xd08': {'compiler_options':  ['-mcpu=cortex-a72']},
     '0xd09': {'compiler_options':  ['-mcpu=cortex-a73']},
