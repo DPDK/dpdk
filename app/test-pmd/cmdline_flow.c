@@ -2472,6 +2472,7 @@ static const enum index next_action_sample[] = {
 	ACTION_VXLAN_ENCAP,
 	ACTION_NVGRE_ENCAP,
 	ACTION_REPRESENTED_PORT,
+	ACTION_PORT_REPRESENTOR,
 	ACTION_NEXT,
 	ZERO,
 };
