@@ -4579,7 +4579,8 @@ flow_dv_convert_encap_data(const struct rte_flow_item *items, uint8_t *buf,
 						  (void *)items->type,
 						  "items total size is too big"
 						  " for encap action");
-		rte_memcpy((void *)&buf[temp_size], items->spec, len);
+		if (items->spec)
+			rte_memcpy(&buf[temp_size], items->spec, len);
 		switch (items->type) {
 		case RTE_FLOW_ITEM_TYPE_ETH:
 			eth = (struct rte_ether_hdr *)&buf[temp_size];

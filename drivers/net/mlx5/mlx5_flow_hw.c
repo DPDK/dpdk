@@ -71,6 +71,95 @@ struct mlx5_indlst_legacy {
 	enum rte_flow_action_type legacy_type;
 };
 
+#define MLX5_CONST_ENCAP_ITEM(encap_type, ptr) \
+(((const struct encap_type *)(ptr))->definition)
+
+struct mlx5_multi_pattern_ctx {
+	union {
+		struct mlx5dr_action_reformat_header reformat_hdr;
+		struct mlx5dr_action_mh_pattern mh_pattern;
+	};
+	union {
+		/* action template auxiliary structures for object destruction */
+		struct mlx5_hw_encap_decap_action *encap;
+		struct mlx5_hw_modify_header_action *mhdr;
+	};
+	/* multi pattern action */
+	struct mlx5dr_rule_action *rule_action;
+};
+
+#define MLX5_MULTIPATTERN_ENCAP_NUM 4
+
+struct mlx5_tbl_multi_pattern_ctx {
+	struct {
+		uint32_t elements_num;
+		struct mlx5_multi_pattern_ctx ctx[MLX5_HW_TBL_MAX_ACTION_TEMPLATE];
+	} reformat[MLX5_MULTIPATTERN_ENCAP_NUM];
+
+	struct {
+		uint32_t elements_num;
+		struct mlx5_multi_pattern_ctx ctx[MLX5_HW_TBL_MAX_ACTION_TEMPLATE];
+	} mh;
+};
+
+#define MLX5_EMPTY_MULTI_PATTERN_CTX {{{0,}},}
+
+static int
+mlx5_tbl_multi_pattern_process(struct rte_eth_dev *dev,
+			       struct rte_flow_template_table *tbl,
+			       struct mlx5_tbl_multi_pattern_ctx *mpat,
+			       struct rte_flow_error *error);
+
+static __rte_always_inline int
+mlx5_multi_pattern_reformat_to_index(enum mlx5dr_action_type type)
+{
+	switch (type) {
+	case MLX5DR_ACTION_TYP_REFORMAT_TNL_L2_TO_L2:
+		return 0;
+	case MLX5DR_ACTION_TYP_REFORMAT_L2_TO_TNL_L2:
+		return 1;
+	case MLX5DR_ACTION_TYP_REFORMAT_TNL_L3_TO_L2:
+		return 2;
+	case MLX5DR_ACTION_TYP_REFORMAT_L2_TO_TNL_L3:
+		return 3;
+	default:
+		break;
+	}
+	return -1;
+}
+
+static __rte_always_inline enum mlx5dr_action_type
+mlx5_multi_pattern_reformat_index_to_type(uint32_t ix)
+{
+	switch (ix) {
+	case 0:
+		return MLX5DR_ACTION_TYP_REFORMAT_TNL_L2_TO_L2;
+	case 1:
+		return MLX5DR_ACTION_TYP_REFORMAT_L2_TO_TNL_L2;
+	case 2:
+		return MLX5DR_ACTION_TYP_REFORMAT_TNL_L3_TO_L2;
+	case 3:
+		return MLX5DR_ACTION_TYP_REFORMAT_L2_TO_TNL_L3;
+	default:
+		break;
+	}
+	return MLX5DR_ACTION_TYP_MAX;
+}
+
+static inline enum mlx5dr_table_type
+get_mlx5dr_table_type(const struct rte_flow_attr *attr)
+{
+	enum mlx5dr_table_type type;
+
+	if (attr->transfer)
+		type = MLX5DR_TABLE_TYPE_FDB;
+	else if (attr->egress)
+		type = MLX5DR_TABLE_TYPE_NIC_TX;
+	else
+		type = MLX5DR_TABLE_TYPE_NIC_RX;
+	return type;
+}
+
 struct mlx5_mirror_clone {
 	enum rte_flow_action_type type;
 	void *action_ctx;
@@ -462,6 +551,34 @@ flow_hw_ct_compile(struct rte_eth_dev *dev,
 	return 0;
 }
 
+static void
+flow_hw_template_destroy_reformat_action(struct mlx5_hw_encap_decap_action *encap_decap)
+{
+	if (encap_decap->multi_pattern) {
+		uint32_t refcnt = __atomic_sub_fetch(encap_decap->multi_pattern_refcnt,
+						     1, __ATOMIC_RELAXED);
+		if (refcnt)
+			return;
+		mlx5_free((void *)(uintptr_t)encap_decap->multi_pattern_refcnt);
+	}
+	if (encap_decap->action)
+		mlx5dr_action_destroy(encap_decap->action);
+}
+
+static void
+flow_hw_template_destroy_mhdr_action(struct mlx5_hw_modify_header_action *mhdr)
+{
+	if (mhdr->multi_pattern) {
+		uint32_t refcnt = __atomic_sub_fetch(mhdr->multi_pattern_refcnt,
+						     1, __ATOMIC_RELAXED);
+		if (refcnt)
+			return;
+		mlx5_free((void *)(uintptr_t)mhdr->multi_pattern_refcnt);
+	}
+	if (mhdr->action)
+		mlx5dr_action_destroy(mhdr->action);
+}
+
 /**
  * Destroy DR actions created by action template.
  *
@@ -503,14 +620,12 @@ __flow_hw_action_template_destroy(struct rte_eth_dev *dev,
 		acts->tir = NULL;
 	}
 	if (acts->encap_decap) {
-		if (acts->encap_decap->action)
-			mlx5dr_action_destroy(acts->encap_decap->action);
+		flow_hw_template_destroy_reformat_action(acts->encap_decap);
 		mlx5_free(acts->encap_decap);
 		acts->encap_decap = NULL;
 	}
 	if (acts->mhdr) {
-		if (acts->mhdr->action)
-			mlx5dr_action_destroy(acts->mhdr->action);
+		flow_hw_template_destroy_mhdr_action(acts->mhdr);
 		mlx5_free(acts->mhdr);
 		acts->mhdr = NULL;
 	}
@@ -881,8 +996,6 @@ flow_hw_action_modify_field_is_shared(const struct rte_flow_action *action,
 	if (v->src.field == RTE_FLOW_FIELD_VALUE) {
 		uint32_t j;
 
-		if (m == NULL)
-			return false;
 		for (j = 0; j < RTE_DIM(m->src.value); ++j) {
 			/*
 			 * Immediate value is considered to be masked
@@ -1680,6 +1793,137 @@ table_template_translate_indirect_list(struct rte_eth_dev *dev,
 	return ret;
 }
 
+static int
+mlx5_tbl_translate_reformat(struct mlx5_priv *priv,
+			    const struct rte_flow_template_table_attr *table_attr,
+			    struct mlx5_hw_actions *acts,
+			    struct rte_flow_actions_template *at,
+			    const struct rte_flow_item *enc_item,
+			    const struct rte_flow_item *enc_item_m,
+			    uint8_t *encap_data, uint8_t *encap_data_m,
+			    struct mlx5_tbl_multi_pattern_ctx *mp_ctx,
+			    size_t data_size, uint16_t reformat_src,
+			    enum mlx5dr_action_type refmt_type,
+			    struct rte_flow_error *error)
+{
+	int mp_reformat_ix = mlx5_multi_pattern_reformat_to_index(refmt_type);
+	const struct rte_flow_attr *attr = &table_attr->flow_attr;
+	enum mlx5dr_table_type tbl_type = get_mlx5dr_table_type(attr);
+	struct mlx5dr_action_reformat_header hdr;
+	uint8_t buf[MLX5_ENCAP_MAX_LEN];
+	bool shared_rfmt = false;
+	int ret;
+
+	MLX5_ASSERT(at->reformat_off != UINT16_MAX);
+	if (enc_item) {
+		MLX5_ASSERT(!encap_data);
+		ret = flow_dv_convert_encap_data(enc_item, buf, &data_size, error);
+		if (ret)
+			return ret;
+		encap_data = buf;
+		if (enc_item_m)
+			shared_rfmt = true;
+	} else if (encap_data && encap_data_m) {
+		shared_rfmt = true;
+	}
+	acts->encap_decap = mlx5_malloc(MLX5_MEM_ZERO,
+					sizeof(*acts->encap_decap) + data_size,
+					0, SOCKET_ID_ANY);
+	if (!acts->encap_decap)
+		return rte_flow_error_set(error, ENOMEM,
+					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					  NULL, "no memory for reformat context");
+	hdr.sz = data_size;
+	hdr.data = encap_data;
+	if (shared_rfmt || mp_reformat_ix < 0) {
+		uint16_t reformat_ix = at->reformat_off;
+		uint32_t flags = mlx5_hw_act_flag[!!attr->group][tbl_type] |
+				 MLX5DR_ACTION_FLAG_SHARED;
+
+		acts->encap_decap->action =
+			mlx5dr_action_create_reformat(priv->dr_ctx, refmt_type,
+						      1, &hdr, 0, flags);
+		if (!acts->encap_decap->action)
+			return -rte_errno;
+		acts->rule_acts[reformat_ix].action = acts->encap_decap->action;
+		acts->rule_acts[reformat_ix].reformat.data = acts->encap_decap->data;
+		acts->rule_acts[reformat_ix].reformat.offset = 0;
+		acts->encap_decap->shared = true;
+	} else {
+		uint32_t ix;
+		typeof(mp_ctx->reformat[0]) *reformat_ctx = mp_ctx->reformat +
+							    mp_reformat_ix;
+
+		ix = reformat_ctx->elements_num++;
+		reformat_ctx->ctx[ix].reformat_hdr = hdr;
+		reformat_ctx->ctx[ix].rule_action = &acts->rule_acts[at->reformat_off];
+		reformat_ctx->ctx[ix].encap = acts->encap_decap;
+		acts->rule_acts[at->reformat_off].reformat.hdr_idx = ix;
+		acts->encap_decap_pos = at->reformat_off;
+		acts->encap_decap->data_size = data_size;
+		ret = __flow_hw_act_data_encap_append
+			(priv, acts, (at->actions + reformat_src)->type,
+			 reformat_src, at->reformat_off, data_size);
+		if (ret)
+			return -rte_errno;
+	}
+	return 0;
+}
+
+static int
+mlx5_tbl_translate_modify_header(struct rte_eth_dev *dev,
+				 const struct mlx5_flow_template_table_cfg *cfg,
+				 struct mlx5_hw_actions *acts,
+				 struct mlx5_tbl_multi_pattern_ctx *mp_ctx,
+				 struct mlx5_hw_modify_header_action *mhdr,
+				 struct rte_flow_error *error)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	const struct rte_flow_template_table_attr *table_attr = &cfg->attr;
+	const struct rte_flow_attr *attr = &table_attr->flow_attr;
+	enum mlx5dr_table_type tbl_type = get_mlx5dr_table_type(attr);
+	uint16_t mhdr_ix = mhdr->pos;
+	struct mlx5dr_action_mh_pattern pattern = {
+		.sz = sizeof(struct mlx5_modification_cmd) * mhdr->mhdr_cmds_num
+	};
+
+	if (flow_hw_validate_compiled_modify_field(dev, cfg, mhdr, error)) {
+		__flow_hw_action_template_destroy(dev, acts);
+		return -rte_errno;
+	}
+	acts->mhdr = mlx5_malloc(MLX5_MEM_ZERO, sizeof(*acts->mhdr),
+				 0, SOCKET_ID_ANY);
+	if (!acts->mhdr)
+		return rte_flow_error_set(error, ENOMEM,
+					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					  NULL, "translate modify_header: no memory for modify header context");
+	rte_memcpy(acts->mhdr, mhdr, sizeof(*mhdr));
+	pattern.data = (__be64 *)acts->mhdr->mhdr_cmds;
+	if (mhdr->shared) {
+		uint32_t flags = mlx5_hw_act_flag[!!attr->group][tbl_type] |
+				 MLX5DR_ACTION_FLAG_SHARED;
+
+		acts->mhdr->action = mlx5dr_action_create_modify_header
+						(priv->dr_ctx, 1, &pattern, 0,
+						 flags);
+		if (!acts->mhdr->action)
+			return rte_flow_error_set(error, rte_errno,
+						  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+						  NULL, "translate modify_header: failed to create DR action");
+		acts->rule_acts[mhdr_ix].action = acts->mhdr->action;
+	} else {
+		typeof(mp_ctx->mh) *mh = &mp_ctx->mh;
+		uint32_t idx = mh->elements_num;
+		struct mlx5_multi_pattern_ctx *mh_ctx = mh->ctx + mh->elements_num++;
+
+		mh_ctx->mh_pattern = pattern;
+		mh_ctx->mhdr = acts->mhdr;
+		mh_ctx->rule_action = &acts->rule_acts[mhdr_ix];
+		acts->rule_acts[mhdr_ix].modify_header.pattern_idx = idx;
+	}
+	return 0;
+}
+
 /**
  * Translate rte_flow actions to DR action.
  *
@@ -1708,6 +1952,7 @@ __flow_hw_actions_translate(struct rte_eth_dev *dev,
 			    const struct mlx5_flow_template_table_cfg *cfg,
 			    struct mlx5_hw_actions *acts,
 			    struct rte_flow_actions_template *at,
+			    struct mlx5_tbl_multi_pattern_ctx *mp_ctx,
 			    struct rte_flow_error *error)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
@@ -1877,31 +2122,25 @@ __flow_hw_actions_translate(struct rte_eth_dev *dev,
 			break;
 		case RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP:
 			MLX5_ASSERT(!reformat_used);
-			enc_item = ((const struct rte_flow_action_vxlan_encap *)
-				   actions->conf)->definition;
+			enc_item = MLX5_CONST_ENCAP_ITEM(rte_flow_action_vxlan_encap,
+							 actions->conf);
 			if (masks->conf)
-				enc_item_m = ((const struct rte_flow_action_vxlan_encap *)
-					     masks->conf)->definition;
+				enc_item_m = MLX5_CONST_ENCAP_ITEM(rte_flow_action_vxlan_encap,
+								   masks->conf);
 			reformat_used = true;
 			reformat_src = src_pos;
 			refmt_type = MLX5DR_ACTION_TYP_REFORMAT_L2_TO_TNL_L2;
 			break;
 		case RTE_FLOW_ACTION_TYPE_NVGRE_ENCAP:
 			MLX5_ASSERT(!reformat_used);
-			enc_item = ((const struct rte_flow_action_nvgre_encap *)
-				   actions->conf)->definition;
+			enc_item = MLX5_CONST_ENCAP_ITEM(rte_flow_action_nvgre_encap,
+							 actions->conf);
 			if (masks->conf)
-				enc_item_m = ((const struct rte_flow_action_nvgre_encap *)
-					     masks->conf)->definition;
+				enc_item_m = MLX5_CONST_ENCAP_ITEM(rte_flow_action_nvgre_encap,
+								   masks->conf);
 			reformat_used = true;
 			reformat_src = src_pos;
 			refmt_type = MLX5DR_ACTION_TYP_REFORMAT_L2_TO_TNL_L2;
-			break;
-		case RTE_FLOW_ACTION_TYPE_VXLAN_DECAP:
-		case RTE_FLOW_ACTION_TYPE_NVGRE_DECAP:
-			MLX5_ASSERT(!reformat_used);
-			reformat_used = true;
-			refmt_type = MLX5DR_ACTION_TYP_REFORMAT_TNL_L2_TO_L2;
 			break;
 		case RTE_FLOW_ACTION_TYPE_RAW_ENCAP:
 			raw_encap_data =
@@ -1925,6 +2164,12 @@ __flow_hw_actions_translate(struct rte_eth_dev *dev,
 				MLX5DR_ACTION_TYP_REFORMAT_L2_TO_TNL_L2;
 			}
 			reformat_src = src_pos;
+			break;
+		case RTE_FLOW_ACTION_TYPE_VXLAN_DECAP:
+		case RTE_FLOW_ACTION_TYPE_NVGRE_DECAP:
+			MLX5_ASSERT(!reformat_used);
+			reformat_used = true;
+			refmt_type = MLX5DR_ACTION_TYP_REFORMAT_TNL_L2_TO_L2;
 			break;
 		case RTE_FLOW_ACTION_TYPE_RAW_DECAP:
 			reformat_used = true;
@@ -2062,83 +2307,20 @@ __flow_hw_actions_translate(struct rte_eth_dev *dev,
 		}
 	}
 	if (mhdr.pos != UINT16_MAX) {
-		struct mlx5dr_action_mh_pattern pattern;
-		uint32_t flags;
-		uint32_t bulk_size;
-		size_t mhdr_len;
-
-		if (flow_hw_validate_compiled_modify_field(dev, cfg, &mhdr, error)) {
-			__flow_hw_action_template_destroy(dev, acts);
-			return -rte_errno;
-		}
-		acts->mhdr = mlx5_malloc(MLX5_MEM_ZERO, sizeof(*acts->mhdr),
-					 0, SOCKET_ID_ANY);
-		if (!acts->mhdr)
+		ret = mlx5_tbl_translate_modify_header(dev, cfg, acts, mp_ctx,
+						       &mhdr, error);
+		if (ret)
 			goto err;
-		rte_memcpy(acts->mhdr, &mhdr, sizeof(*acts->mhdr));
-		mhdr_len = sizeof(struct mlx5_modification_cmd) * acts->mhdr->mhdr_cmds_num;
-		flags = mlx5_hw_act_flag[!!attr->group][type];
-		if (acts->mhdr->shared) {
-			flags |= MLX5DR_ACTION_FLAG_SHARED;
-			bulk_size = 0;
-		} else {
-			bulk_size = rte_log2_u32(table_attr->nb_flows);
-		}
-		pattern.data = (__be64 *)acts->mhdr->mhdr_cmds;
-		pattern.sz = mhdr_len;
-		acts->mhdr->action = mlx5dr_action_create_modify_header
-				(priv->dr_ctx, 1, &pattern,
-				 bulk_size, flags);
-		if (!acts->mhdr->action)
-			goto err;
-		acts->rule_acts[acts->mhdr->pos].action = acts->mhdr->action;
 	}
 	if (reformat_used) {
-		struct mlx5dr_action_reformat_header hdr;
-		uint8_t buf[MLX5_ENCAP_MAX_LEN];
-		bool shared_rfmt = true;
-
-		MLX5_ASSERT(at->reformat_off != UINT16_MAX);
-		if (enc_item) {
-			MLX5_ASSERT(!encap_data);
-			if (flow_dv_convert_encap_data(enc_item, buf, &data_size, error))
-				goto err;
-			encap_data = buf;
-			if (!enc_item_m)
-				shared_rfmt = false;
-		} else if (encap_data && !encap_data_m) {
-			shared_rfmt = false;
-		}
-		acts->encap_decap = mlx5_malloc(MLX5_MEM_ZERO,
-				    sizeof(*acts->encap_decap) + data_size,
-				    0, SOCKET_ID_ANY);
-		if (!acts->encap_decap)
+		ret = mlx5_tbl_translate_reformat(priv, table_attr, acts, at,
+						  enc_item, enc_item_m,
+						  encap_data, encap_data_m,
+						  mp_ctx, data_size,
+						  reformat_src,
+						  refmt_type, error);
+		if (ret)
 			goto err;
-		if (data_size) {
-			acts->encap_decap->data_size = data_size;
-			memcpy(acts->encap_decap->data, encap_data, data_size);
-		}
-
-		hdr.sz = data_size;
-		hdr.data = encap_data;
-		acts->encap_decap->action = mlx5dr_action_create_reformat
-				(priv->dr_ctx, refmt_type,
-				 1, &hdr,
-				 shared_rfmt ? 0 : rte_log2_u32(table_attr->nb_flows),
-				 mlx5_hw_act_flag[!!attr->group][type] |
-				 (shared_rfmt ? MLX5DR_ACTION_FLAG_SHARED : 0));
-		if (!acts->encap_decap->action)
-			goto err;
-		acts->rule_acts[at->reformat_off].action = acts->encap_decap->action;
-		acts->rule_acts[at->reformat_off].reformat.data = acts->encap_decap->data;
-		if (shared_rfmt)
-			acts->rule_acts[at->reformat_off].reformat.offset = 0;
-		else if (__flow_hw_act_data_encap_append(priv, acts,
-				 (at->actions + reformat_src)->type,
-				 reformat_src, at->reformat_off, data_size))
-			goto err;
-		acts->encap_decap->shared = shared_rfmt;
-		acts->encap_decap_pos = at->reformat_off;
 	}
 	return 0;
 err:
@@ -2167,15 +2349,20 @@ flow_hw_actions_translate(struct rte_eth_dev *dev,
 			  struct rte_flow_template_table *tbl,
 			  struct rte_flow_error *error)
 {
+	int ret;
 	uint32_t i;
+	struct mlx5_tbl_multi_pattern_ctx mpat = MLX5_EMPTY_MULTI_PATTERN_CTX;
 
 	for (i = 0; i < tbl->nb_action_templates; i++) {
 		if (__flow_hw_actions_translate(dev, &tbl->cfg,
 						&tbl->ats[i].acts,
 						tbl->ats[i].action_template,
-						error))
+						&mpat, error))
 			goto err;
 	}
+	ret = mlx5_tbl_multi_pattern_process(dev, tbl, &mpat, error);
+	if (ret)
+		goto err;
 	return 0;
 err:
 	while (i--)
@@ -3684,6 +3871,143 @@ flow_hw_q_flow_flush(struct rte_eth_dev *dev,
 	return 0;
 }
 
+static int
+mlx5_tbl_multi_pattern_process(struct rte_eth_dev *dev,
+			       struct rte_flow_template_table *tbl,
+			       struct mlx5_tbl_multi_pattern_ctx *mpat,
+			       struct rte_flow_error *error)
+{
+	uint32_t i;
+	struct mlx5_priv *priv = dev->data->dev_private;
+	const struct rte_flow_template_table_attr *table_attr = &tbl->cfg.attr;
+	const struct rte_flow_attr *attr = &table_attr->flow_attr;
+	enum mlx5dr_table_type type = get_mlx5dr_table_type(attr);
+	uint32_t flags = mlx5_hw_act_flag[!!attr->group][type];
+	struct mlx5dr_action *dr_action;
+	uint32_t bulk_size = rte_log2_u32(table_attr->nb_flows);
+
+	for (i = 0; i < MLX5_MULTIPATTERN_ENCAP_NUM; i++) {
+		uint32_t j;
+		uint32_t *reformat_refcnt;
+		typeof(mpat->reformat[0]) *reformat = mpat->reformat + i;
+		struct mlx5dr_action_reformat_header hdr[MLX5_HW_TBL_MAX_ACTION_TEMPLATE];
+		enum mlx5dr_action_type reformat_type =
+			mlx5_multi_pattern_reformat_index_to_type(i);
+
+		if (!reformat->elements_num)
+			continue;
+		for (j = 0; j < reformat->elements_num; j++)
+			hdr[j] = reformat->ctx[j].reformat_hdr;
+		reformat_refcnt = mlx5_malloc(MLX5_MEM_ZERO, sizeof(uint32_t), 0,
+					      rte_socket_id());
+		if (!reformat_refcnt)
+			return rte_flow_error_set(error, ENOMEM,
+						  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+						  NULL, "failed to allocate multi-pattern encap counter");
+		*reformat_refcnt = reformat->elements_num;
+		dr_action = mlx5dr_action_create_reformat
+			(priv->dr_ctx, reformat_type, reformat->elements_num, hdr,
+			 bulk_size, flags);
+		if (!dr_action) {
+			mlx5_free(reformat_refcnt);
+			return rte_flow_error_set(error, rte_errno,
+						  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+						  NULL,
+						  "failed to create multi-pattern encap action");
+		}
+		for (j = 0; j < reformat->elements_num; j++) {
+			reformat->ctx[j].rule_action->action = dr_action;
+			reformat->ctx[j].encap->action = dr_action;
+			reformat->ctx[j].encap->multi_pattern = 1;
+			reformat->ctx[j].encap->multi_pattern_refcnt = reformat_refcnt;
+		}
+	}
+	if (mpat->mh.elements_num) {
+		typeof(mpat->mh) *mh = &mpat->mh;
+		struct mlx5dr_action_mh_pattern pattern[MLX5_HW_TBL_MAX_ACTION_TEMPLATE];
+		uint32_t *mh_refcnt = mlx5_malloc(MLX5_MEM_ZERO, sizeof(uint32_t),
+						 0, rte_socket_id());
+
+		if (!mh_refcnt)
+			return rte_flow_error_set(error, ENOMEM,
+						  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+						  NULL, "failed to allocate modify header counter");
+		*mh_refcnt = mpat->mh.elements_num;
+		for (i = 0; i < mpat->mh.elements_num; i++)
+			pattern[i] = mh->ctx[i].mh_pattern;
+		dr_action = mlx5dr_action_create_modify_header
+			(priv->dr_ctx, mpat->mh.elements_num, pattern,
+			 bulk_size, flags);
+		if (!dr_action) {
+			mlx5_free(mh_refcnt);
+			return rte_flow_error_set(error, rte_errno,
+						  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+						  NULL,
+						  "failed to create multi-pattern header modify action");
+		}
+		for (i = 0; i < mpat->mh.elements_num; i++) {
+			mh->ctx[i].rule_action->action = dr_action;
+			mh->ctx[i].mhdr->action = dr_action;
+			mh->ctx[i].mhdr->multi_pattern = 1;
+			mh->ctx[i].mhdr->multi_pattern_refcnt = mh_refcnt;
+		}
+	}
+
+	return 0;
+}
+
+static int
+mlx5_hw_build_template_table(struct rte_eth_dev *dev,
+			     uint8_t nb_action_templates,
+			     struct rte_flow_actions_template *action_templates[],
+			     struct mlx5dr_action_template *at[],
+			     struct rte_flow_template_table *tbl,
+			     struct rte_flow_error *error)
+{
+	int ret;
+	uint8_t i;
+	struct mlx5_tbl_multi_pattern_ctx mpat = MLX5_EMPTY_MULTI_PATTERN_CTX;
+
+	for (i = 0; i < nb_action_templates; i++) {
+		uint32_t refcnt = __atomic_add_fetch(&action_templates[i]->refcnt, 1,
+						     __ATOMIC_RELAXED);
+
+		if (refcnt <= 1) {
+			rte_flow_error_set(error, EINVAL,
+					   RTE_FLOW_ERROR_TYPE_ACTION,
+					   &action_templates[i], "invalid AT refcount");
+			goto at_error;
+		}
+		at[i] = action_templates[i]->tmpl;
+		tbl->ats[i].action_template = action_templates[i];
+		LIST_INIT(&tbl->ats[i].acts.act_list);
+		/* do NOT translate table action if `dev` was not started */
+		if (!dev->data->dev_started)
+			continue;
+		ret = __flow_hw_actions_translate(dev, &tbl->cfg,
+						  &tbl->ats[i].acts,
+						  action_templates[i],
+						  &mpat, error);
+		if (ret) {
+			i++;
+			goto at_error;
+		}
+	}
+	tbl->nb_action_templates = nb_action_templates;
+	ret = mlx5_tbl_multi_pattern_process(dev, tbl, &mpat, error);
+	if (ret)
+		goto at_error;
+	return 0;
+
+at_error:
+	while (i--) {
+		__flow_hw_action_template_destroy(dev, &tbl->ats[i].acts);
+		__atomic_sub_fetch(&action_templates[i]->refcnt,
+				   1, __ATOMIC_RELAXED);
+	}
+	return rte_errno;
+}
+
 /**
  * Create flow table.
  *
@@ -3836,29 +4160,12 @@ flow_hw_table_create(struct rte_eth_dev *dev,
 	}
 	tbl->nb_item_templates = nb_item_templates;
 	/* Build the action template. */
-	for (i = 0; i < nb_action_templates; i++) {
-		uint32_t ret;
-
-		ret = __atomic_fetch_add(&action_templates[i]->refcnt, 1,
-					 __ATOMIC_RELAXED) + 1;
-		if (ret <= 1) {
-			rte_errno = EINVAL;
-			goto at_error;
-		}
-		at[i] = action_templates[i]->tmpl;
-		tbl->ats[i].action_template = action_templates[i];
-		LIST_INIT(&tbl->ats[i].acts.act_list);
-		if (!port_started)
-			continue;
-		err = __flow_hw_actions_translate(dev, &tbl->cfg,
-						  &tbl->ats[i].acts,
-						  action_templates[i], &sub_error);
-		if (err) {
-			i++;
-			goto at_error;
-		}
+	err = mlx5_hw_build_template_table(dev, nb_action_templates,
+					   action_templates, at, tbl, &sub_error);
+	if (err) {
+		i = nb_item_templates;
+		goto it_error;
 	}
-	tbl->nb_action_templates = nb_action_templates;
 	tbl->matcher = mlx5dr_matcher_create
 		(tbl->grp->tbl, mt, nb_item_templates, at, nb_action_templates, &matcher_attr);
 	if (!tbl->matcher)
@@ -3872,7 +4179,7 @@ flow_hw_table_create(struct rte_eth_dev *dev,
 		LIST_INSERT_HEAD(&priv->flow_hw_tbl_ongo, tbl, next);
 	return tbl;
 at_error:
-	while (i--) {
+	for (i = 0; i < nb_action_templates; i++) {
 		__flow_hw_action_template_destroy(dev, &tbl->ats[i].acts);
 		__atomic_fetch_sub(&action_templates[i]->refcnt,
 				   1, __ATOMIC_RELAXED);
@@ -4410,6 +4717,10 @@ flow_hw_validate_action_modify_field(struct rte_eth_dev *dev,
 	const struct rte_flow_action_modify_field *mask_conf = mask->conf;
 	int ret;
 
+	if (!mask_conf)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ACTION, action,
+					  "modify_field mask conf is missing");
 	if (action_conf->operation != mask_conf->operation)
 		return rte_flow_error_set(error, EINVAL,
 				RTE_FLOW_ERROR_TYPE_ACTION, action,
@@ -4816,16 +5127,25 @@ flow_hw_validate_action_indirect(struct rte_eth_dev *dev,
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 static int
-flow_hw_validate_action_raw_encap(struct rte_eth_dev *dev __rte_unused,
-				  const struct rte_flow_action *action,
+flow_hw_validate_action_raw_encap(const struct rte_flow_action *action,
+				  const struct rte_flow_action *mask,
 				  struct rte_flow_error *error)
 {
-	const struct rte_flow_action_raw_encap *raw_encap_data = action->conf;
+	const struct rte_flow_action_raw_encap *mask_conf = mask->conf;
+	const struct rte_flow_action_raw_encap *action_conf = action->conf;
 
-	if (!raw_encap_data || !raw_encap_data->size || !raw_encap_data->data)
+	if (!mask_conf || !mask_conf->size)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ACTION, mask,
+					  "raw_encap: size must be masked");
+	if (!action_conf || !action_conf->size)
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ACTION, action,
-					  "invalid raw_encap_data");
+					  "raw_encap: invalid action configuration");
+	if (mask_conf->data && !action_conf->data)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ACTION, action,
+					  "raw_encap: masked data is missing");
 	return 0;
 }
 
@@ -5107,7 +5427,7 @@ mlx5_flow_hw_actions_validate(struct rte_eth_dev *dev,
 			action_flags |= MLX5_FLOW_ACTION_DECAP;
 			break;
 		case RTE_FLOW_ACTION_TYPE_RAW_ENCAP:
-			ret = flow_hw_validate_action_raw_encap(dev, action, error);
+			ret = flow_hw_validate_action_raw_encap(action, mask, error);
 			if (ret < 0)
 				return ret;
 			action_flags |= MLX5_FLOW_ACTION_ENCAP;
@@ -10012,20 +10332,6 @@ mlx5_hw_mirror_destroy(struct rte_eth_dev *dev, struct mlx5_mirror *mirror)
 	mlx5_free(mirror);
 }
 
-static inline enum mlx5dr_table_type
-get_mlx5dr_table_type(const struct rte_flow_attr *attr)
-{
-	enum mlx5dr_table_type type;
-
-	if (attr->transfer)
-		type = MLX5DR_TABLE_TYPE_FDB;
-	else if (attr->egress)
-		type = MLX5DR_TABLE_TYPE_NIC_TX;
-	else
-		type = MLX5DR_TABLE_TYPE_NIC_RX;
-	return type;
-}
-
 static __rte_always_inline bool
 mlx5_mirror_terminal_action(const struct rte_flow_action *action)
 {
@@ -10175,9 +10481,6 @@ mirror_format_port(struct rte_eth_dev *dev,
 	dest_attr->dest = priv->hw_vport[port_action->port_id];
 	return 0;
 }
-
-#define MLX5_CONST_ENCAP_ITEM(encap_type, ptr) \
-(((const struct encap_type *)(ptr))->definition)
 
 static int
 hw_mirror_clone_reformat(const struct rte_flow_action *actions,

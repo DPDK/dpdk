@@ -1376,7 +1376,9 @@ struct mlx5_hw_encap_decap_action {
 	enum mlx5dr_action_type action_type;
 	struct mlx5dr_action *action; /* Action object. */
 	/* Is header_reformat action shared across flows in table. */
-	bool shared;
+	uint32_t shared:1;
+	uint32_t multi_pattern:1;
+	volatile uint32_t *multi_pattern_refcnt;
 	size_t data_size; /* Action metadata size. */
 	uint8_t data[]; /* Action data. */
 };
@@ -1390,7 +1392,9 @@ struct mlx5_hw_modify_header_action {
 	/* Modify header action position in action rule table. */
 	uint16_t pos;
 	/* Is MODIFY_HEADER action shared across flows in table. */
-	bool shared;
+	uint32_t shared:1;
+	uint32_t multi_pattern:1;
+	volatile uint32_t *multi_pattern_refcnt;
 	/* Amount of modification commands stored in the precompiled buffer. */
 	uint32_t mhdr_cmds_num;
 	/* Precompiled modification commands. */
