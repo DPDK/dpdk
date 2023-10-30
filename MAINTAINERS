@@ -639,11 +639,11 @@ F: doc/guides/nics/af_xdp.rst
 F: doc/guides/nics/features/af_xdp.ini
 
 Amazon ENA
-M: Michal Krawczyk <mk@semihalf.com>
 M: Shai Brandes <shaibran@amazon.com>
 M: Evgeny Schemeilin <evgenys@amazon.com>
-M: Igor Chauskin <igorch@amazon.com>
 M: Ron Beider <rbeider@amazon.com>
+M: Amit Bernstein <amitbern@amazon.com>
+M: Wajeeh Atrash <atrwajee@amazon.com>
 F: drivers/net/ena/
 F: doc/guides/nics/ena.rst
 F: doc/guides/nics/features/ena.ini
