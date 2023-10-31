@@ -169,6 +169,7 @@ struct mlx5_switch_info {
 	int32_t ctrl_num; /**< Controller number (valid for c#pf#vf# format). */
 	int32_t pf_num; /**< PF number (valid for pfxvfx format only). */
 	int32_t port_name; /**< Representor port name. */
+	int32_t mpesw_owner; /**< MPESW owner port number. */
 	uint64_t switch_id; /**< Switch identifier. */
 };
 

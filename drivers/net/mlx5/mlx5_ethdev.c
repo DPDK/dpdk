@@ -395,18 +395,30 @@ uint16_t
 mlx5_representor_id_encode(const struct mlx5_switch_info *info,
 			   enum rte_eth_representor_type hpf_type)
 {
-	enum rte_eth_representor_type type = RTE_ETH_REPRESENTOR_VF;
+	enum rte_eth_representor_type type;
 	uint16_t repr = info->port_name;
+	int32_t pf = info->pf_num;
 
-	if (info->representor == 0)
-		return UINT16_MAX;
-	if (info->name_type == MLX5_PHYS_PORT_NAME_TYPE_PFSF)
+	switch (info->name_type) {
+	case MLX5_PHYS_PORT_NAME_TYPE_UPLINK:
+		if (!info->representor)
+			return UINT16_MAX;
+		type = RTE_ETH_REPRESENTOR_PF;
+		pf = info->mpesw_owner;
+		break;
+	case MLX5_PHYS_PORT_NAME_TYPE_PFSF:
 		type = RTE_ETH_REPRESENTOR_SF;
-	if (info->name_type == MLX5_PHYS_PORT_NAME_TYPE_PFHPF) {
+		break;
+	case MLX5_PHYS_PORT_NAME_TYPE_PFHPF:
 		type = hpf_type;
 		repr = UINT16_MAX;
+		break;
+	case MLX5_PHYS_PORT_NAME_TYPE_PFVF:
+	default:
+		type = RTE_ETH_REPRESENTOR_VF;
+		break;
 	}
-	return MLX5_REPRESENTOR_ID(info->pf_num, type, repr);
+	return MLX5_REPRESENTOR_ID(pf, type, repr);
 }
 
 /**
@@ -430,7 +442,7 @@ mlx5_representor_info_get(struct rte_eth_dev *dev,
 			  struct rte_eth_representor_info *info)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	int n_type = 4; /* Representor types, VF, HPF@VF, SF and HPF@SF. */
+	int n_type = 5; /* Representor types: PF, VF, HPF@VF, SF and HPF@SF. */
 	int n_pf = 2; /* Number of PFs. */
 	int i = 0, pf;
 	int n_entries;
@@ -443,7 +455,30 @@ mlx5_representor_info_get(struct rte_eth_dev *dev,
 		n_entries = info->nb_ranges_alloc;
 
 	info->controller = 0;
-	info->pf = priv->pf_bond >= 0 ? priv->pf_bond : 0;
+	info->pf = 0;
+	if (mlx5_is_port_on_mpesw_device(priv)) {
+		info->pf = priv->mpesw_port;
+		/* PF range, both ports will show the same information. */
+		info->ranges[i].type = RTE_ETH_REPRESENTOR_PF;
+		info->ranges[i].controller = 0;
+		info->ranges[i].pf = priv->mpesw_owner + 1;
+		info->ranges[i].vf = 0;
+		/*
+		 * The representor indexes should be the values set of "priv->mpesw_port".
+		 * In the real case now, only 1 PF/UPLINK representor is supported.
+		 * The port index will always be the value of "owner + 1".
+		 */
+		info->ranges[i].id_base =
+			MLX5_REPRESENTOR_ID(priv->mpesw_owner, info->ranges[i].type,
+					    info->ranges[i].pf);
+		info->ranges[i].id_end =
+			MLX5_REPRESENTOR_ID(priv->mpesw_owner, info->ranges[i].type,
+					    info->ranges[i].pf);
+		snprintf(info->ranges[i].name, sizeof(info->ranges[i].name),
+			 "pf%d", info->ranges[i].pf);
+		i++;
+	} else if (priv->pf_bond >= 0)
+		info->pf = priv->pf_bond;
 	for (pf = 0; pf < n_pf; ++pf) {
 		/* VF range. */
 		info->ranges[i].type = RTE_ETH_REPRESENTOR_VF;

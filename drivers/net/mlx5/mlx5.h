@@ -186,12 +186,15 @@ struct mlx5_dev_cap {
 	char fw_ver[64]; /* Firmware version of this device. */
 };
 
+#define MLX5_MPESW_PORT_INVALID (-1)
+
 /** Data associated with devices to spawn. */
 struct mlx5_dev_spawn_data {
 	uint32_t ifindex; /**< Network interface index. */
 	uint32_t max_port; /**< Device maximal port index. */
 	uint32_t phys_port; /**< Device physical port index. */
 	int pf_bond; /**< bonding device PF index. < 0 - no bonding */
+	int mpesw_port; /**< MPESW uplink index. Valid if mpesw_owner_port >= 0. */
 	struct mlx5_switch_info info; /**< Switch information. */
 	const char *phys_dev_name; /**< Name of physical device. */
 	struct rte_eth_dev *eth_dev; /**< Associated Ethernet device. */
@@ -199,6 +202,23 @@ struct mlx5_dev_spawn_data {
 	struct mlx5_common_device *cdev; /**< Backend common device. */
 	struct mlx5_bond_info *bond_info;
 };
+
+/**
+ * Check if the port requested to be probed is MPESW physical device
+ * or a representor port.
+ *
+ * @param spawn
+ *   Parameters of the probed port.
+ *
+ * @return
+ *   True if the probed port is a physical device or representor in MPESW setup.
+ *   False otherwise or MPESW was not configured.
+ */
+static inline bool
+mlx5_is_probed_port_on_mpesw_device(struct mlx5_dev_spawn_data *spawn)
+{
+	return spawn->mpesw_port >= 0;
+}
 
 /** Data associated with socket messages. */
 struct mlx5_flow_dump_req  {
@@ -1768,6 +1788,9 @@ struct mlx5_priv {
 	uint32_t vport_meta_mask; /* Used for vport index field match mask. */
 	uint16_t representor_id; /* UINT16_MAX if not a representor. */
 	int32_t pf_bond; /* >=0, representor owner PF index in bonding. */
+	int32_t mpesw_owner; /* >=0, representor owner PF index in MPESW. */
+	int32_t mpesw_port; /* Related port index of MPESW device. < 0 - no MPESW. */
+	bool mpesw_uplink; /* If true, port is an uplink port. */
 	unsigned int if_index; /* Associated kernel network device index. */
 	/* RX/TX queues. */
 	unsigned int rxqs_n; /* RX queues array size. */
@@ -1931,6 +1954,22 @@ mlx5_devx_obj_ops_en(struct mlx5_dev_ctx_shared *sh)
 	 */
 	return (sh->cdev->config.devx && sh->config.dv_flow_en &&
 		sh->dev_cap.dest_tir);
+}
+
+/**
+ * Check if the port is either MPESW physical device or a representor port.
+ *
+ * @param priv
+ *   Pointer to port's private data.
+ *
+ * @return
+ *   True if the port is a physical device or representor in MPESW setup.
+ *   False otherwise or MPESW was not configured.
+ */
+static inline bool
+mlx5_is_port_on_mpesw_device(struct mlx5_priv *priv)
+{
+	return priv->mpesw_port >= 0;
 }
 
 /* mlx5.c */

@@ -1375,6 +1375,138 @@ for an additional list of options shared with other mlx5 drivers.
   By default, the PMD will set this value to 1.
 
 
+Multiport E-Switch
+------------------
+
+In standard deployments of NVIDIA ConnectX and BlueField HCAs, where embedded switch is enabled,
+each physical port is associated with a single switching domain.
+Only PFs, VFs and SFs related to that physical port are connected to this domain
+and offloaded flow rules are allowed to steer traffic only between the entities in the given domain.
+
+The following diagram pictures the high level overview of this architecture::
+
+       .---. .------. .------. .---. .------. .------.
+       |PF0| |PF0VFi| |PF0SFi| |PF1| |PF1VFi| |PF1SFi|
+       .-+-. .--+---. .--+---. .-+-. .--+---. .--+---.
+         |      |        |       |      |        |
+     .---|------|--------|-------|------|--------|---------.
+     |   |      |        |       |      |        |      HCA|
+     | .-+------+--------+---. .-+------+--------+---.     |
+     | |                     | |                     |     |
+     | |      E-Switch       | |     E-Switch        |     |
+     | |         PF0         | |        PF1          |     |
+     | |                     | |                     |     |
+     | .---------+-----------. .--------+------------.     |
+     |           |                      |                  |
+     .--------+--+---+---------------+--+---+--------------.
+              |      |               |      |
+              | PHY0 |               | PHY1 |
+              |      |               |      |
+              .------.               .------.
+
+Multiport E-Switch is a deployment scenario where:
+
+- All physical ports, PFs, VFs and SFs share the same switching domain.
+- Each physical port gets a separate representor port.
+- Traffic can be matched or forwarded explicitly between any of the entities
+  connected to the domain.
+
+The following diagram pictures the high level overview of this architecture::
+
+       .---. .------. .------. .---. .------. .------.
+       |PF0| |PF0VFi| |PF0SFi| |PF1| |PF1VFi| |PF1SFi|
+       .-+-. .--+---. .--+---. .-+-. .--+---. .--+---.
+         |      |        |       |      |        |
+     .---|------|--------|-------|------|--------|---------.
+     |   |      |        |       |      |        |      HCA|
+     | .-+------+--------+-------+------+--------+---.     |
+     | |                                             |     |
+     | |                   Shared                    |     |
+     | |                  E-Switch                   |     |
+     | |                                             |     |
+     | .---------+----------------------+------------.     |
+     |           |                      |                  |
+     .--------+--+---+---------------+--+---+--------------.
+              |      |               |      |
+              | PHY0 |               | PHY1 |
+              |      |               |      |
+              .------.               .------.
+
+In this deployment a single application can control the switching and forwarding behavior for all
+entities on the HCA.
+
+With this configuration, mlx5 PMD supports:
+
+- matching traffic coming from physical port, PF, VF or SF using REPRESENTED_PORT items;
+- forwarding traffic to physical port, PF, VF or SF using REPRESENTED_PORT actions;
+
+Requirements
+~~~~~~~~~~~~
+
+Supported HCAs:
+
+- ConnectX family: ConnectX-6 Dx and above.
+- BlueField family: BlueField-2 and above.
+- FW version: at least ``XX.37.1014``.
+
+Supported mlx5 kernel modules versions:
+
+- Upstream Linux - from version 6.3.
+- Modules packaged in MLNX_OFED - from version v23.04-0.5.3.3.
+
+Configuration
+~~~~~~~~~~~~~
+
+#. Apply required FW configuration::
+
+      sudo mlxconfig -d /dev/mst/mt4125_pciconf0 set LAG_RESOURCE_ALLOCATION=1
+
+#. Reset FW or cold reboot the host.
+
+#. Switch E-Switch mode on all of the PFs to ``switchdev`` mode::
+
+      sudo devlink dev eswitch set pci/0000:08:00.0 mode switchdev
+      sudo devlink dev eswitch set pci/0000:08:00.1 mode switchdev
+
+#. Enable Multiport E-Switch on all of the PFs::
+
+      sudo devlink dev param set pci/0000:08:00.0 name esw_multiport value true cmode runtime
+      sudo devlink dev param set pci/0000:08:00.1 name esw_multiport value true cmode runtime
+
+#. Configure required number of VFs/SFs::
+
+      echo 4 | sudo tee /sys/class/net/eth2/device/sriov_numvfs
+      echo 4 | sudo tee /sys/class/net/eth3/device/sriov_numvfs
+
+#. Start testpmd and verify that all ports are visible::
+
+      $ sudo dpdk-testpmd -a 08:00.0,dv_flow_en=2,representor=pf0-1vf0-3 -- -i
+      testpmd> show port summary all
+      Number of available ports: 10
+      Port MAC Address       Name         Driver         Status   Link
+      0    E8:EB:D5:18:22:BC 08:00.0_p0   mlx5_pci       up       200 Gbps
+      1    E8:EB:D5:18:22:BD 08:00.0_p1   mlx5_pci       up       200 Gbps
+      2    D2:F6:43:0B:9E:19 08:00.0_representor_c0pf0vf0 mlx5_pci       up       200 Gbps
+      3    E6:42:27:B7:68:BD 08:00.0_representor_c0pf0vf1 mlx5_pci       up       200 Gbps
+      4    A6:5B:7F:8B:B8:47 08:00.0_representor_c0pf0vf2 mlx5_pci       up       200 Gbps
+      5    12:93:50:45:89:02 08:00.0_representor_c0pf0vf3 mlx5_pci       up       200 Gbps
+      6    06:D3:B2:79:FE:AC 08:00.0_representor_c0pf1vf0 mlx5_pci       up       200 Gbps
+      7    12:FC:08:E4:C2:CA 08:00.0_representor_c0pf1vf1 mlx5_pci       up       200 Gbps
+      8    8E:A9:9A:D0:35:4C 08:00.0_representor_c0pf1vf2 mlx5_pci       up       200 Gbps
+      9    E6:35:83:1F:B0:A9 08:00.0_representor_c0pf1vf3 mlx5_pci       up       200 Gbps
+
+Limitations
+~~~~~~~~~~~
+
+- Multiport E-Switch is not supported on Windows.
+- Multiport E-Switch is supported only with HW Steering flow engine (``dv_flow_en=2``).
+- Matching traffic coming from a physical port and forwarding it to a physical port
+  (either the same or other one) is not supported.
+
+  In order to achieve such a functionality, an application has to setup hairpin queues
+  between physical port representors and forward the traffic using hairpin queues.
+
+
 Sub-Function
 ------------
 

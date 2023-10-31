@@ -1331,7 +1331,7 @@ flow_hw_represented_port_compile(struct rte_eth_dev *dev,
 	if (!priv->master)
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
-					  "represented_port acton must"
+					  "represented_port action must"
 					  " be used on proxy port");
 	if (m && !!m->port_id) {
 		struct mlx5_priv *port_priv;
@@ -9188,7 +9188,7 @@ flow_hw_set_port_info(struct rte_eth_dev *dev)
 	info = &mlx5_flow_hw_port_infos[port_id];
 	info->regc_mask = priv->vport_meta_mask;
 	info->regc_value = priv->vport_meta_tag;
-	info->is_wire = priv->master;
+	info->is_wire = mlx5_is_port_on_mpesw_device(priv) ? priv->mpesw_uplink : priv->master;
 }
 
 /* Clears vport tag and mask used for HWS rules. */
