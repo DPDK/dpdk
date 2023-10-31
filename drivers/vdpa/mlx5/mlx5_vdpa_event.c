@@ -514,7 +514,6 @@ mlx5_vdpa_cqe_event_setup(struct mlx5_vdpa_priv *priv)
 		DRV_LOG(ERR, "Failed to initialize thread attributes");
 		goto out;
 	}
-	attr.priority = RTE_THREAD_PRIORITY_REALTIME_CRITICAL;
 	if (priv->event_core != -1)
 		CPU_SET(priv->event_core, &attr.cpuset);
 	else
