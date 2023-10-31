@@ -978,7 +978,7 @@ int hns3_fdir_filter_program(struct hns3_adapter *hns,
 				 rule->key_conf.spec.src_port,
 				 rule->key_conf.spec.dst_port, ret);
 		else
-			hns3_remove_fdir_filter(hw, fdir_info, &rule->key_conf);
+			ret = hns3_remove_fdir_filter(hw, fdir_info, &rule->key_conf);
 
 		return ret;
 	}
