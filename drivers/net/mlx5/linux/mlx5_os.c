@@ -1931,9 +1931,38 @@ mlx5_device_bond_pci_match(const char *ibdev_name,
 	return pf;
 }
 
+static int
+mlx5_nl_esw_multiport_get(struct rte_pci_addr *pci_addr, int *enabled)
+{
+	char pci_addr_str[PCI_PRI_STR_SIZE] = { 0 };
+	int nlsk_fd;
+	int devlink_id;
+	int ret;
+
+	/* Provide correct value to have defined enabled state in case of an error. */
+	*enabled = 0;
+	rte_pci_device_name(pci_addr, pci_addr_str, sizeof(pci_addr_str));
+	nlsk_fd = mlx5_nl_init(NETLINK_GENERIC, 0);
+	if (nlsk_fd < 0)
+		return nlsk_fd;
+	devlink_id = mlx5_nl_devlink_family_id_get(nlsk_fd);
+	if (devlink_id < 0) {
+		ret = devlink_id;
+		DRV_LOG(DEBUG, "Unable to get devlink family id for Multiport E-Switch checks "
+			       "by netlink, for PCI device %s", pci_addr_str);
+		goto close_nlsk_fd;
+	}
+	ret = mlx5_nl_devlink_esw_multiport_get(nlsk_fd, devlink_id, pci_addr_str, enabled);
+	if (ret < 0)
+		DRV_LOG(DEBUG, "Unable to get Multiport E-Switch state by Netlink.");
+close_nlsk_fd:
+	close(nlsk_fd);
+	return ret;
+}
+
 #define SYSFS_MPESW_PARAM_MAX_LEN 16
 
-static __rte_unused int
+static int
 mlx5_sysfs_esw_multiport_get(struct ibv_device *ibv, struct rte_pci_addr *pci_addr, int *enabled)
 {
 	int nl_rdma;
@@ -1998,6 +2027,26 @@ mlx5_sysfs_esw_multiport_get(struct ibv_device *ibv, struct rte_pci_addr *pci_ad
 close_nl_rdma:
 	close(nl_rdma);
 	return ret;
+}
+
+static __rte_unused int
+mlx5_is_mpesw_enabled(struct ibv_device *ibv, struct rte_pci_addr *ibv_pci_addr, int *enabled)
+{
+	/*
+	 * Try getting Multiport E-Switch state through netlink interface
+	 * If unable, try sysfs interface. If that is unable as well,
+	 * assume that Multiport E-Switch is disabled and return an error.
+	 */
+	if (mlx5_nl_esw_multiport_get(ibv_pci_addr, enabled) >= 0 ||
+	    mlx5_sysfs_esw_multiport_get(ibv, ibv_pci_addr, enabled) >= 0)
+		return 0;
+	DRV_LOG(DEBUG, "Unable to check MPESW state for IB device %s "
+		       "(PCI: " PCI_PRI_FMT ")",
+		       ibv->name,
+		       ibv_pci_addr->domain, ibv_pci_addr->bus,
+		       ibv_pci_addr->devid, ibv_pci_addr->function);
+	*enabled = 0;
+	return -rte_errno;
 }
 
 /**
