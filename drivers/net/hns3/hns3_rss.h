@@ -190,10 +190,6 @@ bool hns3_check_rss_types_valid(struct hns3_hw *hw, uint64_t types);
 int hns3_set_rss_tuple_by_rss_hf(struct hns3_hw *hw, uint64_t rss_hf);
 int hns3_set_rss_tuple_field(struct hns3_hw *hw, uint64_t tuple_fields);
 int hns3_get_rss_tuple_field(struct hns3_hw *hw, uint64_t *tuple_fields);
-int hns3_rss_set_algo_key(struct hns3_hw *hw, uint8_t hash_algo,
-			  const uint8_t *key, uint8_t key_len);
-int hns3_rss_get_algo_key(struct hns3_hw *hw,  uint8_t *hash_algo,
-			  uint8_t *key, uint8_t key_len);
 uint64_t hns3_rss_calc_tuple_filed(uint64_t rss_hf);
 int hns3_update_rss_algo_key(struct hns3_hw *hw, uint8_t hash_algo,
 			     uint8_t *key, uint8_t key_len);
