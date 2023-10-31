@@ -519,6 +519,28 @@ hns3_build_api_caps(void)
 	return rte_cpu_to_le_32(api_caps);
 }
 
+static void
+hns3_set_dcb_capability(struct hns3_hw *hw)
+{
+	struct hns3_adapter *hns = HNS3_DEV_HW_TO_ADAPTER(hw);
+	struct rte_pci_device *pci_dev;
+	struct rte_eth_dev *eth_dev;
+	uint16_t device_id;
+
+	if (hns->is_vf)
+		return;
+
+	eth_dev = &rte_eth_devices[hw->data->port_id];
+	pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
+	device_id = pci_dev->id.device_id;
+
+	if (device_id == HNS3_DEV_ID_25GE_RDMA ||
+	    device_id == HNS3_DEV_ID_50GE_RDMA ||
+	    device_id == HNS3_DEV_ID_100G_RDMA_MACSEC ||
+	    device_id == HNS3_DEV_ID_200G_RDMA)
+		hns3_set_bit(hw->capability, HNS3_DEV_SUPPORT_DCB_B, 1);
+}
+
 static int
 hns3_cmd_query_firmware_version_and_capability(struct hns3_hw *hw)
 {
@@ -536,6 +558,9 @@ hns3_cmd_query_firmware_version_and_capability(struct hns3_hw *hw)
 		return ret;
 
 	hw->fw_version = rte_le_to_cpu_32(resp->firmware);
+
+	hns3_set_dcb_capability(hw);
+
 	/*
 	 * Make sure mask the capability before parse capability because it
 	 * may overwrite resp's data.
