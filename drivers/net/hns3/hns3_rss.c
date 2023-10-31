@@ -771,7 +771,7 @@ hns3_dev_rss_hash_conf_get(struct rte_eth_dev *dev,
 {
 	struct hns3_adapter *hns = dev->data->dev_private;
 	struct hns3_hw *hw = &hns->hw;
-	uint8_t hash_algo;
+	uint8_t hash_algo = 0;
 	int ret;
 
 	rte_spinlock_lock(&hw->lock);
@@ -993,7 +993,7 @@ hns3_update_rss_algo_key(struct hns3_hw *hw, uint8_t hash_func,
 {
 	uint8_t rss_key[HNS3_RSS_KEY_SIZE_MAX] = {0};
 	bool modify_key, modify_algo;
-	uint8_t hash_algo;
+	uint8_t hash_algo = 0;
 	int ret;
 
 	modify_key = (key != NULL && key_len > 0);
