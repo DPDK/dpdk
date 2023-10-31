@@ -1524,6 +1524,24 @@ icp_qat_fw_mmp_ecdsa_verify_gfp_521_input::in in @endlink
  * icp_qat_fw_mmp_kpt_ecdsa_sign_rs_gfp_521_output::s s @endlink
  */
 
+#define PKE_ECSM2_SIGN_RS 0x222116fe
+/**< Functionality ID for ECC SM2 Sign RS
+ * @li 3 input parameters : @link icp_qat_fw_mmp_ecsm2_sign_rs_input_s::k k
+ * @endlink @link icp_qat_fw_mmp_ecsm2_sign_rs_input_s::e e @endlink @link
+ * icp_qat_fw_mmp_ecsm2_sign_rs_input_s::d d @endlink
+ * @li 2 output parameters : @link icp_qat_fw_mmp_ecsm2_sign_rs_output_s::r r
+ * @endlink @link icp_qat_fw_mmp_ecsm2_sign_rs_output_s::s s @endlink
+ */
+#define PKE_ECSM2_VERIFY 0x29241743
+/**< Functionality ID for ECC SM2 Signature Verify
+ * @li 5 input parameters : @link icp_qat_fw_mmp_ecsm2_verify_input_s::e e
+ * @endlink @link icp_qat_fw_mmp_ecsm2_verify_input_s::r r @endlink @link
+ * icp_qat_fw_mmp_ecsm2_verify_input_s::s s @endlink @link
+ * icp_qat_fw_mmp_ecsm2_verify_input_s::xp xp @endlink @link
+ * icp_qat_fw_mmp_ecsm2_verify_input_s::yp yp @endlink
+ * @li no output parameters
+ */
+
 #define PKE_LIVENESS 0x00000001
 /**< Functionality ID for PKE_LIVENESS
  * @li 0 input parameter(s)

@@ -314,4 +314,24 @@ get_ec_verify_function(const struct rte_crypto_asym_xform *xform)
 	return qat_function;
 }
 
+static struct qat_asym_function
+get_sm2_ecdsa_sign_function(void)
+{
+	struct qat_asym_function qat_function = {
+		PKE_ECSM2_SIGN_RS, 32
+	};
+
+	return qat_function;
+}
+
+static struct qat_asym_function
+get_sm2_ecdsa_verify_function(void)
+{
+	struct qat_asym_function qat_function = {
+		PKE_ECSM2_VERIFY, 32
+	};
+
+	return qat_function;
+}
+
 #endif

@@ -233,6 +233,7 @@ New Features
 * **Updated Intel QuickAssist Technology driver.**
 
   * Enabled support for QAT 2.0c (4944) devices in QAT crypto driver.
+  * Added support for SM2 ECDSA algorithm.
 
 * **Updated Marvell cnxk crypto driver.**
 

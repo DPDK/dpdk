@@ -186,6 +186,7 @@ The QAT ASYM PMD has support for:
 * ``RTE_CRYPTO_ASYM_XFORM_ECDSA``
 * ``RTE_CRYPTO_ASYM_XFORM_ECPM``
 * ``RTE_CRYPTO_ASYM_XFORM_ECDH``
+* ``RTE_CRYPTO_ASYM_XFORM_SM2``
 
 Limitations
 ~~~~~~~~~~~
