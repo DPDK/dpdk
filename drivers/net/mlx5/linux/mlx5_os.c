@@ -1931,6 +1931,75 @@ mlx5_device_bond_pci_match(const char *ibdev_name,
 	return pf;
 }
 
+#define SYSFS_MPESW_PARAM_MAX_LEN 16
+
+static __rte_unused int
+mlx5_sysfs_esw_multiport_get(struct ibv_device *ibv, struct rte_pci_addr *pci_addr, int *enabled)
+{
+	int nl_rdma;
+	unsigned int n_ports;
+	unsigned int i;
+	int ret;
+
+	/* Provide correct value to have defined enabled state in case of an error. */
+	*enabled = 0;
+	nl_rdma = mlx5_nl_init(NETLINK_RDMA, 0);
+	if (nl_rdma < 0)
+		return nl_rdma;
+	n_ports = mlx5_nl_portnum(nl_rdma, ibv->name);
+	if (!n_ports) {
+		ret = -rte_errno;
+		goto close_nl_rdma;
+	}
+	for (i = 1; i <= n_ports; ++i) {
+		unsigned int ifindex;
+		char ifname[IF_NAMESIZE + 1];
+		struct rte_pci_addr if_pci_addr;
+		char mpesw[SYSFS_MPESW_PARAM_MAX_LEN + 1];
+		FILE *sysfs;
+		int n;
+
+		ifindex = mlx5_nl_ifindex(nl_rdma, ibv->name, i);
+		if (!ifindex)
+			continue;
+		if (!if_indextoname(ifindex, ifname))
+			continue;
+		MKSTR(sysfs_if_path, "/sys/class/net/%s", ifname);
+		if (mlx5_get_pci_addr(sysfs_if_path, &if_pci_addr))
+			continue;
+		if (pci_addr->domain != if_pci_addr.domain ||
+		    pci_addr->bus != if_pci_addr.bus ||
+		    pci_addr->devid != if_pci_addr.devid ||
+		    pci_addr->function != if_pci_addr.function)
+			continue;
+		MKSTR(sysfs_mpesw_path,
+		      "/sys/class/net/%s/compat/devlink/lag_port_select_mode", ifname);
+		sysfs = fopen(sysfs_mpesw_path, "r");
+		if (!sysfs)
+			continue;
+		n = fscanf(sysfs, "%" RTE_STR(SYSFS_MPESW_PARAM_MAX_LEN) "s", mpesw);
+		fclose(sysfs);
+		if (n != 1)
+			continue;
+		ret = 0;
+		if (strcmp(mpesw, "multiport_esw") == 0) {
+			*enabled = 1;
+			break;
+		}
+		*enabled = 0;
+		break;
+	}
+	if (i > n_ports) {
+		DRV_LOG(DEBUG, "Unable to get Multiport E-Switch state by sysfs.");
+		rte_errno = ENOENT;
+		ret = -rte_errno;
+	}
+
+close_nl_rdma:
+	close(nl_rdma);
+	return ret;
+}
+
 /**
  * Register a PCI device within bonding.
  *
