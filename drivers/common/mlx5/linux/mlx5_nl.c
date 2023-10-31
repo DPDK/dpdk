@@ -1962,3 +1962,73 @@ mlx5_nl_read_events(int nlsk_fd, mlx5_nl_event_cb *cb, void *cb_arg)
 	}
 	return 0;
 }
+
+static int
+mlx5_nl_esw_multiport_cb(struct nlmsghdr *nh, void *arg)
+{
+
+	int ret = -EINVAL;
+	int *enable = arg;
+	struct nlattr *tail = RTE_PTR_ADD(nh, nh->nlmsg_len);
+	struct nlattr *nla = RTE_PTR_ADD(nh, NLMSG_ALIGN(sizeof(*nh)) +
+					NLMSG_ALIGN(sizeof(struct genlmsghdr)));
+
+	while (nla->nla_len && nla < tail) {
+		switch (nla->nla_type) {
+		/* Expected nested attributes case. */
+		case DEVLINK_ATTR_PARAM:
+		case DEVLINK_ATTR_PARAM_VALUES_LIST:
+		case DEVLINK_ATTR_PARAM_VALUE:
+			ret = 0;
+			nla += 1;
+			break;
+		case DEVLINK_ATTR_PARAM_VALUE_DATA:
+			*enable = 1;
+			return 0;
+		default:
+			nla = RTE_PTR_ADD(nla, NLMSG_ALIGN(nla->nla_len));
+		}
+	}
+	*enable = 0;
+	return ret;
+}
+
+#define NL_ESW_MULTIPORT_PARAM "esw_multiport"
+
+int
+mlx5_nl_devlink_esw_multiport_get(int nlsk_fd, int family_id, const char *pci_addr, int *enable)
+{
+	struct nlmsghdr *nlh;
+	struct genlmsghdr *genl;
+	uint32_t sn = MLX5_NL_SN_GENERATE;
+	int ret;
+	uint8_t buf[NLMSG_ALIGN(sizeof(struct nlmsghdr)) +
+		    NLMSG_ALIGN(sizeof(struct genlmsghdr)) +
+		    NLMSG_ALIGN(sizeof(struct nlattr)) * 4 +
+		    NLMSG_ALIGN(MLX5_NL_MAX_ATTR_SIZE) * 4];
+
+	memset(buf, 0, sizeof(buf));
+	nlh = (struct nlmsghdr *)buf;
+	nlh->nlmsg_len = sizeof(struct nlmsghdr);
+	nlh->nlmsg_type = family_id;
+	nlh->nlmsg_flags = NLM_F_REQUEST | NLM_F_ACK;
+	genl = (struct genlmsghdr *)nl_msg_tail(nlh);
+	nlh->nlmsg_len += sizeof(struct genlmsghdr);
+	genl->cmd = DEVLINK_CMD_PARAM_GET;
+	genl->version = DEVLINK_GENL_VERSION;
+	nl_attr_put(nlh, DEVLINK_ATTR_BUS_NAME, "pci", 4);
+	nl_attr_put(nlh, DEVLINK_ATTR_DEV_NAME, pci_addr, strlen(pci_addr) + 1);
+	nl_attr_put(nlh, DEVLINK_ATTR_PARAM_NAME,
+		    NL_ESW_MULTIPORT_PARAM, sizeof(NL_ESW_MULTIPORT_PARAM));
+	ret = mlx5_nl_send(nlsk_fd, nlh, sn);
+	if (ret >= 0)
+		ret = mlx5_nl_recv(nlsk_fd, sn, mlx5_nl_esw_multiport_cb, enable);
+	if (ret < 0) {
+		DRV_LOG(DEBUG, "Failed to get Multiport E-Switch enable on device %s: %d.",
+			pci_addr, ret);
+		return ret;
+	}
+	DRV_LOG(DEBUG, "Multiport E-Switch is %sabled for device \"%s\".",
+		*enable ? "en" : "dis", pci_addr);
+	return ret;
+}

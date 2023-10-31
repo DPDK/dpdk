@@ -125,6 +125,8 @@ INTERNAL {
 	mlx5_mr_addr2mr_bh;
 
 	mlx5_nl_allmulti; # WINDOWS_NO_EXPORT
+	mlx5_nl_devlink_esw_multiport_get; # WINDOWS_NO_EXPORT
+	mlx5_nl_devlink_family_id_get; # WINDOWS_NO_EXPORT
 	mlx5_nl_ifindex; # WINDOWS_NO_EXPORT
 	mlx5_nl_init; # WINDOWS_NO_EXPORT
 	mlx5_nl_mac_addr_add; # WINDOWS_NO_EXPORT

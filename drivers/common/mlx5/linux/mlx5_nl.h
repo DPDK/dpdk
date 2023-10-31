@@ -71,6 +71,7 @@ __rte_internal
 uint32_t mlx5_nl_vlan_vmwa_create(struct mlx5_nl_vlan_vmwa_context *vmwa,
 				  uint32_t ifindex, uint16_t tag);
 
+__rte_internal
 int mlx5_nl_devlink_family_id_get(int nlsk_fd);
 int mlx5_nl_enable_roce_get(int nlsk_fd, int family_id, const char *pci_addr,
 			    int *enable);
@@ -81,5 +82,9 @@ __rte_internal
 int mlx5_nl_read_events(int nlsk_fd, mlx5_nl_event_cb *cb, void *cb_arg);
 __rte_internal
 int mlx5_nl_parse_link_status_update(struct nlmsghdr *hdr, uint32_t *ifindex);
+
+__rte_internal
+int mlx5_nl_devlink_esw_multiport_get(int nlsk_fd, int family_id,
+				      const char *pci_addr, int *enable);
 
 #endif /* RTE_PMD_MLX5_NL_H_ */
