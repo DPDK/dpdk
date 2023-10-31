@@ -2203,8 +2203,11 @@ hns3vf_reinit_dev(struct hns3_adapter *hns)
 		 */
 		if (pci_dev->kdrv == RTE_PCI_KDRV_IGB_UIO ||
 		    pci_dev->kdrv == RTE_PCI_KDRV_UIO_GENERIC) {
-			if (hns3vf_enable_msix(pci_dev, true))
+			ret = hns3vf_enable_msix(pci_dev, true);
+			if (ret != 0) {
 				hns3_err(hw, "Failed to enable msix");
+				return ret;
+			}
 		}
 
 		rte_intr_enable(pci_dev->intr_handle);

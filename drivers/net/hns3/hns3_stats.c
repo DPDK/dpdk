@@ -771,7 +771,7 @@ hns3_mac_stats_reset(struct hns3_hw *hw)
 	return 0;
 }
 
-static int
+static uint16_t
 hns3_get_imissed_stats_num(struct hns3_adapter *hns)
 {
 #define NO_IMISSED_STATS_NUM   0
@@ -993,7 +993,7 @@ hns3_imissed_stats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *xstats,
 	struct hns3_adapter *hns = dev->data->dev_private;
 	struct hns3_hw *hw = &hns->hw;
 	struct hns3_rx_missed_stats *imissed_stats = &hw->imissed_stats;
-	int imissed_stats_num;
+	uint16_t imissed_stats_num;
 	int cnt = *count;
 	char *addr;
 	uint16_t i;
@@ -1170,7 +1170,7 @@ hns3_imissed_stats_name_get(struct rte_eth_dev *dev,
 {
 	struct hns3_adapter *hns = dev->data->dev_private;
 	uint32_t cnt = *count;
-	int imissed_stats_num;
+	uint16_t imissed_stats_num;
 	uint16_t i;
 
 	imissed_stats_num = hns3_get_imissed_stats_num(hns);
@@ -1539,8 +1539,13 @@ hns3_stats_init(struct hns3_hw *hw)
 		return ret;
 	}
 
-	if (!hns->is_vf)
-		hns3_mac_stats_reset(hw);
+	if (!hns->is_vf) {
+		ret = hns3_mac_stats_reset(hw);
+		if (ret) {
+			hns3_err(hw, "reset mac stats failed, ret = %d", ret);
+			return ret;
+		}
+	}
 
 	return hns3_tqp_stats_init(hw);
 }
