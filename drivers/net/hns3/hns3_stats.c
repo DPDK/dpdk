@@ -1144,9 +1144,15 @@ int
 hns3_stats_init(struct hns3_hw *hw)
 {
 	struct hns3_adapter *hns = HNS3_DEV_HW_TO_ADAPTER(hw);
+	int ret;
 
-	if (!hns->is_vf)
-		hns3_mac_stats_reset(hw);
+	if (!hns->is_vf) {
+		ret = hns3_mac_stats_reset(hw);
+		if (ret) {
+			hns3_err(hw, "reset mac stats failed, ret = %d", ret);
+			return ret;
+		}
+	}
 
 	return hns3_tqp_stats_init(hw);
 }
