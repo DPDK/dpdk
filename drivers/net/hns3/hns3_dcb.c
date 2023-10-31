@@ -1082,7 +1082,7 @@ hns3_dcb_map_cfg(struct hns3_hw *hw)
 
 	ret = hns3_pg_to_pri_map(hw);
 	if (ret) {
-		hns3_err(hw, "pri_to_pg mapping fail: %d", ret);
+		hns3_err(hw, "pg_to_pri mapping fail: %d", ret);
 		return ret;
 	}
 
