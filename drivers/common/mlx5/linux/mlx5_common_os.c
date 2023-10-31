@@ -96,10 +96,11 @@ mlx5_translate_port_name(const char *port_name_in,
 	char ctrl = 0, pf_c1, pf_c2, vf_c1, vf_c2, eol;
 	char *end;
 	int sc_items;
+	int32_t ctrl_num = -1;
 
-	sc_items = sscanf(port_name_in, "%c%d",
-			  &ctrl, &port_info_out->ctrl_num);
+	sc_items = sscanf(port_name_in, "%c%d", &ctrl, &ctrl_num);
 	if (sc_items == 2 && ctrl == 'c') {
+		port_info_out->ctrl_num = ctrl_num;
 		port_name_in++; /* 'c' */
 		port_name_in += snprintf(NULL, 0, "%d",
 					  port_info_out->ctrl_num);
