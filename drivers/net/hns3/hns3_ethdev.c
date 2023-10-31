@@ -3112,19 +3112,11 @@ hns3_get_capability(struct hns3_hw *hw)
 	struct rte_pci_device *pci_dev;
 	struct hns3_pf *pf = &hns->pf;
 	struct rte_eth_dev *eth_dev;
-	uint16_t device_id;
 	uint8_t revision;
 	int ret;
 
 	eth_dev = &rte_eth_devices[hw->data->port_id];
 	pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
-	device_id = pci_dev->id.device_id;
-
-	if (device_id == HNS3_DEV_ID_25GE_RDMA ||
-	    device_id == HNS3_DEV_ID_50GE_RDMA ||
-	    device_id == HNS3_DEV_ID_100G_RDMA_MACSEC ||
-	    device_id == HNS3_DEV_ID_200G_RDMA)
-		hns3_set_bit(hw->capability, HNS3_DEV_SUPPORT_DCB_B, 1);
 
 	/* Get PCI revision id */
 	ret = rte_pci_read_config(pci_dev, &revision, HNS3_PCI_REVISION_ID_LEN,
