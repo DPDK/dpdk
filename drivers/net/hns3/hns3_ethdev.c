@@ -2726,10 +2726,6 @@ hns3_get_capability(struct hns3_hw *hw)
 	struct hns3_pf *pf = &hns->pf;
 	int ret;
 
-	ret = hns3_get_pci_revision_id(hw, &hw->revision);
-	if (ret)
-		return ret;
-
 	ret = hns3_query_mac_stats_reg_num(hw);
 	if (ret)
 		return ret;
@@ -4591,6 +4587,10 @@ hns3_init_pf(struct rte_eth_dev *eth_dev)
 
 	/* Get hardware io base address from pcie BAR2 IO space */
 	hw->io_base = pci_dev->mem_resource[2].addr;
+
+	ret = hns3_get_pci_revision_id(hw, &hw->revision);
+	if (ret)
+		return ret;
 
 	/* Firmware command queue initialize */
 	ret = hns3_cmd_init_queue(hw);

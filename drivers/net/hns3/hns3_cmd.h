@@ -322,6 +322,7 @@ enum HNS3_CAPS_BITS {
 	HNS3_CAPS_RAS_IMP_B,
 	HNS3_CAPS_RXD_ADV_LAYOUT_B = 15,
 	HNS3_CAPS_TM_B = 19,
+	HNS3_CAPS_GRO_B = 20,
 };
 
 /* Capabilities of VF dependent on the PF */
