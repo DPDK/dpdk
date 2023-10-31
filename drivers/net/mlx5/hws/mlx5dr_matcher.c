@@ -253,15 +253,15 @@ connect:
 		goto remove_from_list;
 	}
 
-	if (prev) {
-		/* Reset next miss FT to default (drop refcount) */
-		ret = mlx5dr_table_ft_set_default_next_ft(tbl, prev->end_ft);
-		if (ret) {
-			DR_LOG(ERR, "Failed to reset matcher ft default miss");
-			goto remove_from_list;
-		}
-	} else {
-		/* Update tables missing to current table */
+	/* Reset next miss FT to default (drop refcount) */
+	ret = mlx5dr_table_ft_set_default_next_ft(tbl, prev ? prev->end_ft : tbl->ft);
+	if (ret) {
+		DR_LOG(ERR, "Failed to reset matcher ft default miss");
+		goto remove_from_list;
+	}
+
+	if (!prev) {
+		/* Update tables missing to current matcher in the table */
 		ret = mlx5dr_table_update_connected_miss_tables(tbl);
 		if (ret) {
 			DR_LOG(ERR, "Fatal error, failed to update connected miss table");
@@ -274,27 +274,6 @@ connect:
 remove_from_list:
 	LIST_REMOVE(matcher, next);
 	return ret;
-}
-
-static int mlx5dr_last_matcher_disconnect(struct mlx5dr_table *tbl,
-					  struct mlx5dr_devx_obj *prev_ft)
-{
-	struct mlx5dr_cmd_ft_modify_attr ft_attr = {0};
-
-	if (tbl->default_miss.miss_tbl) {
-		/* Connect new last matcher to next miss_tbl if exists */
-		return mlx5dr_table_connect_to_miss_table(tbl,
-							  tbl->default_miss.miss_tbl);
-	} else {
-		ft_attr.modify_fs = MLX5_IFC_MODIFY_FLOW_TABLE_RTC_ID;
-		ft_attr.type = tbl->fw_ft_type;
-		/* Matcher is last, point prev end FT to default miss */
-		mlx5dr_cmd_set_attr_connect_miss_tbl(tbl->ctx,
-						     tbl->fw_ft_type,
-						     tbl->type,
-						     &ft_attr);
-		return mlx5dr_cmd_flow_table_modify(prev_ft, &ft_attr);
-	}
 }
 
 static int mlx5dr_matcher_disconnect(struct mlx5dr_matcher *matcher)
@@ -330,7 +309,7 @@ static int mlx5dr_matcher_disconnect(struct mlx5dr_matcher *matcher)
 			goto matcher_reconnect;
 		}
 	} else {
-		ret = mlx5dr_last_matcher_disconnect(tbl, prev_ft);
+		ret = mlx5dr_table_connect_to_miss_table(tbl, tbl->default_miss.miss_tbl);
 		if (ret) {
 			DR_LOG(ERR, "Failed to disconnect last matcher");
 			goto matcher_reconnect;
