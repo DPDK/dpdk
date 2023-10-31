@@ -1797,9 +1797,15 @@ mlx5_dev_spawn_data_cmp(const void *a, const void *b)
 		&((const struct mlx5_dev_spawn_data *)a)->info;
 	const struct mlx5_switch_info *si_b =
 		&((const struct mlx5_dev_spawn_data *)b)->info;
+	int uplink_a = si_a->name_type == MLX5_PHYS_PORT_NAME_TYPE_UPLINK;
+	int uplink_b = si_b->name_type == MLX5_PHYS_PORT_NAME_TYPE_UPLINK;
 	int ret;
 
-	/* Master device first. */
+	/* Uplink ports first. */
+	ret = uplink_b - uplink_a;
+	if (ret)
+		return ret;
+	/* Then master devices. */
 	ret = si_b->master - si_a->master;
 	if (ret)
 		return ret;
