@@ -1920,7 +1920,7 @@ mlx5_flow_field_id_to_modify_info
 			uint8_t tag_index = flow_tag_index_get(data);
 			int reg;
 
-			off_be = (tag_index == MLX5_LINEAR_HASH_TAG_INDEX) ?
+			off_be = (tag_index == RTE_PMD_MLX5_LINEAR_HASH_TAG_INDEX) ?
 				 16 - (data->offset + width) + 16 : data->offset;
 			if (priv->sh->config.dv_flow_en == 2)
 				reg = flow_hw_get_reg_id(dev,
@@ -19708,18 +19708,18 @@ flow_dv_sync_domain(struct rte_eth_dev *dev, uint32_t domains, uint32_t flags)
 	struct mlx5_priv *priv = dev->data->dev_private;
 	int ret = 0;
 
-	if ((domains & MLX5_DOMAIN_BIT_NIC_RX) && priv->sh->rx_domain != NULL) {
+	if ((domains & RTE_PMD_MLX5_DOMAIN_BIT_NIC_RX) && priv->sh->rx_domain != NULL) {
 		ret = mlx5_os_flow_dr_sync_domain(priv->sh->rx_domain,
 						flags);
 		if (ret != 0)
 			return ret;
 	}
-	if ((domains & MLX5_DOMAIN_BIT_NIC_TX) && priv->sh->tx_domain != NULL) {
+	if ((domains & RTE_PMD_MLX5_DOMAIN_BIT_NIC_TX) && priv->sh->tx_domain != NULL) {
 		ret = mlx5_os_flow_dr_sync_domain(priv->sh->tx_domain, flags);
 		if (ret != 0)
 			return ret;
 	}
-	if ((domains & MLX5_DOMAIN_BIT_FDB) && priv->sh->fdb_domain != NULL) {
+	if ((domains & RTE_PMD_MLX5_DOMAIN_BIT_FDB) && priv->sh->fdb_domain != NULL) {
 		ret = mlx5_os_flow_dr_sync_domain(priv->sh->fdb_domain, flags);
 		if (ret != 0)
 			return ret;

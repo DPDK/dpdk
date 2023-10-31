@@ -663,9 +663,9 @@ mlx5_is_external_rxq(struct rte_eth_dev *dev, uint16_t queue_idx)
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_external_rxq *rxq;
 
-	if (!priv->ext_rxqs || queue_idx < MLX5_EXTERNAL_RX_QUEUE_ID_MIN)
+	if (!priv->ext_rxqs || queue_idx < RTE_PMD_MLX5_EXTERNAL_RX_QUEUE_ID_MIN)
 		return false;
-	rxq = &priv->ext_rxqs[queue_idx - MLX5_EXTERNAL_RX_QUEUE_ID_MIN];
+	rxq = &priv->ext_rxqs[queue_idx - RTE_PMD_MLX5_EXTERNAL_RX_QUEUE_ID_MIN];
 	return !!__atomic_load_n(&rxq->refcnt, __ATOMIC_RELAXED);
 }
 

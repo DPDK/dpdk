@@ -192,7 +192,7 @@ mlx5_need_cache_flow(const struct mlx5_priv *priv,
 {
 	return priv->isolated && priv->sh->config.dv_flow_en == 1 &&
 		(attr ? !attr->group : true) &&
-		priv->mode_info.mode == MLX5_FLOW_ENGINE_MODE_STANDBY &&
+		priv->mode_info.mode == RTE_PMD_MLX5_FLOW_ENGINE_MODE_STANDBY &&
 		(!priv->sh->config.dv_esw_en || !priv->sh->config.fdb_def_rule);
 }
 
@@ -7724,7 +7724,7 @@ mlx5_flow_cache_flow_info(struct rte_eth_dev *dev,
 			  uint32_t flow_idx)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_flow_engine_mode_info *mode_info = &priv->mode_info;
+	struct rte_pmd_mlx5_flow_engine_mode_info *mode_info = &priv->mode_info;
 	struct mlx5_dv_flow_info *flow_info, *tmp_info;
 	struct rte_flow_error error;
 	int len, ret;
@@ -7798,7 +7798,7 @@ static int
 mlx5_flow_cache_flow_toggle(struct rte_eth_dev *dev, bool orig_prio)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_flow_engine_mode_info *mode_info = &priv->mode_info;
+	struct rte_pmd_mlx5_flow_engine_mode_info *mode_info = &priv->mode_info;
 	struct mlx5_dv_flow_info *flow_info;
 	struct rte_flow_attr attr;
 	struct rte_flow_error error;
@@ -7861,7 +7861,7 @@ err:
  * Set the mode of the flow engine of a process to active or standby during live migration.
  *
  * @param[in] mode
- *   MLX5 flow engine mode, @see `enum mlx5_flow_engine_mode`.
+ *   MLX5 flow engine mode, @see `enum rte_pmd_mlx5_flow_engine_mode`.
  * @param[in] flags
  *   Flow engine mode specific flags.
  *
@@ -7869,20 +7869,20 @@ err:
  *   Negative value on error, positive on success.
  */
 int
-rte_pmd_mlx5_flow_engine_set_mode(enum mlx5_flow_engine_mode mode, uint32_t flags)
+rte_pmd_mlx5_flow_engine_set_mode(enum rte_pmd_mlx5_flow_engine_mode mode, uint32_t flags)
 {
 	struct mlx5_priv *priv;
-	struct mlx5_flow_engine_mode_info *mode_info;
+	struct rte_pmd_mlx5_flow_engine_mode_info *mode_info;
 	struct mlx5_dv_flow_info *flow_info, *tmp_info;
 	uint16_t port, port_id;
 	uint16_t toggle_num = 0;
 	struct rte_eth_dev *dev;
-	enum mlx5_flow_engine_mode orig_mode;
+	enum rte_pmd_mlx5_flow_engine_mode orig_mode;
 	uint32_t orig_flags;
 	bool need_toggle = false;
 
 	/* Check if flags combinations are supported. */
-	if (flags && flags != MLX5_FLOW_ENGINE_FLAG_STANDBY_DUP_INGRESS) {
+	if (flags && flags != RTE_PMD_MLX5_FLOW_ENGINE_FLAG_STANDBY_DUP_INGRESS) {
 		DRV_LOG(ERR, "Doesn't support such flags %u", flags);
 		return -1;
 	}
@@ -7905,7 +7905,7 @@ rte_pmd_mlx5_flow_engine_set_mode(enum mlx5_flow_engine_mode mode, uint32_t flag
 			continue;
 		}
 		/* Active -> standby. */
-		if (mode == MLX5_FLOW_ENGINE_MODE_STANDBY) {
+		if (mode == RTE_PMD_MLX5_FLOW_ENGINE_MODE_STANDBY) {
 			if (!LIST_EMPTY(&mode_info->hot_upgrade)) {
 				DRV_LOG(ERR, "Cached rule existed");
 				orig_mode = mode_info->mode;
@@ -7916,7 +7916,7 @@ rte_pmd_mlx5_flow_engine_set_mode(enum mlx5_flow_engine_mode mode, uint32_t flag
 			mode_info->mode = mode;
 			toggle_num++;
 		/* Standby -> active. */
-		} else if (mode == MLX5_FLOW_ENGINE_MODE_ACTIVE) {
+		} else if (mode == RTE_PMD_MLX5_FLOW_ENGINE_MODE_ACTIVE) {
 			if (LIST_EMPTY(&mode_info->hot_upgrade)) {
 				DRV_LOG(INFO, "No cached rule existed");
 			} else {
@@ -7930,7 +7930,7 @@ rte_pmd_mlx5_flow_engine_set_mode(enum mlx5_flow_engine_mode mode, uint32_t flag
 			toggle_num++;
 		}
 	}
-	if (mode == MLX5_FLOW_ENGINE_MODE_ACTIVE) {
+	if (mode == RTE_PMD_MLX5_FLOW_ENGINE_MODE_ACTIVE) {
 		/* Clear cache flow rules. */
 		MLX5_ETH_FOREACH_DEV(port, NULL) {
 			priv = rte_eth_devices[port].data->dev_private;
@@ -8004,8 +8004,8 @@ mlx5_flow_create(struct rte_eth_dev *dev,
 	}
 	if (unlikely(mlx5_need_cache_flow(priv, attr))) {
 		if (attr->transfer ||
-		    (attr->ingress &&
-		    !(priv->mode_info.mode_flag & MLX5_FLOW_ENGINE_FLAG_STANDBY_DUP_INGRESS)))
+				(attr->ingress && !(priv->mode_info.mode_flag &
+				RTE_PMD_MLX5_FLOW_ENGINE_FLAG_STANDBY_DUP_INGRESS)))
 			new_attr->priority += 1;
 	}
 	flow_idx = flow_list_create(dev, MLX5_FLOW_TYPE_GEN, attr, items, actions, true, error);
@@ -8074,7 +8074,7 @@ mlx5_flow_list_flush(struct rte_eth_dev *dev, enum mlx5_flow_type type,
 	struct mlx5_priv *priv = dev->data->dev_private;
 	uint32_t num_flushed = 0, fidx = 1;
 	struct rte_flow *flow;
-	struct mlx5_flow_engine_mode_info *mode_info = &priv->mode_info;
+	struct rte_pmd_mlx5_flow_engine_mode_info *mode_info = &priv->mode_info;
 	struct mlx5_dv_flow_info *flow_info;
 
 #ifdef HAVE_IBV_FLOW_DV_SUPPORT
@@ -8544,7 +8544,7 @@ mlx5_flow_destroy(struct rte_eth_dev *dev,
 		  struct rte_flow_error *error __rte_unused)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_flow_engine_mode_info *mode_info = &priv->mode_info;
+	struct rte_pmd_mlx5_flow_engine_mode_info *mode_info = &priv->mode_info;
 	struct mlx5_dv_flow_info *flow_info;
 
 	if (priv->sh->config.dv_flow_en == 2)

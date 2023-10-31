@@ -2176,7 +2176,7 @@ mlx5_ext_rxq_get(struct rte_eth_dev *dev, uint16_t idx)
 	struct mlx5_priv *priv = dev->data->dev_private;
 
 	MLX5_ASSERT(mlx5_is_external_rxq(dev, idx));
-	return &priv->ext_rxqs[idx - MLX5_EXTERNAL_RX_QUEUE_ID_MIN];
+	return &priv->ext_rxqs[idx - RTE_PMD_MLX5_EXTERNAL_RX_QUEUE_ID_MIN];
 }
 
 /**
@@ -2341,7 +2341,7 @@ mlx5_ext_rxq_verify(struct rte_eth_dev *dev)
 	if (priv->ext_rxqs == NULL)
 		return 0;
 
-	for (i = MLX5_EXTERNAL_RX_QUEUE_ID_MIN; i <= UINT16_MAX ; ++i) {
+	for (i = RTE_PMD_MLX5_EXTERNAL_RX_QUEUE_ID_MIN; i <= UINT16_MAX ; ++i) {
 		rxq = mlx5_ext_rxq_get(dev, i);
 		if (rxq->refcnt < 2)
 			continue;
@@ -3210,9 +3210,9 @@ mlx5_external_rx_queue_get_validate(uint16_t port_id, uint16_t dpdk_idx)
 	struct rte_eth_dev *dev;
 	struct mlx5_priv *priv;
 
-	if (dpdk_idx < MLX5_EXTERNAL_RX_QUEUE_ID_MIN) {
+	if (dpdk_idx < RTE_PMD_MLX5_EXTERNAL_RX_QUEUE_ID_MIN) {
 		DRV_LOG(ERR, "Queue index %u should be in range: [%u, %u].",
-			dpdk_idx, MLX5_EXTERNAL_RX_QUEUE_ID_MIN, UINT16_MAX);
+			dpdk_idx, RTE_PMD_MLX5_EXTERNAL_RX_QUEUE_ID_MIN, UINT16_MAX);
 		rte_errno = EINVAL;
 		return NULL;
 	}
@@ -3243,7 +3243,7 @@ mlx5_external_rx_queue_get_validate(uint16_t port_id, uint16_t dpdk_idx)
 	 * DevX, external RxQs array is allocated.
 	 */
 	MLX5_ASSERT(priv->ext_rxqs != NULL);
-	return &priv->ext_rxqs[dpdk_idx - MLX5_EXTERNAL_RX_QUEUE_ID_MIN];
+	return &priv->ext_rxqs[dpdk_idx - RTE_PMD_MLX5_EXTERNAL_RX_QUEUE_ID_MIN];
 }
 
 int

@@ -135,10 +135,10 @@ mlx5_test_set_port_host_shaper(uint16_t port_id, uint16_t avail_thresh_triggered
 	host_shaper_avail_thresh_triggered[port_id] = avail_thresh_triggered ? 1 : 0;
 	if (!avail_thresh_triggered) {
 		ret = rte_pmd_mlx5_host_shaper_config(port_id, 0,
-		RTE_BIT32(MLX5_HOST_SHAPER_FLAG_AVAIL_THRESH_TRIGGERED));
+		RTE_BIT32(RTE_PMD_MLX5_HOST_SHAPER_FLAG_AVAIL_THRESH_TRIGGERED));
 	} else {
 		ret = rte_pmd_mlx5_host_shaper_config(port_id, 1,
-		RTE_BIT32(MLX5_HOST_SHAPER_FLAG_AVAIL_THRESH_TRIGGERED));
+		RTE_BIT32(RTE_PMD_MLX5_HOST_SHAPER_FLAG_AVAIL_THRESH_TRIGGERED));
 	}
 	if (ret)
 		return ret;
@@ -593,8 +593,8 @@ struct mlx5_cmd_set_flow_engine_mode {
 };
 
 static int
-parse_multi_token_flow_engine_mode(char *t_str, enum mlx5_flow_engine_mode *mode,
-				   uint32_t *flag)
+parse_multi_token_flow_engine_mode(char *t_str,
+		enum rte_pmd_mlx5_flow_engine_mode *mode, uint32_t *flag)
 {
 	uint64_t val;
 	char *token;
@@ -607,9 +607,9 @@ parse_multi_token_flow_engine_mode(char *t_str, enum mlx5_flow_engine_mode *mode
 		return -1;
 
 	if (!strcmp(token, "active"))
-		*mode = MLX5_FLOW_ENGINE_MODE_ACTIVE;
+		*mode = RTE_PMD_MLX5_FLOW_ENGINE_MODE_ACTIVE;
 	else if (!strcmp(token, "standby"))
-		*mode = MLX5_FLOW_ENGINE_MODE_STANDBY;
+		*mode = RTE_PMD_MLX5_FLOW_ENGINE_MODE_STANDBY;
 	else
 		return -1;
 
@@ -632,7 +632,7 @@ mlx5_cmd_set_flow_engine_mode_parsed(void *parsed_result,
 				     __rte_unused void *data)
 {
 	struct mlx5_cmd_set_flow_engine_mode *res = parsed_result;
-	enum mlx5_flow_engine_mode mode;
+	enum rte_pmd_mlx5_flow_engine_mode mode;
 	uint32_t flag;
 	int ret;
 
@@ -647,11 +647,11 @@ mlx5_cmd_set_flow_engine_mode_parsed(void *parsed_result,
 
 	if (ret < 0)
 		fprintf(stderr, "Fail to set flow_engine to %s mode with flag 0x%x, error %s\n",
-			mode == MLX5_FLOW_ENGINE_MODE_ACTIVE ? "active" : "standby", flag,
+			mode == RTE_PMD_MLX5_FLOW_ENGINE_MODE_ACTIVE ? "active" : "standby", flag,
 			strerror(-ret));
 	else
 		TESTPMD_LOG(DEBUG, "Set %d ports flow_engine to %s mode with flag 0x%x\n", ret,
-			    mode == MLX5_FLOW_ENGINE_MODE_ACTIVE ? "active" : "standby", flag);
+			mode == RTE_PMD_MLX5_FLOW_ENGINE_MODE_ACTIVE ? "active" : "standby", flag);
 }
 
 cmdline_parse_token_string_t mlx5_cmd_set_flow_engine_mode_mlx5 =

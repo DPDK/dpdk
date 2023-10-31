@@ -213,7 +213,7 @@ Limitations
 - Host shaper:
 
   - Support BlueField series NIC from BlueField-2.
-  - When configuring host shaper with MLX5_HOST_SHAPER_FLAG_AVAIL_THRESH_TRIGGERED flag set,
+  - When configuring host shaper with ``RTE_PMD_MLX5_HOST_SHAPER_FLAG_AVAIL_THRESH_TRIGGERED`` flag,
     only rates 0 and 100Mbps are supported.
 
 - HW steering:
@@ -2221,7 +2221,7 @@ Set Flow Engine Mode
 ~~~~~~~~~~~~~~~~~~~~
 
 Set the flow engine to active or standby mode with specific flags (bitmap style).
-See ``MLX5_FLOW_ENGINE_FLAG_*`` for the flag definitions.
+See ``RTE_PMD_MLX5_FLOW_ENGINE_FLAG_*`` for the flag definitions.
 
 .. code-block:: console
 

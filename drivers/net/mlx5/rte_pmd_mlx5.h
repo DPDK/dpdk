@@ -38,9 +38,9 @@ extern "C" {
 __rte_experimental
 int rte_pmd_mlx5_get_dyn_flag_names(char *names[], unsigned int n);
 
-#define MLX5_DOMAIN_BIT_NIC_RX	(1 << 0) /**< NIC RX domain bit mask. */
-#define MLX5_DOMAIN_BIT_NIC_TX	(1 << 1) /**< NIC TX domain bit mask. */
-#define MLX5_DOMAIN_BIT_FDB	(1 << 2) /**< FDB (TX + RX) domain bit mask. */
+#define RTE_PMD_MLX5_DOMAIN_BIT_NIC_RX	(1 << 0) /**< NIC RX domain bit mask. */
+#define RTE_PMD_MLX5_DOMAIN_BIT_NIC_TX	(1 << 1) /**< NIC TX domain bit mask. */
+#define RTE_PMD_MLX5_DOMAIN_BIT_FDB	(1 << 2) /**< FDB (TX + RX) domain bit mask. */
 
 /**
  * Synchronize the flows to make them take effort on hardware.
@@ -52,7 +52,7 @@ int rte_pmd_mlx5_get_dyn_flag_names(char *names[], unsigned int n);
  * @param[in] domains
  *   Refer to "/usr/include/infiniband/mlx5dv.h".
  *   Bitmask of domains in which the synchronization will be done.
- *   MLX5_DOMAIN_BIT* macros are used to specify the domains.
+ *   RTE_PMD_MLX5_DOMAIN_BIT_* macros are used to specify the domains.
  *   An ADD or OR operation could be used to synchronize flows in more than
  *   one domain per call.
  *
@@ -66,12 +66,12 @@ int rte_pmd_mlx5_sync_flow(uint16_t port_id, uint32_t domains);
 /**
  * External Rx queue rte_flow index minimal value.
  */
-#define MLX5_EXTERNAL_RX_QUEUE_ID_MIN (UINT16_MAX - 1000 + 1)
+#define RTE_PMD_MLX5_EXTERNAL_RX_QUEUE_ID_MIN (UINT16_MAX - 1000 + 1)
 
 /**
  * Tag level to set the linear hash index.
  */
-#define MLX5_LINEAR_HASH_TAG_INDEX 255
+#define RTE_PMD_MLX5_LINEAR_HASH_TAG_INDEX 255
 
 /**
  * Update mapping between rte_flow queue index (16 bits) and HW queue index (32
@@ -123,7 +123,7 @@ int rte_pmd_mlx5_external_rx_queue_id_unmap(uint16_t port_id,
  * Unset this flag to update the rate of the host port shaper directly in
  * the API call; use rate 0 to disable the current shaper.
  */
-#define MLX5_HOST_SHAPER_FLAG_AVAIL_THRESH_TRIGGERED 0
+#define RTE_PMD_MLX5_HOST_SHAPER_FLAG_AVAIL_THRESH_TRIGGERED 0
 
 /**
  * Configure a HW shaper to limit Tx rate for a host port.
@@ -135,7 +135,7 @@ int rte_pmd_mlx5_external_rx_queue_id_unmap(uint16_t port_id,
  * @param[in] rate
  *   Unit is 100Mbps, setting the rate to 0 disables the shaper.
  * @param[in] flags
- *   Host shaper flags.
+ *   Host shaper flags (see RTE_PMD_MLX5_HOST_SHAPER_FLAG_*).
  * @return
  *   0 : operation success.
  *   Otherwise:
@@ -164,16 +164,16 @@ __rte_experimental
 int rte_pmd_mlx5_external_sq_enable(uint16_t port_id, uint32_t sq_num);
 
 /* MLX5 flow engine mode definition for live migration. */
-enum mlx5_flow_engine_mode {
-	MLX5_FLOW_ENGINE_MODE_ACTIVE, /* active means high priority, effective in HW. */
-	MLX5_FLOW_ENGINE_MODE_STANDBY, /* standby mode with lower priority flow rules. */
+enum rte_pmd_mlx5_flow_engine_mode {
+	RTE_PMD_MLX5_FLOW_ENGINE_MODE_ACTIVE, /* active means high priority, effective in HW. */
+	RTE_PMD_MLX5_FLOW_ENGINE_MODE_STANDBY, /* standby mode with lower priority flow rules. */
 };
 
 /**
  * When set on the flow engine of a standby process, ingress flow rules will be effective
  * in active and standby processes, so the ingress traffic may be duplicated.
  */
-#define MLX5_FLOW_ENGINE_FLAG_STANDBY_DUP_INGRESS      RTE_BIT32(0)
+#define RTE_PMD_MLX5_FLOW_ENGINE_FLAG_STANDBY_DUP_INGRESS      RTE_BIT32(0)
 
 /**
  * @warning
@@ -217,9 +217,9 @@ enum mlx5_flow_engine_mode {
  *   old:    shutdown
  *
  * @param mode
- *   The desired mode `mlx5_flow_engine_mode`.
+ *   The desired mode (see rte_pmd_mlx5_flow_engine_mode).
  * @param flags
- *   Mode specific flags.
+ *   Mode specific flags (see RTE_PMD_MLX5_FLOW_ENGINE_FLAG_*).
  * @return
  *   Positive value on success, -rte_errno value on error:
  *   - (> 0) Number of switched devices.
@@ -227,7 +227,7 @@ enum mlx5_flow_engine_mode {
  *   - (-EPERM) if operation failed and can't recover.
  */
 __rte_experimental
-int rte_pmd_mlx5_flow_engine_set_mode(enum mlx5_flow_engine_mode mode, uint32_t flags);
+int rte_pmd_mlx5_flow_engine_set_mode(enum rte_pmd_mlx5_flow_engine_mode mode, uint32_t flags);
 
 #ifdef __cplusplus
 }

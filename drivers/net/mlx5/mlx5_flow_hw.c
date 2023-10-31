@@ -1189,7 +1189,7 @@ flow_hw_modify_field_compile(struct rte_eth_dev *dev,
 
 			value = *(const unaligned_uint32_t *)item.spec;
 			if (conf->dst.field == RTE_FLOW_FIELD_TAG &&
-			    tag_index == MLX5_LINEAR_HASH_TAG_INDEX)
+			    tag_index == RTE_PMD_MLX5_LINEAR_HASH_TAG_INDEX)
 				value = rte_cpu_to_be_32(value << 16);
 			else
 				value = rte_cpu_to_be_32(value);
@@ -2633,7 +2633,7 @@ flow_hw_modify_field_construct(struct mlx5_hw_q_job *job,
 
 		value_p = (unaligned_uint32_t *)values;
 		if (mhdr_action->dst.field == RTE_FLOW_FIELD_TAG &&
-		    tag_index == MLX5_LINEAR_HASH_TAG_INDEX)
+		    tag_index == RTE_PMD_MLX5_LINEAR_HASH_TAG_INDEX)
 			*value_p = rte_cpu_to_be_32(*value_p << 16);
 		else
 			*value_p = rte_cpu_to_be_32(*value_p);
@@ -4784,10 +4784,10 @@ flow_hw_validate_action_modify_field(struct rte_eth_dev *dev,
 	}
 	if ((action_conf->dst.field == RTE_FLOW_FIELD_TAG &&
 	     action_conf->dst.tag_index >= MLX5_FLOW_HW_TAGS_MAX &&
-	     action_conf->dst.tag_index != MLX5_LINEAR_HASH_TAG_INDEX) ||
+	     action_conf->dst.tag_index != RTE_PMD_MLX5_LINEAR_HASH_TAG_INDEX) ||
 	    (action_conf->src.field == RTE_FLOW_FIELD_TAG &&
 	     action_conf->src.tag_index >= MLX5_FLOW_HW_TAGS_MAX &&
-	     action_conf->src.tag_index != MLX5_LINEAR_HASH_TAG_INDEX))
+	     action_conf->src.tag_index != RTE_PMD_MLX5_LINEAR_HASH_TAG_INDEX))
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ACTION, action,
 				 "tag index is out of range");
@@ -6333,7 +6333,7 @@ flow_hw_pattern_validate(struct rte_eth_dev *dev,
 							  NULL,
 							  "Tag spec is NULL");
 			if (tag->index >= MLX5_FLOW_HW_TAGS_MAX &&
-			    tag->index != MLX5_LINEAR_HASH_TAG_INDEX)
+			    tag->index != RTE_PMD_MLX5_LINEAR_HASH_TAG_INDEX)
 				return rte_flow_error_set(error, EINVAL,
 							  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 							  NULL,

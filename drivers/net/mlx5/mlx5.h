@@ -1697,8 +1697,8 @@ struct mlx5_dv_flow_info {
 	struct rte_flow_attr attr;
 };
 
-struct mlx5_flow_engine_mode_info {
-	enum mlx5_flow_engine_mode mode;
+struct rte_pmd_mlx5_flow_engine_mode_info {
+	enum rte_pmd_mlx5_flow_engine_mode mode;
 	uint32_t mode_flag;
 	/* The list is maintained in insertion order. */
 	LIST_HEAD(hot_up_info, mlx5_dv_flow_info) hot_upgrade;
@@ -1848,7 +1848,7 @@ struct mlx5_priv {
 	uint32_t nb_queue; /* HW steering queue number. */
 	struct mlx5_hws_cnt_pool *hws_cpool; /* HW steering's counter pool. */
 	uint32_t hws_mark_refcnt; /* HWS mark action reference counter. */
-	struct mlx5_flow_engine_mode_info mode_info; /* Process set flow engine info. */
+	struct rte_pmd_mlx5_flow_engine_mode_info mode_info; /* Process set flow engine info. */
 	struct mlx5_flow_hw_attr *hw_attr; /* HW Steering port configuration. */
 #if defined(HAVE_IBV_FLOW_DV_SUPPORT) || !defined(HAVE_INFINIBAND_VERBS_H)
 	/* Item template list. */

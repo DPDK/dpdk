@@ -1560,7 +1560,7 @@ int rte_pmd_mlx5_host_shaper_config(int port_id, uint8_t rate,
 	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
 	struct mlx5_priv *priv = dev->data->dev_private;
 	bool lwm_triggered =
-	     !!(flags & RTE_BIT32(MLX5_HOST_SHAPER_FLAG_AVAIL_THRESH_TRIGGERED));
+	     !!(flags & RTE_BIT32(RTE_PMD_MLX5_HOST_SHAPER_FLAG_AVAIL_THRESH_TRIGGERED));
 
 	if (!lwm_triggered) {
 		priv->sh->host_shaper_rate = rate;
