@@ -283,7 +283,7 @@ static const struct {
  * rss_generic_config command function, opcode:0x0D01.
  * Used to set algorithm and hash key of RSS.
  */
-int
+static int
 hns3_set_rss_algo_key(struct hns3_hw *hw, uint8_t hash_algo,
 		      const uint8_t *key, uint8_t key_len)
 {
@@ -324,7 +324,7 @@ hns3_set_rss_algo_key(struct hns3_hw *hw, uint8_t hash_algo,
 	return 0;
 }
 
-int
+static int
 hns3_rss_get_algo_key(struct hns3_hw *hw,  uint8_t *hash_algo,
 		      uint8_t *key, uint8_t key_len)
 {
