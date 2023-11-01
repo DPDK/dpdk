@@ -52,7 +52,7 @@ enum mlx5dr_action_setter_flag {
 	ASF_SINGLE2 = 1 << 1,
 	ASF_SINGLE3 = 1 << 2,
 	ASF_DOUBLE = ASF_SINGLE2 | ASF_SINGLE3,
-	ASF_REPARSE = 1 << 3,
+	ASF_INSERT = 1 << 3,
 	ASF_REMOVE = 1 << 4,
 	ASF_MODIFY = 1 << 5,
 	ASF_CTR = 1 << 6,

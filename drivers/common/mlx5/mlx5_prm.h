@@ -3445,6 +3445,7 @@ enum mlx5_ifc_rtc_ste_format {
 enum mlx5_ifc_rtc_reparse_mode {
 	MLX5_IFC_RTC_REPARSE_NEVER = 0x0,
 	MLX5_IFC_RTC_REPARSE_ALWAYS = 0x1,
+	MLX5_IFC_RTC_REPARSE_BY_STC = 0x2,
 };
 
 #define MLX5_IFC_RTC_LINEAR_LOOKUP_TBL_LOG_MAX 16
@@ -3510,6 +3511,12 @@ enum mlx5_ifc_stc_action_type {
 	MLX5_IFC_STC_ACTION_TYPE_ALLOW = 0x84,
 	MLX5_IFC_STC_ACTION_TYPE_JUMP_TO_VPORT = 0x85,
 	MLX5_IFC_STC_ACTION_TYPE_JUMP_TO_UPLINK = 0x86,
+};
+
+enum mlx5_ifc_stc_reparse_mode {
+	MLX5_IFC_STC_REPARSE_IGNORE = 0x0,
+	MLX5_IFC_STC_REPARSE_NEVER = 0x1,
+	MLX5_IFC_STC_REPARSE_ALWAYS = 0x2,
 };
 
 struct mlx5_ifc_stc_ste_param_ste_table_bits {
@@ -3623,7 +3630,8 @@ enum {
 
 struct mlx5_ifc_stc_bits {
 	u8 modify_field_select[0x40];
-	u8 reserved_at_40[0x48];
+	u8 reserved_at_40[0x46];
+	u8 reparse_mode[0x2];
 	u8 table_type[0x8];
 	u8 ste_action_offset[0x8];
 	u8 action_type[0x8];

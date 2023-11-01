@@ -79,6 +79,7 @@ struct mlx5dr_cmd_rtc_create_attr {
 	uint8_t table_type;
 	uint8_t match_definer_0;
 	uint8_t match_definer_1;
+	uint8_t reparse_mode;
 	bool is_frst_jumbo;
 	bool is_scnd_range;
 };
@@ -98,6 +99,7 @@ struct mlx5dr_cmd_stc_create_attr {
 struct mlx5dr_cmd_stc_modify_attr {
 	uint32_t stc_offset;
 	uint8_t action_offset;
+	uint8_t reparse_mode;
 	enum mlx5_ifc_stc_action_type action_type;
 	union {
 		uint32_t id; /* TIRN, TAG, FT ID, STE ID */

@@ -4,6 +4,21 @@
 
 #include "mlx5dr_internal.h"
 
+bool mlx5dr_context_cap_dynamic_reparse(struct mlx5dr_context *ctx)
+{
+	return IS_BIT_SET(ctx->caps->rtc_reparse_mode, MLX5_IFC_RTC_REPARSE_BY_STC);
+}
+
+uint8_t mlx5dr_context_get_reparse_mode(struct mlx5dr_context *ctx)
+{
+	/* Prefer to use dynamic reparse, reparse only specific actions */
+	if (mlx5dr_context_cap_dynamic_reparse(ctx))
+		return MLX5_IFC_RTC_REPARSE_NEVER;
+
+	/* Otherwise use less efficient static */
+	return MLX5_IFC_RTC_REPARSE_ALWAYS;
+}
+
 static int mlx5dr_context_pools_init(struct mlx5dr_context *ctx)
 {
 	struct mlx5dr_pool_attr pool_attr = {0};

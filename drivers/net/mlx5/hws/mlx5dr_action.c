@@ -107,16 +107,18 @@ static int mlx5dr_action_get_shared_stc_nic(struct mlx5dr_context *ctx,
 		goto unlock_and_out;
 	}
 	switch (stc_type) {
-	case MLX5DR_CONTEXT_SHARED_STC_DECAP:
+	case MLX5DR_CONTEXT_SHARED_STC_DECAP_L3:
 		stc_attr.action_type = MLX5_IFC_STC_ACTION_TYPE_HEADER_REMOVE;
 		stc_attr.action_offset = MLX5DR_ACTION_OFFSET_DW5;
+		stc_attr.reparse_mode = MLX5_IFC_STC_REPARSE_IGNORE;
 		stc_attr.remove_header.decap = 0;
 		stc_attr.remove_header.start_anchor = MLX5_HEADER_ANCHOR_PACKET_START;
 		stc_attr.remove_header.end_anchor = MLX5_HEADER_ANCHOR_IPV6_IPV4;
 		break;
-	case MLX5DR_CONTEXT_SHARED_STC_POP:
+	case MLX5DR_CONTEXT_SHARED_STC_DOUBLE_POP:
 		stc_attr.action_type = MLX5_IFC_STC_ACTION_TYPE_REMOVE_WORDS;
 		stc_attr.action_offset = MLX5DR_ACTION_OFFSET_DW5;
+		stc_attr.reparse_mode = MLX5_IFC_STC_REPARSE_ALWAYS;
 		stc_attr.remove_words.start_anchor = MLX5_HEADER_ANCHOR_FIRST_VLAN_START;
 		stc_attr.remove_words.num_of_words = MLX5DR_ACTION_HDR_LEN_L2_VLAN;
 		break;
@@ -424,6 +426,11 @@ int mlx5dr_action_alloc_single_stc(struct mlx5dr_context *ctx,
 	}
 
 	stc_attr->stc_offset = stc->offset;
+
+	/* Dynamic reparse not supported, overwrite and use default */
+	if (!mlx5dr_context_cap_dynamic_reparse(ctx))
+		stc_attr->reparse_mode = MLX5_IFC_STC_REPARSE_IGNORE;
+
 	devx_obj_0 = mlx5dr_pool_chunk_get_base_devx_obj(stc_pool, stc);
 
 	/* According to table/action limitation change the stc_attr */
@@ -512,6 +519,8 @@ static void mlx5dr_action_fill_stc_attr(struct mlx5dr_action *action,
 					struct mlx5dr_devx_obj *obj,
 					struct mlx5dr_cmd_stc_modify_attr *attr)
 {
+	attr->reparse_mode = MLX5_IFC_STC_REPARSE_IGNORE;
+
 	switch (action->type) {
 	case MLX5DR_ACTION_TYP_TAG:
 		attr->action_type = MLX5_IFC_STC_ACTION_TYPE_TAG;
@@ -538,6 +547,7 @@ static void mlx5dr_action_fill_stc_attr(struct mlx5dr_action *action,
 	case MLX5DR_ACTION_TYP_REFORMAT_TNL_L3_TO_L2:
 	case MLX5DR_ACTION_TYP_MODIFY_HDR:
 		attr->action_offset = MLX5DR_ACTION_OFFSET_DW6;
+		attr->reparse_mode = MLX5_IFC_STC_REPARSE_ALWAYS;
 		if (action->modify_header.num_of_actions == 1) {
 			attr->modify_action.data = action->modify_header.single_action;
 			attr->action_type = mlx5dr_action_get_mh_stc_type(attr->modify_action.data);
@@ -565,6 +575,7 @@ static void mlx5dr_action_fill_stc_attr(struct mlx5dr_action *action,
 	case MLX5DR_ACTION_TYP_REFORMAT_TNL_L2_TO_L2:
 		attr->action_type = MLX5_IFC_STC_ACTION_TYPE_HEADER_REMOVE;
 		attr->action_offset = MLX5DR_ACTION_OFFSET_DW5;
+		attr->reparse_mode = MLX5_IFC_STC_REPARSE_ALWAYS;
 		attr->remove_header.decap = 1;
 		attr->remove_header.start_anchor = MLX5_HEADER_ANCHOR_PACKET_START;
 		attr->remove_header.end_anchor = MLX5_HEADER_ANCHOR_INNER_MAC;
@@ -574,6 +585,7 @@ static void mlx5dr_action_fill_stc_attr(struct mlx5dr_action *action,
 	case MLX5DR_ACTION_TYP_INSERT_HEADER:
 		attr->action_type = MLX5_IFC_STC_ACTION_TYPE_HEADER_INSERT;
 		attr->action_offset = MLX5DR_ACTION_OFFSET_DW6;
+		attr->reparse_mode = MLX5_IFC_STC_REPARSE_ALWAYS;
 		attr->insert_header.encap = action->reformat.encap;
 		attr->insert_header.insert_anchor = action->reformat.anchor;
 		attr->insert_header.arg_id = action->reformat.arg_obj->id;
@@ -603,12 +615,14 @@ static void mlx5dr_action_fill_stc_attr(struct mlx5dr_action *action,
 	case MLX5DR_ACTION_TYP_POP_VLAN:
 		attr->action_type = MLX5_IFC_STC_ACTION_TYPE_REMOVE_WORDS;
 		attr->action_offset = MLX5DR_ACTION_OFFSET_DW5;
+		attr->reparse_mode = MLX5_IFC_STC_REPARSE_ALWAYS;
 		attr->remove_words.start_anchor = MLX5_HEADER_ANCHOR_FIRST_VLAN_START;
 		attr->remove_words.num_of_words = MLX5DR_ACTION_HDR_LEN_L2_VLAN / 2;
 		break;
 	case MLX5DR_ACTION_TYP_PUSH_VLAN:
 		attr->action_type = MLX5_IFC_STC_ACTION_TYPE_HEADER_INSERT;
 		attr->action_offset = MLX5DR_ACTION_OFFSET_DW6;
+		attr->reparse_mode = MLX5_IFC_STC_REPARSE_ALWAYS;
 		attr->insert_header.encap = 0;
 		attr->insert_header.is_inline = 1;
 		attr->insert_header.insert_anchor = MLX5_HEADER_ANCHOR_PACKET_START;
@@ -627,6 +641,7 @@ static void mlx5dr_action_fill_stc_attr(struct mlx5dr_action *action,
 			attr->remove_words.num_of_words = action->remove_header.num_of_words;
 		}
 		attr->action_offset = MLX5DR_ACTION_OFFSET_DW5;
+		attr->reparse_mode = MLX5_IFC_STC_REPARSE_ALWAYS;
 		break;
 	default:
 		DR_LOG(ERR, "Invalid action type %d", action->type);
@@ -1171,7 +1186,7 @@ mlx5dr_action_create_pop_vlan(struct mlx5dr_context *ctx, uint32_t flags)
 	if (!action)
 		return NULL;
 
-	ret = mlx5dr_action_get_shared_stc(action, MLX5DR_CONTEXT_SHARED_STC_POP);
+	ret = mlx5dr_action_get_shared_stc(action, MLX5DR_CONTEXT_SHARED_STC_DOUBLE_POP);
 	if (ret) {
 		DR_LOG(ERR, "Failed to create remove stc for reformat");
 		goto free_action;
@@ -1186,7 +1201,7 @@ mlx5dr_action_create_pop_vlan(struct mlx5dr_context *ctx, uint32_t flags)
 	return action;
 
 free_shared:
-	mlx5dr_action_put_shared_stc(action, MLX5DR_CONTEXT_SHARED_STC_POP);
+	mlx5dr_action_put_shared_stc(action, MLX5DR_CONTEXT_SHARED_STC_DOUBLE_POP);
 free_action:
 	simple_free(action);
 	return NULL;
@@ -1342,7 +1357,7 @@ mlx5dr_action_handle_l2_to_tunnel_l3(struct mlx5dr_action *action,
 	int ret;
 
 	/* The action is remove-l2-header + insert-l3-header */
-	ret = mlx5dr_action_get_shared_stc(action, MLX5DR_CONTEXT_SHARED_STC_DECAP);
+	ret = mlx5dr_action_get_shared_stc(action, MLX5DR_CONTEXT_SHARED_STC_DECAP_L3);
 	if (ret) {
 		DR_LOG(ERR, "Failed to create remove stc for reformat");
 		return ret;
@@ -1359,7 +1374,7 @@ mlx5dr_action_handle_l2_to_tunnel_l3(struct mlx5dr_action *action,
 	return 0;
 
 put_shared_stc:
-	mlx5dr_action_put_shared_stc(action, MLX5DR_CONTEXT_SHARED_STC_DECAP);
+	mlx5dr_action_put_shared_stc(action, MLX5DR_CONTEXT_SHARED_STC_DECAP_L3);
 	return ret;
 }
 
@@ -2142,7 +2157,7 @@ static void mlx5dr_action_destroy_hws(struct mlx5dr_action *action)
 		break;
 	case MLX5DR_ACTION_TYP_POP_VLAN:
 		mlx5dr_action_destroy_stcs(action);
-		mlx5dr_action_put_shared_stc(action, MLX5DR_CONTEXT_SHARED_STC_POP);
+		mlx5dr_action_put_shared_stc(action, MLX5DR_CONTEXT_SHARED_STC_DOUBLE_POP);
 		break;
 	case MLX5DR_ACTION_TYP_DEST_ARRAY:
 		mlx5dr_action_destroy_stcs(action);
@@ -2170,7 +2185,7 @@ static void mlx5dr_action_destroy_hws(struct mlx5dr_action *action)
 			mlx5dr_cmd_destroy_obj(obj);
 		break;
 	case MLX5DR_ACTION_TYP_REFORMAT_L2_TO_TNL_L3:
-		mlx5dr_action_put_shared_stc(action, MLX5DR_CONTEXT_SHARED_STC_DECAP);
+		mlx5dr_action_put_shared_stc(action, MLX5DR_CONTEXT_SHARED_STC_DECAP_L3);
 		for (i = 0; i < action->reformat.num_of_hdrs; i++)
 			mlx5dr_action_destroy_stcs(&action[i]);
 		mlx5dr_cmd_destroy_obj(action->reformat.arg_obj);
@@ -2230,6 +2245,7 @@ int mlx5dr_action_get_default_stc(struct mlx5dr_context *ctx,
 
 	stc_attr.action_type = MLX5_IFC_STC_ACTION_TYPE_NOP;
 	stc_attr.action_offset = MLX5DR_ACTION_OFFSET_DW0;
+	stc_attr.reparse_mode = MLX5_IFC_STC_REPARSE_IGNORE;
 	ret = mlx5dr_action_alloc_single_stc(ctx, &stc_attr, tbl_type,
 					     &default_stc->nop_ctr);
 	if (ret) {
@@ -2594,7 +2610,7 @@ mlx5dr_action_setter_single_double_pop(struct mlx5dr_actions_apply_data *apply,
 	apply->wqe_data[MLX5DR_ACTION_OFFSET_DW5] = 0;
 	apply->wqe_ctrl->stc_ix[MLX5DR_ACTION_STC_IDX_DW5] =
 		htobe32(mlx5dr_action_get_shared_stc_offset(apply->common_res,
-						    MLX5DR_CONTEXT_SHARED_STC_POP));
+							    MLX5DR_CONTEXT_SHARED_STC_DOUBLE_POP));
 }
 
 static void
@@ -2629,7 +2645,7 @@ mlx5dr_action_setter_common_decap(struct mlx5dr_actions_apply_data *apply,
 	apply->wqe_data[MLX5DR_ACTION_OFFSET_DW5] = 0;
 	apply->wqe_ctrl->stc_ix[MLX5DR_ACTION_STC_IDX_DW5] =
 		htobe32(mlx5dr_action_get_shared_stc_offset(apply->common_res,
-							    MLX5DR_CONTEXT_SHARED_STC_DECAP));
+							    MLX5DR_CONTEXT_SHARED_STC_DECAP_L3));
 }
 
 int mlx5dr_action_template_process(struct mlx5dr_action_template *at)
@@ -2680,8 +2696,8 @@ int mlx5dr_action_template_process(struct mlx5dr_action_template *at)
 				pop_setter->set_single = &mlx5dr_action_setter_single_double_pop;
 				break;
 			}
-			setter = mlx5dr_action_setter_find_first(last_setter, ASF_SINGLE1 | ASF_MODIFY);
-			setter->flags |= ASF_SINGLE1 | ASF_REPARSE | ASF_REMOVE;
+			setter = mlx5dr_action_setter_find_first(last_setter, ASF_SINGLE1 | ASF_MODIFY | ASF_INSERT);
+			setter->flags |= ASF_SINGLE1 | ASF_REMOVE;
 			setter->set_single = &mlx5dr_action_setter_single;
 			setter->idx_single = i;
 			pop_setter = setter;
@@ -2690,7 +2706,7 @@ int mlx5dr_action_template_process(struct mlx5dr_action_template *at)
 		case MLX5DR_ACTION_TYP_PUSH_VLAN:
 			/* Double insert inline */
 			setter = mlx5dr_action_setter_find_first(last_setter, ASF_DOUBLE | ASF_REMOVE);
-			setter->flags |= ASF_DOUBLE | ASF_REPARSE | ASF_MODIFY;
+			setter->flags |= ASF_DOUBLE | ASF_INSERT;
 			setter->set_double = &mlx5dr_action_setter_push_vlan;
 			setter->idx_double = i;
 			break;
@@ -2698,7 +2714,7 @@ int mlx5dr_action_template_process(struct mlx5dr_action_template *at)
 		case MLX5DR_ACTION_TYP_MODIFY_HDR:
 			/* Double modify header list */
 			setter = mlx5dr_action_setter_find_first(last_setter, ASF_DOUBLE | ASF_REMOVE);
-			setter->flags |= ASF_DOUBLE | ASF_MODIFY | ASF_REPARSE;
+			setter->flags |= ASF_DOUBLE | ASF_MODIFY;
 			setter->set_double = &mlx5dr_action_setter_modify_header;
 			setter->idx_double = i;
 			break;
@@ -2715,7 +2731,7 @@ int mlx5dr_action_template_process(struct mlx5dr_action_template *at)
 		case MLX5DR_ACTION_TYP_REFORMAT_TNL_L2_TO_L2:
 			/* Single remove header to header */
 			setter = mlx5dr_action_setter_find_first(last_setter, ASF_SINGLE1 | ASF_MODIFY);
-			setter->flags |= ASF_SINGLE1 | ASF_REMOVE | ASF_REPARSE;
+			setter->flags |= ASF_SINGLE1 | ASF_REMOVE;
 			setter->set_single = &mlx5dr_action_setter_single;
 			setter->idx_single = i;
 			break;
@@ -2723,8 +2739,8 @@ int mlx5dr_action_template_process(struct mlx5dr_action_template *at)
 		case MLX5DR_ACTION_TYP_INSERT_HEADER:
 		case MLX5DR_ACTION_TYP_REFORMAT_L2_TO_TNL_L2:
 			/* Double insert header with pointer */
-			setter = mlx5dr_action_setter_find_first(last_setter, ASF_DOUBLE);
-			setter->flags |= ASF_DOUBLE | ASF_REPARSE;
+			setter = mlx5dr_action_setter_find_first(last_setter, ASF_DOUBLE | ASF_REMOVE);
+			setter->flags |= ASF_DOUBLE | ASF_INSERT;
 			setter->set_double = &mlx5dr_action_setter_insert_ptr;
 			setter->idx_double = i;
 			break;
@@ -2732,7 +2748,7 @@ int mlx5dr_action_template_process(struct mlx5dr_action_template *at)
 		case MLX5DR_ACTION_TYP_REFORMAT_L2_TO_TNL_L3:
 			/* Single remove + Double insert header with pointer */
 			setter = mlx5dr_action_setter_find_first(last_setter, ASF_SINGLE1 | ASF_DOUBLE);
-			setter->flags |= ASF_SINGLE1 | ASF_DOUBLE | ASF_REPARSE | ASF_REMOVE;
+			setter->flags |= ASF_SINGLE1 | ASF_DOUBLE;
 			setter->set_double = &mlx5dr_action_setter_insert_ptr;
 			setter->idx_double = i;
 			setter->set_single = &mlx5dr_action_setter_common_decap;
@@ -2741,9 +2757,8 @@ int mlx5dr_action_template_process(struct mlx5dr_action_template *at)
 
 		case MLX5DR_ACTION_TYP_REFORMAT_TNL_L3_TO_L2:
 			/* Double modify header list with remove and push inline */
-			setter = mlx5dr_action_setter_find_first(last_setter,
-								 ASF_DOUBLE | ASF_REMOVE);
-			setter->flags |= ASF_DOUBLE | ASF_MODIFY | ASF_REPARSE;
+			setter = mlx5dr_action_setter_find_first(last_setter, ASF_DOUBLE | ASF_REMOVE);
+			setter->flags |= ASF_DOUBLE | ASF_MODIFY | ASF_INSERT;
 			setter->set_double = &mlx5dr_action_setter_tnl_l3_to_l2;
 			setter->idx_double = i;
 			break;

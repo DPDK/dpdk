@@ -562,6 +562,7 @@ static int mlx5dr_matcher_create_rtc(struct mlx5dr_matcher *matcher,
 	rtc_attr.pd = ctx->pd_num;
 	rtc_attr.ste_base = devx_obj->id;
 	rtc_attr.ste_offset = ste->offset;
+	rtc_attr.reparse_mode = mlx5dr_context_get_reparse_mode(ctx);
 	rtc_attr.table_type = mlx5dr_table_get_res_fw_ft_type(tbl->type, false);
 	mlx5dr_matcher_set_rtc_attr_sz(matcher, &rtc_attr, rtc_type, false);
 
@@ -764,6 +765,7 @@ static int mlx5dr_matcher_bind_at(struct mlx5dr_matcher *matcher)
 	/* Allocate STC for jumps to STE */
 	stc_attr.action_offset = MLX5DR_ACTION_OFFSET_HIT;
 	stc_attr.action_type = MLX5_IFC_STC_ACTION_TYPE_JUMP_TO_STE_TABLE;
+	stc_attr.reparse_mode = MLX5_IFC_STC_REPARSE_IGNORE;
 	stc_attr.ste_table.ste = matcher->action_ste.ste;
 	stc_attr.ste_table.ste_pool = matcher->action_ste.pool;
 	stc_attr.ste_table.match_definer_id = ctx->caps->trivial_match_definer;

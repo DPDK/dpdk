@@ -394,7 +394,7 @@ mlx5dr_cmd_rtc_create(struct ibv_context *ctx,
 	MLX5_SET(rtc, attr, ste_table_base_id, rtc_attr->ste_base);
 	MLX5_SET(rtc, attr, ste_table_offset, rtc_attr->ste_offset);
 	MLX5_SET(rtc, attr, miss_flow_table_id, rtc_attr->miss_ft_id);
-	MLX5_SET(rtc, attr, reparse_mode, MLX5_IFC_RTC_REPARSE_ALWAYS);
+	MLX5_SET(rtc, attr, reparse_mode, rtc_attr->reparse_mode);
 
 	devx_obj->obj = mlx5_glue->devx_obj_create(ctx, in, sizeof(in), out, sizeof(out));
 	if (!devx_obj->obj) {
@@ -570,6 +570,7 @@ mlx5dr_cmd_stc_modify(struct mlx5dr_devx_obj *devx_obj,
 	attr = MLX5_ADDR_OF(create_stc_in, in, stc);
 	MLX5_SET(stc, attr, ste_action_offset, stc_attr->action_offset);
 	MLX5_SET(stc, attr, action_type, stc_attr->action_type);
+	MLX5_SET(stc, attr, reparse_mode, stc_attr->reparse_mode);
 	MLX5_SET64(stc, attr, modify_field_select,
 		   MLX5_IFC_MODIFY_STC_FIELD_SELECT_NEW_STC);
 

@@ -11,8 +11,8 @@ enum mlx5dr_context_flags {
 };
 
 enum mlx5dr_context_shared_stc_type {
-	MLX5DR_CONTEXT_SHARED_STC_DECAP = 0,
-	MLX5DR_CONTEXT_SHARED_STC_POP = 1,
+	MLX5DR_CONTEXT_SHARED_STC_DECAP_L3 = 0,
+	MLX5DR_CONTEXT_SHARED_STC_DOUBLE_POP = 1,
 	MLX5DR_CONTEXT_SHARED_STC_MAX = 2,
 };
 
@@ -60,4 +60,9 @@ mlx5dr_context_get_local_ibv(struct mlx5dr_context *ctx)
 
 	return ctx->ibv_ctx;
 }
+
+bool mlx5dr_context_cap_dynamic_reparse(struct mlx5dr_context *ctx);
+
+uint8_t mlx5dr_context_get_reparse_mode(struct mlx5dr_context *ctx);
+
 #endif /* MLX5DR_CONTEXT_H_ */
