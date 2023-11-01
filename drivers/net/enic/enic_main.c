@@ -1639,7 +1639,7 @@ int enic_set_mtu(struct enic *enic, uint16_t new_mtu)
 	 * packet length.
 	 */
 	if (!eth_dev->data->dev_started)
-		goto set_mtu_done;
+		return rc;
 
 	/*
 	 * The device has started, re-do RQs on the fly. In the process, we
