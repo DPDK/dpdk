@@ -46,6 +46,7 @@ enum mlx5dr_action_type {
 	MLX5DR_ACTION_TYP_ASO_METER,
 	MLX5DR_ACTION_TYP_ASO_CT,
 	MLX5DR_ACTION_TYP_INSERT_HEADER,
+	MLX5DR_ACTION_TYP_REMOVE_HEADER,
 	MLX5DR_ACTION_TYP_DEST_ROOT,
 	MLX5DR_ACTION_TYP_DEST_ARRAY,
 	MLX5DR_ACTION_TYP_MAX,
@@ -182,6 +183,29 @@ struct mlx5dr_action_insert_header {
 	 * requiring device to update offloaded fields (for example IPv4 total length).
 	 */
 	bool encap;
+};
+
+enum mlx5dr_action_remove_header_type {
+	MLX5DR_ACTION_REMOVE_HEADER_TYPE_BY_OFFSET,
+	MLX5DR_ACTION_REMOVE_HEADER_TYPE_BY_HEADER,
+};
+
+struct mlx5dr_action_remove_header_attr {
+	enum mlx5dr_action_remove_header_type type;
+	union {
+		struct {
+			/* PRM start anchor from which header will be removed */
+			uint8_t start_anchor;
+			/* PRM end anchor till which header will be removed */
+			uint8_t end_anchor;
+			bool decap;
+		} by_anchor;
+		struct {
+			/* PRM start anchor from which header will be removed */
+			uint8_t start_anchor;
+			uint8_t size;
+		} by_offset;
+	};
 };
 
 struct mlx5dr_action_mh_pattern {
@@ -725,6 +749,22 @@ mlx5dr_action_create_insert_header(struct mlx5dr_context *ctx,
 				   uint8_t num_of_hdrs,
 				   struct mlx5dr_action_insert_header *hdrs,
 				   uint32_t log_bulk_size,
+				   uint32_t flags);
+
+/* Create remove header action.
+ *
+ * @param[in] ctx
+ *	The context in which the new action will be created.
+ * @param[in] attr
+ *	attributes: specifies the remove header type, PRM start anchor and
+ *	the PRM end anchor or the PRM start anchor and remove size in bytes.
+ * @param[in] flags
+ *	Action creation flags. (enum mlx5dr_action_flags)
+ * @return pointer to mlx5dr_action on success NULL otherwise.
+ */
+struct mlx5dr_action *
+mlx5dr_action_create_remove_header(struct mlx5dr_context *ctx,
+				   struct mlx5dr_action_remove_header_attr *attr,
 				   uint32_t flags);
 
 /* Destroy direct rule action.

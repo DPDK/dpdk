@@ -159,6 +159,13 @@ struct mlx5dr_action {
 					size_t num_dest;
 					struct mlx5dr_cmd_set_fte_dest *dest_list;
 				} dest_array;
+				struct {
+					uint8_t type;
+					uint8_t start_anchor;
+					uint8_t end_anchor;
+					uint8_t num_of_words;
+					bool decap;
+				} remove_header;
 			};
 		};
 

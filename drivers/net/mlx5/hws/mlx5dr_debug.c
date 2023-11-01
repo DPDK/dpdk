@@ -25,6 +25,7 @@ const char *mlx5dr_debug_action_type_str[] = {
 	[MLX5DR_ACTION_TYP_DEST_ROOT] = "DEST_ROOT",
 	[MLX5DR_ACTION_TYP_DEST_ARRAY] = "DEST_ARRAY",
 	[MLX5DR_ACTION_TYP_INSERT_HEADER] = "INSERT_HEADER",
+	[MLX5DR_ACTION_TYP_REMOVE_HEADER] = "REMOVE_HEADER",
 };
 
 static_assert(ARRAY_SIZE(mlx5dr_debug_action_type_str) == MLX5DR_ACTION_TYP_MAX,

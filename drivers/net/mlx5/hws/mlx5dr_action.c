@@ -7,6 +7,8 @@
 #define WIRE_PORT 0xFFFF
 
 #define MLX5DR_ACTION_METER_INIT_COLOR_OFFSET 1
+/* Header removal size limited to 128B (64 words) */
+#define MLX5DR_ACTION_REMOVE_HEADER_MAX_SIZE 128
 
 /* This is the maximum allowed action order for each table type:
  *	 TX: POP_VLAN, CTR, ASO_METER, AS_CT, PUSH_VLAN, MODIFY, ENCAP, Term
@@ -18,6 +20,7 @@
 static const uint32_t action_order_arr[MLX5DR_TABLE_TYPE_MAX][MLX5DR_ACTION_TYP_MAX] = {
 	[MLX5DR_TABLE_TYPE_NIC_RX] = {
 		BIT(MLX5DR_ACTION_TYP_TAG),
+		BIT(MLX5DR_ACTION_TYP_REMOVE_HEADER) |
 		BIT(MLX5DR_ACTION_TYP_REFORMAT_TNL_L2_TO_L2) |
 		BIT(MLX5DR_ACTION_TYP_REFORMAT_TNL_L3_TO_L2),
 		BIT(MLX5DR_ACTION_TYP_POP_VLAN),
@@ -58,6 +61,7 @@ static const uint32_t action_order_arr[MLX5DR_TABLE_TYPE_MAX][MLX5DR_ACTION_TYP_
 		BIT(MLX5DR_ACTION_TYP_LAST),
 	},
 	[MLX5DR_TABLE_TYPE_FDB] = {
+		BIT(MLX5DR_ACTION_TYP_REMOVE_HEADER) |
 		BIT(MLX5DR_ACTION_TYP_REFORMAT_TNL_L2_TO_L2) |
 		BIT(MLX5DR_ACTION_TYP_REFORMAT_TNL_L3_TO_L2),
 		BIT(MLX5DR_ACTION_TYP_POP_VLAN),
@@ -602,6 +606,19 @@ static void mlx5dr_action_fill_stc_attr(struct mlx5dr_action *action,
 		attr->insert_header.insert_anchor = MLX5_HEADER_ANCHOR_PACKET_START;
 		attr->insert_header.insert_offset = MLX5DR_ACTION_HDR_LEN_L2_MACS;
 		attr->insert_header.header_size = MLX5DR_ACTION_HDR_LEN_L2_VLAN;
+		break;
+	case MLX5DR_ACTION_TYP_REMOVE_HEADER:
+		if (action->remove_header.type == MLX5DR_ACTION_REMOVE_HEADER_TYPE_BY_HEADER) {
+			attr->action_type = MLX5_IFC_STC_ACTION_TYPE_HEADER_REMOVE;
+			attr->remove_header.decap = action->remove_header.decap;
+			attr->remove_header.start_anchor = action->remove_header.start_anchor;
+			attr->remove_header.end_anchor = action->remove_header.end_anchor;
+		} else {
+			attr->action_type = MLX5_IFC_STC_ACTION_TYPE_REMOVE_WORDS;
+			attr->remove_words.start_anchor = action->remove_header.start_anchor;
+			attr->remove_words.num_of_words = action->remove_header.num_of_words;
+		}
+		attr->action_offset = MLX5DR_ACTION_OFFSET_DW5;
 		break;
 	default:
 		DR_LOG(ERR, "Invalid action type %d", action->type);
@@ -2023,6 +2040,64 @@ free_action:
 	return NULL;
 }
 
+struct mlx5dr_action *
+mlx5dr_action_create_remove_header(struct mlx5dr_context *ctx,
+				   struct mlx5dr_action_remove_header_attr *attr,
+				   uint32_t flags)
+{
+	struct mlx5dr_action *action;
+
+	if (mlx5dr_action_is_root_flags(flags)) {
+		DR_LOG(ERR, "Remove header action not supported over root");
+		rte_errno = ENOTSUP;
+		return NULL;
+	}
+
+	action = mlx5dr_action_create_generic(ctx, flags, MLX5DR_ACTION_TYP_REMOVE_HEADER);
+	if (!action)
+		return NULL;
+
+	switch (attr->type) {
+	case MLX5DR_ACTION_REMOVE_HEADER_TYPE_BY_HEADER:
+		action->remove_header.type = MLX5DR_ACTION_REMOVE_HEADER_TYPE_BY_HEADER;
+		action->remove_header.start_anchor = attr->by_anchor.start_anchor;
+		action->remove_header.end_anchor = attr->by_anchor.end_anchor;
+		action->remove_header.decap = attr->by_anchor.decap;
+		break;
+	case MLX5DR_ACTION_REMOVE_HEADER_TYPE_BY_OFFSET:
+		if (attr->by_offset.size % W_SIZE != 0) {
+			DR_LOG(ERR, "Invalid size, HW supports header remove in WORD granularity");
+			rte_errno = EINVAL;
+			goto free_action;
+		}
+
+		if (attr->by_offset.size > MLX5DR_ACTION_REMOVE_HEADER_MAX_SIZE) {
+			DR_LOG(ERR, "Header removal size limited to %u bytes",
+			       MLX5DR_ACTION_REMOVE_HEADER_MAX_SIZE);
+			rte_errno = EINVAL;
+			goto free_action;
+		}
+
+		action->remove_header.type = MLX5DR_ACTION_REMOVE_HEADER_TYPE_BY_OFFSET;
+		action->remove_header.start_anchor = attr->by_offset.start_anchor;
+		action->remove_header.num_of_words = attr->by_offset.size / W_SIZE;
+		break;
+	default:
+		DR_LOG(ERR, "Unsupported remove header type %u", attr->type);
+		rte_errno = ENOTSUP;
+		goto free_action;
+	}
+
+	if (mlx5dr_action_create_stcs(action, NULL))
+		goto free_action;
+
+	return action;
+
+free_action:
+	simple_free(action);
+	return NULL;
+}
+
 static void mlx5dr_action_destroy_hws(struct mlx5dr_action *action)
 {
 	struct mlx5dr_devx_obj *obj = NULL;
@@ -2043,6 +2118,7 @@ static void mlx5dr_action_destroy_hws(struct mlx5dr_action *action)
 	case MLX5DR_ACTION_TYP_ASO_METER:
 	case MLX5DR_ACTION_TYP_ASO_CT:
 	case MLX5DR_ACTION_TYP_PUSH_VLAN:
+	case MLX5DR_ACTION_TYP_REMOVE_HEADER:
 		mlx5dr_action_destroy_stcs(action);
 		break;
 	case MLX5DR_ACTION_TYP_DEST_ROOT:
@@ -2620,6 +2696,7 @@ int mlx5dr_action_template_process(struct mlx5dr_action_template *at)
 			setter->idx_double = i;
 			break;
 
+		case MLX5DR_ACTION_TYP_REMOVE_HEADER:
 		case MLX5DR_ACTION_TYP_REFORMAT_TNL_L2_TO_L2:
 			/* Single remove header to header */
 			setter = mlx5dr_action_setter_find_first(last_setter, ASF_SINGLE1 | ASF_MODIFY);
