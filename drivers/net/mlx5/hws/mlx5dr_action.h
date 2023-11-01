@@ -6,7 +6,7 @@
 #define MLX5DR_ACTION_H_
 
 /* Max number of STEs needed for a rule (including match) */
-#define MLX5DR_ACTION_MAX_STE 10
+#define MLX5DR_ACTION_MAX_STE 20
 
 /* Max number of internal subactions of ipv6_ext */
 #define MLX5DR_ACTION_IPV6_EXT_MAX_SA 4
@@ -104,6 +104,7 @@ struct mlx5dr_actions_wqe_setter {
 	uint8_t idx_ctr;
 	uint8_t idx_hit;
 	uint8_t flags;
+	uint8_t extra_data;
 };
 
 struct mlx5dr_action_template {

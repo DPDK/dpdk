@@ -3007,6 +3007,121 @@ mlx5dr_action_setter_common_decap(struct mlx5dr_actions_apply_data *apply,
 							    MLX5DR_CONTEXT_SHARED_STC_DECAP_L3));
 }
 
+static void
+mlx5dr_action_setter_ipv6_route_ext_gen_push_mhdr(uint8_t *data, void *mh_data)
+{
+	uint8_t *action_ptr = mh_data;
+	uint32_t *ipv6_dst_addr;
+	uint8_t seg_left;
+	uint32_t i;
+
+	/* Fetch the last IPv6 address in the segment list which is the next hop */
+	seg_left = MLX5_GET(header_ipv6_routing_ext, data, segments_left) - 1;
+	ipv6_dst_addr = (uint32_t *)data + MLX5_ST_SZ_DW(header_ipv6_routing_ext)
+			+ seg_left * MLX5_ST_SZ_DW(definer_hl_ipv6_addr);
+
+	/* Load next hop IPv6 address in reverse order to ipv6.dst_address */
+	for (i = 0; i < MLX5_ST_SZ_DW(definer_hl_ipv6_addr); i++) {
+		MLX5_SET(set_action_in, action_ptr, data, be32toh(*ipv6_dst_addr++));
+		action_ptr += MLX5DR_MODIFY_ACTION_SIZE;
+	}
+
+	/* Set ipv6_route_ext.next_hdr per user input */
+	MLX5_SET(set_action_in, action_ptr, data, *data);
+}
+
+static void
+mlx5dr_action_setter_ipv6_route_ext_mhdr(struct mlx5dr_actions_apply_data *apply,
+					 struct mlx5dr_actions_wqe_setter *setter)
+{
+	struct mlx5dr_rule_action *rule_action = apply->rule_action;
+	struct mlx5dr_actions_wqe_setter tmp_setter = {0};
+	struct mlx5dr_rule_action tmp_rule_action;
+	__be64 cmd[MLX5_SRV6_SAMPLE_NUM] = {0};
+	struct mlx5dr_action *ipv6_ext_action;
+	uint8_t *header;
+
+	header = rule_action[setter->idx_double].ipv6_ext.header;
+	ipv6_ext_action = rule_action[setter->idx_double].action;
+	tmp_rule_action.action = ipv6_ext_action->ipv6_route_ext.action[setter->extra_data];
+
+	if (tmp_rule_action.action->flags & MLX5DR_ACTION_FLAG_SHARED) {
+		tmp_rule_action.modify_header.offset = 0;
+		tmp_rule_action.modify_header.pattern_idx = 0;
+		tmp_rule_action.modify_header.data = NULL;
+	} else {
+		/*
+		 * Copy ipv6_dst from ipv6_route_ext.last_seg.
+		 * Set ipv6_route_ext.next_hdr.
+		 */
+		mlx5dr_action_setter_ipv6_route_ext_gen_push_mhdr(header, cmd);
+		tmp_rule_action.modify_header.data = (uint8_t *)cmd;
+		tmp_rule_action.modify_header.pattern_idx = 0;
+		tmp_rule_action.modify_header.offset =
+			rule_action[setter->idx_double].ipv6_ext.offset;
+	}
+
+	apply->rule_action = &tmp_rule_action;
+
+	/* Reuse regular */
+	mlx5dr_action_setter_modify_header(apply, &tmp_setter);
+
+	/* Swap rule actions from backup */
+	apply->rule_action = rule_action;
+}
+
+static void
+mlx5dr_action_setter_ipv6_route_ext_insert_ptr(struct mlx5dr_actions_apply_data *apply,
+					       struct mlx5dr_actions_wqe_setter *setter)
+{
+	struct mlx5dr_rule_action *rule_action = apply->rule_action;
+	struct mlx5dr_actions_wqe_setter tmp_setter = {0};
+	struct mlx5dr_rule_action tmp_rule_action;
+	struct mlx5dr_action *ipv6_ext_action;
+	uint8_t header[MLX5_PUSH_MAX_LEN];
+
+	ipv6_ext_action = rule_action[setter->idx_double].action;
+	tmp_rule_action.action = ipv6_ext_action->ipv6_route_ext.action[setter->extra_data];
+
+	if (tmp_rule_action.action->flags & MLX5DR_ACTION_FLAG_SHARED) {
+		tmp_rule_action.reformat.offset = 0;
+		tmp_rule_action.reformat.hdr_idx = 0;
+		tmp_rule_action.reformat.data = NULL;
+	} else {
+		memcpy(header, rule_action[setter->idx_double].ipv6_ext.header,
+		       tmp_rule_action.action->reformat.header_size);
+		/* Clear ipv6_route_ext.next_hdr for right checksum */
+		MLX5_SET(header_ipv6_routing_ext, header, next_hdr, 0);
+		tmp_rule_action.reformat.data = header;
+		tmp_rule_action.reformat.hdr_idx = 0;
+		tmp_rule_action.reformat.offset =
+			rule_action[setter->idx_double].ipv6_ext.offset;
+	}
+
+	apply->rule_action = &tmp_rule_action;
+
+	/* Reuse regular */
+	mlx5dr_action_setter_insert_ptr(apply, &tmp_setter);
+
+	/* Swap rule actions from backup */
+	apply->rule_action = rule_action;
+}
+
+static void
+mlx5dr_action_setter_ipv6_route_ext_pop(struct mlx5dr_actions_apply_data *apply,
+					struct mlx5dr_actions_wqe_setter *setter)
+{
+	struct mlx5dr_rule_action *rule_action = &apply->rule_action[setter->idx_single];
+	uint8_t idx = MLX5DR_ACTION_IPV6_EXT_MAX_SA - 1;
+	struct mlx5dr_action *action;
+
+	/* Pop the ipv6_route_ext as set_single logic */
+	action = rule_action->action->ipv6_route_ext.action[idx];
+	apply->wqe_data[MLX5DR_ACTION_OFFSET_DW5] = 0;
+	apply->wqe_ctrl->stc_ix[MLX5DR_ACTION_STC_IDX_DW5] =
+		htobe32(action->stc[apply->tbl_type].offset);
+}
+
 int mlx5dr_action_template_process(struct mlx5dr_action_template *at)
 {
 	struct mlx5dr_actions_wqe_setter *start_setter = at->setters + 1;
@@ -3068,6 +3183,65 @@ int mlx5dr_action_template_process(struct mlx5dr_action_template *at)
 			setter->flags |= ASF_DOUBLE | ASF_INSERT;
 			setter->set_double = &mlx5dr_action_setter_push_vlan;
 			setter->idx_double = i;
+			break;
+
+		case MLX5DR_ACTION_TYP_POP_IPV6_ROUTE_EXT:
+			/*
+			 * Backup ipv6_route_ext.next_hdr to ipv6_route_ext.seg_left.
+			 * Set ipv6_route_ext.next_hdr to 0 for checksum bug.
+			 */
+			setter = mlx5dr_action_setter_find_first(last_setter, ASF_DOUBLE | ASF_REMOVE);
+			setter->flags |= ASF_DOUBLE | ASF_MODIFY;
+			setter->set_double = &mlx5dr_action_setter_ipv6_route_ext_mhdr;
+			setter->idx_double = i;
+			setter->extra_data = 0;
+			setter++;
+
+			/*
+			 * Restore ipv6_route_ext.next_hdr from ipv6_route_ext.seg_left.
+			 * Load the final destination address from flex parser sample 1->4.
+			 */
+			setter->flags |= ASF_DOUBLE | ASF_MODIFY;
+			setter->set_double = &mlx5dr_action_setter_ipv6_route_ext_mhdr;
+			setter->idx_double = i;
+			setter->extra_data = 1;
+			setter++;
+
+			/* Set the ipv6.protocol per ipv6_route_ext.next_hdr */
+			setter->flags |= ASF_DOUBLE | ASF_MODIFY;
+			setter->set_double = &mlx5dr_action_setter_ipv6_route_ext_mhdr;
+			setter->idx_double = i;
+			setter->extra_data = 2;
+			/* Pop ipv6_route_ext */
+			setter->flags |= ASF_SINGLE1 | ASF_REMOVE;
+			setter->set_single = &mlx5dr_action_setter_ipv6_route_ext_pop;
+			setter->idx_single = i;
+			break;
+
+		case MLX5DR_ACTION_TYP_PUSH_IPV6_ROUTE_EXT:
+			/* Insert ipv6_route_ext with next_hdr as 0 due to checksum bug */
+			setter = mlx5dr_action_setter_find_first(last_setter, ASF_DOUBLE | ASF_REMOVE);
+			setter->flags |= ASF_DOUBLE | ASF_INSERT;
+			setter->set_double = &mlx5dr_action_setter_ipv6_route_ext_insert_ptr;
+			setter->idx_double = i;
+			setter->extra_data = 0;
+			setter++;
+
+			/* Set ipv6.protocol as IPPROTO_ROUTING: 0x2b */
+			setter->flags |= ASF_DOUBLE | ASF_MODIFY;
+			setter->set_double = &mlx5dr_action_setter_ipv6_route_ext_mhdr;
+			setter->idx_double = i;
+			setter->extra_data = 1;
+			setter++;
+
+			/*
+			 * Load the right ipv6_route_ext.next_hdr per user input buffer.
+			 * Load the next dest_addr from the ipv6_route_ext.seg_list[last].
+			 */
+			setter->flags |= ASF_DOUBLE | ASF_MODIFY;
+			setter->set_double = &mlx5dr_action_setter_ipv6_route_ext_mhdr;
+			setter->idx_double = i;
+			setter->extra_data = 2;
 			break;
 
 		case MLX5DR_ACTION_TYP_MODIFY_HDR:
