@@ -6,8 +6,8 @@
 CPFL Poll Mode Driver
 =====================
 
-The [*EXPERIMENTAL*] cpfl PMD (**librte_net_cpfl**) provides poll mode driver support
-for Intel\ |reg| Infrastructure Processing Unit (Intel\ |reg| IPU) E2100.
+The cpfl PMD (**librte_net_cpfl**) provides poll mode driver support for
+Intel\ |reg| Infrastructure Processing Unit (Intel\ |reg| IPU) E2100.
 Please refer to
 https://www.intel.com/content/www/us/en/products/network-io/infrastructure-processing-units/asic/e2000-asic.html
 for more information.
@@ -32,6 +32,8 @@ Here is the suggested matching list which has been tested and verified.
    |     DPDK   |  MEV-ts release  |
    +============+==================+
    |    23.07   |      0.9.1       |
+   +------------+------------------+
+   |    23.11   |       1.0        |
    +------------+------------------+
 
 
