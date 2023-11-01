@@ -654,12 +654,9 @@ tx_machine(struct bond_dev_private *internals, uint16_t member_id)
 }
 
 static uint16_t
-max_index(uint64_t *a, int n)
+max_index(uint64_t *a, uint16_t n)
 {
-	if (n <= 0)
-		return -1;
-
-	int i, max_i = 0;
+	uint16_t i, max_i = 0;
 	uint64_t max = a[0];
 
 	for (i = 1; i < n; ++i) {
