@@ -467,7 +467,7 @@ static void __attribute__((destructor(RTE_PRIO(prio)), used)) func(void)
  * whichever difference is the lowest.
  */
 #define RTE_ALIGN_MUL_NEAR(v, mul)				\
-	({							\
+	__extension__ ({					\
 		typeof(v) ceil = RTE_ALIGN_MUL_CEIL(v, mul);	\
 		typeof(v) floor = RTE_ALIGN_MUL_FLOOR(v, mul);	\
 		(ceil - (v)) > ((v) - floor) ? floor : ceil;	\
