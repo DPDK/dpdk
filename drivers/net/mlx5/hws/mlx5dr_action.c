@@ -547,7 +547,9 @@ static void mlx5dr_action_fill_stc_attr(struct mlx5dr_action *action,
 	case MLX5DR_ACTION_TYP_REFORMAT_TNL_L3_TO_L2:
 	case MLX5DR_ACTION_TYP_MODIFY_HDR:
 		attr->action_offset = MLX5DR_ACTION_OFFSET_DW6;
-		attr->reparse_mode = MLX5_IFC_STC_REPARSE_ALWAYS;
+		if (action->modify_header.require_reparse)
+			attr->reparse_mode = MLX5_IFC_STC_REPARSE_ALWAYS;
+
 		if (action->modify_header.num_of_actions == 1) {
 			attr->modify_action.data = action->modify_header.single_action;
 			attr->action_type = mlx5dr_action_get_mh_stc_type(attr->modify_action.data);
@@ -1474,6 +1476,8 @@ mlx5dr_action_handle_tunnel_l3_to_l2(struct mlx5dr_action *action,
 		action[i].modify_header.num_of_actions = num_of_actions;
 		action[i].modify_header.arg_obj = arg_obj;
 		action[i].modify_header.pat_obj = pat_obj;
+		action[i].modify_header.require_reparse =
+			mlx5dr_pat_require_reparse((__be64 *)mh_data, num_of_actions);
 
 		ret = mlx5dr_action_create_stcs(&action[i], NULL);
 		if (ret) {
@@ -1620,7 +1624,7 @@ mlx5dr_action_create_modify_header_hws(struct mlx5dr_action *action,
 {
 	struct mlx5dr_devx_obj *pat_obj, *arg_obj = NULL;
 	struct mlx5dr_context *ctx = action->ctx;
-	uint16_t max_mh_actions = 0;
+	uint16_t num_actions, max_mh_actions = 0;
 	int i, ret;
 
 	/* Calculate maximum number of mh actions for shared arg allocation */
@@ -1646,11 +1650,14 @@ mlx5dr_action_create_modify_header_hws(struct mlx5dr_action *action,
 			goto free_stc_and_pat;
 		}
 
+		num_actions = pattern[i].sz / MLX5DR_MODIFY_ACTION_SIZE;
 		action[i].modify_header.num_of_patterns = num_of_patterns;
 		action[i].modify_header.max_num_of_actions = max_mh_actions;
-		action[i].modify_header.num_of_actions = pattern[i].sz / MLX5DR_MODIFY_ACTION_SIZE;
+		action[i].modify_header.num_of_actions = num_actions;
+		action[i].modify_header.require_reparse =
+			mlx5dr_pat_require_reparse(pattern[i].data, num_actions);
 
-		if (action[i].modify_header.num_of_actions == 1) {
+		if (num_actions == 1) {
 			pat_obj = NULL;
 			/* Optimize single modify action to be used inline */
 			action[i].modify_header.single_action = pattern[i].data[0];

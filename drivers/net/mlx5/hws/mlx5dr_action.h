@@ -127,6 +127,7 @@ struct mlx5dr_action {
 					uint8_t single_action_type;
 					uint8_t num_of_actions;
 					uint8_t max_num_of_actions;
+					uint8_t require_reparse;
 				} modify_header;
 				struct {
 					struct mlx5dr_devx_obj *arg_obj;

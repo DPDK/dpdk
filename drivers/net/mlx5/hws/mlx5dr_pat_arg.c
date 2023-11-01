@@ -37,6 +37,43 @@ uint32_t mlx5dr_arg_get_arg_size(uint16_t num_of_actions)
 	return BIT(mlx5dr_arg_get_arg_log_size(num_of_actions));
 }
 
+bool mlx5dr_pat_require_reparse(__be64 *actions, uint16_t num_of_actions)
+{
+	uint16_t i, field;
+	uint8_t action_id;
+
+	for (i = 0; i < num_of_actions; i++) {
+		action_id = MLX5_GET(set_action_in, &actions[i], action_type);
+
+		switch (action_id) {
+		case MLX5_MODIFICATION_TYPE_NOP:
+			field = MLX5_MODI_OUT_NONE;
+			break;
+
+		case MLX5_MODIFICATION_TYPE_SET:
+		case MLX5_MODIFICATION_TYPE_ADD:
+			field = MLX5_GET(set_action_in, &actions[i], field);
+			break;
+
+		case MLX5_MODIFICATION_TYPE_COPY:
+		case MLX5_MODIFICATION_TYPE_ADD_FIELD:
+			field = MLX5_GET(copy_action_in, &actions[i], dst_field);
+			break;
+
+		default:
+			/* Insert/Remove/Unknown actions require reparse */
+			return true;
+		}
+
+		/* Below fields can change packet structure require a reparse */
+		if (field == MLX5_MODI_OUT_ETHERTYPE ||
+		    field == MLX5_MODI_OUT_IPV6_NEXT_HDR)
+			return true;
+	}
+
+	return false;
+}
+
 /* Cache and cache element handling */
 int mlx5dr_pat_init_pattern_cache(struct mlx5dr_pattern_cache **cache)
 {
@@ -228,8 +265,8 @@ mlx5dr_pat_get_pattern(struct mlx5dr_context *ctx,
 	}
 
 	pat_obj = mlx5dr_cmd_header_modify_pattern_create(ctx->ibv_ctx,
-							      pattern_sz,
-							      (uint8_t *)pattern);
+							  pattern_sz,
+							  (uint8_t *)pattern);
 	if (!pat_obj) {
 		DR_LOG(ERR, "Failed to create pattern FW object");
 		goto out_unlock;
