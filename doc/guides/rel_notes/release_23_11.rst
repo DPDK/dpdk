@@ -181,6 +181,8 @@ New Features
   * Added support for multi-port E-Switch.
   * Added support for Network Service Header (NSH) flow matching.
   * Added support for ``RTE_FLOW_ITEM_TYPE_PTYPE`` flow item.
+  * Added support for ``RTE_FLOW_ACTION_TYPE_IPV6_EXT_PUSH`` flow action.
+  * Added support for ``RTE_FLOW_ACTION_TYPE_IPV6_EXT_REMOVE`` flow action.
   * Added support for ``RTE_FLOW_ACTION_TYPE_PORT_REPRESENTOR`` flow action and mirror.
   * Added support for ``RTE_FLOW_ACTION_TYPE_INDIRECT_LIST`` flow action.
 

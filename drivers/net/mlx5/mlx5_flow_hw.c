@@ -624,6 +624,12 @@ __flow_hw_action_template_destroy(struct rte_eth_dev *dev,
 		mlx5_free(acts->encap_decap);
 		acts->encap_decap = NULL;
 	}
+	if (acts->push_remove) {
+		if (acts->push_remove->action)
+			mlx5dr_action_destroy(acts->push_remove->action);
+		mlx5_free(acts->push_remove);
+		acts->push_remove = NULL;
+	}
 	if (acts->mhdr) {
 		flow_hw_template_destroy_mhdr_action(acts->mhdr);
 		mlx5_free(acts->mhdr);
@@ -759,6 +765,44 @@ __flow_hw_act_data_encap_append(struct mlx5_priv *priv,
 	act_data->encap.len = len;
 	LIST_INSERT_HEAD(&acts->act_list, act_data, next);
 	return 0;
+}
+
+/**
+ * Append dynamic push action to the dynamic action list.
+ *
+ * @param[in] dev
+ *   Pointer to the port.
+ * @param[in] acts
+ *   Pointer to the template HW steering DR actions.
+ * @param[in] type
+ *   Action type.
+ * @param[in] action_src
+ *   Offset of source rte flow action.
+ * @param[in] action_dst
+ *   Offset of destination DR action.
+ * @param[in] len
+ *   Length of the data to be updated.
+ *
+ * @return
+ *    Data pointer on success, NULL otherwise and rte_errno is set.
+ */
+static __rte_always_inline void *
+__flow_hw_act_data_push_append(struct rte_eth_dev *dev,
+			       struct mlx5_hw_actions *acts,
+			       enum rte_flow_action_type type,
+			       uint16_t action_src,
+			       uint16_t action_dst,
+			       uint16_t len)
+{
+	struct mlx5_action_construct_data *act_data;
+	struct mlx5_priv *priv = dev->data->dev_private;
+
+	act_data = __flow_hw_act_data_alloc(priv, type, action_src, action_dst);
+	if (!act_data)
+		return NULL;
+	act_data->ipv6_ext.len = len;
+	LIST_INSERT_HEAD(&acts->act_list, act_data, next);
+	return act_data;
 }
 
 static __rte_always_inline int
@@ -1924,6 +1968,82 @@ mlx5_tbl_translate_modify_header(struct rte_eth_dev *dev,
 	return 0;
 }
 
+
+static int
+mlx5_create_ipv6_ext_reformat(struct rte_eth_dev *dev,
+			      const struct mlx5_flow_template_table_cfg *cfg,
+			      struct mlx5_hw_actions *acts,
+			      struct rte_flow_actions_template *at,
+			      uint8_t *push_data, uint8_t *push_data_m,
+			      size_t push_size, uint16_t recom_src,
+			      enum mlx5dr_action_type recom_type)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	const struct rte_flow_template_table_attr *table_attr = &cfg->attr;
+	const struct rte_flow_attr *attr = &table_attr->flow_attr;
+	enum mlx5dr_table_type type = get_mlx5dr_table_type(attr);
+	struct mlx5_action_construct_data *act_data;
+	struct mlx5dr_action_reformat_header hdr = {0};
+	uint32_t flag, bulk = 0;
+
+	flag = mlx5_hw_act_flag[!!attr->group][type];
+	acts->push_remove = mlx5_malloc(MLX5_MEM_ZERO,
+					sizeof(*acts->push_remove) + push_size,
+					0, SOCKET_ID_ANY);
+	if (!acts->push_remove)
+		return -ENOMEM;
+
+	switch (recom_type) {
+	case MLX5DR_ACTION_TYP_PUSH_IPV6_ROUTE_EXT:
+		if (!push_data || !push_size)
+			goto err1;
+		if (!push_data_m) {
+			bulk = rte_log2_u32(table_attr->nb_flows);
+		} else {
+			flag |= MLX5DR_ACTION_FLAG_SHARED;
+			acts->push_remove->shared = 1;
+		}
+		acts->push_remove->data_size = push_size;
+		memcpy(acts->push_remove->data, push_data, push_size);
+		hdr.data = push_data;
+		hdr.sz = push_size;
+		break;
+	case MLX5DR_ACTION_TYP_POP_IPV6_ROUTE_EXT:
+		flag |= MLX5DR_ACTION_FLAG_SHARED;
+		acts->push_remove->shared = 1;
+		break;
+	default:
+		break;
+	}
+
+	acts->push_remove->action =
+		mlx5dr_action_create_reformat_ipv6_ext(priv->dr_ctx,
+				recom_type, &hdr, bulk, flag);
+	if (!acts->push_remove->action)
+		goto err1;
+	acts->rule_acts[at->recom_off].action = acts->push_remove->action;
+	acts->rule_acts[at->recom_off].ipv6_ext.header = acts->push_remove->data;
+	acts->rule_acts[at->recom_off].ipv6_ext.offset = 0;
+	acts->push_remove_pos = at->recom_off;
+	if (!acts->push_remove->shared) {
+		act_data = __flow_hw_act_data_push_append(dev, acts,
+				RTE_FLOW_ACTION_TYPE_IPV6_EXT_PUSH,
+				recom_src, at->recom_off, push_size);
+		if (!act_data)
+			goto err;
+	}
+	return 0;
+err:
+	if (acts->push_remove->action)
+		mlx5dr_action_destroy(acts->push_remove->action);
+err1:
+	if (acts->push_remove) {
+		mlx5_free(acts->push_remove);
+		acts->push_remove = NULL;
+	}
+	return -EINVAL;
+}
+
 /**
  * Translate rte_flow actions to DR action.
  *
@@ -1957,19 +2077,24 @@ __flow_hw_actions_translate(struct rte_eth_dev *dev,
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	const struct rte_flow_template_table_attr *table_attr = &cfg->attr;
+	struct mlx5_hca_flex_attr *hca_attr = &priv->sh->cdev->config.hca_attr.flex;
 	const struct rte_flow_attr *attr = &table_attr->flow_attr;
 	struct rte_flow_action *actions = at->actions;
 	struct rte_flow_action *masks = at->masks;
 	enum mlx5dr_action_type refmt_type = MLX5DR_ACTION_TYP_LAST;
+	enum mlx5dr_action_type recom_type = MLX5DR_ACTION_TYP_LAST;
 	const struct rte_flow_action_raw_encap *raw_encap_data;
+	const struct rte_flow_action_ipv6_ext_push *ipv6_ext_data;
 	const struct rte_flow_item *enc_item = NULL, *enc_item_m = NULL;
-	uint16_t reformat_src = 0;
+	uint16_t reformat_src = 0, recom_src = 0;
 	uint8_t *encap_data = NULL, *encap_data_m = NULL;
-	size_t data_size = 0;
+	uint8_t *push_data = NULL, *push_data_m = NULL;
+	size_t data_size = 0, push_size = 0;
 	struct mlx5_hw_modify_header_action mhdr = { 0 };
 	bool actions_end = false;
 	uint32_t type;
 	bool reformat_used = false;
+	bool recom_used = false;
 	unsigned int of_vlan_offset;
 	uint16_t jump_pos;
 	uint32_t ct_idx;
@@ -2175,6 +2300,36 @@ __flow_hw_actions_translate(struct rte_eth_dev *dev,
 			reformat_used = true;
 			refmt_type = MLX5DR_ACTION_TYP_REFORMAT_TNL_L2_TO_L2;
 			break;
+		case RTE_FLOW_ACTION_TYPE_IPV6_EXT_PUSH:
+			if (!hca_attr->query_match_sample_info || !hca_attr->parse_graph_anchor ||
+			    !priv->sh->srh_flex_parser.flex.mapnum) {
+				DRV_LOG(ERR, "SRv6 anchor is not supported.");
+				goto err;
+			}
+			MLX5_ASSERT(!recom_used && !recom_type);
+			recom_used = true;
+			recom_type = MLX5DR_ACTION_TYP_PUSH_IPV6_ROUTE_EXT;
+			ipv6_ext_data =
+				(const struct rte_flow_action_ipv6_ext_push *)masks->conf;
+			if (ipv6_ext_data)
+				push_data_m = ipv6_ext_data->data;
+			ipv6_ext_data =
+				(const struct rte_flow_action_ipv6_ext_push *)actions->conf;
+			if (ipv6_ext_data) {
+				push_data = ipv6_ext_data->data;
+				push_size = ipv6_ext_data->size;
+			}
+			recom_src = src_pos;
+			break;
+		case RTE_FLOW_ACTION_TYPE_IPV6_EXT_REMOVE:
+			if (!hca_attr->query_match_sample_info || !hca_attr->parse_graph_anchor ||
+			    !priv->sh->srh_flex_parser.flex.mapnum) {
+				DRV_LOG(ERR, "SRv6 anchor is not supported.");
+				goto err;
+			}
+			recom_used = true;
+			recom_type = MLX5DR_ACTION_TYP_POP_IPV6_ROUTE_EXT;
+			break;
 		case RTE_FLOW_ACTION_TYPE_SEND_TO_KERNEL:
 			flow_hw_translate_group(dev, cfg, attr->group,
 						&target_grp, error);
@@ -2319,6 +2474,14 @@ __flow_hw_actions_translate(struct rte_eth_dev *dev,
 						  mp_ctx, data_size,
 						  reformat_src,
 						  refmt_type, error);
+		if (ret)
+			goto err;
+	}
+	if (recom_used) {
+		MLX5_ASSERT(at->recom_off != UINT16_MAX);
+		ret = mlx5_create_ipv6_ext_reformat(dev, cfg, acts, at, push_data,
+						    push_data_m, push_size, recom_src,
+						    recom_type);
 		if (ret)
 			goto err;
 	}
@@ -2719,11 +2882,13 @@ flow_hw_actions_construct(struct rte_eth_dev *dev,
 	const struct mlx5_hw_actions *hw_acts = &hw_at->acts;
 	const struct rte_flow_action *action;
 	const struct rte_flow_action_raw_encap *raw_encap_data;
+	const struct rte_flow_action_ipv6_ext_push *ipv6_push;
 	const struct rte_flow_item *enc_item = NULL;
 	const struct rte_flow_action_ethdev *port_action = NULL;
 	const struct rte_flow_action_meter *meter = NULL;
 	const struct rte_flow_action_age *age = NULL;
 	uint8_t *buf = job->encap_data;
+	uint8_t *push_buf = job->push_data;
 	struct rte_flow_attr attr = {
 			.ingress = 1,
 	};
@@ -2853,6 +3018,13 @@ flow_hw_actions_construct(struct rte_eth_dev *dev,
 			rte_memcpy((void *)buf, raw_encap_data->data, act_data->encap.len);
 			MLX5_ASSERT(raw_encap_data->size ==
 				    act_data->encap.len);
+			break;
+		case RTE_FLOW_ACTION_TYPE_IPV6_EXT_PUSH:
+			ipv6_push =
+				(const struct rte_flow_action_ipv6_ext_push *)action->conf;
+			rte_memcpy((void *)push_buf, ipv6_push->data,
+				   act_data->ipv6_ext.len);
+			MLX5_ASSERT(ipv6_push->size == act_data->ipv6_ext.len);
 			break;
 		case RTE_FLOW_ACTION_TYPE_MODIFY_FIELD:
 			if (action->type == RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_VID)
@@ -3009,6 +3181,11 @@ flow_hw_actions_construct(struct rte_eth_dev *dev,
 		rule_acts[hw_acts->encap_decap_pos].reformat.offset =
 				job->flow->res_idx - 1;
 		rule_acts[hw_acts->encap_decap_pos].reformat.data = buf;
+	}
+	if (hw_acts->push_remove && !hw_acts->push_remove->shared) {
+		rule_acts[hw_acts->push_remove_pos].ipv6_ext.offset =
+				job->flow->res_idx - 1;
+		rule_acts[hw_acts->push_remove_pos].ipv6_ext.header = push_buf;
 	}
 	if (mlx5_hws_cnt_id_valid(hw_acts->cnt_id))
 		job->flow->cnt_id = hw_acts->cnt_id;
@@ -5114,6 +5291,38 @@ flow_hw_validate_action_indirect(struct rte_eth_dev *dev,
 }
 
 /**
+ * Validate ipv6_ext_push action.
+ *
+ * @param[in] dev
+ *   Pointer to rte_eth_dev structure.
+ * @param[in] action
+ *   Pointer to the indirect action.
+ * @param[out] error
+ *   Pointer to error structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+flow_hw_validate_action_ipv6_ext_push(struct rte_eth_dev *dev __rte_unused,
+				      const struct rte_flow_action *action,
+				      struct rte_flow_error *error)
+{
+	const struct rte_flow_action_ipv6_ext_push *raw_push_data = action->conf;
+
+	if (!raw_push_data || !raw_push_data->size || !raw_push_data->data)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ACTION, action,
+					  "invalid ipv6_ext_push data");
+	if (raw_push_data->type != IPPROTO_ROUTING ||
+	    raw_push_data->size > MLX5_PUSH_MAX_LEN)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ACTION, action,
+					  "Unsupported ipv6_ext_push type or length");
+	return 0;
+}
+
+/**
  * Validate raw_encap action.
  *
  * @param[in] dev
@@ -5340,6 +5549,7 @@ mlx5_flow_hw_actions_validate(struct rte_eth_dev *dev,
 #endif
 	uint16_t i;
 	int ret;
+	const struct rte_flow_action_ipv6_ext_remove *remove_data;
 
 	/* FDB actions are only valid to proxy port. */
 	if (attr->transfer && (!priv->sh->config.dv_esw_en || !priv->master))
@@ -5435,6 +5645,21 @@ mlx5_flow_hw_actions_validate(struct rte_eth_dev *dev,
 		case RTE_FLOW_ACTION_TYPE_RAW_DECAP:
 			/* TODO: Validation logic */
 			action_flags |= MLX5_FLOW_ACTION_DECAP;
+			break;
+		case RTE_FLOW_ACTION_TYPE_IPV6_EXT_PUSH:
+			ret = flow_hw_validate_action_ipv6_ext_push(dev, action, error);
+			if (ret < 0)
+				return ret;
+			action_flags |= MLX5_FLOW_ACTION_IPV6_ROUTING_PUSH;
+			break;
+		case RTE_FLOW_ACTION_TYPE_IPV6_EXT_REMOVE:
+			remove_data = action->conf;
+			/* Remove action must be shared. */
+			if (remove_data->type != IPPROTO_ROUTING || !mask) {
+				DRV_LOG(ERR, "Only supports shared IPv6 routing remove");
+				return -EINVAL;
+			}
+			action_flags |= MLX5_FLOW_ACTION_IPV6_ROUTING_REMOVE;
 			break;
 		case RTE_FLOW_ACTION_TYPE_METER:
 			/* TODO: Validation logic */
@@ -5551,6 +5776,8 @@ static enum mlx5dr_action_type mlx5_hw_dr_action_types[] = {
 	[RTE_FLOW_ACTION_TYPE_OF_POP_VLAN] = MLX5DR_ACTION_TYP_POP_VLAN,
 	[RTE_FLOW_ACTION_TYPE_OF_PUSH_VLAN] = MLX5DR_ACTION_TYP_PUSH_VLAN,
 	[RTE_FLOW_ACTION_TYPE_SEND_TO_KERNEL] = MLX5DR_ACTION_TYP_DEST_ROOT,
+	[RTE_FLOW_ACTION_TYPE_IPV6_EXT_PUSH] = MLX5DR_ACTION_TYP_PUSH_IPV6_ROUTE_EXT,
+	[RTE_FLOW_ACTION_TYPE_IPV6_EXT_REMOVE] = MLX5DR_ACTION_TYP_POP_IPV6_ROUTE_EXT,
 };
 
 static inline void
@@ -5648,6 +5875,8 @@ flow_hw_template_actions_list(struct rte_flow_actions_template *at,
 /**
  * Create DR action template based on a provided sequence of flow actions.
  *
+ * @param[in] dev
+ *   Pointer to the rte_eth_dev structure.
  * @param[in] at
  *   Pointer to flow actions template to be updated.
  *
@@ -5656,7 +5885,8 @@ flow_hw_template_actions_list(struct rte_flow_actions_template *at,
  *   NULL otherwise.
  */
 static struct mlx5dr_action_template *
-flow_hw_dr_actions_template_create(struct rte_flow_actions_template *at)
+flow_hw_dr_actions_template_create(struct rte_eth_dev *dev,
+				   struct rte_flow_actions_template *at)
 {
 	struct mlx5dr_action_template *dr_template;
 	enum mlx5dr_action_type action_types[MLX5_HW_MAX_ACTS] = { MLX5DR_ACTION_TYP_LAST };
@@ -5665,8 +5895,11 @@ flow_hw_dr_actions_template_create(struct rte_flow_actions_template *at)
 	enum mlx5dr_action_type reformat_act_type = MLX5DR_ACTION_TYP_REFORMAT_TNL_L2_TO_L2;
 	uint16_t reformat_off = UINT16_MAX;
 	uint16_t mhdr_off = UINT16_MAX;
+	uint16_t recom_off = UINT16_MAX;
 	uint16_t cnt_off = UINT16_MAX;
+	enum mlx5dr_action_type recom_type = MLX5DR_ACTION_TYP_LAST;
 	int ret;
+
 	for (i = 0, curr_off = 0; at->actions[i].type != RTE_FLOW_ACTION_TYPE_END; ++i) {
 		const struct rte_flow_action_raw_encap *raw_encap_data;
 		size_t data_size;
@@ -5697,6 +5930,16 @@ flow_hw_dr_actions_template_create(struct rte_flow_actions_template *at)
 			MLX5_ASSERT(reformat_off == UINT16_MAX);
 			reformat_off = curr_off++;
 			reformat_act_type = mlx5_hw_dr_action_types[at->actions[i].type];
+			break;
+		case RTE_FLOW_ACTION_TYPE_IPV6_EXT_PUSH:
+			MLX5_ASSERT(recom_off == UINT16_MAX);
+			recom_type = MLX5DR_ACTION_TYP_PUSH_IPV6_ROUTE_EXT;
+			recom_off = curr_off++;
+			break;
+		case RTE_FLOW_ACTION_TYPE_IPV6_EXT_REMOVE:
+			MLX5_ASSERT(recom_off == UINT16_MAX);
+			recom_type = MLX5DR_ACTION_TYP_POP_IPV6_ROUTE_EXT;
+			recom_off = curr_off++;
 			break;
 		case RTE_FLOW_ACTION_TYPE_RAW_ENCAP:
 			raw_encap_data = at->actions[i].conf;
@@ -5770,11 +6013,25 @@ flow_hw_dr_actions_template_create(struct rte_flow_actions_template *at)
 		at->reformat_off = reformat_off;
 		action_types[reformat_off] = reformat_act_type;
 	}
+	if (recom_off != UINT16_MAX) {
+		at->recom_off = recom_off;
+		action_types[recom_off] = recom_type;
+	}
 	dr_template = mlx5dr_action_template_create(action_types);
-	if (dr_template)
+	if (dr_template) {
 		at->dr_actions_num = curr_off;
-	else
+	} else {
 		DRV_LOG(ERR, "Failed to create DR action template: %d", rte_errno);
+		return NULL;
+	}
+	/* Create srh flex parser for remove anchor. */
+	if ((recom_type == MLX5DR_ACTION_TYP_POP_IPV6_ROUTE_EXT ||
+	     recom_type == MLX5DR_ACTION_TYP_PUSH_IPV6_ROUTE_EXT) &&
+	    mlx5_alloc_srh_flex_parser(dev)) {
+		DRV_LOG(ERR, "Failed to create srv6 flex parser");
+		claim_zero(mlx5dr_action_template_destroy(dr_template));
+		return NULL;
+	}
 	return dr_template;
 err_actions_num:
 	DRV_LOG(ERR, "Number of HW actions (%u) exceeded maximum (%u) allowed in template",
@@ -6155,6 +6412,7 @@ flow_hw_actions_template_create(struct rte_eth_dev *dev,
 		at->dr_off[i] = UINT16_MAX;
 	at->reformat_off = UINT16_MAX;
 	at->mhdr_off = UINT16_MAX;
+	at->recom_off = UINT16_MAX;
 	for (i = 0; actions->type != RTE_FLOW_ACTION_TYPE_END;
 	     actions++, masks++, i++) {
 		const struct rte_flow_action_modify_field *info;
@@ -6183,7 +6441,7 @@ flow_hw_actions_template_create(struct rte_eth_dev *dev,
 			break;
 		}
 	}
-	at->tmpl = flow_hw_dr_actions_template_create(at);
+	at->tmpl = flow_hw_dr_actions_template_create(dev, at);
 	if (!at->tmpl)
 		goto error;
 	at->action_flags = action_flags;
@@ -6220,6 +6478,9 @@ flow_hw_actions_template_destroy(struct rte_eth_dev *dev,
 				 struct rte_flow_actions_template *template,
 				 struct rte_flow_error *error __rte_unused)
 {
+	uint64_t flag = MLX5_FLOW_ACTION_IPV6_ROUTING_REMOVE |
+			MLX5_FLOW_ACTION_IPV6_ROUTING_PUSH;
+
 	if (__atomic_load_n(&template->refcnt, __ATOMIC_RELAXED) > 1) {
 		DRV_LOG(WARNING, "Action template %p is still in use.",
 			(void *)template);
@@ -6228,6 +6489,8 @@ flow_hw_actions_template_destroy(struct rte_eth_dev *dev,
 				   NULL,
 				   "action template in using");
 	}
+	if (template->action_flags & flag)
+		mlx5_free_srh_flex_parser(dev);
 	LIST_REMOVE(template, next);
 	flow_hw_flex_item_release(dev, &template->flex_item);
 	if (template->tmpl)
@@ -8796,6 +9059,7 @@ flow_hw_configure(struct rte_eth_dev *dev,
 		mem_size += (sizeof(struct mlx5_hw_q_job *) +
 			    sizeof(struct mlx5_hw_q_job) +
 			    sizeof(uint8_t) * MLX5_ENCAP_MAX_LEN +
+			    sizeof(uint8_t) * MLX5_PUSH_MAX_LEN +
 			    sizeof(struct mlx5_modification_cmd) *
 			    MLX5_MHDR_MAX_CMD +
 			    sizeof(struct rte_flow_item) *
@@ -8811,7 +9075,7 @@ flow_hw_configure(struct rte_eth_dev *dev,
 	}
 	for (i = 0; i < nb_q_updated; i++) {
 		char mz_name[RTE_MEMZONE_NAMESIZE];
-		uint8_t *encap = NULL;
+		uint8_t *encap = NULL, *push = NULL;
 		struct mlx5_modification_cmd *mhdr_cmd = NULL;
 		struct rte_flow_item *items = NULL;
 		struct rte_flow_hw *upd_flow = NULL;
@@ -8831,13 +9095,16 @@ flow_hw_configure(struct rte_eth_dev *dev,
 			   &job[_queue_attr[i]->size];
 		encap = (uint8_t *)
 			 &mhdr_cmd[_queue_attr[i]->size * MLX5_MHDR_MAX_CMD];
-		items = (struct rte_flow_item *)
+		push = (uint8_t *)
 			 &encap[_queue_attr[i]->size * MLX5_ENCAP_MAX_LEN];
+		items = (struct rte_flow_item *)
+			 &push[_queue_attr[i]->size * MLX5_PUSH_MAX_LEN];
 		upd_flow = (struct rte_flow_hw *)
 			&items[_queue_attr[i]->size * MLX5_HW_MAX_ITEMS];
 		for (j = 0; j < _queue_attr[i]->size; j++) {
 			job[j].mhdr_cmd = &mhdr_cmd[j * MLX5_MHDR_MAX_CMD];
 			job[j].encap_data = &encap[j * MLX5_ENCAP_MAX_LEN];
+			job[j].push_data = &push[j * MLX5_PUSH_MAX_LEN];
 			job[j].items = &items[j * MLX5_HW_MAX_ITEMS];
 			job[j].upd_flow = &upd_flow[j];
 			priv->hw_q[i].job[j] = &job[j];

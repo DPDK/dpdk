@@ -150,6 +150,7 @@ Features
 - Matching on ESP header SPI field.
 - Matching on InfiniBand BTH.
 - Modify IPv4/IPv6 ECN field.
+- Push or remove IPv6 routing extension.
 - RSS support in sample action.
 - E-Switch mirroring and jump.
 - E-Switch mirroring and modify.
@@ -604,6 +605,15 @@ Limitations
   - ``segments_left``
 
   Only supports HW steering (``dv_flow_en=2``).
+
+- IPv6 routing extension push/remove:
+
+  - Supported only with HW Steering enabled (``dv_flow_en=2``).
+  - Supported in non-zero group
+    (no limits on transfer domain if ``fdb_def_rule_en=1`` which is default).
+  - Only supports TCP or UDP as next layer.
+  - IPv6 routing header must be the only present extension.
+  - Not supported on guest port.
 
 - Hairpin:
 

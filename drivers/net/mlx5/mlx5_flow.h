@@ -363,6 +363,8 @@ enum mlx5_feature_name {
 #define MLX5_FLOW_ACTION_INDIRECT_AGE (1ull << 44)
 #define MLX5_FLOW_ACTION_QUOTA (1ull << 46)
 #define MLX5_FLOW_ACTION_PORT_REPRESENTOR (1ull << 47)
+#define MLX5_FLOW_ACTION_IPV6_ROUTING_REMOVE (1ull << 48)
+#define MLX5_FLOW_ACTION_IPV6_ROUTING_PUSH (1ull << 49)
 
 #define MLX5_FLOW_DROP_INCLUSIVE_ACTIONS \
 	(MLX5_FLOW_ACTION_COUNT | MLX5_FLOW_ACTION_SAMPLE | MLX5_FLOW_ACTION_AGE)
@@ -1269,6 +1271,8 @@ typedef int
 			    const struct rte_flow_action *,
 			    struct mlx5dr_rule_action *);
 
+#define MLX5_MHDR_MAX_CMD ((MLX5_MAX_MODIFY_NUM) * 2 + 1)
+
 /* rte flow action translate to DR action struct. */
 struct mlx5_action_construct_data {
 	LIST_ENTRY(mlx5_action_construct_data) next;
@@ -1316,6 +1320,10 @@ struct mlx5_action_construct_data {
 			cnt_id_t id;
 		} shared_counter;
 		struct {
+			/* IPv6 extension push data len. */
+			uint16_t len;
+		} ipv6_ext;
+		struct {
 			uint32_t id;
 			uint32_t conf_masked:1;
 		} shared_meter;
@@ -1359,6 +1367,7 @@ struct rte_flow_actions_template {
 	uint16_t *src_off; /* RTE action displacement from app. template */
 	uint16_t reformat_off; /* Offset of DR reformat action. */
 	uint16_t mhdr_off; /* Offset of DR modify header action. */
+	uint16_t recom_off;  /* Offset of DR IPv6 routing push remove action. */
 	uint32_t refcnt; /* Reference counter. */
 	uint8_t flex_item; /* flex item index. */
 };
@@ -1384,7 +1393,14 @@ struct mlx5_hw_encap_decap_action {
 	uint8_t data[]; /* Action data. */
 };
 
-#define MLX5_MHDR_MAX_CMD ((MLX5_MAX_MODIFY_NUM) * 2 + 1)
+/* Push remove action struct. */
+struct mlx5_hw_push_remove_action {
+	struct mlx5dr_action *action; /* Action object. */
+	/* Is push_remove action shared across flows in table. */
+	uint8_t shared;
+	size_t data_size; /* Action metadata size. */
+	uint8_t data[]; /* Action data. */
+};
 
 /* Modify field action struct. */
 struct mlx5_hw_modify_header_action {
@@ -1415,6 +1431,9 @@ struct mlx5_hw_actions {
 	/* Encap/Decap action. */
 	struct mlx5_hw_encap_decap_action *encap_decap;
 	uint16_t encap_decap_pos; /* Encap/Decap action position. */
+	/* Push/remove action. */
+	struct mlx5_hw_push_remove_action *push_remove;
+	uint16_t push_remove_pos; /* Push/remove action position. */
 	uint32_t mark:1; /* Indicate the mark action. */
 	cnt_id_t cnt_id; /* Counter id. */
 	uint32_t mtr_id; /* Meter id. */

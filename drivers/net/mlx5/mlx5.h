@@ -393,6 +393,7 @@ struct mlx5_hw_q_job {
 	};
 	void *user_data; /* Job user data. */
 	uint8_t *encap_data; /* Encap data. */
+	uint8_t *push_data; /* IPv6 routing push data. */
 	struct mlx5_modification_cmd *mhdr_cmd;
 	struct rte_flow_item *items;
 	union {
