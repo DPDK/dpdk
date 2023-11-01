@@ -62,6 +62,12 @@ enum mlx5dr_action_setter_flag {
 	ASF_HIT = 1 << 7,
 };
 
+enum mlx5dr_action_stc_reparse {
+	MLX5DR_ACTION_STC_REPARSE_DEFAULT,
+	MLX5DR_ACTION_STC_REPARSE_ON,
+	MLX5DR_ACTION_STC_REPARSE_OFF,
+};
+
 struct mlx5dr_action_default_stc {
 	struct mlx5dr_pool_chunk nop_ctr;
 	struct mlx5dr_pool_chunk nop_dw5;
@@ -141,6 +147,7 @@ struct mlx5dr_action {
 					uint8_t anchor;
 					uint8_t offset;
 					bool encap;
+					uint8_t require_reparse;
 				} reformat;
 				struct {
 					struct mlx5dr_action

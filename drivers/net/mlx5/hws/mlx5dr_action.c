@@ -552,6 +552,7 @@ static void mlx5dr_action_fill_stc_attr(struct mlx5dr_action *action,
 	case MLX5DR_ACTION_TYP_REFORMAT_TNL_L3_TO_L2:
 	case MLX5DR_ACTION_TYP_MODIFY_HDR:
 		attr->action_offset = MLX5DR_ACTION_OFFSET_DW6;
+		attr->reparse_mode = MLX5_IFC_STC_REPARSE_IGNORE;
 		if (action->modify_header.require_reparse)
 			attr->reparse_mode = MLX5_IFC_STC_REPARSE_ALWAYS;
 
@@ -590,9 +591,12 @@ static void mlx5dr_action_fill_stc_attr(struct mlx5dr_action *action,
 	case MLX5DR_ACTION_TYP_REFORMAT_L2_TO_TNL_L2:
 	case MLX5DR_ACTION_TYP_REFORMAT_L2_TO_TNL_L3:
 	case MLX5DR_ACTION_TYP_INSERT_HEADER:
+		attr->reparse_mode = MLX5_IFC_STC_REPARSE_ALWAYS;
+		if (!action->reformat.require_reparse)
+			attr->reparse_mode = MLX5_IFC_STC_REPARSE_IGNORE;
+
 		attr->action_type = MLX5_IFC_STC_ACTION_TYPE_HEADER_INSERT;
 		attr->action_offset = MLX5DR_ACTION_OFFSET_DW6;
-		attr->reparse_mode = MLX5_IFC_STC_REPARSE_ALWAYS;
 		attr->insert_header.encap = action->reformat.encap;
 		attr->insert_header.insert_anchor = action->reformat.anchor;
 		attr->insert_header.arg_id = action->reformat.arg_obj->id;
@@ -1301,7 +1305,7 @@ static int
 mlx5dr_action_handle_insert_with_ptr(struct mlx5dr_action *action,
 				     uint8_t num_of_hdrs,
 				     struct mlx5dr_action_reformat_header *hdrs,
-				     uint32_t log_bulk_sz)
+				     uint32_t log_bulk_sz, uint32_t reparse)
 {
 	struct mlx5dr_devx_obj *arg_obj;
 	size_t max_sz = 0;
@@ -1337,6 +1341,11 @@ mlx5dr_action_handle_insert_with_ptr(struct mlx5dr_action *action,
 			action[i].reformat.offset = 0;
 			action[i].reformat.encap = 1;
 		}
+
+		if (likely(reparse == MLX5DR_ACTION_STC_REPARSE_DEFAULT))
+			action[i].reformat.require_reparse = true;
+		else if (reparse == MLX5DR_ACTION_STC_REPARSE_ON)
+			action[i].reformat.require_reparse = true;
 
 		ret = mlx5dr_action_create_stcs(&action[i], NULL);
 		if (ret) {
@@ -1374,7 +1383,8 @@ mlx5dr_action_handle_l2_to_tunnel_l3(struct mlx5dr_action *action,
 	ret = mlx5dr_action_handle_insert_with_ptr(action,
 						   num_of_hdrs,
 						   hdrs,
-						   log_bulk_sz);
+						   log_bulk_sz,
+						   MLX5DR_ACTION_STC_REPARSE_DEFAULT);
 	if (ret)
 		goto put_shared_stc;
 
@@ -1517,7 +1527,8 @@ mlx5dr_action_create_reformat_hws(struct mlx5dr_action *action,
 		ret = mlx5dr_action_create_stcs(action, NULL);
 		break;
 	case MLX5DR_ACTION_TYP_REFORMAT_L2_TO_TNL_L2:
-		ret = mlx5dr_action_handle_insert_with_ptr(action, num_of_hdrs, hdrs, bulk_size);
+		ret = mlx5dr_action_handle_insert_with_ptr(action, num_of_hdrs, hdrs, bulk_size,
+							   MLX5DR_ACTION_STC_REPARSE_DEFAULT);
 		break;
 	case MLX5DR_ACTION_TYP_REFORMAT_L2_TO_TNL_L3:
 		ret = mlx5dr_action_handle_l2_to_tunnel_l3(action, num_of_hdrs, hdrs, bulk_size);
@@ -1625,7 +1636,8 @@ static int
 mlx5dr_action_create_modify_header_hws(struct mlx5dr_action *action,
 				       uint8_t num_of_patterns,
 				       struct mlx5dr_action_mh_pattern *pattern,
-				       uint32_t log_bulk_size)
+				       uint32_t log_bulk_size,
+				       uint32_t reparse)
 {
 	struct mlx5dr_devx_obj *pat_obj, *arg_obj = NULL;
 	struct mlx5dr_context *ctx = action->ctx;
@@ -1659,8 +1671,12 @@ mlx5dr_action_create_modify_header_hws(struct mlx5dr_action *action,
 		action[i].modify_header.num_of_patterns = num_of_patterns;
 		action[i].modify_header.max_num_of_actions = max_mh_actions;
 		action[i].modify_header.num_of_actions = num_actions;
-		action[i].modify_header.require_reparse =
-			mlx5dr_pat_require_reparse(pattern[i].data, num_actions);
+
+		if (likely(reparse == MLX5DR_ACTION_STC_REPARSE_DEFAULT))
+			action[i].modify_header.require_reparse =
+				mlx5dr_pat_require_reparse(pattern[i].data, num_actions);
+		else if (reparse == MLX5DR_ACTION_STC_REPARSE_ON)
+			action[i].modify_header.require_reparse = true;
 
 		if (num_actions == 1) {
 			pat_obj = NULL;
@@ -1703,12 +1719,12 @@ free_stc_and_pat:
 	return rte_errno;
 }
 
-struct mlx5dr_action *
-mlx5dr_action_create_modify_header(struct mlx5dr_context *ctx,
-				   uint8_t num_of_patterns,
-				   struct mlx5dr_action_mh_pattern *patterns,
-				   uint32_t log_bulk_size,
-				   uint32_t flags)
+static struct mlx5dr_action *
+mlx5dr_action_create_modify_header_reparse(struct mlx5dr_context *ctx,
+					   uint8_t num_of_patterns,
+					   struct mlx5dr_action_mh_pattern *patterns,
+					   uint32_t log_bulk_size,
+					   uint32_t flags, uint32_t reparse)
 {
 	struct mlx5dr_action *action;
 	int ret;
@@ -1756,7 +1772,8 @@ mlx5dr_action_create_modify_header(struct mlx5dr_context *ctx,
 	ret = mlx5dr_action_create_modify_header_hws(action,
 						     num_of_patterns,
 						     patterns,
-						     log_bulk_size);
+						     log_bulk_size,
+						     reparse);
 	if (ret)
 		goto free_action;
 
@@ -1767,6 +1784,17 @@ free_action:
 	return NULL;
 }
 
+struct mlx5dr_action *
+mlx5dr_action_create_modify_header(struct mlx5dr_context *ctx,
+				   uint8_t num_of_patterns,
+				   struct mlx5dr_action_mh_pattern *patterns,
+				   uint32_t log_bulk_size,
+				   uint32_t flags)
+{
+	return mlx5dr_action_create_modify_header_reparse(ctx, num_of_patterns, patterns,
+							  log_bulk_size, flags,
+							  MLX5DR_ACTION_STC_REPARSE_DEFAULT);
+}
 static struct mlx5dr_devx_obj *
 mlx5dr_action_dest_array_process_reformat(struct mlx5dr_context *ctx,
 					  enum mlx5dr_action_type type,
@@ -2007,12 +2035,12 @@ free_steering_anchor:
 	return NULL;
 }
 
-struct mlx5dr_action *
-mlx5dr_action_create_insert_header(struct mlx5dr_context *ctx,
-				   uint8_t num_of_hdrs,
-				   struct mlx5dr_action_insert_header *hdrs,
-				   uint32_t log_bulk_size,
-				   uint32_t flags)
+static struct mlx5dr_action *
+mlx5dr_action_create_insert_header_reparse(struct mlx5dr_context *ctx,
+					   uint8_t num_of_hdrs,
+					   struct mlx5dr_action_insert_header *hdrs,
+					   uint32_t log_bulk_size,
+					   uint32_t flags, uint32_t reparse)
 {
 	struct mlx5dr_action_reformat_header *reformat_hdrs;
 	struct mlx5dr_action *action;
@@ -2065,7 +2093,8 @@ mlx5dr_action_create_insert_header(struct mlx5dr_context *ctx,
 	}
 
 	ret = mlx5dr_action_handle_insert_with_ptr(action, num_of_hdrs,
-						   reformat_hdrs, log_bulk_size);
+						   reformat_hdrs, log_bulk_size,
+						   reparse);
 	if (ret) {
 		DR_LOG(ERR, "Failed to create HWS reformat action");
 		goto free_reformat_hdrs;
@@ -2080,6 +2109,18 @@ free_reformat_hdrs:
 free_action:
 	simple_free(action);
 	return NULL;
+}
+
+struct mlx5dr_action *
+mlx5dr_action_create_insert_header(struct mlx5dr_context *ctx,
+				   uint8_t num_of_hdrs,
+				   struct mlx5dr_action_insert_header *hdrs,
+				   uint32_t log_bulk_size,
+				   uint32_t flags)
+{
+	return mlx5dr_action_create_insert_header_reparse(ctx, num_of_hdrs, hdrs,
+							  log_bulk_size, flags,
+							  MLX5DR_ACTION_STC_REPARSE_DEFAULT);
 }
 
 struct mlx5dr_action *
@@ -2175,8 +2216,9 @@ mlx5dr_action_create_pop_ipv6_route_ext_mhdr1(struct mlx5dr_action *action)
 	pattern.data = cmd;
 	pattern.sz = sizeof(cmd);
 
-	return mlx5dr_action_create_modify_header(action->ctx, 1, &pattern,
-						  0, action->flags);
+	return mlx5dr_action_create_modify_header_reparse(action->ctx, 1, &pattern, 0,
+							  action->flags,
+							  MLX5DR_ACTION_STC_REPARSE_ON);
 }
 
 static void *
@@ -2222,8 +2264,9 @@ mlx5dr_action_create_pop_ipv6_route_ext_mhdr2(struct mlx5dr_action *action)
 	pattern.data = cmd;
 	pattern.sz = sizeof(cmd);
 
-	return mlx5dr_action_create_modify_header(action->ctx, 1, &pattern,
-						  0, action->flags);
+	return mlx5dr_action_create_modify_header_reparse(action->ctx, 1, &pattern, 0,
+							  action->flags,
+							  MLX5DR_ACTION_STC_REPARSE_ON);
 }
 
 static void *
@@ -2249,8 +2292,9 @@ mlx5dr_action_create_pop_ipv6_route_ext_mhdr3(struct mlx5dr_action *action)
 	pattern.data = (__be64 *)cmd;
 	pattern.sz = sizeof(cmd);
 
-	return mlx5dr_action_create_modify_header(action->ctx, 1, &pattern,
-						  0, action->flags);
+	return mlx5dr_action_create_modify_header_reparse(action->ctx, 1, &pattern, 0,
+							  action->flags,
+							  MLX5DR_ACTION_STC_REPARSE_OFF);
 }
 
 static int
@@ -2397,8 +2441,9 @@ mlx5dr_action_create_push_ipv6_route_ext(struct mlx5dr_action *action,
 	insert_hdr.hdr.sz = hdr->sz;
 	insert_hdr.hdr.data = header;
 	action->ipv6_route_ext.action[0] =
-		mlx5dr_action_create_insert_header(action->ctx, 1, &insert_hdr,
-						   bulk_size, action->flags);
+		mlx5dr_action_create_insert_header_reparse(action->ctx, 1, &insert_hdr,
+							    bulk_size, action->flags,
+							    MLX5DR_ACTION_STC_REPARSE_OFF);
 	action->ipv6_route_ext.action[1] =
 		mlx5dr_action_create_push_ipv6_route_ext_mhdr1(action);
 	action->ipv6_route_ext.action[2] =
@@ -2431,12 +2476,6 @@ mlx5dr_action_create_reformat_ipv6_ext(struct mlx5dr_context *ctx,
 	struct mlx5dr_action *action;
 	int ret;
 
-	if (mlx5dr_context_cap_dynamic_reparse(ctx)) {
-		DR_LOG(ERR, "IPv6 extension actions is not supported");
-		rte_errno = ENOTSUP;
-		return NULL;
-	}
-
 	if (!mlx5dr_action_is_hws_flags(flags) ||
 	    ((flags & MLX5DR_ACTION_FLAG_SHARED) && log_bulk_size)) {
 		DR_LOG(ERR, "IPv6 extension flags don't fit HWS (flags: 0x%x)", flags);
@@ -2461,6 +2500,12 @@ mlx5dr_action_create_reformat_ipv6_ext(struct mlx5dr_context *ctx,
 		ret = mlx5dr_action_create_pop_ipv6_route_ext(action);
 		break;
 	case MLX5DR_ACTION_TYP_PUSH_IPV6_ROUTE_EXT:
+		if (!mlx5dr_context_cap_dynamic_reparse(ctx)) {
+			DR_LOG(ERR, "IPv6 routing extension push actions is not supported");
+			rte_errno = ENOTSUP;
+			goto free_action;
+		}
+
 		ret = mlx5dr_action_create_push_ipv6_route_ext(action, hdr, log_bulk_size);
 		break;
 	default:
