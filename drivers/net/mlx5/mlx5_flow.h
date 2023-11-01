@@ -595,6 +595,7 @@ struct mlx5_flow_dv_matcher {
 	struct mlx5_flow_dv_match_params mask; /**< Matcher mask. */
 };
 
+#define MLX5_PUSH_MAX_LEN 128
 #define MLX5_ENCAP_MAX_LEN 132
 
 /* Encap/decap resource structure. */
@@ -2898,6 +2899,49 @@ flow_hw_get_srh_flex_parser_byte_off_from_ctx(void *dr_ctx __rte_unused)
 #endif
 	return UINT32_MAX;
 }
+
+static __rte_always_inline uint8_t
+flow_hw_get_ipv6_route_ext_anchor_from_ctx(void *dr_ctx)
+{
+#ifdef HAVE_IBV_FLOW_DV_SUPPORT
+	uint16_t port;
+	struct mlx5_priv *priv;
+
+	MLX5_ETH_FOREACH_DEV(port, NULL) {
+		priv = rte_eth_devices[port].data->dev_private;
+		if (priv->dr_ctx == dr_ctx)
+			return priv->sh->srh_flex_parser.flex.devx_fp->anchor_id;
+	}
+#else
+	RTE_SET_USED(dr_ctx);
+#endif
+	return 0;
+}
+
+static __rte_always_inline uint16_t
+flow_hw_get_ipv6_route_ext_mod_id_from_ctx(void *dr_ctx, uint8_t idx)
+{
+#ifdef HAVE_IBV_FLOW_DV_SUPPORT
+	uint16_t port;
+	struct mlx5_priv *priv;
+	struct mlx5_flex_parser_devx *fp;
+
+	if (idx >= MLX5_GRAPH_NODE_SAMPLE_NUM || idx >= MLX5_SRV6_SAMPLE_NUM)
+		return 0;
+	MLX5_ETH_FOREACH_DEV(port, NULL) {
+		priv = rte_eth_devices[port].data->dev_private;
+		if (priv->dr_ctx == dr_ctx) {
+			fp = priv->sh->srh_flex_parser.flex.devx_fp;
+			return fp->sample_info[idx].modify_field_id;
+		}
+	}
+#else
+	RTE_SET_USED(dr_ctx);
+	RTE_SET_USED(idx);
+#endif
+	return 0;
+}
+
 void
 mlx5_indirect_list_handles_release(struct rte_eth_dev *dev);
 #ifdef HAVE_MLX5_HWS_SUPPORT

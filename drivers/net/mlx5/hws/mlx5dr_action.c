@@ -22,7 +22,8 @@ static const uint32_t action_order_arr[MLX5DR_TABLE_TYPE_MAX][MLX5DR_ACTION_TYP_
 		BIT(MLX5DR_ACTION_TYP_TAG),
 		BIT(MLX5DR_ACTION_TYP_REMOVE_HEADER) |
 		BIT(MLX5DR_ACTION_TYP_REFORMAT_TNL_L2_TO_L2) |
-		BIT(MLX5DR_ACTION_TYP_REFORMAT_TNL_L3_TO_L2),
+		BIT(MLX5DR_ACTION_TYP_REFORMAT_TNL_L3_TO_L2) |
+		BIT(MLX5DR_ACTION_TYP_POP_IPV6_ROUTE_EXT),
 		BIT(MLX5DR_ACTION_TYP_POP_VLAN),
 		BIT(MLX5DR_ACTION_TYP_POP_VLAN),
 		BIT(MLX5DR_ACTION_TYP_CTR),
@@ -32,6 +33,7 @@ static const uint32_t action_order_arr[MLX5DR_TABLE_TYPE_MAX][MLX5DR_ACTION_TYP_
 		BIT(MLX5DR_ACTION_TYP_PUSH_VLAN),
 		BIT(MLX5DR_ACTION_TYP_MODIFY_HDR),
 		BIT(MLX5DR_ACTION_TYP_INSERT_HEADER) |
+		BIT(MLX5DR_ACTION_TYP_PUSH_IPV6_ROUTE_EXT) |
 		BIT(MLX5DR_ACTION_TYP_REFORMAT_L2_TO_TNL_L2) |
 		BIT(MLX5DR_ACTION_TYP_REFORMAT_L2_TO_TNL_L3),
 		BIT(MLX5DR_ACTION_TYP_TBL) |
@@ -52,6 +54,7 @@ static const uint32_t action_order_arr[MLX5DR_TABLE_TYPE_MAX][MLX5DR_ACTION_TYP_
 		BIT(MLX5DR_ACTION_TYP_PUSH_VLAN),
 		BIT(MLX5DR_ACTION_TYP_MODIFY_HDR),
 		BIT(MLX5DR_ACTION_TYP_INSERT_HEADER) |
+		BIT(MLX5DR_ACTION_TYP_PUSH_IPV6_ROUTE_EXT) |
 		BIT(MLX5DR_ACTION_TYP_REFORMAT_L2_TO_TNL_L2) |
 		BIT(MLX5DR_ACTION_TYP_REFORMAT_L2_TO_TNL_L3),
 		BIT(MLX5DR_ACTION_TYP_TBL) |
@@ -63,7 +66,8 @@ static const uint32_t action_order_arr[MLX5DR_TABLE_TYPE_MAX][MLX5DR_ACTION_TYP_
 	[MLX5DR_TABLE_TYPE_FDB] = {
 		BIT(MLX5DR_ACTION_TYP_REMOVE_HEADER) |
 		BIT(MLX5DR_ACTION_TYP_REFORMAT_TNL_L2_TO_L2) |
-		BIT(MLX5DR_ACTION_TYP_REFORMAT_TNL_L3_TO_L2),
+		BIT(MLX5DR_ACTION_TYP_REFORMAT_TNL_L3_TO_L2) |
+		BIT(MLX5DR_ACTION_TYP_POP_IPV6_ROUTE_EXT),
 		BIT(MLX5DR_ACTION_TYP_POP_VLAN),
 		BIT(MLX5DR_ACTION_TYP_POP_VLAN),
 		BIT(MLX5DR_ACTION_TYP_CTR),
@@ -73,6 +77,7 @@ static const uint32_t action_order_arr[MLX5DR_TABLE_TYPE_MAX][MLX5DR_ACTION_TYP_
 		BIT(MLX5DR_ACTION_TYP_PUSH_VLAN),
 		BIT(MLX5DR_ACTION_TYP_MODIFY_HDR),
 		BIT(MLX5DR_ACTION_TYP_INSERT_HEADER) |
+		BIT(MLX5DR_ACTION_TYP_PUSH_IPV6_ROUTE_EXT) |
 		BIT(MLX5DR_ACTION_TYP_REFORMAT_L2_TO_TNL_L2) |
 		BIT(MLX5DR_ACTION_TYP_REFORMAT_L2_TO_TNL_L3),
 		BIT(MLX5DR_ACTION_TYP_TBL) |
@@ -1570,7 +1575,7 @@ mlx5dr_action_create_reformat(struct mlx5dr_context *ctx,
 
 	if (!mlx5dr_action_is_hws_flags(flags) ||
 	    ((flags & MLX5DR_ACTION_FLAG_SHARED) && (log_bulk_size || num_of_hdrs > 1))) {
-		DR_LOG(ERR, "Reformat flags don't fit HWS (flags: %x0x)", flags);
+		DR_LOG(ERR, "Reformat flags don't fit HWS (flags: 0x%x)", flags);
 		rte_errno = EINVAL;
 		goto free_action;
 	}
@@ -2135,6 +2140,347 @@ free_action:
 	return NULL;
 }
 
+static void *
+mlx5dr_action_create_pop_ipv6_route_ext_mhdr1(struct mlx5dr_action *action)
+{
+	struct mlx5dr_action_mh_pattern pattern;
+	__be64 cmd[3] = {0};
+	uint16_t mod_id;
+
+	mod_id = flow_hw_get_ipv6_route_ext_mod_id_from_ctx(action->ctx, 0);
+	if (!mod_id) {
+		rte_errno = EINVAL;
+		return NULL;
+	}
+
+	/*
+	 * Backup ipv6_route_ext.next_hdr to ipv6_route_ext.seg_left.
+	 * Next_hdr will be copied to ipv6.protocol after pop done.
+	 */
+	MLX5_SET(copy_action_in, &cmd[0], action_type, MLX5_MODIFICATION_TYPE_COPY);
+	MLX5_SET(copy_action_in, &cmd[0], length, 8);
+	MLX5_SET(copy_action_in, &cmd[0], src_offset, 24);
+	MLX5_SET(copy_action_in, &cmd[0], src_field, mod_id);
+	MLX5_SET(copy_action_in, &cmd[0], dst_field, mod_id);
+
+	/* Add nop between the continuous same modify field id */
+	MLX5_SET(copy_action_in, &cmd[1], action_type, MLX5_MODIFICATION_TYPE_NOP);
+
+	/* Clear next_hdr for right checksum */
+	MLX5_SET(set_action_in, &cmd[2], action_type, MLX5_MODIFICATION_TYPE_SET);
+	MLX5_SET(set_action_in, &cmd[2], length, 8);
+	MLX5_SET(set_action_in, &cmd[2], offset, 24);
+	MLX5_SET(set_action_in, &cmd[2], field, mod_id);
+
+	pattern.data = cmd;
+	pattern.sz = sizeof(cmd);
+
+	return mlx5dr_action_create_modify_header(action->ctx, 1, &pattern,
+						  0, action->flags);
+}
+
+static void *
+mlx5dr_action_create_pop_ipv6_route_ext_mhdr2(struct mlx5dr_action *action)
+{
+	enum mlx5_modification_field field[MLX5_ST_SZ_DW(definer_hl_ipv6_addr)] = {
+		MLX5_MODI_OUT_DIPV6_127_96,
+		MLX5_MODI_OUT_DIPV6_95_64,
+		MLX5_MODI_OUT_DIPV6_63_32,
+		MLX5_MODI_OUT_DIPV6_31_0
+	};
+	struct mlx5dr_action_mh_pattern pattern;
+	__be64 cmd[5] = {0};
+	uint16_t mod_id;
+	uint32_t i;
+
+	/* Copy ipv6_route_ext[first_segment].dst_addr by flex parser to ipv6.dst_addr */
+	for (i = 0; i < MLX5_ST_SZ_DW(definer_hl_ipv6_addr); i++) {
+		mod_id = flow_hw_get_ipv6_route_ext_mod_id_from_ctx(action->ctx, i + 1);
+		if (!mod_id) {
+			rte_errno = EINVAL;
+			return NULL;
+		}
+
+		MLX5_SET(copy_action_in, &cmd[i], action_type, MLX5_MODIFICATION_TYPE_COPY);
+		MLX5_SET(copy_action_in, &cmd[i], dst_field, field[i]);
+		MLX5_SET(copy_action_in, &cmd[i], src_field, mod_id);
+	}
+
+	mod_id = flow_hw_get_ipv6_route_ext_mod_id_from_ctx(action->ctx, 0);
+	if (!mod_id) {
+		rte_errno = EINVAL;
+		return NULL;
+	}
+
+	/* Restore next_hdr from seg_left for flex parser identifying */
+	MLX5_SET(copy_action_in, &cmd[4], action_type, MLX5_MODIFICATION_TYPE_COPY);
+	MLX5_SET(copy_action_in, &cmd[4], length, 8);
+	MLX5_SET(copy_action_in, &cmd[4], dst_offset, 24);
+	MLX5_SET(copy_action_in, &cmd[4], src_field, mod_id);
+	MLX5_SET(copy_action_in, &cmd[4], dst_field, mod_id);
+
+	pattern.data = cmd;
+	pattern.sz = sizeof(cmd);
+
+	return mlx5dr_action_create_modify_header(action->ctx, 1, &pattern,
+						  0, action->flags);
+}
+
+static void *
+mlx5dr_action_create_pop_ipv6_route_ext_mhdr3(struct mlx5dr_action *action)
+{
+	uint8_t cmd[MLX5DR_MODIFY_ACTION_SIZE] = {0};
+	struct mlx5dr_action_mh_pattern pattern;
+	uint16_t mod_id;
+
+	mod_id = flow_hw_get_ipv6_route_ext_mod_id_from_ctx(action->ctx, 0);
+	if (!mod_id) {
+		rte_errno = EINVAL;
+		return NULL;
+	}
+
+	/* Copy ipv6_route_ext.next_hdr to ipv6.protocol */
+	MLX5_SET(copy_action_in, cmd, action_type, MLX5_MODIFICATION_TYPE_COPY);
+	MLX5_SET(copy_action_in, cmd, length, 8);
+	MLX5_SET(copy_action_in, cmd, src_offset, 24);
+	MLX5_SET(copy_action_in, cmd, src_field, mod_id);
+	MLX5_SET(copy_action_in, cmd, dst_field, MLX5_MODI_OUT_IPV6_NEXT_HDR);
+
+	pattern.data = (__be64 *)cmd;
+	pattern.sz = sizeof(cmd);
+
+	return mlx5dr_action_create_modify_header(action->ctx, 1, &pattern,
+						  0, action->flags);
+}
+
+static int
+mlx5dr_action_create_pop_ipv6_route_ext(struct mlx5dr_action *action)
+{
+	uint8_t anchor_id = flow_hw_get_ipv6_route_ext_anchor_from_ctx(action->ctx);
+	struct mlx5dr_action_remove_header_attr hdr_attr;
+	uint32_t i;
+
+	if (!anchor_id) {
+		rte_errno = EINVAL;
+		return rte_errno;
+	}
+
+	action->ipv6_route_ext.action[0] =
+		mlx5dr_action_create_pop_ipv6_route_ext_mhdr1(action);
+	action->ipv6_route_ext.action[1] =
+		mlx5dr_action_create_pop_ipv6_route_ext_mhdr2(action);
+	action->ipv6_route_ext.action[2] =
+		mlx5dr_action_create_pop_ipv6_route_ext_mhdr3(action);
+
+	hdr_attr.by_anchor.decap = 1;
+	hdr_attr.by_anchor.start_anchor = anchor_id;
+	hdr_attr.by_anchor.end_anchor = MLX5_HEADER_ANCHOR_TCP_UDP;
+	hdr_attr.type = MLX5DR_ACTION_REMOVE_HEADER_TYPE_BY_HEADER;
+	action->ipv6_route_ext.action[3] =
+		mlx5dr_action_create_remove_header(action->ctx, &hdr_attr, action->flags);
+
+	if (!action->ipv6_route_ext.action[0] || !action->ipv6_route_ext.action[1] ||
+	    !action->ipv6_route_ext.action[2] || !action->ipv6_route_ext.action[3]) {
+		DR_LOG(ERR, "Failed to create ipv6_route_ext pop subaction");
+		goto err;
+	}
+
+	return 0;
+
+err:
+	for (i = 0; i < MLX5DR_ACTION_IPV6_EXT_MAX_SA; i++)
+		if (action->ipv6_route_ext.action[i])
+			mlx5dr_action_destroy(action->ipv6_route_ext.action[i]);
+
+	return rte_errno;
+}
+
+static void *
+mlx5dr_action_create_push_ipv6_route_ext_mhdr1(struct mlx5dr_action *action)
+{
+	uint8_t cmd[MLX5DR_MODIFY_ACTION_SIZE] = {0};
+	struct mlx5dr_action_mh_pattern pattern;
+
+	/* Set ipv6.protocol to IPPROTO_ROUTING */
+	MLX5_SET(set_action_in, cmd, action_type, MLX5_MODIFICATION_TYPE_SET);
+	MLX5_SET(set_action_in, cmd, length, 8);
+	MLX5_SET(set_action_in, cmd, field, MLX5_MODI_OUT_IPV6_NEXT_HDR);
+	MLX5_SET(set_action_in, cmd, data, IPPROTO_ROUTING);
+
+	pattern.data = (__be64 *)cmd;
+	pattern.sz = sizeof(cmd);
+
+	return mlx5dr_action_create_modify_header(action->ctx, 1, &pattern, 0,
+						  action->flags | MLX5DR_ACTION_FLAG_SHARED);
+}
+
+static void *
+mlx5dr_action_create_push_ipv6_route_ext_mhdr2(struct mlx5dr_action *action,
+					       uint32_t bulk_size,
+					       uint8_t *data)
+{
+	enum mlx5_modification_field field[MLX5_ST_SZ_DW(definer_hl_ipv6_addr)] = {
+		MLX5_MODI_OUT_DIPV6_127_96,
+		MLX5_MODI_OUT_DIPV6_95_64,
+		MLX5_MODI_OUT_DIPV6_63_32,
+		MLX5_MODI_OUT_DIPV6_31_0
+	};
+	struct mlx5dr_action_mh_pattern pattern;
+	uint32_t *ipv6_dst_addr = NULL;
+	uint8_t seg_left, next_hdr;
+	__be64 cmd[5] = {0};
+	uint16_t mod_id;
+	uint32_t i;
+
+	/* Fetch the last IPv6 address in the segment list */
+	if (action->flags & MLX5DR_ACTION_FLAG_SHARED) {
+		seg_left = MLX5_GET(header_ipv6_routing_ext, data, segments_left) - 1;
+		ipv6_dst_addr = (uint32_t *)data + MLX5_ST_SZ_DW(header_ipv6_routing_ext) +
+				seg_left * MLX5_ST_SZ_DW(definer_hl_ipv6_addr);
+	}
+
+	/* Copy IPv6 destination address from ipv6_route_ext.last_segment */
+	for (i = 0; i < MLX5_ST_SZ_DW(definer_hl_ipv6_addr); i++) {
+		MLX5_SET(set_action_in, &cmd[i], action_type, MLX5_MODIFICATION_TYPE_SET);
+		MLX5_SET(set_action_in, &cmd[i], field, field[i]);
+		if (action->flags & MLX5DR_ACTION_FLAG_SHARED)
+			MLX5_SET(set_action_in, &cmd[i], data, be32toh(*ipv6_dst_addr++));
+	}
+
+	mod_id = flow_hw_get_ipv6_route_ext_mod_id_from_ctx(action->ctx, 0);
+	if (!mod_id) {
+		rte_errno = EINVAL;
+		return NULL;
+	}
+
+	/* Set ipv6_route_ext.next_hdr since initially pushed as 0 for right checksum */
+	MLX5_SET(set_action_in, &cmd[4], action_type, MLX5_MODIFICATION_TYPE_SET);
+	MLX5_SET(set_action_in, &cmd[4], length, 8);
+	MLX5_SET(set_action_in, &cmd[4], offset, 24);
+	MLX5_SET(set_action_in, &cmd[4], field, mod_id);
+	if (action->flags & MLX5DR_ACTION_FLAG_SHARED) {
+		next_hdr = MLX5_GET(header_ipv6_routing_ext, data, next_hdr);
+		MLX5_SET(set_action_in, &cmd[4], data, next_hdr);
+	}
+
+	pattern.data = cmd;
+	pattern.sz = sizeof(cmd);
+
+	return mlx5dr_action_create_modify_header(action->ctx, 1, &pattern,
+						  bulk_size, action->flags);
+}
+
+static int
+mlx5dr_action_create_push_ipv6_route_ext(struct mlx5dr_action *action,
+					 struct mlx5dr_action_reformat_header *hdr,
+					 uint32_t bulk_size)
+{
+	struct mlx5dr_action_insert_header insert_hdr = { {0} };
+	uint8_t header[MLX5_PUSH_MAX_LEN];
+	uint32_t i;
+
+	if (!hdr || !hdr->sz || hdr->sz > MLX5_PUSH_MAX_LEN ||
+	    ((action->flags & MLX5DR_ACTION_FLAG_SHARED) && !hdr->data)) {
+		DR_LOG(ERR, "Invalid ipv6_route_ext header");
+		rte_errno = EINVAL;
+		return rte_errno;
+	}
+
+	if (action->flags & MLX5DR_ACTION_FLAG_SHARED) {
+		memcpy(header, hdr->data, hdr->sz);
+		/* Clear ipv6_route_ext.next_hdr for right checksum */
+		MLX5_SET(header_ipv6_routing_ext, header, next_hdr, 0);
+	}
+
+	insert_hdr.anchor = MLX5_HEADER_ANCHOR_TCP_UDP;
+	insert_hdr.encap = 1;
+	insert_hdr.hdr.sz = hdr->sz;
+	insert_hdr.hdr.data = header;
+	action->ipv6_route_ext.action[0] =
+		mlx5dr_action_create_insert_header(action->ctx, 1, &insert_hdr,
+						   bulk_size, action->flags);
+	action->ipv6_route_ext.action[1] =
+		mlx5dr_action_create_push_ipv6_route_ext_mhdr1(action);
+	action->ipv6_route_ext.action[2] =
+		mlx5dr_action_create_push_ipv6_route_ext_mhdr2(action, bulk_size, hdr->data);
+
+	if (!action->ipv6_route_ext.action[0] ||
+	    !action->ipv6_route_ext.action[1] ||
+	    !action->ipv6_route_ext.action[2]) {
+		DR_LOG(ERR, "Failed to create ipv6_route_ext push subaction");
+		goto err;
+	}
+
+	return 0;
+
+err:
+	for (i = 0; i < MLX5DR_ACTION_IPV6_EXT_MAX_SA; i++)
+		if (action->ipv6_route_ext.action[i])
+			mlx5dr_action_destroy(action->ipv6_route_ext.action[i]);
+
+	return rte_errno;
+}
+
+struct mlx5dr_action *
+mlx5dr_action_create_reformat_ipv6_ext(struct mlx5dr_context *ctx,
+				       enum mlx5dr_action_type action_type,
+				       struct mlx5dr_action_reformat_header *hdr,
+				       uint32_t log_bulk_size,
+				       uint32_t flags)
+{
+	struct mlx5dr_action *action;
+	int ret;
+
+	if (mlx5dr_context_cap_dynamic_reparse(ctx)) {
+		DR_LOG(ERR, "IPv6 extension actions is not supported");
+		rte_errno = ENOTSUP;
+		return NULL;
+	}
+
+	if (!mlx5dr_action_is_hws_flags(flags) ||
+	    ((flags & MLX5DR_ACTION_FLAG_SHARED) && log_bulk_size)) {
+		DR_LOG(ERR, "IPv6 extension flags don't fit HWS (flags: 0x%x)", flags);
+		rte_errno = EINVAL;
+		return NULL;
+	}
+
+	action = mlx5dr_action_create_generic(ctx, flags, action_type);
+	if (!action) {
+		rte_errno = ENOMEM;
+		return NULL;
+	}
+
+	switch (action_type) {
+	case MLX5DR_ACTION_TYP_POP_IPV6_ROUTE_EXT:
+		if (!(flags & MLX5DR_ACTION_FLAG_SHARED)) {
+			DR_LOG(ERR, "Pop ipv6_route_ext must be shared");
+			rte_errno = EINVAL;
+			goto free_action;
+		}
+
+		ret = mlx5dr_action_create_pop_ipv6_route_ext(action);
+		break;
+	case MLX5DR_ACTION_TYP_PUSH_IPV6_ROUTE_EXT:
+		ret = mlx5dr_action_create_push_ipv6_route_ext(action, hdr, log_bulk_size);
+		break;
+	default:
+		DR_LOG(ERR, "Unsupported action type %d\n", action_type);
+		rte_errno = ENOTSUP;
+		goto free_action;
+	}
+
+	if (ret) {
+		DR_LOG(ERR, "Failed to create IPv6 extension reformat action");
+		goto free_action;
+	}
+
+	return action;
+
+free_action:
+	simple_free(action);
+	return NULL;
+}
+
 static void mlx5dr_action_destroy_hws(struct mlx5dr_action *action)
 {
 	struct mlx5dr_devx_obj *obj = NULL;
@@ -2202,6 +2548,12 @@ static void mlx5dr_action_destroy_hws(struct mlx5dr_action *action)
 		for (i = 0; i < action->reformat.num_of_hdrs; i++)
 			mlx5dr_action_destroy_stcs(&action[i]);
 		mlx5dr_cmd_destroy_obj(action->reformat.arg_obj);
+		break;
+	case MLX5DR_ACTION_TYP_PUSH_IPV6_ROUTE_EXT:
+	case MLX5DR_ACTION_TYP_POP_IPV6_ROUTE_EXT:
+		for (i = 0; i < MLX5DR_ACTION_IPV6_EXT_MAX_SA; i++)
+			if (action->ipv6_route_ext.action[i])
+				mlx5dr_action_destroy(action->ipv6_route_ext.action[i]);
 		break;
 	}
 }

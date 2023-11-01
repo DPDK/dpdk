@@ -8,6 +8,9 @@
 /* Max number of STEs needed for a rule (including match) */
 #define MLX5DR_ACTION_MAX_STE 10
 
+/* Max number of internal subactions of ipv6_ext */
+#define MLX5DR_ACTION_IPV6_EXT_MAX_SA 4
+
 enum mlx5dr_action_stc_idx {
 	MLX5DR_ACTION_STC_IDX_CTRL = 0,
 	MLX5DR_ACTION_STC_IDX_HIT = 1,
@@ -138,6 +141,10 @@ struct mlx5dr_action {
 					uint8_t offset;
 					bool encap;
 				} reformat;
+				struct {
+					struct mlx5dr_action
+						*action[MLX5DR_ACTION_IPV6_EXT_MAX_SA];
+				} ipv6_route_ext;
 				struct {
 					struct mlx5dr_devx_obj *devx_obj;
 					uint8_t return_reg_id;
