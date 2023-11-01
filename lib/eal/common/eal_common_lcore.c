@@ -564,7 +564,8 @@ lcore_telemetry_info_cb(unsigned int lcore_id, void *arg)
 		rte_tel_data_add_dict_string(info->d, "usage_ratio", ratio_str);
 	}
 
-	return 0;
+	/* Return non-zero positive value to stop iterating over lcore_id. */
+	return 1;
 }
 
 static int
