@@ -492,9 +492,9 @@ mlx5dr_cmd_stc_modify_set_stc_param(struct mlx5dr_cmd_stc_modify_attr *stc_attr,
 			 stc_attr->insert_header.insert_anchor);
 		/* HW gets the next 2 sizes in words */
 		MLX5_SET(stc_ste_param_insert, stc_parm, insert_size,
-			 stc_attr->insert_header.header_size / 2);
+			 stc_attr->insert_header.header_size / W_SIZE);
 		MLX5_SET(stc_ste_param_insert, stc_parm, insert_offset,
-			 stc_attr->insert_header.insert_offset / 2);
+			 stc_attr->insert_header.insert_offset / W_SIZE);
 		MLX5_SET(stc_ste_param_insert, stc_parm, insert_argument,
 			 stc_attr->insert_header.arg_id);
 		break;

@@ -28,6 +28,7 @@ static const uint32_t action_order_arr[MLX5DR_TABLE_TYPE_MAX][MLX5DR_ACTION_TYP_
 		BIT(MLX5DR_ACTION_TYP_PUSH_VLAN),
 		BIT(MLX5DR_ACTION_TYP_PUSH_VLAN),
 		BIT(MLX5DR_ACTION_TYP_MODIFY_HDR),
+		BIT(MLX5DR_ACTION_TYP_INSERT_HEADER) |
 		BIT(MLX5DR_ACTION_TYP_REFORMAT_L2_TO_TNL_L2) |
 		BIT(MLX5DR_ACTION_TYP_REFORMAT_L2_TO_TNL_L3),
 		BIT(MLX5DR_ACTION_TYP_TBL) |
@@ -47,6 +48,7 @@ static const uint32_t action_order_arr[MLX5DR_TABLE_TYPE_MAX][MLX5DR_ACTION_TYP_
 		BIT(MLX5DR_ACTION_TYP_PUSH_VLAN),
 		BIT(MLX5DR_ACTION_TYP_PUSH_VLAN),
 		BIT(MLX5DR_ACTION_TYP_MODIFY_HDR),
+		BIT(MLX5DR_ACTION_TYP_INSERT_HEADER) |
 		BIT(MLX5DR_ACTION_TYP_REFORMAT_L2_TO_TNL_L2) |
 		BIT(MLX5DR_ACTION_TYP_REFORMAT_L2_TO_TNL_L3),
 		BIT(MLX5DR_ACTION_TYP_TBL) |
@@ -66,6 +68,7 @@ static const uint32_t action_order_arr[MLX5DR_TABLE_TYPE_MAX][MLX5DR_ACTION_TYP_
 		BIT(MLX5DR_ACTION_TYP_PUSH_VLAN),
 		BIT(MLX5DR_ACTION_TYP_PUSH_VLAN),
 		BIT(MLX5DR_ACTION_TYP_MODIFY_HDR),
+		BIT(MLX5DR_ACTION_TYP_INSERT_HEADER) |
 		BIT(MLX5DR_ACTION_TYP_REFORMAT_L2_TO_TNL_L2) |
 		BIT(MLX5DR_ACTION_TYP_REFORMAT_L2_TO_TNL_L3),
 		BIT(MLX5DR_ACTION_TYP_TBL) |
@@ -555,20 +558,15 @@ static void mlx5dr_action_fill_stc_attr(struct mlx5dr_action *action,
 		attr->remove_header.end_anchor = MLX5_HEADER_ANCHOR_INNER_MAC;
 		break;
 	case MLX5DR_ACTION_TYP_REFORMAT_L2_TO_TNL_L2:
-		attr->action_type = MLX5_IFC_STC_ACTION_TYPE_HEADER_INSERT;
-		attr->action_offset = MLX5DR_ACTION_OFFSET_DW6;
-		attr->insert_header.encap = 1;
-		attr->insert_header.insert_anchor = MLX5_HEADER_ANCHOR_PACKET_START;
-		attr->insert_header.arg_id = action->reformat.arg_obj->id;
-		attr->insert_header.header_size = action->reformat.header_size;
-		break;
 	case MLX5DR_ACTION_TYP_REFORMAT_L2_TO_TNL_L3:
+	case MLX5DR_ACTION_TYP_INSERT_HEADER:
 		attr->action_type = MLX5_IFC_STC_ACTION_TYPE_HEADER_INSERT;
 		attr->action_offset = MLX5DR_ACTION_OFFSET_DW6;
-		attr->insert_header.encap = 1;
-		attr->insert_header.insert_anchor = MLX5_HEADER_ANCHOR_PACKET_START;
+		attr->insert_header.encap = action->reformat.encap;
+		attr->insert_header.insert_anchor = action->reformat.anchor;
 		attr->insert_header.arg_id = action->reformat.arg_obj->id;
 		attr->insert_header.header_size = action->reformat.header_size;
+		attr->insert_header.insert_offset = action->reformat.offset;
 		break;
 	case MLX5DR_ACTION_TYP_ASO_METER:
 		attr->action_offset = MLX5DR_ACTION_OFFSET_DW6;
@@ -1246,7 +1244,7 @@ mlx5dr_action_create_reformat_root(struct mlx5dr_action *action,
 }
 
 static int
-mlx5dr_action_handle_l2_to_tunnel_l2(struct mlx5dr_action *action,
+mlx5dr_action_handle_insert_with_ptr(struct mlx5dr_action *action,
 				     uint8_t num_of_hdrs,
 				     struct mlx5dr_action_reformat_header *hdrs,
 				     uint32_t log_bulk_sz)
@@ -1256,8 +1254,8 @@ mlx5dr_action_handle_l2_to_tunnel_l2(struct mlx5dr_action *action,
 	int ret, i;
 
 	for (i = 0; i < num_of_hdrs; i++) {
-		if (hdrs[i].sz % 2 != 0) {
-			DR_LOG(ERR, "Header data size should be multiply of 2");
+		if (hdrs[i].sz % W_SIZE != 0) {
+			DR_LOG(ERR, "Header data size should be in WORD granularity");
 			rte_errno = EINVAL;
 			return rte_errno;
 		}
@@ -1278,6 +1276,13 @@ mlx5dr_action_handle_l2_to_tunnel_l2(struct mlx5dr_action *action,
 		action[i].reformat.header_size = hdrs[i].sz;
 		action[i].reformat.num_of_hdrs = num_of_hdrs;
 		action[i].reformat.max_hdr_sz = max_sz;
+
+		if (action[i].type == MLX5DR_ACTION_TYP_REFORMAT_L2_TO_TNL_L2 ||
+		    action[i].type == MLX5DR_ACTION_TYP_REFORMAT_L2_TO_TNL_L3) {
+			action[i].reformat.anchor = MLX5_HEADER_ANCHOR_PACKET_START;
+			action[i].reformat.offset = 0;
+			action[i].reformat.encap = 1;
+		}
 
 		ret = mlx5dr_action_create_stcs(&action[i], NULL);
 		if (ret) {
@@ -1312,7 +1317,7 @@ mlx5dr_action_handle_l2_to_tunnel_l3(struct mlx5dr_action *action,
 	}
 
 	/* Reuse the insert with pointer for the L2L3 header */
-	ret = mlx5dr_action_handle_l2_to_tunnel_l2(action,
+	ret = mlx5dr_action_handle_insert_with_ptr(action,
 						   num_of_hdrs,
 						   hdrs,
 						   log_bulk_sz);
@@ -1456,7 +1461,7 @@ mlx5dr_action_create_reformat_hws(struct mlx5dr_action *action,
 		ret = mlx5dr_action_create_stcs(action, NULL);
 		break;
 	case MLX5DR_ACTION_TYP_REFORMAT_L2_TO_TNL_L2:
-		ret = mlx5dr_action_handle_l2_to_tunnel_l2(action, num_of_hdrs, hdrs, bulk_size);
+		ret = mlx5dr_action_handle_insert_with_ptr(action, num_of_hdrs, hdrs, bulk_size);
 		break;
 	case MLX5DR_ACTION_TYP_REFORMAT_L2_TO_TNL_L3:
 		ret = mlx5dr_action_handle_l2_to_tunnel_l3(action, num_of_hdrs, hdrs, bulk_size);
@@ -1486,6 +1491,7 @@ mlx5dr_action_create_reformat(struct mlx5dr_context *ctx,
 
 	if (!num_of_hdrs) {
 		DR_LOG(ERR, "Reformat num_of_hdrs cannot be zero");
+		rte_errno = EINVAL;
 		return NULL;
 	}
 
@@ -1521,7 +1527,6 @@ mlx5dr_action_create_reformat(struct mlx5dr_context *ctx,
 	ret = mlx5dr_action_create_reformat_hws(action, num_of_hdrs, hdrs, log_bulk_size);
 	if (ret) {
 		DR_LOG(ERR, "Failed to create HWS reformat action");
-		rte_errno = EINVAL;
 		goto free_action;
 	}
 
@@ -1943,6 +1948,81 @@ free_steering_anchor:
 	return NULL;
 }
 
+struct mlx5dr_action *
+mlx5dr_action_create_insert_header(struct mlx5dr_context *ctx,
+				   uint8_t num_of_hdrs,
+				   struct mlx5dr_action_insert_header *hdrs,
+				   uint32_t log_bulk_size,
+				   uint32_t flags)
+{
+	struct mlx5dr_action_reformat_header *reformat_hdrs;
+	struct mlx5dr_action *action;
+	int i, ret;
+
+	if (!num_of_hdrs) {
+		DR_LOG(ERR, "Reformat num_of_hdrs cannot be zero");
+		rte_errno = EINVAL;
+		return NULL;
+	}
+
+	if (mlx5dr_action_is_root_flags(flags)) {
+		DR_LOG(ERR, "Dynamic reformat action not supported over root");
+		rte_errno = ENOTSUP;
+		return NULL;
+	}
+
+	if (!mlx5dr_action_is_hws_flags(flags) ||
+	    ((flags & MLX5DR_ACTION_FLAG_SHARED) && (log_bulk_size || num_of_hdrs > 1))) {
+		DR_LOG(ERR, "Reformat flags don't fit HWS (flags: 0x%x)", flags);
+		rte_errno = EINVAL;
+		return NULL;
+	}
+
+	action = mlx5dr_action_create_generic_bulk(ctx, flags,
+						   MLX5DR_ACTION_TYP_INSERT_HEADER,
+						   num_of_hdrs);
+	if (!action)
+		return NULL;
+
+	reformat_hdrs = simple_calloc(num_of_hdrs, sizeof(*reformat_hdrs));
+	if (!reformat_hdrs) {
+		DR_LOG(ERR, "Failed to allocate memory for reformat_hdrs");
+		rte_errno = ENOMEM;
+		goto free_action;
+	}
+
+	for (i = 0; i < num_of_hdrs; i++) {
+		if (hdrs[i].offset % W_SIZE != 0) {
+			DR_LOG(ERR, "Header offset should be in WORD granularity");
+			rte_errno = EINVAL;
+			goto free_reformat_hdrs;
+		}
+
+		action[i].reformat.anchor = hdrs[i].anchor;
+		action[i].reformat.encap = hdrs[i].encap;
+		action[i].reformat.offset = hdrs[i].offset;
+		reformat_hdrs[i].sz = hdrs[i].hdr.sz;
+		reformat_hdrs[i].data = hdrs[i].hdr.data;
+	}
+
+	ret = mlx5dr_action_handle_insert_with_ptr(action, num_of_hdrs,
+						   reformat_hdrs, log_bulk_size);
+	if (ret) {
+		DR_LOG(ERR, "Failed to create HWS reformat action");
+		goto free_reformat_hdrs;
+	}
+
+	simple_free(reformat_hdrs);
+
+	return action;
+
+free_reformat_hdrs:
+	simple_free(reformat_hdrs);
+free_action:
+	simple_free(action);
+	return NULL;
+}
+
 static void mlx5dr_action_destroy_hws(struct mlx5dr_action *action)
 {
 	struct mlx5dr_devx_obj *obj = NULL;
@@ -2004,6 +2084,7 @@ static void mlx5dr_action_destroy_hws(struct mlx5dr_action *action)
 			mlx5dr_action_destroy_stcs(&action[i]);
 		mlx5dr_cmd_destroy_obj(action->reformat.arg_obj);
 		break;
+	case MLX5DR_ACTION_TYP_INSERT_HEADER:
 	case MLX5DR_ACTION_TYP_REFORMAT_L2_TO_TNL_L2:
 		for (i = 0; i < action->reformat.num_of_hdrs; i++)
 			mlx5dr_action_destroy_stcs(&action[i]);
@@ -2547,6 +2628,7 @@ int mlx5dr_action_template_process(struct mlx5dr_action_template *at)
 			setter->idx_single = i;
 			break;
 
+		case MLX5DR_ACTION_TYP_INSERT_HEADER:
 		case MLX5DR_ACTION_TYP_REFORMAT_L2_TO_TNL_L2:
 			/* Double insert header with pointer */
 			setter = mlx5dr_action_setter_find_first(last_setter, ASF_DOUBLE);

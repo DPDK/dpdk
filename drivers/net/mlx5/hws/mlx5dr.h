@@ -45,6 +45,7 @@ enum mlx5dr_action_type {
 	MLX5DR_ACTION_TYP_PUSH_VLAN,
 	MLX5DR_ACTION_TYP_ASO_METER,
 	MLX5DR_ACTION_TYP_ASO_CT,
+	MLX5DR_ACTION_TYP_INSERT_HEADER,
 	MLX5DR_ACTION_TYP_DEST_ROOT,
 	MLX5DR_ACTION_TYP_DEST_ARRAY,
 	MLX5DR_ACTION_TYP_MAX,
@@ -167,6 +168,20 @@ struct mlx5dr_devx_obj {
 struct mlx5dr_action_reformat_header {
 	size_t sz;
 	void *data;
+};
+
+struct mlx5dr_action_insert_header {
+	struct mlx5dr_action_reformat_header hdr;
+	/* PRM start anchor to which header will be inserted */
+	uint8_t anchor;
+	/* Header insertion offset in bytes, from the start
+	 * anchor to the location where new header will be inserted.
+	 */
+	uint8_t offset;
+	/* Indicates this header insertion adds encapsulation header to the packet,
+	 * requiring device to update offloaded fields (for example IPv4 total length).
+	 */
+	bool encap;
 };
 
 struct mlx5dr_action_mh_pattern {
@@ -690,6 +705,27 @@ struct mlx5dr_action *
 mlx5dr_action_create_dest_root(struct mlx5dr_context *ctx,
 				uint16_t priority,
 				uint32_t flags);
+
+/* Create insert header action.
+ *
+ * @param[in] ctx
+ *	The context in which the new action will be created.
+ * @param[in] num_of_hdrs
+ *	Number of provided headers in "hdrs" array.
+ * @param[in] hdrs
+ *	Headers array containing header information.
+ * @param[in] log_bulk_size
+ *	Number of unique values used with this insert header.
+ * @param[in] flags
+ *	Action creation flags. (enum mlx5dr_action_flags)
+ * @return pointer to mlx5dr_action on success NULL otherwise.
+ */
+struct mlx5dr_action *
+mlx5dr_action_create_insert_header(struct mlx5dr_context *ctx,
+				   uint8_t num_of_hdrs,
+				   struct mlx5dr_action_insert_header *hdrs,
+				   uint32_t log_bulk_size,
+				   uint32_t flags);
 
 /* Destroy direct rule action.
  *

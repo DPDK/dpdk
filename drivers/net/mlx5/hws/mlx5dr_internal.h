@@ -40,6 +40,7 @@
 #include "mlx5dr_pat_arg.h"
 #include "mlx5dr_crc32.h"
 
+#define W_SIZE		2
 #define DW_SIZE		4
 #define BITS_IN_BYTE	8
 #define BITS_IN_DW	(BITS_IN_BYTE * DW_SIZE)

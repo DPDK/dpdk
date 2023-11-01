@@ -131,8 +131,11 @@ struct mlx5dr_action {
 				struct {
 					struct mlx5dr_devx_obj *arg_obj;
 					uint32_t header_size;
-					uint8_t num_of_hdrs;
 					uint16_t max_hdr_sz;
+					uint8_t num_of_hdrs;
+					uint8_t anchor;
+					uint8_t offset;
+					bool encap;
 				} reformat;
 				struct {
 					struct mlx5dr_devx_obj *devx_obj;
