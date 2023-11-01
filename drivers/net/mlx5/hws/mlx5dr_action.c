@@ -389,7 +389,15 @@ mlx5dr_action_fixup_stc_attr(struct mlx5dr_context *ctx,
 		}
 		use_fixup = true;
 		break;
-
+	case MLX5_IFC_STC_ACTION_TYPE_JUMP_TO_TIR:
+		/* TIR is allowed on RX side, requires mask in case of FDB */
+		if (fw_tbl_type == FS_FT_FDB_TX) {
+			fixup_stc_attr->action_type = MLX5_IFC_STC_ACTION_TYPE_DROP;
+			fixup_stc_attr->action_offset = MLX5DR_ACTION_OFFSET_HIT;
+			fixup_stc_attr->stc_offset = stc_attr->stc_offset;
+			use_fixup = true;
+		}
+		break;
 	default:
 		break;
 	}
@@ -855,6 +863,13 @@ mlx5dr_action_create_dest_tir(struct mlx5dr_context *ctx,
 	if (mlx5dr_action_is_hws_flags(flags) &&
 	    mlx5dr_action_is_root_flags(flags)) {
 		DR_LOG(ERR, "Same action cannot be used for root and non root");
+		rte_errno = ENOTSUP;
+		return NULL;
+	}
+
+	if ((flags & MLX5DR_ACTION_FLAG_ROOT_FDB) ||
+	    (flags & MLX5DR_ACTION_FLAG_HWS_FDB && !ctx->caps->fdb_tir_stc)) {
+		DR_LOG(ERR, "TIR action not support on FDB");
 		rte_errno = ENOTSUP;
 		return NULL;
 	}

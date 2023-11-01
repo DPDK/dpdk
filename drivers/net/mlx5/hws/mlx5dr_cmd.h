@@ -236,6 +236,7 @@ struct mlx5dr_cmd_query_caps {
 	uint8_t log_header_modify_argument_granularity;
 	uint8_t log_header_modify_argument_max_alloc;
 	uint8_t sq_ts_format;
+	uint8_t fdb_tir_stc;
 	uint64_t definer_format_sup;
 	uint32_t trivial_match_definer;
 	uint32_t vhca_id;
