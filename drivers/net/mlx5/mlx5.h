@@ -1355,6 +1355,7 @@ struct mlx5_flex_pattern_field {
 	uint16_t shift:5;
 	uint16_t reg_id:5;
 };
+
 #define MLX5_INVALID_SAMPLE_REG_ID 0x1F
 
 /* Port flex item context. */
@@ -1366,6 +1367,11 @@ struct mlx5_flex_item {
 	struct mlx5_flex_pattern_field map[MLX5_FLEX_ITEM_MAPPING_NUM];
 };
 
+/*
+ * Sample an IPv6 address and the first dword of SRv6 header.
+ * Then it is 16 + 4 = 20 bytes which is 5 dwords.
+ */
+#define MLX5_SRV6_SAMPLE_NUM 5
 /* Mlx5 internal flex parser profile structure. */
 struct mlx5_internal_flex_parser_profile {
 	uint32_t refcnt;

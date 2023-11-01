@@ -1067,6 +1067,7 @@ mlx5_alloc_srh_flex_parser(struct rte_eth_dev *dev)
 	struct mlx5_devx_graph_node_attr node = {
 		.modify_field_select = 0,
 	};
+	uint32_t i;
 	uint32_t ids[MLX5_GRAPH_NODE_SAMPLE_NUM];
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_common_dev_config *config = &priv->sh->cdev->config;
@@ -1100,10 +1101,18 @@ mlx5_alloc_srh_flex_parser(struct rte_eth_dev *dev)
 	node.next_header_field_size = 0x8;
 	node.in[0].arc_parse_graph_node = MLX5_GRAPH_ARC_NODE_IP;
 	node.in[0].compare_condition_value = IPPROTO_ROUTING;
-	node.sample[0].flow_match_sample_en = 1;
-	/* First come first serve no matter inner or outer. */
-	node.sample[0].flow_match_sample_tunnel_mode = MLX5_GRAPH_SAMPLE_TUNNEL_FIRST;
-	node.sample[0].flow_match_sample_offset_mode = MLX5_GRAPH_SAMPLE_OFFSET_FIXED;
+	/* Final IPv6 address. */
+	for (i = 0; i <= MLX5_SRV6_SAMPLE_NUM - 1 && i < MLX5_GRAPH_NODE_SAMPLE_NUM; i++) {
+		node.sample[i].flow_match_sample_en = 1;
+		node.sample[i].flow_match_sample_offset_mode =
+					MLX5_GRAPH_SAMPLE_OFFSET_FIXED;
+		/* First come first serve no matter inner or outer. */
+		node.sample[i].flow_match_sample_tunnel_mode =
+					MLX5_GRAPH_SAMPLE_TUNNEL_FIRST;
+		node.sample[i].flow_match_sample_field_base_offset =
+					(i + 1) * sizeof(uint32_t); /* in bytes */
+	}
+	node.sample[0].flow_match_sample_field_base_offset = 0;
 	node.out[0].arc_parse_graph_node = MLX5_GRAPH_ARC_NODE_TCP;
 	node.out[0].compare_condition_value = IPPROTO_TCP;
 	node.out[1].arc_parse_graph_node = MLX5_GRAPH_ARC_NODE_UDP;
@@ -1116,8 +1125,8 @@ mlx5_alloc_srh_flex_parser(struct rte_eth_dev *dev)
 		goto error;
 	}
 	priv->sh->srh_flex_parser.flex.devx_fp->devx_obj = fp;
-	priv->sh->srh_flex_parser.flex.mapnum = 1;
-	priv->sh->srh_flex_parser.flex.devx_fp->num_samples = 1;
+	priv->sh->srh_flex_parser.flex.mapnum = MLX5_SRV6_SAMPLE_NUM;
+	priv->sh->srh_flex_parser.flex.devx_fp->num_samples = MLX5_SRV6_SAMPLE_NUM;
 
 	ret = mlx5_devx_cmd_query_parse_samples(fp, ids, priv->sh->srh_flex_parser.flex.mapnum,
 						&priv->sh->srh_flex_parser.flex.devx_fp->anchor_id);
@@ -1125,12 +1134,22 @@ mlx5_alloc_srh_flex_parser(struct rte_eth_dev *dev)
 		DRV_LOG(ERR, "Failed to query sample IDs.");
 		goto error;
 	}
-	ret = mlx5_devx_cmd_match_sample_info_query(ibv_ctx, ids[0],
-				&priv->sh->srh_flex_parser.flex.devx_fp->sample_info[0]);
-	if (ret) {
-		DRV_LOG(ERR, "Failed to query sample id information.");
-		goto error;
+	for (i = 0; i <= MLX5_SRV6_SAMPLE_NUM - 1 && i < MLX5_GRAPH_NODE_SAMPLE_NUM; i++) {
+		ret = mlx5_devx_cmd_match_sample_info_query(ibv_ctx, ids[i],
+					&priv->sh->srh_flex_parser.flex.devx_fp->sample_info[i]);
+		if (ret) {
+			DRV_LOG(ERR, "Failed to query sample id %u information.", ids[i]);
+			goto error;
+		}
 	}
+	for (i = 0; i <= MLX5_SRV6_SAMPLE_NUM - 1 && i < MLX5_GRAPH_NODE_SAMPLE_NUM; i++) {
+		priv->sh->srh_flex_parser.flex.devx_fp->sample_ids[i] = ids[i];
+		priv->sh->srh_flex_parser.flex.map[i].width = sizeof(uint32_t) * CHAR_BIT;
+		priv->sh->srh_flex_parser.flex.map[i].reg_id = i;
+		priv->sh->srh_flex_parser.flex.map[i].shift =
+						(i + 1) * sizeof(uint32_t) * CHAR_BIT;
+	}
+	priv->sh->srh_flex_parser.flex.map[0].shift = 0;
 	return 0;
 error:
 	if (fp)
