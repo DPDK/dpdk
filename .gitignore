@@ -36,6 +36,9 @@ TAGS
 # ignore python bytecode files
 *.pyc
 
+# ignore BPF programs
+drivers/net/tap/bpf/tap_bpf_program.o
+
 # DTS results
 dts/output
 

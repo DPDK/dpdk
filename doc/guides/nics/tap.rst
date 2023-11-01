@@ -256,15 +256,12 @@ C functions under different ELF sections.
 
 2. Install ``LLVM`` library and ``clang`` compiler versions 3.7 and above
 
-3. Compile ``tap_bpf_program.c`` via ``LLVM`` into an object file::
+3. Use make to compile  `tap_bpf_program.c`` via ``LLVM`` into an object file
+   and extract the resulting instructions into ``tap_bpf_insn.h``.
 
-    clang -O2 -emit-llvm -c tap_bpf_program.c -o - | llc -march=bpf \
-    -filetype=obj -o <tap_bpf_program.o>
+    cd bpf; make
 
-
-4. Use a tool that receives two parameters: an eBPF object file and a section
-name, and prints out the section as a C array of eBPF instructions.
-Embed the C array in your TAP PMD tree.
+4. Recompile the TAP PMD.
 
 The C arrays are uploaded to the kernel using BPF system calls.
 
