@@ -656,7 +656,7 @@ rte_flow_conv_action_conf(void *buf, const size_t size,
 		if (src.rss->key_len && src.rss->key) {
 			off = RTE_ALIGN_CEIL(off, sizeof(*dst.rss->key));
 			tmp = sizeof(*src.rss->key) * src.rss->key_len;
-			if (size >= off + tmp)
+			if (size >= (uint64_t)off + (uint64_t)tmp)
 				dst.rss->key = rte_memcpy
 					((void *)((uintptr_t)dst.rss + off),
 					 src.rss->key, tmp);
@@ -665,7 +665,7 @@ rte_flow_conv_action_conf(void *buf, const size_t size,
 		if (src.rss->queue_num) {
 			off = RTE_ALIGN_CEIL(off, sizeof(*dst.rss->queue));
 			tmp = sizeof(*src.rss->queue) * src.rss->queue_num;
-			if (size >= off + tmp)
+			if (size >= (uint64_t)off + (uint64_t)tmp)
 				dst.rss->queue = rte_memcpy
 					((void *)((uintptr_t)dst.rss + off),
 					 src.rss->queue, tmp);
