@@ -379,6 +379,7 @@ T: git://dpdk.org/dpdk
 
 Memory pool
 M: Andrew Rybchenko <andrew.rybchenko@oktetlabs.ru>
+M: Morten Brørup <mb@smartsharesystems.com>
 F: lib/mempool/
 F: drivers/mempool/ring/
 F: doc/guides/prog_guide/mempool_lib.rst
