@@ -131,6 +131,8 @@ rss_l3_l4(struct __sk_buff *skb)
 	__u8 *key = 0;
 	__u32 len;
 	__u32 queue = 0;
+	bool mf = 0;
+	__u16 frag_off = 0;
 
 	rsskey = map_lookup_elem(&map_keys, &key_idx);
 	if (!rsskey) {
@@ -155,6 +157,8 @@ rss_l3_l4(struct __sk_buff *skb)
 			return TC_ACT_OK;
 
 		__u8 *src_dst_addr = data + off + offsetof(struct iphdr, saddr);
+		__u8 *frag_off_addr = data + off + offsetof(struct iphdr, frag_off);
+		__u8 *prot_addr = data + off + offsetof(struct iphdr, protocol);
 		__u8 *src_dst_port = data + off + sizeof(struct iphdr);
 		struct ipv4_l3_l4_tuple v4_tuple = {
 			.src_addr = IPv4(*(src_dst_addr + 0),
@@ -165,11 +169,25 @@ rss_l3_l4(struct __sk_buff *skb)
 					*(src_dst_addr + 5),
 					*(src_dst_addr + 6),
 					*(src_dst_addr + 7)),
-			.sport = PORT(*(src_dst_port + 0),
-					*(src_dst_port + 1)),
-			.dport = PORT(*(src_dst_port + 2),
-					*(src_dst_port + 3)),
+			.sport = 0,
+			.dport = 0,
 		};
+		/** Fetch the L4-payer port numbers only in-case of TCP/UDP
+		 ** and also if the packet is not fragmented. Since fragmented
+		 ** chunks do not have L4 TCP/UDP header.
+		 **/
+		if (*prot_addr == IPPROTO_UDP || *prot_addr == IPPROTO_TCP) {
+			frag_off = PORT(*(frag_off_addr + 0),
+					*(frag_off_addr + 1));
+			mf = frag_off & 0x2000;
+			frag_off = frag_off & 0x1fff;
+			if (mf == 0 && frag_off == 0) {
+				v4_tuple.sport = PORT(*(src_dst_port + 0),
+						*(src_dst_port + 1));
+				v4_tuple.dport = PORT(*(src_dst_port + 2),
+						*(src_dst_port + 3));
+			}
+		}
 		__u8 input_len = sizeof(v4_tuple) / sizeof(__u32);
 		if (rsskey->hash_fields & (1 << HASH_FIELD_IPV4_L3))
 			input_len--;
@@ -182,6 +200,9 @@ rss_l3_l4(struct __sk_buff *skb)
 					offsetof(struct ipv6hdr, saddr);
 		__u8 *src_dst_port = data + off +
 					sizeof(struct ipv6hdr);
+		__u8 *next_hdr = data + off +
+					offsetof(struct ipv6hdr, nexthdr);
+
 		struct ipv6_l3_l4_tuple v6_tuple;
 		for (j = 0; j < 4; j++)
 			*((uint32_t *)&v6_tuple.src_addr + j) =
@@ -191,10 +212,18 @@ rss_l3_l4(struct __sk_buff *skb)
 			*((uint32_t *)&v6_tuple.dst_addr + j) =
 				__builtin_bswap32(*((uint32_t *)
 						src_dst_addr + 4 + j));
-		v6_tuple.sport = PORT(*(src_dst_port + 0),
-			      *(src_dst_port + 1));
-		v6_tuple.dport = PORT(*(src_dst_port + 2),
-			      *(src_dst_port + 3));
+
+		/** Fetch the L4 header port-numbers only if next-header
+		 * is TCP/UDP **/
+		if (*next_hdr == IPPROTO_UDP || *next_hdr == IPPROTO_TCP) {
+			v6_tuple.sport = PORT(*(src_dst_port + 0),
+				      *(src_dst_port + 1));
+			v6_tuple.dport = PORT(*(src_dst_port + 2),
+				      *(src_dst_port + 3));
+		} else {
+			v6_tuple.sport = 0;
+			v6_tuple.dport = 0;
+		}
 
 		__u8 input_len = sizeof(v6_tuple) / sizeof(__u32);
 		if (rsskey->hash_fields & (1 << HASH_FIELD_IPV6_L3))
