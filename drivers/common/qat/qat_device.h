@@ -133,6 +133,8 @@ struct qat_pci_device {
 	/**< Address of misc bar */
 	void *dev_private;
 	/**< Per generation specific information */
+	uint32_t slice_map;
+	/**< Map of the crypto and compression slices */
 };
 
 struct qat_gen_hw_data {

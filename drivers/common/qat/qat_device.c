@@ -13,6 +13,15 @@
 #include "adf_pf2vf_msg.h"
 #include "qat_pf2vf.h"
 
+#define NOT_NULL(arg, func, msg, ...)		\
+	do {					\
+		if (arg == NULL) {		\
+			QAT_LOG(ERR,		\
+			msg, ##__VA_ARGS__);	\
+			func;			\
+		}				\
+	} while (0)
+
 /* Hardware device information per generation */
 struct qat_gen_hw_data qat_gen_config[QAT_N_GENS];
 struct qat_dev_hw_spec_funcs *qat_dev_hw_spec[QAT_N_GENS];
@@ -173,6 +182,29 @@ qat_dev_parse_cmd(const char *str, struct qat_dev_cmd_param
 	}
 }
 
+static enum qat_device_gen
+pick_gen(const struct rte_pci_device *pci_dev)
+{
+	switch (pci_dev->id.device_id) {
+	case 0x0443:
+		return QAT_GEN1;
+	case 0x37c9:
+	case 0x19e3:
+	case 0x6f55:
+	case 0x18ef:
+		return QAT_GEN2;
+	case 0x18a1:
+		return QAT_GEN3;
+	case 0x4941:
+	case 0x4943:
+	case 0x4945:
+		return QAT_GEN4;
+	default:
+		QAT_LOG(ERR, "Invalid dev_id, can't determine generation");
+		return QAT_N_GENS;
+	}
+}
+
 struct qat_pci_device *
 qat_pci_device_allocate(struct rte_pci_device *pci_dev,
 		struct qat_dev_cmd_param *qat_dev_cmd_param)
@@ -190,25 +222,8 @@ qat_pci_device_allocate(struct rte_pci_device *pci_dev,
 	rte_pci_device_name(&pci_dev->addr, name, sizeof(name));
 	snprintf(name+strlen(name), QAT_DEV_NAME_MAX_LEN-strlen(name), "_qat");
 
-	switch (pci_dev->id.device_id) {
-	case 0x0443:
-		qat_dev_gen = QAT_GEN1;
-		break;
-	case 0x37c9:
-	case 0x19e3:
-	case 0x6f55:
-	case 0x18ef:
-		qat_dev_gen = QAT_GEN2;
-		break;
-	case 0x18a1:
-		qat_dev_gen = QAT_GEN3;
-		break;
-	case 0x4941:
-	case 0x4943:
-	case 0x4945:
-		qat_dev_gen = QAT_GEN4;
-		break;
-	default:
+	qat_dev_gen = pick_gen(pci_dev);
+	if (qat_dev_gen == QAT_N_GENS) {
 		QAT_LOG(ERR, "Invalid dev_id, can't determine generation");
 		return NULL;
 	}
@@ -265,20 +280,15 @@ qat_pci_device_allocate(struct rte_pci_device *pci_dev,
 	qat_dev->dev_private = qat_dev + 1;
 	strlcpy(qat_dev->name, name, QAT_DEV_NAME_MAX_LEN);
 	qat_dev->qat_dev_id = qat_dev_id;
-	qat_pci_devs[qat_dev_id].pci_dev = pci_dev;
 	qat_dev->qat_dev_gen = qat_dev_gen;
 
 	ops_hw = qat_dev_hw_spec[qat_dev->qat_dev_gen];
-	if (ops_hw->qat_dev_get_misc_bar == NULL) {
-		QAT_LOG(ERR, "qat_dev_get_misc_bar function pointer not set");
-		rte_memzone_free(qat_dev_mz);
-		return NULL;
-	}
+	NOT_NULL(ops_hw->qat_dev_get_misc_bar, goto error,
+		"QAT internal error! qat_dev_get_misc_bar function not set");
 	if (ops_hw->qat_dev_get_misc_bar(&mem_resource, pci_dev) == 0) {
 		if (mem_resource->addr == NULL) {
 			QAT_LOG(ERR, "QAT cannot get access to VF misc bar");
-			rte_memzone_free(qat_dev_mz);
-			return NULL;
+			goto error;
 		}
 		qat_dev->misc_bar_io_addr = mem_resource->addr;
 	} else
@@ -291,22 +301,45 @@ qat_pci_device_allocate(struct rte_pci_device *pci_dev,
 		QAT_LOG(ERR,
 			"Cannot acquire ring configuration for QAT_%d",
 			qat_dev_id);
-			rte_memzone_free(qat_dev_mz);
-		return NULL;
+		goto error;
 	}
+	NOT_NULL(ops_hw->qat_dev_reset_ring_pairs, goto error,
+		"QAT internal error! Reset ring pairs function not set, gen : %d",
+		qat_dev_gen);
+	if (ops_hw->qat_dev_reset_ring_pairs(qat_dev)) {
+		QAT_LOG(ERR,
+			"Cannot reset ring pairs, does pf driver supports pf2vf comms?"
+			);
+		goto error;
+	}
+	NOT_NULL(ops_hw->qat_dev_get_slice_map, goto error,
+		"QAT internal error! Read slice function not set, gen : %d",
+		qat_dev_gen);
+	if (ops_hw->qat_dev_get_slice_map(&qat_dev->slice_map, pci_dev) < 0) {
+		RTE_LOG(ERR, EAL,
+			"Cannot read slice configuration\n");
+		goto error;
+	}
+	rte_spinlock_init(&qat_dev->arb_csr_lock);
 
 	/* No errors when allocating, attach memzone with
 	 * qat_dev to list of devices
 	 */
 	qat_pci_devs[qat_dev_id].mz = qat_dev_mz;
-
-	rte_spinlock_init(&qat_dev->arb_csr_lock);
+	qat_pci_devs[qat_dev_id].pci_dev = pci_dev;
 	qat_nb_pci_devices++;
 
 	QAT_LOG(DEBUG, "QAT device %d found, name %s, total QATs %d",
 			qat_dev->qat_dev_id, qat_dev->name, qat_nb_pci_devices);
 
 	return qat_dev;
+error:
+	if (rte_memzone_free(qat_dev_mz)) {
+		QAT_LOG(DEBUG,
+			"QAT internal error! Trying to free already allocated memzone: %s",
+			qat_dev_mz->name);
+	}
+	return NULL;
 }
 
 static int
@@ -371,9 +404,7 @@ static int qat_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 {
 	int sym_ret = 0, asym_ret = 0, comp_ret = 0;
 	int num_pmds_created = 0;
-	uint32_t capa = 0;
 	struct qat_pci_device *qat_pci_dev;
-	struct qat_dev_hw_spec_funcs *ops_hw;
 	struct qat_dev_cmd_param qat_dev_cmd_param[] = {
 			{ QAT_LEGACY_CAPA, 0 },
 			{ SYM_ENQ_THRESHOLD_NAME, 0 },
@@ -393,23 +424,7 @@ static int qat_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	if (qat_pci_dev == NULL)
 		return -ENODEV;
 
-	ops_hw = qat_dev_hw_spec[qat_pci_dev->qat_dev_gen];
-	if (ops_hw->qat_dev_reset_ring_pairs == NULL)
-		return -ENOTSUP;
-	if (ops_hw->qat_dev_reset_ring_pairs(qat_pci_dev)) {
-		QAT_LOG(ERR,
-			"Cannot reset ring pairs, does pf driver supports pf2vf comms?"
-			);
-		return -ENODEV;
-	}
-
-	if (ops_hw->qat_dev_get_slice_map(&capa, pci_dev) < 0) {
-		RTE_LOG(ERR, EAL,
-			"Cannot read slice configuration\n");
-		return -1;
-	}
-	qat_dev_cmd_param[QAT_CMD_SLICE_MAP_POS].val = capa;
-
+	qat_dev_cmd_param[QAT_CMD_SLICE_MAP_POS].val = qat_pci_dev->slice_map;
 	sym_ret = qat_sym_dev_create(qat_pci_dev, qat_dev_cmd_param);
 	if (sym_ret == 0) {
 		num_pmds_created++;
