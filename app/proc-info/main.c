@@ -131,6 +131,8 @@ struct desc_param {
 static struct desc_param rx_desc_param;
 static struct desc_param tx_desc_param;
 
+#define RSS_HASH_KEY_SIZE 64
+
 /* display usage */
 static void
 proc_info_usage(const char *prgname)
@@ -821,6 +823,7 @@ show_port(void)
 		struct rte_eth_fc_conf fc_conf;
 		struct rte_ether_addr mac;
 		struct rte_eth_dev_owner owner;
+		uint8_t rss_key[RSS_HASH_KEY_SIZE];
 
 		/* Skip if port is not in mask */
 		if ((enabled_port_mask & (1ul << i)) == 0)
@@ -979,17 +982,17 @@ show_port(void)
 			printf("\n");
 		}
 
+		rss_conf.rss_key = rss_key;
+		rss_conf.rss_key_len = dev_info.hash_key_size;
 		ret = rte_eth_dev_rss_hash_conf_get(i, &rss_conf);
 		if (ret == 0) {
-			if (rss_conf.rss_key) {
-				printf("  - RSS\n");
-				printf("\t  -- RSS len %u key (hex):",
-						rss_conf.rss_key_len);
-				for (k = 0; k < rss_conf.rss_key_len; k++)
-					printf(" %x", rss_conf.rss_key[k]);
-				printf("\t  -- hf 0x%"PRIx64"\n",
-						rss_conf.rss_hf);
-			}
+			printf("  - RSS\n");
+			printf("\t  -- RSS len %u key (hex):",
+					rss_conf.rss_key_len);
+			for (k = 0; k < rss_conf.rss_key_len; k++)
+				printf(" %x", rss_conf.rss_key[k]);
+			printf("\t  -- hf 0x%"PRIx64"\n",
+					rss_conf.rss_hf);
 		}
 
 #ifdef RTE_LIB_SECURITY
