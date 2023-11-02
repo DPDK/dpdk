@@ -2174,3 +2174,78 @@ nfp_net_flow_ctrl_get(struct rte_eth_dev *dev,
 
 	return 0;
 }
+
+static int
+nfp_net_pause_frame_set(struct nfp_net_hw *net_hw,
+		struct nfp_eth_table_port *eth_port,
+		enum rte_eth_fc_mode mode)
+{
+	int err;
+	bool flag;
+	struct nfp_nsp *nsp;
+
+	nsp = nfp_eth_config_start(net_hw->cpp, eth_port->index);
+	if (nsp == NULL) {
+		PMD_DRV_LOG(ERR, "NFP error when obtaining NSP handle.");
+		return -EIO;
+	}
+
+	flag = (mode & RTE_ETH_FC_TX_PAUSE) == 0 ? false : true;
+	err = nfp_eth_set_tx_pause(nsp, flag);
+	if (err != 0) {
+		PMD_DRV_LOG(ERR, "Failed to configure TX pause frame.");
+		nfp_eth_config_cleanup_end(nsp);
+		return err;
+	}
+
+	flag = (mode & RTE_ETH_FC_RX_PAUSE) == 0 ? false : true;
+	err = nfp_eth_set_rx_pause(nsp, flag);
+	if (err != 0) {
+		PMD_DRV_LOG(ERR, "Failed to configure RX pause frame.");
+		nfp_eth_config_cleanup_end(nsp);
+		return err;
+	}
+
+	err = nfp_eth_config_commit_end(nsp);
+	if (err != 0) {
+		PMD_DRV_LOG(ERR, "Failed to configure pause frame.");
+		return err;
+	}
+
+	return 0;
+}
+
+int
+nfp_net_flow_ctrl_set(struct rte_eth_dev *dev,
+		struct rte_eth_fc_conf *fc_conf)
+{
+	int ret;
+	struct nfp_net_hw *net_hw;
+	enum rte_eth_fc_mode set_mode;
+	enum rte_eth_fc_mode original_mode;
+	struct nfp_eth_table *nfp_eth_table;
+	struct nfp_eth_table_port *eth_port;
+
+	net_hw = nfp_net_get_hw(dev);
+	if (net_hw->pf_dev == NULL)
+		return -EINVAL;
+
+	nfp_eth_table = net_hw->pf_dev->nfp_eth_table;
+	eth_port = &nfp_eth_table->ports[net_hw->idx];
+
+	original_mode = nfp_net_get_pause_mode(eth_port);
+	set_mode = fc_conf->mode;
+
+	if (set_mode == original_mode)
+		return 0;
+
+	ret = nfp_net_pause_frame_set(net_hw, eth_port, set_mode);
+	if (ret != 0)
+		return ret;
+
+	/* Update eth_table after modifying RX/TX pause frame mode. */
+	eth_port->tx_pause_enabled = (set_mode & RTE_ETH_FC_TX_PAUSE) == 0 ? false : true;
+	eth_port->rx_pause_enabled = (set_mode & RTE_ETH_FC_RX_PAUSE) == 0 ? false : true;
+
+	return 0;
+}

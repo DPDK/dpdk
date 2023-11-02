@@ -189,6 +189,8 @@ void nfp_eth_config_cleanup_end(struct nfp_nsp *nsp);
 int nfp_eth_set_aneg(struct nfp_nsp *nsp, enum nfp_eth_aneg mode);
 int nfp_eth_set_speed(struct nfp_nsp *nsp, uint32_t speed);
 int nfp_eth_set_split(struct nfp_nsp *nsp, uint32_t lanes);
+int nfp_eth_set_tx_pause(struct nfp_nsp *nsp, bool tx_pause);
+int nfp_eth_set_rx_pause(struct nfp_nsp *nsp, bool rx_pause);
 
 /* NSP static information */
 struct nfp_nsp_identify {

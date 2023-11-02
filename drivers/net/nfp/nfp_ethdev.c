@@ -524,6 +524,7 @@ static const struct eth_dev_ops nfp_net_eth_dev_ops = {
 	.udp_tunnel_port_del    = nfp_udp_tunnel_port_del,
 	.fw_version_get         = nfp_net_firmware_version_get,
 	.flow_ctrl_get          = nfp_net_flow_ctrl_get,
+	.flow_ctrl_set          = nfp_net_flow_ctrl_set,
 };
 
 static inline void
