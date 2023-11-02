@@ -56,6 +56,8 @@ extern int ice_timestamp_dynfield_offset;
 
 #define ICE_HEADER_SPLIT_ENA   BIT(0)
 
+#define ICE_TX_MTU_SEG_MAX	8
+
 typedef void (*ice_rx_release_mbufs_t)(struct ice_rx_queue *rxq);
 typedef void (*ice_tx_release_mbufs_t)(struct ice_tx_queue *txq);
 typedef void (*ice_rxd_to_pkt_fields_t)(struct ice_rx_queue *rxq,

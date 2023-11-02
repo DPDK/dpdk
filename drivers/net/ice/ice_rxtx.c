@@ -3679,7 +3679,7 @@ ice_check_empty_mbuf(struct rte_mbuf *tx_pkt)
 }
 
 uint16_t
-ice_prep_pkts(__rte_unused void *tx_queue, struct rte_mbuf **tx_pkts,
+ice_prep_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	      uint16_t nb_pkts)
 {
 	int i, ret;
@@ -3690,9 +3690,23 @@ ice_prep_pkts(__rte_unused void *tx_queue, struct rte_mbuf **tx_pkts,
 		m = tx_pkts[i];
 		ol_flags = m->ol_flags;
 
-		if (ol_flags & RTE_MBUF_F_TX_TCP_SEG &&
+		if (!(ol_flags & RTE_MBUF_F_TX_TCP_SEG) &&
+		    /**
+		     * No TSO case: nb->segs, pkt_len to not exceed
+		     * the limites.
+		     */
+		    (m->nb_segs > ICE_TX_MTU_SEG_MAX ||
+		     m->pkt_len > ICE_FRAME_SIZE_MAX)) {
+			rte_errno = EINVAL;
+			return i;
+		} else if (ol_flags & RTE_MBUF_F_TX_TCP_SEG &&
+		    /** TSO case: tso_segsz, nb_segs, pkt_len not exceed
+		     * the limits.
+		     */
 		    (m->tso_segsz < ICE_MIN_TSO_MSS ||
 		     m->tso_segsz > ICE_MAX_TSO_MSS ||
+		     m->nb_segs >
+			((struct ice_tx_queue *)tx_queue)->nb_tx_desc ||
 		     m->pkt_len > ICE_MAX_TSO_FRAME_SIZE)) {
 			/**
 			 * MSS outside the range are considered malicious
