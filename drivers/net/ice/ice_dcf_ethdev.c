@@ -1937,6 +1937,8 @@ ice_dcf_dev_init(struct rte_eth_dev *eth_dev)
 		return -1;
 	}
 
+	ice_dcf_stats_reset(eth_dev);
+
 	dcf_config_promisc(adapter, false, false);
 	return 0;
 }
