@@ -2993,7 +2993,8 @@ iavf_prep_pkts(__rte_unused void *tx_queue, struct rte_mbuf **tx_pkts,
 				return i;
 			}
 		} else if ((m->tso_segsz < IAVF_MIN_TSO_MSS) ||
-			   (m->tso_segsz > IAVF_MAX_TSO_MSS)) {
+			   (m->tso_segsz > IAVF_MAX_TSO_MSS) ||
+			   (m->nb_segs > txq->nb_tx_desc)) {
 			/* MSS outside the range are considered malicious */
 			rte_errno = EINVAL;
 			return i;
