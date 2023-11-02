@@ -938,6 +938,50 @@ nfp_check_multi_pf_from_nsp(struct rte_pci_device *pci_dev,
 }
 
 static int
+nfp_enable_multi_pf(struct nfp_pf_dev *pf_dev)
+{
+	int err = 0;
+	uint64_t tx_base;
+	uint8_t *ctrl_bar;
+	struct nfp_hw *hw;
+	uint32_t cap_extend;
+	struct nfp_net_hw net_hw;
+	struct nfp_cpp_area *area;
+	char name[RTE_ETH_NAME_MAX_LEN];
+
+	memset(&net_hw, 0, sizeof(struct nfp_net_hw));
+
+	/* Map the symbol table */
+	snprintf(name, sizeof(name), "_pf%u_net_bar0",
+			pf_dev->multi_pf.function_id);
+	ctrl_bar = nfp_rtsym_map(pf_dev->sym_tbl, name, NFP_NET_CFG_BAR_SZ,
+			&area);
+	if (ctrl_bar == NULL) {
+		PMD_INIT_LOG(ERR, "Failed to find data vNIC memory symbol");
+		return -ENODEV;
+	}
+
+	hw = &net_hw.super;
+	hw->ctrl_bar = ctrl_bar;
+
+	cap_extend = nn_cfg_readl(hw, NFP_NET_CFG_CAP_WORD1);
+	if ((cap_extend & NFP_NET_CFG_CTRL_MULTI_PF) == 0) {
+		PMD_INIT_LOG(ERR, "Loaded firmware doesn't support multiple PF");
+		err = -EINVAL;
+		goto end;
+	}
+
+	tx_base = nn_cfg_readl(hw, NFP_NET_CFG_START_TXQ);
+	net_hw.tx_bar = pf_dev->qc_bar + tx_base * NFP_QCP_QUEUE_ADDR_SZ;
+	nfp_net_cfg_queue_setup(&net_hw);
+	rte_spinlock_init(&hw->reconfig_lock);
+	nfp_ext_reconfig(&net_hw.super, NFP_NET_CFG_CTRL_MULTI_PF, NFP_NET_CFG_UPDATE_GEN);
+end:
+	nfp_cpp_area_release_free(area);
+	return err;
+}
+
+static int
 nfp_init_app_fw_nic(struct nfp_pf_dev *pf_dev,
 		const struct nfp_dev_info *dev_info)
 {
@@ -1224,6 +1268,12 @@ nfp_pf_init(struct rte_pci_device *pci_dev)
 	 */
 	switch (pf_dev->app_fw_id) {
 	case NFP_APP_FW_CORE_NIC:
+		if (pf_dev->multi_pf.enabled) {
+			ret = nfp_enable_multi_pf(pf_dev);
+			if (ret != 0)
+				goto hwqueues_cleanup;
+		}
+
 		PMD_INIT_LOG(INFO, "Initializing coreNIC");
 		ret = nfp_init_app_fw_nic(pf_dev, dev_info);
 		if (ret != 0) {
