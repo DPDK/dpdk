@@ -224,11 +224,22 @@ nfp_net_set_link_down(struct rte_eth_dev *dev)
 		return nfp_eth_set_configured(dev->process_private, hw->nfp_idx, 0);
 }
 
+static uint8_t
+nfp_function_id_get(const struct nfp_pf_dev *pf_dev,
+		uint8_t phy_port)
+{
+	if (pf_dev->multi_pf.enabled)
+		return pf_dev->multi_pf.function_id;
+
+	return phy_port;
+}
+
 /* Reset and stop device. The device can not be restarted. */
 static int
 nfp_net_close(struct rte_eth_dev *dev)
 {
 	uint8_t i;
+	uint8_t id;
 	struct nfp_net_hw *hw;
 	struct nfp_pf_dev *pf_dev;
 	struct rte_pci_device *pci_dev;
@@ -264,8 +275,10 @@ nfp_net_close(struct rte_eth_dev *dev)
 	app_fw_nic->ports[hw->idx] = NULL;
 
 	for (i = 0; i < app_fw_nic->total_phyports; i++) {
+		id = nfp_function_id_get(pf_dev, i);
+
 		/* Check to see if ports are still in use */
-		if (app_fw_nic->ports[i] != NULL)
+		if (app_fw_nic->ports[id] != NULL)
 			return 0;
 	}
 
@@ -669,6 +682,19 @@ load_fw:
 	return 0;
 }
 
+static void
+nfp_fw_unload(struct nfp_cpp *cpp)
+{
+	struct nfp_nsp *nsp;
+
+	nsp = nfp_nsp_open(cpp);
+	if (nsp == NULL)
+		return;
+
+	nfp_nsp_device_soft_reset(nsp);
+	nfp_nsp_close(nsp);
+}
+
 static int
 nfp_fw_setup(struct rte_pci_device *dev,
 		struct nfp_cpp *cpp,
@@ -753,6 +779,7 @@ nfp_init_app_fw_nic(struct nfp_pf_dev *pf_dev,
 		const struct nfp_dev_info *dev_info)
 {
 	uint8_t i;
+	uint8_t id;
 	int ret = 0;
 	uint32_t total_vnics;
 	struct nfp_net_hw *hw;
@@ -760,10 +787,13 @@ nfp_init_app_fw_nic(struct nfp_pf_dev *pf_dev,
 	struct rte_eth_dev *eth_dev;
 	struct nfp_app_fw_nic *app_fw_nic;
 	struct nfp_eth_table *nfp_eth_table;
+	char bar_name[RTE_ETH_NAME_MAX_LEN];
 	char port_name[RTE_ETH_NAME_MAX_LEN];
+	char vnic_name[RTE_ETH_NAME_MAX_LEN];
 
 	nfp_eth_table = pf_dev->nfp_eth_table;
 	PMD_INIT_LOG(INFO, "Total physical ports: %d", nfp_eth_table->count);
+	id = nfp_function_id_get(pf_dev, 0);
 
 	/* Allocate memory for the CoreNIC app */
 	app_fw_nic = rte_zmalloc("nfp_app_fw_nic", sizeof(*app_fw_nic), 0);
@@ -774,9 +804,10 @@ nfp_init_app_fw_nic(struct nfp_pf_dev *pf_dev,
 	pf_dev->app_fw_priv = app_fw_nic;
 
 	/* Read the number of vNIC's created for the PF */
-	total_vnics = nfp_rtsym_read_le(pf_dev->sym_tbl, "nfd_cfg_pf0_num_ports", &ret);
+	snprintf(vnic_name, sizeof(vnic_name), "nfd_cfg_pf%u_num_ports", id);
+	total_vnics = nfp_rtsym_read_le(pf_dev->sym_tbl, vnic_name, &ret);
 	if (ret != 0 || total_vnics == 0 || total_vnics > 8) {
-		PMD_INIT_LOG(ERR, "nfd_cfg_pf0_num_ports symbol with wrong value");
+		PMD_INIT_LOG(ERR, "%s symbol with wrong value", vnic_name);
 		ret = -ENODEV;
 		goto app_cleanup;
 	}
@@ -806,11 +837,12 @@ nfp_init_app_fw_nic(struct nfp_pf_dev *pf_dev,
 		app_fw_nic->multiport = true;
 
 	/* Map the symbol table */
-	pf_dev->ctrl_bar = nfp_rtsym_map(pf_dev->sym_tbl, "_pf0_net_bar0",
+	snprintf(bar_name, sizeof(bar_name), "_pf%u_net_bar0", id);
+	pf_dev->ctrl_bar = nfp_rtsym_map(pf_dev->sym_tbl, bar_name,
 			app_fw_nic->total_phyports * NFP_NET_CFG_BAR_SZ,
 			&pf_dev->ctrl_area);
 	if (pf_dev->ctrl_bar == NULL) {
-		PMD_INIT_LOG(ERR, "nfp_rtsym_map fails for _pf0_net_ctrl_bar");
+		PMD_INIT_LOG(ERR, "nfp_rtsym_map fails for %s", bar_name);
 		ret = -EIO;
 		goto app_cleanup;
 	}
@@ -820,8 +852,9 @@ nfp_init_app_fw_nic(struct nfp_pf_dev *pf_dev,
 	/* Loop through all physical ports on PF */
 	numa_node = rte_socket_id();
 	for (i = 0; i < app_fw_nic->total_phyports; i++) {
-		snprintf(port_name, sizeof(port_name), "%s_port%d",
-				pf_dev->pci_dev->device.name, i);
+		id = nfp_function_id_get(pf_dev, i);
+		snprintf(port_name, sizeof(port_name), "%s_port%u",
+				pf_dev->pci_dev->device.name, id);
 
 		/* Allocate a eth_dev for this phyport */
 		eth_dev = rte_eth_dev_allocate(port_name);
@@ -843,14 +876,14 @@ nfp_init_app_fw_nic(struct nfp_pf_dev *pf_dev,
 		hw = eth_dev->data->dev_private;
 
 		/* Add this device to the PF's array of physical ports */
-		app_fw_nic->ports[i] = hw;
+		app_fw_nic->ports[id] = hw;
 
 		hw->dev_info = dev_info;
 		hw->pf_dev = pf_dev;
 		hw->cpp = pf_dev->cpp;
 		hw->eth_dev = eth_dev;
-		hw->idx = i;
-		hw->nfp_idx = nfp_eth_table->ports[i].index;
+		hw->idx = id;
+		hw->nfp_idx = nfp_eth_table->ports[id].index;
 
 		eth_dev->device = &pf_dev->pci_dev->device;
 
@@ -872,13 +905,15 @@ nfp_init_app_fw_nic(struct nfp_pf_dev *pf_dev,
 
 port_cleanup:
 	for (i = 0; i < app_fw_nic->total_phyports; i++) {
-		if (app_fw_nic->ports[i] != NULL &&
-				app_fw_nic->ports[i]->eth_dev != NULL) {
+		id = nfp_function_id_get(pf_dev, i);
+
+		if (app_fw_nic->ports[id] != NULL &&
+				app_fw_nic->ports[id]->eth_dev != NULL) {
 			struct rte_eth_dev *tmp_dev;
-			tmp_dev = app_fw_nic->ports[i]->eth_dev;
+			tmp_dev = app_fw_nic->ports[id]->eth_dev;
 			nfp_ipsec_uninit(tmp_dev);
 			rte_eth_dev_release_port(tmp_dev);
-			app_fw_nic->ports[i] = NULL;
+			app_fw_nic->ports[id] = NULL;
 		}
 	}
 	nfp_cpp_area_free(pf_dev->ctrl_area);
@@ -892,15 +927,19 @@ static int
 nfp_pf_init(struct rte_pci_device *pci_dev)
 {
 	uint32_t i;
+	uint32_t id;
 	int ret = 0;
 	uint64_t addr;
+	uint32_t index;
 	uint32_t cpp_id;
+	uint8_t function_id;
 	struct nfp_cpp *cpp;
 	struct nfp_pf_dev *pf_dev;
 	struct nfp_hwinfo *hwinfo;
 	enum nfp_app_fw_id app_fw_id;
 	char name[RTE_ETH_NAME_MAX_LEN];
 	struct nfp_rtsym_table *sym_tbl;
+	char app_name[RTE_ETH_NAME_MAX_LEN];
 	struct nfp_eth_table *nfp_eth_table;
 	const struct nfp_dev_info *dev_info;
 
@@ -919,7 +958,8 @@ nfp_pf_init(struct rte_pci_device *pci_dev)
 	}
 
 	/* Allocate memory for the PF "device" */
-	snprintf(name, sizeof(name), "nfp_pf%d", 0);
+	function_id = (pci_dev->addr.function) & 0x07;
+	snprintf(name, sizeof(name), "nfp_pf%u", function_id);
 	pf_dev = rte_zmalloc(name, sizeof(*pf_dev), 0);
 	if (pf_dev == NULL) {
 		PMD_INIT_LOG(ERR, "Can't allocate memory for the PF device");
@@ -960,10 +1000,14 @@ nfp_pf_init(struct rte_pci_device *pci_dev)
 	}
 
 	pf_dev->multi_pf.enabled = nfp_check_multi_pf_from_nsp(pci_dev, cpp);
+	pf_dev->multi_pf.function_id = function_id;
 
 	/* Force the physical port down to clear the possible DMA error */
-	for (i = 0; i < nfp_eth_table->count; i++)
-		nfp_eth_set_configured(cpp, nfp_eth_table->ports[i].index, 0);
+	for (i = 0; i < nfp_eth_table->count; i++) {
+		id = nfp_function_id_get(pf_dev, i);
+		index = nfp_eth_table->ports[id].index;
+		nfp_eth_set_configured(cpp, index, 0);
+	}
 
 	if (nfp_fw_setup(pci_dev, cpp, nfp_eth_table, hwinfo) != 0) {
 		PMD_INIT_LOG(ERR, "Error when uploading firmware");
@@ -976,13 +1020,14 @@ nfp_pf_init(struct rte_pci_device *pci_dev)
 	if (sym_tbl == NULL) {
 		PMD_INIT_LOG(ERR, "Something is wrong with the firmware symbol table");
 		ret = -EIO;
-		goto eth_table_cleanup;
+		goto fw_cleanup;
 	}
 
 	/* Read the app ID of the firmware loaded */
-	app_fw_id = nfp_rtsym_read_le(sym_tbl, "_pf0_net_app_id", &ret);
+	snprintf(app_name, sizeof(app_name), "_pf%u_net_app_id", function_id);
+	app_fw_id = nfp_rtsym_read_le(sym_tbl, app_name, &ret);
 	if (ret != 0) {
-		PMD_INIT_LOG(ERR, "Couldn't read app_fw_id from fw");
+		PMD_INIT_LOG(ERR, "Couldn't read %s from firmware", app_name);
 		ret = -EIO;
 		goto sym_tbl_cleanup;
 	}
@@ -1047,6 +1092,8 @@ hwqueues_cleanup:
 	nfp_cpp_area_free(pf_dev->qc_area);
 sym_tbl_cleanup:
 	free(sym_tbl);
+fw_cleanup:
+	nfp_fw_unload(cpp);
 eth_table_cleanup:
 	free(nfp_eth_table);
 hwinfo_cleanup:
@@ -1065,21 +1112,29 @@ nfp_secondary_init_app_fw_nic(struct nfp_pf_dev *pf_dev)
 	uint32_t i;
 	int err = 0;
 	int ret = 0;
+	uint8_t function_id;
 	uint32_t total_vnics;
 	struct nfp_net_hw *hw;
+	char pf_name[RTE_ETH_NAME_MAX_LEN];
 
 	/* Read the number of vNIC's created for the PF */
-	total_vnics = nfp_rtsym_read_le(pf_dev->sym_tbl, "nfd_cfg_pf0_num_ports", &err);
+	function_id = (pf_dev->pci_dev->addr.function) & 0x07;
+	snprintf(pf_name, sizeof(pf_name), "nfd_cfg_pf%u_num_ports", function_id);
+	total_vnics = nfp_rtsym_read_le(pf_dev->sym_tbl, pf_name, &err);
 	if (err != 0 || total_vnics == 0 || total_vnics > 8) {
-		PMD_INIT_LOG(ERR, "nfd_cfg_pf0_num_ports symbol with wrong value");
+		PMD_INIT_LOG(ERR, "%s symbol with wrong value", pf_name);
 		return -ENODEV;
 	}
 
 	for (i = 0; i < total_vnics; i++) {
+		uint32_t id = i;
 		struct rte_eth_dev *eth_dev;
 		char port_name[RTE_ETH_NAME_MAX_LEN];
+
+		if (nfp_check_multi_pf_from_fw(total_vnics))
+			id = function_id;
 		snprintf(port_name, sizeof(port_name), "%s_port%u",
-				pf_dev->pci_dev->device.name, i);
+				pf_dev->pci_dev->device.name, id);
 
 		PMD_INIT_LOG(DEBUG, "Secondary attaching to port %s", port_name);
 		eth_dev = rte_eth_dev_attach_secondary(port_name);
@@ -1109,11 +1164,13 @@ nfp_pf_secondary_init(struct rte_pci_device *pci_dev)
 {
 	int ret = 0;
 	struct nfp_cpp *cpp;
+	uint8_t function_id;
 	struct nfp_pf_dev *pf_dev;
 	enum nfp_app_fw_id app_fw_id;
 	char name[RTE_ETH_NAME_MAX_LEN];
 	struct nfp_rtsym_table *sym_tbl;
 	const struct nfp_dev_info *dev_info;
+	char app_name[RTE_ETH_NAME_MAX_LEN];
 
 	if (pci_dev == NULL)
 		return -ENODEV;
@@ -1167,9 +1224,11 @@ nfp_pf_secondary_init(struct rte_pci_device *pci_dev)
 	}
 
 	/* Read the app ID of the firmware loaded */
-	app_fw_id = nfp_rtsym_read_le(sym_tbl, "_pf0_net_app_id", &ret);
+	function_id = pci_dev->addr.function & 0x7;
+	snprintf(app_name, sizeof(app_name), "_pf%u_net_app_id", function_id);
+	app_fw_id = nfp_rtsym_read_le(sym_tbl, app_name, &ret);
 	if (ret != 0) {
-		PMD_INIT_LOG(ERR, "Couldn't read app_fw_id from fw");
+		PMD_INIT_LOG(ERR, "Couldn't read %s from fw", app_name);
 		ret = -EIO;
 		goto sym_tbl_cleanup;
 	}

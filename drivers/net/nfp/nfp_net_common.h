@@ -57,6 +57,8 @@ struct nfp_net_tlv_caps {
 struct nfp_multi_pf {
 	/** Support multiple PF */
 	bool enabled;
+	/** Function index */
+	uint8_t function_id;
 };
 
 struct nfp_pf_dev {
