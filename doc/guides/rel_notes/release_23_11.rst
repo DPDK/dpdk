@@ -109,6 +109,12 @@ New Features
 
   Added support for amd-pstate driver which works on AMD EPYC processors.
 
+* **Improved support of RSS hash algorithm.**
+
+  * Added support to query RSS hash algorithm capability via ``rte_eth_dev_info_get()``,
+    and set RSS hash algorithm via ``rte_eth_dev_configure()``
+    or ``rte_eth_dev_rss_hash_update()``.
+
 * **Added a flow action type for P4-defined actions.**
 
   For P4-programmable devices, hardware pipeline can be configured through
@@ -387,6 +393,12 @@ ABI Changes
   ``recycle_tx_mbufs_reuse`` and ``recycle_rx_descriptors_refill``
   fields, to move ``rxq`` and ``txq`` fields, to change the size of
   ``reserved1`` and ``reserved2`` fields.
+
+* ethdev: Added ``algorithm`` field to ``rte_eth_rss_conf`` structure
+  for RSS hash algorithm.
+
+* ethdev: Added ``rss_algo_capa`` field to ``rte_eth_dev_info`` structure
+  for reporting RSS hash algorithm capability.
 
 * security: struct ``rte_security_ipsec_sa_options`` was updated
   due to inline out-of-place feature addition.

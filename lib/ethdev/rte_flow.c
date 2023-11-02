@@ -13,7 +13,6 @@
 #include <rte_branch_prediction.h>
 #include <rte_string_fns.h>
 #include <rte_mbuf_dyn.h>
-#include "rte_ethdev.h"
 #include "rte_flow_driver.h"
 #include "rte_flow.h"
 
