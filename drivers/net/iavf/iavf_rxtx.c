@@ -2347,12 +2347,12 @@ end_of_tx:
 
 /* TX prep functions */
 uint16_t
-iavf_prep_pkts(__rte_unused void *tx_queue, struct rte_mbuf **tx_pkts,
-	      uint16_t nb_pkts)
+iavf_prep_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 {
 	int i, ret;
 	uint64_t ol_flags;
 	struct rte_mbuf *m;
+	struct iavf_tx_queue *txq = tx_queue;
 
 	for (i = 0; i < nb_pkts; i++) {
 		m = tx_pkts[i];
@@ -2365,7 +2365,8 @@ iavf_prep_pkts(__rte_unused void *tx_queue, struct rte_mbuf **tx_pkts,
 				return i;
 			}
 		} else if ((m->tso_segsz < IAVF_MIN_TSO_MSS) ||
-			   (m->tso_segsz > IAVF_MAX_TSO_MSS)) {
+			   (m->tso_segsz > IAVF_MAX_TSO_MSS) ||
+			   (m->nb_segs > txq->nb_tx_desc)) {
 			/* MSS outside the range are considered malicious */
 			rte_errno = EINVAL;
 			return i;
