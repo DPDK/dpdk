@@ -715,6 +715,15 @@ nfp_fw_setup(struct rte_pci_device *dev,
 }
 
 static inline bool
+nfp_check_multi_pf_from_fw(uint32_t total_vnics)
+{
+	if (total_vnics == 1)
+		return true;
+
+	return false;
+}
+
+static inline bool
 nfp_check_multi_pf_from_nsp(struct rte_pci_device *pci_dev,
 		struct nfp_cpp *cpp)
 {
@@ -767,14 +776,22 @@ nfp_init_app_fw_nic(struct nfp_pf_dev *pf_dev,
 		goto app_cleanup;
 	}
 
-	/*
-	 * For coreNIC the number of vNICs exposed should be the same as the
-	 * number of physical ports.
-	 */
-	if (total_vnics != nfp_eth_table->count) {
-		PMD_INIT_LOG(ERR, "Total physical ports do not match number of vNICs");
-		ret = -ENODEV;
-		goto app_cleanup;
+	if (pf_dev->multi_pf.enabled) {
+		if (!nfp_check_multi_pf_from_fw(total_vnics)) {
+			PMD_INIT_LOG(ERR, "NSP report multipf, but FW report not multipf");
+			ret = -ENODEV;
+			goto app_cleanup;
+		}
+	} else {
+		/*
+		 * For coreNIC the number of vNICs exposed should be the same as the
+		 * number of physical ports.
+		 */
+		if (total_vnics != nfp_eth_table->count) {
+			PMD_INIT_LOG(ERR, "Total physical ports do not match number of vNICs");
+			ret = -ENODEV;
+			goto app_cleanup;
+		}
 	}
 
 	/* Populate coreNIC app properties */
