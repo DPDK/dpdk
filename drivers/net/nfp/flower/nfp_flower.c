@@ -859,7 +859,7 @@ app_cleanup:
 }
 
 int
-nfp_secondary_init_app_fw_flower(struct nfp_cpp *cpp)
+nfp_secondary_init_app_fw_flower(struct nfp_pf_dev *pf_dev)
 {
 	struct rte_eth_dev *eth_dev;
 	const char *port_name = "pf_vnic_eth_dev";
@@ -872,7 +872,7 @@ nfp_secondary_init_app_fw_flower(struct nfp_cpp *cpp)
 		return -ENODEV;
 	}
 
-	eth_dev->process_private = cpp;
+	eth_dev->process_private = pf_dev->cpp;
 	eth_dev->dev_ops = &nfp_flower_pf_vnic_ops;
 	eth_dev->rx_pkt_burst = nfp_net_recv_pkts;
 	eth_dev->tx_pkt_burst = nfp_flower_pf_xmit_pkts;

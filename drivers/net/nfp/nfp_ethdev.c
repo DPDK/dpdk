@@ -1008,9 +1008,7 @@ cpp_cleanup:
 }
 
 static int
-nfp_secondary_init_app_fw_nic(struct rte_pci_device *pci_dev,
-		struct nfp_rtsym_table *sym_tbl,
-		struct nfp_cpp *cpp)
+nfp_secondary_init_app_fw_nic(struct nfp_pf_dev *pf_dev)
 {
 	uint32_t i;
 	int err = 0;
@@ -1019,7 +1017,7 @@ nfp_secondary_init_app_fw_nic(struct rte_pci_device *pci_dev,
 	struct nfp_net_hw *hw;
 
 	/* Read the number of vNIC's created for the PF */
-	total_vnics = nfp_rtsym_read_le(sym_tbl, "nfd_cfg_pf0_num_ports", &err);
+	total_vnics = nfp_rtsym_read_le(pf_dev->sym_tbl, "nfd_cfg_pf0_num_ports", &err);
 	if (err != 0 || total_vnics == 0 || total_vnics > 8) {
 		PMD_INIT_LOG(ERR, "nfd_cfg_pf0_num_ports symbol with wrong value");
 		return -ENODEV;
@@ -1029,7 +1027,7 @@ nfp_secondary_init_app_fw_nic(struct rte_pci_device *pci_dev,
 		struct rte_eth_dev *eth_dev;
 		char port_name[RTE_ETH_NAME_MAX_LEN];
 		snprintf(port_name, sizeof(port_name), "%s_port%u",
-				pci_dev->device.name, i);
+				pf_dev->pci_dev->device.name, i);
 
 		PMD_INIT_LOG(DEBUG, "Secondary attaching to port %s", port_name);
 		eth_dev = rte_eth_dev_attach_secondary(port_name);
@@ -1039,7 +1037,7 @@ nfp_secondary_init_app_fw_nic(struct rte_pci_device *pci_dev,
 			break;
 		}
 
-		eth_dev->process_private = cpp;
+		eth_dev->process_private = pf_dev->cpp;
 		hw = eth_dev->data->dev_private;
 		nfp_net_ethdev_ops_mount(hw, eth_dev);
 
@@ -1059,7 +1057,9 @@ nfp_pf_secondary_init(struct rte_pci_device *pci_dev)
 {
 	int ret = 0;
 	struct nfp_cpp *cpp;
+	struct nfp_pf_dev *pf_dev;
 	enum nfp_app_fw_id app_fw_id;
+	char name[RTE_ETH_NAME_MAX_LEN];
 	struct nfp_rtsym_table *sym_tbl;
 	const struct nfp_dev_info *dev_info;
 
@@ -1077,6 +1077,14 @@ nfp_pf_secondary_init(struct rte_pci_device *pci_dev)
 		return -ENODEV;
 	}
 
+	/* Allocate memory for the PF "device" */
+	snprintf(name, sizeof(name), "nfp_pf%d", 0);
+	pf_dev = rte_zmalloc(name, sizeof(*pf_dev), 0);
+	if (pf_dev == NULL) {
+		PMD_INIT_LOG(ERR, "Can't allocate memory for the PF device");
+		return -ENOMEM;
+	}
+
 	/*
 	 * When device bound to UIO, the device could be used, by mistake,
 	 * by two DPDK apps, and the UIO driver does not avoid it. This
@@ -1091,7 +1099,8 @@ nfp_pf_secondary_init(struct rte_pci_device *pci_dev)
 
 	if (cpp == NULL) {
 		PMD_INIT_LOG(ERR, "A CPP handle can not be obtained");
-		return -EIO;
+		ret = -EIO;
+		goto pf_cleanup;
 	}
 
 	/*
@@ -1101,20 +1110,29 @@ nfp_pf_secondary_init(struct rte_pci_device *pci_dev)
 	sym_tbl = nfp_rtsym_table_read(cpp);
 	if (sym_tbl == NULL) {
 		PMD_INIT_LOG(ERR, "Something is wrong with the firmware symbol table");
-		return -EIO;
+		ret = -EIO;
+		goto pf_cleanup;
 	}
 
 	/* Read the app ID of the firmware loaded */
 	app_fw_id = nfp_rtsym_read_le(sym_tbl, "_pf0_net_app_id", &ret);
 	if (ret != 0) {
 		PMD_INIT_LOG(ERR, "Couldn't read app_fw_id from fw");
+		ret = -EIO;
 		goto sym_tbl_cleanup;
 	}
 
+	/* Populate the newly created PF device */
+	pf_dev->app_fw_id = app_fw_id;
+	pf_dev->cpp = cpp;
+	pf_dev->sym_tbl = sym_tbl;
+	pf_dev->pci_dev = pci_dev;
+
+	/* Call app specific init code now */
 	switch (app_fw_id) {
 	case NFP_APP_FW_CORE_NIC:
 		PMD_INIT_LOG(INFO, "Initializing coreNIC");
-		ret = nfp_secondary_init_app_fw_nic(pci_dev, sym_tbl, cpp);
+		ret = nfp_secondary_init_app_fw_nic(pf_dev);
 		if (ret != 0) {
 			PMD_INIT_LOG(ERR, "Could not initialize coreNIC!");
 			goto sym_tbl_cleanup;
@@ -1122,7 +1140,7 @@ nfp_pf_secondary_init(struct rte_pci_device *pci_dev)
 		break;
 	case NFP_APP_FW_FLOWER_NIC:
 		PMD_INIT_LOG(INFO, "Initializing Flower");
-		ret = nfp_secondary_init_app_fw_flower(cpp);
+		ret = nfp_secondary_init_app_fw_flower(pf_dev);
 		if (ret != 0) {
 			PMD_INIT_LOG(ERR, "Could not initialize Flower!");
 			goto sym_tbl_cleanup;
@@ -1134,8 +1152,12 @@ nfp_pf_secondary_init(struct rte_pci_device *pci_dev)
 		goto sym_tbl_cleanup;
 	}
 
+	return 0;
+
 sym_tbl_cleanup:
 	free(sym_tbl);
+pf_cleanup:
+	rte_free(pf_dev);
 
 	return ret;
 }
