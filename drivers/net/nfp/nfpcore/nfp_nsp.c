@@ -22,7 +22,8 @@
 
 #define NSP_COMMAND             0x08
 #define   NSP_COMMAND_OPTION    GENMASK_ULL(63, 32)
-#define   NSP_COMMAND_CODE      GENMASK_ULL(31, 16)
+#define   NSP_COMMAND_VER_MAJOR GENMASK_ULL(31, 28)
+#define   NSP_COMMAND_CODE      GENMASK_ULL(27, 16)
 #define   NSP_COMMAND_DMA_BUF   RTE_BIT64(1)
 #define   NSP_COMMAND_START     RTE_BIT64(0)
 
@@ -370,6 +371,7 @@ nfp_nsp_command_real(struct nfp_nsp *state,
 
 	err = nfp_cpp_writeq(cpp, nsp_cpp, nsp_command,
 			FIELD_PREP(NSP_COMMAND_OPTION, arg->option) |
+			FIELD_PREP(NSP_COMMAND_VER_MAJOR, state->ver.major) |
 			FIELD_PREP(NSP_COMMAND_CODE, arg->code) |
 			FIELD_PREP(NSP_COMMAND_DMA_BUF, arg->dma) |
 			FIELD_PREP(NSP_COMMAND_START, 1));
