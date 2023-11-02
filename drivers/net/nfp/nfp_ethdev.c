@@ -656,7 +656,12 @@ load_fw:
 	PMD_DRV_LOG(INFO, "Firmware file found at %s with size: %zu",
 			fw_name, fsize);
 	PMD_DRV_LOG(INFO, "Uploading the firmware ...");
-	nfp_nsp_load_fw(nsp, fw_buf, fsize);
+	if (nfp_nsp_load_fw(nsp, fw_buf, fsize) < 0) {
+		free(fw_buf);
+		PMD_DRV_LOG(ERR, "Firmware load failed.");
+		return -EIO;
+	}
+
 	PMD_DRV_LOG(INFO, "Done");
 
 	free(fw_buf);
