@@ -174,6 +174,8 @@ int nfp_configure_rx_interrupt(struct rte_eth_dev *dev,
 uint32_t nfp_check_offloads(struct rte_eth_dev *dev);
 int nfp_net_promisc_enable(struct rte_eth_dev *dev);
 int nfp_net_promisc_disable(struct rte_eth_dev *dev);
+int nfp_net_allmulticast_enable(struct rte_eth_dev *dev);
+int nfp_net_allmulticast_disable(struct rte_eth_dev *dev);
 int nfp_net_link_update_common(struct rte_eth_dev *dev,
 		struct nfp_net_hw *hw,
 		struct rte_eth_link *link,

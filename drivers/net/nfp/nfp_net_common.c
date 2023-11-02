@@ -583,6 +583,66 @@ nfp_net_promisc_disable(struct rte_eth_dev *dev)
 	return 0;
 }
 
+static int
+nfp_net_set_allmulticast_mode(struct rte_eth_dev *dev,
+		bool enable)
+{
+	int ret;
+	uint32_t update;
+	struct nfp_hw *hw;
+	uint32_t cap_extend;
+	uint32_t ctrl_extend;
+	uint32_t new_ctrl_extend;
+	struct nfp_net_hw *net_hw;
+
+	net_hw = nfp_net_get_hw(dev);
+	hw = &net_hw->super;
+
+	cap_extend = hw->cap_ext;
+	if ((cap_extend & NFP_NET_CFG_CTRL_MCAST_FILTER) == 0) {
+		PMD_DRV_LOG(ERR, "Allmulticast mode not supported");
+		return -ENOTSUP;
+	}
+
+	/*
+	 * Allmulticast mode enabled when NFP_NET_CFG_CTRL_MCAST_FILTER bit is 0.
+	 * Allmulticast mode disabled when NFP_NET_CFG_CTRL_MCAST_FILTER bit is 1.
+	 */
+	ctrl_extend = hw->ctrl_ext;
+	if (enable) {
+		if ((ctrl_extend & NFP_NET_CFG_CTRL_MCAST_FILTER) == 0)
+			return 0;
+
+		new_ctrl_extend = ctrl_extend & ~NFP_NET_CFG_CTRL_MCAST_FILTER;
+	} else {
+		if ((ctrl_extend & NFP_NET_CFG_CTRL_MCAST_FILTER) != 0)
+			return 0;
+
+		new_ctrl_extend = ctrl_extend | NFP_NET_CFG_CTRL_MCAST_FILTER;
+	}
+
+	update = NFP_NET_CFG_UPDATE_GEN;
+
+	ret = nfp_ext_reconfig(hw, new_ctrl_extend, update);
+	if (ret != 0)
+		return ret;
+
+	hw->ctrl_ext = new_ctrl_extend;
+	return 0;
+}
+
+int
+nfp_net_allmulticast_enable(struct rte_eth_dev *dev)
+{
+	return nfp_net_set_allmulticast_mode(dev, true);
+}
+
+int
+nfp_net_allmulticast_disable(struct rte_eth_dev *dev)
+{
+	return nfp_net_set_allmulticast_mode(dev, false);
+}
+
 int
 nfp_net_link_update_common(struct rte_eth_dev *dev,
 		struct nfp_net_hw *hw,
