@@ -986,12 +986,13 @@ show_port(void)
 		rss_conf.rss_key_len = dev_info.hash_key_size;
 		ret = rte_eth_dev_rss_hash_conf_get(i, &rss_conf);
 		if (ret == 0) {
-			printf("  - RSS\n");
-			printf("\t  -- RSS len %u key (hex):",
+			printf("  - RSS info\n");
+			printf("\t  -- key len : %u\n",
 					rss_conf.rss_key_len);
+			printf("\t  -- key (hex) : ");
 			for (k = 0; k < rss_conf.rss_key_len; k++)
-				printf(" %x", rss_conf.rss_key[k]);
-			printf("\t  -- hf 0x%"PRIx64"\n",
+				printf("%02x", rss_conf.rss_key[k]);
+			printf("\n\t  -- hash function : 0x%"PRIx64"\n",
 					rss_conf.rss_hf);
 		}
 
