@@ -373,6 +373,7 @@ cpfl_fxp_parse_action(struct cpfl_itf *itf,
 			break;
 		case RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP:
 		case RTE_FLOW_ACTION_TYPE_VXLAN_DECAP:
+		case RTE_FLOW_ACTION_TYPE_PROG:
 			break;
 		case RTE_FLOW_ACTION_TYPE_VOID:
 			break;
@@ -425,6 +426,7 @@ cpfl_is_mod_action(const struct rte_flow_action actions[])
 		switch (action_type) {
 		case RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP:
 		case RTE_FLOW_ACTION_TYPE_VXLAN_DECAP:
+		case RTE_FLOW_ACTION_TYPE_PROG:
 			return true;
 		default:
 			continue;

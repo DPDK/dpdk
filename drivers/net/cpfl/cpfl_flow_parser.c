@@ -35,6 +35,8 @@ cpfl_get_action_type_by_str(const char *type)
 		return RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP;
 	else if (strcmp(type, "vxlan_decap") == 0)
 		return RTE_FLOW_ACTION_TYPE_VXLAN_DECAP;
+	else if (strcmp(type, "prog") == 0)
+		return RTE_FLOW_ACTION_TYPE_PROG;
 
 	PMD_DRV_LOG(ERR, "Not support this type: %s.", type);
 	return RTE_FLOW_ACTION_TYPE_VOID;
@@ -612,6 +614,58 @@ cpfl_flow_js_mr_key(json_t *ob_mr_keys, struct cpfl_flow_js_mr_key *js_mr_key)
 				}
 				encap->protocols[j] = proto_type;
 			}
+		} else if (js_mr_key->actions[i].type == RTE_FLOW_ACTION_TYPE_PROG) {
+			int ret;
+			uint32_t param_size, j;
+			uint16_t value = 0;
+			json_t *ob_param, *subobject;
+			const char *name;
+
+			ret = cpfl_json_t_to_uint32(object, "id", &js_mr_key->actions[i].prog.id);
+			if (ret < 0) {
+				PMD_DRV_LOG(ERR, "Can not parse uint32 'id'.");
+				goto err;
+			}
+			if (json_object_get(object, "name")) {
+				js_mr_key->actions[i].prog.has_name = TRUE;
+				name = cpfl_json_t_to_string(object, "name");
+				if (!name) {
+					PMD_DRV_LOG(ERR, "Can not parse string 'name'.");
+					goto err;
+				}
+				strncpy(js_mr_key->actions[i].prog.name, name,
+					CPFL_FLOW_JSON_STR_SIZE_MAX - 1);
+			}
+
+			ob_param = json_object_get(object, "parameters");
+			param_size = json_array_size(ob_param);
+			js_mr_key->actions[i].prog.param_size = param_size;
+			for (j = 0; j < param_size; j++) {
+				subobject = json_array_get(ob_param, j);
+				ret = cpfl_json_t_to_uint16(subobject, "index", &value);
+				if (ret < 0) {
+					PMD_DRV_LOG(ERR, "Can not parse 'index'.");
+					goto err;
+				}
+				js_mr_key->actions[i].prog.params[j].index = value;
+				if (json_object_get(subobject, "name")) {
+					js_mr_key->actions[i].prog.params[j].has_name = TRUE;
+					name = cpfl_json_t_to_string(subobject, "name");
+					if (!name) {
+						PMD_DRV_LOG(ERR, "Can not parse string 'name'.");
+						goto err;
+					}
+					strncpy(js_mr_key->actions[i].prog.params[j].name, name,
+						CPFL_FLOW_JSON_STR_SIZE_MAX - 1);
+				}
+				ret = cpfl_json_t_to_uint16(subobject, "size", &value);
+				if (ret < 0) {
+					PMD_DRV_LOG(ERR, "Can not parse 'size'.");
+					goto err;
+				}
+				js_mr_key->actions[i].prog.params[j].size = value;
+			}
+
 		} else if (js_mr_key->actions[i].type != RTE_FLOW_ACTION_TYPE_VXLAN_DECAP) {
 			PMD_DRV_LOG(ERR, "not support this type: %d.", js_mr_key->actions[i].type);
 			goto err;
@@ -634,11 +688,6 @@ cpfl_flow_js_mr_layout(json_t *ob_layouts, struct cpfl_flow_js_mr_action_mod *js
 	js_mod->layout_size = len;
 	if (len == 0)
 		return 0;
-	js_mod->layout = rte_malloc(NULL, sizeof(struct cpfl_flow_js_mr_layout) * len, 0);
-	if (!js_mod->layout) {
-		PMD_DRV_LOG(ERR, "Failed to alloc memory.");
-		return -ENOMEM;
-	}
 
 	for (i = 0; i < len; i++) {
 		json_t *object;
@@ -681,6 +730,79 @@ err:
 }
 
 static int
+cpfl_flow_js_mr_content(json_t *ob_content, struct cpfl_flow_js_mr_action_mod *js_mod)
+{
+	int ret, len, i;
+	json_t *ob_field;
+
+	if (!ob_content)
+		return 0;
+
+	js_mod->is_content = TRUE;
+	ret = cpfl_json_t_to_uint16(ob_content, "size", &js_mod->content.size);
+	if (ret < 0) {
+		PMD_DRV_LOG(ERR, "Can not parse 'size'.");
+		return -EINVAL;
+	}
+
+	ob_field = json_object_get(ob_content, "fields");
+	len = json_array_size(ob_field);
+	js_mod->content.field_size = len;
+	if (len == 0)
+		return 0;
+
+	for (i = 0; i < len; i++) {
+		json_t *object;
+		uint16_t start = 0, width = 0, index = 0;
+		const char *type;
+
+		object = json_array_get(ob_field, i);
+		type = cpfl_json_t_to_string(object, "type");
+		if (!type) {
+			PMD_DRV_LOG(ERR, "Can not parse string 'type'.");
+			goto err;
+		}
+		strncpy(js_mod->content.fields[i].type, type, CPFL_FLOW_JSON_STR_SIZE_MAX - 1);
+		ret = cpfl_json_t_to_uint16(object, "start", &start);
+		if (ret < 0) {
+			PMD_DRV_LOG(ERR, "Can not parse 'start'.");
+			goto err;
+		}
+		js_mod->content.fields[i].start = start;
+		ret = cpfl_json_t_to_uint16(object, "width", &width);
+		if (ret < 0) {
+			PMD_DRV_LOG(ERR, "Can not parse 'width'.");
+			goto err;
+		}
+		js_mod->content.fields[i].width = width;
+		if (strcmp(type, "parameter") == 0) {
+			ret = cpfl_json_t_to_uint16(object, "index", &index);
+			if (ret < 0) {
+				PMD_DRV_LOG(ERR, "Can not parse 'index'.");
+				goto err;
+			}
+			js_mod->content.fields[i].index = index;
+		} else if (strcmp(type, "constant") == 0) {
+			json_t *ob_value, *subobj;
+			int value_len, j;
+
+			ob_value = json_object_get(object, "value");
+			value_len = json_array_size(ob_value);
+			for (j = 0; j < value_len; j++) {
+				subobj = json_array_get(ob_value, j);
+				js_mod->content.fields[i].value[j] =
+				    (uint8_t)json_integer_value(subobj);
+			}
+		}
+	}
+
+	return 0;
+
+err:
+	return -EINVAL;
+}
+
+static int
 cpfl_flow_js_mr_action(json_t *ob_mr_act, struct cpfl_flow_js_mr_action *js_mr_act)
 {
 	json_t *ob_data;
@@ -695,7 +817,7 @@ cpfl_flow_js_mr_action(json_t *ob_mr_act, struct cpfl_flow_js_mr_action *js_mr_a
 	/* mr->action->data */
 	ob_data = json_object_get(ob_mr_act, "data");
 	if (strcmp(type, "mod") == 0) {
-		json_t *ob_layouts;
+		json_t *ob_layouts, *ob_content;
 		uint16_t profile = 0;
 		int ret;
 
@@ -710,6 +832,12 @@ cpfl_flow_js_mr_action(json_t *ob_mr_act, struct cpfl_flow_js_mr_action *js_mr_a
 		ret = cpfl_flow_js_mr_layout(ob_layouts, &js_mr_act->mod);
 		if (ret < 0) {
 			PMD_DRV_LOG(ERR, "Can not parse layout.");
+			return ret;
+		}
+		ob_content = json_object_get(ob_data, "content");
+		ret = cpfl_flow_js_mr_content(ob_content, &js_mr_act->mod);
+		if (ret < 0) {
+			PMD_DRV_LOG(ERR, "Can not parse 'content'.");
 			return ret;
 		}
 	} else  {
@@ -862,7 +990,6 @@ cpfl_parser_destroy(struct cpfl_flow_js_parser *parser)
 		struct cpfl_flow_js_mr *mr = &parser->modifications[i];
 
 		rte_free(mr->key.actions);
-		rte_free(mr->action.mod.layout);
 	}
 	rte_free(parser->modifications);
 	rte_free(parser);
@@ -1544,6 +1671,40 @@ cpfl_check_actions_vxlan_encap(struct cpfl_flow_mr_key_action_vxlan_encap *encap
 	return 0;
 }
 
+static int
+cpfl_parse_check_prog_action(struct cpfl_flow_js_mr_key_action *key_act,
+			     struct cpfl_flow_mr_key_action_prog *mr_key_prog,
+			     const struct rte_flow_action_prog *prog)
+{
+	uint32_t k;
+	bool check_name;
+
+	check_name = key_act->prog.has_name ? strcmp(prog->name, key_act->prog.name) == 0
+					    : atol(prog->name) == key_act->prog.id;
+	if (!check_name) {
+		PMD_DRV_LOG(ERR, "Not support this prog type: %s.", prog->name);
+		return -EINVAL;
+	}
+	if (key_act->prog.param_size != prog->args_num)
+		return -EINVAL;
+	for (k = 0; k < key_act->prog.param_size; k++) {
+		const struct rte_flow_action_prog_argument *arg = &prog->args[k];
+		struct cpfl_flow_js_prog_parameter *param = &key_act->prog.params[k];
+
+		check_name = param->has_name ? strcmp(arg->name, param->name) == 0
+					     : atoi(arg->name) == param->index;
+		if (!check_name || arg->size != param->size)
+			return -EINVAL;
+		if (param->has_name) {
+			mr_key_prog->has_name = TRUE;
+			strncpy(mr_key_prog->name[param->index], param->name,
+				CPFL_FLOW_JSON_STR_SIZE_MAX - 1);
+		}
+	}
+
+	return 0;
+}
+
 /* check and parse */
 static int
 cpfl_parse_mr_key_action(struct cpfl_flow_js_mr_key_action *key_acts, int size,
@@ -1575,9 +1736,9 @@ cpfl_parse_mr_key_action(struct cpfl_flow_js_mr_key_action *key_acts, int size,
 			}
 			if (j >= actions_length)
 				return -EINVAL;
-			mr_key_action[i].type = RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP;
-			mr_key_action[i].encap.action = &actions[j];
-			encap = &mr_key_action[i].encap;
+			mr_key_action->mods[i].type = RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP;
+			mr_key_action->mods[i].encap.action = &actions[j];
+			encap = &mr_key_action->mods[i].encap;
 
 			proto_size = key_act->encap.proto_size;
 			encap->proto_size = proto_size;
@@ -1598,8 +1759,22 @@ cpfl_parse_mr_key_action(struct cpfl_flow_js_mr_key_action *key_acts, int size,
 			}
 			if (j >= actions_length)
 				return -EINVAL;
-			mr_key_action[i].type = RTE_FLOW_ACTION_TYPE_VXLAN_DECAP;
+			mr_key_action->mods[i].type = RTE_FLOW_ACTION_TYPE_VXLAN_DECAP;
 			j++;
+		} else if (type == RTE_FLOW_ACTION_TYPE_PROG) {
+			const struct rte_flow_action_prog *prog;
+
+			while (j < actions_length &&
+			       actions[j].type != RTE_FLOW_ACTION_TYPE_PROG) {
+				j++;
+			}
+			if (j >= actions_length)
+				return -EINVAL;
+			prog = actions[j].conf;
+			mr_key_action->prog.prog = prog;
+			ret = cpfl_parse_check_prog_action(key_act, &mr_key_action->prog, prog);
+			if (ret < 0)
+				return -EINVAL;
 		} else {
 			PMD_DRV_LOG(ERR, "Not support this type: %d.", type);
 			return -EPERM;
@@ -1612,7 +1787,7 @@ cpfl_parse_mr_key_action(struct cpfl_flow_js_mr_key_action *key_acts, int size,
 /* output: uint8_t *buffer, uint16_t *byte_len */
 static int
 cpfl_parse_layout(struct cpfl_flow_js_mr_layout *layouts, int layout_size,
-		  struct cpfl_flow_mr_key_action *mr_key_action,
+		  struct cpfl_flow_mr_key_mod *mods,
 		  uint8_t *buffer, uint16_t *byte_len)
 {
 	int i;
@@ -1622,7 +1797,7 @@ cpfl_parse_layout(struct cpfl_flow_js_mr_layout *layouts, int layout_size,
 		int index, size, offset;
 		const char *hint;
 		const uint8_t *addr = NULL;
-		struct cpfl_flow_mr_key_action *temp;
+		struct cpfl_flow_mr_key_mod *temp;
 		struct cpfl_flow_js_mr_layout *layout;
 
 		layout = &layouts[i];
@@ -1636,7 +1811,7 @@ cpfl_parse_layout(struct cpfl_flow_js_mr_layout *layouts, int layout_size,
 			continue;
 		}
 		hint = layout->hint;
-		temp = mr_key_action + index;
+		temp = mods + index;
 		if (temp->type == RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP) {
 			const struct rte_flow_action_vxlan_encap *action_vxlan_encap;
 			struct rte_flow_item *definition;
@@ -1686,6 +1861,51 @@ cpfl_parse_layout(struct cpfl_flow_js_mr_layout *layouts, int layout_size,
 }
 
 static int
+cpfl_parse_content(struct cpfl_flow_js_mr_content *content,
+		   struct cpfl_flow_mr_key_action_prog *prog, uint8_t *buffer)
+{
+	int i, j;
+
+	for (i = 0; i < content->field_size; i++) {
+		uint16_t start, width, shift_bit;
+
+		start = content->fields[i].start / 8;
+		width = (content->fields[i].width + 7) / 8;
+		shift_bit = (8 - content->fields[i].start % 8 - content->fields[i].width % 8) % 8;
+
+		for (j = 0; j < width; j++) {
+			uint8_t old_value = 0;
+
+			if (strcmp(content->fields[i].type, "parameter") == 0) {
+				uint32_t k;
+				uint16_t index = content->fields[i].index;
+				const struct rte_flow_action_prog *act_prog = prog->prog;
+
+				for (k = 0; k < act_prog->args_num; k++) {
+					const char *name = act_prog->args[k].name;
+
+					if ((prog->has_name &&
+					     strcmp(prog->name[index], name) == 0) ||
+					    (!prog->has_name && atoi(name) == index)) {
+						old_value = act_prog->args[k].value[j];
+						break;
+					}
+				}
+				if (k == act_prog->args_num)
+					return -EINVAL;
+			} else if (strcmp(content->fields[i].type, "constant") == 0) {
+				old_value = content->fields[i].value[j];
+			} else {
+				return -EINVAL;
+			}
+			memset(buffer + start + j, buffer[start + j] | old_value << shift_bit, 1);
+		}
+	}
+
+	return 0;
+}
+
+static int
 cpfl_parse_mr_action(struct cpfl_flow_js_mr_action *action,
 		     struct cpfl_flow_mr_key_action *mr_key_action,
 		     struct cpfl_flow_mr_action *mr_action)
@@ -1695,6 +1915,18 @@ cpfl_parse_mr_action(struct cpfl_flow_js_mr_action *action,
 	/* mr->action->type */
 	type = action->type;
 	/* mr->action->data */
+	if (action->mod.is_content) {
+		struct cpfl_flow_js_mr_content *content = &action->mod.content;
+
+		mr_action->type = CPFL_JS_MR_ACTION_TYPE_MOD;
+		mr_action->mod.byte_len = 0;
+		mr_action->mod.prof = action->mod.prof;
+		mr_action->mod.byte_len = content->size;
+		memset(mr_action->mod.data, 0, sizeof(mr_action->mod.data));
+
+		return cpfl_parse_content(content, &mr_key_action->prog, mr_action->mod.data);
+	}
+
 	if (type == CPFL_JS_MR_ACTION_TYPE_MOD) {
 		struct cpfl_flow_js_mr_layout *layout;
 
@@ -1706,7 +1938,7 @@ cpfl_parse_mr_action(struct cpfl_flow_js_mr_action *action,
 			return 0;
 		memset(mr_action->mod.data, 0, sizeof(mr_action->mod.data));
 
-		return cpfl_parse_layout(layout, action->mod.layout_size, mr_key_action,
+		return cpfl_parse_layout(layout, action->mod.layout_size, mr_key_action->mods,
 					 mr_action->mod.data, &mr_action->mod.byte_len);
 	}
 	PMD_DRV_LOG(ERR, "Not support this type: %d.", type);
@@ -1731,7 +1963,7 @@ cpfl_parse_mod_rules(struct cpfl_flow_js_parser *parser, const struct rte_flow_a
 		     struct cpfl_flow_mr_action *mr_action)
 {
 	int i;
-	struct cpfl_flow_mr_key_action mr_key_action[CPFL_MOD_KEY_NUM_MAX] = {0};
+	struct cpfl_flow_mr_key_action mr_key_action = {0};
 
 	for (i = 0; i < parser->mr_size; i++) {
 		int ret;
@@ -1740,11 +1972,11 @@ cpfl_parse_mod_rules(struct cpfl_flow_js_parser *parser, const struct rte_flow_a
 		mr = &parser->modifications[i];
 		if (!mr)
 			return -EINVAL;
-		ret = cpfl_check_mod_key(mr, actions, mr_key_action);
+		ret = cpfl_check_mod_key(mr, actions, &mr_key_action);
 		if (ret < 0)
 			continue;
 		/* mr->action */
-		return cpfl_parse_mr_action(&mr->action, mr_key_action, mr_action);
+		return cpfl_parse_mr_action(&mr->action, &mr_key_action, mr_action);
 	}
 
 	return -EINVAL;

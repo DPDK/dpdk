@@ -161,7 +161,7 @@ New Features
 * **Updated Intel cpfl driver.**
 
   * Added support for port representor.
-  * Added support for flow offload.
+  * Added support for flow offload (including P4-defined pipeline).
 
 * **Updated Intel iavf driver.**
 
