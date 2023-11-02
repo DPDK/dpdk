@@ -1431,8 +1431,7 @@ static void openssl_reset_asym_session(struct openssl_asym_session *sess)
 	switch (sess->xfrm_type) {
 	case RTE_CRYPTO_ASYM_XFORM_RSA:
 #if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
-		if (sess->u.r.ctx)
-			EVP_PKEY_CTX_free(sess->u.r.ctx);
+		EVP_PKEY_CTX_free(sess->u.r.ctx);
 #else
 		if (sess->u.r.rsa)
 			RSA_free(sess->u.r.rsa);

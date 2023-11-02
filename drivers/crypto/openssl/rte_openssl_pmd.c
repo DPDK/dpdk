@@ -1957,10 +1957,8 @@ process_openssl_dsa_sign_op_evp(struct rte_crypto_op *cop,
 err_dsa_sign:
 	if (params)
 		OSSL_PARAM_free(params);
-	if (key_ctx)
-		EVP_PKEY_CTX_free(key_ctx);
-	if (dsa_ctx)
-		EVP_PKEY_CTX_free(dsa_ctx);
+	EVP_PKEY_CTX_free(key_ctx);
+	EVP_PKEY_CTX_free(dsa_ctx);
 	return -1;
 }
 
@@ -2039,10 +2037,8 @@ err_dsa_verify:
 		DSA_SIG_free(sign);
 	if (params)
 		OSSL_PARAM_free(params);
-	if (key_ctx)
-		EVP_PKEY_CTX_free(key_ctx);
-	if (dsa_ctx)
-		EVP_PKEY_CTX_free(dsa_ctx);
+	EVP_PKEY_CTX_free(key_ctx);
+	EVP_PKEY_CTX_free(dsa_ctx);
 
 	return ret;
 }
@@ -2294,16 +2290,12 @@ process_openssl_dh_op_evp(struct rte_crypto_op *cop,
 	ret = 0;
 
  err_dh:
-	if (pub_key)
-		BN_free(pub_key);
-	if (priv_key)
-		BN_free(priv_key);
+	BN_free(pub_key);
+	BN_free(priv_key);
 	if (params)
 		OSSL_PARAM_free(params);
-	if (dhpkey)
-		EVP_PKEY_free(dhpkey);
-	if (peerkey)
-		EVP_PKEY_free(peerkey);
+	EVP_PKEY_free(dhpkey);
+	EVP_PKEY_free(peerkey);
 
 	EVP_PKEY_CTX_free(dh_ctx);
 
@@ -2880,17 +2872,13 @@ process_openssl_sm2_op_evp(struct rte_crypto_op *cop,
 	ret = 0;
 	cop->status = RTE_CRYPTO_OP_STATUS_SUCCESS;
 err_sm2:
-	if (kctx)
-		EVP_PKEY_CTX_free(kctx);
+	EVP_PKEY_CTX_free(kctx);
 
-	if (sctx)
-		EVP_PKEY_CTX_free(sctx);
+	EVP_PKEY_CTX_free(sctx);
 
-	if (cctx)
-		EVP_PKEY_CTX_free(cctx);
+	EVP_PKEY_CTX_free(cctx);
 
-	if (pkey)
-		EVP_PKEY_free(pkey);
+	EVP_PKEY_free(pkey);
 
 	return ret;
 }
