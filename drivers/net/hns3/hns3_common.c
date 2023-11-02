@@ -133,6 +133,10 @@ hns3_dev_infos_get(struct rte_eth_dev *eth_dev, struct rte_eth_dev_info *info)
 	info->reta_size = hw->rss_ind_tbl_size;
 	info->hash_key_size = hw->rss_key_size;
 	info->flow_type_rss_offloads = HNS3_ETH_RSS_SUPPORT;
+	info->rss_algo_capa = RTE_ETH_HASH_ALGO_CAPA_MASK(DEFAULT) |
+			      RTE_ETH_HASH_ALGO_CAPA_MASK(TOEPLITZ) |
+			      RTE_ETH_HASH_ALGO_CAPA_MASK(SIMPLE_XOR) |
+			      RTE_ETH_HASH_ALGO_CAPA_MASK(SYMMETRIC_TOEPLITZ);
 
 	info->default_rxportconf.burst_size = HNS3_DEFAULT_PORT_CONF_BURST_SIZE;
 	info->default_txportconf.burst_size = HNS3_DEFAULT_PORT_CONF_BURST_SIZE;
