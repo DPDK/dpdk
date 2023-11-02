@@ -1326,6 +1326,7 @@ err_secondary:
 		config->mps == MLX5_MPW_ENHANCED ? "enhanced " :
 		config->mps == MLX5_MPW ? "legacy " : "",
 		config->mps != MLX5_MPW_DISABLED ? "enabled" : "disabled");
+
 	if (sh->devx) {
 		config->hca_attr = sh->cdev->config.hca_attr;
 		sh->steering_format_version =
@@ -2065,6 +2066,7 @@ mlx5_os_config_default(struct mlx5_dev_config *config,
 					cconf->hca_attr.log_min_stride_wqe_sz :
 					MLX5_MPRQ_LOG_MIN_STRIDE_WQE_SIZE;
 	config->mprq.log_stride_num = MLX5_MPRQ_DEFAULT_LOG_STRIDE_NUM;
+	config->mprq.log_stride_size = MLX5_ARG_UNSET;
 	config->dv_esw_en = 1;
 	config->dv_flow_en = 1;
 	config->decap_en = 1;
