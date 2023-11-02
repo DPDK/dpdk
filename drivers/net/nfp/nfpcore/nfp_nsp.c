@@ -637,6 +637,12 @@ nfp_nsp_load_fw(struct nfp_nsp *state,
 	return 0;
 }
 
+bool
+nfp_nsp_fw_loaded(struct nfp_nsp *state)
+{
+	return nfp_nsp_command(state, SPCODE_FW_LOADED) > 0;
+}
+
 int
 nfp_nsp_read_eth_table(struct nfp_nsp *state,
 		void *buf,

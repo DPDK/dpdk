@@ -212,5 +212,6 @@ enum nfp_nsp_sensor_id {
 
 int nfp_hwmon_read_sensor(struct nfp_cpp *cpp, enum nfp_nsp_sensor_id id,
 		uint32_t *val);
+bool nfp_nsp_fw_loaded(struct nfp_nsp *state);
 
 #endif /* __NSP_NSP_H__ */
