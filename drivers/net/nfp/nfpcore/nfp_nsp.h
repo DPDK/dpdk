@@ -139,6 +139,8 @@ struct nfp_eth_table {
 		bool supp_aneg;   /**< Support auto negotiation */
 
 		bool override_changed;  /**< Media reconfig pending */
+		bool rx_pause_enabled;  /**< Switch of RX pause frame */
+		bool tx_pause_enabled;  /**< Switch of TX pause frame */
 
 		uint8_t port_type;    /**< One of %PORT_* */
 		/** Sum of lanes of all subports of this port */

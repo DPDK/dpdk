@@ -268,6 +268,8 @@ int nfp_net_firmware_version_get(struct rte_eth_dev *dev, char *fw_version, size
 bool nfp_net_is_valid_nfd_version(struct nfp_net_fw_ver version);
 struct nfp_net_hw *nfp_net_get_hw(const struct rte_eth_dev *dev);
 int nfp_net_stop(struct rte_eth_dev *dev);
+int nfp_net_flow_ctrl_get(struct rte_eth_dev *dev,
+		struct rte_eth_fc_conf *fc_conf);
 
 #define NFP_PRIV_TO_APP_FW_NIC(app_fw_priv)\
 	((struct nfp_app_fw_nic *)app_fw_priv)

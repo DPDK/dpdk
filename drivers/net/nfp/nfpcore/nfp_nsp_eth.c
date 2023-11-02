@@ -33,6 +33,8 @@
 #define NSP_ETH_STATE_ANEG              GENMASK_ULL(25, 23)
 #define NSP_ETH_STATE_FEC               GENMASK_ULL(27, 26)
 #define NSP_ETH_STATE_ACT_FEC           GENMASK_ULL(29, 28)
+#define NSP_ETH_STATE_TX_PAUSE          RTE_BIT64(31)
+#define NSP_ETH_STATE_RX_PAUSE          RTE_BIT64(32)
 
 #define NSP_ETH_CTRL_CONFIGURED         RTE_BIT64(0)
 #define NSP_ETH_CTRL_ENABLED            RTE_BIT64(1)
@@ -186,6 +188,15 @@ nfp_eth_port_translate(struct nfp_nsp *nsp,
 
 	dst->act_fec = FIELD_GET(NSP_ETH_STATE_ACT_FEC, state);
 	dst->supp_aneg = FIELD_GET(NSP_ETH_PORT_SUPP_ANEG, port);
+
+	if (nfp_nsp_get_abi_ver_minor(nsp) < 37) {
+		dst->tx_pause_enabled = true;
+		dst->rx_pause_enabled = true;
+		return;
+	}
+
+	dst->tx_pause_enabled = FIELD_GET(NSP_ETH_STATE_TX_PAUSE, state);
+	dst->rx_pause_enabled = FIELD_GET(NSP_ETH_STATE_RX_PAUSE, state);
 }
 
 static void

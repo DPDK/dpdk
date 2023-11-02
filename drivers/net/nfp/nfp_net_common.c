@@ -2133,3 +2133,44 @@ nfp_net_stop(struct rte_eth_dev *dev)
 
 	return 0;
 }
+
+static enum rte_eth_fc_mode
+nfp_net_get_pause_mode(struct nfp_eth_table_port *eth_port)
+{
+	enum rte_eth_fc_mode mode;
+
+	if (eth_port->rx_pause_enabled) {
+		if (eth_port->tx_pause_enabled)
+			mode = RTE_ETH_FC_FULL;
+		else
+			mode = RTE_ETH_FC_RX_PAUSE;
+	} else {
+		if (eth_port->tx_pause_enabled)
+			mode = RTE_ETH_FC_TX_PAUSE;
+		else
+			mode = RTE_ETH_FC_NONE;
+	}
+
+	return mode;
+}
+
+int
+nfp_net_flow_ctrl_get(struct rte_eth_dev *dev,
+		struct rte_eth_fc_conf *fc_conf)
+{
+	struct nfp_net_hw *net_hw;
+	struct nfp_eth_table *nfp_eth_table;
+	struct nfp_eth_table_port *eth_port;
+
+	net_hw = nfp_net_get_hw(dev);
+	if (net_hw->pf_dev == NULL)
+		return -EINVAL;
+
+	nfp_eth_table = net_hw->pf_dev->nfp_eth_table;
+	eth_port = &nfp_eth_table->ports[dev->data->port_id];
+
+	/* Currently only RX/TX switch are supported */
+	fc_conf->mode = nfp_net_get_pause_mode(eth_port);
+
+	return 0;
+}
