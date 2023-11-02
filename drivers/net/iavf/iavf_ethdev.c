@@ -1148,6 +1148,8 @@ iavf_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 		.nb_max = IAVF_MAX_RING_DESC,
 		.nb_min = IAVF_MIN_RING_DESC,
 		.nb_align = IAVF_ALIGN_RING_DESC,
+		.nb_mtu_seg_max = IAVF_TX_MAX_MTU_SEG,
+		.nb_seg_max = IAVF_MAX_RING_DESC,
 	};
 
 	return 0;
