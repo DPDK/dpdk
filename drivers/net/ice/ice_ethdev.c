@@ -3886,6 +3886,8 @@ ice_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 		.nb_max = ICE_MAX_RING_DESC,
 		.nb_min = ICE_MIN_RING_DESC,
 		.nb_align = ICE_ALIGN_RING_DESC,
+		.nb_mtu_seg_max = ICE_TX_MTU_SEG_MAX,
+		.nb_seg_max = ICE_MAX_RING_DESC,
 	};
 
 	dev_info->speed_capa = RTE_ETH_LINK_SPEED_10M |
