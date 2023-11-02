@@ -235,9 +235,9 @@ size is used to indicate the hardware supported reta size
 show port rss-hash
 ~~~~~~~~~~~~~~~~~~
 
-Display the RSS hash functions and RSS hash key of a port::
+Display the RSS hash functions and RSS hash key or RSS hash algorithm of a port::
 
-   testpmd> show port (port_id) rss-hash [key]
+   testpmd> show port (port_id) rss-hash [key | algorithm]
 
 clear port
 ~~~~~~~~~~

@@ -1153,7 +1153,7 @@ int set_vf_rate_limit(portid_t port_id, uint16_t vf, uint32_t rate,
 int set_rxq_avail_thresh(portid_t port_id, uint16_t queue_id,
 			 uint8_t avail_thresh);
 
-void port_rss_hash_conf_show(portid_t port_id, int show_rss_key);
+void port_rss_hash_conf_show(portid_t port_id, int show_rss_key, int show_rss_algo);
 void port_rss_hash_key_update(portid_t port_id, char rss_type[],
 			      uint8_t *hash_key, uint8_t hash_key_len);
 int rx_queue_id_is_invalid(queueid_t rxq_id);

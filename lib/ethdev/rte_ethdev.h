@@ -4644,6 +4644,22 @@ rte_eth_dev_rss_hash_conf_get(uint16_t port_id,
 			      struct rte_eth_rss_conf *rss_conf);
 
 /**
+ * @warning
+ * @b EXPERIMENTAL: this API may change, or be removed, without prior notice.
+ *
+ *  Get the name of RSS hash algorithm.
+ *
+ * @param rss_algo
+ *   Hash algorithm.
+ *
+ * @return
+ *   Hash algorithm name or 'UNKNOWN' if the rss_algo cannot be recognized.
+ */
+__rte_experimental
+const char *
+rte_eth_dev_rss_algo_name(enum rte_eth_hash_function rss_algo);
+
+/**
  * Add UDP tunneling port for a type of tunnel.
  *
  * Some NICs may require such configuration to properly parse a tunnel

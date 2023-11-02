@@ -174,8 +174,8 @@ static void cmd_help_long_parsed(void *parsed_result,
 			" by masks on port X. size is used to indicate the"
 			" hardware supported reta size\n\n"
 
-			"show port (port_id) rss-hash [key]\n"
-			"    Display the RSS hash functions and RSS hash key of port\n\n"
+			"show port (port_id) rss-hash [key | algorithm]\n"
+			"    Display the RSS hash functions, RSS hash key and RSS hash algorithms of port\n\n"
 
 			"clear port (info|stats|xstats|fdir) (port_id|all)\n"
 			"    Clear information for port_id, or all.\n\n"
@@ -3026,15 +3026,17 @@ struct cmd_showport_rss_hash {
 	cmdline_fixed_string_t rss_hash;
 	cmdline_fixed_string_t rss_type;
 	cmdline_fixed_string_t key; /* optional argument */
+	cmdline_fixed_string_t algorithm; /* optional argument */
 };
 
 static void cmd_showport_rss_hash_parsed(void *parsed_result,
 				__rte_unused struct cmdline *cl,
-				void *show_rss_key)
+				__rte_unused void *data)
 {
 	struct cmd_showport_rss_hash *res = parsed_result;
 
-	port_rss_hash_conf_show(res->port_id, show_rss_key != NULL);
+	port_rss_hash_conf_show(res->port_id,
+		!strcmp(res->key, "key"), !strcmp(res->algorithm, "algorithm"));
 }
 
 static cmdline_parse_token_string_t cmd_showport_rss_hash_show =
@@ -3049,6 +3051,8 @@ static cmdline_parse_token_string_t cmd_showport_rss_hash_rss_hash =
 				 "rss-hash");
 static cmdline_parse_token_string_t cmd_showport_rss_hash_rss_key =
 	TOKEN_STRING_INITIALIZER(struct cmd_showport_rss_hash, key, "key");
+static cmdline_parse_token_string_t cmd_showport_rss_hash_rss_algo =
+	TOKEN_STRING_INITIALIZER(struct cmd_showport_rss_hash, algorithm, "algorithm");
 
 static cmdline_parse_inst_t cmd_showport_rss_hash = {
 	.f = cmd_showport_rss_hash_parsed,
@@ -3065,7 +3069,7 @@ static cmdline_parse_inst_t cmd_showport_rss_hash = {
 
 static cmdline_parse_inst_t cmd_showport_rss_hash_key = {
 	.f = cmd_showport_rss_hash_parsed,
-	.data = (void *)1,
+	.data = NULL,
 	.help_str = "show port <port_id> rss-hash key",
 	.tokens = {
 		(void *)&cmd_showport_rss_hash_show,
@@ -3073,6 +3077,20 @@ static cmdline_parse_inst_t cmd_showport_rss_hash_key = {
 		(void *)&cmd_showport_rss_hash_port_id,
 		(void *)&cmd_showport_rss_hash_rss_hash,
 		(void *)&cmd_showport_rss_hash_rss_key,
+		NULL,
+	},
+};
+
+static cmdline_parse_inst_t cmd_showport_rss_hash_algo = {
+	.f = cmd_showport_rss_hash_parsed,
+	.data = NULL,
+	.help_str = "show port <port_id> rss-hash algorithm",
+	.tokens = {
+		(void *)&cmd_showport_rss_hash_show,
+		(void *)&cmd_showport_rss_hash_port,
+		(void *)&cmd_showport_rss_hash_port_id,
+		(void *)&cmd_showport_rss_hash_rss_hash,
+		(void *)&cmd_showport_rss_hash_rss_algo,
 		NULL,
 	},
 };
@@ -12969,6 +12987,7 @@ static cmdline_parse_ctx_t builtin_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_tunnel_udp_config,
 	(cmdline_parse_inst_t *)&cmd_showport_rss_hash,
 	(cmdline_parse_inst_t *)&cmd_showport_rss_hash_key,
+	(cmdline_parse_inst_t *)&cmd_showport_rss_hash_algo,
 	(cmdline_parse_inst_t *)&cmd_config_rss_hash_key,
 	(cmdline_parse_inst_t *)&cmd_cleanup_txq_mbufs,
 	(cmdline_parse_inst_t *)&cmd_dump,

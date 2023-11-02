@@ -160,6 +160,17 @@ enum {
 	STAT_QMAP_RX
 };
 
+static const struct {
+	enum rte_eth_hash_function algo;
+	const char *name;
+} rte_eth_dev_rss_algo_names[] = {
+	{RTE_ETH_HASH_FUNCTION_DEFAULT, "default"},
+	{RTE_ETH_HASH_FUNCTION_SIMPLE_XOR, "simple_xor"},
+	{RTE_ETH_HASH_FUNCTION_TOEPLITZ, "toeplitz"},
+	{RTE_ETH_HASH_FUNCTION_SYMMETRIC_TOEPLITZ, "symmetric_toeplitz"},
+	{RTE_ETH_HASH_FUNCTION_SYMMETRIC_TOEPLITZ_SORT, "symmetric_toeplitz_sort"},
+};
+
 int
 rte_eth_iterator_init(struct rte_dev_iterator *iter, const char *devargs_str)
 {
@@ -4789,6 +4800,20 @@ rte_eth_dev_rss_hash_conf_get(uint16_t port_id,
 	rte_ethdev_trace_rss_hash_conf_get(port_id, rss_conf, ret);
 
 	return ret;
+}
+
+const char *
+rte_eth_dev_rss_algo_name(enum rte_eth_hash_function rss_algo)
+{
+	const char *name = "Unknown function";
+	unsigned int i;
+
+	for (i = 0; i < RTE_DIM(rte_eth_dev_rss_algo_names); i++) {
+		if (rss_algo == rte_eth_dev_rss_algo_names[i].algo)
+			return rte_eth_dev_rss_algo_names[i].name;
+	}
+
+	return name;
 }
 
 int

@@ -314,6 +314,7 @@ EXPERIMENTAL {
 	rte_flow_restore_info_dynflag;
 
 	# added in 23.11
+	rte_eth_dev_rss_algo_name;
 	rte_eth_recycle_rx_queue_info_get;
 	rte_flow_group_set_miss_actions;
 	rte_flow_calc_table_hash;

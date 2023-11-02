@@ -115,6 +115,9 @@ New Features
     and set RSS hash algorithm via ``rte_eth_dev_configure()``
     or ``rte_eth_dev_rss_hash_update()``.
 
+  * Added new function ``rte_eth_dev_rss_algo_name``
+    to get name of RSS hash algorithm.
+
 * **Added a flow action type for P4-defined actions.**
 
   For P4-programmable devices, hardware pipeline can be configured through
