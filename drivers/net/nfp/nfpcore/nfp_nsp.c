@@ -40,7 +40,17 @@
 #define   NSP_DFLT_BUFFER_SIZE_MB      GENMASK_ULL(7, 0)
 
 #define NSP_MAGIC               0xab10
-#define NSP_MAJOR               0
+
+/*
+ * ABI major version is bumped separately without resetting minor
+ * version when the change in NSP is not compatible to old driver.
+ */
+#define NSP_MAJOR               1
+
+/*
+ * ABI minor version is bumped when new feature is introduced
+ * while old driver can still work without this new feature.
+ */
 #define NSP_MINOR               8
 
 #define NSP_CODE_MAJOR          GENMASK_ULL(15, 12)
@@ -203,7 +213,7 @@ nfp_nsp_check(struct nfp_nsp *state)
 	state->ver.major = FIELD_GET(NSP_STATUS_MAJOR, reg);
 	state->ver.minor = FIELD_GET(NSP_STATUS_MINOR, reg);
 
-	if (state->ver.major != NSP_MAJOR || state->ver.minor < NSP_MINOR) {
+	if (state->ver.major > NSP_MAJOR || state->ver.minor < NSP_MINOR) {
 		PMD_DRV_LOG(ERR, "Unsupported ABI %hu.%hu", state->ver.major,
 				state->ver.minor);
 		return -EINVAL;

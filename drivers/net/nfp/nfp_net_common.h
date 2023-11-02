@@ -54,6 +54,11 @@ struct nfp_net_tlv_caps {
 	uint32_t mbox_cmsg_types;        /**< Cmsgs which can be passed through the mailbox */
 };
 
+struct nfp_multi_pf {
+	/** Support multiple PF */
+	bool enabled;
+};
+
 struct nfp_pf_dev {
 	/** Backpointer to associated pci device */
 	struct rte_pci_device *pci_dev;
@@ -79,6 +84,9 @@ struct nfp_pf_dev {
 
 	/** Service id of cpp bridge service */
 	uint32_t cpp_bridge_id;
+
+	/** Multiple PF configuration */
+	struct nfp_multi_pf multi_pf;
 };
 
 struct nfp_app_fw_nic {

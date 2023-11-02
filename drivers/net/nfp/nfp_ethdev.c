@@ -481,7 +481,7 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 
 	rte_eth_copy_pci_info(eth_dev, pci_dev);
 
-	if (port == 0) {
+	if (port == 0 || pf_dev->multi_pf.enabled) {
 		uint32_t min_size;
 
 		hw->ctrl_bar = pf_dev->ctrl_bar;
@@ -714,6 +714,26 @@ nfp_fw_setup(struct rte_pci_device *dev,
 	return err;
 }
 
+static inline bool
+nfp_check_multi_pf_from_nsp(struct rte_pci_device *pci_dev,
+		struct nfp_cpp *cpp)
+{
+	bool flag;
+	struct nfp_nsp *nsp;
+
+	nsp = nfp_nsp_open(cpp);
+	if (nsp == NULL) {
+		PMD_DRV_LOG(ERR, "NFP error when obtaining NSP handle");
+		return false;
+	}
+
+	flag = (nfp_nsp_get_abi_ver_major(nsp) > 0) &&
+			(pci_dev->id.device_id == PCI_DEVICE_ID_NFP3800_PF_NIC);
+
+	nfp_nsp_close(nsp);
+	return flag;
+}
+
 static int
 nfp_init_app_fw_nic(struct nfp_pf_dev *pf_dev,
 		const struct nfp_dev_info *dev_info)
@@ -876,6 +896,14 @@ nfp_pf_init(struct rte_pci_device *pci_dev)
 		return -ENODEV;
 	}
 
+	/* Allocate memory for the PF "device" */
+	snprintf(name, sizeof(name), "nfp_pf%d", 0);
+	pf_dev = rte_zmalloc(name, sizeof(*pf_dev), 0);
+	if (pf_dev == NULL) {
+		PMD_INIT_LOG(ERR, "Can't allocate memory for the PF device");
+		return -ENOMEM;
+	}
+
 	/*
 	 * When device bound to UIO, the device could be used, by mistake,
 	 * by two DPDK apps, and the UIO driver does not avoid it. This
@@ -890,7 +918,8 @@ nfp_pf_init(struct rte_pci_device *pci_dev)
 
 	if (cpp == NULL) {
 		PMD_INIT_LOG(ERR, "A CPP handle can not be obtained");
-		return -EIO;
+		ret = -EIO;
+		goto pf_cleanup;
 	}
 
 	hwinfo = nfp_hwinfo_read(cpp);
@@ -907,6 +936,8 @@ nfp_pf_init(struct rte_pci_device *pci_dev)
 		ret = -EIO;
 		goto hwinfo_cleanup;
 	}
+
+	pf_dev->multi_pf.enabled = nfp_check_multi_pf_from_nsp(pci_dev, cpp);
 
 	/* Force the physical port down to clear the possible DMA error */
 	for (i = 0; i < nfp_eth_table->count; i++)
@@ -934,14 +965,6 @@ nfp_pf_init(struct rte_pci_device *pci_dev)
 		goto sym_tbl_cleanup;
 	}
 
-	/* Allocate memory for the PF "device" */
-	snprintf(name, sizeof(name), "nfp_pf%d", 0);
-	pf_dev = rte_zmalloc(name, sizeof(*pf_dev), 0);
-	if (pf_dev == NULL) {
-		ret = -ENOMEM;
-		goto sym_tbl_cleanup;
-	}
-
 	/* Populate the newly created PF device */
 	pf_dev->app_fw_id = app_fw_id;
 	pf_dev->cpp = cpp;
@@ -959,7 +982,7 @@ nfp_pf_init(struct rte_pci_device *pci_dev)
 	if (pf_dev->qc_bar == NULL) {
 		PMD_INIT_LOG(ERR, "nfp_rtsym_map fails for net.qc");
 		ret = -EIO;
-		goto pf_cleanup;
+		goto sym_tbl_cleanup;
 	}
 
 	PMD_INIT_LOG(DEBUG, "qc_bar address: %p", pf_dev->qc_bar);
@@ -1000,8 +1023,6 @@ nfp_pf_init(struct rte_pci_device *pci_dev)
 
 hwqueues_cleanup:
 	nfp_cpp_area_free(pf_dev->qc_area);
-pf_cleanup:
-	rte_free(pf_dev);
 sym_tbl_cleanup:
 	free(sym_tbl);
 eth_table_cleanup:
@@ -1010,6 +1031,8 @@ hwinfo_cleanup:
 	free(hwinfo);
 cpp_cleanup:
 	nfp_cpp_free(cpp);
+pf_cleanup:
+	rte_free(pf_dev);
 
 	return ret;
 }
