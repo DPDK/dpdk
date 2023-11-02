@@ -1184,6 +1184,8 @@ show_port(void)
 				printf("%02x", rss_conf.rss_key[k]);
 			printf("\n\t  -- hash function : 0x%"PRIx64"\n",
 					rss_conf.rss_hf);
+			printf("\t  -- hash algorithm : %s\n",
+				rte_eth_dev_rss_algo_name(rss_conf.algorithm));
 		}
 
 #ifdef RTE_LIB_SECURITY
