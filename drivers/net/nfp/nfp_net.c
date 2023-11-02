@@ -3662,6 +3662,7 @@ static int nfp_pf_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	int ret = -ENODEV;
 	int err;
 	int i;
+	uint32_t j;
 
 	if (!dev)
 		return ret;
@@ -3695,6 +3696,10 @@ static int nfp_pf_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		PMD_DRV_LOG(ERR, "Error reading NFP ethernet table");
 		return -EIO;
 	}
+
+	/* Force the physical port down to clear the possible DMA error */
+	for (j = 0; j < nfp_eth_table->count; j++)
+		nfp_eth_set_configured(cpp, nfp_eth_table->ports[j].index, 0);
 
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
 		if (nfp_fw_setup(dev, cpp, nfp_eth_table, hwinfo)) {
