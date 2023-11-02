@@ -5,6 +5,8 @@
  * Small portions derived from code Copyright(c) 2010-2015 Intel Corporation.
  */
 
+#include <unistd.h>
+
 #include <eal_firmware.h>
 #include <rte_alarm.h>
 
@@ -16,6 +18,7 @@
 #include "nfpcore/nfp_rtsym.h"
 #include "nfpcore/nfp_nsp.h"
 #include "nfpcore/nfp6000_pcie.h"
+#include "nfpcore/nfp_resource.h"
 
 #include "nfp_cpp_bridge.h"
 #include "nfp_ipsec.h"
@@ -234,6 +237,79 @@ nfp_function_id_get(const struct nfp_pf_dev *pf_dev,
 	return phy_port;
 }
 
+static void
+nfp_net_beat_timer(void *arg)
+{
+	uint64_t cur_sec;
+	struct nfp_multi_pf *multi_pf = arg;
+
+	cur_sec = rte_rdtsc();
+	nn_writeq(cur_sec, multi_pf->beat_addr + NFP_BEAT_OFFSET(multi_pf->function_id));
+
+	/* Beat once per second. */
+	if (rte_eal_alarm_set(1000 * 1000, nfp_net_beat_timer,
+			(void *)multi_pf) < 0) {
+		PMD_DRV_LOG(ERR, "Error setting alarm");
+	}
+}
+
+static int
+nfp_net_keepalive_init(struct nfp_cpp *cpp,
+		struct nfp_multi_pf *multi_pf)
+{
+	uint8_t *base;
+	uint64_t addr;
+	uint32_t size;
+	uint32_t cpp_id;
+	struct nfp_resource *res;
+
+	res = nfp_resource_acquire(cpp, NFP_RESOURCE_KEEPALIVE);
+	if (res == NULL)
+		return -EIO;
+
+	cpp_id = nfp_resource_cpp_id(res);
+	addr = nfp_resource_address(res);
+	size = nfp_resource_size(res);
+
+	nfp_resource_release(res);
+
+	/* Allocate a fixed area for keepalive. */
+	base = nfp_cpp_map_area(cpp, cpp_id, addr, size, &multi_pf->beat_area);
+	if (base == NULL) {
+		PMD_DRV_LOG(ERR, "Failed to map area for keepalive.");
+		return -EIO;
+	}
+
+	multi_pf->beat_addr = base;
+
+	return 0;
+}
+
+static void
+nfp_net_keepalive_uninit(struct nfp_multi_pf *multi_pf)
+{
+	nfp_cpp_area_release_free(multi_pf->beat_area);
+}
+
+static int
+nfp_net_keepalive_start(struct nfp_multi_pf *multi_pf)
+{
+	if (rte_eal_alarm_set(1000 * 1000, nfp_net_beat_timer,
+			(void *)multi_pf) < 0) {
+		PMD_DRV_LOG(ERR, "Error setting alarm");
+		return -EIO;
+	}
+
+	return 0;
+}
+
+static void
+nfp_net_keepalive_stop(struct nfp_multi_pf *multi_pf)
+{
+	/* Cancel keepalive for multiple PF setup */
+	rte_eal_alarm_cancel(nfp_net_beat_timer, (void *)multi_pf);
+}
+
 /* Reset and stop device. The device can not be restarted. */
 static int
 nfp_net_close(struct rte_eth_dev *dev)
@@ -284,6 +360,10 @@ nfp_net_close(struct rte_eth_dev *dev)
 
 	/* Now it is safe to free all PF resources */
 	PMD_INIT_LOG(INFO, "Freeing PF resources");
+	if (pf_dev->multi_pf.enabled) {
+		nfp_net_keepalive_stop(&pf_dev->multi_pf);
+		nfp_net_keepalive_uninit(&pf_dev->multi_pf);
+	}
 	nfp_cpp_area_free(pf_dev->ctrl_area);
 	nfp_cpp_area_free(pf_dev->qc_area);
 	free(pf_dev->hwinfo);
@@ -696,10 +776,91 @@ nfp_fw_unload(struct nfp_cpp *cpp)
 }
 
 static int
+nfp_fw_reload(struct rte_pci_device *dev,
+		struct nfp_nsp *nsp,
+		char *card_desc)
+{
+	int err;
+
+	nfp_nsp_device_soft_reset(nsp);
+	err = nfp_fw_upload(dev, nsp, card_desc);
+	if (err != 0)
+		PMD_DRV_LOG(ERR, "NFP firmware load failed");
+
+	return err;
+}
+
+static int
+nfp_fw_loaded_check_alive(struct rte_pci_device *dev,
+		struct nfp_nsp *nsp,
+		char *card_desc,
+		const struct nfp_dev_info *dev_info,
+		struct nfp_multi_pf *multi_pf)
+{
+	int offset;
+	uint32_t i;
+	uint64_t beat;
+	uint32_t port_num;
+
+	/*
+	 * If the beats of any other port changed in 3s,
+	 * we should not reload the firmware.
+	 */
+	for (port_num = 0; port_num < dev_info->pf_num_per_unit; port_num++) {
+		if (port_num == multi_pf->function_id)
+			continue;
+
+		offset = NFP_BEAT_OFFSET(port_num);
+		beat = nn_readq(multi_pf->beat_addr + offset);
+		for (i = 0; i < 3; i++) {
+			sleep(1);
+			if (nn_readq(multi_pf->beat_addr + offset) != beat)
+				return 0;
+		}
+	}
+
+	return nfp_fw_reload(dev, nsp, card_desc);
+}
+
+static int
+nfp_fw_reload_for_multipf(struct rte_pci_device *dev,
+		struct nfp_nsp *nsp,
+		char *card_desc,
+		struct nfp_cpp *cpp,
+		const struct nfp_dev_info *dev_info,
+		struct nfp_multi_pf *multi_pf)
+{
+	int err;
+
+	err = nfp_net_keepalive_init(cpp, multi_pf);
+	if (err != 0)
+		PMD_DRV_LOG(ERR, "NFP write beat failed");
+
+	if (nfp_nsp_fw_loaded(nsp))
+		err = nfp_fw_loaded_check_alive(dev, nsp, card_desc, dev_info, multi_pf);
+	else
+		err = nfp_fw_reload(dev, nsp, card_desc);
+	if (err != 0) {
+		nfp_net_keepalive_uninit(multi_pf);
+		return err;
+	}
+
+	err = nfp_net_keepalive_start(multi_pf);
+	if (err != 0) {
+		nfp_net_keepalive_uninit(multi_pf);
+		PMD_DRV_LOG(ERR, "NFP write beat failed");
+	}
+
+	return err;
+}
+
+static int
 nfp_fw_setup(struct rte_pci_device *dev,
 		struct nfp_cpp *cpp,
 		struct nfp_eth_table *nfp_eth_table,
-		struct nfp_hwinfo *hwinfo)
+		struct nfp_hwinfo *hwinfo,
+		const struct nfp_dev_info *dev_info,
+		struct nfp_multi_pf *multi_pf)
 {
 	int err;
 	char card_desc[100];
@@ -738,8 +899,10 @@ nfp_fw_setup(struct rte_pci_device *dev,
 		return -EIO;
 	}
 
-	nfp_nsp_device_soft_reset(nsp);
-	err = nfp_fw_upload(dev, nsp, card_desc);
+	if (multi_pf->enabled)
+		err = nfp_fw_reload_for_multipf(dev, nsp, card_desc, cpp, dev_info, multi_pf);
+	else
+		err = nfp_fw_reload(dev, nsp, card_desc);
 
 	nfp_nsp_close(nsp);
 	return err;
@@ -1009,7 +1172,8 @@ nfp_pf_init(struct rte_pci_device *pci_dev)
 		nfp_eth_set_configured(cpp, index, 0);
 	}
 
-	if (nfp_fw_setup(pci_dev, cpp, nfp_eth_table, hwinfo) != 0) {
+	if (nfp_fw_setup(pci_dev, cpp, nfp_eth_table, hwinfo,
+			dev_info, &pf_dev->multi_pf) != 0) {
 		PMD_INIT_LOG(ERR, "Error when uploading firmware");
 		ret = -EIO;
 		goto eth_table_cleanup;
@@ -1094,6 +1258,7 @@ sym_tbl_cleanup:
 	free(sym_tbl);
 fw_cleanup:
 	nfp_fw_unload(cpp);
+	nfp_net_keepalive_stop(&pf_dev->multi_pf);
 eth_table_cleanup:
 	free(nfp_eth_table);
 hwinfo_cleanup:

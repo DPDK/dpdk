@@ -17,6 +17,9 @@
 /* Service Processor */
 #define NFP_RESOURCE_NSP                "nfp.sp"
 
+/* Keepalive */
+#define NFP_RESOURCE_KEEPALIVE          "nfp.beat"
+
 /* Opaque handle to a NFP Resource */
 struct nfp_resource;
 

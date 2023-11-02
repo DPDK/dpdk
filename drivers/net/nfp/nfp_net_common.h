@@ -36,6 +36,19 @@
 /* Number of supported physical ports */
 #define NFP_MAX_PHYPORTS        12
 
+#define NFP_BEAT_LENGTH         8
+
+/*
+ * Each PF has corresponding word to beat:
+ * Offset | Usage
+ *   0    | magic number
+ *   8    | beat of Pf0
+ *   16   | beat of Pf1
+ *   24   | beat of Pf2
+ *   32   | beat of Pf3
+ */
+#define NFP_BEAT_OFFSET(_x)     (((_x) + 1) * NFP_BEAT_LENGTH)
+
 /* Firmware application ID's */
 enum nfp_app_fw_id {
 	NFP_APP_FW_CORE_NIC               = 0x1,
@@ -59,6 +72,10 @@ struct nfp_multi_pf {
 	bool enabled;
 	/** Function index */
 	uint8_t function_id;
+	/** Pointer to CPP area for beat to keepalive */
+	struct nfp_cpp_area *beat_area;
+	/** Pointer to mapped beat address used for keepalive */
+	uint8_t *beat_addr;
 };
 
 struct nfp_pf_dev {
