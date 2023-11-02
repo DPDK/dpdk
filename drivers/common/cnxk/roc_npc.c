@@ -331,9 +331,8 @@ roc_npc_init(struct roc_npc *roc_npc)
 	 */
 	plt_bitmap_set(npc->rss_grp_entries, 0);
 
-	rc = npc_aged_flows_bitmap_alloc(roc_npc);
-	if (rc != 0)
-		goto done;
+	roc_npc->flow_age.age_flow_refcnt = 0;
+
 	return rc;
 
 done:
