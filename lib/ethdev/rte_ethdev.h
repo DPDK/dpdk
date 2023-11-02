@@ -448,24 +448,27 @@ struct rte_vlan_filter_conf {
 /**
  * A structure used to configure the Receive Side Scaling (RSS) feature
  * of an Ethernet port.
- * If not NULL, the *rss_key* pointer of the *rss_conf* structure points
- * to an array holding the RSS key to use for hashing specific header
- * fields of received packets. The length of this array should be indicated
- * by *rss_key_len* below. Otherwise, a default random hash key is used by
- * the device driver.
- *
- * The *rss_key_len* field of the *rss_conf* structure indicates the length
- * in bytes of the array pointed by *rss_key*. To be compatible, this length
- * will be checked in i40e only. Others assume 40 bytes to be used as before.
- *
- * The *rss_hf* field of the *rss_conf* structure indicates the different
- * types of IPv4/IPv6 packets to which the RSS hashing must be applied.
- * Supplying an *rss_hf* equal to zero disables the RSS feature.
  */
 struct rte_eth_rss_conf {
-	uint8_t *rss_key;    /**< If not NULL, 40-byte hash key. */
+	/**
+	 * In rte_eth_dev_rss_hash_conf_get(), the *rss_key_len* should be
+	 * greater than or equal to the *hash_key_size* which get from
+	 * rte_eth_dev_info_get() API. And the *rss_key* should contain at least
+	 * *hash_key_size* bytes. If not meet these requirements, the query
+	 * result is unreliable even if the operation returns success.
+	 *
+	 * In rte_eth_dev_rss_hash_update() or rte_eth_dev_configure(), if
+	 * *rss_key* is not NULL, the *rss_key_len* indicates the length of the
+	 * *rss_key* in bytes and it should be equal to *hash_key_size*.
+	 * If *rss_key* is NULL, drivers are free to use a random or a default key.
+	 */
+	uint8_t *rss_key;
 	uint8_t rss_key_len; /**< hash key length in bytes. */
-	uint64_t rss_hf;     /**< Hash functions to apply - see below. */
+	/**
+	 * Indicates the type of packets or the specific part of packets to
+	 * which RSS hashing is to be applied.
+	 */
+	uint64_t rss_hf;
 };
 
 /*

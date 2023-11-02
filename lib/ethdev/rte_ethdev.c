@@ -1500,6 +1500,16 @@ rte_eth_dev_configure(uint16_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 		goto rollback;
 	}
 
+	if (dev_conf->rx_adv_conf.rss_conf.rss_key != NULL &&
+	    dev_conf->rx_adv_conf.rss_conf.rss_key_len != dev_info.hash_key_size) {
+		RTE_ETHDEV_LOG(ERR,
+			"Ethdev port_id=%u invalid RSS key len: %u, valid value: %u\n",
+			port_id, dev_conf->rx_adv_conf.rss_conf.rss_key_len,
+			dev_info.hash_key_size);
+		ret = -EINVAL;
+		goto rollback;
+	}
+
 	/*
 	 * Setup new number of Rx/Tx queues and reconfigure device.
 	 */
@@ -4698,6 +4708,14 @@ rte_eth_dev_rss_hash_update(uint16_t port_id,
 		return -ENOTSUP;
 	}
 
+	if (rss_conf->rss_key != NULL &&
+	    rss_conf->rss_key_len != dev_info.hash_key_size) {
+		RTE_ETHDEV_LOG(ERR,
+			"Ethdev port_id=%u invalid RSS key len: %u, valid value: %u\n",
+			port_id, rss_conf->rss_key_len, dev_info.hash_key_size);
+		return -EINVAL;
+	}
+
 	if (*dev->dev_ops->rss_hash_update == NULL)
 		return -ENOTSUP;
 	ret = eth_err(port_id, (*dev->dev_ops->rss_hash_update)(dev,
@@ -4712,6 +4730,7 @@ int
 rte_eth_dev_rss_hash_conf_get(uint16_t port_id,
 			      struct rte_eth_rss_conf *rss_conf)
 {
+	struct rte_eth_dev_info dev_info = { 0 };
 	struct rte_eth_dev *dev;
 	int ret;
 
@@ -4722,6 +4741,18 @@ rte_eth_dev_rss_hash_conf_get(uint16_t port_id,
 		RTE_ETHDEV_LOG(ERR,
 			"Cannot get ethdev port %u RSS hash config to NULL\n",
 			port_id);
+		return -EINVAL;
+	}
+
+	ret = rte_eth_dev_info_get(port_id, &dev_info);
+	if (ret != 0)
+		return ret;
+
+	if (rss_conf->rss_key != NULL &&
+	    rss_conf->rss_key_len < dev_info.hash_key_size) {
+		RTE_ETHDEV_LOG(ERR,
+			"Ethdev port_id=%u invalid RSS key len: %u, should not be less than: %u\n",
+			port_id, rss_conf->rss_key_len, dev_info.hash_key_size);
 		return -EINVAL;
 	}
 

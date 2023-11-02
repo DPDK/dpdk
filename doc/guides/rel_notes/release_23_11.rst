@@ -330,6 +330,11 @@ API Changes
 
 * power: Updated the x86 Uncore power management API so that it is vendor agnostic.
 
+* ethdev: When ``rte_eth_dev_configure`` or ``rte_eth_dev_rss_hash_update`` are called,
+  the ``rss_key_len`` of structure ``rte_eth_rss_conf`` should be provided
+  by the user for the case ``rss_key != NULL``,
+  it won't be taken as default 40 bytes anymore.
+
 * bonding: Replaced master/slave to main/member. The data structure
   ``struct rte_eth_bond_8023ad_slave_info`` was renamed to
   ``struct rte_eth_bond_8023ad_member_info`` in DPDK 23.11.
