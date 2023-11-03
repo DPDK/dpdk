@@ -827,65 +827,35 @@ static int
 test_m2d_auto_free(int16_t dev_id, uint16_t vchan)
 {
 #define NR_MBUF 256
-	struct rte_mbuf *src[NR_MBUF], *dst[NR_MBUF];
-	const struct rte_dma_vchan_conf qconf = {
-		.direction = RTE_DMA_DIR_MEM_TO_DEV,
-		.nb_desc = TEST_RINGSIZE,
-		.auto_free.m2d.pool = pool,
-		.dst_port.port_type = RTE_DMA_PORT_PCIE,
-		.dst_port.pcie.coreid = 0,
-	};
+	struct rte_mempool_cache *cache;
+	struct rte_mbuf *src[NR_MBUF];
 	uint32_t buf_cnt1, buf_cnt2;
 	struct rte_mempool_ops *ops;
-	static bool dev_init;
 	uint16_t nb_done = 0;
 	bool dma_err = false;
 	int retry = 100;
 	int i, ret = 0;
+	rte_iova_t dst;
 
-	if (!dev_init) {
-		/* Stop the device to reconfigure vchan. */
-		if (rte_dma_stop(dev_id) < 0)
-			ERR_RETURN("Error stopping device %u\n", dev_id);
-
-		if (rte_dma_vchan_setup(dev_id, vchan, &qconf) < 0)
-			ERR_RETURN("Error with queue configuration\n");
-
-		if (rte_dma_start(dev_id) != 0)
-			ERR_RETURN("Error with rte_dma_start()\n");
-
-		dev_init = true;
-	}
-
-	if (rte_pktmbuf_alloc_bulk(pool, dst, NR_MBUF) != 0)
-		ERR_RETURN("alloc dst mbufs failed.\n");
-
-	for (i = 0; i < NR_MBUF; i++) {
-		/* Using mbuf structure to hold remote iova address. */
-		rte_mbuf_iova_set(dst[i], (rte_iova_t)env_test_param[TEST_PARAM_REMOTE_ADDR]);
-		dst[i]->data_off = 0;
-	}
+	dst = (rte_iova_t)env_test_param[TEST_PARAM_REMOTE_ADDR];
 
 	/* Capture buffer count before allocating source buffer. */
+	cache = rte_mempool_default_cache(pool, rte_lcore_id());
 	ops = rte_mempool_get_ops(pool->ops_index);
-	buf_cnt1 = ops->get_count(pool);
+	buf_cnt1 = ops->get_count(pool) + cache->len;
 
-	if (rte_pktmbuf_alloc_bulk(pool, src, NR_MBUF) != 0) {
-		printf("alloc src mbufs failed.\n");
-		ret = -1;
-		goto done;
-	}
+	if (rte_pktmbuf_alloc_bulk(pool, src, NR_MBUF) != 0)
+		ERR_RETURN("alloc src mbufs failed.\n");
 
-	if ((buf_cnt1 - NR_MBUF) != ops->get_count(pool)) {
+	if ((buf_cnt1 - NR_MBUF) != (ops->get_count(pool) + cache->len)) {
 		printf("Buffer count check failed.\n");
 		ret = -1;
 		goto done;
 	}
 
 	for (i = 0; i < NR_MBUF; i++) {
-		ret = rte_dma_copy(dev_id, vchan, rte_mbuf_data_iova(src[i]),
-				   rte_mbuf_data_iova(dst[i]), COPY_LEN,
-				   RTE_DMA_OP_FLAG_AUTO_FREE);
+		ret = rte_dma_copy(dev_id, vchan, rte_mbuf_data_iova(src[i]), dst,
+				   COPY_LEN, RTE_DMA_OP_FLAG_AUTO_FREE);
 
 		if (ret < 0) {
 			printf("rte_dma_copy returned error.\n");
@@ -902,19 +872,42 @@ test_m2d_auto_free(int16_t dev_id, uint16_t vchan)
 		rte_delay_us_sleep(1000);
 	} while (retry-- && (nb_done < NR_MBUF));
 
-	buf_cnt2 = ops->get_count(pool);
+	buf_cnt2 = ops->get_count(pool) + cache->len;
 	if ((buf_cnt1 != buf_cnt2) || dma_err) {
 		printf("Free mem to dev buffer test failed.\n");
 		ret = -1;
 	}
 
 done:
-	rte_pktmbuf_free_bulk(dst, NR_MBUF);
 	/* If the test passes source buffer will be freed in hardware. */
 	if (ret < 0)
 		rte_pktmbuf_free_bulk(&src[nb_done], (NR_MBUF - nb_done));
 
 	return ret;
+}
+
+static int
+prepare_m2d_auto_free(int16_t dev_id, uint16_t vchan)
+{
+	const struct rte_dma_vchan_conf qconf = {
+		.direction = RTE_DMA_DIR_MEM_TO_DEV,
+		.nb_desc = TEST_RINGSIZE,
+		.auto_free.m2d.pool = pool,
+		.dst_port.port_type = RTE_DMA_PORT_PCIE,
+		.dst_port.pcie.coreid = 0,
+	};
+
+	/* Stop the device to reconfigure vchan. */
+	if (rte_dma_stop(dev_id) < 0)
+		ERR_RETURN("Error stopping device %u\n", dev_id);
+
+	if (rte_dma_vchan_setup(dev_id, vchan, &qconf) < 0)
+		ERR_RETURN("Error with queue configuration\n");
+
+	if (rte_dma_start(dev_id) != 0)
+		ERR_RETURN("Error with rte_dma_start()\n");
+
+	return 0;
 }
 
 static int
@@ -1011,6 +1004,8 @@ test_dmadev_instance(int16_t dev_id)
 
 	if ((info.dev_capa & RTE_DMA_CAPA_M2D_AUTO_FREE) &&
 	    dma_add_test[TEST_M2D_AUTO_FREE].enabled == true) {
+		if (prepare_m2d_auto_free(dev_id, vchan) != 0)
+			goto err;
 		if (runtest("m2d_auto_free", test_m2d_auto_free, 128, dev_id, vchan,
 			    CHECK_ERRS) < 0)
 			goto err;
