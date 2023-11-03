@@ -215,6 +215,7 @@ mvtvm_ml_model_io_info_set(struct cnxk_ml_model *model)
 		model->mvtvm.info.input[i].sz_q =
 			model->mvtvm.info.input[i].nb_elements *
 			rte_ml_io_type_size_get(model->mvtvm.info.input[i].qtype);
+		model->mvtvm.info.input[i].scale = metadata->input[i].scale;
 
 		model->mvtvm.info.total_input_sz_d += model->mvtvm.info.input[i].sz_d;
 		model->mvtvm.info.total_input_sz_q += model->mvtvm.info.input[i].sz_q;
@@ -255,6 +256,7 @@ mvtvm_ml_model_io_info_set(struct cnxk_ml_model *model)
 		model->mvtvm.info.output[i].sz_q =
 			model->mvtvm.info.output[i].nb_elements *
 			rte_ml_io_type_size_get(model->mvtvm.info.output[i].qtype);
+		model->mvtvm.info.output[i].scale = metadata->output[i].scale;
 
 		model->mvtvm.info.total_output_sz_d += model->mvtvm.info.output[i].sz_d;
 		model->mvtvm.info.total_output_sz_q += model->mvtvm.info.output[i].sz_q;
