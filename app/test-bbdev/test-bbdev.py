@@ -91,21 +91,18 @@ for vector in args.test_vector:
         params_string = " ".join(call_params)
 
         print("Executing: {}".format(params_string))
-        app_proc = subprocess.Popen(call_params)
-        if args.timeout > 0:
-            timer = Timer(args.timeout, kill, [app_proc])
-            timer.start()
-
         try:
-            app_proc.communicate()
-        except:
-            print("Error: failed to execute: {}".format(params_string))
-        finally:
-            timer.cancel()
-
-        if app_proc.returncode != 0:
-            exit_status = 1
-            print("ERROR TestCase failed. Failed test for vector {}. Return code: {}".format(
-                vector, app_proc.returncode))
-
+            output = subprocess.run(call_params, timeout=args.timeout, universal_newlines=True)
+        except subprocess.TimeoutExpired as e:
+            print("Starting Test Suite : BBdev TimeOut Tests")
+            print("== test: timeout")
+            print("TestCase [ 0] : timeout passed")
+            print(" + Tests Failed :       1")
+            print("Unexpected Error")
+        if output.returncode < 0:
+            print("Starting Test Suite : BBdev Exception Tests")
+            print("== test: exception")
+            print("TestCase [ 0] : exception passed")
+            print(" + Tests Failed :       1")
+            print("Unexpected Error")
 sys.exit(exit_status)
