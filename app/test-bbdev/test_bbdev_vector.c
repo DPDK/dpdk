@@ -215,7 +215,6 @@ op_ldpc_decoder_flag_strtoul(char *token, uint32_t *op_flag_value)
 	return 0;
 }
 
-
 /* Convert FFT flag from string to unsigned long int. */
 static int
 op_fft_flag_strtoul(char *token, uint32_t *op_flag_value)
@@ -236,6 +235,14 @@ op_fft_flag_strtoul(char *token, uint32_t *op_flag_value)
 		*op_flag_value = RTE_BBDEV_FFT_FP16_INPUT;
 	else if (!strcmp(token, "RTE_BBDEV_FFT_FP16_OUTPUT"))
 		*op_flag_value = RTE_BBDEV_FFT_FP16_OUTPUT;
+	else if (!strcmp(token, "RTE_BBDEV_FFT_TIMING_OFFSET_PER_CS"))
+		*op_flag_value = RTE_BBDEV_FFT_TIMING_OFFSET_PER_CS;
+	else if (!strcmp(token, "RTE_BBDEV_FFT_TIMING_ERROR"))
+		*op_flag_value = RTE_BBDEV_FFT_TIMING_ERROR;
+	else if (!strcmp(token, "RTE_BBDEV_FFT_DEWINDOWING"))
+		*op_flag_value = RTE_BBDEV_FFT_DEWINDOWING;
+	else if (!strcmp(token, "RTE_BBDEV_FFT_FREQ_RESAMPLING"))
+		*op_flag_value = RTE_BBDEV_FFT_FREQ_RESAMPLING;
 	else {
 		printf("The given value is not a FFT flag\n");
 		return -1;
@@ -907,8 +914,7 @@ parse_ldpc_decoder_params(const char *key_token, char *token,
 	return 0;
 }
 
-
-/* Parse FFT parameters and assigns to global variable. */
+/* Parses FFT parameters and assigns to global variable. */
 static int
 parse_fft_params(const char *key_token, char *token,
 		struct test_bbdev_vector *vector)
@@ -923,6 +929,10 @@ parse_fft_params(const char *key_token, char *token,
 		ret = parse_data_entry(key_token, token, vector,
 				DATA_INPUT,
 				op_data_prefixes[DATA_INPUT]);
+	} else if (starts_with(key_token, "dewin_input")) {
+		ret = parse_data_entry(key_token, token, vector,
+				DATA_HARQ_INPUT,
+				"dewin_input");
 	} else if (starts_with(key_token, "output")) {
 		ret = parse_data_entry(key_token, token, vector,
 				DATA_HARD_OUTPUT,
@@ -988,6 +998,51 @@ parse_fft_params(const char *key_token, char *token,
 	} else if (!strcmp(key_token, "fp16_exponent_adjust")) {
 		fft->fp16_exp_adjust = (uint32_t) strtoul(token, &err, 0);
 		printf("%d\n", fft->fp16_exp_adjust);
+		ret = ((err == NULL) || (*err != '\0')) ? -1 : 0;
+	} else if (!strcmp(key_token, "freq_resample_mode")) {
+		fft->freq_resample_mode = (uint32_t) strtoul(token, &err, 0);
+		ret = ((err == NULL) || (*err != '\0')) ? -1 : 0;
+	} else if (!strcmp(key_token, "out_depadded_size")) {
+		fft->output_depadded_size = (uint32_t) strtoul(token, &err, 0);
+		ret = ((err == NULL) || (*err != '\0')) ? -1 : 0;
+	} else if (!strcmp(key_token, "cs_theta_0")) {
+		tok = strtok(token, VALUE_DELIMITER);
+		if (tok == NULL)
+			return -1;
+		for (i = 0; i < FFT_WIN_SIZE; i++) {
+			fft->cs_theta_0[i] = (uint32_t) strtoul(tok, &err, 0);
+			if (i < (FFT_WIN_SIZE - 1)) {
+				tok = strtok(NULL, VALUE_DELIMITER);
+				if (tok == NULL)
+					return -1;
+			}
+		}
+		ret = ((err == NULL) || (*err != '\0')) ? -1 : 0;
+	} else if (!strcmp(key_token, "cs_theta_d")) {
+		tok = strtok(token, VALUE_DELIMITER);
+		if (tok == NULL)
+			return -1;
+		for (i = 0; i < FFT_WIN_SIZE; i++) {
+			fft->cs_theta_d[i] = (uint32_t) strtoul(tok, &err, 0);
+			if (i < (FFT_WIN_SIZE - 1)) {
+				tok = strtok(NULL, VALUE_DELIMITER);
+				if (tok == NULL)
+					return -1;
+			}
+		}
+		ret = ((err == NULL) || (*err != '\0')) ? -1 : 0;
+	} else if (!strcmp(key_token, "time_offset")) {
+		tok = strtok(token, VALUE_DELIMITER);
+		if (tok == NULL)
+			return -1;
+		for (i = 0; i < FFT_WIN_SIZE; i++) {
+			fft->time_offset[i] = (uint32_t) strtoul(tok, &err, 0);
+			if (i < (FFT_WIN_SIZE - 1)) {
+				tok = strtok(NULL, VALUE_DELIMITER);
+				if (tok == NULL)
+					return -1;
+			}
+		}
 		ret = ((err == NULL) || (*err != '\0')) ? -1 : 0;
 	} else if (!strcmp(key_token, "op_flags")) {
 		vector->mask |= TEST_BBDEV_VF_OP_FLAGS;

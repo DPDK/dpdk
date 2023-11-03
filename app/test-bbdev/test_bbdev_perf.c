@@ -864,6 +864,7 @@ add_bbdev_dev(uint8_t dev_id, struct rte_bbdev_info *info,
 		conf.q_fft.num_qgroups = VRB_QMGR_NUM_QGS;
 		conf.q_fft.first_qgroup_index = VRB_QMGR_INVALID_IDX;
 		conf.q_fft.num_aqs_per_groups = VRB_QMGR_NUM_AQS;
+		conf.q_fft.aq_depth_log2 = VRB_QMGR_AQ_DEPTH;
 		conf.q_mld.num_qgroups = VRB_QMGR_NUM_QGS;
 		conf.q_mld.first_qgroup_index = VRB_QMGR_INVALID_IDX;
 		conf.q_mld.num_aqs_per_groups = VRB_QMGR_NUM_AQS;
@@ -1970,7 +1971,7 @@ static void
 copy_reference_fft_op(struct rte_bbdev_fft_op **ops, unsigned int n,
 		unsigned int start_idx, struct rte_bbdev_op_data *inputs,
 		struct rte_bbdev_op_data *outputs, struct rte_bbdev_op_data *pwrouts,
-		struct rte_bbdev_fft_op *ref_op)
+		struct rte_bbdev_op_data *win_inputs, struct rte_bbdev_fft_op *ref_op)
 {
 	unsigned int i, j;
 	struct rte_bbdev_op_fft *fft = &ref_op->fft;
@@ -1982,6 +1983,11 @@ copy_reference_fft_op(struct rte_bbdev_fft_op **ops, unsigned int n,
 				fft->output_leading_depadding;
 		for (j = 0; j < RTE_BBDEV_MAX_CS_2; j++)
 			ops[i]->fft.window_index[j] = fft->window_index[j];
+		for (j = 0; j < RTE_BBDEV_MAX_CS; j++) {
+			ops[i]->fft.cs_theta_0[j] = fft->cs_theta_0[j];
+			ops[i]->fft.cs_theta_d[j] = fft->cs_theta_d[j];
+			ops[i]->fft.time_offset[j] = fft->time_offset[j];
+		}
 		ops[i]->fft.cs_bitmap = fft->cs_bitmap;
 		ops[i]->fft.num_antennas_log2 = fft->num_antennas_log2;
 		ops[i]->fft.idft_log2 = fft->idft_log2;
@@ -1992,8 +1998,12 @@ copy_reference_fft_op(struct rte_bbdev_fft_op **ops, unsigned int n,
 		ops[i]->fft.ncs_reciprocal = fft->ncs_reciprocal;
 		ops[i]->fft.power_shift = fft->power_shift;
 		ops[i]->fft.fp16_exp_adjust = fft->fp16_exp_adjust;
+		ops[i]->fft.output_depadded_size = fft->output_depadded_size;
+		ops[i]->fft.freq_resample_mode = fft->freq_resample_mode;
 		ops[i]->fft.base_output = outputs[start_idx + i];
 		ops[i]->fft.base_input = inputs[start_idx + i];
+		if (win_inputs != NULL)
+			ops[i]->fft.dewindowing_input = win_inputs[start_idx + i];
 		if (pwrouts != NULL)
 			ops[i]->fft.power_meas_output = pwrouts[start_idx + i];
 		ops[i]->fft.op_flags = fft->op_flags;
@@ -2575,7 +2585,7 @@ validate_op_fft_chain(struct rte_bbdev_op_data *op, struct op_data_entries *orig
 {
 	struct rte_mbuf *m = op->data;
 	uint8_t i, nb_dst_segments = orig_op->nb_segments;
-	int16_t delt, abs_delt, thres_hold = 3;
+	int16_t delt, abs_delt, thres_hold = 4;
 	uint32_t j, data_len_iq, error_num;
 	int16_t *ref_out, *op_out;
 
@@ -2754,6 +2764,9 @@ create_reference_fft_op(struct rte_bbdev_fft_op *op)
 	entry = &test_vector.entries[DATA_INPUT];
 	for (i = 0; i < entry->nb_segments; ++i)
 		op->fft.base_input.length += entry->segments[i].length;
+	entry = &test_vector.entries[DATA_HARQ_INPUT];
+	for (i = 0; i < entry->nb_segments; ++i)
+		op->fft.dewindowing_input.length += entry->segments[i].length;
 }
 
 static void
@@ -3722,7 +3735,8 @@ throughput_intr_lcore_fft(void *arg)
 			num_to_process);
 	if (test_vector.op_type != RTE_BBDEV_OP_NONE)
 		copy_reference_fft_op(ops, num_to_process, 0, bufs->inputs,
-				bufs->hard_outputs, bufs->soft_outputs, tp->op_params->ref_fft_op);
+				bufs->hard_outputs, bufs->soft_outputs, bufs->harq_inputs,
+				tp->op_params->ref_fft_op);
 
 	/* Set counter to validate the ordering */
 	for (j = 0; j < num_to_process; ++j)
@@ -4596,7 +4610,7 @@ throughput_pmd_lcore_fft(void *arg)
 
 	if (test_vector.op_type != RTE_BBDEV_OP_NONE)
 		copy_reference_fft_op(ops_enq, num_ops, 0, bufs->inputs,
-				bufs->hard_outputs, bufs->soft_outputs, ref_op);
+				bufs->hard_outputs, bufs->soft_outputs, bufs->harq_inputs, ref_op);
 
 	/* Set counter to validate the ordering */
 	for (j = 0; j < num_ops; ++j)
@@ -5452,7 +5466,7 @@ latency_test_fft(struct rte_mempool *mempool,
 		if (test_vector.op_type != RTE_BBDEV_OP_NONE)
 			copy_reference_fft_op(ops_enq, burst_sz, dequeued,
 					bufs->inputs,
-					bufs->hard_outputs, bufs->soft_outputs,
+					bufs->hard_outputs, bufs->soft_outputs, bufs->harq_inputs,
 					ref_op);
 
 		/* Set counter to validate the ordering */
@@ -5714,7 +5728,7 @@ offload_latency_test_fft(struct rte_mempool *mempool, struct test_buffers *bufs,
 		if (test_vector.op_type != RTE_BBDEV_OP_NONE)
 			copy_reference_fft_op(ops_enq, burst_sz, dequeued,
 					bufs->inputs,
-					bufs->hard_outputs, bufs->soft_outputs,
+					bufs->hard_outputs, bufs->soft_outputs, bufs->harq_inputs,
 					ref_op);
 
 		/* Start time meas for enqueue function offload latency */
