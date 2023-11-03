@@ -65,6 +65,7 @@ struct test_bbdev_vector {
 		struct rte_bbdev_op_ldpc_dec ldpc_dec;
 		struct rte_bbdev_op_ldpc_enc ldpc_enc;
 		struct rte_bbdev_op_fft fft;
+		struct rte_bbdev_op_mldts mldts;
 	};
 	/* Additional storage for op data entries */
 	struct op_data_entries entries[DATA_NUM_TYPES];
