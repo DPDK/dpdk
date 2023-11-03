@@ -59,6 +59,7 @@ hns3_dev_infos_get(struct rte_eth_dev *eth_dev, struct rte_eth_dev_info *info)
 	info->max_tx_queues = hw->tqps_num;
 	info->max_rx_pktlen = HNS3_MAX_FRAME_LEN; /* CRC included */
 	info->min_rx_bufsize = HNS3_MIN_BD_BUF_SIZE;
+	info->max_rx_bufsize = HNS3_MAX_BD_BUF_SIZE;
 	info->max_mtu = info->max_rx_pktlen - HNS3_ETH_OVERHEAD;
 	info->max_lro_pkt_size = HNS3_MAX_LRO_SIZE;
 	info->rx_offload_capa = (RTE_ETH_RX_OFFLOAD_IPV4_CKSUM |
