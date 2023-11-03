@@ -101,13 +101,12 @@ cdx_vfio_unmap_resource_primary(struct rte_cdx_device *dev)
 	struct mapped_cdx_res_list *vfio_res_list;
 	int ret, vfio_dev_fd;
 
-	if (rte_intr_fd_get(dev->intr_handle) < 0)
-		return -1;
-
-	if (close(rte_intr_fd_get(dev->intr_handle)) < 0) {
-		CDX_BUS_ERR("Error when closing eventfd file descriptor for %s",
-			dev->device.name);
-		return -1;
+	if (rte_intr_fd_get(dev->intr_handle) >= 0) {
+		if (close(rte_intr_fd_get(dev->intr_handle)) < 0) {
+			CDX_BUS_ERR("Error when closing eventfd file descriptor for %s",
+				dev->device.name);
+			return -1;
+		}
 	}
 
 	vfio_dev_fd = rte_intr_dev_fd_get(dev->intr_handle);
@@ -185,6 +184,9 @@ cdx_vfio_setup_interrupts(struct rte_cdx_device *dev, int vfio_dev_fd,
 {
 	int i, ret;
 
+	if (rte_intr_dev_fd_set(dev->intr_handle, vfio_dev_fd))
+		return -1;
+
 	if (num_irqs == 0)
 		return 0;
 
@@ -225,9 +227,6 @@ cdx_vfio_setup_interrupts(struct rte_cdx_device *dev, int vfio_dev_fd,
 
 		/* DPDK CDX bus currently supports only MSI-X */
 		if (rte_intr_type_set(dev->intr_handle, RTE_INTR_HANDLE_VFIO_MSIX))
-			return -1;
-
-		if (rte_intr_dev_fd_set(dev->intr_handle, vfio_dev_fd))
 			return -1;
 
 		return 0;

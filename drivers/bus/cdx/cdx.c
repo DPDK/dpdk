@@ -405,9 +405,9 @@ cdx_probe_one_driver(struct rte_cdx_driver *dr,
 	return ret;
 
 error_probe:
+	cdx_vfio_unmap_resource(dev);
 	rte_intr_instance_free(dev->intr_handle);
 	dev->intr_handle = NULL;
-	cdx_vfio_unmap_resource(dev);
 error_map_device:
 	return ret;
 }
