@@ -2240,7 +2240,8 @@ validate_op_harq_chain(struct rte_bbdev_op_data *op,
 
 		/* Cannot compare HARQ output data for such cases */
 		if ((ldpc_llr_decimals > 1) && ((ops_ld->op_flags & RTE_BBDEV_LDPC_LLR_COMPRESSION)
-				|| (ops_ld->op_flags & RTE_BBDEV_LDPC_HARQ_6BIT_COMPRESSION)))
+				|| (ops_ld->op_flags & RTE_BBDEV_LDPC_HARQ_6BIT_COMPRESSION)
+				|| (ops_ld->op_flags & RTE_BBDEV_LDPC_HARQ_4BIT_COMPRESSION)))
 			break;
 
 		if (!(ldpc_cap_flags &

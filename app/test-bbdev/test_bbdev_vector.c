@@ -196,6 +196,8 @@ op_ldpc_decoder_flag_strtoul(char *token, uint32_t *op_flag_value)
 		*op_flag_value = RTE_BBDEV_LDPC_DEC_SCATTER_GATHER;
 	else if (!strcmp(token, "RTE_BBDEV_LDPC_HARQ_6BIT_COMPRESSION"))
 		*op_flag_value = RTE_BBDEV_LDPC_HARQ_6BIT_COMPRESSION;
+	else if (!strcmp(token, "RTE_BBDEV_LDPC_HARQ_4BIT_COMPRESSION"))
+		*op_flag_value = RTE_BBDEV_LDPC_HARQ_4BIT_COMPRESSION;
 	else if (!strcmp(token, "RTE_BBDEV_LDPC_LLR_COMPRESSION"))
 		*op_flag_value = RTE_BBDEV_LDPC_LLR_COMPRESSION;
 	else if (!strcmp(token,
