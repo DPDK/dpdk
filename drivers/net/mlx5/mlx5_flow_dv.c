@@ -14067,7 +14067,7 @@ flow_dv_apply(struct rte_eth_dev *dev, struct rte_flow *flow,
 			}
 			dv->actions[n++] = priv->sh->default_miss_action;
 		}
-		misc_mask = flow_dv_matcher_enable(dv->value.buf);
+		misc_mask = flow_dv_matcher_enable(dv_h->matcher->mask.buf);
 		__flow_dv_adjust_buf_size(&dv->value.size, misc_mask);
 		err = mlx5_flow_os_create_flow(dv_h->matcher->matcher_object,
 					       (void *)&dv->value, n,
@@ -16236,7 +16236,7 @@ flow_dv_destroy_def_policy(struct rte_eth_dev *dev)
 static int
 __flow_dv_create_policy_flow(struct rte_eth_dev *dev,
 			uint32_t color_reg_c_idx,
-			enum rte_color color, void *matcher_object,
+			enum rte_color color, struct mlx5_flow_dv_matcher *dv_matcher,
 			int actions_n, void *actions,
 			bool match_src_port, const struct rte_flow_item *item,
 			void **rule, const struct rte_flow_attr *attr)
@@ -16262,9 +16262,9 @@ __flow_dv_create_policy_flow(struct rte_eth_dev *dev,
 	flow_dv_match_meta_reg(matcher.buf, value.buf,
 			       (enum modify_reg)color_reg_c_idx,
 			       rte_col_2_mlx5_col(color), UINT32_MAX);
-	misc_mask = flow_dv_matcher_enable(value.buf);
+	misc_mask = flow_dv_matcher_enable(dv_matcher->mask.buf);
 	__flow_dv_adjust_buf_size(&value.size, misc_mask);
-	ret = mlx5_flow_os_create_flow(matcher_object, (void *)&value,
+	ret = mlx5_flow_os_create_flow(dv_matcher->matcher_object, (void *)&value,
 				       actions_n, actions, rule);
 	if (ret) {
 		DRV_LOG(ERR, "Failed to create meter policy%d flow.", color);
@@ -16412,7 +16412,7 @@ __flow_dv_create_domain_policy_rules(struct rte_eth_dev *dev,
 		/* Create flow, matching color. */
 		if (__flow_dv_create_policy_flow(dev,
 				color_reg_c_idx, (enum rte_color)i,
-				color_rule->matcher->matcher_object,
+				color_rule->matcher,
 				acts[i].actions_n, acts[i].dv_actions,
 				svport_match, NULL, &color_rule->rule,
 				&attr)) {
@@ -16872,7 +16872,7 @@ flow_dv_create_mtr_tbls(struct rte_eth_dev *dev,
 			actions[i++] = priv->sh->dr_drop_action;
 			flow_dv_match_meta_reg(matcher_para.buf, value.buf,
 				(enum modify_reg)mtr_id_reg_c, 0, 0);
-			misc_mask = flow_dv_matcher_enable(value.buf);
+			misc_mask = flow_dv_matcher_enable(mtrmng->def_matcher[domain]->mask.buf);
 			__flow_dv_adjust_buf_size(&value.size, misc_mask);
 			ret = mlx5_flow_os_create_flow
 				(mtrmng->def_matcher[domain]->matcher_object,
@@ -16917,7 +16917,7 @@ flow_dv_create_mtr_tbls(struct rte_eth_dev *dev,
 					fm->drop_cnt, NULL);
 		actions[i++] = cnt->action;
 		actions[i++] = priv->sh->dr_drop_action;
-		misc_mask = flow_dv_matcher_enable(value.buf);
+		misc_mask = flow_dv_matcher_enable(drop_matcher->mask.buf);
 		__flow_dv_adjust_buf_size(&value.size, misc_mask);
 		ret = mlx5_flow_os_create_flow(drop_matcher->matcher_object,
 					       (void *)&value, i, actions,
@@ -17292,7 +17292,7 @@ flow_dv_meter_hierarchy_rule_create(struct rte_eth_dev *dev,
 		}
 		if (__flow_dv_create_policy_flow(dev, color_reg_c_idx,
 					(enum rte_color)i,
-					color_rule->matcher->matcher_object,
+					color_rule->matcher,
 					acts.actions_n, acts.dv_actions,
 					true, item,
 					&color_rule->rule, &attr)) {
@@ -18309,7 +18309,7 @@ flow_dv_discover_priorities(struct rte_eth_dev *dev,
 			break;
 		}
 		/* Try to apply the flow to HW. */
-		misc_mask = flow_dv_matcher_enable(flow.dv.value.buf);
+		misc_mask = flow_dv_matcher_enable(flow.handle->dvh.matcher->mask.buf);
 		__flow_dv_adjust_buf_size(&flow.dv.value.size, misc_mask);
 		err = mlx5_flow_os_create_flow
 				(flow.handle->dvh.matcher->matcher_object,
