@@ -284,8 +284,10 @@ op_ldpc_encoder_flag_strtoul(char *token, uint32_t *op_flag_value)
 		*op_flag_value = RTE_BBDEV_LDPC_ENC_INTERRUPTS;
 	else if (!strcmp(token, "RTE_BBDEV_LDPC_ENC_SCATTER_GATHER"))
 		*op_flag_value = RTE_BBDEV_LDPC_ENC_SCATTER_GATHER;
+	else if (!strcmp(token, "RTE_BBDEV_LDPC_ENC_CONCATENATION"))
+		*op_flag_value = RTE_BBDEV_LDPC_ENC_CONCATENATION;
 	else {
-		printf("The given value is not a turbo encoder flag\n");
+		printf("The given value is not a LDPC encoder flag - %s\n", token);
 		return -1;
 	}
 
