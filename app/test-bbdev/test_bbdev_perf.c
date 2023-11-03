@@ -721,9 +721,9 @@ add_bbdev_dev(uint8_t dev_id, struct rte_bbdev_info *info,
 			conf.vf_dl_queues_number[i] = VF_DL_5G_QUEUE_VALUE;
 		}
 
-		/* UL bandwidth. Needed for schedule algorithm */
+		/* UL bandwidth. Needed only for Vista Creek 5GNR schedule algorithm */
 		conf.ul_bandwidth = UL_5G_BANDWIDTH;
-		/* DL bandwidth */
+		/* DL bandwidth. Needed only for Vista Creek 5GNR schedule algorithm  */
 		conf.dl_bandwidth = DL_5G_BANDWIDTH;
 
 		/* UL & DL load Balance Factor to 64 */
@@ -743,7 +743,7 @@ add_bbdev_dev(uint8_t dev_id, struct rte_bbdev_info *info,
 		struct rte_acc_conf conf;
 		unsigned int i;
 
-		printf("Configure ACC100/ACC101 FEC Driver %s with default values\n",
+		printf("Configure ACC100 FEC device %s with default values\n",
 				info->drv.driver_name);
 
 		/* clear default configuration before initialization */
@@ -1047,13 +1047,15 @@ ut_setup(void)
 static void
 ut_teardown(void)
 {
-	uint8_t i, dev_id;
+	uint8_t i, dev_id, ret;
 	struct rte_bbdev_stats stats;
 
 	for (i = 0; i < nb_active_devs; i++) {
 		dev_id = active_devs[i].dev_id;
 		/* read stats and print */
-		rte_bbdev_stats_get(dev_id, &stats);
+		ret = rte_bbdev_stats_get(dev_id, &stats);
+		if (ret != 0)
+			printf("Failed to get stats on bbdev %u\n", dev_id);
 		/* Stop the device */
 		rte_bbdev_stop(dev_id);
 	}
@@ -2227,9 +2229,11 @@ validate_op_harq_chain(struct rte_bbdev_op_data *op,
 				if ((error > 8 && (abs_harq_origin <
 						(llr_max - 16))) ||
 						(error > 16)) {
+					/*
 					printf("HARQ mismatch %d: exp %d act %d => %d\n",
 							j, harq_orig[j],
 							harq_out[jj], error);
+					*/
 					byte_error++;
 					cum_error += error;
 				}
@@ -5270,7 +5274,7 @@ offload_latency_test_fft(struct rte_mempool *mempool, struct test_buffers *bufs,
 			burst_sz = num_to_process - dequeued;
 
 		ret = rte_bbdev_fft_op_alloc_bulk(mempool, ops_enq, burst_sz);
-		TEST_ASSERT_SUCCESS(ret, "Allocation failed for %d ops", burst_sz);
+		TEST_ASSERT_SUCCESS(ret, "rte_bbdev_fft_op_alloc_bulk() failed");
 		if (test_vector.op_type != RTE_BBDEV_OP_NONE)
 			copy_reference_fft_op(ops_enq, burst_sz, dequeued,
 					bufs->inputs,
@@ -5352,7 +5356,7 @@ offload_latency_test_dec(struct rte_mempool *mempool, struct test_buffers *bufs,
 			burst_sz = num_to_process - dequeued;
 
 		ret = rte_bbdev_dec_op_alloc_bulk(mempool, ops_enq, burst_sz);
-		TEST_ASSERT_SUCCESS(ret, "Allocation failed for %d ops", burst_sz);
+		TEST_ASSERT_SUCCESS(ret, "rte_bbdev_dec_op_alloc_bulk() failed");
 		ref_op->turbo_dec.iter_max = get_iter_max();
 		if (test_vector.op_type != RTE_BBDEV_OP_NONE)
 			copy_reference_dec_op(ops_enq, burst_sz, dequeued,
@@ -5439,7 +5443,7 @@ offload_latency_test_ldpc_dec(struct rte_mempool *mempool,
 			burst_sz = num_to_process - dequeued;
 
 		ret = rte_bbdev_dec_op_alloc_bulk(mempool, ops_enq, burst_sz);
-		TEST_ASSERT_SUCCESS(ret, "Allocation failed for %d ops", burst_sz);
+		TEST_ASSERT_SUCCESS(ret, "rte_bbdev_dec_op_alloc_bulk() failed");
 		ref_op->ldpc_dec.iter_max = get_iter_max();
 		if (test_vector.op_type != RTE_BBDEV_OP_NONE)
 			copy_reference_ldpc_dec_op(ops_enq, burst_sz, dequeued,
@@ -5534,8 +5538,7 @@ offload_latency_test_enc(struct rte_mempool *mempool, struct test_buffers *bufs,
 			burst_sz = num_to_process - dequeued;
 
 		ret = rte_bbdev_enc_op_alloc_bulk(mempool, ops_enq, burst_sz);
-		TEST_ASSERT_SUCCESS(ret,
-				"rte_bbdev_enc_op_alloc_bulk() failed");
+		TEST_ASSERT_SUCCESS(ret, "rte_bbdev_enc_op_alloc_bulk() failed");
 		if (test_vector.op_type != RTE_BBDEV_OP_NONE)
 			copy_reference_enc_op(ops_enq, burst_sz, dequeued,
 					bufs->inputs,
@@ -5617,8 +5620,7 @@ offload_latency_test_ldpc_enc(struct rte_mempool *mempool,
 			burst_sz = num_to_process - dequeued;
 
 		ret = rte_bbdev_enc_op_alloc_bulk(mempool, ops_enq, burst_sz);
-		TEST_ASSERT_SUCCESS(ret,
-				"rte_bbdev_enc_op_alloc_bulk() failed");
+		TEST_ASSERT_SUCCESS(ret, "rte_bbdev_enc_op_alloc_bulk() failed");
 		if (test_vector.op_type != RTE_BBDEV_OP_NONE)
 			copy_reference_ldpc_enc_op(ops_enq, burst_sz, dequeued,
 					bufs->inputs,

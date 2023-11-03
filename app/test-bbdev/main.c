@@ -107,7 +107,8 @@ unit_test_suite_runner(struct unit_test_suite *suite)
 	end = rte_rdtsc_precise();
 
 	printf(" + ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ +\n");
-	printf(" + Test Suite Summary : %s\n", suite->suite_name);
+	printf(" + Test Suite Summary : %s - %s\n",
+			suite->suite_name, get_vector_filename());
 	printf(" + Tests Total :       %2d\n", total);
 	printf(" + Tests Skipped :     %2d\n", skipped);
 	printf(" + Tests Passed :      %2d\n", succeeded);
