@@ -234,12 +234,18 @@ The most common guidelines for writing RST text are detailed in the
 The additional guidelines below reiterate or expand upon those guidelines.
 
 
-Line Length
-~~~~~~~~~~~
+Line Length and Wrapping
+~~~~~~~~~~~~~~~~~~~~~~~~
 
-* Lines in sentences should be less than 80 characters and wrapped at
-  words. Multiple sentences which are not separated by a blank line are joined
-  automatically into paragraphs.
+* Documentation lines should be less than 100 characters.
+
+* Each sentence should start on a new line.
+  Multiple sentences, which are not separated by a blank line,
+  are joined automatically into paragraphs.
+
+* Wrap sentences at punctuation points, for example, at a comma.
+  If no punctuation, put the newline at a logical point in the sentence,
+  for example, at the end of a clause before an "and" or "but".
 
 * Lines in literal blocks should be less than 80 characters
   since they are not wrapped by the document formatters.
