@@ -881,6 +881,8 @@ port_infos_display(portid_t port_id)
 	}
 
 	printf("Minimum size of RX buffer: %u\n", dev_info.min_rx_bufsize);
+	if (dev_info.max_rx_bufsize != UINT32_MAX)
+		printf("Maximum size of RX buffer: %u\n", dev_info.max_rx_bufsize);
 	printf("Maximum configurable length of RX packet: %u\n",
 		dev_info.max_rx_pktlen);
 	printf("Maximum configurable size of LRO aggregated packet: %u\n",

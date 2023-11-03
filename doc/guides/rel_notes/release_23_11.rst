@@ -109,6 +109,12 @@ New Features
 
   Added support for amd-pstate driver which works on AMD EPYC processors.
 
+* **Added maximum Rx buffer size to report.**
+
+  Introduced the ``max_rx_bufsize`` field, representing
+  the maximum Rx buffer size per descriptor supported by the HW,
+  in the structure ``rte_eth_dev_info`` to avoid wasting mempool space.
+
 * **Improved support of RSS hash algorithm.**
 
   * Added support to query RSS hash algorithm capability via ``rte_eth_dev_info_get()``,

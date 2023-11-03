@@ -1754,7 +1754,15 @@ struct rte_eth_dev_info {
 	uint16_t min_mtu;	/**< Minimum MTU allowed */
 	uint16_t max_mtu;	/**< Maximum MTU allowed */
 	const uint32_t *dev_flags; /**< Device flags */
-	uint32_t min_rx_bufsize; /**< Minimum size of Rx buffer. */
+	/** Minimum Rx buffer size per descriptor supported by HW. */
+	uint32_t min_rx_bufsize;
+	/**
+	 * Maximum Rx buffer size per descriptor supported by HW.
+	 * The value is not enforced, information only to application to
+	 * optimize mbuf size.
+	 * Its value is UINT32_MAX when not specified by the driver.
+	 */
+	uint32_t max_rx_bufsize;
 	uint32_t max_rx_pktlen; /**< Maximum configurable length of Rx pkt. */
 	/** Maximum configurable size of LRO aggregated packet. */
 	uint32_t max_lro_pkt_size;
