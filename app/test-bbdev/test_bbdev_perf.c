@@ -1838,6 +1838,12 @@ generate_turbo_llr_input(uint16_t n, struct rte_bbdev_op_data *inputs,
 	range = ref_op->turbo_dec.input.length;
 	N0 = 1.0 / pow(10.0, get_snr() / 10.0);
 
+	if (range > inputs[0].data->data_len) {
+		printf("Warning: Limiting LLR generation to first segment (%d from %d)\n",
+				inputs[0].data->data_len, range);
+		range = inputs[0].data->data_len;
+	}
+
 	for (i = 0; i < n; ++i) {
 		m = inputs[i].data;
 		int8_t *llrs = rte_pktmbuf_mtod_offset(m, int8_t *, 0);
