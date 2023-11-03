@@ -102,6 +102,10 @@ cdx_vfio_unmap_resource_primary(struct rte_cdx_device *dev)
 	int ret, vfio_dev_fd;
 
 	if (rte_intr_fd_get(dev->intr_handle) >= 0) {
+		if (rte_cdx_vfio_bm_disable(dev) < 0)
+			CDX_BUS_ERR("Error when disabling bus master for %s",
+				    dev->device.name);
+
 		if (close(rte_intr_fd_get(dev->intr_handle)) < 0) {
 			CDX_BUS_ERR("Error when closing eventfd file descriptor for %s",
 				dev->device.name);
@@ -251,6 +255,16 @@ cdx_vfio_setup_device(struct rte_cdx_device *dev, int vfio_dev_fd,
 	 */
 	if (ioctl(vfio_dev_fd, VFIO_DEVICE_RESET) && errno != EINVAL) {
 		CDX_BUS_ERR("Unable to reset device! Error: %d (%s)", errno,
+			strerror(errno));
+		return -1;
+	}
+
+	/*
+	 * Enable Bus mastering for the device. errno is set as ENOTTY if
+	 * device does not support configuring bus master.
+	 */
+	if (rte_cdx_vfio_bm_enable(dev) && (errno != -ENOTTY)) {
+		CDX_BUS_ERR("Bus master enable failure! Error: %d (%s)", errno,
 			strerror(errno));
 		return -1;
 	}
@@ -593,5 +607,94 @@ rte_cdx_vfio_intr_disable(const struct rte_intr_handle *intr_handle)
 		CDX_BUS_ERR("Error disabling MSI interrupts for fd %d",
 			rte_intr_fd_get(intr_handle));
 
+	return ret;
+}
+
+/* Enable Bus Mastering */
+int
+rte_cdx_vfio_bm_enable(struct rte_cdx_device *dev)
+{
+	struct vfio_device_info device_info = { .argsz = sizeof(device_info) };
+	struct vfio_device_feature_bus_master *vfio_bm_feature;
+	struct vfio_device_feature *feature;
+	int vfio_dev_fd, ret;
+	size_t argsz;
+
+	vfio_dev_fd = rte_intr_dev_fd_get(dev->intr_handle);
+	if (vfio_dev_fd < 0)
+		return -1;
+
+	argsz = sizeof(struct vfio_device_feature) + sizeof(struct vfio_device_feature_bus_master);
+
+	feature = (struct vfio_device_feature *)malloc(argsz);
+	if (!feature)
+		return -ENOMEM;
+
+	vfio_bm_feature = (struct vfio_device_feature_bus_master *) feature->data;
+
+	feature->argsz = argsz;
+
+	feature->flags = RTE_VFIO_DEVICE_FEATURE_BUS_MASTER | VFIO_DEVICE_FEATURE_PROBE;
+	feature->flags |= VFIO_DEVICE_FEATURE_SET;
+	ret = ioctl(vfio_dev_fd, RTE_VFIO_DEVICE_FEATURE, feature);
+	if (ret) {
+		CDX_BUS_ERR("Bus Master configuring not supported for device: %s, error: %d (%s)\n",
+			dev->name, errno, strerror(errno));
+		free(feature);
+		return ret;
+	}
+
+	feature->flags = RTE_VFIO_DEVICE_FEATURE_BUS_MASTER | VFIO_DEVICE_FEATURE_SET;
+	vfio_bm_feature->op = VFIO_DEVICE_FEATURE_SET_MASTER;
+	ret = ioctl(vfio_dev_fd, RTE_VFIO_DEVICE_FEATURE, feature);
+	if (ret < 0)
+		CDX_BUS_ERR("BM Enable Error for device: %s, Error: %d (%s)\n",
+			dev->name, errno, strerror(errno));
+
+	free(feature);
+	return ret;
+}
+
+/* Disable Bus Mastering */
+int
+rte_cdx_vfio_bm_disable(struct rte_cdx_device *dev)
+{
+	struct vfio_device_feature_bus_master *vfio_bm_feature;
+	struct vfio_device_feature *feature;
+	int vfio_dev_fd, ret;
+	size_t argsz;
+
+	vfio_dev_fd = rte_intr_dev_fd_get(dev->intr_handle);
+	if (vfio_dev_fd < 0)
+		return -1;
+
+	argsz = sizeof(struct vfio_device_feature) + sizeof(struct vfio_device_feature_bus_master);
+
+	feature = (struct vfio_device_feature *)malloc(argsz);
+	if (!feature)
+		return -ENOMEM;
+
+	vfio_bm_feature = (struct vfio_device_feature_bus_master *) feature->data;
+
+	feature->argsz = argsz;
+
+	feature->flags = RTE_VFIO_DEVICE_FEATURE_BUS_MASTER | VFIO_DEVICE_FEATURE_PROBE;
+	feature->flags |= VFIO_DEVICE_FEATURE_SET;
+	ret = ioctl(vfio_dev_fd, RTE_VFIO_DEVICE_FEATURE, feature);
+	if (ret) {
+		CDX_BUS_ERR("Bus Master configuring not supported for device: %s, Error: %d (%s)\n",
+			dev->name, errno, strerror(errno));
+		free(feature);
+		return ret;
+	}
+
+	feature->flags = RTE_VFIO_DEVICE_FEATURE_BUS_MASTER | VFIO_DEVICE_FEATURE_SET;
+	vfio_bm_feature->op = VFIO_DEVICE_FEATURE_CLEAR_MASTER;
+	ret = ioctl(vfio_dev_fd, RTE_VFIO_DEVICE_FEATURE, feature);
+	if (ret < 0)
+		CDX_BUS_ERR("BM Disable Error for device: %s, Error: %d (%s)\n",
+			dev->name, errno, strerror(errno));
+
+	free(feature);
 	return ret;
 }

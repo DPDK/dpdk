@@ -16,6 +16,7 @@ extern "C" {
 
 #include <stdlib.h>
 #include <inttypes.h>
+#include <linux/types.h>
 
 #include <bus_driver.h>
 #include <dev_driver.h>
@@ -177,6 +178,30 @@ int rte_cdx_vfio_intr_enable(const struct rte_intr_handle *intr_handle);
  */
 __rte_internal
 int rte_cdx_vfio_intr_disable(const struct rte_intr_handle *intr_handle);
+
+/**
+ * Enable Bus Mastering for CDX bus devices.
+ *
+ * @param dev
+ *   Pointer to the cdx device.
+ *
+ * @return
+ *   0 on success, -1 on error.
+ */
+__rte_internal
+int rte_cdx_vfio_bm_enable(struct rte_cdx_device *dev);
+
+/**
+ * Disable Bus Mastering for CDX bus devices.
+ *
+ * @param dev
+ *   Pointer to the cdx device.
+ *
+ * @return
+ *   0 on success, -1 on error.
+ */
+__rte_internal
+int rte_cdx_vfio_bm_disable(struct rte_cdx_device *dev);
 
 /**
  * Unregister a CDX driver.

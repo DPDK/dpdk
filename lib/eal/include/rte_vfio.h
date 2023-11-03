@@ -73,6 +73,33 @@ struct vfio_info_cap_header {
 #define RTE_VFIO_CAP_MSIX_MAPPABLE 3
 #endif
 
+/* VFIO_DEVICE_FEATURE is defined for kernel version 5.7 and newer. */
+#ifdef	VFIO_DEVICE_FEATURE
+#define	RTE_VFIO_DEVICE_FEATURE	VFIO_DEVICE_FEATURE
+#else
+#define	RTE_VFIO_DEVICE_FEATURE	_IO(VFIO_TYPE, VFIO_BASE + 17)
+struct vfio_device_feature {
+	__u32	argsz;
+	__u32	flags;
+#define	VFIO_DEVICE_FEATURE_MASK	(0xffff) /* 16-bit feature index */
+#define	VFIO_DEVICE_FEATURE_GET		(1 << 16) /* Get feature into data[] */
+#define	VFIO_DEVICE_FEATURE_SET		(1 << 17) /* Set feature from data[] */
+#define	VFIO_DEVICE_FEATURE_PROBE	(1 << 18) /* Probe feature support */
+	__u8	data[];
+};
+#endif
+
+#ifdef	VFIO_DEVICE_FEATURE_BUS_MASTER
+#define	RTE_VFIO_DEVICE_FEATURE_BUS_MASTER	VFIO_DEVICE_FEATURE_BUS_MASTER
+#else
+#define	RTE_VFIO_DEVICE_FEATURE_BUS_MASTER	10
+struct vfio_device_feature_bus_master {
+	__u32 op;
+#define	VFIO_DEVICE_FEATURE_CLEAR_MASTER	0	/* Clear Bus Master */
+#define	VFIO_DEVICE_FEATURE_SET_MASTER		1	/* Set Bus Master */
+};
+#endif
+
 #else /* not VFIO_PRESENT */
 
 /* we don't need an actual definition, only pointer is used */

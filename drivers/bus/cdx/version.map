@@ -5,6 +5,8 @@ INTERNAL {
 	rte_cdx_register;
 	rte_cdx_unmap_device;
 	rte_cdx_unregister;
+	rte_cdx_vfio_bm_disable;
+	rte_cdx_vfio_bm_enable;
 	rte_cdx_vfio_intr_disable;
 	rte_cdx_vfio_intr_enable;
 
