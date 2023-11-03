@@ -25,12 +25,18 @@ parser.add_argument("-p", "--testapp-path",
                     help="specifies path to the bbdev test app",
                     default=dpdk_path + "/" + dpdk_target + "/app/dpdk-test-bbdev")
 parser.add_argument("-e", "--eal-params",
-                    help="EAL arguments which are passed to the test app",
-                    default="--vdev=baseband_null0")
+                    help="EAL arguments which must be passed to the test app",
+                    default="--vdev=baseband_null0 -a00:00.0")
+# Until deprecated in next release keep -t as an valid argument for timeout, then use -T
 parser.add_argument("-t", "--timeout",
                     type=int,
                     help="Timeout in seconds",
-                    default=300)
+                    default=600)
+# This will become -t option for iter_max in next release
+parser.add_argument("--iter-max",
+                    type=int,
+                    help="Max iterations",
+                    default=6)
 parser.add_argument("-c", "--test-cases",
                     nargs="+",
                     help="Defines test cases to run. Run all if not specified")
@@ -48,6 +54,10 @@ parser.add_argument("-b", "--burst-size",
                     type=int,
                     help="Operations enqueue/dequeue burst size.",
                     default=[32])
+parser.add_argument("-s", "--snr",
+                    type=int,
+                    help="SNR in dB for BLER tests",
+                    default=0)
 parser.add_argument("-l", "--num-lcores",
                     type=int,
                     help="Number of lcores to run.",
@@ -67,6 +77,16 @@ if args.eal_params:
     params.extend(shlex.split(args.eal_params))
 
 params.extend(["--"])
+
+if args.snr:
+    params.extend(["-s", str(args.snr)])
+
+if args.iter_max:
+    params.extend(["-t", str(args.iter_max)])
+    print("The argument for iter_max will be -t in next release")
+
+if args.timeout:
+    print("The argument for timeout will be -T in next release")
 
 if args.num_ops:
     params.extend(["-n", str(args.num_ops)])
