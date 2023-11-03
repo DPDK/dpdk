@@ -7287,7 +7287,8 @@ flow_hw_create_send_to_kernel_actions(struct mlx5_priv *priv __rte_unused)
 	bool is_vf_sf_dev = priv->sh->dev_cap.vf || priv->sh->dev_cap.sf;
 
 	for (i = MLX5DR_TABLE_TYPE_NIC_RX; i < MLX5DR_TABLE_TYPE_MAX; i++) {
-		if (is_vf_sf_dev && MLX5DR_TABLE_TYPE_FDB == i)
+		if ((!priv->sh->config.dv_esw_en || is_vf_sf_dev) &&
+		     i == MLX5DR_TABLE_TYPE_FDB)
 			continue;
 		action_flag = mlx5_hw_act_flag[1][i];
 		priv->hw_send_to_kernel[i] =
