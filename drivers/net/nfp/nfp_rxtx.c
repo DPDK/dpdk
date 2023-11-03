@@ -584,17 +584,24 @@ nfp_net_set_ptype(const struct nfp_ptype_parsed *nfp_ptype,
 /**
  * Parse the packet type from Rx descriptor and set to mbuf.
  *
+ * @param rxq
+ *   Rx queue
  * @param rxds
  *   Rx descriptor including the offloading info of packet type.
  * @param mb
  *   Mbuf to set the packet type.
  */
 static void
-nfp_net_parse_ptype(struct nfp_net_rx_desc *rxds,
+nfp_net_parse_ptype(struct nfp_net_rxq *rxq,
+		struct nfp_net_rx_desc *rxds,
 		struct rte_mbuf *mb)
 {
+	struct nfp_net_hw *hw = rxq->hw;
 	struct nfp_ptype_parsed nfp_ptype;
 	uint16_t rxd_ptype = rxds->rxd.offload_info;
+
+	if ((hw->super.cap_ext & NFP_NET_CFG_CTRL_PKT_TYPE) == 0)
+		return;
 
 	if (rxd_ptype == 0 || (rxds->rxd.flags & PCIE_DESC_RX_VLAN) != 0)
 		return;
@@ -735,7 +742,7 @@ nfp_net_recv_pkts(void *rx_queue,
 		struct nfp_meta_parsed meta = {};
 		nfp_net_parse_meta(rxds, rxq, hw, mb, &meta);
 
-		nfp_net_parse_ptype(rxds, mb);
+		nfp_net_parse_ptype(rxq, rxds, mb);
 
 		/* Checking the checksum flag */
 		nfp_net_rx_cksum(rxq, rxds, mb);
