@@ -2070,7 +2070,7 @@ sfc_process_mport_journal_cb(void *data, efx_mport_desc_t *mport,
 	struct sfc_mport_journal_ctx *ctx = data;
 
 	if (ctx == NULL || ctx->sa == NULL) {
-		sfc_err(ctx->sa, "received NULL context or SFC adapter");
+		SFC_GENERIC_LOG(ERR, "received NULL context or SFC adapter");
 		return EINVAL;
 	}
 
