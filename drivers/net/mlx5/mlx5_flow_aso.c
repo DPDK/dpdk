@@ -932,7 +932,8 @@ mlx5_aso_mtr_completion_handle(struct mlx5_aso_sq *sq, bool need_lock)
 		rte_spinlock_lock(&sq->sqsl);
 	max = (uint16_t)(sq->head - sq->tail);
 	if (unlikely(!max)) {
-		rte_spinlock_unlock(&sq->sqsl);
+		if (need_lock)
+			rte_spinlock_unlock(&sq->sqsl);
 		return;
 	}
 	do {
