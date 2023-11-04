@@ -171,6 +171,7 @@ ulp_ha_mgr_timer_cb(void *arg)
 
 	myclient_cnt = bnxt_ulp_cntxt_num_shared_clients_get(ulp_ctx);
 	if (myclient_cnt == 0) {
+		bnxt_ulp_cntxt_entry_release();
 		BNXT_TF_DBG(ERR,
 			    "PANIC Client Count is zero kill timer\n.");
 		return;
