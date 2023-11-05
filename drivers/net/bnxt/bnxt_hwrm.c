@@ -3191,6 +3191,7 @@ static uint16_t bnxt_parse_eth_link_speed(uint32_t conf_link_speed,
 	case RTE_ETH_LINK_SPEED_25G:
 		eth_link_speed =
 			HWRM_PORT_PHY_CFG_INPUT_FORCE_LINK_SPEED_25GB;
+		link_info->link_signal_mode = BNXT_SIG_MODE_NRZ;
 		break;
 	case RTE_ETH_LINK_SPEED_40G:
 		eth_link_speed =
