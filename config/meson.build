@@ -209,11 +209,6 @@ dpdk_conf.set('RTE_BACKTRACE', cc.has_header('execinfo.h') or is_windows)
 libarchive = dependency('libarchive', required: false, method: 'pkg-config')
 if libarchive.found()
     dpdk_conf.set('RTE_HAS_LIBARCHIVE', 1)
-    # Push libarchive link dependency at the project level to support
-    # statically linking dpdk apps. Details at:
-    # https://inbox.dpdk.org/dev/20210605004024.660267a1@sovereign/
-    add_project_link_arguments('-larchive', language: 'c')
-    dpdk_extra_ldflags += '-larchive'
 endif
 
 # check for libbsd
