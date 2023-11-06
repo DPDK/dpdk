@@ -156,6 +156,20 @@ __rte_experimental
 int rte_pci_set_bus_master(const struct rte_pci_device *dev, bool enable);
 
 /**
+ * Enable/Disable PASID (Process Address Space ID).
+ *
+ * @param dev
+ *   A pointer to a rte_pci_device structure.
+ * @param offset
+ *   Offset of the PASID external capability.
+ * @param enable
+ *   Flag to enable or disable PASID.
+ */
+__rte_internal
+int rte_pci_pasid_set_state(const struct rte_pci_device *dev,
+		off_t offset, bool enable);
+
+/**
  * Read PCI config space.
  *
  * @param device

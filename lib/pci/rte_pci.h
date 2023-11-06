@@ -101,6 +101,7 @@ extern "C" {
 #define RTE_PCI_EXT_CAP_ID_ACS		0x0d	/* Access Control Services */
 #define RTE_PCI_EXT_CAP_ID_SRIOV	0x10	/* SR-IOV */
 #define RTE_PCI_EXT_CAP_ID_PRI		0x13	/* Page Request Interface */
+#define RTE_PCI_EXT_CAP_ID_PASID	0x1B    /* Process Address Space ID */
 
 /* Advanced Error Reporting (RTE_PCI_EXT_CAP_ID_ERR) */
 #define RTE_PCI_ERR_UNCOR_STATUS	0x04	/* Uncorrectable Error Status */
@@ -132,6 +133,9 @@ extern "C" {
 #define RTE_PCI_PRI_CTRL		0x04	/* PRI control register */
 #define RTE_PCI_PRI_CTRL_ENABLE		0x0001	/* Enable */
 #define RTE_PCI_PRI_ALLOC_REQ		0x0c	/* PRI max reqs allowed */
+
+/* Process Address Space ID (RTE_PCI_EXT_CAP_ID_PASID) */
+#define RTE_PCI_PASID_CTRL		0x06    /* PASID control register */
 
 /** Formatting string for PCI device identifier: Ex: 0000:00:01.0 */
 #define PCI_PRI_FMT "%.4" PRIx32 ":%.2" PRIx8 ":%.2" PRIx8 ".%" PRIx8
