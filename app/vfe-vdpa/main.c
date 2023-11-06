@@ -715,14 +715,8 @@ cmdline_parse_ctx_t main_ctx[] = {
 int
 main(int argc, char *argv[])
 {
-	char ch;
-	int ret, vport_num;
-	struct cmdline *cl;
-	struct rte_vdpa_device *vdev;
-	struct rte_device *dev;
-	struct rte_dev_iterator dev_iter;
+	int ret;
 	rte_uuid_t vf_token;
-	struct rte_device *tdev = NULL;
 	sigset_t set;
 	pthread_t thread_s;
 
@@ -764,61 +758,9 @@ main(int argc, char *argv[])
 	if (ret < 0)
 		rte_exit(EXIT_FAILURE, "invalid argument\n");
 
-	if (interactive == 1) {
-		cl = cmdline_stdin_new(main_ctx, "vdpa> ");
-		if (cl == NULL)
-			rte_panic("Cannot create cmdline instance\n");
-		cmdline_interact(cl);
-		cmdline_stdin_exit(cl);
-	} else {
-		RTE_DEV_FOREACH(dev, "class=vdpa", &dev_iter) {
-			vdev = rte_vdpa_find_device_by_name(dev->name);
-			if (vdev == NULL) {
-				rte_panic("Failed to find vDPA dev for %s\n",
-						dev->name);
-			}
-			vport_num = vdpa_alloc_vport_res();
-			if (vport_num < 0)
-				rte_panic("Failed to find vDPA dev vport resource for %s\n",
-						dev->name);
-			vports[vport_num].dev = vdev;
-			snprintf(vports[vport_num].ifname, MAX_PATH_LEN, "%s%d",
-					iface, vport_num);
-
-			start_vdpa(&vports[vport_num]);
-		}
-
-		printf("enter \'q\' to quit\n");
-		while (scanf("%c", &ch)) {
-			if (ch == 'q')
-				break;
-			while (ch != '\n') {
-				if (scanf("%c", &ch))
-					printf("%c", ch);
-			}
-			printf("enter \'q\' to quit\n");
-		}
-	}
-
-	pthread_mutex_lock(&quit_lock);
-	vdpa_rpc_stop(&vdpa_rpc_ctx);
-	vdpa_sample_quit();
-
-	RTE_DEV_FOREACH_SAFE(dev, "class=vdpa", &dev_iter, tdev) {
-		rte_dev_remove(dev);
-	}
-
-	RTE_DEV_FOREACH_SAFE(dev, "bus=pci", &dev_iter, tdev) {
-		rte_dev_remove(dev);
-	}
-
-	printf("\n Remove default container fd \r\n");
-	if (rte_vfio_container_destroy(RTE_VFIO_DEFAULT_CONTAINER_FD) != 0) {
-		printf("\n Default container fd remove fail \r\n");
-	}
-
-	/* clean up the EAL */
-	rte_eal_cleanup();
+	/* loop for exit the application */
+	while (1)
+		sleep(1);
 
 	return 0;
 }
