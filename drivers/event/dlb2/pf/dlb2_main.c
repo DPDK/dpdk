@@ -26,6 +26,7 @@
 #define PF_ID_ZERO 0	/* PF ONLY! */
 #define NO_OWNER_VF 0	/* PF ONLY! */
 #define NOT_VF_REQ false /* PF ONLY! */
+#define DLB2_PCI_PASID_CAP_OFFSET        0x148   /* PASID capability offset */
 
 static int
 dlb2_pf_init_driver_state(struct dlb2_dev *dlb2_dev)
@@ -512,6 +513,16 @@ dlb2_pf_reset(struct dlb2_dev *dlb2_dev)
 				__func__, (int)off);
 			return ret;
 		}
+	}
+
+	/* Disable PASID if it is enabled by default, which
+	 * breaks the DLB if enabled.
+	 */
+	off = DLB2_PCI_PASID_CAP_OFFSET + RTE_PCI_PASID_CTRL;
+	if (rte_pci_pasid_set_state(pdev, off, false)) {
+		DLB2_LOG_ERR("[%s()] failed to write the pcie config space at offset %d\n",
+				__func__, (int)off);
+		return -1;
 	}
 
 	return 0;
