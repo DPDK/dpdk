@@ -45,6 +45,7 @@ extern "C" {
 #define RTE_PCI_EXT_CAP_ID_ERR		0x01	/* Advanced Error Reporting */
 #define RTE_PCI_EXT_CAP_ID_DSN		0x03	/* Device Serial Number */
 #define RTE_PCI_EXT_CAP_ID_SRIOV	0x10	/* SR-IOV*/
+#define RTE_PCI_EXT_CAP_ID_PASID	0x1B    /* Process Address Space ID */
 
 /* Single Root I/O Virtualization */
 #define RTE_PCI_SRIOV_CAP		0x04	/* SR-IOV Capabilities */
@@ -58,6 +59,9 @@ extern "C" {
 #define RTE_PCI_SRIOV_VF_DID		0x1a	/* VF Device ID */
 #define RTE_PCI_SRIOV_SUP_PGSIZE	0x1c	/* Supported Page Sizes */
 
+
+/* Process Address Space ID (RTE_PCI_EXT_CAP_ID_PASID) */
+#define RTE_PCI_PASID_CTRL		0x06    /* PASID control register */
 /** Formatting string for PCI device identifier: Ex: 0000:00:01.0 */
 #define PCI_PRI_FMT "%.4" PRIx32 ":%.2" PRIx8 ":%.2" PRIx8 ".%" PRIx8
 #define PCI_PRI_STR_SIZE sizeof("XXXXXXXX:XX:XX.X")
