@@ -116,8 +116,7 @@ cpfl_prep_sem_rule_blob(const uint8_t *key,
 	uint32_t i;
 
 	idpf_memset(rule_blob, 0, sizeof(*rule_blob), IDPF_DMA_MEM);
-	idpf_memcpy(rule_blob->sem_rule.key, key, key_byte_len,
-		    CPFL_NONDMA_TO_DMA);
+	memcpy(rule_blob->sem_rule.key, key, key_byte_len);
 
 	for (i = 0; i < act_byte_len / sizeof(uint32_t); i++)
 		*act_dst++ = CPU_TO_LE32(*act_src++);

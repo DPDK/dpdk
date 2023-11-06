@@ -2478,7 +2478,7 @@ cpfl_alloc_dma_mem_batch(struct idpf_dma_mem *orig_dma, struct idpf_dma_mem *dma
 {
 	int i;
 
-	if (!idpf_alloc_dma_mem(NULL, orig_dma, size * (1 + batch_size))) {
+	if (!idpf_alloc_dma_mem(NULL, orig_dma, (uint64_t)size * (1 + batch_size))) {
 		PMD_INIT_LOG(ERR, "Could not alloc dma memory");
 		return -ENOMEM;
 	}

@@ -75,8 +75,8 @@ cpfl_receive_ctlq_msg(struct idpf_hw *hw, struct idpf_ctlq_info *cq, u16 num_q_m
 		rte_delay_us_sleep(10);
 		ret = cpfl_vport_ctlq_recv(cq, &num_q_msg, &q_msg[0]);
 
-		if (ret && ret != CPFL_ERR_CTLQ_NO_WORK &&
-		    ret != CPFL_ERR_CTLQ_ERROR) {
+		if (ret && ret != CPFL_ERR_CTLQ_NO_WORK && ret != CPFL_ERR_CTLQ_ERROR &&
+		    ret != CPFL_ERR_CTLQ_EMPTY) {
 			PMD_INIT_LOG(ERR, "failed to recv ctrlq msg. err: 0x%4x\n", ret);
 			retries++;
 			continue;
@@ -164,7 +164,7 @@ cpfl_default_rule_pack(struct cpfl_rule_info *rinfo, struct idpf_dma_mem *dma,
 {
 	union cpfl_rule_cfg_pkt_record *blob = NULL;
 	enum cpfl_ctlq_rule_cfg_opc opc;
-	struct cpfl_rule_cfg_data cfg;
+	struct cpfl_rule_cfg_data cfg = {0};
 	uint16_t cfg_ctrl;
 
 	if (!dma->va) {
