@@ -21,6 +21,9 @@ endif
 if dpdk_conf.has('RTE_USE_LIBBSD')
     ext_deps += libbsd
 endif
+if dpdk_conf.has('RTE_HAS_LIBARCHIVE')
+    ext_deps += libarchive
+endif
 if cc.has_function('getentropy', prefix : '#include <unistd.h>')
     cflags += '-DRTE_LIBEAL_USE_GETENTROPY'
 endif
