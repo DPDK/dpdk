@@ -170,8 +170,10 @@ cnxk_gpio_parse_store_args(struct cnxk_gpio_params **params, const char *args)
 		len += strlen(allowlist) + 1;
 
 	*params = cnxk_gpio_params_reserve(len);
-	if (!(*params))
-		return -ENOMEM;
+	if (!(*params)) {
+		ret = -ENOMEM;
+		goto out;
+	}
 
 	strlcpy((*params)->allowlist, allowlist, strlen(allowlist) + 1);
 
