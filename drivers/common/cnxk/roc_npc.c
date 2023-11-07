@@ -1422,7 +1422,7 @@ npc_inline_dev_ipsec_action_free(struct npc *npc, struct roc_npc_flow *flow)
 	return 1;
 }
 
-static void
+void
 roc_npc_sdp_channel_get(struct roc_npc *roc_npc, uint16_t *chan_base, uint16_t *chan_mask)
 {
 	struct roc_nix *roc_nix = roc_npc->roc_nix;
@@ -1437,8 +1437,9 @@ roc_npc_sdp_channel_get(struct roc_npc *roc_npc, uint16_t *chan_base, uint16_t *
 		num_bits = (sizeof(uint32_t) * 8) - plt_clz32(range) - 1;
 		/* Set mask for (15 - numbits) MSB bits */
 		*chan_mask = (uint16_t)~GENMASK(num_bits, 0);
+		*chan_mask &= 0xFFF;
 	} else {
-		*chan_mask = (uint16_t)GENMASK(15, 0);
+		*chan_mask = (uint16_t)GENMASK(11, 0);
 	}
 
 	mask = (uint16_t)GENMASK(num_bits, 0);

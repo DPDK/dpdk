@@ -459,6 +459,7 @@ INTERNAL {
 	roc_npc_mcam_read_counter;
 	roc_npc_inl_mcam_read_counter;
 	roc_npc_profile_name_get;
+	roc_npc_sdp_channel_get;
 	roc_npc_validate_portid_action;
 	roc_ot_ipsec_inb_sa_init;
 	roc_ot_ipsec_outb_sa_init;
