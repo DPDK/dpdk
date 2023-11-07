@@ -385,4 +385,6 @@ int __roc_api roc_npc_mcam_init(struct roc_npc *roc_npc,
 				struct roc_npc_flow *flow, int mcam_id);
 int __roc_api roc_npc_mcam_move(struct roc_npc *roc_npc, uint16_t old_ent,
 				uint16_t new_ent);
+void __roc_api roc_npc_sdp_channel_get(struct roc_npc *roc_npc, uint16_t *chan_base,
+				       uint16_t *chan_mask);
 #endif /* _ROC_NPC_H_ */
