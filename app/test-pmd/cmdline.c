@@ -4933,6 +4933,7 @@ cmd_tso_set_parsed(void *parsed_result,
 {
 	struct cmd_tso_set_result *res = parsed_result;
 	struct rte_eth_dev_info dev_info;
+	uint64_t offloads;
 	int ret;
 
 	if (port_id_is_invalid(res->port_id, ENABLED_WARN))
@@ -4949,21 +4950,31 @@ cmd_tso_set_parsed(void *parsed_result,
 	if (ret != 0)
 		return;
 
-	if ((ports[res->port_id].tso_segsz != 0) &&
-		(dev_info.tx_offload_capa & RTE_ETH_TX_OFFLOAD_TCP_TSO) == 0) {
-		fprintf(stderr, "Error: TSO is not supported by port %d\n",
-			res->port_id);
-		return;
+	if (ports[res->port_id].tso_segsz != 0) {
+		if ((dev_info.tx_offload_capa & (RTE_ETH_TX_OFFLOAD_TCP_TSO |
+				RTE_ETH_TX_OFFLOAD_UDP_TSO)) == 0) {
+			fprintf(stderr, "Error: both TSO and UFO are not supported by port %d\n",
+				res->port_id);
+			return;
+		}
+		/* display warnings if configuration is not supported by the NIC */
+		if ((dev_info.tx_offload_capa & RTE_ETH_TX_OFFLOAD_TCP_TSO) == 0)
+			printf("Warning: port %d doesn't support TSO\n", res->port_id);
+		if ((dev_info.tx_offload_capa & RTE_ETH_TX_OFFLOAD_UDP_TSO) == 0)
+			printf("Warning: port %d doesn't support UFO\n", res->port_id);
 	}
 
 	if (ports[res->port_id].tso_segsz == 0) {
 		ports[res->port_id].dev_conf.txmode.offloads &=
-						~RTE_ETH_TX_OFFLOAD_TCP_TSO;
-		printf("TSO for non-tunneled packets is disabled\n");
+			~(RTE_ETH_TX_OFFLOAD_TCP_TSO | RTE_ETH_TX_OFFLOAD_UDP_TSO);
+		printf("TSO and UFO for non-tunneled packets is disabled\n");
 	} else {
-		ports[res->port_id].dev_conf.txmode.offloads |=
-						RTE_ETH_TX_OFFLOAD_TCP_TSO;
-		printf("TSO segment size for non-tunneled packets is %d\n",
+		offloads = (dev_info.tx_offload_capa & RTE_ETH_TX_OFFLOAD_TCP_TSO) ?
+					RTE_ETH_TX_OFFLOAD_TCP_TSO : 0;
+		offloads |= (dev_info.tx_offload_capa & RTE_ETH_TX_OFFLOAD_UDP_TSO) ?
+					RTE_ETH_TX_OFFLOAD_UDP_TSO : 0;
+		ports[res->port_id].dev_conf.txmode.offloads |= offloads;
+		printf("segment size for non-tunneled packets is %d\n",
 			ports[res->port_id].tso_segsz);
 	}
 	cmd_config_queue_tx_offloads(&ports[res->port_id]);
