@@ -83,8 +83,6 @@ rte_smp_mb(void)
 
 #define rte_io_rmb() rte_compiler_barrier()
 
-#ifndef RTE_TOOLCHAIN_MSVC
-
 /**
  * Synchronization fence between threads based on the specified memory order.
  *
@@ -100,6 +98,8 @@ rte_atomic_thread_fence(rte_memory_order memorder)
 	else
 		__rte_atomic_thread_fence(memorder);
 }
+
+#ifndef RTE_TOOLCHAIN_MSVC
 
 /*------------------------- 16 bit atomic operations -------------------------*/
 
