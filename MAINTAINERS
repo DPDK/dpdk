@@ -455,6 +455,7 @@ F: examples/l2fwd-crypto/
 
 Security API
 M: Akhil Goyal <gakhil@marvell.com>
+M: Anoob Joseph <anoobj@marvell.com>
 T: git://dpdk.org/next/dpdk-next-crypto
 F: lib/security/
 F: doc/guides/prog_guide/rte_security.rst
