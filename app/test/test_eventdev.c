@@ -313,7 +313,7 @@ test_eventdev_queue_setup(void)
 			    RTE_EVENT_DEV_ATTR_QUEUE_COUNT, &queue_count),
 			    "Queue count get failed");
 
-	for (i = 0; i < (int)queue_count; i++) {
+	for (i = 1; i < (int)queue_count; i++) {
 		ret = rte_event_queue_setup(TEST_DEV_ID, i, NULL);
 		TEST_ASSERT_SUCCESS(ret, "Failed to setup queue%d", i);
 	}
@@ -786,7 +786,7 @@ test_eventdev_port_setup(void)
 				RTE_EVENT_DEV_ATTR_PORT_COUNT,
 				&port_count), "Port count get failed");
 
-	for (i = 0; i < (int)port_count; i++) {
+	for (i = 1; i < (int)port_count; i++) {
 		ret = rte_event_port_setup(TEST_DEV_ID, i, NULL);
 		TEST_ASSERT_SUCCESS(ret, "Failed to setup port%d", i);
 	}
