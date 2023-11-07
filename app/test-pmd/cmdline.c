@@ -4893,19 +4893,6 @@ cmd_tso_set_parsed(void *parsed_result,
 			ports[res->port_id].tso_segsz);
 	}
 	cmd_config_queue_tx_offloads(&ports[res->port_id]);
-
-	/* display warnings if configuration is not supported by the NIC */
-	ret = eth_dev_info_get_print_err(res->port_id, &dev_info);
-	if (ret != 0)
-		return;
-
-	if ((ports[res->port_id].tso_segsz != 0) &&
-		(dev_info.tx_offload_capa & RTE_ETH_TX_OFFLOAD_TCP_TSO) == 0) {
-		fprintf(stderr,
-			"Warning: TSO enabled but not supported by port %d\n",
-			res->port_id);
-	}
-
 	cmd_reconfig_device_queue(res->port_id, 1, 1);
 }
 
