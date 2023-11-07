@@ -1475,7 +1475,7 @@ test_fail:
 int
 test_dlb2_eventdev(void)
 {
-	const char *dlb2_eventdev_name = "dlb2_event";
+	const char *dlb2_eventdev_name = "event_dlb2";
 	uint8_t num_evdevs = rte_event_dev_count();
 	int i, ret = 0;
 	int found = 0, skipped = 0, passed = 0, failed = 0;
@@ -1489,7 +1489,7 @@ test_dlb2_eventdev(void)
 
 		/* skip non-dlb2 event devices */
 		if (strncmp(info.driver_name, dlb2_eventdev_name,
-			    sizeof(*info.driver_name)) != 0) {
+				strlen(dlb2_eventdev_name)) != 0) {
 			skipped++;
 			continue;
 		}
