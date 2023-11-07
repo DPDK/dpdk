@@ -40,12 +40,12 @@ static void intel_umonitor(volatile void *addr)
 
 static void intel_umwait(const uint64_t timeout)
 {
+#if defined(RTE_TOOLCHAIN_MSVC) || defined(__WAITPKG__)
+	_umwait(0, timeout);
+#else
 	const uint32_t tsc_l = (uint32_t)timeout;
 	const uint32_t tsc_h = (uint32_t)(timeout >> 32);
 
-#if defined(RTE_TOOLCHAIN_MSVC) || defined(__WAITPKG__)
-	_umwait(tsc_l, tsc_h);
-#else
 	asm volatile(".byte 0xf2, 0x0f, 0xae, 0xf7;"
 			: /* ignore rflags */
 			: "D"(0), /* enter C0.2 */
@@ -208,17 +208,17 @@ end:
 int
 rte_power_pause(const uint64_t tsc_timestamp)
 {
-	const uint32_t tsc_l = (uint32_t)tsc_timestamp;
-	const uint32_t tsc_h = (uint32_t)(tsc_timestamp >> 32);
-
 	/* prevent user from running this instruction if it's not supported */
 	if (!wait_supported)
 		return -ENOTSUP;
 
 	/* execute TPAUSE */
 #if defined(RTE_TOOLCHAIN_MSVC) || defined(__WAITPKG__)
-	_tpause(tsc_l, tsc_h);
+	_tpause(0, tsc_timestamp);
 #else
+	const uint32_t tsc_l = (uint32_t)tsc_timestamp;
+	const uint32_t tsc_h = (uint32_t)(tsc_timestamp >> 32);
+
 	asm volatile(".byte 0x66, 0x0f, 0xae, 0xf7;"
 			: /* ignore rflags */
 			: "D"(0), /* enter C0.2 */
