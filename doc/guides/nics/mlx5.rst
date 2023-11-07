@@ -537,19 +537,23 @@ Limitations
 
   - Supports ``RTE_FLOW_ACTION_TYPE_SAMPLE`` action only within NIC Rx and
     E-Switch steering domain.
-  - For E-Switch Sampling flow with sample ratio > 1, additional actions are not
-    supported in the sample actions list.
+  - In E-Switch steering domain, for sampling with sample ratio > 1 in a transfer rule,
+    additional actions are not supported in the sample actions list.
   - For ConnectX-5, the ``RTE_FLOW_ACTION_TYPE_SAMPLE`` is typically used as
     first action in the E-Switch egress flow if with header modify or
     encapsulation actions.
-  - For NIC Rx flow, supports ``MARK``, ``COUNT``, ``QUEUE``, ``RSS`` in the
+  - For NIC Rx flow, supports only ``MARK``, ``COUNT``, ``QUEUE``, ``RSS`` in the
     sample actions list.
-  - For E-Switch mirroring flow, supports ``RAW_ENCAP``, ``PORT_ID``,
-    ``VXLAN_ENCAP``, ``NVGRE_ENCAP`` in the sample actions list.
-  - For E-Switch mirroring flow with sample ratio = 1, the ``ENCAP`` action
-    supports uplink port only.
-  - For E-Switch mirroring flow with sample ratio = 1, the ``PORT`` and ``JUMP`` actions
-    are not supported without presented ``ENCAP`` action in the sample actions list.
+  - In E-Switch steering domain, for mirroring with sample ratio = 1 in a transfer rule,
+    supports only ``RAW_ENCAP``, ``PORT_ID``, ``REPRESENTED_PORT``, ``VXLAN_ENCAP``, ``NVGRE_ENCAP``
+    in the sample actions list.
+  - In E-Switch steering domain, for mirroring with sample ratio = 1 in a transfer rule,
+    the encapsulation actions (``RAW_ENCAP`` or ``VXLAN_ENCAP`` or ``NVGRE_ENCAP``)
+    support uplink port only.
+  - In E-Switch steering domain, for mirroring with sample ratio = 1 in a transfer rule,
+    the port actions (``PORT_ID`` or ``REPRESENTED_PORT``) with uplink port and ``JUMP`` action
+    are not supported without the encapsulation actions
+    (``RAW_ENCAP`` or ``VXLAN_ENCAP`` or ``NVGRE_ENCAP``) in the sample actions list.
   - For ConnectX-5 trusted device, the application metadata with SET_TAG index 0
     is not supported before ``RTE_FLOW_ACTION_TYPE_SAMPLE`` action.
 
