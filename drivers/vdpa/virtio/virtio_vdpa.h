@@ -19,7 +19,6 @@ struct virtio_vdpa_vring_info {
 	uint16_t index;
 	uint8_t notifier_state;
 	bool enable;
-	bool vector_enable;
 	struct rte_intr_handle *intr_handle;
 	struct virtio_vdpa_priv *priv;
 };

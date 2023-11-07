@@ -330,7 +330,7 @@ virtio_vdpa_virtq_doorbell_relay_disable(struct virtio_vdpa_priv *priv,
 	int retries = VIRTIO_VDPA_INTR_RETRIES;
 
 	intr_handle = priv->vrings[vq_idx]->intr_handle;
-	if (rte_intr_fd_get(intr_handle) != -1) {
+	if (intr_handle && rte_intr_fd_get(intr_handle) != -1) {
 		while (retries-- && ret == -EAGAIN) {
 			ret = rte_intr_callback_unregister(intr_handle,
 							virtio_vdpa_virtq_handler,
@@ -347,6 +347,8 @@ virtio_vdpa_virtq_doorbell_relay_disable(struct virtio_vdpa_priv *priv,
 		rte_intr_fd_set(intr_handle, -1);
 	}
 	rte_intr_instance_free(intr_handle);
+	priv->vrings[vq_idx]->intr_handle = NULL;
+	priv->vrings[vq_idx]->notifier_state = VIRTIO_VDPA_NOTIFIER_STATE_DISABLED;
 	return 0;
 }
 
@@ -426,14 +428,11 @@ virtio_vdpa_virtq_disable(struct virtio_vdpa_priv *priv, int vq_idx)
 		DRV_LOG(ERR, "%s doorbell relay disable failed ret:%d",
 						priv->vdev->device->name, ret);
 	}
-	priv->vrings[vq_idx]->notifier_state = VIRTIO_VDPA_NOTIFIER_STATE_DISABLED;
 
 	if (priv->configured) {
 		virtio_pci_dev_queue_del(priv->vpdev, vq_idx);
 
-		if (priv->vrings[vq_idx]->vector_enable) {
-			ret = virtio_pci_dev_interrupt_disable(priv->vpdev, vq_idx + 1);
-		}
+        ret = virtio_pci_dev_interrupt_disable(priv->vpdev, vq_idx + 1);
 		if (ret) {
 			DRV_LOG(ERR, "%s virtq %d interrupt disabel failed",
 							priv->vdev->device->name, vq_idx);
@@ -491,8 +490,6 @@ virtio_vdpa_virtq_enable(struct virtio_vdpa_priv *priv, int vq_idx)
 							priv->vdev->device->name, ret);
 			return ret;
 		}
-		if (priv->configured)
-			priv->vrings[vq_idx]->vector_enable = true;
 	} else {
 		DRV_LOG(DEBUG, "%s virtq %d call fd is -1, interrupt is disabled",
 						priv->vdev->device->name, vq_idx);
@@ -535,10 +532,18 @@ virtio_vdpa_virtq_enable(struct virtio_vdpa_priv *priv, int vq_idx)
 
 	DRV_LOG(DEBUG, "Virtq %d nr_entrys:%d", vq_idx, vq.size);
 
-	ret = priv->configured ? virtio_pci_dev_queue_set(priv->vpdev, vq_idx, &vring_info) :
-		virtio_pci_dev_state_queue_set(priv->vpdev, vq_idx, &vring_info, priv->state_mz->addr);
+	if (priv->configured) {
+		ret = virtio_pci_dev_queue_set(priv->vpdev, vq_idx, &vring_info);
+		if (ret) {
+			DRV_LOG(ERR, "%s setup_queue failed", priv->vdev->device->name);
+			return -EINVAL;
+		}
+	}
+
+	/* update state anyway */
+	ret = virtio_pci_dev_state_queue_set(priv->vpdev, vq_idx, &vring_info, priv->state_mz->addr);
 	if (ret) {
-		DRV_LOG(ERR, "%s setup_queue failed", priv->vdev->device->name);
+		DRV_LOG(ERR, "%s setup queue dev_state failed", priv->vdev->device->name);
 		return -EINVAL;
 	}
 
@@ -627,11 +632,25 @@ virtio_vdpa_dev_cleanup(int vid)
 	struct rte_vdpa_device *vdev = rte_vhost_get_vdpa_device(vid);
 	struct virtio_vdpa_priv *priv =
 		virtio_vdpa_find_priv_resource_by_vdev(vdev);
+	uint16_t num_vr, vq_idx;
 
 	if (priv == NULL) {
 		DRV_LOG(ERR, "Invalid vDPA device: %s", vdev->device->name);
 		return -ENODEV;
 	}
+
+	/* Disable all queues when qemu can't gracefully close. */
+	num_vr = rte_vhost_get_vring_num(vid);
+	for (vq_idx = 0; vq_idx < num_vr; vq_idx++) {
+		if (priv->vrings[vq_idx]->enable) {
+			virtio_vdpa_virtq_doorbell_relay_disable(priv, vq_idx);
+			virtio_pci_dev_state_queue_del(priv->vpdev, vq_idx, priv->state_mz->addr);
+			virtio_pci_dev_state_interrupt_disable(priv->vpdev, vq_idx + 1, priv->state_mz->addr);
+			priv->vrings[vq_idx]->enable = false;
+		}
+	}
+
+	virtio_pci_dev_state_all_queues_disable(priv->vpdev, priv->state_mz->addr);
 
 	priv->dev_conf_read = false;
 
@@ -698,6 +717,16 @@ virtio_vdpa_dev_set_mem_table(int vid)
 	if (priv == NULL) {
 		DRV_LOG(ERR, "Invalid vDPA device: %s", vdev->device->name);
 		return -ENODEV;
+	}
+
+    /* In case of hotplug VM memory */
+	if (priv->dev_work_flag == VIRTIO_VDPA_DEV_CLOSE_WORK_START) {
+		DRV_LOG(ERR, "%s is waiting dev close work finish lcore:%d", vdev->device->name, priv->lcore_id);
+		rte_eal_wait_lcore(priv->lcore_id);
+	}
+
+	if (priv->dev_work_flag == VIRTIO_VDPA_DEV_CLOSE_WORK_ERR) {
+		DRV_LOG(ERR, "%s is dev close work had err", vdev->device->name);
 	}
 
 	priv->vid = vid;
@@ -1027,13 +1056,6 @@ virtio_vdpa_dev_close(int vid)
 
 	rte_free(tmp_hw_idx);
 
-	/* Disable all queues */
-	for (i = 0; i < num_vr; i++) {
-		if (priv->vrings[i]->enable)
-			virtio_vdpa_vring_state_set(vid, i, 0);
-	}
-
-	virtio_pci_dev_state_all_queues_disable(priv->vpdev, priv->state_mz->addr);
 
 	virtio_pci_dev_state_dev_status_set(priv->state_mz->addr, VIRTIO_CONFIG_STATUS_ACK |
 													VIRTIO_CONFIG_STATUS_DRIVER);
@@ -1083,8 +1105,6 @@ virtio_vdpa_dev_config(int vid)
 		DRV_LOG(ERR, "%s is dev close work had err", vdev->device->name);
 		return -EINVAL;
 	}
-
-	priv->dev_work_flag = VIRTIO_VDPA_DEV_CLOSE_WORK_CLEAN;
 
 	nr_virtqs = rte_vhost_get_vring_num(vid);
 	if (priv->nvec < (nr_virtqs + 1)) {
@@ -1150,7 +1170,7 @@ virtio_vdpa_dev_config(int vid)
 	priv->configured = 1;
 	t_end  = rte_rdtsc_precise();
 	DRV_LOG(INFO, "%s vid %d was configured, took %lu us.", vdev->device->name,
-            vid, (t_end - t_start) * 1000000 / rte_get_tsc_hz());
+			vid, (t_end - t_start) * 1000000 / rte_get_tsc_hz());
 
 	return 0;
 }
