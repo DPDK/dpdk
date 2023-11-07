@@ -8721,7 +8721,7 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 								RTE_FLOW_ERROR_TYPE_ACTION, NULL,
 								"mirror to rep port with encap is not supported");
 			} else {
-				if ((sub_action_flags & ~MLX5_FLOW_ACTION_ENCAP) &&
+				if (!(sub_action_flags & MLX5_FLOW_ACTION_ENCAP) &&
 				    (action_flags & MLX5_FLOW_ACTION_JUMP))
 					return rte_flow_error_set(error, ENOTSUP,
 								RTE_FLOW_ERROR_TYPE_ACTION, NULL,
