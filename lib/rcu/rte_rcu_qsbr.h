@@ -530,7 +530,7 @@ __rte_rcu_qsbr_check_selective(struct rte_rcu_qsbr *v, uint64_t t, bool wait)
 		id = i << __RTE_QSBR_THRID_INDEX_SHIFT;
 
 		while (bmap) {
-			j = __builtin_ctzl(bmap);
+			j = rte_ctz64(bmap);
 			__RTE_RCU_DP_LOG(DEBUG,
 				"%s: check: token = %" PRIu64 ", wait = %d, Bit Map = 0x%" PRIx64 ", Thread ID = %d",
 				__func__, t, wait, bmap, id + j);

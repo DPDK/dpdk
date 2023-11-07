@@ -231,7 +231,7 @@ rte_rcu_qsbr_dump(FILE *f, struct rte_rcu_qsbr *v)
 					rte_memory_order_acquire);
 		id = i << __RTE_QSBR_THRID_INDEX_SHIFT;
 		while (bmap) {
-			t = __builtin_ctzl(bmap);
+			t = rte_ctz64(bmap);
 			fprintf(f, "%u ", id + t);
 
 			bmap &= ~(1UL << t);
@@ -252,7 +252,7 @@ rte_rcu_qsbr_dump(FILE *f, struct rte_rcu_qsbr *v)
 					rte_memory_order_acquire);
 		id = i << __RTE_QSBR_THRID_INDEX_SHIFT;
 		while (bmap) {
-			t = __builtin_ctzl(bmap);
+			t = rte_ctz64(bmap);
 			fprintf(f, "thread ID = %u, count = %" PRIu64 ", lock count = %u\n",
 				id + t,
 				rte_atomic_load_explicit(

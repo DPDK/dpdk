@@ -11,6 +11,7 @@ extern "C" {
 
 #include <stdint.h>
 #include <rte_vect.h>
+#include <rte_bitops.h>
 
 #ifndef RTE_TABLE_HASH_LRU_STRATEGY
 #ifdef __ARM_NEON
@@ -33,7 +34,7 @@ f_lru_pos(uint64_t lru_list)
 	uint16x4_t min_vec = vmov_n_u16(vminv_u16(lru_vec));
 	uint64_t mask = vget_lane_u64(vreinterpret_u64_u16(
 			vceq_u16(min_vec, lru_vec)), 0);
-	return __builtin_clzl(mask) >> 4;
+	return rte_clz64(mask) >> 4;
 }
 #define lru_pos(bucket) f_lru_pos(bucket->lru_list)
 

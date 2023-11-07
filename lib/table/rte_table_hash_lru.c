@@ -220,8 +220,8 @@ rte_table_hash_lru_create(void *params, int socket_id, uint32_t entry_size)
 
 	/* Internal */
 	t->bucket_mask = t->n_buckets - 1;
-	t->key_size_shl = __builtin_ctzl(p->key_size);
-	t->data_size_shl = __builtin_ctzl(entry_size);
+	t->key_size_shl = rte_ctz32(p->key_size);
+	t->data_size_shl = rte_ctz32(entry_size);
 
 	/* Tables */
 	key_mask_offset = 0;

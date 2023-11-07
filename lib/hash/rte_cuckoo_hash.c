@@ -1931,7 +1931,7 @@ __bulk_lookup_l(const struct rte_hash *h, const void **keys,
 
 		if (prim_hitmask[i]) {
 			uint32_t first_hit =
-					__builtin_ctzl(prim_hitmask[i])
+					rte_ctz32(prim_hitmask[i])
 					>> 1;
 			uint32_t key_idx =
 				primary_bkt[i]->key_idx[first_hit];
@@ -1945,7 +1945,7 @@ __bulk_lookup_l(const struct rte_hash *h, const void **keys,
 
 		if (sec_hitmask[i]) {
 			uint32_t first_hit =
-					__builtin_ctzl(sec_hitmask[i])
+					rte_ctz32(sec_hitmask[i])
 					>> 1;
 			uint32_t key_idx =
 				secondary_bkt[i]->key_idx[first_hit];
@@ -1962,7 +1962,7 @@ __bulk_lookup_l(const struct rte_hash *h, const void **keys,
 		positions[i] = -ENOENT;
 		while (prim_hitmask[i]) {
 			uint32_t hit_index =
-					__builtin_ctzl(prim_hitmask[i])
+					rte_ctz32(prim_hitmask[i])
 					>> 1;
 			uint32_t key_idx =
 				primary_bkt[i]->key_idx[hit_index];
@@ -1990,7 +1990,7 @@ __bulk_lookup_l(const struct rte_hash *h, const void **keys,
 
 		while (sec_hitmask[i]) {
 			uint32_t hit_index =
-					__builtin_ctzl(sec_hitmask[i])
+					rte_ctz32(sec_hitmask[i])
 					>> 1;
 			uint32_t key_idx =
 				secondary_bkt[i]->key_idx[hit_index];
@@ -2088,7 +2088,7 @@ __bulk_lookup_lf(const struct rte_hash *h, const void **keys,
 
 			if (prim_hitmask[i]) {
 				uint32_t first_hit =
-						__builtin_ctzl(prim_hitmask[i])
+						rte_ctz32(prim_hitmask[i])
 						>> 1;
 				uint32_t key_idx =
 					primary_bkt[i]->key_idx[first_hit];
@@ -2102,7 +2102,7 @@ __bulk_lookup_lf(const struct rte_hash *h, const void **keys,
 
 			if (sec_hitmask[i]) {
 				uint32_t first_hit =
-						__builtin_ctzl(sec_hitmask[i])
+						rte_ctz32(sec_hitmask[i])
 						>> 1;
 				uint32_t key_idx =
 					secondary_bkt[i]->key_idx[first_hit];
@@ -2118,7 +2118,7 @@ __bulk_lookup_lf(const struct rte_hash *h, const void **keys,
 		for (i = 0; i < num_keys; i++) {
 			while (prim_hitmask[i]) {
 				uint32_t hit_index =
-						__builtin_ctzl(prim_hitmask[i])
+						rte_ctz32(prim_hitmask[i])
 						>> 1;
 				uint32_t key_idx =
 				rte_atomic_load_explicit(
@@ -2150,7 +2150,7 @@ __bulk_lookup_lf(const struct rte_hash *h, const void **keys,
 
 			while (sec_hitmask[i]) {
 				uint32_t hit_index =
-						__builtin_ctzl(sec_hitmask[i])
+						rte_ctz32(sec_hitmask[i])
 						>> 1;
 				uint32_t key_idx =
 				rte_atomic_load_explicit(
@@ -2357,7 +2357,7 @@ rte_hash_lookup_bulk_data(const struct rte_hash *h, const void **keys,
 	__rte_hash_lookup_bulk(h, keys, num_keys, positions, hit_mask, data);
 
 	/* Return number of hits */
-	return __builtin_popcountl(*hit_mask);
+	return rte_popcount64(*hit_mask);
 }
 
 
@@ -2474,7 +2474,7 @@ rte_hash_lookup_with_hash_bulk_data(const struct rte_hash *h,
 			positions, hit_mask, data);
 
 	/* Return number of hits */
-	return __builtin_popcountl(*hit_mask);
+	return rte_popcount64(*hit_mask);
 }
 
 int32_t

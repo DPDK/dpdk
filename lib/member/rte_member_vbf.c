@@ -108,8 +108,8 @@ rte_member_create_vbf(struct rte_member_setsum *ss,
 	 * div_shift is used for division shift, to be divided by number of bits
 	 * represented by a uint32_t variable
 	 */
-	ss->mul_shift = __builtin_ctzl(ss->num_set);
-	ss->div_shift = __builtin_ctzl(32 >> ss->mul_shift);
+	ss->mul_shift = rte_ctz32(ss->num_set);
+	ss->div_shift = rte_ctz32(32 >> ss->mul_shift);
 
 	RTE_MEMBER_LOG(DEBUG, "vector bloom filter created, "
 		"each bloom filter expects %u keys, needs %u bits, %u hashes, "
@@ -174,7 +174,7 @@ rte_member_lookup_vbf(const struct rte_member_setsum *ss, const void *key,
 	}
 
 	if (mask) {
-		*set_id = __builtin_ctzl(mask) + 1;
+		*set_id = rte_ctz32(mask) + 1;
 		return 1;
 	}
 
@@ -207,7 +207,7 @@ rte_member_lookup_bulk_vbf(const struct rte_member_setsum *ss,
 	}
 	for (i = 0; i < num_keys; i++) {
 		if (mask[i]) {
-			set_ids[i] = __builtin_ctzl(mask[i]) + 1;
+			set_ids[i] = rte_ctz32(mask[i]) + 1;
 			num_matches++;
 		} else
 			set_ids[i] = RTE_MEMBER_NO_MATCH;
@@ -233,7 +233,7 @@ rte_member_lookup_multi_vbf(const struct rte_member_setsum *ss,
 		mask &= test_bit(bit_loc, ss);
 	}
 	while (mask) {
-		uint32_t loc = __builtin_ctzl(mask);
+		uint32_t loc = rte_ctz32(mask);
 		set_id[num_matches] = loc + 1;
 		num_matches++;
 		if (num_matches >= match_per_key)
@@ -272,7 +272,7 @@ rte_member_lookup_multi_bulk_vbf(const struct rte_member_setsum *ss,
 	for (i = 0; i < num_keys; i++) {
 		match_cnt_t = 0;
 		while (mask[i]) {
-			uint32_t loc = __builtin_ctzl(mask[i]);
+			uint32_t loc = rte_ctz32(mask[i]);
 			set_ids[i * match_per_key + match_cnt_t] = loc + 1;
 			match_cnt_t++;
 			if (match_cnt_t >= match_per_key)

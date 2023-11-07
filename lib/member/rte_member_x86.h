@@ -22,7 +22,7 @@ update_entry_search_avx(uint32_t bucket_id, member_sig_t tmp_sig,
 		_mm256_load_si256((__m256i const *)buckets[bucket_id].sigs),
 		_mm256_set1_epi16(tmp_sig)));
 	if (hitmask) {
-		uint32_t hit_idx = __builtin_ctzl(hitmask) >> 1;
+		uint32_t hit_idx = rte_ctz32(hitmask) >> 1;
 		buckets[bucket_id].sets[hit_idx] = set_id;
 		return 1;
 	}
@@ -38,7 +38,7 @@ search_bucket_single_avx(uint32_t bucket_id, member_sig_t tmp_sig,
 		_mm256_load_si256((__m256i const *)buckets[bucket_id].sigs),
 		_mm256_set1_epi16(tmp_sig)));
 	while (hitmask) {
-		uint32_t hit_idx = __builtin_ctzl(hitmask) >> 1;
+		uint32_t hit_idx = rte_ctz32(hitmask) >> 1;
 		if (buckets[bucket_id].sets[hit_idx] != RTE_MEMBER_NO_MATCH) {
 			*set_id = buckets[bucket_id].sets[hit_idx];
 			return 1;
@@ -59,7 +59,7 @@ search_bucket_multi_avx(uint32_t bucket_id, member_sig_t tmp_sig,
 		_mm256_load_si256((__m256i const *)buckets[bucket_id].sigs),
 		_mm256_set1_epi16(tmp_sig)));
 	while (hitmask) {
-		uint32_t hit_idx = __builtin_ctzl(hitmask) >> 1;
+		uint32_t hit_idx = rte_ctz32(hitmask) >> 1;
 		if (buckets[bucket_id].sets[hit_idx] != RTE_MEMBER_NO_MATCH) {
 			set_id[*counter] = buckets[bucket_id].sets[hit_idx];
 			(*counter)++;

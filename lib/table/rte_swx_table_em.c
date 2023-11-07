@@ -260,8 +260,8 @@ __table_create(struct table **table,
 	if (!params->hash_func)
 		t->params.hash_func = rte_hash_crc;
 
-	t->key_size_shl = __builtin_ctzl(key_size);
-	t->data_size_shl = __builtin_ctzl(key_data_size);
+	t->key_size_shl = rte_ctz32(key_size);
+	t->data_size_shl = rte_ctz32(key_data_size);
 	t->n_buckets = n_buckets;
 	t->n_buckets_ext = n_buckets_ext;
 	t->total_size = total_size;
