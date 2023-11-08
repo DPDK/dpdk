@@ -399,6 +399,7 @@ struct roc_npc {
 int __roc_api roc_npc_init(struct roc_npc *roc_npc);
 int __roc_api roc_npc_fini(struct roc_npc *roc_npc);
 const char *__roc_api roc_npc_profile_name_get(struct roc_npc *roc_npc);
+int __roc_api roc_npc_kex_capa_get(struct roc_nix *roc_nix, uint64_t *kex_capability);
 
 struct roc_npc_flow *__roc_api roc_npc_flow_create(struct roc_npc *roc_npc,
 						   const struct roc_npc_attr *attr,

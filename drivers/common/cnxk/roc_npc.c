@@ -236,6 +236,30 @@ roc_npc_profile_name_get(struct roc_npc *roc_npc)
 }
 
 int
+roc_npc_kex_capa_get(struct roc_nix *roc_nix, uint64_t *kex_capability)
+{
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	struct npc npc;
+	int rc = 0;
+
+	memset(&npc, 0, sizeof(npc));
+
+	npc.mbox = (&nix->dev)->mbox;
+
+	rc = npc_mcam_fetch_kex_cfg(&npc);
+	if (rc)
+		return rc;
+
+	rc = npc_mcam_fetch_hw_cap(&npc, &npc.hash_extract_cap);
+	if (rc)
+		return rc;
+
+	*kex_capability = npc_get_kex_capability(&npc);
+
+	return 0;
+}
+
+int
 roc_npc_init(struct roc_npc *roc_npc)
 {
 	uint8_t *mem = NULL, *nix_mem = NULL, *npc_mem = NULL;
