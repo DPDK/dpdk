@@ -1192,7 +1192,9 @@ rte_eth_dev_configure(uint16_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 	}
 
 	if (dev_conf->rxmode.mtu == 0)
-		dev->data->dev_conf.rxmode.mtu = RTE_ETHER_MTU;
+		dev->data->dev_conf.rxmode.mtu =
+			(dev_info.max_mtu == 0) ? RTE_ETHER_MTU :
+			RTE_MIN(dev_info.max_mtu, RTE_ETHER_MTU);
 
 	ret = eth_dev_validate_mtu(port_id, &dev_info,
 			dev->data->dev_conf.rxmode.mtu);
