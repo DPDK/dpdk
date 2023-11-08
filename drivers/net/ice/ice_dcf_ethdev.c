@@ -869,6 +869,26 @@ ice_dcf_free_repr_info(struct ice_dcf_adapter *dcf_adapter)
 	}
 }
 
+int
+ice_dcf_handle_vf_repr_close(struct ice_dcf_adapter *dcf_adapter,
+				uint16_t vf_id)
+{
+	struct ice_dcf_repr_info *vf_rep_info;
+
+	if (dcf_adapter->num_reprs >= vf_id) {
+		PMD_DRV_LOG(ERR, "Invalid VF id: %d", vf_id);
+		return -1;
+	}
+
+	if (!dcf_adapter->repr_infos)
+		return 0;
+
+	vf_rep_info = &dcf_adapter->repr_infos[vf_id];
+	vf_rep_info->vf_rep_eth_dev = NULL;
+
+	return 0;
+}
+
 static int
 ice_dcf_init_repr_info(struct ice_dcf_adapter *dcf_adapter)
 {
@@ -892,11 +912,10 @@ ice_dcf_dev_close(struct rte_eth_dev *dev)
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
 
+	ice_dcf_vf_repr_notify_all(adapter, false);
 	(void)ice_dcf_dev_stop(dev);
 
 	ice_free_queues(dev);
-
-	ice_dcf_free_repr_info(adapter);
 	ice_dcf_uninit_parent_adapter(dev);
 	ice_dcf_uninit_hw(dev, &adapter->real_hw);
 
@@ -1073,7 +1092,7 @@ ice_dcf_dev_reset(struct rte_eth_dev *dev)
 		ice_dcf_reset_hw(dev, hw);
 	}
 
-	ret = ice_dcf_dev_uninit(dev);
+	ret = ice_dcf_dev_close(dev);
 	if (ret)
 		return ret;
 
@@ -1141,12 +1160,17 @@ ice_dcf_dev_init(struct rte_eth_dev *eth_dev)
 
 	ice_dcf_stats_reset(eth_dev);
 
+	ice_dcf_vf_repr_notify_all(adapter, true);
+
 	return 0;
 }
 
 static int
 ice_dcf_dev_uninit(struct rte_eth_dev *eth_dev)
 {
+	struct ice_dcf_adapter *adapter = eth_dev->data->dev_private;
+
+	ice_dcf_free_repr_info(adapter);
 	ice_dcf_dev_close(eth_dev);
 
 	return 0;
