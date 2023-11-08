@@ -17,6 +17,7 @@
 #include "test_cryptodev.h"
 #include "test_cryptodev_dh_test_vectors.h"
 #include "test_cryptodev_dsa_test_vectors.h"
+#include "test_cryptodev_ecdh_test_vectors.h"
 #include "test_cryptodev_ecdsa_test_vectors.h"
 #include "test_cryptodev_ecpm_test_vectors.h"
 #include "test_cryptodev_mod_test_vectors.h"
@@ -1812,6 +1813,744 @@ test_ecpm_all_curve(void)
 }
 
 static int
+test_ecdh_priv_key_generate(enum curve curve_id)
+{
+	struct crypto_testsuite_params_asym *ts_params = &testsuite_params;
+	const struct rte_cryptodev_asymmetric_xform_capability *capa;
+	struct rte_mempool *sess_mpool = ts_params->session_mpool;
+	struct rte_mempool *op_mpool = ts_params->op_mpool;
+	struct rte_cryptodev_asym_capability_idx idx;
+	uint8_t dev_id = ts_params->valid_devs[0];
+	struct rte_crypto_asym_xform xform = {0};
+	struct rte_crypto_op *result_op = NULL;
+	uint8_t output_buf[TEST_DATA_SIZE];
+	struct rte_crypto_asym_op *asym_op;
+	struct rte_crypto_op *op = NULL;
+	int ret, status = TEST_SUCCESS;
+	uint16_t output_buflen = 0;
+	void *sess = NULL;
+	int curve;
+
+	/* Check ECDH capability */
+	idx.type = RTE_CRYPTO_ASYM_XFORM_ECDH;
+	capa = rte_cryptodev_asym_capability_get(dev_id, &idx);
+	if (capa == NULL)
+		return -ENOTSUP;
+
+	if (!(capa->op_types & (1 <<  RTE_CRYPTO_ASYM_KE_PRIV_KEY_GENERATE)))
+		return -ENOTSUP;
+
+	switch (curve_id) {
+	case SECP192R1:
+		curve = RTE_CRYPTO_EC_GROUP_SECP192R1;
+		output_buflen = 24;
+		break;
+	case SECP224R1:
+		curve = RTE_CRYPTO_EC_GROUP_SECP224R1;
+		output_buflen = 28;
+		break;
+	case SECP256R1:
+		curve = RTE_CRYPTO_EC_GROUP_SECP256R1;
+		output_buflen = 32;
+		break;
+	case SECP384R1:
+		curve = RTE_CRYPTO_EC_GROUP_SECP384R1;
+		output_buflen = 48;
+		break;
+	case SECP521R1:
+		curve = RTE_CRYPTO_EC_GROUP_SECP521R1;
+		output_buflen = 66;
+		break;
+	default:
+		RTE_LOG(ERR, USER1,
+				"line %u FAILED: %s", __LINE__,
+				"Unsupported curve id\n");
+		status = TEST_FAILED;
+		goto exit;
+	}
+
+	/* Setup crypto op data structure */
+	op = rte_crypto_op_alloc(op_mpool, RTE_CRYPTO_OP_TYPE_ASYMMETRIC);
+	if (op == NULL) {
+		RTE_LOG(ERR, USER1,
+				"line %u FAILED: %s", __LINE__,
+				"Failed to allocate asymmetric crypto "
+				"operation struct\n");
+		status = TEST_FAILED;
+		goto exit;
+	}
+	asym_op = op->asym;
+
+	/* Setup asym xform */
+	xform.next = NULL;
+	xform.xform_type = RTE_CRYPTO_ASYM_XFORM_ECDH;
+	xform.ec.curve_id = curve;
+
+	ret = rte_cryptodev_asym_session_create(dev_id, &xform, sess_mpool, &sess);
+	if (ret < 0) {
+		RTE_LOG(ERR, USER1,
+				"line %u FAILED: %s", __LINE__,
+				"Session creation failed\n");
+		status = (ret == -ENOTSUP) ? TEST_SKIPPED : TEST_FAILED;
+		goto exit;
+	}
+
+	/* Attach asymmetric crypto session to crypto operations */
+	rte_crypto_op_attach_asym_session(op, sess);
+
+	/* Populate op with operational details */
+	asym_op->ecdh.ke_type = RTE_CRYPTO_ASYM_KE_PRIV_KEY_GENERATE;
+
+	/* Init out buf */
+	asym_op->ecdh.priv_key.data = output_buf;
+	asym_op->ecdh.priv_key.length = output_buflen;
+
+	RTE_LOG(DEBUG, USER1, "Process ASYM operation\n");
+
+	/* Process crypto operation */
+	if (rte_cryptodev_enqueue_burst(dev_id, 0, &op, 1) != 1) {
+		RTE_LOG(ERR, USER1,
+				"line %u FAILED: %s", __LINE__,
+				"Error sending packet for operation\n");
+		status = TEST_FAILED;
+		goto exit;
+	}
+
+	while (rte_cryptodev_dequeue_burst(dev_id, 0, &result_op, 1) == 0)
+		rte_pause();
+
+	if (result_op == NULL) {
+		RTE_LOG(ERR, USER1,
+				"line %u FAILED: %s", __LINE__,
+				"Failed to process asym crypto op\n");
+		status = TEST_FAILED;
+		goto exit;
+	}
+
+	if (result_op->status != RTE_CRYPTO_OP_STATUS_SUCCESS) {
+		RTE_LOG(ERR, USER1,
+				"line %u FAILED: %s", __LINE__,
+				"Failed to process asym crypto op\n");
+		status = TEST_FAILED;
+		goto exit;
+	}
+
+	asym_op = result_op->asym;
+
+	debug_hexdump(stdout, "priv_key:",
+		asym_op->ecdh.priv_key.data, asym_op->ecdh.priv_key.length);
+
+exit:
+	if (sess != NULL)
+		rte_cryptodev_asym_session_free(dev_id, sess);
+	rte_crypto_op_free(op);
+	return status;
+}
+
+static int
+test_ecdh_pub_key_generate(enum curve curve_id)
+{
+	struct crypto_testsuite_params_asym *ts_params = &testsuite_params;
+	const struct rte_cryptodev_asymmetric_xform_capability *capa;
+	struct rte_mempool *sess_mpool = ts_params->session_mpool;
+	struct rte_mempool *op_mpool = ts_params->op_mpool;
+	struct crypto_testsuite_ecdh_params input_params;
+	struct rte_cryptodev_asym_capability_idx idx;
+	uint8_t dev_id = ts_params->valid_devs[0];
+	struct rte_crypto_asym_xform xform = {0};
+	struct rte_crypto_op *result_op = NULL;
+	uint8_t output_buf_x[TEST_DATA_SIZE];
+	uint8_t output_buf_y[TEST_DATA_SIZE];
+	struct rte_crypto_asym_op *asym_op;
+	struct rte_crypto_op *op = NULL;
+	int ret, status = TEST_SUCCESS;
+	void *sess = NULL;
+
+	/* Check ECDH capability */
+	idx.type = RTE_CRYPTO_ASYM_XFORM_ECDH;
+	capa = rte_cryptodev_asym_capability_get(dev_id, &idx);
+	if (capa == NULL)
+		return -ENOTSUP;
+
+	if (!(capa->op_types & (1 <<  RTE_CRYPTO_ASYM_KE_PUB_KEY_GENERATE)))
+		return -ENOTSUP;
+
+	switch (curve_id) {
+	case SECP192R1:
+		input_params = ecdh_param_secp192r1;
+		break;
+	case SECP224R1:
+		input_params = ecdh_param_secp224r1;
+		break;
+	case SECP256R1:
+		input_params = ecdh_param_secp256r1;
+		break;
+	case SECP384R1:
+		input_params = ecdh_param_secp384r1;
+		break;
+	case SECP521R1:
+		input_params = ecdh_param_secp521r1;
+		break;
+	default:
+		RTE_LOG(ERR, USER1,
+				"line %u FAILED: %s", __LINE__,
+				"Unsupported curve id\n");
+		status = TEST_FAILED;
+		goto exit;
+	}
+
+	debug_hexdump(stdout, "pkey:",
+		input_params.pkey_A.data, input_params.pkey_A.length);
+
+	/* Setup crypto op data structure */
+	op = rte_crypto_op_alloc(op_mpool, RTE_CRYPTO_OP_TYPE_ASYMMETRIC);
+	if (op == NULL) {
+		RTE_LOG(ERR, USER1,
+				"line %u FAILED: %s", __LINE__,
+				"Failed to allocate asymmetric crypto "
+				"operation struct\n");
+		status = TEST_FAILED;
+		goto exit;
+	}
+	asym_op = op->asym;
+
+	/* Setup asym xform */
+	xform.next = NULL;
+	xform.xform_type = RTE_CRYPTO_ASYM_XFORM_ECDH;
+	xform.ec.curve_id = input_params.curve;
+	xform.ec.pkey.data = input_params.pkey_A.data;
+	xform.ec.pkey.length = input_params.pkey_A.length;
+
+	ret = rte_cryptodev_asym_session_create(dev_id, &xform, sess_mpool, &sess);
+	if (ret < 0) {
+		RTE_LOG(ERR, USER1,
+				"line %u FAILED: %s", __LINE__,
+				"Session creation failed\n");
+		status = (ret == -ENOTSUP) ? TEST_SKIPPED : TEST_FAILED;
+		goto exit;
+	}
+
+	/* Attach asymmetric crypto session to crypto operations */
+	rte_crypto_op_attach_asym_session(op, sess);
+
+	/* Populate op with operational details */
+	asym_op->ecdh.ke_type = RTE_CRYPTO_ASYM_KE_PUB_KEY_GENERATE;
+
+	/* Init out buf */
+	asym_op->ecdh.pub_key.x.data = output_buf_x;
+	asym_op->ecdh.pub_key.y.data = output_buf_y;
+
+	RTE_LOG(DEBUG, USER1, "Process ASYM operation\n");
+
+	/* Process crypto operation */
+	if (rte_cryptodev_enqueue_burst(dev_id, 0, &op, 1) != 1) {
+		RTE_LOG(ERR, USER1,
+				"line %u FAILED: %s", __LINE__,
+				"Error sending packet for operation\n");
+		status = TEST_FAILED;
+		goto exit;
+	}
+
+	while (rte_cryptodev_dequeue_burst(dev_id, 0, &result_op, 1) == 0)
+		rte_pause();
+
+	if (result_op == NULL) {
+		RTE_LOG(ERR, USER1,
+				"line %u FAILED: %s", __LINE__,
+				"Failed to process asym crypto op\n");
+		status = TEST_FAILED;
+		goto exit;
+	}
+
+	if (result_op->status != RTE_CRYPTO_OP_STATUS_SUCCESS) {
+		RTE_LOG(ERR, USER1,
+				"line %u FAILED: %s", __LINE__,
+				"Failed to process asym crypto op\n");
+		status = TEST_FAILED;
+		goto exit;
+	}
+
+	asym_op = result_op->asym;
+
+	debug_hexdump(stdout, "qx:",
+		asym_op->ecdh.pub_key.x.data, asym_op->ecdh.pub_key.x.length);
+	debug_hexdump(stdout, "qy:",
+		asym_op->ecdh.pub_key.y.data, asym_op->ecdh.pub_key.y.length);
+
+	ret = verify_ecdh_secret(input_params.pubkey_qA_x.data,
+				input_params.pubkey_qA_y.data, result_op);
+	if (ret) {
+		status = TEST_FAILED;
+		RTE_LOG(ERR, USER1,
+				"line %u FAILED: %s", __LINE__,
+				"ECDH public key generation failed.\n");
+		goto exit;
+	}
+
+exit:
+	if (sess != NULL)
+		rte_cryptodev_asym_session_free(dev_id, sess);
+	rte_crypto_op_free(op);
+	return status;
+}
+
+static int
+test_ecdh_pub_key_verify(enum curve curve_id)
+{
+	struct crypto_testsuite_params_asym *ts_params = &testsuite_params;
+	const struct rte_cryptodev_asymmetric_xform_capability *capa;
+	struct rte_mempool *sess_mpool = ts_params->session_mpool;
+	struct rte_mempool *op_mpool = ts_params->op_mpool;
+	struct crypto_testsuite_ecdh_params input_params;
+	struct rte_cryptodev_asym_capability_idx idx;
+	uint8_t dev_id = ts_params->valid_devs[0];
+	struct rte_crypto_asym_xform xform = {0};
+	struct rte_crypto_op *result_op = NULL;
+	struct rte_crypto_asym_op *asym_op;
+	struct rte_crypto_op *op = NULL;
+	int ret, status = TEST_SUCCESS;
+	void *sess = NULL;
+
+	/* Check ECDH capability */
+	idx.type = RTE_CRYPTO_ASYM_XFORM_ECDH;
+	capa = rte_cryptodev_asym_capability_get(dev_id, &idx);
+	if (capa == NULL)
+		return -ENOTSUP;
+
+	if (!(capa->op_types & (1 <<  RTE_CRYPTO_ASYM_KE_PUB_KEY_VERIFY)))
+		return -ENOTSUP;
+
+	switch (curve_id) {
+	case SECP192R1:
+		input_params = ecdh_param_secp192r1;
+		break;
+	case SECP224R1:
+		input_params = ecdh_param_secp224r1;
+		break;
+	case SECP256R1:
+		input_params = ecdh_param_secp256r1;
+		break;
+	case SECP384R1:
+		input_params = ecdh_param_secp384r1;
+		break;
+	case SECP521R1:
+		input_params = ecdh_param_secp521r1;
+		break;
+	default:
+		RTE_LOG(ERR, USER1,
+				"line %u FAILED: %s", __LINE__,
+				"Unsupported curve id\n");
+		status = TEST_FAILED;
+		goto exit;
+	}
+
+	debug_hexdump(stdout, "qx:",
+		input_params.pubkey_qA_x.data, input_params.pubkey_qA_x.length);
+	debug_hexdump(stdout, "qy:",
+		input_params.pubkey_qA_y.data, input_params.pubkey_qA_y.length);
+
+	/* Setup crypto op data structure */
+	op = rte_crypto_op_alloc(op_mpool, RTE_CRYPTO_OP_TYPE_ASYMMETRIC);
+	if (op == NULL) {
+		RTE_LOG(ERR, USER1,
+				"line %u FAILED: %s", __LINE__,
+				"Failed to allocate asymmetric crypto "
+				"operation struct\n");
+		status = TEST_FAILED;
+		goto exit;
+	}
+	asym_op = op->asym;
+
+	/* Setup asym xform */
+	xform.next = NULL;
+	xform.xform_type = RTE_CRYPTO_ASYM_XFORM_ECDH;
+	xform.ec.curve_id = input_params.curve;
+
+	ret = rte_cryptodev_asym_session_create(dev_id, &xform, sess_mpool, &sess);
+	if (ret < 0) {
+		RTE_LOG(ERR, USER1,
+				"line %u FAILED: %s", __LINE__,
+				"Session creation failed\n");
+		status = (ret == -ENOTSUP) ? TEST_SKIPPED : TEST_FAILED;
+		goto exit;
+	}
+
+	/* Attach asymmetric crypto session to crypto operations */
+	rte_crypto_op_attach_asym_session(op, sess);
+
+	/* Populate op with operational details */
+	asym_op->ecdh.ke_type = RTE_CRYPTO_ASYM_KE_PUB_KEY_VERIFY;
+	asym_op->ecdh.pub_key.x.data = input_params.pubkey_qA_x.data;
+	asym_op->ecdh.pub_key.x.length = input_params.pubkey_qA_x.length;
+	asym_op->ecdh.pub_key.y.data = input_params.pubkey_qA_y.data;
+	asym_op->ecdh.pub_key.y.length = input_params.pubkey_qA_y.length;
+
+	RTE_LOG(DEBUG, USER1, "Process ASYM operation\n");
+
+	/* Process crypto operation */
+	if (rte_cryptodev_enqueue_burst(dev_id, 0, &op, 1) != 1) {
+		RTE_LOG(ERR, USER1,
+				"line %u FAILED: %s", __LINE__,
+				"Error sending packet for operation\n");
+		status = TEST_FAILED;
+		goto exit;
+	}
+
+	while (rte_cryptodev_dequeue_burst(dev_id, 0, &result_op, 1) == 0)
+		rte_pause();
+
+	if (result_op == NULL) {
+		RTE_LOG(ERR, USER1,
+				"line %u FAILED: %s", __LINE__,
+				"Failed to process asym crypto op\n");
+		status = TEST_FAILED;
+		goto exit;
+	}
+
+	if (result_op->status != RTE_CRYPTO_OP_STATUS_SUCCESS) {
+		RTE_LOG(ERR, USER1,
+				"line %u FAILED: %s", __LINE__,
+				"Failed to process asym crypto op\n");
+		status = TEST_FAILED;
+		goto exit;
+	}
+
+exit:
+	if (sess != NULL)
+		rte_cryptodev_asym_session_free(dev_id, sess);
+	rte_crypto_op_free(op);
+	return status;
+}
+
+static int
+test_ecdh_shared_secret(enum curve curve_id)
+{
+	struct crypto_testsuite_params_asym *ts_params = &testsuite_params;
+	const struct rte_cryptodev_asymmetric_xform_capability *capa;
+	struct rte_mempool *sess_mpool = ts_params->session_mpool;
+	struct rte_mempool *op_mpool = ts_params->op_mpool;
+	struct crypto_testsuite_ecdh_params input_params;
+	struct rte_cryptodev_asym_capability_idx idx;
+	uint8_t dev_id = ts_params->valid_devs[0];
+	struct rte_crypto_asym_xform xform = {0};
+	struct rte_crypto_op *result_op = NULL;
+	uint8_t output_buf_x[TEST_DATA_SIZE];
+	uint8_t output_buf_y[TEST_DATA_SIZE];
+	struct rte_crypto_asym_op *asym_op;
+	struct rte_crypto_op *op = NULL;
+	int ret, status = TEST_SUCCESS;
+	void *sess = NULL;
+
+	/* Check ECDH capability */
+	idx.type = RTE_CRYPTO_ASYM_XFORM_ECDH;
+	capa = rte_cryptodev_asym_capability_get(dev_id, &idx);
+	if (capa == NULL)
+		return -ENOTSUP;
+
+	if (!(capa->op_types & (1 <<  RTE_CRYPTO_ASYM_KE_SHARED_SECRET_COMPUTE)))
+		return -ENOTSUP;
+
+	switch (curve_id) {
+	case SECP192R1:
+		input_params = ecdh_param_secp192r1;
+		break;
+	case SECP224R1:
+		input_params = ecdh_param_secp224r1;
+		break;
+	case SECP256R1:
+		input_params = ecdh_param_secp256r1;
+		break;
+	case SECP384R1:
+		input_params = ecdh_param_secp384r1;
+		break;
+	case SECP521R1:
+		input_params = ecdh_param_secp521r1;
+		break;
+	default:
+		RTE_LOG(ERR, USER1,
+				"line %u FAILED: %s", __LINE__,
+				"Unsupported curve id\n");
+		status = TEST_FAILED;
+		goto exit;
+	}
+
+	/* zA = dA.QB */
+	debug_hexdump(stdout, "pkey:",
+		input_params.pkey_A.data, input_params.pkey_A.length);
+	debug_hexdump(stdout, "qx:",
+		input_params.pubkey_qB_x.data, input_params.pubkey_qB_x.length);
+	debug_hexdump(stdout, "qy:",
+		input_params.pubkey_qB_y.data, input_params.pubkey_qB_y.length);
+
+	/* Setup crypto op data structure */
+	op = rte_crypto_op_alloc(op_mpool, RTE_CRYPTO_OP_TYPE_ASYMMETRIC);
+	if (op == NULL) {
+		RTE_LOG(ERR, USER1,
+				"line %u FAILED: %s", __LINE__,
+				"Failed to allocate asymmetric crypto "
+				"operation struct\n");
+		status = TEST_FAILED;
+		goto exit;
+	}
+	asym_op = op->asym;
+
+	/* Setup asym xform */
+	xform.next = NULL;
+	xform.xform_type = RTE_CRYPTO_ASYM_XFORM_ECDH;
+	xform.ec.curve_id = input_params.curve;
+	xform.ec.pkey.data = input_params.pkey_A.data;
+	xform.ec.pkey.length = input_params.pkey_A.length;
+	xform.ec.q.x.data = input_params.pubkey_qB_x.data;
+	xform.ec.q.x.length = input_params.pubkey_qB_x.length;
+	xform.ec.q.y.data = input_params.pubkey_qB_y.data;
+	xform.ec.q.y.length = input_params.pubkey_qB_y.length;
+
+	ret = rte_cryptodev_asym_session_create(dev_id, &xform, sess_mpool, &sess);
+	if (ret < 0) {
+		RTE_LOG(ERR, USER1,
+				"line %u FAILED: %s", __LINE__,
+				"Session creation failed\n");
+		status = (ret == -ENOTSUP) ? TEST_SKIPPED : TEST_FAILED;
+		goto exit;
+	}
+
+	/* Attach asymmetric crypto session to crypto operations */
+	rte_crypto_op_attach_asym_session(op, sess);
+
+	/* Populate op with operational details */
+	asym_op->ecdh.ke_type = RTE_CRYPTO_ASYM_KE_SHARED_SECRET_COMPUTE;
+
+	/* Init out buf */
+	asym_op->ecdh.shared_secret.x.data = output_buf_x;
+	asym_op->ecdh.shared_secret.y.data = output_buf_y;
+
+	RTE_LOG(DEBUG, USER1, "Process ASYM operation\n");
+
+	/* Process crypto operation */
+	if (rte_cryptodev_enqueue_burst(dev_id, 0, &op, 1) != 1) {
+		RTE_LOG(ERR, USER1,
+				"line %u FAILED: %s", __LINE__,
+				"Error sending packet for operation\n");
+		status = TEST_FAILED;
+		goto exit;
+	}
+
+	while (rte_cryptodev_dequeue_burst(dev_id, 0, &result_op, 1) == 0)
+		rte_pause();
+
+	if (result_op == NULL) {
+		RTE_LOG(ERR, USER1,
+				"line %u FAILED: %s", __LINE__,
+				"Failed to process asym crypto op\n");
+		status = TEST_FAILED;
+		goto exit;
+	}
+
+	if (result_op->status != RTE_CRYPTO_OP_STATUS_SUCCESS) {
+		RTE_LOG(ERR, USER1,
+				"line %u FAILED: %s", __LINE__,
+				"Failed to process asym crypto op\n");
+		status = TEST_FAILED;
+		goto exit;
+	}
+
+	asym_op = result_op->asym;
+
+	debug_hexdump(stdout, "secret_x:",
+		asym_op->ecdh.shared_secret.x.data, asym_op->ecdh.shared_secret.x.length);
+	debug_hexdump(stdout, "secret_y:",
+		asym_op->ecdh.shared_secret.y.data, asym_op->ecdh.shared_secret.y.length);
+
+	ret = verify_ecdh_secret(input_params.secret_x.data,
+				input_params.secret_y.data, result_op);
+	if (ret) {
+		status = TEST_FAILED;
+		RTE_LOG(ERR, USER1,
+				"line %u FAILED: %s", __LINE__,
+				"ECDH shared secret compute failed.\n");
+		goto exit;
+	}
+
+	if (sess != NULL)
+		rte_cryptodev_asym_session_free(dev_id, sess);
+	rte_crypto_op_free(op);
+
+	/* zB = dB.QA */
+	debug_hexdump(stdout, "pkey:",
+		input_params.pkey_B.data, input_params.pkey_B.length);
+	debug_hexdump(stdout, "qx:",
+		input_params.pubkey_qA_x.data, input_params.pubkey_qA_x.length);
+	debug_hexdump(stdout, "qy:",
+		input_params.pubkey_qA_y.data, input_params.pubkey_qA_y.length);
+
+	/* Setup crypto op data structure */
+	op = rte_crypto_op_alloc(op_mpool, RTE_CRYPTO_OP_TYPE_ASYMMETRIC);
+	if (op == NULL) {
+		RTE_LOG(ERR, USER1,
+				"line %u FAILED: %s", __LINE__,
+				"Failed to allocate asymmetric crypto "
+				"operation struct\n");
+		status = TEST_FAILED;
+		goto exit;
+	}
+	asym_op = op->asym;
+
+	/* Setup asym xform */
+	xform.next = NULL;
+	xform.xform_type = RTE_CRYPTO_ASYM_XFORM_ECDH;
+	xform.ec.curve_id = input_params.curve;
+	xform.ec.pkey.data = input_params.pkey_B.data;
+	xform.ec.pkey.length = input_params.pkey_B.length;
+	xform.ec.q.x.data = input_params.pubkey_qA_x.data;
+	xform.ec.q.x.length = input_params.pubkey_qA_x.length;
+	xform.ec.q.y.data = input_params.pubkey_qA_y.data;
+	xform.ec.q.y.length = input_params.pubkey_qA_y.length;
+
+	ret = rte_cryptodev_asym_session_create(dev_id, &xform, sess_mpool, &sess);
+	if (ret < 0) {
+		RTE_LOG(ERR, USER1,
+				"line %u FAILED: %s", __LINE__,
+				"Session creation failed\n");
+		status = (ret == -ENOTSUP) ? TEST_SKIPPED : TEST_FAILED;
+		goto exit;
+	}
+
+	/* Attach asymmetric crypto session to crypto operations */
+	rte_crypto_op_attach_asym_session(op, sess);
+
+	/* Populate op with operational details */
+	asym_op->ecdh.ke_type = RTE_CRYPTO_ASYM_KE_SHARED_SECRET_COMPUTE;
+
+	/* Init out buf */
+	asym_op->ecdh.shared_secret.x.data = output_buf_x;
+	asym_op->ecdh.shared_secret.y.data = output_buf_y;
+
+	RTE_LOG(DEBUG, USER1, "Process ASYM operation\n");
+
+	/* Process crypto operation */
+	if (rte_cryptodev_enqueue_burst(dev_id, 0, &op, 1) != 1) {
+		RTE_LOG(ERR, USER1,
+				"line %u FAILED: %s", __LINE__,
+				"Error sending packet for operation\n");
+		status = TEST_FAILED;
+		goto exit;
+	}
+
+	while (rte_cryptodev_dequeue_burst(dev_id, 0, &result_op, 1) == 0)
+		rte_pause();
+
+	if (result_op == NULL) {
+		RTE_LOG(ERR, USER1,
+				"line %u FAILED: %s", __LINE__,
+				"Failed to process asym crypto op\n");
+		status = TEST_FAILED;
+		goto exit;
+	}
+
+	if (result_op->status != RTE_CRYPTO_OP_STATUS_SUCCESS) {
+		RTE_LOG(ERR, USER1,
+				"line %u FAILED: %s", __LINE__,
+				"Failed to process asym crypto op\n");
+		status = TEST_FAILED;
+		goto exit;
+	}
+
+	asym_op = result_op->asym;
+
+	debug_hexdump(stdout, "secret_x:",
+			asym_op->ecdh.shared_secret.x.data, asym_op->ecdh.shared_secret.x.length);
+	debug_hexdump(stdout, "secret_y:",
+			asym_op->ecdh.shared_secret.y.data, asym_op->ecdh.shared_secret.y.length);
+
+	ret = verify_ecdh_secret(input_params.secret_x.data,
+				input_params.secret_y.data, result_op);
+	if (ret) {
+		status = TEST_FAILED;
+		RTE_LOG(ERR, USER1,
+				"line %u FAILED: %s", __LINE__,
+				"ECDH shared secret compute failed.\n");
+		goto exit;
+	}
+
+exit:
+	if (sess != NULL)
+		rte_cryptodev_asym_session_free(dev_id, sess);
+	rte_crypto_op_free(op);
+	return status;
+}
+
+static int
+test_ecdh_all_curve(void)
+{
+	int status, overall_status = TEST_SUCCESS;
+	enum curve curve_id;
+	int test_index = 0;
+	const char *msg;
+
+	for (curve_id = SECP192R1; curve_id < END_OF_CURVE_LIST; curve_id++) {
+		if (curve_id == SECP521R1_UA)
+			continue;
+
+		status = test_ecdh_priv_key_generate(curve_id);
+		if (status == TEST_SUCCESS) {
+			msg = "succeeded";
+		} else {
+			msg = "failed";
+			overall_status = status;
+		}
+		printf("  %u) TestCase ECDH private key generation for Curve %s %s\n",
+		       test_index ++, curve[curve_id], msg);
+	}
+
+	for (curve_id = SECP192R1; curve_id < END_OF_CURVE_LIST; curve_id++) {
+		if (curve_id == SECP521R1_UA)
+			continue;
+
+		status = test_ecdh_pub_key_generate(curve_id);
+		if (status == TEST_SUCCESS) {
+			msg = "succeeded";
+		} else {
+			msg = "failed";
+			overall_status = status;
+		}
+		printf("  %u) TestCase ECDH public key generation for Curve %s %s\n",
+		       test_index ++, curve[curve_id], msg);
+	}
+
+	for (curve_id = SECP192R1; curve_id < END_OF_CURVE_LIST; curve_id++) {
+		if (curve_id == SECP521R1_UA)
+			continue;
+
+		status = test_ecdh_pub_key_verify(curve_id);
+		if (status == TEST_SUCCESS) {
+			msg = "succeeded";
+		} else {
+			msg = "failed";
+			overall_status = status;
+		}
+		printf("  %u) TestCase ECDH public key verification for Curve %s %s\n",
+		       test_index ++, curve[curve_id], msg);
+	}
+
+	for (curve_id = SECP192R1; curve_id < END_OF_CURVE_LIST; curve_id++) {
+		if (curve_id == SECP521R1_UA)
+			continue;
+
+		status = test_ecdh_shared_secret(curve_id);
+		if (status == TEST_SUCCESS) {
+			msg = "succeeded";
+		} else {
+			msg = "failed";
+			overall_status = status;
+		}
+		printf("  %u) TestCase ECDH shared secret compute for Curve %s %s\n",
+		       test_index ++, curve[curve_id], msg);
+	}
+
+	return overall_status;
+}
+
+static int
 test_sm2_sign(void)
 {
 	struct crypto_testsuite_params_asym *ts_params = &testsuite_params;
@@ -2853,6 +3592,8 @@ static struct unit_test_suite cryptodev_octeontx_asym_testsuite  = {
 			     test_ecdsa_sign_verify_all_curve),
 		TEST_CASE_ST(ut_setup_asym, ut_teardown_asym, test_sm2_sign),
 		TEST_CASE_ST(ut_setup_asym, ut_teardown_asym, test_sm2_verify),
+		TEST_CASE_ST(ut_setup_asym, ut_teardown_asym,
+				test_ecdh_all_curve),
 		TEST_CASE_ST(ut_setup_asym, ut_teardown_asym,
 				test_ecpm_all_curve),
 		TEST_CASES_END() /**< NULL terminate unit test array */
