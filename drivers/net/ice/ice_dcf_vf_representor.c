@@ -50,9 +50,28 @@ ice_dcf_vf_repr_dev_stop(struct rte_eth_dev *dev)
 	return 0;
 }
 
+static void
+ice_dcf_vf_repr_notify_one(struct rte_eth_dev *dev, bool valid)
+{
+	struct ice_dcf_vf_repr *repr = dev->data->dev_private;
+
+	repr->dcf_valid = valid;
+}
+
 static int
 ice_dcf_vf_repr_dev_close(struct rte_eth_dev *dev)
 {
+	struct ice_dcf_vf_repr *repr = dev->data->dev_private;
+	struct ice_dcf_adapter *dcf_adapter;
+	int err;
+
+	if (repr->dcf_valid) {
+		dcf_adapter = repr->dcf_eth_dev->data->dev_private;
+		err = ice_dcf_handle_vf_repr_close(dcf_adapter, repr->vf_id);
+		if (err)
+			PMD_DRV_LOG(ERR, "VF representor invalid");
+	}
+
 	return ice_dcf_vf_repr_uninit(dev);
 }
 
@@ -111,13 +130,14 @@ ice_dcf_vf_repr_link_update(__rte_unused struct rte_eth_dev *ethdev,
 static __rte_always_inline struct ice_dcf_hw *
 ice_dcf_vf_repr_hw(struct ice_dcf_vf_repr *repr)
 {
-	struct ice_dcf_adapter *dcf_adapter =
-			repr->dcf_eth_dev->data->dev_private;
+	struct ice_dcf_adapter *dcf_adapter;
 
-	if (!dcf_adapter) {
+	if (!repr->dcf_valid) {
 		PMD_DRV_LOG(ERR, "DCF for VF representor has been released\n");
 		return NULL;
 	}
+
+	dcf_adapter = repr->dcf_eth_dev->data->dev_private;
 
 	return &dcf_adapter->real_hw;
 }
@@ -414,6 +434,7 @@ ice_dcf_vf_repr_init(struct rte_eth_dev *vf_rep_eth_dev, void *init_param)
 	repr->dcf_eth_dev = param->dcf_eth_dev;
 	repr->switch_domain_id = param->switch_domain_id;
 	repr->vf_id = param->vf_id;
+	repr->dcf_valid = true;
 	repr->outer_vlan_info.port_vlan_ena = false;
 	repr->outer_vlan_info.stripping_ena = false;
 	repr->outer_vlan_info.tpid = RTE_ETHER_TYPE_VLAN;
@@ -486,5 +507,24 @@ ice_dcf_vf_repr_stop_all(struct ice_dcf_adapter *dcf_adapter)
 		ret = ice_dcf_vf_repr_dev_stop(vf_rep_eth_dev);
 		if (!ret)
 			vf_rep_eth_dev->data->dev_started = 0;
+	}
+}
+
+void
+ice_dcf_vf_repr_notify_all(struct ice_dcf_adapter *dcf_adapter, bool valid)
+{
+	uint16_t vf_id;
+	struct rte_eth_dev *vf_rep_eth_dev;
+
+	if (!dcf_adapter->repr_infos)
+		return;
+
+	for (vf_id = 0; vf_id < dcf_adapter->real_hw.num_vfs; vf_id++) {
+		vf_rep_eth_dev = dcf_adapter->repr_infos[vf_id].vf_rep_eth_dev;
+
+		if (!vf_rep_eth_dev)
+			continue;
+
+		ice_dcf_vf_repr_notify_one(vf_rep_eth_dev, valid);
 	}
 }
