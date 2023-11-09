@@ -345,8 +345,8 @@ mlx5_hairpin_auto_bind(struct rte_eth_dev *dev)
 		ret = mlx5_devx_cmd_modify_sq(sq, &sq_attr);
 		if (ret)
 			goto error;
-		rq_attr.state = MLX5_SQC_STATE_RDY;
-		rq_attr.rq_state = MLX5_SQC_STATE_RST;
+		rq_attr.state = MLX5_RQC_STATE_RDY;
+		rq_attr.rq_state = MLX5_RQC_STATE_RST;
 		rq_attr.hairpin_peer_sq = sq->id;
 		rq_attr.hairpin_peer_vhca = priv->config.hca_attr.vhca_id;
 		ret = mlx5_devx_cmd_modify_rq(rq, &rq_attr);
@@ -599,8 +599,8 @@ mlx5_hairpin_queue_peer_bind(struct rte_eth_dev *dev, uint16_t cur_queue,
 				" mismatch", dev->data->port_id, cur_queue);
 			return -rte_errno;
 		}
-		rq_attr.state = MLX5_SQC_STATE_RDY;
-		rq_attr.rq_state = MLX5_SQC_STATE_RST;
+		rq_attr.state = MLX5_RQC_STATE_RDY;
+		rq_attr.rq_state = MLX5_RQC_STATE_RST;
 		rq_attr.hairpin_peer_sq = peer_info->qp_id;
 		rq_attr.hairpin_peer_vhca = peer_info->vhca_id;
 		ret = mlx5_devx_cmd_modify_rq(rxq_ctrl->obj->rq, &rq_attr);
@@ -664,7 +664,7 @@ mlx5_hairpin_queue_peer_unbind(struct rte_eth_dev *dev, uint16_t cur_queue,
 			return -rte_errno;
 		}
 		sq_attr.state = MLX5_SQC_STATE_RST;
-		sq_attr.sq_state = MLX5_SQC_STATE_RST;
+		sq_attr.sq_state = MLX5_SQC_STATE_RDY;
 		ret = mlx5_devx_cmd_modify_sq(txq_ctrl->obj->sq, &sq_attr);
 		if (ret == 0)
 			txq_ctrl->hairpin_status = 0;
@@ -698,8 +698,8 @@ mlx5_hairpin_queue_peer_unbind(struct rte_eth_dev *dev, uint16_t cur_queue,
 				dev->data->port_id, cur_queue);
 			return -rte_errno;
 		}
-		rq_attr.state = MLX5_SQC_STATE_RST;
-		rq_attr.rq_state = MLX5_SQC_STATE_RST;
+		rq_attr.state = MLX5_RQC_STATE_RST;
+		rq_attr.rq_state = MLX5_RQC_STATE_RDY;
 		ret = mlx5_devx_cmd_modify_rq(rxq_ctrl->obj->rq, &rq_attr);
 		if (ret == 0)
 			rxq->hairpin_status = 0;
