@@ -1494,13 +1494,13 @@ mlx5_traffic_enable_hws(struct rte_eth_dev *dev)
 			continue;
 		queue = mlx5_txq_get_sqn(txq);
 		if ((priv->representor || priv->master) && config->dv_esw_en) {
-			if (mlx5_flow_hw_esw_create_sq_miss_flow(dev, queue)) {
+			if (mlx5_flow_hw_esw_create_sq_miss_flow(dev, queue, false)) {
 				mlx5_txq_release(dev, i);
 				goto error;
 			}
 		}
 		if (config->dv_esw_en && config->repr_matching) {
-			if (mlx5_flow_hw_tx_repr_matching_flow(dev, queue)) {
+			if (mlx5_flow_hw_tx_repr_matching_flow(dev, queue, false)) {
 				mlx5_txq_release(dev, i);
 				goto error;
 			}

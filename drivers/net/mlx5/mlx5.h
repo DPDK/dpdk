@@ -1855,6 +1855,7 @@ struct mlx5_priv {
 	void *root_drop_action; /* Pointer to root drop action. */
 	rte_spinlock_t hw_ctrl_lock;
 	LIST_HEAD(hw_ctrl_flow, mlx5_hw_ctrl_flow) hw_ctrl_flows;
+	LIST_HEAD(hw_ext_ctrl_flow, mlx5_hw_ctrl_flow) hw_ext_ctrl_flows;
 	struct rte_flow_template_table *hw_esw_sq_miss_root_tbl;
 	struct rte_flow_template_table *hw_esw_sq_miss_tbl;
 	struct rte_flow_template_table *hw_esw_zero_tbl;
