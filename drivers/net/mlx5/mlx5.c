@@ -1612,6 +1612,9 @@ mlx5_alloc_shared_dev_ctx(const struct mlx5_dev_spawn_data *spawn,
 	/* Add context to the global device list. */
 	LIST_INSERT_HEAD(&mlx5_dev_ctx_list, sh, next);
 	rte_spinlock_init(&sh->geneve_tlv_opt_sl);
+	/* Init counter pool list header and lock. */
+	LIST_INIT(&sh->hws_cpool_list);
+	rte_spinlock_init(&sh->cpool_lock);
 exit:
 	pthread_mutex_unlock(&mlx5_dev_ctx_list_mutex);
 	return sh;

@@ -1455,6 +1455,8 @@ struct mlx5_dev_ctx_shared {
 	uint32_t host_shaper_rate:8;
 	uint32_t lwm_triggered:1;
 	struct mlx5_hws_cnt_svc_mng *cnt_svc;
+	rte_spinlock_t cpool_lock;
+	LIST_HEAD(hws_cpool_list, mlx5_hws_cnt_pool) hws_cpool_list; /* Count pool list. */
 	struct mlx5_dev_shared_port port[]; /* per device port data array. */
 };
 
