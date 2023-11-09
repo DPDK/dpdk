@@ -383,12 +383,14 @@ mlx5_crypto_dev_probe(struct mlx5_common_device *cdev,
 	if (devarg_prms.is_aes_gcm) {
 		ret = mlx5_crypto_gcm_init(priv);
 		if (ret) {
+			rte_cryptodev_pmd_destroy(priv->crypto_dev);
 			DRV_LOG(ERR, "Failed to init AES-GCM crypto.");
 			return -ENOTSUP;
 		}
 	} else {
 		ret = mlx5_crypto_xts_init(priv);
 		if (ret) {
+			rte_cryptodev_pmd_destroy(priv->crypto_dev);
 			DRV_LOG(ERR, "Failed to init AES-XTS crypto.");
 			return -ENOTSUP;
 		}
