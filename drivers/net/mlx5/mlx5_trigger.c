@@ -820,6 +820,11 @@ error:
 		txq_ctrl = mlx5_txq_get(dev, i);
 		if (txq_ctrl == NULL)
 			continue;
+		if (txq_ctrl->type != MLX5_TXQ_TYPE_HAIRPIN ||
+		    txq_ctrl->hairpin_conf.peers[0].port != rx_port) {
+			mlx5_txq_release(dev, i);
+			continue;
+		}
 		rx_queue = txq_ctrl->hairpin_conf.peers[0].queue;
 		rte_eth_hairpin_queue_peer_unbind(rx_port, rx_queue, 0);
 		mlx5_hairpin_queue_peer_unbind(dev, i, 1);
