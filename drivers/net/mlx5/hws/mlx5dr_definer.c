@@ -2143,6 +2143,9 @@ mlx5dr_definer_conv_item_ipv6_routing_ext(struct mlx5dr_definer_conv_data *cd,
 			fc->tag_mask_set = &mlx5dr_definer_ones_set;
 			DR_CALC_SET(fc, eth_l3, protocol_next_header, inner);
 		}
+	} else {
+		rte_errno = ENOTSUP;
+		return rte_errno;
 	}
 
 	if (!m)
