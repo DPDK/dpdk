@@ -394,9 +394,9 @@ qat_sym_build_request(void *in_op, uint8_t *out_msg,
 
 		}
 		min_ofs = auth_ofs;
-
-		if (ctx->qat_hash_alg != ICP_QAT_HW_AUTH_ALGO_NULL ||
-				ctx->auth_op == ICP_QAT_HW_AUTH_VERIFY)
+		if (ctx->qat_hash_alg == ICP_QAT_HW_AUTH_ALGO_NULL)
+			auth_param->auth_res_addr = cookie->digest_null_phys_addr;
+		else
 			auth_param->auth_res_addr =
 					op->sym->auth.digest.phys_addr;
 
