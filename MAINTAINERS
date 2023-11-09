@@ -1889,6 +1889,11 @@ T: git://dpdk.org/next/dpdk-next-eventdev
 F: examples/l2fwd-event/
 F: doc/guides/sample_app_ug/l2_forward_event.rst
 
+L2 forwarding with MACsec example
+M: Akhil Goyal <gakhil@marvell.com>
+F: doc/guides/sample_app_ug/l2_forward_macsec.rst
+F: examples/l2fwd-macsec/
+
 L3 forwarding example
 F: examples/l3fwd/
 F: doc/guides/sample_app_ug/l3_forward.rst

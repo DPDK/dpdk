@@ -26,6 +26,7 @@ Sample Applications User Guides
     l2_forward_real_virtual
     l2_forward_event
     l2_forward_cat
+    l2_forward_macsec
     l3_forward
     l3_forward_graph
     l3_forward_power_man

@@ -302,6 +302,11 @@ New Features
   Application provides a framework so that each use case can be added via a file.
   Each CLI will further be translated into a graph representing the use case.
 
+* **Added layer 2 MACsec forwarding example application.**
+
+  Added a new example layer 2 forwarding application to benchmark
+  MACsec encryption/decryption using rte_security based inline sessions.
+
 
 Removed Items
 -------------
