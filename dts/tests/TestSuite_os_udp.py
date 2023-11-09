@@ -19,6 +19,8 @@ class TestOSUdp(TestSuite):
             Configure SUT ports and SUT to route traffic from if1 to if2.
         """
 
+        # This test uses kernel drivers
+        self.sut_node.bind_ports_to_driver(for_dpdk=False)
         self.configure_testbed_ipv4()
 
     def test_os_udp(self) -> None:
@@ -43,3 +45,5 @@ class TestOSUdp(TestSuite):
             Remove the SUT port configuration configured in setup.
         """
         self.configure_testbed_ipv4(restore=True)
+        # Assume other suites will likely need dpdk driver
+        self.sut_node.bind_ports_to_driver(for_dpdk=True)

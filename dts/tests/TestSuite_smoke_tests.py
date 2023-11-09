@@ -84,9 +84,7 @@ class SmokeTests(TestSuite):
             Ensure that all drivers listed in the config are bound to the correct
             driver.
         """
-        path_to_devbind = self.sut_node.main_session.join_remote_path(
-            self.sut_node._remote_dpdk_dir, "usertools", "dpdk-devbind.py"
-        )
+        path_to_devbind = self.sut_node.path_to_devbind_script
 
         all_nics_in_dpdk_devbind = self.sut_node.main_session.send_command(
             f"{path_to_devbind} --status | awk '{REGEX_FOR_PCI_ADDRESS}'",
@@ -108,7 +106,7 @@ class SmokeTests(TestSuite):
             # We know this isn't None, but mypy doesn't
             assert devbind_info_for_nic is not None
             self.verify(
-                devbind_info_for_nic.group(1) == nic.os_driver,
+                devbind_info_for_nic.group(1) == nic.os_driver_for_dpdk,
                 f"Driver for device {nic.pci} does not match driver listed in "
                 f"configuration (bound to {devbind_info_for_nic.group(1)})",
             )

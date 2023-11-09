@@ -89,6 +89,7 @@ class SutNode(Node):
     _dpdk_version: str | None
     _node_info: NodeInfo | None
     _compiler_version: str | None
+    _path_to_devbind_script: PurePath | None
 
     def __init__(self, node_config: SutNodeConfiguration):
         super(SutNode, self).__init__(node_config)
@@ -105,6 +106,7 @@ class SutNode(Node):
         self._dpdk_version = None
         self._node_info = None
         self._compiler_version = None
+        self._path_to_devbind_script = None
         self._logger.info(f"Created node: {self.name}")
 
     @property
@@ -155,6 +157,14 @@ class SutNode(Node):
                 return ""
         return self._compiler_version
 
+    @property
+    def path_to_devbind_script(self) -> PurePath:
+        if self._path_to_devbind_script is None:
+            self._path_to_devbind_script = self.main_session.join_remote_path(
+                self._remote_dpdk_dir, "usertools", "dpdk-devbind.py"
+            )
+        return self._path_to_devbind_script
+
     def get_build_target_info(self) -> BuildTargetInfo:
         return BuildTargetInfo(
             dpdk_version=self.dpdk_version, compiler_version=self.compiler_version
@@ -176,6 +186,14 @@ class SutNode(Node):
         self._configure_build_target(build_target_config)
         self._copy_dpdk_tarball()
         self._build_dpdk()
+        self.bind_ports_to_driver()
+
+    def _tear_down_build_target(self) -> None:
+        """
+        This method exists to be optionally overwritten by derived classes and
+        is not decorated so that the derived class doesn't have to use the decorator.
+        """
+        self.bind_ports_to_driver(for_dpdk=False)
 
     def _configure_build_target(
         self, build_target_config: BuildTargetConfiguration
@@ -389,3 +407,18 @@ class SutNode(Node):
         return super().create_interactive_shell(
             shell_cls, timeout, privileged, str(eal_parameters)
         )
+
+    def bind_ports_to_driver(self, for_dpdk: bool = True) -> None:
+        """Bind all ports on the SUT to a driver.
+
+        Args:
+            for_dpdk: Boolean that, when True, binds ports to os_driver_for_dpdk
+            or, when False, binds to os_driver. Defaults to True.
+        """
+        for port in self.ports:
+            driver = port.os_driver_for_dpdk if for_dpdk else port.os_driver
+            self.main_session.send_command(
+                f"{self.path_to_devbind_script} -b {driver} --force {port.pci}",
+                privileged=True,
+                verify=True,
+            )
