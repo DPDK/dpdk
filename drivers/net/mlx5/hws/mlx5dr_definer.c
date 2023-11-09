@@ -1069,10 +1069,12 @@ mlx5dr_definer_conv_item_udp(struct mlx5dr_definer_conv_data *cd,
 	/* Set match on L4 type UDP */
 	if (!cd->relaxed) {
 		fc = &cd->fc[DR_CALC_FNAME(IP_PROTOCOL, inner)];
-		fc->item_idx = item_idx;
-		fc->tag_set = &mlx5dr_definer_udp_protocol_set;
-		fc->tag_mask_set = &mlx5dr_definer_ones_set;
-		DR_CALC_SET(fc, eth_l2, l4_type_bwc, inner);
+		if (!fc->not_overwrite) {
+			fc->item_idx = item_idx;
+			fc->tag_set = &mlx5dr_definer_udp_protocol_set;
+			fc->tag_mask_set = &mlx5dr_definer_ones_set;
+			DR_CALC_SET(fc, eth_l2, l4_type_bwc, inner);
+		}
 	}
 
 	if (!m)
@@ -1115,10 +1117,12 @@ mlx5dr_definer_conv_item_tcp(struct mlx5dr_definer_conv_data *cd,
 	/* Overwrite match on L4 type TCP */
 	if (!cd->relaxed) {
 		fc = &cd->fc[DR_CALC_FNAME(IP_PROTOCOL, inner)];
-		fc->item_idx = item_idx;
-		fc->tag_set = &mlx5dr_definer_tcp_protocol_set;
-		fc->tag_mask_set = &mlx5dr_definer_ones_set;
-		DR_CALC_SET(fc, eth_l2, l4_type_bwc, inner);
+		if (!fc->not_overwrite) {
+			fc->item_idx = item_idx;
+			fc->tag_set = &mlx5dr_definer_tcp_protocol_set;
+			fc->tag_mask_set = &mlx5dr_definer_ones_set;
+			DR_CALC_SET(fc, eth_l2, l4_type_bwc, inner);
+		}
 	}
 
 	if (!m)
@@ -2141,6 +2145,7 @@ mlx5dr_definer_conv_item_ipv6_routing_ext(struct mlx5dr_definer_conv_data *cd,
 			fc->item_idx = item_idx;
 			fc->tag_set = &mlx5dr_definer_ipv6_routing_hdr_set;
 			fc->tag_mask_set = &mlx5dr_definer_ones_set;
+			fc->not_overwrite = 1;
 			DR_CALC_SET(fc, eth_l3, protocol_next_header, inner);
 		}
 	} else {

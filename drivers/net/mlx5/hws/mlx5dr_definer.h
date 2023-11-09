@@ -166,6 +166,7 @@ struct mlx5dr_definer_fc {
 	int bit_off;
 	uint32_t bit_mask;
 	enum mlx5dr_definer_fname fname;
+	uint8_t not_overwrite;
 	void (*tag_set)(struct mlx5dr_definer_fc *fc,
 			const void *item_spec,
 			uint8_t *tag);
