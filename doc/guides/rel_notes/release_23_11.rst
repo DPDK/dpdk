@@ -228,6 +228,7 @@ New Features
 
 * **Updated ipsec_mb crypto driver.**
 
+  * Added Intel IPsec MB v1.5 library support for x86 platform.
   * Added support for digest encrypted to AESNI_MB asynchronous crypto driver.
 
 * **Updated Intel QuickAssist Technology driver.**
