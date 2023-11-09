@@ -98,6 +98,7 @@ struct mlx5_hws_cnt_pool_caches {
 };
 
 struct mlx5_hws_cnt_pool {
+	LIST_ENTRY(mlx5_hws_cnt_pool) next;
 	struct mlx5_hws_cnt_pool_cfg cfg __rte_cache_aligned;
 	struct mlx5_hws_cnt_dcs_mng dcs_mng __rte_cache_aligned;
 	uint32_t query_gen __rte_cache_aligned;
@@ -108,6 +109,7 @@ struct mlx5_hws_cnt_pool {
 	struct rte_ring *wait_reset_list;
 	struct mlx5_hws_cnt_pool_caches *cache;
 	uint64_t time_of_last_age_check;
+	struct mlx5_priv *priv;
 } __rte_cache_aligned;
 
 /* HWS AGE status. */

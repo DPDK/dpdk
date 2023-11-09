@@ -294,26 +294,25 @@ mlx5_hws_cnt_svc(void *opaque)
 		(struct mlx5_dev_ctx_shared *)opaque;
 	uint64_t interval =
 		(uint64_t)sh->cnt_svc->query_interval * (US_PER_S / MS_PER_S);
-	uint16_t port_id;
+	struct mlx5_hws_cnt_pool *hws_cpool;
 	uint64_t start_cycle, query_cycle = 0;
 	uint64_t query_us;
 	uint64_t sleep_us;
 
 	while (sh->cnt_svc->svc_running != 0) {
+		if (rte_spinlock_trylock(&sh->cpool_lock) == 0)
+			continue;
 		start_cycle = rte_rdtsc();
-		MLX5_ETH_FOREACH_DEV(port_id, sh->cdev->dev) {
-			struct mlx5_priv *opriv =
-				rte_eth_devices[port_id].data->dev_private;
-			if (opriv != NULL &&
-			    opriv->sh == sh &&
-			    opriv->hws_cpool != NULL) {
-				__mlx5_hws_cnt_svc(sh, opriv->hws_cpool);
-				if (opriv->hws_age_req)
-					mlx5_hws_aging_check(opriv,
-							     opriv->hws_cpool);
-			}
+		/* 200ms for 16M counters. */
+		LIST_FOREACH(hws_cpool, &sh->hws_cpool_list, next) {
+			struct mlx5_priv *opriv = hws_cpool->priv;
+
+			__mlx5_hws_cnt_svc(sh, hws_cpool);
+			if (opriv->hws_age_req)
+				mlx5_hws_aging_check(opriv, hws_cpool);
 		}
 		query_cycle = rte_rdtsc() - start_cycle;
+		rte_spinlock_unlock(&sh->cpool_lock);
 		query_us = query_cycle / (rte_get_timer_hz() / US_PER_S);
 		sleep_us = interval - query_us;
 		if (interval > query_us)
@@ -665,6 +664,10 @@ mlx5_hws_cnt_pool_create(struct rte_eth_dev *dev,
 	if (ret != 0)
 		goto error;
 	priv->sh->cnt_svc->refcnt++;
+	cpool->priv = priv;
+	rte_spinlock_lock(&priv->sh->cpool_lock);
+	LIST_INSERT_HEAD(&priv->sh->hws_cpool_list, cpool, next);
+	rte_spinlock_unlock(&priv->sh->cpool_lock);
 	return cpool;
 error:
 	mlx5_hws_cnt_pool_destroy(priv->sh, cpool);
@@ -677,6 +680,13 @@ mlx5_hws_cnt_pool_destroy(struct mlx5_dev_ctx_shared *sh,
 {
 	if (cpool == NULL)
 		return;
+	/*
+	 * 16M counter consumes 200ms to finish the query.
+	 * Maybe blocked for at most 200ms here.
+	 */
+	rte_spinlock_lock(&sh->cpool_lock);
+	LIST_REMOVE(cpool, next);
+	rte_spinlock_unlock(&sh->cpool_lock);
 	if (cpool->cfg.host_cpool == NULL) {
 		if (--sh->cnt_svc->refcnt == 0)
 			mlx5_hws_cnt_svc_deinit(sh);
@@ -1244,11 +1254,13 @@ mlx5_hws_age_pool_destroy(struct mlx5_priv *priv)
 {
 	struct mlx5_age_info *age_info = GET_PORT_AGE_INFO(priv);
 
+	rte_spinlock_lock(&priv->sh->cpool_lock);
 	MLX5_ASSERT(priv->hws_age_req);
 	mlx5_hws_age_info_destroy(priv);
 	mlx5_ipool_destroy(age_info->ages_ipool);
 	age_info->ages_ipool = NULL;
 	priv->hws_age_req = 0;
+	rte_spinlock_unlock(&priv->sh->cpool_lock);
 }
 
 #endif
