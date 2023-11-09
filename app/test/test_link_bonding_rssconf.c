@@ -324,7 +324,7 @@ test_propagate(void)
 	uint8_t n;
 	struct member_conf *port;
 	uint8_t bond_rss_key[40];
-	struct rte_eth_rss_conf bond_rss_conf;
+	struct rte_eth_rss_conf bond_rss_conf = {0};
 
 	int retval = 0;
 	uint64_t rss_hf = 0;
