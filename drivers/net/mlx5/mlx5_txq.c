@@ -1310,8 +1310,16 @@ rte_pmd_mlx5_external_sq_enable(uint16_t port_id, uint32_t sq_num)
 		return -rte_errno;
 	}
 #ifdef HAVE_MLX5_HWS_SUPPORT
-	if (priv->sh->config.dv_flow_en == 2)
-		return mlx5_flow_hw_esw_create_sq_miss_flow(dev, sq_num);
+	if (priv->sh->config.dv_flow_en == 2) {
+		if (mlx5_flow_hw_esw_create_sq_miss_flow(dev, sq_num))
+			return -rte_errno;
+		if (priv->sh->config.repr_matching &&
+		    mlx5_flow_hw_tx_repr_matching_flow(dev, sq_num)) {
+			mlx5_flow_hw_esw_destroy_sq_miss_flow(dev, sq_num);
+			return -rte_errno;
+		}
+		return 0;
+	}
 #endif
 	flow = mlx5_flow_create_devx_sq_miss_flow(dev, sq_num);
 	if (flow > 0)

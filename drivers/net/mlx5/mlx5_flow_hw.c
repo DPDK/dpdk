@@ -11341,6 +11341,8 @@ const struct mlx5_flow_driver_ops mlx5_flow_hw_drv_ops = {
  *   Pointer to flow rule actions.
  * @param action_template_idx
  *   Index of an action template associated with @p table.
+ * @param info
+ *   Additional info about control flow rule.
  *
  * @return
  *   0 on success, negative errno value otherwise and rte_errno set.
@@ -11352,7 +11354,8 @@ flow_hw_create_ctrl_flow(struct rte_eth_dev *owner_dev,
 			 struct rte_flow_item items[],
 			 uint8_t item_template_idx,
 			 struct rte_flow_action actions[],
-			 uint8_t action_template_idx)
+			 uint8_t action_template_idx,
+			 struct mlx5_hw_ctrl_flow_info *info)
 {
 	struct mlx5_priv *priv = proxy_dev->data->dev_private;
 	uint32_t queue = CTRL_QUEUE_ID(priv);
@@ -11399,6 +11402,10 @@ flow_hw_create_ctrl_flow(struct rte_eth_dev *owner_dev,
 	}
 	entry->owner_dev = owner_dev;
 	entry->flow = flow;
+	if (info)
+		entry->info = *info;
+	else
+		entry->info.type = MLX5_HW_CTRL_FLOW_TYPE_GENERAL;
 	LIST_INSERT_HEAD(&priv->hw_ctrl_flows, entry, next);
 	rte_spinlock_unlock(&priv->hw_ctrl_lock);
 	return 0;
@@ -11602,6 +11609,10 @@ mlx5_flow_hw_esw_create_sq_miss_flow(struct rte_eth_dev *dev, uint32_t sqn)
 	};
 	struct rte_flow_item items[3] = { { 0 } };
 	struct rte_flow_action actions[3] = { { 0 } };
+	struct mlx5_hw_ctrl_flow_info flow_info = {
+		.type = MLX5_HW_CTRL_FLOW_TYPE_SQ_MISS_ROOT,
+		.esw_mgr_sq = sqn,
+	};
 	struct rte_eth_dev *proxy_dev;
 	struct mlx5_priv *proxy_priv;
 	uint16_t proxy_port_id = dev->data->port_id;
@@ -11657,7 +11668,7 @@ mlx5_flow_hw_esw_create_sq_miss_flow(struct rte_eth_dev *dev, uint32_t sqn)
 		.type = RTE_FLOW_ACTION_TYPE_END,
 	};
 	ret = flow_hw_create_ctrl_flow(dev, proxy_dev, proxy_priv->hw_esw_sq_miss_root_tbl,
-				       items, 0, actions, 0);
+				       items, 0, actions, 0, &flow_info);
 	if (ret) {
 		DRV_LOG(ERR, "Port %u failed to create root SQ miss flow rule for SQ %u, ret %d",
 			port_id, sqn, ret);
@@ -11686,12 +11697,65 @@ mlx5_flow_hw_esw_create_sq_miss_flow(struct rte_eth_dev *dev, uint32_t sqn)
 	actions[1] = (struct rte_flow_action){
 		.type = RTE_FLOW_ACTION_TYPE_END,
 	};
+	flow_info.type = MLX5_HW_CTRL_FLOW_TYPE_SQ_MISS;
 	ret = flow_hw_create_ctrl_flow(dev, proxy_dev, proxy_priv->hw_esw_sq_miss_tbl,
-				       items, 0, actions, 0);
+				       items, 0, actions, 0, &flow_info);
 	if (ret) {
 		DRV_LOG(ERR, "Port %u failed to create HWS SQ miss flow rule for SQ %u, ret %d",
 			port_id, sqn, ret);
 		return ret;
+	}
+	return 0;
+}
+
+static bool
+flow_hw_is_matching_sq_miss_flow(struct mlx5_hw_ctrl_flow *cf,
+				 struct rte_eth_dev *dev,
+				 uint32_t sqn)
+{
+	if (cf->owner_dev != dev)
+		return false;
+	if (cf->info.type == MLX5_HW_CTRL_FLOW_TYPE_SQ_MISS_ROOT && cf->info.esw_mgr_sq == sqn)
+		return true;
+	if (cf->info.type == MLX5_HW_CTRL_FLOW_TYPE_SQ_MISS && cf->info.esw_mgr_sq == sqn)
+		return true;
+	return false;
+}
+
+int
+mlx5_flow_hw_esw_destroy_sq_miss_flow(struct rte_eth_dev *dev, uint32_t sqn)
+{
+	uint16_t port_id = dev->data->port_id;
+	uint16_t proxy_port_id = dev->data->port_id;
+	struct rte_eth_dev *proxy_dev;
+	struct mlx5_priv *proxy_priv;
+	struct mlx5_hw_ctrl_flow *cf;
+	struct mlx5_hw_ctrl_flow *cf_next;
+	int ret;
+
+	ret = rte_flow_pick_transfer_proxy(port_id, &proxy_port_id, NULL);
+	if (ret) {
+		DRV_LOG(ERR, "Unable to pick transfer proxy port for port %u. Transfer proxy "
+			     "port must be present for default SQ miss flow rules to exist.",
+			     port_id);
+		return ret;
+	}
+	proxy_dev = &rte_eth_devices[proxy_port_id];
+	proxy_priv = proxy_dev->data->dev_private;
+	if (!proxy_priv->dr_ctx)
+		return 0;
+	if (!proxy_priv->hw_esw_sq_miss_root_tbl ||
+	    !proxy_priv->hw_esw_sq_miss_tbl)
+		return 0;
+	cf = LIST_FIRST(&proxy_priv->hw_ctrl_flows);
+	while (cf != NULL) {
+		cf_next = LIST_NEXT(cf, next);
+		if (flow_hw_is_matching_sq_miss_flow(cf, dev, sqn)) {
+			claim_zero(flow_hw_destroy_ctrl_flow(proxy_dev, cf->flow));
+			LIST_REMOVE(cf, next);
+			mlx5_free(cf);
+		}
+		cf = cf_next;
 	}
 	return 0;
 }
@@ -11724,6 +11788,9 @@ mlx5_flow_hw_esw_create_default_jump_flow(struct rte_eth_dev *dev)
 			.type = RTE_FLOW_ACTION_TYPE_END,
 		}
 	};
+	struct mlx5_hw_ctrl_flow_info flow_info = {
+		.type = MLX5_HW_CTRL_FLOW_TYPE_DEFAULT_JUMP,
+	};
 	struct rte_eth_dev *proxy_dev;
 	struct mlx5_priv *proxy_priv;
 	uint16_t proxy_port_id = dev->data->port_id;
@@ -11754,7 +11821,7 @@ mlx5_flow_hw_esw_create_default_jump_flow(struct rte_eth_dev *dev)
 	}
 	return flow_hw_create_ctrl_flow(dev, proxy_dev,
 					proxy_priv->hw_esw_zero_tbl,
-					items, 0, actions, 0);
+					items, 0, actions, 0, &flow_info);
 }
 
 int
@@ -11800,13 +11867,16 @@ mlx5_flow_hw_create_tx_default_mreg_copy_flow(struct rte_eth_dev *dev)
 			.type = RTE_FLOW_ACTION_TYPE_END,
 		},
 	};
+	struct mlx5_hw_ctrl_flow_info flow_info = {
+		.type = MLX5_HW_CTRL_FLOW_TYPE_TX_META_COPY,
+	};
 
 	MLX5_ASSERT(priv->master);
 	if (!priv->dr_ctx || !priv->hw_tx_meta_cpy_tbl)
 		return 0;
 	return flow_hw_create_ctrl_flow(dev, dev,
 					priv->hw_tx_meta_cpy_tbl,
-					eth_all, 0, copy_reg_action, 0);
+					eth_all, 0, copy_reg_action, 0, &flow_info);
 }
 
 int
@@ -11835,6 +11905,10 @@ mlx5_flow_hw_tx_repr_matching_flow(struct rte_eth_dev *dev, uint32_t sqn)
 		{ .type = RTE_FLOW_ACTION_TYPE_END },
 		{ .type = RTE_FLOW_ACTION_TYPE_END },
 	};
+	struct mlx5_hw_ctrl_flow_info flow_info = {
+		.type = MLX5_HW_CTRL_FLOW_TYPE_TX_REPR_MATCH,
+		.tx_repr_sq = sqn,
+	};
 
 	/* It is assumed that caller checked for representor matching. */
 	MLX5_ASSERT(priv->sh->config.repr_matching);
@@ -11860,7 +11934,7 @@ mlx5_flow_hw_tx_repr_matching_flow(struct rte_eth_dev *dev, uint32_t sqn)
 		actions[2].type = RTE_FLOW_ACTION_TYPE_JUMP;
 	}
 	return flow_hw_create_ctrl_flow(dev, dev, priv->hw_tx_repr_tagging_tbl,
-					items, 0, actions, 0);
+					items, 0, actions, 0, &flow_info);
 }
 
 static uint32_t
@@ -11975,6 +12049,9 @@ __flow_hw_ctrl_flows_single(struct rte_eth_dev *dev,
 		{ .type = RTE_FLOW_ACTION_TYPE_RSS },
 		{ .type = RTE_FLOW_ACTION_TYPE_END },
 	};
+	struct mlx5_hw_ctrl_flow_info flow_info = {
+		.type = MLX5_HW_CTRL_FLOW_TYPE_DEFAULT_RX_RSS,
+	};
 
 	if (!eth_spec)
 		return -EINVAL;
@@ -11988,7 +12065,7 @@ __flow_hw_ctrl_flows_single(struct rte_eth_dev *dev,
 	items[3] = flow_hw_get_ctrl_rx_l4_item(rss_type);
 	items[4] = (struct rte_flow_item){ .type = RTE_FLOW_ITEM_TYPE_END };
 	/* Without VLAN filtering, only a single flow rule must be created. */
-	return flow_hw_create_ctrl_flow(dev, dev, tbl, items, 0, actions, 0);
+	return flow_hw_create_ctrl_flow(dev, dev, tbl, items, 0, actions, 0, &flow_info);
 }
 
 static int
@@ -12003,6 +12080,9 @@ __flow_hw_ctrl_flows_single_vlan(struct rte_eth_dev *dev,
 	struct rte_flow_action actions[] = {
 		{ .type = RTE_FLOW_ACTION_TYPE_RSS },
 		{ .type = RTE_FLOW_ACTION_TYPE_END },
+	};
+	struct mlx5_hw_ctrl_flow_info flow_info = {
+		.type = MLX5_HW_CTRL_FLOW_TYPE_DEFAULT_RX_RSS,
 	};
 	unsigned int i;
 
@@ -12026,7 +12106,7 @@ __flow_hw_ctrl_flows_single_vlan(struct rte_eth_dev *dev,
 		};
 
 		items[1].spec = &vlan_spec;
-		if (flow_hw_create_ctrl_flow(dev, dev, tbl, items, 0, actions, 0))
+		if (flow_hw_create_ctrl_flow(dev, dev, tbl, items, 0, actions, 0, &flow_info))
 			return -rte_errno;
 	}
 	return 0;
@@ -12043,6 +12123,9 @@ __flow_hw_ctrl_flows_unicast(struct rte_eth_dev *dev,
 	struct rte_flow_action actions[] = {
 		{ .type = RTE_FLOW_ACTION_TYPE_RSS },
 		{ .type = RTE_FLOW_ACTION_TYPE_END },
+	};
+	struct mlx5_hw_ctrl_flow_info flow_info = {
+		.type = MLX5_HW_CTRL_FLOW_TYPE_DEFAULT_RX_RSS,
 	};
 	const struct rte_ether_addr cmp = {
 		.addr_bytes = "\x00\x00\x00\x00\x00\x00",
@@ -12067,7 +12150,7 @@ __flow_hw_ctrl_flows_unicast(struct rte_eth_dev *dev,
 		if (!memcmp(mac, &cmp, sizeof(*mac)))
 			continue;
 		memcpy(&eth_spec.hdr.dst_addr.addr_bytes, mac->addr_bytes, RTE_ETHER_ADDR_LEN);
-		if (flow_hw_create_ctrl_flow(dev, dev, tbl, items, 0, actions, 0))
+		if (flow_hw_create_ctrl_flow(dev, dev, tbl, items, 0, actions, 0, &flow_info))
 			return -rte_errno;
 	}
 	return 0;
@@ -12085,6 +12168,9 @@ __flow_hw_ctrl_flows_unicast_vlan(struct rte_eth_dev *dev,
 	struct rte_flow_action actions[] = {
 		{ .type = RTE_FLOW_ACTION_TYPE_RSS },
 		{ .type = RTE_FLOW_ACTION_TYPE_END },
+	};
+	struct mlx5_hw_ctrl_flow_info flow_info = {
+		.type = MLX5_HW_CTRL_FLOW_TYPE_DEFAULT_RX_RSS,
 	};
 	const struct rte_ether_addr cmp = {
 		.addr_bytes = "\x00\x00\x00\x00\x00\x00",
@@ -12117,7 +12203,8 @@ __flow_hw_ctrl_flows_unicast_vlan(struct rte_eth_dev *dev,
 			};
 
 			items[1].spec = &vlan_spec;
-			if (flow_hw_create_ctrl_flow(dev, dev, tbl, items, 0, actions, 0))
+			if (flow_hw_create_ctrl_flow(dev, dev, tbl, items, 0, actions, 0,
+						     &flow_info))
 				return -rte_errno;
 		}
 	}

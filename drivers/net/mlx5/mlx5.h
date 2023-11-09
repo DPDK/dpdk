@@ -1705,10 +1705,50 @@ struct mlx5_obj_ops {
 
 #define MLX5_RSS_HASH_FIELDS_LEN RTE_DIM(mlx5_rss_hash_fields)
 
+enum mlx5_hw_ctrl_flow_type {
+	MLX5_HW_CTRL_FLOW_TYPE_GENERAL,
+	MLX5_HW_CTRL_FLOW_TYPE_SQ_MISS_ROOT,
+	MLX5_HW_CTRL_FLOW_TYPE_SQ_MISS,
+	MLX5_HW_CTRL_FLOW_TYPE_DEFAULT_JUMP,
+	MLX5_HW_CTRL_FLOW_TYPE_TX_META_COPY,
+	MLX5_HW_CTRL_FLOW_TYPE_TX_REPR_MATCH,
+	MLX5_HW_CTRL_FLOW_TYPE_LACP_RX,
+	MLX5_HW_CTRL_FLOW_TYPE_DEFAULT_RX_RSS,
+};
+
+/** Additional info about control flow rule. */
+struct mlx5_hw_ctrl_flow_info {
+	/** Determines the kind of control flow rule. */
+	enum mlx5_hw_ctrl_flow_type type;
+	union {
+		/**
+		 * If control flow is a SQ miss flow (root or not),
+		 * then fields contains matching SQ number.
+		 */
+		uint32_t esw_mgr_sq;
+		/**
+		 * If control flow is a Tx representor matching,
+		 * then fields contains matching SQ number.
+		 */
+		uint32_t tx_repr_sq;
+	};
+};
+
+/** Entry for tracking control flow rules in HWS. */
 struct mlx5_hw_ctrl_flow {
 	LIST_ENTRY(mlx5_hw_ctrl_flow) next;
+	/**
+	 * Owner device is a port on behalf of which flow rule was created.
+	 *
+	 * It's different from the port which really created the flow rule
+	 * if and only if flow rule is created on transfer proxy port
+	 * on behalf of representor port.
+	 */
 	struct rte_eth_dev *owner_dev;
+	/** Pointer to flow rule handle. */
 	struct rte_flow *flow;
+	/** Additional information about the control flow rule. */
+	struct mlx5_hw_ctrl_flow_info info;
 };
 
 /*

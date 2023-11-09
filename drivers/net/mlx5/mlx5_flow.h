@@ -2875,6 +2875,8 @@ int mlx5_flow_hw_flush_ctrl_flows(struct rte_eth_dev *dev);
 
 int mlx5_flow_hw_esw_create_sq_miss_flow(struct rte_eth_dev *dev,
 					 uint32_t sqn);
+int mlx5_flow_hw_esw_destroy_sq_miss_flow(struct rte_eth_dev *dev,
+					  uint32_t sqn);
 int mlx5_flow_hw_esw_create_default_jump_flow(struct rte_eth_dev *dev);
 int mlx5_flow_hw_create_tx_default_mreg_copy_flow(struct rte_eth_dev *dev);
 int mlx5_flow_hw_tx_repr_matching_flow(struct rte_eth_dev *dev, uint32_t sqn);
