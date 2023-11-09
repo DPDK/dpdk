@@ -75,6 +75,16 @@ New Features
     which also added support for standard atomics
     (Ref: https://releases.llvm.org/3.6.0/tools/clang/docs/ReleaseNotes.html)
 
+* **Updated dependencies when linking against libarchive.**
+
+  When the libarchive development package is present on the system,
+  DPDK will use libarchive and register a dependency on it.
+  However, on a number of Linux distributions, including, for example, Fedora and Ubuntu,
+  installing the libarchive dev package does not cause all required dependencies for static linking to be automatically installed too.
+  These additional dev packages, such as ``liblz4-dev`` and ``libacl1-dev`` on Ubuntu,
+  will need to be installed manually (if not already present)
+  to prevent errors with linking against DPDK static libraries.
+
 * **Added new build options.**
 
   * Enabling deprecated libraries is now done using
