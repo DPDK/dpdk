@@ -226,17 +226,17 @@ mlx5_rxq_start(struct rte_eth_dev *dev)
 		if (rxq == NULL)
 			continue;
 		rxq_ctrl = rxq->ctrl;
-		if (!rxq_ctrl->started) {
+		if (!rxq_ctrl->started)
 			if (mlx5_rxq_ctrl_prepare(dev, rxq_ctrl, i) < 0)
 				goto error;
-			LIST_INSERT_HEAD(&priv->rxqsobj, rxq_ctrl->obj, next);
-		}
 		ret = priv->obj_ops.rxq_obj_new(rxq);
 		if (ret) {
 			mlx5_free(rxq_ctrl->obj);
 			rxq_ctrl->obj = NULL;
 			goto error;
 		}
+		if (!rxq_ctrl->started)
+			LIST_INSERT_HEAD(&priv->rxqsobj, rxq_ctrl->obj, next);
 		rxq_ctrl->started = true;
 	}
 	return 0;
