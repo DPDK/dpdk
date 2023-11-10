@@ -259,6 +259,9 @@ open_dma(const char *value)
 	char *dma_arg[RTE_MAX_VHOST_DEVICE];
 	int args_nr;
 
+	if (input == NULL)
+		return -1;
+
 	while (isblank(*addrs))
 		addrs++;
 	if (*addrs == '\0') {
