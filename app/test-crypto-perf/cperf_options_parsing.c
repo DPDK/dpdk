@@ -516,6 +516,10 @@ parse_test_file(struct cperf_options *opts,
 		const char *arg)
 {
 	opts->test_file = strdup(arg);
+	if (opts->test_file == NULL) {
+		RTE_LOG(ERR, USER1, "Dup vector file failed!\n");
+		return -1;
+	}
 	if (access(opts->test_file, F_OK) != -1)
 		return 0;
 	RTE_LOG(ERR, USER1, "Test vector file doesn't exist\n");
