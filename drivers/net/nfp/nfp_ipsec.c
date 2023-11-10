@@ -526,6 +526,11 @@ nfp_aesgcm_iv_update(struct ipsec_add_sa *cfg,
 	uint8_t *cfg_iv;
 
 	iv_str = strdup(iv_string);
+	if (iv_str == NULL) {
+		PMD_DRV_LOG(ERR, "Failed to strdup iv_string");
+		return;
+	}
+
 	cfg_iv = (uint8_t *)cfg->aesgcm_fields.iv;
 
 	for (i = 0; i < iv_len; i++) {
