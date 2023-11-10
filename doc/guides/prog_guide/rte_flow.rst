@@ -3987,17 +3987,17 @@ Flow rules management can be done via special lockless flow management queues.
 
 The asynchronous flow rule insertion logic can be broken into two phases.
 
-1. Initialization stage as shown here:
+#. Initialization stage as shown here:
 
-.. _figure_rte_flow_async_init:
+   .. _figure_rte_flow_async_init:
 
-.. figure:: img/rte_flow_async_init.*
+   .. figure:: img/rte_flow_async_init.*
 
-2. Main loop as presented on a datapath application example:
+#. Main loop as presented on a datapath application example:
 
-.. _figure_rte_flow_async_usage:
+   .. _figure_rte_flow_async_usage:
 
-.. figure:: img/rte_flow_async_usage.*
+   .. figure:: img/rte_flow_async_usage.*
 
 Enqueue creation operation
 ~~~~~~~~~~~~~~~~~~~~~~~~~~

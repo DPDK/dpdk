@@ -361,34 +361,34 @@ Sub-Function is a portion of the PCI device,
 it has its own dedicated queues.
 An SF shares PCI-level resources with other SFs and/or with its parent PCI function.
 
-0. Requirement::
+#. Requirement::
 
       MLNX_OFED version >= 5.4-0.3.3.0
 
-1. Configure SF feature::
+#. Configure SF feature::
 
       # Run mlxconfig on both PFs on host and ECPFs on BlueField.
       mlxconfig -d <mst device> set PER_PF_NUM_SF=1 PF_TOTAL_SF=252 PF_SF_BAR_SIZE=12
 
-2. Enable switchdev mode::
+#. Enable switchdev mode::
 
       mlxdevm dev eswitch set pci/<DBDF> mode switchdev
 
-3. Add SF port::
+#. Add SF port::
 
       mlxdevm port add pci/<DBDF> flavour pcisf pfnum 0 sfnum <sfnum>
 
       Get SFID from output: pci/<DBDF>/<SFID>
 
-4. Modify MAC address::
+#. Modify MAC address::
 
       mlxdevm port function set pci/<DBDF>/<SFID> hw_addr <MAC>
 
-5. Activate SF port::
+#. Activate SF port::
 
       mlxdevm port function set pci/<DBDF>/<ID> state active
 
-6. Devargs to probe SF device::
+#. Devargs to probe SF device::
 
       auxiliary:mlx5_core.sf.<num>,class=eth:regex
 

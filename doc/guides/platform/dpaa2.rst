@@ -24,23 +24,23 @@ processors-and-mcus/qoriq-layerscape-arm-processors:QORIQ-ARM>`_.
 Common Offload HW Block Drivers
 -------------------------------
 
-1. **Nics Driver**
+#. **Nics Driver**
 
    See :doc:`../nics/dpaa2` for NXP dpaa2 nic driver information.
 
-2. **Cryptodev Driver**
+#. **Cryptodev Driver**
 
    See :doc:`../cryptodevs/dpaa2_sec` for NXP dpaa2 cryptodev driver information.
 
-3. **Eventdev Driver**
+#. **Eventdev Driver**
 
    See :doc:`../eventdevs/dpaa2` for NXP dpaa2 eventdev driver information.
 
-4. **Rawdev AIOP CMDIF Driver**
+#. **Rawdev AIOP CMDIF Driver**
 
    See :doc:`../rawdevs/dpaa2_cmdif` for NXP dpaa2 AIOP command interface driver information.
 
-5. **DMA Driver**
+#. **DMA Driver**
 
    See :doc:`../dmadevs/dpaa2` for NXP dpaa2 QDMA driver information.
 
@@ -51,27 +51,27 @@ Steps To Setup Platform
 There are four main pre-requisites for executing DPAA2 PMD on a DPAA2
 compatible board:
 
-1. **ARM 64 Tool Chain**
+#. **ARM 64 Tool Chain**
 
    For example, the `*aarch64* Linaro Toolchain <https://releases.linaro.org/components/toolchain/binaries/7.3-2018.05/aarch64-linux-gnu/gcc-linaro-7.3.1-2018.05-i686_aarch64-linux-gnu.tar.xz>`_.
 
-2. **Linux Kernel**
+#. **Linux Kernel**
 
    It can be obtained from `NXP's Github hosting <https://source.codeaurora.org/external/qoriq/qoriq-components/linux>`_.
 
-3. **Rootfile system**
+#. **Rootfile system**
 
    Any *aarch64* supporting filesystem can be used. For example,
    Ubuntu 16.04 LTS (Xenial) or 18.04 (Bionic) userland which can be obtained
    from `here
    <http://cdimage.ubuntu.com/ubuntu-base/releases/18.04/release/ubuntu-base-18.04.1-base-arm64.tar.gz>`_.
 
-4. **Resource Scripts**
+#. **Resource Scripts**
 
    DPAA2 based resources can be configured easily with the help of ready scripts
    as provided in the DPDK Extra repository.
 
-5. **Build Config**
+#. **Build Config**
 
    Use dpaa build configs, they work for both DPAA2 and DPAA platforms.
 

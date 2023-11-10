@@ -563,8 +563,9 @@ Traffic Management API
 DPAA2 PMD supports generic DPDK Traffic Management API which allows to
 configure the following features:
 
-1. Hierarchical scheduling
-2. Traffic shaping
+#. Hierarchical scheduling
+
+#. Traffic shaping
 
 Internally TM is represented by a hierarchy (tree) of nodes.
 Node which has a parent is called a leaf whereas node without
@@ -602,19 +603,19 @@ Usage example
 
 For a detailed usage description please refer to "Traffic Management" section in DPDK :doc:`Testpmd Runtime Functions <../testpmd_app_ug/testpmd_funcs>`.
 
-1. Run testpmd as follows:
+#. Run testpmd as follows:
 
    .. code-block:: console
 
 	./dpdk-testpmd  -c 0xf -n 1 -- -i --portmask 0x3 --nb-cores=1 --txq=4 --rxq=4
 
-2. Stop all ports:
+#. Stop all ports:
 
    .. code-block:: console
 
 	testpmd> port stop all
 
-3. Add shaper profile:
+#. Add shaper profile:
 
    One port level shaper and strict priority on all 4 queues of port 0:
 
@@ -642,7 +643,7 @@ For a detailed usage description please refer to "Traffic Management" section in
 	add port tm leaf node 0 3 8 0 500 1 -1 0 0 0 0
 	port tm hierarchy commit 0 no
 
-4. Create flows as per the source IP addresses:
+#. Create flows as per the source IP addresses:
 
    .. code-block:: console
 
@@ -655,7 +656,7 @@ For a detailed usage description please refer to "Traffic Management" section in
 	flow create 1 group 0 priority 4 ingress pattern ipv4 src is \
 	10.10.10.4 / end actions queue index 3 / end
 
-5. Start all ports
+#. Start all ports
 
    .. code-block:: console
 
@@ -663,10 +664,10 @@ For a detailed usage description please refer to "Traffic Management" section in
 
 
 
-6. Enable forwarding
+#. Enable forwarding
 
    .. code-block:: console
 
 		testpmd> start
 
-7. Inject the traffic on port1 as per the configured flows, you will see shaped and scheduled forwarded traffic on port0
+#. Inject the traffic on port1 as per the configured flows, you will see shaped and scheduled forwarded traffic on port0

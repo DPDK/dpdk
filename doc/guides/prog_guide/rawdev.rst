@@ -13,11 +13,13 @@ In terms of device flavor (type) support, DPDK currently has ethernet
 
 For a new type of device, for example an accelerator, there are not many
 options except:
-1. create another lib/MySpecialDev, driver/MySpecialDrv and use it
-through Bus/PMD model.
-2. Or, create a vdev and implement necessary custom APIs which are directly
-exposed from driver layer. However this may still require changes in bus code
-in DPDK.
+
+#. create another lib/MySpecialDev, driver/MySpecialDrv and use it
+   through Bus/PMD model.
+
+#. Or, create a vdev and implement necessary custom APIs which are directly
+   exposed from driver layer. However this may still require changes in bus code
+   in DPDK.
 
 The DPDK Rawdev library is an abstraction that provides the DPDK framework a
 way to manage such devices in a generic manner without expecting changes to
@@ -30,19 +32,19 @@ Design
 
 Key factors guiding design of the Rawdevice library:
 
-1. Following are some generic operations which can be treated as applicable
+#. Following are some generic operations which can be treated as applicable
    to a large subset of device types. None of the operations are mandatory to
    be implemented by a driver. Application should also be designed for proper
    handling for unsupported APIs.
 
-  * Device Start/Stop - In some cases, 'reset' might also be required which
-    has different semantics than a start-stop-start cycle.
-  * Configuration - Device, Queue or any other sub-system configuration
-  * I/O - Sending a series of buffers which can enclose any arbitrary data
-  * Statistics - Fetch arbitrary device statistics
-  * Firmware Management - Firmware load/unload/status
+   * Device Start/Stop - In some cases, 'reset' might also be required which
+     has different semantics than a start-stop-start cycle.
+   * Configuration - Device, Queue or any other sub-system configuration
+   * I/O - Sending a series of buffers which can enclose any arbitrary data
+   * Statistics - Fetch arbitrary device statistics
+   * Firmware Management - Firmware load/unload/status
 
-2. Application API should be able to pass along arbitrary state information
+#. Application API should be able to pass along arbitrary state information
    to/from device driver. This can be achieved by maintaining context
    information through opaque data or pointers.
 

@@ -346,31 +346,32 @@ handling where every packet could be going to different next node.
 
 Example of intermediate node implementation with home run:
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-1. Start with speculation that next_node = node->ctx.
-This could be the next_node application used in the previous function call of this node.
 
-2. Get the next_node stream array with required space using
-``rte_node_next_stream_get(next_node, space)``.
+#. Start with speculation that next_node = node->ctx.
+   This could be the next_node application used in the previous function call of this node.
 
-3. while n_left_from > 0 (i.e packets left to be sent) prefetch next pkt_set
-and process current pkt_set to find their next node
+#. Get the next_node stream array with required space using
+   ``rte_node_next_stream_get(next_node, space)``.
 
-4. if all the next nodes of the current pkt_set match speculated next node,
-just count them as successfully speculated(``last_spec``) till now and
-continue the loop without actually moving them to the next node. else if there is
-a mismatch, copy all the pkt_set pointers that were ``last_spec`` and move the
-current pkt_set to their respective next's nodes using ``rte_enqueue_next_x1()``.
-Also, one of the next_node can be updated as speculated next_node if it is more
-probable. Finally, reset ``last_spec`` to zero.
+#. while n_left_from > 0 (i.e packets left to be sent) prefetch next pkt_set
+   and process current pkt_set to find their next node
 
-5. if n_left_from != 0 then goto 3) to process remaining packets.
+#. if all the next nodes of the current pkt_set match speculated next node,
+   just count them as successfully speculated(``last_spec``) till now and
+   continue the loop without actually moving them to the next node. else if there is
+   a mismatch, copy all the pkt_set pointers that were ``last_spec`` and move the
+   current pkt_set to their respective next's nodes using ``rte_enqueue_next_x1()``.
+   Also, one of the next_node can be updated as speculated next_node if it is more
+   probable. Finally, reset ``last_spec`` to zero.
 
-6. if last_spec == nb_objs, All the objects passed were successfully speculated
-to single next node. So, the current stream can be moved to next node using
-``rte_node_next_stream_move(node, next_node)``.
-This is the ``home run`` where memcpy of buffer pointers to next node is avoided.
+#. if n_left_from != 0 then goto 3) to process remaining packets.
 
-7. Update the ``node->ctx`` with more probable next node.
+#. if last_spec == nb_objs, All the objects passed were successfully speculated
+   to single next node. So, the current stream can be moved to next node using
+   ``rte_node_next_stream_move(node, next_node)``.
+   This is the ``home run`` where memcpy of buffer pointers to next node is avoided.
+
+#. Update the ``node->ctx`` with more probable next node.
 
 Graph object memory layout
 --------------------------

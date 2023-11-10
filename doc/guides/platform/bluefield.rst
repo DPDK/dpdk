@@ -25,11 +25,11 @@ Supported BlueField Platforms
 Common Offload HW Drivers
 -------------------------
 
-1. **NIC Driver**
+#. **NIC Driver**
 
    See :doc:`../nics/mlx5` for NVIDIA mlx5 NIC driver information.
 
-2. **Cryptodev Driver**
+#. **Cryptodev Driver**
 
    This is based on the crypto extension support of armv8. See
    :doc:`../cryptodevs/armv8` for armv8 crypto driver information.

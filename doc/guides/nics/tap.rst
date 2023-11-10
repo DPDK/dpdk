@@ -249,19 +249,19 @@ It is possible to support different RSS hash algorithms by updating file
 ``tap_bpf_program.c``  In order to add a new RSS hash algorithm follow these
 steps:
 
-1. Write the new RSS implementation in file ``tap_bpf_program.c``
+#. Write the new RSS implementation in file ``tap_bpf_program.c``
 
-BPF programs which are uploaded to the kernel correspond to
-C functions under different ELF sections.
+   BPF programs which are uploaded to the kernel correspond to
+   C functions under different ELF sections.
 
-2. Install ``LLVM`` library and ``clang`` compiler versions 3.7 and above
+#. Install ``LLVM`` library and ``clang`` compiler versions 3.7 and above
 
-3. Use make to compile  `tap_bpf_program.c`` via ``LLVM`` into an object file
-   and extract the resulting instructions into ``tap_bpf_insn.h``.
+#. Use make to compile  `tap_bpf_program.c`` via ``LLVM`` into an object file
+   and extract the resulting instructions into ``tap_bpf_insn.h``::
 
     cd bpf; make
 
-4. Recompile the TAP PMD.
+#. Recompile the TAP PMD.
 
 The C arrays are uploaded to the kernel using BPF system calls.
 

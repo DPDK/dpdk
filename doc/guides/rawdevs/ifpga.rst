@@ -244,13 +244,14 @@ through partitioning of individual dedicated resources, or virtualization of
 shared resources. OFS provides several models to share the AFU resources via
 PR mechanism and hardware-based virtualization schemes.
 
-1. Legacy model.
+#. Legacy model.
    With legacy model FPGA cards like Intel PAC N3000 or N5000, there is
    a notion that the boundary between the AFU and the shell is also the unit of
    PR for those FPGA platforms. This model is only able to handle a
    single context, because it only has one PR engine, and one PR region which
    has an associated Port device.
-2. Multiple VFs per PR slot.
+
+#. Multiple VFs per PR slot.
    In this model, available AFU resources may allow instantiation of many VFs
    which have a dedicated PCIe function with their own dedicated MMIO space, or
    partition a region of MMIO space on a single PCIe function. Intel PAC N6000

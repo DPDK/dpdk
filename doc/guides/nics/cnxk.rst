@@ -311,10 +311,10 @@ Runtime Config Options
 
    In CN10K, in event mode, driver can work in two modes,
 
-   1. Inbound encrypted traffic received by probed ipsec inline device while
+   #. Inbound encrypted traffic received by probed ipsec inline device while
       plain traffic post decryption is received by ethdev.
 
-   2. Both Inbound encrypted traffic and plain traffic post decryption are
+   #. Both Inbound encrypted traffic and plain traffic post decryption are
       received by ethdev.
 
    By default event mode works using inline device i.e mode ``1``.

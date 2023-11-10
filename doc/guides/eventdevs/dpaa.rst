@@ -64,7 +64,7 @@ Example:
 Limitations
 -----------
 
-1. DPAA eventdev can not work with DPAA PUSH mode queues configured for ethdev.
+#. DPAA eventdev can not work with DPAA PUSH mode queues configured for ethdev.
    Please configure export DPAA_NUM_PUSH_QUEUES=0
 
 Platform Requirement

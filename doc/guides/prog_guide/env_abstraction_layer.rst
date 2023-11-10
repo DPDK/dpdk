@@ -807,15 +807,15 @@ Known Issues
 
   This means, use cases involving preemptible pthreads should consider using rte_ring carefully.
 
-  1. It CAN be used for preemptible single-producer and single-consumer use case.
+  #. It CAN be used for preemptible single-producer and single-consumer use case.
 
-  2. It CAN be used for non-preemptible multi-producer and preemptible single-consumer use case.
+  #. It CAN be used for non-preemptible multi-producer and preemptible single-consumer use case.
 
-  3. It CAN be used for preemptible single-producer and non-preemptible multi-consumer use case.
+  #. It CAN be used for preemptible single-producer and non-preemptible multi-consumer use case.
 
-  4. It MAY be used by preemptible multi-producer and/or preemptible multi-consumer pthreads whose scheduling policy are all SCHED_OTHER(cfs), SCHED_IDLE or SCHED_BATCH. User SHOULD be aware of the performance penalty before using it.
+  #. It MAY be used by preemptible multi-producer and/or preemptible multi-consumer pthreads whose scheduling policy are all SCHED_OTHER(cfs), SCHED_IDLE or SCHED_BATCH. User SHOULD be aware of the performance penalty before using it.
 
-  5. It MUST not be used by multi-producer/consumer pthreads, whose scheduling policies are SCHED_FIFO or SCHED_RR.
+  #. It MUST not be used by multi-producer/consumer pthreads, whose scheduling policies are SCHED_FIFO or SCHED_RR.
 
   Alternatively, applications can use the lock-free stack mempool handler. When
   considering this handler, note that:

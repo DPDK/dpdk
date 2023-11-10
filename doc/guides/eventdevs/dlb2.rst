@@ -271,24 +271,29 @@ certain reconfiguration sequences that are valid in the eventdev API but not
 supported by the PMD.
 
 Specifically, the PMD supports the following configuration sequence:
-1. Configure and start the device
-2. Stop the device
-3. (Optional) Reconfigure the device
-4. (Optional) If step 3 is run:
 
-   a. Setup queue(s). The reconfigured queue(s) lose their previous port links.
-   b. The reconfigured port(s) lose their previous queue links.
+#. Configure and start the device
 
-5. (Optional, only if steps 4a and 4b are run) Link port(s) to queue(s)
-6. Restart the device. If the device is reconfigured in step 3 but one or more
+#. Stop the device
+
+#. (Optional) Reconfigure the device
+   Setup queue(s). The reconfigured queue(s) lose their previous port links.
+   The reconfigured port(s) lose their previous queue links.
+   Link port(s) to queue(s)
+
+#. Restart the device. If the device is reconfigured in step 3 but one or more
    of its ports or queues are not, the PMD will apply their previous
    configuration (including port->queue links) at this time.
 
 The PMD does not support the following configuration sequences:
-1. Configure and start the device
-2. Stop the device
-3. Setup queue or setup port
-4. Start the device
+
+#. Configure and start the device
+
+#. Stop the device
+
+#. Setup queue or setup port
+
+#. Start the device
 
 This sequence is not supported because the event device must be reconfigured
 before its ports or queues can be.

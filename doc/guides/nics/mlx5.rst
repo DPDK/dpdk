@@ -1535,15 +1535,15 @@ Use <sfnum> to probe SF representor::
 Performance tuning
 ------------------
 
-1. Configure aggressive CQE Zipping for maximum performance::
+#. Configure aggressive CQE Zipping for maximum performance::
 
         mlxconfig -d <mst device> s CQE_COMPRESSION=1
 
-  To set it back to the default CQE Zipping mode use::
+   To set it back to the default CQE Zipping mode use::
 
         mlxconfig -d <mst device> s CQE_COMPRESSION=0
 
-2. In case of virtualization:
+#. In case of virtualization:
 
    - Make sure that hypervisor kernel is 3.16 or newer.
    - Configure boot with ``iommu=pt``.
@@ -1551,7 +1551,7 @@ Performance tuning
    - Make sure to allocate a VM on huge pages.
    - Make sure to set CPU pinning.
 
-3. Use the CPU near local NUMA node to which the PCIe adapter is connected,
+#. Use the CPU near local NUMA node to which the PCIe adapter is connected,
    for better performance. For VMs, verify that the right CPU
    and NUMA node are pinned according to the above. Run::
 
@@ -1559,21 +1559,21 @@ Performance tuning
 
    to identify the NUMA node to which the PCIe adapter is connected.
 
-4. If more than one adapter is used, and root complex capabilities allow
+#. If more than one adapter is used, and root complex capabilities allow
    to put both adapters on the same NUMA node without PCI bandwidth degradation,
    it is recommended to locate both adapters on the same NUMA node.
    This in order to forward packets from one to the other without
    NUMA performance penalty.
 
-5. Disable pause frames::
+#. Disable pause frames::
 
         ethtool -A <netdev> rx off tx off
 
-6. Verify IO non-posted prefetch is disabled by default. This can be checked
+#. Verify IO non-posted prefetch is disabled by default. This can be checked
    via the BIOS configuration. Please contact you server provider for more
    information about the settings.
 
-.. note::
+   .. note::
 
         On some machines, depends on the machine integrator, it is beneficial
         to set the PCI max read request parameter to 1K. This can be
@@ -1590,7 +1590,7 @@ Performance tuning
         The XXX can be different on different systems. Make sure to configure
         according to the setpci output.
 
-7. To minimize overhead of searching Memory Regions:
+#. To minimize overhead of searching Memory Regions:
 
    - '--socket-mem' is recommended to pin memory by predictable amount.
    - Configure per-lcore cache when creating Mempools for packet buffer.
