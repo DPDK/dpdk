@@ -522,6 +522,9 @@ parse_qos_list(const char *value, void *opaque)
 	char *end = NULL;
 	char *f = s;
 
+	if (s == NULL)
+		return;
+
 	while (*s) {
 		if (*s == '[')
 			start = s;
