@@ -3454,6 +3454,8 @@ parse_hdrs_list(const char *str, const char *item_name, unsigned int max_items,
 
 	nb_item = 0;
 	char *str2 = strdup(str);
+	if (str2 == NULL)
+		return nb_item;
 	cur = strtok_r(str2, ",", &tmp);
 	while (cur != NULL) {
 		parsed_items[nb_item] = get_ptype(cur);
