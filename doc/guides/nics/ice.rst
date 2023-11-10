@@ -26,13 +26,16 @@ Prerequisites
   Dynamic Device Personalization (DDP) Package <https://cdrdv2.intel.com/v1/dl/getContent/618651>`_.
 
 
-Recommended Matching List
--------------------------
+Kernel driver, DDP and Firmware Matching List
+---------------------------------------------
 
 It is highly recommended to upgrade the ice kernel driver, firmware and DDP package
 to avoid the compatibility issues with ice PMD.
-Here is the suggested matching list which has been tested and verified.
-The detailed information can refer to chapter Tested Platforms/Tested NICs in release notes.
+The table below shows a summary of the DPDK versions
+with corresponding out-of-tree Linux kernel drivers, DDP package and firmware.
+The full list of in-tree and out-of-tree Linux kernel drivers from kernel.org
+and Linux distributions that were tested and verified
+are listed in the Tested Platforms section of the Release Notes for each release.
 
    +-----------+---------------+-----------------+-----------+--------------+-----------+
    |    DPDK   | Kernel Driver | OS Default DDP  | COMMS DDP | Wireless DDP | Firmware  |
