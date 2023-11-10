@@ -142,8 +142,10 @@ app_parse_opt_vals(const char *conf_str, char separator, uint32_t n_vals, uint32
 
 	n_tokens = rte_strsplit(string, strnlen(string, 32), tokens, n_vals, separator);
 
-	if (n_tokens > MAX_OPT_VALUES)
+	if (n_tokens > MAX_OPT_VALUES) {
+		free(string);
 		return -1;
+	}
 
 	for (i = 0; i < n_tokens; i++)
 		opt_vals[i] = (uint32_t)atol(tokens[i]);
