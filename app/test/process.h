@@ -59,8 +59,11 @@ process_dup(const char *const argv[], int numargs, const char *env_value)
 		return -1;
 	else if (pid == 0) {
 		/* make a copy of the arguments to be passed to exec */
-		for (i = 0; i < numargs; i++)
+		for (i = 0; i < numargs; i++) {
 			argv_cpy[i] = strdup(argv[i]);
+			if (argv_cpy[i] == NULL)
+				rte_panic("Error dup args\n");
+		}
 		argv_cpy[i] = NULL;
 		num = numargs;
 
