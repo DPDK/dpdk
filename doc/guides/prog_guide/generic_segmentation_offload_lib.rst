@@ -204,7 +204,7 @@ To segment an outgoing packet, an application must:
    - a flag, that indicates whether the IPv4 headers of output segments should
      contain fixed or incremental ID values.
 
-2. Set the appropriate ol_flags in the mbuf.
+#. Set the appropriate ol_flags in the mbuf.
 
    - The GSO library use the value of an mbuf's ``ol_flags`` attribute to
      determine how a packet should be segmented. It is the application's

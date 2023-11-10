@@ -217,6 +217,7 @@ Prerequisites for Rx interrupts
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 To support Rx interrupts,
+
 #. Check if guest kernel supports VFIO-NOIOMMU:
 
     Linux started to support VFIO-NOIOMMU since 4.8.0. Make sure the guest
@@ -379,12 +380,16 @@ according to below configuration:
 
 #. Split virtqueue mergeable path: If Rx mergeable is negotiated, in-order feature is
    not negotiated, this path will be selected.
+
 #. Split virtqueue non-mergeable path: If Rx mergeable and in-order feature are not
    negotiated, also Rx offload(s) are requested, this path will be selected.
+
 #. Split virtqueue in-order mergeable path: If Rx mergeable and in-order feature are
    both negotiated, this path will be selected.
+
 #. Split virtqueue in-order non-mergeable path: If in-order feature is negotiated and
    Rx mergeable is not negotiated, this path will be selected.
+
 #. Split virtqueue vectorized Rx path: If Rx mergeable is disabled and no Rx offload
    requested, this path will be selected.
 
@@ -393,16 +398,21 @@ according to below configuration:
 
 #. Packed virtqueue mergeable path: If Rx mergeable is negotiated, in-order feature
    is not negotiated, this path will be selected.
+
 #. Packed virtqueue non-mergeable path: If Rx mergeable and in-order feature are not
    negotiated, this path will be selected.
+
 #. Packed virtqueue in-order mergeable path: If in-order and Rx mergeable feature are
    both negotiated, this path will be selected.
+
 #. Packed virtqueue in-order non-mergeable path: If in-order feature is negotiated and
    Rx mergeable is not negotiated, this path will be selected.
+
 #. Packed virtqueue vectorized Rx path: If building and running environment support
    (AVX512 || NEON) && in-order feature is negotiated && Rx mergeable
    is not negotiated && TCP_LRO Rx offloading is disabled && vectorized option enabled,
    this path will be selected.
+
 #. Packed virtqueue vectorized Tx path: If building and running environment support
    (AVX512 || NEON)  && in-order feature is negotiated && vectorized option enabled,
    this path will be selected.
@@ -480,5 +490,7 @@ or configuration, below steps can help you identify which path you selected and
 root cause faster.
 
 #. Run vhost/virtio test case;
+
 #. Run "perf top" and check virtio Rx/Tx callback names;
+
 #. Identify which virtio path is selected refer to above table.
