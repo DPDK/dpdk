@@ -2046,7 +2046,7 @@ mlx5_tx_packet_multi_inline(struct mlx5_txq_data *__rte_restrict txq,
 		uintptr_t start;
 
 		mbuf = loc->mbuf;
-		nxlen = rte_pktmbuf_data_len(mbuf);
+		nxlen = rte_pktmbuf_data_len(mbuf) + vlan;
 		/*
 		 * Packet length exceeds the allowed inline data length,
 		 * check whether the minimal inlining is required.
