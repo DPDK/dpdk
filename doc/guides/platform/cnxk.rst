@@ -111,7 +111,9 @@ where even VF bound to the first domain and odd VF bound to the second domain.
 Typical application usage models are,
 
 #. Communication between the Linux kernel and DPDK application.
+
 #. Exception path to Linux kernel from DPDK application as SW ``KNI`` replacement.
+
 #. Communication between two different DPDK applications.
 
 SDP interface
@@ -130,6 +132,7 @@ can bind PF or VF to use SDP interface and it will be enumerated as ethdev ports
 The primary use case for SDP is to enable the smart NIC use case. Typical usage models are,
 
 #. Communication channel between remote host and cnxk SoC over PCIe.
+
 #. Transfer packets received from network interface to remote host over PCIe and
    vice-versa.
 
