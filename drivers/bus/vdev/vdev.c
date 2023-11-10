@@ -249,6 +249,10 @@ alloc_devargs(const char *name, const char *args)
 		devargs->data = strdup(args);
 	else
 		devargs->data = strdup("");
+	if (devargs->data == NULL) {
+		free(devargs);
+		return NULL;
+	}
 	devargs->args = devargs->data;
 
 	ret = strlcpy(devargs->name, name, sizeof(devargs->name));
