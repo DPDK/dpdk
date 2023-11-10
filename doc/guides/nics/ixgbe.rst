@@ -47,8 +47,6 @@ The wider register gives space to hold multiple packet buffers so as to save ins
 There is no change to PMD API. The RX/TX handler are the only two entries for vPMD packet I/O.
 They are transparently registered at runtime RX/TX execution if all condition checks pass.
 
-1.  To date, only an SSE version of IX GBE vPMD is available.
-
 Some constraints apply as pre-conditions for specific optimizations on bulk packet transfers.
 The following sections explain RX and TX constraints in the vPMD.
 
