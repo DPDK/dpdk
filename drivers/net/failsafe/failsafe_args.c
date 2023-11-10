@@ -248,7 +248,7 @@ fs_parse_device_param(struct rte_eth_dev *dev, const char *param,
 			goto free_args;
 	} else {
 		ERROR("Unrecognized device type: %.*s", (int)b, param);
-		return -EINVAL;
+		ret = -EINVAL;
 	}
 free_args:
 	free(args);
