@@ -225,6 +225,8 @@ eal_save_args(int argc, char **argv)
 		if (strcmp(argv[i], "--") == 0)
 			break;
 		eal_args[i] = strdup(argv[i]);
+		if (eal_args[i] == NULL)
+			goto error;
 	}
 	eal_args[i++] = NULL; /* always finish with NULL */
 
@@ -234,13 +236,31 @@ eal_save_args(int argc, char **argv)
 
 	eal_app_args = calloc(argc - i + 1, sizeof(*eal_args));
 	if (eal_app_args == NULL)
-		return -1;
+		goto error;
 
-	for (j = 0; i < argc; j++, i++)
+	for (j = 0; i < argc; j++, i++) {
 		eal_app_args[j] = strdup(argv[i]);
+		if (eal_app_args[j] == NULL)
+			goto error;
+	}
 	eal_app_args[j] = NULL;
 
 	return 0;
+
+error:
+	if (eal_app_args != NULL) {
+		i = 0;
+		while (eal_app_args[i] != NULL)
+			free(eal_app_args[i++]);
+		free(eal_app_args);
+		eal_app_args = NULL;
+	}
+	i = 0;
+	while (eal_args[i] != NULL)
+		free(eal_args[i++]);
+	free(eal_args);
+	eal_args = NULL;
+	return -1;
 }
 #endif
 
