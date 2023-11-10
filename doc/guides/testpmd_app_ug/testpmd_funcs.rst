@@ -1570,9 +1570,9 @@ Enable/disable E-tag based forwarding on a port::
 config per port Rx offloading
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Enable or disable a per port Rx offloading on all Rx queues of a port::
+Enable or disable port Rx offloading on all Rx queues of a port::
 
-   testpmd> port config (port_id) rx_offload (offloading) on|off
+   testpmd> port config (port_id|all) rx_offload (offloading) on|off
 
 * ``offloading``: can be any of these offloading capability:
                   all, vlan_strip, ipv4_cksum, udp_cksum, tcp_cksum, tcp_lro,
@@ -1600,9 +1600,9 @@ This command should be run when the port is stopped, or else it will fail.
 config per port Tx offloading
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Enable or disable a per port Tx offloading on all Tx queues of a port::
+Enable or disable port Tx offloading on all Tx queues of a port::
 
-   testpmd> port config (port_id) tx_offload (offloading) on|off
+   testpmd> port config (port_id|all) tx_offload (offloading) on|off
 
 * ``offloading``: can be any of these offloading capability:
                   all, vlan_insert, ipv4_cksum, udp_cksum, tcp_cksum,
