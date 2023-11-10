@@ -171,6 +171,9 @@ parse_device_id(const char *key __rte_unused, const char *value,
 	struct pdump_tuples *pt = extra_args;
 
 	pt->device_id = strdup(value);
+	if (pt->device_id == NULL)
+		return -1;
+
 	pt->dump_by_type = DEVICE_ID;
 
 	return 0;
