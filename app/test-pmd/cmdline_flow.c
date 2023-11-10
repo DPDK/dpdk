@@ -7383,13 +7383,13 @@ static const struct token token_list[] = {
 		.name = "handle",
 		.help = "indirect list handle",
 		.next = NEXT(next_ial, NEXT_ENTRY(INDIRECT_LIST_ACTION_ID2PTR_HANDLE)),
-		.args = ARGS(ARGS_ENTRY_ARB(0, sizeof(uintptr_t))),
+		.args = ARGS(ARGS_ENTRY_ARB(0, sizeof(uint32_t))),
 	},
 	[ACTION_INDIRECT_LIST_CONF] = {
 		.name = "conf",
 		.help = "indirect list configuration",
 		.next = NEXT(next_ial, NEXT_ENTRY(INDIRECT_LIST_ACTION_ID2PTR_CONF)),
-		.args = ARGS(ARGS_ENTRY_ARB(0, sizeof(uintptr_t))),
+		.args = ARGS(ARGS_ENTRY_ARB(0, sizeof(uint32_t))),
 	},
 	[INDIRECT_LIST_ACTION_ID2PTR_HANDLE] = {
 		.type = "UNSIGNED",
