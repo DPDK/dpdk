@@ -4938,33 +4938,27 @@ struct cmd_tunnel_tso_set_result {
 	portid_t port_id;
 };
 
-static struct rte_eth_dev_info
-check_tunnel_tso_nic_support(portid_t port_id)
+static void
+check_tunnel_tso_nic_support(portid_t port_id, uint64_t tx_offload_capa)
 {
-	struct rte_eth_dev_info dev_info;
-
-	if (eth_dev_info_get_print_err(port_id, &dev_info) != 0)
-		return dev_info;
-
-	if (!(dev_info.tx_offload_capa & DEV_TX_OFFLOAD_VXLAN_TNL_TSO))
+	if (!(tx_offload_capa & DEV_TX_OFFLOAD_VXLAN_TNL_TSO))
 		printf("Warning: VXLAN TUNNEL TSO not supported therefore "
 		       "not enabled for port %d\n", port_id);
-	if (!(dev_info.tx_offload_capa & DEV_TX_OFFLOAD_GRE_TNL_TSO))
+	if (!(tx_offload_capa & DEV_TX_OFFLOAD_GRE_TNL_TSO))
 		printf("Warning: GRE TUNNEL TSO	not supported therefore "
 		       "not enabled for port %d\n", port_id);
-	if (!(dev_info.tx_offload_capa & DEV_TX_OFFLOAD_IPIP_TNL_TSO))
+	if (!(tx_offload_capa & DEV_TX_OFFLOAD_IPIP_TNL_TSO))
 		printf("Warning: IPIP TUNNEL TSO not supported therefore "
 		       "not enabled for port %d\n", port_id);
-	if (!(dev_info.tx_offload_capa & DEV_TX_OFFLOAD_GENEVE_TNL_TSO))
+	if (!(tx_offload_capa & DEV_TX_OFFLOAD_GENEVE_TNL_TSO))
 		printf("Warning: GENEVE TUNNEL TSO not supported therefore "
 		       "not enabled for port %d\n", port_id);
-	if (!(dev_info.tx_offload_capa & DEV_TX_OFFLOAD_IP_TNL_TSO))
+	if (!(tx_offload_capa & DEV_TX_OFFLOAD_IP_TNL_TSO))
 		printf("Warning: IP TUNNEL TSO not supported therefore "
 		       "not enabled for port %d\n", port_id);
-	if (!(dev_info.tx_offload_capa & DEV_TX_OFFLOAD_UDP_TNL_TSO))
+	if (!(tx_offload_capa & DEV_TX_OFFLOAD_UDP_TNL_TSO))
 		printf("Warning: UDP TUNNEL TSO not supported therefore "
 		       "not enabled for port %d\n", port_id);
-	return dev_info;
 }
 
 static void
@@ -4974,6 +4968,7 @@ cmd_tunnel_tso_set_parsed(void *parsed_result,
 {
 	struct cmd_tunnel_tso_set_result *res = parsed_result;
 	struct rte_eth_dev_info dev_info;
+	int ret;
 
 	if (port_id_is_invalid(res->port_id, ENABLED_WARN))
 		return;
@@ -4985,7 +4980,11 @@ cmd_tunnel_tso_set_parsed(void *parsed_result,
 	if (!strcmp(res->mode, "set"))
 		ports[res->port_id].tunnel_tso_segsz = res->tso_segsz;
 
-	dev_info = check_tunnel_tso_nic_support(res->port_id);
+	ret = eth_dev_info_get_print_err(res->port_id, &dev_info);
+	if (ret != 0)
+		return;
+
+	check_tunnel_tso_nic_support(res->port_id, dev_info.tx_offload_capa);
 	if (ports[res->port_id].tunnel_tso_segsz == 0) {
 		ports[res->port_id].dev_conf.txmode.offloads &=
 			~(DEV_TX_OFFLOAD_VXLAN_TNL_TSO |
