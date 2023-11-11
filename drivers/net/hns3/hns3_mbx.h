@@ -93,21 +93,11 @@ enum hns3_mbx_link_fail_subcode {
 #define HNS3_MBX_MAX_RESP_DATA_SIZE	8
 #define HNS3_MBX_DEF_TIME_LIMIT_MS	500
 
-enum {
-	HNS3_MBX_RESP_MATCHING_SCHEME_OF_ORIGINAL = 0,
-	HNS3_MBX_RESP_MATCHING_SCHEME_OF_MATCH_ID
-};
-
 struct hns3_mbx_resp_status {
 	rte_spinlock_t lock; /* protects against contending sync cmd resp */
 
-	uint8_t matching_scheme;
-
 	/* The following fields used in the matching scheme for original */
 	uint32_t req_msg_data;
-	uint32_t head;
-	uint32_t tail;
-	uint32_t lost;
 
 	/* The following fields used in the matching scheme for match_id */
 	uint16_t match_id;
