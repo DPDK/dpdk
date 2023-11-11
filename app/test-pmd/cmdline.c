@@ -5011,12 +5011,6 @@ cmd_tunnel_tso_set_parsed(void *parsed_result,
 				res->port_id);
 			return;
 		}
-		check_tunnel_tso_nic_support(res->port_id, dev_info.tx_offload_capa);
-
-		ports[res->port_id].dev_conf.txmode.offloads |=
-			(all_tunnel_tso & dev_info.tx_offload_capa);
-		printf("TSO segment size for tunneled packets is %d\n",
-			ports[res->port_id].tunnel_tso_segsz);
 
 		/* Below conditions are needed to make it work:
 		 * (1) tunnel TSO is supported by the NIC;
@@ -5029,14 +5023,23 @@ cmd_tunnel_tso_set_parsed(void *parsed_result,
 		 * is not necessary for IPv6 tunneled pkts because there's no
 		 * checksum in IP header anymore.
 		 */
-
-		if (!ports[res->port_id].parse_tunnel)
+		if (!ports[res->port_id].parse_tunnel) {
 			fprintf(stderr,
-				"Warning: csum parse_tunnel must be set so that tunneled packets are recognized\n");
+				"Error: csum parse_tunnel must be set so that tunneled packets are recognized\n");
+			return;
+		}
 		if (!(ports[res->port_id].dev_conf.txmode.offloads &
-		      RTE_ETH_TX_OFFLOAD_OUTER_IPV4_CKSUM))
+		      RTE_ETH_TX_OFFLOAD_OUTER_IPV4_CKSUM)) {
 			fprintf(stderr,
-				"Warning: csum set outer-ip must be set to hw if outer L3 is IPv4; not necessary for IPv6\n");
+				"Error: csum set outer-ip must be set to hw if outer L3 is IPv4; not necessary for IPv6\n");
+			return;
+		}
+
+		check_tunnel_tso_nic_support(res->port_id, dev_info.tx_offload_capa);
+		ports[res->port_id].dev_conf.txmode.offloads |=
+				(all_tunnel_tso & dev_info.tx_offload_capa);
+		printf("TSO segment size for tunneled packets is %d\n",
+			ports[res->port_id].tunnel_tso_segsz);
 	}
 
 	cmd_config_queue_tx_offloads(&ports[res->port_id]);
