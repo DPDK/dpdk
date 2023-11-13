@@ -1596,6 +1596,7 @@ enqueue_req:
 jcmdq_full:
 	queue->head = head;
 	qp->stats.enqueued_count += count;
+	rte_wmb();
 
 	return count;
 }
