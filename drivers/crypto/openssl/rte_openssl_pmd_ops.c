@@ -958,9 +958,11 @@ static int openssl_set_asym_session_parameters(
 		rsa_ctx = EVP_PKEY_CTX_new(pkey, NULL);
 		asym_session->xfrm_type = RTE_CRYPTO_ASYM_XFORM_RSA;
 		asym_session->u.r.ctx = rsa_ctx;
+		EVP_PKEY_free(pkey);
 		EVP_PKEY_CTX_free(key_ctx);
+		OSSL_PARAM_BLD_free(param_bld);
 		OSSL_PARAM_free(params);
-		break;
+		ret = 0;
 #else
 		RSA *rsa = RSA_new();
 		if (rsa == NULL)
@@ -1030,7 +1032,7 @@ static int openssl_set_asym_session_parameters(
 		}
 		asym_session->u.r.rsa = rsa;
 		asym_session->xfrm_type = RTE_CRYPTO_ASYM_XFORM_RSA;
-		break;
+		ret = 0;
 #endif
 err_rsa:
 		BN_clear_free(n);
@@ -1042,7 +1044,7 @@ err_rsa:
 		BN_clear_free(dmq1);
 		BN_clear_free(iqmp);
 
-		return -1;
+		return ret;
 	}
 	case RTE_CRYPTO_ASYM_XFORM_MODEX:
 	{
@@ -1184,8 +1186,7 @@ err_dh:
 #if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
 		BIGNUM *p = NULL, *g = NULL;
 		BIGNUM *q = NULL, *priv_key = NULL;
-		BIGNUM *pub_key = BN_new();
-		BN_zero(pub_key);
+		BIGNUM *pub_key = NULL;
 		OSSL_PARAM_BLD *param_bld = NULL;
 
 		p = BN_bin2bn((const unsigned char *)
@@ -1363,6 +1364,7 @@ err_dsa:
 
 		asym_session->u.sm2.params = params;
 		OSSL_PARAM_BLD_free(param_bld);
+		BN_free(pkey_bn);
 
 		asym_session->xfrm_type = RTE_CRYPTO_ASYM_XFORM_SM2;
 		break;
@@ -1373,6 +1375,7 @@ err_sm2:
 		if (asym_session->u.sm2.params)
 			OSSL_PARAM_free(asym_session->u.sm2.params);
 
+		BN_free(pkey_bn);
 		return -1;
 #else
 		OPENSSL_LOG(WARNING, "SM2 unsupported in current OpenSSL Version");
@@ -1451,6 +1454,8 @@ static void openssl_reset_asym_session(struct openssl_asym_session *sess)
 		break;
 	case RTE_CRYPTO_ASYM_XFORM_DH:
 #if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
+		OSSL_PARAM_BLD_free(sess->u.dh.param_bld);
+		OSSL_PARAM_BLD_free(sess->u.dh.param_bld_peer);
 		sess->u.dh.param_bld = NULL;
 		sess->u.dh.param_bld_peer = NULL;
 #else
@@ -1460,6 +1465,7 @@ static void openssl_reset_asym_session(struct openssl_asym_session *sess)
 		break;
 	case RTE_CRYPTO_ASYM_XFORM_DSA:
 #if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
+		OSSL_PARAM_BLD_free(sess->u.s.param_bld);
 		sess->u.s.param_bld = NULL;
 #else
 		if (sess->u.s.dsa)
