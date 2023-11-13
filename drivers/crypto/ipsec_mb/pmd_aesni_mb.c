@@ -2154,7 +2154,7 @@ aesni_mb_dequeue_burst(void *queue_pair, struct rte_crypto_op **ops,
 		uint16_t n = (nb_ops / burst_sz) ?
 			burst_sz : nb_ops;
 
-		while (unlikely((IMB_GET_NEXT_BURST(mb_mgr, n, jobs)) < n)) {
+		if (unlikely((IMB_GET_NEXT_BURST(mb_mgr, n, jobs)) < n)) {
 			/*
 			 * Not enough free jobs in the queue
 			 * Flush n jobs until enough jobs available
@@ -2172,6 +2172,8 @@ aesni_mb_dequeue_burst(void *queue_pair, struct rte_crypto_op **ops,
 					break;
 				}
 			}
+			nb_ops -= i;
+			continue;
 		}
 
 		/*
