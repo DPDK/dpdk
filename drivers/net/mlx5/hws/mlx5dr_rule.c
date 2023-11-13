@@ -741,7 +741,7 @@ int mlx5dr_rule_action_update(struct mlx5dr_rule *rule_handle,
 
 	if (unlikely(mlx5dr_table_is_root(matcher->tbl) ||
 	    unlikely(mlx5dr_matcher_req_fw_wqe(matcher)))) {
-		DR_LOG(ERR, "Rule update not supported on cureent matcher");
+		DR_LOG(ERR, "Rule update not supported on current matcher");
 		rte_errno = ENOTSUP;
 		return -rte_errno;
 	}
