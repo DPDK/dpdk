@@ -343,11 +343,13 @@ unit_test_suite_runner(struct unit_test_suite *suite)
 
 			if (test_success == TEST_SUCCESS)
 				suite->succeeded++;
-			else if (test_success == TEST_SKIPPED)
+			else if (test_success == TEST_SKIPPED) {
 				suite->skipped++;
-			else if (test_success == -ENOTSUP)
+				suite->executed--;
+			} else if (test_success == -ENOTSUP) {
 				suite->unsupported++;
-			else
+				suite->executed--;
+			} else
 				suite->failed++;
 		} else if (test_success == -ENOTSUP) {
 			suite->unsupported++;
