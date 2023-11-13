@@ -250,7 +250,9 @@ qat_sym_crypto_cap_get_gen3(struct qat_cryptodev_private *internals,
 		}
 		if (slice_map & ICP_ACCEL_MASK_SM3_SLICE && (
 			check_auth_capa(&capabilities[iter],
-				RTE_CRYPTO_AUTH_SM3))) {
+				RTE_CRYPTO_AUTH_SM3) ||
+			check_auth_capa(&capabilities[iter],
+				RTE_CRYPTO_AUTH_SM3_HMAC))) {
 			continue;
 		}
 		memcpy(addr + curr_capa, capabilities + iter,
