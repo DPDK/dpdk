@@ -20,7 +20,7 @@ l3fwd_em_handle_ipv4(struct rte_mbuf *m, uint16_t portid,
 
 #ifdef DO_RFC_1812_CHECKS
 	/* Check to make sure the packet is valid (RFC1812) */
-	if (is_valid_ipv4_pkt(ipv4_hdr, m->pkt_len) < 0) {
+	if (is_valid_ipv4_pkt(ipv4_hdr, m->pkt_len, m->ol_flags) < 0) {
 		rte_pktmbuf_free(m);
 		return BAD_PORT;
 	}

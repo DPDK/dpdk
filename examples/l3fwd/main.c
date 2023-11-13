@@ -74,6 +74,7 @@ static int numa_on = 1; /**< NUMA is enabled by default. */
 static int parse_ptype; /**< Parse packet type using rx callback, and */
 			/**< disabled by default */
 static int disable_rss; /**< Disable RSS mode */
+static int relax_rx_offload; /**< Relax Rx offload mode, disabled by default */
 static int per_port_pool; /**< Use separate buffer pools per port; disabled */
 			  /**< by default */
 
@@ -680,6 +681,7 @@ static const char short_options[] =
 #define CMD_LINE_OPT_HASH_ENTRY_NUM "hash-entry-num"
 #define CMD_LINE_OPT_PARSE_PTYPE "parse-ptype"
 #define CMD_LINE_OPT_DISABLE_RSS "disable-rss"
+#define CMD_LINE_OPT_RELAX_RX_OFFLOAD "relax-rx-offload"
 #define CMD_LINE_OPT_PER_PORT_POOL "per-port-pool"
 #define CMD_LINE_OPT_MODE "mode"
 #define CMD_LINE_OPT_EVENTQ_SYNC "eventq-sched"
@@ -708,6 +710,7 @@ enum {
 	CMD_LINE_OPT_HASH_ENTRY_NUM_NUM,
 	CMD_LINE_OPT_PARSE_PTYPE_NUM,
 	CMD_LINE_OPT_DISABLE_RSS_NUM,
+	CMD_LINE_OPT_RELAX_RX_OFFLOAD_NUM,
 	CMD_LINE_OPT_RULE_IPV4_NUM,
 	CMD_LINE_OPT_RULE_IPV6_NUM,
 	CMD_LINE_OPT_ALG_NUM,
@@ -731,6 +734,7 @@ static const struct option lgopts[] = {
 	{CMD_LINE_OPT_MAX_PKT_LEN, 1, 0, CMD_LINE_OPT_MAX_PKT_LEN_NUM},
 	{CMD_LINE_OPT_HASH_ENTRY_NUM, 1, 0, CMD_LINE_OPT_HASH_ENTRY_NUM_NUM},
 	{CMD_LINE_OPT_PARSE_PTYPE, 0, 0, CMD_LINE_OPT_PARSE_PTYPE_NUM},
+	{CMD_LINE_OPT_RELAX_RX_OFFLOAD, 0, 0, CMD_LINE_OPT_RELAX_RX_OFFLOAD_NUM},
 	{CMD_LINE_OPT_DISABLE_RSS, 0, 0, CMD_LINE_OPT_DISABLE_RSS_NUM},
 	{CMD_LINE_OPT_PER_PORT_POOL, 0, 0, CMD_LINE_OPT_PARSE_PER_PORT_POOL},
 	{CMD_LINE_OPT_MODE, 1, 0, CMD_LINE_OPT_MODE_NUM},
@@ -855,6 +859,11 @@ parse_args(int argc, char **argv)
 		case CMD_LINE_OPT_PARSE_PTYPE_NUM:
 			printf("soft parse-ptype is enabled\n");
 			parse_ptype = 1;
+			break;
+
+		case CMD_LINE_OPT_RELAX_RX_OFFLOAD_NUM:
+			printf("Rx offload is relaxed\n");
+			relax_rx_offload = 1;
 			break;
 
 		case CMD_LINE_OPT_DISABLE_RSS_NUM:
@@ -1276,6 +1285,21 @@ l3fwd_poll_resource_setup(void)
 				portid,
 				port_conf.rx_adv_conf.rss_conf.rss_hf,
 				local_port_conf.rx_adv_conf.rss_conf.rss_hf);
+		}
+
+		/* Relax Rx offload requirement */
+		if ((local_port_conf.rxmode.offloads & dev_info.rx_offload_capa) !=
+			local_port_conf.rxmode.offloads) {
+			printf("Port %u requested Rx offloads 0x%"PRIx64
+				" does not match Rx offloads capabilities 0x%"PRIx64"\n",
+				portid, local_port_conf.rxmode.offloads,
+				dev_info.rx_offload_capa);
+			if (relax_rx_offload) {
+				local_port_conf.rxmode.offloads &= dev_info.rx_offload_capa;
+				printf("Warning: modified Rx offload to 0x%"PRIx64
+						" based on device capability\n",
+						local_port_conf.rxmode.offloads);
+			}
 		}
 
 		ret = rte_eth_dev_configure(portid, nb_rx_queue,
