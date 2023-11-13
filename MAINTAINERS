@@ -865,10 +865,11 @@ F: doc/guides/nics/mlx4.rst
 F: doc/guides/nics/features/mlx4.ini
 
 NVIDIA mlx5
-M: Matan Azrad <matan@nvidia.com>
+M: Dariusz Sosnowski <dsosnowski@nvidia.com>
 M: Viacheslav Ovsiienko <viacheslavo@nvidia.com>
 M: Ori Kam <orika@nvidia.com>
 M: Suanming Mou <suanmingm@nvidia.com>
+M: Matan Azrad <matan@nvidia.com>
 T: git://dpdk.org/next/dpdk-next-net-mlx
 F: drivers/common/mlx5/
 F: drivers/net/mlx5/
