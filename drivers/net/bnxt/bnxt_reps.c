@@ -740,10 +740,10 @@ int bnxt_rep_tx_queue_setup_op(struct rte_eth_dev *eth_dev,
 	struct bnxt_tx_queue *parent_txq, *txq;
 	struct bnxt_vf_rep_tx_queue *vfr_txq;
 
-	if (queue_idx >= rep_bp->rx_nr_rings) {
+	if (queue_idx >= rep_bp->tx_nr_rings) {
 		PMD_DRV_LOG(ERR,
 			    "Cannot create Tx rings %d. %d rings available\n",
-			    queue_idx, rep_bp->rx_nr_rings);
+			    queue_idx, rep_bp->tx_nr_rings);
 		return -EINVAL;
 	}
 
