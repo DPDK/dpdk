@@ -190,6 +190,8 @@ struct openssl_asym_session {
 		struct dh {
 			DH *dh_key;
 			uint32_t key_op;
+			BIGNUM *p;
+			BIGNUM *g;
 #if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
 			OSSL_PARAM_BLD * param_bld;
 			OSSL_PARAM_BLD *param_bld_peer;
@@ -199,6 +201,10 @@ struct openssl_asym_session {
 			DSA *dsa;
 #if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
 			OSSL_PARAM_BLD * param_bld;
+			BIGNUM *p;
+			BIGNUM *g;
+			BIGNUM *q;
+			BIGNUM *priv_key;
 #endif
 		} s;
 		struct {

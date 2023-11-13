@@ -1960,6 +1960,7 @@ err_dsa_sign:
 		OSSL_PARAM_free(params);
 	EVP_PKEY_CTX_free(key_ctx);
 	EVP_PKEY_CTX_free(dsa_ctx);
+	EVP_PKEY_free(pkey);
 	return ret;
 }
 
