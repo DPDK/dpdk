@@ -1954,9 +1954,8 @@ mlx5_rxq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	tmpl->rxq.mp = rx_seg[0].mp;
 	tmpl->rxq.elts_n = log2above(desc);
 	tmpl->rxq.rq_repl_thresh = MLX5_VPMD_RXQ_RPLNSH_THRESH(desc_n);
-	tmpl->rxq.elts = (struct rte_mbuf *(*)[desc_n])(tmpl + 1);
-	tmpl->rxq.mprq_bufs =
-		(struct mlx5_mprq_buf *(*)[desc])(*tmpl->rxq.elts + desc_n);
+	tmpl->rxq.elts = (struct rte_mbuf *(*)[])(tmpl + 1);
+	tmpl->rxq.mprq_bufs = (struct mlx5_mprq_buf *(*)[])(*tmpl->rxq.elts + desc_n);
 	tmpl->rxq.idx = idx;
 	if (conf->share_group > 0) {
 		tmpl->rxq.shared = 1;

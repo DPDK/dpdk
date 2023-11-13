@@ -64,7 +64,7 @@ txq_free_elts(struct mlx5_txq_ctrl *txq_ctrl)
 	const uint16_t elts_m = elts_n - 1;
 	uint16_t elts_head = txq_ctrl->txq.elts_head;
 	uint16_t elts_tail = txq_ctrl->txq.elts_tail;
-	struct rte_mbuf *(*elts)[elts_n] = &txq_ctrl->txq.elts;
+	struct rte_mbuf *(*elts)[] = &txq_ctrl->txq.elts;
 
 	DRV_LOG(DEBUG, "port %u Tx queue %u freeing WRs",
 		PORT_ID(txq_ctrl->priv), txq_ctrl->txq.idx);
