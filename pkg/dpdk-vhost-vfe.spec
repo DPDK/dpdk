@@ -11,7 +11,7 @@
 %bcond_with bluefield
 
 Name: dpdk-vhost-vfe
-Version: 0.7
+Version: 0.8
 Release: 1%{?dist}
 Packager: dev@dpdk.org
 URL: http://dpdk.org
