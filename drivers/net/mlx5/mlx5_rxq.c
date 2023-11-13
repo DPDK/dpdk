@@ -2161,6 +2161,7 @@ mlx5_rxq_release(struct rte_eth_dev *dev, uint16_t idx)
 					RTE_ETH_QUEUE_STATE_STOPPED;
 		}
 	} else { /* Refcnt zero, closing device. */
+		LIST_REMOVE(rxq_ctrl, next);
 		LIST_REMOVE(rxq, owner_entry);
 		if (LIST_EMPTY(&rxq_ctrl->owners)) {
 			if (rxq_ctrl->type == MLX5_RXQ_TYPE_STANDARD)
@@ -2168,7 +2169,6 @@ mlx5_rxq_release(struct rte_eth_dev *dev, uint16_t idx)
 					(&rxq_ctrl->rxq.mr_ctrl.cache_bh);
 			if (rxq_ctrl->rxq.shared)
 				LIST_REMOVE(rxq_ctrl, share_entry);
-			LIST_REMOVE(rxq_ctrl, next);
 			mlx5_free(rxq_ctrl);
 		}
 		dev->data->rx_queues[idx] = NULL;
