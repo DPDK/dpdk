@@ -301,6 +301,7 @@ gve_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_id,
 	const struct rte_memzone *mz;
 	struct gve_rx_queue *rxq;
 	uint16_t free_thresh;
+	uint32_t mbuf_len;
 	int err = 0;
 
 	if (nb_desc != hw->rx_desc_cnt) {
@@ -344,7 +345,11 @@ gve_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_id,
 	rxq->hw = hw;
 	rxq->ntfy_addr = &hw->db_bar2[rte_be_to_cpu_32(hw->irq_dbs[rxq->ntfy_id].id)];
 
-	rxq->rx_buf_len = rte_pktmbuf_data_room_size(rxq->mpool) - RTE_PKTMBUF_HEADROOM;
+	mbuf_len =
+		rte_pktmbuf_data_room_size(rxq->mpool) - RTE_PKTMBUF_HEADROOM;
+	rxq->rx_buf_len =
+		RTE_MIN((uint16_t)GVE_RX_MAX_BUF_SIZE_GQI,
+			RTE_ALIGN_FLOOR(mbuf_len, GVE_RX_BUF_ALIGN_GQI));
 
 	/* Allocate software ring */
 	rxq->sw_ring = rte_zmalloc_socket("gve rx sw ring", sizeof(struct rte_mbuf *) * nb_desc,

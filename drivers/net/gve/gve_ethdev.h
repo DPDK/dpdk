@@ -20,7 +20,13 @@
 #define GVE_DEFAULT_TX_RS_THRESH     32
 #define GVE_TX_MAX_FREE_SZ          512
 
-#define GVE_MIN_BUF_SIZE	    1024
+#define GVE_RX_BUF_ALIGN_DQO        128
+#define GVE_RX_MIN_BUF_SIZE_DQO    1024
+#define GVE_RX_MAX_BUF_SIZE_DQO    ((16 * 1024) - GVE_RX_BUF_ALIGN_DQO)
+
+#define GVE_RX_BUF_ALIGN_GQI       2048
+#define GVE_RX_MIN_BUF_SIZE_GQI    2048
+#define GVE_RX_MAX_BUF_SIZE_GQI    4096
 
 #define GVE_TX_CKSUM_OFFLOAD_MASK (		\
 		RTE_MBUF_F_TX_L4_MASK  |	\
