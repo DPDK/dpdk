@@ -474,6 +474,10 @@ mlx5_alloc_shared_dr(struct mlx5_priv *priv)
 	err = mlx5_alloc_table_hash_list(priv);
 	if (err)
 		goto error;
+	sh->default_miss_action =
+			mlx5_glue->dr_create_flow_action_default_miss();
+	if (!sh->default_miss_action)
+		DRV_LOG(WARNING, "Default miss action is not supported.");
 	/* The resources below are only valid with DV support. */
 #ifdef HAVE_IBV_FLOW_DV_SUPPORT
 	/* Init shared flex parsers list, no need lcore_share */
@@ -600,10 +604,6 @@ mlx5_alloc_shared_dr(struct mlx5_priv *priv)
 
 	__mlx5_discovery_misc5_cap(priv);
 #endif /* HAVE_MLX5DV_DR */
-	sh->default_miss_action =
-			mlx5_glue->dr_create_flow_action_default_miss();
-	if (!sh->default_miss_action)
-		DRV_LOG(WARNING, "Default miss action is not supported.");
 	LIST_INIT(&sh->shared_rxqs);
 	return 0;
 error:
