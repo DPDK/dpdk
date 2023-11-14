@@ -943,9 +943,8 @@ rte_pci_pasid_set_state(const struct rte_pci_device *dev,
 		off_t offset, bool enable)
 {
 	uint16_t pasid = enable;
-	return rte_pci_write_config(dev, &pasid, sizeof(pasid), offset) < 0
-		? -1
-		: 0;
+	return rte_pci_write_config(dev, &pasid, sizeof(pasid),
+			offset + RTE_PCI_PASID_CTRL) != sizeof(pasid) ? -1 : 0;
 }
 
 struct rte_pci_bus rte_pci_bus = {

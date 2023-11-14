@@ -518,8 +518,8 @@ dlb2_pf_reset(struct dlb2_dev *dlb2_dev)
 	/* Disable PASID if it is enabled by default, which
 	 * breaks the DLB if enabled.
 	 */
-	off = DLB2_PCI_PASID_CAP_OFFSET + RTE_PCI_PASID_CTRL;
-	if (rte_pci_pasid_set_state(pdev, off, false)) {
+	off = DLB2_PCI_PASID_CAP_OFFSET;
+	if (rte_pci_pasid_set_state(pdev, off, false) < 0) {
 		DLB2_LOG_ERR("[%s()] failed to write the pcie config space at offset %d\n",
 				__func__, (int)off);
 		return -1;

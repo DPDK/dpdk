@@ -161,9 +161,12 @@ int rte_pci_set_bus_master(const struct rte_pci_device *dev, bool enable);
  * @param dev
  *   A pointer to a rte_pci_device structure.
  * @param offset
- *   Offset of the PASID external capability.
+ *   Offset of the PASID external capability structure.
  * @param enable
  *   Flag to enable or disable PASID.
+ *
+ * @return
+ *   0 on success, -1 on error in PCI config space read/write.
  */
 __rte_internal
 int rte_pci_pasid_set_state(const struct rte_pci_device *dev,
