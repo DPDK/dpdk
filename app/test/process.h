@@ -15,6 +15,7 @@
 #include <sys/wait.h>
 
 #include <rte_string_fns.h> /* strlcpy */
+#include <rte_devargs.h>
 
 #ifdef RTE_EXEC_ENV_FREEBSD
 #define self "curproc"
@@ -32,6 +33,34 @@ extern uint16_t flag_for_send_pkts;
 #endif
 #endif
 
+#define PREFIX_ALLOW "--allow="
+
+static int
+add_parameter_allow(char **argv, int max_capacity)
+{
+	struct rte_devargs *devargs;
+	int count = 0;
+
+	RTE_EAL_DEVARGS_FOREACH(NULL, devargs) {
+		if (strlen(devargs->name) == 0)
+			continue;
+
+		if (devargs->data == NULL || strlen(devargs->data) == 0) {
+			if (asprintf(&argv[count], PREFIX_ALLOW"%s", devargs->name) < 0)
+				break;
+		} else {
+			if (asprintf(&argv[count], PREFIX_ALLOW"%s,%s",
+					 devargs->name, devargs->data) < 0)
+				break;
+		}
+
+		if (++count == max_capacity)
+			break;
+	}
+
+	return count;
+}
+
 /*
  * launches a second copy of the test process using the given argv parameters,
  * which should include argv[0] as the process name. To identify in the
@@ -41,8 +70,10 @@ extern uint16_t flag_for_send_pkts;
 static inline int
 process_dup(const char *const argv[], int numargs, const char *env_value)
 {
-	int num;
-	char *argv_cpy[numargs + 1];
+	int num = 0;
+	char **argv_cpy;
+	int allow_num;
+	int argv_num;
 	int i, status;
 	char path[32];
 #ifdef RTE_LIB_PDUMP
@@ -56,14 +87,21 @@ process_dup(const char *const argv[], int numargs, const char *env_value)
 	if (pid < 0)
 		return -1;
 	else if (pid == 0) {
+		allow_num = rte_devargs_type_count(RTE_DEVTYPE_ALLOWED);
+		argv_num = numargs + allow_num + 1;
+		argv_cpy = calloc(argv_num, sizeof(char *));
+		if (!argv_cpy)
+			rte_panic("Memory allocation failed\n");
+
 		/* make a copy of the arguments to be passed to exec */
 		for (i = 0; i < numargs; i++) {
 			argv_cpy[i] = strdup(argv[i]);
 			if (argv_cpy[i] == NULL)
 				rte_panic("Error dup args\n");
 		}
-		argv_cpy[i] = NULL;
-		num = numargs;
+		if (allow_num > 0)
+			num = add_parameter_allow(&argv_cpy[i], allow_num);
+		num += numargs;
 
 #ifdef RTE_EXEC_ENV_LINUX
 		{
