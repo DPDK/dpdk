@@ -72,10 +72,18 @@ static VirtualAlloc2_type VirtualAlloc2_ptr;
 
 #ifdef RTE_TOOLCHAIN_GCC
 
+#ifndef MEM_COALESCE_PLACEHOLDERS
 #define MEM_COALESCE_PLACEHOLDERS 0x00000001
+#endif
+#ifndef MEM_PRESERVE_PLACEHOLDER
 #define MEM_PRESERVE_PLACEHOLDER  0x00000002
+#endif
+#ifndef MEM_REPLACE_PLACEHOLDER
 #define MEM_REPLACE_PLACEHOLDER   0x00004000
+#endif
+#ifndef MEM_RESERVE_PLACEHOLDER
 #define MEM_RESERVE_PLACEHOLDER   0x00040000
+#endif
 
 int
 eal_mem_win32api_init(void)
