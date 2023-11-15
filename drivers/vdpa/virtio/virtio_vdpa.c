@@ -419,6 +419,9 @@ virtio_vdpa_virtq_disable(struct virtio_vdpa_priv *priv, int vq_idx)
 		if (!(features & VIRTIO_F_RING_RESET)) {
 			DRV_LOG(WARNING, "%s can't disable queue after driver ok without queue reset support",
 					priv->vdev->device->name);
+			// Handle blk special case SET_VRING_ENABLE(0) before GET_VRING_BASE
+			virtio_vdpa_virtq_doorbell_relay_disable(priv, vq_idx);
+			virtio_pci_dev_interrupt_disable(priv->vpdev, vq_idx + 1);
 			return 0;
 		}
 	}
