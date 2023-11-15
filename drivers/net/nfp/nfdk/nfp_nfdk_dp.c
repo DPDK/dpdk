@@ -301,6 +301,9 @@ nfp_net_nfdk_xmit_pkts_common(void *tx_queue,
 		uint64_t metadata = 0;
 
 		pkt = *(tx_pkts + npkts);
+		if (pkt == NULL)
+			goto xmit_end;
+
 		nop_descs = nfp_net_nfdk_tx_maybe_close_block(txq, pkt);
 		if (nop_descs < 0)
 			goto xmit_end;
