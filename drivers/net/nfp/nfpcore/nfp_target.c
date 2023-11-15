@@ -528,7 +528,7 @@ nfp_mask64(int msb,
 		return 0;
 
 	width = msb - lsb + 1;
-	if (width < 0)
+	if (width <= 0)
 		return 0;
 
 	if (width == 64)
