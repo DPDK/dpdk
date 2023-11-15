@@ -31,7 +31,7 @@
  * by polling with given interval and timeout.
  */
 #define fpga_wait_register_field(_field, _expect, _reg_addr, _timeout, _invl)\
-({									     \
+__extension__ ({							     \
 	int wait = 0;							     \
 	int ret = -ETIMEDOUT;						     \
 	typeof(_expect) value;						     \

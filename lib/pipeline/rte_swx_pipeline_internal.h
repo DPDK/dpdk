@@ -1485,7 +1485,7 @@ instr_operand_nbo(struct thread *t, const struct instr_operand *x)
 #endif
 
 #define METADATA_READ(thread, offset, n_bits)                                  \
-({                                                                             \
+__extension__ ({                                                               \
 	uint64_t *m64_ptr = (uint64_t *)&(thread)->metadata[offset];           \
 	uint64_t m64 = *m64_ptr;                                               \
 	uint64_t m64_mask = UINT64_MAX >> (64 - (n_bits));                     \

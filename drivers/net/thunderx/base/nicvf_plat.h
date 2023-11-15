@@ -55,11 +55,11 @@
 
 /* ARM64 specific functions */
 #if defined(RTE_ARCH_ARM64)
-#define nicvf_prefetch_store_keep(_ptr) ({\
+#define nicvf_prefetch_store_keep(_ptr) __extension__ ({\
 	asm volatile("prfm pstl1keep, [%x0]\n" : : "r" (_ptr)); })
 
 
-#define NICVF_LOAD_PAIR(reg1, reg2, addr) ({		\
+#define NICVF_LOAD_PAIR(reg1, reg2, addr) __extension__ ({		\
 			asm volatile(			\
 			"ldp %x[x1], %x[x0], [%x[p1]]"	\
 			: [x1]"=r"(reg1), [x0]"=r"(reg2)\

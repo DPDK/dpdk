@@ -124,7 +124,7 @@ hisi_dma_update_queue_mbit(struct hisi_dma_dev *hw, uint32_t qoff,
 	hisi_dma_write_queue(hw, qoff, tmp);
 }
 
-#define hisi_dma_poll_hw_state(hw, val, cond, sleep_us, timeout_us) ({ \
+#define hisi_dma_poll_hw_state(hw, val, cond, sleep_us, timeout_us) __extension__ ({ \
 	uint32_t timeout = 0; \
 	while (timeout++ <= (timeout_us)) { \
 		(val) = hisi_dma_read_queue(hw, HISI_DMA_QUEUE_FSM_REG); \

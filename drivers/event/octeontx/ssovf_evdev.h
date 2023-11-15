@@ -96,14 +96,14 @@
 
 /* ARM64 specific functions */
 #if defined(RTE_ARCH_ARM64)
-#define ssovf_load_pair(val0, val1, addr) ({		\
+#define ssovf_load_pair(val0, val1, addr) __extension__ ({		\
 			asm volatile(			\
 			"ldp %x[x0], %x[x1], [%x[p1]]"	\
 			:[x0]"=r"(val0), [x1]"=r"(val1) \
 			:[p1]"r"(addr)			\
 			); })
 
-#define ssovf_store_pair(val0, val1, addr) ({		\
+#define ssovf_store_pair(val0, val1, addr) __extension__ ({		\
 			asm volatile(			\
 			"stp %x[x0], %x[x1], [%x[p1]]"	\
 			::[x0]"r"(val0), [x1]"r"(val1), [p1]"r"(addr) \

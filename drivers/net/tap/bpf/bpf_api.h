@@ -162,7 +162,7 @@ static void BPF_FUNC(trace_printk, const char *fmt, int fmt_size, ...);
 
 #ifndef printt
 # define printt(fmt, ...)						\
-	({								\
+	__extension__ ({						\
 		char ____fmt[] = fmt;					\
 		trace_printk(____fmt, sizeof(____fmt), ##__VA_ARGS__);	\
 	})

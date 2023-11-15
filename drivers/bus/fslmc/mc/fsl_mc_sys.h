@@ -40,11 +40,11 @@ struct fsl_mc_io {
 #define __arch_putq(v, a)	(*(volatile uint64_t *)(a) = (v))
 #define __arch_putq32(v, a)	(*(volatile uint32_t *)(a) = (v))
 #define readq(c) \
-	({ uint64_t __v = __arch_getq(c); __iormb(); __v; })
+	__extension__ ({ uint64_t __v = __arch_getq(c); __iormb(); __v; })
 #define writeq(v, c) \
-	({ uint64_t __v = v; __iowmb(); __arch_putq(__v, c); __v; })
+	__extension__ ({ uint64_t __v = v; __iowmb(); __arch_putq(__v, c); __v; })
 #define writeq32(v, c) \
-	({ uint32_t __v = v; __iowmb(); __arch_putq32(__v, c); __v; })
+	__extension__ ({ uint32_t __v = v; __iowmb(); __arch_putq32(__v, c); __v; })
 #define ioread64(_p)		readq(_p)
 #define iowrite64(_v, _p)	writeq(_v, _p)
 #define iowrite32(_v, _p)	writeq32(_v, _p)

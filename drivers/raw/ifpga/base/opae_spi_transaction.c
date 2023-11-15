@@ -24,7 +24,7 @@
 #define SPI_REG_BYTES 4
 
 #define INIT_SPI_TRAN_HEADER(trans_type, size, address) \
-({ \
+__extension__ ({ \
 	header.trans_type = trans_type; \
 	header.reserve = 0; \
 	header.size = cpu_to_be16(size); \

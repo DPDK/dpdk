@@ -95,36 +95,36 @@ test_and_set_bit(unsigned long nr, void *addr)
 #define PMEM_SIZE	0x8000	/* TMU has less... */
 #define PMEM_END	(PMEM_BASE_ADDR + PMEM_SIZE)
 
-#define writel(v, p) ({*(volatile unsigned int *)(p) = (v); })
+#define writel(v, p) __extension__ ({*(volatile unsigned int *)(p) = (v); })
 #define readl(p) (*(const volatile unsigned int *)(p))
 
 /* These check memory ranges from PE point of view/memory map */
 #define IS_DMEM(addr, len)				\
-	({ typeof(addr) addr_ = (addr);			\
+	__extension__ ({ typeof(addr) addr_ = (addr);	\
 	((unsigned long)(addr_) >= DMEM_BASE_ADDR) &&	\
 	(((unsigned long)(addr_) + (len)) <= DMEM_END); })
 
 #define IS_PMEM(addr, len)				\
-	({ typeof(addr) addr_ = (addr);			\
+	__extension__ ({ typeof(addr) addr_ = (addr);	\
 	((unsigned long)(addr_) >= PMEM_BASE_ADDR) &&	\
 	(((unsigned long)(addr_) + (len)) <= PMEM_END); })
 
 #define IS_PE_LMEM(addr, len)				\
-	({ typeof(addr) addr_ = (addr);			\
+	__extension__ ({ typeof(addr) addr_ = (addr);	\
 	((unsigned long)(addr_) >=			\
 	PE_LMEM_BASE_ADDR) &&				\
 	(((unsigned long)(addr_) +			\
 	(len)) <= PE_LMEM_END); })
 
 #define IS_PFE_LMEM(addr, len)				\
-	({ typeof(addr) addr_ = (addr);			\
+	__extension__ ({ typeof(addr) addr_ = (addr);	\
 	((unsigned long)(addr_) >=			\
 	CBUS_VIRT_TO_PFE(LMEM_BASE_ADDR)) &&		\
 	(((unsigned long)(addr_) + (len)) <=		\
 	CBUS_VIRT_TO_PFE(LMEM_END)); })
 
 #define __IS_PHYS_DDR(addr, len)			\
-	({ typeof(addr) addr_ = (addr);			\
+	__extension__ ({ typeof(addr) addr_ = (addr);	\
 	((unsigned long)(addr_) >=			\
 	DDR_PHYS_BASE_ADDR) &&				\
 	(((unsigned long)(addr_) + (len)) <=		\

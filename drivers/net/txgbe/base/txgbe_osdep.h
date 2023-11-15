@@ -172,7 +172,7 @@ static inline u64 REVERT_BIT_MASK64(u64 mask)
 
 /* Check whether an address is broadcast. */
 #define TXGBE_IS_BROADCAST(address) \
-		({typeof(address)addr = (address); \
+		__extension__ ({typeof(address)addr = (address); \
 		(((u8 *)(addr))[0] == ((u8)0xff)) && \
 		(((u8 *)(addr))[1] == ((u8)0xff)); })
 

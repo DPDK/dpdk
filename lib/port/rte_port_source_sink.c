@@ -178,7 +178,7 @@ error_exit:
 #else /* RTE_PORT_PCAP */
 
 #define PCAP_SOURCE_LOAD(port, file_name, n_bytes, socket_id)	\
-({								\
+__extension__ ({						\
 	int _ret = 0;						\
 								\
 	if (file_name) {					\
@@ -431,7 +431,7 @@ do {								\
 #else
 
 #define PCAP_SINK_OPEN(port, file_name, max_n_pkts)		\
-({								\
+__extension__ ({						\
 	int _ret = 0;						\
 								\
 	if (file_name) {					\

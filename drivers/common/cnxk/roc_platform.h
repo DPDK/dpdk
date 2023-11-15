@@ -82,7 +82,7 @@
 
 /** Divide ceil */
 #define PLT_DIV_CEIL(x, y)			\
-	({					\
+	__extension__ ({			\
 		__typeof(x) __x = x;		\
 		__typeof(y) __y = y;		\
 		(__x + __y - 1) / __y;		\

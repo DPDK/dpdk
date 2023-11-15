@@ -44,8 +44,8 @@ extern struct rte_ml_dev_ops ml_dev_dummy_ops;
 
 /* Memory barrier macros */
 #if defined(RTE_ARCH_ARM)
-#define dmb_st ({ asm volatile("dmb st" : : : "memory"); })
-#define dsb_st ({ asm volatile("dsb st" : : : "memory"); })
+#define dmb_st __extension__ ({ asm volatile("dmb st" : : : "memory"); })
+#define dsb_st __extension__ ({ asm volatile("dsb st" : : : "memory"); })
 #else
 #define dmb_st
 #define dsb_st

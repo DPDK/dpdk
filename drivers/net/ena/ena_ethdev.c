@@ -459,7 +459,7 @@ mp_msg_init(struct rte_mp_msg *msg, enum ena_mp_req type, int port_id)
  *       calls to the same proxied function under the same lock.
  */
 #define ENA_PROXY(a, f, ...)						\
-({									\
+__extension__ ({							\
 	struct ena_adapter *_a = (a);					\
 	struct timespec ts = { .tv_sec = ENA_MP_REQ_TMO };		\
 	struct ena_mp_body *req, *rsp;					\
@@ -507,13 +507,13 @@ mp_msg_init(struct rte_mp_msg *msg, enum ena_mp_req type, int port_id)
  *********************************************************************/
 
 ENA_PROXY_DESC(ena_com_get_dev_basic_stats, ENA_MP_DEV_STATS_GET,
-({
+__extension__ ({
 	ENA_TOUCH(adapter);
 	ENA_TOUCH(req);
 	ENA_TOUCH(ena_dev);
 	ENA_TOUCH(stats);
 }),
-({
+__extension__ ({
 	ENA_TOUCH(rsp);
 	ENA_TOUCH(ena_dev);
 	if (stats != &adapter->basic_stats)
@@ -522,13 +522,13 @@ ENA_PROXY_DESC(ena_com_get_dev_basic_stats, ENA_MP_DEV_STATS_GET,
 	struct ena_com_dev *ena_dev, struct ena_admin_basic_stats *stats);
 
 ENA_PROXY_DESC(ena_com_get_eni_stats, ENA_MP_ENI_STATS_GET,
-({
+__extension__ ({
 	ENA_TOUCH(adapter);
 	ENA_TOUCH(req);
 	ENA_TOUCH(ena_dev);
 	ENA_TOUCH(stats);
 }),
-({
+__extension__ ({
 	ENA_TOUCH(rsp);
 	ENA_TOUCH(ena_dev);
 	if (stats != (struct ena_admin_eni_stats *)&adapter->metrics_stats)
@@ -537,12 +537,12 @@ ENA_PROXY_DESC(ena_com_get_eni_stats, ENA_MP_ENI_STATS_GET,
 	struct ena_com_dev *ena_dev, struct ena_admin_eni_stats *stats);
 
 ENA_PROXY_DESC(ena_com_set_dev_mtu, ENA_MP_MTU_SET,
-({
+__extension__ ({
 	ENA_TOUCH(adapter);
 	ENA_TOUCH(ena_dev);
 	req->args.mtu = mtu;
 }),
-({
+__extension__ ({
 	ENA_TOUCH(adapter);
 	ENA_TOUCH(rsp);
 	ENA_TOUCH(ena_dev);
@@ -551,12 +551,12 @@ ENA_PROXY_DESC(ena_com_set_dev_mtu, ENA_MP_MTU_SET,
 	struct ena_com_dev *ena_dev, int mtu);
 
 ENA_PROXY_DESC(ena_com_indirect_table_set, ENA_MP_IND_TBL_SET,
-({
+__extension__ ({
 	ENA_TOUCH(adapter);
 	ENA_TOUCH(req);
 	ENA_TOUCH(ena_dev);
 }),
-({
+__extension__ ({
 	ENA_TOUCH(adapter);
 	ENA_TOUCH(rsp);
 	ENA_TOUCH(ena_dev);
@@ -564,13 +564,13 @@ ENA_PROXY_DESC(ena_com_indirect_table_set, ENA_MP_IND_TBL_SET,
 	struct ena_com_dev *ena_dev);
 
 ENA_PROXY_DESC(ena_com_indirect_table_get, ENA_MP_IND_TBL_GET,
-({
+__extension__ ({
 	ENA_TOUCH(adapter);
 	ENA_TOUCH(req);
 	ENA_TOUCH(ena_dev);
 	ENA_TOUCH(ind_tbl);
 }),
-({
+__extension__ ({
 	ENA_TOUCH(rsp);
 	ENA_TOUCH(ena_dev);
 	if (ind_tbl != adapter->indirect_table)
@@ -580,14 +580,14 @@ ENA_PROXY_DESC(ena_com_indirect_table_get, ENA_MP_IND_TBL_GET,
 	struct ena_com_dev *ena_dev, u32 *ind_tbl);
 
 ENA_PROXY_DESC(ena_com_get_customer_metrics, ENA_MP_CUSTOMER_METRICS_GET,
-({
+__extension__ ({
 	ENA_TOUCH(adapter);
 	ENA_TOUCH(req);
 	ENA_TOUCH(ena_dev);
 	ENA_TOUCH(buf);
 	ENA_TOUCH(buf_size);
 }),
-({
+__extension__ ({
 	ENA_TOUCH(rsp);
 	ENA_TOUCH(ena_dev);
 	ENA_TOUCH(buf_size);
@@ -597,13 +597,13 @@ ENA_PROXY_DESC(ena_com_get_customer_metrics, ENA_MP_CUSTOMER_METRICS_GET,
 	struct ena_com_dev *ena_dev, char *buf, size_t buf_size);
 
 ENA_PROXY_DESC(ena_com_get_ena_srd_info, ENA_MP_SRD_STATS_GET,
-({
+__extension__ ({
 	ENA_TOUCH(adapter);
 	ENA_TOUCH(req);
 	ENA_TOUCH(ena_dev);
 	ENA_TOUCH(info);
 }),
-({
+__extension__ ({
 	ENA_TOUCH(rsp);
 	ENA_TOUCH(ena_dev);
 	if ((struct ena_stats_srd *)info != &adapter->srd_stats)

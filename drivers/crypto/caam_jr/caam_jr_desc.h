@@ -32,7 +32,7 @@
 /* Macro for setting up a JD. The structure of the JD is common across all
  * supported protocols, thus its structure is identical.
  */
-#define SEC_JD_INIT(descriptor)	      ({ \
+#define SEC_JD_INIT(descriptor)	      __extension__ ({ \
 	/* CTYPE = job descriptor			       \
 	 * RSMS, DNR = 0
 	 * ONE = 1

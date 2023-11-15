@@ -141,9 +141,9 @@ extern int ena_logtype_com;
 #define ena_spinlock_t rte_spinlock_t
 #define ENA_SPINLOCK_INIT(spinlock) rte_spinlock_init(&(spinlock))
 #define ENA_SPINLOCK_LOCK(spinlock, flags)				       \
-	({(void)(flags); rte_spinlock_lock(&(spinlock)); })
+	__extension__ ({(void)(flags); rte_spinlock_lock(&(spinlock)); })
 #define ENA_SPINLOCK_UNLOCK(spinlock, flags)				       \
-	({(void)(flags); rte_spinlock_unlock(&(spinlock)); })
+	__extension__ ({(void)(flags); rte_spinlock_unlock(&(spinlock)); })
 #define ENA_SPINLOCK_DESTROY(spinlock) ((void)(spinlock))
 
 typedef struct {
@@ -237,7 +237,7 @@ ena_mem_alloc_coherent(struct rte_eth_dev_data *data, size_t size,
 		ENA_MEM_ALLOC_COHERENT_ALIGNED(dmadev, size, virt, phys,       \
 			mem_handle, RTE_CACHE_LINE_SIZE)
 #define ENA_MEM_FREE_COHERENT(dmadev, size, virt, phys, mem_handle)	       \
-		({ ENA_TOUCH(size); ENA_TOUCH(phys); ENA_TOUCH(dmadev);	       \
+		__extension__ ({ ENA_TOUCH(size); ENA_TOUCH(phys); ENA_TOUCH(dmadev);	       \
 		   rte_memzone_free(mem_handle); })
 
 #define ENA_MEM_ALLOC_COHERENT_NODE_ALIGNED(				       \
@@ -263,16 +263,16 @@ ena_mem_alloc_coherent(struct rte_eth_dev_data *data, size_t size,
 
 #define ENA_MEM_ALLOC(dmadev, size) rte_zmalloc(NULL, size, 1)
 #define ENA_MEM_FREE(dmadev, ptr, size)					       \
-	({ ENA_TOUCH(dmadev); ENA_TOUCH(size); rte_free(ptr); })
+	__extension__ ({ ENA_TOUCH(dmadev); ENA_TOUCH(size); rte_free(ptr); })
 
 #define ENA_DB_SYNC(mem_handle) ((void)mem_handle)
 
 #define ENA_REG_WRITE32(bus, value, reg)				       \
-	({ (void)(bus); rte_write32((value), (reg)); })
+	__extension__ ({ (void)(bus); rte_write32((value), (reg)); })
 #define ENA_REG_WRITE32_RELAXED(bus, value, reg)			       \
-	({ (void)(bus); rte_write32_relaxed((value), (reg)); })
+	__extension__ ({ (void)(bus); rte_write32_relaxed((value), (reg)); })
 #define ENA_REG_READ32(bus, reg)					       \
-	({ (void)(bus); rte_read32_relaxed((reg)); })
+	__extension__ ({ (void)(bus); rte_read32_relaxed((reg)); })
 
 #define ATOMIC32_INC(i32_ptr) rte_atomic32_inc(i32_ptr)
 #define ATOMIC32_DEC(i32_ptr) rte_atomic32_dec(i32_ptr)

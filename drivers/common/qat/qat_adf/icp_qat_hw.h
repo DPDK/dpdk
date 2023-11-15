@@ -292,7 +292,7 @@ enum icp_qat_hw_cipher_convert {
 #define QAT_CIPHER_AEAD_AAD_SIZE_BITPOS 16
 #define QAT_CIPHER_AEAD_AAD_SIZE_LE_BITPOS 0
 #define ICP_QAT_HW_CIPHER_CONFIG_BUILD_UPPER(aad_size) \
-	({ \
+	__extension__ ({ \
 	typeof(aad_size) aad_size1 = aad_size; \
 	(((((aad_size1) >> QAT_CIPHER_AEAD_AAD_UPPER_SHIFT) & \
 	QAT_CIPHER_AEAD_AAD_SIZE_UPPER_MASK) << \

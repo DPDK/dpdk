@@ -42,7 +42,7 @@
 
 #define ENETFEC_MAX_Q		1
 
-#define writel(v, p) ({*(volatile unsigned int *)(p) = (v); })
+#define writel(v, p) __extension__ ({*(volatile unsigned int *)(p) = (v); })
 #define readl(p) rte_read32(p)
 
 struct bufdesc {

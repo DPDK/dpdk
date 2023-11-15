@@ -102,7 +102,7 @@ typedef uint64_t   u64;
 #endif
 
 #ifndef do_div
-#define do_div(n, base) ({\
+#define do_div(n, base) __extension__ ({\
 	(n) = (n) / (base);\
 })
 #endif /* do_div */
