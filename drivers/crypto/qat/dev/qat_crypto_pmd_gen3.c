@@ -232,6 +232,13 @@ qat_sym_crypto_cap_get_gen3(struct qat_cryptodev_private *internals,
 	}
 
 	for (i = 0; i < capa_num; i++, iter++) {
+		if (unlikely(qat_legacy_capa) && (i == legacy_capa_num)) {
+			capabilities = qat_sym_crypto_caps_gen3;
+			addr += curr_capa;
+			curr_capa = 0;
+			iter = 0;
+		}
+
 		if (slice_map & ICP_ACCEL_MASK_SM4_SLICE && (
 			check_cipher_capa(&capabilities[iter],
 				RTE_CRYPTO_CIPHER_SM4_ECB) ||
@@ -249,13 +256,6 @@ qat_sym_crypto_cap_get_gen3(struct qat_cryptodev_private *internals,
 		memcpy(addr + curr_capa, capabilities + iter,
 			sizeof(struct rte_cryptodev_capabilities));
 		curr_capa++;
-
-		if (unlikely(qat_legacy_capa) && (i == legacy_capa_num-1)) {
-			capabilities = qat_sym_crypto_caps_gen3;
-			addr += curr_capa;
-			curr_capa = 0;
-			iter = -1;
-		}
 	}
 	internals->qat_dev_capabilities = internals->capa_mz->addr;
 
