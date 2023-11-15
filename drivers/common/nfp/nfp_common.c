@@ -187,14 +187,14 @@ nfp_enable_queues(struct nfp_hw *hw,
 	/* Enabling the required TX queues in the device */
 	enabled_queues = 0;
 	for (i = 0; i < nb_tx_queues; i++)
-		enabled_queues |= (1 << i);
+		enabled_queues |= (1ULL << i);
 
 	nn_cfg_writeq(hw, NFP_NET_CFG_TXRS_ENABLE, enabled_queues);
 
 	/* Enabling the required RX queues in the device */
 	enabled_queues = 0;
 	for (i = 0; i < nb_rx_queues; i++)
-		enabled_queues |= (1 << i);
+		enabled_queues |= (1ULL << i);
 
 	nn_cfg_writeq(hw, NFP_NET_CFG_RXRS_ENABLE, enabled_queues);
 }
