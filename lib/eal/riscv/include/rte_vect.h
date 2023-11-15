@@ -29,7 +29,7 @@ typedef union rte_xmm {
 	uint32_t	u32[XMM_SIZE / sizeof(uint32_t)];
 	uint64_t	u64[XMM_SIZE / sizeof(uint64_t)];
 	double		pd[XMM_SIZE / sizeof(double)];
-} __rte_aligned(8) rte_xmm_t;
+} __rte_aligned(16) rte_xmm_t;
 
 static inline xmm_t
 vect_load_128(void *p)
