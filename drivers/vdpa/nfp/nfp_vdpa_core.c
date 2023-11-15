@@ -176,7 +176,7 @@ uint64_t
 nfp_vdpa_get_queue_notify_offset(struct nfp_vdpa_hw *vdpa_hw __rte_unused,
 		int qid)
 {
-	return NFP_VDPA_NOTIFY_ADDR_BASE + (qid * NFP_VDPA_NOTIFY_ADDR_INTERVAL);
+	return NFP_VDPA_NOTIFY_ADDR_BASE + ((uint64_t)qid * NFP_VDPA_NOTIFY_ADDR_INTERVAL);
 }
 
 /*
