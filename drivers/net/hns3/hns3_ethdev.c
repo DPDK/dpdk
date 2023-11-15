@@ -2581,8 +2581,7 @@ hns3_dev_infos_get(struct rte_eth_dev *eth_dev, struct rte_eth_dev_info *info)
 				 DEV_RX_OFFLOAD_VLAN_STRIP |
 				 DEV_RX_OFFLOAD_VLAN_FILTER |
 				 DEV_RX_OFFLOAD_JUMBO_FRAME |
-				 DEV_RX_OFFLOAD_RSS_HASH |
-				 DEV_RX_OFFLOAD_TCP_LRO);
+				 DEV_RX_OFFLOAD_RSS_HASH);
 	info->tx_offload_capa = (DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM |
 				 DEV_TX_OFFLOAD_IPV4_CKSUM |
 				 DEV_TX_OFFLOAD_TCP_CKSUM |
@@ -2599,6 +2598,9 @@ hns3_dev_infos_get(struct rte_eth_dev *eth_dev, struct rte_eth_dev_info *info)
 	if (hns3_dev_indep_txrx_supported(hw))
 		info->dev_capa = RTE_ETH_DEV_CAPA_RUNTIME_RX_QUEUE_SETUP |
 				 RTE_ETH_DEV_CAPA_RUNTIME_TX_QUEUE_SETUP;
+
+	if (hns3_dev_gro_supported(hw))
+		info->rx_offload_capa |= DEV_RX_OFFLOAD_TCP_LRO;
 
 	info->rx_desc_lim = (struct rte_eth_desc_lim) {
 		.nb_max = HNS3_MAX_RING_DESC,
@@ -3032,6 +3034,28 @@ hns3_parse_speed(int speed_cmd, uint32_t *speed)
 	return 0;
 }
 
+int
+hns3_get_pci_revision_id(struct hns3_hw *hw, uint8_t *revision_id)
+{
+	struct rte_pci_device *pci_dev;
+	struct rte_eth_dev *eth_dev;
+	uint8_t revision;
+	int ret;
+
+	eth_dev = &rte_eth_devices[hw->data->port_id];
+	pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
+	ret = rte_pci_read_config(pci_dev, &revision, HNS3_PCI_REVISION_ID_LEN,
+				  HNS3_PCI_REVISION_ID);
+	if (ret != HNS3_PCI_REVISION_ID_LEN) {
+		hns3_err(hw, "failed to read pci revision id, ret = %d", ret);
+		return -EIO;
+	}
+
+	*revision_id = revision;
+
+	return 0;
+}
+
 static void
 hns3_set_default_dev_specifications(struct hns3_hw *hw)
 {
@@ -3109,30 +3133,14 @@ static int
 hns3_get_capability(struct hns3_hw *hw)
 {
 	struct hns3_adapter *hns = HNS3_DEV_HW_TO_ADAPTER(hw);
-	struct rte_pci_device *pci_dev;
 	struct hns3_pf *pf = &hns->pf;
-	struct rte_eth_dev *eth_dev;
-	uint8_t revision;
 	int ret;
-
-	eth_dev = &rte_eth_devices[hw->data->port_id];
-	pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
-
-	/* Get PCI revision id */
-	ret = rte_pci_read_config(pci_dev, &revision, HNS3_PCI_REVISION_ID_LEN,
-				  HNS3_PCI_REVISION_ID);
-	if (ret != HNS3_PCI_REVISION_ID_LEN) {
-		PMD_INIT_LOG(ERR, "failed to read pci revision id, ret = %d",
-			     ret);
-		return -EIO;
-	}
-	hw->revision = revision;
 
 	ret = hns3_query_mac_stats_reg_num(hw);
 	if (ret)
 		return ret;
 
-	if (revision < PCI_REVISION_ID_HIP09_A) {
+	if (hw->revision < PCI_REVISION_ID_HIP09_A) {
 		hns3_set_default_dev_specifications(hw);
 		hw->intr.mapping_mode = HNS3_INTR_MAPPING_VEC_RSV_ONE;
 		hw->intr.gl_unit = HNS3_INTR_COALESCE_GL_UINT_2US;
@@ -4785,6 +4793,10 @@ hns3_init_pf(struct rte_eth_dev *eth_dev)
 
 	/* Get hardware io base address from pcie BAR2 IO space */
 	hw->io_base = pci_dev->mem_resource[2].addr;
+
+	ret = hns3_get_pci_revision_id(hw, &hw->revision);
+	if (ret)
+		return ret;
 
 	/* Firmware command queue initialize */
 	ret = hns3_cmd_init_queue(hw);

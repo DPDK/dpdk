@@ -2794,6 +2794,9 @@ hns3_config_gro(struct hns3_hw *hw, bool en)
 	struct hns3_cmd_desc desc;
 	int ret;
 
+	if (!hns3_dev_gro_supported(hw))
+		return 0;
+
 	hns3_cmd_setup_basic_desc(&desc, HNS3_OPC_GRO_GENERIC_CONFIG, false);
 	req = (struct hns3_cfg_gro_status_cmd *)desc.data;
 

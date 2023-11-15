@@ -778,6 +778,7 @@ struct hns3_adapter {
 #define HNS3_DEV_SUPPORT_TX_PUSH_B		0x5
 #define HNS3_DEV_SUPPORT_INDEP_TXRX_B		0x6
 #define HNS3_DEV_SUPPORT_STASH_B		0x7
+#define HNS3_DEV_SUPPORT_GRO_B			0x14
 
 #define hns3_dev_dcb_supported(hw) \
 	hns3_get_bit((hw)->capability, HNS3_DEV_SUPPORT_DCB_B)
@@ -807,6 +808,9 @@ struct hns3_adapter {
 
 #define hns3_dev_stash_supported(hw) \
 	hns3_get_bit((hw)->capability, HNS3_DEV_SUPPORT_STASH_B)
+
+#define hns3_dev_gro_supported(hw) \
+	hns3_get_bit((hw)->capability, HNS3_DEV_SUPPORT_GRO_B)
 
 #define HNS3_DEV_PRIVATE_TO_HW(adapter) \
 	(&((struct hns3_adapter *)(adapter))->hw)
@@ -939,6 +943,7 @@ int hns3_dev_filter_ctrl(struct rte_eth_dev *dev,
 bool hns3_is_reset_pending(struct hns3_adapter *hns);
 bool hns3vf_is_reset_pending(struct hns3_adapter *hns);
 void hns3_update_link_status(struct hns3_hw *hw);
+int hns3_get_pci_revision_id(struct hns3_hw *hw, uint8_t *revision_id);
 
 static inline bool
 is_reset_pending(struct hns3_adapter *hns)

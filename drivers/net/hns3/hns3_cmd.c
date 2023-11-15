@@ -436,6 +436,8 @@ static void hns3_parse_capability(struct hns3_hw *hw,
 		hns3_set_bit(hw->capability, HNS3_DEV_SUPPORT_INDEP_TXRX_B, 1);
 	if (hns3_get_bit(caps, HNS3_CAPS_STASH_B))
 		hns3_set_bit(hw->capability, HNS3_DEV_SUPPORT_STASH_B, 1);
+	if (hns3_get_bit(caps, HNS3_CAPS_GRO_B))
+		hns3_set_bit(hw->capability, HNS3_DEV_SUPPORT_GRO_B, 1);
 }
 
 static uint32_t
@@ -470,6 +472,19 @@ hns3_set_dcb_capability(struct hns3_hw *hw)
 		hns3_set_bit(hw->capability, HNS3_DEV_SUPPORT_DCB_B, 1);
 }
 
+static void
+hns3_set_default_capability(struct hns3_hw *hw)
+{
+	hns3_set_dcb_capability(hw);
+
+	/*
+	 * The firmware of the network engines with HIP08 do not report some
+	 * capabilities, like GRO. Set default capabilities for it.
+	 */
+	if (hw->revision < PCI_REVISION_ID_HIP09_A)
+		hns3_set_bit(hw->capability, HNS3_DEV_SUPPORT_GRO_B, 1);
+}
+
 static int
 hns3_cmd_query_firmware_version_and_capability(struct hns3_hw *hw)
 {
@@ -488,8 +503,7 @@ hns3_cmd_query_firmware_version_and_capability(struct hns3_hw *hw)
 
 	hw->fw_version = rte_le_to_cpu_32(resp->firmware);
 
-	hns3_set_dcb_capability(hw);
-
+	hns3_set_default_capability(hw);
 	hns3_parse_capability(hw, resp);
 
 	return 0;
