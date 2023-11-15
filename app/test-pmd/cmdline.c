@@ -11186,6 +11186,11 @@ config_port_rx_offload(portid_t port_id, char *name, bool on)
 			fprintf(stderr, "Unknown offload name: %s\n", name);
 			return;
 		}
+		if ((offload & dev_info.rx_offload_capa) == 0) {
+			fprintf(stderr, "Error: port %u doesn't support offload: %s.\n",
+				port_id, name);
+			return;
+		}
 	}
 
 	nb_rx_queues = dev_info.nb_rx_queues;
@@ -11386,6 +11391,11 @@ cmd_config_per_queue_rx_offload_parsed(void *parsed_result,
 		offload = search_rx_offload(res->offload);
 		if (offload == 0) {
 			fprintf(stderr, "Unknown offload name: %s\n", res->offload);
+			return;
+		}
+		if ((offload & dev_info.rx_queue_offload_capa) == 0) {
+			fprintf(stderr, "Error: port %u doesn't support per queue offload: %s.\n",
+				port_id, res->offload);
 			return;
 		}
 	}
@@ -11698,6 +11708,11 @@ config_port_tx_offload(portid_t port_id, char *name, bool on)
 			fprintf(stderr, "Unknown offload name: %s\n", name);
 			return;
 		}
+		if ((offload & dev_info.tx_offload_capa) == 0) {
+			fprintf(stderr, "Error: port %u doesn't support offload: %s.\n",
+				port_id, name);
+			return;
+		}
 	}
 
 	nb_tx_queues = dev_info.nb_tx_queues;
@@ -11902,6 +11917,11 @@ cmd_config_per_queue_tx_offload_parsed(void *parsed_result,
 		offload = search_tx_offload(res->offload);
 		if (offload == 0) {
 			fprintf(stderr, "Unknown offload name: %s\n", res->offload);
+			return;
+		}
+		if ((offload & dev_info.tx_queue_offload_capa) == 0) {
+			fprintf(stderr, "Error: port %u doesn't support per queue offload: %s.\n",
+				port_id, res->offload);
 			return;
 		}
 	}
