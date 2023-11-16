@@ -382,11 +382,17 @@ enum mlx5_hw_job_type {
 	MLX5_HW_Q_JOB_TYPE_UPDATE_QUERY, /* Flow update and query job type. */
 };
 
+enum mlx5_hw_indirect_type {
+	MLX5_HW_INDIRECT_TYPE_LEGACY,
+	MLX5_HW_INDIRECT_TYPE_LIST
+};
+
 #define MLX5_HW_MAX_ITEMS (16)
 
 /* HW steering flow management job descriptor. */
 struct mlx5_hw_q_job {
 	uint32_t type; /* Job type. */
+	uint32_t indirect_type;
 	union {
 		struct rte_flow_hw *flow; /* Flow attached to the job. */
 		const void *action; /* Indirect action attached to the job. */

@@ -3740,6 +3740,56 @@ flow_hw_age_count_release(struct mlx5_priv *priv, uint32_t queue,
 	}
 }
 
+static __rte_always_inline void
+flow_hw_pull_legacy_indirect_comp(struct rte_eth_dev *dev, struct mlx5_hw_q_job *job,
+				  uint32_t queue)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_aso_ct_action *aso_ct;
+	struct mlx5_aso_mtr *aso_mtr;
+	uint32_t type, idx;
+
+	if (MLX5_INDIRECT_ACTION_TYPE_GET(job->action) ==
+	    MLX5_INDIRECT_ACTION_TYPE_QUOTA) {
+		mlx5_quota_async_completion(dev, queue, job);
+	} else if (job->type == MLX5_HW_Q_JOB_TYPE_DESTROY) {
+		type = MLX5_INDIRECT_ACTION_TYPE_GET(job->action);
+		if (type == MLX5_INDIRECT_ACTION_TYPE_METER_MARK) {
+			idx = MLX5_INDIRECT_ACTION_IDX_GET(job->action);
+			mlx5_ipool_free(priv->hws_mpool->idx_pool, idx);
+		}
+	} else if (job->type == MLX5_HW_Q_JOB_TYPE_CREATE) {
+		type = MLX5_INDIRECT_ACTION_TYPE_GET(job->action);
+		if (type == MLX5_INDIRECT_ACTION_TYPE_METER_MARK) {
+			idx = MLX5_INDIRECT_ACTION_IDX_GET(job->action);
+			aso_mtr = mlx5_ipool_get(priv->hws_mpool->idx_pool, idx);
+			aso_mtr->state = ASO_METER_READY;
+		} else if (type == MLX5_INDIRECT_ACTION_TYPE_CT) {
+			idx = MLX5_ACTION_CTX_CT_GET_IDX
+			((uint32_t)(uintptr_t)job->action);
+			aso_ct = mlx5_ipool_get(priv->hws_ctpool->cts, idx);
+			aso_ct->state = ASO_CONNTRACK_READY;
+		}
+	} else if (job->type == MLX5_HW_Q_JOB_TYPE_QUERY) {
+		type = MLX5_INDIRECT_ACTION_TYPE_GET(job->action);
+		if (type == MLX5_INDIRECT_ACTION_TYPE_CT) {
+			idx = MLX5_ACTION_CTX_CT_GET_IDX
+			((uint32_t)(uintptr_t)job->action);
+			aso_ct = mlx5_ipool_get(priv->hws_ctpool->cts, idx);
+			mlx5_aso_ct_obj_analyze(job->query.user,
+						job->query.hw);
+			aso_ct->state = ASO_CONNTRACK_READY;
+		}
+	} else {
+		/*
+		 * rte_flow_op_result::user data can point to
+		 * struct mlx5_aso_mtr object as well
+		 */
+		if (queue != CTRL_QUEUE_ID(priv))
+			MLX5_ASSERT(false);
+	}
+}
+
 static inline int
 __flow_hw_pull_indir_action_comp(struct rte_eth_dev *dev,
 				 uint32_t queue,
@@ -3749,11 +3799,7 @@ __flow_hw_pull_indir_action_comp(struct rte_eth_dev *dev,
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct rte_ring *r = priv->hw_q[queue].indir_cq;
-	struct mlx5_hw_q_job *job = NULL;
 	void *user_data = NULL;
-	uint32_t type, idx;
-	struct mlx5_aso_mtr *aso_mtr;
-	struct mlx5_aso_ct_action *aso_ct;
 	int ret_comp, i;
 
 	ret_comp = (int)rte_ring_count(r);
@@ -3775,49 +3821,18 @@ __flow_hw_pull_indir_action_comp(struct rte_eth_dev *dev,
 						     &res[ret_comp],
 						     n_res - ret_comp);
 	for (i = 0; i <  ret_comp; i++) {
-		job = (struct mlx5_hw_q_job *)res[i].user_data;
+		struct mlx5_hw_q_job *job = (struct mlx5_hw_q_job *)res[i].user_data;
+
 		/* Restore user data. */
 		res[i].user_data = job->user_data;
-		if (MLX5_INDIRECT_ACTION_TYPE_GET(job->action) ==
-		    MLX5_INDIRECT_ACTION_TYPE_QUOTA) {
-			mlx5_quota_async_completion(dev, queue, job);
-		} else if (job->type == MLX5_HW_Q_JOB_TYPE_DESTROY) {
-			type = MLX5_INDIRECT_ACTION_TYPE_GET(job->action);
-			if (type == MLX5_INDIRECT_ACTION_TYPE_METER_MARK) {
-				idx = MLX5_INDIRECT_ACTION_IDX_GET(job->action);
-				mlx5_ipool_free(priv->hws_mpool->idx_pool, idx);
-			}
-		} else if (job->type == MLX5_HW_Q_JOB_TYPE_CREATE) {
-			type = MLX5_INDIRECT_ACTION_TYPE_GET(job->action);
-			if (type == MLX5_INDIRECT_ACTION_TYPE_METER_MARK) {
-				idx = MLX5_INDIRECT_ACTION_IDX_GET(job->action);
-				aso_mtr = mlx5_ipool_get(priv->hws_mpool->idx_pool, idx);
-				aso_mtr->state = ASO_METER_READY;
-			} else if (type == MLX5_INDIRECT_ACTION_TYPE_CT) {
-				idx = MLX5_ACTION_CTX_CT_GET_IDX
-					((uint32_t)(uintptr_t)job->action);
-				aso_ct = mlx5_ipool_get(priv->hws_ctpool->cts, idx);
-				aso_ct->state = ASO_CONNTRACK_READY;
-			}
-		} else if (job->type == MLX5_HW_Q_JOB_TYPE_QUERY) {
-			type = MLX5_INDIRECT_ACTION_TYPE_GET(job->action);
-			if (type == MLX5_INDIRECT_ACTION_TYPE_CT) {
-				idx = MLX5_ACTION_CTX_CT_GET_IDX
-					((uint32_t)(uintptr_t)job->action);
-				aso_ct = mlx5_ipool_get(priv->hws_ctpool->cts, idx);
-				mlx5_aso_ct_obj_analyze(job->query.user,
-							job->query.hw);
-				aso_ct->state = ASO_CONNTRACK_READY;
-			}
-		} else {
-			/*
-			 * rte_flow_op_result::user data can point to
-			 * struct mlx5_aso_mtr object as well
-			 */
-			if (queue == CTRL_QUEUE_ID(priv))
-				continue;
-			MLX5_ASSERT(false);
-		}
+		if (job->indirect_type == MLX5_HW_INDIRECT_TYPE_LEGACY)
+			flow_hw_pull_legacy_indirect_comp(dev, job, queue);
+		/*
+		 * Current PMD supports 2 indirect action list types - MIRROR and REFORMAT.
+		 * These indirect list types do not post WQE to create action.
+		 * Future indirect list types that do post WQE will add
+		 * completion handlers here.
+		 */
 		flow_hw_job_put(priv, job, queue);
 	}
 	return ret_comp;
@@ -10109,6 +10124,7 @@ flow_hw_action_handle_create(struct rte_eth_dev *dev, uint32_t queue,
 	}
 	if (job) {
 		job->action = handle;
+		job->indirect_type = MLX5_HW_INDIRECT_TYPE_LEGACY;
 		flow_hw_action_finalize(dev, queue, job, push, aso,
 					handle != NULL);
 	}
@@ -11341,6 +11357,7 @@ flow_hw_async_action_list_handle_create(struct rte_eth_dev *dev, uint32_t queue,
 	}
 	if (job) {
 		job->action = handle;
+		job->indirect_type = MLX5_HW_INDIRECT_TYPE_LIST;
 		flow_hw_action_finalize(dev, queue, job, push, false,
 					handle != NULL);
 	}
