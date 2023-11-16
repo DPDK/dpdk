@@ -20,7 +20,7 @@
 
 #define TEST_NAME_MAX_LEN 80
 #define TEST_RINGSIZE 512
-#define COPY_LEN 1024
+#define COPY_LEN 2048
 
 static struct rte_dma_info info;
 static struct rte_mempool *pool;
@@ -389,6 +389,125 @@ test_stop_start(int16_t dev_id, uint16_t vchan)
 	id_count = id;
 	if (test_single_copy(dev_id, vchan) < 0)
 		ERR_RETURN("Error performing copy after device restart\n");
+	return 0;
+}
+
+static int
+test_enqueue_sg_copies(int16_t dev_id, uint16_t vchan)
+{
+	unsigned int src_len, dst_len, n_sge, len, i, j, k;
+	char orig_src[COPY_LEN], orig_dst[COPY_LEN];
+	struct rte_dma_info info = { 0 };
+	enum rte_dma_status_code status;
+	uint16_t id, n_src, n_dst;
+
+	if (rte_dma_info_get(dev_id, &info) < 0)
+		ERR_RETURN("Failed to get dev info");
+
+	if (info.max_sges < 2)
+		ERR_RETURN("Test needs minimum 2 SG pointers");
+
+	n_sge = info.max_sges;
+
+	for (n_src = 1; n_src <= n_sge; n_src++) {
+		for (n_dst = 1; n_dst <= n_sge; n_dst++) {
+			/* Normalize SG buffer lengths */
+			len = COPY_LEN;
+			len -= (len % (n_src * n_dst));
+			dst_len = len / n_dst;
+			src_len = len / n_src;
+
+			struct rte_dma_sge sg_src[n_sge], sg_dst[n_sge];
+			struct rte_mbuf *src[n_sge], *dst[n_sge];
+			char *src_data[n_sge], *dst_data[n_sge];
+
+			for (i = 0 ; i < len; i++)
+				orig_src[i] = rte_rand() & 0xFF;
+
+			memset(orig_dst, 0, len);
+
+			for (i = 0; i < n_src; i++) {
+				src[i] = rte_pktmbuf_alloc(pool);
+				RTE_ASSERT(src[i] != NULL);
+				sg_src[i].addr = rte_pktmbuf_iova(src[i]);
+				sg_src[i].length = src_len;
+				src_data[i] = rte_pktmbuf_mtod(src[i], char *);
+			}
+
+			for (k = 0; k < n_dst; k++) {
+				dst[k] = rte_pktmbuf_alloc(pool);
+				RTE_ASSERT(dst[k] != NULL);
+				sg_dst[k].addr = rte_pktmbuf_iova(dst[k]);
+				sg_dst[k].length = dst_len;
+				dst_data[k] = rte_pktmbuf_mtod(dst[k], char *);
+			}
+
+			for (i = 0; i < n_src; i++) {
+				for (j = 0; j < src_len; j++)
+					src_data[i][j] = orig_src[i * src_len + j];
+			}
+
+			for (k = 0; k < n_dst; k++)
+				memset(dst_data[k], 0, dst_len);
+
+			printf("\tsrc segs: %2d [seg len: %4d] - dst segs: %2d [seg len : %4d]\n",
+				n_src, src_len, n_dst, dst_len);
+
+			id = rte_dma_copy_sg(dev_id, vchan, sg_src, sg_dst, n_src, n_dst,
+					     RTE_DMA_OP_FLAG_SUBMIT);
+
+			if (id != id_count)
+				ERR_RETURN("Error with rte_dma_copy_sg, got %u, expected %u\n",
+					id, id_count);
+
+			/* Give time for copy to finish, then check it was done */
+			await_hw(dev_id, vchan);
+
+			for (k = 0; k < n_dst; k++)
+				memcpy((&orig_dst[0] + k * dst_len), dst_data[k], dst_len);
+
+			if (memcmp(orig_src, orig_dst, COPY_LEN))
+				ERR_RETURN("Data mismatch");
+
+			/* Verify completion */
+			id = ~id;
+			if (rte_dma_completed(dev_id, vchan, 1, &id, NULL) != 1)
+				ERR_RETURN("Error with rte_dma_completed\n");
+
+			/* Verify expected index(id_count) */
+			if (id != id_count)
+				ERR_RETURN("Error:incorrect job id received, %u [expected %u]\n",
+						id, id_count);
+
+			/* Check for completed and id when no job done */
+			id = ~id;
+			if (rte_dma_completed(dev_id, vchan, 1, &id, NULL) != 0)
+				ERR_RETURN("Error with rte_dma_completed when no job done\n");
+
+			if (id != id_count)
+				ERR_RETURN("Error:incorrect job id received when no job done, %u [expected %u]\n",
+					   id, id_count);
+
+			/* Check for completed_status and id when no job done */
+			id = ~id;
+			if (rte_dma_completed_status(dev_id, vchan, 1, &id, &status) != 0)
+				ERR_RETURN("Error with rte_dma_completed_status when no job done\n");
+			if (id != id_count)
+				ERR_RETURN("Error:incorrect job id received when no job done, %u [expected %u]\n",
+						id, 0);
+
+			for (i = 0; i < n_src; i++)
+				rte_pktmbuf_free(src[i]);
+			for (i = 0; i < n_dst; i++)
+				rte_pktmbuf_free(dst[i]);
+
+			/* Verify that completion returns nothing more */
+			if (rte_dma_completed(dev_id, 0, 1, NULL, NULL) != 0)
+				ERR_RETURN("Error with rte_dma_completed in empty check\n");
+
+			id_count++;
+		}
+	}
 	return 0;
 }
 
@@ -931,6 +1050,17 @@ prepare_m2d_auto_free(int16_t dev_id, uint16_t vchan)
 }
 
 static int
+test_dmadev_sg_copy_setup(void)
+{
+	int ret = TEST_SUCCESS;
+
+	if ((info.dev_capa & RTE_DMA_CAPA_OPS_COPY_SG) == 0)
+		return TEST_SKIPPED;
+
+	return ret;
+}
+
+static int
 test_dmadev_burst_setup(void)
 {
 	if (rte_dma_burst_capacity(test_dev_id, vchan) < 64) {
@@ -1045,7 +1175,7 @@ test_dmadev_setup(void)
 			TEST_RINGSIZE * 2, /* n == num elements */
 			32,  /* cache size */
 			0,   /* priv size */
-			2048, /* data room size */
+			COPY_LEN + RTE_PKTMBUF_HEADROOM, /* data room size */
 			info.numa_node);
 	if (pool == NULL)
 		ERR_RETURN("Error with mempool creation\n");
@@ -1071,6 +1201,7 @@ test_dmadev_instance(int16_t dev_id)
 	struct rte_dma_info dev_info;
 	enum {
 		  TEST_COPY = 0,
+		  TEST_COPY_SG,
 		  TEST_START,
 		  TEST_BURST,
 		  TEST_ERR,
@@ -1081,6 +1212,7 @@ test_dmadev_instance(int16_t dev_id)
 
 	static struct runtest_param param[] = {
 		{"copy", test_enqueue_copies, 640},
+		{"sg_copy", test_enqueue_sg_copies, 1},
 		{"stop_start", test_stop_start, 1},
 		{"burst_capacity", test_burst_capacity, 1},
 		{"error_handling", test_completion_handling, 1},
@@ -1096,6 +1228,9 @@ test_dmadev_instance(int16_t dev_id)
 			TEST_CASE_NAMED_WITH_DATA("copy",
 				NULL, NULL,
 				runtest, &param[TEST_COPY]),
+			TEST_CASE_NAMED_WITH_DATA("sg_copy",
+				test_dmadev_sg_copy_setup, NULL,
+				runtest, &param[TEST_COPY_SG]),
 			TEST_CASE_NAMED_WITH_DATA("stop_start",
 				NULL, NULL,
 				runtest, &param[TEST_START]),
