@@ -7,6 +7,7 @@ Script to automatically generate boilerplate for using DPDK cmdline library.
 """
 
 import argparse
+import shlex
 import sys
 
 PARSE_FN_PARAMS = "void *parsed_result, struct cmdline *cl, void *data"
@@ -133,12 +134,14 @@ def process_commands(infile, hfile, cfile, ctxname):
     )
 
     for lineno, line in enumerate(infile.readlines()):
-        if line.lstrip().startswith("#"):
+        tokens = shlex.split(line, comments=True)
+        if not tokens:
             continue
-        if "#" not in line:
-            line = line + "#"  # ensure split always works, even if no help text
-        tokens, comment = line.split("#", 1)
-        cmd_inst, h_out, c_out = process_command(lineno, tokens.strip().split(), comment.strip())
+        if "#" in line:
+            comment = line.split("#", 1)[-1].strip()
+        else:
+            comment = ""
+        cmd_inst, h_out, c_out = process_command(lineno, tokens, comment)
         hfile.write("\n".join(h_out))
         if cfile:
             cfile.write("\n".join(c_out))
