@@ -1214,6 +1214,7 @@ F: drivers/common/qat/
 
 ISA-L
 M: Lee Daly <lee.daly@intel.com>
+M: Pablo de Lara <pablo.de.lara.guarch@intel.com>
 F: drivers/compress/isal/
 F: doc/guides/compressdevs/isal.rst
 F: doc/guides/compressdevs/features/isal.ini
