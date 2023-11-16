@@ -3158,6 +3158,8 @@ static uint16_t bnxt_check_eth_link_autoneg(uint32_t conf_link)
 static uint16_t bnxt_parse_eth_link_speed(uint32_t conf_link_speed,
 					  struct bnxt_link_info *link_info)
 {
+	uint16_t support_pam4_speeds = link_info->support_pam4_speeds;
+	uint16_t support_speeds = link_info->support_speeds;
 	uint16_t eth_link_speed = 0;
 
 	if (conf_link_speed == RTE_ETH_LINK_SPEED_AUTONEG)
@@ -3195,23 +3197,23 @@ static uint16_t bnxt_parse_eth_link_speed(uint32_t conf_link_speed,
 			HWRM_PORT_PHY_CFG_INPUT_FORCE_LINK_SPEED_40GB;
 		break;
 	case RTE_ETH_LINK_SPEED_50G:
-		if (link_info->support_pam4_speeds &
-		    HWRM_PORT_PHY_QCFG_OUTPUT_SUPPORT_PAM4_SPEEDS_50G) {
-			eth_link_speed = HWRM_PORT_PHY_CFG_INPUT_FORCE_PAM4_LINK_SPEED_50GB;
-			link_info->link_signal_mode = BNXT_SIG_MODE_PAM4;
-		} else {
+		if (support_speeds & HWRM_PORT_PHY_QCFG_OUTPUT_SUPPORT_SPEEDS_50GB) {
 			eth_link_speed = HWRM_PORT_PHY_CFG_INPUT_FORCE_LINK_SPEED_50GB;
 			link_info->link_signal_mode = BNXT_SIG_MODE_NRZ;
+		} else if (support_pam4_speeds &
+			   HWRM_PORT_PHY_QCFG_OUTPUT_SUPPORT_PAM4_SPEEDS_50G) {
+			eth_link_speed = HWRM_PORT_PHY_CFG_INPUT_FORCE_PAM4_LINK_SPEED_50GB;
+			link_info->link_signal_mode = BNXT_SIG_MODE_PAM4;
 		}
 		break;
 	case RTE_ETH_LINK_SPEED_100G:
-		if (link_info->support_pam4_speeds &
-		    HWRM_PORT_PHY_QCFG_OUTPUT_SUPPORT_PAM4_SPEEDS_100G) {
-			eth_link_speed = HWRM_PORT_PHY_CFG_INPUT_FORCE_PAM4_LINK_SPEED_100GB;
-			link_info->link_signal_mode = BNXT_SIG_MODE_PAM4;
-		} else {
+		if (support_speeds & HWRM_PORT_PHY_QCFG_OUTPUT_SUPPORT_SPEEDS_100GB) {
 			eth_link_speed = HWRM_PORT_PHY_CFG_INPUT_FORCE_LINK_SPEED_100GB;
 			link_info->link_signal_mode = BNXT_SIG_MODE_NRZ;
+		} else if (support_pam4_speeds &
+			   HWRM_PORT_PHY_QCFG_OUTPUT_SUPPORT_PAM4_SPEEDS_100G) {
+			eth_link_speed = HWRM_PORT_PHY_CFG_INPUT_FORCE_PAM4_LINK_SPEED_100GB;
+			link_info->link_signal_mode = BNXT_SIG_MODE_PAM4;
 		}
 		break;
 	case RTE_ETH_LINK_SPEED_200G:
