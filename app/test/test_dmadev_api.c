@@ -260,7 +260,7 @@ test_dma_vchan_setup(void)
 }
 
 static int
-setup_one_vchan(void)
+setup_vchan(int nb_vchans)
 {
 	struct rte_dma_vchan_conf vchan_conf = { 0 };
 	struct rte_dma_info dev_info = { 0 };
@@ -269,13 +269,15 @@ setup_one_vchan(void)
 
 	ret = rte_dma_info_get(test_dev_id, &dev_info);
 	RTE_TEST_ASSERT_SUCCESS(ret, "Failed to obtain device info, %d", ret);
-	dev_conf.nb_vchans = 1;
+	dev_conf.nb_vchans = nb_vchans;
 	ret = rte_dma_configure(test_dev_id, &dev_conf);
 	RTE_TEST_ASSERT_SUCCESS(ret, "Failed to configure, %d", ret);
 	vchan_conf.direction = RTE_DMA_DIR_MEM_TO_MEM;
 	vchan_conf.nb_desc = dev_info.min_desc;
-	ret = rte_dma_vchan_setup(test_dev_id, 0, &vchan_conf);
-	RTE_TEST_ASSERT_SUCCESS(ret, "Failed to setup vchan, %d", ret);
+	for (int i = 0; i < nb_vchans; i++) {
+		ret = rte_dma_vchan_setup(test_dev_id, i, &vchan_conf);
+		RTE_TEST_ASSERT_SUCCESS(ret, "Failed to setup vchan %d, %d", i, ret);
+	}
 
 	return TEST_SUCCESS;
 }
@@ -294,7 +296,7 @@ test_dma_start_stop(void)
 	RTE_TEST_ASSERT(ret == -EINVAL, "Expected -EINVAL, %d", ret);
 
 	/* Setup one vchan for later test */
-	ret = setup_one_vchan();
+	ret = setup_vchan(1);
 	RTE_TEST_ASSERT_SUCCESS(ret, "Failed to setup one vchan, %d", ret);
 
 	ret = rte_dma_start(test_dev_id);
@@ -305,6 +307,50 @@ test_dma_start_stop(void)
 	RTE_TEST_ASSERT(ret == -EBUSY, "Failed to configure, %d", ret);
 	ret = rte_dma_vchan_setup(test_dev_id, 0, &vchan_conf);
 	RTE_TEST_ASSERT(ret == -EBUSY, "Failed to setup vchan, %d", ret);
+
+	ret = rte_dma_stop(test_dev_id);
+	RTE_TEST_ASSERT_SUCCESS(ret, "Failed to stop, %d", ret);
+
+	return TEST_SUCCESS;
+}
+
+static int
+test_dma_reconfigure(void)
+{
+	struct rte_dma_conf dev_conf = { 0 };
+	struct rte_dma_info dev_info = { 0 };
+	uint16_t cfg_vchans;
+	int ret;
+
+	ret = rte_dma_info_get(test_dev_id, &dev_info);
+	RTE_TEST_ASSERT_SUCCESS(ret, "Failed to obtain device info, %d", ret);
+
+	/* At least two vchans required for the test */
+	if (dev_info.max_vchans < 2)
+		return TEST_SKIPPED;
+
+	/* Setup one vchan for later test */
+	ret = setup_vchan(1);
+	RTE_TEST_ASSERT_SUCCESS(ret, "Failed to setup one vchan, %d", ret);
+
+	ret = rte_dma_start(test_dev_id);
+	RTE_TEST_ASSERT_SUCCESS(ret, "Failed to start, %d", ret);
+
+	ret = rte_dma_stop(test_dev_id);
+	RTE_TEST_ASSERT_SUCCESS(ret, "Failed to stop, %d", ret);
+
+	/* Check reconfigure and vchan setup after device stopped */
+	cfg_vchans = dev_conf.nb_vchans = (dev_info.max_vchans - 1);
+
+	ret = setup_vchan(cfg_vchans);
+	RTE_TEST_ASSERT_SUCCESS(ret, "Failed to setup one vchan, %d", ret);
+
+	ret = rte_dma_start(test_dev_id);
+	RTE_TEST_ASSERT_SUCCESS(ret, "Failed to start, %d", ret);
+
+	ret = rte_dma_info_get(test_dev_id, &dev_info);
+	RTE_TEST_ASSERT_SUCCESS(ret, "Failed to obtain device info, %d", ret);
+	RTE_TEST_ASSERT_EQUAL(dev_info.nb_vchans, cfg_vchans, "incorrect reconfiguration");
 
 	ret = rte_dma_stop(test_dev_id);
 	RTE_TEST_ASSERT_SUCCESS(ret, "Failed to stop, %d", ret);
@@ -328,7 +374,7 @@ test_dma_stats(void)
 	RTE_TEST_ASSERT(ret == -EINVAL, "Expected -EINVAL, %d", ret);
 
 	/* Setup one vchan for later test */
-	ret = setup_one_vchan();
+	ret = setup_vchan(1);
 	RTE_TEST_ASSERT_SUCCESS(ret, "Failed to setup one vchan, %d", ret);
 
 	/* Check for invalid vchan */
@@ -400,7 +446,7 @@ test_dma_completed(void)
 	int ret;
 
 	/* Setup one vchan for later test */
-	ret = setup_one_vchan();
+	ret = setup_vchan(1);
 	RTE_TEST_ASSERT_SUCCESS(ret, "Failed to setup one vchan, %d", ret);
 
 	ret = rte_dma_start(test_dev_id);
@@ -459,7 +505,7 @@ test_dma_completed_status(void)
 	int ret;
 
 	/* Setup one vchan for later test */
-	ret = setup_one_vchan();
+	ret = setup_vchan(1);
 	RTE_TEST_ASSERT_SUCCESS(ret, "Failed to setup one vchan, %d", ret);
 
 	ret = rte_dma_start(test_dev_id);
@@ -517,6 +563,7 @@ static struct unit_test_suite dma_api_testsuite = {
 		TEST_CASE(test_dma_configure),
 		TEST_CASE(test_dma_vchan_setup),
 		TEST_CASE(test_dma_start_stop),
+		TEST_CASE(test_dma_reconfigure),
 		TEST_CASE(test_dma_stats),
 		TEST_CASE(test_dma_dump),
 		TEST_CASE(test_dma_completed),
