@@ -59,9 +59,6 @@ enum vdpa_vf_debug_test_type {
 };
 
 int
-rte_vdpa_vf_dev_prov(const char *vf_name, struct vdpa_vf_params *vf_params);
-
-int
 rte_vdpa_vf_dev_add(const char *vf_name, struct vdpa_vf_params *vf_params);
 
 int

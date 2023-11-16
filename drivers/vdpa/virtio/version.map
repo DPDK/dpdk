@@ -1,7 +1,6 @@
 DPDK_22 {
 	global:
 
-	rte_vdpa_vf_dev_prov;
 	rte_vdpa_vf_dev_add;
 	rte_vdpa_vf_dev_remove;
 	rte_vdpa_get_vf_list;

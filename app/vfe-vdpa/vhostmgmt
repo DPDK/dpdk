@@ -144,21 +144,6 @@ def mgmtpf(args):
 
 def mgmtvf(args):
     params = {}
-    if args.prov_vf:
-        params['provision'] = args.prov_vf
-        params['vfdev'] = args.pfvfdev
-        if args.msix_num:
-            params['msix_num'] = args.msix_num
-        if args.queue_num:
-            params['queue_num'] = args.queue_num
-        if args.queue_size:
-            params['queue_size'] = args.queue_size
-        if args.device_feature:
-            params['device_feature'] = args.device_feature
-        if args.mtu:
-            params['mtu'] = args.mtu
-        if args.mac:
-            params['mac'] = args.mac
     if args.add_vf:
         params['add'] = args.add_vf
         params['vfdev'] = args.pfvfdev
@@ -218,7 +203,6 @@ def main():
     # mgmtvf
     p = subparsers.add_parser('vf', help='Management VF device')
     group = p.add_mutually_exclusive_group()
-    group.add_argument('-p', '--provision', action='store_true', dest='prov_vf', help="provision a pci device")
     group.add_argument('-a', '--add', action='store_true', dest='add_vf', help="add a pci device")
     group.add_argument('-r', '--remove', action='store_true', dest='remove_vf', help="remove a pci device")
     group.add_argument('-l', '--list', action='store_true', dest='list_vf', help="list all VF devices of PF device")
@@ -232,18 +216,6 @@ def main():
     Device specified as PCI "domain:bus:slot.func" syntax or "bus:slot.func" syntax.
     For device add/remove to drivers, they may be referred to by interface name.
     """)
-    p.add_argument('-n', metavar='msix_num', dest='msix_num', type=int,
-                    help='Device msix number')
-    p.add_argument('-q', metavar='queue_num', dest='queue_num', type=int,
-                    help='Device queue number')
-    p.add_argument('-s', metavar='queue_size', dest='queue_size', type=int,
-                    help='Device queue size')
-    p.add_argument('-f', metavar='device_feature', dest='device_feature', type=int_hex,
-                    help='Device feature bits')
-    p.add_argument('-t', metavar='mtu', dest='mtu', type=int,
-                    help='Device MTU')
-    p.add_argument('-m', metavar='mac', dest='mac', type=str,
-                    help='Device mac address')
     p.add_argument('-o', metavar='test_operation', dest='test_operation', type=int,
                     help='Device test operation: 1=running; 2=quiesced; 3=freeze; 4=start_logging; 5=stop_logging; 6=get_lm_status')
     p.add_argument('-b', metavar='test_size_mode', dest='test_size_mode', type=int,
@@ -265,16 +237,6 @@ def main():
                 parser.print_usage()
                 sys.exit(1)
     if args.called_rpc_name == "vf":
-        if args.prov_vf:
-            vfdev = args.pfvfdev
-            if not vfdev:
-                print("Error: No vf device specified for provision vf action.")
-                parser.print_usage()
-                sys.exit(1)
-            if not args.msix_num and not args.queue_num and not args.queue_size and not args.device_feature and not args.mtu and not args.mac:
-                print("Error: no invalid provision parameters.")
-                parser.print_usage()
-                sys.exit(1)
         if args.add_vf:
             vfdev = args.pfvfdev
             if not vfdev:
@@ -313,7 +275,7 @@ def main():
                     print("Error: invalid test start_logging parameters.")
                     parser.print_usage()
                     sys.exit(1)
-        if not args.prov_vf and not args.add_vf and not args.remove_vf and not args.list_vf and not args.info_vf and not args.debug_vf:
+        if not args.add_vf and not args.remove_vf and not args.list_vf and not args.info_vf and not args.debug_vf:
                 print("Error: invalid action.")
                 parser.print_usage()
                 sys.exit(1)

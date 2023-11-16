@@ -198,26 +198,6 @@ static cJSON *mgmtpf(jrpc_context *ctx, cJSON *params, cJSON *id)
 	return result;
 }
 
-static cJSON *vdpa_vf_dev_prov(const char *vf_name,
-			struct vdpa_vf_params *vf_params)
-{
-	struct vdpa_vf_params vf_info = {0};
-	cJSON *result = cJSON_CreateObject();
-
-	if (!rte_vdpa_get_vf_info(vf_name, &vf_info)) {
-		cJSON_AddStringToObject(result, "Error",
-		"VF device is already existed");
-		return result;
-	}
-	if (rte_vdpa_vf_dev_prov(vf_name, vf_params)) {
-		cJSON_AddStringToObject(result, "Error",
-			"Fail to add VF device");
-		return result;
-	}
-	cJSON_AddStringToObject(result, "Success", vf_name);
-	return result;
-}
-
 static cJSON *vdpa_vf_dev_add(const char *vf_name,
 			struct vdpa_vf_params *vf_params,
 			const char *socket_file)
@@ -363,7 +343,6 @@ static cJSON *vdpa_vf_dev_debug(const char *vf_name,
 
 static cJSON *mgmtvf(jrpc_context *ctx, cJSON *params, cJSON *id)
 {
-	cJSON *vf_prov = cJSON_GetObjectItem(params, "provision");
 	cJSON *vf_add = cJSON_GetObjectItem(params, "add");
 	cJSON *vf_remove = cJSON_GetObjectItem(params, "remove");
 	cJSON *vf_list = cJSON_GetObjectItem(params, "list");
@@ -378,47 +357,7 @@ static cJSON *mgmtvf(jrpc_context *ctx, cJSON *params, cJSON *id)
 
 	rpc_ctx = (struct vdpa_rpc_context *)ctx->data;
 	pthread_mutex_lock(&rpc_ctx->rpc_lock);
-	if (vf_prov && vf_dev) {
-		struct vdpa_vf_params vf_params = {0};
-		cJSON *msix_num = cJSON_GetObjectItem(params, "msix_num");
-		cJSON *queue_num = cJSON_GetObjectItem(params, "queue_num");
-		cJSON *queue_size = cJSON_GetObjectItem(params, "queue_size");
-		cJSON *features = cJSON_GetObjectItem(params, "device_feature");
-		cJSON *mtu = cJSON_GetObjectItem(params, "mtu");
-		cJSON *mac = cJSON_GetObjectItem(params, "mac");
-		uint8_t *addr_bytes = vf_params.mac.addr_bytes;
-
-		/* Parse PCI device name*/
-		vf_params.prov_flags = 0;
-		if (msix_num) {
-			vf_params.prov_flags |= (1 << VDPA_VF_MSIX_NUM);
-			vf_params.msix_num = msix_num->valueint;
-		}
-		if (queue_num) {
-			vf_params.prov_flags |= (1 << VDPA_VF_QUEUE_NUM);
-			vf_params.queue_num = queue_num->valueint;
-		}
-		if (queue_size) {
-			vf_params.prov_flags |= (1 << VDPA_VF_QUEUE_SIZE);
-			vf_params.queue_size = queue_size->valueint;
-		}
-		if (features) {
-			vf_params.prov_flags |= (1 << VDPA_VF_FEATURES);
-			vf_params.features = features->valueint;
-		}
-		if (mtu) {
-			vf_params.prov_flags |= (1 << VDPA_VF_MTU);
-			vf_params.mtu = mtu->valueint;
-		}
-		if (mac) {
-			vf_params.prov_flags |= (1 << VDPA_VF_MAC);
-			sscanf(mac->valuestring,
-			"%hhx:%hhx:%hhx:%hhx:%hhx:%hhx",
-			&addr_bytes[0], &addr_bytes[1], &addr_bytes[2],
-			&addr_bytes[3], &addr_bytes[4], &addr_bytes[5]);
-		}
-		result = vdpa_vf_dev_prov(vf_dev->valuestring, &vf_params);
-	} else if (vf_add && vf_dev) {
+	if (vf_add && vf_dev) {
 		cJSON *socket_file = cJSON_GetObjectItem(params,
 				"socket_file");
 		result = vdpa_vf_dev_add(vf_dev->valuestring, NULL,

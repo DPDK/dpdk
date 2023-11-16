@@ -24,13 +24,6 @@ extern int virtio_vdpa_logtype;
 #endif
 
 int
-rte_vdpa_vf_dev_prov(const char *vf_name __rte_unused, struct vdpa_vf_params *vf_params __rte_unused)
-{
-	/*To be added*/
-	return 0;
-}
-
-int
 rte_vdpa_vf_dev_add(const char *vf_name, struct vdpa_vf_params *vf_params __rte_unused)
 {
 	char args[RTE_DEV_NAME_MAX_LEN];
