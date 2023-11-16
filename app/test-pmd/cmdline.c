@@ -11737,7 +11737,7 @@ cmd_config_per_port_tx_offload_parsed(void *parsed_result,
 	struct cmd_config_per_port_tx_offload_result *res = parsed_result;
 	bool on;
 
-	on = strcmp(res->on_off, "on");
+	on = strcmp(res->on_off, "on") == 0;
 	config_port_tx_offload(res->port_id, res->offload, on);
 }
 
