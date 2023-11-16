@@ -18,11 +18,16 @@
 
 #define ERR_RETURN(...) do { print_err(__func__, __LINE__, __VA_ARGS__); return -1; } while (0)
 
+#define TEST_NAME_MAX_LEN 80
 #define TEST_RINGSIZE 512
 #define COPY_LEN 1024
 
+static struct rte_dma_info info;
 static struct rte_mempool *pool;
+static bool check_err_stats;
+static int16_t test_dev_id;
 static uint16_t id_count;
+static uint16_t vchan;
 
 enum {
 	TEST_PARAM_REMOTE_ADDR = 0,
@@ -61,12 +66,27 @@ print_err(const char *func, int lineno, const char *format, ...)
 	va_end(ap);
 }
 
+struct runtest_param {
+	const char name[TEST_NAME_MAX_LEN];
+	int (*test_fn)(int16_t dev_id, uint16_t vchan);
+	int iterations;
+};
+
 static int
-runtest(const char *printable, int (*test_fn)(int16_t dev_id, uint16_t vchan), int iterations,
-		int16_t dev_id, uint16_t vchan, bool check_err_stats)
+runtest(const void *args)
 {
+	int (*test_fn)(int16_t dev_id, uint16_t vchan);
+	const struct runtest_param *param = args;
 	struct rte_dma_stats stats;
+	const char *printable;
+	int iterations;
+	int16_t dev_id;
 	int i;
+
+	printable = param->name;
+	iterations = param->iterations;
+	test_fn = param->test_fn;
+	dev_id = test_dev_id;
 
 	rte_dma_stats_reset(dev_id, vchan);
 	printf("DMA Dev %d: Running %s Tests %s\n", dev_id, printable,
@@ -911,25 +931,86 @@ prepare_m2d_auto_free(int16_t dev_id, uint16_t vchan)
 }
 
 static int
-test_dmadev_instance(int16_t dev_id)
+test_dmadev_burst_setup(void)
 {
-#define CHECK_ERRS    true
+	if (rte_dma_burst_capacity(test_dev_id, vchan) < 64) {
+		RTE_LOG(ERR, USER1,
+			"DMA Dev %u: insufficient burst capacity (64 required), skipping tests\n",
+			test_dev_id);
+		return TEST_SKIPPED;
+	}
+
+	return TEST_SUCCESS;
+}
+
+static int
+test_dmadev_err_handling_setup(void)
+{
+	int ret = TEST_SKIPPED;
+
+	/* to test error handling we can provide null pointers for source or dest in copies. This
+	 * requires VA mode in DPDK, since NULL(0) is a valid physical address.
+	 * We also need hardware that can report errors back.
+	 */
+	if (rte_eal_iova_mode() != RTE_IOVA_VA)
+		RTE_LOG(ERR, USER1,
+			"DMA Dev %u: DPDK not in VA mode, skipping error handling tests\n",
+			test_dev_id);
+	else if ((info.dev_capa & RTE_DMA_CAPA_HANDLES_ERRORS) == 0)
+		RTE_LOG(ERR, USER1,
+			"DMA Dev %u: device does not report errors, skipping error handling tests\n",
+			test_dev_id);
+	else
+		ret = TEST_SUCCESS;
+
+	return ret;
+}
+
+static int
+test_dmadev_fill_setup(void)
+{
+	int ret = TEST_SUCCESS;
+
+	if ((info.dev_capa & RTE_DMA_CAPA_OPS_FILL) == 0) {
+		RTE_LOG(ERR, USER1,
+			"DMA Dev %u: No device fill support, skipping fill tests\n", test_dev_id);
+		ret = TEST_SKIPPED;
+	}
+
+	return ret;
+}
+
+static int
+test_dmadev_autofree_setup(void)
+{
+	int ret = TEST_SKIPPED;
+
+	if ((info.dev_capa & RTE_DMA_CAPA_M2D_AUTO_FREE) &&
+	    dma_add_test[TEST_M2D_AUTO_FREE].enabled == true) {
+		if (prepare_m2d_auto_free(test_dev_id, vchan) != 0)
+			return ret;
+
+		ret = TEST_SUCCESS;
+	}
+
+	return ret;
+}
+
+static int
+test_dmadev_setup(void)
+{
+	int16_t dev_id = test_dev_id;
 	struct rte_dma_stats stats;
-	struct rte_dma_info info;
 	const struct rte_dma_conf conf = { .nb_vchans = 1};
 	const struct rte_dma_vchan_conf qconf = {
 			.direction = RTE_DMA_DIR_MEM_TO_MEM,
 			.nb_desc = TEST_RINGSIZE,
 	};
-	const int vchan = 0;
 	int ret;
 
 	ret = rte_dma_info_get(dev_id, &info);
 	if (ret != 0)
 		ERR_RETURN("Error with rte_dma_info_get()\n");
-
-	printf("\n### Test dmadev instance %u [%s]\n",
-			dev_id, info.dev_name);
 
 	if (info.max_vchans < 1)
 		ERR_RETURN("Error, no channels available on device id %u\n", dev_id);
@@ -969,76 +1050,82 @@ test_dmadev_instance(int16_t dev_id)
 	if (pool == NULL)
 		ERR_RETURN("Error with mempool creation\n");
 
-	/* run the test cases, use many iterations to ensure UINT16_MAX id wraparound */
-	if (runtest("copy", test_enqueue_copies, 640, dev_id, vchan, CHECK_ERRS) < 0)
-		goto err;
+	check_err_stats = false;
+	vchan = 0;
 
-	/* run tests stopping/starting devices and check jobs still work after restart */
-	if (runtest("stop-start", test_stop_start, 1, dev_id, vchan, CHECK_ERRS) < 0)
-		goto err;
-
-	/* run some burst capacity tests */
-	if (rte_dma_burst_capacity(dev_id, vchan) < 64)
-		printf("DMA Dev %u: insufficient burst capacity (64 required), skipping tests\n",
-				dev_id);
-	else if (runtest("burst capacity", test_burst_capacity, 1, dev_id, vchan, CHECK_ERRS) < 0)
-		goto err;
-
-	/* to test error handling we can provide null pointers for source or dest in copies. This
-	 * requires VA mode in DPDK, since NULL(0) is a valid physical address.
-	 * We also need hardware that can report errors back.
-	 */
-	if (rte_eal_iova_mode() != RTE_IOVA_VA)
-		printf("DMA Dev %u: DPDK not in VA mode, skipping error handling tests\n", dev_id);
-	else if ((info.dev_capa & RTE_DMA_CAPA_HANDLES_ERRORS) == 0)
-		printf("DMA Dev %u: device does not report errors, skipping error handling tests\n",
-				dev_id);
-	else if (runtest("error handling", test_completion_handling, 1,
-			dev_id, vchan, !CHECK_ERRS) < 0)
-		goto err;
-
-	if ((info.dev_capa & RTE_DMA_CAPA_OPS_FILL) == 0)
-		printf("DMA Dev %u: No device fill support, skipping fill tests\n", dev_id);
-	else if (runtest("fill", test_enqueue_fill, 1, dev_id, vchan, CHECK_ERRS) < 0)
-		goto err;
-
-	if ((info.dev_capa & RTE_DMA_CAPA_M2D_AUTO_FREE) &&
-	    dma_add_test[TEST_M2D_AUTO_FREE].enabled == true) {
-		if (prepare_m2d_auto_free(dev_id, vchan) != 0)
-			goto err;
-		if (runtest("m2d_auto_free", test_m2d_auto_free, 128, dev_id, vchan,
-			    CHECK_ERRS) < 0)
-			goto err;
-	}
-
-	rte_mempool_free(pool);
-
-	if (rte_dma_stop(dev_id) < 0)
-		ERR_RETURN("Error stopping device %u\n", dev_id);
-
-	rte_dma_stats_reset(dev_id, vchan);
 	return 0;
+}
 
-err:
+static void
+test_dmadev_teardown(void)
+{
 	rte_mempool_free(pool);
-	rte_dma_stop(dev_id);
-	return -1;
+	rte_dma_stop(test_dev_id);
+	rte_dma_stats_reset(test_dev_id, vchan);
+	test_dev_id = -EINVAL;
 }
 
 static int
-test_apis(void)
+test_dmadev_instance(int16_t dev_id)
 {
-	const char *pmd = "dma_skeleton";
-	int id;
+	struct rte_dma_info dev_info;
+	enum {
+		  TEST_COPY = 0,
+		  TEST_START,
+		  TEST_BURST,
+		  TEST_ERR,
+		  TEST_FILL,
+		  TEST_M2D,
+		  TEST_END
+	};
+
+	static struct runtest_param param[] = {
+		{"copy", test_enqueue_copies, 640},
+		{"stop_start", test_stop_start, 1},
+		{"burst_capacity", test_burst_capacity, 1},
+		{"error_handling", test_completion_handling, 1},
+		{"fill", test_enqueue_fill, 1},
+		{"m2d_auto_free", test_m2d_auto_free, 128},
+	};
+
+	static struct unit_test_suite ts = {
+		.suite_name = "DMA dev instance testsuite",
+		.setup = test_dmadev_setup,
+		.teardown = test_dmadev_teardown,
+		.unit_test_cases = {
+			TEST_CASE_NAMED_WITH_DATA("copy",
+				NULL, NULL,
+				runtest, &param[TEST_COPY]),
+			TEST_CASE_NAMED_WITH_DATA("stop_start",
+				NULL, NULL,
+				runtest, &param[TEST_START]),
+			TEST_CASE_NAMED_WITH_DATA("burst_capacity",
+				test_dmadev_burst_setup, NULL,
+				runtest, &param[TEST_BURST]),
+			TEST_CASE_NAMED_WITH_DATA("error_handling",
+				test_dmadev_err_handling_setup, NULL,
+				runtest, &param[TEST_ERR]),
+			TEST_CASE_NAMED_WITH_DATA("fill",
+				test_dmadev_fill_setup, NULL,
+				runtest, &param[TEST_FILL]),
+			TEST_CASE_NAMED_WITH_DATA("m2d_autofree",
+				test_dmadev_autofree_setup, NULL,
+				runtest, &param[TEST_M2D]),
+			TEST_CASES_END()
+		}
+	};
+
 	int ret;
 
-	/* attempt to create skeleton instance - ignore errors due to one being already present */
-	rte_vdev_init(pmd, NULL);
-	id = rte_dma_get_dev_id_by_name(pmd);
-	if (id < 0)
+	if (rte_dma_info_get(dev_id, &dev_info) < 0)
 		return TEST_SKIPPED;
-	printf("\n### Test dmadev infrastructure using skeleton driver\n");
-	ret = test_dma_api(id);
+
+	test_dev_id = dev_id;
+	printf("\n### Test dmadev instance %u [%s]\n",
+		   test_dev_id, dev_info.dev_name);
+
+	ret = unit_test_suite_runner(&ts);
+	test_dev_id = -EINVAL;
 
 	return ret;
 }
@@ -1083,20 +1170,24 @@ parse_dma_env_var(void)
 static int
 test_dma(void)
 {
+	const char *pmd = "dma_skeleton";
 	int i;
 
 	parse_dma_env_var();
 
-	/* basic sanity on dmadev infrastructure */
-	if (test_apis() < 0)
-		ERR_RETURN("Error performing API tests\n");
+	/* attempt to create skeleton instance - ignore errors due to one being already present*/
+	rte_vdev_init(pmd, NULL);
 
 	if (rte_dma_count_avail() == 0)
 		return TEST_SKIPPED;
 
-	RTE_DMA_FOREACH_DEV(i)
+	RTE_DMA_FOREACH_DEV(i) {
+		if (test_dma_api(i) < 0)
+			ERR_RETURN("Error performing API tests\n");
+
 		if (test_dmadev_instance(i) < 0)
 			ERR_RETURN("Error, test failure for device %d\n", i);
+	}
 
 	return 0;
 }

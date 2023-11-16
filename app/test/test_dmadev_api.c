@@ -9,16 +9,12 @@
 #include <rte_test.h>
 #include <rte_dmadev.h>
 
-extern int test_dma_api(uint16_t dev_id);
+#include "test.h"
 
-#define DMA_TEST_API_RUN(test) \
-	testsuite_run_test(test, #test)
+extern int test_dma_api(uint16_t dev_id);
 
 #define TEST_MEMCPY_SIZE	1024
 #define TEST_WAIT_US_VAL	50000
-
-#define TEST_SUCCESS 0
-#define TEST_FAILED  -1
 
 static int16_t test_dev_id;
 static int16_t invalid_dev_id;
@@ -26,14 +22,9 @@ static int16_t invalid_dev_id;
 static char *src;
 static char *dst;
 
-static int total;
-static int passed;
-static int failed;
-
 static int
-testsuite_setup(int16_t dev_id)
+testsuite_setup(void)
 {
-	test_dev_id = dev_id;
 	invalid_dev_id = -1;
 
 	src = rte_malloc("dmadev_test_src", TEST_MEMCPY_SIZE, 0);
@@ -45,10 +36,6 @@ testsuite_setup(int16_t dev_id)
 		src = NULL;
 		return -ENOMEM;
 	}
-
-	total = 0;
-	passed = 0;
-	failed = 0;
 
 	/* Set dmadev log level to critical to suppress unnecessary output
 	 * during API tests.
@@ -69,25 +56,6 @@ testsuite_teardown(void)
 	rte_dma_stop(test_dev_id);
 
 	rte_log_set_level_pattern("lib.dmadev", RTE_LOG_INFO);
-}
-
-static void
-testsuite_run_test(int (*test)(void), const char *name)
-{
-	int ret = 0;
-
-	if (test) {
-		ret = test();
-		if (ret < 0) {
-			failed++;
-			printf("%s Failed\n", name);
-		} else {
-			passed++;
-			printf("%s Passed\n", name);
-		}
-	}
-
-	total++;
 }
 
 static int
@@ -301,7 +269,7 @@ setup_one_vchan(void)
 
 	ret = rte_dma_info_get(test_dev_id, &dev_info);
 	RTE_TEST_ASSERT_SUCCESS(ret, "Failed to obtain device info, %d", ret);
-	dev_conf.nb_vchans = dev_info.max_vchans;
+	dev_conf.nb_vchans = 1;
 	ret = rte_dma_configure(test_dev_id, &dev_conf);
 	RTE_TEST_ASSERT_SUCCESS(ret, "Failed to configure, %d", ret);
 	vchan_conf.direction = RTE_DMA_DIR_MEM_TO_MEM;
@@ -537,38 +505,35 @@ test_dma_completed_status(void)
 	return TEST_SUCCESS;
 }
 
+static struct unit_test_suite dma_api_testsuite = {
+	.suite_name = "DMA API Test Suite",
+	.setup = testsuite_setup,
+	.teardown = testsuite_teardown,
+	.unit_test_cases = {
+		TEST_CASE(test_dma_get_dev_id_by_name),
+		TEST_CASE(test_dma_is_valid_dev),
+		TEST_CASE(test_dma_count),
+		TEST_CASE(test_dma_info_get),
+		TEST_CASE(test_dma_configure),
+		TEST_CASE(test_dma_vchan_setup),
+		TEST_CASE(test_dma_start_stop),
+		TEST_CASE(test_dma_stats),
+		TEST_CASE(test_dma_dump),
+		TEST_CASE(test_dma_completed),
+		TEST_CASE(test_dma_completed_status),
+		TEST_CASES_END()
+	}
+};
+
 int
 test_dma_api(uint16_t dev_id)
 {
-	int ret = testsuite_setup(dev_id);
-	if (ret) {
-		printf("testsuite setup fail!\n");
-		return -1;
-	}
+	struct rte_dma_info dev_info;
 
-	/* If the testcase exit successfully, ensure that the test dmadev exist
-	 * and the dmadev is in the stopped state.
-	 */
-	DMA_TEST_API_RUN(test_dma_get_dev_id_by_name);
-	DMA_TEST_API_RUN(test_dma_is_valid_dev);
-	DMA_TEST_API_RUN(test_dma_count);
-	DMA_TEST_API_RUN(test_dma_info_get);
-	DMA_TEST_API_RUN(test_dma_configure);
-	DMA_TEST_API_RUN(test_dma_vchan_setup);
-	DMA_TEST_API_RUN(test_dma_start_stop);
-	DMA_TEST_API_RUN(test_dma_stats);
-	DMA_TEST_API_RUN(test_dma_dump);
-	DMA_TEST_API_RUN(test_dma_completed);
-	DMA_TEST_API_RUN(test_dma_completed_status);
+	if (rte_dma_info_get(dev_id, &dev_info) < 0)
+		return TEST_SKIPPED;
 
-	testsuite_teardown();
-
-	printf("Total tests   : %d\n", total);
-	printf("Passed        : %d\n", passed);
-	printf("Failed        : %d\n", failed);
-
-	if (failed)
-		return -1;
-
-	return 0;
+	printf("\n### Test dmadev infrastructure using %u [%s]\n", dev_id, dev_info.dev_name);
+	test_dev_id = dev_id;
+	return unit_test_suite_runner(&dma_api_testsuite);
 };
