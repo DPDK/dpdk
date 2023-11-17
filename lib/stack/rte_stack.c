@@ -56,7 +56,7 @@ rte_stack_create(const char *name, unsigned int count, int socket_id,
 	int ret;
 
 	if (flags & ~(RTE_STACK_F_LF)) {
-		STACK_LOG_ERR("Unsupported stack flags %#x\n", flags);
+		STACK_LOG_ERR("Unsupported stack flags %#x", flags);
 		return NULL;
 	}
 
@@ -65,7 +65,7 @@ rte_stack_create(const char *name, unsigned int count, int socket_id,
 #endif
 #if !defined(RTE_STACK_LF_SUPPORTED)
 	if (flags & RTE_STACK_F_LF) {
-		STACK_LOG_ERR("Lock-free stack is not supported on your platform\n");
+		STACK_LOG_ERR("Lock-free stack is not supported on your platform");
 		rte_errno = ENOTSUP;
 		return NULL;
 	}
@@ -82,7 +82,7 @@ rte_stack_create(const char *name, unsigned int count, int socket_id,
 
 	te = rte_zmalloc("STACK_TAILQ_ENTRY", sizeof(*te), 0);
 	if (te == NULL) {
-		STACK_LOG_ERR("Cannot reserve memory for tailq\n");
+		STACK_LOG_ERR("Cannot reserve memory for tailq");
 		rte_errno = ENOMEM;
 		return NULL;
 	}
@@ -92,7 +92,7 @@ rte_stack_create(const char *name, unsigned int count, int socket_id,
 	mz = rte_memzone_reserve_aligned(mz_name, sz, socket_id,
 					 0, __alignof__(*s));
 	if (mz == NULL) {
-		STACK_LOG_ERR("Cannot reserve stack memzone!\n");
+		STACK_LOG_ERR("Cannot reserve stack memzone!");
 		rte_mcfg_tailq_write_unlock();
 		rte_free(te);
 		return NULL;

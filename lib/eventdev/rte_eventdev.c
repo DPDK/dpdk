@@ -1007,13 +1007,13 @@ rte_event_port_profile_links_set(uint8_t dev_id, uint8_t port_id, const uint8_t 
 	}
 
 	if (*dev->dev_ops->port_link == NULL) {
-		RTE_EDEV_LOG_ERR("Function not supported\n");
+		RTE_EDEV_LOG_ERR("Function not supported");
 		rte_errno = ENOTSUP;
 		return 0;
 	}
 
 	if (profile_id && *dev->dev_ops->port_link_profile == NULL) {
-		RTE_EDEV_LOG_ERR("Function not supported\n");
+		RTE_EDEV_LOG_ERR("Function not supported");
 		rte_errno = ENOTSUP;
 		return 0;
 	}

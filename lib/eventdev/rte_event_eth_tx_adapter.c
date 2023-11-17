@@ -334,7 +334,7 @@ txa_service_conf_cb(uint8_t __rte_unused id, uint8_t dev_id,
 
 	ret = rte_event_port_setup(dev_id, port_id, pc);
 	if (ret) {
-		RTE_EDEV_LOG_ERR("failed to setup event port %u\n",
+		RTE_EDEV_LOG_ERR("failed to setup event port %u",
 					port_id);
 		if (started) {
 			if (rte_event_dev_start(dev_id))

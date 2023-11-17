@@ -726,7 +726,7 @@ rte_dma_vchan_status(int16_t dev_id, uint16_t vchan, enum rte_dma_vchan_status *
 		return -EINVAL;
 
 	if (vchan >= dev->data->dev_conf.nb_vchans) {
-		RTE_DMA_LOG(ERR, "Device %u vchan %u out of range\n", dev_id, vchan);
+		RTE_DMA_LOG(ERR, "Device %u vchan %u out of range", dev_id, vchan);
 		return -EINVAL;
 	}
 

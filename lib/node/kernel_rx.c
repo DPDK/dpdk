@@ -134,7 +134,7 @@ kernel_rx_node_do(struct rte_graph *graph, struct rte_node *node, kernel_rx_node
 			if (len == 0 || len == 0xFFFF) {
 				rte_pktmbuf_free(m);
 				if (rx->idx <= 0)
-					node_dbg("kernel_rx", "rx_mbuf array is empty\n");
+					node_dbg("kernel_rx", "rx_mbuf array is empty");
 				rx->idx--;
 				break;
 			}
@@ -207,20 +207,20 @@ kernel_rx_node_init(const struct rte_graph *graph, struct rte_node *node)
 	RTE_VERIFY(elem != NULL);
 
 	if (ctx->pktmbuf_pool == NULL) {
-		node_err("kernel_rx", "Invalid mbuf pool on graph %s\n", graph->name);
+		node_err("kernel_rx", "Invalid mbuf pool on graph %s", graph->name);
 		return -EINVAL;
 	}
 
 	recv_info = rte_zmalloc_socket("kernel_rx_info", sizeof(kernel_rx_info_t),
 				       RTE_CACHE_LINE_SIZE, graph->socket);
 	if (!recv_info) {
-		node_err("kernel_rx", "Kernel recv_info is NULL\n");
+		node_err("kernel_rx", "Kernel recv_info is NULL");
 		return -ENOMEM;
 	}
 
 	sock = socket(AF_INET, SOCK_RAW, IPPROTO_RAW);
 	if (sock < 0) {
-		node_err("kernel_rx", "Unable to open RAW socket\n");
+		node_err("kernel_rx", "Unable to open RAW socket");
 		return sock;
 	}
 
