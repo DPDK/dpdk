@@ -12,15 +12,16 @@ fi
 install_libabigail() {
     version=$1
     instdir=$2
+    tarball=$version.tar.xz
 
-    wget -q "http://mirrors.kernel.org/sourceware/libabigail/${version}.tar.gz"
-    tar -xf ${version}.tar.gz
+    wget -q "http://mirrors.kernel.org/sourceware/libabigail/$tarball"
+    tar -xf $tarball
     cd $version && autoreconf -vfi && cd -
     mkdir $version/build
     cd $version/build && ../configure --prefix=$instdir && cd -
     make -C $version/build all install
     rm -rf $version
-    rm ${version}.tar.gz
+    rm $tarball
 }
 
 configure_coredump() {
