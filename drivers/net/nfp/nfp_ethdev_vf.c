@@ -122,6 +122,8 @@ nfp_netvf_start(struct rte_eth_dev *dev)
 	if (nfp_net_reconfig(hw, new_ctrl, update) < 0)
 		return -EIO;
 
+	hw->ctrl = new_ctrl;
+
 	/*
 	 * Allocating rte mbufs for configured rx queues.
 	 * This requires queues being enabled before
@@ -130,8 +132,6 @@ nfp_netvf_start(struct rte_eth_dev *dev)
 		ret = -ENOMEM;
 		goto error;
 	}
-
-	hw->ctrl = new_ctrl;
 
 	return 0;
 
