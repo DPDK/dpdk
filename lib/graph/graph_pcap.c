@@ -214,7 +214,7 @@ graph_pcap_dispatch(struct rte_graph *graph,
 		mbuf = (struct rte_mbuf *)objs[i];
 
 		mc = rte_pcapng_copy(mbuf->port, 0, mbuf, pkt_mp, mbuf->pkt_len,
-				     rte_get_tsc_cycles(), 0, buffer);
+				     0, buffer);
 		if (mc == NULL)
 			break;
 

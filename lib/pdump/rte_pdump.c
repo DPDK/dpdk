@@ -90,7 +90,6 @@ pdump_copy(uint16_t port_id, uint16_t queue,
 	int ring_enq;
 	uint16_t d_pkts = 0;
 	struct rte_mbuf *dup_bufs[nb_pkts];
-	uint64_t ts;
 	struct rte_ring *ring;
 	struct rte_mempool *mp;
 	struct rte_mbuf *p;
@@ -99,7 +98,6 @@ pdump_copy(uint16_t port_id, uint16_t queue,
 	if (cbs->filter)
 		rte_bpf_exec_burst(cbs->filter, (void **)pkts, rcs, nb_pkts);
 
-	ts = rte_get_tsc_cycles();
 	ring = cbs->ring;
 	mp = cbs->mp;
 	for (i = 0; i < nb_pkts; i++) {
@@ -122,7 +120,7 @@ pdump_copy(uint16_t port_id, uint16_t queue,
 		if (cbs->ver == V2)
 			p = rte_pcapng_copy(port_id, queue,
 					    pkts[i], mp, cbs->snaplen,
-					    ts, direction, NULL);
+					    direction, NULL);
 		else
 			p = rte_pktmbuf_copy(pkts[i], mp, 0, cbs->snaplen);
 

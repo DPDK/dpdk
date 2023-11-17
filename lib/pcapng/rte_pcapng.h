@@ -114,8 +114,6 @@ enum rte_pcapng_direction {
  * @param length
  *   The upper limit on bytes to copy.  Passing UINT32_MAX
  *   means all data (after offset).
- * @param timestamp
- *   The timestamp in TSC cycles.
  * @param direction
  *   The direction of the packer: receive, transmit or unknown.
  * @param comment
@@ -128,7 +126,7 @@ enum rte_pcapng_direction {
 struct rte_mbuf *
 rte_pcapng_copy(uint16_t port_id, uint32_t queue,
 		const struct rte_mbuf *m, struct rte_mempool *mp,
-		uint32_t length, uint64_t timestamp,
+		uint32_t length,
 		enum rte_pcapng_direction direction, const char *comment);
 
 
@@ -178,28 +176,21 @@ rte_pcapng_write_packets(rte_pcapng_t *self,
  *  The handle to the packet capture file
  * @param port
  *  The Ethernet port to report stats on.
- * @param comment
- *   Optional comment to add to statistics.
- * @param start_time
- *  The time when packet capture was started in nanoseconds.
- *  Optional: can be zero if not known.
- * @param end_time
- *  The time when packet capture was stopped in nanoseconds.
- *  Optional: can be zero if not finished;
  * @param ifrecv
  *  The number of packets received by capture.
  *  Optional: use UINT64_MAX if not known.
  * @param ifdrop
  *  The number of packets missed by the capture process.
  *  Optional: use UINT64_MAX if not known.
+ * @param comment
+ *  Optional comment to add to statistics.
  * @return
  *  number of bytes written to file, -1 on failure to write file
  */
 ssize_t
 rte_pcapng_write_stats(rte_pcapng_t *self, uint16_t port,
-		       const char *comment,
-		       uint64_t start_time, uint64_t end_time,
-		       uint64_t ifrecv, uint64_t ifdrop);
+		       uint64_t ifrecv, uint64_t ifdrop,
+		       const char *comment);
 
 #ifdef __cplusplus
 }

@@ -402,6 +402,9 @@ API Changes
   Updated ``rte_ml_op``, ``rte_ml_io_quantize`` and ``rte_ml_io_dequantize``
   to support an array of ``rte_ml_buff_seg``.
 
+* pcapng: The time parameters were removed
+  from the functions ``rte_pcapng_copy`` and ``rte_pcapng_write_stats``.
+
 
 ABI Changes
 -----------

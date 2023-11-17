@@ -66,13 +66,13 @@ static bool print_stats;
 
 /* capture limit options */
 static struct {
-	uint64_t  duration;	/* nanoseconds */
+	time_t  duration;	/* seconds */
 	unsigned long packets;  /* number of packets in file */
 	size_t size;		/* file size (bytes) */
 } stop;
 
 /* Running state */
-static uint64_t start_time, end_time;
+static time_t start_time;
 static uint64_t packets_received;
 static size_t file_size;
 
@@ -197,7 +197,7 @@ static void auto_stop(char *opt)
 		if (*value == '\0' || *endp != '\0' || interval <= 0)
 			rte_exit(EXIT_FAILURE,
 				 "Invalid duration \"%s\"\n", value);
-		stop.duration = NSEC_PER_SEC * interval;
+		stop.duration = interval;
 	} else if (strcmp(opt, "filesize") == 0) {
 		stop.size = get_uint(value, "filesize", 0) * 1024;
 	} else if (strcmp(opt, "packets") == 0) {
@@ -511,15 +511,6 @@ static void statistics_loop(void)
 	}
 }
 
-/* Return the time since 1/1/1970 in nanoseconds */
-static uint64_t create_timestamp(void)
-{
-	struct timespec now;
-
-	clock_gettime(CLOCK_MONOTONIC, &now);
-	return rte_timespec_to_ns(&now);
-}
-
 static void
 cleanup_pdump_resources(void)
 {
@@ -589,9 +580,8 @@ report_packet_stats(dumpcap_out_t out)
 		ifdrop = pdump_stats.nombuf + pdump_stats.ringfull;
 
 		if (use_pcapng)
-			rte_pcapng_write_stats(out.pcapng, intf->port, NULL,
-					       start_time, end_time,
-					       ifrecv, ifdrop);
+			rte_pcapng_write_stats(out.pcapng, intf->port,
+					       ifrecv, ifdrop, NULL);
 
 		if (ifrecv == 0)
 			percent = 0;
@@ -983,7 +973,7 @@ int main(int argc, char **argv)
 	mp = create_mempool();
 	out = create_output();
 
-	start_time = create_timestamp();
+	start_time = time(NULL);
 	enable_pdump(r, mp);
 
 	if (!quiet) {
@@ -1005,11 +995,10 @@ int main(int argc, char **argv)
 			break;
 
 		if (stop.duration != 0 &&
-		    create_timestamp() - start_time > stop.duration)
+		    time(NULL) - start_time > stop.duration)
 			break;
 	}
 
-	end_time = create_timestamp();
 	disable_primary_monitor();
 
 	if (rte_eal_primary_proc_alive(NULL))
