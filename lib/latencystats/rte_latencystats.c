@@ -27,8 +27,8 @@ latencystat_cycles_per_ns(void)
 
 RTE_LOG_REGISTER_DEFAULT(latencystat_logtype, INFO);
 #define RTE_LOGTYPE_LATENCY_STATS latencystat_logtype
-#define LATENCY_STATS_LOG(level, fmt, ...) \
-	RTE_LOG(level, LATENCY_STATS, fmt "\n", ## __VA_ARGS__)
+#define LATENCY_STATS_LOG(level, ...) \
+	RTE_LOG_LINE(level, LATENCY_STATS, "" __VA_ARGS__)
 
 static uint64_t timestamp_dynflag;
 static int timestamp_dynfield_offset = -1;

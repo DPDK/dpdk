@@ -28,8 +28,8 @@
 /* needs to be before rte_cuckoo_hash.h */
 RTE_LOG_REGISTER_DEFAULT(hash_logtype, INFO);
 #define RTE_LOGTYPE_HASH hash_logtype
-#define HASH_LOG(level, fmt, ...) \
-	RTE_LOG(level, HASH, fmt "\n", ## __VA_ARGS__)
+#define HASH_LOG(level, ...) \
+	RTE_LOG_LINE(level, HASH, "" __VA_ARGS__)
 
 #include "rte_cuckoo_hash.h"
 

@@ -18,8 +18,8 @@
 
 RTE_LOG_REGISTER_DEFAULT(reorder_logtype, INFO);
 #define RTE_LOGTYPE_REORDER reorder_logtype
-#define REORDER_LOG(level, fmt, ...) \
-	RTE_LOG(level, REORDER, fmt "\n", ## __VA_ARGS__)
+#define REORDER_LOG(level, ...) \
+	RTE_LOG_LINE(level, REORDER, "" __VA_ARGS__)
 
 TAILQ_HEAD(rte_reorder_list, rte_tailq_entry);
 

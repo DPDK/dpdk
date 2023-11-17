@@ -30,27 +30,30 @@
 #define DATA_MZ_NAME_FORMAT "rte_event_timer_adapter_data_%d"
 
 RTE_LOG_REGISTER_SUFFIX(evtim_logtype, adapter.timer, NOTICE);
+#define RTE_LOGTYPE_EVTIM evtim_logtype
 RTE_LOG_REGISTER_SUFFIX(evtim_buffer_logtype, adapter.timer, NOTICE);
+#define RTE_LOGTYPE_EVTIM_BUF evtim_buffer_logtype
 RTE_LOG_REGISTER_SUFFIX(evtim_svc_logtype, adapter.timer.svc, NOTICE);
+#define RTE_LOGTYPE_EVTIM_SVC evtim_svc_logtype
 
 static struct rte_event_timer_adapter *adapters;
 
 static const struct event_timer_adapter_ops swtim_ops;
 
 #define EVTIM_LOG(level, logtype, ...) \
-	rte_log(RTE_LOG_ ## level, logtype, \
-		RTE_FMT("EVTIMER: %s() line %u: " RTE_FMT_HEAD(__VA_ARGS__,) \
-			"\n", __func__, __LINE__, RTE_FMT_TAIL(__VA_ARGS__,)))
+	RTE_LOG_LINE(level, logtype, \
+		RTE_FMT("EVTIMER: %s() line %u: " RTE_FMT_HEAD(__VA_ARGS__ ,), \
+			__func__, __LINE__, RTE_FMT_TAIL(__VA_ARGS__ ,)))
 
-#define EVTIM_LOG_ERR(...) EVTIM_LOG(ERR, evtim_logtype, __VA_ARGS__)
+#define EVTIM_LOG_ERR(...) EVTIM_LOG(ERR, EVTIM, __VA_ARGS__)
 
 #ifdef RTE_LIBRTE_EVENTDEV_DEBUG
 #define EVTIM_LOG_DBG(...) \
-	EVTIM_LOG(DEBUG, evtim_logtype, __VA_ARGS__)
+	EVTIM_LOG(DEBUG, EVTIM, __VA_ARGS__)
 #define EVTIM_BUF_LOG_DBG(...) \
-	EVTIM_LOG(DEBUG, evtim_buffer_logtype, __VA_ARGS__)
+	EVTIM_LOG(DEBUG, EVTIM_BUF, __VA_ARGS__)
 #define EVTIM_SVC_LOG_DBG(...) \
-	EVTIM_LOG(DEBUG, evtim_svc_logtype, __VA_ARGS__)
+	EVTIM_LOG(DEBUG, EVTIM_SVC, __VA_ARGS__)
 #else
 #define EVTIM_LOG_DBG(...) (void)0
 #define EVTIM_BUF_LOG_DBG(...) (void)0

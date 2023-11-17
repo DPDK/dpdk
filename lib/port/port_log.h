@@ -4,6 +4,6 @@
 
 #include <rte_log.h>
 
-#define PORT_LOG(level, fmt, ...) \
-	RTE_LOG(level, PORT, fmt "\n", ## __VA_ARGS__)
+#define PORT_LOG(level, ...) \
+	RTE_LOG_LINE(level, PORT, "" __VA_ARGS__)
 

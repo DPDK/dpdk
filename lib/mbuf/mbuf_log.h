@@ -2,5 +2,5 @@
 
 extern int mbuf_logtype;
 #define RTE_LOGTYPE_MBUF	mbuf_logtype
-#define MBUF_LOG(level, fmt, ...) \
-	RTE_LOG(level, MBUF, fmt "\n", ## __VA_ARGS__)
+#define MBUF_LOG(level, ...) \
+	RTE_LOG_LINE(level, MBUF, "" __VA_ARGS__)

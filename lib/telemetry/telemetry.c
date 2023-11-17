@@ -57,9 +57,7 @@ static rte_cpuset_t *thread_cpuset;
 
 RTE_LOG_REGISTER_DEFAULT(logtype, WARNING);
 #define RTE_LOGTYPE_TMTY logtype
-#define TMTY_LOG_LINE(l, ...) \
-	RTE_LOG(l, TMTY,  RTE_FMT("TELEMETRY: " RTE_FMT_HEAD(__VA_ARGS__ ,) "\n", \
-		RTE_FMT_TAIL(__VA_ARGS__ ,)))
+#define TMTY_LOG_LINE(l, ...) RTE_LOG_LINE(l, TMTY, "TELEMETRY: " __VA_ARGS__)
 
 /* list of command callbacks, with one command registered by default */
 static struct cmd_callback *callbacks;

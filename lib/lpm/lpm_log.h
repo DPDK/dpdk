@@ -2,5 +2,5 @@
 
 extern int lpm_logtype;
 #define RTE_LOGTYPE_LPM lpm_logtype
-#define LPM_LOG(level, fmt, ...) \
-	RTE_LOG(level, LPM, fmt "\n", ## __VA_ARGS__)
+#define LPM_LOG(level, ...) \
+	RTE_LOG_LINE(level, LPM, "" __VA_ARGS__)

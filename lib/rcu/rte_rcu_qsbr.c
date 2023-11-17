@@ -20,7 +20,7 @@
 #include "rcu_qsbr_pvt.h"
 
 #define RCU_LOG(level, fmt, args...) \
-	RTE_LOG(level, RCU, "%s(): " fmt "\n", __func__, ## args)
+	RTE_LOG_LINE(level, RCU, "%s(): " fmt, __func__, ## args)
 
 /* Get the memory size of QSBR variable */
 size_t

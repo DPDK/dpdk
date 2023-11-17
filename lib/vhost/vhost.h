@@ -678,10 +678,10 @@ extern int vhost_data_log_level;
 #define RTE_LOGTYPE_VHOST_DATA vhost_data_log_level
 
 #define VHOST_CONFIG_LOG(prefix, level, fmt, args...)		\
-	RTE_LOG(level, VHOST_CONFIG, "VHOST_CONFIG: (%s) " fmt "\n", prefix, ##args)
+	RTE_LOG_LINE(level, VHOST_CONFIG, "VHOST_CONFIG: (%s) " fmt, prefix, ##args)
 
 #define VHOST_DATA_LOG(prefix, level, fmt, args...)		\
-	RTE_LOG_DP(level, VHOST_DATA, "VHOST_DATA: (%s) " fmt "\n", prefix, ##args)
+	RTE_LOG_DP_LINE(level, VHOST_DATA, "VHOST_DATA: (%s) " fmt, prefix, ##args)
 
 #ifdef RTE_LIBRTE_VHOST_DEBUG
 #define VHOST_MAX_PRINT_BUFF 6072

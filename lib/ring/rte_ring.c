@@ -28,8 +28,8 @@
 
 RTE_LOG_REGISTER_DEFAULT(ring_logtype, INFO);
 #define RTE_LOGTYPE_RING ring_logtype
-#define RING_LOG(level, fmt, ...) \
-	RTE_LOG(level, RING, fmt "\n", ## __VA_ARGS__)
+#define RING_LOG(level, ...) \
+	RTE_LOG_LINE(level, RING, "" __VA_ARGS__)
 
 TAILQ_HEAD(rte_ring_list, rte_tailq_entry);
 

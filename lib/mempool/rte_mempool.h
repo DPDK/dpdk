@@ -182,8 +182,8 @@ struct rte_mempool_objtlr {
  */
 extern int rte_mempool_logtype;
 #define RTE_LOGTYPE_MEMPOOL	rte_mempool_logtype
-#define RTE_MEMPOOL_LOG(level, fmt, ...) \
-	RTE_LOG(level, MEMPOOL, fmt "\n", ## __VA_ARGS__)
+#define RTE_MEMPOOL_LOG(level, ...) \
+	RTE_LOG_LINE(level, MEMPOOL, "" __VA_ARGS__)
 
 /**
  * A list of memory where objects are stored

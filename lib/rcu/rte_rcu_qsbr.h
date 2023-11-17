@@ -40,17 +40,15 @@ extern int rte_rcu_log_type;
 
 #if RTE_LOG_DP_LEVEL >= RTE_LOG_DEBUG
 #define __RTE_RCU_DP_LOG(level, fmt, args...) \
-	rte_log(RTE_LOG_ ## level, rte_rcu_log_type, \
-		"%s(): " fmt "\n", __func__, ## args)
+	RTE_LOG_LINE(level, RCU, "%s(): " fmt, __func__, ## args)
 #else
 #define __RTE_RCU_DP_LOG(level, fmt, args...)
 #endif
 
 #if defined(RTE_LIBRTE_RCU_DEBUG)
-#define __RTE_RCU_IS_LOCK_CNT_ZERO(v, thread_id, level, fmt, args...) do {\
+#define __RTE_RCU_IS_LOCK_CNT_ZERO(v, thread_id, level, fmt, args...) do { \
 	if (v->qsbr_cnt[thread_id].lock_cnt) \
-		rte_log(RTE_LOG_ ## level, rte_rcu_log_type, \
-			"%s(): " fmt "\n", __func__, ## args); \
+		RTE_LOG_LINE(level, RCU, "%s(): " fmt, __func__, ## args); \
 } while (0)
 #else
 #define __RTE_RCU_IS_LOCK_CNT_ZERO(v, thread_id, level, fmt, args...)

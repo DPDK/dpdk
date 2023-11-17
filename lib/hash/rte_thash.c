@@ -15,8 +15,8 @@
 
 RTE_LOG_REGISTER_SUFFIX(thash_logtype, thash, INFO);
 #define RTE_LOGTYPE_HASH thash_logtype
-#define HASH_LOG(level, fmt, ...) \
-	RTE_LOG(level, HASH, fmt "\n", ## __VA_ARGS__)
+#define HASH_LOG(level, ...) \
+	RTE_LOG_LINE(level, HASH, "" __VA_ARGS__)
 
 #define THASH_NAME_LEN		64
 #define TOEPLITZ_HASH_LEN	32

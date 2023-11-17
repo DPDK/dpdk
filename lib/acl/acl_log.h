@@ -4,5 +4,5 @@
 
 extern int acl_logtype;
 #define RTE_LOGTYPE_ACL	acl_logtype
-#define ACL_LOG(level, fmt, ...) \
-	RTE_LOG(level, ACL, fmt "\n", ## __VA_ARGS__)
+#define ACL_LOG(level, ...) \
+	RTE_LOG_LINE(level, ACL, "" __VA_ARGS__)

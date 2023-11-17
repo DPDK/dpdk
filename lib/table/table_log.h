@@ -4,6 +4,6 @@
 
 #include <rte_log.h>
 
-#define TABLE_LOG(level, fmt, ...) \
-	RTE_LOG(level, TABLE, fmt "\n", ## __VA_ARGS__)
+#define TABLE_LOG(level, ...) \
+	RTE_LOG_LINE(level, TABLE, "" __VA_ARGS__)
 

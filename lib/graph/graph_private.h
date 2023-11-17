@@ -18,11 +18,12 @@
 #include "rte_graph_worker.h"
 
 extern int rte_graph_logtype;
+#define RTE_LOGTYPE_GRAPH rte_graph_logtype
 
 #define GRAPH_LOG(level, ...)                                                  \
-	rte_log(RTE_LOG_##level, rte_graph_logtype,                            \
-		RTE_FMT("GRAPH: %s():%u " RTE_FMT_HEAD(__VA_ARGS__, ) "\n",    \
-			__func__, __LINE__, RTE_FMT_TAIL(__VA_ARGS__, )))
+	RTE_LOG_LINE(level, GRAPH,                                             \
+		RTE_FMT("GRAPH: %s():%u " RTE_FMT_HEAD(__VA_ARGS__ ,),         \
+			__func__, __LINE__, RTE_FMT_TAIL(__VA_ARGS__ ,)))
 
 #define graph_err(...) GRAPH_LOG(ERR, __VA_ARGS__)
 #define graph_warn(...) GRAPH_LOG(WARNING, __VA_ARGS__)

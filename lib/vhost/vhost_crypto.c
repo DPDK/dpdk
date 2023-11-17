@@ -21,15 +21,15 @@ RTE_LOG_REGISTER_SUFFIX(vhost_crypto_logtype, crypto, INFO);
 #define RTE_LOGTYPE_VHOST_CRYPTO	vhost_crypto_logtype
 
 #define VC_LOG_ERR(fmt, args...)				\
-	RTE_LOG(ERR, VHOST_CRYPTO, "%s() line %u: " fmt "\n",	\
+	RTE_LOG_LINE(ERR, VHOST_CRYPTO, "%s() line %u: " fmt,	\
 		__func__, __LINE__, ## args)
 #define VC_LOG_INFO(fmt, args...)				\
-	RTE_LOG(INFO, VHOST_CRYPTO, "%s() line %u: " fmt "\n",	\
+	RTE_LOG_LINE(INFO, VHOST_CRYPTO, "%s() line %u: " fmt,	\
 		__func__, __LINE__, ## args)
 
 #ifdef RTE_LIBRTE_VHOST_DEBUG
 #define VC_LOG_DBG(fmt, args...)				\
-	RTE_LOG(DEBUG, VHOST_CRYPTO, "%s() line %u: " fmt "\n",	\
+	RTE_LOG_LINE(DEBUG, VHOST_CRYPTO, "%s() line %u: " fmt,	\
 		__func__, __LINE__, ## args)
 #else
 #define VC_LOG_DBG(fmt, args...)

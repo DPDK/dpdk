@@ -209,8 +209,7 @@ extern int rte_regexdev_logtype;
 #define RTE_LOGTYPE_REGEXDEV rte_regexdev_logtype
 
 #define RTE_REGEXDEV_LOG_LINE(level, ...) \
-	RTE_LOG(level, REGEXDEV, RTE_FMT(RTE_FMT_HEAD(__VA_ARGS__ ,) "\n", \
-		RTE_FMT_TAIL(__VA_ARGS__ ,)))
+	RTE_LOG_LINE(level, REGEXDEV, "" __VA_ARGS__)
 
 /* Macros to check for valid port */
 #define RTE_REGEXDEV_VALID_DEV_ID_OR_ERR_RET(dev_id, retval) do { \

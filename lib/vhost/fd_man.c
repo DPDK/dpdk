@@ -12,8 +12,8 @@
 
 RTE_LOG_REGISTER_SUFFIX(vhost_fdset_logtype, fdset, INFO);
 #define RTE_LOGTYPE_VHOST_FDMAN vhost_fdset_logtype
-#define VHOST_FDMAN_LOG(level, fmt, ...) \
-	RTE_LOG(level, VHOST_FDMAN, fmt "\n", ## __VA_ARGS__)
+#define VHOST_FDMAN_LOG(level, ...) \
+	RTE_LOG_LINE(level, VHOST_FDMAN, "" __VA_ARGS__)
 
 #define FDPOLLERR (POLLERR | POLLHUP | POLLNVAL)
 

@@ -27,11 +27,11 @@ extern "C" {
 #include "rte_rawdev.h"
 
 extern int librawdev_logtype;
+#define RTE_LOGTYPE_RAWDEV librawdev_logtype
 
 /* Logging Macros */
 #define RTE_RDEV_LOG(level, fmt, args...) \
-	rte_log(RTE_LOG_ ## level, librawdev_logtype, "%s(): " fmt "\n", \
-		__func__, ##args)
+	RTE_LOG_LINE(level, RAWDEV, "%s(): " fmt, __func__, ##args)
 
 #define RTE_RDEV_ERR(fmt, args...) \
 	RTE_RDEV_LOG(ERR, fmt, ## args)

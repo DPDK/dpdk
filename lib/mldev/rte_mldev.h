@@ -144,9 +144,10 @@ extern "C" {
 
 /* Logging Macro */
 extern int rte_ml_dev_logtype;
+#define RTE_LOGTYPE_MLDEV rte_ml_dev_logtype
 
-#define RTE_MLDEV_LOG(level, fmt, args...)                                                         \
-	rte_log(RTE_LOG_##level, rte_ml_dev_logtype, "%s(): " fmt "\n", __func__, ##args)
+#define RTE_MLDEV_LOG(level, fmt, args...) \
+	RTE_LOG_LINE(level, MLDEV, "%s(): " fmt, __func__, ##args)
 
 #define RTE_ML_STR_MAX 128
 /**< Maximum length of name string */

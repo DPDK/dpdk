@@ -48,9 +48,9 @@ extern "C" {
  * Log GetLastError() with context, usually a Win32 API function and arguments.
  */
 #define RTE_LOG_WIN32_ERR(...) \
-	RTE_LOG(DEBUG, EAL, RTE_FMT("GetLastError()=%lu: " \
-		RTE_FMT_HEAD(__VA_ARGS__,) "\n", GetLastError(), \
-		RTE_FMT_TAIL(__VA_ARGS__,)))
+	RTE_LOG_LINE(DEBUG, EAL, RTE_FMT("GetLastError()=%lu: " \
+		RTE_FMT_HEAD(__VA_ARGS__ ,), GetLastError(), \
+		RTE_FMT_TAIL(__VA_ARGS__ ,)))
 
 #ifdef __cplusplus
 }

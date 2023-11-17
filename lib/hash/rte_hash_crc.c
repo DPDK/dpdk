@@ -9,8 +9,8 @@
 
 RTE_LOG_REGISTER_SUFFIX(hash_crc_logtype, crc, INFO);
 #define RTE_LOGTYPE_HASH_CRC hash_crc_logtype
-#define HASH_CRC_LOG(level, fmt, ...) \
-	RTE_LOG(level, HASH_CRC, fmt "\n", ## __VA_ARGS__)
+#define HASH_CRC_LOG(level, ...) \
+	RTE_LOG_LINE(level, HASH_CRC, "" __VA_ARGS__)
 
 uint8_t rte_hash_crc32_alg = CRC32_SW;
 

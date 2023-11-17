@@ -33,15 +33,15 @@ extern "C" {
 
 /* Logging Macros */
 #define RTE_EDEV_LOG_ERR(...) \
-	RTE_LOG(ERR, EVENTDEV, \
-		RTE_FMT("%s() line %u: " RTE_FMT_HEAD(__VA_ARGS__,) "\n", \
-			__func__, __LINE__, RTE_FMT_TAIL(__VA_ARGS__,)))
+	RTE_LOG_LINE(ERR, EVENTDEV, \
+		RTE_FMT("%s() line %u: " RTE_FMT_HEAD(__VA_ARGS__ ,), \
+			__func__, __LINE__, RTE_FMT_TAIL(__VA_ARGS__ ,)))
 
 #ifdef RTE_LIBRTE_EVENTDEV_DEBUG
 #define RTE_EDEV_LOG_DEBUG(...) \
-	RTE_LOG(DEBUG, EVENTDEV, \
-		RTE_FMT("%s() line %u: " RTE_FMT_HEAD(__VA_ARGS__,) "\n", \
-			__func__, __LINE__, RTE_FMT_TAIL(__VA_ARGS__,)))
+	RTE_LOG_LINE(DEBUG, EVENTDEV, \
+		RTE_FMT("%s() line %u: " RTE_FMT_HEAD(__VA_ARGS__ ,), \
+			__func__, __LINE__, RTE_FMT_TAIL(__VA_ARGS__ ,)))
 #else
 #define RTE_EDEV_LOG_DEBUG(...) (void)0
 #endif

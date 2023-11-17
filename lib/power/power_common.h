@@ -12,12 +12,12 @@
 
 extern int power_logtype;
 #define RTE_LOGTYPE_POWER power_logtype
-#define POWER_LOG(level, fmt, ...) \
-	RTE_LOG(level, POWER, fmt "\n", ## __VA_ARGS__)
+#define POWER_LOG(level, ...) \
+	RTE_LOG_LINE(level, POWER, "" __VA_ARGS__)
 
 #ifdef RTE_LIBRTE_POWER_DEBUG
 #define POWER_DEBUG_LOG(fmt, args...) \
-	RTE_LOG(ERR, POWER, "%s: " fmt "\n", __func__, ## args)
+	RTE_LOG_LINE(ERR, POWER, "%s: " fmt, __func__, ## args)
 #else
 #define POWER_DEBUG_LOG(fmt, args...)
 #endif

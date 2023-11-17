@@ -28,10 +28,11 @@
 
 /* BBDev library logging ID */
 RTE_LOG_REGISTER_DEFAULT(bbdev_logtype, NOTICE);
+#define RTE_LOGTYPE_BBDEV bbdev_logtype
 
 /* Helper macro for logging */
-#define rte_bbdev_log(level, fmt, ...) \
-	rte_log(RTE_LOG_ ## level, bbdev_logtype, fmt "\n", ##__VA_ARGS__)
+#define rte_bbdev_log(level, ...) \
+	RTE_LOG_LINE(level, BBDEV, "" __VA_ARGS__)
 
 #define rte_bbdev_log_debug(fmt, ...) \
 	rte_bbdev_log(DEBUG, RTE_STR(__LINE__) ":%s() " fmt, __func__, \

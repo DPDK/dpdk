@@ -70,11 +70,11 @@ static const rte_net_crc_handler handlers_neon[] = {
 
 static uint16_t max_simd_bitwidth;
 
-#define NET_LOG(level, fmt, args...)					\
-	rte_log(RTE_LOG_ ## level, libnet_logtype, "%s(): " fmt "\n",	\
-		__func__, ## args)
-
 RTE_LOG_REGISTER_DEFAULT(libnet_logtype, INFO);
+#define RTE_LOGTYPE_NET libnet_logtype
+
+#define NET_LOG(level, fmt, args...) \
+	RTE_LOG_LINE(level, NET, "%s(): " fmt, __func__, ## args)
 
 /* Scalar handling */
 

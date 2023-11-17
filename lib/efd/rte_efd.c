@@ -31,8 +31,8 @@
 
 RTE_LOG_REGISTER_DEFAULT(efd_logtype, INFO);
 #define RTE_LOGTYPE_EFD	efd_logtype
-#define EFD_LOG(level, fmt, ...) \
-	RTE_LOG(level, EFD, fmt "\n", ## __VA_ARGS__)
+#define EFD_LOG(level, ...) \
+	RTE_LOG_LINE(level, EFD, "" __VA_ARGS__)
 
 #define EFD_KEY(key_idx, table) (table->keys + ((key_idx) * table->key_len))
 /** Hash function used to determine chunk_id and bin_id for a group */

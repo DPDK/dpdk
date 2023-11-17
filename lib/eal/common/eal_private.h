@@ -748,7 +748,7 @@ int eal_asprintf(char **buffer, const char *format, ...);
 		eal_asprintf(buffer, format, ##__VA_ARGS__)
 #endif
 
-#define EAL_LOG(level, fmt, ...) \
-	RTE_LOG(level, EAL, fmt "\n", ## __VA_ARGS__)
+#define EAL_LOG(level, ...) \
+	RTE_LOG_LINE(level, EAL, "" __VA_ARGS__)
 
 #endif /* _EAL_PRIVATE_H_ */

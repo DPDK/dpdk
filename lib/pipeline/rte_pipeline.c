@@ -12,8 +12,8 @@
 
 #include "rte_pipeline.h"
 
-#define PIPELINE_LOG(level, fmt, ...) \
-	RTE_LOG(level, PIPELINE, fmt "\n", ## __VA_ARGS__)
+#define PIPELINE_LOG(level, ...) \
+	RTE_LOG_LINE(level, PIPELINE, "" __VA_ARGS__)
 
 #define RTE_TABLE_INVALID                                 UINT32_MAX
 

@@ -16,11 +16,11 @@
 struct telemetry_metrics_data tel_met_data;
 
 int metrics_log_level;
+#define RTE_LOGTYPE_METRICS metrics_log_level
 
 /* Logging Macros */
 #define METRICS_LOG(level, fmt, args...) \
-	rte_log(RTE_LOG_ ##level, metrics_log_level, "%s(): "fmt "\n", \
-		__func__, ##args)
+	RTE_LOG_LINE(level, METRICS, "%s(): "fmt, __func__, ## args)
 
 #define METRICS_LOG_ERR(fmt, args...) \
 	METRICS_LOG(ERR, fmt, ## args)

@@ -179,8 +179,7 @@ extern int rte_eth_dev_logtype;
 #define RTE_LOGTYPE_ETHDEV rte_eth_dev_logtype
 
 #define RTE_ETHDEV_LOG_LINE(level, ...) \
-	RTE_LOG(level, ETHDEV, RTE_FMT(RTE_FMT_HEAD(__VA_ARGS__ ,) "\n", \
-		RTE_FMT_TAIL(__VA_ARGS__ ,)))
+	RTE_LOG_LINE(level, ETHDEV, "" __VA_ARGS__)
 
 struct rte_mbuf;
 

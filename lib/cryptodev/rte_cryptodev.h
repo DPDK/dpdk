@@ -36,24 +36,22 @@ extern int rte_cryptodev_logtype;
 
 /* Logging Macros */
 #define CDEV_LOG_ERR(...) \
-	RTE_LOG(ERR, CRYPTODEV, \
-		RTE_FMT("%s() line %u: " RTE_FMT_HEAD(__VA_ARGS__,) "\n", \
-			__func__, __LINE__, RTE_FMT_TAIL(__VA_ARGS__,)))
+	RTE_LOG_LINE(ERR, CRYPTODEV, \
+		RTE_FMT("%s() line %u: " RTE_FMT_HEAD(__VA_ARGS__ ,), \
+			__func__, __LINE__, RTE_FMT_TAIL(__VA_ARGS__ ,)))
 
 #define CDEV_LOG_INFO(...) \
-	RTE_LOG(INFO, CRYPTODEV, \
-		RTE_FMT(RTE_FMT_HEAD(__VA_ARGS__,) "\n", \
-			RTE_FMT_TAIL(__VA_ARGS__,)))
+	RTE_LOG_LINE(INFO, CRYPTODEV, "" __VA_ARGS__)
 
 #define CDEV_LOG_DEBUG(...) \
-	RTE_LOG(DEBUG, CRYPTODEV, \
-		RTE_FMT("%s() line %u: " RTE_FMT_HEAD(__VA_ARGS__,) "\n", \
-			__func__, __LINE__, RTE_FMT_TAIL(__VA_ARGS__,)))
+	RTE_LOG_LINE(DEBUG, CRYPTODEV, \
+		RTE_FMT("%s() line %u: " RTE_FMT_HEAD(__VA_ARGS__ ,), \
+			__func__, __LINE__, RTE_FMT_TAIL(__VA_ARGS__ ,)))
 
 #define CDEV_PMD_TRACE(...) \
-	RTE_LOG(DEBUG, CRYPTODEV, \
-		RTE_FMT("[%s] %s: " RTE_FMT_HEAD(__VA_ARGS__,) "\n", \
-			dev, __func__, RTE_FMT_TAIL(__VA_ARGS__,)))
+	RTE_LOG_LINE(DEBUG, CRYPTODEV, \
+		RTE_FMT("[%s] %s: " RTE_FMT_HEAD(__VA_ARGS__ ,), \
+			dev, __func__, RTE_FMT_TAIL(__VA_ARGS__ ,)))
 
 /**
  * A macro that points to an offset from the start

@@ -21,9 +21,10 @@ extern "C" {
 
 /* Logging Macros */
 extern int compressdev_logtype;
+#define RTE_LOGTYPE_COMPRESSDEV compressdev_logtype
+
 #define COMPRESSDEV_LOG(level, fmt, args...) \
-	rte_log(RTE_LOG_ ## level, compressdev_logtype, "%s(): " fmt "\n", \
-			__func__, ##args)
+	RTE_LOG_LINE(level, COMPRESSDEV, "%s(): " fmt, __func__, ## args)
 
 /**
  * Dequeue processed packets from queue pair of a device.

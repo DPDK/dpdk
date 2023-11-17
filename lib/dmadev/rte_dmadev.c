@@ -32,9 +32,11 @@ static struct {
 } *dma_devices_shared_data;
 
 RTE_LOG_REGISTER_DEFAULT(rte_dma_logtype, INFO);
+#define RTE_LOGTYPE_DMA rte_dma_logtype
+
 #define RTE_DMA_LOG(level, ...) \
-	rte_log(RTE_LOG_ ## level, rte_dma_logtype, RTE_FMT("dma: " \
-		RTE_FMT_HEAD(__VA_ARGS__,) "\n", RTE_FMT_TAIL(__VA_ARGS__,)))
+	RTE_LOG_LINE(level, DMA, RTE_FMT("dma: " RTE_FMT_HEAD(__VA_ARGS__ ,), \
+		RTE_FMT_TAIL(__VA_ARGS__ ,)))
 
 int
 rte_dma_dev_max(size_t dev_max)

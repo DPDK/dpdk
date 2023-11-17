@@ -19,8 +19,8 @@
 
 RTE_LOG_REGISTER_SUFFIX(guest_channel_logtype, guest_channel, INFO);
 #define RTE_LOGTYPE_GUEST_CHANNEL guest_channel_logtype
-#define GUEST_CHANNEL_LOG(level, fmt, ...) \
-	RTE_LOG(level, GUEST_CHANNEL, fmt "\n", ## __VA_ARGS__)
+#define GUEST_CHANNEL_LOG(level, ...) \
+	RTE_LOG_LINE(level, GUEST_CHANNEL, "" __VA_ARGS__)
 
 /* Timeout for incoming message in milliseconds. */
 #define TIMEOUT 10

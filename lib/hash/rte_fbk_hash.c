@@ -21,8 +21,8 @@
 
 RTE_LOG_REGISTER_SUFFIX(fbk_hash_logtype, fbk, INFO);
 #define RTE_LOGTYPE_HASH fbk_hash_logtype
-#define HASH_LOG(level, fmt, ...) \
-	RTE_LOG(level, HASH, fmt "\n", ## __VA_ARGS__)
+#define HASH_LOG(level, ...) \
+	RTE_LOG_LINE(level, HASH, "" __VA_ARGS__)
 
 TAILQ_HEAD(rte_fbk_hash_list, rte_tailq_entry);
 
