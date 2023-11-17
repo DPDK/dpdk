@@ -304,7 +304,7 @@ rte_rcu_qsbr_thread_online(struct rte_rcu_qsbr *v, unsigned int thread_id)
 
 	RTE_ASSERT(v != NULL && thread_id < v->max_threads);
 
-	__RTE_RCU_IS_LOCK_CNT_ZERO(v, thread_id, ERR, "Lock counter %u\n",
+	__RTE_RCU_IS_LOCK_CNT_ZERO(v, thread_id, ERR, "Lock counter %u",
 				v->qsbr_cnt[thread_id].lock_cnt);
 
 	/* Copy the current value of token.
@@ -355,7 +355,7 @@ rte_rcu_qsbr_thread_offline(struct rte_rcu_qsbr *v, unsigned int thread_id)
 {
 	RTE_ASSERT(v != NULL && thread_id < v->max_threads);
 
-	__RTE_RCU_IS_LOCK_CNT_ZERO(v, thread_id, ERR, "Lock counter %u\n",
+	__RTE_RCU_IS_LOCK_CNT_ZERO(v, thread_id, ERR, "Lock counter %u",
 				v->qsbr_cnt[thread_id].lock_cnt);
 
 	/* The reader can go offline only after the load of the
@@ -432,7 +432,7 @@ rte_rcu_qsbr_unlock(__rte_unused struct rte_rcu_qsbr *v,
 				1, __ATOMIC_RELEASE);
 
 	__RTE_RCU_IS_LOCK_CNT_ZERO(v, thread_id, WARNING,
-				"Lock counter %u. Nested locks?\n",
+				"Lock counter %u. Nested locks?",
 				v->qsbr_cnt[thread_id].lock_cnt);
 #endif
 }
@@ -486,7 +486,7 @@ rte_rcu_qsbr_quiescent(struct rte_rcu_qsbr *v, unsigned int thread_id)
 
 	RTE_ASSERT(v != NULL && thread_id < v->max_threads);
 
-	__RTE_RCU_IS_LOCK_CNT_ZERO(v, thread_id, ERR, "Lock counter %u\n",
+	__RTE_RCU_IS_LOCK_CNT_ZERO(v, thread_id, ERR, "Lock counter %u",
 				v->qsbr_cnt[thread_id].lock_cnt);
 
 	/* Acquire the changes to the shared data structure released

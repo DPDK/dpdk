@@ -92,7 +92,7 @@ rte_rcu_qsbr_thread_register(struct rte_rcu_qsbr *v, unsigned int thread_id)
 		return 1;
 	}
 
-	__RTE_RCU_IS_LOCK_CNT_ZERO(v, thread_id, ERR, "Lock counter %u\n",
+	__RTE_RCU_IS_LOCK_CNT_ZERO(v, thread_id, ERR, "Lock counter %u",
 				v->qsbr_cnt[thread_id].lock_cnt);
 
 	id = thread_id & __RTE_QSBR_THRID_MASK;
@@ -144,7 +144,7 @@ rte_rcu_qsbr_thread_unregister(struct rte_rcu_qsbr *v, unsigned int thread_id)
 		return 1;
 	}
 
-	__RTE_RCU_IS_LOCK_CNT_ZERO(v, thread_id, ERR, "Lock counter %u\n",
+	__RTE_RCU_IS_LOCK_CNT_ZERO(v, thread_id, ERR, "Lock counter %u",
 				v->qsbr_cnt[thread_id].lock_cnt);
 
 	id = thread_id & __RTE_QSBR_THRID_MASK;

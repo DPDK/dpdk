@@ -245,7 +245,7 @@ transform_cipher_param(struct rte_crypto_sym_xform *xform,
 		return ret;
 
 	if (param->cipher_key_len > VHOST_USER_CRYPTO_MAX_CIPHER_KEY_LENGTH) {
-		VC_LOG_DBG("Invalid cipher key length\n");
+		VC_LOG_DBG("Invalid cipher key length");
 		return -VIRTIO_CRYPTO_BADMSG;
 	}
 
@@ -301,7 +301,7 @@ transform_chain_param(struct rte_crypto_sym_xform *xforms,
 		return ret;
 
 	if (param->cipher_key_len > VHOST_USER_CRYPTO_MAX_CIPHER_KEY_LENGTH) {
-		VC_LOG_DBG("Invalid cipher key length\n");
+		VC_LOG_DBG("Invalid cipher key length");
 		return -VIRTIO_CRYPTO_BADMSG;
 	}
 
@@ -321,7 +321,7 @@ transform_chain_param(struct rte_crypto_sym_xform *xforms,
 		return ret;
 
 	if (param->auth_key_len > VHOST_USER_CRYPTO_MAX_HMAC_KEY_LENGTH) {
-		VC_LOG_DBG("Invalid auth key length\n");
+		VC_LOG_DBG("Invalid auth key length");
 		return -VIRTIO_CRYPTO_BADMSG;
 	}
 

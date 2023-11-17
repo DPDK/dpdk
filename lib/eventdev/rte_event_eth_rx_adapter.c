@@ -290,14 +290,14 @@ rxa_event_buf_get(struct event_eth_rx_adapter *rx_adapter, uint16_t eth_dev_id,
 
 #define RTE_EVENT_ETH_RX_ADAPTER_ID_VALID_OR_ERR_RET(id, retval) do { \
 	if (!rxa_validate_id(id)) { \
-		RTE_EDEV_LOG_ERR("Invalid eth Rx adapter id = %d\n", id); \
+		RTE_EDEV_LOG_ERR("Invalid eth Rx adapter id = %d", id); \
 		return retval; \
 	} \
 } while (0)
 
 #define RTE_EVENT_ETH_RX_ADAPTER_ID_VALID_OR_GOTO_ERR_RET(id, retval) do { \
 	if (!rxa_validate_id(id)) { \
-		RTE_EDEV_LOG_ERR("Invalid eth Rx adapter id = %d\n", id); \
+		RTE_EDEV_LOG_ERR("Invalid eth Rx adapter id = %d", id); \
 		ret = retval; \
 		goto error; \
 	} \
@@ -305,7 +305,7 @@ rxa_event_buf_get(struct event_eth_rx_adapter *rx_adapter, uint16_t eth_dev_id,
 
 #define RTE_EVENT_ETH_RX_ADAPTER_TOKEN_VALID_OR_GOTO_ERR_RET(token, retval) do { \
 	if ((token) == NULL || strlen(token) == 0 || !isdigit(*token)) { \
-		RTE_EDEV_LOG_ERR("Invalid eth Rx adapter token\n"); \
+		RTE_EDEV_LOG_ERR("Invalid eth Rx adapter token"); \
 		ret = retval; \
 		goto error; \
 	} \
@@ -1534,7 +1534,7 @@ rxa_default_conf_cb(uint8_t id, uint8_t dev_id,
 	dev_conf.nb_event_ports += 1;
 	ret = rte_event_dev_configure(dev_id, &dev_conf);
 	if (ret) {
-		RTE_EDEV_LOG_ERR("failed to configure event dev %u\n",
+		RTE_EDEV_LOG_ERR("failed to configure event dev %u",
 						dev_id);
 		if (started) {
 			if (rte_event_dev_start(dev_id))
@@ -1545,7 +1545,7 @@ rxa_default_conf_cb(uint8_t id, uint8_t dev_id,
 
 	ret = rte_event_port_setup(dev_id, port_id, port_conf);
 	if (ret) {
-		RTE_EDEV_LOG_ERR("failed to setup event port %u\n",
+		RTE_EDEV_LOG_ERR("failed to setup event port %u",
 					port_id);
 		return ret;
 	}
@@ -1622,7 +1622,7 @@ rxa_create_intr_thread(struct event_eth_rx_adapter *rx_adapter)
 	if (!err)
 		return 0;
 
-	RTE_EDEV_LOG_ERR("Failed to create interrupt thread err = %d\n", err);
+	RTE_EDEV_LOG_ERR("Failed to create interrupt thread err = %d", err);
 	rte_free(rx_adapter->epoll_events);
 error:
 	rte_ring_free(rx_adapter->intr_ring);
@@ -1638,12 +1638,12 @@ rxa_destroy_intr_thread(struct event_eth_rx_adapter *rx_adapter)
 
 	err = pthread_cancel(rx_adapter->rx_intr_thread);
 	if (err)
-		RTE_EDEV_LOG_ERR("Can't cancel interrupt thread err = %d\n",
+		RTE_EDEV_LOG_ERR("Can't cancel interrupt thread err = %d",
 				err);
 
 	err = pthread_join(rx_adapter->rx_intr_thread, NULL);
 	if (err)
-		RTE_EDEV_LOG_ERR("Can't join interrupt thread err = %d\n", err);
+		RTE_EDEV_LOG_ERR("Can't join interrupt thread err = %d", err);
 
 	rte_free(rx_adapter->epoll_events);
 	rte_ring_free(rx_adapter->intr_ring);
@@ -1909,7 +1909,7 @@ rxa_init_service(struct event_eth_rx_adapter *rx_adapter, uint8_t id)
 	if (rte_mbuf_dyn_rx_timestamp_register(
 			&event_eth_rx_timestamp_dynfield_offset,
 			&event_eth_rx_timestamp_dynflag) != 0) {
-		RTE_EDEV_LOG_ERR("Error registering timestamp field in mbuf\n");
+		RTE_EDEV_LOG_ERR("Error registering timestamp field in mbuf");
 		return -rte_errno;
 	}
 
@@ -2439,7 +2439,7 @@ rxa_create(uint8_t id, uint8_t dev_id,
 			    RTE_DIM(default_rss_key));
 
 	if (rx_adapter->eth_devices == NULL) {
-		RTE_EDEV_LOG_ERR("failed to get mem for eth devices\n");
+		RTE_EDEV_LOG_ERR("failed to get mem for eth devices");
 		rte_free(rx_adapter);
 		return -ENOMEM;
 	}
@@ -3449,7 +3449,7 @@ handle_rxa_stats(const char *cmd __rte_unused,
 	/* Get Rx adapter stats */
 	if (rte_event_eth_rx_adapter_stats_get(rx_adapter_id,
 					       &rx_adptr_stats)) {
-		RTE_EDEV_LOG_ERR("Failed to get Rx adapter stats\n");
+		RTE_EDEV_LOG_ERR("Failed to get Rx adapter stats");
 		return -1;
 	}
 
@@ -3486,7 +3486,7 @@ handle_rxa_stats_reset(const char *cmd __rte_unused,
 
 	/* Reset Rx adapter stats */
 	if (rte_event_eth_rx_adapter_stats_reset(rx_adapter_id)) {
-		RTE_EDEV_LOG_ERR("Failed to reset Rx adapter stats\n");
+		RTE_EDEV_LOG_ERR("Failed to reset Rx adapter stats");
 		return -1;
 	}
 

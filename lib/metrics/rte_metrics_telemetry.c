@@ -363,7 +363,7 @@ rte_metrics_tel_stat_names_to_ids(const char * const *stat_names,
 			}
 		}
 		if (j == num_metrics) {
-			METRICS_LOG_WARN("Invalid stat name %s\n",
+			METRICS_LOG_WARN("Invalid stat name %s",
 					stat_names[i]);
 			free(names);
 			return -EINVAL;

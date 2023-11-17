@@ -1969,7 +1969,7 @@ rte_cryptodev_sym_session_create(uint8_t dev_id,
 	}
 
 	if (xforms == NULL) {
-		CDEV_LOG_ERR("Invalid xform\n");
+		CDEV_LOG_ERR("Invalid xform");
 		rte_errno = EINVAL;
 		return NULL;
 	}
