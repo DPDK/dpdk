@@ -618,7 +618,8 @@ static __rte_always_inline void
 enqueue_one_cipher_job_gen1(struct qat_sym_session *ctx,
 	struct icp_qat_fw_la_bulk_req *req,
 	struct rte_crypto_va_iova_ptr *iv,
-	union rte_crypto_sym_ofs ofs, uint32_t data_len)
+	union rte_crypto_sym_ofs ofs, uint32_t data_len,
+	struct qat_sym_op_cookie *cookie)
 {
 	struct icp_qat_fw_la_cipher_req_params *cipher_param;
 
@@ -629,6 +630,15 @@ enqueue_one_cipher_job_gen1(struct qat_sym_session *ctx,
 	cipher_param->cipher_offset = ofs.ofs.cipher.head;
 	cipher_param->cipher_length = data_len - ofs.ofs.cipher.head -
 			ofs.ofs.cipher.tail;
+
+	if (AES_OR_3DES_MISALIGNED) {
+		QAT_LOG(DEBUG,
+	  "Input cipher buffer misalignment detected and change job as NULL operation");
+		struct icp_qat_fw_comn_req_hdr *header = &req->comn_hdr;
+		header->service_type = ICP_QAT_FW_COMN_REQ_NULL;
+		header->service_cmd_id = ICP_QAT_FW_NULL_REQ_SERV_ID;
+		cookie->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
+	}
 }
 
 static __rte_always_inline void
@@ -685,7 +695,8 @@ enqueue_one_chain_job_gen1(struct qat_sym_session *ctx,
 	struct rte_crypto_va_iova_ptr *cipher_iv,
 	struct rte_crypto_va_iova_ptr *digest,
 	struct rte_crypto_va_iova_ptr *auth_iv,
-	union rte_crypto_sym_ofs ofs, uint32_t data_len)
+	union rte_crypto_sym_ofs ofs, uint32_t data_len,
+	struct qat_sym_op_cookie *cookie)
 {
 	struct icp_qat_fw_la_cipher_req_params *cipher_param;
 	struct icp_qat_fw_la_auth_req_params *auth_param;
@@ -722,11 +733,13 @@ enqueue_one_chain_job_gen1(struct qat_sym_session *ctx,
 	 * error detected.
 	 */
 	if (AES_OR_3DES_MISALIGNED) {
-		QAT_LOG(ERR, "Input cipher length alignment error detected.\n");
-		ctx->qat_cipher_alg = ICP_QAT_HW_CIPHER_ALGO_NULL;
-		ctx->qat_hash_alg = ICP_QAT_HW_AUTH_ALGO_NULL;
-		cipher_param->cipher_length = 0;
-		auth_param->auth_len = 0;
+		QAT_LOG(DEBUG,
+	  "Input cipher buffer misalignment detected and change job as NULL operation");
+		struct icp_qat_fw_comn_req_hdr *header = &req->comn_hdr;
+		header->service_type = ICP_QAT_FW_COMN_REQ_NULL;
+		header->service_cmd_id = ICP_QAT_FW_NULL_REQ_SERV_ID;
+		cookie->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
+		return -1;
 	}
 
 	switch (ctx->qat_hash_alg) {

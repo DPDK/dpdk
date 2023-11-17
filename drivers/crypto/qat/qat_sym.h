@@ -117,6 +117,7 @@ struct qat_sym_op_cookie {
 	} opt;
 	uint8_t digest_null[4];
 	phys_addr_t digest_null_phys_addr;
+	enum rte_crypto_op_status status;
 };
 
 struct qat_sym_dp_ctx {
@@ -321,6 +322,7 @@ qat_sym_process_response(void **op, uint8_t *resp, void *op_cookie,
 			(resp_msg->opaque_data);
 	struct qat_sym_session *sess;
 	uint8_t is_docsis_sec;
+	struct qat_sym_op_cookie *cookie = NULL;
 
 #if RTE_LOG_DP_LEVEL >= RTE_LOG_DEBUG
 	QAT_DP_HEXDUMP_LOG(DEBUG, "qat_response:", (uint8_t *)resp_msg,
@@ -364,6 +366,12 @@ qat_sym_process_response(void **op, uint8_t *resp, void *op_cookie,
 				(struct qat_sym_op_cookie *) op_cookie;
 		memset(cookie->opt.spc_gmac.cd_cipher.key, 0,
 				sess->auth_key_length);
+	}
+
+	cookie = (struct qat_sym_op_cookie *) op_cookie;
+	if (cookie->status == RTE_CRYPTO_OP_STATUS_INVALID_ARGS) {
+		rx_op->status = cookie->status;
+		cookie->status = 0;
 	}
 
 	*op = (void *)rx_op;

@@ -248,7 +248,7 @@ qat_sym_build_op_cipher_gen1(void *in_op, struct qat_sym_session *ctx,
 		return -EINVAL;
 	}
 
-	enqueue_one_cipher_job_gen1(ctx, req, &cipher_iv, ofs, total_len);
+	enqueue_one_cipher_job_gen1(ctx, req, &cipher_iv, ofs, total_len, op_cookie);
 
 	qat_sym_debug_log_dump(req, ctx, in_sgl.vec, in_sgl.num, &cipher_iv,
 			NULL, NULL, NULL);
@@ -383,7 +383,7 @@ qat_sym_build_op_chain_gen1(void *in_op, struct qat_sym_session *ctx,
 
 	enqueue_one_chain_job_gen1(ctx, req, in_sgl.vec, in_sgl.num,
 			out_sgl.vec, out_sgl.num, &cipher_iv, &digest, &auth_iv,
-			ofs, total_len);
+			ofs, total_len, cookie);
 
 	qat_sym_debug_log_dump(req, ctx, in_sgl.vec, in_sgl.num, &cipher_iv,
 			&auth_iv, NULL, &digest);
@@ -507,7 +507,7 @@ qat_sym_dp_enqueue_single_cipher_gen1(void *qp_data, uint8_t *drv_ctx,
 	if (unlikely(data_len < 0))
 		return -1;
 
-	enqueue_one_cipher_job_gen1(ctx, req, iv, ofs, (uint32_t)data_len);
+	enqueue_one_cipher_job_gen1(ctx, req, iv, ofs, (uint32_t)data_len, cookie);
 
 	qat_sym_debug_log_dump(req, ctx, data, n_data_vecs, iv,
 			NULL, NULL, NULL);
@@ -564,7 +564,7 @@ qat_sym_dp_enqueue_cipher_jobs_gen1(void *qp_data, uint8_t *drv_ctx,
 		if (unlikely(data_len < 0))
 			break;
 		enqueue_one_cipher_job_gen1(ctx, req, &vec->iv[i], ofs,
-			(uint32_t)data_len);
+			(uint32_t)data_len, cookie);
 		tail = (tail + tx_queue->msg_size) & tx_queue->modulo_mask;
 
 		qat_sym_debug_log_dump(req, ctx, vec->src_sgl[i].vec,
@@ -740,7 +740,7 @@ qat_sym_dp_enqueue_single_chain_gen1(void *qp_data, uint8_t *drv_ctx,
 
 	if (unlikely(enqueue_one_chain_job_gen1(ctx, req, data, n_data_vecs,
 			NULL, 0, cipher_iv, job_digest, auth_iv, ofs,
-			(uint32_t)data_len)))
+			(uint32_t)data_len, cookie)))
 		return -1;
 
 	dp_ctx->tail = tail;
@@ -811,7 +811,7 @@ qat_sym_dp_enqueue_chain_jobs_gen1(void *qp_data, uint8_t *drv_ctx,
 				vec->src_sgl[i].vec, vec->src_sgl[i].num,
 				NULL, 0,
 				&vec->iv[i], job_digest,
-				&vec->auth_iv[i], ofs, (uint32_t)data_len)))
+				&vec->auth_iv[i], ofs, (uint32_t)data_len, cookie)))
 			break;
 
 		tail = (tail + tx_queue->msg_size) & tx_queue->modulo_mask;
