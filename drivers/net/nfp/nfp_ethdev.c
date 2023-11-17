@@ -808,6 +808,7 @@ static int nfp_pf_init(struct rte_pci_device *pci_dev)
 	int total_ports;
 	int ret = -ENODEV;
 	int err;
+	uint32_t i;
 
 	if (!pci_dev)
 		return ret;
@@ -843,6 +844,10 @@ static int nfp_pf_init(struct rte_pci_device *pci_dev)
 		ret = -EIO;
 		goto hwinfo_cleanup;
 	}
+
+	/* Force the physical port down to clear the possible DMA error */
+	for (i = 0; i < nfp_eth_table->count; i++)
+		nfp_eth_set_configured(cpp, nfp_eth_table->ports[i].index, 0);
 
 	if (nfp_fw_setup(pci_dev, cpp, nfp_eth_table, hwinfo)) {
 		PMD_INIT_LOG(ERR, "Error when uploading firmware");
