@@ -10,8 +10,13 @@ System Requirements
 Building the DPDK and its applications requires one of the following
 environments:
 
-* The Clang-LLVM C compiler and Microsoft MSVC linker.
+* LLVM 14.0.0 (or later) and Microsoft MSVC linker.
 * The MinGW-w64 toolchain (either native or cross).
+* Microsoft Visual Studio 2022 (any edition).
+
+  - note Microsoft Visual Studio 2022 does not currently build enough
+    of DPDK to produce a working DPDK application
+    but may be used to validate that changes are portable between toolchains.
 
 The Meson Build system is used to prepare the sources for compilation
 with the Ninja backend.
@@ -55,6 +60,13 @@ Install to a folder without spaces in its name, like ``C:\MinGW``.
 This path is assumed for the rest of this guide.
 
 
+Option 3. Microsoft Visual Studio Toolset (MSVC)
+------------------------------------------------
+
+Install any edition of Microsoft Visual Studio 2022
+from the `Visual Studio website <https://visualstudio.microsoft.com/downloads/>`_.
+
+
 Install the Build System
 ------------------------
 
@@ -64,7 +76,7 @@ A good option to choose is the MSI installer for both meson and ninja together::
 
 	http://mesonbuild.com/Getting-meson.html#installing-meson-and-ninja-with-the-msi-installer%22
 
-Recommended version is Meson 0.57.
+Required version is Meson 0.57.
 
 Versions starting from 0.58 are unusable with LLVM toolchain
 because of a `Meson issue <https://github.com/mesonbuild/meson/issues/8981>`_.
@@ -83,8 +95,8 @@ Build the code
 The build environment is setup to build the EAL and the helloworld example by
 default.
 
-Option 1. Native Build on Windows
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Option 1. Native Build on Windows using LLVM
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 When using Clang-LLVM, specifying the compiler might be required to complete
 the meson command:
@@ -105,7 +117,7 @@ To compile the examples, the flag ``-Dexamples`` is required.
 
     cd C:\Users\me\dpdk
     meson setup -Dexamples=helloworld build
-    ninja -C build
+    meson compile -C build
 
 Option 2. Cross-Compile with MinGW-w64
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -117,3 +129,17 @@ Depending on the distribution, paths in this file may need adjustments.
 
     meson setup --cross-file config/x86/cross-mingw -Dexamples=helloworld build
     ninja -C build
+
+Option 3. Native Build on Windows using MSVC
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Open a 'Developer PowerShell for VS 2022' prompt from the start menu.
+The developer prompt will configure the environment
+to select the appropriate compiler, linker and SDK paths
+required to build with Visual Studio 2022.
+
+.. code-block:: console
+
+   cd C:\Users\me\dpdk
+   meson setup -Denable_stdatomic=true build
+   meson compile -C build
