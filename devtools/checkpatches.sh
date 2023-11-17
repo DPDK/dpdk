@@ -53,6 +53,14 @@ print_usage () {
 check_forbidden_additions() { # <patch>
 	res=0
 
+	# refrain from new calls to RTE_LOG
+	awk -v FOLDERS="lib" \
+		-v EXPRESSIONS="RTE_LOG\\\(" \
+		-v RET_ON_FAIL=1 \
+		-v MESSAGE='Prefer RTE_LOG_LINE' \
+		-f $(dirname $(readlink -f $0))/check-forbidden-tokens.awk \
+		"$1" || res=1
+
 	# refrain from new additions of rte_panic() and rte_exit()
 	# multiple folders and expressions are separated by spaces
 	awk -v FOLDERS="lib drivers" \
