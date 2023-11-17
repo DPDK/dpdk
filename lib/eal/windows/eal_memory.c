@@ -110,7 +110,7 @@ eal_mem_win32api_init(void)
 	VirtualAlloc2_ptr = (VirtualAlloc2_type)(
 		(void *)GetProcAddress(library, function));
 	if (VirtualAlloc2_ptr == NULL) {
-		RTE_LOG_WIN32_ERR("GetProcAddress(\"%s\", \"%s\")\n",
+		RTE_LOG_WIN32_ERR("GetProcAddress(\"%s\", \"%s\")",
 			library_name, function);
 
 		/* Contrary to the docs, Server 2016 is not supported. */

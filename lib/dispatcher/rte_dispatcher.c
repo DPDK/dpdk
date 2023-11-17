@@ -246,7 +246,7 @@ evd_service_register(struct rte_dispatcher *dispatcher)
 	rc = rte_service_component_register(&service, &dispatcher->service_id);
 	if (rc != 0)
 		RTE_EDEV_LOG_ERR("Registration of dispatcher service "
-				 "%s failed with error code %d\n",
+				 "%s failed with error code %d",
 				 service.name, rc);
 
 	return rc;
@@ -260,7 +260,7 @@ evd_service_unregister(struct rte_dispatcher *dispatcher)
 	rc = rte_service_component_unregister(dispatcher->service_id);
 	if (rc != 0)
 		RTE_EDEV_LOG_ERR("Unregistration of dispatcher service "
-				 "failed with error code %d\n", rc);
+				 "failed with error code %d", rc);
 
 	return rc;
 }
@@ -279,7 +279,7 @@ rte_dispatcher_create(uint8_t event_dev_id)
 				  RTE_CACHE_LINE_SIZE, socket_id);
 
 	if (dispatcher == NULL) {
-		RTE_EDEV_LOG_ERR("Unable to allocate memory for dispatcher\n");
+		RTE_EDEV_LOG_ERR("Unable to allocate memory for dispatcher");
 		rte_errno = ENOMEM;
 		return NULL;
 	}
@@ -483,7 +483,7 @@ evd_lcore_uninstall_handler(struct rte_dispatcher_lcore *lcore,
 	unreg_handler = evd_lcore_get_handler_by_id(lcore, handler_id);
 
 	if (unreg_handler == NULL) {
-		RTE_EDEV_LOG_ERR("Invalid handler id %d\n", handler_id);
+		RTE_EDEV_LOG_ERR("Invalid handler id %d", handler_id);
 		return -EINVAL;
 	}
 
@@ -602,7 +602,7 @@ rte_dispatcher_finalize_unregister(struct rte_dispatcher *dispatcher,
 	unreg_finalizer = evd_get_finalizer_by_id(dispatcher, finalizer_id);
 
 	if (unreg_finalizer == NULL) {
-		RTE_EDEV_LOG_ERR("Invalid finalizer id %d\n", finalizer_id);
+		RTE_EDEV_LOG_ERR("Invalid finalizer id %d", finalizer_id);
 		return -EINVAL;
 	}
 
@@ -636,7 +636,7 @@ evd_set_service_runstate(struct rte_dispatcher *dispatcher, int state)
 	 */
 	if (rc != 0)
 		RTE_EDEV_LOG_ERR("Unexpected error %d occurred while setting "
-				 "service component run state to %d\n", rc,
+				 "service component run state to %d", rc,
 				 state);
 
 	RTE_VERIFY(rc == 0);

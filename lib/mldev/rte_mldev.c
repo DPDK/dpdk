@@ -159,7 +159,7 @@ int
 rte_ml_dev_init(size_t dev_max)
 {
 	if (dev_max == 0 || dev_max > INT16_MAX) {
-		RTE_MLDEV_LOG(ERR, "Invalid dev_max = %zu (> %d)\n", dev_max, INT16_MAX);
+		RTE_MLDEV_LOG(ERR, "Invalid dev_max = %zu (> %d)", dev_max, INT16_MAX);
 		rte_errno = EINVAL;
 		return -rte_errno;
 	}
@@ -217,7 +217,7 @@ rte_ml_dev_socket_id(int16_t dev_id)
 	struct rte_ml_dev *dev;
 
 	if (!rte_ml_dev_is_valid_dev(dev_id)) {
-		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d\n", dev_id);
+		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d", dev_id);
 		return -EINVAL;
 	}
 
@@ -232,7 +232,7 @@ rte_ml_dev_info_get(int16_t dev_id, struct rte_ml_dev_info *dev_info)
 	struct rte_ml_dev *dev;
 
 	if (!rte_ml_dev_is_valid_dev(dev_id)) {
-		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d\n", dev_id);
+		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d", dev_id);
 		return -EINVAL;
 	}
 
@@ -241,7 +241,7 @@ rte_ml_dev_info_get(int16_t dev_id, struct rte_ml_dev_info *dev_info)
 		return -ENOTSUP;
 
 	if (dev_info == NULL) {
-		RTE_MLDEV_LOG(ERR, "Dev %d, dev_info cannot be NULL\n", dev_id);
+		RTE_MLDEV_LOG(ERR, "Dev %d, dev_info cannot be NULL", dev_id);
 		return -EINVAL;
 	}
 	memset(dev_info, 0, sizeof(struct rte_ml_dev_info));
@@ -257,7 +257,7 @@ rte_ml_dev_configure(int16_t dev_id, const struct rte_ml_dev_config *config)
 	int ret;
 
 	if (!rte_ml_dev_is_valid_dev(dev_id)) {
-		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d\n", dev_id);
+		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d", dev_id);
 		return -EINVAL;
 	}
 
@@ -271,7 +271,7 @@ rte_ml_dev_configure(int16_t dev_id, const struct rte_ml_dev_config *config)
 	}
 
 	if (config == NULL) {
-		RTE_MLDEV_LOG(ERR, "Dev %d, config cannot be NULL\n", dev_id);
+		RTE_MLDEV_LOG(ERR, "Dev %d, config cannot be NULL", dev_id);
 		return -EINVAL;
 	}
 
@@ -280,7 +280,7 @@ rte_ml_dev_configure(int16_t dev_id, const struct rte_ml_dev_config *config)
 		return ret;
 
 	if (config->nb_queue_pairs > dev_info.max_queue_pairs) {
-		RTE_MLDEV_LOG(ERR, "Device %d num of queues %u > %u\n", dev_id,
+		RTE_MLDEV_LOG(ERR, "Device %d num of queues %u > %u", dev_id,
 			      config->nb_queue_pairs, dev_info.max_queue_pairs);
 		return -EINVAL;
 	}
@@ -294,7 +294,7 @@ rte_ml_dev_close(int16_t dev_id)
 	struct rte_ml_dev *dev;
 
 	if (!rte_ml_dev_is_valid_dev(dev_id)) {
-		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d\n", dev_id);
+		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d", dev_id);
 		return -EINVAL;
 	}
 
@@ -318,7 +318,7 @@ rte_ml_dev_start(int16_t dev_id)
 	int ret;
 
 	if (!rte_ml_dev_is_valid_dev(dev_id)) {
-		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d\n", dev_id);
+		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d", dev_id);
 		return -EINVAL;
 	}
 
@@ -345,7 +345,7 @@ rte_ml_dev_stop(int16_t dev_id)
 	int ret;
 
 	if (!rte_ml_dev_is_valid_dev(dev_id)) {
-		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d\n", dev_id);
+		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d", dev_id);
 		return -EINVAL;
 	}
 
@@ -372,7 +372,7 @@ rte_ml_dev_queue_pair_setup(int16_t dev_id, uint16_t queue_pair_id,
 	struct rte_ml_dev *dev;
 
 	if (!rte_ml_dev_is_valid_dev(dev_id)) {
-		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d\n", dev_id);
+		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d", dev_id);
 		return -EINVAL;
 	}
 
@@ -386,7 +386,7 @@ rte_ml_dev_queue_pair_setup(int16_t dev_id, uint16_t queue_pair_id,
 	}
 
 	if (qp_conf == NULL) {
-		RTE_MLDEV_LOG(ERR, "Dev %d, qp_conf cannot be NULL\n", dev_id);
+		RTE_MLDEV_LOG(ERR, "Dev %d, qp_conf cannot be NULL", dev_id);
 		return -EINVAL;
 	}
 
@@ -404,7 +404,7 @@ rte_ml_dev_stats_get(int16_t dev_id, struct rte_ml_dev_stats *stats)
 	struct rte_ml_dev *dev;
 
 	if (!rte_ml_dev_is_valid_dev(dev_id)) {
-		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d\n", dev_id);
+		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d", dev_id);
 		return -EINVAL;
 	}
 
@@ -413,7 +413,7 @@ rte_ml_dev_stats_get(int16_t dev_id, struct rte_ml_dev_stats *stats)
 		return -ENOTSUP;
 
 	if (stats == NULL) {
-		RTE_MLDEV_LOG(ERR, "Dev %d, stats cannot be NULL\n", dev_id);
+		RTE_MLDEV_LOG(ERR, "Dev %d, stats cannot be NULL", dev_id);
 		return -EINVAL;
 	}
 	memset(stats, 0, sizeof(struct rte_ml_dev_stats));
@@ -427,7 +427,7 @@ rte_ml_dev_stats_reset(int16_t dev_id)
 	struct rte_ml_dev *dev;
 
 	if (!rte_ml_dev_is_valid_dev(dev_id)) {
-		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d\n", dev_id);
+		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d", dev_id);
 		return;
 	}
 
@@ -445,7 +445,7 @@ rte_ml_dev_xstats_names_get(int16_t dev_id, enum rte_ml_dev_xstats_mode mode, in
 	struct rte_ml_dev *dev;
 
 	if (!rte_ml_dev_is_valid_dev(dev_id)) {
-		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d\n", dev_id);
+		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d", dev_id);
 		return -EINVAL;
 	}
 
@@ -462,7 +462,7 @@ rte_ml_dev_xstats_by_name_get(int16_t dev_id, const char *name, uint16_t *stat_i
 	struct rte_ml_dev *dev;
 
 	if (!rte_ml_dev_is_valid_dev(dev_id)) {
-		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d\n", dev_id);
+		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d", dev_id);
 		return -EINVAL;
 	}
 
@@ -471,12 +471,12 @@ rte_ml_dev_xstats_by_name_get(int16_t dev_id, const char *name, uint16_t *stat_i
 		return -ENOTSUP;
 
 	if (name == NULL) {
-		RTE_MLDEV_LOG(ERR, "Dev %d, name cannot be NULL\n", dev_id);
+		RTE_MLDEV_LOG(ERR, "Dev %d, name cannot be NULL", dev_id);
 		return -EINVAL;
 	}
 
 	if (value == NULL) {
-		RTE_MLDEV_LOG(ERR, "Dev %d, value cannot be NULL\n", dev_id);
+		RTE_MLDEV_LOG(ERR, "Dev %d, value cannot be NULL", dev_id);
 		return -EINVAL;
 	}
 
@@ -490,7 +490,7 @@ rte_ml_dev_xstats_get(int16_t dev_id, enum rte_ml_dev_xstats_mode mode, int32_t 
 	struct rte_ml_dev *dev;
 
 	if (!rte_ml_dev_is_valid_dev(dev_id)) {
-		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d\n", dev_id);
+		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d", dev_id);
 		return -EINVAL;
 	}
 
@@ -499,12 +499,12 @@ rte_ml_dev_xstats_get(int16_t dev_id, enum rte_ml_dev_xstats_mode mode, int32_t 
 		return -ENOTSUP;
 
 	if (stat_ids == NULL) {
-		RTE_MLDEV_LOG(ERR, "Dev %d, stat_ids cannot be NULL\n", dev_id);
+		RTE_MLDEV_LOG(ERR, "Dev %d, stat_ids cannot be NULL", dev_id);
 		return -EINVAL;
 	}
 
 	if (values == NULL) {
-		RTE_MLDEV_LOG(ERR, "Dev %d, values cannot be NULL\n", dev_id);
+		RTE_MLDEV_LOG(ERR, "Dev %d, values cannot be NULL", dev_id);
 		return -EINVAL;
 	}
 
@@ -518,7 +518,7 @@ rte_ml_dev_xstats_reset(int16_t dev_id, enum rte_ml_dev_xstats_mode mode, int32_
 	struct rte_ml_dev *dev;
 
 	if (!rte_ml_dev_is_valid_dev(dev_id)) {
-		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d\n", dev_id);
+		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d", dev_id);
 		return -EINVAL;
 	}
 
@@ -535,7 +535,7 @@ rte_ml_dev_dump(int16_t dev_id, FILE *fd)
 	struct rte_ml_dev *dev;
 
 	if (!rte_ml_dev_is_valid_dev(dev_id)) {
-		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d\n", dev_id);
+		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d", dev_id);
 		return -EINVAL;
 	}
 
@@ -544,7 +544,7 @@ rte_ml_dev_dump(int16_t dev_id, FILE *fd)
 		return -ENOTSUP;
 
 	if (fd == NULL) {
-		RTE_MLDEV_LOG(ERR, "Dev %d, file descriptor cannot be NULL\n", dev_id);
+		RTE_MLDEV_LOG(ERR, "Dev %d, file descriptor cannot be NULL", dev_id);
 		return -EINVAL;
 	}
 
@@ -557,7 +557,7 @@ rte_ml_dev_selftest(int16_t dev_id)
 	struct rte_ml_dev *dev;
 
 	if (!rte_ml_dev_is_valid_dev(dev_id)) {
-		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d\n", dev_id);
+		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d", dev_id);
 		return -EINVAL;
 	}
 
@@ -574,7 +574,7 @@ rte_ml_model_load(int16_t dev_id, struct rte_ml_model_params *params, uint16_t *
 	struct rte_ml_dev *dev;
 
 	if (!rte_ml_dev_is_valid_dev(dev_id)) {
-		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d\n", dev_id);
+		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d", dev_id);
 		return -EINVAL;
 	}
 
@@ -583,12 +583,12 @@ rte_ml_model_load(int16_t dev_id, struct rte_ml_model_params *params, uint16_t *
 		return -ENOTSUP;
 
 	if (params == NULL) {
-		RTE_MLDEV_LOG(ERR, "Dev %d, params cannot be NULL\n", dev_id);
+		RTE_MLDEV_LOG(ERR, "Dev %d, params cannot be NULL", dev_id);
 		return -EINVAL;
 	}
 
 	if (model_id == NULL) {
-		RTE_MLDEV_LOG(ERR, "Dev %d, model_id cannot be NULL\n", dev_id);
+		RTE_MLDEV_LOG(ERR, "Dev %d, model_id cannot be NULL", dev_id);
 		return -EINVAL;
 	}
 
@@ -601,7 +601,7 @@ rte_ml_model_unload(int16_t dev_id, uint16_t model_id)
 	struct rte_ml_dev *dev;
 
 	if (!rte_ml_dev_is_valid_dev(dev_id)) {
-		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d\n", dev_id);
+		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d", dev_id);
 		return -EINVAL;
 	}
 
@@ -618,7 +618,7 @@ rte_ml_model_start(int16_t dev_id, uint16_t model_id)
 	struct rte_ml_dev *dev;
 
 	if (!rte_ml_dev_is_valid_dev(dev_id)) {
-		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d\n", dev_id);
+		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d", dev_id);
 		return -EINVAL;
 	}
 
@@ -635,7 +635,7 @@ rte_ml_model_stop(int16_t dev_id, uint16_t model_id)
 	struct rte_ml_dev *dev;
 
 	if (!rte_ml_dev_is_valid_dev(dev_id)) {
-		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d\n", dev_id);
+		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d", dev_id);
 		return -EINVAL;
 	}
 
@@ -652,7 +652,7 @@ rte_ml_model_info_get(int16_t dev_id, uint16_t model_id, struct rte_ml_model_inf
 	struct rte_ml_dev *dev;
 
 	if (!rte_ml_dev_is_valid_dev(dev_id)) {
-		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d\n", dev_id);
+		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d", dev_id);
 		return -EINVAL;
 	}
 
@@ -661,7 +661,7 @@ rte_ml_model_info_get(int16_t dev_id, uint16_t model_id, struct rte_ml_model_inf
 		return -ENOTSUP;
 
 	if (model_info == NULL) {
-		RTE_MLDEV_LOG(ERR, "Dev %d, model_id %u, model_info cannot be NULL\n", dev_id,
+		RTE_MLDEV_LOG(ERR, "Dev %d, model_id %u, model_info cannot be NULL", dev_id,
 			      model_id);
 		return -EINVAL;
 	}
@@ -675,7 +675,7 @@ rte_ml_model_params_update(int16_t dev_id, uint16_t model_id, void *buffer)
 	struct rte_ml_dev *dev;
 
 	if (!rte_ml_dev_is_valid_dev(dev_id)) {
-		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d\n", dev_id);
+		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d", dev_id);
 		return -EINVAL;
 	}
 
@@ -684,7 +684,7 @@ rte_ml_model_params_update(int16_t dev_id, uint16_t model_id, void *buffer)
 		return -ENOTSUP;
 
 	if (buffer == NULL) {
-		RTE_MLDEV_LOG(ERR, "Dev %d, buffer cannot be NULL\n", dev_id);
+		RTE_MLDEV_LOG(ERR, "Dev %d, buffer cannot be NULL", dev_id);
 		return -EINVAL;
 	}
 
@@ -698,7 +698,7 @@ rte_ml_io_quantize(int16_t dev_id, uint16_t model_id, struct rte_ml_buff_seg **d
 	struct rte_ml_dev *dev;
 
 	if (!rte_ml_dev_is_valid_dev(dev_id)) {
-		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d\n", dev_id);
+		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d", dev_id);
 		return -EINVAL;
 	}
 
@@ -707,12 +707,12 @@ rte_ml_io_quantize(int16_t dev_id, uint16_t model_id, struct rte_ml_buff_seg **d
 		return -ENOTSUP;
 
 	if (dbuffer == NULL) {
-		RTE_MLDEV_LOG(ERR, "Dev %d, dbuffer cannot be NULL\n", dev_id);
+		RTE_MLDEV_LOG(ERR, "Dev %d, dbuffer cannot be NULL", dev_id);
 		return -EINVAL;
 	}
 
 	if (qbuffer == NULL) {
-		RTE_MLDEV_LOG(ERR, "Dev %d, qbuffer cannot be NULL\n", dev_id);
+		RTE_MLDEV_LOG(ERR, "Dev %d, qbuffer cannot be NULL", dev_id);
 		return -EINVAL;
 	}
 
@@ -726,7 +726,7 @@ rte_ml_io_dequantize(int16_t dev_id, uint16_t model_id, struct rte_ml_buff_seg *
 	struct rte_ml_dev *dev;
 
 	if (!rte_ml_dev_is_valid_dev(dev_id)) {
-		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d\n", dev_id);
+		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d", dev_id);
 		return -EINVAL;
 	}
 
@@ -735,12 +735,12 @@ rte_ml_io_dequantize(int16_t dev_id, uint16_t model_id, struct rte_ml_buff_seg *
 		return -ENOTSUP;
 
 	if (qbuffer == NULL) {
-		RTE_MLDEV_LOG(ERR, "Dev %d, qbuffer cannot be NULL\n", dev_id);
+		RTE_MLDEV_LOG(ERR, "Dev %d, qbuffer cannot be NULL", dev_id);
 		return -EINVAL;
 	}
 
 	if (dbuffer == NULL) {
-		RTE_MLDEV_LOG(ERR, "Dev %d, dbuffer cannot be NULL\n", dev_id);
+		RTE_MLDEV_LOG(ERR, "Dev %d, dbuffer cannot be NULL", dev_id);
 		return -EINVAL;
 	}
 
@@ -811,7 +811,7 @@ rte_ml_enqueue_burst(int16_t dev_id, uint16_t qp_id, struct rte_ml_op **ops, uin
 
 #ifdef RTE_LIBRTE_ML_DEV_DEBUG
 	if (!rte_ml_dev_is_valid_dev(dev_id)) {
-		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d\n", dev_id);
+		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d", dev_id);
 		rte_errno = -EINVAL;
 		return 0;
 	}
@@ -823,13 +823,13 @@ rte_ml_enqueue_burst(int16_t dev_id, uint16_t qp_id, struct rte_ml_op **ops, uin
 	}
 
 	if (ops == NULL) {
-		RTE_MLDEV_LOG(ERR, "Dev %d, ops cannot be NULL\n", dev_id);
+		RTE_MLDEV_LOG(ERR, "Dev %d, ops cannot be NULL", dev_id);
 		rte_errno = -EINVAL;
 		return 0;
 	}
 
 	if (qp_id >= dev->data->nb_queue_pairs) {
-		RTE_MLDEV_LOG(ERR, "Invalid qp_id %u\n", qp_id);
+		RTE_MLDEV_LOG(ERR, "Invalid qp_id %u", qp_id);
 		rte_errno = -EINVAL;
 		return 0;
 	}
@@ -847,7 +847,7 @@ rte_ml_dequeue_burst(int16_t dev_id, uint16_t qp_id, struct rte_ml_op **ops, uin
 
 #ifdef RTE_LIBRTE_ML_DEV_DEBUG
 	if (!rte_ml_dev_is_valid_dev(dev_id)) {
-		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d\n", dev_id);
+		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d", dev_id);
 		rte_errno = -EINVAL;
 		return 0;
 	}
@@ -859,13 +859,13 @@ rte_ml_dequeue_burst(int16_t dev_id, uint16_t qp_id, struct rte_ml_op **ops, uin
 	}
 
 	if (ops == NULL) {
-		RTE_MLDEV_LOG(ERR, "Dev %d, ops cannot be NULL\n", dev_id);
+		RTE_MLDEV_LOG(ERR, "Dev %d, ops cannot be NULL", dev_id);
 		rte_errno = -EINVAL;
 		return 0;
 	}
 
 	if (qp_id >= dev->data->nb_queue_pairs) {
-		RTE_MLDEV_LOG(ERR, "Invalid qp_id %u\n", qp_id);
+		RTE_MLDEV_LOG(ERR, "Invalid qp_id %u", qp_id);
 		rte_errno = -EINVAL;
 		return 0;
 	}
@@ -883,7 +883,7 @@ rte_ml_op_error_get(int16_t dev_id, struct rte_ml_op *op, struct rte_ml_op_error
 
 #ifdef RTE_LIBRTE_ML_DEV_DEBUG
 	if (!rte_ml_dev_is_valid_dev(dev_id)) {
-		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d\n", dev_id);
+		RTE_MLDEV_LOG(ERR, "Invalid dev_id = %d", dev_id);
 		return -EINVAL;
 	}
 
@@ -892,12 +892,12 @@ rte_ml_op_error_get(int16_t dev_id, struct rte_ml_op *op, struct rte_ml_op_error
 		return -ENOTSUP;
 
 	if (op == NULL) {
-		RTE_MLDEV_LOG(ERR, "Dev %d, op cannot be NULL\n", dev_id);
+		RTE_MLDEV_LOG(ERR, "Dev %d, op cannot be NULL", dev_id);
 		return -EINVAL;
 	}
 
 	if (error == NULL) {
-		RTE_MLDEV_LOG(ERR, "Dev %d, error cannot be NULL\n", dev_id);
+		RTE_MLDEV_LOG(ERR, "Dev %d, error cannot be NULL", dev_id);
 		return -EINVAL;
 	}
 #else

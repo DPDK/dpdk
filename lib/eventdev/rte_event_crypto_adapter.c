@@ -133,7 +133,7 @@ static struct event_crypto_adapter **event_crypto_adapter;
 /* Macros to check for valid adapter */
 #define EVENT_CRYPTO_ADAPTER_ID_VALID_OR_ERR_RET(id, retval) do { \
 	if (!eca_valid_id(id)) { \
-		RTE_EDEV_LOG_ERR("Invalid crypto adapter id = %d\n", id); \
+		RTE_EDEV_LOG_ERR("Invalid crypto adapter id = %d", id); \
 		return retval; \
 	} \
 } while (0)
@@ -309,7 +309,7 @@ eca_default_config_cb(uint8_t id, uint8_t dev_id,
 
 	ret = rte_event_dev_configure(dev_id, &dev_conf);
 	if (ret) {
-		RTE_EDEV_LOG_ERR("failed to configure event dev %u\n", dev_id);
+		RTE_EDEV_LOG_ERR("failed to configure event dev %u", dev_id);
 		if (started) {
 			if (rte_event_dev_start(dev_id))
 				return -EIO;
@@ -319,7 +319,7 @@ eca_default_config_cb(uint8_t id, uint8_t dev_id,
 
 	ret = rte_event_port_setup(dev_id, port_id, port_conf);
 	if (ret) {
-		RTE_EDEV_LOG_ERR("failed to setup event port %u\n", port_id);
+		RTE_EDEV_LOG_ERR("failed to setup event port %u", port_id);
 		return ret;
 	}
 
@@ -391,7 +391,7 @@ rte_event_crypto_adapter_create_ext(uint8_t id, uint8_t dev_id,
 					sizeof(struct crypto_device_info), 0,
 					socket_id);
 	if (adapter->cdevs == NULL) {
-		RTE_EDEV_LOG_ERR("Failed to get mem for crypto devices\n");
+		RTE_EDEV_LOG_ERR("Failed to get mem for crypto devices");
 		eca_circular_buffer_free(&adapter->ebuf);
 		rte_free(adapter);
 		return -ENOMEM;
@@ -1403,7 +1403,7 @@ rte_event_crypto_adapter_runtime_params_set(uint8_t id,
 	EVENT_CRYPTO_ADAPTER_ID_VALID_OR_ERR_RET(id, -EINVAL);
 
 	if (params == NULL) {
-		RTE_EDEV_LOG_ERR("params pointer is NULL\n");
+		RTE_EDEV_LOG_ERR("params pointer is NULL");
 		return -EINVAL;
 	}
 
@@ -1436,7 +1436,7 @@ rte_event_crypto_adapter_runtime_params_get(uint8_t id,
 	EVENT_CRYPTO_ADAPTER_ID_VALID_OR_ERR_RET(id, -EINVAL);
 
 	if (params == NULL) {
-		RTE_EDEV_LOG_ERR("params pointer is NULL\n");
+		RTE_EDEV_LOG_ERR("params pointer is NULL");
 		return -EINVAL;
 	}
 

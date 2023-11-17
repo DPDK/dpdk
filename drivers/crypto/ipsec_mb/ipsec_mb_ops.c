@@ -406,7 +406,7 @@ ipsec_mb_ipc_request(const struct rte_mp_msg *mp_msg, const void *peer)
 		resp_param->result = ipsec_mb_qp_release(dev, qp_id);
 		break;
 	default:
-		CDEV_LOG_ERR("invalid mp request type\n");
+		CDEV_LOG_ERR("invalid mp request type");
 	}
 
 out:

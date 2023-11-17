@@ -36,7 +36,7 @@ kernel_tx_process_mbuf(struct rte_node *node, struct rte_mbuf **mbufs, uint16_t 
 		sin.sin_addr.s_addr = ip4->dst_addr;
 
 		if (sendto(ctx->sock, buf, len, 0, (struct sockaddr *)&sin, sizeof(sin)) < 0)
-			node_err("kernel_tx", "Unable to send packets: %s\n", strerror(errno));
+			node_err("kernel_tx", "Unable to send packets: %s", strerror(errno));
 	}
 }
 
@@ -87,7 +87,7 @@ kernel_tx_node_init(const struct rte_graph *graph __rte_unused, struct rte_node 
 
 	ctx->sock = socket(AF_INET, SOCK_RAW, IPPROTO_RAW);
 	if (ctx->sock < 0)
-		node_err("kernel_tx", "Unable to open RAW socket\n");
+		node_err("kernel_tx", "Unable to open RAW socket");
 
 	return 0;
 }

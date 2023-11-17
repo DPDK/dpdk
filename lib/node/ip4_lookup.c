@@ -143,7 +143,7 @@ rte_node_ip4_route_add(uint32_t ip, uint8_t depth, uint16_t next_hop,
 				  ip, depth, val);
 		if (ret < 0) {
 			node_err("ip4_lookup",
-				 "Unable to add entry %s / %d nh (%x) to LPM table on sock %d, rc=%d\n",
+				 "Unable to add entry %s / %d nh (%x) to LPM table on sock %d, rc=%d",
 				 abuf, depth, val, socket, ret);
 			return ret;
 		}

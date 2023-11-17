@@ -283,7 +283,7 @@ rte_node_ip6_route_add(const uint8_t *ip, uint8_t depth, uint16_t next_hop,
 		if (ret < 0) {
 			node_err("ip6_lookup",
 				 "Unable to add entry %s / %d nh (%x) to LPM "
-				 "table on sock %d, rc=%d\n",
+				 "table on sock %d, rc=%d",
 				 abuf, depth, val, socket, ret);
 			return ret;
 		}
