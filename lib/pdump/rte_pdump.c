@@ -564,9 +564,10 @@ pdump_prepare_client_request(const char *device, uint16_t queue,
 	if (rte_mp_request_sync(&mp_req, &mp_reply, &ts) == 0) {
 		mp_rep = &mp_reply.msgs[0];
 		resp = (struct pdump_response *)mp_rep->param;
-		rte_errno = resp->err_value;
-		if (!resp->err_value)
+		if (resp->err_value == 0)
 			ret = 0;
+		else
+			rte_errno = -resp->err_value;
 		free(mp_reply.msgs);
 	}
 
