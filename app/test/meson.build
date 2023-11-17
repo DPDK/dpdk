@@ -128,7 +128,7 @@ source_file_deps = {
     'test_metrics.c': ['metrics'],
     'test_mp_secondary.c': ['hash', 'lpm'],
     'test_net_ether.c': ['net'],
-    'test_pcapng.c': ['ethdev', 'net', 'pcapng'],
+    'test_pcapng.c': ['ethdev', 'net', 'pcapng', 'bus_vdev'],
     'test_pdcp.c': ['eventdev', 'pdcp', 'net', 'timer', 'security'],
     'test_pdump.c': ['pdump'] + sample_packet_forward_deps,
     'test_per_lcore.c': [],
