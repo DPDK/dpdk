@@ -379,6 +379,7 @@ int nfp_rx_queue_intr_disable(struct rte_eth_dev *dev, uint16_t queue_id);
 void nfp_net_params_setup(struct nfp_net_hw *hw);
 void nfp_net_cfg_queue_setup(struct nfp_net_hw *hw);
 void nfp_eth_copy_mac(uint8_t *dst, const uint8_t *src);
+void nfp_net_irq_unmask(struct rte_eth_dev *dev);
 void nfp_net_dev_interrupt_handler(void *param);
 void nfp_net_dev_interrupt_delayed_handler(void *param);
 int nfp_net_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu);
