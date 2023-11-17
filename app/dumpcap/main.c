@@ -44,7 +44,6 @@
 #include <pcap/pcap.h>
 #include <pcap/bpf.h>
 
-#define RING_NAME "capture-ring"
 #define MONITOR_INTERVAL  (500 * 1000)
 #define MBUF_POOL_CACHE_SIZE 32
 #define BURST_SIZE 32
@@ -555,6 +554,7 @@ static void dpdk_init(void)
 static struct rte_ring *create_ring(void)
 {
 	struct rte_ring *ring;
+	char ring_name[RTE_RING_NAMESIZE];
 	size_t size, log2;
 
 	/* Find next power of 2 >= size. */
@@ -568,26 +568,26 @@ static struct rte_ring *create_ring(void)
 		ring_size = size;
 	}
 
-	ring = rte_ring_lookup(RING_NAME);
-	if (ring == NULL) {
-		ring = rte_ring_create(RING_NAME, ring_size,
-					rte_socket_id(), 0);
-		if (ring == NULL)
-			rte_exit(EXIT_FAILURE, "Could not create ring :%s\n",
-				 rte_strerror(rte_errno));
-	}
+	/* Want one ring per invocation of program */
+	snprintf(ring_name, sizeof(ring_name),
+		 "dumpcap-%d", getpid());
+
+	ring = rte_ring_create(ring_name, ring_size,
+			       rte_socket_id(), 0);
+	if (ring == NULL)
+		rte_exit(EXIT_FAILURE, "Could not create ring :%s\n",
+			 rte_strerror(rte_errno));
+
 	return ring;
 }
 
 static struct rte_mempool *create_mempool(void)
 {
-	static const char pool_name[] = "capture_mbufs";
+	char pool_name[RTE_MEMPOOL_NAMESIZE];
 	size_t num_mbufs = 2 * ring_size;
 	struct rte_mempool *mp;
 
-	mp = rte_mempool_lookup(pool_name);
-	if (mp)
-		return mp;
+	snprintf(pool_name, sizeof(pool_name), "capture_%d", getpid());
 
 	mp = rte_pktmbuf_pool_create_by_ops(pool_name, num_mbufs,
 					    MBUF_POOL_CACHE_SIZE, 0,
