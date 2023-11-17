@@ -277,7 +277,8 @@ int
 nfp_set_mac_addr(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr)
 {
 	struct nfp_net_hw *hw;
-	uint32_t update, ctrl;
+	uint32_t update;
+	uint32_t new_ctrl;
 
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	if ((hw->ctrl & NFP_NET_CFG_CTRL_ENABLE) &&
@@ -292,14 +293,17 @@ nfp_set_mac_addr(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr)
 
 	/* Signal the NIC about the change */
 	update = NFP_NET_CFG_UPDATE_MACADDR;
-	ctrl = hw->ctrl;
+	new_ctrl = hw->ctrl;
 	if ((hw->ctrl & NFP_NET_CFG_CTRL_ENABLE) &&
 	    (hw->cap & NFP_NET_CFG_CTRL_LIVE_ADDR))
-		ctrl |= NFP_NET_CFG_CTRL_LIVE_ADDR;
-	if (nfp_net_reconfig(hw, ctrl, update) < 0) {
+		new_ctrl |= NFP_NET_CFG_CTRL_LIVE_ADDR;
+	if (nfp_net_reconfig(hw, new_ctrl, update) < 0) {
 		PMD_INIT_LOG(INFO, "MAC address update failed");
 		return -EIO;
 	}
+
+	hw->ctrl = new_ctrl;
+
 	return 0;
 }
 
