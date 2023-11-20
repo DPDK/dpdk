@@ -154,58 +154,79 @@ def balanced_traffic(
 
 NO_PORT = (0,)
 
-# fmt: off
-# rss_intel_key, see drivers/net/ixgbe/ixgbe_rxtx.c
-RSS_KEY_INTEL = bytes(
-    (
-        0x6d, 0x5a, 0x56, 0xda, 0x25, 0x5b, 0x0e, 0xc2,
-        0x41, 0x67, 0x25, 0x3d, 0x43, 0xa3, 0x8f, 0xb0,
-        0xd0, 0xca, 0x2b, 0xcb, 0xae, 0x7b, 0x30, 0xb4,
-        0x77, 0xcb, 0x2d, 0xa3, 0x80, 0x30, 0xf2, 0x0c,
-        0x6a, 0x42, 0xb7, 0x3b, 0xbe, 0xac, 0x01, 0xfa,
-    )
-)
-# rss_hash_default_key, see drivers/net/mlx5/mlx5_rxq.c
-RSS_KEY_MLX = bytes(
-    (
-        0x2c, 0xc6, 0x81, 0xd1, 0x5b, 0xdb, 0xf4, 0xf7,
-        0xfc, 0xa2, 0x83, 0x19, 0xdb, 0x1a, 0x3e, 0x94,
-        0x6b, 0x9e, 0x38, 0xd9, 0x2c, 0x9c, 0x03, 0xd1,
-        0xad, 0x99, 0x44, 0xa7, 0xd9, 0x56, 0x3d, 0x59,
-        0x06, 0x3c, 0x25, 0xf3, 0xfc, 0x1f, 0xdc, 0x2a,
-    )
-)
-# rss_key_default, see drivers/net/i40e/i40e_ethdev.c
-# i40e is the only driver that takes 52 bytes keys
-RSS_KEY_I40E = bytes(
-    (
-        0x44, 0x39, 0x79, 0x6b, 0xb5, 0x4c, 0x50, 0x23,
-        0xb6, 0x75, 0xea, 0x5b, 0x12, 0x4f, 0x9f, 0x30,
-        0xb8, 0xa2, 0xc0, 0x3d, 0xdf, 0xdc, 0x4d, 0x02,
-        0xa0, 0x8c, 0x9b, 0x33, 0x4a, 0xf6, 0x4a, 0x4c,
-        0x05, 0xc6, 0xfa, 0x34, 0x39, 0x58, 0xd8, 0x55,
-        0x7d, 0x99, 0x58, 0x3a, 0xe1, 0x38, 0xc9, 0x2e,
-        0x81, 0x15, 0x03, 0x66,
-    )
-)
-# fmt: on
-DEFAULT_DRIVER_KEYS = {
-    "intel": RSS_KEY_INTEL,
-    "mlx": RSS_KEY_MLX,
-    "i40e": RSS_KEY_I40E,
+
+class DriverInfo:
+    def __init__(self, key: bytes = None, reta_size: int = None):
+        self.__key = key
+        self.__reta_size = reta_size
+
+    def rss_key(self) -> bytes:
+        return self.__key
+
+    def reta_size(self, num_queues: int) -> int:
+        return self.__reta_size
+
+
+class MlxDriverInfo(DriverInfo):
+    def rss_key(self) -> bytes:
+        return bytes(
+            (
+                # fmt: off
+                # rss_hash_default_key, see drivers/net/mlx5/mlx5_rxq.c
+                0x2c, 0xc6, 0x81, 0xd1, 0x5b, 0xdb, 0xf4, 0xf7,
+                0xfc, 0xa2, 0x83, 0x19, 0xdb, 0x1a, 0x3e, 0x94,
+                0x6b, 0x9e, 0x38, 0xd9, 0x2c, 0x9c, 0x03, 0xd1,
+                0xad, 0x99, 0x44, 0xa7, 0xd9, 0x56, 0x3d, 0x59,
+                0x06, 0x3c, 0x25, 0xf3, 0xfc, 0x1f, 0xdc, 0x2a,
+                # fmt: on
+            )
+        )
+
+    def reta_size(self, num_queues: int) -> int:
+        if num_queues & (num_queues - 1) == 0:
+            # If the requested number of RX queues is power of two,
+            # use a table of this size.
+            return num_queues
+        # otherwise, use the maximum table size
+        return 512
+
+
+DEFAULT_DRIVERS = {
+    "intel": DriverInfo(
+        key=bytes(
+            (
+                # fmt: off
+                # rss_intel_key, see drivers/net/ixgbe/ixgbe_rxtx.c
+                0x6d, 0x5a, 0x56, 0xda, 0x25, 0x5b, 0x0e, 0xc2,
+                0x41, 0x67, 0x25, 0x3d, 0x43, 0xa3, 0x8f, 0xb0,
+                0xd0, 0xca, 0x2b, 0xcb, 0xae, 0x7b, 0x30, 0xb4,
+                0x77, 0xcb, 0x2d, 0xa3, 0x80, 0x30, 0xf2, 0x0c,
+                0x6a, 0x42, 0xb7, 0x3b, 0xbe, 0xac, 0x01, 0xfa,
+                # fmt: on
+            )
+        ),
+        reta_size=128,
+    ),
+    "i40e": DriverInfo(
+        key=bytes(
+            (
+                # fmt: off
+                # rss_key_default, see drivers/net/i40e/i40e_ethdev.c
+                # i40e is the only driver that takes 52 bytes keys
+                0x44, 0x39, 0x79, 0x6b, 0xb5, 0x4c, 0x50, 0x23,
+                0xb6, 0x75, 0xea, 0x5b, 0x12, 0x4f, 0x9f, 0x30,
+                0xb8, 0xa2, 0xc0, 0x3d, 0xdf, 0xdc, 0x4d, 0x02,
+                0xa0, 0x8c, 0x9b, 0x33, 0x4a, 0xf6, 0x4a, 0x4c,
+                0x05, 0xc6, 0xfa, 0x34, 0x39, 0x58, 0xd8, 0x55,
+                0x7d, 0x99, 0x58, 0x3a, 0xe1, 0x38, 0xc9, 0x2e,
+                0x81, 0x15, 0x03, 0x66,
+                # fmt: on
+            )
+        ),
+        reta_size=512,
+    ),
+    "mlx": MlxDriverInfo(),
 }
-
-
-def rss_key(value):
-    if value in DEFAULT_DRIVER_KEYS:
-        return DEFAULT_DRIVER_KEYS[value]
-    try:
-        key = binascii.unhexlify(value)
-        if len(key) not in (40, 52):
-            raise argparse.ArgumentTypeError("The key must be 40 or 52 bytes long")
-        return key
-    except (TypeError, ValueError) as e:
-        raise argparse.ArgumentTypeError(str(e)) from e
 
 
 def port_range(value):
@@ -296,21 +317,20 @@ def parse_args():
     parser.add_argument(
         "-k",
         "--rss-key",
-        default=RSS_KEY_INTEL,
-        type=rss_key,
-        help="""
-        The random 40-bytes key used to compute the RSS hash. This option
+        default="intel",
+        help=f"""
+        The random key used to compute the RSS hash. This option
         supports either a well-known name or the hex value of the key
-        (well-known names: "intel", "mlx", default: "intel").
+        (well-known names: {', '.join(DEFAULT_DRIVERS)}, default: intel).
         """,
     )
     parser.add_argument(
         "-t",
         "--reta-size",
-        default=128,
         type=power_of_two,
         help="""
-        Size of the redirection table or "RETA" (default: 128).
+        Size of the redirection table or "RETA" (default: depends on driver if
+        using a well-known driver name, otherwise 128).
         """,
     )
     parser.add_argument(
@@ -339,8 +359,23 @@ def parse_args():
         parser.error(
             f"{args.ip_src} and {args.ip_dst} don't have the same protocol version"
         )
+
+    if args.rss_key in DEFAULT_DRIVERS:
+        driver_info = DEFAULT_DRIVERS[args.rss_key]
+    else:
+        try:
+            key = binascii.unhexlify(args.rss_key)
+        except (TypeError, ValueError) as e:
+            parser.error(f"RSS_KEY: {e}")
+        driver_info = DriverInfo(key=key, reta_size=128)
+
+    if args.reta_size is None:
+        args.reta_size = driver_info.reta_size(args.rx_queues)
+
     if args.reta_size < args.rx_queues:
         parser.error("RETA_SIZE must be greater than or equal to RX_QUEUES")
+
+    args.rss_key = driver_info.rss_key()
 
     return args
 
