@@ -352,6 +352,14 @@ def parse_args():
         Output in parseable JSON format.
         """,
     )
+    parser.add_argument(
+        "-i",
+        "--info",
+        action="store_true",
+        help="""
+        Print RETA size and RSS key above the results. Not available with --json.
+        """,
+    )
 
     args = parser.parse_args()
 
@@ -359,6 +367,9 @@ def parse_args():
         parser.error(
             f"{args.ip_src} and {args.ip_dst} don't have the same protocol version"
         )
+
+    if args.json and args.info:
+        parser.error("--json and --info are mutually exclusive")
 
     if args.rss_key in DEFAULT_DRIVERS:
         driver_info = DEFAULT_DRIVERS[args.rss_key]
@@ -441,6 +452,11 @@ def main():
                 widths[i] = len(r)
             cells.append(r)
         rows.append(tuple(cells))
+
+    if args.info:
+        print(f"RSS key:     {binascii.hexlify(args.rss_key).decode()}")
+        print(f"RETA size:   {args.reta_size}")
+        print()
 
     fmt = [f"%-{w}s" for w in widths]
     fmt[-1] = "%s"  # avoid trailing whitespace
