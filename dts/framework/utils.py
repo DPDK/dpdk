@@ -19,9 +19,7 @@ from .exception import ConfigurationError
 
 class StrEnum(Enum):
     @staticmethod
-    def _generate_next_value_(
-        name: str, start: int, count: int, last_values: object
-    ) -> str:
+    def _generate_next_value_(name: str, start: int, count: int, last_values: object) -> str:
         return name
 
     def __str__(self) -> str:
@@ -32,9 +30,7 @@ REGEX_FOR_PCI_ADDRESS = "/[0-9a-fA-F]{4}:[0-9a-fA-F]{2}:[0-9a-fA-F]{2}.[0-9]{1}/
 
 
 def check_dts_python_version() -> None:
-    if sys.version_info.major < 3 or (
-        sys.version_info.major == 3 and sys.version_info.minor < 10
-    ):
+    if sys.version_info.major < 3 or (sys.version_info.major == 3 and sys.version_info.minor < 10):
         print(
             RED(
                 (
@@ -60,9 +56,7 @@ def expand_range(range_str: str) -> list[int]:
         range_boundaries = range_str.split("-")
         # will throw an exception when items in range_boundaries can't be converted,
         # serving as type check
-        expanded_range.extend(
-            range(int(range_boundaries[0]), int(range_boundaries[-1]) + 1)
-        )
+        expanded_range.extend(range(int(range_boundaries[0]), int(range_boundaries[-1]) + 1))
 
     return expanded_range
 
@@ -71,9 +65,7 @@ def get_packet_summaries(packets: list[Packet]):
     if len(packets) == 1:
         packet_summaries = packets[0].summary()
     else:
-        packet_summaries = json.dumps(
-            list(map(lambda pkt: pkt.summary(), packets)), indent=4
-        )
+        packet_summaries = json.dumps(list(map(lambda pkt: pkt.summary(), packets)), indent=4)
     return f"Packet contents: \n{packet_summaries}"
 
 
@@ -94,9 +86,7 @@ class MesonArgs(object):
     _default_library: str
 
     def __init__(self, default_library: str | None = None, **dpdk_args: str | bool):
-        self._default_library = (
-            f"--default-library={default_library}" if default_library else ""
-        )
+        self._default_library = f"--default-library={default_library}" if default_library else ""
         self._dpdk_args = " ".join(
             (
                 f"-D{dpdk_arg_name}={dpdk_arg_value}"

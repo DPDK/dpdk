@@ -54,9 +54,7 @@ class LogicalCoreList(object):
 
         # the input lcores may not be sorted
         self._lcore_list.sort()
-        self._lcore_str = (
-            f'{",".join(self._get_consecutive_lcores_range(self._lcore_list))}'
-        )
+        self._lcore_str = f'{",".join(self._get_consecutive_lcores_range(self._lcore_list))}'
 
     @property
     def lcore_list(self) -> list[int]:
@@ -70,15 +68,11 @@ class LogicalCoreList(object):
                 segment.append(lcore_id)
             else:
                 formatted_core_list.append(
-                    f"{segment[0]}-{segment[-1]}"
-                    if len(segment) > 1
-                    else f"{segment[0]}"
+                    f"{segment[0]}-{segment[-1]}" if len(segment) > 1 else f"{segment[0]}"
                 )
                 current_core_index = lcore_ids_list.index(lcore_id)
                 formatted_core_list.extend(
-                    self._get_consecutive_lcores_range(
-                        lcore_ids_list[current_core_index:]
-                    )
+                    self._get_consecutive_lcores_range(lcore_ids_list[current_core_index:])
                 )
                 segment.clear()
                 break
@@ -125,9 +119,7 @@ class LogicalCoreFilter(ABC):
         self._filter_specifier = filter_specifier
 
         # sorting by core is needed in case hyperthreading is enabled
-        self._lcores_to_filter = sorted(
-            lcore_list, key=lambda x: x.core, reverse=not ascending
-        )
+        self._lcores_to_filter = sorted(lcore_list, key=lambda x: x.core, reverse=not ascending)
         self.filter()
 
     @abstractmethod
@@ -220,9 +212,7 @@ class LogicalCoreCountFilter(LogicalCoreFilter):
                 else:
                     # we have enough lcores per this core
                     continue
-            elif self._filter_specifier.cores_per_socket > len(
-                lcore_count_per_core_map
-            ):
+            elif self._filter_specifier.cores_per_socket > len(lcore_count_per_core_map):
                 # only add cores if we need more
                 lcore_count_per_core_map[lcore.core] = 1
                 filtered_lcores.append(lcore)

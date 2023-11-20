@@ -131,9 +131,7 @@ class SutNode(Node):
     @property
     def dpdk_version(self) -> str:
         if self._dpdk_version is None:
-            self._dpdk_version = self.main_session.get_dpdk_version(
-                self._remote_dpdk_dir
-            )
+            self._dpdk_version = self.main_session.get_dpdk_version(self._remote_dpdk_dir)
         return self._dpdk_version
 
     @property
@@ -151,8 +149,7 @@ class SutNode(Node):
                 )
             else:
                 self._logger.warning(
-                    "Failed to get compiler version because"
-                    "_build_target_config is None."
+                    "Failed to get compiler version because _build_target_config is None."
                 )
                 return ""
         return self._compiler_version
@@ -173,9 +170,7 @@ class SutNode(Node):
     def _guess_dpdk_remote_dir(self) -> PurePath:
         return self.main_session.guess_dpdk_remote_dir(self._remote_tmp_dir)
 
-    def _set_up_build_target(
-        self, build_target_config: BuildTargetConfiguration
-    ) -> None:
+    def _set_up_build_target(self, build_target_config: BuildTargetConfiguration) -> None:
         """
         Setup DPDK on the SUT node.
         """
@@ -195,23 +190,18 @@ class SutNode(Node):
         """
         self.bind_ports_to_driver(for_dpdk=False)
 
-    def _configure_build_target(
-        self, build_target_config: BuildTargetConfiguration
-    ) -> None:
+    def _configure_build_target(self, build_target_config: BuildTargetConfiguration) -> None:
         """
         Populate common environment variables and set build target config.
         """
         self._env_vars = {}
         self._build_target_config = build_target_config
-        self._env_vars.update(
-            self.main_session.get_dpdk_build_env_vars(build_target_config.arch)
-        )
+        self._env_vars.update(self.main_session.get_dpdk_build_env_vars(build_target_config.arch))
         self._env_vars["CC"] = build_target_config.compiler.name
         if build_target_config.compiler_wrapper:
             self._env_vars["CC"] = (
-                f"'{build_target_config.compiler_wrapper} "
-                f"{build_target_config.compiler.name}'"
-            )
+                f"'{build_target_config.compiler_wrapper} {build_target_config.compiler.name}'"
+            )  # fmt: skip
 
     @Node.skip_setup
     def _copy_dpdk_tarball(self) -> None:
@@ -242,9 +232,7 @@ class SutNode(Node):
         self.main_session.remove_remote_dir(self._remote_dpdk_dir)
 
         # then extract to remote path
-        self.main_session.extract_remote_tarball(
-            remote_tarball_path, self._remote_dpdk_dir
-        )
+        self.main_session.extract_remote_tarball(remote_tarball_path, self._remote_dpdk_dir)
 
     @Node.skip_setup
     def _build_dpdk(self) -> None:
@@ -281,9 +269,7 @@ class SutNode(Node):
         )
 
         if app_name == "all":
-            return self.main_session.join_remote_path(
-                self.remote_dpdk_build_dir, "examples"
-            )
+            return self.main_session.join_remote_path(self.remote_dpdk_build_dir, "examples")
         return self.main_session.join_remote_path(
             self.remote_dpdk_build_dir, "examples", f"dpdk-{app_name}"
         )
@@ -337,9 +323,7 @@ class SutNode(Node):
                 '-c 0xf -a 0000:88:00.0 --file-prefix=dpdk_1112_20190809143420';
         """
 
-        lcore_list = LogicalCoreList(
-            self.filter_lcores(lcore_filter_specifier, ascending_cores)
-        )
+        lcore_list = LogicalCoreList(self.filter_lcores(lcore_filter_specifier, ascending_cores))
 
         if append_prefix_timestamp:
             prefix = f"{prefix}_{self._dpdk_timestamp}"
@@ -404,9 +388,7 @@ class SutNode(Node):
                 self.remote_dpdk_build_dir, shell_cls.path
             )
 
-        return super().create_interactive_shell(
-            shell_cls, timeout, privileged, str(eal_parameters)
-        )
+        return super().create_interactive_shell(shell_cls, timeout, privileged, str(eal_parameters))
 
     def bind_ports_to_driver(self, for_dpdk: bool = True) -> None:
         """Bind all ports on the SUT to a driver.

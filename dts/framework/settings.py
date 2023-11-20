@@ -72,9 +72,8 @@ class _Settings:
 
 def _get_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Run DPDK test suites. All options may be specified with "
-        "the environment variables provided in brackets. "
-        "Command line arguments have higher priority.",
+        description="Run DPDK test suites. All options may be specified with the environment "
+        "variables provided in brackets. Command line arguments have higher priority.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
 
@@ -82,8 +81,7 @@ def _get_parser() -> argparse.ArgumentParser:
         "--config-file",
         action=_env_arg("DTS_CFG_FILE"),
         default="conf.yaml",
-        help="[DTS_CFG_FILE] configuration file that describes the test cases, SUTs "
-        "and targets.",
+        help="[DTS_CFG_FILE] configuration file that describes the test cases, SUTs and targets.",
     )
 
     parser.add_argument(
@@ -100,8 +98,7 @@ def _get_parser() -> argparse.ArgumentParser:
         action=_env_arg("DTS_TIMEOUT"),
         default=15,
         type=float,
-        help="[DTS_TIMEOUT] The default timeout for all DTS operations except for "
-        "compiling DPDK.",
+        help="[DTS_TIMEOUT] The default timeout for all DTS operations except for compiling DPDK.",
     )
 
     parser.add_argument(
@@ -170,9 +167,7 @@ def _get_settings() -> _Settings:
         timeout=parsed_args.timeout,
         verbose=(parsed_args.verbose == "Y"),
         skip_setup=(parsed_args.skip_setup == "Y"),
-        dpdk_tarball_path=Path(
-            DPDKGitTarball(parsed_args.tarball, parsed_args.output_dir)
-        )
+        dpdk_tarball_path=Path(DPDKGitTarball(parsed_args.tarball, parsed_args.output_dir))
         if not os.path.exists(parsed_args.tarball)
         else Path(parsed_args.tarball),
         compile_timeout=parsed_args.compile_timeout,

@@ -96,9 +96,7 @@ def scapy_send_packets_and_capture(
     return [scapy_packet.build() for scapy_packet in sniffer.stop(join=True)]
 
 
-def scapy_send_packets(
-    xmlrpc_packets: list[xmlrpc.client.Binary], send_iface: str
-) -> None:
+def scapy_send_packets(xmlrpc_packets: list[xmlrpc.client.Binary], send_iface: str) -> None:
     """RPC function to send packets.
 
     The function is meant to be executed on the remote TG node.
@@ -197,9 +195,7 @@ class ScapyTrafficGenerator(CapturingTrafficGenerator):
     def __init__(self, tg_node: TGNode, config: ScapyTrafficGeneratorConfig):
         self._config = config
         self._tg_node = tg_node
-        self._logger = getLogger(
-            f"{self._tg_node.name} {self._config.traffic_generator_type}"
-        )
+        self._logger = getLogger(f"{self._tg_node.name} {self._config.traffic_generator_type}")
 
         assert (
             self._tg_node.config.os == OS.linux
@@ -218,9 +214,7 @@ class ScapyTrafficGenerator(CapturingTrafficGenerator):
         self._start_xmlrpc_server_in_remote_python(xmlrpc_server_listen_port)
 
         # connect to the server
-        server_url = (
-            f"http://{self._tg_node.config.hostname}:{xmlrpc_server_listen_port}"
-        )
+        server_url = f"http://{self._tg_node.config.hostname}:{xmlrpc_server_listen_port}"
         self.rpc_server_proxy = xmlrpc.client.ServerProxy(
             server_url, allow_none=True, verbose=SETTINGS.verbose
         )
@@ -240,17 +234,14 @@ class ScapyTrafficGenerator(CapturingTrafficGenerator):
         src = inspect.getsource(QuittableXMLRPCServer)
         # Lines with only whitespace break the repl if in the middle of a function
         # or class, so strip all lines containing only whitespace
-        src = "\n".join(
-            [line for line in src.splitlines() if not line.isspace() and line != ""]
-        )
+        src = "\n".join([line for line in src.splitlines() if not line.isspace() and line != ""])
 
         spacing = "\n" * 4
 
         # execute it in the python terminal
         self.session.send_command(spacing + src + spacing)
         self.session.send_command(
-            f"server = QuittableXMLRPCServer(('0.0.0.0', {listen_port}));"
-            f"server.serve_forever()",
+            f"server = QuittableXMLRPCServer(('0.0.0.0', {listen_port}));server.serve_forever()",
             "XMLRPC OK",
         )
 

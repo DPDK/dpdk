@@ -30,9 +30,7 @@ from .remote import (
 )
 
 
-def create_session(
-    node_config: NodeConfiguration, name: str, logger: DTSLOG
-) -> OSSession:
+def create_session(node_config: NodeConfiguration, name: str, logger: DTSLOG) -> OSSession:
     match node_config.os:
         case OS.linux:
             return LinuxSession(node_config, name, logger)

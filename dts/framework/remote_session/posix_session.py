@@ -94,8 +94,7 @@ class PosixSession(OSSession):
         expected_dir: str | PurePath | None = None,
     ) -> None:
         self.send_command(
-            f"tar xfm {remote_tarball_path} "
-            f"-C {PurePosixPath(remote_tarball_path).parent}",
+            f"tar xfm {remote_tarball_path} -C {PurePosixPath(remote_tarball_path).parent}",
             60,
         )
         if expected_dir:
@@ -125,8 +124,7 @@ class PosixSession(OSSession):
                 self._logger.info("Configuring DPDK build from scratch.")
                 self.remove_remote_dir(remote_dpdk_build_dir)
                 self.send_command(
-                    f"meson setup "
-                    f"{meson_args} {remote_dpdk_dir} {remote_dpdk_build_dir}",
+                    f"meson setup {meson_args} {remote_dpdk_dir} {remote_dpdk_build_dir}",
                     timeout,
                     verify=True,
                     env=env_vars,
@@ -140,9 +138,7 @@ class PosixSession(OSSession):
             raise DPDKBuildError(f"DPDK build failed when doing '{e.command}'.")
 
     def get_dpdk_version(self, build_dir: str | PurePath) -> str:
-        out = self.send_command(
-            f"cat {self.join_remote_path(build_dir, 'VERSION')}", verify=True
-        )
+        out = self.send_command(f"cat {self.join_remote_path(build_dir, 'VERSION')}", verify=True)
         return out.stdout
 
     def kill_cleanup_dpdk_apps(self, dpdk_prefix_list: Iterable[str]) -> None:
@@ -156,9 +152,7 @@ class PosixSession(OSSession):
             self._check_dpdk_hugepages(dpdk_runtime_dirs)
             self._remove_dpdk_runtime_dirs(dpdk_runtime_dirs)
 
-    def _get_dpdk_runtime_dirs(
-        self, dpdk_prefix_list: Iterable[str]
-    ) -> list[PurePosixPath]:
+    def _get_dpdk_runtime_dirs(self, dpdk_prefix_list: Iterable[str]) -> list[PurePosixPath]:
         prefix = PurePosixPath("/var", "run", "dpdk")
         if not dpdk_prefix_list:
             remote_prefixes = self._list_remote_dirs(prefix)
@@ -174,9 +168,7 @@ class PosixSession(OSSession):
         Return a list of directories of the remote_dir.
         If remote_path doesn't exist, return None.
         """
-        out = self.send_command(
-            f"ls -l {remote_path} | awk '/^d/ {{print $NF}}'"
-        ).stdout
+        out = self.send_command(f"ls -l {remote_path} | awk '/^d/ {{print $NF}}'").stdout
         if "No such file or directory" in out:
             return None
         else:
@@ -200,9 +192,7 @@ class PosixSession(OSSession):
         result = self.send_command(f"test -e {remote_path}")
         return not result.return_code
 
-    def _check_dpdk_hugepages(
-        self, dpdk_runtime_dirs: Iterable[str | PurePath]
-    ) -> None:
+    def _check_dpdk_hugepages(self, dpdk_runtime_dirs: Iterable[str | PurePath]) -> None:
         for dpdk_runtime_dir in dpdk_runtime_dirs:
             hugepage_info = PurePosixPath(dpdk_runtime_dir, "hugepage_info")
             if self._remote_files_exists(hugepage_info):
@@ -213,9 +203,7 @@ class PosixSession(OSSession):
                     self._logger.warning(out)
                     self._logger.warning("*******************************************")
 
-    def _remove_dpdk_runtime_dirs(
-        self, dpdk_runtime_dirs: Iterable[str | PurePath]
-    ) -> None:
+    def _remove_dpdk_runtime_dirs(self, dpdk_runtime_dirs: Iterable[str | PurePath]) -> None:
         for dpdk_runtime_dir in dpdk_runtime_dirs:
             self.remove_remote_dir(dpdk_runtime_dir)
 
@@ -245,6 +233,4 @@ class PosixSession(OSSession):
             SETTINGS.timeout,
         ).stdout.split("\n")
         kernel_version = self.send_command("uname -r", SETTINGS.timeout).stdout
-        return NodeInfo(
-            os_release_info[0].strip(), os_release_info[1].strip(), kernel_version
-        )
+        return NodeInfo(os_release_info[0].strip(), os_release_info[1].strip(), kernel_version)

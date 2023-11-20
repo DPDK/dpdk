@@ -140,9 +140,7 @@ class NodeConfiguration:
 
         if "traffic_generator" in d:
             return TGNodeConfiguration(
-                traffic_generator=TrafficGeneratorConfig.from_dict(
-                    d["traffic_generator"]
-                ),
+                traffic_generator=TrafficGeneratorConfig.from_dict(d["traffic_generator"]),
                 **common_config,
             )
         else:
@@ -249,9 +247,7 @@ class ExecutionConfiguration:
         build_targets: list[BuildTargetConfiguration] = list(
             map(BuildTargetConfiguration.from_dict, d["build_targets"])
         )
-        test_suites: list[TestSuiteConfig] = list(
-            map(TestSuiteConfig.from_dict, d["test_suites"])
-        )
+        test_suites: list[TestSuiteConfig] = list(map(TestSuiteConfig.from_dict, d["test_suites"]))
         sut_name = d["system_under_test_node"]["node_name"]
         skip_smoke_tests = d.get("skip_smoke_tests", False)
         assert sut_name in node_map, f"Unknown SUT {sut_name} in execution {d}"
@@ -268,9 +264,7 @@ class ExecutionConfiguration:
         ), f"Invalid TG configuration {traffic_generator_node}"
 
         vdevs = (
-            d["system_under_test_node"]["vdevs"]
-            if "vdevs" in d["system_under_test_node"]
-            else []
+            d["system_under_test_node"]["vdevs"] if "vdevs" in d["system_under_test_node"] else []
         )
         return ExecutionConfiguration(
             build_targets=build_targets,
@@ -299,9 +293,7 @@ class Configuration:
         assert len(nodes) == len(node_map), "Duplicate node names are not allowed"
 
         executions: list[ExecutionConfiguration] = list(
-            map(
-                ExecutionConfiguration.from_dict, d["executions"], [node_map for _ in d]
-            )
+            map(ExecutionConfiguration.from_dict, d["executions"], [node_map for _ in d])
         )
 
         return Configuration(executions=executions)
@@ -315,9 +307,7 @@ def load_config() -> Configuration:
     with open(SETTINGS.config_file_path, "r") as f:
         config_data = yaml.safe_load(f)
 
-    schema_path = os.path.join(
-        pathlib.Path(__file__).parent.resolve(), "conf_yaml_schema.json"
-    )
+    schema_path = os.path.join(pathlib.Path(__file__).parent.resolve(), "conf_yaml_schema.json")
 
     with open(schema_path, "r") as f:
         schema = json.load(f)

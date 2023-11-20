@@ -45,13 +45,10 @@ class SmokeTests(TestSuite):
         for dev in self.sut_node.virtual_devices:
             vdev_args += f"--vdev {dev} "
         vdev_args = vdev_args[:-1]
-        driver_tests_command = (
-            f"meson test -C {self.dpdk_build_dir_path} --suite driver-tests"
-        )
+        driver_tests_command = f"meson test -C {self.dpdk_build_dir_path} --suite driver-tests"
         if vdev_args:
             self._logger.info(
-                "Running driver tests with the following virtual "
-                f"devices: {vdev_args}"
+                f"Running driver tests with the following virtual devices: {vdev_args}"
             )
             driver_tests_command += f' --test-args "{vdev_args}"'
 
@@ -67,9 +64,7 @@ class SmokeTests(TestSuite):
         Test:
             Uses testpmd driver to verify that devices have been found by testpmd.
         """
-        testpmd_driver = self.sut_node.create_interactive_shell(
-            TestPmdShell, privileged=True
-        )
+        testpmd_driver = self.sut_node.create_interactive_shell(TestPmdShell, privileged=True)
         dev_list = [str(x) for x in testpmd_driver.get_devices()]
         for nic in self.nics_in_node:
             self.verify(

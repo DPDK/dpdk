@@ -102,9 +102,7 @@ class TestSuite(object):
                     tg_port.peer,
                     tg_port.identifier,
                 ):
-                    self._port_links.append(
-                        PortLink(sut_port=sut_port, tg_port=tg_port)
-                    )
+                    self._port_links.append(PortLink(sut_port=sut_port, tg_port=tg_port))
 
     def set_up_suite(self) -> None:
         """
@@ -151,9 +149,7 @@ class TestSuite(object):
     def _configure_ipv4_forwarding(self, enable: bool) -> None:
         self.sut_node.configure_ipv4_forwarding(enable)
 
-    def send_packet_and_capture(
-        self, packet: Packet, duration: float = 1
-    ) -> list[Packet]:
+    def send_packet_and_capture(self, packet: Packet, duration: float = 1) -> list[Packet]:
         """
         Send a packet through the appropriate interface and
         receive on the appropriate interface.
@@ -202,21 +198,15 @@ class TestSuite(object):
             self._fail_test_case_verify(failure_description)
 
     def _fail_test_case_verify(self, failure_description: str) -> None:
-        self._logger.debug(
-            "A test case failed, showing the last 10 commands executed on SUT:"
-        )
+        self._logger.debug("A test case failed, showing the last 10 commands executed on SUT:")
         for command_res in self.sut_node.main_session.remote_session.history[-10:]:
             self._logger.debug(command_res.command)
-        self._logger.debug(
-            "A test case failed, showing the last 10 commands executed on TG:"
-        )
+        self._logger.debug("A test case failed, showing the last 10 commands executed on TG:")
         for command_res in self.tg_node.main_session.remote_session.history[-10:]:
             self._logger.debug(command_res.command)
         raise TestCaseVerifyError(failure_description)
 
-    def verify_packets(
-        self, expected_packet: Packet, received_packets: list[Packet]
-    ) -> None:
+    def verify_packets(self, expected_packet: Packet, received_packets: list[Packet]) -> None:
         for received_packet in received_packets:
             if self._compare_packets(expected_packet, received_packet):
                 break
@@ -225,17 +215,11 @@ class TestSuite(object):
                 f"The expected packet {get_packet_summaries(expected_packet)} "
                 f"not found among received {get_packet_summaries(received_packets)}"
             )
-            self._fail_test_case_verify(
-                "An expected packet not found among received packets."
-            )
+            self._fail_test_case_verify("An expected packet not found among received packets.")
 
-    def _compare_packets(
-        self, expected_packet: Packet, received_packet: Packet
-    ) -> bool:
+    def _compare_packets(self, expected_packet: Packet, received_packet: Packet) -> bool:
         self._logger.debug(
-            "Comparing packets: \n"
-            f"{expected_packet.summary()}\n"
-            f"{received_packet.summary()}"
+            f"Comparing packets: \n{expected_packet.summary()}\n{received_packet.summary()}"
         )
 
         l3 = IP in expected_packet.layers()
@@ -262,14 +246,10 @@ class TestSuite(object):
             expected_payload = expected_payload.payload
 
         if expected_payload:
-            self._logger.debug(
-                f"The expected packet did not contain {expected_payload}."
-            )
+            self._logger.debug(f"The expected packet did not contain {expected_payload}.")
             return False
         if received_payload and received_payload.__class__ != Padding:
-            self._logger.debug(
-                "The received payload had extra layers which were not padding."
-            )
+            self._logger.debug("The received payload had extra layers which were not padding.")
             return False
         return True
 
@@ -296,10 +276,7 @@ class TestSuite(object):
 
     def _verify_l3_packet(self, received_packet: IP, expected_packet: IP) -> bool:
         self._logger.debug("Looking at the IP layer.")
-        if (
-            received_packet.src != expected_packet.src
-            or received_packet.dst != expected_packet.dst
-        ):
+        if received_packet.src != expected_packet.src or received_packet.dst != expected_packet.dst:
             return False
         return True
 
@@ -373,9 +350,7 @@ class TestSuite(object):
             if self._should_be_executed(test_case_name, test_case_regex):
                 filtered_test_cases.append(test_case)
         cases_str = ", ".join((x.__name__ for x in filtered_test_cases))
-        self._logger.debug(
-            f"Found test cases '{cases_str}' in {self.__class__.__name__}."
-        )
+        self._logger.debug(f"Found test cases '{cases_str}' in {self.__class__.__name__}.")
         return filtered_test_cases
 
     def _should_be_executed(self, test_case_name: str, test_case_regex: str) -> bool:
@@ -445,9 +420,7 @@ class TestSuite(object):
             self._logger.exception(f"Test case execution ERROR: {test_case_name}")
             test_case_result.update(Result.ERROR, e)
         except KeyboardInterrupt:
-            self._logger.error(
-                f"Test case execution INTERRUPTED by user: {test_case_name}"
-            )
+            self._logger.error(f"Test case execution INTERRUPTED by user: {test_case_name}")
             test_case_result.update(Result.SKIP)
             raise KeyboardInterrupt("Stop DTS")
 
@@ -464,9 +437,7 @@ def get_test_suites(testsuite_module_path: str) -> list[type[TestSuite]]:
     try:
         testcase_module = importlib.import_module(testsuite_module_path)
     except ModuleNotFoundError as e:
-        raise ConfigurationError(
-            f"Test suite '{testsuite_module_path}' not found."
-        ) from e
+        raise ConfigurationError(f"Test suite '{testsuite_module_path}' not found.") from e
     return [
         test_suite_class
         for _, test_suite_class in inspect.getmembers(testcase_module, is_test_suite)

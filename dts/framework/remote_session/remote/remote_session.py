@@ -96,9 +96,7 @@ class RemoteSession(ABC):
         If verify is True, check the return code of the executed command
         and raise a RemoteCommandExecutionError if the command failed.
         """
-        self._logger.info(
-            f"Sending: '{command}'" + (f" with env vars: '{env}'" if env else "")
-        )
+        self._logger.info(f"Sending: '{command}'" + (f" with env vars: '{env}'" if env else ""))
         result = self._send_command(command, timeout, env)
         if verify and result.return_code:
             self._logger.debug(
@@ -112,9 +110,7 @@ class RemoteSession(ABC):
         return result
 
     @abstractmethod
-    def _send_command(
-        self, command: str, timeout: float, env: dict | None
-    ) -> CommandResult:
+    def _send_command(self, command: str, timeout: float, env: dict | None) -> CommandResult:
         """
         Use the underlying protocol to execute the command using optional env vars
         and return CommandResult.

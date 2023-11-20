@@ -92,9 +92,7 @@ def _run_execution(
     Run the given execution. This involves running the execution setup as well as
     running all build targets in the given execution.
     """
-    dts_logger.info(
-        f"Running execution with SUT '{execution.system_under_test_node.name}'."
-    )
+    dts_logger.info(f"Running execution with SUT '{execution.system_under_test_node.name}'.")
     execution_result = result.add_execution(sut_node.config)
     execution_result.add_sut_info(sut_node.node_info)
 
@@ -107,9 +105,7 @@ def _run_execution(
 
     else:
         for build_target in execution.build_targets:
-            _run_build_target(
-                sut_node, tg_node, build_target, execution, execution_result
-            )
+            _run_build_target(sut_node, tg_node, build_target, execution, execution_result)
 
     finally:
         try:
@@ -170,13 +166,10 @@ def _run_all_suites(
         execution.test_suites[:0] = [TestSuiteConfig.from_dict("smoke_tests")]
     for test_suite_config in execution.test_suites:
         try:
-            _run_single_suite(
-                sut_node, tg_node, execution, build_target_result, test_suite_config
-            )
+            _run_single_suite(sut_node, tg_node, execution, build_target_result, test_suite_config)
         except BlockingTestSuiteError as e:
             dts_logger.exception(
-                f"An error occurred within {test_suite_config.test_suite}. "
-                "Skipping build target..."
+                f"An error occurred within {test_suite_config.test_suite}. Skipping build target."
             )
             result.add_error(e)
             end_build_target = True

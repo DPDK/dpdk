@@ -73,9 +73,7 @@ class InteractiveRemoteSession:
             f"Initializing interactive connection for {self.username}@{self.hostname}"
         )
         self._connect()
-        self._logger.info(
-            f"Interactive connection successful for {self.username}@{self.hostname}"
-        )
+        self._logger.info(f"Interactive connection successful for {self.username}@{self.hostname}")
 
     def _connect(self) -> None:
         """Establish a connection to the node.
@@ -108,8 +106,7 @@ class InteractiveRemoteSession:
                 self._logger.debug(traceback.format_exc())
                 self._logger.warning(e)
                 self._logger.info(
-                    "Retrying interactive session connection: "
-                    f"retry number {retry_attempt +1}"
+                    f"Retrying interactive session connection: retry number {retry_attempt +1}"
                 )
             else:
                 break

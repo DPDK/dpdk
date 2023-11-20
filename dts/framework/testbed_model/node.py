@@ -103,18 +103,14 @@ class Node(ABC):
         is not decorated so that the derived class doesn't have to use the decorator.
         """
 
-    def set_up_build_target(
-        self, build_target_config: BuildTargetConfiguration
-    ) -> None:
+    def set_up_build_target(self, build_target_config: BuildTargetConfiguration) -> None:
         """
         Perform the build target setup that will be done for each build target
         tested on this node.
         """
         self._set_up_build_target(build_target_config)
 
-    def _set_up_build_target(
-        self, build_target_config: BuildTargetConfiguration
-    ) -> None:
+    def _set_up_build_target(self, build_target_config: BuildTargetConfiguration) -> None:
         """
         This method exists to be optionally overwritten by derived classes and
         is not decorated so that the derived class doesn't have to use the decorator.

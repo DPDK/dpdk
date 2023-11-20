@@ -82,9 +82,7 @@ class LinuxSession(PosixSession):
         self._mount_huge_pages()
 
     def _get_hugepage_size(self) -> int:
-        hugepage_size = self.send_command(
-            "awk '/Hugepagesize/ {print $2}' /proc/meminfo"
-        ).stdout
+        hugepage_size = self.send_command("awk '/Hugepagesize/ {print $2}' /proc/meminfo").stdout
         return int(hugepage_size)
 
     def _get_hugepages_total(self) -> int:
@@ -120,13 +118,9 @@ class LinuxSession(PosixSession):
         # there's no reason to do any numa specific configuration)
         return len(self._numa_nodes) > 1
 
-    def _configure_huge_pages(
-        self, amount: int, size: int, force_first_numa: bool
-    ) -> None:
+    def _configure_huge_pages(self, amount: int, size: int, force_first_numa: bool) -> None:
         self._logger.info("Configuring Hugepages.")
-        hugepage_config_path = (
-            f"/sys/kernel/mm/hugepages/hugepages-{size}kB/nr_hugepages"
-        )
+        hugepage_config_path = f"/sys/kernel/mm/hugepages/hugepages-{size}kB/nr_hugepages"
         if force_first_numa and self._supports_numa():
             # clear non-numa hugepages
             self.send_command(f"echo 0 | tee {hugepage_config_path}", privileged=True)
@@ -135,24 +129,18 @@ class LinuxSession(PosixSession):
                 f"/hugepages-{size}kB/nr_hugepages"
             )
 
-        self.send_command(
-            f"echo {amount} | tee {hugepage_config_path}", privileged=True
-        )
+        self.send_command(f"echo {amount} | tee {hugepage_config_path}", privileged=True)
 
     def update_ports(self, ports: list[Port]) -> None:
         self._logger.debug("Gathering port info.")
         for port in ports:
-            assert (
-                port.node == self.name
-            ), "Attempted to gather port info on the wrong node"
+            assert port.node == self.name, "Attempted to gather port info on the wrong node"
 
         port_info_list = self._get_lshw_info()
         for port in ports:
             for port_info in port_info_list:
                 if f"pci@{port.pci}" == port_info.get("businfo"):
-                    self._update_port_attr(
-                        port, port_info.get("logicalname"), "logical_name"
-                    )
+                    self._update_port_attr(port, port_info.get("logicalname"), "logical_name")
                     self._update_port_attr(port, port_info.get("serial"), "mac_address")
                     port_info_list.remove(port_info)
                     break
@@ -163,25 +151,18 @@ class LinuxSession(PosixSession):
         output = self.send_command("lshw -quiet -json -C network", verify=True)
         return json.loads(output.stdout)
 
-    def _update_port_attr(
-        self, port: Port, attr_value: str | None, attr_name: str
-    ) -> None:
+    def _update_port_attr(self, port: Port, attr_value: str | None, attr_name: str) -> None:
         if attr_value:
             setattr(port, attr_name, attr_value)
-            self._logger.debug(
-                f"Found '{attr_name}' of port {port.pci}: '{attr_value}'."
-            )
+            self._logger.debug(f"Found '{attr_name}' of port {port.pci}: '{attr_value}'.")
         else:
             self._logger.warning(
-                f"Attempted to get '{attr_name}' of port {port.pci}, "
-                f"but it doesn't exist."
+                f"Attempted to get '{attr_name}' of port {port.pci}, but it doesn't exist."
             )
 
     def configure_port_state(self, port: Port, enable: bool) -> None:
         state = "up" if enable else "down"
-        self.send_command(
-            f"ip link set dev {port.logical_name} {state}", privileged=True
-        )
+        self.send_command(f"ip link set dev {port.logical_name} {state}", privileged=True)
 
     def configure_port_ip_address(
         self,

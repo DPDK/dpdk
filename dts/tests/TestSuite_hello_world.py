@@ -34,9 +34,7 @@ class TestHelloWorld(TestSuite):
         # get the first usable core
         lcore_amount = LogicalCoreCount(1, 1, 1)
         lcores = LogicalCoreCountFilter(self.sut_node.lcores, lcore_amount).filter()
-        eal_para = self.sut_node.create_eal_parameters(
-            lcore_filter_specifier=lcore_amount
-        )
+        eal_para = self.sut_node.create_eal_parameters(lcore_filter_specifier=lcore_amount)
         result = self.sut_node.run_dpdk_app(self.app_helloworld_path, eal_para)
         self.verify(
             f"hello from core {int(lcores[0])}" in result.stdout,

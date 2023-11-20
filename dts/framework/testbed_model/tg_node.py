@@ -45,9 +45,7 @@ class TGNode(Node):
 
     def __init__(self, node_config: TGNodeConfiguration):
         super(TGNode, self).__init__(node_config)
-        self.traffic_generator = create_traffic_generator(
-            self, node_config.traffic_generator
-        )
+        self.traffic_generator = create_traffic_generator(self, node_config.traffic_generator)
         self._logger.info(f"Created node: {self.name}")
 
     def send_packet_and_capture(
@@ -94,6 +92,5 @@ def create_traffic_generator(
             return ScapyTrafficGenerator(tg_node, traffic_generator_config)
         case _:
             raise ConfigurationError(
-                "Unknown traffic generator: "
-                f"{traffic_generator_config.traffic_generator_type}"
+                f"Unknown traffic generator: {traffic_generator_config.traffic_generator_type}"
             )

@@ -21,13 +21,9 @@ class TestPmdShell(InteractiveShell):
     path: PurePath = PurePath("app", "dpdk-testpmd")
     dpdk_app: bool = True
     _default_prompt: str = "testpmd>"
-    _command_extra_chars: str = (
-        "\n"  # We want to append an extra newline to every command
-    )
+    _command_extra_chars: str = "\n"  # We want to append an extra newline to every command
 
-    def _start_application(
-        self, get_privileged_command: Callable[[str], str] | None
-    ) -> None:
+    def _start_application(self, get_privileged_command: Callable[[str], str] | None) -> None:
         """See "_start_application" in InteractiveShell."""
         self._app_args += " -- -i"
         super()._start_application(get_privileged_command)

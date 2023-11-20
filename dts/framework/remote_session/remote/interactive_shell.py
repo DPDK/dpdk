@@ -85,9 +85,7 @@ class InteractiveShell(ABC):
         self._app_args = app_args
         self._start_application(get_privileged_command)
 
-    def _start_application(
-        self, get_privileged_command: Callable[[str], str] | None
-    ) -> None:
+    def _start_application(self, get_privileged_command: Callable[[str], str] | None) -> None:
         """Starts a new interactive application based on the path to the app.
 
         This method is often overridden by subclasses as their process for

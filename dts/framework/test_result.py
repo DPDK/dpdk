@@ -83,9 +83,7 @@ class Statistics(dict):
         """
         self[other.name] += 1
         self["PASS RATE"] = (
-            float(self[Result.PASS.name])
-            * 100
-            / sum(self[result.name] for result in Result)
+            float(self[Result.PASS.name]) * 100 / sum(self[result.name] for result in Result)
         )
         return self
 
@@ -135,9 +133,7 @@ class BaseResult(object):
 
     def _get_inner_errors(self) -> list[Exception]:
         return [
-            error
-            for inner_result in self._inner_results
-            for error in inner_result.get_errors()
+            error for inner_result in self._inner_results for error in inner_result.get_errors()
         ]
 
     def get_errors(self) -> list[Exception]:
@@ -174,9 +170,7 @@ class TestCaseResult(BaseResult, FixtureResult):
         statistics += self.result
 
     def __bool__(self) -> bool:
-        return (
-            bool(self.setup_result) and bool(self.teardown_result) and bool(self.result)
-        )
+        return bool(self.setup_result) and bool(self.teardown_result) and bool(self.result)
 
 
 class TestSuiteResult(BaseResult):
@@ -247,9 +241,7 @@ class ExecutionResult(BaseResult):
         super(ExecutionResult, self).__init__()
         self.sut_node = sut_node
 
-    def add_build_target(
-        self, build_target: BuildTargetConfiguration
-    ) -> BuildTargetResult:
+    def add_build_target(self, build_target: BuildTargetConfiguration) -> BuildTargetResult:
         build_target_result = BuildTargetResult(build_target)
         self._inner_results.append(build_target_result)
         return build_target_result

@@ -116,10 +116,7 @@ class RemoteCommandExecutionError(DTSError):
         self.command_return_code = command_return_code
 
     def __str__(self) -> str:
-        return (
-            f"Command {self.command} returned a non-zero exit code: "
-            f"{self.command_return_code}"
-        )
+        return f"Command {self.command} returned a non-zero exit code: {self.command_return_code}"
 
 
 class RemoteDirectoryExistsError(DTSError):

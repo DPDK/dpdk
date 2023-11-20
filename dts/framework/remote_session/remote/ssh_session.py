@@ -80,9 +80,7 @@ class SSHSession(RemoteSession):
                 if error not in errors:
                     errors.append(error)
 
-                self._logger.info(
-                    f"Retrying connection: retry number {retry_attempt + 1}."
-                )
+                self._logger.info(f"Retrying connection: retry number {retry_attempt + 1}.")
 
             else:
                 break
@@ -92,9 +90,7 @@ class SSHSession(RemoteSession):
     def is_alive(self) -> bool:
         return self.session.is_connected
 
-    def _send_command(
-        self, command: str, timeout: float, env: dict | None
-    ) -> CommandResult:
+    def _send_command(self, command: str, timeout: float, env: dict | None) -> CommandResult:
         """Send a command and return the result of the execution.
 
         Args:
@@ -107,9 +103,7 @@ class SSHSession(RemoteSession):
             SSHTimeoutError: The command execution timed out.
         """
         try:
-            output = self.session.run(
-                command, env=env, warn=True, hide=True, timeout=timeout
-            )
+            output = self.session.run(command, env=env, warn=True, hide=True, timeout=timeout)
 
         except (UnexpectedExit, ThreadException) as e:
             self._logger.exception(e)
@@ -119,9 +113,7 @@ class SSHSession(RemoteSession):
             self._logger.exception(e)
             raise SSHTimeoutError(command, e.result.stderr) from e
 
-        return CommandResult(
-            self.name, command, output.stdout, output.stderr, output.return_code
-        )
+        return CommandResult(self.name, command, output.stdout, output.stderr, output.return_code)
 
     def copy_from(
         self,
