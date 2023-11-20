@@ -880,6 +880,7 @@ All Python code should be compliant with
 `PEP8 (Style Guide for Python Code) <https://www.python.org/dev/peps/pep-0008/>`_.
 
 The ``pep8`` tool can be used for testing compliance with the guidelines.
+Note that line lengths are acceptable up to 100 characters, which is in line with C recommendations.
 
 Integrating with the Build System
 ---------------------------------
