@@ -223,12 +223,6 @@ gve_rx_queue_setup_dqo(struct rte_eth_dev *dev, uint16_t queue_id,
 	uint32_t mbuf_len;
 	int err = 0;
 
-	if (nb_desc != hw->rx_desc_cnt) {
-		PMD_DRV_LOG(WARNING, "gve doesn't support nb_desc config, use hw nb_desc %u.",
-			    hw->rx_desc_cnt);
-	}
-	nb_desc = hw->rx_desc_cnt;
-
 	/* Free memory if needed */
 	if (dev->data->rx_queues[queue_id]) {
 		gve_rx_queue_release_dqo(dev, queue_id);
