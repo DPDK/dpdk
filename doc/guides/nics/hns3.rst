@@ -30,7 +30,6 @@ Features of the HNS3 PMD are:
 - DCB
 - Scattered and gather for TX and RX
 - Vector Poll mode driver
-- Dump register
 - SR-IOV VF
 - Multi-process
 - MAC/VLAN filter
@@ -38,6 +37,15 @@ Features of the HNS3 PMD are:
 - NUMA support
 - Generic flow API
 - IEEE1588/802.1AS timestamping
+- Basic stats
+- Extended stats
+- Traffic Management API
+- Speed capabilities
+- Link Auto-negotiation
+- Link flow control
+- Dump register
+- Dump private info from device
+- FW version
 
 Prerequisites
 -------------
