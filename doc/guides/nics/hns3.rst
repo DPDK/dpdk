@@ -58,7 +58,8 @@ The following options can be modified in the ``config/rte_config.h`` file.
 
 - ``RTE_LIBRTE_HNS3_MAX_TQP_NUM_PER_PF`` (default ``256``)
 
-  Number of MAX queues reserved for PF.
+  Number of MAX queues reserved for PF on HIP09 and HIP10.
+  The MAX queue number is also determined by the value the firmware report.
 
 Runtime Config Options
 ~~~~~~~~~~~~~~~~~~~~~~
