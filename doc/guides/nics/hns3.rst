@@ -30,7 +30,6 @@ Features of the HNS3 PMD are:
 - DCB
 - Scattered and gather for TX and RX
 - Vector Poll mode driver
-- Dump register
 - SR-IOV VF
 - Multi-process
 - MAC/VLAN filter
