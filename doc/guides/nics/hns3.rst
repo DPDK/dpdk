@@ -212,36 +212,50 @@ Generic flow API
 
 - ``RSS Flow``
 
-  RSS Flow supports to set hash input set, hash function, enable hash
-  and configure queues.
-  For example:
-  Configure queues as queue 0, 1, 2, 3.
+  RSS Flow supports for creating rule base on input tuple, hash key, queues
+  and hash algorithm. But hash key, queues and hash algorithm are the global
+  configuration for hardware which will affect other rules.
+  The rule just setting input tuple is completely independent.
+
+  Run ``testpmd``:
+
+  .. code-block:: console
+
+    dpdk-testpmd -a 0000:7d:00.0 -l 10-18 -- -i --rxq=8 --txq=8
+
+  All IP packets can be distributed to 8 queues.
+
+  Set IPv4-TCP packet is distributed to 8 queues based on L3/L4 SRC only.
+
+  .. code-block:: console
+
+    testpmd> flow create 0 ingress pattern eth / ipv4 / tcp / end actions \
+             rss types ipv4-tcp l4-src-only l3-src-only end queues end / end
+
+  Disable IPv4 packet RSS hash.
+
+  .. code-block:: console
+
+    testpmd> flow create 0 ingress pattern eth / ipv4 / end actions rss \
+             types none end queues end / end
+
+  Set hash function as symmetric Toeplitz.
 
   .. code-block:: console
 
     testpmd> flow create 0 ingress pattern end actions rss types end \
-      queues 0 1 2 3 end / end
+             queues end func symmetric_toeplitz / end
 
-  Enable hash and set input set for IPv4-TCP.
+  In this case, all packets that enabled RSS are hashed using symmetric
+  Toeplitz algorithm.
 
-  .. code-block:: console
-
-    testpmd> flow create 0 ingress pattern eth / ipv4 / tcp / end \
-      actions rss types ipv4-tcp l3-src-only end queues end / end
-
-  Set symmetric hash enable for flow type IPv4-TCP.
+  Flush all RSS rules
 
   .. code-block:: console
 
-    testpmd> flow create 0 ingress pattern eth / ipv4 / tcp / end \
-      actions rss types ipv4-tcp end queues end func symmetric_toeplitz / end
+    testpmd> flow flush 0
 
-  Set hash function as simple xor.
-
-  .. code-block:: console
-
-    testpmd> flow create 0 ingress pattern end actions rss types end \
-      queues end func simple_xor / end
+  The RSS configurations of hardwre is back to the one ethdev ops set.
 
 Statistics
 ----------
