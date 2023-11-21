@@ -556,6 +556,7 @@ RTE_TRACE_POINT(
 	rte_trace_point_emit_u16(dev_info->min_mtu);
 	rte_trace_point_emit_u16(dev_info->max_mtu);
 	rte_trace_point_emit_u32(dev_info->min_rx_bufsize);
+	rte_trace_point_emit_u32(dev_info->max_rx_bufsize);
 	rte_trace_point_emit_u32(dev_info->max_rx_pktlen);
 	rte_trace_point_emit_u16(dev_info->max_rx_queues);
 	rte_trace_point_emit_u16(dev_info->max_tx_queues);
@@ -566,6 +567,7 @@ RTE_TRACE_POINT(
 	rte_trace_point_emit_u64(dev_info->tx_queue_offload_capa);
 	rte_trace_point_emit_u16(dev_info->reta_size);
 	rte_trace_point_emit_u8(dev_info->hash_key_size);
+	rte_trace_point_emit_u32(dev_info->rss_algo_capa);
 	rte_trace_point_emit_u64(dev_info->flow_type_rss_offloads);
 	rte_trace_point_emit_u16(dev_info->rx_desc_lim.nb_max);
 	rte_trace_point_emit_u16(dev_info->rx_desc_lim.nb_min);
@@ -774,6 +776,7 @@ RTE_TRACE_POINT(
 	rte_trace_point_emit_ptr(rss_conf->rss_key);
 	rte_trace_point_emit_u8(rss_conf->rss_key_len);
 	rte_trace_point_emit_u64(rss_conf->rss_hf);
+	rte_trace_point_emit_u32(rss_conf->algorithm);
 	rte_trace_point_emit_int(ret);
 )
 
@@ -785,6 +788,7 @@ RTE_TRACE_POINT(
 	rte_trace_point_emit_ptr(rss_conf->rss_key);
 	rte_trace_point_emit_u8(rss_conf->rss_key_len);
 	rte_trace_point_emit_u64(rss_conf->rss_hf);
+	rte_trace_point_emit_u32(rss_conf->algorithm);
 	rte_trace_point_emit_int(ret);
 )
 
