@@ -10081,7 +10081,7 @@ test_ipsec_proto_mbuf_enq(struct crypto_testsuite_params *ts_params,
 	do {
 		/* Get packet from port 0, queue 0 */
 		ret = rte_eth_rx_burst(0, 0, &m, 1);
-	} while ((ret == 0) && (rte_get_tsc_cycles() > timeout));
+	} while ((ret == 0) && (rte_get_tsc_cycles() < timeout));
 
 	if (ret == 0) {
 		printf("Could not receive packets from ethdev\n");
