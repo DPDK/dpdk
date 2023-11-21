@@ -29,17 +29,6 @@
 #define RETURN_IF_TRUE(cond, retval)
 #endif
 
-#if defined(RTE_LIBRTE_HASH_DEBUG)
-#define ERR_IF_TRUE(cond, fmt, args...) do { \
-	if (cond) { \
-		RTE_LOG(ERR, HASH, fmt, ##args); \
-		return; \
-	} \
-} while (0)
-#else
-#define ERR_IF_TRUE(cond, fmt, args...)
-#endif
-
 #include <rte_hash_crc.h>
 #include <rte_jhash.h>
 
