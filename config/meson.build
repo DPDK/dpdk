@@ -152,7 +152,7 @@ if cpu_instruction_set == 'generic'
     elif host_machine.cpu_family().startswith('ppc')
         cpu_instruction_set = 'power8'
     elif host_machine.cpu_family().startswith('riscv')
-        cpu_instruction_set = 'riscv'
+        cpu_instruction_set = 'rv64gc'
     endif
 endif
 
