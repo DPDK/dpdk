@@ -2,6 +2,7 @@
 # Copyright(c) 2018-2020 Intel Corporation
 
 IMB_required_ver = '0.53.0'
+IMB_max_ver = '1.3.0'
 lib = cc.find_library('IPSec_MB', required: false)
 if not lib.found()
 	build = false
@@ -11,9 +12,9 @@ else
 	imb_ver = cc.get_define('IMB_VERSION_STR',
 		prefix : '#include<intel-ipsec-mb.h>').split('"')[1]
 
-	if (imb_ver == '') or (imb_ver.version_compare('<' + IMB_required_ver))
-		reason = 'IPSec_MB version >= @0@ is required, found version @1@'.format(
-				IMB_required_ver, imb_ver)
+	if (imb_ver == '') or (imb_ver.version_compare('<' + IMB_required_ver)
+		or imb_ver.version_compare('>' + IMB_max_ver))
+		reason = 'IPSec_MB version >= @0@ and <= @2@ is required, found version @1@'.format(IMB_required_ver, imb_ver, IMB_max_ver)
 		build = false
 	endif
 
