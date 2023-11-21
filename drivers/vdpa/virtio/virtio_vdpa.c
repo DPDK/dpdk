@@ -486,13 +486,15 @@ virtio_vdpa_virtq_enable(struct virtio_vdpa_priv *priv, int vq_idx)
 			return -EINVAL;
 		}
 
-		ret = priv->configured ? virtio_pci_dev_interrupt_enable(priv->vpdev, vq.callfd, vq_idx + 1) :
-			virtio_pci_dev_state_interrupt_enable(priv->vpdev, vq.callfd, vq_idx + 1, priv->state_mz->addr);
-		if (ret) {
-			DRV_LOG(ERR, "%s virtq interrupt enable failed ret:%d",
-							priv->vdev->device->name, ret);
-			return ret;
+		if (priv->configured) {
+			ret = virtio_pci_dev_interrupt_enable(priv->vpdev, vq.callfd, vq_idx + 1);
+			if (ret) {
+				DRV_LOG(ERR, "%s virtq interrupt enable failed ret:%d",
+								priv->vdev->device->name, ret);
+				return ret;
+			}
 		}
+		virtio_pci_dev_state_interrupt_enable(priv->vpdev, vq.callfd, vq_idx + 1, priv->state_mz->addr);
 	} else {
 		DRV_LOG(DEBUG, "%s virtq %d call fd is -1, interrupt is disabled",
 						priv->vdev->device->name, vq_idx);
