@@ -32,6 +32,7 @@ RTE_TRACE_POINT(
 	rte_trace_point_emit_u32(dev_conf->link_speeds);
 	rte_trace_point_emit_u32(dev_conf->rxmode.mq_mode);
 	rte_trace_point_emit_u32(dev_conf->rxmode.mtu);
+	rte_trace_point_emit_u32(dev_conf->rxmode.max_lro_pkt_size);
 	rte_trace_point_emit_u64(dev_conf->rxmode.offloads);
 	rte_trace_point_emit_u32(dev_conf->txmode.mq_mode);
 	rte_trace_point_emit_u64(dev_conf->txmode.offloads);
@@ -558,6 +559,7 @@ RTE_TRACE_POINT(
 	rte_trace_point_emit_u32(dev_info->min_rx_bufsize);
 	rte_trace_point_emit_u32(dev_info->max_rx_bufsize);
 	rte_trace_point_emit_u32(dev_info->max_rx_pktlen);
+	rte_trace_point_emit_u32(dev_info->max_lro_pkt_size);
 	rte_trace_point_emit_u16(dev_info->max_rx_queues);
 	rte_trace_point_emit_u16(dev_info->max_tx_queues);
 	rte_trace_point_emit_u32(dev_info->max_mac_addrs);
