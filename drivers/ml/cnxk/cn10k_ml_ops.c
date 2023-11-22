@@ -1191,13 +1191,15 @@ cn10k_ml_result_update(struct cnxk_ml_dev *cnxk_mldev, int qp_id, void *request)
 	uint64_t fw_latency;
 	uint16_t model_id;
 	uint16_t layer_id;
+	uint16_t idx;
 
 	req = (struct cnxk_ml_req *)request;
 	result = &req->cn10k_req.result;
 	op = req->op;
 	if (likely(result->error_code == 0)) {
-		model_id = cnxk_mldev->index_map[op->model_id].model_id;
-		layer_id = cnxk_mldev->index_map[op->model_id].layer_id;
+		idx = req->cn10k_req.jd.hdr.model_id;
+		model_id = cnxk_mldev->index_map[idx].model_id;
+		layer_id = cnxk_mldev->index_map[idx].layer_id;
 		model = cnxk_mldev->mldev->data->models[model_id];
 		layer = &model->layer[layer_id];
 		if (likely(qp_id >= 0)) {
