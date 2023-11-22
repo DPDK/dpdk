@@ -195,44 +195,56 @@ start_vdpa(struct vdpa_port *vport)
 		RTE_LOG(ERR, VDPA,
 			"%s exists, please remove it or specify another file and try again.\n",
 			socket_path);
-		return -1;
+		return -VFE_VDPA_ERR_ADD_VF_NO_ACCESS_SOCKET_PATH;
 	}
 	ret = rte_vhost_driver_register(socket_path, vport->flags);
-	if (ret != 0)
-		rte_exit(EXIT_FAILURE,
+	if (ret != 0) {
+		RTE_LOG(ERR, VDPA,
 			"register driver failed: %s\n",
 			socket_path);
+		return -VFE_VDPA_ERR_ADD_VF_VHOST_DRIVER_REGISTER;
+	}
 
 	/* vdpa device should get feature from device and not use builtin_net_driver */
 	ret = rte_vdpa_get_features(vport->dev, &features);
-	if (ret != 0)
-		rte_exit(EXIT_FAILURE,
+	if (ret != 0) {
+		RTE_LOG(ERR, VDPA,
 			"get vdpa feature fail: %s\n",
 			socket_path);
+		return -VFE_VDPA_ERR_ADD_VF_VDPA_GET_FEATURES;
+	}
 
 	ret = rte_vhost_driver_set_features(socket_path, features);
-	if (ret != 0)
-		rte_exit(EXIT_FAILURE,
+	if (ret != 0) {
+		RTE_LOG(ERR, VDPA,
 			"set feature failed: %s\n",
 			socket_path);
+		return -VFE_VDPA_ERR_ADD_VF_VHOST_DRIVER_SET_FEATURES;
+	}
 
 	ret = rte_vhost_driver_callback_register(socket_path,
 			&vdpa_sample_devops);
-	if (ret != 0)
-		rte_exit(EXIT_FAILURE,
+	if (ret != 0) {
+		RTE_LOG(ERR, VDPA,
 			"register driver ops failed: %s\n",
 			socket_path);
+		return -VFE_VDPA_ERR_ADD_VF_VHOST_DRIVER_CALLBACK_REGISTER;
+	}
 
 	ret = rte_vhost_driver_attach_vdpa_device(socket_path, vport->dev);
-	if (ret != 0)
-		rte_exit(EXIT_FAILURE,
+	if (ret != 0) {
+		RTE_LOG(ERR, VDPA,
 			"attach vdpa device failed: %s\n",
 			socket_path);
+		return -VFE_VDPA_ERR_ADD_VF_VHOST_DRIVER_ATTACH_VDPA_DEVICE;
+	}
 
-	if (rte_vhost_driver_start(socket_path) < 0)
-		rte_exit(EXIT_FAILURE,
+	if (rte_vhost_driver_start(socket_path) < 0) {
+		RTE_LOG(ERR, VDPA,
 			"start vhost driver failed: %s\n",
 			socket_path);
+		return -VFE_VDPA_ERR_ADD_VF_VHOST_DRIVER_START;
+	}
 	return 0;
 }
 
@@ -264,7 +276,7 @@ int vdpa_with_socket_path_start(const char *vf_name,
 {
 	struct rte_vdpa_device *dev;
 	char ifname[MAX_PATH_LEN];
-	int vport_num;
+	int vport_num, ret = 0;
 
 	if (iface[0] == '\0' && !socket_file) {
 		/* Default socket path: /tmp/vf- */
@@ -282,7 +294,7 @@ int vdpa_with_socket_path_start(const char *vf_name,
 	if (vport_num < 0) {
 		RTE_LOG(ERR, VDPA, "Unable to find vdpa device vport resource for %s.\n",
 		vf_name);
-		return -1;
+		return -VFE_VDPA_ERR_ADD_VF_EXCEED_VPORT_LIMIT;
 	}
 	rte_strscpy(vports[vport_num].ifname, ifname, MAX_PATH_LEN);
 	RTE_LOG(INFO, VDPA, "VDPA VF Device %s socket file is %s\n",
@@ -291,12 +303,15 @@ int vdpa_with_socket_path_start(const char *vf_name,
 	if (dev == NULL) {
 		RTE_LOG(ERR, VDPA, "Unable to find vdpa device id for %s.\n",
 		vf_name);
-		return -1;
+		return -VFE_VDPA_ERR_NO_VF_DEVICE;
 	}
 	vports[vport_num].dev = dev;
-	if (start_vdpa(&vports[vport_num]))
+	ret = start_vdpa(&vports[vport_num]);
+	if (ret) {
 		memset(&vports[vport_num], 0, sizeof(struct vdpa_port));
-	return 0;
+		return ret;
+	}
+	return ret;
 }
 
 void vdpa_with_socket_path_stop(const char *vf_name)

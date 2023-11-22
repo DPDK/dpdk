@@ -9,6 +9,8 @@
 #include "virtio_pci.h"
 #undef VIRTIO_API_FLAG
 
+#include "virtio_util.h"
+
 /* Status byte for guest to report progress. */
 #define VIRTIO_CONFIG_STATUS_RESET		0x00
 #define VIRTIO_CONFIG_STATUS_ACK		0x01
@@ -101,7 +103,7 @@ void virtio_pci_dev_set_status(struct virtio_pci_dev *vpdev, uint8_t status);
 __rte_internal
 uint8_t virtio_pci_dev_get_status(struct virtio_pci_dev *vpdev);
 __rte_internal
-void virtio_pci_dev_reset(struct virtio_pci_dev *vpdev, uint32_t time_out_ms);
+int virtio_pci_dev_reset(struct virtio_pci_dev *vpdev, uint32_t time_out_ms);
 __rte_internal
 int virtio_pci_dev_notify_area_get(struct virtio_pci_dev *vpdev, uint16_t qid, uint64_t *offset, uint64_t *size);
 __rte_internal
@@ -120,6 +122,7 @@ __rte_internal
 void virtio_pci_dev_state_num_queue_set(struct virtio_pci_dev *vpdev);
 __rte_internal
 uint8_t virtio_pci_dev_isr_get(struct virtio_pci_dev *vpdev);
+const char * rte_vdpa_err_str_get(int32_t err);
 
 
 #endif /* _VIRTIO_API_H_ */

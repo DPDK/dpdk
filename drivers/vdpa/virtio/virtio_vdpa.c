@@ -12,6 +12,7 @@
 
 #include <virtio_api.h>
 #include <virtio_lm.h>
+#include <virtio_util.h>
 #include "rte_vf_rpc.h"
 #include "virtio_vdpa.h"
 
@@ -1586,7 +1587,7 @@ virtio_vdpa_dev_remove(struct rte_pci_device *pci_dev)
 	}
 	pthread_mutex_unlock(&priv_list_lock);
 	if (!found)
-		return -ENODEV;
+		return -VFE_VDPA_ERR_NO_VF_DEVICE;
 	return virtio_vdpa_dev_do_remove(pci_dev, priv);
 }
 
@@ -1629,7 +1630,7 @@ virtio_vdpa_dev_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	ret = virtio_vdpa_get_pf_name(devname, pfname, sizeof(pfname));
 	if (ret) {
 		DRV_LOG(ERR, "%s failed to get pf name ret:%d", devname, ret);
-		rte_errno = rte_errno ? rte_errno : EINVAL;
+		rte_errno = VFE_VDPA_ERR_NO_PF_DEVICE;
 		goto error;
 	}
 
@@ -1637,14 +1638,14 @@ virtio_vdpa_dev_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	priv->pf_priv = rte_vdpa_get_mi_by_bdf(pfname);;
 	if (!priv->pf_priv) {
 		DRV_LOG(ERR, "%s failed to get pf priv", devname);
-		rte_errno = rte_errno ? rte_errno : EINVAL;
+		rte_errno = VFE_VDPA_ERR_NO_PF_DEVICE;
 		goto error;
 	}
 
 	ret = virtio_vdpa_get_vfid(pfname, devname, &vf_id);
 	if (ret) {
 		DRV_LOG(ERR, "%s pf %s failed to get vfid ret:%d", devname, pfname, ret);
-		rte_errno = rte_errno ? rte_errno : EINVAL;
+		rte_errno = VFE_VDPA_ERR_ADD_VF_NO_VFID;
 		goto error;
 	}
 	priv->vf_id = vf_id;
@@ -1657,7 +1658,7 @@ virtio_vdpa_dev_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	priv->vfio_container_fd = rte_vfio_container_create();
 	if (priv->vfio_container_fd < 0) {
 		DRV_LOG(ERR, "%s failed to get container fd", devname);
-		rte_errno = rte_errno ? rte_errno : EINVAL;
+		rte_errno = VFE_VDPA_ERR_ADD_VF_CREATE_VFIO_CONTAINER;
 		goto error;
 	}
 
@@ -1666,7 +1667,7 @@ virtio_vdpa_dev_probe(struct rte_pci_driver *pci_drv __rte_unused,
 				&iommu_group_num);
 		if (ret <= 0) {
 			DRV_LOG(ERR, "%s failed to get IOMMU group ret:%d", devname, ret);
-			rte_errno = rte_errno ? rte_errno : EINVAL;
+			rte_errno = VFE_VDPA_ERR_ADD_VF_GET_IOMMU_GROUP;
 			goto error;
 		}
 
@@ -1680,14 +1681,16 @@ virtio_vdpa_dev_probe(struct rte_pci_driver *pci_drv __rte_unused,
 			retries--;
 		} else
 			break;
-		if (!retries)
+		if (!retries) {
+			rte_errno = VFE_VDPA_ERR_ADD_VF_VFIO_CONTAINER_GROUP_BIND;
 			goto error;
+		}
 	} while(retries);
 
 	priv->vpdev = virtio_pci_dev_alloc(pci_dev);
 	if (priv->vpdev == NULL) {
 		DRV_LOG(ERR, "%s failed to alloc virito pci dev", devname);
-		rte_errno = rte_errno ? rte_errno : EINVAL;
+		rte_errno = VFE_VDPA_ERR_ADD_VF_ALLOC;
 		goto error;
 	}
 
@@ -1699,14 +1702,14 @@ virtio_vdpa_dev_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	priv->vfio_dev_fd = rte_intr_dev_fd_get(pci_dev->intr_handle);
 	if (priv->vfio_dev_fd < 0) {
 		DRV_LOG(ERR, "%s failed to get vfio dev fd", devname);
-		rte_errno = rte_errno ? rte_errno : EINVAL;
+		rte_errno = VFE_VDPA_ERR_VFIO_DEV_FD;
 		goto error;
 	}
 
 	priv->vdev = rte_vdpa_register_device(&pci_dev->device, &virtio_vdpa_ops);
 	if (priv->vdev == NULL) {
 		DRV_LOG(ERR, "%s failed to register vDPA device", devname);
-		rte_errno = rte_errno ? rte_errno : EINVAL;
+		rte_errno = VFE_VDPA_ERR_ADD_VF_REGISTER_DEVICE;
 		goto error;
 	}
 
@@ -1715,7 +1718,7 @@ virtio_vdpa_dev_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	if (ret) {
 		DRV_LOG(ERR, "%s failed to alloc vDPA device queues ret:%d",
 					devname, ret);
-		rte_errno = rte_errno ? rte_errno : EINVAL;
+		rte_errno = VFE_VDPA_ERR_ADD_VF_QUEUES_ALLOC;
 		goto error;
 	}
 
@@ -1723,7 +1726,7 @@ virtio_vdpa_dev_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	if (priv->nvec <= 0) {
 		DRV_LOG(ERR, "%s error dev interrupts %d less than 0",
 					devname, priv->nvec);
-		rte_errno = rte_errno ? rte_errno : EINVAL;
+		rte_errno = VFE_VDPA_ERR_ADD_VF_NO_VECTOR;
 		goto error;
 	}
 
@@ -1731,7 +1734,7 @@ virtio_vdpa_dev_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	if (ret) {
 		DRV_LOG(ERR, "%s error alloc virtio dev interrupts ret:%d %s",
 					devname, ret, strerror(errno));
-		rte_errno = rte_errno ? rte_errno : EINVAL;
+		rte_errno = VFE_VDPA_ERR_ADD_VF_INTERRUPT_ALLOC;
 		goto error;
 	}
 
@@ -1751,7 +1754,7 @@ virtio_vdpa_dev_probe(struct rte_pci_driver *pci_drv __rte_unused,
 			VIRTIO_VDPA_STATE_ALIGN);
 	if (priv->state_mz == NULL) {
 		DRV_LOG(ERR, "Failed to reserve memzone dev:%s", devname);
-		rte_errno = rte_errno ? rte_errno : ENOMEM;
+		rte_errno = ENOMEM;
 		goto error;
 	}
 
@@ -1762,6 +1765,7 @@ virtio_vdpa_dev_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		ret = priv->dev_ops->reg_dev_intr(priv);
 		if (ret) {
 			DRV_LOG(ERR, "%s register dev interrupt fail ret:%d", devname, ret);
+			rte_errno = rte_errno ? rte_errno : VFE_VDPA_ERR_ADD_VF_REGISTER_INTERRUPT;
 			goto error;
 		}
 
@@ -1770,7 +1774,7 @@ virtio_vdpa_dev_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		if (ret) {
 			DRV_LOG(ERR, "%s error enabling virtio dev interrupts: %d(%s)",
 					devname, ret, strerror(errno));
-			rte_errno = rte_errno ? rte_errno : EINVAL;
+			rte_errno = rte_errno ? rte_errno : VFE_VDPA_ERR_ADD_VF_ENABLE_INTERRUPT;
 			goto error;
 		}
 	}
@@ -1779,14 +1783,14 @@ virtio_vdpa_dev_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	if (ret) {
 		DRV_LOG(ERR, "%s error copy bar to state ret:%d",
 					devname, ret);
-		rte_errno = rte_errno ? rte_errno : EINVAL;
+		rte_errno = rte_errno ? rte_errno : VFE_VDPA_ERR_ADD_VF_BAR_COPY;
 		goto error;
 	}
 
 	ret = virtio_vdpa_cmd_set_status(priv->pf_priv, priv->vf_id, VIRTIO_S_QUIESCED);
 	if (ret) {
 		DRV_LOG(ERR, "%s vfid %d failed suspend ret:%d", devname, priv->vf_id, ret);
-		rte_errno = rte_errno ? rte_errno : EINVAL;
+		rte_errno = rte_errno ? rte_errno : VFE_VDPA_ERR_ADD_VF_SET_STATUS_QUIESCED;
 		goto error;
 	}
 
@@ -1795,7 +1799,7 @@ virtio_vdpa_dev_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	ret = virtio_vdpa_cmd_set_status(priv->pf_priv, priv->vf_id, VIRTIO_S_FREEZED);
 	if (ret) {
 		DRV_LOG(ERR, "%s vfid %d failed suspend ret:%d", devname, priv->vf_id, ret);
-		rte_errno = rte_errno ? rte_errno : EINVAL;
+		rte_errno = rte_errno ? rte_errno : VFE_VDPA_ERR_ADD_VF_SET_STATUS_FREEZED;
 		goto error;
 	}
 
@@ -1883,7 +1887,7 @@ virtio_vdpa_dev_vf_filter_dump(const char *vf_name, struct vdpa_vf_params *vf_in
 	}
 	pthread_mutex_unlock(&priv_list_lock);
 
-	return found ? 0 : -EINVAL;
+	return found ? 0 : -VFE_VDPA_ERR_NO_VF_DEVICE;
 }
 
 /*

@@ -12,6 +12,7 @@
 #include "virtio_api.h"
 #include "virtio_lm.h"
 #include "virtio_vdpa.h"
+#include "virtio_util.h"
 #include <rte_vhost.h>
 
 extern int virtio_vdpa_logtype;
@@ -30,10 +31,10 @@ rte_vdpa_vf_dev_add(const char *vf_name, struct vdpa_vf_params *vf_params __rte_
 	snprintf(args, RTE_DEV_NAME_MAX_LEN, "%s=%s", VIRTIO_ARG_VDPA, VIRTIO_ARG_VDPA_VALUE_VF);
 
 	if (!vf_name)
-		return -EINVAL;
+		return -VFE_VDPA_ERR_NO_VF_NAME;
 
 	if(virtio_vdpa_find_priv_resource_by_name(vf_name))
-		return -EEXIST;
+		return -VFE_VDPA_ERR_ADD_VF_ALREADY_ADD;
 
 	return rte_eal_hotplug_add("pci", vf_name, args);
 }
@@ -42,10 +43,10 @@ int
 rte_vdpa_vf_dev_remove(const char *vf_name)
 {
 	if (!vf_name)
-		return -EINVAL;
+		return -VFE_VDPA_ERR_NO_VF_NAME;
 
 	if(!virtio_vdpa_find_priv_resource_by_name(vf_name))
-		return -ENODEV;
+		return -VFE_VDPA_ERR_NO_VF_DEVICE;
 
 	return rte_eal_hotplug_remove("pci", vf_name);
 }
@@ -56,12 +57,15 @@ rte_vdpa_get_vf_list(const char *pf_name, struct vdpa_vf_params *vf_info,
 {
 	struct virtio_vdpa_pf_priv *priv;
 
-	if (!pf_name || !vf_info || max_vf_num <=0)
-		return -EINVAL;
+	if (!pf_name)
+		return -VFE_VDPA_ERR_NO_PF_NAME;
+
+	if (!vf_info || max_vf_num <=0)
+		return -ENOMEM;
 
 	priv = rte_vdpa_get_mi_by_bdf(pf_name);
 	if (!priv)
-		return -ENODEV;
+		return -VFE_VDPA_ERR_NO_PF_DEVICE;
 
 	return virtio_vdpa_dev_pf_filter_dump(vf_info, max_vf_num, priv);
 }

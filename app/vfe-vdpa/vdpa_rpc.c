@@ -95,17 +95,18 @@ static void vdpa_rpc_get_info(cJSON *obj, uint64_t val, const char **info,
 	}
 }
 
+static cJSON *vdpa_rpc_format_errno(cJSON *result, int32_t ret)
+{
+	cJSON_AddNumberToObject(result, "errno", ret);
+	cJSON_AddStringToObject(result, "errstr", rte_vdpa_err_str_get(ret));
+	return result;
+}
+
 static cJSON *vdpa_pf_dev_add(const char *pf_name)
 {
 	cJSON *result = cJSON_CreateObject();
 
-	if (rte_vdpa_pf_dev_add(pf_name))
-		cJSON_AddStringToObject(result, "Error",
-			"Fail to add PF device");
-	else
-		cJSON_AddStringToObject(result, "Success",
-				pf_name);
-	return result;
+	return vdpa_rpc_format_errno(result, rte_vdpa_pf_dev_add(pf_name));
 }
 
 static cJSON *vdpa_pf_dev_remove(const char *pf_name)
@@ -116,18 +117,10 @@ static cJSON *vdpa_pf_dev_remove(const char *pf_name)
 
 	max_vf_num = rte_vdpa_get_vf_list(pf_name, &vf_para, 1);
 	if (max_vf_num > 0) {
-		cJSON_AddStringToObject(result, "Error",
-			"Please remove all VF devices before remove PF");
-		return result;
+		return vdpa_rpc_format_errno(result, -VFE_VDPA_ERR_REMOVE_PF_WITH_VF);
 	}
 
-	if (rte_vdpa_pf_dev_remove(pf_name))
-		cJSON_AddStringToObject(result, "Error",
-			"Fail to remove PF device");
-	else
-		cJSON_AddStringToObject(result, "Success",
-				pf_name);
-	return result;
+	return vdpa_rpc_format_errno(result, rte_vdpa_pf_dev_remove(pf_name));
 }
 
 static cJSON *vdpa_pf_dev_list(void)
@@ -142,15 +135,14 @@ static cJSON *vdpa_pf_dev_list(void)
 		sizeof(struct virtio_vdpa_pf_info) * MAX_VDPA_SAMPLE_PORTS, 0);
 	max_pf_num = rte_vdpa_get_pf_list(pf_info, MAX_VDPA_SAMPLE_PORTS);
 	if (max_pf_num <= 0) {
-		cJSON_AddStringToObject(result, "Error",
-			"Fail to dump all PF devices");
+		vdpa_rpc_format_errno(result, -VFE_VDPA_ERR_NO_PF_DEVICE);
 		rte_free(pf_info);
 		return result;
 	}
 	if (max_pf_num > MAX_VDPA_SAMPLE_PORTS) {
-		cJSON_AddStringToObject(result, "Warning",
-			"PF devices number more than 1024");
 		max_pf_num = MAX_VDPA_SAMPLE_PORTS;
+		RTE_LOG(WARNING, RPC, "PF devices number more than limit %d",
+				MAX_VDPA_SAMPLE_PORTS);
 	}
 	for (i = 0; i < max_pf_num; i++) {
 		device = cJSON_CreateObject();
@@ -159,7 +151,7 @@ static cJSON *vdpa_pf_dev_list(void)
 	}
 	cJSON_AddItemToObject(result, "devices", devices);
 	rte_free(pf_info);
-	return result;
+	return vdpa_rpc_format_errno(result, 0);
 }
 
 static cJSON *mgmtpf(jrpc_context *ctx, cJSON *params, cJSON *id)
@@ -203,19 +195,14 @@ static cJSON *vdpa_vf_dev_add(const char *vf_name,
 			const char *socket_file)
 {
 	cJSON *result = cJSON_CreateObject();
+	int ret;
 
-	if (rte_vdpa_vf_dev_add(vf_name, vf_params)) {
-		cJSON_AddStringToObject(result, "Error",
-			"Fail to add VF device");
-		return result;
+	ret = rte_vdpa_vf_dev_add(vf_name, vf_params);
+	if (ret) {
+		return vdpa_rpc_format_errno(result, ret);
 	}
-	if (vdpa_with_socket_path_start(vf_name, socket_file)) {
-		cJSON_AddStringToObject(result, "Error",
-		"Fail to start socket for VF device");
-		return result;
-	}
-	cJSON_AddStringToObject(result, "Success", vf_name);
-	return result;
+	ret = vdpa_with_socket_path_start(vf_name, socket_file);
+	return vdpa_rpc_format_errno(result, ret);
 }
 
 static cJSON *vdpa_vf_dev_remove(const char *vf_name)
@@ -223,13 +210,7 @@ static cJSON *vdpa_vf_dev_remove(const char *vf_name)
 	cJSON *result = cJSON_CreateObject();
 
 	vdpa_with_socket_path_stop(vf_name);
-	if (rte_vdpa_vf_dev_remove(vf_name))
-		cJSON_AddStringToObject(result, "Error",
-			"Fail to remove VF device");
-	else
-		
-		cJSON_AddStringToObject(result, "Success", vf_name);
-	return result;
+	return vdpa_rpc_format_errno(result, rte_vdpa_vf_dev_remove(vf_name));
 }
 
 static void vdpa_vf_info_reformat(cJSON *device, struct vdpa_vf_params *vf_params)
@@ -262,16 +243,16 @@ static cJSON *vdpa_vf_dev_info(const char *vf_name)
 	cJSON *result = cJSON_CreateObject();
 	struct vdpa_vf_params vf_info = {0};
 	cJSON *device = NULL;
+	int ret = 0;
 
-	if (rte_vdpa_get_vf_info(vf_name, &vf_info)) {
-		cJSON_AddStringToObject(result, "Error",
-			"Fail to dump all VF devices");
-		return result;
+	ret = rte_vdpa_get_vf_info(vf_name, &vf_info);
+	if (ret) {
+		return vdpa_rpc_format_errno(result, ret);
 	}
 	device = cJSON_CreateObject();
 	vdpa_vf_info_reformat(device, &vf_info);
 	cJSON_AddItemToObject(result, "device", device);
-	return result;
+	return vdpa_rpc_format_errno(result, ret);;
 }
 
 static cJSON *vdpa_vf_dev_list(const char *pf_name)
@@ -281,21 +262,18 @@ static cJSON *vdpa_vf_dev_list(const char *pf_name)
 	struct vdpa_vf_params *vf_info = NULL;
 	cJSON *device = NULL;
 	int max_vf_num, i;
+	int ret = 0;
 
 	vf_info = rte_zmalloc(NULL,
 		sizeof(struct vdpa_vf_params) * MAX_VDPA_SAMPLE_PORTS, 0);
 	max_vf_num = rte_vdpa_get_vf_list(pf_name, vf_info,
 			MAX_VDPA_SAMPLE_PORTS);
 	if (max_vf_num <= 0) {
-		cJSON_AddStringToObject(result, "Error",
-			"Fail to dump all VF devices");
-		rte_free(vf_info);
-		return result;
+		return vdpa_rpc_format_errno(result, max_vf_num);
 	}
 	if (max_vf_num > MAX_VDPA_SAMPLE_PORTS) {
-		cJSON_AddStringToObject(result, "Warning",
-			"VF devices number more than 1024");
 		max_vf_num = MAX_VDPA_SAMPLE_PORTS;
+		ret = VFE_VDPA_ERR_EXCEED_LIMIT;
 	}
 	for (i = 0; i < max_vf_num; i++) {
 		device = cJSON_CreateObject();
@@ -304,7 +282,7 @@ static cJSON *vdpa_vf_dev_list(const char *pf_name)
 	}
 	cJSON_AddItemToObject(result, "devices", devices);
 	rte_free(vf_info);
-	return result;
+	return vdpa_rpc_format_errno(result, ret);
 }
 
 static cJSON *vdpa_vf_dev_debug(const char *vf_name,

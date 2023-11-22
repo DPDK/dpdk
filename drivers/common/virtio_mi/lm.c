@@ -1050,7 +1050,7 @@ virtio_vdpa_mi_dev_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	ret = virtio_pci_devargs_parse(pci_dev->device.devargs, &vdpa);
 	if (ret < 0) {
 		DRV_LOG(ERR, "Devargs parsing is failed");
-		return ret;
+		return -VFE_VDPA_ERR_DEVARGS_PARSE;
 	}
 	/* virtio vdpa pmd skips probe if device needs to work in none vdpa mode */
 	if (vdpa != 1)
@@ -1070,14 +1070,14 @@ virtio_vdpa_mi_dev_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	priv->vpdev = virtio_pci_dev_alloc(pci_dev);
 	if (priv->vpdev == NULL) {
 		DRV_LOG(ERR, "%s failed to alloc virito pci dev", devname);
-		rte_errno = rte_errno ? rte_errno : ENODEV;
+		rte_errno = VFE_VDPA_ERR_ADD_PF_PROBE_FAIL;
 		goto error;
 	}
 
 	priv->vfio_dev_fd = rte_intr_dev_fd_get(pci_dev->intr_handle);
 	if (priv->vfio_dev_fd < 0) {
 		DRV_LOG(ERR, "%s failed to get vfio dev fd", devname);
-		rte_errno = rte_errno ? rte_errno : ENODEV;
+		rte_errno = VFE_VDPA_ERR_VFIO_DEV_FD;
 		goto err_free_pci_dev;
 	}
 
@@ -1091,7 +1091,7 @@ virtio_vdpa_mi_dev_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		DRV_LOG(ERR, "PCI device: %s device id 0x%x is not supported",
 					priv->pdev->device.name,
 					priv->pdev->id.device_id);
-		rte_errno = rte_errno ? rte_errno : EOPNOTSUPP;
+		rte_errno = VFE_VDPA_ERR_ADD_PF_DEVICEID_NOT_SUPPORT;
 		goto err_free_pci_dev;
 	}
 
@@ -1101,7 +1101,7 @@ virtio_vdpa_mi_dev_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		DRV_LOG(ERR, "Device does not support feature required: device 0x%" PRIx64 \
 				", required: 0x%" PRIx64, priv->device_features,
 				features);
-		rte_errno = rte_errno ? rte_errno : EOPNOTSUPP;
+		rte_errno = VFE_VDPA_ERR_ADD_PF_FEATURE_NOT_MEET;
 		goto err_free_pci_dev;
 	}
 	features = virtio_pci_dev_features_set(priv->vpdev, features);
@@ -1111,7 +1111,7 @@ virtio_vdpa_mi_dev_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	ret = virtio_vdpa_admin_queue_alloc(priv);
 	if (ret) {
 		DRV_LOG(ERR, "Failed to alloc admin queue for vDPA device");
-		rte_errno = rte_errno ? rte_errno : -ret;
+		rte_errno = VFE_VDPA_ERR_ADD_PF_ALLOC_ADMIN_QUEUE;
 		goto err_free_pci_dev;
 	}
 
@@ -1183,10 +1183,10 @@ int
 rte_vdpa_pf_dev_add(const char *pf_name)
 {
 	if (!pf_name)
-		return -EINVAL;
+		return -VFE_VDPA_ERR_NO_PF_NAME;
 
 	if (rte_vdpa_get_mi_by_bdf(pf_name))
-		return -EEXIST;
+		return -VFE_VDPA_ERR_ADD_PF_ALREADY_ADD;
 
 	return rte_eal_hotplug_add("pci", pf_name, "vdpa=2");
 }
@@ -1195,10 +1195,10 @@ int
 rte_vdpa_pf_dev_remove(const char *pf_name)
 {
 	if (!pf_name)
-		return -EINVAL;
+		return -VFE_VDPA_ERR_NO_PF_NAME;
 
 	if (!rte_vdpa_get_mi_by_bdf(pf_name))
-		return -ENODEV;
+		return -VFE_VDPA_ERR_NO_PF_DEVICE;
 
 	/* Fixme: no vf count checking */
 	return rte_eal_hotplug_remove("pci", pf_name);

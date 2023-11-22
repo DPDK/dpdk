@@ -27,6 +27,7 @@ virtio_pci_dev_alloc(struct rte_pci_device *pci_dev)
 	vpdev = rte_zmalloc("virtio pci device", sizeof(*vpdev), RTE_CACHE_LINE_SIZE);
 	if (vpdev == NULL) {
 		PMD_INIT_LOG(ERR, "Failed to allocate vpdev memory");
+		rte_errno = ENOMEM;
 		return NULL;
 	}
 
@@ -36,19 +37,23 @@ virtio_pci_dev_alloc(struct rte_pci_device *pci_dev)
 	ret = virtio_pci_dev_init(pci_dev, vpdev);
 	if (ret) {
 		PMD_INIT_LOG(ERR, "Failed to init virtio PCI device %s", pci_dev->device.name);
-		rte_errno = rte_errno ? rte_errno : EINVAL;
+		rte_errno = VFE_VDPA_ERR_ADD_PF_PROBE_FAIL;
 		goto error;
 	}
 
 	vpdev->vfio_dev_fd = rte_intr_dev_fd_get(pci_dev->intr_handle);
 	if (vpdev->vfio_dev_fd < 0) {
 		PMD_INIT_LOG(ERR, "Failed to get vfio dev fd");
-		rte_errno = rte_errno ? rte_errno : EINVAL;
+		rte_errno = VFE_VDPA_ERR_VFIO_DEV_FD;
 		goto error;
 	}
 
 	/* Reset the device, so when device is used later, reset time is saved. */
-	virtio_pci_dev_reset(vpdev, VIRTIO_VDPA_PROBE_RESET_TIME_OUT);
+	ret = virtio_pci_dev_reset(vpdev, VIRTIO_VDPA_PROBE_RESET_TIME_OUT);
+	if (ret) {
+		rte_errno = VFE_VDPA_ERR_RESET_DEVICE_TIMEOUT;
+		goto error;
+	}
 
 	/* Tell the device that driver has noticed it. */
 	virtio_pci_dev_set_status(vpdev, VIRTIO_CONFIG_STATUS_ACK);
@@ -739,7 +744,7 @@ virtio_pci_dev_get_status(struct virtio_pci_dev *vpdev)
 	return VIRTIO_OPS(hw)->get_status(hw);
 }
 
-void
+int
 virtio_pci_dev_reset(struct virtio_pci_dev *vpdev, uint32_t time_out_ms)
 {
 	uint32_t retry = 0;
@@ -750,12 +755,13 @@ virtio_pci_dev_reset(struct virtio_pci_dev *vpdev, uint32_t time_out_ms)
 	while (VIRTIO_OPS(hw)->get_status(hw) != VIRTIO_CONFIG_STATUS_RESET) {
 		if (retry++ > time_out_ms) {
 			PMD_INIT_LOG(WARNING, "vpdev %s  reset %d ms timeout", VP_DEV_NAME(vpdev), time_out_ms);
-			break;
+			return VFE_VDPA_ERR_RESET_DEVICE_TIMEOUT;
 		}
 		if (!(retry % 1000))
 			PMD_INIT_LOG(INFO, "vpdev %s  resetting", VP_DEV_NAME(vpdev));
 		usleep(1000L);
 	}
+	return 0;
 }
 
 void

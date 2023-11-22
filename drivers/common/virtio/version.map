@@ -1,3 +1,9 @@
+DPDK_22 {
+	global:
+
+	rte_vdpa_err_str_get;
+};
+
 INTERNAL {
 	global:
 
@@ -42,3 +48,4 @@ INTERNAL {
 
 	local: *;
 };
+
