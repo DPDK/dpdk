@@ -17,6 +17,8 @@ extern "C" {
 #include <stdbool.h>
 #include <stdint.h>
 
+#include <rte_compat.h>
+
 /*
  * determine if VFIO is present on the system
  */
@@ -238,6 +240,32 @@ rte_vfio_clear_group(int vfio_group_fd);
 int
 rte_vfio_get_group_num(const char *sysfs_base,
 		      const char *dev_addr, int *iommu_group_num);
+
+/**
+ * Get device information
+ *
+ * This function is only relevant to Linux and will return an error on BSD.
+ *
+ * @param sysfs_base
+ *   sysfs path prefix.
+ *
+ * @param dev_addr
+ *   device location.
+ *
+ * @param vfio_dev_fd
+ *   VFIO fd.
+ *
+ * @param device_info
+ *   Device information.
+ *
+ * @return
+ *   0 on success.
+ *  <0 on failure.
+ */
+__rte_experimental
+int
+rte_vfio_get_device_info(const char *sysfs_base, const char *dev_addr,
+		int *vfio_dev_fd, struct vfio_device_info *device_info);
 
 /**
  * Open a new VFIO container fd
