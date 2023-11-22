@@ -348,6 +348,10 @@ mvtvm_ml_model_info_set(struct cnxk_ml_dev *cnxk_mldev, struct cnxk_ml_model *mo
 tvm_mrvl_model:
 	cn10k_ml_model_info_set(cnxk_mldev, model, &model->mvtvm.info,
 				&model->layer[0].glow.metadata);
+
+	metadata = &model->mvtvm.metadata;
+	strlcpy(info->name, metadata->model.name, TVMDP_NAME_STRLEN);
+
 	info->io_layout = RTE_ML_IO_LAYOUT_SPLIT;
 }
 
