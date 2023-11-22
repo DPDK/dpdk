@@ -1230,6 +1230,32 @@ pci_vfio_ioport_map(struct rte_pci_device *dev, int bar,
 		return -1;
 	}
 
+	if (rte_eal_process_type() == RTE_PROC_SECONDARY) {
+		struct vfio_device_info device_info = { .argsz = sizeof(device_info) };
+		char pci_addr[PATH_MAX];
+		int vfio_dev_fd;
+		struct rte_pci_addr *loc = &dev->addr;
+
+		/* store PCI address string */
+		snprintf(pci_addr, sizeof(pci_addr), PCI_PRI_FMT,
+				loc->domain, loc->bus, loc->devid, loc->function);
+
+		vfio_dev_fd = rte_intr_dev_fd_get(dev->intr_handle);
+		if (vfio_dev_fd < 0) {
+			return -1;
+		} else if (vfio_dev_fd == 0) {
+			if (rte_vfio_get_device_info(rte_pci_get_sysfs_path(), pci_addr,
+				&vfio_dev_fd, &device_info) != 0)
+				return -1;
+			/* save vfio_dev_fd so it can be used during release */
+			if (rte_intr_dev_fd_set(dev->intr_handle, vfio_dev_fd) != 0)
+				return -1;
+
+			if (pci_vfio_fill_regions(dev, vfio_dev_fd, &device_info) != 0)
+				return -1;
+		}
+	}
+
 	if (pci_vfio_get_region(dev, bar, &size, &offset) != 0) {
 		RTE_LOG(ERR, EAL, "Cannot get offset of region %d.\n", bar);
 		return -1;
