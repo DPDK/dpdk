@@ -43,7 +43,8 @@ else
     IMB_required_ver = '1.4.0'
     IMB_header = '#include<intel-ipsec-mb.h>'
     libipsecmb = cc.find_library('IPSec_MB', required: false)
-    if libipsecmb.found()
+    if libipsecmb.found() and meson.version().version_compare('>=0.60') and cc.links(
+            'int main(void) {return 0;}', dependencies: libipsecmb)
         # version comes with quotes, so we split based on " and take the middle
         imb_ver = cc.get_define('IMB_VERSION_STR',
             prefix : IMB_header).split('"')[1]
