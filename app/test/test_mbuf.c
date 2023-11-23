@@ -2345,16 +2345,13 @@ test_pktmbuf_ext_shinfo_init_helper(struct rte_mempool *pktmbuf_pool)
 		GOTO_FAIL("%s: External buffer is not attached to mbuf\n",
 				__func__);
 
-	/* allocate one more mbuf */
+	/* allocate one more mbuf, it is attached to the same external buffer */
 	clone = rte_pktmbuf_clone(m, pktmbuf_pool);
 	if (clone == NULL)
 		GOTO_FAIL("%s: mbuf clone allocation failed!\n", __func__);
 	if (rte_pktmbuf_pkt_len(clone) != 0)
 		GOTO_FAIL("%s: Bad packet length\n", __func__);
 
-	/* attach the same external buffer to the cloned mbuf */
-	rte_pktmbuf_attach_extbuf(clone, ext_buf_addr, buf_iova, buf_len,
-			ret_shinfo);
 	if (clone->ol_flags != RTE_MBUF_F_EXTERNAL)
 		GOTO_FAIL("%s: External buffer is not attached to mbuf\n",
 				__func__);
