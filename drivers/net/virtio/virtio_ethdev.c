@@ -638,10 +638,13 @@ virtio_init_queue(struct rte_eth_dev *dev, uint16_t queue_idx)
 		hw->cvq = cvq;
 	}
 
-	if (hw->use_va)
+	if (hw->use_va) {
 		vq->mbuf_addr_offset = offsetof(struct rte_mbuf, buf_addr);
-	else
+		vq->mbuf_addr_mask = UINTPTR_MAX;
+	} else {
 		vq->mbuf_addr_offset = offsetof(struct rte_mbuf, buf_iova);
+		vq->mbuf_addr_mask = UINT64_MAX;
+	}
 
 	if (queue_type == VTNET_TQ) {
 		struct virtio_tx_region *txr;
