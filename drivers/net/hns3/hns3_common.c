@@ -70,8 +70,7 @@ hns3_dev_infos_get(struct rte_eth_dev *eth_dev, struct rte_eth_dev_info *info)
 				 RTE_ETH_RX_OFFLOAD_SCATTER |
 				 RTE_ETH_RX_OFFLOAD_VLAN_STRIP |
 				 RTE_ETH_RX_OFFLOAD_VLAN_FILTER |
-				 RTE_ETH_RX_OFFLOAD_RSS_HASH |
-				 RTE_ETH_RX_OFFLOAD_TCP_LRO);
+				 RTE_ETH_RX_OFFLOAD_RSS_HASH);
 	info->tx_offload_capa = (RTE_ETH_TX_OFFLOAD_OUTER_IPV4_CKSUM |
 				 RTE_ETH_TX_OFFLOAD_IPV4_CKSUM |
 				 RTE_ETH_TX_OFFLOAD_TCP_CKSUM |
@@ -99,6 +98,8 @@ hns3_dev_infos_get(struct rte_eth_dev *eth_dev, struct rte_eth_dev_info *info)
 
 	if (hns3_dev_get_support(hw, PTP))
 		info->rx_offload_capa |= RTE_ETH_RX_OFFLOAD_TIMESTAMP;
+	if (hns3_dev_get_support(hw, GRO))
+		info->rx_offload_capa |= RTE_ETH_RX_OFFLOAD_TCP_LRO;
 
 	info->rx_desc_lim = (struct rte_eth_desc_lim) {
 		.nb_max = HNS3_MAX_RING_DESC,

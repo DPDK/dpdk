@@ -761,10 +761,6 @@ hns3vf_get_capability(struct hns3_hw *hw)
 {
 	int ret;
 
-	ret = hns3_get_pci_revision_id(hw, &hw->revision);
-	if (ret)
-		return ret;
-
 	if (hw->revision < PCI_REVISION_ID_HIP09_A) {
 		hns3_set_default_dev_specifications(hw);
 		hw->intr.mapping_mode = HNS3_INTR_MAPPING_VEC_RSV_ONE;
@@ -1451,6 +1447,10 @@ hns3vf_init_vf(struct rte_eth_dev *eth_dev)
 
 	/* Get hardware io base address from pcie BAR2 IO space */
 	hw->io_base = pci_dev->mem_resource[2].addr;
+
+	ret = hns3_get_pci_revision_id(hw, &hw->revision);
+	if (ret)
+		return ret;
 
 	/* Firmware command queue initialize */
 	ret = hns3_cmd_init_queue(hw);
