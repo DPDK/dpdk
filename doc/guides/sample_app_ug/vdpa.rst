@@ -38,8 +38,7 @@ where
 * --iface specifies the path prefix of the UNIX domain socket file, e.g.
   /tmp/vhost-user-, then the socket files will be named as /tmp/vhost-user-<n>
   (n starts from 0).
-* --interactive means run the vdpa sample in interactive mode, currently 4
-  internal cmds are supported:
+* --interactive means run the vDPA sample in interactive mode:
 
   1. help: show help message
   2. list: list all available vdpa devices
