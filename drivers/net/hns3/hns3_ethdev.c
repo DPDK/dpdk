@@ -2739,21 +2739,8 @@ static int
 hns3_get_capability(struct hns3_hw *hw)
 {
 	struct hns3_adapter *hns = HNS3_DEV_HW_TO_ADAPTER(hw);
-	struct rte_pci_device *pci_dev;
 	struct hns3_pf *pf = &hns->pf;
-	struct rte_eth_dev *eth_dev;
-	uint16_t device_id;
 	int ret;
-
-	eth_dev = &rte_eth_devices[hw->data->port_id];
-	pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
-	device_id = pci_dev->id.device_id;
-
-	if (device_id == HNS3_DEV_ID_25GE_RDMA ||
-	    device_id == HNS3_DEV_ID_50GE_RDMA ||
-	    device_id == HNS3_DEV_ID_100G_RDMA_MACSEC ||
-	    device_id == HNS3_DEV_ID_200G_RDMA)
-		hns3_set_bit(hw->capability, HNS3_DEV_SUPPORT_DCB_B, 1);
 
 	ret = hns3_get_pci_revision_id(hw, &hw->revision);
 	if (ret)
