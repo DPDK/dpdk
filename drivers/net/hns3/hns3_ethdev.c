@@ -228,6 +228,30 @@ out:
 	return ret;
 }
 
+void
+hns3_clear_reset_event(struct hns3_hw *hw)
+{
+	uint32_t clearval = 0;
+
+	switch (hw->reset.level) {
+	case HNS3_IMP_RESET:
+		clearval = BIT(HNS3_VECTOR0_IMPRESET_INT_B);
+		break;
+	case HNS3_GLOBAL_RESET:
+		clearval = BIT(HNS3_VECTOR0_GLOBALRESET_INT_B);
+		break;
+	default:
+		break;
+	}
+
+	if (clearval == 0)
+		return;
+
+	hns3_write_dev(hw, HNS3_MISC_RESET_STS_REG, clearval);
+
+	hns3_pf_enable_irq0(hw);
+}
+
 static void
 hns3_clear_event_cause(struct hns3_hw *hw, uint32_t event_type, uint32_t regclr)
 {
@@ -300,6 +324,34 @@ hns3_delay_before_clear_event_cause(struct hns3_hw *hw, uint32_t event_type, uin
 	}
 }
 
+static bool
+hns3_reset_event_valid(struct hns3_hw *hw)
+{
+	struct hns3_adapter *hns = HNS3_DEV_HW_TO_ADAPTER(hw);
+	enum hns3_reset_level new_req = HNS3_NONE_RESET;
+	enum hns3_reset_level last_req;
+	uint32_t vector0_int;
+
+	vector0_int = hns3_read_dev(hw, HNS3_VECTOR0_OTHER_INT_STS_REG);
+	if (BIT(HNS3_VECTOR0_IMPRESET_INT_B) & vector0_int)
+		new_req = HNS3_IMP_RESET;
+	else if (BIT(HNS3_VECTOR0_GLOBALRESET_INT_B) & vector0_int)
+		new_req = HNS3_GLOBAL_RESET;
+	if (new_req == HNS3_NONE_RESET)
+		return true;
+
+	last_req = hns3_get_reset_level(hns, &hw->reset.pending);
+	if (last_req == HNS3_NONE_RESET)
+		return true;
+
+	if (new_req > last_req)
+		return true;
+
+	hns3_warn(hw, "last_req (%u) less than or equal to new_req (%u) ignore",
+		  last_req, new_req);
+	return false;
+}
+
 static void
 hns3_interrupt_handler(void *param)
 {
@@ -309,6 +361,9 @@ hns3_interrupt_handler(void *param)
 	enum hns3_evt_cause event_cause;
 	struct hns3_intr_state state;
 	uint32_t clearval = 0;
+
+	if (!hns3_reset_event_valid(hw))
+		return;
 
 	/* Disable interrupt */
 	hns3_pf_disable_irq0(hw);
@@ -338,7 +393,11 @@ hns3_interrupt_handler(void *param)
 	}
 
 	/* Enable interrupt if it is not cause by reset */
-	hns3_pf_enable_irq0(hw);
+	if (event_cause == HNS3_VECTOR0_EVENT_ERR ||
+	    event_cause == HNS3_VECTOR0_EVENT_MBX ||
+	    event_cause == HNS3_VECTOR0_EVENT_PTP ||
+	    event_cause == HNS3_VECTOR0_EVENT_OTHER)
+		hns3_pf_enable_irq0(hw);
 }
 
 static int
@@ -5556,7 +5615,7 @@ is_pf_reset_done(struct hns3_hw *hw)
 		return true;
 }
 
-static void
+static enum hns3_reset_level
 hns3_detect_reset_event(struct hns3_hw *hw)
 {
 	struct hns3_adapter *hns = HNS3_DEV_HW_TO_ADAPTER(hw);
@@ -5568,11 +5627,9 @@ hns3_detect_reset_event(struct hns3_hw *hw)
 	vector0_intr_state = hns3_read_dev(hw, HNS3_VECTOR0_OTHER_INT_STS_REG);
 	if (BIT(HNS3_VECTOR0_IMPRESET_INT_B) & vector0_intr_state) {
 		__atomic_store_n(&hw->reset.disable_cmd, 1, __ATOMIC_RELAXED);
-		hns3_atomic_set_bit(HNS3_IMP_RESET, &hw->reset.pending);
 		new_req = HNS3_IMP_RESET;
 	} else if (BIT(HNS3_VECTOR0_GLOBALRESET_INT_B) & vector0_intr_state) {
 		__atomic_store_n(&hw->reset.disable_cmd, 1, __ATOMIC_RELAXED);
-		hns3_atomic_set_bit(HNS3_GLOBAL_RESET, &hw->reset.pending);
 		new_req = HNS3_GLOBAL_RESET;
 	}
 
@@ -5580,13 +5637,16 @@ hns3_detect_reset_event(struct hns3_hw *hw)
 		hns3_schedule_delayed_reset(hns);
 		hns3_warn(hw, "High level reset detected, delay do reset");
 	}
+
+	return new_req;
 }
 
 bool
 hns3_is_reset_pending(struct hns3_adapter *hns)
 {
+	enum hns3_reset_level new_req;
 	struct hns3_hw *hw = &hns->hw;
-	enum hns3_reset_level reset;
+	enum hns3_reset_level last_req;
 
 	/*
 	 * Only primary can process can process the reset event,
@@ -5595,17 +5655,17 @@ hns3_is_reset_pending(struct hns3_adapter *hns)
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return false;
 
-	hns3_detect_reset_event(hw);
-	reset = hns3_get_reset_level(hns, &hw->reset.pending);
-	if (reset != HNS3_NONE_RESET && hw->reset.level != HNS3_NONE_RESET &&
-	    hw->reset.level < reset) {
-		hns3_warn(hw, "High level reset %d is pending", reset);
+	new_req = hns3_detect_reset_event(hw);
+	last_req = hns3_get_reset_level(hns, &hw->reset.pending);
+	if (last_req != HNS3_NONE_RESET && new_req != HNS3_NONE_RESET &&
+	    new_req < last_req) {
+		hns3_warn(hw, "High level reset %d is pending", last_req);
 		return true;
 	}
-	reset = hns3_get_reset_level(hns, &hw->reset.request);
-	if (reset != HNS3_NONE_RESET && hw->reset.level != HNS3_NONE_RESET &&
-	    hw->reset.level < reset) {
-		hns3_warn(hw, "High level reset %d is request", reset);
+	last_req = hns3_get_reset_level(hns, &hw->reset.request);
+	if (last_req != HNS3_NONE_RESET && hw->reset.level != HNS3_NONE_RESET &&
+	    hw->reset.level < last_req) {
+		hns3_warn(hw, "High level reset %d is request", last_req);
 		return true;
 	}
 	return false;
