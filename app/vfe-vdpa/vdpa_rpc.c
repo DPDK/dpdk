@@ -170,6 +170,8 @@ static cJSON *mgmtpf(jrpc_context *ctx, cJSON *params, cJSON *id)
 	cJSON *pf_dev = cJSON_GetObjectItem(params, "dev");
 	cJSON *result = NULL;
 	struct vdpa_rpc_context *rpc_ctx;
+	uint64_t t_start = rte_rdtsc_precise();
+	uint64_t t_end;
 
 	rpc_ctx = (struct vdpa_rpc_context *)ctx->data;
 	pthread_mutex_lock(&rpc_ctx->rpc_lock);
@@ -189,6 +191,10 @@ static cJSON *mgmtpf(jrpc_context *ctx, cJSON *params, cJSON *id)
 		cJSON_AddItemToObject(result, "id", id);
 	}
 	pthread_mutex_unlock(&rpc_ctx->rpc_lock);
+
+	t_end = rte_rdtsc_precise();
+	RTE_LOG(DEBUG, RPC, "RPC mgmtpf spend %lu us.\n",
+			(t_end - t_start) * 1000000 / rte_get_tsc_hz());
 	return result;
 }
 
@@ -367,6 +373,8 @@ static cJSON *mgmtvf(jrpc_context *ctx, cJSON *params, cJSON *id)
 	cJSON *vf_debug = cJSON_GetObjectItem(params, "debug");
 	cJSON *result = NULL;
 	struct vdpa_rpc_context *rpc_ctx;
+	uint64_t t_start = rte_rdtsc_precise();
+	uint64_t t_end;
 
 	rpc_ctx = (struct vdpa_rpc_context *)ctx->data;
 	pthread_mutex_lock(&rpc_ctx->rpc_lock);
@@ -453,6 +461,9 @@ error_vf:
 		cJSON_AddItemToObject(result, "id", id);
 	}
 	pthread_mutex_unlock(&rpc_ctx->rpc_lock);
+	t_end = rte_rdtsc_precise();
+	RTE_LOG(DEBUG, RPC, "RPC mgmtvf spent %lu us.\n",
+			(t_end - t_start) * 1000000 / rte_get_tsc_hz());
 	return result;
 }
 
