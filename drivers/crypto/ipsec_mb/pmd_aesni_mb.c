@@ -6,6 +6,8 @@
 
 #include "pmd_aesni_mb_priv.h"
 
+RTE_DEFINE_PER_LCORE(pid_t, pid);
+
 struct aesni_mb_op_buf_data {
 	struct rte_mbuf *m;
 	uint32_t offset;
@@ -846,6 +848,7 @@ aesni_mb_session_configure(IMB_MGR *mb_mgr,
 #if IMB_VERSION(1, 3, 0) < IMB_VERSION_NUM
 	sess->session_id = imb_set_session(mb_mgr, &sess->template_job);
 	sess->pid = getpid();
+	RTE_PER_LCORE(pid) = sess->pid;
 #endif
 
 	return 0;
@@ -1503,7 +1506,7 @@ aesni_mb_digest_appended_in_src(struct rte_crypto_op *op, IMB_JOB *job,
 static inline int
 set_mb_job_params(IMB_JOB *job, struct ipsec_mb_qp *qp,
 		struct rte_crypto_op *op, uint8_t *digest_idx,
-		IMB_MGR *mb_mgr)
+		IMB_MGR *mb_mgr, pid_t pid)
 {
 	struct rte_mbuf *m_src = op->sym->m_src, *m_dst;
 	struct aesni_mb_qp_data *qp_data = ipsec_mb_get_qp_private_data(qp);
@@ -1517,6 +1520,10 @@ set_mb_job_params(IMB_JOB *job, struct ipsec_mb_qp *qp,
 	uint8_t sgl = 0;
 	uint8_t lb_sgl = 0;
 
+#if IMB_VERSION(1, 3, 0) >= IMB_VERSION_NUM
+	(void) pid;
+#endif
+
 	session = ipsec_mb_get_session_private(qp, op);
 	if (session == NULL) {
 		op->status = RTE_CRYPTO_OP_STATUS_INVALID_SESSION;
@@ -1527,7 +1534,7 @@ set_mb_job_params(IMB_JOB *job, struct ipsec_mb_qp *qp,
 			session->template_job.cipher_mode;
 
 #if IMB_VERSION(1, 3, 0) < IMB_VERSION_NUM
-	if (session->pid != getpid()) {
+	if (session->pid != pid) {
 		memcpy(job, &session->template_job, sizeof(IMB_JOB));
 		imb_set_session(mb_mgr, job);
 	} else if (job->session_id != session->session_id)
@@ -2136,6 +2143,7 @@ aesni_mb_dequeue_burst(void *queue_pair, struct rte_crypto_op **ops,
 	int retval, processed_jobs = 0;
 	uint16_t i, nb_jobs;
 	IMB_JOB *jobs[IMB_MAX_BURST_SIZE] = {NULL};
+	pid_t pid;
 
 	if (unlikely(nb_ops == 0 || mb_mgr == NULL))
 		return 0;
@@ -2176,6 +2184,11 @@ aesni_mb_dequeue_burst(void *queue_pair, struct rte_crypto_op **ops,
 			continue;
 		}
 
+		if (!RTE_PER_LCORE(pid))
+			RTE_PER_LCORE(pid) = getpid();
+
+		pid = RTE_PER_LCORE(pid);
+
 		/*
 		 * Get the next operations to process from ingress queue.
 		 * There is no need to return the job to the IMB_MGR
@@ -2194,7 +2207,7 @@ aesni_mb_dequeue_burst(void *queue_pair, struct rte_crypto_op **ops,
 							       &digest_idx);
 			else
 				retval = set_mb_job_params(job, qp, op,
-							   &digest_idx, mb_mgr);
+							   &digest_idx, mb_mgr, pid);
 
 			if (unlikely(retval != 0)) {
 				qp->stats.dequeue_err_count++;
@@ -2317,6 +2330,7 @@ aesni_mb_dequeue_burst(void *queue_pair, struct rte_crypto_op **ops,
 	struct rte_crypto_op *op;
 	IMB_JOB *job;
 	int retval, processed_jobs = 0;
+	pid_t pid = 0;
 
 	if (unlikely(nb_ops == 0 || mb_mgr == NULL))
 		return 0;
@@ -2353,7 +2367,7 @@ aesni_mb_dequeue_burst(void *queue_pair, struct rte_crypto_op **ops,
 						&digest_idx);
 		else
 			retval = set_mb_job_params(job, qp, op,
-				&digest_idx, mb_mgr);
+				&digest_idx, mb_mgr, pid);
 
 		if (unlikely(retval != 0)) {
 			qp->stats.dequeue_err_count++;
