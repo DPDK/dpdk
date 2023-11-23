@@ -244,6 +244,8 @@ Limitations
 
   - Matching on ICMP6 following IPv6 routing extension header,
     should match ``ipv6_routing_ext_next_hdr`` instead of ICMP6.
+    IPv6 routing extension matching is not supported in flow template relaxed
+    matching mode (see ``struct rte_flow_pattern_template_attr::relaxed_matching``).
 
 - When using Verbs flow engine (``dv_flow_en`` = 0), flow pattern without any
   specific VLAN will match for VLAN packets as well:
