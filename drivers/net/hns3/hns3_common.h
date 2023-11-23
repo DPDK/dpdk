@@ -58,6 +58,7 @@ int hns3_map_rx_interrupt(struct rte_eth_dev *dev);
 void hns3_unmap_rx_interrupt(struct rte_eth_dev *dev);
 int hns3_restore_rx_interrupt(struct hns3_hw *hw);
 
+int hns3_get_pci_revision_id(struct hns3_hw *hw, uint8_t *revision_id);
 void hns3_set_default_dev_specifications(struct hns3_hw *hw);
 int hns3_query_dev_specifications(struct hns3_hw *hw);
 
