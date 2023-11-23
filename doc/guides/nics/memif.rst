@@ -216,15 +216,15 @@ In this example we run two instances of testpmd application and transmit packets
 
 First create ``server`` interface::
 
-    #./<build_dir>/app/dpdk-testpmd -l 0-1 --proc-type=primary --file-prefix=pmd1 --vdev=net_memif,role=server -- -i
+    # ./<build_dir>/app/dpdk-testpmd -l 0-1 --proc-type=primary --file-prefix=pmd1 --vdev=net_memif,role=server -- -i
 
 Now create ``client`` interface (server must be already running so the client will connect)::
 
-    #./<build_dir>/app/dpdk-testpmd -l 2-3 --proc-type=primary --file-prefix=pmd2 --vdev=net_memif -- -i
+    # ./<build_dir>/app/dpdk-testpmd -l 2-3 --proc-type=primary --file-prefix=pmd2 --vdev=net_memif -- -i
 
 You can also enable ``zero-copy`` on ``client`` interface::
 
-    #./<build_dir>/app/dpdk-testpmd -l 2-3 --proc-type=primary --file-prefix=pmd2 --vdev=net_memif,zero-copy=yes --single-file-segments -- -i
+    # ./<build_dir>/app/dpdk-testpmd -l 2-3 --proc-type=primary --file-prefix=pmd2 --vdev=net_memif,zero-copy=yes --single-file-segments -- -i
 
 Start forwarding packets::
 
@@ -260,7 +260,7 @@ To see socket filename use show memif command::
 
 Now create memif interface by running testpmd with these command line options::
 
-    #./dpdk-testpmd --vdev=net_memif,socket=/run/vpp/memif.sock -- -i
+    # ./dpdk-testpmd --vdev=net_memif,socket=/run/vpp/memif.sock -- -i
 
 Testpmd should now create memif client interface and try to connect to server.
 In testpmd set forward option to icmpecho and start forwarding::
@@ -283,7 +283,7 @@ The situation is analogous to cross connecting 2 ports of the NIC by cable.
 
 To set the loopback, just use the same socket and id with different roles::
 
-    #./dpdk-testpmd --vdev=net_memif0,role=server,id=0 --vdev=net_memif1,role=client,id=0 -- -i
+    # ./dpdk-testpmd --vdev=net_memif0,role=server,id=0 --vdev=net_memif1,role=client,id=0 -- -i
 
 Then start the communication::
 
