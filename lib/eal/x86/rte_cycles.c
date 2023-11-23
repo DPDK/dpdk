@@ -6,6 +6,10 @@
 #include <unistd.h>
 #include <cpuid.h>
 
+#define x86_vendor_amd(t1, t2, t3)        \
+	((t1 == 0x68747541) && /* htuA */   \
+	 (t2 == 0x444d4163) && /* DMAc */   \
+	 (t3 == 0x69746e65))   /* itne */
 
 #include "eal_private.h"
 
@@ -89,6 +93,18 @@ get_tsc_freq_arch(void)
 	uint32_t a, b, c, d, maxleaf;
 	uint8_t mult, model;
 	int32_t ret;
+
+#ifdef RTE_TOOLCHAIN_MSVC
+	__cpuid(cpuinfo, 0);
+	a = cpuinfo[0];
+	b = cpuinfo[1];
+	c = cpuinfo[2];
+	d = cpuinfo[3];
+#else
+	__cpuid(0, a, b, c, d);
+#endif
+	if (x86_vendor_amd(b, c, d))
+		return 0;
 
 	/*
 	 * Time Stamp Counter and Nominal Core Crystal Clock
