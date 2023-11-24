@@ -875,6 +875,8 @@ T: git://dpdk.org/next/dpdk-next-net-mlx
 F: drivers/common/mlx5/
 F: drivers/net/mlx5/
 F: buildtools/options-ibverbs-static.sh
+F: doc/guides/platform/mlx5.rst
+F: doc/guides/platform/bluefield.rst
 F: doc/guides/nics/mlx5.rst
 F: doc/guides/nics/features/mlx5.ini
 
