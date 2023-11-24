@@ -6,54 +6,8 @@
 DPDK Release 23.11
 ==================
 
-.. **Read this first.**
-
-   The text in the sections below explains how to update the release notes.
-
-   Use proper spelling, capitalization and punctuation in all sections.
-
-   Variable and config names should be quoted as fixed width text:
-   ``LIKE_THIS``.
-
-   Build the docs and view the output file to ensure the changes are correct::
-
-      ninja -C build doc
-      xdg-open build/doc/guides/html/rel_notes/release_23_11.html
-
-
 New Features
 ------------
-
-.. This section should contain new features added in this release.
-   Sample format:
-
-   * **Add a title in the past tense with a full stop.**
-
-     Add a short 1-2 sentence description in the past tense.
-     The description should be enough to allow someone scanning
-     the release notes to understand the new feature.
-
-     If the feature adds a lot of sub-features you can use a bullet list
-     like this:
-
-     * Added feature foo to do something.
-     * Enhanced feature bar to do something else.
-
-     Refer to the previous release notes for examples.
-
-     Suggested order in release notes items:
-     * Core libs (EAL, mempool, ring, mbuf, buses)
-     * Device abstraction libs and PMDs (ordered alphabetically by vendor name)
-       - ethdev (lib, PMDs)
-       - cryptodev (lib, PMDs)
-       - eventdev (lib, PMDs)
-       - etc
-     * Other libs
-     * Apps, Examples, Tools (if significant)
-
-     This section is a comment. Do not overwrite or remove it.
-     Also, make sure to start the actual text at the margin.
-     =======================================================
 
 * **Build requirements increased for C11.**
 
@@ -63,8 +17,8 @@ New Features
 
   More specifically, the requirements will be:
 
-  * Support for flag "-std=c11" (or similar)
-  * __STDC_NO_ATOMICS__ is *not defined* when using c11 flag
+  * Support for flag ``-std=c11`` (or similar)
+  * ``__STDC_NO_ATOMICS__`` is *not defined* when using c11 flag
 
   Please note:
 
@@ -102,10 +56,12 @@ New Features
 
 * **Added support for power intrinsics with AMD processors.**
 
+  Added AMD ``MONITORX``/``MWAITX`` instructions in EAL for power optimisation.
+
 * **Added support for allow/block list in vmbus bus driver.***
 
-  The ``vmbus`` bus driver now supports -a and -b EAL options for selecting
-  devices.
+  The ``vmbus`` bus driver now supports ``-a`` and ``-b`` EAL options
+  for selecting devices.
 
 * **Added mbuf recycling support.**
 
@@ -143,7 +99,7 @@ New Features
 
   For P4-programmable devices, hardware pipeline can be configured through
   a new "PROG" action type and its associated custom arguments.
-  Such P4 pipeline, not using the standard blocks of the flow API,
+  Such P4 pipelines, not using the standard blocks of the flow API,
   can be managed with ``RTE_FLOW_ITEM_TYPE_FLEX`` and ``RTE_FLOW_ACTION_TYPE_PROG``.
 
 * **Added flow group set miss actions.**
@@ -155,7 +111,7 @@ New Features
 * **Updated Amazon ena (Elastic Network Adapter) net driver.**
 
   * Upgraded ENA HAL to latest version.
-  * Added support for connection tracking allowance utilization metric.
+  * Added support for connection tracking allowance utilization metrics.
   * Added support for reporting Rx overrun errors in xstats.
   * Added support for ENA-express metrics.
 
@@ -222,12 +178,12 @@ New Features
   Added Rx inject API to allow applications to submit packets
   for protocol offload and have them injected back to ethdev Rx
   so that further ethdev Rx actions (IP reassembly, packet parsing and flow lookups)
-  can happen based on inner packet.
+  can happen based on the inner packet.
 
-  The API when implemented by an ethdev, application would be able to process
+  When using the API implemented by an ethdev the application would be able to process
   packets that are received without/failed inline offload processing
   (such as fragmented ESP packets with inline IPsec offload).
-  The API when implemented by a cryptodev, can be used for injecting packets
+  When using the API implemented by a cryptodev it can be used for injecting packets
   to ethdev Rx after IPsec processing and take advantage of ethdev Rx actions
   for the inner packet which cannot be accelerated in inline protocol offload mode.
 
@@ -239,7 +195,7 @@ New Features
 * **Updated ipsec_mb crypto driver.**
 
   * Added Intel IPsec MB v1.5 library support for x86 platform.
-  * Added support for digest encrypted to AESNI_MB asynchronous crypto driver.
+  * Added support for digest encrypted to the AESNI_MB asynchronous crypto driver.
 
 * **Updated Intel QuickAssist Technology driver.**
 
@@ -274,7 +230,7 @@ New Features
   for creating Rx adapter instance for the applications desire to
   control both the event port allocation and event buffer size.
 
-* **Added event DMA adapter library.**
+* **Added eventdev DMA adapter.**
 
   * Added the Event DMA Adapter Library. This library extends the event-based
     model by introducing APIs that allow applications to enqueue/dequeue DMA
@@ -282,8 +238,8 @@ New Features
 
 * **Added eventdev support to link queues to port with link profile.**
 
-  Introduced event link profiles that can be used to associated links between
-  event queues and an event port with a unique identifier termed as link profile.
+  Introduced event link profiles that can be used to associate links between
+  event queues and an event port with a unique identifier termed the "link profile".
   The profile can be used to switch between the associated links in fast-path
   without the additional overhead of linking/unlinking and waiting for unlinking.
 
@@ -308,8 +264,8 @@ New Features
 
 * **Added CLI based graph application.**
 
-  Added CLI based graph application which exercises on different use cases.
-  Application provides a framework so that each use case can be added via a file.
+  Added CLI based graph application which exercises different use cases.
+  The application provides a framework so that each use case can be added via a file.
   Each CLI will further be translated into a graph representing the use case.
 
 * **Added layer 2 MACsec forwarding example application.**
@@ -320,15 +276,6 @@ New Features
 
 Removed Items
 -------------
-
-.. This section should contain removed items in this release. Sample format:
-
-   * Add a short 1-2 sentence description of the removed item
-     in the past tense.
-
-   This section is a comment. Do not overwrite or remove it.
-   Also, make sure to start the actual text at the margin.
-   =======================================================
 
 * eal: Removed deprecated ``RTE_FUNC_PTR_OR_*`` macros.
 
@@ -354,18 +301,6 @@ Removed Items
 
 API Changes
 -----------
-
-.. This section should contain API changes. Sample format:
-
-   * sample: Add a short 1-2 sentence description of the API change
-     which was announced in the previous releases and made in this release.
-     Start with a scope label like "ethdev:".
-     Use fixed width quotes for ``function_names`` or ``struct_names``.
-     Use the past tense.
-
-   This section is a comment. Do not overwrite or remove it.
-   Also, make sure to start the actual text at the margin.
-   =======================================================
 
 * eal: The thread API has changed.
   The function ``rte_thread_create_control()`` does not take attributes anymore.
@@ -419,18 +354,6 @@ API Changes
 ABI Changes
 -----------
 
-.. This section should contain ABI changes. Sample format:
-
-   * sample: Add a short 1-2 sentence description of the ABI change
-     which was announced in the previous releases and made in this release.
-     Start with a scope label like "ethdev:".
-     Use fixed width quotes for ``function_names`` or ``struct_names``.
-     Use the past tense.
-
-   This section is a comment. Do not overwrite or remove it.
-   Also, make sure to start the actual text at the margin.
-   =======================================================
-
 * ethdev: Added ``recycle_tx_mbufs_reuse`` and ``recycle_rx_descriptors_refill``
   fields to ``rte_eth_dev`` structure.
 
@@ -449,39 +372,8 @@ ABI Changes
   due to inline out-of-place feature addition.
 
 
-Known Issues
-------------
-
-.. This section should contain new known issues in this release. Sample format:
-
-   * **Add title in present tense with full stop.**
-
-     Add a short 1-2 sentence description of the known issue
-     in the present tense. Add information on any known workarounds.
-
-   This section is a comment. Do not overwrite or remove it.
-   Also, make sure to start the actual text at the margin.
-   =======================================================
-
-
 Tested Platforms
 ----------------
-
-.. This section should contain a list of platforms that were tested
-   with this release.
-
-   The format is:
-
-   * <vendor> platform with <vendor> <type of devices> combinations
-
-     * List of CPU
-     * List of OS
-     * List of devices
-     * Other relevant details...
-
-   This section is a comment. Do not overwrite or remove it.
-   Also, make sure to start the actual text at the margin.
-   =======================================================
 
 * Intel\ |reg| platforms with Intel\ |reg| NICs combinations
 
