@@ -1708,8 +1708,7 @@ i40e_flow_parse_fdir_pattern(struct rte_eth_dev *dev,
 
 				ether_type = rte_be_to_cpu_16(eth_spec->hdr.ether_type);
 
-				if (next_type == RTE_FLOW_ITEM_TYPE_VLAN ||
-				    ether_type == RTE_ETHER_TYPE_IPV4 ||
+				if (ether_type == RTE_ETHER_TYPE_IPV4 ||
 				    ether_type == RTE_ETHER_TYPE_IPV6 ||
 				    ether_type == i40e_get_outer_vlan(dev)) {
 					rte_flow_error_set(error, EINVAL,
