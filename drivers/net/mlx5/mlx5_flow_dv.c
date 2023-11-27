@@ -5484,13 +5484,6 @@ flow_dv_validate_action_jump(struct rte_eth_dev *dev,
 				       &grp_info, error);
 	if (ret)
 		return ret;
-	if (attributes->group == target_group &&
-	    !(action_flags & (MLX5_FLOW_ACTION_TUNNEL_SET |
-			      MLX5_FLOW_ACTION_TUNNEL_MATCH)))
-		return rte_flow_error_set(error, EINVAL,
-					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
-					  "target group must be other than"
-					  " the current flow group");
 	if (table == 0)
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ACTION_CONF,
