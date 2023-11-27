@@ -149,6 +149,7 @@ def mgmtvf(args):
         params['add'] = args.add_vf
         params['vfdev'] = args.pfvfdev
         params['socket_file'] = args.vhost_socket
+        params['uuid'] = args.vm_uuid
     if args.remove_vf:
         params['remove'] = args.remove_vf
         params['vfdev'] = args.pfvfdev
@@ -223,6 +224,8 @@ def main():
                     help='Device test mode: 1=bit; 2=byte', default=2)
     p.add_argument('-v', metavar='vhost_socket', dest='vhost_socket', type=str,
                     help='Vhost socket file name')
+    p.add_argument('-u', metavar='vm_uuid', dest='vm_uuid', type=str,
+                    help='Virtual machine UUID')
     p.set_defaults(func=mgmtvf)
 
     args = parser.parse_args()

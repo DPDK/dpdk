@@ -190,14 +190,14 @@ static cJSON *mgmtpf(jrpc_context *ctx, cJSON *params, cJSON *id)
 	return result;
 }
 
-static cJSON *vdpa_vf_dev_add(const char *vf_name,
+static cJSON *vdpa_vf_dev_add(char *vf_name,
 			struct vdpa_vf_params *vf_params,
-			const char *socket_file)
+			const char *socket_file, const char *vm_uuid)
 {
 	cJSON *result = cJSON_CreateObject();
 	int ret;
 
-	ret = rte_vdpa_vf_dev_add(vf_name, vf_params);
+	ret = rte_vdpa_vf_dev_add(vf_name, vm_uuid, vf_params);
 	if (ret) {
 		return vdpa_rpc_format_errno(result, ret);
 	}
@@ -332,8 +332,10 @@ static cJSON *mgmtvf(jrpc_context *ctx, cJSON *params, cJSON *id)
 	if (vf_add && vf_dev) {
 		cJSON *socket_file = cJSON_GetObjectItem(params,
 				"socket_file");
+		cJSON *uuid = cJSON_GetObjectItem(params, "uuid");
 		result = vdpa_vf_dev_add(vf_dev->valuestring, NULL,
-			socket_file ? socket_file->valuestring : NULL);
+			socket_file ? socket_file->valuestring : NULL,
+			uuid ? uuid->valuestring : NULL);
 	} else if (vf_remove && vf_dev) {
 		/* Parse PCI device name*/
 		result = vdpa_vf_dev_remove(vf_dev->valuestring);

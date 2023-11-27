@@ -9,6 +9,7 @@
 #include <rte_vdpa.h>
 #include <vdpa_driver.h>
 #include <rte_kvargs.h>
+#include <rte_uuid.h>
 
 #include <virtio_api.h>
 #include <virtio_lm.h>
@@ -1348,8 +1349,17 @@ static int vdpa_check_handler(__rte_unused const char *key,
 	return 0;
 }
 
+static int vm_uuid_check_handler(__rte_unused const char *key,
+		const char *value, void *ret_val)
+{
+	if(rte_uuid_parse(value, ret_val))
+		return -1;
+	else
+		return 0;
+}
+
 static int
-virtio_pci_devargs_parse(struct rte_devargs *devargs, int *vdpa)
+virtio_pci_devargs_parse(struct rte_devargs *devargs, int *vdpa, rte_uuid_t vm_uuid)
 {
 	struct rte_kvargs *kvlist;
 	int ret = 0;
@@ -1371,6 +1381,18 @@ virtio_pci_devargs_parse(struct rte_devargs *devargs, int *vdpa)
 				vdpa_check_handler, vdpa);
 		if (ret < 0)
 			DRV_LOG(ERR, "Failed to parse %s", VIRTIO_ARG_VDPA);
+	}
+
+	if (rte_kvargs_count(kvlist, VIRTIO_ARG_VM_UUID) == 1) {
+		/* VM UUID could be specified to let the driver know which VF
+		 * belongs to the same VM. This information will be used to
+		 * optimize DMA mapping for multiple VFs in the same VM.
+		 * e.g., vf_uuid=edc76b9c-7d9e-46c9-be5d-a1d5e606a77d
+		 */
+		ret = rte_kvargs_process(kvlist, VIRTIO_ARG_VM_UUID,
+				vm_uuid_check_handler, vm_uuid);
+		if (ret < 0)
+			DRV_LOG(ERR, "Failed to parse %s", VIRTIO_ARG_VM_UUID);
 	}
 
 	rte_kvargs_free(kvlist);
@@ -1596,6 +1618,7 @@ virtio_vdpa_dev_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		struct rte_pci_device *pci_dev)
 {
 	int vdpa = 0;
+	rte_uuid_t vm_uuid;
 	int ret, fd, vf_id = 0, state_len;
 	struct virtio_vdpa_priv *priv;
 	char devname[RTE_DEV_NAME_MAX_LEN] = {0};
@@ -1607,7 +1630,7 @@ virtio_vdpa_dev_probe(struct rte_pci_driver *pci_drv __rte_unused,
 
 	rte_pci_device_name(&pci_dev->addr, devname, RTE_DEV_NAME_MAX_LEN);
 
-	ret = virtio_pci_devargs_parse(pci_dev->device.devargs, &vdpa);
+	ret = virtio_pci_devargs_parse(pci_dev->device.devargs, &vdpa, vm_uuid);
 	if (ret < 0) {
 		DRV_LOG(ERR, "Devargs parsing is failed %d dev:%s", ret, devname);
 		return ret;
@@ -1626,6 +1649,7 @@ virtio_vdpa_dev_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	}
 
 	priv->pdev = pci_dev;
+	rte_uuid_copy(priv->vm_uuid, vm_uuid);
 
 	ret = virtio_vdpa_get_pf_name(devname, pfname, sizeof(pfname));
 	if (ret) {

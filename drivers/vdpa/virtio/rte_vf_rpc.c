@@ -8,12 +8,14 @@
  * Device specific rpc lib
  */
 #include <unistd.h>
+#include <string.h>
 #include "rte_vf_rpc.h"
 #include "virtio_api.h"
 #include "virtio_lm.h"
 #include "virtio_vdpa.h"
 #include "virtio_util.h"
 #include <rte_vhost.h>
+#include <rte_pci.h>
 
 extern int virtio_vdpa_logtype;
 #define RPC_LOG(level, fmt, args...) \
@@ -25,13 +27,19 @@ extern int virtio_vdpa_logtype;
 #endif
 
 int
-rte_vdpa_vf_dev_add(const char *vf_name, struct vdpa_vf_params *vf_params __rte_unused)
+rte_vdpa_vf_dev_add(char *vf_name, const char *vm_uuid,
+	struct vdpa_vf_params *vf_params __rte_unused)
 {
 	char args[RTE_DEV_NAME_MAX_LEN];
-	snprintf(args, RTE_DEV_NAME_MAX_LEN, "%s=%s", VIRTIO_ARG_VDPA, VIRTIO_ARG_VDPA_VALUE_VF);
 
 	if (!vf_name)
 		return -VFE_VDPA_ERR_NO_VF_NAME;
+
+	if (vm_uuid != NULL)
+		snprintf(args, RTE_DEV_NAME_MAX_LEN, "%s=%s,%s=%s", VIRTIO_ARG_VDPA, VIRTIO_ARG_VDPA_VALUE_VF,
+			VIRTIO_ARG_VM_UUID, vm_uuid);
+	else
+		snprintf(args, RTE_DEV_NAME_MAX_LEN, "%s=%s", VIRTIO_ARG_VDPA, VIRTIO_ARG_VDPA_VALUE_VF);
 
 	if(virtio_vdpa_find_priv_resource_by_name(vf_name))
 		return -VFE_VDPA_ERR_ADD_VF_ALREADY_ADD;
