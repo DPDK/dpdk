@@ -531,6 +531,19 @@ hns3vf_enable_irq0(struct hns3_hw *hw)
 	hns3_write_dev(hw, HNS3_MISC_VECTOR_REG_BASE, 1);
 }
 
+void
+hns3vf_clear_reset_event(struct hns3_hw *hw)
+{
+	uint32_t clearval;
+	uint32_t cmdq_stat_reg;
+
+	cmdq_stat_reg = hns3_read_dev(hw, HNS3_VECTOR0_CMDQ_STAT_REG);
+	clearval = cmdq_stat_reg & ~BIT(HNS3_VECTOR0_RST_INT_B);
+	hns3_write_dev(hw, HNS3_VECTOR0_CMDQ_SRC_REG, clearval);
+
+	hns3vf_enable_irq0(hw);
+}
+
 static enum hns3vf_evt_cause
 hns3vf_check_event_cause(struct hns3_adapter *hns, uint32_t *clearval)
 {
@@ -605,8 +618,10 @@ hns3vf_interrupt_handler(void *param)
 		break;
 	}
 
-	/* Enable interrupt */
-	hns3vf_enable_irq0(hw);
+	/* Enable interrupt if it is not caused by reset */
+	if (event_cause == HNS3VF_VECTOR0_EVENT_MBX ||
+	    event_cause == HNS3VF_VECTOR0_EVENT_OTHER)
+		hns3vf_enable_irq0(hw);
 }
 
 void
