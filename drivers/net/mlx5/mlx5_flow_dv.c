@@ -1925,7 +1925,7 @@ mlx5_flow_field_id_to_modify_info
 			if (priv->sh->config.dv_flow_en == 2)
 				reg = flow_hw_get_reg_id(dev,
 							 RTE_FLOW_ITEM_TYPE_TAG,
-							 data->level);
+							 tag_index);
 			else
 				reg = mlx5_flow_get_reg_id(dev, MLX5_APP_TAG,
 							   tag_index, error);
