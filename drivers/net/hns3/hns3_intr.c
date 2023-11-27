@@ -2749,7 +2749,8 @@ hns3_reset_post(struct hns3_adapter *hns)
 		/* IMP will wait ready flag before reset */
 		hns3_notify_reset_ready(hw, false);
 		hns3_clear_reset_level(hw, &hw->reset.pending);
-		hns3_clear_reset_event(hw);
+		if (!hns->is_vf)
+			hns3_clear_reset_event(hw);
 		__atomic_store_n(&hns->hw.reset.resetting, 0, __ATOMIC_RELAXED);
 		hw->reset.attempts = 0;
 		hw->reset.stats.success_cnt++;
@@ -2799,7 +2800,8 @@ hns3_reset_fail_handle(struct hns3_adapter *hns)
 	struct timeval tv;
 
 	hns3_clear_reset_level(hw, &hw->reset.pending);
-	hns3_clear_reset_event(hw);
+	if (!hns->is_vf)
+		hns3_clear_reset_event(hw);
 	if (hns3_reset_err_handle(hns)) {
 		hw->reset.stage = RESET_STAGE_PREWAIT;
 		hns3_schedule_reset(hns);
