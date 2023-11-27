@@ -1036,6 +1036,7 @@ void hns3vf_update_link_status(struct hns3_hw *hw, uint8_t link_status,
 			  uint32_t link_speed, uint8_t link_duplex);
 void hns3vf_update_push_lsc_cap(struct hns3_hw *hw, bool supported);
 void hns3_clear_reset_event(struct hns3_hw *hw);
+void hns3vf_clear_reset_event(struct hns3_hw *hw);
 
 static inline bool
 is_reset_pending(struct hns3_adapter *hns)
@@ -1046,6 +1047,17 @@ is_reset_pending(struct hns3_adapter *hns)
 	else
 		ret = hns3_is_reset_pending(hns);
 	return ret;
+}
+
+static inline void
+hns3_clear_reset_status(struct hns3_hw *hw)
+{
+	struct hns3_adapter *hns = HNS3_DEV_HW_TO_ADAPTER(hw);
+
+	if (hns->is_vf)
+		hns3vf_clear_reset_event(hw);
+	else
+		hns3_clear_reset_event(hw);
 }
 
 #endif /* _HNS3_ETHDEV_H_ */
