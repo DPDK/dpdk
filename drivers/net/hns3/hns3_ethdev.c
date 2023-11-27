@@ -5560,7 +5560,10 @@ hns3_detect_reset_event(struct hns3_hw *hw)
 		new_req = HNS3_GLOBAL_RESET;
 	}
 
-	if (new_req != HNS3_NONE_RESET && last_req < new_req) {
+	if (new_req == HNS3_NONE_RESET)
+		return HNS3_NONE_RESET;
+
+	if (last_req == HNS3_NONE_RESET || last_req < new_req) {
 		hns3_schedule_delayed_reset(hns);
 		hns3_warn(hw, "High level reset detected, delay do reset");
 	}
