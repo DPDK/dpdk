@@ -930,6 +930,8 @@ virtio_vdpa_dev_close(int vid)
 	uint64_t features = 0, max_phy, log_base, log_size, log_size_align;
 	uint16_t num_vr;
 	rte_iova_t iova;
+	uint64_t t_start = rte_rdtsc_precise();
+	uint64_t t_end;
 	int ret, i;
 
 	if (priv == NULL) {
@@ -1076,7 +1078,9 @@ virtio_vdpa_dev_close(int vid)
 	}
 	priv->dev_work_flag = VIRTIO_VDPA_DEV_CLOSE_WORK_START;
 
-	DRV_LOG(INFO, "%s vid %d was closed", priv->vdev->device->name, vid);
+	t_end  = rte_rdtsc_precise();
+	DRV_LOG(INFO, "%s vid %d was closed, took %lu us.", priv->vdev->device->name,
+			vid, (t_end - t_start) * 1000000 / rte_get_tsc_hz());
 	return ret;
 }
 
