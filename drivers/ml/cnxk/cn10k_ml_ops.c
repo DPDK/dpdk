@@ -288,6 +288,7 @@ cn10k_ml_model_xstat_get(struct cnxk_ml_dev *cnxk_mldev, struct cnxk_ml_layer *l
 static int
 cn10k_ml_cache_model_data(struct cnxk_ml_dev *cnxk_mldev, struct cnxk_ml_layer *layer)
 {
+	struct cn10k_ml_layer_xstats *xstats;
 	char str[RTE_MEMZONE_NAMESIZE];
 	const struct plt_memzone *mz;
 	uint64_t isize = 0;
@@ -308,6 +309,16 @@ cn10k_ml_cache_model_data(struct cnxk_ml_dev *cnxk_mldev, struct cnxk_ml_layer *
 	ret = cn10k_ml_inference_sync(cnxk_mldev, layer->index, mz->addr,
 				      PLT_PTR_ADD(mz->addr, isize), 1);
 	plt_memzone_free(mz);
+
+	/* Reset sync xstats. */
+	xstats = layer->glow.sync_xstats;
+	xstats->hw_latency_tot = 0;
+	xstats->hw_latency_min = UINT64_MAX;
+	xstats->hw_latency_max = 0;
+	xstats->fw_latency_tot = 0;
+	xstats->fw_latency_min = UINT64_MAX;
+	xstats->fw_latency_max = 0;
+	xstats->dequeued_count = 0;
 
 	return ret;
 }
