@@ -9,6 +9,13 @@ timeout_seconds_fast = 10
 test_no_huge_args = ['--no-huge', '-m', '2048']
 has_hugepage = run_command(has_hugepages_cmd, check: true).stdout().strip() != '0'
 message('hugepage availability: @0@'.format(has_hugepage))
+if not has_hugepage
+    if arch_subdir == 'ppc'
+        # On ppc64, without huge pages, PA would be the default but fails like:
+        # EAL: Cannot use IOVA as 'PA' since physical addresses are not available
+        test_no_huge_args += '--iova-mode=va'
+    endif
+endif
 
 # process source files to determine the different unit test suites
 # - fast_tests
