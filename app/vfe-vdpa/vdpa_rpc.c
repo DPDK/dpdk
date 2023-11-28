@@ -234,6 +234,7 @@ static void vdpa_vf_info_reformat(cJSON *device, struct vdpa_vf_params *vf_param
 		addr_bytes[0], addr_bytes[1], addr_bytes[2],
 		addr_bytes[3], addr_bytes[4], addr_bytes[5]);
 	cJSON_AddStringToObject(device, "mac", mac_string);
+	cJSON_AddStringToObject(device, "vm_uuid", vf_params->vm_uuid);
 	if (!vdpa_get_socket_file_name(vf_params->vf_name, mac_string))
 		cJSON_AddStringToObject(device, "socket_file", mac_string);
 }

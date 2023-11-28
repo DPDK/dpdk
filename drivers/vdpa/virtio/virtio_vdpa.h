@@ -11,6 +11,16 @@ enum {
 	VIRTIO_VDPA_NOTIFIER_STATE_ERR
 };
 
+struct virtio_vdpa_iommu_domain {
+	TAILQ_ENTRY(virtio_vdpa_iommu_domain) next;
+	rte_uuid_t vm_uuid;
+	int vfio_container_fd;
+	struct rte_vhost_memory *mem;
+	int container_ref_cnt;
+	int mem_tbl_ref_cnt;
+	pthread_mutex_t domain_lock;
+};
+
 struct virtio_vdpa_vring_info {
 	uint64_t desc;
 	uint64_t avail;
@@ -37,7 +47,7 @@ struct virtio_vdpa_priv {
 	const struct rte_memzone *state_mz; /* This is used to formmat state  at local */
 	const struct rte_memzone *state_mz_remote; /* This is used get state frome contoller */
 	const struct virtio_vdpa_device_callback *dev_ops;
-	struct rte_vhost_memory *mem;
+	struct virtio_vdpa_iommu_domain *iommu_domain;
 	enum virtio_internal_status lm_status;
 	int state_size;
 	int vfio_container_fd;
@@ -53,6 +63,7 @@ struct virtio_vdpa_priv {
 	uint16_t hw_nr_virtqs; /* Number of vq device supported */
 	bool configured;
 	bool dev_conf_read;
+	bool mem_tbl_set;
 };
 
 #define VIRTIO_VDPA_REMOTE_STATE_DEFAULT_SIZE 8192

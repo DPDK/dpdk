@@ -29,6 +29,7 @@ struct vdpa_vf_params {
 	uint64_t features;
 	uint32_t mtu;
 	struct rte_ether_addr mac;
+	char vm_uuid[RTE_UUID_STRLEN];
 };
 
 enum vdpa_vf_prov_flags {
