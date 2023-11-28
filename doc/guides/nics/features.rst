@@ -711,6 +711,19 @@ Supports configuring per-queue stat counter mapping.
   ``rte_eth_dev_set_tx_queue_stats_mapping()``.
 
 
+.. _nic_features_traffic_manager:
+
+Traffic manager
+---------------
+
+Supports Traffic manager.
+
+* **[implements] rte_tm_ops**: ``capabilities_get``, ``shaper_profile_add``,
+  ``hierarchy_commit`` and so on.
+* **[related]    API**: ``rte_tm_capabilities_get()``, ``rte_tm_shaper_profile_add()``,
+  ``rte_tm_hierarchy_commit()`` and so on.
+
+
 .. _nic_features_fw_version:
 
 FW version
