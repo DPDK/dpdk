@@ -34,6 +34,17 @@ Supports getting the speed capabilities that the current device is capable of.
 * **[related]  API**: ``rte_eth_dev_info_get()``.
 
 
+.. _nic_features_link_speeds_config:
+
+Link speed configuration
+------------------------
+
+Supports configurating fixed speed and link autonegotiation.
+
+* **[uses]     user config**: ``dev_conf.link_speeds:RTE_ETH_LINK_SPEED_*``.
+* **[related]  API**: ``rte_eth_dev_configure()``.
+
+
 .. _nic_features_link_status:
 
 Link status
