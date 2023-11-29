@@ -185,7 +185,7 @@ struct entity_priv_dl_part {
 	/** Reorder packet buffer */
 	struct pdcp_reorder reorder;
 	/** Bitmap memory region */
-	uint8_t bitmap_mem[0];
+	uint8_t bitmap_mem[];
 };
 
 struct entity_priv_ul_part {
