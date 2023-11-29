@@ -334,9 +334,7 @@ struct ipsec_encap_gcm {
  * @seq_num: IPsec sequence number
  * @spi: IPsec SPI (Security Parameters Index)
  * @ip_hdr_len: optional IP Header length (in bytes)
- *  reserved - 16b
- *  Opt. IP Hdr Len - 16b
- * @ip_hdr: optional IP Header content (only for IPsec legacy mode)
+ *  IP header must follow directly after ipsec_encap_pdb
  */
 struct ipsec_encap_pdb {
 	uint32_t options;
@@ -350,7 +348,6 @@ struct ipsec_encap_pdb {
 	};
 	uint32_t spi;
 	uint32_t ip_hdr_len;
-	uint8_t ip_hdr[0];
 };
 
 static inline unsigned int
@@ -776,7 +773,12 @@ cnstr_shdsc_ipsec_encap(uint32_t *descbuf, bool ps, bool swap,
 		PROGRAM_SET_36BIT_ADDR(p);
 	phdr = SHR_HDR(p, share, hdr, 0);
 	__rta_copy_ipsec_encap_pdb(p, pdb, cipherdata->algtype);
-	COPY_DATA(p, pdb->ip_hdr, pdb->ip_hdr_len);
+
+	/* IP header if any follows the encap_pdb */
+	if (pdb->ip_hdr_len > 0) {
+		void *ip_hdr = pdb + 1;
+		COPY_DATA(p, ip_hdr, pdb->ip_hdr_len);
+	}
 	SET_LABEL(p, hdr);
 	pkeyjmp = JUMP(p, keyjmp, LOCAL_JUMP, ALL_TRUE, BOTH|SHRD);
 	if (authdata->keylen)
@@ -913,7 +915,13 @@ cnstr_shdsc_ipsec_encap_des_aes_xcbc(uint32_t *descbuf,
 	PROGRAM_CNTXT_INIT(p, descbuf, 0);
 	phdr = SHR_HDR(p, share, hdr, 0);
 	__rta_copy_ipsec_encap_pdb(p, pdb, cipherdata->algtype);
-	COPY_DATA(p, pdb->ip_hdr, pdb->ip_hdr_len);
+
+	/* IP header if any follows the encap_pdb */
+	if (pdb->ip_hdr_len > 0) {
+		void *ip_hdr = pdb + 1;
+		COPY_DATA(p, ip_hdr, pdb->ip_hdr_len);
+	}
+
 	SET_LABEL(p, hdr);
 	pkeyjump = JUMP(p, keyjump, LOCAL_JUMP, ALL_TRUE, SHRD | SELF);
 	/*
