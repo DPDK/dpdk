@@ -765,7 +765,7 @@ struct vnic_devcmd_notify {
 struct vnic_devcmd_provinfo {
 	uint8_t oui[3];
 	uint8_t type;
-	uint8_t data[0];
+	uint8_t data[];
 };
 
 /*
