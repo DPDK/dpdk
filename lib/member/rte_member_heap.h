@@ -27,7 +27,7 @@ struct hash {
 	uint16_t bkt_cnt;
 	uint16_t num_item;
 	uint32_t seed;
-	struct hash_bkt buckets[0];
+	struct hash_bkt buckets[];
 };
 
 struct node {
