@@ -73,7 +73,7 @@ struct nfp_flower_cmsg_mac_repr {
 		uint8_t info;
 		uint8_t nbi_port;
 		uint8_t phys_port;
-	} ports[0];
+	} ports[];
 };
 
 /*
