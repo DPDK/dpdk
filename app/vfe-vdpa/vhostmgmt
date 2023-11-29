@@ -82,7 +82,8 @@ class JsonRpcVirtnetClient(object):
                 buf += self.sock.recv(4096).decode("utf-8")
                 response = self.__string_to_json(buf)
             except socket.timeout:
-                break
+                print("ERR: response timeout")
+                sys.exit(1)
             except ValueError:
                 continue  # incomplete response; keep buffering
 
@@ -177,7 +178,7 @@ def int_hex(x):
 def main():
     server_addr='127.0.0.1'
     server_port='12190'
-    timeout=60.0
+    timeout=125.0
 
     parser = argparse.ArgumentParser(
         description='Nvidia vdpa-rpc command line interface ' + __version__)
