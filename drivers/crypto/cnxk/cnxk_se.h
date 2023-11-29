@@ -29,8 +29,11 @@ enum cpt_dp_thread_type {
 	CPT_DP_THREAD_TYPE_PT,
 };
 
+#define SYM_SESS_SIZE sizeof(struct rte_cryptodev_sym_session)
+
 struct cnxk_se_sess {
-	struct rte_cryptodev_sym_session rte_sess;
+	uint8_t rte_sess[SYM_SESS_SIZE];
+
 	uint8_t aes_gcm : 1;
 	uint8_t aes_ccm : 1;
 	uint8_t aes_ctr : 1;

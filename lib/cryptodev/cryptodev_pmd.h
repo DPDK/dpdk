@@ -153,7 +153,7 @@ struct rte_cryptodev_sym_session {
 
 	RTE_MARKER cacheline1 __rte_cache_min_aligned;
 	/**< Second cache line - start of the driver session data */
-	uint8_t driver_priv_data[0];
+	uint8_t driver_priv_data[];
 	/**< Driver specific session data, variable size */
 };
 
