@@ -53,7 +53,7 @@ struct cpfl_rule_info_meta {
 	uint32_t pr_num;			/* number of pattern rules */
 	uint32_t mr_num;			/* number of modification rules */
 	uint32_t rule_num;			/* number of all rules */
-	struct cpfl_rule_info rules[0];
+	struct cpfl_rule_info rules[];
 };
 
 static uint32_t cpfl_fxp_mod_idx_alloc(struct cpfl_adapter_ext *ad);
