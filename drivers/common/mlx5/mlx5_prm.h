@@ -5181,7 +5181,7 @@ struct mlx5_ifc_flow_context_bits {
 	u8 reserved_at_e0[0x40];
 	u8 encrypt_decrypt_obj_id[0x20];
 	u8 reserved_at_140[0x16c0];
-	union mlx5_ifc_dest_format_flow_counter_list_auto_bits destination[0];
+	union mlx5_ifc_dest_format_flow_counter_list_auto_bits destination[];
 };
 
 struct mlx5_ifc_set_fte_in_bits {

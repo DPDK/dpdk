@@ -1314,7 +1314,7 @@ struct mlx5_aso_ct_pool {
 	};
 	struct mlx5_aso_sq *sq; /* Async ASO SQ. */
 	struct mlx5_aso_sq *shared_sq; /* Shared ASO SQ. */
-	struct mlx5_aso_ct_action actions[0];
+	struct mlx5_aso_ct_action actions[];
 	/* CT action structures bulk. */
 };
 
@@ -1331,7 +1331,7 @@ struct mlx5_aso_ct_pools_mng {
 	rte_spinlock_t ct_sl; /* The ASO CT free list lock. */
 	rte_rwlock_t resize_rwl; /* The ASO CT pool resize lock. */
 	struct aso_ct_list free_cts; /* Free ASO CT objects list. */
-	struct mlx5_aso_sq aso_sqs[0]; /* ASO queue objects. */
+	struct mlx5_aso_sq aso_sqs[]; /* ASO queue objects. */
 };
 
 #ifdef PEDANTIC
