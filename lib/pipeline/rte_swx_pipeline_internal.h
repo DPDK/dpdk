@@ -213,7 +213,7 @@ TAILQ_HEAD(rss_tailq, rss);
 
 struct rss_runtime {
 	uint32_t key_size; /* key size in bytes. */
-	uint8_t key[0]; /* key. */
+	uint8_t key[]; /* key. */
 };
 
 /*
