@@ -33,7 +33,7 @@ struct rte_security_session {
 	/**< session private data IOVA address */
 
 	RTE_MARKER cacheline1 __rte_cache_min_aligned;
-	uint8_t driver_priv_data[0];
+	uint8_t driver_priv_data[];
 	/**< Private session material, variable size (depends on driver) */
 };
 

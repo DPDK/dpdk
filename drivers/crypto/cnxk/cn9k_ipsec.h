@@ -20,8 +20,10 @@ struct cn9k_ipsec_sa {
 	};
 } __rte_aligned(8);
 
+#define SEC_SESS_SIZE sizeof(struct rte_security_session)
+
 struct cn9k_sec_session {
-	struct rte_security_session rte_sess;
+	uint8_t rte_sess[SEC_SESS_SIZE];
 
 	/** PMD private space */
 
