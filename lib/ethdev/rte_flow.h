@@ -3138,7 +3138,7 @@ struct rte_flow_action_vxlan_encap {
  */
 struct rte_flow_action_nvgre_encap {
 	/**
-	 * Encapsulating vxlan tunnel definition
+	 * Encapsulating nvgre tunnel definition
 	 * (terminated by the END pattern item).
 	 */
 	struct rte_flow_item *definition;
