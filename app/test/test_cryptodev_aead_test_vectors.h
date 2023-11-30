@@ -8,6 +8,7 @@
 #define GMAC_LARGE_PLAINTEXT_LENGTH		65344
 #define MAX_AAD_LENGTH				65536
 #define GCM_LARGE_AAD_LENGTH			65296
+#define AEAD_TEXT_MAX_LENGTH			8096
 
 static uint8_t gcm_aad_zero_text[MAX_AAD_LENGTH] = { 0 };
 
@@ -46,12 +47,12 @@ struct aead_test_data {
 	} aad;
 
 	struct {
-		uint8_t data[8096];
+		uint8_t data[AEAD_TEXT_MAX_LENGTH];
 		unsigned len;
 	} plaintext;
 
 	struct {
-		uint8_t data[8096];
+		uint8_t data[AEAD_TEXT_MAX_LENGTH];
 		unsigned len;
 	} ciphertext;
 
