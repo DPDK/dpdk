@@ -1518,8 +1518,11 @@ iavf_security_ctx_create(struct iavf_adapter *adapter)
 	if (adapter->security_ctx == NULL) {
 		adapter->security_ctx = rte_malloc("iavf_security_ctx",
 				sizeof(struct iavf_security_ctx), 0);
-		if (adapter->security_ctx == NULL)
+		if (adapter->security_ctx == NULL) {
+			rte_free(adapter->vf.eth_dev->security_ctx);
+			adapter->vf.eth_dev->security_ctx = NULL;
 			return -ENOMEM;
+		}
 	}
 
 	return 0;
