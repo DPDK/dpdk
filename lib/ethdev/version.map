@@ -316,6 +316,9 @@ EXPERIMENTAL {
 	rte_eth_recycle_rx_queue_info_get;
 	rte_flow_group_set_miss_actions;
 	rte_flow_calc_table_hash;
+
+	# added in 24.03
+	rte_eth_find_rss_algo;
 };
 
 INTERNAL {

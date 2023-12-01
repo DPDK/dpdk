@@ -55,6 +55,11 @@ New Features
      Also, make sure to start the actual text at the margin.
      =======================================================
 
+* **Improved support of RSS hash algorithm.**
+
+  * Added new function ``rte_eth_find_rss_algo`` to get RSS hash
+    algorithm by its name.
+
 
 Removed Items
 -------------

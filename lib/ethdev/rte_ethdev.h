@@ -4669,6 +4669,26 @@ const char *
 rte_eth_dev_rss_algo_name(enum rte_eth_hash_function rss_algo);
 
 /**
+ * @warning
+ * @b EXPERIMENTAL: this API may change, or be removed, without prior notice.
+ *
+ *  Get RSS hash algorithm by its name.
+ *
+ * @param name
+ *   RSS hash algorithm.
+ *
+ * @param algo
+ *   return the RSS hash algorithm found, @see rte_eth_hash_function.
+ *
+ * @return
+ *   - (0) if successful.
+ *   - (-EINVAL) if not found.
+ */
+__rte_experimental
+int
+rte_eth_find_rss_algo(const char *name, uint32_t *algo);
+
+/**
  * Add UDP tunneling port for a type of tunnel.
  *
  * Some NICs may require such configuration to properly parse a tunnel
