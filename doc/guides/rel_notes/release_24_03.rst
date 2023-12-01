@@ -66,6 +66,11 @@ New Features
   The argparse library was added to ease writing user-friendly applications,
   replacing ``getopt()`` usage.
 
+* **Improved RSS hash algorithm support.**
+
+  Added new function ``rte_eth_find_rss_algo``
+  to get RSS hash algorithm by its name.
+
 * **Updated Marvell cnxk crypto driver.**
 
   * Added support for Rx inject in crypto_cn10k.

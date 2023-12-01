@@ -4827,6 +4827,21 @@ rte_eth_dev_rss_algo_name(enum rte_eth_hash_function rss_algo)
 }
 
 int
+rte_eth_find_rss_algo(const char *name, uint32_t *algo)
+{
+	unsigned int i;
+
+	for (i = 0; i < RTE_DIM(rte_eth_dev_rss_algo_names); i++) {
+		if (strcmp(name, rte_eth_dev_rss_algo_names[i].name) == 0) {
+			*algo = rte_eth_dev_rss_algo_names[i].algo;
+			return 0;
+		}
+	}
+
+	return -EINVAL;
+}
+
+int
 rte_eth_dev_udp_tunnel_port_add(uint16_t port_id,
 				struct rte_eth_udp_tunnel *udp_tunnel)
 {
