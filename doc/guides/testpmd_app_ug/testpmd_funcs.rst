@@ -2263,6 +2263,17 @@ hash of input [IP] packets received on port::
                      ipv6-udp-ex <string of hex digits \
                      (variable length, NIC dependent)>)
 
+
+port config rss hash algorithm
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+To configure the RSS hash algorithm used to compute the RSS
+hash of input packets received on port::
+
+   testpmd> port config <port_id> rss-hash-algo (default|\
+                     simple_xor|toeplitz|symmetric_toeplitz|\
+                     symmetric_toeplitz_sort)
+
 port cleanup txq mbufs
 ~~~~~~~~~~~~~~~~~~~~~~
 

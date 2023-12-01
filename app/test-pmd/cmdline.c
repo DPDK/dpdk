@@ -726,6 +726,10 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"port config port-id rss reta (hash,queue)[,(hash,queue)]\n"
 			"    Set the RSS redirection table.\n\n"
 
+			"port config (port_id) rss-hash-algo (default|simple_xor|toeplitz|"
+			"symmetric_toeplitz|symmetric_toeplitz_sort)\n"
+			"    Set the RSS hash algorithm.\n\n"
+
 			"port config (port_id) dcb vt (on|off) (traffic_class)"
 			" pfc (on|off)\n"
 			"    Set the DCB mode.\n\n"
@@ -2271,6 +2275,82 @@ static cmdline_parse_inst_t cmd_config_rss_hash_key = {
 		(void *)&cmd_config_rss_hash_key_rss_hash_key,
 		(void *)&cmd_config_rss_hash_key_rss_type,
 		(void *)&cmd_config_rss_hash_key_value,
+		NULL,
+	},
+};
+
+/* *** configure rss hash algorithm *** */
+struct cmd_config_rss_hash_algo {
+	cmdline_fixed_string_t port;
+	cmdline_fixed_string_t config;
+	portid_t port_id;
+	cmdline_fixed_string_t rss_hash_algo;
+	cmdline_fixed_string_t algo;
+};
+
+static void
+cmd_config_rss_hash_algo_parsed(void *parsed_result,
+				__rte_unused struct cmdline *cl,
+				__rte_unused void *data)
+{
+	struct cmd_config_rss_hash_algo *res = parsed_result;
+	uint8_t rss_key[RSS_HASH_KEY_LENGTH];
+	struct rte_eth_rss_conf rss_conf;
+	uint32_t algorithm;
+	int ret;
+
+	rss_conf.rss_key_len = RSS_HASH_KEY_LENGTH;
+	rss_conf.rss_key = rss_key;
+	ret = rte_eth_dev_rss_hash_conf_get(res->port_id, &rss_conf);
+	if (ret != 0) {
+		fprintf(stderr, "failed to get port %u RSS configuration\n",
+			res->port_id);
+		return;
+	}
+
+	algorithm = (uint32_t)rss_conf.algorithm;
+	ret = rte_eth_find_rss_algo(res->algo, &algorithm);
+	if (ret != 0) {
+		fprintf(stderr, "port %u configured invalid RSS hash algorithm: %s\n",
+			res->port_id, res->algo);
+		return;
+	}
+
+	ret = rte_eth_dev_rss_hash_update(res->port_id, &rss_conf);
+	if (ret != 0) {
+		fprintf(stderr, "failed to set port %u RSS hash algorithm\n",
+			res->port_id);
+		return;
+	}
+}
+
+static cmdline_parse_token_string_t cmd_config_rss_hash_algo_port =
+	TOKEN_STRING_INITIALIZER(struct cmd_config_rss_hash_algo, port, "port");
+static cmdline_parse_token_string_t cmd_config_rss_hash_algo_config =
+	TOKEN_STRING_INITIALIZER(struct cmd_config_rss_hash_algo, config,
+				 "config");
+static cmdline_parse_token_num_t cmd_config_rss_hash_algo_port_id =
+	TOKEN_NUM_INITIALIZER(struct cmd_config_rss_hash_algo, port_id,
+			      RTE_UINT16);
+static cmdline_parse_token_string_t cmd_config_rss_hash_algo_rss_hash_algo =
+	TOKEN_STRING_INITIALIZER(struct cmd_config_rss_hash_algo,
+				 rss_hash_algo, "rss-hash-algo");
+static cmdline_parse_token_string_t cmd_config_rss_hash_algo_algo =
+	TOKEN_STRING_INITIALIZER(struct cmd_config_rss_hash_algo, algo,
+				 "default#simple_xor#toeplitz#"
+				 "symmetric_toeplitz#symmetric_toeplitz_sort");
+
+static cmdline_parse_inst_t cmd_config_rss_hash_algo = {
+	.f = cmd_config_rss_hash_algo_parsed,
+	.data = NULL,
+	.help_str = "port config <port_id> rss-hash-algo "
+		"default|simple_xor|toeplitz|symmetric_toeplitz|symmetric_toeplitz_sort",
+	.tokens = {
+		(void *)&cmd_config_rss_hash_algo_port,
+		(void *)&cmd_config_rss_hash_algo_config,
+		(void *)&cmd_config_rss_hash_algo_port_id,
+		(void *)&cmd_config_rss_hash_algo_rss_hash_algo,
+		(void *)&cmd_config_rss_hash_algo_algo,
 		NULL,
 	},
 };
@@ -13165,6 +13245,7 @@ static cmdline_parse_ctx_t builtin_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_showport_rss_hash_key,
 	(cmdline_parse_inst_t *)&cmd_showport_rss_hash_algo,
 	(cmdline_parse_inst_t *)&cmd_config_rss_hash_key,
+	(cmdline_parse_inst_t *)&cmd_config_rss_hash_algo,
 	(cmdline_parse_inst_t *)&cmd_cleanup_txq_mbufs,
 	(cmdline_parse_inst_t *)&cmd_dump,
 	(cmdline_parse_inst_t *)&cmd_dump_one,
