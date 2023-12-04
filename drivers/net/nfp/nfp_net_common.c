@@ -2115,6 +2115,7 @@ nfp_net_is_valid_nfd_version(struct nfp_net_fw_ver version)
 int
 nfp_net_stop(struct rte_eth_dev *dev)
 {
+	struct nfp_cpp *cpp;
 	struct nfp_net_hw *hw;
 
 	hw = nfp_net_get_hw(dev);
@@ -2126,10 +2127,11 @@ nfp_net_stop(struct rte_eth_dev *dev)
 	nfp_net_stop_rx_queue(dev);
 
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
-		/* Configure the physical port down */
-		nfp_eth_set_configured(hw->cpp, hw->nfp_idx, 0);
+		cpp = hw->cpp;
 	else
-		nfp_eth_set_configured(dev->process_private, hw->nfp_idx, 0);
+		cpp = ((struct nfp_pf_dev *)(dev->process_private))->cpp;
+
+	nfp_eth_set_configured(cpp, hw->nfp_idx, 0);
 
 	return 0;
 }

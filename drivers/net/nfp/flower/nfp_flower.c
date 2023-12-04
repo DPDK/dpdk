@@ -872,7 +872,7 @@ nfp_secondary_init_app_fw_flower(struct nfp_pf_dev *pf_dev)
 		return -ENODEV;
 	}
 
-	eth_dev->process_private = pf_dev->cpp;
+	eth_dev->process_private = pf_dev;
 	eth_dev->dev_ops = &nfp_flower_pf_vnic_ops;
 	eth_dev->rx_pkt_burst = nfp_net_recv_pkts;
 	eth_dev->tx_pkt_burst = nfp_flower_pf_xmit_pkts;
