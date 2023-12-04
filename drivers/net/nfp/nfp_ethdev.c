@@ -329,6 +329,55 @@ nfp_net_uninit(struct rte_eth_dev *eth_dev)
 		nfp_cpp_area_release_free(net_hw->mac_stats_area);
 }
 
+static void
+nfp_cleanup_port_app_fw_nic(struct nfp_pf_dev *pf_dev,
+		uint8_t id)
+{
+	struct rte_eth_dev *eth_dev;
+	struct nfp_app_fw_nic *app_fw_nic;
+
+	app_fw_nic = pf_dev->app_fw_priv;
+	if (app_fw_nic->ports[id] != NULL) {
+		eth_dev = app_fw_nic->ports[id]->eth_dev;
+		if (eth_dev != NULL)
+			nfp_net_uninit(eth_dev);
+
+		app_fw_nic->ports[id] = NULL;
+	}
+}
+
+static void
+nfp_uninit_app_fw_nic(struct nfp_pf_dev *pf_dev)
+{
+	nfp_cpp_area_release_free(pf_dev->ctrl_area);
+	rte_free(pf_dev->app_fw_priv);
+}
+
+void
+nfp_pf_uninit(struct nfp_pf_dev *pf_dev)
+{
+	nfp_cpp_area_release_free(pf_dev->qc_area);
+	free(pf_dev->sym_tbl);
+	if (pf_dev->multi_pf.enabled) {
+		nfp_net_keepalive_stop(&pf_dev->multi_pf);
+		nfp_net_keepalive_uninit(&pf_dev->multi_pf);
+	}
+	free(pf_dev->nfp_eth_table);
+	free(pf_dev->hwinfo);
+	nfp_cpp_free(pf_dev->cpp);
+	rte_free(pf_dev);
+}
+
+static int
+nfp_pf_secondary_uninit(struct nfp_pf_dev *pf_dev)
+{
+	free(pf_dev->sym_tbl);
+	nfp_cpp_free(pf_dev->cpp);
+	rte_free(pf_dev);
+
+	return 0;
+}
+
 /* Reset and stop device. The device can not be restarted. */
 static int
 nfp_net_close(struct rte_eth_dev *dev)
@@ -340,8 +389,19 @@ nfp_net_close(struct rte_eth_dev *dev)
 	struct rte_pci_device *pci_dev;
 	struct nfp_app_fw_nic *app_fw_nic;
 
-	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+	/*
+	 * In secondary process, a released eth device can be found by its name
+	 * in shared memory.
+	 * If the state of the eth device is RTE_ETH_DEV_UNUSED, it means the
+	 * eth device has been released.
+	 */
+	if (rte_eal_process_type() == RTE_PROC_SECONDARY) {
+		if (dev->state == RTE_ETH_DEV_UNUSED)
+			return 0;
+
+		nfp_pf_secondary_uninit(dev->process_private);
 		return 0;
+	}
 
 	hw = dev->data->dev_private;
 	pf_dev = hw->pf_dev;
@@ -358,16 +418,17 @@ nfp_net_close(struct rte_eth_dev *dev)
 	nfp_net_close_tx_queue(dev);
 	nfp_net_close_rx_queue(dev);
 
-	/* Clear ipsec */
-	nfp_ipsec_uninit(dev);
-
 	/* Cancel possible impending LSC work here before releasing the port */
 	rte_eal_alarm_cancel(nfp_net_dev_interrupt_delayed_handler, (void *)dev);
 
 	/* Only free PF resources after all physical ports have been closed */
 	/* Mark this port as unused and free device priv resources */
 	nn_cfg_writeb(&hw->super, NFP_NET_CFG_LSC, 0xff);
-	app_fw_nic->ports[hw->idx] = NULL;
+
+	if (pf_dev->app_fw_id != NFP_APP_FW_CORE_NIC)
+		return -EINVAL;
+
+	nfp_cleanup_port_app_fw_nic(pf_dev, hw->idx);
 
 	for (i = 0; i < app_fw_nic->total_phyports; i++) {
 		id = nfp_function_id_get(pf_dev, i);
@@ -377,25 +438,15 @@ nfp_net_close(struct rte_eth_dev *dev)
 			return 0;
 	}
 
-	/* Now it is safe to free all PF resources */
-	PMD_INIT_LOG(INFO, "Freeing PF resources");
-	if (pf_dev->multi_pf.enabled) {
-		nfp_net_keepalive_stop(&pf_dev->multi_pf);
-		nfp_net_keepalive_uninit(&pf_dev->multi_pf);
-	}
-	nfp_cpp_area_free(pf_dev->ctrl_area);
-	nfp_cpp_area_free(pf_dev->qc_area);
-	free(pf_dev->hwinfo);
-	free(pf_dev->sym_tbl);
-	nfp_cpp_free(pf_dev->cpp);
-	rte_free(app_fw_nic);
-	rte_free(pf_dev);
-
+	/* Enable in nfp_net_start() */
 	rte_intr_disable(pci_dev->intr_handle);
 
-	/* Unregister callback func from eal lib */
+	/* Register in nfp_net_init() */
 	rte_intr_callback_unregister(pci_dev->intr_handle,
 			nfp_net_dev_interrupt_handler, (void *)dev);
+
+	nfp_uninit_app_fw_nic(pf_dev);
+	nfp_pf_uninit(pf_dev);
 
 	return 0;
 }
