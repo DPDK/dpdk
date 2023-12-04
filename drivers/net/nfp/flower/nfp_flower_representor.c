@@ -291,6 +291,43 @@ nfp_flower_repr_tx_burst(void *tx_queue,
 	return sent;
 }
 
+static int
+nfp_flower_repr_uninit(struct rte_eth_dev *eth_dev)
+{
+	struct nfp_flower_representor *repr;
+
+	repr = eth_dev->data->dev_private;
+	rte_ring_free(repr->ring);
+
+	return 0;
+}
+
+static int
+nfp_flower_pf_repr_uninit(__rte_unused struct rte_eth_dev *eth_dev)
+{
+	return 0;
+}
+
+static void
+nfp_flower_repr_free(struct nfp_flower_representor *repr,
+		enum nfp_repr_type repr_type)
+{
+	switch (repr_type) {
+	case NFP_REPR_TYPE_PHYS_PORT:
+		rte_eth_dev_destroy(repr->eth_dev, nfp_flower_repr_uninit);
+		break;
+	case NFP_REPR_TYPE_PF:
+		rte_eth_dev_destroy(repr->eth_dev, nfp_flower_pf_repr_uninit);
+		break;
+	case NFP_REPR_TYPE_VF:
+		rte_eth_dev_destroy(repr->eth_dev, nfp_flower_repr_uninit);
+		break;
+	default:
+		PMD_DRV_LOG(ERR, "Unsupported repr port type.");
+		break;
+	}
+}
+
 static const struct eth_dev_ops nfp_flower_pf_repr_dev_ops = {
 	.dev_infos_get        = nfp_flower_repr_dev_infos_get,
 
@@ -410,6 +447,7 @@ nfp_flower_pf_repr_init(struct rte_eth_dev *eth_dev,
 
 	repr->app_fw_flower->pf_repr = repr;
 	repr->app_fw_flower->pf_hw->eth_dev = eth_dev;
+	repr->eth_dev = eth_dev;
 
 	return 0;
 }
@@ -501,6 +539,8 @@ nfp_flower_repr_init(struct rte_eth_dev *eth_dev,
 		app_fw_flower->vf_reprs[index] = repr;
 	}
 
+	repr->eth_dev = eth_dev;
+
 	return 0;
 
 mac_cleanup:
@@ -509,6 +549,35 @@ ring_cleanup:
 	rte_ring_free(repr->ring);
 
 	return ret;
+}
+
+static void
+nfp_flower_repr_free_all(struct nfp_app_fw_flower *app_fw_flower)
+{
+	uint32_t i;
+	struct nfp_flower_representor *repr;
+
+	for (i = 0; i < MAX_FLOWER_VFS; i++) {
+		repr = app_fw_flower->vf_reprs[i];
+		if (repr != NULL) {
+			nfp_flower_repr_free(repr, NFP_REPR_TYPE_VF);
+			app_fw_flower->vf_reprs[i] = NULL;
+		}
+	}
+
+	for (i = 0; i < NFP_MAX_PHYPORTS; i++) {
+		repr = app_fw_flower->phy_reprs[i];
+		if (repr != NULL) {
+			nfp_flower_repr_free(repr, NFP_REPR_TYPE_PHYS_PORT);
+			app_fw_flower->phy_reprs[i] = NULL;
+		}
+	}
+
+	repr = app_fw_flower->pf_repr;
+	if (repr != NULL) {
+		nfp_flower_repr_free(repr, NFP_REPR_TYPE_PF);
+		app_fw_flower->pf_repr = NULL;
+	}
 }
 
 static int
@@ -585,7 +654,7 @@ nfp_flower_repr_alloc(struct nfp_app_fw_flower *app_fw_flower)
 	}
 
 	if (i < app_fw_flower->num_phyport_reprs)
-		return ret;
+		goto repr_free;
 
 	/*
 	 * Now allocate eth_dev's for VF representors.
@@ -614,9 +683,14 @@ nfp_flower_repr_alloc(struct nfp_app_fw_flower *app_fw_flower)
 	}
 
 	if (i < app_fw_flower->num_vf_reprs)
-		return ret;
+		goto repr_free;
 
 	return 0;
+
+repr_free:
+	nfp_flower_repr_free_all(app_fw_flower);
+
+	return ret;
 }
 
 int
@@ -635,7 +709,7 @@ nfp_flower_repr_create(struct nfp_app_fw_flower *app_fw_flower)
 
 	/* Allocate a switch domain for the flower app */
 	if (app_fw_flower->switch_domain_id == RTE_ETH_DEV_SWITCH_DOMAIN_ID_INVALID &&
-			rte_eth_switch_domain_alloc(&app_fw_flower->switch_domain_id)) {
+			rte_eth_switch_domain_alloc(&app_fw_flower->switch_domain_id) != 0) {
 		PMD_INIT_LOG(WARNING, "failed to allocate switch domain for device");
 	}
 
@@ -677,8 +751,15 @@ nfp_flower_repr_create(struct nfp_app_fw_flower *app_fw_flower)
 	ret = nfp_flower_repr_alloc(app_fw_flower);
 	if (ret != 0) {
 		PMD_INIT_LOG(ERR, "representors allocation failed");
-		return -EINVAL;
+		ret = -EINVAL;
+		goto domain_free;
 	}
 
 	return 0;
+
+domain_free:
+	if (rte_eth_switch_domain_free(app_fw_flower->switch_domain_id) != 0)
+		PMD_INIT_LOG(WARNING, "failed to free switch domain for device");
+
+	return ret;
 }
