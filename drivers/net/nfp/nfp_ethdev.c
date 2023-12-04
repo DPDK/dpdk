@@ -1333,12 +1333,13 @@ nfp_pf_init(struct rte_pci_device *pci_dev)
 	return 0;
 
 hwqueues_cleanup:
-	nfp_cpp_area_free(pf_dev->qc_area);
+	nfp_cpp_area_release_free(pf_dev->qc_area);
 sym_tbl_cleanup:
 	free(sym_tbl);
 fw_cleanup:
 	nfp_fw_unload(cpp);
 	nfp_net_keepalive_stop(&pf_dev->multi_pf);
+	nfp_net_keepalive_uninit(&pf_dev->multi_pf);
 eth_table_cleanup:
 	free(nfp_eth_table);
 hwinfo_cleanup:
