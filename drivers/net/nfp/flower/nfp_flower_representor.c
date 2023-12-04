@@ -328,12 +328,75 @@ nfp_flower_repr_free(struct nfp_flower_representor *repr,
 	}
 }
 
+/* Reset and stop device. The device can not be restarted. */
+static int
+nfp_flower_repr_dev_close(struct rte_eth_dev *dev)
+{
+	uint16_t i;
+	struct nfp_net_hw *hw;
+	struct nfp_pf_dev *pf_dev;
+	struct nfp_net_txq *this_tx_q;
+	struct nfp_net_rxq *this_rx_q;
+	struct nfp_flower_representor *repr;
+	struct nfp_app_fw_flower *app_fw_flower;
+
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return 0;
+
+	repr = dev->data->dev_private;
+	app_fw_flower = repr->app_fw_flower;
+	hw = app_fw_flower->pf_hw;
+	pf_dev = hw->pf_dev;
+
+	/*
+	 * We assume that the DPDK application is stopping all the
+	 * threads/queues before calling the device close function.
+	 */
+	nfp_net_disable_queues(dev);
+
+	/* Clear queues */
+	for (i = 0; i < dev->data->nb_tx_queues; i++) {
+		this_tx_q = dev->data->tx_queues[i];
+		nfp_net_reset_tx_queue(this_tx_q);
+	}
+
+	for (i = 0; i < dev->data->nb_rx_queues; i++) {
+		this_rx_q = dev->data->rx_queues[i];
+		nfp_net_reset_rx_queue(this_rx_q);
+	}
+
+	if (pf_dev->app_fw_id != NFP_APP_FW_FLOWER_NIC)
+		return -EINVAL;
+
+	nfp_flower_repr_free(repr, repr->repr_type);
+
+	for (i = 0; i < MAX_FLOWER_VFS; i++) {
+		if (app_fw_flower->vf_reprs[i] != NULL)
+			return 0;
+	}
+
+	for (i = 0; i < NFP_MAX_PHYPORTS; i++) {
+		if (app_fw_flower->phy_reprs[i] != NULL)
+			return 0;
+	}
+
+	if (app_fw_flower->pf_repr != NULL)
+		return 0;
+
+	/* Now it is safe to free all PF resources */
+	nfp_uninit_app_fw_flower(pf_dev);
+	nfp_pf_uninit(pf_dev);
+
+	return 0;
+}
+
 static const struct eth_dev_ops nfp_flower_pf_repr_dev_ops = {
 	.dev_infos_get        = nfp_flower_repr_dev_infos_get,
 
 	.dev_start            = nfp_flower_pf_start,
 	.dev_configure        = nfp_net_configure,
 	.dev_stop             = nfp_net_stop,
+	.dev_close            = nfp_flower_repr_dev_close,
 
 	.rx_queue_setup       = nfp_net_rx_queue_setup,
 	.tx_queue_setup       = nfp_net_tx_queue_setup,
@@ -356,6 +419,7 @@ static const struct eth_dev_ops nfp_flower_repr_dev_ops = {
 	.dev_start            = nfp_flower_repr_dev_start,
 	.dev_configure        = nfp_net_configure,
 	.dev_stop             = nfp_flower_repr_dev_stop,
+	.dev_close            = nfp_flower_repr_dev_close,
 
 	.rx_queue_setup       = nfp_flower_repr_rx_queue_setup,
 	.tx_queue_setup       = nfp_flower_repr_tx_queue_setup,
