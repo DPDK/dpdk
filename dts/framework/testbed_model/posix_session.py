@@ -2,6 +2,15 @@
 # Copyright(c) 2023 PANTHEON.tech s.r.o.
 # Copyright(c) 2023 University of New Hampshire
 
+"""POSIX compliant OS translator.
+
+Translates OS-unaware calls into POSIX compliant calls/utilities. POSIX is a set of standards
+for portability between Unix operating systems which not all Linux distributions
+(or the tools most frequently bundled with said distributions) adhere to. Most of Linux
+distributions are mostly compliant though.
+This intermediate module implements the common parts of mostly POSIX compliant distributions.
+"""
+
 import re
 from collections.abc import Iterable
 from pathlib import PurePath, PurePosixPath
@@ -15,13 +24,21 @@ from .os_session import OSSession
 
 
 class PosixSession(OSSession):
-    """
-    An intermediary class implementing the Posix compliant parts of
-    Linux and other OS remote sessions.
-    """
+    """An intermediary class implementing the POSIX standard."""
 
     @staticmethod
     def combine_short_options(**opts: bool) -> str:
+        """Combine shell options into one argument.
+
+        These are options such as ``-x``, ``-v``, ``-f`` which are combined into ``-xvf``.
+
+        Args:
+            opts: The keys are option names (usually one letter) and the bool values indicate
+                whether to include the option in the resulting argument.
+
+        Returns:
+            The options combined into one argument.
+        """
         ret_opts = ""
         for opt, include in opts.items():
             if include:
@@ -33,17 +50,19 @@ class PosixSession(OSSession):
         return ret_opts
 
     def guess_dpdk_remote_dir(self, remote_dir: str | PurePath) -> PurePosixPath:
+        """Overrides :meth:`~.os_session.OSSession.guess_dpdk_remote_dir`."""
         remote_guess = self.join_remote_path(remote_dir, "dpdk-*")
         result = self.send_command(f"ls -d {remote_guess} | tail -1")
         return PurePosixPath(result.stdout)
 
     def get_remote_tmp_dir(self) -> PurePosixPath:
+        """Overrides :meth:`~.os_session.OSSession.get_remote_tmp_dir`."""
         return PurePosixPath("/tmp")
 
     def get_dpdk_build_env_vars(self, arch: Architecture) -> dict:
-        """
-        Create extra environment variables needed for i686 arch build. Get information
-        from the node if needed.
+        """Overrides :meth:`~.os_session.OSSession.get_dpdk_build_env_vars`.
+
+        Supported architecture: ``i686``.
         """
         env_vars = {}
         if arch == Architecture.i686:
@@ -63,6 +82,7 @@ class PosixSession(OSSession):
         return env_vars
 
     def join_remote_path(self, *args: str | PurePath) -> PurePosixPath:
+        """Overrides :meth:`~.os_session.OSSession.join_remote_path`."""
         return PurePosixPath(*args)
 
     def copy_from(
@@ -70,6 +90,7 @@ class PosixSession(OSSession):
         source_file: str | PurePath,
         destination_file: str | PurePath,
     ) -> None:
+        """Overrides :meth:`~.os_session.OSSession.copy_from`."""
         self.remote_session.copy_from(source_file, destination_file)
 
     def copy_to(
@@ -77,6 +98,7 @@ class PosixSession(OSSession):
         source_file: str | PurePath,
         destination_file: str | PurePath,
     ) -> None:
+        """Overrides :meth:`~.os_session.OSSession.copy_to`."""
         self.remote_session.copy_to(source_file, destination_file)
 
     def remove_remote_dir(
@@ -85,6 +107,7 @@ class PosixSession(OSSession):
         recursive: bool = True,
         force: bool = True,
     ) -> None:
+        """Overrides :meth:`~.os_session.OSSession.remove_remote_dir`."""
         opts = PosixSession.combine_short_options(r=recursive, f=force)
         self.send_command(f"rm{opts} {remote_dir_path}")
 
@@ -93,6 +116,7 @@ class PosixSession(OSSession):
         remote_tarball_path: str | PurePath,
         expected_dir: str | PurePath | None = None,
     ) -> None:
+        """Overrides :meth:`~.os_session.OSSession.extract_remote_tarball`."""
         self.send_command(
             f"tar xfm {remote_tarball_path} -C {PurePosixPath(remote_tarball_path).parent}",
             60,
@@ -109,6 +133,7 @@ class PosixSession(OSSession):
         rebuild: bool = False,
         timeout: float = SETTINGS.compile_timeout,
     ) -> None:
+        """Overrides :meth:`~.os_session.OSSession.build_dpdk`."""
         try:
             if rebuild:
                 # reconfigure, then build
@@ -138,10 +163,12 @@ class PosixSession(OSSession):
             raise DPDKBuildError(f"DPDK build failed when doing '{e.command}'.")
 
     def get_dpdk_version(self, build_dir: str | PurePath) -> str:
+        """Overrides :meth:`~.os_session.OSSession.get_dpdk_version`."""
         out = self.send_command(f"cat {self.join_remote_path(build_dir, 'VERSION')}", verify=True)
         return out.stdout
 
     def kill_cleanup_dpdk_apps(self, dpdk_prefix_list: Iterable[str]) -> None:
+        """Overrides :meth:`~.os_session.OSSession.kill_cleanup_dpdk_apps`."""
         self._logger.info("Cleaning up DPDK apps.")
         dpdk_runtime_dirs = self._get_dpdk_runtime_dirs(dpdk_prefix_list)
         if dpdk_runtime_dirs:
@@ -153,6 +180,14 @@ class PosixSession(OSSession):
             self._remove_dpdk_runtime_dirs(dpdk_runtime_dirs)
 
     def _get_dpdk_runtime_dirs(self, dpdk_prefix_list: Iterable[str]) -> list[PurePosixPath]:
+        """Find runtime directories DPDK apps are currently using.
+
+        Args:
+              dpdk_prefix_list: The prefixes DPDK apps were started with.
+
+        Returns:
+            The paths of DPDK apps' runtime dirs.
+        """
         prefix = PurePosixPath("/var", "run", "dpdk")
         if not dpdk_prefix_list:
             remote_prefixes = self._list_remote_dirs(prefix)
@@ -164,9 +199,13 @@ class PosixSession(OSSession):
         return [PurePosixPath(prefix, dpdk_prefix) for dpdk_prefix in dpdk_prefix_list]
 
     def _list_remote_dirs(self, remote_path: str | PurePath) -> list[str] | None:
-        """
-        Return a list of directories of the remote_dir.
-        If remote_path doesn't exist, return None.
+        """Contents of remote_path.
+
+        Args:
+            remote_path: List the contents of this path.
+
+        Returns:
+            The contents of remote_path. If remote_path doesn't exist, return None.
         """
         out = self.send_command(f"ls -l {remote_path} | awk '/^d/ {{print $NF}}'").stdout
         if "No such file or directory" in out:
@@ -175,6 +214,17 @@ class PosixSession(OSSession):
             return out.splitlines()
 
     def _get_dpdk_pids(self, dpdk_runtime_dirs: Iterable[str | PurePath]) -> list[int]:
+        """Find PIDs of running DPDK apps.
+
+        Look at each "config" file found in dpdk_runtime_dirs and find the PIDs of processes
+        that opened those file.
+
+        Args:
+            dpdk_runtime_dirs: The paths of DPDK apps' runtime dirs.
+
+        Returns:
+            The PIDs of running DPDK apps.
+        """
         pids = []
         pid_regex = r"p(\d+)"
         for dpdk_runtime_dir in dpdk_runtime_dirs:
@@ -193,6 +243,14 @@ class PosixSession(OSSession):
         return not result.return_code
 
     def _check_dpdk_hugepages(self, dpdk_runtime_dirs: Iterable[str | PurePath]) -> None:
+        """Check there aren't any leftover hugepages.
+
+        If any hugepages are found, emit a warning. The hugepages are investigated in the
+        "hugepage_info" file of dpdk_runtime_dirs.
+
+        Args:
+            dpdk_runtime_dirs: The paths of DPDK apps' runtime dirs.
+        """
         for dpdk_runtime_dir in dpdk_runtime_dirs:
             hugepage_info = PurePosixPath(dpdk_runtime_dir, "hugepage_info")
             if self._remote_files_exists(hugepage_info):
@@ -208,9 +266,11 @@ class PosixSession(OSSession):
             self.remove_remote_dir(dpdk_runtime_dir)
 
     def get_dpdk_file_prefix(self, dpdk_prefix: str) -> str:
+        """Overrides :meth:`~.os_session.OSSession.get_dpdk_file_prefix`."""
         return ""
 
     def get_compiler_version(self, compiler_name: str) -> str:
+        """Overrides :meth:`~.os_session.OSSession.get_compiler_version`."""
         match compiler_name:
             case "gcc":
                 return self.send_command(
@@ -228,6 +288,7 @@ class PosixSession(OSSession):
                 raise ValueError(f"Unknown compiler {compiler_name}")
 
     def get_node_info(self) -> NodeInfo:
+        """Overrides :meth:`~.os_session.OSSession.get_node_info`."""
         os_release_info = self.send_command(
             "awk -F= '$1 ~ /^NAME$|^VERSION$/ {print $2}' /etc/os-release",
             SETTINGS.timeout,

@@ -1,6 +1,8 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2023 PANTHEON.tech s.r.o.
 
+"""SSH remote session."""
+
 import socket
 import traceback
 from pathlib import PurePath
@@ -26,13 +28,8 @@ from .remote_session import CommandResult, RemoteSession
 class SSHSession(RemoteSession):
     """A persistent SSH connection to a remote Node.
 
-    The connection is implemented with the Fabric Python library.
-
-    Args:
-        node_config: The configuration of the Node to connect to.
-        session_name: The name of the session.
-        logger: The logger used for logging.
-            This should be passed from the parent OSSession.
+    The connection is implemented with
+    `the Fabric Python library <https://docs.fabfile.org/en/latest/>`_.
 
     Attributes:
         session: The underlying Fabric SSH connection.
@@ -78,6 +75,7 @@ class SSHSession(RemoteSession):
             raise SSHConnectionError(self.hostname, errors)
 
     def is_alive(self) -> bool:
+        """Overrides :meth:`~.remote_session.RemoteSession.is_alive`."""
         return self.session.is_connected
 
     def _send_command(self, command: str, timeout: float, env: dict | None) -> CommandResult:
@@ -85,7 +83,7 @@ class SSHSession(RemoteSession):
 
         Args:
             command: The command to execute.
-            timeout: Wait at most this many seconds for the execution to complete.
+            timeout: Wait at most this long in seconds for the command execution to complete.
             env: Extra environment variables that will be used in command execution.
 
         Raises:
@@ -110,6 +108,7 @@ class SSHSession(RemoteSession):
         source_file: str | PurePath,
         destination_file: str | PurePath,
     ) -> None:
+        """Overrides :meth:`~.remote_session.RemoteSession.copy_from`."""
         self.session.get(str(destination_file), str(source_file))
 
     def copy_to(
@@ -117,6 +116,7 @@ class SSHSession(RemoteSession):
         source_file: str | PurePath,
         destination_file: str | PurePath,
     ) -> None:
+        """Overrides :meth:`~.remote_session.RemoteSession.copy_to`."""
         self.session.put(str(source_file), str(destination_file))
 
     def _close(self, force: bool = False) -> None:

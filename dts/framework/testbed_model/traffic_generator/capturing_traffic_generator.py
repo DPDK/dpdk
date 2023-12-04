@@ -23,19 +23,21 @@ from .traffic_generator import TrafficGenerator
 
 
 def _get_default_capture_name() -> str:
-    """
-    This is the function used for the default implementation of capture names.
-    """
     return str(uuid.uuid4())
 
 
 class CapturingTrafficGenerator(TrafficGenerator):
     """Capture packets after sending traffic.
 
-    A mixin interface which enables a packet generator to declare that it can capture
+    The intermediary interface which enables a packet generator to declare that it can capture
     packets and return them to the user.
 
+    Similarly to :class:`~.traffic_generator.TrafficGenerator`, this class exposes
+    the public methods specific to capturing traffic generators and defines a private method
+    that must implement the traffic generation and capturing logic in subclasses.
+
     The methods of capturing traffic generators obey the following workflow:
+
         1. send packets
         2. capture packets
         3. write the capture to a .pcap file
@@ -44,6 +46,7 @@ class CapturingTrafficGenerator(TrafficGenerator):
 
     @property
     def is_capturing(self) -> bool:
+        """This traffic generator can capture traffic."""
         return True
 
     def send_packet_and_capture(
@@ -54,11 +57,12 @@ class CapturingTrafficGenerator(TrafficGenerator):
         duration: float,
         capture_name: str = _get_default_capture_name(),
     ) -> list[Packet]:
-        """Send a packet, return received traffic.
+        """Send `packet` and capture received traffic.
 
-        Send a packet on the send_port and then return all traffic captured
-        on the receive_port for the given duration. Also record the captured traffic
-        in a pcap file.
+        Send `packet` on `send_port` and then return all traffic captured
+        on `receive_port` for the given `duration`.
+
+        The captured traffic is recorded in the `capture_name`.pcap file.
 
         Args:
             packet: The packet to send.
@@ -68,7 +72,7 @@ class CapturingTrafficGenerator(TrafficGenerator):
             capture_name: The name of the .pcap file where to store the capture.
 
         Returns:
-             A list of received packets. May be empty if no packets are captured.
+             The received packets. May be empty if no packets are captured.
         """
         return self.send_packets_and_capture(
             [packet], send_port, receive_port, duration, capture_name
@@ -82,11 +86,14 @@ class CapturingTrafficGenerator(TrafficGenerator):
         duration: float,
         capture_name: str = _get_default_capture_name(),
     ) -> list[Packet]:
-        """Send packets, return received traffic.
+        """Send `packets` and capture received traffic.
 
-        Send packets on the send_port and then return all traffic captured
-        on the receive_port for the given duration. Also record the captured traffic
-        in a pcap file.
+        Send `packets` on `send_port` and then return all traffic captured
+        on `receive_port` for the given `duration`.
+
+        The captured traffic is recorded in the `capture_name`.pcap file. The target directory
+        can be configured with the :option:`--output-dir` command line argument or
+        the :envvar:`DTS_OUTPUT_DIR` environment variable.
 
         Args:
             packets: The packets to send.
@@ -96,7 +103,7 @@ class CapturingTrafficGenerator(TrafficGenerator):
             capture_name: The name of the .pcap file where to store the capture.
 
         Returns:
-             A list of received packets. May be empty if no packets are captured.
+             The received packets. May be empty if no packets are captured.
         """
         self._logger.debug(get_packet_summaries(packets))
         self._logger.debug(
@@ -121,10 +128,12 @@ class CapturingTrafficGenerator(TrafficGenerator):
         receive_port: Port,
         duration: float,
     ) -> list[Packet]:
-        """
-        The extended classes must implement this method which
-        sends packets on send_port and receives packets on the receive_port
-        for the specified duration. It must be able to handle no received packets.
+        """The implementation of :method:`send_packets_and_capture`.
+
+        The subclasses must implement this method which sends `packets` on `send_port`
+        and receives packets on `receive_port` for the specified `duration`.
+
+        It must be able to handle receiving no packets.
         """
 
     def _write_capture_from_packets(self, capture_name: str, packets: list[Packet]) -> None:

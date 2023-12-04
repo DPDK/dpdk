@@ -3,18 +3,20 @@
 
 """Common functionality for interactive shell handling.
 
-This base class, InteractiveShell, is meant to be extended by other classes that
-contain functionality specific to that shell type. These derived classes will often
-modify things like the prompt to expect or the arguments to pass into the application,
-but still utilize the same method for sending a command and collecting output. How
-this output is handled however is often application specific. If an application needs
-elevated privileges to start it is expected that the method for gaining those
-privileges is provided when initializing the class.
+The base class, :class:`InteractiveShell`, is meant to be extended by subclasses that contain
+functionality specific to that shell type. These subclasses will often modify things like
+the prompt to expect or the arguments to pass into the application, but still utilize
+the same method for sending a command and collecting output. How this output is handled however
+is often application specific. If an application needs elevated privileges to start it is expected
+that the method for gaining those privileges is provided when initializing the class.
+
+The :option:`--timeout` command line argument and the :envvar:`DTS_TIMEOUT`
+environment variable configure the timeout of getting the output from command execution.
 """
 
 from abc import ABC
 from pathlib import PurePath
-from typing import Callable
+from typing import Callable, ClassVar
 
 from paramiko import Channel, SSHClient, channel  # type: ignore[import]
 
@@ -30,28 +32,6 @@ class InteractiveShell(ABC):
     and collecting input until reaching a certain prompt. All interactive applications
     will use the same SSH connection, but each will create their own channel on that
     session.
-
-    Arguments:
-        interactive_session: The SSH session dedicated to interactive shells.
-        logger: Logger used for displaying information in the console.
-        get_privileged_command: Method for modifying a command to allow it to use
-            elevated privileges. If this is None, the application will not be started
-            with elevated privileges.
-        app_args: Command line arguments to be passed to the application on startup.
-        timeout: Timeout used for the SSH channel that is dedicated to this interactive
-            shell. This timeout is for collecting output, so if reading from the buffer
-            and no output is gathered within the timeout, an exception is thrown.
-
-    Attributes
-        _default_prompt: Prompt to expect at the end of output when sending a command.
-            This is often overridden by derived classes.
-        _command_extra_chars: Extra characters to add to the end of every command
-            before sending them. This is often overridden by derived classes and is
-            most commonly an additional newline character.
-        path: Path to the executable to start the interactive application.
-        dpdk_app: Whether this application is a DPDK app. If it is, the build
-            directory for DPDK on the node will be prepended to the path to the
-            executable.
     """
 
     _interactive_session: SSHClient
@@ -61,10 +41,22 @@ class InteractiveShell(ABC):
     _logger: DTSLOG
     _timeout: float
     _app_args: str
-    _default_prompt: str = ""
-    _command_extra_chars: str = ""
-    path: PurePath
-    dpdk_app: bool = False
+
+    #: Prompt to expect at the end of output when sending a command.
+    #: This is often overridden by subclasses.
+    _default_prompt: ClassVar[str] = ""
+
+    #: Extra characters to add to the end of every command
+    #: before sending them. This is often overridden by subclasses and is
+    #: most commonly an additional newline character.
+    _command_extra_chars: ClassVar[str] = ""
+
+    #: Path to the executable to start the interactive application.
+    path: ClassVar[PurePath]
+
+    #: Whether this application is a DPDK app. If it is, the build directory
+    #: for DPDK on the node will be prepended to the path to the executable.
+    dpdk_app: ClassVar[bool] = False
 
     def __init__(
         self,
@@ -74,6 +66,19 @@ class InteractiveShell(ABC):
         app_args: str = "",
         timeout: float = SETTINGS.timeout,
     ) -> None:
+        """Create an SSH channel during initialization.
+
+        Args:
+            interactive_session: The SSH session dedicated to interactive shells.
+            logger: The logger instance this session will use.
+            get_privileged_command: A method for modifying a command to allow it to use
+                elevated privileges. If :data:`None`, the application will not be started
+                with elevated privileges.
+            app_args: The command line arguments to be passed to the application on startup.
+            timeout: The timeout used for the SSH channel that is dedicated to this interactive
+                shell. This timeout is for collecting output, so if reading from the buffer
+                and no output is gathered within the timeout, an exception is thrown.
+        """
         self._interactive_session = interactive_session
         self._ssh_channel = self._interactive_session.invoke_shell()
         self._stdin = self._ssh_channel.makefile_stdin("w")
@@ -90,6 +95,10 @@ class InteractiveShell(ABC):
 
         This method is often overridden by subclasses as their process for
         starting may look different.
+
+        Args:
+            get_privileged_command: A function (but could be any callable) that produces
+                the version of the command with elevated privileges.
         """
         start_command = f"{self.path} {self._app_args}"
         if get_privileged_command is not None:
@@ -97,16 +106,24 @@ class InteractiveShell(ABC):
         self.send_command(start_command)
 
     def send_command(self, command: str, prompt: str | None = None) -> str:
-        """Send a command and get all output before the expected ending string.
+        """Send `command` and get all output before the expected ending string.
 
         Lines that expect input are not included in the stdout buffer, so they cannot
-        be used for expect. For example, if you were prompted to log into something
-        with a username and password, you cannot expect "username:" because it won't
-        yet be in the stdout buffer. A workaround for this could be consuming an
-        extra newline character to force the current prompt into the stdout buffer.
+        be used for expect.
+
+        Example:
+            If you were prompted to log into something with a username and password,
+            you cannot expect ``username:`` because it won't yet be in the stdout buffer.
+            A workaround for this could be consuming an extra newline character to force
+            the current `prompt` into the stdout buffer.
+
+        Args:
+            command: The command to send.
+            prompt: After sending the command, `send_command` will be expecting this string.
+                If :data:`None`, will use the class's default prompt.
 
         Returns:
-            All output in the buffer before expected string
+            All output in the buffer before expected string.
         """
         self._logger.info(f"Sending: '{command}'")
         if prompt is None:
@@ -124,8 +141,10 @@ class InteractiveShell(ABC):
         return out
 
     def close(self) -> None:
+        """Properly free all resources."""
         self._stdin.close()
         self._ssh_channel.close()
 
     def __del__(self) -> None:
+        """Make sure the session is properly closed before deleting the object."""
         self.close()

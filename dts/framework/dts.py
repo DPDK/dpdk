@@ -3,6 +3,33 @@
 # Copyright(c) 2022-2023 PANTHEON.tech s.r.o.
 # Copyright(c) 2022-2023 University of New Hampshire
 
+r"""Test suite runner module.
+
+A DTS run is split into stages:
+
+    #. Execution stage,
+    #. Build target stage,
+    #. Test suite stage,
+    #. Test case stage.
+
+The module is responsible for running tests on testbeds defined in the test run configuration.
+Each setup or teardown of each stage is recorded in a :class:`~.test_result.DTSResult` or
+one of its subclasses. The test case results are also recorded.
+
+If an error occurs, the current stage is aborted, the error is recorded and the run continues in
+the next iteration of the same stage. The return code is the highest `severity` of all
+:class:`~.exception.DTSError`\s.
+
+Example:
+    An error occurs in a build target setup. The current build target is aborted and the run
+    continues with the next build target. If the errored build target was the last one in the given
+    execution, the next execution begins.
+
+Attributes:
+    dts_logger: The logger instance used in this module.
+    result: The top level result used in the module.
+"""
+
 import sys
 
 from .config import (
@@ -23,9 +50,38 @@ result: DTSResult = DTSResult(dts_logger)
 
 
 def run_all() -> None:
-    """
-    The main process of DTS. Runs all build targets in all executions from the main
-    config file.
+    """Run all build targets in all executions from the test run configuration.
+
+    Before running test suites, executions and build targets are first set up.
+    The executions and build targets defined in the test run configuration are iterated over.
+    The executions define which tests to run and where to run them and build targets define
+    the DPDK build setup.
+
+    The tests suites are set up for each execution/build target tuple and each scheduled
+    test case within the test suite is set up, executed and torn down. After all test cases
+    have been executed, the test suite is torn down and the next build target will be tested.
+
+    All the nested steps look like this:
+
+        #. Execution setup
+
+            #. Build target setup
+
+                #. Test suite setup
+
+                    #. Test case setup
+                    #. Test case logic
+                    #. Test case teardown
+
+                #. Test suite teardown
+
+            #. Build target teardown
+
+        #. Execution teardown
+
+    The test cases are filtered according to the specification in the test run configuration and
+    the :option:`--test-cases` command line argument or
+    the :envvar:`DTS_TESTCASES` environment variable.
     """
     global dts_logger
     global result
@@ -87,6 +143,8 @@ def run_all() -> None:
 
 
 def _check_dts_python_version() -> None:
+    """Check the required Python version - v3.10."""
+
     def RED(text: str) -> str:
         return f"\u001B[31;1m{str(text)}\u001B[0m"
 
@@ -109,9 +167,16 @@ def _run_execution(
     execution: ExecutionConfiguration,
     result: DTSResult,
 ) -> None:
-    """
-    Run the given execution. This involves running the execution setup as well as
-    running all build targets in the given execution.
+    """Run the given execution.
+
+    This involves running the execution setup as well as running all build targets
+    in the given execution. After that, execution teardown is run.
+
+    Args:
+        sut_node: The execution's SUT node.
+        tg_node: The execution's TG node.
+        execution: An execution's test run configuration.
+        result: The top level result object.
     """
     dts_logger.info(f"Running execution with SUT '{execution.system_under_test_node.name}'.")
     execution_result = result.add_execution(sut_node.config)
@@ -144,8 +209,18 @@ def _run_build_target(
     execution: ExecutionConfiguration,
     execution_result: ExecutionResult,
 ) -> None:
-    """
-    Run the given build target.
+    """Run the given build target.
+
+    This involves running the build target setup as well as running all test suites
+    in the given execution the build target is defined in.
+    After that, build target teardown is run.
+
+    Args:
+        sut_node: The execution's SUT node.
+        tg_node: The execution's TG node.
+        build_target: A build target's test run configuration.
+        execution: The build target's execution's test run configuration.
+        execution_result: The execution level result object associated with the execution.
     """
     dts_logger.info(f"Running build target '{build_target.name}'.")
     build_target_result = execution_result.add_build_target(build_target)
@@ -177,10 +252,20 @@ def _run_all_suites(
     execution: ExecutionConfiguration,
     build_target_result: BuildTargetResult,
 ) -> None:
-    """
-    Use the given build_target to run execution's test suites
-    with possibly only a subset of test cases.
-    If no subset is specified, run all test cases.
+    """Run the execution's (possibly a subset) test suites using the current build target.
+
+    The function assumes the build target we're testing has already been built on the SUT node.
+    The current build target thus corresponds to the current DPDK build present on the SUT node.
+
+    If a blocking test suite (such as the smoke test suite) fails, the rest of the test suites
+    in the current build target won't be executed.
+
+    Args:
+        sut_node: The execution's SUT node.
+        tg_node: The execution's TG node.
+        execution: The execution's test run configuration associated with the current build target.
+        build_target_result: The build target level result object associated
+            with the current build target.
     """
     end_build_target = False
     if not execution.skip_smoke_tests:
@@ -206,16 +291,22 @@ def _run_single_suite(
     build_target_result: BuildTargetResult,
     test_suite_config: TestSuiteConfig,
 ) -> None:
-    """Runs a single test suite.
+    """Run all test suite in a single test suite module.
+
+    The function assumes the build target we're testing has already been built on the SUT node.
+    The current build target thus corresponds to the current DPDK build present on the SUT node.
 
     Args:
-        sut_node: Node to run tests on.
-        execution: Execution the test case belongs to.
-        build_target_result: Build target configuration test case is run on
-        test_suite_config: Test suite configuration
+        sut_node: The execution's SUT node.
+        tg_node: The execution's TG node.
+        execution: The execution's test run configuration associated with the current build target.
+        build_target_result: The build target level result object associated
+            with the current build target.
+        test_suite_config: Test suite test run configuration specifying the test suite module
+            and possibly a subset of test cases of test suites in that module.
 
     Raises:
-        BlockingTestSuiteError: If a test suite that was marked as blocking fails.
+        BlockingTestSuiteError: If a blocking test suite fails.
     """
     try:
         full_suite_path = f"tests.TestSuite_{test_suite_config.test_suite}"
@@ -239,9 +330,7 @@ def _run_single_suite(
 
 
 def _exit_dts() -> None:
-    """
-    Process all errors and exit with the proper exit code.
-    """
+    """Process all errors and exit with the proper exit code."""
     result.process()
 
     if dts_logger:

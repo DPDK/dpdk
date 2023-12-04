@@ -3,6 +3,14 @@
 # Copyright(c) 2023 PANTHEON.tech s.r.o.
 # Copyright(c) 2023 University of New Hampshire
 
+"""System under test (DPDK + hardware) node.
+
+A system under test (SUT) is the combination of DPDK
+and the hardware we're testing with DPDK (NICs, crypto and other devices).
+An SUT node is where this SUT runs.
+"""
+
+
 import os
 import tarfile
 import time
@@ -26,6 +34,11 @@ from .virtual_device import VirtualDevice
 
 
 class EalParameters(object):
+    """The environment abstraction layer parameters.
+
+    The string representation can be created by converting the instance to a string.
+    """
+
     def __init__(
         self,
         lcore_list: LogicalCoreList,
@@ -35,21 +48,23 @@ class EalParameters(object):
         vdevs: list[VirtualDevice],
         other_eal_param: str,
     ):
-        """
-        Generate eal parameters character string;
-        :param lcore_list: the list of logical cores to use.
-        :param memory_channels: the number of memory channels to use.
-        :param prefix: set file prefix string, eg:
-                        prefix='vf'
-        :param no_pci: switch of disable PCI bus eg:
-                        no_pci=True
-        :param vdevs: virtual device list, eg:
-                        vdevs=[
-                            VirtualDevice('net_ring0'),
-                            VirtualDevice('net_ring1')
-                        ]
-        :param other_eal_param: user defined DPDK eal parameters, eg:
-                        other_eal_param='--single-file-segments'
+        """Initialize the parameters according to inputs.
+
+        Process the parameters into the format used on the command line.
+
+        Args:
+            lcore_list: The list of logical cores to use.
+            memory_channels: The number of memory channels to use.
+            prefix: Set the file prefix string with which to start DPDK, e.g.: ``prefix='vf'``.
+            no_pci: Switch to disable PCI bus e.g.: ``no_pci=True``.
+            vdevs: Virtual devices, e.g.::
+
+                vdevs=[
+                    VirtualDevice('net_ring0'),
+                    VirtualDevice('net_ring1')
+                ]
+            other_eal_param: user defined DPDK EAL parameters, e.g.:
+                ``other_eal_param='--single-file-segments'``
         """
         self._lcore_list = f"-l {lcore_list}"
         self._memory_channels = f"-n {memory_channels}"
@@ -61,6 +76,7 @@ class EalParameters(object):
         self._other_eal_param = other_eal_param
 
     def __str__(self) -> str:
+        """Create the EAL string."""
         return (
             f"{self._lcore_list} "
             f"{self._memory_channels} "
@@ -72,11 +88,21 @@ class EalParameters(object):
 
 
 class SutNode(Node):
-    """
-    A class for managing connections to the System under Test, providing
-    methods that retrieve the necessary information about the node (such as
-    CPU, memory and NIC details) and configuration capabilities.
-    Another key capability is building DPDK according to given build target.
+    """The system under test node.
+
+    The SUT node extends :class:`Node` with DPDK specific features:
+
+        * DPDK build,
+        * Gathering of DPDK build info,
+        * The running of DPDK apps, interactively or one-time execution,
+        * DPDK apps cleanup.
+
+    The :option:`--tarball` command line argument and the :envvar:`DTS_DPDK_TARBALL`
+    environment variable configure the path to the DPDK tarball
+    or the git commit ID, tag ID or tree ID to test.
+
+    Attributes:
+        config: The SUT node configuration
     """
 
     config: SutNodeConfiguration
@@ -94,6 +120,11 @@ class SutNode(Node):
     _path_to_devbind_script: PurePath | None
 
     def __init__(self, node_config: SutNodeConfiguration):
+        """Extend the constructor with SUT node specifics.
+
+        Args:
+            node_config: The SUT node's test run configuration.
+        """
         super(SutNode, self).__init__(node_config)
         self._dpdk_prefix_list = []
         self._build_target_config = None
@@ -113,6 +144,12 @@ class SutNode(Node):
 
     @property
     def _remote_dpdk_dir(self) -> PurePath:
+        """The remote DPDK dir.
+
+        This internal property should be set after extracting the DPDK tarball. If it's not set,
+        that implies the DPDK setup step has been skipped, in which case we can guess where
+        a previous build was located.
+        """
         if self.__remote_dpdk_dir is None:
             self.__remote_dpdk_dir = self._guess_dpdk_remote_dir()
         return self.__remote_dpdk_dir
@@ -123,6 +160,11 @@ class SutNode(Node):
 
     @property
     def remote_dpdk_build_dir(self) -> PurePath:
+        """The remote DPDK build directory.
+
+        This is the directory where DPDK was built.
+        We assume it was built in a subdirectory of the extracted tarball.
+        """
         if self._build_target_config:
             return self.main_session.join_remote_path(
                 self._remote_dpdk_dir, self._build_target_config.name
@@ -132,18 +174,21 @@ class SutNode(Node):
 
     @property
     def dpdk_version(self) -> str:
+        """Last built DPDK version."""
         if self._dpdk_version is None:
             self._dpdk_version = self.main_session.get_dpdk_version(self._remote_dpdk_dir)
         return self._dpdk_version
 
     @property
     def node_info(self) -> NodeInfo:
+        """Additional node information."""
         if self._node_info is None:
             self._node_info = self.main_session.get_node_info()
         return self._node_info
 
     @property
     def compiler_version(self) -> str:
+        """The node's compiler version."""
         if self._compiler_version is None:
             if self._build_target_config is not None:
                 self._compiler_version = self.main_session.get_compiler_version(
@@ -158,6 +203,7 @@ class SutNode(Node):
 
     @property
     def path_to_devbind_script(self) -> PurePath:
+        """The path to the dpdk-devbind.py script on the node."""
         if self._path_to_devbind_script is None:
             self._path_to_devbind_script = self.main_session.join_remote_path(
                 self._remote_dpdk_dir, "usertools", "dpdk-devbind.py"
@@ -165,6 +211,11 @@ class SutNode(Node):
         return self._path_to_devbind_script
 
     def get_build_target_info(self) -> BuildTargetInfo:
+        """Get additional build target information.
+
+        Returns:
+            The build target information,
+        """
         return BuildTargetInfo(
             dpdk_version=self.dpdk_version, compiler_version=self.compiler_version
         )
@@ -173,8 +224,9 @@ class SutNode(Node):
         return self.main_session.guess_dpdk_remote_dir(self._remote_tmp_dir)
 
     def _set_up_build_target(self, build_target_config: BuildTargetConfiguration) -> None:
-        """
-        Setup DPDK on the SUT node.
+        """Setup DPDK on the SUT node.
+
+        Additional build target setup steps on top of those in :class:`Node`.
         """
         # we want to ensure that dpdk_version and compiler_version is reset for new
         # build targets
@@ -186,16 +238,14 @@ class SutNode(Node):
         self.bind_ports_to_driver()
 
     def _tear_down_build_target(self) -> None:
-        """
-        This method exists to be optionally overwritten by derived classes and
-        is not decorated so that the derived class doesn't have to use the decorator.
+        """Bind ports to the operating system drivers.
+
+        Additional build target teardown steps on top of those in :class:`Node`.
         """
         self.bind_ports_to_driver(for_dpdk=False)
 
     def _configure_build_target(self, build_target_config: BuildTargetConfiguration) -> None:
-        """
-        Populate common environment variables and set build target config.
-        """
+        """Populate common environment variables and set build target config."""
         self._env_vars = {}
         self._build_target_config = build_target_config
         self._env_vars.update(self.main_session.get_dpdk_build_env_vars(build_target_config.arch))
@@ -207,9 +257,7 @@ class SutNode(Node):
 
     @Node.skip_setup
     def _copy_dpdk_tarball(self) -> None:
-        """
-        Copy to and extract DPDK tarball on the SUT node.
-        """
+        """Copy to and extract DPDK tarball on the SUT node."""
         self._logger.info("Copying DPDK tarball to SUT.")
         self.main_session.copy_to(SETTINGS.dpdk_tarball_path, self._remote_tmp_dir)
 
@@ -238,8 +286,9 @@ class SutNode(Node):
 
     @Node.skip_setup
     def _build_dpdk(self) -> None:
-        """
-        Build DPDK. Uses the already configured target. Assumes that the tarball has
+        """Build DPDK.
+
+        Uses the already configured target. Assumes that the tarball has
         already been copied to and extracted on the SUT node.
         """
         self.main_session.build_dpdk(
@@ -250,15 +299,19 @@ class SutNode(Node):
         )
 
     def build_dpdk_app(self, app_name: str, **meson_dpdk_args: str | bool) -> PurePath:
-        """
-        Build one or all DPDK apps. Requires DPDK to be already built on the SUT node.
-        When app_name is 'all', build all example apps.
-        When app_name is any other string, tries to build that example app.
-        Return the directory path of the built app. If building all apps, return
-        the path to the examples directory (where all apps reside).
-        The meson_dpdk_args are keyword arguments
-        found in meson_option.txt in root DPDK directory. Do not use -D with them,
-        for example: enable_kmods=True.
+        """Build one or all DPDK apps.
+
+        Requires DPDK to be already built on the SUT node.
+
+        Args:
+            app_name: The name of the DPDK app to build.
+                When `app_name` is ``all``, build all example apps.
+            meson_dpdk_args: The arguments found in ``meson_options.txt`` in root DPDK directory.
+                Do not use ``-D`` with them.
+
+        Returns:
+            The directory path of the built app. If building all apps, return
+            the path to the examples directory (where all apps reside).
         """
         self.main_session.build_dpdk(
             self._env_vars,
@@ -277,9 +330,7 @@ class SutNode(Node):
         )
 
     def kill_cleanup_dpdk_apps(self) -> None:
-        """
-        Kill all dpdk applications on the SUT. Cleanup hugepages.
-        """
+        """Kill all dpdk applications on the SUT, then clean up hugepages."""
         if self._dpdk_kill_session and self._dpdk_kill_session.is_alive():
             # we can use the session if it exists and responds
             self._dpdk_kill_session.kill_cleanup_dpdk_apps(self._dpdk_prefix_list)
@@ -298,33 +349,34 @@ class SutNode(Node):
         vdevs: list[VirtualDevice] | None = None,
         other_eal_param: str = "",
     ) -> "EalParameters":
-        """
-        Generate eal parameters character string;
-        :param lcore_filter_specifier: a number of lcores/cores/sockets to use
-                        or a list of lcore ids to use.
-                        The default will select one lcore for each of two cores
-                        on one socket, in ascending order of core ids.
-        :param ascending_cores: True, use cores with the lowest numerical id first
-                        and continue in ascending order. If False, start with the
-                        highest id and continue in descending order. This ordering
-                        affects which sockets to consider first as well.
-        :param prefix: set file prefix string, eg:
-                        prefix='vf'
-        :param append_prefix_timestamp: if True, will append a timestamp to
-                        DPDK file prefix.
-        :param no_pci: switch of disable PCI bus eg:
-                        no_pci=True
-        :param vdevs: virtual device list, eg:
-                        vdevs=[
-                            VirtualDevice('net_ring0'),
-                            VirtualDevice('net_ring1')
-                        ]
-        :param other_eal_param: user defined DPDK eal parameters, eg:
-                        other_eal_param='--single-file-segments'
-        :return: eal param string, eg:
-                '-c 0xf -a 0000:88:00.0 --file-prefix=dpdk_1112_20190809143420';
-        """
+        """Compose the EAL parameters.
 
+        Process the list of cores and the DPDK prefix and pass that along with
+        the rest of the arguments.
+
+        Args:
+            lcore_filter_specifier: A number of lcores/cores/sockets to use
+                or a list of lcore ids to use.
+                The default will select one lcore for each of two cores
+                on one socket, in ascending order of core ids.
+            ascending_cores: Sort cores in ascending order (lowest to highest IDs).
+                If :data:`False`, sort in descending order.
+            prefix: Set the file prefix string with which to start DPDK, e.g.: ``prefix='vf'``.
+            append_prefix_timestamp: If :data:`True`, will append a timestamp to DPDK file prefix.
+            no_pci: Switch to disable PCI bus e.g.: ``no_pci=True``.
+            vdevs: Virtual devices, e.g.::
+
+                vdevs=[
+                    VirtualDevice('net_ring0'),
+                    VirtualDevice('net_ring1')
+                ]
+            other_eal_param: user defined DPDK EAL parameters, e.g.:
+                ``other_eal_param='--single-file-segments'``.
+
+        Returns:
+            An EAL param string, such as
+            ``-c 0xf -a 0000:88:00.0 --file-prefix=dpdk_1112_20190809143420``.
+        """
         lcore_list = LogicalCoreList(self.filter_lcores(lcore_filter_specifier, ascending_cores))
 
         if append_prefix_timestamp:
@@ -348,14 +400,29 @@ class SutNode(Node):
     def run_dpdk_app(
         self, app_path: PurePath, eal_args: "EalParameters", timeout: float = 30
     ) -> CommandResult:
-        """
-        Run DPDK application on the remote node.
+        """Run DPDK application on the remote node.
+
+        The application is not run interactively - the command that starts the application
+        is executed and then the call waits for it to finish execution.
+
+        Args:
+            app_path: The remote path to the DPDK application.
+            eal_args: EAL parameters to run the DPDK application with.
+            timeout: Wait at most this long in seconds for `command` execution to complete.
+
+        Returns:
+            The result of the DPDK app execution.
         """
         return self.main_session.send_command(
             f"{app_path} {eal_args}", timeout, privileged=True, verify=True
         )
 
     def configure_ipv4_forwarding(self, enable: bool) -> None:
+        """Enable/disable IPv4 forwarding on the node.
+
+        Args:
+            enable: If :data:`True`, enable the forwarding, otherwise disable it.
+        """
         self.main_session.configure_ipv4_forwarding(enable)
 
     def create_interactive_shell(
@@ -365,9 +432,13 @@ class SutNode(Node):
         privileged: bool = False,
         eal_parameters: EalParameters | str | None = None,
     ) -> InteractiveShellType:
-        """Factory method for creating a handler for an interactive session.
+        """Extend the factory for interactive session handlers.
 
-        Instantiate shell_cls according to the remote OS specifics.
+        The extensions are SUT node specific:
+
+            * The default for `eal_parameters`,
+            * The interactive shell path `shell_cls.path` is prepended with path to the remote
+              DPDK build directory for DPDK apps.
 
         Args:
             shell_cls: The class of the shell.
@@ -377,9 +448,10 @@ class SutNode(Node):
             privileged: Whether to run the shell with administrative privileges.
             eal_parameters: List of EAL parameters to use to launch the app. If this
                 isn't provided or an empty string is passed, it will default to calling
-                create_eal_parameters().
+                :meth:`create_eal_parameters`.
+
         Returns:
-            Instance of the desired interactive application.
+            An instance of the desired interactive application shell.
         """
         if not eal_parameters:
             eal_parameters = self.create_eal_parameters()
@@ -396,8 +468,8 @@ class SutNode(Node):
         """Bind all ports on the SUT to a driver.
 
         Args:
-            for_dpdk: Boolean that, when True, binds ports to os_driver_for_dpdk
-            or, when False, binds to os_driver. Defaults to True.
+            for_dpdk: If :data:`True`, binds ports to os_driver_for_dpdk.
+                If :data:`False`, binds to os_driver.
         """
         for port in self.ports:
             driver = port.os_driver_for_dpdk if for_dpdk else port.os_driver

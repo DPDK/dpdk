@@ -2,6 +2,13 @@
 # Copyright(c) 2023 PANTHEON.tech s.r.o.
 # Copyright(c) 2023 University of New Hampshire
 
+"""Linux OS translator.
+
+Translate OS-unaware calls into Linux calls/utilities. Most of Linux distributions are mostly
+compliant with POSIX standards, so this module only implements the parts that aren't.
+This intermediate module implements the common parts of mostly POSIX compliant distributions.
+"""
+
 import json
 from ipaddress import IPv4Interface, IPv6Interface
 from typing import TypedDict, Union
@@ -17,43 +24,52 @@ from .posix_session import PosixSession
 
 
 class LshwConfigurationOutput(TypedDict):
+    """The relevant parts of ``lshw``'s ``configuration`` section."""
+
+    #:
     link: str
 
 
 class LshwOutput(TypedDict):
-    """
-    A model of the relevant information from json lshw output, e.g.:
-    {
-    ...
-    "businfo" : "pci@0000:08:00.0",
-    "logicalname" : "enp8s0",
-    "version" : "00",
-    "serial" : "52:54:00:59:e1:ac",
-    ...
-    "configuration" : {
-      ...
-      "link" : "yes",
-      ...
-    },
-    ...
+    """A model of the relevant information from ``lshw``'s json output.
+
+    Example:
+        ::
+
+            {
+            ...
+            "businfo" : "pci@0000:08:00.0",
+            "logicalname" : "enp8s0",
+            "version" : "00",
+            "serial" : "52:54:00:59:e1:ac",
+            ...
+            "configuration" : {
+              ...
+              "link" : "yes",
+              ...
+            },
+            ...
     """
 
+    #:
     businfo: str
+    #:
     logicalname: NotRequired[str]
+    #:
     serial: NotRequired[str]
+    #:
     configuration: LshwConfigurationOutput
 
 
 class LinuxSession(PosixSession):
-    """
-    The implementation of non-Posix compliant parts of Linux remote sessions.
-    """
+    """The implementation of non-Posix compliant parts of Linux."""
 
     @staticmethod
     def _get_privileged_command(command: str) -> str:
         return f"sudo -- sh -c '{command}'"
 
     def get_remote_cpus(self, use_first_core: bool) -> list[LogicalCore]:
+        """Overrides :meth:`~.os_session.OSSession.get_remote_cpus`."""
         cpu_info = self.send_command("lscpu -p=CPU,CORE,SOCKET,NODE|grep -v \\#").stdout
         lcores = []
         for cpu_line in cpu_info.splitlines():
@@ -65,18 +81,20 @@ class LinuxSession(PosixSession):
         return lcores
 
     def get_dpdk_file_prefix(self, dpdk_prefix: str) -> str:
+        """Overrides :meth:`~.os_session.OSSession.get_dpdk_file_prefix`."""
         return dpdk_prefix
 
-    def setup_hugepages(self, hugepage_amount: int, force_first_numa: bool) -> None:
+    def setup_hugepages(self, hugepage_count: int, force_first_numa: bool) -> None:
+        """Overrides :meth:`~.os_session.OSSession.setup_hugepages`."""
         self._logger.info("Getting Hugepage information.")
         hugepage_size = self._get_hugepage_size()
         hugepages_total = self._get_hugepages_total()
         self._numa_nodes = self._get_numa_nodes()
 
-        if force_first_numa or hugepages_total != hugepage_amount:
+        if force_first_numa or hugepages_total != hugepage_count:
             # when forcing numa, we need to clear existing hugepages regardless
             # of size, so they can be moved to the first numa node
-            self._configure_huge_pages(hugepage_amount, hugepage_size, force_first_numa)
+            self._configure_huge_pages(hugepage_count, hugepage_size, force_first_numa)
         else:
             self._logger.info("Hugepages already configured.")
         self._mount_huge_pages()
@@ -132,6 +150,7 @@ class LinuxSession(PosixSession):
         self.send_command(f"echo {amount} | tee {hugepage_config_path}", privileged=True)
 
     def update_ports(self, ports: list[Port]) -> None:
+        """Overrides :meth:`~.os_session.OSSession.update_ports`."""
         self._logger.debug("Gathering port info.")
         for port in ports:
             assert port.node == self.name, "Attempted to gather port info on the wrong node"
@@ -161,6 +180,7 @@ class LinuxSession(PosixSession):
             )
 
     def configure_port_state(self, port: Port, enable: bool) -> None:
+        """Overrides :meth:`~.os_session.OSSession.configure_port_state`."""
         state = "up" if enable else "down"
         self.send_command(f"ip link set dev {port.logical_name} {state}", privileged=True)
 
@@ -170,6 +190,7 @@ class LinuxSession(PosixSession):
         port: Port,
         delete: bool,
     ) -> None:
+        """Overrides :meth:`~.os_session.OSSession.configure_port_ip_address`."""
         command = "del" if delete else "add"
         self.send_command(
             f"ip address {command} {address} dev {port.logical_name}",
@@ -178,5 +199,6 @@ class LinuxSession(PosixSession):
         )
 
     def configure_ipv4_forwarding(self, enable: bool) -> None:
+        """Overrides :meth:`~.os_session.OSSession.configure_ipv4_forwarding`."""
         state = 1 if enable else 0
         self.send_command(f"sysctl -w net.ipv4.ip_forward={state}", privileged=True)

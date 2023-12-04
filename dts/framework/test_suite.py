@@ -2,8 +2,19 @@
 # Copyright(c) 2010-2014 Intel Corporation
 # Copyright(c) 2023 PANTHEON.tech s.r.o.
 
-"""
-Base class for creating DTS test cases.
+"""Features common to all test suites.
+
+The module defines the :class:`TestSuite` class which doesn't contain any test cases, and as such
+must be extended by subclasses which add test cases. The :class:`TestSuite` contains the basics
+needed by subclasses:
+
+    * Test suite and test case execution flow,
+    * Testbed (SUT, TG) configuration,
+    * Packet sending and verification,
+    * Test case verification.
+
+The module also defines a function, :func:`get_test_suites`,
+for gathering test suites from a Python module.
 """
 
 import importlib
@@ -11,7 +22,7 @@ import inspect
 import re
 from ipaddress import IPv4Interface, IPv6Interface, ip_interface
 from types import MethodType
-from typing import Any, Union
+from typing import Any, ClassVar, Union
 
 from scapy.layers.inet import IP  # type: ignore[import]
 from scapy.layers.l2 import Ether  # type: ignore[import]
@@ -31,25 +42,44 @@ from .utils import get_packet_summaries
 
 
 class TestSuite(object):
-    """
-    The base TestSuite class provides methods for handling basic flow of a test suite:
-    * test case filtering and collection
-    * test suite setup/cleanup
-    * test setup/cleanup
-    * test case execution
-    * error handling and results storage
-    Test cases are implemented by derived classes. Test cases are all methods
-    starting with test_, further divided into performance test cases
-    (starting with test_perf_) and functional test cases (all other test cases).
-    By default, all test cases will be executed. A list of testcase str names
-    may be specified in conf.yaml or on the command line
-    to filter which test cases to run.
-    The methods named [set_up|tear_down]_[suite|test_case] should be overridden
-    in derived classes if the appropriate suite/test case fixtures are needed.
+    """The base class with methods for handling the basic flow of a test suite.
+
+        * Test case filtering and collection,
+        * Test suite setup/cleanup,
+        * Test setup/cleanup,
+        * Test case execution,
+        * Error handling and results storage.
+
+    Test cases are implemented by subclasses. Test cases are all methods starting with ``test_``,
+    further divided into performance test cases (starting with ``test_perf_``)
+    and functional test cases (all other test cases).
+
+    By default, all test cases will be executed. A list of testcase names may be specified
+    in the YAML test run configuration file and in the :option:`--test-cases` command line argument
+    or in the :envvar:`DTS_TESTCASES` environment variable to filter which test cases to run.
+    The union of both lists will be used. Any unknown test cases from the latter lists
+    will be silently ignored.
+
+    If the :option:`--re-run` command line argument or the :envvar:`DTS_RERUN` environment variable
+    is set, in case of a test case failure, the test case will be executed again until it passes
+    or it fails that many times in addition of the first failure.
+
+    The methods named ``[set_up|tear_down]_[suite|test_case]`` should be overridden in subclasses
+    if the appropriate test suite/test case fixtures are needed.
+
+    The test suite is aware of the testbed (the SUT and TG) it's running on. From this, it can
+    properly choose the IP addresses and other configuration that must be tailored to the testbed.
+
+    Attributes:
+        sut_node: The SUT node where the test suite is running.
+        tg_node: The TG node where the test suite is running.
     """
 
     sut_node: SutNode
-    is_blocking = False
+    tg_node: TGNode
+    #: Whether the test suite is blocking. A failure of a blocking test suite
+    #: will block the execution of all subsequent test suites in the current build target.
+    is_blocking: ClassVar[bool] = False
     _logger: DTSLOG
     _test_cases_to_run: list[str]
     _func: bool
@@ -72,6 +102,20 @@ class TestSuite(object):
         func: bool,
         build_target_result: BuildTargetResult,
     ):
+        """Initialize the test suite testbed information and basic configuration.
+
+        Process what test cases to run, create the associated
+        :class:`~.test_result.TestSuiteResult`, find links between ports
+        and set up default IP addresses to be used when configuring them.
+
+        Args:
+            sut_node: The SUT node where the test suite will run.
+            tg_node: The TG node where the test suite will run.
+            test_cases: The list of test cases to execute.
+                If empty, all test cases will be executed.
+            func: Whether to run functional tests.
+            build_target_result: The build target result this test suite is run in.
+        """
         self.sut_node = sut_node
         self.tg_node = tg_node
         self._logger = getLogger(self.__class__.__name__)
@@ -95,6 +139,7 @@ class TestSuite(object):
         self._tg_ip_address_ingress = ip_interface("192.168.101.3/24")
 
     def _process_links(self) -> None:
+        """Construct links between SUT and TG ports."""
         for sut_port in self.sut_node.ports:
             for tg_port in self.tg_node.ports:
                 if (sut_port.identifier, sut_port.peer) == (
@@ -104,27 +149,42 @@ class TestSuite(object):
                     self._port_links.append(PortLink(sut_port=sut_port, tg_port=tg_port))
 
     def set_up_suite(self) -> None:
-        """
-        Set up test fixtures common to all test cases; this is done before
-        any test case is run.
+        """Set up test fixtures common to all test cases.
+
+        This is done before any test case has been run.
         """
 
     def tear_down_suite(self) -> None:
-        """
-        Tear down the previously created test fixtures common to all test cases.
+        """Tear down the previously created test fixtures common to all test cases.
+
+        This is done after all test have been run.
         """
 
     def set_up_test_case(self) -> None:
-        """
-        Set up test fixtures before each test case.
+        """Set up test fixtures before each test case.
+
+        This is done before *each* test case.
         """
 
     def tear_down_test_case(self) -> None:
-        """
-        Tear down the previously created test fixtures after each test case.
+        """Tear down the previously created test fixtures after each test case.
+
+        This is done after *each* test case.
         """
 
     def configure_testbed_ipv4(self, restore: bool = False) -> None:
+        """Configure IPv4 addresses on all testbed ports.
+
+        The configured ports are:
+
+        * SUT ingress port,
+        * SUT egress port,
+        * TG ingress port,
+        * TG egress port.
+
+        Args:
+            restore: If :data:`True`, will remove the configuration instead.
+        """
         delete = True if restore else False
         enable = False if restore else True
         self._configure_ipv4_forwarding(enable)
@@ -149,11 +209,17 @@ class TestSuite(object):
         self.sut_node.configure_ipv4_forwarding(enable)
 
     def send_packet_and_capture(self, packet: Packet, duration: float = 1) -> list[Packet]:
-        """
-        Send a packet through the appropriate interface and
-        receive on the appropriate interface.
-        Modify the packet with l3/l2 addresses corresponding
-        to the testbed and desired traffic.
+        """Send and receive `packet` using the associated TG.
+
+        Send `packet` through the appropriate interface and receive on the appropriate interface.
+        Modify the packet with l3/l2 addresses corresponding to the testbed and desired traffic.
+
+        Args:
+            packet: The packet to send.
+            duration: Capture traffic for this amount of time after sending `packet`.
+
+        Returns:
+            A list of received packets.
         """
         packet = self._adjust_addresses(packet)
         return self.tg_node.send_packet_and_capture(
@@ -161,13 +227,26 @@ class TestSuite(object):
         )
 
     def get_expected_packet(self, packet: Packet) -> Packet:
+        """Inject the proper L2/L3 addresses into `packet`.
+
+        Args:
+            packet: The packet to modify.
+
+        Returns:
+            `packet` with injected L2/L3 addresses.
+        """
         return self._adjust_addresses(packet, expected=True)
 
     def _adjust_addresses(self, packet: Packet, expected: bool = False) -> Packet:
-        """
+        """L2 and L3 address additions in both directions.
+
         Assumptions:
-            Two links between SUT and TG, one link is TG -> SUT,
-            the other SUT -> TG.
+            Two links between SUT and TG, one link is TG -> SUT, the other SUT -> TG.
+
+        Args:
+            packet: The packet to modify.
+            expected: If :data:`True`, the direction is SUT -> TG,
+                otherwise the direction is TG -> SUT.
         """
         if expected:
             # The packet enters the TG from SUT
@@ -193,6 +272,19 @@ class TestSuite(object):
         return Ether(packet.build())
 
     def verify(self, condition: bool, failure_description: str) -> None:
+        """Verify `condition` and handle failures.
+
+        When `condition` is :data:`False`, raise an exception and log the last 10 commands
+        executed on both the SUT and TG.
+
+        Args:
+            condition: The condition to check.
+            failure_description: A short description of the failure
+                that will be stored in the raised exception.
+
+        Raises:
+            TestCaseVerifyError: `condition` is :data:`False`.
+        """
         if not condition:
             self._fail_test_case_verify(failure_description)
 
@@ -206,6 +298,19 @@ class TestSuite(object):
         raise TestCaseVerifyError(failure_description)
 
     def verify_packets(self, expected_packet: Packet, received_packets: list[Packet]) -> None:
+        """Verify that `expected_packet` has been received.
+
+        Go through `received_packets` and check that `expected_packet` is among them.
+        If not, raise an exception and log the last 10 commands
+        executed on both the SUT and TG.
+
+        Args:
+            expected_packet: The packet we're expecting to receive.
+            received_packets: The packets where we're looking for `expected_packet`.
+
+        Raises:
+            TestCaseVerifyError: `expected_packet` is not among `received_packets`.
+        """
         for received_packet in received_packets:
             if self._compare_packets(expected_packet, received_packet):
                 break
@@ -280,10 +385,14 @@ class TestSuite(object):
         return True
 
     def run(self) -> None:
-        """
-        Setup, execute and teardown the whole suite.
-        Suite execution consists of running all test cases scheduled to be executed.
-        A test cast run consists of setup, execution and teardown of said test case.
+        """Set up, execute and tear down the whole suite.
+
+        Test suite execution consists of running all test cases scheduled to be executed.
+        A test case run consists of setup, execution and teardown of said test case.
+
+        Record the setup and the teardown and handle failures.
+
+        The list of scheduled test cases is constructed when creating the :class:`TestSuite` object.
         """
         test_suite_name = self.__class__.__name__
 
@@ -315,9 +424,7 @@ class TestSuite(object):
                 raise BlockingTestSuiteError(test_suite_name)
 
     def _execute_test_suite(self) -> None:
-        """
-        Execute all test cases scheduled to be executed in this suite.
-        """
+        """Execute all test cases scheduled to be executed in this suite."""
         if self._func:
             for test_case_method in self._get_functional_test_cases():
                 test_case_name = test_case_method.__name__
@@ -334,14 +441,18 @@ class TestSuite(object):
                     self._run_test_case(test_case_method, test_case_result)
 
     def _get_functional_test_cases(self) -> list[MethodType]:
-        """
-        Get all functional test cases.
+        """Get all functional test cases defined in this TestSuite.
+
+        Returns:
+            The list of functional test cases of this TestSuite.
         """
         return self._get_test_cases(r"test_(?!perf_)")
 
     def _get_test_cases(self, test_case_regex: str) -> list[MethodType]:
-        """
-        Return a list of test cases matching test_case_regex.
+        """Return a list of test cases matching test_case_regex.
+
+        Returns:
+            The list of test cases matching test_case_regex of this TestSuite.
         """
         self._logger.debug(f"Searching for test cases in {self.__class__.__name__}.")
         filtered_test_cases = []
@@ -353,9 +464,7 @@ class TestSuite(object):
         return filtered_test_cases
 
     def _should_be_executed(self, test_case_name: str, test_case_regex: str) -> bool:
-        """
-        Check whether the test case should be executed.
-        """
+        """Check whether the test case should be scheduled to be executed."""
         match = bool(re.match(test_case_regex, test_case_name))
         if self._test_cases_to_run:
             return match and test_case_name in self._test_cases_to_run
@@ -365,9 +474,9 @@ class TestSuite(object):
     def _run_test_case(
         self, test_case_method: MethodType, test_case_result: TestCaseResult
     ) -> None:
-        """
-        Setup, execute and teardown a test case in this suite.
-        Exceptions are caught and recorded in logs and results.
+        """Setup, execute and teardown a test case in this suite.
+
+        Record the result of the setup and the teardown and handle failures.
         """
         test_case_name = test_case_method.__name__
 
@@ -402,9 +511,7 @@ class TestSuite(object):
     def _execute_test_case(
         self, test_case_method: MethodType, test_case_result: TestCaseResult
     ) -> None:
-        """
-        Execute one test case and handle failures.
-        """
+        """Execute one test case, record the result and handle failures."""
         test_case_name = test_case_method.__name__
         try:
             self._logger.info(f"Starting test case execution: {test_case_name}")
@@ -425,6 +532,18 @@ class TestSuite(object):
 
 
 def get_test_suites(testsuite_module_path: str) -> list[type[TestSuite]]:
+    r"""Find all :class:`TestSuite`\s in a Python module.
+
+    Args:
+        testsuite_module_path: The path to the Python module.
+
+    Returns:
+        The list of :class:`TestSuite`\s found within the Python module.
+
+    Raises:
+        ConfigurationError: The test suite module was not found.
+    """
+
     def is_test_suite(object: Any) -> bool:
         try:
             if issubclass(object, TestSuite) and object is not TestSuite:

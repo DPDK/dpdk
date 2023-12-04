@@ -3,6 +3,72 @@
 # Copyright(c) 2022-2023 PANTHEON.tech s.r.o.
 # Copyright(c) 2022 University of New Hampshire
 
+"""Environment variables and command line arguments parsing.
+
+This is a simple module utilizing the built-in argparse module to parse command line arguments,
+augment them with values from environment variables and make them available across the framework.
+
+The command line value takes precedence, followed by the environment variable value,
+followed by the default value defined in this module.
+
+The command line arguments along with the supported environment variables are:
+
+.. option:: --config-file
+.. envvar:: DTS_CFG_FILE
+
+    The path to the YAML test run configuration file.
+
+.. option:: --output-dir, --output
+.. envvar:: DTS_OUTPUT_DIR
+
+    The directory where DTS logs and results are saved.
+
+.. option:: --compile-timeout
+.. envvar:: DTS_COMPILE_TIMEOUT
+
+    The timeout for compiling DPDK.
+
+.. option:: -t, --timeout
+.. envvar:: DTS_TIMEOUT
+
+    The timeout for all DTS operation except for compiling DPDK.
+
+.. option:: -v, --verbose
+.. envvar:: DTS_VERBOSE
+
+    Set to any value to enable logging everything to the console.
+
+.. option:: -s, --skip-setup
+.. envvar:: DTS_SKIP_SETUP
+
+    Set to any value to skip building DPDK.
+
+.. option:: --tarball, --snapshot, --git-ref
+.. envvar:: DTS_DPDK_TARBALL
+
+    The path to a DPDK tarball, git commit ID, tag ID or tree ID to test.
+
+.. option:: --test-cases
+.. envvar:: DTS_TESTCASES
+
+    A comma-separated list of test cases to execute. Unknown test cases will be silently ignored.
+
+.. option:: --re-run, --re_run
+.. envvar:: DTS_RERUN
+
+    Re-run each test case this many times in case of a failure.
+
+The module provides one key module-level variable:
+
+Attributes:
+    SETTINGS: The module level variable storing framework-wide DTS settings.
+
+Typical usage example::
+
+  from framework.settings import SETTINGS
+  foo = SETTINGS.foo
+"""
+
 import argparse
 import os
 from collections.abc import Callable, Iterable, Sequence
@@ -16,6 +82,23 @@ _T = TypeVar("_T")
 
 
 def _env_arg(env_var: str) -> Any:
+    """A helper method augmenting the argparse Action with environment variables.
+
+    If the supplied environment variable is defined, then the default value
+    of the argument is modified. This satisfies the priority order of
+    command line argument > environment variable > default value.
+
+    Arguments with no values (flags) should be defined using the const keyword argument
+    (True or False). When the argument is specified, it will be set to const, if not specified,
+    the default will be stored (possibly modified by the corresponding environment variable).
+
+    Other arguments work the same as default argparse arguments, that is using
+    the default 'store' action.
+
+    Returns:
+          The modified argparse.Action.
+    """
+
     class _EnvironmentArgument(argparse.Action):
         def __init__(
             self,
@@ -68,14 +151,28 @@ def _env_arg(env_var: str) -> Any:
 
 @dataclass(slots=True)
 class Settings:
+    """Default framework-wide user settings.
+
+    The defaults may be modified at the start of the run.
+    """
+
+    #:
     config_file_path: Path = Path(__file__).parent.parent.joinpath("conf.yaml")
+    #:
     output_dir: str = "output"
+    #:
     timeout: float = 15
+    #:
     verbose: bool = False
+    #:
     skip_setup: bool = False
+    #:
     dpdk_tarball_path: Path | str = "dpdk.tar.xz"
+    #:
     compile_timeout: float = 1200
+    #:
     test_cases: list[str] = field(default_factory=list)
+    #:
     re_run: int = 0
 
 
@@ -166,7 +263,7 @@ def _get_parser() -> argparse.ArgumentParser:
         action=_env_arg("DTS_RERUN"),
         default=SETTINGS.re_run,
         type=int,
-        help="[DTS_RERUN] Re-run each test case the specified amount of times "
+        help="[DTS_RERUN] Re-run each test case the specified number of times "
         "if a test failure occurs",
     )
 
@@ -174,6 +271,10 @@ def _get_parser() -> argparse.ArgumentParser:
 
 
 def get_settings() -> Settings:
+    """Create new settings with inputs from the user.
+
+    The inputs are taken from the command line and from environment variables.
+    """
     parsed_args = _get_parser().parse_args()
     return Settings(
         config_file_path=parsed_args.config_file,

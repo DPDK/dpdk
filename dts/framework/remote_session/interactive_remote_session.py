@@ -22,27 +22,23 @@ from framework.logger import DTSLOG
 class InteractiveRemoteSession:
     """SSH connection dedicated to interactive applications.
 
-    This connection is created using paramiko and is a persistent connection to the
-    host. This class defines methods for connecting to the node and configures this
-    connection to send "keep alive" packets every 30 seconds. Because paramiko attempts
-    to use SSH keys to establish a connection first, providing a password is optional.
-    This session is utilized by InteractiveShells and cannot be interacted with
-    directly.
-
-    Arguments:
-        node_config: Configuration class for the node you are connecting to.
-        _logger: Desired logger for this session to use.
+    The connection is created using `paramiko <https://docs.paramiko.org/en/latest/>`_
+    and is a persistent connection to the host. This class defines the methods for connecting
+    to the node and configures the connection to send "keep alive" packets every 30 seconds.
+    Because paramiko attempts to use SSH keys to establish a connection first, providing
+    a password is optional. This session is utilized by InteractiveShells
+    and cannot be interacted with directly.
 
     Attributes:
-        hostname: Hostname that will be used to initialize a connection to the node.
-        ip: A subsection of hostname that removes the port for the connection if there
+        hostname: The hostname that will be used to initialize a connection to the node.
+        ip: A subsection of `hostname` that removes the port for the connection if there
             is one. If there is no port, this will be the same as hostname.
-        port: Port to use for the ssh connection. This will be extracted from the
-            hostname if there is a port included, otherwise it will default to 22.
+        port: Port to use for the ssh connection. This will be extracted from `hostname`
+            if there is a port included, otherwise it will default to ``22``.
         username: User to connect to the node with.
         password: Password of the user connecting to the host. This will default to an
             empty string if a password is not provided.
-        session: Underlying paramiko connection.
+        session: The underlying paramiko connection.
 
     Raises:
         SSHConnectionError: There is an error creating the SSH connection.
@@ -58,9 +54,15 @@ class InteractiveRemoteSession:
     _node_config: NodeConfiguration
     _transport: Transport | None
 
-    def __init__(self, node_config: NodeConfiguration, _logger: DTSLOG) -> None:
+    def __init__(self, node_config: NodeConfiguration, logger: DTSLOG) -> None:
+        """Connect to the node during initialization.
+
+        Args:
+            node_config: The test run configuration of the node to connect to.
+            logger: The logger instance this session will use.
+        """
         self._node_config = node_config
-        self._logger = _logger
+        self._logger = logger
         self.hostname = node_config.hostname
         self.username = node_config.user
         self.password = node_config.password if node_config.password else ""

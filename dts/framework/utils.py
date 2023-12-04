@@ -3,6 +3,16 @@
 # Copyright(c) 2022-2023 PANTHEON.tech s.r.o.
 # Copyright(c) 2022-2023 University of New Hampshire
 
+"""Various utility classes and functions.
+
+These are used in multiple modules across the framework. They're here because
+they provide some non-specific functionality, greatly simplify imports or just don't
+fit elsewhere.
+
+Attributes:
+    REGEX_FOR_PCI_ADDRESS: The regex representing a PCI address, e.g. ``0000:00:08.0``.
+"""
+
 import atexit
 import json
 import os
@@ -19,12 +29,20 @@ REGEX_FOR_PCI_ADDRESS: str = "/[0-9a-fA-F]{4}:[0-9a-fA-F]{2}:[0-9a-fA-F]{2}.[0-9
 
 
 def expand_range(range_str: str) -> list[int]:
-    """
-    Process range string into a list of integers. There are two possible formats:
-    n - a single integer
-    n-m - a range of integers
+    """Process `range_str` into a list of integers.
 
-    The returned range includes both n and m. Empty string returns an empty list.
+    There are two possible formats of `range_str`:
+
+        * ``n`` - a single integer,
+        * ``n-m`` - a range of integers.
+
+    The returned range includes both ``n`` and ``m``. Empty string returns an empty list.
+
+    Args:
+        range_str: The range to expand.
+
+    Returns:
+        All the numbers from the range.
     """
     expanded_range: list[int] = []
     if range_str:
@@ -37,6 +55,14 @@ def expand_range(range_str: str) -> list[int]:
 
 
 def get_packet_summaries(packets: list[Packet]) -> str:
+    """Format a string summary from `packets`.
+
+    Args:
+        packets: The packets to format.
+
+    Returns:
+        The summary of `packets`.
+    """
     if len(packets) == 1:
         packet_summaries = packets[0].summary()
     else:
@@ -45,27 +71,36 @@ def get_packet_summaries(packets: list[Packet]) -> str:
 
 
 class StrEnum(Enum):
+    """Enum with members stored as strings."""
+
     @staticmethod
     def _generate_next_value_(name: str, start: int, count: int, last_values: object) -> str:
         return name
 
     def __str__(self) -> str:
+        """The string representation is the name of the member."""
         return self.name
 
 
 class MesonArgs(object):
-    """
-    Aggregate the arguments needed to build DPDK:
-    default_library: Default library type, Meson allows "shared", "static" and "both".
-               Defaults to None, in which case the argument won't be used.
-    Keyword arguments: The arguments found in meson_options.txt in root DPDK directory.
-               Do not use -D with them, for example:
-               meson_args = MesonArgs(enable_kmods=True).
-    """
+    """Aggregate the arguments needed to build DPDK."""
 
     _default_library: str
 
     def __init__(self, default_library: str | None = None, **dpdk_args: str | bool):
+        """Initialize the meson arguments.
+
+        Args:
+            default_library: The default library type, Meson supports ``shared``, ``static`` and
+                ``both``. Defaults to :data:`None`, in which case the argument won't be used.
+            dpdk_args: The arguments found in ``meson_options.txt`` in root DPDK directory.
+                Do not use ``-D`` with them.
+
+        Example:
+            ::
+
+                meson_args = MesonArgs(enable_kmods=True).
+        """
         self._default_library = f"--default-library={default_library}" if default_library else ""
         self._dpdk_args = " ".join(
             (
@@ -75,6 +110,7 @@ class MesonArgs(object):
         )
 
     def __str__(self) -> str:
+        """The actual args."""
         return " ".join(f"{self._default_library} {self._dpdk_args}".split())
 
 
@@ -96,24 +132,14 @@ class _TarCompressionFormat(StrEnum):
 
 
 class DPDKGitTarball(object):
-    """Create a compressed tarball of DPDK from the repository.
+    """Compressed tarball of DPDK from the repository.
 
-    The DPDK version is specified with git object git_ref.
-    The tarball will be compressed with _TarCompressionFormat,
-    which must be supported by the DTS execution environment.
-    The resulting tarball will be put into output_dir.
-
-    The class supports the os.PathLike protocol,
+    The class supports the :class:`os.PathLike` protocol,
     which is used to get the Path of the tarball::
 
         from pathlib import Path
         tarball = DPDKGitTarball("HEAD", "output")
         tarball_path = Path(tarball)
-
-    Arguments:
-        git_ref: A git commit ID, tag ID or tree ID.
-        output_dir: The directory where to put the resulting tarball.
-        tar_compression_format: The compression format to use.
     """
 
     _git_ref: str
@@ -128,6 +154,17 @@ class DPDKGitTarball(object):
         output_dir: str,
         tar_compression_format: _TarCompressionFormat = _TarCompressionFormat.xz,
     ):
+        """Create the tarball during initialization.
+
+        The DPDK version is specified with `git_ref`. The tarball will be compressed with
+        `tar_compression_format`, which must be supported by the DTS execution environment.
+        The resulting tarball will be put into `output_dir`.
+
+        Args:
+            git_ref: A git commit ID, tag ID or tree ID.
+            output_dir: The directory where to put the resulting tarball.
+            tar_compression_format: The compression format to use.
+        """
         self._git_ref = git_ref
         self._tar_compression_format = tar_compression_format
 
@@ -196,4 +233,5 @@ class DPDKGitTarball(object):
             os.remove(self._tarball_path)
 
     def __fspath__(self) -> str:
+        """The os.PathLike protocol implementation."""
         return str(self._tarball_path)

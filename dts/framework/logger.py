@@ -3,9 +3,9 @@
 # Copyright(c) 2022-2023 PANTHEON.tech s.r.o.
 # Copyright(c) 2022-2023 University of New Hampshire
 
-"""
-DTS logger module with several log level. DTS framework and TestSuite logs
-are saved in different log files.
+"""DTS logger module.
+
+DTS framework and TestSuite logs are saved in different log files.
 """
 
 import logging
@@ -18,19 +18,21 @@ date_fmt = "%Y/%m/%d %H:%M:%S"
 stream_fmt = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 
 
-class LoggerDictType(TypedDict):
-    logger: "DTSLOG"
-    name: str
-    node: str
-
-
-# List for saving all using loggers
-Loggers: list[LoggerDictType] = []
-
-
 class DTSLOG(logging.LoggerAdapter):
-    """
-    DTS log class for framework and testsuite.
+    """DTS logger adapter class for framework and testsuites.
+
+    The :option:`--verbose` command line argument and the :envvar:`DTS_VERBOSE` environment
+    variable control the verbosity of output. If enabled, all messages will be emitted to the
+    console.
+
+    The :option:`--output` command line argument and the :envvar:`DTS_OUTPUT_DIR` environment
+    variable modify the directory where the logs will be stored.
+
+    Attributes:
+        node: The additional identifier. Currently unused.
+        sh: The handler which emits logs to console.
+        fh: The handler which emits logs to a file.
+        verbose_fh: Just as fh, but logs with a different, more verbose, format.
     """
 
     _logger: logging.Logger
@@ -40,6 +42,15 @@ class DTSLOG(logging.LoggerAdapter):
     verbose_fh: logging.FileHandler
 
     def __init__(self, logger: logging.Logger, node: str = "suite"):
+        """Extend the constructor with additional handlers.
+
+        One handler logs to the console, the other one to a file, with either a regular or verbose
+        format.
+
+        Args:
+            logger: The logger from which to create the logger adapter.
+            node: An additional identifier. Currently unused.
+        """
         self._logger = logger
         # 1 means log everything, this will be used by file handlers if their level
         # is not set
@@ -92,26 +103,43 @@ class DTSLOG(logging.LoggerAdapter):
         super(DTSLOG, self).__init__(self._logger, dict(node=self.node))
 
     def logger_exit(self) -> None:
-        """
-        Remove stream handler and logfile handler.
-        """
+        """Remove the stream handler and the logfile handler."""
         for handler in (self.sh, self.fh, self.verbose_fh):
             handler.flush()
             self._logger.removeHandler(handler)
 
 
+class _LoggerDictType(TypedDict):
+    logger: DTSLOG
+    name: str
+    node: str
+
+
+# List for saving all loggers in use
+_Loggers: list[_LoggerDictType] = []
+
+
 def getLogger(name: str, node: str = "suite") -> DTSLOG:
+    """Get DTS logger adapter identified by name and node.
+
+    An existing logger will be returned if one with the exact name and node already exists.
+    A new one will be created and stored otherwise.
+
+    Args:
+        name: The name of the logger.
+        node: An additional identifier for the logger.
+
+    Returns:
+        A logger uniquely identified by both name and node.
     """
-    Get logger handler and if there's no handler for specified Node will create one.
-    """
-    global Loggers
+    global _Loggers
     # return saved logger
-    logger: LoggerDictType
-    for logger in Loggers:
+    logger: _LoggerDictType
+    for logger in _Loggers:
         if logger["name"] == name and logger["node"] == node:
             return logger["logger"]
 
     # return new logger
     dts_logger: DTSLOG = DTSLOG(logging.getLogger(name), node)
-    Loggers.append({"logger": dts_logger, "name": name, "node": node})
+    _Loggers.append({"logger": dts_logger, "name": name, "node": node})
     return dts_logger

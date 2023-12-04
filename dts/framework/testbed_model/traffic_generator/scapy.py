@@ -2,14 +2,15 @@
 # Copyright(c) 2022 University of New Hampshire
 # Copyright(c) 2023 PANTHEON.tech s.r.o.
 
-"""Scapy traffic generator.
+"""The Scapy traffic generator.
 
-Traffic generator used for functional testing, implemented using the Scapy library.
+A traffic generator used for functional testing, implemented with
+`the Scapy library <https://scapy.readthedocs.io/en/latest/>`_.
 The traffic generator uses an XML-RPC server to run Scapy on the remote TG node.
 
-The XML-RPC server runs in an interactive remote SSH session running Python console,
-where we start the server. The communication with the server is facilitated with
-a local server proxy.
+The traffic generator uses the :mod:`xmlrpc.server` module to run an XML-RPC server
+in an interactive remote Python SSH session. The communication with the server is facilitated
+with a local server proxy from the :mod:`xmlrpc.client` module.
 """
 
 import inspect
@@ -69,20 +70,20 @@ def scapy_send_packets_and_capture(
     recv_iface: str,
     duration: float,
 ) -> list[bytes]:
-    """RPC function to send and capture packets.
+    """The RPC function to send and capture packets.
 
-    The function is meant to be executed on the remote TG node.
+    This function is meant to be executed on the remote TG node via the server proxy.
 
     Args:
         xmlrpc_packets: The packets to send. These need to be converted to
-            xmlrpc.client.Binary before sending to the remote server.
+            :class:`~xmlrpc.client.Binary` objects before sending to the remote server.
         send_iface: The logical name of the egress interface.
         recv_iface: The logical name of the ingress interface.
         duration: Capture for this amount of time, in seconds.
 
     Returns:
         A list of bytes. Each item in the list represents one packet, which needs
-            to be converted back upon transfer from the remote node.
+        to be converted back upon transfer from the remote node.
     """
     scapy_packets = [scapy.all.Packet(packet.data) for packet in xmlrpc_packets]
     sniffer = scapy.all.AsyncSniffer(
@@ -96,19 +97,15 @@ def scapy_send_packets_and_capture(
 
 
 def scapy_send_packets(xmlrpc_packets: list[xmlrpc.client.Binary], send_iface: str) -> None:
-    """RPC function to send packets.
+    """The RPC function to send packets.
 
-    The function is meant to be executed on the remote TG node.
-    It doesn't return anything, only sends packets.
+    This function is meant to be executed on the remote TG node via the server proxy.
+    It only sends `xmlrpc_packets`, without capturing them.
 
     Args:
         xmlrpc_packets: The packets to send. These need to be converted to
-            xmlrpc.client.Binary before sending to the remote server.
+            :class:`~xmlrpc.client.Binary` objects before sending to the remote server.
         send_iface: The logical name of the egress interface.
-
-    Returns:
-        A list of bytes. Each item in the list represents one packet, which needs
-            to be converted back upon transfer from the remote node.
     """
     scapy_packets = [scapy.all.Packet(packet.data) for packet in xmlrpc_packets]
     scapy.all.sendp(scapy_packets, iface=send_iface, realtime=True, verbose=True)
@@ -128,11 +125,19 @@ RPC_FUNCTIONS = [
 
 
 class QuittableXMLRPCServer(SimpleXMLRPCServer):
-    """Basic XML-RPC server that may be extended
-    by functions serializable by the marshal module.
+    """Basic XML-RPC server.
+
+    The server may be augmented by functions serializable by the :mod:`marshal` module.
     """
 
     def __init__(self, *args, **kwargs):
+        """Extend the XML-RPC server initialization.
+
+        Args:
+            args: The positional arguments that will be passed to the superclass's constructor.
+            kwargs: The keyword arguments that will be passed to the superclass's constructor.
+                The `allow_none` argument will be set to :data:`True`.
+        """
         kwargs["allow_none"] = True
         super().__init__(*args, **kwargs)
         self.register_introspection_functions()
@@ -140,13 +145,12 @@ class QuittableXMLRPCServer(SimpleXMLRPCServer):
         self.register_function(self.add_rpc_function)
 
     def quit(self) -> None:
+        """Quit the server."""
         self._BaseServer__shutdown_request = True
         return None
 
     def add_rpc_function(self, name: str, function_bytes: xmlrpc.client.Binary) -> None:
-        """Add a function to the server.
-
-        This is meant to be executed remotely.
+        """Add a function to the server from the local server proxy.
 
         Args:
               name: The name of the function.
@@ -157,6 +161,11 @@ class QuittableXMLRPCServer(SimpleXMLRPCServer):
         self.register_function(function)
 
     def serve_forever(self, poll_interval: float = 0.5) -> None:
+        """Extend the superclass method with an additional print.
+
+        Once executed in the local server proxy, the print gives us a clear string to expect
+        when starting the server. The print means this function was executed on the XML-RPC server.
+        """
         print("XMLRPC OK")
         super().serve_forever(poll_interval)
 
@@ -164,19 +173,12 @@ class QuittableXMLRPCServer(SimpleXMLRPCServer):
 class ScapyTrafficGenerator(CapturingTrafficGenerator):
     """Provides access to scapy functions via an RPC interface.
 
-    The traffic generator first starts an XML-RPC on the remote TG node.
-    Then it populates the server with functions which use the Scapy library
-    to send/receive traffic.
+    This class extends the base with remote execution of scapy functions.
 
-    Any packets sent to the remote server are first converted to bytes.
-    They are received as xmlrpc.client.Binary objects on the server side.
-    When the server sends the packets back, they are also received as
-    xmlrpc.client.Binary object on the client side, are converted back to Scapy
-    packets and only then returned from the methods.
-
-    Arguments:
-        tg_node: The node where the traffic generator resides.
-        config: The user configuration of the traffic generator.
+    Any packets sent to the remote server are first converted to bytes. They are received as
+    :class:`~xmlrpc.client.Binary` objects on the server side. When the server sends the packets
+    back, they are also received as :class:`~xmlrpc.client.Binary` objects on the client side, are
+    converted back to :class:`~scapy.packet.Packet` objects and only then returned from the methods.
 
     Attributes:
         session: The exclusive interactive remote session created by the Scapy
@@ -190,6 +192,22 @@ class ScapyTrafficGenerator(CapturingTrafficGenerator):
     _config: ScapyTrafficGeneratorConfig
 
     def __init__(self, tg_node: Node, config: ScapyTrafficGeneratorConfig):
+        """Extend the constructor with Scapy TG specifics.
+
+        The traffic generator first starts an XML-RPC on the remote `tg_node`.
+        Then it populates the server with functions which use the Scapy library
+        to send/receive traffic:
+
+            * :func:`scapy_send_packets_and_capture`
+            * :func:`scapy_send_packets`
+
+        To enable verbose logging from the xmlrpc client, use the :option:`--verbose`
+        command line argument or the :envvar:`DTS_VERBOSE` environment variable.
+
+        Args:
+            tg_node: The node where the traffic generator resides.
+            config: The traffic generator's test run configuration.
+        """
         super().__init__(tg_node, config)
 
         assert (
@@ -231,10 +249,8 @@ class ScapyTrafficGenerator(CapturingTrafficGenerator):
         # or class, so strip all lines containing only whitespace
         src = "\n".join([line for line in src.splitlines() if not line.isspace() and line != ""])
 
-        spacing = "\n" * 4
-
         # execute it in the python terminal
-        self.session.send_command(spacing + src + spacing)
+        self.session.send_command(src + "\n")
         self.session.send_command(
             f"server = QuittableXMLRPCServer(('0.0.0.0', {listen_port}));server.serve_forever()",
             "XMLRPC OK",
@@ -267,6 +283,7 @@ class ScapyTrafficGenerator(CapturingTrafficGenerator):
         return scapy_packets
 
     def close(self) -> None:
+        """Close the traffic generator."""
         try:
             self.rpc_server_proxy.quit()
         except ConnectionRefusedError:
