@@ -160,12 +160,16 @@ nfp_netvf_set_link_down(struct rte_eth_dev *dev __rte_unused)
 static int
 nfp_netvf_close(struct rte_eth_dev *dev)
 {
+	struct nfp_net_hw *net_hw;
 	struct rte_pci_device *pci_dev;
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
 
+	net_hw = dev->data->dev_private;
 	pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+
+	rte_free(net_hw->eth_xstats_base);
 
 	/*
 	 * We assume that the DPDK application is stopping all the
@@ -323,7 +327,7 @@ nfp_netvf_init(struct rte_eth_dev *eth_dev)
 	if (eth_dev->data->mac_addrs == NULL) {
 		PMD_INIT_LOG(ERR, "Failed to space for MAC address");
 		err = -ENOMEM;
-		goto dev_err_ctrl_map;
+		goto free_xstats;
 	}
 
 	nfp_read_mac(hw);
@@ -360,8 +364,8 @@ nfp_netvf_init(struct rte_eth_dev *eth_dev)
 
 	return 0;
 
-dev_err_ctrl_map:
-		nfp_cpp_area_free(net_hw->ctrl_area);
+free_xstats:
+	rte_free(net_hw->eth_xstats_base);
 
 	return err;
 }
