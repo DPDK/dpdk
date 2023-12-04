@@ -940,7 +940,7 @@ static int nfp_pf_init(struct rte_pci_device *pci_dev)
 	return 0;
 
 hwqueues_cleanup:
-	nfp_cpp_area_free(pf_dev->hwqueues_area);
+	nfp_cpp_area_release_free(pf_dev->hwqueues_area);
 ctrl_area_cleanup:
 	nfp_cpp_area_free(pf_dev->ctrl_area);
 pf_cleanup:
