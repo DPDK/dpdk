@@ -317,6 +317,18 @@ nfp_net_keepalive_stop(struct nfp_multi_pf *multi_pf)
 	rte_eal_alarm_cancel(nfp_net_beat_timer, (void *)multi_pf);
 }
 
+static void
+nfp_net_uninit(struct rte_eth_dev *eth_dev)
+{
+	struct nfp_net_hw *net_hw;
+
+	net_hw = eth_dev->data->dev_private;
+	rte_free(net_hw->eth_xstats_base);
+	nfp_ipsec_uninit(eth_dev);
+	if (net_hw->mac_stats_area != NULL)
+		nfp_cpp_area_release_free(net_hw->mac_stats_area);
+}
+
 /* Reset and stop device. The device can not be restarted. */
 static int
 nfp_net_close(struct rte_eth_dev *dev)
@@ -1137,12 +1149,11 @@ port_cleanup:
 				app_fw_nic->ports[id]->eth_dev != NULL) {
 			struct rte_eth_dev *tmp_dev;
 			tmp_dev = app_fw_nic->ports[id]->eth_dev;
-			nfp_ipsec_uninit(tmp_dev);
+			nfp_net_uninit(tmp_dev);
 			rte_eth_dev_release_port(tmp_dev);
-			app_fw_nic->ports[id] = NULL;
 		}
 	}
-	nfp_cpp_area_free(pf_dev->ctrl_area);
+	nfp_cpp_area_release_free(pf_dev->ctrl_area);
 app_cleanup:
 	rte_free(app_fw_nic);
 
