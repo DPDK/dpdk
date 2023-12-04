@@ -48,6 +48,7 @@ nfp_net_start(struct rte_eth_dev *dev)
 	uint16_t i;
 	struct nfp_hw *hw;
 	uint32_t new_ctrl;
+	struct nfp_cpp *cpp;
 	uint32_t update = 0;
 	uint32_t cap_extend;
 	uint32_t intr_vector;
@@ -166,10 +167,12 @@ nfp_net_start(struct rte_eth_dev *dev)
 	}
 
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
-		/* Configure the physical port up */
-		nfp_eth_set_configured(net_hw->cpp, net_hw->nfp_idx, 1);
+		cpp = net_hw->cpp;
 	else
-		nfp_eth_set_configured(dev->process_private, net_hw->nfp_idx, 1);
+		cpp = ((struct nfp_pf_dev *)(dev->process_private))->cpp;
+
+	/* Configure the physical port up */
+	nfp_eth_set_configured(cpp, net_hw->nfp_idx, 1);
 
 	for (i = 0; i < dev->data->nb_rx_queues; i++)
 		dev->data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STARTED;
@@ -201,30 +204,34 @@ error:
 static int
 nfp_net_set_link_up(struct rte_eth_dev *dev)
 {
+	struct nfp_cpp *cpp;
 	struct nfp_net_hw *hw;
 
 	hw = dev->data->dev_private;
 
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
-		/* Configure the physical port down */
-		return nfp_eth_set_configured(hw->cpp, hw->nfp_idx, 1);
+		cpp = hw->cpp;
 	else
-		return nfp_eth_set_configured(dev->process_private, hw->nfp_idx, 1);
+		cpp = ((struct nfp_pf_dev *)(dev->process_private))->cpp;
+
+	return nfp_eth_set_configured(cpp, hw->nfp_idx, 1);
 }
 
 /* Set the link down. */
 static int
 nfp_net_set_link_down(struct rte_eth_dev *dev)
 {
+	struct nfp_cpp *cpp;
 	struct nfp_net_hw *hw;
 
 	hw = dev->data->dev_private;
 
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
-		/* Configure the physical port down */
-		return nfp_eth_set_configured(hw->cpp, hw->nfp_idx, 0);
+		cpp = hw->cpp;
 	else
-		return nfp_eth_set_configured(dev->process_private, hw->nfp_idx, 0);
+		cpp = ((struct nfp_pf_dev *)(dev->process_private))->cpp;
+
+	return nfp_eth_set_configured(cpp, hw->nfp_idx, 0);
 }
 
 static uint8_t
@@ -1361,7 +1368,7 @@ nfp_secondary_init_app_fw_nic(struct nfp_pf_dev *pf_dev)
 			break;
 		}
 
-		eth_dev->process_private = pf_dev->cpp;
+		eth_dev->process_private = pf_dev;
 		hw = eth_dev->data->dev_private;
 		nfp_net_ethdev_ops_mount(hw, eth_dev);
 
