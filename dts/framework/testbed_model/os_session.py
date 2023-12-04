@@ -10,19 +10,19 @@ from typing import Type, TypeVar, Union
 
 from framework.config import Architecture, NodeConfiguration, NodeInfo
 from framework.logger import DTSLOG
-from framework.remote_session.remote import InteractiveShell
-from framework.settings import SETTINGS
-from framework.testbed_model import LogicalCore
-from framework.testbed_model.hw.port import Port
-from framework.utils import MesonArgs
-
-from .remote import (
+from framework.remote_session import (
     CommandResult,
     InteractiveRemoteSession,
+    InteractiveShell,
     RemoteSession,
     create_interactive_session,
     create_remote_session,
 )
+from framework.settings import SETTINGS
+from framework.utils import MesonArgs
+
+from .cpu import LogicalCore
+from .port import Port
 
 InteractiveShellType = TypeVar("InteractiveShellType", bound=InteractiveShell)
 
@@ -85,9 +85,9 @@ class OSSession(ABC):
     def create_interactive_shell(
         self,
         shell_cls: Type[InteractiveShellType],
-        eal_parameters: str,
         timeout: float,
         privileged: bool,
+        app_args: str,
     ) -> InteractiveShellType:
         """
         See "create_interactive_shell" in SutNode
@@ -96,7 +96,7 @@ class OSSession(ABC):
             self.interactive_session.session,
             self._logger,
             self._get_privileged_command if privileged else None,
-            eal_parameters,
+            app_args,
             timeout,
         )
 
@@ -113,7 +113,7 @@ class OSSession(ABC):
         """
 
     @abstractmethod
-    def guess_dpdk_remote_dir(self, remote_dir) -> PurePath:
+    def guess_dpdk_remote_dir(self, remote_dir: str | PurePath) -> PurePath:
         """
         Try to find DPDK remote dir in remote_dir.
         """
@@ -227,7 +227,7 @@ class OSSession(ABC):
         """
 
     @abstractmethod
-    def get_dpdk_file_prefix(self, dpdk_prefix) -> str:
+    def get_dpdk_file_prefix(self, dpdk_prefix: str) -> str:
         """
         Get the DPDK file prefix that will be used when running DPDK apps.
         """

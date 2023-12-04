@@ -42,19 +42,14 @@ class SSHTimeoutError(DTSError):
     Command execution timeout.
     """
 
-    command: str
-    output: str
     severity: ClassVar[ErrorSeverity] = ErrorSeverity.SSH_ERR
+    _command: str
 
-    def __init__(self, command: str, output: str):
-        self.command = command
-        self.output = output
+    def __init__(self, command: str):
+        self._command = command
 
     def __str__(self) -> str:
-        return f"TIMEOUT on {self.command}"
-
-    def get_output(self) -> str:
-        return self.output
+        return f"TIMEOUT on {self._command}"
 
 
 class SSHConnectionError(DTSError):
@@ -62,18 +57,18 @@ class SSHConnectionError(DTSError):
     SSH connection error.
     """
 
-    host: str
-    errors: list[str]
     severity: ClassVar[ErrorSeverity] = ErrorSeverity.SSH_ERR
+    _host: str
+    _errors: list[str]
 
     def __init__(self, host: str, errors: list[str] | None = None):
-        self.host = host
-        self.errors = [] if errors is None else errors
+        self._host = host
+        self._errors = [] if errors is None else errors
 
     def __str__(self) -> str:
-        message = f"Error trying to connect with {self.host}."
-        if self.errors:
-            message += f" Errors encountered while retrying: {', '.join(self.errors)}"
+        message = f"Error trying to connect with {self._host}."
+        if self._errors:
+            message += f" Errors encountered while retrying: {', '.join(self._errors)}"
 
         return message
 
@@ -84,14 +79,14 @@ class SSHSessionDeadError(DTSError):
     It can no longer be used.
     """
 
-    host: str
     severity: ClassVar[ErrorSeverity] = ErrorSeverity.SSH_ERR
+    _host: str
 
     def __init__(self, host: str):
-        self.host = host
+        self._host = host
 
     def __str__(self) -> str:
-        return f"SSH session with {self.host} has died"
+        return f"SSH session with {self._host} has died"
 
 
 class ConfigurationError(DTSError):
@@ -107,16 +102,16 @@ class RemoteCommandExecutionError(DTSError):
     Raised when a command executed on a Node returns a non-zero exit status.
     """
 
-    command: str
-    command_return_code: int
     severity: ClassVar[ErrorSeverity] = ErrorSeverity.REMOTE_CMD_EXEC_ERR
+    command: str
+    _command_return_code: int
 
     def __init__(self, command: str, command_return_code: int):
         self.command = command
-        self.command_return_code = command_return_code
+        self._command_return_code = command_return_code
 
     def __str__(self) -> str:
-        return f"Command {self.command} returned a non-zero exit code: {self.command_return_code}"
+        return f"Command {self.command} returned a non-zero exit code: {self._command_return_code}"
 
 
 class RemoteDirectoryExistsError(DTSError):
@@ -140,22 +135,15 @@ class TestCaseVerifyError(DTSError):
     Used in test cases to verify the expected behavior.
     """
 
-    value: str
     severity: ClassVar[ErrorSeverity] = ErrorSeverity.TESTCASE_VERIFY_ERR
-
-    def __init__(self, value: str):
-        self.value = value
-
-    def __str__(self) -> str:
-        return repr(self.value)
 
 
 class BlockingTestSuiteError(DTSError):
-    suite_name: str
     severity: ClassVar[ErrorSeverity] = ErrorSeverity.BLOCKING_TESTSUITE_ERR
+    _suite_name: str
 
     def __init__(self, suite_name: str) -> None:
-        self.suite_name = suite_name
+        self._suite_name = suite_name
 
     def __str__(self) -> str:
-        return f"Blocking suite {self.suite_name} failed."
+        return f"Blocking suite {self._suite_name} failed."

@@ -12,10 +12,11 @@ from abc import ABC, abstractmethod
 
 from scapy.packet import Packet  # type: ignore[import]
 
-from framework.logger import DTSLOG
+from framework.config import TrafficGeneratorConfig
+from framework.logger import DTSLOG, getLogger
+from framework.testbed_model.node import Node
+from framework.testbed_model.port import Port
 from framework.utils import get_packet_summaries
-
-from .hw.port import Port
 
 
 class TrafficGenerator(ABC):
@@ -24,7 +25,14 @@ class TrafficGenerator(ABC):
     Defines the few basic methods that each traffic generator must implement.
     """
 
+    _config: TrafficGeneratorConfig
+    _tg_node: Node
     _logger: DTSLOG
+
+    def __init__(self, tg_node: Node, config: TrafficGeneratorConfig):
+        self._config = config
+        self._tg_node = tg_node
+        self._logger = getLogger(f"{self._tg_node.name} {self._config.traffic_generator_type}")
 
     def send_packet(self, packet: Packet, port: Port) -> None:
         """Send a packet and block until it is fully sent.

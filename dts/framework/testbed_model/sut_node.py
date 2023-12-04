@@ -15,12 +15,14 @@ from framework.config import (
     NodeInfo,
     SutNodeConfiguration,
 )
-from framework.remote_session import CommandResult, InteractiveShellType, OSSession
+from framework.remote_session import CommandResult
 from framework.settings import SETTINGS
 from framework.utils import MesonArgs
 
-from .hw import LogicalCoreCount, LogicalCoreList, VirtualDevice
+from .cpu import LogicalCoreCount, LogicalCoreList
 from .node import Node
+from .os_session import InteractiveShellType, OSSession
+from .virtual_device import VirtualDevice
 
 
 class EalParameters(object):
@@ -293,7 +295,7 @@ class SutNode(Node):
         prefix: str = "dpdk",
         append_prefix_timestamp: bool = True,
         no_pci: bool = False,
-        vdevs: list[VirtualDevice] = None,
+        vdevs: list[VirtualDevice] | None = None,
         other_eal_param: str = "",
     ) -> "EalParameters":
         """

@@ -11,7 +11,7 @@ import inspect
 import re
 from ipaddress import IPv4Interface, IPv6Interface, ip_interface
 from types import MethodType
-from typing import Union
+from typing import Any, Union
 
 from scapy.layers.inet import IP  # type: ignore[import]
 from scapy.layers.l2 import Ether  # type: ignore[import]
@@ -26,8 +26,7 @@ from .exception import (
 from .logger import DTSLOG, getLogger
 from .settings import SETTINGS
 from .test_result import BuildTargetResult, Result, TestCaseResult, TestSuiteResult
-from .testbed_model import SutNode, TGNode
-from .testbed_model.hw.port import Port, PortLink
+from .testbed_model import Port, PortLink, SutNode, TGNode
 from .utils import get_packet_summaries
 
 
@@ -426,7 +425,7 @@ class TestSuite(object):
 
 
 def get_test_suites(testsuite_module_path: str) -> list[type[TestSuite]]:
-    def is_test_suite(object) -> bool:
+    def is_test_suite(object: Any) -> bool:
         try:
             if issubclass(object, TestSuite) and object is not TestSuite:
                 return True

@@ -262,3 +262,16 @@ class LogicalCoreListFilter(LogicalCoreFilter):
             )
 
         return filtered_lcores
+
+
+def lcore_filter(
+    core_list: list[LogicalCore],
+    filter_specifier: LogicalCoreCount | LogicalCoreList,
+    ascending: bool,
+) -> LogicalCoreFilter:
+    if isinstance(filter_specifier, LogicalCoreList):
+        return LogicalCoreListFilter(core_list, filter_specifier, ascending)
+    elif isinstance(filter_specifier, LogicalCoreCount):
+        return LogicalCoreCountFilter(core_list, filter_specifier, ascending)
+    else:
+        raise ValueError(f"Unsupported filter r{filter_specifier}")

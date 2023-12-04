@@ -17,6 +17,7 @@ from typing import Any, TypedDict, Union
 import warlock  # type: ignore[import]
 import yaml
 
+from framework.exception import ConfigurationError
 from framework.settings import SETTINGS
 from framework.utils import StrEnum
 
@@ -89,7 +90,7 @@ class TrafficGeneratorConfig:
     traffic_generator_type: TrafficGeneratorType
 
     @staticmethod
-    def from_dict(d: dict):
+    def from_dict(d: dict) -> "ScapyTrafficGeneratorConfig":
         # This looks useless now, but is designed to allow expansion to traffic
         # generators that require more configuration later.
         match TrafficGeneratorType(d["type"]):
@@ -97,6 +98,8 @@ class TrafficGeneratorConfig:
                 return ScapyTrafficGeneratorConfig(
                     traffic_generator_type=TrafficGeneratorType.SCAPY
                 )
+            case _:
+                raise ConfigurationError(f'Unknown traffic generator type "{d["type"]}".')
 
 
 @dataclass(slots=True, frozen=True)
@@ -314,6 +317,3 @@ def load_config() -> Configuration:
     config: dict[str, Any] = warlock.model_factory(schema, name="_Config")(config_data)
     config_obj: Configuration = Configuration.from_dict(dict(config))
     return config_obj
-
-
-CONFIGURATION = load_config()

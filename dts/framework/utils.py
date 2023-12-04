@@ -7,7 +7,6 @@ import atexit
 import json
 import os
 import subprocess
-import sys
 from enum import Enum
 from pathlib import Path
 from subprocess import SubprocessError
@@ -16,31 +15,7 @@ from scapy.packet import Packet  # type: ignore[import]
 
 from .exception import ConfigurationError
 
-
-class StrEnum(Enum):
-    @staticmethod
-    def _generate_next_value_(name: str, start: int, count: int, last_values: object) -> str:
-        return name
-
-    def __str__(self) -> str:
-        return self.name
-
-
-REGEX_FOR_PCI_ADDRESS = "/[0-9a-fA-F]{4}:[0-9a-fA-F]{2}:[0-9a-fA-F]{2}.[0-9]{1}/"
-
-
-def check_dts_python_version() -> None:
-    if sys.version_info.major < 3 or (sys.version_info.major == 3 and sys.version_info.minor < 10):
-        print(
-            RED(
-                (
-                    "WARNING: DTS execution node's python version is lower than"
-                    "python 3.10, is deprecated and will not work in future releases."
-                )
-            ),
-            file=sys.stderr,
-        )
-        print(RED("Please use Python >= 3.10 instead"), file=sys.stderr)
+REGEX_FOR_PCI_ADDRESS: str = "/[0-9a-fA-F]{4}:[0-9a-fA-F]{2}:[0-9a-fA-F]{2}.[0-9]{1}/"
 
 
 def expand_range(range_str: str) -> list[int]:
@@ -61,7 +36,7 @@ def expand_range(range_str: str) -> list[int]:
     return expanded_range
 
 
-def get_packet_summaries(packets: list[Packet]):
+def get_packet_summaries(packets: list[Packet]) -> str:
     if len(packets) == 1:
         packet_summaries = packets[0].summary()
     else:
@@ -69,8 +44,13 @@ def get_packet_summaries(packets: list[Packet]):
     return f"Packet contents: \n{packet_summaries}"
 
 
-def RED(text: str) -> str:
-    return f"\u001B[31;1m{str(text)}\u001B[0m"
+class StrEnum(Enum):
+    @staticmethod
+    def _generate_next_value_(name: str, start: int, count: int, last_values: object) -> str:
+        return name
+
+    def __str__(self) -> str:
+        return self.name
 
 
 class MesonArgs(object):
@@ -215,5 +195,5 @@ class DPDKGitTarball(object):
         if self._tarball_path and os.path.exists(self._tarball_path):
             os.remove(self._tarball_path)
 
-    def __fspath__(self):
+    def __fspath__(self) -> str:
         return str(self._tarball_path)

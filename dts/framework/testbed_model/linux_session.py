@@ -9,10 +9,10 @@ from typing import TypedDict, Union
 from typing_extensions import NotRequired
 
 from framework.exception import RemoteCommandExecutionError
-from framework.testbed_model import LogicalCore
-from framework.testbed_model.hw.port import Port
 from framework.utils import expand_range
 
+from .cpu import LogicalCore
+from .port import Port
 from .posix_session import PosixSession
 
 
@@ -64,7 +64,7 @@ class LinuxSession(PosixSession):
             lcores.append(LogicalCore(lcore, core, socket, node))
         return lcores
 
-    def get_dpdk_file_prefix(self, dpdk_prefix) -> str:
+    def get_dpdk_file_prefix(self, dpdk_prefix: str) -> str:
         return dpdk_prefix
 
     def setup_hugepages(self, hugepage_amount: int, force_first_numa: bool) -> None:

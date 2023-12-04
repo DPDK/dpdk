@@ -16,9 +16,9 @@ import scapy.utils  # type: ignore[import]
 from scapy.packet import Packet  # type: ignore[import]
 
 from framework.settings import SETTINGS
+from framework.testbed_model.port import Port
 from framework.utils import get_packet_summaries
 
-from .hw.port import Port
 from .traffic_generator import TrafficGenerator
 
 
@@ -127,7 +127,7 @@ class CapturingTrafficGenerator(TrafficGenerator):
         for the specified duration. It must be able to handle no received packets.
         """
 
-    def _write_capture_from_packets(self, capture_name: str, packets: list[Packet]):
+    def _write_capture_from_packets(self, capture_name: str, packets: list[Packet]) -> None:
         file_name = f"{SETTINGS.output_dir}/{capture_name}.pcap"
         self._logger.debug(f"Writing packets to {file_name}.")
         scapy.utils.wrpcap(file_name, packets)

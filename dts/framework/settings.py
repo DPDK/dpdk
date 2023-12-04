@@ -6,7 +6,7 @@
 import argparse
 import os
 from collections.abc import Callable, Iterable, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, TypeVar
 
@@ -22,8 +22,8 @@ def _env_arg(env_var: str) -> Any:
             option_strings: Sequence[str],
             dest: str,
             nargs: str | int | None = None,
-            const: str | None = None,
-            default: str = None,
+            const: bool | None = None,
+            default: Any = None,
             type: Callable[[str], _T | argparse.FileType | None] = None,
             choices: Iterable[_T] | None = None,
             required: bool = False,
@@ -32,6 +32,12 @@ def _env_arg(env_var: str) -> Any:
         ) -> None:
             env_var_value = os.environ.get(env_var)
             default = env_var_value or default
+            if const is not None:
+                nargs = 0
+                default = const if env_var_value else default
+                type = None
+                choices = None
+                metavar = None
             super(_EnvironmentArgument, self).__init__(
                 option_strings,
                 dest,
@@ -52,22 +58,28 @@ def _env_arg(env_var: str) -> Any:
             values: Any,
             option_string: str = None,
         ) -> None:
-            setattr(namespace, self.dest, values)
+            if self.const is not None:
+                setattr(namespace, self.dest, self.const)
+            else:
+                setattr(namespace, self.dest, values)
 
     return _EnvironmentArgument
 
 
-@dataclass(slots=True, frozen=True)
-class _Settings:
-    config_file_path: str
-    output_dir: str
-    timeout: float
-    verbose: bool
-    skip_setup: bool
-    dpdk_tarball_path: Path
-    compile_timeout: float
-    test_cases: list
-    re_run: int
+@dataclass(slots=True)
+class Settings:
+    config_file_path: Path = Path(__file__).parent.parent.joinpath("conf.yaml")
+    output_dir: str = "output"
+    timeout: float = 15
+    verbose: bool = False
+    skip_setup: bool = False
+    dpdk_tarball_path: Path | str = "dpdk.tar.xz"
+    compile_timeout: float = 1200
+    test_cases: list[str] = field(default_factory=list)
+    re_run: int = 0
+
+
+SETTINGS: Settings = Settings()
 
 
 def _get_parser() -> argparse.ArgumentParser:
@@ -80,7 +92,8 @@ def _get_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--config-file",
         action=_env_arg("DTS_CFG_FILE"),
-        default="conf.yaml",
+        default=SETTINGS.config_file_path,
+        type=Path,
         help="[DTS_CFG_FILE] configuration file that describes the test cases, SUTs and targets.",
     )
 
@@ -88,7 +101,7 @@ def _get_parser() -> argparse.ArgumentParser:
         "--output-dir",
         "--output",
         action=_env_arg("DTS_OUTPUT_DIR"),
-        default="output",
+        default=SETTINGS.output_dir,
         help="[DTS_OUTPUT_DIR] Output directory where dts logs and results are saved.",
     )
 
@@ -96,7 +109,7 @@ def _get_parser() -> argparse.ArgumentParser:
         "-t",
         "--timeout",
         action=_env_arg("DTS_TIMEOUT"),
-        default=15,
+        default=SETTINGS.timeout,
         type=float,
         help="[DTS_TIMEOUT] The default timeout for all DTS operations except for compiling DPDK.",
     )
@@ -105,8 +118,9 @@ def _get_parser() -> argparse.ArgumentParser:
         "-v",
         "--verbose",
         action=_env_arg("DTS_VERBOSE"),
-        default="N",
-        help="[DTS_VERBOSE] Set to 'Y' to enable verbose output, logging all messages "
+        default=SETTINGS.verbose,
+        const=True,
+        help="[DTS_VERBOSE] Specify to enable verbose output, logging all messages "
         "to the console.",
     )
 
@@ -114,8 +128,8 @@ def _get_parser() -> argparse.ArgumentParser:
         "-s",
         "--skip-setup",
         action=_env_arg("DTS_SKIP_SETUP"),
-        default="N",
-        help="[DTS_SKIP_SETUP] Set to 'Y' to skip all setup steps on SUT and TG nodes.",
+        const=True,
+        help="[DTS_SKIP_SETUP] Specify to skip all setup steps on SUT and TG nodes.",
     )
 
     parser.add_argument(
@@ -123,7 +137,7 @@ def _get_parser() -> argparse.ArgumentParser:
         "--snapshot",
         "--git-ref",
         action=_env_arg("DTS_DPDK_TARBALL"),
-        default="dpdk.tar.xz",
+        default=SETTINGS.dpdk_tarball_path,
         type=Path,
         help="[DTS_DPDK_TARBALL] Path to DPDK source code tarball or a git commit ID, "
         "tag ID or tree ID to test. To test local changes, first commit them, "
@@ -133,7 +147,7 @@ def _get_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--compile-timeout",
         action=_env_arg("DTS_COMPILE_TIMEOUT"),
-        default=1200,
+        default=SETTINGS.compile_timeout,
         type=float,
         help="[DTS_COMPILE_TIMEOUT] The timeout for compiling DPDK.",
     )
@@ -150,7 +164,7 @@ def _get_parser() -> argparse.ArgumentParser:
         "--re-run",
         "--re_run",
         action=_env_arg("DTS_RERUN"),
-        default=0,
+        default=SETTINGS.re_run,
         type=int,
         help="[DTS_RERUN] Re-run each test case the specified amount of times "
         "if a test failure occurs",
@@ -159,21 +173,20 @@ def _get_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def _get_settings() -> _Settings:
+def get_settings() -> Settings:
     parsed_args = _get_parser().parse_args()
-    return _Settings(
+    return Settings(
         config_file_path=parsed_args.config_file,
         output_dir=parsed_args.output_dir,
         timeout=parsed_args.timeout,
-        verbose=(parsed_args.verbose == "Y"),
-        skip_setup=(parsed_args.skip_setup == "Y"),
-        dpdk_tarball_path=Path(DPDKGitTarball(parsed_args.tarball, parsed_args.output_dir))
-        if not os.path.exists(parsed_args.tarball)
-        else Path(parsed_args.tarball),
+        verbose=parsed_args.verbose,
+        skip_setup=parsed_args.skip_setup,
+        dpdk_tarball_path=Path(
+            Path(DPDKGitTarball(parsed_args.tarball, parsed_args.output_dir))
+            if not os.path.exists(parsed_args.tarball)
+            else Path(parsed_args.tarball)
+        ),
         compile_timeout=parsed_args.compile_timeout,
-        test_cases=parsed_args.test_cases.split(",") if parsed_args.test_cases else [],
+        test_cases=(parsed_args.test_cases.split(",") if parsed_args.test_cases else []),
         re_run=parsed_args.re_run,
     )
-
-
-SETTINGS: _Settings = _get_settings()

@@ -32,7 +32,7 @@ class PosixSession(OSSession):
 
         return ret_opts
 
-    def guess_dpdk_remote_dir(self, remote_dir) -> PurePosixPath:
+    def guess_dpdk_remote_dir(self, remote_dir: str | PurePath) -> PurePosixPath:
         remote_guess = self.join_remote_path(remote_dir, "dpdk-*")
         result = self.send_command(f"ls -d {remote_guess} | tail -1")
         return PurePosixPath(result.stdout)
@@ -207,7 +207,7 @@ class PosixSession(OSSession):
         for dpdk_runtime_dir in dpdk_runtime_dirs:
             self.remove_remote_dir(dpdk_runtime_dir)
 
-    def get_dpdk_file_prefix(self, dpdk_prefix) -> str:
+    def get_dpdk_file_prefix(self, dpdk_prefix: str) -> str:
         return ""
 
     def get_compiler_version(self, compiler_name: str) -> str:

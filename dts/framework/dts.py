@@ -6,19 +6,19 @@
 import sys
 
 from .config import (
-    CONFIGURATION,
     BuildTargetConfiguration,
     ExecutionConfiguration,
     TestSuiteConfig,
+    load_config,
 )
 from .exception import BlockingTestSuiteError
 from .logger import DTSLOG, getLogger
 from .test_result import BuildTargetResult, DTSResult, ExecutionResult, Result
 from .test_suite import get_test_suites
 from .testbed_model import SutNode, TGNode
-from .utils import check_dts_python_version
 
-dts_logger: DTSLOG = getLogger("DTSRunner")
+# dummy defaults to satisfy linters
+dts_logger: DTSLOG = None  # type: ignore[assignment]
 result: DTSResult = DTSResult(dts_logger)
 
 
@@ -30,14 +30,18 @@ def run_all() -> None:
     global dts_logger
     global result
 
+    # create a regular DTS logger and create a new result with it
+    dts_logger = getLogger("DTSRunner")
+    result = DTSResult(dts_logger)
+
     # check the python version of the server that run dts
-    check_dts_python_version()
+    _check_dts_python_version()
 
     sut_nodes: dict[str, SutNode] = {}
     tg_nodes: dict[str, TGNode] = {}
     try:
         # for all Execution sections
-        for execution in CONFIGURATION.executions:
+        for execution in load_config().executions:
             sut_node = sut_nodes.get(execution.system_under_test_node.name)
             tg_node = tg_nodes.get(execution.traffic_generator_node.name)
 
@@ -80,6 +84,23 @@ def run_all() -> None:
     # at that point, we'll only have partial results which could be impacted by the
     # error causing the uncaught exception, making them uninterpretable
     _exit_dts()
+
+
+def _check_dts_python_version() -> None:
+    def RED(text: str) -> str:
+        return f"\u001B[31;1m{str(text)}\u001B[0m"
+
+    if sys.version_info.major < 3 or (sys.version_info.major == 3 and sys.version_info.minor < 10):
+        print(
+            RED(
+                (
+                    "WARNING: DTS execution node's python version is lower than"
+                    "python 3.10, is deprecated and will not work in future releases."
+                )
+            ),
+            file=sys.stderr,
+        )
+        print(RED("Please use Python >= 3.10 instead"), file=sys.stderr)
 
 
 def _run_execution(

@@ -18,9 +18,7 @@ from paramiko.ssh_exception import (  # type: ignore[import]
     SSHException,
 )
 
-from framework.config import NodeConfiguration
 from framework.exception import SSHConnectionError, SSHSessionDeadError, SSHTimeoutError
-from framework.logger import DTSLOG
 
 from .remote_session import CommandResult, RemoteSession
 
@@ -44,14 +42,6 @@ class SSHSession(RemoteSession):
     """
 
     session: Connection
-
-    def __init__(
-        self,
-        node_config: NodeConfiguration,
-        session_name: str,
-        logger: DTSLOG,
-    ):
-        super(SSHSession, self).__init__(node_config, session_name, logger)
 
     def _connect(self) -> None:
         errors = []
@@ -111,7 +101,7 @@ class SSHSession(RemoteSession):
 
         except CommandTimedOut as e:
             self._logger.exception(e)
-            raise SSHTimeoutError(command, e.result.stderr) from e
+            raise SSHTimeoutError(command) from e
 
         return CommandResult(self.name, command, output.stdout, output.stderr, output.return_code)
 

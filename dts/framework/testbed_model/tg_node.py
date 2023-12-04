@@ -16,16 +16,11 @@ A node can be a traffic generator node as well as system under test node.
 
 from scapy.packet import Packet  # type: ignore[import]
 
-from framework.config import (
-    ScapyTrafficGeneratorConfig,
-    TGNodeConfiguration,
-    TrafficGeneratorType,
-)
-from framework.exception import ConfigurationError
+from framework.config import TGNodeConfiguration
 
-from .capturing_traffic_generator import CapturingTrafficGenerator
-from .hw.port import Port
 from .node import Node
+from .port import Port
+from .traffic_generator import CapturingTrafficGenerator, create_traffic_generator
 
 
 class TGNode(Node):
@@ -78,19 +73,3 @@ class TGNode(Node):
         """Free all resources used by the node"""
         self.traffic_generator.close()
         super(TGNode, self).close()
-
-
-def create_traffic_generator(
-    tg_node: TGNode, traffic_generator_config: ScapyTrafficGeneratorConfig
-) -> CapturingTrafficGenerator:
-    """A factory function for creating traffic generator object from user config."""
-
-    from .scapy import ScapyTrafficGenerator
-
-    match traffic_generator_config.traffic_generator_type:
-        case TrafficGeneratorType.SCAPY:
-            return ScapyTrafficGenerator(tg_node, traffic_generator_config)
-        case _:
-            raise ConfigurationError(
-                f"Unknown traffic generator: {traffic_generator_config.traffic_generator_type}"
-            )

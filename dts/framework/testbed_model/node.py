@@ -12,23 +12,26 @@ from ipaddress import IPv4Interface, IPv6Interface
 from typing import Any, Callable, Type, Union
 
 from framework.config import (
+    OS,
     BuildTargetConfiguration,
     ExecutionConfiguration,
     NodeConfiguration,
 )
+from framework.exception import ConfigurationError
 from framework.logger import DTSLOG, getLogger
-from framework.remote_session import InteractiveShellType, OSSession, create_session
 from framework.settings import SETTINGS
 
-from .hw import (
+from .cpu import (
     LogicalCore,
     LogicalCoreCount,
     LogicalCoreList,
     LogicalCoreListFilter,
-    VirtualDevice,
     lcore_filter,
 )
-from .hw.port import Port
+from .linux_session import LinuxSession
+from .os_session import InteractiveShellType, OSSession
+from .port import Port
+from .virtual_device import VirtualDevice
 
 
 class Node(ABC):
@@ -168,9 +171,9 @@ class Node(ABC):
 
         return self.main_session.create_interactive_shell(
             shell_cls,
-            app_args,
             timeout,
             privileged,
+            app_args,
         )
 
     def filter_lcores(
@@ -201,7 +204,7 @@ class Node(ABC):
         self._logger.info("Getting CPU information.")
         self.lcores = self.main_session.get_remote_cpus(self.config.use_first_core)
 
-    def _setup_hugepages(self):
+    def _setup_hugepages(self) -> None:
         """
         Setup hugepages on the Node. Different architectures can supply different
         amounts of memory for hugepages and numa-based hugepage allocation may need
@@ -245,3 +248,11 @@ class Node(ABC):
             return lambda *args: None
         else:
             return func
+
+
+def create_session(node_config: NodeConfiguration, name: str, logger: DTSLOG) -> OSSession:
+    match node_config.os:
+        case OS.linux:
+            return LinuxSession(node_config, name, logger)
+        case _:
+            raise ConfigurationError(f"Unsupported OS {node_config.os}")

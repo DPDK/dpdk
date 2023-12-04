@@ -246,7 +246,7 @@ class ExecutionResult(BaseResult):
         self._inner_results.append(build_target_result)
         return build_target_result
 
-    def add_sut_info(self, sut_info: NodeInfo):
+    def add_sut_info(self, sut_info: NodeInfo) -> None:
         self.sut_os_name = sut_info.os_name
         self.sut_os_version = sut_info.os_version
         self.sut_kernel_version = sut_info.kernel_version
@@ -289,7 +289,7 @@ class DTSResult(BaseResult):
         self._inner_results.append(execution_result)
         return execution_result
 
-    def add_error(self, error) -> None:
+    def add_error(self, error: Exception) -> None:
         self._errors.append(error)
 
     def process(self) -> None:

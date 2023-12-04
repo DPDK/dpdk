@@ -10,10 +10,17 @@ A test framework for testing DPDK.
 
 import logging
 
-from framework import dts
+from framework import settings
 
 
 def main() -> None:
+    """Set DTS settings, then run DTS.
+
+    The DTS settings are taken from the command line arguments and the environment variables.
+    """
+    settings.SETTINGS = settings.get_settings()
+    from framework import dts
+
     dts.run_all()
 
 

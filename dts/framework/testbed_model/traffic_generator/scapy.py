@@ -24,16 +24,15 @@ from scapy.layers.l2 import Ether  # type: ignore[import]
 from scapy.packet import Packet  # type: ignore[import]
 
 from framework.config import OS, ScapyTrafficGeneratorConfig
-from framework.logger import DTSLOG, getLogger
 from framework.remote_session import PythonShell
 from framework.settings import SETTINGS
+from framework.testbed_model.node import Node
+from framework.testbed_model.port import Port
 
 from .capturing_traffic_generator import (
     CapturingTrafficGenerator,
     _get_default_capture_name,
 )
-from .hw.port import Port
-from .tg_node import TGNode
 
 """
 ========= BEGIN RPC FUNCTIONS =========
@@ -144,7 +143,7 @@ class QuittableXMLRPCServer(SimpleXMLRPCServer):
         self._BaseServer__shutdown_request = True
         return None
 
-    def add_rpc_function(self, name: str, function_bytes: xmlrpc.client.Binary):
+    def add_rpc_function(self, name: str, function_bytes: xmlrpc.client.Binary) -> None:
         """Add a function to the server.
 
         This is meant to be executed remotely.
@@ -189,13 +188,9 @@ class ScapyTrafficGenerator(CapturingTrafficGenerator):
     session: PythonShell
     rpc_server_proxy: xmlrpc.client.ServerProxy
     _config: ScapyTrafficGeneratorConfig
-    _tg_node: TGNode
-    _logger: DTSLOG
 
-    def __init__(self, tg_node: TGNode, config: ScapyTrafficGeneratorConfig):
-        self._config = config
-        self._tg_node = tg_node
-        self._logger = getLogger(f"{self._tg_node.name} {self._config.traffic_generator_type}")
+    def __init__(self, tg_node: Node, config: ScapyTrafficGeneratorConfig):
+        super().__init__(tg_node, config)
 
         assert (
             self._tg_node.config.os == OS.linux
@@ -229,7 +224,7 @@ class ScapyTrafficGenerator(CapturingTrafficGenerator):
             function_bytes = marshal.dumps(function.__code__)
             self.rpc_server_proxy.add_rpc_function(function.__name__, function_bytes)
 
-    def _start_xmlrpc_server_in_remote_python(self, listen_port: int):
+    def _start_xmlrpc_server_in_remote_python(self, listen_port: int) -> None:
         # load the source of the function
         src = inspect.getsource(QuittableXMLRPCServer)
         # Lines with only whitespace break the repl if in the middle of a function
@@ -271,7 +266,7 @@ class ScapyTrafficGenerator(CapturingTrafficGenerator):
         scapy_packets = [Ether(packet.data) for packet in xmlrpc_packets]
         return scapy_packets
 
-    def close(self):
+    def close(self) -> None:
         try:
             self.rpc_server_proxy.quit()
         except ConnectionRefusedError:
