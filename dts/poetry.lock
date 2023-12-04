@@ -489,20 +489,20 @@ files = [
 
 [[package]]
 name = "pydocstyle"
-version = "6.3.0"
+version = "6.1.1"
 description = "Python docstring style checker"
 optional = false
 python-versions = ">=3.6"
 files = [
-    {file = "pydocstyle-6.3.0-py3-none-any.whl", hash = "sha256:118762d452a49d6b05e194ef344a55822987a462831ade91ec5c06fd2169d019"},
-    {file = "pydocstyle-6.3.0.tar.gz", hash = "sha256:7ce43f0c0ac87b07494eb9c0b462c0b73e6ff276807f204d6b53edc72b7e44e1"},
+    {file = "pydocstyle-6.1.1-py3-none-any.whl", hash = "sha256:6987826d6775056839940041beef5c08cc7e3d71d63149b48e36727f70144dc4"},
+    {file = "pydocstyle-6.1.1.tar.gz", hash = "sha256:1d41b7c459ba0ee6c345f2eb9ae827cab14a7533a88c5c6f7e94923f72df92dc"},
 ]
 
 [package.dependencies]
-snowballstemmer = ">=2.2.0"
+snowballstemmer = "*"
 
 [package.extras]
-toml = ["tomli (>=1.2.3)"]
+toml = ["toml"]
 
 [[package]]
 name = "pyflakes"
@@ -837,4 +837,4 @@ jsonschema = ">=4,<5"
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "0b1e4a1cb8323e17e5ee5951c97e74bde6e60d0413d7b25b1803d5b2bab39639"
+content-hash = "3501e97b3dadc19fe8ae179fe21b1edd2488001da9a8e86ff2bca0b86b99b89b"

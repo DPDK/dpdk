@@ -25,6 +25,7 @@ PyYAML = "^6.0"
 types-PyYAML = "^6.0.8"
 fabric = "^2.7.1"
 scapy = "^2.5.0"
+pydocstyle = "6.1.1"
 
 [tool.poetry.group.dev.dependencies]
 mypy = "^0.961"
@@ -39,9 +40,12 @@ requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.pylama]
-linters = "mccabe,pycodestyle,pyflakes"
+linters = "mccabe,pycodestyle,pydocstyle,pyflakes"
 format = "pylint"
 max_line_length = 100
+
+[tool.pylama.linter.pydocstyle]
+convention = "google"
 
 [tool.mypy]
 python_version = "3.10"
