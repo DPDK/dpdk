@@ -272,6 +272,7 @@ int nfp_net_flow_ctrl_get(struct rte_eth_dev *dev,
 		struct rte_eth_fc_conf *fc_conf);
 int nfp_net_flow_ctrl_set(struct rte_eth_dev *dev,
 		struct rte_eth_fc_conf *fc_conf);
+void nfp_pf_uninit(struct nfp_pf_dev *pf_dev);
 
 #define NFP_PRIV_TO_APP_FW_NIC(app_fw_priv)\
 	((struct nfp_app_fw_nic *)app_fw_priv)
