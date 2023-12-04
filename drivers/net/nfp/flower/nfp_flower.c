@@ -82,63 +82,6 @@ nfp_flower_pf_start(struct rte_eth_dev *dev)
 	return 0;
 }
 
-/* Reset and stop device. The device can not be restarted. */
-static int
-nfp_flower_pf_close(struct rte_eth_dev *dev)
-{
-	uint16_t i;
-	struct nfp_net_hw *hw;
-	struct nfp_pf_dev *pf_dev;
-	struct nfp_net_txq *this_tx_q;
-	struct nfp_net_rxq *this_rx_q;
-	struct nfp_flower_representor *repr;
-	struct nfp_app_fw_flower *app_fw_flower;
-
-	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
-		return 0;
-
-	repr = dev->data->dev_private;
-	hw = repr->app_fw_flower->pf_hw;
-	pf_dev = hw->pf_dev;
-	app_fw_flower = NFP_PRIV_TO_APP_FW_FLOWER(pf_dev->app_fw_priv);
-
-	nfp_mtr_priv_uninit(pf_dev);
-
-	/*
-	 * We assume that the DPDK application is stopping all the
-	 * threads/queues before calling the device close function.
-	 */
-	nfp_net_disable_queues(dev);
-
-	/* Clear queues */
-	for (i = 0; i < dev->data->nb_tx_queues; i++) {
-		this_tx_q = dev->data->tx_queues[i];
-		nfp_net_reset_tx_queue(this_tx_q);
-	}
-
-	for (i = 0; i < dev->data->nb_rx_queues; i++) {
-		this_rx_q = dev->data->rx_queues[i];
-		nfp_net_reset_rx_queue(this_rx_q);
-	}
-
-	/* Cancel possible impending LSC work here before releasing the port */
-	rte_eal_alarm_cancel(nfp_net_dev_interrupt_delayed_handler, (void *)dev);
-
-	nn_cfg_writeb(&hw->super, NFP_NET_CFG_LSC, 0xff);
-
-	/* Now it is safe to free all PF resources */
-	PMD_DRV_LOG(INFO, "Freeing PF resources");
-	nfp_cpp_area_free(pf_dev->ctrl_area);
-	nfp_cpp_area_free(pf_dev->qc_area);
-	free(pf_dev->hwinfo);
-	free(pf_dev->sym_tbl);
-	nfp_cpp_free(pf_dev->cpp);
-	rte_free(app_fw_flower);
-	rte_free(pf_dev);
-
-	return 0;
-}
-
 static const struct eth_dev_ops nfp_flower_pf_vnic_ops = {
 	.dev_infos_get          = nfp_net_infos_get,
 	.link_update            = nfp_net_link_update,
@@ -146,7 +89,6 @@ static const struct eth_dev_ops nfp_flower_pf_vnic_ops = {
 
 	.dev_start              = nfp_flower_pf_start,
 	.dev_stop               = nfp_net_stop,
-	.dev_close              = nfp_flower_pf_close,
 };
 
 static inline struct nfp_flower_representor *
@@ -856,6 +798,21 @@ app_cleanup:
 	rte_free(app_fw_flower);
 
 	return ret;
+}
+
+void
+nfp_uninit_app_fw_flower(struct nfp_pf_dev *pf_dev)
+{
+	struct nfp_app_fw_flower *app_fw_flower;
+
+	app_fw_flower = pf_dev->app_fw_priv;
+	nfp_flower_cleanup_ctrl_vnic(app_fw_flower->ctrl_hw);
+	nfp_cpp_area_free(app_fw_flower->ctrl_hw->ctrl_area);
+	nfp_cpp_area_free(pf_dev->ctrl_area);
+	rte_free(app_fw_flower->pf_hw);
+	nfp_mtr_priv_uninit(pf_dev);
+	nfp_flow_priv_uninit(pf_dev);
+	rte_free(app_fw_flower);
 }
 
 int
