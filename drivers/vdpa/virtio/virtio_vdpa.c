@@ -419,9 +419,6 @@ virtio_vdpa_virtq_disable(struct virtio_vdpa_priv *priv, int vq_idx)
 		if (!(features & VIRTIO_F_RING_RESET)) {
 			DRV_LOG(WARNING, "%s can't disable queue after driver ok without queue reset support",
 					priv->vdev->device->name);
-			// Handle blk special case SET_VRING_ENABLE(0) before GET_VRING_BASE
-			virtio_vdpa_virtq_doorbell_relay_disable(priv, vq_idx);
-			virtio_pci_dev_interrupt_disable(priv->vpdev, vq_idx + 1);
 			return 0;
 		}
 	}
@@ -582,6 +579,8 @@ virtio_vdpa_vring_state_set(int vid, int vq_idx, int state)
 		return -E2BIG;
 	}
 
+	priv->vrings[vq_idx]->conf_enable = !!state;
+
 	if (!state && !priv->vrings[vq_idx]->enable) {
 		DRV_LOG(INFO, "VDPA device %s vid:%d  set vring %d state %d already disabled, just return",
 						priv->vdev->device->name, vid, vq_idx, state);
@@ -637,27 +636,18 @@ virtio_vdpa_dev_cleanup(int vid)
 	struct rte_vdpa_device *vdev = rte_vhost_get_vdpa_device(vid);
 	struct virtio_vdpa_priv *priv =
 		virtio_vdpa_find_priv_resource_by_vdev(vdev);
-	uint16_t num_vr, vq_idx;
 
 	if (priv == NULL) {
 		DRV_LOG(ERR, "Invalid vDPA device: %s", vdev->device->name);
 		return -ENODEV;
 	}
 
-	/* Disable all queues when qemu can't gracefully close. */
-	num_vr = rte_vhost_get_vring_num(vid);
-	for (vq_idx = 0; vq_idx < num_vr; vq_idx++) {
-		if (priv->vrings[vq_idx]->enable) {
-			virtio_vdpa_virtq_doorbell_relay_disable(priv, vq_idx);
-			virtio_pci_dev_state_queue_del(priv->vpdev, vq_idx, priv->state_mz->addr);
-			virtio_pci_dev_state_interrupt_disable(priv->vpdev, vq_idx + 1, priv->state_mz->addr);
-			priv->vrings[vq_idx]->enable = false;
-		}
-	}
-
-	virtio_pci_dev_state_all_queues_disable(priv->vpdev, priv->state_mz->addr);
-
 	priv->dev_conf_read = false;
+
+	/* In case kill -9 qemu */
+	for (i = 0; i < priv->hw_nr_virtqs; i++) {
+		priv->vrings[i]->conf_enable = false;
+	}
 
 	mem = priv->mem;
 	if (mem == NULL) {
@@ -1063,6 +1053,12 @@ virtio_vdpa_dev_close(int vid)
 
 	rte_free(tmp_hw_idx);
 
+	/* Disable all queues */
+	for (i = 0; i < num_vr; i++) {
+		if (priv->vrings[i]->enable)
+			virtio_vdpa_virtq_disable(priv, i);
+	}
+	virtio_pci_dev_state_all_queues_disable(priv->vpdev, priv->state_mz->addr);
 
 	virtio_pci_dev_state_dev_status_set(priv->state_mz->addr, VIRTIO_CONFIG_STATUS_ACK |
 													VIRTIO_CONFIG_STATUS_DRIVER);
@@ -1124,6 +1120,12 @@ virtio_vdpa_dev_config(int vid)
 	priv->vid = vid;
 
 	for (i = 0; i < nr_virtqs; i++) {
+		/* For mem hotplug case, needs enable queues again */
+		if (priv->vrings[i]->conf_enable && !priv->vrings[i]->enable) {
+			DRV_LOG(DEBUG, "%s enable queue %d in device configure",
+					vdev->device->name, i);
+			virtio_vdpa_virtq_enable(priv, i);
+		}
 		ret = rte_vhost_get_vring_base(vid, i, &last_avail_idx, &last_used_idx);
 		if (ret) {
 			DRV_LOG(ERR, "%s error get vring base ret:%d", vdev->device->name, ret);
