@@ -597,9 +597,6 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 
 		net_hw->mac_stats = net_hw->mac_stats_bar;
 	} else {
-		if (pf_dev->ctrl_bar == NULL)
-			return -ENODEV;
-
 		/* Use port offset in pf ctrl_bar for this ports control bar */
 		hw->ctrl_bar = pf_dev->ctrl_bar + (port * NFP_NET_CFG_BAR_SZ);
 		net_hw->mac_stats = app_fw_nic->ports[0]->mac_stats_bar +
@@ -611,18 +608,19 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 
 	err = nfp_net_common_init(pci_dev, net_hw);
 	if (err != 0)
-		return err;
+		goto free_area;
 
 	err = nfp_net_tlv_caps_parse(eth_dev);
 	if (err != 0) {
 		PMD_INIT_LOG(ERR, "Failed to parser TLV caps");
 		return err;
+		goto free_area;
 	}
 
 	err = nfp_ipsec_init(eth_dev);
 	if (err != 0) {
 		PMD_INIT_LOG(ERR, "Failed to init IPsec module");
-		return err;
+		goto free_area;
 	}
 
 	nfp_net_ethdev_ops_mount(net_hw, eth_dev);
@@ -632,7 +630,8 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 	if (net_hw->eth_xstats_base == NULL) {
 		PMD_INIT_LOG(ERR, "no memory for xstats base values on device %s!",
 				pci_dev->device.name);
-		return -ENOMEM;
+		err = -ENOMEM;
+		goto ipsec_exit;
 	}
 
 	/* Work out where in the BAR the queues start. */
@@ -662,7 +661,8 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 	eth_dev->data->mac_addrs = rte_zmalloc("mac_addr", RTE_ETHER_ADDR_LEN, 0);
 	if (eth_dev->data->mac_addrs == NULL) {
 		PMD_INIT_LOG(ERR, "Failed to space for MAC address");
-		return -ENOMEM;
+		err = -ENOMEM;
+		goto xstats_free;
 	}
 
 	nfp_net_pf_read_mac(app_fw_nic, port);
@@ -700,6 +700,16 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 	nfp_net_stats_reset(eth_dev);
 
 	return 0;
+
+xstats_free:
+	rte_free(net_hw->eth_xstats_base);
+ipsec_exit:
+	nfp_ipsec_uninit(eth_dev);
+free_area:
+	if (net_hw->mac_stats_area != NULL)
+		nfp_cpp_area_release_free(net_hw->mac_stats_area);
+
+	return err;
 }
 
 #define DEFAULT_FW_PATH       "/lib/firmware/netronome"
