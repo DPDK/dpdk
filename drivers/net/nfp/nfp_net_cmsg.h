@@ -8,6 +8,19 @@
 
 #include "nfp_net_common.h"
 
+/**
+ * Match EtherType data
+ * Bit    3 3 2 2 2 2 2 2 2 2 2 2 1 1 1 1 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0 0
+ * -----\ 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0
+ * Word  +-------------------------------+-------------------------------+
+ *    0  |                               |            Ethtype            |
+ *       +-----------------+-------------+-------------------------------+
+ */
+struct nfp_net_cmsg_match_eth {
+	uint16_t ether_type;
+	uint16_t spare;
+};
+
 #define NFP_NET_CMSG_ACTION_DROP          (0x1 << 0) /* Drop action */
 #define NFP_NET_CMSG_ACTION_QUEUE         (0x1 << 1) /* Queue action */
 #define NFP_NET_CMSG_ACTION_MARK          (0x1 << 2) /* Mark action */

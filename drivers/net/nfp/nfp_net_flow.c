@@ -13,6 +13,28 @@
 #include "nfp_logs.h"
 #include "nfp_net_cmsg.h"
 
+/* Static initializer for a list of subsequent item types */
+#define NEXT_ITEM(...) \
+	((const enum rte_flow_item_type []){ \
+		__VA_ARGS__, RTE_FLOW_ITEM_TYPE_END, \
+	})
+
+/* Process structure associated with a flow item */
+struct nfp_net_flow_item_proc {
+	/* Bit-mask for fields supported by this PMD. */
+	const void *mask_support;
+	/* Bit-mask to use when @p item->mask is not provided. */
+	const void *mask_default;
+	/* Size in bytes for @p mask_support and @p mask_default. */
+	const uint32_t mask_sz;
+	/* Merge a pattern item into a flow rule handle. */
+	int (*merge)(struct rte_flow *nfp_flow,
+			const struct rte_flow_item *item,
+			const struct nfp_net_flow_item_proc *proc);
+	/* List of possible subsequent items. */
+	const enum rte_flow_item_type *const next_item;
+};
+
 static int
 nfp_net_flow_table_add(struct nfp_net_priv *priv,
 		struct rte_flow *nfp_flow)
@@ -162,6 +184,10 @@ nfp_net_flow_calculate_items(const struct rte_flow_item items[],
 
 	for (item = items; item->type != RTE_FLOW_ITEM_TYPE_END; ++item) {
 		switch (item->type) {
+		case RTE_FLOW_ITEM_TYPE_ETH:
+			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ITEM_TYPE_ETH detected");
+			*match_len = sizeof(struct nfp_net_cmsg_match_eth);
+			return 0;
 		default:
 			PMD_DRV_LOG(ERR, "Can't calculate match length");
 			*match_len = 0;
@@ -170,6 +196,143 @@ nfp_net_flow_calculate_items(const struct rte_flow_item items[],
 	}
 
 	return -EINVAL;
+}
+
+static int
+nfp_net_flow_merge_eth(__rte_unused struct rte_flow *nfp_flow,
+		const struct rte_flow_item *item,
+		__rte_unused const struct nfp_net_flow_item_proc *proc)
+{
+	struct nfp_net_cmsg_match_eth *eth;
+	const struct rte_flow_item_eth *spec;
+
+	spec = item->spec;
+	if (spec == NULL) {
+		PMD_DRV_LOG(ERR, "NFP flow merge eth: no item->spec!");
+		return -EINVAL;
+	}
+
+	nfp_flow->payload.cmsg_type = NFP_NET_CFG_MBOX_CMD_FS_ADD_ETHTYPE;
+
+	eth = (struct nfp_net_cmsg_match_eth *)nfp_flow->payload.match_data;
+	eth->ether_type = rte_be_to_cpu_16(spec->type);
+
+	return 0;
+}
+
+/* Graph of supported items and associated process function */
+static const struct nfp_net_flow_item_proc nfp_net_flow_item_proc_list[] = {
+	[RTE_FLOW_ITEM_TYPE_END] = {
+		.next_item = NEXT_ITEM(RTE_FLOW_ITEM_TYPE_ETH),
+	},
+	[RTE_FLOW_ITEM_TYPE_ETH] = {
+		.merge = nfp_net_flow_merge_eth,
+	},
+};
+
+static int
+nfp_net_flow_item_check(const struct rte_flow_item *item,
+		const struct nfp_net_flow_item_proc *proc)
+{
+	uint32_t i;
+	int ret = 0;
+	const uint8_t *mask;
+
+	/* item->last and item->mask cannot exist without item->spec. */
+	if (item->spec == NULL) {
+		if (item->mask || item->last) {
+			PMD_DRV_LOG(ERR, "'mask' or 'last' field provided"
+					" without a corresponding 'spec'.");
+			return -EINVAL;
+		}
+
+		/* No spec, no mask, no problem. */
+		return 0;
+	}
+
+	mask = (item->mask != NULL) ? item->mask : proc->mask_default;
+
+	/*
+	 * Single-pass check to make sure that:
+	 * - Mask is supported, no bits are set outside proc->mask_support.
+	 * - Both item->spec and item->last are included in mask.
+	 */
+	for (i = 0; i != proc->mask_sz; ++i) {
+		if (mask[i] == 0)
+			continue;
+
+		if ((mask[i] | ((const uint8_t *)proc->mask_support)[i]) !=
+				((const uint8_t *)proc->mask_support)[i]) {
+			PMD_DRV_LOG(ERR, "Unsupported field found in 'mask'.");
+			ret = -EINVAL;
+			break;
+		}
+
+		if (item->last != NULL &&
+				(((const uint8_t *)item->spec)[i] & mask[i]) !=
+				(((const uint8_t *)item->last)[i] & mask[i])) {
+			PMD_DRV_LOG(ERR, "Range between 'spec' and 'last'"
+					" is larger than 'mask'.");
+			ret = -ERANGE;
+			break;
+		}
+	}
+
+	return ret;
+}
+
+static int
+nfp_net_flow_compile_items(const struct rte_flow_item items[],
+		struct rte_flow *nfp_flow)
+{
+	uint32_t i;
+	int ret = 0;
+	const struct rte_flow_item *item;
+	const struct nfp_net_flow_item_proc *proc_list;
+
+	proc_list = nfp_net_flow_item_proc_list;
+
+	for (item = items; item->type != RTE_FLOW_ITEM_TYPE_END; ++item) {
+		const struct nfp_net_flow_item_proc *proc = NULL;
+
+		for (i = 0; (proc_list->next_item != NULL) &&
+				(proc_list->next_item[i] != RTE_FLOW_ITEM_TYPE_END); ++i) {
+			if (proc_list->next_item[i] == item->type) {
+				proc = &nfp_net_flow_item_proc_list[item->type];
+				break;
+			}
+		}
+
+		if (proc == NULL) {
+			PMD_DRV_LOG(ERR, "No next item provided for %d", item->type);
+			ret = -ENOTSUP;
+			break;
+		}
+
+		/* Perform basic sanity checks */
+		ret = nfp_net_flow_item_check(item, proc);
+		if (ret != 0) {
+			PMD_DRV_LOG(ERR, "NFP flow item %d check failed", item->type);
+			ret = -EINVAL;
+			break;
+		}
+
+		if (proc->merge == NULL) {
+			PMD_DRV_LOG(ERR, "NFP flow item %d no proc function", item->type);
+			ret = -ENOTSUP;
+			break;
+		}
+
+		ret = proc->merge(nfp_flow, item, proc);
+		if (ret != 0) {
+			PMD_DRV_LOG(ERR, "NFP flow item %d exact merge failed", item->type);
+			break;
+		}
+
+		proc_list = proc;
+	}
+
+	return ret;
 }
 
 static void
@@ -216,6 +379,12 @@ nfp_net_flow_setup(struct rte_eth_dev *dev,
 	if (nfp_flow == NULL) {
 		PMD_DRV_LOG(ERR, "Alloc nfp flow failed.");
 		return NULL;
+	}
+
+	ret = nfp_net_flow_compile_items(items, nfp_flow);
+	if (ret != 0) {
+		PMD_DRV_LOG(ERR, "NFP flow item process failed.");
+		goto free_flow;
 	}
 
 	/* Calculate and store the hash_key for later use */
