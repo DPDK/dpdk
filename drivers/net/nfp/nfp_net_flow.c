@@ -548,6 +548,20 @@ nfp_net_flow_action_drop(struct rte_flow *nfp_flow)
 	action_data->action = NFP_NET_CMSG_ACTION_DROP;
 }
 
+static void
+nfp_net_flow_action_mark(struct rte_flow *nfp_flow,
+		const struct rte_flow_action *action)
+{
+	struct nfp_net_cmsg_action *action_data;
+	const struct rte_flow_action_mark *mark;
+
+	action_data = (struct nfp_net_cmsg_action *)nfp_flow->payload.action_data;
+	mark = action->conf;
+
+	action_data->action |= NFP_NET_CMSG_ACTION_MARK;
+	action_data->mark_id = mark->id;
+}
+
 static int
 nfp_net_flow_compile_actions(const struct rte_flow_action actions[],
 		struct rte_flow *nfp_flow)
@@ -560,6 +574,10 @@ nfp_net_flow_compile_actions(const struct rte_flow_action actions[],
 			PMD_DRV_LOG(DEBUG, "Process RTE_FLOW_ACTION_TYPE_DROP");
 			nfp_net_flow_action_drop(nfp_flow);
 			return 0;
+		case RTE_FLOW_ACTION_TYPE_MARK:
+			PMD_DRV_LOG(DEBUG, "Process RTE_FLOW_ACTION_TYPE_MARK");
+			nfp_net_flow_action_mark(nfp_flow, action);
+			break;
 		default:
 			PMD_DRV_LOG(ERR, "Unsupported action type: %d", action->type);
 			return -ENOTSUP;

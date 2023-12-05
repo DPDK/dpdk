@@ -25,6 +25,8 @@ struct nfp_meta_parsed {
 	uint32_t port_id;         /**< Port id value */
 	uint32_t sa_idx;          /**< IPsec SA index */
 	uint32_t hash;            /**< RSS hash value */
+	uint32_t mark_id;         /**< Mark id value */
+	uint16_t flags;           /**< Bitmap to indicate if meta exist */
 	uint8_t hash_type;        /**< RSS hash type */
 	uint8_t ipsec_type;       /**< IPsec type */
 	uint8_t vlan_layer;       /**< The valid number of value in @vlan[] */
@@ -290,6 +292,10 @@ nfp_net_parse_chained_meta(uint8_t *meta_base,
 			meta->sa_idx = rte_be_to_cpu_32(*(rte_be32_t *)meta_offset);
 			meta->ipsec_type = meta_info & NFP_NET_META_FIELD_MASK;
 			break;
+		case NFP_NET_META_MARK:
+			meta->flags |= (1 << NFP_NET_META_MARK);
+			meta->mark_id = rte_be_to_cpu_32(*(rte_be32_t *)meta_offset);
+			break;
 		default:
 			/* Unsupported metadata can be a performance issue */
 			return false;
@@ -434,6 +440,17 @@ nfp_net_parse_meta_ipsec(struct nfp_meta_parsed *meta,
 	}
 }
 
+static void
+nfp_net_parse_meta_mark(const struct nfp_meta_parsed *meta,
+		struct rte_mbuf *mbuf)
+{
+	if (((meta->flags >> NFP_NET_META_MARK) & 0x1) == 0)
+		return;
+
+	mbuf->hash.fdir.hi = meta->mark_id;
+	mbuf->ol_flags |= RTE_MBUF_F_RX_FDIR | RTE_MBUF_F_RX_FDIR_ID;
+}
+
 /* Parse the metadata from packet */
 static void
 nfp_net_parse_meta(struct nfp_net_rx_desc *rxds,
@@ -458,6 +475,7 @@ nfp_net_parse_meta(struct nfp_net_rx_desc *rxds,
 			nfp_net_parse_meta_vlan(meta, rxds, rxq, mb);
 			nfp_net_parse_meta_qinq(meta, rxq, mb);
 			nfp_net_parse_meta_ipsec(meta, rxq, mb);
+			nfp_net_parse_meta_mark(meta, mb);
 		} else {
 			PMD_RX_LOG(DEBUG, "RX chained metadata format is wrong!");
 		}
