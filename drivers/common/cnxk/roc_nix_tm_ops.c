@@ -51,25 +51,26 @@ roc_nix_tm_sq_aura_fc(struct roc_nix_sq *sq, bool enable)
 		goto exit;
 
 	/* Read back npa aura ctx */
-	req = mbox_alloc_msg_npa_aq_enq(mbox);
-	if (req == NULL) {
-		rc = -ENOSPC;
-		goto exit;
-	}
+	if (enable) {
+		req = mbox_alloc_msg_npa_aq_enq(mbox);
+		if (req == NULL) {
+			rc = -ENOSPC;
+			goto exit;
+		}
 
-	req->aura_id = roc_npa_aura_handle_to_aura(aura_handle);
-	req->ctype = NPA_AQ_CTYPE_AURA;
-	req->op = NPA_AQ_INSTOP_READ;
+		req->aura_id = roc_npa_aura_handle_to_aura(aura_handle);
+		req->ctype = NPA_AQ_CTYPE_AURA;
+		req->op = NPA_AQ_INSTOP_READ;
 
-	rc = mbox_process_msg(mbox, (void *)&rsp);
-	if (rc)
-		goto exit;
+		rc = mbox_process_msg(mbox, (void *)&rsp);
+		if (rc)
+			goto exit;
 
-	/* Init when enabled as there might be no triggers */
-	if (enable)
+		/* Init when enabled as there might be no triggers */
 		*(volatile uint64_t *)sq->fc = rsp->aura.count;
-	else
+	} else {
 		*(volatile uint64_t *)sq->fc = sq->aura_sqb_bufs;
+	}
 	/* Sync write barrier */
 	plt_wmb();
 	rc = 0;
