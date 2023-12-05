@@ -108,6 +108,14 @@ struct nfp_pf_dev {
 	struct nfp_multi_pf multi_pf;
 };
 
+#define NFP_NET_FLOW_LIMIT    1024
+
+struct nfp_net_priv {
+	uint32_t hash_seed; /**< Hash seed for hash tables in this structure. */
+	struct rte_hash *flow_table; /**< Hash table to store flow rules. */
+	uint16_t flow_count; /**< Flow count in hash table */
+};
+
 struct nfp_app_fw_nic {
 	/** Backpointer to the PF device */
 	struct nfp_pf_dev *pf_dev;
@@ -177,6 +185,9 @@ struct nfp_net_hw {
 	struct nfp_net_tlv_caps tlv_caps;
 
 	struct nfp_net_ipsec_data *ipsec_data;
+
+	/** Used for rte_flow of CoreNIC firmware */
+	struct nfp_net_priv *priv;
 };
 
 static inline uint32_t
