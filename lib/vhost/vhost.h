@@ -295,7 +295,8 @@ struct vhost_virtqueue {
 #define VIRTIO_UNINITIALIZED_EVENTFD	(-2)
 
 	bool			enabled;
-	bool			access_ok;
+	/* Protected by vq->access_lock */
+	bool			access_ok __rte_guarded_var;
 	bool			ready;
 
 	rte_rwlock_t		access_lock;
@@ -873,11 +874,13 @@ void *vhost_alloc_copy_ind_table(struct virtio_net *dev,
 			uint64_t desc_addr, uint64_t desc_len)
 	__rte_shared_locks_required(&vq->iotlb_lock);
 int vring_translate(struct virtio_net *dev, struct vhost_virtqueue *vq)
+	__rte_exclusive_locks_required(&vq->access_lock)
 	__rte_shared_locks_required(&vq->iotlb_lock);
 uint64_t translate_log_addr(struct virtio_net *dev, struct vhost_virtqueue *vq,
 		uint64_t log_addr)
 	__rte_shared_locks_required(&vq->iotlb_lock);
-void vring_invalidate(struct virtio_net *dev, struct vhost_virtqueue *vq);
+void vring_invalidate(struct virtio_net *dev, struct vhost_virtqueue *vq)
+	__rte_exclusive_locks_required(&vq->access_lock);
 
 static __rte_always_inline uint64_t
 vhost_iova_to_vva(struct virtio_net *dev, struct vhost_virtqueue *vq,

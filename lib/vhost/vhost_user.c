@@ -787,6 +787,8 @@ translate_ring_addresses(struct virtio_net **pdev, struct vhost_virtqueue **pvq)
 	dev = *pdev;
 	vq = *pvq;
 
+	vq_assert_lock(dev, vq);
+
 	if (vq->ring_addrs.flags & (1 << VHOST_VRING_F_LOG)) {
 		vq->log_guest_addr =
 			log_addr_to_gpa(dev, vq);
@@ -923,6 +925,9 @@ vhost_user_set_vring_addr(struct virtio_net **pdev,
 
 	/* addr->index refers to the queue index. The txq 1, rxq is 0. */
 	vq = dev->virtqueue[ctx->msg.payload.addr.index];
+
+	/* vhost_user_lock_all_queue_pairs locked all qps */
+	vq_assert_lock(dev, vq);
 
 	access_ok = vq->access_ok;
 
@@ -1436,6 +1441,9 @@ vhost_user_set_mem_table(struct virtio_net **pdev,
 			continue;
 
 		if (vq->desc || vq->avail || vq->used) {
+			/* vhost_user_lock_all_queue_pairs locked all qps */
+			vq_assert_lock(dev, vq);
+
 			/*
 			 * If the memory table got updated, the ring addresses
 			 * need to be translated again as virtual addresses have
