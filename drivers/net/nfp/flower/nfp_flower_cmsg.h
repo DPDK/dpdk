@@ -6,8 +6,8 @@
 #ifndef __NFP_CMSG_H__
 #define __NFP_CMSG_H__
 
-#include "../nfp_flow.h"
 #include "nfp_flower.h"
+#include "nfp_flower_flow.h"
 
 struct nfp_flower_cmsg_hdr {
 	rte_be16_t pad;
