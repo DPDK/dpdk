@@ -80,9 +80,7 @@ rte_gso_segment(struct rte_mbuf *pkt,
 		ret = gso_udp4_segment(pkt, gso_size, direct_pool,
 				indirect_pool, pkts_out, nb_pkts_out);
 	} else {
-		/* unsupported packet, skip */
-		RTE_LOG(DEBUG, GSO, "Unsupported packet type\n");
-		ret = 0;
+		ret = -ENOTSUP;	/* only UDP or TCP allowed */
 	}
 
 	if (ret < 0) {

@@ -46,7 +46,7 @@ extern "C" {
 #define RTE_LOGTYPE_CRYPTODEV 17 /**< Log related to cryptodev. */
 				 /* was RTE_LOGTYPE_EFD */
 #define RTE_LOGTYPE_EVENTDEV  19 /**< Log related to eventdev. */
-#define RTE_LOGTYPE_GSO       20 /**< Log related to GSO. */
+				 /* was RTE_LOGTYPE_GSO */
 
 /* these log types can be used in an application */
 #define RTE_LOGTYPE_USER1     24 /**< User-defined log type 1. */

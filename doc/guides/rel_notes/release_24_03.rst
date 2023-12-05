@@ -84,6 +84,8 @@ API Changes
    Also, make sure to start the actual text at the margin.
    =======================================================
 
+* gso: ``rte_gso_segment`` now returns -ENOTSUP for unknown protocols.
+
 
 ABI Changes
 -----------
