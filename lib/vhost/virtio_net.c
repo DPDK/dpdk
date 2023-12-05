@@ -1696,6 +1696,17 @@ virtio_dev_rx_packed(struct virtio_net *dev,
 	return pkt_idx;
 }
 
+static void
+virtio_dev_vring_translate(struct virtio_net *dev, struct vhost_virtqueue *vq)
+{
+	rte_rwlock_write_lock(&vq->access_lock);
+	vhost_user_iotlb_rd_lock(vq);
+	if (!vq->access_ok)
+		vring_translate(dev, vq);
+	vhost_user_iotlb_rd_unlock(vq);
+	rte_rwlock_write_unlock(&vq->access_lock);
+}
+
 static __rte_always_inline uint32_t
 virtio_dev_rx(struct virtio_net *dev, struct vhost_virtqueue *vq,
 	struct rte_mbuf **pkts, uint32_t count)
@@ -1710,9 +1721,13 @@ virtio_dev_rx(struct virtio_net *dev, struct vhost_virtqueue *vq,
 
 	vhost_user_iotlb_rd_lock(vq);
 
-	if (unlikely(!vq->access_ok))
-		if (unlikely(vring_translate(dev, vq) < 0))
-			goto out;
+	if (unlikely(!vq->access_ok)) {
+		vhost_user_iotlb_rd_unlock(vq);
+		rte_rwlock_read_unlock(&vq->access_lock);
+
+		virtio_dev_vring_translate(dev, vq);
+		goto out_no_unlock;
+	}
 
 	count = RTE_MIN((uint32_t)MAX_PKT_BURST, count);
 	if (count == 0)
@@ -1731,6 +1746,7 @@ out:
 out_access_unlock:
 	rte_rwlock_read_unlock(&vq->access_lock);
 
+out_no_unlock:
 	return nb_tx;
 }
 
@@ -2528,9 +2544,13 @@ virtio_dev_rx_async_submit(struct virtio_net *dev, struct vhost_virtqueue *vq,
 
 	vhost_user_iotlb_rd_lock(vq);
 
-	if (unlikely(!vq->access_ok))
-		if (unlikely(vring_translate(dev, vq) < 0))
-			goto out;
+	if (unlikely(!vq->access_ok)) {
+		vhost_user_iotlb_rd_unlock(vq);
+		rte_rwlock_read_unlock(&vq->access_lock);
+
+		virtio_dev_vring_translate(dev, vq);
+		goto out_no_unlock;
+	}
 
 	count = RTE_MIN((uint32_t)MAX_PKT_BURST, count);
 	if (count == 0)
@@ -2551,6 +2571,7 @@ out:
 out_access_unlock:
 	rte_rwlock_write_unlock(&vq->access_lock);
 
+out_no_unlock:
 	return nb_tx;
 }
 
@@ -3581,11 +3602,13 @@ rte_vhost_dequeue_burst(int vid, uint16_t queue_id,
 
 	vhost_user_iotlb_rd_lock(vq);
 
-	if (unlikely(!vq->access_ok))
-		if (unlikely(vring_translate(dev, vq) < 0)) {
-			count = 0;
-			goto out;
-		}
+	if (unlikely(!vq->access_ok)) {
+		vhost_user_iotlb_rd_unlock(vq);
+		rte_rwlock_read_unlock(&vq->access_lock);
+
+		virtio_dev_vring_translate(dev, vq);
+		goto out_no_unlock;
+	}
 
 	/*
 	 * Construct a RARP broadcast packet, and inject it to the "pkts"
@@ -3646,6 +3669,7 @@ out_access_unlock:
 	if (unlikely(rarp_mbuf != NULL))
 		count += 1;
 
+out_no_unlock:
 	return count;
 }
 
@@ -4196,11 +4220,14 @@ rte_vhost_async_try_dequeue_burst(int vid, uint16_t queue_id,
 
 	vhost_user_iotlb_rd_lock(vq);
 
-	if (unlikely(vq->access_ok == 0))
-		if (unlikely(vring_translate(dev, vq) < 0)) {
-			count = 0;
-			goto out;
-		}
+	if (unlikely(vq->access_ok == 0)) {
+		vhost_user_iotlb_rd_unlock(vq);
+		rte_rwlock_read_unlock(&vq->access_lock);
+
+		virtio_dev_vring_translate(dev, vq);
+		count = 0;
+		goto out_no_unlock;
+	}
 
 	/*
 	 * Construct a RARP broadcast packet, and inject it to the "pkts"
@@ -4266,5 +4293,6 @@ out_access_unlock:
 	if (unlikely(rarp_mbuf != NULL))
 		count += 1;
 
+out_no_unlock:
 	return count;
 }
