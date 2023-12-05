@@ -9,6 +9,8 @@ DPDK_24 {
 	rte_hash_add_key_with_hash;
 	rte_hash_add_key_with_hash_data;
 	rte_hash_count;
+	rte_hash_crc32_alg;
+	rte_hash_crc_set_alg;
 	rte_hash_create;
 	rte_hash_del_key;
 	rte_hash_del_key_with_hash;

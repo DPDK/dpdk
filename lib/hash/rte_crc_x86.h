@@ -67,7 +67,7 @@ crc32c_sse42_u64(uint64_t data, uint64_t init_val)
 static inline uint32_t
 rte_hash_crc_1byte(uint8_t data, uint32_t init_val)
 {
-	if (likely(crc32_alg & CRC32_SSE42))
+	if (likely(rte_hash_crc32_alg & CRC32_SSE42))
 		return crc32c_sse42_u8(data, init_val);
 
 	return crc32c_1byte(data, init_val);
@@ -81,7 +81,7 @@ rte_hash_crc_1byte(uint8_t data, uint32_t init_val)
 static inline uint32_t
 rte_hash_crc_2byte(uint16_t data, uint32_t init_val)
 {
-	if (likely(crc32_alg & CRC32_SSE42))
+	if (likely(rte_hash_crc32_alg & CRC32_SSE42))
 		return crc32c_sse42_u16(data, init_val);
 
 	return crc32c_2bytes(data, init_val);
@@ -95,7 +95,7 @@ rte_hash_crc_2byte(uint16_t data, uint32_t init_val)
 static inline uint32_t
 rte_hash_crc_4byte(uint32_t data, uint32_t init_val)
 {
-	if (likely(crc32_alg & CRC32_SSE42))
+	if (likely(rte_hash_crc32_alg & CRC32_SSE42))
 		return crc32c_sse42_u32(data, init_val);
 
 	return crc32c_1word(data, init_val);
@@ -110,11 +110,11 @@ static inline uint32_t
 rte_hash_crc_8byte(uint64_t data, uint32_t init_val)
 {
 #ifdef RTE_ARCH_X86_64
-	if (likely(crc32_alg == CRC32_SSE42_x64))
+	if (likely(rte_hash_crc32_alg == CRC32_SSE42_x64))
 		return crc32c_sse42_u64(data, init_val);
 #endif
 
-	if (likely(crc32_alg & CRC32_SSE42))
+	if (likely(rte_hash_crc32_alg & CRC32_SSE42))
 		return crc32c_sse42_u64_mimic(data, init_val);
 
 	return crc32c_2words(data, init_val);

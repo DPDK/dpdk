@@ -9,6 +9,7 @@
 #include <errno.h>
 #include <sys/queue.h>
 
+#include <rte_cpuflags.h>
 #include <rte_string_fns.h>
 #include <rte_log.h>
 #include <rte_eal_memconfig.h>

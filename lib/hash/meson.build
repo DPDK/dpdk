@@ -19,6 +19,7 @@ indirect_headers += files(
 
 sources = files(
         'rte_cuckoo_hash.c',
+        'rte_hash_crc.c',
         'rte_fbk_hash.c',
         'rte_thash.c',
         'rte_thash_gfni.c',
