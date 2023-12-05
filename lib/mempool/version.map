@@ -15,6 +15,7 @@ DPDK_24 {
 	rte_mempool_get_page_size;
 	rte_mempool_in_use_count;
 	rte_mempool_list_dump;
+	rte_mempool_logtype;
 	rte_mempool_lookup;
 	rte_mempool_mem_iter;
 	rte_mempool_obj_iter;

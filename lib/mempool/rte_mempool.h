@@ -43,6 +43,7 @@
 #include <rte_spinlock.h>
 #include <rte_debug.h>
 #include <rte_lcore.h>
+#include <rte_log.h>
 #include <rte_branch_prediction.h>
 #include <rte_ring.h>
 #include <rte_memcpy.h>
@@ -175,6 +176,12 @@ struct rte_mempool_objtlr {
 };
 
 #endif
+
+/**
+ * @internal Logtype used for mempool related messages.
+ */
+extern int rte_mempool_logtype;
+#define RTE_LOGTYPE_MEMPOOL	rte_mempool_logtype
 
 /**
  * A list of memory where objects are stored
