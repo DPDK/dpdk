@@ -21,6 +21,43 @@ struct nfp_net_cmsg_match_eth {
 	uint16_t spare;
 };
 
+/**
+ * Match IPv4 data
+ * Bit    3 3 2 2 2 2 2 2 2 2 2 2 1 1 1 1 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0 0
+ * -----\ 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0
+ * Word  +-----+-------------------------+---------------+---------------+
+ *    0  |     |        Position         |   L4 Proto    | L4 Proto Mask |
+ *       +-----+-------------------------+---------------+---------------+
+ *    1  |                             SIP4                              |
+ *       +---------------------------------------------------------------+
+ *    2  |                           SIP4 Mask                           |
+ *       +---------------------------------------------------------------+
+ *    3  |                             DIP4                              |
+ *       +---------------------------------------------------------------+
+ *    4  |                           DIP4 Mask                           |
+ *       +-------------------------------+-------------------------------+
+ *    5  |             SPort             |           SPort Mask          |
+ *       +-------------------------------+-------------------------------+
+ *    6  |             DPort             |           DPort Mask          |
+ *       +-----------------+-------------+-------------------------------+
+ *
+ * Position – Position index of the rule, 13bits.
+ *            As priority, smaller value indicates higher priority.
+ */
+struct nfp_net_cmsg_match_v4 {
+	uint8_t l4_protocol_mask;
+	uint8_t l4_protocol;
+	uint16_t position;
+	uint32_t src_ipv4;
+	uint32_t src_ipv4_mask;
+	uint32_t dst_ipv4;
+	uint32_t dst_ipv4_mask;
+	uint16_t src_port;
+	uint16_t src_port_mask;
+	uint16_t dst_port;
+	uint16_t dst_port_mask;
+};
+
 #define NFP_NET_CMSG_ACTION_DROP          (0x1 << 0) /* Drop action */
 #define NFP_NET_CMSG_ACTION_QUEUE         (0x1 << 1) /* Queue action */
 #define NFP_NET_CMSG_ACTION_MARK          (0x1 << 2) /* Mark action */
