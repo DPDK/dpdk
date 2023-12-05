@@ -28,6 +28,9 @@
 #include "rte_efd_arm64.h"
 #endif
 
+RTE_LOG_REGISTER_DEFAULT(efd_logtype, INFO);
+#define RTE_LOGTYPE_EFD	efd_logtype
+
 #define EFD_KEY(key_idx, table) (table->keys + ((key_idx) * table->key_len))
 /** Hash function used to determine chunk_id and bin_id for a group */
 #define EFD_HASH(key, table) \

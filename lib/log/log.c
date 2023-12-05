@@ -366,7 +366,6 @@ static const struct logtype logtype_strings[] = {
 	{RTE_LOGTYPE_PIPELINE,   "lib.pipeline"},
 	{RTE_LOGTYPE_MBUF,       "lib.mbuf"},
 	{RTE_LOGTYPE_CRYPTODEV,  "lib.cryptodev"},
-	{RTE_LOGTYPE_EFD,        "lib.efd"},
 	{RTE_LOGTYPE_EVENTDEV,   "lib.eventdev"},
 	{RTE_LOGTYPE_GSO,        "lib.gso"},
 	{RTE_LOGTYPE_USER1,      "user1"},
