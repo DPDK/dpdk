@@ -2198,7 +2198,9 @@ vhost_user_get_vring_base(struct virtio_net **pdev,
 
 	vhost_user_iotlb_flush_all(dev);
 
+	rte_rwlock_write_lock(&vq->access_lock);
 	vring_invalidate(dev, vq);
+	rte_rwlock_write_unlock(&vq->access_lock);
 
 	return RTE_VHOST_MSG_RESULT_REPLY;
 }
