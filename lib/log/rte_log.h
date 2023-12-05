@@ -30,14 +30,14 @@ extern "C" {
 				 /* was RTE_LOGTYPE_MALLOC */
 				 /* was RTE_LOGTYPE_RING */
 				 /* was RTE_LOGTYPE_MEMPOOL */
-#define RTE_LOGTYPE_TIMER      4 /**< Log related to timers. */
+				 /* was RTE_LOGTYPE_TIMER */
 #define RTE_LOGTYPE_PMD        5 /**< Log related to poll mode driver. */
 				 /* was RTE_LOGTYPE_HASH */
 				 /* was RTE_LOGTYPE_LPM */
 				 /* was RTE_LOGTYPE_KNI */
 				 /* was RTE_LOGTYPE_ACL */
 				 /* was RTE_LOGTYPE_POWER */
-#define RTE_LOGTYPE_METER     11 /**< Log related to QoS meter. */
+				 /* was RTE_LOGTYPE_METER */
 				 /* was RTE_LOGTYPE_SCHED */
 #define RTE_LOGTYPE_PORT      13 /**< Log related to port. */
 #define RTE_LOGTYPE_TABLE     14 /**< Log related to table. */
