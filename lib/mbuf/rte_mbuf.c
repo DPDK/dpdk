@@ -20,6 +20,10 @@
 #include <rte_errno.h>
 #include <rte_memcpy.h>
 
+#include "mbuf_log.h"
+
+RTE_LOG_REGISTER_DEFAULT(mbuf_logtype, INFO);
+
 /*
  * pktmbuf pool constructor, given as a callback function to
  * rte_mempool_create(), or called directly if using

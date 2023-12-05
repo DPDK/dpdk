@@ -17,6 +17,8 @@
 #include <rte_mbuf.h>
 #include <rte_mbuf_dyn.h>
 
+#include "mbuf_log.h"
+
 #define RTE_MBUF_DYN_MZNAME "rte_mbuf_dyn"
 
 struct mbuf_dynfield_elt {

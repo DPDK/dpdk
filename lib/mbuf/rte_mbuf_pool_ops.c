@@ -8,6 +8,8 @@
 #include <rte_errno.h>
 #include <rte_mbuf_pool_ops.h>
 
+#include "mbuf_log.h"
+
 int
 rte_mbuf_set_platform_mempool_ops(const char *ops_name)
 {
