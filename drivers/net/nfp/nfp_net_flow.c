@@ -309,6 +309,53 @@ nfp_net_flow_merge_ipv6(struct rte_flow *nfp_flow,
 	return 0;
 }
 
+static int
+nfp_flow_merge_l4(struct rte_flow *nfp_flow,
+		const struct rte_flow_item *item,
+		const struct nfp_net_flow_item_proc *proc)
+{
+	const struct rte_flow_item_tcp *mask;
+	const struct rte_flow_item_tcp *spec;
+	struct nfp_net_cmsg_match_v4 *ipv4 = NULL;
+	struct nfp_net_cmsg_match_v6 *ipv6 = NULL;
+
+	spec = item->spec;
+	if (spec == NULL) {
+		PMD_DRV_LOG(ERR, "NFP flow merge tcp: no item->spec!");
+		return -EINVAL;
+	}
+
+	mask = (item->mask != NULL) ? item->mask : proc->mask_default;
+
+	switch (nfp_flow->payload.cmsg_type) {
+	case NFP_NET_CFG_MBOX_CMD_FS_ADD_V4:
+		ipv4 = (struct nfp_net_cmsg_match_v4 *)nfp_flow->payload.match_data;
+		break;
+	case NFP_NET_CFG_MBOX_CMD_FS_ADD_V6:
+		ipv6 = (struct nfp_net_cmsg_match_v6 *)nfp_flow->payload.match_data;
+		break;
+	default:
+		PMD_DRV_LOG(ERR, "L3 layer neither IPv4 nor IPv6.");
+		return -EINVAL;
+	}
+
+	if (ipv4 != NULL) {
+		ipv4->src_port_mask = rte_be_to_cpu_16(mask->hdr.src_port);
+		ipv4->dst_port_mask = rte_be_to_cpu_16(mask->hdr.dst_port);
+
+		ipv4->src_port = rte_be_to_cpu_16(spec->hdr.src_port);
+		ipv4->dst_port = rte_be_to_cpu_16(spec->hdr.dst_port);
+	} else {
+		ipv6->src_port_mask = rte_be_to_cpu_16(mask->hdr.src_port);
+		ipv6->dst_port_mask = rte_be_to_cpu_16(mask->hdr.dst_port);
+
+		ipv6->src_port = rte_be_to_cpu_16(spec->hdr.src_port);
+		ipv6->dst_port = rte_be_to_cpu_16(spec->hdr.dst_port);
+	}
+
+	return 0;
+}
+
 /* Graph of supported items and associated process function */
 static const struct nfp_net_flow_item_proc nfp_net_flow_item_proc_list[] = {
 	[RTE_FLOW_ITEM_TYPE_END] = {
@@ -320,6 +367,9 @@ static const struct nfp_net_flow_item_proc nfp_net_flow_item_proc_list[] = {
 		.merge = nfp_net_flow_merge_eth,
 	},
 	[RTE_FLOW_ITEM_TYPE_IPV4] = {
+		.next_item = NEXT_ITEM(RTE_FLOW_ITEM_TYPE_TCP,
+				RTE_FLOW_ITEM_TYPE_UDP,
+				RTE_FLOW_ITEM_TYPE_SCTP),
 		.mask_support = &(const struct rte_flow_item_ipv4){
 			.hdr = {
 				.next_proto_id = 0xff,
@@ -332,6 +382,9 @@ static const struct nfp_net_flow_item_proc nfp_net_flow_item_proc_list[] = {
 		.merge = nfp_net_flow_merge_ipv4,
 	},
 	[RTE_FLOW_ITEM_TYPE_IPV6] = {
+		.next_item = NEXT_ITEM(RTE_FLOW_ITEM_TYPE_TCP,
+				RTE_FLOW_ITEM_TYPE_UDP,
+				RTE_FLOW_ITEM_TYPE_SCTP),
 		.mask_support = &(const struct rte_flow_item_ipv6){
 			.hdr = {
 				.proto    = 0xff,
@@ -344,6 +397,39 @@ static const struct nfp_net_flow_item_proc nfp_net_flow_item_proc_list[] = {
 		.mask_default = &rte_flow_item_ipv6_mask,
 		.mask_sz = sizeof(struct rte_flow_item_ipv6),
 		.merge = nfp_net_flow_merge_ipv6,
+	},
+	[RTE_FLOW_ITEM_TYPE_TCP] = {
+		.mask_support = &(const struct rte_flow_item_tcp){
+			.hdr = {
+				.src_port  = RTE_BE16(0xffff),
+				.dst_port  = RTE_BE16(0xffff),
+			},
+		},
+		.mask_default = &rte_flow_item_tcp_mask,
+		.mask_sz = sizeof(struct rte_flow_item_tcp),
+		.merge = nfp_flow_merge_l4,
+	},
+	[RTE_FLOW_ITEM_TYPE_UDP] = {
+		.mask_support = &(const struct rte_flow_item_udp){
+			.hdr = {
+				.src_port = RTE_BE16(0xffff),
+				.dst_port = RTE_BE16(0xffff),
+			},
+		},
+		.mask_default = &rte_flow_item_udp_mask,
+		.mask_sz = sizeof(struct rte_flow_item_udp),
+		.merge = nfp_flow_merge_l4,
+	},
+	[RTE_FLOW_ITEM_TYPE_SCTP] = {
+		.mask_support = &(const struct rte_flow_item_sctp){
+			.hdr = {
+				.src_port  = RTE_BE16(0xffff),
+				.dst_port  = RTE_BE16(0xffff),
+			},
+		},
+		.mask_default = &rte_flow_item_sctp_mask,
+		.mask_sz = sizeof(struct rte_flow_item_sctp),
+		.merge = nfp_flow_merge_l4,
 	},
 };
 
