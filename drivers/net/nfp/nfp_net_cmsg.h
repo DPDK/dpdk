@@ -1,0 +1,37 @@
+/* SPDX-License-Identifier: BSD-3-Clause
+ * Copyright (c) 2023 Corigine, Inc.
+ * All rights reserved.
+ */
+
+#ifndef __NFP_NET_CMSG_H__
+#define __NFP_NET_CMSG_H__
+
+#include "nfp_net_common.h"
+
+enum nfp_net_cfg_mbox_cmd {
+	NFP_NET_CFG_MBOX_CMD_FS_ADD_V4,       /* Add Flow Steer rule for V4 table */
+	NFP_NET_CFG_MBOX_CMD_FS_DEL_V4,       /* Delete Flow Steer rule for V4 table */
+	NFP_NET_CFG_MBOX_CMD_FS_ADD_V6,       /* Add Flow Steer rule for V4 table */
+	NFP_NET_CFG_MBOX_CMD_FS_DEL_V6,       /* Delete Flow Steer rule for V4 table */
+	NFP_NET_CFG_MBOX_CMD_FS_ADD_ETHTYPE,  /* Add Flow Steer rule for Ethtype table */
+	NFP_NET_CFG_MBOX_CMD_FS_DEL_ETHTYPE,  /* Delete Flow Steer rule for Ethtype table */
+};
+
+enum nfp_net_cfg_mbox_ret {
+	NFP_NET_CFG_MBOX_RET_FS_OK,               /* No error happen */
+	NFP_NET_CFG_MBOX_RET_FS_ERR_NO_SPACE,     /* Return error code no space */
+	NFP_NET_CFG_MBOX_RET_FS_ERR_MASK_FULL,    /* Return error code mask table full */
+	NFP_NET_CFG_MBOX_RET_FS_ERR_CMD_INVALID,  /* Return error code invalid cmd */
+};
+
+/* 4B cmd, and up to 500B data. */
+struct nfp_net_cmsg {
+	uint32_t cmd;     /**< One of nfp_net_cfg_mbox_cmd */
+	uint32_t data[];
+};
+
+struct nfp_net_cmsg *nfp_net_cmsg_alloc(uint32_t msg_size);
+void nfp_net_cmsg_free(struct nfp_net_cmsg *cmsg);
+int nfp_net_cmsg_xmit(struct nfp_net_hw *hw, struct nfp_net_cmsg *cmsg, uint32_t msg_size);
+
+#endif /* __NFP_NET_CMSG_H__ */

@@ -92,6 +92,7 @@
 #define NFP_NET_CFG_MBOX_SIMPLE_VAL           0x8
 
 #define NFP_NET_CFG_MBOX_CMD_IPSEC            3
+#define NFP_NET_CFG_MBOX_CMD_FLOW_STEER       10
 
 /*
  * TLV capabilities
