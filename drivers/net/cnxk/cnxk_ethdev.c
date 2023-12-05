@@ -1521,7 +1521,7 @@ cnxk_nix_tx_queue_start(struct rte_eth_dev *eth_dev, uint16_t qid)
 	if (data->tx_queue_state[qid] == RTE_ETH_QUEUE_STATE_STARTED)
 		return 0;
 
-	rc = roc_nix_tm_sq_aura_fc(sq, true);
+	rc = roc_nix_sq_ena_dis(sq, true);
 	if (rc) {
 		plt_err("Failed to enable sq aura fc, txq=%u, rc=%d", qid, rc);
 		goto done;
@@ -1543,7 +1543,7 @@ cnxk_nix_tx_queue_stop(struct rte_eth_dev *eth_dev, uint16_t qid)
 	if (data->tx_queue_state[qid] == RTE_ETH_QUEUE_STATE_STOPPED)
 		return 0;
 
-	rc = roc_nix_tm_sq_aura_fc(sq, false);
+	rc = roc_nix_sq_ena_dis(sq, false);
 	if (rc) {
 		plt_err("Failed to disable sqb aura fc, txq=%u, rc=%d", qid,
 			rc);
