@@ -114,6 +114,7 @@ struct nfp_net_priv {
 	uint32_t hash_seed; /**< Hash seed for hash tables in this structure. */
 	struct rte_hash *flow_table; /**< Hash table to store flow rules. */
 	uint16_t flow_count; /**< Flow count in hash table */
+	bool flow_position[NFP_NET_FLOW_LIMIT]; /**< Flow position array */
 };
 
 struct nfp_app_fw_nic {

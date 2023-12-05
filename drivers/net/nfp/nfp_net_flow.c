@@ -11,8 +11,9 @@
 #include <rte_malloc.h>
 
 #include "nfp_logs.h"
+#include "nfp_net_cmsg.h"
 
-__rte_unused static int
+static int
 nfp_net_flow_table_add(struct nfp_net_priv *priv,
 		struct rte_flow *nfp_flow)
 {
@@ -27,7 +28,7 @@ nfp_net_flow_table_add(struct nfp_net_priv *priv,
 	return 0;
 }
 
-__rte_unused static int
+static int
 nfp_net_flow_table_delete(struct nfp_net_priv *priv,
 		struct rte_flow *nfp_flow)
 {
@@ -42,7 +43,7 @@ nfp_net_flow_table_delete(struct nfp_net_priv *priv,
 	return 0;
 }
 
-__rte_unused static struct rte_flow *
+static struct rte_flow *
 nfp_net_flow_table_search(struct nfp_net_priv *priv,
 		struct rte_flow *nfp_flow)
 {
@@ -59,11 +60,58 @@ nfp_net_flow_table_search(struct nfp_net_priv *priv,
 	return flow_find;
 }
 
-__rte_unused static struct rte_flow *
-nfp_net_flow_alloc(uint32_t match_len,
+static int
+nfp_net_flow_position_acquire(struct nfp_net_priv *priv,
+		uint32_t priority,
+		struct rte_flow *nfp_flow)
+{
+	uint32_t i;
+
+	if (priority != 0) {
+		i = NFP_NET_FLOW_LIMIT - priority - 1;
+
+		if (priv->flow_position[i]) {
+			PMD_DRV_LOG(ERR, "There is already a flow rule in this place.");
+			return -EAGAIN;
+		}
+
+		priv->flow_position[i] = true;
+		nfp_flow->position = priority;
+		return 0;
+	}
+
+	for (i = 0; i < NFP_NET_FLOW_LIMIT; i++) {
+		if (!priv->flow_position[i]) {
+			priv->flow_position[i] = true;
+			break;
+		}
+	}
+
+	if (i == NFP_NET_FLOW_LIMIT) {
+		PMD_DRV_LOG(ERR, "The limited flow number is reach.");
+		return -ERANGE;
+	}
+
+	nfp_flow->position = NFP_NET_FLOW_LIMIT - i - 1;
+
+	return 0;
+}
+
+static void
+nfp_net_flow_position_free(struct nfp_net_priv *priv,
+		struct rte_flow *nfp_flow)
+{
+	priv->flow_position[nfp_flow->position] = false;
+}
+
+static struct rte_flow *
+nfp_net_flow_alloc(struct nfp_net_priv *priv,
+		uint32_t priority,
+		uint32_t match_len,
 		uint32_t action_len,
 		uint32_t port_id)
 {
+	int ret;
 	char *data;
 	struct rte_flow *nfp_flow;
 	struct nfp_net_flow_payload *payload;
@@ -76,6 +124,10 @@ nfp_net_flow_alloc(uint32_t match_len,
 	if (data == NULL)
 		goto free_flow;
 
+	ret = nfp_net_flow_position_acquire(priv, priority, nfp_flow);
+	if (ret != 0)
+		goto free_payload;
+
 	nfp_flow->port_id      = port_id;
 	payload                = &nfp_flow->payload;
 	payload->match_len     = match_len;
@@ -85,17 +137,360 @@ nfp_net_flow_alloc(uint32_t match_len,
 
 	return nfp_flow;
 
+free_payload:
+	rte_free(data);
 free_flow:
 	rte_free(nfp_flow);
 
 	return NULL;
 }
 
-__rte_unused static void
-nfp_net_flow_free(struct rte_flow *nfp_flow)
+static void
+nfp_net_flow_free(struct nfp_net_priv *priv,
+		struct rte_flow *nfp_flow)
 {
+	nfp_net_flow_position_free(priv, nfp_flow);
 	rte_free(nfp_flow->payload.match_data);
 	rte_free(nfp_flow);
+}
+
+static int
+nfp_net_flow_calculate_items(const struct rte_flow_item items[],
+		uint32_t *match_len)
+{
+	const struct rte_flow_item *item;
+
+	for (item = items; item->type != RTE_FLOW_ITEM_TYPE_END; ++item) {
+		switch (item->type) {
+		default:
+			PMD_DRV_LOG(ERR, "Can't calculate match length");
+			*match_len = 0;
+			return -ENOTSUP;
+		}
+	}
+
+	return -EINVAL;
+}
+
+static void
+nfp_net_flow_process_priority(__rte_unused struct rte_flow *nfp_flow,
+		uint32_t match_len)
+{
+	switch (match_len) {
+	default:
+		break;
+	}
+}
+
+static struct rte_flow *
+nfp_net_flow_setup(struct rte_eth_dev *dev,
+		const struct rte_flow_attr *attr,
+		const struct rte_flow_item items[],
+		__rte_unused const struct rte_flow_action actions[])
+{
+	int ret;
+	char *hash_data;
+	uint32_t port_id;
+	uint32_t action_len;
+	struct nfp_net_hw *hw;
+	uint32_t match_len = 0;
+	struct nfp_net_priv *priv;
+	struct rte_flow *nfp_flow;
+	struct rte_flow *flow_find;
+	struct nfp_app_fw_nic *app_fw_nic;
+
+	hw = dev->data->dev_private;
+	app_fw_nic = NFP_PRIV_TO_APP_FW_NIC(hw->pf_dev->app_fw_priv);
+	priv = app_fw_nic->ports[hw->idx]->priv;
+
+	ret = nfp_net_flow_calculate_items(items, &match_len);
+	if (ret != 0) {
+		PMD_DRV_LOG(ERR, "Key layers calculate failed.");
+		return NULL;
+	}
+
+	action_len = sizeof(struct nfp_net_cmsg_action);
+	port_id = ((struct nfp_net_hw *)dev->data->dev_private)->nfp_idx;
+
+	nfp_flow = nfp_net_flow_alloc(priv, attr->priority, match_len, action_len, port_id);
+	if (nfp_flow == NULL) {
+		PMD_DRV_LOG(ERR, "Alloc nfp flow failed.");
+		return NULL;
+	}
+
+	/* Calculate and store the hash_key for later use */
+	hash_data = nfp_flow->payload.match_data;
+	nfp_flow->hash_key = rte_jhash(hash_data, match_len + action_len,
+			priv->hash_seed);
+
+	/* Find the flow in hash table */
+	flow_find = nfp_net_flow_table_search(priv, nfp_flow);
+	if (flow_find != NULL) {
+		PMD_DRV_LOG(ERR, "This flow is already exist.");
+		goto free_flow;
+	}
+
+	priv->flow_count++;
+
+	nfp_net_flow_process_priority(nfp_flow, match_len);
+
+	return nfp_flow;
+
+free_flow:
+	nfp_net_flow_free(priv, nfp_flow);
+
+	return NULL;
+}
+
+static int
+nfp_net_flow_teardown(struct nfp_net_priv *priv,
+		__rte_unused struct rte_flow *nfp_flow)
+{
+	priv->flow_count--;
+
+	return 0;
+}
+
+static int
+nfp_net_flow_offload(struct nfp_net_hw *hw,
+		struct rte_flow *flow,
+		bool delete_flag)
+{
+	int ret;
+	char *tmp;
+	uint32_t msg_size;
+	struct nfp_net_cmsg *cmsg;
+
+	msg_size = sizeof(uint32_t) + flow->payload.match_len +
+			flow->payload.action_len;
+	cmsg = nfp_net_cmsg_alloc(msg_size);
+	if (cmsg == NULL) {
+		PMD_DRV_LOG(ERR, "Alloc cmsg failed.");
+		return -ENOMEM;
+	}
+
+	cmsg->cmd = flow->payload.cmsg_type;
+	if (delete_flag)
+		cmsg->cmd++;
+
+	tmp = (char *)cmsg->data;
+	rte_memcpy(tmp, flow->payload.match_data, flow->payload.match_len);
+	tmp += flow->payload.match_len;
+	rte_memcpy(tmp, flow->payload.action_data, flow->payload.action_len);
+
+	ret = nfp_net_cmsg_xmit(hw, cmsg, msg_size);
+	if (ret != 0) {
+		PMD_DRV_LOG(ERR, "Send cmsg failed.");
+		ret = -EINVAL;
+		goto free_cmsg;
+	}
+
+free_cmsg:
+	nfp_net_cmsg_free(cmsg);
+
+	return ret;
+}
+
+static int
+nfp_net_flow_validate(struct rte_eth_dev *dev,
+		const struct rte_flow_attr *attr,
+		const struct rte_flow_item items[],
+		const struct rte_flow_action actions[],
+		struct rte_flow_error *error)
+{
+	int ret;
+	struct nfp_net_hw *hw;
+	struct rte_flow *nfp_flow;
+	struct nfp_net_priv *priv;
+	struct nfp_app_fw_nic *app_fw_nic;
+
+	hw = dev->data->dev_private;
+	app_fw_nic = NFP_PRIV_TO_APP_FW_NIC(hw->pf_dev->app_fw_priv);
+	priv = app_fw_nic->ports[hw->idx]->priv;
+
+	nfp_flow = nfp_net_flow_setup(dev, attr, items, actions);
+	if (nfp_flow == NULL) {
+		return rte_flow_error_set(error, ENOTSUP,
+				RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				NULL, "This flow can not be offloaded.");
+	}
+
+	ret = nfp_net_flow_teardown(priv, nfp_flow);
+	if (ret != 0) {
+		return rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				NULL, "Flow resource free failed.");
+	}
+
+	nfp_net_flow_free(priv, nfp_flow);
+
+	return 0;
+}
+
+static struct rte_flow *
+nfp_net_flow_create(struct rte_eth_dev *dev,
+		const struct rte_flow_attr *attr,
+		const struct rte_flow_item items[],
+		const struct rte_flow_action actions[],
+		struct rte_flow_error *error)
+{
+	int ret;
+	struct nfp_net_hw *hw;
+	struct rte_flow *nfp_flow;
+	struct nfp_net_priv *priv;
+	struct nfp_app_fw_nic *app_fw_nic;
+
+	hw = dev->data->dev_private;
+	app_fw_nic = NFP_PRIV_TO_APP_FW_NIC(hw->pf_dev->app_fw_priv);
+	priv = app_fw_nic->ports[hw->idx]->priv;
+
+	nfp_flow = nfp_net_flow_setup(dev, attr, items, actions);
+	if (nfp_flow == NULL) {
+		rte_flow_error_set(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				NULL, "This flow can not be offloaded.");
+		return NULL;
+	}
+
+	/* Add the flow to flow hash table */
+	ret = nfp_net_flow_table_add(priv, nfp_flow);
+	if (ret != 0) {
+		rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				NULL, "Add flow to the flow table failed.");
+		goto flow_teardown;
+	}
+
+	/* Add the flow to hardware */
+	ret = nfp_net_flow_offload(hw, nfp_flow, false);
+	if (ret != 0) {
+		rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				NULL, "Add flow to firmware failed.");
+		goto table_delete;
+	}
+
+	return nfp_flow;
+
+table_delete:
+	nfp_net_flow_table_delete(priv, nfp_flow);
+flow_teardown:
+	nfp_net_flow_teardown(priv, nfp_flow);
+	nfp_net_flow_free(priv, nfp_flow);
+
+	return NULL;
+}
+
+static int
+nfp_net_flow_destroy(struct rte_eth_dev *dev,
+		struct rte_flow *nfp_flow,
+		struct rte_flow_error *error)
+{
+	int ret;
+	struct nfp_net_hw *hw;
+	struct nfp_net_priv *priv;
+	struct rte_flow *flow_find;
+	struct nfp_app_fw_nic *app_fw_nic;
+
+	hw = dev->data->dev_private;
+	app_fw_nic = NFP_PRIV_TO_APP_FW_NIC(hw->pf_dev->app_fw_priv);
+	priv = app_fw_nic->ports[hw->idx]->priv;
+
+	/* Find the flow in flow hash table */
+	flow_find = nfp_net_flow_table_search(priv, nfp_flow);
+	if (flow_find == NULL) {
+		rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				NULL, "Flow does not exist.");
+		ret = -EINVAL;
+		goto exit;
+	}
+
+	/* Delete the flow from hardware */
+	ret = nfp_net_flow_offload(hw, nfp_flow, true);
+	if (ret != 0) {
+		rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				NULL, "Delete flow from firmware failed.");
+		ret = -EINVAL;
+		goto exit;
+	}
+
+	/* Delete the flow from flow hash table */
+	ret = nfp_net_flow_table_delete(priv, nfp_flow);
+	if (ret != 0) {
+		rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				NULL, "Delete flow from the flow table failed.");
+		ret = -EINVAL;
+		goto exit;
+	}
+
+	ret = nfp_net_flow_teardown(priv, nfp_flow);
+	if (ret != 0) {
+		rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				NULL, "Flow teardown failed.");
+		ret = -EINVAL;
+		goto exit;
+	}
+
+exit:
+	nfp_net_flow_free(priv, nfp_flow);
+
+	return ret;
+}
+
+static int
+nfp_net_flow_flush(struct rte_eth_dev *dev,
+		struct rte_flow_error *error)
+{
+	int ret = 0;
+	void *next_data;
+	uint32_t iter = 0;
+	const void *next_key;
+	struct nfp_net_hw *hw;
+	struct rte_flow *nfp_flow;
+	struct rte_hash *flow_table;
+	struct nfp_app_fw_nic *app_fw_nic;
+
+	hw = dev->data->dev_private;
+	app_fw_nic = NFP_PRIV_TO_APP_FW_NIC(hw->pf_dev->app_fw_priv);
+	flow_table = app_fw_nic->ports[hw->idx]->priv->flow_table;
+
+	while (rte_hash_iterate(flow_table, &next_key, &next_data, &iter) >= 0) {
+		nfp_flow = next_data;
+		ret = nfp_net_flow_destroy(dev, nfp_flow, error);
+		if (ret != 0)
+			break;
+	}
+
+	return ret;
+}
+
+static const struct rte_flow_ops nfp_net_flow_ops = {
+	.validate                = nfp_net_flow_validate,
+	.create                  = nfp_net_flow_create,
+	.destroy                 = nfp_net_flow_destroy,
+	.flush                   = nfp_net_flow_flush,
+};
+
+int
+nfp_net_flow_ops_get(struct rte_eth_dev *dev,
+		const struct rte_flow_ops **ops)
+{
+	struct nfp_net_hw *hw;
+
+	if ((dev->data->dev_flags & RTE_ETH_DEV_REPRESENTOR) != 0) {
+		*ops = NULL;
+		PMD_DRV_LOG(ERR, "Port is a representor.");
+		return -EINVAL;
+	}
+
+	hw = dev->data->dev_private;
+	if ((hw->super.ctrl_ext & NFP_NET_CFG_CTRL_FLOW_STEER) == 0) {
+		*ops = NULL;
+		return 0;
+	}
+
+	*ops = &nfp_net_flow_ops;
+
+	return 0;
 }
 
 int
