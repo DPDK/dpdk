@@ -196,6 +196,7 @@ vduse_vring_setup(struct virtio_net *dev, unsigned int index)
 				vq->size * sizeof(struct batch_copy_elem),
 				RTE_CACHE_LINE_SIZE, 0);
 
+	rte_rwlock_write_lock(&vq->access_lock);
 	vhost_user_iotlb_rd_lock(vq);
 	if (vring_translate(dev, vq))
 		VHOST_LOG_CONFIG(dev->ifname, ERR, "Failed to translate vring %d addresses\n",
@@ -206,6 +207,7 @@ vduse_vring_setup(struct virtio_net *dev, unsigned int index)
 				"Failed to disable guest notifications on vring %d\n",
 				index);
 	vhost_user_iotlb_rd_unlock(vq);
+	rte_rwlock_write_unlock(&vq->access_lock);
 
 	vq_efd.index = index;
 	vq_efd.fd = vq->kickfd;
@@ -259,7 +261,9 @@ vduse_vring_cleanup(struct virtio_net *dev, unsigned int index)
 	close(vq->kickfd);
 	vq->kickfd = VIRTIO_UNINITIALIZED_EVENTFD;
 
+	rte_rwlock_write_lock(&vq->access_lock);
 	vring_invalidate(dev, vq);
+	rte_rwlock_write_unlock(&vq->access_lock);
 
 	rte_free(vq->batch_copy_elems);
 	vq->batch_copy_elems = NULL;
