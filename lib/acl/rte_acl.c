@@ -8,6 +8,9 @@
 #include <rte_tailq.h>
 
 #include "acl.h"
+#include "acl_log.h"
+
+RTE_LOG_REGISTER_DEFAULT(acl_logtype, INFO);
 
 TAILQ_HEAD(rte_acl_list, rte_tailq_entry);
 

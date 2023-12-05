@@ -4,6 +4,7 @@
 
 #include <rte_acl.h>
 #include "acl.h"
+#include "acl_log.h"
 
 #define	QRANGE_MIN	((uint8_t)INT8_MIN)
 

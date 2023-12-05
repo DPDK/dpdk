@@ -3,8 +3,11 @@
  */
 
 #include <rte_acl.h>
+#include <rte_log.h>
+
 #include "tb_mem.h"
 #include "acl.h"
+#include "acl_log.h"
 
 #define	ACL_POOL_ALIGN		8
 #define	ACL_POOL_ALLOC_MIN	0x800000

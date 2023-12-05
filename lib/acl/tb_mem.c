@@ -3,6 +3,7 @@
  */
 
 #include "tb_mem.h"
+#include "acl_log.h"
 
 /*
  *  Memory management routines for temporary memory.
@@ -25,7 +26,7 @@ tb_pool(struct tb_mem_pool *pool, size_t sz)
 	size = sz + pool->alignment - 1;
 	block = calloc(1, size + sizeof(*pool->block));
 	if (block == NULL) {
-		RTE_LOG(ERR, MALLOC, "%s(%zu)\n failed, currently allocated "
+		RTE_LOG(ERR, ACL, "%s(%zu)\n failed, currently allocated "
 			"by pool: %zu bytes\n", __func__, sz, pool->alloc);
 		siglongjmp(pool->fail, -ENOMEM);
 		return NULL;
