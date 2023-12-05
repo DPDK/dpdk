@@ -684,7 +684,7 @@ eth_memif_tx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 		n_free = __atomic_load_n(&ring->head, __ATOMIC_ACQUIRE) - slot;
 	}
 
-	uint8_t i;
+	uint16_t i;
 	struct rte_mbuf **buf_tmp = bufs;
 	mbuf_head = *buf_tmp++;
 	struct rte_mempool *mp = mbuf_head->pool;
