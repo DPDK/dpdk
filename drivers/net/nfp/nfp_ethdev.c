@@ -23,6 +23,7 @@
 #include "nfp_cpp_bridge.h"
 #include "nfp_ipsec.h"
 #include "nfp_logs.h"
+#include "nfp_net_flow.h"
 
 #define NFP_PF_DRIVER_NAME net_nfp_pf
 
@@ -150,6 +151,10 @@ nfp_net_start(struct rte_eth_dev *dev)
 	if ((cap_extend & NFP_NET_CFG_CTRL_IPSEC) != 0)
 		ctrl_extend |= NFP_NET_CFG_CTRL_IPSEC_SM_LOOKUP
 				| NFP_NET_CFG_CTRL_IPSEC_LM_LOOKUP;
+
+	/* Enable flow steer by extend ctrl word1. */
+	if ((cap_extend & NFP_NET_CFG_CTRL_FLOW_STEER) != 0)
+		ctrl_extend |= NFP_NET_CFG_CTRL_FLOW_STEER;
 
 	update = NFP_NET_CFG_UPDATE_GEN;
 	if (nfp_ext_reconfig(hw, ctrl_extend, update) != 0)
@@ -323,6 +328,10 @@ nfp_net_uninit(struct rte_eth_dev *eth_dev)
 	struct nfp_net_hw *net_hw;
 
 	net_hw = eth_dev->data->dev_private;
+
+	if ((net_hw->super.cap_ext & NFP_NET_CFG_CTRL_FLOW_STEER) != 0)
+		nfp_net_flow_priv_uninit(net_hw->pf_dev, net_hw->idx);
+
 	rte_free(net_hw->eth_xstats_base);
 	nfp_ipsec_uninit(eth_dev);
 	if (net_hw->mac_stats_area != NULL)
@@ -762,6 +771,14 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 	/* Recording current stats counters values */
 	nfp_net_stats_reset(eth_dev);
 
+	if ((hw->cap_ext & NFP_NET_CFG_CTRL_FLOW_STEER) != 0) {
+		err = nfp_net_flow_priv_init(pf_dev, port);
+		if (err != 0) {
+			PMD_INIT_LOG(ERR, "Init net flow priv failed");
+			goto xstats_free;
+		}
+	}
+
 	return 0;
 
 xstats_free:
@@ -1195,13 +1212,11 @@ nfp_init_app_fw_nic(struct nfp_pf_dev *pf_dev,
 port_cleanup:
 	for (i = 0; i < app_fw_nic->total_phyports; i++) {
 		id = nfp_function_id_get(pf_dev, i);
+		hw = app_fw_nic->ports[id];
 
-		if (app_fw_nic->ports[id] != NULL &&
-				app_fw_nic->ports[id]->eth_dev != NULL) {
-			struct rte_eth_dev *tmp_dev;
-			tmp_dev = app_fw_nic->ports[id]->eth_dev;
-			nfp_net_uninit(tmp_dev);
-			rte_eth_dev_release_port(tmp_dev);
+		if (hw != NULL && hw->eth_dev != NULL) {
+			nfp_net_uninit(hw->eth_dev);
+			rte_eth_dev_release_port(hw->eth_dev);
 		}
 	}
 	nfp_cpp_area_release_free(pf_dev->ctrl_area);

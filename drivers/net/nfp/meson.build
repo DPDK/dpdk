@@ -36,6 +36,7 @@ sources = files(
         'nfp_mtr.c',
         'nfp_net_common.c',
         'nfp_net_ctrl.c',
+        'nfp_net_flow.c',
         'nfp_rxtx.c',
 )
 
