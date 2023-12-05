@@ -71,7 +71,7 @@ def process_command(lineno, tokens, comment):
         elif t_type in ["IP", "IP_ADDR", "IPADDR"]:
             result_struct.append(f"\tcmdline_ipaddr_t {t_name};")
             initializers.append(
-                f"cmdline_parse_token_ipaddr_t cmd_{name}_{t_name}_tok =\n"
+                f"static cmdline_parse_token_ipaddr_t cmd_{name}_{t_name}_tok =\n"
                 f"\tTOKEN_IPV4_INITIALIZER(struct cmd_{name}_result, {t_name});"
             )
         elif t_type.startswith("(") and t_type.endswith(")"):
