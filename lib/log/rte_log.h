@@ -32,7 +32,7 @@ extern "C" {
 #define RTE_LOGTYPE_MEMPOOL    3 /**< Log related to mempool. */
 #define RTE_LOGTYPE_TIMER      4 /**< Log related to timers. */
 #define RTE_LOGTYPE_PMD        5 /**< Log related to poll mode driver. */
-#define RTE_LOGTYPE_HASH       6 /**< Log related to hash table. */
+				 /* was RTE_LOGTYPE_HASH */
 #define RTE_LOGTYPE_LPM        7 /**< Log related to LPM. */
 				 /* was RTE_LOGTYPE_KNI */
 				 /* was RTE_LOGTYPE_ACL */

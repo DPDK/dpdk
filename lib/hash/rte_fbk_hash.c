@@ -19,6 +19,9 @@
 
 #include "rte_fbk_hash.h"
 
+RTE_LOG_REGISTER_SUFFIX(fbk_hash_logtype, fbk, INFO);
+#define RTE_LOGTYPE_HASH fbk_hash_logtype
+
 TAILQ_HEAD(rte_fbk_hash_list, rte_tailq_entry);
 
 static struct rte_tailq_elem rte_fbk_hash_tailq = {

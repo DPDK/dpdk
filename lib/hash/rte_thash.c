@@ -13,6 +13,9 @@
 #include <rte_log.h>
 #include <rte_malloc.h>
 
+RTE_LOG_REGISTER_SUFFIX(thash_logtype, thash, INFO);
+#define RTE_LOGTYPE_HASH thash_logtype
+
 #define THASH_NAME_LEN		64
 #define TOEPLITZ_HASH_LEN	32
 

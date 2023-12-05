@@ -356,7 +356,6 @@ static const struct logtype logtype_strings[] = {
 	{RTE_LOGTYPE_MEMPOOL,    "lib.mempool"},
 	{RTE_LOGTYPE_TIMER,      "lib.timer"},
 	{RTE_LOGTYPE_PMD,        "pmd"},
-	{RTE_LOGTYPE_HASH,       "lib.hash"},
 	{RTE_LOGTYPE_LPM,        "lib.lpm"},
 	{RTE_LOGTYPE_POWER,      "lib.power"},
 	{RTE_LOGTYPE_METER,      "lib.meter"},

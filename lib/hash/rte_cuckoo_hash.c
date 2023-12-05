@@ -24,6 +24,11 @@
 #include <rte_tailq.h>
 
 #include "rte_hash.h"
+
+/* needs to be before rte_cuckoo_hash.h */
+RTE_LOG_REGISTER_DEFAULT(hash_logtype, INFO);
+#define RTE_LOGTYPE_HASH hash_logtype
+
 #include "rte_cuckoo_hash.h"
 
 /* Mask of all flags supported by this version */
