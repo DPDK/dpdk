@@ -28,7 +28,7 @@ extern "C" {
 /* SDK log type */
 #define RTE_LOGTYPE_EAL        0 /**< Log related to eal. */
 				 /* was RTE_LOGTYPE_MALLOC */
-#define RTE_LOGTYPE_RING       2 /**< Log related to ring. */
+				 /* was RTE_LOGTYPE_RING */
 				 /* was RTE_LOGTYPE_MEMPOOL */
 #define RTE_LOGTYPE_TIMER      4 /**< Log related to timers. */
 #define RTE_LOGTYPE_PMD        5 /**< Log related to poll mode driver. */

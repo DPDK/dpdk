@@ -352,7 +352,6 @@ struct logtype {
 
 static const struct logtype logtype_strings[] = {
 	{RTE_LOGTYPE_EAL,        "lib.eal"},
-	{RTE_LOGTYPE_RING,       "lib.ring"},
 	{RTE_LOGTYPE_TIMER,      "lib.timer"},
 	{RTE_LOGTYPE_PMD,        "pmd"},
 	{RTE_LOGTYPE_METER,      "lib.meter"},

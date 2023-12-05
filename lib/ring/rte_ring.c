@@ -26,6 +26,9 @@
 #include "rte_ring.h"
 #include "rte_ring_elem.h"
 
+RTE_LOG_REGISTER_DEFAULT(ring_logtype, INFO);
+#define RTE_LOGTYPE_RING ring_logtype
+
 TAILQ_HEAD(rte_ring_list, rte_tailq_entry);
 
 static struct rte_tailq_elem rte_ring_tailq = {
