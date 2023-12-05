@@ -70,6 +70,10 @@ The format of the list file must be:
 
   * ``<IP>src_ip``
 
+  * ``<IPv4>dst_ip4``
+
+  * ``<IPv6>dst_ip6``
+
 * Variable fields, which take their values from a list of options,
   have the comma-separated option list placed in braces, rather than a the type name.
   For example,
