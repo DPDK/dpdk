@@ -33,6 +33,7 @@
 
 /* Prepend field types */
 #define NFP_NET_META_HASH               1 /* Next field carries hash type */
+#define NFP_NET_META_MARK               2
 #define NFP_NET_META_VLAN               4
 #define NFP_NET_META_PORTID             5
 #define NFP_NET_META_IPSEC              9
