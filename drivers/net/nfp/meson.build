@@ -34,6 +34,7 @@ sources = files(
         'nfp_ipsec.c',
         'nfp_logs.c',
         'nfp_mtr.c',
+        'nfp_net_cmsg.c',
         'nfp_net_common.c',
         'nfp_net_ctrl.c',
         'nfp_net_flow.c',
