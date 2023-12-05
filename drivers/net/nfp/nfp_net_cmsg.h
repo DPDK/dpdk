@@ -8,6 +8,34 @@
 
 #include "nfp_net_common.h"
 
+#define NFP_NET_CMSG_ACTION_DROP          (0x1 << 0) /* Drop action */
+#define NFP_NET_CMSG_ACTION_QUEUE         (0x1 << 1) /* Queue action */
+#define NFP_NET_CMSG_ACTION_MARK          (0x1 << 2) /* Mark action */
+
+/**
+ * Action data
+ * Bit    3 3 2 2 2 2 2 2 2 2 2 2 1 1 1 1 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0 0
+ * -----\ 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0
+ * Word  +-------------------------------+-------------------------------+
+ *    0  |                 |    Queue    |              Actions          |
+ *       +-----------------+-------------+-------------------------------+
+ *    1  |                         Mark ID                               |
+ *       +---------------------------------------------------------------+
+ *
+ * Queue – Queue ID, 7 bits.
+ * Actions – An action bitmap, each bit represents an action type:
+ *       - Bit 0: Drop action. Drop the packet.
+ *       - Bit 1: Queue action. Use the queue specified by “Queue” field.
+ *                If not set, the queue is usually specified by RSS.
+ *       - Bit 2: Mark action. Mark packet with Mark ID.
+ */
+struct nfp_net_cmsg_action {
+	uint16_t action;
+	uint8_t queue;
+	uint8_t spare;
+	uint16_t mark_id;
+};
+
 enum nfp_net_cfg_mbox_cmd {
 	NFP_NET_CFG_MBOX_CMD_FS_ADD_V4,       /* Add Flow Steer rule for V4 table */
 	NFP_NET_CFG_MBOX_CMD_FS_DEL_V4,       /* Delete Flow Steer rule for V4 table */
