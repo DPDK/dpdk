@@ -1128,7 +1128,7 @@ check_eth_dev_caps(uint16_t portid, uint32_t inbound, uint32_t tso)
 	if (inbound) {
 		if ((dev_info.rx_offload_capa &
 				RTE_ETH_RX_OFFLOAD_SECURITY) == 0) {
-			RTE_LOG(WARNING, PORT,
+			RTE_LOG(WARNING, IPSEC,
 				"hardware RX IPSec offload is not supported\n");
 			return -EINVAL;
 		}
@@ -1136,13 +1136,13 @@ check_eth_dev_caps(uint16_t portid, uint32_t inbound, uint32_t tso)
 	} else { /* outbound */
 		if ((dev_info.tx_offload_capa &
 				RTE_ETH_TX_OFFLOAD_SECURITY) == 0) {
-			RTE_LOG(WARNING, PORT,
+			RTE_LOG(WARNING, IPSEC,
 				"hardware TX IPSec offload is not supported\n");
 			return -EINVAL;
 		}
 		if (tso && (dev_info.tx_offload_capa &
 				RTE_ETH_TX_OFFLOAD_TCP_TSO) == 0) {
-			RTE_LOG(WARNING, PORT,
+			RTE_LOG(WARNING, IPSEC,
 				"hardware TCP TSO offload is not supported\n");
 			return -EINVAL;
 		}
