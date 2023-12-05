@@ -336,6 +336,37 @@ nfp_net_flow_compile_items(const struct rte_flow_item items[],
 }
 
 static void
+nfp_net_flow_action_drop(struct rte_flow *nfp_flow)
+{
+	struct nfp_net_cmsg_action *action_data;
+
+	action_data = (struct nfp_net_cmsg_action *)nfp_flow->payload.action_data;
+
+	action_data->action = NFP_NET_CMSG_ACTION_DROP;
+}
+
+static int
+nfp_net_flow_compile_actions(const struct rte_flow_action actions[],
+		struct rte_flow *nfp_flow)
+{
+	const struct rte_flow_action *action;
+
+	for (action = actions; action->type != RTE_FLOW_ACTION_TYPE_END; ++action) {
+		switch (action->type) {
+		case RTE_FLOW_ACTION_TYPE_DROP:
+			PMD_DRV_LOG(DEBUG, "Process RTE_FLOW_ACTION_TYPE_DROP");
+			nfp_net_flow_action_drop(nfp_flow);
+			return 0;
+		default:
+			PMD_DRV_LOG(ERR, "Unsupported action type: %d", action->type);
+			return -ENOTSUP;
+		}
+	}
+
+	return 0;
+}
+
+static void
 nfp_net_flow_process_priority(__rte_unused struct rte_flow *nfp_flow,
 		uint32_t match_len)
 {
@@ -349,7 +380,7 @@ static struct rte_flow *
 nfp_net_flow_setup(struct rte_eth_dev *dev,
 		const struct rte_flow_attr *attr,
 		const struct rte_flow_item items[],
-		__rte_unused const struct rte_flow_action actions[])
+		const struct rte_flow_action actions[])
 {
 	int ret;
 	char *hash_data;
@@ -384,6 +415,12 @@ nfp_net_flow_setup(struct rte_eth_dev *dev,
 	ret = nfp_net_flow_compile_items(items, nfp_flow);
 	if (ret != 0) {
 		PMD_DRV_LOG(ERR, "NFP flow item process failed.");
+		goto free_flow;
+	}
+
+	ret = nfp_net_flow_compile_actions(actions, nfp_flow);
+	if (ret != 0) {
+		PMD_DRV_LOG(ERR, "NFP flow action process failed.");
 		goto free_flow;
 	}
 
