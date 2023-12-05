@@ -16,8 +16,11 @@
 #include <rte_reciprocal.h>
 
 #include "rte_sched.h"
+#include "rte_sched_log.h"
 #include "rte_sched_common.h"
+
 #include "rte_approx.h"
+
 
 #ifdef __INTEL_COMPILER
 #pragma warning(disable:2259) /* conversion may lose significant bits */
@@ -2999,3 +3002,5 @@ rte_sched_port_dequeue(struct rte_sched_port *port, struct rte_mbuf **pkts, uint
 
 	return count;
 }
+
+RTE_LOG_REGISTER_DEFAULT(sched_logtype, INFO);

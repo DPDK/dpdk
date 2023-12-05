@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "rte_sched_log.h"
 #include "rte_pie.h"
 
 #ifdef __INTEL_COMPILER
