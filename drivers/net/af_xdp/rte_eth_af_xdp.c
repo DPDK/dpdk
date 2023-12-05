@@ -1211,6 +1211,7 @@ xsk_umem_info *xdp_umem_configure(struct pmd_internals *internals,
 		AF_XDP_LOG(ERR, "Failed to reserve memzone for af_xdp umem.\n");
 		goto err;
 	}
+	umem->mz = mz;
 
 	ret = xsk_umem__create(&umem->umem, mz->addr,
 			       ETH_AF_XDP_NUM_BUFFERS * ETH_AF_XDP_FRAME_SIZE,
@@ -1221,7 +1222,6 @@ xsk_umem_info *xdp_umem_configure(struct pmd_internals *internals,
 		AF_XDP_LOG(ERR, "Failed to create umem\n");
 		goto err;
 	}
-	umem->mz = mz;
 
 	return umem;
 
