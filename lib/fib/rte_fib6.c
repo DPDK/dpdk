@@ -10,6 +10,7 @@
 #include <rte_eal_memconfig.h>
 #include <rte_tailq.h>
 #include <rte_errno.h>
+#include <rte_log.h>
 #include <rte_malloc.h>
 #include <rte_string_fns.h>
 
@@ -17,6 +18,7 @@
 #include <rte_fib6.h>
 
 #include "trie.h"
+#include "fib_log.h"
 
 TAILQ_HEAD(rte_fib6_list, rte_tailq_entry);
 static struct rte_tailq_elem rte_fib6_tailq = {

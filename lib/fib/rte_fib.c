@@ -17,6 +17,9 @@
 #include <rte_fib.h>
 
 #include "dir24_8.h"
+#include "fib_log.h"
+
+RTE_LOG_REGISTER_DEFAULT(fib_logtype, INFO);
 
 TAILQ_HEAD(rte_fib_list, rte_tailq_entry);
 static struct rte_tailq_elem rte_fib_tailq = {

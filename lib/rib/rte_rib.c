@@ -16,6 +16,9 @@
 
 #include <rte_rib.h>
 
+RTE_LOG_REGISTER_DEFAULT(rib_logtype, INFO);
+#define RTE_LOGTYPE_LPM rib_logtype
+
 TAILQ_HEAD(rte_rib_list, rte_tailq_entry);
 static struct rte_tailq_elem rte_rib_tailq = {
 	.name = "RTE_RIB",

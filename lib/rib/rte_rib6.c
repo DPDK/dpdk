@@ -9,12 +9,15 @@
 
 #include <rte_eal_memconfig.h>
 #include <rte_errno.h>
+#include <rte_log.h>
 #include <rte_malloc.h>
 #include <rte_mempool.h>
 #include <rte_string_fns.h>
 #include <rte_tailq.h>
 
 #include <rte_rib6.h>
+
+#include "rib_log.h"
 
 #define RTE_RIB_VALID_NODE	1
 #define RIB6_MAXDEPTH		128
