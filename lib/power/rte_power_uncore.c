@@ -8,6 +8,7 @@
 #include <rte_errno.h>
 #include <rte_spinlock.h>
 
+#include "power_common.h"
 #include "rte_power_uncore.h"
 #include "power_intel_uncore.h"
 

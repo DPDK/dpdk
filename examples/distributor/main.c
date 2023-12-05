@@ -679,7 +679,7 @@ init_power_library(void)
 		/* init power management library */
 		ret = rte_power_init(lcore_id);
 		if (ret) {
-			RTE_LOG(ERR, POWER,
+			fprintf(stderr,
 				"Library initialization failed on core %u\n",
 				lcore_id);
 			/*

@@ -8,6 +8,7 @@
 
 #include "rte_power_guest_channel.h"
 #include "guest_channel.h"
+#include "power_common.h"
 #include "power_kvm_vm.h"
 
 #define FD_PATH "/dev/virtio-ports/virtio.serial.port.poweragent"

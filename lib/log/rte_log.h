@@ -36,7 +36,7 @@ extern "C" {
 				 /* was RTE_LOGTYPE_LPM */
 				 /* was RTE_LOGTYPE_KNI */
 				 /* was RTE_LOGTYPE_ACL */
-#define RTE_LOGTYPE_POWER     10 /**< Log related to power. */
+				 /* was RTE_LOGTYPE_POWER */
 #define RTE_LOGTYPE_METER     11 /**< Log related to QoS meter. */
 #define RTE_LOGTYPE_SCHED     12 /**< Log related to QoS port scheduler. */
 #define RTE_LOGTYPE_PORT      13 /**< Log related to port. */

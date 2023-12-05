@@ -10,6 +10,7 @@
 #include "rte_power.h"
 #include "power_acpi_cpufreq.h"
 #include "power_cppc_cpufreq.h"
+#include "power_common.h"
 #include "power_kvm_vm.h"
 #include "power_pstate_cpufreq.h"
 #include "power_amd_pstate_cpufreq.h"
