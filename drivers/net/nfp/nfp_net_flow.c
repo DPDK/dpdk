@@ -192,6 +192,10 @@ nfp_net_flow_calculate_items(const struct rte_flow_item items[],
 			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ITEM_TYPE_IPV4 detected");
 			*match_len = sizeof(struct nfp_net_cmsg_match_v4);
 			return 0;
+		case RTE_FLOW_ITEM_TYPE_IPV6:
+			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ITEM_TYPE_IPV6 detected");
+			*match_len = sizeof(struct nfp_net_cmsg_match_v6);
+			return 0;
 		default:
 			PMD_DRV_LOG(ERR, "Can't calculate match length");
 			*match_len = 0;
@@ -255,11 +259,62 @@ nfp_net_flow_merge_ipv4(struct rte_flow *nfp_flow,
 	return 0;
 }
 
+static int
+nfp_net_flow_merge_ipv6(struct rte_flow *nfp_flow,
+		const struct rte_flow_item *item,
+		const struct nfp_net_flow_item_proc *proc)
+{
+	uint32_t i;
+	struct nfp_net_cmsg_match_v6 *ipv6;
+	const struct rte_flow_item_ipv6 *mask;
+	const struct rte_flow_item_ipv6 *spec;
+
+	spec = item->spec;
+	if (spec == NULL) {
+		PMD_DRV_LOG(DEBUG, "NFP flow merge ipv6: no item->spec!");
+		return 0;
+	}
+
+	mask = (item->mask != NULL) ? item->mask : proc->mask_default;
+
+	nfp_flow->payload.cmsg_type = NFP_NET_CFG_MBOX_CMD_FS_ADD_V6;
+	ipv6 = (struct nfp_net_cmsg_match_v6 *)nfp_flow->payload.match_data;
+
+	ipv6->l4_protocol_mask = mask->hdr.proto;
+	for (i = 0; i < sizeof(ipv6->src_ipv6); i += 4) {
+		ipv6->src_ipv6_mask[i] = mask->hdr.src_addr[i + 3];
+		ipv6->src_ipv6_mask[i + 1] = mask->hdr.src_addr[i + 2];
+		ipv6->src_ipv6_mask[i + 2] = mask->hdr.src_addr[i + 1];
+		ipv6->src_ipv6_mask[i + 3] = mask->hdr.src_addr[i];
+
+		ipv6->dst_ipv6_mask[i] = mask->hdr.dst_addr[i + 3];
+		ipv6->dst_ipv6_mask[i + 1] = mask->hdr.dst_addr[i + 2];
+		ipv6->dst_ipv6_mask[i + 2] = mask->hdr.dst_addr[i + 1];
+		ipv6->dst_ipv6_mask[i + 3] = mask->hdr.dst_addr[i];
+	}
+
+	ipv6->l4_protocol = spec->hdr.proto;
+	for (i = 0; i < sizeof(ipv6->src_ipv6); i += 4) {
+		ipv6->src_ipv6[i] = spec->hdr.src_addr[i + 3];
+		ipv6->src_ipv6[i + 1] = spec->hdr.src_addr[i + 2];
+		ipv6->src_ipv6[i + 2] = spec->hdr.src_addr[i + 1];
+		ipv6->src_ipv6[i + 3] = spec->hdr.src_addr[i];
+
+		ipv6->dst_ipv6[i] = spec->hdr.dst_addr[i + 3];
+		ipv6->dst_ipv6[i + 1] = spec->hdr.dst_addr[i + 2];
+		ipv6->dst_ipv6[i + 2] = spec->hdr.dst_addr[i + 1];
+		ipv6->dst_ipv6[i + 3] = spec->hdr.dst_addr[i];
+	}
+
+	return 0;
+}
+
 /* Graph of supported items and associated process function */
 static const struct nfp_net_flow_item_proc nfp_net_flow_item_proc_list[] = {
 	[RTE_FLOW_ITEM_TYPE_END] = {
 		.next_item = NEXT_ITEM(RTE_FLOW_ITEM_TYPE_ETH,
-				RTE_FLOW_ITEM_TYPE_IPV4),
+				RTE_FLOW_ITEM_TYPE_IPV4,
+				RTE_FLOW_ITEM_TYPE_IPV6),
 	},
 	[RTE_FLOW_ITEM_TYPE_ETH] = {
 		.merge = nfp_net_flow_merge_eth,
@@ -275,6 +330,20 @@ static const struct nfp_net_flow_item_proc nfp_net_flow_item_proc_list[] = {
 		.mask_default = &rte_flow_item_ipv4_mask,
 		.mask_sz = sizeof(struct rte_flow_item_ipv4),
 		.merge = nfp_net_flow_merge_ipv4,
+	},
+	[RTE_FLOW_ITEM_TYPE_IPV6] = {
+		.mask_support = &(const struct rte_flow_item_ipv6){
+			.hdr = {
+				.proto    = 0xff,
+				.src_addr = "\xff\xff\xff\xff\xff\xff\xff\xff"
+						"\xff\xff\xff\xff\xff\xff\xff\xff",
+				.dst_addr = "\xff\xff\xff\xff\xff\xff\xff\xff"
+						"\xff\xff\xff\xff\xff\xff\xff\xff",
+			},
+		},
+		.mask_default = &rte_flow_item_ipv6_mask,
+		.mask_sz = sizeof(struct rte_flow_item_ipv6),
+		.merge = nfp_net_flow_merge_ipv6,
 	},
 };
 
@@ -419,11 +488,16 @@ nfp_net_flow_process_priority(struct rte_flow *nfp_flow,
 		uint32_t match_len)
 {
 	struct nfp_net_cmsg_match_v4 *ipv4;
+	struct nfp_net_cmsg_match_v6 *ipv6;
 
 	switch (match_len) {
 	case sizeof(struct nfp_net_cmsg_match_v4):
 		ipv4 = (struct nfp_net_cmsg_match_v4 *)nfp_flow->payload.match_data;
 		ipv4->position = nfp_flow->position;
+		break;
+	case sizeof(struct nfp_net_cmsg_match_v6):
+		ipv6 = (struct nfp_net_cmsg_match_v6 *)nfp_flow->payload.match_data;
+		ipv6->position = nfp_flow->position;
 		break;
 	default:
 		break;
