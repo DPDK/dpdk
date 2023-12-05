@@ -3,10 +3,10 @@
  * All rights reserved.
  */
 
-#ifndef __NFP_FLOW_H__
-#define __NFP_FLOW_H__
+#ifndef __NFP_FLOWER_FLOW_H__
+#define __NFP_FLOWER_FLOW_H__
 
-#include "nfp_net_common.h"
+#include "../nfp_net_common.h"
 
 /* The firmware expects lengths in units of long words */
 #define NFP_FL_LW_SIZ                   2
@@ -182,7 +182,7 @@ struct nfp_flower_representor;
 
 int nfp_flow_priv_init(struct nfp_pf_dev *pf_dev);
 void nfp_flow_priv_uninit(struct nfp_pf_dev *pf_dev);
-int nfp_net_flow_ops_get(struct rte_eth_dev *dev, const struct rte_flow_ops **ops);
+int nfp_flow_ops_get(struct rte_eth_dev *dev, const struct rte_flow_ops **ops);
 bool nfp_flow_inner_item_get(const struct rte_flow_item items[],
 		const struct rte_flow_item **inner_item);
 struct rte_flow *nfp_flow_process(struct nfp_flower_representor *representor,
@@ -202,4 +202,4 @@ int nfp_flow_destroy(struct rte_eth_dev *dev,
 		struct rte_flow *nfp_flow,
 		struct rte_flow_error *error);
 
-#endif /* __NFP_FLOW_H__ */
+#endif /* __NFP_FLOWER_FLOW_H__ */

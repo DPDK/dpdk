@@ -11,7 +11,7 @@
 #include <ethdev_driver.h>
 #include <rte_flow.h>
 
-#include "../nfp_flow.h"
+#include "nfp_flower_flow.h"
 
 struct nfp_ct_map_entry;
 

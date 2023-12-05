@@ -3,7 +3,7 @@
  * All rights reserved.
  */
 
-#include "nfp_flow.h"
+#include "nfp_flower_flow.h"
 
 #include <rte_flow_driver.h>
 #include <rte_hash.h>
@@ -4318,7 +4318,7 @@ static const struct rte_flow_ops nfp_flow_ops = {
 };
 
 int
-nfp_net_flow_ops_get(struct rte_eth_dev *dev,
+nfp_flow_ops_get(struct rte_eth_dev *dev,
 		const struct rte_flow_ops **ops)
 {
 	if ((dev->data->dev_flags & RTE_ETH_DEV_REPRESENTOR) == 0) {
