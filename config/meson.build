@@ -128,13 +128,14 @@ else
             cpu_instruction_set = 'generic'
         endif
     endif
+    if platform == 'native'
+        if cpu_instruction_set == 'auto'
+            cpu_instruction_set = 'native'
+        endif
+    endif
 endif
 
-if platform == 'native'
-    if cpu_instruction_set == 'auto'
-        cpu_instruction_set = 'native'
-    endif
-elif platform == 'generic'
+if platform == 'generic'
     if cpu_instruction_set == 'auto'
         cpu_instruction_set = 'generic'
     endif
