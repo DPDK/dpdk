@@ -887,10 +887,12 @@ nix_tm_sq_flush_pre(struct roc_nix_sq *sq)
 		if (!sq)
 			continue;
 
-		rc = roc_nix_tm_sq_aura_fc(sq, false);
-		if (rc) {
-			plt_err("Failed to disable sqb aura fc, rc=%d", rc);
-			goto cleanup;
+		if (sq->enable) {
+			rc = roc_nix_tm_sq_aura_fc(sq, false);
+			if (rc) {
+				plt_err("Failed to disable sqb aura fc, rc=%d", rc);
+				goto cleanup;
+			}
 		}
 
 		/* Wait for sq entries to be flushed */
@@ -997,10 +999,12 @@ nix_tm_sq_flush_post(struct roc_nix_sq *sq)
 			once = true;
 		}
 
-		rc = roc_nix_tm_sq_aura_fc(s_sq, true);
-		if (rc) {
-			plt_err("Failed to enable sqb aura fc, rc=%d", rc);
-			return rc;
+		if (s_sq->enable) {
+			rc = roc_nix_tm_sq_aura_fc(s_sq, true);
+			if (rc) {
+				plt_err("Failed to enable sqb aura fc, rc=%d", rc);
+				return rc;
+			}
 		}
 	}
 

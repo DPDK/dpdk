@@ -401,6 +401,7 @@ struct roc_nix_sq {
 	void *sqe_mem;
 	void *fc;
 	uint8_t tc;
+	bool enable;
 };
 
 struct roc_nix_link_info {
@@ -952,6 +953,7 @@ void __roc_api roc_nix_cq_head_tail_get(struct roc_nix *roc_nix, uint16_t qid,
 					uint32_t *head, uint32_t *tail);
 int __roc_api roc_nix_sq_init(struct roc_nix *roc_nix, struct roc_nix_sq *sq);
 int __roc_api roc_nix_sq_fini(struct roc_nix_sq *sq);
+int __roc_api roc_nix_sq_ena_dis(struct roc_nix_sq *sq, bool enable);
 void __roc_api roc_nix_sq_head_tail_get(struct roc_nix *roc_nix, uint16_t qid,
 					uint32_t *head, uint32_t *tail);
 

@@ -93,6 +93,20 @@ exit:
 }
 
 int
+roc_nix_sq_ena_dis(struct roc_nix_sq *sq, bool enable)
+{
+	int rc = 0;
+
+	rc = roc_nix_tm_sq_aura_fc(sq, enable);
+	if (rc)
+		goto done;
+
+	sq->enable = enable;
+done:
+	return rc;
+}
+
+int
 roc_nix_rq_ena_dis(struct roc_nix_rq *rq, bool enable)
 {
 	struct nix *nix = roc_nix_to_nix_priv(rq->roc_nix);
@@ -1409,6 +1423,7 @@ roc_nix_sq_init(struct roc_nix *roc_nix, struct roc_nix_sq *sq)
 	}
 	mbox_put(mbox);
 
+	sq->enable = true;
 	nix->sqs[qid] = sq;
 	sq->io_addr = nix->base + NIX_LF_OP_SENDX(0);
 	/* Evenly distribute LMT slot for each sq */
