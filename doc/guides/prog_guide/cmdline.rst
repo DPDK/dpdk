@@ -159,6 +159,19 @@ To get at the results structure for each command above,
 the ``parsed_result`` parameter should be cast to ``struct cmd_quit_result``
 or ``struct cmd_show_port_stats_result`` respectively.
 
+.. note::
+
+  In some cases, the user may want to have an optional variable parameter at the end of a command.
+  Such a variable parameter would not normally be included in the "cmdname" string,
+  leading to duplicate definition errors.
+  To work around this,
+  any variable token with a name prefixed by ``'__'`` will be included in the "cmdname" string,
+  with the prefix removed.
+  Using this, it is possible to have commands, such as:
+  ``start tx_first`` and ``start tx_first <UINT16>__n``, without them conflicting.
+  The resulting code generated will expect functions called ``cmd_start_tx_first_parsed``
+  and ``cmd_start_tx_first_n_parsed`` respectively.
+
 Integrating with the Application
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

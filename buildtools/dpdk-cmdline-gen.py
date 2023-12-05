@@ -40,7 +40,12 @@ def process_command(lineno, tokens, comment):
     name_tokens = []
     for t in tokens:
         if t.startswith("<"):
-            break
+            # stop processing the name building at a variable token,
+            # UNLESS the token name starts with "__"
+            t_type, t_name = t[1:].split(">")
+            if not t_name.startswith("__"):
+                break
+            t = t_name[2:]   # strip off the leading '__'
         name_tokens.append(t)
     name = "_".join(name_tokens)
 
@@ -51,6 +56,8 @@ def process_command(lineno, tokens, comment):
         if t.startswith("<"):
             t_type, t_name = t[1:].split(">")
             t_val = "NULL"
+            if t_name.startswith("__"):
+                t_name = t_name[2:]
         else:
             t_type = "STRING"
             t_name = t
