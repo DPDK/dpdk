@@ -1046,7 +1046,7 @@ rte_event_dma_adapter_vchan_add(uint8_t id, int16_t dma_dev_id, uint16_t vchan,
 							sizeof(struct dma_vchan_info),
 							0, adapter->socket_id);
 			if (dev_info->vchanq == NULL) {
-				printf("Queue pair add not supported\n");
+				RTE_EDEV_LOG_ERR("Queue pair add not supported");
 				return -ENOMEM;
 			}
 		}
@@ -1057,7 +1057,7 @@ rte_event_dma_adapter_vchan_add(uint8_t id, int16_t dma_dev_id, uint16_t vchan,
 						sizeof(struct dma_vchan_info),
 						0, adapter->socket_id);
 			if (dev_info->tqmap == NULL) {
-				printf("tq pair add not supported\n");
+				RTE_EDEV_LOG_ERR("tq pair add not supported");
 				return -ENOMEM;
 			}
 		}

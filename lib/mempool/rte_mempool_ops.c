@@ -46,7 +46,7 @@ rte_mempool_register_ops(const struct rte_mempool_ops *h)
 
 	if (strlen(h->name) >= sizeof(ops->name) - 1) {
 		rte_spinlock_unlock(&rte_mempool_ops_table.sl);
-		RTE_LOG(DEBUG, EAL, "%s(): mempool_ops <%s>: name too long\n",
+		RTE_LOG(DEBUG, MEMPOOL, "%s(): mempool_ops <%s>: name too long\n",
 				__func__, h->name);
 		rte_errno = EEXIST;
 		return -EEXIST;
