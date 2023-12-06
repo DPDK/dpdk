@@ -403,7 +403,7 @@ inspect_hugedir_cb(const struct walk_hugedir_data *whd)
 	struct stat st;
 
 	if (fstat(whd->file_fd, &st) < 0)
-		RTE_LOG(DEBUG, EAL, "%s(): stat(\"%s\") failed: %s",
+		RTE_LOG(DEBUG, EAL, "%s(): stat(\"%s\") failed: %s\n",
 				__func__, whd->file_name, strerror(errno));
 	else
 		(*total_size) += st.st_size;

@@ -1542,7 +1542,7 @@ rte_intr_efd_enable(struct rte_intr_handle *intr_handle, uint32_t nb_efd)
 		/* only check, initialization would be done in vdev driver.*/
 		if ((uint64_t)rte_intr_efd_counter_size_get(intr_handle) >
 		    sizeof(union rte_intr_read_buffer)) {
-			RTE_LOG(ERR, EAL, "the efd_counter_size is oversized");
+			RTE_LOG(ERR, EAL, "the efd_counter_size is oversized\n");
 			return -EINVAL;
 		}
 	} else {

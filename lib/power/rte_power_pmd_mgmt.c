@@ -684,7 +684,7 @@ int
 rte_power_pmd_mgmt_set_pause_duration(unsigned int duration)
 {
 	if (duration == 0) {
-		RTE_LOG(ERR, POWER, "Pause duration must be greater than 0, value unchanged");
+		RTE_LOG(ERR, POWER, "Pause duration must be greater than 0, value unchanged\n");
 		return -EINVAL;
 	}
 	pause_duration = duration;
@@ -707,7 +707,7 @@ rte_power_pmd_mgmt_set_scaling_freq_min(unsigned int lcore, unsigned int min)
 	}
 
 	if (min > scale_freq_max[lcore]) {
-		RTE_LOG(ERR, POWER, "Invalid min frequency: Cannot be greater than max frequency");
+		RTE_LOG(ERR, POWER, "Invalid min frequency: Cannot be greater than max frequency\n");
 		return -EINVAL;
 	}
 	scale_freq_min[lcore] = min;
@@ -727,7 +727,7 @@ rte_power_pmd_mgmt_set_scaling_freq_max(unsigned int lcore, unsigned int max)
 	if (max == 0)
 		max = UINT32_MAX;
 	if (max < scale_freq_min[lcore]) {
-		RTE_LOG(ERR, POWER, "Invalid max frequency: Cannot be less than min frequency");
+		RTE_LOG(ERR, POWER, "Invalid max frequency: Cannot be less than min frequency\n");
 		return -EINVAL;
 	}
 
