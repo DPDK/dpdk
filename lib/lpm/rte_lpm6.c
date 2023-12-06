@@ -279,7 +279,7 @@ rte_lpm6_create(const char *name, int socket_id,
 
 	rules_tbl = rte_hash_create(&rule_hash_tbl_params);
 	if (rules_tbl == NULL) {
-		RTE_LOG(ERR, LPM, "LPM rules hash table allocation failed: %s (%d)",
+		RTE_LOG(ERR, LPM, "LPM rules hash table allocation failed: %s (%d)\n",
 				  rte_strerror(rte_errno), rte_errno);
 		goto fail_wo_unlock;
 	}
@@ -289,7 +289,7 @@ rte_lpm6_create(const char *name, int socket_id,
 			sizeof(uint32_t) * config->number_tbl8s,
 			RTE_CACHE_LINE_SIZE);
 	if (tbl8_pool == NULL) {
-		RTE_LOG(ERR, LPM, "LPM tbl8 pool allocation failed: %s (%d)",
+		RTE_LOG(ERR, LPM, "LPM tbl8 pool allocation failed: %s (%d)\n",
 				  rte_strerror(rte_errno), rte_errno);
 		rte_errno = ENOMEM;
 		goto fail_wo_unlock;
@@ -300,7 +300,7 @@ rte_lpm6_create(const char *name, int socket_id,
 			sizeof(struct rte_lpm_tbl8_hdr) * config->number_tbl8s,
 			RTE_CACHE_LINE_SIZE);
 	if (tbl8_hdrs == NULL) {
-		RTE_LOG(ERR, LPM, "LPM tbl8 headers allocation failed: %s (%d)",
+		RTE_LOG(ERR, LPM, "LPM tbl8 headers allocation failed: %s (%d)\n",
 				  rte_strerror(rte_errno), rte_errno);
 		rte_errno = ENOMEM;
 		goto fail_wo_unlock;

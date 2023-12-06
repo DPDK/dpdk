@@ -2141,7 +2141,7 @@ rte_vect_set_max_simd_bitwidth(uint16_t bitwidth)
 	struct internal_config *internal_conf =
 		eal_get_internal_configuration();
 	if (internal_conf->max_simd_bitwidth.forced) {
-		RTE_LOG(NOTICE, EAL, "Cannot set max SIMD bitwidth - user runtime override enabled");
+		RTE_LOG(NOTICE, EAL, "Cannot set max SIMD bitwidth - user runtime override enabled\n");
 		return -EPERM;
 	}
 
