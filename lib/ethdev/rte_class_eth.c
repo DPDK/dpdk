@@ -165,7 +165,7 @@ eth_dev_iterate(const void *start,
 			valid_keys = eth_params_keys;
 		kvargs = rte_kvargs_parse(str, valid_keys);
 		if (kvargs == NULL) {
-			RTE_LOG(ERR, EAL, "cannot parse argument list\n");
+			RTE_ETHDEV_LOG(ERR, "cannot parse argument list\n");
 			rte_errno = EINVAL;
 			return NULL;
 		}
