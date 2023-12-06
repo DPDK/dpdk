@@ -202,17 +202,11 @@ static cJSON *vdpa_vf_dev_add(const char *vf_name,
 			struct vdpa_vf_params *vf_params,
 			const char *socket_file)
 {
-	struct vdpa_vf_params vf_info = {0};
 	cJSON *result = cJSON_CreateObject();
 
 	if (rte_vdpa_vf_dev_add(vf_name, vf_params)) {
 		cJSON_AddStringToObject(result, "Error",
 			"Fail to add VF device");
-		return result;
-	}
-	if (rte_vdpa_get_vf_info(vf_name, &vf_info)) {
-		cJSON_AddStringToObject(result, "Error",
-		"Fail to find VF device");
 		return result;
 	}
 	if (vdpa_with_socket_path_start(vf_name, socket_file)) {
