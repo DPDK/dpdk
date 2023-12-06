@@ -424,7 +424,6 @@ vdpa_rpc_start(struct vdpa_rpc_context *rpc_ctx)
 	const struct sched_param sp = {
 		.sched_priority = sched_get_priority_max(SCHED_RR),
 	};
-	rte_cpuset_t cpuset;
 	pthread_attr_t attr;
 	char name[32];
 	int ret;
@@ -447,15 +446,6 @@ vdpa_rpc_start(struct vdpa_rpc_context *rpc_ctx)
 	if (ret) {
 		RTE_LOG(ERR, RPC,
 		"Failed to create vdpa rpc-thread ret %d.\n", ret);
-		return ret;
-	}
-	CPU_ZERO(&cpuset);
-	CPU_SET(0, &cpuset);
-	ret = pthread_setaffinity_np(rpc_ctx->rpc_server_tid,
-			sizeof(cpuset), &cpuset);
-	if (ret) {
-		RTE_LOG(ERR, RPC, "Failed to set thread affinity for "
-		"vdpa rpc-thread ret %d.\n", ret);
 		return ret;
 	}
 	snprintf(name, sizeof(name), "vDPA-RPC");
