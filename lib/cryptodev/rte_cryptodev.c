@@ -2579,7 +2579,7 @@ rte_cryptodev_driver_id_get(const char *name)
 	int driver_id = -1;
 
 	if (name == NULL) {
-		RTE_LOG(DEBUG, CRYPTODEV, "name pointer NULL");
+		CDEV_LOG_DEBUG("name pointer NULL");
 		return -1;
 	}
 

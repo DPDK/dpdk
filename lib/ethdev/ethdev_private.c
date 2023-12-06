@@ -184,7 +184,7 @@ rte_eth_devargs_parse_representor_ports(char *str, void *data)
 		RTE_DIM(eth_da->representor_ports));
 done:
 	if (str == NULL)
-		RTE_LOG(ERR, EAL, "wrong representor format: %s\n", str);
+		RTE_ETHDEV_LOG(ERR, "wrong representor format: %s\n", str);
 	return str == NULL ? -1 : 0;
 }
 

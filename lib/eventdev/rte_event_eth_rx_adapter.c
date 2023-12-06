@@ -311,9 +311,9 @@ rxa_event_buf_get(struct event_eth_rx_adapter *rx_adapter, uint16_t eth_dev_id,
 	} \
 } while (0)
 
-#define RTE_ETH_VALID_PORTID_OR_GOTO_ERR_RET(port_id, retval) do { \
+#define RTE_EVENT_ETH_RX_ADAPTER_PORTID_VALID_OR_GOTO_ERR_RET(port_id, retval) do { \
 	if (!rte_eth_dev_is_valid_port(port_id)) { \
-		RTE_ETHDEV_LOG(ERR, "Invalid port_id=%u\n", port_id); \
+		RTE_EDEV_LOG_ERR("Invalid port_id=%u", port_id); \
 		ret = retval; \
 		goto error; \
 	} \
@@ -3521,7 +3521,7 @@ handle_rxa_get_queue_conf(const char *cmd __rte_unused,
 
 	/* Get device ID from parameter string */
 	eth_dev_id = strtoul(token, NULL, 10);
-	RTE_ETH_VALID_PORTID_OR_GOTO_ERR_RET(eth_dev_id, -EINVAL);
+	RTE_EVENT_ETH_RX_ADAPTER_PORTID_VALID_OR_GOTO_ERR_RET(eth_dev_id, -EINVAL);
 
 	token = strtok(NULL, ",");
 	RTE_EVENT_ETH_RX_ADAPTER_TOKEN_VALID_OR_GOTO_ERR_RET(token, -1);
@@ -3593,7 +3593,7 @@ handle_rxa_get_queue_stats(const char *cmd __rte_unused,
 
 	/* Get device ID from parameter string */
 	eth_dev_id = strtoul(token, NULL, 10);
-	RTE_ETH_VALID_PORTID_OR_GOTO_ERR_RET(eth_dev_id, -EINVAL);
+	RTE_EVENT_ETH_RX_ADAPTER_PORTID_VALID_OR_GOTO_ERR_RET(eth_dev_id, -EINVAL);
 
 	token = strtok(NULL, ",");
 	RTE_EVENT_ETH_RX_ADAPTER_TOKEN_VALID_OR_GOTO_ERR_RET(token, -1);
@@ -3663,7 +3663,7 @@ handle_rxa_queue_stats_reset(const char *cmd __rte_unused,
 
 	/* Get device ID from parameter string */
 	eth_dev_id = strtoul(token, NULL, 10);
-	RTE_ETH_VALID_PORTID_OR_GOTO_ERR_RET(eth_dev_id, -EINVAL);
+	RTE_EVENT_ETH_RX_ADAPTER_PORTID_VALID_OR_GOTO_ERR_RET(eth_dev_id, -EINVAL);
 
 	token = strtok(NULL, ",");
 	RTE_EVENT_ETH_RX_ADAPTER_TOKEN_VALID_OR_GOTO_ERR_RET(token, -1);
@@ -3718,7 +3718,7 @@ handle_rxa_instance_get(const char *cmd __rte_unused,
 
 	/* Get device ID from parameter string */
 	eth_dev_id = strtoul(token, NULL, 10);
-	RTE_ETH_VALID_PORTID_OR_GOTO_ERR_RET(eth_dev_id, -EINVAL);
+	RTE_EVENT_ETH_RX_ADAPTER_PORTID_VALID_OR_GOTO_ERR_RET(eth_dev_id, -EINVAL);
 
 	token = strtok(NULL, ",");
 	RTE_EVENT_ETH_RX_ADAPTER_TOKEN_VALID_OR_GOTO_ERR_RET(token, -1);

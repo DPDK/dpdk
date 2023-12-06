@@ -465,7 +465,7 @@ rte_eth_devargs_parse(const char *dargs, struct rte_eth_devargs *eth_da)
 		pair = &args.pairs[i];
 		if (strcmp("representor", pair->key) == 0) {
 			if (eth_da->type != RTE_ETH_REPRESENTOR_NONE) {
-				RTE_LOG(ERR, EAL, "duplicated representor key: %s\n",
+				RTE_ETHDEV_LOG(ERR, "duplicated representor key: %s\n",
 					dargs);
 				result = -1;
 				goto parse_cleanup;
@@ -691,7 +691,7 @@ rte_eth_representor_id_get(uint16_t port_id,
 		if (info->ranges[i].controller != controller)
 			continue;
 		if (info->ranges[i].id_end < info->ranges[i].id_base) {
-			RTE_LOG(WARNING, EAL, "Port %hu invalid representor ID Range %u - %u, entry %d\n",
+			RTE_ETHDEV_LOG(WARNING, "Port %hu invalid representor ID Range %u - %u, entry %d\n",
 				port_id, info->ranges[i].id_base,
 				info->ranges[i].id_end, i);
 			continue;
