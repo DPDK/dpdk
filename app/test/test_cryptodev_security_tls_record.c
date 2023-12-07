@@ -3,6 +3,8 @@
  */
 
 #include <rte_crypto.h>
+#include <rte_dtls.h>
+#include <rte_tls.h>
 
 #include "test.h"
 #include "test_cryptodev_security_tls_record.h"
@@ -62,8 +64,8 @@ test_tls_record_td_prepare(const struct crypto_param *param1, const struct crypt
 			   const struct tls_record_test_flags *flags,
 			   struct tls_record_test_data *td_array, int nb_td)
 {
+	int i, min_padding, hdr_len, tls_pkt_size, mac_len = 0, exp_nonce_len = 0, roundup_len = 0;
 	struct tls_record_test_data *td = NULL;
-	int i;
 
 	memset(td_array, 0, nb_td * sizeof(*td));
 
@@ -93,6 +95,59 @@ test_tls_record_td_prepare(const struct crypto_param *param1, const struct crypt
 			td->xform.chain.auth.auth.digest_length = param2->digest_length;
 		}
 	}
+
+	tls_pkt_size = td->input_text.len;
+
+	if (!td->aead) {
+		mac_len = td->xform.chain.auth.auth.digest_length;
+		switch (td->xform.chain.cipher.cipher.algo) {
+		case RTE_CRYPTO_CIPHER_3DES_CBC:
+			roundup_len = 8;
+			exp_nonce_len = 8;
+			break;
+		case RTE_CRYPTO_CIPHER_AES_CBC:
+			roundup_len = 16;
+			exp_nonce_len = 16;
+			break;
+		default:
+			roundup_len = 0;
+			exp_nonce_len = 0;
+			break;
+		}
+	} else {
+		mac_len = td->xform.aead.aead.digest_length;
+		exp_nonce_len = 8;
+	}
+
+	switch (td->tls_record_xform.ver) {
+	case RTE_SECURITY_VERSION_TLS_1_2:
+	case RTE_SECURITY_VERSION_TLS_1_3:
+		hdr_len = sizeof(struct rte_tls_hdr);
+		min_padding = 1;
+		break;
+	case RTE_SECURITY_VERSION_DTLS_1_2:
+		hdr_len = sizeof(struct rte_dtls_hdr);
+		min_padding = 0;
+		break;
+	default:
+		hdr_len = 0;
+		min_padding = 0;
+		break;
+	}
+
+	tls_pkt_size += mac_len;
+
+	/* Padding */
+	tls_pkt_size += min_padding;
+	tls_pkt_size = RTE_ALIGN_MUL_CEIL(tls_pkt_size, roundup_len);
+
+	/* Explicit nonce */
+	tls_pkt_size += exp_nonce_len;
+
+	/* Add TLS header */
+	tls_pkt_size += hdr_len;
+
+	td->output_text.len = tls_pkt_size;
 
 	RTE_SET_USED(flags);
 }
@@ -160,6 +215,60 @@ test_tls_record_res_d_prepare(const uint8_t *output_text, uint32_t len,
 
 	return TEST_SUCCESS;
 }
+static int
+tls_record_hdr_verify(const struct tls_record_test_data *td, const uint8_t *output_text)
+{
+	uint16_t length, hdr_len;
+	uint8_t content_type;
+
+	if (td->tls_record_xform.ver == RTE_SECURITY_VERSION_TLS_1_2) {
+		const struct rte_tls_hdr *hdr = (const struct rte_tls_hdr *)output_text;
+		if (rte_be_to_cpu_16(hdr->version) != RTE_TLS_VERSION_1_2) {
+			printf("Incorrect header version [expected - %4x, received - %4x]\n",
+			       RTE_TLS_VERSION_1_2, rte_be_to_cpu_16(hdr->version));
+			return TEST_FAILED;
+		}
+		content_type = hdr->type;
+		length = rte_be_to_cpu_16(hdr->length);
+		hdr_len = sizeof(struct rte_tls_hdr);
+	} else if (td->tls_record_xform.ver == RTE_SECURITY_VERSION_TLS_1_3) {
+		const struct rte_tls_hdr *hdr = (const struct rte_tls_hdr *)output_text;
+		if (rte_be_to_cpu_16(hdr->version) != RTE_TLS_VERSION_1_3) {
+			printf("Incorrect header version [expected - %4x, received - %4x]\n",
+			       RTE_TLS_VERSION_1_3, rte_be_to_cpu_16(hdr->version));
+			return TEST_FAILED;
+		}
+		content_type = hdr->type;
+		length = rte_be_to_cpu_16(hdr->length);
+		hdr_len = sizeof(struct rte_tls_hdr);
+	} else if (td->tls_record_xform.ver == RTE_SECURITY_VERSION_DTLS_1_2) {
+		const struct rte_dtls_hdr *hdr = (const struct rte_dtls_hdr *)output_text;
+		if (rte_be_to_cpu_16(hdr->version) != RTE_DTLS_VERSION_1_2) {
+			printf("Incorrect header version [expected - %4x, received - %4x]\n",
+			       RTE_DTLS_VERSION_1_2, rte_be_to_cpu_16(hdr->version));
+			return TEST_FAILED;
+		}
+		content_type = hdr->type;
+		length = rte_be_to_cpu_16(hdr->length);
+		hdr_len = sizeof(struct rte_dtls_hdr);
+	} else {
+		return TEST_FAILED;
+	}
+
+	if (content_type != td->app_type) {
+		printf("Incorrect content type in packet [expected - %d, received - %d]\n",
+		       td->app_type, content_type);
+		return TEST_FAILED;
+	}
+
+	if (length != td->output_text.len - hdr_len) {
+		printf("Incorrect packet length [expected - %d, received - %d]\n",
+		       td->output_text.len - hdr_len, length);
+		return TEST_FAILED;
+	}
+
+	return TEST_SUCCESS;
+}
 
 int
 test_tls_record_post_process(const struct rte_mbuf *m, const struct tls_record_test_data *td,
@@ -169,6 +278,7 @@ test_tls_record_post_process(const struct rte_mbuf *m, const struct tls_record_t
 	uint8_t output_text[TLS_RECORD_MAX_LEN];
 	const struct rte_mbuf *seg;
 	const uint8_t *output;
+	int ret;
 
 	memset(output_text, 0, TLS_RECORD_MAX_LEN);
 
@@ -191,6 +301,12 @@ test_tls_record_post_process(const struct rte_mbuf *m, const struct tls_record_t
 	if (output != output_text) {
 		/* Single segment mbuf, copy manually */
 		memcpy(output_text, output, len);
+	}
+
+	if (td->tls_record_xform.type == RTE_SECURITY_TLS_SESS_TYPE_WRITE) {
+		ret = tls_record_hdr_verify(td, output_text);
+		if (ret != TEST_SUCCESS)
+			return ret;
 	}
 
 	/*
