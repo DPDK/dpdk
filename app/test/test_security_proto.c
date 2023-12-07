@@ -81,3 +81,28 @@ test_sec_crypto_caps_auth_verify(const struct rte_security_capability *sec_cap,
 
 	return -ENOTSUP;
 }
+
+void
+test_sec_alg_display(const struct crypto_param *param1, const struct crypto_param *param2)
+{
+	if (param1->type == RTE_CRYPTO_SYM_XFORM_AEAD) {
+		printf("\t%s [%d]",
+		       rte_cryptodev_get_aead_algo_string(param1->alg.aead),
+		       param1->key_length * 8);
+	} else if (param1->type == RTE_CRYPTO_SYM_XFORM_AUTH) {
+		printf("\t%s",
+		       rte_cryptodev_get_auth_algo_string(param1->alg.auth));
+		if (param1->alg.auth != RTE_CRYPTO_AUTH_NULL)
+			printf(" [%dB ICV]", param1->digest_length);
+	} else {
+		printf("\t%s",
+		       rte_cryptodev_get_cipher_algo_string(param1->alg.cipher));
+		if (param1->alg.cipher != RTE_CRYPTO_CIPHER_NULL)
+			printf(" [%d]", param1->key_length * 8);
+		printf(" %s",
+		       rte_cryptodev_get_auth_algo_string(param2->alg.auth));
+		if (param2->alg.auth != RTE_CRYPTO_AUTH_NULL)
+			printf(" [%dB ICV]", param2->digest_length);
+	}
+	printf("\n");
+}

@@ -1345,8 +1345,7 @@ test_ipsec_inline_proto_all(const struct ipsec_test_flags *flags)
 
 		if (ret == TEST_FAILED) {
 			printf("\n TEST FAILED");
-			test_ipsec_display_alg(alg_list[i].param1,
-					       alg_list[i].param2);
+			test_sec_alg_display(alg_list[i].param1, alg_list[i].param2);
 			fail_cnt++;
 			continue;
 		}
@@ -1360,15 +1359,13 @@ test_ipsec_inline_proto_all(const struct ipsec_test_flags *flags)
 
 		if (ret == TEST_FAILED) {
 			printf("\n TEST FAILED");
-			test_ipsec_display_alg(alg_list[i].param1,
-					       alg_list[i].param2);
+			test_sec_alg_display(alg_list[i].param1, alg_list[i].param2);
 			fail_cnt++;
 			continue;
 		}
 
 		if (flags->display_alg)
-			test_ipsec_display_alg(alg_list[i].param1,
-					       alg_list[i].param2);
+			test_sec_alg_display(alg_list[i].param1, alg_list[i].param2);
 
 		pass_cnt++;
 	}

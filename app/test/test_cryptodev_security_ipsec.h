@@ -155,9 +155,6 @@ void test_ipsec_td_update(struct ipsec_test_data td_inb[],
 			  int nb_td,
 			  const struct ipsec_test_flags *flags);
 
-void test_ipsec_display_alg(const struct crypto_param *param1,
-			    const struct crypto_param *param2);
-
 int test_ipsec_post_process(const struct rte_mbuf *m,
 			    const struct ipsec_test_data *td,
 			    struct ipsec_test_data *res_d, bool silent,

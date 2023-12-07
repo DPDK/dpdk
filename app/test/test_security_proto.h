@@ -141,4 +141,6 @@ int test_sec_crypto_caps_cipher_verify(const struct rte_security_capability *sec
 int test_sec_crypto_caps_auth_verify(const struct rte_security_capability *sec_cap,
 		struct rte_crypto_sym_xform *auth);
 
+void test_sec_alg_display(const struct crypto_param *param1, const struct crypto_param *param2);
+
 #endif

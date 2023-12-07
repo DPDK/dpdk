@@ -10563,8 +10563,7 @@ test_ipsec_proto_all(const struct ipsec_test_flags *flags)
 			return TEST_FAILED;
 
 		if (flags->display_alg)
-			test_ipsec_display_alg(alg_list[i].param1,
-					       alg_list[i].param2);
+			test_sec_alg_display(alg_list[i].param1, alg_list[i].param2);
 
 		pass_cnt++;
 	}
@@ -10609,8 +10608,7 @@ test_ipsec_ah_proto_all(const struct ipsec_test_flags *flags)
 			return TEST_FAILED;
 
 		if (flags->display_alg)
-			test_ipsec_display_alg(ah_alg_list[i].param1,
-					       ah_alg_list[i].param2);
+			test_sec_alg_display(ah_alg_list[i].param1, ah_alg_list[i].param2);
 
 		pass_cnt++;
 	}

@@ -532,8 +532,7 @@ main(int argc, char **argv)
 	for (ctx.td_idx = 0; ctx.td_idx < RTE_DIM(alg_list); ctx.td_idx++) {
 
 		printf("\n\n    Algorithm combination:");
-		test_ipsec_display_alg(alg_list[ctx.td_idx].param1,
-				       alg_list[ctx.td_idx].param2);
+		test_sec_alg_display(alg_list[ctx.td_idx].param1, alg_list[ctx.td_idx].param2);
 		printf("    ----------------------");
 
 		printf("\n%20s%20s%20s%20s%20s%20s\n\n",
