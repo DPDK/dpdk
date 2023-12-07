@@ -1295,11 +1295,11 @@ test_ipsec_inline_proto_all(const struct ipsec_test_flags *flags)
 			flags->sa_expiry_bytes_soft ||
 			flags->sa_expiry_bytes_hard ||
 			flags->sa_expiry_pkts_hard)
-		nb_pkts = IPSEC_TEST_PACKETS_MAX;
+		nb_pkts = TEST_SEC_PKTS_MAX;
 
-	for (i = 0; i < RTE_DIM(alg_list); i++) {
-		test_ipsec_td_prepare(alg_list[i].param1,
-				      alg_list[i].param2,
+	for (i = 0; i < RTE_DIM(sec_alg_list); i++) {
+		test_ipsec_td_prepare(sec_alg_list[i].param1,
+				      sec_alg_list[i].param2,
 				      flags, &td_outb, 1);
 
 		if (!td_outb.aead) {
@@ -1331,8 +1331,7 @@ test_ipsec_inline_proto_all(const struct ipsec_test_flags *flags)
 				(((td_outb.output_text.len + RTE_ETHER_HDR_LEN)
 				  * nb_pkts) >> 3) - 1;
 		if (flags->sa_expiry_pkts_hard)
-			td_outb.ipsec_xform.life.packets_hard_limit =
-					IPSEC_TEST_PACKETS_MAX - 1;
+			td_outb.ipsec_xform.life.packets_hard_limit = TEST_SEC_PKTS_MAX - 1;
 		if (flags->sa_expiry_bytes_hard)
 			td_outb.ipsec_xform.life.bytes_hard_limit =
 				(((td_outb.output_text.len + RTE_ETHER_HDR_LEN)
@@ -1345,7 +1344,7 @@ test_ipsec_inline_proto_all(const struct ipsec_test_flags *flags)
 
 		if (ret == TEST_FAILED) {
 			printf("\n TEST FAILED");
-			test_sec_alg_display(alg_list[i].param1, alg_list[i].param2);
+			test_sec_alg_display(sec_alg_list[i].param1, sec_alg_list[i].param2);
 			fail_cnt++;
 			continue;
 		}
@@ -1359,13 +1358,13 @@ test_ipsec_inline_proto_all(const struct ipsec_test_flags *flags)
 
 		if (ret == TEST_FAILED) {
 			printf("\n TEST FAILED");
-			test_sec_alg_display(alg_list[i].param1, alg_list[i].param2);
+			test_sec_alg_display(sec_alg_list[i].param1, sec_alg_list[i].param2);
 			fail_cnt++;
 			continue;
 		}
 
 		if (flags->display_alg)
-			test_sec_alg_display(alg_list[i].param1, alg_list[i].param2);
+			test_sec_alg_display(sec_alg_list[i].param1, sec_alg_list[i].param2);
 
 		pass_cnt++;
 	}
@@ -1742,7 +1741,8 @@ inline_ipsec_testsuite_setup(void)
 				ret, port_id);
 		return ret;
 	}
-	test_ipsec_alg_list_populate();
+
+	test_sec_alg_list_populate();
 
 	/* Change the plaintext size for tests without Known vectors */
 	if (sg_mode) {
@@ -2003,7 +2003,8 @@ event_inline_ipsec_testsuite_setup(void)
 	}
 
 	event_mode_enabled = true;
-	test_ipsec_alg_list_populate();
+
+	test_sec_alg_list_populate();
 
 	return 0;
 }
@@ -2685,8 +2686,8 @@ test_ipsec_inline_pkt_replay(const void *test_data, const uint64_t esn[],
 		      bool replayed_pkt[], uint32_t nb_pkts, bool esn_en,
 		      uint64_t winsz)
 {
-	struct ipsec_test_data td_outb[IPSEC_TEST_PACKETS_MAX];
-	struct ipsec_test_data td_inb[IPSEC_TEST_PACKETS_MAX];
+	struct ipsec_test_data td_outb[TEST_SEC_PKTS_MAX];
+	struct ipsec_test_data td_inb[TEST_SEC_PKTS_MAX];
 	struct ipsec_test_flags flags;
 	uint32_t i, ret = 0;
 

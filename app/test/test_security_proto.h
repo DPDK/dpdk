@@ -8,6 +8,8 @@
 #include <rte_cryptodev.h>
 #include <rte_security.h>
 
+#define TEST_SEC_PKTS_MAX 32
+
 struct crypto_param {
 	enum rte_crypto_sym_xform_type type;
 	union {
@@ -137,6 +139,20 @@ static const struct crypto_param auth_list[] = {
 		.iv_length = 12,
 	},
 };
+
+struct crypto_param_comb {
+	const struct crypto_param *param1;
+	const struct crypto_param *param2;
+};
+
+extern struct crypto_param_comb sec_alg_list[RTE_DIM(aead_list) +
+					     (RTE_DIM(cipher_list) * RTE_DIM(auth_list))];
+
+extern struct crypto_param_comb sec_auth_only_alg_list[2 * (RTE_DIM(auth_list) - 1)];
+
+void test_sec_alg_list_populate(void);
+
+void test_sec_auth_only_alg_list_populate(void);
 
 int test_sec_crypto_caps_aead_verify(const struct rte_security_capability *sec_cap,
 		struct rte_crypto_sym_xform *aead);

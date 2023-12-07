@@ -7,6 +7,52 @@
 
 #include "test_security_proto.h"
 
+struct crypto_param_comb sec_alg_list[RTE_DIM(aead_list) +
+				  (RTE_DIM(cipher_list) *
+				   RTE_DIM(auth_list))];
+
+struct crypto_param_comb sec_auth_only_alg_list[2 * (RTE_DIM(auth_list) - 1)];
+
+void
+test_sec_alg_list_populate(void)
+{
+	unsigned long i, j, index = 0;
+
+	for (i = 0; i < RTE_DIM(aead_list); i++) {
+		sec_alg_list[index].param1 = &aead_list[i];
+		sec_alg_list[index].param2 = NULL;
+		index++;
+	}
+
+	for (i = 0; i < RTE_DIM(cipher_list); i++) {
+		for (j = 0; j < RTE_DIM(auth_list); j++) {
+			sec_alg_list[index].param1 = &cipher_list[i];
+			sec_alg_list[index].param2 = &auth_list[j];
+			index++;
+		}
+	}
+}
+
+void
+test_sec_auth_only_alg_list_populate(void)
+{
+	unsigned long i, index = 0;
+
+	for (i = 1; i < RTE_DIM(auth_list); i++) {
+		sec_auth_only_alg_list[index].param1 = &auth_list[i];
+		sec_auth_only_alg_list[index].param2 = NULL;
+		index++;
+	}
+
+	for (i = 1; i < RTE_DIM(auth_list); i++) {
+		/* NULL cipher */
+		sec_auth_only_alg_list[index].param1 = &cipher_list[0];
+
+		sec_auth_only_alg_list[index].param2 = &auth_list[i];
+		index++;
+	}
+}
+
 int
 test_sec_crypto_caps_aead_verify(const struct rte_security_capability *sec_cap,
 		struct rte_crypto_sym_xform *aead)

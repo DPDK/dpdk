@@ -10,7 +10,6 @@
 
 #include "test_security_proto.h"
 
-#define IPSEC_TEST_PACKETS_MAX 32
 #define IPSEC_TEXT_MAX_LEN 16384u
 
 struct ipsec_test_data {
@@ -117,25 +116,10 @@ struct ipsec_test_flags {
 	bool rx_inject;
 };
 
-struct crypto_param_comb {
-	const struct crypto_param *param1;
-	const struct crypto_param *param2;
-};
-
 extern struct ipsec_test_data pkt_aes_256_gcm;
 extern struct ipsec_test_data pkt_aes_256_gcm_v6;
 extern struct ipsec_test_data pkt_aes_128_cbc_hmac_sha256;
 extern struct ipsec_test_data pkt_aes_128_cbc_hmac_sha256_v6;
-
-extern struct crypto_param_comb alg_list[RTE_DIM(aead_list) +
-					 (RTE_DIM(cipher_list) *
-					  RTE_DIM(auth_list))];
-
-extern struct crypto_param_comb ah_alg_list[2 * (RTE_DIM(auth_list) - 1)];
-
-void test_ipsec_alg_list_populate(void);
-
-void test_ipsec_ah_alg_list_populate(void);
 
 int test_ipsec_sec_caps_verify(struct rte_security_ipsec_xform *ipsec_xform,
 			       const struct rte_security_capability *sec_cap,

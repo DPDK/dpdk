@@ -474,8 +474,8 @@ args_parse(int argc, char **argv)
 int
 main(int argc, char **argv)
 {
-	struct ipsec_test_data td_outb[RTE_DIM(alg_list)];
-	struct ipsec_test_data td_inb[RTE_DIM(alg_list)];
+	struct ipsec_test_data td_outb[RTE_DIM(sec_alg_list)];
+	struct ipsec_test_data td_inb[RTE_DIM(sec_alg_list)];
 	struct ipsec_test_flags flags;
 	uint32_t lcore_id;
 	uint8_t nb_lcores;
@@ -513,11 +513,11 @@ main(int argc, char **argv)
 	if (ret)
 		goto cryptodev_fini;
 
-	test_ipsec_alg_list_populate();
+	test_sec_alg_list_populate();
 
-	for (i = 0; i < RTE_DIM(alg_list); i++) {
-		test_ipsec_td_prepare(alg_list[i].param1,
-				      alg_list[i].param2,
+	for (i = 0; i < RTE_DIM(sec_alg_list); i++) {
+		test_ipsec_td_prepare(sec_alg_list[i].param1,
+				      sec_alg_list[i].param2,
 				      &flags,
 				      &td_outb[i],
 				      1);
@@ -529,10 +529,11 @@ main(int argc, char **argv)
 	if (ctx.is_inbound)
 		ctx.td = td_inb;
 
-	for (ctx.td_idx = 0; ctx.td_idx < RTE_DIM(alg_list); ctx.td_idx++) {
+	for (ctx.td_idx = 0; ctx.td_idx < RTE_DIM(sec_alg_list); ctx.td_idx++) {
 
 		printf("\n\n    Algorithm combination:");
-		test_sec_alg_display(alg_list[ctx.td_idx].param1, alg_list[ctx.td_idx].param2);
+		test_sec_alg_display(sec_alg_list[ctx.td_idx].param1,
+				     sec_alg_list[ctx.td_idx].param2);
 		printf("    ----------------------");
 
 		printf("\n%20s%20s%20s%20s%20s%20s\n\n",

@@ -838,8 +838,8 @@ ipsec_proto_testsuite_setup(void)
 		ret = TEST_SKIPPED;
 	}
 
-	test_ipsec_alg_list_populate();
-	test_ipsec_ah_alg_list_populate();
+	test_sec_alg_list_populate();
+	test_sec_auth_only_alg_list_populate();
 
 	/*
 	 * Stop the device. Device would be started again by individual test
@@ -10506,19 +10506,19 @@ test_ipsec_proto_known_vec_inb_rx_inject(const void *test_data)
 static int
 test_ipsec_proto_all(const struct ipsec_test_flags *flags)
 {
-	struct ipsec_test_data td_outb[IPSEC_TEST_PACKETS_MAX];
-	struct ipsec_test_data td_inb[IPSEC_TEST_PACKETS_MAX];
+	struct ipsec_test_data td_outb[TEST_SEC_PKTS_MAX];
+	struct ipsec_test_data td_inb[TEST_SEC_PKTS_MAX];
 	unsigned int i, nb_pkts = 1, pass_cnt = 0;
 	int ret;
 
 	if (flags->iv_gen ||
 	    flags->sa_expiry_pkts_soft ||
 	    flags->sa_expiry_pkts_hard)
-		nb_pkts = IPSEC_TEST_PACKETS_MAX;
+		nb_pkts = TEST_SEC_PKTS_MAX;
 
-	for (i = 0; i < RTE_DIM(alg_list); i++) {
-		test_ipsec_td_prepare(alg_list[i].param1,
-				      alg_list[i].param2,
+	for (i = 0; i < RTE_DIM(sec_alg_list); i++) {
+		test_ipsec_td_prepare(sec_alg_list[i].param1,
+				      sec_alg_list[i].param2,
 				      flags,
 				      td_outb,
 				      nb_pkts);
@@ -10563,7 +10563,7 @@ test_ipsec_proto_all(const struct ipsec_test_flags *flags)
 			return TEST_FAILED;
 
 		if (flags->display_alg)
-			test_sec_alg_display(alg_list[i].param1, alg_list[i].param2);
+			test_sec_alg_display(sec_alg_list[i].param1, sec_alg_list[i].param2);
 
 		pass_cnt++;
 	}
@@ -10577,14 +10577,14 @@ test_ipsec_proto_all(const struct ipsec_test_flags *flags)
 static int
 test_ipsec_ah_proto_all(const struct ipsec_test_flags *flags)
 {
-	struct ipsec_test_data td_outb[IPSEC_TEST_PACKETS_MAX];
-	struct ipsec_test_data td_inb[IPSEC_TEST_PACKETS_MAX];
+	struct ipsec_test_data td_outb[TEST_SEC_PKTS_MAX];
+	struct ipsec_test_data td_inb[TEST_SEC_PKTS_MAX];
 	unsigned int i, nb_pkts = 1, pass_cnt = 0;
 	int ret;
 
-	for (i = 0; i < RTE_DIM(ah_alg_list); i++) {
-		test_ipsec_td_prepare(ah_alg_list[i].param1,
-				      ah_alg_list[i].param2,
+	for (i = 0; i < RTE_DIM(sec_auth_only_alg_list); i++) {
+		test_ipsec_td_prepare(sec_auth_only_alg_list[i].param1,
+				      sec_auth_only_alg_list[i].param2,
 				      flags,
 				      td_outb,
 				      nb_pkts);
@@ -10608,7 +10608,8 @@ test_ipsec_ah_proto_all(const struct ipsec_test_flags *flags)
 			return TEST_FAILED;
 
 		if (flags->display_alg)
-			test_sec_alg_display(ah_alg_list[i].param1, ah_alg_list[i].param2);
+			test_sec_alg_display(sec_auth_only_alg_list[i].param1,
+					     sec_auth_only_alg_list[i].param2);
 
 		pass_cnt++;
 	}
@@ -11110,8 +11111,8 @@ test_ipsec_pkt_replay(const void *test_data, const uint64_t esn[],
 		      bool replayed_pkt[], uint32_t nb_pkts, bool esn_en,
 		      uint64_t winsz)
 {
-	struct ipsec_test_data td_outb[IPSEC_TEST_PACKETS_MAX];
-	struct ipsec_test_data td_inb[IPSEC_TEST_PACKETS_MAX];
+	struct ipsec_test_data td_outb[TEST_SEC_PKTS_MAX];
+	struct ipsec_test_data td_inb[TEST_SEC_PKTS_MAX];
 	struct ipsec_test_flags flags;
 	uint32_t i = 0, ret = 0;
 
