@@ -11722,6 +11722,7 @@ test_tls_record_proto_process(const struct tls_record_test_data td[],
 			      struct tls_record_test_data res_d[], int nb_td, bool silent,
 			      const struct tls_record_test_flags *flags)
 {
+	int nb_segs = flags->nb_segs_in_mbuf ? flags->nb_segs_in_mbuf : 1;
 	struct crypto_testsuite_params *ts_params = &testsuite_params;
 	struct crypto_unittest_params *ut_params = &unittest_params;
 	struct rte_security_tls_record_xform tls_record_xform;
@@ -11824,7 +11825,7 @@ test_tls_record_proto_process(const struct tls_record_test_data td[],
 	for (i = 0; i < nb_td; i++) {
 		/* Setup source mbuf payload */
 		ut_params->ibuf = create_segmented_mbuf(ts_params->mbuf_pool, td[i].input_text.len,
-				1, 0);
+				nb_segs, 0);
 		pktmbuf_write(ut_params->ibuf, 0, td[i].input_text.len, td[i].input_text.data);
 
 		/* Generate crypto op data structure */
@@ -11977,6 +11978,24 @@ test_tls_record_proto_display_list(void)
 	memset(&flags, 0, sizeof(flags));
 
 	flags.display_alg = true;
+
+	return test_tls_record_proto_all(&flags);
+}
+
+static int
+test_tls_record_proto_sgl(void)
+{
+	struct tls_record_test_flags flags = {
+		.nb_segs_in_mbuf = 5
+	};
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	struct rte_cryptodev_info dev_info;
+
+	rte_cryptodev_info_get(ts_params->valid_devs[0], &dev_info);
+	if (!(dev_info.feature_flags & RTE_CRYPTODEV_FF_IN_PLACE_SGL)) {
+		printf("Device doesn't support in-place scatter-gather. Test Skipped.\n");
+		return TEST_SKIPPED;
+	}
 
 	return test_tls_record_proto_all(&flags);
 }
@@ -16979,6 +16998,10 @@ static struct unit_test_suite tls12_record_proto_testsuite  = {
 			"Combined test alg list",
 			ut_setup_security, ut_teardown,
 			test_tls_record_proto_display_list),
+		TEST_CASE_NAMED_ST(
+			"Multi-segmented mode",
+			ut_setup_security, ut_teardown,
+			test_tls_record_proto_sgl),
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}
 };
@@ -17076,6 +17099,10 @@ static struct unit_test_suite dtls12_record_proto_testsuite  = {
 			"Combined test alg list",
 			ut_setup_security, ut_teardown,
 			test_tls_record_proto_display_list),
+		TEST_CASE_NAMED_ST(
+			"Multi-segmented mode",
+			ut_setup_security, ut_teardown,
+			test_tls_record_proto_sgl),
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}
 };

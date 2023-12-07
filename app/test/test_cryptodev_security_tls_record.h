@@ -55,6 +55,7 @@ struct tls_record_test_data {
 
 struct tls_record_test_flags {
 	bool display_alg;
+	int nb_segs_in_mbuf;
 };
 
 extern struct tls_record_test_data tls_test_data_aes_128_gcm_v1;
