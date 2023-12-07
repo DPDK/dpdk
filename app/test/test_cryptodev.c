@@ -11727,6 +11727,7 @@ test_tls_record_proto_process(const struct tls_record_test_data td[],
 	struct rte_security_tls_record_xform tls_record_xform;
 	struct rte_security_capability_idx sec_cap_idx;
 	const struct rte_security_capability *sec_cap;
+	struct tls_record_test_data *res_d_tmp = NULL;
 	enum rte_security_tls_sess_type sess_type;
 	uint8_t dev_id = ts_params->valid_devs[0];
 	struct rte_security_ctx *ctx;
@@ -11864,7 +11865,10 @@ test_tls_record_proto_process(const struct tls_record_test_data td[],
 		if (ret != TEST_SUCCESS)
 			goto crypto_op_free;
 
-		ret = test_tls_record_post_process(ut_params->ibuf, &td[i], NULL, silent);
+		if (res_d != NULL)
+			res_d_tmp = &res_d[i];
+
+		ret = test_tls_record_post_process(ut_params->ibuf, &td[i], res_d_tmp, silent);
 		if (ret != TEST_SUCCESS)
 			goto crypto_op_free;
 
@@ -11887,7 +11891,6 @@ crypto_op_free:
 		rte_security_session_destroy(ctx, ut_params->sec_session);
 	ut_params->sec_session = NULL;
 
-	RTE_SET_USED(res_d);
 	RTE_SET_USED(flags);
 
 	return ret;
@@ -11924,6 +11927,58 @@ test_tls_record_proto_known_vec_read(const void *test_data)
 		memcpy(&td_inb, td, sizeof(td_inb));
 
 	return test_tls_record_proto_process(&td_inb, NULL, 1, false, &flags);
+}
+
+static int
+test_tls_record_proto_all(const struct tls_record_test_flags *flags)
+{
+	struct tls_record_test_data td_outb[TEST_SEC_PKTS_MAX];
+	struct tls_record_test_data td_inb[TEST_SEC_PKTS_MAX];
+	unsigned int i, nb_pkts = 1, pass_cnt = 0;
+	int ret;
+
+	for (i = 0; i < RTE_DIM(sec_alg_list); i++) {
+		test_tls_record_td_prepare(sec_alg_list[i].param1, sec_alg_list[i].param2, flags,
+					   td_outb, nb_pkts);
+
+		ret = test_tls_record_proto_process(td_outb, td_inb, nb_pkts, true, flags);
+		if (ret == TEST_SKIPPED)
+			continue;
+
+		if (ret == TEST_FAILED)
+			return TEST_FAILED;
+
+		test_tls_record_td_update(td_inb, td_outb, nb_pkts, flags);
+
+		ret = test_tls_record_proto_process(td_inb, NULL, nb_pkts, true, flags);
+		if (ret == TEST_SKIPPED)
+			continue;
+
+		if (ret == TEST_FAILED)
+			return TEST_FAILED;
+
+		if (flags->display_alg)
+			test_sec_alg_display(sec_alg_list[i].param1, sec_alg_list[i].param2);
+
+		pass_cnt++;
+	}
+
+	if (pass_cnt > 0)
+		return TEST_SUCCESS;
+	else
+		return TEST_SKIPPED;
+}
+
+static int
+test_tls_record_proto_display_list(void)
+{
+	struct tls_record_test_flags flags;
+
+	memset(&flags, 0, sizeof(flags));
+
+	flags.display_alg = true;
+
+	return test_tls_record_proto_all(&flags);
 }
 
 #endif
@@ -16868,6 +16923,10 @@ static struct unit_test_suite tls12_record_proto_testsuite  = {
 			"Read record known vector AES-128-CBC-SHA1",
 			ut_setup_security, ut_teardown,
 			test_tls_record_proto_known_vec_read, &tls_test_data_aes_128_cbc_sha1_hmac),
+		TEST_CASE_NAMED_ST(
+			"Combined test alg list",
+			ut_setup_security, ut_teardown,
+			test_tls_record_proto_display_list),
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}
 };
@@ -16892,6 +16951,10 @@ static struct unit_test_suite dtls12_record_proto_testsuite  = {
 			"Read record known vector AES-GCM-256",
 			ut_setup_security, ut_teardown,
 			test_tls_record_proto_known_vec_read, &dtls_test_data_aes_256_gcm),
+		TEST_CASE_NAMED_ST(
+			"Combined test alg list",
+			ut_setup_security, ut_teardown,
+			test_tls_record_proto_display_list),
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}
 };

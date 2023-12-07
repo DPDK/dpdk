@@ -7,6 +7,7 @@
 #include "test.h"
 #include "test_cryptodev_security_tls_record.h"
 #include "test_cryptodev_security_tls_record_test_vectors.h"
+#include "test_security_proto.h"
 
 int
 test_tls_record_status_check(struct rte_crypto_op *op)
@@ -54,6 +55,65 @@ test_tls_record_td_read_from_write(const struct tls_record_test_data *td_out,
 		td_in->xform.chain.auth.auth.op = RTE_CRYPTO_AUTH_OP_VERIFY;
 		td_in->xform.chain.cipher.cipher.op = RTE_CRYPTO_CIPHER_OP_DECRYPT;
 	}
+}
+
+void
+test_tls_record_td_prepare(const struct crypto_param *param1, const struct crypto_param *param2,
+			   const struct tls_record_test_flags *flags,
+			   struct tls_record_test_data *td_array, int nb_td)
+{
+	struct tls_record_test_data *td = NULL;
+	int i;
+
+	memset(td_array, 0, nb_td * sizeof(*td));
+
+	for (i = 0; i < nb_td; i++) {
+		td = &td_array[i];
+
+		/* Prepare fields based on param */
+
+		if (param1->type == RTE_CRYPTO_SYM_XFORM_AEAD) {
+			/* Copy template for packet & key fields */
+			memcpy(td, &tls_test_data_aes_128_gcm_v1, sizeof(*td));
+
+			td->aead = true;
+			td->xform.aead.aead.algo = param1->alg.aead;
+			td->xform.aead.aead.key.length = param1->key_length;
+			td->xform.aead.aead.digest_length = param1->digest_length;
+		} else {
+			/* Copy template for packet & key fields */
+			memcpy(td, &tls_test_data_aes_128_cbc_sha1_hmac, sizeof(*td));
+
+			td->aead = false;
+			td->xform.chain.cipher.cipher.algo = param1->alg.cipher;
+			td->xform.chain.cipher.cipher.key.length = param1->key_length;
+			td->xform.chain.cipher.cipher.iv.length = param1->iv_length;
+			td->xform.chain.auth.auth.algo = param2->alg.auth;
+			td->xform.chain.auth.auth.key.length = param2->key_length;
+			td->xform.chain.auth.auth.digest_length = param2->digest_length;
+		}
+	}
+
+	RTE_SET_USED(flags);
+}
+
+void
+test_tls_record_td_update(struct tls_record_test_data td_inb[],
+			  const struct tls_record_test_data td_outb[], int nb_td,
+			  const struct tls_record_test_flags *flags)
+{
+	int i;
+
+	for (i = 0; i < nb_td; i++) {
+		memcpy(td_inb[i].output_text.data, td_outb[i].input_text.data,
+		       td_outb[i].input_text.len);
+		td_inb[i].output_text.len = td_outb->input_text.len;
+
+		/* Clear outbound specific flags */
+		td_inb[i].tls_record_xform.options.iv_gen_disable = 0;
+	}
+
+	RTE_SET_USED(flags);
 }
 
 static int

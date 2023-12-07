@@ -8,6 +8,8 @@
 #include <rte_cryptodev.h>
 #include <rte_security.h>
 
+#include "test_security_proto.h"
+
 #define TLS_RECORD_MAX_LEN 16384u
 
 struct tls_record_test_data {
@@ -69,6 +71,15 @@ int test_tls_record_sec_caps_verify(struct rte_security_tls_record_xform *tls_re
 
 void test_tls_record_td_read_from_write(const struct tls_record_test_data *td_out,
 					struct tls_record_test_data *td_in);
+
+void test_tls_record_td_prepare(const struct crypto_param *param1,
+				const struct crypto_param *param2,
+				const struct tls_record_test_flags *flags,
+				struct tls_record_test_data *td_array, int nb_td);
+
+void test_tls_record_td_update(struct tls_record_test_data td_inb[],
+			       const struct tls_record_test_data td_outb[], int nb_td,
+			       const struct tls_record_test_flags *flags);
 
 int test_tls_record_post_process(const struct rte_mbuf *m, const struct tls_record_test_data *td,
 				 struct tls_record_test_data *res_d, bool silent);
