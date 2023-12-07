@@ -16908,6 +16908,31 @@ static struct unit_test_suite tls12_record_proto_testsuite  = {
 			ut_setup_security, ut_teardown,
 			test_tls_record_proto_known_vec, &tls_test_data_aes_128_cbc_sha1_hmac),
 		TEST_CASE_NAMED_WITH_DATA(
+			"Write record known vector AES-128-CBC-SHA256",
+			ut_setup_security, ut_teardown,
+			test_tls_record_proto_known_vec, &tls_test_data_aes_128_cbc_sha256_hmac),
+		TEST_CASE_NAMED_WITH_DATA(
+			"Write record known vector AES-256-CBC-SHA1",
+			ut_setup_security, ut_teardown,
+			test_tls_record_proto_known_vec, &tls_test_data_aes_256_cbc_sha1_hmac),
+		TEST_CASE_NAMED_WITH_DATA(
+			"Write record known vector AES-256-CBC-SHA256",
+			ut_setup_security, ut_teardown,
+			test_tls_record_proto_known_vec, &tls_test_data_aes_256_cbc_sha256_hmac),
+		TEST_CASE_NAMED_WITH_DATA(
+			"Write record known vector 3DES-CBC-SHA1-HMAC",
+			ut_setup_security, ut_teardown,
+			test_tls_record_proto_known_vec, &tls_test_data_3des_cbc_sha1_hmac),
+		TEST_CASE_NAMED_WITH_DATA(
+			"Write record known vector NULL-SHA1-HMAC",
+			ut_setup_security, ut_teardown,
+			test_tls_record_proto_known_vec, &tls_test_data_null_cipher_sha1_hmac),
+		TEST_CASE_NAMED_WITH_DATA(
+			"Write record known vector CHACHA20-POLY1305",
+			ut_setup_security, ut_teardown,
+			test_tls_record_proto_known_vec, &tls_test_data_chacha20_poly1305),
+
+		TEST_CASE_NAMED_WITH_DATA(
 			"Read record known vector AES-GCM-128 (vector 1)",
 			ut_setup_security, ut_teardown,
 			test_tls_record_proto_known_vec_read, &tls_test_data_aes_128_gcm_v1),
@@ -16923,6 +16948,33 @@ static struct unit_test_suite tls12_record_proto_testsuite  = {
 			"Read record known vector AES-128-CBC-SHA1",
 			ut_setup_security, ut_teardown,
 			test_tls_record_proto_known_vec_read, &tls_test_data_aes_128_cbc_sha1_hmac),
+		TEST_CASE_NAMED_WITH_DATA(
+			"Read record known vector AES-128-CBC-SHA256",
+			ut_setup_security, ut_teardown,
+			test_tls_record_proto_known_vec_read,
+			&tls_test_data_aes_128_cbc_sha256_hmac),
+		TEST_CASE_NAMED_WITH_DATA(
+			"Read record known vector AES-256-CBC-SHA1",
+			ut_setup_security, ut_teardown,
+			test_tls_record_proto_known_vec_read, &tls_test_data_aes_256_cbc_sha1_hmac),
+		TEST_CASE_NAMED_WITH_DATA(
+			"Read record known vector AES-256-CBC-SHA256",
+			ut_setup_security, ut_teardown,
+			test_tls_record_proto_known_vec_read,
+			&tls_test_data_aes_256_cbc_sha256_hmac),
+		TEST_CASE_NAMED_WITH_DATA(
+			"Read record known vector 3DES-CBC-SHA1-HMAC",
+			ut_setup_security, ut_teardown,
+			test_tls_record_proto_known_vec_read, &tls_test_data_3des_cbc_sha1_hmac),
+		TEST_CASE_NAMED_WITH_DATA(
+			"Read record known vector NULL-SHA1-HMAC",
+			ut_setup_security, ut_teardown,
+			test_tls_record_proto_known_vec_read, &tls_test_data_null_cipher_sha1_hmac),
+		TEST_CASE_NAMED_WITH_DATA(
+			"Read record known vector CHACHA20-POLY1305",
+			ut_setup_security, ut_teardown,
+			test_tls_record_proto_known_vec_read, &tls_test_data_chacha20_poly1305),
+
 		TEST_CASE_NAMED_ST(
 			"Combined test alg list",
 			ut_setup_security, ut_teardown,
@@ -16944,6 +16996,40 @@ static struct unit_test_suite dtls12_record_proto_testsuite  = {
 			ut_setup_security, ut_teardown,
 			test_tls_record_proto_known_vec, &dtls_test_data_aes_256_gcm),
 		TEST_CASE_NAMED_WITH_DATA(
+			"Write record known vector AES-128-CBC-SHA1",
+			ut_setup_security, ut_teardown,
+			test_tls_record_proto_known_vec,
+			&dtls_test_data_aes_128_cbc_sha1_hmac),
+		TEST_CASE_NAMED_WITH_DATA(
+			"Write record known vector AES-128-CBC-SHA256",
+			ut_setup_security, ut_teardown,
+			test_tls_record_proto_known_vec,
+			&dtls_test_data_aes_128_cbc_sha256_hmac),
+		TEST_CASE_NAMED_WITH_DATA(
+			"Write record known vector AES-256-CBC-SHA1",
+			ut_setup_security, ut_teardown,
+			test_tls_record_proto_known_vec,
+			&dtls_test_data_aes_256_cbc_sha1_hmac),
+		TEST_CASE_NAMED_WITH_DATA(
+			"Write record known vector AES-256-CBC-SHA256",
+			ut_setup_security, ut_teardown,
+			test_tls_record_proto_known_vec,
+			&dtls_test_data_aes_256_cbc_sha256_hmac),
+		TEST_CASE_NAMED_WITH_DATA(
+			"Write record known vector 3DES-CBC-SHA1-HMAC",
+			ut_setup_security, ut_teardown,
+			test_tls_record_proto_known_vec,
+			&dtls_test_data_3des_cbc_sha1_hmac),
+		TEST_CASE_NAMED_WITH_DATA(
+			"Write record known vector NULL-SHA1-HMAC",
+			ut_setup_security, ut_teardown,
+			test_tls_record_proto_known_vec,
+			&dtls_test_data_null_cipher_sha1_hmac),
+		TEST_CASE_NAMED_WITH_DATA(
+			"Write record known vector CHACHA20-POLY1305",
+			ut_setup_security, ut_teardown,
+			test_tls_record_proto_known_vec, &dtls_test_data_chacha20_poly1305),
+		TEST_CASE_NAMED_WITH_DATA(
 			"Read record known vector AES-GCM-128",
 			ut_setup_security, ut_teardown,
 			test_tls_record_proto_known_vec_read, &dtls_test_data_aes_128_gcm),
@@ -16951,6 +17037,41 @@ static struct unit_test_suite dtls12_record_proto_testsuite  = {
 			"Read record known vector AES-GCM-256",
 			ut_setup_security, ut_teardown,
 			test_tls_record_proto_known_vec_read, &dtls_test_data_aes_256_gcm),
+		TEST_CASE_NAMED_WITH_DATA(
+			"Read record known vector AES-128-CBC-SHA1",
+			ut_setup_security, ut_teardown,
+			test_tls_record_proto_known_vec_read,
+			&dtls_test_data_aes_128_cbc_sha1_hmac),
+		TEST_CASE_NAMED_WITH_DATA(
+			"Read record known vector AES-128-CBC-SHA256",
+			ut_setup_security, ut_teardown,
+			test_tls_record_proto_known_vec_read,
+			&dtls_test_data_aes_128_cbc_sha256_hmac),
+		TEST_CASE_NAMED_WITH_DATA(
+			"Read record known vector AES-256-CBC-SHA1",
+			ut_setup_security, ut_teardown,
+			test_tls_record_proto_known_vec_read,
+			&dtls_test_data_aes_256_cbc_sha1_hmac),
+		TEST_CASE_NAMED_WITH_DATA(
+			"Read record known vector AES-256-CBC-SHA256",
+			ut_setup_security, ut_teardown,
+			test_tls_record_proto_known_vec_read,
+			&dtls_test_data_aes_256_cbc_sha256_hmac),
+		TEST_CASE_NAMED_WITH_DATA(
+			"Read record known vector 3DES-CBC-SHA1-HMAC",
+			ut_setup_security, ut_teardown,
+			test_tls_record_proto_known_vec_read,
+			&dtls_test_data_3des_cbc_sha1_hmac),
+		TEST_CASE_NAMED_WITH_DATA(
+			"Read record known vector NULL-SHA1-HMAC",
+			ut_setup_security, ut_teardown,
+			test_tls_record_proto_known_vec_read,
+			&dtls_test_data_null_cipher_sha1_hmac),
+		TEST_CASE_NAMED_WITH_DATA(
+			"Read record known vector CHACHA20-POLY1305",
+			ut_setup_security, ut_teardown,
+			test_tls_record_proto_known_vec_read, &dtls_test_data_chacha20_poly1305),
+
 		TEST_CASE_NAMED_ST(
 			"Combined test alg list",
 			ut_setup_security, ut_teardown,
