@@ -517,12 +517,13 @@ nfb_eth_dev_init(struct rte_eth_dev *dev)
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	struct rte_pci_addr *pci_addr = &pci_dev->addr;
 	struct rte_ether_addr eth_addr_init;
+	char nfb_dev[PATH_MAX];
 
 	NFB_LOG(INFO, "Initializing NFB device (" PCI_PRI_FMT ")",
 		pci_addr->domain, pci_addr->bus, pci_addr->devid,
 		pci_addr->function);
 
-	snprintf(internals->nfb_dev, PATH_MAX,
+	snprintf(nfb_dev, sizeof(nfb_dev),
 		"/dev/nfb/by-pci-slot/" PCI_PRI_FMT,
 		pci_addr->domain, pci_addr->bus, pci_addr->devid,
 		pci_addr->function);
@@ -532,10 +533,9 @@ nfb_eth_dev_init(struct rte_eth_dev *dev)
 	 * number of queues that can be created and store it in private device
 	 * data structure.
 	 */
-	internals->nfb = nfb_open(internals->nfb_dev);
+	internals->nfb = nfb_open(nfb_dev);
 	if (internals->nfb == NULL) {
-		NFB_LOG(ERR, "nfb_open(): failed to open %s",
-			internals->nfb_dev);
+		NFB_LOG(ERR, "nfb_open(): failed to open %s", nfb_dev);
 		return -EINVAL;
 	}
 	data->nb_rx_queues = ndp_get_rx_queue_available_count(internals->nfb);
