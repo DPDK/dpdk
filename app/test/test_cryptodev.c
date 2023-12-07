@@ -16841,9 +16841,17 @@ static struct unit_test_suite tls12_record_proto_testsuite  = {
 			ut_setup_security, ut_teardown,
 			test_tls_record_proto_known_vec, &tls_test_data_aes_128_gcm_v1),
 		TEST_CASE_NAMED_WITH_DATA(
+			"Write record known vector AES-128-CBC-SHA1",
+			ut_setup_security, ut_teardown,
+			test_tls_record_proto_known_vec, &tls_test_data_aes_128_cbc_sha1_hmac),
+		TEST_CASE_NAMED_WITH_DATA(
 			"Read record known vector AES-GCM-128 (vector 1)",
 			ut_setup_security, ut_teardown,
 			test_tls_record_proto_known_vec_read, &tls_test_data_aes_128_gcm_v1),
+		TEST_CASE_NAMED_WITH_DATA(
+			"Read record known vector AES-128-CBC-SHA1",
+			ut_setup_security, ut_teardown,
+			test_tls_record_proto_known_vec_read, &tls_test_data_aes_128_cbc_sha1_hmac),
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}
 };
