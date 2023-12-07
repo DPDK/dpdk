@@ -16841,7 +16841,15 @@ static struct unit_test_suite tls12_record_proto_testsuite  = {
 			ut_setup_security, ut_teardown,
 			test_tls_record_proto_known_vec, &tls_test_data_aes_128_gcm_v1),
 		TEST_CASE_NAMED_WITH_DATA(
-			"Write record known vector AES-128-CBC-SHA1",
+			"Write record known vector AES-GCM-128 (vector 2)",
+			ut_setup_security, ut_teardown,
+			test_tls_record_proto_known_vec, &tls_test_data_aes_128_gcm_v2),
+		TEST_CASE_NAMED_WITH_DATA(
+			"Write record known vector AES-GCM-256",
+			ut_setup_security, ut_teardown,
+			test_tls_record_proto_known_vec, &tls_test_data_aes_256_gcm),
+		TEST_CASE_NAMED_WITH_DATA(
+			"Write record known vector AES-CBC-128-SHA1",
 			ut_setup_security, ut_teardown,
 			test_tls_record_proto_known_vec, &tls_test_data_aes_128_cbc_sha1_hmac),
 		TEST_CASE_NAMED_WITH_DATA(
@@ -16849,9 +16857,41 @@ static struct unit_test_suite tls12_record_proto_testsuite  = {
 			ut_setup_security, ut_teardown,
 			test_tls_record_proto_known_vec_read, &tls_test_data_aes_128_gcm_v1),
 		TEST_CASE_NAMED_WITH_DATA(
+			"Read record known vector AES-GCM-128 (vector 2)",
+			ut_setup_security, ut_teardown,
+			test_tls_record_proto_known_vec_read, &tls_test_data_aes_128_gcm_v2),
+		TEST_CASE_NAMED_WITH_DATA(
+			"Read record known vector AES-GCM-256",
+			ut_setup_security, ut_teardown,
+			test_tls_record_proto_known_vec_read, &tls_test_data_aes_256_gcm),
+		TEST_CASE_NAMED_WITH_DATA(
 			"Read record known vector AES-128-CBC-SHA1",
 			ut_setup_security, ut_teardown,
 			test_tls_record_proto_known_vec_read, &tls_test_data_aes_128_cbc_sha1_hmac),
+		TEST_CASES_END() /**< NULL terminate unit test array */
+	}
+};
+
+static struct unit_test_suite dtls12_record_proto_testsuite  = {
+	.suite_name = "DTLS 1.2 Record Protocol Unit Test Suite",
+	.setup = tls_record_proto_testsuite_setup,
+	.unit_test_cases = {
+		TEST_CASE_NAMED_WITH_DATA(
+			"Write record known vector AES-GCM-128",
+			ut_setup_security, ut_teardown,
+			test_tls_record_proto_known_vec, &dtls_test_data_aes_128_gcm),
+		TEST_CASE_NAMED_WITH_DATA(
+			"Write record known vector AES-GCM-256",
+			ut_setup_security, ut_teardown,
+			test_tls_record_proto_known_vec, &dtls_test_data_aes_256_gcm),
+		TEST_CASE_NAMED_WITH_DATA(
+			"Read record known vector AES-GCM-128",
+			ut_setup_security, ut_teardown,
+			test_tls_record_proto_known_vec_read, &dtls_test_data_aes_128_gcm),
+		TEST_CASE_NAMED_WITH_DATA(
+			"Read record known vector AES-GCM-256",
+			ut_setup_security, ut_teardown,
+			test_tls_record_proto_known_vec_read, &dtls_test_data_aes_256_gcm),
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}
 };
@@ -17864,6 +17904,7 @@ run_cryptodev_testsuite(const char *pmd_name)
 		&pdcp_proto_testsuite,
 		&docsis_proto_testsuite,
 		&tls12_record_proto_testsuite,
+		&dtls12_record_proto_testsuite,
 #endif
 		&end_testsuite
 	};

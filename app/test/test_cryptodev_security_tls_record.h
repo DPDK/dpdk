@@ -56,6 +56,10 @@ struct tls_record_test_flags {
 };
 
 extern struct tls_record_test_data tls_test_data_aes_128_gcm_v1;
+extern struct tls_record_test_data tls_test_data_aes_128_gcm_v2;
+extern struct tls_record_test_data tls_test_data_aes_256_gcm;
+extern struct tls_record_test_data dtls_test_data_aes_128_gcm;
+extern struct tls_record_test_data dtls_test_data_aes_256_gcm;
 extern struct tls_record_test_data tls_test_data_aes_128_cbc_sha1_hmac;
 
 int test_tls_record_status_check(struct rte_crypto_op *op);
