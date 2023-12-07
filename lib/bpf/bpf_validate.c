@@ -2178,18 +2178,18 @@ restore_eval_state(struct bpf_verifier *bvf, struct inst_node *node)
 }
 
 static void
-log_eval_state(const struct bpf_verifier *bvf, const struct ebpf_insn *ins,
-	uint32_t pc, int32_t loglvl)
+log_dbg_eval_state(const struct bpf_verifier *bvf, const struct ebpf_insn *ins,
+	uint32_t pc)
 {
 	const struct bpf_eval_state *st;
 	const struct bpf_reg_val *rv;
 
-	rte_log(loglvl, rte_bpf_logtype, "%s(pc=%u):\n", __func__, pc);
+	RTE_BPF_LOG(DEBUG, "%s(pc=%u):\n", __func__, pc);
 
 	st = bvf->evst;
 	rv = st->rv + ins->dst_reg;
 
-	rte_log(loglvl, rte_bpf_logtype,
+	RTE_BPF_LOG(DEBUG,
 		"r%u={\n"
 		"\tv={type=%u, size=%zu},\n"
 		"\tmask=0x%" PRIx64 ",\n"
@@ -2269,7 +2269,7 @@ evaluate(struct bpf_verifier *bvf)
 				}
 			}
 
-			log_eval_state(bvf, ins + idx, idx, RTE_LOG_DEBUG);
+			log_dbg_eval_state(bvf, ins + idx, idx);
 			bvf->evin = NULL;
 		}
 
