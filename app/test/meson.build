@@ -170,6 +170,7 @@ source_file_deps = {
     'test_security.c': ['net', 'security'],
     'test_security_inline_macsec.c': ['ethdev', 'security'],
     'test_security_inline_proto.c': ['ethdev', 'security', 'eventdev'] + test_cryptodev_deps,
+    'test_security_proto.c' : ['cryptodev', 'security'],
     'test_seqlock.c': [],
     'test_service_cores.c': [],
     'test_spinlock.c': [],

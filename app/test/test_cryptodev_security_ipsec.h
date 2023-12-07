@@ -263,18 +263,6 @@ int test_ipsec_sec_caps_verify(struct rte_security_ipsec_xform *ipsec_xform,
 			       const struct rte_security_capability *sec_cap,
 			       bool silent);
 
-int test_ipsec_crypto_caps_aead_verify(
-		const struct rte_security_capability *sec_cap,
-		struct rte_crypto_sym_xform *aead);
-
-int test_ipsec_crypto_caps_cipher_verify(
-		const struct rte_security_capability *sec_cap,
-		struct rte_crypto_sym_xform *cipher);
-
-int test_ipsec_crypto_caps_auth_verify(
-		const struct rte_security_capability *sec_cap,
-		struct rte_crypto_sym_xform *auth);
-
 void test_ipsec_td_in_from_out(const struct ipsec_test_data *td_out,
 			       struct ipsec_test_data *td_in);
 

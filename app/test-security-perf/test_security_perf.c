@@ -16,6 +16,7 @@
 #include <app/test/test_cryptodev.h>
 #include <app/test/test_cryptodev_security_ipsec.h>
 #include <app/test/test_cryptodev_security_ipsec_test_vectors.h>
+#include <app/test/test_security_proto.h>
 
 #define NB_DESC 4096
 #define DEF_NB_SESSIONS (16 * 10 * 1024) /* 16 * 10K tunnels */
@@ -258,9 +259,7 @@ sec_conf_init(struct lcore_conf *conf,
 		conf->aead_xform.aead.iv.offset = IV_OFFSET;
 
 		/* Verify crypto capabilities */
-		if (test_ipsec_crypto_caps_aead_verify(
-				sec_cap,
-				&conf->aead_xform) != 0) {
+		if (test_sec_crypto_caps_aead_verify(sec_cap, &conf->aead_xform) != 0) {
 			RTE_LOG(ERR, USER1,
 				"Crypto capabilities not supported\n");
 			return -1;
@@ -270,9 +269,7 @@ sec_conf_init(struct lcore_conf *conf,
 		       sizeof(conf->auth_xform));
 		conf->auth_xform.auth.key.data = td[0].auth_key.data;
 
-		if (test_ipsec_crypto_caps_auth_verify(
-				sec_cap,
-				&conf->auth_xform) != 0) {
+		if (test_sec_crypto_caps_auth_verify(sec_cap, &conf->auth_xform) != 0) {
 			RTE_LOG(INFO, USER1,
 				"Auth crypto capabilities not supported\n");
 			return -1;
@@ -288,17 +285,13 @@ sec_conf_init(struct lcore_conf *conf,
 
 		/* Verify crypto capabilities */
 
-		if (test_ipsec_crypto_caps_cipher_verify(
-				sec_cap,
-				&conf->cipher_xform) != 0) {
+		if (test_sec_crypto_caps_cipher_verify(sec_cap, &conf->cipher_xform) != 0) {
 			RTE_LOG(ERR, USER1,
 				"Cipher crypto capabilities not supported\n");
 			return -1;
 		}
 
-		if (test_ipsec_crypto_caps_auth_verify(
-				sec_cap,
-				&conf->auth_xform) != 0) {
+		if (test_sec_crypto_caps_auth_verify(sec_cap, &conf->auth_xform) != 0) {
 			RTE_LOG(ERR, USER1,
 				"Auth crypto capabilities not supported\n");
 			return -1;

@@ -12,6 +12,7 @@
 
 #include "test.h"
 #include "test_security_inline_proto_vectors.h"
+#include "test_security_proto.h"
 
 #ifdef RTE_EXEC_ENV_WINDOWS
 static int
@@ -248,8 +249,7 @@ create_inline_ipsec_session(struct ipsec_test_data *sa, uint16_t portid,
 				sizeof(struct rte_crypto_sym_xform));
 		sess_conf->crypto_xform->aead.key.data = sa->key.data;
 		/* Verify crypto capabilities */
-		if (test_ipsec_crypto_caps_aead_verify(sec_cap,
-					sess_conf->crypto_xform) != 0) {
+		if (test_sec_crypto_caps_aead_verify(sec_cap, sess_conf->crypto_xform) != 0) {
 			RTE_LOG(INFO, USER1,
 				"Crypto capabilities not supported\n");
 			return TEST_SKIPPED;
@@ -268,14 +268,14 @@ create_inline_ipsec_session(struct ipsec_test_data *sa, uint16_t portid,
 			sess_conf->crypto_xform->next->auth.key.data =
 							sa->auth_key.data;
 			/* Verify crypto capabilities */
-			if (test_ipsec_crypto_caps_cipher_verify(sec_cap,
+			if (test_sec_crypto_caps_cipher_verify(sec_cap,
 					sess_conf->crypto_xform) != 0) {
 				RTE_LOG(INFO, USER1,
 					"Cipher crypto capabilities not supported\n");
 				return TEST_SKIPPED;
 			}
 
-			if (test_ipsec_crypto_caps_auth_verify(sec_cap,
+			if (test_sec_crypto_caps_auth_verify(sec_cap,
 					sess_conf->crypto_xform->next) != 0) {
 				RTE_LOG(INFO, USER1,
 					"Auth crypto capabilities not supported\n");
@@ -294,14 +294,14 @@ create_inline_ipsec_session(struct ipsec_test_data *sa, uint16_t portid,
 							sa->key.data;
 
 			/* Verify crypto capabilities */
-			if (test_ipsec_crypto_caps_cipher_verify(sec_cap,
+			if (test_sec_crypto_caps_cipher_verify(sec_cap,
 					sess_conf->crypto_xform->next) != 0) {
 				RTE_LOG(INFO, USER1,
 					"Cipher crypto capabilities not supported\n");
 				return TEST_SKIPPED;
 			}
 
-			if (test_ipsec_crypto_caps_auth_verify(sec_cap,
+			if (test_sec_crypto_caps_auth_verify(sec_cap,
 					sess_conf->crypto_xform) != 0) {
 				RTE_LOG(INFO, USER1,
 					"Auth crypto capabilities not supported\n");

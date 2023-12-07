@@ -10,5 +10,6 @@ endif
 sources = files(
         'test_security_perf.c',
         '../test/test_cryptodev_security_ipsec.c',
+        '../test/test_security_proto.c',
 )
 deps += ['security', 'cmdline']
