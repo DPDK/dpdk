@@ -16837,13 +16837,13 @@ static struct unit_test_suite tls12_record_proto_testsuite  = {
 	.setup = tls_record_proto_testsuite_setup,
 	.unit_test_cases = {
 		TEST_CASE_NAMED_WITH_DATA(
-			"Known vector TBD",
+			"Write record known vector AES-GCM-128 (vector 1)",
 			ut_setup_security, ut_teardown,
-			test_tls_record_proto_known_vec, &tls_test_data1),
+			test_tls_record_proto_known_vec, &tls_test_data_aes_128_gcm_v1),
 		TEST_CASE_NAMED_WITH_DATA(
-			"Known vector TBD",
+			"Read record known vector AES-GCM-128 (vector 1)",
 			ut_setup_security, ut_teardown,
-			test_tls_record_proto_known_vec_read, &tls_test_data1),
+			test_tls_record_proto_known_vec_read, &tls_test_data_aes_128_gcm_v1),
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}
 };
