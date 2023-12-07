@@ -517,7 +517,6 @@ nfb_eth_dev_init(struct rte_eth_dev *dev)
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	struct rte_pci_addr *pci_addr = &pci_dev->addr;
 	struct rte_ether_addr eth_addr_init;
-	struct rte_kvargs *kvlist;
 
 	NFB_LOG(INFO, "Initializing NFB device (" PCI_PRI_FMT ")",
 		pci_addr->domain, pci_addr->bus, pci_addr->devid,
@@ -527,21 +526,6 @@ nfb_eth_dev_init(struct rte_eth_dev *dev)
 		"/dev/nfb/by-pci-slot/" PCI_PRI_FMT,
 		pci_addr->domain, pci_addr->bus, pci_addr->devid,
 		pci_addr->function);
-
-	/* Check validity of device args */
-	if (dev->device->devargs != NULL &&
-			dev->device->devargs->args != NULL &&
-			strlen(dev->device->devargs->args) > 0) {
-		kvlist = rte_kvargs_parse(dev->device->devargs->args,
-						VALID_KEYS);
-		if (kvlist == NULL) {
-			NFB_LOG(ERR, "Failed to parse device arguments %s",
-				dev->device->devargs->args);
-			rte_kvargs_free(kvlist);
-			return -EINVAL;
-		}
-		rte_kvargs_free(kvlist);
-	}
 
 	/*
 	 * Get number of available DMA RX and TX queues, which is maximum
