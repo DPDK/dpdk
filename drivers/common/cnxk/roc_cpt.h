@@ -190,7 +190,7 @@ void __roc_api roc_cpt_iq_enable(struct roc_cpt_lf *lf);
 int __roc_api roc_cpt_lmtline_init(struct roc_cpt *roc_cpt,
 				   struct roc_cpt_lmtline *lmtline, int lf_id);
 
-void __roc_api roc_cpt_parse_hdr_dump(const struct cpt_parse_hdr_s *cpth);
+void __roc_api roc_cpt_parse_hdr_dump(FILE *file, const struct cpt_parse_hdr_s *cpth);
 int __roc_api roc_cpt_ctx_write(struct roc_cpt_lf *lf, void *sa_dptr,
 				void *sa_cptr, uint16_t sa_len);
 

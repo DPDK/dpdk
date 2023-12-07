@@ -549,7 +549,7 @@ int __roc_api roc_nix_rx_drop_re_set(struct roc_nix *roc_nix, bool ena);
 int __roc_api roc_nix_lf_get_reg_count(struct roc_nix *roc_nix);
 int __roc_api roc_nix_lf_reg_dump(struct roc_nix *roc_nix, uint64_t *data);
 int __roc_api roc_nix_queues_ctx_dump(struct roc_nix *roc_nix, FILE *file);
-void __roc_api roc_nix_cqe_dump(const struct nix_cqe_hdr_s *cq);
+void __roc_api roc_nix_cqe_dump(FILE *file, const struct nix_cqe_hdr_s *cq);
 void __roc_api roc_nix_rq_dump(struct roc_nix_rq *rq, FILE *file);
 void __roc_api roc_nix_cq_dump(struct roc_nix_cq *cq, FILE *file);
 void __roc_api roc_nix_sq_dump(struct roc_nix_sq *sq, FILE *file);

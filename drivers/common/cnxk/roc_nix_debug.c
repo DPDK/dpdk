@@ -808,9 +808,8 @@ fail:
 
 /* Dumps struct nix_cqe_hdr_s and union nix_rx_parse_u */
 void
-roc_nix_cqe_dump(const struct nix_cqe_hdr_s *cq)
+roc_nix_cqe_dump(FILE *file, const struct nix_cqe_hdr_s *cq)
 {
-	FILE *file = NULL;
 	const union nix_rx_parse_u *rx =
 		(const union nix_rx_parse_u *)((const uint64_t *)cq + 1);
 	const uint64_t *sgs = (const uint64_t *)(rx + 1);
