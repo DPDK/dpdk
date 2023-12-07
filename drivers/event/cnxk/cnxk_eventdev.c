@@ -243,16 +243,17 @@ cnxk_sso_dev_validate(const struct rte_eventdev *event_dev)
 
 	deq_tmo_ns = conf->dequeue_timeout_ns;
 
-	if (deq_tmo_ns == 0)
-		deq_tmo_ns = dev->min_dequeue_timeout_ns;
-	if (deq_tmo_ns < dev->min_dequeue_timeout_ns ||
-	    deq_tmo_ns > dev->max_dequeue_timeout_ns) {
+	if (deq_tmo_ns && (deq_tmo_ns < dev->min_dequeue_timeout_ns ||
+			   deq_tmo_ns > dev->max_dequeue_timeout_ns)) {
 		plt_err("Unsupported dequeue timeout requested");
 		return -EINVAL;
 	}
 
-	if (conf->event_dev_cfg & RTE_EVENT_DEV_CFG_PER_DEQUEUE_TIMEOUT)
+	if (conf->event_dev_cfg & RTE_EVENT_DEV_CFG_PER_DEQUEUE_TIMEOUT) {
+		if (deq_tmo_ns == 0)
+			deq_tmo_ns = dev->min_dequeue_timeout_ns;
 		dev->is_timeout_deq = 1;
+	}
 
 	dev->deq_tmo_ns = deq_tmo_ns;
 
