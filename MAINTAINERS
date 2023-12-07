@@ -359,8 +359,7 @@ F: kernel/freebsd/nic_uio/
 
 Windows support
 M: Dmitry Kozlyuk <dmitry.kozliuk@gmail.com>
-M: Narcisa Ana Maria Vasile <navasile@linux.microsoft.com>
-M: Dmitry Malloy <dmitrym@microsoft.com>
+M: Tyler Retzlaff <roretzla@linux.microsoft.com>
 M: Pallavi Kadam <pallavi.kadam@intel.com>
 F: lib/eal/windows/
 F: buildtools/map_to_win.py
