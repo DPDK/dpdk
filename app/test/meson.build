@@ -57,6 +57,7 @@ source_file_deps = {
     'test_cryptodev_crosscheck.c': test_cryptodev_deps,
     'test_cryptodev_security_ipsec.c': test_cryptodev_deps,
     'test_cryptodev_security_pdcp.c': test_cryptodev_deps,
+    'test_cryptodev_security_tls_record.c': ['cryptodev', 'security'],
     'test_cycles.c': [],
     'test_debug.c': [],
     'test_devargs.c': ['kvargs'],
