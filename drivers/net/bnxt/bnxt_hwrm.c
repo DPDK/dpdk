@@ -901,6 +901,8 @@ static int __bnxt_hwrm_func_qcaps(struct bnxt *bp)
 		    bp->max_l2_ctx, bp->max_vnics);
 	bp->max_stat_ctx = rte_le_to_cpu_16(resp->max_stat_ctx);
 	bp->max_mcast_addr = rte_le_to_cpu_32(resp->max_mcast_filters);
+	if (!bp->max_mcast_addr)
+		bp->max_mcast_addr = BNXT_DFLT_MAX_MC_ADDR;
 	memcpy(bp->dsn, resp->device_serial_number, sizeof(bp->dsn));
 
 	if (BNXT_PF(bp))
