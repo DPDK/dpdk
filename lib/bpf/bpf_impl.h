@@ -27,9 +27,10 @@ int __rte_bpf_jit_x86(struct rte_bpf *bpf);
 int __rte_bpf_jit_arm64(struct rte_bpf *bpf);
 
 extern int rte_bpf_logtype;
+#define RTE_LOGTYPE_BPF rte_bpf_logtype
 
-#define	RTE_BPF_LOG(lvl, fmt, args...) \
-	rte_log(RTE_LOG_## lvl, rte_bpf_logtype, fmt, ##args)
+#define	RTE_BPF_LOG_LINE(lvl, fmt, args...) \
+	RTE_LOG(lvl, BPF, fmt "\n", ##args)
 
 static inline size_t
 bpf_size(uint32_t bpf_op_sz)

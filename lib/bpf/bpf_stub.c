@@ -19,7 +19,7 @@ rte_bpf_elf_load(const struct rte_bpf_prm *prm, const char *fname,
 		return NULL;
 	}
 
-	RTE_BPF_LOG(ERR, "%s() is not supported, rebuild with libelf installed\n",
+	RTE_BPF_LOG_LINE(ERR, "%s() is not supported, rebuild with libelf installed",
 		__func__);
 	rte_errno = ENOTSUP;
 	return NULL;
@@ -35,7 +35,7 @@ rte_bpf_convert(const struct bpf_program *prog)
 		return NULL;
 	}
 
-	RTE_BPF_LOG(ERR, "%s() is not supported, rebuild with libpcap installed\n",
+	RTE_BPF_LOG_LINE(ERR, "%s() is not supported, rebuild with libpcap installed",
 		__func__);
 	rte_errno = ENOTSUP;
 	return NULL;

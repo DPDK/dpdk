@@ -673,17 +673,15 @@ vhost_log_write_iova(struct virtio_net *dev, struct vhost_virtqueue *vq,
 }
 
 extern int vhost_config_log_level;
+#define RTE_LOGTYPE_VHOST_CONFIG vhost_config_log_level
 extern int vhost_data_log_level;
+#define RTE_LOGTYPE_VHOST_DATA vhost_data_log_level
 
-#define VHOST_LOG_CONFIG(prefix, level, fmt, args...)		\
-	rte_log(RTE_LOG_ ## level, vhost_config_log_level,	\
-		"VHOST_CONFIG: (%s) " fmt, prefix, ##args)
+#define VHOST_CONFIG_LOG(prefix, level, fmt, args...)		\
+	RTE_LOG(level, VHOST_CONFIG, "VHOST_CONFIG: (%s) " fmt "\n", prefix, ##args)
 
-#define VHOST_LOG_DATA(prefix, level, fmt, args...)		\
-	(void)((RTE_LOG_ ## level <= RTE_LOG_DP_LEVEL) ?	\
-	 rte_log(RTE_LOG_ ## level,  vhost_data_log_level,	\
-		"VHOST_DATA: (%s) " fmt, prefix, ##args) :	\
-	 0)
+#define VHOST_DATA_LOG(prefix, level, fmt, args...)		\
+	RTE_LOG_DP(level, VHOST_DATA, "VHOST_DATA: (%s) " fmt "\n", prefix, ##args)
 
 #ifdef RTE_LIBRTE_VHOST_DEBUG
 #define VHOST_MAX_PRINT_BUFF 6072
@@ -702,7 +700,7 @@ extern int vhost_data_log_level;
 	} \
 	snprintf(packet + strnlen(packet, VHOST_MAX_PRINT_BUFF), VHOST_MAX_PRINT_BUFF - strnlen(packet, VHOST_MAX_PRINT_BUFF), "\n"); \
 	\
-	VHOST_LOG_DATA(device->ifname, DEBUG, "%s", packet); \
+	RTE_LOG_DP(DEBUG, VHOST_DATA, "VHOST_DATA: (%s) %s", dev->ifname, packet); \
 } while (0)
 #else
 #define PRINT_PACKET(device, addr, size, header) do {} while (0)
@@ -830,7 +828,7 @@ get_device(int vid)
 		dev = vhost_devices[vid];
 
 	if (unlikely(!dev)) {
-		VHOST_LOG_CONFIG("device", ERR, "(%d) device not found.\n", vid);
+		VHOST_CONFIG_LOG("device", ERR, "(%d) device not found.", vid);
 	}
 
 	return dev;
@@ -963,8 +961,8 @@ vhost_vring_call_split(struct virtio_net *dev, struct vhost_virtqueue *vq)
 		vq->signalled_used = new;
 		vq->signalled_used_valid = true;
 
-		VHOST_LOG_DATA(dev->ifname, DEBUG,
-			"%s: used_event_idx=%d, old=%d, new=%d\n",
+		VHOST_DATA_LOG(dev->ifname, DEBUG,
+			"%s: used_event_idx=%d, old=%d, new=%d",
 			__func__, vhost_used_event(vq), old, new);
 
 		if (vhost_need_event(vhost_used_event(vq), new, old) ||

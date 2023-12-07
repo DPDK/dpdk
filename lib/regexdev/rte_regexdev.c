@@ -73,16 +73,16 @@ regexdev_check_name(const char *name)
 	size_t name_len;
 
 	if (name == NULL) {
-		RTE_REGEXDEV_LOG(ERR, "Name can't be NULL\n");
+		RTE_REGEXDEV_LOG_LINE(ERR, "Name can't be NULL");
 		return -EINVAL;
 	}
 	name_len = strnlen(name, RTE_REGEXDEV_NAME_MAX_LEN);
 	if (name_len == 0) {
-		RTE_REGEXDEV_LOG(ERR, "Zero length RegEx device name\n");
+		RTE_REGEXDEV_LOG_LINE(ERR, "Zero length RegEx device name");
 		return -EINVAL;
 	}
 	if (name_len >= RTE_REGEXDEV_NAME_MAX_LEN) {
-		RTE_REGEXDEV_LOG(ERR, "RegEx device name is too long\n");
+		RTE_REGEXDEV_LOG_LINE(ERR, "RegEx device name is too long");
 		return -EINVAL;
 	}
 	return (int)name_len;
@@ -101,17 +101,17 @@ rte_regexdev_register(const char *name)
 		return NULL;
 	dev = regexdev_allocated(name);
 	if (dev != NULL) {
-		RTE_REGEXDEV_LOG(ERR, "RegEx device already allocated\n");
+		RTE_REGEXDEV_LOG_LINE(ERR, "RegEx device already allocated");
 		return NULL;
 	}
 	dev_id = regexdev_find_free_dev();
 	if (dev_id == RTE_MAX_REGEXDEV_DEVS) {
-		RTE_REGEXDEV_LOG
-			(ERR, "Reached maximum number of RegEx devices\n");
+		RTE_REGEXDEV_LOG_LINE
+			(ERR, "Reached maximum number of RegEx devices");
 		return NULL;
 	}
 	if (regexdev_shared_data_prepare() < 0) {
-		RTE_REGEXDEV_LOG(ERR, "Cannot allocate RegEx shared data\n");
+		RTE_REGEXDEV_LOG_LINE(ERR, "Cannot allocate RegEx shared data");
 		return NULL;
 	}
 
@@ -215,8 +215,8 @@ rte_regexdev_configure(uint8_t dev_id, const struct rte_regexdev_config *cfg)
 	if (*dev->dev_ops->dev_configure == NULL)
 		return -ENOTSUP;
 	if (dev->data->dev_started) {
-		RTE_REGEXDEV_LOG
-			(ERR, "Dev %u must be stopped to allow configuration\n",
+		RTE_REGEXDEV_LOG_LINE
+			(ERR, "Dev %u must be stopped to allow configuration",
 			 dev_id);
 		return -EBUSY;
 	}
@@ -225,66 +225,66 @@ rte_regexdev_configure(uint8_t dev_id, const struct rte_regexdev_config *cfg)
 		return ret;
 	if ((cfg->dev_cfg_flags & RTE_REGEXDEV_CFG_CROSS_BUFFER_SCAN_F) &&
 	    !(dev_info.regexdev_capa & RTE_REGEXDEV_SUPP_CROSS_BUFFER_F)) {
-		RTE_REGEXDEV_LOG(ERR,
-				 "Dev %u doesn't support cross buffer scan\n",
+		RTE_REGEXDEV_LOG_LINE(ERR,
+				 "Dev %u doesn't support cross buffer scan",
 				 dev_id);
 		return -EINVAL;
 	}
 	if ((cfg->dev_cfg_flags & RTE_REGEXDEV_CFG_MATCH_AS_END_F) &&
 	    !(dev_info.regexdev_capa & RTE_REGEXDEV_SUPP_MATCH_AS_END_F)) {
-		RTE_REGEXDEV_LOG(ERR,
-				 "Dev %u doesn't support match as end\n",
+		RTE_REGEXDEV_LOG_LINE(ERR,
+				 "Dev %u doesn't support match as end",
 				 dev_id);
 		return -EINVAL;
 	}
 	if ((cfg->dev_cfg_flags & RTE_REGEXDEV_CFG_MATCH_ALL_F) &&
 	    !(dev_info.regexdev_capa & RTE_REGEXDEV_SUPP_MATCH_ALL_F)) {
-		RTE_REGEXDEV_LOG(ERR,
-				 "Dev %u doesn't support match all\n",
+		RTE_REGEXDEV_LOG_LINE(ERR,
+				 "Dev %u doesn't support match all",
 				 dev_id);
 		return -EINVAL;
 	}
 	if (cfg->nb_groups == 0) {
-		RTE_REGEXDEV_LOG(ERR, "Dev %u num of groups must be > 0\n",
+		RTE_REGEXDEV_LOG_LINE(ERR, "Dev %u num of groups must be > 0",
 				 dev_id);
 		return -EINVAL;
 	}
 	if (cfg->nb_groups > dev_info.max_groups) {
-		RTE_REGEXDEV_LOG(ERR, "Dev %u num of groups %d > %d\n",
+		RTE_REGEXDEV_LOG_LINE(ERR, "Dev %u num of groups %d > %d",
 				 dev_id, cfg->nb_groups, dev_info.max_groups);
 		return -EINVAL;
 	}
 	if (cfg->nb_max_matches == 0) {
-		RTE_REGEXDEV_LOG(ERR, "Dev %u num of matches must be > 0\n",
+		RTE_REGEXDEV_LOG_LINE(ERR, "Dev %u num of matches must be > 0",
 				 dev_id);
 		return -EINVAL;
 	}
 	if (cfg->nb_max_matches > dev_info.max_matches) {
-		RTE_REGEXDEV_LOG(ERR, "Dev %u num of matches %d > %d\n",
+		RTE_REGEXDEV_LOG_LINE(ERR, "Dev %u num of matches %d > %d",
 				 dev_id, cfg->nb_max_matches,
 				 dev_info.max_matches);
 		return -EINVAL;
 	}
 	if (cfg->nb_queue_pairs == 0) {
-		RTE_REGEXDEV_LOG(ERR, "Dev %u num of queues must be > 0\n",
+		RTE_REGEXDEV_LOG_LINE(ERR, "Dev %u num of queues must be > 0",
 				 dev_id);
 		return -EINVAL;
 	}
 	if (cfg->nb_queue_pairs > dev_info.max_queue_pairs) {
-		RTE_REGEXDEV_LOG(ERR, "Dev %u num of queues %d > %d\n",
+		RTE_REGEXDEV_LOG_LINE(ERR, "Dev %u num of queues %d > %d",
 				 dev_id, cfg->nb_queue_pairs,
 				 dev_info.max_queue_pairs);
 		return -EINVAL;
 	}
 	if (cfg->nb_rules_per_group == 0) {
-		RTE_REGEXDEV_LOG(ERR,
-				 "Dev %u num of rules per group must be > 0\n",
+		RTE_REGEXDEV_LOG_LINE(ERR,
+				 "Dev %u num of rules per group must be > 0",
 				 dev_id);
 		return -EINVAL;
 	}
 	if (cfg->nb_rules_per_group > dev_info.max_rules_per_group) {
-		RTE_REGEXDEV_LOG(ERR,
-				 "Dev %u num of rules per group %d > %d\n",
+		RTE_REGEXDEV_LOG_LINE(ERR,
+				 "Dev %u num of rules per group %d > %d",
 				 dev_id, cfg->nb_rules_per_group,
 				 dev_info.max_rules_per_group);
 		return -EINVAL;
@@ -306,21 +306,21 @@ rte_regexdev_queue_pair_setup(uint8_t dev_id, uint16_t queue_pair_id,
 	if (*dev->dev_ops->dev_qp_setup == NULL)
 		return -ENOTSUP;
 	if (dev->data->dev_started) {
-		RTE_REGEXDEV_LOG
-			(ERR, "Dev %u must be stopped to allow configuration\n",
+		RTE_REGEXDEV_LOG_LINE
+			(ERR, "Dev %u must be stopped to allow configuration",
 			 dev_id);
 		return -EBUSY;
 	}
 	if (queue_pair_id >= dev->data->dev_conf.nb_queue_pairs) {
-		RTE_REGEXDEV_LOG(ERR,
-				 "Dev %u invalid queue %d > %d\n",
+		RTE_REGEXDEV_LOG_LINE(ERR,
+				 "Dev %u invalid queue %d > %d",
 				 dev_id, queue_pair_id,
 				 dev->data->dev_conf.nb_queue_pairs);
 		return -EINVAL;
 	}
 	if (dev->data->dev_started) {
-		RTE_REGEXDEV_LOG
-			(ERR, "Dev %u must be stopped to allow configuration\n",
+		RTE_REGEXDEV_LOG_LINE
+			(ERR, "Dev %u must be stopped to allow configuration",
 			 dev_id);
 		return -EBUSY;
 	}
@@ -383,7 +383,7 @@ rte_regexdev_attr_get(uint8_t dev_id, enum rte_regexdev_attr_id attr_id,
 	if (*dev->dev_ops->dev_attr_get == NULL)
 		return -ENOTSUP;
 	if (attr_value == NULL) {
-		RTE_REGEXDEV_LOG(ERR, "Dev %d attribute value can't be NULL\n",
+		RTE_REGEXDEV_LOG_LINE(ERR, "Dev %d attribute value can't be NULL",
 				 dev_id);
 		return -EINVAL;
 	}
@@ -401,7 +401,7 @@ rte_regexdev_attr_set(uint8_t dev_id, enum rte_regexdev_attr_id attr_id,
 	if (*dev->dev_ops->dev_attr_set == NULL)
 		return -ENOTSUP;
 	if (attr_value == NULL) {
-		RTE_REGEXDEV_LOG(ERR, "Dev %d attribute value can't be NULL\n",
+		RTE_REGEXDEV_LOG_LINE(ERR, "Dev %d attribute value can't be NULL",
 				 dev_id);
 		return -EINVAL;
 	}
@@ -420,7 +420,7 @@ rte_regexdev_rule_db_update(uint8_t dev_id,
 	if (*dev->dev_ops->dev_rule_db_update == NULL)
 		return -ENOTSUP;
 	if (rules == NULL) {
-		RTE_REGEXDEV_LOG(ERR, "Dev %d rules can't be NULL\n",
+		RTE_REGEXDEV_LOG_LINE(ERR, "Dev %d rules can't be NULL",
 				 dev_id);
 		return -EINVAL;
 	}
@@ -450,7 +450,7 @@ rte_regexdev_rule_db_import(uint8_t dev_id, const char *rule_db,
 	if (*dev->dev_ops->dev_db_import == NULL)
 		return -ENOTSUP;
 	if (rule_db == NULL) {
-		RTE_REGEXDEV_LOG(ERR, "Dev %d rules can't be NULL\n",
+		RTE_REGEXDEV_LOG_LINE(ERR, "Dev %d rules can't be NULL",
 				 dev_id);
 		return -EINVAL;
 	}
@@ -480,7 +480,7 @@ rte_regexdev_xstats_names_get(uint8_t dev_id,
 	if (*dev->dev_ops->dev_xstats_names_get == NULL)
 		return -ENOTSUP;
 	if (xstats_map == NULL) {
-		RTE_REGEXDEV_LOG(ERR, "Dev %d xstats map can't be NULL\n",
+		RTE_REGEXDEV_LOG_LINE(ERR, "Dev %d xstats map can't be NULL",
 				 dev_id);
 		return -EINVAL;
 	}
@@ -498,11 +498,11 @@ rte_regexdev_xstats_get(uint8_t dev_id, const uint16_t *ids,
 	if (*dev->dev_ops->dev_xstats_get == NULL)
 		return -ENOTSUP;
 	if (ids == NULL) {
-		RTE_REGEXDEV_LOG(ERR, "Dev %d ids can't be NULL\n", dev_id);
+		RTE_REGEXDEV_LOG_LINE(ERR, "Dev %d ids can't be NULL", dev_id);
 		return -EINVAL;
 	}
 	if (values == NULL) {
-		RTE_REGEXDEV_LOG(ERR, "Dev %d values can't be NULL\n", dev_id);
+		RTE_REGEXDEV_LOG_LINE(ERR, "Dev %d values can't be NULL", dev_id);
 		return -EINVAL;
 	}
 	return (*dev->dev_ops->dev_xstats_get)(dev, ids, values, n);
@@ -519,15 +519,15 @@ rte_regexdev_xstats_by_name_get(uint8_t dev_id, const char *name,
 	if (*dev->dev_ops->dev_xstats_by_name_get == NULL)
 		return -ENOTSUP;
 	if (name == NULL) {
-		RTE_REGEXDEV_LOG(ERR, "Dev %d name can't be NULL\n", dev_id);
+		RTE_REGEXDEV_LOG_LINE(ERR, "Dev %d name can't be NULL", dev_id);
 		return -EINVAL;
 	}
 	if (id == NULL) {
-		RTE_REGEXDEV_LOG(ERR, "Dev %d id can't be NULL\n", dev_id);
+		RTE_REGEXDEV_LOG_LINE(ERR, "Dev %d id can't be NULL", dev_id);
 		return -EINVAL;
 	}
 	if (value == NULL) {
-		RTE_REGEXDEV_LOG(ERR, "Dev %d value can't be NULL\n", dev_id);
+		RTE_REGEXDEV_LOG_LINE(ERR, "Dev %d value can't be NULL", dev_id);
 		return -EINVAL;
 	}
 	return (*dev->dev_ops->dev_xstats_by_name_get)(dev, name, id, value);
@@ -544,7 +544,7 @@ rte_regexdev_xstats_reset(uint8_t dev_id, const uint16_t *ids,
 	if (*dev->dev_ops->dev_xstats_reset == NULL)
 		return -ENOTSUP;
 	if (ids == NULL) {
-		RTE_REGEXDEV_LOG(ERR, "Dev %d ids can't be NULL\n", dev_id);
+		RTE_REGEXDEV_LOG_LINE(ERR, "Dev %d ids can't be NULL", dev_id);
 		return -EINVAL;
 	}
 	return (*dev->dev_ops->dev_xstats_reset)(dev, ids, nb_ids);
@@ -572,7 +572,7 @@ rte_regexdev_dump(uint8_t dev_id, FILE *f)
 	if (*dev->dev_ops->dev_dump == NULL)
 		return -ENOTSUP;
 	if (f == NULL) {
-		RTE_REGEXDEV_LOG(ERR, "Dev %d file can't be NULL\n", dev_id);
+		RTE_REGEXDEV_LOG_LINE(ERR, "Dev %d file can't be NULL", dev_id);
 		return -EINVAL;
 	}
 	return (*dev->dev_ops->dev_dump)(dev, f);

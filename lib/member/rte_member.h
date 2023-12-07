@@ -100,15 +100,6 @@ typedef uint16_t member_set_t;
 #define MEMBER_HASH_FUNC       rte_jhash
 #endif
 
-extern int librte_member_logtype;
-
-#define RTE_MEMBER_LOG(level, ...) \
-	rte_log(RTE_LOG_ ## level, \
-		librte_member_logtype, \
-		RTE_FMT("%s(): " RTE_FMT_HEAD(__VA_ARGS__,), \
-			__func__, \
-			RTE_FMT_TAIL(__VA_ARGS__,)))
-
 /** @internal setsummary structure. */
 struct rte_member_setsum;
 

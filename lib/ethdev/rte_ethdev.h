@@ -176,9 +176,11 @@ extern "C" {
 #include "rte_dev_info.h"
 
 extern int rte_eth_dev_logtype;
+#define RTE_LOGTYPE_ETHDEV rte_eth_dev_logtype
 
-#define RTE_ETHDEV_LOG(level, ...) \
-	rte_log(RTE_LOG_ ## level, rte_eth_dev_logtype, "" __VA_ARGS__)
+#define RTE_ETHDEV_LOG_LINE(level, ...) \
+	RTE_LOG(level, ETHDEV, RTE_FMT(RTE_FMT_HEAD(__VA_ARGS__ ,) "\n", \
+		RTE_FMT_TAIL(__VA_ARGS__ ,)))
 
 struct rte_mbuf;
 
@@ -2000,14 +2002,14 @@ struct rte_eth_fec_capa {
 /* Macros to check for valid port */
 #define RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, retval) do { \
 	if (!rte_eth_dev_is_valid_port(port_id)) { \
-		RTE_ETHDEV_LOG(ERR, "Invalid port_id=%u\n", port_id); \
+		RTE_ETHDEV_LOG_LINE(ERR, "Invalid port_id=%u", port_id); \
 		return retval; \
 	} \
 } while (0)
 
 #define RTE_ETH_VALID_PORTID_OR_RET(port_id) do { \
 	if (!rte_eth_dev_is_valid_port(port_id)) { \
-		RTE_ETHDEV_LOG(ERR, "Invalid port_id=%u\n", port_id); \
+		RTE_ETHDEV_LOG_LINE(ERR, "Invalid port_id=%u", port_id); \
 		return; \
 	} \
 } while (0)
@@ -6052,8 +6054,8 @@ rte_eth_rx_burst(uint16_t port_id, uint16_t queue_id,
 #ifdef RTE_ETHDEV_DEBUG_RX
 	if (port_id >= RTE_MAX_ETHPORTS ||
 			queue_id >= RTE_MAX_QUEUES_PER_PORT) {
-		RTE_ETHDEV_LOG(ERR,
-			"Invalid port_id=%u or queue_id=%u\n",
+		RTE_ETHDEV_LOG_LINE(ERR,
+			"Invalid port_id=%u or queue_id=%u",
 			port_id, queue_id);
 		return 0;
 	}
@@ -6067,7 +6069,7 @@ rte_eth_rx_burst(uint16_t port_id, uint16_t queue_id,
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, 0);
 
 	if (qd == NULL) {
-		RTE_ETHDEV_LOG(ERR, "Invalid Rx queue_id=%u for port_id=%u\n",
+		RTE_ETHDEV_LOG_LINE(ERR, "Invalid Rx queue_id=%u for port_id=%u",
 			queue_id, port_id);
 		return 0;
 	}
@@ -6123,8 +6125,8 @@ rte_eth_rx_queue_count(uint16_t port_id, uint16_t queue_id)
 #ifdef RTE_ETHDEV_DEBUG_RX
 	if (port_id >= RTE_MAX_ETHPORTS ||
 			queue_id >= RTE_MAX_QUEUES_PER_PORT) {
-		RTE_ETHDEV_LOG(ERR,
-			"Invalid port_id=%u or queue_id=%u\n",
+		RTE_ETHDEV_LOG_LINE(ERR,
+			"Invalid port_id=%u or queue_id=%u",
 			port_id, queue_id);
 		return -EINVAL;
 	}
@@ -6196,8 +6198,8 @@ rte_eth_rx_descriptor_status(uint16_t port_id, uint16_t queue_id,
 #ifdef RTE_ETHDEV_DEBUG_RX
 	if (port_id >= RTE_MAX_ETHPORTS ||
 			queue_id >= RTE_MAX_QUEUES_PER_PORT) {
-		RTE_ETHDEV_LOG(ERR,
-			"Invalid port_id=%u or queue_id=%u\n",
+		RTE_ETHDEV_LOG_LINE(ERR,
+			"Invalid port_id=%u or queue_id=%u",
 			port_id, queue_id);
 		return -EINVAL;
 	}
@@ -6267,8 +6269,8 @@ static inline int rte_eth_tx_descriptor_status(uint16_t port_id,
 #ifdef RTE_ETHDEV_DEBUG_TX
 	if (port_id >= RTE_MAX_ETHPORTS ||
 			queue_id >= RTE_MAX_QUEUES_PER_PORT) {
-		RTE_ETHDEV_LOG(ERR,
-			"Invalid port_id=%u or queue_id=%u\n",
+		RTE_ETHDEV_LOG_LINE(ERR,
+			"Invalid port_id=%u or queue_id=%u",
 			port_id, queue_id);
 		return -EINVAL;
 	}
@@ -6391,8 +6393,8 @@ rte_eth_tx_burst(uint16_t port_id, uint16_t queue_id,
 #ifdef RTE_ETHDEV_DEBUG_TX
 	if (port_id >= RTE_MAX_ETHPORTS ||
 			queue_id >= RTE_MAX_QUEUES_PER_PORT) {
-		RTE_ETHDEV_LOG(ERR,
-			"Invalid port_id=%u or queue_id=%u\n",
+		RTE_ETHDEV_LOG_LINE(ERR,
+			"Invalid port_id=%u or queue_id=%u",
 			port_id, queue_id);
 		return 0;
 	}
@@ -6406,7 +6408,7 @@ rte_eth_tx_burst(uint16_t port_id, uint16_t queue_id,
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, 0);
 
 	if (qd == NULL) {
-		RTE_ETHDEV_LOG(ERR, "Invalid Tx queue_id=%u for port_id=%u\n",
+		RTE_ETHDEV_LOG_LINE(ERR, "Invalid Tx queue_id=%u for port_id=%u",
 			queue_id, port_id);
 		return 0;
 	}
@@ -6501,8 +6503,8 @@ rte_eth_tx_prepare(uint16_t port_id, uint16_t queue_id,
 #ifdef RTE_ETHDEV_DEBUG_TX
 	if (port_id >= RTE_MAX_ETHPORTS ||
 			queue_id >= RTE_MAX_QUEUES_PER_PORT) {
-		RTE_ETHDEV_LOG(ERR,
-			"Invalid port_id=%u or queue_id=%u\n",
+		RTE_ETHDEV_LOG_LINE(ERR,
+			"Invalid port_id=%u or queue_id=%u",
 			port_id, queue_id);
 		rte_errno = ENODEV;
 		return 0;
@@ -6515,12 +6517,12 @@ rte_eth_tx_prepare(uint16_t port_id, uint16_t queue_id,
 
 #ifdef RTE_ETHDEV_DEBUG_TX
 	if (!rte_eth_dev_is_valid_port(port_id)) {
-		RTE_ETHDEV_LOG(ERR, "Invalid Tx port_id=%u\n", port_id);
+		RTE_ETHDEV_LOG_LINE(ERR, "Invalid Tx port_id=%u", port_id);
 		rte_errno = ENODEV;
 		return 0;
 	}
 	if (qd == NULL) {
-		RTE_ETHDEV_LOG(ERR, "Invalid Tx queue_id=%u for port_id=%u\n",
+		RTE_ETHDEV_LOG_LINE(ERR, "Invalid Tx queue_id=%u for port_id=%u",
 			queue_id, port_id);
 		rte_errno = EINVAL;
 		return 0;
@@ -6706,8 +6708,8 @@ rte_eth_recycle_mbufs(uint16_t rx_port_id, uint16_t rx_queue_id,
 #ifdef RTE_ETHDEV_DEBUG_TX
 	if (tx_port_id >= RTE_MAX_ETHPORTS ||
 			tx_queue_id >= RTE_MAX_QUEUES_PER_PORT) {
-		RTE_ETHDEV_LOG(ERR,
-				"Invalid tx_port_id=%u or tx_queue_id=%u\n",
+		RTE_ETHDEV_LOG_LINE(ERR,
+				"Invalid tx_port_id=%u or tx_queue_id=%u",
 				tx_port_id, tx_queue_id);
 		return 0;
 	}
@@ -6721,7 +6723,7 @@ rte_eth_recycle_mbufs(uint16_t rx_port_id, uint16_t rx_queue_id,
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(tx_port_id, 0);
 
 	if (qd1 == NULL) {
-		RTE_ETHDEV_LOG(ERR, "Invalid Tx queue_id=%u for port_id=%u\n",
+		RTE_ETHDEV_LOG_LINE(ERR, "Invalid Tx queue_id=%u for port_id=%u",
 				tx_queue_id, tx_port_id);
 		return 0;
 	}
@@ -6732,7 +6734,7 @@ rte_eth_recycle_mbufs(uint16_t rx_port_id, uint16_t rx_queue_id,
 #ifdef RTE_ETHDEV_DEBUG_RX
 	if (rx_port_id >= RTE_MAX_ETHPORTS ||
 			rx_queue_id >= RTE_MAX_QUEUES_PER_PORT) {
-		RTE_ETHDEV_LOG(ERR, "Invalid rx_port_id=%u or rx_queue_id=%u\n",
+		RTE_ETHDEV_LOG_LINE(ERR, "Invalid rx_port_id=%u or rx_queue_id=%u",
 				rx_port_id, rx_queue_id);
 		return 0;
 	}
@@ -6746,7 +6748,7 @@ rte_eth_recycle_mbufs(uint16_t rx_port_id, uint16_t rx_queue_id,
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(rx_port_id, 0);
 
 	if (qd2 == NULL) {
-		RTE_ETHDEV_LOG(ERR, "Invalid Rx queue_id=%u for port_id=%u\n",
+		RTE_ETHDEV_LOG_LINE(ERR, "Invalid Rx queue_id=%u for port_id=%u",
 				rx_queue_id, rx_port_id);
 		return 0;
 	}

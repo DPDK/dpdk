@@ -46,9 +46,6 @@
 extern "C" {
 #endif
 
-#define RTE_FLOW_LOG(level, ...) \
-	rte_log(RTE_LOG_ ## level, rte_eth_dev_logtype, "" __VA_ARGS__)
-
 /**
  * Flow rule attributes.
  *

@@ -21,14 +21,14 @@ vduse_device_create(const char *path, bool compliant_ol_flags)
 {
 	RTE_SET_USED(compliant_ol_flags);
 
-	VHOST_LOG_CONFIG(path, ERR, "VDUSE support disabled at build time\n");
+	VHOST_CONFIG_LOG(path, ERR, "VDUSE support disabled at build time");
 	return -1;
 }
 
 static inline int
 vduse_device_destroy(const char *path)
 {
-	VHOST_LOG_CONFIG(path, ERR, "VDUSE support disabled at build time\n");
+	VHOST_CONFIG_LOG(path, ERR, "VDUSE support disabled at build time");
 	return -1;
 }
 

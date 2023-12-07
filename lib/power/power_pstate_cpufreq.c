@@ -104,7 +104,7 @@ power_read_turbo_pct(uint64_t *outVal)
 		goto out;
 	}
 
-	POWER_DEBUG_TRACE("power turbo pct: %"PRIu64"\n", *outVal);
+	POWER_DEBUG_LOG("power turbo pct: %"PRIu64, *outVal);
 
 out:	close(fd);
 	return ret;
@@ -204,7 +204,7 @@ power_init_for_setting_freq(struct pstate_power_info *pi)
 	max_non_turbo = base_min_ratio
 		      + (100 - max_non_turbo) * (base_max_ratio - base_min_ratio) / 100;
 
-	POWER_DEBUG_TRACE("no turbo perf %"PRIu64"\n", max_non_turbo);
+	POWER_DEBUG_LOG("no turbo perf %"PRIu64, max_non_turbo);
 
 	pi->non_turbo_max_ratio = (uint32_t)max_non_turbo;
 
@@ -310,7 +310,7 @@ set_freq_internal(struct pstate_power_info *pi, uint32_t idx)
 			return -1;
 		}
 
-		POWER_DEBUG_TRACE("Frequency '%u' to be set for lcore %u\n",
+		POWER_DEBUG_LOG("Frequency '%u' to be set for lcore %u",
 				  target_freq, pi->lcore_id);
 
 		fflush(pi->f_cur_min);
@@ -333,7 +333,7 @@ set_freq_internal(struct pstate_power_info *pi, uint32_t idx)
 			return -1;
 		}
 
-		POWER_DEBUG_TRACE("Frequency '%u' to be set for lcore %u\n",
+		POWER_DEBUG_LOG("Frequency '%u' to be set for lcore %u",
 				  target_freq, pi->lcore_id);
 
 		fflush(pi->f_cur_max);
@@ -434,7 +434,7 @@ power_get_available_freqs(struct pstate_power_info *pi)
 	else
 		base_max_freq = pi->non_turbo_max_ratio * BUS_FREQ;
 
-	POWER_DEBUG_TRACE("sys min %u, sys max %u, base_max %u\n",
+	POWER_DEBUG_LOG("sys min %u, sys max %u, base_max %u",
 			sys_min_freq,
 			sys_max_freq,
 			base_max_freq);
@@ -471,7 +471,7 @@ power_get_available_freqs(struct pstate_power_info *pi)
 
 	ret = 0;
 
-	POWER_DEBUG_TRACE("%d frequency(s) of lcore %u are available\n",
+	POWER_DEBUG_LOG("%d frequency(s) of lcore %u are available",
 			num_freqs, pi->lcore_id);
 
 out:

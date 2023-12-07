@@ -182,8 +182,8 @@ power_set_governor(unsigned int lcore_id, const char *new_governor,
 	/* Check if current governor is already what we want */
 	if (strcmp(buf, new_governor) == 0) {
 		ret = 0;
-		POWER_DEBUG_TRACE("Power management governor of lcore %u is "
-				"already %s\n", lcore_id, new_governor);
+		POWER_DEBUG_LOG("Power management governor of lcore %u is "
+				"already %s", lcore_id, new_governor);
 		goto out;
 	}
 

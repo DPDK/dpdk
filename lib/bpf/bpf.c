@@ -44,7 +44,7 @@ __rte_bpf_jit(struct rte_bpf *bpf)
 #endif
 
 	if (rc != 0)
-		RTE_BPF_LOG(WARNING, "%s(%p) failed, error code: %d;\n",
+		RTE_BPF_LOG_LINE(WARNING, "%s(%p) failed, error code: %d;",
 			__func__, bpf, rc);
 	return rc;
 }

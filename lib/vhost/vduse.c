@@ -78,32 +78,32 @@ vduse_iotlb_miss(struct virtio_net *dev, uint64_t iova, uint8_t perm __rte_unuse
 
 	ret = ioctl(dev->vduse_dev_fd, VDUSE_IOTLB_GET_FD, &entry);
 	if (ret < 0) {
-		VHOST_LOG_CONFIG(dev->ifname, ERR, "Failed to get IOTLB entry for 0x%" PRIx64 "\n",
+		VHOST_CONFIG_LOG(dev->ifname, ERR, "Failed to get IOTLB entry for 0x%" PRIx64,
 				iova);
 		return -1;
 	}
 
 	fd = ret;
 
-	VHOST_LOG_CONFIG(dev->ifname, DEBUG, "New IOTLB entry:\n");
-	VHOST_LOG_CONFIG(dev->ifname, DEBUG, "\tIOVA: %" PRIx64 " - %" PRIx64 "\n",
+	VHOST_CONFIG_LOG(dev->ifname, DEBUG, "New IOTLB entry:");
+	VHOST_CONFIG_LOG(dev->ifname, DEBUG, "\tIOVA: %" PRIx64 " - %" PRIx64,
 			(uint64_t)entry.start, (uint64_t)entry.last);
-	VHOST_LOG_CONFIG(dev->ifname, DEBUG, "\toffset: %" PRIx64 "\n", (uint64_t)entry.offset);
-	VHOST_LOG_CONFIG(dev->ifname, DEBUG, "\tfd: %d\n", fd);
-	VHOST_LOG_CONFIG(dev->ifname, DEBUG, "\tperm: %x\n", entry.perm);
+	VHOST_CONFIG_LOG(dev->ifname, DEBUG, "\toffset: %" PRIx64, (uint64_t)entry.offset);
+	VHOST_CONFIG_LOG(dev->ifname, DEBUG, "\tfd: %d", fd);
+	VHOST_CONFIG_LOG(dev->ifname, DEBUG, "\tperm: %x", entry.perm);
 
 	size = entry.last - entry.start + 1;
 	mmap_addr = mmap(0, size + entry.offset, entry.perm, MAP_SHARED, fd, 0);
 	if (!mmap_addr) {
-		VHOST_LOG_CONFIG(dev->ifname, ERR,
-				"Failed to mmap IOTLB entry for 0x%" PRIx64 "\n", iova);
+		VHOST_CONFIG_LOG(dev->ifname, ERR,
+				"Failed to mmap IOTLB entry for 0x%" PRIx64, iova);
 		ret = -1;
 		goto close_fd;
 	}
 
 	ret = fstat(fd, &stat);
 	if (ret < 0) {
-		VHOST_LOG_CONFIG(dev->ifname, ERR, "Failed to get page size.\n");
+		VHOST_CONFIG_LOG(dev->ifname, ERR, "Failed to get page size.");
 		munmap(mmap_addr, entry.offset + size);
 		goto close_fd;
 	}
@@ -134,14 +134,14 @@ vduse_control_queue_event(int fd, void *arg, int *remove __rte_unused)
 
 	ret = read(fd, &buf, sizeof(buf));
 	if (ret < 0) {
-		VHOST_LOG_CONFIG(dev->ifname, ERR, "Failed to read control queue event: %s\n",
+		VHOST_CONFIG_LOG(dev->ifname, ERR, "Failed to read control queue event: %s",
 				strerror(errno));
 		return;
 	}
 
-	VHOST_LOG_CONFIG(dev->ifname, DEBUG, "Control queue kicked\n");
+	VHOST_CONFIG_LOG(dev->ifname, DEBUG, "Control queue kicked");
 	if (virtio_net_ctrl_handle(dev))
-		VHOST_LOG_CONFIG(dev->ifname, ERR, "Failed to handle ctrl request\n");
+		VHOST_CONFIG_LOG(dev->ifname, ERR, "Failed to handle ctrl request");
 }
 
 static void
@@ -156,21 +156,21 @@ vduse_vring_setup(struct virtio_net *dev, unsigned int index)
 	vq_info.index = index;
 	ret = ioctl(dev->vduse_dev_fd, VDUSE_VQ_GET_INFO, &vq_info);
 	if (ret) {
-		VHOST_LOG_CONFIG(dev->ifname, ERR, "Failed to get VQ %u info: %s\n",
+		VHOST_CONFIG_LOG(dev->ifname, ERR, "Failed to get VQ %u info: %s",
 				index, strerror(errno));
 		return;
 	}
 
-	VHOST_LOG_CONFIG(dev->ifname, INFO, "VQ %u info:\n", index);
-	VHOST_LOG_CONFIG(dev->ifname, INFO, "\tnum: %u\n", vq_info.num);
-	VHOST_LOG_CONFIG(dev->ifname, INFO, "\tdesc_addr: %llx\n",
+	VHOST_CONFIG_LOG(dev->ifname, INFO, "VQ %u info:", index);
+	VHOST_CONFIG_LOG(dev->ifname, INFO, "\tnum: %u", vq_info.num);
+	VHOST_CONFIG_LOG(dev->ifname, INFO, "\tdesc_addr: %llx",
 			(unsigned long long)vq_info.desc_addr);
-	VHOST_LOG_CONFIG(dev->ifname, INFO, "\tdriver_addr: %llx\n",
+	VHOST_CONFIG_LOG(dev->ifname, INFO, "\tdriver_addr: %llx",
 			(unsigned long long)vq_info.driver_addr);
-	VHOST_LOG_CONFIG(dev->ifname, INFO, "\tdevice_addr: %llx\n",
+	VHOST_CONFIG_LOG(dev->ifname, INFO, "\tdevice_addr: %llx",
 			(unsigned long long)vq_info.device_addr);
-	VHOST_LOG_CONFIG(dev->ifname, INFO, "\tavail_idx: %u\n", vq_info.split.avail_index);
-	VHOST_LOG_CONFIG(dev->ifname, INFO, "\tready: %u\n", vq_info.ready);
+	VHOST_CONFIG_LOG(dev->ifname, INFO, "\tavail_idx: %u", vq_info.split.avail_index);
+	VHOST_CONFIG_LOG(dev->ifname, INFO, "\tready: %u", vq_info.ready);
 
 	vq->last_avail_idx = vq_info.split.avail_index;
 	vq->size = vq_info.num;
@@ -182,12 +182,12 @@ vduse_vring_setup(struct virtio_net *dev, unsigned int index)
 
 	vq->kickfd = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
 	if (vq->kickfd < 0) {
-		VHOST_LOG_CONFIG(dev->ifname, ERR, "Failed to init kickfd for VQ %u: %s\n",
+		VHOST_CONFIG_LOG(dev->ifname, ERR, "Failed to init kickfd for VQ %u: %s",
 				index, strerror(errno));
 		vq->kickfd = VIRTIO_INVALID_EVENTFD;
 		return;
 	}
-	VHOST_LOG_CONFIG(dev->ifname, INFO, "\tkick fd: %d\n", vq->kickfd);
+	VHOST_CONFIG_LOG(dev->ifname, INFO, "\tkick fd: %d", vq->kickfd);
 
 	vq->shadow_used_split = rte_malloc_socket(NULL,
 				vq->size * sizeof(struct vring_used_elem),
@@ -198,12 +198,12 @@ vduse_vring_setup(struct virtio_net *dev, unsigned int index)
 
 	vhost_user_iotlb_rd_lock(vq);
 	if (vring_translate(dev, vq))
-		VHOST_LOG_CONFIG(dev->ifname, ERR, "Failed to translate vring %d addresses\n",
+		VHOST_CONFIG_LOG(dev->ifname, ERR, "Failed to translate vring %d addresses",
 				index);
 
 	if (vhost_enable_guest_notification(dev, vq, 0))
-		VHOST_LOG_CONFIG(dev->ifname, ERR,
-				"Failed to disable guest notifications on vring %d\n",
+		VHOST_CONFIG_LOG(dev->ifname, ERR,
+				"Failed to disable guest notifications on vring %d",
 				index);
 	vhost_user_iotlb_rd_unlock(vq);
 
@@ -212,7 +212,7 @@ vduse_vring_setup(struct virtio_net *dev, unsigned int index)
 
 	ret = ioctl(dev->vduse_dev_fd, VDUSE_VQ_SETUP_KICKFD, &vq_efd);
 	if (ret) {
-		VHOST_LOG_CONFIG(dev->ifname, ERR, "Failed to setup kickfd for VQ %u: %s\n",
+		VHOST_CONFIG_LOG(dev->ifname, ERR, "Failed to setup kickfd for VQ %u: %s",
 				index, strerror(errno));
 		close(vq->kickfd);
 		vq->kickfd = VIRTIO_UNINITIALIZED_EVENTFD;
@@ -222,8 +222,8 @@ vduse_vring_setup(struct virtio_net *dev, unsigned int index)
 	if (vq == dev->cvq) {
 		ret = fdset_add(&vduse.fdset, vq->kickfd, vduse_control_queue_event, NULL, dev);
 		if (ret) {
-			VHOST_LOG_CONFIG(dev->ifname, ERR,
-					"Failed to setup kickfd handler for VQ %u: %s\n",
+			VHOST_CONFIG_LOG(dev->ifname, ERR,
+					"Failed to setup kickfd handler for VQ %u: %s",
 					index, strerror(errno));
 			vq_efd.fd = VDUSE_EVENTFD_DEASSIGN;
 			ioctl(dev->vduse_dev_fd, VDUSE_VQ_SETUP_KICKFD, &vq_efd);
@@ -232,7 +232,7 @@ vduse_vring_setup(struct virtio_net *dev, unsigned int index)
 		}
 		fdset_pipe_notify(&vduse.fdset);
 		vhost_enable_guest_notification(dev, vq, 1);
-		VHOST_LOG_CONFIG(dev->ifname, INFO, "Ctrl queue event handler installed\n");
+		VHOST_CONFIG_LOG(dev->ifname, INFO, "Ctrl queue event handler installed");
 	}
 }
 
@@ -253,7 +253,7 @@ vduse_vring_cleanup(struct virtio_net *dev, unsigned int index)
 
 	ret = ioctl(dev->vduse_dev_fd, VDUSE_VQ_SETUP_KICKFD, &vq_efd);
 	if (ret)
-		VHOST_LOG_CONFIG(dev->ifname, ERR, "Failed to cleanup kickfd for VQ %u: %s\n",
+		VHOST_CONFIG_LOG(dev->ifname, ERR, "Failed to cleanup kickfd for VQ %u: %s",
 				index, strerror(errno));
 
 	close(vq->kickfd);
@@ -279,23 +279,23 @@ vduse_device_start(struct virtio_net *dev)
 {
 	unsigned int i, ret;
 
-	VHOST_LOG_CONFIG(dev->ifname, INFO, "Starting device...\n");
+	VHOST_CONFIG_LOG(dev->ifname, INFO, "Starting device...");
 
 	dev->notify_ops = vhost_driver_callback_get(dev->ifname);
 	if (!dev->notify_ops) {
-		VHOST_LOG_CONFIG(dev->ifname, ERR,
-				"Failed to get callback ops for driver\n");
+		VHOST_CONFIG_LOG(dev->ifname, ERR,
+				"Failed to get callback ops for driver");
 		return;
 	}
 
 	ret = ioctl(dev->vduse_dev_fd, VDUSE_DEV_GET_FEATURES, &dev->features);
 	if (ret) {
-		VHOST_LOG_CONFIG(dev->ifname, ERR, "Failed to get features: %s\n",
+		VHOST_CONFIG_LOG(dev->ifname, ERR, "Failed to get features: %s",
 				strerror(errno));
 		return;
 	}
 
-	VHOST_LOG_CONFIG(dev->ifname, INFO, "Negotiated Virtio features: 0x%" PRIx64 "\n",
+	VHOST_CONFIG_LOG(dev->ifname, INFO, "Negotiated Virtio features: 0x%" PRIx64,
 		dev->features);
 
 	if (dev->features &
@@ -331,7 +331,7 @@ vduse_device_stop(struct virtio_net *dev)
 {
 	unsigned int i;
 
-	VHOST_LOG_CONFIG(dev->ifname, INFO, "Stopping device...\n");
+	VHOST_CONFIG_LOG(dev->ifname, INFO, "Stopping device...");
 
 	vhost_destroy_device_notify(dev);
 
@@ -357,34 +357,34 @@ vduse_events_handler(int fd, void *arg, int *remove __rte_unused)
 
 	ret = read(fd, &req, sizeof(req));
 	if (ret < 0) {
-		VHOST_LOG_CONFIG(dev->ifname, ERR, "Failed to read request: %s\n",
+		VHOST_CONFIG_LOG(dev->ifname, ERR, "Failed to read request: %s",
 				strerror(errno));
 		return;
 	} else if (ret < (int)sizeof(req)) {
-		VHOST_LOG_CONFIG(dev->ifname, ERR, "Incomplete to read request %d\n", ret);
+		VHOST_CONFIG_LOG(dev->ifname, ERR, "Incomplete to read request %d", ret);
 		return;
 	}
 
-	VHOST_LOG_CONFIG(dev->ifname, INFO, "New request: %s (%u)\n",
+	VHOST_CONFIG_LOG(dev->ifname, INFO, "New request: %s (%u)",
 			vduse_req_id_to_str(req.type), req.type);
 
 	switch (req.type) {
 	case VDUSE_GET_VQ_STATE:
 		vq = dev->virtqueue[req.vq_state.index];
-		VHOST_LOG_CONFIG(dev->ifname, INFO, "\tvq index: %u, avail_index: %u\n",
+		VHOST_CONFIG_LOG(dev->ifname, INFO, "\tvq index: %u, avail_index: %u",
 				req.vq_state.index, vq->last_avail_idx);
 		resp.vq_state.split.avail_index = vq->last_avail_idx;
 		resp.result = VDUSE_REQ_RESULT_OK;
 		break;
 	case VDUSE_SET_STATUS:
-		VHOST_LOG_CONFIG(dev->ifname, INFO, "\tnew status: 0x%08x\n",
+		VHOST_CONFIG_LOG(dev->ifname, INFO, "\tnew status: 0x%08x",
 				req.s.status);
 		old_status = dev->status;
 		dev->status = req.s.status;
 		resp.result = VDUSE_REQ_RESULT_OK;
 		break;
 	case VDUSE_UPDATE_IOTLB:
-		VHOST_LOG_CONFIG(dev->ifname, INFO, "\tIOVA range: %" PRIx64 " - %" PRIx64 "\n",
+		VHOST_CONFIG_LOG(dev->ifname, INFO, "\tIOVA range: %" PRIx64 " - %" PRIx64,
 				(uint64_t)req.iova.start, (uint64_t)req.iova.last);
 		vhost_user_iotlb_cache_remove(dev, req.iova.start,
 				req.iova.last - req.iova.start + 1);
@@ -399,7 +399,7 @@ vduse_events_handler(int fd, void *arg, int *remove __rte_unused)
 
 	ret = write(dev->vduse_dev_fd, &resp, sizeof(resp));
 	if (ret != sizeof(resp)) {
-		VHOST_LOG_CONFIG(dev->ifname, ERR, "Failed to write response %s\n",
+		VHOST_CONFIG_LOG(dev->ifname, ERR, "Failed to write response %s",
 				strerror(errno));
 		return;
 	}
@@ -411,7 +411,7 @@ vduse_events_handler(int fd, void *arg, int *remove __rte_unused)
 			vduse_device_stop(dev);
 	}
 
-	VHOST_LOG_CONFIG(dev->ifname, INFO, "Request %s (%u) handled successfully\n",
+	VHOST_CONFIG_LOG(dev->ifname, INFO, "Request %s (%u) handled successfully",
 			vduse_req_id_to_str(req.type), req.type);
 }
 
@@ -435,14 +435,14 @@ vduse_device_create(const char *path, bool compliant_ol_flags)
 		 * rebuild the wait list of poll.
 		 */
 		if (fdset_pipe_init(&vduse.fdset) < 0) {
-			VHOST_LOG_CONFIG(path, ERR, "failed to create pipe for vduse fdset\n");
+			VHOST_CONFIG_LOG(path, ERR, "failed to create pipe for vduse fdset");
 			return -1;
 		}
 
 		ret = rte_thread_create_internal_control(&fdset_tid, "vduse-evt",
 				fdset_event_dispatch, &vduse.fdset);
 		if (ret != 0) {
-			VHOST_LOG_CONFIG(path, ERR, "failed to create vduse fdset handling thread\n");
+			VHOST_CONFIG_LOG(path, ERR, "failed to create vduse fdset handling thread");
 			fdset_pipe_uninit(&vduse.fdset);
 			return -1;
 		}
@@ -452,13 +452,13 @@ vduse_device_create(const char *path, bool compliant_ol_flags)
 
 	control_fd = open(VDUSE_CTRL_PATH, O_RDWR);
 	if (control_fd < 0) {
-		VHOST_LOG_CONFIG(name, ERR, "Failed to open %s: %s\n",
+		VHOST_CONFIG_LOG(name, ERR, "Failed to open %s: %s",
 				VDUSE_CTRL_PATH, strerror(errno));
 		return -1;
 	}
 
 	if (ioctl(control_fd, VDUSE_SET_API_VERSION, &ver)) {
-		VHOST_LOG_CONFIG(name, ERR, "Failed to set API version: %" PRIu64 ": %s\n",
+		VHOST_CONFIG_LOG(name, ERR, "Failed to set API version: %" PRIu64 ": %s",
 				ver, strerror(errno));
 		ret = -1;
 		goto out_ctrl_close;
@@ -467,24 +467,24 @@ vduse_device_create(const char *path, bool compliant_ol_flags)
 	dev_config = malloc(offsetof(struct vduse_dev_config, config) +
 			sizeof(vnet_config));
 	if (!dev_config) {
-		VHOST_LOG_CONFIG(name, ERR, "Failed to allocate VDUSE config\n");
+		VHOST_CONFIG_LOG(name, ERR, "Failed to allocate VDUSE config");
 		ret = -1;
 		goto out_ctrl_close;
 	}
 
 	ret = rte_vhost_driver_get_features(path, &features);
 	if (ret < 0) {
-		VHOST_LOG_CONFIG(name, ERR, "Failed to get backend features\n");
+		VHOST_CONFIG_LOG(name, ERR, "Failed to get backend features");
 		goto out_free;
 	}
 
 	ret = rte_vhost_driver_get_queue_num(path, &max_queue_pairs);
 	if (ret < 0) {
-		VHOST_LOG_CONFIG(name, ERR, "Failed to get max queue pairs\n");
+		VHOST_CONFIG_LOG(name, ERR, "Failed to get max queue pairs");
 		goto out_free;
 	}
 
-	VHOST_LOG_CONFIG(path, INFO, "VDUSE max queue pairs: %u\n", max_queue_pairs);
+	VHOST_CONFIG_LOG(path, INFO, "VDUSE max queue pairs: %u", max_queue_pairs);
 	total_queues = max_queue_pairs * 2;
 
 	if (max_queue_pairs == 1)
@@ -506,14 +506,14 @@ vduse_device_create(const char *path, bool compliant_ol_flags)
 
 	ret = ioctl(control_fd, VDUSE_CREATE_DEV, dev_config);
 	if (ret < 0) {
-		VHOST_LOG_CONFIG(name, ERR, "Failed to create VDUSE device: %s\n",
+		VHOST_CONFIG_LOG(name, ERR, "Failed to create VDUSE device: %s",
 				strerror(errno));
 		goto out_free;
 	}
 
 	dev_fd = open(path, O_RDWR);
 	if (dev_fd < 0) {
-		VHOST_LOG_CONFIG(name, ERR, "Failed to open device %s: %s\n",
+		VHOST_CONFIG_LOG(name, ERR, "Failed to open device %s: %s",
 				path, strerror(errno));
 		ret = -1;
 		goto out_dev_close;
@@ -521,14 +521,14 @@ vduse_device_create(const char *path, bool compliant_ol_flags)
 
 	ret = fcntl(dev_fd, F_SETFL, O_NONBLOCK);
 	if (ret < 0) {
-		VHOST_LOG_CONFIG(name, ERR, "Failed to set chardev as non-blocking: %s\n",
+		VHOST_CONFIG_LOG(name, ERR, "Failed to set chardev as non-blocking: %s",
 				strerror(errno));
 		goto out_dev_close;
 	}
 
 	vid = vhost_new_device(&vduse_backend_ops);
 	if (vid < 0) {
-		VHOST_LOG_CONFIG(name, ERR, "Failed to create new Vhost device\n");
+		VHOST_CONFIG_LOG(name, ERR, "Failed to create new Vhost device");
 		ret = -1;
 		goto out_dev_close;
 	}
@@ -549,7 +549,7 @@ vduse_device_create(const char *path, bool compliant_ol_flags)
 
 		ret = alloc_vring_queue(dev, i);
 		if (ret) {
-			VHOST_LOG_CONFIG(name, ERR, "Failed to alloc vring %d metadata\n", i);
+			VHOST_CONFIG_LOG(name, ERR, "Failed to alloc vring %d metadata", i);
 			goto out_dev_destroy;
 		}
 
@@ -558,7 +558,7 @@ vduse_device_create(const char *path, bool compliant_ol_flags)
 
 		ret = ioctl(dev->vduse_dev_fd, VDUSE_VQ_SETUP, &vq_cfg);
 		if (ret) {
-			VHOST_LOG_CONFIG(name, ERR, "Failed to set-up VQ %d\n", i);
+			VHOST_CONFIG_LOG(name, ERR, "Failed to set-up VQ %d", i);
 			goto out_dev_destroy;
 		}
 	}
@@ -567,7 +567,7 @@ vduse_device_create(const char *path, bool compliant_ol_flags)
 
 	ret = fdset_add(&vduse.fdset, dev->vduse_dev_fd, vduse_events_handler, NULL, dev);
 	if (ret) {
-		VHOST_LOG_CONFIG(name, ERR, "Failed to add fd %d to vduse fdset\n",
+		VHOST_CONFIG_LOG(name, ERR, "Failed to add fd %d to vduse fdset",
 				dev->vduse_dev_fd);
 		goto out_dev_destroy;
 	}
@@ -624,7 +624,7 @@ vduse_device_destroy(const char *path)
 	if (dev->vduse_ctrl_fd >= 0) {
 		ret = ioctl(dev->vduse_ctrl_fd, VDUSE_DESTROY_DEV, name);
 		if (ret)
-			VHOST_LOG_CONFIG(name, ERR, "Failed to destroy VDUSE device: %s\n",
+			VHOST_CONFIG_LOG(name, ERR, "Failed to destroy VDUSE device: %s",
 					strerror(errno));
 		close(dev->vduse_ctrl_fd);
 		dev->vduse_ctrl_fd = -1;

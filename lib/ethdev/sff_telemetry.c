@@ -19,7 +19,7 @@ sff_port_module_eeprom_parse(uint16_t port_id, struct rte_tel_data *d)
 	int ret;
 
 	if (d == NULL) {
-		RTE_ETHDEV_LOG(ERR, "Dict invalid\n");
+		RTE_ETHDEV_LOG_LINE(ERR, "Dict invalid");
 		return;
 	}
 
@@ -27,16 +27,16 @@ sff_port_module_eeprom_parse(uint16_t port_id, struct rte_tel_data *d)
 	if (ret != 0) {
 		switch (ret) {
 		case -ENODEV:
-			RTE_ETHDEV_LOG(ERR, "Port index %d invalid\n", port_id);
+			RTE_ETHDEV_LOG_LINE(ERR, "Port index %d invalid", port_id);
 			break;
 		case -ENOTSUP:
-			RTE_ETHDEV_LOG(ERR, "Operation not supported by device\n");
+			RTE_ETHDEV_LOG_LINE(ERR, "Operation not supported by device");
 			break;
 		case -EIO:
-			RTE_ETHDEV_LOG(ERR, "Device is removed\n");
+			RTE_ETHDEV_LOG_LINE(ERR, "Device is removed");
 			break;
 		default:
-			RTE_ETHDEV_LOG(ERR, "Unable to get port module info, %d\n", ret);
+			RTE_ETHDEV_LOG_LINE(ERR, "Unable to get port module info, %d", ret);
 			break;
 		}
 		return;
@@ -46,7 +46,7 @@ sff_port_module_eeprom_parse(uint16_t port_id, struct rte_tel_data *d)
 	einfo.length = minfo.eeprom_len;
 	einfo.data = calloc(1, minfo.eeprom_len);
 	if (einfo.data == NULL) {
-		RTE_ETHDEV_LOG(ERR, "Allocation of port %u EEPROM data failed\n", port_id);
+		RTE_ETHDEV_LOG_LINE(ERR, "Allocation of port %u EEPROM data failed", port_id);
 		return;
 	}
 
@@ -54,16 +54,16 @@ sff_port_module_eeprom_parse(uint16_t port_id, struct rte_tel_data *d)
 	if (ret != 0) {
 		switch (ret) {
 		case -ENODEV:
-			RTE_ETHDEV_LOG(ERR, "Port index %d invalid\n", port_id);
+			RTE_ETHDEV_LOG_LINE(ERR, "Port index %d invalid", port_id);
 			break;
 		case -ENOTSUP:
-			RTE_ETHDEV_LOG(ERR, "Operation not supported by device\n");
+			RTE_ETHDEV_LOG_LINE(ERR, "Operation not supported by device");
 			break;
 		case -EIO:
-			RTE_ETHDEV_LOG(ERR, "Device is removed\n");
+			RTE_ETHDEV_LOG_LINE(ERR, "Device is removed");
 			break;
 		default:
-			RTE_ETHDEV_LOG(ERR, "Unable to get port module EEPROM, %d\n", ret);
+			RTE_ETHDEV_LOG_LINE(ERR, "Unable to get port module EEPROM, %d", ret);
 			break;
 		}
 		free(einfo.data);
@@ -84,7 +84,7 @@ sff_port_module_eeprom_parse(uint16_t port_id, struct rte_tel_data *d)
 		sff_8636_show_all(einfo.data, einfo.length, d);
 		break;
 	default:
-		RTE_ETHDEV_LOG(NOTICE, "Unsupported module type: %u\n", minfo.type);
+		RTE_ETHDEV_LOG_LINE(NOTICE, "Unsupported module type: %u", minfo.type);
 		break;
 	}
 
@@ -99,7 +99,7 @@ ssf_add_dict_string(struct rte_tel_data *d, const char *name_str, const char *va
 	if (d->type != TEL_DICT)
 		return;
 	if (d->data_len >= RTE_TEL_MAX_DICT_ENTRIES) {
-		RTE_ETHDEV_LOG(ERR, "data_len has exceeded the maximum number of inserts\n");
+		RTE_ETHDEV_LOG_LINE(ERR, "data_len has exceeded the maximum number of inserts");
 		return;
 	}
 
@@ -135,13 +135,13 @@ eth_dev_handle_port_module_eeprom(const char *cmd __rte_unused, const char *para
 	port_id = strtoul(params, &end_param, 0);
 
 	if (errno != 0 || port_id >= UINT16_MAX) {
-		RTE_ETHDEV_LOG(ERR, "Invalid argument, %d\n", errno);
+		RTE_ETHDEV_LOG_LINE(ERR, "Invalid argument, %d", errno);
 		return -1;
 	}
 
 	if (*end_param != '\0')
-		RTE_ETHDEV_LOG(NOTICE,
-			"Extra parameters [%s] passed to ethdev telemetry command, ignoring\n",
+		RTE_ETHDEV_LOG_LINE(NOTICE,
+			"Extra parameters [%s] passed to ethdev telemetry command, ignoring",
 				end_param);
 
 	rte_tel_data_start_dict(d);

@@ -36,8 +36,8 @@ eth_dev_parse_port_params(const char *params, uint16_t *port_id,
 
 	pi = strtoul(params, end_param, 0);
 	if (**end_param != '\0' && !has_next)
-		RTE_ETHDEV_LOG(NOTICE,
-			"Extra parameters passed to ethdev telemetry command, ignoring\n");
+		RTE_ETHDEV_LOG_LINE(NOTICE,
+			"Extra parameters passed to ethdev telemetry command, ignoring");
 
 	if (pi >= UINT16_MAX || !rte_eth_dev_is_valid_port(pi))
 		return -EINVAL;
@@ -153,8 +153,8 @@ eth_dev_handle_port_xstats(const char *cmd __rte_unused,
 		kvlist = rte_kvargs_parse(end_param, valid_keys);
 		ret = rte_kvargs_process(kvlist, NULL, eth_dev_parse_hide_zero, &hide_zero);
 		if (kvlist == NULL || ret != 0)
-			RTE_ETHDEV_LOG(NOTICE,
-				"Unknown extra parameters passed to ethdev telemetry command, ignoring\n");
+			RTE_ETHDEV_LOG_LINE(NOTICE,
+				"Unknown extra parameters passed to ethdev telemetry command, ignoring");
 		rte_kvargs_free(kvlist);
 	}
 
@@ -445,8 +445,8 @@ eth_dev_handle_port_flow_ctrl(const char *cmd __rte_unused,
 
 	ret = rte_eth_dev_flow_ctrl_get(port_id, &fc_conf);
 	if (ret != 0) {
-		RTE_ETHDEV_LOG(ERR,
-			"Failed to get flow ctrl info, ret = %d\n", ret);
+		RTE_ETHDEV_LOG_LINE(ERR,
+			"Failed to get flow ctrl info, ret = %d", ret);
 		return ret;
 	}
 
@@ -496,8 +496,8 @@ ethdev_parse_queue_params(const char *params, bool is_rx,
 		qid = strtoul(qid_param, &end_param, 0);
 	}
 	if (*end_param != '\0')
-		RTE_ETHDEV_LOG(NOTICE,
-			"Extra parameters passed to ethdev telemetry command, ignoring\n");
+		RTE_ETHDEV_LOG_LINE(NOTICE,
+			"Extra parameters passed to ethdev telemetry command, ignoring");
 
 	if (qid >= UINT16_MAX)
 		return -EINVAL;
@@ -522,8 +522,8 @@ eth_dev_add_burst_mode(uint16_t port_id, uint16_t queue_id,
 		return 0;
 
 	if (ret != 0) {
-		RTE_ETHDEV_LOG(ERR,
-			"Failed to get burst mode for port %u\n", port_id);
+		RTE_ETHDEV_LOG_LINE(ERR,
+			"Failed to get burst mode for port %u", port_id);
 		return ret;
 	}
 
@@ -689,8 +689,8 @@ eth_dev_add_dcb_info(uint16_t port_id, struct rte_tel_data *d)
 
 	ret = rte_eth_dev_get_dcb_info(port_id, &dcb_info);
 	if (ret != 0) {
-		RTE_ETHDEV_LOG(ERR,
-			"Failed to get dcb info, ret = %d\n", ret);
+		RTE_ETHDEV_LOG_LINE(ERR,
+			"Failed to get dcb info, ret = %d", ret);
 		return ret;
 	}
 
@@ -769,8 +769,8 @@ eth_dev_handle_port_rss_info(const char *cmd __rte_unused,
 
 	ret = rte_eth_dev_info_get(port_id, &dev_info);
 	if (ret != 0) {
-		RTE_ETHDEV_LOG(ERR,
-			"Failed to get device info, ret = %d\n", ret);
+		RTE_ETHDEV_LOG_LINE(ERR,
+			"Failed to get device info, ret = %d", ret);
 		return ret;
 	}
 
@@ -823,7 +823,7 @@ eth_dev_fec_capas_to_string(uint32_t fec_capa, char *fec_name, uint32_t len)
 		count = snprintf(fec_name, len, "unknown ");
 
 	if (count >= len) {
-		RTE_ETHDEV_LOG(WARNING, "FEC capa names may be truncated\n");
+		RTE_ETHDEV_LOG_LINE(WARNING, "FEC capa names may be truncated");
 		count = len;
 	}
 
@@ -994,8 +994,8 @@ eth_dev_handle_port_vlan(const char *cmd __rte_unused,
 
 	ret = rte_eth_dev_conf_get(port_id, &dev_conf);
 	if (ret != 0) {
-		RTE_ETHDEV_LOG(ERR,
-			"Failed to get device configuration, ret = %d\n", ret);
+		RTE_ETHDEV_LOG_LINE(ERR,
+			"Failed to get device configuration, ret = %d", ret);
 		return ret;
 	}
 
@@ -1115,7 +1115,7 @@ eth_dev_handle_port_tm_caps(const char *cmd __rte_unused,
 
 	ret = rte_tm_capabilities_get(port_id, &cap, &error);
 	if (ret != 0) {
-		RTE_ETHDEV_LOG(ERR, "error: %s, error type: %u\n",
+		RTE_ETHDEV_LOG_LINE(ERR, "error: %s, error type: %u",
 			error.message ? error.message : "no stated reason",
 			error.type);
 		return ret;
@@ -1229,8 +1229,8 @@ eth_dev_parse_tm_params(char *params, uint32_t *result)
 
 	ret = strtoul(splited_param, &params, 0);
 	if (*params != '\0')
-		RTE_ETHDEV_LOG(NOTICE,
-			"Extra parameters passed to ethdev telemetry command, ignoring\n");
+		RTE_ETHDEV_LOG_LINE(NOTICE,
+			"Extra parameters passed to ethdev telemetry command, ignoring");
 
 	if (ret >= UINT32_MAX)
 		return -EINVAL;
@@ -1263,7 +1263,7 @@ eth_dev_handle_port_tm_level_caps(const char *cmd __rte_unused,
 
 	ret = rte_tm_level_capabilities_get(port_id, level_id, &cap, &error);
 	if (ret != 0) {
-		RTE_ETHDEV_LOG(ERR, "error: %s, error type: %u\n",
+		RTE_ETHDEV_LOG_LINE(ERR, "error: %s, error type: %u",
 			error.message ? error.message : "no stated reason",
 			error.type);
 		return ret;
@@ -1389,7 +1389,7 @@ eth_dev_handle_port_tm_node_caps(const char *cmd __rte_unused,
 
 	return 0;
 out:
-	RTE_ETHDEV_LOG(WARNING, "error: %s, error type: %u\n",
+	RTE_ETHDEV_LOG_LINE(WARNING, "error: %s, error type: %u",
 		error.message ? error.message : "no stated reason",
 		error.type);
 	return ret;

@@ -82,7 +82,7 @@ set_freq_internal(struct cppc_power_info *pi, uint32_t idx)
 	if (idx == pi->curr_idx)
 		return 0;
 
-	POWER_DEBUG_TRACE("Frequency[%u] %u to be set for lcore %u\n",
+	POWER_DEBUG_LOG("Frequency[%u] %u to be set for lcore %u",
 			idx, pi->freqs[idx], pi->lcore_id);
 	if (fseek(pi->f, 0, SEEK_SET) < 0) {
 		POWER_LOG(ERR, "Fail to set file position indicator to 0 "
@@ -172,14 +172,14 @@ power_check_turbo(struct cppc_power_info *pi)
 		pi->turbo_available = 1;
 		pi->turbo_enable = 1;
 		ret = 0;
-		POWER_DEBUG_TRACE("Lcore %u can do Turbo Boost! highest perf %u, "
-				"nominal perf %u\n",
+		POWER_DEBUG_LOG("Lcore %u can do Turbo Boost! highest perf %u, "
+				"nominal perf %u",
 				pi->lcore_id, highest_perf, nominal_perf);
 	} else {
 		pi->turbo_available = 0;
 		pi->turbo_enable = 0;
-		POWER_DEBUG_TRACE("Lcore %u Turbo not available! highest perf %u, "
-				"nominal perf %u\n",
+		POWER_DEBUG_LOG("Lcore %u Turbo not available! highest perf %u, "
+				"nominal perf %u",
 				pi->lcore_id, highest_perf, nominal_perf);
 	}
 
@@ -265,7 +265,7 @@ power_get_available_freqs(struct cppc_power_info *pi)
 
 	ret = 0;
 
-	POWER_DEBUG_TRACE("%d frequency(s) of lcore %u are available\n",
+	POWER_DEBUG_LOG("%d frequency(s) of lcore %u are available",
 			num_freqs, pi->lcore_id);
 
 out:

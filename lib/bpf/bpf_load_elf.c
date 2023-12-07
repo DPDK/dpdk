@@ -84,8 +84,8 @@ resolve_xsym(const char *sn, size_t ofs, struct ebpf_insn *ins, size_t ins_sz,
 		 * as an ordinary EBPF_CALL.
 		 */
 		if (ins[idx].src_reg == EBPF_PSEUDO_CALL) {
-			RTE_BPF_LOG(INFO, "%s(%u): "
-				"EBPF_PSEUDO_CALL to external function: %s\n",
+			RTE_BPF_LOG_LINE(INFO, "%s(%u): "
+				"EBPF_PSEUDO_CALL to external function: %s",
 				__func__, idx, sn);
 			ins[idx].src_reg = EBPF_REG_0;
 		}
@@ -121,7 +121,7 @@ check_elf_header(const Elf64_Ehdr *eh)
 		err = "unexpected machine type";
 
 	if (err != NULL) {
-		RTE_BPF_LOG(ERR, "%s(): %s\n", __func__, err);
+		RTE_BPF_LOG_LINE(ERR, "%s(): %s", __func__, err);
 		return -EINVAL;
 	}
 
@@ -144,7 +144,7 @@ find_elf_code(Elf *elf, const char *section, Elf_Data **psd, size_t *pidx)
 	eh = elf64_getehdr(elf);
 	if (eh == NULL) {
 		rc = elf_errno();
-		RTE_BPF_LOG(ERR, "%s(%p, %s) error code: %d(%s)\n",
+		RTE_BPF_LOG_LINE(ERR, "%s(%p, %s) error code: %d(%s)",
 			__func__, elf, section, rc, elf_errmsg(rc));
 		return -EINVAL;
 	}
@@ -167,7 +167,7 @@ find_elf_code(Elf *elf, const char *section, Elf_Data **psd, size_t *pidx)
 	if (sd == NULL || sd->d_size == 0 ||
 			sd->d_size % sizeof(struct ebpf_insn) != 0) {
 		rc = elf_errno();
-		RTE_BPF_LOG(ERR, "%s(%p, %s) error code: %d(%s)\n",
+		RTE_BPF_LOG_LINE(ERR, "%s(%p, %s) error code: %d(%s)",
 			__func__, elf, section, rc, elf_errmsg(rc));
 		return -EINVAL;
 	}
@@ -216,8 +216,8 @@ process_reloc(Elf *elf, size_t sym_idx, Elf64_Rel *re, size_t re_sz,
 
 		rc = resolve_xsym(sn, ofs, ins, ins_sz, prm);
 		if (rc != 0) {
-			RTE_BPF_LOG(ERR,
-				"resolve_xsym(%s, %zu) error code: %d\n",
+			RTE_BPF_LOG_LINE(ERR,
+				"resolve_xsym(%s, %zu) error code: %d",
 				sn, ofs, rc);
 			return rc;
 		}
@@ -309,7 +309,7 @@ rte_bpf_elf_load(const struct rte_bpf_prm *prm, const char *fname,
 	fd = open(fname, O_RDONLY);
 	if (fd < 0) {
 		rc = errno;
-		RTE_BPF_LOG(ERR, "%s(%s) error code: %d(%s)\n",
+		RTE_BPF_LOG_LINE(ERR, "%s(%s) error code: %d(%s)",
 			__func__, fname, rc, strerror(rc));
 		rte_errno = EINVAL;
 		return NULL;
@@ -319,15 +319,15 @@ rte_bpf_elf_load(const struct rte_bpf_prm *prm, const char *fname,
 	close(fd);
 
 	if (bpf == NULL) {
-		RTE_BPF_LOG(ERR,
+		RTE_BPF_LOG_LINE(ERR,
 			"%s(fname=\"%s\", sname=\"%s\") failed, "
-			"error code: %d\n",
+			"error code: %d",
 			__func__, fname, sname, rte_errno);
 		return NULL;
 	}
 
-	RTE_BPF_LOG(INFO, "%s(fname=\"%s\", sname=\"%s\") "
-		"successfully creates %p(jit={.func=%p,.sz=%zu});\n",
+	RTE_BPF_LOG_LINE(INFO, "%s(fname=\"%s\", sname=\"%s\") "
+		"successfully creates %p(jit={.func=%p,.sz=%zu});",
 		__func__, fname, sname, bpf, bpf->jit.func, bpf->jit.sz);
 	return bpf;
 }

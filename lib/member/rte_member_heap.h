@@ -6,6 +6,7 @@
 #ifndef RTE_MEMBER_HEAP_H
 #define RTE_MEMBER_HEAP_H
 
+#include "member.h"
 #include <rte_ring_elem.h>
 #include "rte_member.h"
 
@@ -129,16 +130,16 @@ resize_hash_table(struct minheap *hp)
 	while (1) {
 		new_bkt_cnt = hp->hashtable->bkt_cnt * HASH_RESIZE_MULTI;
 
-		RTE_MEMBER_LOG(ERR, "Sketch Minheap HT load factor is [%f]\n",
+		MEMBER_LOG(ERR, "Sketch Minheap HT load factor is [%f]",
 			hp->hashtable->num_item / ((float)hp->hashtable->bkt_cnt * HASH_BKT_SIZE));
-		RTE_MEMBER_LOG(ERR, "Sketch Minheap HT resize happen!\n");
+		MEMBER_LOG(ERR, "Sketch Minheap HT resize happen!");
 		rte_free(hp->hashtable);
 		hp->hashtable = rte_zmalloc_socket(NULL, sizeof(struct hash) +
 						new_bkt_cnt * sizeof(struct hash_bkt),
 						RTE_CACHE_LINE_SIZE, hp->socket);
 
 		if (hp->hashtable == NULL) {
-			RTE_MEMBER_LOG(ERR, "Sketch Minheap HT allocation failed\n");
+			MEMBER_LOG(ERR, "Sketch Minheap HT allocation failed");
 			return -ENOMEM;
 		}
 
@@ -147,8 +148,8 @@ resize_hash_table(struct minheap *hp)
 		for (i = 0; i < hp->size; ++i) {
 			if (hash_table_insert(hp->elem[i].key,
 				i + 1, hp->key_len, hp->hashtable) < 0) {
-				RTE_MEMBER_LOG(ERR,
-					"Sketch Minheap HT resize insert fail!\n");
+				MEMBER_LOG(ERR,
+					"Sketch Minheap HT resize insert fail!");
 				break;
 			}
 		}
@@ -174,7 +175,7 @@ rte_member_minheap_init(struct minheap *heap, int size,
 	heap->elem = rte_zmalloc_socket(NULL, sizeof(struct node) * size,
 				RTE_CACHE_LINE_SIZE, socket);
 	if (heap->elem == NULL) {
-		RTE_MEMBER_LOG(ERR, "Sketch Minheap elem allocation failed\n");
+		MEMBER_LOG(ERR, "Sketch Minheap elem allocation failed");
 		return -ENOMEM;
 	}
 
@@ -188,7 +189,7 @@ rte_member_minheap_init(struct minheap *heap, int size,
 					RTE_CACHE_LINE_SIZE, socket);
 
 	if (heap->hashtable == NULL) {
-		RTE_MEMBER_LOG(ERR, "Sketch Minheap HT allocation failed\n");
+		MEMBER_LOG(ERR, "Sketch Minheap HT allocation failed");
 		rte_free(heap->elem);
 		return -ENOMEM;
 	}
@@ -231,13 +232,13 @@ rte_member_heapify(struct minheap *hp, uint32_t idx, bool update_hash)
 		if (update_hash) {
 			if (hash_table_update(hp->elem[smallest].key, idx + 1, smallest + 1,
 					hp->key_len, hp->hashtable) < 0) {
-				RTE_MEMBER_LOG(ERR, "Minheap Hash Table update failed\n");
+				MEMBER_LOG(ERR, "Minheap Hash Table update failed");
 				return;
 			}
 
 			if (hash_table_update(hp->elem[idx].key, smallest + 1, idx + 1,
 					hp->key_len, hp->hashtable) < 0) {
-				RTE_MEMBER_LOG(ERR, "Minheap Hash Table update failed\n");
+				MEMBER_LOG(ERR, "Minheap Hash Table update failed");
 				return;
 			}
 		}
@@ -255,7 +256,7 @@ rte_member_minheap_insert_node(struct minheap *hp, const void *key,
 	uint32_t slot_id;
 
 	if (rte_ring_sc_dequeue_elem(free_key_slot, &slot_id, sizeof(uint32_t)) != 0) {
-		RTE_MEMBER_LOG(ERR, "Minheap get empty keyslot failed\n");
+		MEMBER_LOG(ERR, "Minheap get empty keyslot failed");
 		return -1;
 	}
 
@@ -270,7 +271,7 @@ rte_member_minheap_insert_node(struct minheap *hp, const void *key,
 		hp->elem[i] = hp->elem[PARENT(i)];
 		if (hash_table_update(hp->elem[i].key, PARENT(i) + 1, i + 1,
 				hp->key_len, hp->hashtable) < 0) {
-			RTE_MEMBER_LOG(ERR, "Minheap Hash Table update failed\n");
+			MEMBER_LOG(ERR, "Minheap Hash Table update failed");
 			return -1;
 		}
 		i = PARENT(i);
@@ -279,7 +280,7 @@ rte_member_minheap_insert_node(struct minheap *hp, const void *key,
 
 	if (hash_table_insert(key, i + 1, hp->key_len, hp->hashtable) < 0) {
 		if (resize_hash_table(hp) < 0) {
-			RTE_MEMBER_LOG(ERR, "Minheap Hash Table resize failed\n");
+			MEMBER_LOG(ERR, "Minheap Hash Table resize failed");
 			return -1;
 		}
 	}
@@ -296,7 +297,7 @@ rte_member_minheap_delete_node(struct minheap *hp, const void *key,
 	uint32_t offset = RTE_PTR_DIFF(hp->elem[idx].key, key_slot) / hp->key_len;
 
 	if (hash_table_del(key, idx + 1, hp->key_len, hp->hashtable) < 0) {
-		RTE_MEMBER_LOG(ERR, "Minheap Hash Table delete failed\n");
+		MEMBER_LOG(ERR, "Minheap Hash Table delete failed");
 		return -1;
 	}
 
@@ -311,7 +312,7 @@ rte_member_minheap_delete_node(struct minheap *hp, const void *key,
 
 	if (hash_table_update(hp->elem[idx].key, hp->size, idx + 1,
 				hp->key_len, hp->hashtable) < 0) {
-		RTE_MEMBER_LOG(ERR, "Minheap Hash Table update failed\n");
+		MEMBER_LOG(ERR, "Minheap Hash Table update failed");
 		return -1;
 	}
 	hp->size--;
@@ -332,7 +333,7 @@ rte_member_minheap_replace_node(struct minheap *hp,
 	recycle_key = hp->elem[0].key;
 
 	if (hash_table_del(recycle_key, 1, hp->key_len, hp->hashtable) < 0) {
-		RTE_MEMBER_LOG(ERR, "Minheap Hash Table delete failed\n");
+		MEMBER_LOG(ERR, "Minheap Hash Table delete failed");
 		return -1;
 	}
 
@@ -340,7 +341,7 @@ rte_member_minheap_replace_node(struct minheap *hp,
 
 	if (hash_table_update(hp->elem[0].key, hp->size, 1,
 				hp->key_len, hp->hashtable) < 0) {
-		RTE_MEMBER_LOG(ERR, "Minheap Hash Table update failed\n");
+		MEMBER_LOG(ERR, "Minheap Hash Table update failed");
 		return -1;
 	}
 	hp->size--;
@@ -358,7 +359,7 @@ rte_member_minheap_replace_node(struct minheap *hp,
 		hp->elem[i] = hp->elem[PARENT(i)];
 		if (hash_table_update(hp->elem[i].key, PARENT(i) + 1, i + 1,
 				hp->key_len, hp->hashtable) < 0) {
-			RTE_MEMBER_LOG(ERR, "Minheap Hash Table update failed\n");
+			MEMBER_LOG(ERR, "Minheap Hash Table update failed");
 			return -1;
 		}
 		i = PARENT(i);
@@ -367,9 +368,9 @@ rte_member_minheap_replace_node(struct minheap *hp,
 	hp->elem[i] = nd;
 
 	if (hash_table_insert(new_key, i + 1, hp->key_len, hp->hashtable) < 0) {
-		RTE_MEMBER_LOG(ERR, "Minheap Hash Table replace insert failed\n");
+		MEMBER_LOG(ERR, "Minheap Hash Table replace insert failed");
 		if (resize_hash_table(hp) < 0) {
-			RTE_MEMBER_LOG(ERR, "Minheap Hash Table replace resize failed\n");
+			MEMBER_LOG(ERR, "Minheap Hash Table replace resize failed");
 			return -1;
 		}
 	}

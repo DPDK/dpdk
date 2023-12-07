@@ -9,6 +9,7 @@
 #include <rte_log.h>
 #include <rte_vect.h>
 
+#include "member.h"
 #include "rte_member.h"
 #include "rte_member_ht.h"
 
@@ -84,8 +85,8 @@ rte_member_create_ht(struct rte_member_setsum *ss,
 			!rte_is_power_of_2(RTE_MEMBER_BUCKET_ENTRIES) ||
 			num_entries < RTE_MEMBER_BUCKET_ENTRIES) {
 		rte_errno = EINVAL;
-		RTE_MEMBER_LOG(ERR,
-			"Membership HT create with invalid parameters\n");
+		MEMBER_LOG(ERR,
+			"Membership HT create with invalid parameters");
 		return -EINVAL;
 	}
 
@@ -98,8 +99,8 @@ rte_member_create_ht(struct rte_member_setsum *ss,
 			RTE_CACHE_LINE_SIZE, ss->socket_id);
 
 	if (buckets == NULL) {
-		RTE_MEMBER_LOG(ERR, "memory allocation failed for HT "
-						"setsummary\n");
+		MEMBER_LOG(ERR, "memory allocation failed for HT "
+						"setsummary");
 		return -ENOMEM;
 	}
 
@@ -121,8 +122,8 @@ rte_member_create_ht(struct rte_member_setsum *ss,
 #endif
 		ss->sig_cmp_fn = RTE_MEMBER_COMPARE_SCALAR;
 
-	RTE_MEMBER_LOG(DEBUG, "Hash table based filter created, "
-			"the table has %u entries, %u buckets\n",
+	MEMBER_LOG(DEBUG, "Hash table based filter created, "
+			"the table has %u entries, %u buckets",
 			num_entries, num_buckets);
 	return 0;
 }

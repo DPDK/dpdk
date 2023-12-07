@@ -9,6 +9,7 @@
 #include <rte_errno.h>
 #include <rte_log.h>
 
+#include "member.h"
 #include "rte_member.h"
 #include "rte_member_vbf.h"
 
@@ -35,7 +36,7 @@ rte_member_create_vbf(struct rte_member_setsum *ss,
 			params->false_positive_rate == 0 ||
 			params->false_positive_rate > 1) {
 		rte_errno = EINVAL;
-		RTE_MEMBER_LOG(ERR, "Membership vBF create with invalid parameters\n");
+		MEMBER_LOG(ERR, "Membership vBF create with invalid parameters");
 		return -EINVAL;
 	}
 
@@ -56,7 +57,7 @@ rte_member_create_vbf(struct rte_member_setsum *ss,
 
 	if (fp_one_bf == 0) {
 		rte_errno = EINVAL;
-		RTE_MEMBER_LOG(ERR, "Membership BF false positive rate is too small\n");
+		MEMBER_LOG(ERR, "Membership BF false positive rate is too small");
 		return -EINVAL;
 	}
 
@@ -111,10 +112,10 @@ rte_member_create_vbf(struct rte_member_setsum *ss,
 	ss->mul_shift = rte_ctz32(ss->num_set);
 	ss->div_shift = rte_ctz32(32 >> ss->mul_shift);
 
-	RTE_MEMBER_LOG(DEBUG, "vector bloom filter created, "
+	MEMBER_LOG(DEBUG, "vector bloom filter created, "
 		"each bloom filter expects %u keys, needs %u bits, %u hashes, "
 		"with false positive rate set as %.5f, "
-		"The new calculated vBF false positive rate is %.5f\n",
+		"The new calculated vBF false positive rate is %.5f",
 		num_keys_per_bf, ss->bits, ss->num_hashes, fp_one_bf, new_fp);
 
 	ss->table = rte_zmalloc_socket(NULL, ss->num_set * (ss->bits >> 3),

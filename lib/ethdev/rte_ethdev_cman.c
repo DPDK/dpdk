@@ -21,12 +21,12 @@ rte_eth_cman_info_get(uint16_t port_id, struct rte_eth_cman_info *info)
 	dev = &rte_eth_devices[port_id];
 
 	if (info == NULL) {
-		RTE_ETHDEV_LOG(ERR, "congestion management info is NULL\n");
+		RTE_ETHDEV_LOG_LINE(ERR, "congestion management info is NULL");
 		return -EINVAL;
 	}
 
 	if (dev->dev_ops->cman_info_get == NULL) {
-		RTE_ETHDEV_LOG(ERR, "Function not implemented\n");
+		RTE_ETHDEV_LOG_LINE(ERR, "Function not implemented");
 		return -ENOTSUP;
 	}
 
@@ -49,12 +49,12 @@ rte_eth_cman_config_init(uint16_t port_id, struct rte_eth_cman_config *config)
 	dev = &rte_eth_devices[port_id];
 
 	if (config == NULL) {
-		RTE_ETHDEV_LOG(ERR, "congestion management config is NULL\n");
+		RTE_ETHDEV_LOG_LINE(ERR, "congestion management config is NULL");
 		return -EINVAL;
 	}
 
 	if (dev->dev_ops->cman_config_init == NULL) {
-		RTE_ETHDEV_LOG(ERR, "Function not implemented\n");
+		RTE_ETHDEV_LOG_LINE(ERR, "Function not implemented");
 		return -ENOTSUP;
 	}
 
@@ -77,12 +77,12 @@ rte_eth_cman_config_set(uint16_t port_id, const struct rte_eth_cman_config *conf
 	dev = &rte_eth_devices[port_id];
 
 	if (config == NULL) {
-		RTE_ETHDEV_LOG(ERR, "congestion management config is NULL\n");
+		RTE_ETHDEV_LOG_LINE(ERR, "congestion management config is NULL");
 		return -EINVAL;
 	}
 
 	if (dev->dev_ops->cman_config_set == NULL) {
-		RTE_ETHDEV_LOG(ERR, "Function not implemented\n");
+		RTE_ETHDEV_LOG_LINE(ERR, "Function not implemented");
 		return -ENOTSUP;
 	}
 
@@ -104,12 +104,12 @@ rte_eth_cman_config_get(uint16_t port_id, struct rte_eth_cman_config *config)
 	dev = &rte_eth_devices[port_id];
 
 	if (config == NULL) {
-		RTE_ETHDEV_LOG(ERR, "congestion management config is NULL\n");
+		RTE_ETHDEV_LOG_LINE(ERR, "congestion management config is NULL");
 		return -EINVAL;
 	}
 
 	if (dev->dev_ops->cman_config_get == NULL) {
-		RTE_ETHDEV_LOG(ERR, "Function not implemented\n");
+		RTE_ETHDEV_LOG_LINE(ERR, "Function not implemented");
 		return -ENOTSUP;
 	}
 

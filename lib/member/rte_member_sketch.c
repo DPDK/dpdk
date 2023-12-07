@@ -14,6 +14,7 @@
 #include <rte_prefetch.h>
 #include <rte_ring_elem.h>
 
+#include "member.h"
 #include "rte_member.h"
 #include "rte_member_sketch.h"
 #include "rte_member_heap.h"
@@ -118,8 +119,8 @@ rte_member_create_sketch(struct rte_member_setsum *ss,
 
 	if (params->sample_rate == 0 || params->sample_rate > 1) {
 		rte_errno = EINVAL;
-		RTE_MEMBER_LOG(ERR,
-			"Membership Sketch created with invalid parameters\n");
+		MEMBER_LOG(ERR,
+			"Membership Sketch created with invalid parameters");
 		return -EINVAL;
 	}
 
@@ -141,8 +142,8 @@ rte_member_create_sketch(struct rte_member_setsum *ss,
 	if (ss->use_avx512 == true) {
 #ifdef CC_AVX512_SUPPORT
 		ss->num_row = NUM_ROW_VEC;
-		RTE_MEMBER_LOG(NOTICE,
-			"Membership Sketch AVX512 update/lookup/delete ops is selected\n");
+		MEMBER_LOG(NOTICE,
+			"Membership Sketch AVX512 update/lookup/delete ops is selected");
 		ss->sketch_update = sketch_update_avx512;
 		ss->sketch_lookup = sketch_lookup_avx512;
 		ss->sketch_delete = sketch_delete_avx512;
@@ -151,8 +152,8 @@ rte_member_create_sketch(struct rte_member_setsum *ss,
 #endif
 	{
 		ss->num_row = NUM_ROW_SCALAR;
-		RTE_MEMBER_LOG(NOTICE,
-			"Membership Sketch SCALAR update/lookup/delete ops is selected\n");
+		MEMBER_LOG(NOTICE,
+			"Membership Sketch SCALAR update/lookup/delete ops is selected");
 		ss->sketch_update = sketch_update_scalar;
 		ss->sketch_lookup = sketch_lookup_scalar;
 		ss->sketch_delete = sketch_delete_scalar;
@@ -173,21 +174,21 @@ rte_member_create_sketch(struct rte_member_setsum *ss,
 			sizeof(uint64_t) * num_col * ss->num_row,
 			RTE_CACHE_LINE_SIZE, ss->socket_id);
 	if (ss->table == NULL) {
-		RTE_MEMBER_LOG(ERR, "Sketch Table memory allocation failed\n");
+		MEMBER_LOG(ERR, "Sketch Table memory allocation failed");
 		return -ENOMEM;
 	}
 
 	ss->hash_seeds = rte_zmalloc_socket(NULL, sizeof(uint64_t) * ss->num_row,
 			RTE_CACHE_LINE_SIZE, ss->socket_id);
 	if (ss->hash_seeds == NULL) {
-		RTE_MEMBER_LOG(ERR, "Sketch Hashseeds memory allocation failed\n");
+		MEMBER_LOG(ERR, "Sketch Hashseeds memory allocation failed");
 		return -ENOMEM;
 	}
 
 	ss->runtime_var = rte_zmalloc_socket(NULL, sizeof(struct sketch_runtime),
 					RTE_CACHE_LINE_SIZE, ss->socket_id);
 	if (ss->runtime_var == NULL) {
-		RTE_MEMBER_LOG(ERR, "Sketch Runtime memory allocation failed\n");
+		MEMBER_LOG(ERR, "Sketch Runtime memory allocation failed");
 		rte_free(ss);
 		return -ENOMEM;
 	}
@@ -205,7 +206,7 @@ rte_member_create_sketch(struct rte_member_setsum *ss,
 	runtime->key_slots = rte_zmalloc_socket(NULL, ss->key_len * ss->topk,
 					RTE_CACHE_LINE_SIZE, ss->socket_id);
 	if (runtime->key_slots == NULL) {
-		RTE_MEMBER_LOG(ERR, "Sketch Key Slots allocation failed\n");
+		MEMBER_LOG(ERR, "Sketch Key Slots allocation failed");
 		goto error;
 	}
 
@@ -216,14 +217,14 @@ rte_member_create_sketch(struct rte_member_setsum *ss,
 
 	if (rte_member_minheap_init(&(runtime->heap), params->top_k,
 			ss->socket_id, params->prim_hash_seed) < 0) {
-		RTE_MEMBER_LOG(ERR, "Sketch Minheap allocation failed\n");
+		MEMBER_LOG(ERR, "Sketch Minheap allocation failed");
 		goto error_runtime;
 	}
 
 	runtime->report_array = rte_zmalloc_socket(NULL, sizeof(struct node) * ss->topk,
 					RTE_CACHE_LINE_SIZE, ss->socket_id);
 	if (runtime->report_array == NULL) {
-		RTE_MEMBER_LOG(ERR, "Sketch Runtime Report Array allocation failed\n");
+		MEMBER_LOG(ERR, "Sketch Runtime Report Array allocation failed");
 		goto error_runtime;
 	}
 
@@ -239,8 +240,8 @@ rte_member_create_sketch(struct rte_member_setsum *ss,
 		ss->converge_thresh = 10 * pow(ss->error_rate, -2.0) * sqrt(log(1 / delta));
 	}
 
-	RTE_MEMBER_LOG(DEBUG, "Sketch created, "
-		"the total memory required is %u Bytes\n",  ss->num_col * ss->num_row * 8);
+	MEMBER_LOG(DEBUG, "Sketch created, "
+		"the total memory required is %u Bytes",  ss->num_col * ss->num_row * 8);
 
 	return 0;
 
@@ -382,8 +383,8 @@ should_converge(const struct rte_member_setsum *ss)
 	/* For count min sketch - L1 norm */
 	if (runtime_var->pkt_cnt > ss->converge_thresh) {
 		runtime_var->converged = 1;
-		RTE_MEMBER_LOG(DEBUG, "Sketch converged, begin sampling "
-					"from key count %"PRIu64"\n",
+		MEMBER_LOG(DEBUG, "Sketch converged, begin sampling "
+					"from key count %"PRIu64,
 					runtime_var->pkt_cnt);
 	}
 }
@@ -471,8 +472,8 @@ rte_member_add_sketch(const struct rte_member_setsum *ss,
 	 * the rte_member_add_sketch_byte_count routine should be used.
 	 */
 	if (ss->count_byte == 1) {
-		RTE_MEMBER_LOG(ERR, "Sketch is Byte Mode, "
-			"should use rte_member_add_byte_count()!\n");
+		MEMBER_LOG(ERR, "Sketch is Byte Mode, "
+			"should use rte_member_add_byte_count()!");
 		return -EINVAL;
 	}
 
@@ -528,8 +529,8 @@ rte_member_add_sketch_byte_count(const struct rte_member_setsum *ss,
 
 	/* should not call this API if not in count byte mode */
 	if (ss->count_byte == 0) {
-		RTE_MEMBER_LOG(ERR, "Sketch is Pkt Mode, "
-			"should use rte_member_add()!\n");
+		MEMBER_LOG(ERR, "Sketch is Pkt Mode, "
+			"should use rte_member_add()!");
 		return -EINVAL;
 	}
 

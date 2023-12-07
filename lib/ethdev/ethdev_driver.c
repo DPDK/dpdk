@@ -80,12 +80,12 @@ rte_eth_dev_allocate(const char *name)
 
 	name_len = strnlen(name, RTE_ETH_NAME_MAX_LEN);
 	if (name_len == 0) {
-		RTE_ETHDEV_LOG(ERR, "Zero length Ethernet device name\n");
+		RTE_ETHDEV_LOG_LINE(ERR, "Zero length Ethernet device name");
 		return NULL;
 	}
 
 	if (name_len >= RTE_ETH_NAME_MAX_LEN) {
-		RTE_ETHDEV_LOG(ERR, "Ethernet device name is too long\n");
+		RTE_ETHDEV_LOG_LINE(ERR, "Ethernet device name is too long");
 		return NULL;
 	}
 
@@ -96,16 +96,16 @@ rte_eth_dev_allocate(const char *name)
 		goto unlock;
 
 	if (eth_dev_allocated(name) != NULL) {
-		RTE_ETHDEV_LOG(ERR,
-			"Ethernet device with name %s already allocated\n",
+		RTE_ETHDEV_LOG_LINE(ERR,
+			"Ethernet device with name %s already allocated",
 			name);
 		goto unlock;
 	}
 
 	port_id = eth_dev_find_free_port();
 	if (port_id == RTE_MAX_ETHPORTS) {
-		RTE_ETHDEV_LOG(ERR,
-			"Reached maximum number of Ethernet ports\n");
+		RTE_ETHDEV_LOG_LINE(ERR,
+			"Reached maximum number of Ethernet ports");
 		goto unlock;
 	}
 
@@ -163,8 +163,8 @@ rte_eth_dev_attach_secondary(const char *name)
 			break;
 	}
 	if (i == RTE_MAX_ETHPORTS) {
-		RTE_ETHDEV_LOG(ERR,
-			"Device %s is not driven by the primary process\n",
+		RTE_ETHDEV_LOG_LINE(ERR,
+			"Device %s is not driven by the primary process",
 			name);
 	} else {
 		eth_dev = eth_dev_get(i);
@@ -302,8 +302,8 @@ rte_eth_dev_create(struct rte_device *device, const char *name,
 				device->numa_node);
 
 			if (!ethdev->data->dev_private) {
-				RTE_ETHDEV_LOG(ERR,
-					"failed to allocate private data\n");
+				RTE_ETHDEV_LOG_LINE(ERR,
+					"failed to allocate private data");
 				retval = -ENOMEM;
 				goto probe_failed;
 			}
@@ -311,8 +311,8 @@ rte_eth_dev_create(struct rte_device *device, const char *name,
 	} else {
 		ethdev = rte_eth_dev_attach_secondary(name);
 		if (!ethdev) {
-			RTE_ETHDEV_LOG(ERR,
-				"secondary process attach failed, ethdev doesn't exist\n");
+			RTE_ETHDEV_LOG_LINE(ERR,
+				"secondary process attach failed, ethdev doesn't exist");
 			return  -ENODEV;
 		}
 	}
@@ -322,15 +322,15 @@ rte_eth_dev_create(struct rte_device *device, const char *name,
 	if (ethdev_bus_specific_init) {
 		retval = ethdev_bus_specific_init(ethdev, bus_init_params);
 		if (retval) {
-			RTE_ETHDEV_LOG(ERR,
-				"ethdev bus specific initialisation failed\n");
+			RTE_ETHDEV_LOG_LINE(ERR,
+				"ethdev bus specific initialisation failed");
 			goto probe_failed;
 		}
 	}
 
 	retval = ethdev_init(ethdev, init_params);
 	if (retval) {
-		RTE_ETHDEV_LOG(ERR, "ethdev initialisation failed\n");
+		RTE_ETHDEV_LOG_LINE(ERR, "ethdev initialisation failed");
 		goto probe_failed;
 	}
 
@@ -394,7 +394,7 @@ void
 rte_eth_dev_internal_reset(struct rte_eth_dev *dev)
 {
 	if (dev->data->dev_started) {
-		RTE_ETHDEV_LOG(ERR, "Port %u must be stopped to allow reset\n",
+		RTE_ETHDEV_LOG_LINE(ERR, "Port %u must be stopped to allow reset",
 			dev->data->port_id);
 		return;
 	}
@@ -487,7 +487,7 @@ rte_eth_devargs_parse(const char *dargs, struct rte_eth_devargs *eth_da)
 		pair = &args.pairs[i];
 		if (strcmp("representor", pair->key) == 0) {
 			if (eth_da->type != RTE_ETH_REPRESENTOR_NONE) {
-				RTE_ETHDEV_LOG(ERR, "duplicated representor key: %s\n",
+				RTE_ETHDEV_LOG_LINE(ERR, "duplicated representor key: %s",
 					dargs);
 				result = -1;
 				goto parse_cleanup;
@@ -524,7 +524,7 @@ rte_eth_dma_zone_free(const struct rte_eth_dev *dev, const char *ring_name,
 	rc = eth_dev_dma_mzone_name(z_name, sizeof(z_name), dev->data->port_id,
 			queue_id, ring_name);
 	if (rc >= RTE_MEMZONE_NAMESIZE) {
-		RTE_ETHDEV_LOG(ERR, "ring name too long\n");
+		RTE_ETHDEV_LOG_LINE(ERR, "ring name too long");
 		return -ENAMETOOLONG;
 	}
 
@@ -549,7 +549,7 @@ rte_eth_dma_zone_reserve(const struct rte_eth_dev *dev, const char *ring_name,
 	rc = eth_dev_dma_mzone_name(z_name, sizeof(z_name), dev->data->port_id,
 			queue_id, ring_name);
 	if (rc >= RTE_MEMZONE_NAMESIZE) {
-		RTE_ETHDEV_LOG(ERR, "ring name too long\n");
+		RTE_ETHDEV_LOG_LINE(ERR, "ring name too long");
 		rte_errno = ENAMETOOLONG;
 		return NULL;
 	}
@@ -559,8 +559,8 @@ rte_eth_dma_zone_reserve(const struct rte_eth_dev *dev, const char *ring_name,
 		if ((socket_id != SOCKET_ID_ANY && socket_id != mz->socket_id) ||
 				size > mz->len ||
 				((uintptr_t)mz->addr & (align - 1)) != 0) {
-			RTE_ETHDEV_LOG(ERR,
-				"memzone %s does not justify the requested attributes\n",
+			RTE_ETHDEV_LOG_LINE(ERR,
+				"memzone %s does not justify the requested attributes",
 				mz->name);
 			return NULL;
 		}
@@ -713,7 +713,7 @@ rte_eth_representor_id_get(uint16_t port_id,
 		if (info->ranges[i].controller != controller)
 			continue;
 		if (info->ranges[i].id_end < info->ranges[i].id_base) {
-			RTE_ETHDEV_LOG(WARNING, "Port %hu invalid representor ID Range %u - %u, entry %d\n",
+			RTE_ETHDEV_LOG_LINE(WARNING, "Port %hu invalid representor ID Range %u - %u, entry %d",
 				port_id, info->ranges[i].id_base,
 				info->ranges[i].id_end, i);
 			continue;

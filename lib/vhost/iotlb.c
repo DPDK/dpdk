@@ -150,16 +150,16 @@ vhost_user_iotlb_pending_insert(struct virtio_net *dev, uint64_t iova, uint8_t p
 
 	node = vhost_user_iotlb_pool_get(dev);
 	if (node == NULL) {
-		VHOST_LOG_CONFIG(dev->ifname, DEBUG,
-			"IOTLB pool empty, clear entries for pending insertion\n");
+		VHOST_CONFIG_LOG(dev->ifname, DEBUG,
+			"IOTLB pool empty, clear entries for pending insertion");
 		if (!TAILQ_EMPTY(&dev->iotlb_pending_list))
 			vhost_user_iotlb_pending_remove_all(dev);
 		else
 			vhost_user_iotlb_cache_random_evict(dev);
 		node = vhost_user_iotlb_pool_get(dev);
 		if (node == NULL) {
-			VHOST_LOG_CONFIG(dev->ifname, ERR,
-				"IOTLB pool still empty, pending insertion failure\n");
+			VHOST_CONFIG_LOG(dev->ifname, ERR,
+				"IOTLB pool still empty, pending insertion failure");
 			return;
 		}
 	}
@@ -253,16 +253,16 @@ vhost_user_iotlb_cache_insert(struct virtio_net *dev, uint64_t iova, uint64_t ua
 
 	new_node = vhost_user_iotlb_pool_get(dev);
 	if (new_node == NULL) {
-		VHOST_LOG_CONFIG(dev->ifname, DEBUG,
-			"IOTLB pool empty, clear entries for cache insertion\n");
+		VHOST_CONFIG_LOG(dev->ifname, DEBUG,
+			"IOTLB pool empty, clear entries for cache insertion");
 		if (!TAILQ_EMPTY(&dev->iotlb_list))
 			vhost_user_iotlb_cache_random_evict(dev);
 		else
 			vhost_user_iotlb_pending_remove_all(dev);
 		new_node = vhost_user_iotlb_pool_get(dev);
 		if (new_node == NULL) {
-			VHOST_LOG_CONFIG(dev->ifname, ERR,
-				"IOTLB pool still empty, cache insertion failed\n");
+			VHOST_CONFIG_LOG(dev->ifname, ERR,
+				"IOTLB pool still empty, cache insertion failed");
 			return;
 		}
 	}
@@ -415,7 +415,7 @@ vhost_user_iotlb_init(struct virtio_net *dev)
 		dev->iotlb_pool = rte_calloc_socket("iotlb", IOTLB_CACHE_SIZE,
 			sizeof(struct vhost_iotlb_entry), 0, socket);
 		if (!dev->iotlb_pool) {
-			VHOST_LOG_CONFIG(dev->ifname, ERR, "Failed to create IOTLB cache pool\n");
+			VHOST_CONFIG_LOG(dev->ifname, ERR, "Failed to create IOTLB cache pool");
 			return -1;
 		}
 		for (i = 0; i < IOTLB_CACHE_SIZE; i++)

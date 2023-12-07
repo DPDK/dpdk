@@ -11,6 +11,7 @@
 #include <rte_tailq.h>
 #include <rte_ring_elem.h>
 
+#include "member.h"
 #include "rte_member.h"
 #include "rte_member_ht.h"
 #include "rte_member_vbf.h"
@@ -102,8 +103,8 @@ rte_member_create(const struct rte_member_parameters *params)
 	if (params->key_len == 0 ||
 			params->prim_hash_seed == params->sec_hash_seed) {
 		rte_errno = EINVAL;
-		RTE_MEMBER_LOG(ERR, "Create setsummary with "
-					"invalid parameters\n");
+		MEMBER_LOG(ERR, "Create setsummary with "
+					"invalid parameters");
 		return NULL;
 	}
 
@@ -112,7 +113,7 @@ rte_member_create(const struct rte_member_parameters *params)
 		sketch_key_ring = rte_ring_create_elem(ring_name, sizeof(uint32_t),
 				rte_align32pow2(params->top_k), params->socket_id, 0);
 		if (sketch_key_ring == NULL) {
-			RTE_MEMBER_LOG(ERR, "Sketch Ring Memory allocation failed\n");
+			MEMBER_LOG(ERR, "Sketch Ring Memory allocation failed");
 			return NULL;
 		}
 	}
@@ -135,7 +136,7 @@ rte_member_create(const struct rte_member_parameters *params)
 	}
 	te = rte_zmalloc("MEMBER_TAILQ_ENTRY", sizeof(*te), 0);
 	if (te == NULL) {
-		RTE_MEMBER_LOG(ERR, "tailq entry allocation failed\n");
+		MEMBER_LOG(ERR, "tailq entry allocation failed");
 		goto error_unlock_exit;
 	}
 
@@ -144,7 +145,7 @@ rte_member_create(const struct rte_member_parameters *params)
 			sizeof(struct rte_member_setsum), RTE_CACHE_LINE_SIZE,
 			params->socket_id);
 	if (setsum == NULL) {
-		RTE_MEMBER_LOG(ERR, "Create setsummary failed\n");
+		MEMBER_LOG(ERR, "Create setsummary failed");
 		goto error_unlock_exit;
 	}
 	strlcpy(setsum->name, params->name, sizeof(setsum->name));
@@ -171,8 +172,8 @@ rte_member_create(const struct rte_member_parameters *params)
 	if (ret < 0)
 		goto error_unlock_exit;
 
-	RTE_MEMBER_LOG(DEBUG, "Creating a setsummary table with "
-			"mode %u\n", setsum->type);
+	MEMBER_LOG(DEBUG, "Creating a setsummary table with "
+			"mode %u", setsum->type);
 
 	te->data = (void *)setsum;
 	TAILQ_INSERT_TAIL(member_list, te, next);

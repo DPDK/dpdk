@@ -182,7 +182,7 @@ rte_eth_devargs_parse_representor_ports(char *str, void *data)
 		RTE_DIM(eth_da->representor_ports));
 done:
 	if (str == NULL)
-		RTE_ETHDEV_LOG(ERR, "wrong representor format: %s\n", str);
+		RTE_ETHDEV_LOG_LINE(ERR, "wrong representor format: %s", str);
 	return str == NULL ? -1 : 0;
 }
 
@@ -214,7 +214,7 @@ dummy_eth_rx_burst(void *rxq,
 
 	port_id = queue - per_port_queues;
 	if (port_id < RTE_DIM(per_port_queues) && !queue->rx_warn_once) {
-		RTE_ETHDEV_LOG(ERR, "lcore %u called rx_pkt_burst for not ready port %"PRIuPTR"\n",
+		RTE_ETHDEV_LOG_LINE(ERR, "lcore %u called rx_pkt_burst for not ready port %"PRIuPTR,
 			rte_lcore_id(), port_id);
 		rte_dump_stack();
 		queue->rx_warn_once = true;
@@ -233,7 +233,7 @@ dummy_eth_tx_burst(void *txq,
 
 	port_id = queue - per_port_queues;
 	if (port_id < RTE_DIM(per_port_queues) && !queue->tx_warn_once) {
-		RTE_ETHDEV_LOG(ERR, "lcore %u called tx_pkt_burst for not ready port %"PRIuPTR"\n",
+		RTE_ETHDEV_LOG_LINE(ERR, "lcore %u called tx_pkt_burst for not ready port %"PRIuPTR,
 			rte_lcore_id(), port_id);
 		rte_dump_stack();
 		queue->tx_warn_once = true;
@@ -337,7 +337,7 @@ eth_dev_shared_data_prepare(void)
 				sizeof(*eth_dev_shared_data),
 				rte_socket_id(), flags);
 		if (mz == NULL) {
-			RTE_ETHDEV_LOG(ERR, "Cannot allocate ethdev shared data\n");
+			RTE_ETHDEV_LOG_LINE(ERR, "Cannot allocate ethdev shared data");
 			goto out;
 		}
 
@@ -355,7 +355,7 @@ eth_dev_shared_data_prepare(void)
 			/* Clean remaining any traces of a previous shared mem */
 			eth_dev_shared_mz = NULL;
 			eth_dev_shared_data = NULL;
-			RTE_ETHDEV_LOG(ERR, "Cannot lookup ethdev shared data\n");
+			RTE_ETHDEV_LOG_LINE(ERR, "Cannot lookup ethdev shared data");
 			goto out;
 		}
 		if (mz == eth_dev_shared_mz && mz->addr == eth_dev_shared_data)

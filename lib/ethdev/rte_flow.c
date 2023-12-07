@@ -18,6 +18,8 @@
 
 #include "ethdev_trace.h"
 
+#define FLOW_LOG RTE_ETHDEV_LOG_LINE
+
 /* Mbuf dynamic field name for metadata. */
 int32_t rte_flow_dynf_metadata_offs = -1;
 
@@ -1614,13 +1616,13 @@ rte_flow_info_get(uint16_t port_id,
 	if (unlikely(!ops))
 		return -rte_errno;
 	if (dev->data->dev_configured == 0) {
-		RTE_FLOW_LOG(INFO,
-			"Device with port_id=%"PRIu16" is not configured.\n",
+		FLOW_LOG(INFO,
+			"Device with port_id=%"PRIu16" is not configured.",
 			port_id);
 		return -EINVAL;
 	}
 	if (port_info == NULL) {
-		RTE_FLOW_LOG(ERR, "Port %"PRIu16" info is NULL.\n", port_id);
+		FLOW_LOG(ERR, "Port %"PRIu16" info is NULL.", port_id);
 		return -EINVAL;
 	}
 	if (likely(!!ops->info_get)) {
@@ -1651,23 +1653,23 @@ rte_flow_configure(uint16_t port_id,
 	if (unlikely(!ops))
 		return -rte_errno;
 	if (dev->data->dev_configured == 0) {
-		RTE_FLOW_LOG(INFO,
-			"Device with port_id=%"PRIu16" is not configured.\n",
+		FLOW_LOG(INFO,
+			"Device with port_id=%"PRIu16" is not configured.",
 			port_id);
 		return -EINVAL;
 	}
 	if (dev->data->dev_started != 0) {
-		RTE_FLOW_LOG(INFO,
-			"Device with port_id=%"PRIu16" already started.\n",
+		FLOW_LOG(INFO,
+			"Device with port_id=%"PRIu16" already started.",
 			port_id);
 		return -EINVAL;
 	}
 	if (port_attr == NULL) {
-		RTE_FLOW_LOG(ERR, "Port %"PRIu16" info is NULL.\n", port_id);
+		FLOW_LOG(ERR, "Port %"PRIu16" info is NULL.", port_id);
 		return -EINVAL;
 	}
 	if (queue_attr == NULL) {
-		RTE_FLOW_LOG(ERR, "Port %"PRIu16" queue info is NULL.\n", port_id);
+		FLOW_LOG(ERR, "Port %"PRIu16" queue info is NULL.", port_id);
 		return -EINVAL;
 	}
 	if ((port_attr->flags & RTE_FLOW_PORT_FLAG_SHARE_INDIRECT) &&
@@ -1704,8 +1706,8 @@ rte_flow_pattern_template_create(uint16_t port_id,
 	if (unlikely(!ops))
 		return NULL;
 	if (dev->data->flow_configured == 0) {
-		RTE_FLOW_LOG(INFO,
-			"Flow engine on port_id=%"PRIu16" is not configured.\n",
+		FLOW_LOG(INFO,
+			"Flow engine on port_id=%"PRIu16" is not configured.",
 			port_id);
 		rte_flow_error_set(error, EINVAL,
 				RTE_FLOW_ERROR_TYPE_STATE,
@@ -1713,8 +1715,8 @@ rte_flow_pattern_template_create(uint16_t port_id,
 		return NULL;
 	}
 	if (template_attr == NULL) {
-		RTE_FLOW_LOG(ERR,
-			     "Port %"PRIu16" template attr is NULL.\n",
+		FLOW_LOG(ERR,
+			     "Port %"PRIu16" template attr is NULL.",
 			     port_id);
 		rte_flow_error_set(error, EINVAL,
 				   RTE_FLOW_ERROR_TYPE_ATTR,
@@ -1722,8 +1724,8 @@ rte_flow_pattern_template_create(uint16_t port_id,
 		return NULL;
 	}
 	if (pattern == NULL) {
-		RTE_FLOW_LOG(ERR,
-			     "Port %"PRIu16" pattern is NULL.\n",
+		FLOW_LOG(ERR,
+			     "Port %"PRIu16" pattern is NULL.",
 			     port_id);
 		rte_flow_error_set(error, EINVAL,
 				   RTE_FLOW_ERROR_TYPE_ATTR,
@@ -1791,8 +1793,8 @@ rte_flow_actions_template_create(uint16_t port_id,
 	if (unlikely(!ops))
 		return NULL;
 	if (dev->data->flow_configured == 0) {
-		RTE_FLOW_LOG(INFO,
-			"Flow engine on port_id=%"PRIu16" is not configured.\n",
+		FLOW_LOG(INFO,
+			"Flow engine on port_id=%"PRIu16" is not configured.",
 			port_id);
 		rte_flow_error_set(error, EINVAL,
 				   RTE_FLOW_ERROR_TYPE_STATE,
@@ -1800,8 +1802,8 @@ rte_flow_actions_template_create(uint16_t port_id,
 		return NULL;
 	}
 	if (template_attr == NULL) {
-		RTE_FLOW_LOG(ERR,
-			     "Port %"PRIu16" template attr is NULL.\n",
+		FLOW_LOG(ERR,
+			     "Port %"PRIu16" template attr is NULL.",
 			     port_id);
 		rte_flow_error_set(error, EINVAL,
 				   RTE_FLOW_ERROR_TYPE_ATTR,
@@ -1809,8 +1811,8 @@ rte_flow_actions_template_create(uint16_t port_id,
 		return NULL;
 	}
 	if (actions == NULL) {
-		RTE_FLOW_LOG(ERR,
-			     "Port %"PRIu16" actions is NULL.\n",
+		FLOW_LOG(ERR,
+			     "Port %"PRIu16" actions is NULL.",
 			     port_id);
 		rte_flow_error_set(error, EINVAL,
 				   RTE_FLOW_ERROR_TYPE_ATTR,
@@ -1818,8 +1820,8 @@ rte_flow_actions_template_create(uint16_t port_id,
 		return NULL;
 	}
 	if (masks == NULL) {
-		RTE_FLOW_LOG(ERR,
-			     "Port %"PRIu16" masks is NULL.\n",
+		FLOW_LOG(ERR,
+			     "Port %"PRIu16" masks is NULL.",
 			     port_id);
 		rte_flow_error_set(error, EINVAL,
 				   RTE_FLOW_ERROR_TYPE_ATTR,
@@ -1889,8 +1891,8 @@ rte_flow_template_table_create(uint16_t port_id,
 	if (unlikely(!ops))
 		return NULL;
 	if (dev->data->flow_configured == 0) {
-		RTE_FLOW_LOG(INFO,
-			"Flow engine on port_id=%"PRIu16" is not configured.\n",
+		FLOW_LOG(INFO,
+			"Flow engine on port_id=%"PRIu16" is not configured.",
 			port_id);
 		rte_flow_error_set(error, EINVAL,
 				   RTE_FLOW_ERROR_TYPE_STATE,
@@ -1898,8 +1900,8 @@ rte_flow_template_table_create(uint16_t port_id,
 		return NULL;
 	}
 	if (table_attr == NULL) {
-		RTE_FLOW_LOG(ERR,
-			     "Port %"PRIu16" table attr is NULL.\n",
+		FLOW_LOG(ERR,
+			     "Port %"PRIu16" table attr is NULL.",
 			     port_id);
 		rte_flow_error_set(error, EINVAL,
 				   RTE_FLOW_ERROR_TYPE_ATTR,
@@ -1907,8 +1909,8 @@ rte_flow_template_table_create(uint16_t port_id,
 		return NULL;
 	}
 	if (pattern_templates == NULL) {
-		RTE_FLOW_LOG(ERR,
-			     "Port %"PRIu16" pattern templates is NULL.\n",
+		FLOW_LOG(ERR,
+			     "Port %"PRIu16" pattern templates is NULL.",
 			     port_id);
 		rte_flow_error_set(error, EINVAL,
 				   RTE_FLOW_ERROR_TYPE_ATTR,
@@ -1916,8 +1918,8 @@ rte_flow_template_table_create(uint16_t port_id,
 		return NULL;
 	}
 	if (actions_templates == NULL) {
-		RTE_FLOW_LOG(ERR,
-			     "Port %"PRIu16" actions templates is NULL.\n",
+		FLOW_LOG(ERR,
+			     "Port %"PRIu16" actions templates is NULL.",
 			     port_id);
 		rte_flow_error_set(error, EINVAL,
 				   RTE_FLOW_ERROR_TYPE_ATTR,

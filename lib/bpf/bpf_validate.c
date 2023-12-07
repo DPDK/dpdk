@@ -1812,15 +1812,15 @@ add_edge(struct bpf_verifier *bvf, struct inst_node *node, uint32_t nidx)
 	uint32_t ne;
 
 	if (nidx > bvf->prm->nb_ins) {
-		RTE_BPF_LOG(ERR, "%s: program boundary violation at pc: %u, "
-			"next pc: %u\n",
+		RTE_BPF_LOG_LINE(ERR, "%s: program boundary violation at pc: %u, "
+			"next pc: %u",
 			__func__, get_node_idx(bvf, node), nidx);
 		return -EINVAL;
 	}
 
 	ne = node->nb_edge;
 	if (ne >= RTE_DIM(node->edge_dest)) {
-		RTE_BPF_LOG(ERR, "%s: internal error at pc: %u\n",
+		RTE_BPF_LOG_LINE(ERR, "%s: internal error at pc: %u",
 			__func__, get_node_idx(bvf, node));
 		return -EINVAL;
 	}
@@ -1927,7 +1927,7 @@ log_unreachable(const struct bpf_verifier *bvf)
 
 		if (node->colour == WHITE &&
 				ins->code != (BPF_LD | BPF_IMM | EBPF_DW))
-			RTE_BPF_LOG(ERR, "unreachable code at pc: %u;\n", i);
+			RTE_BPF_LOG_LINE(ERR, "unreachable code at pc: %u;", i);
 	}
 }
 
@@ -1948,8 +1948,8 @@ log_loop(const struct bpf_verifier *bvf)
 
 		for (j = 0; j != node->nb_edge; j++) {
 			if (node->edge_type[j] == BACK_EDGE)
-				RTE_BPF_LOG(ERR,
-					"loop at pc:%u --> pc:%u;\n",
+				RTE_BPF_LOG_LINE(ERR,
+					"loop at pc:%u --> pc:%u;",
 					i, node->edge_dest[j]);
 		}
 	}
@@ -1979,7 +1979,7 @@ validate(struct bpf_verifier *bvf)
 
 		err = check_syntax(ins);
 		if (err != 0) {
-			RTE_BPF_LOG(ERR, "%s: %s at pc: %u\n",
+			RTE_BPF_LOG_LINE(ERR, "%s: %s at pc: %u",
 				__func__, err, i);
 			rc |= -EINVAL;
 		}
@@ -2048,7 +2048,7 @@ validate(struct bpf_verifier *bvf)
 
 	dfs(bvf);
 
-	RTE_BPF_LOG(DEBUG, "%s(%p) stats:\n"
+	RTE_LOG(DEBUG, BPF, "%s(%p) stats:\n"
 		"nb_nodes=%u;\n"
 		"nb_jcc_nodes=%u;\n"
 		"node_color={[WHITE]=%u, [GREY]=%u,, [BLACK]=%u};\n"
@@ -2062,7 +2062,7 @@ validate(struct bpf_verifier *bvf)
 		bvf->edge_type[BACK_EDGE], bvf->edge_type[CROSS_EDGE]);
 
 	if (bvf->node_colour[BLACK] != bvf->nb_nodes) {
-		RTE_BPF_LOG(ERR, "%s(%p) unreachable instructions;\n",
+		RTE_BPF_LOG_LINE(ERR, "%s(%p) unreachable instructions;",
 			__func__, bvf);
 		log_unreachable(bvf);
 		return -EINVAL;
@@ -2070,13 +2070,13 @@ validate(struct bpf_verifier *bvf)
 
 	if (bvf->node_colour[GREY] != 0 || bvf->node_colour[WHITE] != 0 ||
 			bvf->edge_type[UNKNOWN_EDGE] != 0) {
-		RTE_BPF_LOG(ERR, "%s(%p) DFS internal error;\n",
+		RTE_BPF_LOG_LINE(ERR, "%s(%p) DFS internal error;",
 			__func__, bvf);
 		return -EINVAL;
 	}
 
 	if (bvf->edge_type[BACK_EDGE] != 0) {
-		RTE_BPF_LOG(ERR, "%s(%p) loops detected;\n",
+		RTE_BPF_LOG_LINE(ERR, "%s(%p) loops detected;",
 			__func__, bvf);
 		log_loop(bvf);
 		return -EINVAL;
@@ -2144,8 +2144,8 @@ save_eval_state(struct bpf_verifier *bvf, struct inst_node *node)
 	/* get new eval_state for this node */
 	st = pull_eval_state(bvf);
 	if (st == NULL) {
-		RTE_BPF_LOG(ERR,
-			"%s: internal error (out of space) at pc: %u\n",
+		RTE_BPF_LOG_LINE(ERR,
+			"%s: internal error (out of space) at pc: %u",
 			__func__, get_node_idx(bvf, node));
 		return -ENOMEM;
 	}
@@ -2157,7 +2157,7 @@ save_eval_state(struct bpf_verifier *bvf, struct inst_node *node)
 	node->evst = bvf->evst;
 	bvf->evst = st;
 
-	RTE_BPF_LOG(DEBUG, "%s(bvf=%p,node=%u) old/new states: %p/%p;\n",
+	RTE_BPF_LOG_LINE(DEBUG, "%s(bvf=%p,node=%u) old/new states: %p/%p;",
 		__func__, bvf, get_node_idx(bvf, node), node->evst, bvf->evst);
 
 	return 0;
@@ -2169,7 +2169,7 @@ save_eval_state(struct bpf_verifier *bvf, struct inst_node *node)
 static void
 restore_eval_state(struct bpf_verifier *bvf, struct inst_node *node)
 {
-	RTE_BPF_LOG(DEBUG, "%s(bvf=%p,node=%u) old/new states: %p/%p;\n",
+	RTE_BPF_LOG_LINE(DEBUG, "%s(bvf=%p,node=%u) old/new states: %p/%p;",
 		__func__, bvf, get_node_idx(bvf, node), bvf->evst, node->evst);
 
 	bvf->evst = node->evst;
@@ -2184,12 +2184,12 @@ log_dbg_eval_state(const struct bpf_verifier *bvf, const struct ebpf_insn *ins,
 	const struct bpf_eval_state *st;
 	const struct bpf_reg_val *rv;
 
-	RTE_BPF_LOG(DEBUG, "%s(pc=%u):\n", __func__, pc);
+	RTE_BPF_LOG_LINE(DEBUG, "%s(pc=%u):", __func__, pc);
 
 	st = bvf->evst;
 	rv = st->rv + ins->dst_reg;
 
-	RTE_BPF_LOG(DEBUG,
+	RTE_LOG(DEBUG, BPF,
 		"r%u={\n"
 		"\tv={type=%u, size=%zu},\n"
 		"\tmask=0x%" PRIx64 ",\n"
@@ -2263,7 +2263,7 @@ evaluate(struct bpf_verifier *bvf)
 			if (ins_chk[op].eval != NULL && rc == 0) {
 				err = ins_chk[op].eval(bvf, ins + idx);
 				if (err != NULL) {
-					RTE_BPF_LOG(ERR, "%s: %s at pc: %u\n",
+					RTE_BPF_LOG_LINE(ERR, "%s: %s at pc: %u",
 						__func__, err, idx);
 					rc = -EINVAL;
 				}
@@ -2312,7 +2312,7 @@ __rte_bpf_validate(struct rte_bpf *bpf)
 			bpf->prm.prog_arg.type != RTE_BPF_ARG_PTR &&
 			(sizeof(uint64_t) != sizeof(uintptr_t) ||
 			bpf->prm.prog_arg.type != RTE_BPF_ARG_PTR_MBUF)) {
-		RTE_BPF_LOG(ERR, "%s: unsupported argument type\n", __func__);
+		RTE_BPF_LOG_LINE(ERR, "%s: unsupported argument type", __func__);
 		return -ENOTSUP;
 	}
 
