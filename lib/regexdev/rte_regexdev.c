@@ -19,7 +19,7 @@ static struct {
 	struct rte_regexdev_data data[RTE_MAX_REGEXDEV_DEVS];
 } *rte_regexdev_shared_data;
 
-int rte_regexdev_logtype;
+RTE_LOG_REGISTER_DEFAULT(rte_regexdev_logtype, INFO);
 
 static uint16_t
 regexdev_find_free_dev(void)
