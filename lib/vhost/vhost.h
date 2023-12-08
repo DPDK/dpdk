@@ -1062,6 +1062,6 @@ mbuf_is_consumed(struct rte_mbuf *m)
 	return true;
 }
 
-void mem_set_dump(void *ptr, size_t size, bool enable, uint64_t alignment);
+void mem_set_dump(struct virtio_net *dev, void *ptr, size_t size, bool enable, uint64_t alignment);
 
 #endif /* _VHOST_NET_CDEV_H_ */

@@ -763,7 +763,7 @@ hua_to_alignment(struct rte_vhost_memory *mem, void *ptr)
 }
 
 void
-mem_set_dump(void *ptr, size_t size, bool enable, uint64_t pagesz)
+mem_set_dump(struct virtio_net *dev, void *ptr, size_t size, bool enable, uint64_t pagesz)
 {
 #ifdef MADV_DONTDUMP
 	void *start = RTE_PTR_ALIGN_FLOOR(ptr, pagesz);
@@ -771,8 +771,8 @@ mem_set_dump(void *ptr, size_t size, bool enable, uint64_t pagesz)
 	size_t len = end - (uintptr_t)start;
 
 	if (madvise(start, len, enable ? MADV_DODUMP : MADV_DONTDUMP) == -1) {
-		rte_log(RTE_LOG_INFO, vhost_config_log_level,
-			"VHOST_CONFIG: could not set coredump preference (%s).\n", strerror(errno));
+		VHOST_LOG_CONFIG(dev->ifname, INFO,
+			"could not set coredump preference (%s).\n", strerror(errno));
 	}
 #endif
 }
@@ -807,7 +807,7 @@ translate_ring_addresses(struct virtio_net **pdev, struct vhost_virtqueue **pvq)
 			return;
 		}
 
-		mem_set_dump(vq->desc_packed, len, true,
+		mem_set_dump(dev, vq->desc_packed, len, true,
 			hua_to_alignment(dev->mem, vq->desc_packed));
 		numa_realloc(&dev, &vq);
 		*pdev = dev;
@@ -824,7 +824,7 @@ translate_ring_addresses(struct virtio_net **pdev, struct vhost_virtqueue **pvq)
 			return;
 		}
 
-		mem_set_dump(vq->driver_event, len, true,
+		mem_set_dump(dev, vq->driver_event, len, true,
 			hua_to_alignment(dev->mem, vq->driver_event));
 		len = sizeof(struct vring_packed_desc_event);
 		vq->device_event = (struct vring_packed_desc_event *)
@@ -837,7 +837,7 @@ translate_ring_addresses(struct virtio_net **pdev, struct vhost_virtqueue **pvq)
 			return;
 		}
 
-		mem_set_dump(vq->device_event, len, true,
+		mem_set_dump(dev, vq->device_event, len, true,
 			hua_to_alignment(dev->mem, vq->device_event));
 		vq->access_ok = true;
 		return;
@@ -855,7 +855,7 @@ translate_ring_addresses(struct virtio_net **pdev, struct vhost_virtqueue **pvq)
 		return;
 	}
 
-	mem_set_dump(vq->desc, len, true, hua_to_alignment(dev->mem, vq->desc));
+	mem_set_dump(dev, vq->desc, len, true, hua_to_alignment(dev->mem, vq->desc));
 	numa_realloc(&dev, &vq);
 	*pdev = dev;
 	*pvq = vq;
@@ -871,7 +871,7 @@ translate_ring_addresses(struct virtio_net **pdev, struct vhost_virtqueue **pvq)
 		return;
 	}
 
-	mem_set_dump(vq->avail, len, true, hua_to_alignment(dev->mem, vq->avail));
+	mem_set_dump(dev, vq->avail, len, true, hua_to_alignment(dev->mem, vq->avail));
 	len = sizeof(struct vring_used) +
 		sizeof(struct vring_used_elem) * vq->size;
 	if (dev->features & (1ULL << VIRTIO_RING_F_EVENT_IDX))
@@ -884,7 +884,7 @@ translate_ring_addresses(struct virtio_net **pdev, struct vhost_virtqueue **pvq)
 		return;
 	}
 
-	mem_set_dump(vq->used, len, true, hua_to_alignment(dev->mem, vq->used));
+	mem_set_dump(dev, vq->used, len, true, hua_to_alignment(dev->mem, vq->used));
 
 	if (vq->last_used_idx != vq->used->idx) {
 		VHOST_LOG_CONFIG(dev->ifname, WARNING,
@@ -1274,7 +1274,7 @@ vhost_user_mmap_region(struct virtio_net *dev,
 	region->mmap_addr = mmap_addr;
 	region->mmap_size = mmap_size;
 	region->host_user_addr = (uint64_t)(uintptr_t)mmap_addr + mmap_offset;
-	mem_set_dump(mmap_addr, mmap_size, false, alignment);
+	mem_set_dump(dev, mmap_addr, mmap_size, false, alignment);
 
 	if (dev->async_copy) {
 		if (add_guest_pages(dev, region, alignment) < 0) {
@@ -1580,7 +1580,7 @@ inflight_mem_alloc(struct virtio_net *dev, const char *name, size_t size, int *f
 	}
 
 	alignment = get_blk_size(mfd);
-	mem_set_dump(ptr, size, false, alignment);
+	mem_set_dump(dev, ptr, size, false, alignment);
 	*fd = mfd;
 	return ptr;
 }
@@ -1789,7 +1789,7 @@ vhost_user_set_inflight_fd(struct virtio_net **pdev,
 		dev->inflight_info->fd = -1;
 	}
 
-	mem_set_dump(addr, mmap_size, false, get_blk_size(fd));
+	mem_set_dump(dev, addr, mmap_size, false, get_blk_size(fd));
 	dev->inflight_info->fd = fd;
 	dev->inflight_info->addr = addr;
 	dev->inflight_info->size = mmap_size;
@@ -2343,7 +2343,7 @@ vhost_user_set_log_base(struct virtio_net **pdev,
 	dev->log_addr = (uint64_t)(uintptr_t)addr;
 	dev->log_base = dev->log_addr + off;
 	dev->log_size = size;
-	mem_set_dump(addr, size + off, false, alignment);
+	mem_set_dump(dev, addr, size + off, false, alignment);
 
 	for (i = 0; i < dev->nr_vring; i++) {
 		struct vhost_virtqueue *vq = dev->virtqueue[i];
