@@ -118,6 +118,13 @@ struct hns3_mbx_vlan_filter {
 	uint16_t proto;
 } __rte_packed;
 
+struct hns3_mbx_link_status {
+	uint16_t link_status;
+	uint32_t speed;
+	uint16_t duplex;
+	uint8_t flag;
+} __rte_packed;
+
 #define HNS3_MBX_MSG_MAX_DATA_SIZE	14
 #define HNS3_MBX_MAX_RING_CHAIN_PARAM_NUM	4
 struct hns3_vf_to_pf_msg {
@@ -146,6 +153,22 @@ struct hns3_vf_to_pf_msg {
 	};
 };
 
+struct hns3_pf_to_vf_msg {
+	uint16_t code;
+	union {
+		struct {
+			uint16_t vf_mbx_msg_code;
+			uint16_t vf_mbx_msg_subcode;
+			uint16_t resp_status;
+			uint8_t resp_data[HNS3_MBX_MAX_RESP_DATA_SIZE];
+		};
+		uint16_t promisc_en;
+		uint16_t reset_level;
+		uint16_t pvid_state;
+		uint8_t msg_data[HNS3_MBX_MSG_MAX_DATA_SIZE];
+	};
+};
+
 struct errno_respcode_map {
 	uint16_t resp_code;
 	int err_no;
@@ -170,7 +193,7 @@ struct hns3_mbx_pf_to_vf_cmd {
 	uint8_t msg_len;
 	uint8_t rsv1;
 	uint16_t match_id;
-	uint16_t msg[8];
+	struct hns3_pf_to_vf_msg msg;
 };
 
 struct hns3_pf_rst_done_cmd {
