@@ -6,7 +6,7 @@ Event DMA Adapter Library
 
 DPDK :doc:`eventdev library <eventdev>` provides event driven programming model
 with features to schedule events.
-:doc:`DMA device library <dmadev>` provides an interface to DMA poll mode drivers
+:doc:`../dmadev` provides an interface to DMA poll mode drivers
 that support DMA operations.
 Event DMA adapter is intended to bridge between the event device and the DMA device.
 
@@ -47,7 +47,7 @@ which is needed to enqueue an event after the DMA operation is completed.
 
 .. _figure_event_dma_adapter_op_new:
 
-.. figure:: img/event_dma_adapter_op_new.*
+.. figure:: ../img/event_dma_adapter_op_new.*
 
    Working model of ``RTE_EVENT_DMA_ADAPTER_OP_NEW`` mode
 
@@ -77,7 +77,7 @@ needed to enqueue the event after the DMA operation has completed.
 
 .. _figure_event_dma_adapter_op_forward:
 
-.. figure:: img/event_dma_adapter_op_forward.*
+.. figure:: ../img/event_dma_adapter_op_forward.*
 
    Working model of ``RTE_EVENT_DMA_ADAPTER_OP_FORWARD`` mode
 
@@ -194,7 +194,7 @@ Adding vchan to the adapter instance
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 dmadev device ID and vchan are configured using dmadev APIs.
-For more information, see :doc:`dmadev <dmadev>`.
+For more information, see :doc:`dmadev <../dmadev>`.
 
 .. code-block:: c
 

@@ -1,8 +1,8 @@
 ..  SPDX-License-Identifier: BSD-3-Clause
     Copyright(c) 2010-2014 Intel Corporation.
 
-Thread Safety of DPDK Functions
-===============================
+Thread Safety
+=============
 
 The DPDK is comprised of several libraries.
 Some of the functions in these libraries can be safely called from multiple threads simultaneously, while others cannot.

@@ -582,7 +582,7 @@ of configured tx queues.
 
 After hierarchy is complete it can be committed.
 
-For an additional description please refer to DPDK :doc:`Traffic Management API <../prog_guide/traffic_management>`.
+For an additional description please refer to DPDK :doc:`../prog_guide/ethdev/traffic_management`.
 
 Supported Features
 ~~~~~~~~~~~~~~~~~~
@@ -601,7 +601,7 @@ The following capabilities are supported:
 Usage example
 ~~~~~~~~~~~~~
 
-For a detailed usage description please refer to "Traffic Management" section in DPDK :doc:`Testpmd Runtime Functions <../testpmd_app_ug/testpmd_funcs>`.
+For a detailed usage description please refer to "Traffic Management" section in DPDK :doc:`../testpmd_app_ug/testpmd_funcs`.
 
 #. Run testpmd as follows:
 

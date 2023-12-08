@@ -124,7 +124,7 @@ which part of the system actually runs the dispatching mechanism? Or
 phrased differently, what is replacing the function hosting the shared
 conditional logic (typically launched on all lcores using
 ``rte_eal_remote_launch()``)? To solve this issue, the dispatcher is
-run as a DPDK :doc:`Service <service_cores>`.
+run as a DPDK :doc:`Service <../service_cores>`.
 
 The dispatcher is a layer between the application and the event device
 in the receive direction. In the transmit (i.e., item of work
@@ -408,7 +408,7 @@ services, running on the dispatcher core set.
 An example of such a task would be the management of a per-lcore timer
 wheel (i.e., calling ``rte_timer_manage()``).
 
-Applications employing :doc:`Read-Copy-Update (RCU) <rcu_lib>` (or
+Applications employing :doc:`../rcu_lib` (or
 similar technique) may opt for having quiescent state (e.g., calling
 ``rte_rcu_qsbr_quiescent()``) signaling factored out into a separate
 service, to assure resource reclaiming occurs even though some

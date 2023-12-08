@@ -13,7 +13,7 @@ An example of a complex packet processing pipeline with QoS support is shown in 
 
 .. _figure_pkt_proc_pipeline_qos:
 
-.. figure:: img/pkt_proc_pipeline_qos.*
+.. figure:: ../img/pkt_proc_pipeline_qos.*
 
    Complex Packet Processing Pipeline with QoS Support
 
@@ -114,7 +114,7 @@ these packets are later on removed and handed over to the NIC TX with the packet
 
 .. _figure_hier_sched_blk:
 
-.. figure:: img/hier_sched_blk.*
+.. figure:: ../img/hier_sched_blk.*
 
    Hierarchical Scheduler Block Internal Diagram
 
@@ -137,7 +137,7 @@ Each queue hosts packets from one or multiple connections of the same type belon
 
 .. _figure_sched_hier_per_port:
 
-.. figure:: img/sched_hier_per_port.*
+.. figure:: ../img/sched_hier_per_port.*
 
    Scheduling Hierarchy per Port
 
@@ -271,7 +271,7 @@ A schematic of the internal data structures in shown in with details in.
 
 .. _figure_data_struct_per_port:
 
-.. figure:: img/data_struct_per_port.*
+.. figure:: ../img/data_struct_per_port.*
 
     Internal Data Structures per Port
 
@@ -414,7 +414,7 @@ No input packet can be part of more than one pipeline stage at a given time.
 
 .. _figure_prefetch_pipeline:
 
-.. figure:: img/prefetch_pipeline.*
+.. figure:: ../img/prefetch_pipeline.*
 
     Prefetch Pipeline for the Hierarchical Scheduler Enqueue Operation
 
@@ -454,7 +454,7 @@ moving to the next active TC from the same pipe (if any) or to another active pi
 
 .. _figure_pipe_prefetch_sm:
 
-.. figure:: img/pipe_prefetch_sm.*
+.. figure:: ../img/pipe_prefetch_sm.*
 
    Pipe Prefetch State Machine for the Hierarchical Scheduler Dequeue
    Operation
@@ -1170,7 +1170,7 @@ so the dropper provides the only method for congestion avoidance.
 
 .. _figure_blk_diag_dropper:
 
-.. figure:: img/blk_diag_dropper.*
+.. figure:: ../img/blk_diag_dropper.*
 
    High-level Block Diagram of the DPDK Dropper
 
@@ -1201,7 +1201,7 @@ The RED/WRED/PIE algorithm is exercised first and tail drop second.
 
 .. _figure_flow_tru_dropper:
 
-.. figure:: img/flow_tru_dropper.*
+.. figure:: ../img/flow_tru_dropper.*
 
    Flow Through the Dropper
 
@@ -1308,7 +1308,7 @@ decision is the output value and the remaining values are configuration paramete
 
 .. _figure_ex_data_flow_tru_dropper:
 
-.. figure:: img/ex_data_flow_tru_dropper.*
+.. figure:: ../img/ex_data_flow_tru_dropper.*
 
    Example Data Flow Through Dropper
 
@@ -1329,7 +1329,7 @@ Average Queue Size Calculation when the Queue is not Empty
 
 The definition of the EWMA filter is given in the following equation.
 
-.. image:: img/ewma_filter_eq_1.*
+.. image:: ../img/ewma_filter_eq_1.*
 
 Where:
 
@@ -1353,7 +1353,7 @@ When the queue becomes empty, average queue size should decay gradually to zero 
 or remaining stagnant at the last computed value.
 When a packet is enqueued on an empty queue, the average queue size is computed using the following formula:
 
-.. image:: img/ewma_filter_eq_2.*
+.. image:: ../img/ewma_filter_eq_2.*
 
 Where:
 
@@ -1361,7 +1361,7 @@ Where:
 
 In the dropper module, *m* is defined as:
 
-.. image:: img/m_definition.*
+.. image:: ../img/m_definition.*
 
 Where:
 
@@ -1395,12 +1395,12 @@ A numerical method is used to compute the factor (1-wq)^m that appears in Equati
 
 This method is based on the following identity:
 
-.. image:: img/eq2_factor.*
+.. image:: ../img/eq2_factor.*
 
 
 This allows us to express the following:
 
-.. image:: img/eq2_expression.*
+.. image:: ../img/eq2_expression.*
 
 
 In the dropper module, a look-up table is used to compute log2(1-wq) for each value of wq supported by the dropper module.
@@ -1484,7 +1484,7 @@ Initial Packet Drop Probability
 
 The initial drop probability is calculated using the following equation.
 
-.. image:: img/drop_probability_eq3.*
+.. image:: ../img/drop_probability_eq3.*
 
 Where:
 
@@ -1504,7 +1504,7 @@ a drop probability is calculated to determine if the packet should be enqueued o
 
 .. _figure_pkt_drop_probability:
 
-.. figure:: img/pkt_drop_probability.*
+.. figure:: ../img/pkt_drop_probability.*
 
    Packet Drop Probability for a Given RED Configuration
 
@@ -1515,7 +1515,7 @@ Actual Drop Probability
 If the average queue size is between the minimum and maximum thresholds,
 then the actual drop probability is calculated from the following equation.
 
-.. image:: img/drop_probability_eq4.*
+.. image:: ../img/drop_probability_eq4.*
 
 Where:
 
@@ -1540,7 +1540,7 @@ one that has been taken by other RED implementations, for example, FreeBSD* ALTQ
 
 .. _figure_drop_probability_graph:
 
-.. figure:: img/drop_probability_graph.*
+.. figure:: ../img/drop_probability_graph.*
 
    Initial Drop Probability (pb), Actual Drop probability (pa) Computed Using
    a Factor 1 (Blue Curve) and a Factor 2 (Red Curve)

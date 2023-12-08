@@ -1,8 +1,8 @@
 ..  SPDX-License-Identifier: BSD-3-Clause
     Copyright(c) 2010-2015 Intel Corporation.
 
-Packet Classification and Access Control
-========================================
+Packet Classification and Access Control (ACL) Library
+======================================================
 
 The DPDK provides an Access Control library that gives the ability
 to classify an input packet based on a set of classification rules.

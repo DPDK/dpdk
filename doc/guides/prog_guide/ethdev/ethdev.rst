@@ -1,8 +1,6 @@
 ..  SPDX-License-Identifier: BSD-3-Clause
     Copyright(c) 2010-2015 Intel Corporation.
 
-.. _Poll_Mode_Driver:
-
 Poll Mode Driver
 ================
 
@@ -65,7 +63,7 @@ a private buffer pool in local memory to minimize remote memory access.
 The configuration of packet buffer pools should take into account the underlying physical memory architecture in terms of DIMMS,
 channels and ranks.
 The application must ensure that appropriate parameters are given at memory pool creation time.
-See :ref:`Mempool Library <Mempool_Library>`.
+See :doc:`../mempool_lib`.
 
 Design Principles
 -----------------
@@ -294,8 +292,7 @@ The support of these offload features implies the addition of dedicated
 status bit(s) and value field(s) into the rte_mbuf data structure, along
 with their appropriate handling by the receive/transmit functions
 exported by each PMD. The list of flags and their precise meaning is
-described in the mbuf API documentation and in the in :ref:`Mbuf Library
-<Mbuf_Library>`, section "Meta Information".
+described in the mbuf API documentation and in the :ref:`mbuf_meta` chapter.
 
 Per-Port and Per-Queue Offloads
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -357,7 +354,7 @@ The rte_mbuf data structure includes specific fields to represent, in a generic 
 For an input packet, most fields of the rte_mbuf structure are filled in by the PMD receive function with the information contained in the receive descriptor.
 Conversely, for output packets, most fields of rte_mbuf structures are used by the PMD transmit function to initialize transmit descriptors.
 
-The mbuf structure is fully described in the :ref:`Mbuf Library <Mbuf_Library>` chapter.
+See :doc:`../mbuf_lib` chapter for more details.
 
 Ethernet Device API
 ~~~~~~~~~~~~~~~~~~~

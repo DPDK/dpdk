@@ -19,8 +19,7 @@ destroyed, and :ref:`event timers <event_timer>` can be armed and canceled.
 The Event Timer Adapter library is designed to interface with hardware or
 software implementations of the timer mechanism; it will query an eventdev PMD
 to determine which implementation should be used.  The default software
-implementation manages timers using the DPDK
-:doc:`Timer library <timer_lib>`.
+implementation manages timers using the DPDK :doc:`../timer_lib`.
 
 Examples of using the API are presented in the `API Overview`_ and
 `Processing Timer Expiry Events`_ sections.  Code samples are abstracted and

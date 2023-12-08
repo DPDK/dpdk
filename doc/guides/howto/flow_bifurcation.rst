@@ -58,7 +58,7 @@ the :ref:`flow_isolated_mode` must be configured,
 so there is no default rule routing traffic to userspace.
 
 There is no specific instructions to follow.
-The recommended reading is the :doc:`../prog_guide/rte_flow` guide.
+The recommended reading is the :doc:`../prog_guide/ethdev/flow_offload` guide.
 Below is an example of testpmd commands
 for receiving VXLAN 42 in 4 queues of the DPDK port 0,
 while all other packets go to the kernel:

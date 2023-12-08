@@ -72,7 +72,7 @@ API walk-through
 
 .. _figure_rte_mtr_chaining:
 
-.. figure:: img/rte_mtr_meter_chaining.*
+.. figure:: ../img/rte_mtr_meter_chaining.*
 
    Meter components
 

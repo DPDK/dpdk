@@ -1,14 +1,12 @@
 ..  SPDX-License-Identifier: BSD-3-Clause
     Copyright(c) 2010-2014 Intel Corporation.
 
-.. _Mbuf_Library:
+Packet (Mbuf) Library
+=====================
 
-Mbuf Library
-============
-
-The mbuf library provides the ability to allocate and free buffers (mbufs)
+The Packet (MBuf) library provides the ability to allocate and free buffers (mbufs)
 that may be used by the DPDK application to store message buffers.
-The message buffers are stored in a mempool, using the :ref:`Mempool Library <Mempool_Library>`.
+The message buffers are stored in a mempool, using the :doc:`mempool_lib`.
 
 A rte_mbuf struct generally carries network packet buffers, but it can actually
 be any data (control data, events, ...).
@@ -64,7 +62,7 @@ The Buffer Manager implements a fairly standard set of buffer access functions t
 Buffers Stored in Memory Pools
 ------------------------------
 
-The Buffer Manager uses the :ref:`Mempool Library <Mempool_Library>` to allocate buffers.
+The Buffer Manager uses the :doc:`mempool_lib` to allocate buffers.
 Therefore, it ensures that the packet header is interleaved optimally across the channels and ranks for L3 processing.
 An mbuf contains a field indicating the pool that it originated from.
 When calling rte_pktmbuf_free(m), the mbuf returns to its original pool.
@@ -107,11 +105,13 @@ This library provides some functions for manipulating the data in a packet mbuf.
 
     *   Remove data at the end of the buffer (rte_pktmbuf_trim()) Refer to the *DPDK API Reference* for details.
 
+.. _mbuf_meta:
+
 Meta Information
 ----------------
 
 Some information is retrieved by the network driver and stored in an mbuf to make processing easier.
-For instance, the VLAN, the RSS hash result (see :ref:`Poll Mode Driver <Poll_Mode_Driver>`)
+For instance, the VLAN, the RSS hash result
 and a flag indicating that the checksum was computed by hardware.
 
 An mbuf also contains the input port (where it comes from), and the number of segment mbufs in the chain.

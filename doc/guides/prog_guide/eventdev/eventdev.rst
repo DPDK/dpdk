@@ -169,7 +169,7 @@ walk-through:
 
 .. _figure_eventdev-usage1:
 
-.. figure:: img/eventdev_usage.*
+.. figure:: ../img/eventdev_usage.*
 
    Sample eventdev usage, with RX, two atomic stages and a single-link to TX.
 

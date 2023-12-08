@@ -2,8 +2,8 @@
     Copyright 2016 6WIND S.A.
     Copyright 2016 Mellanox Technologies, Ltd
 
-Generic flow API (rte_flow)
-===========================
+Generic flow API
+================
 
 Overview
 --------
@@ -4105,13 +4105,13 @@ The asynchronous flow rule insertion logic can be broken into two phases.
 
    .. _figure_rte_flow_async_init:
 
-   .. figure:: img/rte_flow_async_init.*
+   .. figure:: ../img/rte_flow_async_init.*
 
 #. Main loop as presented on a datapath application example:
 
    .. _figure_rte_flow_async_usage:
 
-   .. figure:: img/rte_flow_async_usage.*
+   .. figure:: ../img/rte_flow_async_usage.*
 
 Enqueue creation operation
 ~~~~~~~~~~~~~~~~~~~~~~~~~~

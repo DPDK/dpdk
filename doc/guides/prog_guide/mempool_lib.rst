@@ -1,10 +1,8 @@
 ..  SPDX-License-Identifier: BSD-3-Clause
     Copyright(c) 2010-2014 Intel Corporation.
 
-.. _Mempool_Library:
-
-Mempool Library
-===============
+Memory Pool Library
+===================
 
 A memory pool is an allocator of a fixed-sized object.
 In the DPDK, it is identified by name and uses a mempool handler to store free objects.
@@ -12,7 +10,7 @@ The default mempool handler is ring based.
 It provides some other optional services such as a per-core object cache and
 an alignment helper to ensure that objects are padded to spread them equally on all DRAM or DDR3 channels.
 
-This library is used by the :ref:`Mbuf Library <Mbuf_Library>`.
+This library is used by the :doc:`mbuf_lib`.
 
 Cookies
 -------
@@ -164,8 +162,5 @@ Use Cases
 All allocations that require a high level of performance should use a pool-based memory allocator.
 Below are some examples:
 
-*   :ref:`Mbuf Library <Mbuf_Library>`
-
-*   :ref:`Environment Abstraction Layer <Environment_Abstraction_Layer>` , for logging service
-
+*   :doc:`mbuf_lib`
 *   Any application that needs to allocate fixed-sized objects in the data plane and that will be continuously utilized by the system.

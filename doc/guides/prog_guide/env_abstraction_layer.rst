@@ -1,10 +1,8 @@
 ..  SPDX-License-Identifier: BSD-3-Clause
     Copyright(c) 2010-2014 Intel Corporation.
 
-.. _Environment_Abstraction_Layer:
-
-Environment Abstraction Layer
-=============================
+Environment Abstraction Layer (EAL) Library
+===========================================
 
 The Environment Abstraction Layer (EAL) is responsible for gaining access to low-level resources such as hardware and memory space.
 It provides a generic interface that hides the environment specifics from the applications and libraries.
@@ -39,7 +37,7 @@ EAL in a Linux-userland Execution Environment
 In a Linux user space environment, the DPDK application runs as a user-space application using the pthread library.
 
 The EAL performs physical memory allocation using mmap() in hugetlbfs (using huge page sizes to increase performance).
-This memory is exposed to DPDK service layers such as the :ref:`Mempool Library <Mempool_Library>`.
+This memory is exposed to DPDK service layers such as the :doc:`mempool_lib`.
 
 At this point, the DPDK services layer will be initialized, then through pthread setaffinity calls,
 each execution unit will be assigned to a specific logical core to run as a user-level thread.
@@ -80,8 +78,7 @@ Multi-process Support
 ~~~~~~~~~~~~~~~~~~~~~
 
 The Linux EAL allows a multi-process as well as a multi-threaded (pthread) deployment model.
-See chapter
-:ref:`Multi-process Support <Multi-process_Support>` for more details.
+See chapter :doc:`multi_proc_support` for more details.
 
 Memory Mapping Discovery and Memory Reservation
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -154,8 +151,7 @@ of memory that can be used by DPDK application.
     and IPC must not be mixed: it is not safe to allocate/free memory inside
     memory-related or IPC callbacks, and it is not safe to use IPC inside
     memory-related callbacks. See chapter
-    :ref:`Multi-process Support <Multi-process_Support>` for more details about
-    DPDK IPC.
+    :doc:`multi_proc_support` for more details about DPDK IPC.
 
 Legacy Memory Mode
 ^^^^^^^^^^^^^^^^^^

@@ -6,7 +6,7 @@ Event Crypto Adapter Library
 
 The DPDK :doc:`Eventdev library <eventdev>` provides event driven
 programming model with features to schedule events.
-The :doc:`Cryptodev library <cryptodev_lib>` provides an interface to
+The :doc:`../cryptodev_lib` provides an interface to
 the crypto poll mode drivers which supports different crypto operations.
 The Event Crypto Adapter is one of the adapter which is intended to
 bridge between the event device and the crypto device.
@@ -47,7 +47,7 @@ which is needed to enqueue an event after the crypto operation is completed.
 
 .. _figure_event_crypto_adapter_op_new:
 
-.. figure:: img/event_crypto_adapter_op_new.*
+.. figure:: ../img/event_crypto_adapter_op_new.*
 
    Working model of ``RTE_EVENT_CRYPTO_ADAPTER_OP_NEW`` mode
 
@@ -74,7 +74,7 @@ completed.
 
 .. _figure_event_crypto_adapter_op_forward:
 
-.. figure:: img/event_crypto_adapter_op_forward.*
+.. figure:: ../img/event_crypto_adapter_op_forward.*
 
    Working model of ``RTE_EVENT_CRYPTO_ADAPTER_OP_FORWARD`` mode
 
@@ -193,7 +193,7 @@ Adding queue pair to the adapter instance
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Cryptodev device id and queue pair are created using cryptodev APIs.
-For more information see :doc:`here  <cryptodev_lib>`.
+For more information see :doc:`here <../cryptodev_lib>`.
 
 .. code-block:: c
 

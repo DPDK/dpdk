@@ -1,8 +1,8 @@
 .. SPDX-License-Identifier: BSD-3-Clause
    Copyright 2021 HiSilicon Limited
 
-DMA Device Library
-==================
+Direct Memory Access (DMA) Device Library
+=========================================
 
 The DMA library provides a DMA device framework for management and provisioning
 of hardware and software DMA poll mode drivers, defining generic API which

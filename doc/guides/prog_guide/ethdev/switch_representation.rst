@@ -1,8 +1,6 @@
 ..  SPDX-License-Identifier: BSD-3-Clause
     Copyright(c) 2018 6WIND S.A.
 
-.. _switch_representation:
-
 Switch Representation within DPDK Applications
 ==============================================
 
@@ -373,9 +371,9 @@ and actions.
 Enhancing **rte_flow** with the ability to make flow rules match and target
 these endpoints provides a standard interface to manage their
 interconnection without introducing new concepts and whole new API to
-implement them. This is described in `flow API (rte_flow)`_.
+implement them. This is described in [6]_.
 
-.. [6] :doc:`Generic flow API (rte_flow) <rte_flow>`
+.. [6] :doc:`flow_offload`
 
 Flow API (rte_flow)
 -------------------

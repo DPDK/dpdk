@@ -1,8 +1,8 @@
 ..  SPDX-License-Identifier: BSD-3-Clause
     Copyright(c) 2021 Intel Corporation.
 
-FIB Library
-===========
+Forwarding Information Base (FIB) Library
+=========================================
 
 The FIB library provides a fast Longest Prefix Match (LPM) search for 32-bit
 keys or 128-bit for IPv6. It can be used in a variety of applications,
