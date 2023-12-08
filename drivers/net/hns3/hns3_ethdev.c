@@ -5552,18 +5552,16 @@ hns3_detect_reset_event(struct hns3_hw *hw)
 
 	last_req = hns3_get_reset_level(hns, &hw->reset.pending);
 	vector0_intr_state = hns3_read_dev(hw, HNS3_VECTOR0_OTHER_INT_STS_REG);
-	if (BIT(HNS3_VECTOR0_IMPRESET_INT_B) & vector0_intr_state) {
-		__atomic_store_n(&hw->reset.disable_cmd, 1, __ATOMIC_RELAXED);
+	if (BIT(HNS3_VECTOR0_IMPRESET_INT_B) & vector0_intr_state)
 		new_req = HNS3_IMP_RESET;
-	} else if (BIT(HNS3_VECTOR0_GLOBALRESET_INT_B) & vector0_intr_state) {
-		__atomic_store_n(&hw->reset.disable_cmd, 1, __ATOMIC_RELAXED);
+	else if (BIT(HNS3_VECTOR0_GLOBALRESET_INT_B) & vector0_intr_state)
 		new_req = HNS3_GLOBAL_RESET;
-	}
 
 	if (new_req == HNS3_NONE_RESET)
 		return HNS3_NONE_RESET;
 
 	if (last_req == HNS3_NONE_RESET || last_req < new_req) {
+		__atomic_store_n(&hw->reset.disable_cmd, 1, __ATOMIC_RELAXED);
 		hns3_schedule_delayed_reset(hns);
 		hns3_warn(hw, "High level reset detected, delay do reset");
 	}
