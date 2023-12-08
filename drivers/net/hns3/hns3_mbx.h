@@ -89,7 +89,6 @@ enum hns3_mbx_link_fail_subcode {
 	HNS3_MBX_LF_XSFP_ABSENT,
 };
 
-#define HNS3_MBX_MAX_MSG_SIZE	16
 #define HNS3_MBX_MAX_RESP_DATA_SIZE	8
 #define HNS3_MBX_DEF_TIME_LIMIT_MS	500
 
@@ -107,6 +106,46 @@ struct hns3_mbx_resp_status {
 	uint8_t additional_info[HNS3_MBX_MAX_RESP_DATA_SIZE];
 };
 
+struct hns3_ring_chain_param {
+	uint8_t ring_type;
+	uint8_t tqp_index;
+	uint8_t int_gl_index;
+};
+
+struct hns3_mbx_vlan_filter {
+	uint8_t is_kill;
+	uint16_t vlan_id;
+	uint16_t proto;
+} __rte_packed;
+
+#define HNS3_MBX_MSG_MAX_DATA_SIZE	14
+#define HNS3_MBX_MAX_RING_CHAIN_PARAM_NUM	4
+struct hns3_vf_to_pf_msg {
+	uint8_t code;
+	union {
+		struct {
+			uint8_t subcode;
+			uint8_t data[HNS3_MBX_MSG_MAX_DATA_SIZE];
+		};
+		struct {
+			uint8_t en_bc;
+			uint8_t en_uc;
+			uint8_t en_mc;
+			uint8_t en_limit_promisc;
+		};
+		struct {
+			uint8_t vector_id;
+			uint8_t ring_num;
+			struct hns3_ring_chain_param
+				ring_param[HNS3_MBX_MAX_RING_CHAIN_PARAM_NUM];
+		};
+		struct {
+			uint8_t link_status;
+			uint8_t link_fail_code;
+		};
+	};
+};
+
 struct errno_respcode_map {
 	uint16_t resp_code;
 	int err_no;
@@ -122,7 +161,7 @@ struct hns3_mbx_vf_to_pf_cmd {
 	uint8_t msg_len;
 	uint8_t rsv2;
 	uint16_t match_id;
-	uint8_t msg[HNS3_MBX_MAX_MSG_SIZE];
+	struct hns3_vf_to_pf_msg msg;
 };
 
 struct hns3_mbx_pf_to_vf_cmd {
@@ -132,19 +171,6 @@ struct hns3_mbx_pf_to_vf_cmd {
 	uint8_t rsv1;
 	uint16_t match_id;
 	uint16_t msg[8];
-};
-
-struct hns3_ring_chain_param {
-	uint8_t ring_type;
-	uint8_t tqp_index;
-	uint8_t int_gl_index;
-};
-
-#define HNS3_MBX_MAX_RING_CHAIN_PARAM_NUM	4
-struct hns3_vf_bind_vector_msg {
-	uint8_t vector_id;
-	uint8_t ring_num;
-	struct hns3_ring_chain_param param[HNS3_MBX_MAX_RING_CHAIN_PARAM_NUM];
 };
 
 struct hns3_pf_rst_done_cmd {
