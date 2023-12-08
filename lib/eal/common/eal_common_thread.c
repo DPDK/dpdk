@@ -86,7 +86,7 @@ int
 rte_thread_set_affinity(rte_cpuset_t *cpusetp)
 {
 	if (rte_thread_set_affinity_by_id(rte_thread_self(), cpusetp) != 0) {
-		RTE_LOG(ERR, EAL, "rte_thread_set_affinity_by_id failed\n");
+		EAL_LOG(ERR, "rte_thread_set_affinity_by_id failed");
 		return -1;
 	}
 
@@ -175,7 +175,7 @@ eal_thread_loop(void *arg)
 	__rte_thread_init(lcore_id, &lcore_config[lcore_id].cpuset);
 
 	ret = eal_thread_dump_current_affinity(cpuset, sizeof(cpuset));
-	RTE_LOG(DEBUG, EAL, "lcore %u is ready (tid=%zx;cpuset=[%s%s])\n",
+	EAL_LOG(DEBUG, "lcore %u is ready (tid=%zx;cpuset=[%s%s])",
 		lcore_id, rte_thread_self().opaque_id, cpuset,
 		ret == 0 ? "" : "...");
 
@@ -368,12 +368,12 @@ rte_thread_register(void)
 
 	/* EAL init flushes all lcores, we can't register before. */
 	if (eal_get_internal_configuration()->init_complete != 1) {
-		RTE_LOG(DEBUG, EAL, "Called %s before EAL init.\n", __func__);
+		EAL_LOG(DEBUG, "Called %s before EAL init.", __func__);
 		rte_errno = EINVAL;
 		return -1;
 	}
 	if (!rte_mp_disable()) {
-		RTE_LOG(ERR, EAL, "Multiprocess in use, registering non-EAL threads is not supported.\n");
+		EAL_LOG(ERR, "Multiprocess in use, registering non-EAL threads is not supported.");
 		rte_errno = EINVAL;
 		return -1;
 	}
@@ -387,7 +387,7 @@ rte_thread_register(void)
 		rte_errno = ENOMEM;
 		return -1;
 	}
-	RTE_LOG(DEBUG, EAL, "Registered non-EAL thread as lcore %u.\n",
+	EAL_LOG(DEBUG, "Registered non-EAL thread as lcore %u.",
 		lcore_id);
 	return 0;
 }
@@ -401,7 +401,7 @@ rte_thread_unregister(void)
 		eal_lcore_non_eal_release(lcore_id);
 	__rte_thread_uninit();
 	if (lcore_id != LCORE_ID_ANY)
-		RTE_LOG(DEBUG, EAL, "Unregistered non-EAL thread (was lcore %u).\n",
+		EAL_LOG(DEBUG, "Unregistered non-EAL thread (was lcore %u).",
 			lcore_id);
 }
 

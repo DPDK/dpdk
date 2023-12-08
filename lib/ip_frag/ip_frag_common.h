@@ -22,6 +22,9 @@ extern int ipfrag_logtype;
 #define RTE_LOGTYPE_IPFRAG	ipfrag_logtype
 
 /* logging macros. */
+#define IP_FRAG_LOG_LINE(level, fmt, ...) \
+	RTE_LOG(level, IPFRAG, fmt "\n", ## __VA_ARGS__)
+
 #ifdef RTE_LIBRTE_IP_FRAG_DEBUG
 #define	IP_FRAG_LOG(lvl, fmt, args...)	RTE_LOG(lvl, IPFRAG, fmt, ##args)
 #else

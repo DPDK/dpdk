@@ -14,6 +14,7 @@
 #include <rte_log.h>
 
 #include "eal_firmware.h"
+#include "eal_private.h"
 
 #ifdef RTE_HAS_LIBARCHIVE
 
@@ -151,7 +152,7 @@ rte_firmware_read(const char *name, void **buf, size_t *bufsz)
 		path[PATH_MAX - 1] = '\0';
 #ifndef RTE_HAS_LIBARCHIVE
 		if (access(path, F_OK) == 0) {
-			RTE_LOG(WARNING, EAL, "libarchive not linked, %s cannot be decompressed\n",
+			EAL_LOG(WARNING, "libarchive not linked, %s cannot be decompressed",
 				path);
 		}
 #else

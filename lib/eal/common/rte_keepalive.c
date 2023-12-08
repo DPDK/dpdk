@@ -11,6 +11,8 @@
 #include <rte_keepalive.h>
 #include <rte_malloc.h>
 
+#include "eal_private.h"
+
 struct rte_keepalive {
 	/** Core Liveness. */
 	struct {
@@ -53,7 +55,7 @@ struct rte_keepalive {
 static void
 print_trace(const char *msg, struct rte_keepalive *keepcfg, int idx_core)
 {
-	RTE_LOG(INFO, EAL, "%sLast seen %" PRId64 "ms ago.\n",
+	EAL_LOG(INFO, "%sLast seen %" PRId64 "ms ago.",
 		msg,
 		((rte_rdtsc() - keepcfg->last_alive[idx_core])*1000)
 		/ rte_get_tsc_hz()

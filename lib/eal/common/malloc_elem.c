@@ -148,7 +148,7 @@ malloc_elem_insert(struct malloc_elem *elem)
 
 	/* first and last elements must be both NULL or both non-NULL */
 	if ((heap->first == NULL) != (heap->last == NULL)) {
-		RTE_LOG(ERR, EAL, "Heap is probably corrupt\n");
+		EAL_LOG(ERR, "Heap is probably corrupt");
 		return;
 	}
 
@@ -628,7 +628,7 @@ malloc_elem_hide_region(struct malloc_elem *elem, void *start, size_t len)
 
 			malloc_elem_free_list_insert(hide_end);
 		} else if (len_after > 0) {
-			RTE_LOG(ERR, EAL, "Unaligned element, heap is probably corrupt\n");
+			EAL_LOG(ERR, "Unaligned element, heap is probably corrupt");
 			return;
 		}
 	}
@@ -647,7 +647,7 @@ malloc_elem_hide_region(struct malloc_elem *elem, void *start, size_t len)
 
 			malloc_elem_free_list_insert(prev);
 		} else if (len_before > 0) {
-			RTE_LOG(ERR, EAL, "Unaligned element, heap is probably corrupt\n");
+			EAL_LOG(ERR, "Unaligned element, heap is probably corrupt");
 			return;
 		}
 	}

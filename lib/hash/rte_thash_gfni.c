@@ -11,6 +11,8 @@
 
 RTE_LOG_REGISTER_SUFFIX(hash_gfni_logtype, gfni, INFO);
 #define RTE_LOGTYPE_HASH hash_gfni_logtype
+#define HASH_LOG(level, fmt, ...) \
+	RTE_LOG(level, HASH, fmt "\n", ## __VA_ARGS__)
 
 uint32_t
 rte_thash_gfni(const uint64_t *mtrx __rte_unused,
@@ -20,8 +22,8 @@ rte_thash_gfni(const uint64_t *mtrx __rte_unused,
 
 	if (!warned) {
 		warned = true;
-		RTE_LOG(ERR, HASH,
-			"%s is undefined under given arch\n", __func__);
+		HASH_LOG(ERR,
+			"%s is undefined under given arch", __func__);
 	}
 
 	return 0;
@@ -38,8 +40,8 @@ rte_thash_gfni_bulk(const uint64_t *mtrx __rte_unused,
 
 	if (!warned) {
 		warned = true;
-		RTE_LOG(ERR, HASH,
-			"%s is undefined under given arch\n", __func__);
+		HASH_LOG(ERR,
+			"%s is undefined under given arch", __func__);
 	}
 
 	for (i = 0; i < num; i++)

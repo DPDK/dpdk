@@ -29,8 +29,8 @@ mem_map(void *requested_addr, size_t size, int prot, int flags,
 {
 	void *virt = mmap(requested_addr, size, prot, flags, fd, offset);
 	if (virt == MAP_FAILED) {
-		RTE_LOG(DEBUG, EAL,
-		    "Cannot mmap(%p, 0x%zx, 0x%x, 0x%x, %d, 0x%"PRIx64"): %s\n",
+		EAL_LOG(DEBUG,
+		    "Cannot mmap(%p, 0x%zx, 0x%x, 0x%x, %d, 0x%"PRIx64"): %s",
 		    requested_addr, size, prot, flags, fd, offset,
 		    strerror(errno));
 		rte_errno = errno;
@@ -44,7 +44,7 @@ mem_unmap(void *virt, size_t size)
 {
 	int ret = munmap(virt, size);
 	if (ret < 0) {
-		RTE_LOG(DEBUG, EAL, "Cannot munmap(%p, 0x%zx): %s\n",
+		EAL_LOG(DEBUG, "Cannot munmap(%p, 0x%zx): %s",
 			virt, size, strerror(errno));
 		rte_errno = errno;
 	}
@@ -83,7 +83,7 @@ eal_mem_set_dump(void *virt, size_t size, bool dump)
 	int flags = dump ? EAL_DODUMP : EAL_DONTDUMP;
 	int ret = madvise(virt, size, flags);
 	if (ret) {
-		RTE_LOG(DEBUG, EAL, "madvise(%p, %#zx, %d) failed: %s\n",
+		EAL_LOG(DEBUG, "madvise(%p, %#zx, %d) failed: %s",
 				virt, size, flags, strerror(rte_errno));
 		rte_errno = errno;
 	}

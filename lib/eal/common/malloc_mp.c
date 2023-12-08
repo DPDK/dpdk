@@ -156,7 +156,7 @@ handle_sync(const struct rte_mp_msg *msg, const void *peer)
 	int ret;
 
 	if (req->t != REQ_TYPE_SYNC) {
-		RTE_LOG(ERR, EAL, "Unexpected request from primary\n");
+		EAL_LOG(ERR, "Unexpected request from primary");
 		return -1;
 	}
 
@@ -189,19 +189,19 @@ handle_free_request(const struct malloc_mp_req *m)
 	/* check if the requested memory actually exists */
 	msl = rte_mem_virt2memseg_list(start);
 	if (msl == NULL) {
-		RTE_LOG(ERR, EAL, "Requested to free unknown memory\n");
+		EAL_LOG(ERR, "Requested to free unknown memory");
 		return -1;
 	}
 
 	/* check if end is within the same memory region */
 	if (rte_mem_virt2memseg_list(end) != msl) {
-		RTE_LOG(ERR, EAL, "Requested to free memory spanning multiple regions\n");
+		EAL_LOG(ERR, "Requested to free memory spanning multiple regions");
 		return -1;
 	}
 
 	/* we're supposed to only free memory that's not external */
 	if (msl->external) {
-		RTE_LOG(ERR, EAL, "Requested to free external memory\n");
+		EAL_LOG(ERR, "Requested to free external memory");
 		return -1;
 	}
 
@@ -228,13 +228,13 @@ handle_alloc_request(const struct malloc_mp_req *m,
 
 	/* this is checked by the API, but we need to prevent divide by zero */
 	if (ar->page_sz == 0 || !rte_is_power_of_2(ar->page_sz)) {
-		RTE_LOG(ERR, EAL, "Attempting to allocate with invalid page size\n");
+		EAL_LOG(ERR, "Attempting to allocate with invalid page size");
 		return -1;
 	}
 
 	/* heap idx is index into the heap array, not socket ID */
 	if (ar->malloc_heap_idx >= RTE_MAX_HEAPS) {
-		RTE_LOG(ERR, EAL, "Attempting to allocate from invalid heap\n");
+		EAL_LOG(ERR, "Attempting to allocate from invalid heap");
 		return -1;
 	}
 
@@ -247,7 +247,7 @@ handle_alloc_request(const struct malloc_mp_req *m,
 	 * socket ID's are always lower than RTE_MAX_NUMA_NODES.
 	 */
 	if (heap->socket_id >= RTE_MAX_NUMA_NODES) {
-		RTE_LOG(ERR, EAL, "Attempting to allocate from external heap\n");
+		EAL_LOG(ERR, "Attempting to allocate from external heap");
 		return -1;
 	}
 
@@ -258,7 +258,7 @@ handle_alloc_request(const struct malloc_mp_req *m,
 	/* we can't know in advance how many pages we'll need, so we malloc */
 	ms = malloc(sizeof(*ms) * n_segs);
 	if (ms == NULL) {
-		RTE_LOG(ERR, EAL, "Couldn't allocate memory for request state\n");
+		EAL_LOG(ERR, "Couldn't allocate memory for request state");
 		return -1;
 	}
 	memset(ms, 0, sizeof(*ms) * n_segs);
@@ -307,13 +307,13 @@ handle_request(const struct rte_mp_msg *msg, const void *peer __rte_unused)
 	/* make sure it's not a dupe */
 	entry = find_request_by_id(m->id);
 	if (entry != NULL) {
-		RTE_LOG(ERR, EAL, "Duplicate request id\n");
+		EAL_LOG(ERR, "Duplicate request id");
 		goto fail;
 	}
 
 	entry = malloc(sizeof(*entry));
 	if (entry == NULL) {
-		RTE_LOG(ERR, EAL, "Unable to allocate memory for request\n");
+		EAL_LOG(ERR, "Unable to allocate memory for request");
 		goto fail;
 	}
 
@@ -325,7 +325,7 @@ handle_request(const struct rte_mp_msg *msg, const void *peer __rte_unused)
 	} else if (m->t == REQ_TYPE_FREE) {
 		ret = handle_free_request(m);
 	} else {
-		RTE_LOG(ERR, EAL, "Unexpected request from secondary\n");
+		EAL_LOG(ERR, "Unexpected request from secondary");
 		goto fail;
 	}
 
@@ -345,7 +345,7 @@ handle_request(const struct rte_mp_msg *msg, const void *peer __rte_unused)
 		resp->id = m->id;
 
 		if (rte_mp_sendmsg(&resp_msg)) {
-			RTE_LOG(ERR, EAL, "Couldn't send response\n");
+			EAL_LOG(ERR, "Couldn't send response");
 			goto fail;
 		}
 		/* we did not modify the request */
@@ -376,7 +376,7 @@ handle_request(const struct rte_mp_msg *msg, const void *peer __rte_unused)
 					handle_sync_response);
 		} while (ret != 0 && rte_errno == EEXIST);
 		if (ret != 0) {
-			RTE_LOG(ERR, EAL, "Couldn't send sync request\n");
+			EAL_LOG(ERR, "Couldn't send sync request");
 			if (m->t == REQ_TYPE_ALLOC)
 				free(entry->alloc_state.ms);
 			goto fail;
@@ -414,7 +414,7 @@ handle_sync_response(const struct rte_mp_msg *request,
 
 	entry = find_request_by_id(mpreq->id);
 	if (entry == NULL) {
-		RTE_LOG(ERR, EAL, "Wrong request ID\n");
+		EAL_LOG(ERR, "Wrong request ID");
 		goto fail;
 	}
 
@@ -428,12 +428,12 @@ handle_sync_response(const struct rte_mp_msg *request,
 				(struct malloc_mp_req *)reply->msgs[i].param;
 
 		if (resp->t != REQ_TYPE_SYNC) {
-			RTE_LOG(ERR, EAL, "Unexpected response to sync request\n");
+			EAL_LOG(ERR, "Unexpected response to sync request");
 			result = REQ_RESULT_FAIL;
 			break;
 		}
 		if (resp->id != entry->user_req.id) {
-			RTE_LOG(ERR, EAL, "Response to wrong sync request\n");
+			EAL_LOG(ERR, "Response to wrong sync request");
 			result = REQ_RESULT_FAIL;
 			break;
 		}
@@ -458,7 +458,7 @@ handle_sync_response(const struct rte_mp_msg *request,
 		strlcpy(msg.name, MP_ACTION_RESPONSE, sizeof(msg.name));
 
 		if (rte_mp_sendmsg(&msg))
-			RTE_LOG(ERR, EAL, "Could not send message to secondary process\n");
+			EAL_LOG(ERR, "Could not send message to secondary process");
 
 		TAILQ_REMOVE(&mp_request_list.list, entry, next);
 		free(entry);
@@ -482,7 +482,7 @@ handle_sync_response(const struct rte_mp_msg *request,
 		strlcpy(msg.name, MP_ACTION_RESPONSE, sizeof(msg.name));
 
 		if (rte_mp_sendmsg(&msg))
-			RTE_LOG(ERR, EAL, "Could not send message to secondary process\n");
+			EAL_LOG(ERR, "Could not send message to secondary process");
 
 		TAILQ_REMOVE(&mp_request_list.list, entry, next);
 		free(entry->alloc_state.ms);
@@ -524,7 +524,7 @@ handle_sync_response(const struct rte_mp_msg *request,
 					handle_rollback_response);
 		} while (ret != 0 && rte_errno == EEXIST);
 		if (ret != 0) {
-			RTE_LOG(ERR, EAL, "Could not send rollback request to secondary process\n");
+			EAL_LOG(ERR, "Could not send rollback request to secondary process");
 
 			/* we couldn't send rollback request, but that's OK -
 			 * secondary will time out, and memory has been removed
@@ -536,7 +536,7 @@ handle_sync_response(const struct rte_mp_msg *request,
 			goto fail;
 		}
 	} else {
-		RTE_LOG(ERR, EAL, " to sync request of unknown type\n");
+		EAL_LOG(ERR, " to sync request of unknown type");
 		goto fail;
 	}
 
@@ -564,12 +564,12 @@ handle_rollback_response(const struct rte_mp_msg *request,
 
 	entry = find_request_by_id(mpreq->id);
 	if (entry == NULL) {
-		RTE_LOG(ERR, EAL, "Wrong request ID\n");
+		EAL_LOG(ERR, "Wrong request ID");
 		goto fail;
 	}
 
 	if (entry->user_req.t != REQ_TYPE_ALLOC) {
-		RTE_LOG(ERR, EAL, "Unexpected active request\n");
+		EAL_LOG(ERR, "Unexpected active request");
 		goto fail;
 	}
 
@@ -582,7 +582,7 @@ handle_rollback_response(const struct rte_mp_msg *request,
 	strlcpy(msg.name, MP_ACTION_RESPONSE, sizeof(msg.name));
 
 	if (rte_mp_sendmsg(&msg))
-		RTE_LOG(ERR, EAL, "Could not send message to secondary process\n");
+		EAL_LOG(ERR, "Could not send message to secondary process");
 
 	/* clean up */
 	TAILQ_REMOVE(&mp_request_list.list, entry, next);
@@ -657,14 +657,14 @@ request_sync(void)
 	if (ret != 0) {
 		/* if IPC is unsupported, behave as if the call succeeded */
 		if (rte_errno != ENOTSUP)
-			RTE_LOG(ERR, EAL, "Could not send sync request to secondary process\n");
+			EAL_LOG(ERR, "Could not send sync request to secondary process");
 		else
 			ret = 0;
 		goto out;
 	}
 
 	if (reply.nb_received != reply.nb_sent) {
-		RTE_LOG(ERR, EAL, "Not all secondaries have responded\n");
+		EAL_LOG(ERR, "Not all secondaries have responded");
 		goto out;
 	}
 
@@ -672,15 +672,15 @@ request_sync(void)
 		struct malloc_mp_req *resp =
 				(struct malloc_mp_req *)reply.msgs[i].param;
 		if (resp->t != REQ_TYPE_SYNC) {
-			RTE_LOG(ERR, EAL, "Unexpected response from secondary\n");
+			EAL_LOG(ERR, "Unexpected response from secondary");
 			goto out;
 		}
 		if (resp->id != req->id) {
-			RTE_LOG(ERR, EAL, "Wrong request ID\n");
+			EAL_LOG(ERR, "Wrong request ID");
 			goto out;
 		}
 		if (resp->result != REQ_RESULT_SUCCESS) {
-			RTE_LOG(ERR, EAL, "Secondary process failed to synchronize\n");
+			EAL_LOG(ERR, "Secondary process failed to synchronize");
 			goto out;
 		}
 	}
@@ -711,14 +711,14 @@ request_to_primary(struct malloc_mp_req *user_req)
 
 	entry = malloc(sizeof(*entry));
 	if (entry == NULL) {
-		RTE_LOG(ERR, EAL, "Cannot allocate memory for request\n");
+		EAL_LOG(ERR, "Cannot allocate memory for request");
 		goto fail;
 	}
 
 	memset(entry, 0, sizeof(*entry));
 
 	if (gettimeofday(&now, NULL) < 0) {
-		RTE_LOG(ERR, EAL, "Cannot get current time\n");
+		EAL_LOG(ERR, "Cannot get current time");
 		goto fail;
 	}
 
@@ -740,7 +740,7 @@ request_to_primary(struct malloc_mp_req *user_req)
 	memcpy(msg_req, user_req, sizeof(*msg_req));
 
 	if (rte_mp_sendmsg(&msg)) {
-		RTE_LOG(ERR, EAL, "Cannot send message to primary\n");
+		EAL_LOG(ERR, "Cannot send message to primary");
 		goto fail;
 	}
 
@@ -759,7 +759,7 @@ request_to_primary(struct malloc_mp_req *user_req)
 	} while (ret != 0 && ret != ETIMEDOUT);
 
 	if (entry->state != REQ_STATE_COMPLETE) {
-		RTE_LOG(ERR, EAL, "Request timed out\n");
+		EAL_LOG(ERR, "Request timed out");
 		ret = -1;
 	} else {
 		ret = 0;
@@ -783,24 +783,24 @@ register_mp_requests(void)
 		/* it's OK for primary to not support IPC */
 		if (rte_mp_action_register(MP_ACTION_REQUEST, handle_request) &&
 				rte_errno != ENOTSUP) {
-			RTE_LOG(ERR, EAL, "Couldn't register '%s' action\n",
+			EAL_LOG(ERR, "Couldn't register '%s' action",
 				MP_ACTION_REQUEST);
 			return -1;
 		}
 	} else {
 		if (rte_mp_action_register(MP_ACTION_SYNC, handle_sync)) {
-			RTE_LOG(ERR, EAL, "Couldn't register '%s' action\n",
+			EAL_LOG(ERR, "Couldn't register '%s' action",
 				MP_ACTION_SYNC);
 			return -1;
 		}
 		if (rte_mp_action_register(MP_ACTION_ROLLBACK, handle_sync)) {
-			RTE_LOG(ERR, EAL, "Couldn't register '%s' action\n",
+			EAL_LOG(ERR, "Couldn't register '%s' action",
 				MP_ACTION_SYNC);
 			return -1;
 		}
 		if (rte_mp_action_register(MP_ACTION_RESPONSE,
 				handle_response)) {
-			RTE_LOG(ERR, EAL, "Couldn't register '%s' action\n",
+			EAL_LOG(ERR, "Couldn't register '%s' action",
 				MP_ACTION_RESPONSE);
 			return -1;
 		}

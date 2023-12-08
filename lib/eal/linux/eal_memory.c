@@ -104,7 +104,7 @@ rte_mem_virt2phy(const void *virtaddr)
 
 	fd = open("/proc/self/pagemap", O_RDONLY);
 	if (fd < 0) {
-		RTE_LOG(INFO, EAL, "%s(): cannot open /proc/self/pagemap: %s\n",
+		EAL_LOG(INFO, "%s(): cannot open /proc/self/pagemap: %s",
 			__func__, strerror(errno));
 		return RTE_BAD_IOVA;
 	}
@@ -112,7 +112,7 @@ rte_mem_virt2phy(const void *virtaddr)
 	virt_pfn = (unsigned long)virtaddr / page_size;
 	offset = sizeof(uint64_t) * virt_pfn;
 	if (lseek(fd, offset, SEEK_SET) == (off_t) -1) {
-		RTE_LOG(INFO, EAL, "%s(): seek error in /proc/self/pagemap: %s\n",
+		EAL_LOG(INFO, "%s(): seek error in /proc/self/pagemap: %s",
 				__func__, strerror(errno));
 		close(fd);
 		return RTE_BAD_IOVA;
@@ -121,12 +121,12 @@ rte_mem_virt2phy(const void *virtaddr)
 	retval = read(fd, &page, PFN_MASK_SIZE);
 	close(fd);
 	if (retval < 0) {
-		RTE_LOG(INFO, EAL, "%s(): cannot read /proc/self/pagemap: %s\n",
+		EAL_LOG(INFO, "%s(): cannot read /proc/self/pagemap: %s",
 				__func__, strerror(errno));
 		return RTE_BAD_IOVA;
 	} else if (retval != PFN_MASK_SIZE) {
-		RTE_LOG(INFO, EAL, "%s(): read %d bytes from /proc/self/pagemap "
-				"but expected %d:\n",
+		EAL_LOG(INFO, "%s(): read %d bytes from /proc/self/pagemap "
+				"but expected %d:",
 				__func__, retval, PFN_MASK_SIZE);
 		return RTE_BAD_IOVA;
 	}
@@ -237,7 +237,7 @@ static int huge_wrap_sigsetjmp(void)
 /* Callback for numa library. */
 void numa_error(char *where)
 {
-	RTE_LOG(ERR, EAL, "%s failed: %s\n", where, strerror(errno));
+	EAL_LOG(ERR, "%s failed: %s", where, strerror(errno));
 }
 #endif
 
@@ -267,18 +267,18 @@ map_all_hugepages(struct hugepage_file *hugepg_tbl, struct hugepage_info *hpi,
 
 	/* Check if kernel supports NUMA. */
 	if (numa_available() != 0) {
-		RTE_LOG(DEBUG, EAL, "NUMA is not supported.\n");
+		EAL_LOG(DEBUG, "NUMA is not supported.");
 		have_numa = false;
 	}
 
 	if (have_numa) {
-		RTE_LOG(DEBUG, EAL, "Trying to obtain current memory policy.\n");
+		EAL_LOG(DEBUG, "Trying to obtain current memory policy.");
 		oldmask = numa_allocate_nodemask();
 		if (get_mempolicy(&oldpolicy, oldmask->maskp,
 				  oldmask->size + 1, 0, 0) < 0) {
-			RTE_LOG(ERR, EAL,
+			EAL_LOG(ERR,
 				"Failed to get current mempolicy: %s. "
-				"Assuming MPOL_DEFAULT.\n", strerror(errno));
+				"Assuming MPOL_DEFAULT.", strerror(errno));
 			oldpolicy = MPOL_DEFAULT;
 		}
 		for (i = 0; i < RTE_MAX_NUMA_NODES; i++)
@@ -316,8 +316,8 @@ map_all_hugepages(struct hugepage_file *hugepg_tbl, struct hugepage_info *hpi,
 					essential_memory[j] -= hugepage_sz;
 			}
 
-			RTE_LOG(DEBUG, EAL,
-				"Setting policy MPOL_PREFERRED for socket %d\n",
+			EAL_LOG(DEBUG,
+				"Setting policy MPOL_PREFERRED for socket %d",
 				node_id);
 			numa_set_preferred(node_id);
 		}
@@ -332,7 +332,7 @@ map_all_hugepages(struct hugepage_file *hugepg_tbl, struct hugepage_info *hpi,
 		/* try to create hugepage file */
 		fd = open(hf->filepath, O_CREAT | O_RDWR, 0600);
 		if (fd < 0) {
-			RTE_LOG(DEBUG, EAL, "%s(): open failed: %s\n", __func__,
+			EAL_LOG(DEBUG, "%s(): open failed: %s", __func__,
 					strerror(errno));
 			goto out;
 		}
@@ -345,7 +345,7 @@ map_all_hugepages(struct hugepage_file *hugepg_tbl, struct hugepage_info *hpi,
 		virtaddr = mmap(NULL, hugepage_sz, PROT_READ | PROT_WRITE,
 				MAP_SHARED | MAP_POPULATE, fd, 0);
 		if (virtaddr == MAP_FAILED) {
-			RTE_LOG(DEBUG, EAL, "%s(): mmap failed: %s\n", __func__,
+			EAL_LOG(DEBUG, "%s(): mmap failed: %s", __func__,
 					strerror(errno));
 			close(fd);
 			goto out;
@@ -361,8 +361,8 @@ map_all_hugepages(struct hugepage_file *hugepg_tbl, struct hugepage_info *hpi,
 		 * back here.
 		 */
 		if (huge_wrap_sigsetjmp()) {
-			RTE_LOG(DEBUG, EAL, "SIGBUS: Cannot mmap more "
-				"hugepages of size %u MB\n",
+			EAL_LOG(DEBUG, "SIGBUS: Cannot mmap more "
+				"hugepages of size %u MB",
 				(unsigned int)(hugepage_sz / 0x100000));
 			munmap(virtaddr, hugepage_sz);
 			close(fd);
@@ -378,7 +378,7 @@ map_all_hugepages(struct hugepage_file *hugepg_tbl, struct hugepage_info *hpi,
 
 		/* set shared lock on the file. */
 		if (flock(fd, LOCK_SH) < 0) {
-			RTE_LOG(DEBUG, EAL, "%s(): Locking file failed:%s \n",
+			EAL_LOG(DEBUG, "%s(): Locking file failed:%s ",
 				__func__, strerror(errno));
 			close(fd);
 			goto out;
@@ -390,13 +390,13 @@ map_all_hugepages(struct hugepage_file *hugepg_tbl, struct hugepage_info *hpi,
 out:
 #ifdef RTE_EAL_NUMA_AWARE_HUGEPAGES
 	if (maxnode) {
-		RTE_LOG(DEBUG, EAL,
-			"Restoring previous memory policy: %d\n", oldpolicy);
+		EAL_LOG(DEBUG,
+			"Restoring previous memory policy: %d", oldpolicy);
 		if (oldpolicy == MPOL_DEFAULT) {
 			numa_set_localalloc();
 		} else if (set_mempolicy(oldpolicy, oldmask->maskp,
 					 oldmask->size + 1) < 0) {
-			RTE_LOG(ERR, EAL, "Failed to restore mempolicy: %s\n",
+			EAL_LOG(ERR, "Failed to restore mempolicy: %s",
 				strerror(errno));
 			numa_set_localalloc();
 		}
@@ -424,8 +424,8 @@ find_numasocket(struct hugepage_file *hugepg_tbl, struct hugepage_info *hpi)
 
 	f = fopen("/proc/self/numa_maps", "r");
 	if (f == NULL) {
-		RTE_LOG(NOTICE, EAL, "NUMA support not available"
-			" consider that all memory is in socket_id 0\n");
+		EAL_LOG(NOTICE, "NUMA support not available"
+			" consider that all memory is in socket_id 0");
 		return 0;
 	}
 
@@ -443,20 +443,20 @@ find_numasocket(struct hugepage_file *hugepg_tbl, struct hugepage_info *hpi)
 		/* get zone addr */
 		virt_addr = strtoull(buf, &end, 16);
 		if (virt_addr == 0 || end == buf) {
-			RTE_LOG(ERR, EAL, "%s(): error in numa_maps parsing\n", __func__);
+			EAL_LOG(ERR, "%s(): error in numa_maps parsing", __func__);
 			goto error;
 		}
 
 		/* get node id (socket id) */
 		nodestr = strstr(buf, " N");
 		if (nodestr == NULL) {
-			RTE_LOG(ERR, EAL, "%s(): error in numa_maps parsing\n", __func__);
+			EAL_LOG(ERR, "%s(): error in numa_maps parsing", __func__);
 			goto error;
 		}
 		nodestr += 2;
 		end = strstr(nodestr, "=");
 		if (end == NULL) {
-			RTE_LOG(ERR, EAL, "%s(): error in numa_maps parsing\n", __func__);
+			EAL_LOG(ERR, "%s(): error in numa_maps parsing", __func__);
 			goto error;
 		}
 		end[0] = '\0';
@@ -464,7 +464,7 @@ find_numasocket(struct hugepage_file *hugepg_tbl, struct hugepage_info *hpi)
 
 		socket_id = strtoul(nodestr, &end, 0);
 		if ((nodestr[0] == '\0') || (end == NULL) || (*end != '\0')) {
-			RTE_LOG(ERR, EAL, "%s(): error in numa_maps parsing\n", __func__);
+			EAL_LOG(ERR, "%s(): error in numa_maps parsing", __func__);
 			goto error;
 		}
 
@@ -475,8 +475,8 @@ find_numasocket(struct hugepage_file *hugepg_tbl, struct hugepage_info *hpi)
 				hugepg_tbl[i].socket_id = socket_id;
 				hp_count++;
 #ifdef RTE_EAL_NUMA_AWARE_HUGEPAGES
-				RTE_LOG(DEBUG, EAL,
-					"Hugepage %s is on socket %d\n",
+				EAL_LOG(DEBUG,
+					"Hugepage %s is on socket %d",
 					hugepg_tbl[i].filepath, socket_id);
 #endif
 			}
@@ -589,7 +589,7 @@ unlink_hugepage_files(struct hugepage_file *hugepg_tbl,
 		struct hugepage_file *hp = &hugepg_tbl[page];
 
 		if (hp->orig_va != NULL && unlink(hp->filepath)) {
-			RTE_LOG(WARNING, EAL, "%s(): Removing %s failed: %s\n",
+			EAL_LOG(WARNING, "%s(): Removing %s failed: %s",
 				__func__, hp->filepath, strerror(errno));
 		}
 	}
@@ -639,7 +639,7 @@ unmap_unneeded_hugepages(struct hugepage_file *hugepg_tbl,
 
 						hp->orig_va = NULL;
 						if (unlink(hp->filepath) == -1) {
-							RTE_LOG(ERR, EAL, "%s(): Removing %s failed: %s\n",
+							EAL_LOG(ERR, "%s(): Removing %s failed: %s",
 									__func__, hp->filepath, strerror(errno));
 							return -1;
 						}
@@ -676,7 +676,7 @@ remap_segment(struct hugepage_file *hugepages, int seg_start, int seg_end)
 	socket_id = hugepages[seg_start].socket_id;
 	seg_len = seg_end - seg_start;
 
-	RTE_LOG(DEBUG, EAL, "Attempting to map %" PRIu64 "M on socket %i\n",
+	EAL_LOG(DEBUG, "Attempting to map %" PRIu64 "M on socket %i",
 			(seg_len * page_sz) >> 20ULL, socket_id);
 
 	/* find free space in memseg lists */
@@ -716,8 +716,8 @@ remap_segment(struct hugepage_file *hugepages, int seg_start, int seg_end)
 		break;
 	}
 	if (msl_idx == RTE_MAX_MEMSEG_LISTS) {
-		RTE_LOG(ERR, EAL, "Could not find space for memseg. Please increase RTE_MAX_MEMSEG_PER_LIST "
-			"RTE_MAX_MEMSEG_PER_TYPE and/or RTE_MAX_MEM_MB_PER_TYPE in configuration.\n");
+		EAL_LOG(ERR, "Could not find space for memseg. Please increase RTE_MAX_MEMSEG_PER_LIST "
+			"RTE_MAX_MEMSEG_PER_TYPE and/or RTE_MAX_MEM_MB_PER_TYPE in configuration.");
 		return -1;
 	}
 
@@ -735,13 +735,13 @@ remap_segment(struct hugepage_file *hugepages, int seg_start, int seg_end)
 
 		fd = open(hfile->filepath, O_RDWR);
 		if (fd < 0) {
-			RTE_LOG(ERR, EAL, "Could not open '%s': %s\n",
+			EAL_LOG(ERR, "Could not open '%s': %s",
 					hfile->filepath, strerror(errno));
 			return -1;
 		}
 		/* set shared lock on the file. */
 		if (flock(fd, LOCK_SH) < 0) {
-			RTE_LOG(DEBUG, EAL, "Could not lock '%s': %s\n",
+			EAL_LOG(DEBUG, "Could not lock '%s': %s",
 					hfile->filepath, strerror(errno));
 			close(fd);
 			return -1;
@@ -755,7 +755,7 @@ remap_segment(struct hugepage_file *hugepages, int seg_start, int seg_end)
 		addr = mmap(addr, page_sz, PROT_READ | PROT_WRITE,
 				MAP_SHARED | MAP_POPULATE | MAP_FIXED, fd, 0);
 		if (addr == MAP_FAILED) {
-			RTE_LOG(ERR, EAL, "Couldn't remap '%s': %s\n",
+			EAL_LOG(ERR, "Couldn't remap '%s': %s",
 					hfile->filepath, strerror(errno));
 			close(fd);
 			return -1;
@@ -790,10 +790,10 @@ remap_segment(struct hugepage_file *hugepages, int seg_start, int seg_end)
 
 		/* store segment fd internally */
 		if (eal_memalloc_set_seg_fd(msl_idx, ms_idx, fd) < 0)
-			RTE_LOG(ERR, EAL, "Could not store segment fd: %s\n",
+			EAL_LOG(ERR, "Could not store segment fd: %s",
 				rte_strerror(rte_errno));
 	}
-	RTE_LOG(DEBUG, EAL, "Allocated %" PRIu64 "M on socket %i\n",
+	EAL_LOG(DEBUG, "Allocated %" PRIu64 "M on socket %i",
 			(seg_len * page_sz) >> 20, socket_id);
 	return seg_len;
 }
@@ -819,7 +819,7 @@ static int
 memseg_list_free(struct rte_memseg_list *msl)
 {
 	if (rte_fbarray_destroy(&msl->memseg_arr)) {
-		RTE_LOG(ERR, EAL, "Cannot destroy memseg list\n");
+		EAL_LOG(ERR, "Cannot destroy memseg list");
 		return -1;
 	}
 	memset(msl, 0, sizeof(*msl));
@@ -965,7 +965,7 @@ prealloc_segments(struct hugepage_file *hugepages, int n_pages)
 				break;
 			}
 			if (msl_idx == RTE_MAX_MEMSEG_LISTS) {
-				RTE_LOG(ERR, EAL, "Not enough space in memseg lists, please increase RTE_MAX_MEMSEG_LISTS\n");
+				EAL_LOG(ERR, "Not enough space in memseg lists, please increase RTE_MAX_MEMSEG_LISTS");
 				return -1;
 			}
 
@@ -976,7 +976,7 @@ prealloc_segments(struct hugepage_file *hugepages, int n_pages)
 
 			/* finally, allocate VA space */
 			if (eal_memseg_list_alloc(msl, 0) < 0) {
-				RTE_LOG(ERR, EAL, "Cannot preallocate 0x%"PRIx64"kB hugepages\n",
+				EAL_LOG(ERR, "Cannot preallocate 0x%"PRIx64"kB hugepages",
 					page_sz >> 10);
 				return -1;
 			}
@@ -1177,15 +1177,15 @@ eal_legacy_hugepage_init(void)
 		/* create a memfd and store it in the segment fd table */
 		memfd = memfd_create("nohuge", 0);
 		if (memfd < 0) {
-			RTE_LOG(DEBUG, EAL, "Cannot create memfd: %s\n",
+			EAL_LOG(DEBUG, "Cannot create memfd: %s",
 					strerror(errno));
-			RTE_LOG(DEBUG, EAL, "Falling back to anonymous map\n");
+			EAL_LOG(DEBUG, "Falling back to anonymous map");
 		} else {
 			/* we got an fd - now resize it */
 			if (ftruncate(memfd, internal_conf->memory) < 0) {
-				RTE_LOG(ERR, EAL, "Cannot resize memfd: %s\n",
+				EAL_LOG(ERR, "Cannot resize memfd: %s",
 						strerror(errno));
-				RTE_LOG(ERR, EAL, "Falling back to anonymous map\n");
+				EAL_LOG(ERR, "Falling back to anonymous map");
 				close(memfd);
 			} else {
 				/* creating memfd-backed file was successful.
@@ -1193,7 +1193,7 @@ eal_legacy_hugepage_init(void)
 				 * other processes (such as vhost backend), so
 				 * map it as shared memory.
 				 */
-				RTE_LOG(DEBUG, EAL, "Using memfd for anonymous memory\n");
+				EAL_LOG(DEBUG, "Using memfd for anonymous memory");
 				fd = memfd;
 				flags = MAP_SHARED;
 			}
@@ -1203,7 +1203,7 @@ eal_legacy_hugepage_init(void)
 		 * fit into the DMA mask.
 		 */
 		if (eal_memseg_list_alloc(msl, 0)) {
-			RTE_LOG(ERR, EAL, "Cannot preallocate VA space for hugepage memory\n");
+			EAL_LOG(ERR, "Cannot preallocate VA space for hugepage memory");
 			return -1;
 		}
 
@@ -1211,7 +1211,7 @@ eal_legacy_hugepage_init(void)
 		addr = mmap(prealloc_addr, mem_sz, PROT_READ | PROT_WRITE,
 				flags | MAP_FIXED, fd, 0);
 		if (addr == MAP_FAILED || addr != prealloc_addr) {
-			RTE_LOG(ERR, EAL, "%s: mmap() failed: %s\n", __func__,
+			EAL_LOG(ERR, "%s: mmap() failed: %s", __func__,
 					strerror(errno));
 			munmap(prealloc_addr, mem_sz);
 			return -1;
@@ -1222,7 +1222,7 @@ eal_legacy_hugepage_init(void)
 		 */
 		if (fd != -1) {
 			if (eal_memalloc_set_seg_list_fd(0, fd) < 0) {
-				RTE_LOG(ERR, EAL, "Cannot set up segment list fd\n");
+				EAL_LOG(ERR, "Cannot set up segment list fd");
 				/* not a serious error, proceed */
 			}
 		}
@@ -1231,13 +1231,13 @@ eal_legacy_hugepage_init(void)
 
 		if (mcfg->dma_maskbits &&
 		    rte_mem_check_dma_mask_thread_unsafe(mcfg->dma_maskbits)) {
-			RTE_LOG(ERR, EAL,
-				"%s(): couldn't allocate memory due to IOVA exceeding limits of current DMA mask.\n",
+			EAL_LOG(ERR,
+				"%s(): couldn't allocate memory due to IOVA exceeding limits of current DMA mask.",
 				__func__);
 			if (rte_eal_iova_mode() == RTE_IOVA_VA &&
 			    rte_eal_using_phys_addrs())
-				RTE_LOG(ERR, EAL,
-					"%s(): Please try initializing EAL with --iova-mode=pa parameter.\n",
+				EAL_LOG(ERR,
+					"%s(): Please try initializing EAL with --iova-mode=pa parameter.",
 					__func__);
 			goto fail;
 		}
@@ -1292,8 +1292,8 @@ eal_legacy_hugepage_init(void)
 		pages_old = hpi->num_pages[0];
 		pages_new = map_all_hugepages(&tmp_hp[hp_offset], hpi, memory);
 		if (pages_new < pages_old) {
-			RTE_LOG(DEBUG, EAL,
-				"%d not %d hugepages of size %u MB allocated\n",
+			EAL_LOG(DEBUG,
+				"%d not %d hugepages of size %u MB allocated",
 				pages_new, pages_old,
 				(unsigned)(hpi->hugepage_sz / 0x100000));
 
@@ -1309,23 +1309,23 @@ eal_legacy_hugepage_init(void)
 				rte_eal_iova_mode() != RTE_IOVA_VA) {
 			/* find physical addresses for each hugepage */
 			if (find_physaddrs(&tmp_hp[hp_offset], hpi) < 0) {
-				RTE_LOG(DEBUG, EAL, "Failed to find phys addr "
-					"for %u MB pages\n",
+				EAL_LOG(DEBUG, "Failed to find phys addr "
+					"for %u MB pages",
 					(unsigned int)(hpi->hugepage_sz / 0x100000));
 				goto fail;
 			}
 		} else {
 			/* set physical addresses for each hugepage */
 			if (set_physaddrs(&tmp_hp[hp_offset], hpi) < 0) {
-				RTE_LOG(DEBUG, EAL, "Failed to set phys addr "
-					"for %u MB pages\n",
+				EAL_LOG(DEBUG, "Failed to set phys addr "
+					"for %u MB pages",
 					(unsigned int)(hpi->hugepage_sz / 0x100000));
 				goto fail;
 			}
 		}
 
 		if (find_numasocket(&tmp_hp[hp_offset], hpi) < 0){
-			RTE_LOG(DEBUG, EAL, "Failed to find NUMA socket for %u MB pages\n",
+			EAL_LOG(DEBUG, "Failed to find NUMA socket for %u MB pages",
 					(unsigned)(hpi->hugepage_sz / 0x100000));
 			goto fail;
 		}
@@ -1382,9 +1382,9 @@ eal_legacy_hugepage_init(void)
 	for (i = 0; i < (int) internal_conf->num_hugepage_sizes; i++) {
 		for (j = 0; j < RTE_MAX_NUMA_NODES; j++) {
 			if (used_hp[i].num_pages[j] > 0) {
-				RTE_LOG(DEBUG, EAL,
+				EAL_LOG(DEBUG,
 					"Requesting %u pages of size %uMB"
-					" from socket %i\n",
+					" from socket %i",
 					used_hp[i].num_pages[j],
 					(unsigned)
 					(used_hp[i].hugepage_sz / 0x100000),
@@ -1398,7 +1398,7 @@ eal_legacy_hugepage_init(void)
 			nr_hugefiles * sizeof(struct hugepage_file));
 
 	if (hugepage == NULL) {
-		RTE_LOG(ERR, EAL, "Failed to create shared memory!\n");
+		EAL_LOG(ERR, "Failed to create shared memory!");
 		goto fail;
 	}
 	memset(hugepage, 0, nr_hugefiles * sizeof(struct hugepage_file));
@@ -1409,7 +1409,7 @@ eal_legacy_hugepage_init(void)
 	 */
 	if (unmap_unneeded_hugepages(tmp_hp, used_hp,
 			internal_conf->num_hugepage_sizes) < 0) {
-		RTE_LOG(ERR, EAL, "Unmapping and locking hugepages failed!\n");
+		EAL_LOG(ERR, "Unmapping and locking hugepages failed!");
 		goto fail;
 	}
 
@@ -1420,7 +1420,7 @@ eal_legacy_hugepage_init(void)
 	 */
 	if (copy_hugepages_to_shared_mem(hugepage, nr_hugefiles,
 			tmp_hp, nr_hugefiles) < 0) {
-		RTE_LOG(ERR, EAL, "Copying tables to shared memory failed!\n");
+		EAL_LOG(ERR, "Copying tables to shared memory failed!");
 		goto fail;
 	}
 
@@ -1428,7 +1428,7 @@ eal_legacy_hugepage_init(void)
 	/* for legacy 32-bit mode, we did not preallocate VA space, so do it */
 	if (internal_conf->legacy_mem &&
 			prealloc_segments(hugepage, nr_hugefiles)) {
-		RTE_LOG(ERR, EAL, "Could not preallocate VA space for hugepages\n");
+		EAL_LOG(ERR, "Could not preallocate VA space for hugepages");
 		goto fail;
 	}
 #endif
@@ -1437,14 +1437,14 @@ eal_legacy_hugepage_init(void)
 	 * pages become first-class citizens in DPDK memory subsystem
 	 */
 	if (remap_needed_hugepages(hugepage, nr_hugefiles)) {
-		RTE_LOG(ERR, EAL, "Couldn't remap hugepage files into memseg lists\n");
+		EAL_LOG(ERR, "Couldn't remap hugepage files into memseg lists");
 		goto fail;
 	}
 
 	/* free the hugepage backing files */
 	if (internal_conf->hugepage_file.unlink_before_mapping &&
 		unlink_hugepage_files(tmp_hp, internal_conf->num_hugepage_sizes) < 0) {
-		RTE_LOG(ERR, EAL, "Unlinking hugepage files failed!\n");
+		EAL_LOG(ERR, "Unlinking hugepage files failed!");
 		goto fail;
 	}
 
@@ -1480,8 +1480,8 @@ eal_legacy_hugepage_init(void)
 
 	if (mcfg->dma_maskbits &&
 	    rte_mem_check_dma_mask_thread_unsafe(mcfg->dma_maskbits)) {
-		RTE_LOG(ERR, EAL,
-			"%s(): couldn't allocate memory due to IOVA exceeding limits of current DMA mask.\n",
+		EAL_LOG(ERR,
+			"%s(): couldn't allocate memory due to IOVA exceeding limits of current DMA mask.",
 			__func__);
 		goto fail;
 	}
@@ -1527,15 +1527,15 @@ eal_legacy_hugepage_attach(void)
 	int fd, fd_hugepage = -1;
 
 	if (aslr_enabled() > 0) {
-		RTE_LOG(WARNING, EAL, "WARNING: Address Space Layout Randomization "
-				"(ASLR) is enabled in the kernel.\n");
-		RTE_LOG(WARNING, EAL, "   This may cause issues with mapping memory "
-				"into secondary processes\n");
+		EAL_LOG(WARNING, "WARNING: Address Space Layout Randomization "
+				"(ASLR) is enabled in the kernel.");
+		EAL_LOG(WARNING, "   This may cause issues with mapping memory "
+				"into secondary processes");
 	}
 
 	fd_hugepage = open(eal_hugepage_data_path(), O_RDONLY);
 	if (fd_hugepage < 0) {
-		RTE_LOG(ERR, EAL, "Could not open %s\n",
+		EAL_LOG(ERR, "Could not open %s",
 				eal_hugepage_data_path());
 		goto error;
 	}
@@ -1543,13 +1543,13 @@ eal_legacy_hugepage_attach(void)
 	size = getFileSize(fd_hugepage);
 	hp = mmap(NULL, size, PROT_READ, MAP_PRIVATE, fd_hugepage, 0);
 	if (hp == MAP_FAILED) {
-		RTE_LOG(ERR, EAL, "Could not mmap %s\n",
+		EAL_LOG(ERR, "Could not mmap %s",
 				eal_hugepage_data_path());
 		goto error;
 	}
 
 	num_hp = size / sizeof(struct hugepage_file);
-	RTE_LOG(DEBUG, EAL, "Analysing %u files\n", num_hp);
+	EAL_LOG(DEBUG, "Analysing %u files", num_hp);
 
 	/* map all segments into memory to make sure we get the addrs. the
 	 * segments themselves are already in memseg list (which is shared and
@@ -1570,7 +1570,7 @@ eal_legacy_hugepage_attach(void)
 
 		fd = open(hf->filepath, O_RDWR);
 		if (fd < 0) {
-			RTE_LOG(ERR, EAL, "Could not open %s: %s\n",
+			EAL_LOG(ERR, "Could not open %s: %s",
 				hf->filepath, strerror(errno));
 			goto error;
 		}
@@ -1578,14 +1578,14 @@ eal_legacy_hugepage_attach(void)
 		map_addr = mmap(map_addr, map_sz, PROT_READ | PROT_WRITE,
 				MAP_SHARED | MAP_FIXED, fd, 0);
 		if (map_addr == MAP_FAILED) {
-			RTE_LOG(ERR, EAL, "Could not map %s: %s\n",
+			EAL_LOG(ERR, "Could not map %s: %s",
 				hf->filepath, strerror(errno));
 			goto fd_error;
 		}
 
 		/* set shared lock on the file. */
 		if (flock(fd, LOCK_SH) < 0) {
-			RTE_LOG(DEBUG, EAL, "%s(): Locking file failed: %s\n",
+			EAL_LOG(DEBUG, "%s(): Locking file failed: %s",
 				__func__, strerror(errno));
 			goto mmap_error;
 		}
@@ -1593,13 +1593,13 @@ eal_legacy_hugepage_attach(void)
 		/* find segment data */
 		msl = rte_mem_virt2memseg_list(map_addr);
 		if (msl == NULL) {
-			RTE_LOG(DEBUG, EAL, "%s(): Cannot find memseg list\n",
+			EAL_LOG(DEBUG, "%s(): Cannot find memseg list",
 				__func__);
 			goto mmap_error;
 		}
 		ms = rte_mem_virt2memseg(map_addr, msl);
 		if (ms == NULL) {
-			RTE_LOG(DEBUG, EAL, "%s(): Cannot find memseg\n",
+			EAL_LOG(DEBUG, "%s(): Cannot find memseg",
 				__func__);
 			goto mmap_error;
 		}
@@ -1607,14 +1607,14 @@ eal_legacy_hugepage_attach(void)
 		msl_idx = msl - mcfg->memsegs;
 		ms_idx = rte_fbarray_find_idx(&msl->memseg_arr, ms);
 		if (ms_idx < 0) {
-			RTE_LOG(DEBUG, EAL, "%s(): Cannot find memseg idx\n",
+			EAL_LOG(DEBUG, "%s(): Cannot find memseg idx",
 				__func__);
 			goto mmap_error;
 		}
 
 		/* store segment fd internally */
 		if (eal_memalloc_set_seg_fd(msl_idx, ms_idx, fd) < 0)
-			RTE_LOG(ERR, EAL, "Could not store segment fd: %s\n",
+			EAL_LOG(ERR, "Could not store segment fd: %s",
 				rte_strerror(rte_errno));
 	}
 	/* unmap the hugepage config file, since we are done using it */
@@ -1642,9 +1642,9 @@ static int
 eal_hugepage_attach(void)
 {
 	if (eal_memalloc_sync_with_primary()) {
-		RTE_LOG(ERR, EAL, "Could not map memory from primary process\n");
+		EAL_LOG(ERR, "Could not map memory from primary process");
 		if (aslr_enabled() > 0)
-			RTE_LOG(ERR, EAL, "It is recommended to disable ASLR in the kernel and retry running both primary and secondary processes\n");
+			EAL_LOG(ERR, "It is recommended to disable ASLR in the kernel and retry running both primary and secondary processes");
 		return -1;
 	}
 	return 0;
@@ -1740,7 +1740,7 @@ memseg_primary_init_32(void)
 
 	max_mem = (uint64_t)RTE_MAX_MEM_MB << 20;
 	if (total_requested_mem > max_mem) {
-		RTE_LOG(ERR, EAL, "Invalid parameters: 32-bit process can at most use %uM of memory\n",
+		EAL_LOG(ERR, "Invalid parameters: 32-bit process can at most use %uM of memory",
 				(unsigned int)(max_mem >> 20));
 		return -1;
 	}
@@ -1787,7 +1787,7 @@ memseg_primary_init_32(void)
 		skip |= active_sockets == 0 && socket_id != main_lcore_socket;
 
 		if (skip) {
-			RTE_LOG(DEBUG, EAL, "Will not preallocate memory on socket %u\n",
+			EAL_LOG(DEBUG, "Will not preallocate memory on socket %u",
 					socket_id);
 			continue;
 		}
@@ -1819,8 +1819,8 @@ memseg_primary_init_32(void)
 			max_pagesz_mem = RTE_ALIGN_FLOOR(max_pagesz_mem,
 					hugepage_sz);
 
-			RTE_LOG(DEBUG, EAL, "Attempting to preallocate "
-					"%" PRIu64 "M on socket %i\n",
+			EAL_LOG(DEBUG, "Attempting to preallocate "
+					"%" PRIu64 "M on socket %i",
 					max_pagesz_mem >> 20, socket_id);
 
 			type_msl_idx = 0;
@@ -1830,8 +1830,8 @@ memseg_primary_init_32(void)
 				unsigned int n_segs;
 
 				if (msl_idx >= RTE_MAX_MEMSEG_LISTS) {
-					RTE_LOG(ERR, EAL,
-						"No more space in memseg lists, please increase RTE_MAX_MEMSEG_LISTS\n");
+					EAL_LOG(ERR,
+						"No more space in memseg lists, please increase RTE_MAX_MEMSEG_LISTS");
 					return -1;
 				}
 
@@ -1847,7 +1847,7 @@ memseg_primary_init_32(void)
 					/* failing to allocate a memseg list is
 					 * a serious error.
 					 */
-					RTE_LOG(ERR, EAL, "Cannot allocate memseg list\n");
+					EAL_LOG(ERR, "Cannot allocate memseg list");
 					return -1;
 				}
 
@@ -1855,7 +1855,7 @@ memseg_primary_init_32(void)
 					/* if we couldn't allocate VA space, we
 					 * can try with smaller page sizes.
 					 */
-					RTE_LOG(ERR, EAL, "Cannot allocate VA space for memseg list, retrying with different page size\n");
+					EAL_LOG(ERR, "Cannot allocate VA space for memseg list, retrying with different page size");
 					/* deallocate memseg list */
 					if (memseg_list_free(msl))
 						return -1;
@@ -1870,7 +1870,7 @@ memseg_primary_init_32(void)
 			cur_socket_mem += cur_pagesz_mem;
 		}
 		if (cur_socket_mem == 0) {
-			RTE_LOG(ERR, EAL, "Cannot allocate VA space on socket %u\n",
+			EAL_LOG(ERR, "Cannot allocate VA space on socket %u",
 				socket_id);
 			return -1;
 		}
@@ -1901,13 +1901,13 @@ memseg_secondary_init(void)
 			continue;
 
 		if (rte_fbarray_attach(&msl->memseg_arr)) {
-			RTE_LOG(ERR, EAL, "Cannot attach to primary process memseg lists\n");
+			EAL_LOG(ERR, "Cannot attach to primary process memseg lists");
 			return -1;
 		}
 
 		/* preallocate VA space */
 		if (eal_memseg_list_alloc(msl, 0)) {
-			RTE_LOG(ERR, EAL, "Cannot preallocate VA space for hugepage memory\n");
+			EAL_LOG(ERR, "Cannot preallocate VA space for hugepage memory");
 			return -1;
 		}
 	}
@@ -1930,21 +1930,21 @@ rte_eal_memseg_init(void)
 		lim.rlim_cur = lim.rlim_max;
 
 		if (setrlimit(RLIMIT_NOFILE, &lim) < 0) {
-			RTE_LOG(DEBUG, EAL, "Setting maximum number of open files failed: %s\n",
+			EAL_LOG(DEBUG, "Setting maximum number of open files failed: %s",
 					strerror(errno));
 		} else {
-			RTE_LOG(DEBUG, EAL, "Setting maximum number of open files to %"
-					PRIu64 "\n",
+			EAL_LOG(DEBUG, "Setting maximum number of open files to %"
+					PRIu64,
 					(uint64_t)lim.rlim_cur);
 		}
 	} else {
-		RTE_LOG(ERR, EAL, "Cannot get current resource limits\n");
+		EAL_LOG(ERR, "Cannot get current resource limits");
 	}
 #ifndef RTE_EAL_NUMA_AWARE_HUGEPAGES
 	if (!internal_conf->legacy_mem && rte_socket_count() > 1) {
-		RTE_LOG(WARNING, EAL, "DPDK is running on a NUMA system, but is compiled without NUMA support.\n");
-		RTE_LOG(WARNING, EAL, "This will have adverse consequences for performance and usability.\n");
-		RTE_LOG(WARNING, EAL, "Please use --"OPT_LEGACY_MEM" option, or recompile with NUMA support.\n");
+		EAL_LOG(WARNING, "DPDK is running on a NUMA system, but is compiled without NUMA support.");
+		EAL_LOG(WARNING, "This will have adverse consequences for performance and usability.");
+		EAL_LOG(WARNING, "Please use --"OPT_LEGACY_MEM" option, or recompile with NUMA support.");
 	}
 #endif
 

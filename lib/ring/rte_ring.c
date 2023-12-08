@@ -28,6 +28,8 @@
 
 RTE_LOG_REGISTER_DEFAULT(ring_logtype, INFO);
 #define RTE_LOGTYPE_RING ring_logtype
+#define RING_LOG(level, fmt, ...) \
+	RTE_LOG(level, RING, fmt "\n", ## __VA_ARGS__)
 
 TAILQ_HEAD(rte_ring_list, rte_tailq_entry);
 
@@ -55,15 +57,15 @@ rte_ring_get_memsize_elem(unsigned int esize, unsigned int count)
 
 	/* Check if element size is a multiple of 4B */
 	if (esize % 4 != 0) {
-		RTE_LOG(ERR, RING, "element size is not a multiple of 4\n");
+		RING_LOG(ERR, "element size is not a multiple of 4");
 
 		return -EINVAL;
 	}
 
 	/* count must be a power of 2 */
 	if ((!POWEROF2(count)) || (count > RTE_RING_SZ_MASK )) {
-		RTE_LOG(ERR, RING,
-			"Requested number of elements is invalid, must be power of 2, and not exceed %u\n",
+		RING_LOG(ERR,
+			"Requested number of elements is invalid, must be power of 2, and not exceed %u",
 			RTE_RING_SZ_MASK);
 
 		return -EINVAL;
@@ -198,8 +200,8 @@ rte_ring_init(struct rte_ring *r, const char *name, unsigned int count,
 
 	/* future proof flags, only allow supported values */
 	if (flags & ~RING_F_MASK) {
-		RTE_LOG(ERR, RING,
-			"Unsupported flags requested %#x\n", flags);
+		RING_LOG(ERR,
+			"Unsupported flags requested %#x", flags);
 		return -EINVAL;
 	}
 
@@ -219,8 +221,8 @@ rte_ring_init(struct rte_ring *r, const char *name, unsigned int count,
 		r->capacity = count;
 	} else {
 		if ((!POWEROF2(count)) || (count > RTE_RING_SZ_MASK)) {
-			RTE_LOG(ERR, RING,
-				"Requested size is invalid, must be power of 2, and not exceed the size limit %u\n",
+			RING_LOG(ERR,
+				"Requested size is invalid, must be power of 2, and not exceed the size limit %u",
 				RTE_RING_SZ_MASK);
 			return -EINVAL;
 		}
@@ -274,7 +276,7 @@ rte_ring_create_elem(const char *name, unsigned int esize, unsigned int count,
 
 	te = rte_zmalloc("RING_TAILQ_ENTRY", sizeof(*te), 0);
 	if (te == NULL) {
-		RTE_LOG(ERR, RING, "Cannot reserve memory for tailq\n");
+		RING_LOG(ERR, "Cannot reserve memory for tailq");
 		rte_errno = ENOMEM;
 		return NULL;
 	}
@@ -299,7 +301,7 @@ rte_ring_create_elem(const char *name, unsigned int esize, unsigned int count,
 		TAILQ_INSERT_TAIL(ring_list, te, next);
 	} else {
 		r = NULL;
-		RTE_LOG(ERR, RING, "Cannot reserve memory\n");
+		RING_LOG(ERR, "Cannot reserve memory");
 		rte_free(te);
 	}
 	rte_mcfg_tailq_write_unlock();
@@ -331,8 +333,8 @@ rte_ring_free(struct rte_ring *r)
 	 * therefore, there is no memzone to free.
 	 */
 	if (r->memzone == NULL) {
-		RTE_LOG(ERR, RING,
-			"Cannot free ring, not created with rte_ring_create()\n");
+		RING_LOG(ERR,
+			"Cannot free ring, not created with rte_ring_create()");
 		return;
 	}
 
@@ -355,7 +357,7 @@ rte_ring_free(struct rte_ring *r)
 	rte_mcfg_tailq_write_unlock();
 
 	if (rte_memzone_free(r->memzone) != 0)
-		RTE_LOG(ERR, RING, "Cannot free memory\n");
+		RING_LOG(ERR, "Cannot free memory");
 
 	rte_free(te);
 }

@@ -114,8 +114,8 @@ eal_mem_win32api_init(void)
 			library_name, function);
 
 		/* Contrary to the docs, Server 2016 is not supported. */
-		RTE_LOG(ERR, EAL, "Windows 10 or Windows Server 2019 "
-			" is required for memory management\n");
+		EAL_LOG(ERR, "Windows 10 or Windows Server 2019 "
+			" is required for memory management");
 		ret = -1;
 	}
 
@@ -173,8 +173,8 @@ eal_mem_virt2iova_init(void)
 
 	detail = malloc(detail_size);
 	if (detail == NULL) {
-		RTE_LOG(ERR, EAL, "Cannot allocate virt2phys "
-			"device interface detail data\n");
+		EAL_LOG(ERR, "Cannot allocate virt2phys "
+			"device interface detail data");
 		goto exit;
 	}
 
@@ -185,7 +185,7 @@ eal_mem_virt2iova_init(void)
 		goto exit;
 	}
 
-	RTE_LOG(DEBUG, EAL, "Found virt2phys device: %s\n", detail->DevicePath);
+	EAL_LOG(DEBUG, "Found virt2phys device: %s", detail->DevicePath);
 
 	virt2phys_device = CreateFile(
 		detail->DevicePath, 0, 0, NULL, OPEN_EXISTING, 0, NULL);
@@ -574,8 +574,8 @@ rte_mem_map(void *requested_addr, size_t size, int prot, int flags,
 		int ret = mem_free(requested_addr, size, true);
 		if (ret) {
 			if (ret > 0) {
-				RTE_LOG(ERR, EAL, "Cannot map memory "
-					"to a region not reserved\n");
+				EAL_LOG(ERR, "Cannot map memory "
+					"to a region not reserved");
 				rte_errno = EADDRNOTAVAIL;
 			}
 			return NULL;
@@ -691,7 +691,7 @@ eal_nohuge_init(void)
 		NULL, mem_sz, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
 	if (addr == NULL) {
 		RTE_LOG_WIN32_ERR("VirtualAlloc(size=%#zx)", mem_sz);
-		RTE_LOG(ERR, EAL, "Cannot allocate memory\n");
+		EAL_LOG(ERR, "Cannot allocate memory");
 		return -1;
 	}
 
@@ -702,9 +702,9 @@ eal_nohuge_init(void)
 
 	if (mcfg->dma_maskbits &&
 		rte_mem_check_dma_mask_thread_unsafe(mcfg->dma_maskbits)) {
-		RTE_LOG(ERR, EAL,
+		EAL_LOG(ERR,
 			"%s(): couldn't allocate memory due to IOVA "
-			"exceeding limits of current DMA mask.\n", __func__);
+			"exceeding limits of current DMA mask.", __func__);
 		return -1;
 	}
 

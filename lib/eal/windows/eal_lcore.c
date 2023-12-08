@@ -65,7 +65,8 @@ eal_query_group_affinity(void)
 			&infos_size)) {
 		DWORD error = GetLastError();
 		if (error != ERROR_INSUFFICIENT_BUFFER) {
-			RTE_LOG(ERR, EAL, "Cannot get group information size, error %lu\n", error);
+			EAL_LOG(ERR, "Cannot get group information size, error %lu",
+				error);
 			rte_errno = EINVAL;
 			ret = -1;
 			goto cleanup;
@@ -74,7 +75,7 @@ eal_query_group_affinity(void)
 
 	infos = malloc(infos_size);
 	if (infos == NULL) {
-		RTE_LOG(ERR, EAL, "Cannot allocate memory for NUMA node information\n");
+		EAL_LOG(ERR, "Cannot allocate memory for NUMA node information");
 		rte_errno = ENOMEM;
 		ret = -1;
 		goto cleanup;
@@ -82,7 +83,7 @@ eal_query_group_affinity(void)
 
 	if (!GetLogicalProcessorInformationEx(RelationGroup, infos,
 			&infos_size)) {
-		RTE_LOG(ERR, EAL, "Cannot get group information, error %lu\n",
+		EAL_LOG(ERR, "Cannot get group information, error %lu",
 			GetLastError());
 		rte_errno = EINVAL;
 		ret = -1;

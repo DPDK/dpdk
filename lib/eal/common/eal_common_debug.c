@@ -11,12 +11,14 @@
 #include <rte_debug.h>
 #include <rte_errno.h>
 
+#include "eal_private.h"
+
 void
 __rte_panic(const char *funcname, const char *format, ...)
 {
 	va_list ap;
 
-	rte_log(RTE_LOG_CRIT, RTE_LOGTYPE_EAL, "PANIC in %s():\n", funcname);
+	EAL_LOG(CRIT, "PANIC in %s():", funcname);
 	va_start(ap, format);
 	rte_vlog(RTE_LOG_CRIT, RTE_LOGTYPE_EAL, format, ap);
 	va_end(ap);
@@ -42,7 +44,7 @@ rte_exit(int exit_code, const char *format, ...)
 	va_end(ap);
 
 	if (rte_eal_cleanup() != 0 && rte_errno != EALREADY)
-		RTE_LOG(CRIT, EAL,
-			"EAL could not release all resources\n");
+		EAL_LOG(CRIT,
+			"EAL could not release all resources");
 	exit(exit_code);
 }

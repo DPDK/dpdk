@@ -33,8 +33,8 @@ rte_mbuf_set_platform_mempool_ops(const char *ops_name)
 		return 0;
 	}
 
-	RTE_LOG(ERR, MBUF,
-		"%s is already registered as platform mbuf pool ops\n",
+	MBUF_LOG(ERR,
+		"%s is already registered as platform mbuf pool ops",
 		(char *)mz->addr);
 	return -EEXIST;
 }

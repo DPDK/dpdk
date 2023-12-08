@@ -147,7 +147,7 @@ check_numa(void)
 	bool ret = true;
 	/* Check if kernel supports NUMA. */
 	if (numa_available() != 0) {
-		RTE_LOG(DEBUG, EAL, "NUMA is not supported.\n");
+		EAL_LOG(DEBUG, "NUMA is not supported.");
 		ret = false;
 	}
 	return ret;
@@ -156,16 +156,16 @@ check_numa(void)
 static void
 prepare_numa(int *oldpolicy, struct bitmask *oldmask, int socket_id)
 {
-	RTE_LOG(DEBUG, EAL, "Trying to obtain current memory policy.\n");
+	EAL_LOG(DEBUG, "Trying to obtain current memory policy.");
 	if (get_mempolicy(oldpolicy, oldmask->maskp,
 			  oldmask->size + 1, 0, 0) < 0) {
-		RTE_LOG(ERR, EAL,
+		EAL_LOG(ERR,
 			"Failed to get current mempolicy: %s. "
-			"Assuming MPOL_DEFAULT.\n", strerror(errno));
+			"Assuming MPOL_DEFAULT.", strerror(errno));
 		*oldpolicy = MPOL_DEFAULT;
 	}
-	RTE_LOG(DEBUG, EAL,
-		"Setting policy MPOL_PREFERRED for socket %d\n",
+	EAL_LOG(DEBUG,
+		"Setting policy MPOL_PREFERRED for socket %d",
 		socket_id);
 	numa_set_preferred(socket_id);
 }
@@ -173,13 +173,13 @@ prepare_numa(int *oldpolicy, struct bitmask *oldmask, int socket_id)
 static void
 restore_numa(int *oldpolicy, struct bitmask *oldmask)
 {
-	RTE_LOG(DEBUG, EAL,
-		"Restoring previous memory policy: %d\n", *oldpolicy);
+	EAL_LOG(DEBUG,
+		"Restoring previous memory policy: %d", *oldpolicy);
 	if (*oldpolicy == MPOL_DEFAULT) {
 		numa_set_localalloc();
 	} else if (set_mempolicy(*oldpolicy, oldmask->maskp,
 				 oldmask->size + 1) < 0) {
-		RTE_LOG(ERR, EAL, "Failed to restore mempolicy: %s\n",
+		EAL_LOG(ERR, "Failed to restore mempolicy: %s",
 			strerror(errno));
 		numa_set_localalloc();
 	}
@@ -223,7 +223,7 @@ static int lock(int fd, int type)
 		/* couldn't lock */
 		return 0;
 	} else if (ret) {
-		RTE_LOG(ERR, EAL, "%s(): error calling flock(): %s\n",
+		EAL_LOG(ERR, "%s(): error calling flock(): %s",
 			__func__, strerror(errno));
 		return -1;
 	}
@@ -251,7 +251,7 @@ get_seg_memfd(struct hugepage_info *hi __rte_unused,
 			snprintf(segname, sizeof(segname), "seg_%i", list_idx);
 			fd = memfd_create(segname, flags);
 			if (fd < 0) {
-				RTE_LOG(DEBUG, EAL, "%s(): memfd create failed: %s\n",
+				EAL_LOG(DEBUG, "%s(): memfd create failed: %s",
 					__func__, strerror(errno));
 				return -1;
 			}
@@ -265,7 +265,7 @@ get_seg_memfd(struct hugepage_info *hi __rte_unused,
 					list_idx, seg_idx);
 			fd = memfd_create(segname, flags);
 			if (fd < 0) {
-				RTE_LOG(DEBUG, EAL, "%s(): memfd create failed: %s\n",
+				EAL_LOG(DEBUG, "%s(): memfd create failed: %s",
 					__func__, strerror(errno));
 				return -1;
 			}
@@ -316,7 +316,7 @@ get_seg_fd(char *path, int buflen, struct hugepage_info *hi,
 	 */
 	ret = stat(path, &st);
 	if (ret < 0 && errno != ENOENT) {
-		RTE_LOG(DEBUG, EAL, "%s(): stat() for '%s' failed: %s\n",
+		EAL_LOG(DEBUG, "%s(): stat() for '%s' failed: %s",
 			__func__, path, strerror(errno));
 		return -1;
 	}
@@ -342,7 +342,7 @@ get_seg_fd(char *path, int buflen, struct hugepage_info *hi,
 			ret == 0) {
 		/* coverity[toctou] */
 		if (unlink(path) < 0) {
-			RTE_LOG(DEBUG, EAL, "%s(): could not remove '%s': %s\n",
+			EAL_LOG(DEBUG, "%s(): could not remove '%s': %s",
 				__func__, path, strerror(errno));
 			return -1;
 		}
@@ -351,13 +351,13 @@ get_seg_fd(char *path, int buflen, struct hugepage_info *hi,
 	/* coverity[toctou] */
 	fd = open(path, O_CREAT | O_RDWR, 0600);
 	if (fd < 0) {
-		RTE_LOG(ERR, EAL, "%s(): open '%s' failed: %s\n",
+		EAL_LOG(ERR, "%s(): open '%s' failed: %s",
 			__func__, path, strerror(errno));
 		return -1;
 	}
 	/* take out a read lock */
 	if (lock(fd, LOCK_SH) < 0) {
-		RTE_LOG(ERR, EAL, "%s(): lock '%s' failed: %s\n",
+		EAL_LOG(ERR, "%s(): lock '%s' failed: %s",
 			__func__, path, strerror(errno));
 		close(fd);
 		return -1;
@@ -378,7 +378,7 @@ resize_hugefile_in_memory(int fd, uint64_t fa_offset,
 	ret = fallocate(fd, flags, fa_offset, page_sz);
 
 	if (ret < 0) {
-		RTE_LOG(DEBUG, EAL, "%s(): fallocate() failed: %s\n",
+		EAL_LOG(DEBUG, "%s(): fallocate() failed: %s",
 				__func__,
 				strerror(errno));
 		return -1;
@@ -402,7 +402,7 @@ resize_hugefile_in_filesystem(int fd, uint64_t fa_offset, uint64_t page_sz,
 			 */
 
 			if (!grow) {
-				RTE_LOG(DEBUG, EAL, "%s(): fallocate not supported, not freeing page back to the system\n",
+				EAL_LOG(DEBUG, "%s(): fallocate not supported, not freeing page back to the system",
 					__func__);
 				return -1;
 			}
@@ -414,7 +414,7 @@ resize_hugefile_in_filesystem(int fd, uint64_t fa_offset, uint64_t page_sz,
 				*dirty = new_size <= cur_size;
 			if (new_size > cur_size &&
 					ftruncate(fd, new_size) < 0) {
-				RTE_LOG(DEBUG, EAL, "%s(): ftruncate() failed: %s\n",
+				EAL_LOG(DEBUG, "%s(): ftruncate() failed: %s",
 					__func__, strerror(errno));
 				return -1;
 			}
@@ -444,12 +444,12 @@ resize_hugefile_in_filesystem(int fd, uint64_t fa_offset, uint64_t page_sz,
 			if (ret < 0) {
 				if (fallocate_supported == -1 &&
 						errno == ENOTSUP) {
-					RTE_LOG(ERR, EAL, "%s(): fallocate() not supported, hugepage deallocation will be disabled\n",
+					EAL_LOG(ERR, "%s(): fallocate() not supported, hugepage deallocation will be disabled",
 						__func__);
 					again = true;
 					fallocate_supported = 0;
 				} else {
-					RTE_LOG(DEBUG, EAL, "%s(): fallocate() failed: %s\n",
+					EAL_LOG(DEBUG, "%s(): fallocate() failed: %s",
 						__func__,
 						strerror(errno));
 					return -1;
@@ -483,7 +483,7 @@ close_hugefile(int fd, char *path, int list_idx)
 	if (!internal_conf->in_memory &&
 			rte_eal_process_type() == RTE_PROC_PRIMARY &&
 			unlink(path))
-		RTE_LOG(ERR, EAL, "%s(): unlinking '%s' failed: %s\n",
+		EAL_LOG(ERR, "%s(): unlinking '%s' failed: %s",
 			__func__, path, strerror(errno));
 
 	close(fd);
@@ -536,12 +536,12 @@ alloc_seg(struct rte_memseg *ms, void *addr, int socket_id,
 
 	/* these are checked at init, but code analyzers don't know that */
 	if (internal_conf->in_memory && !anonymous_hugepages_supported) {
-		RTE_LOG(ERR, EAL, "Anonymous hugepages not supported, in-memory mode cannot allocate memory\n");
+		EAL_LOG(ERR, "Anonymous hugepages not supported, in-memory mode cannot allocate memory");
 		return -1;
 	}
 	if (internal_conf->in_memory && !memfd_create_supported &&
 			internal_conf->single_file_segments) {
-		RTE_LOG(ERR, EAL, "Single-file segments are not supported without memfd support\n");
+		EAL_LOG(ERR, "Single-file segments are not supported without memfd support");
 		return -1;
 	}
 
@@ -569,7 +569,7 @@ alloc_seg(struct rte_memseg *ms, void *addr, int socket_id,
 		fd = get_seg_fd(path, sizeof(path), hi, list_idx, seg_idx,
 				&dirty);
 		if (fd < 0) {
-			RTE_LOG(ERR, EAL, "Couldn't get fd on hugepage file\n");
+			EAL_LOG(ERR, "Couldn't get fd on hugepage file");
 			return -1;
 		}
 
@@ -584,14 +584,14 @@ alloc_seg(struct rte_memseg *ms, void *addr, int socket_id,
 		} else {
 			map_offset = 0;
 			if (ftruncate(fd, alloc_sz) < 0) {
-				RTE_LOG(DEBUG, EAL, "%s(): ftruncate() failed: %s\n",
+				EAL_LOG(DEBUG, "%s(): ftruncate() failed: %s",
 					__func__, strerror(errno));
 				goto resized;
 			}
 			if (internal_conf->hugepage_file.unlink_before_mapping &&
 					!internal_conf->in_memory) {
 				if (unlink(path)) {
-					RTE_LOG(DEBUG, EAL, "%s(): unlink() failed: %s\n",
+					EAL_LOG(DEBUG, "%s(): unlink() failed: %s",
 						__func__, strerror(errno));
 					goto resized;
 				}
@@ -610,7 +610,7 @@ alloc_seg(struct rte_memseg *ms, void *addr, int socket_id,
 			map_offset);
 
 	if (va == MAP_FAILED) {
-		RTE_LOG(DEBUG, EAL, "%s(): mmap() failed: %s\n", __func__,
+		EAL_LOG(DEBUG, "%s(): mmap() failed: %s", __func__,
 			strerror(errno));
 		/* mmap failed, but the previous region might have been
 		 * unmapped anyway. try to remap it
@@ -618,7 +618,7 @@ alloc_seg(struct rte_memseg *ms, void *addr, int socket_id,
 		goto unmapped;
 	}
 	if (va != addr) {
-		RTE_LOG(DEBUG, EAL, "%s(): wrong mmap() address\n", __func__);
+		EAL_LOG(DEBUG, "%s(): wrong mmap() address", __func__);
 		munmap(va, alloc_sz);
 		goto resized;
 	}
@@ -631,7 +631,7 @@ alloc_seg(struct rte_memseg *ms, void *addr, int socket_id,
 	 * back here.
 	 */
 	if (huge_wrap_sigsetjmp()) {
-		RTE_LOG(DEBUG, EAL, "SIGBUS: Cannot mmap more hugepages of size %uMB\n",
+		EAL_LOG(DEBUG, "SIGBUS: Cannot mmap more hugepages of size %uMB",
 			(unsigned int)(alloc_sz >> 20));
 		goto mapped;
 	}
@@ -645,7 +645,7 @@ alloc_seg(struct rte_memseg *ms, void *addr, int socket_id,
 
 	iova = rte_mem_virt2iova(addr);
 	if (iova == RTE_BAD_PHYS_ADDR) {
-		RTE_LOG(DEBUG, EAL, "%s(): can't get IOVA addr\n",
+		EAL_LOG(DEBUG, "%s(): can't get IOVA addr",
 			__func__);
 		goto mapped;
 	}
@@ -661,19 +661,19 @@ alloc_seg(struct rte_memseg *ms, void *addr, int socket_id,
 		ret = get_mempolicy(&cur_socket_id, NULL, 0, addr,
 					MPOL_F_NODE | MPOL_F_ADDR);
 		if (ret < 0) {
-			RTE_LOG(DEBUG, EAL, "%s(): get_mempolicy: %s\n",
+			EAL_LOG(DEBUG, "%s(): get_mempolicy: %s",
 				__func__, strerror(errno));
 			goto mapped;
 		} else if (cur_socket_id != socket_id) {
-			RTE_LOG(DEBUG, EAL,
-					"%s(): allocation happened on wrong socket (wanted %d, got %d)\n",
+			EAL_LOG(DEBUG,
+					"%s(): allocation happened on wrong socket (wanted %d, got %d)",
 				__func__, socket_id, cur_socket_id);
 			goto mapped;
 		}
 	}
 #else
 	if (rte_socket_count() > 1)
-		RTE_LOG(DEBUG, EAL, "%s(): not checking hugepage NUMA node.\n",
+		EAL_LOG(DEBUG, "%s(): not checking hugepage NUMA node.",
 				__func__);
 #endif
 
@@ -703,7 +703,7 @@ unmapped:
 		 * somebody else maps this hole now, we could accidentally
 		 * override it in the future.
 		 */
-		RTE_LOG(CRIT, EAL, "Can't mmap holes in our virtual address space\n");
+		EAL_LOG(CRIT, "Can't mmap holes in our virtual address space");
 	}
 	/* roll back the ref count */
 	if (internal_conf->single_file_segments)
@@ -748,7 +748,7 @@ free_seg(struct rte_memseg *ms, struct hugepage_info *hi,
 	if (mmap(ms->addr, ms->len, PROT_NONE,
 			MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED, -1, 0) ==
 				MAP_FAILED) {
-		RTE_LOG(DEBUG, EAL, "couldn't unmap page\n");
+		EAL_LOG(DEBUG, "couldn't unmap page");
 		return -1;
 	}
 
@@ -873,13 +873,13 @@ alloc_seg_walk(const struct rte_memseg_list *msl, void *arg)
 	if (wa->hi->lock_descriptor == -1 && !internal_conf->in_memory) {
 		dir_fd = open(wa->hi->hugedir, O_RDONLY);
 		if (dir_fd < 0) {
-			RTE_LOG(ERR, EAL, "%s(): Cannot open '%s': %s\n",
+			EAL_LOG(ERR, "%s(): Cannot open '%s': %s",
 				__func__, wa->hi->hugedir, strerror(errno));
 			return -1;
 		}
 		/* blocking writelock */
 		if (flock(dir_fd, LOCK_EX)) {
-			RTE_LOG(ERR, EAL, "%s(): Cannot lock '%s': %s\n",
+			EAL_LOG(ERR, "%s(): Cannot lock '%s': %s",
 				__func__, wa->hi->hugedir, strerror(errno));
 			close(dir_fd);
 			return -1;
@@ -896,7 +896,7 @@ alloc_seg_walk(const struct rte_memseg_list *msl, void *arg)
 
 		if (alloc_seg(cur, map_addr, wa->socket, wa->hi,
 				msl_idx, cur_idx)) {
-			RTE_LOG(DEBUG, EAL, "attempted to allocate %i segments, but only %i were allocated\n",
+			EAL_LOG(DEBUG, "attempted to allocate %i segments, but only %i were allocated",
 				need, i);
 
 			/* if exact number wasn't requested, stop */
@@ -916,7 +916,7 @@ alloc_seg_walk(const struct rte_memseg_list *msl, void *arg)
 				 * may fail.
 				 */
 				if (free_seg(tmp, wa->hi, msl_idx, j))
-					RTE_LOG(DEBUG, EAL, "Cannot free page\n");
+					EAL_LOG(DEBUG, "Cannot free page");
 			}
 			/* clear the list */
 			if (wa->ms)
@@ -980,13 +980,13 @@ free_seg_walk(const struct rte_memseg_list *msl, void *arg)
 	if (wa->hi->lock_descriptor == -1 && !internal_conf->in_memory) {
 		dir_fd = open(wa->hi->hugedir, O_RDONLY);
 		if (dir_fd < 0) {
-			RTE_LOG(ERR, EAL, "%s(): Cannot open '%s': %s\n",
+			EAL_LOG(ERR, "%s(): Cannot open '%s': %s",
 				__func__, wa->hi->hugedir, strerror(errno));
 			return -1;
 		}
 		/* blocking writelock */
 		if (flock(dir_fd, LOCK_EX)) {
-			RTE_LOG(ERR, EAL, "%s(): Cannot lock '%s': %s\n",
+			EAL_LOG(ERR, "%s(): Cannot lock '%s': %s",
 				__func__, wa->hi->hugedir, strerror(errno));
 			close(dir_fd);
 			return -1;
@@ -1037,7 +1037,7 @@ eal_memalloc_alloc_seg_bulk(struct rte_memseg **ms, int n_segs, size_t page_sz,
 		}
 	}
 	if (!hi) {
-		RTE_LOG(ERR, EAL, "%s(): can't find relevant hugepage_info entry\n",
+		EAL_LOG(ERR, "%s(): can't find relevant hugepage_info entry",
 			__func__);
 		return -1;
 	}
@@ -1061,7 +1061,7 @@ eal_memalloc_alloc_seg_bulk(struct rte_memseg **ms, int n_segs, size_t page_sz,
 	/* memalloc is locked, so it's safe to use thread-unsafe version */
 	ret = rte_memseg_list_walk_thread_unsafe(alloc_seg_walk, &wa);
 	if (ret == 0) {
-		RTE_LOG(ERR, EAL, "%s(): couldn't find suitable memseg_list\n",
+		EAL_LOG(ERR, "%s(): couldn't find suitable memseg_list",
 			__func__);
 		ret = -1;
 	} else if (ret > 0) {
@@ -1104,7 +1104,7 @@ eal_memalloc_free_seg_bulk(struct rte_memseg **ms, int n_segs)
 
 		/* if this page is marked as unfreeable, fail */
 		if (cur->flags & RTE_MEMSEG_FLAG_DO_NOT_FREE) {
-			RTE_LOG(DEBUG, EAL, "Page is not allowed to be freed\n");
+			EAL_LOG(DEBUG, "Page is not allowed to be freed");
 			ret = -1;
 			continue;
 		}
@@ -1118,7 +1118,7 @@ eal_memalloc_free_seg_bulk(struct rte_memseg **ms, int n_segs)
 				break;
 		}
 		if (i == (int)RTE_DIM(internal_conf->hugepage_info)) {
-			RTE_LOG(ERR, EAL, "Can't find relevant hugepage_info entry\n");
+			EAL_LOG(ERR, "Can't find relevant hugepage_info entry");
 			ret = -1;
 			continue;
 		}
@@ -1133,7 +1133,7 @@ eal_memalloc_free_seg_bulk(struct rte_memseg **ms, int n_segs)
 		if (walk_res == 1)
 			continue;
 		if (walk_res == 0)
-			RTE_LOG(ERR, EAL, "Couldn't find memseg list\n");
+			EAL_LOG(ERR, "Couldn't find memseg list");
 		ret = -1;
 	}
 	return ret;
@@ -1344,13 +1344,13 @@ sync_existing(struct rte_memseg_list *primary_msl,
 	 */
 	dir_fd = open(hi->hugedir, O_RDONLY);
 	if (dir_fd < 0) {
-		RTE_LOG(ERR, EAL, "%s(): Cannot open '%s': %s\n", __func__,
+		EAL_LOG(ERR, "%s(): Cannot open '%s': %s", __func__,
 			hi->hugedir, strerror(errno));
 		return -1;
 	}
 	/* blocking writelock */
 	if (flock(dir_fd, LOCK_EX)) {
-		RTE_LOG(ERR, EAL, "%s(): Cannot lock '%s': %s\n", __func__,
+		EAL_LOG(ERR, "%s(): Cannot lock '%s': %s", __func__,
 			hi->hugedir, strerror(errno));
 		close(dir_fd);
 		return -1;
@@ -1405,7 +1405,7 @@ sync_walk(const struct rte_memseg_list *msl, void *arg __rte_unused)
 		}
 	}
 	if (!hi) {
-		RTE_LOG(ERR, EAL, "Can't find relevant hugepage_info entry\n");
+		EAL_LOG(ERR, "Can't find relevant hugepage_info entry");
 		return -1;
 	}
 
@@ -1454,7 +1454,7 @@ secondary_msl_create_walk(const struct rte_memseg_list *msl,
 		primary_msl->memseg_arr.len,
 		primary_msl->memseg_arr.elt_sz);
 	if (ret < 0) {
-		RTE_LOG(ERR, EAL, "Cannot initialize local memory map\n");
+		EAL_LOG(ERR, "Cannot initialize local memory map");
 		return -1;
 	}
 	local_msl->base_va = primary_msl->base_va;
@@ -1479,7 +1479,7 @@ secondary_msl_destroy_walk(const struct rte_memseg_list *msl,
 
 	ret = rte_fbarray_destroy(&local_msl->memseg_arr);
 	if (ret < 0) {
-		RTE_LOG(ERR, EAL, "Cannot destroy local memory map\n");
+		EAL_LOG(ERR, "Cannot destroy local memory map");
 		return -1;
 	}
 	local_msl->base_va = NULL;
@@ -1501,7 +1501,7 @@ alloc_list(int list_idx, int len)
 		/* ensure we have space to store fd per each possible segment */
 		data = malloc(sizeof(int) * len);
 		if (data == NULL) {
-			RTE_LOG(ERR, EAL, "Unable to allocate space for file descriptors\n");
+			EAL_LOG(ERR, "Unable to allocate space for file descriptors");
 			return -1;
 		}
 		/* set all fd's as invalid */
@@ -1750,13 +1750,13 @@ eal_memalloc_init(void)
 		int mfd_res = test_memfd_create();
 
 		if (mfd_res < 0) {
-			RTE_LOG(ERR, EAL, "Unable to check if memfd is supported\n");
+			EAL_LOG(ERR, "Unable to check if memfd is supported");
 			return -1;
 		}
 		if (mfd_res == 1)
-			RTE_LOG(DEBUG, EAL, "Using memfd for anonymous memory\n");
+			EAL_LOG(DEBUG, "Using memfd for anonymous memory");
 		else
-			RTE_LOG(INFO, EAL, "Using memfd is not supported, falling back to anonymous hugepages\n");
+			EAL_LOG(INFO, "Using memfd is not supported, falling back to anonymous hugepages");
 
 		/* we only support single-file segments mode with in-memory mode
 		 * if we support hugetlbfs with memfd_create. this code will
@@ -1764,18 +1764,18 @@ eal_memalloc_init(void)
 		 */
 		if (internal_conf->single_file_segments &&
 				mfd_res != 1) {
-			RTE_LOG(ERR, EAL, "Single-file segments mode cannot be used without memfd support\n");
+			EAL_LOG(ERR, "Single-file segments mode cannot be used without memfd support");
 			return -1;
 		}
 		/* this cannot ever happen but better safe than sorry */
 		if (!anonymous_hugepages_supported) {
-			RTE_LOG(ERR, EAL, "Using anonymous memory is not supported\n");
+			EAL_LOG(ERR, "Using anonymous memory is not supported");
 			return -1;
 		}
 		/* safety net, should be impossible to configure */
 		if (internal_conf->hugepage_file.unlink_before_mapping &&
 				!internal_conf->hugepage_file.unlink_existing) {
-			RTE_LOG(ERR, EAL, "Unlinking existing hugepage files is prohibited, cannot unlink them before mapping.\n");
+			EAL_LOG(ERR, "Unlinking existing hugepage files is prohibited, cannot unlink them before mapping.");
 			return -1;
 		}
 	}

@@ -31,22 +31,22 @@ rte_mempool_register_ops(const struct rte_mempool_ops *h)
 	if (rte_mempool_ops_table.num_ops >=
 			RTE_MEMPOOL_MAX_OPS_IDX) {
 		rte_spinlock_unlock(&rte_mempool_ops_table.sl);
-		RTE_LOG(ERR, MEMPOOL,
-			"Maximum number of mempool ops structs exceeded\n");
+		RTE_MEMPOOL_LOG(ERR,
+			"Maximum number of mempool ops structs exceeded");
 		return -ENOSPC;
 	}
 
 	if (h->alloc == NULL || h->enqueue == NULL ||
 			h->dequeue == NULL || h->get_count == NULL) {
 		rte_spinlock_unlock(&rte_mempool_ops_table.sl);
-		RTE_LOG(ERR, MEMPOOL,
-			"Missing callback while registering mempool ops\n");
+		RTE_MEMPOOL_LOG(ERR,
+			"Missing callback while registering mempool ops");
 		return -EINVAL;
 	}
 
 	if (strlen(h->name) >= sizeof(ops->name) - 1) {
 		rte_spinlock_unlock(&rte_mempool_ops_table.sl);
-		RTE_LOG(DEBUG, MEMPOOL, "%s(): mempool_ops <%s>: name too long\n",
+		RTE_MEMPOOL_LOG(DEBUG, "%s(): mempool_ops <%s>: name too long",
 				__func__, h->name);
 		rte_errno = EEXIST;
 		return -EEXIST;

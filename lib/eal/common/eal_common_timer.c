@@ -39,8 +39,8 @@ static uint64_t
 estimate_tsc_freq(void)
 {
 #define CYC_PER_10MHZ 1E7
-	RTE_LOG(WARNING, EAL, "WARNING: TSC frequency estimated roughly"
-		" - clock timings may be less accurate.\n");
+	EAL_LOG(WARNING, "WARNING: TSC frequency estimated roughly"
+		" - clock timings may be less accurate.");
 	/* assume that the rte_delay_us_sleep() will sleep for 1 second */
 	uint64_t start = rte_rdtsc();
 	rte_delay_us_sleep(US_PER_S);
@@ -71,7 +71,7 @@ set_tsc_freq(void)
 	if (!freq)
 		freq = estimate_tsc_freq();
 
-	RTE_LOG(DEBUG, EAL, "TSC frequency is ~%" PRIu64 " KHz\n", freq / 1000);
+	EAL_LOG(DEBUG, "TSC frequency is ~%" PRIu64 " KHz", freq / 1000);
 	eal_tsc_resolution_hz = freq;
 	mcfg->tsc_hz = freq;
 }

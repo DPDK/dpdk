@@ -57,7 +57,7 @@ eal_get_virtual_area(void *requested_addr, size_t *size,
 	if (system_page_sz == 0)
 		system_page_sz = rte_mem_page_size();
 
-	RTE_LOG(DEBUG, EAL, "Ask a virtual area of 0x%zx bytes\n", *size);
+	EAL_LOG(DEBUG, "Ask a virtual area of 0x%zx bytes", *size);
 
 	addr_is_hint = (flags & EAL_VIRTUAL_AREA_ADDR_IS_HINT) > 0;
 	allow_shrink = (flags & EAL_VIRTUAL_AREA_ALLOW_SHRINK) > 0;
@@ -94,7 +94,7 @@ eal_get_virtual_area(void *requested_addr, size_t *size,
 	do {
 		map_sz = no_align ? *size : *size + page_sz;
 		if (map_sz > SIZE_MAX) {
-			RTE_LOG(ERR, EAL, "Map size too big\n");
+			EAL_LOG(ERR, "Map size too big");
 			rte_errno = E2BIG;
 			return NULL;
 		}
@@ -125,16 +125,16 @@ eal_get_virtual_area(void *requested_addr, size_t *size,
 			RTE_PTR_ALIGN(mapped_addr, page_sz);
 
 	if (*size == 0) {
-		RTE_LOG(ERR, EAL, "Cannot get a virtual area of any size: %s\n",
+		EAL_LOG(ERR, "Cannot get a virtual area of any size: %s",
 			rte_strerror(rte_errno));
 		return NULL;
 	} else if (mapped_addr == NULL) {
-		RTE_LOG(ERR, EAL, "Cannot get a virtual area: %s\n",
+		EAL_LOG(ERR, "Cannot get a virtual area: %s",
 			rte_strerror(rte_errno));
 		return NULL;
 	} else if (requested_addr != NULL && !addr_is_hint &&
 			aligned_addr != requested_addr) {
-		RTE_LOG(ERR, EAL, "Cannot get a virtual area at requested address: %p (got %p)\n",
+		EAL_LOG(ERR, "Cannot get a virtual area at requested address: %p (got %p)",
 			requested_addr, aligned_addr);
 		eal_mem_free(mapped_addr, map_sz);
 		rte_errno = EADDRNOTAVAIL;
@@ -146,19 +146,19 @@ eal_get_virtual_area(void *requested_addr, size_t *size,
 		 * a base virtual address.
 		 */
 		if (internal_conf->base_virtaddr != 0) {
-			RTE_LOG(WARNING, EAL, "WARNING! Base virtual address hint (%p != %p) not respected!\n",
+			EAL_LOG(WARNING, "WARNING! Base virtual address hint (%p != %p) not respected!",
 				requested_addr, aligned_addr);
-			RTE_LOG(WARNING, EAL, "   This may cause issues with mapping memory into secondary processes\n");
+			EAL_LOG(WARNING, "   This may cause issues with mapping memory into secondary processes");
 		} else {
-			RTE_LOG(DEBUG, EAL, "WARNING! Base virtual address hint (%p != %p) not respected!\n",
+			EAL_LOG(DEBUG, "WARNING! Base virtual address hint (%p != %p) not respected!",
 				requested_addr, aligned_addr);
-			RTE_LOG(DEBUG, EAL, "   This may cause issues with mapping memory into secondary processes\n");
+			EAL_LOG(DEBUG, "   This may cause issues with mapping memory into secondary processes");
 		}
 	} else if (next_baseaddr != NULL) {
 		next_baseaddr = RTE_PTR_ADD(aligned_addr, *size);
 	}
 
-	RTE_LOG(DEBUG, EAL, "Virtual area found at %p (size = 0x%zx)\n",
+	EAL_LOG(DEBUG, "Virtual area found at %p (size = 0x%zx)",
 		aligned_addr, *size);
 
 	if (unmap) {
@@ -202,7 +202,7 @@ eal_memseg_list_init_named(struct rte_memseg_list *msl, const char *name,
 {
 	if (rte_fbarray_init(&msl->memseg_arr, name, n_segs,
 			sizeof(struct rte_memseg))) {
-		RTE_LOG(ERR, EAL, "Cannot allocate memseg list: %s\n",
+		EAL_LOG(ERR, "Cannot allocate memseg list: %s",
 			rte_strerror(rte_errno));
 		return -1;
 	}
@@ -212,8 +212,8 @@ eal_memseg_list_init_named(struct rte_memseg_list *msl, const char *name,
 	msl->base_va = NULL;
 	msl->heap = heap;
 
-	RTE_LOG(DEBUG, EAL,
-		"Memseg list allocated at socket %i, page size 0x%"PRIx64"kB\n",
+	EAL_LOG(DEBUG,
+		"Memseg list allocated at socket %i, page size 0x%"PRIx64"kB",
 		socket_id, page_sz >> 10);
 
 	return 0;
@@ -251,8 +251,8 @@ eal_memseg_list_alloc(struct rte_memseg_list *msl, int reserve_flags)
 		 * including common code, so don't duplicate the message.
 		 */
 		if (rte_errno == EADDRNOTAVAIL)
-			RTE_LOG(ERR, EAL, "Cannot reserve %llu bytes at [%p] - "
-				"please use '--" OPT_BASE_VIRTADDR "' option\n",
+			EAL_LOG(ERR, "Cannot reserve %llu bytes at [%p] - "
+				"please use '--" OPT_BASE_VIRTADDR "' option",
 				(unsigned long long)mem_sz, msl->base_va);
 #endif
 		return -1;
@@ -260,7 +260,7 @@ eal_memseg_list_alloc(struct rte_memseg_list *msl, int reserve_flags)
 	msl->base_va = addr;
 	msl->len = mem_sz;
 
-	RTE_LOG(DEBUG, EAL, "VA reserved for memseg list at %p, size %zx\n",
+	EAL_LOG(DEBUG, "VA reserved for memseg list at %p, size %zx",
 			addr, mem_sz);
 
 	return 0;
@@ -472,7 +472,7 @@ rte_mem_event_callback_register(const char *name, rte_mem_event_callback_t clb,
 
 	/* FreeBSD boots with legacy mem enabled by default */
 	if (internal_conf->legacy_mem) {
-		RTE_LOG(DEBUG, EAL, "Registering mem event callbacks not supported\n");
+		EAL_LOG(DEBUG, "Registering mem event callbacks not supported");
 		rte_errno = ENOTSUP;
 		return -1;
 	}
@@ -487,7 +487,7 @@ rte_mem_event_callback_unregister(const char *name, void *arg)
 
 	/* FreeBSD boots with legacy mem enabled by default */
 	if (internal_conf->legacy_mem) {
-		RTE_LOG(DEBUG, EAL, "Registering mem event callbacks not supported\n");
+		EAL_LOG(DEBUG, "Registering mem event callbacks not supported");
 		rte_errno = ENOTSUP;
 		return -1;
 	}
@@ -503,7 +503,7 @@ rte_mem_alloc_validator_register(const char *name,
 
 	/* FreeBSD boots with legacy mem enabled by default */
 	if (internal_conf->legacy_mem) {
-		RTE_LOG(DEBUG, EAL, "Registering mem alloc validators not supported\n");
+		EAL_LOG(DEBUG, "Registering mem alloc validators not supported");
 		rte_errno = ENOTSUP;
 		return -1;
 	}
@@ -519,7 +519,7 @@ rte_mem_alloc_validator_unregister(const char *name, int socket_id)
 
 	/* FreeBSD boots with legacy mem enabled by default */
 	if (internal_conf->legacy_mem) {
-		RTE_LOG(DEBUG, EAL, "Registering mem alloc validators not supported\n");
+		EAL_LOG(DEBUG, "Registering mem alloc validators not supported");
 		rte_errno = ENOTSUP;
 		return -1;
 	}
@@ -545,10 +545,10 @@ check_iova(const struct rte_memseg_list *msl __rte_unused,
 	if (!(iova & *mask))
 		return 0;
 
-	RTE_LOG(DEBUG, EAL, "memseg iova %"PRIx64", len %zx, out of range\n",
+	EAL_LOG(DEBUG, "memseg iova %"PRIx64", len %zx, out of range",
 			    ms->iova, ms->len);
 
-	RTE_LOG(DEBUG, EAL, "\tusing dma mask %"PRIx64"\n", *mask);
+	EAL_LOG(DEBUG, "\tusing dma mask %"PRIx64, *mask);
 	return 1;
 }
 
@@ -565,7 +565,7 @@ check_dma_mask(uint8_t maskbits, bool thread_unsafe)
 	/* Sanity check. We only check width can be managed with 64 bits
 	 * variables. Indeed any higher value is likely wrong. */
 	if (maskbits > MAX_DMA_MASK_BITS) {
-		RTE_LOG(ERR, EAL, "wrong dma mask size %u (Max: %u)\n",
+		EAL_LOG(ERR, "wrong dma mask size %u (Max: %u)",
 				   maskbits, MAX_DMA_MASK_BITS);
 		return -1;
 	}
@@ -925,7 +925,7 @@ rte_extmem_register(void *va_addr, size_t len, rte_iova_t iova_addrs[],
 	/* get next available socket ID */
 	socket_id = mcfg->next_socket_id;
 	if (socket_id > INT32_MAX) {
-		RTE_LOG(ERR, EAL, "Cannot assign new socket ID's\n");
+		EAL_LOG(ERR, "Cannot assign new socket ID's");
 		rte_errno = ENOSPC;
 		ret = -1;
 		goto unlock;
@@ -1030,7 +1030,7 @@ rte_eal_memory_detach(void)
 
 	/* detach internal memory subsystem data first */
 	if (eal_memalloc_cleanup())
-		RTE_LOG(ERR, EAL, "Could not release memory subsystem data\n");
+		EAL_LOG(ERR, "Could not release memory subsystem data");
 
 	for (i = 0; i < RTE_DIM(mcfg->memsegs); i++) {
 		struct rte_memseg_list *msl = &mcfg->memsegs[i];
@@ -1047,7 +1047,7 @@ rte_eal_memory_detach(void)
 		 */
 		if (!msl->external)
 			if (rte_mem_unmap(msl->base_va, msl->len) != 0)
-				RTE_LOG(ERR, EAL, "Could not unmap memory: %s\n",
+				EAL_LOG(ERR, "Could not unmap memory: %s",
 						rte_strerror(rte_errno));
 
 		/*
@@ -1056,7 +1056,7 @@ rte_eal_memory_detach(void)
 		 * have no way of knowing if they still do.
 		 */
 		if (rte_fbarray_detach(&msl->memseg_arr))
-			RTE_LOG(ERR, EAL, "Could not detach fbarray: %s\n",
+			EAL_LOG(ERR, "Could not detach fbarray: %s",
 					rte_strerror(rte_errno));
 	}
 	rte_rwlock_write_unlock(&mcfg->memory_hotplug_lock);
@@ -1068,7 +1068,7 @@ rte_eal_memory_detach(void)
 	 */
 	if (internal_conf->no_shconf == 0 && mcfg->mem_cfg_addr != 0) {
 		if (rte_mem_unmap(mcfg, RTE_ALIGN(sizeof(*mcfg), page_sz)) != 0)
-			RTE_LOG(ERR, EAL, "Could not unmap shared memory config: %s\n",
+			EAL_LOG(ERR, "Could not unmap shared memory config: %s",
 					rte_strerror(rte_errno));
 	}
 	rte_eal_get_configuration()->mem_config = NULL;
@@ -1084,7 +1084,7 @@ rte_eal_memory_init(void)
 		eal_get_internal_configuration();
 	int retval;
 
-	RTE_LOG(DEBUG, EAL, "Setting up physically contiguous memory...\n");
+	EAL_LOG(DEBUG, "Setting up physically contiguous memory...");
 
 	if (rte_eal_memseg_init() < 0)
 		goto fail;
@@ -1213,7 +1213,7 @@ handle_eal_memzone_info_request(const char *cmd __rte_unused,
 	/* go through each page occupied by this memzone */
 	msl = rte_mem_virt2memseg_list(mz->addr);
 	if (!msl) {
-		RTE_LOG(DEBUG, EAL, "Skipping bad memzone\n");
+		EAL_LOG(DEBUG, "Skipping bad memzone");
 		return -1;
 	}
 	page_sz = (size_t)mz->hugepage_sz;
@@ -1404,7 +1404,7 @@ handle_eal_memseg_info_request(const char *cmd __rte_unused,
 	ms = rte_fbarray_get(arr, ms_idx);
 	if (ms == NULL) {
 		rte_mcfg_mem_read_unlock();
-		RTE_LOG(DEBUG, EAL, "Error fetching requested memseg.\n");
+		EAL_LOG(DEBUG, "Error fetching requested memseg.");
 		return -1;
 	}
 
@@ -1477,7 +1477,7 @@ handle_eal_element_list_request(const char *cmd __rte_unused,
 	ms = rte_fbarray_get(&msl->memseg_arr, ms_idx);
 	if (ms == NULL) {
 		rte_mcfg_mem_read_unlock();
-		RTE_LOG(DEBUG, EAL, "Error fetching requested memseg.\n");
+		EAL_LOG(DEBUG, "Error fetching requested memseg.");
 		return -1;
 	}
 
@@ -1555,7 +1555,7 @@ handle_eal_element_info_request(const char *cmd __rte_unused,
 	ms = rte_fbarray_get(&msl->memseg_arr, ms_idx);
 	if (ms == NULL) {
 		rte_mcfg_mem_read_unlock();
-		RTE_LOG(DEBUG, EAL, "Error fetching requested memseg.\n");
+		EAL_LOG(DEBUG, "Error fetching requested memseg.");
 		return -1;
 	}
 

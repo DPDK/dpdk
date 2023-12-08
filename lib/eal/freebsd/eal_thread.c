@@ -38,7 +38,7 @@ void rte_thread_set_name(rte_thread_t thread_id, const char *thread_name)
 	const size_t truncatedsz = sizeof(truncated);
 
 	if (strlcpy(truncated, thread_name, truncatedsz) >= truncatedsz)
-		RTE_LOG(DEBUG, EAL, "Truncated thread name\n");
+		EAL_LOG(DEBUG, "Truncated thread name");
 
 	pthread_set_name_np((pthread_t)thread_id.opaque_id, truncated);
 }

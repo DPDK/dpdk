@@ -9,6 +9,8 @@
 #include <rte_class.h>
 #include <rte_debug.h>
 
+#include "eal_private.h"
+
 static struct rte_class_list rte_class_list =
 	TAILQ_HEAD_INITIALIZER(rte_class_list);
 
@@ -19,14 +21,14 @@ rte_class_register(struct rte_class *class)
 	RTE_VERIFY(class->name && strlen(class->name));
 
 	TAILQ_INSERT_TAIL(&rte_class_list, class, next);
-	RTE_LOG(DEBUG, EAL, "Registered [%s] device class.\n", class->name);
+	EAL_LOG(DEBUG, "Registered [%s] device class.", class->name);
 }
 
 void
 rte_class_unregister(struct rte_class *class)
 {
 	TAILQ_REMOVE(&rte_class_list, class, next);
-	RTE_LOG(DEBUG, EAL, "Unregistered [%s] device class.\n", class->name);
+	EAL_LOG(DEBUG, "Unregistered [%s] device class.", class->name);
 }
 
 struct rte_class *

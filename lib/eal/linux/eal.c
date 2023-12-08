@@ -94,7 +94,7 @@ eal_clean_runtime_dir(void)
 	/* open directory */
 	dir = opendir(runtime_dir);
 	if (!dir) {
-		RTE_LOG(ERR, EAL, "Unable to open runtime directory %s\n",
+		EAL_LOG(ERR, "Unable to open runtime directory %s",
 				runtime_dir);
 		goto error;
 	}
@@ -102,14 +102,14 @@ eal_clean_runtime_dir(void)
 
 	/* lock the directory before doing anything, to avoid races */
 	if (flock(dir_fd, LOCK_EX) < 0) {
-		RTE_LOG(ERR, EAL, "Unable to lock runtime directory %s\n",
+		EAL_LOG(ERR, "Unable to lock runtime directory %s",
 			runtime_dir);
 		goto error;
 	}
 
 	dirent = readdir(dir);
 	if (!dirent) {
-		RTE_LOG(ERR, EAL, "Unable to read runtime directory %s\n",
+		EAL_LOG(ERR, "Unable to read runtime directory %s",
 				runtime_dir);
 		goto error;
 	}
@@ -159,7 +159,7 @@ error:
 	if (dir)
 		closedir(dir);
 
-	RTE_LOG(ERR, EAL, "Error while clearing runtime dir: %s\n",
+	EAL_LOG(ERR, "Error while clearing runtime dir: %s",
 		strerror(errno));
 
 	return -1;
@@ -200,7 +200,7 @@ rte_eal_config_create(void)
 	if (mem_cfg_fd < 0){
 		mem_cfg_fd = open(pathname, O_RDWR | O_CREAT, 0600);
 		if (mem_cfg_fd < 0) {
-			RTE_LOG(ERR, EAL, "Cannot open '%s' for rte_mem_config\n",
+			EAL_LOG(ERR, "Cannot open '%s' for rte_mem_config",
 				pathname);
 			return -1;
 		}
@@ -210,7 +210,7 @@ rte_eal_config_create(void)
 	if (retval < 0){
 		close(mem_cfg_fd);
 		mem_cfg_fd = -1;
-		RTE_LOG(ERR, EAL, "Cannot resize '%s' for rte_mem_config\n",
+		EAL_LOG(ERR, "Cannot resize '%s' for rte_mem_config",
 			pathname);
 		return -1;
 	}
@@ -219,8 +219,8 @@ rte_eal_config_create(void)
 	if (retval < 0){
 		close(mem_cfg_fd);
 		mem_cfg_fd = -1;
-		RTE_LOG(ERR, EAL, "Cannot create lock on '%s'. Is another primary "
-			"process running?\n", pathname);
+		EAL_LOG(ERR, "Cannot create lock on '%s'. Is another primary "
+			"process running?", pathname);
 		return -1;
 	}
 
@@ -228,7 +228,7 @@ rte_eal_config_create(void)
 	rte_mem_cfg_addr = eal_get_virtual_area(rte_mem_cfg_addr,
 			&cfg_len_aligned, page_sz, 0, 0);
 	if (rte_mem_cfg_addr == NULL) {
-		RTE_LOG(ERR, EAL, "Cannot mmap memory for rte_config\n");
+		EAL_LOG(ERR, "Cannot mmap memory for rte_config");
 		close(mem_cfg_fd);
 		mem_cfg_fd = -1;
 		return -1;
@@ -242,7 +242,7 @@ rte_eal_config_create(void)
 		munmap(rte_mem_cfg_addr, cfg_len);
 		close(mem_cfg_fd);
 		mem_cfg_fd = -1;
-		RTE_LOG(ERR, EAL, "Cannot remap memory for rte_config\n");
+		EAL_LOG(ERR, "Cannot remap memory for rte_config");
 		return -1;
 	}
 
@@ -275,7 +275,7 @@ rte_eal_config_attach(void)
 	if (mem_cfg_fd < 0){
 		mem_cfg_fd = open(pathname, O_RDWR);
 		if (mem_cfg_fd < 0) {
-			RTE_LOG(ERR, EAL, "Cannot open '%s' for rte_mem_config\n",
+			EAL_LOG(ERR, "Cannot open '%s' for rte_mem_config",
 				pathname);
 			return -1;
 		}
@@ -287,7 +287,7 @@ rte_eal_config_attach(void)
 	if (mem_config == MAP_FAILED) {
 		close(mem_cfg_fd);
 		mem_cfg_fd = -1;
-		RTE_LOG(ERR, EAL, "Cannot mmap memory for rte_config! error %i (%s)\n",
+		EAL_LOG(ERR, "Cannot mmap memory for rte_config! error %i (%s)",
 			errno, strerror(errno));
 		return -1;
 	}
@@ -328,13 +328,13 @@ rte_eal_config_reattach(void)
 	if (mem_config == MAP_FAILED || mem_config != rte_mem_cfg_addr) {
 		if (mem_config != MAP_FAILED) {
 			/* errno is stale, don't use */
-			RTE_LOG(ERR, EAL, "Cannot mmap memory for rte_config at [%p], got [%p]"
+			EAL_LOG(ERR, "Cannot mmap memory for rte_config at [%p], got [%p]"
 				" - please use '--" OPT_BASE_VIRTADDR
-				"' option\n", rte_mem_cfg_addr, mem_config);
+				"' option", rte_mem_cfg_addr, mem_config);
 			munmap(mem_config, sizeof(struct rte_mem_config));
 			return -1;
 		}
-		RTE_LOG(ERR, EAL, "Cannot mmap memory for rte_config! error %i (%s)\n",
+		EAL_LOG(ERR, "Cannot mmap memory for rte_config! error %i (%s)",
 			errno, strerror(errno));
 		return -1;
 	}
@@ -365,7 +365,7 @@ eal_proc_type_detect(void)
 			ptype = RTE_PROC_SECONDARY;
 	}
 
-	RTE_LOG(INFO, EAL, "Auto-detected process type: %s\n",
+	EAL_LOG(INFO, "Auto-detected process type: %s",
 			ptype == RTE_PROC_PRIMARY ? "PRIMARY" : "SECONDARY");
 
 	return ptype;
@@ -392,20 +392,20 @@ rte_config_init(void)
 			return -1;
 		eal_mcfg_wait_complete();
 		if (eal_mcfg_check_version() < 0) {
-			RTE_LOG(ERR, EAL, "Primary and secondary process DPDK version mismatch\n");
+			EAL_LOG(ERR, "Primary and secondary process DPDK version mismatch");
 			return -1;
 		}
 		if (rte_eal_config_reattach() < 0)
 			return -1;
 		if (!__rte_mp_enable()) {
-			RTE_LOG(ERR, EAL, "Primary process refused secondary attachment\n");
+			EAL_LOG(ERR, "Primary process refused secondary attachment");
 			return -1;
 		}
 		eal_mcfg_update_internal();
 		break;
 	case RTE_PROC_AUTO:
 	case RTE_PROC_INVALID:
-		RTE_LOG(ERR, EAL, "Invalid process type %d\n",
+		EAL_LOG(ERR, "Invalid process type %d",
 			config->process_type);
 		return -1;
 	}
@@ -474,7 +474,7 @@ eal_parse_socket_arg(char *strval, volatile uint64_t *socket_arg)
 
 	len = strnlen(strval, SOCKET_MEM_STRLEN);
 	if (len == SOCKET_MEM_STRLEN) {
-		RTE_LOG(ERR, EAL, "--socket-mem is too long\n");
+		EAL_LOG(ERR, "--socket-mem is too long");
 		return -1;
 	}
 
@@ -595,13 +595,13 @@ eal_parse_huge_worker_stack(const char *arg)
 		int ret;
 
 		if (pthread_attr_init(&attr) != 0) {
-			RTE_LOG(ERR, EAL, "Could not retrieve default stack size\n");
+			EAL_LOG(ERR, "Could not retrieve default stack size");
 			return -1;
 		}
 		ret = pthread_attr_getstacksize(&attr, &cfg->huge_worker_stack_size);
 		pthread_attr_destroy(&attr);
 		if (ret != 0) {
-			RTE_LOG(ERR, EAL, "Could not retrieve default stack size\n");
+			EAL_LOG(ERR, "Could not retrieve default stack size");
 			return -1;
 		}
 	} else {
@@ -617,7 +617,7 @@ eal_parse_huge_worker_stack(const char *arg)
 		cfg->huge_worker_stack_size = stack_size * 1024;
 	}
 
-	RTE_LOG(DEBUG, EAL, "Each worker thread will use %zu kB of DPDK memory as stack\n",
+	EAL_LOG(DEBUG, "Each worker thread will use %zu kB of DPDK memory as stack",
 		cfg->huge_worker_stack_size / 1024);
 	return 0;
 }
@@ -673,7 +673,7 @@ eal_parse_args(int argc, char **argv)
 		{
 			char *hdir = strdup(optarg);
 			if (hdir == NULL)
-				RTE_LOG(ERR, EAL, "Could not store hugepage directory\n");
+				EAL_LOG(ERR, "Could not store hugepage directory");
 			else {
 				/* free old hugepage dir */
 				free(internal_conf->hugepage_dir);
@@ -685,7 +685,7 @@ eal_parse_args(int argc, char **argv)
 		{
 			char *prefix = strdup(optarg);
 			if (prefix == NULL)
-				RTE_LOG(ERR, EAL, "Could not store file prefix\n");
+				EAL_LOG(ERR, "Could not store file prefix");
 			else {
 				/* free old prefix */
 				free(internal_conf->hugefile_prefix);
@@ -696,8 +696,8 @@ eal_parse_args(int argc, char **argv)
 		case OPT_SOCKET_MEM_NUM:
 			if (eal_parse_socket_arg(optarg,
 					internal_conf->socket_mem) < 0) {
-				RTE_LOG(ERR, EAL, "invalid parameters for --"
-						OPT_SOCKET_MEM "\n");
+				EAL_LOG(ERR, "invalid parameters for --"
+						OPT_SOCKET_MEM);
 				eal_usage(prgname);
 				ret = -1;
 				goto out;
@@ -708,8 +708,8 @@ eal_parse_args(int argc, char **argv)
 		case OPT_SOCKET_LIMIT_NUM:
 			if (eal_parse_socket_arg(optarg,
 					internal_conf->socket_limit) < 0) {
-				RTE_LOG(ERR, EAL, "invalid parameters for --"
-						OPT_SOCKET_LIMIT "\n");
+				EAL_LOG(ERR, "invalid parameters for --"
+						OPT_SOCKET_LIMIT);
 				eal_usage(prgname);
 				ret = -1;
 				goto out;
@@ -719,8 +719,8 @@ eal_parse_args(int argc, char **argv)
 
 		case OPT_VFIO_INTR_NUM:
 			if (eal_parse_vfio_intr(optarg) < 0) {
-				RTE_LOG(ERR, EAL, "invalid parameters for --"
-						OPT_VFIO_INTR "\n");
+				EAL_LOG(ERR, "invalid parameters for --"
+						OPT_VFIO_INTR);
 				eal_usage(prgname);
 				ret = -1;
 				goto out;
@@ -729,8 +729,8 @@ eal_parse_args(int argc, char **argv)
 
 		case OPT_VFIO_VF_TOKEN_NUM:
 			if (eal_parse_vfio_vf_token(optarg) < 0) {
-				RTE_LOG(ERR, EAL, "invalid parameters for --"
-						OPT_VFIO_VF_TOKEN "\n");
+				EAL_LOG(ERR, "invalid parameters for --"
+						OPT_VFIO_VF_TOKEN);
 				eal_usage(prgname);
 				ret = -1;
 				goto out;
@@ -745,7 +745,7 @@ eal_parse_args(int argc, char **argv)
 		{
 			char *ops_name = strdup(optarg);
 			if (ops_name == NULL)
-				RTE_LOG(ERR, EAL, "Could not store mbuf pool ops name\n");
+				EAL_LOG(ERR, "Could not store mbuf pool ops name");
 			else {
 				/* free old ops name */
 				free(internal_conf->user_mbuf_pool_ops_name);
@@ -761,8 +761,8 @@ eal_parse_args(int argc, char **argv)
 
 		case OPT_HUGE_WORKER_STACK_NUM:
 			if (eal_parse_huge_worker_stack(optarg) < 0) {
-				RTE_LOG(ERR, EAL, "invalid parameter for --"
-					OPT_HUGE_WORKER_STACK"\n");
+				EAL_LOG(ERR, "invalid parameter for --"
+					OPT_HUGE_WORKER_STACK);
 				eal_usage(prgname);
 				ret = -1;
 				goto out;
@@ -771,16 +771,16 @@ eal_parse_args(int argc, char **argv)
 
 		default:
 			if (opt < OPT_LONG_MIN_NUM && isprint(opt)) {
-				RTE_LOG(ERR, EAL, "Option %c is not supported "
-					"on Linux\n", opt);
+				EAL_LOG(ERR, "Option %c is not supported "
+					"on Linux", opt);
 			} else if (opt >= OPT_LONG_MIN_NUM &&
 				   opt < OPT_LONG_MAX_NUM) {
-				RTE_LOG(ERR, EAL, "Option %s is not supported "
-					"on Linux\n",
+				EAL_LOG(ERR, "Option %s is not supported "
+					"on Linux",
 					eal_long_options[option_index].name);
 			} else {
-				RTE_LOG(ERR, EAL, "Option %d is not supported "
-					"on Linux\n", opt);
+				EAL_LOG(ERR, "Option %d is not supported "
+					"on Linux", opt);
 			}
 			eal_usage(prgname);
 			ret = -1;
@@ -791,11 +791,11 @@ eal_parse_args(int argc, char **argv)
 	/* create runtime data directory. In no_shconf mode, skip any errors */
 	if (eal_create_runtime_dir() < 0) {
 		if (internal_conf->no_shconf == 0) {
-			RTE_LOG(ERR, EAL, "Cannot create runtime directory\n");
+			EAL_LOG(ERR, "Cannot create runtime directory");
 			ret = -1;
 			goto out;
 		} else
-			RTE_LOG(WARNING, EAL, "No DPDK runtime directory created\n");
+			EAL_LOG(WARNING, "No DPDK runtime directory created");
 	}
 
 	if (eal_adjust_config(internal_conf) != 0) {
@@ -843,7 +843,7 @@ eal_check_mem_on_local_socket(void)
 	socket_id = rte_lcore_to_socket_id(config->main_lcore);
 
 	if (rte_memseg_list_walk(check_socket, &socket_id) == 0)
-		RTE_LOG(WARNING, EAL, "WARNING: Main core has no memory on local socket!\n");
+		EAL_LOG(WARNING, "WARNING: Main core has no memory on local socket!");
 }
 
 static int
@@ -880,7 +880,7 @@ static int rte_eal_vfio_setup(void)
 static void rte_eal_init_alert(const char *msg)
 {
 	fprintf(stderr, "EAL: FATAL: %s\n", msg);
-	RTE_LOG(ERR, EAL, "%s\n", msg);
+	EAL_LOG(ERR, "%s", msg);
 }
 
 /*
@@ -1073,27 +1073,27 @@ rte_eal_init(int argc, char **argv)
 		enum rte_iova_mode iova_mode = rte_bus_get_iommu_class();
 
 		if (iova_mode == RTE_IOVA_DC) {
-			RTE_LOG(DEBUG, EAL, "Buses did not request a specific IOVA mode.\n");
+			EAL_LOG(DEBUG, "Buses did not request a specific IOVA mode.");
 
 			if (!RTE_IOVA_IN_MBUF) {
 				iova_mode = RTE_IOVA_VA;
-				RTE_LOG(DEBUG, EAL, "IOVA as VA mode is forced by build option.\n");
+				EAL_LOG(DEBUG, "IOVA as VA mode is forced by build option.");
 			} else if (!phys_addrs) {
 				/* if we have no access to physical addresses,
 				 * pick IOVA as VA mode.
 				 */
 				iova_mode = RTE_IOVA_VA;
-				RTE_LOG(DEBUG, EAL, "Physical addresses are unavailable, selecting IOVA as VA mode.\n");
+				EAL_LOG(DEBUG, "Physical addresses are unavailable, selecting IOVA as VA mode.");
 			} else if (is_iommu_enabled()) {
 				/* we have an IOMMU, pick IOVA as VA mode */
 				iova_mode = RTE_IOVA_VA;
-				RTE_LOG(DEBUG, EAL, "IOMMU is available, selecting IOVA as VA mode.\n");
+				EAL_LOG(DEBUG, "IOMMU is available, selecting IOVA as VA mode.");
 			} else {
 				/* physical addresses available, and no IOMMU
 				 * found, so pick IOVA as PA.
 				 */
 				iova_mode = RTE_IOVA_PA;
-				RTE_LOG(DEBUG, EAL, "IOMMU is not available, selecting IOVA as PA mode.\n");
+				EAL_LOG(DEBUG, "IOMMU is not available, selecting IOVA as PA mode.");
 			}
 		}
 		rte_eal_get_configuration()->iova_mode = iova_mode;
@@ -1114,7 +1114,7 @@ rte_eal_init(int argc, char **argv)
 		return -1;
 	}
 
-	RTE_LOG(INFO, EAL, "Selected IOVA mode '%s'\n",
+	EAL_LOG(INFO, "Selected IOVA mode '%s'",
 		rte_eal_iova_mode() == RTE_IOVA_PA ? "PA" : "VA");
 
 	if (internal_conf->no_hugetlbfs == 0) {
@@ -1138,11 +1138,11 @@ rte_eal_init(int argc, char **argv)
 	if (internal_conf->vmware_tsc_map == 1) {
 #ifdef RTE_LIBRTE_EAL_VMWARE_TSC_MAP_SUPPORT
 		rte_cycles_vmware_tsc_map = 1;
-		RTE_LOG (DEBUG, EAL, "Using VMWARE TSC MAP, "
-				"you must have monitor_control.pseudo_perfctr = TRUE\n");
+		EAL_LOG(DEBUG, "Using VMWARE TSC MAP, "
+				"you must have monitor_control.pseudo_perfctr = TRUE");
 #else
-		RTE_LOG (WARNING, EAL, "Ignoring --vmware-tsc-map because "
-				"RTE_LIBRTE_EAL_VMWARE_TSC_MAP_SUPPORT is not set\n");
+		EAL_LOG(WARNING, "Ignoring --vmware-tsc-map because "
+				"RTE_LIBRTE_EAL_VMWARE_TSC_MAP_SUPPORT is not set");
 #endif
 	}
 
@@ -1229,7 +1229,7 @@ rte_eal_init(int argc, char **argv)
 		&lcore_config[config->main_lcore].cpuset);
 
 	ret = eal_thread_dump_current_affinity(cpuset, sizeof(cpuset));
-	RTE_LOG(DEBUG, EAL, "Main lcore %u is ready (tid=%zx;cpuset=[%s%s])\n",
+	EAL_LOG(DEBUG, "Main lcore %u is ready (tid=%zx;cpuset=[%s%s])",
 		config->main_lcore, (uintptr_t)pthread_self(), cpuset,
 		ret == 0 ? "" : "...");
 
@@ -1350,7 +1350,7 @@ rte_eal_cleanup(void)
 
 	if (!rte_atomic_compare_exchange_strong_explicit(&run_once, &has_run, 1,
 					rte_memory_order_relaxed, rte_memory_order_relaxed)) {
-		RTE_LOG(WARNING, EAL, "Already called cleanup\n");
+		EAL_LOG(WARNING, "Already called cleanup");
 		rte_errno = EALREADY;
 		return -1;
 	}
@@ -1420,7 +1420,7 @@ rte_eal_check_module(const char *module_name)
 
 	/* Check if there is sysfs mounted */
 	if (stat("/sys/module", &st) != 0) {
-		RTE_LOG(DEBUG, EAL, "sysfs is not mounted! error %i (%s)\n",
+		EAL_LOG(DEBUG, "sysfs is not mounted! error %i (%s)",
 			errno, strerror(errno));
 		return -1;
 	}
@@ -1428,12 +1428,12 @@ rte_eal_check_module(const char *module_name)
 	/* A module might be built-in, therefore try sysfs */
 	n = snprintf(sysfs_mod_name, PATH_MAX, "/sys/module/%s", module_name);
 	if (n < 0 || n > PATH_MAX) {
-		RTE_LOG(DEBUG, EAL, "Could not format module path\n");
+		EAL_LOG(DEBUG, "Could not format module path");
 		return -1;
 	}
 
 	if (stat(sysfs_mod_name, &st) != 0) {
-		RTE_LOG(DEBUG, EAL, "Module %s not found! error %i (%s)\n",
+		EAL_LOG(DEBUG, "Module %s not found! error %i (%s)",
 		        sysfs_mod_name, errno, strerror(errno));
 		return 0;
 	}

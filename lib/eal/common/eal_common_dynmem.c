@@ -76,7 +76,7 @@ eal_dynmem_memseg_lists_init(void)
 	n_memtypes = internal_conf->num_hugepage_sizes * rte_socket_count();
 	memtypes = calloc(n_memtypes, sizeof(*memtypes));
 	if (memtypes == NULL) {
-		RTE_LOG(ERR, EAL, "Cannot allocate space for memory types\n");
+		EAL_LOG(ERR, "Cannot allocate space for memory types");
 		return -1;
 	}
 
@@ -101,8 +101,8 @@ eal_dynmem_memseg_lists_init(void)
 			memtypes[cur_type].page_sz = hugepage_sz;
 			memtypes[cur_type].socket_id = socket_id;
 
-			RTE_LOG(DEBUG, EAL, "Detected memory type: "
-				"socket_id:%u hugepage_sz:%" PRIu64 "\n",
+			EAL_LOG(DEBUG, "Detected memory type: "
+				"socket_id:%u hugepage_sz:%" PRIu64,
 				socket_id, hugepage_sz);
 		}
 	}
@@ -120,7 +120,7 @@ eal_dynmem_memseg_lists_init(void)
 	max_seglists_per_type = RTE_MAX_MEMSEG_LISTS / n_memtypes;
 
 	if (max_seglists_per_type == 0) {
-		RTE_LOG(ERR, EAL, "Cannot accommodate all memory types, please increase RTE_MAX_MEMSEG_LISTS\n");
+		EAL_LOG(ERR, "Cannot accommodate all memory types, please increase RTE_MAX_MEMSEG_LISTS");
 		goto out;
 	}
 
@@ -171,15 +171,15 @@ eal_dynmem_memseg_lists_init(void)
 		/* limit number of segment lists according to our maximum */
 		n_seglists = RTE_MIN(n_seglists, max_seglists_per_type);
 
-		RTE_LOG(DEBUG, EAL, "Creating %i segment lists: "
-				"n_segs:%i socket_id:%i hugepage_sz:%" PRIu64 "\n",
+		EAL_LOG(DEBUG, "Creating %i segment lists: "
+				"n_segs:%i socket_id:%i hugepage_sz:%" PRIu64,
 			n_seglists, n_segs, socket_id, pagesz);
 
 		/* create all segment lists */
 		for (cur_seglist = 0; cur_seglist < n_seglists; cur_seglist++) {
 			if (msl_idx >= RTE_MAX_MEMSEG_LISTS) {
-				RTE_LOG(ERR, EAL,
-					"No more space in memseg lists, please increase RTE_MAX_MEMSEG_LISTS\n");
+				EAL_LOG(ERR,
+					"No more space in memseg lists, please increase RTE_MAX_MEMSEG_LISTS");
 				goto out;
 			}
 			msl = &mcfg->memsegs[msl_idx++];
@@ -189,7 +189,7 @@ eal_dynmem_memseg_lists_init(void)
 				goto out;
 
 			if (eal_memseg_list_alloc(msl, 0)) {
-				RTE_LOG(ERR, EAL, "Cannot allocate VA space for memseg list\n");
+				EAL_LOG(ERR, "Cannot allocate VA space for memseg list");
 				goto out;
 			}
 		}
@@ -287,9 +287,9 @@ eal_dynmem_hugepage_init(void)
 			if (num_pages == 0)
 				continue;
 
-			RTE_LOG(DEBUG, EAL,
+			EAL_LOG(DEBUG,
 				"Allocating %u pages of size %" PRIu64 "M "
-				"on socket %i\n",
+				"on socket %i",
 				num_pages, hpi->hugepage_sz >> 20, socket_id);
 
 			/* we may not be able to allocate all pages in one go,
@@ -307,7 +307,7 @@ eal_dynmem_hugepage_init(void)
 
 				pages = malloc(sizeof(*pages) * needed);
 				if (pages == NULL) {
-					RTE_LOG(ERR, EAL, "Failed to malloc pages\n");
+					EAL_LOG(ERR, "Failed to malloc pages");
 					return -1;
 				}
 
@@ -342,7 +342,7 @@ eal_dynmem_hugepage_init(void)
 				continue;
 			if (rte_mem_alloc_validator_register("socket-limit",
 					limits_callback, i, limit))
-				RTE_LOG(ERR, EAL, "Failed to register socket limits validator callback\n");
+				EAL_LOG(ERR, "Failed to register socket limits validator callback");
 		}
 	}
 	return 0;
@@ -515,8 +515,8 @@ eal_dynmem_calc_num_pages_per_socket(
 				internal_conf->socket_mem[socket] / 0x100000);
 			available = requested -
 				((unsigned int)(memory[socket] / 0x100000));
-			RTE_LOG(ERR, EAL, "Not enough memory available on "
-				"socket %u! Requested: %uMB, available: %uMB\n",
+			EAL_LOG(ERR, "Not enough memory available on "
+				"socket %u! Requested: %uMB, available: %uMB",
 				socket, requested, available);
 			return -1;
 		}
@@ -526,8 +526,8 @@ eal_dynmem_calc_num_pages_per_socket(
 	if (total_mem > 0) {
 		requested = (unsigned int)(internal_conf->memory / 0x100000);
 		available = requested - (unsigned int)(total_mem / 0x100000);
-		RTE_LOG(ERR, EAL, "Not enough memory available! "
-			"Requested: %uMB, available: %uMB\n",
+		EAL_LOG(ERR, "Not enough memory available! "
+			"Requested: %uMB, available: %uMB",
 			requested, available);
 		return -1;
 	}

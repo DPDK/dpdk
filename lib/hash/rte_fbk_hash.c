@@ -21,6 +21,8 @@
 
 RTE_LOG_REGISTER_SUFFIX(fbk_hash_logtype, fbk, INFO);
 #define RTE_LOGTYPE_HASH fbk_hash_logtype
+#define HASH_LOG(level, fmt, ...) \
+	RTE_LOG(level, HASH, fmt "\n", ## __VA_ARGS__)
 
 TAILQ_HEAD(rte_fbk_hash_list, rte_tailq_entry);
 
@@ -118,7 +120,7 @@ rte_fbk_hash_create(const struct rte_fbk_hash_params *params)
 
 	te = rte_zmalloc("FBK_HASH_TAILQ_ENTRY", sizeof(*te), 0);
 	if (te == NULL) {
-		RTE_LOG(ERR, HASH, "Failed to allocate tailq entry\n");
+		HASH_LOG(ERR, "Failed to allocate tailq entry");
 		goto exit;
 	}
 
@@ -126,7 +128,7 @@ rte_fbk_hash_create(const struct rte_fbk_hash_params *params)
 	ht = rte_zmalloc_socket(hash_name, mem_size,
 			0, params->socket_id);
 	if (ht == NULL) {
-		RTE_LOG(ERR, HASH, "Failed to allocate fbk hash table\n");
+		HASH_LOG(ERR, "Failed to allocate fbk hash table");
 		rte_free(te);
 		goto exit;
 	}

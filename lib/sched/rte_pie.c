@@ -17,7 +17,7 @@ int
 rte_pie_rt_data_init(struct rte_pie *pie)
 {
 	if (pie == NULL) {
-		RTE_LOG(ERR, SCHED, "%s: Invalid addr for pie\n", __func__);
+		SCHED_LOG(ERR, "%s: Invalid addr for pie", __func__);
 		return -EINVAL;
 	}
 
@@ -39,26 +39,26 @@ rte_pie_config_init(struct rte_pie_config *pie_cfg,
 		return -1;
 
 	if (qdelay_ref <= 0) {
-		RTE_LOG(ERR, SCHED,
-			"%s: Incorrect value for qdelay_ref\n", __func__);
+		SCHED_LOG(ERR,
+			"%s: Incorrect value for qdelay_ref", __func__);
 		return -EINVAL;
 	}
 
 	if (dp_update_interval <= 0) {
-		RTE_LOG(ERR, SCHED,
-			"%s: Incorrect value for dp_update_interval\n", __func__);
+		SCHED_LOG(ERR,
+			"%s: Incorrect value for dp_update_interval", __func__);
 		return -EINVAL;
 	}
 
 	if (max_burst <= 0) {
-		RTE_LOG(ERR, SCHED,
-			"%s: Incorrect value for max_burst\n", __func__);
+		SCHED_LOG(ERR,
+			"%s: Incorrect value for max_burst", __func__);
 		return -EINVAL;
 	}
 
 	if (tailq_th <= 0) {
-		RTE_LOG(ERR, SCHED,
-			"%s: Incorrect value for tailq_th\n", __func__);
+		SCHED_LOG(ERR,
+			"%s: Incorrect value for tailq_th", __func__);
 		return -EINVAL;
 	}
 

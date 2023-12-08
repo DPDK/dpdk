@@ -9,6 +9,7 @@
 #include <rte_alarm.h>
 #include <rte_spinlock.h>
 
+#include "eal_private.h"
 #include <eal_trace_internal.h>
 #include "eal_windows.h"
 
@@ -92,7 +93,7 @@ rte_eal_alarm_set(uint64_t us, rte_eal_alarm_callback cb_fn, void *cb_arg)
 	int ret;
 
 	if (cb_fn == NULL) {
-		RTE_LOG(ERR, EAL, "NULL callback\n");
+		EAL_LOG(ERR, "NULL callback");
 		ret = -EINVAL;
 		goto exit;
 	}
@@ -105,7 +106,7 @@ rte_eal_alarm_set(uint64_t us, rte_eal_alarm_callback cb_fn, void *cb_arg)
 
 	ap = calloc(1, sizeof(*ap));
 	if (ap == NULL) {
-		RTE_LOG(ERR, EAL, "Cannot allocate alarm entry\n");
+		EAL_LOG(ERR, "Cannot allocate alarm entry");
 		ret = -ENOMEM;
 		goto exit;
 	}
@@ -129,7 +130,7 @@ rte_eal_alarm_set(uint64_t us, rte_eal_alarm_callback cb_fn, void *cb_arg)
 		/* Directly schedule callback execution. */
 		ret = alarm_set(ap, deadline);
 		if (ret < 0) {
-			RTE_LOG(ERR, EAL, "Cannot setup alarm\n");
+			EAL_LOG(ERR, "Cannot setup alarm");
 			goto fail;
 		}
 	} else {
@@ -143,7 +144,7 @@ rte_eal_alarm_set(uint64_t us, rte_eal_alarm_callback cb_fn, void *cb_arg)
 
 		ret = intr_thread_exec_sync(alarm_task_exec, &task);
 		if (ret < 0) {
-			RTE_LOG(ERR, EAL, "Cannot setup alarm in interrupt thread\n");
+			EAL_LOG(ERR, "Cannot setup alarm in interrupt thread");
 			goto fail;
 		}
 
@@ -187,7 +188,7 @@ rte_eal_alarm_cancel(rte_eal_alarm_callback cb_fn, void *cb_arg)
 	removed = 0;
 
 	if (cb_fn == NULL) {
-		RTE_LOG(ERR, EAL, "NULL callback\n");
+		EAL_LOG(ERR, "NULL callback");
 		return -EINVAL;
 	}
 
@@ -246,7 +247,7 @@ intr_thread_exec_sync(void (*func)(void *arg), void *arg)
 	rte_spinlock_lock(&task.lock);
 	ret = eal_intr_thread_schedule(intr_thread_entry, &task);
 	if (ret < 0) {
-		RTE_LOG(ERR, EAL, "Cannot schedule task to interrupt thread\n");
+		EAL_LOG(ERR, "Cannot schedule task to interrupt thread");
 		return -EINVAL;
 	}
 

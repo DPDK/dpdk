@@ -367,7 +367,7 @@ vfio_open_group_fd(int iommu_group_num)
 		if (vfio_group_fd < 0) {
 			/* if file not found, it's not an error */
 			if (errno != ENOENT) {
-				RTE_LOG(ERR, EAL, "Cannot open %s: %s\n",
+				EAL_LOG(ERR, "Cannot open %s: %s",
 						filename, strerror(errno));
 				return -1;
 			}
@@ -379,8 +379,8 @@ vfio_open_group_fd(int iommu_group_num)
 			vfio_group_fd = open(filename, O_RDWR);
 			if (vfio_group_fd < 0) {
 				if (errno != ENOENT) {
-					RTE_LOG(ERR, EAL,
-						"Cannot open %s: %s\n",
+					EAL_LOG(ERR,
+						"Cannot open %s: %s",
 						filename, strerror(errno));
 					return -1;
 				}
@@ -408,14 +408,14 @@ vfio_open_group_fd(int iommu_group_num)
 		if (p->result == SOCKET_OK && mp_rep->num_fds == 1) {
 			vfio_group_fd = mp_rep->fds[0];
 		} else if (p->result == SOCKET_NO_FD) {
-			RTE_LOG(ERR, EAL, "Bad VFIO group fd\n");
+			EAL_LOG(ERR, "Bad VFIO group fd");
 			vfio_group_fd = -ENOENT;
 		}
 	}
 
 	free(mp_reply.msgs);
 	if (vfio_group_fd < 0 && vfio_group_fd != -ENOENT)
-		RTE_LOG(ERR, EAL, "Cannot request VFIO group fd\n");
+		EAL_LOG(ERR, "Cannot request VFIO group fd");
 	return vfio_group_fd;
 }
 
@@ -452,7 +452,7 @@ vfio_get_group_fd(struct vfio_config *vfio_cfg,
 
 	/* Lets see first if there is room for a new group */
 	if (vfio_cfg->vfio_active_groups == VFIO_MAX_GROUPS) {
-		RTE_LOG(ERR, EAL, "Maximum number of VFIO groups reached!\n");
+		EAL_LOG(ERR, "Maximum number of VFIO groups reached!");
 		return -1;
 	}
 
@@ -465,13 +465,13 @@ vfio_get_group_fd(struct vfio_config *vfio_cfg,
 
 	/* This should not happen */
 	if (i == VFIO_MAX_GROUPS) {
-		RTE_LOG(ERR, EAL, "No VFIO group free slot found\n");
+		EAL_LOG(ERR, "No VFIO group free slot found");
 		return -1;
 	}
 
 	vfio_group_fd = vfio_open_group_fd(iommu_group_num);
 	if (vfio_group_fd < 0) {
-		RTE_LOG(ERR, EAL, "Failed to open VFIO group %d\n",
+		EAL_LOG(ERR, "Failed to open VFIO group %d",
 			iommu_group_num);
 		return vfio_group_fd;
 	}
@@ -551,13 +551,13 @@ vfio_group_device_get(int vfio_group_fd)
 
 	vfio_cfg = get_vfio_cfg_by_group_fd(vfio_group_fd);
 	if (vfio_cfg == NULL) {
-		RTE_LOG(ERR, EAL, "Invalid VFIO group fd!\n");
+		EAL_LOG(ERR, "Invalid VFIO group fd!");
 		return;
 	}
 
 	i = get_vfio_group_idx(vfio_group_fd);
 	if (i < 0 || i > (VFIO_MAX_GROUPS - 1))
-		RTE_LOG(ERR, EAL, "Wrong VFIO group index (%d)\n", i);
+		EAL_LOG(ERR, "Wrong VFIO group index (%d)", i);
 	else
 		vfio_cfg->vfio_groups[i].devices++;
 }
@@ -570,13 +570,13 @@ vfio_group_device_put(int vfio_group_fd)
 
 	vfio_cfg = get_vfio_cfg_by_group_fd(vfio_group_fd);
 	if (vfio_cfg == NULL) {
-		RTE_LOG(ERR, EAL, "Invalid VFIO group fd!\n");
+		EAL_LOG(ERR, "Invalid VFIO group fd!");
 		return;
 	}
 
 	i = get_vfio_group_idx(vfio_group_fd);
 	if (i < 0 || i > (VFIO_MAX_GROUPS - 1))
-		RTE_LOG(ERR, EAL, "Wrong VFIO group index (%d)\n", i);
+		EAL_LOG(ERR, "Wrong VFIO group index (%d)", i);
 	else
 		vfio_cfg->vfio_groups[i].devices--;
 }
@@ -589,13 +589,13 @@ vfio_group_device_count(int vfio_group_fd)
 
 	vfio_cfg = get_vfio_cfg_by_group_fd(vfio_group_fd);
 	if (vfio_cfg == NULL) {
-		RTE_LOG(ERR, EAL, "Invalid VFIO group fd!\n");
+		EAL_LOG(ERR, "Invalid VFIO group fd!");
 		return -1;
 	}
 
 	i = get_vfio_group_idx(vfio_group_fd);
 	if (i < 0 || i > (VFIO_MAX_GROUPS - 1)) {
-		RTE_LOG(ERR, EAL, "Wrong VFIO group index (%d)\n", i);
+		EAL_LOG(ERR, "Wrong VFIO group index (%d)", i);
 		return -1;
 	}
 
@@ -636,8 +636,8 @@ vfio_mem_event_callback(enum rte_mem_event type, const void *addr, size_t len,
 	while (cur_len < len) {
 		/* some memory segments may have invalid IOVA */
 		if (ms->iova == RTE_BAD_IOVA) {
-			RTE_LOG(DEBUG, EAL,
-				"Memory segment at %p has bad IOVA, skipping\n",
+			EAL_LOG(DEBUG,
+				"Memory segment at %p has bad IOVA, skipping",
 				ms->addr);
 			goto next;
 		}
@@ -670,7 +670,7 @@ vfio_sync_default_container(void)
 	/* default container fd should have been opened in rte_vfio_enable() */
 	if (!default_vfio_cfg->vfio_enabled ||
 			default_vfio_cfg->vfio_container_fd < 0) {
-		RTE_LOG(ERR, EAL, "VFIO support is not initialized\n");
+		EAL_LOG(ERR, "VFIO support is not initialized");
 		return -1;
 	}
 
@@ -690,8 +690,8 @@ vfio_sync_default_container(void)
 	}
 	free(mp_reply.msgs);
 	if (iommu_type_id < 0) {
-		RTE_LOG(ERR, EAL,
-			"Could not get IOMMU type for default container\n");
+		EAL_LOG(ERR,
+			"Could not get IOMMU type for default container");
 		return -1;
 	}
 
@@ -708,7 +708,7 @@ vfio_sync_default_container(void)
 
 		return 0;
 	}
-	RTE_LOG(ERR, EAL, "Could not find IOMMU type id (%i)\n",
+	EAL_LOG(ERR, "Could not find IOMMU type id (%i)",
 			iommu_type_id);
 	return -1;
 }
@@ -721,7 +721,7 @@ rte_vfio_clear_group(int vfio_group_fd)
 
 	vfio_cfg = get_vfio_cfg_by_group_fd(vfio_group_fd);
 	if (vfio_cfg == NULL) {
-		RTE_LOG(ERR, EAL, "Invalid VFIO group fd!\n");
+		EAL_LOG(ERR, "Invalid VFIO group fd!");
 		return -1;
 	}
 
@@ -756,8 +756,8 @@ rte_vfio_setup_device(const char *sysfs_base, const char *dev_addr,
 	/* get group number */
 	ret = rte_vfio_get_group_num(sysfs_base, dev_addr, &iommu_group_num);
 	if (ret == 0) {
-		RTE_LOG(NOTICE, EAL,
-				"%s not managed by VFIO driver, skipping\n",
+		EAL_LOG(NOTICE,
+				"%s not managed by VFIO driver, skipping",
 				dev_addr);
 		return 1;
 	}
@@ -776,8 +776,8 @@ rte_vfio_setup_device(const char *sysfs_base, const char *dev_addr,
 	 * isn't managed by VFIO
 	 */
 	if (vfio_group_fd == -ENOENT) {
-		RTE_LOG(NOTICE, EAL,
-				"%s not managed by VFIO driver, skipping\n",
+		EAL_LOG(NOTICE,
+				"%s not managed by VFIO driver, skipping",
 				dev_addr);
 		return 1;
 	}
@@ -790,14 +790,14 @@ rte_vfio_setup_device(const char *sysfs_base, const char *dev_addr,
 	/* check if the group is viable */
 	ret = ioctl(vfio_group_fd, VFIO_GROUP_GET_STATUS, &group_status);
 	if (ret) {
-		RTE_LOG(ERR, EAL, "%s cannot get VFIO group status, "
-			"error %i (%s)\n", dev_addr, errno, strerror(errno));
+		EAL_LOG(ERR, "%s cannot get VFIO group status, "
+			"error %i (%s)", dev_addr, errno, strerror(errno));
 		close(vfio_group_fd);
 		rte_vfio_clear_group(vfio_group_fd);
 		return -1;
 	} else if (!(group_status.flags & VFIO_GROUP_FLAGS_VIABLE)) {
-		RTE_LOG(ERR, EAL, "%s VFIO group is not viable! "
-			"Not all devices in IOMMU group bound to VFIO or unbound\n",
+		EAL_LOG(ERR, "%s VFIO group is not viable! "
+			"Not all devices in IOMMU group bound to VFIO or unbound",
 			dev_addr);
 		close(vfio_group_fd);
 		rte_vfio_clear_group(vfio_group_fd);
@@ -817,9 +817,9 @@ rte_vfio_setup_device(const char *sysfs_base, const char *dev_addr,
 		ret = ioctl(vfio_group_fd, VFIO_GROUP_SET_CONTAINER,
 				&vfio_container_fd);
 		if (ret) {
-			RTE_LOG(ERR, EAL,
+			EAL_LOG(ERR,
 				"%s cannot add VFIO group to container, error "
-				"%i (%s)\n", dev_addr, errno, strerror(errno));
+				"%i (%s)", dev_addr, errno, strerror(errno));
 			close(vfio_group_fd);
 			rte_vfio_clear_group(vfio_group_fd);
 			return -1;
@@ -841,8 +841,8 @@ rte_vfio_setup_device(const char *sysfs_base, const char *dev_addr,
 			/* select an IOMMU type which we will be using */
 			t = vfio_set_iommu_type(vfio_container_fd);
 			if (!t) {
-				RTE_LOG(ERR, EAL,
-					"%s failed to select IOMMU type\n",
+				EAL_LOG(ERR,
+					"%s failed to select IOMMU type",
 					dev_addr);
 				close(vfio_group_fd);
 				rte_vfio_clear_group(vfio_group_fd);
@@ -857,9 +857,9 @@ rte_vfio_setup_device(const char *sysfs_base, const char *dev_addr,
 			else
 				ret = 0;
 			if (ret) {
-				RTE_LOG(ERR, EAL,
+				EAL_LOG(ERR,
 					"%s DMA remapping failed, error "
-					"%i (%s)\n",
+					"%i (%s)",
 					dev_addr, errno, strerror(errno));
 				close(vfio_group_fd);
 				rte_vfio_clear_group(vfio_group_fd);
@@ -886,10 +886,10 @@ rte_vfio_setup_device(const char *sysfs_base, const char *dev_addr,
 						map->addr, map->iova, map->len,
 						1);
 				if (ret) {
-					RTE_LOG(ERR, EAL, "Couldn't map user memory for DMA: "
+					EAL_LOG(ERR, "Couldn't map user memory for DMA: "
 							"va: 0x%" PRIx64 " "
 							"iova: 0x%" PRIx64 " "
-							"len: 0x%" PRIu64 "\n",
+							"len: 0x%" PRIu64,
 							map->addr, map->iova,
 							map->len);
 					rte_spinlock_recursive_unlock(
@@ -911,13 +911,13 @@ rte_vfio_setup_device(const char *sysfs_base, const char *dev_addr,
 			rte_mcfg_mem_read_unlock();
 
 			if (ret && rte_errno != ENOTSUP) {
-				RTE_LOG(ERR, EAL, "Could not install memory event callback for VFIO\n");
+				EAL_LOG(ERR, "Could not install memory event callback for VFIO");
 				return -1;
 			}
 			if (ret)
-				RTE_LOG(DEBUG, EAL, "Memory event callbacks not supported\n");
+				EAL_LOG(DEBUG, "Memory event callbacks not supported");
 			else
-				RTE_LOG(DEBUG, EAL, "Installed memory event callback for VFIO\n");
+				EAL_LOG(DEBUG, "Installed memory event callback for VFIO");
 		}
 	} else if (rte_eal_process_type() != RTE_PROC_PRIMARY &&
 			vfio_cfg == default_vfio_cfg &&
@@ -929,7 +929,7 @@ rte_vfio_setup_device(const char *sysfs_base, const char *dev_addr,
 		 */
 		ret = vfio_sync_default_container();
 		if (ret < 0) {
-			RTE_LOG(ERR, EAL, "Could not sync default VFIO container\n");
+			EAL_LOG(ERR, "Could not sync default VFIO container");
 			close(vfio_group_fd);
 			rte_vfio_clear_group(vfio_group_fd);
 			return -1;
@@ -937,7 +937,7 @@ rte_vfio_setup_device(const char *sysfs_base, const char *dev_addr,
 		/* we have successfully initialized VFIO, notify user */
 		const struct vfio_iommu_type *t =
 				default_vfio_cfg->vfio_iommu_type;
-		RTE_LOG(INFO, EAL, "Using IOMMU type %d (%s)\n",
+		EAL_LOG(INFO, "Using IOMMU type %d (%s)",
 				t->type_id, t->name);
 	}
 
@@ -965,7 +965,7 @@ rte_vfio_setup_device(const char *sysfs_base, const char *dev_addr,
 		 * the VFIO group or the container not having IOMMU configured.
 		 */
 
-		RTE_LOG(WARNING, EAL, "Getting a vfio_dev_fd for %s failed\n",
+		EAL_LOG(WARNING, "Getting a vfio_dev_fd for %s failed",
 				dev_addr);
 		close(vfio_group_fd);
 		rte_vfio_clear_group(vfio_group_fd);
@@ -976,8 +976,8 @@ rte_vfio_setup_device(const char *sysfs_base, const char *dev_addr,
 dev_get_info:
 	ret = ioctl(*vfio_dev_fd, VFIO_DEVICE_GET_INFO, device_info);
 	if (ret) {
-		RTE_LOG(ERR, EAL, "%s cannot get device info, "
-				"error %i (%s)\n", dev_addr, errno,
+		EAL_LOG(ERR, "%s cannot get device info, "
+				"error %i (%s)", dev_addr, errno,
 				strerror(errno));
 		close(*vfio_dev_fd);
 		close(vfio_group_fd);
@@ -1007,7 +1007,7 @@ rte_vfio_release_device(const char *sysfs_base, const char *dev_addr,
 	/* get group number */
 	ret = rte_vfio_get_group_num(sysfs_base, dev_addr, &iommu_group_num);
 	if (ret <= 0) {
-		RTE_LOG(WARNING, EAL, "%s not managed by VFIO driver\n",
+		EAL_LOG(WARNING, "%s not managed by VFIO driver",
 			dev_addr);
 		/* This is an error at this point. */
 		ret = -1;
@@ -1017,7 +1017,7 @@ rte_vfio_release_device(const char *sysfs_base, const char *dev_addr,
 	/* get the actual group fd */
 	vfio_group_fd = rte_vfio_get_group_fd(iommu_group_num);
 	if (vfio_group_fd < 0) {
-		RTE_LOG(INFO, EAL, "rte_vfio_get_group_fd failed for %s\n",
+		EAL_LOG(INFO, "rte_vfio_get_group_fd failed for %s",
 				   dev_addr);
 		ret = vfio_group_fd;
 		goto out;
@@ -1034,7 +1034,7 @@ rte_vfio_release_device(const char *sysfs_base, const char *dev_addr,
 
 	/* Closing a device */
 	if (close(vfio_dev_fd) < 0) {
-		RTE_LOG(INFO, EAL, "Error when closing vfio_dev_fd for %s\n",
+		EAL_LOG(INFO, "Error when closing vfio_dev_fd for %s",
 				   dev_addr);
 		ret = -1;
 		goto out;
@@ -1047,14 +1047,14 @@ rte_vfio_release_device(const char *sysfs_base, const char *dev_addr,
 	if (!vfio_group_device_count(vfio_group_fd)) {
 
 		if (close(vfio_group_fd) < 0) {
-			RTE_LOG(INFO, EAL, "Error when closing vfio_group_fd for %s\n",
+			EAL_LOG(INFO, "Error when closing vfio_group_fd for %s",
 				dev_addr);
 			ret = -1;
 			goto out;
 		}
 
 		if (rte_vfio_clear_group(vfio_group_fd) < 0) {
-			RTE_LOG(INFO, EAL, "Error when clearing group for %s\n",
+			EAL_LOG(INFO, "Error when clearing group for %s",
 					   dev_addr);
 			ret = -1;
 			goto out;
@@ -1101,21 +1101,21 @@ rte_vfio_enable(const char *modname)
 		}
 	}
 
-	RTE_LOG(DEBUG, EAL, "Probing VFIO support...\n");
+	EAL_LOG(DEBUG, "Probing VFIO support...");
 
 	/* check if vfio module is loaded */
 	vfio_available = rte_eal_check_module(modname);
 
 	/* return error directly */
 	if (vfio_available == -1) {
-		RTE_LOG(INFO, EAL, "Could not get loaded module details!\n");
+		EAL_LOG(INFO, "Could not get loaded module details!");
 		return -1;
 	}
 
 	/* return 0 if VFIO modules not loaded */
 	if (vfio_available == 0) {
-		RTE_LOG(DEBUG, EAL,
-			"VFIO modules not loaded, skipping VFIO support...\n");
+		EAL_LOG(DEBUG,
+			"VFIO modules not loaded, skipping VFIO support...");
 		return 0;
 	}
 
@@ -1131,10 +1131,10 @@ rte_vfio_enable(const char *modname)
 
 	/* check if we have VFIO driver enabled */
 	if (default_vfio_cfg->vfio_container_fd != -1) {
-		RTE_LOG(INFO, EAL, "VFIO support initialized\n");
+		EAL_LOG(INFO, "VFIO support initialized");
 		default_vfio_cfg->vfio_enabled = 1;
 	} else {
-		RTE_LOG(NOTICE, EAL, "VFIO support could not be initialized\n");
+		EAL_LOG(NOTICE, "VFIO support could not be initialized");
 	}
 
 	return 0;
@@ -1186,7 +1186,7 @@ vfio_get_default_container_fd(void)
 	}
 
 	free(mp_reply.msgs);
-	RTE_LOG(ERR, EAL, "Cannot request default VFIO container fd\n");
+	EAL_LOG(ERR, "Cannot request default VFIO container fd");
 	return -1;
 }
 
@@ -1209,13 +1209,13 @@ vfio_set_iommu_type(int vfio_container_fd)
 		int ret = ioctl(vfio_container_fd, VFIO_SET_IOMMU,
 				t->type_id);
 		if (!ret) {
-			RTE_LOG(INFO, EAL, "Using IOMMU type %d (%s)\n",
+			EAL_LOG(INFO, "Using IOMMU type %d (%s)",
 					t->type_id, t->name);
 			return t;
 		}
 		/* not an error, there may be more supported IOMMU types */
-		RTE_LOG(DEBUG, EAL, "Set IOMMU type %d (%s) failed, error "
-				"%i (%s)\n", t->type_id, t->name, errno,
+		EAL_LOG(DEBUG, "Set IOMMU type %d (%s) failed, error "
+				"%i (%s)", t->type_id, t->name, errno,
 				strerror(errno));
 	}
 	/* if we didn't find a suitable IOMMU type, fail */
@@ -1233,15 +1233,15 @@ vfio_has_supported_extensions(int vfio_container_fd)
 		ret = ioctl(vfio_container_fd, VFIO_CHECK_EXTENSION,
 				t->type_id);
 		if (ret < 0) {
-			RTE_LOG(ERR, EAL, "Could not get IOMMU type, error "
-					"%i (%s)\n", errno, strerror(errno));
+			EAL_LOG(ERR, "Could not get IOMMU type, error "
+					"%i (%s)", errno, strerror(errno));
 			close(vfio_container_fd);
 			return -1;
 		} else if (ret == 1) {
 			/* we found a supported extension */
 			n_extensions++;
 		}
-		RTE_LOG(DEBUG, EAL, "IOMMU type %d (%s) is %s\n",
+		EAL_LOG(DEBUG, "IOMMU type %d (%s) is %s",
 				t->type_id, t->name,
 				ret ? "supported" : "not supported");
 	}
@@ -1271,9 +1271,9 @@ rte_vfio_get_container_fd(void)
 	if (internal_conf->process_type == RTE_PROC_PRIMARY) {
 		vfio_container_fd = open(VFIO_CONTAINER_PATH, O_RDWR);
 		if (vfio_container_fd < 0) {
-			RTE_LOG(ERR, EAL,
+			EAL_LOG(ERR,
 					"Cannot open VFIO container %s, error "
-					"%i (%s)\n", VFIO_CONTAINER_PATH,
+					"%i (%s)", VFIO_CONTAINER_PATH,
 					errno, strerror(errno));
 			return -1;
 		}
@@ -1282,19 +1282,19 @@ rte_vfio_get_container_fd(void)
 		ret = ioctl(vfio_container_fd, VFIO_GET_API_VERSION);
 		if (ret != VFIO_API_VERSION) {
 			if (ret < 0)
-				RTE_LOG(ERR, EAL,
+				EAL_LOG(ERR,
 					"Could not get VFIO API version, error "
-					"%i (%s)\n", errno, strerror(errno));
+					"%i (%s)", errno, strerror(errno));
 			else
-				RTE_LOG(ERR, EAL, "Unsupported VFIO API version!\n");
+				EAL_LOG(ERR, "Unsupported VFIO API version!");
 			close(vfio_container_fd);
 			return -1;
 		}
 
 		ret = vfio_has_supported_extensions(vfio_container_fd);
 		if (ret) {
-			RTE_LOG(ERR, EAL,
-				"No supported IOMMU extensions found!\n");
+			EAL_LOG(ERR,
+				"No supported IOMMU extensions found!");
 			return -1;
 		}
 
@@ -1322,7 +1322,7 @@ rte_vfio_get_container_fd(void)
 	}
 
 	free(mp_reply.msgs);
-	RTE_LOG(ERR, EAL, "Cannot request VFIO container fd\n");
+	EAL_LOG(ERR, "Cannot request VFIO container fd");
 	return -1;
 }
 
@@ -1352,7 +1352,7 @@ rte_vfio_get_group_num(const char *sysfs_base,
 			tok, RTE_DIM(tok), '/');
 
 	if (ret <= 0) {
-		RTE_LOG(ERR, EAL, "%s cannot get IOMMU group\n", dev_addr);
+		EAL_LOG(ERR, "%s cannot get IOMMU group", dev_addr);
 		return -1;
 	}
 
@@ -1362,7 +1362,7 @@ rte_vfio_get_group_num(const char *sysfs_base,
 	end = group_tok;
 	*iommu_group_num = strtol(group_tok, &end, 10);
 	if ((end != group_tok && *end != '\0') || errno != 0) {
-		RTE_LOG(ERR, EAL, "%s error parsing IOMMU number!\n", dev_addr);
+		EAL_LOG(ERR, "%s error parsing IOMMU number!", dev_addr);
 		return -1;
 	}
 
@@ -1411,12 +1411,12 @@ vfio_type1_dma_mem_map(int vfio_container_fd, uint64_t vaddr, uint64_t iova,
 			 * returned from kernel.
 			 */
 			if (errno == EEXIST) {
-				RTE_LOG(DEBUG, EAL,
+				EAL_LOG(DEBUG,
 					"Memory segment is already mapped, skipping");
 			} else {
-				RTE_LOG(ERR, EAL,
+				EAL_LOG(ERR,
 					"Cannot set up DMA remapping, error "
-					"%i (%s)\n", errno, strerror(errno));
+					"%i (%s)", errno, strerror(errno));
 				return -1;
 			}
 		}
@@ -1429,12 +1429,12 @@ vfio_type1_dma_mem_map(int vfio_container_fd, uint64_t vaddr, uint64_t iova,
 		ret = ioctl(vfio_container_fd, VFIO_IOMMU_UNMAP_DMA,
 				&dma_unmap);
 		if (ret) {
-			RTE_LOG(ERR, EAL, "Cannot clear DMA remapping, error "
-					"%i (%s)\n", errno, strerror(errno));
+			EAL_LOG(ERR, "Cannot clear DMA remapping, error "
+					"%i (%s)", errno, strerror(errno));
 			return -1;
 		} else if (dma_unmap.size != len) {
-			RTE_LOG(ERR, EAL, "Unexpected size %"PRIu64
-				" of DMA remapping cleared instead of %"PRIu64"\n",
+			EAL_LOG(ERR, "Unexpected size %"PRIu64
+				" of DMA remapping cleared instead of %"PRIu64,
 				(uint64_t)dma_unmap.size, len);
 			rte_errno = EIO;
 			return -1;
@@ -1470,16 +1470,16 @@ vfio_spapr_dma_do_map(int vfio_container_fd, uint64_t vaddr, uint64_t iova,
 		struct vfio_iommu_type1_dma_map dma_map;
 
 		if (iova + len > spapr_dma_win_len) {
-			RTE_LOG(ERR, EAL, "DMA map attempt outside DMA window\n");
+			EAL_LOG(ERR, "DMA map attempt outside DMA window");
 			return -1;
 		}
 
 		ret = ioctl(vfio_container_fd,
 				VFIO_IOMMU_SPAPR_REGISTER_MEMORY, &reg);
 		if (ret) {
-			RTE_LOG(ERR, EAL,
+			EAL_LOG(ERR,
 				"Cannot register vaddr for IOMMU, error "
-				"%i (%s)\n", errno, strerror(errno));
+				"%i (%s)", errno, strerror(errno));
 			return -1;
 		}
 
@@ -1493,8 +1493,8 @@ vfio_spapr_dma_do_map(int vfio_container_fd, uint64_t vaddr, uint64_t iova,
 
 		ret = ioctl(vfio_container_fd, VFIO_IOMMU_MAP_DMA, &dma_map);
 		if (ret) {
-			RTE_LOG(ERR, EAL, "Cannot map vaddr for IOMMU, error "
-					"%i (%s)\n", errno, strerror(errno));
+			EAL_LOG(ERR, "Cannot map vaddr for IOMMU, error "
+					"%i (%s)", errno, strerror(errno));
 			return -1;
 		}
 
@@ -1509,17 +1509,17 @@ vfio_spapr_dma_do_map(int vfio_container_fd, uint64_t vaddr, uint64_t iova,
 		ret = ioctl(vfio_container_fd, VFIO_IOMMU_UNMAP_DMA,
 				&dma_unmap);
 		if (ret) {
-			RTE_LOG(ERR, EAL, "Cannot unmap vaddr for IOMMU, error "
-					"%i (%s)\n", errno, strerror(errno));
+			EAL_LOG(ERR, "Cannot unmap vaddr for IOMMU, error "
+					"%i (%s)", errno, strerror(errno));
 			return -1;
 		}
 
 		ret = ioctl(vfio_container_fd,
 				VFIO_IOMMU_SPAPR_UNREGISTER_MEMORY, &reg);
 		if (ret) {
-			RTE_LOG(ERR, EAL,
+			EAL_LOG(ERR,
 				"Cannot unregister vaddr for IOMMU, error "
-				"%i (%s)\n", errno, strerror(errno));
+				"%i (%s)", errno, strerror(errno));
 			return -1;
 		}
 	}
@@ -1599,7 +1599,7 @@ find_highest_mem_addr(struct spapr_size_walk_param *param)
 		 */
 		FILE *fd = fopen(proc_iomem, "r");
 		if (fd == NULL) {
-			RTE_LOG(ERR, EAL, "Cannot open %s\n", proc_iomem);
+			EAL_LOG(ERR, "Cannot open %s", proc_iomem);
 			return -1;
 		}
 		/* Scan /proc/iomem for the highest PA in the system */
@@ -1612,15 +1612,15 @@ find_highest_mem_addr(struct spapr_size_walk_param *param)
 
 			/* Validate the format of the memory string */
 			if (space == NULL || dash == NULL || space < dash) {
-				RTE_LOG(ERR, EAL, "Can't parse line \"%s\" in file %s\n",
+				EAL_LOG(ERR, "Can't parse line \"%s\" in file %s",
 					line, proc_iomem);
 				continue;
 			}
 
 			start = strtoull(line, NULL, 16);
 			end   = strtoull(dash + 1, NULL, 16);
-			RTE_LOG(DEBUG, EAL, "Found system RAM from 0x%" PRIx64
-				" to 0x%" PRIx64 "\n", start, end);
+			EAL_LOG(DEBUG, "Found system RAM from 0x%" PRIx64
+				" to 0x%" PRIx64, start, end);
 			if (end > max)
 				max = end;
 		}
@@ -1628,22 +1628,22 @@ find_highest_mem_addr(struct spapr_size_walk_param *param)
 		fclose(fd);
 
 		if (max == 0) {
-			RTE_LOG(ERR, EAL, "Failed to find valid \"System RAM\" "
-				"entry in file %s\n", proc_iomem);
+			EAL_LOG(ERR, "Failed to find valid \"System RAM\" "
+				"entry in file %s", proc_iomem);
 			return -1;
 		}
 
 		spapr_dma_win_len = rte_align64pow2(max + 1);
 		return 0;
 	} else if (rte_eal_iova_mode() == RTE_IOVA_VA) {
-		RTE_LOG(DEBUG, EAL, "Highest VA address in memseg list is 0x%"
-			PRIx64 "\n", param->max_va);
+		EAL_LOG(DEBUG, "Highest VA address in memseg list is 0x%"
+			PRIx64, param->max_va);
 		spapr_dma_win_len = rte_align64pow2(param->max_va);
 		return 0;
 	}
 
 	spapr_dma_win_len = 0;
-	RTE_LOG(ERR, EAL, "Unsupported IOVA mode\n");
+	EAL_LOG(ERR, "Unsupported IOVA mode");
 	return -1;
 }
 
@@ -1668,18 +1668,18 @@ spapr_dma_win_size(void)
 	/* walk the memseg list to find the page size/max VA address */
 	memset(&param, 0, sizeof(param));
 	if (rte_memseg_list_walk(vfio_spapr_size_walk, &param) < 0) {
-		RTE_LOG(ERR, EAL, "Failed to walk memseg list for DMA window size\n");
+		EAL_LOG(ERR, "Failed to walk memseg list for DMA window size");
 		return -1;
 	}
 
 	/* we can't be sure if DMA window covers external memory */
 	if (param.is_user_managed)
-		RTE_LOG(WARNING, EAL, "Detected user managed external memory which may not be managed by the IOMMU\n");
+		EAL_LOG(WARNING, "Detected user managed external memory which may not be managed by the IOMMU");
 
 	/* check physical/virtual memory size */
 	if (find_highest_mem_addr(&param) < 0)
 		return -1;
-	RTE_LOG(DEBUG, EAL, "Setting DMA window size to 0x%" PRIx64 "\n",
+	EAL_LOG(DEBUG, "Setting DMA window size to 0x%" PRIx64,
 		spapr_dma_win_len);
 	spapr_dma_win_page_sz = param.page_sz;
 	rte_mem_set_dma_mask(rte_ctz64(spapr_dma_win_len));
@@ -1703,7 +1703,7 @@ vfio_spapr_create_dma_window(int vfio_container_fd)
 
 	ret = ioctl(vfio_container_fd, VFIO_IOMMU_SPAPR_TCE_GET_INFO, &info);
 	if (ret) {
-		RTE_LOG(ERR, EAL, "Cannot get IOMMU info, error %i (%s)\n",
+		EAL_LOG(ERR, "Cannot get IOMMU info, error %i (%s)",
 			errno, strerror(errno));
 		return -1;
 	}
@@ -1744,17 +1744,17 @@ vfio_spapr_create_dma_window(int vfio_container_fd)
 	}
 #endif /* VFIO_IOMMU_SPAPR_INFO_DDW */
 	if (ret) {
-		RTE_LOG(ERR, EAL, "Cannot create new DMA window, error "
-				"%i (%s)\n", errno, strerror(errno));
-		RTE_LOG(ERR, EAL,
-			"Consider using a larger hugepage size if supported by the system\n");
+		EAL_LOG(ERR, "Cannot create new DMA window, error "
+				"%i (%s)", errno, strerror(errno));
+		EAL_LOG(ERR,
+			"Consider using a larger hugepage size if supported by the system");
 		return -1;
 	}
 
 	/* verify the start address  */
 	if (create.start_addr != 0) {
-		RTE_LOG(ERR, EAL, "Received unsupported start address 0x%"
-			PRIx64 "\n", (uint64_t)create.start_addr);
+		EAL_LOG(ERR, "Received unsupported start address 0x%"
+			PRIx64, (uint64_t)create.start_addr);
 		return -1;
 	}
 	return ret;
@@ -1769,13 +1769,13 @@ vfio_spapr_dma_mem_map(int vfio_container_fd, uint64_t vaddr,
 	if (do_map) {
 		if (vfio_spapr_dma_do_map(vfio_container_fd,
 			vaddr, iova, len, 1)) {
-			RTE_LOG(ERR, EAL, "Failed to map DMA\n");
+			EAL_LOG(ERR, "Failed to map DMA");
 			ret = -1;
 		}
 	} else {
 		if (vfio_spapr_dma_do_map(vfio_container_fd,
 			vaddr, iova, len, 0)) {
-			RTE_LOG(ERR, EAL, "Failed to unmap DMA\n");
+			EAL_LOG(ERR, "Failed to unmap DMA");
 			ret = -1;
 		}
 	}
@@ -1787,7 +1787,7 @@ static int
 vfio_spapr_dma_map(int vfio_container_fd)
 {
 	if (vfio_spapr_create_dma_window(vfio_container_fd) < 0) {
-		RTE_LOG(ERR, EAL, "Could not create new DMA window!\n");
+		EAL_LOG(ERR, "Could not create new DMA window!");
 		return -1;
 	}
 
@@ -1822,14 +1822,14 @@ vfio_dma_mem_map(struct vfio_config *vfio_cfg, uint64_t vaddr, uint64_t iova,
 	const struct vfio_iommu_type *t = vfio_cfg->vfio_iommu_type;
 
 	if (!t) {
-		RTE_LOG(ERR, EAL, "VFIO support not initialized\n");
+		EAL_LOG(ERR, "VFIO support not initialized");
 		rte_errno = ENODEV;
 		return -1;
 	}
 
 	if (!t->dma_user_map_func) {
-		RTE_LOG(ERR, EAL,
-			"VFIO custom DMA region mapping not supported by IOMMU %s\n",
+		EAL_LOG(ERR,
+			"VFIO custom DMA region mapping not supported by IOMMU %s",
 			t->name);
 		rte_errno = ENOTSUP;
 		return -1;
@@ -1851,7 +1851,7 @@ container_dma_map(struct vfio_config *vfio_cfg, uint64_t vaddr, uint64_t iova,
 	user_mem_maps = &vfio_cfg->mem_maps;
 	rte_spinlock_recursive_lock(&user_mem_maps->lock);
 	if (user_mem_maps->n_maps == VFIO_MAX_USER_MEM_MAPS) {
-		RTE_LOG(ERR, EAL, "No more space for user mem maps\n");
+		EAL_LOG(ERR, "No more space for user mem maps");
 		rte_errno = ENOMEM;
 		ret = -1;
 		goto out;
@@ -1865,7 +1865,7 @@ container_dma_map(struct vfio_config *vfio_cfg, uint64_t vaddr, uint64_t iova,
 		 * this to be unsupported, because we can't just store any old
 		 * mapping and pollute list of active mappings willy-nilly.
 		 */
-		RTE_LOG(ERR, EAL, "Couldn't map new region for DMA\n");
+		EAL_LOG(ERR, "Couldn't map new region for DMA");
 		ret = -1;
 		goto out;
 	}
@@ -1921,7 +1921,7 @@ container_dma_unmap(struct vfio_config *vfio_cfg, uint64_t vaddr, uint64_t iova,
 			orig_maps, RTE_DIM(orig_maps));
 	/* did we find anything? */
 	if (n_orig < 0) {
-		RTE_LOG(ERR, EAL, "Couldn't find previously mapped region\n");
+		EAL_LOG(ERR, "Couldn't find previously mapped region");
 		rte_errno = EINVAL;
 		ret = -1;
 		goto out;
@@ -1943,7 +1943,7 @@ container_dma_unmap(struct vfio_config *vfio_cfg, uint64_t vaddr, uint64_t iova,
 				vaddr + len, iova + len);
 
 		if (!start_aligned || !end_aligned) {
-			RTE_LOG(DEBUG, EAL, "DMA partial unmap unsupported\n");
+			EAL_LOG(DEBUG, "DMA partial unmap unsupported");
 			rte_errno = ENOTSUP;
 			ret = -1;
 			goto out;
@@ -1961,7 +1961,7 @@ container_dma_unmap(struct vfio_config *vfio_cfg, uint64_t vaddr, uint64_t iova,
 	/* can we store the new maps in our list? */
 	newlen = (user_mem_maps->n_maps - n_orig) + n_new;
 	if (newlen >= VFIO_MAX_USER_MEM_MAPS) {
-		RTE_LOG(ERR, EAL, "Not enough space to store partial mapping\n");
+		EAL_LOG(ERR, "Not enough space to store partial mapping");
 		rte_errno = ENOMEM;
 		ret = -1;
 		goto out;
@@ -1978,11 +1978,11 @@ container_dma_unmap(struct vfio_config *vfio_cfg, uint64_t vaddr, uint64_t iova,
 		 * within our mapped range but had invalid alignment).
 		 */
 		if (rte_errno != ENODEV && rte_errno != ENOTSUP) {
-			RTE_LOG(ERR, EAL, "Couldn't unmap region for DMA\n");
+			EAL_LOG(ERR, "Couldn't unmap region for DMA");
 			ret = -1;
 			goto out;
 		} else {
-			RTE_LOG(DEBUG, EAL, "DMA unmapping failed, but removing mappings anyway\n");
+			EAL_LOG(DEBUG, "DMA unmapping failed, but removing mappings anyway");
 		}
 	}
 
@@ -2005,8 +2005,8 @@ rte_vfio_noiommu_is_enabled(void)
 	fd = open(VFIO_NOIOMMU_MODE, O_RDONLY);
 	if (fd < 0) {
 		if (errno != ENOENT) {
-			RTE_LOG(ERR, EAL, "Cannot open VFIO noiommu file "
-					"%i (%s)\n", errno, strerror(errno));
+			EAL_LOG(ERR, "Cannot open VFIO noiommu file "
+					"%i (%s)", errno, strerror(errno));
 			return -1;
 		}
 		/*
@@ -2019,8 +2019,8 @@ rte_vfio_noiommu_is_enabled(void)
 	cnt = read(fd, &c, 1);
 	close(fd);
 	if (cnt != 1) {
-		RTE_LOG(ERR, EAL, "Unable to read from VFIO noiommu file "
-				"%i (%s)\n", errno, strerror(errno));
+		EAL_LOG(ERR, "Unable to read from VFIO noiommu file "
+				"%i (%s)", errno, strerror(errno));
 		return -1;
 	}
 
@@ -2039,13 +2039,13 @@ rte_vfio_container_create(void)
 	}
 
 	if (i == VFIO_MAX_CONTAINERS) {
-		RTE_LOG(ERR, EAL, "Exceed max VFIO container limit\n");
+		EAL_LOG(ERR, "Exceed max VFIO container limit");
 		return -1;
 	}
 
 	vfio_cfgs[i].vfio_container_fd = rte_vfio_get_container_fd();
 	if (vfio_cfgs[i].vfio_container_fd < 0) {
-		RTE_LOG(NOTICE, EAL, "Fail to create a new VFIO container\n");
+		EAL_LOG(NOTICE, "Fail to create a new VFIO container");
 		return -1;
 	}
 
@@ -2060,7 +2060,7 @@ rte_vfio_container_destroy(int container_fd)
 
 	vfio_cfg = get_vfio_cfg_by_container_fd(container_fd);
 	if (vfio_cfg == NULL) {
-		RTE_LOG(ERR, EAL, "Invalid VFIO container fd\n");
+		EAL_LOG(ERR, "Invalid VFIO container fd");
 		return -1;
 	}
 
@@ -2084,7 +2084,7 @@ rte_vfio_container_group_bind(int container_fd, int iommu_group_num)
 
 	vfio_cfg = get_vfio_cfg_by_container_fd(container_fd);
 	if (vfio_cfg == NULL) {
-		RTE_LOG(ERR, EAL, "Invalid VFIO container fd\n");
+		EAL_LOG(ERR, "Invalid VFIO container fd");
 		return -1;
 	}
 
@@ -2100,7 +2100,7 @@ rte_vfio_container_group_unbind(int container_fd, int iommu_group_num)
 
 	vfio_cfg = get_vfio_cfg_by_container_fd(container_fd);
 	if (vfio_cfg == NULL) {
-		RTE_LOG(ERR, EAL, "Invalid VFIO container fd\n");
+		EAL_LOG(ERR, "Invalid VFIO container fd");
 		return -1;
 	}
 
@@ -2113,14 +2113,14 @@ rte_vfio_container_group_unbind(int container_fd, int iommu_group_num)
 
 	/* This should not happen */
 	if (i == VFIO_MAX_GROUPS || cur_grp == NULL) {
-		RTE_LOG(ERR, EAL, "Specified VFIO group number not found\n");
+		EAL_LOG(ERR, "Specified VFIO group number not found");
 		return -1;
 	}
 
 	if (cur_grp->fd >= 0 && close(cur_grp->fd) < 0) {
-		RTE_LOG(ERR, EAL,
+		EAL_LOG(ERR,
 			"Error when closing vfio_group_fd for iommu_group_num "
-			"%d\n", iommu_group_num);
+			"%d", iommu_group_num);
 		return -1;
 	}
 	cur_grp->group_num = -1;
@@ -2144,7 +2144,7 @@ rte_vfio_container_dma_map(int container_fd, uint64_t vaddr, uint64_t iova,
 
 	vfio_cfg = get_vfio_cfg_by_container_fd(container_fd);
 	if (vfio_cfg == NULL) {
-		RTE_LOG(ERR, EAL, "Invalid VFIO container fd\n");
+		EAL_LOG(ERR, "Invalid VFIO container fd");
 		return -1;
 	}
 
@@ -2164,7 +2164,7 @@ rte_vfio_container_dma_unmap(int container_fd, uint64_t vaddr, uint64_t iova,
 
 	vfio_cfg = get_vfio_cfg_by_container_fd(container_fd);
 	if (vfio_cfg == NULL) {
-		RTE_LOG(ERR, EAL, "Invalid VFIO container fd\n");
+		EAL_LOG(ERR, "Invalid VFIO container fd");
 		return -1;
 	}
 

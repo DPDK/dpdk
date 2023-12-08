@@ -83,7 +83,7 @@ resize_and_map(int fd, const char *path, void *addr, size_t len)
 	void *map_addr;
 
 	if (eal_file_truncate(fd, len)) {
-		RTE_LOG(ERR, EAL, "Cannot truncate %s\n", path);
+		EAL_LOG(ERR, "Cannot truncate %s", path);
 		return -1;
 	}
 
@@ -755,7 +755,7 @@ rte_fbarray_init(struct rte_fbarray *arr, const char *name, unsigned int len,
 		void *new_data = rte_mem_map(data, mmap_len,
 			RTE_PROT_READ | RTE_PROT_WRITE, flags, fd, 0);
 		if (new_data == NULL) {
-			RTE_LOG(DEBUG, EAL, "%s(): couldn't remap anonymous memory: %s\n",
+			EAL_LOG(DEBUG, "%s(): couldn't remap anonymous memory: %s",
 					__func__, rte_strerror(rte_errno));
 			goto fail;
 		}
@@ -770,12 +770,12 @@ rte_fbarray_init(struct rte_fbarray *arr, const char *name, unsigned int len,
 		 */
 		fd = eal_file_open(path, EAL_OPEN_CREATE | EAL_OPEN_READWRITE);
 		if (fd < 0) {
-			RTE_LOG(DEBUG, EAL, "%s(): couldn't open %s: %s\n",
+			EAL_LOG(DEBUG, "%s(): couldn't open %s: %s",
 				__func__, path, rte_strerror(rte_errno));
 			goto fail;
 		} else if (eal_file_lock(
 				fd, EAL_FLOCK_EXCLUSIVE, EAL_FLOCK_RETURN)) {
-			RTE_LOG(DEBUG, EAL, "%s(): couldn't lock %s: %s\n",
+			EAL_LOG(DEBUG, "%s(): couldn't lock %s: %s",
 				__func__, path, rte_strerror(rte_errno));
 			rte_errno = EBUSY;
 			goto fail;
@@ -1017,7 +1017,7 @@ rte_fbarray_destroy(struct rte_fbarray *arr)
 		 */
 		fd = tmp->fd;
 		if (eal_file_lock(fd, EAL_FLOCK_EXCLUSIVE, EAL_FLOCK_RETURN)) {
-			RTE_LOG(DEBUG, EAL, "Cannot destroy fbarray - another process is using it\n");
+			EAL_LOG(DEBUG, "Cannot destroy fbarray - another process is using it");
 			rte_errno = EBUSY;
 			ret = -1;
 			goto out;
@@ -1026,7 +1026,7 @@ rte_fbarray_destroy(struct rte_fbarray *arr)
 		/* we're OK to destroy the file */
 		eal_get_fbarray_path(path, sizeof(path), arr->name);
 		if (unlink(path)) {
-			RTE_LOG(DEBUG, EAL, "Cannot unlink fbarray: %s\n",
+			EAL_LOG(DEBUG, "Cannot unlink fbarray: %s",
 				strerror(errno));
 			rte_errno = errno;
 			/*

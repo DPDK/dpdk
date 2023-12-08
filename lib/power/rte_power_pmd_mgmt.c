@@ -146,7 +146,7 @@ get_monitor_addresses(struct pmd_core_cfg *cfg,
 
 		/* attempted out of bounds access */
 		if (i >= len) {
-			RTE_LOG(ERR, POWER, "Too many queues being monitored\n");
+			POWER_LOG(ERR, "Too many queues being monitored");
 			return -1;
 		}
 
@@ -423,7 +423,7 @@ check_scale(unsigned int lcore)
 	if (!rte_power_check_env_supported(PM_ENV_ACPI_CPUFREQ) &&
 			!rte_power_check_env_supported(PM_ENV_PSTATE_CPUFREQ) &&
 			!rte_power_check_env_supported(PM_ENV_AMD_PSTATE_CPUFREQ)) {
-		RTE_LOG(DEBUG, POWER, "Neither ACPI nor PSTATE modes are supported\n");
+		POWER_LOG(DEBUG, "Neither ACPI nor PSTATE modes are supported");
 		return -ENOTSUP;
 	}
 	/* ensure we could initialize the power library */
@@ -434,7 +434,7 @@ check_scale(unsigned int lcore)
 	env = rte_power_get_env();
 	if (env != PM_ENV_ACPI_CPUFREQ && env != PM_ENV_PSTATE_CPUFREQ &&
 			env != PM_ENV_AMD_PSTATE_CPUFREQ) {
-		RTE_LOG(DEBUG, POWER, "Neither ACPI nor PSTATE modes were initialized\n");
+		POWER_LOG(DEBUG, "Neither ACPI nor PSTATE modes were initialized");
 		return -ENOTSUP;
 	}
 
@@ -450,7 +450,7 @@ check_monitor(struct pmd_core_cfg *cfg, const union queue *qdata)
 
 	/* check if rte_power_monitor is supported */
 	if (!global_data.intrinsics_support.power_monitor) {
-		RTE_LOG(DEBUG, POWER, "Monitoring intrinsics are not supported\n");
+		POWER_LOG(DEBUG, "Monitoring intrinsics are not supported");
 		return -ENOTSUP;
 	}
 	/* check if multi-monitor is supported */
@@ -459,14 +459,14 @@ check_monitor(struct pmd_core_cfg *cfg, const union queue *qdata)
 
 	/* if we're adding a new queue, do we support multiple queues? */
 	if (cfg->n_queues > 0 && !multimonitor_supported) {
-		RTE_LOG(DEBUG, POWER, "Monitoring multiple queues is not supported\n");
+		POWER_LOG(DEBUG, "Monitoring multiple queues is not supported");
 		return -ENOTSUP;
 	}
 
 	/* check if the device supports the necessary PMD API */
 	if (rte_eth_get_monitor_addr(qdata->portid, qdata->qid,
 			&dummy) == -ENOTSUP) {
-		RTE_LOG(DEBUG, POWER, "The device does not support rte_eth_get_monitor_addr\n");
+		POWER_LOG(DEBUG, "The device does not support rte_eth_get_monitor_addr");
 		return -ENOTSUP;
 	}
 
@@ -566,14 +566,14 @@ rte_power_ethdev_pmgmt_queue_enable(unsigned int lcore_id, uint16_t port_id,
 		clb = clb_pause;
 		break;
 	default:
-		RTE_LOG(DEBUG, POWER, "Invalid power management type\n");
+		POWER_LOG(DEBUG, "Invalid power management type");
 		ret = -EINVAL;
 		goto end;
 	}
 	/* add this queue to the list */
 	ret = queue_list_add(lcore_cfg, &qdata);
 	if (ret < 0) {
-		RTE_LOG(DEBUG, POWER, "Failed to add queue to list: %s\n",
+		POWER_LOG(DEBUG, "Failed to add queue to list: %s",
 				strerror(-ret));
 		goto end;
 	}
@@ -686,7 +686,7 @@ int
 rte_power_pmd_mgmt_set_pause_duration(unsigned int duration)
 {
 	if (duration == 0) {
-		RTE_LOG(ERR, POWER, "Pause duration must be greater than 0, value unchanged\n");
+		POWER_LOG(ERR, "Pause duration must be greater than 0, value unchanged");
 		return -EINVAL;
 	}
 	pause_duration = duration;
@@ -704,12 +704,12 @@ int
 rte_power_pmd_mgmt_set_scaling_freq_min(unsigned int lcore, unsigned int min)
 {
 	if (lcore >= RTE_MAX_LCORE) {
-		RTE_LOG(ERR, POWER, "Invalid lcore ID: %u\n", lcore);
+		POWER_LOG(ERR, "Invalid lcore ID: %u", lcore);
 		return -EINVAL;
 	}
 
 	if (min > scale_freq_max[lcore]) {
-		RTE_LOG(ERR, POWER, "Invalid min frequency: Cannot be greater than max frequency\n");
+		POWER_LOG(ERR, "Invalid min frequency: Cannot be greater than max frequency");
 		return -EINVAL;
 	}
 	scale_freq_min[lcore] = min;
@@ -721,7 +721,7 @@ int
 rte_power_pmd_mgmt_set_scaling_freq_max(unsigned int lcore, unsigned int max)
 {
 	if (lcore >= RTE_MAX_LCORE) {
-		RTE_LOG(ERR, POWER, "Invalid lcore ID: %u\n", lcore);
+		POWER_LOG(ERR, "Invalid lcore ID: %u", lcore);
 		return -EINVAL;
 	}
 
@@ -729,7 +729,7 @@ rte_power_pmd_mgmt_set_scaling_freq_max(unsigned int lcore, unsigned int max)
 	if (max == 0)
 		max = UINT32_MAX;
 	if (max < scale_freq_min[lcore]) {
-		RTE_LOG(ERR, POWER, "Invalid max frequency: Cannot be less than min frequency\n");
+		POWER_LOG(ERR, "Invalid max frequency: Cannot be less than min frequency");
 		return -EINVAL;
 	}
 
@@ -742,12 +742,12 @@ int
 rte_power_pmd_mgmt_get_scaling_freq_min(unsigned int lcore)
 {
 	if (lcore >= RTE_MAX_LCORE) {
-		RTE_LOG(ERR, POWER, "Invalid lcore ID: %u\n", lcore);
+		POWER_LOG(ERR, "Invalid lcore ID: %u", lcore);
 		return -EINVAL;
 	}
 
 	if (scale_freq_max[lcore] == 0)
-		RTE_LOG(DEBUG, POWER, "Scaling freq min config not set. Using sysfs min freq.\n");
+		POWER_LOG(DEBUG, "Scaling freq min config not set. Using sysfs min freq.");
 
 	return scale_freq_min[lcore];
 }
@@ -756,12 +756,12 @@ int
 rte_power_pmd_mgmt_get_scaling_freq_max(unsigned int lcore)
 {
 	if (lcore >= RTE_MAX_LCORE) {
-		RTE_LOG(ERR, POWER, "Invalid lcore ID: %u\n", lcore);
+		POWER_LOG(ERR, "Invalid lcore ID: %u", lcore);
 		return -EINVAL;
 	}
 
 	if (scale_freq_max[lcore] == UINT32_MAX) {
-		RTE_LOG(DEBUG, POWER, "Scaling freq max config not set. Using sysfs max freq.\n");
+		POWER_LOG(DEBUG, "Scaling freq max config not set. Using sysfs max freq.");
 		return 0;
 	}
 

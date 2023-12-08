@@ -87,8 +87,8 @@ rte_service_init(void)
 	RTE_BUILD_BUG_ON(RTE_SERVICE_NUM_MAX > 64);
 
 	if (rte_service_library_initialized) {
-		RTE_LOG(NOTICE, EAL,
-			"service library init() called, init flag %d\n",
+		EAL_LOG(NOTICE,
+			"service library init() called, init flag %d",
 			rte_service_library_initialized);
 		return -EALREADY;
 	}
@@ -97,14 +97,14 @@ rte_service_init(void)
 			sizeof(struct rte_service_spec_impl),
 			RTE_CACHE_LINE_SIZE);
 	if (!rte_services) {
-		RTE_LOG(ERR, EAL, "error allocating rte services array\n");
+		EAL_LOG(ERR, "error allocating rte services array");
 		goto fail_mem;
 	}
 
 	lcore_states = rte_calloc("rte_service_core_states", RTE_MAX_LCORE,
 			sizeof(struct core_state), RTE_CACHE_LINE_SIZE);
 	if (!lcore_states) {
-		RTE_LOG(ERR, EAL, "error allocating core states array\n");
+		EAL_LOG(ERR, "error allocating core states array");
 		goto fail_mem;
 	}
 

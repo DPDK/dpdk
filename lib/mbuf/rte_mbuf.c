@@ -231,7 +231,7 @@ rte_pktmbuf_pool_create_by_ops(const char *name, unsigned int n,
 	int ret;
 
 	if (RTE_ALIGN(priv_size, RTE_MBUF_PRIV_ALIGN) != priv_size) {
-		RTE_LOG(ERR, MBUF, "mbuf priv_size=%u is not aligned\n",
+		MBUF_LOG(ERR, "mbuf priv_size=%u is not aligned",
 			priv_size);
 		rte_errno = EINVAL;
 		return NULL;
@@ -251,7 +251,7 @@ rte_pktmbuf_pool_create_by_ops(const char *name, unsigned int n,
 		mp_ops_name = rte_mbuf_best_mempool_ops();
 	ret = rte_mempool_set_ops_byname(mp, mp_ops_name, NULL);
 	if (ret != 0) {
-		RTE_LOG(ERR, MBUF, "error setting mempool handler\n");
+		MBUF_LOG(ERR, "error setting mempool handler");
 		rte_mempool_free(mp);
 		rte_errno = -ret;
 		return NULL;
@@ -297,7 +297,7 @@ rte_pktmbuf_pool_create_extbuf(const char *name, unsigned int n,
 	int ret;
 
 	if (RTE_ALIGN(priv_size, RTE_MBUF_PRIV_ALIGN) != priv_size) {
-		RTE_LOG(ERR, MBUF, "mbuf priv_size=%u is not aligned\n",
+		MBUF_LOG(ERR, "mbuf priv_size=%u is not aligned",
 			priv_size);
 		rte_errno = EINVAL;
 		return NULL;
@@ -307,12 +307,12 @@ rte_pktmbuf_pool_create_extbuf(const char *name, unsigned int n,
 		const struct rte_pktmbuf_extmem *extm = ext_mem + i;
 
 		if (!extm->elt_size || !extm->buf_len || !extm->buf_ptr) {
-			RTE_LOG(ERR, MBUF, "invalid extmem descriptor\n");
+			MBUF_LOG(ERR, "invalid extmem descriptor");
 			rte_errno = EINVAL;
 			return NULL;
 		}
 		if (data_room_size > extm->elt_size) {
-			RTE_LOG(ERR, MBUF, "ext elt_size=%u is too small\n",
+			MBUF_LOG(ERR, "ext elt_size=%u is too small",
 				priv_size);
 			rte_errno = EINVAL;
 			return NULL;
@@ -321,7 +321,7 @@ rte_pktmbuf_pool_create_extbuf(const char *name, unsigned int n,
 	}
 	/* Check whether enough external memory provided. */
 	if (n_elts < n) {
-		RTE_LOG(ERR, MBUF, "not enough extmem\n");
+		MBUF_LOG(ERR, "not enough extmem");
 		rte_errno = ENOMEM;
 		return NULL;
 	}
@@ -342,7 +342,7 @@ rte_pktmbuf_pool_create_extbuf(const char *name, unsigned int n,
 	mp_ops_name = rte_mbuf_best_mempool_ops();
 	ret = rte_mempool_set_ops_byname(mp, mp_ops_name, NULL);
 	if (ret != 0) {
-		RTE_LOG(ERR, MBUF, "error setting mempool handler\n");
+		MBUF_LOG(ERR, "error setting mempool handler");
 		rte_mempool_free(mp);
 		rte_errno = -ret;
 		return NULL;

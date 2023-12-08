@@ -25,7 +25,7 @@ int
 power_kvm_vm_init(unsigned int lcore_id)
 {
 	if (lcore_id >= RTE_MAX_LCORE) {
-		RTE_LOG(ERR, POWER, "Core(%u) is out of range 0...%d\n",
+		POWER_LOG(ERR, "Core(%u) is out of range 0...%d",
 				lcore_id, RTE_MAX_LCORE-1);
 		return -1;
 	}
@@ -46,16 +46,16 @@ power_kvm_vm_freqs(__rte_unused unsigned int lcore_id,
 		__rte_unused uint32_t *freqs,
 		__rte_unused uint32_t num)
 {
-	RTE_LOG(ERR, POWER, "rte_power_freqs is not implemented "
-			"for Virtual Machine Power Management\n");
+	POWER_LOG(ERR, "rte_power_freqs is not implemented "
+			"for Virtual Machine Power Management");
 	return -ENOTSUP;
 }
 
 uint32_t
 power_kvm_vm_get_freq(__rte_unused unsigned int lcore_id)
 {
-	RTE_LOG(ERR, POWER, "rte_power_get_freq is not implemented "
-			"for Virtual Machine Power Management\n");
+	POWER_LOG(ERR, "rte_power_get_freq is not implemented "
+			"for Virtual Machine Power Management");
 	return -ENOTSUP;
 }
 
@@ -63,8 +63,8 @@ int
 power_kvm_vm_set_freq(__rte_unused unsigned int lcore_id,
 		__rte_unused uint32_t index)
 {
-	RTE_LOG(ERR, POWER, "rte_power_set_freq is not implemented "
-			"for Virtual Machine Power Management\n");
+	POWER_LOG(ERR, "rte_power_set_freq is not implemented "
+			"for Virtual Machine Power Management");
 	return -ENOTSUP;
 }
 
@@ -74,7 +74,7 @@ send_msg(unsigned int lcore_id, uint32_t scale_direction)
 	int ret;
 
 	if (lcore_id >= RTE_MAX_LCORE) {
-		RTE_LOG(ERR, POWER, "Core(%u) is out of range 0...%d\n",
+		POWER_LOG(ERR, "Core(%u) is out of range 0...%d",
 				lcore_id, RTE_MAX_LCORE-1);
 		return -1;
 	}
@@ -82,7 +82,7 @@ send_msg(unsigned int lcore_id, uint32_t scale_direction)
 	ret = guest_channel_send_msg(&pkt[lcore_id], lcore_id);
 	if (ret == 0)
 		return 1;
-	RTE_LOG(DEBUG, POWER, "Error sending message: %s\n",
+	POWER_LOG(DEBUG, "Error sending message: %s",
 			ret > 0 ? strerror(ret) : "channel not connected");
 	return -1;
 }
@@ -114,7 +114,7 @@ power_kvm_vm_freq_min(unsigned int lcore_id)
 int
 power_kvm_vm_turbo_status(__rte_unused unsigned int lcore_id)
 {
-	RTE_LOG(ERR, POWER, "rte_power_turbo_status is not implemented for Virtual Machine Power Management\n");
+	POWER_LOG(ERR, "rte_power_turbo_status is not implemented for Virtual Machine Power Management");
 	return -ENOTSUP;
 }
 
@@ -134,6 +134,6 @@ struct rte_power_core_capabilities;
 int power_kvm_vm_get_capabilities(__rte_unused unsigned int lcore_id,
 		__rte_unused struct rte_power_core_capabilities *caps)
 {
-	RTE_LOG(ERR, POWER, "rte_power_get_capabilities is not implemented for Virtual Machine Power Management\n");
+	POWER_LOG(ERR, "rte_power_get_capabilities is not implemented for Virtual Machine Power Management");
 	return -ENOTSUP;
 }

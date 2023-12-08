@@ -471,9 +471,9 @@ rte_acl_gen(struct rte_acl_ctx *ctx, struct rte_acl_trie *trie,
 		XMM_SIZE;
 
 	if (total_size > max_size) {
-		RTE_LOG(DEBUG, ACL,
+		ACL_LOG(DEBUG,
 			"Gen phase for ACL ctx \"%s\" exceeds max_size limit, "
-			"bytes required: %zu, allowed: %zu\n",
+			"bytes required: %zu, allowed: %zu",
 			ctx->name, total_size, max_size);
 		return -ERANGE;
 	}
@@ -481,8 +481,8 @@ rte_acl_gen(struct rte_acl_ctx *ctx, struct rte_acl_trie *trie,
 	mem = rte_zmalloc_socket(ctx->name, total_size, RTE_CACHE_LINE_SIZE,
 			ctx->socket_id);
 	if (mem == NULL) {
-		RTE_LOG(ERR, ACL,
-			"allocation of %zu bytes on socket %d for %s failed\n",
+		ACL_LOG(ERR,
+			"allocation of %zu bytes on socket %d for %s failed",
 			total_size, ctx->socket_id, ctx->name);
 		return -ENOMEM;
 	}

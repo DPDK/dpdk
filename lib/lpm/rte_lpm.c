@@ -192,7 +192,7 @@ rte_lpm_create(const char *name, int socket_id,
 	/* allocate tailq entry */
 	te = rte_zmalloc("LPM_TAILQ_ENTRY", sizeof(*te), 0);
 	if (te == NULL) {
-		RTE_LOG(ERR, LPM, "Failed to allocate tailq entry\n");
+		LPM_LOG(ERR, "Failed to allocate tailq entry");
 		rte_errno = ENOMEM;
 		goto exit;
 	}
@@ -201,7 +201,7 @@ rte_lpm_create(const char *name, int socket_id,
 	i_lpm = rte_zmalloc_socket(mem_name, mem_size,
 			RTE_CACHE_LINE_SIZE, socket_id);
 	if (i_lpm == NULL) {
-		RTE_LOG(ERR, LPM, "LPM memory allocation failed\n");
+		LPM_LOG(ERR, "LPM memory allocation failed");
 		rte_free(te);
 		rte_errno = ENOMEM;
 		goto exit;
@@ -211,7 +211,7 @@ rte_lpm_create(const char *name, int socket_id,
 			(size_t)rules_size, RTE_CACHE_LINE_SIZE, socket_id);
 
 	if (i_lpm->rules_tbl == NULL) {
-		RTE_LOG(ERR, LPM, "LPM rules_tbl memory allocation failed\n");
+		LPM_LOG(ERR, "LPM rules_tbl memory allocation failed");
 		rte_free(i_lpm);
 		i_lpm = NULL;
 		rte_free(te);
@@ -223,7 +223,7 @@ rte_lpm_create(const char *name, int socket_id,
 			(size_t)tbl8s_size, RTE_CACHE_LINE_SIZE, socket_id);
 
 	if (i_lpm->lpm.tbl8 == NULL) {
-		RTE_LOG(ERR, LPM, "LPM tbl8 memory allocation failed\n");
+		LPM_LOG(ERR, "LPM tbl8 memory allocation failed");
 		rte_free(i_lpm->rules_tbl);
 		rte_free(i_lpm);
 		i_lpm = NULL;
@@ -338,7 +338,7 @@ rte_lpm_rcu_qsbr_add(struct rte_lpm *lpm, struct rte_lpm_rcu_config *cfg)
 		params.v = cfg->v;
 		i_lpm->dq = rte_rcu_qsbr_dq_create(&params);
 		if (i_lpm->dq == NULL) {
-			RTE_LOG(ERR, LPM, "LPM defer queue creation failed\n");
+			LPM_LOG(ERR, "LPM defer queue creation failed");
 			return 1;
 		}
 	} else {
@@ -565,7 +565,7 @@ tbl8_free(struct __rte_lpm *i_lpm, uint32_t tbl8_group_start)
 		status = rte_rcu_qsbr_dq_enqueue(i_lpm->dq,
 				(void *)&tbl8_group_start);
 		if (status == 1) {
-			RTE_LOG(ERR, LPM, "Failed to push QSBR FIFO\n");
+			LPM_LOG(ERR, "Failed to push QSBR FIFO");
 			return -rte_errno;
 		}
 	}

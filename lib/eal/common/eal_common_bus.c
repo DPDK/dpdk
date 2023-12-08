@@ -35,14 +35,14 @@ rte_bus_register(struct rte_bus *bus)
 	RTE_VERIFY(!bus->plug || bus->unplug);
 
 	TAILQ_INSERT_TAIL(&rte_bus_list, bus, next);
-	RTE_LOG(DEBUG, EAL, "Registered [%s] bus.\n", rte_bus_name(bus));
+	EAL_LOG(DEBUG, "Registered [%s] bus.", rte_bus_name(bus));
 }
 
 void
 rte_bus_unregister(struct rte_bus *bus)
 {
 	TAILQ_REMOVE(&rte_bus_list, bus, next);
-	RTE_LOG(DEBUG, EAL, "Unregistered [%s] bus.\n", rte_bus_name(bus));
+	EAL_LOG(DEBUG, "Unregistered [%s] bus.", rte_bus_name(bus));
 }
 
 /* Scan all the buses for registered devices */
@@ -55,7 +55,7 @@ rte_bus_scan(void)
 	TAILQ_FOREACH(bus, &rte_bus_list, next) {
 		ret = bus->scan();
 		if (ret)
-			RTE_LOG(ERR, EAL, "Scan for (%s) bus failed.\n",
+			EAL_LOG(ERR, "Scan for (%s) bus failed.",
 				rte_bus_name(bus));
 	}
 
@@ -77,14 +77,14 @@ rte_bus_probe(void)
 
 		ret = bus->probe();
 		if (ret)
-			RTE_LOG(ERR, EAL, "Bus (%s) probe failed.\n",
+			EAL_LOG(ERR, "Bus (%s) probe failed.",
 				rte_bus_name(bus));
 	}
 
 	if (vbus) {
 		ret = vbus->probe();
 		if (ret)
-			RTE_LOG(ERR, EAL, "Bus (%s) probe failed.\n",
+			EAL_LOG(ERR, "Bus (%s) probe failed.",
 				rte_bus_name(vbus));
 	}
 
@@ -133,7 +133,7 @@ rte_bus_dump(FILE *f)
 	TAILQ_FOREACH(bus, &rte_bus_list, next) {
 		ret = bus_dump_one(f, bus);
 		if (ret) {
-			RTE_LOG(ERR, EAL, "Unable to write to stream (%d)\n",
+			EAL_LOG(ERR, "Unable to write to stream (%d)",
 				ret);
 			break;
 		}
@@ -235,15 +235,15 @@ rte_bus_get_iommu_class(void)
 			continue;
 
 		bus_iova_mode = bus->get_iommu_class();
-		RTE_LOG(DEBUG, EAL, "Bus %s wants IOVA as '%s'\n",
+		EAL_LOG(DEBUG, "Bus %s wants IOVA as '%s'",
 			rte_bus_name(bus),
 			bus_iova_mode == RTE_IOVA_DC ? "DC" :
 			(bus_iova_mode == RTE_IOVA_PA ? "PA" : "VA"));
 		if (bus_iova_mode == RTE_IOVA_PA) {
 			buses_want_pa = true;
 			if (!RTE_IOVA_IN_MBUF)
-				RTE_LOG(WARNING, EAL,
-					"Bus %s wants IOVA as PA not compatible with 'enable_iova_as_pa=false' build option.\n",
+				EAL_LOG(WARNING,
+					"Bus %s wants IOVA as PA not compatible with 'enable_iova_as_pa=false' build option.",
 					rte_bus_name(bus));
 		} else if (bus_iova_mode == RTE_IOVA_VA)
 			buses_want_va = true;
@@ -255,8 +255,8 @@ rte_bus_get_iommu_class(void)
 	} else {
 		mode = RTE_IOVA_DC;
 		if (buses_want_va) {
-			RTE_LOG(WARNING, EAL, "Some buses want 'VA' but forcing 'DC' because other buses want 'PA'.\n");
-			RTE_LOG(WARNING, EAL, "Depending on the final decision by the EAL, not all buses may be able to initialize.\n");
+			EAL_LOG(WARNING, "Some buses want 'VA' but forcing 'DC' because other buses want 'PA'.");
+			EAL_LOG(WARNING, "Depending on the final decision by the EAL, not all buses may be able to initialize.");
 		}
 	}
 

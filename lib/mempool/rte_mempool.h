@@ -182,6 +182,8 @@ struct rte_mempool_objtlr {
  */
 extern int rte_mempool_logtype;
 #define RTE_LOGTYPE_MEMPOOL	rte_mempool_logtype
+#define RTE_MEMPOOL_LOG(level, fmt, ...) \
+	RTE_LOG(level, MEMPOOL, fmt "\n", ## __VA_ARGS__)
 
 /**
  * A list of memory where objects are stored
@@ -847,7 +849,7 @@ rte_mempool_ops_enqueue_bulk(struct rte_mempool *mp, void * const *obj_table,
 	ret = ops->enqueue(mp, obj_table, n);
 #ifdef RTE_LIBRTE_MEMPOOL_DEBUG
 	if (unlikely(ret < 0))
-		RTE_LOG(CRIT, MEMPOOL, "cannot enqueue %u objects to mempool %s\n",
+		RTE_MEMPOOL_LOG(CRIT, "cannot enqueue %u objects to mempool %s",
 			n, mp->name);
 #endif
 	return ret;

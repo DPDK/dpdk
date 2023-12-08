@@ -30,7 +30,7 @@ eal_get_ncpus(void)
 
 	if (ncpu < 0) {
 		sysctl(mib, 2, &ncpu, &len, NULL, 0);
-		RTE_LOG(INFO, EAL, "Sysctl reports %d cpus\n", ncpu);
+		EAL_LOG(INFO, "Sysctl reports %d cpus", ncpu);
 	}
 	return ncpu;
 }

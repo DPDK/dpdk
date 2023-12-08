@@ -28,6 +28,8 @@
 /* needs to be before rte_cuckoo_hash.h */
 RTE_LOG_REGISTER_DEFAULT(hash_logtype, INFO);
 #define RTE_LOGTYPE_HASH hash_logtype
+#define HASH_LOG(level, fmt, ...) \
+	RTE_LOG(level, HASH, fmt "\n", ## __VA_ARGS__)
 
 #include "rte_cuckoo_hash.h"
 
@@ -164,7 +166,7 @@ rte_hash_create(const struct rte_hash_parameters *params)
 	hash_list = RTE_TAILQ_CAST(rte_hash_tailq.head, rte_hash_list);
 
 	if (params == NULL) {
-		RTE_LOG(ERR, HASH, "rte_hash_create has no parameters\n");
+		HASH_LOG(ERR, "%s has no parameters", __func__);
 		return NULL;
 	}
 
@@ -173,13 +175,13 @@ rte_hash_create(const struct rte_hash_parameters *params)
 			(params->entries < RTE_HASH_BUCKET_ENTRIES) ||
 			(params->key_len == 0)) {
 		rte_errno = EINVAL;
-		RTE_LOG(ERR, HASH, "rte_hash_create has invalid parameters\n");
+		HASH_LOG(ERR, "%s has invalid parameters", __func__);
 		return NULL;
 	}
 
 	if (params->extra_flag & ~RTE_HASH_EXTRA_FLAGS_MASK) {
 		rte_errno = EINVAL;
-		RTE_LOG(ERR, HASH, "rte_hash_create: unsupported extra flags\n");
+		HASH_LOG(ERR, "%s: unsupported extra flags", __func__);
 		return NULL;
 	}
 
@@ -187,8 +189,8 @@ rte_hash_create(const struct rte_hash_parameters *params)
 	if ((params->extra_flag & RTE_HASH_EXTRA_FLAGS_RW_CONCURRENCY) &&
 	    (params->extra_flag & RTE_HASH_EXTRA_FLAGS_RW_CONCURRENCY_LF)) {
 		rte_errno = EINVAL;
-		RTE_LOG(ERR, HASH, "rte_hash_create: choose rw concurrency or "
-			"rw concurrency lock free\n");
+		HASH_LOG(ERR, "%s: choose rw concurrency or rw concurrency lock free",
+			__func__);
 		return NULL;
 	}
 
@@ -238,7 +240,7 @@ rte_hash_create(const struct rte_hash_parameters *params)
 	r = rte_ring_create_elem(ring_name, sizeof(uint32_t),
 			rte_align32pow2(num_key_slots), params->socket_id, 0);
 	if (r == NULL) {
-		RTE_LOG(ERR, HASH, "memory allocation failed\n");
+		HASH_LOG(ERR, "memory allocation failed");
 		goto err;
 	}
 
@@ -254,8 +256,8 @@ rte_hash_create(const struct rte_hash_parameters *params)
 				params->socket_id, 0);
 
 		if (r_ext == NULL) {
-			RTE_LOG(ERR, HASH, "ext buckets memory allocation "
-								"failed\n");
+			HASH_LOG(ERR, "ext buckets memory allocation "
+								"failed");
 			goto err;
 		}
 	}
@@ -280,7 +282,7 @@ rte_hash_create(const struct rte_hash_parameters *params)
 
 	te = rte_zmalloc("HASH_TAILQ_ENTRY", sizeof(*te), 0);
 	if (te == NULL) {
-		RTE_LOG(ERR, HASH, "tailq entry allocation failed\n");
+		HASH_LOG(ERR, "tailq entry allocation failed");
 		goto err_unlock;
 	}
 
@@ -288,7 +290,7 @@ rte_hash_create(const struct rte_hash_parameters *params)
 					RTE_CACHE_LINE_SIZE, params->socket_id);
 
 	if (h == NULL) {
-		RTE_LOG(ERR, HASH, "memory allocation failed\n");
+		HASH_LOG(ERR, "memory allocation failed");
 		goto err_unlock;
 	}
 
@@ -297,7 +299,7 @@ rte_hash_create(const struct rte_hash_parameters *params)
 				RTE_CACHE_LINE_SIZE, params->socket_id);
 
 	if (buckets == NULL) {
-		RTE_LOG(ERR, HASH, "buckets memory allocation failed\n");
+		HASH_LOG(ERR, "buckets memory allocation failed");
 		goto err_unlock;
 	}
 
@@ -307,8 +309,8 @@ rte_hash_create(const struct rte_hash_parameters *params)
 				num_buckets * sizeof(struct rte_hash_bucket),
 				RTE_CACHE_LINE_SIZE, params->socket_id);
 		if (buckets_ext == NULL) {
-			RTE_LOG(ERR, HASH, "ext buckets memory allocation "
-							"failed\n");
+			HASH_LOG(ERR, "ext buckets memory allocation "
+							"failed");
 			goto err_unlock;
 		}
 		/* Populate ext bkt ring. We reserve 0 similar to the
@@ -323,8 +325,8 @@ rte_hash_create(const struct rte_hash_parameters *params)
 			ext_bkt_to_free = rte_zmalloc(NULL, sizeof(uint32_t) *
 								num_key_slots, 0);
 			if (ext_bkt_to_free == NULL) {
-				RTE_LOG(ERR, HASH, "ext bkt to free memory allocation "
-								"failed\n");
+				HASH_LOG(ERR, "ext bkt to free memory allocation "
+								"failed");
 				goto err_unlock;
 			}
 		}
@@ -339,7 +341,7 @@ rte_hash_create(const struct rte_hash_parameters *params)
 			RTE_CACHE_LINE_SIZE, params->socket_id);
 
 	if (k == NULL) {
-		RTE_LOG(ERR, HASH, "memory allocation failed\n");
+		HASH_LOG(ERR, "memory allocation failed");
 		goto err_unlock;
 	}
 
@@ -347,7 +349,7 @@ rte_hash_create(const struct rte_hash_parameters *params)
 			RTE_CACHE_LINE_SIZE, params->socket_id);
 
 	if (tbl_chng_cnt == NULL) {
-		RTE_LOG(ERR, HASH, "memory allocation failed\n");
+		HASH_LOG(ERR, "memory allocation failed");
 		goto err_unlock;
 	}
 
@@ -395,7 +397,7 @@ rte_hash_create(const struct rte_hash_parameters *params)
 				sizeof(struct lcore_cache) * RTE_MAX_LCORE,
 				RTE_CACHE_LINE_SIZE, params->socket_id);
 		if (local_free_slots == NULL) {
-			RTE_LOG(ERR, HASH, "local free slots memory allocation failed\n");
+			HASH_LOG(ERR, "local free slots memory allocation failed");
 			goto err_unlock;
 		}
 	}
@@ -637,7 +639,7 @@ rte_hash_reset(struct rte_hash *h)
 		/* Reclaim all the resources */
 		rte_rcu_qsbr_dq_reclaim(h->dq, ~0, NULL, &pending, NULL);
 		if (pending != 0)
-			RTE_LOG(ERR, HASH, "RCU reclaim all resources failed\n");
+			HASH_LOG(ERR, "RCU reclaim all resources failed");
 	}
 
 	memset(h->buckets, 0, h->num_buckets * sizeof(struct rte_hash_bucket));
@@ -1511,8 +1513,8 @@ __hash_rcu_qsbr_free_resource(void *p, void *e, unsigned int n)
 	/* Return key indexes to free slot ring */
 	ret = free_slot(h, rcu_dq_entry.key_idx);
 	if (ret < 0) {
-		RTE_LOG(ERR, HASH,
-			"%s: could not enqueue free slots in global ring\n",
+		HASH_LOG(ERR,
+			"%s: could not enqueue free slots in global ring",
 				__func__);
 	}
 }
@@ -1540,7 +1542,7 @@ rte_hash_rcu_qsbr_add(struct rte_hash *h, struct rte_hash_rcu_config *cfg)
 
 	hash_rcu_cfg = rte_zmalloc(NULL, sizeof(struct rte_hash_rcu_config), 0);
 	if (hash_rcu_cfg == NULL) {
-		RTE_LOG(ERR, HASH, "memory allocation failed\n");
+		HASH_LOG(ERR, "memory allocation failed");
 		return 1;
 	}
 
@@ -1564,7 +1566,7 @@ rte_hash_rcu_qsbr_add(struct rte_hash *h, struct rte_hash_rcu_config *cfg)
 		h->dq = rte_rcu_qsbr_dq_create(&params);
 		if (h->dq == NULL) {
 			rte_free(hash_rcu_cfg);
-			RTE_LOG(ERR, HASH, "HASH defer queue creation failed\n");
+			HASH_LOG(ERR, "HASH defer queue creation failed");
 			return 1;
 		}
 	} else {
@@ -1593,8 +1595,8 @@ remove_entry(const struct rte_hash *h, struct rte_hash_bucket *bkt,
 	int ret = free_slot(h, bkt->key_idx[i]);
 
 	if (ret < 0) {
-		RTE_LOG(ERR, HASH,
-			"%s: could not enqueue free slots in global ring\n",
+		HASH_LOG(ERR,
+			"%s: could not enqueue free slots in global ring",
 				__func__);
 	}
 }
@@ -1783,7 +1785,7 @@ return_key:
 		} else if (h->dq)
 			/* Push into QSBR FIFO if using RTE_HASH_QSBR_MODE_DQ */
 			if (rte_rcu_qsbr_dq_enqueue(h->dq, &rcu_dq_entry) != 0)
-				RTE_LOG(ERR, HASH, "Failed to push QSBR FIFO\n");
+				HASH_LOG(ERR, "Failed to push QSBR FIFO");
 	}
 	__hash_rw_writer_unlock(h);
 	return ret;

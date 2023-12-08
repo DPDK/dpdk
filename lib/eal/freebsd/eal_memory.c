@@ -84,7 +84,7 @@ rte_eal_hugepage_init(void)
 		addr = mmap(NULL, mem_sz, PROT_READ | PROT_WRITE,
 				MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 		if (addr == MAP_FAILED) {
-			RTE_LOG(ERR, EAL, "%s: mmap() failed: %s\n", __func__,
+			EAL_LOG(ERR, "%s: mmap() failed: %s", __func__,
 					strerror(errno));
 			return -1;
 		}
@@ -132,8 +132,8 @@ rte_eal_hugepage_init(void)
 			error = sysctlbyname(physaddr_str, &physaddr,
 					&sysctl_size, NULL, 0);
 			if (error < 0) {
-				RTE_LOG(ERR, EAL, "Failed to get physical addr for buffer %u "
-						"from %s\n", j, hpi->hugedir);
+				EAL_LOG(ERR, "Failed to get physical addr for buffer %u "
+						"from %s", j, hpi->hugedir);
 				return -1;
 			}
 
@@ -172,8 +172,8 @@ rte_eal_hugepage_init(void)
 				break;
 			}
 			if (msl_idx == RTE_MAX_MEMSEG_LISTS) {
-				RTE_LOG(ERR, EAL, "Could not find space for memseg. Please increase RTE_MAX_MEMSEG_PER_LIST "
-					"RTE_MAX_MEMSEG_PER_TYPE and/or RTE_MAX_MEM_MB_PER_TYPE in configuration.\n");
+				EAL_LOG(ERR, "Could not find space for memseg. Please increase RTE_MAX_MEMSEG_PER_LIST "
+					"RTE_MAX_MEMSEG_PER_TYPE and/or RTE_MAX_MEM_MB_PER_TYPE in configuration.");
 				return -1;
 			}
 			arr = &msl->memseg_arr;
@@ -190,7 +190,7 @@ rte_eal_hugepage_init(void)
 					hpi->lock_descriptor,
 					j * EAL_PAGE_SIZE);
 			if (addr == MAP_FAILED) {
-				RTE_LOG(ERR, EAL, "Failed to mmap buffer %u from %s\n",
+				EAL_LOG(ERR, "Failed to mmap buffer %u from %s",
 						j, hpi->hugedir);
 				return -1;
 			}
@@ -205,8 +205,8 @@ rte_eal_hugepage_init(void)
 
 			rte_fbarray_set_used(arr, ms_idx);
 
-			RTE_LOG(INFO, EAL, "Mapped memory segment %u @ %p: physaddr:0x%"
-					PRIx64", len %zu\n",
+			EAL_LOG(INFO, "Mapped memory segment %u @ %p: physaddr:0x%"
+					PRIx64", len %zu",
 					seg_idx++, addr, physaddr, page_sz);
 
 			total_mem += seg->len;
@@ -215,9 +215,9 @@ rte_eal_hugepage_init(void)
 			break;
 	}
 	if (total_mem < internal_conf->memory) {
-		RTE_LOG(ERR, EAL, "Couldn't reserve requested memory, "
+		EAL_LOG(ERR, "Couldn't reserve requested memory, "
 				"requested: %" PRIu64 "M "
-				"available: %" PRIu64 "M\n",
+				"available: %" PRIu64 "M",
 				internal_conf->memory >> 20, total_mem >> 20);
 		return -1;
 	}
@@ -268,7 +268,7 @@ rte_eal_hugepage_attach(void)
 		/* Obtain a file descriptor for contiguous memory */
 		fd_hugepage = open(cur_hpi->hugedir, O_RDWR);
 		if (fd_hugepage < 0) {
-			RTE_LOG(ERR, EAL, "Could not open %s\n",
+			EAL_LOG(ERR, "Could not open %s",
 					cur_hpi->hugedir);
 			goto error;
 		}
@@ -277,7 +277,7 @@ rte_eal_hugepage_attach(void)
 
 		/* Map the contiguous memory into each memory segment */
 		if (rte_memseg_walk(attach_segment, &wa) < 0) {
-			RTE_LOG(ERR, EAL, "Failed to mmap buffer %u from %s\n",
+			EAL_LOG(ERR, "Failed to mmap buffer %u from %s",
 				wa.seg_idx, cur_hpi->hugedir);
 			goto error;
 		}
@@ -402,8 +402,8 @@ memseg_primary_init(void)
 			unsigned int n_segs;
 
 			if (msl_idx >= RTE_MAX_MEMSEG_LISTS) {
-				RTE_LOG(ERR, EAL,
-					"No more space in memseg lists, please increase RTE_MAX_MEMSEG_LISTS\n");
+				EAL_LOG(ERR,
+					"No more space in memseg lists, please increase RTE_MAX_MEMSEG_LISTS");
 				return -1;
 			}
 
@@ -424,7 +424,7 @@ memseg_primary_init(void)
 			type_msl_idx++;
 
 			if (memseg_list_alloc(msl)) {
-				RTE_LOG(ERR, EAL, "Cannot allocate VA space for memseg list\n");
+				EAL_LOG(ERR, "Cannot allocate VA space for memseg list");
 				return -1;
 			}
 		}
@@ -449,13 +449,13 @@ memseg_secondary_init(void)
 			continue;
 
 		if (rte_fbarray_attach(&msl->memseg_arr)) {
-			RTE_LOG(ERR, EAL, "Cannot attach to primary process memseg lists\n");
+			EAL_LOG(ERR, "Cannot attach to primary process memseg lists");
 			return -1;
 		}
 
 		/* preallocate VA space */
 		if (memseg_list_alloc(msl)) {
-			RTE_LOG(ERR, EAL, "Cannot preallocate VA space for hugepage memory\n");
+			EAL_LOG(ERR, "Cannot preallocate VA space for hugepage memory");
 			return -1;
 		}
 	}

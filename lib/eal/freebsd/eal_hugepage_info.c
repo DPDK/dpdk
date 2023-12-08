@@ -72,7 +72,7 @@ eal_hugepage_info_init(void)
 			&sysctl_size, NULL, 0);
 
 	if (error != 0) {
-		RTE_LOG(ERR, EAL, "could not read sysctl hw.contigmem.num_buffers\n");
+		EAL_LOG(ERR, "could not read sysctl hw.contigmem.num_buffers");
 		return -1;
 	}
 
@@ -81,28 +81,28 @@ eal_hugepage_info_init(void)
 			&sysctl_size, NULL, 0);
 
 	if (error != 0) {
-		RTE_LOG(ERR, EAL, "could not read sysctl hw.contigmem.buffer_size\n");
+		EAL_LOG(ERR, "could not read sysctl hw.contigmem.buffer_size");
 		return -1;
 	}
 
 	fd = open(CONTIGMEM_DEV, O_RDWR);
 	if (fd < 0) {
-		RTE_LOG(ERR, EAL, "could not open "CONTIGMEM_DEV"\n");
+		EAL_LOG(ERR, "could not open "CONTIGMEM_DEV);
 		return -1;
 	}
 	if (flock(fd, LOCK_EX | LOCK_NB) < 0) {
-		RTE_LOG(ERR, EAL, "could not lock memory. Is another DPDK process running?\n");
+		EAL_LOG(ERR, "could not lock memory. Is another DPDK process running?");
 		return -1;
 	}
 
 	if (buffer_size >= 1<<30)
-		RTE_LOG(INFO, EAL, "Contigmem driver has %d buffers, each of size %dGB\n",
+		EAL_LOG(INFO, "Contigmem driver has %d buffers, each of size %dGB",
 				num_buffers, (int)(buffer_size>>30));
 	else if (buffer_size >= 1<<20)
-		RTE_LOG(INFO, EAL, "Contigmem driver has %d buffers, each of size %dMB\n",
+		EAL_LOG(INFO, "Contigmem driver has %d buffers, each of size %dMB",
 				num_buffers, (int)(buffer_size>>20));
 	else
-		RTE_LOG(INFO, EAL, "Contigmem driver has %d buffers, each of size %dKB\n",
+		EAL_LOG(INFO, "Contigmem driver has %d buffers, each of size %dKB",
 				num_buffers, (int)(buffer_size>>10));
 
 	strlcpy(hpi->hugedir, CONTIGMEM_DEV, sizeof(hpi->hugedir));
@@ -117,7 +117,7 @@ eal_hugepage_info_init(void)
 	tmp_hpi = create_shared_memory(eal_hugepage_info_path(),
 			sizeof(internal_conf->hugepage_info));
 	if (tmp_hpi == NULL ) {
-		RTE_LOG(ERR, EAL, "Failed to create shared memory!\n");
+		EAL_LOG(ERR, "Failed to create shared memory!");
 		return -1;
 	}
 
@@ -132,7 +132,7 @@ eal_hugepage_info_init(void)
 	}
 
 	if (munmap(tmp_hpi, sizeof(internal_conf->hugepage_info)) < 0) {
-		RTE_LOG(ERR, EAL, "Failed to unmap shared memory!\n");
+		EAL_LOG(ERR, "Failed to unmap shared memory!");
 		return -1;
 	}
 
@@ -154,14 +154,14 @@ eal_hugepage_info_read(void)
 	tmp_hpi = open_shared_memory(eal_hugepage_info_path(),
 				  sizeof(internal_conf->hugepage_info));
 	if (tmp_hpi == NULL) {
-		RTE_LOG(ERR, EAL, "Failed to open shared memory!\n");
+		EAL_LOG(ERR, "Failed to open shared memory!");
 		return -1;
 	}
 
 	memcpy(hpi, tmp_hpi, sizeof(internal_conf->hugepage_info));
 
 	if (munmap(tmp_hpi, sizeof(internal_conf->hugepage_info)) < 0) {
-		RTE_LOG(ERR, EAL, "Failed to unmap shared memory!\n");
+		EAL_LOG(ERR, "Failed to unmap shared memory!");
 		return -1;
 	}
 	return 0;

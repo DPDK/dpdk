@@ -36,6 +36,7 @@ extern "C" {
 #include <rte_ring.h>
 
 extern int rte_rcu_log_type;
+#define RTE_LOGTYPE_RCU rte_rcu_log_type
 
 #if RTE_LOG_DP_LEVEL >= RTE_LOG_DEBUG
 #define __RTE_RCU_DP_LOG(level, fmt, args...) \

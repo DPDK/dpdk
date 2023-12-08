@@ -64,7 +64,7 @@ static void sigbus_handler(int signum, siginfo_t *info,
 {
 	int ret;
 
-	RTE_LOG(DEBUG, EAL, "Thread catch SIGBUS, fault address:%p\n",
+	EAL_LOG(DEBUG, "Thread catch SIGBUS, fault address:%p",
 		info->si_addr);
 
 	rte_spinlock_lock(&failure_handle_lock);
@@ -88,7 +88,7 @@ static void sigbus_handler(int signum, siginfo_t *info,
 		}
 	}
 
-	RTE_LOG(DEBUG, EAL, "Success to handle SIGBUS for hot-unplug!\n");
+	EAL_LOG(DEBUG, "Success to handle SIGBUS for hot-unplug!");
 }
 
 static int cmp_dev_name(const struct rte_device *dev,
@@ -108,7 +108,7 @@ dev_uev_socket_fd_create(void)
 	fd = socket(PF_NETLINK, SOCK_RAW | SOCK_CLOEXEC | SOCK_NONBLOCK,
 		    NETLINK_KOBJECT_UEVENT);
 	if (fd < 0) {
-		RTE_LOG(ERR, EAL, "create uevent fd failed.\n");
+		EAL_LOG(ERR, "create uevent fd failed.");
 		return -1;
 	}
 
@@ -119,7 +119,7 @@ dev_uev_socket_fd_create(void)
 
 	ret = bind(fd, (struct sockaddr *) &addr, sizeof(addr));
 	if (ret < 0) {
-		RTE_LOG(ERR, EAL, "Failed to bind uevent socket.\n");
+		EAL_LOG(ERR, "Failed to bind uevent socket.");
 		goto err;
 	}
 
@@ -245,18 +245,18 @@ dev_uev_handler(__rte_unused void *param)
 		return;
 	else if (ret <= 0) {
 		/* connection is closed or broken, can not up again. */
-		RTE_LOG(ERR, EAL, "uevent socket connection is broken.\n");
+		EAL_LOG(ERR, "uevent socket connection is broken.");
 		rte_eal_alarm_set(1, dev_delayed_unregister, NULL);
 		return;
 	}
 
 	ret = dev_uev_parse(buf, &uevent, EAL_UEV_MSG_LEN);
 	if (ret < 0) {
-		RTE_LOG(DEBUG, EAL, "Ignoring uevent '%s'\n", buf);
+		EAL_LOG(DEBUG, "Ignoring uevent '%s'", buf);
 		return;
 	}
 
-	RTE_LOG(DEBUG, EAL, "receive uevent(name:%s, type:%d, subsystem:%d)\n",
+	EAL_LOG(DEBUG, "receive uevent(name:%s, type:%d, subsystem:%d)",
 		uevent.devname, uevent.type, uevent.subsystem);
 
 	switch (uevent.subsystem) {
@@ -273,7 +273,7 @@ dev_uev_handler(__rte_unused void *param)
 			rte_spinlock_lock(&failure_handle_lock);
 			bus = rte_bus_find_by_name(busname);
 			if (bus == NULL) {
-				RTE_LOG(ERR, EAL, "Cannot find bus (%s)\n",
+				EAL_LOG(ERR, "Cannot find bus (%s)",
 					busname);
 				goto failure_handle_err;
 			}
@@ -281,15 +281,15 @@ dev_uev_handler(__rte_unused void *param)
 			dev = bus->find_device(NULL, cmp_dev_name,
 					       uevent.devname);
 			if (dev == NULL) {
-				RTE_LOG(ERR, EAL, "Cannot find device (%s) on "
-					"bus (%s)\n", uevent.devname, busname);
+				EAL_LOG(ERR, "Cannot find device (%s) on "
+					"bus (%s)", uevent.devname, busname);
 				goto failure_handle_err;
 			}
 
 			ret = bus->hot_unplug_handler(dev);
 			if (ret) {
-				RTE_LOG(ERR, EAL, "Can not handle hot-unplug "
-					"for device (%s)\n", dev->name);
+				EAL_LOG(ERR, "Can not handle hot-unplug "
+					"for device (%s)", dev->name);
 			}
 			rte_spinlock_unlock(&failure_handle_lock);
 		}
@@ -318,7 +318,7 @@ rte_dev_event_monitor_start(void)
 
 	intr_handle = rte_intr_instance_alloc(RTE_INTR_INSTANCE_F_PRIVATE);
 	if (intr_handle == NULL) {
-		RTE_LOG(ERR, EAL, "Fail to allocate intr_handle\n");
+		EAL_LOG(ERR, "Fail to allocate intr_handle");
 		goto exit;
 	}
 
@@ -332,7 +332,7 @@ rte_dev_event_monitor_start(void)
 
 	ret = dev_uev_socket_fd_create();
 	if (ret) {
-		RTE_LOG(ERR, EAL, "error create device event fd.\n");
+		EAL_LOG(ERR, "error create device event fd.");
 		goto exit;
 	}
 
@@ -362,7 +362,7 @@ rte_dev_event_monitor_stop(void)
 	rte_rwlock_write_lock(&monitor_lock);
 
 	if (!monitor_refcount) {
-		RTE_LOG(ERR, EAL, "device event monitor already stopped\n");
+		EAL_LOG(ERR, "device event monitor already stopped");
 		goto exit;
 	}
 
@@ -374,7 +374,7 @@ rte_dev_event_monitor_stop(void)
 	ret = rte_intr_callback_unregister(intr_handle, dev_uev_handler,
 					   (void *)-1);
 	if (ret < 0) {
-		RTE_LOG(ERR, EAL, "fail to unregister uevent callback.\n");
+		EAL_LOG(ERR, "fail to unregister uevent callback.");
 		goto exit;
 	}
 
@@ -429,8 +429,8 @@ rte_dev_hotplug_handle_enable(void)
 
 	ret = dev_sigbus_handler_register();
 	if (ret < 0)
-		RTE_LOG(ERR, EAL,
-			"fail to register sigbus handler for devices.\n");
+		EAL_LOG(ERR,
+			"fail to register sigbus handler for devices.");
 
 	hotplug_handle = true;
 
@@ -444,8 +444,8 @@ rte_dev_hotplug_handle_disable(void)
 
 	ret = dev_sigbus_handler_unregister();
 	if (ret < 0)
-		RTE_LOG(ERR, EAL,
-			"fail to unregister sigbus handler for devices.\n");
+		EAL_LOG(ERR,
+			"fail to unregister sigbus handler for devices.");
 
 	hotplug_handle = false;
 

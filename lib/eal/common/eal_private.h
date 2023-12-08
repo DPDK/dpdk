@@ -12,6 +12,7 @@
 
 #include <dev_driver.h>
 #include <rte_lcore.h>
+#include <rte_log.h>
 #include <rte_memory.h>
 
 #include "eal_internal_cfg.h"
@@ -746,5 +747,8 @@ int eal_asprintf(char **buffer, const char *format, ...);
 #define asprintf(buffer, format, ...) \
 		eal_asprintf(buffer, format, ##__VA_ARGS__)
 #endif
+
+#define EAL_LOG(level, fmt, ...) \
+	RTE_LOG(level, EAL, fmt "\n", ## __VA_ARGS__)
 
 #endif /* _EAL_PRIVATE_H_ */

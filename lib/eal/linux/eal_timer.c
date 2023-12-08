@@ -139,20 +139,20 @@ rte_eal_hpet_init(int make_default)
 		eal_get_internal_configuration();
 
 	if (internal_conf->no_hpet) {
-		RTE_LOG(NOTICE, EAL, "HPET is disabled\n");
+		EAL_LOG(NOTICE, "HPET is disabled");
 		return -1;
 	}
 
 	fd = open(DEV_HPET, O_RDONLY);
 	if (fd < 0) {
-		RTE_LOG(ERR, EAL, "ERROR: Cannot open "DEV_HPET": %s!\n",
+		EAL_LOG(ERR, "ERROR: Cannot open "DEV_HPET": %s!",
 			strerror(errno));
 		internal_conf->no_hpet = 1;
 		return -1;
 	}
 	eal_hpet = mmap(NULL, 1024, PROT_READ, MAP_SHARED, fd, 0);
 	if (eal_hpet == MAP_FAILED) {
-		RTE_LOG(ERR, EAL, "ERROR: Cannot mmap "DEV_HPET"!\n");
+		EAL_LOG(ERR, "ERROR: Cannot mmap "DEV_HPET"!");
 		close(fd);
 		internal_conf->no_hpet = 1;
 		return -1;
@@ -166,7 +166,7 @@ rte_eal_hpet_init(int make_default)
 	eal_hpet_resolution_hz = (1000ULL*1000ULL*1000ULL*1000ULL*1000ULL) /
 		(uint64_t)eal_hpet_resolution_fs;
 
-	RTE_LOG(INFO, EAL, "HPET frequency is ~%"PRIu64" kHz\n",
+	EAL_LOG(INFO, "HPET frequency is ~%"PRIu64" kHz",
 			eal_hpet_resolution_hz/1000);
 
 	eal_hpet_msb = (eal_hpet->counter_l >> 30);
@@ -176,7 +176,7 @@ rte_eal_hpet_init(int make_default)
 	ret = rte_thread_create_internal_control(&msb_inc_thread_id, "hpet-msb",
 			hpet_msb_inc, NULL);
 	if (ret != 0) {
-		RTE_LOG(ERR, EAL, "ERROR: Cannot create HPET timer thread!\n");
+		EAL_LOG(ERR, "ERROR: Cannot create HPET timer thread!");
 		internal_conf->no_hpet = 1;
 		return -1;
 	}

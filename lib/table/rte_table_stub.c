@@ -8,6 +8,8 @@
 
 #include "rte_table_stub.h"
 
+#include "table_log.h"
+
 #ifdef RTE_TABLE_STATS_COLLECT
 
 #define RTE_TABLE_LPM_STATS_PKTS_IN_ADD(table, val) \
@@ -38,8 +40,8 @@ rte_table_stub_create(__rte_unused void *params,
 	stub = rte_zmalloc_socket("TABLE", size, RTE_CACHE_LINE_SIZE,
 		socket_id);
 	if (stub == NULL) {
-		RTE_LOG(ERR, TABLE,
-			"%s: Cannot allocate %u bytes for stub table\n",
+		TABLE_LOG(ERR,
+			"%s: Cannot allocate %u bytes for stub table",
 			__func__, size);
 		return NULL;
 	}

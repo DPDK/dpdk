@@ -67,7 +67,7 @@ eal_proc_type_detect(void)
 			ptype = RTE_PROC_SECONDARY;
 	}
 
-	RTE_LOG(INFO, EAL, "Auto-detected process type: %s\n",
+	EAL_LOG(INFO, "Auto-detected process type: %s",
 		ptype == RTE_PROC_PRIMARY ? "PRIMARY" : "SECONDARY");
 
 	return ptype;
@@ -175,16 +175,16 @@ eal_parse_args(int argc, char **argv)
 			exit(EXIT_SUCCESS);
 		default:
 			if (opt < OPT_LONG_MIN_NUM && isprint(opt)) {
-				RTE_LOG(ERR, EAL, "Option %c is not supported "
-					"on Windows\n", opt);
+				EAL_LOG(ERR, "Option %c is not supported "
+					"on Windows", opt);
 			} else if (opt >= OPT_LONG_MIN_NUM &&
 				opt < OPT_LONG_MAX_NUM) {
-				RTE_LOG(ERR, EAL, "Option %s is not supported "
-					"on Windows\n",
+				EAL_LOG(ERR, "Option %s is not supported "
+					"on Windows",
 					eal_long_options[option_index].name);
 			} else {
-				RTE_LOG(ERR, EAL, "Option %d is not supported "
-					"on Windows\n", opt);
+				EAL_LOG(ERR, "Option %d is not supported "
+					"on Windows", opt);
 			}
 			eal_usage(prgname);
 			return -1;
@@ -217,7 +217,7 @@ static void
 rte_eal_init_alert(const char *msg)
 {
 	fprintf(stderr, "EAL: FATAL: %s\n", msg);
-	RTE_LOG(ERR, EAL, "%s\n", msg);
+	EAL_LOG(ERR, "%s", msg);
 }
 
 /* Stubs to enable EAL trace point compilation
@@ -312,8 +312,8 @@ rte_eal_init(int argc, char **argv)
 
 	/* Prevent creation of shared memory files. */
 	if (internal_conf->in_memory == 0) {
-		RTE_LOG(WARNING, EAL, "Multi-process support is requested, "
-			"but not available.\n");
+		EAL_LOG(WARNING, "Multi-process support is requested, "
+			"but not available.");
 		internal_conf->in_memory = 1;
 		internal_conf->no_shconf = 1;
 	}
@@ -356,21 +356,21 @@ rte_eal_init(int argc, char **argv)
 	has_phys_addr = true;
 	if (eal_mem_virt2iova_init() < 0) {
 		/* Non-fatal error if physical addresses are not required. */
-		RTE_LOG(DEBUG, EAL, "Cannot access virt2phys driver, "
-			"PA will not be available\n");
+		EAL_LOG(DEBUG, "Cannot access virt2phys driver, "
+			"PA will not be available");
 		has_phys_addr = false;
 	}
 
 	iova_mode = internal_conf->iova_mode;
 	if (iova_mode == RTE_IOVA_DC) {
-		RTE_LOG(DEBUG, EAL, "Specific IOVA mode is not requested, autodetecting\n");
+		EAL_LOG(DEBUG, "Specific IOVA mode is not requested, autodetecting");
 		if (has_phys_addr) {
-			RTE_LOG(DEBUG, EAL, "Selecting IOVA mode according to bus requests\n");
+			EAL_LOG(DEBUG, "Selecting IOVA mode according to bus requests");
 			iova_mode = rte_bus_get_iommu_class();
 			if (iova_mode == RTE_IOVA_DC) {
 				if (!RTE_IOVA_IN_MBUF) {
 					iova_mode = RTE_IOVA_VA;
-					RTE_LOG(DEBUG, EAL, "IOVA as VA mode is forced by build option.\n");
+					EAL_LOG(DEBUG, "IOVA as VA mode is forced by build option.");
 				} else	{
 					iova_mode = RTE_IOVA_PA;
 				}
@@ -392,7 +392,7 @@ rte_eal_init(int argc, char **argv)
 		return -1;
 	}
 
-	RTE_LOG(DEBUG, EAL, "Selected IOVA mode '%s'\n",
+	EAL_LOG(DEBUG, "Selected IOVA mode '%s'",
 		iova_mode == RTE_IOVA_PA ? "PA" : "VA");
 	rte_eal_get_configuration()->iova_mode = iova_mode;
 
@@ -442,7 +442,7 @@ rte_eal_init(int argc, char **argv)
 		&lcore_config[config->main_lcore].cpuset);
 
 	ret = eal_thread_dump_current_affinity(cpuset, sizeof(cpuset));
-	RTE_LOG(DEBUG, EAL, "Main lcore %u is ready (tid=%zx;cpuset=[%s%s])\n",
+	EAL_LOG(DEBUG, "Main lcore %u is ready (tid=%zx;cpuset=[%s%s])",
 		config->main_lcore, rte_thread_self().opaque_id, cpuset,
 		ret == 0 ? "" : "...");
 
@@ -474,7 +474,7 @@ rte_eal_init(int argc, char **argv)
 		ret = rte_thread_set_affinity_by_id(lcore_config[i].thread_id,
 			&lcore_config[i].cpuset);
 		if (ret != 0)
-			RTE_LOG(DEBUG, EAL, "Cannot set affinity\n");
+			EAL_LOG(DEBUG, "Cannot set affinity");
 	}
 
 	/* Initialize services so drivers can register services during probe. */

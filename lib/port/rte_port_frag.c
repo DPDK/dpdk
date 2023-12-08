@@ -7,6 +7,8 @@
 
 #include "rte_port_frag.h"
 
+#include "port_log.h"
+
 /* Max number of fragments per packet allowed */
 #define	RTE_PORT_FRAG_MAX_FRAGS_PER_PACKET 0x80
 
@@ -62,24 +64,24 @@ rte_port_ring_reader_frag_create(void *params, int socket_id, int is_ipv4)
 
 	/* Check input parameters */
 	if (conf == NULL) {
-		RTE_LOG(ERR, PORT, "%s: Parameter conf is NULL\n", __func__);
+		PORT_LOG(ERR, "%s: Parameter conf is NULL", __func__);
 		return NULL;
 	}
 	if (conf->ring == NULL) {
-		RTE_LOG(ERR, PORT, "%s: Parameter ring is NULL\n", __func__);
+		PORT_LOG(ERR, "%s: Parameter ring is NULL", __func__);
 		return NULL;
 	}
 	if (conf->mtu == 0) {
-		RTE_LOG(ERR, PORT, "%s: Parameter mtu is invalid\n", __func__);
+		PORT_LOG(ERR, "%s: Parameter mtu is invalid", __func__);
 		return NULL;
 	}
 	if (conf->pool_direct == NULL) {
-		RTE_LOG(ERR, PORT, "%s: Parameter pool_direct is NULL\n",
+		PORT_LOG(ERR, "%s: Parameter pool_direct is NULL",
 			__func__);
 		return NULL;
 	}
 	if (conf->pool_indirect == NULL) {
-		RTE_LOG(ERR, PORT, "%s: Parameter pool_indirect is NULL\n",
+		PORT_LOG(ERR, "%s: Parameter pool_indirect is NULL",
 			__func__);
 		return NULL;
 	}
@@ -88,7 +90,7 @@ rte_port_ring_reader_frag_create(void *params, int socket_id, int is_ipv4)
 	port = rte_zmalloc_socket("PORT", sizeof(*port), RTE_CACHE_LINE_SIZE,
 		socket_id);
 	if (port == NULL) {
-		RTE_LOG(ERR, PORT, "%s: port is NULL\n", __func__);
+		PORT_LOG(ERR, "%s: port is NULL", __func__);
 		return NULL;
 	}
 
@@ -232,7 +234,7 @@ static int
 rte_port_ring_reader_frag_free(void *port)
 {
 	if (port == NULL) {
-		RTE_LOG(ERR, PORT, "%s: Parameter port is NULL\n", __func__);
+		PORT_LOG(ERR, "%s: Parameter port is NULL", __func__);
 		return -1;
 	}
 

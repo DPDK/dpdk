@@ -12,6 +12,7 @@
 #include <rte_string_fns.h>
 
 #include "eal_filesystem.h"
+#include "eal_private.h"
 #include "eal_trace.h"
 
 const char *
@@ -348,7 +349,7 @@ trace_mkdir(void)
 		return -rte_errno;
 	}
 
-	RTE_LOG(INFO, EAL, "Trace dir: %s\n", trace->dir);
+	EAL_LOG(INFO, "Trace dir: %s", trace->dir);
 	already_done = true;
 	return 0;
 }

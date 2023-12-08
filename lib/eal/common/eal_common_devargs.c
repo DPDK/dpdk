@@ -39,12 +39,12 @@ devargs_bus_parse_default(struct rte_devargs *devargs,
 	/* Parse devargs name from bus key-value list. */
 	name = rte_kvargs_get(bus_args, "name");
 	if (name == NULL) {
-		RTE_LOG(DEBUG, EAL, "devargs name not found: %s\n",
+		EAL_LOG(DEBUG, "devargs name not found: %s",
 			devargs->data);
 		return 0;
 	}
 	if (rte_strscpy(devargs->name, name, sizeof(devargs->name)) < 0) {
-		RTE_LOG(ERR, EAL, "devargs name too long: %s\n",
+		EAL_LOG(ERR, "devargs name too long: %s",
 			devargs->data);
 		return -E2BIG;
 	}
@@ -79,7 +79,7 @@ rte_devargs_layers_parse(struct rte_devargs *devargs,
 	if (devargs->data != devstr) {
 		devargs->data = strdup(devstr);
 		if (devargs->data == NULL) {
-			RTE_LOG(ERR, EAL, "OOM\n");
+			EAL_LOG(ERR, "OOM");
 			ret = -ENOMEM;
 			goto get_out;
 		}
@@ -133,7 +133,7 @@ rte_devargs_layers_parse(struct rte_devargs *devargs,
 			devargs->bus_str = layers[i].str;
 			devargs->bus = rte_bus_find_by_name(kv->value);
 			if (devargs->bus == NULL) {
-				RTE_LOG(ERR, EAL, "Could not find bus \"%s\"\n",
+				EAL_LOG(ERR, "Could not find bus \"%s\"",
 					kv->value);
 				ret = -EFAULT;
 				goto get_out;
@@ -142,7 +142,7 @@ rte_devargs_layers_parse(struct rte_devargs *devargs,
 			devargs->cls_str = layers[i].str;
 			devargs->cls = rte_class_find_by_name(kv->value);
 			if (devargs->cls == NULL) {
-				RTE_LOG(ERR, EAL, "Could not find class \"%s\"\n",
+				EAL_LOG(ERR, "Could not find class \"%s\"",
 					kv->value);
 				ret = -EFAULT;
 				goto get_out;
@@ -217,7 +217,7 @@ rte_devargs_parse(struct rte_devargs *da, const char *dev)
 		da->name[i] = devname[i];
 		i++;
 		if (i == maxlen) {
-			RTE_LOG(WARNING, EAL, "Parsing \"%s\": device name should be shorter than %zu\n",
+			EAL_LOG(WARNING, "Parsing \"%s\": device name should be shorter than %zu",
 				dev, maxlen);
 			da->name[i - 1] = '\0';
 			return -EINVAL;
@@ -227,7 +227,7 @@ rte_devargs_parse(struct rte_devargs *da, const char *dev)
 	if (bus == NULL) {
 		bus = rte_bus_find_by_device_name(da->name);
 		if (bus == NULL) {
-			RTE_LOG(ERR, EAL, "failed to parse device \"%s\"\n",
+			EAL_LOG(ERR, "failed to parse device \"%s\"",
 				da->name);
 			return -EFAULT;
 		}
@@ -239,7 +239,7 @@ rte_devargs_parse(struct rte_devargs *da, const char *dev)
 	else
 		da->data = strdup("");
 	if (da->data == NULL) {
-		RTE_LOG(ERR, EAL, "not enough memory to parse arguments\n");
+		EAL_LOG(ERR, "not enough memory to parse arguments");
 		return -ENOMEM;
 	}
 	da->drv_str = da->data;
@@ -266,7 +266,7 @@ rte_devargs_parsef(struct rte_devargs *da, const char *format, ...)
 	len += 1;
 	dev = calloc(1, (size_t)len);
 	if (dev == NULL) {
-		RTE_LOG(ERR, EAL, "not enough memory to parse device\n");
+		EAL_LOG(ERR, "not enough memory to parse device");
 		return -ENOMEM;
 	}
 

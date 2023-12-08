@@ -52,7 +52,7 @@ alloc_seg(struct rte_memseg *ms, void *requested_addr, int socket_id,
 		}
 
 		/* Bugcheck, should not happen. */
-		RTE_LOG(DEBUG, EAL, "Attempted to reallocate segment %p "
+		EAL_LOG(DEBUG, "Attempted to reallocate segment %p "
 			"(size %zu) on socket %d", ms->addr,
 			ms->len, ms->socket_id);
 		return -1;
@@ -66,8 +66,8 @@ alloc_seg(struct rte_memseg *ms, void *requested_addr, int socket_id,
 		/* Request a new chunk of memory from OS. */
 		addr = eal_mem_alloc_socket(alloc_sz, socket_id);
 		if (addr == NULL) {
-			RTE_LOG(DEBUG, EAL, "Cannot allocate %zu bytes "
-				"on socket %d\n", alloc_sz, socket_id);
+			EAL_LOG(DEBUG, "Cannot allocate %zu bytes "
+				"on socket %d", alloc_sz, socket_id);
 			return -1;
 		}
 	} else {
@@ -79,15 +79,15 @@ alloc_seg(struct rte_memseg *ms, void *requested_addr, int socket_id,
 		 * error, because it breaks MSL assumptions.
 		 */
 		if ((addr != NULL) && (addr != requested_addr)) {
-			RTE_LOG(CRIT, EAL, "Address %p occupied by an alien "
-				" allocation - MSL is not VA-contiguous!\n",
+			EAL_LOG(CRIT, "Address %p occupied by an alien "
+				" allocation - MSL is not VA-contiguous!",
 				requested_addr);
 			return -1;
 		}
 
 		if (addr == NULL) {
-			RTE_LOG(DEBUG, EAL, "Cannot commit reserved memory %p "
-				"(size %zu) on socket %d\n",
+			EAL_LOG(DEBUG, "Cannot commit reserved memory %p "
+				"(size %zu) on socket %d",
 				requested_addr, alloc_sz, socket_id);
 			return -1;
 		}
@@ -101,8 +101,8 @@ alloc_seg(struct rte_memseg *ms, void *requested_addr, int socket_id,
 
 	iova = rte_mem_virt2iova(addr);
 	if (iova == RTE_BAD_IOVA) {
-		RTE_LOG(DEBUG, EAL,
-			"Cannot get IOVA of allocated segment\n");
+		EAL_LOG(DEBUG,
+			"Cannot get IOVA of allocated segment");
 		goto error;
 	}
 
@@ -115,12 +115,12 @@ alloc_seg(struct rte_memseg *ms, void *requested_addr, int socket_id,
 
 	page = &info.VirtualAttributes;
 	if (!page->Valid || !page->LargePage) {
-		RTE_LOG(DEBUG, EAL, "Got regular page instead of a hugepage\n");
+		EAL_LOG(DEBUG, "Got regular page instead of a hugepage");
 		goto error;
 	}
 	if (page->Node != numa_node) {
-		RTE_LOG(DEBUG, EAL,
-			"NUMA node hint %u (socket %d) not respected, got %u\n",
+		EAL_LOG(DEBUG,
+			"NUMA node hint %u (socket %d) not respected, got %u",
 			numa_node, socket_id, page->Node);
 		goto error;
 	}
@@ -141,8 +141,8 @@ error:
 		/* During decommitment, memory is temporarily returned
 		 * to the system and the address may become unavailable.
 		 */
-		RTE_LOG(CRIT, EAL, "Address %p occupied by an alien "
-			" allocation - MSL is not VA-contiguous!\n", addr);
+		EAL_LOG(CRIT, "Address %p occupied by an alien "
+			" allocation - MSL is not VA-contiguous!", addr);
 	}
 	return -1;
 }
@@ -153,8 +153,8 @@ free_seg(struct rte_memseg *ms)
 	if (eal_mem_decommit(ms->addr, ms->len)) {
 		if (rte_errno == EADDRNOTAVAIL) {
 			/* See alloc_seg() for explanation. */
-			RTE_LOG(CRIT, EAL, "Address %p occupied by an alien "
-				" allocation - MSL is not VA-contiguous!\n",
+			EAL_LOG(CRIT, "Address %p occupied by an alien "
+				" allocation - MSL is not VA-contiguous!",
 				ms->addr);
 		}
 		return -1;
@@ -233,8 +233,8 @@ alloc_seg_walk(const struct rte_memseg_list *msl, void *arg)
 		map_addr = RTE_PTR_ADD(cur_msl->base_va, cur_idx * page_sz);
 
 		if (alloc_seg(cur, map_addr, wa->socket, wa->hi)) {
-			RTE_LOG(DEBUG, EAL, "attempted to allocate %i segments, "
-				"but only %i were allocated\n", need, i);
+			EAL_LOG(DEBUG, "attempted to allocate %i segments, "
+				"but only %i were allocated", need, i);
 
 			/* if exact number wasn't requested, stop */
 			if (!wa->exact)
@@ -249,7 +249,7 @@ alloc_seg_walk(const struct rte_memseg_list *msl, void *arg)
 				rte_fbarray_set_free(arr, j);
 
 				if (free_seg(tmp))
-					RTE_LOG(DEBUG, EAL, "Cannot free page\n");
+					EAL_LOG(DEBUG, "Cannot free page");
 			}
 			/* clear the list */
 			if (wa->ms)
@@ -318,7 +318,7 @@ eal_memalloc_alloc_seg_bulk(struct rte_memseg **ms, int n_segs,
 		eal_get_internal_configuration();
 
 	if (internal_conf->legacy_mem) {
-		RTE_LOG(ERR, EAL, "dynamic allocation not supported in legacy mode\n");
+		EAL_LOG(ERR, "dynamic allocation not supported in legacy mode");
 		return -ENOTSUP;
 	}
 
@@ -330,7 +330,7 @@ eal_memalloc_alloc_seg_bulk(struct rte_memseg **ms, int n_segs,
 		}
 	}
 	if (!hi) {
-		RTE_LOG(ERR, EAL, "cannot find relevant hugepage_info entry\n");
+		EAL_LOG(ERR, "cannot find relevant hugepage_info entry");
 		return -1;
 	}
 
@@ -346,7 +346,7 @@ eal_memalloc_alloc_seg_bulk(struct rte_memseg **ms, int n_segs,
 	/* memalloc is locked, so it's safe to use thread-unsafe version */
 	ret = rte_memseg_list_walk_thread_unsafe(alloc_seg_walk, &wa);
 	if (ret == 0) {
-		RTE_LOG(ERR, EAL, "cannot find suitable memseg_list\n");
+		EAL_LOG(ERR, "cannot find suitable memseg_list");
 		ret = -1;
 	} else if (ret > 0) {
 		ret = (int)wa.segs_allocated;
@@ -383,7 +383,7 @@ eal_memalloc_free_seg_bulk(struct rte_memseg **ms, int n_segs)
 
 		/* if this page is marked as unfreeable, fail */
 		if (cur->flags & RTE_MEMSEG_FLAG_DO_NOT_FREE) {
-			RTE_LOG(DEBUG, EAL, "Page is not allowed to be freed\n");
+			EAL_LOG(DEBUG, "Page is not allowed to be freed");
 			ret = -1;
 			continue;
 		}
@@ -396,7 +396,7 @@ eal_memalloc_free_seg_bulk(struct rte_memseg **ms, int n_segs)
 				break;
 		}
 		if (i == RTE_DIM(internal_conf->hugepage_info)) {
-			RTE_LOG(ERR, EAL, "Can't find relevant hugepage_info entry\n");
+			EAL_LOG(ERR, "Can't find relevant hugepage_info entry");
 			ret = -1;
 			continue;
 		}
@@ -411,7 +411,7 @@ eal_memalloc_free_seg_bulk(struct rte_memseg **ms, int n_segs)
 		if (walk_res == 1)
 			continue;
 		if (walk_res == 0)
-			RTE_LOG(ERR, EAL, "Couldn't find memseg list\n");
+			EAL_LOG(ERR, "Couldn't find memseg list");
 		ret = -1;
 	}
 	return ret;

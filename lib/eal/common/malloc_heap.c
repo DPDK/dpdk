@@ -117,7 +117,7 @@ malloc_add_seg(const struct rte_memseg_list *msl,
 
 	heap_idx = malloc_socket_to_heap_id(msl->socket_id);
 	if (heap_idx < 0) {
-		RTE_LOG(ERR, EAL, "Memseg list has invalid socket id\n");
+		EAL_LOG(ERR, "Memseg list has invalid socket id");
 		return -1;
 	}
 	heap = &mcfg->malloc_heaps[heap_idx];
@@ -135,7 +135,7 @@ malloc_add_seg(const struct rte_memseg_list *msl,
 
 	heap->total_size += len;
 
-	RTE_LOG(DEBUG, EAL, "Added %zuM to heap on socket %i\n", len >> 20,
+	EAL_LOG(DEBUG, "Added %zuM to heap on socket %i", len >> 20,
 			msl->socket_id);
 	return 0;
 }
@@ -308,7 +308,7 @@ alloc_pages_on_heap(struct malloc_heap *heap, uint64_t pg_sz, size_t elt_size,
 	/* first, check if we're allowed to allocate this memory */
 	if (eal_memalloc_mem_alloc_validate(socket,
 			heap->total_size + alloc_sz) < 0) {
-		RTE_LOG(DEBUG, EAL, "User has disallowed allocation\n");
+		EAL_LOG(DEBUG, "User has disallowed allocation");
 		return NULL;
 	}
 
@@ -324,7 +324,7 @@ alloc_pages_on_heap(struct malloc_heap *heap, uint64_t pg_sz, size_t elt_size,
 
 	/* check if we wanted contiguous memory but didn't get it */
 	if (contig && !eal_memalloc_is_contig(msl, map_addr, alloc_sz)) {
-		RTE_LOG(DEBUG, EAL, "%s(): couldn't allocate physically contiguous space\n",
+		EAL_LOG(DEBUG, "%s(): couldn't allocate physically contiguous space",
 				__func__);
 		goto fail;
 	}
@@ -352,8 +352,8 @@ alloc_pages_on_heap(struct malloc_heap *heap, uint64_t pg_sz, size_t elt_size,
 		 * which could solve some situations when IOVA VA is not
 		 * really needed.
 		 */
-		RTE_LOG(ERR, EAL,
-			"%s(): couldn't allocate memory due to IOVA exceeding limits of current DMA mask\n",
+		EAL_LOG(ERR,
+			"%s(): couldn't allocate memory due to IOVA exceeding limits of current DMA mask",
 			__func__);
 
 		/*
@@ -363,8 +363,8 @@ alloc_pages_on_heap(struct malloc_heap *heap, uint64_t pg_sz, size_t elt_size,
 		 */
 		if ((rte_eal_iova_mode() == RTE_IOVA_VA) &&
 		     rte_eal_using_phys_addrs())
-			RTE_LOG(ERR, EAL,
-				"%s(): Please try initializing EAL with --iova-mode=pa parameter\n",
+			EAL_LOG(ERR,
+				"%s(): Please try initializing EAL with --iova-mode=pa parameter",
 				__func__);
 		goto fail;
 	}
@@ -440,7 +440,7 @@ try_expand_heap_primary(struct malloc_heap *heap, uint64_t pg_sz,
 	}
 	heap->total_size += alloc_sz;
 
-	RTE_LOG(DEBUG, EAL, "Heap on socket %d was expanded by %zdMB\n",
+	EAL_LOG(DEBUG, "Heap on socket %d was expanded by %zdMB",
 		socket, alloc_sz >> 20ULL);
 
 	free(ms);
@@ -693,7 +693,7 @@ malloc_heap_alloc_on_heap_id(const char *type, size_t size,
 
 		/* this should have succeeded */
 		if (ret == NULL)
-			RTE_LOG(ERR, EAL, "Error allocating from heap\n");
+			EAL_LOG(ERR, "Error allocating from heap");
 	}
 alloc_unlock:
 	rte_spinlock_unlock(&(heap->lock));
@@ -1040,7 +1040,7 @@ malloc_heap_free(struct malloc_elem *elem)
 	/* we didn't exit early, meaning we have unmapped some pages */
 	unmapped = true;
 
-	RTE_LOG(DEBUG, EAL, "Heap on socket %d was shrunk by %zdMB\n",
+	EAL_LOG(DEBUG, "Heap on socket %d was shrunk by %zdMB",
 		msl->socket_id, aligned_len >> 20ULL);
 
 	rte_mcfg_mem_write_unlock();
@@ -1199,7 +1199,7 @@ malloc_heap_create_external_seg(void *va_addr, rte_iova_t iova_addrs[],
 		}
 	}
 	if (msl == NULL) {
-		RTE_LOG(ERR, EAL, "Couldn't find empty memseg list\n");
+		EAL_LOG(ERR, "Couldn't find empty memseg list");
 		rte_errno = ENOSPC;
 		return NULL;
 	}
@@ -1210,7 +1210,7 @@ malloc_heap_create_external_seg(void *va_addr, rte_iova_t iova_addrs[],
 	/* create the backing fbarray */
 	if (rte_fbarray_init(&msl->memseg_arr, fbarray_name, n_pages,
 			sizeof(struct rte_memseg)) < 0) {
-		RTE_LOG(ERR, EAL, "Couldn't create fbarray backing the memseg list\n");
+		EAL_LOG(ERR, "Couldn't create fbarray backing the memseg list");
 		return NULL;
 	}
 	arr = &msl->memseg_arr;
@@ -1310,7 +1310,7 @@ malloc_heap_add_external_memory(struct malloc_heap *heap,
 	heap->total_size += msl->len;
 
 	/* all done! */
-	RTE_LOG(DEBUG, EAL, "Added segment for heap %s starting at %p\n",
+	EAL_LOG(DEBUG, "Added segment for heap %s starting at %p",
 			heap->name, msl->base_va);
 
 	/* notify all subscribers that a new memory area has been added */
@@ -1356,7 +1356,7 @@ malloc_heap_create(struct malloc_heap *heap, const char *heap_name)
 
 	/* prevent overflow. did you really create 2 billion heaps??? */
 	if (next_socket_id > INT32_MAX) {
-		RTE_LOG(ERR, EAL, "Cannot assign new socket ID's\n");
+		EAL_LOG(ERR, "Cannot assign new socket ID's");
 		rte_errno = ENOSPC;
 		return -1;
 	}
@@ -1382,17 +1382,17 @@ int
 malloc_heap_destroy(struct malloc_heap *heap)
 {
 	if (heap->alloc_count != 0) {
-		RTE_LOG(ERR, EAL, "Heap is still in use\n");
+		EAL_LOG(ERR, "Heap is still in use");
 		rte_errno = EBUSY;
 		return -1;
 	}
 	if (heap->first != NULL || heap->last != NULL) {
-		RTE_LOG(ERR, EAL, "Heap still contains memory segments\n");
+		EAL_LOG(ERR, "Heap still contains memory segments");
 		rte_errno = EBUSY;
 		return -1;
 	}
 	if (heap->total_size != 0)
-		RTE_LOG(ERR, EAL, "Total size not zero, heap is likely corrupt\n");
+		EAL_LOG(ERR, "Total size not zero, heap is likely corrupt");
 
 	/* Reset all of the heap but the (hold) lock so caller can release it. */
 	RTE_BUILD_BUG_ON(offsetof(struct malloc_heap, lock) != 0);
@@ -1411,7 +1411,7 @@ rte_eal_malloc_heap_init(void)
 		eal_get_internal_configuration();
 
 	if (internal_conf->match_allocations)
-		RTE_LOG(DEBUG, EAL, "Hugepages will be freed exactly as allocated.\n");
+		EAL_LOG(DEBUG, "Hugepages will be freed exactly as allocated.");
 
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
 		/* assign min socket ID to external heaps */
@@ -1431,7 +1431,7 @@ rte_eal_malloc_heap_init(void)
 	}
 
 	if (register_mp_requests()) {
-		RTE_LOG(ERR, EAL, "Couldn't register malloc multiprocess actions\n");
+		EAL_LOG(ERR, "Couldn't register malloc multiprocess actions");
 		return -1;
 	}
 
