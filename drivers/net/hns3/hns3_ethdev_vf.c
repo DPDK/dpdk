@@ -569,13 +569,8 @@ hns3vf_check_event_cause(struct hns3_adapter *hns, uint32_t *clearval)
 		val = hns3_read_dev(hw, HNS3_VF_RST_ING);
 		hns3_write_dev(hw, HNS3_VF_RST_ING, val | HNS3_VF_RST_ING_BIT);
 		val = cmdq_stat_reg & ~BIT(HNS3_VECTOR0_RST_INT_B);
-		if (clearval) {
-			hw->reset.stats.global_cnt++;
-			hns3_warn(hw, "Global reset detected, clear reset status");
-		} else {
-			hns3_schedule_delayed_reset(hns);
-			hns3_warn(hw, "Global reset detected, don't clear reset status");
-		}
+		hw->reset.stats.global_cnt++;
+		hns3_warn(hw, "Global reset detected, clear reset status");
 
 		ret = HNS3VF_VECTOR0_EVENT_RST;
 		goto out;
@@ -590,9 +585,9 @@ hns3vf_check_event_cause(struct hns3_adapter *hns, uint32_t *clearval)
 
 	val = 0;
 	ret = HNS3VF_VECTOR0_EVENT_OTHER;
+
 out:
-	if (clearval)
-		*clearval = val;
+	*clearval = val;
 	return ret;
 }
 
@@ -1731,11 +1726,25 @@ is_vf_reset_done(struct hns3_hw *hw)
 	return true;
 }
 
+static enum hns3_reset_level
+hns3vf_detect_reset_event(struct hns3_hw *hw)
+{
+	enum hns3_reset_level reset = HNS3_NONE_RESET;
+	uint32_t cmdq_stat_reg;
+
+	cmdq_stat_reg = hns3_read_dev(hw, HNS3_VECTOR0_CMDQ_STAT_REG);
+	if (BIT(HNS3_VECTOR0_RST_INT_B) & cmdq_stat_reg)
+		reset = HNS3_VF_RESET;
+
+	return reset;
+}
+
 bool
 hns3vf_is_reset_pending(struct hns3_adapter *hns)
 {
+	enum hns3_reset_level last_req;
 	struct hns3_hw *hw = &hns->hw;
-	enum hns3_reset_level reset;
+	enum hns3_reset_level new_req;
 
 	/*
 	 * According to the protocol of PCIe, FLR to a PF device resets the PF
@@ -1758,13 +1767,18 @@ hns3vf_is_reset_pending(struct hns3_adapter *hns)
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return false;
 
-	hns3vf_check_event_cause(hns, NULL);
-	reset = hns3vf_get_reset_level(hw, &hw->reset.pending);
-	if (hw->reset.level != HNS3_NONE_RESET && reset != HNS3_NONE_RESET &&
-	    hw->reset.level < reset) {
-		hns3_warn(hw, "High level reset %d is pending", reset);
+	new_req = hns3vf_detect_reset_event(hw);
+	if (new_req == HNS3_NONE_RESET)
+		return false;
+
+	last_req = hns3vf_get_reset_level(hw, &hw->reset.pending);
+	if (last_req == HNS3_NONE_RESET || last_req < new_req) {
+		__atomic_store_n(&hw->reset.disable_cmd, 1, __ATOMIC_RELAXED);
+		hns3_schedule_delayed_reset(hns);
+		hns3_warn(hw, "High level reset detected, delay do reset");
 		return true;
 	}
+
 	return false;
 }
 
