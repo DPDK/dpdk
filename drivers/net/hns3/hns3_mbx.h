@@ -207,7 +207,8 @@ struct hns3_pf_rst_done_cmd {
 	((crq)->next_to_use = ((crq)->next_to_use + 1) % (crq)->desc_num)
 
 struct hns3_hw;
-void hns3_dev_handle_mbx_msg(struct hns3_hw *hw);
+void hns3pf_handle_mbx_msg(struct hns3_hw *hw);
+void hns3vf_handle_mbx_msg(struct hns3_hw *hw);
 void hns3vf_mbx_setup(struct hns3_vf_to_pf_msg *req,
 		      uint8_t code, uint8_t subcode);
 int hns3vf_mbx_send(struct hns3_hw *hw,
