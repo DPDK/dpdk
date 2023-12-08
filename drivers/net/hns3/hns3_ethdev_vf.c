@@ -254,11 +254,12 @@ hns3vf_set_promisc_mode(struct hns3_hw *hw, bool en_bc_pmc,
 	 *    the packets with vlan tag in promiscuous mode.
 	 */
 	hns3_cmd_setup_basic_desc(&desc, HNS3_OPC_MBX_VF_TO_PF, false);
-	req->msg[0] = HNS3_MBX_SET_PROMISC_MODE;
-	req->msg[1] = en_bc_pmc ? 1 : 0;
-	req->msg[2] = en_uc_pmc ? 1 : 0;
-	req->msg[3] = en_mc_pmc ? 1 : 0;
-	req->msg[4] = hw->promisc_mode == HNS3_LIMIT_PROMISC_MODE ? 1 : 0;
+	req->msg.code = HNS3_MBX_SET_PROMISC_MODE;
+	req->msg.en_bc = en_bc_pmc ? 1 : 0;
+	req->msg.en_uc = en_uc_pmc ? 1 : 0;
+	req->msg.en_mc = en_mc_pmc ? 1 : 0;
+	req->msg.en_limit_promisc =
+		hw->promisc_mode == HNS3_LIMIT_PROMISC_MODE ? 1 : 0;
 
 	ret = hns3_cmd_send(hw, &desc, 1);
 	if (ret)
@@ -347,30 +348,28 @@ hns3vf_bind_ring_with_vector(struct hns3_hw *hw, uint16_t vector_id,
 			     bool mmap, enum hns3_ring_type queue_type,
 			     uint16_t queue_id)
 {
-	struct hns3_vf_bind_vector_msg bind_msg;
+#define HNS3_RING_VERCTOR_DATA_SIZE	14
+	struct hns3_vf_to_pf_msg req = {0};
 	const char *op_str;
-	uint16_t code;
 	int ret;
 
-	memset(&bind_msg, 0, sizeof(bind_msg));
-	code = mmap ? HNS3_MBX_MAP_RING_TO_VECTOR :
+	req.code = mmap ? HNS3_MBX_MAP_RING_TO_VECTOR :
 		HNS3_MBX_UNMAP_RING_TO_VECTOR;
-	bind_msg.vector_id = (uint8_t)vector_id;
+	req.vector_id = (uint8_t)vector_id;
+	req.ring_num = 1;
 
 	if (queue_type == HNS3_RING_TYPE_RX)
-		bind_msg.param[0].int_gl_index = HNS3_RING_GL_RX;
+		req.ring_param[0].int_gl_index = HNS3_RING_GL_RX;
 	else
-		bind_msg.param[0].int_gl_index = HNS3_RING_GL_TX;
-
-	bind_msg.param[0].ring_type = queue_type;
-	bind_msg.ring_num = 1;
-	bind_msg.param[0].tqp_index = queue_id;
+		req.ring_param[0].int_gl_index = HNS3_RING_GL_TX;
+	req.ring_param[0].ring_type = queue_type;
+	req.ring_param[0].tqp_index = queue_id;
 	op_str = mmap ? "Map" : "Unmap";
-	ret = hns3_send_mbx_msg(hw, code, 0, (uint8_t *)&bind_msg,
-				sizeof(bind_msg), false, NULL, 0);
+	ret = hns3_send_mbx_msg(hw, req.code, 0, (uint8_t *)&req.vector_id,
+				HNS3_RING_VERCTOR_DATA_SIZE, false, NULL, 0);
 	if (ret)
-		hns3_err(hw, "%s TQP %u fail, vector_id is %u, ret is %d.",
-			 op_str, queue_id, bind_msg.vector_id, ret);
+		hns3_err(hw, "%s TQP %u fail, vector_id is %u, ret = %d.",
+			 op_str, queue_id, req.vector_id, ret);
 
 	return ret;
 }
@@ -965,19 +964,16 @@ hns3vf_update_link_status(struct hns3_hw *hw, uint8_t link_status,
 static int
 hns3vf_vlan_filter_configure(struct hns3_adapter *hns, uint16_t vlan_id, int on)
 {
-#define HNS3VF_VLAN_MBX_MSG_LEN 5
+	struct hns3_mbx_vlan_filter vlan_filter = {0};
 	struct hns3_hw *hw = &hns->hw;
-	uint8_t msg_data[HNS3VF_VLAN_MBX_MSG_LEN];
-	uint16_t proto = htons(RTE_ETHER_TYPE_VLAN);
-	uint8_t is_kill = on ? 0 : 1;
 
-	msg_data[0] = is_kill;
-	memcpy(&msg_data[1], &vlan_id, sizeof(vlan_id));
-	memcpy(&msg_data[3], &proto, sizeof(proto));
+	vlan_filter.is_kill = on ? 0 : 1;
+	vlan_filter.proto = rte_cpu_to_le_16(RTE_ETHER_TYPE_VLAN);
+	vlan_filter.vlan_id =  rte_cpu_to_le_16(vlan_id);
 
 	return hns3_send_mbx_msg(hw, HNS3_MBX_SET_VLAN, HNS3_MBX_VLAN_FILTER,
-				 msg_data, HNS3VF_VLAN_MBX_MSG_LEN, true, NULL,
-				 0);
+				(uint8_t *)&vlan_filter, sizeof(vlan_filter),
+				 true, NULL, 0);
 }
 
 static int
