@@ -686,13 +686,12 @@ tqp_reset_fail:
 static int
 hns3vf_reset_tqp(struct hns3_hw *hw, uint16_t queue_id)
 {
-	uint8_t msg_data[2];
+	struct hns3_vf_to_pf_msg req;
 	int ret;
 
-	memcpy(msg_data, &queue_id, sizeof(uint16_t));
-
-	ret = hns3_send_mbx_msg(hw, HNS3_MBX_QUEUE_RESET, 0, msg_data,
-				 sizeof(msg_data), true, NULL, 0);
+	hns3vf_mbx_setup(&req, HNS3_MBX_QUEUE_RESET, 0);
+	memcpy(req.data, &queue_id, sizeof(uint16_t));
+	ret = hns3vf_mbx_send(hw, &req, true, NULL, 0);
 	if (ret)
 		hns3_err(hw, "fail to reset tqp, queue_id = %u, ret = %d.",
 			 queue_id, ret);
@@ -769,15 +768,14 @@ static int
 hns3vf_reset_all_tqps(struct hns3_hw *hw)
 {
 #define HNS3VF_RESET_ALL_TQP_DONE	1U
+	struct hns3_vf_to_pf_msg req;
 	uint8_t reset_status;
-	uint8_t msg_data[2];
 	int ret;
 	uint16_t i;
 
-	memset(msg_data, 0, sizeof(msg_data));
-	ret = hns3_send_mbx_msg(hw, HNS3_MBX_QUEUE_RESET, 0, msg_data,
-				sizeof(msg_data), true, &reset_status,
-				sizeof(reset_status));
+	hns3vf_mbx_setup(&req, HNS3_MBX_QUEUE_RESET, 0);
+	ret = hns3vf_mbx_send(hw, &req, true,
+			      &reset_status, sizeof(reset_status));
 	if (ret) {
 		hns3_err(hw, "fail to send rcb reset mbx, ret = %d.", ret);
 		return ret;
