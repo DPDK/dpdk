@@ -11,8 +11,6 @@
 #include "hns3_intr.h"
 #include "hns3_rxtx.h"
 
-#define HNS3_CMD_CODE_OFFSET		2
-
 static const struct errno_respcode_map err_code_map[] = {
 	{0, 0},
 	{1, -EPERM},
@@ -127,29 +125,30 @@ hns3_send_mbx_msg(struct hns3_hw *hw, uint16_t code, uint16_t subcode,
 	struct hns3_mbx_vf_to_pf_cmd *req;
 	struct hns3_cmd_desc desc;
 	bool is_ring_vector_msg;
-	int offset;
 	int ret;
 
 	req = (struct hns3_mbx_vf_to_pf_cmd *)desc.data;
 
 	/* first two bytes are reserved for code & subcode */
-	if (msg_len > (HNS3_MBX_MAX_MSG_SIZE - HNS3_CMD_CODE_OFFSET)) {
+	if (msg_len > HNS3_MBX_MSG_MAX_DATA_SIZE) {
 		hns3_err(hw,
 			 "VF send mbx msg fail, msg len %u exceeds max payload len %d",
-			 msg_len, HNS3_MBX_MAX_MSG_SIZE - HNS3_CMD_CODE_OFFSET);
+			 msg_len, HNS3_MBX_MSG_MAX_DATA_SIZE);
 		return -EINVAL;
 	}
 
 	hns3_cmd_setup_basic_desc(&desc, HNS3_OPC_MBX_VF_TO_PF, false);
-	req->msg[0] = code;
+	req->msg.code = code;
 	is_ring_vector_msg = (code == HNS3_MBX_MAP_RING_TO_VECTOR) ||
 			     (code == HNS3_MBX_UNMAP_RING_TO_VECTOR) ||
 			     (code == HNS3_MBX_GET_RING_VECTOR_MAP);
 	if (!is_ring_vector_msg)
-		req->msg[1] = subcode;
+		req->msg.subcode = subcode;
 	if (msg_data) {
-		offset = is_ring_vector_msg ? 1 : HNS3_CMD_CODE_OFFSET;
-		memcpy(&req->msg[offset], msg_data, msg_len);
+		if (is_ring_vector_msg)
+			memcpy(&req->msg.vector_id, msg_data, msg_len);
+		else
+			memcpy(&req->msg.data, msg_data, msg_len);
 	}
 
 	/* synchronous send */
@@ -296,11 +295,8 @@ static void
 hns3pf_handle_link_change_event(struct hns3_hw *hw,
 				struct hns3_mbx_vf_to_pf_cmd *req)
 {
-#define LINK_STATUS_OFFSET     1
-#define LINK_FAIL_CODE_OFFSET  2
-
-	if (!req->msg[LINK_STATUS_OFFSET])
-		hns3_link_fail_parse(hw, req->msg[LINK_FAIL_CODE_OFFSET]);
+	if (!req->msg.link_status)
+		hns3_link_fail_parse(hw, req->msg.link_fail_code);
 
 	hns3_update_linkstatus_and_event(hw, true);
 }
