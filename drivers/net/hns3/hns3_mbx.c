@@ -24,6 +24,14 @@ static const struct errno_respcode_map err_code_map[] = {
 	{95, -EOPNOTSUPP},
 };
 
+void
+hns3vf_mbx_setup(struct hns3_vf_to_pf_msg *req, uint8_t code, uint8_t subcode)
+{
+	memset(req, 0, sizeof(struct hns3_vf_to_pf_msg));
+	req->code = code;
+	req->subcode = subcode;
+}
+
 static int
 hns3_resp_to_errno(uint16_t resp_code)
 {
@@ -118,45 +126,24 @@ hns3_mbx_prepare_resp(struct hns3_hw *hw, uint16_t code, uint16_t subcode)
 }
 
 int
-hns3_send_mbx_msg(struct hns3_hw *hw, uint16_t code, uint16_t subcode,
-		  const uint8_t *msg_data, uint8_t msg_len, bool need_resp,
-		  uint8_t *resp_data, uint16_t resp_len)
+hns3vf_mbx_send(struct hns3_hw *hw,
+		struct hns3_vf_to_pf_msg *req, bool need_resp,
+		uint8_t *resp_data, uint16_t resp_len)
 {
-	struct hns3_mbx_vf_to_pf_cmd *req;
+	struct hns3_mbx_vf_to_pf_cmd *cmd;
 	struct hns3_cmd_desc desc;
-	bool is_ring_vector_msg;
 	int ret;
 
-	req = (struct hns3_mbx_vf_to_pf_cmd *)desc.data;
-
-	/* first two bytes are reserved for code & subcode */
-	if (msg_len > HNS3_MBX_MSG_MAX_DATA_SIZE) {
-		hns3_err(hw,
-			 "VF send mbx msg fail, msg len %u exceeds max payload len %d",
-			 msg_len, HNS3_MBX_MSG_MAX_DATA_SIZE);
-		return -EINVAL;
-	}
-
 	hns3_cmd_setup_basic_desc(&desc, HNS3_OPC_MBX_VF_TO_PF, false);
-	req->msg.code = code;
-	is_ring_vector_msg = (code == HNS3_MBX_MAP_RING_TO_VECTOR) ||
-			     (code == HNS3_MBX_UNMAP_RING_TO_VECTOR) ||
-			     (code == HNS3_MBX_GET_RING_VECTOR_MAP);
-	if (!is_ring_vector_msg)
-		req->msg.subcode = subcode;
-	if (msg_data) {
-		if (is_ring_vector_msg)
-			memcpy(&req->msg.vector_id, msg_data, msg_len);
-		else
-			memcpy(&req->msg.data, msg_data, msg_len);
-	}
+	cmd = (struct hns3_mbx_vf_to_pf_cmd *)desc.data;
+	cmd->msg = *req;
 
 	/* synchronous send */
 	if (need_resp) {
-		req->mbx_need_resp |= HNS3_MBX_NEED_RESP_BIT;
+		cmd->mbx_need_resp |= HNS3_MBX_NEED_RESP_BIT;
 		rte_spinlock_lock(&hw->mbx_resp.lock);
-		hns3_mbx_prepare_resp(hw, code, subcode);
-		req->match_id = hw->mbx_resp.match_id;
+		hns3_mbx_prepare_resp(hw, req->code, req->subcode);
+		cmd->match_id = hw->mbx_resp.match_id;
 		ret = hns3_cmd_send(hw, &desc, 1);
 		if (ret) {
 			rte_spinlock_unlock(&hw->mbx_resp.lock);
@@ -165,7 +152,8 @@ hns3_send_mbx_msg(struct hns3_hw *hw, uint16_t code, uint16_t subcode,
 			return ret;
 		}
 
-		ret = hns3_get_mbx_resp(hw, code, subcode, resp_data, resp_len);
+		ret = hns3_get_mbx_resp(hw, req->code, req->subcode,
+					resp_data, resp_len);
 		rte_spinlock_unlock(&hw->mbx_resp.lock);
 	} else {
 		/* asynchronous send */
