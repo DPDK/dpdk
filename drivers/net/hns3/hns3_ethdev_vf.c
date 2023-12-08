@@ -91,11 +91,13 @@ hns3vf_add_uc_mac_addr(struct hns3_hw *hw, struct rte_ether_addr *mac_addr)
 {
 	/* mac address was checked by upper level interface */
 	char mac_str[RTE_ETHER_ADDR_FMT_SIZE];
+	struct hns3_vf_to_pf_msg req;
 	int ret;
 
-	ret = hns3_send_mbx_msg(hw, HNS3_MBX_SET_UNICAST,
-				HNS3_MBX_MAC_VLAN_UC_ADD, mac_addr->addr_bytes,
-				RTE_ETHER_ADDR_LEN, false, NULL, 0);
+	hns3vf_mbx_setup(&req, HNS3_MBX_SET_UNICAST,
+			 HNS3_MBX_MAC_VLAN_UC_ADD);
+	memcpy(req.data, mac_addr->addr_bytes, RTE_ETHER_ADDR_LEN);
+	ret = hns3vf_mbx_send(hw, &req, false, NULL, 0);
 	if (ret) {
 		hns3_ether_format_addr(mac_str, RTE_ETHER_ADDR_FMT_SIZE,
 				      mac_addr);
@@ -110,12 +112,13 @@ hns3vf_remove_uc_mac_addr(struct hns3_hw *hw, struct rte_ether_addr *mac_addr)
 {
 	/* mac address was checked by upper level interface */
 	char mac_str[RTE_ETHER_ADDR_FMT_SIZE];
+	struct hns3_vf_to_pf_msg req;
 	int ret;
 
-	ret = hns3_send_mbx_msg(hw, HNS3_MBX_SET_UNICAST,
-				HNS3_MBX_MAC_VLAN_UC_REMOVE,
-				mac_addr->addr_bytes, RTE_ETHER_ADDR_LEN,
-				false, NULL, 0);
+	hns3vf_mbx_setup(&req, HNS3_MBX_SET_UNICAST,
+			 HNS3_MBX_MAC_VLAN_UC_REMOVE);
+	memcpy(req.data, mac_addr->addr_bytes, RTE_ETHER_ADDR_LEN);
+	ret = hns3vf_mbx_send(hw, &req, false, NULL, 0);
 	if (ret) {
 		hns3_ether_format_addr(mac_str, RTE_ETHER_ADDR_FMT_SIZE,
 				       mac_addr);
@@ -134,6 +137,7 @@ hns3vf_set_default_mac_addr(struct rte_eth_dev *dev,
 	struct rte_ether_addr *old_addr;
 	uint8_t addr_bytes[HNS3_TWO_ETHER_ADDR_LEN]; /* for 2 MAC addresses */
 	char mac_str[RTE_ETHER_ADDR_FMT_SIZE];
+	struct hns3_vf_to_pf_msg req;
 	int ret;
 
 	/*
@@ -146,9 +150,10 @@ hns3vf_set_default_mac_addr(struct rte_eth_dev *dev,
 	memcpy(&addr_bytes[RTE_ETHER_ADDR_LEN], old_addr->addr_bytes,
 	       RTE_ETHER_ADDR_LEN);
 
-	ret = hns3_send_mbx_msg(hw, HNS3_MBX_SET_UNICAST,
-				HNS3_MBX_MAC_VLAN_UC_MODIFY, addr_bytes,
-				HNS3_TWO_ETHER_ADDR_LEN, true, NULL, 0);
+	hns3vf_mbx_setup(&req, HNS3_MBX_SET_UNICAST,
+			 HNS3_MBX_MAC_VLAN_UC_MODIFY);
+	memcpy(req.data, addr_bytes, HNS3_TWO_ETHER_ADDR_LEN);
+	ret = hns3vf_mbx_send(hw, &req, true, NULL, 0);
 	if (ret) {
 		/*
 		 * The hns3 VF PMD depends on the hns3 PF kernel ethdev
@@ -185,12 +190,13 @@ hns3vf_add_mc_mac_addr(struct hns3_hw *hw,
 		       struct rte_ether_addr *mac_addr)
 {
 	char mac_str[RTE_ETHER_ADDR_FMT_SIZE];
+	struct hns3_vf_to_pf_msg req;
 	int ret;
 
-	ret = hns3_send_mbx_msg(hw, HNS3_MBX_SET_MULTICAST,
-				HNS3_MBX_MAC_VLAN_MC_ADD,
-				mac_addr->addr_bytes, RTE_ETHER_ADDR_LEN, false,
-				NULL, 0);
+	hns3vf_mbx_setup(&req, HNS3_MBX_SET_MULTICAST,
+			 HNS3_MBX_MAC_VLAN_MC_ADD);
+	memcpy(req.data, mac_addr->addr_bytes, RTE_ETHER_ADDR_LEN);
+	ret = hns3vf_mbx_send(hw, &req, false, NULL, 0);
 	if (ret) {
 		hns3_ether_format_addr(mac_str, RTE_ETHER_ADDR_FMT_SIZE,
 				      mac_addr);
@@ -206,12 +212,13 @@ hns3vf_remove_mc_mac_addr(struct hns3_hw *hw,
 			  struct rte_ether_addr *mac_addr)
 {
 	char mac_str[RTE_ETHER_ADDR_FMT_SIZE];
+	struct hns3_vf_to_pf_msg req;
 	int ret;
 
-	ret = hns3_send_mbx_msg(hw, HNS3_MBX_SET_MULTICAST,
-				HNS3_MBX_MAC_VLAN_MC_REMOVE,
-				mac_addr->addr_bytes, RTE_ETHER_ADDR_LEN, false,
-				NULL, 0);
+	hns3vf_mbx_setup(&req, HNS3_MBX_SET_MULTICAST,
+			 HNS3_MBX_MAC_VLAN_MC_REMOVE);
+	memcpy(req.data, mac_addr->addr_bytes, RTE_ETHER_ADDR_LEN);
+	ret = hns3vf_mbx_send(hw, &req, false, NULL, 0);
 	if (ret) {
 		hns3_ether_format_addr(mac_str, RTE_ETHER_ADDR_FMT_SIZE,
 				       mac_addr);
@@ -348,7 +355,6 @@ hns3vf_bind_ring_with_vector(struct hns3_hw *hw, uint16_t vector_id,
 			     bool mmap, enum hns3_ring_type queue_type,
 			     uint16_t queue_id)
 {
-#define HNS3_RING_VERCTOR_DATA_SIZE	14
 	struct hns3_vf_to_pf_msg req = {0};
 	const char *op_str;
 	int ret;
@@ -365,8 +371,7 @@ hns3vf_bind_ring_with_vector(struct hns3_hw *hw, uint16_t vector_id,
 	req.ring_param[0].ring_type = queue_type;
 	req.ring_param[0].tqp_index = queue_id;
 	op_str = mmap ? "Map" : "Unmap";
-	ret = hns3_send_mbx_msg(hw, req.code, 0, (uint8_t *)&req.vector_id,
-				HNS3_RING_VERCTOR_DATA_SIZE, false, NULL, 0);
+	ret = hns3vf_mbx_send(hw, &req, false, NULL, 0);
 	if (ret)
 		hns3_err(hw, "%s TQP %u fail, vector_id is %u, ret = %d.",
 			 op_str, queue_id, req.vector_id, ret);
@@ -452,10 +457,12 @@ cfg_err:
 static int
 hns3vf_config_mtu(struct hns3_hw *hw, uint16_t mtu)
 {
+	struct hns3_vf_to_pf_msg req;
 	int ret;
 
-	ret = hns3_send_mbx_msg(hw, HNS3_MBX_SET_MTU, 0, (const uint8_t *)&mtu,
-				sizeof(mtu), true, NULL, 0);
+	hns3vf_mbx_setup(&req, HNS3_MBX_SET_MTU, 0);
+	memcpy(req.data, &mtu, sizeof(mtu));
+	ret = hns3vf_mbx_send(hw, &req, true, NULL, 0);
 	if (ret)
 		hns3_err(hw, "Failed to set mtu (%u) for vf: %d", mtu, ret);
 
@@ -646,12 +653,13 @@ hns3vf_get_push_lsc_cap(struct hns3_hw *hw)
 	uint16_t val = HNS3_PF_PUSH_LSC_CAP_NOT_SUPPORTED;
 	uint16_t exp = HNS3_PF_PUSH_LSC_CAP_UNKNOWN;
 	struct hns3_vf *vf = HNS3_DEV_HW_TO_VF(hw);
+	struct hns3_vf_to_pf_msg req;
 
 	__atomic_store_n(&vf->pf_push_lsc_cap, HNS3_PF_PUSH_LSC_CAP_UNKNOWN,
 			 __ATOMIC_RELEASE);
 
-	(void)hns3_send_mbx_msg(hw, HNS3_MBX_GET_LINK_STATUS, 0, NULL, 0, false,
-				NULL, 0);
+	hns3vf_mbx_setup(&req, HNS3_MBX_GET_LINK_STATUS, 0);
+	(void)hns3vf_mbx_send(hw, &req, false, NULL, 0);
 
 	while (remain_ms > 0) {
 		rte_delay_ms(HNS3_POLL_RESPONE_MS);
@@ -746,12 +754,13 @@ hns3vf_check_tqp_info(struct hns3_hw *hw)
 static int
 hns3vf_get_port_base_vlan_filter_state(struct hns3_hw *hw)
 {
+	struct hns3_vf_to_pf_msg req;
 	uint8_t resp_msg;
 	int ret;
 
-	ret = hns3_send_mbx_msg(hw, HNS3_MBX_SET_VLAN,
-				HNS3_MBX_GET_PORT_BASE_VLAN_STATE, NULL, 0,
-				true, &resp_msg, sizeof(resp_msg));
+	hns3vf_mbx_setup(&req, HNS3_MBX_SET_VLAN,
+			 HNS3_MBX_GET_PORT_BASE_VLAN_STATE);
+	ret = hns3vf_mbx_send(hw, &req, true, &resp_msg, sizeof(resp_msg));
 	if (ret) {
 		if (ret == -ETIME) {
 			/*
@@ -792,10 +801,12 @@ hns3vf_get_queue_info(struct hns3_hw *hw)
 {
 #define HNS3VF_TQPS_RSS_INFO_LEN	6
 	uint8_t resp_msg[HNS3VF_TQPS_RSS_INFO_LEN];
+	struct hns3_vf_to_pf_msg req;
 	int ret;
 
-	ret = hns3_send_mbx_msg(hw, HNS3_MBX_GET_QINFO, 0, NULL, 0, true,
-				resp_msg, HNS3VF_TQPS_RSS_INFO_LEN);
+	hns3vf_mbx_setup(&req, HNS3_MBX_GET_QINFO, 0);
+	ret = hns3vf_mbx_send(hw, &req, true,
+			      resp_msg, HNS3VF_TQPS_RSS_INFO_LEN);
 	if (ret) {
 		PMD_INIT_LOG(ERR, "Failed to get tqp info from PF: %d", ret);
 		return ret;
@@ -833,10 +844,11 @@ hns3vf_get_basic_info(struct hns3_hw *hw)
 {
 	uint8_t resp_msg[HNS3_MBX_MAX_RESP_DATA_SIZE];
 	struct hns3_basic_info *basic_info;
+	struct hns3_vf_to_pf_msg req;
 	int ret;
 
-	ret = hns3_send_mbx_msg(hw, HNS3_MBX_GET_BASIC_INFO, 0, NULL, 0,
-				true, resp_msg, sizeof(resp_msg));
+	hns3vf_mbx_setup(&req, HNS3_MBX_GET_BASIC_INFO, 0);
+	ret = hns3vf_mbx_send(hw, &req, true, resp_msg, sizeof(resp_msg));
 	if (ret) {
 		hns3_err(hw, "failed to get basic info from PF, ret = %d.",
 				ret);
@@ -856,10 +868,11 @@ static int
 hns3vf_get_host_mac_addr(struct hns3_hw *hw)
 {
 	uint8_t host_mac[RTE_ETHER_ADDR_LEN];
+	struct hns3_vf_to_pf_msg req;
 	int ret;
 
-	ret = hns3_send_mbx_msg(hw, HNS3_MBX_GET_MAC_ADDR, 0, NULL, 0,
-				true, host_mac, RTE_ETHER_ADDR_LEN);
+	hns3vf_mbx_setup(&req, HNS3_MBX_GET_MAC_ADDR, 0);
+	ret = hns3vf_mbx_send(hw, &req, true, host_mac, RTE_ETHER_ADDR_LEN);
 	if (ret) {
 		hns3_err(hw, "Failed to get mac addr from PF: %d", ret);
 		return ret;
@@ -908,6 +921,7 @@ static void
 hns3vf_request_link_info(struct hns3_hw *hw)
 {
 	struct hns3_vf *vf = HNS3_DEV_HW_TO_VF(hw);
+	struct hns3_vf_to_pf_msg req;
 	bool send_req;
 	int ret;
 
@@ -919,8 +933,8 @@ hns3vf_request_link_info(struct hns3_hw *hw)
 	if (!send_req)
 		return;
 
-	ret = hns3_send_mbx_msg(hw, HNS3_MBX_GET_LINK_STATUS, 0, NULL, 0, false,
-				NULL, 0);
+	hns3vf_mbx_setup(&req, HNS3_MBX_GET_LINK_STATUS, 0);
+	ret = hns3vf_mbx_send(hw, &req, false, NULL, 0);
 	if (ret) {
 		hns3_err(hw, "failed to fetch link status, ret = %d", ret);
 		return;
@@ -964,16 +978,18 @@ hns3vf_update_link_status(struct hns3_hw *hw, uint8_t link_status,
 static int
 hns3vf_vlan_filter_configure(struct hns3_adapter *hns, uint16_t vlan_id, int on)
 {
-	struct hns3_mbx_vlan_filter vlan_filter = {0};
+	struct hns3_mbx_vlan_filter *vlan_filter;
+	struct hns3_vf_to_pf_msg req = {0};
 	struct hns3_hw *hw = &hns->hw;
 
-	vlan_filter.is_kill = on ? 0 : 1;
-	vlan_filter.proto = rte_cpu_to_le_16(RTE_ETHER_TYPE_VLAN);
-	vlan_filter.vlan_id =  rte_cpu_to_le_16(vlan_id);
+	req.code = HNS3_MBX_SET_VLAN;
+	req.subcode = HNS3_MBX_VLAN_FILTER;
+	vlan_filter = (struct hns3_mbx_vlan_filter *)req.data;
+	vlan_filter->is_kill = on ? 0 : 1;
+	vlan_filter->proto = rte_cpu_to_le_16(RTE_ETHER_TYPE_VLAN);
+	vlan_filter->vlan_id = rte_cpu_to_le_16(vlan_id);
 
-	return hns3_send_mbx_msg(hw, HNS3_MBX_SET_VLAN, HNS3_MBX_VLAN_FILTER,
-				(uint8_t *)&vlan_filter, sizeof(vlan_filter),
-				 true, NULL, 0);
+	return hns3vf_mbx_send(hw, &req, true, NULL, 0);
 }
 
 static int
@@ -1002,6 +1018,7 @@ hns3vf_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)
 static int
 hns3vf_en_vlan_filter(struct hns3_hw *hw, bool enable)
 {
+	struct hns3_vf_to_pf_msg req;
 	uint8_t msg_data;
 	int ret;
 
@@ -1009,9 +1026,10 @@ hns3vf_en_vlan_filter(struct hns3_hw *hw, bool enable)
 		return 0;
 
 	msg_data = enable ? 1 : 0;
-	ret = hns3_send_mbx_msg(hw, HNS3_MBX_SET_VLAN,
-			HNS3_MBX_ENABLE_VLAN_FILTER, &msg_data,
-			sizeof(msg_data), true, NULL, 0);
+	hns3vf_mbx_setup(&req, HNS3_MBX_SET_VLAN,
+			 HNS3_MBX_ENABLE_VLAN_FILTER);
+	memcpy(req.data, &msg_data, sizeof(msg_data));
+	ret = hns3vf_mbx_send(hw, &req, true, NULL, 0);
 	if (ret)
 		hns3_err(hw, "%s vlan filter failed, ret = %d.",
 				enable ? "enable" : "disable", ret);
@@ -1022,12 +1040,15 @@ hns3vf_en_vlan_filter(struct hns3_hw *hw, bool enable)
 static int
 hns3vf_en_hw_strip_rxvtag(struct hns3_hw *hw, bool enable)
 {
+	struct hns3_vf_to_pf_msg req;
 	uint8_t msg_data;
 	int ret;
 
 	msg_data = enable ? 1 : 0;
-	ret = hns3_send_mbx_msg(hw, HNS3_MBX_SET_VLAN, HNS3_MBX_VLAN_RX_OFF_CFG,
-				&msg_data, sizeof(msg_data), false, NULL, 0);
+	hns3vf_mbx_setup(&req, HNS3_MBX_SET_VLAN,
+			 HNS3_MBX_VLAN_RX_OFF_CFG);
+	memcpy(req.data, &msg_data, sizeof(msg_data));
+	ret = hns3vf_mbx_send(hw, &req, false, NULL, 0);
 	if (ret)
 		hns3_err(hw, "vf %s strip failed, ret = %d.",
 				enable ? "enable" : "disable", ret);
@@ -1171,11 +1192,13 @@ hns3vf_dev_configure_vlan(struct rte_eth_dev *dev)
 static int
 hns3vf_set_alive(struct hns3_hw *hw, bool alive)
 {
+	struct hns3_vf_to_pf_msg req;
 	uint8_t msg_data;
 
 	msg_data = alive ? 1 : 0;
-	return hns3_send_mbx_msg(hw, HNS3_MBX_SET_ALIVE, 0, &msg_data,
-				 sizeof(msg_data), false, NULL, 0);
+	hns3vf_mbx_setup(&req, HNS3_MBX_SET_ALIVE, 0);
+	memcpy(req.data, &msg_data, sizeof(msg_data));
+	return hns3vf_mbx_send(hw, &req, false, NULL, 0);
 }
 
 static void
@@ -1183,11 +1206,12 @@ hns3vf_keep_alive_handler(void *param)
 {
 	struct rte_eth_dev *eth_dev = (struct rte_eth_dev *)param;
 	struct hns3_adapter *hns = eth_dev->data->dev_private;
+	struct hns3_vf_to_pf_msg req;
 	struct hns3_hw *hw = &hns->hw;
 	int ret;
 
-	ret = hns3_send_mbx_msg(hw, HNS3_MBX_KEEP_ALIVE, 0, NULL, 0,
-				false, NULL, 0);
+	hns3vf_mbx_setup(&req, HNS3_MBX_KEEP_ALIVE, 0);
+	ret = hns3vf_mbx_send(hw, &req, false, NULL, 0);
 	if (ret)
 		hns3_err(hw, "VF sends keeping alive cmd failed(=%d)",
 			 ret);
@@ -1326,9 +1350,11 @@ err_init_hardware:
 static int
 hns3vf_clear_vport_list(struct hns3_hw *hw)
 {
-	return hns3_send_mbx_msg(hw, HNS3_MBX_HANDLE_VF_TBL,
-				 HNS3_MBX_VPORT_LIST_CLEAR, NULL, 0, false,
-				 NULL, 0);
+	struct hns3_vf_to_pf_msg req;
+
+	hns3vf_mbx_setup(&req, HNS3_MBX_HANDLE_VF_TBL,
+			 HNS3_MBX_VPORT_LIST_CLEAR);
+	return hns3vf_mbx_send(hw, &req, false, NULL, 0);
 }
 
 static int
@@ -1797,12 +1823,13 @@ hns3vf_wait_hardware_ready(struct hns3_adapter *hns)
 static int
 hns3vf_prepare_reset(struct hns3_adapter *hns)
 {
+	struct hns3_vf_to_pf_msg req;
 	struct hns3_hw *hw = &hns->hw;
 	int ret;
 
 	if (hw->reset.level == HNS3_VF_FUNC_RESET) {
-		ret = hns3_send_mbx_msg(hw, HNS3_MBX_RESET, 0, NULL,
-					0, true, NULL, 0);
+		hns3vf_mbx_setup(&req, HNS3_MBX_RESET, 0);
+		ret = hns3vf_mbx_send(hw, &req, true, NULL, 0);
 		if (ret)
 			return ret;
 	}

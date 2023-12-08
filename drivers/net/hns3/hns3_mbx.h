@@ -208,7 +208,9 @@ struct hns3_pf_rst_done_cmd {
 
 struct hns3_hw;
 void hns3_dev_handle_mbx_msg(struct hns3_hw *hw);
-int hns3_send_mbx_msg(struct hns3_hw *hw, uint16_t code, uint16_t subcode,
-		      const uint8_t *msg_data, uint8_t msg_len, bool need_resp,
-		      uint8_t *resp_data, uint16_t resp_len);
+void hns3vf_mbx_setup(struct hns3_vf_to_pf_msg *req,
+		      uint8_t code, uint8_t subcode);
+int hns3vf_mbx_send(struct hns3_hw *hw,
+		    struct hns3_vf_to_pf_msg *req_msg, bool need_resp,
+		    uint8_t *resp_data, uint16_t resp_len);
 #endif /* HNS3_MBX_H */
