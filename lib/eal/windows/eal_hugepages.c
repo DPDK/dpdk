@@ -105,8 +105,8 @@ int
 eal_hugepage_info_init(void)
 {
 	if (hugepage_claim_privilege() < 0) {
-		RTE_LOG(ERR, EAL, "Cannot claim hugepage privilege\n"
-		"Verify that large-page support privilege is assigned to the current user\n");
+		RTE_LOG(ERR, EAL,
+			"Cannot claim hugepage privilege, check large-page support privilege\n");
 		return -1;
 	}
 
