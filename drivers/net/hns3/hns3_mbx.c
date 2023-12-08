@@ -192,17 +192,17 @@ static void
 hns3vf_handle_link_change_event(struct hns3_hw *hw,
 				struct hns3_mbx_pf_to_vf_cmd *req)
 {
+	struct hns3_mbx_link_status *link_info =
+		(struct hns3_mbx_link_status *)req->msg.msg_data;
 	uint8_t link_status, link_duplex;
-	uint16_t *msg_q = req->msg;
 	uint8_t support_push_lsc;
 	uint32_t link_speed;
 
-	memcpy(&link_speed, &msg_q[2], sizeof(link_speed));
-	link_status = rte_le_to_cpu_16(msg_q[1]);
-	link_duplex = (uint8_t)rte_le_to_cpu_16(msg_q[4]);
-	hns3vf_update_link_status(hw, link_status, link_speed,
-				  link_duplex);
-	support_push_lsc = (*(uint8_t *)&msg_q[5]) & 1u;
+	link_status = (uint8_t)rte_le_to_cpu_16(link_info->link_status);
+	link_speed = rte_le_to_cpu_32(link_info->speed);
+	link_duplex = (uint8_t)rte_le_to_cpu_16(link_info->duplex);
+	hns3vf_update_link_status(hw, link_status, link_speed, link_duplex);
+	support_push_lsc = (link_info->flag) & 1u;
 	hns3vf_update_push_lsc_cap(hw, support_push_lsc);
 }
 
@@ -211,7 +211,6 @@ hns3_handle_asserting_reset(struct hns3_hw *hw,
 			    struct hns3_mbx_pf_to_vf_cmd *req)
 {
 	enum hns3_reset_level reset_level;
-	uint16_t *msg_q = req->msg;
 
 	/*
 	 * PF has asserted reset hence VF should go in pending
@@ -219,7 +218,7 @@ hns3_handle_asserting_reset(struct hns3_hw *hw,
 	 * has been completely reset. After this stack should
 	 * eventually be re-initialized.
 	 */
-	reset_level = rte_le_to_cpu_16(msg_q[1]);
+	reset_level = rte_le_to_cpu_16(req->msg.reset_level);
 	hns3_atomic_set_bit(reset_level, &hw->reset.pending);
 
 	hns3_warn(hw, "PF inform reset level %d", reset_level);
@@ -241,8 +240,9 @@ hns3_handle_mbx_response(struct hns3_hw *hw, struct hns3_mbx_pf_to_vf_cmd *req)
 		 * to match the request.
 		 */
 		if (req->match_id == resp->match_id) {
-			resp->resp_status = hns3_resp_to_errno(req->msg[3]);
-			memcpy(resp->additional_info, &req->msg[4],
+			resp->resp_status =
+				hns3_resp_to_errno(req->msg.resp_status);
+			memcpy(resp->additional_info, &req->msg.resp_data,
 			       HNS3_MBX_MAX_RESP_DATA_SIZE);
 			rte_io_wmb();
 			resp->received_match_resp = true;
@@ -255,7 +255,8 @@ hns3_handle_mbx_response(struct hns3_hw *hw, struct hns3_mbx_pf_to_vf_cmd *req)
 	 * support copy request's match_id to its response. So VF follows the
 	 * original scheme to process.
 	 */
-	msg_data = (uint32_t)req->msg[1] << HNS3_MBX_RESP_CODE_OFFSET | req->msg[2];
+	msg_data = (uint32_t)req->msg.vf_mbx_msg_code <<
+			HNS3_MBX_RESP_CODE_OFFSET | req->msg.vf_mbx_msg_subcode;
 	if (resp->req_msg_data != msg_data) {
 		hns3_warn(hw,
 			"received response tag (%u) is mismatched with requested tag (%u)",
@@ -263,8 +264,8 @@ hns3_handle_mbx_response(struct hns3_hw *hw, struct hns3_mbx_pf_to_vf_cmd *req)
 		return;
 	}
 
-	resp->resp_status = hns3_resp_to_errno(req->msg[3]);
-	memcpy(resp->additional_info, &req->msg[4],
+	resp->resp_status = hns3_resp_to_errno(req->msg.resp_status);
+	memcpy(resp->additional_info, &req->msg.resp_data,
 	       HNS3_MBX_MAX_RESP_DATA_SIZE);
 	rte_io_wmb();
 	resp->received_match_resp = true;
@@ -305,8 +306,7 @@ static void
 hns3_update_port_base_vlan_info(struct hns3_hw *hw,
 				struct hns3_mbx_pf_to_vf_cmd *req)
 {
-#define PVID_STATE_OFFSET	1
-	uint16_t new_pvid_state = req->msg[PVID_STATE_OFFSET] ?
+	uint16_t new_pvid_state = req->msg.pvid_state ?
 		HNS3_PORT_BASE_VLAN_ENABLE : HNS3_PORT_BASE_VLAN_DISABLE;
 	/*
 	 * Currently, hardware doesn't support more than two layers VLAN offload
@@ -355,7 +355,7 @@ hns3_handle_mbx_msg_out_intr(struct hns3_hw *hw)
 	while (next_to_use != tail) {
 		desc = &crq->desc[next_to_use];
 		req = (struct hns3_mbx_pf_to_vf_cmd *)desc->data;
-		opcode = req->msg[0] & 0xff;
+		opcode = req->msg.code & 0xff;
 
 		flag = rte_le_to_cpu_16(crq->desc[next_to_use].flag);
 		if (!hns3_get_bit(flag, HNS3_CMDQ_RX_OUTVLD_B))
@@ -428,7 +428,7 @@ hns3_dev_handle_mbx_msg(struct hns3_hw *hw)
 
 		desc = &crq->desc[crq->next_to_use];
 		req = (struct hns3_mbx_pf_to_vf_cmd *)desc->data;
-		opcode = req->msg[0] & 0xff;
+		opcode = req->msg.code & 0xff;
 
 		flag = rte_le_to_cpu_16(crq->desc[crq->next_to_use].flag);
 		if (unlikely(!hns3_get_bit(flag, HNS3_CMDQ_RX_OUTVLD_B))) {
@@ -484,7 +484,7 @@ hns3_dev_handle_mbx_msg(struct hns3_hw *hw)
 			 * hns3 PF kernel driver, VF driver will receive this
 			 * mailbox message from PF driver.
 			 */
-			hns3_handle_promisc_info(hw, req->msg[1]);
+			hns3_handle_promisc_info(hw, req->msg.promisc_en);
 			break;
 		default:
 			hns3_err(hw, "received unsupported(%u) mbx msg",
