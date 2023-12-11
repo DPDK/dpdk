@@ -71,7 +71,7 @@ cn10k_sso_hws_link(void *arg, void *port, uint16_t *map, uint16_t nb_link, uint8
 	struct cnxk_sso_evdev *dev = arg;
 	struct cn10k_sso_hws *ws = port;
 
-	return roc_sso_hws_link(&dev->sso, ws->hws_id, map, nb_link, profile);
+	return roc_sso_hws_link(&dev->sso, ws->hws_id, map, nb_link, profile, 0);
 }
 
 static int
@@ -80,7 +80,7 @@ cn10k_sso_hws_unlink(void *arg, void *port, uint16_t *map, uint16_t nb_link, uin
 	struct cnxk_sso_evdev *dev = arg;
 	struct cn10k_sso_hws *ws = port;
 
-	return roc_sso_hws_unlink(&dev->sso, ws->hws_id, map, nb_link, profile);
+	return roc_sso_hws_unlink(&dev->sso, ws->hws_id, map, nb_link, profile, 0);
 }
 
 static void
@@ -111,7 +111,7 @@ cn10k_sso_hws_release(void *arg, void *hws)
 
 	for (i = 0; i < CNXK_SSO_MAX_PROFILES; i++)
 		for (j = 0; j < dev->nb_event_queues; j++)
-			roc_sso_hws_unlink(&dev->sso, ws->hws_id, &j, 1, i);
+			roc_sso_hws_unlink(&dev->sso, ws->hws_id, &j, 1, i, 0);
 	memset(ws, 0, sizeof(*ws));
 }
 

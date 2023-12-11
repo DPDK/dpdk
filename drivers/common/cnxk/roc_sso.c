@@ -236,6 +236,47 @@ sso_hws_link_modify(uint8_t hws, uintptr_t base, struct plt_bitmap *bmp, uint16_
 }
 
 static int
+sso_hws_link_modify_af(struct dev *dev, uint8_t hws, struct plt_bitmap *bmp, uint16_t hwgrp[],
+		       uint16_t n, uint8_t set, uint16_t enable)
+{
+	struct mbox *mbox = mbox_get(dev->mbox);
+	struct ssow_chng_mship *req;
+	int rc, i;
+
+	req = mbox_alloc_msg_ssow_chng_mship(mbox);
+	if (req == NULL) {
+		rc = mbox_process(mbox);
+		if (rc) {
+			mbox_put(mbox);
+			return -EIO;
+		}
+		req = mbox_alloc_msg_ssow_chng_mship(mbox);
+		if (req == NULL) {
+			mbox_put(mbox);
+			return -ENOSPC;
+		}
+	}
+	req->enable = enable;
+	req->set = set;
+	req->hws = hws;
+	req->nb_hwgrps = n;
+	for (i = 0; i < n; i++)
+		req->hwgrps[i] = hwgrp[i];
+	rc = mbox_process(mbox);
+	mbox_put(mbox);
+	if (rc == MBOX_MSG_INVALID)
+		return rc;
+	if (rc)
+		return -EIO;
+
+	for (i = 0; i < n; i++)
+		enable ? plt_bitmap_set(bmp, hwgrp[i]) :
+			 plt_bitmap_clear(bmp, hwgrp[i]);
+
+	return 0;
+}
+
+static int
 sso_msix_fill(struct roc_sso *roc_sso, uint16_t nb_hws, uint16_t nb_hwgrp)
 {
 	struct sso *sso = roc_sso_to_sso_priv(roc_sso);
@@ -300,31 +341,55 @@ roc_sso_ns_to_gw(uint64_t base, uint64_t ns)
 
 int
 roc_sso_hws_link(struct roc_sso *roc_sso, uint8_t hws, uint16_t hwgrp[], uint16_t nb_hwgrp,
-		 uint8_t set)
+		 uint8_t set, bool use_mbox)
 {
-	struct dev *dev = &roc_sso_to_sso_priv(roc_sso)->dev;
-	struct sso *sso;
+	struct sso *sso = roc_sso_to_sso_priv(roc_sso);
+	struct dev *dev = &sso->dev;
 	uintptr_t base;
+	int rc;
 
-	sso = roc_sso_to_sso_priv(roc_sso);
+	if (!nb_hwgrp)
+		return 0;
+
+	if (use_mbox && roc_model_is_cn10k()) {
+		rc = sso_hws_link_modify_af(dev, hws, sso->link_map[hws], hwgrp, nb_hwgrp, set, 1);
+		if (rc == MBOX_MSG_INVALID)
+			goto lf_access;
+		if (rc < 0)
+			return 0;
+		goto done;
+	}
+lf_access:
 	base = dev->bar2 + (RVU_BLOCK_ADDR_SSOW << 20 | hws << 12);
 	sso_hws_link_modify(hws, base, sso->link_map[hws], hwgrp, nb_hwgrp, set, 1);
-
+done:
 	return nb_hwgrp;
 }
 
 int
-roc_sso_hws_unlink(struct roc_sso *roc_sso, uint8_t hws, uint16_t hwgrp[], uint16_t nb_hwgrp,
-		   uint8_t set)
+roc_sso_hws_unlink(struct roc_sso *roc_sso, uint8_t hws, uint16_t hwgrp[],
+		   uint16_t nb_hwgrp, uint8_t set, bool use_mbox)
 {
-	struct dev *dev = &roc_sso_to_sso_priv(roc_sso)->dev;
-	struct sso *sso;
+	struct sso *sso = roc_sso_to_sso_priv(roc_sso);
+	struct dev *dev = &sso->dev;
 	uintptr_t base;
+	int rc;
 
-	sso = roc_sso_to_sso_priv(roc_sso);
+	if (!nb_hwgrp)
+		return 0;
+
+	if (use_mbox && roc_model_is_cn10k()) {
+		rc = sso_hws_link_modify_af(dev, hws, sso->link_map[hws], hwgrp, nb_hwgrp, set, 0);
+		if (rc == MBOX_MSG_INVALID)
+			goto lf_access;
+		if (rc < 0)
+			return 0;
+		goto done;
+	}
+lf_access:
 	base = dev->bar2 + (RVU_BLOCK_ADDR_SSOW << 20 | hws << 12);
 	sso_hws_link_modify(hws, base, sso->link_map[hws], hwgrp, nb_hwgrp, set, 0);
-
+done:
 	return nb_hwgrp;
 }
 

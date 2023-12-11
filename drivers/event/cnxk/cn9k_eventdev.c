@@ -25,12 +25,12 @@ cn9k_sso_hws_link(void *arg, void *port, uint16_t *map, uint16_t nb_link, uint8_
 	if (dev->dual_ws) {
 		dws = port;
 		rc = roc_sso_hws_link(&dev->sso, CN9K_DUAL_WS_PAIR_ID(dws->hws_id, 0), map, nb_link,
-				      profile);
+				      profile, 0);
 		rc |= roc_sso_hws_link(&dev->sso, CN9K_DUAL_WS_PAIR_ID(dws->hws_id, 1), map,
-				       nb_link, profile);
+				       nb_link, profile, 0);
 	} else {
 		ws = port;
-		rc = roc_sso_hws_link(&dev->sso, ws->hws_id, map, nb_link, profile);
+		rc = roc_sso_hws_link(&dev->sso, ws->hws_id, map, nb_link, profile, 0);
 	}
 
 	return rc;
@@ -47,12 +47,12 @@ cn9k_sso_hws_unlink(void *arg, void *port, uint16_t *map, uint16_t nb_link, uint
 	if (dev->dual_ws) {
 		dws = port;
 		rc = roc_sso_hws_unlink(&dev->sso, CN9K_DUAL_WS_PAIR_ID(dws->hws_id, 0), map,
-					nb_link, profile);
+					nb_link, profile, 0);
 		rc |= roc_sso_hws_unlink(&dev->sso, CN9K_DUAL_WS_PAIR_ID(dws->hws_id, 1), map,
-					 nb_link, profile);
+					 nb_link, profile, 0);
 	} else {
 		ws = port;
-		rc = roc_sso_hws_unlink(&dev->sso, ws->hws_id, map, nb_link, profile);
+		rc = roc_sso_hws_unlink(&dev->sso, ws->hws_id, map, nb_link, profile, 0);
 	}
 
 	return rc;
@@ -100,9 +100,9 @@ cn9k_sso_hws_release(void *arg, void *hws)
 		for (i = 0; i < dev->nb_event_queues; i++) {
 			for (k = 0; k < CNXK_SSO_MAX_PROFILES; k++) {
 				roc_sso_hws_unlink(&dev->sso, CN9K_DUAL_WS_PAIR_ID(dws->hws_id, 0),
-						   &i, 1, k);
+						   &i, 1, k, 0);
 				roc_sso_hws_unlink(&dev->sso, CN9K_DUAL_WS_PAIR_ID(dws->hws_id, 1),
-						   &i, 1, k);
+						   &i, 1, k, 0);
 			}
 		}
 		memset(dws, 0, sizeof(*dws));
@@ -110,7 +110,7 @@ cn9k_sso_hws_release(void *arg, void *hws)
 		ws = hws;
 		for (i = 0; i < dev->nb_event_queues; i++)
 			for (k = 0; k < CNXK_SSO_MAX_PROFILES; k++)
-				roc_sso_hws_unlink(&dev->sso, ws->hws_id, &i, 1, k);
+				roc_sso_hws_unlink(&dev->sso, ws->hws_id, &i, 1, k, 0);
 		memset(ws, 0, sizeof(*ws));
 	}
 }
