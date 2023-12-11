@@ -2932,12 +2932,18 @@ bnxt_dev_set_mc_addr_list_op(struct rte_eth_dev *eth_dev,
 	bp->nb_mc_addr = nb_mc_addr;
 
 	if (nb_mc_addr > BNXT_MAX_MC_ADDRS) {
+		PMD_DRV_LOG(INFO, "Number of Mcast MACs added (%u) exceeded Max supported (%u)\n",
+			    nb_mc_addr, BNXT_MAX_MC_ADDRS);
+		PMD_DRV_LOG(INFO, "Turning on Mcast promiscuous mode\n");
 		vnic->flags |= BNXT_VNIC_INFO_ALLMULTI;
 		goto allmulti;
 	}
 
 	/* TODO Check for Duplicate mcast addresses */
-	vnic->flags &= ~BNXT_VNIC_INFO_ALLMULTI;
+	if (vnic->flags & BNXT_VNIC_INFO_ALLMULTI) {
+		PMD_DRV_LOG(INFO, "Turning off Mcast promiscuous mode\n");
+		vnic->flags &= ~BNXT_VNIC_INFO_ALLMULTI;
+	}
 	for (i = 0; i < nb_mc_addr; i++)
 		rte_ether_addr_copy(&mc_addr_set[i], &bp->mcast_addr_list[i]);
 
