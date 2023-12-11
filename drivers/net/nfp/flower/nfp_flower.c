@@ -133,7 +133,9 @@ nfp_flower_pf_dispatch_pkts(struct nfp_net_hw *hw,
 		return false;
 	}
 
-	rte_ring_enqueue(repr->ring, (void *)mbuf);
+	if (rte_ring_enqueue(repr->ring, (void *)mbuf) != 0)
+		return false;
+
 	return true;
 }
 
