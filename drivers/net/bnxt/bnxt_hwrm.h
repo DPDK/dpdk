@@ -60,6 +60,8 @@ struct hwrm_func_qstats_output;
 	HWRM_PORT_PHY_CFG_INPUT_ENABLES_AUTO_PAM4_LINK_SPEED_MASK
 #define HWRM_PORT_PHY_CFG_IN_EN_AUTO_LINK_SPEED_MASK \
 	HWRM_PORT_PHY_CFG_INPUT_ENABLES_AUTO_LINK_SPEED_MASK
+#define BACKING_STORE_CFG_V2_IN_FLG_CFG_ALL_DONE \
+	HWRM_FUNC_BACKING_STORE_CFG_V2_INPUT_FLAGS_BS_CFG_ALL_DONE
 
 #define HWRM_SPEC_CODE_1_8_4		0x10804
 #define HWRM_SPEC_CODE_1_9_0		0x10900
@@ -355,4 +357,10 @@ void bnxt_free_hwrm_tx_ring(struct bnxt *bp, int queue_index);
 int bnxt_alloc_hwrm_tx_ring(struct bnxt *bp, int queue_index);
 int bnxt_hwrm_config_host_mtu(struct bnxt *bp);
 int bnxt_vnic_rss_clear_p5(struct bnxt *bp, struct bnxt_vnic_info *vnic);
+int bnxt_hwrm_func_backing_store_qcaps_v2(struct bnxt *bp);
+int bnxt_hwrm_func_backing_store_cfg_v2(struct bnxt *bp,
+					struct bnxt_ctx_mem *ctxm);
+int bnxt_hwrm_func_backing_store_types_count(struct bnxt *bp);
+int bnxt_hwrm_func_backing_store_ctx_alloc(struct bnxt *bp, uint16_t types);
+int bnxt_alloc_ctx_pg_tbls(struct bnxt *bp);
 #endif

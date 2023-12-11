@@ -24,15 +24,48 @@
 #include "bnxt_vnic.h"
 #include "hsi_struct_def_dpdk.h"
 
-#define HWRM_SPEC_CODE_1_8_3		0x10803
-#define HWRM_VERSION_1_9_1		0x10901
-#define HWRM_VERSION_1_9_2		0x10903
-#define HWRM_VERSION_1_10_2_13		0x10a020d
 struct bnxt_plcmodes_cfg {
 	uint32_t	flags;
 	uint16_t	jumbo_thresh;
 	uint16_t	hds_offset;
 	uint16_t	hds_threshold;
+};
+
+const char *bnxt_backing_store_types[] = {
+	"Queue pair",
+	"Shared receive queue",
+	"Completion queue",
+	"Virtual NIC",
+	"Statistic context",
+	"Slow-path TQM ring",
+	"Fast-path TQM ring",
+	"Unused",
+	"Unused",
+	"Unused",
+	"Unused",
+	"Unused",
+	"Unused",
+	"Unused",
+	"MR and MAV Context",
+	"TIM",
+	"Unused",
+	"Unused",
+	"Unused",
+	"Tx key context",
+	"Rx key context",
+	"Mid-path TQM ring",
+	"SQ Doorbell shadow region",
+	"RQ Doorbell shadow region",
+	"SRQ Doorbell shadow region",
+	"CQ Doorbell shadow region",
+	"QUIC Tx key context",
+	"QUIC Rx key context",
+	"Invalid type",
+	"Invalid type",
+	"Invalid type",
+	"Invalid type",
+	"Invalid type",
+	"Invalid type"
 };
 
 static int page_getenum(size_t size)
@@ -894,6 +927,11 @@ static int __bnxt_hwrm_func_qcaps(struct bnxt *bp)
 	if (flags & HWRM_FUNC_QCAPS_OUTPUT_FLAGS_LINK_ADMIN_STATUS_SUPPORTED)
 		bp->fw_cap |= BNXT_FW_CAP_LINK_ADMIN;
 
+	if (flags & HWRM_FUNC_QCAPS_OUTPUT_FLAGS_EXT_BS_V2_SUPPORTED) {
+		PMD_DRV_LOG(DEBUG, "Backing store v2 supported\n");
+		if (BNXT_CHIP_P7(bp))
+			bp->fw_cap |= BNXT_FW_CAP_BACKING_STORE_V2;
+	}
 	if (!(flags & HWRM_FUNC_QCAPS_OUTPUT_FLAGS_VLAN_ACCELERATION_TX_DISABLED)) {
 		bp->fw_cap |= BNXT_FW_CAP_VLAN_TX_INSERT;
 		PMD_DRV_LOG(DEBUG, "VLAN acceleration for TX is enabled\n");
@@ -5461,16 +5499,171 @@ int bnxt_hwrm_set_ring_coal(struct bnxt *bp,
 	return 0;
 }
 
-#define BNXT_RTE_MEMZONE_FLAG  (RTE_MEMZONE_1GB | RTE_MEMZONE_IOVA_CONTIG)
-int bnxt_hwrm_func_backing_store_qcaps(struct bnxt *bp)
+static void bnxt_init_ctx_initializer(struct bnxt_ctx_mem *ctxm,
+				      uint8_t init_val,
+				      uint8_t init_offset,
+				      bool init_mask_set)
 {
-	struct hwrm_func_backing_store_qcaps_input req = {0};
-	struct hwrm_func_backing_store_qcaps_output *resp =
+	ctxm->init_value = init_val;
+	ctxm->init_offset = BNXT_CTX_INIT_INVALID_OFFSET;
+	if (init_mask_set)
+		ctxm->init_offset = init_offset * 4;
+	else
+		ctxm->init_value = 0;
+}
+
+static int bnxt_alloc_all_ctx_pg_info(struct bnxt *bp)
+{
+	struct bnxt_ctx_mem_info *ctx = bp->ctx;
+	char name[RTE_MEMZONE_NAMESIZE];
+	uint16_t type;
+
+	for (type = 0; type < ctx->types; type++) {
+		struct bnxt_ctx_mem *ctxm = &ctx->ctx_arr[type];
+		int n = 1;
+
+		if (!ctxm->max_entries || ctxm->pg_info)
+			continue;
+
+		if (ctxm->instance_bmap)
+			n = hweight32(ctxm->instance_bmap);
+
+		sprintf(name, "bnxt_ctx_pgmem_%d_%d",
+			bp->eth_dev->data->port_id, type);
+		ctxm->pg_info = rte_malloc(name, sizeof(*ctxm->pg_info) * n,
+					   RTE_CACHE_LINE_SIZE);
+		if (!ctxm->pg_info)
+			return -ENOMEM;
+	}
+	return 0;
+}
+
+static void bnxt_init_ctx_v2_driver_managed(struct bnxt *bp __rte_unused,
+					    struct bnxt_ctx_mem *ctxm)
+{
+	switch (ctxm->type) {
+	case HWRM_FUNC_BACKING_STORE_QCAPS_V2_OUTPUT_TYPE_SQ_DB_SHADOW:
+	case HWRM_FUNC_BACKING_STORE_QCAPS_V2_OUTPUT_TYPE_RQ_DB_SHADOW:
+	case HWRM_FUNC_BACKING_STORE_QCAPS_V2_OUTPUT_TYPE_SRQ_DB_SHADOW:
+	case HWRM_FUNC_BACKING_STORE_QCAPS_V2_OUTPUT_TYPE_CQ_DB_SHADOW:
+		/* FALLTHROUGH */
+		ctxm->entry_size = 0;
+		ctxm->min_entries = 1;
+		ctxm->max_entries = 1;
+		break;
+	}
+}
+
+int bnxt_hwrm_func_backing_store_qcaps_v2(struct bnxt *bp)
+{
+	struct hwrm_func_backing_store_qcaps_v2_input req = {0};
+	struct hwrm_func_backing_store_qcaps_v2_output *resp =
 		bp->hwrm_cmd_resp_addr;
-	struct bnxt_ctx_pg_info *ctx_pg;
-	struct bnxt_ctx_mem_info *ctx;
-	int total_alloc_len;
-	int rc, i, tqm_rings;
+	struct bnxt_ctx_mem_info *ctx = bp->ctx;
+	uint16_t last_valid_type = BNXT_CTX_INV;
+	uint16_t last_valid_idx = 0;
+	uint16_t types, type;
+	int rc;
+
+	for (types = 0, type = 0; types < bp->ctx->types && type != BNXT_CTX_INV; types++) {
+		struct bnxt_ctx_mem *ctxm = &bp->ctx->ctx_arr[types];
+		uint8_t init_val, init_off, i;
+		uint32_t *p;
+		uint32_t flags;
+
+		HWRM_PREP(&req, HWRM_FUNC_BACKING_STORE_QCAPS_V2, BNXT_USE_CHIMP_MB);
+		req.type = rte_cpu_to_le_16(type);
+		rc = bnxt_hwrm_send_message(bp, &req, sizeof(req), BNXT_USE_CHIMP_MB);
+		HWRM_CHECK_RESULT();
+
+		flags = rte_le_to_cpu_32(resp->flags);
+		type = rte_le_to_cpu_16(resp->next_valid_type);
+		if (!(flags & HWRM_FUNC_BACKING_STORE_QCAPS_V2_OUTPUT_FLAGS_TYPE_VALID))
+			goto next;
+
+		ctxm->type = rte_le_to_cpu_16(resp->type);
+
+		ctxm->flags = flags;
+		if (flags &
+		    HWRM_FUNC_BACKING_STORE_QCAPS_V2_OUTPUT_FLAGS_DRIVER_MANAGED_MEMORY) {
+			bnxt_init_ctx_v2_driver_managed(bp, ctxm);
+			goto next;
+		}
+		ctxm->entry_size = rte_le_to_cpu_16(resp->entry_size);
+
+		if (ctxm->entry_size == 0)
+			goto next;
+
+		ctxm->instance_bmap = rte_le_to_cpu_32(resp->instance_bit_map);
+		ctxm->entry_multiple = resp->entry_multiple;
+		ctxm->max_entries = rte_le_to_cpu_32(resp->max_num_entries);
+		ctxm->min_entries = rte_le_to_cpu_32(resp->min_num_entries);
+		init_val = resp->ctx_init_value;
+		init_off = resp->ctx_init_offset;
+		bnxt_init_ctx_initializer(ctxm, init_val, init_off,
+					  BNXT_CTX_INIT_VALID(flags));
+		ctxm->split_entry_cnt = RTE_MIN(resp->subtype_valid_cnt,
+						BNXT_MAX_SPLIT_ENTRY);
+		for (i = 0, p = &resp->split_entry_0; i < ctxm->split_entry_cnt;
+		     i++, p++)
+			ctxm->split[i] = rte_le_to_cpu_32(*p);
+
+		PMD_DRV_LOG(DEBUG,
+			    "type:%s size:%d multiple:%d max:%d min:%d split:%d init_val:%d init_off:%d init:%d bmap:0x%x\n",
+			    bnxt_backing_store_types[ctxm->type], ctxm->entry_size,
+			    ctxm->entry_multiple, ctxm->max_entries, ctxm->min_entries,
+			    ctxm->split_entry_cnt, init_val, init_off,
+			    BNXT_CTX_INIT_VALID(flags), ctxm->instance_bmap);
+		last_valid_type = ctxm->type;
+		last_valid_idx = types;
+next:
+		HWRM_UNLOCK();
+	}
+	ctx->ctx_arr[last_valid_idx].last = true;
+	PMD_DRV_LOG(DEBUG, "Last valid type 0x%x\n", last_valid_type);
+
+	rc = bnxt_alloc_all_ctx_pg_info(bp);
+	if (rc == 0)
+		rc = bnxt_alloc_ctx_pg_tbls(bp);
+	return rc;
+}
+
+int bnxt_hwrm_func_backing_store_types_count(struct bnxt *bp)
+{
+	struct hwrm_func_backing_store_qcaps_v2_input req = {0};
+	struct hwrm_func_backing_store_qcaps_v2_output *resp =
+		bp->hwrm_cmd_resp_addr;
+	uint16_t type = 0;
+	int types = 0;
+	int rc;
+
+	/* Calculate number of valid context types */
+	do {
+		uint32_t flags;
+
+		HWRM_PREP(&req, HWRM_FUNC_BACKING_STORE_QCAPS_V2, BNXT_USE_CHIMP_MB);
+		req.type = rte_cpu_to_le_16(type);
+		rc = bnxt_hwrm_send_message(bp, &req, sizeof(req), BNXT_USE_CHIMP_MB);
+		HWRM_CHECK_RESULT();
+
+		flags = rte_le_to_cpu_32(resp->flags);
+		type = rte_le_to_cpu_16(resp->next_valid_type);
+		HWRM_UNLOCK();
+
+		if (flags & HWRM_FUNC_BACKING_STORE_QCAPS_V2_OUTPUT_FLAGS_TYPE_VALID) {
+			PMD_DRV_LOG(DEBUG, "Valid types 0x%x - %s\n",
+				    req.type, bnxt_backing_store_types[req.type]);
+			types++;
+		}
+	} while (type != HWRM_FUNC_BACKING_STORE_QCAPS_V2_OUTPUT_TYPE_INVALID);
+	PMD_DRV_LOG(DEBUG, "Number of valid types %d\n", types);
+
+	return types;
+}
+
+int bnxt_hwrm_func_backing_store_ctx_alloc(struct bnxt *bp, uint16_t types)
+{
+	int alloc_len = sizeof(struct bnxt_ctx_mem_info);
 
 	if (!BNXT_CHIP_P5_P7(bp) ||
 	    bp->hwrm_spec_code < HWRM_VERSION_1_9_2 ||
@@ -5478,17 +5671,41 @@ int bnxt_hwrm_func_backing_store_qcaps(struct bnxt *bp)
 	    bp->ctx)
 		return 0;
 
+	bp->ctx = rte_zmalloc("bnxt_ctx_mem", alloc_len,
+			      RTE_CACHE_LINE_SIZE);
+	if (bp->ctx == NULL)
+		return -ENOMEM;
+
+	alloc_len = sizeof(struct bnxt_ctx_mem) * types;
+	bp->ctx->ctx_arr = rte_zmalloc("bnxt_ctx_mem_arr",
+				       alloc_len,
+				       RTE_CACHE_LINE_SIZE);
+	if (bp->ctx->ctx_arr == NULL)
+		return -ENOMEM;
+
+	bp->ctx->types = types;
+	return 0;
+}
+
+int bnxt_hwrm_func_backing_store_qcaps(struct bnxt *bp)
+{
+	struct hwrm_func_backing_store_qcaps_input req = {0};
+	struct hwrm_func_backing_store_qcaps_output *resp =
+		bp->hwrm_cmd_resp_addr;
+	struct bnxt_ctx_pg_info *ctx_pg;
+	struct bnxt_ctx_mem_info *ctx;
+	int rc, i, tqm_rings;
+
+	if (!BNXT_CHIP_P5_P7(bp) ||
+	    bp->hwrm_spec_code < HWRM_VERSION_1_9_2 ||
+	    BNXT_VF(bp) ||
+	    bp->ctx->flags & BNXT_CTX_FLAG_INITED)
+		return 0;
+
+	ctx = bp->ctx;
 	HWRM_PREP(&req, HWRM_FUNC_BACKING_STORE_QCAPS, BNXT_USE_CHIMP_MB);
 	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req), BNXT_USE_CHIMP_MB);
 	HWRM_CHECK_RESULT_SILENT();
-
-	total_alloc_len = sizeof(*ctx);
-	ctx = rte_zmalloc("bnxt_ctx_mem", total_alloc_len,
-			  RTE_CACHE_LINE_SIZE);
-	if (!ctx) {
-		rc = -ENOMEM;
-		goto ctx_err;
-	}
 
 	ctx->qp_max_entries = rte_le_to_cpu_32(resp->qp_max_entries);
 	ctx->qp_min_qp1_entries =
@@ -5500,8 +5717,13 @@ int bnxt_hwrm_func_backing_store_qcaps(struct bnxt *bp)
 		rte_le_to_cpu_16(resp->srq_max_l2_entries);
 	ctx->srq_max_entries = rte_le_to_cpu_32(resp->srq_max_entries);
 	ctx->srq_entry_size = rte_le_to_cpu_16(resp->srq_entry_size);
-	ctx->cq_max_l2_entries =
-		rte_le_to_cpu_16(resp->cq_max_l2_entries);
+	if (BNXT_CHIP_P7(bp))
+		ctx->cq_max_l2_entries =
+			RTE_MIN(BNXT_P7_CQ_MAX_L2_ENT,
+				rte_le_to_cpu_16(resp->cq_max_l2_entries));
+	else
+		ctx->cq_max_l2_entries =
+			rte_le_to_cpu_16(resp->cq_max_l2_entries);
 	ctx->cq_max_entries = rte_le_to_cpu_32(resp->cq_max_entries);
 	ctx->cq_entry_size = rte_le_to_cpu_16(resp->cq_entry_size);
 	ctx->vnic_max_vnic_entries =
@@ -5555,9 +5777,70 @@ int bnxt_hwrm_func_backing_store_qcaps(struct bnxt *bp)
 	for (i = 0; i < tqm_rings; i++, ctx_pg++)
 		ctx->tqm_mem[i] = ctx_pg;
 
-	bp->ctx = ctx;
 ctx_err:
 	HWRM_UNLOCK();
+	return rc;
+}
+
+int bnxt_hwrm_func_backing_store_cfg_v2(struct bnxt *bp,
+					struct bnxt_ctx_mem *ctxm)
+{
+	struct hwrm_func_backing_store_cfg_v2_input req = {0};
+	struct hwrm_func_backing_store_cfg_v2_output *resp =
+		bp->hwrm_cmd_resp_addr;
+	struct bnxt_ctx_pg_info *ctx_pg;
+	int i, j, k;
+	uint32_t *p;
+	int rc = 0;
+	int w = 1;
+	int b = 1;
+
+	if (!BNXT_PF(bp)) {
+		PMD_DRV_LOG(INFO,
+			    "Backing store config V2 can be issued on PF only\n");
+		return 0;
+	}
+
+	if (!(ctxm->flags & BNXT_CTX_MEM_TYPE_VALID) || !ctxm->pg_info)
+		return 0;
+
+	if (ctxm->instance_bmap)
+		b = ctxm->instance_bmap;
+
+	w = hweight32(b);
+
+	for (i = 0, j = 0; i < w && rc == 0; i++) {
+		if (!(b & (1 << i)))
+			continue;
+
+		HWRM_PREP(&req, HWRM_FUNC_BACKING_STORE_CFG_V2, BNXT_USE_CHIMP_MB);
+		req.type = rte_cpu_to_le_16(ctxm->type);
+		req.entry_size = rte_cpu_to_le_16(ctxm->entry_size);
+		req.subtype_valid_cnt = ctxm->split_entry_cnt;
+		for (k = 0, p = &req.split_entry_0; k < ctxm->split_entry_cnt; k++)
+			p[k] = rte_cpu_to_le_32(ctxm->split[k]);
+
+		req.instance = rte_cpu_to_le_16(i);
+		ctx_pg = &ctxm->pg_info[j++];
+		if (!ctx_pg->entries)
+			goto unlock;
+
+		req.num_entries = rte_cpu_to_le_32(ctx_pg->entries);
+		bnxt_hwrm_set_pg_attr(&ctx_pg->ring_mem,
+				      &req.page_size_pbl_level,
+				      &req.page_dir);
+		PMD_DRV_LOG(DEBUG,
+			    "Backing store config V2 type:%s last %d, instance %d, hw %d\n",
+			    bnxt_backing_store_types[req.type], ctxm->last, j, w);
+		if (ctxm->last && i == (w - 1))
+			req.flags =
+			rte_cpu_to_le_32(BACKING_STORE_CFG_V2_IN_FLG_CFG_ALL_DONE);
+
+		rc = bnxt_hwrm_send_message(bp, &req, sizeof(req), BNXT_USE_CHIMP_MB);
+		HWRM_CHECK_RESULT();
+unlock:
+		HWRM_UNLOCK();
+	}
 	return rc;
 }
 

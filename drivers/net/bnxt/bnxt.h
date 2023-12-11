@@ -81,6 +81,11 @@
 #define BROADCOM_DEV_957508_N2100	0x5208
 #define BROADCOM_DEV_957414_N225	0x4145
 
+#define HWRM_SPEC_CODE_1_8_3		0x10803
+#define HWRM_VERSION_1_9_1		0x10901
+#define HWRM_VERSION_1_9_2		0x10903
+#define HWRM_VERSION_1_10_2_13		0x10a020d
+
 #define BNXT_MAX_MTU		9574
 #define BNXT_NUM_VLANS		2
 #define BNXT_MAX_PKT_LEN	(BNXT_MAX_MTU + RTE_ETHER_HDR_LEN +\
@@ -430,9 +435,18 @@ struct bnxt_coal {
 #define BNXT_PAGE_SIZE (1 << BNXT_PAGE_SHFT)
 #define MAX_CTX_PAGES  (BNXT_PAGE_SIZE / 8)
 
+#define BNXT_RTE_MEMZONE_FLAG  (RTE_MEMZONE_1GB | RTE_MEMZONE_IOVA_CONTIG)
+
 #define PTU_PTE_VALID             0x1UL
 #define PTU_PTE_LAST              0x2UL
 #define PTU_PTE_NEXT_TO_LAST      0x4UL
+
+#define BNXT_CTX_MIN		1
+#define BNXT_CTX_INV		0xffff
+
+#define BNXT_CTX_INIT_VALID(flags)	\
+	((flags) &			\
+	 HWRM_FUNC_BACKING_STORE_QCAPS_V2_OUTPUT_FLAGS_ENABLE_CTX_KIND_INIT)
 
 struct bnxt_ring_mem_info {
 	int				nr_pages;
@@ -440,6 +454,7 @@ struct bnxt_ring_mem_info {
 	uint32_t			flags;
 #define BNXT_RMEM_VALID_PTE_FLAG	1
 #define BNXT_RMEM_RING_PTE_FLAG		2
+#define BNXT_RMEM_USE_FULL_PAGE_FLAG	4
 
 	void				**pg_arr;
 	rte_iova_t			*dma_arr;
@@ -460,7 +475,50 @@ struct bnxt_ctx_pg_info {
 	struct bnxt_ring_mem_info ring_mem;
 };
 
+struct bnxt_ctx_mem {
+	uint16_t	type;
+	uint16_t	entry_size;
+	uint32_t	flags;
+#define BNXT_CTX_MEM_TYPE_VALID \
+	HWRM_FUNC_BACKING_STORE_QCAPS_V2_OUTPUT_FLAGS_TYPE_VALID
+	uint32_t	instance_bmap;
+	uint8_t		init_value;
+	uint8_t		entry_multiple;
+	uint16_t	init_offset;
+#define	BNXT_CTX_INIT_INVALID_OFFSET	0xffff
+	uint32_t	max_entries;
+	uint32_t	min_entries;
+	uint8_t		last:1;
+	uint8_t		split_entry_cnt;
+#define BNXT_MAX_SPLIT_ENTRY	4
+	union {
+		struct {
+			uint32_t	qp_l2_entries;
+			uint32_t	qp_qp1_entries;
+			uint32_t	qp_fast_qpmd_entries;
+		};
+		uint32_t	srq_l2_entries;
+		uint32_t	cq_l2_entries;
+		uint32_t	vnic_entries;
+		struct {
+			uint32_t	mrav_av_entries;
+			uint32_t	mrav_num_entries_units;
+		};
+		uint32_t	split[BNXT_MAX_SPLIT_ENTRY];
+	};
+	struct bnxt_ctx_pg_info	*pg_info;
+};
+
+#define BNXT_CTX_FLAG_INITED    0x01
+
 struct bnxt_ctx_mem_info {
+	struct bnxt_ctx_mem	*ctx_arr;
+	uint32_t	supported_types;
+	uint32_t	flags;
+	uint16_t	types;
+	uint8_t		tqm_fp_rings_count;
+
+	/* The following are used for V1 */
 	uint32_t        qp_max_entries;
 	uint16_t        qp_min_qp1_entries;
 	uint16_t        qp_max_l2_entries;
@@ -484,10 +542,6 @@ struct bnxt_ctx_mem_info {
 	uint16_t        tim_entry_size;
 	uint32_t        tim_max_entries;
 	uint8_t         tqm_entries_multiple;
-	uint8_t         tqm_fp_rings_count;
-
-	uint32_t        flags;
-#define BNXT_CTX_FLAG_INITED    0x01
 
 	struct bnxt_ctx_pg_info qp_mem;
 	struct bnxt_ctx_pg_info srq_mem;
@@ -739,6 +793,13 @@ struct bnxt {
 #define BNXT_FW_CAP_TRUFLOW_EN		BIT(8)
 #define BNXT_FW_CAP_VLAN_TX_INSERT	BIT(9)
 #define BNXT_FW_CAP_RX_ALL_PKT_TS	BIT(10)
+#define BNXT_FW_CAP_BACKING_STORE_V2	BIT(12)
+#define BNXT_FW_BACKING_STORE_V2_EN(bp)	\
+	((bp)->fw_cap & BNXT_FW_CAP_BACKING_STORE_V2)
+#define BNXT_FW_BACKING_STORE_V1_EN(bp)	\
+	(BNXT_CHIP_P5_P7((bp)) && \
+	 (bp)->hwrm_spec_code >= HWRM_VERSION_1_9_2 && \
+	 !BNXT_VF((bp)))
 #define BNXT_TRUFLOW_EN(bp)	((bp)->fw_cap & BNXT_FW_CAP_TRUFLOW_EN &&\
 				 (bp)->app_id != 0xFF)
 
