@@ -154,6 +154,8 @@ struct mbox_msghdr {
 	M(TIM_DISABLE_RING, 0x804, tim_disable_ring, tim_ring_req, msg_rsp)    \
 	M(TIM_GET_MIN_INTVL, 0x805, tim_get_min_intvl, tim_intvl_req,          \
 	  tim_intvl_rsp)                                                       \
+	M(TIM_CAPTURE_COUNTERS, 0x806, tim_capture_counters, msg_req,          \
+	  tim_capture_rsp)                                                     \
 	/* CPT mbox IDs (range 0xA00 - 0xBFF) */                               \
 	M(CPT_LF_ALLOC, 0xA00, cpt_lf_alloc, cpt_lf_alloc_req_msg, msg_rsp)    \
 	M(CPT_LF_FREE, 0xA01, cpt_lf_free, msg_req, msg_rsp)                   \
@@ -2543,6 +2545,10 @@ enum tim_clk_srcs {
 	TIM_CLK_SRCS_GPIO = 1,
 	TIM_CLK_SRCS_GTI = 2,
 	TIM_CLK_SRCS_PTP = 3,
+	TIM_CLK_SRCS_SYNCE = 4,
+	TIM_CLK_SRCS_BTS = 5,
+	TIM_CLK_SRCS_EXT_MIO = 6,
+	TIM_CLK_SRCS_EXT_GTI = 7,
 	TIM_CLK_SRSC_INVALID,
 };
 
@@ -2652,6 +2658,11 @@ struct tim_intvl_rsp {
 	struct mbox_msghdr hdr;
 	uint64_t __io intvl_cyc;
 	uint64_t __io intvl_ns;
+};
+
+struct tim_capture_rsp {
+	struct mbox_msghdr hdr;
+	uint64_t __io counters[TIM_CLK_SRSC_INVALID];
 };
 
 struct sdp_node_info {

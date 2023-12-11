@@ -49,7 +49,8 @@
 #define TIM_LF_RING_REL		   (0x400)
 
 #define TIM_MAX_INTERVAL_TICKS ((1ULL << 32) - 1)
-#define TIM_MAX_BUCKET_SIZE    ((1ULL << 20) - 1)
-#define TIM_MIN_BUCKET_SIZE    3
+#define TIM_MAX_BUCKET_SIZE    ((1ULL << 20) - 2)
+#define TIM_MIN_BUCKET_SIZE    1
+#define TIM_BUCKET_WRAP_SIZE   3
 
 #endif /* __TIM_HW_H__ */

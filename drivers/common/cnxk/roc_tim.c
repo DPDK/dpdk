@@ -92,6 +92,31 @@ tim_err_desc(int rc)
 }
 
 int
+roc_tim_capture_counters(struct roc_tim *roc_tim, uint64_t *counters, uint8_t nb_cntrs)
+{
+	struct sso *sso = roc_sso_to_sso_priv(roc_tim->roc_sso);
+	struct dev *dev = &sso->dev;
+	struct mbox *mbox = mbox_get(dev->mbox);
+	struct tim_capture_rsp *rsp;
+	int rc, i;
+
+	mbox_alloc_msg_tim_capture_counters(mbox);
+	rc = mbox_process_msg(dev->mbox, (void **)&rsp);
+	if (rc) {
+		tim_err_desc(rc);
+		rc = -EIO;
+		goto fail;
+	}
+
+	for (i = 0; i < nb_cntrs; i++)
+		counters[i] = rsp->counters[i];
+
+fail:
+	mbox_put(mbox);
+	return rc;
+}
+
+int
 roc_tim_lf_enable(struct roc_tim *roc_tim, uint8_t ring_id, uint64_t *start_tsc,
 		  uint32_t *cur_bkt)
 {
@@ -138,7 +163,7 @@ roc_tim_lf_disable(struct roc_tim *roc_tim, uint8_t ring_id)
 		goto fail;
 	req->ring = ring_id;
 
-	rc = mbox_process(dev->mbox);
+	rc = mbox_process(mbox);
 	if (rc) {
 		tim_err_desc(rc);
 		rc = -EIO;

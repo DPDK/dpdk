@@ -891,7 +891,7 @@ roc_sso_rsrc_init(struct roc_sso *roc_sso, uint8_t nb_hws, uint16_t nb_hwgrp, ui
 			goto sso_msix_fail;
 		}
 
-		nb_tim_lfs = nb_tim_lfs ? PLT_MIN(nb_tim_lfs, free_tim_lfs) : free_tim_lfs;
+		nb_tim_lfs = PLT_MIN(nb_tim_lfs, free_tim_lfs);
 	}
 
 	/* 2 error interrupt per TIM LF */
