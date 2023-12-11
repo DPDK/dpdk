@@ -761,6 +761,7 @@ static const struct eth_dev_ops nfp_net_eth_dev_ops = {
 	.flow_ops_get           = nfp_net_flow_ops_get,
 	.fec_get_capability     = nfp_net_fec_get_capability,
 	.fec_get                = nfp_net_fec_get,
+	.fec_set                = nfp_net_fec_set,
 };
 
 static inline void

@@ -2386,3 +2386,57 @@ nfp_net_fec_get(struct rte_eth_dev *dev,
 
 	return 0;
 }
+
+static enum nfp_eth_fec
+nfp_net_fec_rte_to_nfp(uint32_t fec)
+{
+	switch (fec) {
+	case RTE_BIT32(RTE_ETH_FEC_AUTO):
+		return NFP_FEC_AUTO_BIT;
+	case RTE_BIT32(RTE_ETH_FEC_NOFEC):
+		return NFP_FEC_DISABLED_BIT;
+	case RTE_BIT32(RTE_ETH_FEC_RS):
+		return NFP_FEC_REED_SOLOMON_BIT;
+	case RTE_BIT32(RTE_ETH_FEC_BASER):
+		return NFP_FEC_BASER_BIT;
+	default:
+		return NFP_FEC_INVALID_BIT;
+	}
+}
+
+int
+nfp_net_fec_set(struct rte_eth_dev *dev,
+		uint32_t fec_capa)
+{
+	enum nfp_eth_fec fec;
+	struct nfp_net_hw *hw;
+	uint32_t supported_fec;
+	struct nfp_eth_table *nfp_eth_table;
+	struct nfp_eth_table_port *eth_port;
+
+	hw = nfp_net_get_hw(dev);
+	if (hw->pf_dev == NULL)
+		return -EINVAL;
+
+	nfp_eth_table = hw->pf_dev->nfp_eth_table;
+	eth_port = &nfp_eth_table->ports[hw->idx];
+
+	supported_fec = nfp_eth_supported_fec_modes(eth_port);
+	if (supported_fec == 0) {
+		PMD_DRV_LOG(ERR, "NFP can not support FEC.");
+		return -ENOTSUP;
+	}
+
+	fec = nfp_net_fec_rte_to_nfp(fec_capa);
+	if (fec == NFP_FEC_INVALID_BIT) {
+		PMD_DRV_LOG(ERR, "FEC modes is invalid.");
+		return -EINVAL;
+	}
+
+	if ((RTE_BIT32(fec) & supported_fec) == 0) {
+		PMD_DRV_LOG(ERR, "Unsupported FEC mode is set.");
+		return -EIO;
+	}
+
+	return nfp_eth_set_fec(hw->cpp, eth_port->index, fec);
+}
