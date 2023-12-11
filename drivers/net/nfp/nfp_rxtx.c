@@ -765,15 +765,6 @@ nfp_net_recv_pkts(void *rx_queue,
 		/* Checking the checksum flag */
 		nfp_net_rx_cksum(rxq, rxds, mb);
 
-		if (meta.port_id == 0) {
-			rx_pkts[avail++] = mb;
-		} else if (nfp_flower_pf_dispatch_pkts(hw, mb, meta.port_id)) {
-			avail_multiplexed++;
-		} else {
-			rte_pktmbuf_free(mb);
-			break;
-		}
-
 		/* Now resetting and updating the descriptor */
 		rxds->vals[0] = 0;
 		rxds->vals[1] = 0;
@@ -786,6 +777,15 @@ nfp_net_recv_pkts(void *rx_queue,
 		rxq->rd_p++;
 		if (unlikely(rxq->rd_p == rxq->rx_count)) /* Wrapping */
 			rxq->rd_p = 0;
+
+		if (meta.port_id == 0) {
+			rx_pkts[avail++] = mb;
+		} else if (nfp_flower_pf_dispatch_pkts(hw, mb, meta.port_id)) {
+			avail_multiplexed++;
+		} else {
+			rte_pktmbuf_free(mb);
+			break;
+		}
 	}
 
 	if (nb_hold == 0)
