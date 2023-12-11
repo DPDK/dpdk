@@ -47,7 +47,6 @@ struct bnxt_vnic_info {
 	uint16_t	hash_type;
 	uint8_t		hash_mode;
 	uint8_t		prev_hash_mode;
-	const struct rte_memzone *rss_mz;
 	rte_iova_t	rss_table_dma_addr;
 	uint16_t	*rss_table;
 	rte_iova_t	rss_hash_key_dma_addr;

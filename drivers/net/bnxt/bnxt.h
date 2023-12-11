@@ -772,6 +772,7 @@ struct bnxt {
 
 	struct bnxt_vnic_info	*vnic_info;
 	STAILQ_HEAD(, bnxt_vnic_info)	free_vnic_list;
+	const struct rte_memzone *vnic_rss_mz;
 
 	struct bnxt_filter_info	*filter_info;
 	STAILQ_HEAD(, bnxt_filter_info)	free_filter_list;
