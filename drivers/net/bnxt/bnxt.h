@@ -72,6 +72,11 @@
 #define BROADCOM_DEV_ID_58814		0xd814
 #define BROADCOM_DEV_ID_58818		0xd818
 #define BROADCOM_DEV_ID_58818_VF	0xd82e
+#define BROADCOM_DEV_ID_57608		0x1760
+#define BROADCOM_DEV_ID_57604		0x1761
+#define BROADCOM_DEV_ID_57602		0x1762
+#define BROADCOM_DEV_ID_57601		0x1763
+#define BROADCOM_DEV_ID_5760X_VF	0x1819
 
 #define BROADCOM_DEV_957508_N2100	0x5208
 #define BROADCOM_DEV_957414_N225	0x4145
@@ -685,6 +690,7 @@ struct bnxt {
 #define BNXT_FLAG_FLOW_XSTATS_EN		BIT(25)
 #define BNXT_FLAG_DFLT_MAC_SET			BIT(26)
 #define BNXT_FLAG_GFID_ENABLE			BIT(27)
+#define BNXT_FLAG_CHIP_P7			BIT(30)
 #define BNXT_PF(bp)		(!((bp)->flags & BNXT_FLAG_VF))
 #define BNXT_VF(bp)		((bp)->flags & BNXT_FLAG_VF)
 #define BNXT_NPAR(bp)		((bp)->flags & BNXT_FLAG_NPAR_PF)
@@ -694,12 +700,16 @@ struct bnxt {
 #define BNXT_USE_KONG(bp)	((bp)->flags & BNXT_FLAG_KONG_MB_EN)
 #define BNXT_VF_IS_TRUSTED(bp)	((bp)->flags & BNXT_FLAG_TRUSTED_VF_EN)
 #define BNXT_CHIP_P5(bp)	((bp)->flags & BNXT_FLAG_CHIP_P5)
+#define BNXT_CHIP_P7(bp)	((bp)->flags & BNXT_FLAG_CHIP_P7)
+#define BNXT_CHIP_P5_P7(bp)	(BNXT_CHIP_P5(bp) || BNXT_CHIP_P7(bp))
 #define BNXT_STINGRAY(bp)	((bp)->flags & BNXT_FLAG_STINGRAY)
-#define BNXT_HAS_NQ(bp)		BNXT_CHIP_P5(bp)
-#define BNXT_HAS_RING_GRPS(bp)	(!BNXT_CHIP_P5(bp))
+#define BNXT_HAS_NQ(bp)		BNXT_CHIP_P5_P7(bp)
+#define BNXT_HAS_RING_GRPS(bp)	(!BNXT_CHIP_P5_P7(bp))
 #define BNXT_FLOW_XSTATS_EN(bp)	((bp)->flags & BNXT_FLAG_FLOW_XSTATS_EN)
 #define BNXT_HAS_DFLT_MAC_SET(bp)	((bp)->flags & BNXT_FLAG_DFLT_MAC_SET)
 #define BNXT_GFID_ENABLED(bp)	((bp)->flags & BNXT_FLAG_GFID_ENABLE)
+#define BNXT_P7_MAX_NQ_RING_CNT	512
+#define BNXT_P7_CQ_MAX_L2_ENT	8192
 
 	uint32_t			flags2;
 #define BNXT_FLAGS2_PTP_TIMESYNC_ENABLED	BIT(0)

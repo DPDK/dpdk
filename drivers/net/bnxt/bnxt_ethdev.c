@@ -85,6 +85,11 @@ static const struct rte_pci_id bnxt_pci_id_map[] = {
 	{ RTE_PCI_DEVICE(PCI_VENDOR_ID_BROADCOM, BROADCOM_DEV_ID_58814) },
 	{ RTE_PCI_DEVICE(PCI_VENDOR_ID_BROADCOM, BROADCOM_DEV_ID_58818) },
 	{ RTE_PCI_DEVICE(PCI_VENDOR_ID_BROADCOM, BROADCOM_DEV_ID_58818_VF) },
+	{ RTE_PCI_DEVICE(PCI_VENDOR_ID_BROADCOM, BROADCOM_DEV_ID_57608) },
+	{ RTE_PCI_DEVICE(PCI_VENDOR_ID_BROADCOM, BROADCOM_DEV_ID_57604) },
+	{ RTE_PCI_DEVICE(PCI_VENDOR_ID_BROADCOM, BROADCOM_DEV_ID_57602) },
+	{ RTE_PCI_DEVICE(PCI_VENDOR_ID_BROADCOM, BROADCOM_DEV_ID_57601) },
+	{ RTE_PCI_DEVICE(PCI_VENDOR_ID_BROADCOM, BROADCOM_DEV_ID_5760X_VF) },
 	{ .vendor_id = 0, /* sentinel */ },
 };
 
@@ -4683,6 +4688,7 @@ static bool bnxt_vf_pciid(uint16_t device_id)
 	case BROADCOM_DEV_ID_57500_VF1:
 	case BROADCOM_DEV_ID_57500_VF2:
 	case BROADCOM_DEV_ID_58818_VF:
+	case BROADCOM_DEV_ID_5760X_VF:
 		/* FALLTHROUGH */
 		return true;
 	default:
@@ -4708,7 +4714,23 @@ static bool bnxt_p5_device(uint16_t device_id)
 	case BROADCOM_DEV_ID_58812:
 	case BROADCOM_DEV_ID_58814:
 	case BROADCOM_DEV_ID_58818:
+		/* FALLTHROUGH */
+		return true;
+	default:
+		return false;
+	}
+}
+
+/* Phase 7 device */
+static bool bnxt_p7_device(uint16_t device_id)
+{
+	switch (device_id) {
 	case BROADCOM_DEV_ID_58818_VF:
+	case BROADCOM_DEV_ID_57608:
+	case BROADCOM_DEV_ID_57604:
+	case BROADCOM_DEV_ID_57602:
+	case BROADCOM_DEV_ID_57601:
+	case BROADCOM_DEV_ID_5760X_VF:
 		/* FALLTHROUGH */
 		return true;
 	default:
@@ -5865,6 +5887,9 @@ static int bnxt_drv_init(struct rte_eth_dev *eth_dev)
 
 	if (bnxt_p5_device(pci_dev->id.device_id))
 		bp->flags |= BNXT_FLAG_CHIP_P5;
+
+	if (bnxt_p7_device(pci_dev->id.device_id))
+		bp->flags |= BNXT_FLAG_CHIP_P7;
 
 	if (pci_dev->id.device_id == BROADCOM_DEV_ID_58802 ||
 	    pci_dev->id.device_id == BROADCOM_DEV_ID_58804 ||
