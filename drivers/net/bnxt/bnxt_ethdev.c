@@ -5433,6 +5433,7 @@ static int bnxt_map_hcomm_fw_status_reg(struct bnxt *bp)
 static int bnxt_get_config(struct bnxt *bp)
 {
 	uint16_t mtu;
+	int timeout;
 	int rc = 0;
 
 	bp->fw_cap = 0;
@@ -5441,8 +5442,17 @@ static int bnxt_get_config(struct bnxt *bp)
 	if (rc)
 		return rc;
 
-	rc = bnxt_hwrm_ver_get(bp, DFLT_HWRM_CMD_TIMEOUT);
+	timeout = BNXT_CHIP_P7(bp) ?
+		  PCI_FUNC_RESET_WAIT_TIMEOUT :
+		  DFLT_HWRM_CMD_TIMEOUT;
+try_again:
+	rc = bnxt_hwrm_ver_get(bp, timeout);
 	if (rc) {
+		if (rc == -ETIMEDOUT && timeout == PCI_FUNC_RESET_WAIT_TIMEOUT) {
+			bp->flags &= ~BNXT_FLAG_FW_TIMEDOUT;
+			timeout = DFLT_HWRM_CMD_TIMEOUT;
+			goto try_again;
+		}
 		bnxt_check_fw_status(bp);
 		return rc;
 	}

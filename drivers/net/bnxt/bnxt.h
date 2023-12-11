@@ -879,6 +879,7 @@ struct bnxt {
 
 	 /* default command timeout value of 500ms */
 #define DFLT_HWRM_CMD_TIMEOUT		500000
+#define PCI_FUNC_RESET_WAIT_TIMEOUT	1500000
 	 /* short command timeout value of 50ms */
 #define SHORT_HWRM_CMD_TIMEOUT		50000
 	/* default HWRM request timeout value */
