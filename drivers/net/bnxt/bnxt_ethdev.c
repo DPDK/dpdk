@@ -4750,7 +4750,7 @@ static int bnxt_alloc_ctx_mem_blk(struct bnxt *bp,
 {
 	struct bnxt_ring_mem_info *rmem = &ctx_pg->ring_mem;
 	const struct rte_memzone *mz = NULL;
-	char mz_name[RTE_MEMZONE_NAMESIZE];
+	char name[RTE_MEMZONE_NAMESIZE];
 	rte_iova_t mz_phys_addr;
 	uint64_t valid_bits = 0;
 	uint32_t sz;
@@ -4762,6 +4762,19 @@ static int bnxt_alloc_ctx_mem_blk(struct bnxt *bp,
 	rmem->nr_pages = RTE_ALIGN_MUL_CEIL(mem_size, BNXT_PAGE_SIZE) /
 			 BNXT_PAGE_SIZE;
 	rmem->page_size = BNXT_PAGE_SIZE;
+
+	snprintf(name, RTE_MEMZONE_NAMESIZE, "bnxt_ctx_pg_arr%s_%x_%d",
+		 suffix, idx, bp->eth_dev->data->port_id);
+	ctx_pg->ctx_pg_arr = rte_zmalloc(name, sizeof(void *) * rmem->nr_pages, 0);
+	if (ctx_pg->ctx_pg_arr == NULL)
+		return -ENOMEM;
+
+	snprintf(name, RTE_MEMZONE_NAMESIZE, "bnxt_ctx_dma_arr%s_%x_%d",
+		 suffix, idx, bp->eth_dev->data->port_id);
+	ctx_pg->ctx_dma_arr = rte_zmalloc(name, sizeof(rte_iova_t *) * rmem->nr_pages, 0);
+	if (ctx_pg->ctx_dma_arr == NULL)
+		return -ENOMEM;
+
 	rmem->pg_arr = ctx_pg->ctx_pg_arr;
 	rmem->dma_arr = ctx_pg->ctx_dma_arr;
 	rmem->flags = BNXT_RMEM_VALID_PTE_FLAG;
@@ -4769,13 +4782,13 @@ static int bnxt_alloc_ctx_mem_blk(struct bnxt *bp,
 	valid_bits = PTU_PTE_VALID;
 
 	if (rmem->nr_pages > 1) {
-		snprintf(mz_name, RTE_MEMZONE_NAMESIZE,
+		snprintf(name, RTE_MEMZONE_NAMESIZE,
 			 "bnxt_ctx_pg_tbl%s_%x_%d",
 			 suffix, idx, bp->eth_dev->data->port_id);
-		mz_name[RTE_MEMZONE_NAMESIZE - 1] = 0;
-		mz = rte_memzone_lookup(mz_name);
+		name[RTE_MEMZONE_NAMESIZE - 1] = 0;
+		mz = rte_memzone_lookup(name);
 		if (!mz) {
-			mz = rte_memzone_reserve_aligned(mz_name,
+			mz = rte_memzone_reserve_aligned(name,
 						rmem->nr_pages * 8,
 						bp->eth_dev->device->numa_node,
 						RTE_MEMZONE_2MB |
@@ -4794,11 +4807,11 @@ static int bnxt_alloc_ctx_mem_blk(struct bnxt *bp,
 		rmem->pg_tbl_mz = mz;
 	}
 
-	snprintf(mz_name, RTE_MEMZONE_NAMESIZE, "bnxt_ctx_%s_%x_%d",
+	snprintf(name, RTE_MEMZONE_NAMESIZE, "bnxt_ctx_%s_%x_%d",
 		 suffix, idx, bp->eth_dev->data->port_id);
-	mz = rte_memzone_lookup(mz_name);
+	mz = rte_memzone_lookup(name);
 	if (!mz) {
-		mz = rte_memzone_reserve_aligned(mz_name,
+		mz = rte_memzone_reserve_aligned(name,
 						 mem_size,
 						 bp->eth_dev->device->numa_node,
 						 RTE_MEMZONE_1GB |
@@ -4844,6 +4857,17 @@ static void bnxt_free_ctx_mem(struct bnxt *bp)
 		return;
 
 	bp->ctx->flags &= ~BNXT_CTX_FLAG_INITED;
+	rte_free(bp->ctx->qp_mem.ctx_pg_arr);
+	rte_free(bp->ctx->srq_mem.ctx_pg_arr);
+	rte_free(bp->ctx->cq_mem.ctx_pg_arr);
+	rte_free(bp->ctx->vnic_mem.ctx_pg_arr);
+	rte_free(bp->ctx->stat_mem.ctx_pg_arr);
+	rte_free(bp->ctx->qp_mem.ctx_dma_arr);
+	rte_free(bp->ctx->srq_mem.ctx_dma_arr);
+	rte_free(bp->ctx->cq_mem.ctx_dma_arr);
+	rte_free(bp->ctx->vnic_mem.ctx_dma_arr);
+	rte_free(bp->ctx->stat_mem.ctx_dma_arr);
+
 	rte_memzone_free(bp->ctx->qp_mem.ring_mem.mz);
 	rte_memzone_free(bp->ctx->srq_mem.ring_mem.mz);
 	rte_memzone_free(bp->ctx->cq_mem.ring_mem.mz);
@@ -4856,6 +4880,8 @@ static void bnxt_free_ctx_mem(struct bnxt *bp)
 	rte_memzone_free(bp->ctx->stat_mem.ring_mem.pg_tbl_mz);
 
 	for (i = 0; i < bp->ctx->tqm_fp_rings_count + 1; i++) {
+		rte_free(bp->ctx->tqm_mem[i]->ctx_pg_arr);
+		rte_free(bp->ctx->tqm_mem[i]->ctx_dma_arr);
 		if (bp->ctx->tqm_mem[i])
 			rte_memzone_free(bp->ctx->tqm_mem[i]->ring_mem.mz);
 	}
