@@ -365,6 +365,9 @@ struct otx_ep_droq {
 	/* receive buffer list contains mbuf ptr list */
 	struct rte_mbuf **recv_buf_list;
 
+	/* Packet re-arm data. */
+	uint64_t rearm_data;
+
 	/* Packets pending to be processed */
 	uint64_t pkts_pending;
 

@@ -17,7 +17,7 @@
 
 #define OTX_EP_FSZ 28
 #define OTX2_EP_FSZ 24
-#define OTX_EP_MAX_INSTR 128
+#define OTX_EP_MAX_INSTR 256
 
 /* SDP_LENGTH_S specifies packet length and is of 8-byte size */
 #define OTX_EP_INFO_SIZE 8

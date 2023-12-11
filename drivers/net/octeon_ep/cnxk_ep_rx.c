@@ -93,7 +93,7 @@ cnxk_ep_check_rx_pkts(struct otx_ep_droq *droq)
 	new_pkts = val - droq->pkts_sent_ism_prev;
 	droq->pkts_sent_ism_prev = val;
 
-	if (val > (uint32_t)(1 << 31)) {
+	if (val > RTE_BIT32(31)) {
 		/* Only subtract the packet count in the HW counter
 		 * when count above halfway to saturation.
 		 */
@@ -128,7 +128,6 @@ cnxk_ep_process_pkts_scalar(struct rte_mbuf **rx_pkts, struct otx_ep_droq *droq,
 {
 	struct rte_mbuf **recv_buf_list = droq->recv_buf_list;
 	uint32_t bytes_rsvd = 0, read_idx = droq->read_idx;
-	uint16_t port_id = droq->otx_ep_dev->port_id;
 	uint16_t nb_desc = droq->nb_desc;
 	uint16_t pkts;
 
@@ -137,14 +136,19 @@ cnxk_ep_process_pkts_scalar(struct rte_mbuf **rx_pkts, struct otx_ep_droq *droq,
 		struct rte_mbuf *mbuf;
 		uint16_t pkt_len;
 
+		rte_prefetch0(recv_buf_list[otx_ep_incr_index(read_idx, 2, nb_desc)]);
+		rte_prefetch0(rte_pktmbuf_mtod(recv_buf_list[otx_ep_incr_index(read_idx,
+									       2, nb_desc)],
+			      void *));
+
 		mbuf = recv_buf_list[read_idx];
 		info = rte_pktmbuf_mtod(mbuf, struct otx_ep_droq_info *);
 		read_idx = otx_ep_incr_index(read_idx, 1, nb_desc);
 		pkt_len = rte_bswap16(info->length >> 48);
-		mbuf->data_off += OTX_EP_INFO_SIZE;
 		mbuf->pkt_len = pkt_len;
 		mbuf->data_len = pkt_len;
-		mbuf->port = port_id;
+
+		*(uint64_t *)&mbuf->rearm_data = droq->rearm_data;
 		rx_pkts[pkts] = mbuf;
 		bytes_rsvd += pkt_len;
 	}
