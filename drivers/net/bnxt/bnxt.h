@@ -455,8 +455,8 @@ struct bnxt_ring_mem_info {
 
 struct bnxt_ctx_pg_info {
 	uint32_t	entries;
-	void		*ctx_pg_arr[MAX_CTX_PAGES];
-	rte_iova_t	ctx_dma_arr[MAX_CTX_PAGES];
+	void		**ctx_pg_arr;
+	rte_iova_t	*ctx_dma_arr;
 	struct bnxt_ring_mem_info ring_mem;
 };
 
