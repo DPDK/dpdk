@@ -853,7 +853,7 @@ static int __bnxt_hwrm_func_qcaps(struct bnxt *bp)
 	bp->first_vf_id = rte_le_to_cpu_16(resp->first_vf_id);
 	bp->max_rx_em_flows = rte_le_to_cpu_16(resp->max_rx_em_flows);
 	bp->max_l2_ctx = rte_le_to_cpu_16(resp->max_l2_ctxs);
-	if (!BNXT_CHIP_P5(bp) && !bp->pdev->max_vfs)
+	if (!BNXT_CHIP_P5_P7(bp) && !bp->pdev->max_vfs)
 		bp->max_l2_ctx += bp->max_rx_em_flows;
 	if (bp->vnic_cap_flags & BNXT_VNIC_CAP_COS_CLASSIFY)
 		bp->max_vnics = rte_le_to_cpu_16(BNXT_MAX_VNICS_COS_CLASSIFY);
@@ -1187,7 +1187,7 @@ int bnxt_hwrm_func_resc_qcaps(struct bnxt *bp)
 	 * So use the value provided by func_qcaps.
 	 */
 	bp->max_l2_ctx = rte_le_to_cpu_16(resp->max_l2_ctxs);
-	if (!BNXT_CHIP_P5(bp) && !bp->pdev->max_vfs)
+	if (!BNXT_CHIP_P5_P7(bp) && !bp->pdev->max_vfs)
 		bp->max_l2_ctx += bp->max_rx_em_flows;
 	if (bp->vnic_cap_flags & BNXT_VNIC_CAP_COS_CLASSIFY)
 		bp->max_vnics = rte_le_to_cpu_16(BNXT_MAX_VNICS_COS_CLASSIFY);
@@ -1744,7 +1744,7 @@ int bnxt_hwrm_ring_alloc(struct bnxt *bp,
 		req.ring_type = ring_type;
 		req.cmpl_ring_id = rte_cpu_to_le_16(cmpl_ring_id);
 		req.stat_ctx_id = rte_cpu_to_le_32(stats_ctx_id);
-		if (BNXT_CHIP_P5(bp)) {
+		if (BNXT_CHIP_P5_P7(bp)) {
 			mb_pool = bp->rx_queues[0]->mb_pool;
 			rx_buf_size = rte_pktmbuf_data_room_size(mb_pool) -
 				      RTE_PKTMBUF_HEADROOM;
@@ -2118,7 +2118,7 @@ int bnxt_hwrm_vnic_cfg(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 
 	HWRM_PREP(&req, HWRM_VNIC_CFG, BNXT_USE_CHIMP_MB);
 
-	if (BNXT_CHIP_P5(bp)) {
+	if (BNXT_CHIP_P5_P7(bp)) {
 		int dflt_rxq = vnic->start_grp_id;
 		struct bnxt_rx_ring_info *rxr;
 		struct bnxt_cp_ring_info *cpr;
@@ -2304,7 +2304,7 @@ int bnxt_hwrm_vnic_ctx_free(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 {
 	int rc = 0;
 
-	if (BNXT_CHIP_P5(bp)) {
+	if (BNXT_CHIP_P5_P7(bp)) {
 		int j;
 
 		for (j = 0; j < vnic->num_lb_ctxts; j++) {
@@ -2556,7 +2556,7 @@ int bnxt_hwrm_vnic_tpa_cfg(struct bnxt *bp,
 	struct hwrm_vnic_tpa_cfg_input req = {.req_type = 0 };
 	struct hwrm_vnic_tpa_cfg_output *resp = bp->hwrm_cmd_resp_addr;
 
-	if (BNXT_CHIP_P5(bp) && !bp->max_tpa_v2) {
+	if ((BNXT_CHIP_P5(bp) || BNXT_CHIP_P7(bp)) && !bp->max_tpa_v2) {
 		if (enable)
 			PMD_DRV_LOG(ERR, "No HW support for LRO\n");
 		return -ENOTSUP;
@@ -2584,6 +2584,9 @@ int bnxt_hwrm_vnic_tpa_cfg(struct bnxt *bp,
 		req.max_aggs = rte_cpu_to_le_16(BNXT_TPA_MAX_AGGS(bp));
 		req.max_agg_segs = rte_cpu_to_le_16(BNXT_TPA_MAX_SEGS(bp));
 		req.min_agg_len = rte_cpu_to_le_32(512);
+
+		if (BNXT_CHIP_P5_P7(bp))
+			req.max_aggs = rte_cpu_to_le_16(bp->max_tpa_v2);
 	}
 	req.vnic_id = rte_cpu_to_le_16(vnic->fw_vnic_id);
 
@@ -2836,7 +2839,7 @@ void bnxt_free_hwrm_rx_ring(struct bnxt *bp, int queue_index)
 	ring = rxr ? rxr->ag_ring_struct : NULL;
 	if (ring != NULL && cpr != NULL) {
 		bnxt_hwrm_ring_free(bp, ring,
-				    BNXT_CHIP_P5(bp) ?
+				    BNXT_CHIP_P5_P7(bp) ?
 				    HWRM_RING_FREE_INPUT_RING_TYPE_RX_AGG :
 				    HWRM_RING_FREE_INPUT_RING_TYPE_RX,
 				    cpr->cp_ring_struct->fw_ring_id);
@@ -3356,8 +3359,7 @@ int bnxt_set_hwrm_link_config(struct bnxt *bp, bool link_up)
 
 	/* Get user requested autoneg setting */
 	autoneg = bnxt_check_eth_link_autoneg(dev_conf->link_speeds);
-
-	if (BNXT_CHIP_P5(bp) &&
+	if (BNXT_CHIP_P5_P7(bp) &&
 	    dev_conf->link_speeds & RTE_ETH_LINK_SPEED_40G) {
 		/* 40G is not supported as part of media auto detect.
 		 * The speed should be forced and autoneg disabled
@@ -5348,7 +5350,7 @@ int bnxt_vnic_rss_configure(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 	if (!(vnic->rss_table && vnic->hash_type))
 		return 0;
 
-	if (BNXT_CHIP_P5(bp))
+	if (BNXT_CHIP_P5_P7(bp))
 		return bnxt_vnic_rss_configure_p5(bp, vnic);
 
 	/*
@@ -5440,7 +5442,7 @@ int bnxt_hwrm_set_ring_coal(struct bnxt *bp,
 	int rc;
 
 	/* Set ring coalesce parameters only for 100G NICs */
-	if (BNXT_CHIP_P5(bp)) {
+	if (BNXT_CHIP_P5_P7(bp)) {
 		if (bnxt_hwrm_set_coal_params_p5(bp, &req))
 			return -1;
 	} else if (bnxt_stratus_device(bp)) {
@@ -5470,7 +5472,7 @@ int bnxt_hwrm_func_backing_store_qcaps(struct bnxt *bp)
 	int total_alloc_len;
 	int rc, i, tqm_rings;
 
-	if (!BNXT_CHIP_P5(bp) ||
+	if (!BNXT_CHIP_P5_P7(bp) ||
 	    bp->hwrm_spec_code < HWRM_VERSION_1_9_2 ||
 	    BNXT_VF(bp) ||
 	    bp->ctx)

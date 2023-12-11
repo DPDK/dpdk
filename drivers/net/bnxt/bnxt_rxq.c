@@ -600,7 +600,7 @@ int bnxt_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 			if (bp->rx_queues[i]->rx_started)
 				active_queue_cnt++;
 
-		if (BNXT_CHIP_P5(bp)) {
+		if (BNXT_CHIP_P5_P7(bp)) {
 			/*
 			 * For P5, we need to ensure that the VNIC default
 			 * receive ring corresponds to an active receive queue.

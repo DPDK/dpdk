@@ -213,7 +213,7 @@ uint16_t bnxt_rss_ctxts(const struct bnxt *bp)
 	unsigned int num_rss_rings = RTE_MIN(bp->rx_nr_rings,
 					     BNXT_RSS_TBL_SIZE_P5);
 
-	if (!BNXT_CHIP_P5(bp))
+	if (!BNXT_CHIP_P5_P7(bp))
 		return 1;
 
 	return RTE_ALIGN_MUL_CEIL(num_rss_rings,
@@ -223,7 +223,7 @@ uint16_t bnxt_rss_ctxts(const struct bnxt *bp)
 
 uint16_t bnxt_rss_hash_tbl_size(const struct bnxt *bp)
 {
-	if (!BNXT_CHIP_P5(bp))
+	if (!BNXT_CHIP_P5_P7(bp))
 		return HW_HASH_INDEX_SIZE;
 
 	return bnxt_rss_ctxts(bp) * BNXT_RSS_ENTRIES_PER_CTX_P5;
@@ -766,7 +766,7 @@ static int bnxt_start_nic(struct bnxt *bp)
 	/* P5 does not support ring groups.
 	 * But we will use the array to save RSS context IDs.
 	 */
-	if (BNXT_CHIP_P5(bp))
+	if (BNXT_CHIP_P5_P7(bp))
 		bp->max_ring_grps = BNXT_MAX_RSS_CTXTS_P5;
 
 	rc = bnxt_vnic_queue_db_init(bp);
@@ -1248,12 +1248,6 @@ bnxt_receive_function(struct rte_eth_dev *eth_dev)
 {
 	struct bnxt *bp = eth_dev->data->dev_private;
 
-	/* Disable vector mode RX for Stingray2 for now */
-	if (BNXT_CHIP_SR2(bp)) {
-		bp->flags &= ~BNXT_FLAG_RX_VECTOR_PKT_MODE;
-		return bnxt_recv_pkts;
-	}
-
 #if defined(RTE_ARCH_X86) || defined(RTE_ARCH_ARM64)
 	/* Vector mode receive cannot be enabled if scattered rx is in use. */
 	if (eth_dev->data->scattered_rx)
@@ -1318,16 +1312,11 @@ use_scalar_rx:
 }
 
 static eth_tx_burst_t
-bnxt_transmit_function(struct rte_eth_dev *eth_dev)
+bnxt_transmit_function(__rte_unused struct rte_eth_dev *eth_dev)
 {
-	struct bnxt *bp = eth_dev->data->dev_private;
-
-	/* Disable vector mode TX for Stingray2 for now */
-	if (BNXT_CHIP_SR2(bp))
-		return bnxt_xmit_pkts;
-
 #if defined(RTE_ARCH_X86) || defined(RTE_ARCH_ARM64)
 	uint64_t offloads = eth_dev->data->dev_conf.txmode.offloads;
+	struct bnxt *bp = eth_dev->data->dev_private;
 
 	/*
 	 * Vector mode transmit can be enabled only if not using scatter rx
@@ -2092,7 +2081,7 @@ static int bnxt_reta_update_op(struct rte_eth_dev *eth_dev,
 			continue;
 
 		rxq = bnxt_qid_to_rxq(bp, reta_conf[idx].reta[sft]);
-		if (BNXT_CHIP_P5(bp)) {
+		if (BNXT_CHIP_P5_P7(bp)) {
 			vnic->rss_table[i * 2] =
 				rxq->rx_ring->rx_ring_struct->fw_ring_id;
 			vnic->rss_table[i * 2 + 1] =
@@ -2139,7 +2128,7 @@ static int bnxt_reta_query_op(struct rte_eth_dev *eth_dev,
 		if (reta_conf[idx].mask & (1ULL << sft)) {
 			uint16_t qid;
 
-			if (BNXT_CHIP_P5(bp))
+			if (BNXT_CHIP_P5_P7(bp))
 				qid = bnxt_rss_to_qid(bp,
 						      vnic->rss_table[i * 2]);
 			else
@@ -3225,7 +3214,7 @@ bnxt_rx_queue_count_op(void *rx_queue)
 			break;
 
 		case CMPL_BASE_TYPE_RX_TPA_END:
-			if (BNXT_CHIP_P5(rxq->bp)) {
+			if (BNXT_CHIP_P5_P7(rxq->bp)) {
 				struct rx_tpa_v2_end_cmpl_hi *p5_tpa_end;
 
 				p5_tpa_end = (void *)rxcmp;
@@ -3336,7 +3325,7 @@ bnxt_rx_descriptor_status_op(void *rx_queue, uint16_t offset)
 			if (desc == offset)
 				return RTE_ETH_RX_DESC_DONE;
 
-			if (BNXT_CHIP_P5(rxq->bp)) {
+			if (BNXT_CHIP_P5_P7(rxq->bp)) {
 				struct rx_tpa_v2_end_cmpl_hi *p5_tpa_end;
 
 				p5_tpa_end = (void *)rxcmp;

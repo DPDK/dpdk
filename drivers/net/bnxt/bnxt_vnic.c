@@ -143,7 +143,7 @@ int bnxt_alloc_vnic_attributes(struct bnxt *bp, bool reconfig)
 
 	entry_length = HW_HASH_KEY_SIZE;
 
-	if (BNXT_CHIP_P5(bp))
+	if (BNXT_CHIP_P5_P7(bp))
 		rss_table_size = BNXT_RSS_TBL_SIZE_P5 *
 				 2 * sizeof(*vnic->rss_table);
 	else
@@ -418,8 +418,8 @@ static
 int32_t bnxt_vnic_populate_rss_table(struct bnxt *bp,
 				     struct bnxt_vnic_info *vnic)
 {
-	/* RSS table population is different for p4 and p5 platforms */
-	if (BNXT_CHIP_P5(bp))
+	/* RSS table population is different for p4 and p5, p7 platforms */
+	if (BNXT_CHIP_P5_P7(bp))
 		return bnxt_vnic_populate_rss_table_p5(bp, vnic);
 
 	return bnxt_vnic_populate_rss_table_p4(bp, vnic);

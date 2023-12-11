@@ -57,7 +57,7 @@ int bnxt_alloc_ring_grps(struct bnxt *bp)
 	/* P5 does not support ring groups.
 	 * But we will use the array to save RSS context IDs.
 	 */
-	if (BNXT_CHIP_P5(bp)) {
+	if (BNXT_CHIP_P5_P7(bp)) {
 		bp->max_ring_grps = BNXT_MAX_RSS_CTXTS_P5;
 	} else if (bp->max_ring_grps < bp->rx_cp_nr_rings) {
 		/* 1 ring is for default completion ring */
@@ -354,7 +354,7 @@ static void bnxt_set_db(struct bnxt *bp,
 			uint32_t fid,
 			uint32_t ring_mask)
 {
-	if (BNXT_CHIP_P5(bp)) {
+	if (BNXT_CHIP_P5_P7(bp)) {
 		int db_offset = DB_PF_OFFSET;
 		switch (ring_type) {
 		case HWRM_RING_ALLOC_INPUT_RING_TYPE_TX:
@@ -559,7 +559,7 @@ static int bnxt_alloc_rx_agg_ring(struct bnxt *bp, int queue_index)
 
 	ring->fw_rx_ring_id = rxr->rx_ring_struct->fw_ring_id;
 
-	if (BNXT_CHIP_P5(bp)) {
+	if (BNXT_CHIP_P5_P7(bp)) {
 		ring_type = HWRM_RING_ALLOC_INPUT_RING_TYPE_RX_AGG;
 		hw_stats_ctx_id = cpr->hw_stats_ctx_id;
 	} else {

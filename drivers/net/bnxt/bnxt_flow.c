@@ -1199,7 +1199,7 @@ bnxt_vnic_rss_cfg_update(struct bnxt *bp,
 		if (i == bp->rx_cp_nr_rings)
 			return 0;
 
-		if (BNXT_CHIP_P5(bp)) {
+		if (BNXT_CHIP_P5_P7(bp)) {
 			rxq = bp->rx_queues[idx];
 			vnic->rss_table[rss_idx * 2] =
 				rxq->rx_ring->rx_ring_struct->fw_ring_id;

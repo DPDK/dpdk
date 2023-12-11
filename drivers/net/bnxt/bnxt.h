@@ -107,11 +107,11 @@
 #define TPA_MAX_SEGS		5 /* 32 segments in log2 units */
 
 #define BNXT_TPA_MAX_AGGS(bp) \
-	(BNXT_CHIP_P5(bp) ? TPA_MAX_AGGS_TH : \
+	(BNXT_CHIP_P5_P7(bp) ? TPA_MAX_AGGS_TH : \
 			     TPA_MAX_AGGS)
 
 #define BNXT_TPA_MAX_SEGS(bp) \
-	(BNXT_CHIP_P5(bp) ? TPA_MAX_SEGS_TH : \
+	(BNXT_CHIP_P5_P7(bp) ? TPA_MAX_SEGS_TH : \
 			      TPA_MAX_SEGS)
 
 /*
@@ -938,7 +938,7 @@ inline uint16_t bnxt_max_rings(struct bnxt *bp)
 	 * RSS table size in P5 is 512.
 	 * Cap max Rx rings to the same value for RSS.
 	 */
-	if (BNXT_CHIP_P5(bp))
+	if (BNXT_CHIP_P5_P7(bp))
 		max_rx_rings = RTE_MIN(max_rx_rings, BNXT_RSS_TBL_SIZE_P5);
 
 	max_tx_rings = RTE_MIN(max_tx_rings, max_rx_rings);

@@ -334,7 +334,7 @@ static int bnxt_rx_pages(struct bnxt_rx_queue *rxq,
 	uint16_t cp_cons, ag_cons;
 	struct rx_pkt_cmpl *rxcmp;
 	struct rte_mbuf *last = mbuf;
-	bool is_p5_tpa = tpa_info && BNXT_CHIP_P5(rxq->bp);
+	bool is_p5_tpa = tpa_info && BNXT_CHIP_P5_P7(rxq->bp);
 
 	for (i = 0; i < agg_buf; i++) {
 		struct rte_mbuf **ag_buf;
@@ -395,7 +395,7 @@ static int bnxt_discard_rx(struct bnxt *bp, struct bnxt_cp_ring_info *cpr,
 	} else if (cmp_type == RX_TPA_END_CMPL_TYPE_RX_TPA_END) {
 		struct rx_tpa_end_cmpl *tpa_end = cmp;
 
-		if (BNXT_CHIP_P5(bp))
+		if (BNXT_CHIP_P5_P7(bp))
 			return 0;
 
 		agg_bufs = BNXT_TPA_END_AGG_BUFS(tpa_end);
@@ -430,7 +430,7 @@ static inline struct rte_mbuf *bnxt_tpa_end(
 		return NULL;
 	}
 
-	if (BNXT_CHIP_P5(rxq->bp)) {
+	if (BNXT_CHIP_P5_P7(rxq->bp)) {
 		struct rx_tpa_v2_end_cmpl *th_tpa_end;
 		struct rx_tpa_v2_end_cmpl_hi *th_tpa_end1;
 
