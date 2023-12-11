@@ -711,3 +711,20 @@ nfp_nsp_read_sensors(struct nfp_nsp *state,
 
 	return nfp_nsp_command_buf(state, &sensors);
 }
+
+int
+nfp_nsp_hwinfo_set(struct nfp_nsp *state,
+		const void *buf,
+		size_t size)
+{
+	struct nfp_nsp_command_buf_arg hwinfo_set = {
+		{
+			.code   = SPCODE_HWINFO_SET,
+			.option = size,
+		},
+		.in_buf  = buf,
+		.in_size = size,
+	};
+
+	return nfp_nsp_command_buf(state, &hwinfo_set);
+}

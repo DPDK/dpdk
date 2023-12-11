@@ -169,6 +169,9 @@ void *nfp_nsp_config_entries(struct nfp_nsp *state);
 struct nfp_cpp *nfp_nsp_cpp(struct nfp_nsp *state);
 bool nfp_nsp_config_modified(struct nfp_nsp *state);
 uint32_t nfp_nsp_config_idx(struct nfp_nsp *state);
+int nfp_nsp_hwinfo_set(struct nfp_nsp *state,
+		const void *buf,
+		size_t size);
 
 static inline bool
 nfp_eth_can_support_fec(struct nfp_eth_table_port *eth_port)
