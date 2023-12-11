@@ -291,6 +291,8 @@ void nfp_pf_uninit(struct nfp_pf_dev *pf_dev);
 int nfp_net_fec_get_capability(struct rte_eth_dev *dev,
 		struct rte_eth_fec_capa *speed_fec_capa,
 		unsigned int num);
+int nfp_net_fec_get(struct rte_eth_dev *dev,
+		uint32_t *fec_capa);
 
 #define NFP_PRIV_TO_APP_FW_NIC(app_fw_priv)\
 	((struct nfp_app_fw_nic *)app_fw_priv)
