@@ -553,6 +553,41 @@ bnxt_parse_pkt_type(struct rx_pkt_cmpl *rxcmp, struct rx_pkt_cmpl_hi *rxcmp1)
 	return bnxt_ptype_table[index];
 }
 
+static void
+bnxt_parse_pkt_type_v3(struct rte_mbuf *mbuf,
+		       struct rx_pkt_cmpl *rxcmp_v1,
+		       struct rx_pkt_cmpl_hi *rxcmp1_v1)
+{
+	uint32_t flags_type, flags2, meta;
+	struct rx_pkt_v3_cmpl_hi *rxcmp1;
+	struct rx_pkt_v3_cmpl *rxcmp;
+	uint8_t index;
+
+	rxcmp = (void *)rxcmp_v1;
+	rxcmp1 = (void *)rxcmp1_v1;
+
+	flags_type = rte_le_to_cpu_16(rxcmp->flags_type);
+	flags2 = rte_le_to_cpu_32(rxcmp1->flags2);
+	meta = rte_le_to_cpu_32(rxcmp->metadata1_payload_offset);
+
+	/* TODO */
+	/* Validate ptype table indexing at build time. */
+	/* bnxt_check_ptype_constants_v3(); */
+
+	/*
+	 * Index format:
+	 *     bit 0: Set if IP tunnel encapsulated packet.
+	 *     bit 1: Set if IPv6 packet, clear if IPv4.
+	 *     bit 2: Set if VLAN tag present.
+	 *     bits 3-6: Four-bit hardware packet type field.
+	 */
+	index = BNXT_CMPL_V3_ITYPE_TO_IDX(flags_type) |
+		BNXT_CMPL_V3_VLAN_TO_IDX(meta) |
+		BNXT_CMPL_V3_IP_VER_TO_IDX(flags2);
+
+	mbuf->packet_type = bnxt_ptype_table[index];
+}
+
 static void __rte_cold
 bnxt_init_ol_flags_tables(struct bnxt_rx_queue *rxq)
 {
@@ -714,6 +749,43 @@ bnxt_get_rx_ts_p5(struct bnxt *bp, uint32_t rx_ts_cmpl)
 		pkt_time += (1ULL << 32);
 	}
 	ptp->rx_timestamp = pkt_time;
+}
+
+static uint32_t
+bnxt_ulp_set_mark_in_mbuf_v3(struct bnxt *bp, struct rx_pkt_cmpl_hi *rxcmp1,
+			     struct rte_mbuf *mbuf, uint32_t *vfr_flag)
+{
+	struct rx_pkt_v3_cmpl_hi *rxcmp1_v3 = (void *)rxcmp1;
+	uint32_t flags2, meta, mark_id = 0;
+	/* revisit the usage of gfid/lfid if mark action is supported.
+	 * for now, only VFR is using mark and the metadata is the SVIF
+	 * (a small number)
+	 */
+	bool gfid = false;
+	int rc = 0;
+
+	flags2 = rte_le_to_cpu_32(rxcmp1_v3->flags2);
+
+	switch (flags2 & RX_PKT_V3_CMPL_HI_FLAGS2_META_FORMAT_MASK) {
+	case RX_PKT_V3_CMPL_HI_FLAGS2_META_FORMAT_CHDR_DATA:
+		/* Only supporting Metadata for ulp now */
+		meta = rxcmp1_v3->metadata2;
+		break;
+	default:
+		goto skip_mark;
+	}
+
+	rc = ulp_mark_db_mark_get(bp->ulp_ctx, gfid, meta, vfr_flag, &mark_id);
+	if (!rc) {
+		/* Only supporting VFR for now, no Mark actions */
+		if (vfr_flag && *vfr_flag)
+			return mark_id;
+	}
+
+skip_mark:
+	mbuf->hash.fdir.hi = 0;
+
+	return 0;
 }
 
 static uint32_t
@@ -892,7 +964,8 @@ static int bnxt_rx_pkt(struct rte_mbuf **rx_pkt,
 		*rx_pkt = mbuf;
 		goto next_rx;
 	} else if ((cmp_type != CMPL_BASE_TYPE_RX_L2) &&
-		   (cmp_type != CMPL_BASE_TYPE_RX_L2_V2)) {
+		   (cmp_type != CMPL_BASE_TYPE_RX_L2_V2) &&
+		   (cmp_type != CMPL_BASE_TYPE_RX_L2_V3)) {
 		rc = -EINVAL;
 		goto next_rx;
 	}
@@ -928,6 +1001,16 @@ static int bnxt_rx_pkt(struct rte_mbuf **rx_pkt,
 		      RX_PKT_CMPL_FLAGS_ITYPE_PTP_W_TIMESTAMP) ||
 		      bp->ptp_all_rx_tstamp)
 		bnxt_get_rx_ts_p5(rxq->bp, rxcmp1->reorder);
+
+	if (cmp_type == CMPL_BASE_TYPE_RX_L2_V3) {
+		bnxt_parse_csum_v3(mbuf, rxcmp1);
+		bnxt_parse_pkt_type_v3(mbuf, rxcmp, rxcmp1);
+		bnxt_rx_vlan_v3(mbuf, rxcmp, rxcmp1);
+		if (BNXT_TRUFLOW_EN(bp))
+			mark_id = bnxt_ulp_set_mark_in_mbuf_v3(rxq->bp, rxcmp1,
+							       mbuf, &vfr_flag);
+		goto reuse_rx_mbuf;
+	}
 
 	if (cmp_type == CMPL_BASE_TYPE_RX_L2_V2) {
 		bnxt_parse_csum_v2(mbuf, rxcmp1);
@@ -1066,7 +1149,7 @@ uint16_t bnxt_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		if (CMP_TYPE(rxcmp) == CMPL_BASE_TYPE_HWRM_DONE) {
 			PMD_DRV_LOG(ERR, "Rx flush done\n");
 		} else if ((CMP_TYPE(rxcmp) >= CMPL_BASE_TYPE_RX_TPA_START_V2) &&
-		     (CMP_TYPE(rxcmp) <= RX_TPA_V2_ABUF_CMPL_TYPE_RX_TPA_AGG)) {
+			   (CMP_TYPE(rxcmp) <= CMPL_BASE_TYPE_RX_TPA_START_V3)) {
 			rc = bnxt_rx_pkt(&rx_pkts[nb_rx_pkts], rxq, &raw_cons);
 			if (!rc)
 				nb_rx_pkts++;

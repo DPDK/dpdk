@@ -386,4 +386,96 @@ bnxt_parse_pkt_type_v2(struct rte_mbuf *mbuf,
 
 	mbuf->packet_type = pkt_type;
 }
+
+/* Thor2 specific code for RX completion parsing */
+#define RX_PKT_V3_CMPL_FLAGS2_IP_TYPE_SFT	8
+#define RX_PKT_V3_CMPL_METADATA1_VALID_SFT	15
+
+#define BNXT_CMPL_V3_ITYPE_TO_IDX(ft) \
+	(((ft) & RX_PKT_V3_CMPL_FLAGS_ITYPE_MASK) >> \
+	 (RX_PKT_V3_CMPL_FLAGS_ITYPE_SFT - BNXT_PTYPE_TBL_TYPE_SFT))
+
+#define BNXT_CMPL_V3_VLAN_TO_IDX(meta) \
+	(((meta) & (1 << RX_PKT_V3_CMPL_METADATA1_VALID_SFT)) >> \
+	 (RX_PKT_V3_CMPL_METADATA1_VALID_SFT - BNXT_PTYPE_TBL_VLAN_SFT))
+
+#define BNXT_CMPL_V3_IP_VER_TO_IDX(f2) \
+	(((f2) & RX_PKT_V3_CMPL_HI_FLAGS2_IP_TYPE) >> \
+	 (RX_PKT_V3_CMPL_FLAGS2_IP_TYPE_SFT - BNXT_PTYPE_TBL_IP_VER_SFT))
+
+#define RX_CMP_V3_VLAN_VALID(rxcmp)        \
+	(((struct rx_pkt_v3_cmpl *)rxcmp)->metadata1_payload_offset &	\
+	 RX_PKT_V3_CMPL_METADATA1_VALID)
+
+#define RX_CMP_V3_METADATA0_VID(rxcmp1)				\
+	((((struct rx_pkt_v3_cmpl_hi *)rxcmp1)->metadata0) &	\
+	 (RX_PKT_V3_CMPL_HI_METADATA0_VID_MASK |		\
+	  RX_PKT_V3_CMPL_HI_METADATA0_DE  |			\
+	  RX_PKT_V3_CMPL_HI_METADATA0_PRI_MASK))
+
+static inline void bnxt_rx_vlan_v3(struct rte_mbuf *mbuf,
+	struct rx_pkt_cmpl *rxcmp,
+	struct rx_pkt_cmpl_hi *rxcmp1)
+{
+	if (RX_CMP_V3_VLAN_VALID(rxcmp)) {
+		mbuf->vlan_tci = RX_CMP_V3_METADATA0_VID(rxcmp1);
+		mbuf->ol_flags |= RTE_MBUF_F_RX_VLAN | RTE_MBUF_F_RX_VLAN_STRIPPED;
+	}
+}
+
+#define RX_CMP_V3_L4_CS_ERR(err)		\
+	(((err) & RX_PKT_CMPL_ERRORS_MASK)	\
+	 & (RX_PKT_CMPL_ERRORS_L4_CS_ERROR))
+#define RX_CMP_V3_L3_CS_ERR(err)		\
+	(((err) & RX_PKT_CMPL_ERRORS_MASK)	\
+	 & (RX_PKT_CMPL_ERRORS_IP_CS_ERROR))
+#define RX_CMP_V3_T_IP_CS_ERR(err)		\
+	(((err) & RX_PKT_CMPL_ERRORS_MASK)	\
+	 & (RX_PKT_CMPL_ERRORS_T_IP_CS_ERROR))
+#define RX_CMP_V3_T_L4_CS_ERR(err)		\
+	(((err) & RX_PKT_CMPL_ERRORS_MASK)	\
+	 & (RX_PKT_CMPL_ERRORS_T_L4_CS_ERROR))
+#define RX_PKT_CMPL_CALC			\
+	(RX_PKT_CMPL_FLAGS2_IP_CS_CALC |	\
+	 RX_PKT_CMPL_FLAGS2_L4_CS_CALC |	\
+	 RX_PKT_CMPL_FLAGS2_T_IP_CS_CALC |	\
+	 RX_PKT_CMPL_FLAGS2_T_L4_CS_CALC)
+
+static inline uint64_t
+bnxt_parse_csum_fields_v3(uint32_t flags2, uint32_t error_v2)
+{
+	uint64_t ol_flags = 0;
+
+	if (flags2 & RX_PKT_CMPL_CALC) {
+		if (unlikely(RX_CMP_V3_L4_CS_ERR(error_v2)))
+			ol_flags |= RTE_MBUF_F_RX_L4_CKSUM_BAD;
+		else
+			ol_flags |= RTE_MBUF_F_RX_L4_CKSUM_GOOD;
+		if (unlikely(RX_CMP_V3_L3_CS_ERR(error_v2)))
+			ol_flags |= RTE_MBUF_F_RX_IP_CKSUM_BAD;
+		if (unlikely(RX_CMP_V3_T_L4_CS_ERR(error_v2)))
+			ol_flags |= RTE_MBUF_F_RX_OUTER_L4_CKSUM_BAD;
+		else
+			ol_flags |= RTE_MBUF_F_RX_OUTER_L4_CKSUM_GOOD;
+		if (unlikely(RX_CMP_V3_T_IP_CS_ERR(error_v2)))
+			ol_flags |= RTE_MBUF_F_RX_OUTER_IP_CKSUM_BAD;
+		if (!(ol_flags & (RTE_MBUF_F_RX_IP_CKSUM_BAD | RTE_MBUF_F_RX_OUTER_IP_CKSUM_BAD)))
+			ol_flags |= RTE_MBUF_F_RX_IP_CKSUM_GOOD;
+	} else {
+		/* Unknown is defined as 0 for all packets types hence using below for all */
+		ol_flags |= RTE_MBUF_F_RX_IP_CKSUM_UNKNOWN;
+	}
+	return ol_flags;
+}
+
+static inline void
+bnxt_parse_csum_v3(struct rte_mbuf *mbuf, struct rx_pkt_cmpl_hi *rxcmp1)
+{
+	struct rx_pkt_v3_cmpl_hi *v3_cmp =
+		(struct rx_pkt_v3_cmpl_hi *)(rxcmp1);
+	uint16_t error_v2 = rte_le_to_cpu_16(v3_cmp->errors_v2);
+	uint32_t flags2 = rte_le_to_cpu_32(v3_cmp->flags2);
+
+	mbuf->ol_flags |= bnxt_parse_csum_fields_v3(flags2, error_v2);
+}
 #endif /*  _BNXT_RXR_H_ */
