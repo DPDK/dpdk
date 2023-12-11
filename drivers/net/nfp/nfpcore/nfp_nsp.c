@@ -728,3 +728,20 @@ nfp_nsp_hwinfo_set(struct nfp_nsp *state,
 
 	return nfp_nsp_command_buf(state, &hwinfo_set);
 }
+
+int
+nfp_nsp_read_media(struct nfp_nsp *state,
+		void *buf,
+		size_t size)
+{
+	struct nfp_nsp_command_buf_arg media = {
+		{
+			.code   = SPCODE_READ_MEDIA,
+			.option = size,
+		},
+		.out_buf  = buf,
+		.out_size = size,
+	};
+
+	return nfp_nsp_command_buf(state, &media);
+}

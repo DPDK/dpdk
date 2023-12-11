@@ -1208,12 +1208,9 @@ nfp_net_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 		dev_info->hash_key_size = NFP_NET_CFG_RSS_KEY_SZ;
 	}
 
-	dev_info->speed_capa = RTE_ETH_LINK_SPEED_1G |
-			RTE_ETH_LINK_SPEED_10G |
-			RTE_ETH_LINK_SPEED_25G |
-			RTE_ETH_LINK_SPEED_40G |
-			RTE_ETH_LINK_SPEED_50G |
-			RTE_ETH_LINK_SPEED_100G;
+	/* Only PF supports getting speed capability. */
+	if (hw->pf_dev != NULL)
+		dev_info->speed_capa = hw->pf_dev->speed_capa;
 
 	return 0;
 }

@@ -106,6 +106,9 @@ struct nfp_pf_dev {
 
 	/** Multiple PF configuration */
 	struct nfp_multi_pf multi_pf;
+
+	/** Supported speeds bitmap */
+	uint32_t speed_capa;
 };
 
 #define NFP_NET_FLOW_LIMIT    1024
