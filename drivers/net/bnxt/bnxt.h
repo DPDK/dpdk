@@ -311,6 +311,7 @@ struct bnxt_link_info {
 struct bnxt_cos_queue_info {
 	uint8_t	id;
 	uint8_t	profile;
+	uint8_t	profile_type;
 };
 
 struct rte_flow {

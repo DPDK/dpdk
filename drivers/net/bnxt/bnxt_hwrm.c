@@ -1544,7 +1544,7 @@ int bnxt_hwrm_port_phy_qcaps(struct bnxt *bp)
 	return 0;
 }
 
-static bool bnxt_find_lossy_profile(struct bnxt *bp)
+static bool _bnxt_find_lossy_profile(struct bnxt *bp)
 {
 	int i = 0;
 
@@ -1556,6 +1556,41 @@ static bool bnxt_find_lossy_profile(struct bnxt *bp)
 		}
 	}
 	return false;
+}
+
+static bool _bnxt_find_lossy_nic_profile(struct bnxt *bp)
+{
+	int i = 0, j = 0;
+
+	for (i = 0; i < BNXT_COS_QUEUE_COUNT; i++) {
+		for (j = 0; j < BNXT_COS_QUEUE_COUNT; j++) {
+			if (bp->tx_cos_queue[i].profile ==
+			    HWRM_QUEUE_SERVICE_PROFILE_LOSSY &&
+			    bp->tx_cos_queue[j].profile_type ==
+			    HWRM_QUEUE_SERVICE_PROFILE_TYPE_NIC) {
+				bp->tx_cosq_id[0] = bp->tx_cos_queue[i].id;
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
+static bool bnxt_find_lossy_profile(struct bnxt *bp, bool use_prof_type)
+{
+	int i;
+
+	for (i = 0; i < BNXT_COS_QUEUE_COUNT; i++) {
+		PMD_DRV_LOG(DEBUG, "profile %d, profile_id %d, type %d\n",
+			    bp->tx_cos_queue[i].profile,
+			    bp->tx_cos_queue[i].id,
+			    bp->tx_cos_queue[i].profile_type);
+	}
+
+	if (use_prof_type)
+		return _bnxt_find_lossy_nic_profile(bp);
+	else
+		return _bnxt_find_lossy_profile(bp);
 }
 
 static void bnxt_find_first_valid_profile(struct bnxt *bp)
@@ -1579,6 +1614,7 @@ int bnxt_hwrm_queue_qportcfg(struct bnxt *bp)
 	struct hwrm_queue_qportcfg_input req = {.req_type = 0 };
 	struct hwrm_queue_qportcfg_output *resp = bp->hwrm_cmd_resp_addr;
 	uint32_t dir = HWRM_QUEUE_QPORTCFG_INPUT_FLAGS_PATH_TX;
+	bool use_prof_type = false;
 	int i;
 
 get_rx_info:
@@ -1590,9 +1626,14 @@ get_rx_info:
 	    !(bp->vnic_cap_flags & BNXT_VNIC_CAP_COS_CLASSIFY))
 		req.drv_qmap_cap =
 			HWRM_QUEUE_QPORTCFG_INPUT_DRV_QMAP_CAP_ENABLED;
+
 	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req), BNXT_USE_CHIMP_MB);
 
 	HWRM_CHECK_RESULT();
+
+	if (resp->queue_cfg_info &
+	    HWRM_QUEUE_QPORTCFG_OUTPUT_QUEUE_CFG_INFO_USE_PROFILE_TYPE)
+		use_prof_type = true;
 
 	if (dir == HWRM_QUEUE_QPORTCFG_INPUT_FLAGS_PATH_TX) {
 		GET_TX_QUEUE_INFO(0);
@@ -1603,6 +1644,16 @@ get_rx_info:
 		GET_TX_QUEUE_INFO(5);
 		GET_TX_QUEUE_INFO(6);
 		GET_TX_QUEUE_INFO(7);
+		if (use_prof_type) {
+			GET_TX_QUEUE_TYPE_INFO(0);
+			GET_TX_QUEUE_TYPE_INFO(1);
+			GET_TX_QUEUE_TYPE_INFO(2);
+			GET_TX_QUEUE_TYPE_INFO(3);
+			GET_TX_QUEUE_TYPE_INFO(4);
+			GET_TX_QUEUE_TYPE_INFO(5);
+			GET_TX_QUEUE_TYPE_INFO(6);
+			GET_TX_QUEUE_TYPE_INFO(7);
+		}
 	} else  {
 		GET_RX_QUEUE_INFO(0);
 		GET_RX_QUEUE_INFO(1);
@@ -1636,11 +1687,12 @@ get_rx_info:
 			 * operations, ideally we should look to use LOSSY.
 			 * If not found, fallback to the first valid profile
 			 */
-			if (!bnxt_find_lossy_profile(bp))
+			if (!bnxt_find_lossy_profile(bp, use_prof_type))
 				bnxt_find_first_valid_profile(bp);
 
 		}
 	}
+	PMD_DRV_LOG(DEBUG, "Tx COS Queue ID %d\n", bp->tx_cosq_id[0]);
 
 	bp->max_tc = resp->max_configurable_queues;
 	bp->max_lltc = resp->max_configurable_lossless_queues;

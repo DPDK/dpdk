@@ -46,6 +46,9 @@ struct hwrm_func_qstats_output;
 #define HWRM_QUEUE_SERVICE_PROFILE_UNKNOWN \
 	HWRM_QUEUE_QPORTCFG_OUTPUT_QUEUE_ID0_SERVICE_PROFILE_UNKNOWN
 
+#define HWRM_QUEUE_SERVICE_PROFILE_TYPE_NIC \
+	HWRM_QUEUE_QPORTCFG_OUTPUT_QUEUE_ID0_SERVICE_PROFILE_TYPE_NIC
+
 #define HWRM_FUNC_RESOURCE_QCAPS_OUTPUT_VF_RESV_STRATEGY_MINIMAL_STATIC \
 	HWRM_FUNC_RESOURCE_QCAPS_OUTPUT_VF_RESERVATION_STRATEGY_MINIMAL_STATIC
 #define HWRM_FUNC_RESOURCE_QCAPS_OUTPUT_VF_RESV_STRATEGY_MAXIMAL \
@@ -73,6 +76,10 @@ struct hwrm_func_qstats_output;
 	bp->tx_cos_queue[x].id = resp->queue_id##x; \
 	bp->tx_cos_queue[x].profile =	\
 		resp->queue_id##x##_service_profile
+
+#define GET_TX_QUEUE_TYPE_INFO(x) \
+	bp->tx_cos_queue[x].profile_type =	\
+		resp->queue_id##x##_service_profile_type
 
 #define GET_RX_QUEUE_INFO(x) \
 	bp->rx_cos_queue[x].id = resp->queue_id##x; \
