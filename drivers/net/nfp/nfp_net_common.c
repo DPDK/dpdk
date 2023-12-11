@@ -26,6 +26,9 @@
 #define NFP_ETH_OVERHEAD \
 	(RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN + RTE_VLAN_HLEN * 2)
 
+/* Only show FEC capability supported by the current speed. */
+#define NFP_FEC_CAPA_ENTRY_NUM  1
+
 enum nfp_xstat_group {
 	NFP_XSTAT_GROUP_NET,
 	NFP_XSTAT_GROUP_MAC
@@ -2280,4 +2283,46 @@ nfp_net_flow_ctrl_set(struct rte_eth_dev *dev,
 	eth_port->rx_pause_enabled = (set_mode & RTE_ETH_FC_RX_PAUSE) == 0 ? false : true;
 
 	return 0;
+}
+
+int
+nfp_net_fec_get_capability(struct rte_eth_dev *dev,
+		struct rte_eth_fec_capa *speed_fec_capa,
+		__rte_unused unsigned int num)
+{
+	uint16_t speed;
+	struct nfp_net_hw *hw;
+	uint32_t supported_fec;
+	struct nfp_eth_table *nfp_eth_table;
+	struct nfp_eth_table_port *eth_port;
+
+	hw = nfp_net_get_hw(dev);
+	if (hw->pf_dev == NULL)
+		return -EINVAL;
+
+	nfp_eth_table = hw->pf_dev->nfp_eth_table;
+	eth_port = &nfp_eth_table->ports[hw->idx];
+
+	speed = eth_port->speed;
+	supported_fec = nfp_eth_supported_fec_modes(eth_port);
+	if (speed == 0 || supported_fec == 0) {
+		PMD_DRV_LOG(ERR, "FEC modes supported or Speed is invalid.");
+		return -EINVAL;
+	}
+
+	if (speed_fec_capa == NULL)
+		return NFP_FEC_CAPA_ENTRY_NUM;
+
+	speed_fec_capa->speed = speed;
+
+	if ((supported_fec & NFP_FEC_AUTO) != 0)
+		speed_fec_capa->capa |= RTE_ETH_FEC_MODE_CAPA_MASK(AUTO);
+	if ((supported_fec & NFP_FEC_BASER) != 0)
+		speed_fec_capa->capa |= RTE_ETH_FEC_MODE_CAPA_MASK(BASER);
+	if ((supported_fec & NFP_FEC_REED_SOLOMON) != 0)
+		speed_fec_capa->capa |= RTE_ETH_FEC_MODE_CAPA_MASK(RS);
+	if ((supported_fec & NFP_FEC_DISABLED) != 0)
+		speed_fec_capa->capa |= RTE_ETH_FEC_MODE_CAPA_MASK(NOFEC);
+
+	return NFP_FEC_CAPA_ENTRY_NUM;
 }
