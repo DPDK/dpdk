@@ -83,7 +83,7 @@ int __roc_api roc_sso_hwgrp_release_xaq(struct roc_sso *roc_sso,
 int __roc_api roc_sso_hwgrp_set_priority(struct roc_sso *roc_sso,
 					 uint16_t hwgrp, uint8_t weight,
 					 uint8_t affinity, uint8_t priority);
-uint64_t __roc_api roc_sso_ns_to_gw(struct roc_sso *roc_sso, uint64_t ns);
+uint64_t __roc_api roc_sso_ns_to_gw(uint64_t base, uint64_t ns);
 int __roc_api roc_sso_hws_link(struct roc_sso *roc_sso, uint8_t hws, uint16_t hwgrp[],
 			       uint16_t nb_hwgrp, uint8_t set);
 int __roc_api roc_sso_hws_unlink(struct roc_sso *roc_sso, uint8_t hws, uint16_t hwgrp[],

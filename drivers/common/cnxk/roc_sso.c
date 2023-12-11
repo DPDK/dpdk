@@ -17,6 +17,11 @@ sso_lf_alloc(struct dev *dev, enum sso_lf_type lf_type, uint16_t nb_lf,
 	struct mbox *mbox = mbox_get(dev->mbox);
 	int rc = -ENOSPC;
 
+	if (!nb_lf) {
+		mbox_put(mbox);
+		return 0;
+	}
+
 	switch (lf_type) {
 	case SSO_LF_TYPE_HWS: {
 		struct ssow_lf_alloc_req *req;
@@ -55,6 +60,11 @@ sso_lf_free(struct dev *dev, enum sso_lf_type lf_type, uint16_t nb_lf)
 {
 	struct mbox *mbox = mbox_get(dev->mbox);
 	int rc = -ENOSPC;
+
+	if (!nb_lf) {
+		mbox_put(mbox);
+		return 0;
+	}
 
 	switch (lf_type) {
 	case SSO_LF_TYPE_HWS: {
@@ -97,6 +107,11 @@ sso_rsrc_attach(struct roc_sso *roc_sso, enum sso_lf_type lf_type,
 	struct mbox *mbox = mbox_get(dev->mbox);
 	struct rsrc_attach_req *req;
 	int rc = -ENOSPC;
+
+	if (!nb_lf) {
+		mbox_put(mbox);
+		return 0;
+	}
 
 	req = mbox_alloc_msg_attach_resources(mbox);
 	if (req == NULL)
@@ -264,13 +279,10 @@ roc_sso_hwgrp_base_get(struct roc_sso *roc_sso, uint16_t hwgrp)
 }
 
 uint64_t
-roc_sso_ns_to_gw(struct roc_sso *roc_sso, uint64_t ns)
+roc_sso_ns_to_gw(uint64_t base, uint64_t ns)
 {
-	struct dev *dev = &roc_sso_to_sso_priv(roc_sso)->dev;
-	uint64_t current_us, current_ns, new_ns;
-	uintptr_t base;
+	uint64_t current_us;
 
-	base = dev->bar2 + (RVU_BLOCK_ADDR_SSOW << 20);
 	current_us = plt_read64(base + SSOW_LF_GWS_NW_TIM);
 	/* From HRM, table 14-19:
 	 * The SSOW_LF_GWS_NW_TIM[NW_TIM] period is specified in n-1 notation.
@@ -279,14 +291,11 @@ roc_sso_ns_to_gw(struct roc_sso *roc_sso, uint64_t ns)
 
 	/* From HRM, table 14-1:
 	 * SSOW_LF_GWS_NW_TIM[NW_TIM] specifies the minimum timeout. The SSO
-	 * hardware times out a GET_WORK request within 2 usec of the minimum
+	 * hardware times out a GET_WORK request within 1 usec of the minimum
 	 * timeout specified by SSOW_LF_GWS_NW_TIM[NW_TIM].
 	 */
-	current_us += 2;
-	current_ns = current_us * 1E3;
-	new_ns = (ns - PLT_MIN(ns, current_ns));
-	new_ns = !new_ns ? 1 : new_ns;
-	return (new_ns * plt_tsc_hz()) / 1E9;
+	current_us += 1;
+	return PLT_MAX(1UL, (uint64_t)PLT_DIV_CEIL(ns, (current_us * 1E3)));
 }
 
 int
@@ -704,6 +713,9 @@ roc_sso_hwgrp_release_xaq(struct roc_sso *roc_sso, uint16_t hwgrps)
 	struct sso *sso = roc_sso_to_sso_priv(roc_sso);
 	struct dev *dev = &sso->dev;
 	int rc;
+
+	if (!hwgrps)
+		return 0;
 
 	rc = sso_hwgrp_release_xaq(dev, hwgrps);
 	return rc;
