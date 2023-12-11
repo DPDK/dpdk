@@ -25,6 +25,9 @@
 #include "nfp_logs.h"
 #include "nfp_net_flow.h"
 
+/* 64-bit per app capabilities */
+#define NFP_NET_APP_CAP_SP_INDIFF       RTE_BIT64(0) /* Indifferent to port speed */
+
 #define NFP_PF_DRIVER_NAME net_nfp_pf
 
 static void
@@ -1228,6 +1231,46 @@ app_cleanup:
 }
 
 static int
+nfp_net_hwinfo_set(uint8_t function_id,
+		struct nfp_rtsym_table *sym_tbl,
+		struct nfp_cpp *cpp)
+{
+	int ret = 0;
+	uint64_t app_cap;
+	uint8_t sp_indiff;
+	struct nfp_nsp *nsp;
+	char hw_info[RTE_ETH_NAME_MAX_LEN];
+	char app_cap_name[RTE_ETH_NAME_MAX_LEN];
+
+	/* Read the app capabilities of the firmware loaded */
+	snprintf(app_cap_name, sizeof(app_cap_name), "_pf%u_net_app_cap", function_id);
+	app_cap = nfp_rtsym_read_le(sym_tbl, app_cap_name, &ret);
+	if (ret != 0) {
+		PMD_INIT_LOG(ERR, "Couldn't read app_fw_cap from firmware.");
+		return ret;
+	}
+
+	/* Calculate the value of sp_indiff and write to hw_info */
+	sp_indiff = app_cap & NFP_NET_APP_CAP_SP_INDIFF;
+	snprintf(hw_info, sizeof(hw_info), "sp_indiff=%u", sp_indiff);
+
+	nsp = nfp_nsp_open(cpp);
+	if (nsp == NULL) {
+		PMD_INIT_LOG(ERR, "Couldn't get NSP.");
+		return -EIO;
+	}
+
+	ret = nfp_nsp_hwinfo_set(nsp, hw_info, sizeof(hw_info));
+	nfp_nsp_close(nsp);
+	if (ret != 0) {
+		PMD_INIT_LOG(ERR, "Failed to set parameter to hwinfo.");
+		return ret;
+	}
+
+	return 0;
+}
+
+static int
 nfp_pf_init(struct rte_pci_device *pci_dev)
 {
 	uint32_t i;
@@ -1333,6 +1376,14 @@ nfp_pf_init(struct rte_pci_device *pci_dev)
 	app_fw_id = nfp_rtsym_read_le(sym_tbl, app_name, &ret);
 	if (ret != 0) {
 		PMD_INIT_LOG(ERR, "Couldn't read %s from firmware", app_name);
+		ret = -EIO;
+		goto sym_tbl_cleanup;
+	}
+
+	/* Write sp_indiff to hw_info */
+	ret = nfp_net_hwinfo_set(function_id, sym_tbl, cpp);
+	if (ret != 0) {
+		PMD_INIT_LOG(ERR, "Failed to set hwinfo.");
 		ret = -EIO;
 		goto sym_tbl_cleanup;
 	}
