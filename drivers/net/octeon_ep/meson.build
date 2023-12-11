@@ -12,3 +12,14 @@ sources = files(
         'cnxk_ep_rx.c',
         'cnxk_ep_tx.c',
 )
+
+if arch_subdir == 'x86'
+    sources += files('cnxk_ep_rx_sse.c')
+endif
+
+extra_flags = ['-Wno-strict-aliasing']
+foreach flag: extra_flags
+    if cc.has_argument(flag)
+        cflags += flag
+    endif
+endforeach

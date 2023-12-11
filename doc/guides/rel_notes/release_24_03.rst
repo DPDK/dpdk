@@ -110,6 +110,7 @@ New Features
 
   * Optimized mbuf rearm sequence.
   * Updated Tx queue mbuf free thresholds from 128 to 256 for better performance.
+  * Added optimized SSE Rx routines.
 
 * **Updated NVIDIA mlx5 driver.**
 

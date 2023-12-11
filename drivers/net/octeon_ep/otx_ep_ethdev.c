@@ -52,10 +52,17 @@ otx_ep_set_rx_func(struct rte_eth_dev *eth_dev)
 
 	if (otx_epvf->chip_gen == OTX_EP_CN10XX) {
 		eth_dev->rx_pkt_burst = &cnxk_ep_recv_pkts;
+#ifdef RTE_ARCH_X86
+		eth_dev->rx_pkt_burst = &cnxk_ep_recv_pkts_sse;
+#endif
 		if (otx_epvf->rx_offloads & RTE_ETH_RX_OFFLOAD_SCATTER)
 			eth_dev->rx_pkt_burst = &cnxk_ep_recv_pkts_mseg;
 	} else if (otx_epvf->chip_gen == OTX_EP_CN9XX) {
 		eth_dev->rx_pkt_burst = &cn9k_ep_recv_pkts;
+#ifdef RTE_ARCH_X86
+		eth_dev->rx_pkt_burst = &cn9k_ep_recv_pkts_sse;
+#endif
+
 		if (otx_epvf->rx_offloads & RTE_ETH_RX_OFFLOAD_SCATTER)
 			eth_dev->rx_pkt_burst = &cn9k_ep_recv_pkts_mseg;
 	} else {
