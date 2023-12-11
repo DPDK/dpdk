@@ -44,6 +44,7 @@ DPDK_24 {
 	rte_cryptodev_get_sec_ctx;
 	rte_cryptodev_info_get;
 	rte_cryptodev_is_valid_dev;
+	rte_cryptodev_logtype;
 	rte_cryptodev_name_get;
 	rte_cryptodev_queue_pair_count;
 	rte_cryptodev_queue_pair_setup;

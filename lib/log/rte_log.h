@@ -43,7 +43,7 @@ extern "C" {
 #define RTE_LOGTYPE_TABLE     14 /**< Log related to table. */
 #define RTE_LOGTYPE_PIPELINE  15 /**< Log related to pipeline. */
 				 /* was RTE_LOGTYPE_MBUF */
-#define RTE_LOGTYPE_CRYPTODEV 17 /**< Log related to cryptodev. */
+				 /* was RTE_LOGTYPE_CRYPTODEV */
 				 /* was RTE_LOGTYPE_EFD */
 #define RTE_LOGTYPE_EVENTDEV  19 /**< Log related to eventdev. */
 				 /* was RTE_LOGTYPE_GSO */

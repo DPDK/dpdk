@@ -356,7 +356,6 @@ static const struct logtype logtype_strings[] = {
 	{RTE_LOGTYPE_PORT,       "lib.port"},
 	{RTE_LOGTYPE_TABLE,      "lib.table"},
 	{RTE_LOGTYPE_PIPELINE,   "lib.pipeline"},
-	{RTE_LOGTYPE_CRYPTODEV,  "lib.cryptodev"},
 	{RTE_LOGTYPE_EVENTDEV,   "lib.eventdev"},
 	{RTE_LOGTYPE_USER1,      "user1"},
 	{RTE_LOGTYPE_USER2,      "user2"},

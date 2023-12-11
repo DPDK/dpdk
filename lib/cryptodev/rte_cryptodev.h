@@ -28,8 +28,13 @@ extern "C" {
 
 extern const char **rte_cyptodev_names;
 
-/* Logging Macros */
+/**
+ * @internal Logtype used for cryptodev related messages.
+ */
+extern int rte_cryptodev_logtype;
+#define RTE_LOGTYPE_CRYPTODEV rte_cryptodev_logtype
 
+/* Logging Macros */
 #define CDEV_LOG_ERR(...) \
 	RTE_LOG(ERR, CRYPTODEV, \
 		RTE_FMT("%s() line %u: " RTE_FMT_HEAD(__VA_ARGS__,) "\n", \

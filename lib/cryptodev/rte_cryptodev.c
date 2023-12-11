@@ -49,6 +49,8 @@ struct rte_crypto_fp_ops rte_crypto_fp_ops[RTE_CRYPTO_MAX_DEVS];
 /* spinlock for crypto device callbacks */
 static rte_spinlock_t rte_cryptodev_cb_lock = RTE_SPINLOCK_INITIALIZER;
 
+RTE_LOG_REGISTER_DEFAULT(rte_cryptodev_logtype, INFO);
+
 /**
  * The user application callback description.
  *
