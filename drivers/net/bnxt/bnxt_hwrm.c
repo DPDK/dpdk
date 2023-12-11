@@ -1237,7 +1237,10 @@ int bnxt_hwrm_func_resc_qcaps(struct bnxt *bp)
 	else
 		bp->max_vnics = rte_le_to_cpu_16(resp->max_vnics);
 	bp->max_stat_ctx = rte_le_to_cpu_16(resp->max_stat_ctx);
-	bp->max_nq_rings = rte_le_to_cpu_16(resp->max_msix);
+	if (BNXT_CHIP_P7(bp))
+		bp->max_nq_rings = BNXT_P7_MAX_NQ_RING_CNT;
+	else
+		bp->max_nq_rings = rte_le_to_cpu_16(resp->max_msix);
 	bp->vf_resv_strategy = rte_le_to_cpu_16(resp->vf_reservation_strategy);
 	if (bp->vf_resv_strategy >
 	    HWRM_FUNC_RESOURCE_QCAPS_OUTPUT_VF_RESV_STRATEGY_MINIMAL_STATIC)
