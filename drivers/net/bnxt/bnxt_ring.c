@@ -371,9 +371,10 @@ static void bnxt_set_db(struct bnxt *bp,
 			db->db_key64 = DBR_PATH_L2;
 			break;
 		}
-		if (BNXT_CHIP_SR2(bp)) {
+		if (BNXT_CHIP_P7(bp)) {
 			db->db_key64 |= DBR_VALID;
 			db_offset = bp->legacy_db_size;
+			db->db_epoch_mask = ring_mask + 1;
 		} else if (BNXT_VF(bp)) {
 			db_offset = DB_VF_OFFSET;
 		}
@@ -397,12 +398,6 @@ static void bnxt_set_db(struct bnxt *bp,
 		db->db_64 = false;
 	}
 	db->db_ring_mask = ring_mask;
-
-	if (BNXT_CHIP_SR2(bp)) {
-		db->db_epoch_mask = db->db_ring_mask + 1;
-		db->db_epoch_shift = DBR_EPOCH_SFT -
-					rte_log2_u32(db->db_epoch_mask);
-	}
 }
 
 static int bnxt_alloc_cmpl_ring(struct bnxt *bp, int queue_index,

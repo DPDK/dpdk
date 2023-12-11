@@ -53,11 +53,10 @@ struct bnxt_db_info {
 	bool                    db_64;
 	uint32_t		db_ring_mask;
 	uint32_t		db_epoch_mask;
-	uint32_t		db_epoch_shift;
 };
 
-#define DB_EPOCH(db, idx)	(((idx) & (db)->db_epoch_mask) <<	\
-				 ((db)->db_epoch_shift))
+#define DB_EPOCH(db, idx)	(!!((idx) & (db)->db_epoch_mask) <<	\
+				 DBR_EPOCH_SFT)
 #define DB_RING_IDX(db, idx)	(((idx) & (db)->db_ring_mask) |		\
 				 DB_EPOCH(db, idx))
 
