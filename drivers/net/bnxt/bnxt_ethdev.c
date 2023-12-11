@@ -191,6 +191,7 @@ static void bnxt_dev_recover(void *arg);
 static void bnxt_free_error_recovery_info(struct bnxt *bp);
 static void bnxt_free_rep_info(struct bnxt *bp);
 static int bnxt_check_fw_ready(struct bnxt *bp);
+static bool bnxt_enable_ulp(struct bnxt *bp);
 
 int is_bnxt_in_error(struct bnxt *bp)
 {
@@ -1521,7 +1522,8 @@ static int bnxt_dev_stop(struct rte_eth_dev *eth_dev)
 		return ret;
 
 	/* delete the bnxt ULP port details */
-	bnxt_ulp_port_deinit(bp);
+	if (bnxt_enable_ulp(bp))
+		bnxt_ulp_port_deinit(bp);
 
 	bnxt_cancel_fw_health_check(bp);
 
@@ -1642,9 +1644,11 @@ int bnxt_dev_start_op(struct rte_eth_dev *eth_dev)
 		goto error;
 
 	/* Initialize bnxt ULP port details */
-	rc = bnxt_ulp_port_init(bp);
-	if (rc)
-		goto error;
+	if (bnxt_enable_ulp(bp)) {
+		rc = bnxt_ulp_port_init(bp);
+		if (rc)
+			goto error;
+	}
 
 	eth_dev->rx_pkt_burst = bnxt_receive_function(eth_dev);
 	eth_dev->tx_pkt_burst = bnxt_transmit_function(eth_dev);
@@ -3427,7 +3431,7 @@ bnxt_flow_ops_get_op(struct rte_eth_dev *dev,
 	 */
 	dev->data->dev_flags |= RTE_ETH_DEV_FLOW_OPS_THREAD_SAFE;
 
-	if (BNXT_TRUFLOW_EN(bp))
+	if (bnxt_enable_ulp(bp))
 		*ops = &bnxt_ulp_rte_flow_ops;
 	else
 		*ops = &bnxt_flow_ops;
@@ -6656,6 +6660,20 @@ struct tf *bnxt_get_tfp_session(struct bnxt *bp, enum bnxt_session_type type)
 {
 	return (type >= BNXT_SESSION_TYPE_LAST) ?
 		&bp->tfp[BNXT_SESSION_TYPE_REGULAR] : &bp->tfp[type];
+}
+
+/* check if ULP should be enabled or not */
+static bool bnxt_enable_ulp(struct bnxt *bp)
+{
+	/* truflow and MPC should be enabled */
+	/* not enabling ulp for cli and no truflow apps */
+	if (BNXT_TRUFLOW_EN(bp) && bp->app_id != 254 &&
+	    bp->app_id != 255) {
+		if (BNXT_CHIP_P7(bp))
+			return false;
+		return true;
+	}
+	return false;
 }
 
 RTE_LOG_REGISTER_SUFFIX(bnxt_logtype_driver, driver, NOTICE);
