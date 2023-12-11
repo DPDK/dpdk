@@ -1154,8 +1154,8 @@ struct hwrm_err_output {
 #define HWRM_VERSION_MINOR 10
 #define HWRM_VERSION_UPDATE 2
 /* non-zero means beta version */
-#define HWRM_VERSION_RSVD 138
-#define HWRM_VERSION_STR "1.10.2.138"
+#define HWRM_VERSION_RSVD 158
+#define HWRM_VERSION_STR "1.10.2.158"
 
 /****************
  * hwrm_ver_get *
@@ -6329,19 +6329,14 @@ struct rx_pkt_v3_cmpl_hi {
 	#define RX_PKT_V3_CMPL_HI_ERRORS_T_PKT_ERROR_T_L3_BAD_TTL \
 		(UINT32_C(0x5) << 9)
 	/*
-	 * Indicates that the IP checksum failed its check in the tunnel
+	 * Indicates that the physical packet is shorter than that claimed
+	 * by the tunnel header length. Valid for GTPv1-U packets.
 	 * header.
 	 */
-	#define RX_PKT_V3_CMPL_HI_ERRORS_T_PKT_ERROR_T_IP_CS_ERROR \
+	#define RX_PKT_V3_CMPL_HI_ERRORS_T_PKT_ERROR_T_TOTAL_ERROR \
 		(UINT32_C(0x6) << 9)
-	/*
-	 * Indicates that the L4 checksum failed its check in the tunnel
-	 * header.
-	 */
-	#define RX_PKT_V3_CMPL_HI_ERRORS_T_PKT_ERROR_T_L4_CS_ERROR \
-		(UINT32_C(0x7) << 9)
 	#define RX_PKT_V3_CMPL_HI_ERRORS_T_PKT_ERROR_LAST \
-		RX_PKT_V3_CMPL_HI_ERRORS_T_PKT_ERROR_T_L4_CS_ERROR
+		RX_PKT_V3_CMPL_HI_ERRORS_T_PKT_ERROR_T_TOTAL_ERROR
 	/*
 	 * This indicates that there was an error in the inner
 	 * portion of the packet when this
@@ -6406,20 +6401,8 @@ struct rx_pkt_v3_cmpl_hi {
 	 */
 	#define RX_PKT_V3_CMPL_HI_ERRORS_PKT_ERROR_L4_BAD_OPT_LEN \
 		(UINT32_C(0x8) << 12)
-	/*
-	 * Indicates that the IP checksum failed its check in the
-	 * inner header.
-	 */
-	#define RX_PKT_V3_CMPL_HI_ERRORS_PKT_ERROR_IP_CS_ERROR \
-		(UINT32_C(0x9) << 12)
-	/*
-	 * Indicates that the L4 checksum failed its check in the
-	 * inner header.
-	 */
-	#define RX_PKT_V3_CMPL_HI_ERRORS_PKT_ERROR_L4_CS_ERROR \
-		(UINT32_C(0xa) << 12)
 	#define RX_PKT_V3_CMPL_HI_ERRORS_PKT_ERROR_LAST \
-		RX_PKT_V3_CMPL_HI_ERRORS_PKT_ERROR_L4_CS_ERROR
+		RX_PKT_V3_CMPL_HI_ERRORS_PKT_ERROR_L4_BAD_OPT_LEN
 	/*
 	 * This is data from the CFA block as indicated by the meta_format
 	 * field.
@@ -14157,7 +14140,7 @@ struct hwrm_func_qcaps_input {
 	uint8_t	unused_0[6];
 } __rte_packed;
 
-/* hwrm_func_qcaps_output (size:896b/112B) */
+/* hwrm_func_qcaps_output (size:1088b/136B) */
 struct hwrm_func_qcaps_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
@@ -14840,9 +14823,85 @@ struct hwrm_func_qcaps_output {
 	/*
 	 * When this bit is '1', it indicates that the hardware based
 	 * link aggregation group (L2 and RoCE) feature is supported.
+	 * This LAG feature is only supported on the THOR2 or newer NIC
+	 * with multiple ports.
 	 */
 	#define HWRM_FUNC_QCAPS_OUTPUT_FLAGS_EXT2_HW_LAG_SUPPORTED \
 		UINT32_C(0x400)
+	/*
+	 * When this bit is '1', it indicates all contexts can be stored
+	 * on chip instead of using host based backing store memory.
+	 */
+	#define HWRM_FUNC_QCAPS_OUTPUT_FLAGS_EXT2_ON_CHIP_CTX_SUPPORTED \
+		UINT32_C(0x800)
+	/*
+	 * When this bit is '1', it indicates that the HW supports
+	 * using a steering tag in the memory transactions targeting
+	 * L2 or RoCE ring resources.
+	 * Steering Tags are system-specific values that must follow the
+	 * encoding requirements of the hardware platform. On devices that
+	 * support steering to multiple address domains, a value of 0 in
+	 * bit 0 of the steering tag specifies the address is associated
+	 * with the SOC address space, and a value of 1 indicates the
+	 * address is associated with the host address space.
+	 */
+	#define HWRM_FUNC_QCAPS_OUTPUT_FLAGS_EXT2_STEERING_TAG_SUPPORTED \
+		UINT32_C(0x1000)
+	/*
+	 * When this bit is '1', it indicates that driver can enable
+	 * support for an enhanced VF scale.
+	 */
+	#define HWRM_FUNC_QCAPS_OUTPUT_FLAGS_EXT2_ENHANCED_VF_SCALE_SUPPORTED \
+		UINT32_C(0x2000)
+	/*
+	 * When this bit is '1', it indicates that FW is capable of
+	 * supporting partition based XID management for KTLS/QUIC
+	 * Tx/Rx Key Context types.
+	 */
+	#define HWRM_FUNC_QCAPS_OUTPUT_FLAGS_EXT2_KEY_XID_PARTITION_SUPPORTED \
+		UINT32_C(0x4000)
+	/*
+	 * This bit is only valid on the condition that both
+	 * “ktls_supported” and “quic_supported” flags are set. When this
+	 * bit is valid, it conveys information below:
+	 * 1. If it is set to ‘1’, it indicates that the firmware allows the
+	 *    driver to run KTLS and QUIC concurrently;
+	 * 2. If it is cleared to ‘0’, it indicates that the driver has to
+	 *    make sure all crypto connections on all functions are of the
+	 *    same type, i.e., either KTLS or QUIC.
+	 */
+	#define HWRM_FUNC_QCAPS_OUTPUT_FLAGS_EXT2_CONCURRENT_KTLS_QUIC_SUPPORTED \
+		UINT32_C(0x8000)
+	/*
+	 * When this bit is '1', it indicates that the device supports
+	 * setting a cross TC cap on a scheduler queue.
+	 */
+	#define HWRM_FUNC_QCAPS_OUTPUT_FLAGS_EXT2_SCHQ_CROSS_TC_CAP_SUPPORTED \
+		UINT32_C(0x10000)
+	/*
+	 * When this bit is '1', it indicates that the device supports
+	 * setting a per TC cap on a scheduler queue.
+	 */
+	#define HWRM_FUNC_QCAPS_OUTPUT_FLAGS_EXT2_SCHQ_PER_TC_CAP_SUPPORTED \
+		UINT32_C(0x20000)
+	/*
+	 * When this bit is '1', it indicates that the device supports
+	 * setting a per TC reservation on a scheduler queues.
+	 */
+	#define HWRM_FUNC_QCAPS_OUTPUT_FLAGS_EXT2_SCHQ_PER_TC_RESERVATION_SUPPORTED \
+		UINT32_C(0x40000)
+	/*
+	 * When this bit is '1', it indicates that firmware supports query
+	 * for statistics related to invalid doorbell errors and drops.
+	 */
+	#define HWRM_FUNC_QCAPS_OUTPUT_FLAGS_EXT2_DB_ERROR_STATS_SUPPORTED \
+		UINT32_C(0x80000)
+	/*
+	 * When this bit is '1', it indicates that the device supports
+	 * VF RoCE resource management.
+	 */
+	#define HWRM_FUNC_QCAPS_OUTPUT_FLAGS_EXT2_ROCE_VF_RESOURCE_MGMT_SUPPORTED \
+		UINT32_C(0x100000)
 	uint16_t	tunnel_disable_flag;
 	/*
 	 * When this bit is '1', it indicates that the VXLAN parsing
@@ -14892,7 +14951,35 @@ struct hwrm_func_qcaps_output {
 	 */
 	#define HWRM_FUNC_QCAPS_OUTPUT_TUNNEL_DISABLE_FLAG_DISABLE_PPPOE \
 		UINT32_C(0x80)
-	uint8_t	unused_1[2];
+	uint16_t	xid_partition_cap;
+	/*
+	 * When this bit is '1', it indicates that FW is capable of
+	 * supporting partition based XID management for KTLS TX
+	 * key contexts.
+	 */
+	#define HWRM_FUNC_QCAPS_OUTPUT_XID_PARTITION_CAP_KTLS_TKC \
+		UINT32_C(0x1)
+	/*
+	 * When this bit is '1', it indicates that FW is capable of
+	 * supporting partition based XID management for KTLS RX
+	 * key contexts.
+	 */
+	#define HWRM_FUNC_QCAPS_OUTPUT_XID_PARTITION_CAP_KTLS_RKC \
+		UINT32_C(0x2)
+	/*
+	 * When this bit is '1', it indicates that FW is capable of
+	 * supporting partition based XID management for QUIC TX
+	 * key contexts.
+	 */
+	#define HWRM_FUNC_QCAPS_OUTPUT_XID_PARTITION_CAP_QUIC_TKC \
+		UINT32_C(0x4)
+	/*
+	 * When this bit is '1', it indicates that FW is capable of
+	 * supporting partition based XID management for QUIC RX
+	 * key contexts.
+	 */
+	#define HWRM_FUNC_QCAPS_OUTPUT_XID_PARTITION_CAP_QUIC_RKC \
+		UINT32_C(0x8)
 	/*
 	 * This value uniquely identifies the hardware NIC used by the
 	 * function. The value returned will be the same for all functions.
@@ -14901,7 +14988,55 @@ struct hwrm_func_qcaps_output {
 	 * PCIe Capability Device Serial Number.
 	 */
 	uint8_t	device_serial_number[8];
-	uint8_t	unused_2[7];
+	/*
+	 * This field is only valid in the XID partition mode. It indicates
+	 * the number contexts per partition.
+	 */
+	uint16_t	ctxs_per_partition;
+	uint8_t	unused_2[2];
+	/*
+	 * The maximum number of address vectors that may be allocated across
+	 * all VFs for the function. This is valid only on the PF with VF RoCE
+	 * (SR-IOV) enabled. Returns zero if this command is called on a PF
+	 * with VF RoCE (SR-IOV) disabled or on a VF.
+	 */
+	uint32_t	roce_vf_max_av;
+	/*
+	 * The maximum number of completion queues that may be allocated across
+	 * all VFs for the function. This is valid only on the PF with VF RoCE
+	 * (SR-IOV) enabled. Returns zero if this command is called on a PF
+	 * with VF RoCE (SR-IOV) disabled or on a VF.
+	 */
+	uint32_t	roce_vf_max_cq;
+	/*
+	 * The maximum number of memory regions plus memory windows that may be
+	 * allocated across all VFs for the function. This is valid only on the
+	 * PF with VF RoCE (SR-IOV) enabled. Returns zero if this command is
+	 * called on a PF with VF RoCE (SR-IOV) disabled or on a VF.
+	 */
+	uint32_t	roce_vf_max_mrw;
+	/*
+	 * The maximum number of queue pairs that may be allocated across
+	 * all VFs for the function. This is valid only on the PF with VF RoCE
+	 * (SR-IOV) enabled. Returns zero if this command is called on a PF
+	 * with VF RoCE (SR-IOV) disabled or on a VF.
+	 */
+	uint32_t	roce_vf_max_qp;
+	/*
+	 * The maximum number of shared receive queues that may be allocated
+	 * across all VFs for the function. This is valid only on the PF with
+	 * VF RoCE (SR-IOV) enabled. Returns zero if this command is called on
+	 * a PF with VF RoCE (SR-IOV) disabled or on a VF.
+	 */
+	uint32_t	roce_vf_max_srq;
+	/*
+	 * The maximum number of GIDs that may be allocated across all VFs for
+	 * the function. This is valid only on the PF with VF RoCE (SR-IOV)
+	 * enabled. Returns zero if this command is called on a PF with VF RoCE
+	 * (SR-IOV) disabled or on a VF.
+	 */
+	uint32_t	roce_vf_max_gid;
+	uint8_t	unused_3[3];
 	/*
 	 * This field is used in Output records to indicate that the output
 	 * is completely written to RAM.  This field should be read as '1'
@@ -14959,7 +15094,7 @@ struct hwrm_func_qcfg_input {
 	uint8_t	unused_0[6];
 } __rte_packed;
 
-/* hwrm_func_qcfg_output (size:1024b/128B) */
+/* hwrm_func_qcfg_output (size:1280b/160B) */
 struct hwrm_func_qcfg_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
@@ -15604,11 +15739,68 @@ struct hwrm_func_qcfg_output {
 	 */
 	uint16_t	port_kdnet_fid;
 	uint8_t	unused_5[2];
-	/* Number of Tx Key Contexts allocated. */
-	uint32_t	alloc_tx_key_ctxs;
-	/* Number of Rx Key Contexts allocated. */
-	uint32_t	alloc_rx_key_ctxs;
-	uint8_t	unused_6[7];
+	/* Number of KTLS Tx Key Contexts allocated. */
+	uint32_t	num_ktls_tx_key_ctxs;
+	/* Number of KTLS Rx Key Contexts allocated. */
+	uint32_t	num_ktls_rx_key_ctxs;
+	/*
+	 * The LAG idx of this function. The lag_id is per port and the
+	 * valid lag_id is from 0 to 7, if there is no valid lag_id,
+	 * 0xff will be returned.
+	 * This HW lag id is used for Truflow programming only.
+	 */
+	uint8_t	lag_id;
+	/* Partition interface for this function. */
+	uint8_t	parif;
+	/*
+	 * The LAG ID of a hardware link aggregation group (LAG) whose
+	 * member ports include the port of this function.  The LAG was
+	 * previously created using HWRM_FUNC_LAG_CREATE.  If the port of this
+	 * function is not a member of any LAG, the fw_lag_id will be 0xff.
+	 */
+	uint8_t	fw_lag_id;
+	uint8_t	unused_6;
+	/* Number of QUIC Tx Key Contexts allocated. */
+	uint32_t	num_quic_tx_key_ctxs;
+	/* Number of QUIC Rx Key Contexts allocated. */
+	uint32_t	num_quic_rx_key_ctxs;
+	/*
+	 * Number of AVs per VF. Only valid for PF. This field is ignored
+	 * when the flag, l2_vf_resource_mgmt, is not set in RoCE
+	 * initialize_fw.
+	 */
+	uint32_t	roce_max_av_per_vf;
+	/*
+	 * Number of CQs per VF. Only valid for PF. This field is ignored when
+	 * the flag, l2_vf_resource_mgmt, is not set in RoCE initialize_fw.
+	 */
+	uint32_t	roce_max_cq_per_vf;
+	/*
+	 * Number of MR/MWs per VF. Only valid for PF. This field is ignored
+	 * when the flag, l2_vf_resource_mgmt, is not set in RoCE
+	 * initialize_fw.
+	 */
+	uint32_t	roce_max_mrw_per_vf;
+	/*
+	 * Number of QPs per VF. Only valid for PF. This field is ignored when
+	 * the flag, l2_vf_resource_mgmt, is not set in RoCE initialize_fw.
+	 */
+	uint32_t	roce_max_qp_per_vf;
+	/*
+	 * Number of SRQs per VF. Only valid for PF. This field is ignored
+	 * when the flag, l2_vf_resource_mgmt, is not set in RoCE
+	 * initialize_fw.
+	 */
+	uint32_t	roce_max_srq_per_vf;
+	/*
+	 * Number of GIDs per VF. Only valid for PF. This field is ignored
+	 * when the flag, l2_vf_resource_mgmt, is not set in RoCE
+	 * initialize_fw.
+	 */
+	uint32_t	roce_max_gid_per_vf;
+	/* Bitmap of context types that have XID partition enabled. */
+	uint16_t	xid_partition_cfg;
+	uint8_t	unused_7;
 	/*
 	 * This field is used in Output records to indicate that the output
 	 * is completely written to RAM.  This field should be read as '1'
@@ -15624,7 +15816,7 @@ struct hwrm_func_qcfg_output {
  *****************/
 
 
-/* hwrm_func_cfg_input (size:1024b/128B) */
+/* hwrm_func_cfg_input (size:1280b/160B) */
 struct hwrm_func_cfg_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
@@ -15888,15 +16080,6 @@ struct hwrm_func_cfg_input {
 	 */
 	#define HWRM_FUNC_CFG_INPUT_FLAGS_BD_METADATA_DISABLE \
 		UINT32_C(0x40000000)
-	/*
-	 * If this bit is set to 1, the driver is requesting FW to see if
-	 * all the assets requested in this command (i.e. number of KTLS/
-	 * QUIC key contexts) are available. The firmware will return an
-	 * error if the requested assets are not available. The firmware
-	 * will NOT reserve the assets if they are available.
-	 */
-	#define HWRM_FUNC_CFG_INPUT_FLAGS_KEY_CTX_ASSETS_TEST \
-		UINT32_C(0x80000000)
 	uint32_t	enables;
 	/*
 	 * This bit must be '1' for the admin_mtu field to be
@@ -16080,16 +16263,16 @@ struct hwrm_func_cfg_input {
 	#define HWRM_FUNC_CFG_INPUT_ENABLES_HOST_MTU \
 		UINT32_C(0x20000000)
 	/*
-	 * This bit must be '1' for the number of Tx Key Contexts
-	 * field to be configured.
+	 * This bit must be '1' for the num_ktls_tx_key_ctxs field to be
+	 * configured.
 	 */
-	#define HWRM_FUNC_CFG_INPUT_ENABLES_TX_KEY_CTXS \
+	#define HWRM_FUNC_CFG_INPUT_ENABLES_KTLS_TX_KEY_CTXS \
 		UINT32_C(0x40000000)
 	/*
-	 * This bit must be '1' for the number of Rx Key Contexts
-	 * field to be configured.
+	 * This bit must be '1' for the num_ktls_rx_key_ctxs field to be
+	 * configured.
 	 */
-	#define HWRM_FUNC_CFG_INPUT_ENABLES_RX_KEY_CTXS \
+	#define HWRM_FUNC_CFG_INPUT_ENABLES_KTLS_RX_KEY_CTXS \
 		UINT32_C(0x80000000)
 	/*
 	 * This field can be used by the admin PF to configure
@@ -16542,19 +16725,93 @@ struct hwrm_func_cfg_input {
 	 * ring that is assigned to a function has a valid mtu.
 	 */
 	uint16_t	host_mtu;
-	uint8_t	unused_0[4];
+	uint32_t	flags2;
+	/*
+	 * If this bit is set to 1, the driver is requesting the firmware
+	 * to see if the assets (i.e., the number of KTLS key contexts)
+	 * requested in this command are available. The firmware will return
+	 * an error if the requested assets are not available. The firmware
+	 * will NOT reserve the assets if they are available.
+	 */
+	#define HWRM_FUNC_CFG_INPUT_FLAGS2_KTLS_KEY_CTX_ASSETS_TEST \
+		UINT32_C(0x1)
+	/*
+	 * If this bit is set to 1, the driver is requesting the firmware
+	 * to see if the assets (i.e., the number of QUIC key contexts)
+	 * requested in this command are available. The firmware will return
+	 * an error if the requested assets are not available. The firmware
+	 * will NOT reserve the assets if they are available.
+	 */
+	#define HWRM_FUNC_CFG_INPUT_FLAGS2_QUIC_KEY_CTX_ASSETS_TEST \
+		UINT32_C(0x2)
 	uint32_t	enables2;
 	/*
 	 * This bit must be '1' for the kdnet_mode field to be
 	 * configured.
 	 */
-	#define HWRM_FUNC_CFG_INPUT_ENABLES2_KDNET            UINT32_C(0x1)
+	#define HWRM_FUNC_CFG_INPUT_ENABLES2_KDNET \
+		UINT32_C(0x1)
 	/*
 	 * This bit must be '1' for the db_page_size field to be
 	 * configured. Legacy controller core FW may silently ignore
 	 * the db_page_size programming request through this command.
 	 */
-	#define HWRM_FUNC_CFG_INPUT_ENABLES2_DB_PAGE_SIZE     UINT32_C(0x2)
+	#define HWRM_FUNC_CFG_INPUT_ENABLES2_DB_PAGE_SIZE \
+		UINT32_C(0x2)
+	/*
+	 * This bit must be '1' for the num_quic_tx_key_ctxs field to be
+	 * configured.
+	 */
+	#define HWRM_FUNC_CFG_INPUT_ENABLES2_QUIC_TX_KEY_CTXS \
+		UINT32_C(0x4)
+	/*
+	 * This bit must be '1' for the num_quic_rx_key_ctxs field to be
+	 * configured.
+	 */
+	#define HWRM_FUNC_CFG_INPUT_ENABLES2_QUIC_RX_KEY_CTXS \
+		UINT32_C(0x8)
+	/*
+	 * This bit must be '1' for the roce_max_av_per_vf field to be
+	 * configured.
+	 */
+	#define HWRM_FUNC_CFG_INPUT_ENABLES2_ROCE_MAX_AV_PER_VF \
+		UINT32_C(0x10)
+	/*
+	 * This bit must be '1' for the roce_max_cq_per_vf field to be
+	 * configured. Only valid for PF.
+	 */
+	#define HWRM_FUNC_CFG_INPUT_ENABLES2_ROCE_MAX_CQ_PER_VF \
+		UINT32_C(0x20)
+	/*
+	 * This bit must be '1' for the roce_max_mrw_per_vf field to be
+	 * configured. Only valid for PF.
+	 */
+	#define HWRM_FUNC_CFG_INPUT_ENABLES2_ROCE_MAX_MRW_PER_VF \
+		UINT32_C(0x40)
+	/*
+	 * This bit must be '1' for the roce_max_qp_per_vf field to be
+	 * configured.
+	 */
+	#define HWRM_FUNC_CFG_INPUT_ENABLES2_ROCE_MAX_QP_PER_VF \
+		UINT32_C(0x80)
+	/*
+	 * This bit must be '1' for the roce_max_srq_per_vf field to be
+	 * configured. Only valid for PF.
+	 */
+	#define HWRM_FUNC_CFG_INPUT_ENABLES2_ROCE_MAX_SRQ_PER_VF \
+		UINT32_C(0x100)
+	/*
+	 * This bit must be '1' for the roce_max_gid_per_vf field to be
+	 * configured. Only valid for PF.
+	 */
+	#define HWRM_FUNC_CFG_INPUT_ENABLES2_ROCE_MAX_GID_PER_VF \
+		UINT32_C(0x200)
+	/*
+	 * This bit must be '1' for the xid_partition_cfg field to be
+	 * configured. Only valid for PF.
+	 */
+	#define HWRM_FUNC_CFG_INPUT_ENABLES2_XID_PARTITION_CFG \
+		UINT32_C(0x400)
 	/*
 	 * KDNet mode for the port for this function.  If NPAR is
 	 * also configured on this port, it takes precedence.  KDNet
@@ -16602,11 +16859,56 @@ struct hwrm_func_cfg_input {
 	#define HWRM_FUNC_CFG_INPUT_DB_PAGE_SIZE_LAST \
 		HWRM_FUNC_CFG_INPUT_DB_PAGE_SIZE_4MB
 	uint8_t	unused_1[2];
-	/* Number of Tx Key Contexts requested. */
-	uint32_t	num_tx_key_ctxs;
-	/* Number of Rx Key Contexts requested. */
-	uint32_t	num_rx_key_ctxs;
-	uint8_t	unused_2[4];
+	/* Number of KTLS Tx Key Contexts requested. */
+	uint32_t	num_ktls_tx_key_ctxs;
+	/* Number of KTLS Rx Key Contexts requested. */
+	uint32_t	num_ktls_rx_key_ctxs;
+	/* Number of QUIC Tx Key Contexts requested. */
+	uint32_t	num_quic_tx_key_ctxs;
+	/* Number of QUIC Rx Key Contexts requested. */
+	uint32_t	num_quic_rx_key_ctxs;
+	/* Number of AVs per VF. Only valid for PF. */
+	uint32_t	roce_max_av_per_vf;
+	/* Number of CQs per VF. Only valid for PF. */
+	uint32_t	roce_max_cq_per_vf;
+	/* Number of MR/MWs per VF. Only valid for PF. */
+	uint32_t	roce_max_mrw_per_vf;
+	/* Number of QPs per VF. Only valid for PF. */
+	uint32_t	roce_max_qp_per_vf;
+	/* Number of SRQs per VF. Only valid for PF. */
+	uint32_t	roce_max_srq_per_vf;
+	/* Number of GIDs per VF. Only valid for PF. */
+	uint32_t	roce_max_gid_per_vf;
+	/*
+	 * Bitmap of context kinds that have XID partition enabled.
+	 * Only valid for PF.
+	 */
+	uint16_t	xid_partition_cfg;
+	/*
+	 * When this bit is '1', it indicates that driver enables XID
+	 * partition on KTLS TX key contexts.
+	 */
+	#define HWRM_FUNC_CFG_INPUT_XID_PARTITION_CFG_KTLS_TKC \
+		UINT32_C(0x1)
+	/*
+	 * When this bit is '1', it indicates that driver enables XID
+	 * partition on KTLS RX key contexts.
+	 */
+	#define HWRM_FUNC_CFG_INPUT_XID_PARTITION_CFG_KTLS_RKC \
+		UINT32_C(0x2)
+	/*
+	 * When this bit is '1', it indicates that driver enables XID
+	 * partition on QUIC TX key contexts.
+	 */
+	#define HWRM_FUNC_CFG_INPUT_XID_PARTITION_CFG_QUIC_TKC \
+		UINT32_C(0x4)
+	/*
+	 * When this bit is '1', it indicates that driver enables XID
+	 * partition on QUIC RX key contexts.
+	 */
+	#define HWRM_FUNC_CFG_INPUT_XID_PARTITION_CFG_QUIC_RKC \
+		UINT32_C(0x8)
+	uint16_t	unused_2;
 } __rte_packed;
 
 /* hwrm_func_cfg_output (size:128b/16B) */
@@ -22466,8 +22768,14 @@ struct hwrm_func_backing_store_cfg_v2_input {
 	 * which means "0" indicates the first instance. For backing
 	 * stores with single instance only, leave this field to 0.
 	 * 1. If the backing store type is MPC TQM ring, use the following
-	 *    instance value to MPC client mapping:
+	 *    instance value to map to MPC clients:
 	 *    TCE (0), RCE (1), TE_CFA(2), RE_CFA (3), PRIMATE(4)
+	 * 2. If the backing store type is TBL_SCOPE, use the following
+	 *    instance value to map to table scope regions:
+	 *    RE_CFA_LKUP (0), RE_CFA_ACT (1), TE_CFA_LKUP(2), TE_CFA_ACT (3)
+	 * 3. If the backing store type is XID partition, use the following
+	 *    instance value to map to context types:
+	 *    KTLS_TKC (0), KTLS_RKC (1), QUIC_TKC (2), QUIC_RKC (3)
 	 */
 	uint16_t	instance;
 	/* Control flags. */
@@ -22578,7 +22886,8 @@ struct hwrm_func_backing_store_cfg_v2_input {
 	 * | SRQ  |             srq_split_entries                      |
 	 * | CQ   |             cq_split_entries                       |
 	 * | VINC |            vnic_split_entries                      |
-	 * | MRAV |            marv_split_entries                      |
+	 * | MRAV |            mrav_split_entries                      |
+	 * | TS   |             ts_split_entries                       |
 	 */
 	uint32_t	split_entry_0;
 	/* Split entry #1. */
@@ -22711,6 +23020,15 @@ struct hwrm_func_backing_store_qcfg_v2_input {
 	 * Instance of the backing store type. It is zero-based,
 	 * which means "0" indicates the first instance. For backing
 	 * stores with single instance only, leave this field to 0.
+	 * 1. If the backing store type is MPC TQM ring, use the following
+	 *    instance value to map to MPC clients:
+	 *    TCE (0), RCE (1), TE_CFA(2), RE_CFA (3), PRIMATE(4)
+	 * 2. If the backing store type is TBL_SCOPE, use the following
+	 *    instance value to map to table scope regions:
+	 *    RE_CFA_LKUP (0), RE_CFA_ACT (1), TE_CFA_LKUP(2), TE_CFA_ACT (3)
+	 * 3. If the backing store type is XID partition, use the following
+	 *    instance value to map to context types:
+	 *    KTLS_TKC (0), KTLS_RKC (1), QUIC_TKC (2), QUIC_RKC (3)
 	 */
 	uint16_t	instance;
 	uint8_t	rsvd[4];
@@ -22779,6 +23097,15 @@ struct hwrm_func_backing_store_qcfg_v2_output {
 	 * Instance of the backing store type. It is zero-based,
 	 * which means "0" indicates the first instance. For backing
 	 * stores with single instance only, leave this field to 0.
+	 * 1. If the backing store type is MPC TQM ring, use the following
+	 *    instance value to map to MPC clients:
+	 *    TCE (0), RCE (1), TE_CFA(2), RE_CFA (3), PRIMATE(4)
+	 * 2. If the backing store type is TBL_SCOPE, use the following
+	 *    instance value to map to table scope regions:
+	 *    RE_CFA_LKUP (0), RE_CFA_ACT (1), TE_CFA_LKUP(2), TE_CFA_ACT (3)
+	 * 3. If the backing store type is XID partition, use the following
+	 *    instance value to map to context types:
+	 *    KTLS_TKC (0), KTLS_RKC (1), QUIC_TKC (2), QUIC_RKC (3)
 	 */
 	uint16_t	instance;
 	/* Control flags. */
@@ -22855,7 +23182,8 @@ struct hwrm_func_backing_store_qcfg_v2_output {
 	 * | SRQ  |             srq_split_entries                      |
 	 * | CQ   |             cq_split_entries                       |
 	 * | VINC |            vnic_split_entries                      |
-	 * | MRAV |            marv_split_entries                      |
+	 * | MRAV |            mrav_split_entries                      |
+	 * | TS   |             ts_split_entries                       |
 	 */
 	uint32_t	split_entry_0;
 	/* Split entry #1. */
@@ -22876,17 +23204,20 @@ struct hwrm_func_backing_store_qcfg_v2_output {
 	uint8_t	valid;
 } __rte_packed;
 
-/* Common structure to cast QPC split entries. This casting is required in the following HWRM command inputs/outputs if the backing store type is QPC. 1. hwrm_func_backing_store_cfg_v2_input 2. hwrm_func_backing_store_qcfg_v2_output 3. hwrm_func_backing_store_qcaps_v2_output */
 /* qpc_split_entries (size:128b/16B) */
 struct qpc_split_entries {
 	/* Number of L2 QP backing store entries. */
 	uint32_t	qp_num_l2_entries;
 	/* Number of QP1 entries. */
 	uint32_t	qp_num_qp1_entries;
-	uint32_t	rsvd[2];
+	/*
+	 * Number of RoCE QP context entries required for this
+	 * function to support fast QP modify destroy feature.
+	 */
+	uint32_t	qp_num_fast_qpmd_entries;
+	uint32_t	rsvd;
 } __rte_packed;
 
-/* Common structure to cast SRQ split entries. This casting is required in the following HWRM command inputs/outputs if the backing store type is SRQ. 1. hwrm_func_backing_store_cfg_v2_input 2. hwrm_func_backing_store_qcfg_v2_output 3. hwrm_func_backing_store_qcaps_v2_output */
 /* srq_split_entries (size:128b/16B) */
 struct srq_split_entries {
 	/* Number of L2 SRQ backing store entries. */
@@ -22895,7 +23226,6 @@ struct srq_split_entries {
 	uint32_t	rsvd2[2];
 } __rte_packed;
 
-/* Common structure to cast CQ split entries. This casting is required in the following HWRM command inputs/outputs if the backing store type is CQ. 1. hwrm_func_backing_store_cfg_v2_input 2. hwrm_func_backing_store_qcfg_v2_output 3. hwrm_func_backing_store_qcaps_v2_output */
 /* cq_split_entries (size:128b/16B) */
 struct cq_split_entries {
 	/* Number of L2 CQ backing store entries. */
@@ -22904,7 +23234,6 @@ struct cq_split_entries {
 	uint32_t	rsvd2[2];
 } __rte_packed;
 
-/* Common structure to cast VNIC split entries. This casting is required in the following HWRM command inputs/outputs if the backing store type is VNIC. 1. hwrm_func_backing_store_cfg_v2_input 2. hwrm_func_backing_store_qcfg_v2_output 3. hwrm_func_backing_store_qcaps_v2_output */
 /* vnic_split_entries (size:128b/16B) */
 struct vnic_split_entries {
 	/* Number of VNIC backing store entries. */
@@ -22913,12 +23242,26 @@ struct vnic_split_entries {
 	uint32_t	rsvd2[2];
 } __rte_packed;
 
-/* Common structure to cast MRAV split entries. This casting is required in the following HWRM command inputs/outputs if the backing store type is MRAV. 1. hwrm_func_backing_store_cfg_v2_input 2. hwrm_func_backing_store_qcfg_v2_output 3. hwrm_func_backing_store_qcaps_v2_output */
 /* mrav_split_entries (size:128b/16B) */
 struct mrav_split_entries {
 	/* Number of AV backing store entries. */
 	uint32_t	mrav_num_av_entries;
 	uint32_t	rsvd;
+	uint32_t	rsvd2[2];
+} __rte_packed;
+
+/* ts_split_entries (size:128b/16B) */
+struct ts_split_entries {
+	/* Max number of TBL_SCOPE region entries (QCAPS). */
+	uint32_t	region_num_entries;
+	/* tsid to configure (CFG). */
+	uint8_t	tsid;
+	/*
+	 * Lkup static bucket count (power of 2).
+	 * Array is indexed by enum cfa_dir
+	 */
+	uint8_t	lkup_static_bkt_cnt_exp[2];
+	uint8_t	rsvd;
 	uint32_t	rsvd2[2];
 } __rte_packed;
 
@@ -23113,11 +23456,35 @@ struct hwrm_func_backing_store_qcaps_v2_output {
 	#define HWRM_FUNC_BACKING_STORE_QCAPS_V2_OUTPUT_FLAGS_DRIVER_MANAGED_MEMORY \
 		UINT32_C(0x4)
 	/*
+	 * When set, it indicates the support of the following capability
+	 * that is specific to the QP type:
+	 * - For 2-port adapters, the ability to extend the RoCE QP
+	 *   entries configured on a PF, during some network events such as
+	 *   Link Down. These additional entries count is included in the
+	 *   advertised 'max_num_entries'.
+	 * - The count of RoCE QP entries, derived from 'max_num_entries'
+	 *   (max_num_entries - qp_num_qp1_entries - qp_num_l2_entries -
+	 *   qp_num_fast_qpmd_entries, note qp_num_fast_qpmd_entries is
+	 *   always zero when QPs are pseudo-statically allocated), includes
+	 *   the count of QPs that can be migrated from the other PF (e.g.,
+	 *   during network link down). Therefore, during normal operation
+	 *   when both PFs are active, the supported number of RoCE QPs for
+	 *   each of the PF is half of the advertised value.
+	 */
+	#define HWRM_FUNC_BACKING_STORE_QCAPS_V2_OUTPUT_FLAGS_ROCE_QP_PSEUDO_STATIC_ALLOC \
+		UINT32_C(0x8)
+	/*
 	 * Bit map of the valid instances associated with the
 	 * backing store type.
 	 * 1. If the backing store type is MPC TQM ring, use the following
-	 *    bit to MPC client mapping:
+	 *    bits to map to MPC clients:
 	 *    TCE (0), RCE (1), TE_CFA(2), RE_CFA (3), PRIMATE(4)
+	 * 2. If the backing store type is TBL_SCOPE, use the following
+	 *    bits to map to table scope regions:
+	 *    RE_CFA_LKUP (0), RE_CFA_ACT (1), TE_CFA_LKUP(2), TE_CFA_ACT (3)
+	 * 3. If the backing store type is VF XID partition in-use table, use
+	 *    the following bits to map to context types:
+	 *    KTLS_TKC (0), KTLS_RKC (1), QUIC_TKC (2), QUIC_RKC (3)
 	 */
 	uint32_t	instance_bit_map;
 	/*
@@ -23164,7 +23531,43 @@ struct hwrm_func_backing_store_qcaps_v2_output {
 	 * |   4   | All four split entries have valid data.            |
 	 */
 	uint8_t	subtype_valid_cnt;
-	uint8_t	rsvd2;
+	/*
+	 * Bitmap that indicates if each of the 'split_entry' denotes an
+	 * exact count (i.e., min = max). When the exact count bit is set,
+	 * it indicates the exact number of entries as advertised has to be
+	 * configured. The 'split_entry' to be set to contain exact count by
+	 * this bitmap needs to be a valid split entry specified by
+	 * 'subtype_valid_cnt'.
+	 */
+	uint8_t	exact_cnt_bit_map;
+	/*
+	 * When this bit is '1', it indicates 'split_entry_0' contains
+	 * an exact count.
+	 */
+	#define HWRM_FUNC_BACKING_STORE_QCAPS_V2_OUTPUT_EXACT_CNT_BIT_MAP_SPLIT_ENTRY_0_EXACT \
+		UINT32_C(0x1)
+	/*
+	 * When this bit is '1', it indicates 'split_entry_1' contains
+	 * an exact count.
+	 */
+	#define HWRM_FUNC_BACKING_STORE_QCAPS_V2_OUTPUT_EXACT_CNT_BIT_MAP_SPLIT_ENTRY_1_EXACT \
+		UINT32_C(0x2)
+	/*
+	 * When this bit is '1', it indicates 'split_entry_2' contains
+	 * an exact count.
+	 */
+	#define HWRM_FUNC_BACKING_STORE_QCAPS_V2_OUTPUT_EXACT_CNT_BIT_MAP_SPLIT_ENTRY_2_EXACT \
+		UINT32_C(0x4)
+	/*
+	 * When this bit is '1', it indicates 'split_entry_3' contains
+	 * an exact count.
+	 */
+	#define HWRM_FUNC_BACKING_STORE_QCAPS_V2_OUTPUT_EXACT_CNT_BIT_MAP_SPLIT_ENTRY_3_EXACT \
+		UINT32_C(0x8)
+	#define HWRM_FUNC_BACKING_STORE_QCAPS_V2_OUTPUT_EXACT_CNT_BIT_MAP_UNUSED_MASK \
+		UINT32_C(0xf0)
+	#define HWRM_FUNC_BACKING_STORE_QCAPS_V2_OUTPUT_EXACT_CNT_BIT_MAP_UNUSED_SFT \
+		4
 	/*
 	 * Split entry #0. Note that the four split entries (as a group)
 	 * must be cast to a type-specific data structure first before
@@ -23176,7 +23579,8 @@ struct hwrm_func_backing_store_qcaps_v2_output {
 	 * | SRQ  |             srq_split_entries                      |
 	 * | CQ   |             cq_split_entries                       |
 	 * | VINC |            vnic_split_entries                      |
-	 * | MRAV |            marv_split_entries                      |
+	 * | MRAV |            mrav_split_entries                      |
+	 * | TS   |             ts_split_entries                       |
 	 */
 	uint32_t	split_entry_0;
 	/* Split entry #1. */
@@ -23471,7 +23875,9 @@ struct hwrm_func_dbr_pacing_qcfg_output {
 	 * dbr_throttling_aeq_arm_reg register.
 	 */
 	uint8_t	dbr_throttling_aeq_arm_reg_val;
-	uint8_t	unused_3[7];
+	uint8_t	unused_3[3];
+	/* This field indicates the maximum depth of the doorbell FIFO. */
+	uint32_t	dbr_stat_db_max_fifo_depth;
 	/*
 	 * Specifies primary function’s NQ ID.
 	 * A value of 0xFFFF FFFF indicates NQ ID is invalid.
@@ -25128,7 +25534,7 @@ struct hwrm_func_spd_qcfg_output {
  *********************/
 
 
-/* hwrm_port_phy_cfg_input (size:448b/56B) */
+/* hwrm_port_phy_cfg_input (size:512b/64B) */
 struct hwrm_port_phy_cfg_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
@@ -25505,6 +25911,18 @@ struct hwrm_port_phy_cfg_input {
 	 */
 	#define HWRM_PORT_PHY_CFG_INPUT_ENABLES_AUTO_PAM4_LINK_SPEED_MASK \
 		UINT32_C(0x1000)
+	/*
+	 * This bit must be '1' for the force_link_speeds2 field to be
+	 * configured.
+	 */
+	#define HWRM_PORT_PHY_CFG_INPUT_ENABLES_FORCE_LINK_SPEEDS2 \
+		UINT32_C(0x2000)
+	/*
+	 * This bit must be '1' for the auto_link_speeds2_mask field to
+	 * be configured.
+	 */
+	#define HWRM_PORT_PHY_CFG_INPUT_ENABLES_AUTO_LINK_SPEEDS2_MASK \
+		UINT32_C(0x4000)
 	/* Port ID of port that is to be configured. */
 	uint16_t	port_id;
 	/*
@@ -25808,7 +26226,99 @@ struct hwrm_port_phy_cfg_input {
 		UINT32_C(0x2)
 	#define HWRM_PORT_PHY_CFG_INPUT_AUTO_LINK_PAM4_SPEED_MASK_200G \
 		UINT32_C(0x4)
-	uint8_t	unused_2[2];
+	/*
+	 * This is the speed that will be used if the force_link_speeds2
+	 * bit is '1'.  If unsupported speed is selected, an error
+	 * will be generated.
+	 */
+	uint16_t	force_link_speeds2;
+	/* 1Gb link speed */
+	#define HWRM_PORT_PHY_CFG_INPUT_FORCE_LINK_SPEEDS2_1GB \
+		UINT32_C(0xa)
+	/* 10Gb link speed */
+	#define HWRM_PORT_PHY_CFG_INPUT_FORCE_LINK_SPEEDS2_10GB \
+		UINT32_C(0x64)
+	/* 25Gb link speed */
+	#define HWRM_PORT_PHY_CFG_INPUT_FORCE_LINK_SPEEDS2_25GB \
+		UINT32_C(0xfa)
+	/* 40Gb link speed */
+	#define HWRM_PORT_PHY_CFG_INPUT_FORCE_LINK_SPEEDS2_40GB \
+		UINT32_C(0x190)
+	/* 50Gb link speed */
+	#define HWRM_PORT_PHY_CFG_INPUT_FORCE_LINK_SPEEDS2_50GB \
+		UINT32_C(0x1f4)
+	/* 100Gb link speed */
+	#define HWRM_PORT_PHY_CFG_INPUT_FORCE_LINK_SPEEDS2_100GB \
+		UINT32_C(0x3e8)
+	/* 50Gb (PAM4-56: 50G per lane) link speed */
+	#define HWRM_PORT_PHY_CFG_INPUT_FORCE_LINK_SPEEDS2_50GB_PAM4_56 \
+		UINT32_C(0x1f5)
+	/* 100Gb (PAM4-56: 50G per lane) link speed */
+	#define HWRM_PORT_PHY_CFG_INPUT_FORCE_LINK_SPEEDS2_100GB_PAM4_56 \
+		UINT32_C(0x3e9)
+	/* 200Gb (PAM4-56: 50G per lane) link speed */
+	#define HWRM_PORT_PHY_CFG_INPUT_FORCE_LINK_SPEEDS2_200GB_PAM4_56 \
+		UINT32_C(0x7d1)
+	/* 400Gb (PAM4-56: 50G per lane) link speed */
+	#define HWRM_PORT_PHY_CFG_INPUT_FORCE_LINK_SPEEDS2_400GB_PAM4_56 \
+		UINT32_C(0xfa1)
+	/* 100Gb (PAM4-112: 100G per lane) link speed */
+	#define HWRM_PORT_PHY_CFG_INPUT_FORCE_LINK_SPEEDS2_100GB_PAM4_112 \
+		UINT32_C(0x3ea)
+	/* 200Gb (PAM4-112: 100G per lane) link speed */
+	#define HWRM_PORT_PHY_CFG_INPUT_FORCE_LINK_SPEEDS2_200GB_PAM4_112 \
+		UINT32_C(0x7d2)
+	/* 400Gb (PAM4-112: 100G per lane) link speed */
+	#define HWRM_PORT_PHY_CFG_INPUT_FORCE_LINK_SPEEDS2_400GB_PAM4_112 \
+		UINT32_C(0xfa2)
+	#define HWRM_PORT_PHY_CFG_INPUT_FORCE_LINK_SPEEDS2_LAST \
+		HWRM_PORT_PHY_CFG_INPUT_FORCE_LINK_SPEEDS2_400GB_PAM4_112
+	/*
+	 * This is a mask of link speeds that will be used if
+	 * auto_link_speeds2_mask bit in the "enables" field is 1.
+	 * If unsupported speed is enabled an error will be generated.
+	 */
+	uint16_t	auto_link_speeds2_mask;
+	/* 1Gb link speed */
+	#define HWRM_PORT_PHY_CFG_INPUT_AUTO_LINK_SPEEDS2_MASK_1GB \
+		UINT32_C(0x1)
+	/* 10Gb link speed */
+	#define HWRM_PORT_PHY_CFG_INPUT_AUTO_LINK_SPEEDS2_MASK_10GB \
+		UINT32_C(0x2)
+	/* 25Gb link speed */
+	#define HWRM_PORT_PHY_CFG_INPUT_AUTO_LINK_SPEEDS2_MASK_25GB \
+		UINT32_C(0x4)
+	/* 40Gb link speed */
+	#define HWRM_PORT_PHY_CFG_INPUT_AUTO_LINK_SPEEDS2_MASK_40GB \
+		UINT32_C(0x8)
+	/* 50Gb link speed */
+	#define HWRM_PORT_PHY_CFG_INPUT_AUTO_LINK_SPEEDS2_MASK_50GB \
+		UINT32_C(0x10)
+	/* 100Gb link speed */
+	#define HWRM_PORT_PHY_CFG_INPUT_AUTO_LINK_SPEEDS2_MASK_100GB \
+		UINT32_C(0x20)
+	/* 50Gb (PAM4-56: 50G per lane) link speed */
+	#define HWRM_PORT_PHY_CFG_INPUT_AUTO_LINK_SPEEDS2_MASK_50GB_PAM4_56 \
+		UINT32_C(0x40)
+	/* 100Gb (PAM4-56: 50G per lane) link speed */
+	#define HWRM_PORT_PHY_CFG_INPUT_AUTO_LINK_SPEEDS2_MASK_100GB_PAM4_56 \
+		UINT32_C(0x80)
+	/* 200Gb (PAM4-56: 50G per lane) link speed */
+	#define HWRM_PORT_PHY_CFG_INPUT_AUTO_LINK_SPEEDS2_MASK_200GB_PAM4_56 \
+		UINT32_C(0x100)
+	/* 400Gb (PAM4-56: 50G per lane) link speed */
+	#define HWRM_PORT_PHY_CFG_INPUT_AUTO_LINK_SPEEDS2_MASK_400GB_PAM4_56 \
+		UINT32_C(0x200)
+	/* 100Gb (PAM4-112: 100G per lane) link speed */
+	#define HWRM_PORT_PHY_CFG_INPUT_AUTO_LINK_SPEEDS2_MASK_100GB_PAM4_112 \
+		UINT32_C(0x400)
+	/* 200Gb (PAM4-112: 100G per lane) link speed */
+	#define HWRM_PORT_PHY_CFG_INPUT_AUTO_LINK_SPEEDS2_MASK_200GB_PAM4_112 \
+		UINT32_C(0x800)
+	/* 400Gb (PAM4-112: 100G per lane) link speed */
+	#define HWRM_PORT_PHY_CFG_INPUT_AUTO_LINK_SPEEDS2_MASK_400GB_PAM4_112 \
+		UINT32_C(0x1000)
+	uint8_t	unused_2[6];
 } __rte_packed;
 
 /* hwrm_port_phy_cfg_output (size:128b/16B) */
@@ -25932,11 +26442,14 @@ struct hwrm_port_phy_qcfg_output {
 	/* NRZ signaling */
 	#define HWRM_PORT_PHY_QCFG_OUTPUT_SIGNAL_MODE_NRZ \
 		UINT32_C(0x0)
-	/* PAM4 signaling */
+	/* PAM4-56 signaling */
 	#define HWRM_PORT_PHY_QCFG_OUTPUT_SIGNAL_MODE_PAM4 \
 		UINT32_C(0x1)
+	/* PAM4-112 signaling */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_SIGNAL_MODE_PAM4_112 \
+		UINT32_C(0x2)
 	#define HWRM_PORT_PHY_QCFG_OUTPUT_SIGNAL_MODE_LAST \
-		HWRM_PORT_PHY_QCFG_OUTPUT_SIGNAL_MODE_PAM4
+		HWRM_PORT_PHY_QCFG_OUTPUT_SIGNAL_MODE_PAM4_112
 	/* This value indicates the current active FEC mode. */
 	#define HWRM_PORT_PHY_QCFG_OUTPUT_ACTIVE_FEC_MASK \
 		UINT32_C(0xf0)
@@ -25992,6 +26505,8 @@ struct hwrm_port_phy_qcfg_output {
 	#define HWRM_PORT_PHY_QCFG_OUTPUT_LINK_SPEED_100GB UINT32_C(0x3e8)
 	/* 200Gb link speed */
 	#define HWRM_PORT_PHY_QCFG_OUTPUT_LINK_SPEED_200GB UINT32_C(0x7d0)
+	/* 400Gb link speed */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_LINK_SPEED_400GB UINT32_C(0xfa0)
 	/* 10Mb link speed */
 	#define HWRM_PORT_PHY_QCFG_OUTPUT_LINK_SPEED_10MB  UINT32_C(0xffff)
 	#define HWRM_PORT_PHY_QCFG_OUTPUT_LINK_SPEED_LAST \
@@ -26446,8 +26961,56 @@ struct hwrm_port_phy_qcfg_output {
 	/* 100G_BASEER2 */
 	#define HWRM_PORT_PHY_QCFG_OUTPUT_PHY_TYPE_100G_BASEER2 \
 		UINT32_C(0x27)
+	/* 400G_BASECR */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_PHY_TYPE_100G_BASECR \
+		UINT32_C(0x28)
+	/* 100G_BASESR */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_PHY_TYPE_100G_BASESR \
+		UINT32_C(0x29)
+	/* 100G_BASELR */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_PHY_TYPE_100G_BASELR \
+		UINT32_C(0x2a)
+	/* 100G_BASEER */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_PHY_TYPE_100G_BASEER \
+		UINT32_C(0x2b)
+	/* 200G_BASECR2 */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_PHY_TYPE_200G_BASECR2 \
+		UINT32_C(0x2c)
+	/* 200G_BASESR2 */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_PHY_TYPE_200G_BASESR2 \
+		UINT32_C(0x2d)
+	/* 200G_BASELR2 */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_PHY_TYPE_200G_BASELR2 \
+		UINT32_C(0x2e)
+	/* 200G_BASEER2 */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_PHY_TYPE_200G_BASEER2 \
+		UINT32_C(0x2f)
+	/* 400G_BASECR8 */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_PHY_TYPE_400G_BASECR8 \
+		UINT32_C(0x30)
+	/* 200G_BASESR8 */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_PHY_TYPE_400G_BASESR8 \
+		UINT32_C(0x31)
+	/* 400G_BASELR8 */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_PHY_TYPE_400G_BASELR8 \
+		UINT32_C(0x32)
+	/* 400G_BASEER8 */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_PHY_TYPE_400G_BASEER8 \
+		UINT32_C(0x33)
+	/* 400G_BASECR4 */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_PHY_TYPE_400G_BASECR4 \
+		UINT32_C(0x34)
+	/* 400G_BASESR4 */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_PHY_TYPE_400G_BASESR4 \
+		UINT32_C(0x35)
+	/* 400G_BASELR4 */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_PHY_TYPE_400G_BASELR4 \
+		UINT32_C(0x36)
+	/* 400G_BASEER4 */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_PHY_TYPE_400G_BASEER4 \
+		UINT32_C(0x37)
 	#define HWRM_PORT_PHY_QCFG_OUTPUT_PHY_TYPE_LAST \
-		HWRM_PORT_PHY_QCFG_OUTPUT_PHY_TYPE_100G_BASEER2
+		HWRM_PORT_PHY_QCFG_OUTPUT_PHY_TYPE_400G_BASEER4
 	/* This value represents a media type. */
 	uint8_t	media_type;
 	/* Unknown */
@@ -26856,6 +27419,12 @@ struct hwrm_port_phy_qcfg_output {
 	#define HWRM_PORT_PHY_QCFG_OUTPUT_OPTION_FLAGS_SIGNAL_MODE_KNOWN \
 		UINT32_C(0x2)
 	/*
+	 * When this bit is '1', speeds2 fields are used to get
+	 * speed details.
+	 */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_OPTION_FLAGS_SPEEDS2_SUPPORTED \
+		UINT32_C(0x4)
+	/*
 	 * Up to 16 bytes of null padded ASCII string representing
 	 * PHY vendor.
 	 * If the string is set to null, then the vendor name is not
@@ -26933,7 +27502,162 @@ struct hwrm_port_phy_qcfg_output {
 	uint8_t	link_down_reason;
 	/* Remote fault */
 	#define HWRM_PORT_PHY_QCFG_OUTPUT_LINK_DOWN_REASON_RF     UINT32_C(0x1)
-	uint8_t	unused_0[7];
+	/*
+	 * The supported speeds for the port. This is a bit mask.
+	 * For each speed that is supported, the corresponding
+	 * bit will be set to '1'. This is valid only if speeds2_supported
+	 * is set in option_flags
+	 */
+	uint16_t	support_speeds2;
+	/* 1Gb link speed */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_SUPPORT_SPEEDS2_1GB \
+		UINT32_C(0x1)
+	/* 10Gb link speed */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_SUPPORT_SPEEDS2_10GB \
+		UINT32_C(0x2)
+	/* 25Gb link speed */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_SUPPORT_SPEEDS2_25GB \
+		UINT32_C(0x4)
+	/* 40Gb link speed */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_SUPPORT_SPEEDS2_40GB \
+		UINT32_C(0x8)
+	/* 50Gb link speed */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_SUPPORT_SPEEDS2_50GB \
+		UINT32_C(0x10)
+	/* 100Gb link speed */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_SUPPORT_SPEEDS2_100GB \
+		UINT32_C(0x20)
+	/* 50Gb (PAM4-56: 50G per lane) link speed */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_SUPPORT_SPEEDS2_50GB_PAM4_56 \
+		UINT32_C(0x40)
+	/* 100Gb (PAM4-56: 50G per lane) link speed */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_SUPPORT_SPEEDS2_100GB_PAM4_56 \
+		UINT32_C(0x80)
+	/* 200Gb (PAM4-56: 50G per lane) link speed */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_SUPPORT_SPEEDS2_200GB_PAM4_56 \
+		UINT32_C(0x100)
+	/* 400Gb (PAM4-56: 50G per lane) link speed */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_SUPPORT_SPEEDS2_400GB_PAM4_56 \
+		UINT32_C(0x200)
+	/* 100Gb (PAM4-112: 100G per lane) link speed */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_SUPPORT_SPEEDS2_100GB_PAM4_112 \
+		UINT32_C(0x400)
+	/* 200Gb (PAM4-112: 100G per lane) link speed */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_SUPPORT_SPEEDS2_200GB_PAM4_112 \
+		UINT32_C(0x800)
+	/* 400Gb (PAM4-112: 100G per lane) link speed */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_SUPPORT_SPEEDS2_400GB_PAM4_112 \
+		UINT32_C(0x1000)
+	/* 800Gb (PAM4-112: 100G per lane) link speed */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_SUPPORT_SPEEDS2_800GB_PAM4_112 \
+		UINT32_C(0x2000)
+	/*
+	 * Current setting of forced link speed. When the link speed is not
+	 * being forced, this value shall be set to 0.
+	 * This field is valid only if speeds2_supported is set in option_flags.
+	 */
+	uint16_t	force_link_speeds2;
+	/* 1Gb link speed */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_FORCE_LINK_SPEEDS2_1GB \
+		UINT32_C(0xa)
+	/* 10Gb link speed */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_FORCE_LINK_SPEEDS2_10GB \
+		UINT32_C(0x64)
+	/* 25Gb link speed */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_FORCE_LINK_SPEEDS2_25GB \
+		UINT32_C(0xfa)
+	/* 40Gb link speed */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_FORCE_LINK_SPEEDS2_40GB \
+		UINT32_C(0x190)
+	/* 50Gb link speed */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_FORCE_LINK_SPEEDS2_50GB \
+		UINT32_C(0x1f4)
+	/* 100Gb link speed */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_FORCE_LINK_SPEEDS2_100GB \
+		UINT32_C(0x3e8)
+	/* 50Gb (PAM4-56: 50G per lane) link speed */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_FORCE_LINK_SPEEDS2_50GB_PAM4_56 \
+		UINT32_C(0x1f5)
+	/* 100Gb (PAM4-56: 50G per lane) link speed */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_FORCE_LINK_SPEEDS2_100GB_PAM4_56 \
+		UINT32_C(0x3e9)
+	/* 200Gb (PAM4-56: 50G per lane) link speed */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_FORCE_LINK_SPEEDS2_200GB_PAM4_56 \
+		UINT32_C(0x7d1)
+	/* 400Gb (PAM4-56: 50G per lane) link speed */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_FORCE_LINK_SPEEDS2_400GB_PAM4_56 \
+		UINT32_C(0xfa1)
+	/* 100Gb (PAM4-112: 100G per lane) link speed */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_FORCE_LINK_SPEEDS2_100GB_PAM4_112 \
+		UINT32_C(0x3ea)
+	/* 200Gb (PAM4-112: 100G per lane) link speed */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_FORCE_LINK_SPEEDS2_200GB_PAM4_112 \
+		UINT32_C(0x7d2)
+	/* 400Gb (PAM4-112: 100G per lane) link speed */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_FORCE_LINK_SPEEDS2_400GB_PAM4_112 \
+		UINT32_C(0xfa2)
+	/* 800Gb (PAM4-112: 100G per lane) link speed */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_FORCE_LINK_SPEEDS2_800GB_PAM4_112 \
+		UINT32_C(0x1f42)
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_FORCE_LINK_SPEEDS2_LAST \
+		HWRM_PORT_PHY_QCFG_OUTPUT_FORCE_LINK_SPEEDS2_800GB_PAM4_112
+	/*
+	 * Current setting of auto_link speed_mask that is used to advertise
+	 * speeds during autonegotiation.
+	 * This field is only valid when auto_mode is set to "mask".
+	 * and if speeds2_supported is set in option_flags
+	 * The speeds specified in this field shall be a subset of
+	 * supported speeds on this port.
+	 */
+	uint16_t	auto_link_speeds2;
+	/* 1Gb link speed */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_AUTO_LINK_SPEEDS2_1GB \
+		UINT32_C(0x1)
+	/* 10Gb link speed */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_AUTO_LINK_SPEEDS2_10GB \
+		UINT32_C(0x2)
+	/* 25Gb link speed */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_AUTO_LINK_SPEEDS2_25GB \
+		UINT32_C(0x4)
+	/* 40Gb link speed */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_AUTO_LINK_SPEEDS2_40GB \
+		UINT32_C(0x8)
+	/* 50Gb link speed */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_AUTO_LINK_SPEEDS2_50GB \
+		UINT32_C(0x10)
+	/* 100Gb link speed */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_AUTO_LINK_SPEEDS2_100GB \
+		UINT32_C(0x20)
+	/* 50Gb (PAM4-56: 50G per lane) link speed */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_AUTO_LINK_SPEEDS2_50GB_PAM4_56 \
+		UINT32_C(0x40)
+	/* 100Gb (PAM4-56: 50G per lane) link speed */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_AUTO_LINK_SPEEDS2_100GB_PAM4_56 \
+		UINT32_C(0x80)
+	/* 200Gb (PAM4-56: 50G per lane) link speed */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_AUTO_LINK_SPEEDS2_200GB_PAM4_56 \
+		UINT32_C(0x100)
+	/* 400Gb (PAM4-56: 50G per lane) link speed */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_AUTO_LINK_SPEEDS2_400GB_PAM4_56 \
+		UINT32_C(0x200)
+	/* 100Gb (PAM4-112: 100G per lane) link speed */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_AUTO_LINK_SPEEDS2_100GB_PAM4_112 \
+		UINT32_C(0x400)
+	/* 200Gb (PAM4-112: 100G per lane) link speed */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_AUTO_LINK_SPEEDS2_200GB_PAM4_112 \
+		UINT32_C(0x800)
+	/* 400Gb (PAM4-112: 100G per lane) link speed */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_AUTO_LINK_SPEEDS2_400GB_PAM4_112 \
+		UINT32_C(0x1000)
+	/* 800Gb (PAM4-112: 100G per lane) link speed */
+	#define HWRM_PORT_PHY_QCFG_OUTPUT_AUTO_LINK_SPEEDS2_800GB_PAM4_112 \
+		UINT32_C(0x2000)
+	/*
+	 * This field is indicate the number of lanes used to transfer
+	 * data. If the link is down, the value is zero.
+	 * This is valid only if speeds2_supported is set in option_flags.
+	 */
+	uint8_t	active_lanes;
 	/*
 	 * This field is used in Output records to indicate that the output
 	 * is completely written to RAM.  This field should be read as '1'
@@ -28381,7 +29105,7 @@ struct tx_port_stats_ext {
 } __rte_packed;
 
 /* Port Rx Statistics extended Format */
-/* rx_port_stats_ext (size:3776b/472B) */
+/* rx_port_stats_ext (size:3904b/488B) */
 struct rx_port_stats_ext {
 	/* Number of times link state changed to down */
 	uint64_t	link_down_events;
@@ -28462,8 +29186,9 @@ struct rx_port_stats_ext {
 	/* The number of events where the port receive buffer was over 85% full */
 	uint64_t	rx_buffer_passed_threshold;
 	/*
-	 * The number of symbol errors that wasn't corrected by FEC correction
-	 * algorithm
+	 * This counter represents uncorrected symbol errors post-FEC and may not
+	 * be populated in all cases. Each uncorrected FEC block may result in
+	 * one or more symbol errors.
 	 */
 	uint64_t	rx_pcs_symbol_err;
 	/* The number of corrected bits on the port according to active FEC */
@@ -28507,6 +29232,21 @@ struct rx_port_stats_ext {
 	 * FEC function in the PHY
 	 */
 	uint64_t	rx_fec_uncorrectable_blocks;
+	/*
+	 * Total number of packets that are dropped due to not matching
+	 * any RX filter rules. This value is zero on the non supported
+	 * controllers. This counter is per controller, Firmware reports the
+	 * same value on active ports. This counter does not include the
+	 * packet discards because of no available buffers.
+	 */
+	uint64_t	rx_filter_miss;
+	/*
+	 * This field represents the number of FEC symbol errors by counting
+	 * once for each 10-bit symbol corrected by FEC block.
+	 * rx_fec_corrected_blocks will be incremented if all symbol errors in a
+	 * codeword gets corrected.
+	 */
+	uint64_t	rx_fec_symbol_err;
 } __rte_packed;
 
 /*
@@ -29435,7 +30175,7 @@ struct hwrm_port_phy_qcaps_input {
 	uint8_t	unused_0[6];
 } __rte_packed;
 
-/* hwrm_port_phy_qcaps_output (size:256b/32B) */
+/* hwrm_port_phy_qcaps_output (size:320b/40B) */
 struct hwrm_port_phy_qcaps_output {
 	/* The specific error status for the command. */
 	uint16_t	error_code;
@@ -29726,6 +30466,13 @@ struct hwrm_port_phy_qcaps_output {
 	#define HWRM_PORT_PHY_QCAPS_OUTPUT_FLAGS2_BANK_ADDR_SUPPORTED \
 		UINT32_C(0x4)
 	/*
+	 * If set to 1, then this field indicates that
+	 * supported_speed2 field is to be used in lieu of all
+	 * supported_speed variants.
+	 */
+	#define HWRM_PORT_PHY_QCAPS_OUTPUT_FLAGS2_SPEEDS2_SUPPORTED \
+		UINT32_C(0x8)
+	/*
 	 * Number of internal ports for this device. This field allows the FW
 	 * to advertise how many internal ports are present. Manufacturing
 	 * tools uses this to determine how many internal ports should have
@@ -29733,6 +30480,108 @@ struct hwrm_port_phy_qcaps_output {
 	 * option "HPTN_MODE" is set to 1.
 	 */
 	uint8_t	internal_port_cnt;
+	uint8_t	unused_0;
+	/*
+	 * This is a bit mask to indicate what speeds are supported
+	 * as forced speeds on this link.
+	 * For each speed that can be forced on this link, the
+	 * corresponding mask bit shall be set to '1'.
+	 * This field is valid only if speeds2_supported bit is set in flags2
+	 */
+	uint16_t	supported_speeds2_force_mode;
+	/* 1Gb link speed */
+	#define HWRM_PORT_PHY_QCAPS_OUTPUT_SUPPORTED_SPEEDS2_FORCE_MODE_1GB \
+		UINT32_C(0x1)
+	/* 10Gb link speed */
+	#define HWRM_PORT_PHY_QCAPS_OUTPUT_SUPPORTED_SPEEDS2_FORCE_MODE_10GB \
+		UINT32_C(0x2)
+	/* 25Gb link speed */
+	#define HWRM_PORT_PHY_QCAPS_OUTPUT_SUPPORTED_SPEEDS2_FORCE_MODE_25GB \
+		UINT32_C(0x4)
+	/* 40Gb link speed */
+	#define HWRM_PORT_PHY_QCAPS_OUTPUT_SUPPORTED_SPEEDS2_FORCE_MODE_40GB \
+		UINT32_C(0x8)
+	/* 50Gb link speed */
+	#define HWRM_PORT_PHY_QCAPS_OUTPUT_SUPPORTED_SPEEDS2_FORCE_MODE_50GB \
+		UINT32_C(0x10)
+	/* 100Gb link speed */
+	#define HWRM_PORT_PHY_QCAPS_OUTPUT_SUPPORTED_SPEEDS2_FORCE_MODE_100GB \
+		UINT32_C(0x20)
+	/* 50Gb (PAM4-56: 50G per lane) link speed */
+	#define HWRM_PORT_PHY_QCAPS_OUTPUT_SUPPORTED_SPEEDS2_FORCE_MODE_50GB_PAM4_56 \
+		UINT32_C(0x40)
+	/* 100Gb (PAM4-56: 50G per lane) link speed */
+	#define HWRM_PORT_PHY_QCAPS_OUTPUT_SUPPORTED_SPEEDS2_FORCE_MODE_100GB_PAM4_56 \
+		UINT32_C(0x80)
+	/* 200Gb (PAM4-56: 50G per lane) link speed */
+	#define HWRM_PORT_PHY_QCAPS_OUTPUT_SUPPORTED_SPEEDS2_FORCE_MODE_200GB_PAM4_56 \
+		UINT32_C(0x100)
+	/* 400Gb (PAM4-56: 50G per lane) link speed */
+	#define HWRM_PORT_PHY_QCAPS_OUTPUT_SUPPORTED_SPEEDS2_FORCE_MODE_400GB_PAM4_56 \
+		UINT32_C(0x200)
+	/* 100Gb (PAM4-112: 100G per lane) link speed */
+	#define HWRM_PORT_PHY_QCAPS_OUTPUT_SUPPORTED_SPEEDS2_FORCE_MODE_100GB_PAM4_112 \
+		UINT32_C(0x400)
+	/* 200Gb (PAM4-112: 100G per lane) link speed */
+	#define HWRM_PORT_PHY_QCAPS_OUTPUT_SUPPORTED_SPEEDS2_FORCE_MODE_200GB_PAM4_112 \
+		UINT32_C(0x800)
+	/* 400Gb (PAM4-112: 100G per lane) link speed */
+	#define HWRM_PORT_PHY_QCAPS_OUTPUT_SUPPORTED_SPEEDS2_FORCE_MODE_400GB_PAM4_112 \
+		UINT32_C(0x1000)
+	/* 800Gb (PAM4-112: 100G per lane) link speed */
+	#define HWRM_PORT_PHY_QCAPS_OUTPUT_SUPPORTED_SPEEDS2_FORCE_MODE_800GB_PAM4_112 \
+		UINT32_C(0x2000)
+	/*
+	 * This is a bit mask to indicate what speeds are supported
+	 * for autonegotiation on this link.
+	 * For each speed that can be autonegotiated on this link, the
+	 * corresponding mask bit shall be set to '1'.
+	 * This field is valid only if speeds2_supported bit is set in flags2
+	 */
+	uint16_t	supported_speeds2_auto_mode;
+	/* 1Gb link speed */
+	#define HWRM_PORT_PHY_QCAPS_OUTPUT_SUPPORTED_SPEEDS2_AUTO_MODE_1GB \
+		UINT32_C(0x1)
+	/* 10Gb link speed */
+	#define HWRM_PORT_PHY_QCAPS_OUTPUT_SUPPORTED_SPEEDS2_AUTO_MODE_10GB \
+		UINT32_C(0x2)
+	/* 25Gb link speed */
+	#define HWRM_PORT_PHY_QCAPS_OUTPUT_SUPPORTED_SPEEDS2_AUTO_MODE_25GB \
+		UINT32_C(0x4)
+	/* 40Gb link speed */
+	#define HWRM_PORT_PHY_QCAPS_OUTPUT_SUPPORTED_SPEEDS2_AUTO_MODE_40GB \
+		UINT32_C(0x8)
+	/* 50Gb link speed */
+	#define HWRM_PORT_PHY_QCAPS_OUTPUT_SUPPORTED_SPEEDS2_AUTO_MODE_50GB \
+		UINT32_C(0x10)
+	/* 100Gb link speed */
+	#define HWRM_PORT_PHY_QCAPS_OUTPUT_SUPPORTED_SPEEDS2_AUTO_MODE_100GB \
+		UINT32_C(0x20)
+	/* 50Gb (PAM4-56: 50G per lane) link speed */
+	#define HWRM_PORT_PHY_QCAPS_OUTPUT_SUPPORTED_SPEEDS2_AUTO_MODE_50GB_PAM4_56 \
+		UINT32_C(0x40)
+	/* 100Gb (PAM4-56: 50G per lane) link speed */
+	#define HWRM_PORT_PHY_QCAPS_OUTPUT_SUPPORTED_SPEEDS2_AUTO_MODE_100GB_PAM4_56 \
+		UINT32_C(0x80)
+	/* 200Gb (PAM4-56: 50G per lane) link speed */
+	#define HWRM_PORT_PHY_QCAPS_OUTPUT_SUPPORTED_SPEEDS2_AUTO_MODE_200GB_PAM4_56 \
+		UINT32_C(0x100)
+	/* 400Gb (PAM4-56: 50G per lane) link speed */
+	#define HWRM_PORT_PHY_QCAPS_OUTPUT_SUPPORTED_SPEEDS2_AUTO_MODE_400GB_PAM4_56 \
+		UINT32_C(0x200)
+	/* 100Gb (PAM4-112: 100G per lane) link speed */
+	#define HWRM_PORT_PHY_QCAPS_OUTPUT_SUPPORTED_SPEEDS2_AUTO_MODE_100GB_PAM4_112 \
+		UINT32_C(0x400)
+	/* 200Gb (PAM4-112: 100G per lane) link speed */
+	#define HWRM_PORT_PHY_QCAPS_OUTPUT_SUPPORTED_SPEEDS2_AUTO_MODE_200GB_PAM4_112 \
+		UINT32_C(0x800)
+	/* 400Gb (PAM4-112: 100G per lane) link speed */
+	#define HWRM_PORT_PHY_QCAPS_OUTPUT_SUPPORTED_SPEEDS2_AUTO_MODE_400GB_PAM4_112 \
+		UINT32_C(0x1000)
+	/* 800Gb (PAM4-112: 100G per lane) link speed */
+	#define HWRM_PORT_PHY_QCAPS_OUTPUT_SUPPORTED_SPEEDS2_AUTO_MODE_800GB_PAM4_112 \
+		UINT32_C(0x2000)
+	uint8_t	unused_1[3];
 	/*
 	 * This field is used in Output records to indicate that the output
 	 * is completely written to RAM.  This field should be read as '1'
@@ -38132,6 +38981,9 @@ struct hwrm_vnic_qcaps_output {
 	/* When this bit is '1' FW supports VNIC hash mode. */
 	#define HWRM_VNIC_QCAPS_OUTPUT_FLAGS_VNIC_RSS_HASH_MODE_CAP \
 		UINT32_C(0x10000000)
+	/* When this bit is set to '1', hardware supports tunnel TPA. */
+	#define HWRM_VNIC_QCAPS_OUTPUT_FLAGS_HW_TUNNEL_TPA_CAP \
+		UINT32_C(0x20000000)
 	/*
 	 * This field advertises the maximum concurrent TPA aggregations
 	 * supported by the VNIC on new devices that support TPA v2 or v3.
@@ -38154,7 +39006,7 @@ struct hwrm_vnic_qcaps_output {
  *********************/
 
 
-/* hwrm_vnic_tpa_cfg_input (size:320b/40B) */
+/* hwrm_vnic_tpa_cfg_input (size:384b/48B) */
 struct hwrm_vnic_tpa_cfg_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
@@ -38276,6 +39128,12 @@ struct hwrm_vnic_tpa_cfg_input {
 	#define HWRM_VNIC_TPA_CFG_INPUT_ENABLES_MAX_AGG_TIMER     UINT32_C(0x4)
 	/* deprecated bit.  Do not use!!! */
 	#define HWRM_VNIC_TPA_CFG_INPUT_ENABLES_MIN_AGG_LEN       UINT32_C(0x8)
+	/*
+	 * This bit must be '1' for the tnl_tpa_en_bitmap field to be
+	 * configured.
+	 */
+	#define HWRM_VNIC_TPA_CFG_INPUT_ENABLES_TNL_TPA_EN \
+		UINT32_C(0x10)
 	/* Logical vnic ID */
 	uint16_t	vnic_id;
 	/*
@@ -38332,6 +39190,117 @@ struct hwrm_vnic_tpa_cfg_input {
 	 * and can be queried using hwrm_vnic_tpa_qcfg.
 	 */
 	uint32_t	min_agg_len;
+	/*
+	 * If the device supports hardware tunnel TPA feature, as indicated by
+	 * the HWRM_VNIC_QCAPS command, this field is used to configure the
+	 * tunnel types to be enabled. Each bit corresponds to a specific
+	 * tunnel type. If a bit is set to '1', then the associated tunnel
+	 * type is enabled; otherwise, it is disabled.
+	 */
+	uint32_t	tnl_tpa_en_bitmap;
+	/*
+	 * When this bit is '1', enable VXLAN encapsulated packets for
+	 * aggregation.
+	 */
+	#define HWRM_VNIC_TPA_CFG_INPUT_TNL_TPA_EN_BITMAP_VXLAN \
+		UINT32_C(0x1)
+	/*
+	 * When this bit is set to ‘1’, enable GENEVE encapsulated packets
+	 * for aggregation.
+	 */
+	#define HWRM_VNIC_TPA_CFG_INPUT_TNL_TPA_EN_BITMAP_GENEVE \
+		UINT32_C(0x2)
+	/*
+	 * When this bit is set to ‘1’, enable NVGRE encapsulated packets
+	 * for aggregation..
+	 */
+	#define HWRM_VNIC_TPA_CFG_INPUT_TNL_TPA_EN_BITMAP_NVGRE \
+		UINT32_C(0x4)
+	/*
+	 * When this bit is set to ‘1’, enable GRE encapsulated packets
+	 * for aggregation..
+	 */
+	#define HWRM_VNIC_TPA_CFG_INPUT_TNL_TPA_EN_BITMAP_GRE \
+		UINT32_C(0x8)
+	/*
+	 * When this bit is set to ‘1’, enable IPV4 encapsulated packets
+	 * for aggregation..
+	 */
+	#define HWRM_VNIC_TPA_CFG_INPUT_TNL_TPA_EN_BITMAP_IPV4 \
+		UINT32_C(0x10)
+	/*
+	 * When this bit is set to ‘1’, enable IPV6 encapsulated packets
+	 * for aggregation..
+	 */
+	#define HWRM_VNIC_TPA_CFG_INPUT_TNL_TPA_EN_BITMAP_IPV6 \
+		UINT32_C(0x20)
+	/*
+	 * When this bit is '1', enable VXLAN_GPE encapsulated packets for
+	 * aggregation.
+	 */
+	#define HWRM_VNIC_TPA_CFG_INPUT_TNL_TPA_EN_BITMAP_VXLAN_GPE \
+		UINT32_C(0x40)
+	/*
+	 * When this bit is '1', enable VXLAN_CUSTOMER1 encapsulated packets
+	 * for aggregation.
+	 */
+	#define HWRM_VNIC_TPA_CFG_INPUT_TNL_TPA_EN_BITMAP_VXLAN_CUST1 \
+		UINT32_C(0x80)
+	/*
+	 * When this bit is '1', enable GRE_CUSTOMER1 encapsulated packets
+	 * for aggregation.
+	 */
+	#define HWRM_VNIC_TPA_CFG_INPUT_TNL_TPA_EN_BITMAP_GRE_CUST1 \
+		UINT32_C(0x100)
+	/*
+	 * When this bit is '1', enable UPAR1 encapsulated packets for
+	 * aggregation.
+	 */
+	#define HWRM_VNIC_TPA_CFG_INPUT_TNL_TPA_EN_BITMAP_UPAR1 \
+		UINT32_C(0x200)
+	/*
+	 * When this bit is '1', enable UPAR2 encapsulated packets for
+	 * aggregation.
+	 */
+	#define HWRM_VNIC_TPA_CFG_INPUT_TNL_TPA_EN_BITMAP_UPAR2 \
+		UINT32_C(0x400)
+	/*
+	 * When this bit is '1', enable UPAR3 encapsulated packets for
+	 * aggregation.
+	 */
+	#define HWRM_VNIC_TPA_CFG_INPUT_TNL_TPA_EN_BITMAP_UPAR3 \
+		UINT32_C(0x800)
+	/*
+	 * When this bit is '1', enable UPAR4 encapsulated packets for
+	 * aggregation.
+	 */
+	#define HWRM_VNIC_TPA_CFG_INPUT_TNL_TPA_EN_BITMAP_UPAR4 \
+		UINT32_C(0x1000)
+	/*
+	 * When this bit is '1', enable UPAR5 encapsulated packets for
+	 * aggregation.
+	 */
+	#define HWRM_VNIC_TPA_CFG_INPUT_TNL_TPA_EN_BITMAP_UPAR5 \
+		UINT32_C(0x2000)
+	/*
+	 * When this bit is '1', enable UPAR6 encapsulated packets for
+	 * aggregation.
+	 */
+	#define HWRM_VNIC_TPA_CFG_INPUT_TNL_TPA_EN_BITMAP_UPAR6 \
+		UINT32_C(0x4000)
+	/*
+	 * When this bit is '1', enable UPAR7 encapsulated packets for
+	 * aggregation.
+	 */
+	#define HWRM_VNIC_TPA_CFG_INPUT_TNL_TPA_EN_BITMAP_UPAR7 \
+		UINT32_C(0x8000)
+	/*
+	 * When this bit is '1', enable UPAR8 encapsulated packets for
+	 * aggregation.
+	 */
+	#define HWRM_VNIC_TPA_CFG_INPUT_TNL_TPA_EN_BITMAP_UPAR8 \
+		UINT32_C(0x10000)
+	uint8_t	unused_1[4];
 } __rte_packed;
 
 /* hwrm_vnic_tpa_cfg_output (size:128b/16B) */
@@ -38345,6 +39314,288 @@ struct hwrm_vnic_tpa_cfg_output {
 	/* The length of the response data in number of bytes. */
 	uint16_t	resp_len;
 	uint8_t	unused_0[7];
+	/*
+	 * This field is used in Output records to indicate that the output
+	 * is completely written to RAM.  This field should be read as '1'
+	 * to indicate that the output has been completely written.
+	 * When writing a command completion or response to an internal processor,
+	 * the order of writes has to be such that this field is written last.
+	 */
+	uint8_t	valid;
+} __rte_packed;
+
+/**********************
+ * hwrm_vnic_tpa_qcfg *
+ **********************/
+
+
+/* hwrm_vnic_tpa_qcfg_input (size:192b/24B) */
+struct hwrm_vnic_tpa_qcfg_input {
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/*
+	 * The completion ring to send the completion event on. This should
+	 * be the NQ ID returned from the `nq_alloc` HWRM command.
+	 */
+	uint16_t	cmpl_ring;
+	/*
+	 * The sequence ID is used by the driver for tracking multiple
+	 * commands. This ID is treated as opaque data by the firmware and
+	 * the value is returned in the `hwrm_resp_hdr` upon completion.
+	 */
+	uint16_t	seq_id;
+	/*
+	 * The target ID of the command:
+	 * * 0x0-0xFFF8 - The function ID
+	 * * 0xFFF8-0xFFFC, 0xFFFE - Reserved for internal processors
+	 * * 0xFFFD - Reserved for user-space HWRM interface
+	 * * 0xFFFF - HWRM
+	 */
+	uint16_t	target_id;
+	/*
+	 * A physical address pointer pointing to a host buffer that the
+	 * command's response data will be written. This can be either a host
+	 * physical address (HPA) or a guest physical address (GPA) and must
+	 * point to a physically contiguous block of memory.
+	 */
+	uint64_t	resp_addr;
+	/* Logical vnic ID */
+	uint16_t	vnic_id;
+	uint8_t	unused_0[6];
+} __rte_packed;
+
+/* hwrm_vnic_tpa_qcfg_output (size:256b/32B) */
+struct hwrm_vnic_tpa_qcfg_output {
+	/* The specific error status for the command. */
+	uint16_t	error_code;
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/* The sequence ID from the original command. */
+	uint16_t	seq_id;
+	/* The length of the response data in number of bytes. */
+	uint16_t	resp_len;
+	uint32_t	flags;
+	/*
+	 * When this bit is '1', the VNIC is configured to
+	 * perform transparent packet aggregation (TPA) of
+	 * non-tunneled TCP packets.
+	 */
+	#define HWRM_VNIC_TPA_QCFG_OUTPUT_FLAGS_TPA \
+		UINT32_C(0x1)
+	/*
+	 * When this bit is '1', the VNIC is configured to
+	 * perform transparent packet aggregation (TPA) of
+	 * tunneled TCP packets.
+	 */
+	#define HWRM_VNIC_TPA_QCFG_OUTPUT_FLAGS_ENCAP_TPA \
+		UINT32_C(0x2)
+	/*
+	 * When this bit is '1', the VNIC is configured to
+	 * perform transparent packet aggregation (TPA) according
+	 * to Windows Receive Segment Coalescing (RSC) rules.
+	 */
+	#define HWRM_VNIC_TPA_QCFG_OUTPUT_FLAGS_RSC_WND_UPDATE \
+		UINT32_C(0x4)
+	/*
+	 * When this bit is '1', the VNIC is configured to
+	 * perform transparent packet aggregation (TPA) according
+	 * to Linux Generic Receive Offload (GRO) rules.
+	 */
+	#define HWRM_VNIC_TPA_QCFG_OUTPUT_FLAGS_GRO \
+		UINT32_C(0x8)
+	/*
+	 * When this bit is '1', the VNIC is configured to
+	 * perform transparent packet aggregation (TPA) for TCP
+	 * packets with IP ECN set to non-zero.
+	 */
+	#define HWRM_VNIC_TPA_QCFG_OUTPUT_FLAGS_AGG_WITH_ECN \
+		UINT32_C(0x10)
+	/*
+	 * When this bit is '1', the VNIC is configured to
+	 * perform transparent packet aggregation (TPA) for
+	 * GRE tunneled TCP packets only if all packets have the
+	 * same GRE sequence.
+	 */
+	#define HWRM_VNIC_TPA_QCFG_OUTPUT_FLAGS_AGG_WITH_SAME_GRE_SEQ \
+		UINT32_C(0x20)
+	/*
+	 * When this bit is '1' and the GRO mode is enabled,
+	 * the VNIC is configured to
+	 * perform transparent packet aggregation (TPA) for
+	 * TCP/IPv4 packets with consecutively increasing IPIDs.
+	 * In other words, the last packet that is being
+	 * aggregated to an already existing aggregation context
+	 * shall have IPID 1 more than the IPID of the last packet
+	 * that was aggregated in that aggregation context.
+	 */
+	#define HWRM_VNIC_TPA_QCFG_OUTPUT_FLAGS_GRO_IPID_CHECK \
+		UINT32_C(0x40)
+	/*
+	 * When this bit is '1' and the GRO mode is enabled,
+	 * the VNIC is configured to
+	 * perform transparent packet aggregation (TPA) for
+	 * TCP packets with the same TTL (IPv4) or Hop limit (IPv6)
+	 * value.
+	 */
+	#define HWRM_VNIC_TPA_QCFG_OUTPUT_FLAGS_GRO_TTL_CHECK \
+		UINT32_C(0x80)
+	/*
+	 * This is the maximum number of TCP segments that can
+	 * be aggregated (unit is Log2). Max value is 31.
+	 */
+	uint16_t	max_agg_segs;
+	/* 1 segment */
+	#define HWRM_VNIC_TPA_QCFG_OUTPUT_MAX_AGG_SEGS_1   UINT32_C(0x0)
+	/* 2 segments */
+	#define HWRM_VNIC_TPA_QCFG_OUTPUT_MAX_AGG_SEGS_2   UINT32_C(0x1)
+	/* 4 segments */
+	#define HWRM_VNIC_TPA_QCFG_OUTPUT_MAX_AGG_SEGS_4   UINT32_C(0x2)
+	/* 8 segments */
+	#define HWRM_VNIC_TPA_QCFG_OUTPUT_MAX_AGG_SEGS_8   UINT32_C(0x3)
+	/* Any segment size larger than this is not valid */
+	#define HWRM_VNIC_TPA_QCFG_OUTPUT_MAX_AGG_SEGS_MAX UINT32_C(0x1f)
+	#define HWRM_VNIC_TPA_QCFG_OUTPUT_MAX_AGG_SEGS_LAST \
+		HWRM_VNIC_TPA_QCFG_OUTPUT_MAX_AGG_SEGS_MAX
+	/*
+	 * This is the maximum number of aggregations this VNIC is
+	 * allowed (unit is Log2). Max value is 7
+	 */
+	uint16_t	max_aggs;
+	/* 1 aggregation */
+	#define HWRM_VNIC_TPA_QCFG_OUTPUT_MAX_AGGS_1   UINT32_C(0x0)
+	/* 2 aggregations */
+	#define HWRM_VNIC_TPA_QCFG_OUTPUT_MAX_AGGS_2   UINT32_C(0x1)
+	/* 4 aggregations */
+	#define HWRM_VNIC_TPA_QCFG_OUTPUT_MAX_AGGS_4   UINT32_C(0x2)
+	/* 8 aggregations */
+	#define HWRM_VNIC_TPA_QCFG_OUTPUT_MAX_AGGS_8   UINT32_C(0x3)
+	/* 16 aggregations */
+	#define HWRM_VNIC_TPA_QCFG_OUTPUT_MAX_AGGS_16  UINT32_C(0x4)
+	/* Any aggregation size larger than this is not valid */
+	#define HWRM_VNIC_TPA_QCFG_OUTPUT_MAX_AGGS_MAX UINT32_C(0x7)
+	#define HWRM_VNIC_TPA_QCFG_OUTPUT_MAX_AGGS_LAST \
+		HWRM_VNIC_TPA_QCFG_OUTPUT_MAX_AGGS_MAX
+	/*
+	 * This is the maximum amount of time allowed for
+	 * an aggregation context to complete after it was initiated.
+	 */
+	uint32_t	max_agg_timer;
+	/*
+	 * This is the minimum amount of payload length required to
+	 * start an aggregation context.
+	 */
+	uint32_t	min_agg_len;
+	/*
+	 * If the device supports hardware tunnel TPA feature, as indicated by
+	 * the HWRM_VNIC_QCAPS command, this field conveys the bitmap of the
+	 * tunnel types that have been configured. Each bit corresponds to a
+	 * specific tunnel type. If a bit is set to '1', then the associated
+	 * tunnel type is enabled; otherwise, it is disabled.
+	 */
+	uint32_t	tnl_tpa_en_bitmap;
+	/*
+	 * When this bit is '1', enable VXLAN encapsulated packets for
+	 * aggregation.
+	 */
+	#define HWRM_VNIC_TPA_QCFG_OUTPUT_TNL_TPA_EN_BITMAP_VXLAN \
+		UINT32_C(0x1)
+	/*
+	 * When this bit is set to ‘1’, enable GENEVE encapsulated packets
+	 * for aggregation.
+	 */
+	#define HWRM_VNIC_TPA_QCFG_OUTPUT_TNL_TPA_EN_BITMAP_GENEVE \
+		UINT32_C(0x2)
+	/*
+	 * When this bit is set to ‘1’, enable NVGRE encapsulated packets
+	 * for aggregation..
+	 */
+	#define HWRM_VNIC_TPA_QCFG_OUTPUT_TNL_TPA_EN_BITMAP_NVGRE \
+		UINT32_C(0x4)
+	/*
+	 * When this bit is set to ‘1’, enable GRE encapsulated packets
+	 * for aggregation..
+	 */
+	#define HWRM_VNIC_TPA_QCFG_OUTPUT_TNL_TPA_EN_BITMAP_GRE \
+		UINT32_C(0x8)
+	/*
+	 * When this bit is set to ‘1’, enable IPV4 encapsulated packets
+	 * for aggregation..
+	 */
+	#define HWRM_VNIC_TPA_QCFG_OUTPUT_TNL_TPA_EN_BITMAP_IPV4 \
+		UINT32_C(0x10)
+	/*
+	 * When this bit is set to ‘1’, enable IPV6 encapsulated packets
+	 * for aggregation..
+	 */
+	#define HWRM_VNIC_TPA_QCFG_OUTPUT_TNL_TPA_EN_BITMAP_IPV6 \
+		UINT32_C(0x20)
+	/*
+	 * When this bit is '1', enable VXLAN_GPE encapsulated packets for
+	 * aggregation.
+	 */
+	#define HWRM_VNIC_TPA_QCFG_OUTPUT_TNL_TPA_EN_BITMAP_VXLAN_GPE \
+		UINT32_C(0x40)
+	/*
+	 * When this bit is '1', enable VXLAN_CUSTOMER1 encapsulated packets
+	 * for aggregation.
+	 */
+	#define HWRM_VNIC_TPA_QCFG_OUTPUT_TNL_TPA_EN_BITMAP_VXLAN_CUST1 \
+		UINT32_C(0x80)
+	/*
+	 * When this bit is '1', enable GRE_CUSTOMER1 encapsulated packets
+	 * for aggregation.
+	 */
+	#define HWRM_VNIC_TPA_QCFG_OUTPUT_TNL_TPA_EN_BITMAP_GRE_CUST1 \
+		UINT32_C(0x100)
+	/*
+	 * When this bit is '1', enable UPAR1 encapsulated packets for
+	 * aggregation.
+	 */
+	#define HWRM_VNIC_TPA_QCFG_OUTPUT_TNL_TPA_EN_BITMAP_UPAR1 \
+		UINT32_C(0x200)
+	/*
+	 * When this bit is '1', enable UPAR2 encapsulated packets for
+	 * aggregation.
+	 */
+	#define HWRM_VNIC_TPA_QCFG_OUTPUT_TNL_TPA_EN_BITMAP_UPAR2 \
+		UINT32_C(0x400)
+	/*
+	 * When this bit is '1', enable UPAR3 encapsulated packets for
+	 * aggregation.
+	 */
+	#define HWRM_VNIC_TPA_QCFG_OUTPUT_TNL_TPA_EN_BITMAP_UPAR3 \
+		UINT32_C(0x800)
+	/*
+	 * When this bit is '1', enable UPAR4 encapsulated packets for
+	 * aggregation.
+	 */
+	#define HWRM_VNIC_TPA_QCFG_OUTPUT_TNL_TPA_EN_BITMAP_UPAR4 \
+		UINT32_C(0x1000)
+	/*
+	 * When this bit is '1', enable UPAR5 encapsulated packets for
+	 * aggregation.
+	 */
+	#define HWRM_VNIC_TPA_QCFG_OUTPUT_TNL_TPA_EN_BITMAP_UPAR5 \
+		UINT32_C(0x2000)
+	/*
+	 * When this bit is '1', enable UPAR6 encapsulated packets for
+	 * aggregation.
+	 */
+	#define HWRM_VNIC_TPA_QCFG_OUTPUT_TNL_TPA_EN_BITMAP_UPAR6 \
+		UINT32_C(0x4000)
+	/*
+	 * When this bit is '1', enable UPAR7 encapsulated packets for
+	 * aggregation.
+	 */
+	#define HWRM_VNIC_TPA_QCFG_OUTPUT_TNL_TPA_EN_BITMAP_UPAR7 \
+		UINT32_C(0x8000)
+	/*
+	 * When this bit is '1', enable UPAR8 encapsulated packets for
+	 * aggregation.
+	 */
+	#define HWRM_VNIC_TPA_QCFG_OUTPUT_TNL_TPA_EN_BITMAP_UPAR8 \
+		UINT32_C(0x10000)
+	uint8_t	unused_0[3];
 	/*
 	 * This field is used in Output records to indicate that the output
 	 * is completely written to RAM.  This field should be read as '1'
@@ -38572,6 +39823,12 @@ struct hwrm_vnic_rss_cfg_input {
 	 */
 	#define HWRM_VNIC_RSS_CFG_INPUT_FLAGS_HASH_TYPE_EXCLUDE \
 		UINT32_C(0x2)
+	/*
+	 * When this bit is '1', it indicates that the support of setting
+	 * ipsec hash_types by the host drivers.
+	 */
+	#define HWRM_VNIC_RSS_CFG_INPUT_FLAGS_IPSEC_HASH_TYPE_CFG_SUPPORT \
+		UINT32_C(0x4)
 	uint8_t	ring_select_mode;
 	/*
 	 * In this mode, HW uses Toeplitz algorithm and provided Toeplitz
@@ -39439,6 +40696,12 @@ struct hwrm_ring_alloc_input {
 	 */
 	#define HWRM_RING_ALLOC_INPUT_ENABLES_MPC_CHNLS_TYPE \
 		UINT32_C(0x400)
+	/*
+	 * This bit must be '1' for the steering_tag field to be
+	 * configured.
+	 */
+	#define HWRM_RING_ALLOC_INPUT_ENABLES_STEERING_TAG_VALID \
+		UINT32_C(0x800)
 	/* Ring Type. */
 	uint8_t	ring_type;
 	/* L2 Completion Ring (CR) */
@@ -39664,7 +40927,8 @@ struct hwrm_ring_alloc_input {
 	#define HWRM_RING_ALLOC_INPUT_RING_ARB_CFG_ARB_POLICY_PARAM_MASK \
 		UINT32_C(0xff00)
 	#define HWRM_RING_ALLOC_INPUT_RING_ARB_CFG_ARB_POLICY_PARAM_SFT 8
-	uint16_t	unused_3;
+	/* Steering tag to use for memory transactions. */
+	uint16_t	steering_tag;
 	/*
 	 * This field is reserved for the future use.
 	 * It shall be set to 0.
@@ -43871,7 +45135,10 @@ struct hwrm_cfa_ntuple_filter_alloc_input {
 	 * Setting of this flag indicates that the dst_id field contains RFS
 	 * ring table index. If this is not set it indicates dst_id is VNIC
 	 * or VPORT or function ID.  Note dest_fid and dest_rfs_ring_idx
-	 * can’t be set at the same time.
+	 * can't be set at the same time.  Updated drivers should pass ring
+	 * idx in the rfs_ring_tbl_idx field if the firmware indicates
+	 * support for the new field in the HWRM_CFA_ADV_FLOW_MGMT_QCAPS
+	 * response.
 	 */
 	#define HWRM_CFA_NTUPLE_FILTER_ALLOC_INPUT_FLAGS_DEST_RFS_RING_IDX \
 		UINT32_C(0x20)
@@ -43986,10 +45253,7 @@ struct hwrm_cfa_ntuple_filter_alloc_input {
 	 */
 	#define HWRM_CFA_NTUPLE_FILTER_ALLOC_INPUT_ENABLES_DST_ID \
 		UINT32_C(0x10000)
-	/*
-	 * This bit must be '1' for the mirror_vnic_id field to be
-	 * configured.
-	 */
+	/* This flag is deprecated. */
 	#define HWRM_CFA_NTUPLE_FILTER_ALLOC_INPUT_ENABLES_MIRROR_VNIC_ID \
 		UINT32_C(0x20000)
 	/*
@@ -43998,7 +45262,10 @@ struct hwrm_cfa_ntuple_filter_alloc_input {
 	 */
 	#define HWRM_CFA_NTUPLE_FILTER_ALLOC_INPUT_ENABLES_DST_MACADDR \
 		UINT32_C(0x40000)
-	/* This flag is deprecated. */
+	/*
+	 * This bit must be '1' for the rfs_ring_tbl_idx field to
+	 * be configured.
+	 */
 	#define HWRM_CFA_NTUPLE_FILTER_ALLOC_INPUT_ENABLES_RFS_RING_TBL_IDX \
 		UINT32_C(0x80000)
 	/*
@@ -44069,10 +45336,12 @@ struct hwrm_cfa_ntuple_filter_alloc_input {
 	 */
 	uint16_t	dst_id;
 	/*
-	 * Logical VNIC ID of the VNIC where traffic is
-	 * mirrored.
+	 * If set, this value shall represent the ring table
+	 * index for receive flow steering. Note that this offset
+	 * was formerly used for the mirror_vnic_id field, which
+	 * is no longer supported.
 	 */
-	uint16_t	mirror_vnic_id;
+	uint16_t	rfs_ring_tbl_idx;
 	/*
 	 * This value indicates the tunnel type for this filter.
 	 * If this field is not specified, then the filter shall
@@ -50258,6 +51527,13 @@ struct hwrm_cfa_adv_flow_mgnt_qcaps_output {
 	 */
 	#define HWRM_CFA_ADV_FLOW_MGNT_QCAPS_OUTPUT_FLAGS_NTUPLE_FLOW_RX_EXT_IP_PROTO_SUPPORTED \
 		UINT32_C(0x100000)
+	/*
+	 * Value of 1 to indicate that firmware supports setting of
+	 * rfs_ring_tbl_idx (new offset) in HWRM_CFA_NTUPLE_ALLOC command.
+	 * Value of 0 indicates ring tbl idx should be passed using dst_id.
+	 */
+	#define HWRM_CFA_ADV_FLOW_MGNT_QCAPS_OUTPUT_FLAGS_RFS_RING_TBL_IDX_V3_SUPPORTED \
+		UINT32_C(0x200000)
 	uint8_t	unused_0[3];
 	/*
 	 * This field is used in Output records to indicate that the output
@@ -56744,9 +58020,17 @@ struct hwrm_tunnel_dst_port_query_input {
 	/* Generic Protocol Extension for VXLAN (VXLAN-GPE) */
 	#define HWRM_TUNNEL_DST_PORT_QUERY_INPUT_TUNNEL_TYPE_VXLAN_GPE \
 		UINT32_C(0x10)
+	/* Generic Routing Encapsulation */
+	#define HWRM_TUNNEL_DST_PORT_QUERY_INPUT_TUNNEL_TYPE_GRE \
+		UINT32_C(0x11)
 	#define HWRM_TUNNEL_DST_PORT_QUERY_INPUT_TUNNEL_TYPE_LAST \
-		HWRM_TUNNEL_DST_PORT_QUERY_INPUT_TUNNEL_TYPE_VXLAN_GPE
-	uint8_t	unused_0[7];
+		HWRM_TUNNEL_DST_PORT_QUERY_INPUT_TUNNEL_TYPE_GRE
+	/*
+	 * This field is used to specify the next protocol value defined in the
+	 * corresponding RFC spec for the applicable tunnel type.
+	 */
+	uint8_t	tunnel_next_proto;
+	uint8_t	unused_0[6];
 } __rte_packed;
 
 /* hwrm_tunnel_dst_port_query_output (size:128b/16B) */
@@ -56808,7 +58092,21 @@ struct hwrm_tunnel_dst_port_query_output {
 	/* This bit will be '1' when UPAR7 is IN_USE */
 	#define HWRM_TUNNEL_DST_PORT_QUERY_OUTPUT_UPAR_IN_USE_UPAR7 \
 		UINT32_C(0x80)
-	uint8_t	unused_0[2];
+	/*
+	 * This field is used to convey the status of non udp port based
+	 * tunnel parsing at chip level and at function level.
+	 */
+	uint8_t	status;
+	/* This bit will be '1' when tunnel parsing is enabled globally. */
+	#define HWRM_TUNNEL_DST_PORT_QUERY_OUTPUT_STATUS_CHIP_LEVEL \
+		UINT32_C(0x1)
+	/*
+	 * This bit will be '1' when tunnel parsing is enabled
+	 * on the corresponding function.
+	 */
+	#define HWRM_TUNNEL_DST_PORT_QUERY_OUTPUT_STATUS_FUNC_LEVEL \
+		UINT32_C(0x2)
+	uint8_t	unused_0;
 	/*
 	 * This field is used in Output records to indicate that the output
 	 * is completely written to RAM.  This field should be read as '1'
@@ -56886,9 +58184,16 @@ struct hwrm_tunnel_dst_port_alloc_input {
 	/* Generic Protocol Extension for VXLAN (VXLAN-GPE) */
 	#define HWRM_TUNNEL_DST_PORT_ALLOC_INPUT_TUNNEL_TYPE_VXLAN_GPE \
 		UINT32_C(0x10)
+	/* Generic Routing Encapsulation */
+	#define HWRM_TUNNEL_DST_PORT_ALLOC_INPUT_TUNNEL_TYPE_GRE \
+		UINT32_C(0x11)
 	#define HWRM_TUNNEL_DST_PORT_ALLOC_INPUT_TUNNEL_TYPE_LAST \
-		HWRM_TUNNEL_DST_PORT_ALLOC_INPUT_TUNNEL_TYPE_VXLAN_GPE
-	uint8_t	unused_0;
+		HWRM_TUNNEL_DST_PORT_ALLOC_INPUT_TUNNEL_TYPE_GRE
+	/*
+	 * This field is used to specify the next protocol value defined in the
+	 * corresponding RFC spec for the applicable tunnel type.
+	 */
+	uint8_t	tunnel_next_proto;
 	/*
 	 * This field represents the value of L4 destination port used
 	 * for the given tunnel type. This field is valid for
@@ -56900,7 +58205,7 @@ struct hwrm_tunnel_dst_port_alloc_input {
 	 * A value of 0 shall fail the command.
 	 */
 	uint16_t	tunnel_dst_port_val;
-	uint8_t	unused_1[4];
+	uint8_t	unused_0[4];
 } __rte_packed;
 
 /* hwrm_tunnel_dst_port_alloc_output (size:128b/16B) */
@@ -56929,8 +58234,11 @@ struct hwrm_tunnel_dst_port_alloc_output {
 	/* Out of resources error */
 	#define HWRM_TUNNEL_DST_PORT_ALLOC_OUTPUT_ERROR_INFO_ERR_NO_RESOURCE \
 		UINT32_C(0x2)
+	/* Tunnel type is already enabled */
+	#define HWRM_TUNNEL_DST_PORT_ALLOC_OUTPUT_ERROR_INFO_ERR_ENABLED \
+		UINT32_C(0x3)
 	#define HWRM_TUNNEL_DST_PORT_ALLOC_OUTPUT_ERROR_INFO_LAST \
-		HWRM_TUNNEL_DST_PORT_ALLOC_OUTPUT_ERROR_INFO_ERR_NO_RESOURCE
+		HWRM_TUNNEL_DST_PORT_ALLOC_OUTPUT_ERROR_INFO_ERR_ENABLED
 	/*
 	 * This field represents the UPAR usage status.
 	 * Available UPARs on wh+ are UPAR0 and UPAR1
@@ -57040,15 +58348,22 @@ struct hwrm_tunnel_dst_port_free_input {
 	/* Generic Protocol Extension for VXLAN (VXLAN-GPE) */
 	#define HWRM_TUNNEL_DST_PORT_FREE_INPUT_TUNNEL_TYPE_VXLAN_GPE \
 		UINT32_C(0x10)
+	/* Generic Routing Encapsulation */
+	#define HWRM_TUNNEL_DST_PORT_FREE_INPUT_TUNNEL_TYPE_GRE \
+		UINT32_C(0x11)
 	#define HWRM_TUNNEL_DST_PORT_FREE_INPUT_TUNNEL_TYPE_LAST \
-		HWRM_TUNNEL_DST_PORT_FREE_INPUT_TUNNEL_TYPE_VXLAN_GPE
-	uint8_t	unused_0;
+		HWRM_TUNNEL_DST_PORT_FREE_INPUT_TUNNEL_TYPE_GRE
+	/*
+	 * This field is used to specify the next protocol value defined in the
+	 * corresponding RFC spec for the applicable tunnel type.
+	 */
+	uint8_t	tunnel_next_proto;
 	/*
 	 * Identifier of a tunnel L4 destination port value. Only applies to tunnel
 	 * types that has l4 destination port parameters.
 	 */
 	uint16_t	tunnel_dst_port_id;
-	uint8_t	unused_1[4];
+	uint8_t	unused_0[4];
 } __rte_packed;
 
 /* hwrm_tunnel_dst_port_free_output (size:128b/16B) */
@@ -57234,7 +58549,7 @@ struct ctx_eng_stats {
  ***********************/
 
 
-/* hwrm_stat_ctx_alloc_input (size:256b/32B) */
+/* hwrm_stat_ctx_alloc_input (size:320b/40B) */
 struct hwrm_stat_ctx_alloc_input {
 	/* The HWRM command request type. */
 	uint16_t	req_type;
@@ -57305,6 +58620,18 @@ struct hwrm_stat_ctx_alloc_input {
 	 * for the periodic DMA updates.
 	 */
 	uint16_t	stats_dma_length;
+	uint16_t	flags;
+	/* This stats context uses the steering tag specified in the command. */
+	#define HWRM_STAT_CTX_ALLOC_INPUT_FLAGS_STEERING_TAG_VALID \
+		UINT32_C(0x1)
+	/*
+	 * Steering tag to use for memory transactions from the periodic DMA
+	 * updates. 'steering_tag_valid' should be set and 'steering_tag'
+	 * should be specified, when the 'steering_tag_supported' bit is set
+	 * under the 'flags_ext2' field of the hwrm_func_qcaps_output.
+	 */
+	uint16_t	steering_tag;
+	uint32_t	unused_1;
 } __rte_packed;
 
 /* hwrm_stat_ctx_alloc_output (size:128b/16B) */

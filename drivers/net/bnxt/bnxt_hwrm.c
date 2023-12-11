@@ -5175,9 +5175,6 @@ int bnxt_hwrm_set_ntuple_filter(struct bnxt *bp,
 	if (enables &
 	    HWRM_CFA_NTUPLE_FILTER_ALLOC_INPUT_ENABLES_DST_PORT_MASK)
 		req.dst_port_mask = rte_cpu_to_le_16(filter->dst_port_mask);
-	if (enables &
-	    HWRM_CFA_NTUPLE_FILTER_ALLOC_INPUT_ENABLES_MIRROR_VNIC_ID)
-		req.mirror_vnic_id = filter->mirror_vnic_id;
 
 	req.enables = rte_cpu_to_le_32(enables);
 
