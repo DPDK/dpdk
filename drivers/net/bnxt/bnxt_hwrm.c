@@ -215,6 +215,10 @@ static int bnxt_hwrm_send_message(struct bnxt *bp, void *msg,
 	if (bp->flags & BNXT_FLAG_FATAL_ERROR)
 		return 0;
 
+	/* If previous HWRM command timed out, do not send new HWRM command */
+	if (bp->flags & BNXT_FLAG_FW_TIMEDOUT)
+		return 0;
+
 	timeout = bp->hwrm_cmd_timeout;
 
 	/* Update the message length for backing store config for new FW. */
@@ -315,6 +319,7 @@ static int bnxt_hwrm_send_message(struct bnxt *bp, void *msg,
 		PMD_DRV_LOG(ERR,
 			    "Error(timeout) sending msg 0x%04x, seq_id %d\n",
 			    req->req_type, req->seq_id);
+		bp->flags |= BNXT_FLAG_FW_TIMEDOUT;
 		return -ETIMEDOUT;
 	}
 	return 0;
