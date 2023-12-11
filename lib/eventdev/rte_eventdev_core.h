@@ -65,7 +65,7 @@ struct rte_event_fp_ops {
 	/**< PMD Tx adapter enqueue same destination function. */
 	event_crypto_adapter_enqueue_t ca_enqueue;
 	/**< PMD Crypto adapter enqueue function. */
-	uintptr_t reserved[5];
+	uintptr_t reserved[6];
 } __rte_cache_aligned;
 
 extern struct rte_event_fp_ops rte_event_fp_ops[RTE_EVENT_MAX_DEVS];
