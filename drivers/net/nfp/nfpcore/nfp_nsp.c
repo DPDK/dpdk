@@ -221,7 +221,7 @@ nfp_nsp_check(struct nfp_nsp *state)
 	}
 
 	if ((reg & NSP_STATUS_BUSY) != 0) {
-		PMD_DRV_LOG(ERR, "Service processor busy!");
+		PMD_DRV_LOG(DEBUG, "Service processor busy!");
 		return -EBUSY;
 	}
 
@@ -258,7 +258,7 @@ nfp_nsp_open(struct nfp_cpp *cpp)
 
 	err = nfp_nsp_check(state);
 	if (err != 0) {
-		PMD_DRV_LOG(ERR, "NSP - check failed");
+		PMD_DRV_LOG(DEBUG, "NSP - check failed");
 		nfp_nsp_close(state);
 		return NULL;
 	}

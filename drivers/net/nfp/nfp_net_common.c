@@ -643,6 +643,46 @@ nfp_net_allmulticast_disable(struct rte_eth_dev *dev)
 	return nfp_net_set_allmulticast_mode(dev, false);
 }
 
+static int
+nfp_net_speed_aneg_update(struct rte_eth_dev *dev,
+		struct nfp_net_hw *hw,
+		struct rte_eth_link *link)
+{
+	uint32_t i;
+	uint32_t speed;
+	struct nfp_eth_table *nfp_eth_table;
+	struct nfp_eth_table_port *eth_port;
+
+	/* Compare whether the current status has changed. */
+	if (dev->data->dev_link.link_status != link->link_status) {
+		nfp_eth_table = nfp_eth_read_ports(hw->cpp);
+		if (nfp_eth_table == NULL) {
+			PMD_DRV_LOG(DEBUG, "Error reading NFP ethernet table.");
+			return -EIO;
+		}
+
+		hw->pf_dev->nfp_eth_table->ports[hw->idx] = nfp_eth_table->ports[hw->idx];
+		free(nfp_eth_table);
+	}
+
+	nfp_eth_table = hw->pf_dev->nfp_eth_table;
+	eth_port = &nfp_eth_table->ports[hw->idx];
+	speed = eth_port->speed;
+
+	for (i = 0; i < RTE_DIM(nfp_net_link_speed_nfp2rte); i++) {
+		if (nfp_net_link_speed_nfp2rte[i] == speed) {
+			link->link_speed = speed;
+			break;
+		}
+	}
+
+	if (dev->data->dev_conf.link_speeds == RTE_ETH_LINK_SPEED_AUTONEG &&
+			eth_port->supp_aneg)
+		link->link_autoneg = RTE_ETH_LINK_AUTONEG;
+
+	return 0;
+}
+
 int
 nfp_net_link_update_common(struct rte_eth_dev *dev,
 		struct nfp_net_hw *hw,
@@ -650,23 +690,14 @@ nfp_net_link_update_common(struct rte_eth_dev *dev,
 		uint32_t link_status)
 {
 	int ret;
-	uint32_t i;
 	uint32_t nn_link_status;
-	struct nfp_eth_table *nfp_eth_table;
-
-	link->link_speed = RTE_ETH_SPEED_NUM_NONE;
 
 	if (link->link_status == RTE_ETH_LINK_UP) {
 		if (hw->pf_dev != NULL) {
-			nfp_eth_table = hw->pf_dev->nfp_eth_table;
-			if (nfp_eth_table != NULL) {
-				uint32_t speed = nfp_eth_table->ports[hw->idx].speed;
-				for (i = 0; i < RTE_DIM(nfp_net_link_speed_nfp2rte); i++) {
-					if (nfp_net_link_speed_nfp2rte[i] == speed) {
-						link->link_speed = speed;
-						break;
-					}
-				}
+			ret = nfp_net_speed_aneg_update(dev, hw, link);
+			if (ret != 0) {
+				PMD_DRV_LOG(DEBUG, "Failed to update speed and aneg.");
+				return ret;
 			}
 		} else {
 			/*
@@ -718,6 +749,8 @@ nfp_net_link_update(struct rte_eth_dev *dev,
 	link.link_duplex = RTE_ETH_LINK_FULL_DUPLEX;
 
 	ret = nfp_net_link_update_common(dev, hw, &link, nn_link_status);
+	if (ret == -EIO)
+		return ret;
 
 	/*
 	 * Notify the port to update the speed value in the CTRL BAR from NSP.
