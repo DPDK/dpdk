@@ -15,6 +15,18 @@ sources = files(
 
 if arch_subdir == 'x86'
     sources += files('cnxk_ep_rx_sse.c')
+    if cc.get_define('__AVX2__', args: machine_args) != ''
+        cflags += ['-DCC_AVX2_SUPPORT']
+        sources += files('cnxk_ep_rx_avx.c')
+    elif cc.has_argument('-mavx2')
+        cflags += ['-DCC_AVX2_SUPPORT']
+        otx_ep_avx2_lib = static_library('otx_ep_avx2_lib',
+                        'cnxk_ep_rx_avx.c',
+                        dependencies: [static_rte_ethdev, static_rte_pci, static_rte_bus_pci],
+                        include_directories: includes,
+                        c_args: [cflags, '-mavx2'])
+        objs += otx_ep_avx2_lib.extract_objects('cnxk_ep_rx_avx.c')
+    endif
 endif
 
 extra_flags = ['-Wno-strict-aliasing']
