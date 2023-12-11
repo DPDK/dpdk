@@ -45,6 +45,150 @@ nfp_net_pf_read_mac(struct nfp_app_fw_nic *app_fw_nic,
 	rte_ether_addr_copy(&nfp_eth_table->ports[port].mac_addr, &hw->super.mac_addr);
 }
 
+static uint32_t
+nfp_net_speed_bitmap2speed(uint32_t speeds_bitmap)
+{
+	switch (speeds_bitmap) {
+	case RTE_ETH_LINK_SPEED_10M_HD:
+		return RTE_ETH_SPEED_NUM_10M;
+	case RTE_ETH_LINK_SPEED_10M:
+		return RTE_ETH_SPEED_NUM_10M;
+	case RTE_ETH_LINK_SPEED_100M_HD:
+		return RTE_ETH_SPEED_NUM_100M;
+	case RTE_ETH_LINK_SPEED_100M:
+		return RTE_ETH_SPEED_NUM_100M;
+	case RTE_ETH_LINK_SPEED_1G:
+		return RTE_ETH_SPEED_NUM_1G;
+	case RTE_ETH_LINK_SPEED_2_5G:
+		return RTE_ETH_SPEED_NUM_2_5G;
+	case RTE_ETH_LINK_SPEED_5G:
+		return RTE_ETH_SPEED_NUM_5G;
+	case RTE_ETH_LINK_SPEED_10G:
+		return RTE_ETH_SPEED_NUM_10G;
+	case RTE_ETH_LINK_SPEED_20G:
+		return RTE_ETH_SPEED_NUM_20G;
+	case RTE_ETH_LINK_SPEED_25G:
+		return RTE_ETH_SPEED_NUM_25G;
+	case RTE_ETH_LINK_SPEED_40G:
+		return RTE_ETH_SPEED_NUM_40G;
+	case RTE_ETH_LINK_SPEED_50G:
+		return RTE_ETH_SPEED_NUM_50G;
+	case RTE_ETH_LINK_SPEED_56G:
+		return RTE_ETH_SPEED_NUM_56G;
+	case RTE_ETH_LINK_SPEED_100G:
+		return RTE_ETH_SPEED_NUM_100G;
+	case RTE_ETH_LINK_SPEED_200G:
+		return RTE_ETH_SPEED_NUM_200G;
+	case RTE_ETH_LINK_SPEED_400G:
+		return RTE_ETH_SPEED_NUM_400G;
+	default:
+		return RTE_ETH_SPEED_NUM_NONE;
+	}
+}
+
+static int
+nfp_net_nfp4000_speed_configure_check(uint16_t port_id,
+		uint32_t configure_speed,
+		struct nfp_eth_table *nfp_eth_table)
+{
+	switch (port_id) {
+	case 0:
+		if (configure_speed == RTE_ETH_SPEED_NUM_25G &&
+				nfp_eth_table->ports[1].speed == RTE_ETH_SPEED_NUM_10G) {
+			PMD_DRV_LOG(ERR, "The speed configuration is not supported for NFP4000.");
+			return -ENOTSUP;
+		}
+		break;
+	case 1:
+		if (configure_speed == RTE_ETH_SPEED_NUM_10G &&
+				nfp_eth_table->ports[0].speed == RTE_ETH_SPEED_NUM_25G) {
+			PMD_DRV_LOG(ERR, "The speed configuration is not supported for NFP4000.");
+			return -ENOTSUP;
+		}
+		break;
+	default:
+		PMD_DRV_LOG(ERR, "The port id is invalid.");
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static int
+nfp_net_speed_configure(struct rte_eth_dev *dev,
+		struct nfp_net_hw *net_hw)
+{
+	int ret;
+	uint32_t speed_capa;
+	struct nfp_nsp *nsp;
+	uint32_t link_speeds;
+	uint32_t configure_speed;
+	struct nfp_eth_table_port *eth_port;
+	struct nfp_eth_table *nfp_eth_table;
+
+	nfp_eth_table = net_hw->pf_dev->nfp_eth_table;
+	eth_port = &nfp_eth_table->ports[net_hw->idx];
+
+	speed_capa = net_hw->pf_dev->speed_capa;
+	if (speed_capa == 0) {
+		PMD_DRV_LOG(ERR, "Speed_capa is invalid.");
+		return -EINVAL;
+	}
+
+	link_speeds = dev->data->dev_conf.link_speeds;
+	configure_speed = nfp_net_speed_bitmap2speed(speed_capa & link_speeds);
+	if (configure_speed == RTE_ETH_SPEED_NUM_NONE &&
+			link_speeds != RTE_ETH_LINK_SPEED_AUTONEG) {
+		PMD_DRV_LOG(ERR, "Configured speed is invalid.");
+		return -EINVAL;
+	}
+
+	/* NFP4000 does not allow the port 0 25Gbps and port 1 10Gbps at the same time. */
+	if (net_hw->device_id == PCI_DEVICE_ID_NFP4000_PF_NIC) {
+		ret = nfp_net_nfp4000_speed_configure_check(net_hw->idx,
+				configure_speed, nfp_eth_table);
+		if (ret != 0) {
+			PMD_DRV_LOG(ERR, "Failed to configure speed for NFP4000.");
+			return ret;
+		}
+	}
+
+	nsp = nfp_eth_config_start(net_hw->cpp, eth_port->index);
+	if (nsp == NULL) {
+		PMD_DRV_LOG(ERR, "Couldn't get NSP.");
+		return -EIO;
+	}
+
+	if (link_speeds == RTE_ETH_LINK_SPEED_AUTONEG) {
+		if (eth_port->supp_aneg) {
+			ret = nfp_eth_set_aneg(nsp, NFP_ANEG_AUTO);
+			if (ret != 0) {
+				PMD_DRV_LOG(ERR, "Failed to set ANEG enable.");
+				goto config_cleanup;
+			}
+		}
+	} else {
+		ret = nfp_eth_set_aneg(nsp, NFP_ANEG_DISABLED);
+		if (ret != 0) {
+			PMD_DRV_LOG(ERR, "Failed to set ANEG disable.");
+			goto config_cleanup;
+		}
+
+		ret = nfp_eth_set_speed(nsp, configure_speed);
+		if (ret != 0) {
+			PMD_DRV_LOG(ERR, "Failed to set speed.");
+			goto config_cleanup;
+		}
+	}
+
+	return nfp_eth_config_commit_end(nsp);
+
+config_cleanup:
+	nfp_eth_config_cleanup_end(nsp);
+
+	return ret;
+}
+
 static int
 nfp_net_start(struct rte_eth_dev *dev)
 {
@@ -74,6 +218,13 @@ nfp_net_start(struct rte_eth_dev *dev)
 
 	/* Enabling the required queues in the device */
 	nfp_net_enable_queues(dev);
+
+	/* Configure the port speed and the auto-negotiation mode. */
+	ret = nfp_net_speed_configure(dev, net_hw);
+	if (ret < 0) {
+		PMD_DRV_LOG(ERR, "Failed to set the speed and auto-negotiation mode.");
+		return ret;
+	}
 
 	/* Check and configure queue intr-vector mapping */
 	if (dev->data->dev_conf.intr_conf.rxq != 0) {
