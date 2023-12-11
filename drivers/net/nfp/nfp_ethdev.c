@@ -1270,6 +1270,116 @@ nfp_net_hwinfo_set(uint8_t function_id,
 	return 0;
 }
 
+const uint32_t nfp_eth_media_table[NFP_MEDIA_LINK_MODES_NUMBER] = {
+	[NFP_MEDIA_W0_RJ45_10M]     = RTE_ETH_LINK_SPEED_10M,
+	[NFP_MEDIA_W0_RJ45_10M_HD]  = RTE_ETH_LINK_SPEED_10M_HD,
+	[NFP_MEDIA_W0_RJ45_100M]    = RTE_ETH_LINK_SPEED_100M,
+	[NFP_MEDIA_W0_RJ45_100M_HD] = RTE_ETH_LINK_SPEED_100M_HD,
+	[NFP_MEDIA_W0_RJ45_1G]      = RTE_ETH_LINK_SPEED_1G,
+	[NFP_MEDIA_W0_RJ45_2P5G]    = RTE_ETH_LINK_SPEED_2_5G,
+	[NFP_MEDIA_W0_RJ45_5G]      = RTE_ETH_LINK_SPEED_5G,
+	[NFP_MEDIA_W0_RJ45_10G]     = RTE_ETH_LINK_SPEED_10G,
+	[NFP_MEDIA_1000BASE_CX]     = RTE_ETH_LINK_SPEED_1G,
+	[NFP_MEDIA_1000BASE_KX]     = RTE_ETH_LINK_SPEED_1G,
+	[NFP_MEDIA_10GBASE_KX4]     = RTE_ETH_LINK_SPEED_10G,
+	[NFP_MEDIA_10GBASE_KR]      = RTE_ETH_LINK_SPEED_10G,
+	[NFP_MEDIA_10GBASE_CX4]     = RTE_ETH_LINK_SPEED_10G,
+	[NFP_MEDIA_10GBASE_CR]      = RTE_ETH_LINK_SPEED_10G,
+	[NFP_MEDIA_10GBASE_SR]      = RTE_ETH_LINK_SPEED_10G,
+	[NFP_MEDIA_10GBASE_ER]      = RTE_ETH_LINK_SPEED_10G,
+	[NFP_MEDIA_25GBASE_KR]      = RTE_ETH_LINK_SPEED_25G,
+	[NFP_MEDIA_25GBASE_KR_S]    = RTE_ETH_LINK_SPEED_25G,
+	[NFP_MEDIA_25GBASE_CR]      = RTE_ETH_LINK_SPEED_25G,
+	[NFP_MEDIA_25GBASE_CR_S]    = RTE_ETH_LINK_SPEED_25G,
+	[NFP_MEDIA_25GBASE_SR]      = RTE_ETH_LINK_SPEED_25G,
+	[NFP_MEDIA_40GBASE_CR4]     = RTE_ETH_LINK_SPEED_40G,
+	[NFP_MEDIA_40GBASE_KR4]     = RTE_ETH_LINK_SPEED_40G,
+	[NFP_MEDIA_40GBASE_SR4]     = RTE_ETH_LINK_SPEED_40G,
+	[NFP_MEDIA_40GBASE_LR4]     = RTE_ETH_LINK_SPEED_40G,
+	[NFP_MEDIA_50GBASE_KR]      = RTE_ETH_LINK_SPEED_50G,
+	[NFP_MEDIA_50GBASE_SR]      = RTE_ETH_LINK_SPEED_50G,
+	[NFP_MEDIA_50GBASE_CR]      = RTE_ETH_LINK_SPEED_50G,
+	[NFP_MEDIA_50GBASE_LR]      = RTE_ETH_LINK_SPEED_50G,
+	[NFP_MEDIA_50GBASE_ER]      = RTE_ETH_LINK_SPEED_50G,
+	[NFP_MEDIA_50GBASE_FR]      = RTE_ETH_LINK_SPEED_50G,
+	[NFP_MEDIA_100GBASE_KR4]    = RTE_ETH_LINK_SPEED_100G,
+	[NFP_MEDIA_100GBASE_SR4]    = RTE_ETH_LINK_SPEED_100G,
+	[NFP_MEDIA_100GBASE_CR4]    = RTE_ETH_LINK_SPEED_100G,
+	[NFP_MEDIA_100GBASE_KP4]    = RTE_ETH_LINK_SPEED_100G,
+	[NFP_MEDIA_100GBASE_CR10]   = RTE_ETH_LINK_SPEED_100G,
+	[NFP_MEDIA_10GBASE_LR]      = RTE_ETH_LINK_SPEED_10G,
+	[NFP_MEDIA_25GBASE_LR]      = RTE_ETH_LINK_SPEED_25G,
+	[NFP_MEDIA_25GBASE_ER]      = RTE_ETH_LINK_SPEED_25G
+};
+
+static int
+nfp_net_speed_capa_get_real(struct nfp_eth_media_buf *media_buf,
+		struct nfp_pf_dev *pf_dev)
+{
+	uint32_t i;
+	uint32_t j;
+	uint32_t offset;
+	uint32_t speed_capa = 0;
+	uint64_t supported_modes;
+
+	for (i = 0; i < RTE_DIM(media_buf->supported_modes); i++) {
+		supported_modes = media_buf->supported_modes[i];
+		offset = i * UINT64_BIT;
+		for (j = 0; j < UINT64_BIT; j++) {
+			if (supported_modes == 0)
+				break;
+
+			if ((supported_modes & 1) != 0) {
+				if ((j + offset) >= NFP_MEDIA_LINK_MODES_NUMBER) {
+					PMD_DRV_LOG(ERR, "Invalid offset of media table.");
+					return -EINVAL;
+				}
+
+				speed_capa |= nfp_eth_media_table[j + offset];
+			}
+
+			supported_modes = supported_modes >> 1;
+		}
+	}
+
+	pf_dev->speed_capa = speed_capa;
+
+	return pf_dev->speed_capa == 0 ? -EINVAL : 0;
+}
+
+static int
+nfp_net_speed_capa_get(struct nfp_pf_dev *pf_dev,
+		uint32_t port_id)
+{
+	int ret;
+	struct nfp_nsp *nsp;
+	struct nfp_eth_media_buf media_buf;
+
+	media_buf.eth_index = pf_dev->nfp_eth_table->ports[port_id].eth_index;
+	pf_dev->speed_capa = 0;
+
+	nsp = nfp_nsp_open(pf_dev->cpp);
+	if (nsp == NULL) {
+		PMD_DRV_LOG(ERR, "Couldn't get NSP.");
+		return -EIO;
+	}
+
+	ret = nfp_nsp_read_media(nsp, &media_buf, sizeof(media_buf));
+	nfp_nsp_close(nsp);
+	if (ret != 0) {
+		PMD_DRV_LOG(ERR, "Failed to read media.");
+		return ret;
+	}
+
+	ret = nfp_net_speed_capa_get_real(&media_buf, pf_dev);
+	if (ret < 0) {
+		PMD_DRV_LOG(ERR, "Speed capability is invalid.");
+		return ret;
+	}
+
+	return 0;
+}
+
 static int
 nfp_pf_init(struct rte_pci_device *pci_dev)
 {
@@ -1395,6 +1505,17 @@ nfp_pf_init(struct rte_pci_device *pci_dev)
 	pf_dev->sym_tbl = sym_tbl;
 	pf_dev->pci_dev = pci_dev;
 	pf_dev->nfp_eth_table = nfp_eth_table;
+
+	/* Get the speed capability */
+	for (i = 0; i < nfp_eth_table->count; i++) {
+		id = nfp_function_id_get(pf_dev, i);
+		ret = nfp_net_speed_capa_get(pf_dev, id);
+		if (ret != 0) {
+			PMD_INIT_LOG(ERR, "Failed to get speed capability.");
+			ret = -EIO;
+			goto sym_tbl_cleanup;
+		}
+	}
 
 	/* Configure access to tx/rx vNIC BARs */
 	addr = nfp_qcp_queue_offset(dev_info, 0);
