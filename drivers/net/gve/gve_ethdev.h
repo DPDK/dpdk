@@ -28,7 +28,9 @@
 #define GVE_DEFAULT_TX_FREE_THRESH  256
 #define GVE_TX_MAX_FREE_SZ          512
 
-#define GVE_MIN_BUF_SIZE	    1024
+#define GVE_RX_BUF_ALIGN_GQI       2048
+#define GVE_RX_MIN_BUF_SIZE_GQI    2048
+#define GVE_RX_MAX_BUF_SIZE_GQI    4096
 
 /* A list of pages registered with the device during setup and used by a queue
  * as buffers
