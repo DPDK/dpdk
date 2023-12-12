@@ -71,7 +71,10 @@ static struct rte_event_dev_info evdev_dlb2_default_info = {
 	.max_num_events = DLB2_MAX_NUM_LDB_CREDITS,
 	.max_single_link_event_port_queue_pairs =
 		DLB2_MAX_NUM_DIR_PORTS(DLB2_HW_V2),
-	.event_dev_cap = (RTE_EVENT_DEV_CAP_EVENT_QOS |
+	.event_dev_cap = (RTE_EVENT_DEV_CAP_ATOMIC |
+			  RTE_EVENT_DEV_CAP_ORDERED |
+			  RTE_EVENT_DEV_CAP_PARALLEL |
+			  RTE_EVENT_DEV_CAP_EVENT_QOS |
 			  RTE_EVENT_DEV_CAP_NONSEQ_MODE |
 			  RTE_EVENT_DEV_CAP_DISTRIBUTED_SCHED |
 			  RTE_EVENT_DEV_CAP_QUEUE_ALL_TYPES |
