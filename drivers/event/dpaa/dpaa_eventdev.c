@@ -353,6 +353,8 @@ dpaa_event_dev_info_get(struct rte_eventdev *dev,
 	dev_info->max_num_events =
 		DPAA_EVENT_MAX_NUM_EVENTS;
 	dev_info->event_dev_cap =
+		RTE_EVENT_DEV_CAP_ATOMIC |
+		RTE_EVENT_DEV_CAP_PARALLEL |
 		RTE_EVENT_DEV_CAP_DISTRIBUTED_SCHED |
 		RTE_EVENT_DEV_CAP_BURST_MODE |
 		RTE_EVENT_DEV_CAP_MULTIPLE_QUEUE_PORT |
