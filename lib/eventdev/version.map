@@ -155,6 +155,7 @@ INTERNAL {
 	event_dev_fp_ops_reset;
 	event_dev_fp_ops_set;
 	event_dev_probing_finish;
+	rte_event_logtype;
 	rte_event_pmd_allocate;
 	rte_event_pmd_get_named_dev;
 	rte_event_pmd_is_valid_dev;

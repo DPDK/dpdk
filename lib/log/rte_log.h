@@ -46,7 +46,7 @@ extern "C" {
 				 /* was RTE_LOGTYPE_MBUF */
 				 /* was RTE_LOGTYPE_CRYPTODEV */
 				 /* was RTE_LOGTYPE_EFD */
-#define RTE_LOGTYPE_EVENTDEV  19 /**< Log related to eventdev. */
+				 /* was RTE_LOGTYPE_EVENTDEV */
 				 /* was RTE_LOGTYPE_GSO */
 
 /* these log types can be used in an application */

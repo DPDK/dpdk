@@ -31,6 +31,9 @@ extern "C" {
 #include "event_timer_adapter_pmd.h"
 #include "rte_eventdev.h"
 
+extern int rte_event_logtype;
+#define RTE_LOGTYPE_EVENTDEV rte_event_logtype
+
 /* Logging Macros */
 #define RTE_EDEV_LOG_ERR(...) \
 	RTE_LOG_LINE(ERR, EVENTDEV, \

@@ -28,6 +28,8 @@
 #include "eventdev_pmd.h"
 #include "eventdev_trace.h"
 
+RTE_LOG_REGISTER_DEFAULT(rte_event_logtype, INFO);
+
 static struct rte_eventdev rte_event_devices[RTE_EVENT_MAX_DEVS];
 
 struct rte_eventdev *rte_eventdevs = rte_event_devices;
