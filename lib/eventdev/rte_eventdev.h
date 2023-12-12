@@ -250,11 +250,22 @@ struct rte_event;
  * @see rte_event_dequeue_burst()
  */
 #define RTE_EVENT_DEV_CAP_QUEUE_ALL_TYPES     (1ULL << 3)
-/**< Event device is capable of enqueuing events of any type to any queue.
- * If this capability is not set, the queue only supports events of the
- *  *RTE_SCHED_TYPE_* type that it was created with.
+/**< Event device is capable of accepting enqueued events, of any type
+ * advertised as supported by the device, to all destination queues.
  *
- * @see RTE_SCHED_TYPE_* values
+ * When this capability is set, the "schedule_type" field of the
+ * rte_event_queue_conf structure is ignored when a queue is being configured.
+ * Instead the "sched_type" field of each event enqueued is used to
+ * select the scheduling to be performed on that event.
+ *
+ * If this capability is not set, the queue only supports events of the
+ *  *RTE_SCHED_TYPE_* type specified in the rte_event_queue_conf structure
+ *  at time of configuration.
+ *
+ * @see RTE_SCHED_TYPE_ATOMIC
+ * @see RTE_SCHED_TYPE_ORDERED
+ * @see RTE_SCHED_TYPE_PARALLEL
+ * @see rte_event_queue_conf.schedule_type
  */
 #define RTE_EVENT_DEV_CAP_BURST_MODE          (1ULL << 4)
 /**< Event device is capable of operating in burst mode for enqueue(forward,
