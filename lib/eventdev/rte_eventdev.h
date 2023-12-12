@@ -326,6 +326,27 @@ struct rte_event;
  * than one.
  */
 
+#define RTE_EVENT_DEV_CAP_ATOMIC  (1ULL << 13)
+/**< Event device is capable of atomic scheduling.
+ * When this flag is set, the application can configure queues with scheduling type
+ * atomic on this event device.
+ * @see RTE_SCHED_TYPE_ATOMIC
+ */
+
+#define RTE_EVENT_DEV_CAP_ORDERED  (1ULL << 14)
+/**< Event device is capable of ordered scheduling.
+ * When this flag is set, the application can configure queues with scheduling type
+ * ordered on this event device.
+ * @see RTE_SCHED_TYPE_ORDERED
+ */
+
+#define RTE_EVENT_DEV_CAP_PARALLEL  (1ULL << 15)
+/**< Event device is capable of parallel scheduling.
+ * When this flag is set, the application can configure queues with scheduling type
+ * parallel on this event device.
+ * @see RTE_SCHED_TYPE_PARALLEL
+ */
+
 /* Event device priority levels */
 #define RTE_EVENT_DEV_PRIORITY_HIGHEST   0
 /**< Highest priority expressed across eventdev subsystem
