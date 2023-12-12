@@ -22,7 +22,10 @@ cnxk_sso_info_get(struct cnxk_sso_evdev *dev,
 	dev_info->max_event_port_dequeue_depth = 1;
 	dev_info->max_event_port_enqueue_depth = 1;
 	dev_info->max_num_events = dev->max_num_events;
-	dev_info->event_dev_cap = RTE_EVENT_DEV_CAP_QUEUE_QOS |
+	dev_info->event_dev_cap = RTE_EVENT_DEV_CAP_ATOMIC |
+				  RTE_EVENT_DEV_CAP_ORDERED |
+				  RTE_EVENT_DEV_CAP_PARALLEL |
+				  RTE_EVENT_DEV_CAP_QUEUE_QOS |
 				  RTE_EVENT_DEV_CAP_DISTRIBUTED_SCHED |
 				  RTE_EVENT_DEV_CAP_QUEUE_ALL_TYPES |
 				  RTE_EVENT_DEV_CAP_RUNTIME_PORT_LINK |
