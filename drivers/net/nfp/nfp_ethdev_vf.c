@@ -452,6 +452,8 @@ nfp_netvf_init(struct rte_eth_dev *eth_dev)
 					   (void *)eth_dev);
 		/* Telling the firmware about the LSC interrupt entry */
 		nn_cfg_writeb(hw, NFP_NET_CFG_LSC, NFP_NET_IRQ_LSC_IDX);
+		/* Unmask the LSC interrupt */
+		nfp_net_irq_unmask(eth_dev);
 		/* Recording current stats counters values */
 		nfp_net_stats_reset(eth_dev);
 	}

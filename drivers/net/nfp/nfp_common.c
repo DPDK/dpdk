@@ -885,7 +885,7 @@ nfp_net_dev_link_status_print(struct rte_eth_dev *dev)
  * If MSI-X auto-masking is enabled clear the mask bit, otherwise
  * clear the ICR for the entry.
  */
-static void
+void
 nfp_net_irq_unmask(struct rte_eth_dev *dev)
 {
 	struct nfp_net_hw *hw;
