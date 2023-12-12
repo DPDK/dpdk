@@ -220,6 +220,8 @@ dsw_info_get(struct rte_eventdev *dev __rte_unused,
 		.max_num_events = DSW_MAX_EVENTS,
 		.max_profiles_per_port = 1,
 		.event_dev_cap = RTE_EVENT_DEV_CAP_BURST_MODE|
+		RTE_EVENT_DEV_CAP_ATOMIC |
+		RTE_EVENT_DEV_CAP_PARALLEL |
 		RTE_EVENT_DEV_CAP_DISTRIBUTED_SCHED|
 		RTE_EVENT_DEV_CAP_NONSEQ_MODE|
 		RTE_EVENT_DEV_CAP_MULTIPLE_QUEUE_PORT|
