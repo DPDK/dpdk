@@ -1960,6 +1960,7 @@ err_dsa_sign:
 		EVP_PKEY_CTX_free(key_ctx);
 	if (dsa_ctx)
 		EVP_PKEY_CTX_free(dsa_ctx);
+	EVP_PKEY_free(pkey);
 	return -1;
 }
 
