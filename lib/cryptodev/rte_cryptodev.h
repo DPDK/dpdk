@@ -26,8 +26,6 @@ extern "C" {
 
 #include "rte_cryptodev_trace_fp.h"
 
-extern const char **rte_cyptodev_names;
-
 /**
  * @internal Logtype used for cryptodev related messages.
  */
