@@ -1070,14 +1070,14 @@ virtio_vdpa_mi_dev_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	priv->vpdev = virtio_pci_dev_alloc(pci_dev);
 	if (priv->vpdev == NULL) {
 		DRV_LOG(ERR, "%s failed to alloc virito pci dev", devname);
-		rte_errno = VFE_VDPA_ERR_ADD_PF_PROBE_FAIL;
+		ret = -VFE_VDPA_ERR_ADD_PF_PROBE_FAIL;
 		goto error;
 	}
 
 	priv->vfio_dev_fd = rte_intr_dev_fd_get(pci_dev->intr_handle);
 	if (priv->vfio_dev_fd < 0) {
 		DRV_LOG(ERR, "%s failed to get vfio dev fd", devname);
-		rte_errno = VFE_VDPA_ERR_VFIO_DEV_FD;
+		ret = -VFE_VDPA_ERR_VFIO_DEV_FD;
 		goto err_free_pci_dev;
 	}
 
@@ -1091,17 +1091,17 @@ virtio_vdpa_mi_dev_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		DRV_LOG(ERR, "PCI device: %s device id 0x%x is not supported",
 					priv->pdev->device.name,
 					priv->pdev->id.device_id);
-		rte_errno = VFE_VDPA_ERR_ADD_PF_DEVICEID_NOT_SUPPORT;
+		ret = -VFE_VDPA_ERR_ADD_PF_DEVICEID_NOT_SUPPORT;
 		goto err_free_pci_dev;
 	}
 
 	virtio_pci_dev_features_get(priv->vpdev, &priv->device_features);
 	features = priv->dev_ops->get_required_features();
-	if (!(priv->device_features & features)) {
+	if ((priv->device_features & features) != features) {
 		DRV_LOG(ERR, "Device does not support feature required: device 0x%" PRIx64 \
 				", required: 0x%" PRIx64, priv->device_features,
 				features);
-		rte_errno = VFE_VDPA_ERR_ADD_PF_FEATURE_NOT_MEET;
+		ret = -VFE_VDPA_ERR_ADD_PF_FEATURE_NOT_MEET;
 		goto err_free_pci_dev;
 	}
 	features = virtio_pci_dev_features_set(priv->vpdev, features);
@@ -1111,7 +1111,7 @@ virtio_vdpa_mi_dev_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	ret = virtio_vdpa_admin_queue_alloc(priv);
 	if (ret) {
 		DRV_LOG(ERR, "Failed to alloc admin queue for vDPA device");
-		rte_errno = VFE_VDPA_ERR_ADD_PF_ALLOC_ADMIN_QUEUE;
+		ret = -VFE_VDPA_ERR_ADD_PF_ALLOC_ADMIN_QUEUE;
 		goto err_free_pci_dev;
 	}
 
@@ -1127,7 +1127,7 @@ err_free_pci_dev:
 	virtio_pci_dev_free(priv->vpdev);
 error:
 	rte_free(priv);
-	return -rte_errno;
+	return ret;
 }
 
 static int
