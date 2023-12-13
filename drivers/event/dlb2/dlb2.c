@@ -3969,7 +3969,8 @@ dlb2_hw_dequeue_sparse(struct dlb2_eventdev *dlb2,
 	else
 		timeout = dlb2->global_dequeue_wait_ticks;
 
-	start_ticks = rte_get_timer_cycles();
+	if (timeout != 0)
+		start_ticks = rte_get_timer_cycles();
 
 	use_scalar = use_scalar || (max_num & 0x3);
 
@@ -4117,7 +4118,8 @@ dlb2_hw_dequeue(struct dlb2_eventdev *dlb2,
 	else
 		timeout = dlb2->global_dequeue_wait_ticks;
 
-	start_ticks = rte_get_timer_cycles();
+	if (timeout != 0)
+		start_ticks = rte_get_timer_cycles();
 
 	while (num < max_num) {
 		struct dlb2_dequeue_qe qes[DLB2_NUM_QES_PER_CACHE_LINE];
