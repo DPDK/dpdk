@@ -1371,7 +1371,7 @@ nfp_net_supported_ptypes_get(struct rte_eth_dev *dev)
 		return NULL;
 
 	net_hw = dev->data->dev_private;
-	if ((net_hw->super.cap_ext & NFP_NET_CFG_CTRL_PKT_TYPE) == 0)
+	if ((net_hw->super.ctrl_ext & NFP_NET_CFG_CTRL_PKT_TYPE) == 0)
 		return NULL;
 
 	return ptypes;

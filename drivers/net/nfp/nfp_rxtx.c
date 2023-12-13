@@ -617,7 +617,7 @@ nfp_net_parse_ptype(struct nfp_net_rxq *rxq,
 	struct nfp_ptype_parsed nfp_ptype;
 	uint16_t rxd_ptype = rxds->rxd.offload_info;
 
-	if ((hw->super.cap_ext & NFP_NET_CFG_CTRL_PKT_TYPE) == 0)
+	if ((hw->super.ctrl_ext & NFP_NET_CFG_CTRL_PKT_TYPE) == 0)
 		return;
 
 	if (rxd_ptype == 0 || (rxds->rxd.flags & PCIE_DESC_RX_VLAN) != 0)
