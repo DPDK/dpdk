@@ -306,28 +306,51 @@ void
 nfp_net_log_device_information(const struct nfp_net_hw *hw)
 {
 	uint32_t cap = hw->super.cap;
+	uint32_t cap_ext = hw->super.cap_ext;
 
 	PMD_INIT_LOG(INFO, "VER: %u.%u, Maximum supported MTU: %d",
 			hw->ver.major, hw->ver.minor, hw->max_mtu);
 
-	PMD_INIT_LOG(INFO, "CAP: %#x, %s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s", cap,
-			cap & NFP_NET_CFG_CTRL_PROMISC   ? "PROMISC "   : "",
-			cap & NFP_NET_CFG_CTRL_L2BC      ? "L2BCFILT "  : "",
-			cap & NFP_NET_CFG_CTRL_L2MC      ? "L2MCFILT "  : "",
-			cap & NFP_NET_CFG_CTRL_RXCSUM    ? "RXCSUM "    : "",
-			cap & NFP_NET_CFG_CTRL_TXCSUM    ? "TXCSUM "    : "",
-			cap & NFP_NET_CFG_CTRL_RXVLAN    ? "RXVLAN "    : "",
-			cap & NFP_NET_CFG_CTRL_TXVLAN    ? "TXVLAN "    : "",
-			cap & NFP_NET_CFG_CTRL_RXVLAN_V2 ? "RXVLANv2 "  : "",
-			cap & NFP_NET_CFG_CTRL_TXVLAN_V2 ? "TXVLANv2 "  : "",
-			cap & NFP_NET_CFG_CTRL_RXQINQ    ? "RXQINQ "    : "",
-			cap & NFP_NET_CFG_CTRL_SCATTER   ? "SCATTER "   : "",
-			cap & NFP_NET_CFG_CTRL_GATHER    ? "GATHER "    : "",
-			cap & NFP_NET_CFG_CTRL_LIVE_ADDR ? "LIVE_ADDR " : "",
-			cap & NFP_NET_CFG_CTRL_LSO       ? "TSO "       : "",
-			cap & NFP_NET_CFG_CTRL_LSO2      ? "TSOv2 "     : "",
-			cap & NFP_NET_CFG_CTRL_RSS       ? "RSS "       : "",
-			cap & NFP_NET_CFG_CTRL_RSS2      ? "RSSv2 "     : "");
+	PMD_INIT_LOG(INFO, "CAP: %#x", cap);
+	PMD_INIT_LOG(INFO, "%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s",
+			cap & NFP_NET_CFG_CTRL_ENABLE        ? "ENABLE "      : "",
+			cap & NFP_NET_CFG_CTRL_PROMISC       ? "PROMISC "     : "",
+			cap & NFP_NET_CFG_CTRL_L2BC          ? "L2BCFILT "    : "",
+			cap & NFP_NET_CFG_CTRL_L2MC          ? "L2MCFILT "    : "",
+			cap & NFP_NET_CFG_CTRL_RXCSUM        ? "RXCSUM "      : "",
+			cap & NFP_NET_CFG_CTRL_TXCSUM        ? "TXCSUM "      : "",
+			cap & NFP_NET_CFG_CTRL_RXVLAN        ? "RXVLAN "      : "",
+			cap & NFP_NET_CFG_CTRL_TXVLAN        ? "TXVLAN "      : "",
+			cap & NFP_NET_CFG_CTRL_SCATTER       ? "SCATTER "     : "",
+			cap & NFP_NET_CFG_CTRL_GATHER        ? "GATHER "      : "",
+			cap & NFP_NET_CFG_CTRL_LSO           ? "TSO "         : "",
+			cap & NFP_NET_CFG_CTRL_RXQINQ        ? "RXQINQ "      : "",
+			cap & NFP_NET_CFG_CTRL_RXVLAN_V2     ? "RXVLANv2 "    : "",
+			cap & NFP_NET_CFG_CTRL_RINGCFG       ? "RINGCFG "     : "",
+			cap & NFP_NET_CFG_CTRL_RSS           ? "RSS "         : "",
+			cap & NFP_NET_CFG_CTRL_IRQMOD        ? "IRQMOD "      : "",
+			cap & NFP_NET_CFG_CTRL_RINGPRIO      ? "RINGPRIO "    : "",
+			cap & NFP_NET_CFG_CTRL_MSIXAUTO      ? "MSIXAUTO "    : "",
+			cap & NFP_NET_CFG_CTRL_TXRWB         ? "TXRWB "       : "",
+			cap & NFP_NET_CFG_CTRL_L2SWITCH      ? "L2SWITCH "    : "",
+			cap & NFP_NET_CFG_CTRL_TXVLAN_V2     ? "TXVLANv2 "    : "",
+			cap & NFP_NET_CFG_CTRL_VXLAN         ? "VXLAN "       : "",
+			cap & NFP_NET_CFG_CTRL_NVGRE         ? "NVGRE "       : "",
+			cap & NFP_NET_CFG_CTRL_MSIX_TX_OFF   ? "MSIX_TX_OFF " : "",
+			cap & NFP_NET_CFG_CTRL_LSO2          ? "TSOv2 "       : "",
+			cap & NFP_NET_CFG_CTRL_RSS2          ? "RSSv2 "       : "",
+			cap & NFP_NET_CFG_CTRL_CSUM_COMPLETE ? "CSUM "        : "",
+			cap & NFP_NET_CFG_CTRL_LIVE_ADDR     ? "LIVE_ADDR "   : "");
+
+	PMD_INIT_LOG(INFO, "CAP_WORD1: %#x", cap_ext);
+	PMD_INIT_LOG(INFO, "%s%s%s%s%s%s%s",
+			cap_ext & NFP_NET_CFG_CTRL_PKT_TYPE        ? "PKT_TYPE "        : "",
+			cap_ext & NFP_NET_CFG_CTRL_IPSEC           ? "IPSEC "           : "",
+			cap_ext & NFP_NET_CFG_CTRL_IPSEC_SM_LOOKUP ? "IPSEC_SM "        : "",
+			cap_ext & NFP_NET_CFG_CTRL_IPSEC_LM_LOOKUP ? "IPSEC_LM "        : "",
+			cap_ext & NFP_NET_CFG_CTRL_MULTI_PF        ? "MULTI_PF "        : "",
+			cap_ext & NFP_NET_CFG_CTRL_FLOW_STEER      ? "FLOW_STEER "      : "",
+			cap_ext & NFP_NET_CFG_CTRL_IN_ORDER        ? "VIRTIO_IN_ORDER " : "");
 
 	PMD_INIT_LOG(INFO, "max_rx_queues: %u, max_tx_queues: %u",
 			hw->max_rx_queues, hw->max_tx_queues);
