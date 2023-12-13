@@ -175,7 +175,6 @@ nfp_net_nfdk_set_meta_data(struct rte_mbuf *pkt,
 	char *meta;
 	uint8_t layer = 0;
 	uint32_t meta_type;
-	uint32_t cap_extend;
 	struct nfp_net_hw *hw;
 	uint32_t header_offset;
 	uint8_t vlan_layer = 0;
@@ -184,7 +183,6 @@ nfp_net_nfdk_set_meta_data(struct rte_mbuf *pkt,
 
 	memset(&meta_data, 0, sizeof(meta_data));
 	hw = txq->hw;
-	cap_extend = hw->super.cap_ext;
 
 	if ((pkt->ol_flags & RTE_MBUF_F_TX_VLAN) != 0 &&
 			(hw->super.ctrl & NFP_NET_CFG_CTRL_TXVLAN_V2) != 0) {
@@ -195,7 +193,7 @@ nfp_net_nfdk_set_meta_data(struct rte_mbuf *pkt,
 	}
 
 	if ((pkt->ol_flags & RTE_MBUF_F_TX_SEC_OFFLOAD) != 0 &&
-			(cap_extend & NFP_NET_CFG_CTRL_IPSEC) != 0) {
+			(hw->super.ctrl_ext & NFP_NET_CFG_CTRL_IPSEC) != 0) {
 		uint32_t ipsec_type = NFP_NET_META_IPSEC |
 				NFP_NET_META_IPSEC << NFP_NET_META_FIELD_SIZE |
 				NFP_NET_META_IPSEC << (2 * NFP_NET_META_FIELD_SIZE);
