@@ -417,6 +417,11 @@ nfp_net_set_mac_addr(struct rte_eth_dev *dev,
 		return -EBUSY;
 	}
 
+	if (rte_is_valid_assigned_ether_addr(mac_addr) == 0) {
+		PMD_DRV_LOG(ERR, "Invalid MAC address");
+		return -EINVAL;
+	}
+
 	/* Writing new MAC to the specific port BAR address */
 	nfp_write_mac(hw, (uint8_t *)mac_addr);
 
