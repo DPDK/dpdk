@@ -391,8 +391,7 @@ nfp_net_parse_meta_qinq(const struct nfp_meta_parsed *meta,
 {
 	struct nfp_hw *hw = &rxq->hw->super;
 
-	if ((hw->ctrl & NFP_NET_CFG_CTRL_RXQINQ) == 0 ||
-			(hw->cap & NFP_NET_CFG_CTRL_RXQINQ) == 0)
+	if ((hw->ctrl & NFP_NET_CFG_CTRL_RXQINQ) == 0)
 		return;
 
 	if (meta->vlan_layer < NFP_META_MAX_VLANS)

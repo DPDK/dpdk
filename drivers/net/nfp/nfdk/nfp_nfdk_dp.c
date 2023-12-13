@@ -23,7 +23,7 @@ nfp_net_nfdk_tx_cksum(struct nfp_net_txq *txq,
 	uint64_t ol_flags;
 	struct nfp_net_hw *hw = txq->hw;
 
-	if ((hw->super.cap & NFP_NET_CFG_CTRL_TXCSUM) == 0)
+	if ((hw->super.ctrl & NFP_NET_CFG_CTRL_TXCSUM) == 0)
 		return flags;
 
 	ol_flags = mb->ol_flags;
@@ -57,7 +57,7 @@ nfp_net_nfdk_tx_tso(struct nfp_net_txq *txq,
 
 	txd.raw = 0;
 
-	if ((hw->super.cap & NFP_NET_CFG_CTRL_LSO_ANY) == 0)
+	if ((hw->super.ctrl & NFP_NET_CFG_CTRL_LSO_ANY) == 0)
 		return txd.raw;
 
 	ol_flags = mb->ol_flags;
@@ -146,7 +146,7 @@ nfp_net_nfdk_tx_maybe_close_block(struct nfp_net_txq *txq,
 		return -EINVAL;
 
 	/* Count TSO descriptor */
-	if ((txq->hw->super.cap & NFP_NET_CFG_CTRL_LSO_ANY) != 0 &&
+	if ((txq->hw->super.ctrl & NFP_NET_CFG_CTRL_LSO_ANY) != 0 &&
 			(pkt->ol_flags & RTE_MBUF_F_TX_TCP_SEG) != 0)
 		n_descs++;
 
@@ -325,7 +325,7 @@ nfp_net_nfdk_xmit_pkts_common(void *tx_queue,
 			nfp_net_nfdk_set_meta_data(pkt, txq, &metadata);
 
 		if (unlikely(pkt->nb_segs > 1 &&
-				(hw->super.cap & NFP_NET_CFG_CTRL_GATHER) == 0)) {
+				(hw->super.ctrl & NFP_NET_CFG_CTRL_GATHER) == 0)) {
 			PMD_TX_LOG(ERR, "Multisegment packet not supported");
 			goto xmit_end;
 		}
@@ -335,7 +335,7 @@ nfp_net_nfdk_xmit_pkts_common(void *tx_queue,
 		 * multisegment packet, but TSO info needs to be in all of them.
 		 */
 		dma_len = pkt->data_len;
-		if ((hw->super.cap & NFP_NET_CFG_CTRL_LSO_ANY) != 0 &&
+		if ((hw->super.ctrl & NFP_NET_CFG_CTRL_LSO_ANY) != 0 &&
 				(pkt->ol_flags & RTE_MBUF_F_TX_TCP_SEG) != 0) {
 			type = NFDK_DESC_TX_TYPE_TSO;
 		} else if (pkt->next == NULL && dma_len <= NFDK_TX_MAX_DATA_PER_HEAD) {
@@ -408,7 +408,7 @@ nfp_net_nfdk_xmit_pkts_common(void *tx_queue,
 		ktxds->raw = rte_cpu_to_le_64(nfp_net_nfdk_tx_cksum(txq, temp_pkt, metadata));
 		ktxds++;
 
-		if ((hw->super.cap & NFP_NET_CFG_CTRL_LSO_ANY) != 0 &&
+		if ((hw->super.ctrl & NFP_NET_CFG_CTRL_LSO_ANY) != 0 &&
 				(temp_pkt->ol_flags & RTE_MBUF_F_TX_TCP_SEG) != 0) {
 			ktxds->raw = rte_cpu_to_le_64(nfp_net_nfdk_tx_tso(txq, temp_pkt));
 			ktxds++;
