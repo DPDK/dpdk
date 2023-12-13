@@ -260,37 +260,50 @@ plt_thread_is_valid(plt_thread_t thr)
 
 /* Log */
 extern int cnxk_logtype_base;
+#define RTE_LOGTYPE_base cnxk_logtype_base
 extern int cnxk_logtype_mbox;
+#define RTE_LOGTYPE_mbox cnxk_logtype_mbox
 extern int cnxk_logtype_cpt;
+#define RTE_LOGTYPE_cpt cnxk_logtype_cpt
 extern int cnxk_logtype_ml;
+#define RTE_LOGTYPE_ml cnxk_logtype_ml
 extern int cnxk_logtype_npa;
+#define RTE_LOGTYPE_npa cnxk_logtype_npa
 extern int cnxk_logtype_nix;
+#define RTE_LOGTYPE_nix cnxk_logtype_nix
 extern int cnxk_logtype_npc;
+#define RTE_LOGTYPE_npc cnxk_logtype_npc
 extern int cnxk_logtype_sso;
+#define RTE_LOGTYPE_sso cnxk_logtype_sso
 extern int cnxk_logtype_tim;
+#define RTE_LOGTYPE_tim cnxk_logtype_tim
 extern int cnxk_logtype_tm;
+#define RTE_LOGTYPE_tm cnxk_logtype_tm
 extern int cnxk_logtype_ree;
+#define RTE_LOGTYPE_ree cnxk_logtype_ree
 extern int cnxk_logtype_dpi;
+#define RTE_LOGTYPE_dpi cnxk_logtype_dpi
 extern int cnxk_logtype_rep;
+#define RTE_LOGTYPE_rep cnxk_logtype_rep
 extern int cnxk_logtype_esw;
+#define RTE_LOGTYPE_esw cnxk_logtype_esw
 
 #define RTE_LOGTYPE_CNXK cnxk_logtype_base
 
-#define plt_err(fmt, args...)                                                  \
-	RTE_LOG(ERR, CNXK, "%s():%u " fmt "\n", __func__, __LINE__, ##args)
-#define plt_info(fmt, args...) RTE_LOG(INFO, CNXK, fmt "\n", ##args)
-#define plt_warn(fmt, args...) RTE_LOG(WARNING, CNXK, fmt "\n", ##args)
-#define plt_print(fmt, args...) RTE_LOG(INFO, CNXK, fmt "\n", ##args)
+#define plt_err(...) \
+	RTE_LOG_LINE_PREFIX(ERR, CNXK, "%s():%u ", __func__ RTE_LOG_COMMA __LINE__, __VA_ARGS__)
+#define plt_info(...) RTE_LOG_LINE(INFO, CNXK, __VA_ARGS__)
+#define plt_warn(...) RTE_LOG_LINE(WARNING, CNXK, __VA_ARGS__)
+#define plt_print(...) RTE_LOG_LINE(INFO, CNXK, __VA_ARGS__)
 #define plt_dump(fmt, ...)      fprintf(stderr, fmt "\n", ##__VA_ARGS__)
 #define plt_dump_no_nl(fmt, ...) fprintf(stderr, fmt, ##__VA_ARGS__)
 
 /**
  * Log debug message if given subsystem logging is enabled.
  */
-#define plt_dbg(subsystem, fmt, args...)                                       \
-	rte_log(RTE_LOG_DEBUG, cnxk_logtype_##subsystem,                       \
-		"[%s] %s():%u " fmt "\n", #subsystem, __func__, __LINE__,      \
-##args)
+#define plt_dbg(subsystem, ...) \
+	RTE_LOG_LINE_PREFIX(DEBUG, subsystem, "%s():%u ", __func__ RTE_LOG_COMMA __LINE__, \
+		__VA_ARGS__)
 
 #define plt_base_dbg(fmt, ...)	plt_dbg(base, fmt, ##__VA_ARGS__)
 #define plt_cpt_dbg(fmt, ...)	plt_dbg(cpt, fmt, ##__VA_ARGS__)
@@ -308,12 +321,15 @@ extern int cnxk_logtype_esw;
 #define plt_esw_dbg(fmt, ...)	plt_dbg(esw, fmt, ##__VA_ARGS__)
 
 /* Datapath logs */
-#define plt_dp_err(fmt, args...)                                               \
-	RTE_LOG_DP(ERR, CNXK, "%s():%u " fmt "\n", __func__, __LINE__, ##args)
-#define plt_dp_info(fmt, args...)                                              \
-	RTE_LOG_DP(INFO, CNXK, "%s():%u " fmt "\n", __func__, __LINE__, ##args)
-#define plt_dp_dbg(fmt, args...)                                              \
-	RTE_LOG_DP(DEBUG, CNXK, "%s():%u " fmt "\n", __func__, __LINE__, ##args)
+#define plt_dp_err(...) \
+	RTE_LOG_DP_LINE_PREFIX(ERR, CNXK, "%s():%u ", __func__ RTE_LOG_COMMA __LINE__, \
+		__VA_ARGS__)
+#define plt_dp_info(...) \
+	RTE_LOG_DP_LINE_PREFIX(INFO, CNXK, "%s():%u ", __func__ RTE_LOG_COMMA __LINE__, \
+		__VA_ARGS__)
+#define plt_dp_dbg(...) \
+	RTE_LOG_DP_LINE_PREFIX(DEBUG, CNXK, "%s():%u ", __func__ RTE_LOG_COMMA __LINE__, \
+		__VA_ARGS__)
 
 #ifdef __cplusplus
 #define CNXK_PCI_ID(subsystem_dev, dev)                                        \

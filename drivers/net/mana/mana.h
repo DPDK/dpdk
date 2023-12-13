@@ -466,17 +466,16 @@ struct mana_rxq {
 extern int mana_logtype_driver;
 #define RTE_LOGTYPE_MANA_DRIVER mana_logtype_driver
 extern int mana_logtype_init;
+#define RTE_LOGTYPE_MANA_INIT mana_logtype_init
 
-#define DRV_LOG(level, fmt, args...) \
-	rte_log(RTE_LOG_ ## level, mana_logtype_driver, "%s(): " fmt "\n", \
-		__func__, ## args)
+#define DRV_LOG(level, ...) \
+	RTE_LOG_LINE_PREFIX(level, MANA_DRIVER, "%s(): ", __func__, __VA_ARGS__)
 
-#define DP_LOG(level, fmt, args...) \
-	RTE_LOG_DP(level, MANA_DRIVER, fmt "\n", ## args)
+#define DP_LOG(level, ...) \
+	RTE_LOG_DP_LINE(level, MANA_DRIVER, __VA_ARGS__)
 
-#define PMD_INIT_LOG(level, fmt, args...) \
-	rte_log(RTE_LOG_ ## level, mana_logtype_init, "%s(): " fmt "\n",\
-		__func__, ## args)
+#define PMD_INIT_LOG(level, ...) \
+	RTE_LOG_LINE_PREFIX(level, MANA_INIT, "%s(): ", __func__, __VA_ARGS__)
 
 #define PMD_INIT_FUNC_TRACE() PMD_INIT_LOG(DEBUG, " >>")
 

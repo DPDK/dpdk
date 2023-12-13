@@ -16,11 +16,10 @@
 static void bond_mode_8023ad_ext_periodic_cb(void *arg);
 #ifdef RTE_LIBRTE_BOND_DEBUG_8023AD
 
-#define MODE4_DEBUG_LOG(fmt, ...)			\
-	rte_log(RTE_LOG_DEBUG, bond_logtype,		\
-		"%6u [Port %u: %s] " fmt "\n",		\
-		bond_dbg_get_time_diff_ms(), member_id,	\
-		__func__, ##__VA_ARGS__)
+#define MODE4_DEBUG_LOG(...) \
+	RTE_LOG_LINE_PREFIX(DEBUG, BOND, "%6u [Port %u: %s] ", \
+		bond_dbg_get_time_diff_ms() RTE_LOG_COMMA member_id RTE_LOG_COMMA __func__, \
+		__VA_ARGS__)
 
 static uint64_t start_time;
 

@@ -11,24 +11,19 @@
 /**< ARMv8 Crypto PMD device name */
 
 extern int crypto_armv8_log_type;
+#define RTE_LOGTYPE_CRYPTO_ARMV8 crypto_armv8_log_type
 
-#define ARMV8_CRYPTO_LOG_ERR(fmt, args...)			\
-	rte_log(RTE_LOG_ERR, crypto_armv8_log_type,		\
-			"[%s] %s() line %u: " fmt "\n",		\
-			RTE_STR(CRYPTODEV_NAME_ARMV8_PMD),	\
-			__func__, __LINE__, ## args)
+#define ARMV8_CRYPTO_LOG_ERR(...) \
+	RTE_LOG_LINE_PREFIX(ERR, CRYPTO_ARMV8, "%s() line %u: ", \
+		__func__ RTE_LOG_COMMA __LINE__, __VA_ARGS__)
 
-#define ARMV8_CRYPTO_LOG_INFO(fmt, args...)			\
-	rte_log(RTE_LOG_INFO, crypto_armv8_log_type,		\
-			"[%s] %s() line %u: " fmt "\n",		\
-			RTE_STR(CRYPTODEV_NAME_ARMV8_PMD),	\
-			__func__, __LINE__, ## args)
+#define ARMV8_CRYPTO_LOG_INFO(...) \
+	RTE_LOG_LINE_PREFIX(INFO, CRYPTO_ARMV8, "%s() line %u: ", \
+		__func__ RTE_LOG_COMMA __LINE__, __VA_ARGS__)
 
-#define ARMV8_CRYPTO_LOG_DBG(fmt, args...)			\
-	rte_log(RTE_LOG_DEBUG, crypto_armv8_log_type,		\
-			"[%s] %s() line %u: " fmt "\n",		\
-			RTE_STR(CRYPTODEV_NAME_ARMV8_PMD),	\
-			__func__, __LINE__, ## args)
+#define ARMV8_CRYPTO_LOG_DBG(...) \
+	RTE_LOG_LINE_PREFIX(DEBUG, CRYPTO_ARMV8, "%s() line %u: ", \
+		__func__ RTE_LOG_COMMA __LINE__, __VA_ARGS__)
 
 #define NBBY		8		/* Number of bits in a byte */
 #define BYTE_LENGTH(x)	((x) / NBBY)	/* Number of bytes in x (round down) */

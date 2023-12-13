@@ -4,7 +4,7 @@
  */
 
 extern int tap_logtype;
+#define RTE_LOGTYPE_TAP tap_logtype
 
-#define TAP_LOG(level, fmt, args...) \
-	rte_log(RTE_LOG_ ## level, tap_logtype, "%s(): " fmt "\n", \
-		__func__, ## args)
+#define TAP_LOG(level, ...) \
+	RTE_LOG_LINE_PREFIX(level, TAP, "%s(): ", __func__, __VA_ARGS__)

@@ -9,8 +9,8 @@ extern int eventdev_dlb2_log_level;
 #define RTE_LOGTYPE_EVENTDEV_DLB2 eventdev_dlb2_log_level
 
 /* Dynamic logging */
-#define DLB2_LOG_IMPL(level, fmt, args...) \
-	RTE_LOG(level, EVENTDEV_DLB2, "%s" fmt "\n", __func__, ##args)
+#define DLB2_LOG_IMPL(level, ...) \
+	RTE_LOG_LINE_PREFIX(level, EVENTDEV_DLB2, "%s", __func__, __VA_ARGS__)
 
 #define DLB2_LOG_INFO(fmt, args...) \
 	DLB2_LOG_IMPL(INFO, fmt, ## args)
@@ -19,7 +19,7 @@ extern int eventdev_dlb2_log_level;
 	DLB2_LOG_IMPL(ERR, fmt, ## args)
 
 /* remove debug logs at compile time unless actually debugging */
-#define DLB2_LOG_LINE_DBG(fmt, args...) \
-	RTE_LOG_DP(DEBUG, EVENTDEV_DLB2, fmt "\n", ## args)
+#define DLB2_LOG_LINE_DBG(...) \
+	RTE_LOG_DP_LINE(DEBUG, EVENTDEV_DLB2, __VA_ARGS__)
 
 #endif /* _DLB2_EVDEV_LOG_H_ */

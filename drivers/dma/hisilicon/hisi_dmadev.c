@@ -18,21 +18,20 @@
 #include "hisi_dmadev.h"
 
 RTE_LOG_REGISTER_DEFAULT(hisi_dma_logtype, INFO);
-#define HISI_DMA_LOG(level, fmt, args...) \
-		rte_log(RTE_LOG_ ## level, hisi_dma_logtype, \
-		"%s(): " fmt "\n", __func__, ##args)
-#define HISI_DMA_LOG_RAW(hw, level, fmt, args...) \
-		rte_log(RTE_LOG_ ## level, hisi_dma_logtype, \
-		"%s %s(): " fmt "\n", (hw)->data->dev_name, \
-		__func__, ##args)
-#define HISI_DMA_DEBUG(hw, fmt, args...) \
-		HISI_DMA_LOG_RAW(hw, DEBUG, fmt, ## args)
-#define HISI_DMA_INFO(hw, fmt, args...) \
-		HISI_DMA_LOG_RAW(hw, INFO, fmt, ## args)
-#define HISI_DMA_WARN(hw, fmt, args...) \
-		HISI_DMA_LOG_RAW(hw, WARNING, fmt, ## args)
-#define HISI_DMA_ERR(hw, fmt, args...) \
-		HISI_DMA_LOG_RAW(hw, ERR, fmt, ## args)
+#define RTE_LOGTYPE_HISI_DMA hisi_dma_logtype
+#define HISI_DMA_LOG(level, ...) \
+	RTE_LOG_LINE_PREFIX(level, HISI_DMA, "%s(): ", __func__, __VA_ARGS__)
+#define HISI_DMA_DEV_LOG(hw, level, ...) \
+	RTE_LOG_LINE_PREFIX(level, HISI_DMA, "%s %s(): ", \
+		(hw)->data->dev_name RTE_LOG_COMMA __func__, __VA_ARGS__)
+#define HISI_DMA_DEBUG(hw, ...) \
+	HISI_DMA_DEV_LOG(hw, DEBUG, __VA_ARGS__)
+#define HISI_DMA_INFO(hw, ...) \
+	HISI_DMA_DEV_LOG(hw, INFO, __VA_ARGS__)
+#define HISI_DMA_WARN(hw, ...) \
+	HISI_DMA_DEV_LOG(hw, WARNING, __VA_ARGS__)
+#define HISI_DMA_ERR(hw, ...) \
+	HISI_DMA_DEV_LOG(hw, ERR, __VA_ARGS__)
 
 static uint32_t
 hisi_dma_queue_base(struct hisi_dma_dev *hw)

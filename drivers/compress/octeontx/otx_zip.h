@@ -18,6 +18,7 @@
 #include <zip_regs.h>
 
 extern int octtx_zip_logtype_driver;
+#define RTE_LOGTYPE_OCTTX_ZIP_DRIVER octtx_zip_logtype_driver
 
 /* ZIP VF Control/Status registers (CSRs): */
 /* VF_BAR0: */
@@ -76,10 +77,8 @@ extern int octtx_zip_logtype_driver;
 /**< ZIP PMD device name */
 #define COMPRESSDEV_NAME_ZIP_PMD	compress_octeontx
 
-#define ZIP_PMD_LOG(level, fmt, args...) \
-	rte_log(RTE_LOG_ ## level, \
-	octtx_zip_logtype_driver, "%s(): "fmt "\n", \
-	__func__, ##args)
+#define ZIP_PMD_LOG(level, ...) \
+	RTE_LOG_LINE_PREFIX(level, OCTTX_ZIP_DRIVER, "%s(): ", __func__, __VA_ARGS__)
 
 #define ZIP_PMD_INFO(fmt, args...) \
 	ZIP_PMD_LOG(INFO, fmt, ## args)

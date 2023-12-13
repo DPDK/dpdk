@@ -33,9 +33,9 @@
 #define MIN(v1, v2)	((v1) < (v2) ? (v1) : (v2))
 
 RTE_LOG_REGISTER(ifcvf_vdpa_logtype, pmd.vdpa.ifcvf, NOTICE);
-#define DRV_LOG(level, fmt, args...) \
-	rte_log(RTE_LOG_ ## level, ifcvf_vdpa_logtype, \
-		"IFCVF %s(): " fmt "\n", __func__, ##args)
+#define RTE_LOGTYPE_IFCVF_VDPA ifcvf_vdpa_logtype
+#define DRV_LOG(level, ...) \
+	RTE_LOG_LINE_PREFIX(level, IFCVF_VDPA, "%s(): ", __func__, __VA_ARGS__)
 
 #define IFCVF_USED_RING_LEN(size) \
 	((size) * sizeof(struct vring_used_elem) + sizeof(uint16_t) * 3)

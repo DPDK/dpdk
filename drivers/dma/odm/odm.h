@@ -13,8 +13,6 @@
 #include <rte_log.h>
 #include <rte_memzone.h>
 
-extern int odm_logtype;
-
 /* ODM VF register offsets from VF_BAR0 */
 #define ODM_VDMA_EN(x)		(0x00 | (x << 3))
 #define ODM_VDMA_REQQ_CTL(x)	(0x80 | (x << 3))
@@ -66,10 +64,11 @@ extern int odm_logtype;
 #define odm_read64(addr)       rte_read64_relaxed((volatile void *)(addr))
 #define odm_write64(val, addr) rte_write64_relaxed((val), (volatile void *)(addr))
 
+extern int odm_logtype;
+#define RTE_LOGTYPE_ODM odm_logtype
+
 #define ODM_LOG(level, ...) \
-	rte_log(RTE_LOG_ ## level, odm_logtype, \
-		RTE_FMT("%s(): %u" RTE_FMT_HEAD(__VA_ARGS__,) "\n", __func__, __LINE__, \
-			RTE_FMT_TAIL(__VA_ARGS__, )))
+	RTE_LOG_LINE_PREFIX(level, ODM, "%s(): %u", __func__ RTE_LOG_COMMA __LINE__, __VA_ARGS__)
 
 /*
  * Structure odm_instr_hdr_s for ODM

@@ -8,9 +8,9 @@
 #include <rte_log.h>
 
 extern int vdev_logtype_bus;
+#define RTE_LOGTYPE_VDEV_BUS vdev_logtype_bus
 
-#define VDEV_LOG(level, fmt, args...) \
-	rte_log(RTE_LOG_ ## level, vdev_logtype_bus, "%s(): " fmt "\n", \
-		__func__, ##args)
+#define VDEV_LOG(level, ...) \
+	RTE_LOG_LINE_PREFIX(level, VDEV_BUS, "%s(): ", __func__, __VA_ARGS__)
 
 #endif /* _VDEV_LOGS_H_ */

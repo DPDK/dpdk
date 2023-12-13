@@ -21,9 +21,9 @@
 #include "skeleton_dmadev.h"
 
 RTE_LOG_REGISTER_DEFAULT(skeldma_logtype, INFO);
-#define SKELDMA_LOG(level, fmt, args...) \
-	rte_log(RTE_LOG_ ## level, skeldma_logtype, "%s(): " fmt "\n", \
-		__func__, ##args)
+#define RTE_LOGTYPE_SKELDMA skeldma_logtype
+#define SKELDMA_LOG(level, ...) \
+	RTE_LOG_LINE_PREFIX(level, SKELDMA, "%s(): ", __func__, __VA_ARGS__)
 
 static int
 skeldma_info_get(const struct rte_dma_dev *dev, struct rte_dma_info *dev_info,

@@ -80,14 +80,11 @@ typedef uint64_t  dma_addr_t;
 
 #define PTR_ALIGN(p, a)		((typeof(p))ALIGN((unsigned long)(p), (a)))
 
-/* Reported driver name. */
-#define HINIC_DRIVER_NAME "net_hinic"
-
 extern int hinic_logtype;
+#define RTE_LOGTYPE_NET_HINIC hinic_logtype
 
-#define PMD_DRV_LOG(level, fmt, args...) \
-	rte_log(RTE_LOG_ ## level, hinic_logtype, \
-		HINIC_DRIVER_NAME": " fmt "\n", ##args)
+#define PMD_DRV_LOG(level, ...) \
+	RTE_LOG_LINE(level, NET_HINIC, __VA_ARGS__)
 
 /* common definition */
 #ifndef ETH_ALEN

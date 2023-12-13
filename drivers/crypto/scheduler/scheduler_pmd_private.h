@@ -15,10 +15,11 @@
 #define PER_WORKER_BUFF_SIZE			(256)
 
 extern int scheduler_logtype_driver;
+#define RTE_LOGTYPE_SCHEDULER_DRIVER scheduler_logtype_driver
 
-#define CR_SCHED_LOG(level, fmt, args...) \
-	rte_log(RTE_LOG_ ## level, scheduler_logtype_driver,		\
-			"%s() line %u: "fmt "\n", __func__, __LINE__, ##args)
+#define CR_SCHED_LOG(level, ...) \
+	RTE_LOG_LINE_PREFIX(level, SCHEDULER_DRIVER, "%s() line %u: ", \
+		__func__ RTE_LOG_COMMA __LINE__, __VA_ARGS__)
 
 struct scheduler_worker {
 	uint8_t dev_id;

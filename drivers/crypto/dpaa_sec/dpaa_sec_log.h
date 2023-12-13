@@ -11,13 +11,11 @@
 extern int dpaa_logtype_sec;
 #define RTE_LOGTYPE_DPAA_SEC dpaa_logtype_sec
 
-#define DPAA_SEC_LOG(level, fmt, args...) \
-	rte_log(RTE_LOG_ ## level, dpaa_logtype_sec, "dpaa_sec: " \
-		fmt "\n", ##args)
+#define DPAA_SEC_LOG(level, ...) \
+	RTE_LOG_LINE(level, DPAA_SEC, __VA_ARGS__)
 
-#define DPAA_SEC_DEBUG(fmt, args...) \
-	rte_log(RTE_LOG_DEBUG, dpaa_logtype_sec, "dpaa_sec: %s(): " \
-		fmt "\n", __func__, ##args)
+#define DPAA_SEC_DEBUG(...) \
+	RTE_LOG_LINE_PREFIX(DEBUG, DPAA_SEC, "%s(): ", __func__, __VA_ARGS__)
 
 #define PMD_INIT_FUNC_TRACE() DPAA_SEC_DEBUG(" >>")
 
@@ -29,8 +27,8 @@ extern int dpaa_logtype_sec;
 	DPAA_SEC_LOG(WARNING, fmt, ## args)
 
 /* DP Logs, toggled out at compile time if level lower than current level */
-#define DPAA_SEC_DP_LOG(level, fmt, args...) \
-	RTE_LOG_DP_LINE(level, DPAA_SEC, fmt, ## args)
+#define DPAA_SEC_DP_LOG(level, ...) \
+	RTE_LOG_DP_LINE(level, DPAA_SEC, __VA_ARGS__)
 
 #define DPAA_SEC_DP_DEBUG(fmt, args...) \
 	DPAA_SEC_DP_LOG(DEBUG, fmt, ## args)

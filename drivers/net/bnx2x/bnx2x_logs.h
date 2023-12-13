@@ -9,44 +9,40 @@
 #define _PMD_LOGS_H_
 
 extern int bnx2x_logtype_init;
-#define PMD_INIT_LOG(level, sc, fmt, args...) \
-	rte_log(RTE_LOG_ ## level, bnx2x_logtype_init, \
-	"[bnx2x_pmd: %s] %s() " fmt "\n", (sc)->devinfo.name, __func__, ##args)
+#define RTE_LOGTYPE_BNX2X_INIT bnx2x_logtype_init
+#define PMD_INIT_LOG(level, sc, ...) \
+	RTE_LOG_LINE_PREFIX(level, BNX2X_INIT, "[%s] %s() ", \
+		(sc)->devinfo.name RTE_LOG_COMMA __func__, __VA_ARGS__)
 
 #define PMD_INIT_FUNC_TRACE(sc) PMD_INIT_LOG(DEBUG, sc, " >>")
 
 extern int bnx2x_logtype_driver;
-#define PMD_DRV_LOG_RAW(level, sc, fmt, args...) \
-	rte_log(RTE_LOG_ ## level, bnx2x_logtype_driver, \
-		"[%s:%d(%s)] " fmt,	__func__, __LINE__, \
-		(sc)->devinfo.name ? (sc)->devinfo.name : "", ## args)
-
-#define PMD_DRV_LOG(level, sc, fmt, args...) \
-	PMD_DRV_LOG_RAW(level, sc, fmt "\n", ## args)
+#define RTE_LOGTYPE_BNX2X_DRIVER bnx2x_logtype_driver
+#define PMD_DRV_LOG(level, sc, ...) \
+	RTE_LOG_LINE_PREFIX(level, BNX2X_DRIVER, "[%s:%d(%s)] ", \
+		__func__ RTE_LOG_COMMA __LINE__ RTE_LOG_COMMA \
+		(sc)->devinfo.name ? (sc)->devinfo.name : "", __VA_ARGS__)
 
 #ifdef RTE_LIBRTE_BNX2X_DEBUG_RX
-#define PMD_RX_LOG(level, fmt, args...) \
-	rte_log(RTE_LOG_ ## level, bnx2x_logtype_driver, \
-	"%s(): " fmt "\n", __func__, ## args)
+#define PMD_RX_LOG(level, ...) \
+	RTE_LOG_LINE_PREFIX(level, BNX2X_DRIVER, "%s(): ", __func__, __VA_ARGS__)
 #else
-#define PMD_RX_LOG(level, fmt, args...) do { } while(0)
+#define PMD_RX_LOG(...) do { } while(0)
 #endif
 
 #ifdef RTE_LIBRTE_BNX2X_DEBUG_TX
-#define PMD_TX_LOG(level, fmt, args...) \
-	rte_log(RTE_LOG_ ## level, bnx2x_logtype_driver, \
-		"%s(): " fmt "\n", __func__, ## args)
+#define PMD_TX_LOG(level, ...) \
+	RTE_LOG_LINE_PREFIX(level, BNX2X_DRIVER, "%s(): ", __func__, __VA_ARGS__)
 #else
-#define PMD_TX_LOG(level, fmt, args...) do { } while(0)
+#define PMD_TX_LOG(...) do { } while(0)
 #endif
 
 #ifdef RTE_LIBRTE_BNX2X_DEBUG_PERIODIC
-#define PMD_DEBUG_PERIODIC_LOG(level, sc, fmt, args...) \
-	rte_log(RTE_LOG_ ## level, bnx2x_logtype_driver, \
-		"%s(%s): " fmt "\n", __func__, \
-		(sc)->devinfo.name ? (sc)->devinfo.name : "", ## args)
+#define PMD_DEBUG_PERIODIC_LOG(level, sc, ...) \
+	RTE_LOG_LINE_PREFIX(level, BNX2X_DRIVER, "%s(%s): ", \
+		__func__ RTE_LOG_COMMA (sc)->devinfo.name ? (sc)->devinfo.name : "", __VA_ARGS__)
 #else
-#define PMD_DEBUG_PERIODIC_LOG(level, sc, fmt, args...) do { } while (0)
+#define PMD_DEBUG_PERIODIC_LOG(...) do { } while (0)
 #endif
 
 #endif /* _PMD_LOGS_H_ */

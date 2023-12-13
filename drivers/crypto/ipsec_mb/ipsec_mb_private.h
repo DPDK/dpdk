@@ -59,9 +59,10 @@ extern RTE_DEFINE_PER_LCORE(IMB_MGR *, mb_mgr);
 
 /** PMD LOGTYPE DRIVER, common to all PMDs */
 extern int ipsec_mb_logtype_driver;
-#define IPSEC_MB_LOG(level, fmt, ...)                                         \
-	rte_log(RTE_LOG_##level, ipsec_mb_logtype_driver,                     \
-		"%s() line %u: " fmt "\n", __func__, __LINE__, ##__VA_ARGS__)
+#define RTE_LOGTYPE_IPSEC_MB ipsec_mb_logtype_driver
+#define IPSEC_MB_LOG(level, ...) \
+	RTE_LOG_LINE_PREFIX(level, IPSEC_MB, "%s() line %u: ", \
+		__func__ RTE_LOG_COMMA __LINE__, __VA_ARGS__)
 
 /** All supported device types */
 enum ipsec_mb_pmd_types {

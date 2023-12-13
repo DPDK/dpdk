@@ -548,8 +548,8 @@ static int bnxt_handle_tx_cp(struct bnxt_tx_queue *txq)
 		if (CMP_TYPE(txcmp) == TX_CMPL_TYPE_TX_L2)
 			nb_tx_pkts += opaque;
 		else
-			RTE_LOG_DP(ERR, BNXT,
-					"Unhandled CMP type %02x\n",
+			RTE_LOG_DP_LINE(ERR, BNXT,
+					"Unhandled CMP type %02x",
 					CMP_TYPE(txcmp));
 		raw_cons = NEXT_RAW_CMP(raw_cons);
 	} while (nb_tx_pkts < ring_mask);

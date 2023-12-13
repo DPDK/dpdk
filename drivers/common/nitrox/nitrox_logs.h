@@ -7,7 +7,7 @@
 
 extern int nitrox_logtype;
 #define RTE_LOGTYPE_NITROX nitrox_logtype
-#define NITROX_LOG_LINE(level, fmt, args...) \
-	RTE_LOG(level, NITROX, "%s:%d " fmt "\n", __func__, __LINE__, ## args)
+#define NITROX_LOG_LINE(level, ...) \
+	RTE_LOG_LINE_PREFIX(level, NITROX, "%s:%d ", __func__ RTE_LOG_COMMA __LINE__, __VA_ARGS__)
 
 #endif /* _NITROX_LOGS_H_ */

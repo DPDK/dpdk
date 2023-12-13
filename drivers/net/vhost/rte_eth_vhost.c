@@ -25,8 +25,7 @@ RTE_LOG_REGISTER_DEFAULT(vhost_logtype, NOTICE);
 #define RTE_LOGTYPE_VHOST vhost_logtype
 
 #define VHOST_LOG_LINE(level, ...) \
-	RTE_LOG(level, VHOST, RTE_FMT(RTE_FMT_HEAD(__VA_ARGS__ ,) "\n", \
-		RTE_FMT_TAIL(__VA_ARGS__ ,)))
+	RTE_LOG_LINE(level, VHOST, __VA_ARGS__)
 
 enum {VIRTIO_RXQ, VIRTIO_TXQ, VIRTIO_QNUM};
 

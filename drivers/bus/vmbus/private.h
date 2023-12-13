@@ -34,9 +34,9 @@ extern struct rte_vmbus_bus rte_vmbus_bus;
 	RTE_TAILQ_FOREACH(p, &(rte_vmbus_bus.driver_list), next)
 
 extern int vmbus_logtype_bus;
-#define VMBUS_LOG(level, fmt, args...) \
-	rte_log(RTE_LOG_ ## level, vmbus_logtype_bus, "%s(): " fmt "\n", \
-		__func__, ##args)
+#define RTE_LOGTYPE_VMBUS_BUS vmbus_logtype_bus
+#define VMBUS_LOG(level, ...) \
+	RTE_LOG_LINE_PREFIX(level, VMBUS_BUS, "%s(): ", __func__, __VA_ARGS__)
 
 struct vmbus_br {
 	struct vmbus_bufring *vbr;

@@ -8,10 +8,10 @@
 #include <rte_rawdev.h>
 
 extern int skeleton_pmd_logtype;
+#define RTE_LOGTYPE_SKELETON_PMD skeleton_pmd_logtype
 
-#define SKELETON_PMD_LOG(level, fmt, args...) \
-	rte_log(RTE_LOG_ ## level, skeleton_pmd_logtype, "%s(): " fmt "\n", \
-		__func__, ##args)
+#define SKELETON_PMD_LOG(level, ...) \
+	RTE_LOG_LINE_PREFIX(level, SKELETON_PMD, "%s(): ", __func__, __VA_ARGS__)
 
 #define SKELETON_PMD_FUNC_TRACE() SKELETON_PMD_LOG(DEBUG, ">>")
 

@@ -51,10 +51,10 @@ static const struct softnic_conn_params conn_params_default = {
 };
 
 RTE_LOG_REGISTER_DEFAULT(pmd_softnic_logtype, NOTICE);
+#define RTE_LOGTYPE_PMD_SOFTNIC pmd_softnic_logtype
 
-#define PMD_LOG(level, fmt, args...) \
-	rte_log(RTE_LOG_ ## level, pmd_softnic_logtype, \
-		"%s(): " fmt "\n", __func__, ##args)
+#define PMD_LOG(level, ...) \
+	RTE_LOG_LINE_PREFIX(level, PMD_SOFTNIC, "%s(): ", __func__, __VA_ARGS__)
 
 static int
 pmd_dev_infos_get(struct rte_eth_dev *dev __rte_unused,

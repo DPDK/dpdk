@@ -12,13 +12,11 @@ extern "C" {
 extern int dpaa2_cmdif_logtype;
 #define RTE_LOGTYPE_DPAA2_CMDIF dpaa2_cmdif_logtype
 
-#define DPAA2_CMDIF_LOG(level, fmt, args...) \
-	rte_log(RTE_LOG_ ## level, dpaa2_cmdif_logtype, "dpaa2_cmdif: " \
-		fmt "\n", ## args)
+#define DPAA2_CMDIF_LOG(level, ...) \
+	RTE_LOG_LINE(level, DPAA2_CMDIF, __VA_ARGS__)
 
-#define DPAA2_CMDIF_DEBUG(fmt, args...) \
-	rte_log(RTE_LOG_DEBUG, dpaa2_cmdif_logtype, "dpaa2_cmdif: %s(): " \
-		fmt "\n", __func__, ## args)
+#define DPAA2_CMDIF_DEBUG(...) \
+	RTE_LOG_LINE_PREFIX(DEBUG, DPAA2_CMDIF, "%s(): ", __func__, __VA_ARGS__)
 
 #define DPAA2_CMDIF_FUNC_TRACE() DPAA2_CMDIF_DEBUG(">>")
 
@@ -30,8 +28,8 @@ extern int dpaa2_cmdif_logtype;
 	DPAA2_CMDIF_LOG(WARNING, fmt, ## args)
 
 /* DP Logs, toggled out at compile time if level lower than current level */
-#define DPAA2_CMDIF_DP_LOG(level, fmt, args...) \
-	RTE_LOG_DP(level, DPAA2_CMDIF, "dpaa2_cmdif: " fmt "\n", ## args)
+#define DPAA2_CMDIF_DP_LOG(level, ...) \
+	RTE_LOG_DP_LINE(level, DPAA2_CMDIF, __VA_ARGS__)
 
 #define DPAA2_CMDIF_DP_DEBUG(fmt, args...) \
 	DPAA2_CMDIF_DP_LOG(DEBUG, fmt, ## args)

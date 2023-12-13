@@ -151,11 +151,11 @@
 #define ACC_MAX_FFT_WIN      16
 
 extern int acc_common_logtype;
+#define RTE_LOGTYPE_ACC_COMMON acc_common_logtype
 
 /* Helper macro for logging */
-#define rte_acc_log(level, fmt, ...) \
-	rte_log(RTE_LOG_ ## level, acc_common_logtype, fmt "\n", \
-		##__VA_ARGS__)
+#define rte_acc_log(level, ...) \
+	RTE_LOG_LINE(level, ACC_COMMON, __VA_ARGS__)
 
 /* ACC100 DMA Descriptor triplet */
 struct acc_dma_triplet {

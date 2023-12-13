@@ -102,14 +102,14 @@ static struct rte_eth_link pmd_link = {
 };
 
 RTE_LOG_REGISTER_DEFAULT(af_packet_logtype, NOTICE);
+#define RTE_LOGTYPE_AFPACKET af_packet_logtype
 
-#define PMD_LOG(level, fmt, args...) \
-	rte_log(RTE_LOG_ ## level, af_packet_logtype, \
-		"%s(): " fmt "\n", __func__, ##args)
+#define PMD_LOG(level, ...) \
+	RTE_LOG_LINE_PREFIX(level, AFPACKET, "%s(): ", __func__, __VA_ARGS__)
 
-#define PMD_LOG_ERRNO(level, fmt, args...) \
-	rte_log(RTE_LOG_ ## level, af_packet_logtype, \
-		"%s(): " fmt ":%s\n", __func__, ##args, strerror(errno))
+#define PMD_LOG_ERRNO(level, fmt, ...) \
+	RTE_LOG_LINE(level, AFPACKET, "%s(): " fmt ":%s", __func__, \
+		## __VA_ARGS__, strerror(errno))
 
 static uint16_t
 eth_af_packet_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)

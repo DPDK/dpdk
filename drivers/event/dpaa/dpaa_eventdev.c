@@ -48,6 +48,7 @@
  * 1 Eventdev can have N Eventqueue
  */
 RTE_LOG_REGISTER_DEFAULT(dpaa_logtype_eventdev, NOTICE);
+#define RTE_LOGTYPE_DPAA_EVENTDEV dpaa_logtype_eventdev
 
 #define DISABLE_INTR_MODE "disable_intr"
 

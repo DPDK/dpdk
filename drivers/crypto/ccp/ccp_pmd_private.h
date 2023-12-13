@@ -11,18 +11,21 @@
 extern int crypto_ccp_logtype;
 #define RTE_LOGTYPE_CRYPTO_CCP crypto_ccp_logtype
 
-#define CCP_LOG_ERR(fmt, args...) \
-	RTE_LOG_LINE(ERR, CRYPTO_CCP, "%s() line %u: " fmt, __func__, __LINE__, ## args)
+#define CCP_LOG_ERR(...) \
+	RTE_LOG_LINE_PREFIX(ERR, CRYPTO_CCP, "%s() line %u: ", \
+		__func__ RTE_LOG_COMMA __LINE__, __VA_ARGS__)
 
 #ifdef RTE_LIBRTE_CCP_DEBUG
-#define CCP_LOG_INFO(fmt, args...) \
-	RTE_LOG_LINE(INFO, CRYPTO_CCP, "%s() line %u: " fmt, __func__, __LINE__, ## args)
+#define CCP_LOG_INFO(...) \
+	RTE_LOG_LINE_PREFIX(INFO, CRYPTO_CCP, "%s() line %u: ", \
+		__func__ RTE_LOG_COMMA __LINE__, __VA_ARGS__)
 
-#define CCP_LOG_DBG(fmt, args...) \
-	RTE_LOG_LINE(DEBUG, CRYPTO_CCP, "%s() line %u: " fmt, __func__, __LINE__, ## args)
+#define CCP_LOG_DBG(...) \
+	RTE_LOG_LINE_PREFIX(DEBUG, CRYPTO_CCP, "%s() line %u: ", \
+		__func__ RTE_LOG_COMMA __LINE__, __VA_ARGS__)
 #else
-#define CCP_LOG_INFO(fmt, args...)
-#define CCP_LOG_DBG(fmt, args...)
+#define CCP_LOG_INFO(...)
+#define CCP_LOG_DBG(...)
 #endif
 
 /**< Maximum queue pairs supported by CCP PMD */

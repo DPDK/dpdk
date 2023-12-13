@@ -12,13 +12,11 @@ extern "C" {
 extern int dpaa2_qdma_logtype;
 #define RTE_LOGTYPE_DPAA2_QDMA dpaa2_qdma_logtype
 
-#define DPAA2_QDMA_LOG(level, fmt, args...) \
-	rte_log(RTE_LOG_ ## level, dpaa2_qdma_logtype, "dpaa2_qdma: " \
-		fmt "\n", ## args)
+#define DPAA2_QDMA_LOG(level, ...) \
+	RTE_LOG_LINE(level, DPAA2_QDMA, __VA_ARGS__)
 
-#define DPAA2_QDMA_DEBUG(fmt, args...) \
-	rte_log(RTE_LOG_DEBUG, dpaa2_qdma_logtype, "dpaa2_qdma: %s(): " \
-		fmt "\n", __func__, ## args)
+#define DPAA2_QDMA_DEBUG(...) \
+	RTE_LOG_LINE_PREFIX(DEBUG, DPAA2_QDMA, "%s(): ", __func__, __VA_ARGS__)
 
 #define DPAA2_QDMA_FUNC_TRACE() DPAA2_QDMA_DEBUG(">>")
 
@@ -30,8 +28,8 @@ extern int dpaa2_qdma_logtype;
 	DPAA2_QDMA_LOG(WARNING, fmt, ## args)
 
 /* DP Logs, toggled out at compile time if level lower than current level */
-#define DPAA2_QDMA_DP_LOG(level, fmt, args...) \
-	RTE_LOG_DP(level, DPAA2_QDMA, "dpaa2_qdma: " fmt "\n", ## args)
+#define DPAA2_QDMA_DP_LOG(level, ...) \
+	RTE_LOG_DP_LINE(level, DPAA2_QDMA, __VA_ARGS__)
 
 #define DPAA2_QDMA_DP_DEBUG(fmt, args...) \
 	DPAA2_QDMA_DP_LOG(DEBUG, fmt, ## args)

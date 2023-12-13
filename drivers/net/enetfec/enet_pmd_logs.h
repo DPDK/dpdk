@@ -8,12 +8,11 @@
 #include <rte_log.h>
 
 extern int enetfec_logtype_pmd;
-#define RTE_LOGTYPE_ENETFEC_PMD enetfec_logtype_pmd
+#define RTE_LOGTYPE_ENETFEC_NET enetfec_logtype_pmd
 
 /* PMD related logs */
-#define ENETFEC_PMD_LOG(level, fmt, args...) \
-	rte_log(RTE_LOG_ ## level, enetfec_logtype_pmd, "\nfec_net: %s()" \
-		fmt "\n", __func__, ##args)
+#define ENETFEC_PMD_LOG(level, ...) \
+	RTE_LOG_LINE_PREFIX(level, ENETFEC_NET, "%s()", __func__, __VA_ARGS__)
 
 #define PMD_INIT_FUNC_TRACE() ENET_PMD_LOG(DEBUG, " >>")
 
@@ -28,7 +27,7 @@ extern int enetfec_logtype_pmd;
 	ENETFEC_PMD_LOG(WARNING, fmt, ## args)
 
 /* DP Logs, toggled out at compile time if level lower than current level */
-#define ENETFEC_DP_LOG(level, fmt, args...) \
-	RTE_LOG_DP(level, ENETFEC_PMD, fmt, ## args)
+#define ENETFEC_DP_LOG(level, ...) \
+	RTE_LOG_DP_LINE(level, ENETFEC_NET, __VA_ARGS__)
 
 #endif /* _ENETFEC_LOGS_H_ */

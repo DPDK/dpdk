@@ -6,15 +6,13 @@
 #define _DPAA2_PMD_LOGS_H_
 
 extern int dpaa2_logtype_pmd;
-#define RTE_LOGTYPE_DPAA2_PMD dpaa2_logtype_pmd
+#define RTE_LOGTYPE_DPAA2_NET dpaa2_logtype_pmd
 
-#define DPAA2_PMD_LOG(level, fmt, args...) \
-	rte_log(RTE_LOG_ ## level, dpaa2_logtype_pmd, "dpaa2_net: " \
-		fmt "\n", ##args)
+#define DPAA2_PMD_LOG(level, ...) \
+	RTE_LOG_LINE(level, DPAA2_NET, __VA_ARGS__)
 
-#define DPAA2_PMD_DEBUG(fmt, args...) \
-	rte_log(RTE_LOG_DEBUG, dpaa2_logtype_pmd, "dpaa2_net: %s(): "\
-		fmt "\n", __func__, ##args)
+#define DPAA2_PMD_DEBUG(...) \
+	RTE_LOG_LINE_PREFIX(DEBUG, DPAA2_NET, "%s(): ", __func__, __VA_ARGS__)
 
 #define PMD_INIT_FUNC_TRACE() DPAA2_PMD_DEBUG(">>")
 
@@ -28,8 +26,8 @@ extern int dpaa2_logtype_pmd;
 	DPAA2_PMD_LOG(WARNING, fmt, ## args)
 
 /* DP Logs, toggled out at compile time if level lower than current level */
-#define DPAA2_PMD_DP_LOG(level, fmt, args...) \
-	RTE_LOG_DP(level, DPAA2_PMD, fmt, ## args)
+#define DPAA2_PMD_DP_LOG(level, ...) \
+	RTE_LOG_DP_LINE(level, DPAA2_NET, __VA_ARGS__)
 
 #define DPAA2_PMD_DP_DEBUG(fmt, args...) \
 	DPAA2_PMD_DP_LOG(DEBUG, fmt, ## args)

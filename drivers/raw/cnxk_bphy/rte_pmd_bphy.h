@@ -27,10 +27,10 @@ extern "C" {
 #endif
 
 extern int cnxk_logtype_bphy;
+#define RTE_LOGTYPE_CNXK_BPHY cnxk_logtype_bphy
 
-#define CNXK_BPHY_LOG(level, fmt, args...)	\
-	rte_log(RTE_LOG_ ## level, cnxk_logtype_bphy, \
-		"%s(): " fmt "\n", __func__, ## args)
+#define CNXK_BPHY_LOG(level, ...) \
+	RTE_LOG_LINE_PREFIX(level, CNXK_BPHY, "%s(): ", __func__, __VA_ARGS__)
 
 /** Available message types */
 enum cnxk_bphy_cgx_msg_type {

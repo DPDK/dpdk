@@ -83,9 +83,9 @@ struct mvneta_priv {
 
 /** Current log type. */
 extern int mvneta_logtype;
+#define RTE_LOGTYPE_MVNETA mvneta_logtype
 
-#define MVNETA_LOG(level, fmt, args...) \
-	rte_log(RTE_LOG_ ## level, mvneta_logtype, "%s(): " fmt "\n", \
-		__func__, ##args)
+#define MVNETA_LOG(level, ...) \
+	RTE_LOG_LINE_PREFIX(level, MVNETA, "%s(): ", __func__, __VA_ARGS__)
 
 #endif /* _MVNETA_ETHDEV_H_ */

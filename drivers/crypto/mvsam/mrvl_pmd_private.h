@@ -14,11 +14,11 @@
 
 /** MRVL PMD LOGTYPE DRIVER */
 extern int mrvl_logtype_driver;
+#define RTE_LOGTYPE_MRVL_DRIVER mrvl_logtype_driver
 
-#define MRVL_LOG(level, fmt, ...) \
-	rte_log(RTE_LOG_ ## level, mrvl_logtype_driver, \
-			"%s() line %u: " fmt "\n", __func__, __LINE__, \
-					## __VA_ARGS__)
+#define MRVL_LOG(level, ...) \
+	RTE_LOG_LINE_PREFIX(level, MRVL_DRIVER, "%s() line %u: ", \
+		__func__ RTE_LOG_COMMA __LINE__, __VA_ARGS__)
 
 /**
  * Handy bits->bytes conversion macro.

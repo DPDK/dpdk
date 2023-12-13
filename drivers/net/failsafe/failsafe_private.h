@@ -357,12 +357,9 @@ extern int failsafe_mac_from_arg;
 #endif
 
 extern int failsafe_logtype;
+#define RTE_LOGTYPE_NET_FAILSAFE failsafe_logtype
 
-#define LOG__(l, m, ...) \
-	rte_log(RTE_LOG_ ## l, failsafe_logtype, \
-		"net_failsafe: " m "%c", __VA_ARGS__)
-
-#define LOG_(level, ...) LOG__(level, __VA_ARGS__, '\n')
+#define LOG_(l, ...) RTE_LOG_LINE(l, NET_FAILSAFE, __VA_ARGS__)
 #define DEBUG(...) LOG_(DEBUG, __VA_ARGS__)
 #define INFO(...) LOG_(INFO, __VA_ARGS__)
 #define WARN(...) LOG_(WARNING, __VA_ARGS__)

@@ -71,10 +71,10 @@ struct __rte_cache_aligned uadk_crypto_priv {
 };
 
 extern int uadk_crypto_logtype;
+#define RTE_LOGTYPE_UADK_CRYPTO uadk_crypto_logtype
 
-#define UADK_LOG(level, fmt, ...)  \
-	rte_log(RTE_LOG_ ## level, uadk_crypto_logtype,  \
-		"%s() line %u: " fmt "\n", __func__, __LINE__,  \
-		## __VA_ARGS__)
+#define UADK_LOG(level, ...)  \
+	RTE_LOG_LINE_PREFIX(level, UADK_CRYPTO, "%s() line %u: ", \
+		__func__ RTE_LOG_COMMA __LINE__, __VA_ARGS__)
 
 #endif /* _UADK_CRYPTO_PMD_PRIVATE_H_ */

@@ -13,10 +13,11 @@
 #include <rte_errno.h>
 
 extern int cuda_logtype;
+#define RTE_LOGTYPE_CUDA cuda_logtype
 
 /* Helper macro for logging */
 #define rte_cuda_log(level, fmt, ...) \
-	rte_log(RTE_LOG_ ## level, cuda_logtype, fmt "\n", ##__VA_ARGS__)
+	RTE_LOG_LINE(level, CUDA, fmt, ##__VA_ARGS__)
 
 #define rte_cuda_debug(fmt, ...) \
 	rte_cuda_log(DEBUG, RTE_STR(__LINE__) ":%s() " fmt, __func__, \

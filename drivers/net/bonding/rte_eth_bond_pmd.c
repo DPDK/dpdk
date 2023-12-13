@@ -491,9 +491,9 @@ update_client_stats(uint32_t addr, uint16_t port, uint32_t *TXorRXindicator)
 
 #ifdef RTE_LIBRTE_BOND_DEBUG_ALB
 #define MODE6_DEBUG(info, src_ip, dst_ip, eth_h, arp_op, port, burstnumber) \
-	rte_log(RTE_LOG_DEBUG, bond_logtype,				\
+	RTE_LOG_LINE(DEBUG, BOND,				\
 		"%s port:%d SrcMAC:" RTE_ETHER_ADDR_PRT_FMT " SrcIP:%s " \
-		"DstMAC:" RTE_ETHER_ADDR_PRT_FMT " DstIP:%s %s %d\n", \
+		"DstMAC:" RTE_ETHER_ADDR_PRT_FMT " DstIP:%s %s %d", \
 		info,							\
 		port,							\
 		RTE_ETHER_ADDR_BYTES(&eth_h->src_addr),                  \

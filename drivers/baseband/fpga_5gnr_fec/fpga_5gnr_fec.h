@@ -11,17 +11,18 @@
 #include "agx100_pmd.h"
 #include "vc_5gnr_pmd.h"
 
+extern int fpga_5gnr_fec_logtype;
+#define RTE_LOGTYPE_FPGA_5GNR_FEC fpga_5gnr_fec_logtype
+
 /* Helper macro for logging */
-#define rte_bbdev_log(level, fmt, ...) \
-	rte_log(RTE_LOG_ ## level, fpga_5gnr_fec_logtype, fmt "\n", \
-		##__VA_ARGS__)
+#define rte_bbdev_log(level, ...) \
+	RTE_LOG_LINE(level, FPGA_5GNR_FEC, __VA_ARGS__)
 
 #ifdef RTE_LIBRTE_BBDEV_DEBUG
-#define rte_bbdev_log_debug(fmt, ...) \
-		rte_bbdev_log(DEBUG, "fpga_5gnr_fec: " fmt, \
-		##__VA_ARGS__)
+#define rte_bbdev_log_debug(...) \
+	rte_bbdev_log(DEBUG, __VA_ARGS__)
 #else
-#define rte_bbdev_log_debug(fmt, ...)
+#define rte_bbdev_log_debug(...)
 #endif
 
 /* FPGA 5GNR FEC driver names */

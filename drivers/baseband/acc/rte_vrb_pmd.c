@@ -26,6 +26,7 @@ RTE_LOG_REGISTER_SUFFIX(vrb_logtype, vrb, DEBUG);
 #else
 RTE_LOG_REGISTER_SUFFIX(vrb_logtype, vrb, NOTICE);
 #endif
+#define RTE_LOGTYPE_VRB vrb_logtype
 
 /* Calculate the offset of the enqueue register. */
 static inline uint32_t

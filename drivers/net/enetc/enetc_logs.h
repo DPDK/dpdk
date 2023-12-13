@@ -6,15 +6,13 @@
 #define _ENETC_LOGS_H_
 
 extern int enetc_logtype_pmd;
-#define RTE_LOGTYPE_ENETC_PMD enetc_logtype_pmd
+#define RTE_LOGTYPE_ENETC_NET enetc_logtype_pmd
 
-#define ENETC_PMD_LOG(level, fmt, args...) \
-	rte_log(RTE_LOG_ ## level, enetc_logtype_pmd, "enetc_net: " \
-		fmt "\n", ##args)
+#define ENETC_PMD_LOG(level, ...) \
+	RTE_LOG_LINE(level, ENETC_NET, __VA_ARGS__)
 
-#define ENETC_PMD_DEBUG(fmt, args...) \
-	rte_log(RTE_LOG_DEBUG, enetc_logtype_pmd, "enetc_net: %s(): "\
-		fmt "\n", __func__, ##args)
+#define ENETC_PMD_DEBUG(...) \
+	RTE_LOG_LINE_PREFIX(DEBUG, ENETC_NET, "%s(): ", __func__, __VA_ARGS__)
 
 #define PMD_INIT_FUNC_TRACE() ENETC_PMD_DEBUG(">>")
 
@@ -30,8 +28,8 @@ extern int enetc_logtype_pmd;
 	ENETC_PMD_LOG(WARNING, fmt, ## args)
 
 /* DP Logs, toggled out at compile time if level lower than current level */
-#define ENETC_PMD_DP_LOG(level, fmt, args...) \
-	RTE_LOG_DP(level, ENETC_PMD, fmt, ## args)
+#define ENETC_PMD_DP_LOG(level, ...) \
+	RTE_LOG_DP_LINE(level, ENETC_NET, __VA_ARGS__)
 
 #define ENETC_PMD_DP_DEBUG(fmt, args...) \
 	ENETC_PMD_DP_LOG(DEBUG, fmt, ## args)

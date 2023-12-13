@@ -25,18 +25,17 @@ RTE_LOG_REGISTER_DEFAULT(fpga_lte_fec_logtype, DEBUG);
 #else
 RTE_LOG_REGISTER_DEFAULT(fpga_lte_fec_logtype, NOTICE);
 #endif
+#define RTE_LOGTYPE_FPGA_LTE_FEC fpga_lte_fec_logtype
 
 /* Helper macro for logging */
-#define rte_bbdev_log(level, fmt, ...) \
-	rte_log(RTE_LOG_ ## level, fpga_lte_fec_logtype, fmt "\n", \
-		##__VA_ARGS__)
+#define rte_bbdev_log(level, ...) \
+	RTE_LOG_LINE(level, FPGA_LTE_FEC, __VA_ARGS__)
 
 #ifdef RTE_LIBRTE_BBDEV_DEBUG
-#define rte_bbdev_log_debug(fmt, ...) \
-		rte_bbdev_log(DEBUG, "fpga_lte_fec: " fmt, \
-		##__VA_ARGS__)
+#define rte_bbdev_log_debug(...) \
+	rte_bbdev_log(DEBUG, __VA_ARGS__)
 #else
-#define rte_bbdev_log_debug(fmt, ...)
+#define rte_bbdev_log_debug(...)
 #endif
 
 /* FPGA LTE FEC driver names */

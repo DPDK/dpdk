@@ -35,9 +35,10 @@ struct ioat_dmadev {
 };
 
 extern int ioat_pmd_logtype;
+#define RTE_LOGTYPE_IOAT_PMD ioat_pmd_logtype
 
-#define IOAT_PMD_LOG(level, fmt, args...) rte_log(RTE_LOG_ ## level, \
-		ioat_pmd_logtype, "IOAT: %s(): " fmt "\n", __func__, ##args)
+#define IOAT_PMD_LOG(level, ...) \
+	RTE_LOG_LINE_PREFIX(level, IOAT_PMD, "%s(): ", __func__, __VA_ARGS__)
 
 #define IOAT_PMD_DEBUG(fmt, args...)  IOAT_PMD_LOG(DEBUG, fmt, ## args)
 #define IOAT_PMD_INFO(fmt, args...)   IOAT_PMD_LOG(INFO, fmt, ## args)

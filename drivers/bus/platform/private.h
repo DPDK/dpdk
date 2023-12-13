@@ -35,8 +35,7 @@ struct rte_platform_bus {
 extern int platform_bus_logtype;
 #define RTE_LOGTYPE_PLATFORM_BUS platform_bus_logtype
 #define PLATFORM_LOG_LINE(level, ...) \
-	RTE_LOG(level, PLATFORM_BUS, RTE_FMT(RTE_FMT_HEAD(__VA_ARGS__,) "\n", \
-		RTE_FMT_TAIL(__VA_ARGS__,)))
+	RTE_LOG_LINE(level, PLATFORM_BUS, __VA_ARGS__)
 
 /*
  * Iterate registered platform devices and find one that matches provided string.

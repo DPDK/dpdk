@@ -30,6 +30,7 @@ RTE_LOG_REGISTER_SUFFIX(acc100_logtype, acc100, DEBUG);
 #else
 RTE_LOG_REGISTER_SUFFIX(acc100_logtype, acc100, NOTICE);
 #endif
+#define RTE_LOGTYPE_ACC100 acc100_logtype
 
 /* Calculate the offset of the enqueue register */
 static inline uint32_t

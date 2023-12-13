@@ -20,14 +20,12 @@ extern int dpaax_logger;
 #define DPAAX_HWWARN(cond, fmt, args...) do { } while (0)
 #endif
 
-#define DPAAX_LOG(level, fmt, args...) \
-	rte_log(RTE_LOG_ ## level, dpaax_logger, "dpaax: " fmt "\n", \
-		##args)
+#define DPAAX_LOG(level, ...) \
+	RTE_LOG_LINE(level, DPAAX_LOGGER, __VA_ARGS__)
 
 /* Debug logs are with Function names */
-#define DPAAX_DEBUG(fmt, args...) \
-	rte_log(RTE_LOG_DEBUG, dpaax_logger, "dpaax: %s():	 " fmt "\n", \
-		__func__, ##args)
+#define DPAAX_DEBUG(...) \
+	RTE_LOG_LINE_PREFIX(DEBUG, DPAAX_LOGGER, "%s(): ", __func__, __VA_ARGS__)
 
 #define DPAAX_INFO(fmt, args...) \
 	DPAAX_LOG(INFO, fmt, ## args)

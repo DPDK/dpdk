@@ -8,14 +8,9 @@
 #include <rte_log.h>
 
 extern int opdl_logtype_driver;
+#define RTE_LOGTYPE_OPDL opdl_logtype_driver
 
-#define PMD_DRV_LOG_RAW(level, fmt, args...) \
-	rte_log(RTE_LOG_ ## level, opdl_logtype_driver, "%s(): " fmt, \
-			__func__, ## args)
-
-#define PMD_DRV_LOG(level, fmt, args...) \
-	PMD_DRV_LOG_RAW(level, fmt "\n", ## args)
-
-
+#define PMD_DRV_LOG(level, ...) \
+	RTE_LOG_LINE_PREFIX(level, OPDL, "%s(): ", __func__, __VA_ARGS__)
 
 #endif /* _OPDL_LOGS_H_ */

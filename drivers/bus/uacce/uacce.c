@@ -59,9 +59,9 @@ static const char *const uacce_params_keys[] = {
 		RTE_TAILQ_FOREACH(p, &uacce_bus.driver_list, next)
 
 extern int uacce_bus_logtype;
-#define UACCE_BUS_LOG(level, fmt, args...) \
-	rte_log(RTE_LOG_ ## level, uacce_bus_logtype, "uacce: " fmt "\n", \
-		##args)
+#define RTE_LOGTYPE_UACCE_BUS uacce_bus_logtype
+#define UACCE_BUS_LOG(level, ...) \
+	RTE_LOG_LINE(level, UACCE_BUS, __VA_ARGS__)
 #define UACCE_BUS_ERR(fmt, args...) UACCE_BUS_LOG(ERR, fmt, ##args)
 #define UACCE_BUS_WARN(fmt, args...) UACCE_BUS_LOG(WARNING, fmt, ##args)
 #define UACCE_BUS_INFO(fmt, args...) UACCE_BUS_LOG(INFO, fmt, ##args)

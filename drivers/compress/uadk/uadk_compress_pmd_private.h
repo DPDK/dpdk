@@ -27,10 +27,10 @@ struct  uadk_compress_xform {
 };
 
 extern int uadk_compress_logtype;
+#define RTE_LOGTYPE_UADK_COMPRESS uadk_compress_logtype
 
-#define UADK_LOG(level, fmt, ...)  \
-	rte_log(RTE_LOG_ ## level, uadk_compress_logtype,  \
-		"%s() line %u: " fmt "\n", __func__, __LINE__,  \
-		## __VA_ARGS__)
+#define UADK_LOG(level, ...)  \
+	RTE_LOG_LINE_PREFIX(level, UADK_COMPRESS, "%s() line %u: ", \
+		__func__ RTE_LOG_COMMA __LINE__, __VA_ARGS__)
 
 #endif /* _UADK_COMPRESS_PMD_PRIVATE_H_ */

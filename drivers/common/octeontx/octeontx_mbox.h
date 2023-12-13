@@ -17,9 +17,9 @@
 #define RM_INTERFACE_VERSION    0x2
 
 
-#define MBOX_LOG(level, fmt, args...) \
-	rte_log(RTE_LOG_ ## level, octeontx_logtype_mbox,\
-			"%s() line %u: " fmt "\n", __func__, __LINE__, ## args)
+#define MBOX_LOG(level, ...) \
+	RTE_LOG_LINE_PREFIX(level, OCTEONTX_MBOX, "%s() line %u: ", \
+		__func__ RTE_LOG_COMMA __LINE__, __VA_ARGS__)
 
 #define mbox_log_info(fmt, ...) MBOX_LOG(INFO, fmt, ##__VA_ARGS__)
 #define mbox_log_dbg(fmt, ...) MBOX_LOG(DEBUG, fmt, ##__VA_ARGS__)
@@ -27,6 +27,7 @@
 #define mbox_func_trace mbox_log_dbg
 
 extern int octeontx_logtype_mbox;
+#define RTE_LOGTYPE_OCTEONTX_MBOX octeontx_logtype_mbox
 
 struct octeontx_mbox_hdr {
 	uint16_t vfid;  /* VF index or pf resource index local to the domain */

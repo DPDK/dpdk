@@ -53,11 +53,20 @@ print_usage () {
 check_forbidden_additions() { # <patch>
 	res=0
 
-	# refrain from new calls to RTE_LOG
+	# refrain from new calls to RTE_LOG in libraries
 	awk -v FOLDERS="lib" \
 		-v EXPRESSIONS="RTE_LOG\\\(" \
 		-v RET_ON_FAIL=1 \
 		-v MESSAGE='Prefer RTE_LOG_LINE' \
+		-f $(dirname $(readlink -f $0))/check-forbidden-tokens.awk \
+		"$1" || res=1
+
+	# refrain from new calls to RTE_LOG in drivers (but leave some leeway for base drivers)
+	awk -v FOLDERS="drivers" \
+		-v SKIP_FILES='osdep.h$' \
+		-v EXPRESSIONS="RTE_LOG\\\( RTE_LOG_DP\\\( rte_log\\\(" \
+		-v RET_ON_FAIL=1 \
+		-v MESSAGE='Prefer RTE_LOG_LINE/RTE_LOG_DP_LINE' \
 		-f $(dirname $(readlink -f $0))/check-forbidden-tokens.awk \
 		"$1" || res=1
 

@@ -9,15 +9,15 @@
 #include <rte_log.h>
 
 extern int bcmfs_conf_logtype;
+#define RTE_LOGTYPE_BCMFS_CONF bcmfs_conf_logtype
 extern int bcmfs_dp_logtype;
+#define RTE_LOGTYPE_BCMFS_DP bcmfs_dp_logtype
 
-#define BCMFS_LOG(level, fmt, args...)		\
-	rte_log(RTE_LOG_ ## level, bcmfs_conf_logtype,		\
-		"%s(): " fmt "\n", __func__, ## args)
+#define BCMFS_LOG(level, ...) \
+	RTE_LOG_LINE_PREFIX(level, BCMFS_CONF, "%s(): ", __func__, __VA_ARGS__)
 
-#define BCMFS_DP_LOG(level, fmt, args...)		\
-	rte_log(RTE_LOG_ ## level, bcmfs_dp_logtype,		\
-		"%s(): " fmt "\n", __func__, ## args)
+#define BCMFS_DP_LOG(level, ...) \
+	RTE_LOG_LINE_PREFIX(level, BCMFS_DP, "%s(): ", __func__, __VA_ARGS__)
 
 #define BCMFS_DP_HEXDUMP_LOG(level, title, buf, len)	\
 	bcmfs_hexdump_log(RTE_LOG_ ## level, bcmfs_dp_logtype, title, buf, len)

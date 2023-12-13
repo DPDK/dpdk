@@ -12,31 +12,29 @@ extern "C" {
 #endif
 
 extern int igc_logtype_init;
+#define RTE_LOGTYPE_IGC_INIT igc_logtype_init
 extern int igc_logtype_driver;
 #define RTE_LOGTYPE_IGC_DRIVER igc_logtype_driver
 
-#define PMD_INIT_LOG(level, fmt, args...) \
-	rte_log(RTE_LOG_ ## level, igc_logtype_init, \
-		"%s(): " fmt "\n", __func__, ##args)
+#define PMD_INIT_LOG(level, ...) \
+	RTE_LOG_LINE_PREFIX(level, IGC_INIT, "%s(): ", __func__, __VA_ARGS__)
 
 #define PMD_INIT_FUNC_TRACE() PMD_INIT_LOG(DEBUG, " >>")
 
 #ifdef RTE_ETHDEV_DEBUG_RX
-#define PMD_RX_LOG(level, fmt, args...) \
-	RTE_LOG(level, IGC_DRIVER, "%s(): " fmt "\n", __func__, ## args)
+#define PMD_RX_LOG(...) PMD_DRV_LOG(__VA_ARGS__)
 #else
-#define PMD_RX_LOG(level, fmt, args...) do { } while (0)
+#define PMD_RX_LOG(...) do { } while (0)
 #endif
 
 #ifdef RTE_ETHDEV_DEBUG_TX
-#define PMD_TX_LOG(level, fmt, args...) \
-	RTE_LOG(level, IGC_DRIVER, "%s(): " fmt "\n", __func__, ## args)
+#define PMD_TX_LOG(...) PMD_DRV_LOG(__VA_ARGS__)
 #else
-#define PMD_TX_LOG(level, fmt, args...) do { } while (0)
+#define PMD_TX_LOG(...) do { } while (0)
 #endif
 
-#define PMD_DRV_LOG(level, fmt, args...) \
-	RTE_LOG(level, IGC_DRIVER, "%s(): " fmt "\n", __func__, ## args)
+#define PMD_DRV_LOG(level, ...) \
+	RTE_LOG_LINE_PREFIX(level, IGC_DRIVER, "%s(): ", __func__, __VA_ARGS__)
 
 #ifdef __cplusplus
 }

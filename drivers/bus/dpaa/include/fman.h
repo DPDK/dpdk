@@ -403,8 +403,7 @@ extern int fman_ccsr_map_fd;
 #define FMAN_ERR(rc, fmt, args...) \
 	do { \
 		_errno = (rc); \
-		rte_log(RTE_LOG_ERR, dpaa_logtype_bus, "dpaa: " fmt "(%d)\n", \
-			##args, errno); \
+		RTE_LOG_LINE(ERR, DPAA_BUS, fmt "(%d)", ##args, errno); \
 	} while (0)
 
 #define FMAN_IP_REV_1	0xC30C4

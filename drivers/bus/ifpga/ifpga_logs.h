@@ -8,10 +8,10 @@
 #include <rte_log.h>
 
 extern int ifpga_bus_logtype;
+#define RTE_LOGTYPE_IFPGA_BUS ifpga_bus_logtype
 
-#define IFPGA_BUS_LOG(level, fmt, args...) \
-	rte_log(RTE_LOG_ ## level, ifpga_bus_logtype, "%s(): " fmt "\n", \
-		__func__, ##args)
+#define IFPGA_BUS_LOG(level, ...) \
+	RTE_LOG_LINE_PREFIX(level, IFPGA_BUS, "%s(): ", __func__, __VA_ARGS__)
 
 #define IFPGA_BUS_FUNC_TRACE() IFPGA_BUS_LOG(DEBUG, ">>")
 
