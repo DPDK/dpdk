@@ -1907,7 +1907,7 @@ no_dsn:
 
 	strncpy(pkg_file, ICE_PKG_FILE_DEFAULT, ICE_MAX_PKG_FILENAME_SIZE);
 	if (rte_firmware_read(pkg_file, &buf, &bufsz) < 0) {
-		PMD_INIT_LOG(ERR, "failed to search file path\n");
+		PMD_INIT_LOG(ERR, "failed to search file path");
 		return -1;
 	}
 
@@ -1916,7 +1916,7 @@ load_fw:
 
 	err = ice_copy_and_init_pkg(hw, buf, bufsz);
 	if (!ice_is_init_pkg_successful(err)) {
-		PMD_INIT_LOG(ERR, "ice_copy_and_init_hw failed: %d\n", err);
+		PMD_INIT_LOG(ERR, "ice_copy_and_init_hw failed: %d", err);
 		free(buf);
 		return -1;
 	}
@@ -2166,7 +2166,7 @@ static int ice_parse_devargs(struct rte_eth_dev *dev)
 
 	kvlist = rte_kvargs_parse(devargs->args, ice_valid_args);
 	if (kvlist == NULL) {
-		PMD_INIT_LOG(ERR, "Invalid kvargs key\n");
+		PMD_INIT_LOG(ERR, "Invalid kvargs key");
 		return -EINVAL;
 	}
 
@@ -2405,20 +2405,20 @@ ice_dev_init(struct rte_eth_dev *dev)
 	if (pos) {
 		if (rte_pci_read_config(pci_dev, &dsn_low, 4, pos + 4) < 0 ||
 				rte_pci_read_config(pci_dev, &dsn_high, 4, pos + 8) < 0) {
-			PMD_INIT_LOG(ERR, "Failed to read pci config space\n");
+			PMD_INIT_LOG(ERR, "Failed to read pci config space");
 		} else {
 			use_dsn = true;
 			dsn = (uint64_t)dsn_high << 32 | dsn_low;
 		}
 	} else {
-		PMD_INIT_LOG(ERR, "Failed to read device serial number\n");
+		PMD_INIT_LOG(ERR, "Failed to read device serial number");
 	}
 
 	ret = ice_load_pkg(pf->adapter, use_dsn, dsn);
 	if (ret == 0) {
 		ret = ice_init_hw_tbls(hw);
 		if (ret) {
-			PMD_INIT_LOG(ERR, "ice_init_hw_tbls failed: %d\n", ret);
+			PMD_INIT_LOG(ERR, "ice_init_hw_tbls failed: %d", ret);
 			rte_free(hw->pkg_copy);
 		}
 	}
@@ -2470,14 +2470,14 @@ ice_dev_init(struct rte_eth_dev *dev)
 
 	ret = ice_aq_stop_lldp(hw, true, false, NULL);
 	if (ret != ICE_SUCCESS)
-		PMD_INIT_LOG(DEBUG, "lldp has already stopped\n");
+		PMD_INIT_LOG(DEBUG, "lldp has already stopped");
 	ret = ice_init_dcb(hw, true);
 	if (ret != ICE_SUCCESS)
-		PMD_INIT_LOG(DEBUG, "Failed to init DCB\n");
+		PMD_INIT_LOG(DEBUG, "Failed to init DCB");
 	/* Forward LLDP packets to default VSI */
 	ret = ice_lldp_fltr_add_remove(hw, vsi->vsi_id, true);
 	if (ret != ICE_SUCCESS)
-		PMD_INIT_LOG(DEBUG, "Failed to cfg lldp\n");
+		PMD_INIT_LOG(DEBUG, "Failed to cfg lldp");
 	/* register callback func to eal lib */
 	rte_intr_callback_register(intr_handle,
 				   ice_interrupt_handler, dev);
@@ -2502,7 +2502,7 @@ ice_dev_init(struct rte_eth_dev *dev)
 	if (hw->phy_model == ICE_PHY_E822) {
 		ret = ice_start_phy_timer_e822(hw, hw->pf_id);
 		if (ret)
-			PMD_INIT_LOG(ERR, "Failed to start phy timer\n");
+			PMD_INIT_LOG(ERR, "Failed to start phy timer");
 	}
 
 	if (!ad->is_safe_mode) {
@@ -2748,7 +2748,7 @@ ice_hash_moveout(struct ice_pf *pf, struct ice_rss_hash_cfg *cfg)
 	status = ice_rem_rss_cfg(hw, vsi->idx, cfg);
 	if (status && status != ICE_ERR_DOES_NOT_EXIST) {
 		PMD_DRV_LOG(ERR,
-			    "ice_rem_rss_cfg failed for VSI:%d, error:%d\n",
+			    "ice_rem_rss_cfg failed for VSI:%d, error:%d",
 			    vsi->idx, status);
 		return -EBUSY;
 	}
@@ -2769,7 +2769,7 @@ ice_hash_moveback(struct ice_pf *pf, struct ice_rss_hash_cfg *cfg)
 	status = ice_add_rss_cfg(hw, vsi->idx, cfg);
 	if (status) {
 		PMD_DRV_LOG(ERR,
-			    "ice_add_rss_cfg failed for VSI:%d, error:%d\n",
+			    "ice_add_rss_cfg failed for VSI:%d, error:%d",
 			    vsi->idx, status);
 		return -EBUSY;
 	}
@@ -3164,7 +3164,7 @@ ice_rem_rss_cfg_wrap(struct ice_pf *pf, uint16_t vsi_id,
 
 	ret = ice_rem_rss_cfg(hw, vsi_id, cfg);
 	if (ret && ret != ICE_ERR_DOES_NOT_EXIST)
-		PMD_DRV_LOG(ERR, "remove rss cfg failed\n");
+		PMD_DRV_LOG(ERR, "remove rss cfg failed");
 
 	ice_rem_rss_cfg_post(pf, cfg->addl_hdrs);
 
@@ -3180,15 +3180,15 @@ ice_add_rss_cfg_wrap(struct ice_pf *pf, uint16_t vsi_id,
 
 	ret = ice_add_rss_cfg_pre(pf, cfg->addl_hdrs);
 	if (ret)
-		PMD_DRV_LOG(ERR, "add rss cfg pre failed\n");
+		PMD_DRV_LOG(ERR, "add rss cfg pre failed");
 
 	ret = ice_add_rss_cfg(hw, vsi_id, cfg);
 	if (ret)
-		PMD_DRV_LOG(ERR, "add rss cfg failed\n");
+		PMD_DRV_LOG(ERR, "add rss cfg failed");
 
 	ret = ice_add_rss_cfg_post(pf, cfg);
 	if (ret)
-		PMD_DRV_LOG(ERR, "add rss cfg post failed\n");
+		PMD_DRV_LOG(ERR, "add rss cfg post failed");
 
 	return 0;
 }
@@ -3378,7 +3378,7 @@ ice_get_default_rss_key(uint8_t *rss_key, uint32_t rss_key_size)
 	if (rss_key_size > sizeof(default_key)) {
 		PMD_DRV_LOG(WARNING,
 			    "requested size %u is larger than default %zu, "
-			    "only %zu bytes are gotten for key\n",
+			    "only %zu bytes are gotten for key",
 			    rss_key_size, sizeof(default_key),
 			    sizeof(default_key));
 	}
@@ -3413,12 +3413,12 @@ static int ice_init_rss(struct ice_pf *pf)
 
 	if (nb_q == 0) {
 		PMD_DRV_LOG(WARNING,
-			"RSS is not supported as rx queues number is zero\n");
+			"RSS is not supported as rx queues number is zero");
 		return 0;
 	}
 
 	if (is_safe_mode) {
-		PMD_DRV_LOG(WARNING, "RSS is not supported in safe mode\n");
+		PMD_DRV_LOG(WARNING, "RSS is not supported in safe mode");
 		return 0;
 	}
 
@@ -4277,7 +4277,7 @@ ice_phy_conf_link(struct ice_hw *hw,
 		cfg.phy_type_low = phy_type_low & phy_caps->phy_type_low;
 		cfg.phy_type_high = phy_type_high & phy_caps->phy_type_high;
 	} else {
-		PMD_DRV_LOG(WARNING, "Invalid speed setting, set to default!\n");
+		PMD_DRV_LOG(WARNING, "Invalid speed setting, set to default!");
 		cfg.phy_type_low = phy_caps->phy_type_low;
 		cfg.phy_type_high = phy_caps->phy_type_high;
 	}
@@ -5734,7 +5734,7 @@ ice_get_module_info(struct rte_eth_dev *dev,
 		}
 		break;
 	default:
-		PMD_DRV_LOG(WARNING, "SFF Module Type not recognized.\n");
+		PMD_DRV_LOG(WARNING, "SFF Module Type not recognized.");
 		return -EINVAL;
 	}
 	return 0;
@@ -5805,7 +5805,7 @@ ice_get_module_eeprom(struct rte_eth_dev *dev,
 							   0, NULL);
 				PMD_DRV_LOG(DEBUG, "SFF %02X %02X %02X %X = "
 					"%02X%02X%02X%02X."
-					"%02X%02X%02X%02X (%X)\n",
+					"%02X%02X%02X%02X (%X)",
 					addr, offset, page, is_sfp,
 					value[0], value[1],
 					value[2], value[3],
@@ -6773,7 +6773,7 @@ ice_fec_get_capability(struct rte_eth_dev *dev, struct rte_eth_fec_capa *speed_f
 	ret = ice_aq_get_phy_caps(hw->port_info, false, ICE_AQC_REPORT_TOPO_CAP_MEDIA,
 				  &pcaps, NULL);
 	if (ret != ICE_SUCCESS) {
-		PMD_DRV_LOG(ERR, "Failed to get capability information: %d\n",
+		PMD_DRV_LOG(ERR, "Failed to get capability information: %d",
 				ret);
 		return -ENOTSUP;
 	}
@@ -6805,7 +6805,7 @@ ice_fec_get(struct rte_eth_dev *dev, uint32_t *fec_capa)
 
 	ret = ice_get_link_info_safe(pf, enable_lse, &link_status);
 	if (ret != ICE_SUCCESS) {
-		PMD_DRV_LOG(ERR, "Failed to get link information: %d\n",
+		PMD_DRV_LOG(ERR, "Failed to get link information: %d",
 			ret);
 		return -ENOTSUP;
 	}
@@ -6815,7 +6815,7 @@ ice_fec_get(struct rte_eth_dev *dev, uint32_t *fec_capa)
 	ret = ice_aq_get_phy_caps(pi, false, ICE_AQC_REPORT_TOPO_CAP_MEDIA,
 				  &pcaps, NULL);
 	if (ret != ICE_SUCCESS) {
-		PMD_DRV_LOG(ERR, "Failed to get capability information: %d\n",
+		PMD_DRV_LOG(ERR, "Failed to get capability information: %d",
 			ret);
 		return -ENOTSUP;
 	}

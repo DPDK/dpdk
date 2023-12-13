@@ -1814,7 +1814,7 @@ nicvf_dev_start(struct rte_eth_dev *dev)
 	/* Apply new link configurations if changed */
 	ret = nicvf_apply_link_speed(dev);
 	if (ret) {
-		PMD_INIT_LOG(ERR, "Failed to set link configuration\n");
+		PMD_INIT_LOG(ERR, "Failed to set link configuration");
 		return ret;
 	}
 

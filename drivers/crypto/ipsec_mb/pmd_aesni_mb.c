@@ -113,7 +113,7 @@ aesni_mb_set_session_auth_parameters(IMB_MGR *mb_mgr,
 		uint16_t xcbc_mac_digest_len =
 			get_truncated_digest_byte_length(IMB_AUTH_AES_XCBC);
 		if (sess->auth.req_digest_len != xcbc_mac_digest_len) {
-			IPSEC_MB_LOG(ERR, "Invalid digest size\n");
+			IPSEC_MB_LOG(ERR, "Invalid digest size");
 			return -EINVAL;
 		}
 		sess->template_job.auth_tag_output_len_in_bytes = sess->auth.req_digest_len;
@@ -136,7 +136,7 @@ aesni_mb_set_session_auth_parameters(IMB_MGR *mb_mgr,
 				get_digest_byte_length(IMB_AUTH_AES_CMAC);
 
 		if (sess->auth.req_digest_len > cmac_digest_len) {
-			IPSEC_MB_LOG(ERR, "Invalid digest size\n");
+			IPSEC_MB_LOG(ERR, "Invalid digest size");
 			return -EINVAL;
 		}
 		/*
@@ -171,7 +171,7 @@ aesni_mb_set_session_auth_parameters(IMB_MGR *mb_mgr,
 
 		if (sess->auth.req_digest_len >
 			get_digest_byte_length(IMB_AUTH_AES_GMAC)) {
-			IPSEC_MB_LOG(ERR, "Invalid digest size\n");
+			IPSEC_MB_LOG(ERR, "Invalid digest size");
 			return -EINVAL;
 		}
 		sess->template_job.auth_tag_output_len_in_bytes = sess->auth.req_digest_len;
@@ -198,7 +198,7 @@ aesni_mb_set_session_auth_parameters(IMB_MGR *mb_mgr,
 			sess->template_job.key_len_in_bytes = IMB_KEY_256_BYTES;
 			break;
 		default:
-			IPSEC_MB_LOG(ERR, "Invalid authentication key length\n");
+			IPSEC_MB_LOG(ERR, "Invalid authentication key length");
 			return -EINVAL;
 		}
 		sess->template_job.u.GMAC._key = &sess->cipher.gcm_key;
@@ -211,7 +211,7 @@ aesni_mb_set_session_auth_parameters(IMB_MGR *mb_mgr,
 			sess->template_job.hash_alg = IMB_AUTH_ZUC_EIA3_BITLEN;
 
 			if (sess->auth.req_digest_len != 4) {
-				IPSEC_MB_LOG(ERR, "Invalid digest size\n");
+				IPSEC_MB_LOG(ERR, "Invalid digest size");
 				return -EINVAL;
 			}
 		} else if (xform->auth.key.length == 32) {
@@ -223,11 +223,11 @@ aesni_mb_set_session_auth_parameters(IMB_MGR *mb_mgr,
 #else
 			if (sess->auth.req_digest_len != 4) {
 #endif
-				IPSEC_MB_LOG(ERR, "Invalid digest size\n");
+				IPSEC_MB_LOG(ERR, "Invalid digest size");
 				return -EINVAL;
 			}
 		} else {
-			IPSEC_MB_LOG(ERR, "Invalid authentication key length\n");
+			IPSEC_MB_LOG(ERR, "Invalid authentication key length");
 			return -EINVAL;
 		}
 
@@ -243,7 +243,7 @@ aesni_mb_set_session_auth_parameters(IMB_MGR *mb_mgr,
 			get_truncated_digest_byte_length(
 						IMB_AUTH_SNOW3G_UIA2_BITLEN);
 		if (sess->auth.req_digest_len != snow3g_uia2_digest_len) {
-			IPSEC_MB_LOG(ERR, "Invalid digest size\n");
+			IPSEC_MB_LOG(ERR, "Invalid digest size");
 			return -EINVAL;
 		}
 		sess->template_job.auth_tag_output_len_in_bytes = sess->auth.req_digest_len;
@@ -258,7 +258,7 @@ aesni_mb_set_session_auth_parameters(IMB_MGR *mb_mgr,
 		uint16_t kasumi_f9_digest_len =
 			get_truncated_digest_byte_length(IMB_AUTH_KASUMI_UIA1);
 		if (sess->auth.req_digest_len != kasumi_f9_digest_len) {
-			IPSEC_MB_LOG(ERR, "Invalid digest size\n");
+			IPSEC_MB_LOG(ERR, "Invalid digest size");
 			return -EINVAL;
 		}
 		sess->template_job.auth_tag_output_len_in_bytes = sess->auth.req_digest_len;
@@ -389,7 +389,7 @@ aesni_mb_set_session_auth_parameters(IMB_MGR *mb_mgr,
 
 	if (sess->auth.req_digest_len > full_digest_size ||
 			sess->auth.req_digest_len == 0) {
-		IPSEC_MB_LOG(ERR, "Invalid digest size\n");
+		IPSEC_MB_LOG(ERR, "Invalid digest size");
 		return -EINVAL;
 	}
 
@@ -725,7 +725,7 @@ aesni_mb_set_session_aead_parameters(const IMB_MGR *mb_mgr,
 		if (sess->auth.req_digest_len < AES_CCM_DIGEST_MIN_LEN ||
 			sess->auth.req_digest_len > AES_CCM_DIGEST_MAX_LEN ||
 			(sess->auth.req_digest_len & 1) == 1) {
-			IPSEC_MB_LOG(ERR, "Invalid digest size\n");
+			IPSEC_MB_LOG(ERR, "Invalid digest size");
 			return -EINVAL;
 		}
 		break;
@@ -761,7 +761,7 @@ aesni_mb_set_session_aead_parameters(const IMB_MGR *mb_mgr,
 		/* GCM digest size must be between 1 and 16 */
 		if (sess->auth.req_digest_len == 0 ||
 				sess->auth.req_digest_len > 16) {
-			IPSEC_MB_LOG(ERR, "Invalid digest size\n");
+			IPSEC_MB_LOG(ERR, "Invalid digest size");
 			return -EINVAL;
 		}
 		break;
@@ -782,7 +782,7 @@ aesni_mb_set_session_aead_parameters(const IMB_MGR *mb_mgr,
 		sess->template_job.enc_keys = sess->cipher.expanded_aes_keys.encode;
 		sess->template_job.dec_keys = sess->cipher.expanded_aes_keys.decode;
 		if (sess->auth.req_digest_len != 16) {
-			IPSEC_MB_LOG(ERR, "Invalid digest size\n");
+			IPSEC_MB_LOG(ERR, "Invalid digest size");
 			return -EINVAL;
 		}
 		break;
@@ -1234,7 +1234,7 @@ handle_sgl_linear(IMB_JOB *job, struct rte_crypto_op *op, uint32_t dst_offset,
 	total_len = sgl_linear_cipher_auth_len(job, &auth_len);
 	linear_buf = rte_zmalloc(NULL, total_len + job->auth_tag_output_len_in_bytes, 0);
 	if (linear_buf == NULL) {
-		IPSEC_MB_LOG(ERR, "Error allocating memory for SGL Linear Buffer\n");
+		IPSEC_MB_LOG(ERR, "Error allocating memory for SGL Linear Buffer");
 		return -1;
 	}
 

@@ -561,7 +561,7 @@ gve_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_id, uint16_t nb_desc,
 
 	/* Ring size is required to be a power of two. */
 	if (!rte_is_power_of_2(nb_desc)) {
-		PMD_DRV_LOG(ERR, "Invalid ring size %u. GVE ring size must be a power of 2.\n",
+		PMD_DRV_LOG(ERR, "Invalid ring size %u. GVE ring size must be a power of 2.",
 			    nb_desc);
 		return -EINVAL;
 	}

@@ -173,14 +173,14 @@ ixgbe_add_tx_flow_control_drop_filter(struct rte_eth_dev *eth_dev)
 	struct ixgbe_ethertype_filter ethertype_filter;
 
 	if (!hw->mac.ops.set_ethertype_anti_spoofing) {
-		PMD_DRV_LOG(INFO, "ether type anti-spoofing is not supported.\n");
+		PMD_DRV_LOG(INFO, "ether type anti-spoofing is not supported.");
 		return;
 	}
 
 	i = ixgbe_ethertype_filter_lookup(filter_info,
 					  IXGBE_ETHERTYPE_FLOW_CTRL);
 	if (i >= 0) {
-		PMD_DRV_LOG(ERR, "A ether type filter entity for flow control already exists!\n");
+		PMD_DRV_LOG(ERR, "A ether type filter entity for flow control already exists!");
 		return;
 	}
 
@@ -193,7 +193,7 @@ ixgbe_add_tx_flow_control_drop_filter(struct rte_eth_dev *eth_dev)
 	i = ixgbe_ethertype_filter_insert(filter_info,
 					  &ethertype_filter);
 	if (i < 0) {
-		PMD_DRV_LOG(ERR, "Cannot find an unused ether type filter entity for flow control.\n");
+		PMD_DRV_LOG(ERR, "Cannot find an unused ether type filter entity for flow control.");
 		return;
 	}
 
@@ -424,7 +424,7 @@ ixgbe_disable_vf_mc_promisc(struct rte_eth_dev *dev, uint32_t vf)
 
 	vmolr = IXGBE_READ_REG(hw, IXGBE_VMOLR(vf));
 
-	PMD_DRV_LOG(INFO, "VF %u: disabling multicast promiscuous\n", vf);
+	PMD_DRV_LOG(INFO, "VF %u: disabling multicast promiscuous", vf);
 
 	vmolr &= ~IXGBE_VMOLR_MPE;
 
@@ -630,7 +630,7 @@ ixgbe_negotiate_vf_api(struct rte_eth_dev *dev, uint32_t vf, uint32_t *msgbuf)
 		break;
 	}
 
-	PMD_DRV_LOG(ERR, "Negotiate invalid api version %u from VF %d\n",
+	PMD_DRV_LOG(ERR, "Negotiate invalid api version %u from VF %d",
 		api_version, vf);
 
 	return -1;
@@ -679,7 +679,7 @@ ixgbe_get_vf_queues(struct rte_eth_dev *dev, uint32_t vf, uint32_t *msgbuf)
 	case RTE_ETH_MQ_TX_NONE:
 	case RTE_ETH_MQ_TX_DCB:
 		PMD_DRV_LOG(ERR, "PF must work with virtualization for VF %u"
-			", but its tx mode = %d\n", vf,
+			", but its tx mode = %d", vf,
 			eth_conf->txmode.mq_mode);
 		return -1;
 
@@ -713,7 +713,7 @@ ixgbe_get_vf_queues(struct rte_eth_dev *dev, uint32_t vf, uint32_t *msgbuf)
 		break;
 
 	default:
-		PMD_DRV_LOG(ERR, "PF work with invalid mode = %d\n",
+		PMD_DRV_LOG(ERR, "PF work with invalid mode = %d",
 			eth_conf->txmode.mq_mode);
 		return -1;
 	}
@@ -769,7 +769,7 @@ ixgbe_set_vf_mc_promisc(struct rte_eth_dev *dev, uint32_t vf, uint32_t *msgbuf)
 		if (!(fctrl & IXGBE_FCTRL_UPE)) {
 			/* VF promisc requires PF in promisc */
 			PMD_DRV_LOG(ERR,
-			       "Enabling VF promisc requires PF in promisc\n");
+			       "Enabling VF promisc requires PF in promisc");
 			return -1;
 		}
 
@@ -806,7 +806,7 @@ ixgbe_set_vf_macvlan_msg(struct rte_eth_dev *dev, uint32_t vf, uint32_t *msgbuf)
 	if (index) {
 		if (!rte_is_valid_assigned_ether_addr(
 			(struct rte_ether_addr *)new_mac)) {
-			PMD_DRV_LOG(ERR, "set invalid mac vf:%d\n", vf);
+			PMD_DRV_LOG(ERR, "set invalid mac vf:%d", vf);
 			return -1;
 		}
 

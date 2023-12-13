@@ -69,7 +69,7 @@ rte_hw_mbuf_create_pool(struct rte_mempool *mp)
 		ret = dpaa2_affine_qbman_swp();
 		if (ret) {
 			DPAA2_MEMPOOL_ERR(
-				"Failed to allocate IO portal, tid: %d\n",
+				"Failed to allocate IO portal, tid: %d",
 				rte_gettid());
 			goto err1;
 		}
@@ -213,7 +213,7 @@ rte_dpaa2_mbuf_release(struct rte_mempool *pool __rte_unused,
 		ret = dpaa2_affine_qbman_swp();
 		if (ret != 0) {
 			DPAA2_MEMPOOL_ERR(
-				"Failed to allocate IO portal, tid: %d\n",
+				"Failed to allocate IO portal, tid: %d",
 				rte_gettid());
 			return;
 		}
@@ -357,7 +357,7 @@ rte_dpaa2_mbuf_alloc_bulk(struct rte_mempool *pool,
 		ret = dpaa2_affine_qbman_swp();
 		if (ret != 0) {
 			DPAA2_MEMPOOL_ERR(
-				"Failed to allocate IO portal, tid: %d\n",
+				"Failed to allocate IO portal, tid: %d",
 				rte_gettid());
 			return ret;
 		}
@@ -472,7 +472,7 @@ dpaa2_populate(struct rte_mempool *mp, unsigned int max_objs,
 	msl = rte_mem_virt2memseg_list(vaddr);
 
 	if (!msl) {
-		DPAA2_MEMPOOL_DEBUG("Memsegment is External.\n");
+		DPAA2_MEMPOOL_DEBUG("Memsegment is External.");
 		rte_fslmc_vfio_mem_dmamap((size_t)vaddr,
 				(size_t)paddr, (size_t)len);
 	}

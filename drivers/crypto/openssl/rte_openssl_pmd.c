@@ -57,13 +57,13 @@ static void ossl_legacy_provider_load(void)
 	/* Load Multiple providers into the default (NULL) library context */
 	legacy = OSSL_PROVIDER_load(NULL, "legacy");
 	if (legacy == NULL) {
-		OPENSSL_LOG(ERR, "Failed to load Legacy provider\n");
+		OPENSSL_LOG(ERR, "Failed to load Legacy provider");
 		return;
 	}
 
 	deflt = OSSL_PROVIDER_load(NULL, "default");
 	if (deflt == NULL) {
-		OPENSSL_LOG(ERR, "Failed to load Default provider\n");
+		OPENSSL_LOG(ERR, "Failed to load Default provider");
 		OSSL_PROVIDER_unload(legacy);
 		return;
 	}
@@ -2123,7 +2123,7 @@ process_openssl_dsa_sign_op_evp(struct rte_crypto_op *cop,
 	dsa_sign_data_p = (const unsigned char *)dsa_sign_data;
 	DSA_SIG *sign = d2i_DSA_SIG(NULL, &dsa_sign_data_p, outlen);
 	if (!sign) {
-		OPENSSL_LOG(ERR, "%s:%d\n", __func__, __LINE__);
+		OPENSSL_LOG(ERR, "%s:%d", __func__, __LINE__);
 		OPENSSL_free(dsa_sign_data);
 		goto err_dsa_sign;
 	} else {
@@ -2168,7 +2168,7 @@ process_openssl_dsa_verify_op_evp(struct rte_crypto_op *cop,
 
 	cop->status = RTE_CRYPTO_OP_STATUS_ERROR;
 	if (!param_bld) {
-		OPENSSL_LOG(ERR, " %s:%d\n", __func__, __LINE__);
+		OPENSSL_LOG(ERR, " %s:%d", __func__, __LINE__);
 		return -1;
 	}
 
@@ -2246,7 +2246,7 @@ process_openssl_dsa_sign_op(struct rte_crypto_op *cop,
 			dsa);
 
 	if (sign == NULL) {
-		OPENSSL_LOG(ERR, "%s:%d\n", __func__, __LINE__);
+		OPENSSL_LOG(ERR, "%s:%d", __func__, __LINE__);
 		cop->status = RTE_CRYPTO_OP_STATUS_ERROR;
 	} else {
 		const BIGNUM *r = NULL, *s = NULL;
@@ -2275,7 +2275,7 @@ process_openssl_dsa_verify_op(struct rte_crypto_op *cop,
 	BIGNUM *pub_key = NULL;
 
 	if (sign == NULL) {
-		OPENSSL_LOG(ERR, " %s:%d\n", __func__, __LINE__);
+		OPENSSL_LOG(ERR, " %s:%d", __func__, __LINE__);
 		cop->status = RTE_CRYPTO_OP_STATUS_NOT_PROCESSED;
 		return -1;
 	}
@@ -2352,7 +2352,7 @@ process_openssl_dh_op_evp(struct rte_crypto_op *cop,
 
 		if (!OSSL_PARAM_BLD_push_BN(param_bld_peer, OSSL_PKEY_PARAM_PUB_KEY,
 				pub_key)) {
-			OPENSSL_LOG(ERR, "Failed to set public key\n");
+			OPENSSL_LOG(ERR, "Failed to set public key");
 			OSSL_PARAM_BLD_free(param_bld_peer);
 			BN_free(pub_key);
 			return ret;
@@ -2397,7 +2397,7 @@ process_openssl_dh_op_evp(struct rte_crypto_op *cop,
 
 		if (!OSSL_PARAM_BLD_push_BN(param_bld, OSSL_PKEY_PARAM_PRIV_KEY,
 				priv_key)) {
-			OPENSSL_LOG(ERR, "Failed to set private key\n");
+			OPENSSL_LOG(ERR, "Failed to set private key");
 			EVP_PKEY_CTX_free(peer_ctx);
 			OSSL_PARAM_free(params_peer);
 			BN_free(pub_key);
@@ -2423,7 +2423,7 @@ process_openssl_dh_op_evp(struct rte_crypto_op *cop,
 		goto err_dh;
 
 	if (op->ke_type == RTE_CRYPTO_ASYM_KE_PUB_KEY_GENERATE) {
-		OPENSSL_LOG(DEBUG, "%s:%d updated pub key\n", __func__, __LINE__);
+		OPENSSL_LOG(DEBUG, "%s:%d updated pub key", __func__, __LINE__);
 		if (!EVP_PKEY_get_bn_param(dhpkey, OSSL_PKEY_PARAM_PUB_KEY, &pub_key))
 			goto err_dh;
 				/* output public key */
@@ -2432,7 +2432,7 @@ process_openssl_dh_op_evp(struct rte_crypto_op *cop,
 
 	if (op->ke_type == RTE_CRYPTO_ASYM_KE_PRIV_KEY_GENERATE) {
 
-		OPENSSL_LOG(DEBUG, "%s:%d updated priv key\n", __func__, __LINE__);
+		OPENSSL_LOG(DEBUG, "%s:%d updated priv key", __func__, __LINE__);
 		if (!EVP_PKEY_get_bn_param(dhpkey, OSSL_PKEY_PARAM_PRIV_KEY, &priv_key))
 			goto err_dh;
 
@@ -2527,7 +2527,7 @@ process_openssl_dh_op(struct rte_crypto_op *cop,
 		}
 		ret = set_dh_priv_key(dh_key, priv_key);
 		if (ret) {
-			OPENSSL_LOG(ERR, "Failed to set private key\n");
+			OPENSSL_LOG(ERR, "Failed to set private key");
 			cop->status = RTE_CRYPTO_OP_STATUS_ERROR;
 			BN_free(peer_key);
 			BN_free(priv_key);
@@ -2574,7 +2574,7 @@ process_openssl_dh_op(struct rte_crypto_op *cop,
 		}
 		ret = set_dh_priv_key(dh_key, priv_key);
 		if (ret) {
-			OPENSSL_LOG(ERR, "Failed to set private key\n");
+			OPENSSL_LOG(ERR, "Failed to set private key");
 			cop->status = RTE_CRYPTO_OP_STATUS_ERROR;
 			BN_free(priv_key);
 			return 0;
@@ -2596,7 +2596,7 @@ process_openssl_dh_op(struct rte_crypto_op *cop,
 	if (asym_op->dh.ke_type == RTE_CRYPTO_ASYM_KE_PUB_KEY_GENERATE) {
 		const BIGNUM *pub_key = NULL;
 
-		OPENSSL_LOG(DEBUG, "%s:%d update public key\n",
+		OPENSSL_LOG(DEBUG, "%s:%d update public key",
 				__func__, __LINE__);
 
 		/* get the generated keys */
@@ -2610,7 +2610,7 @@ process_openssl_dh_op(struct rte_crypto_op *cop,
 	if (asym_op->dh.ke_type == RTE_CRYPTO_ASYM_KE_PRIV_KEY_GENERATE) {
 		const BIGNUM *priv_key = NULL;
 
-		OPENSSL_LOG(DEBUG, "%s:%d updated priv key\n",
+		OPENSSL_LOG(DEBUG, "%s:%d updated priv key",
 				__func__, __LINE__);
 
 		/* get the generated keys */
@@ -2719,7 +2719,7 @@ process_openssl_rsa_op_evp(struct rte_crypto_op *cop,
 	default:
 		cop->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
 		OPENSSL_LOG(ERR,
-				"rsa pad type not supported %d\n", pad);
+				"rsa pad type not supported %d", pad);
 		return ret;
 	}
 
@@ -2746,7 +2746,7 @@ process_openssl_rsa_op_evp(struct rte_crypto_op *cop,
 		op->rsa.cipher.length = outlen;
 
 		OPENSSL_LOG(DEBUG,
-				"length of encrypted text %zu\n", outlen);
+				"length of encrypted text %zu", outlen);
 		break;
 
 	case RTE_CRYPTO_ASYM_OP_DECRYPT:
@@ -2770,7 +2770,7 @@ process_openssl_rsa_op_evp(struct rte_crypto_op *cop,
 			goto err_rsa;
 		op->rsa.message.length = outlen;
 
-		OPENSSL_LOG(DEBUG, "length of decrypted text %zu\n", outlen);
+		OPENSSL_LOG(DEBUG, "length of decrypted text %zu", outlen);
 		break;
 
 	case RTE_CRYPTO_ASYM_OP_SIGN:
@@ -2825,7 +2825,7 @@ process_openssl_rsa_op_evp(struct rte_crypto_op *cop,
 
 		OPENSSL_LOG(DEBUG,
 				"Length of public_decrypt %zu "
-				"length of message %zd\n",
+				"length of message %zd",
 				outlen, op->rsa.message.length);
 		if (CRYPTO_memcmp(tmp, op->rsa.message.data,
 				op->rsa.message.length)) {
@@ -3097,7 +3097,7 @@ process_openssl_rsa_op(struct rte_crypto_op *cop,
 	default:
 		cop->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
 		OPENSSL_LOG(ERR,
-				"rsa pad type not supported %d\n", pad);
+				"rsa pad type not supported %d", pad);
 		return 0;
 	}
 
@@ -3112,7 +3112,7 @@ process_openssl_rsa_op(struct rte_crypto_op *cop,
 		if (ret > 0)
 			op->rsa.cipher.length = ret;
 		OPENSSL_LOG(DEBUG,
-				"length of encrypted text %d\n", ret);
+				"length of encrypted text %d", ret);
 		break;
 
 	case RTE_CRYPTO_ASYM_OP_DECRYPT:
@@ -3150,7 +3150,7 @@ process_openssl_rsa_op(struct rte_crypto_op *cop,
 
 		OPENSSL_LOG(DEBUG,
 				"Length of public_decrypt %d "
-				"length of message %zd\n",
+				"length of message %zd",
 				ret, op->rsa.message.length);
 		if ((ret <= 0) || (CRYPTO_memcmp(tmp, op->rsa.message.data,
 				op->rsa.message.length))) {

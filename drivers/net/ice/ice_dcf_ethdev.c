@@ -1646,7 +1646,7 @@ ice_dcf_init_repr_info(struct ice_dcf_adapter *dcf_adapter)
 				   dcf_adapter->real_hw.num_vfs,
 				   sizeof(dcf_adapter->repr_infos[0]), 0);
 	if (!dcf_adapter->repr_infos) {
-		PMD_DRV_LOG(ERR, "Failed to alloc memory for VF representors\n");
+		PMD_DRV_LOG(ERR, "Failed to alloc memory for VF representors");
 		return -ENOMEM;
 	}
 
@@ -2088,7 +2088,7 @@ eth_ice_dcf_pci_probe(__rte_unused struct rte_pci_driver *pci_drv,
 		}
 
 		if (dcf_adapter->real_hw.vf_vsi_map[vf_id] == dcf_vsi_id) {
-			PMD_DRV_LOG(ERR, "VF ID %u is DCF's ID.\n", vf_id);
+			PMD_DRV_LOG(ERR, "VF ID %u is DCF's ID.", vf_id);
 			ret = -EINVAL;
 			break;
 		}

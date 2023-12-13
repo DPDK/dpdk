@@ -2284,7 +2284,7 @@ get_running_host_id(void)
 	uint8_t host_id = CPFL_INVALID_HOST_ID;
 
 	if (uname(&unamedata) != 0)
-		PMD_INIT_LOG(ERR, "Cannot fetch node_name for host\n");
+		PMD_INIT_LOG(ERR, "Cannot fetch node_name for host");
 	else if (strstr(unamedata.nodename, "ipu-imc"))
 		PMD_INIT_LOG(ERR, "CPFL PMD cannot be running on IMC.");
 	else if (strstr(unamedata.nodename, "ipu-acc"))

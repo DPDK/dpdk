@@ -170,7 +170,7 @@ cnxk_ep_xmit_pkts_scalar_mseg(struct rte_mbuf **tx_pkts, struct otx_ep_instr_que
 		num_sg = (frags + mask) / OTX_EP_NUM_SG_PTRS;
 
 		if (unlikely(pkt_len > OTX_EP_MAX_PKT_SZ && num_sg > OTX_EP_MAX_SG_LISTS)) {
-			otx_ep_err("Failed to xmit the pkt, pkt_len is higher or pkt has more segments\n");
+			otx_ep_err("Failed to xmit the pkt, pkt_len is higher or pkt has more segments");
 			goto exit;
 		}
 

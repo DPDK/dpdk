@@ -336,7 +336,7 @@ dlb2_pf_ldb_port_create(struct dlb2_hw_dev *handle,
 	/* Lock the page in memory */
 	ret = rte_mem_lock_page(port_base);
 	if (ret < 0) {
-		DLB2_LOG_ERR("dlb2 pf pmd could not lock page for device i/o\n");
+		DLB2_LOG_ERR("dlb2 pf pmd could not lock page for device i/o");
 		goto create_port_err;
 	}
 
@@ -411,7 +411,7 @@ dlb2_pf_dir_port_create(struct dlb2_hw_dev *handle,
 	/* Lock the page in memory */
 	ret = rte_mem_lock_page(port_base);
 	if (ret < 0) {
-		DLB2_LOG_ERR("dlb2 pf pmd could not lock page for device i/o\n");
+		DLB2_LOG_ERR("dlb2 pf pmd could not lock page for device i/o");
 		goto create_port_err;
 	}
 
@@ -737,7 +737,7 @@ dlb2_eventdev_pci_init(struct rte_eventdev *eventdev)
 						&dlb2_args,
 						dlb2->version);
 			if (ret) {
-				DLB2_LOG_ERR("PFPMD failed to parse args ret=%d, errno=%d\n",
+				DLB2_LOG_ERR("PFPMD failed to parse args ret=%d, errno=%d",
 					     ret, rte_errno);
 				goto dlb2_probe_failed;
 			}
@@ -748,7 +748,7 @@ dlb2_eventdev_pci_init(struct rte_eventdev *eventdev)
 		dlb2->qm_instance.pf_dev = dlb2_probe(pci_dev, probe_args);
 
 		if (dlb2->qm_instance.pf_dev == NULL) {
-			DLB2_LOG_ERR("DLB2 PF Probe failed with error %d\n",
+			DLB2_LOG_ERR("DLB2 PF Probe failed with error %d",
 				     rte_errno);
 			ret = -rte_errno;
 			goto dlb2_probe_failed;
@@ -766,13 +766,13 @@ dlb2_eventdev_pci_init(struct rte_eventdev *eventdev)
 	if (ret)
 		goto dlb2_probe_failed;
 
-	DLB2_LOG_INFO("DLB2 PF Probe success\n");
+	DLB2_LOG_INFO("DLB2 PF Probe success");
 
 	return 0;
 
 dlb2_probe_failed:
 
-	DLB2_LOG_INFO("DLB2 PF Probe failed, ret=%d\n", ret);
+	DLB2_LOG_INFO("DLB2 PF Probe failed, ret=%d", ret);
 
 	return ret;
 }
@@ -811,7 +811,7 @@ event_dlb2_pci_probe(struct rte_pci_driver *pci_drv,
 					     event_dlb2_pf_name);
 	if (ret) {
 		DLB2_LOG_INFO("rte_event_pmd_pci_probe_named() failed, "
-				"ret=%d\n", ret);
+				"ret=%d", ret);
 	}
 
 	return ret;
@@ -826,7 +826,7 @@ event_dlb2_pci_remove(struct rte_pci_device *pci_dev)
 
 	if (ret) {
 		DLB2_LOG_INFO("rte_event_pmd_pci_remove() failed, "
-				"ret=%d\n", ret);
+				"ret=%d", ret);
 	}
 
 	return ret;
@@ -845,7 +845,7 @@ event_dlb2_5_pci_probe(struct rte_pci_driver *pci_drv,
 					    event_dlb2_pf_name);
 	if (ret) {
 		DLB2_LOG_INFO("rte_event_pmd_pci_probe_named() failed, "
-				"ret=%d\n", ret);
+				"ret=%d", ret);
 	}
 
 	return ret;
@@ -860,7 +860,7 @@ event_dlb2_5_pci_remove(struct rte_pci_device *pci_dev)
 
 	if (ret) {
 		DLB2_LOG_INFO("rte_event_pmd_pci_remove() failed, "
-				"ret=%d\n", ret);
+				"ret=%d", ret);
 	}
 
 	return ret;

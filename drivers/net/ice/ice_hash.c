@@ -1245,13 +1245,13 @@ ice_hash_add_raw_cfg(struct ice_adapter *ad,
 					   ice_get_hw_vsi_num(hw, vsi_handle),
 					   id);
 		if (ret) {
-			PMD_DRV_LOG(ERR, "remove RSS flow failed\n");
+			PMD_DRV_LOG(ERR, "remove RSS flow failed");
 			return ret;
 		}
 
 		ret = ice_rem_prof(hw, ICE_BLK_RSS, id);
 		if (ret) {
-			PMD_DRV_LOG(ERR, "remove RSS profile failed\n");
+			PMD_DRV_LOG(ERR, "remove RSS profile failed");
 			return ret;
 		}
 	}
@@ -1259,7 +1259,7 @@ ice_hash_add_raw_cfg(struct ice_adapter *ad,
 	/* add new profile */
 	ret = ice_flow_set_hw_prof(hw, vsi_handle, 0, prof, ICE_BLK_RSS);
 	if (ret) {
-		PMD_DRV_LOG(ERR, "HW profile add failed\n");
+		PMD_DRV_LOG(ERR, "HW profile add failed");
 		return ret;
 	}
 
@@ -1381,7 +1381,7 @@ ice_hash_rem_raw_cfg(struct ice_adapter *ad,
 	return 0;
 
 err:
-	PMD_DRV_LOG(ERR, "HW profile remove failed\n");
+	PMD_DRV_LOG(ERR, "HW profile remove failed");
 	return ret;
 }
 

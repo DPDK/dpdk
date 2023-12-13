@@ -227,7 +227,7 @@ cryptodev_ccp_create(const char *name,
 	}
 	cryptodev_cnt++;
 
-	CCP_LOG_DBG("CCP : Crypto device count = %d\n", cryptodev_cnt);
+	CCP_LOG_DBG("CCP : Crypto device count = %d", cryptodev_cnt);
 	dev->device = &pci_dev->device;
 	dev->device->driver = &pci_drv->driver;
 	dev->driver_id = ccp_cryptodev_driver_id;

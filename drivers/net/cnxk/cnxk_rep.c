@@ -270,7 +270,7 @@ cnxk_representee_mtu_msg_process(struct cnxk_eswitch_dev *eswitch_dev, uint16_t 
 
 		rep_dev = cnxk_rep_pmd_priv(rep_eth_dev);
 		if (rep_dev->rep_id == rep_id) {
-			plt_rep_dbg("Setting MTU as %d for hw_func %x rep_id %d\n", mtu, hw_func,
+			plt_rep_dbg("Setting MTU as %d for hw_func %x rep_id %d", mtu, hw_func,
 				    rep_id);
 			rep_dev->repte_mtu = mtu;
 			break;
@@ -423,7 +423,7 @@ cnxk_rep_parent_setup(struct cnxk_eswitch_dev *eswitch_dev)
 			plt_err("Failed to alloc switch domain: %d", rc);
 			goto fail;
 		}
-		plt_rep_dbg("Allocated switch domain id %d for pf %d\n", switch_domain_id, pf);
+		plt_rep_dbg("Allocated switch domain id %d for pf %d", switch_domain_id, pf);
 		eswitch_dev->sw_dom[j].switch_domain_id = switch_domain_id;
 		eswitch_dev->sw_dom[j].pf = pf;
 		prev_pf = pf;
@@ -549,7 +549,7 @@ cnxk_rep_dev_probe(struct rte_pci_device *pci_dev, struct cnxk_eswitch_dev *eswi
 	int i, j, rc;
 
 	if (eswitch_dev->repr_cnt.nb_repr_created > RTE_MAX_ETHPORTS) {
-		plt_err("nb_representor_ports %d > %d MAX ETHPORTS\n",
+		plt_err("nb_representor_ports %d > %d MAX ETHPORTS",
 			eswitch_dev->repr_cnt.nb_repr_created, RTE_MAX_ETHPORTS);
 		rc = -EINVAL;
 		goto fail;
@@ -604,7 +604,7 @@ cnxk_rep_dev_probe(struct rte_pci_device *pci_dev, struct cnxk_eswitch_dev *eswi
 						   name, cnxk_representee_msg_thread_main,
 						   eswitch_dev);
 		if (rc != 0) {
-			plt_err("Failed to create thread for VF mbox handling\n");
+			plt_err("Failed to create thread for VF mbox handling");
 			goto thread_fail;
 		}
 	}

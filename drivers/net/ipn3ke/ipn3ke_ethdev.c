@@ -203,7 +203,7 @@ ipn3ke_vbng_init_done(struct ipn3ke_hw *hw)
 	}
 
 	if (!timeout) {
-		IPN3KE_AFU_PMD_ERR("IPN3KE vBNG INIT timeout.\n");
+		IPN3KE_AFU_PMD_ERR("IPN3KE vBNG INIT timeout.");
 		return -1;
 	}
 
@@ -348,7 +348,7 @@ ipn3ke_hw_init(struct rte_afu_device *afu_dev,
 		hw->acc_tm = 1;
 		hw->acc_flow = 1;
 
-		IPN3KE_AFU_PMD_DEBUG("UPL_version is 0x%x\n",
+		IPN3KE_AFU_PMD_DEBUG("UPL_version is 0x%x",
 			IPN3KE_READ_REG(hw, 0));
 	}
 

@@ -93,7 +93,7 @@ cnxk_rep_pmd_priv(const struct rte_eth_dev *eth_dev)
 static __rte_always_inline void
 cnxk_rep_pool_buffer_stats(struct rte_mempool *pool)
 {
-	plt_rep_dbg("        pool %s size %d buffer count in use  %d available %d\n", pool->name,
+	plt_rep_dbg("        pool %s size %d buffer count in use  %d available %d", pool->name,
 		    pool->size, rte_mempool_in_use_count(pool), rte_mempool_avail_count(pool));
 }
 

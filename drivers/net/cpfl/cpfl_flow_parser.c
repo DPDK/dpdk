@@ -2020,7 +2020,7 @@ cpfl_metadata_write_port_id(struct cpfl_itf *itf)
 
 	dev_id = cpfl_get_port_id(itf);
 	if (dev_id == CPFL_INVALID_HW_ID) {
-		PMD_DRV_LOG(ERR, "fail to get hw ID\n");
+		PMD_DRV_LOG(ERR, "fail to get hw ID");
 		return false;
 	}
 	cpfl_metadata_write16(&itf->adapter->meta, type, offset, dev_id << 3);

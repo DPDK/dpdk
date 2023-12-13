@@ -324,7 +324,7 @@ idxd_dmadev_probe_pci(struct rte_pci_driver *drv, struct rte_pci_device *dev)
 
 		/* look up queue 0 to get the PCI structure */
 		snprintf(qname, sizeof(qname), "%s-q0", name);
-		IDXD_PMD_INFO("Looking up %s\n", qname);
+		IDXD_PMD_INFO("Looking up %s", qname);
 		ret = idxd_dmadev_create(qname, &dev->device, NULL, &idxd_pci_ops);
 		if (ret != 0) {
 			IDXD_PMD_ERR("Failed to create dmadev %s", name);
@@ -339,7 +339,7 @@ idxd_dmadev_probe_pci(struct rte_pci_driver *drv, struct rte_pci_device *dev)
 		for (qid = 1; qid < max_qid; qid++) {
 			/* add the queue number to each device name */
 			snprintf(qname, sizeof(qname), "%s-q%d", name, qid);
-			IDXD_PMD_INFO("Looking up %s\n", qname);
+			IDXD_PMD_INFO("Looking up %s", qname);
 			ret = idxd_dmadev_create(qname, &dev->device, NULL, &idxd_pci_ops);
 			if (ret != 0) {
 				IDXD_PMD_ERR("Failed to create dmadev %s", name);
@@ -365,7 +365,7 @@ idxd_dmadev_probe_pci(struct rte_pci_driver *drv, struct rte_pci_device *dev)
 		return ret;
 	}
 	if (idxd.u.pci->portals == NULL) {
-		IDXD_PMD_ERR("Error, invalid portal assigned during initialization\n");
+		IDXD_PMD_ERR("Error, invalid portal assigned during initialization");
 		free(idxd.u.pci);
 		return -EINVAL;
 	}

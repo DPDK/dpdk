@@ -482,7 +482,7 @@ __eth_bond_member_add_lock_free(uint16_t bonding_port_id, uint16_t member_port_i
 	ret = rte_eth_dev_info_get(member_port_id, &dev_info);
 	if (ret != 0) {
 		RTE_BOND_LOG(ERR,
-			"%s: Error during getting device (port %u) info: %s\n",
+			"%s: Error during getting device (port %u) info: %s",
 			__func__, member_port_id, strerror(-ret));
 
 		return ret;
@@ -609,7 +609,7 @@ __eth_bond_member_add_lock_free(uint16_t bonding_port_id, uint16_t member_port_i
 					&bonding_eth_dev->data->port_id);
 			internals->member_count--;
 			RTE_BOND_LOG(ERR,
-				"Member (port %u) link get failed: %s\n",
+				"Member (port %u) link get failed: %s",
 				member_port_id, rte_strerror(-ret));
 			return -1;
 		}

@@ -589,7 +589,7 @@ cnxk_nix_process_rx_conf(const struct rte_eth_rxconf *rx_conf,
 	}
 
 	if (mp == NULL || mp[0] == NULL || mp[1] == NULL) {
-		plt_err("invalid memory pools\n");
+		plt_err("invalid memory pools");
 		return -EINVAL;
 	}
 
@@ -617,7 +617,7 @@ cnxk_nix_process_rx_conf(const struct rte_eth_rxconf *rx_conf,
 		return -EINVAL;
 	}
 
-	plt_info("spb_pool:%s lpb_pool:%s lpb_len:%u spb_len:%u\n", (*spb_pool)->name,
+	plt_info("spb_pool:%s lpb_pool:%s lpb_len:%u spb_len:%u", (*spb_pool)->name,
 		 (*lpb_pool)->name, (*lpb_pool)->elt_size, (*spb_pool)->elt_size);
 
 	return 0;

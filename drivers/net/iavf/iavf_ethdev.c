@@ -2383,7 +2383,7 @@ static int iavf_parse_devargs(struct rte_eth_dev *dev)
 
 	kvlist = rte_kvargs_parse(devargs->args, iavf_valid_args);
 	if (!kvlist) {
-		PMD_INIT_LOG(ERR, "invalid kvargs key\n");
+		PMD_INIT_LOG(ERR, "invalid kvargs key");
 		return -EINVAL;
 	}
 
@@ -2418,7 +2418,7 @@ static int iavf_parse_devargs(struct rte_eth_dev *dev)
 	if (ad->devargs.quanta_size != 0 &&
 	    (ad->devargs.quanta_size < 256 || ad->devargs.quanta_size > 4096 ||
 	     ad->devargs.quanta_size & 0x40)) {
-		PMD_INIT_LOG(ERR, "invalid quanta size\n");
+		PMD_INIT_LOG(ERR, "invalid quanta size");
 		ret = -EINVAL;
 		goto bail;
 	}
@@ -3059,12 +3059,12 @@ iavf_dev_reset(struct rte_eth_dev *dev)
 	 */
 	ret = iavf_check_vf_reset_done(hw);
 	if (ret) {
-		PMD_DRV_LOG(ERR, "Wait too long for reset done!\n");
+		PMD_DRV_LOG(ERR, "Wait too long for reset done!");
 		return ret;
 	}
 	iavf_set_no_poll(adapter, false);
 
-	PMD_DRV_LOG(DEBUG, "Start dev_reset ...\n");
+	PMD_DRV_LOG(DEBUG, "Start dev_reset ...");
 	ret = iavf_dev_uninit(dev);
 	if (ret)
 		return ret;
@@ -3109,7 +3109,7 @@ iavf_handle_hw_reset(struct rte_eth_dev *dev)
 		return;
 
 	if (!iavf_is_reset_detected(adapter)) {
-		PMD_DRV_LOG(DEBUG, "reset not start\n");
+		PMD_DRV_LOG(DEBUG, "reset not start");
 		return;
 	}
 
@@ -3136,7 +3136,7 @@ iavf_handle_hw_reset(struct rte_eth_dev *dev)
 	goto exit;
 
 error:
-	PMD_DRV_LOG(DEBUG, "RESET recover with error code=%d\n", ret);
+	PMD_DRV_LOG(DEBUG, "RESET recover with error code=%dn", ret);
 exit:
 	vf->in_reset_recovery = false;
 	iavf_set_no_poll(adapter, false);

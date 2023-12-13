@@ -1531,7 +1531,7 @@ qat_asym_dev_create(struct qat_pci_device *qat_pci_dev)
 
 	snprintf(name, RTE_CRYPTODEV_NAME_MAX_LEN, "%s_%s",
 			qat_pci_dev->name, "asym");
-	QAT_LOG(DEBUG, "Creating QAT ASYM device %s\n", name);
+	QAT_LOG(DEBUG, "Creating QAT ASYM device %s", name);
 
 	if (qat_pci_dev->qat_dev_gen == QAT_VQAT &&
 		sub_id != ADF_VQAT_ASYM_PCI_SUBSYSTEM_ID) {

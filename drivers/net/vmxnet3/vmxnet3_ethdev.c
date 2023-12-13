@@ -1095,10 +1095,10 @@ vmxnet3_dev_start(struct rte_eth_dev *dev)
 			ret = VMXNET3_READ_BAR1_REG(hw, VMXNET3_REG_CMD);
 			if (ret != 0)
 				PMD_INIT_LOG(DEBUG,
-					"Failed in setup memory region cmd\n");
+					"Failed in setup memory region cmd");
 			ret = 0;
 		} else {
-			PMD_INIT_LOG(DEBUG, "Failed to setup memory region\n");
+			PMD_INIT_LOG(DEBUG, "Failed to setup memory region");
 		}
 	} else {
 		PMD_INIT_LOG(WARNING, "Memregs can't init (rx: %d, tx: %d)",

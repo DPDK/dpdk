@@ -192,7 +192,7 @@ ree_dev_register(const char *name)
 {
 	struct rte_regexdev *dev;
 
-	cn9k_ree_dbg("Creating regexdev %s\n", name);
+	cn9k_ree_dbg("Creating regexdev %s", name);
 
 	/* allocate device structure */
 	dev = rte_regexdev_register(name);

@@ -707,7 +707,7 @@ cn10k_rx_descriptor_dump(const struct rte_eth_dev *eth_dev, uint16_t qid,
 	available_pkts = cn10k_nix_rx_avail_get(rxq);
 
 	if ((offset + num - 1) >= available_pkts) {
-		plt_err("Invalid BD num=%u\n", num);
+		plt_err("Invalid BD num=%u", num);
 		return -EINVAL;
 	}
 

@@ -1953,7 +1953,7 @@ fill_sess_aead(struct rte_crypto_sym_xform *xform, struct cnxk_se_sess *sess)
 		sess->cpt_op |= ROC_SE_OP_CIPHER_DECRYPT;
 		sess->cpt_op |= ROC_SE_OP_AUTH_VERIFY;
 	} else {
-		plt_dp_err("Unknown aead operation\n");
+		plt_dp_err("Unknown aead operation");
 		return -1;
 	}
 	switch (aead_form->algo) {
@@ -2037,7 +2037,7 @@ fill_sm_sess_cipher(struct rte_crypto_sym_xform *xform, struct cnxk_se_sess *ses
 		sess->cpt_op |= ROC_SE_OP_CIPHER_DECRYPT;
 		sess->roc_se_ctx.template_w4.s.opcode_minor = ROC_SE_FC_MINOR_OP_DECRYPT;
 	} else {
-		plt_dp_err("Unknown cipher operation\n");
+		plt_dp_err("Unknown cipher operation");
 		return -1;
 	}
 
@@ -2114,7 +2114,7 @@ fill_sess_cipher(struct rte_crypto_sym_xform *xform, struct cnxk_se_sess *sess)
 				ROC_SE_FC_MINOR_OP_HMAC_FIRST;
 		}
 	} else {
-		plt_dp_err("Unknown cipher operation\n");
+		plt_dp_err("Unknown cipher operation");
 		return -1;
 	}
 

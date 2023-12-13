@@ -86,7 +86,7 @@ rte_dpaa2_create_dpci_device(int vdev_fd __rte_unused,
 					sizeof(struct queue_storage_info_t),
 					RTE_CACHE_LINE_SIZE);
 		if (!rxq->q_storage) {
-			DPAA2_BUS_ERR("q_storage allocation failed\n");
+			DPAA2_BUS_ERR("q_storage allocation failed");
 			ret = -ENOMEM;
 			goto err;
 		}
@@ -94,7 +94,7 @@ rte_dpaa2_create_dpci_device(int vdev_fd __rte_unused,
 		memset(rxq->q_storage, 0, sizeof(struct queue_storage_info_t));
 		ret = dpaa2_alloc_dq_storage(rxq->q_storage);
 		if (ret) {
-			DPAA2_BUS_ERR("dpaa2_alloc_dq_storage failed\n");
+			DPAA2_BUS_ERR("dpaa2_alloc_dq_storage failed");
 			goto err;
 		}
 	}

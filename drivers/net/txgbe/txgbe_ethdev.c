@@ -613,7 +613,7 @@ eth_txgbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params __rte_unused)
 		err = txgbe_flash_read_dword(hw, 0xFFFDC, &ssid);
 		if (err) {
 			PMD_INIT_LOG(ERR,
-				"Read of internal subsystem device id failed\n");
+				"Read of internal subsystem device id failed");
 			return -ENODEV;
 		}
 		hw->subsystem_device_id = (u16)ssid >> 8 | (u16)ssid << 8;
@@ -2762,7 +2762,7 @@ txgbe_dev_detect_sfp(void *param)
 		PMD_DRV_LOG(INFO, "SFP not present.");
 	} else if (err == 0) {
 		hw->mac.setup_sfp(hw);
-		PMD_DRV_LOG(INFO, "detected SFP+: %d\n", hw->phy.sfp_type);
+		PMD_DRV_LOG(INFO, "detected SFP+: %d", hw->phy.sfp_type);
 		txgbe_dev_setup_link_alarm_handler(dev);
 		txgbe_dev_link_update(dev, 0);
 	}

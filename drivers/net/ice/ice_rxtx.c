@@ -2839,7 +2839,7 @@ ice_xmit_cleanup(struct ice_tx_queue *txq)
 	if (!(txd[desc_to_clean_to].cmd_type_offset_bsz &
 	    rte_cpu_to_le_64(ICE_TX_DESC_DTYPE_DESC_DONE))) {
 		PMD_TX_LOG(DEBUG, "TX descriptor %4u is not done "
-			   "(port=%d queue=%d) value=0x%"PRIx64"\n",
+			   "(port=%d queue=%d) value=0x%"PRIx64,
 			   desc_to_clean_to,
 			   txq->port_id, txq->queue_id,
 			   txd[desc_to_clean_to].cmd_type_offset_bsz);
@@ -3714,7 +3714,7 @@ ice_xmit_pkts_check(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 
 		if ((adapter->devargs.mbuf_check & ICE_MBUF_CHECK_F_TX_MBUF) &&
 		    (rte_mbuf_check(mb, 1, &reason) != 0)) {
-			PMD_TX_LOG(ERR, "INVALID mbuf: %s\n", reason);
+			PMD_TX_LOG(ERR, "INVALID mbuf: %s", reason);
 			pkt_error = true;
 			break;
 		}
@@ -3723,7 +3723,7 @@ ice_xmit_pkts_check(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		    (mb->data_len > mb->pkt_len ||
 		     mb->data_len < ICE_TX_MIN_PKT_LEN ||
 		     mb->data_len > ICE_FRAME_SIZE_MAX)) {
-			PMD_TX_LOG(ERR, "INVALID mbuf: data_len (%u) is out of range, reasonable range (%d - %d)\n",
+			PMD_TX_LOG(ERR, "INVALID mbuf: data_len (%u) is out of range, reasonable range (%d - %d)",
 				mb->data_len, ICE_TX_MIN_PKT_LEN, ICE_FRAME_SIZE_MAX);
 			pkt_error = true;
 			break;
@@ -3736,13 +3736,13 @@ ice_xmit_pkts_check(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 				 * the limites.
 				 */
 				if (mb->nb_segs > ICE_TX_MTU_SEG_MAX) {
-					PMD_TX_LOG(ERR, "INVALID mbuf: nb_segs (%d) exceeds HW limit, maximum allowed value is %d\n",
+					PMD_TX_LOG(ERR, "INVALID mbuf: nb_segs (%d) exceeds HW limit, maximum allowed value is %d",
 						mb->nb_segs, ICE_TX_MTU_SEG_MAX);
 					pkt_error = true;
 					break;
 				}
 				if (mb->pkt_len > ICE_FRAME_SIZE_MAX) {
-					PMD_TX_LOG(ERR, "INVALID mbuf: pkt_len (%d) exceeds HW limit, maximum allowed value is %d\n",
+					PMD_TX_LOG(ERR, "INVALID mbuf: pkt_len (%d) exceeds HW limit, maximum allowed value is %d",
 						mb->nb_segs, ICE_FRAME_SIZE_MAX);
 					pkt_error = true;
 					break;
@@ -3756,13 +3756,13 @@ ice_xmit_pkts_check(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 					/**
 					 * MSS outside the range are considered malicious
 					 */
-					PMD_TX_LOG(ERR, "INVALID mbuf: tso_segsz (%u) is out of range, reasonable range (%d - %u)\n",
+					PMD_TX_LOG(ERR, "INVALID mbuf: tso_segsz (%u) is out of range, reasonable range (%d - %u)",
 						mb->tso_segsz, ICE_MIN_TSO_MSS, ICE_MAX_TSO_MSS);
 					pkt_error = true;
 					break;
 				}
 				if (mb->nb_segs > ((struct ice_tx_queue *)tx_queue)->nb_tx_desc) {
-					PMD_TX_LOG(ERR, "INVALID mbuf: nb_segs out of ring length\n");
+					PMD_TX_LOG(ERR, "INVALID mbuf: nb_segs out of ring length");
 					pkt_error = true;
 					break;
 				}
@@ -3771,13 +3771,13 @@ ice_xmit_pkts_check(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 
 		if (adapter->devargs.mbuf_check & ICE_MBUF_CHECK_F_TX_OFFLOAD) {
 			if (ol_flags & ICE_TX_OFFLOAD_NOTSUP_MASK) {
-				PMD_TX_LOG(ERR, "INVALID mbuf: TX offload is not supported\n");
+				PMD_TX_LOG(ERR, "INVALID mbuf: TX offload is not supported");
 				pkt_error = true;
 				break;
 			}
 
 			if (!rte_validate_tx_offload(mb)) {
-				PMD_TX_LOG(ERR, "INVALID mbuf: TX offload setup error\n");
+				PMD_TX_LOG(ERR, "INVALID mbuf: TX offload setup error");
 				pkt_error = true;
 				break;
 			}

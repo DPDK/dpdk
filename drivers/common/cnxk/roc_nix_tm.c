@@ -908,7 +908,7 @@ nix_tm_sq_flush_pre(struct roc_nix_sq *sq)
 			if (rc) {
 				roc_nix_tm_dump(sq->roc_nix, NULL);
 				roc_nix_queues_ctx_dump(sq->roc_nix, NULL);
-				plt_err("Failed to drain sq %u, rc=%d\n", sq->qid, rc);
+				plt_err("Failed to drain sq %u, rc=%d", sq->qid, rc);
 				return rc;
 			}
 			/* Freed all pending SQEs for this SQ, so disable this node */

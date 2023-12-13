@@ -102,7 +102,7 @@ cnxk_ep_vf_setup_iq_regs(struct otx_ep_device *otx_ep, uint32_t iq_no)
 	}
 
 	if (loop < 0) {
-		otx_ep_err("IDLE bit is not set\n");
+		otx_ep_err("IDLE bit is not set");
 		return -EIO;
 	}
 
@@ -134,7 +134,7 @@ cnxk_ep_vf_setup_iq_regs(struct otx_ep_device *otx_ep, uint32_t iq_no)
 	} while (reg_val != 0 && loop--);
 
 	if (loop < 0) {
-		otx_ep_err("INST CNT REGISTER is not zero\n");
+		otx_ep_err("INST CNT REGISTER is not zero");
 		return -EIO;
 	}
 
@@ -181,7 +181,7 @@ cnxk_ep_vf_setup_oq_regs(struct otx_ep_device *otx_ep, uint32_t oq_no)
 	}
 
 	if (loop < 0) {
-		otx_ep_err("OUT CNT REGISTER value is zero\n");
+		otx_ep_err("OUT CNT REGISTER value is zero");
 		return -EIO;
 	}
 
@@ -217,7 +217,7 @@ cnxk_ep_vf_setup_oq_regs(struct otx_ep_device *otx_ep, uint32_t oq_no)
 	}
 
 	if (loop < 0) {
-		otx_ep_err("Packets credit register value is not cleared\n");
+		otx_ep_err("Packets credit register value is not cleared");
 		return -EIO;
 	}
 
@@ -250,7 +250,7 @@ cnxk_ep_vf_setup_oq_regs(struct otx_ep_device *otx_ep, uint32_t oq_no)
 	}
 
 	if (loop < 0) {
-		otx_ep_err("Packets sent register value is not cleared\n");
+		otx_ep_err("Packets sent register value is not cleared");
 		return -EIO;
 	}
 
@@ -280,7 +280,7 @@ cnxk_ep_vf_enable_iq(struct otx_ep_device *otx_ep, uint32_t q_no)
 	}
 
 	if (loop < 0) {
-		otx_ep_err("INSTR DBELL not coming back to 0\n");
+		otx_ep_err("INSTR DBELL not coming back to 0");
 		return -EIO;
 	}
 

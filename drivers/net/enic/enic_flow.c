@@ -1351,14 +1351,14 @@ static void
 enic_dump_actions(const struct filter_action_v2 *ea)
 {
 	if (ea->type == FILTER_ACTION_RQ_STEERING) {
-		ENICPMD_LOG(INFO, "Action(V1), queue: %u\n", ea->rq_idx);
+		ENICPMD_LOG(INFO, "Action(V1), queue: %u", ea->rq_idx);
 	} else if (ea->type == FILTER_ACTION_V2) {
-		ENICPMD_LOG(INFO, "Actions(V2)\n");
+		ENICPMD_LOG(INFO, "Actions(V2)");
 		if (ea->flags & FILTER_ACTION_RQ_STEERING_FLAG)
-			ENICPMD_LOG(INFO, "\tqueue: %u\n",
+			ENICPMD_LOG(INFO, "\tqueue: %u",
 			       enic_sop_rq_idx_to_rte_idx(ea->rq_idx));
 		if (ea->flags & FILTER_ACTION_FILTER_ID_FLAG)
-			ENICPMD_LOG(INFO, "\tfilter_id: %u\n", ea->filter_id);
+			ENICPMD_LOG(INFO, "\tfilter_id: %u", ea->filter_id);
 	}
 }
 
@@ -1374,13 +1374,13 @@ enic_dump_filter(const struct filter_v2 *filt)
 
 	switch (filt->type) {
 	case FILTER_IPV4_5TUPLE:
-		ENICPMD_LOG(INFO, "FILTER_IPV4_5TUPLE\n");
+		ENICPMD_LOG(INFO, "FILTER_IPV4_5TUPLE");
 		break;
 	case FILTER_USNIC_IP:
 	case FILTER_DPDK_1:
 		/* FIXME: this should be a loop */
 		gp = &filt->u.generic_1;
-		ENICPMD_LOG(INFO, "Filter: vlan: 0x%04x, mask: 0x%04x\n",
+		ENICPMD_LOG(INFO, "Filter: vlan: 0x%04x, mask: 0x%04x",
 		       gp->val_vlan, gp->mask_vlan);
 
 		if (gp->mask_flags & FILTER_GENERIC_1_IPV4)
@@ -1438,7 +1438,7 @@ enic_dump_filter(const struct filter_v2 *filt)
 				 ? "ipfrag(y)" : "ipfrag(n)");
 		else
 			sprintf(ipfrag, "%s ", "ipfrag(x)");
-		ENICPMD_LOG(INFO, "\tFlags: %s%s%s%s%s%s%s%s\n", ip4, ip6, udp,
+		ENICPMD_LOG(INFO, "\tFlags: %s%s%s%s%s%s%s%s", ip4, ip6, udp,
 			 tcp, tcpudp, ip4csum, l4csum, ipfrag);
 
 		for (i = 0; i < FILTER_GENERIC_1_NUM_LAYERS; i++) {
@@ -1455,7 +1455,7 @@ enic_dump_filter(const struct filter_v2 *filt)
 				bp += 2;
 			}
 			*bp = '\0';
-			ENICPMD_LOG(INFO, "\tL%u mask: %s\n", i + 2, buf);
+			ENICPMD_LOG(INFO, "\tL%u mask: %s", i + 2, buf);
 			bp = buf;
 			for (j = 0; j <= mbyte; j++) {
 				sprintf(bp, "%02x",
@@ -1463,11 +1463,11 @@ enic_dump_filter(const struct filter_v2 *filt)
 				bp += 2;
 			}
 			*bp = '\0';
-			ENICPMD_LOG(INFO, "\tL%u  val: %s\n", i + 2, buf);
+			ENICPMD_LOG(INFO, "\tL%u  val: %s", i + 2, buf);
 		}
 		break;
 	default:
-		ENICPMD_LOG(INFO, "FILTER UNKNOWN\n");
+		ENICPMD_LOG(INFO, "FILTER UNKNOWN");
 		break;
 	}
 }

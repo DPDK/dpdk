@@ -180,7 +180,7 @@ ifpga_scan_one(struct rte_rawdev *rawdev,
 		rawdev->dev_ops->firmware_load &&
 		rawdev->dev_ops->firmware_load(rawdev,
 				&afu_pr_conf)){
-		IFPGA_BUS_ERR("firmware load error %d\n", ret);
+		IFPGA_BUS_ERR("firmware load error %d", ret);
 		goto end;
 	}
 	afu_dev->id.uuid.uuid_low  = afu_pr_conf.afu_id.uuid.uuid_low;
@@ -316,7 +316,7 @@ ifpga_probe_all_drivers(struct rte_afu_device *afu_dev)
 
 	/* Check if a driver is already loaded */
 	if (rte_dev_is_probed(&afu_dev->device)) {
-		IFPGA_BUS_DEBUG("Device %s is already probed\n",
+		IFPGA_BUS_DEBUG("Device %s is already probed",
 				rte_ifpga_device_name(afu_dev));
 		return -EEXIST;
 	}
@@ -353,7 +353,7 @@ ifpga_probe(void)
 		if (ret == -EEXIST)
 			continue;
 		if (ret < 0)
-			IFPGA_BUS_ERR("failed to initialize %s device\n",
+			IFPGA_BUS_ERR("failed to initialize %s device",
 				rte_ifpga_device_name(afu_dev));
 	}
 
@@ -408,7 +408,7 @@ ifpga_remove_driver(struct rte_afu_device *afu_dev)
 
 	name = rte_ifpga_device_name(afu_dev);
 	if (afu_dev->driver == NULL) {
-		IFPGA_BUS_DEBUG("no driver attach to device %s\n", name);
+		IFPGA_BUS_DEBUG("no driver attach to device %s", name);
 		return 1;
 	}
 

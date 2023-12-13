@@ -101,7 +101,7 @@ init(struct test *t, int nb_queues, int nb_ports)
 
 	ret = rte_event_dev_configure(evdev, &config);
 	if (ret < 0)
-		PMD_DRV_LOG(ERR, "%d: Error configuring device\n", __LINE__);
+		PMD_DRV_LOG(ERR, "%d: Error configuring device", __LINE__);
 	return ret;
 };
 
@@ -119,7 +119,7 @@ create_ports(struct test *t, int num_ports)
 
 	for (i = 0; i < num_ports; i++) {
 		if (rte_event_port_setup(evdev, i, &conf) < 0) {
-			PMD_DRV_LOG(ERR, "Error setting up port %d\n", i);
+			PMD_DRV_LOG(ERR, "Error setting up port %d", i);
 			return -1;
 		}
 		t->port[i] = i;
@@ -158,7 +158,7 @@ create_queues_type(struct test *t, int num_qids, enum queue_type flags)
 
 	for (i = t->nb_qids ; i < t->nb_qids + num_qids; i++) {
 		if (rte_event_queue_setup(evdev, i, &conf) < 0) {
-			PMD_DRV_LOG(ERR, "%d: error creating qid %d\n ",
+			PMD_DRV_LOG(ERR, "%d: error creating qid %d ",
 					__LINE__, i);
 			return -1;
 		}
@@ -180,7 +180,7 @@ cleanup(struct test *t __rte_unused)
 {
 	rte_event_dev_stop(evdev);
 	rte_event_dev_close(evdev);
-	PMD_DRV_LOG(ERR, "clean up for test done\n");
+	PMD_DRV_LOG(ERR, "clean up for test done");
 	return 0;
 };
 
@@ -202,7 +202,7 @@ ordered_basic(struct test *t)
 	if (init(t, 2, tx_port+1) < 0 ||
 	    create_ports(t, tx_port+1) < 0 ||
 	    create_queues_type(t, 2, OPDL_Q_TYPE_ORDERED)) {
-		PMD_DRV_LOG(ERR, "%d: Error initializing device\n", __LINE__);
+		PMD_DRV_LOG(ERR, "%d: Error initializing device", __LINE__);
 		return -1;
 	}
 
@@ -226,7 +226,7 @@ ordered_basic(struct test *t)
 		err = rte_event_port_link(evdev, t->port[i], &t->qid[0], NULL,
 				1);
 		if (err != 1) {
-			PMD_DRV_LOG(ERR, "%d: error mapping lb qid\n",
+			PMD_DRV_LOG(ERR, "%d: error mapping lb qid",
 					__LINE__);
 			cleanup(t);
 			return -1;
@@ -236,13 +236,13 @@ ordered_basic(struct test *t)
 	err = rte_event_port_link(evdev, t->port[tx_port], &t->qid[1], NULL,
 			1);
 	if (err != 1) {
-		PMD_DRV_LOG(ERR, "%d: error mapping TX  qid\n", __LINE__);
+		PMD_DRV_LOG(ERR, "%d: error mapping TX  qid", __LINE__);
 		cleanup(t);
 		return -1;
 	}
 
 	if (rte_event_dev_start(evdev) < 0) {
-		PMD_DRV_LOG(ERR, "%d: Error with start call\n", __LINE__);
+		PMD_DRV_LOG(ERR, "%d: Error with start call", __LINE__);
 		return -1;
 	}
 	/* Enqueue 3 packets to the rx port */
@@ -250,7 +250,7 @@ ordered_basic(struct test *t)
 		struct rte_event ev;
 		mbufs[i] = rte_gen_arp(0, t->mbuf_pool);
 		if (!mbufs[i]) {
-			PMD_DRV_LOG(ERR, "%d: gen of pkt failed\n", __LINE__);
+			PMD_DRV_LOG(ERR, "%d: gen of pkt failed", __LINE__);
 			return -1;
 		}
 
@@ -262,7 +262,7 @@ ordered_basic(struct test *t)
 		/* generate pkt and enqueue */
 		err = rte_event_enqueue_burst(evdev, t->port[rx_port], &ev, 1);
 		if (err != 1) {
-			PMD_DRV_LOG(ERR, "%d: Failed to enqueue pkt %u, retval = %u\n",
+			PMD_DRV_LOG(ERR, "%d: Failed to enqueue pkt %u, retval = %u",
 					__LINE__, i, err);
 			return -1;
 		}
@@ -278,7 +278,7 @@ ordered_basic(struct test *t)
 		deq_pkts = rte_event_dequeue_burst(evdev, t->port[i],
 				&deq_ev[i], 1, 0);
 		if (deq_pkts != 1) {
-			PMD_DRV_LOG(ERR, "%d: Failed to deq\n", __LINE__);
+			PMD_DRV_LOG(ERR, "%d: Failed to deq", __LINE__);
 			rte_event_dev_dump(evdev, stdout);
 			return -1;
 		}
@@ -286,7 +286,7 @@ ordered_basic(struct test *t)
 
 		if (seq != (i-1)) {
 			PMD_DRV_LOG(ERR, " seq test failed ! eq is %d , "
-					"port number is %u\n", seq, i);
+					"port number is %u", seq, i);
 			return -1;
 		}
 	}
@@ -298,7 +298,7 @@ ordered_basic(struct test *t)
 		deq_ev[i].queue_id = t->qid[1];
 		err = rte_event_enqueue_burst(evdev, t->port[i], &deq_ev[i], 1);
 		if (err != 1) {
-			PMD_DRV_LOG(ERR, "%d: Failed to enqueue\n", __LINE__);
+			PMD_DRV_LOG(ERR, "%d: Failed to enqueue", __LINE__);
 			return -1;
 		}
 	}
@@ -309,7 +309,7 @@ ordered_basic(struct test *t)
 
 	/* Check to see if we've got all 3 packets */
 	if (deq_pkts != 3) {
-		PMD_DRV_LOG(ERR, "%d: expected 3 pkts at tx port got %d from port %d\n",
+		PMD_DRV_LOG(ERR, "%d: expected 3 pkts at tx port got %d from port %d",
 			__LINE__, deq_pkts, tx_port);
 		rte_event_dev_dump(evdev, stdout);
 		return 1;
@@ -339,7 +339,7 @@ atomic_basic(struct test *t)
 	if (init(t, 2, tx_port+1) < 0 ||
 	    create_ports(t, tx_port+1) < 0 ||
 	    create_queues_type(t, 2, OPDL_Q_TYPE_ATOMIC)) {
-		PMD_DRV_LOG(ERR, "%d: Error initializing device\n", __LINE__);
+		PMD_DRV_LOG(ERR, "%d: Error initializing device", __LINE__);
 		return -1;
 	}
 
@@ -364,7 +364,7 @@ atomic_basic(struct test *t)
 		err = rte_event_port_link(evdev, t->port[i], &t->qid[0], NULL,
 				1);
 		if (err != 1) {
-			PMD_DRV_LOG(ERR, "%d: error mapping lb qid\n",
+			PMD_DRV_LOG(ERR, "%d: error mapping lb qid",
 					__LINE__);
 			cleanup(t);
 			return -1;
@@ -374,13 +374,13 @@ atomic_basic(struct test *t)
 	err = rte_event_port_link(evdev, t->port[tx_port], &t->qid[1], NULL,
 			1);
 	if (err != 1) {
-		PMD_DRV_LOG(ERR, "%d: error mapping TX  qid\n", __LINE__);
+		PMD_DRV_LOG(ERR, "%d: error mapping TX  qid", __LINE__);
 		cleanup(t);
 		return -1;
 	}
 
 	if (rte_event_dev_start(evdev) < 0) {
-		PMD_DRV_LOG(ERR, "%d: Error with start call\n", __LINE__);
+		PMD_DRV_LOG(ERR, "%d: Error with start call", __LINE__);
 		return -1;
 	}
 
@@ -389,7 +389,7 @@ atomic_basic(struct test *t)
 		struct rte_event ev;
 		mbufs[i] = rte_gen_arp(0, t->mbuf_pool);
 		if (!mbufs[i]) {
-			PMD_DRV_LOG(ERR, "%d: gen of pkt failed\n", __LINE__);
+			PMD_DRV_LOG(ERR, "%d: gen of pkt failed", __LINE__);
 			return -1;
 		}
 
@@ -402,7 +402,7 @@ atomic_basic(struct test *t)
 		/* generate pkt and enqueue */
 		err = rte_event_enqueue_burst(evdev, t->port[rx_port], &ev, 1);
 		if (err != 1) {
-			PMD_DRV_LOG(ERR, "%d: Failed to enqueue pkt %u, retval = %u\n",
+			PMD_DRV_LOG(ERR, "%d: Failed to enqueue pkt %u, retval = %u",
 					__LINE__, i, err);
 			return -1;
 		}
@@ -419,7 +419,7 @@ atomic_basic(struct test *t)
 
 		if (t->port[i] != 2) {
 			if (deq_pkts != 0) {
-				PMD_DRV_LOG(ERR, "%d: deq none zero !\n",
+				PMD_DRV_LOG(ERR, "%d: deq none zero !",
 						__LINE__);
 				rte_event_dev_dump(evdev, stdout);
 				return -1;
@@ -427,7 +427,7 @@ atomic_basic(struct test *t)
 		} else {
 
 			if (deq_pkts != 3) {
-				PMD_DRV_LOG(ERR, "%d: deq not eqal to 3 %u !\n",
+				PMD_DRV_LOG(ERR, "%d: deq not eqal to 3 %u !",
 						__LINE__, deq_pkts);
 				rte_event_dev_dump(evdev, stdout);
 				return -1;
@@ -444,7 +444,7 @@ atomic_basic(struct test *t)
 
 			if (err != 3) {
 				PMD_DRV_LOG(ERR, "port %d: Failed to enqueue pkt %u, "
-						"retval = %u\n",
+						"retval = %u",
 						t->port[i], 3, err);
 				return -1;
 			}
@@ -460,7 +460,7 @@ atomic_basic(struct test *t)
 
 	/* Check to see if we've got all 3 packets */
 	if (deq_pkts != 3) {
-		PMD_DRV_LOG(ERR, "%d: expected 3 pkts at tx port got %d from port %d\n",
+		PMD_DRV_LOG(ERR, "%d: expected 3 pkts at tx port got %d from port %d",
 			__LINE__, deq_pkts, tx_port);
 		rte_event_dev_dump(evdev, stdout);
 		return 1;
@@ -568,7 +568,7 @@ single_link_w_stats(struct test *t)
 	    create_ports(t, 3) < 0 || /* 0,1,2 */
 	    create_queues_type(t, 1, OPDL_Q_TYPE_SINGLE_LINK) < 0 ||
 	    create_queues_type(t, 1, OPDL_Q_TYPE_ORDERED) < 0) {
-		PMD_DRV_LOG(ERR, "%d: Error initializing device\n", __LINE__);
+		PMD_DRV_LOG(ERR, "%d: Error initializing device", __LINE__);
 		return -1;
 	}
 
@@ -587,7 +587,7 @@ single_link_w_stats(struct test *t)
 	err = rte_event_port_link(evdev, t->port[1], &t->qid[0], NULL,
 				  1);
 	if (err != 1) {
-		PMD_DRV_LOG(ERR, "%d: error linking port:[%u] to queue:[%u]\n",
+		PMD_DRV_LOG(ERR, "%d: error linking port:[%u] to queue:[%u]",
 		       __LINE__,
 		       t->port[1],
 		       t->qid[0]);
@@ -598,7 +598,7 @@ single_link_w_stats(struct test *t)
 	err = rte_event_port_link(evdev, t->port[2], &t->qid[1], NULL,
 				  1);
 	if (err != 1) {
-		PMD_DRV_LOG(ERR, "%d: error linking port:[%u] to queue:[%u]\n",
+		PMD_DRV_LOG(ERR, "%d: error linking port:[%u] to queue:[%u]",
 		       __LINE__,
 		       t->port[2],
 		       t->qid[1]);
@@ -607,7 +607,7 @@ single_link_w_stats(struct test *t)
 	}
 
 	if (rte_event_dev_start(evdev) != 0) {
-		PMD_DRV_LOG(ERR, "%d: failed to start device\n", __LINE__);
+		PMD_DRV_LOG(ERR, "%d: failed to start device", __LINE__);
 		cleanup(t);
 		return -1;
 	}
@@ -619,7 +619,7 @@ single_link_w_stats(struct test *t)
 		struct rte_event ev;
 		mbufs[i] = rte_gen_arp(0, t->mbuf_pool);
 		if (!mbufs[i]) {
-			PMD_DRV_LOG(ERR, "%d: gen of pkt failed\n", __LINE__);
+			PMD_DRV_LOG(ERR, "%d: gen of pkt failed", __LINE__);
 			return -1;
 		}
 
@@ -631,7 +631,7 @@ single_link_w_stats(struct test *t)
 		/* generate pkt and enqueue */
 		err = rte_event_enqueue_burst(evdev, t->port[rx_port], &ev, 1);
 		if (err != 1) {
-			PMD_DRV_LOG(ERR, "%d: Failed to enqueue pkt %u, retval = %u\n",
+			PMD_DRV_LOG(ERR, "%d: Failed to enqueue pkt %u, retval = %u",
 			       __LINE__,
 			       t->port[rx_port],
 			       err);
@@ -647,7 +647,7 @@ single_link_w_stats(struct test *t)
 					   deq_ev, 3, 0);
 
 	if (deq_pkts != 3) {
-		PMD_DRV_LOG(ERR, "%d: deq not 3 !\n", __LINE__);
+		PMD_DRV_LOG(ERR, "%d: deq not 3 !", __LINE__);
 		cleanup(t);
 		return -1;
 	}
@@ -662,7 +662,7 @@ single_link_w_stats(struct test *t)
 					   NEW_NUM_PACKETS);
 
 	if (deq_pkts != 2) {
-		PMD_DRV_LOG(ERR, "%d: enq not 2 but %u!\n", __LINE__, deq_pkts);
+		PMD_DRV_LOG(ERR, "%d: enq not 2 but %u!", __LINE__, deq_pkts);
 		cleanup(t);
 		return -1;
 	}
@@ -676,7 +676,7 @@ single_link_w_stats(struct test *t)
 
 	/* Check to see if we've got all 2 packets */
 	if (deq_pkts != 2) {
-		PMD_DRV_LOG(ERR, "%d: expected 2 pkts at tx port got %d from port %d\n",
+		PMD_DRV_LOG(ERR, "%d: expected 2 pkts at tx port got %d from port %d",
 			__LINE__, deq_pkts, tx_port);
 		cleanup(t);
 		return -1;
@@ -706,7 +706,7 @@ single_link(struct test *t)
 	    create_ports(t, 3) < 0 || /* 0,1,2 */
 	    create_queues_type(t, 1, OPDL_Q_TYPE_SINGLE_LINK) < 0 ||
 	    create_queues_type(t, 1, OPDL_Q_TYPE_ORDERED) < 0) {
-		PMD_DRV_LOG(ERR, "%d: Error initializing device\n", __LINE__);
+		PMD_DRV_LOG(ERR, "%d: Error initializing device", __LINE__);
 		return -1;
 	}
 
@@ -725,7 +725,7 @@ single_link(struct test *t)
 	err = rte_event_port_link(evdev, t->port[1], &t->qid[0], NULL,
 				  1);
 	if (err != 1) {
-		PMD_DRV_LOG(ERR, "%d: error mapping lb qid\n", __LINE__);
+		PMD_DRV_LOG(ERR, "%d: error mapping lb qid", __LINE__);
 		cleanup(t);
 		return -1;
 	}
@@ -733,14 +733,14 @@ single_link(struct test *t)
 	err = rte_event_port_link(evdev, t->port[2], &t->qid[0], NULL,
 				  1);
 	if (err != 1) {
-		PMD_DRV_LOG(ERR, "%d: error mapping lb qid\n", __LINE__);
+		PMD_DRV_LOG(ERR, "%d: error mapping lb qid", __LINE__);
 		cleanup(t);
 		return -1;
 	}
 
 	if (rte_event_dev_start(evdev) == 0) {
 		PMD_DRV_LOG(ERR, "%d: start DIDN'T FAIL with more than 1 "
-				"SINGLE_LINK PORT\n", __LINE__);
+				"SINGLE_LINK PORT", __LINE__);
 		cleanup(t);
 		return -1;
 	}
@@ -789,7 +789,7 @@ qid_basic(struct test *t)
 	if (init(t, NUM_QUEUES, NUM_QUEUES+1) < 0 ||
 	    create_ports(t, NUM_QUEUES+1) < 0 ||
 	    create_queues_type(t, NUM_QUEUES, OPDL_Q_TYPE_ORDERED)) {
-		PMD_DRV_LOG(ERR, "%d: Error initializing device\n", __LINE__);
+		PMD_DRV_LOG(ERR, "%d: Error initializing device", __LINE__);
 		return -1;
 	}
 
@@ -805,7 +805,7 @@ qid_basic(struct test *t)
 
 		if (nb_linked != 1) {
 
-			PMD_DRV_LOG(ERR, "%s:%d: error mapping port:%u to queue:%u\n",
+			PMD_DRV_LOG(ERR, "%s:%d: error mapping port:%u to queue:%u",
 					__FILE__,
 					__LINE__,
 					i + 1,
@@ -826,7 +826,7 @@ qid_basic(struct test *t)
 					&t_qid,
 					NULL,
 					1) > 0) {
-			PMD_DRV_LOG(ERR, "%s:%d: Second call to port link on same port DID NOT fail\n",
+			PMD_DRV_LOG(ERR, "%s:%d: Second call to port link on same port DID NOT fail",
 					__FILE__,
 					__LINE__);
 			err = -1;
@@ -841,7 +841,7 @@ qid_basic(struct test *t)
 					BATCH_SIZE,
 					0);
 			if (test_num_events != 0) {
-				PMD_DRV_LOG(ERR, "%s:%d: Error dequeuing 0 packets from port %u on stopped device\n",
+				PMD_DRV_LOG(ERR, "%s:%d: Error dequeuing 0 packets from port %u on stopped device",
 						__FILE__,
 						__LINE__,
 						p_id);
@@ -855,7 +855,7 @@ qid_basic(struct test *t)
 					ev,
 					BATCH_SIZE);
 			if (test_num_events != 0) {
-				PMD_DRV_LOG(ERR, "%s:%d: Error enqueuing 0 packets to port %u on stopped device\n",
+				PMD_DRV_LOG(ERR, "%s:%d: Error enqueuing 0 packets to port %u on stopped device",
 						__FILE__,
 						__LINE__,
 						p_id);
@@ -868,7 +868,7 @@ qid_basic(struct test *t)
 	/* Start the device */
 	if (!err) {
 		if (rte_event_dev_start(evdev) < 0) {
-			PMD_DRV_LOG(ERR, "%s:%d: Error with start call\n",
+			PMD_DRV_LOG(ERR, "%s:%d: Error with start call",
 					__FILE__,
 					__LINE__);
 			err = -1;
@@ -884,7 +884,7 @@ qid_basic(struct test *t)
 					&t_qid,
 					NULL,
 					1) > 0) {
-			PMD_DRV_LOG(ERR, "%s:%d: Call to port link on started device DID NOT fail\n",
+			PMD_DRV_LOG(ERR, "%s:%d: Call to port link on started device DID NOT fail",
 					__FILE__,
 					__LINE__);
 			err = -1;
@@ -904,7 +904,7 @@ qid_basic(struct test *t)
 				ev,
 				BATCH_SIZE);
 		if (num_events != BATCH_SIZE) {
-			PMD_DRV_LOG(ERR, "%s:%d: Error enqueuing rx packets\n",
+			PMD_DRV_LOG(ERR, "%s:%d: Error enqueuing rx packets",
 					__FILE__,
 					__LINE__);
 			err = -1;
@@ -921,7 +921,7 @@ qid_basic(struct test *t)
 					0);
 
 			if (num_events != BATCH_SIZE) {
-				PMD_DRV_LOG(ERR, "%s:%d: Error dequeuing packets from port %u\n",
+				PMD_DRV_LOG(ERR, "%s:%d: Error dequeuing packets from port %u",
 						__FILE__,
 						__LINE__,
 						p_id);
@@ -930,7 +930,7 @@ qid_basic(struct test *t)
 			}
 
 			if (ev[0].queue_id != q_id) {
-				PMD_DRV_LOG(ERR, "%s:%d: Error event portid[%u] q_id:[%u] does not match expected:[%u]\n",
+				PMD_DRV_LOG(ERR, "%s:%d: Error event portid[%u] q_id:[%u] does not match expected:[%u]",
 						__FILE__,
 						__LINE__,
 						p_id,
@@ -949,7 +949,7 @@ qid_basic(struct test *t)
 					ev,
 					BATCH_SIZE);
 			if (num_events != BATCH_SIZE) {
-				PMD_DRV_LOG(ERR, "%s:%d: Error enqueuing packets from port:%u to queue:%u\n",
+				PMD_DRV_LOG(ERR, "%s:%d: Error enqueuing packets from port:%u to queue:%u",
 						__FILE__,
 						__LINE__,
 						p_id,
@@ -967,7 +967,7 @@ qid_basic(struct test *t)
 				BATCH_SIZE,
 				0);
 		if (num_events != BATCH_SIZE) {
-			PMD_DRV_LOG(ERR, "%s:%d: Error dequeuing packets from tx port %u\n",
+			PMD_DRV_LOG(ERR, "%s:%d: Error dequeuing packets from tx port %u",
 					__FILE__,
 					__LINE__,
 					p_id);
@@ -993,17 +993,17 @@ opdl_selftest(void)
 	evdev = rte_event_dev_get_dev_id(eventdev_name);
 
 	if (evdev < 0) {
-		PMD_DRV_LOG(ERR, "%d: Eventdev %s not found - creating.\n",
+		PMD_DRV_LOG(ERR, "%d: Eventdev %s not found - creating.",
 				__LINE__, eventdev_name);
 		/* turn on stats by default */
 		if (rte_vdev_init(eventdev_name, "do_validation=1") < 0) {
-			PMD_DRV_LOG(ERR, "Error creating eventdev\n");
+			PMD_DRV_LOG(ERR, "Error creating eventdev");
 			free(t);
 			return -1;
 		}
 		evdev = rte_event_dev_get_dev_id(eventdev_name);
 		if (evdev < 0) {
-			PMD_DRV_LOG(ERR, "Error finding newly created eventdev\n");
+			PMD_DRV_LOG(ERR, "Error finding newly created eventdev");
 			free(t);
 			return -1;
 		}
@@ -1019,27 +1019,27 @@ opdl_selftest(void)
 				512, /* use very small mbufs */
 				rte_socket_id());
 		if (!eventdev_func_mempool) {
-			PMD_DRV_LOG(ERR, "ERROR creating mempool\n");
+			PMD_DRV_LOG(ERR, "ERROR creating mempool");
 			free(t);
 			return -1;
 		}
 	}
 	t->mbuf_pool = eventdev_func_mempool;
 
-	PMD_DRV_LOG(ERR, "*** Running Ordered Basic test...\n");
+	PMD_DRV_LOG(ERR, "*** Running Ordered Basic test...");
 	ret = ordered_basic(t);
 
-	PMD_DRV_LOG(ERR, "*** Running Atomic Basic test...\n");
+	PMD_DRV_LOG(ERR, "*** Running Atomic Basic test...");
 	ret = atomic_basic(t);
 
 
-	PMD_DRV_LOG(ERR, "*** Running QID  Basic test...\n");
+	PMD_DRV_LOG(ERR, "*** Running QID  Basic test...");
 	ret = qid_basic(t);
 
-	PMD_DRV_LOG(ERR, "*** Running SINGLE LINK failure test...\n");
+	PMD_DRV_LOG(ERR, "*** Running SINGLE LINK failure test...");
 	ret = single_link(t);
 
-	PMD_DRV_LOG(ERR, "*** Running SINGLE LINK w stats test...\n");
+	PMD_DRV_LOG(ERR, "*** Running SINGLE LINK w stats test...");
 	ret = single_link_w_stats(t);
 
 	/*

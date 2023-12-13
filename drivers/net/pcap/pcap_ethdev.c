@@ -1093,11 +1093,11 @@ set_iface_direction(const char *iface, pcap_t *pcap,
 {
 	const char *direction_str = (direction == PCAP_D_IN) ? "IN" : "OUT";
 	if (pcap_setdirection(pcap, direction) < 0) {
-		PMD_LOG(ERR, "Setting %s pcap direction %s failed - %s\n",
+		PMD_LOG(ERR, "Setting %s pcap direction %s failed - %s",
 				iface, direction_str, pcap_geterr(pcap));
 		return -1;
 	}
-	PMD_LOG(INFO, "Setting %s pcap direction %s\n",
+	PMD_LOG(INFO, "Setting %s pcap direction %s",
 			iface, direction_str);
 	return 0;
 }

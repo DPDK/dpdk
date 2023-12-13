@@ -191,7 +191,7 @@ bond_ethdev_8023ad_flow_verify(struct rte_eth_dev *bond_dev,
 	ret = rte_eth_dev_info_get(member_port, &member_info);
 	if (ret != 0) {
 		RTE_BOND_LOG(ERR,
-			"%s: Error during getting device (port %u) info: %s\n",
+			"%s: Error during getting device (port %u) info: %s",
 			__func__, member_port, strerror(-ret));
 
 		return ret;
@@ -221,7 +221,7 @@ bond_8023ad_slow_pkt_hw_filter_supported(uint16_t port_id) {
 		ret = rte_eth_dev_info_get(bond_dev->data->port_id, &bond_info);
 		if (ret != 0) {
 			RTE_BOND_LOG(ERR,
-				"%s: Error during getting device (port %u) info: %s\n",
+				"%s: Error during getting device (port %u) info: %s",
 				__func__, bond_dev->data->port_id,
 				strerror(-ret));
 
@@ -2289,7 +2289,7 @@ bond_ethdev_info(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 			ret = rte_eth_dev_info_get(member.port_id, &member_info);
 			if (ret != 0) {
 				RTE_BOND_LOG(ERR,
-					"%s: Error during getting device (port %u) info: %s\n",
+					"%s: Error during getting device (port %u) info: %s",
 					__func__,
 					member.port_id,
 					strerror(-ret));

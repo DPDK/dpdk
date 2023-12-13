@@ -74,7 +74,7 @@ dpaa2_eventdev_enqueue_burst(void *port, const struct rte_event ev[],
 		ret = dpaa2_affine_qbman_swp();
 		if (ret < 0) {
 			DPAA2_EVENTDEV_ERR(
-				"Failed to allocate IO portal, tid: %d\n",
+				"Failed to allocate IO portal, tid: %d",
 				rte_gettid());
 			return 0;
 		}
@@ -276,7 +276,7 @@ dpaa2_eventdev_dequeue_burst(void *port, struct rte_event ev[],
 		ret = dpaa2_affine_qbman_swp();
 		if (ret < 0) {
 			DPAA2_EVENTDEV_ERR(
-				"Failed to allocate IO portal, tid: %d\n",
+				"Failed to allocate IO portal, tid: %d",
 				rte_gettid());
 			return 0;
 		}
@@ -851,7 +851,7 @@ dpaa2_eventdev_crypto_queue_add_all(const struct rte_eventdev *dev,
 	for (i = 0; i < cryptodev->data->nb_queue_pairs; i++) {
 		ret = dpaa2_sec_eventq_attach(cryptodev, i, dpcon, ev);
 		if (ret) {
-			DPAA2_EVENTDEV_ERR("dpaa2_sec_eventq_attach failed: ret %d\n",
+			DPAA2_EVENTDEV_ERR("dpaa2_sec_eventq_attach failed: ret %d",
 				    ret);
 			goto fail;
 		}
@@ -885,7 +885,7 @@ dpaa2_eventdev_crypto_queue_add(const struct rte_eventdev *dev,
 				      dpcon, &conf->ev);
 	if (ret) {
 		DPAA2_EVENTDEV_ERR(
-			"dpaa2_sec_eventq_attach failed: ret: %d\n", ret);
+			"dpaa2_sec_eventq_attach failed: ret: %d", ret);
 		return ret;
 	}
 	return 0;
@@ -905,7 +905,7 @@ dpaa2_eventdev_crypto_queue_del_all(const struct rte_eventdev *dev,
 		ret = dpaa2_sec_eventq_detach(cdev, i);
 		if (ret) {
 			DPAA2_EVENTDEV_ERR(
-				"dpaa2_sec_eventq_detach failed:ret %d\n", ret);
+				"dpaa2_sec_eventq_detach failed:ret %d", ret);
 			return ret;
 		}
 	}
@@ -928,7 +928,7 @@ dpaa2_eventdev_crypto_queue_del(const struct rte_eventdev *dev,
 	ret = dpaa2_sec_eventq_detach(cryptodev, rx_queue_id);
 	if (ret) {
 		DPAA2_EVENTDEV_ERR(
-			"dpaa2_sec_eventq_detach failed: ret: %d\n", ret);
+			"dpaa2_sec_eventq_detach failed: ret: %d", ret);
 		return ret;
 	}
 
@@ -1161,7 +1161,7 @@ dpaa2_eventdev_destroy(const char *name)
 
 	eventdev = rte_event_pmd_get_named_dev(name);
 	if (eventdev == NULL) {
-		RTE_EDEV_LOG_ERR("eventdev with name %s not allocated", name);
+		DPAA2_EVENTDEV_ERR("eventdev with name %s not allocated", name);
 		return -1;
 	}
 

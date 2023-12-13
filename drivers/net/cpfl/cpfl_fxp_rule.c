@@ -77,7 +77,7 @@ cpfl_receive_ctlq_msg(struct idpf_hw *hw, struct idpf_ctlq_info *cq, u16 num_q_m
 
 		if (ret && ret != CPFL_ERR_CTLQ_NO_WORK && ret != CPFL_ERR_CTLQ_ERROR &&
 		    ret != CPFL_ERR_CTLQ_EMPTY) {
-			PMD_INIT_LOG(ERR, "failed to recv ctrlq msg. err: 0x%4x\n", ret);
+			PMD_INIT_LOG(ERR, "failed to recv ctrlq msg. err: 0x%4x", ret);
 			retries++;
 			continue;
 		}
@@ -108,7 +108,7 @@ cpfl_receive_ctlq_msg(struct idpf_hw *hw, struct idpf_ctlq_info *cq, u16 num_q_m
 			buff_cnt = dma ? 1 : 0;
 			ret = cpfl_vport_ctlq_post_rx_buffs(hw, cq, &buff_cnt, &dma);
 			if (ret)
-				PMD_INIT_LOG(WARNING, "could not posted recv bufs\n");
+				PMD_INIT_LOG(WARNING, "could not posted recv bufs");
 		}
 		break;
 	}
@@ -131,7 +131,7 @@ cpfl_mod_rule_pack(struct cpfl_rule_info *rinfo, struct idpf_dma_mem *dma,
 
 	/* prepare rule blob */
 	if (!dma->va) {
-		PMD_INIT_LOG(ERR, "dma mem passed to %s is null\n", __func__);
+		PMD_INIT_LOG(ERR, "dma mem passed to %s is null", __func__);
 		return -1;
 	}
 	blob = (union cpfl_rule_cfg_pkt_record *)dma->va;
@@ -176,7 +176,7 @@ cpfl_default_rule_pack(struct cpfl_rule_info *rinfo, struct idpf_dma_mem *dma,
 	uint16_t cfg_ctrl;
 
 	if (!dma->va) {
-		PMD_INIT_LOG(ERR, "dma mem passed to %s is null\n", __func__);
+		PMD_INIT_LOG(ERR, "dma mem passed to %s is null", __func__);
 		return -1;
 	}
 	blob = (union cpfl_rule_cfg_pkt_record *)dma->va;

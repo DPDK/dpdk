@@ -1119,7 +1119,7 @@ s32 ngbe_set_pcie_master(struct ngbe_hw *hw, bool enable)
 	u32 i;
 
 	if (rte_pci_set_bus_master(pci_dev, enable) < 0) {
-		DEBUGOUT("Cannot configure PCI bus master\n");
+		DEBUGOUT("Cannot configure PCI bus master");
 		return -1;
 	}
 

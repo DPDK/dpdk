@@ -127,7 +127,7 @@ nfp_vdpa_vfio_setup(struct nfp_vdpa_dev *device)
 	if (device->vfio_group_fd < 0)
 		goto container_destroy;
 
-	DRV_VDPA_LOG(DEBUG, "container_fd=%d, group_fd=%d,\n",
+	DRV_VDPA_LOG(DEBUG, "container_fd=%d, group_fd=%d,",
 			device->vfio_container_fd, device->vfio_group_fd);
 
 	ret = rte_pci_map_device(pci_dev);

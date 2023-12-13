@@ -309,7 +309,7 @@ client_put_rxpacket(struct hif_rx_queue *queue,
 	if (readl(&desc->ctrl) & CL_DESC_OWN) {
 		mbuf = rte_cpu_to_le_64(rte_pktmbuf_alloc(pool));
 		if (unlikely(!mbuf)) {
-			PFE_PMD_WARN("Buffer allocation failure\n");
+			PFE_PMD_WARN("Buffer allocation failure");
 			return NULL;
 		}
 
@@ -770,9 +770,9 @@ pfe_hif_rx_idle(struct pfe_hif *hif)
 	} while (--hif_stop_loop);
 
 	if (readl(HIF_RX_STATUS) & BDP_CSR_RX_DMA_ACTV)
-		PFE_PMD_ERR("Failed\n");
+		PFE_PMD_ERR("Failed");
 	else
-		PFE_PMD_INFO("Done\n");
+		PFE_PMD_INFO("Done");
 }
 #endif
 
@@ -806,7 +806,7 @@ pfe_hif_init(struct pfe *pfe)
 
 		pfe_cdev_fd = open(PFE_CDEV_PATH, O_RDWR);
 		if (pfe_cdev_fd < 0) {
-			PFE_PMD_WARN("Unable to open PFE device file (%s).\n",
+			PFE_PMD_WARN("Unable to open PFE device file (%s).",
 				     PFE_CDEV_PATH);
 			pfe->cdev_fd = PFE_CDEV_INVALID_FD;
 			return -1;
@@ -817,7 +817,7 @@ pfe_hif_init(struct pfe *pfe)
 		/* hif interrupt enable */
 		err = ioctl(pfe->cdev_fd, PFE_CDEV_HIF_INTR_EN, &event_fd);
 		if (err) {
-			PFE_PMD_ERR("\nioctl failed for intr enable err: %d\n",
+			PFE_PMD_ERR("ioctl failed for intr enable err: %d",
 					errno);
 			goto err0;
 		}
@@ -826,7 +826,7 @@ pfe_hif_init(struct pfe *pfe)
 		epoll_ev.data.fd = event_fd;
 		err = epoll_ctl(epoll_fd, EPOLL_CTL_ADD, event_fd, &epoll_ev);
 		if (err < 0) {
-			PFE_PMD_ERR("epoll_ctl failed with err = %d\n", errno);
+			PFE_PMD_ERR("epoll_ctl failed with err = %d", errno);
 			goto err0;
 		}
 		pfe->hif.epoll_fd = epoll_fd;

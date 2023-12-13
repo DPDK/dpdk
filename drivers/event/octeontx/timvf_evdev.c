@@ -196,7 +196,7 @@ timvf_ring_start(const struct rte_event_timer_adapter *adptr)
 	timr->tck_int = NSEC2CLK(timr->tck_nsec, rte_get_timer_hz());
 	timr->fast_div = rte_reciprocal_value_u64(timr->tck_int);
 	timvf_log_info("nb_bkts %d min_ns %"PRIu64" min_cyc %"PRIu64""
-			" maxtmo %"PRIu64"\n",
+			" maxtmo %"PRIu64,
 			timr->nb_bkts, timr->tck_nsec, interval,
 			timr->max_tout);
 

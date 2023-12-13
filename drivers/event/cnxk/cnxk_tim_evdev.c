@@ -268,7 +268,7 @@ cnxk_tim_ring_create(struct rte_event_timer_adapter *adptr)
 	sso_set_priv_mem_fn(dev->event_dev, NULL);
 
 	plt_tim_dbg(
-		"Total memory used %" PRIu64 "MB\n",
+		"Total memory used %" PRIu64 "MB",
 		(uint64_t)(((tim_ring->nb_chunks * tim_ring->chunk_sz) +
 			    (tim_ring->nb_bkts * sizeof(struct cnxk_tim_bkt))) /
 			   BIT_ULL(20)));

@@ -133,7 +133,7 @@ ice_dcf_vf_repr_hw(struct ice_dcf_vf_repr *repr)
 	struct ice_dcf_adapter *dcf_adapter;
 
 	if (!repr->dcf_valid) {
-		PMD_DRV_LOG(ERR, "DCF for VF representor has been released\n");
+		PMD_DRV_LOG(ERR, "DCF for VF representor has been released");
 		return NULL;
 	}
 
@@ -272,7 +272,7 @@ ice_dcf_vf_repr_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 
 		if (enable && repr->outer_vlan_info.port_vlan_ena) {
 			PMD_DRV_LOG(ERR,
-				    "Disable the port VLAN firstly\n");
+				    "Disable the port VLAN firstly");
 			return -EINVAL;
 		}
 
@@ -318,7 +318,7 @@ ice_dcf_vf_repr_vlan_pvid_set(struct rte_eth_dev *dev,
 
 	if (repr->outer_vlan_info.stripping_ena) {
 		PMD_DRV_LOG(ERR,
-			    "Disable the VLAN stripping firstly\n");
+			    "Disable the VLAN stripping firstly");
 		return -EINVAL;
 	}
 
@@ -367,7 +367,7 @@ ice_dcf_vf_repr_vlan_tpid_set(struct rte_eth_dev *dev,
 
 	if (vlan_type != RTE_ETH_VLAN_TYPE_OUTER) {
 		PMD_DRV_LOG(ERR,
-			    "Can accelerate only outer VLAN in QinQ\n");
+			    "Can accelerate only outer VLAN in QinQ");
 		return -EINVAL;
 	}
 
@@ -375,7 +375,7 @@ ice_dcf_vf_repr_vlan_tpid_set(struct rte_eth_dev *dev,
 	    tpid != RTE_ETHER_TYPE_VLAN &&
 	    tpid != RTE_ETHER_TYPE_QINQ1) {
 		PMD_DRV_LOG(ERR,
-			    "Invalid TPID: 0x%04x\n", tpid);
+			    "Invalid TPID: 0x%04x", tpid);
 		return -EINVAL;
 	}
 
@@ -387,7 +387,7 @@ ice_dcf_vf_repr_vlan_tpid_set(struct rte_eth_dev *dev,
 						    true);
 		if (err) {
 			PMD_DRV_LOG(ERR,
-				    "Failed to reset port VLAN : %d\n",
+				    "Failed to reset port VLAN : %d",
 				    err);
 			return err;
 		}
@@ -398,7 +398,7 @@ ice_dcf_vf_repr_vlan_tpid_set(struct rte_eth_dev *dev,
 						       RTE_ETH_VLAN_STRIP_MASK);
 		if (err) {
 			PMD_DRV_LOG(ERR,
-				    "Failed to reset VLAN stripping : %d\n",
+				    "Failed to reset VLAN stripping : %d",
 				    err);
 			return err;
 		}

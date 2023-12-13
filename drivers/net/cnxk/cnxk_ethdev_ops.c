@@ -532,7 +532,7 @@ cnxk_nix_sq_flush(struct rte_eth_dev *eth_dev)
 		/* Wait for sq entries to be flushed */
 		rc = roc_nix_tm_sq_flush_spin(sq);
 		if (rc) {
-			plt_err("Failed to drain sq, rc=%d\n", rc);
+			plt_err("Failed to drain sq, rc=%d", rc);
 			goto exit;
 		}
 		if (data->tx_queue_state[i] == RTE_ETH_QUEUE_STATE_STARTED) {

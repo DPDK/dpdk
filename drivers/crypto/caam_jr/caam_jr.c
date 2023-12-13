@@ -309,7 +309,7 @@ caam_jr_prep_cdb(struct caam_jr_session *ses)
 
 	cdb = caam_jr_dma_mem_alloc(L1_CACHE_BYTES, sizeof(struct sec_cdb));
 	if (!cdb) {
-		CAAM_JR_ERR("failed to allocate memory for cdb\n");
+		CAAM_JR_ERR("failed to allocate memory for cdb");
 		return -1;
 	}
 
@@ -606,7 +606,7 @@ hw_poll_job_ring(struct sec_job_ring_t *job_ring,
 		/*TODO for multiple ops, packets*/
 		ctx = container_of(current_desc, struct caam_jr_op_ctx, jobdes);
 		if (unlikely(sec_error_code)) {
-			CAAM_JR_ERR("desc at cidx %d generated error 0x%x\n",
+			CAAM_JR_ERR("desc at cidx %d generated error 0x%x",
 				job_ring->cidx, sec_error_code);
 			hw_handle_job_ring_error(job_ring, sec_error_code);
 			//todo improve with exact errors
@@ -1368,7 +1368,7 @@ caam_jr_enqueue_op(struct rte_crypto_op *op, struct caam_jr_qp *qp)
 	}
 
 	if (unlikely(!ses->qp || ses->qp != qp)) {
-		CAAM_JR_DP_DEBUG("Old:sess->qp=%p New qp = %p\n", ses->qp, qp);
+		CAAM_JR_DP_DEBUG("Old:sess->qp=%p New qp = %p", ses->qp, qp);
 		ses->qp = qp;
 		caam_jr_prep_cdb(ses);
 	}
@@ -1554,7 +1554,7 @@ caam_jr_cipher_init(struct rte_cryptodev *dev __rte_unused,
 	session->cipher_key.data = rte_zmalloc(NULL, xform->cipher.key.length,
 					       RTE_CACHE_LINE_SIZE);
 	if (session->cipher_key.data == NULL && xform->cipher.key.length > 0) {
-		CAAM_JR_ERR("No Memory for cipher key\n");
+		CAAM_JR_ERR("No Memory for cipher key");
 		return -ENOMEM;
 	}
 	session->cipher_key.length = xform->cipher.key.length;
@@ -1576,7 +1576,7 @@ caam_jr_auth_init(struct rte_cryptodev *dev __rte_unused,
 	session->auth_key.data = rte_zmalloc(NULL, xform->auth.key.length,
 					     RTE_CACHE_LINE_SIZE);
 	if (session->auth_key.data == NULL && xform->auth.key.length > 0) {
-		CAAM_JR_ERR("No Memory for auth key\n");
+		CAAM_JR_ERR("No Memory for auth key");
 		return -ENOMEM;
 	}
 	session->auth_key.length = xform->auth.key.length;
@@ -1602,7 +1602,7 @@ caam_jr_aead_init(struct rte_cryptodev *dev __rte_unused,
 	session->aead_key.data = rte_zmalloc(NULL, xform->aead.key.length,
 					     RTE_CACHE_LINE_SIZE);
 	if (session->aead_key.data == NULL && xform->aead.key.length > 0) {
-		CAAM_JR_ERR("No Memory for aead key\n");
+		CAAM_JR_ERR("No Memory for aead key");
 		return -ENOMEM;
 	}
 	session->aead_key.length = xform->aead.key.length;
@@ -1755,7 +1755,7 @@ caam_jr_set_ipsec_session(__rte_unused struct rte_cryptodev *dev,
 					       RTE_CACHE_LINE_SIZE);
 	if (session->cipher_key.data == NULL &&
 			cipher_xform->key.length > 0) {
-		CAAM_JR_ERR("No Memory for cipher key\n");
+		CAAM_JR_ERR("No Memory for cipher key");
 		return -ENOMEM;
 	}
 
@@ -1765,7 +1765,7 @@ caam_jr_set_ipsec_session(__rte_unused struct rte_cryptodev *dev,
 					RTE_CACHE_LINE_SIZE);
 	if (session->auth_key.data == NULL &&
 			auth_xform->key.length > 0) {
-		CAAM_JR_ERR("No Memory for auth key\n");
+		CAAM_JR_ERR("No Memory for auth key");
 		rte_free(session->cipher_key.data);
 		return -ENOMEM;
 	}
@@ -1810,11 +1810,11 @@ caam_jr_set_ipsec_session(__rte_unused struct rte_cryptodev *dev,
 	case RTE_CRYPTO_AUTH_KASUMI_F9:
 	case RTE_CRYPTO_AUTH_AES_CBC_MAC:
 	case RTE_CRYPTO_AUTH_ZUC_EIA3:
-		CAAM_JR_ERR("Crypto: Unsupported auth alg %u\n",
+		CAAM_JR_ERR("Crypto: Unsupported auth alg %u",
 			auth_xform->algo);
 		goto out;
 	default:
-		CAAM_JR_ERR("Crypto: Undefined Auth specified %u\n",
+		CAAM_JR_ERR("Crypto: Undefined Auth specified %u",
 			auth_xform->algo);
 		goto out;
 	}
@@ -1834,11 +1834,11 @@ caam_jr_set_ipsec_session(__rte_unused struct rte_cryptodev *dev,
 	case RTE_CRYPTO_CIPHER_3DES_ECB:
 	case RTE_CRYPTO_CIPHER_AES_ECB:
 	case RTE_CRYPTO_CIPHER_KASUMI_F8:
-		CAAM_JR_ERR("Crypto: Unsupported Cipher alg %u\n",
+		CAAM_JR_ERR("Crypto: Unsupported Cipher alg %u",
 			cipher_xform->algo);
 		goto out;
 	default:
-		CAAM_JR_ERR("Crypto: Undefined Cipher specified %u\n",
+		CAAM_JR_ERR("Crypto: Undefined Cipher specified %u",
 			cipher_xform->algo);
 		goto out;
 	}
@@ -1962,7 +1962,7 @@ caam_jr_dev_configure(struct rte_cryptodev *dev,
 						NULL, NULL, NULL, NULL,
 						SOCKET_ID_ANY, 0);
 		if (!internals->ctx_pool) {
-			CAAM_JR_ERR("%s create failed\n", str);
+			CAAM_JR_ERR("%s create failed", str);
 			return -ENOMEM;
 		}
 	} else
@@ -2180,7 +2180,7 @@ init_job_ring(void *reg_base_addr, int irq_id)
 		}
 	}
 	if (job_ring == NULL) {
-		CAAM_JR_ERR("No free job ring\n");
+		CAAM_JR_ERR("No free job ring");
 		return NULL;
 	}
 
@@ -2301,7 +2301,7 @@ caam_jr_dev_init(const char *name,
 						job_ring->uio_fd);
 
 	if (!dev->data->dev_private) {
-		CAAM_JR_ERR("Ring memory allocation failed\n");
+		CAAM_JR_ERR("Ring memory allocation failed");
 		goto cleanup2;
 	}
 
@@ -2334,7 +2334,7 @@ caam_jr_dev_init(const char *name,
 	security_instance = rte_malloc("caam_jr",
 				sizeof(struct rte_security_ctx), 0);
 	if (security_instance == NULL) {
-		CAAM_JR_ERR("memory allocation failed\n");
+		CAAM_JR_ERR("memory allocation failed");
 		//todo error handling.
 		goto cleanup2;
 	}

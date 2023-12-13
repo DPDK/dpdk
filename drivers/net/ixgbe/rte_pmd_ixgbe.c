@@ -955,7 +955,7 @@ STATIC s32 rte_pmd_ixgbe_acquire_swfw(struct ixgbe_hw *hw, u32 mask)
 	while (--retries) {
 		status = ixgbe_acquire_swfw_semaphore(hw, mask);
 		if (status) {
-			PMD_DRV_LOG(ERR, "Get SWFW sem failed, Status = %d\n",
+			PMD_DRV_LOG(ERR, "Get SWFW sem failed, Status = %d",
 				    status);
 			return status;
 		}
@@ -964,18 +964,18 @@ STATIC s32 rte_pmd_ixgbe_acquire_swfw(struct ixgbe_hw *hw, u32 mask)
 			return IXGBE_SUCCESS;
 
 		if (status == IXGBE_ERR_TOKEN_RETRY)
-			PMD_DRV_LOG(ERR, "Get PHY token failed, Status = %d\n",
+			PMD_DRV_LOG(ERR, "Get PHY token failed, Status = %d",
 				    status);
 
 		ixgbe_release_swfw_semaphore(hw, mask);
 		if (status != IXGBE_ERR_TOKEN_RETRY) {
 			PMD_DRV_LOG(ERR,
-				    "Retry get PHY token failed, Status=%d\n",
+				    "Retry get PHY token failed, Status=%d",
 				    status);
 			return status;
 		}
 	}
-	PMD_DRV_LOG(ERR, "swfw acquisition retries failed!: PHY ID = 0x%08X\n",
+	PMD_DRV_LOG(ERR, "swfw acquisition retries failed!: PHY ID = 0x%08X",
 		    hw->phy.id);
 	return status;
 }

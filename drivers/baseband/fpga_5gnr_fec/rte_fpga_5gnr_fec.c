@@ -1997,10 +1997,10 @@ fpga_5gnr_mutex_acquisition(struct fpga_5gnr_queue *q)
 	do {
 		if (cnt > 0)
 			usleep(FPGA_5GNR_TIMEOUT_CHECK_INTERVAL);
-		rte_bbdev_log_debug("Acquiring Mutex for %x\n", q->ddr_mutex_uuid);
+		rte_bbdev_log_debug("Acquiring Mutex for %x", q->ddr_mutex_uuid);
 		fpga_5gnr_reg_write_32(q->d->mmio_base, FPGA_5GNR_FEC_MUTEX, mutex_ctrl);
 		mutex_read = fpga_5gnr_reg_read_32(q->d->mmio_base, FPGA_5GNR_FEC_MUTEX);
-		rte_bbdev_log_debug("Mutex %x cnt %d owner %x\n",
+		rte_bbdev_log_debug("Mutex %x cnt %d owner %x",
 				mutex_read, cnt, q->ddr_mutex_uuid);
 		cnt++;
 	} while ((mutex_read >> 16) != q->ddr_mutex_uuid);
@@ -2038,7 +2038,7 @@ fpga_5gnr_harq_write_loopback(struct fpga_5gnr_queue *q,
 		reg_32 = fpga_5gnr_reg_read_32(q->d->mmio_base, FPGA_5GNR_FEC_HARQ_BUF_SIZE_REGS);
 		if (reg_32 < harq_in_length) {
 			left_length = reg_32;
-			rte_bbdev_log(ERR, "HARQ in length > HARQ buffer size\n");
+			rte_bbdev_log(ERR, "HARQ in length > HARQ buffer size");
 		}
 	}
 
@@ -2108,17 +2108,17 @@ fpga_5gnr_harq_read_loopback(struct fpga_5gnr_queue *q,
 		reg = fpga_5gnr_reg_read_32(q->d->mmio_base, FPGA_5GNR_FEC_HARQ_BUF_SIZE_REGS);
 		if (reg < harq_in_length) {
 			harq_in_length = reg;
-			rte_bbdev_log(ERR, "HARQ in length > HARQ buffer size\n");
+			rte_bbdev_log(ERR, "HARQ in length > HARQ buffer size");
 		}
 	}
 
 	if (!mbuf_append(harq_output, harq_output, harq_in_length)) {
-		rte_bbdev_log(ERR, "HARQ output buffer warning %d %d\n",
+		rte_bbdev_log(ERR, "HARQ output buffer warning %d %d",
 				harq_output->buf_len - rte_pktmbuf_headroom(harq_output),
 				harq_in_length);
 		harq_in_length = harq_output->buf_len - rte_pktmbuf_headroom(harq_output);
 		if (!mbuf_append(harq_output, harq_output, harq_in_length)) {
-			rte_bbdev_log(ERR, "HARQ output buffer issue %d %d\n",
+			rte_bbdev_log(ERR, "HARQ output buffer issue %d %d",
 					harq_output->buf_len, harq_in_length);
 			return -1;
 		}
@@ -2142,7 +2142,7 @@ fpga_5gnr_harq_read_loopback(struct fpga_5gnr_queue *q,
 		while (reg != 1) {
 			reg = fpga_5gnr_reg_read_8(q->d->mmio_base, FPGA_5GNR_FEC_DDR4_RD_RDY_REGS);
 			if (reg == FPGA_5GNR_DDR_OVERFLOW) {
-				rte_bbdev_log(ERR, "Read address is overflow!\n");
+				rte_bbdev_log(ERR, "Read address is overflow!");
 				return -1;
 			}
 		}
@@ -3376,7 +3376,7 @@ int rte_fpga_5gnr_fec_configure(const char *dev_name, const struct rte_fpga_5gnr
 		return -ENODEV;
 	}
 	struct rte_pci_device *pci_dev = RTE_DEV_TO_PCI(bbdev->device);
-	rte_bbdev_log(INFO, "Configure dev id %x\n", pci_dev->id.device_id);
+	rte_bbdev_log(INFO, "Configure dev id %x", pci_dev->id.device_id);
 	if (pci_dev->id.device_id == VC_5GNR_PF_DEVICE_ID)
 		return vc_5gnr_configure(dev_name, conf);
 	else if (pci_dev->id.device_id == AGX100_PF_DEVICE_ID)

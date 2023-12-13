@@ -3036,7 +3036,7 @@ iavf_check_vlan_up2tc(struct iavf_tx_queue *txq, struct rte_mbuf *m)
 	up = m->vlan_tci >> IAVF_VLAN_TAG_PCP_OFFSET;
 
 	if (!(vf->qos_cap->cap[txq->tc].tc_prio & BIT(up))) {
-		PMD_TX_LOG(ERR, "packet with vlan pcp %u cannot transmit in queue %u\n",
+		PMD_TX_LOG(ERR, "packet with vlan pcp %u cannot transmit in queue %u",
 			up, txq->queue_id);
 		return -1;
 	} else {
@@ -3830,7 +3830,7 @@ iavf_xmit_pkts_check(void *tx_queue, struct rte_mbuf **tx_pkts,
 
 		if ((adapter->devargs.mbuf_check & IAVF_MBUF_CHECK_F_TX_MBUF) &&
 		    (rte_mbuf_check(mb, 1, &reason) != 0)) {
-			PMD_TX_LOG(ERR, "INVALID mbuf: %s\n", reason);
+			PMD_TX_LOG(ERR, "INVALID mbuf: %s", reason);
 			pkt_error = true;
 			break;
 		}
@@ -3838,7 +3838,7 @@ iavf_xmit_pkts_check(void *tx_queue, struct rte_mbuf **tx_pkts,
 		if ((adapter->devargs.mbuf_check & IAVF_MBUF_CHECK_F_TX_SIZE) &&
 		    (mb->data_len < IAVF_TX_MIN_PKT_LEN ||
 		     mb->data_len > adapter->vf.max_pkt_len)) {
-			PMD_TX_LOG(ERR, "INVALID mbuf: data_len (%u) is out of range, reasonable range (%d - %u)\n",
+			PMD_TX_LOG(ERR, "INVALID mbuf: data_len (%u) is out of range, reasonable range (%d - %u)",
 					mb->data_len, IAVF_TX_MIN_PKT_LEN, adapter->vf.max_pkt_len);
 			pkt_error = true;
 			break;
@@ -3848,7 +3848,7 @@ iavf_xmit_pkts_check(void *tx_queue, struct rte_mbuf **tx_pkts,
 			/* Check condition for nb_segs > IAVF_TX_MAX_MTU_SEG. */
 			if (!(ol_flags & (RTE_MBUF_F_TX_TCP_SEG | RTE_MBUF_F_TX_UDP_SEG))) {
 				if (mb->nb_segs > IAVF_TX_MAX_MTU_SEG) {
-					PMD_TX_LOG(ERR, "INVALID mbuf: nb_segs (%d) exceeds HW limit, maximum allowed value is %d\n",
+					PMD_TX_LOG(ERR, "INVALID mbuf: nb_segs (%d) exceeds HW limit, maximum allowed value is %d",
 							mb->nb_segs, IAVF_TX_MAX_MTU_SEG);
 					pkt_error = true;
 					break;
@@ -3856,12 +3856,12 @@ iavf_xmit_pkts_check(void *tx_queue, struct rte_mbuf **tx_pkts,
 			} else if ((mb->tso_segsz < IAVF_MIN_TSO_MSS) ||
 				   (mb->tso_segsz > IAVF_MAX_TSO_MSS)) {
 				/* MSS outside the range are considered malicious */
-				PMD_TX_LOG(ERR, "INVALID mbuf: tso_segsz (%u) is out of range, reasonable range (%d - %u)\n",
+				PMD_TX_LOG(ERR, "INVALID mbuf: tso_segsz (%u) is out of range, reasonable range (%d - %u)",
 						mb->tso_segsz, IAVF_MIN_TSO_MSS, IAVF_MAX_TSO_MSS);
 				pkt_error = true;
 				break;
 			} else if (mb->nb_segs > txq->nb_tx_desc) {
-				PMD_TX_LOG(ERR, "INVALID mbuf: nb_segs out of ring length\n");
+				PMD_TX_LOG(ERR, "INVALID mbuf: nb_segs out of ring length");
 				pkt_error = true;
 				break;
 			}
@@ -3869,13 +3869,13 @@ iavf_xmit_pkts_check(void *tx_queue, struct rte_mbuf **tx_pkts,
 
 		if (adapter->devargs.mbuf_check & IAVF_MBUF_CHECK_F_TX_OFFLOAD) {
 			if (ol_flags & IAVF_TX_OFFLOAD_NOTSUP_MASK) {
-				PMD_TX_LOG(ERR, "INVALID mbuf: TX offload is not supported\n");
+				PMD_TX_LOG(ERR, "INVALID mbuf: TX offload is not supported");
 				pkt_error = true;
 				break;
 			}
 
 			if (!rte_validate_tx_offload(mb)) {
-				PMD_TX_LOG(ERR, "INVALID mbuf: TX offload setup error\n");
+				PMD_TX_LOG(ERR, "INVALID mbuf: TX offload setup error");
 				pkt_error = true;
 				break;
 			}

@@ -186,7 +186,7 @@ sso_rsrc_get(struct roc_sso *roc_sso)
 	mbox_alloc_msg_free_rsrc_cnt(mbox);
 	rc = mbox_process_msg(mbox, (void **)&rsrc_cnt);
 	if (rc) {
-		plt_err("Failed to get free resource count\n");
+		plt_err("Failed to get free resource count");
 		rc = -EIO;
 		goto exit;
 	}

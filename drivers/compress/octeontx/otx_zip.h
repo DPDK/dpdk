@@ -206,7 +206,7 @@ zipvf_prepare_sgl(struct rte_mbuf *buf, int64_t offset, struct zipvf_sginfo *sg_
 			break;
 		}
 
-		ZIP_PMD_LOG(DEBUG, "ZIP SGL buf[%d], len = %d, iova = 0x%"PRIx64"\n",
+		ZIP_PMD_LOG(DEBUG, "ZIP SGL buf[%d], len = %d, iova = 0x%"PRIx64,
 			    sgidx, sginfo[sgidx].sg_ctl.s.length, sginfo[sgidx].sg_addr.s.addr);
 		++sgidx;
 	}
@@ -219,7 +219,7 @@ zipvf_prepare_sgl(struct rte_mbuf *buf, int64_t offset, struct zipvf_sginfo *sg_
 	}
 	qp->num_sgbuf = ++sgidx;
 
-	ZIP_PMD_LOG(DEBUG, "Tot_buf_len:%d max_segs:%"PRIx64"\n", tot_buf_len,
+	ZIP_PMD_LOG(DEBUG, "Tot_buf_len:%d max_segs:%"PRIx64, tot_buf_len,
 		    qp->num_sgbuf);
 	return ret;
 }
@@ -246,7 +246,7 @@ zipvf_prepare_in_buf(union zip_inst_s *inst, struct zipvf_qp *qp, struct rte_com
 		inst->s.inp_ptr_ctl.s.length = qp->num_sgbuf;
 		inst->s.inp_ptr_ctl.s.fw = 0;
 
-		ZIP_PMD_LOG(DEBUG, "Gather(input): len(nb_segs):%d, iova: 0x%"PRIx64"\n",
+		ZIP_PMD_LOG(DEBUG, "Gather(input): len(nb_segs):%d, iova: 0x%"PRIx64,
 			    inst->s.inp_ptr_ctl.s.length, inst->s.inp_ptr_addr.s.addr);
 		return ret;
 	}
@@ -256,7 +256,7 @@ zipvf_prepare_in_buf(union zip_inst_s *inst, struct zipvf_qp *qp, struct rte_com
 	inst->s.inp_ptr_addr.s.addr = rte_pktmbuf_iova_offset(m_src, offset);
 	inst->s.inp_ptr_ctl.s.length = inlen;
 
-	ZIP_PMD_LOG(DEBUG, "Direct input - inlen:%d\n", inlen);
+	ZIP_PMD_LOG(DEBUG, "Direct input - inlen:%d", inlen);
 	return ret;
 }
 
@@ -282,7 +282,7 @@ zipvf_prepare_out_buf(union zip_inst_s *inst, struct zipvf_qp *qp, struct rte_co
 		inst->s.out_ptr_addr.s.addr = rte_mem_virt2iova(qp->s_info);
 		inst->s.out_ptr_ctl.s.length = qp->num_sgbuf;
 
-		ZIP_PMD_LOG(DEBUG, "Scatter(output): nb_segs:%d, iova:0x%"PRIx64"\n",
+		ZIP_PMD_LOG(DEBUG, "Scatter(output): nb_segs:%d, iova:0x%"PRIx64,
 			    inst->s.out_ptr_ctl.s.length, inst->s.out_ptr_addr.s.addr);
 		return ret;
 	}
@@ -296,7 +296,7 @@ zipvf_prepare_out_buf(union zip_inst_s *inst, struct zipvf_qp *qp, struct rte_co
 
 	inst->s.out_ptr_ctl.s.length = inst->s.totaloutputlength;
 
-	ZIP_PMD_LOG(DEBUG, "Direct output - outlen:%d\n", inst->s.totaloutputlength);
+	ZIP_PMD_LOG(DEBUG, "Direct output - outlen:%d", inst->s.totaloutputlength);
 	return ret;
 }
 

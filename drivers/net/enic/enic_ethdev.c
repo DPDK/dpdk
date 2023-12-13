@@ -672,7 +672,7 @@ static void debug_log_add_del_addr(struct rte_ether_addr *addr, bool add)
 	char mac_str[RTE_ETHER_ADDR_FMT_SIZE];
 
 	rte_ether_format_addr(mac_str, RTE_ETHER_ADDR_FMT_SIZE, addr);
-	ENICPMD_LOG(DEBUG, " %s address %s\n",
+	ENICPMD_LOG(DEBUG, " %s address %s",
 		     add ? "add" : "remove", mac_str);
 }
 
@@ -695,7 +695,7 @@ static int enicpmd_set_mc_addr_list(struct rte_eth_dev *eth_dev,
 		    rte_is_broadcast_ether_addr(addr)) {
 			rte_ether_format_addr(mac_str,
 					RTE_ETHER_ADDR_FMT_SIZE, addr);
-			ENICPMD_LOG(ERR, " invalid multicast address %s\n",
+			ENICPMD_LOG(ERR, " invalid multicast address %s",
 				     mac_str);
 			return -EINVAL;
 		}
@@ -703,7 +703,7 @@ static int enicpmd_set_mc_addr_list(struct rte_eth_dev *eth_dev,
 
 	/* Flush all if requested */
 	if (nb_mc_addr == 0 || mc_addr_set == NULL) {
-		ENICPMD_LOG(DEBUG, " flush multicast addresses\n");
+		ENICPMD_LOG(DEBUG, " flush multicast addresses");
 		for (i = 0; i < enic->mc_count; i++) {
 			addr = &enic->mc_addrs[i];
 			debug_log_add_del_addr(addr, false);
@@ -716,7 +716,7 @@ static int enicpmd_set_mc_addr_list(struct rte_eth_dev *eth_dev,
 	}
 
 	if (nb_mc_addr > ENIC_MULTICAST_PERFECT_FILTERS) {
-		ENICPMD_LOG(ERR, " too many multicast addresses: max=%d\n",
+		ENICPMD_LOG(ERR, " too many multicast addresses: max=%d",
 			     ENIC_MULTICAST_PERFECT_FILTERS);
 		return -ENOSPC;
 	}
@@ -982,7 +982,7 @@ static int udp_tunnel_common_check(struct enic *enic,
 	    tnl->prot_type != RTE_ETH_TUNNEL_TYPE_GENEVE)
 		return -ENOTSUP;
 	if (!enic->overlay_offload) {
-		ENICPMD_LOG(DEBUG, " overlay offload is not supported\n");
+		ENICPMD_LOG(DEBUG, " overlay offload is not supported");
 		return -ENOTSUP;
 	}
 	return 0;
@@ -995,10 +995,10 @@ static int update_tunnel_port(struct enic *enic, uint16_t port, bool vxlan)
 	cfg = vxlan ? OVERLAY_CFG_VXLAN_PORT_UPDATE :
 		OVERLAY_CFG_GENEVE_PORT_UPDATE;
 	if (vnic_dev_overlay_offload_cfg(enic->vdev, cfg, port)) {
-		ENICPMD_LOG(DEBUG, " failed to update tunnel port\n");
+		ENICPMD_LOG(DEBUG, " failed to update tunnel port");
 		return -EINVAL;
 	}
-	ENICPMD_LOG(DEBUG, " updated %s port to %u\n",
+	ENICPMD_LOG(DEBUG, " updated %s port to %u",
 		    vxlan ? "vxlan" : "geneve", port);
 	if (vxlan)
 		enic->vxlan_port = port;
@@ -1029,7 +1029,7 @@ static int enicpmd_dev_udp_tunnel_port_add(struct rte_eth_dev *eth_dev,
 	 * "Adding" a new port number replaces it.
 	 */
 	if (tnl->udp_port == port || tnl->udp_port == 0) {
-		ENICPMD_LOG(DEBUG, " %u is already configured or invalid\n",
+		ENICPMD_LOG(DEBUG, " %u is already configured or invalid",
 			     tnl->udp_port);
 		return -EINVAL;
 	}
@@ -1061,7 +1061,7 @@ static int enicpmd_dev_udp_tunnel_port_del(struct rte_eth_dev *eth_dev,
 	 * which is tied to inner RSS and TSO.
 	 */
 	if (tnl->udp_port != port) {
-		ENICPMD_LOG(DEBUG, " %u is not a configured tunnel port\n",
+		ENICPMD_LOG(DEBUG, " %u is not a configured tunnel port",
 			     tnl->udp_port);
 		return -EINVAL;
 	}
@@ -1325,7 +1325,7 @@ static int eth_enic_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	}
 	if (eth_da.nb_representor_ports > 0 &&
 	    eth_da.type != RTE_ETH_REPRESENTOR_VF) {
-		ENICPMD_LOG(ERR, "unsupported representor type: %s\n",
+		ENICPMD_LOG(ERR, "unsupported representor type: %s",
 			    pci_dev->device.devargs->args);
 		return -ENOTSUP;
 	}

@@ -1229,11 +1229,11 @@ i40e_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 			ctx_txd->type_cmd_tso_mss =
 				rte_cpu_to_le_64(cd_type_cmd_tso_mss);
 
-			PMD_TX_LOG(DEBUG, "mbuf: %p, TCD[%u]:\n"
-				"tunneling_params: %#x;\n"
-				"l2tag2: %#hx;\n"
-				"rsvd: %#hx;\n"
-				"type_cmd_tso_mss: %#"PRIx64";\n",
+			PMD_TX_LOG(DEBUG, "mbuf: %p, TCD[%u]: "
+				"tunneling_params: %#x; "
+				"l2tag2: %#hx; "
+				"rsvd: %#hx; "
+				"type_cmd_tso_mss: %#"PRIx64";",
 				tx_pkt, tx_id,
 				ctx_txd->tunneling_params,
 				ctx_txd->l2tag2,
@@ -1276,12 +1276,12 @@ i40e_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 				txd = &txr[tx_id];
 				txn = &sw_ring[txe->next_id];
 			}
-			PMD_TX_LOG(DEBUG, "mbuf: %p, TDD[%u]:\n"
-				"buf_dma_addr: %#"PRIx64";\n"
-				"td_cmd: %#x;\n"
-				"td_offset: %#x;\n"
-				"td_len: %u;\n"
-				"td_tag: %#x;\n",
+			PMD_TX_LOG(DEBUG, "mbuf: %p, TDD[%u]: "
+				"buf_dma_addr: %#"PRIx64"; "
+				"td_cmd: %#x; "
+				"td_offset: %#x; "
+				"td_len: %u; "
+				"td_tag: %#x;",
 				tx_pkt, tx_id, buf_dma_addr,
 				td_cmd, td_offset, slen, td_tag);
 
@@ -1564,7 +1564,7 @@ i40e_xmit_pkts_check(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts
 
 		if ((adapter->mbuf_check & I40E_MBUF_CHECK_F_TX_MBUF) &&
 		    (rte_mbuf_check(mb, 1, &reason) != 0)) {
-			PMD_TX_LOG(ERR, "INVALID mbuf: %s\n", reason);
+			PMD_TX_LOG(ERR, "INVALID mbuf: %s", reason);
 			pkt_error = true;
 			break;
 		}
@@ -1573,7 +1573,7 @@ i40e_xmit_pkts_check(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts
 		    (mb->data_len > mb->pkt_len ||
 		     mb->data_len < I40E_TX_MIN_PKT_LEN ||
 		     mb->data_len > adapter->max_pkt_len)) {
-			PMD_TX_LOG(ERR, "INVALID mbuf: data_len (%u) is out of range, reasonable range (%d - %u)\n",
+			PMD_TX_LOG(ERR, "INVALID mbuf: data_len (%u) is out of range, reasonable range (%d - %u)",
 				mb->data_len, I40E_TX_MIN_PKT_LEN, adapter->max_pkt_len);
 			pkt_error = true;
 			break;
@@ -1586,13 +1586,13 @@ i40e_xmit_pkts_check(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts
 				 * the limites.
 				 */
 				if (mb->nb_segs > I40E_TX_MAX_MTU_SEG) {
-					PMD_TX_LOG(ERR, "INVALID mbuf: nb_segs (%d) exceeds HW limit, maximum allowed value is %d\n",
+					PMD_TX_LOG(ERR, "INVALID mbuf: nb_segs (%d) exceeds HW limit, maximum allowed value is %d",
 						mb->nb_segs, I40E_TX_MAX_MTU_SEG);
 					pkt_error = true;
 					break;
 				}
 				if (mb->pkt_len > I40E_FRAME_SIZE_MAX) {
-					PMD_TX_LOG(ERR, "INVALID mbuf: pkt_len (%d) exceeds HW limit, maximum allowed value is %d\n",
+					PMD_TX_LOG(ERR, "INVALID mbuf: pkt_len (%d) exceeds HW limit, maximum allowed value is %d",
 						mb->nb_segs, I40E_FRAME_SIZE_MAX);
 					pkt_error = true;
 					break;
@@ -1606,18 +1606,18 @@ i40e_xmit_pkts_check(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts
 					/**
 					 * MSS outside the range are considered malicious
 					 */
-					PMD_TX_LOG(ERR, "INVALID mbuf: tso_segsz (%u) is out of range, reasonable range (%d - %u)\n",
+					PMD_TX_LOG(ERR, "INVALID mbuf: tso_segsz (%u) is out of range, reasonable range (%d - %u)",
 						mb->tso_segsz, I40E_MIN_TSO_MSS, I40E_MAX_TSO_MSS);
 					pkt_error = true;
 					break;
 				}
 				if (mb->nb_segs > ((struct i40e_tx_queue *)tx_queue)->nb_tx_desc) {
-					PMD_TX_LOG(ERR, "INVALID mbuf: nb_segs out of ring length\n");
+					PMD_TX_LOG(ERR, "INVALID mbuf: nb_segs out of ring length");
 					pkt_error = true;
 					break;
 				}
 				if (mb->pkt_len > I40E_TSO_FRAME_SIZE_MAX) {
-					PMD_TX_LOG(ERR, "INVALID mbuf: pkt_len (%d) exceeds HW limit, maximum allowed value is %d\n",
+					PMD_TX_LOG(ERR, "INVALID mbuf: pkt_len (%d) exceeds HW limit, maximum allowed value is %d",
 						mb->nb_segs, I40E_TSO_FRAME_SIZE_MAX);
 					pkt_error = true;
 					break;
@@ -1627,13 +1627,13 @@ i40e_xmit_pkts_check(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts
 
 		if (adapter->mbuf_check & I40E_MBUF_CHECK_F_TX_OFFLOAD) {
 			if (ol_flags & I40E_TX_OFFLOAD_NOTSUP_MASK) {
-				PMD_TX_LOG(ERR, "INVALID mbuf: TX offload is not supported\n");
+				PMD_TX_LOG(ERR, "INVALID mbuf: TX offload is not supported");
 				pkt_error = true;
 				break;
 			}
 
 			if (!rte_validate_tx_offload(mb)) {
-				PMD_TX_LOG(ERR, "INVALID mbuf: TX offload setup error\n");
+				PMD_TX_LOG(ERR, "INVALID mbuf: TX offload setup error");
 				pkt_error = true;
 				break;
 			}
@@ -3573,7 +3573,7 @@ i40e_set_tx_function_flag(struct rte_eth_dev *dev, struct i40e_tx_queue *txq)
 				txq->queue_id);
 	else
 		PMD_INIT_LOG(DEBUG,
-				"Neither simple nor vector Tx enabled on Tx queue %u\n",
+				"Neither simple nor vector Tx enabled on Tx queue %u",
 				txq->queue_id);
 }
 

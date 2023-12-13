@@ -437,7 +437,7 @@ cnxk_ml_model_xstats_reset(struct cnxk_ml_dev *cnxk_mldev, int32_t model_id,
 
 			model = cnxk_mldev->mldev->data->models[model_id];
 			if (model == NULL) {
-				plt_err("Invalid model_id = %d\n", model_id);
+				plt_err("Invalid model_id = %d", model_id);
 				return -EINVAL;
 			}
 		}
@@ -454,7 +454,7 @@ cnxk_ml_model_xstats_reset(struct cnxk_ml_dev *cnxk_mldev, int32_t model_id,
 		} else {
 			for (j = 0; j < nb_ids; j++) {
 				if (stat_ids[j] < start_id || stat_ids[j] > end_id) {
-					plt_err("Invalid stat_ids[%d] = %d for model_id = %d\n", j,
+					plt_err("Invalid stat_ids[%d] = %d for model_id = %d", j,
 						stat_ids[j], lcl_model_id);
 					return -EINVAL;
 				}
@@ -510,12 +510,12 @@ cnxk_ml_dev_configure(struct rte_ml_dev *dev, const struct rte_ml_dev_config *co
 
 	cnxk_ml_dev_info_get(dev, &dev_info);
 	if (conf->nb_models > dev_info.max_models) {
-		plt_err("Invalid device config, nb_models > %u\n", dev_info.max_models);
+		plt_err("Invalid device config, nb_models > %u", dev_info.max_models);
 		return -EINVAL;
 	}
 
 	if (conf->nb_queue_pairs > dev_info.max_queue_pairs) {
-		plt_err("Invalid device config, nb_queue_pairs > %u\n", dev_info.max_queue_pairs);
+		plt_err("Invalid device config, nb_queue_pairs > %u", dev_info.max_queue_pairs);
 		return -EINVAL;
 	}
 
@@ -533,10 +533,10 @@ cnxk_ml_dev_configure(struct rte_ml_dev *dev, const struct rte_ml_dev_config *co
 		plt_ml_dbg("Re-configuring ML device, nb_queue_pairs = %u, nb_models = %u",
 			   conf->nb_queue_pairs, conf->nb_models);
 	} else if (cnxk_mldev->state == ML_CNXK_DEV_STATE_STARTED) {
-		plt_err("Device can't be reconfigured in started state\n");
+		plt_err("Device can't be reconfigured in started state");
 		return -ENOTSUP;
 	} else if (cnxk_mldev->state == ML_CNXK_DEV_STATE_CLOSED) {
-		plt_err("Device can't be reconfigured after close\n");
+		plt_err("Device can't be reconfigured after close");
 		return -ENOTSUP;
 	}
 
@@ -853,7 +853,7 @@ cnxk_ml_dev_queue_pair_setup(struct rte_ml_dev *dev, uint16_t queue_pair_id,
 	uint32_t nb_desc;
 
 	if (queue_pair_id >= dev->data->nb_queue_pairs) {
-		plt_err("Queue-pair id = %u (>= max queue pairs supported, %u)\n", queue_pair_id,
+		plt_err("Queue-pair id = %u (>= max queue pairs supported, %u)", queue_pair_id,
 			dev->data->nb_queue_pairs);
 		return -EINVAL;
 	}
@@ -1249,11 +1249,11 @@ cnxk_ml_model_load(struct rte_ml_dev *dev, struct rte_ml_model_params *params, u
 	}
 
 	if ((total_wb_pages + max_scratch_pages) > ocm->num_pages) {
-		plt_err("model_id = %u: total_wb_pages (%u) + scratch_pages (%u) >  %u\n",
+		plt_err("model_id = %u: total_wb_pages (%u) + scratch_pages (%u) >  %u",
 			lcl_model_id, total_wb_pages, max_scratch_pages, ocm->num_pages);
 
 		if (model->type == ML_CNXK_MODEL_TYPE_GLOW) {
-			plt_ml_dbg("layer_id = %u: wb_pages = %u, scratch_pages = %u\n", layer_id,
+			plt_ml_dbg("layer_id = %u: wb_pages = %u, scratch_pages = %u", layer_id,
 				   model->layer[layer_id].glow.ocm_map.wb_pages,
 				   model->layer[layer_id].glow.ocm_map.scratch_pages);
 #ifdef RTE_MLDEV_CNXK_ENABLE_MVTVM
@@ -1262,7 +1262,7 @@ cnxk_ml_model_load(struct rte_ml_dev *dev, struct rte_ml_model_params *params, u
 			     layer_id++) {
 				if (model->layer[layer_id].type == ML_CNXK_LAYER_TYPE_MRVL) {
 					plt_ml_dbg(
-						"layer_id = %u: wb_pages = %u, scratch_pages = %u\n",
+						"layer_id = %u: wb_pages = %u, scratch_pages = %u",
 						layer_id,
 						model->layer[layer_id].glow.ocm_map.wb_pages,
 						model->layer[layer_id].glow.ocm_map.scratch_pages);

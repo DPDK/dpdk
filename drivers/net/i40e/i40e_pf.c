@@ -1280,17 +1280,17 @@ i40e_pf_host_process_cmd_request_queues(struct i40e_pf_vf *vf, uint8_t *msg)
 		req_pairs = i40e_align_floor(req_pairs) << 1;
 
 	if (req_pairs == 0) {
-		PMD_DRV_LOG(ERR, "VF %d tried to request 0 queues. Ignoring.\n",
+		PMD_DRV_LOG(ERR, "VF %d tried to request 0 queues. Ignoring.",
 			    vf->vf_idx);
 	} else if (req_pairs > I40E_MAX_QP_NUM_PER_VF) {
 		PMD_DRV_LOG(ERR,
-			    "VF %d tried to request more than %d queues.\n",
+			    "VF %d tried to request more than %d queues.",
 			    vf->vf_idx,
 			    I40E_MAX_QP_NUM_PER_VF);
 		vfres->num_queue_pairs = I40E_MAX_QP_NUM_PER_VF;
 	} else if (req_pairs > cur_pairs + pf->qp_pool.num_free) {
 		PMD_DRV_LOG(ERR, "VF %d requested %d queues (rounded to %d) "
-			"but only %d available\n",
+			"but only %d available",
 			vf->vf_idx,
 			vfres->num_queue_pairs,
 			req_pairs,
@@ -1550,7 +1550,7 @@ check:
 	if (first_cycle && cur_cycle < first_cycle +
 			(uint64_t)pf->vf_msg_cfg.period * rte_get_timer_hz()) {
 		PMD_DRV_LOG(WARNING, "VF %u too much messages(%u in %u"
-				" seconds),\n\tany new message from which"
+				" seconds), any new message from which"
 				" will be ignored during next %u seconds!",
 				vf_id, pf->vf_msg_cfg.max_msg,
 				(uint32_t)((cur_cycle - first_cycle +

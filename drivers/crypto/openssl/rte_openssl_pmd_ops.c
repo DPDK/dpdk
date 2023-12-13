@@ -892,7 +892,7 @@ static int openssl_set_asym_session_parameters(
 #if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
 		OSSL_PARAM_BLD * param_bld = OSSL_PARAM_BLD_new();
 		if (!param_bld) {
-			OPENSSL_LOG(ERR, "failed to allocate resources\n");
+			OPENSSL_LOG(ERR, "failed to allocate resources");
 			goto err_rsa;
 		}
 
@@ -900,7 +900,7 @@ static int openssl_set_asym_session_parameters(
 			|| !OSSL_PARAM_BLD_push_BN(param_bld,
 					OSSL_PKEY_PARAM_RSA_E, e)) {
 			OSSL_PARAM_BLD_free(param_bld);
-			OPENSSL_LOG(ERR, "failed to allocate resources\n");
+			OPENSSL_LOG(ERR, "failed to allocate resources");
 			goto err_rsa;
 		}
 
@@ -1033,14 +1033,14 @@ static int openssl_set_asym_session_parameters(
 			ret = set_rsa_params(rsa, p, q);
 			if (ret) {
 				OPENSSL_LOG(ERR,
-					"failed to set rsa params\n");
+					"failed to set rsa params");
 				RSA_free(rsa);
 				goto err_rsa;
 			}
 			ret = set_rsa_crt_params(rsa, dmp1, dmq1, iqmp);
 			if (ret) {
 				OPENSSL_LOG(ERR,
-					"failed to set crt params\n");
+					"failed to set crt params");
 				RSA_free(rsa);
 				/*
 				 * set already populated params to NULL
@@ -1053,7 +1053,7 @@ static int openssl_set_asym_session_parameters(
 
 		ret = set_rsa_keys(rsa, n, e, d);
 		if (ret) {
-			OPENSSL_LOG(ERR, "Failed to load rsa keys\n");
+			OPENSSL_LOG(ERR, "Failed to load rsa keys");
 			RSA_free(rsa);
 			return ret;
 		}
@@ -1080,7 +1080,7 @@ err_rsa:
 		BN_CTX *ctx = BN_CTX_new();
 		if (ctx == NULL) {
 			OPENSSL_LOG(ERR,
-				" failed to allocate resources\n");
+				" failed to allocate resources");
 			return ret;
 		}
 		BN_CTX_start(ctx);
@@ -1111,7 +1111,7 @@ err_rsa:
 		BN_CTX *ctx = BN_CTX_new();
 		if (ctx == NULL) {
 			OPENSSL_LOG(ERR,
-				" failed to allocate resources\n");
+				" failed to allocate resources");
 			return ret;
 		}
 		BN_CTX_start(ctx);
@@ -1152,7 +1152,7 @@ err_rsa:
 		OSSL_PARAM_BLD *param_bld = NULL;
 		param_bld = OSSL_PARAM_BLD_new();
 		if (!param_bld) {
-			OPENSSL_LOG(ERR, "failed to allocate resources\n");
+			OPENSSL_LOG(ERR, "failed to allocate resources");
 			goto err_dh;
 		}
 		if ((!OSSL_PARAM_BLD_push_utf8_string(param_bld,
@@ -1168,7 +1168,7 @@ err_rsa:
 		OSSL_PARAM_BLD *param_bld_peer = NULL;
 		param_bld_peer = OSSL_PARAM_BLD_new();
 		if (!param_bld_peer) {
-			OPENSSL_LOG(ERR, "failed to allocate resources\n");
+			OPENSSL_LOG(ERR, "failed to allocate resources");
 			OSSL_PARAM_BLD_free(param_bld);
 			goto err_dh;
 		}
@@ -1203,7 +1203,7 @@ err_rsa:
 		dh = DH_new();
 		if (dh == NULL) {
 			OPENSSL_LOG(ERR,
-				"failed to allocate resources\n");
+				"failed to allocate resources");
 			goto err_dh;
 		}
 		ret = set_dh_params(dh, p, g);
@@ -1217,7 +1217,7 @@ err_rsa:
 		break;
 
 err_dh:
-		OPENSSL_LOG(ERR, " failed to set dh params\n");
+		OPENSSL_LOG(ERR, " failed to set dh params");
 #if (OPENSSL_VERSION_NUMBER >= 0x30000000L)
 		BN_free(*p);
 		BN_free(*g);
@@ -1263,7 +1263,7 @@ err_dh:
 
 		param_bld = OSSL_PARAM_BLD_new();
 		if (!param_bld) {
-			OPENSSL_LOG(ERR, "failed to allocate resources\n");
+			OPENSSL_LOG(ERR, "failed to allocate resources");
 			goto err_dsa;
 		}
 
@@ -1273,7 +1273,7 @@ err_dh:
 			|| !OSSL_PARAM_BLD_push_BN(param_bld, OSSL_PKEY_PARAM_PRIV_KEY,
 			*priv_key)) {
 			OSSL_PARAM_BLD_free(param_bld);
-			OPENSSL_LOG(ERR, "failed to allocate resources\n");
+			OPENSSL_LOG(ERR, "failed to allocate resources");
 			goto err_dsa;
 		}
 		asym_session->xfrm_type = RTE_CRYPTO_ASYM_XFORM_DSA;
@@ -1313,14 +1313,14 @@ err_dh:
 		DSA *dsa = DSA_new();
 		if (dsa == NULL) {
 			OPENSSL_LOG(ERR,
-				" failed to allocate resources\n");
+				" failed to allocate resources");
 			goto err_dsa;
 		}
 
 		ret = set_dsa_params(dsa, p, q, g);
 		if (ret) {
 			DSA_free(dsa);
-			OPENSSL_LOG(ERR, "Failed to dsa params\n");
+			OPENSSL_LOG(ERR, "Failed to dsa params");
 			goto err_dsa;
 		}
 
@@ -1334,7 +1334,7 @@ err_dh:
 		ret = set_dsa_keys(dsa, pub_key, priv_key);
 		if (ret) {
 			DSA_free(dsa);
-			OPENSSL_LOG(ERR, "Failed to set keys\n");
+			OPENSSL_LOG(ERR, "Failed to set keys");
 			goto err_dsa;
 		}
 		asym_session->u.s.dsa = dsa;
@@ -1369,21 +1369,21 @@ err_dsa:
 
 		param_bld = OSSL_PARAM_BLD_new();
 		if (!param_bld) {
-			OPENSSL_LOG(ERR, "failed to allocate params\n");
+			OPENSSL_LOG(ERR, "failed to allocate params");
 			goto err_sm2;
 		}
 
 		ret = OSSL_PARAM_BLD_push_utf8_string(param_bld,
 				OSSL_ASYM_CIPHER_PARAM_DIGEST, "SM3", 0);
 		if (!ret) {
-			OPENSSL_LOG(ERR, "failed to push params\n");
+			OPENSSL_LOG(ERR, "failed to push params");
 			goto err_sm2;
 		}
 
 		ret = OSSL_PARAM_BLD_push_utf8_string(param_bld,
 				OSSL_PKEY_PARAM_GROUP_NAME, "SM2", 0);
 		if (!ret) {
-			OPENSSL_LOG(ERR, "failed to push params\n");
+			OPENSSL_LOG(ERR, "failed to push params");
 			goto err_sm2;
 		}
 
@@ -1393,7 +1393,7 @@ err_dsa:
 		ret = OSSL_PARAM_BLD_push_BN(param_bld, OSSL_PKEY_PARAM_PRIV_KEY,
 									 pkey_bn);
 		if (!ret) {
-			OPENSSL_LOG(ERR, "failed to push params\n");
+			OPENSSL_LOG(ERR, "failed to push params");
 			goto err_sm2;
 		}
 
@@ -1408,13 +1408,13 @@ err_dsa:
 		ret = OSSL_PARAM_BLD_push_octet_string(param_bld,
 				OSSL_PKEY_PARAM_PUB_KEY, pubkey, len);
 		if (!ret) {
-			OPENSSL_LOG(ERR, "failed to push params\n");
+			OPENSSL_LOG(ERR, "failed to push params");
 			goto err_sm2;
 		}
 
 		params = OSSL_PARAM_BLD_to_param(param_bld);
 		if (!params) {
-			OPENSSL_LOG(ERR, "failed to push params\n");
+			OPENSSL_LOG(ERR, "failed to push params");
 			goto err_sm2;
 		}
 

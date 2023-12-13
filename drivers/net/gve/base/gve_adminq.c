@@ -11,7 +11,7 @@
 #define GVE_ADMINQ_SLEEP_LEN		20
 #define GVE_MAX_ADMINQ_EVENT_COUNTER_CHECK	100
 
-#define GVE_DEVICE_OPTION_ERROR_FMT "%s option error:\n Expected: length=%d, feature_mask=%x.\n Actual: length=%d, feature_mask=%x."
+#define GVE_DEVICE_OPTION_ERROR_FMT "%s option error: Expected: length=%d, feature_mask=%x. Actual: length=%d, feature_mask=%x."
 
 #define GVE_DEVICE_OPTION_TOO_BIG_FMT "Length of %s option larger than expected. Possible older version of guest driver."
 
@@ -736,7 +736,7 @@ gve_set_max_desc_cnt(struct gve_priv *priv,
 {
 	if (priv->queue_format == GVE_DQO_RDA_FORMAT) {
 		PMD_DRV_LOG(DEBUG, "Overriding max ring size from device for DQ "
-			    "queue format to 4096.\n");
+			    "queue format to 4096.");
 		priv->max_rx_desc_cnt = GVE_MAX_QUEUE_SIZE_DQO;
 		priv->max_tx_desc_cnt = GVE_MAX_QUEUE_SIZE_DQO;
 		return;

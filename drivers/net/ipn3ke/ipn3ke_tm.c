@@ -1934,10 +1934,10 @@ ipn3ke_tm_show(struct rte_eth_dev *dev)
 
 	tm_id = tm->tm_id;
 
-	IPN3KE_AFU_PMD_DEBUG("***HQoS Tree(%d)***\n", tm_id);
+	IPN3KE_AFU_PMD_DEBUG("***HQoS Tree(%d)***", tm_id);
 
 	port_n = tm->h.port_node;
-	IPN3KE_AFU_PMD_DEBUG("Port: (%d|%s)\n", port_n->node_index,
+	IPN3KE_AFU_PMD_DEBUG("Port: (%d|%s)", port_n->node_index,
 				str_state[port_n->node_state]);
 
 	vt_nl = &tm->h.port_node->children_node_list;
@@ -1951,7 +1951,6 @@ ipn3ke_tm_show(struct rte_eth_dev *dev)
 					cos_n->node_index,
 					str_state[cos_n->node_state]);
 		}
-		IPN3KE_AFU_PMD_DEBUG("\n");
 	}
 }
 
@@ -1969,14 +1968,13 @@ ipn3ke_tm_show_commmit(struct rte_eth_dev *dev)
 
 	tm_id = tm->tm_id;
 
-	IPN3KE_AFU_PMD_DEBUG("***Commit Tree(%d)***\n", tm_id);
+	IPN3KE_AFU_PMD_DEBUG("***Commit Tree(%d)***", tm_id);
 	n = tm->h.port_commit_node;
 	IPN3KE_AFU_PMD_DEBUG("Port: ");
 	if (n)
 		IPN3KE_AFU_PMD_DEBUG("(%d|%s)",
 			n->node_index,
 			str_state[n->node_state]);
-	IPN3KE_AFU_PMD_DEBUG("\n");
 
 	nl = &tm->h.vt_commit_node_list;
 	IPN3KE_AFU_PMD_DEBUG("VT  : ");
@@ -1985,7 +1983,6 @@ ipn3ke_tm_show_commmit(struct rte_eth_dev *dev)
 				n->node_index,
 				str_state[n->node_state]);
 	}
-	IPN3KE_AFU_PMD_DEBUG("\n");
 
 	nl = &tm->h.cos_commit_node_list;
 	IPN3KE_AFU_PMD_DEBUG("COS : ");
@@ -1994,7 +1991,6 @@ ipn3ke_tm_show_commmit(struct rte_eth_dev *dev)
 				n->node_index,
 				str_state[n->node_state]);
 	}
-	IPN3KE_AFU_PMD_DEBUG("\n");
 }
 
 /* Traffic manager hierarchy commit */

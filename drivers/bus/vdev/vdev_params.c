@@ -53,7 +53,7 @@ rte_vdev_dev_iterate(const void *start,
 	if (str != NULL) {
 		kvargs = rte_kvargs_parse(str, vdev_params_keys);
 		if (kvargs == NULL) {
-			VDEV_LOG(ERR, "cannot parse argument list\n");
+			VDEV_LOG(ERR, "cannot parse argument list");
 			rte_errno = EINVAL;
 			return NULL;
 		}

@@ -120,7 +120,7 @@ union otx_ep_instr_irh {
 	{\
 	typeof(value) val = (value); \
 	typeof(reg_off) off = (reg_off); \
-	otx_ep_dbg("octeon_write_csr64: reg: 0x%08lx val: 0x%016llx\n", \
+	otx_ep_dbg("octeon_write_csr64: reg: 0x%08lx val: 0x%016llx", \
 		   (unsigned long)off, (unsigned long long)val); \
 	rte_write64(val, ((base_addr) + off)); \
 	}

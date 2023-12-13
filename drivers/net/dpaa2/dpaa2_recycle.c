@@ -423,7 +423,7 @@ ls_mac_serdes_lpbk_support(uint16_t mac_id,
 
 	sd_idx = ls_serdes_cfg_to_idx(sd_cfg, sd_id);
 	if (sd_idx < 0) {
-		DPAA2_PMD_ERR("Serdes protocol(0x%02x) does not exist\n",
+		DPAA2_PMD_ERR("Serdes protocol(0x%02x) does not exist",
 			sd_cfg);
 		return false;
 	}
@@ -552,7 +552,7 @@ ls_serdes_eth_lpbk(uint16_t mac_id, int en)
 				(serdes_id - LSX_SERDES_1) * 0x10000,
 				sizeof(struct ccsr_ls_serdes) / 64 * 64 + 64);
 	if (!serdes_base) {
-		DPAA2_PMD_ERR("Serdes register map failed\n");
+		DPAA2_PMD_ERR("Serdes register map failed");
 		return -ENOMEM;
 	}
 
@@ -587,7 +587,7 @@ lx_serdes_eth_lpbk(uint16_t mac_id, int en)
 					(serdes_id - LSX_SERDES_1) * 0x10000,
 					sizeof(struct ccsr_lx_serdes) / 64 * 64 + 64);
 	if (!serdes_base) {
-		DPAA2_PMD_ERR("Serdes register map failed\n");
+		DPAA2_PMD_ERR("Serdes register map failed");
 		return -ENOMEM;
 	}
 

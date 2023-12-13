@@ -269,7 +269,7 @@ info_get(struct rte_bbdev *dev, struct rte_bbdev_driver_info *dev_info)
 			dev_info->num_queues[op_cap->type] = num_queue_per_type;
 	}
 
-	rte_bbdev_log_debug("got device info from %u\n", dev->data->dev_id);
+	rte_bbdev_log_debug("got device info from %u", dev->data->dev_id);
 }
 
 /* Release queue */
@@ -1951,7 +1951,7 @@ turbo_sw_bbdev_probe(struct rte_vdev_device *vdev)
 	parse_turbo_sw_params(&init_params, input_args);
 
 	rte_bbdev_log_debug(
-			"Initialising %s on NUMA node %d with max queues: %d\n",
+			"Initialising %s on NUMA node %d with max queues: %d",
 			name, init_params.socket_id, init_params.queues_num);
 
 	return turbo_sw_bbdev_create(vdev, &init_params);

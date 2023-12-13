@@ -8124,7 +8124,7 @@ static int bnx2x_get_shmem_info(struct bnx2x_softc *sc)
 	val = sc->devinfo.bc_ver >> 8;
 	if (val < BNX2X_BC_VER) {
 		/* for now only warn later we might need to enforce this */
-		PMD_DRV_LOG(NOTICE, sc, "This driver needs bc_ver %X but found %X, please upgrade BC\n",
+		PMD_DRV_LOG(NOTICE, sc, "This driver needs bc_ver %X but found %X, please upgrade BC",
 			    BNX2X_BC_VER, val);
 	}
 	sc->link_params.feature_config_flags |=
@@ -9489,16 +9489,16 @@ static int bnx2x_prev_unload(struct bnx2x_softc *sc)
 	hw_lock_val = (REG_RD(sc, hw_lock_reg));
 	if (hw_lock_val) {
 		if (hw_lock_val & HW_LOCK_RESOURCE_NVRAM) {
-			PMD_DRV_LOG(DEBUG, sc, "Releasing previously held NVRAM lock\n");
+			PMD_DRV_LOG(DEBUG, sc, "Releasing previously held NVRAM lock");
 			REG_WR(sc, MCP_REG_MCPR_NVM_SW_ARB,
 			       (MCPR_NVM_SW_ARB_ARB_REQ_CLR1 << SC_PORT(sc)));
 		}
-		PMD_DRV_LOG(DEBUG, sc, "Releasing previously held HW lock\n");
+		PMD_DRV_LOG(DEBUG, sc, "Releasing previously held HW lock");
 		REG_WR(sc, hw_lock_reg, 0xffffffff);
 	}
 
 	if (MCPR_ACCESS_LOCK_LOCK & REG_RD(sc, MCP_REG_MCPR_ACCESS_LOCK)) {
-		PMD_DRV_LOG(DEBUG, sc, "Releasing previously held ALR\n");
+		PMD_DRV_LOG(DEBUG, sc, "Releasing previously held ALR");
 		REG_WR(sc, MCP_REG_MCPR_ACCESS_LOCK, 0);
 	}
 

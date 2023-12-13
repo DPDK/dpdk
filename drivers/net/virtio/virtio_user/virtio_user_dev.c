@@ -1149,7 +1149,7 @@ virtio_user_dev_create_shadow_cvq(struct virtio_user_dev *dev, struct virtqueue 
 	scvq = virtqueue_alloc(&dev->hw, vq->vq_queue_index, vq->vq_nentries,
 			VTNET_CQ, SOCKET_ID_ANY, name);
 	if (!scvq) {
-		PMD_INIT_LOG(ERR, "(%s) Failed to alloc shadow control vq\n", dev->path);
+		PMD_INIT_LOG(ERR, "(%s) Failed to alloc shadow control vq", dev->path);
 		return -ENOMEM;
 	}
 
