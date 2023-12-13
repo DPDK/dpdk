@@ -190,7 +190,6 @@ fast_tests = [
         ['fib_autotest', true, true],
         ['fib6_autotest', true, true],
         ['func_reentrancy_autotest', false, true],
-        ['graph_autotest', true, true],
         ['hash_autotest', true, true],
         ['interrupt_autotest', true, true],
         ['ipfrag_autotest', false, true],
@@ -297,7 +296,6 @@ perf_test_names = [
         'trace_perf_autotest',
         'ipsec_perf_autotest',
         'thash_perf_autotest',
-        'graph_perf_autotest',
 ]
 
 driver_test_names = [
@@ -323,6 +321,10 @@ driver_test_names = [
 dump_test_names = []
 
 if not is_windows
+    fast_tests += [['graph_autotest', true, true]]
+
+    perf_test_names += 'graph_perf_autotest'
+
     driver_test_names += [
             'cryptodev_openssl_asym_autotest',
             'eventdev_selftest_octeontx',
