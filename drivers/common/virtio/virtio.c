@@ -749,17 +749,20 @@ virtio_pci_dev_reset(struct virtio_pci_dev *vpdev, uint32_t time_out_ms)
 {
 	uint32_t retry = 0;
 	struct virtio_hw *hw = &vpdev->hw;
+	const int wait_unit = 100; /* sleep wait_unit ms */
 
+	time_out_ms /= wait_unit;
 	VIRTIO_OPS(hw)->set_status(hw, VIRTIO_CONFIG_STATUS_RESET);
 	/* Flush status write and wait device ready max 120 seconds. */
 	while (VIRTIO_OPS(hw)->get_status(hw) != VIRTIO_CONFIG_STATUS_RESET) {
 		if (retry++ > time_out_ms) {
-			PMD_INIT_LOG(WARNING, "vpdev %s  reset %d ms timeout", VP_DEV_NAME(vpdev), time_out_ms);
+			PMD_INIT_LOG(WARNING, "vpdev %s  reset %d ms timeout",
+				VP_DEV_NAME(vpdev), time_out_ms * wait_unit);
 			return VFE_VDPA_ERR_RESET_DEVICE_TIMEOUT;
 		}
-		if (!(retry % 1000))
+		if (!(retry % (1000 / wait_unit)))
 			PMD_INIT_LOG(INFO, "vpdev %s  resetting", VP_DEV_NAME(vpdev));
-		usleep(1000L);
+		usleep(wait_unit*1000L); /* TODO: better use escaped timestamp */
 	}
 	return 0;
 }
