@@ -592,6 +592,11 @@ nfp_net_promisc_disable(struct rte_eth_dev *dev)
 	net_hw = nfp_net_get_hw(dev);
 	hw = &net_hw->super;
 
+	if ((hw->cap & NFP_NET_CFG_CTRL_PROMISC) == 0) {
+		PMD_DRV_LOG(ERR, "Promiscuous mode not supported");
+		return -ENOTSUP;
+	}
+
 	if ((hw->ctrl & NFP_NET_CFG_CTRL_PROMISC) == 0) {
 		PMD_DRV_LOG(INFO, "Promiscuous mode already disabled");
 		return 0;
