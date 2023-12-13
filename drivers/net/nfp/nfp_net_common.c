@@ -540,7 +540,7 @@ nfp_check_offloads(struct rte_eth_dev *dev)
 			(tx_offload & RTE_ETH_TX_OFFLOAD_VXLAN_TNL_TSO) != 0) {
 		if ((cap & NFP_NET_CFG_CTRL_LSO) != 0)
 			ctrl |= NFP_NET_CFG_CTRL_LSO;
-		else
+		else if ((cap & NFP_NET_CFG_CTRL_LSO2) != 0)
 			ctrl |= NFP_NET_CFG_CTRL_LSO2;
 	}
 
