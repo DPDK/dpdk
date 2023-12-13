@@ -232,7 +232,7 @@ fslmc_memevent_cb(enum rte_mem_event type, const void *addr, size_t len,
 
 		/* iova_addr may be set to RTE_BAD_IOVA */
 		if (iova_addr == RTE_BAD_IOVA) {
-			DPAA2_BUS_DEBUG("Segment has invalid iova, skipping\n");
+			DPAA2_BUS_DEBUG("Segment has invalid iova, skipping");
 			cur_len += map_len;
 			continue;
 		}
@@ -389,7 +389,7 @@ rte_fslmc_vfio_mem_dmamap(uint64_t vaddr, uint64_t iova, uint64_t size)
 	dma_map.vaddr = vaddr;
 	dma_map.iova = iova;
 
-	DPAA2_BUS_DEBUG("VFIOdmamap 0x%"PRIx64":0x%"PRIx64",size 0x%"PRIx64"\n",
+	DPAA2_BUS_DEBUG("VFIOdmamap 0x%"PRIx64":0x%"PRIx64",size 0x%"PRIx64,
 			(uint64_t)dma_map.vaddr, (uint64_t)dma_map.iova,
 			(uint64_t)dma_map.size);
 	ret = ioctl(group->container->fd, VFIO_IOMMU_MAP_DMA,
@@ -480,13 +480,13 @@ fslmc_vfio_setup_device(const char *sysfs_base, const char *dev_addr,
 	ret = ioctl(vfio_group_fd, VFIO_GROUP_GET_STATUS, &group_status);
 	if (ret) {
 		DPAA2_BUS_ERR("  %s cannot get group status, "
-				"error %i (%s)\n", dev_addr,
+				"error %i (%s)", dev_addr,
 				errno, strerror(errno));
 		close(vfio_group_fd);
 		rte_vfio_clear_group(vfio_group_fd);
 		return -1;
 	} else if (!(group_status.flags & VFIO_GROUP_FLAGS_VIABLE)) {
-		DPAA2_BUS_ERR("  %s VFIO group is not viable!\n", dev_addr);
+		DPAA2_BUS_ERR("  %s VFIO group is not viable!", dev_addr);
 		close(vfio_group_fd);
 		rte_vfio_clear_group(vfio_group_fd);
 		return -1;
@@ -503,7 +503,7 @@ fslmc_vfio_setup_device(const char *sysfs_base, const char *dev_addr,
 				&vfio_container_fd);
 		if (ret) {
 			DPAA2_BUS_ERR("  %s cannot add VFIO group to container, "
-					"error %i (%s)\n", dev_addr,
+					"error %i (%s)", dev_addr,
 					errno, strerror(errno));
 			close(vfio_group_fd);
 			close(vfio_container_fd);

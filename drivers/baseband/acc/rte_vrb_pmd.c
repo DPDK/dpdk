@@ -348,7 +348,7 @@ fetch_acc_config(struct rte_bbdev *dev)
 	}
 
 	rte_bbdev_log_debug(
-			"%s Config LLR SIGN IN/OUT %s %s QG %u %u %u %u %u %u AQ %u %u %u %u %u %u Len %u %u %u %u %u %u\n",
+			"%s Config LLR SIGN IN/OUT %s %s QG %u %u %u %u %u %u AQ %u %u %u %u %u %u Len %u %u %u %u %u %u",
 			(d->pf_device) ? "PF" : "VF",
 			(acc_conf->input_pos_llr_1_bit) ? "POS" : "NEG",
 			(acc_conf->output_pos_llr_1_bit) ? "POS" : "NEG",
@@ -464,7 +464,7 @@ vrb_dev_interrupt_handler(void *cb_arg)
 			}
 		} else {
 			rte_bbdev_log_debug(
-					"VRB VF Interrupt received, Info Ring data: 0x%x\n",
+					"VRB VF Interrupt received, Info Ring data: 0x%x",
 					ring_data->val);
 			switch (int_nb) {
 			case ACC_VF_INT_DMA_DL_DESC_IRQ:
@@ -698,7 +698,7 @@ vrb_intr_enable(struct rte_bbdev *dev)
 
 	if (d->device_variant == VRB1_VARIANT) {
 		/* On VRB1: cannot enable MSI/IR to avoid potential back-pressure corner case. */
-		rte_bbdev_log(ERR, "VRB1 (%s) doesn't support any MSI/MSI-X interrupt\n",
+		rte_bbdev_log(ERR, "VRB1 (%s) doesn't support any MSI/MSI-X interrupt",
 				dev->data->name);
 		return -ENOTSUP;
 	}
@@ -800,7 +800,7 @@ vrb_intr_enable(struct rte_bbdev *dev)
 		return 0;
 	}
 
-	rte_bbdev_log(ERR, "Device (%s) supports only VFIO MSI/MSI-X interrupts\n",
+	rte_bbdev_log(ERR, "Device (%s) supports only VFIO MSI/MSI-X interrupts",
 			dev->data->name);
 	return -ENOTSUP;
 }
@@ -1023,7 +1023,7 @@ vrb_queue_setup(struct rte_bbdev *dev, uint16_t queue_id,
 			d->queue_offset(d->pf_device, q->vf_id, q->qgrp_id, q->aq_id));
 
 	rte_bbdev_log_debug(
-			"Setup dev%u q%u: qgrp_id=%u, vf_id=%u, aq_id=%u, aq_depth=%u, mmio_reg_enqueue=%p base %p\n",
+			"Setup dev%u q%u: qgrp_id=%u, vf_id=%u, aq_id=%u, aq_depth=%u, mmio_reg_enqueue=%p base %p",
 			dev->data->dev_id, queue_id, q->qgrp_id, q->vf_id,
 			q->aq_id, q->aq_depth, q->mmio_reg_enqueue,
 			d->mmio_base);
@@ -1076,7 +1076,7 @@ vrb_print_op(struct rte_bbdev_dec_op *op, enum rte_bbdev_op_type op_type,
 			);
 	} else if (op_type == RTE_BBDEV_OP_MLDTS) {
 		struct rte_bbdev_mldts_op *op_mldts = (struct rte_bbdev_mldts_op *) op;
-		rte_bbdev_log(INFO, "  Op MLD %d RBs %d NL %d Rp %d %d %x\n",
+		rte_bbdev_log(INFO, "  Op MLD %d RBs %d NL %d Rp %d %d %x",
 				index,
 				op_mldts->mldts.num_rbs, op_mldts->mldts.num_layers,
 				op_mldts->mldts.r_rep,
@@ -2492,7 +2492,7 @@ vrb_enqueue_ldpc_dec_one_op_cb(struct acc_queue *q, struct rte_bbdev_dec_op *op,
 		hq_output = op->ldpc_dec.harq_combined_output.data;
 		hq_len = op->ldpc_dec.harq_combined_output.length;
 		if (unlikely(!mbuf_append(hq_output_head, hq_output, hq_len))) {
-			rte_bbdev_log(ERR, "HARQ output mbuf issue %d %d\n",
+			rte_bbdev_log(ERR, "HARQ output mbuf issue %d %d",
 					hq_output->buf_len,
 					hq_len);
 			return -1;
@@ -2985,7 +2985,7 @@ vrb_enqueue_ldpc_dec_cb(struct rte_bbdev_queue_data *q_data,
 			break;
 		}
 		avail -= 1;
-		rte_bbdev_log(INFO, "Op %d %d %d %d %d %d %d %d %d %d %d %d\n",
+		rte_bbdev_log(INFO, "Op %d %d %d %d %d %d %d %d %d %d %d %d",
 			i, ops[i]->ldpc_dec.op_flags, ops[i]->ldpc_dec.rv_index,
 			ops[i]->ldpc_dec.iter_max, ops[i]->ldpc_dec.iter_count,
 			ops[i]->ldpc_dec.basegraph, ops[i]->ldpc_dec.z_c,
@@ -3319,7 +3319,7 @@ vrb_dequeue_ldpc_dec_one_op_cb(struct rte_bbdev_queue_data *q_data,
 		return -1;
 
 	rsp.val = atom_desc.rsp.val;
-	rte_bbdev_log_debug("Resp. desc %p: %x %x %x\n", desc, rsp.val, desc->rsp.add_info_0,
+	rte_bbdev_log_debug("Resp. desc %p: %x %x %x", desc, rsp.val, desc->rsp.add_info_0,
 			desc->rsp.add_info_1);
 
 	/* Dequeue. */
@@ -3440,7 +3440,7 @@ vrb_dequeue_dec_one_op_tb(struct acc_queue *q, struct rte_bbdev_dec_op **ref_op,
 	}
 
 	if (check_bit(op->ldpc_dec.op_flags, RTE_BBDEV_LDPC_CRC_TYPE_24A_CHECK)) {
-		rte_bbdev_log_debug("TB-CRC Check %x\n", tb_crc_check);
+		rte_bbdev_log_debug("TB-CRC Check %x", tb_crc_check);
 		if (tb_crc_check > 0)
 			op->status |= 1 << RTE_BBDEV_CRC_ERROR;
 	}
@@ -3985,7 +3985,7 @@ vrb2_check_mld_r_constraint(struct rte_bbdev_mldts_op *op) {
 	layer_idx = RTE_MIN(op->mldts.num_layers - VRB2_MLD_MIN_LAYER,
 			VRB2_MLD_MAX_LAYER - VRB2_MLD_MIN_LAYER);
 	rrep_idx = RTE_MIN(op->mldts.r_rep, VRB2_MLD_MAX_RREP);
-	rte_bbdev_log_debug("RB %d index %d %d max %d\n", op->mldts.num_rbs, layer_idx, rrep_idx,
+	rte_bbdev_log_debug("RB %d index %d %d max %d", op->mldts.num_rbs, layer_idx, rrep_idx,
 			max_rb[layer_idx][rrep_idx]);
 
 	return (op->mldts.num_rbs <= max_rb[layer_idx][rrep_idx]);
@@ -4650,7 +4650,7 @@ vrb1_configure(const char *dev_name, struct rte_acc_conf *conf)
 	}
 
 	if (aram_address > VRB1_WORDS_IN_ARAM_SIZE) {
-		rte_bbdev_log(ERR, "ARAM Configuration not fitting %d %d\n",
+		rte_bbdev_log(ERR, "ARAM Configuration not fitting %d %d",
 				aram_address, VRB1_WORDS_IN_ARAM_SIZE);
 		return -EINVAL;
 	}
@@ -5020,7 +5020,7 @@ vrb2_configure(const char *dev_name, struct rte_acc_conf *conf)
 			}
 		}
 		if (aram_address > VRB2_WORDS_IN_ARAM_SIZE) {
-			rte_bbdev_log(ERR, "ARAM Configuration not fitting %d %d\n",
+			rte_bbdev_log(ERR, "ARAM Configuration not fitting %d %d",
 					aram_address, VRB2_WORDS_IN_ARAM_SIZE);
 			return -EINVAL;
 		}

@@ -406,7 +406,7 @@ failsafe_args_parse(struct rte_eth_dev *dev, const char *params)
 		kvlist = rte_kvargs_parse(mut_params,
 				pmd_failsafe_init_parameters);
 		if (kvlist == NULL) {
-			ERROR("Error parsing parameters, usage:\n"
+			ERROR("Error parsing parameters, usage:"
 				PMD_FAILSAFE_PARAM_STRING);
 			return -1;
 		}

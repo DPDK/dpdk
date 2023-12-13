@@ -38,7 +38,7 @@ fs_flow_complain(struct rte_flow_error *error)
 		errstr = "unknown type";
 	else
 		errstr = errstrlist[error->type];
-	ERROR("Caught error type %d (%s): %s%s\n",
+	ERROR("Caught error type %d (%s): %s%s",
 		error->type, errstr,
 		error->cause ? (snprintf(buf, sizeof(buf), "cause: %p, ",
 				error->cause), buf) : "",
@@ -640,7 +640,7 @@ failsafe_eth_new_event_callback(uint16_t port_id,
 		if (sdev->state >= DEV_PROBED)
 			continue;
 		if (dev->device == NULL) {
-			WARN("Trying to probe malformed device %s.\n",
+			WARN("Trying to probe malformed device %s.",
 			     sdev->devargs.name);
 			continue;
 		}

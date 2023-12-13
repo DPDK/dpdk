@@ -220,7 +220,7 @@ roc_nix_lso_fmt_setup(struct roc_nix *roc_nix)
 		goto exit;
 	}
 
-	plt_nix_dbg("tcpv4 lso fmt=%u\n", rsp->lso_format_idx);
+	plt_nix_dbg("tcpv4 lso fmt=%u", rsp->lso_format_idx);
 
 	/*
 	 * IPv6/TCP LSO
@@ -240,7 +240,7 @@ roc_nix_lso_fmt_setup(struct roc_nix *roc_nix)
 		goto exit;
 	}
 
-	plt_nix_dbg("tcpv6 lso fmt=%u\n", rsp->lso_format_idx);
+	plt_nix_dbg("tcpv6 lso fmt=%u", rsp->lso_format_idx);
 
 	/*
 	 * IPv4/UDP/TUN HDR/IPv4/TCP LSO
@@ -256,7 +256,7 @@ roc_nix_lso_fmt_setup(struct roc_nix *roc_nix)
 		goto exit;
 
 	nix->lso_udp_tun_idx[ROC_NIX_LSO_TUN_V4V4] = rsp->lso_format_idx;
-	plt_nix_dbg("udp tun v4v4 fmt=%u\n", rsp->lso_format_idx);
+	plt_nix_dbg("udp tun v4v4 fmt=%u", rsp->lso_format_idx);
 
 	/*
 	 * IPv4/UDP/TUN HDR/IPv6/TCP LSO
@@ -272,7 +272,7 @@ roc_nix_lso_fmt_setup(struct roc_nix *roc_nix)
 		goto exit;
 
 	nix->lso_udp_tun_idx[ROC_NIX_LSO_TUN_V4V6] = rsp->lso_format_idx;
-	plt_nix_dbg("udp tun v4v6 fmt=%u\n", rsp->lso_format_idx);
+	plt_nix_dbg("udp tun v4v6 fmt=%u", rsp->lso_format_idx);
 
 	/*
 	 * IPv6/UDP/TUN HDR/IPv4/TCP LSO
@@ -288,7 +288,7 @@ roc_nix_lso_fmt_setup(struct roc_nix *roc_nix)
 		goto exit;
 
 	nix->lso_udp_tun_idx[ROC_NIX_LSO_TUN_V6V4] = rsp->lso_format_idx;
-	plt_nix_dbg("udp tun v6v4 fmt=%u\n", rsp->lso_format_idx);
+	plt_nix_dbg("udp tun v6v4 fmt=%u", rsp->lso_format_idx);
 
 	/*
 	 * IPv6/UDP/TUN HDR/IPv6/TCP LSO
@@ -304,7 +304,7 @@ roc_nix_lso_fmt_setup(struct roc_nix *roc_nix)
 		goto exit;
 
 	nix->lso_udp_tun_idx[ROC_NIX_LSO_TUN_V6V6] = rsp->lso_format_idx;
-	plt_nix_dbg("udp tun v6v6 fmt=%u\n", rsp->lso_format_idx);
+	plt_nix_dbg("udp tun v6v6 fmt=%u", rsp->lso_format_idx);
 
 	/*
 	 * IPv4/TUN HDR/IPv4/TCP LSO
@@ -320,7 +320,7 @@ roc_nix_lso_fmt_setup(struct roc_nix *roc_nix)
 		goto exit;
 
 	nix->lso_tun_idx[ROC_NIX_LSO_TUN_V4V4] = rsp->lso_format_idx;
-	plt_nix_dbg("tun v4v4 fmt=%u\n", rsp->lso_format_idx);
+	plt_nix_dbg("tun v4v4 fmt=%u", rsp->lso_format_idx);
 
 	/*
 	 * IPv4/TUN HDR/IPv6/TCP LSO
@@ -336,7 +336,7 @@ roc_nix_lso_fmt_setup(struct roc_nix *roc_nix)
 		goto exit;
 
 	nix->lso_tun_idx[ROC_NIX_LSO_TUN_V4V6] = rsp->lso_format_idx;
-	plt_nix_dbg("tun v4v6 fmt=%u\n", rsp->lso_format_idx);
+	plt_nix_dbg("tun v4v6 fmt=%u", rsp->lso_format_idx);
 
 	/*
 	 * IPv6/TUN HDR/IPv4/TCP LSO
@@ -352,7 +352,7 @@ roc_nix_lso_fmt_setup(struct roc_nix *roc_nix)
 		goto exit;
 
 	nix->lso_tun_idx[ROC_NIX_LSO_TUN_V6V4] = rsp->lso_format_idx;
-	plt_nix_dbg("tun v6v4 fmt=%u\n", rsp->lso_format_idx);
+	plt_nix_dbg("tun v6v4 fmt=%u", rsp->lso_format_idx);
 
 	/*
 	 * IPv6/TUN HDR/IPv6/TCP LSO
@@ -369,7 +369,7 @@ roc_nix_lso_fmt_setup(struct roc_nix *roc_nix)
 		goto exit;
 
 	nix->lso_tun_idx[ROC_NIX_LSO_TUN_V6V6] = rsp->lso_format_idx;
-	plt_nix_dbg("tun v6v6 fmt=%u\n", rsp->lso_format_idx);
+	plt_nix_dbg("tun v6v6 fmt=%u", rsp->lso_format_idx);
 	rc = 0;
 exit:
 	mbox_put(mbox);

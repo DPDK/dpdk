@@ -22,19 +22,19 @@ otx_ep_dmazone_free(const struct rte_memzone *mz)
 	int ret = 0;
 
 	if (mz == NULL) {
-		otx_ep_err("Memzone: NULL\n");
+		otx_ep_err("Memzone: NULL");
 		return;
 	}
 
 	mz_tmp = rte_memzone_lookup(mz->name);
 	if (mz_tmp == NULL) {
-		otx_ep_err("Memzone %s Not Found\n", mz->name);
+		otx_ep_err("Memzone %s Not Found", mz->name);
 		return;
 	}
 
 	ret = rte_memzone_free(mz);
 	if (ret)
-		otx_ep_err("Memzone free failed : ret = %d\n", ret);
+		otx_ep_err("Memzone free failed : ret = %d", ret);
 }
 
 /* Free IQ resources */
@@ -46,7 +46,7 @@ otx_ep_delete_iqs(struct otx_ep_device *otx_ep, uint32_t iq_no)
 
 	iq = otx_ep->instr_queue[iq_no];
 	if (iq == NULL) {
-		otx_ep_err("Invalid IQ[%d]\n", iq_no);
+		otx_ep_err("Invalid IQ[%d]", iq_no);
 		return -EINVAL;
 	}
 
@@ -68,7 +68,7 @@ otx_ep_delete_iqs(struct otx_ep_device *otx_ep, uint32_t iq_no)
 
 	otx_ep->nb_tx_queues--;
 
-	otx_ep_info("IQ[%d] is deleted\n", iq_no);
+	otx_ep_info("IQ[%d] is deleted", iq_no);
 
 	return 0;
 }
@@ -94,7 +94,7 @@ otx_ep_init_instr_queue(struct otx_ep_device *otx_ep, int iq_no, int num_descs,
 					     OTX_EP_PCI_RING_ALIGN,
 					     socket_id);
 	if (iq->iq_mz == NULL) {
-		otx_ep_err("IQ[%d] memzone alloc failed\n", iq_no);
+		otx_ep_err("IQ[%d] memzone alloc failed", iq_no);
 		goto iq_init_fail;
 	}
 
@@ -102,7 +102,7 @@ otx_ep_init_instr_queue(struct otx_ep_device *otx_ep, int iq_no, int num_descs,
 	iq->base_addr = (uint8_t *)iq->iq_mz->addr;
 
 	if (num_descs & (num_descs - 1)) {
-		otx_ep_err("IQ[%d] descs not in power of 2\n", iq_no);
+		otx_ep_err("IQ[%d] descs not in power of 2", iq_no);
 		goto iq_init_fail;
 	}
 
@@ -117,7 +117,7 @@ otx_ep_init_instr_queue(struct otx_ep_device *otx_ep, int iq_no, int num_descs,
 			RTE_CACHE_LINE_SIZE,
 			rte_socket_id());
 	if (iq->req_list == NULL) {
-		otx_ep_err("IQ[%d] req_list alloc failed\n", iq_no);
+		otx_ep_err("IQ[%d] req_list alloc failed", iq_no);
 		goto iq_init_fail;
 	}
 
@@ -125,7 +125,7 @@ otx_ep_init_instr_queue(struct otx_ep_device *otx_ep, int iq_no, int num_descs,
 		sg = rte_zmalloc_socket("sg_entry", (OTX_EP_MAX_SG_LISTS * OTX_EP_SG_ENTRY_SIZE),
 			OTX_EP_SG_ALIGN, rte_socket_id());
 		if (sg == NULL) {
-			otx_ep_err("IQ[%d] sg_entries alloc failed\n", iq_no);
+			otx_ep_err("IQ[%d] sg_entries alloc failed", iq_no);
 			goto iq_init_fail;
 		}
 
@@ -133,14 +133,14 @@ otx_ep_init_instr_queue(struct otx_ep_device *otx_ep, int iq_no, int num_descs,
 		iq->req_list[i].finfo.g.sg = sg;
 	}
 
-	otx_ep_info("IQ[%d]: base: %p basedma: %lx count: %d\n",
+	otx_ep_info("IQ[%d]: base: %p basedma: %lx count: %d",
 		     iq_no, iq->base_addr, (unsigned long)iq->base_addr_dma,
 		     iq->nb_desc);
 
 	iq->mbuf_list = rte_zmalloc_socket("mbuf_list",	(iq->nb_desc * sizeof(struct rte_mbuf *)),
 					   RTE_CACHE_LINE_SIZE, rte_socket_id());
 	if (!iq->mbuf_list) {
-		otx_ep_err("IQ[%d] mbuf_list alloc failed\n", iq_no);
+		otx_ep_err("IQ[%d] mbuf_list alloc failed", iq_no);
 		goto iq_init_fail;
 	}
 
@@ -185,12 +185,12 @@ otx_ep_setup_iqs(struct otx_ep_device *otx_ep, uint32_t iq_no, int num_descs,
 	otx_ep->instr_queue[iq_no] = iq;
 
 	if (otx_ep_init_instr_queue(otx_ep, iq_no, num_descs, socket_id)) {
-		otx_ep_err("IQ init is failed\n");
+		otx_ep_err("IQ init is failed");
 		goto delete_IQ;
 	}
 	otx_ep->nb_tx_queues++;
 
-	otx_ep_info("IQ[%d] is created.\n", iq_no);
+	otx_ep_info("IQ[%d] is created.", iq_no);
 
 	return 0;
 
@@ -233,7 +233,7 @@ otx_ep_delete_oqs(struct otx_ep_device *otx_ep, uint32_t oq_no)
 
 	droq = otx_ep->droq[oq_no];
 	if (droq == NULL) {
-		otx_ep_err("Invalid droq[%d]\n", oq_no);
+		otx_ep_err("Invalid droq[%d]", oq_no);
 		return -EINVAL;
 	}
 
@@ -253,7 +253,7 @@ otx_ep_delete_oqs(struct otx_ep_device *otx_ep, uint32_t oq_no)
 
 	otx_ep->nb_rx_queues--;
 
-	otx_ep_info("OQ[%d] is deleted\n", oq_no);
+	otx_ep_info("OQ[%d] is deleted", oq_no);
 	return 0;
 }
 
@@ -268,7 +268,7 @@ otx_ep_droq_setup_ring_buffers(struct otx_ep_droq *droq)
 	for (idx = 0; idx < droq->nb_desc; idx++) {
 		buf = rte_pktmbuf_alloc(droq->mpool);
 		if (buf == NULL) {
-			otx_ep_err("OQ buffer alloc failed\n");
+			otx_ep_err("OQ buffer alloc failed");
 			droq->stats.rx_alloc_failure++;
 			return -ENOMEM;
 		}
@@ -296,7 +296,7 @@ otx_ep_init_droq(struct otx_ep_device *otx_ep, uint32_t q_no,
 	uint32_t desc_ring_size;
 	int ret;
 
-	otx_ep_info("OQ[%d] Init start\n", q_no);
+	otx_ep_info("OQ[%d] Init start", q_no);
 
 	droq = otx_ep->droq[q_no];
 	droq->otx_ep_dev = otx_ep;
@@ -316,23 +316,23 @@ otx_ep_init_droq(struct otx_ep_device *otx_ep, uint32_t q_no,
 						      socket_id);
 
 	if (droq->desc_ring_mz == NULL) {
-		otx_ep_err("OQ:%d desc_ring allocation failed\n", q_no);
+		otx_ep_err("OQ:%d desc_ring allocation failed", q_no);
 		goto init_droq_fail;
 	}
 
 	droq->desc_ring_dma = droq->desc_ring_mz->iova;
 	droq->desc_ring = (struct otx_ep_droq_desc *)droq->desc_ring_mz->addr;
 
-	otx_ep_dbg("OQ[%d]: desc_ring: virt: 0x%p, dma: %lx\n",
+	otx_ep_dbg("OQ[%d]: desc_ring: virt: 0x%p, dma: %lx",
 		    q_no, droq->desc_ring, (unsigned long)droq->desc_ring_dma);
-	otx_ep_dbg("OQ[%d]: num_desc: %d\n", q_no, droq->nb_desc);
+	otx_ep_dbg("OQ[%d]: num_desc: %d", q_no, droq->nb_desc);
 
 	/* OQ buf_list set up */
 	droq->recv_buf_list = rte_zmalloc_socket("recv_buf_list",
 				(droq->nb_desc * sizeof(struct rte_mbuf *)),
 				 RTE_CACHE_LINE_SIZE, socket_id);
 	if (droq->recv_buf_list == NULL) {
-		otx_ep_err("OQ recv_buf_list alloc failed\n");
+		otx_ep_err("OQ recv_buf_list alloc failed");
 		goto init_droq_fail;
 	}
 
@@ -366,17 +366,17 @@ otx_ep_setup_oqs(struct otx_ep_device *otx_ep, int oq_no, int num_descs,
 	droq = (struct otx_ep_droq *)rte_zmalloc("otx_ep_OQ",
 				sizeof(*droq), RTE_CACHE_LINE_SIZE);
 	if (droq == NULL) {
-		otx_ep_err("Droq[%d] Creation Failed\n", oq_no);
+		otx_ep_err("Droq[%d] Creation Failed", oq_no);
 		return -ENOMEM;
 	}
 	otx_ep->droq[oq_no] = droq;
 
 	if (otx_ep_init_droq(otx_ep, oq_no, num_descs, desc_size, mpool,
 			     socket_id)) {
-		otx_ep_err("Droq[%d] Initialization failed\n", oq_no);
+		otx_ep_err("Droq[%d] Initialization failed", oq_no);
 		goto delete_OQ;
 	}
-	otx_ep_info("OQ[%d] is created.\n", oq_no);
+	otx_ep_info("OQ[%d] is created.", oq_no);
 
 	otx_ep->nb_rx_queues++;
 
@@ -401,12 +401,12 @@ otx_ep_iqreq_delete(struct otx_ep_instr_queue *iq, uint32_t idx)
 	case OTX_EP_REQTYPE_NORESP_GATHER:
 		/* This will take care of multiple segments also */
 		rte_pktmbuf_free(mbuf);
-		otx_ep_dbg("IQ buffer freed at idx[%d]\n", idx);
+		otx_ep_dbg("IQ buffer freed at idx[%d]", idx);
 		break;
 
 	case OTX_EP_REQTYPE_NONE:
 	default:
-		otx_ep_info("This iqreq mode is not supported:%d\n", reqtype);
+		otx_ep_info("This iqreq mode is not supported:%d", reqtype);
 	}
 
 	/* Reset the request list at this index */
@@ -568,7 +568,7 @@ prepare_xmit_gather_list(struct otx_ep_instr_queue *iq, struct rte_mbuf *m, uint
 	num_sg = (frags + mask) / OTX_EP_NUM_SG_PTRS;
 
 	if (unlikely(pkt_len > OTX_EP_MAX_PKT_SZ && num_sg > OTX_EP_MAX_SG_LISTS)) {
-		otx_ep_err("Failed to xmit the pkt, pkt_len is higher or pkt has more segments\n");
+		otx_ep_err("Failed to xmit the pkt, pkt_len is higher or pkt has more segments");
 		goto exit;
 	}
 
@@ -644,16 +644,16 @@ otx_ep_xmit_pkts(void *tx_queue, struct rte_mbuf **pkts, uint16_t nb_pkts)
 		iqcmd.irh.u64 = rte_bswap64(iqcmd.irh.u64);
 
 #ifdef OTX_EP_IO_DEBUG
-		otx_ep_dbg("After swapping\n");
-		otx_ep_dbg("Word0 [dptr]: 0x%016lx\n",
+		otx_ep_dbg("After swapping");
+		otx_ep_dbg("Word0 [dptr]: 0x%016lx",
 			   (unsigned long)iqcmd.dptr);
-		otx_ep_dbg("Word1 [ihtx]: 0x%016lx\n", (unsigned long)iqcmd.ih);
-		otx_ep_dbg("Word2 [pki_ih3]: 0x%016lx\n",
+		otx_ep_dbg("Word1 [ihtx]: 0x%016lx", (unsigned long)iqcmd.ih);
+		otx_ep_dbg("Word2 [pki_ih3]: 0x%016lx",
 			   (unsigned long)iqcmd.pki_ih3);
-		otx_ep_dbg("Word3 [rptr]: 0x%016lx\n",
+		otx_ep_dbg("Word3 [rptr]: 0x%016lx",
 			   (unsigned long)iqcmd.rptr);
-		otx_ep_dbg("Word4 [irh]: 0x%016lx\n", (unsigned long)iqcmd.irh);
-		otx_ep_dbg("Word5 [exhdr[0]]: 0x%016lx\n",
+		otx_ep_dbg("Word4 [irh]: 0x%016lx", (unsigned long)iqcmd.irh);
+		otx_ep_dbg("Word5 [exhdr[0]]: 0x%016lx",
 				(unsigned long)iqcmd.exhdr[0]);
 		rte_pktmbuf_dump(stdout, m, rte_pktmbuf_pkt_len(m));
 #endif
@@ -726,7 +726,7 @@ otx_ep_droq_read_packet(struct otx_ep_device *otx_ep, struct otx_ep_droq *droq, 
 	if (unlikely(!info->length)) {
 		int retry = OTX_EP_MAX_DELAYED_PKT_RETRIES;
 		/* otx_ep_dbg("OCTEON DROQ[%d]: read_idx: %d; Data not ready "
-		 * "yet, Retry; pending=%lu\n", droq->q_no, droq->read_idx,
+		 * "yet, Retry; pending=%lu", droq->q_no, droq->read_idx,
 		 * droq->pkts_pending);
 		 */
 		droq->stats.pkts_delayed_data++;
@@ -735,7 +735,7 @@ otx_ep_droq_read_packet(struct otx_ep_device *otx_ep, struct otx_ep_droq *droq, 
 			rte_delay_us_block(50);
 		}
 		if (!retry && !info->length) {
-			otx_ep_err("OCTEON DROQ[%d]: read_idx: %d; Retry failed !!\n",
+			otx_ep_err("OCTEON DROQ[%d]: read_idx: %d; Retry failed !!",
 				   droq->q_no, droq->read_idx);
 			/* May be zero length packet; drop it */
 			assert(0);
@@ -803,7 +803,7 @@ otx_ep_droq_read_packet(struct otx_ep_device *otx_ep, struct otx_ep_droq *droq, 
 
 				last_buf = mbuf;
 			} else {
-				otx_ep_err("no buf\n");
+				otx_ep_err("no buf");
 				assert(0);
 			}
 

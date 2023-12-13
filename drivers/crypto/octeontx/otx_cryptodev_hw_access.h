@@ -211,7 +211,7 @@ otx_cpt_ring_dbell(struct cpt_instance *instance, uint16_t count)
 static __rte_always_inline void *
 get_cpt_inst(struct command_queue *cqueue)
 {
-	CPT_LOG_DP_DEBUG("CPT queue idx %u\n", cqueue->idx);
+	CPT_LOG_DP_DEBUG("CPT queue idx %u", cqueue->idx);
 	return &cqueue->qhead[cqueue->idx * CPT_INST_SIZE];
 }
 
@@ -305,9 +305,9 @@ complete:
 				" error, MC completion code : 0x%x", user_req,
 				ret);
 		}
-		CPT_LOG_DP_DEBUG("MC status %.8x\n",
+		CPT_LOG_DP_DEBUG("MC status %.8x",
 			   *((volatile uint32_t *)user_req->alternate_caddr));
-		CPT_LOG_DP_DEBUG("HW status %.8x\n",
+		CPT_LOG_DP_DEBUG("HW status %.8x",
 			   *((volatile uint32_t *)user_req->completion_addr));
 	} else if ((cptres->s8x.compcode == CPT_8X_COMP_E_SWERR) ||
 		   (cptres->s8x.compcode == CPT_8X_COMP_E_FAULT)) {

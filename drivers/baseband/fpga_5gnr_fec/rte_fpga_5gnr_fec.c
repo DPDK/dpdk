@@ -1498,14 +1498,14 @@ fpga_mutex_acquisition(struct fpga_queue *q)
 	do {
 		if (cnt > 0)
 			usleep(FPGA_TIMEOUT_CHECK_INTERVAL);
-		rte_bbdev_log_debug("Acquiring Mutex for %x\n",
+		rte_bbdev_log_debug("Acquiring Mutex for %x",
 				q->ddr_mutex_uuid);
 		fpga_reg_write_32(q->d->mmio_base,
 				FPGA_5GNR_FEC_MUTEX,
 				mutex_ctrl);
 		mutex_read = fpga_reg_read_32(q->d->mmio_base,
 				FPGA_5GNR_FEC_MUTEX);
-		rte_bbdev_log_debug("Mutex %x cnt %d owner %x\n",
+		rte_bbdev_log_debug("Mutex %x cnt %d owner %x",
 				mutex_read, cnt, q->ddr_mutex_uuid);
 		cnt++;
 	} while ((mutex_read >> 16) != q->ddr_mutex_uuid);
@@ -1546,7 +1546,7 @@ fpga_harq_write_loopback(struct fpga_queue *q,
 			FPGA_5GNR_FEC_HARQ_BUF_SIZE_REGS);
 	if (reg_32 < harq_in_length) {
 		left_length = reg_32;
-		rte_bbdev_log(ERR, "HARQ in length > HARQ buffer size\n");
+		rte_bbdev_log(ERR, "HARQ in length > HARQ buffer size");
 	}
 
 	input = (uint64_t *)rte_pktmbuf_mtod_offset(harq_input,
@@ -1609,18 +1609,18 @@ fpga_harq_read_loopback(struct fpga_queue *q,
 			FPGA_5GNR_FEC_HARQ_BUF_SIZE_REGS);
 	if (reg < harq_in_length) {
 		harq_in_length = reg;
-		rte_bbdev_log(ERR, "HARQ in length > HARQ buffer size\n");
+		rte_bbdev_log(ERR, "HARQ in length > HARQ buffer size");
 	}
 
 	if (!mbuf_append(harq_output, harq_output, harq_in_length)) {
-		rte_bbdev_log(ERR, "HARQ output buffer warning %d %d\n",
+		rte_bbdev_log(ERR, "HARQ output buffer warning %d %d",
 				harq_output->buf_len -
 				rte_pktmbuf_headroom(harq_output),
 				harq_in_length);
 		harq_in_length = harq_output->buf_len -
 				rte_pktmbuf_headroom(harq_output);
 		if (!mbuf_append(harq_output, harq_output, harq_in_length)) {
-			rte_bbdev_log(ERR, "HARQ output buffer issue %d %d\n",
+			rte_bbdev_log(ERR, "HARQ output buffer issue %d %d",
 					harq_output->buf_len, harq_in_length);
 			return -1;
 		}
@@ -1642,7 +1642,7 @@ fpga_harq_read_loopback(struct fpga_queue *q,
 				FPGA_5GNR_FEC_DDR4_RD_RDY_REGS);
 			if (reg == FPGA_DDR_OVERFLOW) {
 				rte_bbdev_log(ERR,
-						"Read address is overflow!\n");
+						"Read address is overflow!");
 				return -1;
 			}
 		}

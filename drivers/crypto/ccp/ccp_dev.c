@@ -362,7 +362,7 @@ ccp_find_lsb_regions(struct ccp_queue *cmd_q, uint64_t status)
 		if (ccp_get_bit(&cmd_q->lsbmask, j))
 			weight++;
 
-	CCP_LOG_DBG("Queue %d can access %d LSB regions  of mask  %lu\n",
+	CCP_LOG_DBG("Queue %d can access %d LSB regions  of mask  %lu",
 	       (int)cmd_q->id, weight, cmd_q->lsbmask);
 
 	return weight ? 0 : -EINVAL;

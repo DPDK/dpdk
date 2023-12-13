@@ -5053,7 +5053,7 @@ eth_igb_get_module_info(struct rte_eth_dev *dev,
 		PMD_DRV_LOG(ERR,
 			    "Address change required to access page 0xA2, "
 			    "but not supported. Please report the module "
-			    "type to the driver maintainers.\n");
+			    "type to the driver maintainers.");
 		page_swap = true;
 	}
 

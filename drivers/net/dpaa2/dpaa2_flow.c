@@ -3360,7 +3360,7 @@ dpaa2_flow_verify_action(
 				rxq = priv->rx_vq[rss_conf->queue[i]];
 				if (rxq->tc_index != attr->group) {
 					DPAA2_PMD_ERR(
-						"Queue/Group combination are not supported\n");
+						"Queue/Group combination are not supported");
 					return -ENOTSUP;
 				}
 			}
@@ -3601,7 +3601,7 @@ dpaa2_generic_flow_set(struct rte_flow *flow,
 						priv->token, &qos_cfg);
 					if (ret < 0) {
 						DPAA2_PMD_ERR(
-						"RSS QoS table can not be configured(%d)\n",
+						"RSS QoS table can not be configured(%d)",
 							ret);
 						return -1;
 					}
@@ -3718,14 +3718,14 @@ dpaa2_generic_flow_set(struct rte_flow *flow,
 					&priv->extract.tc_key_extract[flow->tc_id].dpkg);
 			if (ret < 0) {
 				DPAA2_PMD_ERR(
-				"unable to set flow distribution.please check queue config\n");
+				"unable to set flow distribution.please check queue config");
 				return ret;
 			}
 
 			/* Allocate DMA'ble memory to write the rules */
 			param = (size_t)rte_malloc(NULL, 256, 64);
 			if (!param) {
-				DPAA2_PMD_ERR("Memory allocation failure\n");
+				DPAA2_PMD_ERR("Memory allocation failure");
 				return -1;
 			}
 
@@ -3747,7 +3747,7 @@ dpaa2_generic_flow_set(struct rte_flow *flow,
 						 priv->token, &tc_cfg);
 			if (ret < 0) {
 				DPAA2_PMD_ERR(
-					"RSS TC table cannot be configured: %d\n",
+					"RSS TC table cannot be configured: %d",
 					ret);
 				rte_free((void *)param);
 				return -1;
@@ -3772,7 +3772,7 @@ dpaa2_generic_flow_set(struct rte_flow *flow,
 							 priv->token, &qos_cfg);
 				if (ret < 0) {
 					DPAA2_PMD_ERR(
-					"RSS QoS dist can't be configured-%d\n",
+					"RSS QoS dist can't be configured-%d",
 					ret);
 					return -1;
 				}
@@ -3841,20 +3841,20 @@ dpaa2_dev_verify_attr(struct dpni_attr *dpni_attr,
 	int ret = 0;
 
 	if (unlikely(attr->group >= dpni_attr->num_rx_tcs)) {
-		DPAA2_PMD_ERR("Priority group is out of range\n");
+		DPAA2_PMD_ERR("Priority group is out of range");
 		ret = -ENOTSUP;
 	}
 	if (unlikely(attr->priority >= dpni_attr->fs_entries)) {
-		DPAA2_PMD_ERR("Priority within the group is out of range\n");
+		DPAA2_PMD_ERR("Priority within the group is out of range");
 		ret = -ENOTSUP;
 	}
 	if (unlikely(attr->egress)) {
 		DPAA2_PMD_ERR(
-			"Flow configuration is not supported on egress side\n");
+			"Flow configuration is not supported on egress side");
 		ret = -ENOTSUP;
 	}
 	if (unlikely(!attr->ingress)) {
-		DPAA2_PMD_ERR("Ingress flag must be configured\n");
+		DPAA2_PMD_ERR("Ingress flag must be configured");
 		ret = -EINVAL;
 	}
 	return ret;
@@ -3933,7 +3933,7 @@ int dpaa2_flow_validate(struct rte_eth_dev *dev,
 	ret = dpni_get_attributes(dpni, CMD_PRI_LOW, token, &dpni_attr);
 	if (ret < 0) {
 		DPAA2_PMD_ERR(
-			"Failure to get dpni@%p attribute, err code  %d\n",
+			"Failure to get dpni@%p attribute, err code  %d",
 			dpni, ret);
 		rte_flow_error_set(error, EPERM,
 			   RTE_FLOW_ERROR_TYPE_ATTR,
@@ -3945,7 +3945,7 @@ int dpaa2_flow_validate(struct rte_eth_dev *dev,
 	ret = dpaa2_dev_verify_attr(&dpni_attr, flow_attr);
 	if (ret < 0) {
 		DPAA2_PMD_ERR(
-			"Invalid attributes are given\n");
+			"Invalid attributes are given");
 		rte_flow_error_set(error, EPERM,
 			   RTE_FLOW_ERROR_TYPE_ATTR,
 			   flow_attr, "invalid");
@@ -3955,7 +3955,7 @@ int dpaa2_flow_validate(struct rte_eth_dev *dev,
 	ret = dpaa2_dev_verify_patterns(pattern);
 	if (ret < 0) {
 		DPAA2_PMD_ERR(
-			"Invalid pattern list is given\n");
+			"Invalid pattern list is given");
 		rte_flow_error_set(error, EPERM,
 			   RTE_FLOW_ERROR_TYPE_ITEM,
 			   pattern, "invalid");
@@ -3965,7 +3965,7 @@ int dpaa2_flow_validate(struct rte_eth_dev *dev,
 	ret = dpaa2_dev_verify_actions(actions);
 	if (ret < 0) {
 		DPAA2_PMD_ERR(
-			"Invalid action list is given\n");
+			"Invalid action list is given");
 		rte_flow_error_set(error, EPERM,
 			   RTE_FLOW_ERROR_TYPE_ACTION,
 			   actions, "invalid");
@@ -4012,13 +4012,13 @@ struct rte_flow *dpaa2_flow_create(struct rte_eth_dev *dev,
 	key_iova = (size_t)rte_zmalloc(NULL, 256, 64);
 	if (!key_iova) {
 		DPAA2_PMD_ERR(
-			"Memory allocation failure for rule configuration\n");
+			"Memory allocation failure for rule configuration");
 		goto mem_failure;
 	}
 	mask_iova = (size_t)rte_zmalloc(NULL, 256, 64);
 	if (!mask_iova) {
 		DPAA2_PMD_ERR(
-			"Memory allocation failure for rule configuration\n");
+			"Memory allocation failure for rule configuration");
 		goto mem_failure;
 	}
 
@@ -4029,13 +4029,13 @@ struct rte_flow *dpaa2_flow_create(struct rte_eth_dev *dev,
 	key_iova = (size_t)rte_zmalloc(NULL, 256, 64);
 	if (!key_iova) {
 		DPAA2_PMD_ERR(
-			"Memory allocation failure for rule configuration\n");
+			"Memory allocation failure for rule configuration");
 		goto mem_failure;
 	}
 	mask_iova = (size_t)rte_zmalloc(NULL, 256, 64);
 	if (!mask_iova) {
 		DPAA2_PMD_ERR(
-			"Memory allocation failure for rule configuration\n");
+			"Memory allocation failure for rule configuration");
 		goto mem_failure;
 	}
 

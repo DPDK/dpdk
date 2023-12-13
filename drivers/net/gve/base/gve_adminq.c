@@ -11,7 +11,7 @@
 #define GVE_ADMINQ_SLEEP_LEN		20
 #define GVE_MAX_ADMINQ_EVENT_COUNTER_CHECK	100
 
-#define GVE_DEVICE_OPTION_ERROR_FMT "%s option error:\n Expected: length=%d, feature_mask=%x.\n Actual: length=%d, feature_mask=%x."
+#define GVE_DEVICE_OPTION_ERROR_FMT "%s option error: Expected: length=%d, feature_mask=%x. Actual: length=%d, feature_mask=%x."
 
 #define GVE_DEVICE_OPTION_TOO_BIG_FMT "Length of %s option larger than expected. Possible older version of guest driver."
 

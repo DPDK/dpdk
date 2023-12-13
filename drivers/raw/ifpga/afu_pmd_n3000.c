@@ -1506,7 +1506,7 @@ static int dma_afu_set_irqs(struct afu_rawdev *dev, uint32_t vec_start,
 	rte_memcpy(&irq_set->data, efds, sizeof(*efds) * count);
 	ret = ioctl(vfio_dev_fd, VFIO_DEVICE_SET_IRQS, irq_set);
 	if (ret)
-		IFPGA_RAWDEV_PMD_ERR("Error enabling MSI-X interrupts\n");
+		IFPGA_RAWDEV_PMD_ERR("Error enabling MSI-X interrupts");
 
 	rte_free(irq_set);
 	return ret;

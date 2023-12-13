@@ -198,7 +198,7 @@ alloc_init_mb_mgr(void)
 	IMB_MGR *mb_mgr = alloc_mb_mgr(0);
 
 	if (unlikely(mb_mgr == NULL)) {
-		IPSEC_MB_LOG(ERR, "Failed to allocate IMB_MGR data\n");
+		IPSEC_MB_LOG(ERR, "Failed to allocate IMB_MGR data");
 		return NULL;
 	}
 

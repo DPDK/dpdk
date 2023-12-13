@@ -142,7 +142,7 @@ bcmfs_queue_create(struct bcmfs_queue *queue,
 
 	if (bcmfs_qp_check_queue_alignment(qp_mz->iova, align)) {
 		BCMFS_LOG(ERR, "Invalid alignment on queue create "
-					" 0x%" PRIx64 "\n",
+					" 0x%" PRIx64,
 					queue->base_phys_addr);
 		ret = -EFAULT;
 		goto queue_create_err;

@@ -37,7 +37,7 @@ otx2_vf_reset_iq(struct otx_ep_device *otx_ep, int q_no)
 				  SDP_VF_R_IN_INSTR_DBELL(q_no));
 	}
 	if (loop < 0) {
-		otx_ep_err("%s: doorbell init retry limit exceeded.\n", __func__);
+		otx_ep_err("%s: doorbell init retry limit exceeded.", __func__);
 		return -EIO;
 	}
 
@@ -48,7 +48,7 @@ otx2_vf_reset_iq(struct otx_ep_device *otx_ep, int q_no)
 		rte_delay_ms(1);
 	} while ((d64 & ~SDP_VF_R_IN_CNTS_OUT_INT) != 0 && loop--);
 	if (loop < 0) {
-		otx_ep_err("%s: in_cnts init retry limit exceeded.\n", __func__);
+		otx_ep_err("%s: in_cnts init retry limit exceeded.", __func__);
 		return -EIO;
 	}
 
@@ -81,7 +81,7 @@ otx2_vf_reset_oq(struct otx_ep_device *otx_ep, int q_no)
 				  SDP_VF_R_OUT_SLIST_DBELL(q_no));
 	}
 	if (loop < 0) {
-		otx_ep_err("%s: doorbell init retry limit exceeded.\n", __func__);
+		otx_ep_err("%s: doorbell init retry limit exceeded.", __func__);
 		return -EIO;
 	}
 
@@ -109,7 +109,7 @@ otx2_vf_reset_oq(struct otx_ep_device *otx_ep, int q_no)
 		rte_delay_ms(1);
 	} while ((d64 & ~SDP_VF_R_OUT_CNTS_IN_INT) != 0 && loop--);
 	if (loop < 0) {
-		otx_ep_err("%s: out_cnts init retry limit exceeded.\n", __func__);
+		otx_ep_err("%s: out_cnts init retry limit exceeded.", __func__);
 		return -EIO;
 	}
 
@@ -252,7 +252,7 @@ otx2_vf_setup_iq_regs(struct otx_ep_device *otx_ep, uint32_t iq_no)
 	}
 
 	if (loop < 0) {
-		otx_ep_err("IDLE bit is not set\n");
+		otx_ep_err("IDLE bit is not set");
 		return -EIO;
 	}
 
@@ -283,7 +283,7 @@ otx2_vf_setup_iq_regs(struct otx_ep_device *otx_ep, uint32_t iq_no)
 	} while (reg_val != 0 && loop--);
 
 	if (loop < 0) {
-		otx_ep_err("INST CNT REGISTER is not zero\n");
+		otx_ep_err("INST CNT REGISTER is not zero");
 		return -EIO;
 	}
 
@@ -332,7 +332,7 @@ otx2_vf_setup_oq_regs(struct otx_ep_device *otx_ep, uint32_t oq_no)
 	}
 
 	if (loop < 0) {
-		otx_ep_err("OUT CNT REGISTER value is zero\n");
+		otx_ep_err("OUT CNT REGISTER value is zero");
 		return -EIO;
 	}
 
@@ -368,7 +368,7 @@ otx2_vf_setup_oq_regs(struct otx_ep_device *otx_ep, uint32_t oq_no)
 	}
 
 	if (loop < 0) {
-		otx_ep_err("Packets credit register value is not cleared\n");
+		otx_ep_err("Packets credit register value is not cleared");
 		return -EIO;
 	}
 	otx_ep_dbg("SDP_R[%d]_credit:%x", oq_no, rte_read32(droq->pkts_credit_reg));
@@ -425,7 +425,7 @@ otx2_vf_enable_iq(struct otx_ep_device *otx_ep, uint32_t q_no)
 	}
 
 	if (loop < 0) {
-		otx_ep_err("INSTR DBELL not coming back to 0\n");
+		otx_ep_err("INSTR DBELL not coming back to 0");
 		return -EIO;
 	}
 

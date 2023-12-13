@@ -267,7 +267,7 @@ qat_queue_create(struct qat_pci_device *qat_dev, struct qat_queue *queue,
 	if (qat_qp_check_queue_alignment(queue->base_phys_addr,
 			queue_size_bytes)) {
 		QAT_LOG(ERR, "Invalid alignment on queue create "
-					" 0x%"PRIx64"\n",
+					" 0x%"PRIx64,
 					queue->base_phys_addr);
 		ret = -EFAULT;
 		goto queue_create_err;

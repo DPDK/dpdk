@@ -1229,11 +1229,11 @@ i40e_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 			ctx_txd->type_cmd_tso_mss =
 				rte_cpu_to_le_64(cd_type_cmd_tso_mss);
 
-			PMD_TX_LOG(DEBUG, "mbuf: %p, TCD[%u]:\n"
-				"tunneling_params: %#x;\n"
-				"l2tag2: %#hx;\n"
-				"rsvd: %#hx;\n"
-				"type_cmd_tso_mss: %#"PRIx64";\n",
+			PMD_TX_LOG(DEBUG, "mbuf: %p, TCD[%u]: "
+				"tunneling_params: %#x; "
+				"l2tag2: %#hx; "
+				"rsvd: %#hx; "
+				"type_cmd_tso_mss: %#"PRIx64";",
 				tx_pkt, tx_id,
 				ctx_txd->tunneling_params,
 				ctx_txd->l2tag2,
@@ -1276,12 +1276,12 @@ i40e_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 				txd = &txr[tx_id];
 				txn = &sw_ring[txe->next_id];
 			}
-			PMD_TX_LOG(DEBUG, "mbuf: %p, TDD[%u]:\n"
-				"buf_dma_addr: %#"PRIx64";\n"
-				"td_cmd: %#x;\n"
-				"td_offset: %#x;\n"
-				"td_len: %u;\n"
-				"td_tag: %#x;\n",
+			PMD_TX_LOG(DEBUG, "mbuf: %p, TDD[%u]: "
+				"buf_dma_addr: %#"PRIx64"; "
+				"td_cmd: %#x; "
+				"td_offset: %#x; "
+				"td_len: %u; "
+				"td_tag: %#x;",
 				tx_pkt, tx_id, buf_dma_addr,
 				td_cmd, td_offset, slen, td_tag);
 
@@ -3467,7 +3467,7 @@ i40e_set_tx_function_flag(struct rte_eth_dev *dev, struct i40e_tx_queue *txq)
 				txq->queue_id);
 	else
 		PMD_INIT_LOG(DEBUG,
-				"Neither simple nor vector Tx enabled on Tx queue %u\n",
+				"Neither simple nor vector Tx enabled on Tx queue %u",
 				txq->queue_id);
 }
 

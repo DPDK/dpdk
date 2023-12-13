@@ -102,7 +102,7 @@ ern_sec_fq_handler(struct qman_portal *qm __rte_unused,
 		   struct qman_fq *fq,
 		   const struct qm_mr_entry *msg)
 {
-	DPAA_SEC_DP_ERR("sec fq %d error, RC = %x, seqnum = %x\n",
+	DPAA_SEC_DP_ERR("sec fq %d error, RC = %x, seqnum = %x",
 			fq->fqid, msg->ern.rc, msg->ern.seqnum);
 }
 
@@ -849,7 +849,7 @@ dpaa_sec_deq(struct dpaa_sec_qp *qp, struct rte_crypto_op **ops, int nb_ops)
 			op->status = RTE_CRYPTO_OP_STATUS_SUCCESS;
 		} else {
 			if (dpaa_sec_dp_dump > DPAA_SEC_DP_NO_DUMP) {
-				DPAA_SEC_DP_WARN("SEC return err:0x%x\n",
+				DPAA_SEC_DP_WARN("SEC return err:0x%x",
 						  ctx->fd_status);
 				if (dpaa_sec_dp_dump > DPAA_SEC_DP_ERR_DUMP)
 					dpaa_sec_dump(ctx, qp);
@@ -1944,7 +1944,7 @@ dpaa_sec_enqueue_burst(void *qp, struct rte_crypto_op **ops,
 			} else if (unlikely(ses->qp[rte_lcore_id() %
 						MAX_DPAA_CORES] != qp)) {
 				DPAA_SEC_DP_ERR("Old:sess->qp = %p"
-					" New qp = %p\n",
+					" New qp = %p",
 					ses->qp[rte_lcore_id() %
 					MAX_DPAA_CORES], qp);
 				frames_to_send = loop;
@@ -2054,7 +2054,7 @@ dpaa_sec_enqueue_burst(void *qp, struct rte_crypto_op **ops,
 				fd->cmd = 0x80000000 |
 					*((uint32_t *)((uint8_t *)op +
 					ses->pdcp.hfn_ovd_offset));
-				DPAA_SEC_DP_DEBUG("Per packet HFN: %x, ovd:%u\n",
+				DPAA_SEC_DP_DEBUG("Per packet HFN: %x, ovd:%u",
 					*((uint32_t *)((uint8_t *)op +
 					ses->pdcp.hfn_ovd_offset)),
 					ses->pdcp.hfn_ovd);
@@ -2095,7 +2095,7 @@ dpaa_sec_dequeue_burst(void *qp, struct rte_crypto_op **ops,
 	dpaa_qp->rx_pkts += num_rx;
 	dpaa_qp->rx_errs += nb_ops - num_rx;
 
-	DPAA_SEC_DP_DEBUG("SEC Received %d Packets\n", num_rx);
+	DPAA_SEC_DP_DEBUG("SEC Received %d Packets", num_rx);
 
 	return num_rx;
 }
@@ -2158,7 +2158,7 @@ dpaa_sec_queue_pair_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 							NULL, NULL, NULL, NULL,
 							SOCKET_ID_ANY, 0);
 		if (!qp->ctx_pool) {
-			DPAA_SEC_ERR("%s create failed\n", str);
+			DPAA_SEC_ERR("%s create failed", str);
 			return -ENOMEM;
 		}
 	} else
@@ -2459,7 +2459,7 @@ dpaa_sec_aead_init(struct rte_cryptodev *dev __rte_unused,
 	session->aead_key.data = rte_zmalloc(NULL, xform->aead.key.length,
 					     RTE_CACHE_LINE_SIZE);
 	if (session->aead_key.data == NULL && xform->aead.key.length > 0) {
-		DPAA_SEC_ERR("No Memory for aead key\n");
+		DPAA_SEC_ERR("No Memory for aead key");
 		return -ENOMEM;
 	}
 	session->aead_key.length = xform->aead.key.length;
@@ -2508,7 +2508,7 @@ dpaa_sec_detach_rxq(struct dpaa_sec_dev_private *qi, struct qman_fq *fq)
 	for (i = 0; i < RTE_DPAA_MAX_RX_QUEUE; i++) {
 		if (&qi->inq[i] == fq) {
 			if (qman_retire_fq(fq, NULL) != 0)
-				DPAA_SEC_DEBUG("Queue is not retired\n");
+				DPAA_SEC_DEBUG("Queue is not retired");
 			qman_oos_fq(fq);
 			qi->inq_attach[i] = 0;
 			return 0;
@@ -3483,7 +3483,7 @@ dpaa_sec_eventq_attach(const struct rte_cryptodev *dev,
 		qp->outq.cb.dqrr_dpdk_cb = dpaa_sec_process_atomic_event;
 		break;
 	case RTE_SCHED_TYPE_ORDERED:
-		DPAA_SEC_ERR("Ordered queue schedule type is not supported\n");
+		DPAA_SEC_ERR("Ordered queue schedule type is not supported");
 		return -ENOTSUP;
 	default:
 		opts.fqd.fq_ctrl |= QM_FQCTRL_AVOIDBLOCK;
@@ -3582,7 +3582,7 @@ check_devargs_handler(__rte_unused const char *key, const char *value,
 	dpaa_sec_dp_dump = atoi(value);
 	if (dpaa_sec_dp_dump > DPAA_SEC_DP_FULL_DUMP) {
 		DPAA_SEC_WARN("WARN: DPAA_SEC_DP_DUMP_LEVEL is not "
-			      "supported, changing to FULL error prints\n");
+			      "supported, changing to FULL error prints");
 		dpaa_sec_dp_dump = DPAA_SEC_DP_FULL_DUMP;
 	}
 
@@ -3645,7 +3645,7 @@ dpaa_sec_dev_init(struct rte_cryptodev *cryptodev)
 
 	ret = munmap(internals->sec_hw, MAP_SIZE);
 	if (ret)
-		DPAA_SEC_WARN("munmap failed\n");
+		DPAA_SEC_WARN("munmap failed");
 
 	close(map_fd);
 	cryptodev->driver_id = dpaa_cryptodev_driver_id;
@@ -3713,7 +3713,7 @@ dpaa_sec_dev_init(struct rte_cryptodev *cryptodev)
 	return 0;
 
 init_error:
-	DPAA_SEC_ERR("driver %s: create failed\n", cryptodev->data->name);
+	DPAA_SEC_ERR("driver %s: create failed", cryptodev->data->name);
 
 	rte_free(cryptodev->security_ctx);
 	return -EFAULT;

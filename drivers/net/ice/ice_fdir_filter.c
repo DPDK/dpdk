@@ -334,7 +334,7 @@ ice_fdir_counter_alloc(struct ice_pf *pf, uint32_t shared, uint32_t id)
 	}
 
 	if (!counter_free) {
-		PMD_DRV_LOG(ERR, "No free counter found\n");
+		PMD_DRV_LOG(ERR, "No free counter found");
 		return NULL;
 	}
 

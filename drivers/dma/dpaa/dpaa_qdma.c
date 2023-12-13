@@ -295,7 +295,7 @@ static struct fsl_qdma_queue
 		for (i = 0; i < queue_num; i++) {
 			if (queue_size[i] > FSL_QDMA_CIRCULAR_DESC_SIZE_MAX ||
 			    queue_size[i] < FSL_QDMA_CIRCULAR_DESC_SIZE_MIN) {
-				DPAA_QDMA_ERR("Get wrong queue-sizes.\n");
+				DPAA_QDMA_ERR("Get wrong queue-sizes.");
 				goto fail;
 			}
 			queue_temp = queue_head + i + (j * queue_num);
@@ -345,7 +345,7 @@ fsl_qdma_queue *fsl_qdma_prep_status_queue(void)
 	status_size = QDMA_STATUS_SIZE;
 	if (status_size > FSL_QDMA_CIRCULAR_DESC_SIZE_MAX ||
 	    status_size < FSL_QDMA_CIRCULAR_DESC_SIZE_MIN) {
-		DPAA_QDMA_ERR("Get wrong status_size.\n");
+		DPAA_QDMA_ERR("Get wrong status_size.");
 		return NULL;
 	}
 
@@ -643,7 +643,7 @@ fsl_qdma_alloc_chan_resources(struct fsl_qdma_chan *fsl_chan)
 				FSL_QDMA_COMMAND_BUFFER_SIZE, 64);
 	if (ret) {
 		DPAA_QDMA_ERR(
-			"failed to alloc dma buffer for comp descriptor\n");
+			"failed to alloc dma buffer for comp descriptor");
 		goto exit;
 	}
 
@@ -779,7 +779,7 @@ dpaa_qdma_enqueue(void *dev_private, uint16_t vchan,
 			(dma_addr_t)dst, (dma_addr_t)src,
 			length, NULL, NULL);
 	if (!fsl_comp) {
-		DPAA_QDMA_DP_DEBUG("fsl_comp is NULL\n");
+		DPAA_QDMA_DP_DEBUG("fsl_comp is NULL");
 		return -1;
 	}
 	ret = fsl_qdma_enqueue_desc(fsl_chan, fsl_comp, flags);
@@ -803,19 +803,19 @@ dpaa_qdma_dequeue_status(void *dev_private, uint16_t vchan,
 
 	intr = qdma_readl_be(status + FSL_QDMA_DEDR);
 	if (intr) {
-		DPAA_QDMA_ERR("DMA transaction error! %x\n", intr);
+		DPAA_QDMA_ERR("DMA transaction error! %x", intr);
 		intr = qdma_readl(status + FSL_QDMA_DECFDW0R);
-		DPAA_QDMA_INFO("reg FSL_QDMA_DECFDW0R %x\n", intr);
+		DPAA_QDMA_INFO("reg FSL_QDMA_DECFDW0R %x", intr);
 		intr = qdma_readl(status + FSL_QDMA_DECFDW1R);
-		DPAA_QDMA_INFO("reg FSL_QDMA_DECFDW1R %x\n", intr);
+		DPAA_QDMA_INFO("reg FSL_QDMA_DECFDW1R %x", intr);
 		intr = qdma_readl(status + FSL_QDMA_DECFDW2R);
-		DPAA_QDMA_INFO("reg FSL_QDMA_DECFDW2R %x\n", intr);
+		DPAA_QDMA_INFO("reg FSL_QDMA_DECFDW2R %x", intr);
 		intr = qdma_readl(status + FSL_QDMA_DECFDW3R);
-		DPAA_QDMA_INFO("reg FSL_QDMA_DECFDW3R %x\n", intr);
+		DPAA_QDMA_INFO("reg FSL_QDMA_DECFDW3R %x", intr);
 		intr = qdma_readl(status + FSL_QDMA_DECFQIDR);
-		DPAA_QDMA_INFO("reg FSL_QDMA_DECFQIDR %x\n", intr);
+		DPAA_QDMA_INFO("reg FSL_QDMA_DECFQIDR %x", intr);
 		intr = qdma_readl(status + FSL_QDMA_DECBR);
-		DPAA_QDMA_INFO("reg FSL_QDMA_DECBR %x\n", intr);
+		DPAA_QDMA_INFO("reg FSL_QDMA_DECBR %x", intr);
 		qdma_writel(0xffffffff,
 			    status + FSL_QDMA_DEDR);
 		intr = qdma_readl(status + FSL_QDMA_DEDR);
@@ -849,19 +849,19 @@ dpaa_qdma_dequeue(void *dev_private,
 
 	intr = qdma_readl_be(status + FSL_QDMA_DEDR);
 	if (intr) {
-		DPAA_QDMA_ERR("DMA transaction error! %x\n", intr);
+		DPAA_QDMA_ERR("DMA transaction error! %x", intr);
 		intr = qdma_readl(status + FSL_QDMA_DECFDW0R);
-		DPAA_QDMA_INFO("reg FSL_QDMA_DECFDW0R %x\n", intr);
+		DPAA_QDMA_INFO("reg FSL_QDMA_DECFDW0R %x", intr);
 		intr = qdma_readl(status + FSL_QDMA_DECFDW1R);
-		DPAA_QDMA_INFO("reg FSL_QDMA_DECFDW1R %x\n", intr);
+		DPAA_QDMA_INFO("reg FSL_QDMA_DECFDW1R %x", intr);
 		intr = qdma_readl(status + FSL_QDMA_DECFDW2R);
-		DPAA_QDMA_INFO("reg FSL_QDMA_DECFDW2R %x\n", intr);
+		DPAA_QDMA_INFO("reg FSL_QDMA_DECFDW2R %x", intr);
 		intr = qdma_readl(status + FSL_QDMA_DECFDW3R);
-		DPAA_QDMA_INFO("reg FSL_QDMA_DECFDW3R %x\n", intr);
+		DPAA_QDMA_INFO("reg FSL_QDMA_DECFDW3R %x", intr);
 		intr = qdma_readl(status + FSL_QDMA_DECFQIDR);
-		DPAA_QDMA_INFO("reg FSL_QDMA_DECFQIDR %x\n", intr);
+		DPAA_QDMA_INFO("reg FSL_QDMA_DECFQIDR %x", intr);
 		intr = qdma_readl(status + FSL_QDMA_DECBR);
-		DPAA_QDMA_INFO("reg FSL_QDMA_DECBR %x\n", intr);
+		DPAA_QDMA_INFO("reg FSL_QDMA_DECBR %x", intr);
 		qdma_writel(0xffffffff,
 			    status + FSL_QDMA_DEDR);
 		intr = qdma_readl(status + FSL_QDMA_DEDR);
@@ -974,7 +974,7 @@ dpaa_qdma_init(struct rte_dma_dev *dmadev)
 	close(ccsr_qdma_fd);
 	if (fsl_qdma->ctrl_base == MAP_FAILED) {
 		DPAA_QDMA_ERR("Can not map CCSR base qdma: Phys: %08" PRIx64
-		       "size %d\n", phys_addr, regs_size);
+		       "size %d", phys_addr, regs_size);
 		goto err;
 	}
 
@@ -998,7 +998,7 @@ dpaa_qdma_init(struct rte_dma_dev *dmadev)
 
 	ret = fsl_qdma_reg_init(fsl_qdma);
 	if (ret) {
-		DPAA_QDMA_ERR("Can't Initialize the qDMA engine.\n");
+		DPAA_QDMA_ERR("Can't Initialize the qDMA engine.");
 		munmap(fsl_qdma->ctrl_base, regs_size);
 		goto err;
 	}

@@ -381,7 +381,7 @@ eth_ngbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params __rte_unused)
 		ssid = ngbe_flash_read_dword(hw, 0xFFFDC);
 		if (ssid == 0x1) {
 			PMD_INIT_LOG(ERR,
-				"Read of internal subsystem device id failed\n");
+				"Read of internal subsystem device id failed");
 			return -ENODEV;
 		}
 		hw->sub_system_id = (u16)ssid >> 8 | (u16)ssid << 8;

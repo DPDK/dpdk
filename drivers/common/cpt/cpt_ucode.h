@@ -2589,7 +2589,7 @@ fill_sess_aead(struct rte_crypto_sym_xform *xform,
 		sess->cpt_op |= CPT_OP_CIPHER_DECRYPT;
 		sess->cpt_op |= CPT_OP_AUTH_VERIFY;
 	} else {
-		CPT_LOG_DP_ERR("Unknown aead operation\n");
+		CPT_LOG_DP_ERR("Unknown aead operation");
 		return -1;
 	}
 	switch (aead_form->algo) {
@@ -2658,7 +2658,7 @@ fill_sess_cipher(struct rte_crypto_sym_xform *xform,
 			ctx->dec_auth = 1;
 		}
 	} else {
-		CPT_LOG_DP_ERR("Unknown cipher operation\n");
+		CPT_LOG_DP_ERR("Unknown cipher operation");
 		return -1;
 	}
 

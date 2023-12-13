@@ -165,7 +165,7 @@ int dpaa2_eth_load_wriop_soft_parser(struct dpaa2_dev_priv *priv,
 
 	addr = rte_malloc(NULL, sp_param.size, 64);
 	if (!addr) {
-		DPAA2_PMD_ERR("Memory unavailable for soft parser param\n");
+		DPAA2_PMD_ERR("Memory unavailable for soft parser param");
 		return -1;
 	}
 
@@ -174,7 +174,7 @@ int dpaa2_eth_load_wriop_soft_parser(struct dpaa2_dev_priv *priv,
 
 	ret = dpni_load_sw_sequence(dpni, CMD_PRI_LOW, priv->token, &cfg);
 	if (ret) {
-		DPAA2_PMD_ERR("dpni_load_sw_sequence failed\n");
+		DPAA2_PMD_ERR("dpni_load_sw_sequence failed");
 		rte_free(addr);
 		return ret;
 	}
@@ -214,7 +214,7 @@ int dpaa2_eth_enable_wriop_soft_parser(struct dpaa2_dev_priv *priv,
 	if (cfg.param_size) {
 		param_addr = rte_malloc(NULL, cfg.param_size, 64);
 		if (!param_addr) {
-			DPAA2_PMD_ERR("Memory unavailable for soft parser param\n");
+			DPAA2_PMD_ERR("Memory unavailable for soft parser param");
 			return -1;
 		}
 
@@ -227,7 +227,7 @@ int dpaa2_eth_enable_wriop_soft_parser(struct dpaa2_dev_priv *priv,
 
 	ret = dpni_enable_sw_sequence(dpni, CMD_PRI_LOW, priv->token, &cfg);
 	if (ret) {
-		DPAA2_PMD_ERR("dpni_enable_sw_sequence failed for dpni%d\n",
+		DPAA2_PMD_ERR("dpni_enable_sw_sequence failed for dpni%d",
 			priv->hw_id);
 		rte_free(param_addr);
 		return ret;

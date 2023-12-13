@@ -3027,7 +3027,7 @@ iavf_check_vlan_up2tc(struct iavf_tx_queue *txq, struct rte_mbuf *m)
 	up = m->vlan_tci >> IAVF_VLAN_TAG_PCP_OFFSET;
 
 	if (!(vf->qos_cap->cap[txq->tc].tc_prio & BIT(up))) {
-		PMD_TX_LOG(ERR, "packet with vlan pcp %u cannot transmit in queue %u\n",
+		PMD_TX_LOG(ERR, "packet with vlan pcp %u cannot transmit in queue %u",
 			up, txq->queue_id);
 		return -1;
 	} else {

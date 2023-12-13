@@ -2822,7 +2822,7 @@ ice_xmit_cleanup(struct ice_tx_queue *txq)
 	if (!(txd[desc_to_clean_to].cmd_type_offset_bsz &
 	    rte_cpu_to_le_64(ICE_TX_DESC_DTYPE_DESC_DONE))) {
 		PMD_TX_LOG(DEBUG, "TX descriptor %4u is not done "
-			   "(port=%d queue=%d) value=0x%"PRIx64"\n",
+			   "(port=%d queue=%d) value=0x%"PRIx64,
 			   desc_to_clean_to,
 			   txq->port_id, txq->queue_id,
 			   txd[desc_to_clean_to].cmd_type_offset_bsz);

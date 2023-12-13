@@ -1223,7 +1223,7 @@ octeontx_dev_tx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
 	if (dev->data->tx_queues[qid]) {
 		res = octeontx_dev_tx_queue_stop(dev, qid);
 		if (res < 0)
-			octeontx_log_err("failed stop tx_queue(%d)\n", qid);
+			octeontx_log_err("failed stop tx_queue(%d)", qid);
 
 		rte_free(dev->data->tx_queues[qid]);
 	}
@@ -1342,7 +1342,7 @@ octeontx_dev_rx_queue_setup(struct rte_eth_dev *dev, uint16_t qidx,
 
 	/* Verify queue index */
 	if (qidx >= dev->data->nb_rx_queues) {
-		octeontx_log_err("QID %d not supported (0 - %d available)\n",
+		octeontx_log_err("QID %d not supported (0 - %d available)",
 				qidx, (dev->data->nb_rx_queues - 1));
 		return -ENOTSUP;
 	}

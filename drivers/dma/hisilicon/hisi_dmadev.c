@@ -358,7 +358,7 @@ hisi_dma_start(struct rte_dma_dev *dev)
 	struct hisi_dma_dev *hw = dev->data->dev_private;
 
 	if (hw->iomz == NULL) {
-		HISI_DMA_ERR(hw, "Vchan was not setup, start fail!\n");
+		HISI_DMA_ERR(hw, "Vchan was not setup, start fail!");
 		return -EINVAL;
 	}
 
@@ -631,7 +631,7 @@ hisi_dma_scan_cq(struct hisi_dma_dev *hw)
 			 * status array indexed by csq_head. Only error logs
 			 * are used for prompting.
 			 */
-			HISI_DMA_ERR(hw, "invalid csq_head:%u!\n", csq_head);
+			HISI_DMA_ERR(hw, "invalid csq_head:%u!", csq_head);
 			count = 0;
 			break;
 		}
@@ -913,7 +913,7 @@ hisi_dma_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	rte_pci_device_name(&pci_dev->addr, name, sizeof(name));
 
 	if (pci_dev->mem_resource[2].addr == NULL) {
-		HISI_DMA_LOG(ERR, "%s BAR2 is NULL!\n", name);
+		HISI_DMA_LOG(ERR, "%s BAR2 is NULL!", name);
 		return -ENODEV;
 	}
 

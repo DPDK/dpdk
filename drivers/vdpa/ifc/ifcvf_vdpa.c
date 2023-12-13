@@ -536,7 +536,7 @@ notify_relay(void *arg)
 		if (nfds < 0) {
 			if (errno == EINTR)
 				continue;
-			DRV_LOG(ERR, "epoll_wait return fail\n");
+			DRV_LOG(ERR, "epoll_wait return fail");
 			return 1;
 		}
 
@@ -651,12 +651,12 @@ intr_relay(void *arg)
 				    errno == EWOULDBLOCK ||
 				    errno == EAGAIN)
 					continue;
-				DRV_LOG(ERR, "Error reading from file descriptor %d: %s\n",
+				DRV_LOG(ERR, "Error reading from file descriptor %d: %s",
 					csc_event.data.fd,
 					strerror(errno));
 				goto out;
 			} else if (nbytes == 0) {
-				DRV_LOG(ERR, "Read nothing from file descriptor %d\n",
+				DRV_LOG(ERR, "Read nothing from file descriptor %d",
 					csc_event.data.fd);
 				continue;
 			} else {
@@ -1500,7 +1500,7 @@ ifcvf_pci_get_device_type(struct rte_pci_device *pci_dev)
 	uint16_t device_id;
 
 	if (pci_device_id < 0x1000 || pci_device_id > 0x107f) {
-		DRV_LOG(ERR, "Probe device is not a virtio device\n");
+		DRV_LOG(ERR, "Probe device is not a virtio device");
 		return -1;
 	}
 
@@ -1577,7 +1577,7 @@ ifcvf_blk_get_config(int vid, uint8_t *config, uint32_t size)
 	DRV_LOG(DEBUG, "      sectors  : %u", dev_cfg->geometry.sectors);
 	DRV_LOG(DEBUG, "num_queues: 0x%08x", dev_cfg->num_queues);
 
-	DRV_LOG(DEBUG, "config: [%x] [%x] [%x] [%x] [%x] [%x] [%x] [%x]\n",
+	DRV_LOG(DEBUG, "config: [%x] [%x] [%x] [%x] [%x] [%x] [%x] [%x]",
 		config[0], config[1], config[2], config[3], config[4],
 		config[5], config[6], config[7]);
 	return 0;

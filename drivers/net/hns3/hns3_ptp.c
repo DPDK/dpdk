@@ -50,7 +50,7 @@ hns3_ptp_int_en(struct hns3_hw *hw, bool en)
 	ret = hns3_cmd_send(hw, &desc, 1);
 	if (ret)
 		hns3_err(hw,
-			"failed to %s ptp interrupt, ret = %d\n",
+			"failed to %s ptp interrupt, ret = %d",
 			en ? "enable" : "disable", ret);
 
 	return ret;

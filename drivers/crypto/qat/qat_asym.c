@@ -1520,7 +1520,7 @@ qat_asym_dev_create(struct qat_pci_device *qat_pci_dev,
 
 	snprintf(name, RTE_CRYPTODEV_NAME_MAX_LEN, "%s_%s",
 			qat_pci_dev->name, "asym");
-	QAT_LOG(DEBUG, "Creating QAT ASYM device %s\n", name);
+	QAT_LOG(DEBUG, "Creating QAT ASYM device %s", name);
 
 	if (gen_dev_ops->cryptodev_ops == NULL) {
 		QAT_LOG(ERR, "Device %s does not support asymmetric crypto",

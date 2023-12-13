@@ -569,7 +569,7 @@ qat_sym_session_configure_cipher(struct rte_cryptodev *dev,
 		ret = -ENOTSUP;
 		goto error_out;
 	default:
-		QAT_LOG(ERR, "Crypto: Undefined Cipher specified %u\n",
+		QAT_LOG(ERR, "Crypto: Undefined Cipher specified %u",
 				cipher_xform->algo);
 		ret = -EINVAL;
 		goto error_out;
@@ -1073,7 +1073,7 @@ qat_sym_session_configure_aead(struct rte_cryptodev *dev,
 						aead_xform);
 		break;
 	default:
-		QAT_LOG(ERR, "Crypto: Undefined AEAD specified %u\n",
+		QAT_LOG(ERR, "Crypto: Undefined AEAD specified %u",
 				aead_xform->algo);
 		return -EINVAL;
 	}
@@ -1676,7 +1676,7 @@ static int aes_ipsecmb_job(uint8_t *in, uint8_t *out, IMB_MGR *m,
 
 	err = imb_get_errno(m);
 	if (err)
-		QAT_LOG(ERR, "Error: %s!\n", imb_get_strerror(err));
+		QAT_LOG(ERR, "Error: %s!", imb_get_strerror(err));
 
 	return -EFAULT;
 }
@@ -2480,10 +2480,8 @@ int qat_sym_cd_auth_set(struct qat_sym_session *cdesc,
 			&state2_size, cdesc->aes_cmac);
 #endif
 		if (ret) {
-			cdesc->aes_cmac ? QAT_LOG(ERR,
-						  "(CMAC)precompute failed")
-					: QAT_LOG(ERR,
-						  "(XCBC)precompute failed");
+			QAT_LOG(ERR, "(%s)precompute failed",
+				cdesc->aes_cmac ? "CMAC" : "XCBC");
 			return -EFAULT;
 		}
 		break;

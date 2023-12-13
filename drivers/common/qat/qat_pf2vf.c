@@ -36,7 +36,7 @@ int qat_pf2vf_exch_msg(struct qat_pci_device *qat_dev,
 	}
 
 	if ((pf2vf_msg.msg_type & type_mask) != pf2vf_msg.msg_type) {
-		QAT_LOG(ERR, "PF2VF message type 0x%X out of range\n",
+		QAT_LOG(ERR, "PF2VF message type 0x%X out of range",
 			pf2vf_msg.msg_type);
 		return -EINVAL;
 	}
@@ -65,7 +65,7 @@ int qat_pf2vf_exch_msg(struct qat_pci_device *qat_dev,
 			(++count < ADF_IOV_MSG_ACK_MAX_RETRY));
 
 		if (val & ADF_PFVF_INT) {
-			QAT_LOG(ERR, "ACK not received from remote\n");
+			QAT_LOG(ERR, "ACK not received from remote");
 			return -EIO;
 		}
 

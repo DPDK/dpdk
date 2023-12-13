@@ -1292,7 +1292,7 @@ memif_connect(struct rte_eth_dev *dev)
 						PROT_READ | PROT_WRITE,
 						MAP_SHARED, mr->fd, 0);
 				if (mr->addr == MAP_FAILED) {
-					MIF_LOG(ERR, "mmap failed: %s\n",
+					MIF_LOG(ERR, "mmap failed: %s",
 						strerror(errno));
 					return -1;
 				}

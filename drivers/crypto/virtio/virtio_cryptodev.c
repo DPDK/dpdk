@@ -591,7 +591,7 @@ virtio_crypto_qp_setup(struct rte_cryptodev *dev, uint16_t queue_pair_id,
 			qp_conf->nb_descriptors, socket_id, &vq);
 	if (ret < 0) {
 		VIRTIO_CRYPTO_INIT_LOG_ERR(
-			"virtio crypto data queue initialization failed\n");
+			"virtio crypto data queue initialization failed");
 		return ret;
 	}
 

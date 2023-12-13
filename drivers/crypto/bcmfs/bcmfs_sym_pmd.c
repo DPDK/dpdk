@@ -217,7 +217,7 @@ bcmfs_sym_qp_setup(struct rte_cryptodev *cdev, uint16_t qp_id,
 	bcmfs_private->fsdev->qps_in_use[qp_id] = *qp_addr;
 
 	cdev->data->queue_pairs[qp_id] = qp;
-	BCMFS_LOG(NOTICE, "queue %d setup done\n", qp_id);
+	BCMFS_LOG(NOTICE, "queue %d setup done", qp_id);
 
 	return 0;
 }

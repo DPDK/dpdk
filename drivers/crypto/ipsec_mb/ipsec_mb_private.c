@@ -165,7 +165,7 @@ ipsec_mb_create(struct rte_vdev_device *vdev,
 
 	rte_cryptodev_pmd_probing_finish(dev);
 
-	IPSEC_MB_LOG(INFO, "IPSec Multi-buffer library version used: %s\n",
+	IPSEC_MB_LOG(INFO, "IPSec Multi-buffer library version used: %s",
 		     imb_get_version_str());
 
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
@@ -176,7 +176,7 @@ ipsec_mb_create(struct rte_vdev_device *vdev,
 
 		if (retval)
 			IPSEC_MB_LOG(ERR,
-				"IPSec Multi-buffer register MP request failed.\n");
+				"IPSec Multi-buffer register MP request failed.");
 	}
 	return retval;
 }

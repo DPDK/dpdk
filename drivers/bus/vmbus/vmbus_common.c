@@ -108,7 +108,7 @@ vmbus_probe_one_driver(struct rte_vmbus_driver *dr,
 	/* no initialization when marked as blocked, return without error */
 	if (dev->device.devargs != NULL &&
 		dev->device.devargs->policy == RTE_DEV_BLOCKED) {
-		VMBUS_LOG(INFO, "  Device is blocked, not initializing\n");
+		VMBUS_LOG(INFO, "  Device is blocked, not initializing");
 		return 1;
 	}
 

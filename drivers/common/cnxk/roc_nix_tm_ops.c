@@ -503,7 +503,7 @@ roc_nix_tm_hierarchy_disable(struct roc_nix *roc_nix)
 		/* Wait for sq entries to be flushed */
 		rc = roc_nix_tm_sq_flush_spin(sq);
 		if (rc) {
-			plt_err("Failed to drain sq, rc=%d\n", rc);
+			plt_err("Failed to drain sq, rc=%d", rc);
 			goto cleanup;
 		}
 	}

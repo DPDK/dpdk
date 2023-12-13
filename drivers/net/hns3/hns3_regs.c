@@ -355,7 +355,7 @@ hns3_get_dfx_reg_bd_num(struct hns3_hw *hw, uint32_t *bd_num_list,
 
 	ret = hns3_cmd_send(hw, desc, HNS3_GET_DFX_REG_BD_NUM_SIZE);
 	if (ret) {
-		hns3_err(hw, "fail to get dfx bd num, ret = %d.\n", ret);
+		hns3_err(hw, "fail to get dfx bd num, ret = %d.", ret);
 		return ret;
 	}
 
@@ -387,7 +387,7 @@ hns3_dfx_reg_cmd_send(struct hns3_hw *hw, struct hns3_cmd_desc *desc,
 	ret = hns3_cmd_send(hw, desc, bd_num);
 	if (ret)
 		hns3_err(hw, "fail to query dfx registers, opcode = 0x%04X, "
-			 "ret = %d.\n", opcode, ret);
+			 "ret = %d.", opcode, ret);
 
 	return ret;
 }

@@ -1493,7 +1493,7 @@ dev_init(struct dev *dev, struct plt_pci_device *pci_dev)
 		rc = plt_thread_create_control(&dev->sync.pfvf_msg_thread, name,
 				pf_vf_mbox_thread_main, dev);
 		if (rc != 0) {
-			plt_err("Failed to create thread for VF mbox handling\n");
+			plt_err("Failed to create thread for VF mbox handling");
 			goto thread_fail;
 		}
 	}

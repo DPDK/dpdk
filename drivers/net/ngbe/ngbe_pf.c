@@ -71,7 +71,7 @@ int ngbe_pf_host_init(struct rte_eth_dev *eth_dev)
 			sizeof(struct ngbe_vf_info) * vf_num, 0);
 	if (*vfinfo == NULL) {
 		PMD_INIT_LOG(ERR,
-			"Cannot allocate memory for private VF data\n");
+			"Cannot allocate memory for private VF data");
 		return -ENOMEM;
 	}
 
@@ -320,7 +320,7 @@ ngbe_disable_vf_mc_promisc(struct rte_eth_dev *eth_dev, uint32_t vf)
 
 	vmolr = rd32(hw, NGBE_POOLETHCTL(vf));
 
-	PMD_DRV_LOG(INFO, "VF %u: disabling multicast promiscuous\n", vf);
+	PMD_DRV_LOG(INFO, "VF %u: disabling multicast promiscuous", vf);
 
 	vmolr &= ~NGBE_POOLETHCTL_MCP;
 
@@ -482,7 +482,7 @@ ngbe_negotiate_vf_api(struct rte_eth_dev *eth_dev,
 		break;
 	}
 
-	PMD_DRV_LOG(ERR, "Negotiate invalid api version %u from VF %d\n",
+	PMD_DRV_LOG(ERR, "Negotiate invalid api version %u from VF %d",
 		api_version, vf);
 
 	return -1;
@@ -564,7 +564,7 @@ ngbe_set_vf_mc_promisc(struct rte_eth_dev *eth_dev,
 		if (!(fctrl & NGBE_PSRCTL_UCP)) {
 			/* VF promisc requires PF in promisc */
 			PMD_DRV_LOG(ERR,
-			       "Enabling VF promisc requires PF in promisc\n");
+			       "Enabling VF promisc requires PF in promisc");
 			return -1;
 		}
 
@@ -601,7 +601,7 @@ ngbe_set_vf_macvlan_msg(struct rte_eth_dev *dev, uint32_t vf, uint32_t *msgbuf)
 
 	if (index) {
 		if (!rte_is_valid_assigned_ether_addr(ea)) {
-			PMD_DRV_LOG(ERR, "set invalid mac vf:%d\n", vf);
+			PMD_DRV_LOG(ERR, "set invalid mac vf:%d", vf);
 			return -1;
 		}
 

@@ -1352,7 +1352,7 @@ axgbe_priority_flow_ctrl_set(struct rte_eth_dev *dev,
 	tc_num = pdata->pfc_map[pfc_conf->priority];
 
 	if (pfc_conf->priority >= pdata->hw_feat.tc_cnt) {
-		PMD_INIT_LOG(ERR, "Max supported  traffic class: %d\n",
+		PMD_INIT_LOG(ERR, "Max supported  traffic class: %d",
 				pdata->hw_feat.tc_cnt);
 	return -EINVAL;
 	}

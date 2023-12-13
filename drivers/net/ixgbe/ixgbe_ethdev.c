@@ -1154,10 +1154,7 @@ eth_ixgbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params __rte_unused)
 	}
 
 	if (hw->mac.ops.fw_recovery_mode && hw->mac.ops.fw_recovery_mode(hw)) {
-		PMD_INIT_LOG(ERR, "\nERROR: "
-			"Firmware recovery mode detected. Limiting functionality.\n"
-			"Refer to the Intel(R) Ethernet Adapters and Devices "
-			"User Guide for details on firmware recovery mode.");
+		PMD_INIT_LOG(ERR, "ERROR: Firmware recovery mode detected. Limiting functionality.");
 		return -EIO;
 	}
 
@@ -1782,7 +1779,7 @@ eth_ixgbe_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 
 	if (eth_da.nb_representor_ports > 0 &&
 	    eth_da.type != RTE_ETH_REPRESENTOR_VF) {
-		PMD_DRV_LOG(ERR, "unsupported representor type: %s\n",
+		PMD_DRV_LOG(ERR, "unsupported representor type: %s",
 			    pci_dev->device.devargs->args);
 		return -ENOTSUP;
 	}

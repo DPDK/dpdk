@@ -9,16 +9,13 @@
 
 extern int idpf_common_logtype;
 
-#define DRV_LOG_RAW(level, ...)					\
+#define DRV_LOG(level, ...)					\
 	rte_log(RTE_LOG_ ## level,				\
 		idpf_common_logtype,				\
 		RTE_FMT("%s(): "				\
 			RTE_FMT_HEAD(__VA_ARGS__,) "\n",	\
 			__func__,				\
 			RTE_FMT_TAIL(__VA_ARGS__,)))
-
-#define DRV_LOG(level, fmt, args...)		\
-	DRV_LOG_RAW(level, fmt "\n", ## args)
 
 #ifdef RTE_LIBRTE_IDPF_DEBUG_RX
 #define RX_LOG(level, ...) \

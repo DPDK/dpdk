@@ -44,11 +44,11 @@ __otx_ep_send_mbox_cmd(struct otx_ep_device *otx_ep,
 		}
 	}
 	if (count == OTX_EP_MBOX_TIMEOUT_MS) {
-		otx_ep_err("mbox send Timeout count:%d\n", count);
+		otx_ep_err("mbox send Timeout count:%d", count);
 		return OTX_EP_MBOX_TIMEOUT_MS;
 	}
 	if (rsp->s.type != OTX_EP_MBOX_TYPE_RSP_ACK) {
-		otx_ep_err("mbox received  NACK from PF\n");
+		otx_ep_err("mbox received  NACK from PF");
 		return OTX_EP_MBOX_CMD_STATUS_NACK;
 	}
 
@@ -65,7 +65,7 @@ otx_ep_send_mbox_cmd(struct otx_ep_device *otx_ep,
 
 	rte_spinlock_lock(&otx_ep->mbox_lock);
 	if (otx_ep_cmd_versions[cmd.s.opcode] > otx_ep->mbox_neg_ver) {
-		otx_ep_dbg("CMD:%d not supported in Version:%d\n", cmd.s.opcode,
+		otx_ep_dbg("CMD:%d not supported in Version:%d", cmd.s.opcode,
 			    otx_ep->mbox_neg_ver);
 		rte_spinlock_unlock(&otx_ep->mbox_lock);
 		return -EOPNOTSUPP;
@@ -92,7 +92,7 @@ otx_ep_mbox_bulk_read(struct otx_ep_device *otx_ep,
 	/* Send cmd to read data from PF */
 	ret = __otx_ep_send_mbox_cmd(otx_ep, cmd, &rsp);
 	if (ret) {
-		otx_ep_err("mbox bulk read data request failed\n");
+		otx_ep_err("mbox bulk read data request failed");
 		rte_spinlock_unlock(&otx_ep->mbox_lock);
 		return ret;
 	}
@@ -108,7 +108,7 @@ otx_ep_mbox_bulk_read(struct otx_ep_device *otx_ep,
 	while (data_len) {
 		ret = __otx_ep_send_mbox_cmd(otx_ep, cmd, &rsp);
 		if (ret) {
-			otx_ep_err("mbox bulk read data request failed\n");
+			otx_ep_err("mbox bulk read data request failed");
 			otx_ep->mbox_data_index = 0;
 			memset(otx_ep->mbox_data_buf, 0, OTX_EP_MBOX_MAX_DATA_BUF_SIZE);
 			rte_spinlock_unlock(&otx_ep->mbox_lock);
@@ -154,10 +154,10 @@ otx_ep_mbox_set_mtu(struct rte_eth_dev *eth_dev, uint16_t mtu)
 
 	ret = otx_ep_send_mbox_cmd(otx_ep, cmd, &rsp);
 	if (ret) {
-		otx_ep_err("set MTU failed\n");
+		otx_ep_err("set MTU failed");
 		return -EINVAL;
 	}
-	otx_ep_dbg("mtu set  success mtu %u\n", mtu);
+	otx_ep_dbg("mtu set  success mtu %u", mtu);
 
 	return 0;
 }
@@ -178,10 +178,10 @@ otx_ep_mbox_set_mac_addr(struct rte_eth_dev *eth_dev,
 		cmd.s_set_mac.mac_addr[i] = mac_addr->addr_bytes[i];
 	ret = otx_ep_send_mbox_cmd(otx_ep, cmd, &rsp);
 	if (ret) {
-		otx_ep_err("set MAC address failed\n");
+		otx_ep_err("set MAC address failed");
 		return -EINVAL;
 	}
-	otx_ep_dbg("%s VF MAC " RTE_ETHER_ADDR_PRT_FMT "\n",
+	otx_ep_dbg("%s VF MAC " RTE_ETHER_ADDR_PRT_FMT,
 		    __func__, RTE_ETHER_ADDR_BYTES(mac_addr));
 	rte_ether_addr_copy(mac_addr, eth_dev->data->mac_addrs);
 	return 0;
@@ -201,12 +201,12 @@ otx_ep_mbox_get_mac_addr(struct rte_eth_dev *eth_dev,
 	cmd.s_set_mac.opcode = OTX_EP_MBOX_CMD_GET_MAC_ADDR;
 	ret = otx_ep_send_mbox_cmd(otx_ep, cmd, &rsp);
 	if (ret) {
-		otx_ep_err("get MAC address failed\n");
+		otx_ep_err("get MAC address failed");
 		return -EINVAL;
 	}
 	for (i = 0; i < RTE_ETHER_ADDR_LEN; i++)
 		mac_addr->addr_bytes[i] = rsp.s_set_mac.mac_addr[i];
-	otx_ep_dbg("%s VF MAC " RTE_ETHER_ADDR_PRT_FMT "\n",
+	otx_ep_dbg("%s VF MAC " RTE_ETHER_ADDR_PRT_FMT,
 		    __func__, RTE_ETHER_ADDR_BYTES(mac_addr));
 	return 0;
 }
@@ -224,7 +224,7 @@ int otx_ep_mbox_get_link_status(struct rte_eth_dev *eth_dev,
 	cmd.s_link_status.opcode = OTX_EP_MBOX_CMD_GET_LINK_STATUS;
 	ret = otx_ep_send_mbox_cmd(otx_ep, cmd, &rsp);
 	if (ret) {
-		otx_ep_err("Get link status failed\n");
+		otx_ep_err("Get link status failed");
 		return -EINVAL;
 	}
 	*oper_up = rsp.s_link_status.status;
@@ -242,7 +242,7 @@ int otx_ep_mbox_get_link_info(struct rte_eth_dev *eth_dev,
 	ret = otx_ep_mbox_bulk_read(otx_ep, OTX_EP_MBOX_CMD_GET_LINK_INFO,
 				      (uint8_t *)&link_info, (int32_t *)&size);
 	if (ret) {
-		otx_ep_err("Get link info failed\n");
+		otx_ep_err("Get link info failed");
 		return ret;
 	}
 	link->link_status = RTE_ETH_LINK_UP;
@@ -310,12 +310,12 @@ int otx_ep_mbox_version_check(struct rte_eth_dev *eth_dev)
 	 * during initialization of PMD driver.
 	 */
 	if (ret == OTX_EP_MBOX_CMD_STATUS_NACK || rsp.s_version.version == 0) {
-		otx_ep_dbg("VF Mbox version fallback to base version from:%u\n",
+		otx_ep_dbg("VF Mbox version fallback to base version from:%u",
 			(uint32_t)cmd.s_version.version);
 		return 0;
 	}
 	otx_ep->mbox_neg_ver = (uint32_t)rsp.s_version.version;
-	otx_ep_dbg("VF Mbox version:%u Negotiated VF version with PF:%u\n",
+	otx_ep_dbg("VF Mbox version:%u Negotiated VF version with PF:%u",
 		    (uint32_t)cmd.s_version.version,
 		    (uint32_t)rsp.s_version.version);
 	return 0;

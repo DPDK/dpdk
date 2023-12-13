@@ -359,13 +359,13 @@ atl_rx_init(struct rte_eth_dev *eth_dev)
 		buff_size = RTE_ALIGN_FLOOR(buff_size, 1024);
 		if (buff_size > HW_ATL_B0_RXD_BUF_SIZE_MAX) {
 			PMD_INIT_LOG(WARNING,
-				"Port %d queue %d: mem pool buff size is too big\n",
+				"Port %d queue %d: mem pool buff size is too big",
 				rxq->port_id, rxq->queue_id);
 			buff_size = HW_ATL_B0_RXD_BUF_SIZE_MAX;
 		}
 		if (buff_size < 1024) {
 			PMD_INIT_LOG(ERR,
-				"Port %d queue %d: mem pool buff size is too small\n",
+				"Port %d queue %d: mem pool buff size is too small",
 				rxq->port_id, rxq->queue_id);
 			return -EINVAL;
 		}

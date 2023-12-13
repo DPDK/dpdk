@@ -230,7 +230,7 @@ fetch_acc100_config(struct rte_bbdev *dev)
 	}
 
 	rte_bbdev_log_debug(
-			"%s Config LLR SIGN IN/OUT %s %s QG %u %u %u %u AQ %u %u %u %u Len %u %u %u %u\n",
+			"%s Config LLR SIGN IN/OUT %s %s QG %u %u %u %u AQ %u %u %u %u Len %u %u %u %u",
 			(d->pf_device) ? "PF" : "VF",
 			(acc_conf->input_pos_llr_1_bit) ? "POS" : "NEG",
 			(acc_conf->output_pos_llr_1_bit) ? "POS" : "NEG",
@@ -1229,7 +1229,7 @@ acc100_fcw_ld_fill(struct rte_bbdev_dec_op *op, struct acc_fcw_ld *fcw,
 			harq_in_length = RTE_ALIGN_FLOOR(harq_in_length, ACC100_HARQ_ALIGN_COMP);
 
 		if ((harq_layout[harq_index].offset > 0) && harq_prun) {
-			rte_bbdev_log_debug("HARQ IN offset unexpected for now\n");
+			rte_bbdev_log_debug("HARQ IN offset unexpected for now");
 			fcw->hcin_size0 = harq_layout[harq_index].size0;
 			fcw->hcin_offset = harq_layout[harq_index].offset;
 			fcw->hcin_size1 = harq_in_length - harq_layout[harq_index].offset;
@@ -2890,7 +2890,7 @@ harq_loopback(struct acc_queue *q, struct rte_bbdev_dec_op *op,
 	uint32_t harq_index;
 
 	if (harq_in_length == 0) {
-		rte_bbdev_log(ERR, "Loopback of invalid null size\n");
+		rte_bbdev_log(ERR, "Loopback of invalid null size");
 		return -EINVAL;
 	}
 
@@ -2928,7 +2928,7 @@ harq_loopback(struct acc_queue *q, struct rte_bbdev_dec_op *op,
 	fcw->hcin_en = 1;
 	fcw->hcout_en = 1;
 
-	rte_bbdev_log(DEBUG, "Loopback IN %d Index %d offset %d length %d %d\n",
+	rte_bbdev_log(DEBUG, "Loopback IN %d Index %d offset %d length %d %d",
 			ddr_mem_in, harq_index,
 			harq_layout[harq_index].offset, harq_in_length,
 			harq_dma_length_in);
@@ -2944,7 +2944,7 @@ harq_loopback(struct acc_queue *q, struct rte_bbdev_dec_op *op,
 		fcw->hcin_size0 = harq_in_length;
 	}
 	harq_layout[harq_index].val = 0;
-	rte_bbdev_log(DEBUG, "Loopback FCW Config %d %d %d\n",
+	rte_bbdev_log(DEBUG, "Loopback FCW Config %d %d %d",
 			fcw->hcin_size0, fcw->hcin_offset, fcw->hcin_size1);
 	fcw->hcout_size0 = harq_in_length;
 	fcw->hcin_decomp_mode = h_comp;
@@ -3691,7 +3691,7 @@ acc100_enqueue_ldpc_dec_cb(struct rte_bbdev_queue_data *q_data,
 
 		if (i > 0)
 			same_op = cmp_ldpc_dec_op(&ops[i-1]);
-		rte_bbdev_log(INFO, "Op %d %d %d %d %d %d %d %d %d %d %d %d\n",
+		rte_bbdev_log(INFO, "Op %d %d %d %d %d %d %d %d %d %d %d %d",
 			i, ops[i]->ldpc_dec.op_flags, ops[i]->ldpc_dec.rv_index,
 			ops[i]->ldpc_dec.iter_max, ops[i]->ldpc_dec.iter_count,
 			ops[i]->ldpc_dec.basegraph, ops[i]->ldpc_dec.z_c,
@@ -3808,7 +3808,7 @@ dequeue_enc_one_op_cb(struct acc_queue *q, struct rte_bbdev_enc_op **ref_op,
 		return -1;
 
 	rsp.val = atom_desc.rsp.val;
-	rte_bbdev_log_debug("Resp. desc %p: %x num %d\n", desc, rsp.val, desc->req.numCBs);
+	rte_bbdev_log_debug("Resp. desc %p: %x num %d", desc, rsp.val, desc->req.numCBs);
 
 	/* Dequeue */
 	op = desc->req.op_addr;
@@ -3885,7 +3885,7 @@ dequeue_enc_one_op_tb(struct acc_queue *q, struct rte_bbdev_enc_op **ref_op,
 		atom_desc.atom_hdr = __atomic_load_n((uint64_t *)desc,
 				__ATOMIC_RELAXED);
 		rsp.val = atom_desc.rsp.val;
-		rte_bbdev_log_debug("Resp. desc %p: %x descs %d cbs %d\n",
+		rte_bbdev_log_debug("Resp. desc %p: %x descs %d cbs %d",
 				desc, rsp.val, descs_in_tb, desc->req.numCBs);
 
 		op->status |= ((rsp.dma_err) ? (1 << RTE_BBDEV_DRV_ERROR) : 0);
@@ -3981,7 +3981,7 @@ dequeue_ldpc_dec_one_op_cb(struct rte_bbdev_queue_data *q_data,
 		return -1;
 
 	rsp.val = atom_desc.rsp.val;
-	rte_bbdev_log_debug("Resp. desc %p: %x\n", desc, rsp.val);
+	rte_bbdev_log_debug("Resp. desc %p: %x", desc, rsp.val);
 
 	/* Dequeue */
 	op = desc->req.op_addr;
@@ -4060,7 +4060,7 @@ dequeue_dec_one_op_tb(struct acc_queue *q, struct rte_bbdev_dec_op **ref_op,
 		atom_desc.atom_hdr = __atomic_load_n((uint64_t *)desc,
 				__ATOMIC_RELAXED);
 		rsp.val = atom_desc.rsp.val;
-		rte_bbdev_log_debug("Resp. desc %p: %x r %d c %d\n",
+		rte_bbdev_log_debug("Resp. desc %p: %x r %d c %d",
 						desc, rsp.val, cb_idx, cbs_in_tb);
 
 		op->status |= ((rsp.input_err) ? (1 << RTE_BBDEV_DATA_ERROR) : 0);
@@ -4797,7 +4797,7 @@ acc100_configure(const char *dev_name, struct rte_acc_conf *conf)
 	}
 
 	if (aram_address > ACC100_WORDS_IN_ARAM_SIZE) {
-		rte_bbdev_log(ERR, "ARAM Configuration not fitting %d %d\n",
+		rte_bbdev_log(ERR, "ARAM Configuration not fitting %d %d",
 				aram_address, ACC100_WORDS_IN_ARAM_SIZE);
 		return -EINVAL;
 	}

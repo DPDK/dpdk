@@ -702,7 +702,7 @@ selection_logic(struct bond_dev_private *internals, uint16_t member_id)
 		ret = rte_eth_link_get_nowait(members[i], &link_info);
 		if (ret < 0) {
 			RTE_BOND_LOG(ERR,
-				"Member (port %u) link get failed: %s\n",
+				"Member (port %u) link get failed: %s",
 				members[i], rte_strerror(-ret));
 			continue;
 		}
@@ -879,7 +879,7 @@ bond_mode_8023ad_periodic_cb(void *arg)
 		ret = rte_eth_link_get_nowait(member_id, &link_info);
 		if (ret < 0) {
 			RTE_BOND_LOG(ERR,
-				"Member (port %u) link get failed: %s\n",
+				"Member (port %u) link get failed: %s",
 				member_id, rte_strerror(-ret));
 		}
 

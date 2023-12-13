@@ -766,7 +766,7 @@ dlb2_xstats_update(struct dlb2_eventdev *dlb2,
 			fn = get_queue_stat;
 			break;
 		default:
-			DLB2_LOG_ERR("Unexpected xstat fn_id %d\n", xs->fn_id);
+			DLB2_LOG_ERR("Unexpected xstat fn_id %d", xs->fn_id);
 			goto invalid_value;
 		}
 
@@ -827,7 +827,7 @@ dlb2_eventdev_xstats_get_by_name(const struct rte_eventdev *dev,
 				fn = get_queue_stat;
 				break;
 			default:
-				DLB2_LOG_ERR("Unexpected xstat fn_id %d\n",
+				DLB2_LOG_ERR("Unexpected xstat fn_id %d",
 					  xs->fn_id);
 				return (uint64_t)-1;
 			}
@@ -865,7 +865,7 @@ dlb2_xstats_reset_range(struct dlb2_eventdev *dlb2, uint32_t start,
 			fn = get_queue_stat;
 			break;
 		default:
-			DLB2_LOG_ERR("Unexpected xstat fn_id %d\n", xs->fn_id);
+			DLB2_LOG_ERR("Unexpected xstat fn_id %d", xs->fn_id);
 			return;
 		}
 

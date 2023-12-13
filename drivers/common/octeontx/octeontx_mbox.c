@@ -264,7 +264,7 @@ octeontx_start_domain(void)
 
 	result = octeontx_mbox_send(&hdr, NULL, 0, NULL, 0);
 	if (result != 0) {
-		mbox_log_err("Could not start domain. Err=%d. FuncErr=%d\n",
+		mbox_log_err("Could not start domain. Err=%d. FuncErr=%d",
 			     result, hdr.res_code);
 		result = -EINVAL;
 	}
@@ -288,7 +288,7 @@ octeontx_check_mbox_version(struct mbox_intf_ver *app_intf_ver,
 				    sizeof(struct mbox_intf_ver),
 				    &kernel_intf_ver, sizeof(kernel_intf_ver));
 	if (result != sizeof(kernel_intf_ver)) {
-		mbox_log_err("Could not send interface version. Err=%d. FuncErr=%d\n",
+		mbox_log_err("Could not send interface version. Err=%d. FuncErr=%d",
 			     result, hdr.res_code);
 		result = -EINVAL;
 	}
