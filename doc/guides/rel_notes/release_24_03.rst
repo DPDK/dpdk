@@ -106,6 +106,10 @@ New Features
   * Added support for Atomic Rules' TK242 packet-capture family of devices
     with PCI IDs: ``0x1024, 0x1025, 0x1026``.
 
+* **Updated Marvell cnxk net driver.**
+
+  * Added support for ``RTE_FLOW_ITEM_TYPE_PPPOES`` flow item.
+
 * **Updated Marvell OCTEON EP driver.**
 
   * Optimized mbuf rearm sequence.
