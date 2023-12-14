@@ -11,13 +11,11 @@
 #include <ctype.h>
 #include <sys/queue.h>
 
-#ifdef RTE_LIB_CMDLINE
 #include <cmdline_rdline.h>
 #include <cmdline_parse.h>
 #include <cmdline_socket.h>
 #include <cmdline.h>
 extern cmdline_parse_ctx_t main_ctx[];
-#endif
 
 #include <rte_memory.h>
 #include <rte_eal.h>
@@ -106,12 +104,10 @@ int last_test_result;
 int
 main(int argc, char **argv)
 {
-#ifdef RTE_LIB_CMDLINE
 	struct cmdline *cl;
 	char *tests[argc]; /* store an array of tests to run */
 	int test_count = 0;
 	int i;
-#endif
 	char *extra_args;
 	int ret;
 
@@ -183,7 +179,6 @@ main(int argc, char **argv)
 				"HPET is not enabled, using TSC as default timer\n");
 
 
-#ifdef RTE_LIB_CMDLINE
 	char *dpdk_test = getenv("DPDK_TEST");
 
 	if (dpdk_test && strlen(dpdk_test) > 0)
@@ -259,7 +254,6 @@ end_of_cmd:
 		cmdline_interact(cl);
 		cmdline_stdin_exit(cl);
 	}
-#endif
 	ret = 0;
 
 out:
