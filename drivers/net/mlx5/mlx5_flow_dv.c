@@ -1664,6 +1664,16 @@ mlx5_flow_field_id_to_modify_info
 		else
 			info[idx].offset = off_be;
 		break;
+	case RTE_FLOW_FIELD_IPV4_IHL:
+		MLX5_ASSERT(data->offset + width <= 4);
+		off_be = 4 - (data->offset + width);
+		info[idx] = (struct field_modify_info){1, 0,
+					MLX5_MODI_OUT_IPV4_IHL};
+		if (mask)
+			mask[idx] = flow_modify_info_mask_8(width, off_be);
+		else
+			info[idx].offset = off_be;
+		break;
 	case RTE_FLOW_FIELD_IPV4_DSCP:
 		MLX5_ASSERT(data->offset + width <= 6);
 		off_be = 6 - (data->offset + width);
@@ -1671,6 +1681,16 @@ mlx5_flow_field_id_to_modify_info
 					MLX5_MODI_OUT_IP_DSCP};
 		if (mask)
 			mask[idx] = flow_modify_info_mask_8(width, off_be);
+		else
+			info[idx].offset = off_be;
+		break;
+	case RTE_FLOW_FIELD_IPV4_TOTAL_LEN:
+		MLX5_ASSERT(data->offset + width <= 16);
+		off_be = 16 - (data->offset + width);
+		info[idx] = (struct field_modify_info){2, 0,
+					MLX5_MODI_OUT_IPV4_TOTAL_LEN};
+		if (mask)
+			mask[idx] = flow_modify_info_mask_16(width, off_be);
 		else
 			info[idx].offset = off_be;
 		break;
@@ -1711,6 +1731,16 @@ mlx5_flow_field_id_to_modify_info
 					MLX5_MODI_OUT_IP_DSCP};
 		if (mask)
 			mask[idx] = flow_modify_info_mask_8(width, off_be);
+		else
+			info[idx].offset = off_be;
+		break;
+	case RTE_FLOW_FIELD_IPV6_PAYLOAD_LEN:
+		MLX5_ASSERT(data->offset + width <= 16);
+		off_be = 16 - (data->offset + width);
+		info[idx] = (struct field_modify_info){2, 0,
+					MLX5_MODI_OUT_IPV6_PAYLOAD_LEN};
+		if (mask)
+			mask[idx] = flow_modify_info_mask_16(width, off_be);
 		else
 			info[idx].offset = off_be;
 		break;
@@ -1857,6 +1887,16 @@ mlx5_flow_field_id_to_modify_info
 					MLX5_MODI_OUT_TCP_FLAGS};
 		if (mask)
 			mask[idx] = flow_modify_info_mask_16(width, off_be);
+		else
+			info[idx].offset = off_be;
+		break;
+	case RTE_FLOW_FIELD_TCP_DATA_OFFSET:
+		MLX5_ASSERT(data->offset + width <= 4);
+		off_be = 4 - (data->offset + width);
+		info[idx] = (struct field_modify_info){1, 0,
+					MLX5_MODI_OUT_TCP_DATA_OFFSET};
+		if (mask)
+			mask[idx] = flow_modify_info_mask_8(width, off_be);
 		else
 			info[idx].offset = off_be;
 		break;
