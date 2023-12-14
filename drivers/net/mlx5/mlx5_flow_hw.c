@@ -1109,7 +1109,8 @@ flow_hw_should_insert_nop(const struct mlx5_hw_modify_header_action *mhdr,
 		if (last_type == MLX5_MODIFICATION_TYPE_SET ||
 		    last_type == MLX5_MODIFICATION_TYPE_ADD)
 			should_insert = new_cmd.field == last_cmd.field;
-		else if (last_type == MLX5_MODIFICATION_TYPE_COPY)
+		else if (last_type == MLX5_MODIFICATION_TYPE_COPY ||
+			 last_type == MLX5_MODIFICATION_TYPE_ADD_FIELD)
 			should_insert = new_cmd.field == last_cmd.dst_field;
 		else if (last_type == MLX5_MODIFICATION_TYPE_NOP)
 			should_insert = false;
@@ -1117,11 +1118,13 @@ flow_hw_should_insert_nop(const struct mlx5_hw_modify_header_action *mhdr,
 			MLX5_ASSERT(false); /* Other types are not supported. */
 		break;
 	case MLX5_MODIFICATION_TYPE_COPY:
+	case MLX5_MODIFICATION_TYPE_ADD_FIELD:
 		if (last_type == MLX5_MODIFICATION_TYPE_SET ||
 		    last_type == MLX5_MODIFICATION_TYPE_ADD)
 			should_insert = (new_cmd.field == last_cmd.field ||
 					 new_cmd.dst_field == last_cmd.field);
-		else if (last_type == MLX5_MODIFICATION_TYPE_COPY)
+		else if (last_type == MLX5_MODIFICATION_TYPE_COPY ||
+			 last_type == MLX5_MODIFICATION_TYPE_ADD_FIELD)
 			should_insert = (new_cmd.field == last_cmd.dst_field ||
 					 new_cmd.dst_field == last_cmd.dst_field);
 		else if (last_type == MLX5_MODIFICATION_TYPE_NOP)
@@ -1271,7 +1274,8 @@ flow_hw_modify_field_compile(struct rte_eth_dev *dev,
 			item.spec = &value;
 		}
 	} else {
-		type = MLX5_MODIFICATION_TYPE_COPY;
+		type = conf->operation == RTE_FLOW_MODIFY_SET ?
+		       MLX5_MODIFICATION_TYPE_COPY : MLX5_MODIFICATION_TYPE_ADD_FIELD;
 		/* For COPY fill the destination field (dcopy) without mask. */
 		mlx5_flow_field_id_to_modify_info(&conf->dst, dcopy, NULL,
 						  conf->width, dev,

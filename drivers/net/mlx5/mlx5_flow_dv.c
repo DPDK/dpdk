@@ -389,6 +389,7 @@ flow_dv_convert_modify_action(struct rte_flow_item *item,
 	uint32_t i = resource->actions_num;
 	struct mlx5_modification_cmd *actions = resource->actions;
 	uint32_t carry_b = 0;
+	bool to_dest;
 
 	/*
 	 * The item and mask are provided in big-endian format.
@@ -397,6 +398,8 @@ flow_dv_convert_modify_action(struct rte_flow_item *item,
 	 */
 	MLX5_ASSERT(item->mask);
 	MLX5_ASSERT(field->size);
+	to_dest = type == MLX5_MODIFICATION_TYPE_COPY ||
+		  type == MLX5_MODIFICATION_TYPE_ADD_FIELD;
 	do {
 		uint32_t size_b;
 		uint32_t off_b;
@@ -416,7 +419,7 @@ flow_dv_convert_modify_action(struct rte_flow_item *item,
 			++field;
 			continue;
 		}
-		if (type == MLX5_MODIFICATION_TYPE_COPY && field->is_flex) {
+		if (to_dest && field->is_flex) {
 			off_b = 32 - field->shift + carry_b - field->size * CHAR_BIT;
 			size_b = field->size * CHAR_BIT - carry_b;
 		} else {
@@ -433,7 +436,7 @@ flow_dv_convert_modify_action(struct rte_flow_item *item,
 			.length = (size_b == sizeof(uint32_t) * CHAR_BIT) ?
 				0 : size_b,
 		};
-		if (type == MLX5_MODIFICATION_TYPE_COPY) {
+		if (to_dest) {
 			MLX5_ASSERT(dest);
 			actions[i].dst_field = dest->id;
 			actions[i].dst_offset =
@@ -476,11 +479,11 @@ flow_dv_convert_modify_action(struct rte_flow_item *item,
 		}
 		/* Convert entire record to expected big-endian format. */
 		actions[i].data0 = rte_cpu_to_be_32(actions[i].data0);
-		if ((type != MLX5_MODIFICATION_TYPE_COPY ||
+		if ((!to_dest ||
 		     dest->id != (enum mlx5_modification_field)UINT32_MAX) &&
 		    field->id != (enum mlx5_modification_field)UINT32_MAX)
 			++i;
-		if (next_dest && type == MLX5_MODIFICATION_TYPE_COPY)
+		if (next_dest && to_dest)
 			++dest;
 		if (next_field)
 			++field;
