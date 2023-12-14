@@ -1804,6 +1804,7 @@ ice_pf_setup(struct ice_pf *pf)
 	}
 
 	pf->main_vsi = vsi;
+	rte_spinlock_init(&pf->link_lock);
 
 	return 0;
 }
@@ -3621,17 +3622,31 @@ ice_rxq_intr_setup(struct rte_eth_dev *dev)
 	return 0;
 }
 
+static enum ice_status
+ice_get_link_info_safe(struct ice_pf *pf, bool ena_lse,
+		       struct ice_link_status *link)
+{
+	struct ice_hw *hw = ICE_PF_TO_HW(pf);
+	int ret;
+
+	rte_spinlock_lock(&pf->link_lock);
+
+	ret = ice_aq_get_link_info(hw->port_info, ena_lse, link, NULL);
+
+	rte_spinlock_unlock(&pf->link_lock);
+
+	return ret;
+}
+
 static void
 ice_get_init_link_status(struct rte_eth_dev *dev)
 {
-	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct ice_pf *pf = ICE_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	bool enable_lse = dev->data->dev_conf.intr_conf.lsc ? true : false;
 	struct ice_link_status link_status;
 	int ret;
 
-	ret = ice_aq_get_link_info(hw->port_info, enable_lse,
-				   &link_status, NULL);
+	ret = ice_get_link_info_safe(pf, enable_lse, &link_status);
 	if (ret != ICE_SUCCESS) {
 		PMD_DRV_LOG(ERR, "Failed to get link info");
 		pf->init_link_up = false;
@@ -3996,7 +4011,7 @@ ice_link_update(struct rte_eth_dev *dev, int wait_to_complete)
 {
 #define CHECK_INTERVAL 50  /* 50ms */
 #define MAX_REPEAT_TIME 40  /* 2s (40 * 50ms) in total */
-	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct ice_pf *pf = ICE_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	struct ice_link_status link_status;
 	struct rte_eth_link link, old;
 	int status;
@@ -4010,8 +4025,7 @@ ice_link_update(struct rte_eth_dev *dev, int wait_to_complete)
 
 	do {
 		/* Get link status information from hardware */
-		status = ice_aq_get_link_info(hw->port_info, enable_lse,
-					      &link_status, NULL);
+		status = ice_get_link_info_safe(pf, enable_lse, &link_status);
 		if (status != ICE_SUCCESS) {
 			link.link_speed = RTE_ETH_SPEED_NUM_100M;
 			link.link_duplex = RTE_ETH_LINK_FULL_DUPLEX;
