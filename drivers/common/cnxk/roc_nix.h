@@ -755,6 +755,8 @@ int __roc_api roc_nix_tm_mark_config(struct roc_nix *roc_nix,
 				     int mark_red);
 uint64_t __roc_api roc_nix_tm_mark_format_get(struct roc_nix *roc_nix,
 					      uint64_t *flags);
+int __roc_api roc_nix_tm_egress_link_cfg_set(struct roc_nix *roc_nix, uint64_t dst_pf_func,
+					     bool enable);
 
 /* Ingress Policer API */
 int __roc_api roc_nix_bpf_timeunit_get(struct roc_nix *roc_nix,

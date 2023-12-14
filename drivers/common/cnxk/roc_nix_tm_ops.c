@@ -1316,3 +1316,73 @@ roc_nix_tm_root_has_sp(struct roc_nix *roc_nix)
 		return false;
 	return true;
 }
+
+static inline struct nix *
+pf_func_to_nix_get(uint16_t pf_func)
+{
+	struct roc_nix *roc_nix_tmp = NULL;
+	struct roc_nix_list *nix_list;
+
+	nix_list = roc_idev_nix_list_get();
+	if (nix_list == NULL)
+		return NULL;
+
+	/* Find the NIX of given pf_func */
+	TAILQ_FOREACH(roc_nix_tmp, nix_list, next) {
+		struct nix *nix = roc_nix_to_nix_priv(roc_nix_tmp);
+
+		if (nix->dev.pf_func == pf_func)
+			return nix;
+	}
+
+	return NULL;
+}
+
+int
+roc_nix_tm_egress_link_cfg_set(struct roc_nix *roc_nix, uint64_t dst_pf_func, bool enable)
+{
+	struct nix *src_nix = roc_nix_to_nix_priv(roc_nix), *dst_nix;
+	struct mbox *mbox = (&src_nix->dev)->mbox;
+	struct nix_txschq_config *req = NULL;
+	struct nix_tm_node_list *list;
+	struct nix_tm_node *node;
+	int rc = 0, k;
+
+	dst_nix = pf_func_to_nix_get(dst_pf_func);
+	if (!dst_nix)
+		return -EINVAL;
+
+	if (dst_nix == src_nix)
+		return 0;
+
+	list = nix_tm_node_list(src_nix, src_nix->tm_tree);
+	TAILQ_FOREACH(node, list, node) {
+		if (node->hw_lvl != src_nix->tm_link_cfg_lvl)
+			continue;
+
+		if (!(node->flags & NIX_TM_NODE_HWRES))
+			continue;
+
+		/* Allocating TL3 request */
+		req = mbox_alloc_msg_nix_txschq_cfg(mbox_get(mbox));
+		req->lvl = src_nix->tm_link_cfg_lvl;
+		k = 0;
+
+		/* Enable PFC/pause on the identified TL3 */
+		req->reg[k] = NIX_AF_TL3_TL2X_LINKX_CFG(node->hw_id, dst_nix->tx_link);
+		if (enable)
+			req->regval[k] |= BIT_ULL(12);
+		else
+			req->regval[k] &= ~(BIT_ULL(12));
+		req->regval_mask[k] = ~(BIT_ULL(12));
+		k++;
+
+		req->num_regs = k;
+		rc = mbox_process(mbox);
+		mbox_put(mbox);
+		if (rc)
+			goto err;
+	}
+err:
+	return rc;
+}

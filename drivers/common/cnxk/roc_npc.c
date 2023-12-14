@@ -1595,6 +1595,21 @@ roc_npc_flow_create(struct roc_npc *roc_npc, const struct roc_npc_attr *attr,
 		goto err_exit;
 	}
 
+	/* If Egress mirror requested then enable TL3_TL2_LINK_CFG */
+	if (flow->is_sampling_rule && (flow->nix_intf == NIX_INTF_TX)) {
+		if (flow->mcast_pf_funcs[0] == npc->pf_func)
+			rc = roc_nix_tm_egress_link_cfg_set(roc_npc->roc_nix,
+							    flow->mcast_pf_funcs[1], true);
+		else
+			rc = roc_nix_tm_egress_link_cfg_set(roc_npc->roc_nix,
+							    flow->mcast_pf_funcs[0], true);
+		if (rc) {
+			plt_err("Adding egress mirror failed");
+			*errcode = rc;
+			goto err_exit;
+		}
+	}
+
 	rc = npc_rss_action_program(roc_npc, actions, flow);
 	if (rc != 0) {
 		*errcode = rc;
@@ -1706,6 +1721,17 @@ roc_npc_flow_destroy(struct roc_npc *roc_npc, struct roc_npc_flow *flow)
 			return rc;
 	}
 
+	/* Disable egress mirror rule */
+	if (flow->is_sampling_rule && (flow->nix_intf == NIX_INTF_TX)) {
+		if (flow->mcast_pf_funcs[0] == npc->pf_func)
+			rc = roc_nix_tm_egress_link_cfg_set(roc_npc->roc_nix,
+							    flow->mcast_pf_funcs[1], false);
+		else
+			rc = roc_nix_tm_egress_link_cfg_set(roc_npc->roc_nix,
+							    flow->mcast_pf_funcs[0], false);
+		if (rc)
+			plt_err("Failed to remove egress mirror rule");
+	}
 	if (flow->is_sampling_rule)
 		roc_nix_mcast_list_free(npc->mbox, flow->mcast_grp_index);
 
