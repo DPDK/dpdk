@@ -296,6 +296,7 @@ iavf_dev_watchdog(void *cb_arg)
 			PMD_DRV_LOG(INFO, "VF \"%s\" reset has completed",
 				adapter->vf.eth_dev->data->name);
 			adapter->vf.vf_reset = false;
+			iavf_set_no_poll(adapter, false);
 		}
 	/* If not in reset then poll vfr_inprogress register for VFLR event */
 	} else {
@@ -308,6 +309,7 @@ iavf_dev_watchdog(void *cb_arg)
 
 			/* enter reset state with VFLR event */
 			adapter->vf.vf_reset = true;
+			iavf_set_no_poll(adapter, false);
 			adapter->vf.link_up = false;
 
 			iavf_dev_event_post(adapter->vf.eth_dev, RTE_ETH_EVENT_INTR_RESET,
@@ -2916,8 +2918,10 @@ iavf_dev_close(struct rte_eth_dev *dev)
 	 * effect.
 	 */
 out:
-	if (vf->vf_reset && !rte_pci_set_bus_master(pci_dev, true))
+	if (vf->vf_reset && !rte_pci_set_bus_master(pci_dev, true)) {
 		vf->vf_reset = false;
+		iavf_set_no_poll(adapter, false);
+	}
 
 	/* disable watchdog */
 	iavf_dev_watchdog_disable(adapter);
@@ -2948,6 +2952,8 @@ static int
 iavf_dev_reset(struct rte_eth_dev *dev)
 {
 	int ret;
+	struct iavf_adapter *adapter =
+		IAVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 	struct iavf_hw *hw = IAVF_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
 
@@ -2962,6 +2968,7 @@ iavf_dev_reset(struct rte_eth_dev *dev)
 		return ret;
 	}
 	vf->vf_reset = false;
+	iavf_set_no_poll(adapter, false);
 
 	PMD_DRV_LOG(DEBUG, "Start dev_reset ...\n");
 	ret = iavf_dev_uninit(dev);
@@ -2977,10 +2984,13 @@ iavf_dev_reset(struct rte_eth_dev *dev)
 int
 iavf_handle_hw_reset(struct rte_eth_dev *dev)
 {
+	struct iavf_adapter *adapter =
+		IAVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
 	int ret;
 
 	vf->in_reset_recovery = true;
+	iavf_set_no_poll(adapter, false);
 
 	ret = iavf_dev_reset(dev);
 	if (ret)
@@ -2998,14 +3008,23 @@ iavf_handle_hw_reset(struct rte_eth_dev *dev)
 	if (ret)
 		goto error;
 	dev->data->dev_started = 1;
-
-	vf->in_reset_recovery = false;
-	return 0;
+	goto exit;
 
 error:
 	PMD_DRV_LOG(DEBUG, "RESET recover with error code=%d\n", ret);
+exit:
 	vf->in_reset_recovery = false;
+	iavf_set_no_poll(adapter, false);
 	return ret;
+}
+
+void
+iavf_set_no_poll(struct iavf_adapter *adapter, bool link_change)
+{
+	struct iavf_info *vf = &adapter->vf;
+
+	adapter->no_poll = (link_change & !vf->link_up) ||
+		vf->vf_reset || vf->in_reset_recovery;
 }
 
 static int

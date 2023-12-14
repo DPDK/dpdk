@@ -273,20 +273,18 @@ iavf_read_msg_from_pf(struct iavf_adapter *adapter, uint16_t buf_len,
 					iavf_dev_watchdog_enable(adapter);
 			}
 			if (adapter->devargs.no_poll_on_link_down) {
-				if (vf->link_up && adapter->no_poll) {
-					adapter->no_poll = false;
-					PMD_DRV_LOG(DEBUG, "VF no poll turned off");
-				}
-				if (!vf->link_up) {
-					adapter->no_poll = true;
+				iavf_set_no_poll(adapter, true);
+				if (adapter->no_poll)
 					PMD_DRV_LOG(DEBUG, "VF no poll turned on");
-				}
+				else
+					PMD_DRV_LOG(DEBUG, "VF no poll turned off");
 			}
 			PMD_DRV_LOG(INFO, "Link status update:%s",
 					vf->link_up ? "up" : "down");
 			break;
 		case VIRTCHNL_EVENT_RESET_IMPENDING:
 			vf->vf_reset = true;
+			iavf_set_no_poll(adapter, false);
 			PMD_DRV_LOG(INFO, "VF is resetting");
 			break;
 		case VIRTCHNL_EVENT_PF_DRIVER_CLOSE:
@@ -462,6 +460,7 @@ iavf_handle_pf_event_msg(struct rte_eth_dev *dev, uint8_t *msg,
 		vf->link_up = false;
 		if (!vf->vf_reset) {
 			vf->vf_reset = true;
+			iavf_set_no_poll(adapter, false);
 			iavf_dev_event_post(dev, RTE_ETH_EVENT_INTR_RESET,
 				NULL, 0);
 		}
@@ -485,14 +484,11 @@ iavf_handle_pf_event_msg(struct rte_eth_dev *dev, uint8_t *msg,
 				iavf_dev_watchdog_enable(adapter);
 		}
 		if (adapter->devargs.no_poll_on_link_down) {
-			if (vf->link_up && adapter->no_poll) {
-				adapter->no_poll = false;
-				PMD_DRV_LOG(DEBUG, "VF no poll turned off");
-			}
-			if (!vf->link_up) {
-				adapter->no_poll = true;
+			iavf_set_no_poll(adapter, true);
+			if (adapter->no_poll)
 				PMD_DRV_LOG(DEBUG, "VF no poll turned on");
-			}
+			else
+				PMD_DRV_LOG(DEBUG, "VF no poll turned off");
 		}
 		iavf_dev_event_post(dev, RTE_ETH_EVENT_INTR_LSC, NULL, 0);
 		break;
