@@ -814,6 +814,7 @@ nfp_uninit_app_fw_flower(struct nfp_pf_dev *pf_dev)
 	rte_free(app_fw_flower->pf_hw);
 	nfp_mtr_priv_uninit(pf_dev);
 	nfp_flow_priv_uninit(pf_dev);
+	rte_eth_switch_domain_free(app_fw_flower->switch_domain_id);
 	rte_free(app_fw_flower);
 }
 
