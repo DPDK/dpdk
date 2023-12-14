@@ -548,6 +548,10 @@ struct ice_pf {
 	uint64_t rss_hf;
 	struct ice_tm_conf tm_conf;
 	uint16_t outer_ethertype;
+	/* lock prevent race condition between lsc interrupt handler
+	 * and link status update during dev_start.
+	 */
+	rte_spinlock_t link_lock;
 };
 
 #define ICE_MAX_QUEUE_NUM  2048
