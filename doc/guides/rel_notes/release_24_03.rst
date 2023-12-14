@@ -109,6 +109,7 @@ New Features
 * **Updated Marvell cnxk net driver.**
 
   * Added support for ``RTE_FLOW_ITEM_TYPE_PPPOES`` flow item.
+  * Added support for ``RTE_FLOW_ACTION_TYPE_SAMPLE`` flow item.
 
 * **Updated Marvell OCTEON EP driver.**
 
