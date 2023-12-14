@@ -525,6 +525,11 @@ npc_parse_lb(struct npc_parse_state *pst)
 		info.len = pattern->size;
 		lt = NPC_LT_LB_STAG_QINQ;
 		lflags = NPC_F_STAG_CTAG;
+	} else if (pst->pattern->type == ROC_NPC_ITEM_TYPE_PPPOES) {
+		info.hw_mask = NULL;
+		info.len = pattern->size;
+		info.hw_hdr_len = 2;
+		lt = NPC_LT_LB_PPPOE;
 	} else if (pst->pattern->type == ROC_NPC_ITEM_TYPE_RAW) {
 		raw_spec = pst->pattern->spec;
 		if (raw_spec->relative)
