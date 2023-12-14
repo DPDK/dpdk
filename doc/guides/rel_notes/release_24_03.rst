@@ -71,6 +71,11 @@ New Features
   Added new function ``rte_eth_find_rss_algo``
   to get RSS hash algorithm by its name.
 
+* **Added flow matching items.**
+
+  * Added ``RTE_FLOW_ITEM_TYPE_RANDOM`` to match a random value,
+    and ``RTE_FLOW_FIELD_RANDOM`` to represent it with a field ID.
+
 * **Updated Marvell cnxk crypto driver.**
 
   * Added support for Rx inject in crypto_cn10k.
