@@ -124,6 +124,7 @@ New Features
 * **Updated NVIDIA mlx5 driver.**
 
   * Added support for comparing result between packet fields or value.
+  * Added support for accumulating value of field into another one.
 
 * **Updated Marvell cnxk crypto driver.**
 

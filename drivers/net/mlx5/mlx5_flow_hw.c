@@ -4957,6 +4957,33 @@ flow_hw_modify_field_is_used(const struct rte_flow_action_modify_field *action,
 	return action->src.field == field || action->dst.field == field;
 }
 
+static bool
+flow_hw_modify_field_is_add_dst_valid(const struct rte_flow_action_modify_field *conf)
+{
+	if (conf->operation != RTE_FLOW_MODIFY_ADD)
+		return true;
+	if (conf->src.field == RTE_FLOW_FIELD_POINTER ||
+	    conf->src.field == RTE_FLOW_FIELD_VALUE)
+		return true;
+	switch (conf->dst.field) {
+	case RTE_FLOW_FIELD_IPV4_TTL:
+	case RTE_FLOW_FIELD_IPV6_HOPLIMIT:
+	case RTE_FLOW_FIELD_TCP_SEQ_NUM:
+	case RTE_FLOW_FIELD_TCP_ACK_NUM:
+	case RTE_FLOW_FIELD_TAG:
+	case RTE_FLOW_FIELD_META:
+	case RTE_FLOW_FIELD_FLEX_ITEM:
+	case RTE_FLOW_FIELD_TCP_DATA_OFFSET:
+	case RTE_FLOW_FIELD_IPV4_IHL:
+	case RTE_FLOW_FIELD_IPV4_TOTAL_LEN:
+	case RTE_FLOW_FIELD_IPV6_PAYLOAD_LEN:
+		return true;
+	default:
+		break;
+	}
+	return false;
+}
+
 static int
 flow_hw_validate_action_modify_field(struct rte_eth_dev *dev,
 				     const struct rte_flow_action *action,
@@ -5069,6 +5096,11 @@ flow_hw_validate_action_modify_field(struct rte_eth_dev *dev,
 		return rte_flow_error_set(error, EINVAL,
 				RTE_FLOW_ERROR_TYPE_ACTION, action,
 				"MPLS cannot be used as destination");
+	/* ADD_FIELD is not supported for all the fields. */
+	if (!flow_hw_modify_field_is_add_dst_valid(action_conf))
+		return rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_ACTION, action,
+				"invalid add_field destination");
 	return 0;
 }
 static int
