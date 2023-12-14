@@ -235,7 +235,7 @@ main(int argc, char **argv)
 				ret = last_test_result;
 
 end_of_cmd:
-			if (ret != 0)
+			if (ret != 0 && ret != TEST_SKIPPED)
 				break;
 		}
 		if (n_skip_tests > 0)
