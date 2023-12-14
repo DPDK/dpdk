@@ -1190,7 +1190,8 @@ eth_ixgbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params __rte_unused)
 	diag = ixgbe_validate_eeprom_checksum(hw, &csum);
 	if (diag != IXGBE_SUCCESS) {
 		PMD_INIT_LOG(ERR, "The EEPROM checksum is not valid: %d", diag);
-		return -EIO;
+		ret = -EIO;
+		goto err_exit;
 	}
 
 #ifdef RTE_LIBRTE_IXGBE_BYPASS
@@ -1228,7 +1229,8 @@ eth_ixgbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params __rte_unused)
 		PMD_INIT_LOG(ERR, "Unsupported SFP+ Module");
 	if (diag) {
 		PMD_INIT_LOG(ERR, "Hardware Initialization Failure: %d", diag);
-		return -EIO;
+		ret = -EIO;
+		goto err_exit;
 	}
 
 	/* Reset the hw statistics */
@@ -1248,7 +1250,8 @@ eth_ixgbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params __rte_unused)
 			     "Failed to allocate %u bytes needed to store "
 			     "MAC addresses",
 			     RTE_ETHER_ADDR_LEN * hw->mac.num_rar_entries);
-		return -ENOMEM;
+		ret = -ENOMEM;
+		goto err_exit;
 	}
 	/* Copy the permanent MAC address */
 	rte_ether_addr_copy((struct rte_ether_addr *)hw->mac.perm_addr,
@@ -1263,7 +1266,8 @@ eth_ixgbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params __rte_unused)
 			     RTE_ETHER_ADDR_LEN * IXGBE_VMDQ_NUM_UC_MAC);
 		rte_free(eth_dev->data->mac_addrs);
 		eth_dev->data->mac_addrs = NULL;
-		return -ENOMEM;
+		ret = -ENOMEM;
+		goto err_exit;
 	}
 
 	/* initialize the vfta */
@@ -1347,6 +1351,11 @@ err_pf_host_init:
 	eth_dev->data->mac_addrs = NULL;
 	rte_free(eth_dev->data->hash_mac_addrs);
 	eth_dev->data->hash_mac_addrs = NULL;
+err_exit:
+#ifdef RTE_LIB_SECURITY
+	rte_free(eth_dev->security_ctx);
+	eth_dev->security_ctx = NULL;
+#endif
 	return ret;
 }
 
