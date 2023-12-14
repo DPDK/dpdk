@@ -1200,11 +1200,12 @@ dpaa_eth_eventq_attach(const struct rte_eth_dev *dev,
 	struct qman_fq *rxq = &dpaa_intf->rx_queues[eth_rx_queue_id];
 	struct qm_mcc_initfq opts = {0};
 
-	if (dpaa_push_mode_max_queue)
-		DPAA_PMD_WARN("PUSH mode q and EVENTDEV are not compatible\n"
-			      "PUSH mode already enabled for first %d queues.\n"
-			      "To disable set DPAA_PUSH_QUEUES_NUMBER to 0",
+	if (dpaa_push_mode_max_queue) {
+		DPAA_PMD_WARN("PUSH mode q and EVENTDEV are not compatible");
+		DPAA_PMD_WARN("PUSH mode already enabled for first %d queues.",
 			      dpaa_push_mode_max_queue);
+		DPAA_PMD_WARN("To disable set DPAA_PUSH_QUEUES_NUMBER to 0");
+	}
 
 	dpaa_poll_queue_default_config(&opts);
 

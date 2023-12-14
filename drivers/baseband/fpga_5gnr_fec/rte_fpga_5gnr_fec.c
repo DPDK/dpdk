@@ -100,49 +100,49 @@ print_static_reg_debug_info(void *mmio_base, uint8_t fpga_variant)
 static void
 vc_5gnr_print_dma_dec_desc_debug_info(union vc_5gnr_dma_desc *desc)
 {
-	rte_bbdev_log_debug("DMA response desc %p\n"
-			"\t-- done(%"PRIu32") | iter(%"PRIu32") | et_pass(%"PRIu32")"
-			" | crcb_pass (%"PRIu32") | error(%"PRIu32")\n"
-			"\t-- qm_idx(%"PRIu32") | max_iter(%"PRIu32") | "
-			"bg_idx (%"PRIu32") | harqin_en(%"PRIu32") | zc(%"PRIu32")\n"
-			"\t-- hbstroe_offset(%"PRIu32") | num_null (%"PRIu32") "
-			"| irq_en(%"PRIu32")\n"
-			"\t-- ncb(%"PRIu32") | desc_idx (%"PRIu32") | "
-			"drop_crc24b(%"PRIu32") | RV (%"PRIu32")\n"
-			"\t-- crc24b_ind(%"PRIu32") | et_dis (%"PRIu32")\n"
-			"\t-- harq_input_length(%"PRIu32") | rm_e(%"PRIu32")\n"
-			"\t-- cbs_in_op(%"PRIu32") | in_add (0x%08"PRIx32"%08"PRIx32")"
-			"| out_add (0x%08"PRIx32"%08"PRIx32")",
-			desc,
+	rte_bbdev_log_debug("DMA response desc %p",
+			desc);
+	rte_bbdev_log_debug("\t-- done(%"PRIu32") | iter(%"PRIu32") | et_pass(%"PRIu32")"
+			" | crcb_pass (%"PRIu32") | error(%"PRIu32")",
 			(uint32_t)desc->dec_req.done,
 			(uint32_t)desc->dec_req.iter,
 			(uint32_t)desc->dec_req.et_pass,
 			(uint32_t)desc->dec_req.crcb_pass,
-			(uint32_t)desc->dec_req.error,
+			(uint32_t)desc->dec_req.error);
+	rte_bbdev_log_debug("\t-- qm_idx(%"PRIu32") | max_iter(%"PRIu32") | "
+			"bg_idx (%"PRIu32") | harqin_en(%"PRIu32") | zc(%"PRIu32")",
 			(uint32_t)desc->dec_req.qm_idx,
 			(uint32_t)desc->dec_req.max_iter,
 			(uint32_t)desc->dec_req.bg_idx,
 			(uint32_t)desc->dec_req.harqin_en,
-			(uint32_t)desc->dec_req.zc,
+			(uint32_t)desc->dec_req.zc);
+	rte_bbdev_log_debug("\t-- hbstroe_offset(%"PRIu32") | num_null (%"PRIu32") "
+			"| irq_en(%"PRIu32")",
 			(uint32_t)desc->dec_req.hbstroe_offset,
 			(uint32_t)desc->dec_req.num_null,
-			(uint32_t)desc->dec_req.irq_en,
+			(uint32_t)desc->dec_req.irq_en);
+	rte_bbdev_log_debug("\t-- ncb(%"PRIu32") | desc_idx (%"PRIu32") | "
+			"drop_crc24b(%"PRIu32") | RV (%"PRIu32")",
 			(uint32_t)desc->dec_req.ncb,
 			(uint32_t)desc->dec_req.desc_idx,
 			(uint32_t)desc->dec_req.drop_crc24b,
-			(uint32_t)desc->dec_req.rv,
+			(uint32_t)desc->dec_req.rv);
+	rte_bbdev_log_debug("\t-- crc24b_ind(%"PRIu32") | et_dis (%"PRIu32")",
 			(uint32_t)desc->dec_req.crc24b_ind,
-			(uint32_t)desc->dec_req.et_dis,
+			(uint32_t)desc->dec_req.et_dis);
+	rte_bbdev_log_debug("\t-- harq_input_length(%"PRIu32") | rm_e(%"PRIu32")",
 			(uint32_t)desc->dec_req.harq_input_length,
-			(uint32_t)desc->dec_req.rm_e,
+			(uint32_t)desc->dec_req.rm_e);
+	rte_bbdev_log_debug("\t-- cbs_in_op(%"PRIu32") | in_add (0x%08"PRIx32"%08"PRIx32")"
+			"| out_add (0x%08"PRIx32"%08"PRIx32")",
 			(uint32_t)desc->dec_req.cbs_in_op,
 			(uint32_t)desc->dec_req.in_addr_hi,
 			(uint32_t)desc->dec_req.in_addr_lw,
 			(uint32_t)desc->dec_req.out_addr_hi,
 			(uint32_t)desc->dec_req.out_addr_lw);
 	uint32_t *word = (uint32_t *) desc;
-	rte_bbdev_log_debug("%08"PRIx32"\n%08"PRIx32"\n%08"PRIx32"\n%08"PRIx32"\n"
-			"%08"PRIx32"\n%08"PRIx32"\n%08"PRIx32"\n%08"PRIx32"\n",
+	rte_bbdev_log_debug("%08"PRIx32", %08"PRIx32", %08"PRIx32", %08"PRIx32", "
+			"%08"PRIx32", %08"PRIx32", %08"PRIx32", %08"PRIx32,
 			word[0], word[1], word[2], word[3],
 			word[4], word[5], word[6], word[7]);
 }
@@ -151,37 +151,12 @@ vc_5gnr_print_dma_dec_desc_debug_info(union vc_5gnr_dma_desc *desc)
 static void
 agx100_print_dma_dec_desc_debug_info(union agx100_dma_desc *desc)
 {
-	rte_bbdev_log_debug("DMA response desc %p\n"
-			"\t-- done(%"PRIu32") | tb_crc_pass(%"PRIu32") | cb_crc_all_pass(%"PRIu32")"
+	rte_bbdev_log_debug("DMA response desc %p",
+			desc);
+	rte_bbdev_log_debug("\t-- done(%"PRIu32") | tb_crc_pass(%"PRIu32") | cb_crc_all_pass(%"PRIu32")"
 			" | cb_all_et_pass(%"PRIu32") | max_iter_ret(%"PRIu32") |"
 			"cgb_crc_bitmap(%"PRIu32") | error_msg(%"PRIu32") | error_code(%"PRIu32") |"
-			"et_dis (%"PRIu32") | harq_in_en(%"PRIu32") | max_iter(%"PRIu32")\n"
-			"\t-- ncb(%"PRIu32") | bg_idx (%"PRIu32") | qm_idx (%"PRIu32")"
-			"| zc(%"PRIu32") | rv(%"PRIu32") | int_en(%"PRIu32")\n"
-			"\t-- max_cbg(%"PRIu32") | cbgti(%"PRIu32") | cbgfi(%"PRIu32") |"
-			"cbgs(%"PRIu32") | desc_idx(%"PRIu32")\n"
-			"\t-- ca(%"PRIu32") | c(%"PRIu32") | llr_pckg(%"PRIu32") |"
-			"syndrome_check_mode(%"PRIu32") | num_null(%"PRIu32")\n"
-			"\t-- ea(%"PRIu32") | eba(%"PRIu32")\n"
-			"\t-- hbstore_offset_out(%"PRIu32")\n"
-			"\t-- hbstore_offset_in(%"PRIu32") | en_slice_ts(%"PRIu32") |"
-			"en_host_ts(%"PRIu32") | en_cb_wr_status(%"PRIu32")"
-			" | en_output_sg(%"PRIu32") | en_input_sg(%"PRIu32") | tb_cb(%"PRIu32")"
-			" | crc24b_ind(%"PRIu32")| drop_crc24b(%"PRIu32")\n"
-			"\t-- harq_input_length_a(%"PRIu32") | harq_input_length_b(%"PRIu32")\n"
-			"\t-- input_slice_table_addr_lo(%"PRIu32")"
-			" | input_start_addr_lo(%"PRIu32")\n"
-			"\t-- input_slice_table_addr_hi(%"PRIu32")"
-			" | input_start_addr_hi(%"PRIu32")\n"
-			"\t-- input_slice_num(%"PRIu32") | input_length(%"PRIu32")\n"
-			"\t-- output_slice_table_addr_lo(%"PRIu32")"
-			" | output_start_addr_lo(%"PRIu32")\n"
-			"\t-- output_slice_table_addr_hi(%"PRIu32")"
-			" | output_start_addr_hi(%"PRIu32")\n"
-			"\t-- output_slice_num(%"PRIu32") | output_length(%"PRIu32")\n"
-			"\t-- enqueue_timestamp(%"PRIu32")\n"
-			"\t-- completion_timestamp(%"PRIu32")\n",
-			desc,
+			"et_dis (%"PRIu32") | harq_in_en(%"PRIu32") | max_iter(%"PRIu32")",
 			(uint32_t)desc->dec_req.done,
 			(uint32_t)desc->dec_req.tb_crc_pass,
 			(uint32_t)desc->dec_req.cb_crc_all_pass,
@@ -192,26 +167,38 @@ agx100_print_dma_dec_desc_debug_info(union agx100_dma_desc *desc)
 			(uint32_t)desc->dec_req.error_code,
 			(uint32_t)desc->dec_req.et_dis,
 			(uint32_t)desc->dec_req.harq_in_en,
-			(uint32_t)desc->dec_req.max_iter,
+			(uint32_t)desc->dec_req.max_iter);
+	rte_bbdev_log_debug("\t-- ncb(%"PRIu32") | bg_idx (%"PRIu32") | qm_idx (%"PRIu32")"
+			"| zc(%"PRIu32") | rv(%"PRIu32") | int_en(%"PRIu32")",
 			(uint32_t)desc->dec_req.ncb,
 			(uint32_t)desc->dec_req.bg_idx,
 			(uint32_t)desc->dec_req.qm_idx,
 			(uint32_t)desc->dec_req.zc,
 			(uint32_t)desc->dec_req.rv,
-			(uint32_t)desc->dec_req.int_en,
+			(uint32_t)desc->dec_req.int_en);
+	rte_bbdev_log_debug("\t-- max_cbg(%"PRIu32") | cbgti(%"PRIu32") | cbgfi(%"PRIu32") |"
+			"cbgs(%"PRIu32") | desc_idx(%"PRIu32")",
 			(uint32_t)desc->dec_req.max_cbg,
 			(uint32_t)desc->dec_req.cbgti,
 			(uint32_t)desc->dec_req.cbgfi,
 			(uint32_t)desc->dec_req.cbgs,
-			(uint32_t)desc->dec_req.desc_idx,
+			(uint32_t)desc->dec_req.desc_idx);
+	rte_bbdev_log_debug("\t-- ca(%"PRIu32") | c(%"PRIu32") | llr_pckg(%"PRIu32") |"
+			"syndrome_check_mode(%"PRIu32") | num_null(%"PRIu32")",
 			(uint32_t)desc->dec_req.ca,
 			(uint32_t)desc->dec_req.c,
 			(uint32_t)desc->dec_req.llr_pckg,
 			(uint32_t)desc->dec_req.syndrome_check_mode,
-			(uint32_t)desc->dec_req.num_null,
+			(uint32_t)desc->dec_req.num_null);
+	rte_bbdev_log_debug("\t-- ea(%"PRIu32") | eba(%"PRIu32")",
 			(uint32_t)desc->dec_req.ea,
-			(uint32_t)desc->dec_req.eba,
-			(uint32_t)desc->dec_req.hbstore_offset_out,
+			(uint32_t)desc->dec_req.eba);
+	rte_bbdev_log_debug("\t-- hbstore_offset_out(%"PRIu32")",
+			(uint32_t)desc->dec_req.hbstore_offset_out);
+	rte_bbdev_log_debug("\t-- hbstore_offset_in(%"PRIu32") | en_slice_ts(%"PRIu32") |"
+			"en_host_ts(%"PRIu32") | en_cb_wr_status(%"PRIu32")"
+			" | en_output_sg(%"PRIu32") | en_input_sg(%"PRIu32") | tb_cb(%"PRIu32")"
+			" | crc24b_ind(%"PRIu32")| drop_crc24b(%"PRIu32")",
 			(uint32_t)desc->dec_req.hbstore_offset_in,
 			(uint32_t)desc->dec_req.en_slice_ts,
 			(uint32_t)desc->dec_req.en_host_ts,
@@ -220,29 +207,42 @@ agx100_print_dma_dec_desc_debug_info(union agx100_dma_desc *desc)
 			(uint32_t)desc->dec_req.en_input_sg,
 			(uint32_t)desc->dec_req.tb_cb,
 			(uint32_t)desc->dec_req.crc24b_ind,
-			(uint32_t)desc->dec_req.drop_crc24b,
+			(uint32_t)desc->dec_req.drop_crc24b);
+	rte_bbdev_log_debug("\t-- harq_input_length_a(%"PRIu32") | harq_input_length_b(%"PRIu32")",
 			(uint32_t)desc->dec_req.harq_input_length_a,
-			(uint32_t)desc->dec_req.harq_input_length_b,
+			(uint32_t)desc->dec_req.harq_input_length_b);
+	rte_bbdev_log_debug("\t-- input_slice_table_addr_lo(%"PRIu32")"
+			" | input_start_addr_lo(%"PRIu32")",
 			(uint32_t)desc->dec_req.input_slice_table_addr_lo,
-			(uint32_t)desc->dec_req.input_start_addr_lo,
+			(uint32_t)desc->dec_req.input_start_addr_lo);
+	rte_bbdev_log_debug("\t-- input_slice_table_addr_hi(%"PRIu32")"
+			" | input_start_addr_hi(%"PRIu32")",
 			(uint32_t)desc->dec_req.input_slice_table_addr_hi,
-			(uint32_t)desc->dec_req.input_start_addr_hi,
+			(uint32_t)desc->dec_req.input_start_addr_hi);
+	rte_bbdev_log_debug("\t-- input_slice_num(%"PRIu32") | input_length(%"PRIu32")",
 			(uint32_t)desc->dec_req.input_slice_num,
-			(uint32_t)desc->dec_req.input_length,
+			(uint32_t)desc->dec_req.input_length);
+	rte_bbdev_log_debug("\t-- output_slice_table_addr_lo(%"PRIu32")"
+			" | output_start_addr_lo(%"PRIu32")",
 			(uint32_t)desc->dec_req.output_slice_table_addr_lo,
-			(uint32_t)desc->dec_req.output_start_addr_lo,
+			(uint32_t)desc->dec_req.output_start_addr_lo);
+	rte_bbdev_log_debug("\t-- output_slice_table_addr_hi(%"PRIu32")"
+			" | output_start_addr_hi(%"PRIu32")",
 			(uint32_t)desc->dec_req.output_slice_table_addr_hi,
-			(uint32_t)desc->dec_req.output_start_addr_hi,
+			(uint32_t)desc->dec_req.output_start_addr_hi);
+	rte_bbdev_log_debug("\t-- output_slice_num(%"PRIu32") | output_length(%"PRIu32")",
 			(uint32_t)desc->dec_req.output_slice_num,
-			(uint32_t)desc->dec_req.output_length,
-			(uint32_t)desc->dec_req.enqueue_timestamp,
+			(uint32_t)desc->dec_req.output_length);
+	rte_bbdev_log_debug("\t-- enqueue_timestamp(%"PRIu32")",
+			(uint32_t)desc->dec_req.enqueue_timestamp);
+	rte_bbdev_log_debug("\t-- completion_timestamp(%"PRIu32")",
 			(uint32_t)desc->dec_req.completion_timestamp);
 
 	uint32_t *word = (uint32_t *) desc;
-	rte_bbdev_log_debug("%08"PRIx32"\n%08"PRIx32"\n%08"PRIx32"\n%08"PRIx32"\n"
-			"%08"PRIx32"\n%08"PRIx32"\n%08"PRIx32"\n%08"PRIx32"\n"
-			"%08"PRIx32"\n%08"PRIx32"\n%08"PRIx32"\n%08"PRIx32"\n"
-			"%08"PRIx32"\n%08"PRIx32"\n%08"PRIx32"\n%08"PRIx32"\n",
+	rte_bbdev_log_debug("%08"PRIx32", %08"PRIx32", %08"PRIx32", %08"PRIx32", "
+			"%08"PRIx32", %08"PRIx32", %08"PRIx32", %08"PRIx32", "
+			"%08"PRIx32", %08"PRIx32", %08"PRIx32", %08"PRIx32", "
+			"%08"PRIx32", %08"PRIx32", %08"PRIx32", %08"PRIx32,
 			word[0], word[1], word[2], word[3],
 			word[4], word[5], word[6], word[7],
 			word[8], word[9], word[10], word[11],
@@ -253,31 +253,28 @@ agx100_print_dma_dec_desc_debug_info(union agx100_dma_desc *desc)
 static void
 vc_5gnr_print_dma_enc_desc_debug_info(union vc_5gnr_dma_desc *desc)
 {
-	rte_bbdev_log_debug("DMA response desc %p\n"
-			"%"PRIu32" %"PRIu32"\n"
-			"K' %"PRIu32" E %"PRIu32" desc %"PRIu32" Z %"PRIu32"\n"
-			"BG %"PRIu32" Qm %"PRIu32" CRC %"PRIu32" IRQ %"PRIu32"\n"
-			"k0 %"PRIu32" Ncb %"PRIu32" F %"PRIu32"\n",
-			desc,
+	rte_bbdev_log_debug("DMA response desc %p",
+			desc);
+	rte_bbdev_log_debug("%"PRIu32" %"PRIu32,
 			(uint32_t)desc->enc_req.done,
-			(uint32_t)desc->enc_req.error,
-
+			(uint32_t)desc->enc_req.error);
+	rte_bbdev_log_debug("K' %"PRIu32" E %"PRIu32" desc %"PRIu32" Z %"PRIu32,
 			(uint32_t)desc->enc_req.k_,
 			(uint32_t)desc->enc_req.rm_e,
 			(uint32_t)desc->enc_req.desc_idx,
-			(uint32_t)desc->enc_req.zc,
-
+			(uint32_t)desc->enc_req.zc);
+	rte_bbdev_log_debug("BG %"PRIu32" Qm %"PRIu32" CRC %"PRIu32" IRQ %"PRIu32,
 			(uint32_t)desc->enc_req.bg_idx,
 			(uint32_t)desc->enc_req.qm_idx,
 			(uint32_t)desc->enc_req.crc_en,
-			(uint32_t)desc->enc_req.irq_en,
-
+			(uint32_t)desc->enc_req.irq_en);
+	rte_bbdev_log_debug("k0 %"PRIu32" Ncb %"PRIu32" F %"PRIu32,
 			(uint32_t)desc->enc_req.k0,
 			(uint32_t)desc->enc_req.ncb,
 			(uint32_t)desc->enc_req.num_null);
 	uint32_t *word = (uint32_t *) desc;
-	rte_bbdev_log_debug("%08"PRIx32"\n%08"PRIx32"\n%08"PRIx32"\n%08"PRIx32"\n"
-			"%08"PRIx32"\n%08"PRIx32"\n%08"PRIx32"\n%08"PRIx32"\n",
+	rte_bbdev_log_debug("%08"PRIx32", %08"PRIx32", %08"PRIx32", %08"PRIx32", "
+			"%08"PRIx32", %08"PRIx32", %08"PRIx32", %08"PRIx32,
 			word[0], word[1], word[2], word[3],
 			word[4], word[5], word[6], word[7]);
 }
@@ -286,49 +283,37 @@ vc_5gnr_print_dma_enc_desc_debug_info(union vc_5gnr_dma_desc *desc)
 static void
 agx100_print_dma_enc_desc_debug_info(union agx100_dma_desc *desc)
 {
-	rte_bbdev_log_debug("DMA response desc %p\n"
-			"\t-- done(%"PRIu32") | error_msg(%"PRIu32") | error_code(%"PRIu32")\n"
-			"\t-- ncb(%"PRIu32") | bg_idx (%"PRIu32") | qm_idx (%"PRIu32")"
-			"| zc(%"PRIu32") | rv(%"PRIu32") | int_en(%"PRIu32")\n"
-			"\t-- max_cbg(%"PRIu32") | cbgti(%"PRIu32") | cbgs(%"PRIu32") | "
-			"desc_idx(%"PRIu32")\n"
-			"\t-- ca(%"PRIu32") | c(%"PRIu32") | num_null(%"PRIu32")\n"
-			"\t-- ea(%"PRIu32")\n"
-			"\t-- eb(%"PRIu32")\n"
-			"\t-- k_(%"PRIu32") | en_slice_ts(%"PRIu32") | en_host_ts(%"PRIu32") | "
-			"en_cb_wr_status(%"PRIu32") | en_output_sg(%"PRIu32") | "
-			"en_input_sg(%"PRIu32") | tb_cb(%"PRIu32") | crc_en(%"PRIu32")\n"
-			"\t-- input_slice_table_addr_lo(%"PRIu32")"
-			" | input_start_addr_lo(%"PRIu32")\n"
-			"\t-- input_slice_table_addr_hi(%"PRIu32")"
-			" | input_start_addr_hi(%"PRIu32")\n"
-			"\t-- input_slice_num(%"PRIu32") | input_length(%"PRIu32")\n"
-			"\t-- output_slice_table_addr_lo(%"PRIu32")"
-			" | output_start_addr_lo(%"PRIu32")\n"
-			"\t-- output_slice_table_addr_hi(%"PRIu32")"
-			" | output_start_addr_hi(%"PRIu32")\n"
-			"\t-- output_slice_num(%"PRIu32") | output_length(%"PRIu32")\n"
-			"\t-- enqueue_timestamp(%"PRIu32")\n"
-			"\t-- completion_timestamp(%"PRIu32")\n",
-			desc,
+	rte_bbdev_log_debug("DMA response desc %p",
+			desc);
+	rte_bbdev_log_debug("\t-- done(%"PRIu32") | error_msg(%"PRIu32") | error_code(%"PRIu32")",
 			(uint32_t)desc->enc_req.done,
 			(uint32_t)desc->enc_req.error_msg,
-			(uint32_t)desc->enc_req.error_code,
+			(uint32_t)desc->enc_req.error_code);
+	rte_bbdev_log_debug("\t-- ncb(%"PRIu32") | bg_idx (%"PRIu32") | qm_idx (%"PRIu32")"
+			"| zc(%"PRIu32") | rv(%"PRIu32") | int_en(%"PRIu32")",
 			(uint32_t)desc->enc_req.ncb,
 			(uint32_t)desc->enc_req.bg_idx,
 			(uint32_t)desc->enc_req.qm_idx,
 			(uint32_t)desc->enc_req.zc,
 			(uint32_t)desc->enc_req.rv,
-			(uint32_t)desc->enc_req.int_en,
+			(uint32_t)desc->enc_req.int_en);
+	rte_bbdev_log_debug("\t-- max_cbg(%"PRIu32") | cbgti(%"PRIu32") | cbgs(%"PRIu32") | "
+			"desc_idx(%"PRIu32")",
 			(uint32_t)desc->enc_req.max_cbg,
 			(uint32_t)desc->enc_req.cbgti,
 			(uint32_t)desc->enc_req.cbgs,
-			(uint32_t)desc->enc_req.desc_idx,
+			(uint32_t)desc->enc_req.desc_idx);
+	rte_bbdev_log_debug("\t-- ca(%"PRIu32") | c(%"PRIu32") | num_null(%"PRIu32")",
 			(uint32_t)desc->enc_req.ca,
 			(uint32_t)desc->enc_req.c,
-			(uint32_t)desc->enc_req.num_null,
-			(uint32_t)desc->enc_req.ea,
-			(uint32_t)desc->enc_req.eb,
+			(uint32_t)desc->enc_req.num_null);
+	rte_bbdev_log_debug("\t-- ea(%"PRIu32")",
+			(uint32_t)desc->enc_req.ea);
+	rte_bbdev_log_debug("\t-- eb(%"PRIu32")",
+			(uint32_t)desc->enc_req.eb);
+	rte_bbdev_log_debug("\t-- k_(%"PRIu32") | en_slice_ts(%"PRIu32") | en_host_ts(%"PRIu32") | "
+			"en_cb_wr_status(%"PRIu32") | en_output_sg(%"PRIu32") | "
+			"en_input_sg(%"PRIu32") | tb_cb(%"PRIu32") | crc_en(%"PRIu32")",
 			(uint32_t)desc->enc_req.k_,
 			(uint32_t)desc->enc_req.en_slice_ts,
 			(uint32_t)desc->enc_req.en_host_ts,
@@ -336,27 +321,39 @@ agx100_print_dma_enc_desc_debug_info(union agx100_dma_desc *desc)
 			(uint32_t)desc->enc_req.en_output_sg,
 			(uint32_t)desc->enc_req.en_input_sg,
 			(uint32_t)desc->enc_req.tb_cb,
-			(uint32_t)desc->enc_req.crc_en,
+			(uint32_t)desc->enc_req.crc_en);
+	rte_bbdev_log_debug("\t-- input_slice_table_addr_lo(%"PRIu32")"
+			" | input_start_addr_lo(%"PRIu32")",
 			(uint32_t)desc->enc_req.input_slice_table_addr_lo,
-			(uint32_t)desc->enc_req.input_start_addr_lo,
+			(uint32_t)desc->enc_req.input_start_addr_lo);
+	rte_bbdev_log_debug("\t-- input_slice_table_addr_hi(%"PRIu32")"
+			" | input_start_addr_hi(%"PRIu32")",
 			(uint32_t)desc->enc_req.input_slice_table_addr_hi,
-			(uint32_t)desc->enc_req.input_start_addr_hi,
+			(uint32_t)desc->enc_req.input_start_addr_hi);
+	rte_bbdev_log_debug("\t-- input_slice_num(%"PRIu32") | input_length(%"PRIu32")",
 			(uint32_t)desc->enc_req.input_slice_num,
-			(uint32_t)desc->enc_req.input_length,
+			(uint32_t)desc->enc_req.input_length);
+	rte_bbdev_log_debug("\t-- output_slice_table_addr_lo(%"PRIu32")"
+			" | output_start_addr_lo(%"PRIu32")",
 			(uint32_t)desc->enc_req.output_slice_table_addr_lo,
-			(uint32_t)desc->enc_req.output_start_addr_lo,
+			(uint32_t)desc->enc_req.output_start_addr_lo);
+	rte_bbdev_log_debug("\t-- output_slice_table_addr_hi(%"PRIu32")"
+			" | output_start_addr_hi(%"PRIu32")",
 			(uint32_t)desc->enc_req.output_slice_table_addr_hi,
-			(uint32_t)desc->enc_req.output_start_addr_hi,
+			(uint32_t)desc->enc_req.output_start_addr_hi);
+	rte_bbdev_log_debug("\t-- output_slice_num(%"PRIu32") | output_length(%"PRIu32")",
 			(uint32_t)desc->enc_req.output_slice_num,
-			(uint32_t)desc->enc_req.output_length,
-			(uint32_t)desc->enc_req.enqueue_timestamp,
+			(uint32_t)desc->enc_req.output_length);
+	rte_bbdev_log_debug("\t-- enqueue_timestamp(%"PRIu32")",
+			(uint32_t)desc->enc_req.enqueue_timestamp);
+	rte_bbdev_log_debug("\t-- completion_timestamp(%"PRIu32")",
 			(uint32_t)desc->enc_req.completion_timestamp);
 
 	uint32_t *word = (uint32_t *) desc;
-	rte_bbdev_log_debug("%08"PRIx32"\n%08"PRIx32"\n%08"PRIx32"\n%08"PRIx32"\n"
-			"%08"PRIx32"\n%08"PRIx32"\n%08"PRIx32"\n%08"PRIx32"\n"
-			"%08"PRIx32"\n%08"PRIx32"\n%08"PRIx32"\n%08"PRIx32"\n"
-			"%08"PRIx32"\n%08"PRIx32"\n%08"PRIx32"\n%08"PRIx32"\n",
+	rte_bbdev_log_debug("%08"PRIx32", %08"PRIx32", %08"PRIx32", %08"PRIx32", "
+			"%08"PRIx32", %08"PRIx32", %08"PRIx32", %08"PRIx32", "
+			"%08"PRIx32", %08"PRIx32", %08"PRIx32", %08"PRIx32", "
+			"%08"PRIx32", %08"PRIx32", %08"PRIx32", %08"PRIx32,
 			word[0], word[1], word[2], word[3],
 			word[4], word[5], word[6], word[7],
 			word[8], word[9], word[10], word[11],

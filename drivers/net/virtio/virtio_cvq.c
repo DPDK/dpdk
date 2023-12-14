@@ -92,16 +92,11 @@ virtio_send_command_packed(struct virtnet_ctl *cvq,
 		vq->vq_packed.used_wrap_counter ^= 1;
 	}
 
-	PMD_INIT_LOG(DEBUG, "vq->vq_free_cnt=%d\n"
-			"vq->vq_avail_idx=%d\n"
-			"vq->vq_used_cons_idx=%d\n"
-			"vq->vq_packed.cached_flags=0x%x\n"
-			"vq->vq_packed.used_wrap_counter=%d",
-			vq->vq_free_cnt,
-			vq->vq_avail_idx,
-			vq->vq_used_cons_idx,
-			vq->vq_packed.cached_flags,
-			vq->vq_packed.used_wrap_counter);
+	PMD_INIT_LOG(DEBUG, "vq->vq_free_cnt=%d", vq->vq_free_cnt);
+	PMD_INIT_LOG(DEBUG, "vq->vq_avail_idx=%d", vq->vq_avail_idx);
+	PMD_INIT_LOG(DEBUG, "vq->vq_used_cons_idx=%d", vq->vq_used_cons_idx);
+	PMD_INIT_LOG(DEBUG, "vq->vq_packed.cached_flags=0x%x", vq->vq_packed.cached_flags);
+	PMD_INIT_LOG(DEBUG, "vq->vq_packed.used_wrap_counter=%d", vq->vq_packed.used_wrap_counter);
 
 	result = cvq->hdr_mz->addr;
 	return result;
@@ -183,8 +178,8 @@ virtio_send_command_split(struct virtnet_ctl *cvq,
 		vq->vq_free_cnt++;
 	}
 
-	PMD_INIT_LOG(DEBUG, "vq->vq_free_cnt=%d\nvq->vq_desc_head_idx=%d",
-			vq->vq_free_cnt, vq->vq_desc_head_idx);
+	PMD_INIT_LOG(DEBUG, "vq->vq_free_cnt=%d", vq->vq_free_cnt);
+	PMD_INIT_LOG(DEBUG, "vq->vq_desc_head_idx=%d", vq->vq_desc_head_idx);
 
 	result = cvq->hdr_mz->addr;
 	return result;

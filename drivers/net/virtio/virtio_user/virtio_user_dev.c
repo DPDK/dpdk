@@ -1197,21 +1197,21 @@ virtio_user_dev_update_status(struct virtio_user_dev *dev)
 	ret = dev->ops->get_status(dev, &status);
 	if (!ret) {
 		dev->status = status;
-		PMD_INIT_LOG(DEBUG, "Updated Device Status(0x%08x):\n"
-			"\t-RESET: %u\n"
-			"\t-ACKNOWLEDGE: %u\n"
-			"\t-DRIVER: %u\n"
-			"\t-DRIVER_OK: %u\n"
-			"\t-FEATURES_OK: %u\n"
-			"\t-DEVICE_NEED_RESET: %u\n"
-			"\t-FAILED: %u",
-			dev->status,
-			(dev->status == VIRTIO_CONFIG_STATUS_RESET),
-			!!(dev->status & VIRTIO_CONFIG_STATUS_ACK),
-			!!(dev->status & VIRTIO_CONFIG_STATUS_DRIVER),
-			!!(dev->status & VIRTIO_CONFIG_STATUS_DRIVER_OK),
-			!!(dev->status & VIRTIO_CONFIG_STATUS_FEATURES_OK),
-			!!(dev->status & VIRTIO_CONFIG_STATUS_DEV_NEED_RESET),
+		PMD_INIT_LOG(DEBUG, "Updated Device Status(0x%08x):",
+			dev->status);
+		PMD_INIT_LOG(DEBUG, "\t-RESET: %u",
+			(dev->status == VIRTIO_CONFIG_STATUS_RESET));
+		PMD_INIT_LOG(DEBUG, "\t-ACKNOWLEDGE: %u",
+			!!(dev->status & VIRTIO_CONFIG_STATUS_ACK));
+		PMD_INIT_LOG(DEBUG, "\t-DRIVER: %u",
+			!!(dev->status & VIRTIO_CONFIG_STATUS_DRIVER));
+		PMD_INIT_LOG(DEBUG, "\t-DRIVER_OK: %u",
+			!!(dev->status & VIRTIO_CONFIG_STATUS_DRIVER_OK));
+		PMD_INIT_LOG(DEBUG, "\t-FEATURES_OK: %u",
+			!!(dev->status & VIRTIO_CONFIG_STATUS_FEATURES_OK));
+		PMD_INIT_LOG(DEBUG, "\t-DEVICE_NEED_RESET: %u",
+			!!(dev->status & VIRTIO_CONFIG_STATUS_DEV_NEED_RESET));
+		PMD_INIT_LOG(DEBUG, "\t-FAILED: %u",
 			!!(dev->status & VIRTIO_CONFIG_STATUS_FAILED));
 	} else if (ret != -ENOTSUP) {
 		PMD_INIT_LOG(ERR, "(%s) Failed to get backend status", dev->path);

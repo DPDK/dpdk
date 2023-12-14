@@ -79,41 +79,40 @@ bond_print_lacp(struct lacpdu *l)
 	if (p_len && p_state[p_len-1] == ' ')
 		p_state[p_len-1] = '\0';
 
-	RTE_BOND_LOG(DEBUG,
-		     "LACP: {\n"
-		     "  subtype= %02X\n"
-		     "  ver_num=%02X\n"
-		     "  actor={ tlv=%02X, len=%02X\n"
-		     "    pri=%04X, system=%s, key=%04X, p_pri=%04X p_num=%04X\n"
-		     "       state={ %s }\n"
-		     "  }\n"
-		     "  partner={ tlv=%02X, len=%02X\n"
-		     "    pri=%04X, system=%s, key=%04X, p_pri=%04X p_num=%04X\n"
-		     "       state={ %s }\n"
-		     "  }\n"
-		     "  collector={info=%02X, length=%02X, max_delay=%04X\n, "
-		     "type_term=%02X, terminator_length = %02X }",
-		     l->subtype,
-		     l->version_number,
+	RTE_BOND_LOG(DEBUG, "LACP: {");
+	RTE_BOND_LOG(DEBUG, "  subtype= %02X",
+		     l->subtype);
+	RTE_BOND_LOG(DEBUG, "  ver_num=%02X",
+		     l->version_number);
+	RTE_BOND_LOG(DEBUG, "  actor={ tlv=%02X, len=%02X",
 		     l->actor.tlv_type_info,
-		     l->actor.info_length,
+		     l->actor.info_length);
+	RTE_BOND_LOG(DEBUG, "    pri=%04X, system=%s, key=%04X, p_pri=%04X p_num=%04X",
 		     l->actor.port_params.system_priority,
 		     a_address,
 		     l->actor.port_params.key,
 		     l->actor.port_params.port_priority,
-		     l->actor.port_params.port_number,
-		     a_state,
+		     l->actor.port_params.port_number);
+	RTE_BOND_LOG(DEBUG, "       state={ %s }",
+		     a_state);
+	RTE_BOND_LOG(DEBUG, "  }");
+	RTE_BOND_LOG(DEBUG, "  partner={ tlv=%02X, len=%02X",
 		     l->partner.tlv_type_info,
-		     l->partner.info_length,
+		     l->partner.info_length);
+	RTE_BOND_LOG(DEBUG, "    pri=%04X, system=%s, key=%04X, p_pri=%04X p_num=%04X",
 		     l->partner.port_params.system_priority,
 		     p_address,
 		     l->partner.port_params.key,
 		     l->partner.port_params.port_priority,
-		     l->partner.port_params.port_number,
-		     p_state,
+		     l->partner.port_params.port_number);
+	RTE_BOND_LOG(DEBUG, "       state={ %s }",
+		     p_state);
+	RTE_BOND_LOG(DEBUG, "  }");
+	RTE_BOND_LOG(DEBUG, "  collector={info=%02X, length=%02X, max_delay=%04X, ",
 		     l->tlv_type_collector_info,
 		     l->collector_info_length,
-		     l->collector_max_delay,
+		     l->collector_max_delay);
+	RTE_BOND_LOG(DEBUG, "type_term=%02X, terminator_length = %02X }",
 		     l->tlv_type_terminator,
 		     l->terminator_length);
 
@@ -205,18 +204,20 @@ show_warnings(uint16_t member_id)
 
 	if (warnings & WRN_RX_QUEUE_FULL) {
 		RTE_BOND_LOG(DEBUG,
-			     "Member %u: failed to enqueue LACP packet into RX ring.\n"
-			     "Receive and transmit functions must be invoked on bonding"
-			     "interface at least 10 times per second or LACP will notwork correctly",
+			     "Member %u: failed to enqueue LACP packet into RX ring.",
 			     member_id);
+		RTE_BOND_LOG(DEBUG,
+			     "Receive and transmit functions must be invoked on bonding "
+			     "interface at least 10 times per second or LACP will notwork correctly");
 	}
 
 	if (warnings & WRN_TX_QUEUE_FULL) {
 		RTE_BOND_LOG(DEBUG,
-			     "Member %u: failed to enqueue LACP packet into TX ring.\n"
-			     "Receive and transmit functions must be invoked on bonding"
-			     "interface at least 10 times per second or LACP will not work correctly",
+			     "Member %u: failed to enqueue LACP packet into TX ring.",
 			     member_id);
+		RTE_BOND_LOG(DEBUG,
+			     "Receive and transmit functions must be invoked on bonding "
+			     "interface at least 10 times per second or LACP will not work correctly");
 	}
 
 	if (warnings & WRN_RX_MARKER_TO_FAST)

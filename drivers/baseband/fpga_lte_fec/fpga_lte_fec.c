@@ -444,28 +444,28 @@ print_static_reg_debug_info(void *mmio_base)
 static void
 print_dma_dec_desc_debug_info(union fpga_dma_desc *desc)
 {
-	rte_bbdev_log_debug("DMA response desc %p\n"
-		"\t-- done(%"PRIu32") | iter(%"PRIu32") | crc_pass(%"PRIu32")"
-		" | error (%"PRIu32") | crc_type(%"PRIu32")\n"
-		"\t-- max_iter(%"PRIu32") | bypass_rm(%"PRIu32") | "
-		"irq_en (%"PRIu32") | drop_crc(%"PRIu32") | offset(%"PRIu32")\n"
-		"\t-- k(%"PRIu32") | in_len (%"PRIu16") | op_add(%p)\n"
-		"\t-- cbs_in_op(%"PRIu32") | in_add (0x%08"PRIx32"%08"PRIx32") | "
-		"out_add (0x%08"PRIx32"%08"PRIx32")",
-		desc,
+	rte_bbdev_log_debug("DMA response desc %p",
+		desc);
+	rte_bbdev_log_debug("\t-- done(%"PRIu32") | iter(%"PRIu32") | crc_pass(%"PRIu32")"
+		" | error (%"PRIu32") | crc_type(%"PRIu32")",
 		(uint32_t)desc->dec_req.done,
 		(uint32_t)desc->dec_req.iter,
 		(uint32_t)desc->dec_req.crc_pass,
 		(uint32_t)desc->dec_req.error,
-		(uint32_t)desc->dec_req.crc_type,
+		(uint32_t)desc->dec_req.crc_type);
+	rte_bbdev_log_debug("\t-- max_iter(%"PRIu32") | bypass_rm(%"PRIu32") | "
+		"irq_en (%"PRIu32") | drop_crc(%"PRIu32") | offset(%"PRIu32")",
 		(uint32_t)desc->dec_req.max_iter,
 		(uint32_t)desc->dec_req.bypass_rm,
 		(uint32_t)desc->dec_req.irq_en,
 		(uint32_t)desc->dec_req.drop_crc,
-		(uint32_t)desc->dec_req.offset,
+		(uint32_t)desc->dec_req.offset);
+	rte_bbdev_log_debug("\t-- k(%"PRIu32") | in_len (%"PRIu16") | op_add(%p)",
 		(uint32_t)desc->dec_req.k,
 		(uint16_t)desc->dec_req.in_len,
-		desc->dec_req.op_addr,
+		desc->dec_req.op_addr);
+	rte_bbdev_log_debug("\t-- cbs_in_op(%"PRIu32") | in_add (0x%08"PRIx32"%08"PRIx32") | "
+		"out_add (0x%08"PRIx32"%08"PRIx32")",
 		(uint32_t)desc->dec_req.cbs_in_op,
 		(uint32_t)desc->dec_req.in_addr_hi,
 		(uint32_t)desc->dec_req.in_addr_lw,

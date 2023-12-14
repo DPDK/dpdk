@@ -348,11 +348,11 @@ build_authenc_gcm_sg_fd(dpaa2_sec_session *sess,
 	DPAA2_SET_FD_COMPOUND_FMT(fd);
 	DPAA2_SET_FD_FLC(fd, DPAA2_VADDR_TO_IOVA(flc));
 
-	DPAA2_SEC_DP_DEBUG("GCM SG: auth_off: 0x%x/length %d, digest-len=%d\n"
-		   "iv-len=%d data_off: 0x%x\n",
+	DPAA2_SEC_DP_DEBUG("GCM SG: auth_off: 0x%x/length %d, digest-len=%d",
 		   sym_op->aead.data.offset,
 		   sym_op->aead.data.length,
-		   sess->digest_length,
+		   sess->digest_length);
+	DPAA2_SEC_DP_DEBUG("iv-len=%d data_off: 0x%x",
 		   sess->iv.length,
 		   sym_op->m_src->data_off);
 
@@ -506,11 +506,11 @@ build_authenc_gcm_fd(dpaa2_sec_session *sess,
 	DPAA2_SET_FD_COMPOUND_FMT(fd);
 	DPAA2_SET_FD_FLC(fd, DPAA2_VADDR_TO_IOVA(flc));
 
-	DPAA2_SEC_DP_DEBUG("GCM: auth_off: 0x%x/length %d, digest-len=%d\n"
-		   "iv-len=%d data_off: 0x%x\n",
+	DPAA2_SEC_DP_DEBUG("GCM: auth_off: 0x%x/length %d, digest-len=%d",
 		   sym_op->aead.data.offset,
 		   sym_op->aead.data.length,
-		   sess->digest_length,
+		   sess->digest_length);
+	DPAA2_SEC_DP_DEBUG("iv-len=%d data_off: 0x%x",
 		   sess->iv.length,
 		   sym_op->m_src->data_off);
 
@@ -631,11 +631,12 @@ build_authenc_sg_fd(dpaa2_sec_session *sess,
 	DPAA2_SET_FD_FLC(fd, DPAA2_VADDR_TO_IOVA(flc));
 
 	DPAA2_SEC_DP_DEBUG(
-		"AUTHENC SG: auth_off: 0x%x/length %d, digest-len=%d\n"
-		"cipher_off: 0x%x/length %d, iv-len=%d data_off: 0x%x\n",
+		"AUTHENC SG: auth_off: 0x%x/length %d, digest-len=%d",
 		sym_op->auth.data.offset,
 		sym_op->auth.data.length,
-		sess->digest_length,
+		sess->digest_length);
+	DPAA2_SEC_DP_DEBUG(
+		"cipher_off: 0x%x/length %d, iv-len=%d data_off: 0x%x",
 		sym_op->cipher.data.offset,
 		sym_op->cipher.data.length,
 		sess->iv.length,
@@ -791,11 +792,12 @@ build_authenc_fd(dpaa2_sec_session *sess,
 	DPAA2_SET_FD_FLC(fd, DPAA2_VADDR_TO_IOVA(flc));
 
 	DPAA2_SEC_DP_DEBUG(
-		"AUTHENC: auth_off: 0x%x/length %d, digest-len=%d\n"
-		"cipher_off: 0x%x/length %d, iv-len=%d data_off: 0x%x\n",
+		"AUTHENC: auth_off: 0x%x/length %d, digest-len=%d",
 		sym_op->auth.data.offset,
 		sym_op->auth.data.length,
-		sess->digest_length,
+		sess->digest_length);
+	DPAA2_SEC_DP_DEBUG(
+		"cipher_off: 0x%x/length %d, iv-len=%d data_off: 0x%x",
 		sym_op->cipher.data.offset,
 		sym_op->cipher.data.length,
 		sess->iv.length,
@@ -3931,20 +3933,20 @@ void dpaa2_sec_stats_get(struct rte_cryptodev *dev,
 	if (ret) {
 		DPAA2_SEC_ERR("SEC counters failed");
 	} else {
-		DPAA2_SEC_INFO("dpseci hardware stats:"
-			    "\n\tNum of Requests Dequeued = %" PRIu64
-			    "\n\tNum of Outbound Encrypt Requests = %" PRIu64
-			    "\n\tNum of Inbound Decrypt Requests = %" PRIu64
-			    "\n\tNum of Outbound Bytes Encrypted = %" PRIu64
-			    "\n\tNum of Outbound Bytes Protected = %" PRIu64
-			    "\n\tNum of Inbound Bytes Decrypted = %" PRIu64
-			    "\n\tNum of Inbound Bytes Validated = %" PRIu64,
-			    counters.dequeued_requests,
-			    counters.ob_enc_requests,
-			    counters.ib_dec_requests,
-			    counters.ob_enc_bytes,
-			    counters.ob_prot_bytes,
-			    counters.ib_dec_bytes,
+		DPAA2_SEC_INFO("dpseci hardware stats:");
+		DPAA2_SEC_INFO("\tNum of Requests Dequeued = %" PRIu64,
+			    counters.dequeued_requests);
+		DPAA2_SEC_INFO("\tNum of Outbound Encrypt Requests = %" PRIu64,
+			    counters.ob_enc_requests);
+		DPAA2_SEC_INFO("\tNum of Inbound Decrypt Requests = %" PRIu64,
+			    counters.ib_dec_requests);
+		DPAA2_SEC_INFO("\tNum of Outbound Bytes Encrypted = %" PRIu64,
+			    counters.ob_enc_bytes);
+		DPAA2_SEC_INFO("\tNum of Outbound Bytes Protected = %" PRIu64,
+			    counters.ob_prot_bytes);
+		DPAA2_SEC_INFO("\tNum of Inbound Bytes Decrypted = %" PRIu64,
+			    counters.ib_dec_bytes);
+		DPAA2_SEC_INFO("\tNum of Inbound Bytes Validated = %" PRIu64,
 			    counters.ib_valid_bytes);
 	}
 }

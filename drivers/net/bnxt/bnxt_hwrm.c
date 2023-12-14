@@ -1828,16 +1828,16 @@ static int bnxt_hwrm_port_phy_qcfg(struct bnxt *bp,
 
 	/* Display the captured P7 phy details */
 	if (BNXT_LINK_SPEEDS_V2(bp)) {
-		PMD_DRV_LOG_LINE(DEBUG, "Phytype:%d, Media_type:%d, Status: %d, Link Signal:%d\n"
-			    "Active Fec: %d Support_speeds2:%x, Force_link_speedsv2:%x\n"
-			    "Auto_link_speedsv2:%x, Active_lanes:%d",
+		PMD_DRV_LOG_LINE(DEBUG, "Phytype:%d, Media_type:%d, Status: %d, Link Signal:%d",
 			    link_info->phy_type,
 			    link_info->media_type,
 			    link_info->phy_link_status,
-			    link_info->link_signal_mode,
+			    link_info->link_signal_mode);
+		PMD_DRV_LOG_LINE(DEBUG, "Active Fec: %d Support_speeds2:%x, Force_link_speedsv2:%x",
 			    (resp->active_fec_signal_mode &
 				HWRM_PORT_PHY_QCFG_OUTPUT_ACTIVE_FEC_MASK) >> 4,
-			    link_info->support_speeds2, link_info->force_link_speeds2,
+			    link_info->support_speeds2, link_info->force_link_speeds2);
+		PMD_DRV_LOG_LINE(DEBUG, "Auto_link_speedsv2:%x, Active_lanes:%d",
 			    link_info->auto_link_speeds2,
 			    link_info->active_lanes);
 
@@ -1850,12 +1850,12 @@ static int bnxt_hwrm_port_phy_qcfg(struct bnxt *bp,
 			desc = ((struct link_speeds2_tbl *)
 				bnxt_get_hwrm_to_rte_speeds2_entry(link_info->link_speed))->desc;
 
-		PMD_DRV_LOG_LINE(INFO, "Link Speed: %s %s, Status: %s Signal-mode: %s\n"
-			    "Media type: %s, Xcvr type: %s, Active FEC: %s Lanes: %d",
+		PMD_DRV_LOG_LINE(INFO, "Link Speed: %s %s, Status: %s Signal-mode: %s",
 			    desc,
 			    !(link_info->auto_mode) ? "Forced" : "AutoNegotiated",
 			    link_status_str[link_info->phy_link_status % MAX_LINK_STR],
-			    signal_mode[link_info->link_signal_mode % MAX_SIG_MODE],
+			    signal_mode[link_info->link_signal_mode % MAX_SIG_MODE]);
+		PMD_DRV_LOG_LINE(INFO, "Media type: %s, Xcvr type: %s, Active FEC: %s Lanes: %d",
 			    media_type[link_info->media_type % MAX_MEDIA_TYPE],
 			    bnxt_get_xcvr_type(rte_le_to_cpu_32
 					       (resp->xcvr_identifier_type_tx_lpi_timer)),

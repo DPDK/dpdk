@@ -123,9 +123,10 @@ void caam_jr_stats_get(struct rte_cryptodev *dev,
 		stats->dequeued_count += qp[i]->rx_pkts;
 		stats->enqueue_err_count += qp[i]->tx_errs;
 		stats->dequeue_err_count += qp[i]->rx_errs;
-		CAAM_JR_INFO("extra stats:\n\tRX Poll ERR = %" PRIu64
-			     "\n\tTX Ring Full = %" PRIu64,
-			     qp[i]->rx_poll_err,
+		CAAM_JR_INFO("extra stats:");
+		CAAM_JR_INFO("\tRX Poll ERR = %" PRIu64,
+			     qp[i]->rx_poll_err);
+		CAAM_JR_INFO("\tTX Ring Full = %" PRIu64,
 			     qp[i]->tx_ring_full);
 	}
 }

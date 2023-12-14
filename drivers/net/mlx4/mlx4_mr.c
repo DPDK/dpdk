@@ -564,9 +564,9 @@ mlx4_mr_create_secondary(struct rte_eth_dev *dev, struct mlx4_mr_cache *entry,
 	/* Lookup can't fail. */
 	MLX4_ASSERT(entry->lkey != UINT32_MAX);
 	rte_rwlock_read_unlock(&priv->mr.rwlock);
-	DEBUG("port %u MR CREATED by primary process for %p:\n"
-	      "  [0x%" PRIxPTR ", 0x%" PRIxPTR "), lkey=0x%x",
-	      dev->data->port_id, (void *)addr,
+	DEBUG("port %u MR CREATED by primary process for %p:",
+	      dev->data->port_id, (void *)addr);
+	DEBUG("  [0x%" PRIxPTR ", 0x%" PRIxPTR "), lkey=0x%x",
 	      entry->start, entry->end, entry->lkey);
 	return entry->lkey;
 }
@@ -787,10 +787,10 @@ alloc_resources:
 	MLX4_ASSERT((uintptr_t)mr->ibv_mr->addr == data.start);
 	MLX4_ASSERT(mr->ibv_mr->length == len);
 	LIST_INSERT_HEAD(&priv->mr.mr_list, mr, mr);
-	DEBUG("port %u MR CREATED (%p) for %p:\n"
-	      "  [0x%" PRIxPTR ", 0x%" PRIxPTR "),"
+	DEBUG("port %u MR CREATED (%p) for %p:",
+	      dev->data->port_id, (void *)mr, (void *)addr);
+	DEBUG("  [0x%" PRIxPTR ", 0x%" PRIxPTR "),"
 	      " lkey=0x%x base_idx=%u ms_n=%u, ms_bmp_n=%u",
-	      dev->data->port_id, (void *)mr, (void *)addr,
 	      data.start, data.end, rte_cpu_to_be_32(mr->ibv_mr->lkey),
 	      mr->ms_base_idx, mr->ms_n, mr->ms_bmp_n);
 	/* Insert to the global cache table. */
@@ -1251,10 +1251,10 @@ mlx4_mr_update_ext_mp_cb(struct rte_mempool *mp, void *opaque,
 	mr->ms_bmp_n = 1;
 	rte_rwlock_write_lock(&priv->mr.rwlock);
 	LIST_INSERT_HEAD(&priv->mr.mr_list, mr, mr);
-	DEBUG("port %u MR CREATED (%p) for external memory %p:\n"
-	      "  [0x%" PRIxPTR ", 0x%" PRIxPTR "),"
+	DEBUG("port %u MR CREATED (%p) for external memory %p:",
+	      dev->data->port_id, (void *)mr, (void *)addr);
+	DEBUG("  [0x%" PRIxPTR ", 0x%" PRIxPTR "),"
 	      " lkey=0x%x base_idx=%u ms_n=%u, ms_bmp_n=%u",
-	      dev->data->port_id, (void *)mr, (void *)addr,
 	      addr, addr + len, rte_cpu_to_be_32(mr->ibv_mr->lkey),
 	      mr->ms_base_idx, mr->ms_n, mr->ms_bmp_n);
 	/* Insert to the global cache table. */
