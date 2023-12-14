@@ -2845,7 +2845,7 @@ void mlx5_flow_field_id_to_modify_info
 		 const struct rte_flow_attr *attr, struct rte_flow_error *error);
 int flow_dv_convert_modify_action(struct rte_flow_item *item,
 			      struct field_modify_info *field,
-			      struct field_modify_info *dcopy,
+			      struct field_modify_info *dest,
 			      struct mlx5_flow_dv_modify_hdr_resource *resource,
 			      uint32_t type, struct rte_flow_error *error);
 

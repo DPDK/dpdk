@@ -363,8 +363,10 @@ mlx5_update_vlan_vid_pcp(const struct rte_flow_action *action,
  *     For MLX5_MODIFICATION_TYPE_SET specifies destination field.
  *     For MLX5_MODIFICATION_TYPE_ADD specifies destination field.
  *     For MLX5_MODIFICATION_TYPE_COPY specifies source field.
- * @param[in] dcopy
- *   Destination field info for MLX5_MODIFICATION_TYPE_COPY in @type.
+ *     For MLX5_MODIFICATION_TYPE_ADD_FIELD specifies source field.
+ * @param[in] dest
+ *   Destination field info for MLX5_MODIFICATION_TYPE_COPY and
+ *   MLX5_MODIFICATION_TYPE_ADD_FIELD in @type.
  *   Negative offset value sets the same offset as source offset.
  *   size field is ignored, value is taken from source field.
  * @param[in,out] resource
@@ -380,7 +382,7 @@ mlx5_update_vlan_vid_pcp(const struct rte_flow_action *action,
 int
 flow_dv_convert_modify_action(struct rte_flow_item *item,
 			      struct field_modify_info *field,
-			      struct field_modify_info *dcopy,
+			      struct field_modify_info *dest,
 			      struct mlx5_flow_dv_modify_hdr_resource *resource,
 			      uint32_t type, struct rte_flow_error *error)
 {
@@ -401,7 +403,7 @@ flow_dv_convert_modify_action(struct rte_flow_item *item,
 		uint32_t mask;
 		uint32_t data;
 		bool next_field = true;
-		bool next_dcopy = true;
+		bool next_dest = true;
 
 		if (i >= MLX5_MAX_MODIFY_NUM)
 			return rte_flow_error_set(error, EINVAL,
@@ -432,20 +434,20 @@ flow_dv_convert_modify_action(struct rte_flow_item *item,
 				0 : size_b,
 		};
 		if (type == MLX5_MODIFICATION_TYPE_COPY) {
-			MLX5_ASSERT(dcopy);
-			actions[i].dst_field = dcopy->id;
+			MLX5_ASSERT(dest);
+			actions[i].dst_field = dest->id;
 			actions[i].dst_offset =
-				(int)dcopy->offset < 0 ? off_b : dcopy->offset;
+				(int)dest->offset < 0 ? off_b : dest->offset;
 			/* Convert entire record to big-endian format. */
 			actions[i].data1 = rte_cpu_to_be_32(actions[i].data1);
 			/*
 			 * Destination field overflow. Copy leftovers of
 			 * a source field to the next destination field.
 			 */
-			if ((size_b > dcopy->size * CHAR_BIT - dcopy->offset) &&
-			    dcopy->size != 0) {
+			if ((size_b > dest->size * CHAR_BIT - dest->offset) &&
+			    dest->size != 0) {
 				actions[i].length =
-					dcopy->size * CHAR_BIT - dcopy->offset;
+					dest->size * CHAR_BIT - dest->offset;
 				carry_b += actions[i].length;
 				next_field = false;
 			} else {
@@ -455,12 +457,12 @@ flow_dv_convert_modify_action(struct rte_flow_item *item,
 			 * Not enough bits in a source filed to fill a
 			 * destination field. Switch to the next source.
 			 */
-			if ((size_b < dcopy->size * CHAR_BIT - dcopy->offset) &&
+			if ((size_b < dest->size * CHAR_BIT - dest->offset) &&
 			    ((size_b == field->size * CHAR_BIT - off_b) ||
 			     field->is_flex)) {
 				actions[i].length = size_b;
-				dcopy->offset += actions[i].length;
-				next_dcopy = false;
+				dest->offset += actions[i].length;
+				next_dest = false;
 			}
 		} else {
 			MLX5_ASSERT(item->spec);
@@ -475,11 +477,11 @@ flow_dv_convert_modify_action(struct rte_flow_item *item,
 		/* Convert entire record to expected big-endian format. */
 		actions[i].data0 = rte_cpu_to_be_32(actions[i].data0);
 		if ((type != MLX5_MODIFICATION_TYPE_COPY ||
-		     dcopy->id != (enum mlx5_modification_field)UINT32_MAX) &&
+		     dest->id != (enum mlx5_modification_field)UINT32_MAX) &&
 		    field->id != (enum mlx5_modification_field)UINT32_MAX)
 			++i;
-		if (next_dcopy && type == MLX5_MODIFICATION_TYPE_COPY)
-			++dcopy;
+		if (next_dest && type == MLX5_MODIFICATION_TYPE_COPY)
+			++dest;
 		if (next_field)
 			++field;
 	} while (field->size);
