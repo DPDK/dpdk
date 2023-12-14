@@ -196,11 +196,19 @@ enum roc_npc_action_type {
 	ROC_NPC_ACTION_TYPE_PORT_ID = (1 << 16),
 	ROC_NPC_ACTION_TYPE_METER = (1 << 17),
 	ROC_NPC_ACTION_TYPE_AGE = (1 << 18),
+	ROC_NPC_ACTION_TYPE_SAMPLE = (1 << 19),
 };
 
 struct roc_npc_action {
 	enum roc_npc_action_type type; /**< Action type. */
-	const void *conf; /**< Pointer to action configuration object. */
+	const void *conf;	       /**< Pointer to action configuration object. */
+};
+
+struct roc_npc_action_sample {
+	uint32_t ratio;	      /**< packets sampled equals to '1/ratio'. */
+	uint32_t action_type; /* PF or VF or PORT_ID target. */
+	uint16_t pf_func;
+	uint16_t channel;
 };
 
 struct roc_npc_action_mark {
@@ -294,6 +302,8 @@ struct roc_npc_spi_to_sa_action_info {
 	bool has_action;
 };
 
+struct mbox;
+
 struct roc_npc_flow {
 	uint8_t nix_intf;
 	uint8_t enable;
@@ -322,6 +332,13 @@ struct roc_npc_flow {
 	void *age_context;
 	uint32_t timeout;
 	bool has_age_action;
+	bool is_sampling_rule;
+	uint32_t recv_queue;
+	uint32_t mcast_grp_index;
+	uint32_t mce_start_index;
+#define ROC_NPC_MIRROR_LIST_SIZE 2
+	uint16_t mcast_pf_funcs[ROC_NPC_MIRROR_LIST_SIZE];
+	uint16_t mcast_channels[ROC_NPC_MIRROR_LIST_SIZE];
 
 	TAILQ_ENTRY(roc_npc_flow) next;
 };

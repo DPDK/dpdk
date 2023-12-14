@@ -300,6 +300,11 @@ struct mbox_msghdr {
 	M(NIX_FREE_BPIDS, 0x8029, nix_free_bpids, nix_bpids, msg_rsp)          \
 	M(NIX_RX_CHAN_CFG, 0x802a, nix_rx_chan_cfg, nix_rx_chan_cfg,           \
 	  nix_rx_chan_cfg)                                                     \
+	M(NIX_MCAST_GRP_CREATE, 0x802b, nix_mcast_grp_create, nix_mcast_grp_create_req,            \
+	  nix_mcast_grp_create_rsp)                                                                \
+	M(NIX_MCAST_GRP_DESTROY, 0x802c, nix_mcast_grp_destroy, nix_mcast_grp_destroy_req, msg_rsp)\
+	M(NIX_MCAST_GRP_UPDATE, 0x802d, nix_mcast_grp_update, nix_mcast_grp_update_req,            \
+	  nix_mcast_grp_update_rsp)                                                                \
 	/* MCS mbox IDs (range 0xa000 - 0xbFFF) */                                                 \
 	M(MCS_ALLOC_RESOURCES, 0xa000, mcs_alloc_resources, mcs_alloc_rsrc_req,                    \
 	  mcs_alloc_rsrc_rsp)                                                                      \
@@ -1768,6 +1773,57 @@ struct nix_rx_chan_cfg {
 	uint16_t __io chan; /* RX channel to be configured */
 	uint64_t __io val; /* NIX_AF_RX_CHAN_CFG value */
 	uint64_t __io rsvd;
+};
+
+struct nix_mcast_grp_create_req {
+	struct mbox_msghdr hdr;
+#define NIX_MCAST_INGRESS 0
+#define NIX_MCAST_EGRESS  1
+	uint8_t __io dir;
+	uint8_t __io reserved[11];
+	/* Reserving few bytes for future requirement */
+};
+
+struct nix_mcast_grp_create_rsp {
+	struct mbox_msghdr hdr;
+	/* This mcast_grp_idx should be passed during MCAM
+	 * write entry for multicast. AF will identify the
+	 * corresponding multicast table index associated
+	 * with the group id and program the same to MCAM entry.
+	 * This group id is also needed during group delete
+	 * and update request.
+	 */
+	uint32_t __io mcast_grp_idx;
+};
+struct nix_mcast_grp_destroy_req {
+	struct mbox_msghdr hdr;
+	/* Group id returned by nix_mcast_grp_create_rsp */
+	uint32_t __io mcast_grp_idx;
+};
+
+struct nix_mcast_grp_update_req {
+	struct mbox_msghdr hdr;
+	/* Group id returned by nix_mcast_grp_create_rsp */
+	uint32_t __io mcast_grp_idx;
+	/* Number of multicast/mirror entries requested */
+	uint32_t __io num_mce_entry;
+#define NIX_MCE_ENTRY_MAX 64
+#define NIX_RX_RQ	  0
+#define NIX_RX_RSS	  1
+	/* Receive queue or RSS index within pf_func */
+	uint32_t __io rq_rss_index[NIX_MCE_ENTRY_MAX];
+	uint16_t __io pcifunc[NIX_MCE_ENTRY_MAX];
+	uint16_t __io channel[NIX_MCE_ENTRY_MAX];
+#define NIX_MCAST_OP_ADD_ENTRY 0
+#define NIX_MCAST_OP_DEL_ENTRY 1
+	/* Destination type. 0:Receive queue, 1:RSS*/
+	uint8_t __io dest_type[NIX_MCE_ENTRY_MAX];
+	uint8_t __io op;
+};
+
+struct nix_mcast_grp_update_rsp {
+	struct mbox_msghdr hdr;
+	uint32_t __io mce_start_index;
 };
 
 /* Global NIX inline IPSec configuration */

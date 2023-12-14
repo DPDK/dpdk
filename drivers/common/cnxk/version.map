@@ -298,6 +298,8 @@ INTERNAL {
 	roc_nix_mac_promisc_mode_enable;
 	roc_nix_mac_rxtx_start_stop;
 	roc_nix_max_pkt_len;
+	roc_nix_mcast_list_free;
+	roc_nix_mcast_list_setup;
 	roc_nix_mcast_mcam_entry_alloc;
 	roc_nix_mcast_mcam_entry_ena_dis;
 	roc_nix_mcast_mcam_entry_free;

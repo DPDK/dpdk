@@ -493,8 +493,7 @@ void npc_age_flow_list_entry_delete(struct roc_npc *npc, struct roc_npc_flow *fl
 uint32_t npc_aged_flows_get(void *args);
 int npc_aged_flows_bitmap_alloc(struct roc_npc *roc_npc);
 void npc_aged_flows_bitmap_free(struct roc_npc *roc_npc);
-int npc_aging_ctrl_thread_create(struct roc_npc *roc_npc,
-				 const struct roc_npc_action_age *age,
+int npc_aging_ctrl_thread_create(struct roc_npc *roc_npc, const struct roc_npc_action_age *age,
 				 struct roc_npc_flow *flow);
 void npc_aging_ctrl_thread_destroy(struct roc_npc *roc_npc);
 #endif /* _ROC_NPC_PRIV_H_ */

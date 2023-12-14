@@ -107,3 +107,89 @@ exit:
 	mbox_put(mbox);
 	return rc;
 }
+
+int
+roc_nix_mcast_list_setup(struct mbox *mbox, uint8_t intf, int nb_entries, uint16_t *pf_funcs,
+			 uint16_t *channels, uint32_t *rqs, uint32_t *grp_index,
+			 uint32_t *start_index)
+{
+	struct nix_mcast_grp_create_req *mce_grp_create_req;
+	struct nix_mcast_grp_create_rsp *mce_grp_create_rsp;
+	struct nix_mcast_grp_update_req *mce_grp_update_req;
+	struct nix_mcast_grp_update_rsp *mce_grp_update_rsp;
+	int rc = 0, i;
+
+	mbox_get(mbox);
+
+	mce_grp_create_req = mbox_alloc_msg_nix_mcast_grp_create(mbox);
+	if (mce_grp_create_req == NULL) {
+		rc = -ENOSPC;
+		goto exit;
+	}
+
+	mce_grp_create_req->dir = intf;
+	rc = mbox_process_msg(mbox, (void *)&mce_grp_create_rsp);
+	if (rc) {
+		plt_err("Failed to create mirror list");
+		goto exit;
+	}
+
+	*grp_index = mce_grp_create_rsp->mcast_grp_idx;
+
+	mce_grp_update_req = mbox_alloc_msg_nix_mcast_grp_update(mbox);
+	if (mce_grp_update_req == NULL) {
+		rc = -ENOSPC;
+		goto exit;
+	}
+
+	mce_grp_update_req->mcast_grp_idx = *grp_index;
+	mce_grp_update_req->op = NIX_MCAST_OP_ADD_ENTRY;
+	mce_grp_update_req->num_mce_entry = nb_entries;
+	for (i = 0; i < nb_entries; i++) {
+		mce_grp_update_req->pcifunc[i] = pf_funcs[i];
+		mce_grp_update_req->channel[i] = channels[i];
+		mce_grp_update_req->rq_rss_index[i] = rqs[i];
+		mce_grp_update_req->dest_type[i] = NIX_RX_RQ;
+	}
+
+	rc = mbox_process_msg(mbox, (void *)&mce_grp_update_rsp);
+	if (rc) {
+		plt_err("Failed to create mirror list");
+		goto exit;
+	}
+
+	*start_index = (mce_grp_update_rsp->mce_start_index & 0xFFFFF);
+
+	rc = 0;
+exit:
+	mbox_put(mbox);
+	return rc;
+}
+
+int
+roc_nix_mcast_list_free(struct mbox *mbox, uint32_t mcast_grp_index)
+{
+	struct nix_mcast_grp_destroy_req *mce_grp_destroy_req;
+	struct nix_mcast_grp_destroy_rsp *mce_grp_destroy_rsp;
+	int rc = 0;
+
+	mbox_get(mbox);
+
+	mce_grp_destroy_req = mbox_alloc_msg_nix_mcast_grp_destroy(mbox);
+	if (mce_grp_destroy_req == NULL) {
+		rc = -ENOSPC;
+		goto exit;
+	}
+
+	mce_grp_destroy_req->mcast_grp_idx = mcast_grp_index;
+	rc = mbox_process_msg(mbox, (void *)&mce_grp_destroy_rsp);
+	if (rc) {
+		plt_err("Failed to destroy mirror group index");
+		goto exit;
+	}
+
+	rc = 0;
+exit:
+	mbox_put(mbox);
+	return rc;
+}

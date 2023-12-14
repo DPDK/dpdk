@@ -1005,6 +1005,10 @@ int __roc_api roc_nix_mcast_mcam_entry_write(struct roc_nix *roc_nix,
 					     struct mcam_entry *entry,
 					     uint32_t index, uint8_t intf,
 					     uint64_t action);
-int __roc_api roc_nix_mcast_mcam_entry_ena_dis(struct roc_nix *roc_nix,
-					       uint32_t index, bool enable);
+int __roc_api roc_nix_mcast_mcam_entry_ena_dis(struct roc_nix *roc_nix, uint32_t index,
+					       bool enable);
+int __roc_api roc_nix_mcast_list_setup(struct mbox *mbox, uint8_t intf, int nb_entries,
+				       uint16_t *pf_funcs, uint16_t *channels, uint32_t *rqs,
+				       uint32_t *grp_index, uint32_t *start_index);
+int __roc_api roc_nix_mcast_list_free(struct mbox *mbox, uint32_t mcast_grp_index);
 #endif /* _ROC_NIX_H_ */

@@ -498,12 +498,46 @@ npc_parse_spi_to_sa_action(struct roc_npc *roc_npc, const struct roc_npc_action 
 }
 
 static int
+roc_npc_process_sample_action(struct roc_npc *roc_npc,
+			      const struct roc_npc_action_sample *sample_action,
+			      struct roc_npc_flow *flow)
+{
+	struct nix *nix = roc_nix_to_nix_priv(roc_npc->roc_nix);
+	struct npc *npc = roc_npc_to_npc_priv(roc_npc);
+
+	flow->is_sampling_rule = true;
+
+	switch (sample_action->action_type) {
+	case ROC_NPC_ACTION_TYPE_PORT_ID:
+		flow->mcast_pf_funcs[0] = sample_action->pf_func;
+		flow->mcast_channels[0] = sample_action->channel;
+		break;
+	case ROC_NPC_ACTION_TYPE_PF:
+		flow->mcast_pf_funcs[0] = roc_npc->pf_func;
+		flow->mcast_channels[0] = npc->channel;
+		break;
+	case ROC_NPC_ACTION_TYPE_VF:
+		if (sample_action->pf_func >= nix->dev.maxvf)
+			return -EINVAL;
+		flow->mcast_pf_funcs[0] =
+			((roc_npc->pf_func & 0xfc00) | (sample_action->pf_func + 1));
+		flow->mcast_channels[0] = npc->channel;
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static int
 npc_parse_actions(struct roc_npc *roc_npc, const struct roc_npc_attr *attr,
 		  const struct roc_npc_action actions[], struct roc_npc_flow *flow,
 		  uint16_t dst_pf_func)
 {
 	struct npc *npc = roc_npc_to_npc_priv(roc_npc);
 	const struct roc_npc_action *sec_action = NULL;
+	const struct roc_npc_action_sample *act_sample;
 	const struct roc_npc_action_mark *act_mark;
 	const struct roc_npc_action_meter *act_mtr;
 	const struct roc_npc_action_queue *act_q;
@@ -562,8 +596,7 @@ npc_parse_actions(struct roc_npc *roc_npc, const struct roc_npc_attr *attr,
 			break;
 
 		case ROC_NPC_ACTION_TYPE_VF:
-			vf_act =
-				(const struct roc_npc_action_vf *)actions->conf;
+			vf_act = (const struct roc_npc_action_vf *)actions->conf;
 			req_act |= ROC_NPC_ACTION_TYPE_VF;
 			vf_id = vf_act->id & RVU_PFVF_FUNC_MASK;
 			pf_func &= (0xfc00);
@@ -576,9 +609,8 @@ npc_parse_actions(struct roc_npc *roc_npc, const struct roc_npc_attr *attr,
 			break;
 
 		case ROC_NPC_ACTION_TYPE_QUEUE:
-			act_q = (const struct roc_npc_action_queue *)
-					actions->conf;
-			rq = act_q->index;
+			act_q = (const struct roc_npc_action_queue *)actions->conf;
+			rq = act_q->index & 0xFFFFF;
 			req_act |= ROC_NPC_ACTION_TYPE_QUEUE;
 			break;
 
@@ -648,6 +680,13 @@ npc_parse_actions(struct roc_npc *roc_npc, const struct roc_npc_attr *attr,
 				goto err_exit;
 			req_act |= ROC_NPC_ACTION_TYPE_AGE;
 			break;
+		case ROC_NPC_ACTION_TYPE_SAMPLE:
+			req_act |= ROC_NPC_ACTION_TYPE_SAMPLE;
+			act_sample = actions->conf;
+			errcode = roc_npc_process_sample_action(roc_npc, act_sample, flow);
+			if (errcode)
+				goto err_exit;
+			break;
 		default:
 			errcode = NPC_ERR_ACTION_NOTSUP;
 			goto err_exit;
@@ -688,6 +727,27 @@ npc_parse_actions(struct roc_npc *roc_npc, const struct roc_npc_attr *attr,
 		goto err_exit;
 	}
 
+	if (req_act & ROC_NPC_ACTION_TYPE_SAMPLE) {
+		/* One entry for the mce list PF and channel comes from the sample subaction.
+		 * Another one is the action target of the flow rule getting created.
+		 */
+		flow->mcast_pf_funcs[1] = pf_func;
+		flow->mcast_channels[1] = npc->channel;
+		if (req_act & (ROC_NPC_ACTION_TYPE_DROP | ROC_NPC_ACTION_TYPE_SEC |
+			       ROC_NPC_ACTION_TYPE_RSS)) {
+			plt_err("Drop/RSS/SEC not supported with action type sample");
+			return -EINVAL;
+		}
+		if (flow->mcast_pf_funcs[0] == flow->mcast_pf_funcs[1]) {
+			plt_err("Sample destination and target cannot be same");
+			return -EINVAL;
+		}
+		if ((attr->egress) && (flow->mcast_channels[0] == flow->mcast_channels[1])) {
+			plt_err("Mirroring within PF and VF not allowed");
+			return -EINVAL;
+		}
+	}
+
 	/* Check if actions specified are compatible */
 	if (attr->egress) {
 		if (req_act & ROC_NPC_ACTION_TYPE_VLAN_STRIP) {
@@ -697,11 +757,10 @@ npc_parse_actions(struct roc_npc *roc_npc, const struct roc_npc_attr *attr,
 		}
 
 		if (req_act &
-		    ~(ROC_NPC_ACTION_TYPE_VLAN_INSERT |
-		      ROC_NPC_ACTION_TYPE_VLAN_ETHTYPE_INSERT |
-		      ROC_NPC_ACTION_TYPE_VLAN_PCP_INSERT |
-		      ROC_NPC_ACTION_TYPE_DROP | ROC_NPC_ACTION_TYPE_COUNT)) {
-			plt_err("Only VLAN insert, drop, count supported on Egress");
+		    ~(ROC_NPC_ACTION_TYPE_VLAN_INSERT | ROC_NPC_ACTION_TYPE_VLAN_ETHTYPE_INSERT |
+		      ROC_NPC_ACTION_TYPE_VLAN_PCP_INSERT | ROC_NPC_ACTION_TYPE_DROP |
+		      ROC_NPC_ACTION_TYPE_COUNT | ROC_NPC_ACTION_TYPE_SAMPLE)) {
+			plt_err("Only VLAN insert, drop, count, sample supported on Egress");
 			errcode = NPC_ERR_ACTION_NOTSUP;
 			goto err_exit;
 		}
@@ -722,6 +781,11 @@ npc_parse_actions(struct roc_npc *roc_npc, const struct roc_npc_attr *attr,
 			plt_err("Unsupported action for egress");
 			errcode = NPC_ERR_ACTION_NOTSUP;
 			goto err_exit;
+		}
+
+		if (req_act & ROC_NPC_ACTION_TYPE_SAMPLE) {
+			flow->mcast_pf_funcs[1] = pf_func;
+			flow->mcast_channels[1] = npc->channel;
 		}
 
 		goto set_pf_func;
@@ -771,13 +835,13 @@ npc_parse_actions(struct roc_npc *roc_npc, const struct roc_npc_attr *attr,
 		} else {
 			flow->npc_action = NIX_RX_ACTIONOP_UCAST;
 			if (req_act & ROC_NPC_ACTION_TYPE_QUEUE)
-				flow->npc_action |= (uint64_t)rq << 20;
+				flow->recv_queue = rq;
 		}
 	} else if (req_act & ROC_NPC_ACTION_TYPE_DROP) {
 		flow->npc_action = NIX_RX_ACTIONOP_DROP;
 	} else if (req_act & ROC_NPC_ACTION_TYPE_QUEUE) {
 		flow->npc_action = NIX_RX_ACTIONOP_UCAST;
-		flow->npc_action |= (uint64_t)rq << 20;
+		flow->recv_queue = rq;
 	} else if (req_act & ROC_NPC_ACTION_TYPE_RSS) {
 		flow->npc_action = NIX_RX_ACTIONOP_UCAST;
 	} else if (req_act & ROC_NPC_ACTION_TYPE_SEC) {
@@ -796,6 +860,9 @@ npc_parse_actions(struct roc_npc *roc_npc, const struct roc_npc_attr *attr,
 		errcode = NPC_ERR_ACTION_NOTSUP;
 		goto err_exit;
 	}
+
+	if (req_act & ROC_NPC_ACTION_TYPE_SAMPLE)
+		flow->npc_action = NIX_RX_ACTIONOP_MCAST;
 
 	if (mark)
 		flow->npc_action |= (uint64_t)mark << 40;
@@ -1638,6 +1705,9 @@ roc_npc_flow_destroy(struct roc_npc *roc_npc, struct roc_npc_flow *flow)
 		if (rc != 0)
 			return rc;
 	}
+
+	if (flow->is_sampling_rule)
+		roc_nix_mcast_list_free(npc->mbox, flow->mcast_grp_index);
 
 	rc = roc_npc_mcam_free(roc_npc, flow);
 	if (rc != 0)
