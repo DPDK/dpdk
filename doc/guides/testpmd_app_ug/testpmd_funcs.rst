@@ -3767,6 +3767,10 @@ This section lists supported pattern items and their attributes, if any.
 
   - ``data {unsigned}``: metadata value.
 
+- ``random``: match application specific random value.
+
+  - ``value {unsigned}``: random value.
+
 - ``gtp_psc``: match GTP PDU extension header with type 0x85.
 
   - ``pdu_type {unsigned}``: PDU type.
