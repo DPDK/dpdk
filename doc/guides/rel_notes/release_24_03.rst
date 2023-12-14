@@ -60,6 +60,11 @@ New Features
   * Added new function ``rte_eth_find_rss_algo`` to get RSS hash
     algorithm by its name.
 
+* **Added flow matching of random value.**
+
+  * Added ``RTE_FLOW_ITEM_TYPE_RANDOM`` to match random value.
+  * Added ``RTE_FLOW_FIELD_RANDOM`` to represent it in field ID struct.
+
 
 Removed Items
 -------------

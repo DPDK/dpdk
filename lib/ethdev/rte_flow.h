@@ -701,6 +701,19 @@ enum rte_flow_item_type {
 	 *
 	 */
 	RTE_FLOW_ITEM_TYPE_PTYPE,
+
+	/**
+	 * [META]
+	 *
+	 * Matches a random value.
+	 *
+	 * This value is not based on the packet data/headers.
+	 * Application shouldn't assume that this value is kept during the
+	 * lifetime of the packet.
+	 *
+	 * @see struct rte_flow_item_random.
+	 */
+	RTE_FLOW_ITEM_TYPE_RANDOM,
 };
 
 /**
@@ -2041,6 +2054,25 @@ static const struct rte_flow_item_ib_bth rte_flow_item_ib_bth_mask = {
 		.opcode = 0xff,
 		.dst_qp = "\xff\xff\xff",
 	},
+};
+#endif
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this structure may change without prior notice
+ *
+ * RTE_FLOW_ITEM_TYPE_RANDOM
+ *
+ * Matches a random value.
+ */
+struct rte_flow_item_random {
+	uint32_t value;
+};
+
+/** Default mask for RTE_FLOW_ITEM_TYPE_RANDOM. */
+#ifndef __cplusplus
+static const struct rte_flow_item_random rte_flow_item_random_mask = {
+	.value = UINT32_MAX,
 };
 #endif
 
@@ -3900,7 +3932,8 @@ enum rte_flow_field_id {
 	RTE_FLOW_FIELD_TCP_DATA_OFFSET,	/**< TCP data offset. */
 	RTE_FLOW_FIELD_IPV4_IHL,	/**< IPv4 IHL. */
 	RTE_FLOW_FIELD_IPV4_TOTAL_LEN,	/**< IPv4 total length. */
-	RTE_FLOW_FIELD_IPV6_PAYLOAD_LEN	/**< IPv6 payload length. */
+	RTE_FLOW_FIELD_IPV6_PAYLOAD_LEN,/**< IPv6 payload length. */
+	RTE_FLOW_FIELD_RANDOM		/**< Random value. */
 };
 
 /**

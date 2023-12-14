@@ -1573,6 +1573,20 @@ Matches the packet type as defined in rte_mbuf_ptype.
 
 - ``packet_type``: L2/L3/L4 and tunnel information.
 
+Item: ``RANDOM``
+^^^^^^^^^^^^^^^^
+
+Matches a random value.
+
+A random unsigned integer (at most 32-bit) is generated for each packet during
+flow rule processing, by either HW, SW or some external source.
+Application can match on either exact value or range of values.
+This value is not based on the packet data/headers.
+Application shouldn't assume that this value is kept during the lifetime of
+the packet.
+
+- ``value``: Specific value to match.
+
 Actions
 ~~~~~~~
 
