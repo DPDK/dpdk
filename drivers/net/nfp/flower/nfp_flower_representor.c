@@ -314,13 +314,13 @@ nfp_flower_repr_free(struct nfp_flower_representor *repr,
 {
 	switch (repr_type) {
 	case NFP_REPR_TYPE_PHYS_PORT:
-		rte_eth_dev_destroy(repr->eth_dev, nfp_flower_repr_uninit);
+		nfp_flower_repr_uninit(repr->eth_dev);
 		break;
 	case NFP_REPR_TYPE_PF:
-		rte_eth_dev_destroy(repr->eth_dev, nfp_flower_pf_repr_uninit);
+		nfp_flower_pf_repr_uninit(repr->eth_dev);
 		break;
 	case NFP_REPR_TYPE_VF:
-		rte_eth_dev_destroy(repr->eth_dev, nfp_flower_repr_uninit);
+		nfp_flower_repr_uninit(repr->eth_dev);
 		break;
 	default:
 		PMD_DRV_LOG(ERR, "Unsupported repr port type.");
