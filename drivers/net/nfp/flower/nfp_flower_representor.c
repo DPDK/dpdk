@@ -294,17 +294,30 @@ nfp_flower_repr_tx_burst(void *tx_queue,
 static int
 nfp_flower_repr_uninit(struct rte_eth_dev *eth_dev)
 {
+	uint16_t index;
 	struct nfp_flower_representor *repr;
 
 	repr = eth_dev->data->dev_private;
 	rte_ring_free(repr->ring);
 
+	if (repr->repr_type == NFP_REPR_TYPE_PHYS_PORT) {
+		index = NFP_FLOWER_CMSG_PORT_PHYS_PORT_NUM(repr->port_id);
+		repr->app_fw_flower->phy_reprs[index] = NULL;
+	} else {
+		index = repr->vf_id;
+		repr->app_fw_flower->vf_reprs[index] = NULL;
+	}
+
 	return 0;
 }
 
 static int
-nfp_flower_pf_repr_uninit(__rte_unused struct rte_eth_dev *eth_dev)
+nfp_flower_pf_repr_uninit(struct rte_eth_dev *eth_dev)
 {
+	struct nfp_flower_representor *repr = eth_dev->data->dev_private;
+
+	repr->app_fw_flower->pf_repr = NULL;
+
 	return 0;
 }
 
