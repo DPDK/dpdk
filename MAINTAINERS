@@ -1774,6 +1774,7 @@ F: doc/guides/testpmd_app_ug/
 
 DMA device performance tool
 M: Cheng Jiang <honest.jiang@foxmail.com>
+M: Chengwen Feng <fengchengwen@huawei.com>
 F: app/test-dma-perf/
 F: doc/guides/tools/dmaperf.rst
 
