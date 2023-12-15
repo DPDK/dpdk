@@ -98,15 +98,19 @@ npc_rss_action_validate(struct rte_eth_dev *eth_dev,
 }
 
 static void
-npc_rss_flowkey_get(struct cnxk_eth_dev *eth_dev,
-		    const struct roc_npc_action *rss_action,
-		    uint32_t *flowkey_cfg)
+npc_rss_flowkey_get(struct cnxk_eth_dev *eth_dev, const struct roc_npc_action *rss_action,
+		    uint32_t *flowkey_cfg, uint64_t default_rss_types)
 {
 	const struct roc_npc_action_rss *rss;
+	uint64_t rss_types;
 
 	rss = (const struct roc_npc_action_rss *)rss_action->conf;
+	rss_types = rss->types;
+	/* If no RSS types are specified, use default one */
+	if (rss_types == 0)
+		rss_types = default_rss_types;
 
-	*flowkey_cfg = cnxk_rss_ethdev_to_nix(eth_dev, rss->types, rss->level);
+	*flowkey_cfg = cnxk_rss_ethdev_to_nix(eth_dev, rss_types, rss->level);
 }
 
 static int
@@ -206,7 +210,8 @@ cnxk_map_actions(struct rte_eth_dev *eth_dev, const struct rte_flow_attr *attr,
 				goto err_exit;
 			in_actions[i].type = ROC_NPC_ACTION_TYPE_RSS;
 			in_actions[i].conf = actions->conf;
-			npc_rss_flowkey_get(dev, &in_actions[i], flowkey_cfg);
+			npc_rss_flowkey_get(dev, &in_actions[i], flowkey_cfg,
+					    eth_dev->data->dev_conf.rx_adv_conf.rss_conf.rss_hf);
 			break;
 
 		case RTE_FLOW_ACTION_TYPE_SECURITY:
