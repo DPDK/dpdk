@@ -13,8 +13,11 @@
 #include <rte_log.h>
 #include <rte_io.h>
 
-#define WARNINGOUT(S, args...)  RTE_LOG(WARNING, PMD, S, ##args)
-#define DEBUGOUT(S, args...)    RTE_LOG(DEBUG, PMD, S, ##args)
+extern int ifcvf_vdpa_logtype;
+#define RTE_LOGTYPE_IFCVF_VDPA ifcvf_vdpa_logtype
+
+#define WARNINGOUT(S, args...)  RTE_LOG(WARNING, IFCVF_VDPA, S, ##args)
+#define DEBUGOUT(S, args...)    RTE_LOG(DEBUG, IFCVF_VDPA, S, ##args)
 #define STATIC                  static
 
 #define msec_delay(x)	rte_delay_us_sleep(1000 * (x))

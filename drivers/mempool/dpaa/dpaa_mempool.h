@@ -67,7 +67,7 @@ extern struct dpaa_bp_info *rte_dpaa_bpid_info;
 #define MEMPOOL_INIT_FUNC_TRACE() DPAA_MEMPOOL_LOG(DEBUG, " >>")
 
 #define DPAA_MEMPOOL_DPDEBUG(fmt, args...) \
-	RTE_LOG_DP(DEBUG, PMD, fmt, ## args)
+	RTE_LOG_DP(DEBUG, DPAA_MEMPOOL, fmt, ## args)
 #define DPAA_MEMPOOL_DEBUG(fmt, args...) \
 	DPAA_MEMPOOL_LOG(DEBUG, fmt, ## args)
 #define DPAA_MEMPOOL_ERR(fmt, args...) \

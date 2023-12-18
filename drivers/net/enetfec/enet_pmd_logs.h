@@ -8,6 +8,7 @@
 #include <rte_log.h>
 
 extern int enetfec_logtype_pmd;
+#define RTE_LOGTYPE_ENETFEC_PMD enetfec_logtype_pmd
 
 /* PMD related logs */
 #define ENETFEC_PMD_LOG(level, fmt, args...) \
@@ -28,6 +29,6 @@ extern int enetfec_logtype_pmd;
 
 /* DP Logs, toggled out at compile time if level lower than current level */
 #define ENETFEC_DP_LOG(level, fmt, args...) \
-	RTE_LOG_DP(level, PMD, fmt, ## args)
+	RTE_LOG_DP(level, ENETFEC_PMD, fmt, ## args)
 
 #endif /* _ENETFEC_LOGS_H_ */

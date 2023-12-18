@@ -8,6 +8,7 @@
 #include <rte_log.h>
 
 extern int idpf_common_logtype;
+#define RTE_LOGTYPE_IDPF_COMMON idpf_common_logtype
 
 #define DRV_LOG_RAW(level, ...)					\
 	rte_log(RTE_LOG_ ## level,				\
@@ -23,7 +24,7 @@ extern int idpf_common_logtype;
 #ifdef RTE_LIBRTE_IDPF_DEBUG_RX
 #define RX_LOG(level, ...) \
 	RTE_LOG(level, \
-		PMD, \
+		IDPF_COMMON, \
 		RTE_FMT("%s(): " \
 			RTE_FMT_HEAD(__VA_ARGS__,) "\n", \
 			__func__, \
@@ -35,7 +36,7 @@ extern int idpf_common_logtype;
 #ifdef RTE_LIBRTE_IDPF_DEBUG_TX
 #define TX_LOG(level, ...) \
 	RTE_LOG(level, \
-		PMD, \
+		IDPF_COMMON, \
 		RTE_FMT("%s(): " \
 			RTE_FMT_HEAD(__VA_ARGS__,) "\n", \
 			__func__, \

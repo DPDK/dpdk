@@ -9,6 +9,7 @@
 #define _DPAA_SEC_LOG_H_
 
 extern int dpaa_logtype_sec;
+#define RTE_LOGTYPE_DPAA_SEC dpaa_logtype_sec
 
 #define DPAA_SEC_LOG(level, fmt, args...) \
 	rte_log(RTE_LOG_ ## level, dpaa_logtype_sec, "dpaa_sec: " \
@@ -29,7 +30,7 @@ extern int dpaa_logtype_sec;
 
 /* DP Logs, toggled out at compile time if level lower than current level */
 #define DPAA_SEC_DP_LOG(level, fmt, args...) \
-	RTE_LOG_DP(level, PMD, fmt, ## args)
+	RTE_LOG_DP(level, DPAA_SEC, fmt, ## args)
 
 #define DPAA_SEC_DP_DEBUG(fmt, args...) \
 	DPAA_SEC_DP_LOG(DEBUG, fmt, ## args)

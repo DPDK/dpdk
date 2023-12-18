@@ -214,6 +214,7 @@ dpaa_rx_cb_atomic(void *event,
 
 /* PMD related logs */
 extern int dpaa_logtype_pmd;
+#define RTE_LOGTYPE_DPAA_PMD dpaa_logtype_pmd
 
 #define DPAA_PMD_LOG(level, fmt, args...) \
 	rte_log(RTE_LOG_ ## level, dpaa_logtype_pmd, "%s(): " fmt "\n", \
@@ -232,6 +233,6 @@ extern int dpaa_logtype_pmd;
 
 /* DP Logs, toggled out at compile time if level lower than current level */
 #define DPAA_DP_LOG(level, fmt, args...) \
-	RTE_LOG_DP(level, PMD, fmt, ## args)
+	RTE_LOG_DP(level, DPAA_PMD, fmt, ## args)
 
 #endif

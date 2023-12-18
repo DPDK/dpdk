@@ -598,4 +598,6 @@ int otx_ep_delete_oqs(struct otx_ep_device *otx_ep, uint32_t oq_no);
 #define PCI_VENDOR_ID_CAVIUM			0x177D
 
 extern int otx_net_ep_logtype;
+#define RTE_LOGTYPE_OTX_NET_EP otx_net_ep_logtype
+
 #endif  /* _OTX_EP_COMMON_H_ */

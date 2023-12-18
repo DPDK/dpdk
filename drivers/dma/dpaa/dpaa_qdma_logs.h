@@ -6,6 +6,7 @@
 #define __DPAA_QDMA_LOGS_H__
 
 extern int dpaa_qdma_logtype;
+#define RTE_LOGTYPE_DPAA_QDMA dpaa_qdma_logtype
 
 #define DPAA_QDMA_LOG(level, fmt, args...) \
 	rte_log(RTE_LOG_ ## level, dpaa_qdma_logtype, "dpaa_qdma: " \
@@ -26,7 +27,7 @@ extern int dpaa_qdma_logtype;
 
 /* DP Logs, toggled out at compile time if level lower than current level */
 #define DPAA_QDMA_DP_LOG(level, fmt, args...) \
-	RTE_LOG_DP(level, PMD, "dpaa_qdma: " fmt "\n", ## args)
+	RTE_LOG_DP(level, DPAA_QDMA, "dpaa_qdma: " fmt "\n", ## args)
 
 #define DPAA_QDMA_DP_DEBUG(fmt, args...) \
 	DPAA_QDMA_DP_LOG(DEBUG, fmt, ## args)

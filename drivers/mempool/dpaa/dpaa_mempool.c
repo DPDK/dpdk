@@ -38,6 +38,7 @@ struct dpaa_memseg_list rte_dpaa_memsegs
 struct dpaa_bp_info *rte_dpaa_bpid_info;
 
 RTE_LOG_REGISTER_DEFAULT(dpaa_logtype_mempool, NOTICE);
+#define RTE_LOGTYPE_DPAA_MEMPOOL dpaa_logtype_mempool
 
 static int
 dpaa_mbuf_create_pool(struct rte_mempool *mp)

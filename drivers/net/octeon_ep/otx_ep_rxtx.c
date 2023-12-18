@@ -884,7 +884,7 @@ otx_ep_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		next_fetch = (pkts == new_pkts - 1) ? 0 : 1;
 		oq_pkt = otx_ep_droq_read_packet(otx_ep, droq, next_fetch);
 		if (!oq_pkt) {
-			RTE_LOG_DP(ERR, PMD,
+			RTE_LOG_DP(ERR, OTX_NET_EP,
 				   "DROQ read pkt failed pending %" PRIu64
 				    "last_pkt_count %" PRIu64 "new_pkts %d.\n",
 				   droq->pkts_pending, droq->last_pkt_count,

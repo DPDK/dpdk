@@ -6,6 +6,7 @@
 #define _DLB2_EVDEV_LOG_H_
 
 extern int eventdev_dlb2_log_level;
+#define RTE_LOGTYPE_EVENTDEV_DLB2_LOG_LEVEL eventdev_dlb2_log_level
 
 /* Dynamic logging */
 #define DLB2_LOG_IMPL(level, fmt, args...) \
@@ -20,6 +21,6 @@ extern int eventdev_dlb2_log_level;
 
 /* remove debug logs at compile time unless actually debugging */
 #define DLB2_LOG_DBG(fmt, args...) \
-	RTE_LOG_DP(DEBUG, PMD, fmt, ## args)
+	RTE_LOG_DP(DEBUG, EVENTDEV_DLB2_LOG_LEVEL, fmt, ## args)
 
 #endif /* _DLB2_EVDEV_LOG_H_ */

@@ -6,6 +6,7 @@
 #define _ENETC_LOGS_H_
 
 extern int enetc_logtype_pmd;
+#define RTE_LOGTYPE_ENETC_PMD enetc_logtype_pmd
 
 #define ENETC_PMD_LOG(level, fmt, args...) \
 	rte_log(RTE_LOG_ ## level, enetc_logtype_pmd, "enetc_net: " \
@@ -30,7 +31,7 @@ extern int enetc_logtype_pmd;
 
 /* DP Logs, toggled out at compile time if level lower than current level */
 #define ENETC_PMD_DP_LOG(level, fmt, args...) \
-	RTE_LOG_DP(level, PMD, fmt, ## args)
+	RTE_LOG_DP(level, ENETC_PMD, fmt, ## args)
 
 #define ENETC_PMD_DP_DEBUG(fmt, args...) \
 	ENETC_PMD_DP_LOG(DEBUG, fmt, ## args)

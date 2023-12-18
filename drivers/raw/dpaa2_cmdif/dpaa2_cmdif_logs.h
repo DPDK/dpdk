@@ -10,6 +10,7 @@ extern "C" {
 #endif
 
 extern int dpaa2_cmdif_logtype;
+#define RTE_LOGTYPE_DPAA2_CMDIF dpaa2_cmdif_logtype
 
 #define DPAA2_CMDIF_LOG(level, fmt, args...) \
 	rte_log(RTE_LOG_ ## level, dpaa2_cmdif_logtype, "dpaa2_cmdif: " \
@@ -30,7 +31,7 @@ extern int dpaa2_cmdif_logtype;
 
 /* DP Logs, toggled out at compile time if level lower than current level */
 #define DPAA2_CMDIF_DP_LOG(level, fmt, args...) \
-	RTE_LOG_DP(level, PMD, "dpaa2_cmdif: " fmt "\n", ## args)
+	RTE_LOG_DP(level, DPAA2_CMDIF, "dpaa2_cmdif: " fmt "\n", ## args)
 
 #define DPAA2_CMDIF_DP_DEBUG(fmt, args...) \
 	DPAA2_CMDIF_DP_LOG(DEBUG, fmt, ## args)

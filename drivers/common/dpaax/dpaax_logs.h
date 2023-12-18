@@ -8,6 +8,7 @@
 #include <rte_log.h>
 
 extern int dpaax_logger;
+#define RTE_LOGTYPE_DPAAX_LOGGER dpaax_logger
 
 #ifdef RTE_LIBRTE_DPAAX_DEBUG
 #define DPAAX_HWWARN(cond, fmt, args...) \

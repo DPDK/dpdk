@@ -6,6 +6,7 @@
 #define _DPAA2_PMD_LOGS_H_
 
 extern int dpaa2_logtype_pmd;
+#define RTE_LOGTYPE_DPAA2_PMD dpaa2_logtype_pmd
 
 #define DPAA2_PMD_LOG(level, fmt, args...) \
 	rte_log(RTE_LOG_ ## level, dpaa2_logtype_pmd, "dpaa2_net: " \
@@ -28,7 +29,7 @@ extern int dpaa2_logtype_pmd;
 
 /* DP Logs, toggled out at compile time if level lower than current level */
 #define DPAA2_PMD_DP_LOG(level, fmt, args...) \
-	RTE_LOG_DP(level, PMD, fmt, ## args)
+	RTE_LOG_DP(level, DPAA2_PMD, fmt, ## args)
 
 #define DPAA2_PMD_DP_DEBUG(fmt, args...) \
 	DPAA2_PMD_DP_LOG(DEBUG, fmt, ## args)

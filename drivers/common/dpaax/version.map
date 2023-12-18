@@ -6,6 +6,7 @@ INTERNAL {
 	dpaax_iova_table_p;
 	dpaax_iova_table_populate;
 	dpaax_iova_table_update;
+	dpaax_logger;
 	of_device_is_available;
 	of_device_is_compatible;
 	of_find_compatible_node;

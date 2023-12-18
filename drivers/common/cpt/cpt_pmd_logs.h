@@ -15,6 +15,8 @@
  * otx*_cryptodev.h file would define the CPT_LOGTYPE macro for the
  * platform.
  */
+#define RTE_LOGTYPE_CPT CPT_LOGTYPE
+
 #define CPT_PMD_DRV_LOG_RAW(level, fmt, args...) \
 		rte_log(RTE_LOG_ ## level, CPT_LOGTYPE, \
 			"cpt: %s(): " fmt "\n", __func__, ##args)
@@ -30,11 +32,9 @@
 
 /*
  * DP logs, toggled out at compile time if level lower than current level.
- * DP logs would be logged under 'PMD' type. So for dynamic logging, the
- * level of 'pmd' has to be used.
  */
 #define CPT_LOG_DP(level, fmt, args...) \
-	RTE_LOG_DP(level, PMD, fmt "\n", ## args)
+	RTE_LOG_DP(level, CPT, fmt "\n", ## args)
 
 #define CPT_LOG_DP_DEBUG(fmt, args...) \
 	CPT_LOG_DP(DEBUG, fmt, ## args)

@@ -8,6 +8,7 @@
 #include <rte_log.h>
 
 extern int caam_jr_logtype;
+#define RTE_LOGTYPE_CAAM_JR caam_jr_logtype
 
 #define CAAM_JR_LOG(level, fmt, args...) \
 	rte_log(RTE_LOG_ ## level, caam_jr_logtype, "caam_jr: " \
@@ -28,7 +29,7 @@ extern int caam_jr_logtype;
 
 /* DP Logs, toggled out at compile time if level lower than current level */
 #define CAAM_JR_DP_LOG(level, fmt, args...) \
-	RTE_LOG_DP(level, PMD, fmt "\n", ## args)
+	RTE_LOG_DP(level, CAAM_JR, fmt "\n", ## args)
 
 #define CAAM_JR_DP_DEBUG(fmt, args...) \
 	CAAM_JR_DP_LOG(DEBUG, fmt, ## args)

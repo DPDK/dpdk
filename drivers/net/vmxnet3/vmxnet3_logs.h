@@ -13,26 +13,27 @@ extern int vmxnet3_logtype_init;
 
 #ifdef RTE_LIBRTE_VMXNET3_DEBUG_RX
 #define PMD_RX_LOG(level, fmt, args...) \
-	RTE_LOG(level, PMD, "%s(): " fmt "\n", __func__, ## args)
+	RTE_LOG(level, VMXNET3_DRIVER, "%s(): " fmt "\n", __func__, ## args)
 #else
 #define PMD_RX_LOG(level, fmt, args...) do { } while(0)
 #endif
 
 #ifdef RTE_LIBRTE_VMXNET3_DEBUG_TX
 #define PMD_TX_LOG(level, fmt, args...) \
-	RTE_LOG(level, PMD, "%s(): " fmt "\n", __func__, ## args)
+	RTE_LOG(level, VMXNET3_DRIVER, "%s(): " fmt "\n", __func__, ## args)
 #else
 #define PMD_TX_LOG(level, fmt, args...) do { } while(0)
 #endif
 
 #ifdef RTE_LIBRTE_VMXNET3_DEBUG_TX_FREE
 #define PMD_TX_FREE_LOG(level, fmt, args...) \
-	RTE_LOG(level, PMD, "%s(): " fmt "\n", __func__, ## args)
+	RTE_LOG(level, VMXNET3_DRIVER, "%s(): " fmt "\n", __func__, ## args)
 #else
 #define PMD_TX_FREE_LOG(level, fmt, args...) do { } while(0)
 #endif
 
 extern int vmxnet3_logtype_driver;
+#define RTE_LOGTYPE_VMXNET3_DRIVER vmxnet3_logtype_driver
 #define PMD_DRV_LOG(level, fmt, args...) \
 	rte_log(RTE_LOG_ ## level, vmxnet3_logtype_driver, \
 		"%s(): " fmt "\n", __func__, ## args)

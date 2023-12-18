@@ -6,6 +6,7 @@
 #define _DPAA2_HW_MEMPOOL_LOGS_H_
 
 extern int dpaa2_logtype_mempool;
+#define RTE_LOGTYPE_DPAA2_MEMPOOL dpaa2_logtype_mempool
 
 #define DPAA2_MEMPOOL_LOG(level, fmt, args...) \
 	rte_log(RTE_LOG_ ## level, dpaa2_logtype_mempool, \
@@ -25,7 +26,7 @@ extern int dpaa2_logtype_mempool;
 
 /* DP Logs, toggled out at compile time if level lower than current level */
 #define DPAA2_MEMPOOL_DP_LOG(level, fmt, args...) \
-	RTE_LOG_DP(level, PMD, fmt, ## args)
+	RTE_LOG_DP(level, DPAA2_MEMPOOL, fmt, ## args)
 
 #define DPAA2_MEMPOOL_DP_DEBUG(fmt, args...) \
 	DPAA2_MEMPOOL_DP_LOG(DEBUG, fmt, ## args)

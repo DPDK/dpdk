@@ -1051,6 +1051,7 @@ extern const struct rte_flow_ops bnxt_flow_meter_ops;
 		((eth_dev)->data->dev_flags & RTE_ETH_DEV_REPRESENTOR)
 
 extern int bnxt_logtype_driver;
+#define RTE_LOGTYPE_BNXT bnxt_logtype_driver
 #define PMD_DRV_LOG_RAW(level, fmt, args...) \
 	rte_log(RTE_LOG_ ## level, bnxt_logtype_driver, "%s(): " fmt, \
 		__func__, ## args)
