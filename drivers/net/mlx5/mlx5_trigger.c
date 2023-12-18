@@ -1524,6 +1524,9 @@ mlx5_traffic_enable_hws(struct rte_eth_dev *dev)
 	}
 	if (priv->isolated)
 		return 0;
+	if (!priv->sh->config.lacp_by_user && priv->pf_bond >= 0)
+		if (mlx5_flow_hw_lacp_rx_flow(dev))
+			goto error;
 	if (dev->data->promiscuous)
 		flags |= MLX5_CTRL_PROMISCUOUS;
 	if (dev->data->all_multicast)

@@ -1363,7 +1363,7 @@ __flow_hw_actions_translate(struct rte_eth_dev *dev,
 	else
 		type = MLX5DR_TABLE_TYPE_NIC_RX;
 	for (; !actions_end; actions++, masks++) {
-		switch (actions->type) {
+		switch ((int)actions->type) {
 		case RTE_FLOW_ACTION_TYPE_INDIRECT:
 			action_pos = at->actions_off[actions - at->actions];
 			if (!attr->group) {
@@ -1666,6 +1666,16 @@ __flow_hw_actions_translate(struct rte_eth_dev *dev,
 							actions - action_start,
 							action_pos))
 				goto err;
+			break;
+		case MLX5_RTE_FLOW_ACTION_TYPE_DEFAULT_MISS:
+			/* Internal, can be skipped. */
+			if (!!attr->group) {
+				DRV_LOG(ERR, "DEFAULT MISS action is only"
+					" supported in root table.");
+				goto err;
+			}
+			action_pos = at->actions_off[actions - at->actions];
+			acts->rule_acts[action_pos].action = priv->hw_def_miss;
 			break;
 		case RTE_FLOW_ACTION_TYPE_END:
 			actions_end = true;
@@ -3870,6 +3880,34 @@ flow_hw_validate_action_push_vlan(struct rte_eth_dev *dev,
 }
 
 static int
+flow_hw_validate_action_default_miss(struct rte_eth_dev *dev,
+				     const struct rte_flow_actions_template_attr *attr,
+				     uint64_t action_flags,
+				     struct rte_flow_error *error)
+{
+	/*
+	 * The private DEFAULT_MISS action is used internally for LACP in control
+	 * flows. So this validation can be ignored. It can be kept right now since
+	 * the validation will be done only once.
+	 */
+	struct mlx5_priv *priv = dev->data->dev_private;
+
+	if (!attr->ingress || attr->egress || attr->transfer)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
+					  "DEFAULT MISS is only supported in ingress.");
+	if (!priv->hw_def_miss)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
+					  "DEFAULT MISS action does not exist.");
+	if (action_flags & MLX5_FLOW_FATE_ACTIONS)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
+					  "DEFAULT MISS should be the only termination.");
+	return 0;
+}
+
+static int
 mlx5_flow_hw_actions_validate(struct rte_eth_dev *dev,
 			      const struct rte_flow_actions_template_attr *attr,
 			      const struct rte_flow_action actions[],
@@ -3902,7 +3940,7 @@ mlx5_flow_hw_actions_validate(struct rte_eth_dev *dev,
 						  RTE_FLOW_ERROR_TYPE_ACTION,
 						  action,
 						  "mask type does not match action type");
-		switch (action->type) {
+		switch ((int)action->type) {
 		case RTE_FLOW_ACTION_TYPE_VOID:
 			break;
 		case RTE_FLOW_ACTION_TYPE_INDIRECT:
@@ -4028,6 +4066,13 @@ mlx5_flow_hw_actions_validate(struct rte_eth_dev *dev,
 		case RTE_FLOW_ACTION_TYPE_END:
 			actions_end = true;
 			break;
+		case MLX5_RTE_FLOW_ACTION_TYPE_DEFAULT_MISS:
+			ret = flow_hw_validate_action_default_miss(dev, attr,
+								   action_flags, error);
+			if (ret < 0)
+				return ret;
+			action_flags |= MLX5_FLOW_ACTION_DEFAULT_MISS;
+			break;
 		default:
 			return rte_flow_error_set(error, ENOTSUP,
 						  RTE_FLOW_ERROR_TYPE_ACTION,
@@ -4047,8 +4092,7 @@ flow_hw_actions_validate(struct rte_eth_dev *dev,
 			 const struct rte_flow_action masks[],
 			 struct rte_flow_error *error)
 {
-	return mlx5_flow_hw_actions_validate(dev, attr, actions, masks, NULL,
-					     error);
+	return mlx5_flow_hw_actions_validate(dev, attr, actions, masks, NULL, error);
 }
 
 
@@ -4149,7 +4193,7 @@ flow_hw_dr_actions_template_create(struct rte_flow_actions_template *at)
 
 		if (curr_off >= MLX5_HW_MAX_ACTS)
 			goto err_actions_num;
-		switch (at->actions[i].type) {
+		switch ((int)at->actions[i].type) {
 		case RTE_FLOW_ACTION_TYPE_VOID:
 			break;
 		case RTE_FLOW_ACTION_TYPE_INDIRECT:
@@ -4226,6 +4270,10 @@ flow_hw_dr_actions_template_create(struct rte_flow_actions_template *at)
 				action_types[cnt_off] = MLX5DR_ACTION_TYP_CTR;
 			}
 			at->actions_off[i] = cnt_off;
+			break;
+		case MLX5_RTE_FLOW_ACTION_TYPE_DEFAULT_MISS:
+			at->actions_off[i] = curr_off;
+			action_types[curr_off++] = MLX5DR_ACTION_TYP_MISS;
 			break;
 		default:
 			type = mlx5_hw_dr_action_types[at->actions[i].type];
@@ -5747,6 +5795,42 @@ flow_hw_create_tx_default_mreg_copy_pattern_template(struct rte_eth_dev *dev,
 	return flow_hw_pattern_template_create(dev, &tx_pa_attr, eth_all, error);
 }
 
+/*
+ * Creating a flow pattern template with all LACP packets matching, only for NIC
+ * ingress domain.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ * @param error
+ *   Pointer to error structure.
+ *
+ * @return
+ *   Pointer to flow pattern template on success, NULL otherwise.
+ */
+static struct rte_flow_pattern_template *
+flow_hw_create_lacp_rx_pattern_template(struct rte_eth_dev *dev, struct rte_flow_error *error)
+{
+	struct rte_flow_pattern_template_attr pa_attr = {
+		.relaxed_matching = 0,
+		.ingress = 1,
+	};
+	struct rte_flow_item_eth lacp_mask = {
+		.dst.addr_bytes = "\x00\x00\x00\x00\x00\x00",
+		.src.addr_bytes = "\x00\x00\x00\x00\x00\x00",
+		.type = 0xFFFF,
+	};
+	struct rte_flow_item eth_all[] = {
+		[0] = {
+			.type = RTE_FLOW_ITEM_TYPE_ETH,
+			.mask = &lacp_mask,
+		},
+		[1] = {
+			.type = RTE_FLOW_ITEM_TYPE_END,
+		},
+	};
+	return flow_hw_pattern_template_create(dev, &pa_attr, eth_all, error);
+}
+
 /**
  * Creates a flow actions template with modify field action and masked jump action.
  * Modify field action sets the least significant bit of REG_C_0 (usable by user-space)
@@ -6013,6 +6097,38 @@ flow_hw_create_tx_default_mreg_copy_actions_template(struct rte_eth_dev *dev,
 					       masks, error);
 }
 
+/*
+ * Creating an actions template to use default miss to re-route packets to the
+ * kernel driver stack.
+ * On root table, only DEFAULT_MISS action can be used.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ * @param error
+ *   Pointer to error structure.
+ *
+ * @return
+ *   Pointer to flow actions template on success, NULL otherwise.
+ */
+static struct rte_flow_actions_template *
+flow_hw_create_lacp_rx_actions_template(struct rte_eth_dev *dev, struct rte_flow_error *error)
+{
+	struct rte_flow_actions_template_attr act_attr = {
+		.ingress = 1,
+	};
+	const struct rte_flow_action actions[] = {
+		[0] = {
+			.type = (enum rte_flow_action_type)
+				MLX5_RTE_FLOW_ACTION_TYPE_DEFAULT_MISS,
+		},
+		[1] = {
+			.type = RTE_FLOW_ACTION_TYPE_END,
+		},
+	};
+
+	return flow_hw_actions_template_create(dev, &act_attr, actions, actions, error);
+}
+
 /**
  * Creates a control flow table used to transfer traffic from E-Switch Manager
  * and TX queues from group 0 to group 1.
@@ -6171,6 +6287,43 @@ flow_hw_create_ctrl_jump_table(struct rte_eth_dev *dev,
 	return flow_hw_table_create(dev, &cfg, &it, 1, &at, 1, error);
 }
 
+/*
+ * Create a table on the root group to for the LACP traffic redirecting.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ * @param it
+ *   Pointer to flow pattern template.
+ * @param at
+ *   Pointer to flow actions template.
+ *
+ * @return
+ *   Pointer to flow table on success, NULL otherwise.
+ */
+static struct rte_flow_template_table *
+flow_hw_create_lacp_rx_table(struct rte_eth_dev *dev,
+			     struct rte_flow_pattern_template *it,
+			     struct rte_flow_actions_template *at,
+			     struct rte_flow_error *error)
+{
+	struct rte_flow_template_table_attr attr = {
+		.flow_attr = {
+			.group = 0,
+			.priority = 0,
+			.ingress = 1,
+			.egress = 0,
+			.transfer = 0,
+		},
+		.nb_flows = 1,
+	};
+	struct mlx5_flow_template_table_cfg cfg = {
+		.attr = attr,
+		.external = false,
+	};
+
+	return flow_hw_table_create(dev, &cfg, &it, 1, &at, 1, error);
+}
+
 /**
  * Creates a set of flow tables used to create control flows used
  * when E-Switch is engaged.
@@ -6191,10 +6344,12 @@ flow_hw_create_ctrl_tables(struct rte_eth_dev *dev, struct rte_flow_error *error
 	struct rte_flow_pattern_template *regc_sq_items_tmpl = NULL;
 	struct rte_flow_pattern_template *port_items_tmpl = NULL;
 	struct rte_flow_pattern_template *tx_meta_items_tmpl = NULL;
+	struct rte_flow_pattern_template *lacp_rx_items_tmpl = NULL;
 	struct rte_flow_actions_template *regc_jump_actions_tmpl = NULL;
 	struct rte_flow_actions_template *port_actions_tmpl = NULL;
 	struct rte_flow_actions_template *jump_one_actions_tmpl = NULL;
 	struct rte_flow_actions_template *tx_meta_actions_tmpl = NULL;
+	struct rte_flow_actions_template *lacp_rx_actions_tmpl = NULL;
 	uint32_t xmeta = priv->sh->config.dv_xmeta_en;
 	uint32_t repr_matching = priv->sh->config.repr_matching;
 	int ret;
@@ -6290,6 +6445,28 @@ flow_hw_create_ctrl_tables(struct rte_eth_dev *dev, struct rte_flow_error *error
 			goto err;
 		}
 	}
+	/* Create LACP default miss table. */
+	if (!priv->sh->config.lacp_by_user && priv->pf_bond >= 0) {
+		lacp_rx_items_tmpl = flow_hw_create_lacp_rx_pattern_template(dev, error);
+		if (!lacp_rx_items_tmpl) {
+			DRV_LOG(ERR, "port %u failed to create pattern template"
+				" for LACP Rx traffic", dev->data->port_id);
+			goto err;
+		}
+		lacp_rx_actions_tmpl = flow_hw_create_lacp_rx_actions_template(dev, error);
+		if (!lacp_rx_actions_tmpl) {
+			DRV_LOG(ERR, "port %u failed to create actions template"
+				" for LACP Rx traffic", dev->data->port_id);
+			goto err;
+		}
+		priv->hw_lacp_rx_tbl = flow_hw_create_lacp_rx_table(dev, lacp_rx_items_tmpl,
+								    lacp_rx_actions_tmpl, error);
+		if (!priv->hw_lacp_rx_tbl) {
+			DRV_LOG(ERR, "port %u failed to create template table for"
+				" for LACP Rx traffic", dev->data->port_id);
+			goto err;
+		}
+	}
 	return 0;
 err:
 	/* Do not overwrite the rte_errno. */
@@ -6298,6 +6475,10 @@ err:
 		ret = rte_flow_error_set(error, EINVAL,
 					 RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
 					 "Failed to create control tables.");
+	if (priv->hw_tx_meta_cpy_tbl) {
+		flow_hw_table_destroy(dev, priv->hw_tx_meta_cpy_tbl, NULL);
+		priv->hw_tx_meta_cpy_tbl = NULL;
+	}
 	if (priv->hw_esw_zero_tbl) {
 		flow_hw_table_destroy(dev, priv->hw_esw_zero_tbl, NULL);
 		priv->hw_esw_zero_tbl = NULL;
@@ -6310,6 +6491,8 @@ err:
 		flow_hw_table_destroy(dev, priv->hw_esw_sq_miss_root_tbl, NULL);
 		priv->hw_esw_sq_miss_root_tbl = NULL;
 	}
+	if (lacp_rx_actions_tmpl)
+		flow_hw_actions_template_destroy(dev, lacp_rx_actions_tmpl, NULL);
 	if (tx_meta_actions_tmpl)
 		flow_hw_actions_template_destroy(dev, tx_meta_actions_tmpl, NULL);
 	if (jump_one_actions_tmpl)
@@ -6318,6 +6501,8 @@ err:
 		flow_hw_actions_template_destroy(dev, port_actions_tmpl, NULL);
 	if (regc_jump_actions_tmpl)
 		flow_hw_actions_template_destroy(dev, regc_jump_actions_tmpl, NULL);
+	if (lacp_rx_items_tmpl)
+		flow_hw_pattern_template_destroy(dev, lacp_rx_items_tmpl, NULL);
 	if (tx_meta_items_tmpl)
 		flow_hw_pattern_template_destroy(dev, tx_meta_items_tmpl, NULL);
 	if (port_items_tmpl)
@@ -6881,6 +7066,7 @@ flow_hw_configure(struct rte_eth_dev *dev,
 	struct rte_flow_queue_attr ctrl_queue_attr = {0};
 	bool is_proxy = !!(priv->sh->config.dv_esw_en && priv->master);
 	int ret = 0;
+	uint32_t action_flags;
 
 	if (!port_attr || !nb_queue || !queue_attr) {
 		rte_errno = EINVAL;
@@ -7030,6 +7216,20 @@ flow_hw_configure(struct rte_eth_dev *dev,
 		if (ret)
 			goto err;
 	}
+	/*
+	 * DEFAULT_MISS action have different behaviors in different domains.
+	 * In FDB, it will steering the packets to the E-switch manager.
+	 * In NIC Rx root, it will steering the packet to the kernel driver stack.
+	 * An action with all bits set in the flag can be created and the HWS
+	 * layer will translate it properly when being used in different rules.
+	 */
+	action_flags = MLX5DR_ACTION_FLAG_ROOT_RX | MLX5DR_ACTION_FLAG_HWS_RX |
+		       MLX5DR_ACTION_FLAG_ROOT_TX | MLX5DR_ACTION_FLAG_HWS_TX;
+	if (is_proxy)
+		action_flags |= (MLX5DR_ACTION_FLAG_ROOT_FDB | MLX5DR_ACTION_FLAG_HWS_FDB);
+	priv->hw_def_miss = mlx5dr_action_create_default_miss(priv->dr_ctx, action_flags);
+	if (!priv->hw_def_miss)
+		goto err;
 	if (is_proxy) {
 		ret = flow_hw_create_vport_actions(priv);
 		if (ret) {
@@ -9050,6 +9250,43 @@ mlx5_flow_hw_tx_repr_matching_flow(struct rte_eth_dev *dev, uint32_t sqn, bool e
 	}
 	return flow_hw_create_ctrl_flow(dev, dev, priv->hw_tx_repr_tagging_tbl,
 					items, 0, actions, 0, &flow_info, external);
+}
+
+int
+mlx5_flow_hw_lacp_rx_flow(struct rte_eth_dev *dev)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct rte_flow_item_eth lacp_item = {
+		.type = RTE_BE16(RTE_ETHER_TYPE_SLOW),
+	};
+	struct rte_flow_item eth_lacp[] = {
+		[0] = {
+			.type = RTE_FLOW_ITEM_TYPE_ETH,
+			.spec = &lacp_item,
+			.mask = &lacp_item,
+		},
+		[1] = {
+			.type = RTE_FLOW_ITEM_TYPE_END,
+		},
+	};
+	struct rte_flow_action miss_action[] = {
+		[0] = {
+			.type = (enum rte_flow_action_type)
+				MLX5_RTE_FLOW_ACTION_TYPE_DEFAULT_MISS,
+		},
+		[1] = {
+			.type = RTE_FLOW_ACTION_TYPE_END,
+		},
+	};
+	struct mlx5_hw_ctrl_flow_info flow_info = {
+		.type = MLX5_HW_CTRL_FLOW_TYPE_LACP_RX,
+	};
+
+	MLX5_ASSERT(priv->master);
+	if (!priv->dr_ctx || !priv->hw_lacp_rx_tbl)
+		return 0;
+	return flow_hw_create_ctrl_flow(dev, dev, priv->hw_lacp_rx_tbl, eth_lacp, 0,
+					miss_action, 0, &flow_info, false);
 }
 
 static uint32_t
