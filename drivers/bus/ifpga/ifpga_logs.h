@@ -9,10 +9,6 @@
 
 extern int ifpga_bus_logtype;
 
-#define IFPGA_LOG(level, fmt, args...) \
-	rte_log(RTE_LOG_ ## level, ifpga_bus_logtype, "%s(): " fmt "\n", \
-		__func__, ##args)
-
 #define IFPGA_BUS_LOG(level, fmt, args...) \
 	rte_log(RTE_LOG_ ## level, ifpga_bus_logtype, "%s(): " fmt "\n", \
 		__func__, ##args)
