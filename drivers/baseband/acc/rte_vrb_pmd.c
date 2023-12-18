@@ -22,9 +22,9 @@
 #include "vrb_pmd.h"
 
 #ifdef RTE_LIBRTE_BBDEV_DEBUG
-RTE_LOG_REGISTER_DEFAULT(vrb_logtype, DEBUG);
+RTE_LOG_REGISTER_SUFFIX(vrb_logtype, vrb, DEBUG);
 #else
-RTE_LOG_REGISTER_DEFAULT(vrb_logtype, NOTICE);
+RTE_LOG_REGISTER_SUFFIX(vrb_logtype, vrb, NOTICE);
 #endif
 
 /* Calculate the offset of the enqueue register. */
