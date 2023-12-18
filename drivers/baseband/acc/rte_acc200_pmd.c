@@ -24,9 +24,9 @@
 #include "acc200_pmd.h"
 
 #ifdef RTE_LIBRTE_BBDEV_DEBUG
-RTE_LOG_REGISTER_DEFAULT(acc200_logtype, DEBUG);
+RTE_LOG_REGISTER_SUFFIX(acc200_logtype, acc200, DEBUG);
 #else
-RTE_LOG_REGISTER_DEFAULT(acc200_logtype, NOTICE);
+RTE_LOG_REGISTER_SUFFIX(acc200_logtype, acc200, NOTICE);
 #endif
 
 /* Calculate the offset of the enqueue register. */
