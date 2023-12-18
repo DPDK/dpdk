@@ -131,9 +131,11 @@
 #define ACC_LIM_31 20 /* 0.31 */
 #define ACC_MAX_E (128 * 1024 - 2)
 
+extern int acc_common_logtype;
+
 /* Helper macro for logging */
 #define rte_acc_log(level, fmt, ...) \
-	rte_log(RTE_LOG_ ## level, RTE_LOG_NOTICE, fmt "\n", \
+	rte_log(RTE_LOG_ ## level, acc_common_logtype, fmt "\n", \
 		##__VA_ARGS__)
 
 /* ACC100 DMA Descriptor triplet */
