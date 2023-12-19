@@ -22,7 +22,7 @@ free_cops(struct rte_crypto_op *cop[], uint32_t n)
 	uint32_t i;
 
 	for (i = 0; i != n; i++)
-		rte_pktmbuf_free(cop[i]->sym->m_src);
+		free_pkts(&cop[i]->sym->m_src, 1);
 }
 
 /* helper routine to enqueue bulk of crypto ops */
