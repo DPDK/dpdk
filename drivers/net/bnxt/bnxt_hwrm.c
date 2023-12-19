@@ -2228,6 +2228,12 @@ int bnxt_hwrm_vnic_cfg(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 	req.lb_rule = rte_cpu_to_le_16(vnic->lb_rule);
 
 config_mru:
+	if (bnxt_compressed_rx_cqe_mode_enabled(bp)) {
+		req.l2_cqe_mode = HWRM_VNIC_CFG_INPUT_L2_CQE_MODE_COMPRESSED;
+		enables |= HWRM_VNIC_CFG_INPUT_ENABLES_L2_CQE_MODE;
+		PMD_DRV_LOG(DEBUG, "Enabling compressed Rx CQE\n");
+	}
+
 	req.enables = rte_cpu_to_le_32(enables);
 	req.vnic_id = rte_cpu_to_le_16(vnic->fw_vnic_id);
 	req.mru = rte_cpu_to_le_16(vnic->mru);
@@ -2603,6 +2609,16 @@ int bnxt_hwrm_vnic_tpa_cfg(struct bnxt *bp,
 	int rc = 0;
 	struct hwrm_vnic_tpa_cfg_input req = {.req_type = 0 };
 	struct hwrm_vnic_tpa_cfg_output *resp = bp->hwrm_cmd_resp_addr;
+
+	if (bnxt_compressed_rx_cqe_mode_enabled(bp)) {
+		/* Don't worry if disabling TPA */
+		if (!enable)
+			return 0;
+
+		/* Return an error if enabling TPA w/ compressed Rx CQE. */
+		PMD_DRV_LOG(ERR, "No HW support for LRO with compressed Rx\n");
+		return -ENOTSUP;
+	}
 
 	if ((BNXT_CHIP_P5(bp) || BNXT_CHIP_P7(bp)) && !bp->max_tpa_v2) {
 		if (enable)

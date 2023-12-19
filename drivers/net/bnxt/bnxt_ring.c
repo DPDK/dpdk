@@ -573,6 +573,7 @@ static int bnxt_alloc_rx_agg_ring(struct bnxt *bp, int queue_index)
 		return rc;
 
 	rxr->ag_raw_prod = 0;
+	rxr->ag_cons = 0;
 	if (BNXT_HAS_RING_GRPS(bp))
 		bp->grp_info[queue_index].ag_fw_ring_id = ring->fw_ring_id;
 	bnxt_set_db(bp, &rxr->ag_db, ring_type, map_idx, ring->fw_ring_id,
@@ -595,7 +596,17 @@ int bnxt_alloc_hwrm_rx_ring(struct bnxt *bp, int queue_index)
 	 * Storage for the cp ring is allocated based on worst-case
 	 * usage, the actual size to be used by hw is computed here.
 	 */
-	cp_ring->ring_size = rxr->rx_ring_struct->ring_size * 2;
+	if (bnxt_compressed_rx_cqe_mode_enabled(bp)) {
+		if (bnxt_need_agg_ring(bp->eth_dev))
+			/* Worst case scenario, needed to accommodate Rx flush
+			 * completion during RING_FREE.
+			 */
+			cp_ring->ring_size = rxr->rx_ring_struct->ring_size * 2;
+		else
+			cp_ring->ring_size = rxr->rx_ring_struct->ring_size;
+	} else {
+		cp_ring->ring_size = rxr->rx_ring_struct->ring_size * 2;
+	}
 
 	if (bnxt_need_agg_ring(bp->eth_dev))
 		cp_ring->ring_size *= AGG_RING_SIZE_FACTOR;

@@ -907,6 +907,203 @@ void bnxt_set_mark_in_mbuf(struct bnxt *bp,
 	mbuf->ol_flags |= RTE_MBUF_F_RX_FDIR | RTE_MBUF_F_RX_FDIR_ID;
 }
 
+static void
+bnxt_set_ol_flags_crx(struct bnxt_rx_ring_info *rxr,
+		      struct rx_pkt_compress_cmpl *rxcmp,
+		      struct rte_mbuf *mbuf)
+{
+	uint16_t flags_type, errors, flags;
+	uint16_t cserr, tmp;
+	uint64_t ol_flags;
+
+	flags_type = rte_le_to_cpu_16(rxcmp->flags_type);
+
+	cserr = rte_le_to_cpu_16(rxcmp->metadata1_cs_error_calc_v1) &
+		(RX_PKT_COMPRESS_CMPL_CS_ERROR_CALC_MASK |
+		 BNXT_RXC_METADATA1_VLAN_VALID);
+
+	flags = cserr & BNXT_CRX_CQE_CSUM_CALC_MASK;
+	tmp = flags;
+
+	/* Set tunnel frame indicator.
+	 * This is to correctly index into the flags_err table.
+	 */
+	flags |= (flags & BNXT_CRX_TUN_CS_CALC) ? BNXT_PKT_CMPL_T_IP_CS_CALC << 3 : 0;
+
+	flags = flags >> BNXT_CRX_CQE_CSUM_CALC_SFT;
+
+	errors = cserr & BNXT_CRX_CQE_CSUM_ERROR_MASK;
+	errors = (errors >> RX_PKT_COMPRESS_CMPL_CS_ERROR_CALC_SFT) & flags;
+
+	ol_flags = rxr->ol_flags_table[flags & ~errors];
+
+	if (unlikely(errors)) {
+		/* Set tunnel frame indicator.
+		 * This is to correctly index into the flags_err table.
+		 */
+		errors |= (tmp & BNXT_CRX_TUN_CS_CALC) ? BNXT_PKT_CMPL_T_IP_CS_CALC << 2 : 0;
+		ol_flags |= rxr->ol_flags_err_table[errors];
+	}
+
+	if (flags_type & RX_PKT_COMPRESS_CMPL_FLAGS_RSS_VALID) {
+		mbuf->hash.rss = rte_le_to_cpu_32(rxcmp->rss_hash);
+		ol_flags |= RTE_MBUF_F_RX_RSS_HASH;
+	}
+
+#ifdef RTE_LIBRTE_IEEE1588
+	/* TODO: TIMESTAMP flags need to be parsed and set. */
+#endif
+
+	mbuf->ol_flags = ol_flags;
+}
+
+static uint32_t
+bnxt_parse_pkt_type_crx(struct rx_pkt_compress_cmpl *rxcmp)
+{
+	uint16_t flags_type, meta_cs;
+	uint8_t index;
+
+	flags_type = rte_le_to_cpu_16(rxcmp->flags_type);
+	meta_cs = rte_le_to_cpu_16(rxcmp->metadata1_cs_error_calc_v1);
+
+	/* Validate ptype table indexing at build time. */
+	/* TODO */
+	/* bnxt_check_ptype_constants(); */
+
+	/*
+	 * Index format:
+	 *     bit 0: Set if IP tunnel encapsulated packet.
+	 *     bit 1: Set if IPv6 packet, clear if IPv4.
+	 *     bit 2: Set if VLAN tag present.
+	 *     bits 3-6: Four-bit hardware packet type field.
+	 */
+	index = BNXT_CMPL_ITYPE_TO_IDX(flags_type) |
+		BNXT_CMPL_VLAN_TUN_TO_IDX_CRX(meta_cs) |
+		BNXT_CMPL_IP_VER_TO_IDX(flags_type);
+
+	return bnxt_ptype_table[index];
+}
+
+static int bnxt_rx_pages_crx(struct bnxt_rx_queue *rxq, struct rte_mbuf *mbuf,
+			     uint32_t *tmp_raw_cons, uint8_t agg_buf)
+{
+	struct bnxt_cp_ring_info *cpr = rxq->cp_ring;
+	struct bnxt_rx_ring_info *rxr = rxq->rx_ring;
+	int i;
+	uint16_t cp_cons, ag_cons;
+	struct rx_pkt_compress_cmpl *rxcmp;
+	struct rte_mbuf *last = mbuf;
+
+	for (i = 0; i < agg_buf; i++) {
+		struct rte_mbuf **ag_buf;
+		struct rte_mbuf *ag_mbuf;
+
+		*tmp_raw_cons = NEXT_RAW_CMP(*tmp_raw_cons);
+		cp_cons = RING_CMP(cpr->cp_ring_struct, *tmp_raw_cons);
+		rxcmp = (struct rx_pkt_compress_cmpl *)&cpr->cp_desc_ring[cp_cons];
+
+#ifdef BNXT_DEBUG
+		bnxt_dump_cmpl(cp_cons, rxcmp);
+#endif
+
+		/*
+		 * The consumer index aka the opaque field for the agg buffers
+		 * is not * available in errors_agg_bufs_opaque. So maintain it
+		 * in driver itself.
+		 */
+		ag_cons = rxr->ag_cons;
+		ag_buf = &rxr->ag_buf_ring[ag_cons];
+		ag_mbuf = *ag_buf;
+
+		ag_mbuf->data_len = rte_le_to_cpu_16(rxcmp->len);
+
+		mbuf->nb_segs++;
+		mbuf->pkt_len += ag_mbuf->data_len;
+
+		last->next = ag_mbuf;
+		last = ag_mbuf;
+
+		*ag_buf = NULL;
+		/*
+		 * As aggregation buffer consumed out of order in TPA module,
+		 * use bitmap to track freed slots to be allocated and notified
+		 * to NIC. TODO: Is this needed. Most likely not.
+		 */
+		rte_bitmap_set(rxr->ag_bitmap, ag_cons);
+		rxr->ag_cons = RING_IDX(rxr->ag_ring_struct, RING_NEXT(ag_cons));
+	}
+	last->next = NULL;
+	bnxt_prod_ag_mbuf(rxq);
+	return 0;
+}
+
+static int bnxt_crx_pkt(struct rte_mbuf **rx_pkt,
+				struct bnxt_rx_queue *rxq,
+				struct rx_pkt_compress_cmpl *rxcmp,
+				uint32_t *raw_cons)
+{
+	struct bnxt_cp_ring_info *cpr = rxq->cp_ring;
+	struct bnxt_rx_ring_info *rxr = rxq->rx_ring;
+	uint32_t tmp_raw_cons = *raw_cons;
+	uint16_t cons, raw_prod;
+	struct rte_mbuf *mbuf;
+	int rc = 0;
+	uint8_t agg_buf = 0;
+
+	agg_buf = BNXT_CRX_CQE_AGG_BUFS(rxcmp);
+	/*
+	 * Since size of rx_pkt_cmpl is same as rx_pkt_compress_cmpl,
+	 * we should be able to use bnxt_agg_bufs_valid to check if AGG
+	 * bufs are valid when using compressed CQEs.
+	 * All we want to check here is if the CQE is valid and the
+	 * location of valid bit is same irrespective of the CQE type.
+	 */
+	if (agg_buf && !bnxt_agg_bufs_valid(cpr, agg_buf, tmp_raw_cons))
+		return -EBUSY;
+
+	raw_prod = rxr->rx_raw_prod;
+
+	cons = rxcmp->errors_agg_bufs_opaque & BNXT_CRX_CQE_OPAQUE_MASK;
+	mbuf = bnxt_consume_rx_buf(rxr, cons);
+	if (mbuf == NULL)
+		return -EBUSY;
+
+	mbuf->data_off = RTE_PKTMBUF_HEADROOM;
+	mbuf->nb_segs = 1;
+	mbuf->next = NULL;
+	mbuf->pkt_len = rxcmp->len;
+	mbuf->data_len = mbuf->pkt_len;
+	mbuf->port = rxq->port_id;
+
+#ifdef RTE_LIBRTE_IEEE1588
+	/* TODO: Add timestamp support. */
+#endif
+
+	bnxt_set_ol_flags_crx(rxr, rxcmp, mbuf);
+	mbuf->packet_type = bnxt_parse_pkt_type_crx(rxcmp);
+	bnxt_set_vlan_crx(rxcmp, mbuf);
+
+	if (bnxt_alloc_rx_data(rxq, rxr, raw_prod)) {
+		PMD_DRV_LOG(ERR, "mbuf alloc failed with prod=0x%x\n",
+			    raw_prod);
+		rc = -ENOMEM;
+		goto rx;
+	}
+	raw_prod = RING_NEXT(raw_prod);
+	rxr->rx_raw_prod = raw_prod;
+
+	if (agg_buf)
+		bnxt_rx_pages_crx(rxq, mbuf, &tmp_raw_cons, agg_buf);
+
+rx:
+	rxr->rx_next_cons = RING_IDX(rxr->rx_ring_struct, RING_NEXT(cons));
+	*rx_pkt = mbuf;
+
+	*raw_cons = tmp_raw_cons;
+
+	return rc;
+}
+
 static int bnxt_rx_pkt(struct rte_mbuf **rx_pkt,
 		       struct bnxt_rx_queue *rxq, uint32_t *raw_cons)
 {
@@ -1148,6 +1345,10 @@ uint16_t bnxt_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 			break;
 		if (CMP_TYPE(rxcmp) == CMPL_BASE_TYPE_HWRM_DONE) {
 			PMD_DRV_LOG(ERR, "Rx flush done\n");
+		} else if (CMP_TYPE(rxcmp) == CMPL_BASE_TYPE_RX_L2_COMPRESS) {
+			rc = bnxt_crx_pkt(&rx_pkts[nb_rx_pkts], rxq,
+					  (struct rx_pkt_compress_cmpl *)rxcmp,
+					  &raw_cons);
 		} else if ((CMP_TYPE(rxcmp) >= CMPL_BASE_TYPE_RX_TPA_START_V2) &&
 			   (CMP_TYPE(rxcmp) <= CMPL_BASE_TYPE_RX_TPA_START_V3)) {
 			rc = bnxt_rx_pkt(&rx_pkts[nb_rx_pkts], rxq, &raw_cons);

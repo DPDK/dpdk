@@ -104,6 +104,7 @@ static const struct rte_pci_id bnxt_pci_id_map[] = {
 #define BNXT_DEVARG_REP_FC_F2R  "rep-fc-f2r"
 #define BNXT_DEVARG_APP_ID	"app-id"
 #define BNXT_DEVARG_IEEE_1588	"ieee-1588"
+#define BNXT_DEVARG_CQE_MODE	"cqe-mode"
 
 static const char *const bnxt_dev_args[] = {
 	BNXT_DEVARG_REPRESENTOR,
@@ -117,8 +118,14 @@ static const char *const bnxt_dev_args[] = {
 	BNXT_DEVARG_REP_FC_F2R,
 	BNXT_DEVARG_APP_ID,
 	BNXT_DEVARG_IEEE_1588,
+	BNXT_DEVARG_CQE_MODE,
 	NULL
 };
+
+/*
+ * cqe-mode = an non-negative 8-bit number
+ */
+#define BNXT_DEVARG_CQE_MODE_INVALID(val)		((val) > 1)
 
 /*
  * app-id = an non-negative 8-bit number
@@ -5699,6 +5706,43 @@ bnxt_parse_devarg_max_num_kflows(__rte_unused const char *key,
 }
 
 static int
+bnxt_parse_devarg_cqe_mode(__rte_unused const char *key,
+			   const char *value, void *opaque_arg)
+{
+	struct bnxt *bp = opaque_arg;
+	unsigned long cqe_mode;
+	char *end = NULL;
+
+	if (!value || !opaque_arg) {
+		PMD_DRV_LOG(ERR,
+			    "Invalid parameter passed to cqe-mode "
+			    "devargs.\n");
+		return -EINVAL;
+	}
+
+	cqe_mode = strtoul(value, &end, 10);
+	if (end == NULL || *end != '\0' ||
+	    (cqe_mode == ULONG_MAX && errno == ERANGE)) {
+		PMD_DRV_LOG(ERR,
+			    "Invalid parameter passed to cqe-mode "
+			    "devargs.\n");
+		return -EINVAL;
+	}
+
+	if (BNXT_DEVARG_CQE_MODE_INVALID(cqe_mode)) {
+		PMD_DRV_LOG(ERR, "Invalid cqe-mode(%d) devargs.\n",
+			    (uint16_t)cqe_mode);
+		return -EINVAL;
+	}
+
+	if (cqe_mode == 1)
+		bp->flags2 |= BNXT_FLAGS2_COMPRESSED_RX_CQE;
+	PMD_DRV_LOG(INFO, "cqe-mode=%d feature enabled.\n", (uint8_t)cqe_mode);
+
+	return 0;
+}
+
+static int
 bnxt_parse_devarg_app_id(__rte_unused const char *key,
 				 const char *value, void *opaque_arg)
 {
@@ -6038,6 +6082,13 @@ err:
 	 */
 	rte_kvargs_process(kvlist, BNXT_DEVARG_IEEE_1588,
 			   bnxt_parse_devarg_ieee_1588, bp);
+
+	/*
+	 * Handler for "cqe-mode" devarg.
+	 * Invoked as for ex: "-a 000:00:0d.0,cqe-mode=1"
+	 */
+	rte_kvargs_process(kvlist, BNXT_DEVARG_CQE_MODE,
+			   bnxt_parse_devarg_cqe_mode, bp);
 
 	rte_kvargs_free(kvlist);
 	return ret;

@@ -782,6 +782,7 @@ struct bnxt {
 #define	BNXT_MULTIROOT_EN(bp)			\
 	((bp)->flags2 & BNXT_FLAGS2_MULTIROOT_EN)
 
+#define	BNXT_FLAGS2_COMPRESSED_RX_CQE		BIT(5)
 	uint32_t		fw_cap;
 #define BNXT_FW_CAP_HOT_RESET		BIT(0)
 #define BNXT_FW_CAP_IF_CHANGE		BIT(1)
@@ -814,6 +815,7 @@ struct bnxt {
 #define BNXT_VNIC_CAP_VLAN_RX_STRIP	BIT(3)
 #define BNXT_RX_VLAN_STRIP_EN(bp)	((bp)->vnic_cap_flags & BNXT_VNIC_CAP_VLAN_RX_STRIP)
 #define BNXT_VNIC_CAP_OUTER_RSS_TRUSTED_VF	BIT(4)
+#define BNXT_VNIC_CAP_L2_CQE_MODE		BIT(8)
 	unsigned int		rx_nr_rings;
 	unsigned int		rx_cp_nr_rings;
 	unsigned int		rx_num_qs_per_vnic;
@@ -1011,6 +1013,21 @@ inline uint16_t bnxt_max_rings(struct bnxt *bp)
 	max_rings = RTE_MIN(max_cp_rings / 2U, max_tx_rings);
 
 	return max_rings;
+}
+
+static inline bool
+bnxt_compressed_rx_cqe_mode_enabled(struct bnxt *bp)
+{
+	uint64_t rx_offloads = bp->eth_dev->data->dev_conf.rxmode.offloads;
+
+	if (bp->vnic_cap_flags & BNXT_VNIC_CAP_L2_CQE_MODE &&
+		bp->flags2 & BNXT_FLAGS2_COMPRESSED_RX_CQE &&
+		!(rx_offloads & RTE_ETH_RX_OFFLOAD_TCP_LRO) &&
+		!(rx_offloads & RTE_ETH_RX_OFFLOAD_BUFFER_SPLIT) &&
+		!bp->num_reps && !bp->ieee_1588)
+		return true;
+
+	return false;
 }
 
 #define BNXT_FC_TIMER	1 /* Timer freq in Sec Flow Counters */
