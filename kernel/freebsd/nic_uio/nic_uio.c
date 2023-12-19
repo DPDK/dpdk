@@ -78,10 +78,14 @@ struct pci_bdf {
 	uint32_t function;
 };
 
-static devclass_t nic_uio_devclass;
-
 DEFINE_CLASS_0(nic_uio, nic_uio_driver, nic_uio_methods, sizeof(struct nic_uio_softc));
+
+#if __FreeBSD_version < 1400000
+static devclass_t nic_uio_devclass;
 DRIVER_MODULE(nic_uio, pci, nic_uio_driver, nic_uio_devclass, nic_uio_modevent, 0);
+#else
+DRIVER_MODULE(nic_uio, pci, nic_uio_driver, nic_uio_modevent, 0);
+#endif
 
 static int
 nic_uio_mmap(struct cdev *cdev, vm_ooffset_t offset, vm_paddr_t *paddr,
