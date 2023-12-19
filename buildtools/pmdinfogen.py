@@ -71,7 +71,9 @@ class ELFImage:
         for i in range(self._symtab.num_symbols()):
             symbol = self._symtab.get_symbol(i)
             if symbol.name.startswith(prefix):
-                yield ELFSymbol(self._image, symbol)
+                elf_symbol = ELFSymbol(self._image, symbol)
+                if elf_symbol.string_value:
+                    yield elf_symbol
 
 
 class COFFSymbol:
