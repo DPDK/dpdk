@@ -398,6 +398,15 @@ rte_dma_is_valid(int16_t dev_id)
 		rte_dma_devices[dev_id].state != RTE_DMA_DEV_UNUSED;
 }
 
+struct rte_dma_dev *
+rte_dma_pmd_get_dev_by_id(int16_t dev_id)
+{
+	if (!rte_dma_is_valid(dev_id))
+		return NULL;
+
+	return &rte_dma_devices[dev_id];
+}
+
 uint16_t
 rte_dma_count_avail(void)
 {

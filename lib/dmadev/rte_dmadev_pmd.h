@@ -167,6 +167,19 @@ struct rte_dma_dev *rte_dma_pmd_allocate(const char *name, int numa_node,
 __rte_internal
 int rte_dma_pmd_release(const char *name);
 
+/**
+ * @internal
+ * Get the rte_dma_dev structure device pointer for the device ID.
+ *
+ * @param dev_id
+ *   DMA device index in dmadev library.
+ *
+ * @return
+ *   rte_dma_dev structure pointer on success, NULL otherwise.
+ */
+__rte_internal
+struct rte_dma_dev *rte_dma_pmd_get_dev_by_id(int16_t dev_id);
+
 #ifdef __cplusplus
 }
 #endif
