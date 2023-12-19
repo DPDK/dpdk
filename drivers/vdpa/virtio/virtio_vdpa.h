@@ -6,9 +6,9 @@
 #define _VIRTIO_VDPA_H_
 
 enum {
-	VIRTIO_VDPA_NOTIFIER_STATE_DISABLED,
-	VIRTIO_VDPA_NOTIFIER_STATE_ENABLED,
-	VIRTIO_VDPA_NOTIFIER_STATE_ERR
+	VIRTIO_VDPA_NOTIFIER_RELAY_DISABLED,
+	VIRTIO_VDPA_NOTIFIER_RELAY_ENABLED,
+	VIRTIO_VDPA_NOTIFIER_RELAY_ERR
 };
 
 struct virtio_vdpa_iommu_domain {
@@ -64,6 +64,11 @@ struct virtio_vdpa_priv {
 	bool configured;
 	bool dev_conf_read;
 	bool mem_tbl_set;
+};
+
+struct virtio_vdpa_notifier_work {
+	struct virtio_vdpa_priv *priv;
+	uint16_t vq_idx;
 };
 
 #define VIRTIO_VDPA_REMOTE_STATE_DEFAULT_SIZE 8192

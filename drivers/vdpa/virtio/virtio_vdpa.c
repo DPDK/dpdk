@@ -337,20 +337,7 @@ virtio_vdpa_virtq_handler(void *cb_arg)
 	}
 
 	virtio_pci_dev_queue_notify(priv->vpdev, virtq->index);
-	if (virtq->notifier_state == VIRTIO_VDPA_NOTIFIER_STATE_DISABLED) {
-		if (rte_vhost_host_notifier_ctrl(priv->vid, virtq->index, true)) {
-			DRV_LOG(ERR,  "%s failed to set notify ctrl virtq %d: %s",
-					priv->vdev->device->name, virtq->index, strerror(errno));
-			virtq->notifier_state = VIRTIO_VDPA_NOTIFIER_STATE_ERR;
-		} else
-			virtq->notifier_state = VIRTIO_VDPA_NOTIFIER_STATE_ENABLED;
-		DRV_LOG(INFO, "%s virtq %u notifier state is %s",
-						priv->vdev->device->name,
-						virtq->index,
-						virtq->notifier_state ==
-						VIRTIO_VDPA_NOTIFIER_STATE_ENABLED ? "enabled" :
-									"disabled");
-	}
+
 	DRV_LOG(DEBUG, "%s ring virtq %u doorbell i:%d",
 					priv->vdev->device->name, virtq->index, i);
 }
@@ -382,7 +369,7 @@ virtio_vdpa_virtq_doorbell_relay_disable(struct virtio_vdpa_priv *priv,
 	}
 	rte_intr_instance_free(intr_handle);
 	priv->vrings[vq_idx]->intr_handle = NULL;
-	priv->vrings[vq_idx]->notifier_state = VIRTIO_VDPA_NOTIFIER_STATE_DISABLED;
+	priv->vrings[vq_idx]->notifier_state = VIRTIO_VDPA_NOTIFIER_RELAY_DISABLED;
 	return 0;
 }
 
@@ -442,6 +429,52 @@ error:
 }
 
 static int
+virtio_vdpa_dev_notifier_work(void *arg)
+{
+	int ret;
+	struct virtio_vdpa_notifier_work *work = arg;
+	uint16_t nr_virtqs, i;
+
+	DRV_LOG(INFO, "%s vid %d dev notifier work of vq id:%d core:%d start",
+			work->priv->vdev->device->name, work->priv->vid, work->vq_idx, rte_lcore_id());
+
+	ret = rte_vhost_host_notifier_ctrl(work->priv->vid, work->vq_idx, true);
+	if (ret) {
+		DRV_LOG(ERR, "%s vid %d dev notifier work failed use relay ret:%d vq id:%d core:%d",
+			work->priv->vdev->device->name, work->priv->vid, ret, work->vq_idx, rte_lcore_id());
+
+		if (work->vq_idx == RTE_VHOST_QUEUE_ALL) {
+			nr_virtqs = rte_vhost_get_vring_num(work->priv->vid);
+			i = 0;
+		} else {
+			i = work->vq_idx;
+			nr_virtqs = i + 1;
+		}
+		for(; i < nr_virtqs; i++) {
+			ret = virtio_vdpa_virtq_doorbell_relay_enable(work->priv, i);
+			if (ret) {
+				DRV_LOG(ERR, "%s vid %d dev notifier relay of vq id:%d core:%d setup fail",
+					work->priv->vdev->device->name, work->priv->vid, i, rte_lcore_id());
+			}
+			work->priv->vrings[i]->notifier_state = VIRTIO_VDPA_NOTIFIER_RELAY_ENABLED;
+		}
+	}
+	DRV_LOG(INFO, "%s vid %d dev notifier work of vq id:%d core:%d finish",
+			work->priv->vdev->device->name, work->priv->vid, work->vq_idx, rte_lcore_id());
+	/* Notify device anyway, in case loss doorbell */
+	if (work->vq_idx == RTE_VHOST_QUEUE_ALL) {
+		nr_virtqs = rte_vhost_get_vring_num(work->priv->vid);
+		i = 0;
+		for(; i < nr_virtqs; i++)
+			virtio_pci_dev_queue_notify(work->priv->vpdev, i);
+	} else
+		virtio_pci_dev_queue_notify(work->priv->vpdev, work->vq_idx);
+
+	rte_free(work);
+	return ret;
+}
+
+static int
 virtio_vdpa_virtq_disable(struct virtio_vdpa_priv *priv, int vq_idx)
 {
 	struct rte_vhost_vring vq;
@@ -457,10 +490,13 @@ virtio_vdpa_virtq_disable(struct virtio_vdpa_priv *priv, int vq_idx)
 		}
 	}
 
-	ret = virtio_vdpa_virtq_doorbell_relay_disable(priv, vq_idx);
-	if (ret) {
-		DRV_LOG(ERR, "%s doorbell relay disable failed ret:%d",
-						priv->vdev->device->name, ret);
+	if (priv->vrings[vq_idx]->notifier_state == VIRTIO_VDPA_NOTIFIER_RELAY_ENABLED) {
+		ret = virtio_vdpa_virtq_doorbell_relay_disable(priv, vq_idx);
+		if (ret) {
+			DRV_LOG(ERR, "%s doorbell relay disable failed ret:%d",
+							priv->vdev->device->name, ret);
+		}
+		priv->vrings[vq_idx]->notifier_state = VIRTIO_VDPA_NOTIFIER_RELAY_DISABLED;
 	}
 
 	if (priv->configured) {
@@ -581,13 +617,6 @@ virtio_vdpa_virtq_enable(struct virtio_vdpa_priv *priv, int vq_idx)
 	if (ret) {
 		DRV_LOG(ERR, "%s setup queue dev_state failed", priv->vdev->device->name);
 		return -EINVAL;
-	}
-
-	ret = virtio_vdpa_virtq_doorbell_relay_enable(priv, vq_idx);
-	if (ret) {
-		DRV_LOG(ERR, "%s virtq doorbell relay failed ret:%d",
-						priv->vdev->device->name, ret);
-		return ret;
 	}
 
 	priv->vrings[vq_idx]->enable = true;
@@ -1144,6 +1173,7 @@ virtio_vdpa_dev_config(int vid)
 	struct virtio_vdpa_priv *priv =
 		virtio_vdpa_find_priv_resource_by_vdev(vdev);
 	uint16_t last_avail_idx, last_used_idx, nr_virtqs;
+	struct virtio_vdpa_notifier_work *notify_work;
 	uint64_t t_start = rte_rdtsc_precise();
 	uint64_t t_end;
 	int ret, i;
@@ -1234,6 +1264,25 @@ virtio_vdpa_dev_config(int vid)
 	priv->lm_status = VIRTIO_S_RUNNING;
 
 	DRV_LOG(INFO, "%s vid %d move to driver ok", vdev->device->name, vid);
+
+	virtio_vdpa_lcore_id = rte_get_next_lcore(virtio_vdpa_lcore_id, 1, 1);
+	notify_work = rte_zmalloc(NULL, sizeof(*notify_work), 0);
+	if (!notify_work) {
+		DRV_LOG(ERR, "%s vfid %d failed to alloc notify work", priv->vdev->device->name, priv->vf_id);
+		rte_errno = rte_errno ? rte_errno : ENOMEM;
+		return -rte_errno;
+	}
+
+	notify_work->priv = priv;
+	notify_work->vq_idx = RTE_VHOST_QUEUE_ALL;
+	DRV_LOG(INFO, "%s vfid %d launch all vq notifier work lcore:%d",
+			priv->vdev->device->name, priv->vf_id, virtio_vdpa_lcore_id);
+	ret = rte_eal_remote_launch(virtio_vdpa_dev_notifier_work, notify_work, virtio_vdpa_lcore_id);
+	if (ret) {
+		DRV_LOG(ERR, "%s vfid %d failed launch notifier work ret:%d lcore:%d",
+				priv->vdev->device->name, priv->vf_id, ret, virtio_vdpa_lcore_id);
+		rte_free(notify_work);
+	}
 
 	priv->configured = 1;
 	t_end  = rte_rdtsc_precise();
