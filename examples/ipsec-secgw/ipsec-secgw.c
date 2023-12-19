@@ -568,7 +568,7 @@ process_pkts_outbound_nosp(struct ipsec_ctx *ipsec_ctx,
 
 static inline void
 process_pkts(struct lcore_conf *qconf, struct rte_mbuf **pkts,
-	     uint8_t nb_pkts, uint16_t portid, void *ctx)
+	     uint16_t nb_pkts, uint16_t portid, void *ctx)
 {
 	struct ipsec_traffic traffic;
 
@@ -695,8 +695,7 @@ ipsec_poll_mode_worker(void)
 	struct rte_mbuf *pkts[MAX_PKT_BURST];
 	uint32_t lcore_id;
 	uint64_t prev_tsc, diff_tsc, cur_tsc;
-	int32_t i, nb_rx;
-	uint16_t portid;
+	uint16_t i, nb_rx, portid;
 	uint8_t queueid;
 	struct lcore_conf *qconf;
 	int32_t rc, socket_id;

@@ -469,7 +469,7 @@ fail:
 
 static __rte_always_inline void
 route4_pkts(struct rt_ctx *rt_ctx, struct rte_mbuf *pkts[],
-	    uint8_t nb_pkts, uint64_t tx_offloads, bool ip_cksum)
+	    uint32_t nb_pkts, uint64_t tx_offloads, bool ip_cksum)
 {
 	uint32_t hop[MAX_PKT_BURST * 2];
 	uint32_t dst_ip[MAX_PKT_BURST * 2];
@@ -557,7 +557,7 @@ route4_pkts(struct rt_ctx *rt_ctx, struct rte_mbuf *pkts[],
 }
 
 static __rte_always_inline void
-route6_pkts(struct rt_ctx *rt_ctx, struct rte_mbuf *pkts[], uint8_t nb_pkts)
+route6_pkts(struct rt_ctx *rt_ctx, struct rte_mbuf *pkts[], uint32_t nb_pkts)
 {
 	int32_t hop[MAX_PKT_BURST * 2];
 	uint8_t dst_ip[MAX_PKT_BURST * 2][16];
