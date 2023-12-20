@@ -7,7 +7,7 @@ sources += files('commands.c', 'test.c')
 
 # optional dependencies: some files may use these - and so we should link them in -
 # but do not explicitly require them so they are not listed in the per-file lists below
-optional_deps = ['crypto_scheduler']
+optional_deps = ['crypto_scheduler', 'lpm']
 
 # some other utility C files, providing functions used by various tests
 # so we need to include these deps in the dependency list for the files using those fns.
@@ -126,7 +126,7 @@ source_file_deps = {
     'test_memzone.c': [],
     'test_meter.c': ['meter'],
     'test_metrics.c': ['metrics'],
-    'test_mp_secondary.c': ['hash', 'lpm'],
+    'test_mp_secondary.c': ['hash'],
     'test_net_ether.c': ['net'],
     'test_pcapng.c': ['ethdev', 'net', 'pcapng', 'bus_vdev'],
     'test_pdcp.c': ['eventdev', 'pdcp', 'net', 'timer', 'security'],

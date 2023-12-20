@@ -101,6 +101,9 @@ fi
 if [ "$MINI" = "true" ]; then
     OPTS="$OPTS -Denable_drivers=net/null"
     OPTS="$OPTS -Ddisable_libs=*"
+    if [ "$DEF_LIB" = "static" ]; then
+        OPTS="$OPTS -Dexamples=l2fwd"
+    fi
 else
     OPTS="$OPTS -Denable_deprecated_libs=*"
 fi

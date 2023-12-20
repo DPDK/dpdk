@@ -76,26 +76,21 @@ if is_ms_compiler
 endif
 
 always_enable = [
-        'acl',
         'cmdline',
         'eal',
         'ethdev',
-        'fib',
         'hash',
         'kvargs',
         'log',
-        'lpm',
         'mbuf',
         'mempool',
         'meter',
         'net',
         'pci',
         'rcu',
-        'rib',
         'ring',
         'stack',
         'telemetry',
-        'timer',
 ]
 
 enable_deprecated_libs = []
