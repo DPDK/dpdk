@@ -75,51 +75,28 @@ if is_ms_compiler
     ]
 endif
 
-optional_libs = [
-        'bbdev',
-        'bitratestats',
-        'bpf',
-        'cfgfile',
-        'compressdev',
-        'cryptodev',
-        'dispatcher',
-        'distributor',
-        'dmadev',
-        'efd',
-        'eventdev',
-        'gpudev',
-        'graph',
-        'gro',
-        'gso',
-        'ip_frag',
-        'ipsec',
-        'jobstats',
-        'latencystats',
-        'member',
-        'metrics',
-        'mldev',
-        'node',
-        'pcapng',
-        'pdcp',
-        'pdump',
-        'pipeline',
-        'port',
-        'power',
-        'rawdev',
-        'regexdev',
-        'reorder',
-        'sched',
-        'security',
-        'table',
-        'vhost',
+always_enable = [
+        'acl',
+        'cmdline',
+        'eal',
+        'ethdev',
+        'fib',
+        'hash',
+        'kvargs',
+        'log',
+        'lpm',
+        'mbuf',
+        'mempool',
+        'meter',
+        'net',
+        'pci',
+        'rcu',
+        'rib',
+        'ring',
+        'stack',
+        'telemetry',
+        'timer',
 ]
-
-always_enable = []
-foreach l:libraries
-    if not optional_libs.contains(l)
-        always_enable += l
-    endif
-endforeach
 
 enable_deprecated_libs = []
 foreach l:run_command(list_dir_globs, get_option('enable_deprecated_libs'),
@@ -136,9 +113,10 @@ enable_libs = run_command(list_dir_globs, get_option('enable_libs'), check: true
 require_libs = true
 if enable_libs.length() == 0
     require_libs = false
-    enable_libs += optional_libs
+    enable_libs = libraries
+else
+    enable_libs += always_enable
 endif
-enable_libs += always_enable
 
 default_cflags = machine_args
 default_cflags += ['-DALLOW_EXPERIMENTAL_API']
