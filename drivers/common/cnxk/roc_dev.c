@@ -198,9 +198,8 @@ af_pf_wait_msg(struct dev *dev, uint16_t vf, int num_msg)
 			vf_msg = mbox_alloc_msg(&dev->mbox_vfpf_up, vf, sz);
 			if (vf_msg) {
 				mbox_req_init(MBOX_MSG_CGX_LINK_EVENT, vf_msg);
-				memcpy((uint8_t *)vf_msg +
-				       sizeof(struct mbox_msghdr), &linfo,
-				       sizeof(struct cgx_link_user_info));
+				mbox_memcpy((uint8_t *)vf_msg + sizeof(struct mbox_msghdr), &linfo,
+					    sizeof(struct cgx_link_user_info));
 
 				vf_msg->rc = msg->rc;
 				vf_msg->pcifunc = msg->pcifunc;
