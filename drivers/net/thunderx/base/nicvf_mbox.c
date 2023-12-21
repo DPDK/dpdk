@@ -485,3 +485,15 @@ nicvf_mbox_reset_xcast(struct nicvf *nic)
 	mbx.msg.msg = NIC_MBOX_MSG_RESET_XCAST;
 	nicvf_mbox_send_msg_to_pf(nic, &mbx);
 }
+
+int
+nicvf_mbox_set_xcast(struct nicvf *nic, uint8_t  mode, uint64_t mac)
+{
+	struct nic_mbx mbx = { .msg = { 0 } };
+
+	mbx.xcast.msg = NIC_MBOX_MSG_SET_XCAST;
+	mbx.xcast.mode = mode;
+	mbx.xcast.mac = mac;
+
+	return nicvf_mbox_send_msg_to_pf(nic, &mbx);
+}
