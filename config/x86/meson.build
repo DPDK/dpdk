@@ -91,9 +91,17 @@ epyc_zen_cores = {
     '__znver1__':128
     }
 
-if get_option('platform') == 'native'
+cpu_instruction_set = get_option('cpu_instruction_set')
+if cpu_instruction_set == 'native'
     foreach m:epyc_zen_cores.keys()
         if cc.get_define(m, args: machine_args) != ''
+            dpdk_conf.set('RTE_MAX_LCORE', epyc_zen_cores[m])
+            break
+        endif
+    endforeach
+else
+    foreach m:epyc_zen_cores.keys()
+        if m.contains(cpu_instruction_set)
             dpdk_conf.set('RTE_MAX_LCORE', epyc_zen_cores[m])
             break
         endif
