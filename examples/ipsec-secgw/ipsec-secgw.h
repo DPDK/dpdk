@@ -232,10 +232,7 @@ free_reassembly_fail_pkt(struct rte_mbuf *mb)
 static inline void
 free_pkts(struct rte_mbuf *mb[], uint32_t n)
 {
-	uint32_t i;
-
-	for (i = 0; i != n; i++)
-		rte_pktmbuf_free(mb[i]);
+	rte_pktmbuf_free_bulk(mb, n);
 
 	core_stats_update_drop(n);
 }
