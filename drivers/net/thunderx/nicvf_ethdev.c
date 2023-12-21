@@ -58,6 +58,10 @@ RTE_LOG_REGISTER_SUFFIX(nicvf_logtype_driver, driver, NOTICE);
 #define NICVF_QLM_MODE_SGMII  7
 #define NICVF_QLM_MODE_XFI   12
 
+#define BCAST_ACCEPT      0x01
+#define CAM_ACCEPT        (1 << 3)
+#define BGX_MCAST_MODE(x) ((x) << 1)
+
 enum nicvf_link_speed {
 	NICVF_LINK_SPEED_SGMII,
 	NICVF_LINK_SPEED_XAUI,
@@ -2185,9 +2189,22 @@ nicvf_eth_dev_uninit(struct rte_eth_dev *dev)
 	nicvf_dev_close(dev);
 	return 0;
 }
+
+static inline uint64_t ether_addr_to_u64(uint8_t *addr)
+{
+	uint64_t u = 0;
+	int i;
+
+	for (i = 0; i < RTE_ETHER_ADDR_LEN; i++)
+		u = u << 8 | addr[i];
+
+	return u;
+}
+
 static int
 nicvf_eth_dev_init(struct rte_eth_dev *eth_dev)
 {
+	uint8_t dmac_ctrl_reg = 0;
 	int ret;
 	struct rte_pci_device *pci_dev;
 	struct nicvf *nic = nicvf_pmd_priv(eth_dev);
@@ -2306,6 +2323,15 @@ nicvf_eth_dev_init(struct rte_eth_dev *eth_dev)
 			&eth_dev->data->mac_addrs[0]);
 
 	ret = nicvf_mbox_set_mac_addr(nic, nic->mac_addr);
+	if (ret) {
+		PMD_INIT_LOG(ERR, "Failed to set mac addr");
+		goto malloc_fail;
+	}
+
+	/* set DMAC CTRL reg to allow MAC */
+	dmac_ctrl_reg = BCAST_ACCEPT | BGX_MCAST_MODE(2) | CAM_ACCEPT;
+	ret = nicvf_mbox_set_xcast(nic, dmac_ctrl_reg,
+			ether_addr_to_u64(nic->mac_addr));
 	if (ret) {
 		PMD_INIT_LOG(ERR, "Failed to set mac addr");
 		goto malloc_fail;
