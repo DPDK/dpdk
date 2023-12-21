@@ -1019,6 +1019,7 @@ npc_parse_lf(struct npc_parse_state *pst)
 {
 	const struct roc_npc_item_info *pattern, *last_pattern;
 	char hw_mask[NPC_MAX_EXTRACT_HW_LEN];
+	const struct roc_npc_flow_item_eth *eth_item;
 	struct npc_parse_item_info info;
 	int lid, lt, lflags;
 	int nr_vlans = 0;
@@ -1035,10 +1036,12 @@ npc_parse_lf(struct npc_parse_state *pst)
 	lt = NPC_LT_LF_TU_ETHER;
 	lflags = 0;
 
+	eth_item = pst->pattern->spec;
+
 	/* No match support for vlan tags */
 	info.def_mask = NULL;
 	info.hw_mask = NULL;
-	info.len = pst->pattern->size;
+	info.len = sizeof(eth_item->hdr);
 	info.spec = NULL;
 	info.mask = NULL;
 	info.hw_hdr_len = 0;
@@ -1069,11 +1072,14 @@ npc_parse_lf(struct npc_parse_state *pst)
 	}
 
 	info.hw_mask = &hw_mask;
-	info.len = pst->pattern->size;
+	info.len = sizeof(eth_item->hdr);
 	info.hw_hdr_len = 0;
 	npc_get_hw_supp_mask(pst, &info, lid, lt);
 	info.spec = NULL;
 	info.mask = NULL;
+
+	if (eth_item && eth_item->has_vlan)
+		pst->set_vlan_ltype_mask = true;
 
 	rc = npc_parse_item_basic(pst->pattern, &info);
 	if (rc != 0)
