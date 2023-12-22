@@ -34,6 +34,7 @@ struct bnxt_tx_queue {
 	const struct rte_memzone *mz;
 	struct rte_mbuf **free;
 	uint64_t offloads;
+	RTE_ATOMIC(uint64_t)	tx_mbuf_drop;
 };
 
 void bnxt_free_txq_stats(struct bnxt_tx_queue *txq);

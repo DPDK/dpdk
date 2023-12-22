@@ -746,6 +746,9 @@ int bnxt_stats_get_op(struct rte_eth_dev *eth_dev,
 			return rc;
 
 		bnxt_fill_rte_eth_stats(bnxt_stats, &ring_stats, i, false);
+		bnxt_stats->oerrors +=
+				rte_atomic_load_explicit(&txq->tx_mbuf_drop,
+							 rte_memory_order_relaxed);
 	}
 
 	return rc;
@@ -790,6 +793,12 @@ int bnxt_stats_reset_op(struct rte_eth_dev *eth_dev)
 		struct bnxt_rx_queue *rxq = bp->rx_queues[i];
 
 		rxq->rx_mbuf_alloc_fail = 0;
+	}
+
+	for (i = 0; i < bp->tx_cp_nr_rings; i++) {
+		struct bnxt_tx_queue *txq = bp->tx_queues[i];
+
+		txq->tx_mbuf_drop = 0;
 	}
 
 	bnxt_clear_prev_stat(bp);

@@ -228,7 +228,7 @@ static int bnxt_invalid_mbuf(struct rte_mbuf *mbuf)
 	return 0;
 }
 
-static uint16_t bnxt_start_xmit(struct rte_mbuf *tx_pkt,
+static int bnxt_start_xmit(struct rte_mbuf *tx_pkt,
 				struct bnxt_tx_queue *txq,
 				uint16_t *coal_pkts,
 				struct tx_bd_long **last_txbd)
@@ -251,27 +251,37 @@ static uint16_t bnxt_start_xmit(struct rte_mbuf *tx_pkt,
 		TX_BD_LONG_FLAGS_LHINT_LT2K,
 		TX_BD_LONG_FLAGS_LHINT_LT2K
 	};
+	int rc = 0;
 
-	if (unlikely(is_bnxt_in_error(txq->bp)))
-		return -EIO;
+	if (unlikely(is_bnxt_in_error(txq->bp))) {
+		rc = -EIO;
+		goto ret;
+	}
 
-	if (unlikely(bnxt_invalid_mbuf(tx_pkt)))
-		return -EINVAL;
+	if (unlikely(bnxt_invalid_mbuf(tx_pkt))) {
+		rc = -EINVAL;
+		goto drop;
+	}
 
-	if (unlikely(bnxt_invalid_nb_segs(tx_pkt)))
-		return -EINVAL;
+	if (unlikely(bnxt_invalid_nb_segs(tx_pkt))) {
+		rc = -EINVAL;
+		goto drop;
+	}
 
 	long_bd = bnxt_xmit_need_long_bd(tx_pkt, txq);
 	nr_bds = long_bd + tx_pkt->nb_segs;
 
-	if (unlikely(bnxt_tx_avail(txq) < nr_bds))
-		return -ENOMEM;
+	if (unlikely(bnxt_tx_avail(txq) < nr_bds)) {
+		rc = -ENOMEM;
+		goto ret;
+	}
 
 	/* Check if number of Tx descriptors is above HW limit */
 	if (unlikely(nr_bds > BNXT_MAX_TSO_SEGS)) {
 		PMD_DRV_LOG_LINE(ERR,
 			    "Num descriptors %d exceeds HW limit", nr_bds);
-		return -ENOSPC;
+		rc = -EINVAL;
+		goto drop;
 	}
 
 	/* If packet length is less than minimum packet size, pad it */
@@ -283,7 +293,8 @@ static uint16_t bnxt_start_xmit(struct rte_mbuf *tx_pkt,
 			PMD_DRV_LOG_LINE(ERR,
 				    "Failed to pad mbuf by %d bytes",
 				    pad);
-			return -ENOMEM;
+			rc = -ENOMEM;
+			goto ret;
 		}
 
 		/* Note: data_len, pkt len are updated in rte_pktmbuf_append */
@@ -291,8 +302,10 @@ static uint16_t bnxt_start_xmit(struct rte_mbuf *tx_pkt,
 	}
 
 	/* Check non zero data_len */
-	if (unlikely(bnxt_zero_data_len_tso_segsz(tx_pkt, true, false)))
-		return -EIO;
+	if (unlikely(bnxt_zero_data_len_tso_segsz(tx_pkt, true, false))) {
+		rc = -EINVAL;
+		goto drop;
+	}
 
 	if (unlikely(txq->bp->ptp_cfg != NULL && txq->bp->ptp_all_rx_tstamp == 1))
 		pkt_needs_ts = bnxt_check_pkt_needs_ts(tx_pkt);
@@ -381,8 +394,10 @@ static uint16_t bnxt_start_xmit(struct rte_mbuf *tx_pkt,
 			 */
 			txbd1->kid_or_ts_low_hdr_size = hdr_size >> 1;
 			txbd1->kid_or_ts_high_mss = tx_pkt->tso_segsz;
-			if (unlikely(bnxt_zero_data_len_tso_segsz(tx_pkt, false, true)))
-				return -EIO;
+			if (unlikely(bnxt_zero_data_len_tso_segsz(tx_pkt, false, true))) {
+				rc = -EINVAL;
+				goto drop;
+			}
 
 		} else if ((tx_pkt->ol_flags & PKT_TX_OIP_IIP_TCP_UDP_CKSUM) ==
 			   PKT_TX_OIP_IIP_TCP_UDP_CKSUM) {
@@ -456,8 +471,10 @@ static uint16_t bnxt_start_xmit(struct rte_mbuf *tx_pkt,
 	m_seg = tx_pkt->next;
 	while (m_seg) {
 		/* Check non zero data_len */
-		if (unlikely(bnxt_zero_data_len_tso_segsz(m_seg, true, false)))
-			return -EIO;
+		if (unlikely(bnxt_zero_data_len_tso_segsz(m_seg, true, false))) {
+			rc = -EINVAL;
+			goto drop;
+		}
 		txr->tx_raw_prod = RING_NEXT(txr->tx_raw_prod);
 
 		prod = RING_IDX(ring, txr->tx_raw_prod);
@@ -477,6 +494,10 @@ static uint16_t bnxt_start_xmit(struct rte_mbuf *tx_pkt,
 	txr->tx_raw_prod = RING_NEXT(txr->tx_raw_prod);
 
 	return 0;
+drop:
+	rte_pktmbuf_free(tx_pkt);
+ret:
+	return rc;
 }
 
 /*
@@ -644,6 +665,7 @@ uint16_t _bnxt_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	uint16_t coal_pkts = 0;
 	struct bnxt_tx_queue *txq = tx_queue;
 	struct tx_bd_long *last_txbd = NULL;
+	uint8_t dropped = 0;
 
 	/* Handle TX completions */
 	bnxt_handle_tx_cp(txq);
@@ -660,8 +682,14 @@ uint16_t _bnxt_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		rc = bnxt_start_xmit(tx_pkts[nb_tx_pkts], txq,
 				     &coal_pkts, &last_txbd);
 
-		if (unlikely(rc))
+		if (unlikely(rc)) {
+			if (rc == -EINVAL) {
+				rte_atomic_fetch_add_explicit(&txq->tx_mbuf_drop, 1,
+							      rte_memory_order_relaxed);
+				dropped++;
+			}
 			break;
+		}
 	}
 
 	if (likely(nb_tx_pkts)) {
@@ -670,6 +698,7 @@ uint16_t _bnxt_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		bnxt_db_write(&txq->tx_ring->tx_db, txq->tx_ring->tx_raw_prod);
 	}
 
+	nb_tx_pkts += dropped;
 	return nb_tx_pkts;
 }
 
