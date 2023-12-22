@@ -18,7 +18,9 @@ sources = files(
         'rte_table_lpm.c',
         'rte_table_lpm_ipv6.c',
         'rte_table_stub.c',
+        'table_log.c',
 )
+
 headers = files(
         'rte_lru.h',
         'rte_swx_hash_func.h',
