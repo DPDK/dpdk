@@ -157,51 +157,67 @@ idpf_init_mbx(struct idpf_hw *hw)
 static int
 idpf_get_pkt_type(struct idpf_adapter *adapter)
 {
-	struct virtchnl2_get_ptype_info *ptype_info;
+	struct virtchnl2_get_ptype_info *req_ptype_info;
+	struct virtchnl2_get_ptype_info *recv_ptype_info;
+	uint16_t recv_num_ptypes = 0;
 	uint16_t ptype_offset, i, j;
-	uint16_t ptype_recvd = 0;
+	uint16_t start_ptype_id = 0;
 	int ret;
 
-	ret = idpf_vc_ptype_info_query(adapter);
-	if (ret != 0) {
-		DRV_LOG(ERR, "Fail to query packet type information");
-		return ret;
+	req_ptype_info = rte_zmalloc("req_ptype_info", IDPF_DFLT_MBX_BUF_SIZE, 0);
+	if (req_ptype_info == NULL)
+		return -ENOMEM;
+
+	recv_ptype_info = rte_zmalloc("recv_ptype_info", IDPF_DFLT_MBX_BUF_SIZE, 0);
+	if (recv_ptype_info == NULL) {
+		ret = -ENOMEM;
+		goto free_req_ptype_info;
 	}
 
-	ptype_info = rte_zmalloc("ptype_info", IDPF_DFLT_MBX_BUF_SIZE, 0);
-		if (ptype_info == NULL)
-			return -ENOMEM;
+	while (start_ptype_id < IDPF_MAX_PKT_TYPE) {
+		memset(req_ptype_info, 0, sizeof(*req_ptype_info));
+		memset(recv_ptype_info, 0, sizeof(*recv_ptype_info));
 
-	while (ptype_recvd < IDPF_MAX_PKT_TYPE) {
-		ret = idpf_vc_one_msg_read(adapter, VIRTCHNL2_OP_GET_PTYPE_INFO,
-					   IDPF_DFLT_MBX_BUF_SIZE, (uint8_t *)ptype_info);
+		if ((start_ptype_id + IDPF_RX_MAX_PTYPES_PER_BUF) > IDPF_MAX_PKT_TYPE)
+			req_ptype_info->num_ptypes =
+				rte_cpu_to_le_16(IDPF_MAX_PKT_TYPE - start_ptype_id);
+		else
+			req_ptype_info->num_ptypes = rte_cpu_to_le_16(IDPF_RX_MAX_PTYPES_PER_BUF);
+		req_ptype_info->start_ptype_id = start_ptype_id;
+
+		ret = idpf_vc_ptype_info_query(adapter, req_ptype_info, recv_ptype_info);
 		if (ret != 0) {
-			DRV_LOG(ERR, "Fail to get packet type information");
-			goto free_ptype_info;
+			DRV_LOG(ERR, "Fail to query packet type information");
+			goto free_recv_ptype_info;
 		}
 
-		ptype_recvd += ptype_info->num_ptypes;
+		recv_num_ptypes += rte_le_to_cpu_16(recv_ptype_info->num_ptypes);
+		if (recv_num_ptypes > IDPF_MAX_PKT_TYPE) {
+			ret = -EINVAL;
+			goto free_recv_ptype_info;
+		}
+
+		start_ptype_id = rte_le_to_cpu_16(req_ptype_info->start_ptype_id) +
+			rte_le_to_cpu_16(req_ptype_info->num_ptypes);
+
 		ptype_offset = sizeof(struct virtchnl2_get_ptype_info) -
 						sizeof(struct virtchnl2_ptype);
 
-		for (i = 0; i < rte_cpu_to_le_16(ptype_info->num_ptypes); i++) {
+		for (i = 0; i < rte_le_to_cpu_16(recv_ptype_info->num_ptypes); i++) {
 			bool is_inner = false, is_ip = false;
 			struct virtchnl2_ptype *ptype;
 			uint32_t proto_hdr = 0;
 
 			ptype = (struct virtchnl2_ptype *)
-					((uint8_t *)ptype_info + ptype_offset);
+					((uint8_t *)recv_ptype_info + ptype_offset);
 			ptype_offset += IDPF_GET_PTYPE_SIZE(ptype);
 			if (ptype_offset > IDPF_DFLT_MBX_BUF_SIZE) {
 				ret = -EINVAL;
-				goto free_ptype_info;
+				goto free_recv_ptype_info;
 			}
 
-			if (rte_cpu_to_le_16(ptype->ptype_id_10) == 0xFFFF)
-				goto free_ptype_info;
-
 			for (j = 0; j < ptype->proto_id_count; j++) {
-				switch (rte_cpu_to_le_16(ptype->proto_id[j])) {
+				switch (rte_le_to_cpu_16(ptype->proto_id[j])) {
 				case VIRTCHNL2_PROTO_HDR_GRE:
 				case VIRTCHNL2_PROTO_HDR_VXLAN:
 					proto_hdr &= ~RTE_PTYPE_L4_MASK;
@@ -358,8 +374,10 @@ idpf_get_pkt_type(struct idpf_adapter *adapter)
 		}
 	}
 
-free_ptype_info:
-	rte_free(ptype_info);
+free_recv_ptype_info:
+	rte_free(recv_ptype_info);
+free_req_ptype_info:
+	rte_free(req_ptype_info);
 	clear_cmd(adapter);
 	return ret;
 }

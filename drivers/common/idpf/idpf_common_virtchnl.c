@@ -202,14 +202,10 @@ idpf_vc_cmd_execute(struct idpf_adapter *adapter, struct idpf_cmd_info *args)
 	switch (args->ops) {
 	case VIRTCHNL_OP_VERSION:
 	case VIRTCHNL2_OP_GET_CAPS:
+	case VIRTCHNL2_OP_GET_PTYPE_INFO:
 		/* for init virtchnl ops, need to poll the response */
 		err = idpf_vc_one_msg_read(adapter, args->ops, args->out_size, args->out_buffer);
 		clear_cmd(adapter);
-		break;
-	case VIRTCHNL2_OP_GET_PTYPE_INFO:
-		/* for multuple response message,
-		 * do not handle the response here.
-		 */
 		break;
 	default:
 		/* For other virtchnl ops in running time,
@@ -909,28 +905,24 @@ idpf_vc_vport_ena_dis(struct idpf_vport *vport, bool enable)
 }
 
 int
-idpf_vc_ptype_info_query(struct idpf_adapter *adapter)
+idpf_vc_ptype_info_query(struct idpf_adapter *adapter,
+			 struct virtchnl2_get_ptype_info *req_ptype_info,
+			 struct virtchnl2_get_ptype_info *recv_ptype_info)
 {
-	struct virtchnl2_get_ptype_info *ptype_info;
 	struct idpf_cmd_info args;
-	int len, err;
+	int err;
 
-	len = sizeof(struct virtchnl2_get_ptype_info);
-	ptype_info = rte_zmalloc("ptype_info", len, 0);
-	if (ptype_info == NULL)
-		return -ENOMEM;
-
-	ptype_info->start_ptype_id = 0;
-	ptype_info->num_ptypes = IDPF_MAX_PKT_TYPE;
 	args.ops = VIRTCHNL2_OP_GET_PTYPE_INFO;
-	args.in_args = (uint8_t *)ptype_info;
-	args.in_args_size = len;
+	args.in_args = (uint8_t *)req_ptype_info;
+	args.in_args_size = sizeof(struct virtchnl2_get_ptype_info);
+	args.out_buffer = adapter->mbx_resp;
+	args.out_size = IDPF_DFLT_MBX_BUF_SIZE;
 
 	err = idpf_vc_cmd_execute(adapter, &args);
 	if (err != 0)
 		DRV_LOG(ERR, "Failed to execute command of VIRTCHNL2_OP_GET_PTYPE_INFO");
 
-	rte_free(ptype_info);
+	rte_memcpy(recv_ptype_info, args.out_buffer, IDPF_DFLT_MBX_BUF_SIZE);
 	return err;
 }
 

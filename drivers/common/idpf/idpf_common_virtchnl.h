@@ -41,7 +41,9 @@ int idpf_vc_vectors_alloc(struct idpf_vport *vport, uint16_t num_vectors);
 __rte_internal
 int idpf_vc_vectors_dealloc(struct idpf_vport *vport);
 __rte_internal
-int idpf_vc_ptype_info_query(struct idpf_adapter *adapter);
+int idpf_vc_ptype_info_query(struct idpf_adapter *adapter,
+			     struct virtchnl2_get_ptype_info *req_ptype_info,
+			     struct virtchnl2_get_ptype_info *recv_ptype_info);
 __rte_internal
 int idpf_vc_one_msg_read(struct idpf_adapter *adapter, uint32_t ops,
 			 uint16_t buf_len, uint8_t *buf);

@@ -31,6 +31,15 @@
 
 #define IDPF_DFLT_INTERVAL	16
 
+#define IDPF_RX_MAX_PTYPE_PROTO_IDS	32
+#define IDPF_RX_MAX_PTYPE_SZ	(sizeof(struct virtchnl2_ptype) +	\
+				 (sizeof(uint16_t) *			\
+				  (IDPF_RX_MAX_PTYPE_PROTO_IDS - 1)))
+#define IDPF_RX_PTYPE_HDR_SZ	(sizeof(struct virtchnl2_get_ptype_info) - \
+				 sizeof(struct virtchnl2_ptype))
+#define IDPF_RX_MAX_PTYPES_PER_BUF				\
+	((IDPF_DFLT_MBX_BUF_SIZE - IDPF_RX_PTYPE_HDR_SZ)/	\
+	 IDPF_RX_MAX_PTYPE_SZ)
 #define IDPF_GET_PTYPE_SIZE(p)						\
 	(sizeof(struct virtchnl2_ptype) +				\
 	 (((p)->proto_id_count ? ((p)->proto_id_count - 1) : 0) * sizeof((p)->proto_id[0])))
