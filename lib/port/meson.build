@@ -8,6 +8,7 @@ if is_windows
 endif
 
 sources = files(
+        'port_log.c',
         'rte_port_ethdev.c',
         'rte_port_fd.c',
         'rte_port_frag.c',

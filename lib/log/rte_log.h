@@ -40,7 +40,7 @@ extern "C" {
 				 /* was RTE_LOGTYPE_POWER */
 				 /* was RTE_LOGTYPE_METER */
 				 /* was RTE_LOGTYPE_SCHED */
-#define RTE_LOGTYPE_PORT      13 /**< Log related to port. */
+				 /* was RTE_LOGTYPE_PORT */
 #define RTE_LOGTYPE_TABLE     14 /**< Log related to table. */
 #define RTE_LOGTYPE_PIPELINE  15 /**< Log related to pipeline. */
 				 /* was RTE_LOGTYPE_MBUF */
