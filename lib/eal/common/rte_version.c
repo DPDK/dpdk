@@ -35,15 +35,28 @@ rte_version(void)
 				RTE_VER_MONTH,
 				RTE_VER_MINOR);
 		else
-			snprintf(version, sizeof(version), "%s %d.%02d.%d%s%d.%s%d.%d",
-				RTE_VER_PREFIX,
-				RTE_VER_YEAR,
-				RTE_VER_MONTH,
-				RTE_VER_MINOR,
-				RTE_VER_SUFFIX,
-				RTE_VER_RELEASE,
-				RTE_VER_VFE_SUFFIX,
-				RTE_VER_VFE_MAIN,
-				RTE_VER_VFE_SUB);
+			if(RTE_VER_VFE_RC != -1)
+				snprintf(version, sizeof(version), "%s %d.%02d.%d%s%d.%s%d.%d-rc%d",
+					RTE_VER_PREFIX,
+					RTE_VER_YEAR,
+					RTE_VER_MONTH,
+					RTE_VER_MINOR,
+					RTE_VER_SUFFIX,
+					RTE_VER_RELEASE,
+					RTE_VER_VFE_SUFFIX,
+					RTE_VER_VFE_MAIN,
+					RTE_VER_VFE_SUB,
+					RTE_VER_VFE_RC);
+			else
+				snprintf(version, sizeof(version), "%s %d.%02d.%d%s%d.%s%d.%d",
+					RTE_VER_PREFIX,
+					RTE_VER_YEAR,
+					RTE_VER_MONTH,
+					RTE_VER_MINOR,
+					RTE_VER_SUFFIX,
+					RTE_VER_RELEASE,
+					RTE_VER_VFE_SUFFIX,
+					RTE_VER_VFE_MAIN,
+					RTE_VER_VFE_SUB);
 	return version;
 }

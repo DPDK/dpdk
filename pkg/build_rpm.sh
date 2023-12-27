@@ -5,8 +5,8 @@ set -e -x
 name=dpdk-vhost-vfe
 topdir=/tmp/build_dpdk_topdir
 specfile=pkg/$name.spec
-[ -z "$VER" ] && VER=`cut -f 3 -d '-' VERSION`
 release=`rpm --eval 1%{?dist}`
+VER=`rpmspec --srpm  -q --queryformat='%{VERSION}\n' $specfile`
 
 srctar=$name-$VER.tar.gz
 srcrpm=$name-$VER-$release.src.rpm
