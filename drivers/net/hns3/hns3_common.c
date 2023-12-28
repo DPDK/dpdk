@@ -85,7 +85,7 @@ hns3_dev_infos_get(struct rte_eth_dev *eth_dev, struct rte_eth_dev_info *info)
 				 RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE |
 				 RTE_ETH_TX_OFFLOAD_VLAN_INSERT);
 
-	if (!hw->port_base_vlan_cfg.state)
+	if (!hns->is_vf && !hw->port_base_vlan_cfg.state)
 		info->tx_offload_capa |= RTE_ETH_TX_OFFLOAD_QINQ_INSERT;
 
 	if (hns3_dev_get_support(hw, OUTER_UDP_CKSUM))
