@@ -128,7 +128,14 @@ const struct supported_cipher_algo cipher_algos[] = {
 		.iv_len = 8,
 		.block_size = 8,
 		.key_len = 8
-	}
+	},
+	{
+		.keyword = "sm4-cbc",
+		.algo = RTE_CRYPTO_CIPHER_SM4_CBC,
+		.iv_len = 16,
+		.block_size = 16,
+		.key_len = 16
+	},
 };
 
 const struct supported_auth_algo auth_algos[] = {
@@ -502,7 +509,8 @@ parse_sa_tokens(char **tokens, uint32_t n_tokens,
 				return;
 
 			if (algo->algo == RTE_CRYPTO_CIPHER_AES_CBC ||
-				algo->algo == RTE_CRYPTO_CIPHER_3DES_CBC)
+				algo->algo == RTE_CRYPTO_CIPHER_3DES_CBC ||
+				algo->algo == RTE_CRYPTO_CIPHER_SM4_CBC)
 				rule->salt = (uint32_t)rte_rand();
 
 			if (algo->algo == RTE_CRYPTO_CIPHER_AES_CTR) {
@@ -1330,6 +1338,7 @@ sa_add_rules(struct sa_ctx *sa_ctx, const struct ipsec_sa entries[],
 			case RTE_CRYPTO_CIPHER_DES_CBC:
 			case RTE_CRYPTO_CIPHER_3DES_CBC:
 			case RTE_CRYPTO_CIPHER_AES_CBC:
+			case RTE_CRYPTO_CIPHER_SM4_CBC:
 				iv_length = sa->iv_len;
 				break;
 			case RTE_CRYPTO_CIPHER_AES_CTR:
