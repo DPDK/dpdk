@@ -88,6 +88,8 @@ void virtio_pci_dev_state_queue_del(struct virtio_pci_dev *vpdev, uint16_t qid, 
 __rte_internal
 int virtio_pci_dev_state_interrupt_enable(struct virtio_pci_dev *vpdev, int fd, int vec, void *state);
 __rte_internal
+int virtio_pci_dev_state_interrupt_enable_only(struct virtio_pci_dev *vpdev, int vec, void *state);
+__rte_internal
 int virtio_pci_dev_state_interrupt_disable(struct virtio_pci_dev *vpdev, int vec, void *state);
 __rte_internal
 int virtio_pci_dev_interrupt_enable(struct virtio_pci_dev *vpdev, int fd, int vec);

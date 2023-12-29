@@ -24,6 +24,7 @@ INTERNAL {
 	virtio_pci_dev_state_queue_set;
 	virtio_pci_dev_state_queue_del;
 	virtio_pci_dev_state_interrupt_enable;
+	virtio_pci_dev_state_interrupt_enable_only;
 	virtio_pci_dev_state_interrupt_disable;
 	virtio_pci_dev_state_dev_status_set;
 	virtio_pci_dev_state_dump;

@@ -1352,6 +1352,12 @@ virtio_vdpa_dev_presetup_done(int vid)
 			rte_errno = rte_errno ? rte_errno : EINVAL;
 			return -rte_errno;
 		}
+		ret = virtio_pci_dev_state_interrupt_enable_only(priv->vpdev, i + 1, priv->state_mz->addr);
+		if (ret) {
+			DRV_LOG(ERR, "%s error set interrupt map in pre-config ret:%d", vdev->device->name, ret);
+			rte_errno = rte_errno ? rte_errno : EINVAL;
+			return -rte_errno;
+		}
 	}
 
 	virtio_pci_dev_state_dev_status_set(priv->state_mz->addr, VIRTIO_CONFIG_STATUS_ACK |

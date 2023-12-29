@@ -553,6 +553,23 @@ virtio_pci_dev_interrupts_free(struct virtio_pci_dev *vpdev)
 }
 
 int
+virtio_pci_dev_state_interrupt_enable_only(struct virtio_pci_dev *vpdev, int vec, void *state)
+{
+	struct virtio_hw *hw = &vpdev->hw;
+	struct virtio_dev_queue_info *q_info;
+	struct virtio_dev_common_state *state_info;
+
+	if (vec == 0) {
+		state_info = state;
+		state_info->common_cfg.msix_config = 0;
+	} else {
+		q_info = hw->virtio_dev_sp_ops->get_queue_offset(state);
+		q_info[vec-1].q_cfg.queue_msix_vector = rte_cpu_to_le_16(vec);
+	}
+	return 0;
+}
+
+int
 virtio_pci_dev_state_interrupt_enable(struct virtio_pci_dev *vpdev, int fd, int vec, void *state)
 {
 	struct virtio_hw *hw = &vpdev->hw;
