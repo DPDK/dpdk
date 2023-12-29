@@ -241,6 +241,9 @@ get_cipher_algo(enum rte_crypto_cipher_algorithm sess_algo, size_t keylen,
 				res = -EINVAL;
 			}
 			break;
+		case RTE_CRYPTO_CIPHER_SM4_CBC:
+			*algo = EVP_sm4_cbc();
+			break;
 		default:
 			res = -EINVAL;
 			break;
@@ -484,6 +487,7 @@ openssl_set_session_cipher_parameters(struct openssl_session *sess,
 	case RTE_CRYPTO_CIPHER_3DES_CBC:
 	case RTE_CRYPTO_CIPHER_AES_CBC:
 	case RTE_CRYPTO_CIPHER_AES_CTR:
+	case RTE_CRYPTO_CIPHER_SM4_CBC:
 		sess->cipher.mode = OPENSSL_CIPHER_LIB;
 		sess->cipher.algo = xform->cipher.algo;
 		sess->cipher.ctx = EVP_CIPHER_CTX_new();
