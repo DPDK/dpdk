@@ -382,6 +382,20 @@ extern struct igb_rss_filter_list igb_filter_rss_list;
 TAILQ_HEAD(igb_flow_mem_list, igb_flow_mem);
 extern struct igb_flow_mem_list igb_flow_list;
 
+/*
+ * Macros to compensate the constant latency observed in i210 for launch time
+ *
+ * launch time = (offset_speed - offset_base + txtime) * 32
+ * offset_speed is speed dependent, set in E1000_I210_LAUNCH_OS0
+ */
+#define IGB_I210_TX_OFFSET_BASE				0xffe0
+#define IGB_I210_TX_OFFSET_SPEED_10			0xc7a0
+#define IGB_I210_TX_OFFSET_SPEED_100		0x86e0
+#define IGB_I210_TX_OFFSET_SPEED_1000		0xbe00
+
+extern uint64_t igb_tx_timestamp_dynflag;
+extern int igb_tx_timestamp_dynfield_offset;
+
 extern const struct rte_flow_ops igb_flow_ops;
 
 /*

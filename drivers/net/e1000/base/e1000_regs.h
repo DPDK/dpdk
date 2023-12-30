@@ -162,6 +162,7 @@
 
 /* QAV Tx mode control register */
 #define E1000_I210_TQAVCTRL	0x3570
+#define E1000_I210_LAUNCH_OS0 0x3578
 
 /* QAV Tx mode control register bitfields masks */
 /* QAV enable */

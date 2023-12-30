@@ -244,12 +244,13 @@ check_tso_para(uint64_t ol_req, union igb_tx_offload ol_para)
 static inline void
 igbe_set_xmit_ctx(struct igb_tx_queue* txq,
 		volatile struct e1000_adv_tx_context_desc *ctx_txd,
-		uint64_t ol_flags, union igb_tx_offload tx_offload)
+		uint64_t ol_flags, union igb_tx_offload tx_offload, uint64_t txtime)
 {
 	uint32_t type_tucmd_mlhl;
 	uint32_t mss_l4len_idx;
 	uint32_t ctx_idx, ctx_curr;
 	uint32_t vlan_macip_lens;
+	uint32_t launch_time;
 	union igb_tx_offload tx_offload_mask;
 
 	ctx_curr = txq->ctx_curr;
@@ -312,16 +313,25 @@ igbe_set_xmit_ctx(struct igb_tx_queue* txq,
 		}
 	}
 
-	txq->ctx_cache[ctx_curr].flags = ol_flags;
-	txq->ctx_cache[ctx_curr].tx_offload.data =
-		tx_offload_mask.data & tx_offload.data;
-	txq->ctx_cache[ctx_curr].tx_offload_mask = tx_offload_mask;
+	if (!txtime) {
+		txq->ctx_cache[ctx_curr].flags = ol_flags;
+		txq->ctx_cache[ctx_curr].tx_offload.data =
+			tx_offload_mask.data & tx_offload.data;
+		txq->ctx_cache[ctx_curr].tx_offload_mask = tx_offload_mask;
+	}
 
 	ctx_txd->type_tucmd_mlhl = rte_cpu_to_le_32(type_tucmd_mlhl);
 	vlan_macip_lens = (uint32_t)tx_offload.data;
 	ctx_txd->vlan_macip_lens = rte_cpu_to_le_32(vlan_macip_lens);
 	ctx_txd->mss_l4len_idx = rte_cpu_to_le_32(mss_l4len_idx);
 	ctx_txd->u.seqnum_seed = 0;
+
+	if (txtime) {
+		launch_time = (txtime - IGB_I210_TX_OFFSET_BASE) % NSEC_PER_SEC;
+		ctx_txd->u.launch_time = rte_cpu_to_le_32(launch_time / 32);
+	} else {
+		ctx_txd->u.launch_time = 0;
+	}
 }
 
 /*
@@ -400,6 +410,7 @@ eth_igb_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	uint32_t new_ctx = 0;
 	uint32_t ctx = 0;
 	union igb_tx_offload tx_offload = {0};
+	uint64_t ts;
 
 	txq = tx_queue;
 	sw_ring = txq->sw_ring;
@@ -552,7 +563,13 @@ eth_igb_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 					txe->mbuf = NULL;
 				}
 
-				igbe_set_xmit_ctx(txq, ctx_txd, tx_ol_req, tx_offload);
+				if (igb_tx_timestamp_dynflag > 0) {
+					ts = *RTE_MBUF_DYNFIELD(tx_pkt,
+						igb_tx_timestamp_dynfield_offset, uint64_t *);
+					igbe_set_xmit_ctx(txq, ctx_txd, tx_ol_req, tx_offload, ts);
+				} else {
+					igbe_set_xmit_ctx(txq, ctx_txd, tx_ol_req, tx_offload, 0);
+				}
 
 				txe->last_id = tx_last;
 				tx_id = txe->next_id;
@@ -1464,7 +1481,8 @@ igb_get_tx_port_offloads_capa(struct rte_eth_dev *dev)
 			  RTE_ETH_TX_OFFLOAD_TCP_CKSUM   |
 			  RTE_ETH_TX_OFFLOAD_SCTP_CKSUM  |
 			  RTE_ETH_TX_OFFLOAD_TCP_TSO     |
-			  RTE_ETH_TX_OFFLOAD_MULTI_SEGS;
+			  RTE_ETH_TX_OFFLOAD_MULTI_SEGS  |
+			  RTE_ETH_TX_OFFLOAD_SEND_ON_TIMESTAMP;
 
 	return tx_offload_capa;
 }
@@ -2579,9 +2597,11 @@ eth_igb_tx_init(struct rte_eth_dev *dev)
 {
 	struct e1000_hw     *hw;
 	struct igb_tx_queue *txq;
+	uint64_t offloads = dev->data->dev_conf.txmode.offloads;
 	uint32_t tctl;
 	uint32_t txdctl;
 	uint16_t i;
+	int err;
 
 	hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
@@ -2610,6 +2630,14 @@ eth_igb_tx_init(struct rte_eth_dev *dev)
 		txdctl |= E1000_TXDCTL_QUEUE_ENABLE;
 		E1000_WRITE_REG(hw, E1000_TXDCTL(txq->reg_idx), txdctl);
 		dev->data->tx_queue_state[i] = RTE_ETH_QUEUE_STATE_STARTED;
+	}
+
+	if (offloads & RTE_ETH_TX_OFFLOAD_SEND_ON_TIMESTAMP) {
+		err = rte_mbuf_dyn_tx_timestamp_register(
+			&igb_tx_timestamp_dynfield_offset,
+			&igb_tx_timestamp_dynflag);
+		if (err)
+			PMD_DRV_LOG(ERR, "Failed to register tx timestamp dynamic field");
 	}
 
 	/* Program the Transmit Control Register. */
