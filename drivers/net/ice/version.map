@@ -8,4 +8,5 @@ EXPERIMENTAL {
 	# added in 19.11
 	rte_pmd_ice_dump_package;
 	rte_pmd_ice_dump_switch;
+	rte_pmd_ice_dump_txsched;
 };

@@ -6,7 +6,7 @@ objs = [base_objs]
 
 sources = files(
         'ice_acl_filter.c',
-        'ice_ddp_package.c',
+        'ice_diagnose.c',
         'ice_ethdev.c',
         'ice_fdir_filter.c',
         'ice_generic_flow.c',

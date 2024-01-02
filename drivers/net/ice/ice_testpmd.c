@@ -3,6 +3,7 @@
  */
 
 #include <stdlib.h>
+#include <stdio.h>
 
 #include <cmdline_parse_num.h>
 #include <cmdline_parse_string.h>
@@ -148,6 +149,63 @@ cmdline_parse_inst_t cmd_ddp_dump_switch = {
 	},
 };
 
+/* Dump Tx Scheduling Tree configuration, only for ice PF */
+struct cmd_txsched_dump_result {
+	cmdline_fixed_string_t txsched;
+	cmdline_fixed_string_t dump;
+	portid_t port_id;
+	cmdline_fixed_string_t mode;
+	char filepath[];
+};
+
+cmdline_parse_token_string_t cmd_txsched_dump_txsched =
+	TOKEN_STRING_INITIALIZER(struct cmd_txsched_dump_result, txsched, "txsched");
+cmdline_parse_token_string_t cmd_txsched_dump_dump =
+	TOKEN_STRING_INITIALIZER(struct cmd_txsched_dump_result, dump, "dump");
+cmdline_parse_token_num_t cmd_txsched_dump_port_id =
+	TOKEN_NUM_INITIALIZER(struct cmd_txsched_dump_result, port_id, RTE_UINT16);
+cmdline_parse_token_string_t cmd_txsched_dump_mode =
+	TOKEN_STRING_INITIALIZER(struct cmd_txsched_dump_result, mode, "brief#detail");
+cmdline_parse_token_string_t cmd_txsched_dump_filepath =
+	TOKEN_STRING_INITIALIZER(struct cmd_txsched_dump_result, filepath, NULL);
+
+static void
+cmd_txsched_dump_parsed(void *parsed_result,
+			__rte_unused struct cmdline *cl,
+			__rte_unused void *data)
+{
+	struct cmd_txsched_dump_result *res = parsed_result;
+	bool detail = false;
+	FILE *fp;
+
+	if (!strcmp(res->mode, "detail"))
+		detail = true;
+
+	fp = fopen(res->filepath, "w");
+	if (fp == NULL) {
+		fprintf(stderr, "Failed to open file\n");
+		return;
+	}
+
+	if (rte_pmd_ice_dump_txsched(res->port_id, detail, fp))
+		fprintf(stderr, "Failed to dump Tx scheduring runtime configure.\n");
+	fclose(fp);
+}
+
+cmdline_parse_inst_t cmd_txsched_dump = {
+	.f = cmd_txsched_dump_parsed,
+	.data = NULL,
+	.help_str = "txsched dump <port_id> <brief|detail> <config_path>",
+	.tokens = {
+		(void *)&cmd_txsched_dump_txsched,
+		(void *)&cmd_txsched_dump_dump,
+		(void *)&cmd_txsched_dump_port_id,
+		(void *)&cmd_txsched_dump_mode,
+		(void *)&cmd_txsched_dump_filepath,
+		NULL,
+	},
+};
+
 static struct testpmd_driver_commands ice_cmds = {
 	.commands = {
 	{
@@ -162,7 +220,14 @@ static struct testpmd_driver_commands ice_cmds = {
 		"    Dump a runtime switch configure on a port\n\n",
 
 	},
+	{
+		&cmd_txsched_dump,
+		"txsched dump (port_id) <brief|detail> (config_path)\n"
+		"    Dump tx scheduling runtime configure on a port\n\n",
+
+	},
 	{ NULL, NULL },
 	},
 };
+
 TESTPMD_ADD_DRIVER_COMMANDS(ice_cmds)

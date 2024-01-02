@@ -739,4 +739,7 @@ int rte_pmd_ice_dump_package(uint16_t port, uint8_t **buff, uint32_t *size);
 
 __rte_experimental
 int rte_pmd_ice_dump_switch(uint16_t port, uint8_t **buff, uint32_t *size);
+
+__rte_experimental
+int rte_pmd_ice_dump_txsched(uint16_t port, bool detail, FILE *stream);
 #endif /* _ICE_ETHDEV_H_ */
