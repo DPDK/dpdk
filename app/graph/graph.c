@@ -24,7 +24,7 @@ cmd_graph_help[] = "graph <usecases> bsz <size> tmo <ns> coremask <bitmask> "
 		   "model <rtc | mcd | default> pcap_enable <0 | 1> num_pcap_pkts <num>"
 		   "pcap_file <output_capture_file>";
 
-static const char * const supported_usecases[] = {"l3fwd"};
+static const char * const supported_usecases[] = {"l3fwd", "l2fwd"};
 struct graph_config graph_config;
 bool graph_started;
 
@@ -270,6 +270,12 @@ cli_graph_start(__rte_unused void *parsed_result, __rte_unused struct cmdline *c
 		if (!strcmp(graph_config.usecases[i].name, "l3fwd")) {
 			if (graph_config.usecases[i].enabled) {
 				rc  = usecase_l3fwd_configure(conf, nb_conf, nb_graphs);
+				break;
+			}
+		}
+		if (!strcmp(graph_config.usecases[i].name, "l2fwd")) {
+			if (graph_config.usecases[i].enabled) {
+				rc  = usecase_l2fwd_configure(conf, nb_conf, nb_graphs);
 				break;
 			}
 		}

@@ -77,6 +77,13 @@ This use case is supported for both H/W and PCAP vdev network devices.
 To demonstrate, corresponding ``.cli`` files are available at ``app/graph/examples/``
 named as ``l3fwd.cli`` and ``l3fwd_pcap.cli`` respectively.
 
+l2fwd
+~~~~~
+
+This use case is supported for both H/W and PCAP vdev network devices.
+To demonstrate, corresponding ``.cli`` files are available at ``app/graph/examples/``
+named as ``l2fwd.cli`` and ``l2fwd_pcap.cli`` respectively.
+
 Example Commands
 ^^^^^^^^^^^^^^^^
 For H/W devices
@@ -86,6 +93,9 @@ For H/W devices
    ./dpdk-graph -c 0xff -a 0002:02:00.0 -a 0002:03:00.0 --
                 -s <dpdk_root_dir>/app/graph/examples/l3fwd.cli
 
+   ./dpdk-graph -c 0xff -a 0002:02:00.0 -a 0002:03:00.0 --
+                -s <dpdk_root_dir>/app/graph/examples/l2fwd.cli
+
 For net_pcapX devices
 
 .. code-block:: console
@@ -93,6 +103,10 @@ For net_pcapX devices
    ./dpdk-graph -c 0xff --vdev=net_pcap0,rx_pcap=in_net_pcap0.pcap,tx_pcap=out_net_pcap1.pcap
                         --vdev=net_pcap1,rx_pcap=in_net_pcap1.pcap,tx_pcap=out_net_pcap0.pcap
                         -- -s <dpdk_root_dir>/app/graph/examples/l3fwd_pcap.cli
+
+   ./dpdk-graph -c 0xff --vdev=net_pcap0,rx_pcap=in_net_pcap0.pcap,tx_pcap=out_net_pcap1.pcap
+                        --vdev=net_pcap1,rx_pcap=in_net_pcap1.pcap,tx_pcap=out_net_pcap0.pcap
+                        -- -s <dpdk_root_dir>/app/graph/examples/l2fwd_pcap.cli
 
 Verifying traffic
 ^^^^^^^^^^^^^^^^^
@@ -325,3 +339,10 @@ l3fwd
 .. _figure_l3fwd_graph:
 
 .. figure:: img/graph-usecase-l3fwd.*
+
+l2fwd
+~~~~~
+
+.. _figure_l2fwd_graph:
+
+.. figure:: img/graph-usecase-l2fwd.*

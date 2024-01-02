@@ -36,6 +36,7 @@ void ethdev_stop(void);
 void *ethdev_mempool_list_by_portid(uint16_t portid);
 int16_t ethdev_portid_by_ip4(uint32_t ip, uint32_t mask);
 int16_t ethdev_portid_by_ip6(uint8_t *ip, uint8_t *mask);
+int16_t ethdev_txport_by_rxport_get(uint16_t portid_rx);
 void ethdev_list_clean(void);
 
 #endif

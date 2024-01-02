@@ -18,6 +18,7 @@ sources = files(
         'graph.c',
         'ip4_route.c',
         'ip6_route.c',
+        'l2fwd.c',
         'l3fwd.c',
         'main.c',
         'mempool.c',
