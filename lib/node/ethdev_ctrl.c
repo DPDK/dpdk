@@ -2,6 +2,7 @@
  * Copyright(C) 2020 Marvell International Ltd.
  */
 
+#include <errno.h>
 #include <stdlib.h>
 
 #include <rte_ethdev.h>
@@ -128,4 +129,51 @@ rte_node_eth_config(struct rte_node_ethdev_config *conf, uint16_t nb_confs,
 
 	ctrl.nb_graphs = nb_graphs;
 	return 0;
+}
+
+int
+rte_node_ethdev_rx_next_update(rte_node_t id, const char *edge_name)
+{
+	struct ethdev_rx_node_main *data;
+	ethdev_rx_node_elem_t *elem;
+	char **next_nodes;
+	int rc = -EINVAL;
+	uint16_t i = 0;
+	uint32_t size;
+
+	if (edge_name == NULL)
+		goto exit;
+
+	size = rte_node_edge_get(id, NULL);
+
+	if (size == RTE_NODE_ID_INVALID)
+		goto exit;
+
+	next_nodes = calloc((size / sizeof(char *)) + 1, sizeof(*next_nodes));
+	if (next_nodes == NULL) {
+		rc = -ENOMEM;
+		goto exit;
+	}
+
+	size = rte_node_edge_get(id, next_nodes);
+
+	while (next_nodes[i] != NULL) {
+		if (strcmp(edge_name, next_nodes[i]) == 0) {
+			data = ethdev_rx_get_node_data_get();
+			elem = data->head;
+			while (elem->next != data->head) {
+				if (elem->nid == id) {
+					elem->ctx.cls_next = i;
+					rc = 0;
+					goto found;
+				}
+				elem = elem->next;
+			}
+		}
+		i++;
+	}
+found:
+	free(next_nodes);
+exit:
+	return rc;
 }

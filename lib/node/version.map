@@ -19,4 +19,7 @@ EXPERIMENTAL {
 	rte_node_ip4_reassembly_configure;
 	rte_node_udp4_dst_port_add;
 	rte_node_udp4_usr_node_add;
+
+	# added in 24.03
+	rte_node_ethdev_rx_next_update;
 };
