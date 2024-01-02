@@ -52,6 +52,7 @@ ice_tm_conf_init(struct rte_eth_dev *dev)
 	pf->tm_conf.nb_qgroup_node = 0;
 	pf->tm_conf.nb_queue_node = 0;
 	pf->tm_conf.committed = false;
+	pf->tm_conf.clear_on_fail = false;
 }
 
 void
@@ -832,9 +833,9 @@ static int ice_add_leaf_nodes(struct rte_eth_dev *dev)
 	return ret;
 }
 
-static int ice_hierarchy_commit(struct rte_eth_dev *dev,
-				 int clear_on_fail,
-				 struct rte_tm_error *error)
+int ice_do_hierarchy_commit(struct rte_eth_dev *dev,
+			    int clear_on_fail,
+			    struct rte_tm_error *error)
 {
 	struct ice_pf *pf = ICE_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
@@ -959,6 +960,9 @@ static int ice_hierarchy_commit(struct rte_eth_dev *dev,
 		}
 	}
 
+	pf->tm_conf.committed = true;
+	pf->tm_conf.clear_on_fail = clear_on_fail;
+
 	return ret_val;
 
 reset_leaf:
@@ -973,4 +977,20 @@ fail_clear:
 		ice_tm_conf_init(dev);
 	}
 	return ret_val;
+}
+
+static int ice_hierarchy_commit(struct rte_eth_dev *dev,
+				 int clear_on_fail,
+				 struct rte_tm_error *error)
+{
+	struct ice_pf *pf = ICE_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+
+	/* if device not started, simply set committed flag and return. */
+	if (!dev->data->dev_started) {
+		pf->tm_conf.committed = true;
+		pf->tm_conf.clear_on_fail = clear_on_fail;
+		return 0;
+	}
+
+	return ice_do_hierarchy_commit(dev, clear_on_fail, error);
 }
