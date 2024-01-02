@@ -478,6 +478,7 @@ struct ice_tm_node {
 	struct ice_tm_node **children;
 	struct ice_tm_shaper_profile *shaper_profile;
 	struct rte_tm_node_params params;
+	struct ice_sched_node *sched_node;
 };
 
 /* node type of Traffic Manager */
