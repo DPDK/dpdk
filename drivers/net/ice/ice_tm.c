@@ -529,7 +529,8 @@ ice_tm_node_add(struct rte_eth_dev *dev, uint32_t node_id,
 		PMD_DRV_LOG(WARNING, "priority != 0 not supported in level %d",
 			    level_id);
 
-	if (tm_node->weight != 1 && level_id != ICE_TM_NODE_TYPE_QUEUE)
+	if (tm_node->weight != 1 &&
+	    level_id != ICE_TM_NODE_TYPE_QUEUE && level_id != ICE_TM_NODE_TYPE_QGROUP)
 		PMD_DRV_LOG(WARNING, "weight != 1 not supported in level %d",
 			    level_id);
 
@@ -725,7 +726,6 @@ static int ice_hierarchy_commit(struct rte_eth_dev *dev,
 	struct ice_sched_node *vsi_node = NULL;
 	struct ice_sched_node *queue_node;
 	struct ice_tx_queue *txq;
-	struct ice_vsi *vsi;
 	int ret_val = ICE_SUCCESS;
 	uint8_t priority;
 	uint32_t i;
@@ -819,6 +819,18 @@ static int ice_hierarchy_commit(struct rte_eth_dev *dev,
 				    tm_node->priority);
 			goto fail_clear;
 		}
+
+		ret_val = ice_sched_cfg_node_bw_alloc(hw, qgroup_sched_node,
+						      ICE_MAX_BW,
+						      (uint16_t)tm_node->weight);
+		if (ret_val) {
+			error->type = RTE_TM_ERROR_TYPE_NODE_WEIGHT;
+			PMD_DRV_LOG(ERR, "configure queue group %u weight %u failed",
+				    tm_node->id,
+				    tm_node->weight);
+			goto fail_clear;
+		}
+
 		idx_qg++;
 		if (idx_qg >= nb_qg) {
 			idx_qg = 0;
@@ -834,7 +846,6 @@ static int ice_hierarchy_commit(struct rte_eth_dev *dev,
 	TAILQ_FOREACH(tm_node, queue_list, node) {
 		qid = tm_node->id;
 		txq = dev->data->tx_queues[qid];
-		vsi = txq->vsi;
 		q_teid = txq->q_teid;
 
 		queue_node = ice_sched_get_node(hw->port_info, q_teid);
@@ -856,12 +867,14 @@ static int ice_hierarchy_commit(struct rte_eth_dev *dev,
 			goto fail_clear;
 		}
 
-		ret_val = ice_cfg_q_bw_alloc(hw->port_info, vsi->idx,
-					     tm_node->tc, tm_node->id,
-					     ICE_MAX_BW, (u32)tm_node->weight);
+		queue_node = ice_sched_get_node(hw->port_info, q_teid);
+		ret_val = ice_sched_cfg_node_bw_alloc(hw, queue_node, ICE_MAX_BW,
+						      (uint16_t)tm_node->weight);
 		if (ret_val) {
 			error->type = RTE_TM_ERROR_TYPE_NODE_WEIGHT;
-			PMD_DRV_LOG(ERR, "configure queue %u weight failed", tm_node->weight);
+			PMD_DRV_LOG(ERR, "configure queue %u weight %u failed",
+				    tm_node->id,
+				    tm_node->weight);
 			goto fail_clear;
 		}
 	}
