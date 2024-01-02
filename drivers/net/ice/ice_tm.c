@@ -390,13 +390,6 @@ ice_tm_node_add(struct rte_eth_dev *dev, uint32_t node_id,
 	if (!params || !error)
 		return -EINVAL;
 
-	/* if already committed */
-	if (pf->tm_conf.committed) {
-		error->type = RTE_TM_ERROR_TYPE_UNSPECIFIED;
-		error->message = "already committed";
-		return -EINVAL;
-	}
-
 	ret = ice_node_param_check(pf, node_id, priority, weight,
 				    params, error);
 	if (ret)
@@ -578,13 +571,6 @@ ice_tm_node_delete(struct rte_eth_dev *dev, uint32_t node_id,
 
 	if (!error)
 		return -EINVAL;
-
-	/* if already committed */
-	if (pf->tm_conf.committed) {
-		error->type = RTE_TM_ERROR_TYPE_UNSPECIFIED;
-		error->message = "already committed";
-		return -EINVAL;
-	}
 
 	if (node_id == RTE_TM_NODE_ID_NULL) {
 		error->type = RTE_TM_ERROR_TYPE_NODE_ID;
