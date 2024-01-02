@@ -15,6 +15,7 @@ extern cmdline_parse_inst_t ethdev_mtu_cmd_ctx;
 extern cmdline_parse_inst_t ethdev_prom_mode_cmd_ctx;
 extern cmdline_parse_inst_t ethdev_ip4_cmd_ctx;
 extern cmdline_parse_inst_t ethdev_ip6_cmd_ctx;
+extern cmdline_parse_inst_t ethdev_forward_cmd_ctx;
 extern cmdline_parse_inst_t ethdev_cmd_ctx;
 extern cmdline_parse_inst_t ethdev_help_cmd_ctx;
 

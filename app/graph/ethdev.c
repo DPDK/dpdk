@@ -38,6 +38,9 @@ cmd_ethdev_ip4_addr_help[] = "ethdev <ethdev_name> ip4 addr add <ip> netmask <ma
 static const char
 cmd_ethdev_ip6_addr_help[] = "ethdev <ethdev_name> ip6 addr add <ip> netmask <mask>";
 
+static const char
+cmd_ethdev_forward_help[] = "ethdev forward <tx_dev_name> <rx_dev_name>";
+
 static struct rte_eth_conf port_conf_default = {
 	.link_speeds = 0,
 	.rxmode = {
@@ -886,5 +889,65 @@ cmdline_parse_inst_t ethdev_help_cmd_ctx = {
 		(void *)&ethdev_help_cmd,
 		(void *)&ethdev_help_ethdev,
 		NULL,
+	},
+};
+
+static int
+ethdev_forward_config(char *tx_dev, char *rx_dev)
+{
+	uint16_t portid_rx = 0;
+	uint16_t portid_tx = 0;
+	struct ethdev *port;
+	int rc = -EINVAL;
+
+	rc = rte_eth_dev_get_port_by_name(tx_dev, &portid_tx);
+	if (rc < 0)
+		return rc;
+
+	rc = rte_eth_dev_get_port_by_name(rx_dev, &portid_rx);
+	if (rc < 0)
+		return rc;
+
+	port = ethdev_port_by_id(portid_rx);
+	if (port) {
+		port->tx_port_id = portid_tx;
+		rc = 0;
+	} else {
+		rc = -EINVAL;
+	}
+
+	return rc;
+}
+
+static void
+cli_ethdev_forward(void *parsed_result, __rte_unused struct cmdline *cl, void *data __rte_unused)
+{
+	struct ethdev_fwd_cmd_tokens *res = parsed_result;
+	int rc = -EINVAL;
+
+	rc = ethdev_forward_config(res->tx_dev, res->rx_dev);
+	if (rc < 0)
+		printf(MSG_CMD_FAIL, res->cmd);
+}
+
+cmdline_parse_token_string_t ethdev_fwd_cfg =
+	TOKEN_STRING_INITIALIZER(struct ethdev_fwd_cmd_tokens, cmd, "ethdev");
+cmdline_parse_token_string_t ethdev_fwd_cmd =
+	TOKEN_STRING_INITIALIZER(struct ethdev_fwd_cmd_tokens, fwd, "forward");
+cmdline_parse_token_string_t ethdev_tx_device =
+	TOKEN_STRING_INITIALIZER(struct ethdev_fwd_cmd_tokens, tx_dev, NULL);
+cmdline_parse_token_string_t ethdev_rx_device =
+	TOKEN_STRING_INITIALIZER(struct ethdev_fwd_cmd_tokens, rx_dev, NULL);
+
+cmdline_parse_inst_t ethdev_forward_cmd_ctx = {
+	.f = cli_ethdev_forward,
+	.data = NULL,
+	.help_str = cmd_ethdev_forward_help,
+	.tokens = {
+	       (void *)&ethdev_fwd_cfg,
+	       (void *)&ethdev_fwd_cmd,
+	       (void *)&ethdev_tx_device,
+	       (void *)&ethdev_rx_device,
+	       NULL,
 	},
 };

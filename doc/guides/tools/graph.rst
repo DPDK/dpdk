@@ -195,6 +195,9 @@ file to express the requested use case configuration.
    | ethdev <ethdev_name> mtu <mtu_sz>    | | Command to configure MTU of DPDK|   Yes   |    Yes   |
    |                                      | | port.                           |         |          |
    +--------------------------------------+-----------------------------------+---------+----------+
+   | | ethdev forward <tx_dev_name>       | | Command to configure port       |   No    |    Yes   |
+   | | <rx_dev_name>                      | | forwarding of DPDK              |         |          |
+   +--------------------------------------+-----------------------------------+---------+----------+
    |  | ethdev <ethdev_name> promiscuous  | | Command to enable/disable       |   Yes   |    Yes   |
    |  | <on/off>                          | | promiscuous mode on DPDK port.  |         |          |
    +--------------------------------------+-----------------------------------+---------+----------+
@@ -297,6 +300,7 @@ Example: ``dpdk-graph`` is started with ``-h 10.28.35.207`` and ``-p 50000`` the
    ethdev <ethdev_name> rxq <n_queues> txq <n_queues> <mempool_name>
    ethdev <ethdev_name> ip4 addr add <ip> netmask <mask>
    ethdev <ethdev_name> ip6 addr add <ip> netmask <mask>
+   ethdev forward <tx_dev_name> <rx_dev_name>
    ethdev <ethdev_name> promiscuous <on/off>
    ethdev <ethdev_name> mtu <mtu_sz>
    ethdev <ethdev_name> stats
