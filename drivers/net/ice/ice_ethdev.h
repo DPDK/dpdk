@@ -504,6 +504,7 @@ struct ice_tm_conf {
 	uint32_t nb_qgroup_node;
 	uint32_t nb_queue_node;
 	bool committed;
+	bool clear_on_fail;
 };
 
 struct ice_pf {
@@ -686,6 +687,9 @@ int ice_rem_rss_cfg_wrap(struct ice_pf *pf, uint16_t vsi_id,
 			 struct ice_rss_hash_cfg *cfg);
 void ice_tm_conf_init(struct rte_eth_dev *dev);
 void ice_tm_conf_uninit(struct rte_eth_dev *dev);
+int ice_do_hierarchy_commit(struct rte_eth_dev *dev,
+			    int clear_on_fail,
+			    struct rte_tm_error *error);
 extern const struct rte_tm_ops ice_tm_ops;
 
 static inline int
