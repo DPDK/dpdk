@@ -411,6 +411,42 @@ To start ``testpmd``, and add vlan 10 to port 0:
 
     testpmd> rx_vlan add 10 0
 
+Diagnostic Utilities
+--------------------
+
+Dump DDP Package
+~~~~~~~~~~~~~~~~
+
+Dump the runtime packet processing pipeline configuration into a
+binary file. This helps the support team diagnose hardware
+configuration issues.
+
+Usage::
+
+    testpmd>ddp dump <port_id> <output_file>
+
+Dump Switch Configurations
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Dump detail hardware configurations related to the switch pipeline
+stage into a binary file.
+
+Usage::
+
+    testpmd>ddp dump switch <port_id> <output_file>
+
+Dump Tx Scheduling Tree
+~~~~~~~~~~~~~~~~~~~~~~~
+
+Dump the runtime Tx scheduling tree into a DOT file.
+
+Usage::
+
+    testpmd>txsched dump <port_id> <brief|detail> <output_file>
+
+In "brief" mode, all scheduling nodes in the tree are displayed.
+In "detail" mode, each node's configuration parameters are also displayed.
+
 Limitations or Known issues
 ---------------------------
 
