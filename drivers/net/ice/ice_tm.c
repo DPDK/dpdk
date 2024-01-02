@@ -756,16 +756,91 @@ static int ice_cfg_hw_node(struct ice_hw *hw,
 	return 0;
 }
 
+static struct ice_sched_node *ice_get_vsi_node(struct ice_hw *hw)
+{
+	struct ice_sched_node *node = hw->port_info->root;
+	uint32_t vsi_layer = hw->num_tx_sched_layers - ICE_VSI_LAYER_OFFSET;
+	uint32_t i;
+
+	for (i = 0; i < vsi_layer; i++)
+		node = node->children[0];
+
+	return node;
+}
+
+static int ice_reset_noleaf_nodes(struct rte_eth_dev *dev)
+{
+	struct ice_pf *pf = ICE_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct ice_tm_node_list *qgroup_list = &pf->tm_conf.qgroup_list;
+	struct ice_sched_node *vsi_node = ice_get_vsi_node(hw);
+	struct ice_tm_node *tm_node;
+	int ret;
+
+	/* reset vsi_node */
+	ret = ice_set_node_rate(hw, NULL, vsi_node);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "reset vsi node failed");
+		return ret;
+	}
+
+	/* reset queue group nodes */
+	TAILQ_FOREACH(tm_node, qgroup_list, node) {
+		if (tm_node->sched_node == NULL)
+			continue;
+
+		ret = ice_cfg_hw_node(hw, NULL, tm_node->sched_node);
+		if (ret) {
+			PMD_DRV_LOG(ERR, "reset queue group node %u failed", tm_node->id);
+			return ret;
+		}
+		tm_node->sched_node = NULL;
+	}
+
+	return 0;
+}
+
+static int ice_remove_leaf_nodes(struct rte_eth_dev *dev)
+{
+	int ret = 0;
+	int i;
+
+	for (i = 0; i < dev->data->nb_tx_queues; i++) {
+		ret = ice_tx_queue_stop(dev, i);
+		if (ret) {
+			PMD_DRV_LOG(ERR, "stop queue %u failed", i);
+			break;
+		}
+	}
+
+	return ret;
+}
+
+static int ice_add_leaf_nodes(struct rte_eth_dev *dev)
+{
+	int ret = 0;
+	int i;
+
+	for (i = 0; i < dev->data->nb_tx_queues; i++) {
+		ret = ice_tx_queue_start(dev, i);
+		if (ret) {
+			PMD_DRV_LOG(ERR, "start queue %u failed", i);
+			break;
+		}
+	}
+
+	return ret;
+}
+
 static int ice_hierarchy_commit(struct rte_eth_dev *dev,
 				 int clear_on_fail,
-				 __rte_unused struct rte_tm_error *error)
+				 struct rte_tm_error *error)
 {
 	struct ice_pf *pf = ICE_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct ice_tm_node_list *qgroup_list = &pf->tm_conf.qgroup_list;
 	struct ice_tm_node_list *queue_list = &pf->tm_conf.queue_list;
 	struct ice_tm_node *tm_node;
-	struct ice_sched_node *node;
 	struct ice_sched_node *vsi_node = NULL;
 	struct ice_sched_node *queue_node;
 	struct ice_tx_queue *txq;
@@ -777,23 +852,25 @@ static int ice_hierarchy_commit(struct rte_eth_dev *dev,
 	uint32_t nb_qg;
 	uint32_t qid;
 	uint32_t q_teid;
-	uint32_t vsi_layer;
 
-	for (i = 0; i < dev->data->nb_tx_queues; i++) {
-		ret_val = ice_tx_queue_stop(dev, i);
-		if (ret_val) {
-			error->type = RTE_TM_ERROR_TYPE_UNSPECIFIED;
-			PMD_DRV_LOG(ERR, "stop queue %u failed", i);
-			goto fail_clear;
-		}
+	/* remove leaf nodes */
+	ret_val = ice_remove_leaf_nodes(dev);
+	if (ret_val) {
+		error->type = RTE_TM_ERROR_TYPE_UNSPECIFIED;
+		PMD_DRV_LOG(ERR, "reset no-leaf nodes failed");
+		goto fail_clear;
 	}
 
-	node = hw->port_info->root;
-	vsi_layer = hw->num_tx_sched_layers - ICE_VSI_LAYER_OFFSET;
-	for (i = 0; i < vsi_layer; i++)
-		node = node->children[0];
-	vsi_node = node;
+	/* reset no-leaf nodes. */
+	ret_val = ice_reset_noleaf_nodes(dev);
+	if (ret_val) {
+		error->type = RTE_TM_ERROR_TYPE_UNSPECIFIED;
+		PMD_DRV_LOG(ERR, "reset leaf nodes failed");
+		goto add_leaf;
+	}
 
+	/* config vsi node */
+	vsi_node = ice_get_vsi_node(hw);
 	tm_node = TAILQ_FIRST(&pf->tm_conf.vsi_list);
 
 	ret_val = ice_set_node_rate(hw, tm_node, vsi_node);
@@ -802,9 +879,10 @@ static int ice_hierarchy_commit(struct rte_eth_dev *dev,
 		PMD_DRV_LOG(ERR,
 			    "configure vsi node %u bandwidth failed",
 			    tm_node->id);
-		goto reset_vsi;
+		goto add_leaf;
 	}
 
+	/* config queue group nodes */
 	nb_vsi_child = vsi_node->num_children;
 	nb_qg = vsi_node->children[0]->num_children;
 
@@ -823,7 +901,7 @@ static int ice_hierarchy_commit(struct rte_eth_dev *dev,
 			if (ret_val) {
 				error->type = RTE_TM_ERROR_TYPE_UNSPECIFIED;
 				PMD_DRV_LOG(ERR, "start queue %u failed", qid);
-				goto reset_vsi;
+				goto reset_leaf;
 			}
 			txq = dev->data->tx_queues[qid];
 			q_teid = txq->q_teid;
@@ -831,7 +909,7 @@ static int ice_hierarchy_commit(struct rte_eth_dev *dev,
 			if (queue_node == NULL) {
 				error->type = RTE_TM_ERROR_TYPE_UNSPECIFIED;
 				PMD_DRV_LOG(ERR, "get queue %u node failed", qid);
-				goto reset_vsi;
+				goto reset_leaf;
 			}
 			if (queue_node->info.parent_teid == qgroup_sched_node->info.node_teid)
 				continue;
@@ -839,7 +917,7 @@ static int ice_hierarchy_commit(struct rte_eth_dev *dev,
 			if (ret_val) {
 				error->type = RTE_TM_ERROR_TYPE_UNSPECIFIED;
 				PMD_DRV_LOG(ERR, "move queue %u failed", qid);
-				goto reset_vsi;
+				goto reset_leaf;
 			}
 		}
 
@@ -849,7 +927,7 @@ static int ice_hierarchy_commit(struct rte_eth_dev *dev,
 			PMD_DRV_LOG(ERR,
 				    "configure queue group node %u failed",
 				    tm_node->id);
-			goto reset_vsi;
+			goto reset_leaf;
 		}
 
 		idx_qg++;
@@ -860,10 +938,11 @@ static int ice_hierarchy_commit(struct rte_eth_dev *dev,
 		if (idx_vsi_child >= nb_vsi_child) {
 			error->type = RTE_TM_ERROR_TYPE_UNSPECIFIED;
 			PMD_DRV_LOG(ERR, "too many queues");
-			goto reset_vsi;
+			goto reset_leaf;
 		}
 	}
 
+	/* config queue nodes */
 	TAILQ_FOREACH(tm_node, queue_list, node) {
 		qid = tm_node->id;
 		txq = dev->data->tx_queues[qid];
@@ -876,14 +955,17 @@ static int ice_hierarchy_commit(struct rte_eth_dev *dev,
 			PMD_DRV_LOG(ERR,
 				    "configure queue group node %u failed",
 				    tm_node->id);
-			goto reset_vsi;
+			goto reset_leaf;
 		}
 	}
 
 	return ret_val;
 
-reset_vsi:
-	ice_set_node_rate(hw, NULL, vsi_node);
+reset_leaf:
+	ice_remove_leaf_nodes(dev);
+add_leaf:
+	ice_add_leaf_nodes(dev);
+	ice_reset_noleaf_nodes(dev);
 fail_clear:
 	/* clear all the traffic manager configuration */
 	if (clear_on_fail) {
