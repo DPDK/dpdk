@@ -3020,7 +3020,7 @@ ice_sched_update_elem(struct ice_hw *hw, struct ice_sched_node *node,
  *
  * This function configures node element's BW allocation.
  */
-static enum ice_status
+enum ice_status
 ice_sched_cfg_node_bw_alloc(struct ice_hw *hw, struct ice_sched_node *node,
 			    enum ice_rl_type rl_type, u16 bw_alloc)
 {

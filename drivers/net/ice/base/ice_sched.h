@@ -240,4 +240,7 @@ ice_sched_replay_q_bw(struct ice_port_info *pi, struct ice_q_ctx *q_ctx);
 enum ice_status
 ice_sched_set_node_bw_lmt(struct ice_port_info *pi, struct ice_sched_node *node,
 			  enum ice_rl_type rl_type, u32 bw);
+enum ice_status
+ice_sched_cfg_node_bw_alloc(struct ice_hw *hw, struct ice_sched_node *node,
+			    enum ice_rl_type rl_type, u16 bw_alloc);
 #endif /* _ICE_SCHED_H_ */
