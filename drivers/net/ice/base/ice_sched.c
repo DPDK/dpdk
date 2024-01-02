@@ -4429,7 +4429,7 @@ ice_sched_set_node_bw(struct ice_port_info *pi, struct ice_sched_node *node,
  * NOTE: Caller provides the correct SRL node in case of shared profile
  * settings.
  */
-static enum ice_status
+enum ice_status
 ice_sched_set_node_bw_lmt(struct ice_port_info *pi, struct ice_sched_node *node,
 			  enum ice_rl_type rl_type, u32 bw)
 {

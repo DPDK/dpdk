@@ -663,6 +663,55 @@ static int ice_move_recfg_lan_txq(struct rte_eth_dev *dev,
 	return ret;
 }
 
+static int ice_set_node_rate(struct ice_hw *hw,
+			     struct ice_tm_node *tm_node,
+			     struct ice_sched_node *sched_node)
+{
+	enum ice_status status;
+	bool reset = false;
+	uint32_t peak = 0;
+	uint32_t committed = 0;
+	uint32_t rate;
+
+	if (tm_node == NULL || tm_node->shaper_profile == NULL) {
+		reset = true;
+	} else {
+		peak = (uint32_t)tm_node->shaper_profile->profile.peak.rate;
+		committed = (uint32_t)tm_node->shaper_profile->profile.committed.rate;
+	}
+
+	if (reset || peak == 0)
+		rate = ICE_SCHED_DFLT_BW;
+	else
+		rate = peak / 1000 * BITS_PER_BYTE;
+
+
+	status = ice_sched_set_node_bw_lmt(hw->port_info,
+					   sched_node,
+					   ICE_MAX_BW,
+					   rate);
+	if (status) {
+		PMD_DRV_LOG(ERR, "Failed to set max bandwidth for node %u", tm_node->id);
+		return -EINVAL;
+	}
+
+	if (reset || committed == 0)
+		rate = ICE_SCHED_DFLT_BW;
+	else
+		rate = committed / 1000 * BITS_PER_BYTE;
+
+	status = ice_sched_set_node_bw_lmt(hw->port_info,
+					   sched_node,
+					   ICE_MIN_BW,
+					   rate);
+	if (status) {
+		PMD_DRV_LOG(ERR, "Failed to set min bandwidth for node %u", tm_node->id);
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
 static int ice_hierarchy_commit(struct rte_eth_dev *dev,
 				 int clear_on_fail,
 				 __rte_unused struct rte_tm_error *error)
@@ -673,13 +722,11 @@ static int ice_hierarchy_commit(struct rte_eth_dev *dev,
 	struct ice_tm_node_list *queue_list = &pf->tm_conf.queue_list;
 	struct ice_tm_node *tm_node;
 	struct ice_sched_node *node;
-	struct ice_sched_node *vsi_node;
+	struct ice_sched_node *vsi_node = NULL;
 	struct ice_sched_node *queue_node;
 	struct ice_tx_queue *txq;
 	struct ice_vsi *vsi;
 	int ret_val = ICE_SUCCESS;
-	uint64_t peak = 0;
-	uint64_t committed = 0;
 	uint8_t priority;
 	uint32_t i;
 	uint32_t idx_vsi_child;
@@ -704,6 +751,18 @@ static int ice_hierarchy_commit(struct rte_eth_dev *dev,
 	for (i = 0; i < vsi_layer; i++)
 		node = node->children[0];
 	vsi_node = node;
+
+	tm_node = TAILQ_FIRST(&pf->tm_conf.vsi_list);
+
+	ret_val = ice_set_node_rate(hw, tm_node, vsi_node);
+	if (ret_val) {
+		error->type = RTE_TM_ERROR_TYPE_UNSPECIFIED;
+		PMD_DRV_LOG(ERR,
+			    "configure vsi node %u bandwidth failed",
+			    tm_node->id);
+		goto reset_vsi;
+	}
+
 	nb_vsi_child = vsi_node->num_children;
 	nb_qg = vsi_node->children[0]->num_children;
 
@@ -722,7 +781,7 @@ static int ice_hierarchy_commit(struct rte_eth_dev *dev,
 			if (ret_val) {
 				error->type = RTE_TM_ERROR_TYPE_UNSPECIFIED;
 				PMD_DRV_LOG(ERR, "start queue %u failed", qid);
-				goto fail_clear;
+				goto reset_vsi;
 			}
 			txq = dev->data->tx_queues[qid];
 			q_teid = txq->q_teid;
@@ -730,7 +789,7 @@ static int ice_hierarchy_commit(struct rte_eth_dev *dev,
 			if (queue_node == NULL) {
 				error->type = RTE_TM_ERROR_TYPE_UNSPECIFIED;
 				PMD_DRV_LOG(ERR, "get queue %u node failed", qid);
-				goto fail_clear;
+				goto reset_vsi;
 			}
 			if (queue_node->info.parent_teid == qgroup_sched_node->info.node_teid)
 				continue;
@@ -738,28 +797,19 @@ static int ice_hierarchy_commit(struct rte_eth_dev *dev,
 			if (ret_val) {
 				error->type = RTE_TM_ERROR_TYPE_UNSPECIFIED;
 				PMD_DRV_LOG(ERR, "move queue %u failed", qid);
-				goto fail_clear;
+				goto reset_vsi;
 			}
 		}
-		if (tm_node->reference_count != 0 && tm_node->shaper_profile) {
-			uint32_t node_teid = qgroup_sched_node->info.node_teid;
-			/* Transfer from Byte per seconds to Kbps */
-			peak = tm_node->shaper_profile->profile.peak.rate;
-			peak = peak / 1000 * BITS_PER_BYTE;
-			ret_val = ice_sched_set_node_bw_lmt_per_tc(hw->port_info,
-								   node_teid,
-								   ICE_AGG_TYPE_Q,
-								   tm_node->tc,
-								   ICE_MAX_BW,
-								   (u32)peak);
-			if (ret_val) {
-				error->type = RTE_TM_ERROR_TYPE_UNSPECIFIED;
-				PMD_DRV_LOG(ERR,
-					    "configure queue group %u bandwidth failed",
-					    tm_node->id);
-				goto fail_clear;
-			}
+
+		ret_val = ice_set_node_rate(hw, tm_node, qgroup_sched_node);
+		if (ret_val) {
+			error->type = RTE_TM_ERROR_TYPE_UNSPECIFIED;
+			PMD_DRV_LOG(ERR,
+				    "configure queue group %u bandwidth failed",
+				    tm_node->id);
+			goto reset_vsi;
 		}
+
 		priority = 7 - tm_node->priority;
 		ret_val = ice_sched_cfg_sibl_node_prio_lock(hw->port_info, qgroup_sched_node,
 							    priority);
@@ -777,7 +827,7 @@ static int ice_hierarchy_commit(struct rte_eth_dev *dev,
 		if (idx_vsi_child >= nb_vsi_child) {
 			error->type = RTE_TM_ERROR_TYPE_UNSPECIFIED;
 			PMD_DRV_LOG(ERR, "too many queues");
-			goto fail_clear;
+			goto reset_vsi;
 		}
 	}
 
@@ -786,37 +836,17 @@ static int ice_hierarchy_commit(struct rte_eth_dev *dev,
 		txq = dev->data->tx_queues[qid];
 		vsi = txq->vsi;
 		q_teid = txq->q_teid;
-		if (tm_node->shaper_profile) {
-			/* Transfer from Byte per seconds to Kbps */
-			if (tm_node->shaper_profile->profile.peak.rate > 0) {
-				peak = tm_node->shaper_profile->profile.peak.rate;
-				peak = peak / 1000 * BITS_PER_BYTE;
-				ret_val = ice_cfg_q_bw_lmt(hw->port_info, vsi->idx,
-							   tm_node->tc, tm_node->id,
-							   ICE_MAX_BW, (u32)peak);
-				if (ret_val) {
-					error->type = RTE_TM_ERROR_TYPE_UNSPECIFIED;
-					PMD_DRV_LOG(ERR,
-						    "configure queue %u peak bandwidth failed",
-						    tm_node->id);
-					goto fail_clear;
-				}
-			}
-			if (tm_node->shaper_profile->profile.committed.rate > 0) {
-				committed = tm_node->shaper_profile->profile.committed.rate;
-				committed = committed / 1000 * BITS_PER_BYTE;
-				ret_val = ice_cfg_q_bw_lmt(hw->port_info, vsi->idx,
-							   tm_node->tc, tm_node->id,
-							   ICE_MIN_BW, (u32)committed);
-				if (ret_val) {
-					error->type = RTE_TM_ERROR_TYPE_UNSPECIFIED;
-					PMD_DRV_LOG(ERR,
-						    "configure queue %u committed bandwidth failed",
-						    tm_node->id);
-					goto fail_clear;
-				}
-			}
+
+		queue_node = ice_sched_get_node(hw->port_info, q_teid);
+		ret_val = ice_set_node_rate(hw, tm_node, queue_node);
+		if (ret_val) {
+			error->type = RTE_TM_ERROR_TYPE_UNSPECIFIED;
+			PMD_DRV_LOG(ERR,
+				    "configure queue %u bandwidth failed",
+				    tm_node->id);
+			goto reset_vsi;
 		}
+
 		priority = 7 - tm_node->priority;
 		ret_val = ice_cfg_vsi_q_priority(hw->port_info, 1,
 						 &q_teid, &priority);
@@ -838,6 +868,8 @@ static int ice_hierarchy_commit(struct rte_eth_dev *dev,
 
 	return ret_val;
 
+reset_vsi:
+	ice_set_node_rate(hw, NULL, vsi_node);
 fail_clear:
 	/* clear all the traffic manager configuration */
 	if (clear_on_fail) {
