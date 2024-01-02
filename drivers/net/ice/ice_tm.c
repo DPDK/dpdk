@@ -713,6 +713,49 @@ static int ice_set_node_rate(struct ice_hw *hw,
 	return 0;
 }
 
+static int ice_cfg_hw_node(struct ice_hw *hw,
+			   struct ice_tm_node *tm_node,
+			   struct ice_sched_node *sched_node)
+{
+	enum ice_status status;
+	uint8_t priority;
+	uint16_t weight;
+	int ret;
+
+	ret = ice_set_node_rate(hw, tm_node, sched_node);
+	if (ret) {
+		PMD_DRV_LOG(ERR,
+			    "configure queue group %u bandwidth failed",
+			    sched_node->info.node_teid);
+		return ret;
+	}
+
+	priority = tm_node ? (7 - tm_node->priority) : 0;
+	status = ice_sched_cfg_sibl_node_prio(hw->port_info,
+					      sched_node,
+					      priority);
+	if (status) {
+		PMD_DRV_LOG(ERR, "configure node %u priority %u failed",
+			    sched_node->info.node_teid,
+			    priority);
+		return -EINVAL;
+	}
+
+	weight = tm_node ? (uint16_t)tm_node->weight : 4;
+
+	status = ice_sched_cfg_node_bw_alloc(hw, sched_node,
+					     ICE_MAX_BW,
+					     weight);
+	if (status) {
+		PMD_DRV_LOG(ERR, "configure node %u weight %u failed",
+			    sched_node->info.node_teid,
+			    weight);
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
 static int ice_hierarchy_commit(struct rte_eth_dev *dev,
 				 int clear_on_fail,
 				 __rte_unused struct rte_tm_error *error)
@@ -726,8 +769,7 @@ static int ice_hierarchy_commit(struct rte_eth_dev *dev,
 	struct ice_sched_node *vsi_node = NULL;
 	struct ice_sched_node *queue_node;
 	struct ice_tx_queue *txq;
-	int ret_val = ICE_SUCCESS;
-	uint8_t priority;
+	int ret_val = 0;
 	uint32_t i;
 	uint32_t idx_vsi_child;
 	uint32_t idx_qg;
@@ -801,34 +843,13 @@ static int ice_hierarchy_commit(struct rte_eth_dev *dev,
 			}
 		}
 
-		ret_val = ice_set_node_rate(hw, tm_node, qgroup_sched_node);
+		ret_val = ice_cfg_hw_node(hw, tm_node, qgroup_sched_node);
 		if (ret_val) {
 			error->type = RTE_TM_ERROR_TYPE_UNSPECIFIED;
 			PMD_DRV_LOG(ERR,
-				    "configure queue group %u bandwidth failed",
+				    "configure queue group node %u failed",
 				    tm_node->id);
 			goto reset_vsi;
-		}
-
-		priority = 7 - tm_node->priority;
-		ret_val = ice_sched_cfg_sibl_node_prio_lock(hw->port_info, qgroup_sched_node,
-							    priority);
-		if (ret_val) {
-			error->type = RTE_TM_ERROR_TYPE_NODE_PRIORITY;
-			PMD_DRV_LOG(ERR, "configure queue group %u priority failed",
-				    tm_node->priority);
-			goto fail_clear;
-		}
-
-		ret_val = ice_sched_cfg_node_bw_alloc(hw, qgroup_sched_node,
-						      ICE_MAX_BW,
-						      (uint16_t)tm_node->weight);
-		if (ret_val) {
-			error->type = RTE_TM_ERROR_TYPE_NODE_WEIGHT;
-			PMD_DRV_LOG(ERR, "configure queue group %u weight %u failed",
-				    tm_node->id,
-				    tm_node->weight);
-			goto fail_clear;
 		}
 
 		idx_qg++;
@@ -847,35 +868,15 @@ static int ice_hierarchy_commit(struct rte_eth_dev *dev,
 		qid = tm_node->id;
 		txq = dev->data->tx_queues[qid];
 		q_teid = txq->q_teid;
-
 		queue_node = ice_sched_get_node(hw->port_info, q_teid);
-		ret_val = ice_set_node_rate(hw, tm_node, queue_node);
+
+		ret_val = ice_cfg_hw_node(hw, tm_node, queue_node);
 		if (ret_val) {
 			error->type = RTE_TM_ERROR_TYPE_UNSPECIFIED;
 			PMD_DRV_LOG(ERR,
-				    "configure queue %u bandwidth failed",
+				    "configure queue group node %u failed",
 				    tm_node->id);
 			goto reset_vsi;
-		}
-
-		priority = 7 - tm_node->priority;
-		ret_val = ice_cfg_vsi_q_priority(hw->port_info, 1,
-						 &q_teid, &priority);
-		if (ret_val) {
-			error->type = RTE_TM_ERROR_TYPE_NODE_PRIORITY;
-			PMD_DRV_LOG(ERR, "configure queue %u priority failed", tm_node->priority);
-			goto fail_clear;
-		}
-
-		queue_node = ice_sched_get_node(hw->port_info, q_teid);
-		ret_val = ice_sched_cfg_node_bw_alloc(hw, queue_node, ICE_MAX_BW,
-						      (uint16_t)tm_node->weight);
-		if (ret_val) {
-			error->type = RTE_TM_ERROR_TYPE_NODE_WEIGHT;
-			PMD_DRV_LOG(ERR, "configure queue %u weight %u failed",
-				    tm_node->id,
-				    tm_node->weight);
-			goto fail_clear;
 		}
 	}
 
