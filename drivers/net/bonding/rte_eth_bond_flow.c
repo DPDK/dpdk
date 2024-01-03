@@ -180,6 +180,8 @@ bond_flow_query_count(struct rte_eth_dev *dev, struct rte_flow *flow,
 
 	count->bytes = 0;
 	count->hits = 0;
+	count->bytes_set = 0;
+	count->hits_set = 0;
 	rte_memcpy(&slave_count, count, sizeof(slave_count));
 	for (i = 0; i < internals->slave_count; i++) {
 		ret = rte_flow_query(internals->slaves[i].port_id,
@@ -192,8 +194,12 @@ bond_flow_query_count(struct rte_eth_dev *dev, struct rte_flow *flow,
 		}
 		count->bytes += slave_count.bytes;
 		count->hits += slave_count.hits;
+		count->bytes_set |= slave_count.bytes_set;
+		count->hits_set |= slave_count.hits_set;
 		slave_count.bytes = 0;
 		slave_count.hits = 0;
+		slave_count.bytes_set = 0;
+		slave_count.hits_set = 0;
 	}
 	return 0;
 }
