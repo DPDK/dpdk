@@ -226,7 +226,8 @@ cperf_alloc_common_memory(const struct cperf_options *options,
 				(mbuf_size * segments_nb);
 		params.dst_buf_offset = *dst_buf_offset;
 		/* Destination buffer will be one segment only */
-		obj_size += max_size + sizeof(struct rte_mbuf);
+		obj_size += max_size + sizeof(struct rte_mbuf) +
+			options->headroom_sz + options->tailroom_sz;
 	}
 
 	*pool = rte_mempool_create_empty(pool_name,
