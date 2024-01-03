@@ -627,6 +627,23 @@ Inline IPsec Support
     documentation.
 
 
+Diagnostic Utilities
+--------------------
+
+Register mbuf dynfield to test Tx LLDP
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Register an mbuf dynfield ``IAVF_TX_LLDP_DYNFIELD`` on ``dev_start``
+to indicate the need to send LLDP packet.
+This dynfield needs to be set to 1 when preparing packet.
+
+For ``dpdk-testpmd`` application, it needs to stop and restart Tx port to take effect.
+
+Usage::
+
+    testpmd> set tx lldp on
+
+
 Limitations or Knowing issues
 -----------------------------
 
