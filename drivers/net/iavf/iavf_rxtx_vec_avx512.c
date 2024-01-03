@@ -2206,6 +2206,9 @@ ctx_vtx1(volatile struct iavf_tx_desc *txdp, struct rte_mbuf *pkt,
 			low_ctx_qw |= (uint64_t)pkt->vlan_tci << IAVF_TXD_CTX_QW0_L2TAG2_PARAM;
 		}
 	}
+	if (IAVF_CHECK_TX_LLDP(pkt))
+		high_ctx_qw |= IAVF_TX_CTX_DESC_SWTCH_UPLINK
+			<< IAVF_TXD_CTX_QW1_CMD_SHIFT;
 	uint64_t high_data_qw = (IAVF_TX_DESC_DTYPE_DATA |
 				((uint64_t)flags  << IAVF_TXD_QW1_CMD_SHIFT) |
 				((uint64_t)pkt->data_len << IAVF_TXD_QW1_TX_BUF_SZ_SHIFT));
@@ -2258,6 +2261,9 @@ ctx_vtx(volatile struct iavf_tx_desc *txdp,
 					(uint64_t)pkt[1]->vlan_tci << IAVF_TXD_QW1_L2TAG1_SHIFT;
 			}
 		}
+		if (IAVF_CHECK_TX_LLDP(pkt[1]))
+			hi_ctx_qw1 |= IAVF_TX_CTX_DESC_SWTCH_UPLINK
+				<< IAVF_TXD_CTX_QW1_CMD_SHIFT;
 
 		if (pkt[0]->ol_flags & RTE_MBUF_F_TX_VLAN) {
 			if (vlan_flag & IAVF_TX_FLAGS_VLAN_TAG_LOC_L2TAG2) {
@@ -2270,6 +2276,9 @@ ctx_vtx(volatile struct iavf_tx_desc *txdp,
 					(uint64_t)pkt[0]->vlan_tci << IAVF_TXD_QW1_L2TAG1_SHIFT;
 			}
 		}
+		if (IAVF_CHECK_TX_LLDP(pkt[0]))
+			hi_ctx_qw0 |= IAVF_TX_CTX_DESC_SWTCH_UPLINK
+				<< IAVF_TXD_CTX_QW1_CMD_SHIFT;
 
 		if (offload) {
 			iavf_txd_enable_offload(pkt[1], &hi_data_qw1);
@@ -2519,4 +2528,11 @@ iavf_xmit_pkts_vec_avx512_ctx_offload(void *tx_queue, struct rte_mbuf **tx_pkts,
 				  uint16_t nb_pkts)
 {
 	return iavf_xmit_pkts_vec_avx512_ctx_cmn(tx_queue, tx_pkts, nb_pkts, true);
+}
+
+uint16_t
+iavf_xmit_pkts_vec_avx512_ctx(void *tx_queue, struct rte_mbuf **tx_pkts,
+				  uint16_t nb_pkts)
+{
+	return iavf_xmit_pkts_vec_avx512_ctx_cmn(tx_queue, tx_pkts, nb_pkts, false);
 }
