@@ -19,6 +19,7 @@
 #define IAVF_AQ_LEN               32
 #define IAVF_AQ_BUF_SZ            4096
 #define IAVF_RESET_WAIT_CNT       2000
+#define IAVF_RESET_DETECTED_CNT   500
 #define IAVF_BUF_SIZE_MIN         1024
 #define IAVF_FRAME_SIZE_MAX       9728
 #define IAVF_QUEUE_BASE_ADDR_UNIT 128
@@ -511,6 +512,6 @@ int iavf_flow_sub_check(struct iavf_adapter *adapter,
 			struct iavf_fsub_conf *filter);
 void iavf_dev_watchdog_enable(struct iavf_adapter *adapter);
 void iavf_dev_watchdog_disable(struct iavf_adapter *adapter);
-int iavf_handle_hw_reset(struct rte_eth_dev *dev);
+void iavf_handle_hw_reset(struct rte_eth_dev *dev);
 void iavf_set_no_poll(struct iavf_adapter *adapter, bool link_change);
 #endif /* _IAVF_ETHDEV_H_ */

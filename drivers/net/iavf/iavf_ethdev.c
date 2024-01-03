@@ -1088,9 +1088,6 @@ iavf_dev_stop(struct rte_eth_dev *dev)
 
 	PMD_INIT_FUNC_TRACE();
 
-	if (vf->vf_reset)
-		return 0;
-
 	if (adapter->closed)
 		return -1;
 
@@ -2955,7 +2952,6 @@ iavf_dev_reset(struct rte_eth_dev *dev)
 	struct iavf_adapter *adapter =
 		IAVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 	struct iavf_hw *hw = IAVF_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
 
 	/*
 	 * Check whether the VF reset has been done and inform application,
@@ -2967,7 +2963,6 @@ iavf_dev_reset(struct rte_eth_dev *dev)
 		PMD_DRV_LOG(ERR, "Wait too long for reset done!\n");
 		return ret;
 	}
-	vf->vf_reset = false;
 	iavf_set_no_poll(adapter, false);
 
 	PMD_DRV_LOG(DEBUG, "Start dev_reset ...\n");
@@ -2978,16 +2973,46 @@ iavf_dev_reset(struct rte_eth_dev *dev)
 	return iavf_dev_init(dev);
 }
 
+static inline bool
+iavf_is_reset(struct iavf_hw *hw)
+{
+	return !(IAVF_READ_REG(hw, IAVF_VF_ARQLEN1) &
+		IAVF_VF_ARQLEN1_ARQENABLE_MASK);
+}
+
+static bool
+iavf_is_reset_detected(struct iavf_adapter *adapter)
+{
+	struct iavf_hw *hw = IAVF_DEV_PRIVATE_TO_HW(adapter);
+	int i;
+
+	/* poll until we see the reset actually happen */
+	for (i = 0; i < IAVF_RESET_DETECTED_CNT; i++) {
+		if (iavf_is_reset(hw))
+			return true;
+		rte_delay_ms(20);
+	}
+
+	return false;
+}
+
 /*
  * Handle hardware reset
  */
-int
+void
 iavf_handle_hw_reset(struct rte_eth_dev *dev)
 {
-	struct iavf_adapter *adapter =
-		IAVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
+	struct iavf_adapter *adapter = dev->data->dev_private;
 	int ret;
+
+	if (!dev->data->dev_started)
+		return;
+
+	if (!iavf_is_reset_detected(adapter)) {
+		PMD_DRV_LOG(DEBUG, "reset not start\n");
+		return;
+	}
 
 	vf->in_reset_recovery = true;
 	iavf_set_no_poll(adapter, false);
@@ -3007,6 +3032,7 @@ iavf_handle_hw_reset(struct rte_eth_dev *dev)
 	ret = iavf_dev_start(dev);
 	if (ret)
 		goto error;
+
 	dev->data->dev_started = 1;
 	goto exit;
 
@@ -3015,7 +3041,8 @@ error:
 exit:
 	vf->in_reset_recovery = false;
 	iavf_set_no_poll(adapter, false);
-	return ret;
+
+	return;
 }
 
 void
