@@ -324,7 +324,10 @@ static int bnxt_start_xmit(struct rte_mbuf *tx_pkt,
 		txbd->flags_type |= TX_BD_LONG_FLAGS_LHINT_GTE2K;
 	else
 		txbd->flags_type |= lhint_arr[tx_pkt->pkt_len >> 9];
-	txbd->address = rte_cpu_to_le_64(rte_mbuf_data_iova(tx_pkt));
+	if (tx_pkt->ol_flags & RTE_MBUF_F_EXTERNAL)
+		txbd->address = rte_cpu_to_le_64(rte_pktmbuf_mtod_offset(tx_pkt, uint64_t, 0));
+	else
+		txbd->address = rte_cpu_to_le_64(rte_mbuf_data_iova(tx_pkt));
 	*last_txbd = txbd;
 
 	if (long_bd) {
@@ -481,7 +484,12 @@ static int bnxt_start_xmit(struct rte_mbuf *tx_pkt,
 		*tx_buf = m_seg;
 
 		txbd = &txr->tx_desc_ring[prod];
-		txbd->address = rte_cpu_to_le_64(rte_mbuf_data_iova(m_seg));
+		if (m_seg->ol_flags & RTE_MBUF_F_EXTERNAL)
+			txbd->address = rte_cpu_to_le_64(rte_pktmbuf_mtod_offset(m_seg,
+										 uint64_t,
+										 0));
+		else
+			txbd->address = rte_cpu_to_le_64(rte_mbuf_data_iova(m_seg));
 		txbd->flags_type = TX_BD_SHORT_TYPE_TX_BD_SHORT;
 		txbd->len = m_seg->data_len;
 
