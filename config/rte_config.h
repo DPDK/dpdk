@@ -14,6 +14,17 @@
 
 #include <rte_build_config.h>
 
+#if defined(__clang__)
+#define RTE_TOOLCHAIN "clang"
+#define RTE_TOOLCHAIN_CLANG 1
+#elif defined(__GNUC__)
+#define RTE_TOOLCHAIN "gcc"
+#define RTE_TOOLCHAIN_GCC 1
+#elif defined(_MSC_VER)
+#define RTE_TOOLCHAIN "msvc"
+#define RTE_TOOLCHAIN_MSVC 1
+#endif
+
 /* legacy defines */
 #ifdef RTE_EXEC_ENV_LINUX
 #define RTE_EXEC_ENV_LINUXAPP 1
