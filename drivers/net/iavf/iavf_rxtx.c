@@ -2418,8 +2418,9 @@ iavf_xmit_cleanup(struct iavf_tx_queue *txq)
 
 /* Check if the context descriptor is needed for TX offloading */
 static inline uint16_t
-iavf_calc_context_desc(uint64_t flags, uint8_t vlan_flag)
+iavf_calc_context_desc(struct rte_mbuf *mb, uint8_t vlan_flag)
 {
+	uint64_t flags = mb->ol_flags;
 	if (flags & (RTE_MBUF_F_TX_TCP_SEG | RTE_MBUF_F_TX_UDP_SEG |
 	    RTE_MBUF_F_TX_TUNNEL_MASK | RTE_MBUF_F_TX_OUTER_IP_CKSUM |
 	    RTE_MBUF_F_TX_OUTER_UDP_CKSUM))
@@ -2427,6 +2428,10 @@ iavf_calc_context_desc(uint64_t flags, uint8_t vlan_flag)
 	if (flags & RTE_MBUF_F_TX_VLAN &&
 	    vlan_flag & IAVF_TX_FLAGS_VLAN_TAG_LOC_L2TAG2)
 		return 1;
+
+	if (IAVF_CHECK_TX_LLDP(mb))
+		return 1;
+
 	return 0;
 }
 
@@ -2445,6 +2450,10 @@ iavf_fill_ctx_desc_cmd_field(volatile uint64_t *field, struct rte_mbuf *m,
 		cmd |= IAVF_TX_CTX_DESC_IL2TAG2
 			<< IAVF_TXD_CTX_QW1_CMD_SHIFT;
 	}
+
+	if (IAVF_CHECK_TX_LLDP(m))
+		cmd |= IAVF_TX_CTX_DESC_SWTCH_UPLINK
+			<< IAVF_TXD_CTX_QW1_CMD_SHIFT;
 
 	*field |= cmd;
 }
@@ -2826,7 +2835,7 @@ iavf_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 
 		nb_desc_data = mb->nb_segs;
 		nb_desc_ctx =
-			iavf_calc_context_desc(mb->ol_flags, txq->vlan_flag);
+			iavf_calc_context_desc(mb, txq->vlan_flag);
 		nb_desc_ipsec = !!(mb->ol_flags & RTE_MBUF_F_TX_SEC_OFFLOAD);
 
 		/**

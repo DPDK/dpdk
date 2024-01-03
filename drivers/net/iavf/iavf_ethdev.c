@@ -41,6 +41,7 @@
 #define IAVF_NO_POLL_ON_LINK_DOWN_ARG "no-poll-on-link-down"
 uint64_t iavf_timestamp_dynflag;
 int iavf_timestamp_dynfield_offset = -1;
+int rte_pmd_iavf_tx_lldp_dynfield_offset = -1;
 
 static const char * const iavf_valid_args[] = {
 	IAVF_PROTO_XTR_ARG,
@@ -1018,6 +1019,10 @@ iavf_dev_start(struct rte_eth_dev *dev)
 			return -1;
 		}
 	}
+
+	/* Check Tx LLDP dynfield */
+	rte_pmd_iavf_tx_lldp_dynfield_offset =
+		rte_mbuf_dynfield_lookup(IAVF_TX_LLDP_DYNFIELD, NULL);
 
 	if (iavf_init_queues(dev) != 0) {
 		PMD_DRV_LOG(ERR, "failed to do Queue init");
