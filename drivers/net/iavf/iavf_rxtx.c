@@ -4048,6 +4048,11 @@ iavf_set_tx_function(struct rte_eth_dev *dev)
 				dev->tx_pkt_prepare = iavf_prep_pkts;
 				PMD_DRV_LOG(DEBUG, "Using AVX512 OFFLOAD Vector Tx (port %d).",
 					    dev->data->port_id);
+			} else if (check_ret == IAVF_VECTOR_CTX_PATH) {
+				dev->tx_pkt_burst = iavf_xmit_pkts_vec_avx512_ctx;
+				dev->tx_pkt_prepare = iavf_prep_pkts;
+				PMD_DRV_LOG(DEBUG, "Using AVX512 CONTEXT Vector Tx (port %d).",
+						dev->data->port_id);
 			} else {
 				dev->tx_pkt_burst = iavf_xmit_pkts_vec_avx512_ctx_offload;
 				dev->tx_pkt_prepare = iavf_prep_pkts;

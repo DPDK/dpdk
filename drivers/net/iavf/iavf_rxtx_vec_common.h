@@ -249,6 +249,11 @@ iavf_tx_vec_queue_default(struct iavf_tx_queue *txq)
 	if (txq->offloads & IAVF_TX_NO_VECTOR_FLAGS)
 		return -1;
 
+	if (rte_pmd_iavf_tx_lldp_dynfield_offset > 0) {
+		txq->use_ctx = 1;
+		return IAVF_VECTOR_CTX_PATH;
+	}
+
 	/**
 	 * Vlan tci needs to be inserted via ctx desc, if the vlan_flag is L2TAG2.
 	 * Tunneling parameters and other fields need be configured in ctx desc
