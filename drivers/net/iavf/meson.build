@@ -8,6 +8,9 @@ endif
 cflags += ['-Wno-strict-aliasing']
 
 includes += include_directories('../../common/iavf')
+
+testpmd_sources = files('iavf_testpmd.c')
+
 deps += ['common_iavf', 'security', 'cryptodev']
 
 sources = files(
