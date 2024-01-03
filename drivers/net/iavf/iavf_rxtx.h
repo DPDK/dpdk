@@ -107,8 +107,16 @@
 #define IAVF_MAX_DATA_PER_TXD \
 	(IAVF_TXD_QW1_TX_BUF_SZ_MASK >> IAVF_TXD_QW1_TX_BUF_SZ_SHIFT)
 
+#define IAVF_TX_LLDP_DYNFIELD "intel_pmd_dynfield_tx_lldp"
+#define IAVF_CHECK_TX_LLDP(m) \
+	((rte_pmd_iavf_tx_lldp_dynfield_offset > 0) && \
+	(*RTE_MBUF_DYNFIELD((m), \
+			rte_pmd_iavf_tx_lldp_dynfield_offset, \
+			uint8_t *)))
+
 extern uint64_t iavf_timestamp_dynflag;
 extern int iavf_timestamp_dynfield_offset;
+extern int rte_pmd_iavf_tx_lldp_dynfield_offset;
 
 /**
  * Rx Flex Descriptors
