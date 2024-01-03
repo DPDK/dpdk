@@ -268,7 +268,7 @@ cperf_mbuf_set(struct rte_mbuf *mbuf,
 		const struct cperf_options *options,
 		const struct cperf_test_vector *test_vector)
 {
-	uint32_t segment_sz = options->segment_sz;
+	uint32_t segment_sz = options->segment_sz - options->headroom_sz - options->tailroom_sz;
 	uint8_t *mbuf_data;
 	uint8_t *test_data;
 	uint32_t remaining_bytes = options->max_buffer_size;
