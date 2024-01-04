@@ -49,7 +49,6 @@ fill_multi_seg_mbuf(struct rte_mbuf *m, struct rte_mempool *mp,
 {
 	uint16_t mbuf_hdr_size = sizeof(struct rte_mbuf);
 	uint16_t remaining_segments = segments_nb;
-	struct rte_mbuf *next_mbuf;
 	rte_iova_t next_seg_phys_addr = rte_mempool_virt2iova(obj) +
 			 mbuf_offset + mbuf_hdr_size;
 
@@ -70,15 +69,15 @@ fill_multi_seg_mbuf(struct rte_mbuf *m, struct rte_mempool *mp,
 		m->nb_segs = segments_nb;
 		m->port = 0xff;
 		rte_mbuf_refcnt_set(m, 1);
-		next_mbuf = (struct rte_mbuf *) ((uint8_t *) m +
-					mbuf_hdr_size + segment_sz);
-		m->next = next_mbuf;
-		m = next_mbuf;
+
 		remaining_segments--;
-
+		if (remaining_segments > 0) {
+			m->next = (struct rte_mbuf *)((uint8_t *) m + mbuf_hdr_size + segment_sz);
+			m = m->next;
+		} else {
+			m->next = NULL;
+		}
 	} while (remaining_segments > 0);
-
-	m->next = NULL;
 }
 
 static void
