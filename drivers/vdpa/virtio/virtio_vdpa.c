@@ -421,6 +421,8 @@ virtio_vdpa_virtq_doorbell_relay_enable(struct virtio_vdpa_priv *priv, int vq_id
 		}
 	}
 
+	priv->vrings[vq_idx]->notifier_state = VIRTIO_VDPA_NOTIFIER_RELAY_ENABLED;
+
 	return 0;
 
 error:
@@ -456,7 +458,6 @@ virtio_vdpa_dev_notifier_work(void *arg)
 				DRV_LOG(ERR, "%s vid %d dev notifier relay of vq id:%d core:%d setup fail",
 					work->priv->vdev->device->name, work->priv->vid, i, rte_lcore_id());
 			}
-			work->priv->vrings[i]->notifier_state = VIRTIO_VDPA_NOTIFIER_RELAY_ENABLED;
 		}
 	}
 	DRV_LOG(INFO, "%s vid %d dev notifier work of vq id:%d core:%d finish",
@@ -474,6 +475,23 @@ virtio_vdpa_dev_notifier_work(void *arg)
 	return ret;
 }
 
+static void
+virtio_vdpa_doorbell_relay_disable(struct virtio_vdpa_priv *priv)
+{
+	uint16_t nr_virtqs = priv->hw_nr_virtqs;
+	int vq_idx, ret;
+
+	for (vq_idx = 0; vq_idx < nr_virtqs; vq_idx++) {
+		if (priv->vrings[vq_idx]->notifier_state == VIRTIO_VDPA_NOTIFIER_RELAY_ENABLED) {
+			ret = virtio_vdpa_virtq_doorbell_relay_disable(priv, vq_idx);
+			if (ret) {
+				DRV_LOG(ERR, "%s doorbell relay disable vq:%d failed ret:%d",
+								priv->vdev->device->name, vq_idx, ret);
+			}
+		}
+	}
+}
+
 static int
 virtio_vdpa_virtq_disable(struct virtio_vdpa_priv *priv, int vq_idx)
 {
@@ -488,15 +506,6 @@ virtio_vdpa_virtq_disable(struct virtio_vdpa_priv *priv, int vq_idx)
 					priv->vdev->device->name);
 			return 0;
 		}
-	}
-
-	if (priv->vrings[vq_idx]->notifier_state == VIRTIO_VDPA_NOTIFIER_RELAY_ENABLED) {
-		ret = virtio_vdpa_virtq_doorbell_relay_disable(priv, vq_idx);
-		if (ret) {
-			DRV_LOG(ERR, "%s doorbell relay disable failed ret:%d",
-							priv->vdev->device->name, ret);
-		}
-		priv->vrings[vq_idx]->notifier_state = VIRTIO_VDPA_NOTIFIER_RELAY_DISABLED;
 	}
 
 	if (priv->configured) {
@@ -1014,6 +1023,8 @@ virtio_vdpa_dev_close(int vid)
 		DRV_LOG(ERR, "Invalid vDPA device: %s", vdev->device->name);
 		return -ENODEV;
 	}
+
+	virtio_vdpa_doorbell_relay_disable(priv);
 	if (!priv->configured) {
 		DRV_LOG(ERR, "vDPA device: %s isn't configured.", vdev->device->name);
 		return -EINVAL;
@@ -1630,6 +1641,7 @@ virtio_vdpa_dev_do_remove(struct rte_pci_device *pci_dev, struct virtio_vdpa_pri
 
 	if (priv->configured)
 		virtio_vdpa_dev_close(priv->vid);
+	virtio_vdpa_doorbell_relay_disable(priv);
 
 	if (priv->dev_work_flag == VIRTIO_VDPA_DEV_CLOSE_WORK_START) {
 		DRV_LOG(ERR, "%s is waiting dev close work finish lcore:%d", pci_dev->name, priv->lcore_id);
