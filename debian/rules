@@ -82,25 +82,16 @@ ifneq (,$(filter dpdk_config_options=%,$(DEB_BUILD_OPTIONS)))
     DPDK_CONFIG_OPTIONS ?= $(subst $(comma),$(space),$(patsubst dpdk_config_options=%,%,$(filter dpdk_config_options=%,$(DEB_BUILD_OPTIONS))))
 endif
 
-DPDK_ENABLED_DRVS := "bus/pci,bus/auxiliary,bus/vdev,"
-DPDK_ENABLED_DRVS := "mempool/bucket,mempool/ring,mempool/stack,$(DPDK_ENABLED_DRVS)"
-#DPDK_ENABLED_DRVS := "common/mlx5,$(DPDK_ENABLED_DRVS)"
-#DPDK_ENABLED_DRVS := "net/mlx5,net/vhost,net/virtio,net/af_packet,$(DPDK_ENABLED_DRVS)"
-#DPDK_ENABLED_DRVS := "vdpa/mlx5,regex/mlx5,compress/mlx5,$(DPDK_ENABLED_DRVS)"
-#DPDK_ENABLED_DRVS := "gpu/cuda,$(DPDK_ENABLED_DRVS)"
-DPDK_ENABLED_DRVS := "net/vhost,net/virtio,vdpa/virtio,common/virtio,common/virtio_mi,$DPDK_ENABLED_DRVS"
-DPDK_DISABLED_DRVS := $(shell . ./debian/get-disabled-drivers.sh; disable_drivers $(DPDK_ENABLED_DRVS))
+DPDK_ENABLED_DRVS := "net/vhost,net/virtio,vdpa/virtio,common/virtio,common/virtio_mi"
 
 # Change default max ethports to 1024
 DPDK_CONFIG_OPTIONS += -Dmax_ethports=1024
-
-DPDK_CONFIG_OPTIONS += -Ddisable_drivers=$(DPDK_DISABLED_DRVS)
-
 DPDK_CONFIG_OPTIONS += -Dmachine=default
-
 DPDK_CONFIG_OPTIONS += -Dexamples=vdpa
 DPDK_CONFIG_OPTIONS += -Dc_args='-DRTE_LIBRTE_VDPA_DEBUG'
-DPDK_CONFIG_OPTIONS += --debug 
+DPDK_CONFIG_OPTIONS += --debug
+DPDK_CONFIG_OPTIONS += -Dtests=false
+DPDK_CONFIG_OPTIONS += -Denable_drivers=$(DPDK_ENABLED_DRVS)
 
 # Ensure build is optimized for release
 DPDK_CONFIG_OPTIONS += --buildtype=release
@@ -200,6 +191,7 @@ override_dh_auto_install-arch:
 	dh_install -p dpdk-vhost-vfe     $(PREFIX)/bin/vfe-vhost*
 	dh_install -p dpdk-vhost-vfe     $(PREFIX)/bin/vhostmgmt
 	dh_install -p dpdk-vhost-vfe     $(PREFIX)/bin/dpdk-vfe-vdpa
+	dh_install -p dpdk-vhost-vfe     /usr/lib/systemd/system/vfe-vhostd.service
 	dh_install -p dpdk-vhost-vfe $(PREFIX)/lib/$(DEB_HOST_MULTIARCH)/*.so.*
 	dh_install -p dpdk-vhost-vfe $(PREFIX)/lib/$(DEB_HOST_MULTIARCH)/*/*/*.so.*
 	dh_install -p dpdk-vhost-vfe-dev $(PREFIX)/lib/$(DEB_HOST_MULTIARCH)/*.so

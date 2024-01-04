@@ -1,0 +1,14 @@
+[Unit]
+Description=Nvidia Vhost Acceleration Daemon
+After=network.target network.service networking.service
+
+[Service]
+Type=simple
+ExecStart=@prefix@/bin/vfe-vhostd -v --file-prefix=vfe-vhostd -a 0000:00:00.0 --log-level=.,debug --no-huge -- --client
+TimeoutSec=1800
+LimitCORE=infinity
+KillSignal=SIGTERM
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

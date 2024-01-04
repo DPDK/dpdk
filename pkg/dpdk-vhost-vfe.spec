@@ -93,33 +93,7 @@ for fast packet processing on x86 platforms.
 %prep
 %setup -q
 MESON_PARAMS=%{?meson_params}
-ENABLED_DRVS="bus/pci,bus/auxiliary,bus/vdev"
-ENABLED_DRVS="mempool/bucket,mempool/stack,mempool/ring,$ENABLED_DRVS"
-#ENABLED_DRVS="common/mlx5,$ENABLED_DRVS"
-#ENABLED_DRVS="net/mlx5,net/vhost,net/virtio,net/af_packet,$ENABLED_DRVS"
-#ENABLED_DRVS="vdpa/mlx5,compress/mlx5,regex/mlx5,$ENABLED_DRVS"
-#ENABLED_DRVS="gpu/cuda,$ENABLED_DRVS"
-ENABLED_DRVS="net/vhost,net/virtio,vdpa/virtio,common/virtio,common/virtio_mi,$ENABLED_DRVS"
-disable_drivers () {
-	enabled_drvs=$1
-	types=$(ls -d drivers/*/)
-	for t in $types; do
-		drivers=$(ls -d "$t"*/)
-		for d in $drivers; do
-			enable="False"
-			OIFS=$IFS; IFS=','
-			for e in $enabled_drvs; do
-				if [ -z "${d##*"$e"*}" ]; then enable="True"; fi
-			done
-			IFS=$OIFS
-			if [ "$enable" = "False" ]; then
-				disabled="$(printf '%s' "$d" | cut -d'/' -f2-),$disabled"
-			fi
-		done
-	done
-	printf '%s' "$disabled"
-}
-DISABLED_DRVS=$(disable_drivers "$ENABLED_DRVS")
+ENABLED_DRVS="vdpa/virtio,common/virtio,common/virtio_mi"
 
 %if %{with bluefield}
 MESON_PARAMS="$MESON_PARAMS --cross-file config/arm/arm64_bluefield_linux_native_gcc"
@@ -132,7 +106,7 @@ MACHINE=default
 %endif
 %endif
 
-CFLAGS="$CFLAGS -fcommon -Werror" meson %{target} -Dexamples=vdpa -Dc_args='-DRTE_LIBRTE_VDPA_DEBUG' --debug -Dprefix=%{dst_prefix} -Dlibdir=%{dst_prefix}/%{dst_lib} --includedir=include/dpdk -Dmachine=$MACHINE -Dmax_ethports=1024 -Ddisable_drivers=$DISABLED_DRVS -Dtests=false -Ddrivers_install_subdir=dpdk/pmds --default-library=shared $MESON_PARAMS
+CFLAGS="$CFLAGS -fcommon -Werror" meson %{target} -Dexamples=vdpa -Dc_args='-DRTE_LIBRTE_VDPA_DEBUG' --debug -Dprefix=%{dst_prefix} -Dlibdir=%{dst_prefix}/%{dst_lib} --includedir=include/dpdk -Dmachine=$MACHINE -Dmax_ethports=1024 -Denable_drivers=$ENABLED_DRVS -Dtests=false -Ddrivers_install_subdir=dpdk/pmds --default-library=shared $MESON_PARAMS
 
 %build
 %{__ninja} -v -C %{target}
@@ -162,6 +136,7 @@ EOF
 %{dst_prefix}/%{dst_lib}/*.so.*
 %{dst_prefix}/%{dst_lib}/dpdk/*/*.so.*
 /etc/ld.so.conf.d/%{name}-%{_arch}.conf
+/usr/lib/systemd/system/*
 
 %files devel
 %{dst_prefix}/include/dpdk

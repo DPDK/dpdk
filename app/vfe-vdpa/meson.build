@@ -23,6 +23,14 @@ install_data([
         ],
         install_dir: 'bin')
 
+conf = configuration_data()
+conf.set('prefix', get_option('prefix'))
+
+configure_file(input : 'vfe-vhostd.service.in',
+               output : 'vfe-vhostd.service',
+               configuration: conf,
+               install_dir : '/usr/lib/systemd/system/')
+
 # if meson >= 0.61.0, can use install_symlink instead
 meson.add_install_script('sh', '-c',
                          'cd ${MESON_INSTALL_DESTDIR_PREFIX}/bin; ln -sf vhostmgmt vfe-vhost-cli')
