@@ -673,6 +673,10 @@ ice_rx_queue_start(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 		return -EINVAL;
 	}
 
+	if (dev->data->rx_queue_state[rx_queue_id] ==
+		RTE_ETH_QUEUE_STATE_STARTED)
+		return 0;
+
 	if (dev->data->dev_conf.rxmode.offloads & RTE_ETH_RX_OFFLOAD_TIMESTAMP)
 		rxq->ts_enable = true;
 	err = ice_program_hw_rx_queue(rxq);
@@ -717,6 +721,10 @@ ice_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 	if (rx_queue_id < dev->data->nb_rx_queues) {
 		rxq = dev->data->rx_queues[rx_queue_id];
 
+		if (dev->data->rx_queue_state[rx_queue_id] ==
+			RTE_ETH_QUEUE_STATE_STOPPED)
+			return 0;
+
 		err = ice_switch_rx_queue(hw, rxq->reg_idx, false);
 		if (err) {
 			PMD_DRV_LOG(ERR, "Failed to switch RX queue %u off",
@@ -757,6 +765,10 @@ ice_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 			    tx_queue_id);
 		return -EINVAL;
 	}
+
+	if (dev->data->tx_queue_state[tx_queue_id] ==
+		RTE_ETH_QUEUE_STATE_STARTED)
+		return 0;
 
 	buf_len = ice_struct_size(txq_elem, txqs, 1);
 	txq_elem = ice_malloc(hw, buf_len);
@@ -1065,6 +1077,10 @@ ice_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 			    tx_queue_id);
 		return -EINVAL;
 	}
+
+	if (dev->data->tx_queue_state[tx_queue_id] ==
+		RTE_ETH_QUEUE_STATE_STOPPED)
+		return 0;
 
 	q_ids[0] = txq->reg_idx;
 	q_teids[0] = txq->q_teid;
