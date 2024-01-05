@@ -2342,23 +2342,28 @@ eth_axgbe_dev_init(struct rte_eth_dev *eth_dev)
 	pdata->arcache = AXGBE_DMA_OS_ARCACHE;
 	pdata->awcache = AXGBE_DMA_OS_AWCACHE;
 
+	/* Read the port property registers */
+	pdata->pp0 = XP_IOREAD(pdata, XP_PROP_0);
+	pdata->pp1 = XP_IOREAD(pdata, XP_PROP_1);
+	pdata->pp2 = XP_IOREAD(pdata, XP_PROP_2);
+	pdata->pp3 = XP_IOREAD(pdata, XP_PROP_3);
+	pdata->pp4 = XP_IOREAD(pdata, XP_PROP_4);
+
 	/* Set the maximum channels and queues */
-	reg = XP_IOREAD(pdata, XP_PROP_1);
-	pdata->tx_max_channel_count = XP_GET_BITS(reg, XP_PROP_1, MAX_TX_DMA);
-	pdata->rx_max_channel_count = XP_GET_BITS(reg, XP_PROP_1, MAX_RX_DMA);
-	pdata->tx_max_q_count = XP_GET_BITS(reg, XP_PROP_1, MAX_TX_QUEUES);
-	pdata->rx_max_q_count = XP_GET_BITS(reg, XP_PROP_1, MAX_RX_QUEUES);
+	pdata->tx_max_channel_count = XP_GET_BITS(pdata->pp1, XP_PROP_1, MAX_TX_DMA);
+	pdata->rx_max_channel_count = XP_GET_BITS(pdata->pp1, XP_PROP_1, MAX_RX_DMA);
+	pdata->tx_max_q_count = XP_GET_BITS(pdata->pp1, XP_PROP_1, MAX_TX_QUEUES);
+	pdata->rx_max_q_count = XP_GET_BITS(pdata->pp1, XP_PROP_1, MAX_RX_QUEUES);
 
 	/* Set the hardware channel and queue counts */
 	axgbe_set_counts(pdata);
 
 	/* Set the maximum fifo amounts */
-	reg = XP_IOREAD(pdata, XP_PROP_2);
-	pdata->tx_max_fifo_size = XP_GET_BITS(reg, XP_PROP_2, TX_FIFO_SIZE);
+	pdata->tx_max_fifo_size = XP_GET_BITS(pdata->pp2, XP_PROP_2, TX_FIFO_SIZE);
 	pdata->tx_max_fifo_size *= 16384;
 	pdata->tx_max_fifo_size = RTE_MIN(pdata->tx_max_fifo_size,
 					  pdata->vdata->tx_max_fifo_size);
-	pdata->rx_max_fifo_size = XP_GET_BITS(reg, XP_PROP_2, RX_FIFO_SIZE);
+	pdata->rx_max_fifo_size = XP_GET_BITS(pdata->pp2, XP_PROP_2, RX_FIFO_SIZE);
 	pdata->rx_max_fifo_size *= 16384;
 	pdata->rx_max_fifo_size = RTE_MIN(pdata->rx_max_fifo_size,
 					  pdata->vdata->rx_max_fifo_size);

@@ -1709,40 +1709,35 @@ static int axgbe_phy_link_status(struct axgbe_port *pdata, int *an_restart)
 static void axgbe_phy_sfp_gpio_setup(struct axgbe_port *pdata)
 {
 	struct axgbe_phy_data *phy_data = pdata->phy_data;
-	unsigned int reg;
-
-	reg = XP_IOREAD(pdata, XP_PROP_3);
 
 	phy_data->sfp_gpio_address = AXGBE_GPIO_ADDRESS_PCA9555 +
-		XP_GET_BITS(reg, XP_PROP_3, GPIO_ADDR);
+		XP_GET_BITS(pdata->pp3, XP_PROP_3, GPIO_ADDR);
 
-	phy_data->sfp_gpio_mask = XP_GET_BITS(reg, XP_PROP_3, GPIO_MASK);
+	phy_data->sfp_gpio_mask = XP_GET_BITS(pdata->pp3, XP_PROP_3, GPIO_MASK);
 
-	phy_data->sfp_gpio_rx_los = XP_GET_BITS(reg, XP_PROP_3,
+	phy_data->sfp_gpio_rx_los = XP_GET_BITS(pdata->pp3, XP_PROP_3,
 						GPIO_RX_LOS);
-	phy_data->sfp_gpio_tx_fault = XP_GET_BITS(reg, XP_PROP_3,
+	phy_data->sfp_gpio_tx_fault = XP_GET_BITS(pdata->pp3, XP_PROP_3,
 						  GPIO_TX_FAULT);
-	phy_data->sfp_gpio_mod_absent = XP_GET_BITS(reg, XP_PROP_3,
+	phy_data->sfp_gpio_mod_absent = XP_GET_BITS(pdata->pp3, XP_PROP_3,
 						    GPIO_MOD_ABS);
-	phy_data->sfp_gpio_rate_select = XP_GET_BITS(reg, XP_PROP_3,
+	phy_data->sfp_gpio_rate_select = XP_GET_BITS(pdata->pp3, XP_PROP_3,
 						     GPIO_RATE_SELECT);
 }
 
 static void axgbe_phy_sfp_comm_setup(struct axgbe_port *pdata)
 {
 	struct axgbe_phy_data *phy_data = pdata->phy_data;
-	unsigned int reg, mux_addr_hi, mux_addr_lo;
+	unsigned int mux_addr_hi, mux_addr_lo;
 
-	reg = XP_IOREAD(pdata, XP_PROP_4);
-
-	mux_addr_hi = XP_GET_BITS(reg, XP_PROP_4, MUX_ADDR_HI);
-	mux_addr_lo = XP_GET_BITS(reg, XP_PROP_4, MUX_ADDR_LO);
+	mux_addr_hi = XP_GET_BITS(pdata->pp4, XP_PROP_4, MUX_ADDR_HI);
+	mux_addr_lo = XP_GET_BITS(pdata->pp4, XP_PROP_4, MUX_ADDR_LO);
 	if (mux_addr_lo == AXGBE_SFP_DIRECT)
 		return;
 
 	phy_data->sfp_comm = AXGBE_SFP_COMM_PCA9545;
 	phy_data->sfp_mux_address = (mux_addr_hi << 2) + mux_addr_lo;
-	phy_data->sfp_mux_channel = XP_GET_BITS(reg, XP_PROP_4, MUX_CHAN);
+	phy_data->sfp_mux_channel = XP_GET_BITS(pdata->pp4, XP_PROP_4, MUX_CHAN);
 }
 
 static void axgbe_phy_sfp_setup(struct axgbe_port *pdata)
@@ -1778,12 +1773,11 @@ static bool axgbe_phy_redrv_error(struct axgbe_phy_data *phy_data)
 static int axgbe_phy_mdio_reset_setup(struct axgbe_port *pdata)
 {
 	struct axgbe_phy_data *phy_data = pdata->phy_data;
-	unsigned int reg;
 
 	if (phy_data->conn_type != AXGBE_CONN_TYPE_MDIO)
 		return 0;
-	reg = XP_IOREAD(pdata, XP_PROP_3);
-	phy_data->mdio_reset = XP_GET_BITS(reg, XP_PROP_3, MDIO_RESET);
+
+	phy_data->mdio_reset = XP_GET_BITS(pdata->pp3, XP_PROP_3, MDIO_RESET);
 	switch (phy_data->mdio_reset) {
 	case AXGBE_MDIO_RESET_NONE:
 	case AXGBE_MDIO_RESET_I2C_GPIO:
@@ -1796,12 +1790,12 @@ static int axgbe_phy_mdio_reset_setup(struct axgbe_port *pdata)
 	}
 	if (phy_data->mdio_reset == AXGBE_MDIO_RESET_I2C_GPIO) {
 		phy_data->mdio_reset_addr = AXGBE_GPIO_ADDRESS_PCA9555 +
-			XP_GET_BITS(reg, XP_PROP_3,
+			XP_GET_BITS(pdata->pp3, XP_PROP_3,
 				    MDIO_RESET_I2C_ADDR);
-		phy_data->mdio_reset_gpio = XP_GET_BITS(reg, XP_PROP_3,
+		phy_data->mdio_reset_gpio = XP_GET_BITS(pdata->pp3, XP_PROP_3,
 							MDIO_RESET_I2C_GPIO);
 	} else if (phy_data->mdio_reset == AXGBE_MDIO_RESET_INT_GPIO) {
-		phy_data->mdio_reset_gpio = XP_GET_BITS(reg, XP_PROP_3,
+		phy_data->mdio_reset_gpio = XP_GET_BITS(pdata->pp3, XP_PROP_3,
 							MDIO_RESET_INT_GPIO);
 	}
 
@@ -1893,12 +1887,9 @@ static bool axgbe_phy_conn_type_mismatch(struct axgbe_port *pdata)
 
 static bool axgbe_phy_port_enabled(struct axgbe_port *pdata)
 {
-	unsigned int reg;
-
-	reg = XP_IOREAD(pdata, XP_PROP_0);
-	if (!XP_GET_BITS(reg, XP_PROP_0, PORT_SPEEDS))
+	if (!XP_GET_BITS(pdata->pp0, XP_PROP_0, PORT_SPEEDS))
 		return false;
-	if (!XP_GET_BITS(reg, XP_PROP_0, CONN_TYPE))
+	if (!XP_GET_BITS(pdata->pp0, XP_PROP_0, CONN_TYPE))
 		return false;
 
 	return true;
@@ -2061,7 +2052,6 @@ static int axgbe_phy_reset(struct axgbe_port *pdata)
 static int axgbe_phy_init(struct axgbe_port *pdata)
 {
 	struct axgbe_phy_data *phy_data;
-	unsigned int reg;
 	int ret;
 
 	/* Check if enabled */
@@ -2082,19 +2072,17 @@ static int axgbe_phy_init(struct axgbe_port *pdata)
 	}
 	pdata->phy_data = phy_data;
 
-	reg = XP_IOREAD(pdata, XP_PROP_0);
-	phy_data->port_mode = XP_GET_BITS(reg, XP_PROP_0, PORT_MODE);
-	phy_data->port_id = XP_GET_BITS(reg, XP_PROP_0, PORT_ID);
-	phy_data->port_speeds = XP_GET_BITS(reg, XP_PROP_0, PORT_SPEEDS);
-	phy_data->conn_type = XP_GET_BITS(reg, XP_PROP_0, CONN_TYPE);
-	phy_data->mdio_addr = XP_GET_BITS(reg, XP_PROP_0, MDIO_ADDR);
+	phy_data->port_mode = XP_GET_BITS(pdata->pp0, XP_PROP_0, PORT_MODE);
+	phy_data->port_id = XP_GET_BITS(pdata->pp0, XP_PROP_0, PORT_ID);
+	phy_data->port_speeds = XP_GET_BITS(pdata->pp0, XP_PROP_0, PORT_SPEEDS);
+	phy_data->conn_type = XP_GET_BITS(pdata->pp0, XP_PROP_0, CONN_TYPE);
+	phy_data->mdio_addr = XP_GET_BITS(pdata->pp0, XP_PROP_0, MDIO_ADDR);
 
-	reg = XP_IOREAD(pdata, XP_PROP_4);
-	phy_data->redrv = XP_GET_BITS(reg, XP_PROP_4, REDRV_PRESENT);
-	phy_data->redrv_if = XP_GET_BITS(reg, XP_PROP_4, REDRV_IF);
-	phy_data->redrv_addr = XP_GET_BITS(reg, XP_PROP_4, REDRV_ADDR);
-	phy_data->redrv_lane = XP_GET_BITS(reg, XP_PROP_4, REDRV_LANE);
-	phy_data->redrv_model = XP_GET_BITS(reg, XP_PROP_4, REDRV_MODEL);
+	phy_data->redrv = XP_GET_BITS(pdata->pp4, XP_PROP_4, REDRV_PRESENT);
+	phy_data->redrv_if = XP_GET_BITS(pdata->pp4, XP_PROP_4, REDRV_IF);
+	phy_data->redrv_addr = XP_GET_BITS(pdata->pp4, XP_PROP_4, REDRV_ADDR);
+	phy_data->redrv_lane = XP_GET_BITS(pdata->pp4, XP_PROP_4, REDRV_LANE);
+	phy_data->redrv_model = XP_GET_BITS(pdata->pp4, XP_PROP_4, REDRV_MODEL);
 
 	/* Validate the connection requested */
 	if (axgbe_phy_conn_type_mismatch(pdata)) {
