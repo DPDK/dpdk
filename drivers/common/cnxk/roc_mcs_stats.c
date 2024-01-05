@@ -120,6 +120,11 @@ roc_mcs_sc_stats_get(struct roc_mcs *mcs, struct roc_mcs_stats_req *mcs_req,
 		if (roc_model_is_cn10kb_a0()) {
 			stats->octet_decrypt_cnt = rsp->octet_decrypt_cnt;
 			stats->octet_validate_cnt = rsp->octet_validate_cnt;
+			/*
+			 * If validate frame is enabled in secy configuration,
+			 * pkt unchecked count is same as pkt ok count.
+			 */
+			stats->pkt_ok_cnt = rsp->pkt_unchecked_cnt;
 		} else {
 			stats->pkt_delay_cnt = rsp->pkt_delay_cnt;
 			stats->pkt_ok_cnt = rsp->pkt_ok_cnt;
