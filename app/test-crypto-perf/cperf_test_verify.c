@@ -111,8 +111,10 @@ cperf_verify_op(struct rte_crypto_op *op,
 	uint32_t len;
 	uint16_t nb_segs;
 	uint8_t *data;
-	uint32_t cipher_offset, auth_offset;
-	uint8_t	cipher, auth;
+	uint32_t cipher_offset, auth_offset = 0;
+	bool cipher = false;
+	bool digest_verify = false;
+	bool is_encrypt = false;
 	int res = 0;
 
 	if (op->status != RTE_CRYPTO_OP_STATUS_SUCCESS)
@@ -150,42 +152,43 @@ cperf_verify_op(struct rte_crypto_op *op,
 
 	switch (options->op_type) {
 	case CPERF_CIPHER_ONLY:
-		cipher = 1;
+		cipher = true;
 		cipher_offset = 0;
-		auth = 0;
-		auth_offset = 0;
-		break;
-	case CPERF_CIPHER_THEN_AUTH:
-		cipher = 1;
-		cipher_offset = 0;
-		auth = 1;
-		auth_offset = options->test_buffer_size;
+		is_encrypt = options->cipher_op == RTE_CRYPTO_CIPHER_OP_ENCRYPT;
 		break;
 	case CPERF_AUTH_ONLY:
-		cipher = 0;
 		cipher_offset = 0;
-		auth = 1;
-		auth_offset = options->test_buffer_size;
+		if (options->auth_op == RTE_CRYPTO_AUTH_OP_GENERATE) {
+			auth_offset = options->test_buffer_size;
+			digest_verify = true;
+		}
 		break;
+	case CPERF_CIPHER_THEN_AUTH:
 	case CPERF_AUTH_THEN_CIPHER:
-		cipher = 1;
+		cipher = true;
 		cipher_offset = 0;
-		auth = 1;
-		auth_offset = options->test_buffer_size;
+		if (options->cipher_op == RTE_CRYPTO_CIPHER_OP_ENCRYPT) {
+			auth_offset = options->test_buffer_size;
+			digest_verify = true;
+			is_encrypt = true;
+		}
 		break;
 	case CPERF_AEAD:
-		cipher = 1;
+		cipher = true;
 		cipher_offset = 0;
-		auth = 1;
-		auth_offset = options->test_buffer_size;
+		if (options->aead_op == RTE_CRYPTO_AEAD_OP_ENCRYPT) {
+			auth_offset = options->test_buffer_size;
+			digest_verify = true;
+			is_encrypt = true;
+		}
 		break;
 	default:
 		res = 1;
 		goto out;
 	}
 
-	if (cipher == 1) {
-		if (options->cipher_op == RTE_CRYPTO_CIPHER_OP_ENCRYPT)
+	if (cipher) {
+		if (is_encrypt)
 			res += !!memcmp(data + cipher_offset,
 					vector->ciphertext.data,
 					options->test_buffer_size);
@@ -195,12 +198,8 @@ cperf_verify_op(struct rte_crypto_op *op,
 					options->test_buffer_size);
 	}
 
-	if (auth == 1) {
-		if (options->auth_op == RTE_CRYPTO_AUTH_OP_GENERATE)
-			res += !!memcmp(data + auth_offset,
-					vector->digest.data,
-					options->digest_sz);
-	}
+	if (digest_verify)
+		res += !!memcmp(data + auth_offset, vector->digest.data, options->digest_sz);
 
 out:
 	rte_free(data);
