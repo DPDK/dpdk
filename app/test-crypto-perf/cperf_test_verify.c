@@ -186,18 +186,18 @@ cperf_verify_op(struct rte_crypto_op *op,
 
 	if (cipher == 1) {
 		if (options->cipher_op == RTE_CRYPTO_CIPHER_OP_ENCRYPT)
-			res += memcmp(data + cipher_offset,
+			res += !!memcmp(data + cipher_offset,
 					vector->ciphertext.data,
 					options->test_buffer_size);
 		else
-			res += memcmp(data + cipher_offset,
+			res += !!memcmp(data + cipher_offset,
 					vector->plaintext.data,
 					options->test_buffer_size);
 	}
 
 	if (auth == 1) {
 		if (options->auth_op == RTE_CRYPTO_AUTH_OP_GENERATE)
-			res += memcmp(data + auth_offset,
+			res += !!memcmp(data + auth_offset,
 					vector->digest.data,
 					options->digest_sz);
 	}
