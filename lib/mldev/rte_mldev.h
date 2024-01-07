@@ -874,6 +874,10 @@ enum rte_ml_io_type {
 	/**< 32-bit integer */
 	RTE_ML_IO_TYPE_UINT32,
 	/**< 32-bit unsigned integer */
+	RTE_ML_IO_TYPE_INT64,
+	/**< 32-bit integer */
+	RTE_ML_IO_TYPE_UINT64,
+	/**< 32-bit unsigned integer */
 	RTE_ML_IO_TYPE_FP8,
 	/**< 8-bit floating point number */
 	RTE_ML_IO_TYPE_FP16,

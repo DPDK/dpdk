@@ -32,6 +32,10 @@ rte_ml_io_type_size_get(enum rte_ml_io_type type)
 		return sizeof(int32_t);
 	case RTE_ML_IO_TYPE_UINT32:
 		return sizeof(uint32_t);
+	case RTE_ML_IO_TYPE_INT64:
+		return sizeof(int64_t);
+	case RTE_ML_IO_TYPE_UINT64:
+		return sizeof(uint64_t);
 	case RTE_ML_IO_TYPE_FP8:
 		return sizeof(uint8_t);
 	case RTE_ML_IO_TYPE_FP16:

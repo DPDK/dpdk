@@ -327,6 +327,104 @@ rte_ml_io_uint32_to_float32(float scale, uint64_t nb_elements, void *input, void
 	return 0;
 }
 
+int
+rte_ml_io_float32_to_int64(float scale, uint64_t nb_elements, void *input, void *output)
+{
+	float *input_buffer;
+	int64_t *output_buffer;
+	uint64_t i;
+
+	if ((scale == 0) || (nb_elements == 0) || (input == NULL) || (output == NULL))
+		return -EINVAL;
+
+	input_buffer = (float *)input;
+	output_buffer = (int64_t *)output;
+
+	for (i = 0; i < nb_elements; i++) {
+		*output_buffer = (int64_t)round((*input_buffer) * scale);
+
+		input_buffer++;
+		output_buffer++;
+	}
+
+	return 0;
+}
+
+int
+rte_ml_io_int64_to_float32(float scale, uint64_t nb_elements, void *input, void *output)
+{
+	int64_t *input_buffer;
+	float *output_buffer;
+	uint64_t i;
+
+	if ((scale == 0) || (nb_elements == 0) || (input == NULL) || (output == NULL))
+		return -EINVAL;
+
+	input_buffer = (int64_t *)input;
+	output_buffer = (float *)output;
+
+	for (i = 0; i < nb_elements; i++) {
+		*output_buffer = scale * (float)(*input_buffer);
+
+		input_buffer++;
+		output_buffer++;
+	}
+
+	return 0;
+}
+
+int
+rte_ml_io_float32_to_uint64(float scale, uint64_t nb_elements, void *input, void *output)
+{
+	float *input_buffer;
+	uint64_t *output_buffer;
+	int64_t i64;
+	uint64_t i;
+
+	if ((scale == 0) || (nb_elements == 0) || (input == NULL) || (output == NULL))
+		return -EINVAL;
+
+	input_buffer = (float *)input;
+	output_buffer = (uint64_t *)output;
+
+	for (i = 0; i < nb_elements; i++) {
+		i64 = (int64_t)round((*input_buffer) * scale);
+
+		if (i64 < 0)
+			i64 = 0;
+
+		*output_buffer = (uint64_t)i64;
+
+		input_buffer++;
+		output_buffer++;
+	}
+
+	return 0;
+}
+
+int
+rte_ml_io_uint64_to_float32(float scale, uint64_t nb_elements, void *input, void *output)
+{
+	uint64_t *input_buffer;
+	float *output_buffer;
+	uint64_t i;
+
+	if ((scale == 0) || (nb_elements == 0) || (input == NULL) || (output == NULL))
+		return -EINVAL;
+
+	input_buffer = (uint64_t *)input;
+	output_buffer = (float *)output;
+
+	for (i = 0; i < nb_elements; i++) {
+		*output_buffer = scale * (float)(*input_buffer);
+
+		input_buffer++;
+		output_buffer++;
+	}
+
+	return 0;
+}
+
 /* Convert a single precision floating point number (float32) into a half precision
  * floating point number (float16) using round to nearest rounding mode.
  */
