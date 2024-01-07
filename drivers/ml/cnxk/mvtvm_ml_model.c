@@ -150,6 +150,8 @@ mvtvm_ml_io_type_map(DLDataType dltype)
 			return RTE_ML_IO_TYPE_INT16;
 		else if (dltype.bits == 32)
 			return RTE_ML_IO_TYPE_INT32;
+		else if (dltype.bits == 64)
+			return RTE_ML_IO_TYPE_INT64;
 		break;
 	case kDLUInt:
 		if (dltype.bits == 8)
@@ -158,6 +160,8 @@ mvtvm_ml_io_type_map(DLDataType dltype)
 			return RTE_ML_IO_TYPE_UINT16;
 		else if (dltype.bits == 32)
 			return RTE_ML_IO_TYPE_UINT32;
+		else if (dltype.bits == 64)
+			return RTE_ML_IO_TYPE_UINT64;
 		break;
 	case kDLFloat:
 		if (dltype.bits == 8)

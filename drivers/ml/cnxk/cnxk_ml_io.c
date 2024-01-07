@@ -40,6 +40,18 @@ cnxk_ml_io_quantize_single(struct cnxk_ml_io *input, uint8_t *dbuffer, uint8_t *
 		case RTE_ML_IO_TYPE_UINT16:
 			ret = rte_ml_io_float32_to_uint16(qscale, nb_elements, dbuffer, qbuffer);
 			break;
+		case RTE_ML_IO_TYPE_INT32:
+			ret = rte_ml_io_float32_to_int32(qscale, nb_elements, dbuffer, qbuffer);
+			break;
+		case RTE_ML_IO_TYPE_UINT32:
+			ret = rte_ml_io_float32_to_uint32(qscale, nb_elements, dbuffer, qbuffer);
+			break;
+		case RTE_ML_IO_TYPE_INT64:
+			ret = rte_ml_io_float32_to_int64(qscale, nb_elements, dbuffer, qbuffer);
+			break;
+		case RTE_ML_IO_TYPE_UINT64:
+			ret = rte_ml_io_float32_to_uint64(qscale, nb_elements, dbuffer, qbuffer);
+			break;
 		case RTE_ML_IO_TYPE_FP16:
 			ret = rte_ml_io_float32_to_float16(nb_elements, dbuffer, qbuffer);
 			break;
@@ -81,6 +93,18 @@ cnxk_ml_io_dequantize_single(struct cnxk_ml_io *output, uint8_t *qbuffer, uint8_
 			break;
 		case RTE_ML_IO_TYPE_UINT16:
 			ret = rte_ml_io_uint16_to_float32(dscale, nb_elements, qbuffer, dbuffer);
+			break;
+		case RTE_ML_IO_TYPE_INT32:
+			ret = rte_ml_io_int32_to_float32(dscale, nb_elements, qbuffer, dbuffer);
+			break;
+		case RTE_ML_IO_TYPE_UINT32:
+			ret = rte_ml_io_uint32_to_float32(dscale, nb_elements, qbuffer, dbuffer);
+			break;
+		case RTE_ML_IO_TYPE_INT64:
+			ret = rte_ml_io_int64_to_float32(dscale, nb_elements, qbuffer, dbuffer);
+			break;
+		case RTE_ML_IO_TYPE_UINT64:
+			ret = rte_ml_io_uint64_to_float32(dscale, nb_elements, qbuffer, dbuffer);
 			break;
 		case RTE_ML_IO_TYPE_FP16:
 			ret = rte_ml_io_float16_to_float32(nb_elements, qbuffer, dbuffer);
