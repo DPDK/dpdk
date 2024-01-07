@@ -58,7 +58,14 @@ void
 ice_tm_conf_uninit(struct rte_eth_dev *dev)
 {
 	struct ice_pf *pf = ICE_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+	struct ice_tm_shaper_profile *shaper_profile;
 	struct ice_tm_node *tm_node;
+
+	/* clear profile */
+	while ((shaper_profile = TAILQ_FIRST(&pf->tm_conf.shaper_profile_list))) {
+		TAILQ_REMOVE(&pf->tm_conf.shaper_profile_list, shaper_profile, node);
+		rte_free(shaper_profile);
+	}
 
 	/* clear node configuration */
 	while ((tm_node = TAILQ_FIRST(&pf->tm_conf.queue_list))) {
@@ -648,6 +655,8 @@ static int ice_move_recfg_lan_txq(struct rte_eth_dev *dev,
 	uint16_t buf_size = ice_struct_size(buf, txqs, 1);
 
 	buf = (struct ice_aqc_move_txqs_data *)ice_malloc(hw, sizeof(*buf));
+	if (buf == NULL)
+		return -ENOMEM;
 
 	queue_parent_node = queue_sched_node->parent;
 	buf->src_teid = queue_parent_node->info.node_teid;
@@ -659,6 +668,7 @@ static int ice_move_recfg_lan_txq(struct rte_eth_dev *dev,
 					NULL, buf, buf_size, &txqs_moved, NULL);
 	if (ret || txqs_moved == 0) {
 		PMD_DRV_LOG(ERR, "move lan queue %u failed", queue_id);
+		rte_free(buf);
 		return ICE_ERR_PARAM;
 	}
 
@@ -668,12 +678,14 @@ static int ice_move_recfg_lan_txq(struct rte_eth_dev *dev,
 	} else {
 		PMD_DRV_LOG(ERR, "invalid children number %d for queue %u",
 			    queue_parent_node->num_children, queue_id);
+		rte_free(buf);
 		return ICE_ERR_PARAM;
 	}
 	dst_node->children[dst_node->num_children++] = queue_sched_node;
 	queue_sched_node->parent = dst_node;
 	ice_sched_query_elem(hw, queue_sched_node->info.node_teid, &queue_sched_node->info);
 
+	rte_free(buf);
 	return ret;
 }
 
