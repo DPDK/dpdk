@@ -239,6 +239,98 @@ rte_ml_io_uint16_to_float32(float scale, uint64_t nb_elements, void *input, void
 /**
  * @internal
  *
+ * Convert a buffer containing numbers in single precision floating format (float32)
+ * to signed 32-bit integer format (INT32).
+ *
+ * @param[in] scale
+ *	Scale factor for conversion.
+ * @param[in] nb_elements
+ *	Number of elements in the buffer.
+ * @param[in] input
+ *	Input buffer containing float32 numbers. Size of buffer is equal to (nb_elements * 4) bytes.
+ * @param[out] output
+ *	Output buffer to store INT32 numbers. Size of buffer is equal to (nb_elements * 4) bytes.
+ *
+ * @return
+ *	- 0, Success.
+ *	- < 0, Error code on failure.
+ */
+__rte_internal
+int
+rte_ml_io_float32_to_int32(float scale, uint64_t nb_elements, void *input, void *output);
+
+/**
+ * @internal
+ *
+ * Convert a buffer containing numbers in signed 32-bit integer format (INT32)
+ * to single precision floating format (float32).
+ *
+ * @param[in] scale
+ *	Scale factor for conversion.
+ * @param[in] nb_elements
+ *	Number of elements in the buffer.
+ * @param[in] input
+ *	Input buffer containing INT32 numbers. Size of buffer is equal to (nb_elements * 4) bytes.
+ * @param[out] output
+ *	Output buffer to store float32 numbers. Size of buffer is equal to (nb_elements * 4) bytes.
+ *
+ * @return
+ *	- 0, Success.
+ *	- < 0, Error code on failure.
+ */
+__rte_internal
+int
+rte_ml_io_int32_to_float32(float scale, uint64_t nb_elements, void *input, void *output);
+
+/**
+ * @internal
+ *
+ * Convert a buffer containing numbers in single precision floating format (float32)
+ * to unsigned 32-bit integer format (UINT32).
+ *
+ * @param[in] scale
+ *	Scale factor for conversion.
+ * @param[in] nb_elements
+ *	Number of elements in the buffer.
+ * @param[in] input
+ *	Input buffer containing float32 numbers. Size of buffer is equal to (nb_elements * 4) bytes.
+ * @param[out] output
+ *	Output buffer to store UINT32 numbers. Size of buffer is equal to (nb_elements * 4) bytes.
+ *
+ * @return
+ *	- 0, Success.
+ *	- < 0, Error code on failure.
+ */
+__rte_internal
+int
+rte_ml_io_float32_to_uint32(float scale, uint64_t nb_elements, void *input, void *output);
+
+/**
+ * @internal
+ *
+ * Convert a buffer containing numbers in unsigned 32-bit integer format (UINT32)
+ * to single precision floating format (float32).
+ *
+ * @param[in] scale
+ *	Scale factor for conversion.
+ * @param[in] nb_elements
+ *	Number of elements in the buffer.
+ * @param[in] input
+ *	Input buffer containing UINT32 numbers. Size of buffer is equal to (nb_elements * 4) bytes.
+ * @param[out] output
+ *	Output buffer to store float32 numbers. Size of buffer is equal to (nb_elements * 4) bytes.
+ *
+ * @return
+ *	- 0, Success.
+ *	- < 0, Error code on failure.
+ */
+__rte_internal
+int
+rte_ml_io_uint32_to_float32(float scale, uint64_t nb_elements, void *input, void *output);
+
+/**
+ * @internal
+ *
  * Convert a buffer containing numbers in single precision floating format (float32) to half
  * precision floating point format (FP16).
  *

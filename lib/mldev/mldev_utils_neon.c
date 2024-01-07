@@ -601,6 +601,248 @@ rte_ml_io_uint16_to_float32(float scale, uint64_t nb_elements, void *input, void
 }
 
 static inline void
+__float32_to_int32_neon_s32x4(float scale, float *input, int32_t *output)
+{
+	float32x4_t f32x4;
+	int32x4_t s32x4;
+
+	/* load 4 x float elements */
+	f32x4 = vld1q_f32(input);
+
+	/* scale */
+	f32x4 = vmulq_n_f32(f32x4, scale);
+
+	/* convert to int32x4_t using round to nearest with ties away rounding mode */
+	s32x4 = vcvtaq_s32_f32(f32x4);
+
+	/* store 4 elements */
+	vst1q_s32(output, s32x4);
+}
+
+static inline void
+__float32_to_int32_neon_s32x1(float scale, float *input, int32_t *output)
+{
+	/* scale and convert, round to nearest with ties away rounding mode */
+	*output = vcvtas_s32_f32(scale * (*input));
+}
+
+int
+rte_ml_io_float32_to_int32(float scale, uint64_t nb_elements, void *input, void *output)
+{
+	float *input_buffer;
+	int32_t *output_buffer;
+	uint64_t nb_iterations;
+	uint32_t vlen;
+	uint64_t i;
+
+	if ((scale == 0) || (nb_elements == 0) || (input == NULL) || (output == NULL))
+		return -EINVAL;
+
+	input_buffer = (float *)input;
+	output_buffer = (int32_t *)output;
+	vlen = 2 * sizeof(float) / sizeof(int32_t);
+	nb_iterations = nb_elements / vlen;
+
+	/* convert vlen elements in each iteration */
+	for (i = 0; i < nb_iterations; i++) {
+		__float32_to_int32_neon_s32x4(scale, input_buffer, output_buffer);
+		input_buffer += vlen;
+		output_buffer += vlen;
+	}
+
+	/* convert leftover elements */
+	i = i * vlen;
+	for (; i < nb_elements; i++) {
+		__float32_to_int32_neon_s32x1(scale, input_buffer, output_buffer);
+		input_buffer++;
+		output_buffer++;
+	}
+
+	return 0;
+}
+
+static inline void
+__int32_to_float32_neon_f32x4(float scale, int32_t *input, float *output)
+{
+	float32x4_t f32x4;
+	int32x4_t s32x4;
+
+	/* load 4 x int32_t elements */
+	s32x4 = vld1q_s32(input);
+
+	/* convert int32_t to float */
+	f32x4 = vcvtq_f32_s32(s32x4);
+
+	/* scale */
+	f32x4 = vmulq_n_f32(f32x4, scale);
+
+	/* store float32x4_t */
+	vst1q_f32(output, f32x4);
+}
+
+static inline void
+__int32_to_float32_neon_f32x1(float scale, int32_t *input, float *output)
+{
+	*output = scale * vcvts_f32_s32(*input);
+}
+
+int
+rte_ml_io_int32_to_float32(float scale, uint64_t nb_elements, void *input, void *output)
+{
+	int32_t *input_buffer;
+	float *output_buffer;
+	uint64_t nb_iterations;
+	uint32_t vlen;
+	uint64_t i;
+
+	if ((scale == 0) || (nb_elements == 0) || (input == NULL) || (output == NULL))
+		return -EINVAL;
+
+	input_buffer = (int32_t *)input;
+	output_buffer = (float *)output;
+	vlen = 2 * sizeof(float) / sizeof(int32_t);
+	nb_iterations = nb_elements / vlen;
+
+	/* convert vlen elements in each iteration */
+	for (i = 0; i < nb_iterations; i++) {
+		__int32_to_float32_neon_f32x4(scale, input_buffer, output_buffer);
+		input_buffer += vlen;
+		output_buffer += vlen;
+	}
+
+	/* convert leftover elements */
+	i = i * vlen;
+	for (; i < nb_elements; i++) {
+		__int32_to_float32_neon_f32x1(scale, input_buffer, output_buffer);
+		input_buffer++;
+		output_buffer++;
+	}
+
+	return 0;
+}
+
+static inline void
+__float32_to_uint32_neon_u32x4(float scale, float *input, uint32_t *output)
+{
+	float32x4_t f32x4;
+	uint32x4_t u32x4;
+
+	/* load 4 float elements */
+	f32x4 = vld1q_f32(input);
+
+	/* scale */
+	f32x4 = vmulq_n_f32(f32x4, scale);
+
+	/* convert using round to nearest with ties to away rounding mode */
+	u32x4 = vcvtaq_u32_f32(f32x4);
+
+	/* store 4 elements */
+	vst1q_u32(output, u32x4);
+}
+
+static inline void
+__float32_to_uint32_neon_u32x1(float scale, float *input, uint32_t *output)
+{
+	/* scale and convert, round to nearest with ties away rounding mode */
+	*output = vcvtas_u32_f32(scale * (*input));
+}
+
+int
+rte_ml_io_float32_to_uint32(float scale, uint64_t nb_elements, void *input, void *output)
+{
+	float *input_buffer;
+	uint32_t *output_buffer;
+	uint64_t nb_iterations;
+	uint64_t vlen;
+	uint64_t i;
+
+	if ((scale == 0) || (nb_elements == 0) || (input == NULL) || (output == NULL))
+		return -EINVAL;
+
+	input_buffer = (float *)input;
+	output_buffer = (uint32_t *)output;
+	vlen = 2 * sizeof(float) / sizeof(uint32_t);
+	nb_iterations = nb_elements / vlen;
+
+	/* convert vlen elements in each iteration */
+	for (i = 0; i < nb_iterations; i++) {
+		__float32_to_uint32_neon_u32x4(scale, input_buffer, output_buffer);
+		input_buffer += vlen;
+		output_buffer += vlen;
+	}
+
+	/* convert leftover elements */
+	i = i * vlen;
+	for (; i < nb_elements; i++) {
+		__float32_to_uint32_neon_u32x1(scale, input_buffer, output_buffer);
+		input_buffer++;
+		output_buffer++;
+	}
+
+	return 0;
+}
+
+static inline void
+__uint32_to_float32_neon_f32x4(float scale, uint32_t *input, float *output)
+{
+	float32x4_t f32x4;
+	uint32x4_t u32x4;
+
+	/* load 4 x uint32_t elements */
+	u32x4 = vld1q_u32(input);
+
+	/* convert uint32_t to float */
+	f32x4 = vcvtq_f32_u32(u32x4);
+
+	/* scale */
+	f32x4 = vmulq_n_f32(f32x4, scale);
+
+	/* store float32x4_t */
+	vst1q_f32(output, f32x4);
+}
+
+static inline void
+__uint32_to_float32_neon_f32x1(float scale, uint32_t *input, float *output)
+{
+	*output = scale * vcvts_f32_u32(*input);
+}
+
+int
+rte_ml_io_uint32_to_float32(float scale, uint64_t nb_elements, void *input, void *output)
+{
+	uint32_t *input_buffer;
+	float *output_buffer;
+	uint64_t nb_iterations;
+	uint32_t vlen;
+	uint64_t i;
+
+	if ((scale == 0) || (nb_elements == 0) || (input == NULL) || (output == NULL))
+		return -EINVAL;
+
+	input_buffer = (uint32_t *)input;
+	output_buffer = (float *)output;
+	vlen = 2 * sizeof(float) / sizeof(uint32_t);
+	nb_iterations = nb_elements / vlen;
+
+	/* convert vlen elements in each iteration */
+	for (i = 0; i < nb_iterations; i++) {
+		__uint32_to_float32_neon_f32x4(scale, input_buffer, output_buffer);
+		input_buffer += vlen;
+		output_buffer += vlen;
+	}
+
+	/* convert leftover elements */
+	i = i * vlen;
+	for (; i < nb_elements; i++) {
+		__uint32_to_float32_neon_f32x1(scale, input_buffer, output_buffer);
+		input_buffer++;
+		output_buffer++;
+	}
+
+	return 0;
+}
+
+static inline void
 __float32_to_float16_neon_f16x4(float32_t *input, float16_t *output)
 {
 	float32x4_t f32x4;

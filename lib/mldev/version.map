@@ -57,6 +57,10 @@ INTERNAL {
 	rte_ml_io_int16_to_float32;
 	rte_ml_io_float32_to_uint16;
 	rte_ml_io_uint16_to_float32;
+	rte_ml_io_float32_to_int32;
+	rte_ml_io_int32_to_float32;
+	rte_ml_io_float32_to_uint32;
+	rte_ml_io_uint32_to_float32;
 	rte_ml_io_float32_to_float16;
 	rte_ml_io_float16_to_float32;
 	rte_ml_io_float32_to_bfloat16;
