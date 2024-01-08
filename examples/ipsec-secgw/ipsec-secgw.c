@@ -236,15 +236,7 @@ struct lcore_conf lcore_conf[RTE_MAX_LCORE];
 
 static struct rte_eth_conf port_conf = {
 	.rxmode = {
-		.mq_mode	= RTE_ETH_MQ_RX_RSS,
-		.offloads = RTE_ETH_RX_OFFLOAD_CHECKSUM,
-	},
-	.rx_adv_conf = {
-		.rss_conf = {
-			.rss_key = NULL,
-			.rss_hf = RTE_ETH_RSS_IP | RTE_ETH_RSS_UDP |
-				RTE_ETH_RSS_TCP | RTE_ETH_RSS_SCTP,
-		},
+		.mq_mode	= RTE_ETH_MQ_RX_NONE,
 	},
 	.txmode = {
 		.mq_mode = RTE_ETH_MQ_TX_NONE,
