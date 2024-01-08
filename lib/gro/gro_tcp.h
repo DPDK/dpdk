@@ -19,6 +19,8 @@
 #define INVALID_TCP_HDRLEN(len) \
 	(((len) < sizeof(struct rte_tcp_hdr)) || ((len) > MAX_TCP_HLEN))
 
+#define VALID_GRO_TCP_FLAGS (RTE_TCP_ACK_FLAG | RTE_TCP_PSH_FLAG | RTE_TCP_FIN_FLAG)
+
 struct cmn_tcp_key {
 	struct rte_ether_addr eth_saddr;
 	struct rte_ether_addr eth_daddr;
@@ -81,11 +83,13 @@ merge_two_tcp_packets(struct gro_tcp_item *item,
 		struct rte_mbuf *pkt,
 		int cmp,
 		uint32_t sent_seq,
+		uint8_t tcp_flags,
 		uint16_t ip_id,
 		uint16_t l2_offset)
 {
 	struct rte_mbuf *pkt_head, *pkt_tail, *lastseg;
 	uint16_t hdr_len, l2_len;
+	struct rte_tcp_hdr *tcp_hdr;
 
 	if (cmp > 0) {
 		pkt_head = item->firstseg;
@@ -128,6 +132,11 @@ merge_two_tcp_packets(struct gro_tcp_item *item,
 	/* update MBUF metadata for the merged packet */
 	pkt_head->nb_segs += pkt_tail->nb_segs;
 	pkt_head->pkt_len += pkt_tail->pkt_len;
+	if (tcp_flags != RTE_TCP_ACK_FLAG) {
+		tcp_hdr = rte_pktmbuf_mtod_offset(pkt, struct rte_tcp_hdr *,
+						l2_offset + pkt_head->l2_len + pkt_head->l3_len);
+		tcp_hdr->tcp_flags |= tcp_flags;
+	}
 
 	return 1;
 }
