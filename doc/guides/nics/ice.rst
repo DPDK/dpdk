@@ -352,6 +352,25 @@ queue 3 using a raw pattern::
 
 Currently, raw pattern support is limited to the FDIR and Hash engines.
 
+Traffic Management Support
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The ice PMD provides support for the Traffic Management API (RTE_TM), allow
+users to offload a 3-layers Tx scheduler on the E810 NIC:
+
+- ``Port Layer``
+
+  This is the root layer, support peak bandwidth configuration, max to 32 children.
+
+- ``Queue Group Layer``
+
+  The middel layer, support peak / committed bandwidth, weight, priority configurations,
+  max to 8 children.
+
+- ``Queue Layer``
+
+  The leaf layer, support peak / committed bandwidth, weight, priority configurations.
+
 Additional Options
 ++++++++++++++++++
 
