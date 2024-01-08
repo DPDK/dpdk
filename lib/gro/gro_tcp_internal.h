@@ -101,7 +101,7 @@ process_tcp_item(struct rte_mbuf *pkt,
 				is_atomic);
 		if (cmp) {
 			if (merge_two_tcp_packets(&items[cur_idx],
-						pkt, cmp, sent_seq, ip_id, 0))
+						pkt, cmp, sent_seq, tcp_hdr->tcp_flags, ip_id, 0))
 				return 1;
 			/*
 			 * Fail to merge the two packets, as the packet

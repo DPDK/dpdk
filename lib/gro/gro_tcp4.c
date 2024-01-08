@@ -126,6 +126,7 @@ gro_tcp4_reassemble(struct rte_mbuf *pkt,
 	uint32_t item_idx;
 	uint32_t i, max_flow_num, remaining_flow_num;
 	uint8_t find;
+	uint32_t item_start_idx;
 
 	/*
 	 * Don't process the packet whose TCP header length is greater
@@ -139,11 +140,8 @@ gro_tcp4_reassemble(struct rte_mbuf *pkt,
 	tcp_hdr = (struct rte_tcp_hdr *)((char *)ipv4_hdr + pkt->l3_len);
 	hdr_len = pkt->l2_len + pkt->l3_len + pkt->l4_len;
 
-	/*
-	 * Don't process the packet which has FIN, SYN, RST, PSH, URG, ECE
-	 * or CWR set.
-	 */
-	if (tcp_hdr->tcp_flags != RTE_TCP_ACK_FLAG)
+	/* Return early if the TCP flags are not handled in GRO layer */
+	if (tcp_hdr->tcp_flags & ~VALID_GRO_TCP_FLAGS)
 		return -1;
 
 	/* trim the tail padding bytes */
@@ -183,13 +181,35 @@ gro_tcp4_reassemble(struct rte_mbuf *pkt,
 		if (tbl->flows[i].start_index != INVALID_ARRAY_INDEX) {
 			if (is_same_tcp4_flow(tbl->flows[i].key, key)) {
 				find = 1;
+				item_start_idx = tbl->flows[i].start_index;
 				break;
 			}
 			remaining_flow_num--;
 		}
 	}
 
-	if (find == 0) {
+	if (find == 1) {
+		/*
+		 * Any packet with additional flags like PSH,FIN should be processed
+		 * and flushed immediately.
+		 * Hence marking the start time to 0, so that the packets will be flushed
+		 * immediately in timer mode.
+		 */
+		if (tcp_hdr->tcp_flags & (RTE_TCP_ACK_FLAG | RTE_TCP_PSH_FLAG | RTE_TCP_FIN_FLAG)) {
+			if (tcp_hdr->tcp_flags != RTE_TCP_ACK_FLAG)
+				tbl->items[item_start_idx].start_time = 0;
+			return process_tcp_item(pkt, tcp_hdr, tcp_dl, tbl->items,
+						tbl->flows[i].start_index, &tbl->item_num,
+						tbl->max_item_num, ip_id, is_atomic, start_time);
+		} else {
+			return -1;
+		}
+	}
+	/*
+	 * Add new flow to the table only if contains ACK flag with data.
+	 * Do not add any packets with additional tcp flags to the GRO table
+	 */
+	if (tcp_hdr->tcp_flags == RTE_TCP_ACK_FLAG) {
 		sent_seq = rte_be_to_cpu_32(tcp_hdr->sent_seq);
 		item_idx = insert_new_tcp_item(pkt, tbl->items, &tbl->item_num,
 						tbl->max_item_num, start_time,
@@ -209,9 +229,7 @@ gro_tcp4_reassemble(struct rte_mbuf *pkt,
 		return 0;
 	}
 
-	return process_tcp_item(pkt, tcp_hdr, tcp_dl, tbl->items, tbl->flows[i].start_index,
-						&tbl->item_num, tbl->max_item_num,
-						ip_id, is_atomic, start_time);
+	return -1;
 }
 
 /*
