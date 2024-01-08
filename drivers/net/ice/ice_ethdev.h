@@ -470,7 +470,6 @@ struct ice_tm_shaper_profile {
 struct ice_tm_node {
 	TAILQ_ENTRY(ice_tm_node) node;
 	uint32_t id;
-	uint32_t tc;
 	uint32_t priority;
 	uint32_t weight;
 	uint32_t reference_count;
@@ -484,8 +483,6 @@ struct ice_tm_node {
 /* node type of Traffic Manager */
 enum ice_tm_node_type {
 	ICE_TM_NODE_TYPE_PORT,
-	ICE_TM_NODE_TYPE_TC,
-	ICE_TM_NODE_TYPE_VSI,
 	ICE_TM_NODE_TYPE_QGROUP,
 	ICE_TM_NODE_TYPE_QUEUE,
 	ICE_TM_NODE_TYPE_MAX,
@@ -495,12 +492,8 @@ enum ice_tm_node_type {
 struct ice_tm_conf {
 	struct ice_shaper_profile_list shaper_profile_list;
 	struct ice_tm_node *root; /* root node - port */
-	struct ice_tm_node_list tc_list; /* node list for all the TCs */
-	struct ice_tm_node_list vsi_list; /* node list for all the VSIs */
 	struct ice_tm_node_list qgroup_list; /* node list for all the queue groups */
 	struct ice_tm_node_list queue_list; /* node list for all the queues */
-	uint32_t nb_tc_node;
-	uint32_t nb_vsi_node;
 	uint32_t nb_qgroup_node;
 	uint32_t nb_queue_node;
 	bool committed;
