@@ -472,6 +472,7 @@ struct ice_tm_node {
 	uint32_t id;
 	uint32_t priority;
 	uint32_t weight;
+	uint32_t level;
 	uint32_t reference_count;
 	struct ice_tm_node *parent;
 	struct ice_tm_node **children;
@@ -492,10 +493,6 @@ enum ice_tm_node_type {
 struct ice_tm_conf {
 	struct ice_shaper_profile_list shaper_profile_list;
 	struct ice_tm_node *root; /* root node - port */
-	struct ice_tm_node_list qgroup_list; /* node list for all the queue groups */
-	struct ice_tm_node_list queue_list; /* node list for all the queues */
-	uint32_t nb_qgroup_node;
-	uint32_t nb_queue_node;
 	bool committed;
 	bool clear_on_fail;
 };
