@@ -8,6 +8,7 @@ subdirs = [
         'common/cnxk',    # depends on bus.
         'common/mlx5',    # depends on bus.
         'common/virtio',  # depends on bus.
+        'common/virtio_ha',  # depends on bus.
         'common/virtio_mi',  # depends on bus.
         'common/qat',     # depends on bus.
         'common/sfc_efx', # depends on bus.

@@ -1,0 +1,29 @@
+INTERNAL {
+	global:
+
+	virtio_ha_pf_ctx_store;
+	virtio_ha_pf_ctx_remove;
+	virtio_ha_vf_devargs_fds_store;
+	virtio_ha_vf_devargs_fds_remove;
+	virtio_ha_vf_vhost_fd_store;
+	virtio_ha_vf_vhost_fd_remove;
+	virtio_ha_vf_mem_tbl_store;
+	virtio_ha_vf_mem_tbl_remove;
+
+	local: *;
+};
+
+DPDK_22 {
+	global:
+
+	virtio_ha_pf_list_query;
+	virtio_ha_vf_list_query;
+	virtio_ha_pf_ctx_query;
+	virtio_ha_vf_ctx_query;
+	virtio_ha_pf_ctx_set;
+	virtio_ha_pf_ctx_unset;
+	virtio_ha_vf_ctx_set;
+	virtio_ha_vf_ctx_unset;
+
+	local: *;
+};
