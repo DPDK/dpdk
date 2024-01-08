@@ -24,6 +24,11 @@ DPDK_22 {
 	virtio_ha_pf_ctx_unset;
 	virtio_ha_vf_ctx_set;
 	virtio_ha_vf_ctx_unset;
+	virtio_ha_alloc_msg;
+	virtio_ha_free_msg;
+	virtio_ha_reset_msg;
+	virtio_ha_send_msg;
+	virtio_ha_recv_msg;
 
 	local: *;
 };

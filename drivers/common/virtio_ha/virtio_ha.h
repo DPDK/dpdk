@@ -12,7 +12,36 @@
 #include <rte_compat.h>
 
 #define VDPA_MAX_SOCK_LEN 108 /* Follow definition of struct sockaddr_un in sys/un.h */
+#define VIRTIO_HA_MAX_FDS 3
 
+enum virtio_ha_msg_type {
+	VIRTIO_HA_APP_QUERY_PF_LIST = 0,
+	VIRTIO_HA_APP_QUERY_VF_LIST = 1,
+	VIRTIO_HA_APP_QUERY_PF_CTX = 2,
+	VIRTIO_HA_APP_QUERY_VF_CTX = 3,
+	VIRTIO_HA_PF_STORE_CTX = 4,
+	VIRTIO_HA_PF_REMOVE_CTX = 5,
+	VIRTIO_HA_VF_STORE_DEVARG_VFIO_FDS = 6,
+	VIRTIO_HA_VF_STORE_VHOST_FD = 7,
+	VIRTIO_HA_VF_STORE_DMA_TBL = 8,
+	VIRTIO_HA_VF_REMOVE_DEVARG_VFIO_FDS = 9,
+	VIRTIO_HA_VF_REMOVE_VHOST_FD = 10,
+	VIRTIO_HA_VF_REMOVE_DMA_TBL = 11,
+	VIRTIO_HA_MESSAGE_MAX = 12,
+};
+
+struct virtio_ha_msg_hdr {
+	uint32_t type; /* Message type defined in virtio_ha_msg_type */
+	char bdf[PCI_PRI_STR_SIZE]; /* PCI BDF string of PF */
+	uint32_t size; /* Payload size */
+};
+
+struct virtio_ha_msg {
+	struct virtio_ha_msg_hdr hdr;
+	struct iovec iov;
+	int nr_fds;
+	int fds[VIRTIO_HA_MAX_FDS];
+};
 struct virtio_dev_name {
     char dev_bdf[PCI_PRI_STR_SIZE];
 };
@@ -45,6 +74,26 @@ struct vdpa_vf_ctx {
     int vfio_device_fd;
     struct virtio_vdpa_dma_mem mem;
 };
+
+/* IPC client/server allocate an HA message */
+struct virtio_ha_msg *virtio_ha_alloc_msg(void);
+
+/* IPC client/server free an HA message */
+void virtio_ha_free_msg(struct virtio_ha_msg *msg);
+
+/* IPC client/server reset this message so it can be re-used. This could avoid free and re-alloc */
+void virtio_ha_reset_msg(struct virtio_ha_msg *msg);
+
+/* IPC client/server send an HA message
+ * return bytes# of send on success or negative val on failure
+ */
+int virtio_ha_send_msg(int sockfd, struct virtio_ha_msg *msg);
+
+/* IPC client/server receive an HA message
+ * return bytes# of recv on success or negative val on failure
+ */
+int virtio_ha_recv_msg(int sockfd, struct virtio_ha_msg *msg);
+
 
 /* App query PF list from HA service, return number of PF */
 int virtio_ha_pf_list_query(struct virtio_dev_name **list);
