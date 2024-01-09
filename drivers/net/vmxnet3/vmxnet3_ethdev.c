@@ -257,6 +257,7 @@ vmxnet3_disable_all_intrs(struct vmxnet3_hw *hw)
 		vmxnet3_disable_intr(hw, i);
 }
 
+#ifndef RTE_EXEC_ENV_FREEBSD
 /*
  * Enable all intrs used by the device
  */
@@ -280,6 +281,7 @@ vmxnet3_enable_all_intrs(struct vmxnet3_hw *hw)
 			vmxnet3_enable_intr(hw, i);
 	}
 }
+#endif
 
 /*
  * Gets tx data ring descriptor size.
@@ -1036,6 +1038,7 @@ vmxnet3_dev_start(struct rte_eth_dev *dev)
 	/* Setting proper Rx Mode and issue Rx Mode Update command */
 	vmxnet3_dev_set_rxmode(hw, VMXNET3_RXM_UCAST | VMXNET3_RXM_BCAST, 1);
 
+#ifndef RTE_EXEC_ENV_FREEBSD
 	/* Setup interrupt callback  */
 	rte_intr_callback_register(dev->intr_handle,
 				   vmxnet3_interrupt_handler, dev);
@@ -1047,6 +1050,7 @@ vmxnet3_dev_start(struct rte_eth_dev *dev)
 
 	/* enable all intrs */
 	vmxnet3_enable_all_intrs(hw);
+#endif
 
 	vmxnet3_process_events(dev);
 
