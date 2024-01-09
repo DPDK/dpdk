@@ -422,6 +422,10 @@ The command line options are:
 
     Set the logical core N to perform bitrate calculation.
 
+*   ``--latencystats=N``
+
+    Set the logical core N to perform latency and jitter calculations.
+
 *   ``--print-event <unknown|intr_lsc|queue_state|intr_reset|vf_mbox|macsec|intr_rmv|dev_probed|dev_released|flow_aged|err_recovering|recovery_success|recovery_failed|all>``
 
     Enable printing the occurrence of the designated event. Using all will
