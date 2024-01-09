@@ -112,10 +112,6 @@ usage(char* progname)
 	       "the packet will be enqueued into the rx drop-queue. "
 	       "If the drop-queue doesn't exist, the packet is dropped. "
 	       "By default drop-queue=127.\n");
-#ifdef RTE_LIB_LATENCYSTATS
-	printf("  --latencystats=N: enable latency and jitter statistics "
-	       "monitoring on forwarding lcore id N.\n");
-#endif
 	printf("  --disable-crc-strip: disable CRC stripping by hardware.\n");
 	printf("  --enable-scatter: enable scattered Rx.\n");
 	printf("  --enable-lro: enable large receive offload.\n");
@@ -176,8 +172,14 @@ usage(char* progname)
 	printf("  --disable-device-start: do not automatically start port\n");
 	printf("  --no-lsc-interrupt: disable link status change interrupt.\n");
 	printf("  --no-rmv-interrupt: disable device removal interrupt.\n");
+#ifdef RTE_LIB_BITRATESTATS
 	printf("  --bitrate-stats=N: set the logical core N to perform "
 		"bit-rate calculation.\n");
+#endif
+#ifdef RTE_LIB_LATENCYSTATS
+	printf("  --latencystats=N: enable latency and jitter statistics "
+	       "monitoring on forwarding lcore id N.\n");
+#endif
 	printf("  --print-event <unknown|intr_lsc|queue_state|intr_reset|vf_mbox|macsec|intr_rmv|flow_aged|all>: "
 	       "enable print of designated event or all of them.\n");
 	printf("  --mask-event <unknown|intr_lsc|queue_state|intr_reset|vf_mbox|macsec|intr_rmv|flow_aged|all>: "
