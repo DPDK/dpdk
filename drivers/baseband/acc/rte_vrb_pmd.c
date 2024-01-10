@@ -3076,6 +3076,33 @@ vrb_enqueue_ldpc_dec(struct rte_bbdev_queue_data *q_data,
 		return vrb_enqueue_ldpc_dec_cb(q_data, ops, num);
 }
 
+/* Update the operation status when dequeuing for any operation type. */
+static inline void
+vrb_update_dequeued_operation(union acc_dma_desc *desc, union acc_dma_rsp_desc rsp, int *op_status,
+	uint32_t *aq_dequeued, bool clear_rsp, bool clear_opstatus)
+{
+	rte_bbdev_log_debug("Resp. desc %p: %x", desc, rsp.val);
+
+	/* Set status based on DMA response. */
+	if (clear_opstatus)
+		*op_status = 0;
+	*op_status |= ((rsp.input_err) ? (1 << RTE_BBDEV_DATA_ERROR) : 0);
+	*op_status |= ((rsp.dma_err) ? (1 << RTE_BBDEV_DRV_ERROR) : 0);
+	*op_status |= ((rsp.fcw_err) ? (1 << RTE_BBDEV_DRV_ERROR) : 0);
+	*op_status |= ((rsp.engine_hung) ? (1 << RTE_BBDEV_ENGINE_ERROR) : 0);
+
+	if (desc->req.last_desc_in_batch) {
+		(*aq_dequeued)++;
+		desc->req.last_desc_in_batch = 0;
+	}
+
+	if (clear_rsp) {
+		/* Clear response explicitly. */
+		desc->rsp.val = ACC_DMA_DESC_TYPE;
+		desc->rsp.add_info_0 = 0; /* Reserved bits. */
+		desc->rsp.add_info_1 = 0; /* Reserved bits. */
+	}
+}
 
 /* Dequeue one encode operations from device in CB mode. */
 static inline int
@@ -3102,25 +3129,11 @@ vrb_dequeue_enc_one_op_cb(struct acc_queue *q, struct rte_bbdev_enc_op **ref_op,
 		return -1;
 
 	rsp.val = atom_desc.rsp.val;
-	rte_bbdev_log_debug("Resp. desc %p: %x", desc, rsp.val);
 
 	/* Dequeue. */
 	op = desc->req.op_addr;
 
-	/* Clearing status, it will be set based on response. */
-	op->status = 0;
-	op->status |= ((rsp.input_err) ? (1 << RTE_BBDEV_DATA_ERROR) : 0);
-	op->status |= ((rsp.dma_err) ? (1 << RTE_BBDEV_DRV_ERROR) : 0);
-	op->status |= ((rsp.fcw_err) ? (1 << RTE_BBDEV_DRV_ERROR) : 0);
-	op->status |= ((rsp.engine_hung) ? (1 << RTE_BBDEV_ENGINE_ERROR) : 0);
-
-	if (desc->req.last_desc_in_batch) {
-		(*aq_dequeued)++;
-		desc->req.last_desc_in_batch = 0;
-	}
-	desc->rsp.val = ACC_DMA_DESC_TYPE;
-	desc->rsp.add_info_0 = 0; /* Reserved bits. */
-	desc->rsp.add_info_1 = 0; /* Reserved bits. */
+	vrb_update_dequeued_operation(desc, rsp, &op->status, aq_dequeued, true, true);
 
 	ref_op[0] = op;
 	context_ptrs = q->companion_ring_addr + desc_idx;
@@ -3151,25 +3164,11 @@ vrb2_dequeue_ldpc_enc_one_op_tb(struct acc_queue *q, struct rte_bbdev_enc_op **r
 		return -1;
 
 	rsp.val = atom_desc.rsp.val;
-	rte_bbdev_log_debug("Resp. desc %p: %x", desc, rsp.val);
 
 	/* Dequeue. */
 	op = desc->req.op_addr;
 
-	/* Clearing status, it will be set based on response. */
-	op->status = 0;
-	op->status |= rsp.input_err << RTE_BBDEV_DATA_ERROR;
-	op->status |= rsp.dma_err << RTE_BBDEV_DRV_ERROR;
-	op->status |= rsp.fcw_err << RTE_BBDEV_DRV_ERROR;
-	op->status |= rsp.engine_hung << RTE_BBDEV_ENGINE_ERROR;
-
-	if (desc->req.last_desc_in_batch) {
-		(*aq_dequeued)++;
-		desc->req.last_desc_in_batch = 0;
-	}
-	desc->rsp.val = ACC_DMA_DESC_TYPE;
-	desc->rsp.add_info_0 = 0; /* Reserved bits. */
-	desc->rsp.add_info_1 = 0; /* Reserved bits. */
+	vrb_update_dequeued_operation(desc, rsp, &op->status, aq_dequeued, true, true);
 
 	/* One op was successfully dequeued */
 	ref_op[0] = op;
@@ -3223,20 +3222,9 @@ vrb_dequeue_enc_one_op_tb(struct acc_queue *q, struct rte_bbdev_enc_op **ref_op,
 		desc = acc_desc_tail(q, *dequeued_descs);
 		atom_desc.atom_hdr = __atomic_load_n((uint64_t *)desc, __ATOMIC_RELAXED);
 		rsp.val = atom_desc.rsp.val;
-		rte_bbdev_log_debug("Resp. desc %p: %x", desc, rsp.val);
 
-		op->status |= ((rsp.input_err) ? (1 << RTE_BBDEV_DATA_ERROR) : 0);
-		op->status |= ((rsp.dma_err) ? (1 << RTE_BBDEV_DRV_ERROR) : 0);
-		op->status |= ((rsp.fcw_err) ? (1 << RTE_BBDEV_DRV_ERROR) : 0);
-		op->status |= ((rsp.engine_hung) ? (1 << RTE_BBDEV_ENGINE_ERROR) : 0);
+		vrb_update_dequeued_operation(desc, rsp, &op->status, aq_dequeued, true, false);
 
-		if (desc->req.last_desc_in_batch) {
-			(*aq_dequeued)++;
-			desc->req.last_desc_in_batch = 0;
-		}
-		desc->rsp.val = ACC_DMA_DESC_TYPE;
-		desc->rsp.add_info_0 = 0;
-		desc->rsp.add_info_1 = 0;
 		(*dequeued_descs)++;
 		current_dequeued_descs++;
 		i++;
@@ -3265,17 +3253,11 @@ vrb_dequeue_dec_one_op_cb(struct rte_bbdev_queue_data *q_data,
 		return -1;
 
 	rsp.val = atom_desc.rsp.val;
-	rte_bbdev_log_debug("Resp. desc %p: %x\n", desc, rsp.val);
 
 	/* Dequeue. */
 	op = desc->req.op_addr;
 
-	/* Clearing status, it will be set based on response. */
-	op->status = 0;
-	op->status |= ((rsp.input_err) ? (1 << RTE_BBDEV_DATA_ERROR) : 0);
-	op->status |= ((rsp.dma_err) ? (1 << RTE_BBDEV_DRV_ERROR) : 0);
-	op->status |= ((rsp.fcw_err) ? (1 << RTE_BBDEV_DRV_ERROR) : 0);
-	op->status |= rsp.engine_hung << RTE_BBDEV_ENGINE_ERROR;
+	vrb_update_dequeued_operation(desc, rsp, &op->status, aq_dequeued, false, true);
 
 	if (op->status != 0) {
 		/* These errors are not expected. */
@@ -3287,11 +3269,7 @@ vrb_dequeue_dec_one_op_cb(struct rte_bbdev_queue_data *q_data,
 	if (!op->status)
 		op->status |= rsp.crc_status << RTE_BBDEV_CRC_ERROR;
 	op->turbo_dec.iter_count = (uint8_t) rsp.iter_cnt;
-	/* Check if this is the last desc in batch (Atomic Queue). */
-	if (desc->req.last_desc_in_batch) {
-		(*aq_dequeued)++;
-		desc->req.last_desc_in_batch = 0;
-	}
+
 	desc->rsp.val = ACC_DMA_DESC_TYPE;
 	desc->rsp.add_info_0 = 0;
 	desc->rsp.add_info_1 = 0;
@@ -3325,12 +3303,9 @@ vrb_dequeue_ldpc_dec_one_op_cb(struct rte_bbdev_queue_data *q_data,
 	/* Dequeue. */
 	op = desc->req.op_addr;
 
-	/* Clearing status, it will be set based on response. */
-	op->status = 0;
-	op->status |= rsp.input_err << RTE_BBDEV_DATA_ERROR;
-	op->status |= rsp.dma_err << RTE_BBDEV_DRV_ERROR;
-	op->status |= rsp.fcw_err << RTE_BBDEV_DRV_ERROR;
-	op->status |= rsp.engine_hung << RTE_BBDEV_ENGINE_ERROR;
+	vrb_update_dequeued_operation(desc, rsp, &op->status, aq_dequeued, false, true);
+
+	/* Additional op status update for LDPC Decoder. */
 	if (op->status != 0)
 		q_data->queue_stats.dequeue_err_count++;
 
@@ -3348,12 +3323,6 @@ vrb_dequeue_ldpc_dec_one_op_cb(struct rte_bbdev_queue_data *q_data,
 
 	if (op->status & (1 << RTE_BBDEV_DRV_ERROR))
 		vrb_check_ir(q->d);
-
-	/* Check if this is the last desc in batch (Atomic Queue). */
-	if (desc->req.last_desc_in_batch) {
-		(*aq_dequeued)++;
-		desc->req.last_desc_in_batch = 0;
-	}
 
 	desc->rsp.val = ACC_DMA_DESC_TYPE;
 	desc->rsp.add_info_0 = 0;
@@ -3409,10 +3378,7 @@ vrb_dequeue_dec_one_op_tb(struct acc_queue *q, struct rte_bbdev_dec_op **ref_op,
 				rsp.val, desc->rsp.add_info_0,
 				desc->rsp.add_info_1);
 
-		op->status |= ((rsp.input_err) ? (1 << RTE_BBDEV_DATA_ERROR) : 0);
-		op->status |= ((rsp.dma_err) ? (1 << RTE_BBDEV_DRV_ERROR) : 0);
-		op->status |= ((rsp.fcw_err) ? (1 << RTE_BBDEV_DRV_ERROR) : 0);
-		op->status |= ((rsp.engine_hung) ? (1 << RTE_BBDEV_ENGINE_ERROR) : 0);
+		vrb_update_dequeued_operation(desc, rsp, &op->status, aq_dequeued, false, false);
 
 		if (check_bit(op->ldpc_dec.op_flags, RTE_BBDEV_LDPC_CRC_TYPE_24A_CHECK))
 			tb_crc_check ^= desc->rsp.add_info_1;
@@ -3427,11 +3393,6 @@ vrb_dequeue_dec_one_op_tb(struct acc_queue *q, struct rte_bbdev_dec_op **ref_op,
 			op->turbo_dec.iter_count = RTE_MAX((uint8_t) rsp.iter_cnt,
 					op->turbo_dec.iter_count);
 
-		/* Check if this is the last desc in batch (Atomic Queue). */
-		if (desc->req.last_desc_in_batch) {
-			(*aq_dequeued)++;
-			desc->req.last_desc_in_batch = 0;
-		}
 		desc->rsp.val = ACC_DMA_DESC_TYPE;
 		desc->rsp.add_info_0 = 0;
 		desc->rsp.add_info_1 = 0;
@@ -3843,25 +3804,14 @@ vrb_dequeue_fft_one_op(struct rte_bbdev_queue_data *q_data,
 	/* Dequeue. */
 	op = desc->req.op_addr;
 
-	/* Clearing status, it will be set based on response. */
-	op->status = 0;
-	op->status |= rsp.input_err << RTE_BBDEV_DATA_ERROR;
-	op->status |= rsp.dma_err << RTE_BBDEV_DRV_ERROR;
-	op->status |= rsp.fcw_err << RTE_BBDEV_DRV_ERROR;
-	op->status |= rsp.engine_hung << RTE_BBDEV_ENGINE_ERROR;
+	vrb_update_dequeued_operation(desc, rsp, &op->status, aq_dequeued, true, true);
+
 	if (op->status != 0)
 		q_data->queue_stats.dequeue_err_count++;
 
 	if (op->status & (1 << RTE_BBDEV_DRV_ERROR))
 		vrb_check_ir(q->d);
 
-	/* Check if this is the last desc in batch (Atomic Queue). */
-	if (desc->req.last_desc_in_batch) {
-		(*aq_dequeued)++;
-		desc->req.last_desc_in_batch = 0;
-	}
-	desc->rsp.val = ACC_DMA_DESC_TYPE;
-	desc->rsp.add_info_0 = 0;
 	*ref_op = op;
 	/* One CB (op) was successfully dequeued. */
 	return 1;
@@ -4206,10 +4156,8 @@ dequeue_mldts_one_op(struct rte_bbdev_queue_data *q_data,
 		desc = q->ring_addr + ((q->sw_ring_tail + dequeued_ops + i) & q->sw_ring_wrap_mask);
 		atom_desc.atom_hdr = __atomic_load_n((uint64_t *)desc, __ATOMIC_RELAXED);
 		rsp.val = atom_desc.rsp.val;
-		op->status |= rsp.input_err << RTE_BBDEV_DATA_ERROR;
-		op->status |= rsp.dma_err << RTE_BBDEV_DRV_ERROR;
-		op->status |= rsp.fcw_err << RTE_BBDEV_DRV_ERROR;
-		op->status |= rsp.engine_hung << RTE_BBDEV_ENGINE_ERROR;
+
+		vrb_update_dequeued_operation(desc, rsp, &op->status, aq_dequeued, true, false);
 	}
 
 	if (op->status != 0)
@@ -4217,13 +4165,6 @@ dequeue_mldts_one_op(struct rte_bbdev_queue_data *q_data,
 	if (op->status & (1 << RTE_BBDEV_DRV_ERROR))
 		vrb_check_ir(q->d);
 
-	/* Check if this is the last desc in batch (Atomic Queue). */
-	if (desc->req.last_desc_in_batch) {
-		(*aq_dequeued)++;
-		desc->req.last_desc_in_batch = 0;
-	}
-	desc->rsp.val = ACC_DMA_DESC_TYPE;
-	desc->rsp.add_info_0 = 0;
 	*ref_op = op;
 
 	return descs_in_op;
