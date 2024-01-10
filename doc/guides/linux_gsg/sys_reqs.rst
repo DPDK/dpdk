@@ -106,7 +106,7 @@ System Software
 
 **Required:**
 
-*   Kernel version >= 4.14
+*   Kernel version >= 4.19
 
     The kernel version required is based on the oldest long term stable kernel available
     at kernel.org when the DPDK version is in development.
