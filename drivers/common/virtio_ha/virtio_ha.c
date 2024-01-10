@@ -4,7 +4,10 @@
 
 #include <sys/uio.h>
 #include <sys/socket.h>
+#include <sys/epoll.h>
+#include <sys/un.h>
 #include <unistd.h>
+#include <pthread.h>
 
 #include <rte_log.h>
 
@@ -14,6 +17,9 @@ RTE_LOG_REGISTER(virtio_ha_ipc_logtype, pmd.vdpa.virtio, NOTICE);
 #define HA_IPC_LOG(level, fmt, args...) \
 	rte_log(RTE_LOG_ ## level, virtio_ha_ipc_logtype, \
 		"VIRTIO HA IPC %s(): " fmt "\n", __func__, ##args)
+
+static int ipc_client_sock;
+static bool ipc_client_connected;
 
 struct virtio_ha_msg *
 virtio_ha_alloc_msg(void)
@@ -236,4 +242,92 @@ out:
 		close_msg_fds(msg);
 
 	return ret;
+}
+
+static void *
+ipc_connection_handler(__rte_unused void *ptr)
+{
+	struct epoll_event event, ev;
+	struct sockaddr_un addr;
+	int epfd, nev;
+
+	epfd = epoll_create(1);
+	if (epfd < 0) {
+		HA_IPC_LOG(ERR, "Failed to create epoll fd");
+		return NULL;
+	}
+
+	event.events = EPOLLHUP | EPOLLERR;
+
+	if (__atomic_load_n(&ipc_client_connected, __ATOMIC_RELAXED) &&
+		epoll_ctl(epfd, EPOLL_CTL_ADD, ipc_client_sock, &event) < 0) {
+		HA_IPC_LOG(ERR, "Failed to epoll ctl add");
+		return NULL;
+	}
+
+	addr.sun_family = AF_UNIX;
+	strcpy(addr.sun_path, VIRTIO_HA_UDS_PATH);
+
+	while (1) {
+		if (__atomic_load_n(&ipc_client_connected, __ATOMIC_RELAXED)) {
+			nev = epoll_wait(epfd, &ev, 1, -1);
+			if (nev == 1) {
+				if ((ev.events & EPOLLERR) || (ev.events & EPOLLHUP)) {
+					HA_IPC_LOG(ERR, "Disconnected from ipc server");
+					__atomic_store_n(&ipc_client_connected, false, __ATOMIC_RELAXED);
+
+					if (epoll_ctl(epfd, EPOLL_CTL_DEL, ipc_client_sock, &event) < 0)
+						HA_IPC_LOG(ERR, "Failed to epoll ctl del for fd %d", ipc_client_sock);
+					close(ipc_client_sock);
+
+					ipc_client_sock = socket(AF_UNIX, SOCK_STREAM, 0);
+					if (ipc_client_sock < 0) {
+						HA_IPC_LOG(ERR, "Failed to re-create ipc client socket");
+						return NULL;
+					}
+				}			
+			}
+		} else {
+			if (connect(ipc_client_sock, (struct sockaddr *)&addr, sizeof(addr)) == 0) {
+				HA_IPC_LOG(INFO, "Reconnected to ipc server, starting HA mode");
+				if (epoll_ctl(epfd, EPOLL_CTL_ADD, ipc_client_sock, &event) < 0) {
+					HA_IPC_LOG(ERR, "Failed to epoll ctl add for re-created sock");
+					return NULL;
+				}
+				__atomic_store_n(&ipc_client_connected, true, __ATOMIC_RELAXED);
+			} else {
+				sleep(1);
+			}
+		}
+    }
+}
+
+int
+virtio_ha_ipc_client_init(void)
+{
+	struct sockaddr_un addr;
+	pthread_t thread;
+
+	ipc_client_sock = socket(AF_UNIX, SOCK_STREAM, 0);
+	if (ipc_client_sock < 0) {
+		HA_IPC_LOG(ERR, "Failed to create ipc client socket");
+		return -1;
+	}
+
+	addr.sun_family = AF_UNIX;
+	strcpy(addr.sun_path, VIRTIO_HA_UDS_PATH);
+	if (connect(ipc_client_sock, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
+		HA_IPC_LOG(INFO, "Failed to connect to ipc server, starting non-HA mode");
+		__atomic_store_n(&ipc_client_connected, false, __ATOMIC_RELAXED);
+	} else {
+		HA_IPC_LOG(INFO, "Connected to ipc server, starting HA mode");
+		__atomic_store_n(&ipc_client_connected, true, __ATOMIC_RELAXED);
+	}
+
+	if (pthread_create(&thread, NULL, &ipc_connection_handler, NULL) != 0) {
+		HA_IPC_LOG(ERR, "Failed to create ipc conn handler");
+		return -1;
+	}
+
+	return 0;
 }

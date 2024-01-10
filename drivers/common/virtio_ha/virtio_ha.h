@@ -11,6 +11,7 @@
 #include <rte_uuid.h>
 #include <rte_compat.h>
 
+#define VIRTIO_HA_UDS_PATH "/tmp/virtio_ha_ipc"
 #define VDPA_MAX_SOCK_LEN 108 /* Follow definition of struct sockaddr_un in sys/un.h */
 #define VIRTIO_HA_MAX_FDS 3
 
@@ -94,6 +95,10 @@ int virtio_ha_send_msg(int sockfd, struct virtio_ha_msg *msg);
  */
 int virtio_ha_recv_msg(int sockfd, struct virtio_ha_msg *msg);
 
+/* IPC client init
+ * return 0 on success or negative val on failure
+ */
+int virtio_ha_ipc_client_init(void);
 
 /* App query PF list from HA service, return number of PF */
 int virtio_ha_pf_list_query(struct virtio_dev_name **list);

@@ -29,6 +29,7 @@ DPDK_22 {
 	virtio_ha_reset_msg;
 	virtio_ha_send_msg;
 	virtio_ha_recv_msg;
+	virtio_ha_ipc_client_init;
 
 	local: *;
 };
