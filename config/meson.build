@@ -146,6 +146,9 @@ dpdk_conf.set('RTE_ARCH_32', cc.sizeof('void *') == 4)
 
 if not is_windows
     add_project_link_arguments('-Wl,--no-as-needed', language: 'c')
+    if cc.has_link_argument('-Wl,--undefined-version')
+        add_project_link_arguments('-Wl,--undefined-version', language: 'c')
+    endif
 endif
 
 # use pthreads if available for the platform
