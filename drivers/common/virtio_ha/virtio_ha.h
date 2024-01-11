@@ -76,6 +76,30 @@ struct vdpa_vf_ctx {
     struct virtio_vdpa_dma_mem mem;
 };
 
+struct virtio_ha_vf_dev {
+	TAILQ_ENTRY(virtio_ha_vf_dev) next;
+	struct vdpa_vf_with_devargs vf_devargs;
+	int vhost_fd;
+	struct vdpa_vf_ctx vf_ctx;
+};
+
+TAILQ_HEAD(virtio_ha_vf_dev_list, virtio_ha_vf_dev);
+
+struct virtio_ha_pf_dev {
+	TAILQ_ENTRY(virtio_ha_pf_dev) next;
+	struct virtio_ha_vf_dev_list vf_list;
+	uint32_t nr_vf;
+	struct virtio_dev_name pf_name;
+	struct virtio_pf_ctx pf_ctx;
+};
+
+TAILQ_HEAD(virtio_ha_pf_dev_list, virtio_ha_pf_dev);
+
+struct virtio_ha_device_list {
+	struct virtio_ha_pf_dev_list pf_list;
+	uint32_t nr_pf;
+};
+
 /* IPC client/server allocate an HA message */
 struct virtio_ha_msg *virtio_ha_alloc_msg(void);
 
