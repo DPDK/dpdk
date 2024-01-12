@@ -9868,14 +9868,10 @@ flow_dv_translate_item_vxlan_gpe(void *key, const struct rte_flow_item *item,
 		vxlan_v = vxlan_m;
 	else if (key_type == MLX5_SET_MATCHER_HS_V)
 		vxlan_m = vxlan_v;
-	for (i = 0; i < size; ++i)
-		vni_v[i] = vxlan_m->hdr.vni[i] & vxlan_v->hdr.vni[i];
 	if (vxlan_m->hdr.flags) {
 		flags_m = vxlan_m->hdr.flags;
 		flags_v = vxlan_v->hdr.flags;
 	}
-	MLX5_SET(fte_match_set_misc3, misc_v, outer_vxlan_gpe_flags,
-		 flags_m & flags_v);
 	m_protocol = vxlan_m->hdr.protocol;
 	v_protocol = vxlan_v->hdr.protocol;
 	if (!m_protocol) {
@@ -9894,8 +9890,32 @@ flow_dv_translate_item_vxlan_gpe(void *key, const struct rte_flow_item *item,
 		if (key_type & MLX5_SET_MATCHER_M)
 			v_protocol = m_protocol;
 	}
-	MLX5_SET(fte_match_set_misc3, misc_v,
-		 outer_vxlan_gpe_next_protocol, m_protocol & v_protocol);
+	/*
+	 * If only match flags/protocol/vni field, keep using misc3 for matching.
+	 * If need to match rsvd0 or rsvd1, using misc5 and do not need using misc3.
+	 */
+	if (!(vxlan_m->hdr.rsvd0[0] || vxlan_m->hdr.rsvd0[1] || vxlan_m->hdr.rsvd1)) {
+		for (i = 0; i < size; ++i)
+			vni_v[i] = vxlan_m->hdr.vni[i] & vxlan_v->hdr.vni[i];
+		MLX5_SET(fte_match_set_misc3, misc_v, outer_vxlan_gpe_flags,
+			 flags_m & flags_v);
+		MLX5_SET(fte_match_set_misc3, misc_v,
+			 outer_vxlan_gpe_next_protocol, m_protocol & v_protocol);
+	} else {
+		uint32_t tunnel_v;
+		void *misc5_v = MLX5_ADDR_OF(fte_match_param, key, misc_parameters_5);
+
+		tunnel_v = (flags_m & flags_v) << 24 |
+			   (vxlan_v->hdr.rsvd0[0] & vxlan_m->hdr.rsvd0[0]) << 16 |
+			   (vxlan_v->hdr.rsvd0[1] & vxlan_m->hdr.rsvd0[1]) << 8 |
+			   (m_protocol & v_protocol);
+		MLX5_SET(fte_match_set_misc5, misc5_v, tunnel_header_0, tunnel_v);
+		tunnel_v = (vxlan_v->hdr.vni[0] & vxlan_m->hdr.vni[0]) << 24 |
+			   (vxlan_v->hdr.vni[1] & vxlan_m->hdr.vni[1]) << 16 |
+			   (vxlan_v->hdr.vni[2] & vxlan_m->hdr.vni[2]) << 8 |
+			   (vxlan_v->hdr.rsvd1 & vxlan_m->hdr.rsvd1);
+		MLX5_SET(fte_match_set_misc5, misc5_v, tunnel_header_1, tunnel_v);
+	}
 }
 
 /**

@@ -3196,6 +3196,11 @@ mlx5_flow_validate_item_vxlan_gpe(const struct rte_flow_item *item,
 					  "no outer UDP layer found");
 	if (!mask)
 		mask = &rte_flow_item_vxlan_gpe_mask;
+	if (priv->sh->misc5_cap && priv->sh->tunnel_header_0_1) {
+		nic_mask.rsvd0[0] = 0xff;
+		nic_mask.rsvd0[1] = 0xff;
+		nic_mask.rsvd1 = 0xff;
+	}
 	ret = mlx5_flow_item_acceptable
 		(item, (const uint8_t *)mask,
 		 (const uint8_t *)&nic_mask,

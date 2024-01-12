@@ -311,6 +311,11 @@ Limitations
   Group zero's behavior may differ which depends on FW.
   Matching value equals 0 (value & mask) is not supported.
 
+- Matching on VXLAN-GPE header fields:
+
+     - ``rsvd0``/``rsvd1`` matching support depends on FW version
+       when using DV flow engine (``dv_flow_en`` = 1).
+
 - L3 VXLAN and VXLAN-GPE tunnels cannot be supported together with MPLSoGRE and MPLSoUDP.
 
 - MPLSoGRE is not supported in HW steering (``dv_flow_en`` = 2).
