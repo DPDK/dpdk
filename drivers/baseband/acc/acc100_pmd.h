@@ -23,14 +23,11 @@
 #define rte_bbdev_log_debug(fmt, ...)
 #endif
 
-#define ACC100_VARIANT 0
-#define ACC101_VARIANT 1
-
 /* ACC100 PF and VF driver names */
 #define ACC100PF_DRIVER_NAME           intel_acc100_pf
 #define ACC100VF_DRIVER_NAME           intel_acc100_vf
 
-/* ACC100 PCI vendor & device IDs */
+/* ACC PCI vendor & device IDs */
 #define ACC100_VENDOR_ID           (0x8086)
 #define ACC100_PF_DEVICE_ID        (0x0d5c)
 #define ACC100_VF_DEVICE_ID        (0x0d5d)

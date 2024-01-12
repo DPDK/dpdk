@@ -1,19 +1,17 @@
 ..  SPDX-License-Identifier: BSD-3-Clause
     Copyright(c) 2020 Intel Corporation
 
-Intel(R) ACC100 and ACC101 5G/4G FEC Poll Mode Drivers
+Intel(R) ACC100 5G/4G FEC Poll Mode Drivers
 ======================================================
 
 The BBDEV ACC100 5G/4G FEC poll mode driver (PMD) supports an
 implementation of a VRAN FEC wireless acceleration function.
 This device is also known as Mount Bryce.
-The BBDEV ACC101, also known as Mount Cirrus, is a derivative device from Mount Bryce
-with functional and capacity improvements but still with the same exposed BBDEV capabilities.
 
 Features
 --------
 
-ACC100 and ACC101 5G/4G FEC PMDs support the following features:
+ACC100 5G/4G FEC PMDs support the following features:
 
 - LDPC Encode in the DL (5GNR)
 - LDPC Decode in the UL (5GNR)
@@ -25,7 +23,7 @@ ACC100 and ACC101 5G/4G FEC PMDs support the following features:
 - MSI
 - SR-IOV
 
-ACC100 and ACC101 5G/4G FEC PMDs support the following BBDEV capabilities:
+ACC100 5G/4G FEC PMDs support the following BBDEV capabilities:
 
 * For the LDPC encode operation:
    - ``RTE_BBDEV_LDPC_CRC_24B_ATTACH`` :  set to attach CRC24B to CB(s)
@@ -94,12 +92,11 @@ Initialization
 --------------
 
 When the device first powers up, its PCI Physical Functions (PF) can be listed through these
-commands for ACC100 (device id ``0d5c``) and ACC101 (device id ``57c4``) respectively:
+commands for ACC100:
 
 .. code-block:: console
 
   sudo lspci -vd8086:0d5c
-  sudo lspci -vd8086:57c4
 
 The physical and virtual functions are compatible with Linux UIO drivers:
 ``vfio_pci`` and ``igb_uio``. However, in order to work the 5G/4G
@@ -156,11 +153,4 @@ Specifically for the BBDEV ACC100 PMD, the command below can be used:
 .. code-block:: console
 
   ./pf_bb_config ACC100 -c acc100/acc100_config_vf_5g.cfg
-  ./test-bbdev.py -e="-c 0xff0 -a${VF_PCI_ADDR}" -c validation -n 64 -b 32 -l 1 -v ./ldpc_dec_default.data
-
-Specifically for the BBDEV ACC101 PMD, the command below can be used:
-
-.. code-block:: console
-
-  ./pf_bb_config ACC101 -c acc101/acc101_config_2vf_4g5g.cfg
   ./test-bbdev.py -e="-c 0xff0 -a${VF_PCI_ADDR}" -c validation -n 64 -b 32 -l 1 -v ./ldpc_dec_default.data

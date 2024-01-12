@@ -156,6 +156,8 @@ Removed Items
   The application reserved statically defined logtypes ``RTE_LOGTYPE_USER1..RTE_LOGTYPE_USER8``
   are still defined.
 
+* acc101: Removed obsolete code for non productized HW variant.
+
 
 API Changes
 -----------
