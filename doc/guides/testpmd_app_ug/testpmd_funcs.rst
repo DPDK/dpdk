@@ -3744,6 +3744,8 @@ This section lists supported pattern items and their attributes, if any.
 
   - ``vni {unsigned}``: VXLAN-GPE identifier.
   - ``flags {unsigned}``: VXLAN-GPE flags.
+  - ``rsvd0 {unsigned}``: VXLAN-GPE reserved field 0.
+  - ``rsvd1 {unsigned}``: VXLAN-GPE reserved field 1.
 
 - ``arp_eth_ipv4``: match ARP header for Ethernet/IPv4.
 
