@@ -20,6 +20,21 @@ DPDK_24 {
 	local: *;
 };
 
+EXPERIMENTAL {
+	global:
+
+	# added in 24.03
+	__rte_dma_trace_burst_capacity;
+	__rte_dma_trace_completed;
+	__rte_dma_trace_completed_status;
+	__rte_dma_trace_copy;
+	__rte_dma_trace_copy_sg;
+	__rte_dma_trace_fill;
+	__rte_dma_trace_submit;
+
+	local: *;
+};
+
 INTERNAL {
 	global:
 
