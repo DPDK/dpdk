@@ -318,7 +318,6 @@ iavf_execute_vf_cmd(struct iavf_adapter *adapter, struct iavf_cmd_info *args,
 
 	switch (args->ops) {
 	case VIRTCHNL_OP_RESET_VF:
-	case VIRTCHNL_OP_REQUEST_QUEUES:
 		/*no need to wait for response */
 		_clear_cmd(vf);
 		break;
@@ -336,6 +335,33 @@ iavf_execute_vf_cmd(struct iavf_adapter *adapter, struct iavf_cmd_info *args,
 		} while (i++ < MAX_TRY_TIMES);
 		if (i >= MAX_TRY_TIMES ||
 		    vf->cmd_retval != VIRTCHNL_STATUS_SUCCESS) {
+			err = -1;
+			PMD_DRV_LOG(ERR, "No response or return failure (%d)"
+				    " for cmd %d", vf->cmd_retval, args->ops);
+		}
+		_clear_cmd(vf);
+		break;
+	case VIRTCHNL_OP_REQUEST_QUEUES:
+		/*
+		 * ignore async reply, only wait for system message,
+		 * vf_reset = true if get VIRTCHNL_EVENT_RESET_IMPENDING,
+		 * if not, means request queues failed.
+		 */
+		do {
+			result = iavf_read_msg_from_pf(adapter, args->out_size,
+						   args->out_buffer);
+			if (result == IAVF_MSG_SYS && vf->vf_reset) {
+				break;
+			} else if (result == IAVF_MSG_CMD ||
+				result == IAVF_MSG_ERR) {
+				err = -1;
+				break;
+			}
+			iavf_msec_delay(ASQ_DELAY_MS);
+			/* If don't read msg or read sys event, continue */
+		} while (i++ < MAX_TRY_TIMES);
+		if (i >= MAX_TRY_TIMES ||
+			vf->cmd_retval != VIRTCHNL_STATUS_SUCCESS) {
 			err = -1;
 			PMD_DRV_LOG(ERR, "No response or return failure (%d)"
 				    " for cmd %d", vf->cmd_retval, args->ops);
@@ -2041,11 +2067,11 @@ iavf_request_queues(struct rte_eth_dev *dev, uint16_t num)
 	struct iavf_adapter *adapter =
 		IAVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 	struct iavf_info *vf =  IAVF_DEV_PRIVATE_TO_VF(adapter);
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	struct virtchnl_vf_res_request vfres;
 	struct iavf_cmd_info args;
 	uint16_t num_queue_pairs;
 	int err;
-	int i = 0;
 
 	if (!(vf->vf_res->vf_cap_flags &
 		VIRTCHNL_VF_OFFLOAD_REQ_QUEUES)) {
@@ -2066,7 +2092,16 @@ iavf_request_queues(struct rte_eth_dev *dev, uint16_t num)
 	args.out_size = IAVF_AQ_BUF_SZ;
 
 	if (vf->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_WB_ON_ITR) {
-		err = iavf_execute_vf_cmd_safe(adapter, &args, 0);
+		/* disable interrupt to avoid the admin queue message to be read
+		 * before iavf_read_msg_from_pf.
+		 *
+		 * don't disable interrupt handler until ready to execute vf cmd.
+		 */
+		rte_spinlock_lock(&vf->aq_lock);
+		rte_intr_disable(pci_dev->intr_handle);
+		err = iavf_execute_vf_cmd(adapter, &args, 0);
+		rte_intr_enable(pci_dev->intr_handle);
+		rte_spinlock_unlock(&vf->aq_lock);
 	} else {
 		rte_eal_alarm_cancel(iavf_dev_alarm_handler, dev);
 		err = iavf_execute_vf_cmd_safe(adapter, &args, 0);
@@ -2077,13 +2112,6 @@ iavf_request_queues(struct rte_eth_dev *dev, uint16_t num)
 	if (err) {
 		PMD_DRV_LOG(ERR, "fail to execute command OP_REQUEST_QUEUES");
 		return err;
-	}
-
-	/* wait for interrupt notification vf is resetting */
-	while (i++ < MAX_TRY_TIMES) {
-		if (vf->vf_reset)
-			break;
-		iavf_msec_delay(ASQ_DELAY_MS);
 	}
 
 	/* request queues succeeded, vf is resetting */
