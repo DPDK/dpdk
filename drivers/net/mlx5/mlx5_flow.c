@@ -11899,3 +11899,45 @@ mlx5_flow_pick_transfer_proxy(struct rte_eth_dev *dev,
 				  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 				  NULL, "unable to find a proxy port");
 }
+
+/**
+ * Discover IPv6 traffic class ID support in rdma-core and firmware.
+ *
+ * @param dev
+ *   Ethernet device.
+ *
+ * @return
+ *   0, rdma-core is good to work with firmware.
+ *   -EOPNOTSUPP, rdma-core could not work with new IPv6 TC ID.
+ */
+int
+mlx5_flow_discover_ipv6_tc_support(struct rte_eth_dev *dev)
+{
+	struct rte_flow_action_set_dscp set_dscp;
+	struct rte_flow_attr attr;
+	struct rte_flow_action actions[2];
+	struct rte_flow_item items[3];
+	struct rte_flow_error error;
+	uint32_t flow_idx;
+
+	memset(&attr, 0, sizeof(attr));
+	memset(actions, 0, sizeof(actions));
+	memset(items, 0, sizeof(items));
+	attr.group = 1;
+	attr.egress = 1;
+	items[0].type = RTE_FLOW_ITEM_TYPE_ETH;
+	items[1].type = RTE_FLOW_ITEM_TYPE_IPV6;
+	items[2].type = RTE_FLOW_ITEM_TYPE_END;
+	/* Random value */
+	set_dscp.dscp = 9;
+	actions[0].type = RTE_FLOW_ACTION_TYPE_SET_IPV6_DSCP;
+	actions[0].conf = &set_dscp;
+	actions[1].type = RTE_FLOW_ACTION_TYPE_END;
+
+	flow_idx = flow_list_create(dev, MLX5_FLOW_TYPE_GEN, &attr, items, actions, true, &error);
+	if (!flow_idx)
+		return -EOPNOTSUPP;
+
+	flow_list_destroy(dev, MLX5_FLOW_TYPE_GEN, flow_idx);
+	return 0;
+}

@@ -1444,6 +1444,7 @@ struct mlx5_dev_ctx_shared {
 	uint32_t lag_rx_port_affinity_en:1;
 	/* lag_rx_port_affinity is supported. */
 	uint32_t hws_max_log_bulk_sz:5;
+	uint32_t ipv6_tc_fallback:1;
 	/* Log of minimal HWS counters created hard coded. */
 	uint32_t hws_max_nb_counters; /* Maximal number for HWS counters. */
 	uint32_t max_port; /* Maximal IB device port index. */
