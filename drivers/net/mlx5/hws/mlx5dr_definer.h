@@ -91,6 +91,11 @@ enum mlx5dr_definer_fname {
 	MLX5DR_DEFINER_FNAME_VPORT_REG_C_0,
 	MLX5DR_DEFINER_FNAME_VXLAN_FLAGS,
 	MLX5DR_DEFINER_FNAME_VXLAN_VNI,
+	MLX5DR_DEFINER_FNAME_VXLAN_GPE_FLAGS,
+	MLX5DR_DEFINER_FNAME_VXLAN_GPE_RSVD0,
+	MLX5DR_DEFINER_FNAME_VXLAN_GPE_PROTO,
+	MLX5DR_DEFINER_FNAME_VXLAN_GPE_VNI,
+	MLX5DR_DEFINER_FNAME_VXLAN_GPE_RSVD1,
 	MLX5DR_DEFINER_FNAME_SOURCE_QP,
 	MLX5DR_DEFINER_FNAME_REG_0,
 	MLX5DR_DEFINER_FNAME_REG_1,
@@ -591,6 +596,14 @@ struct mlx5_ifc_header_vxlan_bits {
 	u8 reserved1[0x18];
 	u8 vni[0x18];
 	u8 reserved2[0x8];
+};
+
+struct mlx5_ifc_header_vxlan_gpe_bits {
+	u8 flags[0x8];
+	u8 rsvd0[0x10];
+	u8 protocol[0x8];
+	u8 vni[0x18];
+	u8 rsvd1[0x8];
 };
 
 struct mlx5_ifc_header_gre_bits {

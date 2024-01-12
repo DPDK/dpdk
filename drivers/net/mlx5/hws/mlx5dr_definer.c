@@ -9,6 +9,7 @@
 #define ETH_TYPE_IPV4_VXLAN	0x0800
 #define ETH_TYPE_IPV6_VXLAN	0x86DD
 #define ETH_VXLAN_DEFAULT_PORT	4789
+#define ETH_VXLAN_GPE_DEFAULT_PORT	4790
 #define IP_UDP_PORT_MPLS	6635
 #define UDP_ROCEV2_PORT	4791
 #define DR_FLOW_LAYER_TUNNEL_NO_MPLS (MLX5_FLOW_LAYER_TUNNEL & ~MLX5_FLOW_LAYER_MPLS)
@@ -167,6 +168,10 @@ struct mlx5dr_definer_conv_data {
 	X(SET,		gtp_ext_hdr_qfi,	v->hdr.qfi,		rte_flow_item_gtp_psc) \
 	X(SET,		vxlan_flags,		v->flags,		rte_flow_item_vxlan) \
 	X(SET,		vxlan_udp_port,		ETH_VXLAN_DEFAULT_PORT,	rte_flow_item_vxlan) \
+	X(SET,		vxlan_gpe_udp_port,	ETH_VXLAN_GPE_DEFAULT_PORT,	rte_flow_item_vxlan_gpe) \
+	X(SET,		vxlan_gpe_flags,	v->flags,		rte_flow_item_vxlan_gpe) \
+	X(SET,		vxlan_gpe_protocol,	v->protocol,		rte_flow_item_vxlan_gpe) \
+	X(SET,		vxlan_gpe_rsvd1,	v->rsvd1,		rte_flow_item_vxlan_gpe) \
 	X(SET,		mpls_udp_port,		IP_UDP_PORT_MPLS,	rte_flow_item_mpls) \
 	X(SET,		source_qp,		v->queue,		mlx5_rte_flow_item_sq) \
 	X(SET,		tag,			v->data,		rte_flow_item_tag) \
@@ -689,6 +694,28 @@ mlx5dr_definer_ib_l4_qp_set(struct mlx5dr_definer_fc *fc,
 	const struct rte_flow_item_ib_bth *v = item_spec;
 
 	memcpy(tag + fc->byte_off, &v->hdr.dst_qp, sizeof(v->hdr.dst_qp));
+}
+
+static void
+mlx5dr_definer_vxlan_gpe_vni_set(struct mlx5dr_definer_fc *fc,
+				 const void *item_spec,
+				 uint8_t *tag)
+{
+	const struct rte_flow_item_vxlan_gpe *v = item_spec;
+
+	memcpy(tag + fc->byte_off, v->vni, sizeof(v->vni));
+}
+
+static void
+mlx5dr_definer_vxlan_gpe_rsvd0_set(struct mlx5dr_definer_fc *fc,
+				   const void *item_spec,
+				   uint8_t *tag)
+{
+	const struct rte_flow_item_vxlan_gpe *v = item_spec;
+	uint16_t rsvd0;
+
+	rsvd0 = (v->rsvd0[0] << 8 | v->rsvd0[1]);
+	DR_SET(tag, rsvd0, fc->byte_off, fc->bit_off, fc->bit_mask);
 }
 
 static int
@@ -2381,6 +2408,92 @@ mlx5dr_definer_conv_item_ib_l4(struct mlx5dr_definer_conv_data *cd,
 }
 
 static int
+mlx5dr_definer_conv_item_vxlan_gpe(struct mlx5dr_definer_conv_data *cd,
+				   struct rte_flow_item *item,
+				   int item_idx)
+{
+	const struct rte_flow_item_vxlan_gpe *m = item->mask;
+	struct mlx5dr_definer_fc *fc;
+	bool inner = cd->tunnel;
+
+	if (inner) {
+		DR_LOG(ERR, "Inner VXLAN GPE item not supported");
+		rte_errno = ENOTSUP;
+		return rte_errno;
+	}
+
+	/* In order to match on VXLAN GPE we must match on ip_protocol and l4_dport */
+	if (!cd->relaxed) {
+		fc = &cd->fc[DR_CALC_FNAME(IP_PROTOCOL, inner)];
+		if (!fc->tag_set) {
+			fc->item_idx = item_idx;
+			fc->tag_mask_set = &mlx5dr_definer_ones_set;
+			fc->tag_set = &mlx5dr_definer_udp_protocol_set;
+			DR_CALC_SET(fc, eth_l2, l4_type_bwc, inner);
+		}
+
+		fc = &cd->fc[DR_CALC_FNAME(L4_DPORT, inner)];
+		if (!fc->tag_set) {
+			fc->item_idx = item_idx;
+			fc->tag_mask_set = &mlx5dr_definer_ones_set;
+			fc->tag_set = &mlx5dr_definer_vxlan_gpe_udp_port_set;
+			DR_CALC_SET(fc, eth_l4, destination_port, inner);
+		}
+	}
+
+	if (!m)
+		return 0;
+
+	if (m->flags) {
+		fc = &cd->fc[MLX5DR_DEFINER_FNAME_VXLAN_GPE_FLAGS];
+		fc->item_idx = item_idx;
+		fc->tag_set = &mlx5dr_definer_vxlan_gpe_flags_set;
+		DR_CALC_SET_HDR(fc, tunnel_header, tunnel_header_0);
+		fc->bit_mask = __mlx5_mask(header_vxlan_gpe, flags);
+		fc->bit_off = __mlx5_dw_bit_off(header_vxlan_gpe, flags);
+	}
+
+	if (!is_mem_zero(m->rsvd0, 2)) {
+		fc = &cd->fc[MLX5DR_DEFINER_FNAME_VXLAN_GPE_RSVD0];
+		fc->item_idx = item_idx;
+		fc->tag_set = &mlx5dr_definer_vxlan_gpe_rsvd0_set;
+		DR_CALC_SET_HDR(fc, tunnel_header, tunnel_header_0);
+		fc->bit_mask = __mlx5_mask(header_vxlan_gpe, rsvd0);
+		fc->bit_off = __mlx5_dw_bit_off(header_vxlan_gpe, rsvd0);
+	}
+
+	if (m->protocol) {
+		fc = &cd->fc[MLX5DR_DEFINER_FNAME_VXLAN_GPE_PROTO];
+		fc->item_idx = item_idx;
+		fc->tag_set = &mlx5dr_definer_vxlan_gpe_protocol_set;
+		DR_CALC_SET_HDR(fc, tunnel_header, tunnel_header_0);
+		fc->byte_off += MLX5_BYTE_OFF(header_vxlan_gpe, protocol);
+		fc->bit_mask = __mlx5_mask(header_vxlan_gpe, protocol);
+		fc->bit_off = __mlx5_dw_bit_off(header_vxlan_gpe, protocol);
+	}
+
+	if (!is_mem_zero(m->vni, 3)) {
+		fc = &cd->fc[MLX5DR_DEFINER_FNAME_VXLAN_GPE_VNI];
+		fc->item_idx = item_idx;
+		fc->tag_set = &mlx5dr_definer_vxlan_gpe_vni_set;
+		DR_CALC_SET_HDR(fc, tunnel_header, tunnel_header_1);
+		fc->bit_mask = __mlx5_mask(header_vxlan_gpe, vni);
+		fc->bit_off = __mlx5_dw_bit_off(header_vxlan_gpe, vni);
+	}
+
+	if (m->rsvd1) {
+		fc = &cd->fc[MLX5DR_DEFINER_FNAME_VXLAN_GPE_RSVD1];
+		fc->item_idx = item_idx;
+		fc->tag_set = &mlx5dr_definer_vxlan_gpe_rsvd1_set;
+		DR_CALC_SET_HDR(fc, tunnel_header, tunnel_header_1);
+		fc->bit_mask = __mlx5_mask(header_vxlan_gpe, rsvd1);
+		fc->bit_off = __mlx5_dw_bit_off(header_vxlan_gpe, rsvd1);
+	}
+
+	return 0;
+}
+
+static int
 mlx5dr_definer_conv_items_to_hl(struct mlx5dr_context *ctx,
 				struct mlx5dr_match_template *mt,
 				uint8_t *hl)
@@ -2531,6 +2644,10 @@ mlx5dr_definer_conv_items_to_hl(struct mlx5dr_context *ctx,
 		case RTE_FLOW_ITEM_TYPE_PTYPE:
 			ret = mlx5dr_definer_conv_item_ptype(&cd, items, i);
 			item_flags |= MLX5_FLOW_ITEM_PTYPE;
+			break;
+		case RTE_FLOW_ITEM_TYPE_VXLAN_GPE:
+			ret = mlx5dr_definer_conv_item_vxlan_gpe(&cd, items, i);
+			item_flags |= MLX5_FLOW_LAYER_VXLAN_GPE;
 			break;
 		default:
 			DR_LOG(ERR, "Unsupported item type %d", items->type);

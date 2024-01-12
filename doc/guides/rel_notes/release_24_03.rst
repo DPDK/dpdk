@@ -123,6 +123,7 @@ New Features
 
 * **Updated NVIDIA mlx5 driver.**
 
+  * Added support for VXLAN-GPE matching in DV and HWS flow engines.
   * Added support for comparing result between packet fields or value.
   * Added support for accumulating value of field into another one.
 
