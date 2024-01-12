@@ -1229,6 +1229,9 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 	attr->modify_outer_ip_ecn = MLX5_GET
 		(flow_table_nic_cap, hcattr,
 		 ft_header_modify_nic_receive.outer_ip_ecn);
+	attr->modify_outer_ipv6_traffic_class = MLX5_GET
+		(flow_table_nic_cap, hcattr,
+		 ft_header_modify_nic_receive.outer_ipv6_traffic_class);
 	attr->set_reg_c = 0xffff;
 	if (attr->nic_flow_table) {
 #define GET_RX_REG_X_BITS \

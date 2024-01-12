@@ -416,6 +416,9 @@ enum mlx5_feature_name {
 #define IPPROTO_MPLS 137
 #endif
 
+#define MLX5_IPV6_HDR_ECN_MASK 0x3
+#define MLX5_IPV6_HDR_DSCP_SHIFT 2
+
 /* UDP port number for MPLS */
 #define MLX5_UDP_PORT_MPLS 6635
 

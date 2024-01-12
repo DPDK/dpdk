@@ -848,6 +848,7 @@ enum mlx5_modification_field {
 	MLX5_MODI_META_REG_C_13 = 0x94,
 	MLX5_MODI_META_REG_C_14 = 0x95,
 	MLX5_MODI_META_REG_C_15 = 0x96,
+	MLX5_MODI_OUT_IPV6_TRAFFIC_CLASS = 0x11C,
 	MLX5_MODI_OUT_IPV4_TOTAL_LEN = 0x11D,
 	MLX5_MODI_OUT_IPV6_PAYLOAD_LEN = 0x11E,
 	MLX5_MODI_OUT_IPV4_IHL = 0x11F,
@@ -2205,7 +2206,9 @@ struct mlx5_ifc_ft_fields_support_bits {
 		u8 metadata_reg_c_x[0x8];
 	}; /* end of DW3 */
 	/* set_action_field_support_2 */
-	u8 reserved_at_80[0x80];
+	u8 reserved_at_80[0x37];
+	u8 outer_ipv6_traffic_class[0x1];
+	u8 reserved_at_B8[0x48];
 	/* add_action_field_support */
 	u8 reserved_at_100[0x80];
 	/* add_action_field_support_2 */
@@ -2243,7 +2246,8 @@ struct mlx5_ifc_ft_fields_support_2_bits {
 	u8 inner_l4_checksum_ok[0x1];
 	u8 outer_ipv4_checksum_ok[0x1];
 	u8 outer_l4_checksum_ok[0x1]; /* end of DW0 */
-	u8 reserved_at_20[0x18];
+	u8 reserved_at_20[0x17];
+	u8 outer_ipv6_traffic_class[0x1];
 	union {
 		struct {
 			u8 metadata_reg_c_15[0x1];

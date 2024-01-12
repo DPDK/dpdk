@@ -253,6 +253,11 @@ struct field_modify_info modify_ipv6[] = {
 	{0, 0, 0},
 };
 
+struct field_modify_info modify_ipv6_traffic_class[] = {
+	{1,  0, MLX5_MODI_OUT_IPV6_TRAFFIC_CLASS},
+	{0, 0, 0},
+};
+
 struct field_modify_info modify_udp[] = {
 	{2, 0, MLX5_MODI_OUT_UDP_SPORT},
 	{2, 2, MLX5_MODI_OUT_UDP_DPORT},
@@ -1323,6 +1328,7 @@ static int
 flow_dv_convert_action_modify_ipv6_dscp
 			(struct mlx5_flow_dv_modify_hdr_resource *resource,
 			 const struct rte_flow_action *action,
+			 uint32_t ipv6_tc_off,
 			 struct rte_flow_error *error)
 {
 	const struct rte_flow_action_set_dscp *conf =
@@ -1330,6 +1336,7 @@ flow_dv_convert_action_modify_ipv6_dscp
 	struct rte_flow_item item = { .type = RTE_FLOW_ITEM_TYPE_IPV6 };
 	struct rte_flow_item_ipv6 ipv6;
 	struct rte_flow_item_ipv6 ipv6_mask;
+	struct field_modify_info *modify_info;
 
 	memset(&ipv6, 0, sizeof(ipv6));
 	memset(&ipv6_mask, 0, sizeof(ipv6_mask));
@@ -1338,12 +1345,19 @@ flow_dv_convert_action_modify_ipv6_dscp
 	 * rdma-core only accept the DSCP bits byte aligned start from
 	 * bit 0 to 5 as to be compatible with IPv4. No need to shift the
 	 * bits in IPv6 case as rdma-core requires byte aligned value.
+	 * IPv6 DSCP uses OUT_IPV6_TRAFFIC_CLASS as ID but it starts from 2
+	 * bits left. Shift the mask left for IPv6 DSCP. Do it here because
+	 * it's needed to distinguish DSCP from ECN in data field construct
 	 */
-	ipv6.hdr.vtc_flow = conf->dscp;
-	ipv6_mask.hdr.vtc_flow = RTE_IPV6_HDR_DSCP_MASK >> 22;
+	ipv6.hdr.vtc_flow = conf->dscp << ipv6_tc_off;
+	ipv6_mask.hdr.vtc_flow = RTE_IPV6_HDR_DSCP_MASK >> (22 - ipv6_tc_off);
 	item.spec = &ipv6;
 	item.mask = &ipv6_mask;
-	return flow_dv_convert_modify_action(&item, modify_ipv6, NULL, resource,
+	if (ipv6_tc_off)
+		modify_info = modify_ipv6_traffic_class;
+	else
+		modify_info = modify_ipv6;
+	return flow_dv_convert_modify_action(&item, modify_info, NULL, resource,
 					     MLX5_MODIFICATION_TYPE_SET, error);
 }
 
@@ -1576,6 +1590,12 @@ mlx5_modify_flex_item(const struct rte_eth_dev *dev,
 	}
 }
 
+static inline bool
+mlx5_dv_modify_ipv6_traffic_class_supported(struct mlx5_priv *priv)
+{
+	return !priv->sh->ipv6_tc_fallback;
+}
+
 void
 mlx5_flow_field_id_to_modify_info
 		(const struct rte_flow_field_data *data,
@@ -1731,9 +1751,20 @@ mlx5_flow_field_id_to_modify_info
 		break;
 	case RTE_FLOW_FIELD_IPV6_DSCP:
 		MLX5_ASSERT(data->offset + width <= 6);
-		off_be = 6 - (data->offset + width);
-		info[idx] = (struct field_modify_info){1, 0,
-					MLX5_MODI_OUT_IP_DSCP};
+		/*
+		 * IPv6 DSCP uses OUT_IPV6_TRAFFIC_CLASS as ID but it starts from 2
+		 * bits left. Shift the mask left for IPv6 DSCP. Do it here because
+		 * it's needed to distinguish DSCP from ECN in data field construct
+		 */
+		if (mlx5_dv_modify_ipv6_traffic_class_supported(priv)) {
+			off_be = 6 - (data->offset + width) + MLX5_IPV6_HDR_DSCP_SHIFT;
+			info[idx] = (struct field_modify_info){1, 0,
+						MLX5_MODI_OUT_IPV6_TRAFFIC_CLASS};
+		} else {
+			off_be = 6 - (data->offset + width);
+			info[idx] = (struct field_modify_info){1, 0,
+						MLX5_MODI_OUT_IP_DSCP};
+		}
 		if (mask)
 			mask[idx] = flow_modify_info_mask_8(width, off_be);
 		else
@@ -2029,11 +2060,24 @@ mlx5_flow_field_id_to_modify_info
 		}
 		break;
 	case RTE_FLOW_FIELD_IPV4_ECN:
-	case RTE_FLOW_FIELD_IPV6_ECN:
 		MLX5_ASSERT(data->offset + width <= 2);
 		off_be = 2 - (data->offset + width);
 		info[idx] = (struct field_modify_info){1, 0,
 					MLX5_MODI_OUT_IP_ECN};
+		if (mask)
+			mask[idx] = flow_modify_info_mask_8(width, off_be);
+		else
+			info[idx].offset = off_be;
+		break;
+	case RTE_FLOW_FIELD_IPV6_ECN:
+		MLX5_ASSERT(data->offset + width <= 2);
+		off_be = 2 - (data->offset + width);
+		if (mlx5_dv_modify_ipv6_traffic_class_supported(priv))
+			info[idx] = (struct field_modify_info){1, 0,
+						MLX5_MODI_OUT_IPV6_TRAFFIC_CLASS};
+		else
+			info[idx] = (struct field_modify_info){1, 0,
+						MLX5_MODI_OUT_IP_ECN};
 		if (mask)
 			mask[idx] = flow_modify_info_mask_8(width, off_be);
 		else
@@ -2161,7 +2205,7 @@ flow_dv_convert_action_modify_field
 	struct field_modify_info dcopy[MLX5_ACT_MAX_MOD_FIELDS] = {
 								{0, 0, 0} };
 	uint32_t mask[MLX5_ACT_MAX_MOD_FIELDS] = {0, 0, 0, 0, 0};
-	uint32_t type, meta = 0;
+	uint32_t type, meta = 0, dscp = 0;
 
 	if (conf->src.field == RTE_FLOW_FIELD_POINTER ||
 	    conf->src.field == RTE_FLOW_FIELD_VALUE) {
@@ -2180,6 +2224,17 @@ flow_dv_convert_action_modify_field
 			meta = *(const unaligned_uint32_t *)item.spec;
 			meta = rte_cpu_to_be_32(meta);
 			item.spec = &meta;
+		}
+		if (mlx5_dv_modify_ipv6_traffic_class_supported(dev->data->dev_private) &&
+		    conf->dst.field == RTE_FLOW_FIELD_IPV6_DSCP &&
+		    !(mask[0] & MLX5_IPV6_HDR_ECN_MASK)) {
+			dscp = *(const unaligned_uint32_t *)item.spec;
+			/*
+			 * IPv6 DSCP uses OUT_IPV6_TRAFFIC_CLASS as ID but it starts from 2
+			 * bits left. Shift the data left for IPv6 DSCP
+			 */
+			dscp <<= MLX5_IPV6_HDR_DSCP_SHIFT;
+			item.spec = &dscp;
 		}
 	} else {
 		type = MLX5_MODIFICATION_TYPE_COPY;
@@ -14385,6 +14440,7 @@ flow_dv_translate(struct rte_eth_dev *dev,
 	struct mlx5_flow_sub_actions_list *sample_act;
 	uint32_t sample_act_pos = UINT32_MAX;
 	uint32_t age_act_pos = UINT32_MAX;
+	uint32_t ipv6_tc_off = 0;
 	uint32_t num_of_dest = 0;
 	int tmp_actions_n = 0;
 	uint32_t table;
@@ -14941,8 +14997,12 @@ flow_dv_translate(struct rte_eth_dev *dev,
 			action_flags |= MLX5_FLOW_ACTION_SET_IPV4_DSCP;
 			break;
 		case RTE_FLOW_ACTION_TYPE_SET_IPV6_DSCP:
+			if (mlx5_dv_modify_ipv6_traffic_class_supported(priv))
+				ipv6_tc_off = MLX5_IPV6_HDR_DSCP_SHIFT;
+			else
+				ipv6_tc_off = 0;
 			if (flow_dv_convert_action_modify_ipv6_dscp(mhdr_res,
-							      actions, error))
+							      actions, ipv6_tc_off, error))
 				return -rte_errno;
 			action_flags |= MLX5_FLOW_ACTION_SET_IPV6_DSCP;
 			break;

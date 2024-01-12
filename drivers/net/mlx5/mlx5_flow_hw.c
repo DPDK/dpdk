@@ -2869,6 +2869,13 @@ flow_hw_modify_field_construct(struct mlx5_hw_q_job *job,
 		}
 		off_b = rte_bsf32(mask);
 		data = flow_dv_fetch_field(values + field->offset, field->size);
+		/*
+		 * IPv6 DSCP uses OUT_IPV6_TRAFFIC_CLASS as ID but it starts from 2
+		 * bits left. Shift the data left for IPv6 DSCP
+		 */
+		if (field->id == MLX5_MODI_OUT_IPV6_TRAFFIC_CLASS &&
+		    !(mask & MLX5_IPV6_HDR_ECN_MASK))
+			data <<= MLX5_IPV6_HDR_DSCP_SHIFT;
 		data = (data & mask) >> off_b;
 		job->mhdr_cmd[i++].data1 = rte_cpu_to_be_32(data);
 		++field;

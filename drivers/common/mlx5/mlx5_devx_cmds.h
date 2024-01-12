@@ -304,6 +304,7 @@ struct mlx5_hca_attr {
 	uint32_t set_reg_c:16;
 	uint32_t nic_flow_table:1;
 	uint32_t modify_outer_ip_ecn:1;
+	uint32_t modify_outer_ipv6_traffic_class:1;
 	union {
 		uint32_t max_flow_counter;
 		struct {
