@@ -3172,6 +3172,7 @@ mlx5_flow_validate_item_vxlan_gpe(const struct rte_flow_item *item,
 	struct rte_flow_item_vxlan_gpe nic_mask = {
 		.vni = "\xff\xff\xff",
 		.protocol = 0xff,
+		.flags = 0xff,
 	};
 
 	if (!priv->sh->config.l3_vxlan_en)
