@@ -1700,19 +1700,21 @@ virtio_vdpa_dev_do_remove(struct rte_pci_device *pci_dev, struct virtio_vdpa_pri
 		virtio_pci_dev_free(priv->vpdev);
 	}
 
-	pthread_mutex_lock(&iommu_domain->domain_lock);
-	iommu_domain->container_ref_cnt--;
-	if (iommu_domain->container_ref_cnt == 0) {
-		if (priv->vfio_container_fd >= 0) {
-			rte_vfio_container_destroy(priv->vfio_container_fd);
-			priv->vfio_container_fd = -1;
-		}
-		if (!rte_uuid_is_null(iommu_domain->vm_uuid))
-			TAILQ_REMOVE(&virtio_iommu_domain_list, iommu_domain, next);
-	}	
-	pthread_mutex_unlock(&iommu_domain->domain_lock);
+	if (iommu_domain) {
+		pthread_mutex_lock(&iommu_domain->domain_lock);
+		iommu_domain->container_ref_cnt--;
+		if (iommu_domain->container_ref_cnt == 0) {
+			if (priv->vfio_container_fd >= 0) {
+				rte_vfio_container_destroy(priv->vfio_container_fd);
+				priv->vfio_container_fd = -1;
+			}
+			if (!rte_uuid_is_null(iommu_domain->vm_uuid))
+				TAILQ_REMOVE(&virtio_iommu_domain_list, iommu_domain, next);
+		}	
+		pthread_mutex_unlock(&iommu_domain->domain_lock);
 
-	rte_free(iommu_domain);
+		rte_free(iommu_domain);
+	}
 
 	if (priv->state_mz)
 		rte_memzone_free(priv->state_mz);
@@ -1832,6 +1834,7 @@ virtio_vdpa_dev_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		iommu_domain->vfio_container_fd = -1;
 		iommu_domain->container_ref_cnt = 0;
 		iommu_domain->mem_tbl_ref_cnt = 0;
+		pthread_mutex_init(&iommu_domain->domain_lock, NULL);
 	}
 
 	priv->iommu_domain = iommu_domain;
