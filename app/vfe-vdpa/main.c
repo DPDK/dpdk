@@ -21,6 +21,7 @@
 #include <virtio_lm.h>
 #include <rte_vf_rpc.h>
 #include <rte_vfio.h>
+#include <virtio_ha.h>
 
 #include <cmdline_parse.h>
 #include <cmdline_socket.h>
@@ -746,6 +747,125 @@ cmdline_parse_ctx_t main_ctx[] = {
 	NULL,
 };
 
+static int
+virtio_ha_client_start(void)
+{
+	struct virtio_dev_name *pf_list = NULL;
+	struct vdpa_vf_with_devargs *vf_list = NULL;
+	struct vdpa_vf_ctx *vf_ctx = NULL;
+	struct virtio_pf_ctx pf_ctx;
+	int ret, i, j, nr_pf, nr_vf;
+
+	ret = virtio_ha_ipc_client_init();
+	if (ret) {
+		RTE_LOG(ERR, VDPA, "Failed to init ha ipc client\n");
+		return -1;		
+	}
+
+	ret = virtio_ha_pf_list_query(&pf_list);
+	if (ret < 0) {
+		RTE_LOG(ERR, VDPA, "Failed to query pf list\n");
+		return -1;		
+	} else if (ret == 0) {
+		RTE_LOG(INFO, VDPA, "Query success: 0 pf to restore\n");
+		return 0;
+	} else {
+		RTE_LOG(INFO, VDPA, "Query success: %d pf to restore\n", ret);
+	}
+
+	nr_pf = ret;
+
+	for (i = 0; i < nr_pf; i++) {
+		ret = virtio_ha_pf_ctx_query(pf_list + i, &pf_ctx);
+		if (ret < 0) {
+			RTE_LOG(ERR, VDPA, "Failed to query pf ctx\n");
+			ret = -1;
+			goto err;
+		}
+
+		ret = virtio_ha_pf_ctx_set(pf_list + i, &pf_ctx);
+		if (ret < 0) {
+			RTE_LOG(ERR, VDPA, "Failed to set pf ctx in pf driver\n");
+			ret = -1;
+			goto err;
+		}
+
+		ret = rte_vdpa_pf_dev_add(pf_list[i].dev_bdf);
+		if (ret < 0) {
+			RTE_LOG(ERR, VDPA, "Failed to restore pf\n");
+			ret = -1;
+			goto err;
+		}
+
+		ret = virtio_ha_pf_ctx_unset(pf_list + i);
+		if (ret < 0) {
+			RTE_LOG(ERR, VDPA, "Failed to unset pf ctx in pf driver\n");
+			ret = -1;
+			goto err;
+		}
+	}
+
+	for (i = 0; i < nr_pf && ret != -1; i++) {
+		ret = virtio_ha_vf_list_query(pf_list + i, &vf_list);
+		if (ret < 0) {
+			RTE_LOG(ERR, VDPA, "Failed to query vf list of %s\n", pf_list[i].dev_bdf);
+			ret = -1;
+			goto err;		
+		} else {
+			RTE_LOG(INFO, VDPA, "Query success: %d vf of pf %s to restore\n",
+				ret, pf_list[i].dev_bdf);
+		}
+
+		nr_vf = ret;
+
+		for (j = 0; j < nr_vf && ret != -1; j++) {
+			ret = virtio_ha_vf_ctx_query(&vf_list[j].vf_name, pf_list + i, &vf_ctx);
+			if (ret < 0) {
+				RTE_LOG(ERR, VDPA, "Failed to query vf ctx\n");
+				ret = -1;
+				goto err_vf_list;
+			}
+
+			ret = virtio_ha_vf_ctx_set(&vf_list[j].vf_name, vf_ctx);
+			if (ret < 0) {
+				RTE_LOG(ERR, VDPA, "Failed to set vf ctx in vf driver\n");
+				ret = -1;
+				goto err_vf_list;
+			}
+
+			ret = rte_vdpa_vf_dev_add(vf_list[j].vf_name.dev_bdf, vf_list[j].vm_uuid, NULL);
+			if (ret < 0) {
+				RTE_LOG(ERR, VDPA, "Failed to restore vf\n");
+				ret = -1;
+				goto err_vf_ctx;
+			}
+
+			ret = vdpa_with_socket_path_start(vf_list[j].vf_name.dev_bdf,
+				vf_list[j].vhost_sock_addr);
+			if (ret < 0) {
+				RTE_LOG(ERR, VDPA, "Failed to start vdpa\n");
+				ret = -1;
+				goto err_vf_ctx;
+			}
+
+			ret = virtio_ha_vf_ctx_unset(&vf_list[j].vf_name);
+			if (ret < 0) {
+				RTE_LOG(ERR, VDPA, "Failed to unset vf ctx in vf driver\n");
+				ret = -1;
+				goto err_vf_ctx;
+			}
+err_vf_ctx:
+			free(vf_ctx);
+		}
+err_vf_list:
+		free(vf_list);
+	}
+
+err:
+	free(pf_list);
+	return 0;
+}
+
 int
 main(int argc, char *argv[])
 {
@@ -783,6 +903,11 @@ main(int argc, char *argv[])
 		uuid_generate(vf_token);
 		rte_eal_vfio_set_vf_token(vf_token);
 	}
+
+	ret = virtio_ha_client_start();
+	if (ret < 0)
+		rte_exit(EXIT_FAILURE, "ha client start failed\n");
+	
 	ret = vdpa_rpc_start(&vdpa_rpc_ctx);
 	if (ret < 0)
 		rte_exit(EXIT_FAILURE, "rpc init failed\n");
