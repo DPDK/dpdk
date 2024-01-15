@@ -14606,9 +14606,9 @@ flow_dv_destroy(struct rte_eth_dev *dev, struct rte_flow *flow)
 		flow_dv_aso_ct_release(dev, flow->ct, NULL);
 	else if (flow->age)
 		flow_dv_aso_age_release(dev, flow->age);
-	if (flow->geneve_tlv_option) {
+	while (flow->geneve_tlv_option) {
 		flow_dv_geneve_tlv_option_resource_release(dev);
-		flow->geneve_tlv_option = 0;
+		flow->geneve_tlv_option--;
 	}
 	while (flow->dev_handles) {
 		uint32_t tmp_idx = flow->dev_handles;
