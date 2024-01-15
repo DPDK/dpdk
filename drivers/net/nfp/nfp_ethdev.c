@@ -1387,9 +1387,12 @@ nfp_init_app_fw_nic(struct nfp_pf_dev *pf_dev,
 	/* Loop through all physical ports on PF */
 	numa_node = rte_socket_id();
 	for (i = 0; i < app_fw_nic->total_phyports; i++) {
-		id = nfp_function_id_get(pf_dev, i);
-		snprintf(port_name, sizeof(port_name), "%s_port%u",
-				pf_dev->pci_dev->device.name, id);
+		if (pf_dev->multi_pf.enabled)
+			snprintf(port_name, sizeof(port_name), "%s",
+					pf_dev->pci_dev->device.name);
+		else
+			snprintf(port_name, sizeof(port_name), "%s_port%u",
+					pf_dev->pci_dev->device.name, i);
 
 		/* Allocate a eth_dev for this phyport */
 		eth_dev = rte_eth_dev_allocate(port_name);
@@ -1409,6 +1412,7 @@ nfp_init_app_fw_nic(struct nfp_pf_dev *pf_dev,
 		}
 
 		hw = eth_dev->data->dev_private;
+		id = nfp_function_id_get(pf_dev, i);
 
 		/* Add this device to the PF's array of physical ports */
 		app_fw_nic->ports[id] = hw;
@@ -1838,14 +1842,15 @@ nfp_secondary_init_app_fw_nic(struct nfp_pf_dev *pf_dev)
 	}
 
 	for (i = 0; i < total_vnics; i++) {
-		uint32_t id = i;
 		struct rte_eth_dev *eth_dev;
 		char port_name[RTE_ETH_NAME_MAX_LEN];
 
 		if (nfp_check_multi_pf_from_fw(total_vnics))
-			id = function_id;
-		snprintf(port_name, sizeof(port_name), "%s_port%u",
-				pf_dev->pci_dev->device.name, id);
+			snprintf(port_name, sizeof(port_name), "%s",
+					pf_dev->pci_dev->device.name);
+		else
+			snprintf(port_name, sizeof(port_name), "%s_port%u",
+					pf_dev->pci_dev->device.name, i);
 
 		PMD_INIT_LOG(DEBUG, "Secondary attaching to port %s", port_name);
 		eth_dev = rte_eth_dev_attach_secondary(port_name);
