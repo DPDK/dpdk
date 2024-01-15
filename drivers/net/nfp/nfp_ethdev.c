@@ -1065,24 +1065,29 @@ nfp_fw_loaded_check_alive(struct nfp_nsp *nsp,
 		const struct nfp_dev_info *dev_info,
 		struct nfp_multi_pf *multi_pf)
 {
-	int offset;
-	uint32_t i;
-	uint64_t beat;
+	uint8_t i;
+	uint64_t tmp_beat;
 	uint32_t port_num;
+	uint64_t beat[dev_info->pf_num_per_unit];
+	uint32_t offset[dev_info->pf_num_per_unit];
+
+	for (port_num = 0; port_num < dev_info->pf_num_per_unit; port_num++) {
+		offset[port_num] = NFP_BEAT_OFFSET(port_num);
+		beat[port_num] = nn_readq(multi_pf->beat_addr + offset[port_num]);
+	}
 
 	/*
 	 * If the beats of any other port changed in 3s,
 	 * we should not reload the firmware.
 	 */
-	for (port_num = 0; port_num < dev_info->pf_num_per_unit; port_num++) {
-		if (port_num == multi_pf->function_id)
-			continue;
+	for (i = 0; i < 3; i++) {
+		sleep(1);
+		for (port_num = 0; port_num < dev_info->pf_num_per_unit; port_num++) {
+			if (port_num == multi_pf->function_id)
+				continue;
 
-		offset = NFP_BEAT_OFFSET(port_num);
-		beat = nn_readq(multi_pf->beat_addr + offset);
-		for (i = 0; i < 3; i++) {
-			sleep(1);
-			if (nn_readq(multi_pf->beat_addr + offset) != beat)
+			tmp_beat = nn_readq(multi_pf->beat_addr + offset[port_num]);
+			if (tmp_beat != beat[port_num])
 				return 0;
 		}
 	}
