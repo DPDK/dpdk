@@ -300,7 +300,6 @@ cperf_verify_test_runner(void *test_ctx)
 				ops_needed, ctx->sess, ctx->options,
 				ctx->test_vector, iv_offset, &imix_idx, NULL);
 
-
 		/* Populate the mbuf with the test vector, for verification */
 		for (i = 0; i < ops_needed; i++)
 			cperf_mbuf_set(ops[i]->sym->m_src,
@@ -317,6 +316,17 @@ cperf_verify_test_runner(void *test_ctx)
 				rte_pktmbuf_linearize(ops[i]->sym->m_src);
 		}
 #endif /* CPERF_LINEARIZATION_ENABLE */
+
+		/**
+		 * When ops_needed is smaller than ops_enqd, the
+		 * unused ops need to be moved to the front for
+		 * next round use.
+		 */
+		if (unlikely(ops_enqd > ops_needed)) {
+			size_t nb_b_to_mov = ops_unused * sizeof(struct rte_crypto_op *);
+
+			memmove(&ops[ops_needed], &ops[ops_enqd], nb_b_to_mov);
+		}
 
 		/* Enqueue burst of ops on crypto device */
 		ops_enqd = rte_cryptodev_enqueue_burst(ctx->dev_id, ctx->qp_id,
