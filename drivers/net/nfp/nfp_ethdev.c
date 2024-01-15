@@ -954,14 +954,13 @@ free_area:
 #define DEFAULT_FW_PATH       "/lib/firmware/netronome"
 
 static int
-nfp_fw_upload(struct rte_pci_device *dev,
+nfp_fw_get_name(struct rte_pci_device *dev,
 		struct nfp_nsp *nsp,
-		char *card)
+		char *card,
+		char *fw_name,
+		size_t fw_size)
 {
-	void *fw_buf;
-	size_t fsize;
 	char serial[40];
-	char fw_name[125];
 	uint16_t interface;
 	uint32_t cpp_serial_len;
 	const uint8_t *cpp_serial;
@@ -980,30 +979,43 @@ nfp_fw_upload(struct rte_pci_device *dev,
 			"serial-%02x-%02x-%02x-%02x-%02x-%02x-%02x-%02x",
 			cpp_serial[0], cpp_serial[1], cpp_serial[2], cpp_serial[3],
 			cpp_serial[4], cpp_serial[5], interface >> 8, interface & 0xff);
-	snprintf(fw_name, sizeof(fw_name), "%s/%s.nffw", DEFAULT_FW_PATH, serial);
+	snprintf(fw_name, fw_size, "%s/%s.nffw", DEFAULT_FW_PATH, serial);
 
 	PMD_DRV_LOG(DEBUG, "Trying with fw file: %s", fw_name);
-	if (rte_firmware_read(fw_name, &fw_buf, &fsize) == 0)
-		goto load_fw;
+	if (access(fw_name, F_OK) == 0)
+		return 0;
 
 	/* Then try the PCI name */
-	snprintf(fw_name, sizeof(fw_name), "%s/pci-%s.nffw", DEFAULT_FW_PATH,
+	snprintf(fw_name, fw_size, "%s/pci-%s.nffw", DEFAULT_FW_PATH,
 			dev->name);
 
 	PMD_DRV_LOG(DEBUG, "Trying with fw file: %s", fw_name);
-	if (rte_firmware_read(fw_name, &fw_buf, &fsize) == 0)
-		goto load_fw;
+	if (access(fw_name, F_OK) == 0)
+		return 0;
 
 	/* Finally try the card type and media */
-	snprintf(fw_name, sizeof(fw_name), "%s/%s", DEFAULT_FW_PATH, card);
+	snprintf(fw_name, fw_size, "%s/%s", DEFAULT_FW_PATH, card);
 	PMD_DRV_LOG(DEBUG, "Trying with fw file: %s", fw_name);
-	if (rte_firmware_read(fw_name, &fw_buf, &fsize) == 0)
-		goto load_fw;
+	if (access(fw_name, F_OK) == 0)
+		return 0;
 
-	PMD_DRV_LOG(ERR, "Can't find suitable firmware.");
 	return -ENOENT;
+}
 
-load_fw:
+static int
+nfp_fw_upload(struct nfp_nsp *nsp,
+		char *fw_name)
+{
+	int err;
+	void *fw_buf;
+	size_t fsize;
+
+	err = rte_firmware_read(fw_name, &fw_buf, &fsize);
+	if (err != 0) {
+		PMD_DRV_LOG(ERR, "firmware %s not found!", fw_name);
+		return -ENOENT;
+	}
+
 	PMD_DRV_LOG(INFO, "Firmware file found at %s with size: %zu",
 			fw_name, fsize);
 	PMD_DRV_LOG(INFO, "Uploading the firmware ...");
@@ -1034,14 +1046,13 @@ nfp_fw_unload(struct nfp_cpp *cpp)
 }
 
 static int
-nfp_fw_reload(struct rte_pci_device *dev,
-		struct nfp_nsp *nsp,
-		char *card_desc)
+nfp_fw_reload(struct nfp_nsp *nsp,
+		char *fw_name)
 {
 	int err;
 
 	nfp_nsp_device_soft_reset(nsp);
-	err = nfp_fw_upload(dev, nsp, card_desc);
+	err = nfp_fw_upload(nsp, fw_name);
 	if (err != 0)
 		PMD_DRV_LOG(ERR, "NFP firmware load failed");
 
@@ -1049,9 +1060,8 @@ nfp_fw_reload(struct rte_pci_device *dev,
 }
 
 static int
-nfp_fw_loaded_check_alive(struct rte_pci_device *dev,
-		struct nfp_nsp *nsp,
-		char *card_desc,
+nfp_fw_loaded_check_alive(struct nfp_nsp *nsp,
+		char *fw_name,
 		const struct nfp_dev_info *dev_info,
 		struct nfp_multi_pf *multi_pf)
 {
@@ -1077,13 +1087,12 @@ nfp_fw_loaded_check_alive(struct rte_pci_device *dev,
 		}
 	}
 
-	return nfp_fw_reload(dev, nsp, card_desc);
+	return nfp_fw_reload(nsp, fw_name);
 }
 
 static int
-nfp_fw_reload_for_multipf(struct rte_pci_device *dev,
-		struct nfp_nsp *nsp,
-		char *card_desc,
+nfp_fw_reload_for_multipf(struct nfp_nsp *nsp,
+		char *fw_name,
 		struct nfp_cpp *cpp,
 		const struct nfp_dev_info *dev_info,
 		struct nfp_multi_pf *multi_pf)
@@ -1095,9 +1104,9 @@ nfp_fw_reload_for_multipf(struct rte_pci_device *dev,
 		PMD_DRV_LOG(ERR, "NFP write beat failed");
 
 	if (nfp_nsp_fw_loaded(nsp))
-		err = nfp_fw_loaded_check_alive(dev, nsp, card_desc, dev_info, multi_pf);
+		err = nfp_fw_loaded_check_alive(nsp, fw_name, dev_info, multi_pf);
 	else
-		err = nfp_fw_reload(dev, nsp, card_desc);
+		err = nfp_fw_reload(nsp, fw_name);
 	if (err != 0) {
 		nfp_net_keepalive_uninit(multi_pf);
 		return err;
@@ -1121,6 +1130,7 @@ nfp_fw_setup(struct rte_pci_device *dev,
 		struct nfp_multi_pf *multi_pf)
 {
 	int err;
+	char fw_name[125];
 	char card_desc[100];
 	struct nfp_nsp *nsp;
 	const char *nfp_fw_model;
@@ -1157,10 +1167,17 @@ nfp_fw_setup(struct rte_pci_device *dev,
 		return -EIO;
 	}
 
+	err = nfp_fw_get_name(dev, nsp, card_desc, fw_name, sizeof(fw_name));
+	if (err != 0) {
+		PMD_DRV_LOG(ERR, "Can't find suitable firmware.");
+		nfp_nsp_close(nsp);
+		return err;
+	}
+
 	if (multi_pf->enabled)
-		err = nfp_fw_reload_for_multipf(dev, nsp, card_desc, cpp, dev_info, multi_pf);
+		err = nfp_fw_reload_for_multipf(nsp, fw_name, cpp, dev_info, multi_pf);
 	else
-		err = nfp_fw_reload(dev, nsp, card_desc);
+		err = nfp_fw_reload(nsp, fw_name);
 
 	nfp_nsp_close(nsp);
 	return err;
