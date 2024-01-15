@@ -1059,10 +1059,8 @@ nfp_fw_reload(struct nfp_nsp *nsp,
 	return err;
 }
 
-static int
-nfp_fw_loaded_check_alive(struct nfp_nsp *nsp,
-		char *fw_name,
-		const struct nfp_dev_info *dev_info,
+static bool
+nfp_fw_skip_load(const struct nfp_dev_info *dev_info,
 		struct nfp_multi_pf *multi_pf)
 {
 	uint8_t i;
@@ -1088,11 +1086,11 @@ nfp_fw_loaded_check_alive(struct nfp_nsp *nsp,
 
 			tmp_beat = nn_readq(multi_pf->beat_addr + offset[port_num]);
 			if (tmp_beat != beat[port_num])
-				return 0;
+				return true;
 		}
 	}
 
-	return nfp_fw_reload(nsp, fw_name);
+	return false;
 }
 
 static int
@@ -1103,17 +1101,11 @@ nfp_fw_reload_for_multipf(struct nfp_nsp *nsp,
 		struct nfp_multi_pf *multi_pf)
 {
 	int err;
+	bool skip_load_fw = false;
 
 	err = nfp_net_keepalive_init(cpp, multi_pf);
-	if (err != 0)
-		PMD_DRV_LOG(ERR, "NFP write beat failed");
-
-	if (nfp_nsp_fw_loaded(nsp))
-		err = nfp_fw_loaded_check_alive(nsp, fw_name, dev_info, multi_pf);
-	else
-		err = nfp_fw_reload(nsp, fw_name);
 	if (err != 0) {
-		nfp_net_keepalive_uninit(multi_pf);
+		PMD_DRV_LOG(ERR, "NFP init beat failed");
 		return err;
 	}
 
@@ -1121,9 +1113,23 @@ nfp_fw_reload_for_multipf(struct nfp_nsp *nsp,
 	if (err != 0) {
 		nfp_net_keepalive_uninit(multi_pf);
 		PMD_DRV_LOG(ERR, "NFP write beat failed");
+		return err;
 	}
 
-	return err;
+	if (nfp_nsp_fw_loaded(nsp))
+		skip_load_fw = nfp_fw_skip_load(dev_info, multi_pf);
+
+	if (skip_load_fw)
+		return 0;
+
+	err = nfp_fw_reload(nsp, fw_name);
+	if (err != 0) {
+		nfp_net_keepalive_stop(multi_pf);
+		nfp_net_keepalive_uninit(multi_pf);
+		return err;
+	}
+
+	return 0;
 }
 
 static int
