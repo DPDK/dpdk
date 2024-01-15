@@ -14373,7 +14373,7 @@ flow_dv_translate_items_sws(struct rte_eth_dev *dev,
 	 * Avoid be overwritten by other sub mlx5_flows.
 	 */
 	if (wks.geneve_tlv_option)
-		dev_flow->flow->geneve_tlv_option = wks.geneve_tlv_option;
+		dev_flow->flow->geneve_tlv_option += wks.geneve_tlv_option;
 	return 0;
 }
 
@@ -15982,9 +15982,9 @@ flow_dv_destroy(struct rte_eth_dev *dev, struct rte_flow *flow)
 		flow_dv_aso_ct_release(dev, flow->ct, NULL);
 	else if (flow->age)
 		flow_dv_aso_age_release(dev, flow->age);
-	if (flow->geneve_tlv_option) {
+	while (flow->geneve_tlv_option) {
 		flow_dev_geneve_tlv_option_resource_release(priv->sh);
-		flow->geneve_tlv_option = 0;
+		flow->geneve_tlv_option--;
 	}
 	while (flow->dev_handles) {
 		uint32_t tmp_idx = flow->dev_handles;
