@@ -471,6 +471,27 @@ nfp_net_keepalive_start(struct nfp_multi_pf *multi_pf)
 }
 
 static void
+nfp_net_keepalive_clear(uint8_t *beat_addr,
+		uint8_t function_id)
+{
+	nn_writeq(0, beat_addr + NFP_BEAT_OFFSET(function_id));
+}
+
+static void
+nfp_net_keepalive_clear_others(const struct nfp_dev_info *dev_info,
+		struct nfp_multi_pf *multi_pf)
+{
+	uint8_t port_num;
+
+	for (port_num = 0; port_num < dev_info->pf_num_per_unit; port_num++) {
+		if (port_num == multi_pf->function_id)
+			continue;
+
+		nfp_net_keepalive_clear(multi_pf->beat_addr, port_num);
+	}
+}
+
+static void
 nfp_net_keepalive_stop(struct nfp_multi_pf *multi_pf)
 {
 	/* Cancel keepalive for multiple PF setup */
@@ -524,6 +545,7 @@ nfp_pf_uninit(struct nfp_pf_dev *pf_dev)
 	free(pf_dev->sym_tbl);
 	if (pf_dev->multi_pf.enabled) {
 		nfp_net_keepalive_stop(&pf_dev->multi_pf);
+		nfp_net_keepalive_clear(pf_dev->multi_pf.beat_addr, pf_dev->multi_pf.function_id);
 		nfp_net_keepalive_uninit(&pf_dev->multi_pf);
 	}
 	free(pf_dev->nfp_eth_table);
@@ -1146,6 +1168,8 @@ nfp_fw_reload_for_multipf(struct nfp_nsp *nsp,
 		nfp_net_keepalive_uninit(multi_pf);
 		return err;
 	}
+
+	nfp_net_keepalive_clear_others(dev_info, multi_pf);
 
 	return 0;
 }
@@ -1779,6 +1803,7 @@ sym_tbl_cleanup:
 fw_cleanup:
 	nfp_fw_unload(cpp);
 	nfp_net_keepalive_stop(&pf_dev->multi_pf);
+	nfp_net_keepalive_clear(pf_dev->multi_pf.beat_addr, pf_dev->multi_pf.function_id);
 	nfp_net_keepalive_uninit(&pf_dev->multi_pf);
 eth_table_cleanup:
 	free(nfp_eth_table);
