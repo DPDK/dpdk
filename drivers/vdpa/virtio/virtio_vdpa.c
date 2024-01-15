@@ -14,6 +14,7 @@
 #include <virtio_api.h>
 #include <virtio_lm.h>
 #include <virtio_util.h>
+#include <virtio_ha.h>
 #include "rte_vf_rpc.h"
 #include "virtio_vdpa.h"
 
@@ -32,6 +33,11 @@ int virtio_vdpa_lcore_id = 0;
 
 #define RTE_ROUNDUP(x, y) ((((x) + ((y) - 1)) / (y)) * (y))
 
+struct virtio_ha_vf_drv_ctx {
+	struct virtio_dev_name vf_name;
+	const struct vdpa_vf_ctx *ctx;
+};
+
 extern struct virtio_vdpa_device_callback virtio_vdpa_blk_callback;
 extern struct virtio_vdpa_device_callback virtio_vdpa_net_callback;
 
@@ -41,6 +47,27 @@ static pthread_mutex_t priv_list_lock = PTHREAD_MUTEX_INITIALIZER;
 
 static TAILQ_HEAD(virtio_vdpa_iommu_domains, virtio_vdpa_iommu_domain) virtio_iommu_domain_list =
 						  TAILQ_HEAD_INITIALIZER(virtio_iommu_domain_list);
+
+
+static struct virtio_ha_vf_drv_ctx cached_ctx;
+
+static void
+virtio_ha_vf_drv_ctx_set(const struct virtio_dev_name *vf, const void *ctx)
+{
+	const struct vdpa_vf_ctx *vf_ctx = (const struct vdpa_vf_ctx *)ctx; 
+
+	memcpy(&cached_ctx.vf_name, vf, sizeof(struct virtio_dev_name));
+	cached_ctx.ctx = vf_ctx;
+}
+
+static void
+virtio_ha_vf_drv_ctx_unset(const struct virtio_dev_name *vf)
+{
+	if (strcmp(vf->dev_bdf, cached_ctx.vf_name.dev_bdf))
+		return;
+	memset(&cached_ctx.vf_name, 0, sizeof(struct virtio_dev_name));
+	cached_ctx.ctx = NULL;
+}
 
 static struct virtio_vdpa_priv *
 virtio_vdpa_find_priv_resource_by_vdev(const struct rte_vdpa_device *vdev)
@@ -2131,6 +2158,16 @@ static struct rte_pci_driver virtio_vdpa_driver = {
 	.probe = virtio_vdpa_dev_probe,
 	.remove = virtio_vdpa_dev_remove,
 };
+
+static struct virtio_ha_dev_ctx_cb virtio_ha_vf_drv_cb = {
+	.set = virtio_ha_vf_drv_ctx_set,
+	.unset = virtio_ha_vf_drv_ctx_unset,
+};
+
+RTE_INIT(vdpa_virtio_ha_init)
+{
+	virtio_ha_vf_register_ctx_cb(&virtio_ha_vf_drv_cb);
+}
 
 RTE_PMD_REGISTER_PCI(VIRTIO_VDPA_DRIVER_NAME, virtio_vdpa_driver);
 RTE_PMD_REGISTER_PCI_TABLE(VIRTIO_VDPA_DRIVER_NAME, pci_id_virtio_map);

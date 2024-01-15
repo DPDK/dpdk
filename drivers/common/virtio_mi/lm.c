@@ -21,6 +21,7 @@
 #include <virtio_admin.h>
 #include <virtio_api.h>
 #include <virtio_lm.h>
+#include <virtio_ha.h>
 
 #define VIRTIO_VDPA_MI_SUPPORTED_NET_FEATURES \
 										(1ULL << VIRTIO_F_ADMIN_VQ | \
@@ -62,6 +63,12 @@ struct virtio_admin_data_ctrl{
 	struct sge_iova out_data[VIRTIO_VDPA_MI_MAX_SGES];
 };
 
+struct virtio_ha_pf_drv_ctx {
+	struct virtio_dev_name pf_name;
+	int vfio_group_fd;
+	int vfio_device_fd;
+};
+
 RTE_LOG_REGISTER(virtio_vdpa_mi_logtype, pmd.vdpa.virtio, NOTICE);
 #define DRV_LOG(level, fmt, args...) \
 	rte_log(RTE_LOG_ ## level, virtio_vdpa_mi_logtype, \
@@ -75,6 +82,7 @@ RTE_LOG_REGISTER(virtio_vdpa_cmd_logtype, pmd.vdpa.virtio, NOTICE);
 TAILQ_HEAD(virtio_vdpa_mi_privs, virtio_vdpa_pf_priv) virtio_mi_priv_list =
 						TAILQ_HEAD_INITIALIZER(virtio_mi_priv_list);
 static pthread_mutex_t mi_priv_list_lock = PTHREAD_MUTEX_INITIALIZER;
+static struct virtio_ha_pf_drv_ctx cached_ctx;
 
 static struct virtio_admin_ctrl *
 virtio_vdpa_send_admin_command_split(struct virtadmin_ctl *avq,
@@ -1155,6 +1163,26 @@ virtio_vdpa_mi_dev_remove(struct rte_pci_device *pci_dev)
 	return 0;
 }
 
+static void
+virtio_ha_pf_drv_ctx_set(const struct virtio_dev_name *pf, const void *ctx)
+{
+	const struct virtio_pf_ctx *pf_ctx = (const struct virtio_pf_ctx *)ctx;
+
+	memcpy(&cached_ctx.pf_name, pf, sizeof(struct virtio_dev_name));
+	cached_ctx.vfio_group_fd = pf_ctx->vfio_group_fd;
+	cached_ctx.vfio_device_fd = pf_ctx->vfio_device_fd;
+}
+
+static void
+virtio_ha_pf_drv_ctx_unset(const struct virtio_dev_name *pf)
+{
+	if (strcmp(pf->dev_bdf, cached_ctx.pf_name.dev_bdf))
+		return;
+	memset(&cached_ctx.pf_name, 0, sizeof(struct virtio_dev_name));
+	cached_ctx.vfio_group_fd = -1;
+	cached_ctx.vfio_device_fd = -1;
+}
+
 struct virtio_vdpa_pf_priv *
 rte_vdpa_get_mi_by_bdf(const char *bdf)
 {
@@ -1241,6 +1269,16 @@ static struct rte_pci_driver virtio_vdpa_mi_driver = {
 };
 
 #define VIRTIO_VDPA_MI_DRIVER_NAME vdpa_virtio_mi
+
+static struct virtio_ha_dev_ctx_cb virtio_ha_pf_drv_cb = {
+	.set = virtio_ha_pf_drv_ctx_set,
+	.unset = virtio_ha_pf_drv_ctx_unset,
+};
+
+RTE_INIT(common_virtio_mi_init)
+{
+	virtio_ha_pf_register_ctx_cb(&virtio_ha_pf_drv_cb);
+}
 
 RTE_PMD_REGISTER_PCI(VIRTIO_VDPA_MI_DRIVER_NAME, virtio_vdpa_mi_driver);
 RTE_PMD_REGISTER_PCI_TABLE(VIRTIO_VDPA_MI_DRIVER_NAME, pci_id_virtio_mi_map);

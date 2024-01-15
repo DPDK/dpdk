@@ -9,6 +9,8 @@ INTERNAL {
 	virtio_ha_vf_vhost_fd_remove;
 	virtio_ha_vf_mem_tbl_store;
 	virtio_ha_vf_mem_tbl_remove;
+	virtio_ha_pf_register_ctx_cb;
+	virtio_ha_vf_register_ctx_cb;
 
 	local: *;
 };

@@ -15,6 +15,11 @@
 #define VDPA_MAX_SOCK_LEN 108 /* Follow definition of struct sockaddr_un in sys/un.h */
 #define VIRTIO_HA_MAX_FDS 3
 
+struct virtio_dev_name;
+
+typedef void (*ctx_set_cb)(const struct virtio_dev_name *dev, const void *ctx);
+typedef void (*ctx_unset_cb)(const struct virtio_dev_name *dev);
+
 enum virtio_ha_msg_type {
 	VIRTIO_HA_APP_QUERY_PF_LIST = 0,
 	VIRTIO_HA_APP_QUERY_VF_LIST = 1,
@@ -100,6 +105,11 @@ struct virtio_ha_device_list {
 	uint32_t nr_pf;
 };
 
+struct virtio_ha_dev_ctx_cb {
+	ctx_set_cb set;
+	ctx_unset_cb unset;
+};
+
 /* IPC client/server allocate an HA message */
 struct virtio_ha_msg *virtio_ha_alloc_msg(void);
 
@@ -151,6 +161,10 @@ int virtio_ha_vf_ctx_set(const struct virtio_dev_name *vf, const struct vdpa_vf_
 int virtio_ha_vf_ctx_unset(const struct virtio_dev_name *vf);
 
 
+/* PF driver register PF context set/remove callbacks */
+__rte_internal
+void virtio_ha_pf_register_ctx_cb(const struct virtio_ha_dev_ctx_cb *ctx_cb);
+
 /* PF driver store PF context to HA service */
 __rte_internal
 int virtio_ha_pf_ctx_store(const struct virtio_dev_name *pf, const struct virtio_pf_ctx *ctx);
@@ -160,6 +174,10 @@ __rte_internal
 int virtio_ha_pf_ctx_remove(const struct virtio_dev_name *pf);
 
 
+
+/* VF driver register VF context set/remove callbacks */
+__rte_internal
+void virtio_ha_vf_register_ctx_cb(const struct virtio_ha_dev_ctx_cb *ctx_cb);
 
 /* VF driver store VF devargs and VFIO fds to HA service */
 __rte_internal

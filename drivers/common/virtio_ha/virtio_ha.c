@@ -20,6 +20,8 @@ RTE_LOG_REGISTER(virtio_ha_ipc_logtype, pmd.vdpa.virtio, NOTICE);
 
 static int ipc_client_sock;
 static bool ipc_client_connected;
+static const struct virtio_ha_dev_ctx_cb *pf_ctx_cb;
+static const struct virtio_ha_dev_ctx_cb *vf_ctx_cb;
 
 struct virtio_ha_msg *
 virtio_ha_alloc_msg(void)
@@ -509,6 +511,57 @@ virtio_ha_vf_ctx_query(struct virtio_dev_name *vf,
 }
 
 int
+virtio_ha_pf_ctx_set(const struct virtio_dev_name *pf, const struct virtio_pf_ctx *ctx)
+{
+	if (!pf_ctx_cb || !pf_ctx_cb->set)
+		return -1;
+
+	pf_ctx_cb->set(pf, ctx);
+
+	return 0;
+}
+
+int
+virtio_ha_pf_ctx_unset(const struct virtio_dev_name *pf)
+{
+	if (!pf_ctx_cb || !pf_ctx_cb->unset)
+		return -1;
+
+	pf_ctx_cb->unset(pf);
+
+	return 0;
+}
+
+int
+virtio_ha_vf_ctx_set(const struct virtio_dev_name *vf, const struct vdpa_vf_ctx *ctx)
+{
+	if (!vf_ctx_cb || !vf_ctx_cb->set)
+		return -1;
+
+	vf_ctx_cb->set(vf, ctx);
+
+	return 0;
+}
+
+int
+virtio_ha_vf_ctx_unset(const struct virtio_dev_name *vf)
+{
+	if (!vf_ctx_cb || !vf_ctx_cb->unset)
+		return -1;
+
+	vf_ctx_cb->unset(vf);
+
+	return 0;
+}
+
+void
+virtio_ha_pf_register_ctx_cb(const struct virtio_ha_dev_ctx_cb *ctx_cb)
+{
+	pf_ctx_cb = ctx_cb;
+	return;
+}
+
+int
 virtio_ha_pf_ctx_store(const struct virtio_dev_name *pf, const struct virtio_pf_ctx *ctx)
 {
 	struct virtio_ha_msg *msg;
@@ -565,6 +618,13 @@ virtio_ha_pf_ctx_remove(const struct virtio_dev_name *pf)
 	virtio_ha_free_msg(msg);
 
 	return 0;
+}
+
+void
+virtio_ha_vf_register_ctx_cb(const struct virtio_ha_dev_ctx_cb *ctx_cb)
+{
+	vf_ctx_cb = ctx_cb;
+	return;
 }
 
 int
