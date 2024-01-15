@@ -2240,11 +2240,6 @@ mlx5dr_definer_conv_item_esp(struct mlx5dr_definer_conv_data *cd,
 	const struct rte_flow_item_esp *m = item->mask;
 	struct mlx5dr_definer_fc *fc;
 
-	if (!cd->ctx->caps->ipsec_offload) {
-		rte_errno = ENOTSUP;
-		return rte_errno;
-	}
-
 	if (!m)
 		return 0;
 	if (m->hdr.spi) {
