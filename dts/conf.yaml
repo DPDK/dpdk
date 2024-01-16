@@ -1,65 +1,76 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright 2022-2023 The DPDK contributors
+# Copyright 2023 Arm Limited
 
 executions:
+  # define one execution environment
   - build_targets:
       - arch: x86_64
         os: linux
         cpu: native
+        # the combination of the following two makes CC="ccache gcc"
         compiler: gcc
         compiler_wrapper: ccache
-    perf: false
-    func: true
-    skip_smoke_tests: false # optional flag that allows you to skip smoke tests
-    test_suites:
+    perf: false # disable performance testing
+    func: true # enable functional testing
+    skip_smoke_tests: false # optional
+    test_suites: # the following test suites will be run in their entirety
       - hello_world
       - os_udp
+    # The machine running the DPDK test executable
     system_under_test_node:
       node_name: "SUT 1"
       vdevs: # optional; if removed, vdevs won't be used in the execution
         - "crypto_openssl"
+    # Traffic generator node to use for this execution environment
     traffic_generator_node: "TG 1"
 nodes:
+  # Define a system under test node, having two network ports physically
+  # connected to the corresponding ports in TG 1 (the peer node)
   - name: "SUT 1"
     hostname: sut1.change.me.localhost
     user: dtsuser
     arch: x86_64
     os: linux
-    lcores: ""
-    use_first_core: false
-    memory_channels: 4
+    lcores: "" # use all the available logical cores
+    use_first_core: false # tells DPDK to use any physical core
+    memory_channels: 4 # tells DPDK to use 4 memory channels
     hugepages:  # optional; if removed, will use system hugepage configuration
         amount: 256
         force_first_numa: false
     ports:
+      # sets up the physical link between "SUT 1"@000:00:08.0 and "TG 1"@0000:00:08.0
       - pci: "0000:00:08.0"
         os_driver_for_dpdk: vfio-pci # OS driver that DPDK will use
-        os_driver: i40e
+        os_driver: i40e              # OS driver to bind when the tests are not running
         peer_node: "TG 1"
         peer_pci: "0000:00:08.0"
+      # sets up the physical link between "SUT 1"@000:00:08.1 and "TG 1"@0000:00:08.1
       - pci: "0000:00:08.1"
         os_driver_for_dpdk: vfio-pci
         os_driver: i40e
         peer_node: "TG 1"
         peer_pci: "0000:00:08.1"
+  # Define a Scapy traffic generator node, having two network ports
+  # physically connected to the corresponding ports in SUT 1 (the peer node).
   - name: "TG 1"
     hostname: tg1.change.me.localhost
     user: dtsuser
     arch: x86_64
     os: linux
-    lcores: ""
     ports:
+      # sets up the physical link between "TG 1"@000:00:08.0 and "SUT 1"@0000:00:08.0
       - pci: "0000:00:08.0"
         os_driver_for_dpdk: rdma
         os_driver: rdma
         peer_node: "SUT 1"
         peer_pci: "0000:00:08.0"
+      # sets up the physical link between "SUT 1"@000:00:08.0 and "TG 1"@0000:00:08.0
       - pci: "0000:00:08.1"
         os_driver_for_dpdk: rdma
         os_driver: rdma
         peer_node: "SUT 1"
         peer_pci: "0000:00:08.1"
-    use_first_core: false
     hugepages:  # optional; if removed, will use system hugepage configuration
         amount: 256
         force_first_numa: false

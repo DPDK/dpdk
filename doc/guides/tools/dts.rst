@@ -91,7 +91,7 @@ Setting up DTS environment
 
    .. code-block:: console
 
-      poetry install
+      poetry install --no-root
       poetry shell
 
 #. **SSH Connection**
@@ -189,7 +189,11 @@ Running DTS
 -----------
 
 DTS needs to know which nodes to connect to and what hardware to use on those nodes.
-Once that's configured, DTS needs a DPDK tarball and it's ready to run.
+Once that's configured, either a DPDK source code tarball or a Git revision ID
+of choice needs to be supplied.
+DTS will use this to compile DPDK on the SUT node
+and then run the tests with the newly built binaries.
+
 
 Configuring DTS
 ~~~~~~~~~~~~~~~
@@ -208,52 +212,48 @@ which don't require password authentication.
 The other fields are mostly self-explanatory
 and documented in more detail in ``dts/framework/config/conf_yaml_schema.json``.
 
+
 DTS Execution
 ~~~~~~~~~~~~~
 
-DTS is run with ``main.py`` located in the ``dts`` directory after entering Poetry shell::
+DTS is run with ``main.py`` located in the ``dts`` directory after entering Poetry shell:
 
-   usage: main.py [-h] [--config-file CONFIG_FILE] [--output-dir OUTPUT_DIR] [-t TIMEOUT]
-                  [-v VERBOSE] [-s SKIP_SETUP] [--tarball TARBALL]
-                  [--compile-timeout COMPILE_TIMEOUT] [--test-cases TEST_CASES]
-                  [--re-run RE_RUN]
+.. code-block:: console
 
-   Run DPDK test suites. All options may be specified with the environment variables provided in
-   brackets. Command line arguments have higher priority.
+   (dts-py3.10) $ ./main.py --help
+   usage: main.py [-h] [--config-file CONFIG_FILE] [--output-dir OUTPUT_DIR] [-t TIMEOUT] [-v] [-s] [--tarball TARBALL] [--compile-timeout COMPILE_TIMEOUT] [--test-cases TEST_CASES] [--re-run RE_RUN]
+
+   Run DPDK test suites. All options may be specified with the environment variables provided in brackets. Command line arguments have higher priority.
 
    options:
-     -h, --help            show this help message and exit
-     --config-file CONFIG_FILE
-                           [DTS_CFG_FILE] configuration file that describes the test cases, SUTs
-                           and targets. (default: conf.yaml)
-     --output-dir OUTPUT_DIR, --output OUTPUT_DIR
-                           [DTS_OUTPUT_DIR] Output directory where dts logs and results are
-                           saved. (default: output)
-     -t TIMEOUT, --timeout TIMEOUT
-                           [DTS_TIMEOUT] The default timeout for all DTS operations except for
-                           compiling DPDK. (default: 15)
-     -v VERBOSE, --verbose VERBOSE
-                           [DTS_VERBOSE] Set to 'Y' to enable verbose output, logging all
-                           messages to the console. (default: N)
-     -s SKIP_SETUP, --skip-setup SKIP_SETUP
-                           [DTS_SKIP_SETUP] Set to 'Y' to skip all setup steps on SUT and TG
-                           nodes. (default: N)
-     --tarball TARBALL, --snapshot TARBALL
-                           [DTS_DPDK_TARBALL] Path to DPDK source code tarball which will be
-                           used in testing. (default: dpdk.tar.xz)
-     --compile-timeout COMPILE_TIMEOUT
-                           [DTS_COMPILE_TIMEOUT] The timeout for compiling DPDK. (default: 1200)
-     --test-cases TEST_CASES
-                           [DTS_TESTCASES] Comma-separated list of test cases to execute.
-                           Unknown test cases will be silently ignored. (default: )
-     --re-run RE_RUN, --re_run RE_RUN
-                           [DTS_RERUN] Re-run each test case the specified amount of times if a
-                           test failure occurs (default: 0)
+   -h, --help            show this help message and exit
+   --config-file CONFIG_FILE
+                         [DTS_CFG_FILE] configuration file that describes the test cases, SUTs and targets. (default: ./conf.yaml)
+   --output-dir OUTPUT_DIR, --output OUTPUT_DIR
+                         [DTS_OUTPUT_DIR] Output directory where DTS logs and results are saved. (default: output)
+   -t TIMEOUT, --timeout TIMEOUT
+                         [DTS_TIMEOUT] The default timeout for all DTS operations except for compiling DPDK. (default: 15)
+   -v, --verbose         [DTS_VERBOSE] Specify to enable verbose output, logging all messages to the console. (default: False)
+   -s, --skip-setup      [DTS_SKIP_SETUP] Specify to skip all setup steps on SUT and TG nodes. (default: None)
+   --tarball TARBALL, --snapshot TARBALL, --git-ref TARBALL
+                         [DTS_DPDK_TARBALL] Path to DPDK source code tarball or a git commit ID, tag ID or tree ID to test. To test local changes, first commit them, then use the commit ID with this option. (default: dpdk.tar.xz)
+   --compile-timeout COMPILE_TIMEOUT
+                         [DTS_COMPILE_TIMEOUT] The timeout for compiling DPDK. (default: 1200)
+   --test-cases TEST_CASES
+                         [DTS_TESTCASES] Comma-separated list of test cases to execute. Unknown test cases will be silently ignored. (default: )
+   --re-run RE_RUN, --re_run RE_RUN
+                         [DTS_RERUN] Re-run each test case the specified number of times if a test failure occurs (default: 0)
 
 
 The brackets contain the names of environment variables that set the same thing.
-The minimum DTS needs is a config file and a DPDK tarball.
+The minimum DTS needs is a config file and a DPDK tarball or git ref ID.
 You may pass those to DTS using the command line arguments or use the default paths.
+
+Example command for running DTS with the template configuration and DPDK tag v23.11:
+
+.. code-block:: console
+
+   (dts-py3.10) $ ./main.py --git-ref v23.11
 
 
 DTS Results
@@ -355,7 +355,7 @@ There are four types of methods that comprise a test suite:
    | Methods ``set_up_test_case`` and ``tear_down_test_case`` will be executed
      before and after each test case, respectively.
    | These methods don't need to be implemented if there's no need for them in a test suite.
-     In that case, nothing will happen when they're is executed.
+     In that case, nothing will happen when they are executed.
 
 #. **Configuration, traffic and other logic**
 
@@ -409,6 +409,10 @@ There are three tools used in DTS to help with code checking, style and formatti
      :language: cfg
      :start-after: [tool.pylama]
      :end-at: linters
+
+* `mypy <https://github.com/python/mypy>`_
+
+  Enables static typing for Python, exploiting the type hints in the source code.
 
 These three tools are all used in ``devtools/dts-check-format.sh``,
 the DTS code check and format script.

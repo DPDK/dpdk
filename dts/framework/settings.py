@@ -199,7 +199,7 @@ def _get_parser() -> argparse.ArgumentParser:
         "--output",
         action=_env_arg("DTS_OUTPUT_DIR"),
         default=SETTINGS.output_dir,
-        help="[DTS_OUTPUT_DIR] Output directory where dts logs and results are saved.",
+        help="[DTS_OUTPUT_DIR] Output directory where DTS logs and results are saved.",
     )
 
     parser.add_argument(
