@@ -311,7 +311,7 @@ roc_bphy_cgx_stop_rxtx(struct roc_bphy_cgx *roc_cgx, unsigned int lmac)
 
 int
 roc_bphy_cgx_set_link_state(struct roc_bphy_cgx *roc_cgx, unsigned int lmac,
-			    bool state)
+			    struct roc_bphy_cgx_link_state *state)
 {
 	uint64_t scr1, scr0;
 
@@ -321,8 +321,13 @@ roc_bphy_cgx_set_link_state(struct roc_bphy_cgx *roc_cgx, unsigned int lmac,
 	if (!roc_bphy_cgx_lmac_exists(roc_cgx, lmac))
 		return -ENODEV;
 
-	scr1 = state ? FIELD_PREP(SCR1_ETH_CMD_ID, ETH_CMD_LINK_BRING_UP) :
-		       FIELD_PREP(SCR1_ETH_CMD_ID, ETH_CMD_LINK_BRING_DOWN);
+	if (!state)
+		return -EINVAL;
+
+	scr1 = (state->state ? FIELD_PREP(SCR1_ETH_CMD_ID, ETH_CMD_LINK_BRING_UP) :
+			       FIELD_PREP(SCR1_ETH_CMD_ID, ETH_CMD_LINK_BRING_DOWN)) |
+	       FIELD_PREP(SCR1_CGX_LINK_BRINGUP_ARGS_TIMEOUT, state->timeout) |
+	       FIELD_PREP(SCR1_CGX_LINK_BRINGUP_ARGS_RX_TX_DIS, state->rx_tx_dis);
 
 	return roc_bphy_cgx_intf_req(roc_cgx, lmac, scr1, &scr0);
 }

@@ -237,6 +237,10 @@ struct cnxk_bphy_cgx_msg_link_info {
 struct cnxk_bphy_cgx_msg_set_link_state {
 	/** Defines link state result */
 	bool state; /* up or down */
+	/** Timeout in ms */
+	int timeout;
+	/** Set if Rx/Tx should not be enabled during link up config */
+	bool rx_tx_dis;
 };
 
 struct cnxk_bphy_cgx_msg_cpri_mode_change {
@@ -682,21 +686,19 @@ rte_pmd_bphy_cgx_set_link_mode(uint16_t dev_id, uint16_t lmac,
  *   The identifier of the device
  * @param lmac
  *   LMAC number for operation
- * @param up
+ * @param state
  *   Link state to set
  *
  * @return
  *   Returns 0 on success, negative error code otherwise
  */
 static __rte_always_inline int
-rte_pmd_bphy_cgx_set_link_state(uint16_t dev_id, uint16_t lmac, bool up)
+rte_pmd_bphy_cgx_set_link_state(uint16_t dev_id, uint16_t lmac,
+				struct cnxk_bphy_cgx_msg_set_link_state *state)
 {
-	struct cnxk_bphy_cgx_msg_set_link_state state = {
-		.state = up,
-	};
 	struct cnxk_bphy_cgx_msg msg = {
 		.type = CNXK_BPHY_CGX_MSG_TYPE_SET_LINK_STATE,
-		.data = &state,
+		.data = state,
 	};
 
 	return __rte_pmd_bphy_enq_deq(dev_id, lmac, &msg, NULL, 0);
