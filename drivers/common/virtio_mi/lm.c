@@ -34,6 +34,7 @@
 										1ULL << VIRTIO_F_VERSION_1)
 
 #define VIRTIO_VDPA_MI_MAX_SGES 32
+#define VIRTIO_VDPA_MI_GET_GROUP_RETRIES 120
 
 struct virtio_vdpa_pf_priv;
 struct virtio_vdpa_dev_ops {
@@ -49,6 +50,7 @@ struct virtio_vdpa_pf_priv {
 	uint64_t device_features;
 	int vfio_dev_fd;
 	uint16_t hw_nr_virtqs; /* number of vq device supported*/
+	struct virtio_dev_name pf_name;
 };
 
 struct sge_iova {
@@ -1050,8 +1052,11 @@ virtio_vdpa_mi_dev_probe(struct rte_pci_driver *pci_drv __rte_unused,
 {
 	char devname[RTE_DEV_NAME_MAX_LEN] = {0};
 	struct virtio_vdpa_pf_priv *priv = NULL;
-	int vdpa = 0, ret;
+	int vdpa = 0, container_fd = -1, group_fd = -1, device_fd = -1, ret, iommu_group;
+	int retries = VIRTIO_VDPA_MI_GET_GROUP_RETRIES;
+	struct virtio_pf_ctx ctx;
 	uint64_t features;
+	bool ctx_restore = false;
 
 	RTE_VERIFY(rte_eal_iova_mode() == RTE_IOVA_VA);
 
@@ -1072,12 +1077,42 @@ virtio_vdpa_mi_dev_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	}
 
 	rte_pci_device_name(&pci_dev->addr, devname, RTE_DEV_NAME_MAX_LEN);
+	strcpy(priv->pf_name.dev_bdf, devname);
 
 	priv->pdev = pci_dev;
 
-	priv->vpdev = virtio_pci_dev_alloc(pci_dev, -1);
+	ret = rte_vfio_get_group_num(rte_pci_get_sysfs_path(), devname,
+			&iommu_group);
+	if (ret <= 0) {
+		DRV_LOG(ERR, "%s failed to get IOMMU group ret:%d", devname, ret);
+		rte_errno = rte_errno ? rte_errno : EINVAL;
+		goto error;
+	}
+
+	if (!strcmp(cached_ctx.pf_name.dev_bdf, devname)) {
+		ctx_restore = true;
+		container_fd = rte_vfio_get_default_cfd();
+		group_fd = cached_ctx.vfio_group_fd;
+		device_fd = cached_ctx.vfio_device_fd;
+
+		do {
+			DRV_LOG(INFO, "%s iommu_group_num:%d retries:%d", devname, iommu_group, retries);
+
+			ret = rte_vfio_container_group_set_bind(container_fd, iommu_group, group_fd);
+			if (ret < 0) {
+				DRV_LOG(ERR, "%s failed to get group fd", devname);
+				sleep(1);
+				retries--;
+			} else
+				break;
+			if (!retries)
+				goto error;
+		} while(retries);
+	}
+
+	priv->vpdev = virtio_pci_dev_alloc(pci_dev, device_fd);
 	if (priv->vpdev == NULL) {
-		DRV_LOG(ERR, "%s failed to alloc virito pci dev", devname);
+		DRV_LOG(ERR, "%s failed to alloc virtio pci dev", devname);
 		ret = rte_errno ? -rte_errno : -VFE_VDPA_ERR_ADD_PF_PROBE_FAIL;
 		goto error;
 	}
@@ -1087,6 +1122,22 @@ virtio_vdpa_mi_dev_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		DRV_LOG(ERR, "%s failed to get vfio dev fd", devname);
 		ret = -VFE_VDPA_ERR_VFIO_DEV_FD;
 		goto err_free_pci_dev;
+	}
+
+	if (!ctx_restore) {
+		group_fd = rte_vfio_get_group_fd(iommu_group);
+		if (group_fd < 0) {
+			DRV_LOG(ERR, "%s failed to get vfio group fd", devname);
+			goto err_free_pci_dev;
+		}
+
+		ctx.vfio_group_fd = group_fd;
+		ctx.vfio_device_fd = priv->vfio_dev_fd;
+		ret = virtio_ha_pf_ctx_store(&priv->pf_name, &ctx);
+		if (ret < 0) {
+			DRV_LOG(ERR, "%s failed to store pf ctx", devname);
+			goto err_free_pci_dev;			
+		}
 	}
 
 	if (priv->pdev->id.device_id == VIRTIO_PCI_MODERN_DEVICEID_NET) {
@@ -1155,6 +1206,7 @@ virtio_vdpa_mi_dev_remove(struct rte_pci_device *pci_dev)
 	pthread_mutex_unlock(&mi_priv_list_lock);
 
 	if (found) {
+		virtio_ha_pf_ctx_remove(&priv->pf_name);
 		virtio_vdpa_admin_queue_free(priv);
 		virtio_pci_dev_reset(priv->vpdev,VIRTIO_VDPA_REMOVE_RESET_TIME_OUT);
 		virtio_pci_dev_free(priv->vpdev);
