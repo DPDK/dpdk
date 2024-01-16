@@ -9,6 +9,7 @@ drivers = [
         'ifpga',
         'pci',
         'platform',
+        'uacce',
         'vdev',
         'vmbus',
 ]

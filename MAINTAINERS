@@ -602,6 +602,10 @@ Platform bus driver
 M: Tomasz Duszynski <tduszynski@marvell.com>
 F: drivers/bus/platform/
 
+UACCE bus driver
+M: Chengwen Feng <fengchengwen@huawei.com>
+F: drivers/bus/uacce/
+
 VDEV bus driver
 F: drivers/bus/vdev/
 F: app/test/test_vdev.c
