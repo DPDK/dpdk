@@ -8,6 +8,7 @@ DPDK_22 {
 	rte_pci_ioport_unmap;
 	rte_pci_ioport_write;
 	rte_pci_map_device;
+	rte_pci_map_device_with_dev_fd;
 	rte_pci_read_config;
 	rte_pci_register;
 	rte_pci_unmap_device;

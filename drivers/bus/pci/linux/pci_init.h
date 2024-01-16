@@ -81,6 +81,7 @@ int pci_vfio_ioport_unmap(struct rte_pci_ioport *p);
 
 /* map/unmap VFIO resource prototype */
 int pci_vfio_map_resource(struct rte_pci_device *dev);
+int pci_vfio_map_resource_with_dev_fd(struct rte_pci_device *dev, int dev_fd);
 int pci_vfio_unmap_resource(struct rte_pci_device *dev);
 
 int pci_vfio_is_enabled(void);

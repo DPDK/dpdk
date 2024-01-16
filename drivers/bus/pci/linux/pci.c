@@ -87,6 +87,25 @@ rte_pci_map_device(struct rte_pci_device *dev)
 	return ret;
 }
 
+int
+rte_pci_map_device_with_dev_fd(struct rte_pci_device *dev, int dev_fd)
+{
+	int ret = -1;
+
+	if (dev->kdrv != RTE_PCI_KDRV_VFIO) {
+		RTE_LOG(ERR, EAL,
+			"map pci device with device fd is only supported with vfio\n");
+		return ret;
+	}
+
+#ifdef VFIO_PRESENT
+		if (pci_vfio_is_enabled())
+			ret = pci_vfio_map_resource_with_dev_fd(dev, dev_fd);
+#endif
+
+	return ret;
+}
+
 /* Unmap pci device */
 void
 rte_pci_unmap_device(struct rte_pci_device *dev)

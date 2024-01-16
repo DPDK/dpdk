@@ -112,6 +112,37 @@ int rte_vfio_setup_device(const char *sysfs_base, const char *dev_addr,
 		int *vfio_dev_fd, struct vfio_device_info *device_info);
 
 /**
+ * Setup vfio_cfg for the device identified by its address.
+ * It discovers the configured I/O MMU groups or sets a new one for the device.
+ * If a new groups is assigned, the DMA mapping is performed.
+ * 
+ * vfio device fd is already acquired before this function call
+ *
+ * This function is only relevant to linux and will return
+ * an error on BSD.
+ *
+ * @param sysfs_base
+ *   sysfs path prefix.
+ *
+ * @param dev_addr
+ *   device location.
+ *
+ * @param vfio_dev_fd
+ *   VFIO fd.
+ *
+ * @param device_info
+ *   Device information.
+ *
+ * @return
+ *   0 on success.
+ *   <0 on failure.
+ *   >1 if the device cannot be managed this way.
+ */
+int
+rte_vfio_setup_device_with_dev_fd(const char *sysfs_base, const char *dev_addr,
+		int *vfio_dev_fd, struct vfio_device_info *device_info);
+
+/**
  * Release a device mapped to a VFIO-managed I/O MMU group.
  *
  * This function is only relevant to linux and will return
@@ -227,6 +258,19 @@ int
 rte_vfio_get_container_fd(void);
 
 /**
+ * Get the default container fd
+ *
+ * This function is only relevant to linux and will return
+ * an error on BSD.
+ *
+ * @return
+ *  > 0 container fd
+ *  < 0 for errors
+ */
+int
+rte_vfio_get_default_cfd(void);
+
+/**
  * Open VFIO group fd or get an existing one
  *
  * This function is only relevant to linux and will return
@@ -261,6 +305,19 @@ int
 rte_vfio_container_create(void);
 
 /**
+ * Set a container fd to DPDK-maintained cfg.
+ *
+ * @param container_fd
+ *   the container fd to set
+ *
+ * @return
+ *    0 if successful
+ *   <0 if failed
+ */
+int
+rte_vfio_container_set(int container_fd);
+
+/**
  * Destroy the container, unbind all vfio groups within it.
  *
  * @param container_fd
@@ -288,6 +345,25 @@ rte_vfio_container_destroy(int container_fd);
  */
 int
 rte_vfio_container_group_bind(int container_fd, int iommu_group_num);
+
+/**
+ * Bind a IOMMU group with group fd to a container.
+ *
+ * @param container_fd
+ *   the container's fd
+ *
+ * @param iommu_group_num
+ *   the iommu group number to bind to container
+ * 
+ * @param group_fd
+ *   the iommu fd to bind to container
+ *
+ * @return
+ *   0 if successful
+ *   <0 if failed
+ */
+int
+rte_vfio_container_group_set_bind(int container_fd, int iommu_group_num, int group_fd);
 
 /**
  * Unbind a IOMMU group from a container.

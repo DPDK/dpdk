@@ -483,6 +483,47 @@ vfio_get_group_fd(struct vfio_config *vfio_cfg,
 	return vfio_group_fd;
 }
 
+static int
+vfio_set_group_fd(struct vfio_config *vfio_cfg,
+		int iommu_group_num, int group_fd)
+{
+	int i;
+	int vfio_group_fd;
+	struct vfio_group *cur_grp;
+
+	/* check if we already have the group descriptor open */
+	for (i = 0; i < VFIO_MAX_GROUPS; i++)
+		if (vfio_cfg->vfio_groups[i].group_num == iommu_group_num)
+			return 0;
+
+	/* Lets see first if there is room for a new group */
+	if (vfio_cfg->vfio_active_groups == VFIO_MAX_GROUPS) {
+		RTE_LOG(ERR, EAL, "Maximum number of VFIO groups reached!\n");
+		return -1;
+	}
+
+	/* Now lets get an index for the new group */
+	for (i = 0; i < VFIO_MAX_GROUPS; i++)
+		if (vfio_cfg->vfio_groups[i].group_num == -1) {
+			cur_grp = &vfio_cfg->vfio_groups[i];
+			break;
+		}
+
+	/* This should not happen */
+	if (i == VFIO_MAX_GROUPS) {
+		RTE_LOG(ERR, EAL, "No VFIO group free slot found\n");
+		return -1;
+	}
+
+	vfio_group_fd = group_fd;
+
+	cur_grp->group_num = iommu_group_num;
+	cur_grp->fd = vfio_group_fd;
+	vfio_cfg->vfio_active_groups++;
+
+	return 0;
+}
+
 static struct vfio_config *
 get_vfio_cfg_by_group_fd(int vfio_group_fd)
 {
@@ -990,6 +1031,226 @@ dev_get_info:
 }
 
 int
+rte_vfio_setup_device_with_dev_fd(const char *sysfs_base, const char *dev_addr,
+		int *vfio_dev_fd, struct vfio_device_info *device_info)
+{
+	struct vfio_group_status group_status = {
+			.argsz = sizeof(group_status)
+	};
+	struct vfio_config *vfio_cfg;
+	struct user_mem_maps *user_mem_maps;
+	int vfio_container_fd;
+	int vfio_group_fd;
+	int iommu_group_num;
+	int i, ret;
+	const struct internal_config *internal_conf =
+		eal_get_internal_configuration();
+
+	/* get group number */
+	ret = rte_vfio_get_group_num(sysfs_base, dev_addr, &iommu_group_num);
+	if (ret == 0) {
+		RTE_LOG(NOTICE, EAL,
+				"%s not managed by VFIO driver, skipping\n",
+				dev_addr);
+		return 1;
+	}
+
+	/* if negative, something failed */
+	if (ret < 0)
+		return -1;
+
+	/* get the actual group fd */
+	vfio_group_fd = rte_vfio_get_group_fd(iommu_group_num);
+	if (vfio_group_fd < 0 && vfio_group_fd != -ENOENT)
+		return -1;
+
+	/*
+	 * if vfio_group_fd == -ENOENT, that means the device
+	 * isn't managed by VFIO
+	 */
+	if (vfio_group_fd == -ENOENT) {
+		RTE_LOG(NOTICE, EAL,
+				"%s not managed by VFIO driver, skipping\n",
+				dev_addr);
+		return 1;
+	}
+
+	/*
+	 * at this point, we know that this group is viable (meaning, all devices
+	 * are either bound to VFIO or not bound to anything)
+	 */
+
+	/* check if the group is viable */
+	ret = ioctl(vfio_group_fd, VFIO_GROUP_GET_STATUS, &group_status);
+	if (ret) {
+		RTE_LOG(ERR, EAL, "%s cannot get VFIO group status, "
+			"error %i (%s)\n", dev_addr, errno, strerror(errno));
+		close(vfio_group_fd);
+		rte_vfio_clear_group(vfio_group_fd);
+		return -1;
+	} else if (!(group_status.flags & VFIO_GROUP_FLAGS_VIABLE)) {
+		RTE_LOG(ERR, EAL, "%s VFIO group is not viable! "
+			"Not all devices in IOMMU group bound to VFIO or unbound\n",
+			dev_addr);
+		close(vfio_group_fd);
+		rte_vfio_clear_group(vfio_group_fd);
+		return -1;
+	}
+
+	/* get the vfio_config it belongs to */
+	vfio_cfg = get_vfio_cfg_by_group_num(iommu_group_num);
+	vfio_cfg = vfio_cfg ? vfio_cfg : default_vfio_cfg;
+	vfio_container_fd = vfio_cfg->vfio_container_fd;
+	user_mem_maps = &vfio_cfg->mem_maps;
+
+	/* check if group does not have a container yet */
+	if (!(group_status.flags & VFIO_GROUP_FLAGS_CONTAINER_SET)) {
+
+		/* add group to a container */
+		ret = ioctl(vfio_group_fd, VFIO_GROUP_SET_CONTAINER,
+				&vfio_container_fd);
+		if (ret) {
+			RTE_LOG(ERR, EAL,
+				"%s cannot add VFIO group to container, error "
+				"%i (%s)\n", dev_addr, errno, strerror(errno));
+			close(vfio_group_fd);
+			rte_vfio_clear_group(vfio_group_fd);
+			return -1;
+		}
+
+		/*
+		 * pick an IOMMU type and set up DMA mappings for container
+		 *
+		 * needs to be done only once, only when first group is
+		 * assigned to a container and only in primary process.
+		 * Note this can happen several times with the hotplug
+		 * functionality.
+		 */
+		if (internal_conf->process_type == RTE_PROC_PRIMARY &&
+				vfio_cfg->vfio_active_groups == 1 &&
+				vfio_group_device_count(vfio_group_fd) == 0) {
+			const struct vfio_iommu_type *t;
+
+			/* select an IOMMU type which we will be using */
+			t = vfio_set_iommu_type(vfio_container_fd);
+			if (!t) {
+				RTE_LOG(ERR, EAL,
+					"%s failed to select IOMMU type\n",
+					dev_addr);
+				close(vfio_group_fd);
+				rte_vfio_clear_group(vfio_group_fd);
+				return -1;
+			}
+			/* lock memory hotplug before mapping and release it
+			 * after registering callback, to prevent races
+			 */
+			rte_mcfg_mem_read_lock();
+			if (vfio_cfg == default_vfio_cfg)
+				ret = t->dma_map_func(vfio_container_fd);
+			else
+				ret = 0;
+			if (ret) {
+				RTE_LOG(ERR, EAL,
+					"%s DMA remapping failed, error "
+					"%i (%s)\n",
+					dev_addr, errno, strerror(errno));
+				close(vfio_group_fd);
+				rte_vfio_clear_group(vfio_group_fd);
+				rte_mcfg_mem_read_unlock();
+				return -1;
+			}
+
+			vfio_cfg->vfio_iommu_type = t;
+
+			/* re-map all user-mapped segments */
+			rte_spinlock_recursive_lock(&user_mem_maps->lock);
+
+			/* this IOMMU type may not support DMA mapping, but
+			 * if we have mappings in the list - that means we have
+			 * previously mapped something successfully, so we can
+			 * be sure that DMA mapping is supported.
+			 */
+			for (i = 0; i < user_mem_maps->n_maps; i++) {
+				struct user_mem_map *map;
+				map = &user_mem_maps->maps[i];
+
+				ret = t->dma_user_map_func(
+						vfio_container_fd,
+						map->addr, map->iova, map->len,
+						1);
+				if (ret) {
+					RTE_LOG(ERR, EAL, "Couldn't map user memory for DMA: "
+							"va: 0x%" PRIx64 " "
+							"iova: 0x%" PRIx64 " "
+							"len: 0x%" PRIu64 "\n",
+							map->addr, map->iova,
+							map->len);
+					rte_spinlock_recursive_unlock(
+							&user_mem_maps->lock);
+					rte_mcfg_mem_read_unlock();
+					return -1;
+				}
+			}
+			rte_spinlock_recursive_unlock(&user_mem_maps->lock);
+
+			/* register callback for mem events */
+			if (vfio_cfg == default_vfio_cfg)
+				ret = rte_mem_event_callback_register(
+					VFIO_MEM_EVENT_CLB_NAME,
+					vfio_mem_event_callback, NULL);
+			else
+				ret = 0;
+			/* unlock memory hotplug */
+			rte_mcfg_mem_read_unlock();
+
+			if (ret && rte_errno != ENOTSUP) {
+				RTE_LOG(ERR, EAL, "Could not install memory event callback for VFIO\n");
+				return -1;
+			}
+			if (ret)
+				RTE_LOG(DEBUG, EAL, "Memory event callbacks not supported\n");
+			else
+				RTE_LOG(DEBUG, EAL, "Installed memory event callback for VFIO\n");
+		}
+	} else if (rte_eal_process_type() != RTE_PROC_PRIMARY &&
+			vfio_cfg == default_vfio_cfg &&
+			vfio_cfg->vfio_iommu_type == NULL) {
+		/* if we're not a primary process, we do not set up the VFIO
+		 * container because it's already been set up by the primary
+		 * process. instead, we simply ask the primary about VFIO type
+		 * we are using, and set the VFIO config up appropriately.
+		 */
+		ret = vfio_sync_default_container();
+		if (ret < 0) {
+			RTE_LOG(ERR, EAL, "Could not sync default VFIO container\n");
+			close(vfio_group_fd);
+			rte_vfio_clear_group(vfio_group_fd);
+			return -1;
+		}
+		/* we have successfully initialized VFIO, notify user */
+		const struct vfio_iommu_type *t =
+				default_vfio_cfg->vfio_iommu_type;
+		RTE_LOG(INFO, EAL, "Using IOMMU type %d (%s)\n",
+				t->type_id, t->name);
+	}
+
+	/* test and setup the device */
+	ret = ioctl(*vfio_dev_fd, VFIO_DEVICE_GET_INFO, device_info);
+	if (ret) {
+		RTE_LOG(ERR, EAL, "%s cannot get device info, "
+				"error %i (%s)\n", dev_addr, errno,
+				strerror(errno));
+		close(*vfio_dev_fd);
+		close(vfio_group_fd);
+		rte_vfio_clear_group(vfio_group_fd);
+		return -1;
+	}
+	vfio_group_device_get(vfio_group_fd);
+
+	return 0;
+}
+
+int
 rte_vfio_release_device(const char *sysfs_base, const char *dev_addr,
 		    int vfio_dev_fd)
 {
@@ -1138,6 +1399,19 @@ rte_vfio_enable(const char *modname)
 	}
 
 	return 0;
+}
+
+int
+rte_vfio_get_default_cfd(void)
+{
+	const struct internal_config *internal_conf =
+		eal_get_internal_configuration();
+
+	if (internal_conf->process_type == RTE_PROC_PRIMARY &&
+			default_vfio_cfg->vfio_enabled)
+		return default_vfio_cfg->vfio_container_fd;
+	else
+		return -1;
 }
 
 int
@@ -2082,6 +2356,31 @@ rte_vfio_container_create(void)
 }
 
 int
+rte_vfio_container_set(int container_fd)
+{
+	int i;
+
+	/* Find an empty slot to store new vfio config */
+	for (i = 1; i < VFIO_MAX_CONTAINERS; i++) {
+		if (vfio_cfgs[i].vfio_container_fd == -1)
+			break;
+	}
+
+	if (i == VFIO_MAX_CONTAINERS) {
+		RTE_LOG(ERR, EAL, "Exceed max VFIO container limit\n");
+		return -1;
+	}
+
+	vfio_cfgs[i].vfio_container_fd = container_fd;
+	if (vfio_cfgs[i].vfio_container_fd < 0) {
+		RTE_LOG(NOTICE, EAL, "Fail to set a new VFIO container\n");
+		return -1;
+	}
+
+	return 0;
+}
+
+int
 rte_vfio_container_destroy(int container_fd)
 {
 	struct vfio_config *vfio_cfg;
@@ -2121,6 +2420,20 @@ rte_vfio_container_group_bind(int container_fd, int iommu_group_num)
 	}
 
 	return vfio_get_group_fd(vfio_cfg, iommu_group_num);
+}
+
+int
+rte_vfio_container_group_set_bind(int container_fd, int iommu_group_num, int group_fd)
+{
+	struct vfio_config *vfio_cfg;
+
+	vfio_cfg = get_vfio_cfg_by_container_fd(container_fd);
+	if (vfio_cfg == NULL) {
+		RTE_LOG(ERR, EAL, "Invalid VFIO container fd\n");
+		return -1;
+	}
+
+	return vfio_set_group_fd(vfio_cfg, iommu_group_num, group_fd);
 }
 
 int

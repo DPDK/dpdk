@@ -271,10 +271,13 @@ DPDK_22 {
 	rte_version;
 	rte_vfio_clear_group; # WINDOWS_NO_EXPORT
 	rte_vfio_container_create; # WINDOWS_NO_EXPORT
+	rte_vfio_container_set; # WINDOWS_NO_EXPORT
 	rte_vfio_container_destroy; # WINDOWS_NO_EXPORT
+	rte_vfio_get_default_cfd; # WINDOWS_NO_EXPORT
 	rte_vfio_container_dma_map;
 	rte_vfio_container_dma_unmap;
 	rte_vfio_container_group_bind; # WINDOWS_NO_EXPORT
+	rte_vfio_container_group_set_bind; # WINDOWS_NO_EXPORT
 	rte_vfio_container_group_unbind; # WINDOWS_NO_EXPORT
 	rte_vfio_enable; # WINDOWS_NO_EXPORT
 	rte_vfio_get_container_fd; # WINDOWS_NO_EXPORT
@@ -284,6 +287,7 @@ DPDK_22 {
 	rte_vfio_noiommu_is_enabled; # WINDOWS_NO_EXPORT
 	rte_vfio_release_device; # WINDOWS_NO_EXPORT
 	rte_vfio_setup_device; # WINDOWS_NO_EXPORT
+	rte_vfio_setup_device_with_dev_fd; # WINDOWS_NO_EXPORT
 	rte_vlog;
 	rte_zmalloc;
 	rte_zmalloc_socket;

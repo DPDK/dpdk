@@ -212,6 +212,28 @@ struct rte_pci_bus {
 int rte_pci_map_device(struct rte_pci_device *dev);
 
 /**
+ * Map the PCI device resources in user space virtual memory address
+ * with vfio device fd
+ * 
+ * Note that driver should not call this function when flag
+ * RTE_PCI_DRV_NEED_MAPPING is set, as EAL will do that for
+ * you when it's on.
+ *
+ * @param dev
+ *   A pointer to a rte_pci_device structure describing the device
+ *   to use
+ *
+ * @param dev_fd
+ *   vfio device fd
+ *
+ * @return
+ *   0 on success, negative on error and positive if no driver
+ *   is found for the device.
+ */
+int
+rte_pci_map_device_with_dev_fd(struct rte_pci_device *dev, int dev_fd);
+
+/**
  * Unmap this device
  *
  * @param dev
