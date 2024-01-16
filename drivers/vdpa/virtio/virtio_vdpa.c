@@ -1938,7 +1938,7 @@ virtio_vdpa_dev_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		}
 	} while(retries);
 
-	priv->vpdev = virtio_pci_dev_alloc(pci_dev);
+	priv->vpdev = virtio_pci_dev_alloc(pci_dev, -1);
 	if (priv->vpdev == NULL) {
 		DRV_LOG(ERR, "%s failed to alloc virito pci dev", devname);
 		rte_errno = rte_errno ? rte_errno : VFE_VDPA_ERR_ADD_VF_ALLOC;

@@ -271,7 +271,7 @@ struct virtio_pci_internal {
 /*
  * Function declaration from virtio_pci.c
  */
-int virtio_pci_dev_init(struct rte_pci_device *pci_dev, struct virtio_pci_dev *dev);
+int virtio_pci_dev_init(struct rte_pci_device *pci_dev, struct virtio_pci_dev *dev, int dev_fd);
 void virtio_pci_dev_legacy_ioport_unmap(struct virtio_hw *hw);
 int virtio_pci_dev_legacy_ioport_map(struct virtio_hw *hw);
 

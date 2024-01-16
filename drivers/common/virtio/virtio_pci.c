@@ -639,16 +639,23 @@ get_cfg_addr(struct rte_pci_device *dev, struct virtio_pci_cap *cap)
 }
 
 static int
-virtio_read_caps(struct rte_pci_device *pci_dev, struct virtio_hw *hw)
+virtio_read_caps(struct rte_pci_device *pci_dev, struct virtio_hw *hw, int dev_fd)
 {
 	struct virtio_pci_dev *dev = virtio_pci_get_dev(hw);
 	uint8_t pos;
 	struct virtio_pci_cap cap;
 	int ret;
 
-	if (rte_pci_map_device(pci_dev)) {
-		PMD_INIT_LOG(DEBUG, "failed to map pci device!");
-		return -EINVAL;
+	if (dev_fd == -1) {
+		if (rte_pci_map_device(pci_dev)) {
+			PMD_INIT_LOG(DEBUG, "failed to map pci device!");
+			return -EINVAL;
+		}
+	} else {
+		if (rte_pci_map_device_with_dev_fd(pci_dev, dev_fd)) {
+			PMD_INIT_LOG(DEBUG, "failed to map pci device with dev_fd!");
+			return -EINVAL;
+		}
 	}
 
 	ret = rte_pci_read_config(pci_dev, &pos, 1, PCI_CAPABILITY_LIST);
@@ -764,7 +771,7 @@ next:
  * Return 0 on success.
  */
 int
-virtio_pci_dev_init(struct rte_pci_device *pci_dev, struct virtio_pci_dev *dev)
+virtio_pci_dev_init(struct rte_pci_device *pci_dev, struct virtio_pci_dev *dev, int dev_fd)
 {
 	struct virtio_hw *hw = &dev->hw;
 
@@ -775,7 +782,7 @@ virtio_pci_dev_init(struct rte_pci_device *pci_dev, struct virtio_pci_dev *dev)
 	 * only on modern pci device. If failed, we fallback to legacy
 	 * virtio handling.
 	 */
-	if (virtio_read_caps(pci_dev, hw) == 0) {
+	if (virtio_read_caps(pci_dev, hw, dev_fd) == 0) {
 		PMD_INIT_LOG(INFO, "modern virtio pci detected");
 		VIRTIO_OPS(hw) = &virtio_dev_pci_modern_ops;
 		if (pci_dev->id.device_id == VIRTIO_PCI_MODERN_DEVICEID_NET)
