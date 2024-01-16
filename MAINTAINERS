@@ -739,7 +739,6 @@ F: doc/guides/nics/hinic.rst
 F: doc/guides/nics/features/hinic.ini
 
 Intel e1000
-M: Simei Su <simei.su@intel.com>
 M: Wenjun Wu <wenjun1.wu@intel.com>
 T: git://dpdk.org/next/dpdk-next-net-intel
 F: drivers/net/e1000/
@@ -809,7 +808,6 @@ F: doc/guides/nics/features/cpfl.ini
 
 Intel igc
 M: Junfeng Guo <junfeng.guo@intel.com>
-M: Simei Su <simei.su@intel.com>
 T: git://dpdk.org/next/dpdk-next-net-intel
 F: drivers/net/igc/
 F: doc/guides/nics/igc.rst
