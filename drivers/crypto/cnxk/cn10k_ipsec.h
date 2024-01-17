@@ -31,13 +31,18 @@ struct cn10k_sec_session {
 
 	/** PMD private space */
 
+	enum rte_security_session_protocol proto;
 	/** Pre-populated CPT inst words */
 	struct cnxk_cpt_inst_tmpl inst;
 	uint16_t max_extended_len;
 	uint16_t iv_offset;
 	uint8_t iv_length;
-	uint8_t ip_csum;
-	bool is_outbound;
+	union {
+		struct {
+			uint8_t ip_csum;
+			bool is_outbound;
+		} ipsec;
+	};
 	/** Queue pair */
 	struct cnxk_cpt_qp *qp;
 	/** Userdata to be set for Rx inject */

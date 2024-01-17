@@ -11,9 +11,10 @@
 #include "roc_ae.h"
 #include "roc_cpt.h"
 
-#define CNXK_CPT_MAX_CAPS	 55
-#define CNXK_SEC_CRYPTO_MAX_CAPS 16
-#define CNXK_SEC_MAX_CAPS	 9
+#define CNXK_CPT_MAX_CAPS	       55
+#define CNXK_SEC_IPSEC_CRYPTO_MAX_CAPS 16
+#define CNXK_SEC_MAX_CAPS	       9
+
 /**
  * Device private data
  */
@@ -23,8 +24,7 @@ struct cnxk_cpt_vf {
 	uint16_t *rx_chan_base;
 	struct roc_cpt cpt;
 	struct rte_cryptodev_capabilities crypto_caps[CNXK_CPT_MAX_CAPS];
-	struct rte_cryptodev_capabilities
-		sec_crypto_caps[CNXK_SEC_CRYPTO_MAX_CAPS];
+	struct rte_cryptodev_capabilities sec_ipsec_crypto_caps[CNXK_SEC_IPSEC_CRYPTO_MAX_CAPS];
 	struct rte_security_capability sec_caps[CNXK_SEC_MAX_CAPS];
 	uint64_t cnxk_fpm_iova[ROC_AE_EC_ID_PMAX];
 	struct roc_ae_ec_group *ec_grp[ROC_AE_EC_ID_PMAX];

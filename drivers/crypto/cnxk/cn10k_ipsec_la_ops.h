@@ -121,7 +121,7 @@ process_outb_sa(struct roc_cpt_lf *lf, struct rte_crypto_op *cop, struct cn10k_s
 		i = 0;
 		gather_comp = (struct roc_sglist_comp *)((uint8_t *)m_data + 8);
 
-		i = fill_ipsec_sg_comp_from_pkt(gather_comp, i, m_src);
+		i = fill_sg_comp_from_pkt(gather_comp, i, m_src);
 		((uint16_t *)in_buffer)[2] = rte_cpu_to_be_16(i);
 
 		g_size_bytes = ((i + 3) / 4) * sizeof(struct roc_sglist_comp);
@@ -132,7 +132,7 @@ process_outb_sa(struct roc_cpt_lf *lf, struct rte_crypto_op *cop, struct cn10k_s
 		i = 0;
 		scatter_comp = (struct roc_sglist_comp *)((uint8_t *)gather_comp + g_size_bytes);
 
-		i = fill_ipsec_sg_comp_from_pkt(scatter_comp, i, m_src);
+		i = fill_sg_comp_from_pkt(scatter_comp, i, m_src);
 		((uint16_t *)in_buffer)[3] = rte_cpu_to_be_16(i);
 
 		s_size_bytes = ((i + 3) / 4) * sizeof(struct roc_sglist_comp);
@@ -170,7 +170,7 @@ process_outb_sa(struct roc_cpt_lf *lf, struct rte_crypto_op *cop, struct cn10k_s
 		i = 0;
 		gather_comp = (struct roc_sg2list_comp *)((uint8_t *)m_data);
 
-		i = fill_ipsec_sg2_comp_from_pkt(gather_comp, i, m_src);
+		i = fill_sg2_comp_from_pkt(gather_comp, i, m_src);
 
 		cpt_inst_w5.s.gather_sz = ((i + 2) / 3);
 		g_size_bytes = ((i + 2) / 3) * sizeof(struct roc_sg2list_comp);
@@ -181,7 +181,7 @@ process_outb_sa(struct roc_cpt_lf *lf, struct rte_crypto_op *cop, struct cn10k_s
 		i = 0;
 		scatter_comp = (struct roc_sg2list_comp *)((uint8_t *)gather_comp + g_size_bytes);
 
-		i = fill_ipsec_sg2_comp_from_pkt(scatter_comp, i, m_src);
+		i = fill_sg2_comp_from_pkt(scatter_comp, i, m_src);
 
 		cpt_inst_w6.s.scatter_sz = ((i + 2) / 3);
 
@@ -211,7 +211,7 @@ process_inb_sa(struct rte_crypto_op *cop, struct cn10k_sec_session *sess, struct
 		inst->w4.u64 = sess->inst.w4 | rte_pktmbuf_pkt_len(m_src);
 		dptr = rte_pktmbuf_mtod(m_src, uint64_t);
 		inst->dptr = dptr;
-		m_src->ol_flags |= (uint64_t)sess->ip_csum;
+		m_src->ol_flags |= (uint64_t)sess->ipsec.ip_csum;
 	} else if (is_sg_ver2 == false) {
 		struct roc_sglist_comp *scatter_comp, *gather_comp;
 		uint32_t g_size_bytes, s_size_bytes;
@@ -234,7 +234,7 @@ process_inb_sa(struct rte_crypto_op *cop, struct cn10k_sec_session *sess, struct
 		/* Input Gather List */
 		i = 0;
 		gather_comp = (struct roc_sglist_comp *)((uint8_t *)m_data + 8);
-		i = fill_ipsec_sg_comp_from_pkt(gather_comp, i, m_src);
+		i = fill_sg_comp_from_pkt(gather_comp, i, m_src);
 		((uint16_t *)in_buffer)[2] = rte_cpu_to_be_16(i);
 
 		g_size_bytes = ((i + 3) / 4) * sizeof(struct roc_sglist_comp);
@@ -242,7 +242,7 @@ process_inb_sa(struct rte_crypto_op *cop, struct cn10k_sec_session *sess, struct
 		/* Output Scatter List */
 		i = 0;
 		scatter_comp = (struct roc_sglist_comp *)((uint8_t *)gather_comp + g_size_bytes);
-		i = fill_ipsec_sg_comp_from_pkt(scatter_comp, i, m_src);
+		i = fill_sg_comp_from_pkt(scatter_comp, i, m_src);
 		((uint16_t *)in_buffer)[3] = rte_cpu_to_be_16(i);
 
 		s_size_bytes = ((i + 3) / 4) * sizeof(struct roc_sglist_comp);
@@ -270,7 +270,7 @@ process_inb_sa(struct rte_crypto_op *cop, struct cn10k_sec_session *sess, struct
 		i = 0;
 		gather_comp = (struct roc_sg2list_comp *)((uint8_t *)m_data);
 
-		i = fill_ipsec_sg2_comp_from_pkt(gather_comp, i, m_src);
+		i = fill_sg2_comp_from_pkt(gather_comp, i, m_src);
 
 		cpt_inst_w5.s.gather_sz = ((i + 2) / 3);
 		g_size_bytes = ((i + 2) / 3) * sizeof(struct roc_sg2list_comp);
@@ -278,7 +278,7 @@ process_inb_sa(struct rte_crypto_op *cop, struct cn10k_sec_session *sess, struct
 		/* Output Scatter List */
 		i = 0;
 		scatter_comp = (struct roc_sg2list_comp *)((uint8_t *)gather_comp + g_size_bytes);
-		i = fill_ipsec_sg2_comp_from_pkt(scatter_comp, i, m_src);
+		i = fill_sg2_comp_from_pkt(scatter_comp, i, m_src);
 
 		cpt_inst_w6.s.scatter_sz = ((i + 2) / 3);
 

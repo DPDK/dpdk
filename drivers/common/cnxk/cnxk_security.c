@@ -8,9 +8,8 @@
 
 #include "roc_api.h"
 
-static void
-ipsec_hmac_opad_ipad_gen(struct rte_crypto_sym_xform *auth_xform,
-			 uint8_t *hmac_opad_ipad)
+void
+cnxk_sec_opad_ipad_gen(struct rte_crypto_sym_xform *auth_xform, uint8_t *hmac_opad_ipad)
 {
 	const uint8_t *key = auth_xform->auth.key.data;
 	uint32_t length = auth_xform->auth.key.length;
@@ -192,7 +191,7 @@ ot_ipsec_sa_common_param_fill(union roc_ot_ipsec_sa_word2 *w2,
 			const uint8_t *auth_key = auth_xfrm->auth.key.data;
 			roc_aes_xcbc_key_derive(auth_key, hmac_opad_ipad);
 		} else {
-			ipsec_hmac_opad_ipad_gen(auth_xfrm, hmac_opad_ipad);
+			cnxk_sec_opad_ipad_gen(auth_xfrm, hmac_opad_ipad);
 		}
 
 		tmp_key = (uint64_t *)hmac_opad_ipad;
@@ -741,7 +740,7 @@ onf_ipsec_sa_common_param_fill(struct roc_ie_onf_sa_ctl *ctl, uint8_t *salt,
 		key = cipher_xfrm->cipher.key.data;
 		length = cipher_xfrm->cipher.key.length;
 
-		ipsec_hmac_opad_ipad_gen(auth_xfrm, hmac_opad_ipad);
+		cnxk_sec_opad_ipad_gen(auth_xfrm, hmac_opad_ipad);
 	}
 
 	switch (length) {
@@ -1374,7 +1373,7 @@ cnxk_on_ipsec_outb_sa_create(struct rte_security_ipsec_xform *ipsec,
 
 			roc_aes_xcbc_key_derive(auth_key, hmac_opad_ipad);
 		} else if (auth_xform->auth.algo != RTE_CRYPTO_AUTH_NULL) {
-			ipsec_hmac_opad_ipad_gen(auth_xform, hmac_opad_ipad);
+			cnxk_sec_opad_ipad_gen(auth_xform, hmac_opad_ipad);
 		}
 	}
 
@@ -1441,7 +1440,7 @@ cnxk_on_ipsec_inb_sa_create(struct rte_security_ipsec_xform *ipsec,
 
 			roc_aes_xcbc_key_derive(auth_key, hmac_opad_ipad);
 		} else if (auth_xform->auth.algo != RTE_CRYPTO_AUTH_NULL) {
-			ipsec_hmac_opad_ipad_gen(auth_xform, hmac_opad_ipad);
+			cnxk_sec_opad_ipad_gen(auth_xform, hmac_opad_ipad);
 		}
 	}
 

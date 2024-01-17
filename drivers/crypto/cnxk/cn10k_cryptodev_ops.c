@@ -80,8 +80,9 @@ sess_put:
 }
 
 static __rte_always_inline int __rte_hot
-cpt_sec_inst_fill(struct cnxk_cpt_qp *qp, struct rte_crypto_op *op, struct cn10k_sec_session *sess,
-		  struct cpt_inst_s *inst, struct cpt_inflight_req *infl_req, const bool is_sg_ver2)
+cpt_sec_ipsec_inst_fill(struct cnxk_cpt_qp *qp, struct rte_crypto_op *op,
+			struct cn10k_sec_session *sess, struct cpt_inst_s *inst,
+			struct cpt_inflight_req *infl_req, const bool is_sg_ver2)
 {
 	struct rte_crypto_sym_op *sym_op = op->sym;
 	int ret;
@@ -91,13 +92,24 @@ cpt_sec_inst_fill(struct cnxk_cpt_qp *qp, struct rte_crypto_op *op, struct cn10k
 		return -ENOTSUP;
 	}
 
-	if (sess->is_outbound)
+	if (sess->ipsec.is_outbound)
 		ret = process_outb_sa(&qp->lf, op, sess, &qp->meta_info, infl_req, inst,
 				      is_sg_ver2);
 	else
 		ret = process_inb_sa(op, sess, inst, &qp->meta_info, infl_req, is_sg_ver2);
 
 	return ret;
+}
+
+static __rte_always_inline int __rte_hot
+cpt_sec_inst_fill(struct cnxk_cpt_qp *qp, struct rte_crypto_op *op, struct cn10k_sec_session *sess,
+		  struct cpt_inst_s *inst, struct cpt_inflight_req *infl_req, const bool is_sg_ver2)
+{
+
+	if (sess->proto == RTE_SECURITY_PROTOCOL_IPSEC)
+		return cpt_sec_ipsec_inst_fill(qp, op, sess, &inst[0], infl_req, is_sg_ver2);
+
+	return 0;
 }
 
 static inline int

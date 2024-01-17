@@ -61,14 +61,15 @@ bool __roc_api cnxk_onf_ipsec_inb_sa_valid(struct roc_onf_ipsec_inb_sa *sa);
 bool __roc_api cnxk_onf_ipsec_outb_sa_valid(struct roc_onf_ipsec_outb_sa *sa);
 
 /* [CN9K] */
-int __roc_api
-cnxk_on_ipsec_inb_sa_create(struct rte_security_ipsec_xform *ipsec,
-			    struct rte_crypto_sym_xform *crypto_xform,
-			    struct roc_ie_on_inb_sa *in_sa);
+int __roc_api cnxk_on_ipsec_inb_sa_create(struct rte_security_ipsec_xform *ipsec,
+					  struct rte_crypto_sym_xform *crypto_xform,
+					  struct roc_ie_on_inb_sa *in_sa);
 
-int __roc_api
-cnxk_on_ipsec_outb_sa_create(struct rte_security_ipsec_xform *ipsec,
-			     struct rte_crypto_sym_xform *crypto_xform,
-			     struct roc_ie_on_outb_sa *out_sa);
+int __roc_api cnxk_on_ipsec_outb_sa_create(struct rte_security_ipsec_xform *ipsec,
+					   struct rte_crypto_sym_xform *crypto_xform,
+					   struct roc_ie_on_outb_sa *out_sa);
+
+__rte_internal
+void cnxk_sec_opad_ipad_gen(struct rte_crypto_sym_xform *auth_xform, uint8_t *hmac_opad_ipad);
 
 #endif /* _CNXK_SECURITY_H__ */

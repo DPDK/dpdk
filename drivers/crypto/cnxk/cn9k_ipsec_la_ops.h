@@ -132,7 +132,7 @@ process_outb_sa(struct cpt_qp_meta_info *m_info, struct rte_crypto_op *cop,
 		gather_comp = (struct roc_sglist_comp *)((uint8_t *)m_data + 8);
 
 		i = fill_sg_comp(gather_comp, i, (uint64_t)hdr, hdr_len);
-		i = fill_ipsec_sg_comp_from_pkt(gather_comp, i, m_src);
+		i = fill_sg_comp_from_pkt(gather_comp, i, m_src);
 		((uint16_t *)in_buffer)[2] = rte_cpu_to_be_16(i);
 
 		g_size_bytes = ((i + 3) / 4) * sizeof(struct roc_sglist_comp);
@@ -146,7 +146,7 @@ process_outb_sa(struct cpt_qp_meta_info *m_info, struct rte_crypto_op *cop,
 		scatter_comp = (struct roc_sglist_comp *)((uint8_t *)gather_comp + g_size_bytes);
 
 		i = fill_sg_comp(scatter_comp, i, (uint64_t)hdr, hdr_len);
-		i = fill_ipsec_sg_comp_from_pkt(scatter_comp, i, m_src);
+		i = fill_sg_comp_from_pkt(scatter_comp, i, m_src);
 		((uint16_t *)in_buffer)[3] = rte_cpu_to_be_16(i);
 
 		s_size_bytes = ((i + 3) / 4) * sizeof(struct roc_sglist_comp);
@@ -228,7 +228,7 @@ process_inb_sa(struct cpt_qp_meta_info *m_info, struct rte_crypto_op *cop,
 		 */
 		i = 0;
 		gather_comp = (struct roc_sglist_comp *)((uint8_t *)m_data + 8);
-		i = fill_ipsec_sg_comp_from_pkt(gather_comp, i, m_src);
+		i = fill_sg_comp_from_pkt(gather_comp, i, m_src);
 		((uint16_t *)in_buffer)[2] = rte_cpu_to_be_16(i);
 
 		g_size_bytes = ((i + 3) / 4) * sizeof(struct roc_sglist_comp);
@@ -239,7 +239,7 @@ process_inb_sa(struct cpt_qp_meta_info *m_info, struct rte_crypto_op *cop,
 		i = 0;
 		scatter_comp = (struct roc_sglist_comp *)((uint8_t *)gather_comp + g_size_bytes);
 		i = fill_sg_comp(scatter_comp, i, (uint64_t)hdr, hdr_len);
-		i = fill_ipsec_sg_comp_from_pkt(scatter_comp, i, m_src);
+		i = fill_sg_comp_from_pkt(scatter_comp, i, m_src);
 		((uint16_t *)in_buffer)[3] = rte_cpu_to_be_16(i);
 
 		s_size_bytes = ((i + 3) / 4) * sizeof(struct roc_sglist_comp);

@@ -1,6 +1,7 @@
 INTERNAL {
 	global:
 
+	cnxk_sec_opad_ipad_gen;
 	cnxk_ipsec_icvlen_get;
 	cnxk_ipsec_ivlen_get;
 	cnxk_ipsec_outb_rlens_get;
