@@ -20,11 +20,14 @@
 #include "roc_sso_dp.h"
 
 #include "cn10k_cryptodev.h"
-#include "cn10k_cryptodev_ops.h"
 #include "cn10k_cryptodev_event_dp.h"
+#include "cn10k_cryptodev_ops.h"
+#include "cn10k_cryptodev_sec.h"
 #include "cn10k_eventdev.h"
 #include "cn10k_ipsec.h"
 #include "cn10k_ipsec_la_ops.h"
+#include "cn10k_tls.h"
+#include "cn10k_tls_ops.h"
 #include "cnxk_ae.h"
 #include "cnxk_cryptodev.h"
 #include "cnxk_cryptodev_ops.h"
@@ -102,12 +105,26 @@ cpt_sec_ipsec_inst_fill(struct cnxk_cpt_qp *qp, struct rte_crypto_op *op,
 }
 
 static __rte_always_inline int __rte_hot
+cpt_sec_tls_inst_fill(struct cnxk_cpt_qp *qp, struct rte_crypto_op *op,
+		      struct cn10k_sec_session *sess, struct cpt_inst_s *inst,
+		      struct cpt_inflight_req *infl_req, const bool is_sg_ver2)
+{
+	if (sess->tls.is_write)
+		return process_tls_write(&qp->lf, op, sess, &qp->meta_info, infl_req, inst,
+					 is_sg_ver2);
+	else
+		return process_tls_read(op, sess, &qp->meta_info, infl_req, inst, is_sg_ver2);
+}
+
+static __rte_always_inline int __rte_hot
 cpt_sec_inst_fill(struct cnxk_cpt_qp *qp, struct rte_crypto_op *op, struct cn10k_sec_session *sess,
 		  struct cpt_inst_s *inst, struct cpt_inflight_req *infl_req, const bool is_sg_ver2)
 {
 
 	if (sess->proto == RTE_SECURITY_PROTOCOL_IPSEC)
 		return cpt_sec_ipsec_inst_fill(qp, op, sess, &inst[0], infl_req, is_sg_ver2);
+	else if (sess->proto == RTE_SECURITY_PROTOCOL_TLS_RECORD)
+		return cpt_sec_tls_inst_fill(qp, op, sess, &inst[0], infl_req, is_sg_ver2);
 
 	return 0;
 }
@@ -812,7 +829,7 @@ cn10k_cpt_sg_ver2_crypto_adapter_enqueue(void *ws, struct rte_event ev[], uint16
 }
 
 static inline void
-cn10k_cpt_sec_post_process(struct rte_crypto_op *cop, struct cpt_cn10k_res_s *res)
+cn10k_cpt_ipsec_post_process(struct rte_crypto_op *cop, struct cpt_cn10k_res_s *res)
 {
 	struct rte_mbuf *mbuf = cop->sym->m_src;
 	const uint16_t m_len = res->rlen;
@@ -849,10 +866,38 @@ cn10k_cpt_sec_post_process(struct rte_crypto_op *cop, struct cpt_cn10k_res_s *re
 }
 
 static inline void
-cn10k_cpt_dequeue_post_process(struct cnxk_cpt_qp *qp,
-			       struct rte_crypto_op *cop,
-			       struct cpt_inflight_req *infl_req,
-			       struct cpt_cn10k_res_s *res)
+cn10k_cpt_tls_post_process(struct rte_crypto_op *cop, struct cpt_cn10k_res_s *res)
+{
+	struct rte_mbuf *mbuf = cop->sym->m_src;
+	const uint16_t m_len = res->rlen;
+
+	if (!res->uc_compcode) {
+		if (mbuf->next == NULL)
+			mbuf->data_len = m_len;
+		mbuf->pkt_len = m_len;
+	} else {
+		cop->status = RTE_CRYPTO_OP_STATUS_ERROR;
+		cop->aux_flags = res->uc_compcode;
+		plt_err("crypto op failed with UC compcode: 0x%x", res->uc_compcode);
+	}
+}
+
+static inline void
+cn10k_cpt_sec_post_process(struct rte_crypto_op *cop, struct cpt_cn10k_res_s *res)
+{
+	struct rte_crypto_sym_op *sym_op = cop->sym;
+	struct cn10k_sec_session *sess;
+
+	sess = sym_op->session;
+	if (sess->proto == RTE_SECURITY_PROTOCOL_IPSEC)
+		cn10k_cpt_ipsec_post_process(cop, res);
+	else if (sess->proto == RTE_SECURITY_PROTOCOL_TLS_RECORD)
+		cn10k_cpt_tls_post_process(cop, res);
+}
+
+static inline void
+cn10k_cpt_dequeue_post_process(struct cnxk_cpt_qp *qp, struct rte_crypto_op *cop,
+			       struct cpt_inflight_req *infl_req, struct cpt_cn10k_res_s *res)
 {
 	const uint8_t uc_compcode = res->uc_compcode;
 	const uint8_t compcode = res->compcode;

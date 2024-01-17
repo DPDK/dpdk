@@ -32,6 +32,10 @@ cn10k_sec_session_create(void *dev, struct rte_security_session_conf *conf,
 		return cn10k_ipsec_session_create(vf, qp, &conf->ipsec, conf->crypto_xform, sess);
 	}
 
+	if (conf->protocol == RTE_SECURITY_PROTOCOL_TLS_RECORD)
+		return cn10k_tls_record_session_create(vf, qp, &conf->tls_record,
+						       conf->crypto_xform, sess);
+
 	return -ENOTSUP;
 }
 
@@ -53,6 +57,9 @@ cn10k_sec_session_destroy(void *dev, struct rte_security_session *sec_sess)
 
 	if (cn10k_sec_sess->proto == RTE_SECURITY_PROTOCOL_IPSEC)
 		return cn10k_sec_ipsec_session_destroy(qp, cn10k_sec_sess);
+
+	if (cn10k_sec_sess->proto == RTE_SECURITY_PROTOCOL_TLS_RECORD)
+		return cn10k_sec_tls_session_destroy(qp, cn10k_sec_sess);
 
 	return -EINVAL;
 }
