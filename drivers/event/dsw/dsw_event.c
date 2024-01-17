@@ -447,13 +447,9 @@ static bool
 dsw_is_serving_port(struct dsw_evdev *dsw, uint8_t port_id, uint8_t queue_id)
 {
 	struct dsw_queue *queue = &dsw->queues[queue_id];
-	uint16_t i;
+	uint64_t port_mask = UINT64_C(1) << port_id;
 
-	for (i = 0; i < queue->num_serving_ports; i++)
-		if (queue->serving_ports[i] == port_id)
-			return true;
-
-	return false;
+	return queue->serving_ports & port_mask;
 }
 
 static bool
@@ -575,7 +571,7 @@ dsw_schedule(struct dsw_evdev *dsw, uint8_t queue_id, uint16_t flow_hash)
 		/* A single-link queue, or atomic/ordered/parallel but
 		 * with just a single serving port.
 		 */
-		port_id = queue->serving_ports[0];
+		port_id = rte_bsf64(queue->serving_ports);
 
 	DSW_LOG_DP(DEBUG, "Event with queue_id %d flow_hash %d is scheduled "
 		   "to port %d.\n", queue_id, flow_hash, port_id);

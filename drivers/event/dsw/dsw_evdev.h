@@ -234,11 +234,14 @@ struct dsw_port {
 
 struct dsw_queue {
 	uint8_t schedule_type;
-	uint8_t serving_ports[DSW_MAX_PORTS];
+	uint64_t serving_ports;
 	uint16_t num_serving_ports;
 
 	uint8_t flow_to_port_map[DSW_MAX_FLOWS] __rte_cache_aligned;
 };
+
+/* Limited by the size of the 'serving_ports' bitmask */
+static_assert(DSW_MAX_PORTS <= 64, "Max compile-time port count exceeded");
 
 struct dsw_evdev {
 	struct rte_eventdev_data *data;

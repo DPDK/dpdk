@@ -144,24 +144,23 @@ dsw_queue_release(struct rte_eventdev *dev __rte_unused,
 static void
 queue_add_port(struct dsw_queue *queue, uint16_t port_id)
 {
-	queue->serving_ports[queue->num_serving_ports] = port_id;
+	uint64_t port_mask = UINT64_C(1) << port_id;
+
+	queue->serving_ports |=	port_mask;
 	queue->num_serving_ports++;
 }
 
 static bool
 queue_remove_port(struct dsw_queue *queue, uint16_t port_id)
 {
-	uint16_t i;
+	uint64_t port_mask = UINT64_C(1) << port_id;
 
-	for (i = 0; i < queue->num_serving_ports; i++)
-		if (queue->serving_ports[i] == port_id) {
-			uint16_t last_idx = queue->num_serving_ports - 1;
-			if (i != last_idx)
-				queue->serving_ports[i] =
-					queue->serving_ports[last_idx];
-			queue->num_serving_ports--;
-			return true;
-		}
+	if (queue->serving_ports & port_mask) {
+		queue->num_serving_ports--;
+		queue->serving_ports ^= port_mask;
+		return true;
+	}
+
 	return false;
 }
 
@@ -258,10 +257,20 @@ initial_flow_to_port_assignment(struct dsw_evdev *dsw)
 		struct dsw_queue *queue = &dsw->queues[queue_id];
 		uint16_t flow_hash;
 		for (flow_hash = 0; flow_hash < DSW_MAX_FLOWS; flow_hash++) {
-			uint8_t port_idx =
-				rte_rand() % queue->num_serving_ports;
-			uint8_t port_id =
-				queue->serving_ports[port_idx];
+			uint8_t skip =
+				rte_rand_max(queue->num_serving_ports);
+			uint8_t port_id;
+
+			for (port_id = 0;; port_id++) {
+				uint64_t port_mask = UINT64_C(1) << port_id;
+
+				if (queue->serving_ports & port_mask) {
+					if (skip == 0)
+						break;
+					skip--;
+				}
+			}
+
 			dsw->queues[queue_id].flow_to_port_map[flow_hash] =
 				port_id;
 		}
