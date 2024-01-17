@@ -80,7 +80,8 @@ union cpt_eng_caps {
 		uint64_t __io sg_ver2 : 1;
 		uint64_t __io sm2 : 1;
 		uint64_t __io pdcp_chain_zuc256 : 1;
-		uint64_t __io reserved_38_63 : 26;
+		uint64_t __io tls : 1;
+		uint64_t __io reserved_39_63 : 25;
 	};
 };
 
