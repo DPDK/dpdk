@@ -18,6 +18,36 @@
 #include "cnxk_security.h"
 
 static int
+tls_xform_cipher_auth_verify(struct rte_crypto_sym_xform *cipher_xform,
+			     struct rte_crypto_sym_xform *auth_xform)
+{
+	enum rte_crypto_cipher_algorithm c_algo = cipher_xform->cipher.algo;
+	enum rte_crypto_auth_algorithm a_algo = auth_xform->auth.algo;
+	int ret = -ENOTSUP;
+
+	switch (c_algo) {
+	case RTE_CRYPTO_CIPHER_NULL:
+		if ((a_algo == RTE_CRYPTO_AUTH_MD5_HMAC) || (a_algo == RTE_CRYPTO_AUTH_SHA1_HMAC) ||
+		    (a_algo == RTE_CRYPTO_AUTH_SHA256_HMAC))
+			ret = 0;
+		break;
+	case RTE_CRYPTO_CIPHER_3DES_CBC:
+		if (a_algo == RTE_CRYPTO_AUTH_SHA1_HMAC)
+			ret = 0;
+		break;
+	case RTE_CRYPTO_CIPHER_AES_CBC:
+		if ((a_algo == RTE_CRYPTO_AUTH_SHA1_HMAC) ||
+		    (a_algo == RTE_CRYPTO_AUTH_SHA256_HMAC))
+			ret = 0;
+		break;
+	default:
+		break;
+	}
+
+	return ret;
+}
+
+static int
 tls_xform_cipher_verify(struct rte_crypto_sym_xform *crypto_xform)
 {
 	enum rte_crypto_cipher_algorithm c_algo = crypto_xform->cipher.algo;
@@ -138,7 +168,10 @@ cnxk_tls_xform_verify(struct rte_security_tls_record_xform *tls_xform,
 		ret = tls_xform_cipher_verify(cipher_xform);
 
 	if (!ret)
-		return tls_xform_auth_verify(auth_xform);
+		ret = tls_xform_auth_verify(auth_xform);
+
+	if (cipher_xform && !ret)
+		return tls_xform_cipher_auth_verify(cipher_xform, auth_xform);
 
 	return ret;
 }
