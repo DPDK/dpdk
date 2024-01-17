@@ -747,7 +747,6 @@ F: doc/guides/nics/features/e1000.ini
 F: doc/guides/nics/features/igb*.ini
 
 Intel ixgbe
-M: Qiming Yang <qiming.yang@intel.com>
 T: git://dpdk.org/next/dpdk-next-net-intel
 F: drivers/net/ixgbe/
 F: doc/guides/nics/ixgbe.rst
@@ -780,7 +779,6 @@ F: drivers/common/iavf/
 F: doc/guides/nics/features/iavf*.ini
 
 Intel ice
-M: Qiming Yang <qiming.yang@intel.com>
 M: Qi Zhang <qi.z.zhang@intel.com>
 T: git://dpdk.org/next/dpdk-next-net-intel
 F: drivers/net/ice/
