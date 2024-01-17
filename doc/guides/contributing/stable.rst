@@ -53,7 +53,8 @@ LTS Release
 
 A stable release can be designated as an LTS release based on community
 agreement and a commitment from a maintainer. The current policy is that each
-year's November (X.11) release will be maintained as an LTS for 2 years.
+year's November (X.11) release will be maintained as an LTS for 3 years,
+however that is dependent on continued community support for validation.
 
 After the X.11 release, an LTS branch will be created for it at
 https://git.dpdk.org/dpdk-stable where bugfixes will be backported to.
