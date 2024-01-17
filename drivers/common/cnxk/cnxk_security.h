@@ -70,6 +70,7 @@ int __roc_api cnxk_on_ipsec_outb_sa_create(struct rte_security_ipsec_xform *ipse
 					   struct roc_ie_on_outb_sa *out_sa);
 
 __rte_internal
-void cnxk_sec_opad_ipad_gen(struct rte_crypto_sym_xform *auth_xform, uint8_t *hmac_opad_ipad);
+void cnxk_sec_opad_ipad_gen(struct rte_crypto_sym_xform *auth_xform, uint8_t *hmac_opad_ipad,
+			    bool is_tls);
 
 #endif /* _CNXK_SECURITY_H__ */
