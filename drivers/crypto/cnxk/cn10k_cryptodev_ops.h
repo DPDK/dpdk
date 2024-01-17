@@ -12,6 +12,9 @@
 
 #include "cnxk_cryptodev.h"
 
+#define CN10K_PKTS_PER_LOOP   32
+#define CN10K_PKTS_PER_STEORL 16
+
 extern struct rte_cryptodev_ops cn10k_cpt_ops;
 
 void cn10k_cpt_set_enqdeq_fns(struct rte_cryptodev *dev, struct cnxk_cpt_vf *vf);

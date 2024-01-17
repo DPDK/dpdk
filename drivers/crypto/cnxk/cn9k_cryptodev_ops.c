@@ -122,62 +122,6 @@ cn9k_cpt_inst_prep(struct cnxk_cpt_qp *qp, struct rte_crypto_op *op,
 	return ret;
 }
 
-static inline void
-cn9k_cpt_inst_submit(struct cpt_inst_s *inst, uint64_t lmtline,
-		     uint64_t io_addr)
-{
-	uint64_t lmt_status;
-
-	do {
-		/* Copy CPT command to LMTLINE */
-		roc_lmt_mov64((void *)lmtline, inst);
-
-		/*
-		 * Make sure compiler does not reorder memcpy and ldeor.
-		 * LMTST transactions are always flushed from the write
-		 * buffer immediately, a DMB is not required to push out
-		 * LMTSTs.
-		 */
-		rte_io_wmb();
-		lmt_status = roc_lmt_submit_ldeor(io_addr);
-	} while (lmt_status == 0);
-}
-
-static __plt_always_inline void
-cn9k_cpt_inst_submit_dual(struct cpt_inst_s *inst, uint64_t lmtline,
-			  uint64_t io_addr)
-{
-	uint64_t lmt_status;
-
-	do {
-		/* Copy 2 CPT inst_s to LMTLINE */
-#if defined(RTE_ARCH_ARM64)
-		uint64_t *s = (uint64_t *)inst;
-		uint64_t *d = (uint64_t *)lmtline;
-
-		vst1q_u64(&d[0], vld1q_u64(&s[0]));
-		vst1q_u64(&d[2], vld1q_u64(&s[2]));
-		vst1q_u64(&d[4], vld1q_u64(&s[4]));
-		vst1q_u64(&d[6], vld1q_u64(&s[6]));
-		vst1q_u64(&d[8], vld1q_u64(&s[8]));
-		vst1q_u64(&d[10], vld1q_u64(&s[10]));
-		vst1q_u64(&d[12], vld1q_u64(&s[12]));
-		vst1q_u64(&d[14], vld1q_u64(&s[14]));
-#else
-		roc_lmt_mov_seg((void *)lmtline, inst, 8);
-#endif
-
-		/*
-		 * Make sure compiler does not reorder memcpy and ldeor.
-		 * LMTST transactions are always flushed from the write
-		 * buffer immediately, a DMB is not required to push out
-		 * LMTSTs.
-		 */
-		rte_io_wmb();
-		lmt_status = roc_lmt_submit_ldeor(io_addr);
-	} while (lmt_status == 0);
-}
-
 static uint16_t
 cn9k_cpt_enqueue_burst(void *qptr, struct rte_crypto_op **ops, uint16_t nb_ops)
 {

@@ -12,12 +12,22 @@
 #include "roc_errata.h"
 #include "roc_idev.h"
 #include "roc_ie_on.h"
+#if defined(__aarch64__)
+#include "roc_io.h"
+#else
+#include "roc_io_generic.h"
+#endif
 
 #include "cnxk_ae.h"
 #include "cnxk_cryptodev.h"
 #include "cnxk_cryptodev_capabilities.h"
 #include "cnxk_cryptodev_ops.h"
 #include "cnxk_se.h"
+
+#include "cn10k_cryptodev_ops.h"
+#include "cn9k_cryptodev_ops.h"
+
+#include "rte_pmd_cnxk_crypto.h"
 
 #define CNXK_CPT_MAX_ASYM_OP_NUM_PARAMS	 5
 #define CNXK_CPT_MAX_ASYM_OP_MOD_LEN	 1024
@@ -917,4 +927,93 @@ cnxk_cpt_queue_pair_event_error_query(struct rte_cryptodev *dev, uint16_t qp_id)
 		return 1;
 	}
 	return 0;
+}
+
+void *
+rte_pmd_cnxk_crypto_qptr_get(uint8_t dev_id, uint16_t qp_id)
+{
+	const struct rte_crypto_fp_ops *fp_ops;
+	void *qptr;
+
+	fp_ops = &rte_crypto_fp_ops[dev_id];
+	qptr = fp_ops->qp.data[qp_id];
+
+	return qptr;
+}
+
+static inline void
+cnxk_crypto_cn10k_submit(void *qptr, void *inst, uint16_t nb_inst)
+{
+	uint64_t lmt_base, lmt_arg, io_addr;
+	struct cnxk_cpt_qp *qp = qptr;
+	uint16_t i, j, lmt_id;
+	void *lmt_dst;
+
+	lmt_base = qp->lmtline.lmt_base;
+	io_addr = qp->lmtline.io_addr;
+
+	ROC_LMT_BASE_ID_GET(lmt_base, lmt_id);
+
+again:
+	i = RTE_MIN(nb_inst, CN10K_PKTS_PER_LOOP);
+	lmt_dst = PLT_PTR_CAST(lmt_base);
+
+	for (j = 0; j < i; j++) {
+		rte_memcpy(lmt_dst, inst, sizeof(struct cpt_inst_s));
+		inst = RTE_PTR_ADD(inst, sizeof(struct cpt_inst_s));
+		lmt_dst = RTE_PTR_ADD(lmt_dst, 2 * sizeof(struct cpt_inst_s));
+	}
+
+	rte_io_wmb();
+
+	if (i > CN10K_PKTS_PER_STEORL) {
+		lmt_arg = ROC_CN10K_CPT_LMT_ARG | (CN10K_PKTS_PER_STEORL - 1) << 12 |
+			  (uint64_t)lmt_id;
+		roc_lmt_submit_steorl(lmt_arg, io_addr);
+		lmt_arg = ROC_CN10K_CPT_LMT_ARG | (i - CN10K_PKTS_PER_STEORL - 1) << 12 |
+			  (uint64_t)(lmt_id + CN10K_PKTS_PER_STEORL);
+		roc_lmt_submit_steorl(lmt_arg, io_addr);
+	} else {
+		lmt_arg = ROC_CN10K_CPT_LMT_ARG | (i - 1) << 12 | (uint64_t)lmt_id;
+		roc_lmt_submit_steorl(lmt_arg, io_addr);
+	}
+
+	rte_io_wmb();
+
+	if (nb_inst - i > 0) {
+		nb_inst -= i;
+		goto again;
+	}
+}
+
+static inline void
+cnxk_crypto_cn9k_submit(void *qptr, void *inst, uint16_t nb_inst)
+{
+	struct cnxk_cpt_qp *qp = qptr;
+
+	const uint64_t lmt_base = qp->lf.lmt_base;
+	const uint64_t io_addr = qp->lf.io_addr;
+
+	if (unlikely(nb_inst & 1)) {
+		cn9k_cpt_inst_submit(inst, lmt_base, io_addr);
+		inst = RTE_PTR_ADD(inst, sizeof(struct cpt_inst_s));
+		nb_inst -= 1;
+	}
+
+	while (nb_inst > 0) {
+		cn9k_cpt_inst_submit_dual(inst, lmt_base, io_addr);
+		inst = RTE_PTR_ADD(inst, 2 * sizeof(struct cpt_inst_s));
+		nb_inst -= 2;
+	}
+}
+
+void
+rte_pmd_cnxk_crypto_submit(void *qptr, void *inst, uint16_t nb_inst)
+{
+	if (roc_model_is_cn10k())
+		return cnxk_crypto_cn10k_submit(qptr, inst, nb_inst);
+	else if (roc_model_is_cn9k())
+		return cnxk_crypto_cn9k_submit(qptr, inst, nb_inst);
+
+	plt_err("Invalid cnxk model");
 }

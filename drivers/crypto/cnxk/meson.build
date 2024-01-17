@@ -24,8 +24,8 @@ sources = files(
         'cnxk_cryptodev_sec.c',
 )
 
+headers = files('rte_pmd_cnxk_crypto.h')
 deps += ['bus_pci', 'common_cnxk', 'security', 'eventdev']
-
 includes += include_directories('../../../lib/net', '../../event/cnxk')
 
 if get_option('buildtype').contains('debug')
