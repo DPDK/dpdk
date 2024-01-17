@@ -157,13 +157,28 @@ cpt_ciph_aes_key_type_set(struct roc_se_context *fctx, uint16_t key_len)
 	fctx->enc.aes_key = aes_key_type;
 }
 
-static void
-cpt_hmac_opad_ipad_gen(roc_se_auth_type auth_type, const uint8_t *key, uint16_t length,
-		       struct roc_se_hmac_context *hmac)
+void
+roc_se_hmac_opad_ipad_gen(roc_se_auth_type auth_type, const uint8_t *key, uint16_t length,
+			  uint8_t *opad_ipad, roc_se_op_type op_type)
 {
 	uint8_t opad[128] = {[0 ... 127] = 0x5c};
 	uint8_t ipad[128] = {[0 ... 127] = 0x36};
+	uint8_t ipad_offset, opad_offset;
 	uint32_t i;
+
+	if (op_type == ROC_SE_IPSEC) {
+		if ((auth_type == ROC_SE_MD5_TYPE) || (auth_type == ROC_SE_SHA1_TYPE))
+			ipad_offset = 24;
+		else
+			ipad_offset = 64;
+		opad_offset = 0;
+	} else if (op_type == ROC_SE_TLS) {
+		ipad_offset = 64;
+		opad_offset = 0;
+	} else {
+		ipad_offset = 0;
+		opad_offset = 64;
+	}
 
 	/* HMAC OPAD and IPAD */
 	for (i = 0; i < 128 && i < length; i++) {
@@ -176,28 +191,28 @@ cpt_hmac_opad_ipad_gen(roc_se_auth_type auth_type, const uint8_t *key, uint16_t 
 	 */
 	switch (auth_type) {
 	case ROC_SE_MD5_TYPE:
-		roc_hash_md5_gen(opad, (uint32_t *)hmac->opad);
-		roc_hash_md5_gen(ipad, (uint32_t *)hmac->ipad);
+		roc_hash_md5_gen(opad, (uint32_t *)&opad_ipad[opad_offset]);
+		roc_hash_md5_gen(ipad, (uint32_t *)&opad_ipad[ipad_offset]);
 		break;
 	case ROC_SE_SHA1_TYPE:
-		roc_hash_sha1_gen(opad, (uint32_t *)hmac->opad);
-		roc_hash_sha1_gen(ipad, (uint32_t *)hmac->ipad);
+		roc_hash_sha1_gen(opad, (uint32_t *)&opad_ipad[opad_offset]);
+		roc_hash_sha1_gen(ipad, (uint32_t *)&opad_ipad[ipad_offset]);
 		break;
 	case ROC_SE_SHA2_SHA224:
-		roc_hash_sha256_gen(opad, (uint32_t *)hmac->opad, 224);
-		roc_hash_sha256_gen(ipad, (uint32_t *)hmac->ipad, 224);
+		roc_hash_sha256_gen(opad, (uint32_t *)&opad_ipad[opad_offset], 224);
+		roc_hash_sha256_gen(ipad, (uint32_t *)&opad_ipad[ipad_offset], 224);
 		break;
 	case ROC_SE_SHA2_SHA256:
-		roc_hash_sha256_gen(opad, (uint32_t *)hmac->opad, 256);
-		roc_hash_sha256_gen(ipad, (uint32_t *)hmac->ipad, 256);
+		roc_hash_sha256_gen(opad, (uint32_t *)&opad_ipad[opad_offset], 256);
+		roc_hash_sha256_gen(ipad, (uint32_t *)&opad_ipad[ipad_offset], 256);
 		break;
 	case ROC_SE_SHA2_SHA384:
-		roc_hash_sha512_gen(opad, (uint64_t *)hmac->opad, 384);
-		roc_hash_sha512_gen(ipad, (uint64_t *)hmac->ipad, 384);
+		roc_hash_sha512_gen(opad, (uint64_t *)&opad_ipad[opad_offset], 384);
+		roc_hash_sha512_gen(ipad, (uint64_t *)&opad_ipad[ipad_offset], 384);
 		break;
 	case ROC_SE_SHA2_SHA512:
-		roc_hash_sha512_gen(opad, (uint64_t *)hmac->opad, 512);
-		roc_hash_sha512_gen(ipad, (uint64_t *)hmac->ipad, 512);
+		roc_hash_sha512_gen(opad, (uint64_t *)&opad_ipad[opad_offset], 512);
+		roc_hash_sha512_gen(ipad, (uint64_t *)&opad_ipad[ipad_offset], 512);
 		break;
 	default:
 		break;
@@ -401,7 +416,8 @@ roc_se_auth_key_set(struct roc_se_ctx *se_ctx, roc_se_auth_type type, const uint
 		if (chained_op) {
 			memset(fctx->hmac.ipad, 0, sizeof(fctx->hmac.ipad));
 			memset(fctx->hmac.opad, 0, sizeof(fctx->hmac.opad));
-			cpt_hmac_opad_ipad_gen(type, key, key_len, &fctx->hmac);
+			roc_se_hmac_opad_ipad_gen(type, key, key_len, &fctx->hmac.ipad[0],
+						  ROC_SE_FC);
 			fctx->enc.auth_input_type = 0;
 		} else {
 			se_ctx->hmac = 1;

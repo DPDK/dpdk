@@ -1,7 +1,6 @@
 INTERNAL {
 	global:
 
-	cnxk_sec_opad_ipad_gen;
 	cnxk_ipsec_icvlen_get;
 	cnxk_ipsec_ivlen_get;
 	cnxk_ipsec_outb_rlens_get;
@@ -472,6 +471,7 @@ INTERNAL {
 	roc_plt_init;
 	roc_plt_init_cb_register;
 	roc_plt_lmt_validate;
+	roc_se_hmac_opad_ipad_gen;
 	roc_sso_dev_fini;
 	roc_sso_dev_init;
 	roc_sso_dump;

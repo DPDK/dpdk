@@ -376,7 +376,9 @@ tls_read_sa_fill(struct roc_ie_ot_tls_read_sa *read_sa,
 	else
 		return -EINVAL;
 
-	cnxk_sec_opad_ipad_gen(auth_xfrm, read_sa->opad_ipad, true);
+	roc_se_hmac_opad_ipad_gen(read_sa->w2.s.mac_select, auth_xfrm->auth.key.data,
+				  auth_xfrm->auth.key.length, read_sa->opad_ipad, ROC_SE_TLS);
+
 	tmp = (uint64_t *)read_sa->opad_ipad;
 	for (i = 0; i < (int)(ROC_CTX_MAX_OPAD_IPAD_LEN / sizeof(uint64_t)); i++)
 		tmp[i] = rte_be_to_cpu_64(tmp[i]);
@@ -503,7 +505,9 @@ tls_write_sa_fill(struct roc_ie_ot_tls_write_sa *write_sa,
 		else
 			return -EINVAL;
 
-		cnxk_sec_opad_ipad_gen(auth_xfrm, write_sa->opad_ipad, true);
+		roc_se_hmac_opad_ipad_gen(write_sa->w2.s.mac_select, auth_xfrm->auth.key.data,
+					  auth_xfrm->auth.key.length, write_sa->opad_ipad,
+					  ROC_SE_TLS);
 	}
 
 	tmp_key = (uint64_t *)write_sa->opad_ipad;

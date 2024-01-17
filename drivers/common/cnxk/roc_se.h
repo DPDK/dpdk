@@ -191,6 +191,12 @@ typedef enum {
 	ROC_SE_PDCP_MAC_LEN_128_BIT = 0x3
 } roc_se_pdcp_mac_len_type;
 
+typedef enum {
+	ROC_SE_IPSEC = 0x0,
+	ROC_SE_TLS = 0x1,
+	ROC_SE_FC = 0x2,
+} roc_se_op_type;
+
 struct roc_se_enc_context {
 	uint64_t iv_source : 1;
 	uint64_t aes_key : 2;
@@ -401,4 +407,7 @@ int __roc_api roc_se_ciph_key_set(struct roc_se_ctx *se_ctx, roc_se_cipher_type 
 void __roc_api roc_se_ctx_swap(struct roc_se_ctx *se_ctx);
 void __roc_api roc_se_ctx_init(struct roc_se_ctx *se_ctx);
 
+void __roc_api roc_se_hmac_opad_ipad_gen(roc_se_auth_type auth_type, const uint8_t *key,
+					 uint16_t length, uint8_t *opad_ipad,
+					 roc_se_op_type op_type);
 #endif /* __ROC_SE_H__ */

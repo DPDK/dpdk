@@ -8,55 +8,9 @@
 
 #include "roc_api.h"
 
-void
-cnxk_sec_opad_ipad_gen(struct rte_crypto_sym_xform *auth_xform, uint8_t *hmac_opad_ipad,
-		       bool is_tls)
-{
-	const uint8_t *key = auth_xform->auth.key.data;
-	uint32_t length = auth_xform->auth.key.length;
-	uint8_t opad[128] = {[0 ... 127] = 0x5c};
-	uint8_t ipad[128] = {[0 ... 127] = 0x36};
-	uint32_t i;
-
-	/* HMAC OPAD and IPAD */
-	for (i = 0; i < 128 && i < length; i++) {
-		opad[i] = opad[i] ^ key[i];
-		ipad[i] = ipad[i] ^ key[i];
-	}
-
-	/* Precompute hash of HMAC OPAD and IPAD to avoid
-	 * per packet computation
-	 */
-	switch (auth_xform->auth.algo) {
-	case RTE_CRYPTO_AUTH_MD5_HMAC:
-		roc_hash_md5_gen(opad, (uint32_t *)&hmac_opad_ipad[0]);
-		roc_hash_md5_gen(ipad, (uint32_t *)&hmac_opad_ipad[is_tls ? 64 : 24]);
-		break;
-	case RTE_CRYPTO_AUTH_SHA1_HMAC:
-		roc_hash_sha1_gen(opad, (uint32_t *)&hmac_opad_ipad[0]);
-		roc_hash_sha1_gen(ipad, (uint32_t *)&hmac_opad_ipad[is_tls ? 64 : 24]);
-		break;
-	case RTE_CRYPTO_AUTH_SHA256_HMAC:
-		roc_hash_sha256_gen(opad, (uint32_t *)&hmac_opad_ipad[0], 256);
-		roc_hash_sha256_gen(ipad, (uint32_t *)&hmac_opad_ipad[64], 256);
-		break;
-	case RTE_CRYPTO_AUTH_SHA384_HMAC:
-		roc_hash_sha512_gen(opad, (uint64_t *)&hmac_opad_ipad[0], 384);
-		roc_hash_sha512_gen(ipad, (uint64_t *)&hmac_opad_ipad[64], 384);
-		break;
-	case RTE_CRYPTO_AUTH_SHA512_HMAC:
-		roc_hash_sha512_gen(opad, (uint64_t *)&hmac_opad_ipad[0], 512);
-		roc_hash_sha512_gen(ipad, (uint64_t *)&hmac_opad_ipad[64], 512);
-		break;
-	default:
-		break;
-	}
-}
-
 static int
-ot_ipsec_sa_common_param_fill(union roc_ot_ipsec_sa_word2 *w2,
-			      uint8_t *cipher_key, uint8_t *salt_key,
-			      uint8_t *hmac_opad_ipad,
+ot_ipsec_sa_common_param_fill(union roc_ot_ipsec_sa_word2 *w2, uint8_t *cipher_key,
+			      uint8_t *salt_key, uint8_t *hmac_opad_ipad,
 			      struct rte_security_ipsec_xform *ipsec_xfrm,
 			      struct rte_crypto_sym_xform *crypto_xfrm)
 {
@@ -192,7 +146,9 @@ ot_ipsec_sa_common_param_fill(union roc_ot_ipsec_sa_word2 *w2,
 			const uint8_t *auth_key = auth_xfrm->auth.key.data;
 			roc_aes_xcbc_key_derive(auth_key, hmac_opad_ipad);
 		} else {
-			cnxk_sec_opad_ipad_gen(auth_xfrm, hmac_opad_ipad, false);
+			roc_se_hmac_opad_ipad_gen(w2->s.auth_type, auth_xfrm->auth.key.data,
+						  auth_xfrm->auth.key.length, &hmac_opad_ipad[0],
+						  ROC_SE_IPSEC);
 		}
 
 		tmp_key = (uint64_t *)hmac_opad_ipad;
@@ -741,7 +697,8 @@ onf_ipsec_sa_common_param_fill(struct roc_ie_onf_sa_ctl *ctl, uint8_t *salt,
 		key = cipher_xfrm->cipher.key.data;
 		length = cipher_xfrm->cipher.key.length;
 
-		cnxk_sec_opad_ipad_gen(auth_xfrm, hmac_opad_ipad, false);
+		roc_se_hmac_opad_ipad_gen(ctl->auth_type, auth_xfrm->auth.key.data,
+					  auth_xfrm->auth.key.length, hmac_opad_ipad, ROC_SE_IPSEC);
 	}
 
 	switch (length) {
@@ -1374,7 +1331,9 @@ cnxk_on_ipsec_outb_sa_create(struct rte_security_ipsec_xform *ipsec,
 
 			roc_aes_xcbc_key_derive(auth_key, hmac_opad_ipad);
 		} else if (auth_xform->auth.algo != RTE_CRYPTO_AUTH_NULL) {
-			cnxk_sec_opad_ipad_gen(auth_xform, hmac_opad_ipad, false);
+			roc_se_hmac_opad_ipad_gen(
+				out_sa->common_sa.ctl.auth_type, auth_xform->auth.key.data,
+				auth_xform->auth.key.length, &hmac_opad_ipad[0], ROC_SE_IPSEC);
 		}
 	}
 
@@ -1441,7 +1400,9 @@ cnxk_on_ipsec_inb_sa_create(struct rte_security_ipsec_xform *ipsec,
 
 			roc_aes_xcbc_key_derive(auth_key, hmac_opad_ipad);
 		} else if (auth_xform->auth.algo != RTE_CRYPTO_AUTH_NULL) {
-			cnxk_sec_opad_ipad_gen(auth_xform, hmac_opad_ipad, false);
+			roc_se_hmac_opad_ipad_gen(
+				in_sa->common_sa.ctl.auth_type, auth_xform->auth.key.data,
+				auth_xform->auth.key.length, &hmac_opad_ipad[0], ROC_SE_IPSEC);
 		}
 	}
 
