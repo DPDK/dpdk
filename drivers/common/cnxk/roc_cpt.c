@@ -756,7 +756,7 @@ roc_cpt_dev_init(struct roc_cpt *roc_cpt)
 	rc = dev_init(dev, pci_dev);
 	if (rc) {
 		plt_err("Failed to init roc device");
-		goto fail;
+		return rc;
 	}
 
 	cpt->pci_dev = pci_dev;
@@ -788,6 +788,7 @@ roc_cpt_dev_init(struct roc_cpt *roc_cpt)
 	return 0;
 
 fail:
+	dev_fini(dev, pci_dev);
 	return rc;
 }
 
