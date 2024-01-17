@@ -823,6 +823,7 @@ cn10k_cpt_sec_post_process(struct rte_crypto_op *cop, struct cpt_cn10k_res_s *re
 		break;
 	default:
 		cop->status = RTE_CRYPTO_OP_STATUS_ERROR;
+		cop->aux_flags = res->uc_compcode;
 		return;
 	}
 
@@ -884,6 +885,7 @@ cn10k_cpt_dequeue_post_process(struct cnxk_cpt_qp *qp,
 			plt_dp_info("Request failed with microcode error");
 			plt_dp_info("MC completion code 0x%x",
 				    res->uc_compcode);
+			cop->aux_flags = uc_compcode;
 			goto temp_sess_free;
 		}
 
