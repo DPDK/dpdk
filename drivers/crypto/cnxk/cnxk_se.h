@@ -2482,7 +2482,7 @@ prepare_iov_from_pkt(struct rte_mbuf *pkt, struct roc_se_iov_ptr *iovec, uint32_
 	void *seg_data = NULL;
 	int32_t seg_size = 0;
 
-	if (!pkt) {
+	if (!pkt || pkt->data_len == 0) {
 		iovec->buf_cnt = 0;
 		return 0;
 	}
