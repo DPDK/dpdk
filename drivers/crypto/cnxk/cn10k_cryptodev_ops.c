@@ -15,6 +15,7 @@
 #else
 #include "roc_io_generic.h"
 #endif
+#include "roc_idev.h"
 #include "roc_sso.h"
 #include "roc_sso_dp.h"
 
@@ -1122,6 +1123,7 @@ again:
 		inst->dptr = dptr;
 		inst->rptr = dptr;
 
+		inst->w0.hw_s.chan = *(vf->rx_chan_base + m->port);
 		inst->w0.hw_s.l2_len = l2_len;
 		inst->w0.hw_s.et_offset = l2_len - 2;
 
@@ -1654,7 +1656,7 @@ cn10k_cryptodev_sec_rx_inject_configure(void *device, uint16_t port_id, bool ena
 	if (ret)
 		return -ENOTSUP;
 
-	RTE_SET_USED(enable);
+	roc_idev_nix_rx_inject_set(port_id, enable);
 
 	return 0;
 }

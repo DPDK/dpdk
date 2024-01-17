@@ -10,6 +10,7 @@
 #include "roc_ae_fpm_tables.h"
 #include "roc_cpt.h"
 #include "roc_errata.h"
+#include "roc_idev.h"
 #include "roc_ie_on.h"
 
 #include "cnxk_ae.h"
@@ -117,6 +118,7 @@ cnxk_cpt_dev_config(struct rte_cryptodev *dev, struct rte_cryptodev_config *conf
 		if (rte_security_dynfield_register() < 0)
 			return -ENOTSUP;
 		rxc_ena = true;
+		vf->rx_chan_base = roc_idev_nix_rx_chan_base_get();
 	}
 
 	ret = roc_cpt_dev_configure(roc_cpt, nb_lf, rxc_ena, vf->rx_inject_qp);

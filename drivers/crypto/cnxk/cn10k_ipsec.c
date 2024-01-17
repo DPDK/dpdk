@@ -192,6 +192,9 @@ cn10k_ipsec_inb_sa_create(struct roc_cpt *roc_cpt, struct roc_cpt_lf *lf,
 	sec_sess->is_outbound = false;
 	sec_sess->inst.w7 = ipsec_cpt_inst_w7_get(roc_cpt, in_sa);
 
+	/* Save index/SPI in cookie, specific required for Rx Inject */
+	sa_dptr->w1.s.cookie = 0xFFFFFFFF;
+
 	/* pre-populate CPT INST word 4 */
 	inst_w4.u64 = 0;
 	inst_w4.s.opcode_major = ROC_IE_OT_MAJOR_OP_PROCESS_INBOUND_IPSEC | ROC_IE_OT_INPLACE_BIT;
