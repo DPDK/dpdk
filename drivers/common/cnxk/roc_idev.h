@@ -22,4 +22,9 @@ struct roc_nix_list *__roc_api roc_idev_nix_list_get(void);
 struct roc_mcs *__roc_api roc_idev_mcs_get(uint8_t mcs_idx);
 void __roc_api roc_idev_mcs_set(struct roc_mcs *mcs);
 void __roc_api roc_idev_mcs_free(struct roc_mcs *mcs);
+
+uint8_t __roc_api roc_idev_nix_rx_inject_get(uint16_t port);
+void __roc_api roc_idev_nix_rx_inject_set(uint16_t port, uint8_t enable);
+uint16_t *__roc_api roc_idev_nix_rx_chan_base_get(void);
+void __roc_api roc_idev_nix_rx_chan_set(uint16_t port, uint16_t chan);
 #endif /* _ROC_IDEV_H_ */

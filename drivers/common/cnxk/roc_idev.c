@@ -310,3 +310,47 @@ roc_idev_nix_inl_meta_aura_get(void)
 		return idev->inl_cfg.meta_aura;
 	return 0;
 }
+
+uint8_t
+roc_idev_nix_rx_inject_get(uint16_t port)
+{
+	struct idev_cfg *idev;
+
+	idev = idev_get_cfg();
+	if (idev != NULL && port < PLT_MAX_ETHPORTS)
+		return idev->inl_rx_inj_cfg.rx_inject_en[port];
+
+	return 0;
+}
+
+void
+roc_idev_nix_rx_inject_set(uint16_t port, uint8_t enable)
+{
+	struct idev_cfg *idev;
+
+	idev = idev_get_cfg();
+	if (idev != NULL && port < PLT_MAX_ETHPORTS)
+		__atomic_store_n(&idev->inl_rx_inj_cfg.rx_inject_en[port], enable,
+				 __ATOMIC_RELEASE);
+}
+
+uint16_t *
+roc_idev_nix_rx_chan_base_get(void)
+{
+	struct idev_cfg *idev = idev_get_cfg();
+
+	if (idev != NULL)
+		return (uint16_t *)&idev->inl_rx_inj_cfg.chan;
+
+	return NULL;
+}
+
+void
+roc_idev_nix_rx_chan_set(uint16_t port, uint16_t chan)
+{
+	struct idev_cfg *idev;
+
+	idev = idev_get_cfg();
+	if (idev != NULL && port < PLT_MAX_ETHPORTS)
+		__atomic_store_n(&idev->inl_rx_inj_cfg.chan[port], chan, __ATOMIC_RELEASE);
+}

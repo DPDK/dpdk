@@ -105,6 +105,10 @@ INTERNAL {
 	roc_idev_num_lmtlines_get;
 	roc_idev_nix_inl_meta_aura_get;
 	roc_idev_nix_list_get;
+	roc_idev_nix_rx_chan_base_get;
+	roc_idev_nix_rx_chan_set;
+	roc_idev_nix_rx_inject_get;
+	roc_idev_nix_rx_inject_set;
 	roc_ml_reg_read64;
 	roc_ml_reg_write64;
 	roc_ml_reg_read32;

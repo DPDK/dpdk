@@ -223,6 +223,8 @@ roc_nix_lf_alloc(struct roc_nix *roc_nix, uint32_t nb_rxq, uint32_t nb_txq,
 	nix->nb_rx_queues = nb_rxq;
 	nix->nb_tx_queues = nb_txq;
 
+	roc_idev_nix_rx_chan_set(roc_nix->port_id, rsp->rx_chan_base);
+
 	nix->rqs = plt_zmalloc(sizeof(struct roc_nix_rq *) * nb_rxq, 0);
 	if (!nix->rqs) {
 		rc = -ENOMEM;
