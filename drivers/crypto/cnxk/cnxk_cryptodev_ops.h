@@ -51,6 +51,13 @@ struct cpt_inflight_req {
 	};
 	void *mdata;
 	uint8_t op_flags;
+#ifdef CPT_INST_DEBUG_ENABLE
+	uint8_t scatter_sz;
+	uint8_t opcode_major;
+	uint8_t is_sg_ver2;
+	uint8_t *dptr;
+	uint8_t *rptr;
+#endif
 	void *qp;
 } __rte_aligned(ROC_ALIGN);
 

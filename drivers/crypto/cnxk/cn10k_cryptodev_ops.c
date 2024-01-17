@@ -2,9 +2,10 @@
  * Copyright(C) 2021 Marvell.
  */
 
-#include <rte_cryptodev.h>
 #include <cryptodev_pmd.h>
+#include <rte_cryptodev.h>
 #include <rte_event_crypto_adapter.h>
+#include <rte_hexdump.h>
 #include <rte_ip.h>
 
 #include <ethdev_driver.h>
@@ -102,6 +103,104 @@ cpt_sec_ipsec_inst_fill(struct cnxk_cpt_qp *qp, struct rte_crypto_op *op,
 
 	return ret;
 }
+
+#ifdef CPT_INST_DEBUG_ENABLE
+static inline void
+cpt_request_data_sgv2_mode_dump(uint8_t *in_buffer, bool glist, uint16_t components)
+{
+	struct roc_se_buf_ptr list_ptr[ROC_MAX_SG_CNT];
+	const char *list = glist ? "glist" : "slist";
+	struct roc_sg2list_comp *sg_ptr = NULL;
+	uint16_t list_cnt = 0;
+	char suffix[64];
+	int i, j;
+
+	sg_ptr = (void *)in_buffer;
+	for (i = 0; i < components; i++) {
+		for (j = 0; j < sg_ptr->u.s.valid_segs; j++) {
+			list_ptr[i * 3 + j].size = sg_ptr->u.s.len[j];
+			list_ptr[i * 3 + j].vaddr = (void *)sg_ptr->ptr[j];
+			list_ptr[i * 3 + j].vaddr = list_ptr[i * 3 + j].vaddr;
+			list_cnt++;
+		}
+		sg_ptr++;
+	}
+
+	printf("Current %s: %u\n", list, list_cnt);
+
+	for (i = 0; i < list_cnt; i++) {
+		snprintf(suffix, sizeof(suffix), "%s[%d]: vaddr 0x%" PRIx64 ", vaddr %p len %u",
+			 list, i, (uint64_t)list_ptr[i].vaddr, list_ptr[i].vaddr, list_ptr[i].size);
+		rte_hexdump(stdout, suffix, list_ptr[i].vaddr, list_ptr[i].size);
+	}
+}
+
+static inline void
+cpt_request_data_sg_mode_dump(uint8_t *in_buffer, bool glist)
+{
+	struct roc_se_buf_ptr list_ptr[ROC_MAX_SG_CNT];
+	const char *list = glist ? "glist" : "slist";
+	struct roc_sglist_comp *sg_ptr = NULL;
+	uint16_t list_cnt, components;
+	char suffix[64];
+	int i;
+
+	sg_ptr = (void *)(in_buffer + 8);
+	list_cnt = rte_be_to_cpu_16((((uint16_t *)in_buffer)[2]));
+	if (!glist) {
+		components = list_cnt / 4;
+		if (list_cnt % 4)
+			components++;
+		sg_ptr += components;
+		list_cnt = rte_be_to_cpu_16((((uint16_t *)in_buffer)[3]));
+	}
+
+	printf("Current %s: %u\n", list, list_cnt);
+	components = list_cnt / 4;
+	for (i = 0; i < components; i++) {
+		list_ptr[i * 4 + 0].size = rte_be_to_cpu_16(sg_ptr->u.s.len[0]);
+		list_ptr[i * 4 + 1].size = rte_be_to_cpu_16(sg_ptr->u.s.len[1]);
+		list_ptr[i * 4 + 2].size = rte_be_to_cpu_16(sg_ptr->u.s.len[2]);
+		list_ptr[i * 4 + 3].size = rte_be_to_cpu_16(sg_ptr->u.s.len[3]);
+		list_ptr[i * 4 + 0].vaddr = (void *)rte_be_to_cpu_64(sg_ptr->ptr[0]);
+		list_ptr[i * 4 + 1].vaddr = (void *)rte_be_to_cpu_64(sg_ptr->ptr[1]);
+		list_ptr[i * 4 + 2].vaddr = (void *)rte_be_to_cpu_64(sg_ptr->ptr[2]);
+		list_ptr[i * 4 + 3].vaddr = (void *)rte_be_to_cpu_64(sg_ptr->ptr[3]);
+		list_ptr[i * 4 + 0].vaddr = list_ptr[i * 4 + 0].vaddr;
+		list_ptr[i * 4 + 1].vaddr = list_ptr[i * 4 + 1].vaddr;
+		list_ptr[i * 4 + 2].vaddr = list_ptr[i * 4 + 2].vaddr;
+		list_ptr[i * 4 + 3].vaddr = list_ptr[i * 4 + 3].vaddr;
+		sg_ptr++;
+	}
+
+	components = list_cnt % 4;
+	switch (components) {
+	case 3:
+		list_ptr[i * 4 + 2].size = rte_be_to_cpu_16(sg_ptr->u.s.len[2]);
+		list_ptr[i * 4 + 2].vaddr = (void *)rte_be_to_cpu_64(sg_ptr->ptr[2]);
+		list_ptr[i * 4 + 2].vaddr = list_ptr[i * 4 + 2].vaddr;
+		/* FALLTHROUGH */
+	case 2:
+		list_ptr[i * 4 + 1].size = rte_be_to_cpu_16(sg_ptr->u.s.len[1]);
+		list_ptr[i * 4 + 1].vaddr = (void *)rte_be_to_cpu_64(sg_ptr->ptr[1]);
+		list_ptr[i * 4 + 1].vaddr = list_ptr[i * 4 + 1].vaddr;
+		/* FALLTHROUGH */
+	case 1:
+		list_ptr[i * 4 + 0].size = rte_be_to_cpu_16(sg_ptr->u.s.len[0]);
+		list_ptr[i * 4 + 0].vaddr = (void *)rte_be_to_cpu_64(sg_ptr->ptr[0]);
+		list_ptr[i * 4 + 0].vaddr = list_ptr[i * 4 + 0].vaddr;
+		break;
+	default:
+		break;
+	}
+
+	for (i = 0; i < list_cnt; i++) {
+		snprintf(suffix, sizeof(suffix), "%s[%d]: vaddr 0x%" PRIx64 ", vaddr %p len %u",
+			 list, i, (uint64_t)list_ptr[i].vaddr, list_ptr[i].vaddr, list_ptr[i].size);
+		rte_hexdump(stdout, suffix, list_ptr[i].vaddr, list_ptr[i].size);
+	}
+}
+#endif
 
 static __rte_always_inline int __rte_hot
 cpt_sec_tls_inst_fill(struct cnxk_cpt_qp *qp, struct rte_crypto_op *op,
@@ -204,6 +303,31 @@ cn10k_cpt_fill_inst(struct cnxk_cpt_qp *qp, struct rte_crypto_op *ops[], struct 
 	infl_req->cop = op;
 
 	inst[0].w7.u64 = w7;
+
+#ifdef CPT_INST_DEBUG_ENABLE
+	infl_req->dptr = (uint8_t *)inst[0].dptr;
+	infl_req->rptr = (uint8_t *)inst[0].rptr;
+	infl_req->is_sg_ver2 = is_sg_ver2;
+	infl_req->scatter_sz = inst[0].w6.s.scatter_sz;
+	infl_req->opcode_major = inst[0].w4.s.opcode_major;
+
+	rte_hexdump(stdout, "cptr", (void *)(uint64_t)inst[0].w7.s.cptr, 128);
+	printf("major opcode:%d\n", inst[0].w4.s.opcode_major);
+	printf("minor opcode:%d\n", inst[0].w4.s.opcode_minor);
+	printf("param1:%d\n", inst[0].w4.s.param1);
+	printf("param2:%d\n", inst[0].w4.s.param2);
+	printf("dlen:%d\n", inst[0].w4.s.dlen);
+
+	if (is_sg_ver2) {
+		cpt_request_data_sgv2_mode_dump((void *)inst[0].dptr, 1, inst[0].w5.s.gather_sz);
+		cpt_request_data_sgv2_mode_dump((void *)inst[0].rptr, 0, inst[0].w6.s.scatter_sz);
+	} else {
+		if (infl_req->opcode_major >> 7) {
+			cpt_request_data_sg_mode_dump((void *)inst[0].dptr, 1);
+			cpt_request_data_sg_mode_dump((void *)inst[0].dptr, 0);
+		}
+	}
+#endif
 
 	return 1;
 }
@@ -935,6 +1059,15 @@ cn10k_cpt_dequeue_post_process(struct cnxk_cpt_qp *qp, struct rte_crypto_op *cop
 	}
 
 	if (likely(compcode == CPT_COMP_GOOD)) {
+#ifdef CPT_INST_DEBUG_ENABLE
+		if (infl_req->is_sg_ver2)
+			cpt_request_data_sgv2_mode_dump(infl_req->rptr, 0, infl_req->scatter_sz);
+		else {
+			if (infl_req->opcode_major >> 7)
+				cpt_request_data_sg_mode_dump(infl_req->dptr, 0);
+		}
+#endif
+
 		if (unlikely(uc_compcode)) {
 			if (uc_compcode == ROC_SE_ERR_GC_ICV_MISCOMPARE)
 				cop->status = RTE_CRYPTO_OP_STATUS_AUTH_FAILED;
