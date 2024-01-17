@@ -5,17 +5,31 @@
 #ifndef _VIRTIO_VDPA_H_
 #define _VIRTIO_VDPA_H_
 
+#define VIRTIO_VDPA_MAX_MEM_REGIONS 8
+
 enum {
 	VIRTIO_VDPA_NOTIFIER_RELAY_DISABLED,
 	VIRTIO_VDPA_NOTIFIER_RELAY_ENABLED,
 	VIRTIO_VDPA_NOTIFIER_RELAY_ERR
 };
 
+struct virtio_vdpa_vf_drv_mem_region {
+	uint64_t host_user_addr;
+	uint64_t host_phys_addr;
+	uint64_t guest_phys_addr;
+	uint64_t size;
+};
+
+struct virtio_vdpa_vf_drv_mem {
+	uint32_t nregions;
+	struct virtio_vdpa_vf_drv_mem_region regions[VIRTIO_VDPA_MAX_MEM_REGIONS];
+};
+
 struct virtio_vdpa_iommu_domain {
 	TAILQ_ENTRY(virtio_vdpa_iommu_domain) next;
 	rte_uuid_t vm_uuid;
 	int vfio_container_fd;
-	struct rte_vhost_memory *mem;
+	struct virtio_vdpa_vf_drv_mem mem;
 	int container_ref_cnt;
 	int mem_tbl_ref_cnt;
 	pthread_mutex_t domain_lock;

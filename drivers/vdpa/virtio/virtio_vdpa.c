@@ -734,7 +734,7 @@ virtio_vdpa_dev_cleanup(int vid)
 	struct virtio_vdpa_priv *priv =
 		virtio_vdpa_find_priv_resource_by_vdev(vdev);
 	struct virtio_vdpa_iommu_domain *iommu_domain;
-	struct rte_vhost_mem_region *reg;
+	struct virtio_vdpa_vf_drv_mem_region *reg;
 	int ret;
 
 	if (priv == NULL) {
@@ -756,57 +756,74 @@ virtio_vdpa_dev_cleanup(int vid)
 		priv->mem_tbl_set = false;
 	}
 	if (iommu_domain->mem_tbl_ref_cnt == 0) {
-		if (iommu_domain->mem) {
-			for (i = 0; i < iommu_domain->mem->nregions; i++) {
-				reg = &iommu_domain->mem->regions[i];
-				ret = rte_vfio_container_dma_unmap(priv->vfio_container_fd,
-					reg->host_user_addr, reg->guest_phys_addr,
-					reg->size);
-				DRV_LOG(INFO, "%s, region %u: HVA 0x%" PRIx64 ", "
-					"GPA 0x%" PRIx64 ", QEMU_VA 0x%" PRIx64
-					", size 0x%" PRIx64 ".", "DMA unmap", i,
-					reg->host_user_addr, reg->guest_phys_addr,
-					reg->guest_user_addr, reg->size);
-				if (ret < 0) {
-					DRV_LOG(ERR, "%s vdpa unmap DMA failed ret:%d",
-								priv->vdev->device->name, ret);
-					goto err;
-				}
+		for (i = 0; i < iommu_domain->mem.nregions; i++) {
+			reg = &iommu_domain->mem.regions[i];
+			ret = rte_vfio_container_dma_unmap(priv->vfio_container_fd,
+				reg->host_user_addr, reg->guest_phys_addr,
+				reg->size);
+			DRV_LOG(INFO, "%s, region %u: HVA 0x%" PRIx64 ", "
+				"GPA 0x%" PRIx64 ", HPA 0x%" PRIx64
+				", size 0x%" PRIx64 ".", "DMA unmap", i,
+				reg->host_user_addr, reg->guest_phys_addr,
+				reg->host_phys_addr, reg->size);
+			if (ret < 0) {
+				DRV_LOG(ERR, "%s vdpa unmap DMA failed ret:%d",
+							priv->vdev->device->name, ret);
+				goto err;
 			}
-err:
-			free(iommu_domain->mem);
-			iommu_domain->mem = NULL;
 		}
+err:
+		iommu_domain->mem.nregions = 0;
 	}
 	pthread_mutex_unlock(&iommu_domain->domain_lock);
 	return 0;
 }
 
 static inline int
-virtio_vdpa_find_mem_reg(const struct rte_vhost_mem_region *key, const struct rte_vhost_memory *mem)
+virtio_vdpa_find_mem_in_vhost(const struct virtio_vdpa_vf_drv_mem_region *key,
+	const struct rte_vhost_memory *mem, const uint64_t *hpa)
 {
 	uint32_t i;
 	const struct rte_vhost_mem_region *reg;
 
-	if (mem == NULL)
-		return -1;
-
 	for (i = 0; i < mem->nregions; i++) {
 		reg = &mem->regions[i];
-		if ((reg->guest_user_addr == key->guest_user_addr) &&
+		if ((hpa[i] == key->host_phys_addr) &&
 			(reg->guest_phys_addr == key->guest_phys_addr) &&
 			(reg->size == key->size))
 			return i;
 	}
+
 	return -1;
 }
+
+static inline int
+virtio_vdpa_find_mem_in_iommu_domain(const struct rte_vhost_mem_region *key,
+	const struct virtio_vdpa_vf_drv_mem *mem, const uint64_t hpa)
+{
+	uint32_t i;
+	const struct virtio_vdpa_vf_drv_mem_region *reg;
+
+	for (i = 0; i < mem->nregions; i++) {
+		reg = &mem->regions[i];
+		if ((reg->host_phys_addr == hpa) &&
+			(reg->guest_phys_addr == key->guest_phys_addr) &&
+			(reg->size == key->size))
+			return i;
+	}
+
+	return -1;
+}
+
 static int
 virtio_vdpa_dev_set_mem_table(int vid)
 {
 	uint32_t i = 0;
 	int ret;
 	struct rte_vhost_memory *cur_mem = NULL;
-	struct rte_vhost_mem_region *reg;
+	struct virtio_vdpa_vf_drv_mem_region *reg;
+	struct rte_vhost_mem_region *vhost_reg;
+	uint64_t host_phys_addrs[VIRTIO_VDPA_MAX_MEM_REGIONS];
 	struct virtio_vdpa_iommu_domain *iommu_domain;
 	struct rte_vdpa_device *vdev = rte_vhost_get_vdpa_device(vid);
 	struct virtio_vdpa_priv *priv =
@@ -835,50 +852,58 @@ virtio_vdpa_dev_set_mem_table(int vid)
 		return ret;
 	}
 
+	for (i = 0; i < cur_mem->nregions; i++) {
+		vhost_reg = &cur_mem->regions[i];
+		host_phys_addrs[i] = rte_mem_virt2phy((void *)(uintptr_t)vhost_reg->host_user_addr);
+		if (host_phys_addrs[i] == RTE_BAD_IOVA) {
+			DRV_LOG(ERR, "virt2phy translate failed");
+			free(cur_mem);
+			return -1;
+		}
+	}
+
 	iommu_domain = priv->iommu_domain;
 	pthread_mutex_lock(&iommu_domain->domain_lock);
 	/* Unmap region does not exist in current */
-	if (iommu_domain->mem) {
-		for (i = 0; i < iommu_domain->mem->nregions; i++) {
-			reg = &iommu_domain->mem->regions[i];
-			if (virtio_vdpa_find_mem_reg(reg, cur_mem) < 0) {
-				ret = rte_vfio_container_dma_unmap(priv->vfio_container_fd,
-					reg->host_user_addr, reg->guest_phys_addr,
-					reg->size);
-				DRV_LOG(INFO, "%s, region %u: HVA 0x%" PRIx64 ", "
-					"GPA 0x%" PRIx64 ", QEMU_VA 0x%" PRIx64
-					", size 0x%" PRIx64 ".", "DMA unmap", i,
-					reg->host_user_addr, reg->guest_phys_addr,
-					reg->guest_user_addr, reg->size);
-				if (ret < 0) {
-					DRV_LOG(ERR, "%s vdpa unmap redundant DMA failed ret:%d",
-								priv->vdev->device->name, ret);
-					free(cur_mem);
-					goto err;
-				}
-			} else {
-				DRV_LOG(INFO, "%s HVA 0x%" PRIx64", "
-				"GPA 0x%" PRIx64 ", QEMU_VA 0x%" PRIx64 ", size 0x%" PRIx64
-				" exist in cur map",
-				vdev->device->name, reg->host_user_addr, reg->guest_phys_addr,
-				reg->guest_user_addr, reg->size);
+	for (i = 0; i < iommu_domain->mem.nregions; i++) {
+		reg = &iommu_domain->mem.regions[i];
+		if (virtio_vdpa_find_mem_in_vhost(reg, cur_mem, host_phys_addrs) < 0) {
+			ret = rte_vfio_container_dma_unmap(priv->vfio_container_fd,
+				reg->host_user_addr, reg->guest_phys_addr,
+				reg->size);
+			DRV_LOG(INFO, "%s, region %u: HVA 0x%" PRIx64 ", "
+				"GPA 0x%" PRIx64 ", HPA 0x%" PRIx64
+				", size 0x%" PRIx64 ".", "DMA unmap", i,
+				reg->host_user_addr, reg->guest_phys_addr,
+				reg->host_phys_addr, reg->size);
+			if (ret < 0) {
+				DRV_LOG(ERR, "%s vdpa unmap redundant DMA failed ret:%d",
+							priv->vdev->device->name, ret);
+				free(cur_mem);
+				goto err;
 			}
+		} else {
+			DRV_LOG(INFO, "%s HVA 0x%" PRIx64", "
+			"GPA 0x%" PRIx64 ", HPA 0x%" PRIx64 ", size 0x%" PRIx64
+			" exist in cur map",
+			vdev->device->name, reg->host_user_addr, reg->guest_phys_addr,
+			reg->host_phys_addr, reg->size);
 		}
 	}
 
 	/* Map the region if it doesn't exist yet */
 	for (i = 0; i < cur_mem->nregions; i++) {
-		reg = &cur_mem->regions[i];
-		ret = virtio_vdpa_find_mem_reg(reg, iommu_domain->mem);
+		vhost_reg = &cur_mem->regions[i];
+		ret = virtio_vdpa_find_mem_in_iommu_domain(vhost_reg, &iommu_domain->mem, host_phys_addrs[i]);
 		if (ret < 0) {
 			ret = rte_vfio_container_dma_map(priv->vfio_container_fd,
-				reg->host_user_addr, reg->guest_phys_addr,
-				reg->size);
+				vhost_reg->host_user_addr, vhost_reg->guest_phys_addr,
+				vhost_reg->size);
 			DRV_LOG(INFO, "%s, region %u: HVA 0x%" PRIx64 ", "
-				"GPA 0x%" PRIx64 ", QEMU_VA 0x%" PRIx64 ", size 0x%"
+				"GPA 0x%" PRIx64 ", HPA 0x%" PRIx64 ", size 0x%"
 				PRIx64 ".", "DMA map", i,
-				reg->host_user_addr, reg->guest_phys_addr,
-				reg->guest_user_addr, reg->size);
+				vhost_reg->host_user_addr, vhost_reg->guest_phys_addr,
+				host_phys_addrs[i], vhost_reg->size);
 			if (ret < 0) {
 				DRV_LOG(ERR, "%s DMA map failed ret:%d",
 							priv->vdev->device->name, ret);
@@ -887,18 +912,25 @@ virtio_vdpa_dev_set_mem_table(int vid)
 			}
 		} else {
 			/* The same region could have different HVA, keep the 1st HVA */
-			reg->host_user_addr = iommu_domain->mem->regions[ret].host_user_addr;
+			vhost_reg->host_user_addr = iommu_domain->mem.regions[ret].host_user_addr;
 			DRV_LOG(INFO, "%s HVA 0x%" PRIx64", "
-			"GPA 0x%" PRIx64 ", QEMU_VA 0x%" PRIx64 ", size 0x%" PRIx64
+			"GPA 0x%" PRIx64 ", HPA 0x%" PRIx64 ", size 0x%" PRIx64
 			" already mapped",
-			vdev->device->name, reg->host_user_addr, reg->guest_phys_addr,
-			reg->guest_user_addr, reg->size);
+			vdev->device->name, vhost_reg->host_user_addr, vhost_reg->guest_phys_addr,
+			host_phys_addrs[i], vhost_reg->size);
 		}
 	}
 
-	if (iommu_domain->mem)
-		free(iommu_domain->mem);
-	iommu_domain->mem = cur_mem;
+	for (i = 0; i < cur_mem->nregions; i++) {
+		vhost_reg = &cur_mem->regions[i];
+		iommu_domain->mem.regions[i].guest_phys_addr = vhost_reg->guest_phys_addr;
+		iommu_domain->mem.regions[i].host_user_addr = vhost_reg->host_user_addr;
+		iommu_domain->mem.regions[i].host_phys_addr = host_phys_addrs[i];
+		iommu_domain->mem.regions[i].size = vhost_reg->size;
+	}
+
+	iommu_domain->mem.nregions = cur_mem->nregions;
+	free(cur_mem);
 
 	if (!priv->mem_tbl_set) {
 		priv->mem_tbl_set = true;

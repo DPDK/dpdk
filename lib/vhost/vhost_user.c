@@ -1250,7 +1250,6 @@ vhost_user_mmap_region(struct virtio_net *dev,
 	void *mmap_addr;
 	uint64_t mmap_size;
 	uint64_t alignment;
-	int populate;
 
 	/* Check for memory_size + mmap_offset overflow */
 	if (mmap_offset >= -region->size) {
@@ -1288,9 +1287,9 @@ vhost_user_mmap_region(struct virtio_net *dev,
 		return -1;
 	}
 
-	populate = dev->async_copy ? MAP_POPULATE : 0;
+	/* Always use MAP_POPULATE as it's needed for virt2phys */
 	mmap_addr = mmap(NULL, mmap_size, PROT_READ | PROT_WRITE,
-			MAP_SHARED | populate, region->fd, 0);
+			MAP_SHARED | MAP_POPULATE, region->fd, 0);
 
 	if (mmap_addr == MAP_FAILED) {
 		VHOST_LOG_CONFIG(ERR, "(%s) mmap failed (%s).\n", dev->ifname, strerror(errno));
