@@ -11,9 +11,12 @@
 #include "roc_constants.h"
 #include "roc_ie_ot.h"
 
+#include "cnxk_cryptodev.h"
+#include "cnxk_cryptodev_ops.h"
 #include "cnxk_ipsec.h"
 
-typedef void *CN10K_SA_CONTEXT_MARKER[0];
+/* Forward declaration */
+struct cn10k_sec_session;
 
 struct cn10k_ipsec_sa {
 	union {
@@ -24,36 +27,14 @@ struct cn10k_ipsec_sa {
 	};
 } __rte_aligned(ROC_ALIGN);
 
-#define SEC_SESS_SIZE sizeof(struct rte_security_session)
-
-struct cn10k_sec_session {
-	uint8_t rte_sess[SEC_SESS_SIZE];
-
-	/** PMD private space */
-
-	enum rte_security_session_protocol proto;
-	/** Pre-populated CPT inst words */
-	struct cnxk_cpt_inst_tmpl inst;
-	uint16_t max_extended_len;
-	uint16_t iv_offset;
-	uint8_t iv_length;
-	union {
-		struct {
-			uint8_t ip_csum;
-			bool is_outbound;
-		} ipsec;
-	};
-	/** Queue pair */
-	struct cnxk_cpt_qp *qp;
-	/** Userdata to be set for Rx inject */
-	void *userdata;
-
-	/**
-	 * End of SW mutable area
-	 */
-	struct cn10k_ipsec_sa sa;
-} __rte_aligned(ROC_ALIGN);
-
-void cn10k_sec_ops_override(void);
-
+int cn10k_ipsec_session_create(struct cnxk_cpt_vf *vf, struct cnxk_cpt_qp *qp,
+			       struct rte_security_ipsec_xform *ipsec_xfrm,
+			       struct rte_crypto_sym_xform *crypto_xfrm,
+			       struct rte_security_session *sess);
+int cn10k_sec_ipsec_session_destroy(struct cnxk_cpt_qp *qp, struct cn10k_sec_session *sess);
+int cn10k_ipsec_stats_get(struct cnxk_cpt_qp *qp, struct cn10k_sec_session *sess,
+			  struct rte_security_stats *stats);
+int cn10k_ipsec_session_update(struct cnxk_cpt_vf *vf, struct cnxk_cpt_qp *qp,
+			       struct cn10k_sec_session *sess,
+			       struct rte_security_session_conf *conf);
 #endif /* __CN10K_IPSEC_H__ */
