@@ -17,8 +17,10 @@
 	(PLT_ALIGN_CEIL(ROC_IE_OT_TLS_AR_WIN_SIZE_MAX, BITS_PER_LONG_LONG) / BITS_PER_LONG_LONG)
 
 /* CN10K TLS opcodes */
-#define ROC_IE_OT_TLS_MAJOR_OP_RECORD_ENC 0x16UL
-#define ROC_IE_OT_TLS_MAJOR_OP_RECORD_DEC 0x17UL
+#define ROC_IE_OT_TLS_MAJOR_OP_RECORD_ENC   0x16UL
+#define ROC_IE_OT_TLS_MAJOR_OP_RECORD_DEC   0x17UL
+#define ROC_IE_OT_TLS13_MAJOR_OP_RECORD_ENC 0x18UL
+#define ROC_IE_OT_TLS13_MAJOR_OP_RECORD_DEC 0x19UL
 
 #define ROC_IE_OT_TLS_CTX_MAX_OPAD_IPAD_LEN 128
 #define ROC_IE_OT_TLS_CTX_MAX_KEY_IV_LEN    48
@@ -42,6 +44,7 @@ enum roc_ie_ot_tls_cipher_type {
 enum roc_ie_ot_tls_ver {
 	ROC_IE_OT_TLS_VERSION_TLS_12 = 1,
 	ROC_IE_OT_TLS_VERSION_DTLS_12 = 2,
+	ROC_IE_OT_TLS_VERSION_TLS_13 = 3,
 };
 
 enum roc_ie_ot_tls_aes_key_len {
@@ -131,11 +134,23 @@ struct roc_ie_ot_tls_read_sa {
 	/* Word4 - Word9 */
 	uint8_t cipher_key[ROC_IE_OT_TLS_CTX_MAX_KEY_IV_LEN];
 
-	/* Word10 - Word25 */
-	uint8_t opad_ipad[ROC_IE_OT_TLS_CTX_MAX_OPAD_IPAD_LEN];
+	union {
+		struct {
+			/* Word10 */
+			uint64_t w10_rsvd6;
 
-	/* Word26 - Word32 */
-	struct roc_ie_ot_tls_read_ctx_update_reg ctx;
+			/* Word11 - Word25 */
+			struct roc_ie_ot_tls_read_ctx_update_reg ctx;
+		} tls_13;
+
+		struct {
+			/* Word10 - Word25 */
+			uint8_t opad_ipad[ROC_IE_OT_TLS_CTX_MAX_OPAD_IPAD_LEN];
+
+			/* Word26 - Word95 */
+			struct roc_ie_ot_tls_read_ctx_update_reg ctx;
+		} tls_12;
+	};
 };
 
 struct roc_ie_ot_tls_write_sa {
@@ -187,13 +202,24 @@ struct roc_ie_ot_tls_write_sa {
 	/* Word4 - Word9 */
 	uint8_t cipher_key[ROC_IE_OT_TLS_CTX_MAX_KEY_IV_LEN];
 
-	/* Word10 - Word25 */
-	uint8_t opad_ipad[ROC_IE_OT_TLS_CTX_MAX_OPAD_IPAD_LEN];
+	union {
+		struct {
+			/* Word10 */
+			uint64_t w10_rsvd7;
 
-	/* Word26 */
-	uint64_t w26_rsvd7;
+			uint64_t seq_num;
+		} tls_13;
 
-	/* Word27 */
-	uint64_t seq_num;
+		struct {
+			/* Word10 - Word25 */
+			uint8_t opad_ipad[ROC_IE_OT_TLS_CTX_MAX_OPAD_IPAD_LEN];
+
+			/* Word26 */
+			uint64_t w26_rsvd7;
+
+			/* Word27 */
+			uint64_t seq_num;
+		} tls_12;
+	};
 };
 #endif /* __ROC_IE_OT_TLS_H__ */

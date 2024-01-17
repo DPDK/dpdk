@@ -105,7 +105,8 @@ cnxk_tls_xform_verify(struct rte_security_tls_record_xform *tls_xform,
 	int ret = 0;
 
 	if ((tls_xform->ver != RTE_SECURITY_VERSION_TLS_1_2) &&
-	    (tls_xform->ver != RTE_SECURITY_VERSION_DTLS_1_2))
+	    (tls_xform->ver != RTE_SECURITY_VERSION_DTLS_1_2) &&
+	    (tls_xform->ver != RTE_SECURITY_VERSION_TLS_1_3))
 		return -EINVAL;
 
 	if ((tls_xform->type != RTE_SECURITY_TLS_SESS_TYPE_READ) &&
@@ -114,6 +115,12 @@ cnxk_tls_xform_verify(struct rte_security_tls_record_xform *tls_xform,
 
 	if (crypto_xform->type == RTE_CRYPTO_SYM_XFORM_AEAD)
 		return tls_xform_aead_verify(tls_xform, crypto_xform);
+
+	/* TLS-1.3 only support AEAD.
+	 * Control should not reach here for TLS-1.3
+	 */
+	if (tls_xform->ver == RTE_SECURITY_VERSION_TLS_1_3)
+		return -EINVAL;
 
 	if (tls_xform->type == RTE_SECURITY_TLS_SESS_TYPE_WRITE) {
 		/* Egress */
@@ -259,7 +266,7 @@ tls_write_sa_init(struct roc_ie_ot_tls_write_sa *sa)
 
 	memset(sa, 0, sizeof(struct roc_ie_ot_tls_write_sa));
 
-	offset = offsetof(struct roc_ie_ot_tls_write_sa, w26_rsvd7);
+	offset = offsetof(struct roc_ie_ot_tls_write_sa, tls_12.w26_rsvd7);
 	sa->w0.s.hw_ctx_off = offset / ROC_CTX_UNIT_8B;
 	sa->w0.s.ctx_push_size = sa->w0.s.hw_ctx_off;
 	sa->w0.s.ctx_size = ROC_IE_OT_TLS_CTX_ILEN;
@@ -274,7 +281,7 @@ tls_read_sa_init(struct roc_ie_ot_tls_read_sa *sa)
 
 	memset(sa, 0, sizeof(struct roc_ie_ot_tls_read_sa));
 
-	offset = offsetof(struct roc_ie_ot_tls_read_sa, ctx);
+	offset = offsetof(struct roc_ie_ot_tls_read_sa, tls_12.ctx);
 	sa->w0.s.hw_ctx_off = offset / ROC_CTX_UNIT_8B;
 	sa->w0.s.ctx_push_size = sa->w0.s.hw_ctx_off;
 	sa->w0.s.ctx_size = ROC_IE_OT_TLS_CTX_ILEN;
@@ -283,13 +290,18 @@ tls_read_sa_init(struct roc_ie_ot_tls_read_sa *sa)
 }
 
 static size_t
-tls_read_ctx_size(struct roc_ie_ot_tls_read_sa *sa)
+tls_read_ctx_size(struct roc_ie_ot_tls_read_sa *sa, enum rte_security_tls_version tls_ver)
 {
 	size_t size;
 
 	/* Variable based on Anti-replay Window */
-	size = offsetof(struct roc_ie_ot_tls_read_sa, ctx) +
-	       offsetof(struct roc_ie_ot_tls_read_ctx_update_reg, ar_winbits);
+	if (tls_ver == RTE_SECURITY_VERSION_TLS_1_3) {
+		size = offsetof(struct roc_ie_ot_tls_read_sa, tls_13.ctx) +
+		       offsetof(struct roc_ie_ot_tls_read_ctx_update_reg, ar_winbits);
+	} else {
+		size = offsetof(struct roc_ie_ot_tls_read_sa, tls_12.ctx) +
+		       offsetof(struct roc_ie_ot_tls_read_ctx_update_reg, ar_winbits);
+	}
 
 	if (sa->w0.s.ar_win)
 		size += (1 << (sa->w0.s.ar_win - 1)) * sizeof(uint64_t);
@@ -302,6 +314,7 @@ tls_read_sa_fill(struct roc_ie_ot_tls_read_sa *read_sa,
 		 struct rte_security_tls_record_xform *tls_xfrm,
 		 struct rte_crypto_sym_xform *crypto_xfrm)
 {
+	enum rte_security_tls_version tls_ver = tls_xfrm->ver;
 	struct rte_crypto_sym_xform *auth_xfrm, *cipher_xfrm;
 	const uint8_t *key = NULL;
 	uint64_t *tmp, *tmp_key;
@@ -313,13 +326,22 @@ tls_read_sa_fill(struct roc_ie_ot_tls_read_sa *read_sa,
 	/* Initialize the SA */
 	memset(read_sa, 0, sizeof(struct roc_ie_ot_tls_read_sa));
 
+	if (tls_ver == RTE_SECURITY_VERSION_TLS_1_2) {
+		read_sa->w2.s.version_select = ROC_IE_OT_TLS_VERSION_TLS_12;
+		read_sa->tls_12.ctx.ar_valid_mask = tls_xfrm->tls_1_2.seq_no - 1;
+	} else if (tls_ver == RTE_SECURITY_VERSION_DTLS_1_2) {
+		read_sa->w2.s.version_select = ROC_IE_OT_TLS_VERSION_DTLS_12;
+	} else if (tls_ver == RTE_SECURITY_VERSION_TLS_1_3) {
+		read_sa->w2.s.version_select = ROC_IE_OT_TLS_VERSION_TLS_13;
+		read_sa->tls_13.ctx.ar_valid_mask = tls_xfrm->tls_1_3.seq_no - 1;
+	}
+
 	cipher_key = read_sa->cipher_key;
 
 	/* Set encryption algorithm */
 	if ((crypto_xfrm->type == RTE_CRYPTO_SYM_XFORM_AEAD) &&
 	    (crypto_xfrm->aead.algo == RTE_CRYPTO_AEAD_AES_GCM)) {
 		read_sa->w2.s.cipher_select = ROC_IE_OT_TLS_CIPHER_AES_GCM;
-		read_sa->w2.s.mac_select = ROC_IE_OT_TLS_MAC_SHA2_256;
 
 		length = crypto_xfrm->aead.key.length;
 		if (length == 16)
@@ -330,10 +352,12 @@ tls_read_sa_fill(struct roc_ie_ot_tls_read_sa *read_sa,
 		key = crypto_xfrm->aead.key.data;
 		memcpy(cipher_key, key, length);
 
-		if (tls_xfrm->ver == RTE_SECURITY_VERSION_TLS_1_2)
+		if (tls_ver == RTE_SECURITY_VERSION_TLS_1_2)
 			memcpy(((uint8_t *)cipher_key + 32), &tls_xfrm->tls_1_2.imp_nonce, 4);
-		else if (tls_xfrm->ver == RTE_SECURITY_VERSION_DTLS_1_2)
+		else if (tls_ver == RTE_SECURITY_VERSION_DTLS_1_2)
 			memcpy(((uint8_t *)cipher_key + 32), &tls_xfrm->dtls_1_2.imp_nonce, 4);
+		else if (tls_ver == RTE_SECURITY_VERSION_TLS_1_3)
+			memcpy(((uint8_t *)cipher_key + 32), &tls_xfrm->tls_1_3.imp_nonce, 12);
 
 		goto key_swap;
 	}
@@ -377,9 +401,10 @@ tls_read_sa_fill(struct roc_ie_ot_tls_read_sa *read_sa,
 		return -EINVAL;
 
 	roc_se_hmac_opad_ipad_gen(read_sa->w2.s.mac_select, auth_xfrm->auth.key.data,
-				  auth_xfrm->auth.key.length, read_sa->opad_ipad, ROC_SE_TLS);
+				  auth_xfrm->auth.key.length, read_sa->tls_12.opad_ipad,
+				  ROC_SE_TLS);
 
-	tmp = (uint64_t *)read_sa->opad_ipad;
+	tmp = (uint64_t *)read_sa->tls_12.opad_ipad;
 	for (i = 0; i < (int)(ROC_CTX_MAX_OPAD_IPAD_LEN / sizeof(uint64_t)); i++)
 		tmp[i] = rte_be_to_cpu_64(tmp[i]);
 
@@ -403,23 +428,19 @@ key_swap:
 	read_sa->w0.s.ctx_hdr_size = ROC_IE_OT_TLS_CTX_HDR_SIZE;
 	read_sa->w0.s.aop_valid = 1;
 
-	offset = offsetof(struct roc_ie_ot_tls_read_sa, ctx);
+	offset = offsetof(struct roc_ie_ot_tls_read_sa, tls_12.ctx);
+	if (tls_ver == RTE_SECURITY_VERSION_TLS_1_3)
+		offset = offsetof(struct roc_ie_ot_tls_read_sa, tls_13.ctx);
+
+	/* Entire context size in 128B units */
+	read_sa->w0.s.ctx_size =
+		(PLT_ALIGN_CEIL(tls_read_ctx_size(read_sa, tls_ver), ROC_CTX_UNIT_128B) /
+		 ROC_CTX_UNIT_128B) -
+		1;
 
 	/* Word offset for HW managed CTX field */
 	read_sa->w0.s.hw_ctx_off = offset / 8;
 	read_sa->w0.s.ctx_push_size = read_sa->w0.s.hw_ctx_off;
-
-	/* Entire context size in 128B units */
-	read_sa->w0.s.ctx_size = (PLT_ALIGN_CEIL(tls_read_ctx_size(read_sa), ROC_CTX_UNIT_128B) /
-				  ROC_CTX_UNIT_128B) -
-				 1;
-
-	if (tls_xfrm->ver == RTE_SECURITY_VERSION_TLS_1_2) {
-		read_sa->w2.s.version_select = ROC_IE_OT_TLS_VERSION_TLS_12;
-		read_sa->ctx.ar_valid_mask = tls_xfrm->tls_1_2.seq_no - 1;
-	} else if (tls_xfrm->ver == RTE_SECURITY_VERSION_DTLS_1_2) {
-		read_sa->w2.s.version_select = ROC_IE_OT_TLS_VERSION_DTLS_12;
-	}
 
 	rte_wmb();
 
@@ -431,6 +452,7 @@ tls_write_sa_fill(struct roc_ie_ot_tls_write_sa *write_sa,
 		  struct rte_security_tls_record_xform *tls_xfrm,
 		  struct rte_crypto_sym_xform *crypto_xfrm)
 {
+	enum rte_security_tls_version tls_ver = tls_xfrm->ver;
 	struct rte_crypto_sym_xform *auth_xfrm, *cipher_xfrm;
 	const uint8_t *key = NULL;
 	uint8_t *cipher_key;
@@ -438,13 +460,25 @@ tls_write_sa_fill(struct roc_ie_ot_tls_write_sa *write_sa,
 	int i, length = 0;
 	size_t offset;
 
+	if (tls_ver == RTE_SECURITY_VERSION_TLS_1_2) {
+		write_sa->w2.s.version_select = ROC_IE_OT_TLS_VERSION_TLS_12;
+		write_sa->tls_12.seq_num = tls_xfrm->tls_1_2.seq_no - 1;
+	} else if (tls_ver == RTE_SECURITY_VERSION_DTLS_1_2) {
+		write_sa->w2.s.version_select = ROC_IE_OT_TLS_VERSION_DTLS_12;
+		write_sa->tls_12.seq_num = ((uint64_t)tls_xfrm->dtls_1_2.epoch << 48) |
+					   (tls_xfrm->dtls_1_2.seq_no & 0x0000ffffffffffff);
+		write_sa->tls_12.seq_num -= 1;
+	} else if (tls_ver == RTE_SECURITY_VERSION_TLS_1_3) {
+		write_sa->w2.s.version_select = ROC_IE_OT_TLS_VERSION_TLS_13;
+		write_sa->tls_13.seq_num = tls_xfrm->tls_1_3.seq_no - 1;
+	}
+
 	cipher_key = write_sa->cipher_key;
 
 	/* Set encryption algorithm */
 	if ((crypto_xfrm->type == RTE_CRYPTO_SYM_XFORM_AEAD) &&
 	    (crypto_xfrm->aead.algo == RTE_CRYPTO_AEAD_AES_GCM)) {
 		write_sa->w2.s.cipher_select = ROC_IE_OT_TLS_CIPHER_AES_GCM;
-		write_sa->w2.s.mac_select = ROC_IE_OT_TLS_MAC_SHA2_256;
 
 		length = crypto_xfrm->aead.key.length;
 		if (length == 16)
@@ -455,10 +489,12 @@ tls_write_sa_fill(struct roc_ie_ot_tls_write_sa *write_sa,
 		key = crypto_xfrm->aead.key.data;
 		memcpy(cipher_key, key, length);
 
-		if (tls_xfrm->ver == RTE_SECURITY_VERSION_TLS_1_2)
+		if (tls_ver == RTE_SECURITY_VERSION_TLS_1_2)
 			memcpy(((uint8_t *)cipher_key + 32), &tls_xfrm->tls_1_2.imp_nonce, 4);
-		else if (tls_xfrm->ver == RTE_SECURITY_VERSION_DTLS_1_2)
+		else if (tls_ver == RTE_SECURITY_VERSION_DTLS_1_2)
 			memcpy(((uint8_t *)cipher_key + 32), &tls_xfrm->dtls_1_2.imp_nonce, 4);
+		else if (tls_ver == RTE_SECURITY_VERSION_TLS_1_3)
+			memcpy(((uint8_t *)cipher_key + 32), &tls_xfrm->tls_1_3.imp_nonce, 12);
 
 		goto key_swap;
 	}
@@ -506,11 +542,11 @@ tls_write_sa_fill(struct roc_ie_ot_tls_write_sa *write_sa,
 			return -EINVAL;
 
 		roc_se_hmac_opad_ipad_gen(write_sa->w2.s.mac_select, auth_xfrm->auth.key.data,
-					  auth_xfrm->auth.key.length, write_sa->opad_ipad,
+					  auth_xfrm->auth.key.length, write_sa->tls_12.opad_ipad,
 					  ROC_SE_TLS);
 	}
 
-	tmp_key = (uint64_t *)write_sa->opad_ipad;
+	tmp_key = (uint64_t *)write_sa->tls_12.opad_ipad;
 	for (i = 0; i < (int)(ROC_CTX_MAX_OPAD_IPAD_LEN / sizeof(uint64_t)); i++)
 		tmp_key[i] = rte_be_to_cpu_64(tmp_key[i]);
 
@@ -520,40 +556,37 @@ key_swap:
 		tmp_key[i] = rte_be_to_cpu_64(tmp_key[i]);
 
 	write_sa->w0.s.ctx_hdr_size = ROC_IE_OT_TLS_CTX_HDR_SIZE;
-	offset = offsetof(struct roc_ie_ot_tls_write_sa, w26_rsvd7);
-
-	/* Word offset for HW managed CTX field */
-	write_sa->w0.s.hw_ctx_off = offset / 8;
-	write_sa->w0.s.ctx_push_size = write_sa->w0.s.hw_ctx_off;
-
 	/* Entire context size in 128B units */
 	write_sa->w0.s.ctx_size =
 		(PLT_ALIGN_CEIL(sizeof(struct roc_ie_ot_tls_write_sa), ROC_CTX_UNIT_128B) /
 		 ROC_CTX_UNIT_128B) -
 		1;
-	write_sa->w0.s.aop_valid = 1;
+	offset = offsetof(struct roc_ie_ot_tls_write_sa, tls_12.w26_rsvd7);
 
-	if (tls_xfrm->ver == RTE_SECURITY_VERSION_TLS_1_2) {
-		write_sa->w2.s.version_select = ROC_IE_OT_TLS_VERSION_TLS_12;
-		write_sa->seq_num = tls_xfrm->tls_1_2.seq_no - 1;
-	} else if (tls_xfrm->ver == RTE_SECURITY_VERSION_DTLS_1_2) {
-		write_sa->w2.s.version_select = ROC_IE_OT_TLS_VERSION_DTLS_12;
-		write_sa->seq_num = ((uint64_t)tls_xfrm->dtls_1_2.epoch << 48) |
-				    (tls_xfrm->dtls_1_2.seq_no & 0x0000ffffffffffff);
-		write_sa->seq_num -= 1;
+	if (tls_ver == RTE_SECURITY_VERSION_TLS_1_3) {
+		offset = offsetof(struct roc_ie_ot_tls_write_sa, tls_13.w10_rsvd7);
+		write_sa->w0.s.ctx_size -= 1;
 	}
+
+	/* Word offset for HW managed CTX field */
+	write_sa->w0.s.hw_ctx_off = offset / 8;
+	write_sa->w0.s.ctx_push_size = write_sa->w0.s.hw_ctx_off;
+
+	write_sa->w0.s.aop_valid = 1;
 
 	write_sa->w2.s.iv_at_cptr = ROC_IE_OT_TLS_IV_SRC_DEFAULT;
 
+	if (write_sa->w2.s.version_select != ROC_IE_OT_TLS_VERSION_TLS_13) {
 #ifdef LA_IPSEC_DEBUG
-	if (tls_xfrm->options.iv_gen_disable == 1)
-		write_sa->w2.s.iv_at_cptr = ROC_IE_OT_TLS_IV_SRC_FROM_SA;
+		if (tls_xfrm->options.iv_gen_disable == 1)
+			write_sa->w2.s.iv_at_cptr = ROC_IE_OT_TLS_IV_SRC_FROM_SA;
 #else
-	if (tls_xfrm->options.iv_gen_disable) {
-		plt_err("Application provided IV is not supported");
-		return -ENOTSUP;
-	}
+		if (tls_xfrm->options.iv_gen_disable) {
+			plt_err("Application provided IV is not supported");
+			return -ENOTSUP;
+		}
 #endif
+	}
 
 	rte_wmb();
 
@@ -599,20 +632,17 @@ cn10k_tls_read_sa_create(struct roc_cpt *roc_cpt, struct roc_cpt_lf *lf,
 		sec_sess->iv_length = crypto_xfrm->auth.iv.length;
 	}
 
-	if (sa_dptr->w2.s.version_select == ROC_IE_OT_TLS_VERSION_DTLS_12)
-		sec_sess->tls.hdr_len = 13;
-	else if (sa_dptr->w2.s.version_select == ROC_IE_OT_TLS_VERSION_TLS_12)
-		sec_sess->tls.hdr_len = 5;
-
 	sec_sess->proto = RTE_SECURITY_PROTOCOL_TLS_RECORD;
-
-	/* Enable mib counters */
-	sa_dptr->w0.s.count_mib_bytes = 1;
-	sa_dptr->w0.s.count_mib_pkts = 1;
 
 	/* pre-populate CPT INST word 4 */
 	inst_w4.u64 = 0;
-	inst_w4.s.opcode_major = ROC_IE_OT_TLS_MAJOR_OP_RECORD_DEC | ROC_IE_OT_INPLACE_BIT;
+	if ((sa_dptr->w2.s.version_select == ROC_IE_OT_TLS_VERSION_TLS_12) ||
+	    (sa_dptr->w2.s.version_select == ROC_IE_OT_TLS_VERSION_DTLS_12)) {
+		inst_w4.s.opcode_major = ROC_IE_OT_TLS_MAJOR_OP_RECORD_DEC | ROC_IE_OT_INPLACE_BIT;
+	} else if (sa_dptr->w2.s.version_select == ROC_IE_OT_TLS_VERSION_TLS_13) {
+		inst_w4.s.opcode_major =
+			ROC_IE_OT_TLS13_MAJOR_OP_RECORD_DEC | ROC_IE_OT_INPLACE_BIT;
+	}
 
 	sec_sess->inst.w4 = inst_w4.u64;
 	sec_sess->inst.w7 = cpt_inst_w7_get(roc_cpt, read_sa);
@@ -689,8 +719,13 @@ cn10k_tls_write_sa_create(struct roc_cpt *roc_cpt, struct roc_cpt_lf *lf,
 
 	/* pre-populate CPT INST word 4 */
 	inst_w4.u64 = 0;
-	inst_w4.s.opcode_major = ROC_IE_OT_TLS_MAJOR_OP_RECORD_ENC | ROC_IE_OT_INPLACE_BIT;
-
+	if ((sa_dptr->w2.s.version_select == ROC_IE_OT_TLS_VERSION_TLS_12) ||
+	    (sa_dptr->w2.s.version_select == ROC_IE_OT_TLS_VERSION_DTLS_12)) {
+		inst_w4.s.opcode_major = ROC_IE_OT_TLS_MAJOR_OP_RECORD_ENC | ROC_IE_OT_INPLACE_BIT;
+	} else if (sa_dptr->w2.s.version_select == ROC_IE_OT_TLS_VERSION_TLS_13) {
+		inst_w4.s.opcode_major =
+			ROC_IE_OT_TLS13_MAJOR_OP_RECORD_ENC | ROC_IE_OT_INPLACE_BIT;
+	}
 	sec_sess->inst.w4 = inst_w4.u64;
 	sec_sess->inst.w7 = cpt_inst_w7_get(roc_cpt, write_sa);
 
