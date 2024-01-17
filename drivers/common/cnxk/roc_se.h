@@ -246,7 +246,7 @@ struct roc_se_onk_zuc_ctx {
 	uint8_t zuc_const[32];
 };
 
-struct roc_se_onk_zuc_chain_ctx {
+struct roc_se_pdcp_ctx {
 	union {
 		uint64_t u64;
 		struct {
@@ -276,19 +276,6 @@ struct roc_se_onk_zuc_chain_ctx {
 			uint8_t rsvd1[8];
 		};
 	} st;
-};
-
-struct roc_se_zuc_snow3g_chain_ctx {
-	union {
-		struct roc_se_onk_zuc_chain_ctx onk_ctx;
-	} zuc;
-};
-
-struct roc_se_zuc_snow3g_ctx {
-	union {
-		struct roc_se_onk_zuc_ctx onk_ctx;
-		struct roc_se_otk_zuc_ctx otk_ctx;
-	} zuc;
 };
 
 struct roc_se_kasumi_ctx {
@@ -356,8 +343,7 @@ struct roc_se_ctx {
 		} w0;
 		union {
 			struct roc_se_context fctx;
-			struct roc_se_zuc_snow3g_ctx zs_ctx;
-			struct roc_se_zuc_snow3g_chain_ctx zs_ch_ctx;
+			struct roc_se_pdcp_ctx pctx;
 			struct roc_se_kasumi_ctx k_ctx;
 			struct roc_se_sm_context sm_ctx;
 		};

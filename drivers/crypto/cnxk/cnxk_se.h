@@ -301,8 +301,13 @@ sg_inst_prep(struct roc_se_fc_params *params, struct cpt_inst_s *inst, uint64_t 
 	iv_d = ((uint8_t *)offset_vaddr + ROC_SE_OFF_CTRL_LEN);
 
 	if (pdcp_flag) {
-		if (likely(iv_len))
-			pdcp_iv_copy(iv_d, iv_s, pdcp_alg_type, pack_iv);
+		if (likely(iv_len)) {
+			if (zsk_flags == 0x1)
+				pdcp_iv_copy(iv_d + params->pdcp_iv_offset, iv_s, pdcp_alg_type,
+					     pack_iv);
+			else
+				pdcp_iv_copy(iv_d, iv_s, pdcp_alg_type, pack_iv);
+		}
 	} else {
 		if (likely(iv_len))
 			memcpy(iv_d, iv_s, iv_len);
@@ -378,7 +383,7 @@ sg_inst_prep(struct roc_se_fc_params *params, struct cpt_inst_s *inst, uint64_t 
 	i = 0;
 	scatter_comp = (struct roc_sglist_comp *)((uint8_t *)gather_comp + g_size_bytes);
 
-	if (zsk_flags == 0x1) {
+	if ((zsk_flags == 0x1) && (se_ctx->fc_type == ROC_SE_KASUMI)) {
 		/* IV in SLIST only for EEA3 & UEA2 or for F8 */
 		iv_len = 0;
 	}
@@ -495,8 +500,13 @@ sg2_inst_prep(struct roc_se_fc_params *params, struct cpt_inst_s *inst, uint64_t
 
 	iv_d = ((uint8_t *)offset_vaddr + ROC_SE_OFF_CTRL_LEN);
 	if (pdcp_flag) {
-		if (likely(iv_len))
-			pdcp_iv_copy(iv_d, iv_s, pdcp_alg_type, pack_iv);
+		if (likely(iv_len)) {
+			if (zsk_flags == 0x1)
+				pdcp_iv_copy(iv_d + params->pdcp_iv_offset, iv_s, pdcp_alg_type,
+					     pack_iv);
+			else
+				pdcp_iv_copy(iv_d, iv_s, pdcp_alg_type, pack_iv);
+		}
 	} else {
 		if (likely(iv_len))
 			memcpy(iv_d, iv_s, iv_len);
@@ -570,7 +580,7 @@ sg2_inst_prep(struct roc_se_fc_params *params, struct cpt_inst_s *inst, uint64_t
 	i = 0;
 	scatter_comp = (struct roc_sg2list_comp *)((uint8_t *)gather_comp + g_size_bytes);
 
-	if (zsk_flags == 0x1) {
+	if ((zsk_flags == 0x1) && (se_ctx->fc_type == ROC_SE_KASUMI)) {
 		/* IV in SLIST only for EEA3 & UEA2 or for F8 */
 		iv_len = 0;
 	}
@@ -1620,28 +1630,34 @@ static __rte_always_inline int
 cpt_pdcp_alg_prep(uint32_t req_flags, uint64_t d_offs, uint64_t d_lens,
 		  struct roc_se_fc_params *params, struct cpt_inst_s *inst, const bool is_sg_ver2)
 {
+	/*
+	 * pdcp_iv_offset is auth_iv_offset wrt cipher_iv_offset which is
+	 * 16 with old microcode without ZUC 256 support
+	 * whereas it is 24 with new microcode which has ZUC 256.
+	 * So iv_len reserved is 32B for cipher and auth IVs with old microcode
+	 * and 48B with new microcode.
+	 */
+	const int iv_len = params->pdcp_iv_offset * 2;
+	struct roc_se_ctx *se_ctx = params->ctx;
 	uint32_t encr_data_len, auth_data_len;
+	const int flags = se_ctx->zsk_flags;
 	uint32_t encr_offset, auth_offset;
 	union cpt_inst_w4 cpt_inst_w4;
 	int32_t inputlen, outputlen;
-	struct roc_se_ctx *se_ctx;
 	uint64_t *offset_vaddr;
 	uint8_t pdcp_alg_type;
 	uint32_t mac_len = 0;
 	const uint8_t *iv_s;
 	uint8_t pack_iv = 0;
 	uint64_t offset_ctrl;
-	int flags, iv_len;
 	int ret;
 
-	se_ctx = params->ctx;
-	flags = se_ctx->zsk_flags;
 	mac_len = se_ctx->mac_len;
 
 	cpt_inst_w4.u64 = se_ctx->template_w4.u64;
-	cpt_inst_w4.s.opcode_major = ROC_SE_MAJOR_OP_PDCP;
 
 	if (flags == 0x1) {
+		cpt_inst_w4.s.opcode_minor = 1;
 		iv_s = params->auth_iv_buf;
 
 		/*
@@ -1653,47 +1669,32 @@ cpt_pdcp_alg_prep(uint32_t req_flags, uint64_t d_offs, uint64_t d_lens,
 		pdcp_alg_type = se_ctx->pdcp_auth_alg;
 
 		if (pdcp_alg_type != ROC_SE_PDCP_ALG_TYPE_AES_CMAC) {
-			iv_len = params->auth_iv_len;
 
-			if (iv_len == 25) {
-				iv_len -= 2;
+			if (params->auth_iv_len == 25)
 				pack_iv = 1;
-			}
 
 			auth_offset = auth_offset / 8;
-
-			/* consider iv len */
-			auth_offset += iv_len;
-
-			inputlen =
-				auth_offset + (RTE_ALIGN(auth_data_len, 8) / 8);
-		} else {
-			iv_len = 16;
-
-			/* consider iv len */
-			auth_offset += iv_len;
-
-			inputlen = auth_offset + auth_data_len;
-
-			/* length should be in bits */
-			auth_data_len *= 8;
+			auth_data_len = RTE_ALIGN(auth_data_len, 8) / 8;
 		}
 
-		outputlen = mac_len;
+		/* consider iv len */
+		auth_offset += iv_len;
+
+		inputlen = auth_offset + auth_data_len;
+		outputlen = iv_len + mac_len;
 
 		offset_ctrl = rte_cpu_to_be_64((uint64_t)auth_offset);
+		cpt_inst_w4.s.param1 = auth_data_len;
 
 		encr_data_len = 0;
 		encr_offset = 0;
 	} else {
+		cpt_inst_w4.s.opcode_minor = 0;
 		iv_s = params->iv_buf;
-		iv_len = params->cipher_iv_len;
 		pdcp_alg_type = se_ctx->pdcp_ci_alg;
 
-		if (iv_len == 25) {
-			iv_len -= 2;
+		if (params->cipher_iv_len == 25)
 			pack_iv = 1;
-		}
 
 		/*
 		 * Microcode expects offsets in bytes
@@ -1703,6 +1704,7 @@ cpt_pdcp_alg_prep(uint32_t req_flags, uint64_t d_offs, uint64_t d_lens,
 
 		encr_offset = ROC_SE_ENCR_OFFSET(d_offs);
 		encr_offset = encr_offset / 8;
+
 		/* consider iv len */
 		encr_offset += iv_len;
 
@@ -1710,10 +1712,11 @@ cpt_pdcp_alg_prep(uint32_t req_flags, uint64_t d_offs, uint64_t d_lens,
 		outputlen = inputlen;
 
 		/* iv offset is 0 */
-		offset_ctrl = rte_cpu_to_be_64((uint64_t)encr_offset << 16);
+		offset_ctrl = rte_cpu_to_be_64((uint64_t)encr_offset);
 
 		auth_data_len = 0;
 		auth_offset = 0;
+		cpt_inst_w4.s.param1 = (RTE_ALIGN(encr_data_len, 8) / 8);
 	}
 
 	if (unlikely((encr_offset >> 16) || (auth_offset >> 8))) {
@@ -1722,12 +1725,6 @@ cpt_pdcp_alg_prep(uint32_t req_flags, uint64_t d_offs, uint64_t d_lens,
 		plt_dp_err("auth_offset: %d", auth_offset);
 		return -1;
 	}
-
-	/*
-	 * Lengths are expected in bits.
-	 */
-	cpt_inst_w4.s.param1 = encr_data_len;
-	cpt_inst_w4.s.param2 = auth_data_len;
 
 	/*
 	 * In cn9k, cn10k since we have a limitation of
@@ -1741,6 +1738,7 @@ cpt_pdcp_alg_prep(uint32_t req_flags, uint64_t d_offs, uint64_t d_lens,
 
 		/* Use Direct mode */
 
+		cpt_inst_w4.s.opcode_major = ROC_SE_MAJOR_OP_PDCP_CHAIN;
 		offset_vaddr = (uint64_t *)((uint8_t *)dm_vaddr - ROC_SE_OFF_CTRL_LEN - iv_len);
 
 		/* DPTR */
@@ -1756,6 +1754,7 @@ cpt_pdcp_alg_prep(uint32_t req_flags, uint64_t d_offs, uint64_t d_lens,
 		*offset_vaddr = offset_ctrl;
 		inst->w4.u64 = cpt_inst_w4.u64;
 	} else {
+		cpt_inst_w4.s.opcode_major = ROC_SE_MAJOR_OP_PDCP_CHAIN | ROC_DMA_MODE_SG;
 		inst->w4.u64 = cpt_inst_w4.u64;
 		if (is_sg_ver2)
 			ret = sg2_inst_prep(params, inst, offset_ctrl, iv_s, iv_len, pack_iv,
@@ -2246,8 +2245,6 @@ fill_sess_cipher(struct rte_crypto_sym_xform *xform, struct cnxk_se_sess *sess)
 					 c_form->key.length)))
 		return -1;
 
-	if ((enc_type >= ROC_SE_ZUC_EEA3) && (enc_type <= ROC_SE_AES_CTR_EEA2))
-		roc_se_ctx_swap(&sess->roc_se_ctx);
 	return 0;
 }
 
@@ -2406,14 +2403,9 @@ fill_sess_auth(struct rte_crypto_sym_xform *xform, struct cnxk_se_sess *sess)
 		sess->auth_iv_offset = a_form->iv.offset;
 		sess->auth_iv_length = a_form->iv.length;
 	}
-	if (unlikely(roc_se_auth_key_set(&sess->roc_se_ctx, auth_type,
-					 a_form->key.data, a_form->key.length,
-					 a_form->digest_length)))
+	if (unlikely(roc_se_auth_key_set(&sess->roc_se_ctx, auth_type, a_form->key.data,
+					 a_form->key.length, a_form->digest_length)))
 		return -1;
-
-	if ((auth_type >= ROC_SE_ZUC_EIA3) &&
-	    (auth_type <= ROC_SE_AES_CMAC_EIA2))
-		roc_se_ctx_swap(&sess->roc_se_ctx);
 
 	return 0;
 }
