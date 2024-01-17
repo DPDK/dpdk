@@ -40,6 +40,8 @@ struct cn10k_sec_session {
 	bool is_outbound;
 	/** Queue pair */
 	struct cnxk_cpt_qp *qp;
+	/** Userdata to be set for Rx inject */
+	void *userdata;
 
 	/**
 	 * End of SW mutable area

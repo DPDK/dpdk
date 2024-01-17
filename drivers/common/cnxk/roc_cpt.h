@@ -171,7 +171,8 @@ int __roc_api roc_cpt_dev_init(struct roc_cpt *roc_cpt);
 int __roc_api roc_cpt_dev_fini(struct roc_cpt *roc_cpt);
 int __roc_api roc_cpt_eng_grp_add(struct roc_cpt *roc_cpt,
 				  enum cpt_eng_type eng_type);
-int __roc_api roc_cpt_dev_configure(struct roc_cpt *roc_cpt, int nb_lf);
+int __roc_api roc_cpt_dev_configure(struct roc_cpt *roc_cpt, int nb_lf, bool rxc_ena,
+				    uint16_t rx_inject_qp);
 void __roc_api roc_cpt_dev_clear(struct roc_cpt *roc_cpt);
 int __roc_api roc_cpt_lf_init(struct roc_cpt *roc_cpt, struct roc_cpt_lf *lf);
 void __roc_api roc_cpt_lf_fini(struct roc_cpt_lf *lf);

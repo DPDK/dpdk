@@ -237,6 +237,15 @@ struct cpt_inst_s {
 			uint64_t doneint : 1;
 			uint64_t nixtx_addr : 60;
 		} s;
+		struct {
+			uint64_t nixtxl : 3;
+			uint64_t doneint : 1;
+			uint64_t chan : 12;
+			uint64_t l2_len : 8;
+			uint64_t et_offset : 8;
+			uint64_t match_id : 16;
+			uint64_t sso_pf_func : 16;
+		} hw_s;
 		uint64_t u64;
 	} w0;
 

@@ -8,5 +8,8 @@ INTERNAL {
 	cn10k_cpt_crypto_adapter_dequeue;
 	cn10k_cpt_crypto_adapter_vector_dequeue;
 
+	cn10k_cryptodev_sec_inb_rx_inject;
+	cn10k_cryptodev_sec_rx_inject_configure;
+
 	local: *;
 };

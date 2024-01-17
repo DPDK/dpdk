@@ -5,6 +5,7 @@
 #include <rte_cryptodev.h>
 #include <cryptodev_pmd.h>
 #include <rte_errno.h>
+#include <rte_security_driver.h>
 
 #include "roc_ae_fpm_tables.h"
 #include "roc_cpt.h"
@@ -95,6 +96,7 @@ cnxk_cpt_dev_config(struct rte_cryptodev *dev, struct rte_cryptodev_config *conf
 	struct cnxk_cpt_vf *vf = dev->data->dev_private;
 	struct roc_cpt *roc_cpt = &vf->cpt;
 	uint16_t nb_lf_avail, nb_lf;
+	bool rxc_ena = false;
 	int ret;
 
 	/* If this is a reconfigure attempt, clear the device and configure again */
@@ -111,7 +113,13 @@ cnxk_cpt_dev_config(struct rte_cryptodev *dev, struct rte_cryptodev_config *conf
 	if (nb_lf > nb_lf_avail)
 		return -ENOTSUP;
 
-	ret = roc_cpt_dev_configure(roc_cpt, nb_lf);
+	if (dev->feature_flags & RTE_CRYPTODEV_FF_SECURITY_RX_INJECT) {
+		if (rte_security_dynfield_register() < 0)
+			return -ENOTSUP;
+		rxc_ena = true;
+	}
+
+	ret = roc_cpt_dev_configure(roc_cpt, nb_lf, rxc_ena, vf->rx_inject_qp);
 	if (ret) {
 		plt_err("Could not configure device");
 		return ret;
@@ -208,6 +216,10 @@ cnxk_cpt_dev_info_get(struct rte_cryptodev *dev,
 	info->sym.max_nb_sessions = 0;
 	info->min_mbuf_headroom_req = CNXK_CPT_MIN_HEADROOM_REQ;
 	info->min_mbuf_tailroom_req = CNXK_CPT_MIN_TAILROOM_REQ;
+
+	/* If the LF ID for RX Inject is less than the available lfs. */
+	if (vf->rx_inject_qp > info->max_nb_queue_pairs)
+		info->feature_flags &= ~RTE_CRYPTODEV_FF_SECURITY_RX_INJECT;
 }
 
 static void
@@ -451,6 +463,19 @@ cnxk_cpt_queue_pair_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 
 	qp->sess_mp = conf->mp_session;
 	dev->data->queue_pairs[qp_id] = qp;
+
+	if (qp_id == vf->rx_inject_qp) {
+		ret = roc_cpt_lmtline_init(roc_cpt, &vf->rx_inj_lmtline, vf->rx_inject_qp);
+		if (ret) {
+			plt_err("Could not init lmtline Rx inject");
+			goto exit;
+		}
+
+		vf->rx_inj_pf_func = qp->lf.pf_func;
+
+		/* Block the queue for other submissions */
+		qp->pend_q.pq_mask = 0;
+	}
 
 	return 0;
 

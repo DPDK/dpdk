@@ -187,6 +187,18 @@ Runtime Config Options
    With the above configuration, the number of maximum queue pairs supported
    by the device is limited to 4.
 
+- ``QP ID for Rx injection in case of fallback mechanism`` (default ``60``)
+
+   QP ID for Rx injection in fallback mechanism of security.
+   Can be configured during runtime by using ``rx_inject_qp`` devargs parameter.
+
+   For example::
+
+      -a 0002:20:00.1,rx_inject_qp=20
+
+   With the above configuration, QP 20 will be used by the device for Rx injection
+   in security in fallback mechanism scenario.
+
 Debugging Options
 -----------------
 

@@ -7,6 +7,8 @@
 #include <rte_event_crypto_adapter.h>
 #include <rte_ip.h>
 
+#include <ethdev_driver.h>
+
 #include "roc_cpt.h"
 #if defined(__aarch64__)
 #include "roc_io.h"
@@ -1057,6 +1059,104 @@ cn10k_cpt_dequeue_burst(void *qptr, struct rte_crypto_op **ops, uint16_t nb_ops)
 	return i;
 }
 
+uint16_t __rte_hot
+cn10k_cryptodev_sec_inb_rx_inject(void *dev, struct rte_mbuf **pkts,
+				  struct rte_security_session **sess, uint16_t nb_pkts)
+{
+	uint16_t l2_len, pf_func, lmt_id, count = 0;
+	uint64_t lmt_base, lmt_arg, io_addr;
+	struct cn10k_sec_session *sec_sess;
+	struct rte_cryptodev *cdev = dev;
+	union cpt_res_s *hw_res = NULL;
+	struct cpt_inst_s *inst;
+	struct cnxk_cpt_vf *vf;
+	struct rte_mbuf *m;
+	uint64_t dptr;
+	int i;
+
+	const union cpt_res_s res = {
+		.cn10k.compcode = CPT_COMP_NOT_DONE,
+	};
+
+	vf = cdev->data->dev_private;
+
+	lmt_base = vf->rx_inj_lmtline.lmt_base;
+	io_addr = vf->rx_inj_lmtline.io_addr;
+
+	ROC_LMT_BASE_ID_GET(lmt_base, lmt_id);
+	pf_func = vf->rx_inj_pf_func;
+
+again:
+	inst = (struct cpt_inst_s *)lmt_base;
+	for (i = 0; i < RTE_MIN(PKTS_PER_LOOP, nb_pkts); i++) {
+
+		m = pkts[i];
+		sec_sess = (struct cn10k_sec_session *)sess[i];
+
+		if (unlikely(rte_pktmbuf_headroom(m) < 32)) {
+			plt_dp_err("No space for CPT res_s");
+			break;
+		}
+
+		if (unlikely(!rte_pktmbuf_is_contiguous(m))) {
+			plt_dp_err("Multi seg is not supported");
+			break;
+		}
+
+		l2_len = m->l2_len;
+
+		*rte_security_dynfield(m) = (uint64_t)sec_sess->userdata;
+
+		hw_res = rte_pktmbuf_mtod(m, void *);
+		hw_res = RTE_PTR_SUB(hw_res, 32);
+		hw_res = RTE_PTR_ALIGN_CEIL(hw_res, 16);
+
+		/* Prepare CPT instruction */
+		inst->w0.u64 = 0;
+		inst->w2.u64 = 0;
+		inst->w2.s.rvu_pf_func = pf_func;
+		inst->w3.u64 = (((uint64_t)m + sizeof(struct rte_mbuf)) >> 3) << 3 | 1;
+
+		inst->w4.u64 = sec_sess->inst.w4 | (rte_pktmbuf_pkt_len(m));
+		dptr = (uint64_t)rte_pktmbuf_iova(m);
+		inst->dptr = dptr;
+		inst->rptr = dptr;
+
+		inst->w0.hw_s.l2_len = l2_len;
+		inst->w0.hw_s.et_offset = l2_len - 2;
+
+		inst->res_addr = (uint64_t)hw_res;
+		rte_atomic_store_explicit((unsigned long __rte_atomic *)&hw_res->u64[0], res.u64[0],
+					  rte_memory_order_relaxed);
+
+		inst->w7.u64 = sec_sess->inst.w7;
+
+		inst += 2;
+	}
+
+	if (i > PKTS_PER_STEORL) {
+		lmt_arg = ROC_CN10K_CPT_LMT_ARG | (PKTS_PER_STEORL - 1) << 12 | (uint64_t)lmt_id;
+		roc_lmt_submit_steorl(lmt_arg, io_addr);
+		lmt_arg = ROC_CN10K_CPT_LMT_ARG | (i - PKTS_PER_STEORL - 1) << 12 |
+			  (uint64_t)(lmt_id + PKTS_PER_STEORL);
+		roc_lmt_submit_steorl(lmt_arg, io_addr);
+	} else {
+		lmt_arg = ROC_CN10K_CPT_LMT_ARG | (i - 1) << 12 | (uint64_t)lmt_id;
+		roc_lmt_submit_steorl(lmt_arg, io_addr);
+	}
+
+	rte_io_wmb();
+
+	if (nb_pkts - i > 0 && i == PKTS_PER_LOOP) {
+		nb_pkts -= i;
+		pkts += i;
+		count += i;
+		goto again;
+	}
+
+	return count + i;
+}
+
 void
 cn10k_cpt_set_enqdeq_fns(struct rte_cryptodev *dev, struct cnxk_cpt_vf *vf)
 {
@@ -1531,6 +1631,30 @@ cn10k_sym_configure_raw_dp_ctx(struct rte_cryptodev *dev, uint16_t qp_id,
 			raw_dp_ctx->enqueue_burst = cn10k_cpt_raw_enqueue_burst_sgv1;
 		}
 	}
+
+	return 0;
+}
+
+int
+cn10k_cryptodev_sec_rx_inject_configure(void *device, uint16_t port_id, bool enable)
+{
+	struct rte_cryptodev *crypto_dev = device;
+	struct rte_eth_dev *eth_dev;
+	int ret;
+
+	if (!rte_eth_dev_is_valid_port(port_id))
+		return -EINVAL;
+
+	if (!(crypto_dev->feature_flags & RTE_CRYPTODEV_FF_SECURITY_RX_INJECT))
+		return -ENOTSUP;
+
+	eth_dev = &rte_eth_devices[port_id];
+
+	ret = strncmp(eth_dev->device->driver->name, "net_cn10k", 8);
+	if (ret)
+		return -ENOTSUP;
+
+	RTE_SET_USED(enable);
 
 	return 0;
 }

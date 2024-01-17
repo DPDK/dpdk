@@ -2022,6 +2022,8 @@ struct cpt_lf_alloc_req_msg {
 	uint8_t __io blkaddr;
 	uint8_t __io ctx_ilen_valid : 1;
 	uint8_t __io ctx_ilen : 7;
+	uint8_t __io rxc_ena : 1;
+	uint8_t __io rxc_ena_lf_id : 7;
 };
 
 #define CPT_INLINE_INBOUND  0
