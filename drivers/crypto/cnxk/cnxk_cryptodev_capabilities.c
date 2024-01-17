@@ -40,6 +40,16 @@
 					   RTE_DIM(sec_tls12_caps_##name));     \
 	} while (0)
 
+#define SEC_TLS13_CAPS_ADD(cnxk_caps, cur_pos, hw_caps, name)                  \
+	do {                                                                   \
+		if ((hw_caps[CPT_ENG_TYPE_SE].name) ||                         \
+		    (hw_caps[CPT_ENG_TYPE_IE].name) ||                         \
+		    (hw_caps[CPT_ENG_TYPE_AE].name))                           \
+			sec_tls13_caps_add(cnxk_caps, cur_pos,                 \
+					   sec_tls13_caps_##name,               \
+					   RTE_DIM(sec_tls13_caps_##name));     \
+	} while (0)
+
 static const struct rte_cryptodev_capabilities caps_mul[] = {
 	{	/* RSA */
 		.op = RTE_CRYPTO_OP_TYPE_ASYMMETRIC,
@@ -1631,6 +1641,40 @@ static const struct rte_cryptodev_capabilities sec_tls12_caps_sha1_sha2[] = {
 	},
 };
 
+static const struct rte_cryptodev_capabilities sec_tls13_caps_aes[] = {
+	{	/* AES GCM */
+		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
+		{.sym = {
+			.xform_type = RTE_CRYPTO_SYM_XFORM_AEAD,
+			{.aead = {
+				.algo = RTE_CRYPTO_AEAD_AES_GCM,
+				.block_size = 16,
+				.key_size = {
+					.min = 16,
+					.max = 32,
+					.increment = 16
+				},
+				.digest_size = {
+					.min = 16,
+					.max = 16,
+					.increment = 0
+				},
+				.aad_size = {
+					.min = 5,
+					.max = 5,
+					.increment = 0
+				},
+				.iv_size = {
+					.min = 0,
+					.max = 0,
+					.increment = 0
+				}
+			}, }
+		}, }
+	},
+};
+
+
 static const struct rte_security_capability sec_caps_templ[] = {
 	{	/* IPsec Lookaside Protocol ESP Tunnel Ingress */
 		.action = RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL,
@@ -1755,6 +1799,26 @@ static const struct rte_security_capability sec_caps_templ[] = {
 		.protocol = RTE_SECURITY_PROTOCOL_TLS_RECORD,
 		.tls_record = {
 			.ver = RTE_SECURITY_VERSION_DTLS_1_2,
+			.type = RTE_SECURITY_TLS_SESS_TYPE_WRITE,
+			.ar_win_size = 0,
+		},
+		.crypto_capabilities = NULL,
+	},
+	{	/* TLS 1.3 Record Read */
+		.action = RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL,
+		.protocol = RTE_SECURITY_PROTOCOL_TLS_RECORD,
+		.tls_record = {
+			.ver = RTE_SECURITY_VERSION_TLS_1_3,
+			.type = RTE_SECURITY_TLS_SESS_TYPE_READ,
+			.ar_win_size = 0,
+		},
+		.crypto_capabilities = NULL,
+	},
+	{	/* TLS 1.3 Record Write */
+		.action = RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL,
+		.protocol = RTE_SECURITY_PROTOCOL_TLS_RECORD,
+		.tls_record = {
+			.ver = RTE_SECURITY_VERSION_TLS_1_3,
 			.type = RTE_SECURITY_TLS_SESS_TYPE_WRITE,
 			.ar_win_size = 0,
 		},
@@ -2005,6 +2069,33 @@ sec_tls12_crypto_caps_populate(struct rte_cryptodev_capabilities cnxk_caps[],
 	sec_tls12_caps_add(cnxk_caps, &cur_pos, caps_end, RTE_DIM(caps_end));
 }
 
+static void
+sec_tls13_caps_limit_check(int *cur_pos, int nb_caps)
+{
+	PLT_VERIFY(*cur_pos + nb_caps <= CNXK_SEC_TLS_1_3_CRYPTO_MAX_CAPS);
+}
+
+static void
+sec_tls13_caps_add(struct rte_cryptodev_capabilities cnxk_caps[], int *cur_pos,
+		   const struct rte_cryptodev_capabilities *caps, int nb_caps)
+{
+	sec_tls13_caps_limit_check(cur_pos, nb_caps);
+
+	memcpy(&cnxk_caps[*cur_pos], caps, nb_caps * sizeof(caps[0]));
+	*cur_pos += nb_caps;
+}
+
+static void
+sec_tls13_crypto_caps_populate(struct rte_cryptodev_capabilities cnxk_caps[],
+			       union cpt_eng_caps *hw_caps)
+{
+	int cur_pos = 0;
+
+	SEC_TLS13_CAPS_ADD(cnxk_caps, &cur_pos, hw_caps, aes);
+
+	sec_tls13_caps_add(cnxk_caps, &cur_pos, caps_end, RTE_DIM(caps_end));
+}
+
 void
 cnxk_cpt_caps_populate(struct cnxk_cpt_vf *vf)
 {
@@ -2016,6 +2107,7 @@ cnxk_cpt_caps_populate(struct cnxk_cpt_vf *vf)
 	if (vf->cpt.hw_caps[CPT_ENG_TYPE_SE].tls) {
 		sec_tls12_crypto_caps_populate(vf->sec_tls_1_2_crypto_caps, vf->cpt.hw_caps);
 		sec_tls12_crypto_caps_populate(vf->sec_dtls_1_2_crypto_caps, vf->cpt.hw_caps);
+		sec_tls13_crypto_caps_populate(vf->sec_tls_1_3_crypto_caps, vf->cpt.hw_caps);
 	}
 
 	PLT_STATIC_ASSERT(RTE_DIM(sec_caps_templ) <= RTE_DIM(vf->sec_caps));
