@@ -82,16 +82,10 @@ process_outb_sa(struct cpt_qp_meta_info *m_info, struct rte_crypto_op *cop,
 	extend_tail = rlen - dlen;
 	pkt_len += extend_tail;
 
-	if (likely(m_src->next == NULL)) {
+	if (likely((m_src->next == NULL) && (hdr_len <= data_off))) {
 		if (unlikely(extend_tail > rte_pktmbuf_tailroom(m_src))) {
 			plt_dp_err("Not enough tail room (required: %d, available: %d)",
 				   extend_tail, rte_pktmbuf_tailroom(m_src));
-			return -ENOMEM;
-		}
-
-		if (unlikely(hdr_len > data_off)) {
-			plt_dp_err("Not enough head room (required: %d, available: %d)", hdr_len,
-				   rte_pktmbuf_headroom(m_src));
 			return -ENOMEM;
 		}
 
