@@ -578,7 +578,17 @@ cn9k_cpt_dequeue_post_process(struct cnxk_cpt_qp *qp, struct rte_crypto_op *cop,
 		if (unlikely(res->uc_compcode)) {
 			if (res->uc_compcode == ROC_SE_ERR_GC_ICV_MISCOMPARE)
 				cop->status = RTE_CRYPTO_OP_STATUS_AUTH_FAILED;
-			else
+			else if (cop->type == RTE_CRYPTO_OP_TYPE_ASYMMETRIC &&
+				 cop->sess_type == RTE_CRYPTO_OP_WITH_SESSION &&
+				 cop->asym->ecdh.ke_type == RTE_CRYPTO_ASYM_KE_PUB_KEY_VERIFY) {
+				if (res->uc_compcode == ROC_AE_ERR_ECC_POINT_NOT_ON_CURVE) {
+					cop->status = RTE_CRYPTO_OP_STATUS_ERROR;
+					return;
+				} else if (res->uc_compcode == ROC_AE_ERR_ECC_PAI) {
+					cop->status = RTE_CRYPTO_OP_STATUS_SUCCESS;
+					return;
+				}
+			} else
 				cop->status = RTE_CRYPTO_OP_STATUS_ERROR;
 
 			plt_dp_info("Request failed with microcode error");
