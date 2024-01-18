@@ -910,7 +910,7 @@ opdl_ring_create(const char *name, uint32_t num_slots, uint32_t slot_size,
 			RTE_CACHE_LINE_MASK) != 0);
 	RTE_BUILD_BUG_ON((offsetof(struct opdl_ring, slots) &
 			RTE_CACHE_LINE_MASK) != 0);
-	RTE_BUILD_BUG_ON(!rte_is_power_of_2(OPDL_DISCLAIMS_PER_LCORE));
+	RTE_BUILD_BUG_ON(!RTE_IS_POWER_OF_2(OPDL_DISCLAIMS_PER_LCORE));
 
 	/* Parameter checking */
 	if (name == NULL) {
