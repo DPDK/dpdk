@@ -143,10 +143,9 @@ descs_to_fdir_32b(volatile union i40e_rx_desc *rxdp, struct rte_mbuf **rx_pkt)
 	/* convert fdir_id_mask into a single bit, then shift as required for
 	 * correct location in the mbuf->olflags
 	 */
-	const uint32_t FDIR_ID_BIT_SHIFT = 13;
-	RTE_BUILD_BUG_ON(RTE_MBUF_F_RX_FDIR_ID != (1 << FDIR_ID_BIT_SHIFT));
+	RTE_BUILD_BUG_ON(RTE_MBUF_F_RX_FDIR_ID != (1 << I40E_FDIR_ID_BIT_SHIFT));
 	v_fd_id_mask = _mm_srli_epi32(v_fd_id_mask, 31);
-	v_fd_id_mask = _mm_slli_epi32(v_fd_id_mask, FDIR_ID_BIT_SHIFT);
+	v_fd_id_mask = _mm_slli_epi32(v_fd_id_mask, I40E_FDIR_ID_BIT_SHIFT);
 
 	/* The returned value must be combined into each mbuf. This is already
 	 * being done for RSS and VLAN mbuf olflags, so return bits to OR in.
@@ -205,10 +204,9 @@ descs_to_fdir_16b(__m128i fltstat, __m128i descs[4], struct rte_mbuf **rx_pkt)
 	descs[0] = _mm_blendv_epi8(descs[0], _mm_setzero_si128(), v_desc0_mask);
 
 	/* Shift to 1 or 0 bit per u32 lane, then to RTE_MBUF_F_RX_FDIR_ID offset */
-	const uint32_t FDIR_ID_BIT_SHIFT = 13;
-	RTE_BUILD_BUG_ON(RTE_MBUF_F_RX_FDIR_ID != (1 << FDIR_ID_BIT_SHIFT));
+	RTE_BUILD_BUG_ON(RTE_MBUF_F_RX_FDIR_ID != (1 << I40E_FDIR_ID_BIT_SHIFT));
 	__m128i v_mask_one_bit = _mm_srli_epi32(v_fdir_id_mask, 31);
-	return _mm_slli_epi32(v_mask_one_bit, FDIR_ID_BIT_SHIFT);
+	return _mm_slli_epi32(v_mask_one_bit, I40E_FDIR_ID_BIT_SHIFT);
 }
 #endif
 

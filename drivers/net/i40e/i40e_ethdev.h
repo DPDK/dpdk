@@ -278,6 +278,7 @@ enum i40e_flxpld_layer_idx {
 #define I40E_DEFAULT_DCB_APP_PRIO   3
 
 #define I40E_FDIR_PRG_PKT_CNT       128
+#define I40E_FDIR_ID_BIT_SHIFT	    13
 
 /*
  * Struct to store flow created.
