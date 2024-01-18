@@ -597,6 +597,16 @@ __extension__ typedef uint64_t RTE_MARKER64[0];
 	})
 
 /**
+ * Macro to return the minimum of two numbers
+ *
+ * As opposed to RTE_MIN, it does not use temporary variables so it is not safe
+ * if a or b is an expression. Yet it is guaranteed to be constant for use in
+ * static_assert().
+ */
+#define RTE_MIN_T(a, b, t) \
+	((t)(a) < (t)(b) ? (t)(a) : (t)(b))
+
+/**
  * Macro to return the maximum of two numbers
  */
 #define RTE_MAX(a, b) \
@@ -605,6 +615,16 @@ __extension__ typedef uint64_t RTE_MARKER64[0];
 		typeof (b) _b = (b); \
 		_a > _b ? _a : _b; \
 	})
+
+/**
+ * Macro to return the maximum of two numbers
+ *
+ * As opposed to RTE_MAX, it does not use temporary variables so it is not safe
+ * if a or b is an expression. Yet it is guaranteed to be constant for use in
+ * static_assert().
+ */
+#define RTE_MAX_T(a, b, t) \
+	((t)(a) > (t)(b) ? (t)(a) : (t)(b))
 
 /*********** Other general functions / macros ********/
 
