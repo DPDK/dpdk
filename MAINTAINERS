@@ -37,7 +37,6 @@ M: Ajit Khaparde <ajit.khaparde@broadcom.com>
 T: git://dpdk.org/next/dpdk-next-net-brcm
 
 Next-net-intel Tree
-M: Qi Zhang <qi.z.zhang@intel.com>
 T: git://dpdk.org/next/dpdk-next-net-intel
 
 Next-net-mrvl Tree
@@ -634,7 +633,6 @@ F: doc/guides/nics/features/afpacket.ini
 
 Linux AF_XDP
 M: Ciara Loftus <ciara.loftus@intel.com>
-M: Qi Zhang <qi.z.zhang@intel.com>
 F: drivers/net/af_xdp/
 F: doc/guides/nics/af_xdp.rst
 F: doc/guides/nics/features/af_xdp.ini
@@ -762,7 +760,6 @@ F: doc/guides/nics/intel_vf.rst
 F: doc/guides/nics/features/i40e*.ini
 
 Intel fm10k
-M: Qi Zhang <qi.z.zhang@intel.com>
 M: Xiao Wang <xiao.w.wang@intel.com>
 T: git://dpdk.org/next/dpdk-next-net-intel
 F: drivers/net/fm10k/
@@ -777,7 +774,6 @@ F: drivers/common/iavf/
 F: doc/guides/nics/features/iavf*.ini
 
 Intel ice
-M: Qi Zhang <qi.z.zhang@intel.com>
 T: git://dpdk.org/next/dpdk-next-net-intel
 F: drivers/net/ice/
 F: doc/guides/nics/ice.rst
