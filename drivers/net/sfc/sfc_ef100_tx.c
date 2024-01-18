@@ -563,8 +563,7 @@ sfc_ef100_tx_pkt_descs_max(const struct rte_mbuf *m)
 		 * (split into many Tx descriptors).
 		 */
 		RTE_BUILD_BUG_ON(SFC_EF100_TX_SEND_DESC_LEN_MAX <
-				 RTE_MIN((unsigned int)EFX_MAC_PDU_MAX,
-				 SFC_MBUF_SEG_LEN_MAX));
+				 RTE_MIN_T(EFX_MAC_PDU_MAX, SFC_MBUF_SEG_LEN_MAX, uint32_t));
 	}
 
 	if (m->ol_flags & sfc_dp_mport_override) {
