@@ -171,7 +171,11 @@ container_to_json(const struct rte_tel_data *d, char *out_buf, size_t buf_len)
 		d->type != RTE_TEL_ARRAY_INT && d->type != RTE_TEL_ARRAY_STRING)
 		return snprintf(out_buf, buf_len, "null");
 
-	used = rte_tel_json_empty_array(out_buf, buf_len, 0);
+	if (d->type == RTE_TEL_DICT)
+		used = rte_tel_json_empty_obj(out_buf, buf_len, 0);
+	else
+		used = rte_tel_json_empty_array(out_buf, buf_len, 0);
+
 	if (d->type == RTE_TEL_ARRAY_U64)
 		for (i = 0; i < d->data_len; i++)
 			used = rte_tel_json_add_array_u64(out_buf,
