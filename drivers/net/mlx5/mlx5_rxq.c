@@ -1444,7 +1444,7 @@ mlx5_mprq_alloc_mp(struct rte_eth_dev *dev)
 	/*
 	 * rte_mempool_create_empty() has sanity check to refuse large cache
 	 * size compared to the number of elements.
-	 * CACHE_FLUSHTHRESH_MULTIPLIER is defined in a C file, so using a
+	 * CALC_CACHE_FLUSHTHRESH() is defined in a C file, so using a
 	 * constant number 2 instead.
 	 */
 	obj_num = RTE_MAX(obj_num, MLX5_MPRQ_MP_CACHE_SZ * 2);

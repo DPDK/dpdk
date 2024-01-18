@@ -50,9 +50,10 @@ static void
 mempool_event_callback_invoke(enum rte_mempool_event event,
 			      struct rte_mempool *mp);
 
-#define CACHE_FLUSHTHRESH_MULTIPLIER 1.5
-#define CALC_CACHE_FLUSHTHRESH(c)	\
-	((typeof(c))((c) * CACHE_FLUSHTHRESH_MULTIPLIER))
+/* Note: avoid using floating point since that compiler
+ * may not think that is constant.
+ */
+#define CALC_CACHE_FLUSHTHRESH(c) (((c) * 3) / 2)
 
 #if defined(RTE_ARCH_X86)
 /*
