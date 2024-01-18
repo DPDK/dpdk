@@ -16,6 +16,7 @@
 extern "C" {
 #endif
 
+#include <assert.h>
 #include <stdint.h>
 #include <limits.h>
 
@@ -503,10 +504,18 @@ rte_is_aligned(const void * const __rte_restrict ptr, const unsigned int align)
 
 /*********** Macros for compile type checks ********/
 
+/* Workaround for toolchain issues with missing C11 macro in FreeBSD */
+#if !defined(static_assert) && !defined(__cplusplus)
+#define	static_assert	_Static_assert
+#endif
+
 /**
  * Triggers an error at compilation time if the condition is true.
+ *
+ * The do { } while(0) exists to workaround a bug in clang (#55821)
+ * where it would not handle _Static_assert in a switch case.
  */
-#define RTE_BUILD_BUG_ON(condition) ((void)sizeof(char[1 - 2*!!(condition)]))
+#define RTE_BUILD_BUG_ON(condition) do { static_assert(!(condition), #condition); } while (0)
 
 /*********** Cache line related macros ********/
 

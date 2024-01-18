@@ -105,6 +105,9 @@ API Changes
   If use with an expression is desired applications can adapt by supplying
   ``typeof(e)`` as an argument.
 
+* eal: Improved ``RTE_BUILD_BUG_ON`` by using C11 ``static_assert``.
+  Non-constant expressions are now rejected instead of being silently ignored.
+
 * gso: ``rte_gso_segment`` now returns -ENOTSUP for unknown protocols.
 
 
