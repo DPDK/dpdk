@@ -490,6 +490,8 @@ struct virtio_net {
 	void			*extern_data;
 	/* pre and post vhost user message handlers for the device */
 	struct rte_vhost_user_extern_ops extern_ops;
+
+	int conn_fd;
 } __rte_cache_aligned;
 
 static __rte_always_inline bool
@@ -772,7 +774,7 @@ get_device(int vid)
 	return dev;
 }
 
-int vhost_new_device(void);
+int vhost_new_device(int conn_fd);
 void cleanup_device(struct virtio_net *dev, int destroy);
 void reset_device(struct virtio_net *dev);
 void vhost_destroy_device(int);

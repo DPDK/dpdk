@@ -275,6 +275,7 @@ DPDK_22 {
 	rte_vfio_container_destroy; # WINDOWS_NO_EXPORT
 	rte_vfio_get_default_cfd; # WINDOWS_NO_EXPORT
 	rte_vfio_container_dma_map;
+	rte_vfio_container_set_dma_map;
 	rte_vfio_container_dma_unmap;
 	rte_vfio_container_group_bind; # WINDOWS_NO_EXPORT
 	rte_vfio_container_group_set_bind; # WINDOWS_NO_EXPORT

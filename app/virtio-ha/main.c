@@ -334,6 +334,11 @@ ha_server_store_vhost_fd(struct virtio_ha_msg *msg)
 	vf_name = (struct virtio_dev_name *)msg->iov.iov_base;
 	TAILQ_FOREACH(vf_dev, vf_list, next) {
 		if (!strcmp(vf_dev->vf_devargs.vf_name.dev_bdf, vf_name->dev_bdf)) {
+			if (vf_dev->vhost_fd != -1) {
+				HA_APP_LOG(INFO, "Close vf %s vhost old fd %d",
+					vf_name->dev_bdf, vf_dev->vhost_fd);
+				close(vf_dev->vhost_fd);
+			}
 			vf_dev->vhost_fd = msg->fds[0];
 			HA_APP_LOG(INFO, "Stored vf %s vhost fd %d", vf_name->dev_bdf, msg->fds[0]);
 			break;

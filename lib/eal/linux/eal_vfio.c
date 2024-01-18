@@ -2190,6 +2190,41 @@ out:
 }
 
 static int
+container_set_dma_map(struct vfio_config *vfio_cfg, uint64_t vaddr, uint64_t iova,
+		uint64_t len)
+{
+	struct user_mem_map *new_map;
+	struct user_mem_maps *user_mem_maps;
+	bool has_partial_unmap;
+	int ret = 0;
+
+	user_mem_maps = &vfio_cfg->mem_maps;
+	rte_spinlock_recursive_lock(&user_mem_maps->lock);
+	if (user_mem_maps->n_maps == VFIO_MAX_USER_MEM_MAPS) {
+		RTE_LOG(ERR, EAL, "No more space for user mem maps\n");
+		rte_errno = ENOMEM;
+		ret = -1;
+		goto out;
+	}
+
+	/* do we have partial unmap support? */
+	has_partial_unmap = vfio_cfg->vfio_iommu_type->partial_unmap;
+
+	/* create new user mem map entry */
+	new_map = &user_mem_maps->maps[user_mem_maps->n_maps++];
+	new_map->addr = vaddr;
+	new_map->iova = iova;
+	new_map->len = len;
+	/* for IOMMU types supporting partial unmap, we don't need chunking */
+	new_map->chunk = has_partial_unmap ? 0 : len;
+
+	compact_user_maps(user_mem_maps);
+out:
+	rte_spinlock_recursive_unlock(&user_mem_maps->lock);
+	return ret;
+}
+
+static int
 container_dma_unmap(struct vfio_config *vfio_cfg, uint64_t vaddr, uint64_t iova,
 		uint64_t len)
 {
@@ -2494,6 +2529,26 @@ rte_vfio_container_dma_map(int container_fd, uint64_t vaddr, uint64_t iova,
 	}
 
 	return container_dma_map(vfio_cfg, vaddr, iova, len);
+}
+
+int
+rte_vfio_container_set_dma_map(int container_fd, uint64_t vaddr, uint64_t iova,
+		uint64_t len)
+{
+	struct vfio_config *vfio_cfg;
+
+	if (len == 0) {
+		rte_errno = EINVAL;
+		return -1;
+	}
+
+	vfio_cfg = get_vfio_cfg_by_container_fd(container_fd);
+	if (vfio_cfg == NULL) {
+		RTE_LOG(ERR, EAL, "Invalid VFIO container fd\n");
+		return -1;
+	}
+
+	return container_set_dma_map(vfio_cfg, vaddr, iova, len);
 }
 
 int

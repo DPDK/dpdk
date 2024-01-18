@@ -36,6 +36,7 @@ DPDK_22 {
 	rte_vhost_enqueue_burst;
 	rte_vhost_extern_callback_register;
 	rte_vhost_get_ifname;
+	rte_vhost_get_conn_fd;
 	rte_vhost_get_log_base;
 	rte_vhost_get_mem_table;
 	rte_vhost_get_mtu;

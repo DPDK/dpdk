@@ -656,7 +656,7 @@ reset_device(struct virtio_net *dev)
  * there is a new virtio device being attached).
  */
 int
-vhost_new_device(void)
+vhost_new_device(int conn_fd)
 {
 	struct virtio_net *dev;
 	int i;
@@ -687,6 +687,7 @@ vhost_new_device(void)
 	dev->flags = VIRTIO_DEV_BUILTIN_VIRTIO_NET;
 	dev->slave_req_fd = -1;
 	dev->postcopy_ufd = -1;
+	dev->conn_fd = conn_fd;
 	rte_spinlock_init(&dev->slave_req_lock);
 
 	return i;
@@ -879,6 +880,16 @@ rte_vhost_get_ifname(int vid, char *buf, size_t len)
 	buf[len - 1] = '\0';
 
 	return 0;
+}
+
+int rte_vhost_get_conn_fd(int vid)
+{
+	struct virtio_net *dev = get_device(vid);
+
+	if (dev == NULL)
+		return 0;
+
+	return dev->conn_fd;
 }
 
 int

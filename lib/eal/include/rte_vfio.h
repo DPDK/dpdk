@@ -406,6 +406,30 @@ rte_vfio_container_dma_map(int container_fd, uint64_t vaddr,
 		uint64_t iova, uint64_t len);
 
 /**
+ * Save DMA mapping info but do not do DMA map.
+ *
+ * @param container_fd
+ *   the specified container fd. Use RTE_VFIO_DEFAULT_CONTAINER_FD to
+ *   use the default container.
+ *
+ * @param vaddr
+ *   Starting virtual address of memory to be mapped.
+ *
+ * @param iova
+ *   Starting IOVA address of memory to be mapped.
+ *
+ * @param len
+ *   Length of memory segment being mapped.
+ *
+ * @return
+ *    0 if successful
+ *   <0 if failed
+ */
+int
+rte_vfio_container_set_dma_map(int container_fd, uint64_t vaddr,
+		uint64_t iova, uint64_t len);
+
+/**
  * Perform DMA unmapping for devices in a container.
  *
  * @param container_fd

@@ -218,7 +218,7 @@ vhost_user_add_connection(int fd, struct vhost_user_socket *vsocket)
 		return;
 	}
 
-	vid = vhost_new_device();
+	vid = vhost_new_device(fd);
 	if (vid == -1) {
 		goto err;
 	}

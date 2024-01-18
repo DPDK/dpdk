@@ -5,6 +5,8 @@
 #ifndef _VIRTIO_VDPA_H_
 #define _VIRTIO_VDPA_H_
 
+#include <virtio_ha.h>
+
 #define VIRTIO_VDPA_MAX_MEM_REGIONS 8
 
 enum {
@@ -78,6 +80,10 @@ struct virtio_vdpa_priv {
 	bool configured;
 	bool dev_conf_read;
 	bool mem_tbl_set;
+	bool ctx_stored;
+	bool fd_args_stored;
+	struct virtio_dev_name vf_name;
+	struct virtio_dev_name pf_name;
 };
 
 struct virtio_vdpa_notifier_work {

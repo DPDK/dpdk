@@ -701,6 +701,17 @@ uint16_t rte_vhost_get_vring_num(int vid);
 int rte_vhost_get_ifname(int vid, char *buf, size_t len);
 
 /**
+ * Get the virtio net device's connection fd
+ *
+ * @param vid
+ *  vhost device ID
+ *
+ * @return
+ *  socket fd on success, -1 on failure
+ */
+int rte_vhost_get_conn_fd(int vid);
+
+/**
  * Get how many avail entries are left in the queue
  *
  * @param vid
