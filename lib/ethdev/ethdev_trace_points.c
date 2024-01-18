@@ -37,6 +37,9 @@ RTE_TRACE_POINT_REGISTER(rte_eth_trace_call_rx_callbacks,
 RTE_TRACE_POINT_REGISTER(rte_eth_trace_call_tx_callbacks,
 	lib.ethdev.call_tx_callbacks)
 
+RTE_TRACE_POINT_REGISTER(rte_eth_trace_tx_queue_count,
+	lib.ethdev.tx_queue_count)
+
 RTE_TRACE_POINT_REGISTER(rte_eth_trace_iterator_init,
 	lib.ethdev.iterator_init)
 

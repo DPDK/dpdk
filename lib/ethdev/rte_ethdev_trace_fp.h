@@ -73,6 +73,14 @@ RTE_TRACE_POINT_FP(
 	rte_trace_point_emit_u64(count);
 )
 
+RTE_TRACE_POINT_FP(
+	rte_eth_trace_tx_queue_count,
+	RTE_TRACE_POINT_ARGS(uint16_t port_id, uint16_t queue_id, int rc),
+	rte_trace_point_emit_u16(port_id);
+	rte_trace_point_emit_u16(queue_id);
+	rte_trace_point_emit_int(rc);
+)
+
 #ifdef __cplusplus
 }
 #endif

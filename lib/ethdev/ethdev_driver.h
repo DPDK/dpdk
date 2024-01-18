@@ -58,6 +58,8 @@ struct rte_eth_dev {
 	eth_rx_queue_count_t rx_queue_count;
 	/** Check the status of a Rx descriptor */
 	eth_rx_descriptor_status_t rx_descriptor_status;
+	/** Get the number of used Tx descriptors */
+	eth_tx_queue_count_t tx_queue_count;
 	/** Check the status of a Tx descriptor */
 	eth_tx_descriptor_status_t tx_descriptor_status;
 	/** Pointer to PMD transmit mbufs reuse function */

@@ -71,6 +71,11 @@ New Features
   Added new function ``rte_eth_find_rss_algo``
   to get RSS hash algorithm by its name.
 
+* **Added query of used descriptors number in Tx queue.**
+
+  * Added a fath path function ``rte_eth_tx_queue_count``
+    to get the number of used descriptors of a Tx queue.
+
 * **Added flow matching items.**
 
   * Added ``RTE_FLOW_ITEM_TYPE_RANDOM`` to match a random value,
