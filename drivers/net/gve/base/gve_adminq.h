@@ -314,6 +314,17 @@ struct gve_stats_report {
 
 GVE_CHECK_STRUCT_LEN(8, gve_stats_report);
 
+/* Numbers of gve tx/rx stats in stats report. */
+#define GVE_TX_STATS_REPORT_NUM        6
+#define GVE_RX_STATS_REPORT_NUM        2
+
+/* Interval to schedule a stats report update, 20000ms. */
+#define GVE_STATS_REPORT_TIMER_PERIOD  20000
+
+/* Numbers of NIC tx/rx stats in stats report. */
+#define NIC_TX_STATS_REPORT_NUM        0
+#define NIC_RX_STATS_REPORT_NUM        4
+
 enum gve_stat_names {
 	/* stats from gve */
 	TX_WAKE_CNT			= 1,
