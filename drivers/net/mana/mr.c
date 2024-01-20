@@ -122,11 +122,12 @@ mana_del_pmd_mr(struct mana_mr_cache *mr)
 }
 
 /*
- * Find a MR from cache. If not found, register a new MR.
+ * Alloc a MR.
+ * Try to find a MR in the cache. If not found, register a new MR.
  */
 struct mana_mr_cache *
-mana_find_pmd_mr(struct mana_mr_btree *local_mr_btree, struct mana_priv *priv,
-		 struct rte_mbuf *mbuf)
+mana_alloc_pmd_mr(struct mana_mr_btree *local_mr_btree, struct mana_priv *priv,
+		  struct rte_mbuf *mbuf)
 {
 	struct rte_mempool *pool = mbuf->pool;
 	int ret, second_try = 0;

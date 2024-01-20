@@ -512,9 +512,9 @@ int mana_start_tx_queues(struct rte_eth_dev *dev);
 int mana_stop_rx_queues(struct rte_eth_dev *dev);
 int mana_stop_tx_queues(struct rte_eth_dev *dev);
 
-struct mana_mr_cache *mana_find_pmd_mr(struct mana_mr_btree *local_tree,
-				       struct mana_priv *priv,
-				       struct rte_mbuf *mbuf);
+struct mana_mr_cache *mana_alloc_pmd_mr(struct mana_mr_btree *local_tree,
+					struct mana_priv *priv,
+					struct rte_mbuf *mbuf);
 int mana_new_pmd_mr(struct mana_mr_btree *local_tree, struct mana_priv *priv,
 		    struct rte_mempool *pool);
 void mana_remove_all_mr(struct mana_priv *priv);

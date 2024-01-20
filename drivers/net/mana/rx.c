@@ -75,7 +75,7 @@ mana_alloc_and_post_rx_wqe(struct mana_rxq *rxq)
 		return -ENOMEM;
 	}
 
-	mr = mana_find_pmd_mr(&rxq->mr_btree, priv, mbuf);
+	mr = mana_alloc_pmd_mr(&rxq->mr_btree, priv, mbuf);
 	if (!mr) {
 		DP_LOG(ERR, "failed to register RX MR");
 		rte_pktmbuf_free(mbuf);

@@ -365,7 +365,7 @@ mana_tx_burst(void *dpdk_txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		/* Create SGL for packet data buffers */
 		for (seg_idx = 0; seg_idx < m_pkt->nb_segs; seg_idx++) {
 			struct mana_mr_cache *mr =
-				mana_find_pmd_mr(&txq->mr_btree, priv, m_seg);
+				mana_alloc_pmd_mr(&txq->mr_btree, priv, m_seg);
 
 			if (!mr) {
 				DP_LOG(ERR, "failed to get MR, pkt_idx %u",
