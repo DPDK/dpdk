@@ -19,6 +19,7 @@
 #include "rte_vdpa.h"
 #include "vdpa_driver.h"
 #include "vhost.h"
+#include "iotlb.h"
 
 /** Double linked list of vDPA devices. */
 TAILQ_HEAD(vdpa_device_list, rte_vdpa_device);
@@ -191,17 +192,21 @@ rte_vdpa_relay_vring_used(int vid, uint16_t qid, void *vring_m)
 			if (unlikely(nr_descs > vq->size))
 				return -1;
 
+			vhost_user_iotlb_rd_lock(vq);
 			desc_ring = (struct vring_desc *)(uintptr_t)
 				vhost_iova_to_vva(dev, vq,
 						vq->desc[desc_id].addr, &dlen,
 						VHOST_ACCESS_RO);
+			vhost_user_iotlb_rd_unlock(vq);
 			if (unlikely(!desc_ring))
 				return -1;
 
 			if (unlikely(dlen < vq->desc[desc_id].len)) {
+				vhost_user_iotlb_rd_lock(vq);
 				idesc = vhost_alloc_copy_ind_table(dev, vq,
 						vq->desc[desc_id].addr,
 						vq->desc[desc_id].len);
+				vhost_user_iotlb_rd_unlock(vq);
 				if (unlikely(!idesc))
 					return -1;
 
@@ -218,9 +223,12 @@ rte_vdpa_relay_vring_used(int vid, uint16_t qid, void *vring_m)
 			if (unlikely(nr_descs-- == 0))
 				goto fail;
 			desc = desc_ring[desc_id];
-			if (desc.flags & VRING_DESC_F_WRITE)
+			if (desc.flags & VRING_DESC_F_WRITE) {
+				vhost_user_iotlb_rd_lock(vq);
 				vhost_log_write_iova(dev, vq, desc.addr,
 						     desc.len);
+				vhost_user_iotlb_rd_unlock(vq);
+			}
 			desc_id = desc.next;
 		} while (desc.flags & VRING_DESC_F_NEXT);
 
