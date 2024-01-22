@@ -9,6 +9,8 @@
 #include <rte_log.h>
 
 #include "fd_man.h"
+#include "vhost.h"
+#include "vdpa_driver.h"
 
 
 #define RTE_LOGTYPE_VHOST_FDMAN RTE_LOGTYPE_USER1
@@ -78,7 +80,7 @@ fdset_find_fd(struct fdset *pfdset, int fd)
 
 static void
 fdset_add_fd(struct fdset *pfdset, int idx, int fd,
-	fd_cb rcb, fd_cb wcb, void *dat)
+	fd_cb rcb, fd_cb wcb, void *dat, bool check_timeout)
 {
 	struct fdentry *pfdentry = &pfdset->fd[idx];
 	struct pollfd *pfd = &pfdset->rwfds[idx];
@@ -87,6 +89,9 @@ fdset_add_fd(struct fdset *pfdset, int idx, int fd,
 	pfdentry->rcb = rcb;
 	pfdentry->wcb = wcb;
 	pfdentry->dat = dat;
+	pfdentry->check_timeout = check_timeout;
+	if (check_timeout)
+		gettimeofday(&pfdentry->timestamp, NULL);
 
 	pfd->fd = fd;
 	pfd->events  = rcb ? POLLIN : 0;
@@ -113,7 +118,7 @@ fdset_init(struct fdset *pfdset)
  * Register the fd in the fdset with read/write handler and context.
  */
 int
-fdset_add(struct fdset *pfdset, int fd, fd_cb rcb, fd_cb wcb, void *dat)
+fdset_add(struct fdset *pfdset, int fd, fd_cb rcb, fd_cb wcb, void *dat, bool check_timeout)
 {
 	int i;
 
@@ -133,7 +138,7 @@ fdset_add(struct fdset *pfdset, int fd, fd_cb rcb, fd_cb wcb, void *dat)
 		}
 	}
 
-	fdset_add_fd(pfdset, i, fd, rcb, wcb, dat);
+	fdset_add_fd(pfdset, i, fd, rcb, wcb, dat, check_timeout);
 	pthread_mutex_unlock(&pfdset->fd_mutex);
 
 	return 0;
@@ -218,6 +223,9 @@ fdset_event_dispatch(void *arg)
 	int i;
 	struct pollfd *pfd;
 	struct fdentry *pfdentry;
+	struct rte_vdpa_device *vdpa_dev;
+	struct timeval time;
+	double time_passed;
 	fd_cb rcb, wcb;
 	void *dat;
 	int fd, numfds;
@@ -262,6 +270,18 @@ fdset_event_dispatch(void *arg)
 				continue;
 			}
 
+			if (pfdentry->check_timeout) {
+				gettimeofday(&time, NULL);
+				time_passed = (time.tv_sec - pfdentry->timestamp.tv_sec) * 1e6;
+				time_passed = (time_passed + (time.tv_usec - pfdentry->timestamp.tv_usec)) * 1e-6;
+				if (time_passed > VHOST_SOCK_TIME_OUT) {
+					vdpa_dev = (struct rte_vdpa_device *)pfdentry->dat;
+					vdpa_dev->ops->mem_tbl_cleanup(vdpa_dev);
+					pfdentry->check_timeout = false;
+					//TO-DO: how to handle client disconnect?
+				}
+			}
+
 			if (!pfd->revents) {
 				pthread_mutex_unlock(&pfdset->fd_mutex);
 				continue;
@@ -272,6 +292,7 @@ fdset_event_dispatch(void *arg)
 			rcb = pfdentry->rcb;
 			wcb = pfdentry->wcb;
 			dat = pfdentry->dat;
+			pfdentry->check_timeout = false;
 			pfdentry->busy = 1;
 
 			pthread_mutex_unlock(&pfdset->fd_mutex);
@@ -340,7 +361,7 @@ fdset_pipe_init(struct fdset *fdset)
 	}
 
 	ret = fdset_add(fdset, fdset->u.readfd,
-			fdset_pipe_read_cb, NULL, NULL);
+			fdset_pipe_read_cb, NULL, NULL, false);
 
 	if (ret < 0) {
 		RTE_LOG(ERR, VHOST_FDMAN,

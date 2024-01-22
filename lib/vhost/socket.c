@@ -260,7 +260,7 @@ vhost_user_add_connection(int fd, struct vhost_user_socket *vsocket)
 	conn->vsocket = vsocket;
 	conn->vid = vid;
 	ret = fdset_add(&vhost_user.fdset, fd, vhost_user_read_cb,
-			NULL, conn);
+			NULL, conn, false);
 	if (ret < 0) {
 		VHOST_LOG_CONFIG(ERR, "(%s) failed to add fd %d into vhost server fdset\n",
 			vsocket->path, fd);
@@ -394,7 +394,7 @@ vhost_user_start_server(struct vhost_user_socket *vsocket)
 		goto err;
 
 	ret = fdset_add(&vhost_user.fdset, fd, vhost_user_server_new_connection,
-		  NULL, vsocket);
+		  NULL, vsocket, true);
 	if (ret < 0) {
 		VHOST_LOG_CONFIG(ERR,
 			"(%s) failed to add listen fd %d to vhost server fdset\n",
@@ -413,6 +413,8 @@ struct vhost_user_reconnect {
 	struct sockaddr_un un;
 	int fd;
 	struct vhost_user_socket *vsocket;
+	bool check_timeout;
+	struct timeval timestamp;
 
 	TAILQ_ENTRY(vhost_user_reconnect) next;
 };
@@ -453,6 +455,9 @@ vhost_user_client_reconnect(void *arg __rte_unused)
 {
 	int ret;
 	struct vhost_user_reconnect *reconn, *next;
+	struct rte_vdpa_device *vdpa_dev;
+	struct timeval time;
+	double time_passed;
 
 	while (1) {
 		pthread_mutex_lock(&reconn_list.mutex);
@@ -474,8 +479,19 @@ vhost_user_client_reconnect(void *arg __rte_unused)
 					reconn->vsocket->path, reconn->fd);
 				goto remove_fd;
 			}
-			if (ret == -1)
+			if (ret == -1) {
+				if (reconn->check_timeout) {
+					gettimeofday(&time, NULL);
+					time_passed = (time.tv_sec - reconn->timestamp.tv_sec) * 1e6;
+					time_passed = (time_passed + (time.tv_usec - reconn->timestamp.tv_usec)) * 1e-6;
+					if (time_passed > VHOST_SOCK_TIME_OUT) {
+						vdpa_dev = (struct rte_vdpa_device *)reconn->vsocket->vdpa_dev;
+						vdpa_dev->ops->mem_tbl_cleanup(vdpa_dev);
+						reconn->check_timeout = false;
+					}
+				}
 				continue;
+			}
 
 			VHOST_LOG_CONFIG(INFO, "(%s) connected\n", reconn->vsocket->path);
 			vhost_user_add_connection(reconn->fd, reconn->vsocket);
@@ -546,6 +562,8 @@ vhost_user_start_client(struct vhost_user_socket *vsocket)
 	reconn->un = vsocket->un;
 	reconn->fd = fd;
 	reconn->vsocket = vsocket;
+	reconn->check_timeout = true;
+	gettimeofday(&reconn->timestamp, NULL);
 	pthread_mutex_lock(&reconn_list.mutex);
 	TAILQ_INSERT_TAIL(&reconn_list.head, reconn, next);
 	pthread_mutex_unlock(&reconn_list.mutex);

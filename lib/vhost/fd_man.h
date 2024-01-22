@@ -6,6 +6,7 @@
 #define _FD_MAN_H_
 #include <pthread.h>
 #include <poll.h>
+#include <sys/time.h>
 
 #define MAX_FDS 1024
 
@@ -17,6 +18,8 @@ struct fdentry {
 	fd_cb wcb;	/* callback when this fd is writeable.*/
 	void *dat;	/* fd context */
 	int busy;	/* whether this entry is being used in cb. */
+	bool check_timeout; /* whether to check connection timeout */
+	struct timeval timestamp; /* Timestamp value for timeout check */
 };
 
 struct fdset {
@@ -41,7 +44,7 @@ struct fdset {
 void fdset_init(struct fdset *pfdset);
 
 int fdset_add(struct fdset *pfdset, int fd,
-	fd_cb rcb, fd_cb wcb, void *dat);
+	fd_cb rcb, fd_cb wcb, void *dat, bool check_timeout);
 
 void *fdset_del(struct fdset *pfdset, int fd);
 int fdset_try_del(struct fdset *pfdset, int fd);

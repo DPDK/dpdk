@@ -81,8 +81,11 @@ struct rte_vdpa_dev_ops {
 	/** Early setup during LM */
 	int (*presetup_done)(int vid);
 
+	/** Memory table cleanup */
+	void (*mem_tbl_cleanup)(struct rte_vdpa_device *dev);
+
 	/** Reserved for future extension */
-	void *reserved[2];
+	void *reserved[1];
 };
 
 /**

@@ -51,6 +51,8 @@
 
 #define MAX_PKT_BURST 32
 
+#define VHOST_SOCK_TIME_OUT 3.00 /* 3 seconds */
+
 #define VHOST_MAX_ASYNC_IT (MAX_PKT_BURST)
 #define VHOST_MAX_ASYNC_VEC 2048
 #define VIRTIO_MAX_RX_PKTLEN 9728U

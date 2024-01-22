@@ -1652,6 +1652,32 @@ virtio_vdpa_dev_presetup_done(int vid)
 	return 0;
 }
 
+static void
+virtio_vdpa_dev_mem_tbl_cleanup(struct rte_vdpa_device *vdev)
+{
+	struct virtio_vdpa_priv *priv =
+		virtio_vdpa_find_priv_resource_by_vdev(vdev);
+	struct virtio_vdpa_vf_drv_mem *mem = &priv->iommu_domain->mem;
+	uint32_t i;
+	int ret;
+
+	ret = virtio_ha_vf_mem_tbl_remove(&priv->vf_name, &priv->pf_name);
+	if (ret < 0)
+		DRV_LOG(ERR, "Failed to remove mem table: %s", vdev->device->name);
+
+	/* Don't call rte_vfio_container_dma_unmap() because at this time, DPDK EAL
+	 * layer does not have the DMA mapping information (the corresponding HVA does
+	 * not exist)
+	 */
+	for (i = 0; i < mem->nregions; i++) {
+		ret = virtio_vdpa_raw_vfio_dma_unmap(priv->iommu_domain->vfio_container_fd,	
+			mem->regions[i].guest_phys_addr, mem->regions[i].size);
+		if (ret < 0)
+			DRV_LOG(ERR, "Failed to DMA unmap region %u: %s", i, vdev->device->name);
+	}
+	mem->nregions = 0;
+}
+
 static struct rte_vdpa_dev_ops virtio_vdpa_ops = {
 	.get_queue_num = virtio_vdpa_vqs_max_get,
 	.get_features = virtio_vdpa_features_get,
@@ -1671,6 +1697,7 @@ static struct rte_vdpa_dev_ops virtio_vdpa_ops = {
 	.set_mem_table = virtio_vdpa_dev_set_mem_table,
 	.dev_cleanup = virtio_vdpa_dev_cleanup,
 	.presetup_done = virtio_vdpa_dev_presetup_done,
+	.mem_tbl_cleanup = virtio_vdpa_dev_mem_tbl_cleanup,
 };
 
 static int vdpa_check_handler(__rte_unused const char *key,
