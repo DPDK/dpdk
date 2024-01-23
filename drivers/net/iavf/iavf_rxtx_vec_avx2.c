@@ -193,62 +193,30 @@ _iavf_recv_raw_pkts_vec_avx2(struct iavf_rx_queue *rxq,
 			 _mm256_loadu_si256((void *)&sw_ring[i + 4]));
 #endif
 
-		__m256i raw_desc0_1, raw_desc2_3, raw_desc4_5, raw_desc6_7;
-#ifdef RTE_LIBRTE_IAVF_16BYTE_RX_DESC
-		/* for AVX we need alignment otherwise loads are not atomic */
-		if (avx_aligned) {
-			/* load in descriptors, 2 at a time, in reverse order */
-			raw_desc6_7 = _mm256_load_si256((void *)(rxdp + 6));
-			rte_compiler_barrier();
-			raw_desc4_5 = _mm256_load_si256((void *)(rxdp + 4));
-			rte_compiler_barrier();
-			raw_desc2_3 = _mm256_load_si256((void *)(rxdp + 2));
-			rte_compiler_barrier();
-			raw_desc0_1 = _mm256_load_si256((void *)(rxdp + 0));
-		} else
-#endif
-		{
-			const __m128i raw_desc7 =
-				_mm_load_si128((void *)(rxdp + 7));
-			rte_compiler_barrier();
-			const __m128i raw_desc6 =
-				_mm_load_si128((void *)(rxdp + 6));
-			rte_compiler_barrier();
-			const __m128i raw_desc5 =
-				_mm_load_si128((void *)(rxdp + 5));
-			rte_compiler_barrier();
-			const __m128i raw_desc4 =
-				_mm_load_si128((void *)(rxdp + 4));
-			rte_compiler_barrier();
-			const __m128i raw_desc3 =
-				_mm_load_si128((void *)(rxdp + 3));
-			rte_compiler_barrier();
-			const __m128i raw_desc2 =
-				_mm_load_si128((void *)(rxdp + 2));
-			rte_compiler_barrier();
-			const __m128i raw_desc1 =
-				_mm_load_si128((void *)(rxdp + 1));
-			rte_compiler_barrier();
-			const __m128i raw_desc0 =
-				_mm_load_si128((void *)(rxdp + 0));
+		const __m128i raw_desc7 = _mm_load_si128((void *)(rxdp + 7));
+		rte_compiler_barrier();
+		const __m128i raw_desc6 = _mm_load_si128((void *)(rxdp + 6));
+		rte_compiler_barrier();
+		const __m128i raw_desc5 = _mm_load_si128((void *)(rxdp + 5));
+		rte_compiler_barrier();
+		const __m128i raw_desc4 = _mm_load_si128((void *)(rxdp + 4));
+		rte_compiler_barrier();
+		const __m128i raw_desc3 = _mm_load_si128((void *)(rxdp + 3));
+		rte_compiler_barrier();
+		const __m128i raw_desc2 = _mm_load_si128((void *)(rxdp + 2));
+		rte_compiler_barrier();
+		const __m128i raw_desc1 = _mm_load_si128((void *)(rxdp + 1));
+		rte_compiler_barrier();
+		const __m128i raw_desc0 = _mm_load_si128((void *)(rxdp + 0));
 
-			raw_desc6_7 =
-				_mm256_inserti128_si256
-					(_mm256_castsi128_si256(raw_desc6),
-					 raw_desc7, 1);
-			raw_desc4_5 =
-				_mm256_inserti128_si256
-					(_mm256_castsi128_si256(raw_desc4),
-					 raw_desc5, 1);
-			raw_desc2_3 =
-				_mm256_inserti128_si256
-					(_mm256_castsi128_si256(raw_desc2),
-					 raw_desc3, 1);
-			raw_desc0_1 =
-				_mm256_inserti128_si256
-					(_mm256_castsi128_si256(raw_desc0),
-					 raw_desc1, 1);
-		}
+		const __m256i raw_desc6_7 =
+			_mm256_inserti128_si256(_mm256_castsi128_si256(raw_desc6), raw_desc7, 1);
+		const __m256i raw_desc4_5 =
+			_mm256_inserti128_si256(_mm256_castsi128_si256(raw_desc4), raw_desc5, 1);
+		const __m256i raw_desc2_3 =
+			_mm256_inserti128_si256(_mm256_castsi128_si256(raw_desc2), raw_desc3, 1);
+		const __m256i raw_desc0_1 =
+			_mm256_inserti128_si256(_mm256_castsi128_si256(raw_desc0), raw_desc1, 1);
 
 		if (split_packet) {
 			int j;
