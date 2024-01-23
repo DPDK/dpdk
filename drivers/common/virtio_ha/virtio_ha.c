@@ -6,10 +6,12 @@
 #include <sys/socket.h>
 #include <sys/epoll.h>
 #include <sys/un.h>
+#include <sys/queue.h>
 #include <unistd.h>
 #include <pthread.h>
 
 #include <rte_log.h>
+#include <rte_spinlock.h>
 
 #include "virtio_ha.h"
 
@@ -20,8 +22,12 @@ RTE_LOG_REGISTER(virtio_ha_ipc_logtype, pmd.vdpa.virtio, NOTICE);
 
 static int ipc_client_sock;
 static bool ipc_client_connected;
+static bool ipc_client_sync;
 static const struct virtio_ha_dev_ctx_cb *pf_ctx_cb;
 static const struct virtio_ha_dev_ctx_cb *vf_ctx_cb;
+static struct virtio_ha_device_list client_devs;
+
+static void sync_dev_context_to_ha(void);
 
 struct virtio_ha_msg *
 virtio_ha_alloc_msg(void)
@@ -297,6 +303,9 @@ ipc_connection_handler(__rte_unused void *ptr)
 					return NULL;
 				}
 				__atomic_store_n(&ipc_client_connected, true, __ATOMIC_RELAXED);
+				__atomic_store_n(&ipc_client_sync, true, __ATOMIC_RELAXED);
+				sync_dev_context_to_ha();
+				__atomic_store_n(&ipc_client_sync, false, __ATOMIC_RELAXED);
 			} else {
 				sleep(1);
 			}
@@ -309,6 +318,9 @@ virtio_ha_ipc_client_init(void)
 {
 	struct sockaddr_un addr;
 	pthread_t thread;
+
+	TAILQ_INIT(&client_devs.pf_list);
+	client_devs.nr_pf = 0;
 
 	ipc_client_sock = socket(AF_UNIX, SOCK_STREAM, 0);
 	if (ipc_client_sock < 0) {
@@ -326,6 +338,8 @@ virtio_ha_ipc_client_init(void)
 		__atomic_store_n(&ipc_client_connected, true, __ATOMIC_RELAXED);
 	}
 
+	__atomic_store_n(&ipc_client_sync, false, __ATOMIC_RELAXED);
+
 	if (pthread_create(&thread, NULL, &ipc_connection_handler, NULL) != 0) {
 		HA_IPC_LOG(ERR, "Failed to create ipc conn handler");
 		return -1;
@@ -334,12 +348,73 @@ virtio_ha_ipc_client_init(void)
 	return 0;
 }
 
+static struct virtio_ha_pf_dev *
+alloc_pf_dev_to_list(const struct virtio_dev_name *pf)
+{
+	struct virtio_ha_pf_dev *dev;
+
+	dev = malloc(sizeof(struct virtio_ha_pf_dev));
+	if (dev == NULL) {
+		HA_IPC_LOG(ERR, "Failed to alloc pf dev");
+		return NULL;
+	}
+
+	memset(dev, 0, sizeof(struct virtio_ha_pf_dev));
+	TAILQ_INIT(&dev->vf_list);
+	dev->nr_vf = 0;
+	memcpy(dev->pf_name.dev_bdf, pf->dev_bdf, PCI_PRI_STR_SIZE);
+	TAILQ_INSERT_TAIL(&client_devs.pf_list, dev, next);
+
+	return dev;
+}
+
+static struct virtio_ha_vf_dev *
+alloc_vf_dev_to_list(struct vdpa_vf_with_devargs *vf_dev, const struct virtio_dev_name *pf)
+{
+	struct virtio_ha_vf_dev_list *vf_list = NULL;
+	struct virtio_ha_pf_dev *dev;
+	struct virtio_ha_vf_dev *vf;
+	size_t len;
+	bool found = false;
+
+	TAILQ_FOREACH(dev, &client_devs.pf_list, next) {
+		if (!strcmp(dev->pf_name.dev_bdf, pf->dev_bdf)) {
+			vf_list = &dev->vf_list;
+			found = true;
+			break;
+		}
+	}
+
+	if (!found)
+		return NULL;
+
+	/* To avoid memory realloc when mem table entry number changes, alloc for max entry num */
+	len = sizeof(struct virtio_ha_vf_dev) +
+		sizeof(struct virtio_vdpa_mem_region) * VIRTIO_HA_MAX_MEM_REGIONS;
+	vf = malloc(len);
+	if (vf == NULL) {
+		HA_IPC_LOG(ERR, "Failed to alloc vf device");
+		return NULL;
+	}
+
+	memset(vf, 0, len);
+	memcpy(&vf->vf_devargs, vf_dev, sizeof(struct vdpa_vf_with_devargs));
+	TAILQ_INSERT_TAIL(vf_list, vf, next);
+
+	return vf;
+}
+
 int
 virtio_ha_pf_list_query(struct virtio_dev_name **list)
 {
 	struct virtio_ha_msg *msg;
-	uint32_t nr_pf;
+	struct virtio_ha_pf_dev *dev;
+	struct virtio_dev_name *names;
+	uint32_t nr_pf, i;
 	int ret;
+
+	while (__atomic_load_n(&ipc_client_sync, __ATOMIC_RELAXED))
+		;
 
 	if (!__atomic_load_n(&ipc_client_connected, __ATOMIC_RELAXED))
 		return 0;
@@ -363,10 +438,21 @@ virtio_ha_pf_list_query(struct virtio_dev_name **list)
 		return -1;
 	}
 
-	*list = (struct virtio_dev_name *)msg->iov.iov_base;
+	names = (struct virtio_dev_name *)msg->iov.iov_base;
+	*list = names;
 	nr_pf = msg->iov.iov_len / sizeof(struct virtio_dev_name);
 
 	virtio_ha_free_msg(msg);
+
+	for (i = 0; i < nr_pf; i++) {
+		dev = alloc_pf_dev_to_list(names + i);
+		if (!dev) {
+			HA_IPC_LOG(ERR, "Failed to alloc pf %s to list", names[i].dev_bdf);
+			return nr_pf;			
+		}
+		dev->pf_ctx.vfio_device_fd = -1;
+		dev->pf_ctx.vfio_group_fd = -1;
+	}
 
 	return nr_pf;
 }
@@ -375,9 +461,14 @@ int
 virtio_ha_vf_list_query(const struct virtio_dev_name *pf,
     struct vdpa_vf_with_devargs **vf_list)
 {
+	struct virtio_ha_vf_dev *vf;
 	struct virtio_ha_msg *msg;
-	uint32_t nr_vf;
+	struct vdpa_vf_with_devargs *dev;
+	uint32_t nr_vf, i;
 	int ret;
+
+	while (__atomic_load_n(&ipc_client_sync, __ATOMIC_RELAXED))
+		;
 
 	if (!__atomic_load_n(&ipc_client_connected, __ATOMIC_RELAXED))
 		return 0;
@@ -402,10 +493,23 @@ virtio_ha_vf_list_query(const struct virtio_dev_name *pf,
 		return -1;
 	}
 
-	*vf_list = (struct vdpa_vf_with_devargs *)msg->iov.iov_base;
+	dev = (struct vdpa_vf_with_devargs *)msg->iov.iov_base;
+	*vf_list = dev;
 	nr_vf = msg->iov.iov_len / sizeof(struct vdpa_vf_with_devargs);
 
 	virtio_ha_free_msg(msg);
+
+	for (i = 0; i < nr_vf; i++) {
+		vf = alloc_vf_dev_to_list(dev + i, pf);
+		if (!vf) {
+			HA_IPC_LOG(ERR, "Failed to alloc vf %s to list", dev[i].vf_name.dev_bdf);
+			return nr_vf;
+		}
+		vf->vf_ctx.vfio_container_fd = -1;
+		vf->vf_ctx.vfio_group_fd = -1;
+		vf->vf_ctx.vfio_device_fd = -1;
+		vf->vhost_fd = -1;
+	}
 
 	return nr_vf;
 }
@@ -413,8 +517,12 @@ virtio_ha_vf_list_query(const struct virtio_dev_name *pf,
 int
 virtio_ha_pf_ctx_query(const struct virtio_dev_name *pf, struct virtio_pf_ctx *ctx)
 {
+	struct virtio_ha_pf_dev *dev;
 	struct virtio_ha_msg *msg;
 	int ret;
+
+	while (__atomic_load_n(&ipc_client_sync, __ATOMIC_RELAXED))
+		;
 
 	if (!__atomic_load_n(&ipc_client_connected, __ATOMIC_RELAXED))
 		return 0;
@@ -449,6 +557,14 @@ virtio_ha_pf_ctx_query(const struct virtio_dev_name *pf, struct virtio_pf_ctx *c
 
 	virtio_ha_free_msg(msg);
 
+	TAILQ_FOREACH(dev, &client_devs.pf_list, next) {
+		if (!strcmp(dev->pf_name.dev_bdf, pf->dev_bdf)) {
+			dev->pf_ctx.vfio_group_fd = msg->fds[0];
+			dev->pf_ctx.vfio_device_fd = msg->fds[1];
+			break;
+		}
+	}
+
 	return 0;
 }
 
@@ -456,9 +572,16 @@ int
 virtio_ha_vf_ctx_query(struct virtio_dev_name *vf,
 	const struct virtio_dev_name *pf, struct vdpa_vf_ctx **ctx)
 {
+	struct virtio_ha_pf_dev *dev;
+	struct virtio_ha_vf_dev *vf_dev;
+	struct virtio_ha_vf_dev_list *vf_list;
 	struct virtio_vdpa_dma_mem *mem;
 	struct virtio_ha_msg *msg;
+	bool found = false;
 	int ret;
+
+	while (__atomic_load_n(&ipc_client_sync, __ATOMIC_RELAXED))
+		;
 
 	if (!__atomic_load_n(&ipc_client_connected, __ATOMIC_RELAXED))
 		return 0;
@@ -506,6 +629,27 @@ virtio_ha_vf_ctx_query(struct virtio_dev_name *vf,
 	free(msg->iov.iov_base);//TO-DO: should make ctx->mem a pointer?
 
 	virtio_ha_free_msg(msg);
+
+	TAILQ_FOREACH(dev, &client_devs.pf_list, next) {
+		if (!strcmp(dev->pf_name.dev_bdf, pf->dev_bdf)) {
+			vf_list = &dev->vf_list;
+			found = true;
+			break;
+		}
+	}
+
+	if (!found)
+		return 0;
+
+	TAILQ_FOREACH(vf_dev, vf_list, next) {
+		if (!strcmp(vf_dev->vf_devargs.vf_name.dev_bdf, vf->dev_bdf)) {
+			vf_dev->vf_ctx.vfio_container_fd = msg->fds[0];
+			vf_dev->vf_ctx.vfio_group_fd = msg->fds[1];
+			vf_dev->vf_ctx.vfio_device_fd = msg->fds[2];
+			memcpy(&vf_dev->vf_ctx.mem, &(*ctx)->mem, msg->iov.iov_len);
+			break;
+		}
+	}
 
 	return 0;
 }
@@ -561,14 +705,11 @@ virtio_ha_pf_register_ctx_cb(const struct virtio_ha_dev_ctx_cb *ctx_cb)
 	return;
 }
 
-int
-virtio_ha_pf_ctx_store(const struct virtio_dev_name *pf, const struct virtio_pf_ctx *ctx)
+static int
+virtio_ha_pf_ctx_store_no_cache(const struct virtio_dev_name *pf, const struct virtio_pf_ctx *ctx)
 {
 	struct virtio_ha_msg *msg;
 	int ret;
-
-	if (!__atomic_load_n(&ipc_client_connected, __ATOMIC_RELAXED))
-		return 0;
 
 	msg = virtio_ha_alloc_msg();
 	if (!msg) {
@@ -593,31 +734,82 @@ virtio_ha_pf_ctx_store(const struct virtio_dev_name *pf, const struct virtio_pf_
 }
 
 int
-virtio_ha_pf_ctx_remove(const struct virtio_dev_name *pf)
+virtio_ha_pf_ctx_store(const struct virtio_dev_name *pf, const struct virtio_pf_ctx *ctx)
 {
-	struct virtio_ha_msg *msg;
-	int ret;
+	struct virtio_ha_pf_dev *dev;
+
+	while (__atomic_load_n(&ipc_client_sync, __ATOMIC_RELAXED))
+		;
+
+	dev = alloc_pf_dev_to_list(pf);
+	if (!dev) {
+		HA_IPC_LOG(ERR, "Alloc pf %s to list failed", pf->dev_bdf);
+		return -1;
+	}
+
+	dev->pf_ctx.vfio_group_fd = ctx->vfio_group_fd;
+	dev->pf_ctx.vfio_device_fd = ctx->vfio_device_fd;
 
 	if (!__atomic_load_n(&ipc_client_connected, __ATOMIC_RELAXED))
 		return 0;
+	else
+		return virtio_ha_pf_ctx_store_no_cache(pf, ctx);
+}
 
-	msg = virtio_ha_alloc_msg();
-	if (!msg) {
-		HA_IPC_LOG(ERR, "Failed to alloc ipc client msg");
-		return -1;
+int
+virtio_ha_pf_ctx_remove(const struct virtio_dev_name *pf)
+{
+	struct virtio_ha_vf_dev_list *vf_list = NULL;
+	struct virtio_ha_pf_dev *dev;
+	struct virtio_ha_vf_dev *vf_dev;
+	bool found = false;
+
+	while (__atomic_load_n(&ipc_client_sync, __ATOMIC_RELAXED))
+		;
+
+	TAILQ_FOREACH(dev, &client_devs.pf_list, next) {
+		if (!strcmp(dev->pf_name.dev_bdf, pf->dev_bdf)) {
+			vf_list = &dev->vf_list;
+			found = true;
+			break;
+		}
 	}
 
-	msg->hdr.type = VIRTIO_HA_PF_REMOVE_CTX;
-	memcpy(msg->hdr.bdf, pf->dev_bdf, PCI_PRI_STR_SIZE);
-	ret = virtio_ha_send_msg(ipc_client_sock, msg);
-	if (ret < 0) {
-		HA_IPC_LOG(ERR, "Failed to send msg");
+	if (!found)
 		return -1;
+
+	if (vf_list) {
+		TAILQ_FOREACH(vf_dev, vf_list, next)
+			free(vf_dev);
 	}
 
-	virtio_ha_free_msg(msg);
+	TAILQ_REMOVE(&client_devs.pf_list, dev, next);
+	free(dev);
 
-	return 0;
+	if (!__atomic_load_n(&ipc_client_connected, __ATOMIC_RELAXED)) {
+		return 0;
+	} else {
+		struct virtio_ha_msg *msg;
+		int ret;
+
+		msg = virtio_ha_alloc_msg();
+		if (!msg) {
+			HA_IPC_LOG(ERR, "Failed to alloc ipc client msg");
+			return -1;
+		}
+
+		msg->hdr.type = VIRTIO_HA_PF_REMOVE_CTX;
+		memcpy(msg->hdr.bdf, pf->dev_bdf, PCI_PRI_STR_SIZE);
+		ret = virtio_ha_send_msg(ipc_client_sock, msg);
+		if (ret < 0) {
+			HA_IPC_LOG(ERR, "Failed to send msg");
+			return -1;
+		}
+
+		virtio_ha_free_msg(msg);
+
+		return 0;
+	}
 }
 
 void
@@ -627,16 +819,13 @@ virtio_ha_vf_register_ctx_cb(const struct virtio_ha_dev_ctx_cb *ctx_cb)
 	return;
 }
 
-int
-virtio_ha_vf_devargs_fds_store(struct vdpa_vf_with_devargs *vf_dev,
+static int
+virtio_ha_vf_devargs_fds_store_no_cache(struct vdpa_vf_with_devargs *vf_dev,
     const struct virtio_dev_name *pf, int vfio_container_fd,
 	int vfio_group_fd, int vfio_device_fd)
 {
 	struct virtio_ha_msg *msg;
 	int ret;
-
-	if (!__atomic_load_n(&ipc_client_connected, __ATOMIC_RELAXED))
-		return 0;
 
 	msg = virtio_ha_alloc_msg();
 	if (!msg) {
@@ -665,46 +854,104 @@ virtio_ha_vf_devargs_fds_store(struct vdpa_vf_with_devargs *vf_dev,
 }
 
 int
-virtio_ha_vf_devargs_fds_remove(struct virtio_dev_name *vf,
-	const struct virtio_dev_name *pf)
+virtio_ha_vf_devargs_fds_store(struct vdpa_vf_with_devargs *vf_dev,
+    const struct virtio_dev_name *pf, int vfio_container_fd,
+	int vfio_group_fd, int vfio_device_fd)
 {
-	struct virtio_ha_msg *msg;
-	int ret;
+	struct virtio_ha_vf_dev *vf;
+
+	while (__atomic_load_n(&ipc_client_sync, __ATOMIC_RELAXED))
+		;
+
+	vf = alloc_vf_dev_to_list(vf_dev, pf);
+	if (!vf) {
+		HA_IPC_LOG(ERR, "Failed to alloc vf %s to list", vf_dev->vf_name.dev_bdf);
+		return -1;
+	}
+
+	vf->vf_ctx.vfio_container_fd = vfio_container_fd;
+	vf->vf_ctx.vfio_group_fd = vfio_group_fd;
+	vf->vf_ctx.vfio_device_fd = vfio_device_fd;
+	vf->vhost_fd = -1;
 
 	if (!__atomic_load_n(&ipc_client_connected, __ATOMIC_RELAXED))
 		return 0;
-
-	msg = virtio_ha_alloc_msg();
-	if (!msg) {
-		HA_IPC_LOG(ERR, "Failed to alloc ipc client msg");
-		return -1;
-	}
-
-	msg->hdr.type = VIRTIO_HA_VF_REMOVE_DEVARG_VFIO_FDS;
-	msg->hdr.size = sizeof(struct virtio_dev_name);
-	memcpy(msg->hdr.bdf, pf->dev_bdf, PCI_PRI_STR_SIZE);
-	msg->iov.iov_len = sizeof(struct virtio_dev_name);
-	msg->iov.iov_base = vf;
-	ret = virtio_ha_send_msg(ipc_client_sock, msg);
-	if (ret < 0) {
-		HA_IPC_LOG(ERR, "Failed to send msg");
-		return -1;
-	}
-
-	virtio_ha_free_msg(msg);
-
-	return 0;
+	else
+		return virtio_ha_vf_devargs_fds_store_no_cache(vf_dev, pf, vfio_container_fd,
+			vfio_group_fd, vfio_device_fd);
 }
 
 int
-virtio_ha_vf_vhost_fd_store(struct virtio_dev_name *vf,
+virtio_ha_vf_devargs_fds_remove(struct virtio_dev_name *vf,
+	const struct virtio_dev_name *pf)
+{
+	struct virtio_ha_vf_dev_list *vf_list = NULL;
+	struct virtio_ha_pf_dev *dev;
+	struct virtio_ha_vf_dev *vf_dev;
+	bool found = false;
+
+	while (__atomic_load_n(&ipc_client_sync, __ATOMIC_RELAXED))
+		;
+
+	TAILQ_FOREACH(dev, &client_devs.pf_list, next) {
+		if (!strcmp(dev->pf_name.dev_bdf, pf->dev_bdf)) {
+			vf_list = &dev->vf_list;
+			found = true;
+			break;
+		}
+	}
+
+	if (!found)
+		return -1;
+
+	found = false;
+	TAILQ_FOREACH(vf_dev, vf_list, next) {
+		if (!strcmp(vf_dev->vf_devargs.vf_name.dev_bdf, vf->dev_bdf)) {
+			found = true;
+			break;
+		}
+	}
+
+	if (found) {
+		TAILQ_REMOVE(vf_list, vf_dev, next);
+		free(vf_dev);
+	}
+
+	if (!__atomic_load_n(&ipc_client_connected, __ATOMIC_RELAXED)) {
+		return 0;
+	} else {
+		struct virtio_ha_msg *msg;
+		int ret;
+
+		msg = virtio_ha_alloc_msg();
+		if (!msg) {
+			HA_IPC_LOG(ERR, "Failed to alloc ipc client msg");
+			return -1;
+		}
+
+		msg->hdr.type = VIRTIO_HA_VF_REMOVE_DEVARG_VFIO_FDS;
+		msg->hdr.size = sizeof(struct virtio_dev_name);
+		memcpy(msg->hdr.bdf, pf->dev_bdf, PCI_PRI_STR_SIZE);
+		msg->iov.iov_len = sizeof(struct virtio_dev_name);
+		msg->iov.iov_base = vf;
+		ret = virtio_ha_send_msg(ipc_client_sock, msg);
+		if (ret < 0) {
+			HA_IPC_LOG(ERR, "Failed to send msg");
+			return -1;
+		}
+
+		virtio_ha_free_msg(msg);
+
+		return 0;
+	}
+}
+
+static int
+virtio_ha_vf_vhost_fd_store_no_cache(struct virtio_dev_name *vf,
 	const struct virtio_dev_name *pf, int fd)
 {
 	struct virtio_ha_msg *msg;
 	int ret;
-
-	if (!__atomic_load_n(&ipc_client_connected, __ATOMIC_RELAXED))
-		return 0;
 
 	msg = virtio_ha_alloc_msg();
 	if (!msg) {
@@ -731,48 +978,108 @@ virtio_ha_vf_vhost_fd_store(struct virtio_dev_name *vf,
 }
 
 int
-virtio_ha_vf_vhost_fd_remove(struct virtio_dev_name *vf,
-	const struct virtio_dev_name *pf)
+virtio_ha_vf_vhost_fd_store(struct virtio_dev_name *vf,
+	const struct virtio_dev_name *pf, int fd)
 {
-	struct virtio_ha_msg *msg;
-	int ret;
+	struct virtio_ha_vf_dev_list *vf_list = NULL;
+	struct virtio_ha_pf_dev *dev;
+	struct virtio_ha_vf_dev *vf_dev;
+	bool found = false;
+
+	while (__atomic_load_n(&ipc_client_sync, __ATOMIC_RELAXED))
+		;
+
+	TAILQ_FOREACH(dev, &client_devs.pf_list, next) {
+		if (!strcmp(dev->pf_name.dev_bdf, pf->dev_bdf)) {
+			vf_list = &dev->vf_list;
+			found = true;
+			break;
+		}
+	}
+
+	if (!found)
+		return -1;
+
+	TAILQ_FOREACH(vf_dev, vf_list, next) {
+		if (!strcmp(vf_dev->vf_devargs.vf_name.dev_bdf, vf->dev_bdf)) {
+			vf_dev->vhost_fd = fd;
+			break;
+		}
+	}
 
 	if (!__atomic_load_n(&ipc_client_connected, __ATOMIC_RELAXED))
 		return 0;
-
-	msg = virtio_ha_alloc_msg();
-	if (!msg) {
-		HA_IPC_LOG(ERR, "Failed to alloc ipc client msg");
-		return -1;
-	}
-
-	msg->hdr.type = VIRTIO_HA_VF_REMOVE_VHOST_FD;
-	msg->hdr.size = sizeof(struct virtio_dev_name);
-	memcpy(msg->hdr.bdf, pf->dev_bdf, PCI_PRI_STR_SIZE);
-	msg->iov.iov_len = sizeof(struct virtio_dev_name);
-	msg->iov.iov_base = vf;
-	ret = virtio_ha_send_msg(ipc_client_sock, msg);
-	if (ret < 0) {
-		HA_IPC_LOG(ERR, "Failed to send msg");
-		return -1;
-	}
-
-	virtio_ha_free_msg(msg);
-
-	return 0;
+	else 
+		return virtio_ha_vf_vhost_fd_store_no_cache(vf, pf, fd);
 }
 
 int
-virtio_ha_vf_mem_tbl_store(const struct virtio_dev_name *vf,
+virtio_ha_vf_vhost_fd_remove(struct virtio_dev_name *vf,
+	const struct virtio_dev_name *pf)
+{
+	struct virtio_ha_vf_dev_list *vf_list = NULL;
+	struct virtio_ha_pf_dev *dev;
+	struct virtio_ha_vf_dev *vf_dev;
+	bool found = false;
+
+	while (__atomic_load_n(&ipc_client_sync, __ATOMIC_RELAXED))
+		;
+
+	TAILQ_FOREACH(dev, &client_devs.pf_list, next) {
+		if (!strcmp(dev->pf_name.dev_bdf, pf->dev_bdf)) {
+			vf_list = &dev->vf_list;
+			found = true;
+			break;
+		}
+	}
+
+	if (!found)
+		return -1;
+
+	TAILQ_FOREACH(vf_dev, vf_list, next) {
+		if (!strcmp(vf_dev->vf_devargs.vf_name.dev_bdf, vf->dev_bdf)) {
+			vf_dev->vhost_fd = -1;
+			break;
+		}
+	}
+
+	if (!__atomic_load_n(&ipc_client_connected, __ATOMIC_RELAXED)) {
+		return 0;
+	} else {
+		struct virtio_ha_msg *msg;
+		int ret;
+
+		msg = virtio_ha_alloc_msg();
+		if (!msg) {
+			HA_IPC_LOG(ERR, "Failed to alloc ipc client msg");
+			return -1;
+		}
+
+		msg->hdr.type = VIRTIO_HA_VF_REMOVE_VHOST_FD;
+		msg->hdr.size = sizeof(struct virtio_dev_name);
+		memcpy(msg->hdr.bdf, pf->dev_bdf, PCI_PRI_STR_SIZE);
+		msg->iov.iov_len = sizeof(struct virtio_dev_name);
+		msg->iov.iov_base = vf;
+		ret = virtio_ha_send_msg(ipc_client_sock, msg);
+		if (ret < 0) {
+			HA_IPC_LOG(ERR, "Failed to send msg");
+			return -1;
+		}
+
+		virtio_ha_free_msg(msg);
+
+		return 0;
+	}
+}
+
+static int
+virtio_ha_vf_mem_tbl_store_no_cache(const struct virtio_dev_name *vf,
     const struct virtio_dev_name *pf, const struct virtio_vdpa_dma_mem *mem)
 {
 	struct virtio_dev_name *vf_dev;
 	struct virtio_ha_msg *msg;
 	size_t mem_len;
 	int ret;
-
-	if (!__atomic_load_n(&ipc_client_connected, __ATOMIC_RELAXED))
-		return 0;
 
 	msg = virtio_ha_alloc_msg();
 	if (!msg) {
@@ -803,37 +1110,146 @@ virtio_ha_vf_mem_tbl_store(const struct virtio_dev_name *vf,
 	free(msg->iov.iov_base);
 	virtio_ha_free_msg(msg);
 
-	return 0;	
+	return 0;
+}
+
+int
+virtio_ha_vf_mem_tbl_store(const struct virtio_dev_name *vf,
+    const struct virtio_dev_name *pf, const struct virtio_vdpa_dma_mem *mem)
+{
+	struct virtio_ha_vf_dev_list *vf_list = NULL;
+	struct virtio_ha_pf_dev *dev;
+	struct virtio_ha_vf_dev *vf_dev;
+	size_t len;
+	bool found = false;
+
+	while (__atomic_load_n(&ipc_client_sync, __ATOMIC_RELAXED))
+		;
+
+	TAILQ_FOREACH(dev, &client_devs.pf_list, next) {
+		if (!strcmp(dev->pf_name.dev_bdf, pf->dev_bdf)) {
+			vf_list = &dev->vf_list;
+			found = true;
+			break;
+		}
+	}
+
+	if (!found)
+		return -1;
+
+	len = sizeof(struct virtio_vdpa_dma_mem) +
+		mem->nregions * sizeof(struct virtio_vdpa_mem_region);
+	TAILQ_FOREACH(vf_dev, vf_list, next) {
+		if (!strcmp(vf_dev->vf_devargs.vf_name.dev_bdf, vf->dev_bdf)) {
+			memcpy(&vf_dev->vf_ctx.mem, mem, len);
+			break;
+		}
+	}
+
+	if (!__atomic_load_n(&ipc_client_connected, __ATOMIC_RELAXED))
+		return 0;
+	else
+		return virtio_ha_vf_mem_tbl_store_no_cache(vf, pf, mem);
 }
 
 int
 virtio_ha_vf_mem_tbl_remove(struct virtio_dev_name *vf,
 	const struct virtio_dev_name *pf)
 {
-	struct virtio_ha_msg *msg;
+	struct virtio_ha_vf_dev_list *vf_list = NULL;
+	struct virtio_ha_pf_dev *dev;
+	struct virtio_ha_vf_dev *vf_dev;
+	struct virtio_vdpa_dma_mem *mem;
+	bool found = false;
+
+	while (__atomic_load_n(&ipc_client_sync, __ATOMIC_RELAXED))
+		;
+
+	TAILQ_FOREACH(dev, &client_devs.pf_list, next) {
+		if (!strcmp(dev->pf_name.dev_bdf, pf->dev_bdf)) {
+			vf_list = &dev->vf_list;
+			found = true;
+			break;
+		}
+	}
+
+	if (!found)
+		return -1;
+
+	TAILQ_FOREACH(vf_dev, vf_list, next) {
+		if (!strcmp(vf_dev->vf_devargs.vf_name.dev_bdf, vf->dev_bdf)) {
+			mem = &vf_dev->vf_ctx.mem;
+			mem->nregions = 0;
+			break;
+		}
+	}
+
+	if (!__atomic_load_n(&ipc_client_connected, __ATOMIC_RELAXED)) {
+		return 0;
+	} else {
+		struct virtio_ha_msg *msg;
+		int ret;
+
+		msg = virtio_ha_alloc_msg();
+		if (!msg) {
+			HA_IPC_LOG(ERR, "Failed to alloc ipc client msg");
+			return -1;
+		}
+
+		msg->hdr.type = VIRTIO_HA_VF_REMOVE_DMA_TBL;
+		msg->hdr.size = sizeof(struct virtio_dev_name);
+		memcpy(msg->hdr.bdf, pf->dev_bdf, PCI_PRI_STR_SIZE);
+		msg->iov.iov_len = sizeof(struct virtio_dev_name);
+		msg->iov.iov_base = vf;
+		ret = virtio_ha_send_msg(ipc_client_sock, msg);
+		if (ret < 0) {
+			HA_IPC_LOG(ERR, "Failed to send msg");
+			return -1;
+		}
+
+		virtio_ha_free_msg(msg);
+
+		return 0;
+	}
+}
+
+static void
+sync_dev_context_to_ha(void)
+{
+	struct virtio_ha_pf_dev *dev;
+	struct virtio_ha_vf_dev *vf_dev;
+	struct virtio_ha_vf_dev_list *vf_list;
 	int ret;
 
-	if (!__atomic_load_n(&ipc_client_connected, __ATOMIC_RELAXED))
-		return 0;
+	TAILQ_FOREACH(dev, &client_devs.pf_list, next) {
+		ret = virtio_ha_pf_ctx_store_no_cache(&dev->pf_name, &dev->pf_ctx);
+		if (ret) {
+			HA_IPC_LOG(ERR, "Failed to sync pf ctx");
+			continue;
+		}
 
-	msg = virtio_ha_alloc_msg();
-	if (!msg) {
-		HA_IPC_LOG(ERR, "Failed to alloc ipc client msg");
-		return -1;
+		vf_list = &dev->vf_list;
+
+		TAILQ_FOREACH(vf_dev, vf_list, next) {
+			ret = virtio_ha_vf_devargs_fds_store_no_cache(&vf_dev->vf_devargs, &dev->pf_name,
+				vf_dev->vf_ctx.vfio_container_fd, vf_dev->vf_ctx.vfio_group_fd,
+				vf_dev->vf_ctx.vfio_device_fd);
+			if (ret) {
+				HA_IPC_LOG(ERR, "Failed to sync vf devargs and fds");
+				continue;
+			}
+
+			ret = virtio_ha_vf_vhost_fd_store_no_cache(&vf_dev->vf_devargs.vf_name, &dev->pf_name, vf_dev->vhost_fd);
+			if (ret) {
+				HA_IPC_LOG(ERR, "Failed to sync vf vhost fd");
+				continue;
+			}
+
+			ret = virtio_ha_vf_mem_tbl_store_no_cache(&vf_dev->vf_devargs.vf_name, &dev->pf_name, &vf_dev->vf_ctx.mem);
+			if (ret) {
+				HA_IPC_LOG(ERR, "Failed to sync vf memory table");
+				continue;
+			}
+		}
 	}
-
-	msg->hdr.type = VIRTIO_HA_VF_REMOVE_DMA_TBL;
-	msg->hdr.size = sizeof(struct virtio_dev_name);
-	memcpy(msg->hdr.bdf, pf->dev_bdf, PCI_PRI_STR_SIZE);
-	msg->iov.iov_len = sizeof(struct virtio_dev_name);
-	msg->iov.iov_base = vf;
-	ret = virtio_ha_send_msg(ipc_client_sock, msg);
-	if (ret < 0) {
-		HA_IPC_LOG(ERR, "Failed to send msg");
-		return -1;
-	}
-
-	virtio_ha_free_msg(msg);
-
-	return 0;	
 }

@@ -14,6 +14,7 @@
 #define VIRTIO_HA_UDS_PATH "/tmp/virtio_ha_ipc"
 #define VDPA_MAX_SOCK_LEN 108 /* Follow definition of struct sockaddr_un in sys/un.h */
 #define VIRTIO_HA_MAX_FDS 3
+#define VIRTIO_HA_MAX_MEM_REGIONS 8
 
 struct virtio_dev_name;
 

@@ -14,8 +14,6 @@
 
 #include <virtio_ha.h>
 
-#define VIRTIO_HA_MAX_MEM_REGIONS 8
-
 RTE_LOG_REGISTER(virtio_ha_app_logtype, test.ha, INFO);
 
 #define HA_APP_LOG(level, fmt, args...) \
