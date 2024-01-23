@@ -433,6 +433,7 @@ signal_handler(int signum)
 
 		if (eal_start) {
 			rte_vdpa_vf_ctrl_ctx_remove(false);
+			rte_vdpa_pf_ctrl_ctx_remove(false);
 
 			vdpa_sample_quit();
 

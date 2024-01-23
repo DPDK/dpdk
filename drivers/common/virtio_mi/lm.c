@@ -85,6 +85,7 @@ TAILQ_HEAD(virtio_vdpa_mi_privs, virtio_vdpa_pf_priv) virtio_mi_priv_list =
 						TAILQ_HEAD_INITIALIZER(virtio_mi_priv_list);
 static pthread_mutex_t mi_priv_list_lock = PTHREAD_MUTEX_INITIALIZER;
 static struct virtio_ha_pf_drv_ctx cached_ctx;
+static bool ctx_remove_enabled;
 
 static struct virtio_admin_ctrl *
 virtio_vdpa_send_admin_command_split(struct virtadmin_ctl *avq,
@@ -1036,6 +1037,12 @@ virtio_vdpa_blk_dev_get_adminq_idx(struct virtio_vdpa_pf_priv *priv __rte_unused
 	return 0;
 }
 
+void
+rte_vdpa_pf_ctrl_ctx_remove(bool enable)
+{
+	ctx_remove_enabled = enable;
+}
+
 static struct virtio_vdpa_dev_ops virtio_vdpa_net_dev_ops = {
 	.get_required_features = virtio_vdpa_get_net_dev_required_features,
 	.get_adminq_idx = virtio_vdpa_net_dev_get_adminq_idx,
@@ -1206,7 +1213,8 @@ virtio_vdpa_mi_dev_remove(struct rte_pci_device *pci_dev)
 	pthread_mutex_unlock(&mi_priv_list_lock);
 
 	if (found) {
-		virtio_ha_pf_ctx_remove(&priv->pf_name);
+		if (ctx_remove_enabled)
+			virtio_ha_pf_ctx_remove(&priv->pf_name);
 		virtio_vdpa_admin_queue_free(priv);
 		virtio_pci_dev_reset(priv->vpdev,VIRTIO_VDPA_REMOVE_RESET_TIME_OUT);
 		virtio_pci_dev_free(priv->vpdev);

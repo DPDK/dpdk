@@ -121,6 +121,8 @@ static cJSON *vdpa_pf_dev_remove(const char *pf_name)
 		return vdpa_rpc_format_errno(result, -VFE_VDPA_ERR_REMOVE_PF_WITH_VF);
 	}
 
+	rte_vdpa_pf_ctrl_ctx_remove(true);
+
 	return vdpa_rpc_format_errno(result, rte_vdpa_pf_dev_remove(pf_name));
 }
 

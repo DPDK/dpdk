@@ -68,5 +68,7 @@ int
 rte_vdpa_pf_dev_remove(const char *pf_name);
 int
 rte_vdpa_get_pf_list(struct virtio_vdpa_pf_info *pf_info, int max_pf_num);
+void
+rte_vdpa_pf_ctrl_ctx_remove(bool enable);
 
 #endif /* _VIRTIO_LM_H_ */

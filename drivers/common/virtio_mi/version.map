@@ -23,6 +23,7 @@ DPDK_22 {
 	rte_vdpa_pf_dev_add;
 	rte_vdpa_pf_dev_remove;
 	rte_vdpa_get_pf_list;
+	rte_vdpa_pf_ctrl_ctx_remove;
 
 	local: *;
 };
