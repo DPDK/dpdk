@@ -52,6 +52,9 @@ virtio_user_read_dev_config(struct virtio_hw *hw, size_t offset,
 
 	if (offset == offsetof(struct virtio_net_config, max_virtqueue_pairs))
 		*(uint16_t *)dst = dev->max_queue_pairs;
+
+	if (offset >= offsetof(struct virtio_net_config, rss_max_key_size))
+		virtio_user_dev_get_rss_config(dev, dst, offset, length);
 }
 
 static void

@@ -305,6 +305,24 @@ virtio_user_dev_init_max_queue_pairs(struct virtio_user_dev *dev, uint32_t user_
 }
 
 int
+virtio_user_dev_get_rss_config(struct virtio_user_dev *dev, void *dst, size_t offset, int length)
+{
+	int ret = 0;
+
+	if (!(dev->device_features & (1ULL << VIRTIO_NET_F_RSS)))
+		return -ENOTSUP;
+
+	if (!dev->ops->get_config)
+		return -ENOTSUP;
+
+	ret = dev->ops->get_config(dev, dst, offset, length);
+	if (ret)
+		PMD_DRV_LOG(ERR, "(%s) Failed to get rss config in device", dev->path);
+
+	return ret;
+}
+
+int
 virtio_user_dev_set_mac(struct virtio_user_dev *dev)
 {
 	int ret = 0;
@@ -682,7 +700,8 @@ virtio_user_free_vrings(struct virtio_user_dev *dev)
 	 1ULL << VIRTIO_F_IN_ORDER		|	\
 	 1ULL << VIRTIO_F_VERSION_1		|	\
 	 1ULL << VIRTIO_F_RING_PACKED		|	\
-	 1ULL << VIRTIO_F_NOTIFICATION_DATA)
+	 1ULL << VIRTIO_F_NOTIFICATION_DATA	|	\
+	 1ULL << VIRTIO_NET_F_RSS)
 
 int
 virtio_user_dev_init(struct virtio_user_dev *dev, char *path, uint16_t queues,
@@ -894,6 +913,11 @@ virtio_user_handle_ctrl_msg_split(struct virtio_user_dev *dev, struct vring *vri
 
 		queues = *(uint16_t *)(uintptr_t)vring->desc[idx_data].addr;
 		status = virtio_user_handle_mq(dev, queues);
+	} else if (hdr->class == VIRTIO_NET_CTRL_MQ && hdr->cmd == VIRTIO_NET_CTRL_MQ_RSS_CONFIG) {
+		struct virtio_net_ctrl_rss *rss;
+
+		rss = (struct virtio_net_ctrl_rss *)(uintptr_t)vring->desc[idx_data].addr;
+		status = virtio_user_handle_mq(dev, rss->max_tx_vq);
 	} else if (hdr->class == VIRTIO_NET_CTRL_RX  ||
 		   hdr->class == VIRTIO_NET_CTRL_MAC ||
 		   hdr->class == VIRTIO_NET_CTRL_VLAN) {
@@ -955,6 +979,11 @@ virtio_user_handle_ctrl_msg_packed(struct virtio_user_dev *dev,
 		queues = *(uint16_t *)(uintptr_t)
 				vring->desc[idx_data].addr;
 		status = virtio_user_handle_mq(dev, queues);
+	} else if (hdr->class == VIRTIO_NET_CTRL_MQ && hdr->cmd == VIRTIO_NET_CTRL_MQ_RSS_CONFIG) {
+		struct virtio_net_ctrl_rss *rss;
+
+		rss = (struct virtio_net_ctrl_rss *)(uintptr_t)vring->desc[idx_data].addr;
+		status = virtio_user_handle_mq(dev, rss->max_tx_vq);
 	} else if (hdr->class == VIRTIO_NET_CTRL_RX  ||
 		   hdr->class == VIRTIO_NET_CTRL_MAC ||
 		   hdr->class == VIRTIO_NET_CTRL_VLAN) {
