@@ -112,4 +112,5 @@ int virtio_vdpa_dirty_desc_get(struct virtio_vdpa_priv *priv, int qix, uint64_t 
 int virtio_vdpa_used_vring_addr_get(struct virtio_vdpa_priv *priv, int qix, uint64_t *used_vring_addr, uint32_t *used_vring_len);
 const struct rte_memzone * virtio_vdpa_dev_dp_map_get(struct virtio_vdpa_priv *priv, size_t len);
 uint64_t virtio_vdpa_gpa_to_hva(int vid, uint64_t gpa);
+void rte_vdpa_vf_ctrl_ctx_remove(bool enable);
 #endif /* _VIRTIO_VDPA_H_ */

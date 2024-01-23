@@ -8,4 +8,4 @@ sources = files(
 	'virtio_vdpa_blk.c',
 	'rte_vf_rpc.c',
 )
-headers = files('rte_vf_rpc.h')
+headers = files('rte_vf_rpc.h', 'virtio_vdpa.h')

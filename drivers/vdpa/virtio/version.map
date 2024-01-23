@@ -6,6 +6,7 @@ DPDK_22 {
 	rte_vdpa_get_vf_list;
 	rte_vdpa_get_vf_info;
 	rte_vdpa_vf_dev_debug;
+	rte_vdpa_vf_ctrl_ctx_remove;
 
 	local: *;
 };

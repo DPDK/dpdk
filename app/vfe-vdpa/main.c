@@ -22,6 +22,7 @@
 #include <rte_vf_rpc.h>
 #include <rte_vfio.h>
 #include <virtio_ha.h>
+#include <virtio_vdpa.h>
 
 #include <cmdline_parse.h>
 #include <cmdline_socket.h>
@@ -338,6 +339,9 @@ void vdpa_with_socket_path_stop(const char *vf_name)
 		vf_name);
 		return;
 	}
+
+	rte_vdpa_vf_ctrl_ctx_remove(true);
+
 	if (vport->ifname[0] != '\0') {
 		close_vdpa(vport);
 		memset(vport, 0, sizeof(*vport));
@@ -428,6 +432,8 @@ signal_handler(int signum)
 			vdpa_rpc_stop(&vdpa_rpc_ctx);
 
 		if (eal_start) {
+			rte_vdpa_vf_ctrl_ctx_remove(false);
+
 			vdpa_sample_quit();
 
 			RTE_DEV_FOREACH_SAFE(dev, "class=vdpa", &dev_iter, tdev) {

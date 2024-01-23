@@ -52,6 +52,7 @@ static TAILQ_HEAD(virtio_vdpa_iommu_domains, virtio_vdpa_iommu_domain) virtio_io
 
 
 static struct virtio_ha_vf_drv_ctx cached_ctx;
+static bool ctx_remove_enabled;
 
 static void
 virtio_ha_vf_drv_ctx_set(const struct virtio_dev_name *vf, const void *ctx)
@@ -795,35 +796,37 @@ virtio_vdpa_dev_cleanup(int vid)
 		priv->vrings[i]->conf_enable = false;
 	}
 
-	ret = virtio_ha_vf_vhost_fd_remove(&priv->vf_name, &priv->pf_name);
-	if (ret < 0)
-		DRV_LOG(ERR, "Failed to remove vhost fd: %s", vdev->device->name);
+	if (ctx_remove_enabled) {
+		ret = virtio_ha_vf_vhost_fd_remove(&priv->vf_name, &priv->pf_name);
+		if (ret < 0)
+			DRV_LOG(ERR, "Failed to remove vhost fd: %s", vdev->device->name);
 
-	ret = virtio_ha_vf_mem_tbl_remove(&priv->vf_name, &priv->pf_name);
-	if (ret < 0)
-		DRV_LOG(ERR, "Failed to remove mem table: %s", vdev->device->name);
+		ret = virtio_ha_vf_mem_tbl_remove(&priv->vf_name, &priv->pf_name);
+		if (ret < 0)
+			DRV_LOG(ERR, "Failed to remove mem table: %s", vdev->device->name);
 
-	iommu_domain = priv->iommu_domain;
-	pthread_mutex_lock(&iommu_domain->domain_lock);
-	if (priv->mem_tbl_set) {
-		iommu_domain->mem_tbl_ref_cnt--;
-		priv->mem_tbl_set = false;
-	}
-	if (iommu_domain->mem_tbl_ref_cnt == 0) {
-		for (i = 0; i < iommu_domain->mem.nregions; i++) {
-			reg = &iommu_domain->mem.regions[i];
-			if (virtio_vdpa_dev_dma_unmap(priv->vfio_container_fd,
-				reg->host_phys_addr, reg->host_user_addr, reg->guest_phys_addr,
-				reg->size) < 0) {
-				DRV_LOG(ERR, "%s vdpa unmap DMA failed ret:%d",
-							priv->vdev->device->name, ret);
-				goto err;
-			}
+		iommu_domain = priv->iommu_domain;
+		pthread_mutex_lock(&iommu_domain->domain_lock);
+		if (priv->mem_tbl_set) {
+			iommu_domain->mem_tbl_ref_cnt--;
+			priv->mem_tbl_set = false;
 		}
+		if (iommu_domain->mem_tbl_ref_cnt == 0) {
+			for (i = 0; i < iommu_domain->mem.nregions; i++) {
+				reg = &iommu_domain->mem.regions[i];
+				if (virtio_vdpa_dev_dma_unmap(priv->vfio_container_fd,
+					reg->host_phys_addr, reg->host_user_addr, reg->guest_phys_addr,
+					reg->size) < 0) {
+					DRV_LOG(ERR, "%s vdpa unmap DMA failed ret:%d",
+								priv->vdev->device->name, ret);
+					goto err;
+				}
+			}
 err:
-		iommu_domain->mem.nregions = 0;
+			iommu_domain->mem.nregions = 0;
+		}
+		pthread_mutex_unlock(&iommu_domain->domain_lock);			
 	}
-	pthread_mutex_unlock(&iommu_domain->domain_lock);
 	return 0;
 }
 
@@ -1871,6 +1874,15 @@ virtio_vdpa_get_vfid(const char *pf_name, const char *vf_name, int *vfid)
 	return -ENODEV;
 }
 
+/* Control remove/cleanup behavior of this driver. When ctx_remove_enabled is true,
+ * device context will be removed from HA service, otherwise it will not.
+ */
+void
+rte_vdpa_vf_ctrl_ctx_remove(bool enable)
+{
+	ctx_remove_enabled = enable;
+}
+
 static int
 virtio_vdpa_dev_do_remove(struct rte_pci_device *pci_dev, struct virtio_vdpa_priv *priv)
 {
@@ -1964,11 +1976,14 @@ virtio_vdpa_dev_do_remove(struct rte_pci_device *pci_dev, struct virtio_vdpa_pri
 		rte_memzone_free(priv->state_mz_remote);
 	if (priv->vdpa_dp_map)
 		rte_memzone_free(priv->vdpa_dp_map);
-	rte_free(priv);
 
-	ret = virtio_ha_vf_devargs_fds_remove(&priv->vf_name, &priv->pf_name);
-	if (ret < 0)
-		DRV_LOG(ERR, "Failed to remove vf devargs and fds: %s", priv->vdev->device->name);
+	if (ctx_remove_enabled) {
+		ret = virtio_ha_vf_devargs_fds_remove(&priv->vf_name, &priv->pf_name);
+		if (ret < 0)
+			DRV_LOG(ERR, "Failed to remove vf devargs and fds: %s", priv->vf_name.dev_bdf);
+	}
+
+	rte_free(priv);
 
 	return 0;
 }
