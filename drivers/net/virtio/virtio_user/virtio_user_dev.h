@@ -64,6 +64,8 @@ struct virtio_user_dev {
 	struct virtqueue	*scvq;
 
 	void *backend_data;
+
+	uint16_t **notify_area;
 };
 
 int virtio_user_dev_set_features(struct virtio_user_dev *dev);

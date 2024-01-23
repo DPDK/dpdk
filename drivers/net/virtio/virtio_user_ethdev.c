@@ -18,6 +18,7 @@
 #include <bus_vdev_driver.h>
 #include <rte_alarm.h>
 #include <rte_cycles.h>
+#include <rte_io.h>
 
 #include "virtio_ethdev.h"
 #include "virtio_logs.h"
@@ -232,6 +233,9 @@ virtio_user_setup_queue(struct virtio_hw *hw, struct virtqueue *vq)
 	else
 		virtio_user_setup_queue_split(vq, dev);
 
+	if (dev->notify_area)
+		vq->notify_addr = dev->notify_area[vq->vq_queue_index];
+
 	if (dev->hw_cvq && hw->cvq && (virtnet_cq_to_vq(hw->cvq) == vq))
 		return virtio_user_dev_create_shadow_cvq(dev, vq);
 
@@ -262,8 +266,8 @@ virtio_user_del_queue(struct virtio_hw *hw, struct virtqueue *vq)
 static void
 virtio_user_notify_queue(struct virtio_hw *hw, struct virtqueue *vq)
 {
-	uint64_t buf = 1;
 	struct virtio_user_dev *dev = virtio_user_get_dev(hw);
+	uint64_t notify_data = 1;
 
 	if (hw->cvq && (virtnet_cq_to_vq(hw->cvq) == vq)) {
 		virtio_user_handle_cq(dev, vq->vq_queue_index);
@@ -271,9 +275,34 @@ virtio_user_notify_queue(struct virtio_hw *hw, struct virtqueue *vq)
 		return;
 	}
 
-	if (write(dev->kickfds[vq->vq_queue_index], &buf, sizeof(buf)) < 0)
-		PMD_DRV_LOG(ERR, "failed to kick backend: %s",
-			    strerror(errno));
+	if (!dev->notify_area) {
+		if (write(dev->kickfds[vq->vq_queue_index], &notify_data,
+			  sizeof(notify_data)) < 0)
+			PMD_DRV_LOG(ERR, "failed to kick backend: %s",
+				    strerror(errno));
+		return;
+	} else if (!virtio_with_feature(hw, VIRTIO_F_NOTIFICATION_DATA)) {
+		rte_write16(vq->vq_queue_index, vq->notify_addr);
+		return;
+	}
+
+	if (virtio_with_packed_queue(hw)) {
+		/* Bit[0:15]: vq queue index
+		 * Bit[16:30]: avail index
+		 * Bit[31]: avail wrap counter
+		 */
+		notify_data = ((uint32_t)(!!(vq->vq_packed.cached_flags &
+				VRING_PACKED_DESC_F_AVAIL)) << 31) |
+				((uint32_t)vq->vq_avail_idx << 16) |
+				vq->vq_queue_index;
+	} else {
+		/* Bit[0:15]: vq queue index
+		 * Bit[16:31]: avail index
+		 */
+		notify_data = ((uint32_t)vq->vq_avail_idx << 16) |
+				vq->vq_queue_index;
+	}
+	rte_write32(notify_data, vq->notify_addr);
 }
 
 static int
