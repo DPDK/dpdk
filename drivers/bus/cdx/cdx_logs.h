@@ -23,15 +23,4 @@ extern int cdx_logtype_bus;
 #define CDX_BUS_WARN(fmt, args...) \
 	CDX_BUS_LOG(WARNING, fmt, ## args)
 
-/* DP Logs, toggled out at compile time if level lower than current level */
-#define CDX_BUS_DP_LOG(level, fmt, args...) \
-	RTE_LOG_DP(level, PMD, fmt, ## args)
-
-#define CDX_BUS_DP_DEBUG(fmt, args...) \
-	CDX_BUS_DP_LOG(DEBUG, fmt, ## args)
-#define CDX_BUS_DP_INFO(fmt, args...) \
-	CDX_BUS_DP_LOG(INFO, fmt, ## args)
-#define CDX_BUS_DP_WARN(fmt, args...) \
-	CDX_BUS_DP_LOG(WARNING, fmt, ## args)
-
 #endif /* CDX_LOGS_H */

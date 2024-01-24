@@ -35,15 +35,4 @@ extern int dpaax_logger;
 #define DPAAX_WARN(fmt, args...) \
 	DPAAX_LOG(WARNING, fmt, ## args)
 
-/* DP Logs, toggled out at compile time if level lower than current level */
-#define DPAAX_DP_LOG(level, fmt, args...) \
-	RTE_LOG_DP(level, PMD, fmt, ## args)
-
-#define DPAAX_DP_DEBUG(fmt, args...) \
-	DPAAX_DP_LOG(DEBUG, fmt, ## args)
-#define DPAAX_DP_INFO(fmt, args...) \
-	DPAAX_DP_LOG(INFO, fmt, ## args)
-#define DPAAX_DP_WARN(fmt, args...) \
-	DPAAX_DP_LOG(WARNING, fmt, ## args)
-
 #endif /* _DPAAX_LOGS_H_ */
