@@ -2389,7 +2389,7 @@ int bnx2x_alloc_ilt_mem(struct bnx2x_softc *sc)
 static int bnx2x_alloc_ilt_lines_mem(struct bnx2x_softc *sc)
 {
 	sc->ilt->lines = rte_calloc("",
-				    sizeof(struct ilt_line), ILT_MAX_LINES,
+				    ILT_MAX_LINES, sizeof(struct ilt_line),
 				    RTE_CACHE_LINE_SIZE);
 	return sc->ilt->lines == NULL;
 }
