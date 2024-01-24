@@ -2002,7 +2002,7 @@ handle_dev_dump(const char *cmd __rte_unused,
 
 	RTE_EVENTDEV_VALID_DEVID_OR_ERR_RET(dev_id, -EINVAL);
 
-	buf = calloc(sizeof(char), RTE_TEL_MAX_SINGLE_STRING_LEN);
+	buf = calloc(RTE_TEL_MAX_SINGLE_STRING_LEN, sizeof(char));
 	if (buf == NULL)
 		return -ENOMEM;
 
