@@ -335,6 +335,10 @@ F: examples/*/*_sse*
 F: examples/*/*_avx*
 F: examples/common/sse/
 
+AMD x86
+M: Vipin Varghese <vipin.varghese@amd.com>
+F: doc/guides/linux_gsg/amd_platform.rst
+
 Linux EAL (with overlaps)
 F: lib/eal/linux/
 F: doc/guides/linux_gsg/
