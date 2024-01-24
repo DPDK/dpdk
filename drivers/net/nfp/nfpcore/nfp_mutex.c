@@ -151,7 +151,7 @@ nfp_cpp_mutex_alloc(struct nfp_cpp *cpp, int target,
 	if (tmp != key)
 		return NFP_ERRPTR(EEXIST);
 
-	mutex = calloc(sizeof(*mutex), 1);
+	mutex = calloc(1, sizeof(*mutex));
 	if (!mutex)
 		return NFP_ERRPTR(ENOMEM);
 
