@@ -43,7 +43,8 @@ const char *cperf_op_type_strs[] = {
 	[CPERF_PDCP] = "pdcp",
 	[CPERF_DOCSIS] = "docsis",
 	[CPERF_IPSEC] = "ipsec",
-	[CPERF_ASYM_MODEX] = "modex"
+	[CPERF_ASYM_MODEX] = "modex",
+	[CPERF_TLS] = "tls-record"
 };
 
 const struct cperf_test cperf_testmap[] = {
@@ -236,6 +237,7 @@ cperf_initialize_cryptodev(struct cperf_options *opts, uint8_t *enabled_cdevs)
 		case CPERF_PDCP:
 		case CPERF_DOCSIS:
 		case CPERF_IPSEC:
+		case CPERF_TLS:
 			/* Fall through */
 		default:
 			conf.ff_disable |= RTE_CRYPTODEV_FF_ASYMMETRIC_CRYPTO;

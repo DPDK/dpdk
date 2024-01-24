@@ -660,7 +660,7 @@ cperf_test_vector_get_dummy(struct cperf_options *options)
 		t_vec->modex.elen = options->modex_data->exponent.len;
 	}
 
-	if (options->op_type ==	CPERF_PDCP ||
+	if (options->op_type ==	CPERF_PDCP || options->op_type == CPERF_TLS ||
 			options->op_type == CPERF_IPSEC) {
 		if (options->cipher_algo == RTE_CRYPTO_CIPHER_NULL) {
 			t_vec->cipher_key.length = 0;
@@ -795,7 +795,7 @@ cperf_test_vector_get_dummy(struct cperf_options *options)
 		t_vec->auth_iv.length = options->auth_iv_sz;
 	}
 
-	if (options->op_type == CPERF_AEAD ||
+	if (options->op_type == CPERF_AEAD || options->op_type == CPERF_TLS ||
 			options->op_type == CPERF_IPSEC) {
 		t_vec->aead_key.length = options->aead_key_sz;
 		t_vec->aead_key.data = aead_key;

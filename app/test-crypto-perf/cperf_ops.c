@@ -175,6 +175,42 @@ cperf_set_ops_security_ipsec(struct rte_crypto_op **ops,
 	*tsc_start += tsc_end_temp - tsc_start_temp;
 }
 
+static void
+cperf_set_ops_security_tls(struct rte_crypto_op **ops,
+		uint32_t src_buf_offset __rte_unused,
+		uint32_t dst_buf_offset __rte_unused,
+		uint16_t nb_ops, void *sess,
+		const struct cperf_options *options,
+		const struct cperf_test_vector *test_vector,
+		uint16_t iv_offset __rte_unused, uint32_t *imix_idx,
+		uint64_t *tsc_start)
+{
+	const uint32_t test_buffer_size = options->test_buffer_size;
+	const uint32_t headroom_sz = options->headroom_sz;
+	const uint32_t segment_sz = options->segment_sz;
+	uint16_t i = 0;
+
+	RTE_SET_USED(imix_idx);
+	RTE_SET_USED(tsc_start);
+	RTE_SET_USED(test_vector);
+
+	for (i = 0; i < nb_ops; i++) {
+		struct rte_crypto_sym_op *sym_op = ops[i]->sym;
+		struct rte_mbuf *m = sym_op->m_src;
+
+		ops[i]->status = RTE_CRYPTO_OP_STATUS_NOT_PROCESSED;
+		ops[i]->param1.tls_record.content_type = 0x17;
+		rte_security_attach_session(ops[i], sess);
+		sym_op->m_src = (struct rte_mbuf *)((uint8_t *)ops[i] + src_buf_offset);
+
+		m->data_off = headroom_sz;
+		m->buf_len = segment_sz;
+		m->data_len = test_buffer_size;
+		m->pkt_len = test_buffer_size;
+
+		sym_op->m_dst = NULL;
+	}
+}
 #endif
 
 static void
@@ -756,6 +792,106 @@ create_ipsec_session(struct rte_mempool *sess_mp,
 }
 
 static void *
+create_tls_session(struct rte_mempool *sess_mp,
+		uint8_t dev_id,
+		const struct cperf_options *options,
+		const struct cperf_test_vector *test_vector,
+		uint16_t iv_offset)
+{
+	struct rte_crypto_sym_xform auth_xform = {0};
+	struct rte_crypto_sym_xform *crypto_xform;
+	struct rte_crypto_sym_xform xform = {0};
+
+	if (options->aead_algo != 0) {
+		/* Setup AEAD Parameters */
+		xform.type = RTE_CRYPTO_SYM_XFORM_AEAD;
+		xform.next = NULL;
+		xform.aead.algo = options->aead_algo;
+		xform.aead.op = options->aead_op;
+		xform.aead.iv.offset = iv_offset;
+		xform.aead.key.data = test_vector->aead_key.data;
+		xform.aead.key.length = test_vector->aead_key.length;
+		xform.aead.iv.length = test_vector->aead_iv.length;
+		xform.aead.digest_length = options->digest_sz;
+		xform.aead.aad_length = options->aead_aad_sz;
+		crypto_xform = &xform;
+	} else if (options->cipher_algo != 0 && options->auth_algo != 0) {
+		/* Setup Cipher Parameters */
+		xform.type = RTE_CRYPTO_SYM_XFORM_CIPHER;
+		xform.cipher.algo = options->cipher_algo;
+		xform.cipher.op = options->cipher_op;
+		xform.cipher.iv.offset = iv_offset;
+		xform.cipher.iv.length = test_vector->cipher_iv.length;
+		/* cipher different than null */
+		if (options->cipher_algo != RTE_CRYPTO_CIPHER_NULL) {
+			xform.cipher.key.data = test_vector->cipher_key.data;
+			xform.cipher.key.length = test_vector->cipher_key.length;
+		} else {
+			xform.cipher.key.data = NULL;
+			xform.cipher.key.length = 0;
+		}
+
+		/* Setup Auth Parameters */
+		auth_xform.type = RTE_CRYPTO_SYM_XFORM_AUTH;
+		auth_xform.auth.algo = options->auth_algo;
+		auth_xform.auth.op = options->auth_op;
+		auth_xform.auth.iv.offset = iv_offset + xform.cipher.iv.length;
+		/* auth different than null */
+		if (options->auth_algo != RTE_CRYPTO_AUTH_NULL) {
+			auth_xform.auth.digest_length = options->digest_sz;
+			auth_xform.auth.key.length = test_vector->auth_key.length;
+			auth_xform.auth.key.data = test_vector->auth_key.data;
+			auth_xform.auth.iv.length = test_vector->auth_iv.length;
+		} else {
+			auth_xform.auth.digest_length = 0;
+			auth_xform.auth.key.length = 0;
+			auth_xform.auth.key.data = NULL;
+			auth_xform.auth.iv.length = 0;
+		}
+
+		if (options->is_outbound) {
+			/* Currently supporting AUTH then Encrypt mode only for TLS. */
+			crypto_xform = &auth_xform;
+			auth_xform.next = &xform;
+			xform.next = NULL;
+		} else {
+			crypto_xform = &xform;
+			xform.next = &auth_xform;
+			auth_xform.next = NULL;
+		}
+	} else {
+		return NULL;
+	}
+
+	struct rte_security_tls_record_sess_options opts = {
+		.iv_gen_disable = 0,
+		.extra_padding_enable = 0,
+	};
+	struct rte_security_session_conf sess_conf = {
+		.action_type = RTE_SECURITY_ACTION_TYPE_LOOKASIDE_PROTOCOL,
+		.protocol = RTE_SECURITY_PROTOCOL_TLS_RECORD,
+		{.tls_record = {
+			.ver = RTE_SECURITY_VERSION_TLS_1_2,
+			.options = opts,
+		} },
+		.userdata = NULL,
+		.crypto_xform = crypto_xform,
+	};
+	if (options->tls_version)
+		sess_conf.tls_record.ver = options->tls_version;
+
+	if (options->is_outbound)
+		sess_conf.tls_record.type = RTE_SECURITY_TLS_SESS_TYPE_WRITE;
+	else
+		sess_conf.tls_record.type = RTE_SECURITY_TLS_SESS_TYPE_READ;
+
+	void *ctx = rte_cryptodev_get_sec_ctx(dev_id);
+
+	/* Create security session */
+	return (void *)rte_security_session_create(ctx, &sess_conf, sess_mp);
+}
+
+static void *
 cperf_create_session(struct rte_mempool *sess_mp,
 	uint8_t dev_id,
 	const struct cperf_options *options,
@@ -860,6 +996,11 @@ cperf_create_session(struct rte_mempool *sess_mp,
 
 	if (options->op_type == CPERF_IPSEC) {
 		return create_ipsec_session(sess_mp, dev_id,
+				options, test_vector, iv_offset);
+	}
+
+	if (options->op_type == CPERF_TLS) {
+		return create_tls_session(sess_mp, dev_id,
 				options, test_vector, iv_offset);
 	}
 
@@ -1088,6 +1229,9 @@ cperf_get_op_functions(const struct cperf_options *options,
 		break;
 	case CPERF_IPSEC:
 		op_fns->populate_ops = cperf_set_ops_security_ipsec;
+		break;
+	case CPERF_TLS:
+		op_fns->populate_ops = cperf_set_ops_security_tls;
 		break;
 #endif
 	default:

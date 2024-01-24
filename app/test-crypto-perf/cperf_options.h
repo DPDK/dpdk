@@ -55,6 +55,7 @@
 #define CPERF_PDCP_SES_HFN_EN	("pdcp-ses-hfn-en")
 #define PDCP_DEFAULT_HFN	0x1
 #define CPERF_DOCSIS_HDR_SZ	("docsis-hdr-sz")
+#define CPERF_TLS_VERSION	("tls-version")
 #endif
 
 #define CPERF_CSV		("csv-friendly")
@@ -83,7 +84,8 @@ enum cperf_op_type {
 	CPERF_PDCP,
 	CPERF_DOCSIS,
 	CPERF_IPSEC,
-	CPERF_ASYM_MODEX
+	CPERF_ASYM_MODEX,
+	CPERF_TLS,
 };
 
 extern const char *cperf_op_type_strs[];
@@ -134,6 +136,7 @@ struct cperf_options {
 	uint16_t pdcp_sdap;
 	enum rte_security_pdcp_domain pdcp_domain;
 	uint16_t docsis_hdr_sz;
+	enum rte_security_tls_version tls_version;
 #endif
 	char device_type[RTE_CRYPTODEV_NAME_MAX_LEN];
 	enum cperf_op_type op_type;

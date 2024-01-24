@@ -175,6 +175,8 @@ The following are the application command-line options:
            pdcp
            docsis
            modex
+           ipsec
+           tls-record
 
         For GCM/CCM algorithms you should use aead flag.
 
@@ -339,6 +341,10 @@ The following are the application command-line options:
 
         Set modex length for asymmetric crypto perf test.
         Supported lengths are 60, 128, 255, 448. Default length is 128.
+
+* ``--tls-version <TLS1.2/TLS1.3/DTLS1.2>``
+
+        Set TLS/DTLS protocol version for perf test (default is TLS1.2).
 
 Test Vector File
 ~~~~~~~~~~~~~~~~

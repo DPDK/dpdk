@@ -36,8 +36,8 @@ usage(char *progname)
 		" --segment-sz N: set the size of the segment to use\n"
 		" --desc-nb N: set number of descriptors for each crypto device\n"
 		" --devtype TYPE: set crypto device type to use\n"
-		" --optype cipher-only / auth-only / cipher-then-auth /\n"
-		"           auth-then-cipher / aead : set operation type\n"
+		" --optype cipher-only / auth-only / cipher-then-auth / auth-then-cipher /\n"
+		"        aead / pdcp / docsis / ipsec / modex / tls-record : set operation type\n"
 		" --sessionless: enable session-less crypto operations\n"
 		" --out-of-place: enable out-of-place crypto operations\n"
 		" --test-file NAME: set the test vector file path\n"
@@ -67,6 +67,7 @@ usage(char *progname)
 		" --pdcp-ses-hfn-en: enable session based fixed HFN\n"
 		" --enable-sdap: enable sdap\n"
 		" --docsis-hdr-sz: set DOCSIS header size\n"
+		" --tls-version VER: set TLS VERSION <TLS1.2/TLS1.3/DTLS1.2>\n"
 #endif
 		" -h: prints this help\n",
 		progname);
@@ -480,7 +481,11 @@ parse_op_type(struct cperf_options *opts, const char *arg)
 		{
 			cperf_op_type_strs[CPERF_ASYM_MODEX],
 			CPERF_ASYM_MODEX
-		}
+		},
+		{
+			cperf_op_type_strs[CPERF_TLS],
+			CPERF_TLS
+		},
 	};
 
 	int id = get_str_key_id_mapping(optype_namemap,
@@ -736,6 +741,45 @@ parse_pdcp_domain(struct cperf_options *opts, const char *arg)
 	return 0;
 }
 
+const char *cperf_tls_version_strs[] = {
+	[RTE_SECURITY_VERSION_TLS_1_2] = "TLS1.2",
+	[RTE_SECURITY_VERSION_TLS_1_3] = "TLS1.3",
+	[RTE_SECURITY_VERSION_DTLS_1_2] = "DTLS1.2"
+};
+
+static int
+parse_tls_version(struct cperf_options *opts, const char *arg)
+{
+	struct name_id_map tls_version_namemap[] = {
+		{
+			cperf_tls_version_strs
+			[RTE_SECURITY_VERSION_TLS_1_2],
+			RTE_SECURITY_VERSION_TLS_1_2
+		},
+		{
+			cperf_tls_version_strs
+			[RTE_SECURITY_VERSION_TLS_1_3],
+			RTE_SECURITY_VERSION_TLS_1_3
+		},
+		{
+			cperf_tls_version_strs
+			[RTE_SECURITY_VERSION_DTLS_1_2],
+			RTE_SECURITY_VERSION_DTLS_1_2
+		},
+	};
+
+	int id = get_str_key_id_mapping(tls_version_namemap,
+			RTE_DIM(tls_version_namemap), arg);
+	if (id < 0) {
+		RTE_LOG(ERR, USER1, "invalid TLS version specified\n");
+		return -1;
+	}
+
+	opts->tls_version = (enum rte_security_tls_version)id;
+
+	return 0;
+}
+
 static int
 parse_pdcp_ses_hfn_en(struct cperf_options *opts, const char *arg __rte_unused)
 {
@@ -897,6 +941,7 @@ static struct option lgopts[] = {
 	{ CPERF_PDCP_SES_HFN_EN, no_argument, 0, 0 },
 	{ CPERF_ENABLE_SDAP, no_argument, 0, 0 },
 	{ CPERF_DOCSIS_HDR_SZ, required_argument, 0, 0 },
+	{ CPERF_TLS_VERSION, required_argument, 0, 0 },
 #endif
 	{ CPERF_CSV, no_argument, 0, 0},
 
@@ -1014,6 +1059,7 @@ cperf_opts_parse_long(int opt_idx, struct cperf_options *opts)
 		{ CPERF_PDCP_SES_HFN_EN,	parse_pdcp_ses_hfn_en },
 		{ CPERF_ENABLE_SDAP,	parse_enable_sdap },
 		{ CPERF_DOCSIS_HDR_SZ,	parse_docsis_hdr_sz },
+		{ CPERF_TLS_VERSION,	parse_tls_version },
 #endif
 		{ CPERF_CSV,		parse_csv_friendly},
 		{ CPERF_PMDCC_DELAY_MS,	parse_pmd_cyclecount_delay_ms},
@@ -1194,12 +1240,12 @@ cperf_options_check(struct cperf_options *options)
 	if (options->segment_sz == 0) {
 		options->segment_sz = options->max_buffer_size +
 				options->digest_sz;
-		/* In IPsec operation, packet length will be increased
+		/* In IPsec and TLS operation, packet length will be increased
 		 * by some bytes depend upon the algorithm, so increasing
 		 * the segment size by headroom to cover most of
 		 * the scenarios.
 		 */
-		if (options->op_type == CPERF_IPSEC)
+		if (options->op_type == CPERF_IPSEC || options->op_type == CPERF_TLS)
 			options->segment_sz += RTE_PKTMBUF_HEADROOM;
 	}
 
@@ -1332,7 +1378,7 @@ cperf_options_check(struct cperf_options *options)
 			return -EINVAL;
 	}
 
-	if (options->op_type == CPERF_IPSEC) {
+	if (options->op_type == CPERF_IPSEC || options->op_type == CPERF_TLS) {
 		if (options->aead_algo) {
 			if (options->aead_op == RTE_CRYPTO_AEAD_OP_ENCRYPT)
 				options->is_outbound = 1;
@@ -1359,6 +1405,8 @@ cperf_options_dump(struct cperf_options *opts)
 	printf("# Crypto Performance Application Options:\n");
 	printf("#\n");
 	printf("# cperf test: %s\n", cperf_test_type_strs[opts->test]);
+	printf("#\n");
+	printf("# cperf operation type: %s\n", cperf_op_type_strs[opts->op_type]);
 	printf("#\n");
 	printf("# size of crypto op / mbuf pool: %u\n", opts->pool_sz);
 	printf("# total number of ops: %u\n", opts->total_ops);
