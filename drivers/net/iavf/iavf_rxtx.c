@@ -3781,11 +3781,12 @@ iavf_recv_pkts_no_poll(void *rx_queue, struct rte_mbuf **rx_pkts,
 				uint16_t nb_pkts)
 {
 	struct iavf_rx_queue *rxq = rx_queue;
-	enum iavf_rx_burst_type rx_burst_type =
-		rxq->vsi->adapter->rx_burst_type;
+	enum iavf_rx_burst_type rx_burst_type;
 
 	if (!rxq->vsi || rxq->vsi->adapter->no_poll)
 		return 0;
+
+	rx_burst_type = rxq->vsi->adapter->rx_burst_type;
 
 	return iavf_rx_pkt_burst_ops[rx_burst_type](rx_queue,
 								rx_pkts, nb_pkts);
@@ -3796,11 +3797,12 @@ iavf_xmit_pkts_no_poll(void *tx_queue, struct rte_mbuf **tx_pkts,
 				uint16_t nb_pkts)
 {
 	struct iavf_tx_queue *txq = tx_queue;
-	enum iavf_tx_burst_type tx_burst_type =
-		txq->vsi->adapter->tx_burst_type;
+	enum iavf_tx_burst_type tx_burst_type;
 
 	if (!txq->vsi || txq->vsi->adapter->no_poll)
 		return 0;
+
+	tx_burst_type = txq->vsi->adapter->tx_burst_type;
 
 	return iavf_tx_pkt_burst_ops[tx_burst_type](tx_queue,
 								tx_pkts, nb_pkts);
