@@ -1011,7 +1011,7 @@ dmadev_handle_dev_dump(const char *cmd __rte_unused,
 	if (*end_param != '\0')
 		RTE_DMA_LOG(WARNING, "Extra parameters passed to dmadev telemetry command, ignoring");
 
-	buf = calloc(sizeof(char), RTE_TEL_MAX_SINGLE_STRING_LEN);
+	buf = calloc(RTE_TEL_MAX_SINGLE_STRING_LEN, sizeof(char));
 	if (buf == NULL)
 		return -ENOMEM;
 
