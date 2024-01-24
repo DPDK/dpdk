@@ -33,9 +33,15 @@ testsuite_setup(void)
 	uint8_t count;
 	count = rte_event_dev_count();
 	if (!count) {
+		int ret;
+
 		printf("Failed to find a valid event device,"
-			" testing with event_skeleton device\n");
-		return rte_vdev_init("event_skeleton", NULL);
+			" trying with event_skeleton device\n");
+		ret = rte_vdev_init("event_skeleton", NULL);
+		if (ret != 0) {
+			printf("No event device, skipping\n");
+			return TEST_SKIPPED;
+		}
 	}
 	return TEST_SUCCESS;
 }
