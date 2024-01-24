@@ -1350,8 +1350,8 @@ sfc_mae_action_set_list_add(struct sfc_adapter *sa,
 
 	action_set_list->action_sets =
 		rte_calloc("sfc_mae_action_set_list_action_sets",
-			   sizeof(struct sfc_mae_action_set *),
-			   action_set_list->nb_action_sets, 0);
+			   action_set_list->nb_action_sets,
+			   sizeof(struct sfc_mae_action_set *), 0);
 	if (action_set_list->action_sets == NULL) {
 		sfc_err(sa, "failed to allocate action set list");
 		rte_free(action_set_list);
