@@ -168,7 +168,7 @@ nfp_cpp_mutex_alloc(struct nfp_cpp *cpp,
 	if (tmp != key)
 		return NULL;
 
-	mutex = calloc(sizeof(*mutex), 1);
+	mutex = calloc(1, sizeof(*mutex));
 	if (mutex == NULL)
 		return NULL;
 
