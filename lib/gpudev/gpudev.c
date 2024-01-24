@@ -20,8 +20,7 @@ RTE_LOG_REGISTER_DEFAULT(gpu_logtype, NOTICE);
 #define RTE_LOGTYPE_GPUDEV gpu_logtype
 
 #define GPU_LOG(level, ...) \
-	RTE_LOG_LINE(level, GPUDEV, RTE_FMT("gpu: " RTE_FMT_HEAD(__VA_ARGS__ ,), \
-		RTE_FMT_TAIL(__VA_ARGS__ ,)))
+	RTE_LOG_LINE(level, GPUDEV, "" __VA_ARGS__)
 
 /* Set any driver error as EPERM */
 #define GPU_DRV_RET(function) \

@@ -15,7 +15,7 @@ extern int rte_node_logtype;
 
 #define NODE_LOG(level, node_name, ...)                                        \
 	RTE_LOG_LINE(level, NODE,                                              \
-		RTE_FMT("NODE %s: %s():%u " RTE_FMT_HEAD(__VA_ARGS__ ,),       \
+		RTE_FMT("%s: %s():%u " RTE_FMT_HEAD(__VA_ARGS__ ,),            \
 			node_name, __func__, __LINE__,                         \
 			RTE_FMT_TAIL(__VA_ARGS__ ,)))
 

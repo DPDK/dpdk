@@ -22,7 +22,7 @@ extern int rte_graph_logtype;
 
 #define GRAPH_LOG(level, ...)                                                  \
 	RTE_LOG_LINE(level, GRAPH,                                             \
-		RTE_FMT("GRAPH: %s():%u " RTE_FMT_HEAD(__VA_ARGS__ ,),         \
+		RTE_FMT("%s():%u " RTE_FMT_HEAD(__VA_ARGS__ ,),                \
 			__func__, __LINE__, RTE_FMT_TAIL(__VA_ARGS__ ,)))
 
 #define graph_err(...) GRAPH_LOG(ERR, __VA_ARGS__)
