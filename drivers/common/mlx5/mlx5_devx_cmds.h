@@ -212,8 +212,10 @@ struct mlx5_hca_attr {
 	uint32_t lro_timer_supported_periods[MLX5_LRO_NUM_SUPP_PERIODS];
 	uint16_t lro_min_mss_size;
 	uint32_t flex_parser_protocols;
-	uint32_t max_geneve_tlv_options;
-	uint32_t max_geneve_tlv_option_data_len;
+	uint32_t max_geneve_tlv_options:8;
+	uint32_t max_geneve_tlv_option_data_len:5;
+	uint32_t geneve_tlv_sample:1;
+	uint32_t geneve_tlv_option_offset:1;
 	uint32_t hairpin:1;
 	uint32_t log_max_hairpin_queues:5;
 	uint32_t log_max_hairpin_wq_data_sz:5;
@@ -675,6 +677,9 @@ struct mlx5_devx_geneve_tlv_option_attr {
 	uint32_t option_class:16;
 	uint32_t option_type:8;
 	uint32_t option_data_len:5;
+	uint32_t option_class_ignore:1;
+	uint32_t offset_valid:1;
+	uint32_t sample_offset:8;
 };
 
 /* mlx5_devx_cmds.c */

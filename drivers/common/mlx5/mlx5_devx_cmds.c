@@ -968,6 +968,10 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 			max_geneve_tlv_options);
 	attr->max_geneve_tlv_option_data_len = MLX5_GET(cmd_hca_cap, hcattr,
 			max_geneve_tlv_option_data_len);
+	attr->geneve_tlv_option_offset = MLX5_GET(cmd_hca_cap, hcattr,
+						  geneve_tlv_option_offset);
+	attr->geneve_tlv_sample = MLX5_GET(cmd_hca_cap, hcattr,
+					   geneve_tlv_sample);
 	attr->query_match_sample_info = MLX5_GET(cmd_hca_cap, hcattr,
 						 query_match_sample_info);
 	attr->qos.sup = MLX5_GET(cmd_hca_cap, hcattr, qos);
@@ -2886,11 +2890,21 @@ mlx5_devx_cmd_create_geneve_tlv_option(void *ctx,
 		 MLX5_CMD_OP_CREATE_GENERAL_OBJECT);
 	MLX5_SET(general_obj_in_cmd_hdr, hdr, obj_type,
 		 MLX5_GENERAL_OBJ_TYPE_GENEVE_TLV_OPT);
-	MLX5_SET(geneve_tlv_option, opt, option_class,
-		 rte_be_to_cpu_16(attr->option_class));
 	MLX5_SET(geneve_tlv_option, opt, option_type, attr->option_type);
 	MLX5_SET(geneve_tlv_option, opt, option_data_length,
 		 attr->option_data_len);
+	if (attr->option_class_ignore)
+		MLX5_SET(geneve_tlv_option, opt, option_class_ignore,
+			 attr->option_class_ignore);
+	else
+		MLX5_SET(geneve_tlv_option, opt, option_class,
+			 rte_be_to_cpu_16(attr->option_class));
+	if (attr->offset_valid) {
+		MLX5_SET(geneve_tlv_option, opt, sample_offset_valid,
+			 attr->offset_valid);
+		MLX5_SET(geneve_tlv_option, opt, sample_offset,
+			 attr->sample_offset);
+	}
 	geneve_tlv_opt_obj->obj = mlx5_glue->devx_obj_create(ctx, in,
 							     sizeof(in), out,
 							     sizeof(out));

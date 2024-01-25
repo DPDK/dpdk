@@ -1854,7 +1854,9 @@ struct mlx5_ifc_cmd_hca_cap_bits {
 	u8 num_of_uars_per_page[0x20];
 	u8 flex_parser_protocols[0x20];
 	u8 max_geneve_tlv_options[0x8];
-	u8 reserved_at_568[0x3];
+	u8 geneve_tlv_sample[0x1];
+	u8 geneve_tlv_option_offset[0x1];
+	u8 reserved_at_56a[0x1];
 	u8 max_geneve_tlv_option_data_len[0x5];
 	u8 flex_parser_header_modify[0x1];
 	u8 reserved_at_571[0x2];
@@ -3428,15 +3430,20 @@ struct mlx5_ifc_virtio_q_counters_bits {
 
 struct mlx5_ifc_geneve_tlv_option_bits {
 	u8 modify_field_select[0x40];
-	u8 reserved_at_40[0x18];
+	u8 reserved_at_40[0x8];
+	u8 sample_offset[0x8];
+	u8 sample_id_valid[0x1];
+	u8 sample_offset_valid[0x1];
+	u8 option_class_ignore[0x1];
+	u8 reserved_at_53[0x5];
 	u8 geneve_option_fte_index[0x8];
 	u8 option_class[0x10];
 	u8 option_type[0x8];
 	u8 reserved_at_78[0x3];
 	u8 option_data_length[0x5];
-	u8 reserved_at_80[0x180];
+	u8 geneve_sample_field_id[0x20];
+	u8 reserved_at_a0[0x160];
 };
-
 
 enum mlx5_ifc_rtc_update_mode {
 	MLX5_IFC_RTC_STE_UPDATE_MODE_BY_HASH = 0x0,
