@@ -2429,3 +2429,95 @@ This command is used for testing live migration,
 and works for software steering only.
 Default FDB jump should be disabled if switchdev is enabled.
 The mode will propagate to all the probed ports.
+
+
+GENEVE TLV options parser
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+See the :ref:`GENEVE parser API <geneve_parser_api>` for more information.
+
+Set
+^^^
+
+Add single option to the global option list::
+
+   testpmd> mlx5 set tlv_option class (class) type (type) len (length) \
+            offset (sample_offset) sample_len (sample_len) \
+            class_mode (ignore|fixed|matchable) data (0xffffffff|0x0 [0xffffffff|0x0]*)
+
+where:
+
+* ``class``: option class.
+* ``type``: option type.
+* ``length``: option data length in 4 bytes granularity.
+* ``sample_offset``: offset to data list related to option data start.
+  The offset is in 4 bytes granularity.
+* ``sample_len``: length data list in 4 bytes granularity.
+* ``ignore``: ignore ``class`` field.
+* ``fixed``: option class is fixed and defines the option along with the type.
+* ``matchable``: ``class`` field is matchable.
+* ``data``: list of masks indicating which DW should be configure.
+  The size of list should be equal to ``sample_len``.
+* ``0xffffffff``: this DW should be configure.
+* ``0x0``: this DW shouldn't be configure.
+
+Flush
+^^^^^
+
+Remove several options from the global option list::
+
+   testpmd> mlx5 flush tlv_options max (nb_option)
+
+where:
+
+* ``nb_option``: maximum number of option to remove from list. The order is LIFO.
+
+List
+^^^^
+
+Print all options which are set in the global option list so far::
+
+   testpmd> mlx5 list tlv_options
+
+Output contains the values of each option, one per line.
+There is no output at all when no options are configured on the global list::
+
+   ID      Type    Class   Class_mode   Len     Offset  Sample_len   Data
+   [...]   [...]   [...]   [...]        [...]   [...]   [...]        [...]
+
+Setting several options and listing them::
+
+   testpmd> mlx5 set tlv_option class 1 type 1 len 4 offset 1 sample_len 3
+            class_mode fixed data 0xffffffff 0x0 0xffffffff
+   testpmd: set new option in global list, now it has 1 options
+   testpmd> mlx5 set tlv_option class 1 type 2 len 2 offset 0 sample_len 2
+            class_mode fixed data 0xffffffff 0xffffffff
+   testpmd: set new option in global list, now it has 2 options
+   testpmd> mlx5 set tlv_option class 1 type 3 len 5 offset 4 sample_len 1
+            class_mode fixed data 0xffffffff
+   testpmd: set new option in global list, now it has 3 options
+   testpmd> mlx5 list tlv_options
+   ID      Type    Class   Class_mode   Len    Offset  Sample_len  Data
+   0       1       1       fixed        4      1       3           0xffffffff 0x0 0xffffffff
+   1       2       1       fixed        2      0       2           0xffffffff 0xffffffff
+   2       3       1       fixed        5      4       1           0xffffffff
+   testpmd>
+
+Apply
+^^^^^
+
+Create GENEVE TLV parser for specific port using option list which are set so far::
+
+   testpmd> mlx5 port (port_id) apply tlv_options
+
+The same global option list can used by several ports.
+
+Destroy
+^^^^^^^
+
+Destroy GENEVE TLV parser for specific port::
+
+   testpmd> mlx5 port (port_id) destroy tlv_options
+
+This command doesn't destroy the global list,
+For releasing options, ``flush`` command should be used.
