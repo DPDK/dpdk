@@ -1775,6 +1775,34 @@ flow_hw_get_reg_id_from_ctx(void *dr_ctx,
 	return REG_NON;
 }
 
+/**
+ * Get GENEVE TLV option FW information according type and class.
+ *
+ * @param[in] dr_ctx
+ *   Pointer to HW steering DR context.
+ * @param[in] type
+ *   GENEVE TLV option type.
+ * @param[in] class
+ *   GENEVE TLV option class.
+ * @param[out] hl_ok_bit
+ *   Pointer to header layout structure describing OK bit FW information.
+ * @param[out] num_of_dws
+ *   Pointer to fill inside the size of 'hl_dws' array.
+ * @param[out] hl_dws
+ *   Pointer to header layout array describing data DWs FW information.
+ * @param[out] ok_bit_on_class
+ *   Pointer to an indicator whether OK bit includes class along with type.
+ *
+ * @return
+ *   0 on success, negative errno otherwise and rte_errno is set.
+ */
+int
+mlx5_get_geneve_hl_data(const void *dr_ctx, uint8_t type, uint16_t class,
+			struct mlx5_hl_data ** const hl_ok_bit,
+			uint8_t *num_of_dws,
+			struct mlx5_hl_data ** const hl_dws,
+			bool *ok_bit_on_class);
+
 void *
 mlx5_geneve_tlv_parser_create(uint16_t port_id,
 			      const struct rte_pmd_mlx5_geneve_tlv tlv_list[],

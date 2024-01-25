@@ -59,6 +59,100 @@ struct mlx5_geneve_tlv_options {
 };
 
 /**
+ * Check if type and class is matching to given GENEVE TLV option.
+ *
+ * @param type
+ *   GENEVE option type.
+ * @param class
+ *   GENEVE option class.
+ * @param option
+ *   Pointer to GENEVE TLV option structure.
+ *
+ * @return
+ *   True if this type and class match to this option, false otherwise.
+ */
+static inline bool
+option_match_type_and_class(uint8_t type, uint16_t class,
+			    struct mlx5_geneve_tlv_option *option)
+{
+	if (type != option->type)
+		return false;
+	if (option->class_mode == 1 && option->class != class)
+		return false;
+	return true;
+}
+
+/**
+ * Get GENEVE TLV option matching to given type and class.
+ *
+ * @param priv
+ *   Pointer to port's private data.
+ * @param type
+ *   GENEVE option type.
+ * @param class
+ *   GENEVE option class.
+ *
+ * @return
+ *   Pointer to option structure if exist, NULL otherwise and rte_errno is set.
+ */
+static struct mlx5_geneve_tlv_option *
+mlx5_geneve_tlv_option_get(const struct mlx5_priv *priv, uint8_t type,
+			   uint16_t class)
+{
+	struct mlx5_geneve_tlv_options *options;
+	uint8_t i;
+
+	if (priv->tlv_options == NULL) {
+		DRV_LOG(ERR,
+			"Port %u doesn't have configured GENEVE TLV options.",
+			priv->dev_data->port_id);
+		rte_errno = EINVAL;
+		return NULL;
+	}
+	options = priv->tlv_options;
+	MLX5_ASSERT(options != NULL);
+	for (i = 0; i < options->nb_options; ++i) {
+		struct mlx5_geneve_tlv_option *option = &options->options[i];
+
+		if (option_match_type_and_class(type, class, option))
+			return option;
+	}
+	DRV_LOG(ERR, "TLV option type %u class %u doesn't exist.", type, class);
+	rte_errno = ENOENT;
+	return NULL;
+}
+
+int
+mlx5_get_geneve_hl_data(const void *dr_ctx, uint8_t type, uint16_t class,
+			struct mlx5_hl_data ** const hl_ok_bit,
+			uint8_t *num_of_dws,
+			struct mlx5_hl_data ** const hl_dws,
+			bool *ok_bit_on_class)
+{
+	uint16_t port_id;
+
+	MLX5_ETH_FOREACH_DEV(port_id, NULL) {
+		struct mlx5_priv *priv;
+		struct mlx5_geneve_tlv_option *option;
+
+		priv = rte_eth_devices[port_id].data->dev_private;
+		if (priv->dr_ctx != dr_ctx)
+			continue;
+		/* Find specific option inside list. */
+		option = mlx5_geneve_tlv_option_get(priv, type, class);
+		if (option == NULL)
+			return -rte_errno;
+		*hl_ok_bit = &option->hl_ok_bit;
+		*hl_dws = option->match_data;
+		*num_of_dws = option->match_data_size;
+		*ok_bit_on_class = !!(option->class_mode == 1);
+		return 0;
+	}
+	DRV_LOG(ERR, "DR CTX %p doesn't belong to any DPDK port.", dr_ctx);
+	return -EINVAL;
+}
+
+/**
  * Create single GENEVE TLV option sample.
  *
  * @param ctx
