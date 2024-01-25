@@ -536,12 +536,10 @@ Below are some firmware configurations listed.
    or
    FLEX_PARSER_PROFILE_ENABLE=1
 
-- enable Geneve TLV option flow matching in SW steering::
+- enable Geneve TLV option flow matching::
 
    FLEX_PARSER_PROFILE_ENABLE=0
-
-- enable Geneve TLV option flow matching in HW steering::
-
+   or
    FLEX_PARSER_PROFILE_ENABLE=8
 
 - enable GTP flow matching::

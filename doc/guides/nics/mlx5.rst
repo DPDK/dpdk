@@ -352,6 +352,7 @@ Limitations
      - Multiple Class/Type/Length Geneve TLV options are supported per physical device.
      - Multiple of same Geneve TLV option isn't supported at the same pattern template.
      - Supported only with ``FLEX_PARSER_PROFILE_ENABLE`` = 8.
+     - Supported also with ``FLEX_PARSER_PROFILE_ENABLE`` = 0 for single DW only.
      - Supported for FW version **xx.37.0142** and above.
 
   .. _geneve_parser_api:
@@ -370,6 +371,13 @@ Limitations
       the option should be configured with ``match_on_class_mode=2``.
       One extra DW is consumed for it.
     - Matching on ``length`` field is not supported.
+
+    - More limitations with ``FLEX_PARSER_PROFILE_ENABLE`` = 0:
+
+      - single DW
+      - ``sample_len`` must be equal to ``option_len`` and not bigger than 1.
+      - ``match_on_class_mode`` different than 1 is not supported.
+      - ``offset`` must be 0.
 
     Although the parser is created per physical device, this API is port oriented.
     Each port should call this API before using GENEVE OPT item,

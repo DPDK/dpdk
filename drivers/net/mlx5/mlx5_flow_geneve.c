@@ -18,6 +18,8 @@
 #define MAX_GENEVE_OPTION_TOTAL_DATA_SIZE \
 		(MAX_GENEVE_OPTION_DATA_SIZE * MAX_GENEVE_OPTIONS_RESOURCES)
 
+#define INVALID_SAMPLE_ID (UINT8_MAX)
+
 /**
  * Single DW inside GENEVE TLV option.
  */
@@ -265,6 +267,8 @@ mlx5_geneve_tlv_options_unregister(struct mlx5_priv *priv,
  *   Pointer to header layout structure to update.
  * @param resource
  *   Pointer to single sample context to fill.
+ * @param sample_id
+ *   The flex parser id for single DW or UINT8_MAX for multiple DWs.
  *
  * @return
  *   0 on success, a negative errno otherwise and rte_errno is set.
@@ -274,7 +278,7 @@ mlx5_geneve_tlv_option_create_sample(void *ctx,
 		      struct mlx5_devx_geneve_tlv_option_attr *attr,
 		      struct mlx5_devx_match_sample_info_query_attr *query_attr,
 		      struct mlx5_hl_data *match_data,
-		      struct mlx5_geneve_tlv_resource *resource)
+		      struct mlx5_geneve_tlv_resource *resource, uint8_t sample_id)
 {
 	struct mlx5_devx_obj *obj;
 	int ret;
@@ -282,7 +286,10 @@ mlx5_geneve_tlv_option_create_sample(void *ctx,
 	obj = mlx5_devx_cmd_create_geneve_tlv_option(ctx, attr);
 	if (obj == NULL)
 		return -rte_errno;
-	ret = mlx5_devx_cmd_query_geneve_tlv_option(ctx, obj, query_attr);
+	if (sample_id == INVALID_SAMPLE_ID)
+		ret = mlx5_devx_cmd_query_geneve_tlv_option(ctx, obj, query_attr);
+	else
+		ret = mlx5_devx_cmd_match_sample_info_query(ctx, sample_id, query_attr);
 	if (ret) {
 		claim_zero(mlx5_devx_cmd_destroy(obj));
 		return ret;
@@ -335,20 +342,22 @@ should_configure_sample_for_dw0(const struct rte_pmd_mlx5_geneve_tlv *spec)
  *   Pointer to user configuration.
  * @param option
  *   Pointer to single GENEVE TLV option to fill.
+ * @param sample_id
+ *   The flex parser id for single DW or UINT8_MAX for multiple DWs.
  *
  * @return
  *   0 on success, a negative errno otherwise and rte_errno is set.
  */
 static int
 mlx5_geneve_tlv_option_create(void *ctx, const struct rte_pmd_mlx5_geneve_tlv *spec,
-			      struct mlx5_geneve_tlv_option *option)
+			      struct mlx5_geneve_tlv_option *option, uint8_t sample_id)
 {
 	struct mlx5_devx_geneve_tlv_option_attr attr = {
 		.option_class = spec->option_class,
 		.option_type = spec->option_type,
 		.option_data_len = spec->option_len,
 		.option_class_ignore = spec->match_on_class_mode == 1 ? 0 : 1,
-		.offset_valid = 1,
+		.offset_valid = sample_id == INVALID_SAMPLE_ID ? 1 : 0,
 	};
 	struct mlx5_devx_match_sample_info_query_attr query_attr = {0};
 	struct mlx5_geneve_tlv_resource *resource;
@@ -356,12 +365,14 @@ mlx5_geneve_tlv_option_create(void *ctx, const struct rte_pmd_mlx5_geneve_tlv *s
 	int ret;
 
 	if (should_configure_sample_for_dw0(spec)) {
+		MLX5_ASSERT(sample_id == INVALID_SAMPLE_ID);
 		attr.sample_offset = 0;
 		resource = &option->resources[resource_id];
 		ret = mlx5_geneve_tlv_option_create_sample(ctx, &attr,
 							   &query_attr,
 							   &option->match_data[0],
-							   resource);
+							   resource,
+							   INVALID_SAMPLE_ID);
 		if (ret)
 			return ret;
 		resource_id++;
@@ -379,7 +390,8 @@ mlx5_geneve_tlv_option_create(void *ctx, const struct rte_pmd_mlx5_geneve_tlv *s
 		ret = mlx5_geneve_tlv_option_create_sample(ctx, &attr,
 							   &query_attr,
 							   &option->match_data[i],
-							   resource);
+							   resource,
+							   sample_id);
 		if (ret)
 			goto error;
 		resource_id++;
@@ -467,6 +479,8 @@ mlx5_geneve_tlv_option_copy(struct rte_pmd_mlx5_geneve_tlv *dst,
  *   A list of GENEVE TLV options to create parser for them.
  * @param nb_options
  *   The number of options in TLV list.
+ * @param sample_id
+ *   The flex parser id for single DW or UINT8_MAX for multiple DWs.
  *
  * @return
  *   A pointer to GENEVE TLV options parser structure on success,
@@ -475,7 +489,7 @@ mlx5_geneve_tlv_option_copy(struct rte_pmd_mlx5_geneve_tlv *dst,
 static struct mlx5_geneve_tlv_options *
 mlx5_geneve_tlv_options_create(struct mlx5_dev_ctx_shared *sh,
 			       const struct rte_pmd_mlx5_geneve_tlv tlv_list[],
-			       uint8_t nb_options)
+			       uint8_t nb_options, uint8_t sample_id)
 {
 	struct mlx5_geneve_tlv_options *options;
 	const struct rte_pmd_mlx5_geneve_tlv *spec;
@@ -495,7 +509,7 @@ mlx5_geneve_tlv_options_create(struct mlx5_dev_ctx_shared *sh,
 	for (i = 0; i < nb_options; ++i) {
 		spec = &tlv_list[i];
 		ret = mlx5_geneve_tlv_option_create(sh->cdev->ctx, spec,
-						    &options->options[i]);
+						    &options->options[i], sample_id);
 		if (ret < 0)
 			goto error;
 		/* Copy the user list for comparing future configuration. */
@@ -705,6 +719,12 @@ mlx5_is_same_geneve_tlv_options(const struct mlx5_geneve_tlv_options *options,
 	return true;
 }
 
+static inline bool
+multiple_dws_supported(struct mlx5_hca_attr *attr)
+{
+	return attr->geneve_tlv_option_offset && attr->geneve_tlv_sample;
+}
+
 void *
 mlx5_geneve_tlv_parser_create(uint16_t port_id,
 			      const struct rte_pmd_mlx5_geneve_tlv tlv_list[],
@@ -715,8 +735,7 @@ mlx5_geneve_tlv_parser_create(uint16_t port_id,
 	struct rte_eth_dev *dev;
 	struct mlx5_priv *priv;
 	struct mlx5_hca_attr *attr;
-	uint8_t total_dws = 0;
-	uint8_t i;
+	uint8_t sample_id;
 
 	/*
 	 * Validate the input before taking a lock and before any memory
@@ -742,34 +761,71 @@ mlx5_geneve_tlv_parser_create(uint16_t port_id,
 		return NULL;
 	}
 	attr = &priv->sh->cdev->config.hca_attr;
-	MLX5_ASSERT(MAX_GENEVE_OPTIONS_RESOURCES <=
-		    attr->max_geneve_tlv_options);
-	if (!attr->geneve_tlv_option_offset || !attr->geneve_tlv_sample ||
-	    !attr->query_match_sample_info || !attr->geneve_tlv_opt) {
-		DRV_LOG(ERR, "Not enough capabilities to support GENEVE TLV parser, maybe old FW version");
+	if (!attr->query_match_sample_info || !attr->geneve_tlv_opt) {
+		DRV_LOG(ERR, "Not enough capabilities to support GENEVE TLV parser, is this device eswitch manager?");
 		rte_errno = ENOTSUP;
 		return NULL;
 	}
-	if (nb_options > MAX_GENEVE_OPTIONS_RESOURCES) {
+	DRV_LOG(DEBUG, "Max DWs supported for GENEVE TLV option is %u",
+		attr->max_geneve_tlv_options);
+	if (nb_options > attr->max_geneve_tlv_options) {
 		DRV_LOG(ERR,
 			"GENEVE TLV option number (%u) exceeds the limit (%u).",
-			nb_options, MAX_GENEVE_OPTIONS_RESOURCES);
+			nb_options, attr->max_geneve_tlv_options);
 		rte_errno = EINVAL;
 		return NULL;
 	}
-	for (i = 0; i < nb_options; ++i) {
-		if (mlx5_geneve_tlv_option_validate(attr, &tlv_list[i]) < 0) {
-			DRV_LOG(ERR, "GENEVE TLV option %u is invalid.", i);
+	if (multiple_dws_supported(attr)) {
+		uint8_t total_dws = 0;
+		uint8_t i;
+
+		MLX5_ASSERT(attr->max_geneve_tlv_options >= MAX_GENEVE_OPTIONS_RESOURCES);
+		for (i = 0; i < nb_options; ++i) {
+			if (mlx5_geneve_tlv_option_validate(attr, &tlv_list[i]) < 0) {
+				DRV_LOG(ERR, "GENEVE TLV option %u is invalid.", i);
+				return NULL;
+			}
+			total_dws += mlx5_geneve_tlv_option_get_nb_dws(&tlv_list[i]);
+		}
+		if (total_dws > MAX_GENEVE_OPTIONS_RESOURCES) {
+			DRV_LOG(ERR,
+				"Total requested DWs (%u) exceeds the limit (%u).",
+				total_dws, MAX_GENEVE_OPTIONS_RESOURCES);
+			rte_errno = EINVAL;
 			return NULL;
 		}
-		total_dws += mlx5_geneve_tlv_option_get_nb_dws(&tlv_list[i]);
-	}
-	if (total_dws > MAX_GENEVE_OPTIONS_RESOURCES) {
-		DRV_LOG(ERR,
-			"Total requested DWs (%u) exceeds the limit (%u).",
-			total_dws, MAX_GENEVE_OPTIONS_RESOURCES);
-		rte_errno = EINVAL;
-		return NULL;
+		/* Multiple DWs is supported, each of the has sample ID given later. */
+		sample_id = INVALID_SAMPLE_ID;
+		DRV_LOG(DEBUG, "GENEVE TLV parser supports multiple DWs, FLEX_PARSER_PROFILE_ENABLE == 8");
+	} else {
+		const struct rte_pmd_mlx5_geneve_tlv *option = &tlv_list[0];
+
+		if (option->offset != 0) {
+			DRV_LOG(ERR,
+				"GENEVE TLV option offset %u is required but not supported.",
+				option->offset);
+			rte_errno = ENOTSUP;
+			return NULL;
+		}
+		if (option->sample_len != option->option_len) {
+			DRV_LOG(ERR,
+				"GENEVE TLV option length (%u) should be equal to sample length (%u).",
+				option->option_len, option->sample_len);
+			rte_errno = ENOTSUP;
+			return NULL;
+		}
+		if (option->match_on_class_mode != 1) {
+			DRV_LOG(ERR,
+				"GENEVE TLV option match_on_class_mode %u is invalid for flex parser profile 0.",
+				option->match_on_class_mode);
+			rte_errno = EINVAL;
+			return NULL;
+		}
+		if (mlx5_geneve_tlv_option_validate(attr, option) < 0)
+			return NULL;
+		/* Single DW is supported, its sample ID is given. */
+		sample_id = attr->geneve_tlv_option_sample_id;
+		DRV_LOG(DEBUG, "GENEVE TLV parser supports only single DW, FLEX_PARSER_PROFILE_ENABLE == 0");
 	}
 	/* Take lock for this physical device and manage the options. */
 	phdev = mlx5_get_locked_physical_device(priv);
@@ -793,7 +849,7 @@ mlx5_geneve_tlv_parser_create(uint16_t port_id,
 		goto exit;
 	}
 	/* Create GENEVE TLV options for this physical device. */
-	options = mlx5_geneve_tlv_options_create(priv->sh, tlv_list, nb_options);
+	options = mlx5_geneve_tlv_options_create(priv->sh, tlv_list, nb_options, sample_id);
 	if (!options) {
 		mlx5_unlock_physical_device();
 		return NULL;
