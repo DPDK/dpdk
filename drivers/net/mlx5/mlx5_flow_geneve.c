@@ -153,6 +153,106 @@ mlx5_get_geneve_hl_data(const void *dr_ctx, uint8_t type, uint16_t class,
 }
 
 /**
+ * Calculate total data size.
+ *
+ * @param[in] priv
+ *   Pointer to port's private data.
+ * @param[in] geneve_opt
+ *   Pointer to GENEVE option item structure.
+ * @param[out] error
+ *   Pointer to error structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+int
+mlx5_flow_geneve_tlv_option_validate(struct mlx5_priv *priv,
+				     const struct rte_flow_item *geneve_opt,
+				     struct rte_flow_error *error)
+{
+	const struct rte_flow_item_geneve_opt *spec = geneve_opt->spec;
+	const struct rte_flow_item_geneve_opt *mask = geneve_opt->mask;
+	struct mlx5_geneve_tlv_option *option;
+
+	option = mlx5_geneve_tlv_option_get(priv, spec->option_type, spec->option_class);
+	if (option == NULL)
+		return rte_flow_error_set(error, rte_errno,
+					  RTE_FLOW_ERROR_TYPE_ITEM, NULL,
+					  "Unregistered GENEVE option");
+	if (mask->option_type != UINT8_MAX)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ITEM, NULL,
+					  "GENEVE option type must be fully masked");
+	if (option->class_mode == 1 && mask->option_class != UINT16_MAX)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ITEM, NULL,
+					  "GENEVE option class must be fully masked");
+	return 0;
+}
+
+/**
+ * Register single GENEVE TLV option as used by pattern template.
+ *
+ * @param[in] priv
+ *   Pointer to port's private data.
+ * @param[in] spec
+ *   Pointer to GENEVE option item structure.
+ * @param[out] mng
+ *   Pointer to GENEVE option manager.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+int
+mlx5_geneve_tlv_option_register(struct mlx5_priv *priv,
+				const struct rte_flow_item_geneve_opt *spec,
+				struct mlx5_geneve_tlv_options_mng *mng)
+{
+	struct mlx5_geneve_tlv_option *option;
+
+	option = mlx5_geneve_tlv_option_get(priv, spec->option_type, spec->option_class);
+	if (option == NULL)
+		return -rte_errno;
+	/* Increase the option reference counter. */
+	rte_atomic_fetch_add_explicit(&option->refcnt, 1,
+				      rte_memory_order_relaxed);
+	/* Update the manager with option information. */
+	mng->options[mng->nb_options].opt_type = spec->option_type;
+	mng->options[mng->nb_options].opt_class = spec->option_class;
+	mng->nb_options++;
+	return 0;
+}
+
+/**
+ * Unregister all GENEVE TLV options used by pattern template.
+ *
+ * @param[in] priv
+ *   Pointer to port's private data.
+ * @param[in] mng
+ *   Pointer to GENEVE option manager.
+ */
+void
+mlx5_geneve_tlv_options_unregister(struct mlx5_priv *priv,
+				   struct mlx5_geneve_tlv_options_mng *mng)
+{
+	struct mlx5_geneve_tlv_option *option;
+	uint8_t i;
+
+	for (i = 0; i < mng->nb_options; ++i) {
+		option = mlx5_geneve_tlv_option_get(priv,
+						    mng->options[i].opt_type,
+						    mng->options[i].opt_class);
+		MLX5_ASSERT(option != NULL);
+		/* Decrease the option reference counter. */
+		rte_atomic_fetch_sub_explicit(&option->refcnt, 1,
+					      rte_memory_order_relaxed);
+		mng->options[i].opt_type = 0;
+		mng->options[i].opt_class = 0;
+	}
+	mng->nb_options = 0;
+}
+
+/**
  * Create single GENEVE TLV option sample.
  *
  * @param ctx
@@ -208,6 +308,24 @@ mlx5_geneve_tlv_option_destroy_sample(struct mlx5_geneve_tlv_resource *resource)
 	resource->obj = NULL;
 }
 
+/*
+ * Sample for DW0 are created when one of two conditions is met:
+ * 1. Header is matchable.
+ * 2. This option doesn't configure any data DW.
+ */
+static bool
+should_configure_sample_for_dw0(const struct rte_pmd_mlx5_geneve_tlv *spec)
+{
+	uint8_t i;
+
+	if (spec->match_on_class_mode == 2)
+		return true;
+	for (i = 0; i < spec->sample_len; ++i)
+		if (spec->match_data_mask[i] != 0)
+			return false;
+	return true;
+}
+
 /**
  * Create single GENEVE TLV option.
  *
@@ -237,8 +355,7 @@ mlx5_geneve_tlv_option_create(void *ctx, const struct rte_pmd_mlx5_geneve_tlv *s
 	uint8_t i, resource_id = 0;
 	int ret;
 
-	if (spec->match_on_class_mode == 2) {
-		/* Header is matchable, create sample for DW0. */
+	if (should_configure_sample_for_dw0(spec)) {
 		attr.sample_offset = 0;
 		resource = &option->resources[resource_id];
 		ret = mlx5_geneve_tlv_option_create_sample(ctx, &attr,

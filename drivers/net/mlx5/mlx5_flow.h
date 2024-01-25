@@ -1341,6 +1341,15 @@ struct mlx5_action_construct_data {
 
 #define MAX_GENEVE_OPTIONS_RESOURCES 7
 
+/* GENEVE TLV options manager structure. */
+struct mlx5_geneve_tlv_options_mng {
+	uint8_t nb_options; /* Number of options inside the template. */
+	struct {
+		uint8_t opt_type;
+		uint16_t opt_class;
+	} options[MAX_GENEVE_OPTIONS_RESOURCES];
+};
+
 /* Flow item template struct. */
 struct rte_flow_pattern_template {
 	LIST_ENTRY(rte_flow_pattern_template) next;
@@ -1360,6 +1369,8 @@ struct rte_flow_pattern_template {
 	 * tag pattern item for representor matching.
 	 */
 	bool implicit_tag;
+	/* Manages all GENEVE TLV options used by this pattern template. */
+	struct mlx5_geneve_tlv_options_mng geneve_opt_mng;
 	uint8_t flex_item; /* flex item index. */
 };
 
@@ -1808,6 +1819,16 @@ mlx5_geneve_tlv_parser_create(uint16_t port_id,
 			      const struct rte_pmd_mlx5_geneve_tlv tlv_list[],
 			      uint8_t nb_options);
 int mlx5_geneve_tlv_parser_destroy(void *handle);
+int mlx5_flow_geneve_tlv_option_validate(struct mlx5_priv *priv,
+					 const struct rte_flow_item *geneve_opt,
+					 struct rte_flow_error *error);
+
+struct mlx5_geneve_tlv_options_mng;
+int mlx5_geneve_tlv_option_register(struct mlx5_priv *priv,
+				    const struct rte_flow_item_geneve_opt *spec,
+				    struct mlx5_geneve_tlv_options_mng *mng);
+void mlx5_geneve_tlv_options_unregister(struct mlx5_priv *priv,
+					struct mlx5_geneve_tlv_options_mng *mng);
 
 void flow_hw_set_port_info(struct rte_eth_dev *dev);
 void flow_hw_clear_port_info(struct rte_eth_dev *dev);

@@ -337,20 +337,27 @@ Limitations
      - Length
      - Data
 
-  Only one Class/Type/Length Geneve TLV option is supported per shared device.
   Class/Type/Length fields must be specified as well as masks.
   Class/Type/Length specified masks must be full.
   Matching Geneve TLV option without specifying data is not supported.
   Matching Geneve TLV option with ``data & mask == 0`` is not supported.
 
+  In SW steering (``dv_flow_en`` = 1):
+
+     - Only one Class/Type/Length Geneve TLV option is supported per shared device.
+     - Supported only with ``FLEX_PARSER_PROFILE_ENABLE`` = 0.
+
+  In HW steering (``dv_flow_en`` = 2):
+
+     - Multiple Class/Type/Length Geneve TLV options are supported per physical device.
+     - Multiple of same Geneve TLV option isn't supported at the same pattern template.
+     - Supported only with ``FLEX_PARSER_PROFILE_ENABLE`` = 8.
+     - Supported for FW version **xx.37.0142** and above.
+
   .. _geneve_parser_api:
 
-  - A parser API (``rte_pmd_mlx5_create_geneve_tlv_parser``)
-    is available under these conditions:
-
-    - Supported only in HW steering (``dv_flow_en`` = 2).
-    - Supported only when ``FLEX_PARSER_PROFILE_ENABLE`` = 8.
-    - Supported for FW version **xx.37.0142** and above.
+  - An API (``rte_pmd_mlx5_create_geneve_tlv_parser``)
+    is available for the flexible parser used in HW steering:
 
     Each physical device has 7 DWs for GENEVE TLV options.
     Partial option configuration is supported,
