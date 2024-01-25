@@ -190,9 +190,10 @@ struct mlx5_shared_data *mlx5_shared_data;
 /** Driver-specific log messages type. */
 int mlx5_logtype;
 
-static LIST_HEAD(, mlx5_dev_ctx_shared) mlx5_dev_ctx_list =
-						LIST_HEAD_INITIALIZER();
+static LIST_HEAD(mlx5_dev_ctx_list, mlx5_dev_ctx_shared) dev_ctx_list = LIST_HEAD_INITIALIZER();
+static LIST_HEAD(mlx5_phdev_list, mlx5_physical_device) phdev_list = LIST_HEAD_INITIALIZER();
 static pthread_mutex_t mlx5_dev_ctx_list_mutex;
+
 static const struct mlx5_indexed_pool_config mlx5_ipool_cfg[] = {
 #if defined(HAVE_IBV_FLOW_DV_SUPPORT) || !defined(HAVE_INFINIBAND_VERBS_H)
 	[MLX5_IPOOL_DECAP_ENCAP] = {
@@ -1692,6 +1693,60 @@ mlx5_init_shared_dev_registers(struct mlx5_dev_ctx_shared *sh)
 	mlx5_init_hws_flow_tags_registers(sh);
 }
 
+static struct mlx5_physical_device *
+mlx5_get_physical_device(struct mlx5_common_device *cdev)
+{
+	struct mlx5_physical_device *phdev;
+	struct mlx5_hca_attr *attr = &cdev->config.hca_attr;
+
+	/* Search for physical device by system_image_guid. */
+	LIST_FOREACH(phdev, &phdev_list, next) {
+		if (phdev->guid == attr->system_image_guid) {
+			phdev->refcnt++;
+			return phdev;
+		}
+	}
+	phdev = mlx5_malloc(MLX5_MEM_ZERO | MLX5_MEM_RTE,
+			    sizeof(struct mlx5_physical_device),
+			    RTE_CACHE_LINE_SIZE, SOCKET_ID_ANY);
+	if (!phdev) {
+		DRV_LOG(ERR, "Physical device allocation failure.");
+		rte_errno = ENOMEM;
+		return NULL;
+	}
+	phdev->guid = attr->system_image_guid;
+	phdev->refcnt = 1;
+	LIST_INSERT_HEAD(&phdev_list, phdev, next);
+	DRV_LOG(DEBUG, "Physical device is created, guid=%" PRIu64 ".",
+		phdev->guid);
+	return phdev;
+}
+
+static void
+mlx5_physical_device_destroy(struct mlx5_physical_device *phdev)
+{
+#ifdef RTE_LIBRTE_MLX5_DEBUG
+	/* Check the object presence in the list. */
+	struct mlx5_physical_device *lphdev;
+
+	LIST_FOREACH(lphdev, &phdev_list, next)
+		if (lphdev == phdev)
+			break;
+	MLX5_ASSERT(lphdev);
+	if (lphdev != phdev) {
+		DRV_LOG(ERR, "Freeing non-existing physical device");
+		return;
+	}
+#endif
+	MLX5_ASSERT(phdev);
+	MLX5_ASSERT(phdev->refcnt);
+	if (--phdev->refcnt)
+		return;
+	/* Remove physical device from the global device list. */
+	LIST_REMOVE(phdev, next);
+	mlx5_free(phdev);
+}
+
 /**
  * Allocate shared device context. If there is multiport device the
  * master and representors will share this context, if there is single
@@ -1725,7 +1780,7 @@ mlx5_alloc_shared_dev_ctx(const struct mlx5_dev_spawn_data *spawn,
 	MLX5_ASSERT(rte_eal_process_type() == RTE_PROC_PRIMARY);
 	pthread_mutex_lock(&mlx5_dev_ctx_list_mutex);
 	/* Search for IB context by device name. */
-	LIST_FOREACH(sh, &mlx5_dev_ctx_list, next) {
+	LIST_FOREACH(sh, &dev_ctx_list, next) {
 		if (!strcmp(sh->ibdev_name, spawn->phys_dev_name)) {
 			sh->refcnt++;
 			goto exit;
@@ -1765,6 +1820,9 @@ mlx5_alloc_shared_dev_ctx(const struct mlx5_dev_spawn_data *spawn,
 		sizeof(sh->ibdev_name) - 1);
 	strncpy(sh->ibdev_path, mlx5_os_get_ctx_device_path(sh->cdev->ctx),
 		sizeof(sh->ibdev_path) - 1);
+	sh->phdev = mlx5_get_physical_device(sh->cdev);
+	if (!sh->phdev)
+		goto error;
 	/*
 	 * Setting port_id to max unallowed value means there is no interrupt
 	 * subhandler installed for the given port index i.
@@ -1798,7 +1856,7 @@ mlx5_alloc_shared_dev_ctx(const struct mlx5_dev_spawn_data *spawn,
 #endif
 	}
 	mlx5_os_dev_shared_handler_install(sh);
-	if (LIST_EMPTY(&mlx5_dev_ctx_list)) {
+	if (LIST_EMPTY(&dev_ctx_list)) {
 		err = mlx5_flow_os_init_workspace_once();
 		if (err)
 			goto error;
@@ -1811,7 +1869,7 @@ mlx5_alloc_shared_dev_ctx(const struct mlx5_dev_spawn_data *spawn,
 	mlx5_flow_aging_init(sh);
 	mlx5_flow_ipool_create(sh);
 	/* Add context to the global device list. */
-	LIST_INSERT_HEAD(&mlx5_dev_ctx_list, sh, next);
+	LIST_INSERT_HEAD(&dev_ctx_list, sh, next);
 	rte_spinlock_init(&sh->geneve_tlv_opt_sl);
 	mlx5_init_shared_dev_registers(sh);
 	/* Init counter pool list header and lock. */
@@ -1833,6 +1891,8 @@ error:
 	} while (++i <= (uint32_t)sh->bond.n_port);
 	if (sh->td)
 		claim_zero(mlx5_devx_cmd_destroy(sh->td));
+	if (sh->phdev)
+		mlx5_physical_device_destroy(sh->phdev);
 	mlx5_free(sh);
 	rte_errno = err;
 	return NULL;
@@ -1919,7 +1979,7 @@ mlx5_free_shared_dev_ctx(struct mlx5_dev_ctx_shared *sh)
 	/* Check the object presence in the list. */
 	struct mlx5_dev_ctx_shared *lctx;
 
-	LIST_FOREACH(lctx, &mlx5_dev_ctx_list, next)
+	LIST_FOREACH(lctx, &dev_ctx_list, next)
 		if (lctx == sh)
 			break;
 	MLX5_ASSERT(lctx);
@@ -1945,7 +2005,7 @@ mlx5_free_shared_dev_ctx(struct mlx5_dev_ctx_shared *sh)
 	/* Remove context from the global device list. */
 	LIST_REMOVE(sh, next);
 	/* Release resources on the last device removal. */
-	if (LIST_EMPTY(&mlx5_dev_ctx_list)) {
+	if (LIST_EMPTY(&dev_ctx_list)) {
 		mlx5_os_net_cleanup();
 		mlx5_flow_os_release_workspace();
 	}
@@ -1985,6 +2045,7 @@ mlx5_free_shared_dev_ctx(struct mlx5_dev_ctx_shared *sh)
 		MLX5_ASSERT(sh->geneve_tlv_option_resource == NULL);
 	pthread_mutex_destroy(&sh->txpp.mutex);
 	mlx5_lwm_unset(sh);
+	mlx5_physical_device_destroy(sh->phdev);
 	mlx5_free(sh);
 	return;
 exit:
@@ -2929,7 +2990,7 @@ mlx5_probe_again_args_validate(struct mlx5_common_device *cdev,
 		return 0;
 	pthread_mutex_lock(&mlx5_dev_ctx_list_mutex);
 	/* Search for IB context by common device pointer. */
-	LIST_FOREACH(sh, &mlx5_dev_ctx_list, next)
+	LIST_FOREACH(sh, &dev_ctx_list, next)
 		if (sh->cdev == cdev)
 			break;
 	pthread_mutex_unlock(&mlx5_dev_ctx_list_mutex);

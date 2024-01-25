@@ -1419,6 +1419,18 @@ struct mlx5_dev_registers {
 #define HAVE_MLX5_DR_CREATE_ACTION_ASO_EXT
 #endif
 
+/**
+ * Physical device structure.
+ * This device is created once per NIC to manage recourses shared by all ports
+ * under same physical device.
+ */
+struct mlx5_physical_device {
+	LIST_ENTRY(mlx5_physical_device) next;
+	struct mlx5_dev_ctx_shared *sh; /* Created on sherd context. */
+	uint64_t guid; /* System image guid, the uniq ID of physical device. */
+	uint32_t refcnt;
+};
+
 /*
  * Shared Infiniband device context for Master/Representors
  * which belong to same IB device with multiple IB ports.
@@ -1450,6 +1462,7 @@ struct mlx5_dev_ctx_shared {
 	uint32_t max_port; /* Maximal IB device port index. */
 	struct mlx5_bond_info bond; /* Bonding information. */
 	struct mlx5_common_device *cdev; /* Backend mlx5 device. */
+	struct mlx5_physical_device *phdev; /* Backend physical device. */
 	uint32_t tdn; /* Transport Domain number. */
 	char ibdev_name[MLX5_FS_NAME_MAX]; /* SYSFS dev name. */
 	char ibdev_path[MLX5_FS_PATH_MAX]; /* SYSFS dev path for secondary */
