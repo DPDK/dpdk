@@ -12,6 +12,7 @@
 #define UDP_VXLAN_GPE_PORT	4790
 #define UDP_GTPU_PORT	2152
 #define UDP_PORT_MPLS	6635
+#define UDP_GENEVE_PORT 6081
 #define UDP_ROCEV2_PORT	4791
 #define DR_FLOW_LAYER_TUNNEL_NO_MPLS (MLX5_FLOW_LAYER_TUNNEL & ~MLX5_FLOW_LAYER_MPLS)
 
@@ -177,6 +178,9 @@ struct mlx5dr_definer_conv_data {
 	X(SET,		source_qp,		v->queue,		mlx5_rte_flow_item_sq) \
 	X(SET,		tag,			v->data,		rte_flow_item_tag) \
 	X(SET,		metadata,		v->data,		rte_flow_item_meta) \
+	X(SET_BE16,	geneve_protocol,	v->protocol,		rte_flow_item_geneve) \
+	X(SET,		geneve_udp_port,	UDP_GENEVE_PORT,	rte_flow_item_geneve) \
+	X(SET_BE16,	geneve_ctrl,		v->ver_opt_len_o_c_rsvd0,	rte_flow_item_geneve) \
 	X(SET_BE16,	gre_c_ver,		v->c_rsvd0_ver,		rte_flow_item_gre) \
 	X(SET_BE16,	gre_protocol_type,	v->protocol,		rte_flow_item_gre) \
 	X(SET,		ipv4_protocol_gre,	IPPROTO_GRE,		rte_flow_item_gre) \
@@ -686,6 +690,16 @@ mlx5dr_definer_mpls_label_set(struct mlx5dr_definer_fc *fc,
 
 	memcpy(tag + fc->byte_off, v->label_tc_s, sizeof(v->label_tc_s));
 	memcpy(tag + fc->byte_off + sizeof(v->label_tc_s), &v->ttl, sizeof(v->ttl));
+}
+
+static void
+mlx5dr_definer_geneve_vni_set(struct mlx5dr_definer_fc *fc,
+			      const void *item_spec,
+			      uint8_t *tag)
+{
+	const struct rte_flow_item_geneve *v = item_spec;
+
+	memcpy(tag + fc->byte_off, v->vni, sizeof(v->vni));
 }
 
 static void
@@ -2228,6 +2242,79 @@ mlx5dr_definer_conv_item_random(struct mlx5dr_definer_conv_data *cd,
 }
 
 static int
+mlx5dr_definer_conv_item_geneve(struct mlx5dr_definer_conv_data *cd,
+				struct rte_flow_item *item,
+				int item_idx)
+{
+	const struct rte_flow_item_geneve *m = item->mask;
+	struct mlx5dr_definer_fc *fc;
+	bool inner = cd->tunnel;
+
+	if (inner) {
+		DR_LOG(ERR, "Inner GENEVE item not supported");
+		rte_errno = ENOTSUP;
+		return rte_errno;
+	}
+
+	/* In order to match on Geneve we must match on ip_protocol and l4_dport */
+	if (!cd->relaxed) {
+		fc = &cd->fc[DR_CALC_FNAME(IP_PROTOCOL, inner)];
+		if (!fc->tag_set) {
+			fc->item_idx = item_idx;
+			fc->tag_mask_set = &mlx5dr_definer_ones_set;
+			fc->tag_set = &mlx5dr_definer_udp_protocol_set;
+			DR_CALC_SET(fc, eth_l2, l4_type_bwc, inner);
+		}
+
+		fc = &cd->fc[DR_CALC_FNAME(L4_DPORT, inner)];
+		if (!fc->tag_set) {
+			fc->item_idx = item_idx;
+			fc->tag_mask_set = &mlx5dr_definer_ones_set;
+			fc->tag_set = &mlx5dr_definer_geneve_udp_port_set;
+			DR_CALC_SET(fc, eth_l4, destination_port, inner);
+		}
+	}
+
+	if (!m)
+		return 0;
+
+	if (m->rsvd1) {
+		rte_errno = ENOTSUP;
+		return rte_errno;
+	}
+
+	if (m->ver_opt_len_o_c_rsvd0) {
+		fc = &cd->fc[MLX5DR_DEFINER_FNAME_GENEVE_CTRL];
+		fc->item_idx = item_idx;
+		fc->tag_set = &mlx5dr_definer_geneve_ctrl_set;
+		DR_CALC_SET_HDR(fc, tunnel_header, tunnel_header_0);
+		fc->bit_mask = __mlx5_mask(header_geneve, ver_opt_len_o_c_rsvd);
+		fc->bit_off = __mlx5_dw_bit_off(header_geneve, ver_opt_len_o_c_rsvd);
+	}
+
+	if (m->protocol) {
+		fc = &cd->fc[MLX5DR_DEFINER_FNAME_GENEVE_PROTO];
+		fc->item_idx = item_idx;
+		fc->tag_set = &mlx5dr_definer_geneve_protocol_set;
+		DR_CALC_SET_HDR(fc, tunnel_header, tunnel_header_0);
+		fc->byte_off += MLX5_BYTE_OFF(header_geneve, protocol_type);
+		fc->bit_mask = __mlx5_mask(header_geneve, protocol_type);
+		fc->bit_off = __mlx5_dw_bit_off(header_geneve, protocol_type);
+	}
+
+	if (!is_mem_zero(m->vni, 3)) {
+		fc = &cd->fc[MLX5DR_DEFINER_FNAME_GENEVE_VNI];
+		fc->item_idx = item_idx;
+		fc->tag_set = &mlx5dr_definer_geneve_vni_set;
+		DR_CALC_SET_HDR(fc, tunnel_header, tunnel_header_1);
+		fc->bit_mask = __mlx5_mask(header_geneve, vni);
+		fc->bit_off = __mlx5_dw_bit_off(header_geneve, vni);
+	}
+
+	return 0;
+}
+
+static int
 mlx5dr_definer_mt_set_fc(struct mlx5dr_match_template *mt,
 			 struct mlx5dr_definer_fc *fc,
 			 uint8_t *hl)
@@ -2664,6 +2751,10 @@ mlx5dr_definer_conv_items_to_hl(struct mlx5dr_context *ctx,
 			ret = mlx5dr_definer_conv_item_mpls(&cd, items, i);
 			item_flags |= MLX5_FLOW_LAYER_MPLS;
 			cd.mpls_idx++;
+			break;
+		case RTE_FLOW_ITEM_TYPE_GENEVE:
+			ret = mlx5dr_definer_conv_item_geneve(&cd, items, i);
+			item_flags |= MLX5_FLOW_LAYER_GENEVE;
 			break;
 		case RTE_FLOW_ITEM_TYPE_IB_BTH:
 			ret = mlx5dr_definer_conv_item_ib_l4(&cd, items, i);
