@@ -966,18 +966,6 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 	attr->max_geneve_tlv_option_data_len = MLX5_GET(cmd_hca_cap, hcattr,
 			max_geneve_tlv_option_data_len);
 	attr->qos.sup = MLX5_GET(cmd_hca_cap, hcattr, qos);
-	attr->qos.flow_meter_aso_sup = !!(MLX5_GET64(cmd_hca_cap, hcattr,
-					 general_obj_types) &
-			      MLX5_GENERAL_OBJ_TYPES_CAP_FLOW_METER_ASO);
-	attr->vdpa.valid = !!(MLX5_GET64(cmd_hca_cap, hcattr,
-					 general_obj_types) &
-			      MLX5_GENERAL_OBJ_TYPES_CAP_VIRTQ_NET_Q);
-	attr->vdpa.queue_counters_valid = !!(MLX5_GET64(cmd_hca_cap, hcattr,
-							general_obj_types) &
-				  MLX5_GENERAL_OBJ_TYPES_CAP_VIRTIO_Q_COUNTERS);
-	attr->parse_graph_flex_node = !!(MLX5_GET64(cmd_hca_cap, hcattr,
-					 general_obj_types) &
-			      MLX5_GENERAL_OBJ_TYPES_CAP_PARSE_GRAPH_FLEX_NODE);
 	attr->wqe_index_ignore = MLX5_GET(cmd_hca_cap, hcattr,
 					  wqe_index_ignore_cap);
 	attr->cross_channel = MLX5_GET(cmd_hca_cap, hcattr, cd);
@@ -1001,6 +989,9 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 	/* Read the general_obj_types bitmap and extract the relevant bits. */
 	general_obj_types_supported = MLX5_GET64(cmd_hca_cap, hcattr,
 						 general_obj_types);
+	attr->qos.flow_meter_aso_sup =
+			!!(general_obj_types_supported &
+			   MLX5_GENERAL_OBJ_TYPES_CAP_FLOW_METER_ASO);
 	attr->vdpa.valid = !!(general_obj_types_supported &
 			      MLX5_GENERAL_OBJ_TYPES_CAP_VIRTQ_NET_Q);
 	attr->vdpa.queue_counters_valid =
@@ -1074,8 +1065,7 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 		MLX5_GET(cmd_hca_cap, hcattr, umr_modify_entity_size_disabled);
 	attr->wait_on_time = MLX5_GET(cmd_hca_cap, hcattr, wait_on_time);
 	attr->crypto = MLX5_GET(cmd_hca_cap, hcattr, crypto);
-	attr->ct_offload = !!(MLX5_GET64(cmd_hca_cap, hcattr,
-					 general_obj_types) &
+	attr->ct_offload = !!(general_obj_types_supported &
 			      MLX5_GENERAL_OBJ_TYPES_CAP_CONN_TRACK_OFFLOAD);
 	attr->rq_delay_drop = MLX5_GET(cmd_hca_cap, hcattr, rq_delay_drop);
 	attr->nic_flow_table = MLX5_GET(cmd_hca_cap, hcattr, nic_flow_table);
