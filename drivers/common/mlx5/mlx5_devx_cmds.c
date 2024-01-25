@@ -2918,6 +2918,56 @@ mlx5_devx_cmd_create_geneve_tlv_option(void *ctx,
 	return geneve_tlv_opt_obj;
 }
 
+/**
+ * Query GENEVE TLV option using DevX API.
+ *
+ * @param[in] ctx
+ *   Context used to create GENEVE TLV option object.
+ * @param[in] geneve_tlv_opt_obj
+ *   DevX object of the GENEVE TLV option.
+ * @param[out] attr
+ *   Pointer to match sample info attributes structure.
+ *
+ * @return
+ *   0 on success, a negative errno otherwise and rte_errno is set.
+ */
+int
+mlx5_devx_cmd_query_geneve_tlv_option(void *ctx,
+				      struct mlx5_devx_obj *geneve_tlv_opt_obj,
+				      struct mlx5_devx_match_sample_info_query_attr *attr)
+{
+	uint32_t in[MLX5_ST_SZ_DW(general_obj_in_cmd_hdr)] = {0};
+	uint32_t out[MLX5_ST_SZ_DW(query_geneve_tlv_option_out)] = {0};
+	void *hdr = MLX5_ADDR_OF(query_geneve_tlv_option_out, in, hdr);
+	void *opt = MLX5_ADDR_OF(query_geneve_tlv_option_out, out,
+				 geneve_tlv_opt);
+	int ret;
+
+	MLX5_SET(general_obj_in_cmd_hdr, hdr, opcode,
+		 MLX5_CMD_OP_QUERY_GENERAL_OBJECT);
+	MLX5_SET(general_obj_in_cmd_hdr, hdr, obj_type,
+		 MLX5_GENERAL_OBJ_TYPE_GENEVE_TLV_OPT);
+	MLX5_SET(general_obj_in_cmd_hdr, hdr, obj_id, geneve_tlv_opt_obj->id);
+	/* Call first query to get sample handle. */
+	ret = mlx5_glue->devx_obj_query(geneve_tlv_opt_obj->obj, in, sizeof(in),
+					out, sizeof(out));
+	if (ret) {
+		DRV_LOG(ERR, "Failed to query GENEVE TLV option using DevX.");
+		rte_errno = errno;
+		return -errno;
+	}
+	/* Call second query to get sample information. */
+	if (MLX5_GET(geneve_tlv_option, opt, sample_id_valid)) {
+		uint32_t sample_id = MLX5_GET(geneve_tlv_option, opt,
+					      geneve_sample_field_id);
+
+		return mlx5_devx_cmd_match_sample_info_query(ctx, sample_id,
+							     attr);
+	}
+	DRV_LOG(DEBUG, "GENEVE TLV option sample isn't valid.");
+	return 0;
+}
+
 int
 mlx5_devx_cmd_wq_query(void *wq, uint32_t *counter_set_id)
 {

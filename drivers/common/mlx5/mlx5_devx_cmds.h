@@ -795,6 +795,12 @@ struct mlx5_devx_obj *
 mlx5_devx_cmd_create_geneve_tlv_option(void *ctx,
 				 struct mlx5_devx_geneve_tlv_option_attr *attr);
 
+__rte_internal
+int
+mlx5_devx_cmd_query_geneve_tlv_option(void *ctx,
+				      struct mlx5_devx_obj *geneve_tlv_opt_obj,
+				      struct mlx5_devx_match_sample_info_query_attr *attr);
+
 /**
  * Create virtio queue counters object DevX API.
  *

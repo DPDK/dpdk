@@ -3733,6 +3733,11 @@ struct mlx5_ifc_create_geneve_tlv_option_in_bits {
 	struct mlx5_ifc_geneve_tlv_option_bits geneve_tlv_opt;
 };
 
+struct mlx5_ifc_query_geneve_tlv_option_out_bits {
+	struct mlx5_ifc_general_obj_in_cmd_hdr_bits hdr;
+	struct mlx5_ifc_geneve_tlv_option_bits geneve_tlv_opt;
+};
+
 struct mlx5_ifc_create_rtc_in_bits {
 	struct mlx5_ifc_general_obj_in_cmd_hdr_bits hdr;
 	struct mlx5_ifc_rtc_bits rtc;
