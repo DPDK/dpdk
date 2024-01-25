@@ -518,8 +518,11 @@ mlx5_devx_cmd_query_nic_vport_context(void *ctx,
 	}
 	vctx = MLX5_ADDR_OF(query_nic_vport_context_out, out,
 			    nic_vport_context);
-	attr->vport_inline_mode = MLX5_GET(nic_vport_context, vctx,
-					   min_wqe_inline_mode);
+	if (attr->wqe_inline_mode == MLX5_CAP_INLINE_MODE_VPORT_CONTEXT)
+		attr->vport_inline_mode = MLX5_GET(nic_vport_context, vctx,
+						   min_wqe_inline_mode);
+	attr->system_image_guid = MLX5_GET64(nic_vport_context, vctx,
+					     system_image_guid);
 	return 0;
 }
 
@@ -1351,8 +1354,7 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 		}
 		attr->qp_ts_format = MLX5_GET(roce_caps, hcattr, qp_ts_format);
 	}
-	if (attr->eth_virt &&
-	    attr->wqe_inline_mode == MLX5_CAP_INLINE_MODE_VPORT_CONTEXT) {
+	if (attr->eth_virt) {
 		rc = mlx5_devx_cmd_query_nic_vport_context(ctx, 0, attr);
 		if (rc) {
 			attr->eth_virt = 0;
