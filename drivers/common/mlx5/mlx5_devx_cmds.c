@@ -641,11 +641,10 @@ mlx5_devx_cmd_match_sample_info_query(void *ctx, uint32_t sample_field_id,
 	MLX5_SET(query_match_sample_info_in, in, sample_field_id,
 		 sample_field_id);
 	rc = mlx5_glue->devx_general_cmd(ctx, in, sizeof(in), out, sizeof(out));
-	if (rc) {
-		DRV_LOG(ERR, "Failed to query match sample info using DevX: %s",
-			strerror(rc));
-		rte_errno = rc;
-		return -rc;
+	if (rc || MLX5_FW_STATUS(out)) {
+		DEVX_DRV_LOG(ERR, out, "query match sample info",
+			     "sample_field_id", sample_field_id);
+		return MLX5_DEVX_ERR_RC(rc);
 	}
 	attr->modify_field_id = MLX5_GET(query_match_sample_info_out, out,
 					 modify_field_id);
