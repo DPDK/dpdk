@@ -280,6 +280,9 @@ enum mlx5_feature_name {
 /* COMPARE ITEM */
 #define MLX5_FLOW_ITEM_COMPARE (1ull << 54)
 
+/* Random ITEM */
+#define MLX5_FLOW_ITEM_RANDOM (1ull << 55)
+
 /* Outer Masks. */
 #define MLX5_FLOW_LAYER_OUTER_L3 \
 	(MLX5_FLOW_LAYER_OUTER_L3_IPV4 | MLX5_FLOW_LAYER_OUTER_L3_IPV6)

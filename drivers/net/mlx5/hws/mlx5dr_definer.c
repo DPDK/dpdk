@@ -187,6 +187,7 @@ struct mlx5dr_definer_conv_data {
 	X(SET_BE32,     ipsec_sequence_number,  v->hdr.seq,             rte_flow_item_esp) \
 	X(SET,		ib_l4_udp_port,		UDP_ROCEV2_PORT,	rte_flow_item_ib_bth) \
 	X(SET,		ib_l4_opcode,		v->hdr.opcode,		rte_flow_item_ib_bth) \
+	X(SET,		random_number,		v->value,		rte_flow_item_random) \
 	X(SET,		ib_l4_bth_a,		v->hdr.a,		rte_flow_item_ib_bth) \
 
 /* Item set function format */
@@ -2201,6 +2202,33 @@ mlx5dr_definer_conv_item_ipv6_routing_ext(struct mlx5dr_definer_conv_data *cd,
 }
 
 static int
+mlx5dr_definer_conv_item_random(struct mlx5dr_definer_conv_data *cd,
+				struct rte_flow_item *item,
+				int item_idx)
+{
+	const struct rte_flow_item_random *m = item->mask;
+	const struct rte_flow_item_random *l = item->last;
+	struct mlx5dr_definer_fc *fc;
+
+	if (!m)
+		return 0;
+
+	if (m->value != (m->value & UINT16_MAX)) {
+		DR_LOG(ERR, "Random value is 16 bits only");
+		rte_errno = EINVAL;
+		return rte_errno;
+	}
+
+	fc = &cd->fc[MLX5DR_DEFINER_FNAME_RANDOM_NUM];
+	fc->item_idx = item_idx;
+	fc->tag_set = &mlx5dr_definer_random_number_set;
+	fc->is_range = l && l->value;
+	DR_CALC_SET_HDR(fc, random_number, random_number);
+
+	return 0;
+}
+
+static int
 mlx5dr_definer_mt_set_fc(struct mlx5dr_match_template *mt,
 			 struct mlx5dr_definer_fc *fc,
 			 uint8_t *hl)
@@ -2251,6 +2279,7 @@ mlx5dr_definer_check_item_range_supp(struct rte_flow_item *item)
 	case RTE_FLOW_ITEM_TYPE_TAG:
 	case RTE_FLOW_ITEM_TYPE_META:
 	case MLX5_RTE_FLOW_ITEM_TYPE_TAG:
+	case RTE_FLOW_ITEM_TYPE_RANDOM:
 		return 0;
 	default:
 		DR_LOG(ERR, "Range not supported over item type %d", item->type);
@@ -2644,6 +2673,10 @@ mlx5dr_definer_conv_items_to_hl(struct mlx5dr_context *ctx,
 		case RTE_FLOW_ITEM_TYPE_PTYPE:
 			ret = mlx5dr_definer_conv_item_ptype(&cd, items, i);
 			item_flags |= MLX5_FLOW_ITEM_PTYPE;
+			break;
+		case RTE_FLOW_ITEM_TYPE_RANDOM:
+			ret = mlx5dr_definer_conv_item_random(&cd, items, i);
+			item_flags |= MLX5_FLOW_ITEM_RANDOM;
 			break;
 		case RTE_FLOW_ITEM_TYPE_VXLAN_GPE:
 			ret = mlx5dr_definer_conv_item_vxlan_gpe(&cd, items, i);

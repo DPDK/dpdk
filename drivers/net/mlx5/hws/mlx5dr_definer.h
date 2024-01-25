@@ -155,6 +155,7 @@ enum mlx5dr_definer_fname {
 	MLX5DR_DEFINER_FNAME_PTYPE_TUNNEL,
 	MLX5DR_DEFINER_FNAME_PTYPE_FRAG_O,
 	MLX5DR_DEFINER_FNAME_PTYPE_FRAG_I,
+	MLX5DR_DEFINER_FNAME_RANDOM_NUM,
 	MLX5DR_DEFINER_FNAME_MAX,
 };
 
@@ -412,6 +413,11 @@ struct mlx5_ifc_definer_hl_ipv4_src_dst_bits {
 	u8 destination_address[0x20];
 };
 
+struct mlx5_ifc_definer_hl_random_number_bits {
+	u8 random_number[0x10];
+	u8 reserved[0x10];
+};
+
 struct mlx5_ifc_definer_hl_ipv6_addr_bits {
 	u8 ipv6_address_127_96[0x20];
 	u8 ipv6_address_95_64[0x20];
@@ -521,7 +527,7 @@ struct mlx5_ifc_definer_hl_bits {
 	struct mlx5_ifc_definer_hl_mpls_bits mpls_inner;
 	u8 unsupported_config_headers_outer[0x80];
 	u8 unsupported_config_headers_inner[0x80];
-	u8 unsupported_random_number[0x20];
+	struct mlx5_ifc_definer_hl_random_number_bits random_number;
 	struct mlx5_ifc_definer_hl_ipsec_bits ipsec;
 	struct mlx5_ifc_definer_hl_metadata_bits metadata;
 	u8 unsupported_utc_timestamp[0x40];
