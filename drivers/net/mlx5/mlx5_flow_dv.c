@@ -10104,7 +10104,6 @@ flow_dv_translate_item_geneve_opt(struct rte_eth_dev *dev, void *key,
 	const struct rte_flow_item_geneve_opt *geneve_opt_m;
 	const struct rte_flow_item_geneve_opt *geneve_opt_v;
 	const struct rte_flow_item_geneve_opt *geneve_opt_vv = item->spec;
-	void *misc_v = MLX5_ADDR_OF(fte_match_param, key, misc_parameters);
 	void *misc3_v = MLX5_ADDR_OF(fte_match_param, key, misc_parameters_3);
 	rte_be32_t opt_data_key = 0, opt_data_mask = 0;
 	uint32_t *data;
@@ -10122,21 +10121,6 @@ flow_dv_translate_item_geneve_opt(struct rte_eth_dev *dev, void *key,
 			DRV_LOG(ERR, "Failed to create geneve_tlv_obj");
 			return ret;
 		}
-	}
-	/*
-	 * Set the option length in GENEVE header if not requested.
-	 * The GENEVE TLV option length is expressed by the option length field
-	 * in the GENEVE header.
-	 * If the option length was not requested but the GENEVE TLV option item
-	 * is present we set the option length field implicitly.
-	 */
-	if (!MLX5_GET16(fte_match_set_misc, misc_v, geneve_opt_len)) {
-		if (key_type & MLX5_SET_MATCHER_M)
-			MLX5_SET(fte_match_set_misc, misc_v, geneve_opt_len,
-				 MLX5_GENEVE_OPTLEN_MASK);
-		else
-			MLX5_SET(fte_match_set_misc, misc_v, geneve_opt_len,
-				 geneve_opt_v->option_len + 1);
 	}
 	/* Set the data. */
 	if (key_type == MLX5_SET_MATCHER_SW_V)
