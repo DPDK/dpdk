@@ -629,8 +629,12 @@ Limitations
   - Modification of an arbitrary place in a packet via the special ``RTE_FLOW_FIELD_START`` Field ID is not supported.
   - Modification of the MPLS header is supported only in HWS and only to copy from,
     the encapsulation level is always 0.
-  - Modification of the 802.1Q Tag, VXLAN Network or GENEVE Network ID's is not supported.
   - Modify field action using ``RTE_FLOW_FIELD_RANDOM`` is not supported.
+  - Modification of the 802.1Q tag is not supported.
+  - Modification of VXLAN network or GENEVE network ID is supported only for HW steering.
+  - Modification of GENEVE network ID is not supported when configured
+    ``FLEX_PARSER_PROFILE_ENABLE`` supports Geneve TLV options.
+    See :ref:`mlx5_firmware_config` for more flex parser information.
   - Encapsulation levels are not supported, can modify outermost header fields only.
   - Offsets cannot skip past the boundary of a field.
   - If the field type is ``RTE_FLOW_FIELD_MAC_TYPE``

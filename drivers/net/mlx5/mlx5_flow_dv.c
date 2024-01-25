@@ -1957,6 +1957,7 @@ mlx5_flow_field_id_to_modify_info
 			info[idx].offset = off_be;
 		break;
 	case RTE_FLOW_FIELD_VXLAN_VNI:
+	case RTE_FLOW_FIELD_GENEVE_VNI:
 		MLX5_ASSERT(data->offset + width <= 24);
 		/* VNI is on bits 31-8 of TUNNEL_HDR_DW_1. */
 		off_be = 24 - (data->offset + width) + 8;
@@ -1966,9 +1967,6 @@ mlx5_flow_field_id_to_modify_info
 			mask[idx] = flow_modify_info_mask_32(width, off_be);
 		else
 			info[idx].offset = off_be;
-		break;
-	case RTE_FLOW_FIELD_GENEVE_VNI:
-		/* not supported yet*/
 		break;
 	case RTE_FLOW_FIELD_GTP_TEID:
 		MLX5_ASSERT(data->offset + width <= 32);

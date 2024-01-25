@@ -124,7 +124,7 @@ New Features
 * **Updated NVIDIA mlx5 driver.**
 
   * Added support for VXLAN-GPE matching in DV and HWS flow engines.
-  * Added support for GENEVE matching in HWS flow engine.
+  * Added support for GENEVE matching and modifying in HWS flow engine.
   * Added support for matching a random value.
   * Added support for comparing result between packet fields or value.
   * Added support for accumulating value of field into another one.

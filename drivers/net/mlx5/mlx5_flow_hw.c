@@ -4999,6 +4999,8 @@ flow_hw_validate_action_modify_field(struct rte_eth_dev *dev,
 {
 	const struct rte_flow_action_modify_field *action_conf = action->conf;
 	const struct rte_flow_action_modify_field *mask_conf = mask->conf;
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_hca_attr *attr = &priv->sh->cdev->config.hca_attr;
 	int ret;
 
 	if (!mask_conf)
@@ -5098,10 +5100,16 @@ flow_hw_validate_action_modify_field(struct rte_eth_dev *dev,
 		return rte_flow_error_set(error, EINVAL,
 				RTE_FLOW_ERROR_TYPE_ACTION, action,
 				"modifying random value is not supported");
-	if (flow_hw_modify_field_is_used(action_conf, RTE_FLOW_FIELD_GENEVE_VNI))
+	/**
+	 * Geneve VNI modification is supported only when Geneve header is
+	 * parsed natively. When GENEVE options are supported, they both Geneve
+	 * and options headers are parsed as a flex parser.
+	 */
+	if (flow_hw_modify_field_is_used(action_conf, RTE_FLOW_FIELD_GENEVE_VNI) &&
+	    attr->geneve_tlv_opt)
 		return rte_flow_error_set(error, EINVAL,
 				RTE_FLOW_ERROR_TYPE_ACTION, action,
-				"modifying Geneve VNI is not supported");
+				"modifying Geneve VNI is not supported when GENEVE opt is supported");
 	/* Due to HW bug, tunnel MPLS header is read only. */
 	if (action_conf->dst.field == RTE_FLOW_FIELD_MPLS)
 		return rte_flow_error_set(error, EINVAL,
