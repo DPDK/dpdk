@@ -5496,6 +5496,11 @@ flow_dv_validate_action_modify_field(struct rte_eth_dev *dev,
 				RTE_FLOW_ERROR_TYPE_ACTION, action,
 				"modifications of the MPLS header "
 				"is not supported");
+	if (dst_data->field == RTE_FLOW_FIELD_RANDOM ||
+	    src_data->field == RTE_FLOW_FIELD_RANDOM)
+		return rte_flow_error_set(error, ENOTSUP,
+				RTE_FLOW_ERROR_TYPE_ACTION, action,
+				"modifications of random value is not supported");
 	if (dst_data->field == RTE_FLOW_FIELD_MARK ||
 	    src_data->field == RTE_FLOW_FIELD_MARK)
 		if (config->dv_xmeta_en == MLX5_XMETA_MODE_LEGACY ||

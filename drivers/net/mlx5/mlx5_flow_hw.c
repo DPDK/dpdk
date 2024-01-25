@@ -5094,6 +5094,10 @@ flow_hw_validate_action_modify_field(struct rte_eth_dev *dev,
 		return rte_flow_error_set(error, EINVAL,
 				RTE_FLOW_ERROR_TYPE_ACTION, action,
 				"modifying vlan_type is not supported");
+	if (flow_hw_modify_field_is_used(action_conf, RTE_FLOW_FIELD_RANDOM))
+		return rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_ACTION, action,
+				"modifying random value is not supported");
 	if (flow_hw_modify_field_is_used(action_conf, RTE_FLOW_FIELD_GENEVE_VNI))
 		return rte_flow_error_set(error, EINVAL,
 				RTE_FLOW_ERROR_TYPE_ACTION, action,
@@ -6928,6 +6932,7 @@ flow_hw_pattern_validate(struct rte_eth_dev *dev,
 		case RTE_FLOW_ITEM_TYPE_FLEX:
 		case RTE_FLOW_ITEM_TYPE_IB_BTH:
 		case RTE_FLOW_ITEM_TYPE_PTYPE:
+		case RTE_FLOW_ITEM_TYPE_RANDOM:
 			break;
 		case RTE_FLOW_ITEM_TYPE_INTEGRITY:
 			/*

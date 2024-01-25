@@ -149,6 +149,7 @@ Features
 - Matching on Geneve TLV option header with raw encap/decap action.
 - Matching on ESP header SPI field.
 - Matching on InfiniBand BTH.
+- Matching on random value.
 - Modify IPv4/IPv6 ECN field.
 - Push or remove IPv6 routing extension.
 - RSS support in sample action.
@@ -375,6 +376,13 @@ Limitations
     must be byte aligned (multiple of 8).
   - Modify field with flex item, the offset must be byte aligned (multiple of 8).
 
+- Match on random value:
+
+  - Supported only with HW Steering enabled (``dv_flow_en`` = 2).
+  - Supported only in table with ``nb_flows=1``.
+  - NIC ingress/egress flow in group 0 is not supported.
+  - Supports matching only 16 bits (LSB).
+
 - Match with compare result item (``RTE_FLOW_ITEM_TYPE_COMPARE``):
 
   - Only supported in HW steering(``dv_flow_en`` = 2) mode.
@@ -578,6 +586,7 @@ Limitations
   - Modification of the MPLS header is supported only in HWS and only to copy from,
     the encapsulation level is always 0.
   - Modification of the 802.1Q Tag, VXLAN Network or GENEVE Network ID's is not supported.
+  - Modify field action using ``RTE_FLOW_FIELD_RANDOM`` is not supported.
   - Encapsulation levels are not supported, can modify outermost header fields only.
   - Offsets cannot skip past the boundary of a field.
   - If the field type is ``RTE_FLOW_FIELD_MAC_TYPE``
