@@ -1814,6 +1814,25 @@ mlx5_get_geneve_hl_data(const void *dr_ctx, uint8_t type, uint16_t class,
 			struct mlx5_hl_data ** const hl_dws,
 			bool *ok_bit_on_class);
 
+/**
+ * Get modify field ID for single DW inside configured GENEVE TLV option.
+ *
+ * @param[in] dr_ctx
+ *   Pointer to HW steering DR context.
+ * @param[in] type
+ *   GENEVE TLV option type.
+ * @param[in] class
+ *   GENEVE TLV option class.
+ * @param[in] dw_offset
+ *   Offset of DW inside the option.
+ *
+ * @return
+ *   Modify field ID on success, negative errno otherwise and rte_errno is set.
+ */
+int
+mlx5_get_geneve_option_modify_field_id(const void *dr_ctx, uint8_t type,
+				       uint16_t class, uint8_t dw_offset);
+
 void *
 mlx5_geneve_tlv_parser_create(uint16_t port_id,
 			      const struct rte_pmd_mlx5_geneve_tlv tlv_list[],
@@ -1822,6 +1841,8 @@ int mlx5_geneve_tlv_parser_destroy(void *handle);
 int mlx5_flow_geneve_tlv_option_validate(struct mlx5_priv *priv,
 					 const struct rte_flow_item *geneve_opt,
 					 struct rte_flow_error *error);
+int mlx5_geneve_opt_modi_field_get(struct mlx5_priv *priv,
+				   const struct rte_flow_field_data *data);
 
 struct mlx5_geneve_tlv_options_mng;
 int mlx5_geneve_tlv_option_register(struct mlx5_priv *priv,

@@ -255,6 +255,123 @@ mlx5_geneve_tlv_options_unregister(struct mlx5_priv *priv,
 }
 
 /**
+ * Get single DW resource from given option.
+ *
+ * @param option
+ *   Pointer to single GENEVE TLV option.
+ * @param offset
+ *   Offset of DW related to option start.
+ *
+ * @return
+ *   DW resource on success, NULL otherwise and rte_errno is set.
+ */
+static struct mlx5_geneve_tlv_resource *
+mlx5_geneve_tlv_option_get_resource_by_offset(struct mlx5_geneve_tlv_option *option,
+					      uint8_t offset)
+{
+	uint8_t i;
+
+	for (i = 0; option->resources[i].obj != NULL; ++i) {
+		if (option->resources[i].offset < offset)
+			continue;
+		if (option->resources[i].offset == offset)
+			return &option->resources[i];
+		break;
+	}
+	DRV_LOG(ERR, "The DW in offset %u wasn't configured.", offset);
+	rte_errno = EINVAL;
+	return NULL;
+}
+
+int
+mlx5_get_geneve_option_modify_field_id(const void *dr_ctx, uint8_t type,
+				       uint16_t class, uint8_t dw_offset)
+{
+	uint16_t port_id;
+
+	MLX5_ETH_FOREACH_DEV(port_id, NULL) {
+		struct mlx5_priv *priv;
+		struct mlx5_geneve_tlv_option *option;
+		struct mlx5_geneve_tlv_resource *resource;
+
+		priv = rte_eth_devices[port_id].data->dev_private;
+		if (priv->dr_ctx != dr_ctx)
+			continue;
+		/* Find specific option inside list. */
+		option = mlx5_geneve_tlv_option_get(priv, type, class);
+		if (option == NULL)
+			return -rte_errno;
+		/* Find specific FW object inside option resources. */
+		resource = mlx5_geneve_tlv_option_get_resource_by_offset(option,
+									 dw_offset);
+		if (resource == NULL)
+			return -rte_errno;
+		return resource->modify_field;
+	}
+	DRV_LOG(ERR, "DR CTX %p doesn't belong to any DPDK port.", dr_ctx);
+	rte_errno = EINVAL;
+	return -rte_errno;
+}
+
+/**
+ * Get modify field ID for single DW inside configured GENEVE TLV option.
+ *
+ * @param[in] priv
+ *   Pointer to port's private data.
+ * @param[in] data
+ *   Pointer to modify field data structure.
+ *
+ * @return
+ *   Modify field ID on success, negative errno otherwise and rte_errno is set.
+ */
+int
+mlx5_geneve_opt_modi_field_get(struct mlx5_priv *priv,
+			       const struct rte_flow_field_data *data)
+{
+	uint16_t class = data->class_id;
+	uint8_t type = data->type;
+	struct mlx5_geneve_tlv_option *option;
+	struct mlx5_geneve_tlv_resource *resource;
+	uint8_t offset;
+
+	option = mlx5_geneve_tlv_option_get(priv, type, class);
+	if (option == NULL)
+		return -rte_errno;
+	switch (data->field) {
+	case RTE_FLOW_FIELD_GENEVE_OPT_TYPE:
+	case RTE_FLOW_FIELD_GENEVE_OPT_CLASS:
+		if (!option->match_data[0].dw_mask) {
+			DRV_LOG(ERR, "DW0 isn't configured");
+			rte_errno = EINVAL;
+			return -rte_errno;
+		}
+		resource = &option->resources[0];
+		MLX5_ASSERT(resource->offset == 0);
+		break;
+	case RTE_FLOW_FIELD_GENEVE_OPT_DATA:
+		/*
+		 * Convert offset twice:
+		 *  - First conversion from bit offset to DW offset.
+		 *  - Second conversion is to be related to data start instead
+		 *    of option start.
+		 */
+		offset = (data->offset >> 5) + 1;
+		resource = mlx5_geneve_tlv_option_get_resource_by_offset(option,
+									 offset);
+		break;
+	default:
+		DRV_LOG(ERR,
+			"Field ID %u doesn't describe GENEVE option header.",
+			data->field);
+		rte_errno = EINVAL;
+		return -rte_errno;
+	}
+	if (resource == NULL)
+		return -rte_errno;
+	return resource->modify_field;
+}
+
+/**
  * Create single GENEVE TLV option sample.
  *
  * @param ctx

@@ -1465,6 +1465,21 @@ mlx5_mpls_modi_field_get(const struct rte_flow_field_data *data)
 	return MLX5_MODI_IN_MPLS_LABEL_0 + data->tag_index;
 }
 
+static __rte_always_inline int
+flow_geneve_opt_modi_field_get(struct mlx5_priv *priv,
+			       const struct rte_flow_field_data *data)
+{
+#ifdef HAVE_MLX5_HWS_SUPPORT
+	return mlx5_geneve_opt_modi_field_get(priv, data);
+#else
+	(void)priv;
+	(void)data;
+	DRV_LOG(ERR, "GENEVE option modification is not supported.");
+	rte_errno = ENOTSUP;
+	return -rte_errno;
+#endif
+}
+
 static void
 mlx5_modify_flex_item(const struct rte_eth_dev *dev,
 		      const struct mlx5_flex_item *flex,
@@ -1604,9 +1619,11 @@ mlx5_flow_field_id_to_modify_info
 		 const struct rte_flow_attr *attr, struct rte_flow_error *error)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
+	enum mlx5_modification_field modi_id;
 	uint32_t idx = 0;
 	uint32_t off_be = 0;
 	uint32_t length = 0;
+
 	switch ((int)data->field) {
 	case RTE_FLOW_FIELD_START:
 		/* not supported yet */
@@ -1968,6 +1985,48 @@ mlx5_flow_field_id_to_modify_info
 		else
 			info[idx].offset = off_be;
 		break;
+	case RTE_FLOW_FIELD_GENEVE_OPT_TYPE:
+		MLX5_ASSERT(data->offset + width <= 8);
+		modi_id = flow_geneve_opt_modi_field_get(priv, data);
+		if (modi_id < 0)
+			return;
+		/* Type is on bits 16-8 of GENEVE option header (DW0). */
+		off_be = 32 - (16 + data->offset + width);
+		info[idx] = (struct field_modify_info){4, 0, modi_id};
+		if (mask)
+			mask[idx] = flow_modify_info_mask_32(width, off_be);
+		else
+			info[idx].offset = off_be;
+		break;
+	case RTE_FLOW_FIELD_GENEVE_OPT_CLASS:
+		MLX5_ASSERT(data->offset + width <= 16);
+		modi_id = flow_geneve_opt_modi_field_get(priv, data);
+		if (modi_id < 0)
+			return;
+		/* Class is on bits 31-16 of GENEVE option header (DW0). */
+		off_be = 32 - (data->offset + width);
+		info[idx] = (struct field_modify_info){4, 0, modi_id};
+		if (mask)
+			mask[idx] = flow_modify_info_mask_32(width, off_be);
+		else
+			info[idx].offset = off_be;
+		break;
+	case RTE_FLOW_FIELD_GENEVE_OPT_DATA:
+		if ((data->offset % 32) + width > 32) {
+			DRV_LOG(ERR, "Geneve TLV option data is per DW.");
+			return;
+		}
+		modi_id = flow_geneve_opt_modi_field_get(priv, data);
+		if (modi_id < 0)
+			return;
+		/* Use offset inside DW. */
+		off_be = 32 - ((data->offset % 32) + width);
+		info[idx] = (struct field_modify_info){4, 0, modi_id};
+		if (mask)
+			mask[idx] = flow_modify_info_mask_32(width, off_be);
+		else
+			info[idx].offset = off_be;
+		break;
 	case RTE_FLOW_FIELD_GTP_TEID:
 		MLX5_ASSERT(data->offset + width <= 32);
 		off_be = 32 - (data->offset + width);
@@ -1981,8 +2040,8 @@ mlx5_flow_field_id_to_modify_info
 	case RTE_FLOW_FIELD_MPLS:
 		MLX5_ASSERT(data->offset + width <= 32);
 		off_be = 32 - (data->offset + width);
-		info[idx] = (struct field_modify_info){4, 0,
-					mlx5_mpls_modi_field_get(data)};
+		modi_id = mlx5_mpls_modi_field_get(data);
+		info[idx] = (struct field_modify_info){4, 0, modi_id};
 		if (mask)
 			mask[idx] = flow_modify_info_mask_32(width, off_be);
 		else
@@ -5488,6 +5547,21 @@ flow_dv_validate_action_modify_field(struct rte_eth_dev *dev,
 				RTE_FLOW_ERROR_TYPE_ACTION, action,
 				"modifications of the GENEVE Network"
 				" Identifier is not supported");
+	if (dst_data->field == RTE_FLOW_FIELD_GENEVE_OPT_TYPE ||
+	    src_data->field == RTE_FLOW_FIELD_GENEVE_OPT_TYPE)
+		return rte_flow_error_set(error, ENOTSUP,
+				RTE_FLOW_ERROR_TYPE_ACTION, action,
+				"modifications of the GENEVE option type is not supported");
+	if (dst_data->field == RTE_FLOW_FIELD_GENEVE_OPT_CLASS ||
+	    src_data->field == RTE_FLOW_FIELD_GENEVE_OPT_CLASS)
+		return rte_flow_error_set(error, ENOTSUP,
+				RTE_FLOW_ERROR_TYPE_ACTION, action,
+				"modifications of the GENEVE option class is not supported");
+	if (dst_data->field == RTE_FLOW_FIELD_GENEVE_OPT_DATA ||
+	    src_data->field == RTE_FLOW_FIELD_GENEVE_OPT_DATA)
+		return rte_flow_error_set(error, ENOTSUP,
+				RTE_FLOW_ERROR_TYPE_ACTION, action,
+				"modifications of the GENEVE option data is not supported");
 	if (dst_data->field == RTE_FLOW_FIELD_MPLS ||
 	    src_data->field == RTE_FLOW_FIELD_MPLS)
 		return rte_flow_error_set(error, ENOTSUP,
