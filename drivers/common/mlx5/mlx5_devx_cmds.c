@@ -965,6 +965,8 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 			max_geneve_tlv_options);
 	attr->max_geneve_tlv_option_data_len = MLX5_GET(cmd_hca_cap, hcattr,
 			max_geneve_tlv_option_data_len);
+	attr->query_match_sample_info = MLX5_GET(cmd_hca_cap, hcattr,
+						 query_match_sample_info);
 	attr->qos.sup = MLX5_GET(cmd_hca_cap, hcattr, qos);
 	attr->wqe_index_ignore = MLX5_GET(cmd_hca_cap, hcattr,
 					  wqe_index_ignore_cap);
@@ -1094,8 +1096,8 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 			(ctx, &attr->flex);
 		if (rc)
 			return -1;
-		attr->flex.query_match_sample_info = MLX5_GET(cmd_hca_cap, hcattr,
-							      query_match_sample_info);
+		attr->flex.query_match_sample_info =
+						attr->query_match_sample_info;
 	}
 	if (attr->crypto) {
 		attr->aes_xts = MLX5_GET(cmd_hca_cap, hcattr, aes_xts) ||
