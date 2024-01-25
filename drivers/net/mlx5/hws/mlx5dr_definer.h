@@ -534,10 +534,8 @@ struct mlx5_ifc_definer_hl_bits {
 	u8 unsupported_free_running_timestamp[0x40];
 	struct mlx5_ifc_definer_hl_flex_parser_bits flex_parser;
 	struct mlx5_ifc_definer_hl_registers_bits registers;
-	/* struct x ib_l3_extended; */
-	/* struct x rwh */
-	/* struct x dcceth */
-	/* struct x dceth */
+	/* Reserved in case header layout on future HW */
+	u8 unsupported_reserved[0xd40];
 };
 
 enum mlx5dr_definer_gtp {
