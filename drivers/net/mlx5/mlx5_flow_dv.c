@@ -10046,11 +10046,15 @@ flow_dev_geneve_tlv_option_resource_register(struct rte_eth_dev *dev,
 			goto exit;
 		}
 	} else {
+		struct mlx5_devx_geneve_tlv_option_attr attr = {
+			.option_class = geneve_opt_v->option_class,
+			.option_type = geneve_opt_v->option_type,
+			.option_data_len = geneve_opt_v->option_len,
+		};
+
 		/* Create a GENEVE TLV object and resource. */
 		obj = mlx5_devx_cmd_create_geneve_tlv_option(sh->cdev->ctx,
-				geneve_opt_v->option_class,
-				geneve_opt_v->option_type,
-				geneve_opt_v->option_len);
+							     &attr);
 		if (!obj) {
 			ret = rte_flow_error_set(error, ENODATA,
 				RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,

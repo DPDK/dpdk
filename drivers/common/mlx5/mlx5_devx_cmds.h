@@ -668,6 +668,15 @@ struct mlx5_devx_crypto_login_attr {
 	uint8_t credential[MLX5_CRYPTO_CREDENTIAL_SIZE];
 };
 
+/*
+ * GENEVE TLV option attributes structure, used by GENEVE TLV option create.
+ */
+struct mlx5_devx_geneve_tlv_option_attr {
+	uint32_t option_class:16;
+	uint32_t option_type:8;
+	uint32_t option_data_len:5;
+};
+
 /* mlx5_devx_cmds.c */
 
 __rte_internal
@@ -778,7 +787,7 @@ int mlx5_devx_cmd_register_write(void *ctx, uint16_t reg_id,
 __rte_internal
 struct mlx5_devx_obj *
 mlx5_devx_cmd_create_geneve_tlv_option(void *ctx,
-		uint16_t class, uint8_t type, uint8_t len);
+				 struct mlx5_devx_geneve_tlv_option_attr *attr);
 
 /**
  * Create virtio queue counters object DevX API.

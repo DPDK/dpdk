@@ -2858,19 +2858,15 @@ mlx5_devx_cmd_create_conn_track_offload_obj(void *ctx, uint32_t pd,
  *
  * @param[in] ctx
  *   Context returned from mlx5 open_device() glue function.
- * @param [in] class
- *   TLV option variable value of class
- * @param [in] type
- *   TLV option variable value of type
- * @param [in] len
- *   TLV option variable value of len
+ * @param[in] attr
+ *   Pointer to GENEVE TLV option attributes structure.
  *
  * @return
  *   The DevX object created, NULL otherwise and rte_errno is set.
  */
 struct mlx5_devx_obj *
 mlx5_devx_cmd_create_geneve_tlv_option(void *ctx,
-		uint16_t class, uint8_t type, uint8_t len)
+				  struct mlx5_devx_geneve_tlv_option_attr *attr)
 {
 	uint32_t in[MLX5_ST_SZ_DW(create_geneve_tlv_option_in)] = {0};
 	uint32_t out[MLX5_ST_SZ_DW(general_obj_out_cmd_hdr)] = {0};
@@ -2879,25 +2875,27 @@ mlx5_devx_cmd_create_geneve_tlv_option(void *ctx,
 						   0, SOCKET_ID_ANY);
 
 	if (!geneve_tlv_opt_obj) {
-		DRV_LOG(ERR, "Failed to allocate geneve tlv option object.");
+		DRV_LOG(ERR, "Failed to allocate GENEVE TLV option object.");
 		rte_errno = ENOMEM;
 		return NULL;
 	}
 	void *hdr = MLX5_ADDR_OF(create_geneve_tlv_option_in, in, hdr);
 	void *opt = MLX5_ADDR_OF(create_geneve_tlv_option_in, in,
-			geneve_tlv_opt);
+				 geneve_tlv_opt);
 	MLX5_SET(general_obj_in_cmd_hdr, hdr, opcode,
-			MLX5_CMD_OP_CREATE_GENERAL_OBJECT);
+		 MLX5_CMD_OP_CREATE_GENERAL_OBJECT);
 	MLX5_SET(general_obj_in_cmd_hdr, hdr, obj_type,
 		 MLX5_GENERAL_OBJ_TYPE_GENEVE_TLV_OPT);
 	MLX5_SET(geneve_tlv_option, opt, option_class,
-			rte_be_to_cpu_16(class));
-	MLX5_SET(geneve_tlv_option, opt, option_type, type);
-	MLX5_SET(geneve_tlv_option, opt, option_data_length, len);
+		 rte_be_to_cpu_16(attr->option_class));
+	MLX5_SET(geneve_tlv_option, opt, option_type, attr->option_type);
+	MLX5_SET(geneve_tlv_option, opt, option_data_length,
+		 attr->option_data_len);
 	geneve_tlv_opt_obj->obj = mlx5_glue->devx_obj_create(ctx, in,
-					sizeof(in), out, sizeof(out));
+							     sizeof(in), out,
+							     sizeof(out));
 	if (!geneve_tlv_opt_obj->obj) {
-		DEVX_DRV_LOG(ERR, out, "create GENEVE TLV", NULL, 0);
+		DEVX_DRV_LOG(ERR, out, "create GENEVE TLV option", NULL, 0);
 		mlx5_free(geneve_tlv_opt_obj);
 		return NULL;
 	}
