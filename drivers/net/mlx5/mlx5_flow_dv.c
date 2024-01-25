@@ -10103,13 +10103,13 @@ flow_dv_translate_item_geneve_opt(struct rte_eth_dev *dev, void *key,
 {
 	const struct rte_flow_item_geneve_opt *geneve_opt_m;
 	const struct rte_flow_item_geneve_opt *geneve_opt_v;
-	const struct rte_flow_item_geneve_opt *geneve_opt_vv = item->spec;
+	const struct rte_flow_item_geneve_opt *orig_spec = item->spec;
 	void *misc3_v = MLX5_ADDR_OF(fte_match_param, key, misc_parameters_3);
 	rte_be32_t opt_data_key = 0, opt_data_mask = 0;
-	uint32_t *data;
+	size_t option_byte_len;
 	int ret = 0;
 
-	if (MLX5_ITEM_VALID(item, key_type))
+	if (MLX5_ITEM_VALID(item, key_type) || !orig_spec)
 		return -1;
 	MLX5_ITEM_UPDATE(item, key_type, geneve_opt_v, geneve_opt_m,
 			 &rte_flow_item_geneve_opt_mask);
@@ -10122,21 +10122,15 @@ flow_dv_translate_item_geneve_opt(struct rte_eth_dev *dev, void *key,
 			return ret;
 		}
 	}
-	/* Set the data. */
-	if (key_type == MLX5_SET_MATCHER_SW_V)
-		data = geneve_opt_vv->data;
-	else
-		data = geneve_opt_v->data;
-	if (data) {
-		memcpy(&opt_data_key, data,
-			RTE_MIN((uint32_t)(geneve_opt_v->option_len * 4),
-				sizeof(opt_data_key)));
-		memcpy(&opt_data_mask, geneve_opt_m->data,
-			RTE_MIN((uint32_t)(geneve_opt_v->option_len * 4),
-				sizeof(opt_data_mask)));
+	/* Convert the option length from DW to bytes for using memcpy. */
+	option_byte_len = RTE_MIN((size_t)(orig_spec->option_len * 4),
+				  sizeof(rte_be32_t));
+	if (geneve_opt_v->data) {
+		memcpy(&opt_data_key, geneve_opt_v->data, option_byte_len);
+		memcpy(&opt_data_mask, geneve_opt_m->data, option_byte_len);
 		MLX5_SET(fte_match_set_misc3, misc3_v,
-				geneve_tlv_option_0_data,
-			rte_be_to_cpu_32(opt_data_key & opt_data_mask));
+			 geneve_tlv_option_0_data,
+			 rte_be_to_cpu_32(opt_data_key & opt_data_mask));
 	}
 	return ret;
 }
