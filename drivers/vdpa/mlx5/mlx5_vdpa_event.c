@@ -244,22 +244,30 @@ mlx5_vdpa_queues_complete(struct mlx5_vdpa_priv *priv)
 	return max;
 }
 
+static void
+mlx5_vdpa_drain_cq_one(struct mlx5_vdpa_priv *priv,
+	struct mlx5_vdpa_virtq *virtq)
+{
+	struct mlx5_vdpa_cq *cq = &virtq->eqp.cq;
+
+	mlx5_vdpa_queue_complete(cq);
+	if (cq->cq_obj.cq) {
+		cq->cq_obj.cqes[0].wqe_counter = rte_cpu_to_be_16(UINT16_MAX);
+		virtq->eqp.qp_pi = 0;
+		if (!cq->armed)
+			mlx5_vdpa_cq_arm(priv, cq);
+	}
+}
+
 void
 mlx5_vdpa_drain_cq(struct mlx5_vdpa_priv *priv)
 {
+	struct mlx5_vdpa_virtq *virtq;
 	unsigned int i;
 
 	for (i = 0; i < priv->caps.max_num_virtio_queues; i++) {
-		struct mlx5_vdpa_cq *cq = &priv->virtqs[i].eqp.cq;
-
-		mlx5_vdpa_queue_complete(cq);
-		if (cq->cq_obj.cq) {
-			cq->cq_obj.cqes[0].wqe_counter =
-				rte_cpu_to_be_16(UINT16_MAX);
-			priv->virtqs[i].eqp.qp_pi = 0;
-			if (!cq->armed)
-				mlx5_vdpa_cq_arm(priv, cq);
-		}
+		virtq = &priv->virtqs[i];
+		mlx5_vdpa_drain_cq_one(priv, virtq);
 	}
 }
 
@@ -632,6 +640,7 @@ mlx5_vdpa_event_qp_prepare(struct mlx5_vdpa_priv *priv, uint16_t desc_n,
 	if (eqp->cq.cq_obj.cq != NULL && log_desc_n == eqp->cq.log_desc_n) {
 		/* Reuse existing resources. */
 		eqp->cq.callfd = callfd;
+		mlx5_vdpa_drain_cq_one(priv, virtq);
 		/* FW will set event qp to error state in q destroy. */
 		if (reset && !mlx5_vdpa_qps2rst2rts(eqp))
 			rte_write32(rte_cpu_to_be_32(RTE_BIT32(log_desc_n)),
