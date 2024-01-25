@@ -216,6 +216,7 @@ struct mlx5_hca_attr {
 	uint32_t max_geneve_tlv_option_data_len:5;
 	uint32_t geneve_tlv_sample:1;
 	uint32_t geneve_tlv_option_offset:1;
+	uint32_t geneve_tlv_option_sample_id:4;
 	uint32_t hairpin:1;
 	uint32_t log_max_hairpin_queues:5;
 	uint32_t log_max_hairpin_wq_data_sz:5;

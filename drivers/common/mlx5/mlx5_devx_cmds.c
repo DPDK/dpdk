@@ -973,6 +973,8 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 					   geneve_tlv_sample);
 	attr->query_match_sample_info = MLX5_GET(cmd_hca_cap, hcattr,
 						 query_match_sample_info);
+	attr->geneve_tlv_option_sample_id = MLX5_GET(cmd_hca_cap, hcattr,
+						     flex_parser_id_geneve_opt_0);
 	attr->qos.sup = MLX5_GET(cmd_hca_cap, hcattr, qos);
 	attr->wqe_index_ignore = MLX5_GET(cmd_hca_cap, hcattr,
 					  wqe_index_ignore_cap);
