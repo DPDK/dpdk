@@ -2843,10 +2843,6 @@ void flow_hw_grp_clone_free_cb(void *tool_ctx, struct mlx5_list_entry *entry);
 
 struct mlx5_aso_age_action *flow_aso_age_get_by_idx(struct rte_eth_dev *dev,
 						    uint32_t age_idx);
-int flow_dev_geneve_tlv_option_resource_register(struct rte_eth_dev *dev,
-					     const struct rte_flow_item *item,
-					     struct rte_flow_error *error);
-void flow_dev_geneve_tlv_option_resource_release(struct mlx5_dev_ctx_shared *sh);
 
 void flow_release_workspace(void *data);
 int mlx5_flow_os_init_workspace_once(void);

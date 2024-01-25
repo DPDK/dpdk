@@ -9998,7 +9998,7 @@ flow_dv_translate_item_geneve(void *key, const struct rte_flow_item *item,
 /**
  * Create Geneve TLV option resource.
  *
- * @param dev[in, out]
+ * @param[in, out] dev
  *   Pointer to rte_eth_dev structure.
  * @param[in] item
  *   Flow pattern to translate.
@@ -10008,8 +10008,7 @@ flow_dv_translate_item_geneve(void *key, const struct rte_flow_item *item,
  * @return
  *   0 on success otherwise -errno and errno is set.
  */
-
-int
+static int
 flow_dev_geneve_tlv_option_resource_register(struct rte_eth_dev *dev,
 					     const struct rte_flow_item *item,
 					     struct rte_flow_error *error)
@@ -10022,6 +10021,7 @@ flow_dev_geneve_tlv_option_resource_register(struct rte_eth_dev *dev,
 	const struct rte_flow_item_geneve_opt *geneve_opt_v = item->spec;
 	int ret = 0;
 
+	MLX5_ASSERT(sh->config.dv_flow_en == 1);
 	if (!geneve_opt_v)
 		return -1;
 	rte_spinlock_lock(&sh->geneve_tlv_opt_sl);
@@ -10032,13 +10032,8 @@ flow_dev_geneve_tlv_option_resource_register(struct rte_eth_dev *dev,
 			geneve_opt_v->option_type &&
 			geneve_opt_resource->length ==
 			geneve_opt_v->option_len) {
-			/*
-			 * We already have GENEVE TLV option obj allocated.
-			 * Increasing refcnt only in SWS. HWS uses it as global.
-			 */
-			if (priv->sh->config.dv_flow_en == 1)
-				__atomic_fetch_add(&geneve_opt_resource->refcnt, 1,
-						   __ATOMIC_RELAXED);
+			__atomic_fetch_add(&geneve_opt_resource->refcnt, 1,
+					   __ATOMIC_RELAXED);
 		} else {
 			ret = rte_flow_error_set(error, ENOMEM,
 				RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
@@ -10117,8 +10112,11 @@ flow_dv_translate_item_geneve_opt(struct rte_eth_dev *dev, void *key,
 		return -1;
 	MLX5_ITEM_UPDATE(item, key_type, geneve_opt_v, geneve_opt_m,
 			 &rte_flow_item_geneve_opt_mask);
-	/* Register resource requires item spec. */
-	if (key_type & MLX5_SET_MATCHER_V) {
+	/*
+	 * Register resource requires item spec for SW steering,
+	 * for HW steering resources is registered explicitly by user.
+	 */
+	if (key_type & MLX5_SET_MATCHER_SW_V) {
 		ret = flow_dev_geneve_tlv_option_resource_register(dev, item,
 								   error);
 		if (ret) {
@@ -15900,7 +15898,7 @@ flow_dv_dest_array_resource_release(struct rte_eth_dev *dev,
 				    &resource->entry);
 }
 
-void
+static void
 flow_dev_geneve_tlv_option_resource_release(struct mlx5_dev_ctx_shared *sh)
 {
 	struct mlx5_geneve_tlv_option_resource *geneve_opt_resource =
