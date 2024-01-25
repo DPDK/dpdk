@@ -118,6 +118,8 @@ struct mlx5dr_definer_conv_data {
 	uint8_t relaxed;
 	uint8_t tunnel;
 	uint8_t mpls_idx;
+	uint8_t geneve_opt_ok_idx;
+	uint8_t geneve_opt_data_idx;
 	enum rte_flow_item_type last_item;
 };
 
@@ -700,6 +702,29 @@ mlx5dr_definer_geneve_vni_set(struct mlx5dr_definer_fc *fc,
 	const struct rte_flow_item_geneve *v = item_spec;
 
 	memcpy(tag + fc->byte_off, v->vni, sizeof(v->vni));
+}
+
+static void
+mlx5dr_definer_geneve_opt_ctrl_set(struct mlx5dr_definer_fc *fc,
+				   const void *item_spec,
+				   uint8_t *tag)
+{
+	const struct rte_flow_item_geneve_opt *v = item_spec;
+	uint32_t dw0 = 0;
+
+	dw0 |= v->option_type << __mlx5_dw_bit_off(header_geneve_opt, type);
+	dw0 |= rte_cpu_to_be_16(v->option_class) << __mlx5_dw_bit_off(header_geneve_opt, class);
+	DR_SET(tag, dw0, fc->byte_off, fc->bit_off, fc->bit_mask);
+}
+
+static void
+mlx5dr_definer_geneve_opt_data_set(struct mlx5dr_definer_fc *fc,
+				   const void *item_spec,
+				   uint8_t *tag)
+{
+	const struct rte_flow_item_geneve_opt *v = item_spec;
+
+	DR_SET_BE32(tag, v->data[fc->extra_data], fc->byte_off, fc->bit_off, fc->bit_mask);
 }
 
 static void
@@ -1356,7 +1381,6 @@ mlx5dr_definer_conv_item_port(struct mlx5dr_definer_conv_data *cd,
 	struct mlx5dr_cmd_query_caps *caps = cd->ctx->caps;
 	const struct rte_flow_item_ethdev *m = item->mask;
 	struct mlx5dr_definer_fc *fc;
-	uint8_t bit_offset = 0;
 
 	if (m->port_id) {
 		if (!caps->wire_regc_mask) {
@@ -1365,16 +1389,13 @@ mlx5dr_definer_conv_item_port(struct mlx5dr_definer_conv_data *cd,
 			return rte_errno;
 		}
 
-		while (!(caps->wire_regc_mask & (1 << bit_offset)))
-			bit_offset++;
-
 		fc = &cd->fc[MLX5DR_DEFINER_FNAME_VPORT_REG_C_0];
 		fc->item_idx = item_idx;
 		fc->tag_set = &mlx5dr_definer_vport_set;
 		fc->tag_mask_set = &mlx5dr_definer_ones_set;
 		DR_CALC_SET_HDR(fc, registers, register_c_0);
-		fc->bit_off = bit_offset;
-		fc->bit_mask = caps->wire_regc_mask >> bit_offset;
+		fc->bit_off = __builtin_ctz(caps->wire_regc_mask);
+		fc->bit_mask = caps->wire_regc_mask >> fc->bit_off;
 	} else {
 		DR_LOG(ERR, "Pord ID item mask must specify ID mask");
 		rte_errno = EINVAL;
@@ -2315,6 +2336,116 @@ mlx5dr_definer_conv_item_geneve(struct mlx5dr_definer_conv_data *cd,
 }
 
 static int
+mlx5dr_definer_conv_item_geneve_opt(struct mlx5dr_definer_conv_data *cd,
+				    struct rte_flow_item *item,
+				    int item_idx)
+{
+	const struct rte_flow_item_geneve_opt *m = item->mask;
+	const struct rte_flow_item_geneve_opt *v = item->spec;
+	struct mlx5_hl_data *hl_ok_bit, *hl_dws;
+	struct mlx5dr_definer_fc *fc;
+	uint8_t num_of_dws, i;
+	bool ok_bit_on_class;
+	int ret;
+
+	if (!m || !(m->option_class || m->option_type || m->data))
+		return 0;
+
+	if (!v || m->option_type != 0xff) {
+		DR_LOG(ERR, "Cannot match geneve opt without valid opt type");
+		goto out_not_supp;
+	}
+
+	if (m->option_class && m->option_class != RTE_BE16(UINT16_MAX)) {
+		DR_LOG(ERR, "Geneve option class has invalid mask");
+		goto out_not_supp;
+	}
+
+	ret = mlx5_get_geneve_hl_data(cd->ctx,
+				      v->option_type,
+				      v->option_class,
+				      &hl_ok_bit,
+				      &num_of_dws,
+				      &hl_dws,
+				      &ok_bit_on_class);
+	if (ret) {
+		DR_LOG(ERR, "Geneve opt type and class %d not supported", v->option_type);
+		goto out_not_supp;
+	}
+
+	if (!ok_bit_on_class && m->option_class) {
+		/* DW0 is used, we will match type, class */
+		if (!num_of_dws || hl_dws[0].dw_mask != UINT32_MAX) {
+			DR_LOG(ERR, "Geneve opt type %d DW0 not supported", v->option_type);
+			goto out_not_supp;
+		}
+
+		if (MLX5DR_DEFINER_FNAME_GENEVE_OPT_DW_0 + cd->geneve_opt_data_idx >
+		    MLX5DR_DEFINER_FNAME_GENEVE_OPT_DW_7) {
+			DR_LOG(ERR, "Max match geneve opt DWs reached");
+			goto out_not_supp;
+		}
+
+		fc = &cd->fc[MLX5DR_DEFINER_FNAME_GENEVE_OPT_DW_0 + cd->geneve_opt_data_idx++];
+		fc->item_idx = item_idx;
+		fc->tag_set = &mlx5dr_definer_geneve_opt_ctrl_set;
+		fc->byte_off = hl_dws[0].dw_offset * DW_SIZE;
+		fc->bit_mask = UINT32_MAX;
+	} else {
+		/* DW0 is not used, we must verify geneve opt type exists in packet */
+		if (!hl_ok_bit->dw_mask) {
+			DR_LOG(ERR, "Geneve opt OK bits not supported");
+			goto out_not_supp;
+		}
+
+		if (MLX5DR_DEFINER_FNAME_GENEVE_OPT_OK_0 + cd->geneve_opt_ok_idx >
+		    MLX5DR_DEFINER_FNAME_GENEVE_OPT_OK_7) {
+			DR_LOG(ERR, "Max match geneve opt reached");
+			goto out_not_supp;
+		}
+
+		fc = &cd->fc[MLX5DR_DEFINER_FNAME_GENEVE_OPT_OK_0 + cd->geneve_opt_ok_idx++];
+		fc->item_idx = item_idx;
+		fc->tag_set = &mlx5dr_definer_ones_set;
+		fc->byte_off = hl_ok_bit->dw_offset * DW_SIZE +
+				__builtin_clz(hl_ok_bit->dw_mask) / 8;
+		fc->bit_off = __builtin_ctz(hl_ok_bit->dw_mask);
+		fc->bit_mask = 0x1;
+	}
+
+	for (i = 1; i < num_of_dws; i++) {
+		/* Process each valid geneve option data DW1..N */
+		if (!m->data[i - 1])
+			continue;
+
+		if (hl_dws[i].dw_mask != UINT32_MAX) {
+			DR_LOG(ERR, "Matching Geneve opt data[%d] not supported", i - 1);
+			goto out_not_supp;
+		}
+
+		if (MLX5DR_DEFINER_FNAME_GENEVE_OPT_DW_0 + cd->geneve_opt_data_idx >
+		    MLX5DR_DEFINER_FNAME_GENEVE_OPT_DW_7) {
+			DR_LOG(ERR, "Max match geneve options DWs reached");
+			goto out_not_supp;
+		}
+
+		fc = &cd->fc[MLX5DR_DEFINER_FNAME_GENEVE_OPT_DW_0 + cd->geneve_opt_data_idx++];
+		fc->item_idx = item_idx;
+		fc->tag_set = &mlx5dr_definer_geneve_opt_data_set;
+		fc->byte_off = hl_dws[i].dw_offset * DW_SIZE;
+		fc->bit_mask = m->data[i - 1];
+		/* Use extra_data for data[] set offset */
+		fc->extra_data = i - 1;
+	}
+
+	return 0;
+
+out_not_supp:
+	rte_errno = ENOTSUP;
+	return rte_errno;
+}
+
+static int
 mlx5dr_definer_mt_set_fc(struct mlx5dr_match_template *mt,
 			 struct mlx5dr_definer_fc *fc,
 			 uint8_t *hl)
@@ -2755,6 +2886,10 @@ mlx5dr_definer_conv_items_to_hl(struct mlx5dr_context *ctx,
 		case RTE_FLOW_ITEM_TYPE_GENEVE:
 			ret = mlx5dr_definer_conv_item_geneve(&cd, items, i);
 			item_flags |= MLX5_FLOW_LAYER_GENEVE;
+			break;
+		case RTE_FLOW_ITEM_TYPE_GENEVE_OPT:
+			ret = mlx5dr_definer_conv_item_geneve_opt(&cd, items, i);
+			item_flags |= MLX5_FLOW_LAYER_GENEVE_OPT;
 			break;
 		case RTE_FLOW_ITEM_TYPE_IB_BTH:
 			ret = mlx5dr_definer_conv_item_ib_l4(&cd, items, i);
