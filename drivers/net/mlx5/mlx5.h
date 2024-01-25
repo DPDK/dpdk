@@ -1419,6 +1419,8 @@ struct mlx5_dev_registers {
 #define HAVE_MLX5_DR_CREATE_ACTION_ASO_EXT
 #endif
 
+struct mlx5_geneve_tlv_options;
+
 /**
  * Physical device structure.
  * This device is created once per NIC to manage recourses shared by all ports
@@ -1428,6 +1430,7 @@ struct mlx5_physical_device {
 	LIST_ENTRY(mlx5_physical_device) next;
 	struct mlx5_dev_ctx_shared *sh; /* Created on sherd context. */
 	uint64_t guid; /* System image guid, the uniq ID of physical device. */
+	struct mlx5_geneve_tlv_options *tlv_options;
 	uint32_t refcnt;
 };
 
@@ -1950,6 +1953,8 @@ struct mlx5_priv {
 	/* Action template list. */
 	LIST_HEAD(flow_hw_at, rte_flow_actions_template) flow_hw_at;
 	struct mlx5dr_context *dr_ctx; /**< HW steering DR context. */
+	/* Pointer to the GENEVE TLV options. */
+	struct mlx5_geneve_tlv_options *tlv_options;
 	/* HW steering queue polling mechanism job descriptor LIFO. */
 	uint32_t hws_strict_queue:1;
 	/**< Whether all operations strictly happen on the same HWS queue. */
@@ -2088,6 +2093,9 @@ void mlx5_flow_counter_mode_config(struct rte_eth_dev *dev);
 int mlx5_flow_aso_age_mng_init(struct mlx5_dev_ctx_shared *sh);
 int mlx5_aso_flow_mtrs_mng_init(struct mlx5_dev_ctx_shared *sh);
 int mlx5_flow_aso_ct_mng_init(struct mlx5_dev_ctx_shared *sh);
+struct mlx5_physical_device *
+mlx5_get_locked_physical_device(struct mlx5_priv *priv);
+void mlx5_unlock_physical_device(void);
 
 /* mlx5_ethdev.c */
 

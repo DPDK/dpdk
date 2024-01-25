@@ -46,6 +46,7 @@ sources = files(
 
 if is_linux
     sources += files(
+            'mlx5_flow_geneve.c',
             'mlx5_flow_hw.c',
             'mlx5_hws_cnt.c',
             'mlx5_flow_quota.c',

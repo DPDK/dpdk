@@ -343,6 +343,35 @@ Limitations
   Matching Geneve TLV option without specifying data is not supported.
   Matching Geneve TLV option with ``data & mask == 0`` is not supported.
 
+  .. _geneve_parser_api:
+
+  - A parser API (``rte_pmd_mlx5_create_geneve_tlv_parser``)
+    is available under these conditions:
+
+    - Supported only in HW steering (``dv_flow_en`` = 2).
+    - Supported only when ``FLEX_PARSER_PROFILE_ENABLE`` = 8.
+    - Supported for FW version **xx.37.0142** and above.
+
+    Each physical device has 7 DWs for GENEVE TLV options.
+    Partial option configuration is supported,
+    mask for data is provided in parser creation
+    indicating which DWs configuration is requested.
+    Only masked data DWs can be matched later as item field using flow API.
+
+    - Matching of ``type`` field is supported for each configured option.
+    - However, for matching ``class`` field,
+      the option should be configured with ``match_on_class_mode=2``.
+      One extra DW is consumed for it.
+    - Matching on ``length`` field is not supported.
+
+    Although the parser is created per physical device, this API is port oriented.
+    Each port should call this API before using GENEVE OPT item,
+    but its configuration must use the same options list
+    with same internal order configured by first port.
+
+    Calling this API for different ports under same physical device doesn't consume
+    more DWs, the first one creates the parser and the rest use same configuration.
+
 - VF: flow rules created on VF devices can only match traffic targeted at the
   configured MAC addresses (see ``rte_eth_dev_mac_addr_add()``).
 

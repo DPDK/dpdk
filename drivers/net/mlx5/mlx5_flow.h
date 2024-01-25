@@ -1339,6 +1339,8 @@ struct mlx5_action_construct_data {
 	};
 };
 
+#define MAX_GENEVE_OPTIONS_RESOURCES 7
+
 /* Flow item template struct. */
 struct rte_flow_pattern_template {
 	LIST_ENTRY(rte_flow_pattern_template) next;
@@ -1653,6 +1655,11 @@ struct mlx5_flow_split_info {
 	uint64_t prefix_layers; /**< Prefix subflow layers. */
 };
 
+struct mlx5_hl_data {
+	uint8_t dw_offset;
+	uint32_t dw_mask;
+};
+
 struct flow_hw_port_info {
 	uint32_t regc_mask;
 	uint32_t regc_value;
@@ -1767,6 +1774,12 @@ flow_hw_get_reg_id_from_ctx(void *dr_ctx,
 #endif
 	return REG_NON;
 }
+
+void *
+mlx5_geneve_tlv_parser_create(uint16_t port_id,
+			      const struct rte_pmd_mlx5_geneve_tlv tlv_list[],
+			      uint8_t nb_options);
+int mlx5_geneve_tlv_parser_destroy(void *handle);
 
 void flow_hw_set_port_info(struct rte_eth_dev *dev);
 void flow_hw_clear_port_info(struct rte_eth_dev *dev);
@@ -2821,6 +2834,11 @@ mlx5_get_tof(const struct rte_flow_item *items,
 	     enum mlx5_tof_rule_type *rule_type);
 void
 flow_hw_resource_release(struct rte_eth_dev *dev);
+int
+mlx5_geneve_tlv_options_destroy(struct mlx5_geneve_tlv_options *options,
+				struct mlx5_physical_device *phdev);
+int
+mlx5_geneve_tlv_options_check_busy(struct mlx5_priv *priv);
 void
 flow_hw_rxq_flag_set(struct rte_eth_dev *dev, bool enable);
 int flow_dv_action_validate(struct rte_eth_dev *dev,

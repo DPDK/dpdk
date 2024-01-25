@@ -1722,6 +1722,19 @@ mlx5_get_physical_device(struct mlx5_common_device *cdev)
 	return phdev;
 }
 
+struct mlx5_physical_device *
+mlx5_get_locked_physical_device(struct mlx5_priv *priv)
+{
+	pthread_mutex_lock(&mlx5_dev_ctx_list_mutex);
+	return priv->sh->phdev;
+}
+
+void
+mlx5_unlock_physical_device(void)
+{
+	pthread_mutex_unlock(&mlx5_dev_ctx_list_mutex);
+}
+
 static void
 mlx5_physical_device_destroy(struct mlx5_physical_device *phdev)
 {
@@ -2278,6 +2291,7 @@ int
 mlx5_dev_close(struct rte_eth_dev *dev)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_dev_ctx_shared *sh = priv->sh;
 	unsigned int i;
 	int ret;
 
@@ -2290,7 +2304,7 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 		rte_eth_dev_release_port(dev);
 		return 0;
 	}
-	if (!priv->sh)
+	if (!sh)
 		return 0;
 	if (priv->shared_refcnt) {
 		DRV_LOG(ERR, "port %u is shared host in use (%u)",
@@ -2298,6 +2312,15 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 		rte_errno = EBUSY;
 		return -EBUSY;
 	}
+#ifdef HAVE_MLX5_HWS_SUPPORT
+	/* Check if shared GENEVE options created on context being closed. */
+	ret = mlx5_geneve_tlv_options_check_busy(priv);
+	if (ret) {
+		DRV_LOG(ERR, "port %u maintains shared GENEVE TLV options",
+			dev->data->port_id);
+		return ret;
+	}
+#endif
 	DRV_LOG(DEBUG, "port %u closing device \"%s\"",
 		dev->data->port_id,
 		((priv->sh->cdev->ctx != NULL) ?
@@ -2330,6 +2353,11 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 	flow_hw_destroy_vport_action(dev);
 	flow_hw_resource_release(dev);
 	flow_hw_clear_port_info(dev);
+	if (priv->tlv_options != NULL) {
+		/* Free the GENEVE TLV parser resource. */
+		claim_zero(mlx5_geneve_tlv_options_destroy(priv->tlv_options, sh->phdev));
+		priv->tlv_options = NULL;
+	}
 #endif
 	if (priv->rxq_privs != NULL) {
 		/* XXX race condition if mlx5_rx_burst() is still running. */
