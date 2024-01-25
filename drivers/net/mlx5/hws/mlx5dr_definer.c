@@ -8,9 +8,10 @@
 #define BAD_PORT	0xBAD
 #define ETH_TYPE_IPV4_VXLAN	0x0800
 #define ETH_TYPE_IPV6_VXLAN	0x86DD
-#define ETH_VXLAN_DEFAULT_PORT	4789
-#define ETH_VXLAN_GPE_DEFAULT_PORT	4790
-#define IP_UDP_PORT_MPLS	6635
+#define UDP_VXLAN_PORT	4789
+#define UDP_VXLAN_GPE_PORT	4790
+#define UDP_GTPU_PORT	2152
+#define UDP_PORT_MPLS	6635
 #define UDP_ROCEV2_PORT	4791
 #define DR_FLOW_LAYER_TUNNEL_NO_MPLS (MLX5_FLOW_LAYER_TUNNEL & ~MLX5_FLOW_LAYER_MPLS)
 
@@ -159,7 +160,7 @@ struct mlx5dr_definer_conv_data {
 	X(SET,		tcp_protocol,		STE_TCP,		rte_flow_item_tcp) \
 	X(SET_BE16,	tcp_src_port,		v->hdr.src_port,	rte_flow_item_tcp) \
 	X(SET_BE16,	tcp_dst_port,		v->hdr.dst_port,	rte_flow_item_tcp) \
-	X(SET,		gtp_udp_port,		RTE_GTPU_UDP_PORT,	rte_flow_item_gtp) \
+	X(SET,		gtp_udp_port,		UDP_GTPU_PORT,		rte_flow_item_gtp) \
 	X(SET_BE32,	gtp_teid,		v->hdr.teid,		rte_flow_item_gtp) \
 	X(SET,		gtp_msg_type,		v->hdr.msg_type,	rte_flow_item_gtp) \
 	X(SET,		gtp_ext_flag,		!!v->hdr.gtp_hdr_info,	rte_flow_item_gtp) \
@@ -167,12 +168,12 @@ struct mlx5dr_definer_conv_data {
 	X(SET,		gtp_ext_hdr_pdu,	v->hdr.type,		rte_flow_item_gtp_psc) \
 	X(SET,		gtp_ext_hdr_qfi,	v->hdr.qfi,		rte_flow_item_gtp_psc) \
 	X(SET,		vxlan_flags,		v->flags,		rte_flow_item_vxlan) \
-	X(SET,		vxlan_udp_port,		ETH_VXLAN_DEFAULT_PORT,	rte_flow_item_vxlan) \
-	X(SET,		vxlan_gpe_udp_port,	ETH_VXLAN_GPE_DEFAULT_PORT,	rte_flow_item_vxlan_gpe) \
+	X(SET,		vxlan_udp_port,		UDP_VXLAN_PORT,		rte_flow_item_vxlan) \
+	X(SET,		vxlan_gpe_udp_port,	UDP_VXLAN_GPE_PORT,	rte_flow_item_vxlan_gpe) \
 	X(SET,		vxlan_gpe_flags,	v->flags,		rte_flow_item_vxlan_gpe) \
 	X(SET,		vxlan_gpe_protocol,	v->protocol,		rte_flow_item_vxlan_gpe) \
 	X(SET,		vxlan_gpe_rsvd1,	v->rsvd1,		rte_flow_item_vxlan_gpe) \
-	X(SET,		mpls_udp_port,		IP_UDP_PORT_MPLS,	rte_flow_item_mpls) \
+	X(SET,		mpls_udp_port,		UDP_PORT_MPLS,		rte_flow_item_mpls) \
 	X(SET,		source_qp,		v->queue,		mlx5_rte_flow_item_sq) \
 	X(SET,		tag,			v->data,		rte_flow_item_tag) \
 	X(SET,		metadata,		v->data,		rte_flow_item_meta) \
@@ -1198,6 +1199,12 @@ mlx5dr_definer_conv_item_gtp(struct mlx5dr_definer_conv_data *cd,
 	const struct rte_flow_item_gtp *m = item->mask;
 	struct mlx5dr_definer_fc *fc;
 
+	if (cd->tunnel) {
+		DR_LOG(ERR, "Inner GTPU item not supported");
+		rte_errno = ENOTSUP;
+		return rte_errno;
+	}
+
 	/* Overwrite GTPU dest port if not present */
 	fc = &cd->fc[DR_CALC_FNAME(L4_DPORT, false)];
 	if (!fc->tag_set && !cd->relaxed) {
@@ -1372,9 +1379,13 @@ mlx5dr_definer_conv_item_vxlan(struct mlx5dr_definer_conv_data *cd,
 	struct mlx5dr_definer_fc *fc;
 	bool inner = cd->tunnel;
 
-	/* In order to match on VXLAN we must match on ether_type, ip_protocol
-	 * and l4_dport.
-	 */
+	if (inner) {
+		DR_LOG(ERR, "Inner VXLAN item not supported");
+		rte_errno = ENOTSUP;
+		return rte_errno;
+	}
+
+	/* In order to match on VXLAN we must match on ip_protocol and l4_dport */
 	if (!cd->relaxed) {
 		fc = &cd->fc[DR_CALC_FNAME(IP_PROTOCOL, inner)];
 		if (!fc->tag_set) {
@@ -1397,12 +1408,6 @@ mlx5dr_definer_conv_item_vxlan(struct mlx5dr_definer_conv_data *cd,
 		return 0;
 
 	if (m->flags) {
-		if (inner) {
-			DR_LOG(ERR, "Inner VXLAN flags item not supported");
-			rte_errno = ENOTSUP;
-			return rte_errno;
-		}
-
 		fc = &cd->fc[MLX5DR_DEFINER_FNAME_VXLAN_FLAGS];
 		fc->item_idx = item_idx;
 		fc->tag_set = &mlx5dr_definer_vxlan_flags_set;
@@ -1412,12 +1417,6 @@ mlx5dr_definer_conv_item_vxlan(struct mlx5dr_definer_conv_data *cd,
 	}
 
 	if (!is_mem_zero(m->vni, 3)) {
-		if (inner) {
-			DR_LOG(ERR, "Inner VXLAN vni item not supported");
-			rte_errno = ENOTSUP;
-			return rte_errno;
-		}
-
 		fc = &cd->fc[MLX5DR_DEFINER_FNAME_VXLAN_VNI];
 		fc->item_idx = item_idx;
 		fc->tag_set = &mlx5dr_definer_vxlan_vni_set;
