@@ -8,7 +8,7 @@
 
 allow_experimental_apis = true
 
-deps += ['dmadev']
+deps += ['argparse', 'dmadev']
 
 sources = files(
         'dmafwd.c',
