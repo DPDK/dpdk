@@ -319,6 +319,434 @@ test_argparse_invalid_arg_repeat(void)
 	return 0;
 }
 
+static int
+test_argparse_invalid_option(void)
+{
+	struct rte_argparse *obj;
+	char *argv[2];
+	int ret;
+
+	obj = test_argparse_init_obj();
+	argv[0] = test_strdup(obj->usage);
+	argv[1] = test_strdup("--invalid");
+	ret = rte_argparse_parse(obj, 2, argv);
+	TEST_ASSERT(ret == -EINVAL, "Argparse parse expect failed!");
+
+	obj = test_argparse_init_obj();
+	argv[0] = test_strdup(obj->usage);
+	argv[1] = test_strdup("invalid");
+	ret = rte_argparse_parse(obj, 2, argv);
+	TEST_ASSERT(ret == -EINVAL, "Argparse parse expect failed!");
+
+	return 0;
+}
+
+static int
+test_argparse_opt_autosave_parse_int_of_no_val(void)
+{
+	uint32_t flags = RTE_ARGPARSE_ARG_NO_VALUE | RTE_ARGPARSE_ARG_VALUE_INT;
+	struct rte_argparse *obj;
+	int val_saver = 0;
+	char *argv[2];
+	int ret;
+
+	obj = test_argparse_init_obj();
+	obj->args[0].name_long = "--test-long";
+	obj->args[0].name_short = "-t";
+	obj->args[0].val_saver = (void *)&val_saver;
+	obj->args[0].val_set = (void *)100;
+	obj->args[0].flags = flags;
+	obj->args[1].name_long = NULL;
+	argv[0] = test_strdup(obj->usage);
+	argv[1] = test_strdup("--test-long");
+	ret = rte_argparse_parse(obj, 2, argv);
+	TEST_ASSERT(ret == 0, "Argparse parse expect success!");
+	TEST_ASSERT(val_saver == 100, "Argparse parse expect success!");
+
+	obj->args[0].flags = flags;
+	val_saver = 0;
+	argv[1] = test_strdup("-t");
+	ret = rte_argparse_parse(obj, 2, argv);
+	TEST_ASSERT(ret == 0, "Argparse parse expect success!");
+	TEST_ASSERT(val_saver == 100, "Argparse parse expect success!");
+
+	return 0;
+}
+
+static int
+test_argparse_opt_autosave_parse_int_of_required_val(void)
+{
+	uint32_t flags = RTE_ARGPARSE_ARG_REQUIRED_VALUE | RTE_ARGPARSE_ARG_VALUE_INT;
+	struct rte_argparse *obj;
+	int val_saver = 0;
+	char *argv[3];
+	int ret;
+
+	obj = test_argparse_init_obj();
+	obj->args[0].name_long = "--test-long";
+	obj->args[0].name_short = "-t";
+	obj->args[0].val_saver = (void *)&val_saver;
+	obj->args[0].val_set = NULL;
+	obj->args[0].flags = flags;
+	obj->args[1].name_long = NULL;
+	argv[0] = test_strdup(obj->usage);
+	argv[1] = test_strdup("--test-long");
+	argv[2] = test_strdup("100");
+	ret = rte_argparse_parse(obj, 3, argv);
+	TEST_ASSERT(ret == 0, "Argparse parse expect success!");
+	TEST_ASSERT(val_saver == 100, "Argparse parse expect success!");
+
+	obj->args[0].flags = flags;
+	val_saver = 0;
+	argv[1] = test_strdup("-t");
+	ret = rte_argparse_parse(obj, 3, argv);
+	TEST_ASSERT(ret == 0, "Argparse parse expect success!");
+	TEST_ASSERT(val_saver == 100, "Argparse parse expect success!");
+
+	/* test invalid value. */
+	obj->args[0].flags = flags;
+	val_saver = 0;
+	argv[1] = test_strdup("-t");
+	argv[2] = test_strdup("100a");
+	ret = rte_argparse_parse(obj, 3, argv);
+	TEST_ASSERT(ret == -EINVAL, "Argparse parse expect failed!");
+
+	return 0;
+}
+
+static int
+test_argparse_opt_autosave_parse_int_of_optional_val(void)
+{
+	uint32_t flags = RTE_ARGPARSE_ARG_OPTIONAL_VALUE | RTE_ARGPARSE_ARG_VALUE_INT;
+	struct rte_argparse *obj;
+	int val_saver = 0;
+	char *argv[2];
+	int ret;
+
+	obj = test_argparse_init_obj();
+	obj->args[0].name_long = "--test-long";
+	obj->args[0].name_short = "-t";
+	obj->args[0].val_saver = (void *)&val_saver;
+	obj->args[0].val_set = (void *)100;
+	obj->args[0].flags = flags;
+	obj->args[1].name_long = NULL;
+	argv[0] = test_strdup(obj->usage);
+	argv[1] = test_strdup("--test-long");
+	ret = rte_argparse_parse(obj, 2, argv);
+	TEST_ASSERT(ret == 0, "Argparse parse expect success!");
+	TEST_ASSERT(val_saver == 100, "Argparse parse expect success!");
+	obj->args[0].flags = flags;
+	val_saver = 0;
+	argv[1] = test_strdup("-t");
+	ret = rte_argparse_parse(obj, 2, argv);
+	TEST_ASSERT(ret == 0, "Argparse parse expect success!");
+	TEST_ASSERT(val_saver == 100, "Argparse parse expect success!");
+
+	/* test with value. */
+	obj->args[0].flags = flags;
+	val_saver = 0;
+	argv[1] = test_strdup("--test-long=200");
+	ret = rte_argparse_parse(obj, 2, argv);
+	TEST_ASSERT(ret == 0, "Argparse parse expect success!");
+	TEST_ASSERT(val_saver == 200, "Argparse parse expect success!");
+	obj->args[0].flags = flags;
+	val_saver = 0;
+	argv[1] = test_strdup("-t=200");
+	ret = rte_argparse_parse(obj, 2, argv);
+	TEST_ASSERT(ret == 0, "Argparse parse expect success!");
+	TEST_ASSERT(val_saver == 200, "Argparse parse expect success!");
+
+	/* test with option value, but with wrong value. */
+	obj->args[0].flags = flags;
+	val_saver = 0;
+	argv[1] = test_strdup("--test-long=200a");
+	ret = rte_argparse_parse(obj, 2, argv);
+	TEST_ASSERT(ret == -EINVAL, "Argparse parse expect failed!");
+	obj->args[0].flags = flags;
+	val_saver = 0;
+	argv[1] = test_strdup("-t=200a");
+	ret = rte_argparse_parse(obj, 2, argv);
+	TEST_ASSERT(ret == -EINVAL, "Argparse parse expect failed!");
+
+	return 0;
+}
+
+static int
+opt_callback_parse_int_of_no_val(uint32_t index, const char *value, void *opaque)
+{
+	RTE_SET_USED(index);
+	if (value != NULL)
+		return -EINVAL;
+	*(int *)opaque = 100;
+	return 0;
+}
+
+static int
+test_argparse_opt_callback_parse_int_of_no_val(void)
+{
+	struct rte_argparse *obj;
+	int val_saver = 0;
+	char *argv[2];
+	int ret;
+
+	obj = test_argparse_init_obj();
+	obj->callback = opt_callback_parse_int_of_no_val;
+	obj->opaque = (void *)&val_saver;
+	obj->args[0].name_long = "--test-long";
+	obj->args[0].name_short = "-t";
+	obj->args[0].val_saver = NULL;
+	obj->args[0].val_set = (void *)100;
+	obj->args[0].flags = RTE_ARGPARSE_ARG_NO_VALUE;
+	obj->args[1].name_long = NULL;
+	argv[0] = test_strdup(obj->usage);
+	argv[1] = test_strdup("--test-long");
+	ret = rte_argparse_parse(obj, 2, argv);
+	TEST_ASSERT(ret == 0, "Argparse parse expect success!");
+	TEST_ASSERT(val_saver == 100, "Argparse parse expect success!");
+
+	obj->args[0].flags = RTE_ARGPARSE_ARG_NO_VALUE;
+	val_saver = 0;
+	argv[1] = test_strdup("-t");
+	ret = rte_argparse_parse(obj, 2, argv);
+	TEST_ASSERT(ret == 0, "Argparse parse expect success!");
+	TEST_ASSERT(val_saver == 100, "Argparse parse expect success!");
+
+	return 0;
+}
+
+static int
+opt_callback_parse_int_of_required_val(uint32_t index, const char *value, void *opaque)
+{
+	char *s = NULL;
+
+	if (index != 1)
+		return -EINVAL;
+
+	if (value == NULL)
+		return -EINVAL;
+	*(int *)opaque = strtol(value, &s, 0);
+
+	if (s[0] != '\0')
+		return -EINVAL;
+
+	return 0;
+}
+
+static int
+test_argparse_opt_callback_parse_int_of_required_val(void)
+{
+	struct rte_argparse *obj;
+	int val_saver = 0;
+	char *argv[3];
+	int ret;
+
+	obj = test_argparse_init_obj();
+	obj->callback = opt_callback_parse_int_of_required_val;
+	obj->opaque = (void *)&val_saver;
+	obj->args[0].name_long = "--test-long";
+	obj->args[0].name_short = "-t";
+	obj->args[0].val_saver = NULL;
+	obj->args[0].val_set = (void *)1;
+	obj->args[0].flags = RTE_ARGPARSE_ARG_REQUIRED_VALUE;
+	obj->args[1].name_long = NULL;
+	argv[0] = test_strdup(obj->usage);
+	argv[1] = test_strdup("--test-long");
+	argv[2] = test_strdup("100");
+	ret = rte_argparse_parse(obj, 3, argv);
+	TEST_ASSERT(ret == 0, "Argparse parse expect success!");
+	TEST_ASSERT(val_saver == 100, "Argparse parse expect success!");
+
+	obj->args[0].flags = RTE_ARGPARSE_ARG_REQUIRED_VALUE;
+	val_saver = 0;
+	argv[1] = test_strdup("-t");
+	ret = rte_argparse_parse(obj, 3, argv);
+	TEST_ASSERT(ret == 0, "Argparse parse expect success!");
+	TEST_ASSERT(val_saver == 100, "Argparse parse expect success!");
+
+	/* test no more parameters. */
+	obj->args[0].flags = RTE_ARGPARSE_ARG_REQUIRED_VALUE;
+	ret = rte_argparse_parse(obj, 2, argv);
+	TEST_ASSERT(ret == -EINVAL, "Argparse parse expect failed!");
+
+	/* test callback return failed. */
+	obj->args[0].flags = RTE_ARGPARSE_ARG_REQUIRED_VALUE;
+	argv[2] = test_strdup("100a");
+	ret = rte_argparse_parse(obj, 3, argv);
+	TEST_ASSERT(ret == -EINVAL, "Argparse parse expect failed!");
+
+	return 0;
+}
+
+static int
+opt_callback_parse_int_of_optional_val(uint32_t index, const char *value, void *opaque)
+{
+	char *s = NULL;
+
+	if (index != 1)
+		return -EINVAL;
+
+	if (value == NULL) {
+		*(int *)opaque = 10;
+	} else {
+		*(int *)opaque = strtol(value, &s, 0);
+		if (s[0] != '\0')
+			return -EINVAL;
+	}
+
+	return 0;
+}
+
+static int
+test_argparse_opt_callback_parse_int_of_optional_val(void)
+{
+	struct rte_argparse *obj;
+	int val_saver = 0;
+	char *argv[2];
+	int ret;
+
+	obj = test_argparse_init_obj();
+	obj->callback = opt_callback_parse_int_of_optional_val;
+	obj->opaque = (void *)&val_saver;
+	obj->args[0].name_long = "--test-long";
+	obj->args[0].name_short = "-t";
+	obj->args[0].val_saver = NULL;
+	obj->args[0].val_set = (void *)1;
+	obj->args[0].flags = RTE_ARGPARSE_ARG_OPTIONAL_VALUE;
+	obj->args[1].name_long = NULL;
+	argv[0] = test_strdup(obj->usage);
+	argv[1] = test_strdup("--test-long");
+	ret = rte_argparse_parse(obj, 2, argv);
+	TEST_ASSERT(ret == 0, "Argparse parse expect success!");
+	TEST_ASSERT(val_saver == 10, "Argparse parse expect success!");
+
+	obj->args[0].flags = RTE_ARGPARSE_ARG_OPTIONAL_VALUE;
+	val_saver = 0;
+	argv[1] = test_strdup("-t");
+	ret = rte_argparse_parse(obj, 2, argv);
+	TEST_ASSERT(ret == 0, "Argparse parse expect success!");
+	TEST_ASSERT(val_saver == 10, "Argparse parse expect success!");
+
+	/* test with value. */
+	obj->args[0].flags = RTE_ARGPARSE_ARG_OPTIONAL_VALUE;
+	val_saver = 0;
+	argv[1] = test_strdup("--test-long=100");
+	ret = rte_argparse_parse(obj, 2, argv);
+	TEST_ASSERT(ret == 0, "Argparse parse expect success!");
+	TEST_ASSERT(val_saver == 100, "Argparse parse expect success!");
+	obj->args[0].flags = RTE_ARGPARSE_ARG_OPTIONAL_VALUE;
+	val_saver = 0;
+	argv[1] = test_strdup("-t=100");
+	ret = rte_argparse_parse(obj, 2, argv);
+	TEST_ASSERT(ret == 0, "Argparse parse expect success!");
+	TEST_ASSERT(val_saver == 100, "Argparse parse expect success!");
+
+	/* test callback return failed. */
+	obj->args[0].flags = RTE_ARGPARSE_ARG_OPTIONAL_VALUE;
+	argv[1] = test_strdup("-t=100a");
+	ret = rte_argparse_parse(obj, 2, argv);
+	TEST_ASSERT(ret == -EINVAL, "Argparse parse expect failed!");
+
+	return 0;
+}
+
+static int
+test_argparse_pos_autosave_parse_int(void)
+{
+	uint32_t flags = RTE_ARGPARSE_ARG_REQUIRED_VALUE | RTE_ARGPARSE_ARG_VALUE_INT;
+	struct rte_argparse *obj;
+	int val_saver = 0;
+	char *argv[3];
+	int ret;
+
+	obj = test_argparse_init_obj();
+	obj->args[0].name_long = "test-long";
+	obj->args[0].name_short = NULL;
+	obj->args[0].val_saver = (void *)&val_saver;
+	obj->args[0].val_set = NULL;
+	obj->args[0].flags = flags;
+	obj->args[1].name_long = NULL;
+	argv[0] = test_strdup(obj->usage);
+	argv[1] = test_strdup("100");
+	ret = rte_argparse_parse(obj, 2, argv);
+	TEST_ASSERT(ret == 0, "Argparse parse expect success!");
+	TEST_ASSERT(val_saver == 100, "Argparse parse expect success!");
+
+	obj->args[0].flags = flags;
+	val_saver = 0;
+	argv[1] = test_strdup("100a");
+	ret = rte_argparse_parse(obj, 2, argv);
+	TEST_ASSERT(ret == -EINVAL, "Argparse parse expect failed!");
+
+	/* test over position parameters. */
+	obj->args[0].flags = flags;
+	argv[1] = test_strdup("100");
+	argv[2] = test_strdup("200");
+	ret = rte_argparse_parse(obj, 3, argv);
+	TEST_ASSERT(ret == -EINVAL, "Argparse parse expect failed!");
+
+	return 0;
+}
+
+static int
+pos_callback_parse_int(uint32_t index, const char *value, void *opaque)
+{
+	uint32_t int_val;
+	char *s = NULL;
+
+	if (index != 1 && index != 2)
+		return -EINVAL;
+	if (value == NULL)
+		return -EINVAL;
+
+	int_val = strtol(value, &s, 0);
+	if (s[0] != '\0')
+		return -EINVAL;
+
+	*((int *)opaque	+ index) = int_val;
+
+	return 0;
+}
+
+static int
+test_argparse_pos_callback_parse_int(void)
+{
+	int val_saver[3] = { 0, 0, 0 };
+	struct rte_argparse *obj;
+	char *argv[3];
+	int ret;
+
+	obj = test_argparse_init_obj();
+	obj->callback = pos_callback_parse_int;
+	obj->opaque = (void *)val_saver;
+	obj->args[0].name_long = "test-long1";
+	obj->args[0].name_short = NULL;
+	obj->args[0].val_saver = NULL;
+	obj->args[0].val_set = (void *)1;
+	obj->args[0].flags = RTE_ARGPARSE_ARG_REQUIRED_VALUE;
+	obj->args[1].name_long = "test-long2";
+	obj->args[1].name_short = NULL;
+	obj->args[1].val_saver = NULL;
+	obj->args[1].val_set = (void *)2;
+	obj->args[1].flags = RTE_ARGPARSE_ARG_REQUIRED_VALUE;
+	obj->args[2].name_long = NULL;
+	argv[0] = test_strdup(obj->usage);
+	argv[1] = test_strdup("100");
+	argv[2] = test_strdup("200");
+	ret = rte_argparse_parse(obj, 3, argv);
+	TEST_ASSERT(ret == 0, "Argparse parse expect success!");
+	TEST_ASSERT(val_saver[1] == 100, "Argparse parse expect success!");
+	TEST_ASSERT(val_saver[2] == 200, "Argparse parse expect success!");
+
+	/* test callback return failed. */
+	obj->args[0].flags = RTE_ARGPARSE_ARG_REQUIRED_VALUE;
+	obj->args[1].flags = RTE_ARGPARSE_ARG_REQUIRED_VALUE;
+	argv[2] = test_strdup("200a");
+	ret = rte_argparse_parse(obj, 3, argv);
+	TEST_ASSERT(ret == -EINVAL, "Argparse parse expect failed!");
+
+	return 0;
+}
+
 static struct unit_test_suite argparse_test_suite = {
 	.suite_name = "Argparse Unit Test Suite",
 	.setup = test_argparse_setup,
@@ -331,6 +759,15 @@ static struct unit_test_suite argparse_test_suite = {
 		TEST_CASE(test_argparse_invalid_arg_saver),
 		TEST_CASE(test_argparse_invalid_arg_flags),
 		TEST_CASE(test_argparse_invalid_arg_repeat),
+		TEST_CASE(test_argparse_invalid_option),
+		TEST_CASE(test_argparse_opt_autosave_parse_int_of_no_val),
+		TEST_CASE(test_argparse_opt_autosave_parse_int_of_required_val),
+		TEST_CASE(test_argparse_opt_autosave_parse_int_of_optional_val),
+		TEST_CASE(test_argparse_opt_callback_parse_int_of_no_val),
+		TEST_CASE(test_argparse_opt_callback_parse_int_of_required_val),
+		TEST_CASE(test_argparse_opt_callback_parse_int_of_optional_val),
+		TEST_CASE(test_argparse_pos_autosave_parse_int),
+		TEST_CASE(test_argparse_pos_callback_parse_int),
 
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}
