@@ -1004,14 +1004,108 @@ virtio_vdpa_dev_close_work(void *arg)
 }
 
 static int
+virtio_vdpa_save_state_update_hwidx(struct virtio_vdpa_priv *priv, int num_vr)
+{
+	struct virtio_admin_migration_get_internal_state_pending_bytes_result res;
+	struct virtio_dev_run_state_info *tmp_hw_idx;
+	struct rte_vdpa_device *vdev = priv->vdev;
+	char mz_name[RTE_MEMZONE_NAMESIZE];
+	int i, ret = 0;
+
+	ret = virtio_vdpa_cmd_get_internal_pending_bytes(priv->pf_priv,
+			priv->vf_id, &res);
+	if (ret) {
+		DRV_LOG(ERR, "%s vfid %d failed get pending bytes ret:%d",
+					vdev->device->name, priv->vf_id, ret);
+		ret = -EIO;
+		goto out;
+	}
+
+	/* If pre allocated memzone is small, we will realloc */
+	if (res.pending_bytes > VIRTIO_VDPA_REMOTE_STATE_DEFAULT_SIZE) {
+		rte_memzone_free(priv->state_mz_remote);
+
+		ret = snprintf(mz_name, RTE_MEMZONE_NAMESIZE, "%s_remote_mz",
+				vdev->device->name);
+		if (ret < 0 || ret >= RTE_MEMZONE_NAMESIZE) {
+			DRV_LOG(ERR, "%s remote mem zone print fail ret:%d",
+				vdev->device->name, ret);
+		}
+
+		priv->state_mz_remote = rte_memzone_reserve_aligned(mz_name,
+					res.pending_bytes,
+					priv->pdev->device.numa_node, RTE_MEMZONE_IOVA_CONTIG,
+					VIRTIO_VDPA_STATE_ALIGN);
+		if (priv->state_mz_remote == NULL) {
+			DRV_LOG(ERR, "Failed to reserve remote memzone dev:%s",
+				vdev->device->name);
+			ret = -ENOMEM;
+			goto out;
+		}
+	}
+
+	if (res.pending_bytes ==0) {
+		DRV_LOG(ERR, "Dev:%s pending bytes is 0", vdev->device->name);
+		ret = -EIO;
+		goto out;
+	}
+
+	DRV_LOG(INFO, "Dev:%s pending bytes is 0x%" PRIx64, vdev->device->name,
+				res.pending_bytes);
+
+	/*save*/
+	ret = virtio_vdpa_cmd_save_state(priv->pf_priv, priv->vf_id, 0,
+					res.pending_bytes,
+					priv->state_mz_remote->iova);
+	if (ret) {
+		DRV_LOG(ERR, "%s vfid %d failed get state ret:%d", vdev->device->name,
+				priv->vf_id, ret);
+		ret = -EIO;
+		goto out;
+	}
+
+	tmp_hw_idx = rte_zmalloc(NULL, num_vr * sizeof(struct virtio_dev_run_state_info), 0);
+	if (!tmp_hw_idx) {
+		DRV_LOG(ERR, "Failed to alloc memory to save hwidx:%s", vdev->device->name);
+		ret = -ENOMEM;
+		goto out;
+
+	}
+	ret = virtio_pci_dev_state_hw_idx_get(priv->state_mz_remote->addr,
+				res.pending_bytes, tmp_hw_idx, num_vr);
+	if (ret) {
+		DRV_LOG(ERR, "%s vfid %d failed get hwidx ret:%d", vdev->device->name,
+				priv->vf_id, ret);
+		ret = -EIO;
+		goto out_free;
+	}
+
+	/* Set_vring_base */
+	for(i = 0; i < num_vr; i++) {
+		if (tmp_hw_idx[i].flag && priv->vrings[i]->enable) {
+			DRV_LOG(INFO, "%s vid %d qid %d set last_avail_idx:%d,last_used_idx:%d",
+				vdev->device->name, priv->vid,
+				i, tmp_hw_idx[i].last_avail_idx, tmp_hw_idx[i].last_used_idx);
+			ret = rte_vhost_set_vring_base(priv->vid, i, tmp_hw_idx[i].last_avail_idx,
+						tmp_hw_idx[i].last_used_idx);
+			if (ret)
+				DRV_LOG(ERR, "%s vfid %d failed set hwidx ret:%d",
+					vdev->device->name, priv->vf_id, ret);
+		}
+	}
+
+out_free:
+	rte_free(tmp_hw_idx);
+out:
+	return ret;
+}
+
+static int
 virtio_vdpa_dev_close(int vid)
 {
 	struct rte_vdpa_device *vdev = rte_vhost_get_vdpa_device(vid);
 	struct virtio_vdpa_priv *priv =
 		virtio_vdpa_find_priv_resource_by_vdev(vdev);
-	struct virtio_dev_run_state_info *tmp_hw_idx;
-	struct virtio_admin_migration_get_internal_state_pending_bytes_result res;
-	char mz_name[RTE_MEMZONE_NAMESIZE];
 	uint64_t features = 0, max_phy, log_base, log_size, log_size_align;
 	uint16_t num_vr;
 	rte_iova_t iova;
@@ -1088,67 +1182,9 @@ virtio_vdpa_dev_close(int vid)
 		}
 
 	}
-	ret = virtio_vdpa_cmd_get_internal_pending_bytes(priv->pf_priv, priv->vf_id, &res);
-	if (ret) {
-		DRV_LOG(ERR, "%s vfid %d failed get pending bytes ret:%d", vdev->device->name, priv->vf_id, ret);
-	}
 
-	/* If pre allocated memzone is small, we will realloc */
-	if (!ret && (res.pending_bytes > VIRTIO_VDPA_REMOTE_STATE_DEFAULT_SIZE)) {
-		rte_memzone_free(priv->state_mz_remote);
-
-		ret = snprintf(mz_name, RTE_MEMZONE_NAMESIZE, "%s_remote_mz", vdev->device->name);
-		if (ret < 0 || ret >= RTE_MEMZONE_NAMESIZE) {
-			DRV_LOG(ERR, "%s remote mem zone print fail ret:%d", vdev->device->name, ret);
-		}
-
-		priv->state_mz_remote = rte_memzone_reserve_aligned(mz_name,
-										res.pending_bytes,
-										priv->pdev->device.numa_node, RTE_MEMZONE_IOVA_CONTIG,
-										VIRTIO_VDPA_STATE_ALIGN);
-		if (priv->state_mz_remote == NULL) {
-			DRV_LOG(ERR, "Failed to reserve remote memzone dev:%s", vdev->device->name);
-		}
-	}
-
-	if (res.pending_bytes ==0) {
-		DRV_LOG(ERR, "Dev:%s pending bytes is 0", vdev->device->name);
-	}
-
-	DRV_LOG(INFO, "Dev:%s pending bytes is 0x%" PRIx64, vdev->device->name, res.pending_bytes);
-
-	/*save*/
-	ret = virtio_vdpa_cmd_save_state(priv->pf_priv, priv->vf_id, 0,
-								res.pending_bytes,
-								priv->state_mz_remote->iova);
-	if (ret) {
-		DRV_LOG(ERR, "%s vfid %d failed get state ret:%d", vdev->device->name, priv->vf_id, ret);
-	}
-
-	num_vr = rte_vhost_get_vring_num(vid);
-	tmp_hw_idx = rte_zmalloc(NULL, num_vr * sizeof(struct virtio_dev_run_state_info), 0);
-
-	ret = virtio_pci_dev_state_hw_idx_get(priv->state_mz_remote->addr, res.pending_bytes, tmp_hw_idx, num_vr);
-	if (ret) {
-		rte_free(tmp_hw_idx);
-		DRV_LOG(ERR, "%s vfid %d failed get hwidx ret:%d", vdev->device->name, priv->vf_id, ret);
-	}
-
-	/* Set_vring_base */
-	for(i = 0; i < num_vr; i++) {
-		if (tmp_hw_idx[i].flag && priv->vrings[i]->enable) {
-			DRV_LOG(INFO, "%s vid %d qid %d set last_avail_idx:%d,last_used_idx:%d",
-				vdev->device->name, vid,
-				i, tmp_hw_idx[i].last_avail_idx, tmp_hw_idx[i].last_used_idx);
-			ret = rte_vhost_set_vring_base(vid, i, tmp_hw_idx[i].last_avail_idx, tmp_hw_idx[i].last_used_idx);
-			if (ret) {
-				rte_free(tmp_hw_idx);
-				DRV_LOG(ERR, "%s vfid %d failed set hwidx ret:%d", vdev->device->name, priv->vf_id, ret);
-			}
-		}
-	}
-
-	rte_free(tmp_hw_idx);
+	num_vr = rte_vhost_get_vring_num(priv->vid);
+	virtio_vdpa_save_state_update_hwidx(priv, num_vr);
 
 	/* Disable all queues */
 	for (i = 0; i < num_vr; i++) {
