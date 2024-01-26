@@ -59,8 +59,16 @@ enum rte_argparse_flag {
 
 	/** The argument's value is int type. */
 	RTE_ARGPARSE_ARG_VALUE_INT = RTE_SHIFT_VAL64(1, 2),
+	/** The argument's value is uint8 type. */
+	RTE_ARGPARSE_ARG_VALUE_U8 = RTE_SHIFT_VAL64(2, 2),
+	/** The argument's value is uint16 type. */
+	RTE_ARGPARSE_ARG_VALUE_U16 = RTE_SHIFT_VAL64(3, 2),
+	/** The argument's value is uint32 type. */
+	RTE_ARGPARSE_ARG_VALUE_U32 = RTE_SHIFT_VAL64(4, 2),
+	/** The argument's value is uint64 type. */
+	RTE_ARGPARSE_ARG_VALUE_U64 = RTE_SHIFT_VAL64(5, 2),
 	/** Max value type. */
-	RTE_ARGPARSE_ARG_VALUE_MAX = RTE_SHIFT_VAL64(2, 2),
+	RTE_ARGPARSE_ARG_VALUE_MAX = RTE_SHIFT_VAL64(6, 2),
 
 
 	/**

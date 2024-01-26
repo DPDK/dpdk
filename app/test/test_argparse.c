@@ -751,19 +751,72 @@ static int
 test_argparse_parse_type(void)
 {
 	char *str_erange = test_strdup("9999999999999999999999999999999999");
+	char *str_erange_u32 = test_strdup("4294967296");
+	char *str_erange_u16 = test_strdup("65536");
+	char *str_erange_u8 = test_strdup("256");
 	char *str_invalid = test_strdup("1a");
 	char *str_ok = test_strdup("123");
-	int value;
+	uint16_t val_u16;
+	uint32_t val_u32;
+	uint64_t val_u64;
+	uint8_t val_u8;
+	int val_int;
 	int ret;
 
 	/* test for int parsing */
-	ret = rte_argparse_parse_type(str_erange, RTE_ARGPARSE_ARG_VALUE_INT, &value);
+	ret = rte_argparse_parse_type(str_erange, RTE_ARGPARSE_ARG_VALUE_INT, &val_int);
 	TEST_ASSERT(ret != 0, "Argparse parse type expect failed!");
-	ret = rte_argparse_parse_type(str_invalid, RTE_ARGPARSE_ARG_VALUE_INT, &value);
+	ret = rte_argparse_parse_type(str_invalid, RTE_ARGPARSE_ARG_VALUE_INT, &val_int);
 	TEST_ASSERT(ret != 0, "Argparse parse type expect failed!");
-	ret = rte_argparse_parse_type(str_ok, RTE_ARGPARSE_ARG_VALUE_INT, &value);
+	ret = rte_argparse_parse_type(str_ok, RTE_ARGPARSE_ARG_VALUE_INT, &val_int);
 	TEST_ASSERT(ret == 0, "Argparse parse type expect failed!");
-	TEST_ASSERT(value == 123, "Argparse parse type expect failed!");
+	TEST_ASSERT(val_int == 123, "Argparse parse type expect failed!");
+
+	/* test for u8 parsing */
+	ret = rte_argparse_parse_type(str_erange, RTE_ARGPARSE_ARG_VALUE_U8, &val_u8);
+	TEST_ASSERT(ret != 0, "Argparse parse type expect failed!");
+	ret = rte_argparse_parse_type(str_erange_u8, RTE_ARGPARSE_ARG_VALUE_U8, &val_u8);
+	TEST_ASSERT(ret != 0, "Argparse parse type expect failed!");
+	ret = rte_argparse_parse_type(str_invalid, RTE_ARGPARSE_ARG_VALUE_U8, &val_u8);
+	TEST_ASSERT(ret != 0, "Argparse parse type expect failed!");
+	val_u8 = 0;
+	ret = rte_argparse_parse_type(str_ok, RTE_ARGPARSE_ARG_VALUE_U8, &val_u8);
+	TEST_ASSERT(ret == 0, "Argparse parse type expect failed!");
+	TEST_ASSERT(val_u8 == 123, "Argparse parse type expect failed!");
+
+	/* test for u16 parsing */
+	ret = rte_argparse_parse_type(str_erange, RTE_ARGPARSE_ARG_VALUE_U16, &val_u16);
+	TEST_ASSERT(ret != 0, "Argparse parse type expect failed!");
+	ret = rte_argparse_parse_type(str_erange_u16, RTE_ARGPARSE_ARG_VALUE_U16, &val_u16);
+	TEST_ASSERT(ret != 0, "Argparse parse type expect failed!");
+	ret = rte_argparse_parse_type(str_invalid, RTE_ARGPARSE_ARG_VALUE_U16, &val_u16);
+	TEST_ASSERT(ret != 0, "Argparse parse type expect failed!");
+	val_u16 = 0;
+	ret = rte_argparse_parse_type(str_ok, RTE_ARGPARSE_ARG_VALUE_U16, &val_u16);
+	TEST_ASSERT(ret == 0, "Argparse parse type expect failed!");
+	TEST_ASSERT(val_u16 == 123, "Argparse parse type expect failed!");
+
+	/* test for u32 parsing */
+	ret = rte_argparse_parse_type(str_erange, RTE_ARGPARSE_ARG_VALUE_U32, &val_u32);
+	TEST_ASSERT(ret != 0, "Argparse parse type expect failed!");
+	ret = rte_argparse_parse_type(str_erange_u32, RTE_ARGPARSE_ARG_VALUE_U32, &val_u32);
+	TEST_ASSERT(ret != 0, "Argparse parse type expect failed!");
+	ret = rte_argparse_parse_type(str_invalid, RTE_ARGPARSE_ARG_VALUE_U32, &val_u32);
+	TEST_ASSERT(ret != 0, "Argparse parse type expect failed!");
+	val_u32 = 0;
+	ret = rte_argparse_parse_type(str_ok, RTE_ARGPARSE_ARG_VALUE_U32, &val_u32);
+	TEST_ASSERT(ret == 0, "Argparse parse type expect failed!");
+	TEST_ASSERT(val_u32 == 123, "Argparse parse type expect failed!");
+
+	/* test for u64 parsing */
+	ret = rte_argparse_parse_type(str_erange, RTE_ARGPARSE_ARG_VALUE_U64, &val_u64);
+	TEST_ASSERT(ret != 0, "Argparse parse type expect failed!");
+	ret = rte_argparse_parse_type(str_invalid, RTE_ARGPARSE_ARG_VALUE_U64, &val_u64);
+	TEST_ASSERT(ret != 0, "Argparse parse type expect failed!");
+	val_u64 = 0;
+	ret = rte_argparse_parse_type(str_ok, RTE_ARGPARSE_ARG_VALUE_U64, &val_u64);
+	TEST_ASSERT(ret == 0, "Argparse parse type expect failed!");
+	TEST_ASSERT(val_u64 == 123, "Argparse parse type expect failed!");
 
 	return 0;
 }

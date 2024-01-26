@@ -402,6 +402,118 @@ parse_arg_int(struct rte_argparse_arg *arg, const char *value)
 }
 
 static int
+parse_arg_u8(struct rte_argparse_arg *arg, const char *value)
+{
+	unsigned long val;
+	char *s = NULL;
+
+	if (value == NULL) {
+		*(uint8_t *)arg->val_saver = (uint8_t)(intptr_t)arg->val_set;
+		return 0;
+	}
+
+	errno = 0;
+	val = strtoul(value, &s, 0);
+	if (errno == ERANGE || val > UINT8_MAX) {
+		ARGPARSE_LOG(ERR, "argument %s numerical out of range!", arg->name_long);
+		return -EINVAL;
+	}
+
+	if (s[0] != '\0') {
+		ARGPARSE_LOG(ERR, "argument %s expect an uint8 value!", arg->name_long);
+		return -EINVAL;
+	}
+
+	*(uint8_t *)arg->val_saver = val;
+
+	return 0;
+}
+
+static int
+parse_arg_u16(struct rte_argparse_arg *arg, const char *value)
+{
+	unsigned long val;
+	char *s = NULL;
+
+	if (value == NULL) {
+		*(uint16_t *)arg->val_saver = (uint16_t)(intptr_t)arg->val_set;
+		return 0;
+	}
+
+	errno = 0;
+	val = strtoul(value, &s, 0);
+	if (errno == ERANGE || val > UINT16_MAX) {
+		ARGPARSE_LOG(ERR, "argument %s numerical out of range!", arg->name_long);
+		return -EINVAL;
+	}
+
+	if (s[0] != '\0') {
+		ARGPARSE_LOG(ERR, "argument %s expect an uint16 value!", arg->name_long);
+		return -EINVAL;
+	}
+
+	*(uint16_t *)arg->val_saver = val;
+
+	return 0;
+}
+
+static int
+parse_arg_u32(struct rte_argparse_arg *arg, const char *value)
+{
+	unsigned long val;
+	char *s = NULL;
+
+	if (value == NULL) {
+		*(uint32_t *)arg->val_saver = (uint32_t)(intptr_t)arg->val_set;
+		return 0;
+	}
+
+	errno = 0;
+	val = strtoul(value, &s, 0);
+	if (errno == ERANGE || val > UINT32_MAX) {
+		ARGPARSE_LOG(ERR, "argument %s numerical out of range!", arg->name_long);
+		return -EINVAL;
+	}
+
+	if (s[0] != '\0') {
+		ARGPARSE_LOG(ERR, "argument %s expect an uint32 value!", arg->name_long);
+		return -EINVAL;
+	}
+
+	*(uint32_t *)arg->val_saver = val;
+
+	return 0;
+}
+
+static int
+parse_arg_u64(struct rte_argparse_arg *arg, const char *value)
+{
+	unsigned long val;
+	char *s = NULL;
+
+	if (value == NULL) {
+		*(uint64_t *)arg->val_saver = (uint64_t)(intptr_t)arg->val_set;
+		return 0;
+	}
+
+	errno = 0;
+	val = strtoull(value, &s, 0);
+	if (errno == ERANGE) {
+		ARGPARSE_LOG(ERR, "argument %s numerical out of range!", arg->name_long);
+		return -EINVAL;
+	}
+
+	if (s[0] != '\0') {
+		ARGPARSE_LOG(ERR, "argument %s expect an uint64 value!", arg->name_long);
+		return -EINVAL;
+	}
+
+	*(uint64_t *)arg->val_saver = val;
+
+	return 0;
+}
+
+static int
 parse_arg_autosave(struct rte_argparse_arg *arg, const char *value)
 {
 	static struct {
@@ -410,6 +522,10 @@ parse_arg_autosave(struct rte_argparse_arg *arg, const char *value)
 		/* Sort by RTE_ARGPARSE_ARG_VALUE_XXX. */
 		{ NULL          },
 		{ parse_arg_int },
+		{ parse_arg_u8  },
+		{ parse_arg_u16 },
+		{ parse_arg_u32 },
+		{ parse_arg_u64 },
 	};
 	uint32_t index = arg_attr_val_type(arg);
 	int ret = -EINVAL;
