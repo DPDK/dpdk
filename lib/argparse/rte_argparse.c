@@ -606,3 +606,22 @@ error:
 		exit(ret);
 	return ret;
 }
+
+int
+rte_argparse_parse_type(const char *str, uint64_t val_type, void *val)
+{
+	uint32_t cmp_max = RTE_FIELD_GET64(ARG_ATTR_VAL_TYPE_MASK, RTE_ARGPARSE_ARG_VALUE_MAX);
+	struct rte_argparse_arg arg = {
+		.name_long = str,
+		.name_short = NULL,
+		.val_saver = val,
+		.val_set = NULL,
+		.flags = val_type,
+	};
+	uint32_t value_type = arg_attr_val_type(&arg);
+
+	if (value_type == 0 || value_type >= cmp_max)
+		return -EINVAL;
+
+	return parse_arg_autosave(&arg, str);
+}

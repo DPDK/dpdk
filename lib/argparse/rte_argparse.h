@@ -183,6 +183,25 @@ struct rte_argparse {
 __rte_experimental
 int rte_argparse_parse(struct rte_argparse *obj, int argc, char **argv);
 
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Parse the value from the input string based on the value type.
+ *
+ * @param str
+ *   Input string.
+ * @param val_type
+ *   The value type, @see RTE_ARGPARSE_ARG_VALUE_INT or other type.
+ * @param val
+ *   Saver for the value.
+ *
+ * @return
+ *   0 on success. Otherwise negative value is returned.
+ */
+__rte_experimental
+int rte_argparse_parse_type(const char *str, uint64_t val_type, void *val);
+
 #ifdef __cplusplus
 }
 #endif

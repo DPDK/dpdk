@@ -2,6 +2,7 @@ EXPERIMENTAL {
 	global:
 
 	rte_argparse_parse;
+	rte_argparse_parse_type;
 
 	local: *;
 };

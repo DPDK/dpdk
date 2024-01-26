@@ -747,6 +747,27 @@ test_argparse_pos_callback_parse_int(void)
 	return 0;
 }
 
+static int
+test_argparse_parse_type(void)
+{
+	char *str_erange = test_strdup("9999999999999999999999999999999999");
+	char *str_invalid = test_strdup("1a");
+	char *str_ok = test_strdup("123");
+	int value;
+	int ret;
+
+	/* test for int parsing */
+	ret = rte_argparse_parse_type(str_erange, RTE_ARGPARSE_ARG_VALUE_INT, &value);
+	TEST_ASSERT(ret != 0, "Argparse parse type expect failed!");
+	ret = rte_argparse_parse_type(str_invalid, RTE_ARGPARSE_ARG_VALUE_INT, &value);
+	TEST_ASSERT(ret != 0, "Argparse parse type expect failed!");
+	ret = rte_argparse_parse_type(str_ok, RTE_ARGPARSE_ARG_VALUE_INT, &value);
+	TEST_ASSERT(ret == 0, "Argparse parse type expect failed!");
+	TEST_ASSERT(value == 123, "Argparse parse type expect failed!");
+
+	return 0;
+}
+
 static struct unit_test_suite argparse_test_suite = {
 	.suite_name = "Argparse Unit Test Suite",
 	.setup = test_argparse_setup,
@@ -768,6 +789,7 @@ static struct unit_test_suite argparse_test_suite = {
 		TEST_CASE(test_argparse_opt_callback_parse_int_of_optional_val),
 		TEST_CASE(test_argparse_pos_autosave_parse_int),
 		TEST_CASE(test_argparse_pos_callback_parse_int),
+		TEST_CASE(test_argparse_parse_type),
 
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}
