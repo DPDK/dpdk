@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2021 HiSilicon Limited
+ * Copyright(c) 2021-2024 HiSilicon Limited
  */
 
 #include <inttypes.h>
@@ -37,10 +37,12 @@ skeldma_info_get(const struct rte_dma_dev *dev, struct rte_dma_info *dev_info,
 
 	dev_info->dev_capa = RTE_DMA_CAPA_MEM_TO_MEM |
 			     RTE_DMA_CAPA_SVA |
-			     RTE_DMA_CAPA_OPS_COPY;
+			     RTE_DMA_CAPA_OPS_COPY |
+			     RTE_DMA_CAPA_OPS_COPY_SG;
 	dev_info->max_vchans = 1;
 	dev_info->max_desc = SKELDMA_MAX_DESC;
 	dev_info->min_desc = SKELDMA_MIN_DESC;
+	dev_info->max_sges = SKELDMA_MAX_SGES;
 
 	return 0;
 }
@@ -53,6 +55,49 @@ skeldma_configure(struct rte_dma_dev *dev, const struct rte_dma_conf *conf,
 	RTE_SET_USED(conf);
 	RTE_SET_USED(conf_sz);
 	return 0;
+}
+
+static inline void
+do_copy_sg_one(struct rte_dma_sge *src, struct rte_dma_sge *dst, uint16_t nb_dst, uint64_t offset)
+{
+	uint32_t src_off = 0, dst_off = 0;
+	uint32_t copy_len = 0;
+	uint64_t tmp = 0;
+	uint16_t i;
+
+	/* Locate the segment from which the copy is started. */
+	for (i = 0; i < nb_dst; i++) {
+		tmp += dst[i].length;
+		if (offset < tmp) {
+			copy_len = tmp - offset;
+			dst_off = dst[i].length - copy_len;
+			break;
+		}
+	}
+
+	for (/* Use the above index */; i < nb_dst; i++, copy_len = dst[i].length) {
+		copy_len = RTE_MIN(copy_len, src->length - src_off);
+		rte_memcpy((uint8_t *)(uintptr_t)dst[i].addr + dst_off,
+			   (uint8_t *)(uintptr_t)src->addr + src_off,
+			   copy_len);
+		src_off += copy_len;
+		if (src_off >= src->length)
+			break;
+		dst_off = 0;
+	}
+}
+
+static inline void
+do_copy_sg(struct skeldma_desc *desc)
+{
+	uint64_t offset = 0;
+	uint16_t i;
+
+	for (i = 0; i < desc->copy_sg.nb_src; i++) {
+		do_copy_sg_one(&desc->copy_sg.src[i], desc->copy_sg.dst,
+			       desc->copy_sg.nb_dst, offset);
+		offset += desc->copy_sg.src[i].length;
+	}
 }
 
 static uint32_t
@@ -76,9 +121,13 @@ cpucopy_thread(void *param)
 				rte_delay_us_sleep(SLEEP_US_VAL);
 			continue;
 		}
-
 		hw->zero_req_count = 0;
-		rte_memcpy(desc->dst, desc->src, desc->len);
+
+		if (desc->op == SKELDMA_OP_COPY)
+			rte_memcpy(desc->copy.dst, desc->copy.src, desc->copy.len);
+		else if (desc->op == SKELDMA_OP_COPY_SG)
+			do_copy_sg(desc);
+
 		__atomic_fetch_add(&hw->completed_count, 1, __ATOMIC_RELEASE);
 		(void)rte_ring_enqueue(hw->desc_completed, (void *)desc);
 	}
@@ -368,10 +417,42 @@ skeldma_copy(void *dev_private, uint16_t vchan,
 	ret = rte_ring_dequeue(hw->desc_empty, (void **)&desc);
 	if (ret)
 		return -ENOSPC;
-	desc->src = (void *)(uintptr_t)src;
-	desc->dst = (void *)(uintptr_t)dst;
-	desc->len = length;
+	desc->op = SKELDMA_OP_COPY;
 	desc->ridx = hw->ridx;
+	desc->copy.src = (void *)(uintptr_t)src;
+	desc->copy.dst = (void *)(uintptr_t)dst;
+	desc->copy.len = length;
+	if (flags & RTE_DMA_OP_FLAG_SUBMIT)
+		submit(hw, desc);
+	else
+		(void)rte_ring_enqueue(hw->desc_pending, (void *)desc);
+	hw->submitted_count++;
+
+	return hw->ridx++;
+}
+
+static int
+skeldma_copy_sg(void *dev_private, uint16_t vchan,
+		const struct rte_dma_sge *src,
+		const struct rte_dma_sge *dst,
+		uint16_t nb_src, uint16_t nb_dst,
+		uint64_t flags)
+{
+	struct skeldma_hw *hw = dev_private;
+	struct skeldma_desc *desc;
+	int ret;
+
+	RTE_SET_USED(vchan);
+
+	ret = rte_ring_dequeue(hw->desc_empty, (void **)&desc);
+	if (ret)
+		return -ENOSPC;
+	desc->op = SKELDMA_OP_COPY_SG;
+	desc->ridx = hw->ridx;
+	memcpy(desc->copy_sg.src, src, sizeof(*src) * nb_src);
+	memcpy(desc->copy_sg.dst, dst, sizeof(*dst) * nb_dst);
+	desc->copy_sg.nb_src = nb_src;
+	desc->copy_sg.nb_dst = nb_dst;
 	if (flags & RTE_DMA_OP_FLAG_SUBMIT)
 		submit(hw, desc);
 	else
@@ -491,6 +572,7 @@ skeldma_create(const char *name, struct rte_vdev_device *vdev, int lcore_id)
 	dev->dev_ops = &skeldma_ops;
 	dev->fp_obj->dev_private = dev->data->dev_private;
 	dev->fp_obj->copy = skeldma_copy;
+	dev->fp_obj->copy_sg = skeldma_copy_sg;
 	dev->fp_obj->submit = skeldma_submit;
 	dev->fp_obj->completed = skeldma_completed;
 	dev->fp_obj->completed_status = skeldma_completed_status;

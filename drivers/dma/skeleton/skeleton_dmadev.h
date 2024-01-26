@@ -1,20 +1,40 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2021 HiSilicon Limited
+ * Copyright(c) 2021-2024 HiSilicon Limited
  */
 
 #ifndef SKELETON_DMADEV_H
 #define SKELETON_DMADEV_H
 
+#include <rte_dmadev.h>
 #include <rte_ring.h>
 #include <rte_thread.h>
 
 #define SKELDMA_ARG_LCORE	"lcore"
 
+#define SKELDMA_MAX_SGES	4
+
+enum skeldma_op {
+	SKELDMA_OP_COPY,
+	SKELDMA_OP_COPY_SG,
+};
+
 struct skeldma_desc {
-	void *src;
-	void *dst;
-	uint32_t len;
+	enum skeldma_op op;
 	uint16_t ridx; /* ring idx */
+
+	union {
+		struct {
+			void *src;
+			void *dst;
+			uint32_t len;
+		} copy;
+		struct {
+			struct rte_dma_sge src[SKELDMA_MAX_SGES];
+			struct rte_dma_sge dst[SKELDMA_MAX_SGES];
+			uint16_t nb_src;
+			uint16_t nb_dst;
+		} copy_sg;
+	};
 };
 
 struct skeldma_hw {
