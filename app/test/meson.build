@@ -27,6 +27,7 @@ source_file_deps = {
     # the various test_*.c files
     'test_acl.c': ['net', 'acl'],
     'test_alarm.c': [],
+    'test_argparse.c': ['argparse'],
     'test_atomic.c': ['hash'],
     'test_barrier.c': [],
     'test_bitcount.c': [],

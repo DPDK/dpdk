@@ -1635,6 +1635,7 @@ Other libraries
 Argument parsing
 M: Chengwen Feng <fengchengwen@huawei.com>
 F: lib/argparse/
+F: app/test/test_argparse.c
 
 Configuration file
 M: Cristian Dumitrescu <cristian.dumitrescu@intel.com>
