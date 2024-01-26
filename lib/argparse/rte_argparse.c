@@ -640,8 +640,47 @@ parse_args(struct rte_argparse *obj, int argc, char **argv, bool *show_help)
 	return 0;
 }
 
+static uint32_t
+calc_help_align(const struct rte_argparse *obj)
+{
+	const struct rte_argparse_arg *arg;
+	uint32_t width = 12; /* Default "-h, --help  " len. */
+	uint32_t len;
+	uint32_t i;
+
+	for (i = 0; /* NULL */; i++) {
+		arg = &obj->args[i];
+		if (arg->name_long == NULL)
+			break;
+		len = strlen(arg->name_long);
+		if (is_arg_optional(arg) && arg->name_short != NULL) {
+			len += strlen(", ");
+			len += strlen(arg->name_short);
+		}
+		width = RTE_MAX(width, 1 + len + 2); /* start with 1 & end with 2 space. */
+	}
+
+	return width;
+}
+
 static void
-show_args_pos_help(const struct rte_argparse *obj)
+show_oneline_help(const struct rte_argparse_arg *arg, uint32_t width)
+{
+	uint32_t len = 0;
+	uint32_t i;
+
+	if (arg->name_short != NULL)
+		len = printf(" %s,", arg->name_short);
+	len += printf(" %s", arg->name_long);
+
+	for (i = len; i < width; i++)
+		printf(" ");
+
+	printf("%s\n", arg->help);
+}
+
+static void
+show_args_pos_help(const struct rte_argparse *obj, uint32_t align)
 {
 	uint32_t position_count = calc_position_count(obj);
 	const struct rte_argparse_arg *arg;
@@ -657,43 +696,49 @@ show_args_pos_help(const struct rte_argparse *obj)
 			break;
 		if (!is_arg_positional(arg))
 			continue;
-		printf(" %s: %s\n", arg->name_long, arg->help);
+		show_oneline_help(arg, align);
 	}
 }
 
 static void
-show_args_opt_help(const struct rte_argparse *obj)
+show_args_opt_help(const struct rte_argparse *obj, uint32_t align)
 {
+	static const struct rte_argparse_arg help = {
+		.name_long = "--help",
+		.name_short = "-h",
+		.help = "show this help message and exit.",
+	};
 	const struct rte_argparse_arg *arg;
 	uint32_t i;
 
-	printf("\noptions:\n"
-	       " -h, --help: show this help message and exit.\n");
+	printf("\noptions:\n");
+	show_oneline_help(&help, align);
 	for (i = 0; /* NULL */; i++) {
 		arg = &obj->args[i];
 		if (arg->name_long == NULL)
 			break;
 		if (!is_arg_optional(arg))
 			continue;
-		if (arg->name_short != NULL)
-			printf(" %s, %s: %s\n", arg->name_short, arg->name_long, arg->help);
-		else
-			printf(" %s: %s\n", arg->name_long, arg->help);
+		show_oneline_help(arg, align);
 	}
 }
 
 static void
 show_args_help(const struct rte_argparse *obj)
 {
+	uint32_t align = calc_help_align(obj);
+
 	printf("usage: %s %s\n", obj->prog_name, obj->usage);
 	if (obj->descriptor != NULL)
 		printf("\ndescriptor: %s\n", obj->descriptor);
 
-	show_args_pos_help(obj);
-	show_args_opt_help(obj);
+	show_args_pos_help(obj, align);
+	show_args_opt_help(obj, align);
 
 	if (obj->epilog != NULL)
 		printf("\n%s\n", obj->epilog);
+	else
+		printf("\n");
 }
 
 int
