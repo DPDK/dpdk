@@ -16,6 +16,7 @@
 enum skeldma_op {
 	SKELDMA_OP_COPY,
 	SKELDMA_OP_COPY_SG,
+	SKELDMA_OP_FILL,
 };
 
 struct skeldma_desc {
@@ -34,14 +35,19 @@ struct skeldma_desc {
 			uint16_t nb_src;
 			uint16_t nb_dst;
 		} copy_sg;
+		struct {
+			void *dst;
+			uint32_t len;
+			uint64_t pattern;
+		} fill;
 	};
 };
 
 struct skeldma_hw {
-	int lcore_id; /* cpucopy task affinity core */
+	int lcore_id; /* cpuwork task affinity core */
 	int socket_id;
-	rte_thread_t thread; /* cpucopy task thread */
-	volatile int exit_flag; /* cpucopy task exit flag */
+	rte_thread_t thread; /* cpuwork task thread */
+	volatile int exit_flag; /* cpuwork task exit flag */
 
 	struct skeldma_desc *desc_mem;
 
@@ -57,7 +63,7 @@ struct skeldma_hw {
 	 *       |get completed     |------------------|    |
 	 *       |                                     |    |
 	 *       |                                     v    v
-	 *  -----------     cpucopy thread working     -----------
+	 *  -----------     cpuwork thread working     -----------
 	 *  |completed|<-------------------------------| running |
 	 *  -----------                                -----------
 	 */
@@ -72,7 +78,7 @@ struct skeldma_hw {
 	uint16_t last_ridx;
 	uint64_t submitted_count;
 
-	/* Cache delimiter for cpucopy thread's operation data */
+	/* Cache delimiter for cpuwork thread's operation data */
 	char cache2 __rte_cache_aligned;
 	volatile uint32_t zero_req_count;
 	uint64_t completed_count;
