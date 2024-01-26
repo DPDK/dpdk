@@ -28,6 +28,7 @@ INPUT                   = @TOPDIR@/doc/api/doxy-api-index.md \
                           @TOPDIR@/lib/eal/include \
                           @TOPDIR@/lib/eal/include/generic \
                           @TOPDIR@/lib/acl \
+                          @TOPDIR@/lib/argparse \
                           @TOPDIR@/lib/bbdev \
                           @TOPDIR@/lib/bitratestats \
                           @TOPDIR@/lib/bpf \

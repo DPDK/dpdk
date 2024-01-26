@@ -55,6 +55,11 @@ New Features
      Also, make sure to start the actual text at the margin.
      =======================================================
 
+* **Introduced argument parsing library.**
+
+  The argparse library was added to ease writing user-friendly applications,
+  replacing ``getopt()`` usage.
+
 
 Removed Items
 -------------

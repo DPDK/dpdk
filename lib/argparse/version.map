@@ -1,0 +1,7 @@
+EXPERIMENTAL {
+	global:
+
+	rte_argparse_parse;
+
+	local: *;
+};

@@ -11,6 +11,7 @@
 libraries = [
         'log',
         'kvargs', # eal depends on kvargs
+        'argparse',
         'telemetry', # basic info querying
         'eal', # everything depends on eal
         'ring',

@@ -1632,6 +1632,10 @@ F: doc/guides/sample_app_ug/qos_metering.rst
 Other libraries
 ---------------
 
+Argument parsing
+M: Chengwen Feng <fengchengwen@huawei.com>
+F: lib/argparse/
+
 Configuration file
 M: Cristian Dumitrescu <cristian.dumitrescu@intel.com>
 F: lib/cfgfile/

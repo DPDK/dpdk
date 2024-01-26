@@ -1,0 +1,190 @@
+/* SPDX-License-Identifier: BSD-3-Clause
+ * Copyright(c) 2024 HiSilicon Limited
+ */
+
+#ifndef RTE_ARGPARSE_H
+#define RTE_ARGPARSE_H
+
+/**
+ * @file rte_argparse.h
+ *
+ * Argument parsing API.
+ *
+ * The argument parsing API makes it easy to write user-friendly command-line
+ * program. The program defines what arguments it requires,
+ * and the API will parse those arguments from [argc, argv].
+ *
+ * The API provides the following functions:
+ * 1) Support parsing optional argument (which could take with no-value,
+ *    required-value and optional-value.
+ * 2) Support parsing positional argument (which must take with required-value).
+ * 3) Support automatic generate usage information.
+ * 4) Support issue errors when provided with invalid arguments.
+ *
+ * There are two ways to parse arguments:
+ * 1) AutoSave: for which known value types, the way can be used.
+ * 2) Callback: will invoke user callback to parse.
+ *
+ */
+
+#include <stdbool.h>
+#include <stdint.h>
+
+#include <rte_bitops.h>
+#include <rte_compat.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/**
+ * Flag definition (in bitmask form) for an argument.
+ */
+enum rte_argparse_flag {
+	/*
+	 * Bits 0-1: represent the argument whether has value.
+	 */
+
+	/** The argument has no value. */
+	RTE_ARGPARSE_ARG_NO_VALUE = RTE_SHIFT_VAL64(1, 0),
+	/** The argument must have a value. */
+	RTE_ARGPARSE_ARG_REQUIRED_VALUE = RTE_SHIFT_VAL64(2, 0),
+	/** The argument has optional value. */
+	RTE_ARGPARSE_ARG_OPTIONAL_VALUE = RTE_SHIFT_VAL64(3, 0),
+
+
+	/*
+	 * Bits 2-9: represent the value type which used when autosave
+	 */
+
+	/** The argument's value is int type. */
+	RTE_ARGPARSE_ARG_VALUE_INT = RTE_SHIFT_VAL64(1, 2),
+	/** Max value type. */
+	RTE_ARGPARSE_ARG_VALUE_MAX = RTE_SHIFT_VAL64(2, 2),
+
+
+	/**
+	 * Bit 10: flag for that argument support occur multiple times.
+	 * This flag can be set only when the argument is optional.
+	 * When this flag is set, the callback type must be used for parsing.
+	 */
+	RTE_ARGPARSE_ARG_SUPPORT_MULTI = RTE_BIT64(10),
+
+	/**
+	 * Bits 48-63: reserved for this library implementation usage.
+	 */
+	RTE_ARGPARSE_ARG_RESERVED_FIELD = RTE_GENMASK64(63, 48),
+};
+
+/**
+ * A structure used to hold argument's configuration.
+ */
+struct rte_argparse_arg {
+	/**
+	 * Long name of the argument:
+	 * 1) If the argument is optional, it must start with '--'.
+	 * 2) If the argument is positional, it must not start with '-'.
+	 * 3) Other case will be considered as error.
+	 */
+	const char *name_long;
+	/**
+	 * Short name of the argument:
+	 * 1) This field could be set only when name_long is optional, and
+	 *    must start with a hyphen (-) followed by an English letter.
+	 * 2) Other case it should be set NULL.
+	 */
+	const char *name_short;
+
+	/** Help information of the argument, must not be NULL. */
+	const char *help;
+
+	/**
+	 * Saver for the argument's value.
+	 * 1) If the filed is NULL, the callback way is used for parsing
+	 *    argument.
+	 * 2) If the field is not NULL, the autosave way is used for parsing
+	 *    argument.
+	 */
+	void *val_saver;
+	/**
+	 * If val_saver is NULL, this filed (cast as (uint32_t)val_set) will be
+	 * used as the first parameter to invoke callback.
+	 *
+	 * If val_saver is not NULL, then:
+	 * 1) If argument has no value, *val_saver will be set to val_set.
+	 * 2) If argument has optional value but doesn't take value this
+	 *    time, *val_saver will be set to val_set.
+	 * 3) Other case it should be set NULL.
+	 */
+	void *val_set;
+
+	/** @see rte_argparse_flag */
+	uint64_t flags;
+};
+
+/**
+ * Callback prototype used by parsing specified arguments.
+ *
+ * @param index
+ *   The argument's index, coming from argument's val_set field.
+ * @param value
+ *   The value corresponding to the argument, it may be NULL (e.g. the
+ *   argument has no value, or the argument has optional value but doesn't
+ *   provided value).
+ * @param opaque
+ *   An opaque pointer coming from the caller.
+ * @return
+ *   0 on success. Otherwise negative value is returned.
+ */
+typedef int (*arg_parser_t)(uint32_t index, const char *value, void *opaque);
+
+/**
+ * A structure used to hold argparse's configuration.
+ */
+struct rte_argparse {
+	/** Program name. Must not be NULL. */
+	const char *prog_name;
+	/** How to use the program. Must not be NULL. */
+	const char *usage;
+	/** Explain what the program does. Could be NULL. */
+	const char *descriptor;
+	/** Text at the bottom of help. Could be NULL. */
+	const char *epilog;
+	/** Whether exit when error. */
+	bool exit_on_error;
+	/** User callback for parsing arguments. */
+	arg_parser_t callback;
+	/** Opaque which used to invoke callback. */
+	void *opaque;
+	/** Reserved field used for future extension. */
+	void *reserved[16];
+	/** Arguments configuration. Must ended with ARGPARSE_ARG_END(). */
+	struct rte_argparse_arg args[];
+};
+
+#define ARGPARSE_ARG_END() { NULL }
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Parse parameters.
+ *
+ * @param obj
+ *   Parser object.
+ * @param argc
+ *   Parameters count.
+ * @param argv
+ *   Array of parameters points.
+ *
+ * @return
+ *   0 on success. Otherwise negative value is returned.
+ */
+__rte_experimental
+int rte_argparse_parse(struct rte_argparse *obj, int argc, char **argv);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* RTE_ARGPARSE_H */
