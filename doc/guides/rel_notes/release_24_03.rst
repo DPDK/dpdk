@@ -81,6 +81,11 @@ New Features
   * Added ``RTE_FLOW_ITEM_TYPE_RANDOM`` to match a random value,
     and ``RTE_FLOW_FIELD_RANDOM`` to represent it with a field ID.
 
+* **Updated Atomic Rules' Arkville driver.**
+
+  * Added support for Atomic Rules' TK242 packet-capture family of devices
+    with PCI IDs: ``0x1024, 0x1025, 0x1026``.
+
 * **Updated Marvell cnxk crypto driver.**
 
   * Added support for Rx inject in crypto_cn10k.
