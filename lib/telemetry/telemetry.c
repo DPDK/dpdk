@@ -378,8 +378,8 @@ client_handler(void *sock_id)
 			"{\"version\":\"%s\",\"pid\":%d,\"max_output_len\":%d}",
 			telemetry_version, getpid(), MAX_OUTPUT_LEN);
 	if (write(s, info_str, strlen(info_str)) < 0) {
-		close(s);
-		return NULL;
+		TMTY_LOG_LINE(ERR, "Socket write base info to client failed");
+		goto exit;
 	}
 
 	/* receive data is not null terminated */
@@ -404,6 +404,7 @@ client_handler(void *sock_id)
 
 		bytes = read(s, buffer, sizeof(buffer) - 1);
 	}
+exit:
 	close(s);
 	rte_atomic_fetch_sub_explicit(&v2_clients, 1, rte_memory_order_relaxed);
 	return NULL;
