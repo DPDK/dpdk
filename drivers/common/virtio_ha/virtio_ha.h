@@ -34,7 +34,11 @@ enum virtio_ha_msg_type {
 	VIRTIO_HA_VF_REMOVE_DEVARG_VFIO_FDS = 9,
 	VIRTIO_HA_VF_REMOVE_VHOST_FD = 10,
 	VIRTIO_HA_VF_REMOVE_DMA_TBL = 11,
-	VIRTIO_HA_MESSAGE_MAX = 12,
+	VIRTIO_HA_GLOBAL_STORE_CONTAINER = 12,
+	VIRTIO_HA_GLOBAL_QUERY_CONTAINER = 13,
+	VIRTIO_HA_GLOBAL_STORE_DMA_MAP = 14,
+	VIRTIO_HA_GLOBAL_REMOVE_DMA_MAP = 15,
+	VIRTIO_HA_MESSAGE_MAX = 16,
 };
 
 struct virtio_ha_msg_hdr {
@@ -57,6 +61,18 @@ struct virtio_pf_ctx {
     int vfio_group_fd;
     int vfio_device_fd;
 };
+
+struct virtio_ha_global_dma_map {
+	uint64_t iova;
+	uint64_t size;
+};
+
+struct virtio_ha_global_dma_entry {
+	TAILQ_ENTRY(virtio_ha_global_dma_entry) next;
+	struct virtio_ha_global_dma_map map;
+};
+
+TAILQ_HEAD(virtio_ha_global_dma_tbl, virtio_ha_global_dma_entry);
 
 struct vdpa_vf_with_devargs {
     struct virtio_dev_name vf_name;
@@ -103,7 +119,9 @@ TAILQ_HEAD(virtio_ha_pf_dev_list, virtio_ha_pf_dev);
 
 struct virtio_ha_device_list {
 	struct virtio_ha_pf_dev_list pf_list;
+	struct virtio_ha_global_dma_tbl dma_tbl;
 	uint32_t nr_pf;
+	int global_cfd;
 };
 
 struct virtio_ha_dev_ctx_cb {
@@ -210,5 +228,17 @@ int virtio_ha_vf_mem_tbl_store(const struct virtio_dev_name *vf,
 __rte_internal
 int virtio_ha_vf_mem_tbl_remove(struct virtio_dev_name *vf,
 	const struct virtio_dev_name *pf);
+
+/* EAL layer store global VFIO container fd to HA service */
+int virtio_ha_global_cfd_store(int vfio_container_fd);
+
+/* EAL layer query global VFIO container fd from HA service */
+int virtio_ha_global_cfd_query(int *vfio_container_fd);
+
+/* EAL layer store global dma map of VFIO container fd to HA service */
+int virtio_ha_global_dma_map_store(struct virtio_ha_global_dma_map *map);
+
+/* EAL layer remove global dma map of VFIO container fd to HA service */
+int virtio_ha_global_dma_map_remove(struct virtio_ha_global_dma_map *map);
 
 #endif /* _VIRTIO_HA_H_ */

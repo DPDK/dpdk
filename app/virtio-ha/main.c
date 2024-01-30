@@ -7,8 +7,11 @@
 #include <sys/un.h>
 #include <sys/epoll.h>
 #include <sys/queue.h>
+#include <sys/ioctl.h>
+#include <linux/vfio.h>
 #include <unistd.h>
 #include <syslog.h>
+#include <inttypes.h>
 
 #include <rte_log.h>
 
@@ -503,6 +506,120 @@ ha_server_remove_dma_tbl(struct virtio_ha_msg *msg)
 	return HA_MSG_HDLR_SUCCESS;
 }
 
+static int
+ha_server_store_global_cfd(struct virtio_ha_msg *msg)
+{
+	if (msg->nr_fds != 1)
+		return HA_MSG_HDLR_SUCCESS;
+
+	hs.global_cfd = msg->fds[0];
+	HA_APP_LOG(INFO, "Saved global container fd: %d", hs.global_cfd);
+
+	return HA_MSG_HDLR_SUCCESS;
+}
+
+static int
+ha_server_query_global_cfd(struct virtio_ha_msg *msg)
+{
+	if (hs.global_cfd == -1)
+		return HA_MSG_HDLR_REPLY;
+
+	msg->nr_fds = 1;
+	msg->fds[0] = hs.global_cfd;
+	HA_APP_LOG(INFO, "Got query and replied with global container fd: %d", hs.global_cfd);
+
+	return HA_MSG_HDLR_REPLY;
+}
+
+static int
+ha_server_global_store_dma_map(struct virtio_ha_msg *msg)
+{
+	struct virtio_ha_global_dma_entry *entry;
+	struct virtio_ha_global_dma_map *map;
+	bool found = false;
+
+	map = (struct virtio_ha_global_dma_map *)msg->iov.iov_base;
+	TAILQ_FOREACH(entry, &hs.dma_tbl, next) {
+		/* vDPA application should not send entries that have the same iova but different size */
+		if (map->iova == entry->map.iova) {
+			found = true;
+			break;
+		}
+	}
+
+	if (!found) {
+		entry = malloc(sizeof(struct virtio_ha_global_dma_entry));
+		if (!entry) {
+			HA_APP_LOG(ERR, "Failed to alloc dma entry");
+			return HA_MSG_HDLR_SUCCESS;
+		}
+		memcpy(&entry->map, map, sizeof(struct virtio_ha_global_dma_map));
+		TAILQ_INSERT_TAIL(&hs.dma_tbl, entry, next);
+	}
+
+	HA_APP_LOG(INFO, "Saved global dma map: iova(0x%" PRIx64 "), len(0x%" PRIx64 ")",
+		map->iova, map->size);
+
+	return HA_MSG_HDLR_SUCCESS;
+}
+
+static int
+ha_server_global_remove_dma_map(struct virtio_ha_msg *msg)
+{
+	struct virtio_ha_global_dma_entry *entry;
+	struct virtio_ha_global_dma_map *map;
+	bool found = false;
+
+	map = (struct virtio_ha_global_dma_map *)msg->iov.iov_base;
+	TAILQ_FOREACH(entry, &hs.dma_tbl, next) {
+		/* vDPA application should not send entries that have the same iova but different size */
+		if (map->iova == entry->map.iova) {
+			found = true;
+			break;
+		}
+	}
+
+	if (found) {
+		TAILQ_REMOVE(&hs.dma_tbl, entry, next);
+		free(entry);
+	}
+
+	HA_APP_LOG(INFO, "Removed global dma map: iova(0x%" PRIx64 "), len(0x%" PRIx64 ")",
+		map->iova, map->size);
+
+	return HA_MSG_HDLR_SUCCESS;
+}
+
+static void
+ha_server_cleanup_global_dma(void)
+{
+	struct virtio_ha_global_dma_entry *entry, *next;
+	struct vfio_iommu_type1_dma_unmap dma_unmap = {};
+	int ret;
+
+	for (entry = TAILQ_FIRST(&hs.dma_tbl);
+		 entry != NULL; entry = next) {
+		next = TAILQ_NEXT(entry, next);
+		dma_unmap.argsz = sizeof(struct vfio_iommu_type1_dma_unmap);
+		dma_unmap.size = entry->map.size;
+		dma_unmap.iova = entry->map.iova;
+		ret = ioctl(hs.global_cfd, VFIO_IOMMU_UNMAP_DMA, &dma_unmap);
+		if (ret) {
+			HA_APP_LOG(ERR, "Cannot clear DMA remapping");
+		} else if (dma_unmap.size != entry->map.size) {
+			HA_APP_LOG(ERR, "Unexpected size 0x%" PRIx64
+				" of DMA remapping cleared instead of 0x%" PRIx64,
+				(uint64_t)dma_unmap.size, entry->map.size);
+		} else {
+			HA_APP_LOG(INFO, "Clean up global dma map: iova(0x%" PRIx64 "), len(0x%" PRIx64 ")",
+				entry->map.iova, entry->map.size);
+		}
+
+		TAILQ_REMOVE(&hs.dma_tbl, entry, next);
+		free(entry);
+	}
+}
+
 static ha_message_handler_t ha_message_handlers[VIRTIO_HA_MESSAGE_MAX] = {
 	[VIRTIO_HA_APP_QUERY_PF_LIST] = ha_server_app_query_pf_list,
 	[VIRTIO_HA_APP_QUERY_VF_LIST] = ha_server_app_query_vf_list,
@@ -516,6 +633,10 @@ static ha_message_handler_t ha_message_handlers[VIRTIO_HA_MESSAGE_MAX] = {
 	[VIRTIO_HA_VF_REMOVE_DEVARG_VFIO_FDS] = ha_server_remove_devarg_vfio_fds,
 	[VIRTIO_HA_VF_REMOVE_VHOST_FD] = ha_server_remove_vhost_fd,
 	[VIRTIO_HA_VF_REMOVE_DMA_TBL] = ha_server_remove_dma_tbl,
+	[VIRTIO_HA_GLOBAL_STORE_CONTAINER] = ha_server_store_global_cfd,
+	[VIRTIO_HA_GLOBAL_QUERY_CONTAINER] = ha_server_query_global_cfd,
+	[VIRTIO_HA_GLOBAL_STORE_DMA_MAP] = ha_server_global_store_dma_map,
+	[VIRTIO_HA_GLOBAL_REMOVE_DMA_MAP] = ha_server_global_remove_dma_map,
 };
 
 static void
@@ -619,7 +740,9 @@ main(__attribute__((__unused__)) int argc, __attribute__((__unused__)) char *arg
 	}
 
 	TAILQ_INIT(&hs.pf_list);
+	TAILQ_INIT(&hs.dma_tbl);
 	hs.nr_pf = 0;
+	hs.global_cfd = -1;
 
 	hdl.sock = sock;
 	hdl.cb = add_connection;
@@ -641,6 +764,7 @@ main(__attribute__((__unused__)) int argc, __attribute__((__unused__)) char *arg
 				if (epoll_ctl(epfd, EPOLL_CTL_DEL, handler->sock, &ev[i]) < 0)
 					HA_APP_LOG(ERR, "Failed to epoll ctl del for fd %d", handler->sock);
 				close(handler->sock);
+				ha_server_cleanup_global_dma();
 			} else { /* EPOLLIN */
 				handler->cb(handler->sock, handler->data);
 			}

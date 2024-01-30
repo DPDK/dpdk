@@ -320,7 +320,9 @@ virtio_ha_ipc_client_init(void)
 	pthread_t thread;
 
 	TAILQ_INIT(&client_devs.pf_list);
+	TAILQ_INIT(&client_devs.dma_tbl);
 	client_devs.nr_pf = 0;
+	client_devs.global_cfd = -1;
 
 	ipc_client_sock = socket(AF_UNIX, SOCK_STREAM, 0);
 	if (ipc_client_sock < 0) {
@@ -1213,13 +1215,197 @@ virtio_ha_vf_mem_tbl_remove(struct virtio_dev_name *vf,
 	}
 }
 
+static int
+virtio_ha_global_cfd_store_no_cache(int vfio_container_fd)
+{
+	struct virtio_ha_msg *msg;
+	int ret;
+
+	msg = virtio_ha_alloc_msg();
+	if (!msg) {
+		HA_IPC_LOG(ERR, "Failed to alloc ipc client msg");
+		return -1;
+	}
+
+	msg->hdr.type = VIRTIO_HA_GLOBAL_STORE_CONTAINER;
+	msg->fds[0] = vfio_container_fd;
+	msg->nr_fds = 1;
+	ret = virtio_ha_send_msg(ipc_client_sock, msg);
+	if (ret < 0) {
+		HA_IPC_LOG(ERR, "Failed to send msg");
+		return -1;
+	}
+
+	virtio_ha_free_msg(msg);
+
+	return 0;
+}
+
+int
+virtio_ha_global_cfd_store(int vfio_container_fd)
+{
+	while (__atomic_load_n(&ipc_client_sync, __ATOMIC_RELAXED))
+		;
+
+	client_devs.global_cfd = vfio_container_fd;
+
+	if (!__atomic_load_n(&ipc_client_connected, __ATOMIC_RELAXED))
+		return 0;
+	else
+		return virtio_ha_global_cfd_store_no_cache(vfio_container_fd);
+}
+
+int
+virtio_ha_global_cfd_query(int *vfio_container_fd)
+{
+	struct virtio_ha_msg *msg;
+	int ret;
+
+	while (__atomic_load_n(&ipc_client_sync, __ATOMIC_RELAXED))
+		;
+
+	if (!__atomic_load_n(&ipc_client_connected, __ATOMIC_RELAXED))
+		return 0;
+
+	msg = virtio_ha_alloc_msg();
+	if (!msg) {
+		HA_IPC_LOG(ERR, "Failed to alloc ipc client msg");
+		return -1;
+	}
+
+	msg->hdr.type = VIRTIO_HA_GLOBAL_QUERY_CONTAINER;
+	ret = virtio_ha_send_msg(ipc_client_sock, msg);
+	if (ret < 0) {
+		HA_IPC_LOG(ERR, "Failed to send msg");
+		return -1;
+	}
+
+	ret = virtio_ha_recv_msg(ipc_client_sock, msg);
+	if (ret < 0) {
+		HA_IPC_LOG(ERR, "Failed to recv msg");
+		return -1;
+	}
+
+	if (msg->nr_fds != 1)
+		goto out;
+
+	*vfio_container_fd = msg->fds[0];
+	client_devs.global_cfd = msg->fds[0];
+
+out:
+	virtio_ha_free_msg(msg);
+
+	return 0;
+}
+
+static int
+virtio_ha_global_dma_map_no_cache(struct virtio_ha_global_dma_map *map, bool is_map)
+{
+	struct virtio_ha_msg *msg;
+	int ret;
+
+	msg = virtio_ha_alloc_msg();
+	if (!msg) {
+		HA_IPC_LOG(ERR, "Failed to alloc ipc client msg");
+		return -1;
+	}
+
+	msg->hdr.type = is_map ? VIRTIO_HA_GLOBAL_STORE_DMA_MAP : VIRTIO_HA_GLOBAL_REMOVE_DMA_MAP;
+	msg->hdr.size = sizeof(struct virtio_ha_global_dma_entry);
+	msg->iov.iov_len = sizeof(struct virtio_ha_global_dma_entry);
+	msg->iov.iov_base = (void *)map;
+	ret = virtio_ha_send_msg(ipc_client_sock, msg);
+	if (ret < 0) {
+		HA_IPC_LOG(ERR, "Failed to send msg");
+		return -1;
+	}
+
+	virtio_ha_free_msg(msg);
+
+	return 0;
+}
+
+int
+virtio_ha_global_dma_map_store(struct virtio_ha_global_dma_map *map)
+{
+	struct virtio_ha_global_dma_entry *entry;
+	bool found = false;
+
+	while (__atomic_load_n(&ipc_client_sync, __ATOMIC_RELAXED))
+		;
+
+	TAILQ_FOREACH(entry, &client_devs.dma_tbl, next) {
+		if (map->iova == entry->map.iova) {
+			found = true;
+			break;
+		}
+	}
+
+	if (!found) {
+		entry = malloc(sizeof(struct virtio_ha_global_dma_entry));
+		if (!entry) {
+			HA_IPC_LOG(ERR, "Failed to alloc dma entry");
+			return -1;
+		}
+		memcpy(&entry->map, map, sizeof(struct virtio_ha_global_dma_map));
+		TAILQ_INSERT_TAIL(&client_devs.dma_tbl, entry, next);
+	}
+
+	if (!__atomic_load_n(&ipc_client_connected, __ATOMIC_RELAXED))
+		return 0;
+	else
+		return virtio_ha_global_dma_map_no_cache(map, true);
+}
+
+int
+virtio_ha_global_dma_map_remove(struct virtio_ha_global_dma_map *map)
+{
+	struct virtio_ha_global_dma_entry *entry;
+	bool found = false;
+
+	while (__atomic_load_n(&ipc_client_sync, __ATOMIC_RELAXED))
+		;
+
+	TAILQ_FOREACH(entry, &client_devs.dma_tbl, next) {
+		if (map->iova == entry->map.iova) {
+			found = true;
+			break;
+		}
+	}
+
+	if (found) {
+		TAILQ_REMOVE(&client_devs.dma_tbl, entry, next);
+		free(entry);
+	}
+
+	if (!__atomic_load_n(&ipc_client_connected, __ATOMIC_RELAXED)) 
+		return 0;
+	else
+		return virtio_ha_global_dma_map_no_cache(map, false);
+}
+
 static void
 sync_dev_context_to_ha(void)
 {
 	struct virtio_ha_pf_dev *dev;
 	struct virtio_ha_vf_dev *vf_dev;
 	struct virtio_ha_vf_dev_list *vf_list;
+	struct virtio_ha_global_dma_entry *entry;
 	int ret;
+
+	ret = virtio_ha_global_cfd_store_no_cache(client_devs.global_cfd);
+	if (ret) {
+		HA_IPC_LOG(ERR, "Failed to sync global container fd");
+		return;
+	}
+
+	TAILQ_FOREACH(entry, &client_devs.dma_tbl, next) {
+		ret = virtio_ha_global_dma_map_no_cache(&entry->map, true);
+		if (ret) {
+			HA_IPC_LOG(ERR, "Failed to sync global dma map");
+			return;
+		}		
+	}	
 
 	TAILQ_FOREACH(dev, &client_devs.pf_list, next) {
 		ret = virtio_ha_pf_ctx_store_no_cache(&dev->pf_name, &dev->pf_ctx);

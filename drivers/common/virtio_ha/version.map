@@ -32,6 +32,10 @@ DPDK_22 {
 	virtio_ha_send_msg;
 	virtio_ha_recv_msg;
 	virtio_ha_ipc_client_init;
+	virtio_ha_global_cfd_store;
+	virtio_ha_global_cfd_query;
+	virtio_ha_global_dma_map_store;
+	virtio_ha_global_dma_map_remove;
 
 	local: *;
 };

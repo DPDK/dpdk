@@ -83,6 +83,9 @@ struct vfio_device_info;
 
 #define RTE_VFIO_DEFAULT_CONTAINER_FD (-1)
 
+typedef void (*dma_map_store)(uint64_t iova, uint64_t len, bool map);
+typedef void (*container_fd_store)(int cfd);
+
 /**
  * Setup vfio_cfg for the device identified by its address.
  * It discovers the configured I/O MMU groups or sets a new one for the device.
@@ -452,6 +455,29 @@ rte_vfio_container_set_dma_map(int container_fd, uint64_t vaddr,
 int
 rte_vfio_container_dma_unmap(int container_fd, uint64_t vaddr,
 		uint64_t iova, uint64_t len);
+
+/**
+ * Register callback function for storing DMA map and container fd.
+ *
+ * @param dmap_store
+ *   Callback function for storing DMA map/unmap info.
+ *
+ * @param fd_store
+ *   Callback function for storing VFIO container fd.
+ *
+ */
+void
+rte_vfio_register_dma_cb(dma_map_store dmap_store, container_fd_store fd_store);
+
+/**
+ * Restore VFIO container fd for default VFIO cfg.
+ *
+ * @param container_fd
+ *   VFIO container fd to restore.
+ *
+ */
+void
+rte_vfio_restore_default_cfd(int container_fd);
 
 #ifdef __cplusplus
 }

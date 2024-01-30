@@ -754,20 +754,71 @@ cmdline_parse_ctx_t main_ctx[] = {
 	NULL,
 };
 
+static void
+virtio_ha_client_dma_map(uint64_t iova, uint64_t len, bool map)
+{
+	struct virtio_ha_global_dma_map dma_map = {.iova = iova, .size = len};
+	int ret;
+
+	if (map) {
+		ret = virtio_ha_global_dma_map_store(&dma_map);
+		if (ret < 0)
+			RTE_LOG(ERR, VDPA, "Failed to store dma map\n");
+	} else {
+		ret = virtio_ha_global_dma_map_remove(&dma_map);
+		if (ret < 0)
+			RTE_LOG(ERR, VDPA, "Failed to remove dma map\n");	
+	}
+
+	return;
+}
+
+static void
+virtio_ha_client_cfd_store(int container_fd)
+{
+	int ret;
+
+	ret = virtio_ha_global_cfd_store(container_fd);
+	if (ret < 0)
+		RTE_LOG(ERR, VDPA, "Failed to store container fd\n");
+
+	return;
+}
+
 static int
 virtio_ha_client_start(void)
 {
-	struct virtio_dev_name *pf_list = NULL;
-	struct vdpa_vf_with_devargs *vf_list = NULL;
-	struct vdpa_vf_ctx *vf_ctx = NULL;
-	struct virtio_pf_ctx pf_ctx;
-	int ret, i, j, nr_pf, nr_vf;
+	int ret, vfio_container_fd = -1; 
 
 	ret = virtio_ha_ipc_client_init();
 	if (ret) {
 		RTE_LOG(ERR, VDPA, "Failed to init ha ipc client\n");
 		return -1;		
 	}
+
+	rte_vfio_register_dma_cb(virtio_ha_client_dma_map, virtio_ha_client_cfd_store);
+
+	ret = virtio_ha_global_cfd_query(&vfio_container_fd);
+	if (ret < 0) {
+		RTE_LOG(ERR, VDPA, "Failed to query global container fd\n");
+		return -1;
+	} else {
+		RTE_LOG(INFO, VDPA, "Query success: global container fd(%d)\n", vfio_container_fd);
+	}
+
+	rte_vfio_restore_default_cfd(vfio_container_fd);
+
+	return 0;
+}
+
+static int
+virtio_ha_client_dev_restore(void)
+{
+	struct virtio_dev_name *pf_list = NULL;
+	struct vdpa_vf_with_devargs *vf_list = NULL;
+	struct vdpa_vf_ctx *vf_ctx = NULL;
+	struct virtio_pf_ctx pf_ctx;
+	int ret, i, j, nr_pf, nr_vf;
 
 	ret = virtio_ha_pf_list_query(&pf_list);
 	if (ret < 0) {
@@ -897,6 +948,10 @@ main(int argc, char *argv[])
 	if (ret!= 0)
 		rte_exit(EXIT_FAILURE, "sig thread create failed\n");
 
+	ret = virtio_ha_client_start();
+	if (ret < 0)
+		rte_exit(EXIT_FAILURE, "ha client start failed\n");
+	
 	ret = rte_eal_init(argc, argv);
 	if (ret < 0)
 		rte_exit(EXIT_FAILURE, "eal init failed\n");
@@ -911,18 +966,18 @@ main(int argc, char *argv[])
 		rte_eal_vfio_set_vf_token(vf_token);
 	}
 
-	ret = virtio_ha_client_start();
+	ret = parse_args(argc, argv);
 	if (ret < 0)
-		rte_exit(EXIT_FAILURE, "ha client start failed\n");
+		rte_exit(EXIT_FAILURE, "invalid argument\n");
+
+	ret = virtio_ha_client_dev_restore();
+	if (ret < 0)
+		rte_exit(EXIT_FAILURE, "ha client dev restore failed\n");
 	
 	ret = vdpa_rpc_start(&vdpa_rpc_ctx);
 	if (ret < 0)
 		rte_exit(EXIT_FAILURE, "rpc init failed\n");
 	rpc_start = true;
-
-	ret = parse_args(argc, argv);
-	if (ret < 0)
-		rte_exit(EXIT_FAILURE, "invalid argument\n");
 
 	/* loop for exit the application */
 	while (1)
