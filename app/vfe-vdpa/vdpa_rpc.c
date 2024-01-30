@@ -15,6 +15,7 @@
 #include <rte_vdpa.h>
 #include <rte_pci.h>
 #include <rte_string_fns.h>
+#include <rte_version.h>
 #include <virtio_api.h>
 #include <virtio_lm.h>
 #include <virtio_admin.h>
@@ -381,6 +382,15 @@ error_vf:
 	return result;
 }
 
+static cJSON *version(__rte_unused jrpc_context *ctx,
+				__rte_unused cJSON *params,
+				__rte_unused cJSON *id)
+{
+	cJSON *result = cJSON_CreateObject();
+	cJSON_AddStringToObject(result, "vesion", rte_version());
+	return vdpa_rpc_format_errno(result, 0);
+}
+
 static void *vdpa_rpc_handler(void *ctx)
 {
 	struct vdpa_rpc_context *rpc_ctx;
@@ -389,6 +399,7 @@ static void *vdpa_rpc_handler(void *ctx)
 	jrpc_server_init(&rpc_ctx->rpc_server, VDPA_RPC_PORT);
 	jrpc_register_procedure(&rpc_ctx->rpc_server, mgmtpf, "mgmtpf", ctx);
 	jrpc_register_procedure(&rpc_ctx->rpc_server, mgmtvf, "vf", ctx);
+	jrpc_register_procedure(&rpc_ctx->rpc_server, version, "version", ctx);
 	jrpc_server_run(&rpc_ctx->rpc_server);
 	pthread_exit(NULL);
 }

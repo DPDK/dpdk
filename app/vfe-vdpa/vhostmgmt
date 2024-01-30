@@ -42,7 +42,7 @@ class JsonRpcVirtnetClient(object):
             self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.sock.connect((address, int(port)))
         except socket.error as ex:
-            print("ERR: Can't connect to vdpa: %s" % (ex))
+            print("ERR: Can't connect to vhostd: %s" % (ex))
             print("     VDPA is not ready to accept commands")
             sys.exit(1)
 
@@ -176,15 +176,25 @@ def mgmtvf(args):
 def int_hex(x):
     return int(x, 16)
 
+def version(args):
+    params = {}
+
+    result = args.client.call('version', params)
+    print(json.dumps(result, indent=2))
+
 def main():
     server_addr='127.0.0.1'
     server_port='12190'
     timeout=125.0
 
     parser = argparse.ArgumentParser(
-        description='Nvidia vdpa-rpc command line interface ' + __version__)
+        description='Nvidia vhostd-rpc command line interface ' + __version__)
     subparsers = parser.add_subparsers(help='** Use -h for sub-command usage',
                                        dest='called_rpc_name')
+
+    # version
+    p = subparsers.add_parser('version', help='show vhostd version info')
+    p.set_defaults(func=version)
 
     # mgmtpf
     p = subparsers.add_parser('mgmtpf', help='Management PF device')
