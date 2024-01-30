@@ -1602,11 +1602,13 @@ err_secondary:
 			goto error;
 	}
 	rte_rwlock_init(&priv->ind_tbls_lock);
-	if (!priv->sh->cdev->config.hca_attr.modify_outer_ipv6_traffic_class ||
-	    (sh->config.dv_flow_en == 1 &&
-	    !priv->sh->ipv6_tc_fallback &&
-	    mlx5_flow_discover_ipv6_tc_support(eth_dev)))
-		priv->sh->ipv6_tc_fallback = 1;
+	if (sh->phdev->config.ipv6_tc_fallback == MLX5_IPV6_TC_UNKNOWN) {
+		if (!sh->cdev->config.hca_attr.modify_outer_ipv6_traffic_class ||
+		    (sh->config.dv_flow_en == 1 && mlx5_flow_discover_ipv6_tc_support(eth_dev)))
+			sh->phdev->config.ipv6_tc_fallback = MLX5_IPV6_TC_FALLBACK;
+		else
+			sh->phdev->config.ipv6_tc_fallback = MLX5_IPV6_TC_OK;
+	}
 	if (priv->sh->config.dv_flow_en == 2) {
 #ifdef HAVE_MLX5_HWS_SUPPORT
 		if (priv->sh->config.dv_esw_en) {

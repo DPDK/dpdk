@@ -1613,7 +1613,7 @@ mlx5_modify_flex_item(const struct rte_eth_dev *dev,
 static inline bool
 mlx5_dv_modify_ipv6_traffic_class_supported(struct mlx5_priv *priv)
 {
-	return !priv->sh->ipv6_tc_fallback;
+	return priv->sh->phdev->config.ipv6_tc_fallback == MLX5_IPV6_TC_OK;
 }
 
 void

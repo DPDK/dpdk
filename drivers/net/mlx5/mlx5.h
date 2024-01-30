@@ -1421,6 +1421,17 @@ struct mlx5_dev_registers {
 
 struct mlx5_geneve_tlv_options;
 
+enum mlx5_ipv6_tc_support {
+	MLX5_IPV6_TC_UNKNOWN = 0,
+	MLX5_IPV6_TC_FALLBACK,
+	MLX5_IPV6_TC_OK,
+};
+
+struct mlx5_common_nic_config {
+	enum mlx5_ipv6_tc_support ipv6_tc_fallback;
+	/* Whether ipv6 traffic class should use old value. */
+};
+
 /**
  * Physical device structure.
  * This device is created once per NIC to manage recourses shared by all ports
@@ -1431,6 +1442,7 @@ struct mlx5_physical_device {
 	struct mlx5_dev_ctx_shared *sh; /* Created on sherd context. */
 	uint64_t guid; /* System image guid, the uniq ID of physical device. */
 	struct mlx5_geneve_tlv_options *tlv_options;
+	struct mlx5_common_nic_config config;
 	uint32_t refcnt;
 };
 
@@ -1459,7 +1471,6 @@ struct mlx5_dev_ctx_shared {
 	uint32_t lag_rx_port_affinity_en:1;
 	/* lag_rx_port_affinity is supported. */
 	uint32_t hws_max_log_bulk_sz:5;
-	uint32_t ipv6_tc_fallback:1;
 	/* Log of minimal HWS counters created hard coded. */
 	uint32_t hws_max_nb_counters; /* Maximal number for HWS counters. */
 	uint32_t max_port; /* Maximal IB device port index. */
