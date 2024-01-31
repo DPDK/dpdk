@@ -156,6 +156,7 @@ struct virtqueue_stats {
 	uint64_t iotlb_misses;
 	uint64_t inflight_submitted;
 	uint64_t inflight_completed;
+	uint64_t mbuf_alloc_failed;
 	uint64_t guest_notifications_suppressed;
 	/* Counters below are atomic, and should be incremented as such. */
 	RTE_ATOMIC(uint64_t) guest_notifications;

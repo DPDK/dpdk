@@ -2996,6 +2996,7 @@ desc_to_mbuf(struct virtio_net *dev, struct vhost_virtqueue *vq,
 		if (mbuf_avail == 0) {
 			cur = rte_pktmbuf_alloc(mbuf_pool);
 			if (unlikely(cur == NULL)) {
+				vq->stats.mbuf_alloc_failed++;
 				VHOST_DATA_LOG(dev->ifname, ERR,
 					"failed to allocate memory for mbuf.");
 				goto error;
@@ -3123,8 +3124,10 @@ virtio_dev_tx_split(struct virtio_net *dev, struct vhost_virtqueue *vq,
 	count = RTE_MIN(count, avail_entries);
 	VHOST_DATA_LOG(dev->ifname, DEBUG, "about to dequeue %u buffers", count);
 
-	if (rte_pktmbuf_alloc_bulk(mbuf_pool, pkts, count))
+	if (rte_pktmbuf_alloc_bulk(mbuf_pool, pkts, count)) {
+		vq->stats.mbuf_alloc_failed += count;
 		return 0;
+	}
 
 	for (i = 0; i < count; i++) {
 		struct buf_vector buf_vec[BUF_VECTOR_MAX];
@@ -3494,8 +3497,10 @@ virtio_dev_tx_packed(struct virtio_net *dev,
 {
 	uint32_t pkt_idx = 0;
 
-	if (rte_pktmbuf_alloc_bulk(mbuf_pool, pkts, count))
+	if (rte_pktmbuf_alloc_bulk(mbuf_pool, pkts, count)) {
+		vq->stats.mbuf_alloc_failed += count;
 		return 0;
+	}
 
 	do {
 		rte_prefetch0(&vq->desc_packed[vq->last_avail_idx]);
@@ -3745,8 +3750,10 @@ virtio_dev_tx_async_split(struct virtio_net *dev, struct vhost_virtqueue *vq,
 	count = RTE_MIN(count, avail_entries);
 	VHOST_DATA_LOG(dev->ifname, DEBUG, "about to dequeue %u buffers", count);
 
-	if (rte_pktmbuf_alloc_bulk(mbuf_pool, pkts_prealloc, count))
+	if (rte_pktmbuf_alloc_bulk(mbuf_pool, pkts_prealloc, count)) {
+		vq->stats.mbuf_alloc_failed += count;
 		goto out;
+	}
 
 	for (pkt_idx = 0; pkt_idx < count; pkt_idx++) {
 		uint16_t head_idx = 0;
@@ -4035,8 +4042,10 @@ virtio_dev_tx_async_packed(struct virtio_net *dev, struct vhost_virtqueue *vq,
 
 	async_iter_reset(async);
 
-	if (rte_pktmbuf_alloc_bulk(mbuf_pool, pkts_prealloc, count))
+	if (rte_pktmbuf_alloc_bulk(mbuf_pool, pkts_prealloc, count)) {
+		vq->stats.mbuf_alloc_failed += count;
 		goto out;
+	}
 
 	do {
 		struct rte_mbuf *pkt = pkts_prealloc[pkt_idx];
