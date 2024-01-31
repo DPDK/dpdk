@@ -770,6 +770,97 @@ gve_rss_hash_conf_get(struct rte_eth_dev *dev,
 	return 0;
 }
 
+static int
+gve_rss_reta_update(struct rte_eth_dev *dev,
+	struct rte_eth_rss_reta_entry64 *reta_conf, uint16_t reta_size)
+{
+	struct gve_priv *priv = dev->data->dev_private;
+	struct gve_rss_config gve_rss_conf;
+	int table_id;
+	int err;
+	int i;
+
+	/* RSS key must be set before the redirection table can be set. */
+	if (!priv->rss_config.key || priv->rss_config.key_size == 0) {
+		PMD_DRV_LOG(ERR, "RSS hash key msut be set before the "
+			"redirection table can be updated.");
+		return -ENOTSUP;
+	}
+
+	if (reta_size != GVE_RSS_INDIR_SIZE) {
+		PMD_DRV_LOG(ERR, "Redirection table must have %hu elements",
+			(uint16_t)GVE_RSS_INDIR_SIZE);
+		return -EINVAL;
+	}
+
+	err = gve_init_rss_config_from_priv(priv, &gve_rss_conf);
+	if (err) {
+		PMD_DRV_LOG(ERR, "Error allocating new RSS config.");
+		return err;
+	}
+
+	table_id = 0;
+	for (i = 0; i < priv->rss_config.indir_size; i++) {
+		int table_entry = i % RTE_ETH_RETA_GROUP_SIZE;
+		if (reta_conf[table_id].mask & (1ULL << table_entry))
+			gve_rss_conf.indir[i] =
+				reta_conf[table_id].reta[table_entry];
+
+		if (table_entry == RTE_ETH_RETA_GROUP_SIZE - 1)
+			table_id++;
+	}
+
+	err = gve_adminq_configure_rss(priv, &gve_rss_conf);
+	if (err)
+		PMD_DRV_LOG(ERR, "Problem configuring RSS with device.");
+	else
+		gve_update_priv_rss_config(priv, &gve_rss_conf);
+
+	gve_free_rss_config(&gve_rss_conf);
+	return err;
+}
+
+static int
+gve_rss_reta_query(struct rte_eth_dev *dev,
+	struct rte_eth_rss_reta_entry64 *reta_conf, uint16_t reta_size)
+{
+	struct gve_priv *priv = dev->data->dev_private;
+	int table_id;
+	int i;
+
+	if (!(dev->data->dev_conf.rxmode.offloads &
+		RTE_ETH_RX_OFFLOAD_RSS_HASH)) {
+		PMD_DRV_LOG(ERR, "RSS not configured.");
+		return -ENOTSUP;
+	}
+
+	/* RSS key must be set before the redirection table can be queried. */
+	if (!priv->rss_config.key) {
+		PMD_DRV_LOG(ERR, "RSS hash key must be set before the "
+			"redirection table can be initialized.");
+		return -ENOTSUP;
+	}
+
+	if (reta_size != priv->rss_config.indir_size) {
+		PMD_DRV_LOG(ERR, "RSS redirection table must have %d entries.",
+			priv->rss_config.indir_size);
+		return -EINVAL;
+	}
+
+	table_id = 0;
+	for (i = 0; i < priv->rss_config.indir_size; i++) {
+		int table_entry = i % RTE_ETH_RETA_GROUP_SIZE;
+		if (reta_conf[table_id].mask & (1ULL << table_entry))
+			reta_conf[table_id].reta[table_entry] =
+				priv->rss_config.indir[i];
+
+		if (table_entry == RTE_ETH_RETA_GROUP_SIZE - 1)
+			table_id++;
+	}
+
+	return 0;
+}
+
 static const struct eth_dev_ops gve_eth_dev_ops = {
 	.dev_configure        = gve_dev_configure,
 	.dev_start            = gve_dev_start,
@@ -792,6 +883,8 @@ static const struct eth_dev_ops gve_eth_dev_ops = {
 	.xstats_get_names     = gve_xstats_get_names,
 	.rss_hash_update      = gve_rss_hash_update,
 	.rss_hash_conf_get    = gve_rss_hash_conf_get,
+	.reta_update          = gve_rss_reta_update,
+	.reta_query           = gve_rss_reta_query,
 };
 
 static const struct eth_dev_ops gve_eth_dev_ops_dqo = {
@@ -816,6 +909,8 @@ static const struct eth_dev_ops gve_eth_dev_ops_dqo = {
 	.xstats_get_names     = gve_xstats_get_names,
 	.rss_hash_update      = gve_rss_hash_update,
 	.rss_hash_conf_get    = gve_rss_hash_conf_get,
+	.reta_update          = gve_rss_reta_update,
+	.reta_query           = gve_rss_reta_query,
 };
 
 static void
