@@ -759,7 +759,6 @@ F: doc/guides/nics/intel_vf.rst
 F: doc/guides/nics/features/i40e*.ini
 
 Intel fm10k
-M: Xiao Wang <xiao.w.wang@intel.com>
 T: git://dpdk.org/next/dpdk-next-net-intel
 F: drivers/net/fm10k/
 F: doc/guides/nics/fm10k.rst
@@ -1299,7 +1298,6 @@ F: doc/guides/vdpadevs/nfp.rst
 F: doc/guides/vdpadevs/features/nfp.ini
 
 Intel ifc
-M: Xiao Wang <xiao.w.wang@intel.com>
 F: drivers/vdpa/ifc/
 F: doc/guides/vdpadevs/ifc.rst
 F: doc/guides/vdpadevs/features/ifcvf.ini
