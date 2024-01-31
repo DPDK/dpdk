@@ -163,17 +163,17 @@ message(output_message + '\n')
 output_message = '\n=================\nContent Skipped\n=================\n'
 output_message += '\napps:\n\t'
 foreach app:dpdk_apps_disabled
-    reason = get_variable(app.underscorify() + '_disable_reason')
+    reason = get_variable('app_' + app.underscorify() + '_disable_reason')
     output_message += app + ':\t' + reason + '\n\t'
 endforeach
 output_message += '\nlibs:\n\t'
 foreach lib:dpdk_libs_disabled
-    reason = get_variable(lib.underscorify() + '_disable_reason')
+    reason = get_variable('lib_' + lib.underscorify() + '_disable_reason')
     output_message += lib + ':\t' + reason + '\n\t'
 endforeach
 output_message += '\ndrivers:\n\t'
 foreach drv:dpdk_drvs_disabled
-    reason = get_variable(drv.underscorify() + '_disable_reason')
+    reason = get_variable('drv_' + drv.underscorify() + '_disable_reason')
     output_message += drv + ':\t' + reason + '\n\t'
 endforeach
 message(output_message + '\n')

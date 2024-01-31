@@ -159,7 +159,7 @@ foreach subpath:subdirs
             # component disable printout in those cases
             if reason != ''
                 dpdk_drvs_disabled += drv_path
-                set_variable(drv_path.underscorify() + '_disable_reason', reason)
+                set_variable('drv_' + drv_path.underscorify() + '_disable_reason', reason)
             endif
             continue
         endif

@@ -176,7 +176,7 @@ foreach l:libraries
 
     if not build
         dpdk_libs_disabled += name
-        set_variable(name.underscorify() + '_disable_reason', reason)
+        set_variable('lib_' + name.underscorify() + '_disable_reason', reason)
         continue
     endif
 

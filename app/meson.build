@@ -83,7 +83,7 @@ foreach app:apps
     if not build
         if reason != ''
             dpdk_apps_disabled += app
-            set_variable(app.underscorify() + '_disable_reason', reason)
+            set_variable('app_' + app.underscorify() + '_disable_reason', reason)
         endif
         continue
     endif
