@@ -33,6 +33,14 @@
 		RTE_MBUF_F_TX_L4_MASK  |	\
 		RTE_MBUF_F_TX_TCP_SEG)
 
+#define GVE_RSS_OFFLOAD_ALL (		\
+	RTE_ETH_RSS_IPV4 |		\
+	RTE_ETH_RSS_NONFRAG_IPV4_TCP |	\
+	RTE_ETH_RSS_IPV6 |		\
+	RTE_ETH_RSS_IPV6_EX |		\
+	RTE_ETH_RSS_NONFRAG_IPV6_TCP |	\
+	RTE_ETH_RSS_IPV6_TCP_EX)
+
 /* A list of pages registered with the device during setup and used by a queue
  * as buffers
  */

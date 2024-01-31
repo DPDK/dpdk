@@ -405,7 +405,7 @@ gve_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->max_mtu = priv->max_mtu;
 	dev_info->min_mtu = RTE_ETHER_MIN_MTU;
 
-	dev_info->rx_offload_capa = 0;
+	dev_info->rx_offload_capa = RTE_ETH_RX_OFFLOAD_RSS_HASH;
 	dev_info->tx_offload_capa =
 		RTE_ETH_TX_OFFLOAD_MULTI_SEGS	|
 		RTE_ETH_TX_OFFLOAD_UDP_CKSUM	|
@@ -441,6 +441,8 @@ gve_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 		.nb_min = priv->tx_desc_cnt,
 		.nb_align = 1,
 	};
+
+	dev_info->flow_type_rss_offloads = GVE_RSS_OFFLOAD_ALL;
 
 	return 0;
 }
