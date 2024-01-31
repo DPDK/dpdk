@@ -730,6 +730,8 @@ enum index {
 	ACTION_IPV6_EXT_PUSH,
 	ACTION_IPV6_EXT_PUSH_INDEX,
 	ACTION_IPV6_EXT_PUSH_INDEX_VALUE,
+	ACTION_NAT64,
+	ACTION_NAT64_MODE,
 };
 
 /** Maximum size for pattern in struct rte_flow_item_raw. */
@@ -2203,6 +2205,7 @@ static const enum index next_action[] = {
 	ACTION_QUOTA_QU,
 	ACTION_IPV6_EXT_REMOVE,
 	ACTION_IPV6_EXT_PUSH,
+	ACTION_NAT64,
 	ZERO,
 };
 
@@ -2540,6 +2543,12 @@ static const enum index action_port_representor[] = {
 
 static const enum index action_represented_port[] = {
 	ACTION_REPRESENTED_PORT_ETHDEV_PORT_ID,
+	ACTION_NEXT,
+	ZERO,
+};
+
+static const enum index action_nat64[] = {
+	ACTION_NAT64_MODE,
 	ACTION_NEXT,
 	ZERO,
 };
@@ -7046,6 +7055,20 @@ static const struct token token_list[] = {
 		.next = NEXT(NEXT_ENTRY(ACTION_NEXT)),
 		.call = parse_vc_action_ipv6_ext_push_index,
 		.comp = comp_set_ipv6_ext_index,
+	},
+	[ACTION_NAT64] = {
+		.name = "nat64",
+		.help = "NAT64 IP headers translation",
+		.priv = PRIV_ACTION(NAT64, sizeof(struct rte_flow_action_nat64)),
+		.next = NEXT(action_nat64),
+		.call = parse_vc,
+	},
+	[ACTION_NAT64_MODE] = {
+		.name = "type",
+		.help = "NAT64 translation type",
+		.next = NEXT(action_nat64, NEXT_ENTRY(COMMON_UNSIGNED)),
+		.args = ARGS(ARGS_ENTRY(struct rte_flow_action_nat64, type)),
+		.call = parse_vc_conf,
 	},
 	/* Top level command. */
 	[SET] = {

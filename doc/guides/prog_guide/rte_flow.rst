@@ -2821,6 +2821,15 @@ Otherwise, RTE_FLOW_ERROR_TYPE_ACTION error will be returned.
    | ``dscp``  | DSCP in low 6 bits, rest ignore |
    +-----------+---------------------------------+
 
+Action: ``NAT64``
+^^^^^^^^^^^^^^^^^
+
+This action does header translation between IPv4 and IPv6.
+Besides converting the IP addresses,
+other fields in the IP header are handled as well.
+The ``type`` field should be provided
+as defined in ``rte_flow_action_nat64`` when creating the action.
+
 Action: ``AGE``
 ^^^^^^^^^^^^^^^
 
@@ -3518,7 +3527,6 @@ Send packets to the kernel, without going to userspace at all.
 
 The packets will be received by the kernel driver sharing the same device
 as the DPDK port on which this action is configured.
-
 
 Negative types
 ~~~~~~~~~~~~~~

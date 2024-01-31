@@ -3051,6 +3051,13 @@ enum rte_flow_action_type {
 	 * @see struct rte_flow_action_prog.
 	 */
 	RTE_FLOW_ACTION_TYPE_PROG,
+
+	/**
+	 * NAT64 translation of IPv4/IPv6 headers.
+	 *
+	 * @see struct rte_flow_action_nat64
+	 */
+	RTE_FLOW_ACTION_TYPE_NAT64,
 };
 
 /**
@@ -3387,6 +3394,26 @@ struct rte_flow_action_meter {
  */
 struct rte_flow_action_security {
 	void *security_session; /**< Pointer to security session structure. */
+};
+
+/**
+ * NAT64 translation type for IP headers.
+ */
+enum rte_flow_nat64_type {
+	RTE_FLOW_NAT64_6TO4 = 0, /**< IPv6 to IPv4 headers translation. */
+	RTE_FLOW_NAT64_4TO6 = 1, /**< IPv4 to IPv6 headers translation. */
+};
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this structure may change without prior notice.
+ *
+ * RTE_FLOW_ACTION_TYPE_NAT64
+ *
+ * Specify the NAT64 translation type.
+ */
+struct rte_flow_action_nat64 {
+	enum rte_flow_nat64_type type;
 };
 
 /**

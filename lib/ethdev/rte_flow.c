@@ -272,6 +272,7 @@ static const struct rte_flow_desc_data rte_flow_desc_action[] = {
 		       sizeof(struct rte_flow_action_indirect_list)),
 	MK_FLOW_ACTION(PROG,
 		       sizeof(struct rte_flow_action_prog)),
+	MK_FLOW_ACTION(NAT64, sizeof(struct rte_flow_action_nat64)),
 };
 
 int

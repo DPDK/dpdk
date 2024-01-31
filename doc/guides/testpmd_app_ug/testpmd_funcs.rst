@@ -4165,6 +4165,10 @@ This section lists supported actions and their attributes, if any.
   - ``src_ptr``: pointer to source immediate value.
   - ``width``: number of bits to copy.
 
+- ``nat64``: NAT64 IP headers translation
+
+  - ``type {unsigned}``: NAT64 translation type
+
 Destroying flow rules
 ~~~~~~~~~~~~~~~~~~~~~
 
