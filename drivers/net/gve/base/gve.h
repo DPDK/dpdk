@@ -51,4 +51,19 @@ enum gve_state_flags_bit {
 	GVE_PRIV_FLAGS_NAPI_ENABLED		= 4,
 };
 
+enum gve_rss_hash_algorithm {
+	GVE_RSS_HASH_UNDEFINED = 0,
+	GVE_RSS_HASH_TOEPLITZ = 1,
+};
+
+struct gve_rss_config {
+	uint16_t hash_types;
+	enum gve_rss_hash_algorithm alg;
+	uint16_t key_size;
+	uint16_t indir_size;
+	uint8_t *key;
+	uint32_t *indir;
+};
+
+
 #endif /* _GVE_H_ */

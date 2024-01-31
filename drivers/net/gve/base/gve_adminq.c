@@ -389,6 +389,9 @@ static int gve_adminq_issue_cmd(struct gve_priv *priv,
 	case GVE_ADMINQ_DECONFIGURE_DEVICE_RESOURCES:
 		priv->adminq_dcfg_device_resources_cnt++;
 		break;
+	case GVE_ADMINQ_CONFIGURE_RSS:
+		priv->adminq_cfg_rss_cnt++;
+		break;
 	case GVE_ADMINQ_SET_DRIVER_PARAMETER:
 		priv->adminq_set_driver_parameter_cnt++;
 		break;
@@ -938,3 +941,58 @@ err:
 	gve_free_dma_mem(&ptype_map_dma_mem);
 	return err;
 }
+
+int gve_adminq_configure_rss(struct gve_priv *priv,
+			     struct gve_rss_config *rss_config)
+{
+	struct gve_dma_mem indirection_table_dma_mem;
+	struct gve_dma_mem rss_key_dma_mem;
+	union gve_adminq_command cmd;
+	__be32 *indir = NULL;
+	u8 *key = NULL;
+	int err = 0;
+	int i;
+
+	if (!rss_config->indir_size || !rss_config->key_size)
+		return -EINVAL;
+
+	indir = gve_alloc_dma_mem(&indirection_table_dma_mem,
+				  rss_config->indir_size *
+					sizeof(*rss_config->indir));
+	if (!indir) {
+		err = -ENOMEM;
+		goto out;
+	}
+	for (i = 0; i < rss_config->indir_size; i++)
+		indir[i] = cpu_to_be32(rss_config->indir[i]);
+
+	key = gve_alloc_dma_mem(&rss_key_dma_mem,
+				rss_config->key_size *
+					sizeof(*rss_config->key));
+	if (!key) {
+		err = -ENOMEM;
+		goto out;
+	}
+	memcpy(key, rss_config->key, rss_config->key_size);
+
+	memset(&cmd, 0, sizeof(cmd));
+	cmd.opcode = cpu_to_be32(GVE_ADMINQ_CONFIGURE_RSS);
+	cmd.configure_rss = (struct gve_adminq_configure_rss) {
+		.hash_types = cpu_to_be16(rss_config->hash_types),
+		.halg = rss_config->alg,
+		.hkey_len = cpu_to_be16(rss_config->key_size),
+		.indir_len = cpu_to_be16(rss_config->indir_size),
+		.hkey_addr = cpu_to_be64(rss_key_dma_mem.pa),
+		.indir_addr = cpu_to_be64(indirection_table_dma_mem.pa),
+	};
+
+	err = gve_adminq_execute_cmd(priv, &cmd);
+
+out:
+	if (indir)
+		gve_free_dma_mem(&indirection_table_dma_mem);
+	if (key)
+		gve_free_dma_mem(&rss_key_dma_mem);
+	return err;
+}
+

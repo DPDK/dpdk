@@ -19,6 +19,7 @@ enum gve_adminq_opcodes {
 	GVE_ADMINQ_DESTROY_TX_QUEUE		= 0x7,
 	GVE_ADMINQ_DESTROY_RX_QUEUE		= 0x8,
 	GVE_ADMINQ_DECONFIGURE_DEVICE_RESOURCES	= 0x9,
+	GVE_ADMINQ_CONFIGURE_RSS		= 0xA,
 	GVE_ADMINQ_SET_DRIVER_PARAMETER		= 0xB,
 	GVE_ADMINQ_REPORT_STATS			= 0xC,
 	GVE_ADMINQ_REPORT_LINK_SPEED		= 0xD,
@@ -377,6 +378,27 @@ struct gve_adminq_get_ptype_map {
 	__be64 ptype_map_addr;
 };
 
+#define GVE_RSS_HASH_IPV4		BIT(0)
+#define GVE_RSS_HASH_TCPV4		BIT(1)
+#define GVE_RSS_HASH_IPV6		BIT(2)
+#define GVE_RSS_HASH_IPV6_EX		BIT(3)
+#define GVE_RSS_HASH_TCPV6		BIT(4)
+#define GVE_RSS_HASH_TCPV6_EX		BIT(5)
+#define GVE_RSS_HASH_UDPV4		BIT(6)
+#define GVE_RSS_HASH_UDPV6		BIT(7)
+#define GVE_RSS_HASH_UDPV6_EX		BIT(8)
+
+/* RSS configuration command */
+struct gve_adminq_configure_rss {
+	__be16 hash_types;
+	u8 halg; /* hash algorithm */
+	u8 reserved;
+	__be16 hkey_len;
+	__be16 indir_len;
+	__be64 hkey_addr;
+	__be64 indir_addr;
+};
+
 union gve_adminq_command {
 	struct {
 		__be32 opcode;
@@ -391,6 +413,7 @@ union gve_adminq_command {
 			struct gve_adminq_describe_device describe_device;
 			struct gve_adminq_register_page_list reg_page_list;
 			struct gve_adminq_unregister_page_list unreg_page_list;
+			struct gve_adminq_configure_rss configure_rss;
 			struct gve_adminq_set_driver_parameter set_driver_param;
 			struct gve_adminq_report_stats report_stats;
 			struct gve_adminq_report_link_speed report_link_speed;
@@ -404,6 +427,8 @@ union gve_adminq_command {
 
 GVE_CHECK_UNION_LEN(64, gve_adminq_command);
 
+struct gve_priv;
+struct gve_queue_page_list;
 int gve_adminq_alloc(struct gve_priv *priv);
 void gve_adminq_free(struct gve_priv *priv);
 void gve_adminq_release(struct gve_priv *priv);
@@ -433,4 +458,8 @@ int gve_adminq_get_ptype_map_dqo(struct gve_priv *priv,
 int gve_adminq_verify_driver_compatibility(struct gve_priv *priv,
 					   u64 driver_info_len,
 					   dma_addr_t driver_info_addr);
+
+int gve_adminq_configure_rss(struct gve_priv *priv,
+			     struct gve_rss_config *rss_config);
+
 #endif /* _GVE_ADMINQ_H */

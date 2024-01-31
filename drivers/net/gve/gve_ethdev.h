@@ -39,7 +39,10 @@
 	RTE_ETH_RSS_IPV6 |		\
 	RTE_ETH_RSS_IPV6_EX |		\
 	RTE_ETH_RSS_NONFRAG_IPV6_TCP |	\
-	RTE_ETH_RSS_IPV6_TCP_EX)
+	RTE_ETH_RSS_IPV6_TCP_EX |	\
+	RTE_ETH_RSS_NONFRAG_IPV4_UDP |	\
+	RTE_ETH_RSS_NONFRAG_IPV6_UDP |	\
+	RTE_ETH_RSS_IPV6_UDP_EX)
 
 /* A list of pages registered with the device during setup and used by a queue
  * as buffers
@@ -264,6 +267,7 @@ struct gve_priv {
 	uint32_t adminq_destroy_tx_queue_cnt;
 	uint32_t adminq_destroy_rx_queue_cnt;
 	uint32_t adminq_dcfg_device_resources_cnt;
+	uint32_t adminq_cfg_rss_cnt;
 	uint32_t adminq_set_driver_parameter_cnt;
 	uint32_t adminq_report_stats_cnt;
 	uint32_t adminq_report_link_speed_cnt;
