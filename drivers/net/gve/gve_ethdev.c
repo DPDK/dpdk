@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(C) 2022 Intel Corporation
+ * Copyright(C) 2022-2023 Intel Corporation
+ * Copyright(C) 2023 Google LLC
  */
 
 #include "gve_ethdev.h"
@@ -8,6 +9,7 @@
 #include "base/gve_osdep.h"
 #include "gve_version.h"
 #include "rte_ether.h"
+#include "gve_rss.h"
 
 static void
 gve_write_version(uint8_t *driver_version_register)
@@ -88,11 +90,30 @@ gve_dev_configure(struct rte_eth_dev *dev)
 {
 	struct gve_priv *priv = dev->data->dev_private;
 
-	if (dev->data->dev_conf.rxmode.mq_mode & RTE_ETH_MQ_RX_RSS_FLAG)
+	if (dev->data->dev_conf.rxmode.mq_mode & RTE_ETH_MQ_RX_RSS_FLAG) {
 		dev->data->dev_conf.rxmode.offloads |= RTE_ETH_RX_OFFLOAD_RSS_HASH;
+		priv->rss_config.alg = GVE_RSS_HASH_TOEPLITZ;
+	}
 
 	if (dev->data->dev_conf.rxmode.offloads & RTE_ETH_RX_OFFLOAD_TCP_LRO)
 		priv->enable_rsc = 1;
+
+	/* Reset RSS RETA in case number of queues changed. */
+	if (priv->rss_config.indir) {
+		struct gve_rss_config update_reta_config;
+		gve_init_rss_config_from_priv(priv, &update_reta_config);
+		gve_generate_rss_reta(dev, &update_reta_config);
+
+		int err = gve_adminq_configure_rss(priv, &update_reta_config);
+		if (err)
+			PMD_DRV_LOG(ERR,
+				"Could not reconfigure RSS redirection table.");
+		else
+			gve_update_priv_rss_config(priv, &update_reta_config);
+
+		gve_free_rss_config(&update_reta_config);
+		return err;
+	}
 
 	return 0;
 }
@@ -443,6 +464,8 @@ gve_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	};
 
 	dev_info->flow_type_rss_offloads = GVE_RTE_RSS_OFFLOAD_ALL;
+	dev_info->hash_key_size = GVE_RSS_HASH_KEY_SIZE;
+	dev_info->reta_size = GVE_RSS_INDIR_SIZE;
 
 	return 0;
 }
@@ -646,6 +669,107 @@ gve_xstats_get_names(struct rte_eth_dev *dev,
 	return count;
 }
 
+
+static int
+gve_rss_hash_update(struct rte_eth_dev *dev,
+			struct rte_eth_rss_conf *rss_conf)
+{
+	struct gve_priv *priv = dev->data->dev_private;
+	struct gve_rss_config gve_rss_conf;
+	int rss_reta_size;
+	int err;
+
+	if (gve_validate_rss_hf(rss_conf->rss_hf)) {
+		PMD_DRV_LOG(ERR, "Unsupported hash function.");
+		return -EINVAL;
+	}
+
+	if (rss_conf->algorithm != RTE_ETH_HASH_FUNCTION_TOEPLITZ &&
+		rss_conf->algorithm != RTE_ETH_HASH_FUNCTION_DEFAULT) {
+		PMD_DRV_LOG(ERR, "Device only supports Toeplitz algorithm.");
+		return -EINVAL;
+	}
+
+	if (rss_conf->rss_key_len) {
+		if (rss_conf->rss_key_len != GVE_RSS_HASH_KEY_SIZE) {
+			PMD_DRV_LOG(ERR,
+				"Invalid hash key size. Only RSS hash key size "
+				"of %u supported", GVE_RSS_HASH_KEY_SIZE);
+			return -EINVAL;
+		}
+
+		if (!rss_conf->rss_key) {
+			PMD_DRV_LOG(ERR, "RSS key must be non-null.");
+			return -EINVAL;
+		}
+	} else {
+		if (!priv->rss_config.key_size) {
+			PMD_DRV_LOG(ERR, "RSS key must be initialized before "
+				"any other configuration.");
+			return -EINVAL;
+		}
+		rss_conf->rss_key_len = priv->rss_config.key_size;
+	}
+
+	rss_reta_size = priv->rss_config.indir ?
+			priv->rss_config.indir_size :
+			GVE_RSS_INDIR_SIZE;
+	err = gve_init_rss_config(&gve_rss_conf, rss_conf->rss_key_len,
+		rss_reta_size);
+	if (err)
+		return err;
+
+	gve_rss_conf.alg = GVE_RSS_HASH_TOEPLITZ;
+	err = gve_update_rss_hash_types(priv, &gve_rss_conf, rss_conf);
+	if (err)
+		goto err;
+	err = gve_update_rss_key(priv, &gve_rss_conf, rss_conf);
+	if (err)
+		goto err;
+
+	/* Set redirection table to default or preexisting. */
+	if (!priv->rss_config.indir)
+		gve_generate_rss_reta(dev, &gve_rss_conf);
+	else
+		memcpy(gve_rss_conf.indir, priv->rss_config.indir,
+			gve_rss_conf.indir_size * sizeof(*priv->rss_config.indir));
+
+	err = gve_adminq_configure_rss(priv, &gve_rss_conf);
+	if (!err)
+		gve_update_priv_rss_config(priv, &gve_rss_conf);
+
+err:
+	gve_free_rss_config(&gve_rss_conf);
+	return err;
+}
+
+static int
+gve_rss_hash_conf_get(struct rte_eth_dev *dev,
+			struct rte_eth_rss_conf *rss_conf)
+{
+	struct gve_priv *priv = dev->data->dev_private;
+
+	if (!(dev->data->dev_conf.rxmode.offloads &
+			RTE_ETH_RX_OFFLOAD_RSS_HASH)) {
+		PMD_DRV_LOG(ERR, "RSS not configured.");
+		return -ENOTSUP;
+	}
+
+
+	gve_to_rte_rss_hf(priv->rss_config.hash_types, rss_conf);
+	rss_conf->rss_key_len = priv->rss_config.key_size;
+	if (rss_conf->rss_key) {
+		if (!priv->rss_config.key) {
+			PMD_DRV_LOG(ERR, "Unable to retrieve default RSS hash key.");
+			return -ENOTSUP;
+		}
+		memcpy(rss_conf->rss_key, priv->rss_config.key,
+			rss_conf->rss_key_len * sizeof(*rss_conf->rss_key));
+	}
+
+	return 0;
+}
+
 static const struct eth_dev_ops gve_eth_dev_ops = {
 	.dev_configure        = gve_dev_configure,
 	.dev_start            = gve_dev_start,
@@ -666,6 +790,8 @@ static const struct eth_dev_ops gve_eth_dev_ops = {
 	.mtu_set              = gve_dev_mtu_set,
 	.xstats_get           = gve_xstats_get,
 	.xstats_get_names     = gve_xstats_get_names,
+	.rss_hash_update      = gve_rss_hash_update,
+	.rss_hash_conf_get    = gve_rss_hash_conf_get,
 };
 
 static const struct eth_dev_ops gve_eth_dev_ops_dqo = {
@@ -688,6 +814,8 @@ static const struct eth_dev_ops gve_eth_dev_ops_dqo = {
 	.mtu_set              = gve_dev_mtu_set,
 	.xstats_get           = gve_xstats_get,
 	.xstats_get_names     = gve_xstats_get_names,
+	.rss_hash_update      = gve_rss_hash_update,
+	.rss_hash_conf_get    = gve_rss_hash_conf_get,
 };
 
 static void
