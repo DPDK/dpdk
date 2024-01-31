@@ -33,7 +33,7 @@
 		RTE_MBUF_F_TX_L4_MASK  |	\
 		RTE_MBUF_F_TX_TCP_SEG)
 
-#define GVE_RSS_OFFLOAD_ALL (		\
+#define GVE_RTE_RSS_OFFLOAD_ALL (	\
 	RTE_ETH_RSS_IPV4 |		\
 	RTE_ETH_RSS_NONFRAG_IPV4_TCP |	\
 	RTE_ETH_RSS_IPV6 |		\
@@ -290,6 +290,8 @@ struct gve_priv {
 	const struct rte_memzone *stats_report_mem;
 	uint16_t stats_start_idx; /* start index of array of stats written by NIC */
 	uint16_t stats_end_idx; /* end index of array of stats written by NIC */
+
+	struct gve_rss_config rss_config;
 };
 
 static inline bool
