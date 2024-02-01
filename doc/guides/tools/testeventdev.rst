@@ -308,7 +308,7 @@ Example command to run order queue test:
 
 .. code-block:: console
 
-   sudo <build_dir>/app/dpdk-test-eventdev --vdev=event_sw0 -- \
+   sudo <build_dir>/app/dpdk-test-eventdev -c 0x1f -s 0x10 --vdev=event_sw0 -- \
                 --test=order_queue --plcores 1 --wlcores 2,3
 
 
@@ -371,7 +371,7 @@ Example command to run order ``all types queue`` test:
 
 .. code-block:: console
 
-   sudo <build_dir>/app/dpdk-test-eventdev --vdev=event_octeontx -- \
+   sudo <build_dir>/app/dpdk-test-eventdev -c 0x1f -- \
                         --test=order_atq --plcores 1 --wlcores 2,3
 
 
@@ -475,14 +475,14 @@ Example command to run perf queue test:
 
 .. code-block:: console
 
-   sudo <build_dir>/app/dpdk-test-eventdev -c 0xf -s 0x1 --vdev=event_sw0 -- \
+   sudo <build_dir>/app/dpdk-test-eventdev -c 0xf -s 0x2 --vdev=event_sw0 -- \
         --test=perf_queue --plcores=2 --wlcore=3 --stlist=p --nb_pkts=0
 
 Example command to run perf queue test with producer enqueuing a burst of events:
 
 .. code-block:: console
 
-   sudo <build_dir>/app/dpdk-test-eventdev -c 0xf -s 0x1 --vdev=event_sw0 -- \
+   sudo <build_dir>/app/dpdk-test-eventdev -c 0xf -s 0x2 --vdev=event_sw0 -- \
         --test=perf_queue --plcores=2 --wlcore=3 --stlist=p --nb_pkts=0 \
         --prod_enq_burst_sz=32
 
@@ -490,15 +490,15 @@ Example command to run perf queue test with ethernet ports:
 
 .. code-block:: console
 
-   sudo build/app/dpdk-test-eventdev --vdev=event_sw0 -- \
+   sudo build/app/dpdk-test-eventdev -c 0xf -s 0x2 --vdev=event_sw0 -- \
         --test=perf_queue --plcores=2 --wlcore=3 --stlist=p --prod_type_ethdev
 
 Example command to run perf queue test with event timer adapter:
 
 .. code-block:: console
 
-   sudo  <build_dir>/app/dpdk-test-eventdev --vdev="event_octeontx" -- \
-                --wlcores 4 --plcores 12 --test perf_queue --stlist=a \
+   sudo  <build_dir>/app/dpdk-test-eventdev -c 0xfff1 \
+                -- --wlcores 4 --plcores 12 --test perf_queue --stlist=a \
                 --prod_type_timerdev --fwd_latency
 
 PERF_ATQ Test
@@ -585,15 +585,15 @@ Example command to run perf ``all types queue`` test:
 
 .. code-block:: console
 
-   sudo <build_dir>/app/dpdk-test-eventdev --vdev=event_octeontx -- \
+   sudo <build_dir>/app/dpdk-test-eventdev -c 0xf -- \
                 --test=perf_atq --plcores=2 --wlcore=3 --stlist=p --nb_pkts=0
 
 Example command to run perf ``all types queue`` test with event timer adapter:
 
 .. code-block:: console
 
-   sudo  <build_dir>/app/dpdk-test-eventdev --vdev="event_octeontx" -- \
-                --wlcores 4 --plcores 12 --test perf_atq --verbose 20 \
+   sudo  <build_dir>/app/dpdk-test-eventdev -c 0xfff1 \
+                -- --wlcores 4 --plcores 12 --test perf_atq --verbose 20 \
                 --stlist=a --prod_type_timerdev --fwd_latency
 
 
@@ -817,13 +817,13 @@ Example command to run pipeline atq test:
 
 .. code-block:: console
 
-    sudo <build_dir>/app/dpdk-test-eventdev -c 0xf -s 0x8 --vdev=event_sw0 -- \
+    sudo <build_dir>/app/dpdk-test-eventdev -c 0xf -- \
         --test=pipeline_atq --wlcore=1 --prod_type_ethdev --stlist=a
 
 Example command to run pipeline atq test with vector events:
 
 .. code-block:: console
 
-    sudo <build_dir>/app/dpdk-test-eventdev -c 0xf -s 0x8 --vdev=event_sw0 -- \
+    sudo <build_dir>/app/dpdk-test-eventdev -c 0xf -- \
         --test=pipeline_atq --wlcore=1 --prod_type_ethdev --stlist=a \
         --enable_vector  --vector_size 512
