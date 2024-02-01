@@ -4090,7 +4090,19 @@ enum rte_eth_event_type {
 	RTE_ETH_EVENT_MAX       /**< max value of this enum */
 };
 
-/** User application callback to be registered for interrupts. */
+/**
+ * User application callback to be registered for interrupts.
+ *
+ * Note: there is no guarantee in the DPDK drivers that a callback won't be
+ *       called in the middle of other parts of the ethdev API. For example,
+ *       imagine that thread A calls rte_eth_dev_start() and as part of this
+ *       call, a RTE_ETH_EVENT_INTR_RESET event gets generated and the
+ *       associated callback is ran on thread A. In that example, if the
+ *       application protects its internal data using locks before calling
+ *       rte_eth_dev_start(), and the callback takes a same lock, a deadlock
+ *       occurs. Because of this, it is highly recommended NOT to take locks in
+ *       those callbacks.
+ */
 typedef int (*rte_eth_dev_cb_fn)(uint16_t port_id,
 		enum rte_eth_event_type event, void *cb_arg, void *ret_param);
 
