@@ -77,6 +77,7 @@ thought as a software "patch panel" front-end for applications.
    -a pci:dbdf,representor=sf1
    -a pci:dbdf,representor=sf[0-1023]
    -a pci:dbdf,representor=sf[0,2-1023]
+   -a pci:dbdf,representor=[pf[0-1],pf2vf[0-2],pf3[3,5]]
 
 - As virtual devices, they may be more limited than their physical
   counterparts, for instance by exposing only a subset of device

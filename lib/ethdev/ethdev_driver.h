@@ -1802,14 +1802,17 @@ rte_eth_representor_id_get(uint16_t port_id,
  * @param devargs
  *  device arguments
  * @param eth_devargs
- *  parsed ethdev specific arguments.
+ *  contiguous memory populated with parsed ethdev specific arguments.
+ * @param nb_da
+ *  size of eth_devargs array passed
  *
  * @return
- *   Negative errno value on error, 0 on success.
+ *   Negative errno value on error, no of devargs parsed on success.
  */
 __rte_internal
 int
-rte_eth_devargs_parse(const char *devargs, struct rte_eth_devargs *eth_devargs);
+rte_eth_devargs_parse(const char *devargs, struct rte_eth_devargs *eth_devargs,
+		      unsigned int nb_da);
 
 
 typedef int (*ethdev_init_t)(struct rte_eth_dev *ethdev, void *init_params);

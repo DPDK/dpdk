@@ -1317,8 +1317,8 @@ static int eth_enic_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	ENICPMD_FUNC_TRACE();
 	if (pci_dev->device.devargs) {
 		retval = rte_eth_devargs_parse(pci_dev->device.devargs->args,
-				&eth_da);
-		if (retval)
+				&eth_da, 1);
+		if (retval < 0)
 			return retval;
 	}
 	if (eth_da.nb_representor_ports > 0 &&

@@ -376,7 +376,7 @@ parameters to those ports.
 
 * ``representor`` for a device which supports the creation of representor ports
   this argument allows user to specify which switch ports to enable port
-  representors for. Multiple representors in one device argument is invalid::
+  representors for::
 
    -a DBDF,representor=vf0
    -a DBDF,representor=vf[0,4,6,9]
@@ -389,6 +389,8 @@ parameters to those ports.
    -a DBDF,representor=pf1vf0
    -a DBDF,representor=pf[0-1]sf[0-127]
    -a DBDF,representor=pf1
+   -a DBDF,representor=[pf[0-1],pf2vf[0-2],pf3[3,5-8]]
+   (Multiple representors in one device argument can be represented as a list)
 
 Note: PMDs are not required to support the standard device arguments and users
 should consult the relevant PMD documentation to see support devargs.

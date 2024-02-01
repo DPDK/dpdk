@@ -2733,16 +2733,16 @@ mlx5_os_parse_eth_devargs(struct rte_device *dev,
 	memset(eth_da, 0, sizeof(*eth_da));
 	/* Parse representor information first from class argument. */
 	if (dev->devargs->cls_str)
-		ret = rte_eth_devargs_parse(dev->devargs->cls_str, eth_da);
-	if (ret != 0) {
+		ret = rte_eth_devargs_parse(dev->devargs->cls_str, eth_da, 1);
+	if (ret < 0) {
 		DRV_LOG(ERR, "failed to parse device arguments: %s",
 			dev->devargs->cls_str);
 		return -rte_errno;
 	}
 	if (eth_da->type == RTE_ETH_REPRESENTOR_NONE && dev->devargs->args) {
 		/* Parse legacy device argument */
-		ret = rte_eth_devargs_parse(dev->devargs->args, eth_da);
-		if (ret) {
+		ret = rte_eth_devargs_parse(dev->devargs->args, eth_da, 1);
+		if (ret < 0) {
 			DRV_LOG(ERR, "failed to parse device arguments: %s",
 				dev->devargs->args);
 			return -rte_errno;

@@ -792,8 +792,8 @@ nfp_flower_repr_create(struct nfp_app_fw_flower *app_fw_flower)
 
 	/* Now parse PCI device args passed for representor info */
 	if (pci_dev->device.devargs != NULL) {
-		ret = rte_eth_devargs_parse(pci_dev->device.devargs->args, &eth_da);
-		if (ret != 0) {
+		ret = rte_eth_devargs_parse(pci_dev->device.devargs->args, &eth_da, 1);
+		if (ret < 0) {
 			PMD_INIT_LOG(ERR, "devarg parse failed");
 			return -EINVAL;
 		}
