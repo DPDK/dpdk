@@ -1365,6 +1365,7 @@ nfp_net_supported_ptypes_get(struct rte_eth_dev *dev)
 		RTE_PTYPE_INNER_L4_NONFRAG,
 		RTE_PTYPE_INNER_L4_ICMP,
 		RTE_PTYPE_INNER_L4_SCTP,
+		RTE_PTYPE_UNKNOWN
 	};
 
 	if (dev->rx_pkt_burst != nfp_net_recv_pkts)
