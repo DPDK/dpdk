@@ -351,7 +351,8 @@ dpaa_supported_ptypes_get(struct rte_eth_dev *dev)
 		RTE_PTYPE_L4_FRAG,
 		RTE_PTYPE_L4_TCP,
 		RTE_PTYPE_L4_UDP,
-		RTE_PTYPE_L4_SCTP
+		RTE_PTYPE_L4_SCTP,
+		RTE_PTYPE_UNKNOWN
 	};
 
 	PMD_INIT_FUNC_TRACE();
