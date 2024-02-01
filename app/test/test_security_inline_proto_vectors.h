@@ -36,6 +36,13 @@ struct reassembly_vector {
 	bool burst;
 };
 
+struct ip_pkt_vector {
+	/* input/output text in struct ipsec_test_data are not used */
+	struct ipsec_test_data *sa_data;
+	struct ip_reassembly_test_packet *full_pkt;
+	bool burst;
+};
+
 struct sa_expiry_vector {
 	struct ipsec_session_data *sa_data;
 	enum rte_eth_event_ipsec_subtype event;
@@ -291,6 +298,20 @@ struct ip_reassembly_test_packet pkt_ipv6_udp_p3_f5 = {
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 		0x00, 0x00, 0xff, 0xff, 0x02, 0x00, 0x00, 0x02,
 		0x11, 0x00, 0x14, 0xe0, 0x65, 0xcf, 0x5a, 0xae,
+	},
+};
+
+struct ip_reassembly_test_packet pkt_ipv4_udp = {
+	.len = 1200,
+	.l4_offset = 20,
+	.data = {
+		/* IP */
+		0x45, 0x00, 0x04, 0xb0, 0x00, 0x01, 0x00, 0x00,
+		0x40, 0x11, 0x66, 0x0d, 0x0d, 0x00, 0x00, 0x02,
+		0x02, 0x00, 0x00, 0x02,
+
+		/* UDP */
+		0x08, 0x00, 0x27, 0x10, 0x05, 0xc8, 0xb8, 0x4c,
 	},
 };
 
@@ -654,6 +675,12 @@ struct ipsec_test_data conf_aes_128_gcm_v6_tunnel = {
 			},
 		},
 	},
+};
+
+const struct ip_pkt_vector ipv4_vector = {
+	.sa_data = &conf_aes_128_gcm,
+	.full_pkt = &pkt_ipv4_udp,
+	.burst = false,
 };
 
 const struct reassembly_vector ipv4_2frag_vector = {
