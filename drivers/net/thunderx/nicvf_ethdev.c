@@ -392,12 +392,14 @@ nicvf_dev_supported_ptypes_get(struct rte_eth_dev *dev)
 		RTE_PTYPE_L4_TCP,
 		RTE_PTYPE_L4_UDP,
 		RTE_PTYPE_L4_FRAG,
+		RTE_PTYPE_UNKNOWN
 	};
 	static const uint32_t ptypes_tunnel[] = {
 		RTE_PTYPE_TUNNEL_GRE,
 		RTE_PTYPE_TUNNEL_GENEVE,
 		RTE_PTYPE_TUNNEL_VXLAN,
 		RTE_PTYPE_TUNNEL_NVGRE,
+		RTE_PTYPE_UNKNOWN
 	};
 	static const uint32_t ptypes_end = RTE_PTYPE_UNKNOWN;
 
