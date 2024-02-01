@@ -1803,6 +1803,7 @@ tap_dev_supported_ptypes_get(struct rte_eth_dev *dev __rte_unused)
 		RTE_PTYPE_L4_UDP,
 		RTE_PTYPE_L4_TCP,
 		RTE_PTYPE_L4_SCTP,
+		RTE_PTYPE_UNKNOWN
 	};
 
 	return ptypes;
