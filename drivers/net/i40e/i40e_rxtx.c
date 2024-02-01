@@ -1823,7 +1823,7 @@ i40e_dev_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 }
 
 const uint32_t *
-i40e_dev_supported_ptypes_get(struct rte_eth_dev *dev)
+i40e_dev_supported_ptypes_get(struct rte_eth_dev *dev, size_t *no_of_elements)
 {
 	static const uint32_t ptypes[] = {
 		/* refers to i40e_rxd_pkt_type_mapping() */
@@ -1851,7 +1851,6 @@ i40e_dev_supported_ptypes_get(struct rte_eth_dev *dev)
 		RTE_PTYPE_INNER_L4_SCTP,
 		RTE_PTYPE_INNER_L4_TCP,
 		RTE_PTYPE_INNER_L4_UDP,
-		RTE_PTYPE_UNKNOWN
 	};
 
 	if (dev->rx_pkt_burst == i40e_recv_pkts ||
@@ -1866,8 +1865,10 @@ i40e_dev_supported_ptypes_get(struct rte_eth_dev *dev)
 	    dev->rx_pkt_burst == i40e_recv_pkts_vec_avx512 ||
 #endif
 	    dev->rx_pkt_burst == i40e_recv_scattered_pkts_vec_avx2 ||
-	    dev->rx_pkt_burst == i40e_recv_pkts_vec_avx2)
+	    dev->rx_pkt_burst == i40e_recv_pkts_vec_avx2) {
+		*no_of_elements = RTE_DIM(ptypes);
 		return ptypes;
+	}
 	return NULL;
 }
 

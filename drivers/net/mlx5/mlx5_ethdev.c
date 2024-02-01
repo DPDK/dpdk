@@ -579,7 +579,7 @@ mlx5_fw_version_get(struct rte_eth_dev *dev, char *fw_ver, size_t fw_size)
  *   A pointer to the supported Packet types array.
  */
 const uint32_t *
-mlx5_dev_supported_ptypes_get(struct rte_eth_dev *dev)
+mlx5_dev_supported_ptypes_get(struct rte_eth_dev *dev, size_t *no_of_elements)
 {
 	static const uint32_t ptypes[] = {
 		/* refers to rxq_cq_to_pkt_type() */
@@ -596,14 +596,15 @@ mlx5_dev_supported_ptypes_get(struct rte_eth_dev *dev)
 		RTE_PTYPE_INNER_L4_FRAG,
 		RTE_PTYPE_INNER_L4_TCP,
 		RTE_PTYPE_INNER_L4_UDP,
-		RTE_PTYPE_UNKNOWN
 	};
 
 	if (dev->rx_pkt_burst == mlx5_rx_burst ||
 	    dev->rx_pkt_burst == mlx5_rx_burst_mprq ||
 	    dev->rx_pkt_burst == mlx5_rx_burst_vec ||
-	    dev->rx_pkt_burst == mlx5_rx_burst_mprq_vec)
+	    dev->rx_pkt_burst == mlx5_rx_burst_mprq_vec) {
+		*no_of_elements = RTE_DIM(ptypes);
 		return ptypes;
+	}
 	return NULL;
 }
 

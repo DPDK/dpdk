@@ -509,7 +509,7 @@ pfe_tx_queue_setup(struct rte_eth_dev *dev,
 }
 
 static const uint32_t *
-pfe_supported_ptypes_get(struct rte_eth_dev *dev)
+pfe_supported_ptypes_get(struct rte_eth_dev *dev, size_t *no_of_elements)
 {
 	static const uint32_t ptypes[] = {
 		/*todo -= add more types */
@@ -521,12 +521,13 @@ pfe_supported_ptypes_get(struct rte_eth_dev *dev)
 		RTE_PTYPE_L4_TCP,
 		RTE_PTYPE_L4_UDP,
 		RTE_PTYPE_L4_SCTP,
-		RTE_PTYPE_UNKNOWN
 	};
 
 	if (dev->rx_pkt_burst == pfe_recv_pkts ||
-			dev->rx_pkt_burst == pfe_recv_pkts_on_intr)
+			dev->rx_pkt_burst == pfe_recv_pkts_on_intr) {
+		*no_of_elements = RTE_DIM(ptypes);
 		return ptypes;
+	}
 	return NULL;
 }
 

@@ -1864,13 +1864,13 @@ ngbe_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 }
 
 const uint32_t *
-ngbe_dev_supported_ptypes_get(struct rte_eth_dev *dev)
+ngbe_dev_supported_ptypes_get(struct rte_eth_dev *dev, size_t *no_of_elements)
 {
 	if (dev->rx_pkt_burst == ngbe_recv_pkts ||
 	    dev->rx_pkt_burst == ngbe_recv_pkts_sc_single_alloc ||
 	    dev->rx_pkt_burst == ngbe_recv_pkts_sc_bulk_alloc ||
 	    dev->rx_pkt_burst == ngbe_recv_pkts_bulk_alloc)
-		return ngbe_get_supported_ptypes();
+		return ngbe_get_supported_ptypes(no_of_elements);
 
 	return NULL;
 }

@@ -1282,7 +1282,7 @@ fs_dev_infos_get(struct rte_eth_dev *dev,
 }
 
 static const uint32_t *
-fs_dev_supported_ptypes_get(struct rte_eth_dev *dev)
+fs_dev_supported_ptypes_get(struct rte_eth_dev *dev, size_t *no_of_elements)
 {
 	struct sub_device *sdev;
 	struct rte_eth_dev *edev;
@@ -1308,7 +1308,7 @@ fs_dev_supported_ptypes_get(struct rte_eth_dev *dev)
 	 * We just return the ptypes of the device of highest
 	 * priority, usually the PREFERRED device.
 	 */
-	ret = SUBOPS(sdev, dev_supported_ptypes_get)(edev);
+	ret = SUBOPS(sdev, dev_supported_ptypes_get)(edev, no_of_elements);
 unlock:
 	fs_unlock(dev, 0);
 	return ret;

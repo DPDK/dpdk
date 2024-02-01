@@ -1764,7 +1764,8 @@ mrvl_dev_infos_get(struct rte_eth_dev *dev,
  *   Const pointer to the table with supported packet types.
  */
 static const uint32_t *
-mrvl_dev_supported_ptypes_get(struct rte_eth_dev *dev __rte_unused)
+mrvl_dev_supported_ptypes_get(struct rte_eth_dev *dev __rte_unused,
+			      size_t *no_of_elements)
 {
 	static const uint32_t ptypes[] = {
 		RTE_PTYPE_L2_ETHER,
@@ -1778,9 +1779,9 @@ mrvl_dev_supported_ptypes_get(struct rte_eth_dev *dev __rte_unused)
 		RTE_PTYPE_L2_ETHER_ARP,
 		RTE_PTYPE_L4_TCP,
 		RTE_PTYPE_L4_UDP,
-		RTE_PTYPE_UNKNOWN
 	};
 
+	*no_of_elements = RTE_DIM(ptypes);
 	return ptypes;
 }
 

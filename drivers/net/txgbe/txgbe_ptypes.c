@@ -186,7 +186,7 @@ static u32 txgbe_ptype_lookup[TXGBE_PTID_MAX] __rte_cache_aligned = {
 	TPTE(0xFD, ETHER, IPV6, NONE, GRENAT, ETHER_VLAN, IPV6, SCTP),
 };
 
-u32 *txgbe_get_supported_ptypes(void)
+u32 *txgbe_get_supported_ptypes(size_t *no_of_elements)
 {
 	static u32 ptypes[] = {
 		/* For non-vec functions,
@@ -205,9 +205,9 @@ u32 *txgbe_get_supported_ptypes(void)
 		RTE_PTYPE_INNER_L3_IPV6_EXT,
 		RTE_PTYPE_INNER_L4_TCP,
 		RTE_PTYPE_INNER_L4_UDP,
-		RTE_PTYPE_UNKNOWN
 	};
 
+	*no_of_elements = RTE_DIM(ptypes);
 	return ptypes;
 }
 

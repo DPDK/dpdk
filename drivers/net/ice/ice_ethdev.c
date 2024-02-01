@@ -178,7 +178,8 @@ static int ice_timesync_read_time(struct rte_eth_dev *dev,
 static int ice_timesync_write_time(struct rte_eth_dev *dev,
 				   const struct timespec *timestamp);
 static int ice_timesync_disable(struct rte_eth_dev *dev);
-static const uint32_t *ice_buffer_split_supported_hdr_ptypes_get(struct rte_eth_dev *dev);
+static const uint32_t *ice_buffer_split_supported_hdr_ptypes_get(struct rte_eth_dev *dev,
+						size_t *no_of_elements);
 
 static const struct rte_pci_id pci_id_ice_map[] = {
 	{ RTE_PCI_DEVICE(ICE_INTEL_VENDOR_ID, ICE_DEV_ID_E823L_BACKPLANE) },
@@ -6495,7 +6496,8 @@ ice_timesync_disable(struct rte_eth_dev *dev)
 }
 
 static const uint32_t *
-ice_buffer_split_supported_hdr_ptypes_get(struct rte_eth_dev *dev __rte_unused)
+ice_buffer_split_supported_hdr_ptypes_get(struct rte_eth_dev *dev __rte_unused,
+					  size_t *no_of_elements)
 {
 	/* Buffer split protocol header capability. */
 	static const uint32_t ptypes[] = {
@@ -6534,9 +6536,9 @@ ice_buffer_split_supported_hdr_ptypes_get(struct rte_eth_dev *dev __rte_unused)
 		RTE_PTYPE_TUNNEL_GRENAT | RTE_PTYPE_INNER_L2_ETHER |
 		RTE_PTYPE_INNER_L3_IPV6_EXT_UNKNOWN | RTE_PTYPE_INNER_L4_SCTP,
 
-		RTE_PTYPE_UNKNOWN
 	};
 
+	*no_of_elements = RTE_DIM(ptypes);
 	return ptypes;
 }
 

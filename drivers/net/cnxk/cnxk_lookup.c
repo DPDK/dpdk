@@ -9,7 +9,8 @@
 
 #define LOOKUP_ARRAY_SZ (PTYPE_ARRAY_SZ + ERR_ARRAY_SZ + SA_BASE_TBL_SZ + MEMPOOL_TBL_SZ)
 const uint32_t *
-cnxk_nix_supported_ptypes_get(struct rte_eth_dev *eth_dev)
+cnxk_nix_supported_ptypes_get(struct rte_eth_dev *eth_dev,
+			      size_t *no_of_elements)
 {
 	RTE_SET_USED(eth_dev);
 
@@ -47,10 +48,10 @@ cnxk_nix_supported_ptypes_get(struct rte_eth_dev *eth_dev)
 		RTE_PTYPE_INNER_L4_TCP,	      /* LH */
 		RTE_PTYPE_INNER_L4_UDP,	      /* LH */
 		RTE_PTYPE_INNER_L4_SCTP,      /* LH */
-		RTE_PTYPE_INNER_L4_ICMP,      /* LH */
-		RTE_PTYPE_UNKNOWN,
+		RTE_PTYPE_INNER_L4_ICMP,       /* LH */
 	};
 
+	*no_of_elements = RTE_DIM(ptypes);
 	return ptypes;
 }
 

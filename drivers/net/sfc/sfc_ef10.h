@@ -134,7 +134,8 @@ sfc_ef10_ev_qprime(volatile void *qprime, unsigned int read_ptr,
 }
 
 
-const uint32_t * sfc_ef10_supported_ptypes_get(uint32_t tunnel_encaps);
+const uint32_t *sfc_ef10_supported_ptypes_get(uint32_t tunnel_encaps,
+					      size_t *no_of_elements);
 
 
 #ifdef __cplusplus

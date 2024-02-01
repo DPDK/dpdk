@@ -2216,7 +2216,7 @@ ice_recv_scattered_pkts(void *rx_queue,
 }
 
 const uint32_t *
-ice_dev_supported_ptypes_get(struct rte_eth_dev *dev)
+ice_dev_supported_ptypes_get(struct rte_eth_dev *dev, size_t *no_of_elements)
 {
 	struct ice_adapter *ad =
 		ICE_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
@@ -2247,7 +2247,6 @@ ice_dev_supported_ptypes_get(struct rte_eth_dev *dev)
 		RTE_PTYPE_INNER_L4_SCTP,
 		RTE_PTYPE_INNER_L4_TCP,
 		RTE_PTYPE_INNER_L4_UDP,
-		RTE_PTYPE_UNKNOWN
 	};
 
 	static const uint32_t ptypes_comms[] = {
@@ -2278,13 +2277,15 @@ ice_dev_supported_ptypes_get(struct rte_eth_dev *dev)
 		RTE_PTYPE_TUNNEL_GTPC,
 		RTE_PTYPE_TUNNEL_GTPU,
 		RTE_PTYPE_L2_ETHER_PPPOE,
-		RTE_PTYPE_UNKNOWN
 	};
 
-	if (ad->active_pkg_type == ICE_PKG_TYPE_COMMS)
+	if (ad->active_pkg_type == ICE_PKG_TYPE_COMMS) {
+		*no_of_elements = RTE_DIM(ptypes_comms);
 		ptypes = ptypes_comms;
-	else
+	} else {
+		*no_of_elements = RTE_DIM(ptypes_os);
 		ptypes = ptypes_os;
+	}
 
 	if (dev->rx_pkt_burst == ice_recv_pkts ||
 	    dev->rx_pkt_burst == ice_recv_pkts_bulk_alloc ||

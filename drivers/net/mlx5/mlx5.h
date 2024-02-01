@@ -2090,7 +2090,8 @@ uint16_t mlx5_representor_id_encode(const struct mlx5_switch_info *info,
 				    enum rte_eth_representor_type hpf_type);
 int mlx5_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *info);
 int mlx5_fw_version_get(struct rte_eth_dev *dev, char *fw_ver, size_t fw_size);
-const uint32_t *mlx5_dev_supported_ptypes_get(struct rte_eth_dev *dev);
+const uint32_t *mlx5_dev_supported_ptypes_get(struct rte_eth_dev *dev,
+					      size_t *no_of_elements);
 int mlx5_dev_set_mtu(struct rte_eth_dev *dev, uint16_t mtu);
 int mlx5_hairpin_cap_get(struct rte_eth_dev *dev,
 			 struct rte_eth_hairpin_cap *cap);

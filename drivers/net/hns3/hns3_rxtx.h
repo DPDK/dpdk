@@ -776,7 +776,8 @@ uint16_t hns3_xmit_pkts_vec_sve(void *tx_queue, struct rte_mbuf **tx_pkts,
 int hns3_tx_burst_mode_get(struct rte_eth_dev *dev,
 			   __rte_unused uint16_t queue_id,
 			   struct rte_eth_burst_mode *mode);
-const uint32_t *hns3_dev_supported_ptypes_get(struct rte_eth_dev *dev);
+const uint32_t *hns3_dev_supported_ptypes_get(struct rte_eth_dev *dev,
+					      size_t *no_of_elements);
 void hns3_init_rx_ptype_tble(struct rte_eth_dev *dev);
 void hns3_set_rxtx_function(struct rte_eth_dev *eth_dev);
 uint32_t hns3_get_tqp_intr_reg_offset(uint16_t tqp_intr_id);

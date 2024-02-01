@@ -1446,7 +1446,7 @@ fm10k_dev_infos_get(struct rte_eth_dev *dev,
 
 #ifdef RTE_LIBRTE_FM10K_RX_OLFLAGS_ENABLE
 static const uint32_t *
-fm10k_dev_supported_ptypes_get(struct rte_eth_dev *dev)
+fm10k_dev_supported_ptypes_get(struct rte_eth_dev *dev, size_t *no_of_elements)
 {
 	if (dev->rx_pkt_burst == fm10k_recv_pkts ||
 	    dev->rx_pkt_burst == fm10k_recv_scattered_pkts) {
@@ -1459,9 +1459,9 @@ fm10k_dev_supported_ptypes_get(struct rte_eth_dev *dev)
 			RTE_PTYPE_L3_IPV6_EXT,
 			RTE_PTYPE_L4_TCP,
 			RTE_PTYPE_L4_UDP,
-			RTE_PTYPE_UNKNOWN
 		};
 
+		*no_of_elements = RTE_DIM(ptypes);
 		return ptypes;
 	} else if (dev->rx_pkt_burst == fm10k_recv_pkts_vec ||
 		   dev->rx_pkt_burst == fm10k_recv_scattered_pkts_vec) {
@@ -1477,9 +1477,9 @@ fm10k_dev_supported_ptypes_get(struct rte_eth_dev *dev)
 			RTE_PTYPE_TUNNEL_NVGRE,
 			RTE_PTYPE_TUNNEL_VXLAN,
 			RTE_PTYPE_TUNNEL_GRE,
-			RTE_PTYPE_UNKNOWN
 		};
 
+		*no_of_elements = RTE_DIM(ptypes_vec);
 		return ptypes_vec;
 	}
 
@@ -1487,7 +1487,8 @@ fm10k_dev_supported_ptypes_get(struct rte_eth_dev *dev)
 }
 #else
 static const uint32_t *
-fm10k_dev_supported_ptypes_get(struct rte_eth_dev *dev __rte_unused)
+fm10k_dev_supported_ptypes_get(struct rte_eth_dev *dev __rte_unused,
+			       size_t *no_of_elements)
 {
 	return NULL;
 }

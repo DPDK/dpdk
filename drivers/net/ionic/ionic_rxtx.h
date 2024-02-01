@@ -54,7 +54,8 @@ void ionic_txq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
 int ionic_dev_rx_descriptor_status(void *rx_queue, uint16_t offset);
 int ionic_dev_tx_descriptor_status(void *tx_queue, uint16_t offset);
 
-const uint32_t *ionic_dev_supported_ptypes_get(struct rte_eth_dev *dev);
+const uint32_t *ionic_dev_supported_ptypes_get(struct rte_eth_dev *dev,
+					       size_t *no_of_elements);
 
 int ionic_tx_tso(struct ionic_tx_qcq *txq, struct rte_mbuf *txm);
 

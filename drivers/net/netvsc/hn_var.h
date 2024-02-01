@@ -246,7 +246,8 @@ int	hn_vf_info_get(struct hn_data *hv,
 int	hn_vf_add(struct rte_eth_dev *dev, struct hn_data *hv);
 int	hn_vf_configure_locked(struct rte_eth_dev *dev,
 			       const struct rte_eth_conf *dev_conf);
-const uint32_t *hn_vf_supported_ptypes(struct rte_eth_dev *dev);
+const uint32_t *hn_vf_supported_ptypes(struct rte_eth_dev *dev,
+				       size_t *no_of_elements);
 int	hn_vf_start(struct rte_eth_dev *dev);
 int	hn_vf_close(struct rte_eth_dev *dev);
 int	hn_vf_stop(struct rte_eth_dev *dev);

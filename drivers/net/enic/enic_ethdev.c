@@ -511,7 +511,8 @@ static int enicpmd_dev_info_get(struct rte_eth_dev *eth_dev,
 	return 0;
 }
 
-static const uint32_t *enicpmd_dev_supported_ptypes_get(struct rte_eth_dev *dev)
+static const uint32_t *enicpmd_dev_supported_ptypes_get(struct rte_eth_dev *dev,
+							size_t *no_of_elements)
 {
 	static const uint32_t ptypes[] = {
 		RTE_PTYPE_L2_ETHER,
@@ -522,7 +523,6 @@ static const uint32_t *enicpmd_dev_supported_ptypes_get(struct rte_eth_dev *dev)
 		RTE_PTYPE_L4_UDP,
 		RTE_PTYPE_L4_FRAG,
 		RTE_PTYPE_L4_NONFRAG,
-		RTE_PTYPE_UNKNOWN
 	};
 	static const uint32_t ptypes_overlay[] = {
 		RTE_PTYPE_L2_ETHER,
@@ -541,16 +541,18 @@ static const uint32_t *enicpmd_dev_supported_ptypes_get(struct rte_eth_dev *dev)
 		RTE_PTYPE_INNER_L4_UDP,
 		RTE_PTYPE_INNER_L4_FRAG,
 		RTE_PTYPE_INNER_L4_NONFRAG,
-		RTE_PTYPE_UNKNOWN
 	};
 
 	if (dev->rx_pkt_burst != rte_eth_pkt_burst_dummy &&
 	    dev->rx_pkt_burst != NULL) {
 		struct enic *enic = pmd_priv(dev);
-		if (enic->overlay_offload)
+		if (enic->overlay_offload) {
+			*no_of_elements = RTE_DIM(ptypes_overlay);
 			return ptypes_overlay;
-		else
+		} else {
+			*no_of_elements = RTE_DIM(ptypes);
 			return ptypes;
+		}
 	}
 	return NULL;
 }

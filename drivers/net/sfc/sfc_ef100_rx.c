@@ -665,7 +665,8 @@ done:
 }
 
 static const uint32_t *
-sfc_ef100_supported_ptypes_get(__rte_unused uint32_t tunnel_encaps)
+sfc_ef100_supported_ptypes_get(__rte_unused uint32_t tunnel_encaps,
+			       size_t *no_of_elements)
 {
 	static const uint32_t ef100_native_ptypes[] = {
 		RTE_PTYPE_L2_ETHER,
@@ -684,9 +685,9 @@ sfc_ef100_supported_ptypes_get(__rte_unused uint32_t tunnel_encaps)
 		RTE_PTYPE_INNER_L4_TCP,
 		RTE_PTYPE_INNER_L4_UDP,
 		RTE_PTYPE_INNER_L4_FRAG,
-		RTE_PTYPE_UNKNOWN
 	};
 
+	*no_of_elements = RTE_DIM(ef100_native_ptypes);
 	return ef100_native_ptypes;
 }
 

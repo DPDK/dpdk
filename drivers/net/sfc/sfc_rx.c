@@ -194,7 +194,8 @@ sfc_efx_rx_desc_flags_to_packet_type(const unsigned int desc_flags)
 }
 
 static const uint32_t *
-sfc_efx_supported_ptypes_get(__rte_unused uint32_t tunnel_encaps)
+sfc_efx_supported_ptypes_get(__rte_unused uint32_t tunnel_encaps,
+			     size_t *no_of_elements)
 {
 	static const uint32_t ptypes[] = {
 		RTE_PTYPE_L2_ETHER,
@@ -202,9 +203,9 @@ sfc_efx_supported_ptypes_get(__rte_unused uint32_t tunnel_encaps)
 		RTE_PTYPE_L3_IPV6_EXT_UNKNOWN,
 		RTE_PTYPE_L4_TCP,
 		RTE_PTYPE_L4_UDP,
-		RTE_PTYPE_UNKNOWN
 	};
 
+	*no_of_elements = RTE_DIM(ptypes);
 	return ptypes;
 }
 

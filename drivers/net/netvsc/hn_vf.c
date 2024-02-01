@@ -466,7 +466,8 @@ int hn_vf_configure_locked(struct rte_eth_dev *dev,
 	return ret;
 }
 
-const uint32_t *hn_vf_supported_ptypes(struct rte_eth_dev *dev)
+const uint32_t *hn_vf_supported_ptypes(struct rte_eth_dev *dev,
+				       size_t *no_of_elements)
 {
 	struct hn_data *hv = dev->data->dev_private;
 	struct rte_eth_dev *vf_dev;
@@ -475,7 +476,8 @@ const uint32_t *hn_vf_supported_ptypes(struct rte_eth_dev *dev)
 	rte_rwlock_read_lock(&hv->vf_lock);
 	vf_dev = hn_get_vf_dev(hv);
 	if (vf_dev && vf_dev->dev_ops->dev_supported_ptypes_get)
-		ptypes = (*vf_dev->dev_ops->dev_supported_ptypes_get)(vf_dev);
+		ptypes = (*vf_dev->dev_ops->dev_supported_ptypes_get)(vf_dev,
+							      no_of_elements);
 	rte_rwlock_read_unlock(&hv->vf_lock);
 
 	return ptypes;

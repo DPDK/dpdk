@@ -185,7 +185,7 @@ struct rte_txgbe_ptype {
 #define RTE_PTYPE_L2_ETHER_EAPOL            RTE_PTYPE_L2_ETHER
 #define RTE_PTYPE_L2_ETHER_FILTER           RTE_PTYPE_L2_ETHER
 
-u32 *txgbe_get_supported_ptypes(void);
+u32 *txgbe_get_supported_ptypes(size_t *no_of_elements);
 u32 txgbe_decode_ptype(u8 ptid);
 u8 txgbe_encode_ptype(u32 ptype);
 

@@ -1149,16 +1149,18 @@ static int cxgbe_flow_ctrl_set(struct rte_eth_dev *eth_dev,
 }
 
 const uint32_t *
-cxgbe_dev_supported_ptypes_get(struct rte_eth_dev *eth_dev)
+cxgbe_dev_supported_ptypes_get(struct rte_eth_dev *eth_dev,
+			       size_t *no_of_elements)
 {
 	static const uint32_t ptypes[] = {
 		RTE_PTYPE_L3_IPV4,
 		RTE_PTYPE_L3_IPV6,
-		RTE_PTYPE_UNKNOWN
 	};
 
-	if (eth_dev->rx_pkt_burst == cxgbe_recv_pkts)
+	if (eth_dev->rx_pkt_burst == cxgbe_recv_pkts) {
+		*no_of_elements = RTE_DIM(ptypes);
 		return ptypes;
+	}
 	return NULL;
 }
 

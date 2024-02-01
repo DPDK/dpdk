@@ -104,7 +104,8 @@ static int eth_igb_fw_version_get(struct rte_eth_dev *dev,
 				   char *fw_version, size_t fw_size);
 static int eth_igb_infos_get(struct rte_eth_dev *dev,
 			      struct rte_eth_dev_info *dev_info);
-static const uint32_t *eth_igb_supported_ptypes_get(struct rte_eth_dev *dev);
+static const uint32_t *eth_igb_supported_ptypes_get(struct rte_eth_dev *dev,
+						    size_t *no_of_elements);
 static int eth_igbvf_infos_get(struct rte_eth_dev *dev,
 				struct rte_eth_dev_info *dev_info);
 static int  eth_igb_flow_ctrl_get(struct rte_eth_dev *dev,
@@ -2305,7 +2306,7 @@ eth_igb_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 }
 
 static const uint32_t *
-eth_igb_supported_ptypes_get(struct rte_eth_dev *dev)
+eth_igb_supported_ptypes_get(struct rte_eth_dev *dev, size_t *no_of_elements)
 {
 	static const uint32_t ptypes[] = {
 		/* refers to igb_rxd_pkt_info_to_pkt_type() */
@@ -2322,12 +2323,13 @@ eth_igb_supported_ptypes_get(struct rte_eth_dev *dev)
 		RTE_PTYPE_INNER_L3_IPV6_EXT,
 		RTE_PTYPE_INNER_L4_TCP,
 		RTE_PTYPE_INNER_L4_UDP,
-		RTE_PTYPE_UNKNOWN
 	};
 
 	if (dev->rx_pkt_burst == eth_igb_recv_pkts ||
-	    dev->rx_pkt_burst == eth_igb_recv_scattered_pkts)
+	    dev->rx_pkt_burst == eth_igb_recv_scattered_pkts) {
+		*no_of_elements = RTE_DIM(ptypes);
 		return ptypes;
+	}
 	return NULL;
 }
 

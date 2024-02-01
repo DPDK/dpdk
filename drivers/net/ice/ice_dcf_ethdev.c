@@ -1864,7 +1864,8 @@ ice_dcf_dev_reset(struct rte_eth_dev *dev)
 }
 
 static const uint32_t *
-ice_dcf_dev_supported_ptypes_get(struct rte_eth_dev *dev __rte_unused)
+ice_dcf_dev_supported_ptypes_get(struct rte_eth_dev *dev __rte_unused,
+				 size_t *no_of_elements)
 {
 	static const uint32_t ptypes[] = {
 		RTE_PTYPE_L2_ETHER,
@@ -1875,8 +1876,8 @@ ice_dcf_dev_supported_ptypes_get(struct rte_eth_dev *dev __rte_unused)
 		RTE_PTYPE_L4_SCTP,
 		RTE_PTYPE_L4_TCP,
 		RTE_PTYPE_L4_UDP,
-		RTE_PTYPE_UNKNOWN
 	};
+	*no_of_elements = RTE_DIM(ptypes);
 	return ptypes;
 }
 

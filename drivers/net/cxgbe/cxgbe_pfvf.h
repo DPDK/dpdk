@@ -51,7 +51,8 @@ uint16_t cxgbe_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 			 uint16_t nb_pkts);
 uint16_t cxgbe_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 			 uint16_t nb_pkts);
-const uint32_t *cxgbe_dev_supported_ptypes_get(struct rte_eth_dev *eth_dev);
+const uint32_t *cxgbe_dev_supported_ptypes_get(struct rte_eth_dev *eth_dev,
+					       size_t *no_of_elements);
 int cxgbe_dev_xstats_get_by_id(struct rte_eth_dev *dev,
 			       const uint64_t *ids, uint64_t *values,
 			       unsigned int n);

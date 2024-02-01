@@ -704,7 +704,8 @@ struct rte_txgbe_xstats_name_off {
 	unsigned int offset;
 };
 
-const uint32_t *txgbe_dev_supported_ptypes_get(struct rte_eth_dev *dev);
+const uint32_t *txgbe_dev_supported_ptypes_get(struct rte_eth_dev *dev,
+					       size_t *no_of_elements);
 int txgbe_dev_set_mc_addr_list(struct rte_eth_dev *dev,
 				      struct rte_ether_addr *mc_addr_set,
 				      uint32_t nb_mc_addr);

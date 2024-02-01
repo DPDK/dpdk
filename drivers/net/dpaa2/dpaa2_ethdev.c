@@ -1081,7 +1081,7 @@ dpaa2_dev_rx_queue_count(void *rx_queue)
 }
 
 static const uint32_t *
-dpaa2_supported_ptypes_get(struct rte_eth_dev *dev)
+dpaa2_supported_ptypes_get(struct rte_eth_dev *dev, size_t *no_of_elements)
 {
 	static const uint32_t ptypes[] = {
 		/*todo -= add more types */
@@ -1094,13 +1094,14 @@ dpaa2_supported_ptypes_get(struct rte_eth_dev *dev)
 		RTE_PTYPE_L4_UDP,
 		RTE_PTYPE_L4_SCTP,
 		RTE_PTYPE_L4_ICMP,
-		RTE_PTYPE_UNKNOWN
 	};
 
 	if (dev->rx_pkt_burst == dpaa2_dev_prefetch_rx ||
 		dev->rx_pkt_burst == dpaa2_dev_rx ||
-		dev->rx_pkt_burst == dpaa2_dev_loopback_rx)
+		dev->rx_pkt_burst == dpaa2_dev_loopback_rx) {
+		*no_of_elements = RTE_DIM(ptypes);
 		return ptypes;
+	}
 	return NULL;
 }
 

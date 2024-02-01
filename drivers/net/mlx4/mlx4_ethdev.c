@@ -934,7 +934,7 @@ out:
  *   NULL otherwise.
  */
 const uint32_t *
-mlx4_dev_supported_ptypes_get(struct rte_eth_dev *dev)
+mlx4_dev_supported_ptypes_get(struct rte_eth_dev *dev, size_t *no_of_elements)
 {
 	static const uint32_t ptypes[] = {
 		/* refers to rxq_cq_to_pkt_type() */
@@ -944,7 +944,6 @@ mlx4_dev_supported_ptypes_get(struct rte_eth_dev *dev)
 		RTE_PTYPE_L4_FRAG,
 		RTE_PTYPE_L4_TCP,
 		RTE_PTYPE_L4_UDP,
-		RTE_PTYPE_UNKNOWN
 	};
 	static const uint32_t ptypes_l2tun[] = {
 		/* refers to rxq_cq_to_pkt_type() */
@@ -956,15 +955,17 @@ mlx4_dev_supported_ptypes_get(struct rte_eth_dev *dev)
 		RTE_PTYPE_L4_UDP,
 		RTE_PTYPE_INNER_L3_IPV4_EXT_UNKNOWN,
 		RTE_PTYPE_INNER_L3_IPV6_EXT_UNKNOWN,
-		RTE_PTYPE_UNKNOWN
 	};
 	struct mlx4_priv *priv = dev->data->dev_private;
 
 	if (dev->rx_pkt_burst == mlx4_rx_burst) {
-		if (priv->hw_csum_l2tun)
+		if (priv->hw_csum_l2tun) {
+			*no_of_elements = RTE_DIM(ptypes_l2tun);
 			return ptypes_l2tun;
-		else
+		} else {
+			*no_of_elements = RTE_DIM(ptypes);
 			return ptypes;
+		}
 	}
 	return NULL;
 }

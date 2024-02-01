@@ -89,7 +89,8 @@ static int vmxnet3_dev_info_get(struct rte_eth_dev *dev,
 static int vmxnet3_hw_ver_get(struct rte_eth_dev *dev,
 			      char *fw_version, size_t fw_size);
 static const uint32_t *
-vmxnet3_dev_supported_ptypes_get(struct rte_eth_dev *dev);
+vmxnet3_dev_supported_ptypes_get(struct rte_eth_dev *dev,
+				 size_t *no_of_elements);
 static int vmxnet3_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu);
 static int vmxnet3_dev_vlan_filter_set(struct rte_eth_dev *dev,
 				       uint16_t vid, int on);
@@ -1620,16 +1621,18 @@ vmxnet3_hw_ver_get(struct rte_eth_dev *dev,
 }
 
 static const uint32_t *
-vmxnet3_dev_supported_ptypes_get(struct rte_eth_dev *dev)
+vmxnet3_dev_supported_ptypes_get(struct rte_eth_dev *dev,
+				 size_t *no_of_elements)
 {
 	static const uint32_t ptypes[] = {
 		RTE_PTYPE_L3_IPV4_EXT,
 		RTE_PTYPE_L3_IPV4,
-		RTE_PTYPE_UNKNOWN
 	};
 
-	if (dev->rx_pkt_burst == vmxnet3_recv_pkts)
+	if (dev->rx_pkt_burst == vmxnet3_recv_pkts) {
+		*no_of_elements = RTE_DIM(ptypes);
 		return ptypes;
+	}
 	return NULL;
 }
 

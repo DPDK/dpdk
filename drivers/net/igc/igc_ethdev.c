@@ -207,7 +207,8 @@ static int eth_igc_infos_get(struct rte_eth_dev *dev,
 			struct rte_eth_dev_info *dev_info);
 static int eth_igc_led_on(struct rte_eth_dev *dev);
 static int eth_igc_led_off(struct rte_eth_dev *dev);
-static const uint32_t *eth_igc_supported_ptypes_get(struct rte_eth_dev *dev);
+static const uint32_t *eth_igc_supported_ptypes_get(struct rte_eth_dev *dev,
+						    size_t *no_of_elements);
 static int eth_igc_rar_set(struct rte_eth_dev *dev,
 		struct rte_ether_addr *mac_addr, uint32_t index, uint32_t pool);
 static void eth_igc_rar_clear(struct rte_eth_dev *dev, uint32_t index);
@@ -1650,7 +1651,8 @@ eth_igc_led_off(struct rte_eth_dev *dev)
 }
 
 static const uint32_t *
-eth_igc_supported_ptypes_get(__rte_unused struct rte_eth_dev *dev)
+eth_igc_supported_ptypes_get(__rte_unused struct rte_eth_dev *dev,
+			     size_t *no_of_elements)
 {
 	static const uint32_t ptypes[] = {
 		/* refers to rx_desc_pkt_info_to_pkt_type() */
@@ -1667,9 +1669,9 @@ eth_igc_supported_ptypes_get(__rte_unused struct rte_eth_dev *dev)
 		RTE_PTYPE_INNER_L3_IPV6_EXT,
 		RTE_PTYPE_INNER_L4_TCP,
 		RTE_PTYPE_INNER_L4_UDP,
-		RTE_PTYPE_UNKNOWN
 	};
 
+	*no_of_elements = RTE_DIM(ptypes);
 	return ptypes;
 }
 

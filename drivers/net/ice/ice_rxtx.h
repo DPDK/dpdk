@@ -271,7 +271,8 @@ int ice_tx_burst_mode_get(struct rte_eth_dev *dev, uint16_t queue_id,
 int ice_rx_descriptor_status(void *rx_queue, uint16_t offset);
 int ice_tx_descriptor_status(void *tx_queue, uint16_t offset);
 void ice_set_default_ptype_table(struct rte_eth_dev *dev);
-const uint32_t *ice_dev_supported_ptypes_get(struct rte_eth_dev *dev);
+const uint32_t *ice_dev_supported_ptypes_get(struct rte_eth_dev *dev,
+					     size_t *no_of_elements);
 void ice_select_rxd_to_pkt_fields_handler(struct ice_rx_queue *rxq,
 					  uint32_t rxdid);
 

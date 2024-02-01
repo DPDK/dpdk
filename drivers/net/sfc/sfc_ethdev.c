@@ -194,11 +194,12 @@ sfc_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 }
 
 static const uint32_t *
-sfc_dev_supported_ptypes_get(struct rte_eth_dev *dev)
+sfc_dev_supported_ptypes_get(struct rte_eth_dev *dev, size_t *no_of_elements)
 {
 	const struct sfc_adapter_priv *sap = sfc_adapter_priv_by_eth_dev(dev);
 
-	return sap->dp_rx->supported_ptypes_get(sap->shared->tunnel_encaps);
+	return sap->dp_rx->supported_ptypes_get(sap->shared->tunnel_encaps,
+						no_of_elements);
 }
 
 static int

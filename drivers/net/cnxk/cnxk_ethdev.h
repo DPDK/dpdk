@@ -613,7 +613,8 @@ int cnxk_nix_tx_descriptor_status(void *txq, uint16_t offset);
 uint32_t cnxk_nix_rx_queue_count(void *rxq);
 
 /* Lookup configuration */
-const uint32_t *cnxk_nix_supported_ptypes_get(struct rte_eth_dev *eth_dev);
+const uint32_t *cnxk_nix_supported_ptypes_get(struct rte_eth_dev *eth_dev,
+					      size_t *no_of_elements);
 void *cnxk_nix_fastpath_lookup_mem_get(void);
 
 /* Devargs */

@@ -348,7 +348,7 @@ dpaa_eth_dev_configure(struct rte_eth_dev *dev)
 }
 
 static const uint32_t *
-dpaa_supported_ptypes_get(struct rte_eth_dev *dev)
+dpaa_supported_ptypes_get(struct rte_eth_dev *dev, size_t *no_of_elements)
 {
 	static const uint32_t ptypes[] = {
 		RTE_PTYPE_L2_ETHER,
@@ -364,13 +364,14 @@ dpaa_supported_ptypes_get(struct rte_eth_dev *dev)
 		RTE_PTYPE_L4_UDP,
 		RTE_PTYPE_L4_SCTP,
 		RTE_PTYPE_TUNNEL_ESP,
-		RTE_PTYPE_UNKNOWN
 	};
 
 	PMD_INIT_FUNC_TRACE();
 
-	if (dev->rx_pkt_burst == dpaa_eth_queue_rx)
+	if (dev->rx_pkt_burst == dpaa_eth_queue_rx) {
+		*no_of_elements = RTE_DIM(ptypes);
 		return ptypes;
+	}
 	return NULL;
 }
 

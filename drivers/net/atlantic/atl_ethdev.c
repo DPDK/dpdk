@@ -43,7 +43,8 @@ static int atl_dev_stats_reset(struct rte_eth_dev *dev);
 static int atl_fw_version_get(struct rte_eth_dev *dev, char *fw_version,
 			      size_t fw_size);
 
-static const uint32_t *atl_dev_supported_ptypes_get(struct rte_eth_dev *dev);
+static const uint32_t *atl_dev_supported_ptypes_get(struct rte_eth_dev *dev,
+						    size_t *no_of_elements);
 
 static int atl_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu);
 
@@ -1132,7 +1133,7 @@ atl_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 }
 
 static const uint32_t *
-atl_dev_supported_ptypes_get(struct rte_eth_dev *dev)
+atl_dev_supported_ptypes_get(struct rte_eth_dev *dev, size_t *no_of_elements)
 {
 	static const uint32_t ptypes[] = {
 		RTE_PTYPE_L2_ETHER,
@@ -1144,11 +1145,12 @@ atl_dev_supported_ptypes_get(struct rte_eth_dev *dev)
 		RTE_PTYPE_L4_UDP,
 		RTE_PTYPE_L4_SCTP,
 		RTE_PTYPE_L4_ICMP,
-		RTE_PTYPE_UNKNOWN
 	};
 
-	if (dev->rx_pkt_burst == atl_recv_pkts)
+	if (dev->rx_pkt_burst == atl_recv_pkts) {
+		*no_of_elements = RTE_DIM(ptypes);
 		return ptypes;
+	}
 
 	return NULL;
 }

@@ -619,7 +619,8 @@ const uint32_t ionic_ptype_table[IONIC_RXQ_COMP_PKT_TYPE_MASK]
 };
 
 const uint32_t *
-ionic_dev_supported_ptypes_get(struct rte_eth_dev *dev __rte_unused)
+ionic_dev_supported_ptypes_get(struct rte_eth_dev *dev __rte_unused,
+			       size_t *no_of_elements)
 {
 	/* See ionic_ptype_table[] */
 	static const uint32_t ptypes[] = {
@@ -631,9 +632,9 @@ ionic_dev_supported_ptypes_get(struct rte_eth_dev *dev __rte_unused)
 		RTE_PTYPE_L3_IPV6,
 		RTE_PTYPE_L4_TCP,
 		RTE_PTYPE_L4_UDP,
-		RTE_PTYPE_UNKNOWN
 	};
 
+	*no_of_elements = RTE_DIM(ptypes);
 	return ptypes;
 }
 

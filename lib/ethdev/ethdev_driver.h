@@ -449,8 +449,22 @@ typedef int (*eth_queue_stats_mapping_set_t)(struct rte_eth_dev *dev,
 typedef int (*eth_dev_infos_get_t)(struct rte_eth_dev *dev,
 				   struct rte_eth_dev_info *dev_info);
 
-/** @internal Get supported ptypes of an Ethernet device. */
-typedef const uint32_t *(*eth_dev_supported_ptypes_get_t)(struct rte_eth_dev *dev);
+/**
+ * @internal
+ * Function used to get supported ptypes of an Ethernet device.
+ *
+ * @param dev
+ *   ethdev handle of port.
+ *
+ * @param no_of_elements
+ *   number of ptypes elements. Must be initialized to 0.
+ *
+ * @retval
+ *   Success, array of ptypes elements and valid no_of_elements > 0.
+ *   Failures, NULL.
+ */
+typedef const uint32_t *(*eth_dev_supported_ptypes_get_t)(struct rte_eth_dev *dev,
+							  size_t *no_of_elements);
 
 /**
  * @internal
@@ -1081,7 +1095,8 @@ typedef int (*eth_ip_reassembly_conf_set_t)(struct rte_eth_dev *dev,
  * @return
  *   An array pointer to store supported protocol headers.
  */
-typedef const uint32_t *(*eth_buffer_split_supported_hdr_ptypes_get_t)(struct rte_eth_dev *dev);
+typedef const uint32_t *(*eth_buffer_split_supported_hdr_ptypes_get_t)(struct rte_eth_dev *dev,
+								       size_t *no_of_elements);
 
 /**
  * @internal

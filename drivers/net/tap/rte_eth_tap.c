@@ -1778,7 +1778,8 @@ tap_intr_handle_set(struct rte_eth_dev *dev, int set)
 }
 
 static const uint32_t*
-tap_dev_supported_ptypes_get(struct rte_eth_dev *dev __rte_unused)
+tap_dev_supported_ptypes_get(struct rte_eth_dev *dev __rte_unused,
+			     size_t *no_of_elements)
 {
 	static const uint32_t ptypes[] = {
 		RTE_PTYPE_INNER_L2_ETHER,
@@ -1803,9 +1804,9 @@ tap_dev_supported_ptypes_get(struct rte_eth_dev *dev __rte_unused)
 		RTE_PTYPE_L4_UDP,
 		RTE_PTYPE_L4_TCP,
 		RTE_PTYPE_L4_SCTP,
-		RTE_PTYPE_UNKNOWN
 	};
 
+	*no_of_elements = RTE_DIM(ptypes);
 	return ptypes;
 }
 

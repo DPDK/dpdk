@@ -244,7 +244,8 @@ int nfp_net_xstats_get_by_id(struct rte_eth_dev *dev,
 int nfp_net_xstats_reset(struct rte_eth_dev *dev);
 int nfp_net_infos_get(struct rte_eth_dev *dev,
 		struct rte_eth_dev_info *dev_info);
-const uint32_t *nfp_net_supported_ptypes_get(struct rte_eth_dev *dev);
+const uint32_t *nfp_net_supported_ptypes_get(struct rte_eth_dev *dev,
+					     size_t *no_of_elements);
 int nfp_rx_queue_intr_enable(struct rte_eth_dev *dev, uint16_t queue_id);
 int nfp_rx_queue_intr_disable(struct rte_eth_dev *dev, uint16_t queue_id);
 void nfp_net_params_setup(struct nfp_net_hw *hw);
