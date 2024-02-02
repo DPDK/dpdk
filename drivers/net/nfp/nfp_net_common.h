@@ -12,6 +12,7 @@
 #include <nfp_dev.h>
 #include <rte_spinlock.h>
 
+#include "nfpcore/nfp_sync.h"
 #include "nfp_net_ctrl.h"
 
 /* Interrupt definitions */
@@ -109,6 +110,9 @@ struct nfp_pf_dev {
 
 	/** Supported speeds bitmap */
 	uint32_t speed_capa;
+
+	/** Synchronized info */
+	struct nfp_sync *sync;
 };
 
 #define NFP_NET_FLOW_LIMIT    1024

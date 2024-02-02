@@ -19,6 +19,7 @@
 #include "nfpcore/nfp_nsp.h"
 #include "nfpcore/nfp6000_pcie.h"
 #include "nfpcore/nfp_resource.h"
+#include "nfpcore/nfp_sync.h"
 
 #include "nfp_cpp_bridge.h"
 #include "nfp_ipsec.h"
@@ -551,6 +552,7 @@ nfp_pf_uninit(struct nfp_pf_dev *pf_dev)
 	free(pf_dev->nfp_eth_table);
 	free(pf_dev->hwinfo);
 	nfp_cpp_free(pf_dev->cpp);
+	nfp_sync_free(pf_dev->sync);
 	rte_free(pf_dev);
 }
 
@@ -559,6 +561,7 @@ nfp_pf_secondary_uninit(struct nfp_pf_dev *pf_dev)
 {
 	free(pf_dev->sym_tbl);
 	nfp_cpp_free(pf_dev->cpp);
+	nfp_sync_free(pf_dev->sync);
 	rte_free(pf_dev);
 
 	return 0;
@@ -1612,6 +1615,7 @@ nfp_net_speed_capa_get(struct nfp_pf_dev *pf_dev,
 static int
 nfp_pf_init(struct rte_pci_device *pci_dev)
 {
+	void *sync;
 	uint32_t i;
 	uint32_t id;
 	int ret = 0;
@@ -1652,6 +1656,13 @@ nfp_pf_init(struct rte_pci_device *pci_dev)
 		return -ENOMEM;
 	}
 
+	sync = nfp_sync_alloc();
+	if (sync == NULL) {
+		PMD_INIT_LOG(ERR, "Failed to alloc sync zone.");
+		ret = -ENOMEM;
+		goto pf_cleanup;
+	}
+
 	/*
 	 * When device bound to UIO, the device could be used, by mistake,
 	 * by two DPDK apps, and the UIO driver does not avoid it. This
@@ -1667,7 +1678,7 @@ nfp_pf_init(struct rte_pci_device *pci_dev)
 	if (cpp == NULL) {
 		PMD_INIT_LOG(ERR, "A CPP handle can not be obtained");
 		ret = -EIO;
-		goto pf_cleanup;
+		goto sync_free;
 	}
 
 	hwinfo = nfp_hwinfo_read(cpp);
@@ -1734,6 +1745,7 @@ nfp_pf_init(struct rte_pci_device *pci_dev)
 	pf_dev->sym_tbl = sym_tbl;
 	pf_dev->pci_dev = pci_dev;
 	pf_dev->nfp_eth_table = nfp_eth_table;
+	pf_dev->sync = sync;
 
 	/* Get the speed capability */
 	for (i = 0; i < nfp_eth_table->count; i++) {
@@ -1815,6 +1827,8 @@ hwinfo_cleanup:
 	free(hwinfo);
 cpp_cleanup:
 	nfp_cpp_free(cpp);
+sync_free:
+	nfp_sync_free(sync);
 pf_cleanup:
 	rte_free(pf_dev);
 
@@ -1878,6 +1892,7 @@ nfp_secondary_init_app_fw_nic(struct nfp_pf_dev *pf_dev)
 static int
 nfp_pf_secondary_init(struct rte_pci_device *pci_dev)
 {
+	void *sync;
 	int ret = 0;
 	struct nfp_cpp *cpp;
 	uint8_t function_id;
@@ -1910,6 +1925,13 @@ nfp_pf_secondary_init(struct rte_pci_device *pci_dev)
 		return -ENOMEM;
 	}
 
+	sync = nfp_sync_alloc();
+	if (sync == NULL) {
+		PMD_INIT_LOG(ERR, "Failed to alloc sync zone.");
+		ret = -ENOMEM;
+		goto pf_cleanup;
+	}
+
 	/*
 	 * When device bound to UIO, the device could be used, by mistake,
 	 * by two DPDK apps, and the UIO driver does not avoid it. This
@@ -1925,7 +1947,7 @@ nfp_pf_secondary_init(struct rte_pci_device *pci_dev)
 	if (cpp == NULL) {
 		PMD_INIT_LOG(ERR, "A CPP handle can not be obtained");
 		ret = -EIO;
-		goto pf_cleanup;
+		goto sync_free;
 	}
 
 	/*
@@ -1936,7 +1958,7 @@ nfp_pf_secondary_init(struct rte_pci_device *pci_dev)
 	if (sym_tbl == NULL) {
 		PMD_INIT_LOG(ERR, "Something is wrong with the firmware symbol table");
 		ret = -EIO;
-		goto pf_cleanup;
+		goto sync_free;
 	}
 
 	/* Read the app ID of the firmware loaded */
@@ -1954,6 +1976,7 @@ nfp_pf_secondary_init(struct rte_pci_device *pci_dev)
 	pf_dev->cpp = cpp;
 	pf_dev->sym_tbl = sym_tbl;
 	pf_dev->pci_dev = pci_dev;
+	pf_dev->sync = sync;
 
 	/* Call app specific init code now */
 	switch (app_fw_id) {
@@ -1983,6 +2006,8 @@ nfp_pf_secondary_init(struct rte_pci_device *pci_dev)
 
 sym_tbl_cleanup:
 	free(sym_tbl);
+sync_free:
+	nfp_sync_free(sync);
 pf_cleanup:
 	rte_free(pf_dev);
 
