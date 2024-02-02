@@ -10,6 +10,8 @@
 
 #include <bus_pci_driver.h>
 
+#define NFP_SYNC_MAGIC_FL_SERVICE            0x53594e41 /**< ASCII - SYNA */
+
 struct nfp_sync;
 
 struct nfp_sync *nfp_sync_alloc(void);

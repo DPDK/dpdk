@@ -9,6 +9,7 @@
 #include "../nfpcore/nfp_nsp.h"
 #include "../nfp_logs.h"
 #include "../nfp_mtr.h"
+#include "nfp_flower_service.h"
 
 /* Type of representor */
 enum nfp_repr_type {
@@ -395,6 +396,9 @@ nfp_flower_repr_dev_close(struct rte_eth_dev *dev)
 
 	if (app_fw_flower->pf_repr != NULL)
 		return 0;
+
+	/* Stop flower service first */
+	nfp_flower_service_stop(app_fw_flower);
 
 	/* Disable cpp service */
 	nfp_service_disable(&pf_dev->cpp_service_info);

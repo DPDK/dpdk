@@ -18,6 +18,7 @@
 #include "../nfp_mtr.h"
 #include "nfp_flower_ctrl.h"
 #include "nfp_flower_representor.h"
+#include "nfp_flower_service.h"
 
 #define CTRL_VNIC_NB_DESC 512
 
@@ -461,6 +462,13 @@ nfp_flower_init_ctrl_vnic(struct nfp_net_hw *hw)
 		nn_cfg_writeb(&hw->super, NFP_NET_CFG_TXR_SZ(i), rte_log2_u32(CTRL_VNIC_NB_DESC));
 	}
 
+	/* Alloc sync memory zone */
+	ret = nfp_flower_service_sync_alloc(app_fw_flower);
+	if (ret != 0) {
+		PMD_INIT_LOG(ERR, "Alloc sync memory zone failed");
+		goto tx_queue_setup_cleanup;
+	}
+
 	return 0;
 
 tx_queue_setup_cleanup:
@@ -531,6 +539,7 @@ nfp_flower_cleanup_ctrl_vnic(struct nfp_net_hw *hw)
 		}
 	}
 
+	nfp_flower_service_sync_free(app_fw_flower);
 	rte_free(eth_dev->data->tx_queues);
 	rte_free(eth_dev->data->rx_queues);
 	rte_mempool_free(app_fw_flower->ctrl_pktmbuf_pool);
@@ -580,38 +589,6 @@ nfp_flower_start_ctrl_vnic(struct nfp_net_hw *net_hw)
 		PMD_INIT_LOG(ERR, "Error with flower ctrl vNIC freelist setup");
 		return -EIO;
 	}
-
-	return 0;
-}
-
-static int
-nfp_flower_ctrl_vnic_service(void *arg)
-{
-	struct nfp_app_fw_flower *app_fw_flower = arg;
-
-	nfp_flower_ctrl_vnic_poll(app_fw_flower);
-
-	return 0;
-}
-
-static int
-nfp_flower_enable_services(struct nfp_app_fw_flower *app_fw_flower)
-{
-	int ret;
-	struct nfp_service_info info;
-	const struct rte_service_spec flower_service = {
-		.name              = "flower_ctrl_vnic_service",
-		.callback          = nfp_flower_ctrl_vnic_service,
-		.callback_userdata = (void *)app_fw_flower,
-	};
-
-	ret = nfp_service_enable(&flower_service, &info);
-	if (ret != 0) {
-		PMD_INIT_LOG(ERR, "Could not enable service %s", flower_service.name);
-		return ret;
-	}
-
-	app_fw_flower->ctrl_vnic_id = info.id;
 
 	return 0;
 }
@@ -760,7 +737,7 @@ nfp_init_app_fw_flower(struct nfp_pf_dev *pf_dev,
 	}
 
 	/* Start up flower services */
-	ret = nfp_flower_enable_services(app_fw_flower);
+	ret = nfp_flower_service_start(app_fw_flower);
 	if (ret != 0) {
 		PMD_INIT_LOG(ERR, "Could not enable flower services");
 		ret = -ESRCH;
@@ -770,11 +747,13 @@ nfp_init_app_fw_flower(struct nfp_pf_dev *pf_dev,
 	ret = nfp_flower_repr_create(app_fw_flower);
 	if (ret != 0) {
 		PMD_INIT_LOG(ERR, "Could not create representor ports");
-		goto ctrl_vnic_cleanup;
+		goto ctrl_vnic_service_stop;
 	}
 
 	return 0;
 
+ctrl_vnic_service_stop:
+	nfp_flower_service_stop(app_fw_flower);
 ctrl_vnic_cleanup:
 	nfp_flower_cleanup_ctrl_vnic(app_fw_flower->ctrl_hw);
 ctrl_cpp_area_cleanup:

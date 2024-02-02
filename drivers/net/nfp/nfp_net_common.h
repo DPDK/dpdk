@@ -12,6 +12,7 @@
 #include <nfp_dev.h>
 #include <rte_spinlock.h>
 
+#include "flower/nfp_flower_service.h"
 #include "nfpcore/nfp_sync.h"
 #include "nfp_net_ctrl.h"
 #include "nfp_service.h"
@@ -80,6 +81,10 @@ struct nfp_multi_pf {
 	uint8_t *beat_addr;
 };
 
+struct nfp_process_share {
+	struct nfp_flower_service *fl_service;
+};
+
 struct nfp_pf_dev {
 	/** Backpointer to associated pci device */
 	struct rte_pci_device *pci_dev;
@@ -114,6 +119,7 @@ struct nfp_pf_dev {
 
 	/** Synchronized info */
 	struct nfp_sync *sync;
+	struct nfp_process_share process_share;
 };
 
 #define NFP_NET_FLOW_LIMIT    1024

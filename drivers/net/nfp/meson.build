@@ -13,6 +13,7 @@ sources = files(
         'flower/nfp_flower_ctrl.c',
         'flower/nfp_flower_flow.c',
         'flower/nfp_flower_representor.c',
+        'flower/nfp_flower_service.c',
         'nfd3/nfp_nfd3_dp.c',
         'nfdk/nfp_nfdk_dp.c',
         'nfpcore/nfp_cppcore.c',

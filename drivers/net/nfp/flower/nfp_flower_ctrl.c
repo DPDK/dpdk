@@ -12,6 +12,7 @@
 #include "../nfp_logs.h"
 #include "nfp_flower_representor.h"
 #include "nfp_mtr.h"
+#include "nfp_flower_service.h"
 
 #define MAX_PKT_BURST 32
 
@@ -502,26 +503,21 @@ nfp_flower_cmsg_rx(struct nfp_app_fw_flower *app_fw_flower,
 }
 
 void
-nfp_flower_ctrl_vnic_poll(struct nfp_app_fw_flower *app_fw_flower)
+nfp_flower_ctrl_vnic_process(struct nfp_app_fw_flower *app_fw_flower)
 {
 	uint16_t count;
 	struct nfp_net_rxq *rxq;
-	struct nfp_net_hw *ctrl_hw;
 	struct rte_eth_dev *ctrl_eth_dev;
 	struct rte_mbuf *pkts_burst[MAX_PKT_BURST];
 
-	ctrl_hw = app_fw_flower->ctrl_hw;
-	ctrl_eth_dev = ctrl_hw->eth_dev;
+	ctrl_eth_dev = app_fw_flower->ctrl_hw->eth_dev;
 
 	/* Ctrl vNIC only has a single Rx queue */
 	rxq = ctrl_eth_dev->data->rx_queues[0];
-
-	while (rte_service_runstate_get(app_fw_flower->ctrl_vnic_id) != 0) {
-		count = nfp_flower_ctrl_vnic_recv(rxq, pkts_burst, MAX_PKT_BURST);
-		if (count != 0) {
-			app_fw_flower->ctrl_vnic_rx_count += count;
-			/* Process cmsgs here */
-			nfp_flower_cmsg_rx(app_fw_flower, pkts_burst, count);
-		}
+	count = nfp_flower_ctrl_vnic_recv(rxq, pkts_burst, MAX_PKT_BURST);
+	if (count != 0) {
+		app_fw_flower->ctrl_vnic_rx_count += count;
+		/* Process cmsgs here */
+		nfp_flower_cmsg_rx(app_fw_flower, pkts_burst, count);
 	}
 }
