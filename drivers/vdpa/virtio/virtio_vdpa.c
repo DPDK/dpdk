@@ -4,7 +4,9 @@
 #include <unistd.h>
 #include <net/if.h>
 #include <sys/ioctl.h>
+#include <sys/time.h>
 #include <linux/vfio.h>
+
 #include <rte_malloc.h>
 #include <rte_vfio.h>
 #include <rte_vhost.h>
@@ -12,7 +14,6 @@
 #include <vdpa_driver.h>
 #include <rte_kvargs.h>
 #include <rte_uuid.h>
-
 #include <virtio_api.h>
 #include <virtio_lm.h>
 #include <virtio_util.h>
@@ -1120,7 +1121,7 @@ virtio_vdpa_features_set(int vid)
 	else
 		priv->guest_features = virtio_pci_dev_state_features_set(priv->vpdev, features, priv->state_mz->addr);
 
-	DRV_LOG(INFO, "%s vid %d guest feature is %" PRIx64 "orign feature is %" PRIx64,
+	DRV_LOG(INFO, "%s vid %d guest feature is %" PRIx64 ", orign feature is %" PRIx64,
 					priv->vdev->device->name, vid,
 					priv->guest_features, features);
 
@@ -1367,9 +1368,13 @@ virtio_vdpa_dev_config(int vid)
 	uint16_t last_avail_idx, last_used_idx, nr_virtqs;
 	struct virtio_vdpa_notifier_work *notify_work;
 	struct vdpa_vf_with_devargs vf_dev;
-	uint64_t t_start = rte_rdtsc_precise();
-	uint64_t t_end;
 	int ret, i, vhost_sock_fd;
+	struct timeval start, end;
+	uint64_t time_used;
+
+	gettimeofday(&start, NULL);
+	DRV_LOG(INFO, "System time when config start (dev %s): %lu.%06lu",
+		priv->vf_name.dev_bdf, start.tv_sec, start.tv_usec);
 
 	if (priv == NULL) {
 		DRV_LOG(ERR, "Invalid vDPA device: %s", vdev->device->name);
@@ -1478,9 +1483,13 @@ virtio_vdpa_dev_config(int vid)
 	}
 
 	priv->configured = 1;
-	t_end  = rte_rdtsc_precise();
+	gettimeofday(&end, NULL);
+	DRV_LOG(INFO, "System time when config done (dev %s): %lu.%06lu",
+		priv->vf_name.dev_bdf, start.tv_sec, start.tv_usec);
+
+	time_used = (end.tv_sec - start.tv_sec) * 1e6 + end.tv_usec - start.tv_usec;
 	DRV_LOG(INFO, "%s vid %d was configured, took %lu us.", vdev->device->name,
-			vid, (t_end - t_start) * 1000000 / rte_get_tsc_hz());
+			vid, time_used);
 
 	if (!priv->ctx_stored) {
 		if (!priv->fd_args_stored) {
@@ -2033,8 +2042,14 @@ virtio_vdpa_dev_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	size_t mz_len;
 	int retries = VIRTIO_VDPA_GET_GROUPE_RETRIES;
 	bool restore = false;
+	struct timeval start, end;
+	uint64_t time_used;
 
 	rte_pci_device_name(&pci_dev->addr, devname, RTE_DEV_NAME_MAX_LEN);
+
+	gettimeofday(&start, NULL);
+	DRV_LOG(INFO, "System time when probe start (dev %s): %lu.%06lu",
+		devname, start.tv_sec, start.tv_usec);
 
 	ret = virtio_pci_devargs_parse(pci_dev->device.devargs, &vdpa, vm_uuid);
 	if (ret < 0) {
@@ -2349,6 +2364,13 @@ virtio_vdpa_dev_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	pthread_mutex_lock(&priv_list_lock);
 	TAILQ_INSERT_TAIL(&virtio_priv_list, priv, next);
 	pthread_mutex_unlock(&priv_list_lock);
+
+	gettimeofday(&end, NULL);
+	DRV_LOG(INFO, "System time when probe done (dev %s): %lu.%06lu",
+		devname, end.tv_sec, end.tv_usec);
+	time_used = (end.tv_sec - start.tv_sec) * 1e6 + end.tv_usec - start.tv_usec;
+	DRV_LOG(INFO, "%s probe finished, took %lu us.", devname, time_used);
+
 	return 0;
 
 error:

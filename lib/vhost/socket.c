@@ -11,6 +11,7 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <sys/queue.h>
+#include <sys/time.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <pthread.h>
@@ -208,6 +209,7 @@ vhost_user_add_connection(int fd, struct vhost_user_socket *vsocket)
 	struct vhost_user_connection *conn;
 	int ret;
 	struct virtio_net *dev;
+	struct timeval start;
 
 	if (vsocket == NULL)
 		return;
@@ -276,6 +278,10 @@ vhost_user_add_connection(int fd, struct vhost_user_socket *vsocket)
 	pthread_mutex_unlock(&vsocket->conn_mutex);
 
 	fdset_pipe_notify(&vhost_user.fdset);
+
+	gettimeofday(&start, NULL);
+	VHOST_LOG_CONFIG(INFO, "System time when connection established (%s): %lu.%06lu\n",
+		vsocket->path, start.tv_sec, start.tv_usec);
 	return;
 
 err_cleanup:

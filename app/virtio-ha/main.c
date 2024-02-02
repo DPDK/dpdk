@@ -12,6 +12,7 @@
 #include <unistd.h>
 #include <syslog.h>
 #include <inttypes.h>
+#include <sys/time.h>
 
 #include <rte_log.h>
 
@@ -144,6 +145,7 @@ ha_server_app_query_vf_ctx(struct virtio_ha_msg *msg)
 	struct virtio_ha_pf_dev_list *list = &hs.pf_list;
 	struct virtio_ha_vf_dev_list *vf_list = NULL;
 	uint32_t nr_vf;
+	struct timeval start;
 
 	TAILQ_FOREACH(dev, list, next) {
 		if (!strcmp(dev->pf_name.dev_bdf, msg->hdr.bdf)) {
@@ -171,6 +173,10 @@ ha_server_app_query_vf_ctx(struct virtio_ha_msg *msg)
 			msg->fds[0] = vf_dev->vf_ctx.vfio_container_fd;
 			msg->fds[1] = vf_dev->vf_ctx.vfio_group_fd;
 			msg->fds[2] = vf_dev->vf_ctx.vfio_device_fd;
+
+			gettimeofday(&start, NULL);
+			HA_APP_LOG(INFO, "System time when close fd (dev %s): %lu.%06lu",
+				vf->vf_name.dev_bdf, start.tv_sec, start.tv_usec);
 			close(vf_dev->vhost_fd);
 			vf_dev->vhost_fd = -1;
 			HA_APP_LOG(INFO, "Got vf %s ctx query and reply with container fd %d group fd %d "
