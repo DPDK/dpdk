@@ -616,6 +616,9 @@ cnxk_flow_get_aged_flows(struct rte_eth_dev *eth_dev, void **context,
 
 	flow_age = &roc_npc->flow_age;
 
+	if (!flow_age->age_flow_refcnt)
+		return 0;
+
 	do {
 		sn = plt_seqcount_read_begin(&flow_age->seq_cnt);
 
