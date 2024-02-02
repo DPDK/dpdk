@@ -14,6 +14,7 @@
 
 #include "nfpcore/nfp_sync.h"
 #include "nfp_net_ctrl.h"
+#include "nfp_service.h"
 
 /* Interrupt definitions */
 #define NFP_NET_IRQ_LSC_IDX             0
@@ -102,8 +103,8 @@ struct nfp_pf_dev {
 	struct nfp_hwinfo *hwinfo;
 	struct nfp_rtsym_table *sym_tbl;
 
-	/** Service id of cpp bridge service */
-	uint32_t cpp_bridge_id;
+	/** Service info of cpp bridge service */
+	struct nfp_service_info cpp_service_info;
 
 	/** Multiple PF configuration */
 	struct nfp_multi_pf multi_pf;

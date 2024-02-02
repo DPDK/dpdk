@@ -396,6 +396,9 @@ nfp_flower_repr_dev_close(struct rte_eth_dev *dev)
 	if (app_fw_flower->pf_repr != NULL)
 		return 0;
 
+	/* Disable cpp service */
+	nfp_service_disable(&pf_dev->cpp_service_info);
+
 	/* Now it is safe to free all PF resources */
 	nfp_uninit_app_fw_flower(pf_dev);
 	nfp_pf_uninit(pf_dev);

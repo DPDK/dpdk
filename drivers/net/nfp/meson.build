@@ -40,6 +40,7 @@ sources = files(
         'nfp_net_ctrl.c',
         'nfp_net_flow.c',
         'nfp_rxtx.c',
+        'nfp_service.c',
 )
 
 deps += ['hash', 'security', 'common_nfp']

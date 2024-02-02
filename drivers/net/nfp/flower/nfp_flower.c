@@ -598,29 +598,20 @@ static int
 nfp_flower_enable_services(struct nfp_app_fw_flower *app_fw_flower)
 {
 	int ret;
-	uint32_t service_id;
+	struct nfp_service_info info;
 	const struct rte_service_spec flower_service = {
 		.name              = "flower_ctrl_vnic_service",
 		.callback          = nfp_flower_ctrl_vnic_service,
 		.callback_userdata = (void *)app_fw_flower,
 	};
 
-	/* Register the flower services */
-	ret = rte_service_component_register(&flower_service, &service_id);
+	ret = nfp_service_enable(&flower_service, &info);
 	if (ret != 0) {
-		PMD_INIT_LOG(ERR, "Could not register %s", flower_service.name);
-		return -EINVAL;
+		PMD_INIT_LOG(ERR, "Could not enable service %s", flower_service.name);
+		return ret;
 	}
 
-	app_fw_flower->ctrl_vnic_id = service_id;
-	PMD_INIT_LOG(INFO, "%s registered", flower_service.name);
-
-	/* Map them to available service cores */
-	ret = nfp_map_service(service_id);
-	if (ret != 0) {
-		PMD_INIT_LOG(ERR, "Could not map %s", flower_service.name);
-		return -EINVAL;
-	}
+	app_fw_flower->ctrl_vnic_id = info.id;
 
 	return 0;
 }

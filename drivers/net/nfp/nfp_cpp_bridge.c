@@ -8,10 +8,9 @@
 #include <unistd.h>
 #include <sys/ioctl.h>
 
-#include <rte_service_component.h>
-
 #include "nfpcore/nfp_cpp.h"
 #include "nfp_logs.h"
+#include "nfp_service.h"
 
 #define NFP_CPP_MEMIO_BOUNDARY    (1 << 20)
 #define NFP_BRIDGE_OP_READ        20
@@ -25,81 +24,22 @@
 static int nfp_cpp_bridge_service_func(void *args);
 
 int
-nfp_map_service(uint32_t service_id)
-{
-	int32_t ret;
-	uint32_t slcore = 0;
-	int32_t slcore_count;
-	uint8_t service_count;
-	const char *service_name;
-	uint32_t slcore_array[RTE_MAX_LCORE];
-	uint8_t min_service_count = UINT8_MAX;
-
-	slcore_count = rte_service_lcore_list(slcore_array, RTE_MAX_LCORE);
-	if (slcore_count <= 0) {
-		PMD_INIT_LOG(DEBUG, "No service cores found");
-		return -ENOENT;
-	}
-
-	/*
-	 * Find a service core with the least number of services already
-	 * registered to it.
-	 */
-	while (slcore_count--) {
-		service_count = rte_service_lcore_count_services(slcore_array[slcore_count]);
-		if (service_count < min_service_count) {
-			slcore = slcore_array[slcore_count];
-			min_service_count = service_count;
-		}
-	}
-
-	service_name = rte_service_get_name(service_id);
-	PMD_INIT_LOG(INFO, "Mapping service %s to core %u", service_name, slcore);
-
-	ret = rte_service_map_lcore_set(service_id, slcore, 1);
-	if (ret != 0) {
-		PMD_INIT_LOG(DEBUG, "Could not map flower service");
-		return -ENOENT;
-	}
-
-	rte_service_runstate_set(service_id, 1);
-	rte_service_component_runstate_set(service_id, 1);
-	rte_service_lcore_start(slcore);
-	if (rte_service_may_be_active(slcore) != 0)
-		PMD_INIT_LOG(INFO, "The service %s is running", service_name);
-	else
-		PMD_INIT_LOG(ERR, "The service %s is not running", service_name);
-
-	return 0;
-}
-
-int
 nfp_enable_cpp_service(struct nfp_pf_dev *pf_dev)
 {
 	int ret;
-	uint32_t service_id = 0;
+	const char *pci_name;
 	struct rte_service_spec cpp_service = {
-		.name         = "nfp_cpp_service",
-		.callback     = nfp_cpp_bridge_service_func,
+		.callback          = nfp_cpp_bridge_service_func,
+		.callback_userdata = (void *)pf_dev,
 	};
 
-	cpp_service.callback_userdata = (void *)pf_dev;
+	pci_name = strchr(pf_dev->pci_dev->name, ':') + 1;
+	snprintf(cpp_service.name, sizeof(cpp_service.name), "%s_cpp_service", pci_name);
 
-	/* Register the cpp service */
-	ret = rte_service_component_register(&cpp_service, &service_id);
+	ret = nfp_service_enable(&cpp_service, &pf_dev->cpp_service_info);
 	if (ret != 0) {
-		PMD_INIT_LOG(WARNING, "Could not register nfp cpp service");
-		return -EINVAL;
-	}
-
-	pf_dev->cpp_bridge_id = service_id;
-	PMD_INIT_LOG(INFO, "NFP cpp service registered");
-
-	/* Map it to available service core */
-	ret = nfp_map_service(service_id);
-	if (ret != 0) {
-		PMD_INIT_LOG(DEBUG, "Could not map nfp cpp service");
-		return -EINVAL;
+		PMD_INIT_LOG(DEBUG, "Could not enable service %s", cpp_service.name);
+		return ret;
 	}
 
 	return 0;
@@ -387,12 +327,18 @@ nfp_cpp_bridge_service_func(void *args)
 	int sockfd;
 	int datafd;
 	struct nfp_cpp *cpp;
+	const char *pci_name;
+	char socket_handle[14];
 	struct sockaddr address;
 	struct nfp_pf_dev *pf_dev;
 	struct timeval timeout = {1, 0};
 
-	unlink("/tmp/nfp_cpp");
+	pf_dev = args;
 
+	pci_name = strchr(pf_dev->pci_dev->name, ':') + 1;
+	snprintf(socket_handle, sizeof(socket_handle), "/tmp/%s", pci_name);
+
+	unlink(socket_handle);
 	sockfd = socket(AF_UNIX, SOCK_STREAM, 0);
 	if (sockfd < 0) {
 		PMD_CPP_LOG(ERR, "socket creation error. Service failed");
@@ -404,7 +350,7 @@ nfp_cpp_bridge_service_func(void *args)
 	memset(&address, 0, sizeof(struct sockaddr));
 
 	address.sa_family = AF_UNIX;
-	strcpy(address.sa_data, "/tmp/nfp_cpp");
+	strcpy(address.sa_data, socket_handle);
 
 	ret = bind(sockfd, (const struct sockaddr *)&address,
 			sizeof(struct sockaddr));
@@ -421,9 +367,8 @@ nfp_cpp_bridge_service_func(void *args)
 		return ret;
 	}
 
-	pf_dev = args;
 	cpp = pf_dev->cpp;
-	while (rte_service_runstate_get(pf_dev->cpp_bridge_id) != 0) {
+	while (rte_service_runstate_get(pf_dev->cpp_service_info.id) != 0) {
 		datafd = accept(sockfd, NULL, NULL);
 		if (datafd < 0) {
 			if (errno == EAGAIN || errno == EWOULDBLOCK)

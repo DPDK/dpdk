@@ -9,6 +9,5 @@
 #include "nfp_net_common.h"
 
 int nfp_enable_cpp_service(struct nfp_pf_dev *pf_dev);
-int nfp_map_service(uint32_t service_id);
 
 #endif /* __NFP_CPP_BRIDGE_H__ */
