@@ -115,6 +115,8 @@ New Features
 
   * Optimized mbuf rearm sequence.
   * Updated Tx queue mbuf free thresholds from 128 to 256 for better performance.
+  * Updated Rx queue mbuf refill routine to use mempool alloc and reorder it
+    to avoid mbuf write commits.
   * Added optimized SSE Rx routines.
   * Added optimized AVX2 Rx routines.
 

@@ -76,11 +76,11 @@ cnxk_ep_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 	uint16_t new_pkts;
 
 	new_pkts = cnxk_ep_rx_pkts_to_process(droq, nb_pkts);
-	cnxk_ep_process_pkts_scalar(rx_pkts, droq, new_pkts);
-
 	/* Refill RX buffers */
 	if (droq->refill_count >= DROQ_REFILL_THRESHOLD)
 		cnxk_ep_rx_refill(droq);
+
+	cnxk_ep_process_pkts_scalar(rx_pkts, droq, new_pkts);
 
 	return new_pkts;
 }

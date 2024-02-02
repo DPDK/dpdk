@@ -49,7 +49,7 @@ cnxk_ep_process_pkts_vec_avx(struct rte_mbuf **rx_pkts, struct otx_ep_droq *droq
 		/* Load rearm data and packet length for shuffle. */
 		for (i = 0; i < CNXK_EP_OQ_DESC_PER_LOOP_AVX; i++)
 			data[i] = _mm256_set_epi64x(0,
-				rte_pktmbuf_mtod(m[i], struct otx_ep_droq_info *)->length >> 16,
+				cnxk_pktmbuf_mtod(m[i], struct otx_ep_droq_info *)->length >> 16,
 				0, rearm_data);
 
 		/* Shuffle data to its place and sum the packet length. */
@@ -81,14 +81,14 @@ cnxk_ep_recv_pkts_avx(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkt
 	struct otx_ep_droq *droq = (struct otx_ep_droq *)rx_queue;
 	uint16_t new_pkts, vpkts;
 
+	/* Refill RX buffers */
+	if (droq->refill_count >= DROQ_REFILL_THRESHOLD)
+		cnxk_ep_rx_refill(droq);
+
 	new_pkts = cnxk_ep_rx_pkts_to_process(droq, nb_pkts);
 	vpkts = RTE_ALIGN_FLOOR(new_pkts, CNXK_EP_OQ_DESC_PER_LOOP_AVX);
 	cnxk_ep_process_pkts_vec_avx(rx_pkts, droq, vpkts);
 	cnxk_ep_process_pkts_scalar(&rx_pkts[vpkts], droq, new_pkts - vpkts);
-
-	/* Refill RX buffers */
-	if (droq->refill_count >= DROQ_REFILL_THRESHOLD)
-		cnxk_ep_rx_refill(droq);
 
 	return new_pkts;
 }
@@ -98,11 +98,6 @@ cn9k_ep_recv_pkts_avx(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkt
 {
 	struct otx_ep_droq *droq = (struct otx_ep_droq *)rx_queue;
 	uint16_t new_pkts, vpkts;
-
-	new_pkts = cnxk_ep_rx_pkts_to_process(droq, nb_pkts);
-	vpkts = RTE_ALIGN_FLOOR(new_pkts, CNXK_EP_OQ_DESC_PER_LOOP_AVX);
-	cnxk_ep_process_pkts_vec_avx(rx_pkts, droq, vpkts);
-	cnxk_ep_process_pkts_scalar(&rx_pkts[vpkts], droq, new_pkts - vpkts);
 
 	/* Refill RX buffers */
 	if (droq->refill_count >= DROQ_REFILL_THRESHOLD) {
@@ -118,6 +113,11 @@ cn9k_ep_recv_pkts_avx(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkt
 
 		rte_write32(0, droq->pkts_credit_reg);
 	}
+
+	new_pkts = cnxk_ep_rx_pkts_to_process(droq, nb_pkts);
+	vpkts = RTE_ALIGN_FLOOR(new_pkts, CNXK_EP_OQ_DESC_PER_LOOP_AVX);
+	cnxk_ep_process_pkts_vec_avx(rx_pkts, droq, vpkts);
+	cnxk_ep_process_pkts_scalar(&rx_pkts[vpkts], droq, new_pkts - vpkts);
 
 	return new_pkts;
 }

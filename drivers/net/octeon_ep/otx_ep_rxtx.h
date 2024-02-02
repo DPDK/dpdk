@@ -21,7 +21,7 @@
 
 /* SDP_LENGTH_S specifies packet length and is of 8-byte size */
 #define OTX_EP_INFO_SIZE 8
-#define DROQ_REFILL_THRESHOLD 16
+#define DROQ_REFILL_THRESHOLD  64
 #define OTX2_SDP_REQUEST_ISM   (0x1ULL << 63)
 
 static inline uint32_t

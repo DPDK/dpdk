@@ -21,13 +21,16 @@ cnxk_ep_rx_refill_mbuf(struct otx_ep_droq *droq, uint32_t count)
 	uint32_t i;
 	int rc;
 
-	rc = rte_pktmbuf_alloc_bulk(droq->mpool, &recv_buf_list[refill_idx], count);
+	rc = rte_mempool_get_bulk(droq->mpool, (void **)&recv_buf_list[refill_idx], count);
 	if (unlikely(rc)) {
 		droq->stats.rx_alloc_failure++;
 		return rc;
 	}
 
 	for (i = 0; i < count; i++) {
+		rte_prefetch_non_temporal(&desc_ring[(refill_idx + 1) & 3]);
+		if (i < count - 1)
+			rte_prefetch_non_temporal(recv_buf_list[refill_idx + 1]);
 		buf = recv_buf_list[refill_idx];
 		desc_ring[refill_idx].buffer_ptr = rte_mbuf_data_iova_default(buf);
 		refill_idx++;
@@ -42,9 +45,9 @@ cnxk_ep_rx_refill_mbuf(struct otx_ep_droq *droq, uint32_t count)
 static inline void
 cnxk_ep_rx_refill(struct otx_ep_droq *droq)
 {
-	uint32_t desc_refilled = 0, count;
-	uint32_t nb_desc = droq->nb_desc;
+	const uint32_t nb_desc = droq->nb_desc;
 	uint32_t refill_idx = droq->refill_idx;
+	uint32_t desc_refilled = 0, count;
 	int rc;
 
 	if (unlikely(droq->read_idx == refill_idx))
@@ -128,6 +131,8 @@ cnxk_ep_rx_pkts_to_process(struct otx_ep_droq *droq, uint16_t nb_pkts)
 	return RTE_MIN(nb_pkts, droq->pkts_pending);
 }
 
+#define cnxk_pktmbuf_mtod(m, t) ((t)(void *)((char *)(m)->buf_addr + RTE_PKTMBUF_HEADROOM))
+
 static __rte_always_inline void
 cnxk_ep_process_pkts_scalar(struct rte_mbuf **rx_pkts, struct otx_ep_droq *droq, uint16_t new_pkts)
 {
@@ -147,7 +152,7 @@ cnxk_ep_process_pkts_scalar(struct rte_mbuf **rx_pkts, struct otx_ep_droq *droq,
 			      void *));
 
 		mbuf = recv_buf_list[read_idx];
-		info = rte_pktmbuf_mtod(mbuf, struct otx_ep_droq_info *);
+		info = cnxk_pktmbuf_mtod(mbuf, struct otx_ep_droq_info *);
 		read_idx = otx_ep_incr_index(read_idx, 1, nb_desc);
 		pkt_len = rte_bswap16(info->length >> 48);
 		mbuf->pkt_len = pkt_len;
