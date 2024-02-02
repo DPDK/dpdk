@@ -59,6 +59,8 @@ otx_ep_set_rx_func(struct rte_eth_dev *eth_dev)
 		    rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX2) == 1)
 			eth_dev->rx_pkt_burst = &cnxk_ep_recv_pkts_avx;
 #endif
+#elif defined(RTE_ARCH_ARM64)
+		eth_dev->rx_pkt_burst = &cnxk_ep_recv_pkts_neon;
 #endif
 		if (otx_epvf->rx_offloads & RTE_ETH_RX_OFFLOAD_SCATTER)
 			eth_dev->rx_pkt_burst = &cnxk_ep_recv_pkts_mseg;
@@ -71,8 +73,9 @@ otx_ep_set_rx_func(struct rte_eth_dev *eth_dev)
 		    rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX2) == 1)
 			eth_dev->rx_pkt_burst = &cn9k_ep_recv_pkts_avx;
 #endif
+#elif defined(RTE_ARCH_ARM64)
+		eth_dev->rx_pkt_burst = &cn9k_ep_recv_pkts_neon;
 #endif
-
 		if (otx_epvf->rx_offloads & RTE_ETH_RX_OFFLOAD_SCATTER)
 			eth_dev->rx_pkt_burst = &cn9k_ep_recv_pkts_mseg;
 	} else {

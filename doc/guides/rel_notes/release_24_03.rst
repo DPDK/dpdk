@@ -119,6 +119,7 @@ New Features
     to avoid mbuf write commits.
   * Added optimized SSE Rx routines.
   * Added optimized AVX2 Rx routines.
+  * Added optimized NEON Rx routines.
 
 * **Updated NVIDIA mlx5 driver.**
 

@@ -29,7 +29,11 @@ if arch_subdir == 'x86'
     endif
 endif
 
-extra_flags = ['-Wno-strict-aliasing']
+if arch_subdir == 'arm'
+    sources += files('cnxk_ep_rx_neon.c')
+endif
+
+extra_flags = ['-Wno-strict-aliasing', '-flax-vector-conversions']
 foreach flag: extra_flags
     if cc.has_argument(flag)
         cflags += flag
