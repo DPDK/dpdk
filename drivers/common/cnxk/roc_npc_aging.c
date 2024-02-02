@@ -234,7 +234,10 @@ npc_age_flow_list_entry_delete(struct roc_npc *roc_npc,
 {
 	struct npc *npc = roc_npc_to_npc_priv(roc_npc);
 	struct npc_age_flow_list_head *list;
+	struct roc_npc_flow_age *flow_age;
 	struct npc_age_flow_entry *curr;
+
+	flow_age = &roc_npc->flow_age;
 
 	list = &npc->age_flow_list;
 	curr = TAILQ_FIRST(list);
@@ -244,6 +247,7 @@ npc_age_flow_list_entry_delete(struct roc_npc *roc_npc,
 
 	while (curr) {
 		if (flow->mcam_id == curr->flow->mcam_id) {
+			plt_bitmap_clear(flow_age->aged_flows, flow->mcam_id);
 			TAILQ_REMOVE(list, curr, next);
 			plt_free(curr);
 			break;
