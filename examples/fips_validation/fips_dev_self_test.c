@@ -1032,7 +1032,7 @@ prepare_cipher_xform(uint8_t dev_id,
 
 	cap = rte_cryptodev_sym_capability_get(dev_id, &cap_idx);
 	if (!cap) {
-		RTE_LOG(ERR, PMD, "Failed to get capability for cdev %u\n",
+		RTE_LOG(ERR, USER1, "Failed to get capability for cdev %u\n",
 				dev_id);
 		return -EACCES;
 	}
@@ -1040,7 +1040,7 @@ prepare_cipher_xform(uint8_t dev_id,
 	if (rte_cryptodev_sym_capability_check_cipher(cap,
 			cipher_xform->key.length,
 			cipher_xform->iv.length) != 0) {
-		RTE_LOG(ERR, PMD, "PMD %s key length %u IV length %u\n",
+		RTE_LOG(ERR, USER1, "PMD %s key length %u IV length %u\n",
 				rte_cryptodev_name_get(dev_id),
 				cipher_xform->key.length,
 				cipher_xform->iv.length);
@@ -1088,7 +1088,7 @@ prepare_auth_xform(uint8_t dev_id,
 
 	cap = rte_cryptodev_sym_capability_get(dev_id, &cap_idx);
 	if (!cap) {
-		RTE_LOG(ERR, PMD, "Failed to get capability for cdev %u\n",
+		RTE_LOG(ERR, USER1, "Failed to get capability for cdev %u\n",
 				dev_id);
 		return -EACCES;
 	}
@@ -1096,7 +1096,7 @@ prepare_auth_xform(uint8_t dev_id,
 	if (rte_cryptodev_sym_capability_check_auth(cap,
 			auth_xform->key.length,
 			auth_xform->digest_length, 0) != 0) {
-		RTE_LOG(ERR, PMD, "PMD %s key length %u Digest length %u\n",
+		RTE_LOG(ERR, USER1, "PMD %s key length %u Digest length %u\n",
 				rte_cryptodev_name_get(dev_id),
 				auth_xform->key.length,
 				auth_xform->digest_length);
@@ -1147,7 +1147,7 @@ prepare_aead_xform(uint8_t dev_id,
 
 	cap = rte_cryptodev_sym_capability_get(dev_id, &cap_idx);
 	if (!cap) {
-		RTE_LOG(ERR, PMD, "Failed to get capability for cdev %u\n",
+		RTE_LOG(ERR, USER1, "Failed to get capability for cdev %u\n",
 				dev_id);
 		return -EACCES;
 	}
@@ -1156,7 +1156,7 @@ prepare_aead_xform(uint8_t dev_id,
 			aead_xform->key.length,
 			aead_xform->digest_length, aead_xform->aad_length,
 			aead_xform->iv.length) != 0) {
-		RTE_LOG(ERR, PMD,
+		RTE_LOG(ERR, USER1,
 			"PMD %s key_len %u tag_len %u aad_len %u iv_len %u\n",
 				rte_cryptodev_name_get(dev_id),
 				aead_xform->key.length,
@@ -1195,7 +1195,7 @@ prepare_cipher_op(struct rte_crypto_op *op,
 
 	dst = (uint8_t *)rte_pktmbuf_append(mbuf, len);
 	if (!dst) {
-		RTE_LOG(ERR, PMD, "Error %i: MBUF too small\n", -ENOMEM);
+		RTE_LOG(ERR, USER1, "Error %i: MBUF too small\n", -ENOMEM);
 		return -ENOMEM;
 	}
 
@@ -1219,7 +1219,7 @@ prepare_auth_op(struct rte_crypto_op *op,
 	uint8_t *dst;
 
 	if (vec->input.len + vec->digest.len > RTE_MBUF_MAX_NB_SEGS) {
-		RTE_LOG(ERR, PMD, "Error %i: Test data too long (%u).\n",
+		RTE_LOG(ERR, USER1, "Error %i: Test data too long (%u).\n",
 				-ENOMEM, vec->input.len + vec->digest.len);
 		return -ENOMEM;
 	}
@@ -1229,7 +1229,7 @@ prepare_auth_op(struct rte_crypto_op *op,
 	dst = (uint8_t *)rte_pktmbuf_append(mbuf, vec->input.len +
 			vec->digest.len);
 	if (!dst) {
-		RTE_LOG(ERR, PMD, "Error %i: MBUF too small\n", -ENOMEM);
+		RTE_LOG(ERR, USER1, "Error %i: MBUF too small\n", -ENOMEM);
 		return -ENOMEM;
 	}
 
@@ -1274,7 +1274,7 @@ prepare_aead_op(struct rte_crypto_op *op,
 		memcpy(iv, vec->iv.data, vec->iv.len);
 
 	if (len + vec->digest.len > RTE_MBUF_MAX_NB_SEGS) {
-		RTE_LOG(ERR, PMD, "Error %i: Test data too long (%u).\n",
+		RTE_LOG(ERR, USER1, "Error %i: Test data too long (%u).\n",
 				-ENOMEM, len + vec->digest.len);
 		return -ENOMEM;
 	}
@@ -1282,7 +1282,7 @@ prepare_aead_op(struct rte_crypto_op *op,
 	dst = (uint8_t *)rte_pktmbuf_append(mbuf, RTE_ALIGN_CEIL(len +
 			vec->digest.len, 16));
 	if (!dst) {
-		RTE_LOG(ERR, PMD, "Error %i: MBUF too small\n", -ENOMEM);
+		RTE_LOG(ERR, USER1, "Error %i: MBUF too small\n", -ENOMEM);
 		return -ENOMEM;
 	}
 
@@ -1303,7 +1303,7 @@ prepare_aead_op(struct rte_crypto_op *op,
 
 	dst = rte_malloc(NULL, len, 16);
 	if (!dst) {
-		RTE_LOG(ERR, PMD, "Error %i: Not enough memory\n", -ENOMEM);
+		RTE_LOG(ERR, USER1, "Error %i: Not enough memory\n", -ENOMEM);
 		return -ENOMEM;
 	}
 
@@ -1474,24 +1474,24 @@ run_single_test(uint8_t dev_id,
 	ret = test_ops->prepare_xform(dev_id, &xform, vec, dir, key,
 			negative_test);
 	if (ret < 0) {
-		RTE_LOG(ERR, PMD, "Error %i: Prepare Xform\n", ret);
+		RTE_LOG(ERR, USER1, "Error %i: Prepare Xform\n", ret);
 		return ret;
 	}
 
 	sess = rte_cryptodev_sym_session_create(dev_id, &xform, env->sess_pool);
 	if (!sess) {
-		RTE_LOG(ERR, PMD, "Error %i: Init session\n", ret);
+		RTE_LOG(ERR, USER1, "Error %i: Init session\n", ret);
 		return ret;
 	}
 
 	ret = test_ops->prepare_op(env->op, env->mbuf, sess, dir, vec);
 	if (ret < 0) {
-		RTE_LOG(ERR, PMD, "Error %i: Prepare op\n", ret);
+		RTE_LOG(ERR, USER1, "Error %i: Prepare op\n", ret);
 		return ret;
 	}
 
 	if (rte_cryptodev_enqueue_burst(dev_id, 0, &env->op, 1) < 1) {
-		RTE_LOG(ERR, PMD, "Error: Failed enqueue\n");
+		RTE_LOG(ERR, USER1, "Error: Failed enqueue\n");
 		return ret;
 	}
 
@@ -1622,7 +1622,7 @@ fips_dev_self_test(uint8_t dev_id,
 
 	ret = fips_dev_auto_test_init(dev_id, &env);
 	if (ret < 0) {
-		RTE_LOG(ERR, PMD, "Failed to init self-test for PMD %u\n",
+		RTE_LOG(ERR, USER1, "Failed to init self-test for PMD %u\n",
 				dev_id);
 		return ret;
 	}
@@ -1644,7 +1644,7 @@ fips_dev_self_test(uint8_t dev_id,
 					negative_test = 0;
 			}
 
-			RTE_LOG(INFO, PMD, "Testing (ID %u) %s %s%s...\n",
+			RTE_LOG(INFO, USER1, "Testing (ID %u) %s %s%s...\n",
 					i,
 					vec->name,
 					j == self_test_dir_enc_auth_gen ?
@@ -1658,18 +1658,18 @@ fips_dev_self_test(uint8_t dev_id,
 				if (!negative_test)
 					break;
 				ret = -1;
-				RTE_LOG(ERR, PMD, "PMD %u Failed test %s %s\n",
+				RTE_LOG(ERR, USER1, "PMD %u Failed test %s %s\n",
 					dev_id, vec->name,
 					j == self_test_dir_enc_auth_gen ?
 					"Encrypt" : "Decrypt");
 				goto error_exit;
 			case -EACCES:
-				RTE_LOG(ERR, PMD, "Not supported by %s. Skip\n",
+				RTE_LOG(ERR, USER1, "Not supported by %s. Skip\n",
 					rte_cryptodev_name_get(dev_id));
 				ret = 0;
 				break;
 			default:
-				RTE_LOG(ERR, PMD, "PMD %u Failed test %s %s\n",
+				RTE_LOG(ERR, USER1, "PMD %u Failed test %s %s\n",
 					dev_id, vec->name,
 					j == self_test_dir_enc_auth_gen ?
 					"Encrypt" : "Decrypt");
@@ -1682,7 +1682,7 @@ error_exit:
 	fips_dev_auto_test_uninit(dev_id, &env);
 
 	if (ret == 0) {
-		RTE_LOG(INFO, PMD, "PMD %u finished self-test successfully\n",
+		RTE_LOG(INFO, USER1, "PMD %u finished self-test successfully\n",
 				dev_id);
 	}
 
