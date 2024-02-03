@@ -197,8 +197,8 @@ cryptodev_scheduler_create(const char *name,
 				return -EINVAL;
 			}
 
-			RTE_LOG(INFO, PMD, "  Sched mode param (%s = %s)\n",
-					param_name, param_val);
+			CR_SCHED_LOG(INFO, "  Sched mode param (%s = %s)",
+				     param_name, param_val);
 		}
 	}
 

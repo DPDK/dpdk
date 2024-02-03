@@ -833,8 +833,8 @@ cryptodev_armv8_crypto_uninit(struct rte_vdev_device *vdev)
 	if (name == NULL)
 		return -EINVAL;
 
-	RTE_LOG(INFO, PMD,
-		"Closing ARMv8 crypto device %s on numa socket %u\n",
+	ARMV8_CRYPTO_LOG_INFO(
+		"Closing ARMv8 crypto device %s on numa socket %u",
 		name, rte_socket_id());
 
 	cryptodev = rte_cryptodev_pmd_get_named_dev(name);

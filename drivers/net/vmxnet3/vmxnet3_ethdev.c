@@ -1919,7 +1919,7 @@ vmxnet3_interrupt_handler(void *param)
 	if (events == 0)
 		goto done;
 
-	RTE_LOG(DEBUG, PMD, "Reading events: 0x%X", events);
+	PMD_DRV_LOG(DEBUG, "Reading events: 0x%X", events);
 	vmxnet3_process_events(dev);
 done:
 	vmxnet3_enable_intr(hw, *eventIntrIdx);

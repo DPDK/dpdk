@@ -774,15 +774,15 @@ static void dpaa2_test_run(int (*setup)(void), void (*tdown)(void),
 		int (*test)(void), const char *name)
 {
 	if (setup() < 0) {
-		RTE_LOG(INFO, PMD, "Error setting up test %s", name);
+		DPAA2_EVENTDEV_INFO("Error setting up test %s", name);
 		unsupported++;
 	} else {
 		if (test() < 0) {
 			failed++;
-			RTE_LOG(INFO, PMD, "%s Failed\n", name);
+			DPAA2_EVENTDEV_INFO("%s Failed", name);
 		} else {
 			passed++;
-			RTE_LOG(INFO, PMD, "%s Passed", name);
+			DPAA2_EVENTDEV_INFO("%s Passed", name);
 		}
 	}
 

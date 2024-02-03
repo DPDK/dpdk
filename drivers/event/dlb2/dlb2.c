@@ -4741,9 +4741,8 @@ dlb2_parse_params(const char *params,
 		struct rte_kvargs *kvlist = rte_kvargs_parse(params, args);
 
 		if (kvlist == NULL) {
-			RTE_LOG(INFO, PMD,
-				"Ignoring unsupported parameters when creating device '%s'\n",
-				name);
+			DLB2_LOG_INFO("Ignoring unsupported parameters when creating device '%s'",
+				      name);
 		} else {
 			int ret = rte_kvargs_process(kvlist, NUMA_NODE_ARG,
 						     set_numa_node,

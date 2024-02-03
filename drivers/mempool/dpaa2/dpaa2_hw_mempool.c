@@ -293,7 +293,7 @@ rte_dpaa2_mbuf_pool_bpid(struct rte_mempool *mp)
 
 	bp_info = mempool_to_bpinfo(mp);
 	if (!(bp_info->bp_list)) {
-		RTE_LOG(ERR, PMD, "DPAA2 buffer pool not configured\n");
+		DPAA2_MEMPOOL_ERR("DPAA2 buffer pool not configured");
 		return -ENOMEM;
 	}
 
@@ -307,7 +307,7 @@ rte_dpaa2_mbuf_from_buf_addr(struct rte_mempool *mp, void *buf_addr)
 
 	bp_info = mempool_to_bpinfo(mp);
 	if (!(bp_info->bp_list)) {
-		RTE_LOG(ERR, PMD, "DPAA2 buffer pool not configured\n");
+		DPAA2_MEMPOOL_ERR("DPAA2 buffer pool not configured");
 		return NULL;
 	}
 

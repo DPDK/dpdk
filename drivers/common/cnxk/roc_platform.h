@@ -265,11 +265,13 @@ extern int cnxk_logtype_tm;
 extern int cnxk_logtype_ree;
 extern int cnxk_logtype_dpi;
 
+#define RTE_LOGTYPE_CNXK cnxk_logtype_base
+
 #define plt_err(fmt, args...)                                                  \
-	RTE_LOG(ERR, PMD, "%s():%u " fmt "\n", __func__, __LINE__, ##args)
-#define plt_info(fmt, args...) RTE_LOG(INFO, PMD, fmt "\n", ##args)
-#define plt_warn(fmt, args...) RTE_LOG(WARNING, PMD, fmt "\n", ##args)
-#define plt_print(fmt, args...) RTE_LOG(INFO, PMD, fmt "\n", ##args)
+	RTE_LOG(ERR, CNXK, "%s():%u " fmt "\n", __func__, __LINE__, ##args)
+#define plt_info(fmt, args...) RTE_LOG(INFO, CNXK, fmt "\n", ##args)
+#define plt_warn(fmt, args...) RTE_LOG(WARNING, CNXK, fmt "\n", ##args)
+#define plt_print(fmt, args...) RTE_LOG(INFO, CNXK, fmt "\n", ##args)
 #define plt_dump(fmt, ...)      fprintf(stderr, fmt "\n", ##__VA_ARGS__)
 #define plt_dump_no_nl(fmt, ...) fprintf(stderr, fmt, ##__VA_ARGS__)
 
@@ -296,11 +298,11 @@ extern int cnxk_logtype_dpi;
 
 /* Datapath logs */
 #define plt_dp_err(fmt, args...)                                               \
-	RTE_LOG_DP(ERR, PMD, "%s():%u " fmt "\n", __func__, __LINE__, ##args)
+	RTE_LOG_DP(ERR, CNXK, "%s():%u " fmt "\n", __func__, __LINE__, ##args)
 #define plt_dp_info(fmt, args...)                                              \
-	RTE_LOG_DP(INFO, PMD, "%s():%u " fmt "\n", __func__, __LINE__, ##args)
+	RTE_LOG_DP(INFO, CNXK, "%s():%u " fmt "\n", __func__, __LINE__, ##args)
 #define plt_dp_dbg(fmt, args...)                                              \
-	RTE_LOG_DP(DEBUG, PMD, "%s():%u " fmt "\n", __func__, __LINE__, ##args)
+	RTE_LOG_DP(DEBUG, CNXK, "%s():%u " fmt "\n", __func__, __LINE__, ##args)
 
 #ifdef __cplusplus
 #define CNXK_PCI_ID(subsystem_dev, dev)                                        \

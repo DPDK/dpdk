@@ -3518,7 +3518,7 @@ dpaa_sec_eventq_detach(const struct rte_cryptodev *dev,
 	qman_oos_fq(&qp->outq);
 	ret = qman_init_fq(&qp->outq, 0, &opts);
 	if (ret)
-		RTE_LOG(ERR, PMD, "Error in qman_init_fq: ret: %d\n", ret);
+		DPAA_SEC_ERR("Error in qman_init_fq: ret: %d", ret);
 	qp->outq.cb.dqrr = NULL;
 
 	return ret;
@@ -3709,7 +3709,7 @@ dpaa_sec_dev_init(struct rte_cryptodev *cryptodev)
 
 	dpaa_sec_get_devargs(cryptodev->device->devargs, DRIVER_DUMP_MODE);
 
-	RTE_LOG(INFO, PMD, "%s cryptodev init\n", cryptodev->data->name);
+	DPAA_SEC_INFO("%s cryptodev init", cryptodev->data->name);
 	return 0;
 
 init_error:

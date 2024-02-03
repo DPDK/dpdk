@@ -4153,7 +4153,7 @@ dpaa2_sec_eventq_attach(const struct rte_cryptodev *dev,
 		ret = dpseci_set_opr(dpseci, CMD_PRI_LOW, priv->token,
 				   qp_id, OPR_OPT_CREATE, &ocfg);
 		if (ret) {
-			RTE_LOG(ERR, PMD, "Error setting opr: ret: %d\n", ret);
+			DPAA2_SEC_ERR("Error setting opr: ret: %d", ret);
 			return ret;
 		}
 		qp->tx_vq.cb_eqresp_free = dpaa2_sec_free_eqresp_buf;
@@ -4163,7 +4163,7 @@ dpaa2_sec_eventq_attach(const struct rte_cryptodev *dev,
 	ret = dpseci_set_rx_queue(dpseci, CMD_PRI_LOW, priv->token,
 				  qp_id, &cfg);
 	if (ret) {
-		RTE_LOG(ERR, PMD, "Error in dpseci_set_queue: ret: %d\n", ret);
+		DPAA2_SEC_ERR("Error in dpseci_set_queue: ret: %d", ret);
 		return ret;
 	}
 
@@ -4188,7 +4188,7 @@ dpaa2_sec_eventq_detach(const struct rte_cryptodev *dev,
 	ret = dpseci_set_rx_queue(dpseci, CMD_PRI_LOW, priv->token,
 				  qp_id, &cfg);
 	if (ret)
-		RTE_LOG(ERR, PMD, "Error in dpseci_set_queue: ret: %d\n", ret);
+		DPAA2_SEC_ERR("Error in dpseci_set_queue: ret: %d", ret);
 
 	return ret;
 }

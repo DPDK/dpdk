@@ -1141,7 +1141,7 @@ dpaa2_eventdev_create(const char *name, struct rte_vdev_device *vdev)
 		priv->max_event_queues++;
 	} while (dpcon_dev && dpci_dev);
 
-	RTE_LOG(INFO, PMD, "%s eventdev created\n", name);
+	DPAA2_EVENTDEV_INFO("%s eventdev created", name);
 
 done:
 	event_dev_probing_finish(eventdev);
@@ -1178,7 +1178,7 @@ dpaa2_eventdev_destroy(const char *name)
 	}
 	priv->max_event_queues = 0;
 
-	RTE_LOG(INFO, PMD, "%s eventdev cleaned\n", name);
+	DPAA2_EVENTDEV_INFO("%s eventdev cleaned", name);
 	return 0;
 }
 

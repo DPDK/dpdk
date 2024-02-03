@@ -415,10 +415,10 @@ mrvl_set_tx_function(struct rte_eth_dev *dev)
 
 	/* Use a simple Tx queue (no offloads, no multi segs) if possible */
 	if (priv->multiseg) {
-		RTE_LOG(INFO, PMD, "Using multi-segment tx callback\n");
+		MRVL_LOG(INFO, "Using multi-segment tx callback");
 		dev->tx_pkt_burst = mrvl_tx_sg_pkt_burst;
 	} else {
-		RTE_LOG(INFO, PMD, "Using single-segment tx callback\n");
+		MRVL_LOG(INFO, "Using single-segment tx callback");
 		dev->tx_pkt_burst = mrvl_tx_pkt_burst;
 	}
 }
@@ -2976,8 +2976,7 @@ mrvl_tx_sg_pkt_burst(void *txq, struct rte_mbuf **tx_pkts,
 		 */
 		if (nb_segs > PP2_PPIO_DESC_NUM_FRAGS) {
 			total_descs -= nb_segs;
-			RTE_LOG(ERR, PMD,
-				"Too many segments. Packet won't be sent.\n");
+			MRVL_LOG(ERR, "Too many segments. Packet won't be sent.");
 			break;
 		}
 

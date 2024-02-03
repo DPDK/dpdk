@@ -181,7 +181,7 @@ int dpaa2_eth_load_wriop_soft_parser(struct dpaa2_dev_priv *priv,
 
 	priv->ss_iova = (uint64_t)(DPAA2_VADDR_TO_IOVA(addr));
 	priv->ss_offset += sp_param.size;
-	RTE_LOG(INFO, PMD, "Soft parser loaded for dpni@%d\n", priv->hw_id);
+	DPAA2_PMD_INFO("Soft parser loaded for dpni@%d", priv->hw_id);
 
 	rte_free(addr);
 	return 0;
@@ -234,6 +234,6 @@ int dpaa2_eth_enable_wriop_soft_parser(struct dpaa2_dev_priv *priv,
 	}
 
 	rte_free(param_addr);
-	RTE_LOG(INFO, PMD, "Soft parser enabled for dpni@%d\n", priv->hw_id);
+	DPAA2_PMD_INFO("Soft parser enabled for dpni@%d", priv->hw_id);
 	return 0;
 }

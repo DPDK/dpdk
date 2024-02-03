@@ -2851,7 +2851,7 @@ dpaa2_dev_init(struct rte_eth_dev *eth_dev)
 			return ret;
 		}
 	}
-	RTE_LOG(INFO, PMD, "%s: netdev created, connected to %s\n",
+	DPAA2_PMD_INFO("%s: netdev created, connected to %s",
 		eth_dev->data->name, dpaa2_dev->ep_name);
 
 	return 0;

@@ -1025,7 +1025,7 @@ dpaa_event_dev_create(const char *name, const char *params, struct rte_vdev_devi
 	eventdev->txa_enqueue = dpaa_eventdev_txa_enqueue;
 	eventdev->txa_enqueue_same_dest	= dpaa_eventdev_txa_enqueue_same_dest;
 
-	RTE_LOG(INFO, PMD, "%s eventdev added", name);
+	DPAA_EVENTDEV_INFO("%s eventdev added", name);
 
 	/* For secondary processes, the primary has done all the work */
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
