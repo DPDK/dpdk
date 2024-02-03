@@ -56,7 +56,7 @@ cnxk_gpio_read_attr(char *attr, char *val)
 
 #define CNXK_GPIO_ERR_STR(err, str, ...) do {                                  \
 	if (err) {                                                             \
-		RTE_LOG(ERR, PMD, "%s:%d: " str " (%d)\n", __func__, __LINE__, \
+		CNXK_GPIO_LOG(ERR, "%s:%d: " str " (%d)", __func__, __LINE__, \
 			##__VA_ARGS__, err);                                   \
 		goto out;                                                      \
 	}                                                                      \
@@ -330,30 +330,29 @@ cnxk_gpio_selftest(uint16_t dev_id)
 	for (i = 0; i < queues; i++) {
 		ret = rte_rawdev_queue_conf_get(dev_id, i, &conf, sizeof(conf));
 		if (ret) {
-			RTE_LOG(ERR, PMD,
-				"failed to read queue configuration (%d)\n",
+			CNXK_GPIO_LOG(ERR, "failed to read queue configuration (%d)",
 				ret);
 			goto out;
 		}
 
-		RTE_LOG(INFO, PMD, "testing queue%d (gpio%d)\n", i, conf.gpio);
+		CNXK_GPIO_LOG(INFO, "testing queue%d (gpio%d)", i, conf.gpio);
 
 		if (conf.size != 1) {
-			RTE_LOG(ERR, PMD, "wrong queue size received\n");
+			CNXK_GPIO_LOG(ERR, "wrong queue size received");
 			ret = -EIO;
 			goto out;
 		}
 
 		ret = rte_rawdev_queue_setup(dev_id, i, NULL, 0);
 		if (ret) {
-			RTE_LOG(ERR, PMD, "failed to setup queue (%d)\n", ret);
+			CNXK_GPIO_LOG(ERR, "failed to setup queue (%d)", ret);
 			goto out;
 		}
 
 		gpio = gpiochip->gpios[conf.gpio];
 		snprintf(buf, sizeof(buf), CNXK_GPIO_PATH_FMT, gpio->num);
 		if (!cnxk_gpio_attr_exists(buf)) {
-			RTE_LOG(ERR, PMD, "%s does not exist\n", buf);
+			CNXK_GPIO_LOG(ERR, "%s does not exist", buf);
 			ret = -ENOENT;
 			goto release;
 		}
@@ -371,13 +370,13 @@ release:
 		ret2 = ret;
 		ret = rte_rawdev_queue_release(dev_id, i);
 		if (ret) {
-			RTE_LOG(ERR, PMD, "failed to release queue (%d)\n",
+			CNXK_GPIO_LOG(ERR, "failed to release queue (%d)",
 				ret);
 			break;
 		}
 
 		if (cnxk_gpio_attr_exists(buf)) {
-			RTE_LOG(ERR, PMD, "%s still exists\n", buf);
+			CNXK_GPIO_LOG(ERR, "%s still exists", buf);
 			ret = -EIO;
 			break;
 		}

@@ -189,7 +189,7 @@ cnxk_bphy_cgx_process_buf(struct cnxk_bphy_cgx *cgx, unsigned int queue,
 
 	/* get rid of last response if any */
 	if (qp->rsp) {
-		RTE_LOG(WARNING, PMD, "Previous response got overwritten\n");
+		CNXK_BPHY_LOG(WARNING, "Previous response got overwritten");
 		rte_free(qp->rsp);
 	}
 	qp->rsp = rsp;

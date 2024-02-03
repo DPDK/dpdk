@@ -251,7 +251,7 @@ cnxk_bphy_irq_enqueue_bufs(struct rte_rawdev *dev,
 
 	/* get rid of last response if any */
 	if (qp->rsp) {
-		RTE_LOG(WARNING, PMD, "Previous response got overwritten\n");
+		CNXK_BPHY_LOG(WARNING, "Previous response got overwritten");
 		rte_free(qp->rsp);
 	}
 	qp->rsp = rsp;
@@ -410,3 +410,4 @@ static struct rte_pci_driver cnxk_bphy_rawdev_pmd = {
 RTE_PMD_REGISTER_PCI(bphy_rawdev_pci_driver, cnxk_bphy_rawdev_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(bphy_rawdev_pci_driver, pci_bphy_map);
 RTE_PMD_REGISTER_KMOD_DEP(bphy_rawdev_pci_driver, "vfio-pci");
+RTE_LOG_REGISTER_SUFFIX(cnxk_logtype_bphy, bphy, INFO);

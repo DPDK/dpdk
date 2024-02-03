@@ -57,62 +57,61 @@ cnxk_bphy_cgx_dev_selftest(uint16_t dev_id)
 		if (ret)
 			break;
 		if (descs != 1) {
-			RTE_LOG(ERR, PMD, "Wrong number of descs reported\n");
+			CNXK_BPHY_LOG(ERR, "Wrong number of descs reported");
 			ret = -ENODEV;
 			break;
 		}
 
-		RTE_LOG(INFO, PMD, "Testing queue %d\n", i);
+		CNXK_BPHY_LOG(INFO, "Testing queue %d", i);
 
 		ret = rte_pmd_bphy_cgx_stop_rxtx(dev_id, i);
 		if (ret) {
-			RTE_LOG(ERR, PMD, "Failed to stop rx/tx\n");
+			CNXK_BPHY_LOG(ERR, "Failed to stop rx/tx");
 			break;
 		}
 
 		ret = rte_pmd_bphy_cgx_start_rxtx(dev_id, i);
 		if (ret) {
-			RTE_LOG(ERR, PMD, "Failed to start rx/tx\n");
+			CNXK_BPHY_LOG(ERR, "Failed to start rx/tx");
 			break;
 		}
 
 		ret = rte_pmd_bphy_cgx_set_link_state(dev_id, i, false);
 		if (ret) {
-			RTE_LOG(ERR, PMD, "Failed to set link down\n");
+			CNXK_BPHY_LOG(ERR, "Failed to set link down");
 			break;
 		}
 
 		ret = cnxk_bphy_cgx_link_cond(dev_id, i, 0);
 		if (ret != 0)
-			RTE_LOG(ERR, PMD,
-				"Timed out waiting for a link down\n");
+			CNXK_BPHY_LOG(ERR, "Timed out waiting for a link down");
 
 		ret = rte_pmd_bphy_cgx_set_link_state(dev_id, i, true);
 		if (ret) {
-			RTE_LOG(ERR, PMD, "Failed to set link up\n");
+			CNXK_BPHY_LOG(ERR, "Failed to set link up");
 			break;
 		}
 
 		ret = cnxk_bphy_cgx_link_cond(dev_id, i, 1);
 		if (ret != 1)
-			RTE_LOG(ERR, PMD, "Timed out waiting for a link up\n");
+			CNXK_BPHY_LOG(ERR, "Timed out waiting for a link up");
 
 		ret = rte_pmd_bphy_cgx_intlbk_enable(dev_id, i);
 		if (ret) {
-			RTE_LOG(ERR, PMD, "Failed to enable internal lbk\n");
+			CNXK_BPHY_LOG(ERR, "Failed to enable internal lbk");
 			break;
 		}
 
 		ret = rte_pmd_bphy_cgx_intlbk_disable(dev_id, i);
 		if (ret) {
-			RTE_LOG(ERR, PMD, "Failed to disable internal lbk\n");
+			CNXK_BPHY_LOG(ERR, "Failed to disable internal lbk");
 			break;
 		}
 
 		ret = rte_pmd_bphy_cgx_ptp_rx_enable(dev_id, i);
 		/* ptp not available on RPM */
 		if (ret < 0 && ret != -ENOTSUP) {
-			RTE_LOG(ERR, PMD, "Failed to enable ptp\n");
+			CNXK_BPHY_LOG(ERR, "Failed to enable ptp");
 			break;
 		}
 		ret = 0;
@@ -120,27 +119,27 @@ cnxk_bphy_cgx_dev_selftest(uint16_t dev_id)
 		ret = rte_pmd_bphy_cgx_ptp_rx_disable(dev_id, i);
 		/* ptp not available on RPM */
 		if (ret < 0 && ret != -ENOTSUP) {
-			RTE_LOG(ERR, PMD, "Failed to disable ptp\n");
+			CNXK_BPHY_LOG(ERR, "Failed to disable ptp");
 			break;
 		}
 		ret = 0;
 
 		ret = rte_pmd_bphy_cgx_get_supported_fec(dev_id, i, &fec);
 		if (ret) {
-			RTE_LOG(ERR, PMD, "Failed to get supported FEC\n");
+			CNXK_BPHY_LOG(ERR, "Failed to get supported FEC");
 			break;
 		}
 
 		ret = rte_pmd_bphy_cgx_set_fec(dev_id, i, fec);
 		if (ret) {
-			RTE_LOG(ERR, PMD, "Failed to set FEC to %d\n", fec);
+			CNXK_BPHY_LOG(ERR, "Failed to set FEC to %d", fec);
 			break;
 		}
 
 		fec = CNXK_BPHY_CGX_ETH_LINK_FEC_NONE;
 		ret = rte_pmd_bphy_cgx_set_fec(dev_id, i, fec);
 		if (ret) {
-			RTE_LOG(ERR, PMD, "Failed to disable FEC\n");
+			CNXK_BPHY_LOG(ERR, "Failed to disable FEC");
 			break;
 		}
 	}

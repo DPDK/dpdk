@@ -215,13 +215,13 @@ cnxk_gpio_parse_allowlist(struct cnxk_gpiochip *gpiochip, char *allowlist)
 		errno = 0;
 		val = strtol(token, NULL, 10);
 		if (errno) {
-			RTE_LOG(ERR, PMD, "failed to parse %s\n", token);
+			CNXK_GPIO_LOG(ERR, "failed to parse %s", token);
 			ret = -errno;
 			goto out;
 		}
 
 		if (val < 0 || val >= gpiochip->num_gpios) {
-			RTE_LOG(ERR, PMD, "gpio%d out of 0-%d range\n", val,
+			CNXK_GPIO_LOG(ERR, "gpio%d out of 0-%d range", val,
 				gpiochip->num_gpios - 1);
 			ret = -EINVAL;
 			goto out;
@@ -231,7 +231,7 @@ cnxk_gpio_parse_allowlist(struct cnxk_gpiochip *gpiochip, char *allowlist)
 			if (list[i] != val)
 				continue;
 
-			RTE_LOG(WARNING, PMD, "gpio%d already allowed\n", val);
+			CNXK_GPIO_LOG(WARNING, "gpio%d already allowed", val);
 			break;
 		}
 		if (i == queue)
@@ -398,7 +398,7 @@ cnxk_gpio_queue_setup(struct rte_rawdev *dev, uint16_t queue_id,
 			return ret;
 		}
 	} else {
-		RTE_LOG(WARNING, PMD, "using existing gpio%d\n", gpio->num);
+		CNXK_GPIO_LOG(WARNING, "using existing gpio%d", gpio->num);
 	}
 
 	gpiochip->gpios[num] = gpio;
@@ -647,7 +647,7 @@ cnxk_gpio_process_buf(struct cnxk_gpio *gpio, struct rte_rawdev_buf *rbuf)
 
 	/* get rid of last response if any */
 	if (gpio->rsp) {
-		RTE_LOG(WARNING, PMD, "previous response got overwritten\n");
+		CNXK_GPIO_LOG(WARNING, "previous response got overwritten");
 		rte_free(gpio->rsp);
 	}
 	gpio->rsp = rsp;
@@ -741,7 +741,7 @@ cnxk_gpio_probe(struct rte_vdev_device *dev)
 	cnxk_gpio_format_name(name, sizeof(name));
 	rawdev = rte_rawdev_pmd_allocate(name, sizeof(*gpiochip), rte_socket_id());
 	if (!rawdev) {
-		RTE_LOG(ERR, PMD, "failed to allocate %s rawdev\n", name);
+		CNXK_GPIO_LOG(ERR, "failed to allocate %s rawdev", name);
 		return -ENOMEM;
 	}
 
@@ -770,7 +770,7 @@ cnxk_gpio_probe(struct rte_vdev_device *dev)
 	snprintf(buf, sizeof(buf), "%s/gpiochip%d/base", CNXK_GPIO_CLASS_PATH, gpiochip->num);
 	ret = cnxk_gpio_read_attr_int(buf, &gpiochip->base);
 	if (ret) {
-		RTE_LOG(ERR, PMD, "failed to read %s\n", buf);
+		CNXK_GPIO_LOG(ERR, "failed to read %s", buf);
 		goto out;
 	}
 
@@ -778,20 +778,20 @@ cnxk_gpio_probe(struct rte_vdev_device *dev)
 	snprintf(buf, sizeof(buf), "%s/gpiochip%d/ngpio", CNXK_GPIO_CLASS_PATH, gpiochip->num);
 	ret = cnxk_gpio_read_attr_int(buf, &gpiochip->num_gpios);
 	if (ret) {
-		RTE_LOG(ERR, PMD, "failed to read %s\n", buf);
+		CNXK_GPIO_LOG(ERR, "failed to read %s", buf);
 		goto out;
 	}
 	gpiochip->num_queues = gpiochip->num_gpios;
 
 	ret = cnxk_gpio_parse_allowlist(gpiochip, params->allowlist);
 	if (ret) {
-		RTE_LOG(ERR, PMD, "failed to parse allowed gpios\n");
+		CNXK_GPIO_LOG(ERR, "failed to parse allowed gpios");
 		goto out;
 	}
 
 	gpiochip->gpios = rte_calloc(NULL, gpiochip->num_gpios, sizeof(struct cnxk_gpio *), 0);
 	if (!gpiochip->gpios) {
-		RTE_LOG(ERR, PMD, "failed to allocate gpios memory\n");
+		CNXK_GPIO_LOG(ERR, "failed to allocate gpios memory");
 		ret = -ENOMEM;
 		goto out;
 	}
@@ -851,3 +851,4 @@ RTE_PMD_REGISTER_VDEV(cnxk_gpio, cnxk_gpio_drv);
 RTE_PMD_REGISTER_PARAM_STRING(cnxk_gpio,
 		"gpiochip=<int> "
 		"allowlist=<list>");
+RTE_LOG_REGISTER_SUFFIX(cnxk_logtype_gpio, gpio, INFO);
