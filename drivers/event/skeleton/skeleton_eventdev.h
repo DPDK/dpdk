@@ -8,9 +8,12 @@
 #include <eventdev_pmd_pci.h>
 #include <eventdev_pmd_vdev.h>
 
+extern int skeleton_eventdev_logtype;
+
 #ifdef RTE_LIBRTE_PMD_SKELETON_EVENTDEV_DEBUG
 #define PMD_DRV_LOG(level, fmt, args...) \
-	RTE_LOG(level, PMD, "%s(): " fmt "\n", __func__, ## args)
+	rte_log(RTE_LOG_ ## level, skeleton_eventdev_logtype, \
+		"%s(): " fmt "\n", __func__, ## args)
 #define PMD_DRV_FUNC_TRACE() PMD_DRV_LOG(DEBUG, ">>")
 #else
 #define PMD_DRV_LOG(level, fmt, args...) do { } while (0)
@@ -18,7 +21,8 @@
 #endif
 
 #define PMD_DRV_ERR(fmt, args...) \
-	RTE_LOG(ERR, PMD, "%s(): " fmt "\n", __func__, ## args)
+	rte_log(RTE_LOG_ERR, skeleton_eventdev_logtype, \
+		"%s(): " fmt "\n", __func__, ## args)
 
 struct skeleton_eventdev {
 	uintptr_t reg_base;

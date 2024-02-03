@@ -457,8 +457,7 @@ skeleton_eventdev_probe(struct rte_vdev_device *vdev)
 	const char *name;
 
 	name = rte_vdev_device_name(vdev);
-	RTE_LOG(INFO, PMD, "Initializing %s on NUMA node %d\n", name,
-			rte_socket_id());
+	PMD_DRV_LOG(INFO, "Initializing %s on NUMA node %d", name, rte_socket_id());
 	return skeleton_eventdev_create(name, rte_socket_id(), vdev);
 }
 
@@ -479,3 +478,4 @@ static struct rte_vdev_driver vdev_eventdev_skeleton_pmd = {
 };
 
 RTE_PMD_REGISTER_VDEV(EVENTDEV_NAME_SKELETON_PMD, vdev_eventdev_skeleton_pmd);
+RTE_LOG_REGISTER_DEFAULT(skeleton_eventdev_logtype, INFO);
