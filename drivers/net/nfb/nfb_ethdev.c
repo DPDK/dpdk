@@ -192,8 +192,7 @@ nfb_eth_dev_configure(struct rte_eth_dev *dev __rte_unused)
 				(&nfb_timestamp_dynfield_offset,
 				&nfb_timestamp_rx_dynflag);
 		if (ret != 0) {
-			RTE_LOG(ERR, PMD, "Cannot register Rx timestamp"
-					" field/flag %d\n", ret);
+			NFB_LOG(ERR, "Cannot register Rx timestamp field/flag %d", ret);
 			nfb_close(internals->nfb);
 			return -rte_errno;
 		}
@@ -520,7 +519,7 @@ nfb_eth_dev_init(struct rte_eth_dev *dev)
 	struct rte_ether_addr eth_addr_init;
 	struct rte_kvargs *kvlist;
 
-	RTE_LOG(INFO, PMD, "Initializing NFB device (" PCI_PRI_FMT ")\n",
+	NFB_LOG(INFO, "Initializing NFB device (" PCI_PRI_FMT ")",
 		pci_addr->domain, pci_addr->bus, pci_addr->devid,
 		pci_addr->function);
 
@@ -536,7 +535,7 @@ nfb_eth_dev_init(struct rte_eth_dev *dev)
 		kvlist = rte_kvargs_parse(dev->device->devargs->args,
 						VALID_KEYS);
 		if (kvlist == NULL) {
-			RTE_LOG(ERR, PMD, "Failed to parse device arguments %s",
+			NFB_LOG(ERR, "Failed to parse device arguments %s",
 				dev->device->devargs->args);
 			rte_kvargs_free(kvlist);
 			return -EINVAL;
@@ -551,14 +550,14 @@ nfb_eth_dev_init(struct rte_eth_dev *dev)
 	 */
 	internals->nfb = nfb_open(internals->nfb_dev);
 	if (internals->nfb == NULL) {
-		RTE_LOG(ERR, PMD, "nfb_open(): failed to open %s",
+		NFB_LOG(ERR, "nfb_open(): failed to open %s",
 			internals->nfb_dev);
 		return -EINVAL;
 	}
 	data->nb_rx_queues = ndp_get_rx_queue_available_count(internals->nfb);
 	data->nb_tx_queues = ndp_get_tx_queue_available_count(internals->nfb);
 
-	RTE_LOG(INFO, PMD, "Available NDP queues RX: %u TX: %u\n",
+	NFB_LOG(INFO, "Available NDP queues RX: %u TX: %u",
 		data->nb_rx_queues, data->nb_tx_queues);
 
 	nfb_nc_rxmac_init(internals->nfb,
@@ -583,7 +582,7 @@ nfb_eth_dev_init(struct rte_eth_dev *dev)
 	data->mac_addrs = rte_zmalloc(data->name,
 		sizeof(struct rte_ether_addr) * mac_count, RTE_CACHE_LINE_SIZE);
 	if (data->mac_addrs == NULL) {
-		RTE_LOG(ERR, PMD, "Could not alloc space for MAC address!\n");
+		NFB_LOG(ERR, "Could not alloc space for MAC address");
 		nfb_close(internals->nfb);
 		return -EINVAL;
 	}
@@ -601,8 +600,7 @@ nfb_eth_dev_init(struct rte_eth_dev *dev)
 
 	dev->data->dev_flags |= RTE_ETH_DEV_AUTOFILL_QUEUE_XSTATS;
 
-	RTE_LOG(INFO, PMD, "NFB device ("
-		PCI_PRI_FMT ") successfully initialized\n",
+	NFB_LOG(INFO, "NFB device (" PCI_PRI_FMT ") successfully initialized",
 		pci_addr->domain, pci_addr->bus, pci_addr->devid,
 		pci_addr->function);
 
@@ -626,8 +624,7 @@ nfb_eth_dev_uninit(struct rte_eth_dev *dev)
 
 	nfb_eth_dev_close(dev);
 
-	RTE_LOG(INFO, PMD, "NFB device ("
-		PCI_PRI_FMT ") successfully uninitialized\n",
+	NFB_LOG(INFO, "NFB device (" PCI_PRI_FMT ") successfully uninitialized",
 		pci_addr->domain, pci_addr->bus, pci_addr->devid,
 		pci_addr->function);
 
@@ -690,3 +687,4 @@ static struct rte_pci_driver nfb_eth_driver = {
 RTE_PMD_REGISTER_PCI(RTE_NFB_DRIVER_NAME, nfb_eth_driver);
 RTE_PMD_REGISTER_PCI_TABLE(RTE_NFB_DRIVER_NAME, nfb_pci_id_table);
 RTE_PMD_REGISTER_KMOD_DEP(RTE_NFB_DRIVER_NAME, "* nfb");
+RTE_LOG_REGISTER_DEFAULT(nfb_logtype, NOTICE);
