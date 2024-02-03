@@ -352,7 +352,7 @@ struct logtype {
 
 static const struct logtype logtype_strings[] = {
 	{RTE_LOGTYPE_EAL,        "lib.eal"},
-	{RTE_LOGTYPE_PMD,        "pmd"},
+
 	{RTE_LOGTYPE_USER1,      "user1"},
 	{RTE_LOGTYPE_USER2,      "user2"},
 	{RTE_LOGTYPE_USER3,      "user3"},
