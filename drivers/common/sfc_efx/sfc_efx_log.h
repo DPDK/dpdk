@@ -11,7 +11,7 @@
 #define _SFC_EFX_LOG_H_
 
 /** Generic driver log type */
-extern uint32_t sfc_efx_logtype;
+extern int sfc_efx_logtype;
 
 /** Log message, add a prefix and a line break */
 #define SFC_EFX_LOG(level, ...) \
