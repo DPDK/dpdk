@@ -815,5 +815,6 @@ void hns3_stop_tx_datapath(struct rte_eth_dev *dev);
 void hns3_start_tx_datapath(struct rte_eth_dev *dev);
 void hns3_stop_rxtx_datapath(struct rte_eth_dev *dev);
 void hns3_start_rxtx_datapath(struct rte_eth_dev *dev);
+int hns3_get_monitor_addr(void *rx_queue, struct rte_power_monitor_cond *pmc);
 
 #endif /* HNS3_RXTX_H */

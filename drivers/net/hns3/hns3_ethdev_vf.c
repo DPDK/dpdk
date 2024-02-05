@@ -2209,6 +2209,7 @@ static const struct eth_dev_ops hns3vf_eth_dev_ops = {
 	.eth_dev_priv_dump  = hns3_eth_dev_priv_dump,
 	.eth_rx_descriptor_dump = hns3_rx_descriptor_dump,
 	.eth_tx_descriptor_dump = hns3_tx_descriptor_dump,
+	.get_monitor_addr       = hns3_get_monitor_addr,
 };
 
 static const struct hns3_reset_ops hns3vf_reset_ops = {

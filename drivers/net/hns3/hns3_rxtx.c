@@ -4884,3 +4884,24 @@ hns3_start_rxtx_datapath(struct rte_eth_dev *dev)
 
 	hns3_mp_req_start_rxtx(dev);
 }
+
+static int
+hns3_monitor_callback(const uint64_t value,
+		const uint64_t arg[RTE_POWER_MONITOR_OPAQUE_SZ] __rte_unused)
+{
+	const uint64_t vld = rte_le_to_cpu_32(BIT(HNS3_RXD_VLD_B));
+	return (value & vld) == vld ? -1 : 0;
+}
+
+int
+hns3_get_monitor_addr(void *rx_queue, struct rte_power_monitor_cond *pmc)
+{
+	struct hns3_rx_queue *rxq = rx_queue;
+	struct hns3_desc *rxdp = &rxq->rx_ring[rxq->next_to_use];
+
+	pmc->addr = &rxdp->rx.bd_base_info;
+	pmc->fn = hns3_monitor_callback;
+	pmc->size = sizeof(uint32_t);
+
+	return 0;
+}
