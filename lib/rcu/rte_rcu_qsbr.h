@@ -663,17 +663,20 @@ __rte_rcu_qsbr_check_all(struct rte_rcu_qsbr *v, uint64_t t, bool wait)
 static __rte_always_inline int
 rte_rcu_qsbr_check(struct rte_rcu_qsbr *v, uint64_t t, bool wait)
 {
+	uint64_t acked_token;
+
 	RTE_ASSERT(v != NULL);
 
 	/* Check if all the readers have already acknowledged this token */
-	if (likely(t <= rte_atomic_load_explicit(&v->acked_token,
-						rte_memory_order_relaxed))) {
+	acked_token = rte_atomic_load_explicit(&v->acked_token,
+						rte_memory_order_relaxed);
+	if (likely(t <= acked_token)) {
 		__RTE_RCU_DP_LOG(DEBUG,
 			"%s: check: token = %" PRIu64 ", wait = %d",
 			__func__, t, wait);
 		__RTE_RCU_DP_LOG(DEBUG,
 			"%s: status: least acked token = %" PRIu64,
-			__func__, v->acked_token);
+			__func__, acked_token);
 		return 1;
 	}
 
