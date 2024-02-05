@@ -666,7 +666,8 @@ rte_rcu_qsbr_check(struct rte_rcu_qsbr *v, uint64_t t, bool wait)
 	RTE_ASSERT(v != NULL);
 
 	/* Check if all the readers have already acknowledged this token */
-	if (likely(t <= v->acked_token)) {
+	if (likely(t <= rte_atomic_load_explicit(&v->acked_token,
+						rte_memory_order_relaxed))) {
 		__RTE_RCU_DP_LOG(DEBUG,
 			"%s: check: token = %" PRIu64 ", wait = %d",
 			__func__, t, wait);
