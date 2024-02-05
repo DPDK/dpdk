@@ -397,7 +397,7 @@ generate_keys(void)
 	for (i = 2; i < TOTAL_INSERT; i++)
 		keys[i] = keys[i-1] + keys[i-2];
 
-	/* Segregate keys into keys_no_ks and keys_ks */
+	/* Separate keys into keys_no_ks and keys_ks */
 	for (i = 0; i < TOTAL_INSERT; i++) {
 		/* Check if primary bucket has space.*/
 		sig = rte_hash_hash(tbl_rwc_test_param.h,
