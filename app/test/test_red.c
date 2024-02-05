@@ -85,7 +85,7 @@ struct test_var {                   /**< Test variables used for testing RTE_RED
 	uint32_t *enqueued;             /**< Test operations enqueued */
 };
 
-struct test_config {                /**< Master test structure for RTE_RED */
+struct test_config {                /**< Test structure for RTE_RED */
 	const char *ifname;             /**< Interface name */
 	const char *msg;                /**< Test message for display */
 	const char *htxt;               /**< Header txt display for result output */
