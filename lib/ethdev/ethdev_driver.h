@@ -73,6 +73,8 @@ struct rte_eth_dev {
 	struct rte_eth_dev_data *data;
 	void *process_private; /**< Pointer to per-process device data */
 	const struct eth_dev_ops *dev_ops; /**< Functions exported by PMD */
+	/** Fast path flow API functions exported by PMD */
+	const struct rte_flow_fp_ops *flow_fp_ops;
 	struct rte_device *device; /**< Backing device */
 	struct rte_intr_handle *intr_handle; /**< Device interrupt handle */
 

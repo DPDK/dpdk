@@ -349,4 +349,5 @@ INTERNAL {
 	rte_eth_representor_id_get;
 	rte_eth_switch_domain_alloc;
 	rte_eth_switch_domain_free;
+	rte_flow_fp_default_ops;
 };

@@ -3,6 +3,7 @@
  */
 
 #include <rte_flow.h>
+#include <rte_flow_driver.h>
 
 #include <mlx5_malloc.h>
 
@@ -13,6 +14,9 @@
 
 #if defined(HAVE_IBV_FLOW_DV_SUPPORT) || !defined(HAVE_INFINIBAND_VERBS_H)
 #include "mlx5_hws_cnt.h"
+
+/** Fast path async flow API functions. */
+static struct rte_flow_fp_ops mlx5_flow_hw_fp_ops;
 
 /* The maximum actions support in the flow. */
 #define MLX5_HW_MAX_ACTS 16
@@ -9616,6 +9620,7 @@ flow_hw_configure(struct rte_eth_dev *dev,
 		mlx5_free(_queue_attr);
 	if (port_attr->flags & RTE_FLOW_PORT_FLAG_STRICT_QUEUE)
 		priv->hws_strict_queue = 1;
+	dev->flow_fp_ops = &mlx5_flow_hw_fp_ops;
 	return 0;
 err:
 	if (priv->hws_ctpool) {
@@ -9690,6 +9695,7 @@ flow_hw_resource_release(struct rte_eth_dev *dev)
 
 	if (!priv->dr_ctx)
 		return;
+	dev->flow_fp_ops = &rte_flow_fp_default_ops;
 	flow_hw_rxq_flag_set(dev, false);
 	flow_hw_flush_all_ctrl_flows(dev);
 	flow_hw_cleanup_tx_repr_tagging(dev);
@@ -13065,4 +13071,23 @@ mlx5_reformat_action_destroy(struct rte_eth_dev *dev,
 	mlx5_free(handle);
 	return 0;
 }
+
+static struct rte_flow_fp_ops mlx5_flow_hw_fp_ops = {
+	.async_create = flow_hw_async_flow_create,
+	.async_create_by_index = flow_hw_async_flow_create_by_index,
+	.async_actions_update = flow_hw_async_flow_update,
+	.async_destroy = flow_hw_async_flow_destroy,
+	.push = flow_hw_push,
+	.pull = flow_hw_pull,
+	.async_action_handle_create = flow_hw_action_handle_create,
+	.async_action_handle_destroy = flow_hw_action_handle_destroy,
+	.async_action_handle_update = flow_hw_action_handle_update,
+	.async_action_handle_query = flow_hw_action_handle_query,
+	.async_action_handle_query_update = flow_hw_async_action_handle_query_update,
+	.async_action_list_handle_create = flow_hw_async_action_list_handle_create,
+	.async_action_list_handle_destroy = flow_hw_async_action_list_handle_destroy,
+	.async_action_list_handle_query_update =
+		flow_hw_async_action_list_handle_query_update,
+};
+
 #endif

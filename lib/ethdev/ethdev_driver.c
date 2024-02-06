@@ -12,6 +12,7 @@
 
 #include "ethdev_driver.h"
 #include "ethdev_private.h"
+#include "rte_flow_driver.h"
 
 /**
  * A set of values to describe the possible states of a switch domain.
@@ -112,6 +113,7 @@ rte_eth_dev_allocate(const char *name)
 	}
 
 	eth_dev = eth_dev_get(port_id);
+	eth_dev->flow_fp_ops = &rte_flow_fp_default_ops;
 	strlcpy(eth_dev->data->name, name, sizeof(eth_dev->data->name));
 	eth_dev->data->port_id = port_id;
 	eth_dev->data->backer_port_id = RTE_MAX_ETHPORTS;
@@ -246,6 +248,8 @@ rte_eth_dev_release_port(struct rte_eth_dev *eth_dev)
 				RTE_ETH_EVENT_DESTROY, NULL);
 
 	eth_dev_fp_ops_reset(rte_eth_fp_ops + eth_dev->data->port_id);
+
+	eth_dev->flow_fp_ops = &rte_flow_fp_default_ops;
 
 	rte_spinlock_lock(rte_mcfg_ethdev_get_lock());
 

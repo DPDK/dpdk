@@ -49,3 +49,7 @@ deps += ['net', 'kvargs', 'meter', 'telemetry']
 if is_freebsd
     annotate_locks = false
 endif
+
+if get_option('buildtype').contains('debug')
+    cflags += ['-DRTE_FLOW_DEBUG']
+endif

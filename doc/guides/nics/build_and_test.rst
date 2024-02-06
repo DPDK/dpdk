@@ -36,11 +36,16 @@ The ethdev layer supports below build options for debug purpose:
 
   Build with debug code on Tx path.
 
+- ``RTE_FLOW_DEBUG`` (default **disabled**; enabled automatically on debug builds)
+
+  Build with debug code in asynchronous flow API.
+
 .. Note::
 
-   The ethdev library use above options to wrap debug code to trace invalid parameters
+   The ethdev library uses above options to wrap debug code to trace invalid parameters
    on data path APIs, so performance downgrade is expected when enabling those options.
-   Each PMD can decide to reuse them to wrap their own debug code in the Rx/Tx path.
+   Each PMD can decide to reuse them to wrap their own debug code in the Rx/Tx path
+   and in asynchronous flow API implementation.
 
 Running testpmd in Linux
 ------------------------
