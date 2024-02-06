@@ -426,6 +426,9 @@ flow_hw_matching_item_flags_get(const struct rte_flow_item items[])
 		case RTE_FLOW_ITEM_TYPE_GTP:
 			last_item = MLX5_FLOW_LAYER_GTP;
 			break;
+		case RTE_FLOW_ITEM_TYPE_COMPARE:
+			last_item = MLX5_FLOW_ITEM_COMPARE;
+			break;
 		default:
 			break;
 		}
@@ -4386,6 +4389,8 @@ flow_hw_table_create(struct rte_eth_dev *dev,
 			rte_errno = EINVAL;
 			goto it_error;
 		}
+		if (item_templates[i]->item_flags & MLX5_FLOW_ITEM_COMPARE)
+			matcher_attr.mode = MLX5DR_MATCHER_RESOURCE_MODE_HTABLE;
 		ret = __atomic_fetch_add(&item_templates[i]->refcnt, 1,
 					 __ATOMIC_RELAXED) + 1;
 		if (ret <= 1) {
@@ -6634,6 +6639,66 @@ flow_hw_prepend_item(const struct rte_flow_item *items,
 	return copied_items;
 }
 
+static inline bool
+flow_hw_item_compare_field_supported(enum rte_flow_field_id field)
+{
+	switch (field) {
+	case RTE_FLOW_FIELD_TAG:
+	case RTE_FLOW_FIELD_META:
+	case RTE_FLOW_FIELD_VALUE:
+		return true;
+	default:
+		break;
+	}
+	return false;
+}
+
+static int
+flow_hw_validate_item_compare(const struct rte_flow_item *item,
+			      struct rte_flow_error *error)
+{
+	const struct rte_flow_item_compare *comp_m = item->mask;
+	const struct rte_flow_item_compare *comp_v = item->spec;
+
+	if (unlikely(!comp_m))
+		return rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				   NULL,
+				   "compare item mask is missing");
+	if (comp_m->width != UINT32_MAX)
+		return rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				   NULL,
+				   "compare item only support full mask");
+	if (!flow_hw_item_compare_field_supported(comp_m->a.field) ||
+	    !flow_hw_item_compare_field_supported(comp_m->b.field))
+		return rte_flow_error_set(error, ENOTSUP,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				   NULL,
+				   "compare item field not support");
+	if (comp_m->a.field == RTE_FLOW_FIELD_VALUE &&
+	    comp_m->b.field == RTE_FLOW_FIELD_VALUE)
+		return rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				   NULL,
+				   "compare between value is not valid");
+	if (comp_v) {
+		if (comp_v->operation != comp_m->operation ||
+		    comp_v->a.field != comp_m->a.field ||
+		    comp_v->b.field != comp_m->b.field)
+			return rte_flow_error_set(error, EINVAL,
+					   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					   NULL,
+					   "compare item spec/mask not matching");
+		if ((comp_v->width & comp_m->width) != 32)
+			return rte_flow_error_set(error, EINVAL,
+					   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					   NULL,
+					   "compare item only support full mask");
+	}
+	return 0;
+}
+
 static int
 flow_hw_pattern_validate(struct rte_eth_dev *dev,
 			 const struct rte_flow_pattern_template_attr *attr,
@@ -6644,6 +6709,7 @@ flow_hw_pattern_validate(struct rte_eth_dev *dev,
 	int i, tag_idx;
 	bool items_end = false;
 	uint32_t tag_bitmap = 0;
+	int ret;
 
 	if (!attr->ingress && !attr->egress && !attr->transfer)
 		return rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ATTR, NULL,
@@ -6779,6 +6845,13 @@ flow_hw_pattern_validate(struct rte_eth_dev *dev,
 							  "Aggregated affinity item not supported"
 							  " with egress or transfer"
 							  " attribute");
+			break;
+		}
+		case RTE_FLOW_ITEM_TYPE_COMPARE:
+		{
+			ret = flow_hw_validate_item_compare(&items[i], error);
+			if (ret)
+				return ret;
 			break;
 		}
 		case RTE_FLOW_ITEM_TYPE_VOID:

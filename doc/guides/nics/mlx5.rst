@@ -368,6 +368,13 @@ Limitations
     must be byte aligned (multiple of 8).
   - Modify field with flex item, the offset must be byte aligned (multiple of 8).
 
+- Match with compare result item (``RTE_FLOW_ITEM_TYPE_COMPARE``):
+
+  - Only supported in HW steering(``dv_flow_en`` = 2) mode.
+  - Only single flow is supported to the flow table.
+  - Only 32-bit comparison is supported.
+  - Only match with compare result between packet fields is supported.
+
 - No Tx metadata go to the E-Switch steering domain for the Flow group 0.
   The flows within group 0 and set metadata action are rejected by hardware.
 

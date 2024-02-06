@@ -88,6 +88,10 @@ New Features
   * Added support for Atomic Rules' TK242 packet-capture family of devices
     with PCI IDs: ``0x1024, 0x1025, 0x1026``.
 
+* **Updated NVIDIA mlx5 driver.**
+
+  * Added support for comparing result between packet fields or value.
+
 * **Updated Marvell cnxk crypto driver.**
 
   * Added support for Rx inject in crypto_cn10k.
