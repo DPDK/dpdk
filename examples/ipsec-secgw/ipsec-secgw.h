@@ -229,11 +229,10 @@ free_reassembly_fail_pkt(struct rte_mbuf *mb)
 }
 
 /* helper routine to free bulk of packets */
-static inline void
-free_pkts(struct rte_mbuf *mb[], uint32_t n)
+static __rte_always_inline void
+free_pkts(struct rte_mbuf *mb[], const uint32_t n)
 {
-	rte_pktmbuf_free_bulk(mb, n);
-
+	n == 1 ? rte_pktmbuf_free(mb[0]) : rte_pktmbuf_free_bulk(mb, n);
 	core_stats_update_drop(n);
 }
 
