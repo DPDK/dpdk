@@ -609,7 +609,8 @@ iavf_dev_init_vlan(struct rte_eth_dev *dev)
 					RTE_ETH_VLAN_FILTER_MASK |
 					RTE_ETH_VLAN_EXTEND_MASK);
 	if (err) {
-		PMD_DRV_LOG(ERR, "Failed to update vlan offload");
+		PMD_DRV_LOG(INFO,
+			"VLAN offloading is not supported, or offloading was refused by the PF");
 		return err;
 	}
 
@@ -685,9 +686,7 @@ iavf_dev_configure(struct rte_eth_dev *dev)
 		vf->max_rss_qregion = IAVF_MAX_NUM_QUEUES_DFLT;
 	}
 
-	ret = iavf_dev_init_vlan(dev);
-	if (ret)
-		PMD_DRV_LOG(ERR, "configure VLAN failed: %d", ret);
+	iavf_dev_init_vlan(dev);
 
 	if (vf->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_RSS_PF) {
 		if (iavf_init_rss(ad) != 0) {
