@@ -1441,7 +1441,7 @@ flow_modify_info_mask_32_masked(uint32_t length, uint32_t off, uint32_t post_mas
 }
 
 static __rte_always_inline enum mlx5_modification_field
-mlx5_mpls_modi_field_get(const struct rte_flow_action_modify_data *data)
+mlx5_mpls_modi_field_get(const struct rte_flow_field_data *data)
 {
 	return MLX5_MODI_IN_MPLS_LABEL_0 + data->tag_index;
 }
@@ -1449,7 +1449,7 @@ mlx5_mpls_modi_field_get(const struct rte_flow_action_modify_data *data)
 static void
 mlx5_modify_flex_item(const struct rte_eth_dev *dev,
 		      const struct mlx5_flex_item *flex,
-		      const struct rte_flow_action_modify_data *data,
+		      const struct rte_flow_field_data *data,
 		      struct field_modify_info *info,
 		      uint32_t *mask, uint32_t width)
 {
@@ -1573,7 +1573,7 @@ mlx5_modify_flex_item(const struct rte_eth_dev *dev,
 
 void
 mlx5_flow_field_id_to_modify_info
-		(const struct rte_flow_action_modify_data *data,
+		(const struct rte_flow_field_data *data,
 		 struct field_modify_info *info, uint32_t *mask,
 		 uint32_t width, struct rte_eth_dev *dev,
 		 const struct rte_flow_attr *attr, struct rte_flow_error *error)
@@ -5284,8 +5284,8 @@ flow_dv_validate_action_modify_field(struct rte_eth_dev *dev,
 	struct mlx5_sh_config *config = &priv->sh->config;
 	struct mlx5_hca_attr *hca_attr = &priv->sh->cdev->config.hca_attr;
 	const struct rte_flow_action_modify_field *conf = action->conf;
-	const struct rte_flow_action_modify_data *src_data = &conf->src;
-	const struct rte_flow_action_modify_data *dst_data = &conf->dst;
+	const struct rte_flow_field_data *src_data = &conf->src;
+	const struct rte_flow_field_data *dst_data = &conf->dst;
 	uint32_t dst_width, src_width, width = conf->width;
 
 	ret = flow_dv_validate_action_modify_hdr(action_flags, action, error);

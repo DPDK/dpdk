@@ -3194,7 +3194,7 @@ destination offset as ``48``, and provide immediate value ``0xXXXX85XX``.
    | ``width``     | number of bits to use   |
    +---------------+-------------------------+
 
-.. _table_rte_flow_action_modify_data:
+.. _table_rte_flow_field_data:
 
 .. table:: destination/source field definition
 

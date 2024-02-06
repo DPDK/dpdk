@@ -744,13 +744,13 @@ enum index {
 #define ITEM_RAW_SIZE \
 	(sizeof(struct rte_flow_item_raw) + ITEM_RAW_PATTERN_SIZE)
 
-/** Maximum size for external pattern in struct rte_flow_action_modify_data. */
-#define ACTION_MODIFY_PATTERN_SIZE 32
+/** Maximum size for external pattern in struct rte_flow_field_data. */
+#define FLOW_FIELD_PATTERN_SIZE 32
 
 /** Storage size for struct rte_flow_action_modify_field including pattern. */
 #define ACTION_MODIFY_SIZE \
 	(sizeof(struct rte_flow_action_modify_field) + \
-	ACTION_MODIFY_PATTERN_SIZE)
+	FLOW_FIELD_PATTERN_SIZE)
 
 /** Maximum number of queue indices in struct rte_flow_action_rss. */
 #define ACTION_RSS_QUEUE_NUM 128
@@ -944,7 +944,7 @@ static const char *const modify_field_ops[] = {
 	"set", "add", "sub", NULL
 };
 
-static const char *const modify_field_ids[] = {
+static const char *const flow_field_ids[] = {
 	"start", "mac_dst", "mac_src",
 	"vlan_type", "vlan_id", "mac_type",
 	"ipv4_dscp", "ipv4_ttl", "ipv4_src", "ipv4_dst",
@@ -6995,7 +6995,7 @@ static const struct token token_list[] = {
 			     ARGS_ENTRY_ARB(0, 0),
 			     ARGS_ENTRY_ARB
 				(sizeof(struct rte_flow_action_modify_field),
-				 ACTION_MODIFY_PATTERN_SIZE)),
+				 FLOW_FIELD_PATTERN_SIZE)),
 		.call = parse_vc_conf,
 	},
 	[ACTION_MODIFY_FIELD_WIDTH] = {
@@ -9821,10 +9821,10 @@ parse_vc_modify_field_id(struct context *ctx, const struct token *token,
 	if (ctx->curr != ACTION_MODIFY_FIELD_DST_TYPE_VALUE &&
 		ctx->curr != ACTION_MODIFY_FIELD_SRC_TYPE_VALUE)
 		return -1;
-	for (i = 0; modify_field_ids[i]; ++i)
-		if (!strcmp_partial(modify_field_ids[i], str, len))
+	for (i = 0; flow_field_ids[i]; ++i)
+		if (!strcmp_partial(flow_field_ids[i], str, len))
 			break;
-	if (!modify_field_ids[i])
+	if (!flow_field_ids[i])
 		return -1;
 	if (!ctx->object)
 		return len;
@@ -12051,10 +12051,10 @@ comp_set_modify_field_id(struct context *ctx, const struct token *token,
 
 	RTE_SET_USED(token);
 	if (!buf)
-		return RTE_DIM(modify_field_ids);
-	if (ent >= RTE_DIM(modify_field_ids) - 1)
+		return RTE_DIM(flow_field_ids);
+	if (ent >= RTE_DIM(flow_field_ids) - 1)
 		return -1;
-	name = modify_field_ids[ent];
+	name = flow_field_ids[ent];
 	if (ctx->curr == ACTION_MODIFY_FIELD_SRC_TYPE ||
 	    (strcmp(name, "pointer") && strcmp(name, "value")))
 		return strlcpy(buf, name, size);

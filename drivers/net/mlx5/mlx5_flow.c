@@ -2493,7 +2493,7 @@ mlx5_validate_action_ct(struct rte_eth_dev *dev,
  * Validate the level value for modify field action.
  *
  * @param[in] data
- *   Pointer to the rte_flow_action_modify_data structure either src or dst.
+ *   Pointer to the rte_flow_field_data structure either src or dst.
  * @param[out] error
  *   Pointer to error structure.
  *
@@ -2501,7 +2501,7 @@ mlx5_validate_action_ct(struct rte_eth_dev *dev,
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 int
-flow_validate_modify_field_level(const struct rte_flow_action_modify_data *data,
+flow_validate_modify_field_level(const struct rte_flow_field_data *data,
 				 struct rte_flow_error *error)
 {
 	if (data->level == 0)

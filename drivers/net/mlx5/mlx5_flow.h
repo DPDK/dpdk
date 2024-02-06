@@ -1121,7 +1121,7 @@ flow_items_to_tunnel(const struct rte_flow_item items[])
  *   Tag array index.
  */
 static inline uint8_t
-flow_tag_index_get(const struct rte_flow_action_modify_data *data)
+flow_tag_index_get(const struct rte_flow_field_data *data)
 {
 	return data->tag_index ? data->tag_index : data->level;
 }
@@ -2523,7 +2523,7 @@ int mlx5_flow_validate_action_default_miss(uint64_t action_flags,
 				const struct rte_flow_attr *attr,
 				struct rte_flow_error *error);
 int flow_validate_modify_field_level
-			(const struct rte_flow_action_modify_data *data,
+			(const struct rte_flow_field_data *data,
 			 struct rte_flow_error *error);
 int mlx5_flow_item_acceptable(const struct rte_flow_item *item,
 			      const uint8_t *mask,
@@ -2828,7 +2828,7 @@ size_t flow_dv_get_item_hdr_len(const enum rte_flow_item_type item_type);
 int flow_dv_convert_encap_data(const struct rte_flow_item *items, uint8_t *buf,
 			   size_t *size, struct rte_flow_error *error);
 void mlx5_flow_field_id_to_modify_info
-		(const struct rte_flow_action_modify_data *data,
+		(const struct rte_flow_field_data *data,
 		 struct field_modify_info *info, uint32_t *mask,
 		 uint32_t width, struct rte_eth_dev *dev,
 		 const struct rte_flow_attr *attr, struct rte_flow_error *error);

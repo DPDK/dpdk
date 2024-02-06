@@ -137,6 +137,9 @@ API Changes
 
 * gso: ``rte_gso_segment`` now returns -ENOTSUP for unknown protocols.
 
+* ethdev: Renamed structure ``rte_flow_action_modify_data`` to be
+  ``rte_flow_field_data`` for more generic usage.
+
 
 ABI Changes
 -----------
