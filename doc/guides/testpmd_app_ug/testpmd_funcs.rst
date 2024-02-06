@@ -3855,6 +3855,13 @@ This section lists supported pattern items and their attributes, if any.
 
         - ``packet_type {unsigned}``: packet type.
 
+- ``compare``: match the comparison result between packet fields or value.
+
+        - ``op {string}``: comparison operation type.
+        - ``a_type {string}``: compared field.
+        - ``b_type {string}``: comparator field.
+        - ``width {unsigned}``: comparison width.
+
 
 Actions list
 ^^^^^^^^^^^^
@@ -5322,6 +5329,23 @@ A RAW rule can be created as following using ``pattern_hex`` key and mask.
              is 0 limit is 0 pattern_hex spec 00000000000000000000000000000000000000000000000000000a0a0a0a
              pattern_hex mask 0000000000000000000000000000000000000000000000000000ffffffff / end actions
              queue index 4 / end
+
+Sample match with comparison rule
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Match with comparison rule can be created as following using ``compare``.
+
+::
+
+    testpmd> flow pattern_template 0 create ingress pattern_template_id 1 template compare op mask le
+             a_type mask tag a_tag_index mask 1 b_type mask tag b_tag_index mask 2 width mask 0xffffffff / end
+    testpmd> flow actions_template 0 create ingress actions_template_id 1 template count / drop / end
+             mask count / drop  / end
+    testpmd> flow template_table 0 create table_id 1 group 2 priority 1  ingress rules_number 1
+             pattern_template 1 actions_template 1
+    testpmd> flow queue 0 create 0 template_table 1 pattern_template 0 actions_template 0 postpone no
+             pattern compare op is le a_type is tag a_tag_index is 1 b_type is tag b_tag_index is 2 width is 32 / end
+	     actions count / drop / end
 
 BPF Functions
 --------------

@@ -78,6 +78,8 @@ New Features
 
 * **Added flow matching items.**
 
+  * Added ``RTE_FLOW_ITEM_TYPE_COMPARE`` to allow matching
+    on comparison result between packet fields or value.
   * Added ``RTE_FLOW_ITEM_TYPE_RANDOM`` to match a random value,
     and ``RTE_FLOW_FIELD_RANDOM`` to represent it with a field ID.
 

@@ -714,6 +714,13 @@ enum rte_flow_item_type {
 	 * @see struct rte_flow_item_random.
 	 */
 	RTE_FLOW_ITEM_TYPE_RANDOM,
+
+	/**
+	 * Match packet with various comparison types.
+	 *
+	 * See struct rte_flow_item_compare.
+	 */
+	RTE_FLOW_ITEM_TYPE_COMPARE,
 };
 
 /**
@@ -2366,7 +2373,8 @@ static const struct rte_flow_item_ptype rte_flow_item_ptype_mask = {
 #endif
 
 /**
- * Packet header field IDs, used by RTE_FLOW_ACTION_TYPE_MODIFY_FIELD.
+ * Packet header field IDs, used by RTE_FLOW_ACTION_TYPE_MODIFY_FIELD
+ * and RTE_FLOW_ITEM_TYPE_COMPARE.
  */
 enum rte_flow_field_id {
 	RTE_FLOW_FIELD_START = 0,       /**< Start of a packet. */
@@ -2420,7 +2428,8 @@ enum rte_flow_field_id {
  * @warning
  * @b EXPERIMENTAL: this structure may change without prior notice.
  *
- * Packet header field descriptions, used by RTE_FLOW_ACTION_TYPE_MODIFY_FIELD.
+ * Packet header field descriptions, used by RTE_FLOW_ACTION_TYPE_MODIFY_FIELD
+ * and RTE_FLOW_ITEM_TYPE_COMPARE.
  */
 struct rte_flow_field_data {
 	enum rte_flow_field_id field; /**< Field or memory type ID. */
@@ -2508,6 +2517,33 @@ struct rte_flow_field_data {
 		 */
 		void *pvalue;
 	};
+};
+
+/**
+ * Expected operation types for compare item.
+ */
+enum rte_flow_item_compare_op {
+	RTE_FLOW_ITEM_COMPARE_EQ,	/* Compare result equal. */
+	RTE_FLOW_ITEM_COMPARE_NE,	/* Compare result not equal. */
+	RTE_FLOW_ITEM_COMPARE_LT,	/* Compare result less than. */
+	RTE_FLOW_ITEM_COMPARE_LE,	/* Compare result less than or equal. */
+	RTE_FLOW_ITEM_COMPARE_GT,	/* Compare result great than. */
+	RTE_FLOW_ITEM_COMPARE_GE,	/* Compare result great than or equal. */
+};
+
+/**
+ *
+ * RTE_FLOW_ITEM_TYPE_COMPARE
+ *
+ * Matches the packet with compare result.
+ *
+ * The operation means a compare with b result.
+ */
+struct rte_flow_item_compare {
+	enum rte_flow_item_compare_op operation; /* The compare operation. */
+	struct rte_flow_field_data a;		 /* Field be compared.  */
+	struct rte_flow_field_data b;		 /* Field as comparator. */
+	uint32_t width;				 /* Compare width. */
 };
 
 /**

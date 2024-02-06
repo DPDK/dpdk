@@ -1587,6 +1587,13 @@ during the lifetime of the packet.
 
 - ``value``: Specific value to match.
 
+Item: ``COMPARE``
+^^^^^^^^^^^^^^^^^
+
+Matches the comparison result between packet fields or value.
+
+- ``compare``: Comparison information.
+
 Actions
 ~~~~~~~
 

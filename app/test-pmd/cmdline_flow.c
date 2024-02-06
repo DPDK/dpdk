@@ -545,6 +545,28 @@ enum index {
 	ITEM_PTYPE,
 	ITEM_PTYPE_VALUE,
 	ITEM_NSH,
+	ITEM_COMPARE,
+	ITEM_COMPARE_OP,
+	ITEM_COMPARE_OP_VALUE,
+	ITEM_COMPARE_FIELD_A_TYPE,
+	ITEM_COMPARE_FIELD_A_TYPE_VALUE,
+	ITEM_COMPARE_FIELD_A_LEVEL,
+	ITEM_COMPARE_FIELD_A_LEVEL_VALUE,
+	ITEM_COMPARE_FIELD_A_TAG_INDEX,
+	ITEM_COMPARE_FIELD_A_TYPE_ID,
+	ITEM_COMPARE_FIELD_A_CLASS_ID,
+	ITEM_COMPARE_FIELD_A_OFFSET,
+	ITEM_COMPARE_FIELD_B_TYPE,
+	ITEM_COMPARE_FIELD_B_TYPE_VALUE,
+	ITEM_COMPARE_FIELD_B_LEVEL,
+	ITEM_COMPARE_FIELD_B_LEVEL_VALUE,
+	ITEM_COMPARE_FIELD_B_TAG_INDEX,
+	ITEM_COMPARE_FIELD_B_TYPE_ID,
+	ITEM_COMPARE_FIELD_B_CLASS_ID,
+	ITEM_COMPARE_FIELD_B_OFFSET,
+	ITEM_COMPARE_FIELD_B_VALUE,
+	ITEM_COMPARE_FIELD_B_POINTER,
+	ITEM_COMPARE_FIELD_WIDTH,
 
 	/* Validate/create actions. */
 	ACTIONS,
@@ -743,6 +765,10 @@ enum index {
 /** Storage size for struct rte_flow_item_raw including pattern. */
 #define ITEM_RAW_SIZE \
 	(sizeof(struct rte_flow_item_raw) + ITEM_RAW_PATTERN_SIZE)
+
+static const char *const compare_ops[] = {
+	"eq", "ne", "lt", "le", "gt", "ge", NULL
+};
 
 /** Maximum size for external pattern in struct rte_flow_field_data. */
 #define FLOW_FIELD_PATTERN_SIZE 32
@@ -1596,6 +1622,7 @@ static const enum index next_item[] = {
 	ITEM_IB_BTH,
 	ITEM_PTYPE,
 	ITEM_NSH,
+	ITEM_COMPARE,
 	END_SET,
 	ZERO,
 };
@@ -2130,6 +2157,38 @@ static const enum index item_ptype[] = {
 
 static const enum index item_nsh[] = {
 	ITEM_NEXT,
+	ZERO,
+};
+
+static const enum index item_compare_field[] = {
+	ITEM_COMPARE_OP,
+	ITEM_COMPARE_FIELD_A_TYPE,
+	ITEM_COMPARE_FIELD_B_TYPE,
+	ITEM_NEXT,
+	ZERO,
+};
+
+static const enum index compare_field_a[] = {
+	ITEM_COMPARE_FIELD_A_TYPE,
+	ITEM_COMPARE_FIELD_A_LEVEL,
+	ITEM_COMPARE_FIELD_A_TAG_INDEX,
+	ITEM_COMPARE_FIELD_A_TYPE_ID,
+	ITEM_COMPARE_FIELD_A_CLASS_ID,
+	ITEM_COMPARE_FIELD_A_OFFSET,
+	ITEM_COMPARE_FIELD_B_TYPE,
+	ZERO,
+};
+
+static const enum index compare_field_b[] = {
+	ITEM_COMPARE_FIELD_B_TYPE,
+	ITEM_COMPARE_FIELD_B_LEVEL,
+	ITEM_COMPARE_FIELD_B_TAG_INDEX,
+	ITEM_COMPARE_FIELD_B_TYPE_ID,
+	ITEM_COMPARE_FIELD_B_CLASS_ID,
+	ITEM_COMPARE_FIELD_B_OFFSET,
+	ITEM_COMPARE_FIELD_B_VALUE,
+	ITEM_COMPARE_FIELD_B_POINTER,
+	ITEM_COMPARE_FIELD_WIDTH,
 	ZERO,
 };
 
@@ -2882,6 +2941,24 @@ comp_quota_update_name(struct context *ctx, const struct token *token,
 static int
 comp_qu_mode_name(struct context *ctx, const struct token *token,
 		  unsigned int ent, char *buf, unsigned int size);
+static int
+comp_set_compare_field_id(struct context *ctx, const struct token *token,
+			  unsigned int ent, char *buf, unsigned int size);
+static int
+comp_set_compare_op(struct context *ctx, const struct token *token,
+		    unsigned int ent, char *buf, unsigned int size);
+static int
+parse_vc_compare_op(struct context *ctx, const struct token *token,
+			 const char *str, unsigned int len, void *buf,
+			 unsigned int size);
+static int
+parse_vc_compare_field_id(struct context *ctx, const struct token *token,
+			  const char *str, unsigned int len, void *buf,
+			  unsigned int size);
+static int
+parse_vc_compare_field_level(struct context *ctx, const struct token *token,
+			     const char *str, unsigned int len, void *buf,
+			     unsigned int size);
 
 struct indlst_conf {
 	uint32_t id;
@@ -6016,6 +6093,174 @@ static const struct token token_list[] = {
 		.next = NEXT(item_nsh),
 		.call = parse_vc,
 	},
+	[ITEM_COMPARE] = {
+		.name = "compare",
+		.help = "match with the comparison result",
+		.priv = PRIV_ITEM(COMPARE, sizeof(struct rte_flow_item_compare)),
+		.next = NEXT(NEXT_ENTRY(ITEM_COMPARE_OP)),
+		.call = parse_vc,
+	},
+	[ITEM_COMPARE_OP] = {
+		.name = "op",
+		.help = "operation type",
+		.next = NEXT(item_compare_field,
+			NEXT_ENTRY(ITEM_COMPARE_OP_VALUE), item_param),
+		.args = ARGS(ARGS_ENTRY(struct rte_flow_item_compare, operation)),
+	},
+	[ITEM_COMPARE_OP_VALUE] = {
+		.name = "{operation}",
+		.help = "operation type value",
+		.call = parse_vc_compare_op,
+		.comp = comp_set_compare_op,
+	},
+	[ITEM_COMPARE_FIELD_A_TYPE] = {
+		.name = "a_type",
+		.help = "compared field type",
+		.next = NEXT(compare_field_a,
+			NEXT_ENTRY(ITEM_COMPARE_FIELD_A_TYPE_VALUE), item_param),
+		.args = ARGS(ARGS_ENTRY(struct rte_flow_item_compare, a.field)),
+	},
+	[ITEM_COMPARE_FIELD_A_TYPE_VALUE] = {
+		.name = "{a_type}",
+		.help = "compared field type value",
+		.call = parse_vc_compare_field_id,
+		.comp = comp_set_compare_field_id,
+	},
+	[ITEM_COMPARE_FIELD_A_LEVEL] = {
+		.name = "a_level",
+		.help = "compared field level",
+		.next = NEXT(compare_field_a,
+			     NEXT_ENTRY(ITEM_COMPARE_FIELD_A_LEVEL_VALUE), item_param),
+		.args = ARGS(ARGS_ENTRY(struct rte_flow_item_compare, a.level)),
+	},
+	[ITEM_COMPARE_FIELD_A_LEVEL_VALUE] = {
+		.name = "{a_level}",
+		.help = "compared field level value",
+		.call = parse_vc_compare_field_level,
+		.comp = comp_none,
+	},
+	[ITEM_COMPARE_FIELD_A_TAG_INDEX] = {
+		.name = "a_tag_index",
+		.help = "compared field tag array",
+		.next = NEXT(compare_field_a,
+			     NEXT_ENTRY(COMMON_UNSIGNED), item_param),
+		.args = ARGS(ARGS_ENTRY(struct rte_flow_item_compare,
+					a.tag_index)),
+	},
+	[ITEM_COMPARE_FIELD_A_TYPE_ID] = {
+		.name = "a_type_id",
+		.help = "compared field type ID",
+		.next = NEXT(compare_field_a,
+			     NEXT_ENTRY(COMMON_UNSIGNED), item_param),
+		.args = ARGS(ARGS_ENTRY(struct rte_flow_item_compare,
+					a.type)),
+	},
+	[ITEM_COMPARE_FIELD_A_CLASS_ID] = {
+		.name = "a_class",
+		.help = "compared field class ID",
+		.next = NEXT(compare_field_a,
+			     NEXT_ENTRY(COMMON_UNSIGNED), item_param),
+		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_compare,
+					     a.class_id)),
+	},
+	[ITEM_COMPARE_FIELD_A_OFFSET] = {
+		.name = "a_offset",
+		.help = "compared field bit offset",
+		.next = NEXT(compare_field_a,
+			     NEXT_ENTRY(COMMON_UNSIGNED), item_param),
+		.args = ARGS(ARGS_ENTRY(struct rte_flow_item_compare,
+					a.offset)),
+	},
+	[ITEM_COMPARE_FIELD_B_TYPE] = {
+		.name = "b_type",
+		.help = "comparator field type",
+		.next = NEXT(compare_field_b,
+			NEXT_ENTRY(ITEM_COMPARE_FIELD_B_TYPE_VALUE), item_param),
+		.args = ARGS(ARGS_ENTRY(struct rte_flow_item_compare,
+					b.field)),
+	},
+	[ITEM_COMPARE_FIELD_B_TYPE_VALUE] = {
+		.name = "{b_type}",
+		.help = "comparator field type value",
+		.call = parse_vc_compare_field_id,
+		.comp = comp_set_compare_field_id,
+	},
+	[ITEM_COMPARE_FIELD_B_LEVEL] = {
+		.name = "b_level",
+		.help = "comparator field level",
+		.next = NEXT(compare_field_b,
+			     NEXT_ENTRY(ITEM_COMPARE_FIELD_B_LEVEL_VALUE), item_param),
+		.args = ARGS(ARGS_ENTRY(struct rte_flow_item_compare,
+					b.level)),
+	},
+	[ITEM_COMPARE_FIELD_B_LEVEL_VALUE] = {
+		.name = "{b_level}",
+		.help = "comparator field level value",
+		.call = parse_vc_compare_field_level,
+		.comp = comp_none,
+	},
+	[ITEM_COMPARE_FIELD_B_TAG_INDEX] = {
+		.name = "b_tag_index",
+		.help = "comparator field tag array",
+		.next = NEXT(compare_field_b,
+			     NEXT_ENTRY(COMMON_UNSIGNED), item_param),
+		.args = ARGS(ARGS_ENTRY(struct rte_flow_item_compare,
+					b.tag_index)),
+	},
+	[ITEM_COMPARE_FIELD_B_TYPE_ID] = {
+		.name = "b_type_id",
+		.help = "comparator field type ID",
+		.next = NEXT(compare_field_b,
+			     NEXT_ENTRY(COMMON_UNSIGNED), item_param),
+		.args = ARGS(ARGS_ENTRY(struct rte_flow_item_compare,
+					b.type)),
+	},
+	[ITEM_COMPARE_FIELD_B_CLASS_ID] = {
+		.name = "b_class",
+		.help = "comparator field class ID",
+		.next = NEXT(compare_field_b,
+			     NEXT_ENTRY(COMMON_UNSIGNED), item_param),
+		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_compare,
+					     b.class_id)),
+	},
+	[ITEM_COMPARE_FIELD_B_OFFSET] = {
+		.name = "b_offset",
+		.help = "comparator field bit offset",
+		.next = NEXT(compare_field_b,
+			     NEXT_ENTRY(COMMON_UNSIGNED), item_param),
+		.args = ARGS(ARGS_ENTRY(struct rte_flow_item_compare,
+					b.offset)),
+	},
+	[ITEM_COMPARE_FIELD_B_VALUE] = {
+		.name = "b_value",
+		.help = "comparator immediate value",
+		.next = NEXT(compare_field_b,
+			     NEXT_ENTRY(COMMON_HEX), item_param),
+		.args = ARGS(ARGS_ENTRY_ARB(0, 0),
+			     ARGS_ENTRY_ARB(0, 0),
+			     ARGS_ENTRY(struct rte_flow_item_compare,
+					b.value)),
+	},
+	[ITEM_COMPARE_FIELD_B_POINTER] = {
+		.name = "b_ptr",
+		.help = "pointer to comparator immediate value",
+		.next = NEXT(compare_field_b,
+			     NEXT_ENTRY(COMMON_HEX), item_param),
+		.args = ARGS(ARGS_ENTRY(struct rte_flow_item_compare,
+					b.pvalue),
+			     ARGS_ENTRY_ARB(0, 0),
+			     ARGS_ENTRY_ARB
+				(sizeof(struct rte_flow_item_compare),
+				 FLOW_FIELD_PATTERN_SIZE)),
+	},
+	[ITEM_COMPARE_FIELD_WIDTH] = {
+		.name = "width",
+		.help = "number of bits to compare",
+		.next = NEXT(item_compare_field,
+			NEXT_ENTRY(COMMON_UNSIGNED), item_param),
+		.args = ARGS(ARGS_ENTRY(struct rte_flow_item_compare,
+					width)),
+	},
 
 	/* Validate/create actions. */
 	[ACTIONS] = {
@@ -8449,6 +8694,122 @@ parse_vc_item_l2tpv2_type(struct context *ctx, const struct token *token,
 	item = &out->args.vc.pattern[out->args.vc.pattern_n - 1];
 	item->spec = l2tpv2;
 	item->mask = l2tpv2_mask;
+	return len;
+}
+
+/** Parse operation for compare match item. */
+static int
+parse_vc_compare_op(struct context *ctx, const struct token *token,
+			 const char *str, unsigned int len, void *buf,
+			 unsigned int size)
+{
+	struct rte_flow_item_compare *compare_item;
+	unsigned int i;
+
+	(void)token;
+	(void)buf;
+	(void)size;
+	if (ctx->curr != ITEM_COMPARE_OP_VALUE)
+		return -1;
+	for (i = 0; compare_ops[i]; ++i)
+		if (!strcmp_partial(compare_ops[i], str, len))
+			break;
+	if (!compare_ops[i])
+		return -1;
+	if (!ctx->object)
+		return len;
+	compare_item = ctx->object;
+	compare_item->operation = (enum rte_flow_item_compare_op)i;
+	return len;
+}
+
+/** Parse id for compare match item. */
+static int
+parse_vc_compare_field_id(struct context *ctx, const struct token *token,
+			  const char *str, unsigned int len, void *buf,
+			  unsigned int size)
+{
+	struct rte_flow_item_compare *compare_item;
+	unsigned int i;
+
+	(void)token;
+	(void)buf;
+	(void)size;
+	if (ctx->curr != ITEM_COMPARE_FIELD_A_TYPE_VALUE &&
+		ctx->curr != ITEM_COMPARE_FIELD_B_TYPE_VALUE)
+		return -1;
+	for (i = 0; flow_field_ids[i]; ++i)
+		if (!strcmp_partial(flow_field_ids[i], str, len))
+			break;
+	if (!flow_field_ids[i])
+		return -1;
+	if (!ctx->object)
+		return len;
+	compare_item = ctx->object;
+	if (ctx->curr == ITEM_COMPARE_FIELD_A_TYPE_VALUE)
+		compare_item->a.field = (enum rte_flow_field_id)i;
+	else
+		compare_item->b.field = (enum rte_flow_field_id)i;
+	return len;
+}
+
+/** Parse level for compare match item. */
+static int
+parse_vc_compare_field_level(struct context *ctx, const struct token *token,
+			     const char *str, unsigned int len, void *buf,
+			     unsigned int size)
+{
+	struct rte_flow_item_compare *compare_item;
+	struct flex_item *fp = NULL;
+	uint32_t val;
+	struct buffer *out = buf;
+	char *end;
+
+	(void)token;
+	(void)size;
+	if (ctx->curr != ITEM_COMPARE_FIELD_A_LEVEL_VALUE &&
+		ctx->curr != ITEM_COMPARE_FIELD_B_LEVEL_VALUE)
+		return -1;
+	if (!ctx->object)
+		return len;
+	compare_item = ctx->object;
+	errno = 0;
+	val = strtoumax(str, &end, 0);
+	if (errno || (size_t)(end - str) != len)
+		return -1;
+	/* No need to validate action template mask value */
+	if (out->args.vc.masks) {
+		if (ctx->curr == ITEM_COMPARE_FIELD_A_LEVEL_VALUE)
+			compare_item->a.level = val;
+		else
+			compare_item->b.level = val;
+		return len;
+	}
+	if ((ctx->curr == ITEM_COMPARE_FIELD_A_LEVEL_VALUE &&
+		compare_item->a.field == RTE_FLOW_FIELD_FLEX_ITEM) ||
+		(ctx->curr == ITEM_COMPARE_FIELD_B_LEVEL_VALUE &&
+		compare_item->b.field == RTE_FLOW_FIELD_FLEX_ITEM)) {
+		if (val >= FLEX_MAX_PARSERS_NUM) {
+			printf("Bad flex item handle\n");
+			return -1;
+		}
+		fp = flex_items[ctx->port][val];
+		if (!fp) {
+			printf("Bad flex item handle\n");
+			return -1;
+		}
+	}
+	if (ctx->curr == ITEM_COMPARE_FIELD_A_LEVEL_VALUE) {
+		if (compare_item->a.field != RTE_FLOW_FIELD_FLEX_ITEM)
+			compare_item->a.level = val;
+		else
+			compare_item->a.flex_handle = fp->flex_handle;
+	} else if (ctx->curr == ITEM_COMPARE_FIELD_B_LEVEL_VALUE) {
+		if (compare_item->b.field != RTE_FLOW_FIELD_FLEX_ITEM)
+			compare_item->b.level = val;
+		else
+			compare_item->b.flex_handle = fp->flex_handle;
+	}
 	return len;
 }
 
@@ -11936,6 +12297,39 @@ comp_rule_id(struct context *ctx, const struct token *token,
 	if (buf)
 		return -1;
 	return i;
+}
+
+/** Complete operation for compare match item. */
+static int
+comp_set_compare_op(struct context *ctx, const struct token *token,
+		    unsigned int ent, char *buf, unsigned int size)
+{
+	RTE_SET_USED(ctx);
+	RTE_SET_USED(token);
+	if (!buf)
+		return RTE_DIM(compare_ops);
+	if (ent < RTE_DIM(compare_ops) - 1)
+		return strlcpy(buf, compare_ops[ent], size);
+	return -1;
+}
+
+/** Complete field id for compare match item. */
+static int
+comp_set_compare_field_id(struct context *ctx, const struct token *token,
+			  unsigned int ent, char *buf, unsigned int size)
+{
+	const char *name;
+
+	RTE_SET_USED(token);
+	if (!buf)
+		return RTE_DIM(flow_field_ids);
+	if (ent >= RTE_DIM(flow_field_ids) - 1)
+		return -1;
+	name = flow_field_ids[ent];
+	if (ctx->curr == ITEM_COMPARE_FIELD_B_TYPE ||
+	    (strcmp(name, "pointer") && strcmp(name, "value")))
+		return strlcpy(buf, name, size);
+	return -1;
 }
 
 /** Complete type field for RSS action. */
