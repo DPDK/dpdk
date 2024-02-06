@@ -2366,6 +2366,151 @@ static const struct rte_flow_item_ptype rte_flow_item_ptype_mask = {
 #endif
 
 /**
+ * Packet header field IDs, used by RTE_FLOW_ACTION_TYPE_MODIFY_FIELD.
+ */
+enum rte_flow_field_id {
+	RTE_FLOW_FIELD_START = 0,       /**< Start of a packet. */
+	RTE_FLOW_FIELD_MAC_DST,         /**< Destination MAC Address. */
+	RTE_FLOW_FIELD_MAC_SRC,         /**< Source MAC Address. */
+	RTE_FLOW_FIELD_VLAN_TYPE,       /**< VLAN Tag Identifier. */
+	RTE_FLOW_FIELD_VLAN_ID,         /**< VLAN Identifier. */
+	RTE_FLOW_FIELD_MAC_TYPE,        /**< EtherType. */
+	RTE_FLOW_FIELD_IPV4_DSCP,       /**< IPv4 DSCP. */
+	RTE_FLOW_FIELD_IPV4_TTL,        /**< IPv4 Time To Live. */
+	RTE_FLOW_FIELD_IPV4_SRC,        /**< IPv4 Source Address. */
+	RTE_FLOW_FIELD_IPV4_DST,        /**< IPv4 Destination Address. */
+	RTE_FLOW_FIELD_IPV6_DSCP,       /**< IPv6 DSCP. */
+	RTE_FLOW_FIELD_IPV6_HOPLIMIT,   /**< IPv6 Hop Limit. */
+	RTE_FLOW_FIELD_IPV6_SRC,        /**< IPv6 Source Address. */
+	RTE_FLOW_FIELD_IPV6_DST,        /**< IPv6 Destination Address. */
+	RTE_FLOW_FIELD_TCP_PORT_SRC,    /**< TCP Source Port Number. */
+	RTE_FLOW_FIELD_TCP_PORT_DST,    /**< TCP Destination Port Number. */
+	RTE_FLOW_FIELD_TCP_SEQ_NUM,     /**< TCP Sequence Number. */
+	RTE_FLOW_FIELD_TCP_ACK_NUM,     /**< TCP Acknowledgment Number. */
+	RTE_FLOW_FIELD_TCP_FLAGS,       /**< TCP Flags. */
+	RTE_FLOW_FIELD_UDP_PORT_SRC,    /**< UDP Source Port Number. */
+	RTE_FLOW_FIELD_UDP_PORT_DST,    /**< UDP Destination Port Number. */
+	RTE_FLOW_FIELD_VXLAN_VNI,       /**< VXLAN Network Identifier. */
+	RTE_FLOW_FIELD_GENEVE_VNI,      /**< GENEVE Network Identifier. */
+	RTE_FLOW_FIELD_GTP_TEID,        /**< GTP Tunnel Endpoint Identifier. */
+	RTE_FLOW_FIELD_TAG,             /**< Tag value. */
+	RTE_FLOW_FIELD_MARK,            /**< Mark value. */
+	RTE_FLOW_FIELD_META,            /**< Metadata value. */
+	RTE_FLOW_FIELD_POINTER,         /**< Memory pointer. */
+	RTE_FLOW_FIELD_VALUE,           /**< Immediate value. */
+	RTE_FLOW_FIELD_IPV4_ECN,        /**< IPv4 ECN. */
+	RTE_FLOW_FIELD_IPV6_ECN,        /**< IPv6 ECN. */
+	RTE_FLOW_FIELD_GTP_PSC_QFI,     /**< GTP QFI. */
+	RTE_FLOW_FIELD_METER_COLOR,     /**< Meter color marker. */
+	RTE_FLOW_FIELD_IPV6_PROTO,      /**< IPv6 next header. */
+	RTE_FLOW_FIELD_FLEX_ITEM,       /**< Flex item. */
+	RTE_FLOW_FIELD_HASH_RESULT,     /**< Hash result. */
+	RTE_FLOW_FIELD_GENEVE_OPT_TYPE, /**< GENEVE option type. */
+	RTE_FLOW_FIELD_GENEVE_OPT_CLASS,/**< GENEVE option class. */
+	RTE_FLOW_FIELD_GENEVE_OPT_DATA, /**< GENEVE option data. */
+	RTE_FLOW_FIELD_MPLS,            /**< MPLS header. */
+	RTE_FLOW_FIELD_TCP_DATA_OFFSET, /**< TCP data offset. */
+	RTE_FLOW_FIELD_IPV4_IHL,        /**< IPv4 IHL. */
+	RTE_FLOW_FIELD_IPV4_TOTAL_LEN,  /**< IPv4 total length. */
+	RTE_FLOW_FIELD_IPV6_PAYLOAD_LEN,/**< IPv6 payload length. */
+	RTE_FLOW_FIELD_RANDOM,          /**< Random value. */
+};
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this structure may change without prior notice.
+ *
+ * Packet header field descriptions, used by RTE_FLOW_ACTION_TYPE_MODIFY_FIELD.
+ */
+struct rte_flow_field_data {
+	enum rte_flow_field_id field; /**< Field or memory type ID. */
+	union {
+		struct {
+			/** Encapsulation level and tag index or flex item handle. */
+			union {
+				struct {
+					/**
+					 * Packet encapsulation level containing
+					 * the field to modify.
+					 *
+					 * - @p 0 requests the default behavior.
+					 *   Depending on the packet type, it
+					 *   can mean outermost, innermost or
+					 *   anything in between.
+					 *
+					 *   It basically stands for the
+					 *   innermost encapsulation level.
+					 *   Modification can be performed
+					 *   according to PMD and device
+					 *   capabilities.
+					 *
+					 * - @p 1 requests modification to be
+					 *   performed on the outermost packet
+					 *   encapsulation level.
+					 *
+					 * - @p 2 and subsequent values request
+					 *   modification to be performed on
+					 *   the specified inner packet
+					 *   encapsulation level, from
+					 *   outermost to innermost (lower to
+					 *   higher values).
+					 *
+					 * Values other than @p 0 are not
+					 * necessarily supported.
+					 *
+					 * @note that for MPLS field,
+					 * encapsulation level also include
+					 * tunnel since MPLS may appear in
+					 * outer, inner or tunnel.
+					 */
+					uint8_t level;
+					union {
+						/**
+						 * Tag index array inside
+						 * encapsulation level.
+						 * Used for VLAN, MPLS or TAG types.
+						 */
+						uint8_t tag_index;
+						/**
+						 * Geneve option identifier.
+						 * Relevant only for
+						 * RTE_FLOW_FIELD_GENEVE_OPT_XXXX
+						 * modification type.
+						 */
+						struct {
+							/**
+							 * Geneve option type.
+							 */
+							uint8_t type;
+							/**
+							 * Geneve option class.
+							 */
+							rte_be16_t class_id;
+						};
+					};
+				};
+				struct rte_flow_item_flex_handle *flex_handle;
+			};
+			/** Number of bits to skip from a field. */
+			uint32_t offset;
+		};
+		/**
+		 * Immediate value for RTE_FLOW_FIELD_VALUE, presented in the
+		 * same byte order and length as in relevant rte_flow_item_xxx.
+		 * The immediate source bitfield offset is inherited from
+		 * the destination's one.
+		 */
+		uint8_t value[16];
+		/**
+		 * Memory address for RTE_FLOW_FIELD_POINTER, memory layout
+		 * should be the same as for relevant field in the
+		 * rte_flow_item_xxx structure.
+		 */
+		void *pvalue;
+	};
+};
+
+/**
  * Action types.
  *
  * Each possible action is represented by a type.
@@ -3910,151 +4055,6 @@ struct rte_flow_action_meter_color {
  */
 struct rte_flow_action_ethdev {
 	uint16_t port_id; /**< ethdev port ID */
-};
-
-/**
- * Packet header field IDs, used by RTE_FLOW_ACTION_TYPE_MODIFY_FIELD.
- */
-enum rte_flow_field_id {
-	RTE_FLOW_FIELD_START = 0,	/**< Start of a packet. */
-	RTE_FLOW_FIELD_MAC_DST,		/**< Destination MAC Address. */
-	RTE_FLOW_FIELD_MAC_SRC,		/**< Source MAC Address. */
-	RTE_FLOW_FIELD_VLAN_TYPE,	/**< VLAN Tag Identifier. */
-	RTE_FLOW_FIELD_VLAN_ID,		/**< VLAN Identifier. */
-	RTE_FLOW_FIELD_MAC_TYPE,	/**< EtherType. */
-	RTE_FLOW_FIELD_IPV4_DSCP,	/**< IPv4 DSCP. */
-	RTE_FLOW_FIELD_IPV4_TTL,	/**< IPv4 Time To Live. */
-	RTE_FLOW_FIELD_IPV4_SRC,	/**< IPv4 Source Address. */
-	RTE_FLOW_FIELD_IPV4_DST,	/**< IPv4 Destination Address. */
-	RTE_FLOW_FIELD_IPV6_DSCP,	/**< IPv6 DSCP. */
-	RTE_FLOW_FIELD_IPV6_HOPLIMIT,	/**< IPv6 Hop Limit. */
-	RTE_FLOW_FIELD_IPV6_SRC,	/**< IPv6 Source Address. */
-	RTE_FLOW_FIELD_IPV6_DST,	/**< IPv6 Destination Address. */
-	RTE_FLOW_FIELD_TCP_PORT_SRC,	/**< TCP Source Port Number. */
-	RTE_FLOW_FIELD_TCP_PORT_DST,	/**< TCP Destination Port Number. */
-	RTE_FLOW_FIELD_TCP_SEQ_NUM,	/**< TCP Sequence Number. */
-	RTE_FLOW_FIELD_TCP_ACK_NUM,	/**< TCP Acknowledgment Number. */
-	RTE_FLOW_FIELD_TCP_FLAGS,	/**< TCP Flags. */
-	RTE_FLOW_FIELD_UDP_PORT_SRC,	/**< UDP Source Port Number. */
-	RTE_FLOW_FIELD_UDP_PORT_DST,	/**< UDP Destination Port Number. */
-	RTE_FLOW_FIELD_VXLAN_VNI,	/**< VXLAN Network Identifier. */
-	RTE_FLOW_FIELD_GENEVE_VNI,	/**< GENEVE Network Identifier. */
-	RTE_FLOW_FIELD_GTP_TEID,	/**< GTP Tunnel Endpoint Identifier. */
-	RTE_FLOW_FIELD_TAG,		/**< Tag value. */
-	RTE_FLOW_FIELD_MARK,		/**< Mark value. */
-	RTE_FLOW_FIELD_META,		/**< Metadata value. */
-	RTE_FLOW_FIELD_POINTER,		/**< Memory pointer. */
-	RTE_FLOW_FIELD_VALUE,		/**< Immediate value. */
-	RTE_FLOW_FIELD_IPV4_ECN,	/**< IPv4 ECN. */
-	RTE_FLOW_FIELD_IPV6_ECN,	/**< IPv6 ECN. */
-	RTE_FLOW_FIELD_GTP_PSC_QFI,	/**< GTP QFI. */
-	RTE_FLOW_FIELD_METER_COLOR,	/**< Meter color marker. */
-	RTE_FLOW_FIELD_IPV6_PROTO,	/**< IPv6 next header. */
-	RTE_FLOW_FIELD_FLEX_ITEM,	/**< Flex item. */
-	RTE_FLOW_FIELD_HASH_RESULT,	/**< Hash result. */
-	RTE_FLOW_FIELD_GENEVE_OPT_TYPE,	/**< GENEVE option type. */
-	RTE_FLOW_FIELD_GENEVE_OPT_CLASS,/**< GENEVE option class. */
-	RTE_FLOW_FIELD_GENEVE_OPT_DATA,	/**< GENEVE option data. */
-	RTE_FLOW_FIELD_MPLS,		/**< MPLS header. */
-	RTE_FLOW_FIELD_TCP_DATA_OFFSET,	/**< TCP data offset. */
-	RTE_FLOW_FIELD_IPV4_IHL,	/**< IPv4 IHL. */
-	RTE_FLOW_FIELD_IPV4_TOTAL_LEN,	/**< IPv4 total length. */
-	RTE_FLOW_FIELD_IPV6_PAYLOAD_LEN,/**< IPv6 payload length. */
-	RTE_FLOW_FIELD_RANDOM,		/**< Random value. */
-};
-
-/**
- * @warning
- * @b EXPERIMENTAL: this structure may change without prior notice
- *
- * Packet header field descriptions, used by RTE_FLOW_ACTION_TYPE_MODIFY_FIELD.
- */
-struct rte_flow_field_data {
-	enum rte_flow_field_id field; /**< Field or memory type ID. */
-	union {
-		struct {
-			/** Encapsulation level and tag index or flex item handle. */
-			union {
-				struct {
-					/**
-					 * Packet encapsulation level containing
-					 * the field to modify.
-					 *
-					 * - @p 0 requests the default behavior.
-					 *   Depending on the packet type, it
-					 *   can mean outermost, innermost or
-					 *   anything in between.
-					 *
-					 *   It basically stands for the
-					 *   innermost encapsulation level.
-					 *   Modification can be performed
-					 *   according to PMD and device
-					 *   capabilities.
-					 *
-					 * - @p 1 requests modification to be
-					 *   performed on the outermost packet
-					 *   encapsulation level.
-					 *
-					 * - @p 2 and subsequent values request
-					 *   modification to be performed on
-					 *   the specified inner packet
-					 *   encapsulation level, from
-					 *   outermost to innermost (lower to
-					 *   higher values).
-					 *
-					 * Values other than @p 0 are not
-					 * necessarily supported.
-					 *
-					 * @note that for MPLS field,
-					 * encapsulation level also include
-					 * tunnel since MPLS may appear in
-					 * outer, inner or tunnel.
-					 */
-					uint8_t level;
-					union {
-						/**
-						 * Tag index array inside
-						 * encapsulation level.
-						 * Used for VLAN, MPLS or TAG types.
-						 */
-						uint8_t tag_index;
-						/**
-						 * Geneve option identifier.
-						 * Relevant only for
-						 * RTE_FLOW_FIELD_GENEVE_OPT_XXXX
-						 * modification type.
-						 */
-						struct {
-							/**
-							 * Geneve option type.
-							 */
-							uint8_t type;
-							/**
-							 * Geneve option class.
-							 */
-							rte_be16_t class_id;
-						};
-					};
-				};
-				struct rte_flow_item_flex_handle *flex_handle;
-			};
-			/** Number of bits to skip from a field. */
-			uint32_t offset;
-		};
-		/**
-		 * Immediate value for RTE_FLOW_FIELD_VALUE, presented in the
-		 * same byte order and length as in relevant rte_flow_item_xxx.
-		 * The immediate source bitfield offset is inherited from
-		 * the destination's one.
-		 */
-		uint8_t value[16];
-		/**
-		 * Memory address for RTE_FLOW_FIELD_POINTER, memory layout
-		 * should be the same as for relevant field in the
-		 * rte_flow_item_xxx structure.
-		 */
-		void *pvalue;
-	};
 };
 
 /**
