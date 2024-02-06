@@ -421,37 +421,11 @@ static pthread_mutex_t quit_lock;
 static void
 signal_handler(int signum)
 {
-	struct rte_device *dev;
-	struct rte_dev_iterator dev_iter;
-	struct rte_device *tdev = NULL;
-
 	if (signum == SIGINT || signum == SIGTERM) {
 		printf("\nSignal %d received, preparing to exit...\n", signum);
 		pthread_mutex_lock(&quit_lock);
 		if (rpc_start)
 			vdpa_rpc_stop(&vdpa_rpc_ctx);
-
-		if (eal_start) {
-			rte_vdpa_vf_ctrl_ctx_remove(false);
-			rte_vdpa_pf_ctrl_ctx_remove(false);
-
-			vdpa_sample_quit();
-
-			RTE_DEV_FOREACH_SAFE(dev, "class=vdpa", &dev_iter, tdev) {
-				rte_dev_remove(dev);
-			}
-
-			RTE_DEV_FOREACH_SAFE(dev, "bus=pci", &dev_iter, tdev) {
-				rte_dev_remove(dev);
-			}
-
-			printf("\n Remove default container fd \r\n");
-			if (rte_vfio_container_destroy(RTE_VFIO_DEFAULT_CONTAINER_FD) != 0) {
-				printf("\n Default container fd remove fail \r\n");
-			}
-			/* clean up the EAL */
-			rte_eal_cleanup();
-		}
 		exit(0);
 	}
 }
