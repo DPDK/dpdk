@@ -78,4 +78,60 @@ uint16_t ionic_xmit_pkts_sg(void *tx_queue, struct rte_mbuf **tx_pkts,
 
 int ionic_rx_fill_sg(struct ionic_rx_qcq *rxq);
 
+static inline void
+ionic_rxq_flush(struct ionic_queue *q)
+{
+	struct ionic_rxq_desc *desc_base = q->base;
+	struct ionic_rxq_desc *cmb_desc_base = q->cmb_base;
+
+	if (q->cmb_base) {
+		if (q->head_idx < q->cmb_head_idx) {
+			/* copy [cmb_head, num_descs) */
+			rte_memcpy((void *)&cmb_desc_base[q->cmb_head_idx],
+				(void *)&desc_base[q->cmb_head_idx],
+				(q->num_descs - q->cmb_head_idx) * sizeof(*desc_base));
+			/* copy [0, head) */
+			rte_memcpy((void *)&cmb_desc_base[0],
+				(void *)&desc_base[0],
+				q->head_idx * sizeof(*desc_base));
+		} else {
+			/* copy [cmb_head, head) */
+			rte_memcpy((void *)&cmb_desc_base[q->cmb_head_idx],
+				(void *)&desc_base[q->cmb_head_idx],
+				(q->head_idx - q->cmb_head_idx) * sizeof(*desc_base));
+		}
+		q->cmb_head_idx = q->head_idx;
+	}
+
+	ionic_q_flush(q);
+}
+
+static inline void
+ionic_txq_flush(struct ionic_queue *q)
+{
+	struct ionic_txq_desc *desc_base = q->base;
+	struct ionic_txq_desc *cmb_desc_base = q->cmb_base;
+
+	if (q->cmb_base) {
+		if (q->head_idx < q->cmb_head_idx) {
+			/* copy [cmb_head, num_descs) */
+			rte_memcpy((void *)&cmb_desc_base[q->cmb_head_idx],
+				(void *)&desc_base[q->cmb_head_idx],
+				(q->num_descs - q->cmb_head_idx) * sizeof(*desc_base));
+			/* copy [0, head) */
+			rte_memcpy((void *)&cmb_desc_base[0],
+				(void *)&desc_base[0],
+				q->head_idx * sizeof(*desc_base));
+		} else {
+			/* copy [cmb_head, head) */
+			rte_memcpy((void *)&cmb_desc_base[q->cmb_head_idx],
+				(void *)&desc_base[q->cmb_head_idx],
+				(q->head_idx - q->cmb_head_idx) * sizeof(*desc_base));
+		}
+		q->cmb_head_idx = q->head_idx;
+	}
+
+	ionic_q_flush(q);
+}
+
 #endif /* _IONIC_RXTX_H_ */

@@ -166,6 +166,7 @@ ionic_xmit_pkts_sg(void *tx_queue, struct rte_mbuf **tx_pkts,
 {
 	struct ionic_tx_qcq *txq = tx_queue;
 	struct ionic_queue *q = &txq->qcq.q;
+	struct ionic_txq_desc *desc_base = q->base;
 	struct ionic_tx_stats *stats = &txq->stats;
 	struct rte_mbuf *mbuf;
 	uint32_t bytes_tx = 0;
@@ -173,9 +174,7 @@ ionic_xmit_pkts_sg(void *tx_queue, struct rte_mbuf **tx_pkts,
 	uint64_t then, now, hz, delta;
 	int err;
 
-	struct ionic_txq_desc *desc_base = q->base;
-	if (!(txq->flags & IONIC_QCQ_F_CMB))
-		rte_prefetch0(&desc_base[q->head_idx]);
+	rte_prefetch0(&desc_base[q->head_idx]);
 	rte_prefetch0(IONIC_INFO_PTR(q, q->head_idx));
 
 	if (nb_pkts) {
@@ -196,8 +195,7 @@ ionic_xmit_pkts_sg(void *tx_queue, struct rte_mbuf **tx_pkts,
 
 	while (nb_tx < nb_pkts) {
 		uint16_t next_idx = Q_NEXT_TO_POST(q, 1);
-		if (!(txq->flags & IONIC_QCQ_F_CMB))
-			rte_prefetch0(&desc_base[next_idx]);
+		rte_prefetch0(&desc_base[next_idx]);
 		rte_prefetch0(IONIC_INFO_PTR(q, next_idx));
 
 		if (nb_tx + 1 < nb_pkts) {
@@ -222,7 +220,7 @@ ionic_xmit_pkts_sg(void *tx_queue, struct rte_mbuf **tx_pkts,
 
 	if (nb_tx > 0) {
 		rte_wmb();
-		ionic_q_flush(q);
+		ionic_txq_flush(q);
 
 		txq->last_wdog_cycles = rte_get_timer_cycles();
 
@@ -458,8 +456,7 @@ ionic_rxq_service_sg(struct ionic_rx_qcq *rxq, uint32_t work_to_do,
 		/* Prefetch 4 x 16B comp */
 		rte_prefetch0(&cq_desc_base[Q_NEXT_TO_SRVC(cq, 4)]);
 		/* Prefetch 4 x 16B descriptors */
-		if (!(rxq->flags & IONIC_QCQ_F_CMB))
-			rte_prefetch0(&q_desc_base[Q_NEXT_TO_POST(q, 4)]);
+		rte_prefetch0(&q_desc_base[Q_NEXT_TO_POST(q, 4)]);
 
 		/* Clean one descriptor */
 		ionic_rx_clean_one_sg(rxq, cq_desc, rx_svc);
@@ -478,7 +475,8 @@ ionic_rxq_service_sg(struct ionic_rx_qcq *rxq, uint32_t work_to_do,
 
 	/* Update the queue indices and ring the doorbell */
 	if (work_done) {
-		ionic_q_flush(q);
+		ionic_rxq_flush(q);
+
 		rxq->last_wdog_cycles = rte_get_timer_cycles();
 		rxq->wdog_ms = IONIC_Q_WDOG_MS;
 	} else {
@@ -542,7 +540,7 @@ ionic_rx_fill_sg(struct ionic_rx_qcq *rxq)
 		q->head_idx = Q_NEXT_TO_POST(q, 1);
 	}
 
-	ionic_q_flush(q);
+	ionic_rxq_flush(q);
 
 	return err;
 }

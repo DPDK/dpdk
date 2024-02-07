@@ -145,11 +145,13 @@ struct ionic_queue {
 	uint16_t num_descs;
 	uint16_t num_segs;
 	uint16_t head_idx;
+	uint16_t cmb_head_idx;
 	uint16_t tail_idx;
 	uint16_t size_mask;
 	uint8_t type;
 	uint8_t hw_type;
 	void *base;
+	void *cmb_base;
 	void *sg_base;
 	struct ionic_doorbell __iomem *db;
 	void **info;
@@ -158,6 +160,7 @@ struct ionic_queue {
 	uint32_t hw_index;
 	rte_iova_t base_pa;
 	rte_iova_t sg_base_pa;
+	rte_iova_t cmb_base_pa;
 };
 
 #define IONIC_INTR_NONE		(-1)
@@ -244,7 +247,8 @@ uint32_t ionic_cq_service(struct ionic_cq *cq, uint32_t work_to_do,
 
 int ionic_q_init(struct ionic_queue *q, uint32_t index, uint16_t num_descs);
 void ionic_q_reset(struct ionic_queue *q);
-void ionic_q_map(struct ionic_queue *q, void *base, rte_iova_t base_pa);
+void ionic_q_map(struct ionic_queue *q, void *base, rte_iova_t base_pa,
+				 void *cmb_base, rte_iova_t cmb_base_pa);
 void ionic_q_sg_map(struct ionic_queue *q, void *base, rte_iova_t base_pa);
 
 static inline uint16_t

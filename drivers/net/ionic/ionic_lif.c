@@ -572,10 +572,11 @@ ionic_qcq_alloc(struct ionic_lif *lif,
 {
 	struct ionic_qcq *new;
 	uint32_t q_size, cq_size, sg_size, total_size;
-	void *q_base, *cq_base, *sg_base;
+	void *q_base, *cmb_q_base, *cq_base, *sg_base;
 	rte_iova_t q_base_pa = 0;
 	rte_iova_t cq_base_pa = 0;
 	rte_iova_t sg_base_pa = 0;
+	rte_iova_t cmb_q_base_pa = 0;
 	size_t page_size = rte_mem_page_size();
 	int err;
 
@@ -666,19 +667,22 @@ ionic_qcq_alloc(struct ionic_lif *lif,
 			IONIC_PRINT(ERR, "Cannot reserve queue from NIC mem");
 			return -ENOMEM;
 		}
-		q_base = (void *)
+		cmb_q_base = (void *)
 			((uintptr_t)lif->adapter->bars.bar[2].vaddr +
 			 (uintptr_t)lif->adapter->cmb_offset);
 		/* CMB PA is a relative address */
-		q_base_pa = lif->adapter->cmb_offset;
+		cmb_q_base_pa = lif->adapter->cmb_offset;
 		lif->adapter->cmb_offset += q_size;
+	} else {
+		cmb_q_base = NULL;
+		cmb_q_base_pa = 0;
 	}
 
 	IONIC_PRINT(DEBUG, "Q-Base-PA = %#jx CQ-Base-PA = %#jx "
 		"SG-base-PA = %#jx",
 		q_base_pa, cq_base_pa, sg_base_pa);
 
-	ionic_q_map(&new->q, q_base, q_base_pa);
+	ionic_q_map(&new->q, q_base, q_base_pa, cmb_q_base, cmb_q_base_pa);
 	ionic_cq_map(&new->cq, cq_base, cq_base_pa);
 
 	*qcq = new;
@@ -1583,7 +1587,6 @@ ionic_lif_txq_init(struct ionic_tx_qcq *txq)
 			.flags = rte_cpu_to_le_16(IONIC_QINIT_F_ENA),
 			.intr_index = rte_cpu_to_le_16(IONIC_INTR_NONE),
 			.ring_size = rte_log2_u32(q->num_descs),
-			.ring_base = rte_cpu_to_le_64(q->base_pa),
 			.cq_ring_base = rte_cpu_to_le_64(cq->base_pa),
 			.sg_ring_base = rte_cpu_to_le_64(q->sg_base_pa),
 		},
@@ -1592,8 +1595,12 @@ ionic_lif_txq_init(struct ionic_tx_qcq *txq)
 
 	if (txq->flags & IONIC_QCQ_F_SG)
 		ctx.cmd.q_init.flags |= rte_cpu_to_le_16(IONIC_QINIT_F_SG);
-	if (txq->flags & IONIC_QCQ_F_CMB)
+	if (txq->flags & IONIC_QCQ_F_CMB) {
 		ctx.cmd.q_init.flags |= rte_cpu_to_le_16(IONIC_QINIT_F_CMB);
+		ctx.cmd.q_init.ring_base = rte_cpu_to_le_64(q->cmb_base_pa);
+	} else {
+		ctx.cmd.q_init.ring_base = rte_cpu_to_le_64(q->base_pa);
+	}
 
 	IONIC_PRINT(DEBUG, "txq_init.index %d", q->index);
 	IONIC_PRINT(DEBUG, "txq_init.ring_base 0x%" PRIx64 "", q->base_pa);
@@ -1638,7 +1645,6 @@ ionic_lif_rxq_init(struct ionic_rx_qcq *rxq)
 			.flags = rte_cpu_to_le_16(IONIC_QINIT_F_ENA),
 			.intr_index = rte_cpu_to_le_16(IONIC_INTR_NONE),
 			.ring_size = rte_log2_u32(q->num_descs),
-			.ring_base = rte_cpu_to_le_64(q->base_pa),
 			.cq_ring_base = rte_cpu_to_le_64(cq->base_pa),
 			.sg_ring_base = rte_cpu_to_le_64(q->sg_base_pa),
 		},
@@ -1647,8 +1653,12 @@ ionic_lif_rxq_init(struct ionic_rx_qcq *rxq)
 
 	if (rxq->flags & IONIC_QCQ_F_SG)
 		ctx.cmd.q_init.flags |= rte_cpu_to_le_16(IONIC_QINIT_F_SG);
-	if (rxq->flags & IONIC_QCQ_F_CMB)
+	if (rxq->flags & IONIC_QCQ_F_CMB) {
 		ctx.cmd.q_init.flags |= rte_cpu_to_le_16(IONIC_QINIT_F_CMB);
+		ctx.cmd.q_init.ring_base = rte_cpu_to_le_64(q->cmb_base_pa);
+	} else {
+		ctx.cmd.q_init.ring_base = rte_cpu_to_le_64(q->base_pa);
+	}
 
 	IONIC_PRINT(DEBUG, "rxq_init.index %d", q->index);
 	IONIC_PRINT(DEBUG, "rxq_init.ring_base 0x%" PRIx64 "", q->base_pa);
