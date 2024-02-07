@@ -27,7 +27,8 @@ ionic_tx_flush_sg(struct ionic_tx_qcq *txq)
 	struct ionic_cq *cq = &txq->qcq.cq;
 	struct ionic_queue *q = &txq->qcq.q;
 	struct rte_mbuf *txm;
-	struct ionic_txq_comp *cq_desc, *cq_desc_base = cq->base;
+	struct ionic_txq_comp *cq_desc_base = cq->base;
+	volatile struct ionic_txq_comp *cq_desc;
 	void **info;
 	uint32_t i;
 
@@ -252,7 +253,7 @@ ionic_xmit_pkts_sg(void *tx_queue, struct rte_mbuf **tx_pkts,
  */
 static __rte_always_inline void
 ionic_rx_clean_one_sg(struct ionic_rx_qcq *rxq,
-		struct ionic_rxq_comp *cq_desc,
+		volatile struct ionic_rxq_comp *cq_desc,
 		struct ionic_rx_service *rx_svc)
 {
 	struct ionic_queue *q = &rxq->qcq.q;
@@ -438,7 +439,8 @@ ionic_rxq_service_sg(struct ionic_rx_qcq *rxq, uint32_t work_to_do,
 	struct ionic_cq *cq = &rxq->qcq.cq;
 	struct ionic_queue *q = &rxq->qcq.q;
 	struct ionic_rxq_desc *q_desc_base = q->base;
-	struct ionic_rxq_comp *cq_desc, *cq_desc_base = cq->base;
+	struct ionic_rxq_comp *cq_desc_base = cq->base;
+	volatile struct ionic_rxq_comp *cq_desc;
 	uint32_t work_done = 0;
 	uint64_t then, now, hz, delta;
 
