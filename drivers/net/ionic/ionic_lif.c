@@ -1231,13 +1231,7 @@ ionic_lif_rss_setup(struct ionic_lif *lif)
 static void
 ionic_lif_rss_teardown(struct ionic_lif *lif)
 {
-	if (!lif->rss_ind_tbl)
-		return;
-
-	if (lif->rss_ind_tbl_z) {
-		/* Disable RSS on the NIC */
-		ionic_lif_rss_config(lif, 0x0, NULL, NULL);
-
+	if (lif->rss_ind_tbl) {
 		lif->rss_ind_tbl = NULL;
 		lif->rss_ind_tbl_pa = 0;
 		rte_memzone_free(lif->rss_ind_tbl_z);

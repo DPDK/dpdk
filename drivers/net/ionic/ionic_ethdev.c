@@ -1007,13 +1007,10 @@ ionic_dev_close(struct rte_eth_dev *eth_dev)
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
 
-	ionic_lif_stop(lif);
-
 	IONIC_PRINT(NOTICE, "Removing device %s", eth_dev->device->name);
 	if (adapter->intf->unconfigure_intr)
 		(*adapter->intf->unconfigure_intr)(adapter);
 
-	ionic_port_reset(adapter);
 	ionic_reset(adapter);
 
 	ionic_lif_free_queues(lif);
