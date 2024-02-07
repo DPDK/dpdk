@@ -756,7 +756,7 @@ ionic_dev_rx_descriptor_status(void *rx_queue, uint16_t offset)
 {
 	struct ionic_rx_qcq *rxq = rx_queue;
 	struct ionic_qcq *qcq = &rxq->qcq;
-	struct ionic_rxq_comp *cq_desc;
+	volatile struct ionic_rxq_comp *cq_desc;
 	uint16_t mask, head, tail, pos;
 	bool done_color;
 
@@ -795,7 +795,7 @@ ionic_dev_tx_descriptor_status(void *tx_queue, uint16_t offset)
 {
 	struct ionic_tx_qcq *txq = tx_queue;
 	struct ionic_qcq *qcq = &txq->qcq;
-	struct ionic_txq_comp *cq_desc;
+	volatile struct ionic_txq_comp *cq_desc;
 	uint16_t mask, head, tail, pos, cq_pos;
 	bool done_color;
 
