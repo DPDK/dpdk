@@ -1002,6 +1002,7 @@ static const char *const flow_field_ids[] = {
 	"tcp_data_off", "ipv4_ihl", "ipv4_total_len", "ipv6_payload_len",
 	"random",
 	"ipv4_proto",
+	"esp_spi", "esp_seq_num", "esp_proto",
 	NULL
 };
 
