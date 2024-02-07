@@ -285,6 +285,9 @@ ionic_dev_link_update(struct rte_eth_dev *eth_dev,
 		link.link_status = RTE_ETH_LINK_UP;
 		link.link_duplex = RTE_ETH_LINK_FULL_DUPLEX;
 		switch (adapter->link_speed) {
+		case  1000:
+			link.link_speed = RTE_ETH_SPEED_NUM_1G;
+			break;
 		case  10000:
 			link.link_speed = RTE_ETH_SPEED_NUM_10G;
 			break;
@@ -299,6 +302,9 @@ ionic_dev_link_update(struct rte_eth_dev *eth_dev,
 			break;
 		case 100000:
 			link.link_speed = RTE_ETH_SPEED_NUM_100G;
+			break;
+		case 200000:
+			link.link_speed = RTE_ETH_SPEED_NUM_200G;
 			break;
 		default:
 			link.link_speed = RTE_ETH_SPEED_NUM_NONE;
