@@ -10,7 +10,7 @@
 #include <rte_ethdev.h>
 #include <rte_ether.h>
 
-#include "ionic_osdep.h"
+#include "ionic.h"
 #include "ionic_dev.h"
 #include "ionic_rx_filter.h"
 
@@ -99,6 +99,8 @@ struct ionic_rx_qcq {
 
 	/* cacheline4+ */
 	struct rte_mbuf *mbs[IONIC_MBUF_BULK_ALLOC] __rte_cache_aligned;
+
+	struct ionic_admin_ctx admin_ctx;
 };
 
 struct ionic_tx_qcq {
@@ -112,6 +114,8 @@ struct ionic_tx_qcq {
 	uint16_t flags;
 
 	struct ionic_tx_stats stats;
+
+	struct ionic_admin_ctx admin_ctx;
 };
 
 #define IONIC_Q_TO_QCQ(_q)	container_of(_q, struct ionic_qcq, q)
@@ -225,10 +229,12 @@ int ionic_tx_qcq_alloc(struct ionic_lif *lif, uint32_t socket_id,
 void ionic_qcq_free(struct ionic_qcq *qcq);
 
 int ionic_lif_rxq_init(struct ionic_rx_qcq *rxq);
-void ionic_lif_rxq_deinit(struct ionic_rx_qcq *rxq);
+void ionic_lif_rxq_deinit_nowait(struct ionic_rx_qcq *rxq);
+void ionic_lif_rxq_stats(struct ionic_rx_qcq *rxq);
 
 int ionic_lif_txq_init(struct ionic_tx_qcq *txq);
-void ionic_lif_txq_deinit(struct ionic_tx_qcq *txq);
+void ionic_lif_txq_deinit_nowait(struct ionic_tx_qcq *txq);
+void ionic_lif_txq_stats(struct ionic_tx_qcq *txq);
 
 int ionic_lif_rss_config(struct ionic_lif *lif, const uint16_t types,
 	const uint8_t *key, const uint32_t *indir);

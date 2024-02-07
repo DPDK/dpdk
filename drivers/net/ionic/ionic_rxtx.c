@@ -92,36 +92,40 @@ ionic_dev_tx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
 }
 
 int __rte_cold
-ionic_dev_tx_queue_stop(struct rte_eth_dev *eth_dev, uint16_t tx_queue_id)
+ionic_dev_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 {
-	struct ionic_tx_stats *stats;
-	struct ionic_tx_qcq *txq;
+	ionic_dev_tx_queue_stop_firsthalf(dev, tx_queue_id);
+	ionic_dev_tx_queue_stop_secondhalf(dev, tx_queue_id);
+
+	return 0;
+}
+
+void __rte_cold
+ionic_dev_tx_queue_stop_firsthalf(struct rte_eth_dev *dev,
+				uint16_t tx_queue_id)
+{
+	struct ionic_tx_qcq *txq = dev->data->tx_queues[tx_queue_id];
 
 	IONIC_PRINT(DEBUG, "Stopping TX queue %u", tx_queue_id);
 
-	txq = eth_dev->data->tx_queues[tx_queue_id];
+	dev->data->tx_queue_state[tx_queue_id] = RTE_ETH_QUEUE_STATE_STOPPED;
 
-	eth_dev->data->tx_queue_state[tx_queue_id] =
-		RTE_ETH_QUEUE_STATE_STOPPED;
+	ionic_lif_txq_deinit_nowait(txq);
+}
 
-	/*
-	 * Note: we should better post NOP Tx desc and wait for its completion
-	 * before disabling Tx queue
-	 */
+void __rte_cold
+ionic_dev_tx_queue_stop_secondhalf(struct rte_eth_dev *dev,
+				uint16_t tx_queue_id)
+{
+	struct ionic_lif *lif = IONIC_ETH_DEV_TO_LIF(dev);
+	struct ionic_tx_qcq *txq = dev->data->tx_queues[tx_queue_id];
 
-	ionic_lif_txq_deinit(txq);
+	ionic_adminq_wait(lif, &txq->admin_ctx);
 
 	/* Free all buffers from descriptor ring */
 	ionic_tx_empty(txq);
 
-	stats = &txq->stats;
-	IONIC_PRINT(DEBUG, "TX queue %u pkts %ju tso %ju",
-		txq->qcq.q.index, stats->packets, stats->tso);
-	IONIC_PRINT(DEBUG, "TX queue %u comps %ju (%ju per)",
-		txq->qcq.q.index, stats->comps,
-		stats->comps ? stats->packets / stats->comps : 0);
-
-	return 0;
+	ionic_lif_txq_stats(txq);
 }
 
 int __rte_cold
@@ -727,28 +731,40 @@ ionic_dev_rx_queue_start(struct rte_eth_dev *eth_dev, uint16_t rx_queue_id)
  * Stop Receive Units for specified queue.
  */
 int __rte_cold
-ionic_dev_rx_queue_stop(struct rte_eth_dev *eth_dev, uint16_t rx_queue_id)
+ionic_dev_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 {
-	uint8_t *rx_queue_state = eth_dev->data->rx_queue_state;
-	struct ionic_rx_stats *stats;
-	struct ionic_rx_qcq *rxq;
+	ionic_dev_rx_queue_stop_firsthalf(dev, rx_queue_id);
+	ionic_dev_rx_queue_stop_secondhalf(dev, rx_queue_id);
+
+	return 0;
+}
+
+void __rte_cold
+ionic_dev_rx_queue_stop_firsthalf(struct rte_eth_dev *dev,
+				uint16_t rx_queue_id)
+{
+	struct ionic_rx_qcq *rxq = dev->data->rx_queues[rx_queue_id];
 
 	IONIC_PRINT(DEBUG, "Stopping RX queue %u", rx_queue_id);
 
-	rxq = eth_dev->data->rx_queues[rx_queue_id];
+	dev->data->rx_queue_state[rx_queue_id] = RTE_ETH_QUEUE_STATE_STOPPED;
 
-	rx_queue_state[rx_queue_id] = RTE_ETH_QUEUE_STATE_STOPPED;
+	ionic_lif_rxq_deinit_nowait(rxq);
+}
 
-	ionic_lif_rxq_deinit(rxq);
+void __rte_cold
+ionic_dev_rx_queue_stop_secondhalf(struct rte_eth_dev *dev,
+				uint16_t rx_queue_id)
+{
+	struct ionic_lif *lif = IONIC_ETH_DEV_TO_LIF(dev);
+	struct ionic_rx_qcq *rxq = dev->data->rx_queues[rx_queue_id];
+
+	ionic_adminq_wait(lif, &rxq->admin_ctx);
 
 	/* Free all buffers from descriptor ring */
 	ionic_rx_empty(rxq);
 
-	stats = &rxq->stats;
-	IONIC_PRINT(DEBUG, "RX queue %u pkts %ju mtod %ju",
-		rxq->qcq.q.index, stats->packets, stats->mtods);
-
-	return 0;
+	ionic_lif_rxq_stats(rxq);
 }
 
 int

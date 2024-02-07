@@ -31,11 +31,15 @@ static int ionic_lif_addr_add(struct ionic_lif *lif, const uint8_t *addr);
 static int ionic_lif_addr_del(struct ionic_lif *lif, const uint8_t *addr);
 
 static int
-ionic_qcq_disable(struct ionic_qcq *qcq)
+ionic_qcq_disable_nowait(struct ionic_qcq *qcq,
+		struct ionic_admin_ctx *ctx)
 {
+	int err;
+
 	struct ionic_queue *q = &qcq->q;
 	struct ionic_lif *lif = qcq->lif;
-	struct ionic_admin_ctx ctx = {
+
+	*ctx = (struct ionic_admin_ctx) {
 		.pending_work = true,
 		.cmd.q_control = {
 			.opcode = IONIC_CMD_Q_CONTROL,
@@ -45,28 +49,39 @@ ionic_qcq_disable(struct ionic_qcq *qcq)
 		},
 	};
 
-	return ionic_adminq_post_wait(lif, &ctx);
+	/* Does not wait for command completion */
+	err = ionic_adminq_post(lif, ctx);
+	if (err)
+		ctx->pending_work = false;
+	return err;
 }
 
 void
 ionic_lif_stop(struct ionic_lif *lif)
 {
-	uint32_t i;
+	struct rte_eth_dev *dev = lif->eth_dev;
+	uint32_t i, j, chunk;
 
 	IONIC_PRINT_CALL();
 
 	lif->state &= ~IONIC_LIF_F_UP;
 
-	for (i = 0; i < lif->nrxqcqs; i++) {
-		struct ionic_rx_qcq *rxq = lif->rxqcqs[i];
-		if (rxq->flags & IONIC_QCQ_F_INITED)
-			(void)ionic_dev_rx_queue_stop(lif->eth_dev, i);
+	chunk = ionic_adminq_space_avail(lif);
+
+	for (i = 0; i < lif->nrxqcqs; i += chunk) {
+		for (j = 0; j < chunk && i + j < lif->nrxqcqs; j++)
+			ionic_dev_rx_queue_stop_firsthalf(dev, i + j);
+
+		for (j = 0; j < chunk && i + j < lif->nrxqcqs; j++)
+			ionic_dev_rx_queue_stop_secondhalf(dev, i + j);
 	}
 
-	for (i = 0; i < lif->ntxqcqs; i++) {
-		struct ionic_tx_qcq *txq = lif->txqcqs[i];
-		if (txq->flags & IONIC_QCQ_F_INITED)
-			(void)ionic_dev_tx_queue_stop(lif->eth_dev, i);
+	for (i = 0; i < lif->ntxqcqs; i += chunk) {
+		for (j = 0; j < chunk && i + j < lif->ntxqcqs; j++)
+			ionic_dev_tx_queue_stop_firsthalf(dev, i + j);
+
+		for (j = 0; j < chunk && i + j < lif->ntxqcqs; j++)
+			ionic_dev_tx_queue_stop_secondhalf(dev, i + j);
 	}
 }
 
@@ -1240,19 +1255,40 @@ ionic_lif_rss_teardown(struct ionic_lif *lif)
 }
 
 void
-ionic_lif_txq_deinit(struct ionic_tx_qcq *txq)
+ionic_lif_txq_deinit_nowait(struct ionic_tx_qcq *txq)
 {
-	ionic_qcq_disable(&txq->qcq);
+	ionic_qcq_disable_nowait(&txq->qcq, &txq->admin_ctx);
 
 	txq->flags &= ~IONIC_QCQ_F_INITED;
 }
 
 void
-ionic_lif_rxq_deinit(struct ionic_rx_qcq *rxq)
+ionic_lif_txq_stats(struct ionic_tx_qcq *txq)
 {
-	ionic_qcq_disable(&rxq->qcq);
+	struct ionic_tx_stats *stats = &txq->stats;
+
+	IONIC_PRINT(DEBUG, "TX queue %u pkts %ju tso %ju",
+		txq->qcq.q.index, stats->packets, stats->tso);
+	IONIC_PRINT(DEBUG, "TX queue %u comps %ju (%ju per)",
+		txq->qcq.q.index, stats->comps,
+		stats->comps ? stats->packets / stats->comps : 0);
+}
+
+void
+ionic_lif_rxq_deinit_nowait(struct ionic_rx_qcq *rxq)
+{
+	ionic_qcq_disable_nowait(&rxq->qcq, &rxq->admin_ctx);
 
 	rxq->flags &= ~IONIC_QCQ_F_INITED;
+}
+
+void
+ionic_lif_rxq_stats(struct ionic_rx_qcq *rxq)
+{
+	struct ionic_rx_stats *stats = &rxq->stats;
+
+	IONIC_PRINT(DEBUG, "RX queue %u pkts %ju mtod %ju",
+		rxq->qcq.q.index, stats->packets, stats->mtods);
 }
 
 static void

@@ -83,7 +83,10 @@ struct ionic_admin_ctx {
 	union ionic_adminq_comp comp;
 };
 
+int ionic_adminq_post(struct ionic_lif *lif, struct ionic_admin_ctx *ctx);
 int ionic_adminq_post_wait(struct ionic_lif *lif, struct ionic_admin_ctx *ctx);
+int ionic_adminq_wait(struct ionic_lif *lif, struct ionic_admin_ctx *ctx);
+uint16_t ionic_adminq_space_avail(struct ionic_lif *lif);
 
 int ionic_dev_cmd_wait_check(struct ionic_dev *idev, unsigned long max_wait);
 int ionic_setup(struct ionic_adapter *adapter);
