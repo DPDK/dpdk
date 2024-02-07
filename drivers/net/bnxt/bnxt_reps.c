@@ -32,6 +32,14 @@ static const struct eth_dev_ops bnxt_rep_dev_ops = {
 	.flow_ops_get = bnxt_flow_ops_get_op
 };
 
+static bool bnxt_rep_check_parent(struct bnxt_representor *rep)
+{
+	if (!rep->parent_dev->data->dev_private)
+		return false;
+
+	return true;
+}
+
 uint16_t
 bnxt_vfr_recv(uint16_t port_id, uint16_t queue_id, struct rte_mbuf *mbuf)
 {
@@ -266,12 +274,12 @@ int bnxt_representor_uninit(struct rte_eth_dev *eth_dev)
 	PMD_DRV_LOG(DEBUG, "BNXT Port:%d VFR uninit\n", eth_dev->data->port_id);
 	eth_dev->data->mac_addrs = NULL;
 
-	parent_bp = rep->parent_dev->data->dev_private;
-	if (!parent_bp) {
+	if (!bnxt_rep_check_parent(rep)) {
 		PMD_DRV_LOG(DEBUG, "BNXT Port:%d already freed\n",
 			    eth_dev->data->port_id);
 		return 0;
 	}
+	parent_bp = rep->parent_dev->data->dev_private;
 
 	parent_bp->num_reps--;
 	vf_id = rep->vf_id;
@@ -540,11 +548,12 @@ int bnxt_rep_dev_info_get_op(struct rte_eth_dev *eth_dev,
 	int rc = 0;
 
 	/* MAC Specifics */
-	parent_bp = rep_bp->parent_dev->data->dev_private;
-	if (!parent_bp) {
-		PMD_DRV_LOG(ERR, "Rep parent NULL!\n");
+	if (!bnxt_rep_check_parent(rep_bp)) {
+		/* Need not be an error scenario, if parent is closed first */
+		PMD_DRV_LOG(INFO, "Rep parent port does not exist.\n");
 		return rc;
 	}
+	parent_bp = rep_bp->parent_dev->data->dev_private;
 	PMD_DRV_LOG(DEBUG, "Representor dev_info_get_op\n");
 	dev_info->max_mac_addrs = parent_bp->max_l2_ctx;
 	dev_info->max_hash_mac_addrs = 0;
