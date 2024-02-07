@@ -1001,6 +1001,7 @@ static const char *const flow_field_ids[] = {
 	"geneve_opt_type", "geneve_opt_class", "geneve_opt_data", "mpls",
 	"tcp_data_off", "ipv4_ihl", "ipv4_total_len", "ipv6_payload_len",
 	"random",
+	"ipv4_proto",
 	NULL
 };
 

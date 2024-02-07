@@ -2421,6 +2421,7 @@ enum rte_flow_field_id {
 	RTE_FLOW_FIELD_IPV4_IHL,        /**< IPv4 IHL. */
 	RTE_FLOW_FIELD_IPV4_TOTAL_LEN,  /**< IPv4 total length. */
 	RTE_FLOW_FIELD_IPV6_PAYLOAD_LEN,/**< IPv6 payload length. */
+	RTE_FLOW_FIELD_IPV4_PROTO,      /**< IPv4 next protocol. */
 	RTE_FLOW_FIELD_RANDOM,          /**< Random value. */
 };
 
