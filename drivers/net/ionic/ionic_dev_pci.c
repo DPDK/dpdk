@@ -38,7 +38,7 @@ ionic_pci_setup(struct ionic_adapter *adapter)
 	struct ionic_dev *idev = &adapter->idev;
 	struct rte_pci_device *bus_dev = adapter->bus_dev;
 	uint32_t sig;
-	u_char *bar0_base;
+	uint8_t *bar0_base;
 	unsigned int i;
 
 	/* BAR0: dev_cmd and interrupts */
