@@ -117,6 +117,9 @@ ionic_dev_tx_queue_stop(struct rte_eth_dev *eth_dev, uint16_t tx_queue_id)
 	stats = &txq->stats;
 	IONIC_PRINT(DEBUG, "TX queue %u pkts %ju tso %ju",
 		txq->qcq.q.index, stats->packets, stats->tso);
+	IONIC_PRINT(DEBUG, "TX queue %u comps %ju (%ju per)",
+		txq->qcq.q.index, stats->comps,
+		stats->comps ? stats->packets / stats->comps : 0);
 
 	return 0;
 }
