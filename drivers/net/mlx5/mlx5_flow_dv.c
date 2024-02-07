@@ -1384,6 +1384,7 @@ mlx5_flow_item_field_width(struct rte_eth_dev *dev,
 	case RTE_FLOW_FIELD_IPV4_DSCP:
 		return 6;
 	case RTE_FLOW_FIELD_IPV4_TTL:
+	case RTE_FLOW_FIELD_IPV4_PROTO:
 		return 8;
 	case RTE_FLOW_FIELD_IPV4_SRC:
 	case RTE_FLOW_FIELD_IPV4_DST:
@@ -2194,10 +2195,11 @@ mlx5_flow_field_id_to_modify_info
 				info[idx].offset = data->offset;
 		}
 		break;
+	case RTE_FLOW_FIELD_IPV4_PROTO: /* Fall-through. */
 	case RTE_FLOW_FIELD_IPV6_PROTO:
 		MLX5_ASSERT(data->offset + width <= 8);
 		off_be = 8 - (data->offset + width);
-		info[idx] = (struct field_modify_info){1, 0, MLX5_MODI_OUT_IPV6_NEXT_HDR};
+		info[idx] = (struct field_modify_info){1, 0, MLX5_MODI_OUT_IP_PROTOCOL};
 		if (mask)
 			mask[idx] = flow_modify_info_mask_8(width, off_be);
 		else
