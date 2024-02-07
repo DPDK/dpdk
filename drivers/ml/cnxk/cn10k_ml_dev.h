@@ -42,15 +42,6 @@ extern struct rte_ml_dev_ops ml_dev_dummy_ops;
 #define ML_CN10K_SP_FLAGS_OCM_NONRELOCATABLE BIT(0)
 #define ML_CN10K_SP_FLAGS_EXTENDED_LOAD_JD   BIT(1)
 
-/* Memory barrier macros */
-#if defined(RTE_ARCH_ARM)
-#define dmb_st __extension__ ({ asm volatile("dmb st" : : : "memory"); })
-#define dsb_st __extension__ ({ asm volatile("dsb st" : : : "memory"); })
-#else
-#define dmb_st
-#define dsb_st
-#endif
-
 struct cnxk_ml_dev;
 struct cnxk_ml_req;
 struct cnxk_ml_qp;
