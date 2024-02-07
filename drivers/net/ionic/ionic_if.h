@@ -2592,41 +2592,41 @@ struct ionic_lif_stats {
 	__le64 rsvd16;
 	__le64 rsvd17;
 
-	__le64 rsvd18;
-	__le64 rsvd19;
-	__le64 rsvd20;
-	__le64 rsvd21;
-	__le64 rsvd22;
-	__le64 rsvd23;
-	__le64 rsvd24;
-	__le64 rsvd25;
+	__le64 flex1;
+	__le64 flex2;
+	__le64 flex3;
+	__le64 flex4;
+	__le64 flex5;
+	__le64 flex6;
+	__le64 flex7;
+	__le64 flex8;
 
-	__le64 rsvd26;
-	__le64 rsvd27;
-	__le64 rsvd28;
-	__le64 rsvd29;
-	__le64 rsvd30;
-	__le64 rsvd31;
-	__le64 rsvd32;
-	__le64 rsvd33;
+	__le64 flex9;
+	__le64 flex10;
+	__le64 flex11;
+	__le64 flex12;
+	__le64 flex13;
+	__le64 flex14;
+	__le64 flex15;
+	__le64 flex16;
 
-	__le64 rsvd34;
-	__le64 rsvd35;
-	__le64 rsvd36;
-	__le64 rsvd37;
-	__le64 rsvd38;
-	__le64 rsvd39;
-	__le64 rsvd40;
-	__le64 rsvd41;
+	__le64 flex17;
+	__le64 flex18;
+	__le64 flex19;
+	__le64 flex20;
+	__le64 flex21;
+	__le64 flex22;
+	__le64 flex23;
+	__le64 flex24;
 
-	__le64 rsvd42;
-	__le64 rsvd43;
-	__le64 rsvd44;
-	__le64 rsvd45;
-	__le64 rsvd46;
-	__le64 rsvd47;
-	__le64 rsvd48;
-	__le64 rsvd49;
+	__le64 flex25;
+	__le64 flex26;
+	__le64 flex27;
+	__le64 flex28;
+	__le64 flex29;
+	__le64 flex30;
+	__le64 flex31;
+	__le64 flex32;
 
 	/* RDMA/ROCE REQ Error/Debugs (768 - 895) */
 	__le64 rdma_req_rx_pkt_seq_err;
