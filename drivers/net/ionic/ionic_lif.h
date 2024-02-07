@@ -228,11 +228,13 @@ int ionic_tx_qcq_alloc(struct ionic_lif *lif, uint32_t socket_id,
 	struct ionic_tx_qcq **qcq_out);
 void ionic_qcq_free(struct ionic_qcq *qcq);
 
-int ionic_lif_rxq_init(struct ionic_rx_qcq *rxq);
+int ionic_lif_rxq_init_nowait(struct ionic_rx_qcq *rxq);
+void ionic_lif_rxq_init_done(struct ionic_rx_qcq *rxq);
 void ionic_lif_rxq_deinit_nowait(struct ionic_rx_qcq *rxq);
 void ionic_lif_rxq_stats(struct ionic_rx_qcq *rxq);
 
-int ionic_lif_txq_init(struct ionic_tx_qcq *txq);
+int ionic_lif_txq_init_nowait(struct ionic_tx_qcq *txq);
+void ionic_lif_txq_init_done(struct ionic_tx_qcq *txq);
 void ionic_lif_txq_deinit_nowait(struct ionic_tx_qcq *txq);
 void ionic_lif_txq_stats(struct ionic_tx_qcq *txq);
 

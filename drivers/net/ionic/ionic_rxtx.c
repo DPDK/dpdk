@@ -203,11 +203,23 @@ ionic_dev_tx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t tx_queue_id,
  * Start Transmit Units for specified queue.
  */
 int __rte_cold
-ionic_dev_tx_queue_start(struct rte_eth_dev *eth_dev, uint16_t tx_queue_id)
+ionic_dev_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 {
-	uint8_t *tx_queue_state = eth_dev->data->tx_queue_state;
-	struct ionic_tx_qcq *txq;
 	int err;
+
+	err = ionic_dev_tx_queue_start_firsthalf(dev, tx_queue_id);
+	if (err)
+		return err;
+
+	return ionic_dev_tx_queue_start_secondhalf(dev, tx_queue_id);
+}
+
+int __rte_cold
+ionic_dev_tx_queue_start_firsthalf(struct rte_eth_dev *dev,
+				uint16_t tx_queue_id)
+{
+	uint8_t *tx_queue_state = dev->data->tx_queue_state;
+	struct ionic_tx_qcq *txq = dev->data->tx_queues[tx_queue_id];
 
 	if (tx_queue_state[tx_queue_id] == RTE_ETH_QUEUE_STATE_STARTED) {
 		IONIC_PRINT(DEBUG, "TX queue %u already started",
@@ -215,14 +227,29 @@ ionic_dev_tx_queue_start(struct rte_eth_dev *eth_dev, uint16_t tx_queue_id)
 		return 0;
 	}
 
-	txq = eth_dev->data->tx_queues[tx_queue_id];
-
 	IONIC_PRINT(DEBUG, "Starting TX queue %u, %u descs",
 		tx_queue_id, txq->qcq.q.num_descs);
 
-	err = ionic_lif_txq_init(txq);
+	return ionic_lif_txq_init_nowait(txq);
+}
+
+int __rte_cold
+ionic_dev_tx_queue_start_secondhalf(struct rte_eth_dev *dev,
+				uint16_t tx_queue_id)
+{
+	uint8_t *tx_queue_state = dev->data->tx_queue_state;
+	struct ionic_lif *lif = IONIC_ETH_DEV_TO_LIF(dev);
+	struct ionic_tx_qcq *txq = dev->data->tx_queues[tx_queue_id];
+	int err;
+
+	if (tx_queue_state[tx_queue_id] == RTE_ETH_QUEUE_STATE_STARTED)
+		return 0;
+
+	err = ionic_adminq_wait(lif, &txq->admin_ctx);
 	if (err)
 		return err;
+
+	ionic_lif_txq_init_done(txq);
 
 	tx_queue_state[tx_queue_id] = RTE_ETH_QUEUE_STATE_STARTED;
 
@@ -681,21 +708,30 @@ ionic_rx_init_descriptors(struct ionic_rx_qcq *rxq)
  * Start Receive Units for specified queue.
  */
 int __rte_cold
-ionic_dev_rx_queue_start(struct rte_eth_dev *eth_dev, uint16_t rx_queue_id)
+ionic_dev_rx_queue_start(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 {
-	uint8_t *rx_queue_state = eth_dev->data->rx_queue_state;
-	struct ionic_rx_qcq *rxq;
-	struct ionic_queue *q;
 	int err;
+
+	err = ionic_dev_rx_queue_start_firsthalf(dev, rx_queue_id);
+	if (err)
+		return err;
+
+	return ionic_dev_rx_queue_start_secondhalf(dev, rx_queue_id);
+}
+
+int __rte_cold
+ionic_dev_rx_queue_start_firsthalf(struct rte_eth_dev *dev,
+				uint16_t rx_queue_id)
+{
+	uint8_t *rx_queue_state = dev->data->rx_queue_state;
+	struct ionic_rx_qcq *rxq = dev->data->rx_queues[rx_queue_id];
+	struct ionic_queue *q = &rxq->qcq.q;
 
 	if (rx_queue_state[rx_queue_id] == RTE_ETH_QUEUE_STATE_STARTED) {
 		IONIC_PRINT(DEBUG, "RX queue %u already started",
 			rx_queue_id);
 		return 0;
 	}
-
-	rxq = eth_dev->data->rx_queues[rx_queue_id];
-	q = &rxq->qcq.q;
 
 	rxq->frame_size = rxq->qcq.lif->frame_size - RTE_ETHER_CRC_LEN;
 
@@ -708,9 +744,26 @@ ionic_dev_rx_queue_start(struct rte_eth_dev *eth_dev, uint16_t rx_queue_id)
 
 	ionic_rx_init_descriptors(rxq);
 
-	err = ionic_lif_rxq_init(rxq);
+	return ionic_lif_rxq_init_nowait(rxq);
+}
+
+int __rte_cold
+ionic_dev_rx_queue_start_secondhalf(struct rte_eth_dev *dev,
+				uint16_t rx_queue_id)
+{
+	uint8_t *rx_queue_state = dev->data->rx_queue_state;
+	struct ionic_lif *lif = IONIC_ETH_DEV_TO_LIF(dev);
+	struct ionic_rx_qcq *rxq = dev->data->rx_queues[rx_queue_id];
+	int err;
+
+	if (rx_queue_state[rx_queue_id] == RTE_ETH_QUEUE_STATE_STARTED)
+		return 0;
+
+	err = ionic_adminq_wait(lif, &rxq->admin_ctx);
 	if (err)
 		return err;
+
+	ionic_lif_rxq_init_done(rxq);
 
 	/* Allocate buffers for descriptor ring */
 	if (rxq->flags & IONIC_QCQ_F_SG)

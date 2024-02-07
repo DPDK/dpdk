@@ -46,6 +46,16 @@ void ionic_dev_tx_queue_release(struct rte_eth_dev *dev, uint16_t qid);
 int ionic_dev_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id);
 int ionic_dev_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id);
 
+/* Helpers for optimized dev_start() */
+int ionic_dev_rx_queue_start_firsthalf(struct rte_eth_dev *dev,
+	uint16_t rx_queue_id);
+int ionic_dev_rx_queue_start_secondhalf(struct rte_eth_dev *dev,
+	uint16_t rx_queue_id);
+int ionic_dev_tx_queue_start_firsthalf(struct rte_eth_dev *dev,
+	uint16_t tx_queue_id);
+int ionic_dev_tx_queue_start_secondhalf(struct rte_eth_dev *dev,
+	uint16_t tx_queue_id);
+
 /* Helpers for optimized dev_stop() */
 void ionic_dev_rx_queue_stop_firsthalf(struct rte_eth_dev *dev,
 	uint16_t rx_queue_id);
