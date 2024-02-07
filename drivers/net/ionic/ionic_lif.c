@@ -768,7 +768,8 @@ ionic_rx_qcq_alloc(struct ionic_lif *lif, uint32_t socket_id, uint32_t index,
 	max_mtu = rte_le_to_cpu_32(lif->adapter->ident.lif.eth.max_mtu);
 
 	/* If mbufs are too small to hold received packets, enable SG */
-	if (max_mtu > hdr_seg_size) {
+	if (max_mtu > hdr_seg_size &&
+	    !(lif->features & IONIC_ETH_HW_RX_SG)) {
 		IONIC_PRINT(NOTICE, "Enabling RX_OFFLOAD_SCATTER");
 		lif->eth_dev->data->dev_conf.rxmode.offloads |=
 			RTE_ETH_RX_OFFLOAD_SCATTER;
