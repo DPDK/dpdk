@@ -642,6 +642,49 @@ ulp_ctx_shared_session_close(struct bnxt *bp,
 }
 
 static int32_t
+ulp_ctx_mh_get_session_name(struct bnxt *bp,
+			    struct tf_open_session_parms *parms)
+{
+	int32_t	rc = 0;
+	unsigned int domain = 0, bus = 0, slot = 0, device = 0;
+	rc = sscanf(parms->ctrl_chan_name,
+		    "%x:%x:%x.%u",
+		    &domain,
+		    &bus,
+		    &slot,
+		    &device);
+	if (rc != 4) {
+		/* PCI Domain not provided (optional in DPDK), thus we
+		 * force domain to 0 and recheck.
+		 */
+		domain = 0;
+		/* Check parsing of bus/slot/device */
+		rc = sscanf(parms->ctrl_chan_name,
+			    "%x:%x.%u",
+			    &bus,
+			    &slot,
+			    &device);
+		if (rc != 3) {
+			BNXT_TF_DBG(DEBUG,
+				    "Failed to scan device ctrl_chan_name\n");
+			return -EINVAL;
+		}
+	}
+
+	/* change domain name for multi-host system */
+	domain = domain + (0xf & bp->multi_host_pf_pci_id);
+	sprintf(parms->ctrl_chan_name,
+		"%x:%x:%x.%u",
+		domain,
+		bus,
+		slot,
+		device);
+	BNXT_TF_DBG(DEBUG,
+		    "Session name for Multi-Host: ctrl_chan_name:%s\n", parms->ctrl_chan_name);
+	return 0;
+}
+
+static int32_t
 ulp_ctx_shared_session_open(struct bnxt *bp,
 			    enum bnxt_ulp_session_type session_type,
 			    struct bnxt_ulp_session_state *session)
@@ -664,6 +707,14 @@ ulp_ctx_shared_session_open(struct bnxt *bp,
 			    ethdev->data->port_id, rc);
 		return rc;
 	}
+
+	/* On multi-host system, adjust ctrl_chan_name to avoid confliction */
+	if (BNXT_MH(bp)) {
+		rc = ulp_ctx_mh_get_session_name(bp, &parms);
+		if (rc)
+			return rc;
+	}
+
 	resources = &parms.resources;
 
 	/*
@@ -833,6 +884,13 @@ ulp_ctx_session_open(struct bnxt *bp,
 		BNXT_TF_DBG(ERR, "Invalid port %d, rc = %d\n",
 			    ethdev->data->port_id, rc);
 		return rc;
+	}
+
+	/* On multi-host system, adjust ctrl_chan_name to avoid confliction */
+	if (BNXT_MH(bp)) {
+		rc = ulp_ctx_mh_get_session_name(bp, &params);
+		if (rc)
+			return rc;
 	}
 
 	rc = bnxt_ulp_cntxt_app_id_get(bp->ulp_ctx, &app_id);

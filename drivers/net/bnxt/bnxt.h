@@ -825,6 +825,7 @@ struct bnxt {
 #define BNXT_TESTPMD_EN(bp)			\
 	((bp)->flags2 & BNXT_FLAGS2_TESTPMD_EN)
 
+	uint16_t		multi_host_pf_pci_id;
 	uint16_t		chip_num;
 #define CHIP_NUM_58818		0xd818
 #define BNXT_CHIP_SR2(bp)	((bp)->chip_num == CHIP_NUM_58818)

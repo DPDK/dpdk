@@ -4200,6 +4200,14 @@ int bnxt_hwrm_parent_pf_qcfg(struct bnxt *bp)
 	bp->parent->port_id = rte_le_to_cpu_16(resp->port_id);
 
 	flags = rte_le_to_cpu_16(resp->flags);
+
+	/* check for the mulit-host support */
+	if (flags & HWRM_FUNC_QCFG_OUTPUT_FLAGS_MULTI_HOST) {
+		bp->flags |= BNXT_FLAG_MULTI_HOST;
+		bp->multi_host_pf_pci_id = resp->pci_id;
+		PMD_DRV_LOG(INFO, "Mult-Host system Parent PCI-ID: 0x%x\n", resp->pci_id);
+	}
+
 	/* check for the multi-root support */
 	if (flags & HWRM_FUNC_QCFG_OUTPUT_FLAGS_MULTI_ROOT) {
 		bp->flags2 |= BNXT_FLAGS2_MULTIROOT_EN;
