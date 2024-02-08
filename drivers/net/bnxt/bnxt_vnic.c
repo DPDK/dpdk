@@ -280,6 +280,8 @@ uint32_t bnxt_rte_to_hwrm_hash_types(uint64_t rte_type)
 		hwrm_type |= HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_TCP_IPV6;
 	if (rte_type & RTE_ETH_RSS_NONFRAG_IPV6_UDP)
 		hwrm_type |= HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_UDP_IPV6;
+	if (rte_type & RTE_ETH_RSS_IPV6_FLOW_LABEL)
+		hwrm_type |= HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_IPV6_FLOW_LABEL;
 	if (rte_type & RTE_ETH_RSS_ESP)
 		hwrm_type |= HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_ESP_SPI_IPV4 |
 			     HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_ESP_SPI_IPV6;
@@ -302,6 +304,7 @@ int bnxt_rte_to_hwrm_hash_level(struct bnxt *bp, uint64_t hash_f, uint32_t lvl)
 	bool l3_and_l4 = l3 && l4;
 	bool cksum = !!(hash_f &
 			(RTE_ETH_RSS_IPV4_CHKSUM | RTE_ETH_RSS_L4_CHKSUM));
+	bool fl = !!(hash_f & RTE_ETH_RSS_IPV6_FLOW_LABEL);
 
 	/* If FW has not advertised capability to configure outer/inner
 	 * RSS hashing , just log a message. HW will work in default RSS mode.
@@ -317,12 +320,12 @@ int bnxt_rte_to_hwrm_hash_level(struct bnxt *bp, uint64_t hash_f, uint32_t lvl)
 	switch (lvl) {
 	case BNXT_RSS_LEVEL_INNERMOST:
 		/* Irrespective of what RTE says, FW always does 4 tuple */
-		if (l3_and_l4 || l4 || l3_only || cksum)
+		if (l3_and_l4 || l4 || l3_only || cksum || fl)
 			mode = BNXT_HASH_MODE_INNERMOST;
 		break;
 	case BNXT_RSS_LEVEL_OUTERMOST:
 		/* Irrespective of what RTE says, FW always does 4 tuple */
-		if (l3_and_l4 || l4 || l3_only || cksum)
+		if (l3_and_l4 || l4 || l3_only || cksum || fl)
 			mode = BNXT_HASH_MODE_OUTERMOST;
 		break;
 	default:
@@ -1415,6 +1418,8 @@ void bnxt_hwrm_rss_to_rte_hash_conf(struct bnxt_vnic_info *vnic,
 		*rss_conf |= RTE_ETH_RSS_NONFRAG_IPV6_TCP;
 	if (hash_types & HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_UDP_IPV6)
 		*rss_conf |= RTE_ETH_RSS_NONFRAG_IPV6_UDP;
+	if (hash_types & HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_IPV6_FLOW_LABEL)
+		*rss_conf |= RTE_ETH_RSS_IPV6_FLOW_LABEL;
 	if (hash_types & HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_AH_SPI_IPV6 ||
 	    hash_types & HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_AH_SPI_IPV4)
 		*rss_conf |= RTE_ETH_RSS_AH;

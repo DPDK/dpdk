@@ -1087,6 +1087,8 @@ uint64_t bnxt_eth_rss_support(struct bnxt *bp)
 	if (bp->vnic_cap_flags & BNXT_VNIC_CAP_CHKSM_MODE)
 		support |= RTE_ETH_RSS_IPV4_CHKSUM |
 			   RTE_ETH_RSS_L4_CHKSUM;
+	if (bp->vnic_cap_flags & BNXT_VNIC_CAP_IPV6_FLOW_LABEL_MODE)
+		support |= RTE_ETH_RSS_IPV6_FLOW_LABEL;
 	if (bp->vnic_cap_flags & BNXT_VNIC_CAP_AH_SPI_CAP)
 		support |= RTE_ETH_RSS_AH;
 	if (bp->vnic_cap_flags & BNXT_VNIC_CAP_ESP_SPI_CAP)

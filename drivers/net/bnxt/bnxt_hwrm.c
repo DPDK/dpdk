@@ -1308,6 +1308,9 @@ int bnxt_hwrm_vnic_qcaps(struct bnxt *bp)
 	if (flags & HWRM_VNIC_QCAPS_OUTPUT_FLAGS_RING_SELECT_MODE_TOEPLITZ_CHKSM_CAP)
 		bp->vnic_cap_flags |= BNXT_VNIC_CAP_CHKSM_MODE;
 
+	if (flags & HWRM_VNIC_QCAPS_OUTPUT_FLAGS_RSS_IPV6_FLOW_LABEL_CAP)
+		bp->vnic_cap_flags |= BNXT_VNIC_CAP_IPV6_FLOW_LABEL_MODE;
+
 	if (flags & HWRM_VNIC_QCAPS_OUTPUT_FLAGS_L2_CQE_MODE_CAP)
 		bp->vnic_cap_flags |= BNXT_VNIC_CAP_L2_CQE_MODE;
 
@@ -2772,6 +2775,10 @@ int bnxt_hwrm_vnic_free(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 static uint32_t bnxt_sanitize_rss_type(struct bnxt *bp, uint32_t types)
 {
 	uint32_t hwrm_type = types;
+
+	if (types & HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_IPV6_FLOW_LABEL &&
+	    !(bp->vnic_cap_flags & BNXT_VNIC_CAP_IPV6_FLOW_LABEL_MODE))
+		hwrm_type &= ~HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_IPV6_FLOW_LABEL;
 
 	if (types & HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_ESP_SPI_IPV4 &&
 	    !(bp->vnic_cap_flags & BNXT_VNIC_CAP_ESP_SPI4_CAP))
