@@ -623,7 +623,6 @@ struct bnxt_mark_info {
 
 struct bnxt_rep_info {
 	struct rte_eth_dev	*vfr_eth_dev;
-	pthread_mutex_t		vfr_lock;
 	pthread_mutex_t		vfr_start_lock;
 	bool			conduit_valid;
 };

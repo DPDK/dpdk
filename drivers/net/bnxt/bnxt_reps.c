@@ -124,8 +124,8 @@ bnxt_rep_tx_burst(void *tx_queue,
 	qid = vfr_txq->txq->queue_id;
 	vf_rep_bp = vfr_txq->bp;
 	parent = vf_rep_bp->parent_dev->data->dev_private;
-	pthread_mutex_lock(&parent->rep_info->vfr_lock);
 	ptxq = parent->tx_queues[qid];
+	pthread_mutex_lock(&ptxq->txq_lock);
 
 	ptxq->vfr_tx_cfa_action = vf_rep_bp->vfr_tx_cfa_action;
 
@@ -134,9 +134,9 @@ bnxt_rep_tx_burst(void *tx_queue,
 		vf_rep_bp->tx_pkts[qid]++;
 	}
 
-	rc = bnxt_xmit_pkts(ptxq, tx_pkts, nb_pkts);
+	rc = _bnxt_xmit_pkts(ptxq, tx_pkts, nb_pkts);
 	ptxq->vfr_tx_cfa_action = 0;
-	pthread_mutex_unlock(&parent->rep_info->vfr_lock);
+	pthread_mutex_unlock(&ptxq->txq_lock);
 
 	return rc;
 }
