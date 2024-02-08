@@ -111,6 +111,7 @@ void bnxt_tx_queue_release_op(struct rte_eth_dev *dev, uint16_t queue_idx)
 		txq->mz = NULL;
 
 		rte_free(txq->free);
+		pthread_mutex_destroy(&txq->txq_lock);
 		rte_free(txq);
 		dev->data->tx_queues[queue_idx] = NULL;
 	}
@@ -194,6 +195,11 @@ int bnxt_tx_queue_setup_op(struct rte_eth_dev *eth_dev,
 		goto err;
 	}
 
+	rc = pthread_mutex_init(&txq->txq_lock, NULL);
+	if (rc != 0) {
+		PMD_DRV_LOG(ERR, "TxQ mutex init failed!");
+		goto err;
+	}
 	return 0;
 err:
 	bnxt_tx_queue_release_op(eth_dev, queue_idx);

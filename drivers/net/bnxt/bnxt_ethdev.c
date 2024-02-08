@@ -1647,10 +1647,8 @@ bnxt_uninit_locks(struct bnxt *bp)
 	pthread_mutex_destroy(&bp->def_cp_lock);
 	pthread_mutex_destroy(&bp->health_check_lock);
 	pthread_mutex_destroy(&bp->err_recovery_lock);
-	if (bp->rep_info) {
-		pthread_mutex_destroy(&bp->rep_info->vfr_lock);
+	if (bp->rep_info)
 		pthread_mutex_destroy(&bp->rep_info->vfr_start_lock);
-	}
 }
 
 static void bnxt_drv_uninit(struct bnxt *bp)
@@ -6087,13 +6085,6 @@ static int bnxt_init_rep_info(struct bnxt *bp)
 
 	for (i = 0; i < BNXT_MAX_CFA_CODE; i++)
 		bp->cfa_code_map[i] = BNXT_VF_IDX_INVALID;
-
-	rc = pthread_mutex_init(&bp->rep_info->vfr_lock, NULL);
-	if (rc) {
-		PMD_DRV_LOG(ERR, "Unable to initialize vfr_lock\n");
-		bnxt_free_rep_info(bp);
-		return rc;
-	}
 
 	rc = pthread_mutex_init(&bp->rep_info->vfr_start_lock, NULL);
 	if (rc) {
