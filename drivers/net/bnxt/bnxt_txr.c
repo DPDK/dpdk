@@ -516,6 +516,19 @@ static int bnxt_handle_tx_cp(struct bnxt_tx_queue *txq)
 uint16_t bnxt_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 			       uint16_t nb_pkts)
 {
+	struct bnxt_tx_queue *txq = tx_queue;
+	uint16_t rc;
+
+	pthread_mutex_lock(&txq->txq_lock);
+	rc = _bnxt_xmit_pkts(tx_queue, tx_pkts, nb_pkts);
+	pthread_mutex_unlock(&txq->txq_lock);
+
+	return rc;
+}
+
+uint16_t _bnxt_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
+			 uint16_t nb_pkts)
+{
 	int rc;
 	uint16_t nb_tx_pkts = 0;
 	uint16_t coal_pkts = 0;

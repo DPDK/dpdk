@@ -26,6 +26,7 @@ struct bnxt_tx_queue {
 	int			index;
 	int			tx_wake_thresh;
 	uint32_t		vfr_tx_cfa_action;
+	pthread_mutex_t		txq_lock;
 	struct bnxt_tx_ring_info	*tx_ring;
 
 	unsigned int		cp_nr_rings;
