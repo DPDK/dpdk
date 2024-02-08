@@ -165,7 +165,6 @@ parameters defined in ``rte_fpga_5gnr_fec_conf`` structure:
       uint8_t dl_bandwidth;
       uint8_t ul_load_balance;
       uint8_t dl_load_balance;
-      uint16_t flr_time_out;
   };
 
 - ``pf_mode_en``: identifies whether only PF is to be used, or the VFs. PF and
@@ -191,10 +190,6 @@ parameters defined in ``rte_fpga_5gnr_fec_conf`` structure:
   If all hardware queues exceeds the watermark, no code blocks will be
   streamed in from UL/DL code block FIFO.
 
-- ``flr_time_out``: specifies how many 16.384us to be FLR time out. The
-  time_out = flr_time_out x 16.384us. For instance, if you want to set 10ms for
-  the FLR time out then set this setting to 0x262=610.
-
 
 An example configuration code calling the function ``rte_fpga_5gnr_fec_configure()`` is shown
 below:
@@ -219,7 +214,7 @@ below:
   /* setup FPGA PF */
   ret = rte_fpga_5gnr_fec_configure(info->dev_name, &conf);
   TEST_ASSERT_SUCCESS(ret,
-      "Failed to configure 4G FPGA PF for bbdev %s",
+      "Failed to configure 5GNR FPGA PF for bbdev %s",
       info->dev_name);
 
 
