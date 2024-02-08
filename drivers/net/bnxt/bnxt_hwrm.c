@@ -3563,15 +3563,17 @@ void bnxt_free_all_hwrm_resources(struct bnxt *bp)
 		if (vnic->fw_vnic_id == INVALID_HW_RING_ID)
 			continue;
 
+		if (vnic->func_default && (bp->flags & BNXT_FLAG_DFLT_VNIC_SET))
+			bnxt_hwrm_cfa_l2_clear_rx_mask(bp, vnic);
 		bnxt_clear_hwrm_vnic_flows(bp, vnic);
 
 		bnxt_clear_hwrm_vnic_filters(bp, vnic);
 
-		bnxt_hwrm_vnic_ctx_free(bp, vnic);
-
 		bnxt_hwrm_vnic_tpa_cfg(bp, vnic, false);
 
 		bnxt_hwrm_vnic_free(bp, vnic);
+
+		bnxt_hwrm_vnic_ctx_free(bp, vnic);
 
 		rte_free(vnic->fw_grp_ids);
 		vnic->fw_grp_ids = NULL;
