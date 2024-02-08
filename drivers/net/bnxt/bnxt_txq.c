@@ -104,12 +104,12 @@ void bnxt_tx_queue_release_op(struct rte_eth_dev *dev, uint16_t queue_idx)
 
 		/* Free TX completion ring hardware descriptors */
 		if (txq->cp_ring) {
+			bnxt_free_txq_stats(txq);
 			bnxt_free_ring(txq->cp_ring->cp_ring_struct);
 			rte_free(txq->cp_ring->cp_ring_struct);
 			rte_free(txq->cp_ring);
 		}
 
-		bnxt_free_txq_stats(txq);
 		rte_memzone_free(txq->mz);
 		txq->mz = NULL;
 
