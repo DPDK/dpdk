@@ -6,12 +6,13 @@ Intel(R) FPGA 5GNR FEC Poll Mode Driver
 
 The BBDEV FPGA 5GNR FEC poll mode driver (PMD) supports an FPGA implementation of a VRAN
 LDPC Encode / Decode 5GNR wireless acceleration function, using Intel's PCI-e and FPGA
-based Vista Creek device.
+based Vista Creek (N3000, referred to as VC_5GNR in the code)
+as well as Arrow Creek (N6000, referred to as AGX100 in the code).
 
 Features
 --------
 
-FPGA 5GNR FEC PMD supports the following features:
+FPGA 5GNR FEC PMD supports the following BBDEV capabilities:
 
 - LDPC Encode in the DL
 - LDPC Decode in the UL
@@ -67,9 +68,17 @@ Initialization
 
 When the device first powers up, its PCI Physical Functions (PF) can be listed through this command:
 
+Vista Creek (N3000)
+
 .. code-block:: console
 
   sudo lspci -vd8086:0d8f
+
+Arrow Creek (N6000)
+
+.. code-block:: console
+
+  sudo lspci -vd8086:5799
 
 The physical and virtual functions are compatible with Linux UIO drivers:
 ``vfio_pci`` and ``igb_uio``. However, in order to work the FPGA 5GNR FEC device firstly needs
@@ -77,6 +86,7 @@ to be bound to one of these linux drivers through DPDK.
 
 For more details on how to bind the PF device and create VF devices, see
 :ref:`linux_gsg_binding_kernel`.
+
 
 Configure the VFs through PF
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -110,12 +120,14 @@ parameters defined in ``rte_fpga_5gnr_fec_conf`` structure:
 
 - ``vf_*l_queues_number``: defines the hardware queue mapping for every VF.
 
-- ``*l_bandwidth``: in case of congestion on PCIe interface. The device
-  allocates different bandwidth to UL and DL. The weight is configured by this
-  setting. The unit of weight is 3 code blocks. For example, if the code block
-  cbps (code block per second) ratio between UL and DL is 12:1, then the
-  configuration value should be set to 36:3. The schedule algorithm is based
-  on code block regardless the length of each block.
+- ``*l_bandwidth``: Only used for the Vista Creek schedule algorithm
+  in case of congestion on PCIe interface.
+  The device allocates different bandwidth to UL and DL.
+  The weight is configured by this setting.
+  The unit of weight is 3 code blocks.
+  For example, if the code block cbps (code block per second) ratio
+  between UL and DL is 12:1, then the configuration value should be set to 36:3.
+  The schedule algorithm is based on code block regardless the length of each block.
 
 - ``*l_load_balance``: hardware queues are load-balanced in a round-robin
   fashion. Queues get filled first-in first-out until they reach a pre-defined
@@ -159,8 +171,38 @@ Test Application
 BBDEV provides a test application, ``test-bbdev.py`` and range of test data for testing
 the functionality of the device, depending on the device's capabilities.
 
-For more details on how to use the test application,
-see :ref:`test_bbdev_application`.
+.. code-block:: console
+
+   "-p", "--testapp-path": specifies path to the bbdev test app.
+   "-e", "--eal-params"	: EAL arguments which are passed to the test app.
+   "-t", "--timeout"	: Timeout in seconds (default=300).
+   "-c", "--test-cases"	: Defines test cases to run. Run all if not specified.
+   "-v", "--test-vector"	: Test vector path (default=dpdk_path+/app/test-bbdev/test_vectors/bbdev_null.data).
+   "-n", "--num-ops"	: Number of operations to process on device (default=32).
+   "-b", "--burst-size"	: Operations enqueue/dequeue burst size (default=32).
+   "-l", "--num-lcores"	: Number of lcores to run (default=16).
+   "-i", "--init-device" : Initialise PF device with default values.
+
+
+To execute the test application tool using simple decode or encode data,
+type one of the following:
+
+.. code-block:: console
+
+   ./test-bbdev.py -c validation -n 64 -b 1 -v ./ldpc_dec_default.data
+   ./test-bbdev.py -c validation -n 64 -b 1 -v ./ldpc_enc_default.data
+
+
+The test application ``test-bbdev.py`` supports the ability to configure the PF device
+with a default set of values, if the "-i" or "- -init-device" option is included.
+The default values are defined in ``test_bbdev_perf.c`` as:
+
+- VF_UL_QUEUE_VALUE 4
+- VF_DL_QUEUE_VALUE 4
+- UL_BANDWIDTH 3
+- DL_BANDWIDTH 3
+- UL_LOAD_BALANCE 128
+- DL_LOAD_BALANCE 128
 
 
 Test Vectors
@@ -184,7 +226,16 @@ See for more details: https://github.com/intel/pf-bb-config
 
 Specifically for the BBDEV FPGA 5GNR FEC PMD, the command below can be used:
 
+Vista Creek (N3000)
+
 .. code-block:: console
 
   ./pf_bb_config FPGA_5GNR -c fpga_5gnr/fpga_5gnr_config_vf.cfg
+  ./test-bbdev.py -e="-c 0xff0 -a${VF_PCI_ADDR}" -c validation -n 64 -b 32 -l 1 -v ./ldpc_dec_default.data
+
+Arrow Creek (N6000)
+
+.. code-block:: console
+
+  ./pf_bb_config AGX100 -c agx100/agx100_config_1vf.cfg
   ./test-bbdev.py -e="-c 0xff0 -a${VF_PCI_ADDR}" -c validation -n 64 -b 32 -l 1 -v ./ldpc_dec_default.data

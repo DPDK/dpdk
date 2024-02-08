@@ -8,6 +8,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#include "agx100_pmd.h"
 #include "vc_5gnr_pmd.h"
 
 /* Helper macro for logging */
@@ -133,12 +134,19 @@ struct fpga_5gnr_fec_device {
 	bool pf_device;
 	/** Maximum number of possible queues for this device. */
 	uint8_t total_num_queues;
+	/** FPGA Variant. VC_5GNR_FPGA_VARIANT = 0; AGX100_FPGA_VARIANT = 1. */
+	uint8_t fpga_variant;
 };
 
 /** Structure associated with each queue. */
 struct __rte_cache_aligned fpga_5gnr_queue {
 	struct fpga_5gnr_ring_ctrl_reg ring_ctrl_reg;  /**< Ring Control Register */
-	union vc_5gnr_dma_desc *vc_5gnr_ring_addr; /**< Virtual address of VC 5GNR software ring. */
+	union {
+		/** Virtual address of VC 5GNR software ring. */
+		union vc_5gnr_dma_desc *vc_5gnr_ring_addr;
+		/** Virtual address of AGX100 software ring. */
+		union agx100_dma_desc *agx100_ring_addr;
+	};
 	uint64_t *ring_head_addr;  /* Virtual address of completion_head */
 	uint64_t shadow_completion_head; /* Shadow completion head value */
 	uint16_t head_free_desc;  /* Ring head */
