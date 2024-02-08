@@ -131,6 +131,8 @@ struct fpga_5gnr_fec_device {
 	uint64_t q_assigned_bit_map;
 	/** True if this is a PF FPGA 5GNR device. */
 	bool pf_device;
+	/** Maximum number of possible queues for this device. */
+	uint8_t total_num_queues;
 };
 
 /** Structure associated with each queue. */

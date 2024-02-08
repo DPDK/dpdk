@@ -203,7 +203,7 @@ fpga_5gnr_setup_queues(struct rte_bbdev *dev, uint16_t num_queues, int socket_id
 	 * replaced with a queue ID and if it's not then
 	 * FPGA_5GNR_INVALID_HW_QUEUE_ID is returned.
 	 */
-	for (q_id = 0; q_id < VC_5GNR_TOTAL_NUM_QUEUES; ++q_id) {
+	for (q_id = 0; q_id < d->total_num_queues; ++q_id) {
 		uint32_t hw_q_id = fpga_5gnr_reg_read_32(d->mmio_base,
 				VC_5GNR_QUEUE_MAP + (q_id << 2));
 
@@ -367,7 +367,7 @@ fpga_5gnr_dev_info_get(struct rte_bbdev *dev, struct rte_bbdev_driver_info *dev_
 
 	/* Calculates number of queues assigned to device */
 	dev_info->max_num_queues = 0;
-	for (q_id = 0; q_id < VC_5GNR_TOTAL_NUM_QUEUES; ++q_id) {
+	for (q_id = 0; q_id < d->total_num_queues; ++q_id) {
 		uint32_t hw_q_id = fpga_5gnr_reg_read_32(d->mmio_base,
 				VC_5GNR_QUEUE_MAP + (q_id << 2));
 		if (hw_q_id != FPGA_5GNR_INVALID_HW_QUEUE_ID)
@@ -394,11 +394,11 @@ fpga_5gnr_find_free_queue_idx(struct rte_bbdev *dev,
 	struct fpga_5gnr_fec_device *d = dev->data->dev_private;
 	uint64_t q_idx;
 	uint8_t i = 0;
-	uint8_t range = VC_5GNR_TOTAL_NUM_QUEUES >> 1;
+	uint8_t range = d->total_num_queues >> 1;
 
 	if (conf->op_type == RTE_BBDEV_OP_LDPC_ENC) {
-		i = VC_5GNR_NUM_DL_QUEUES;
-		range = VC_5GNR_TOTAL_NUM_QUEUES;
+		i = d->total_num_queues >> 1;
+		range = d->total_num_queues;
 	}
 
 	for (; i < range; ++i) {
@@ -661,7 +661,7 @@ fpga_5gnr_dev_interrupt_handler(void *cb_arg)
 	uint8_t i;
 
 	/* Scan queue assigned to this device */
-	for (i = 0; i < VC_5GNR_TOTAL_NUM_QUEUES; ++i) {
+	for (i = 0; i < d->total_num_queues; ++i) {
 		q_idx = 1ULL << i;
 		if (d->q_bound_bit_map & q_idx) {
 			queue_id = get_queue_id(dev->data, i);
@@ -710,22 +710,25 @@ fpga_5gnr_intr_enable(struct rte_bbdev *dev)
 {
 	int ret;
 	uint8_t i;
+	struct fpga_5gnr_fec_device *d = dev->data->dev_private;
+	uint8_t num_intr_vec;
 
+	num_intr_vec = d->total_num_queues - RTE_INTR_VEC_RXTX_OFFSET;
 	if (!rte_intr_cap_multiple(dev->intr_handle)) {
 		rte_bbdev_log(ERR, "Multiple intr vector is not supported by FPGA (%s)",
 				dev->data->name);
 		return -ENOTSUP;
 	}
 
-	/* Create event file descriptors for each of 64 queue. Event fds will be
-	 * mapped to FPGA IRQs in rte_intr_enable(). This is a 1:1 mapping where
-	 * the IRQ number is a direct translation to the queue number.
+	/* Create event file descriptors for each of the supported queues (Maximum 64).
+	 * Event fds will be mapped to FPGA IRQs in rte_intr_enable().
+	 * This is a 1:1 mapping where the IRQ number is a direct translation to the queue number.
 	 *
-	 * 63 (VC_5GNR_NUM_INTR_VEC) event fds are created as rte_intr_enable()
+	 * num_intr_vec event fds are created as rte_intr_enable()
 	 * mapped the first IRQ to already created interrupt event file
 	 * descriptor (intr_handle->fd).
 	 */
-	if (rte_intr_efd_enable(dev->intr_handle, VC_5GNR_NUM_INTR_VEC)) {
+	if (rte_intr_efd_enable(dev->intr_handle, num_intr_vec)) {
 		rte_bbdev_log(ERR, "Failed to create fds for %u queues", dev->data->num_queues);
 		return -1;
 	}
@@ -735,7 +738,7 @@ fpga_5gnr_intr_enable(struct rte_bbdev *dev)
 	 * It ensures that callback function assigned to that descriptor will
 	 * invoked when any FPGA queue issues interrupt.
 	 */
-	for (i = 0; i < VC_5GNR_NUM_INTR_VEC; ++i) {
+	for (i = 0; i < num_intr_vec; ++i) {
 		if (rte_intr_efds_index_set(dev->intr_handle, i,
 				rte_intr_fd_get(dev->intr_handle)))
 			return -rte_errno;
@@ -2083,6 +2086,8 @@ fpga_5gnr_fec_init(struct rte_bbdev *dev, struct rte_pci_driver *drv)
 			!strcmp(drv->driver.name, RTE_STR(FPGA_5GNR_FEC_PF_DRIVER_NAME));
 	((struct fpga_5gnr_fec_device *) dev->data->dev_private)->mmio_base =
 			pci_dev->mem_resource[0].addr;
+	((struct fpga_5gnr_fec_device *) dev->data->dev_private)->total_num_queues =
+			VC_5GNR_TOTAL_NUM_QUEUES;
 
 	rte_bbdev_log_debug(
 			"Init device %s [%s] @ virtaddr %p phyaddr %#"PRIx64,
@@ -2242,7 +2247,7 @@ static int vc_5gnr_configure(const char *dev_name, const struct rte_fpga_5gnr_fe
 
 	/* Clear all queues registers */
 	payload_32 = FPGA_5GNR_INVALID_HW_QUEUE_ID;
-	for (q_id = 0; q_id < VC_5GNR_TOTAL_NUM_QUEUES; ++q_id) {
+	for (q_id = 0; q_id < d->total_num_queues; ++q_id) {
 		address = (q_id << 2) + VC_5GNR_QUEUE_MAP;
 		fpga_5gnr_reg_write_32(d->mmio_base, address, payload_32);
 	}
@@ -2303,7 +2308,7 @@ static int vc_5gnr_configure(const char *dev_name, const struct rte_fpga_5gnr_fe
 	 */
 	if (conf->pf_mode_en) {
 		payload_32 = 0x1;
-		for (q_id = 0; q_id < VC_5GNR_TOTAL_NUM_QUEUES; ++q_id) {
+		for (q_id = 0; q_id < d->total_num_queues; ++q_id) {
 			address = (q_id << 2) + VC_5GNR_QUEUE_MAP;
 			fpga_5gnr_reg_write_32(d->mmio_base, address, payload_32);
 		}
@@ -2321,11 +2326,11 @@ static int vc_5gnr_configure(const char *dev_name, const struct rte_fpga_5gnr_fe
 		 */
 		if ((total_ul_q_id > VC_5GNR_NUM_UL_QUEUES) ||
 			(total_dl_q_id > VC_5GNR_NUM_DL_QUEUES) ||
-			(total_q_id > VC_5GNR_TOTAL_NUM_QUEUES)) {
+			(total_q_id > d->total_num_queues)) {
 			rte_bbdev_log(ERR,
 					"VC 5GNR FPGA Configuration failed. Too many queues to configure: UL_Q %u, DL_Q %u, FPGA_Q %u",
 					total_ul_q_id, total_dl_q_id,
-					VC_5GNR_TOTAL_NUM_QUEUES);
+					d->total_num_queues);
 			return -EINVAL;
 		}
 		total_ul_q_id = 0;
