@@ -1137,6 +1137,11 @@ static int bnxt_dev_info_get_op(struct rte_eth_dev *eth_dev,
 	dev_info->tx_offload_capa = bnxt_get_tx_port_offloads(bp) |
 				    dev_info->tx_queue_offload_capa;
 	dev_info->flow_type_rss_offloads = bnxt_eth_rss_support(bp);
+	dev_info->rss_algo_capa = RTE_ETH_HASH_ALGO_CAPA_MASK(DEFAULT) |
+				  RTE_ETH_HASH_ALGO_CAPA_MASK(TOEPLITZ);
+
+	if (BNXT_CHIP_P7(bp))
+		dev_info->rss_algo_capa |= RTE_ETH_HASH_ALGO_CAPA_MASK(SIMPLE_XOR);
 
 	dev_info->speed_capa = bnxt_get_speed_capabilities(bp);
 	dev_info->dev_capa = RTE_ETH_DEV_CAPA_RUNTIME_RX_QUEUE_SETUP |
