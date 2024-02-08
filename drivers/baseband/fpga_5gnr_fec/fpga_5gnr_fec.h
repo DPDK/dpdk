@@ -31,26 +31,26 @@
 #define FPGA_5GNR_FEC_VF_DEVICE_ID (0x0D90)
 
 /* Align DMA descriptors to 256 bytes - cache-aligned */
-#define FPGA_RING_DESC_ENTRY_LENGTH (8)
+#define FPGA_5GNR_RING_DESC_ENTRY_LENGTH (8)
 /* Ring size is in 256 bits (32 bytes) units */
 #define FPGA_RING_DESC_LEN_UNIT_BYTES (32)
 /* Maximum size of queue */
-#define FPGA_RING_MAX_SIZE (1024)
+#define FPGA_5GNR_RING_MAX_SIZE (1024)
 
 #define FPGA_NUM_UL_QUEUES (32)
 #define FPGA_NUM_DL_QUEUES (32)
 #define FPGA_TOTAL_NUM_QUEUES (FPGA_NUM_UL_QUEUES + FPGA_NUM_DL_QUEUES)
 #define FPGA_NUM_INTR_VEC (FPGA_TOTAL_NUM_QUEUES - RTE_INTR_VEC_RXTX_OFFSET)
 
-#define FPGA_INVALID_HW_QUEUE_ID (0xFFFFFFFF)
+#define FPGA_5GNR_INVALID_HW_QUEUE_ID (0xFFFFFFFF)
 
-#define FPGA_QUEUE_FLUSH_TIMEOUT_US (1000)
-#define FPGA_HARQ_RDY_TIMEOUT (10)
-#define FPGA_TIMEOUT_CHECK_INTERVAL (5)
-#define FPGA_DDR_OVERFLOW (0x10)
+#define FPGA_5GNR_QUEUE_FLUSH_TIMEOUT_US (1000)
+#define FPGA_5GNR_HARQ_RDY_TIMEOUT (10)
+#define FPGA_5GNR_TIMEOUT_CHECK_INTERVAL (5)
+#define FPGA_5GNR_DDR_OVERFLOW (0x10)
 
-#define FPGA_5GNR_FEC_DDR_WR_DATA_LEN_IN_BYTES 8
-#define FPGA_5GNR_FEC_DDR_RD_DATA_LEN_IN_BYTES 8
+#define FPGA_5GNR_DDR_WR_DATA_LEN_IN_BYTES 8
+#define FPGA_5GNR_DDR_RD_DATA_LEN_IN_BYTES 8
 
 /* Constants from K0 computation from 3GPP 38.212 Table 5.4.2.1-2 */
 #define N_ZC_1 66 /* N = 66 Zc for BG 1 */
@@ -152,7 +152,7 @@ struct __rte_packed fpga_dma_enc_desc {
 		};
 
 		uint8_t sw_ctxt[FPGA_RING_DESC_LEN_UNIT_BYTES *
-					(FPGA_RING_DESC_ENTRY_LENGTH - 1)];
+					(FPGA_5GNR_RING_DESC_ENTRY_LENGTH - 1)];
 	};
 };
 
@@ -197,7 +197,7 @@ struct __rte_packed fpga_dma_dec_desc {
 			uint8_t cbs_in_op;
 		};
 
-		uint32_t sw_ctxt[8 * (FPGA_RING_DESC_ENTRY_LENGTH - 1)];
+		uint32_t sw_ctxt[8 * (FPGA_5GNR_RING_DESC_ENTRY_LENGTH - 1)];
 	};
 };
 
@@ -207,8 +207,8 @@ union fpga_dma_desc {
 	struct fpga_dma_dec_desc dec_req;
 };
 
-/* FPGA 5GNR FEC Ring Control Register */
-struct __rte_packed fpga_ring_ctrl_reg {
+/* FPGA 5GNR Ring Control Register. */
+struct __rte_packed fpga_5gnr_ring_ctrl_reg {
 	uint64_t ring_base_addr;
 	uint64_t ring_head_addr;
 	uint16_t ring_size:11;
@@ -226,38 +226,37 @@ struct __rte_packed fpga_ring_ctrl_reg {
 	uint16_t rsrvd3;
 	uint16_t head_point;
 	uint16_t rsrvd4;
-
 };
 
-/* Private data structure for each FPGA FEC device */
+/* Private data structure for each FPGA 5GNR device. */
 struct fpga_5gnr_fec_device {
-	/** Base address of MMIO registers (BAR0) */
+	/** Base address of MMIO registers (BAR0). */
 	void *mmio_base;
-	/** Base address of memory for sw rings */
+	/** Base address of memory for sw rings. */
 	void *sw_rings;
-	/** Physical address of sw_rings */
+	/** Physical address of sw_rings. */
 	rte_iova_t sw_rings_phys;
 	/** Number of bytes available for each queue in device. */
 	uint32_t sw_ring_size;
-	/** Max number of entries available for each queue in device */
+	/** Max number of entries available for each queue in device. */
 	uint32_t sw_ring_max_depth;
-	/** Base address of response tail pointer buffer */
+	/** Base address of response tail pointer buffer. */
 	uint32_t *tail_ptrs;
-	/** Physical address of tail pointers */
+	/** Physical address of tail pointers. */
 	rte_iova_t tail_ptr_phys;
-	/** Queues flush completion flag */
+	/** Queues flush completion flag. */
 	uint64_t *flush_queue_status;
-	/* Bitmap capturing which Queues are bound to the PF/VF */
+	/** Bitmap capturing which Queues are bound to the PF/VF. */
 	uint64_t q_bound_bit_map;
-	/* Bitmap capturing which Queues have already been assigned */
+	/** Bitmap capturing which Queues have already been assigned. */
 	uint64_t q_assigned_bit_map;
-	/** True if this is a PF FPGA FEC device */
+	/** True if this is a PF FPGA 5GNR device. */
 	bool pf_device;
 };
 
-/* Structure associated with each queue. */
-struct __rte_cache_aligned fpga_queue {
-	struct fpga_ring_ctrl_reg ring_ctrl_reg;  /* Ring Control Register */
+/** Structure associated with each queue. */
+struct __rte_cache_aligned fpga_5gnr_queue {
+	struct fpga_5gnr_ring_ctrl_reg ring_ctrl_reg;  /**< Ring Control Register */
 	union fpga_dma_desc *ring_addr;  /* Virtual address of software ring */
 	uint64_t *ring_head_addr;  /* Virtual address of completion_head */
 	uint64_t shadow_completion_head; /* Shadow completion head value */
@@ -274,84 +273,80 @@ struct __rte_cache_aligned fpga_queue {
 	void *shadow_tail_addr;
 };
 
-/* Write to 16 bit MMIO register address */
+/* Write to 16 bit MMIO register address. */
 static inline void
 mmio_write_16(void *addr, uint16_t value)
 {
 	*((volatile uint16_t *)(addr)) = rte_cpu_to_le_16(value);
 }
 
-/* Write to 32 bit MMIO register address */
+/* Write to 32 bit MMIO register address. */
 static inline void
 mmio_write_32(void *addr, uint32_t value)
 {
 	*((volatile uint32_t *)(addr)) = rte_cpu_to_le_32(value);
 }
 
-/* Write to 64 bit MMIO register address */
+/* Write to 64 bit MMIO register address. */
 static inline void
 mmio_write_64(void *addr, uint64_t value)
 {
 	*((volatile uint64_t *)(addr)) = rte_cpu_to_le_64(value);
 }
 
-/* Write a 8 bit register of a FPGA 5GNR FEC device */
+/* Write a 8 bit register of a FPGA 5GNR device. */
 static inline void
-fpga_reg_write_8(void *mmio_base, uint32_t offset, uint8_t payload)
+fpga_5gnr_reg_write_8(void *mmio_base, uint32_t offset, uint8_t payload)
 {
 	void *reg_addr = RTE_PTR_ADD(mmio_base, offset);
 	*((volatile uint8_t *)(reg_addr)) = payload;
 }
 
-/* Write a 16 bit register of a FPGA 5GNR FEC device */
+/* Write a 16 bit register of a FPGA 5GNR device. */
 static inline void
-fpga_reg_write_16(void *mmio_base, uint32_t offset, uint16_t payload)
+fpga_5gnr_reg_write_16(void *mmio_base, uint32_t offset, uint16_t payload)
 {
 	void *reg_addr = RTE_PTR_ADD(mmio_base, offset);
 	mmio_write_16(reg_addr, payload);
 }
 
-/* Write a 32 bit register of a FPGA 5GNR FEC device */
+/* Write a 32 bit register of a FPGA 5GNR device. */
 static inline void
-fpga_reg_write_32(void *mmio_base, uint32_t offset, uint32_t payload)
+fpga_5gnr_reg_write_32(void *mmio_base, uint32_t offset, uint32_t payload)
 {
 	void *reg_addr = RTE_PTR_ADD(mmio_base, offset);
 	mmio_write_32(reg_addr, payload);
 }
 
-/* Write a 64 bit register of a FPGA 5GNR FEC device */
+/* Write a 64 bit register of a FPGA 5GNR device. */
 static inline void
-fpga_reg_write_64(void *mmio_base, uint32_t offset, uint64_t payload)
+fpga_5gnr_reg_write_64(void *mmio_base, uint32_t offset, uint64_t payload)
 {
 	void *reg_addr = RTE_PTR_ADD(mmio_base, offset);
 	mmio_write_64(reg_addr, payload);
 }
 
-/* Write a ring control register of a FPGA 5GNR FEC device */
+/* Write a ring control register of a FPGA 5GNR device. */
 static inline void
-fpga_ring_reg_write(void *mmio_base, uint32_t offset,
-		struct fpga_ring_ctrl_reg payload)
+fpga_ring_reg_write(void *mmio_base, uint32_t offset, struct fpga_5gnr_ring_ctrl_reg payload)
 {
-	fpga_reg_write_64(mmio_base, offset, payload.ring_base_addr);
-	fpga_reg_write_64(mmio_base, offset + FPGA_5GNR_FEC_RING_HEAD_ADDR,
+	fpga_5gnr_reg_write_64(mmio_base, offset, payload.ring_base_addr);
+	fpga_5gnr_reg_write_64(mmio_base, offset + FPGA_5GNR_FEC_RING_HEAD_ADDR,
 			payload.ring_head_addr);
-	fpga_reg_write_16(mmio_base, offset + FPGA_5GNR_FEC_RING_SIZE,
-			payload.ring_size);
-	fpga_reg_write_16(mmio_base, offset + FPGA_5GNR_FEC_RING_HEAD_POINT,
+	fpga_5gnr_reg_write_16(mmio_base, offset + FPGA_5GNR_FEC_RING_SIZE, payload.ring_size);
+	fpga_5gnr_reg_write_16(mmio_base, offset + FPGA_5GNR_FEC_RING_HEAD_POINT,
 			payload.head_point);
-	fpga_reg_write_8(mmio_base, offset + FPGA_5GNR_FEC_RING_FLUSH_QUEUE_EN,
+	fpga_5gnr_reg_write_8(mmio_base, offset + FPGA_5GNR_FEC_RING_FLUSH_QUEUE_EN,
 			payload.flush_queue_en);
-	fpga_reg_write_16(mmio_base, offset + FPGA_5GNR_FEC_RING_SHADOW_TAIL,
+	fpga_5gnr_reg_write_16(mmio_base, offset + FPGA_5GNR_FEC_RING_SHADOW_TAIL,
 			payload.shadow_tail);
-	fpga_reg_write_8(mmio_base, offset + FPGA_5GNR_FEC_RING_MISC,
-			payload.misc);
-	fpga_reg_write_8(mmio_base, offset + FPGA_5GNR_FEC_RING_ENABLE,
-			payload.enable);
+	fpga_5gnr_reg_write_8(mmio_base, offset + FPGA_5GNR_FEC_RING_MISC, payload.misc);
+	fpga_5gnr_reg_write_8(mmio_base, offset + FPGA_5GNR_FEC_RING_ENABLE, payload.enable);
 }
 
-/* Read a register of FPGA 5GNR FEC device */
+/* Read a register of FPGA 5GNR device. */
 static inline uint32_t
-fpga_reg_read_32(void *mmio_base, uint32_t offset)
+fpga_5gnr_reg_read_32(void *mmio_base, uint32_t offset)
 {
 	void *reg_addr = RTE_PTR_ADD(mmio_base, offset);
 	uint32_t ret = *((volatile uint32_t *)(reg_addr));
@@ -360,9 +355,9 @@ fpga_reg_read_32(void *mmio_base, uint32_t offset)
 
 #ifdef RTE_LIBRTE_BBDEV_DEBUG
 
-/* Read a register of FPGA 5GNR FEC device */
+/* Read a register of FPGA 5GNR device. */
 static inline uint16_t
-fpga_reg_read_16(void *mmio_base, uint32_t offset)
+fpga_5gnr_reg_read_16(void *mmio_base, uint32_t offset)
 {
 	void *reg_addr = RTE_PTR_ADD(mmio_base, offset);
 	uint16_t ret = *((volatile uint16_t *)(reg_addr));
@@ -371,17 +366,17 @@ fpga_reg_read_16(void *mmio_base, uint32_t offset)
 
 #endif
 
-/* Read a register of FPGA 5GNR FEC device */
+/* Read a register of FPGA 5GNR device. */
 static inline uint8_t
-fpga_reg_read_8(void *mmio_base, uint32_t offset)
+fpga_5gnr_reg_read_8(void *mmio_base, uint32_t offset)
 {
 	void *reg_addr = RTE_PTR_ADD(mmio_base, offset);
 	return *((volatile uint8_t *)(reg_addr));
 }
 
-/* Read a register of FPGA 5GNR FEC device */
+/* Read a register of FPGA 5GNR device. */
 static inline uint64_t
-fpga_reg_read_64(void *mmio_base, uint32_t offset)
+fpga_5gnr_reg_read_64(void *mmio_base, uint32_t offset)
 {
 	void *reg_addr = RTE_PTR_ADD(mmio_base, offset);
 	uint64_t ret = *((volatile uint64_t *)(reg_addr));

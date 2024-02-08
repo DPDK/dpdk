@@ -34,38 +34,38 @@ static inline void
 print_ring_reg_debug_info(void *mmio_base, uint32_t offset)
 {
 	rte_bbdev_log_debug(
-		"FPGA MMIO base address @ %p | Ring Control Register @ offset = 0x%08"
+		"FPGA 5GNR MMIO base address @ %p | Ring Control Register @ offset = 0x%08"
 		PRIx32, mmio_base, offset);
 	rte_bbdev_log_debug(
 		"RING_BASE_ADDR = 0x%016"PRIx64,
-		fpga_reg_read_64(mmio_base, offset));
+		fpga_5gnr_reg_read_64(mmio_base, offset));
 	rte_bbdev_log_debug(
 		"RING_HEAD_ADDR = 0x%016"PRIx64,
-		fpga_reg_read_64(mmio_base, offset +
+		fpga_5gnr_reg_read_64(mmio_base, offset +
 				FPGA_5GNR_FEC_RING_HEAD_ADDR));
 	rte_bbdev_log_debug(
 		"RING_SIZE = 0x%04"PRIx16,
-		fpga_reg_read_16(mmio_base, offset +
+		fpga_5gnr_reg_read_16(mmio_base, offset +
 				FPGA_5GNR_FEC_RING_SIZE));
 	rte_bbdev_log_debug(
 		"RING_MISC = 0x%02"PRIx8,
-		fpga_reg_read_8(mmio_base, offset +
+		fpga_5gnr_reg_read_8(mmio_base, offset +
 				FPGA_5GNR_FEC_RING_MISC));
 	rte_bbdev_log_debug(
 		"RING_ENABLE = 0x%02"PRIx8,
-		fpga_reg_read_8(mmio_base, offset +
+		fpga_5gnr_reg_read_8(mmio_base, offset +
 				FPGA_5GNR_FEC_RING_ENABLE));
 	rte_bbdev_log_debug(
 		"RING_FLUSH_QUEUE_EN = 0x%02"PRIx8,
-		fpga_reg_read_8(mmio_base, offset +
+		fpga_5gnr_reg_read_8(mmio_base, offset +
 				FPGA_5GNR_FEC_RING_FLUSH_QUEUE_EN));
 	rte_bbdev_log_debug(
 		"RING_SHADOW_TAIL = 0x%04"PRIx16,
-		fpga_reg_read_16(mmio_base, offset +
+		fpga_5gnr_reg_read_16(mmio_base, offset +
 				FPGA_5GNR_FEC_RING_SHADOW_TAIL));
 	rte_bbdev_log_debug(
 		"RING_HEAD_POINT = 0x%04"PRIx16,
-		fpga_reg_read_16(mmio_base, offset +
+		fpga_5gnr_reg_read_16(mmio_base, offset +
 				FPGA_5GNR_FEC_RING_HEAD_POINT));
 }
 
@@ -73,13 +73,13 @@ print_ring_reg_debug_info(void *mmio_base, uint32_t offset)
 static inline void
 print_static_reg_debug_info(void *mmio_base)
 {
-	uint16_t config = fpga_reg_read_16(mmio_base,
+	uint16_t config = fpga_5gnr_reg_read_16(mmio_base,
 			FPGA_5GNR_FEC_CONFIGURATION);
-	uint8_t qmap_done = fpga_reg_read_8(mmio_base,
+	uint8_t qmap_done = fpga_5gnr_reg_read_8(mmio_base,
 			FPGA_5GNR_FEC_QUEUE_PF_VF_MAP_DONE);
-	uint16_t lb_factor = fpga_reg_read_16(mmio_base,
+	uint16_t lb_factor = fpga_5gnr_reg_read_16(mmio_base,
 			FPGA_5GNR_FEC_LOAD_BALANCE_FACTOR);
-	uint16_t ring_desc_len = fpga_reg_read_16(mmio_base,
+	uint16_t ring_desc_len = fpga_5gnr_reg_read_16(mmio_base,
 			FPGA_5GNR_FEC_RING_DESC_LEN);
 
 	rte_bbdev_log_debug("UL.DL Weights = %u.%u",
@@ -179,17 +179,17 @@ print_dma_enc_desc_debug_info(union fpga_dma_desc *desc)
 #endif
 
 static int
-fpga_setup_queues(struct rte_bbdev *dev, uint16_t num_queues, int socket_id)
+fpga_5gnr_setup_queues(struct rte_bbdev *dev, uint16_t num_queues, int socket_id)
 {
 	/* Number of queues bound to a PF/VF */
 	uint32_t hw_q_num = 0;
 	uint32_t ring_size, payload, address, q_id, offset;
 	rte_iova_t phys_addr;
-	struct fpga_ring_ctrl_reg ring_reg;
-	struct fpga_5gnr_fec_device *fpga_dev = dev->data->dev_private;
+	struct fpga_5gnr_ring_ctrl_reg ring_reg;
+	struct fpga_5gnr_fec_device *d = dev->data->dev_private;
 
 	address = FPGA_5GNR_FEC_QUEUE_PF_VF_MAP_DONE;
-	if (!(fpga_reg_read_32(fpga_dev->mmio_base, address) & 0x1)) {
+	if (!(fpga_5gnr_reg_read_32(d->mmio_base, address) & 0x1)) {
 		rte_bbdev_log(ERR,
 				"Queue-PF/VF mapping is not set! Was PF configured for device (%s) ?",
 				dev->data->name);
@@ -197,26 +197,26 @@ fpga_setup_queues(struct rte_bbdev *dev, uint16_t num_queues, int socket_id)
 	}
 
 	/* Clear queue registers structure */
-	memset(&ring_reg, 0, sizeof(struct fpga_ring_ctrl_reg));
+	memset(&ring_reg, 0, sizeof(struct fpga_5gnr_ring_ctrl_reg));
 
 	/* Scan queue map.
 	 * If a queue is valid and mapped to a calling PF/VF the read value is
 	 * replaced with a queue ID and if it's not then
-	 * FPGA_INVALID_HW_QUEUE_ID is returned.
+	 * FPGA_5GNR_INVALID_HW_QUEUE_ID is returned.
 	 */
 	for (q_id = 0; q_id < FPGA_TOTAL_NUM_QUEUES; ++q_id) {
-		uint32_t hw_q_id = fpga_reg_read_32(fpga_dev->mmio_base,
+		uint32_t hw_q_id = fpga_5gnr_reg_read_32(d->mmio_base,
 				FPGA_5GNR_FEC_QUEUE_MAP + (q_id << 2));
 
 		rte_bbdev_log_debug("%s: queue ID: %u, registry queue ID: %u",
 				dev->device->name, q_id, hw_q_id);
 
-		if (hw_q_id != FPGA_INVALID_HW_QUEUE_ID) {
-			fpga_dev->q_bound_bit_map |= (1ULL << q_id);
+		if (hw_q_id != FPGA_5GNR_INVALID_HW_QUEUE_ID) {
+			d->q_bound_bit_map |= (1ULL << q_id);
 			/* Clear queue register of found queue */
 			offset = FPGA_5GNR_FEC_RING_CTRL_REGS +
-				(sizeof(struct fpga_ring_ctrl_reg) * q_id);
-			fpga_ring_reg_write(fpga_dev->mmio_base,
+				(sizeof(struct fpga_5gnr_ring_ctrl_reg) * q_id);
+			fpga_ring_reg_write(d->mmio_base,
 					offset, ring_reg);
 			++hw_q_num;
 		}
@@ -234,30 +234,30 @@ fpga_setup_queues(struct rte_bbdev *dev, uint16_t num_queues, int socket_id)
 		return -EINVAL;
 	}
 
-	ring_size = FPGA_RING_MAX_SIZE * sizeof(struct fpga_dma_dec_desc);
+	ring_size = FPGA_5GNR_RING_MAX_SIZE * sizeof(struct fpga_dma_dec_desc);
 
 	/* Enforce 32 byte alignment */
 	RTE_BUILD_BUG_ON((RTE_CACHE_LINE_SIZE % 32) != 0);
 
 	/* Allocate memory for SW descriptor rings */
-	fpga_dev->sw_rings = rte_zmalloc_socket(dev->device->driver->name,
+	d->sw_rings = rte_zmalloc_socket(dev->device->driver->name,
 			num_queues * ring_size, RTE_CACHE_LINE_SIZE,
 			socket_id);
-	if (fpga_dev->sw_rings == NULL) {
+	if (d->sw_rings == NULL) {
 		rte_bbdev_log(ERR,
 				"Failed to allocate memory for %s:%u sw_rings",
 				dev->device->driver->name, dev->data->dev_id);
 		return -ENOMEM;
 	}
 
-	fpga_dev->sw_rings_phys = rte_malloc_virt2iova(fpga_dev->sw_rings);
-	fpga_dev->sw_ring_size = ring_size;
-	fpga_dev->sw_ring_max_depth = FPGA_RING_MAX_SIZE;
+	d->sw_rings_phys = rte_malloc_virt2iova(d->sw_rings);
+	d->sw_ring_size = ring_size;
+	d->sw_ring_max_depth = FPGA_5GNR_RING_MAX_SIZE;
 
 	/* Allocate memory for ring flush status */
-	fpga_dev->flush_queue_status = rte_zmalloc_socket(NULL,
+	d->flush_queue_status = rte_zmalloc_socket(NULL,
 			sizeof(uint64_t), RTE_CACHE_LINE_SIZE, socket_id);
-	if (fpga_dev->flush_queue_status == NULL) {
+	if (d->flush_queue_status == NULL) {
 		rte_bbdev_log(ERR,
 				"Failed to allocate memory for %s:%u flush_queue_status",
 				dev->device->driver->name, dev->data->dev_id);
@@ -265,33 +265,32 @@ fpga_setup_queues(struct rte_bbdev *dev, uint16_t num_queues, int socket_id)
 	}
 
 	/* Set the flush status address registers */
-	phys_addr = rte_malloc_virt2iova(fpga_dev->flush_queue_status);
+	phys_addr = rte_malloc_virt2iova(d->flush_queue_status);
 
 	address = FPGA_5GNR_FEC_VFQ_FLUSH_STATUS_LW;
 	payload = (uint32_t)(phys_addr);
-	fpga_reg_write_32(fpga_dev->mmio_base, address, payload);
+	fpga_5gnr_reg_write_32(d->mmio_base, address, payload);
 
 	address = FPGA_5GNR_FEC_VFQ_FLUSH_STATUS_HI;
 	payload = (uint32_t)(phys_addr >> 32);
-	fpga_reg_write_32(fpga_dev->mmio_base, address, payload);
+	fpga_5gnr_reg_write_32(d->mmio_base, address, payload);
 
 	return 0;
 }
 
 static int
-fpga_dev_close(struct rte_bbdev *dev)
+fpga_5gnr_dev_close(struct rte_bbdev *dev)
 {
-	struct fpga_5gnr_fec_device *fpga_dev = dev->data->dev_private;
+	struct fpga_5gnr_fec_device *fpga_5gnr_dev = dev->data->dev_private;
 
-	rte_free(fpga_dev->sw_rings);
-	rte_free(fpga_dev->flush_queue_status);
+	rte_free(fpga_5gnr_dev->sw_rings);
+	rte_free(fpga_5gnr_dev->flush_queue_status);
 
 	return 0;
 }
 
 static void
-fpga_dev_info_get(struct rte_bbdev *dev,
-		struct rte_bbdev_driver_info *dev_info)
+fpga_5gnr_dev_info_get(struct rte_bbdev *dev, struct rte_bbdev_driver_info *dev_info)
 {
 	struct fpga_5gnr_fec_device *d = dev->data->dev_private;
 	uint32_t q_id = 0;
@@ -338,28 +337,27 @@ fpga_dev_info_get(struct rte_bbdev *dev,
 
 	/* Check the HARQ DDR size available */
 	uint8_t timeout_counter = 0;
-	uint32_t harq_buf_ready = fpga_reg_read_32(d->mmio_base,
+	uint32_t harq_buf_ready = fpga_5gnr_reg_read_32(d->mmio_base,
 			FPGA_5GNR_FEC_HARQ_BUF_SIZE_RDY_REGS);
 	while (harq_buf_ready != 1) {
-		usleep(FPGA_TIMEOUT_CHECK_INTERVAL);
+		usleep(FPGA_5GNR_TIMEOUT_CHECK_INTERVAL);
 		timeout_counter++;
-		harq_buf_ready = fpga_reg_read_32(d->mmio_base,
+		harq_buf_ready = fpga_5gnr_reg_read_32(d->mmio_base,
 				FPGA_5GNR_FEC_HARQ_BUF_SIZE_RDY_REGS);
-		if (timeout_counter > FPGA_HARQ_RDY_TIMEOUT) {
-			rte_bbdev_log(ERR, "HARQ Buffer not ready %d",
-					harq_buf_ready);
+		if (timeout_counter > FPGA_5GNR_HARQ_RDY_TIMEOUT) {
+			rte_bbdev_log(ERR, "HARQ Buffer not ready %d", harq_buf_ready);
 			harq_buf_ready = 1;
 		}
 	}
-	uint32_t harq_buf_size = fpga_reg_read_32(d->mmio_base,
+	uint32_t harq_buf_size = fpga_5gnr_reg_read_32(d->mmio_base,
 			FPGA_5GNR_FEC_HARQ_BUF_SIZE_REGS);
 
 	static struct rte_bbdev_queue_conf default_queue_conf;
 	default_queue_conf.socket = dev->data->socket_id;
-	default_queue_conf.queue_size = FPGA_RING_MAX_SIZE;
+	default_queue_conf.queue_size = FPGA_5GNR_RING_MAX_SIZE;
 
 	dev_info->driver_name = dev->device->driver->name;
-	dev_info->queue_size_lim = FPGA_RING_MAX_SIZE;
+	dev_info->queue_size_lim = FPGA_5GNR_RING_MAX_SIZE;
 	dev_info->hardware_accelerated = true;
 	dev_info->min_alignment = 64;
 	dev_info->harq_buffer_size = (harq_buf_size >> 10) + 1;
@@ -372,9 +370,9 @@ fpga_dev_info_get(struct rte_bbdev *dev,
 	/* Calculates number of queues assigned to device */
 	dev_info->max_num_queues = 0;
 	for (q_id = 0; q_id < FPGA_TOTAL_NUM_QUEUES; ++q_id) {
-		uint32_t hw_q_id = fpga_reg_read_32(d->mmio_base,
+		uint32_t hw_q_id = fpga_5gnr_reg_read_32(d->mmio_base,
 				FPGA_5GNR_FEC_QUEUE_MAP + (q_id << 2));
-		if (hw_q_id != FPGA_INVALID_HW_QUEUE_ID)
+		if (hw_q_id != FPGA_5GNR_INVALID_HW_QUEUE_ID)
 			dev_info->max_num_queues++;
 	}
 	/* Expose number of queue per operation type */
@@ -392,7 +390,7 @@ fpga_dev_info_get(struct rte_bbdev *dev,
  * when there is no available queue
  */
 static inline int
-fpga_find_free_queue_idx(struct rte_bbdev *dev,
+fpga_5gnr_find_free_queue_idx(struct rte_bbdev *dev,
 		const struct rte_bbdev_queue_conf *conf)
 {
 	struct fpga_5gnr_fec_device *d = dev->data->dev_private;
@@ -422,16 +420,16 @@ fpga_find_free_queue_idx(struct rte_bbdev *dev,
 }
 
 static int
-fpga_queue_setup(struct rte_bbdev *dev, uint16_t queue_id,
+fpga_5gnr_queue_setup(struct rte_bbdev *dev, uint16_t queue_id,
 		const struct rte_bbdev_queue_conf *conf)
 {
 	uint32_t address, ring_offset;
 	struct fpga_5gnr_fec_device *d = dev->data->dev_private;
-	struct fpga_queue *q;
+	struct fpga_5gnr_queue *q;
 	int8_t q_idx;
 
 	/* Check if there is a free queue to assign */
-	q_idx = fpga_find_free_queue_idx(dev, conf);
+	q_idx = fpga_5gnr_find_free_queue_idx(dev, conf);
 	if (q_idx == -1)
 		return -1;
 
@@ -450,8 +448,7 @@ fpga_queue_setup(struct rte_bbdev *dev, uint16_t queue_id,
 
 	/* Set ring_base_addr */
 	q->ring_addr = RTE_PTR_ADD(d->sw_rings, (d->sw_ring_size * queue_id));
-	q->ring_ctrl_reg.ring_base_addr = d->sw_rings_phys +
-			(d->sw_ring_size * queue_id);
+	q->ring_ctrl_reg.ring_base_addr = d->sw_rings_phys + (d->sw_ring_size * queue_id);
 
 	/* Allocate memory for Completion Head variable*/
 	q->ring_head_addr = rte_zmalloc_socket(dev->device->driver->name,
@@ -466,27 +463,26 @@ fpga_queue_setup(struct rte_bbdev *dev, uint16_t queue_id,
 		return -ENOMEM;
 	}
 	/* Set ring_head_addr */
-	q->ring_ctrl_reg.ring_head_addr =
-			rte_malloc_virt2iova(q->ring_head_addr);
+	q->ring_ctrl_reg.ring_head_addr = rte_malloc_virt2iova(q->ring_head_addr);
 
 	/* Clear shadow_completion_head */
 	q->shadow_completion_head = 0;
 
 	/* Set ring_size */
-	if (conf->queue_size > FPGA_RING_MAX_SIZE) {
+	if (conf->queue_size > FPGA_5GNR_RING_MAX_SIZE) {
 		/* Mark queue as un-assigned */
 		d->q_assigned_bit_map &= (0xFFFFFFFF - (1ULL << q_idx));
 		rte_free(q->ring_head_addr);
 		rte_free(q);
 		rte_bbdev_log(ERR,
 				"Size of queue is too big %d (MAX: %d ) for %s:%u",
-				conf->queue_size, FPGA_RING_MAX_SIZE,
+				conf->queue_size, FPGA_5GNR_RING_MAX_SIZE,
 				dev->device->driver->name, dev->data->dev_id);
 		return -EINVAL;
 	}
 	q->ring_ctrl_reg.ring_size = conf->queue_size;
 
-	/* Set Miscellaneous FPGA register*/
+	/* Set Miscellaneous FPGA 5GNR register. */
 	/* Max iteration number for TTI mitigation - todo */
 	q->ring_ctrl_reg.max_ul_dec = 0;
 	/* Enable max iteration number for TTI - todo */
@@ -495,17 +491,17 @@ fpga_queue_setup(struct rte_bbdev *dev, uint16_t queue_id,
 	/* Enable the ring */
 	q->ring_ctrl_reg.enable = 1;
 
-	/* Set FPGA head_point and tail registers */
+	/* Set FPGA 5GNR head_point and tail registers */
 	q->ring_ctrl_reg.head_point = q->tail = 0;
 
-	/* Set FPGA shadow_tail register */
+	/* Set FPGA 5GNR shadow_tail register */
 	q->ring_ctrl_reg.shadow_tail = q->tail;
 
 	/* Calculates the ring offset for found queue */
 	ring_offset = FPGA_5GNR_FEC_RING_CTRL_REGS +
-			(sizeof(struct fpga_ring_ctrl_reg) * q_idx);
+			(sizeof(struct fpga_5gnr_ring_ctrl_reg) * q_idx);
 
-	/* Set FPGA Ring Control Registers */
+	/* Set FPGA 5GNR Ring Control Registers */
 	fpga_ring_reg_write(d->mmio_base, ring_offset, q->ring_ctrl_reg);
 
 	/* Store MMIO register of shadow_tail */
@@ -522,8 +518,7 @@ fpga_queue_setup(struct rte_bbdev *dev, uint16_t queue_id,
 
 	dev->data->queues[queue_id].queue_private = q;
 
-	rte_bbdev_log_debug("BBDEV queue[%d] set up for FPGA queue[%d]",
-			queue_id, q_idx);
+	rte_bbdev_log_debug("BBDEV queue[%d] set up for FPGA 5GNR queue[%d]", queue_id, q_idx);
 
 #ifdef RTE_LIBRTE_BBDEV_DEBUG
 	/* Read FPGA Ring Control Registers after configuration*/
@@ -533,21 +528,21 @@ fpga_queue_setup(struct rte_bbdev *dev, uint16_t queue_id,
 }
 
 static int
-fpga_queue_release(struct rte_bbdev *dev, uint16_t queue_id)
+fpga_5gnr_queue_release(struct rte_bbdev *dev, uint16_t queue_id)
 {
 	struct fpga_5gnr_fec_device *d = dev->data->dev_private;
-	struct fpga_queue *q = dev->data->queues[queue_id].queue_private;
-	struct fpga_ring_ctrl_reg ring_reg;
+	struct fpga_5gnr_queue *q = dev->data->queues[queue_id].queue_private;
+	struct fpga_5gnr_ring_ctrl_reg ring_reg;
 	uint32_t offset;
 
-	rte_bbdev_log_debug("FPGA Queue[%d] released", queue_id);
+	rte_bbdev_log_debug("FPGA 5GNR Queue[%d] released", queue_id);
 
 	if (q != NULL) {
-		memset(&ring_reg, 0, sizeof(struct fpga_ring_ctrl_reg));
+		memset(&ring_reg, 0, sizeof(struct fpga_5gnr_ring_ctrl_reg));
 		offset = FPGA_5GNR_FEC_RING_CTRL_REGS +
-			(sizeof(struct fpga_ring_ctrl_reg) * q->q_idx);
+			(sizeof(struct fpga_5gnr_ring_ctrl_reg) * q->q_idx);
 		/* Disable queue */
-		fpga_reg_write_8(d->mmio_base,
+		fpga_5gnr_reg_write_8(d->mmio_base,
 				offset + FPGA_5GNR_FEC_RING_ENABLE, 0x00);
 		/* Clear queue registers */
 		fpga_ring_reg_write(d->mmio_base, offset, ring_reg);
@@ -564,12 +559,12 @@ fpga_queue_release(struct rte_bbdev *dev, uint16_t queue_id)
 
 /* Function starts a device queue. */
 static int
-fpga_queue_start(struct rte_bbdev *dev, uint16_t queue_id)
+fpga_5gnr_queue_start(struct rte_bbdev *dev, uint16_t queue_id)
 {
 	struct fpga_5gnr_fec_device *d = dev->data->dev_private;
-	struct fpga_queue *q = dev->data->queues[queue_id].queue_private;
+	struct fpga_5gnr_queue *q = dev->data->queues[queue_id].queue_private;
 	uint32_t offset = FPGA_5GNR_FEC_RING_CTRL_REGS +
-			(sizeof(struct fpga_ring_ctrl_reg) * q->q_idx);
+			(sizeof(struct fpga_5gnr_ring_ctrl_reg) * q->q_idx);
 	uint8_t enable = 0x01;
 	uint16_t zero = 0x0000;
 #ifdef RTE_LIBRTE_BBDEV_DEBUG
@@ -586,23 +581,20 @@ fpga_queue_start(struct rte_bbdev *dev, uint16_t queue_id)
 	/* Clear queue head and tail variables */
 	q->tail = q->head_free_desc = 0;
 
-	/* Clear FPGA head_point and tail registers */
-	fpga_reg_write_16(d->mmio_base, offset + FPGA_5GNR_FEC_RING_HEAD_POINT,
-			zero);
-	fpga_reg_write_16(d->mmio_base, offset + FPGA_5GNR_FEC_RING_SHADOW_TAIL,
-			zero);
+	/* Clear FPGA 5GNR head_point and tail registers */
+	fpga_5gnr_reg_write_16(d->mmio_base, offset + FPGA_5GNR_FEC_RING_HEAD_POINT, zero);
+	fpga_5gnr_reg_write_16(d->mmio_base, offset + FPGA_5GNR_FEC_RING_SHADOW_TAIL, zero);
 
 	/* Enable queue */
-	fpga_reg_write_8(d->mmio_base, offset + FPGA_5GNR_FEC_RING_ENABLE,
-			enable);
+	fpga_5gnr_reg_write_8(d->mmio_base, offset + FPGA_5GNR_FEC_RING_ENABLE, enable);
 
-	rte_bbdev_log_debug("FPGA Queue[%d] started", queue_id);
+	rte_bbdev_log_debug("FPGA 5GNR Queue[%d] started", queue_id);
 	return 0;
 }
 
 /* Function stops a device queue. */
 static int
-fpga_queue_stop(struct rte_bbdev *dev, uint16_t queue_id)
+fpga_5gnr_queue_stop(struct rte_bbdev *dev, uint16_t queue_id)
 {
 	struct fpga_5gnr_fec_device *d = dev->data->dev_private;
 #ifdef RTE_LIBRTE_BBDEV_DEBUG
@@ -611,40 +603,36 @@ fpga_queue_stop(struct rte_bbdev *dev, uint16_t queue_id)
 		return -1;
 	}
 #endif
-	struct fpga_queue *q = dev->data->queues[queue_id].queue_private;
+	struct fpga_5gnr_queue *q = dev->data->queues[queue_id].queue_private;
 	uint32_t offset = FPGA_5GNR_FEC_RING_CTRL_REGS +
-			(sizeof(struct fpga_ring_ctrl_reg) * q->q_idx);
+			(sizeof(struct fpga_5gnr_ring_ctrl_reg) * q->q_idx);
 	uint8_t payload = 0x01;
 	uint8_t counter = 0;
-	uint8_t timeout = FPGA_QUEUE_FLUSH_TIMEOUT_US /
-			FPGA_TIMEOUT_CHECK_INTERVAL;
+	uint8_t timeout = FPGA_5GNR_QUEUE_FLUSH_TIMEOUT_US / FPGA_5GNR_TIMEOUT_CHECK_INTERVAL;
 
 	/* Set flush_queue_en bit to trigger queue flushing */
-	fpga_reg_write_8(d->mmio_base,
+	fpga_5gnr_reg_write_8(d->mmio_base,
 			offset + FPGA_5GNR_FEC_RING_FLUSH_QUEUE_EN, payload);
 
 	/** Check if queue flush is completed.
-	 * FPGA will update the completion flag after queue flushing is
+	 * FPGA 5GNR will update the completion flag after queue flushing is
 	 * completed. If completion flag is not updated within 1ms it is
 	 * considered as a failure.
 	 */
-	while (!(*((volatile uint8_t *)d->flush_queue_status + q->q_idx)
-			& payload)) {
+	while (!(*((volatile uint8_t *)d->flush_queue_status + q->q_idx) & payload)) {
 		if (counter > timeout) {
-			rte_bbdev_log(ERR, "FPGA Queue Flush failed for queue %d",
-					queue_id);
+			rte_bbdev_log(ERR, "FPGA 5GNR Queue Flush failed for queue %d", queue_id);
 			return -1;
 		}
-		usleep(FPGA_TIMEOUT_CHECK_INTERVAL);
+		usleep(FPGA_5GNR_TIMEOUT_CHECK_INTERVAL);
 		counter++;
 	}
 
 	/* Disable queue */
 	payload = 0x00;
-	fpga_reg_write_8(d->mmio_base, offset + FPGA_5GNR_FEC_RING_ENABLE,
-			payload);
+	fpga_5gnr_reg_write_8(d->mmio_base, offset + FPGA_5GNR_FEC_RING_ENABLE, payload);
 
-	rte_bbdev_log_debug("FPGA Queue[%d] stopped", queue_id);
+	rte_bbdev_log_debug("FPGA 5GNR Queue[%d] stopped", queue_id);
 	return 0;
 }
 
@@ -654,7 +642,7 @@ get_queue_id(struct rte_bbdev_data *data, uint8_t q_idx)
 	uint16_t queue_id;
 
 	for (queue_id = 0; queue_id < data->num_queues; ++queue_id) {
-		struct fpga_queue *q = data->queues[queue_id].queue_private;
+		struct fpga_5gnr_queue *q = data->queues[queue_id].queue_private;
 		if (q != NULL && q->q_idx == q_idx)
 			return queue_id;
 	}
@@ -662,13 +650,13 @@ get_queue_id(struct rte_bbdev_data *data, uint8_t q_idx)
 	return -1;
 }
 
-/* Interrupt handler triggered by FPGA dev for handling specific interrupt */
+/* Interrupt handler triggered by FPGA 5GNR dev for handling specific interrupt. */
 static void
-fpga_dev_interrupt_handler(void *cb_arg)
+fpga_5gnr_dev_interrupt_handler(void *cb_arg)
 {
 	struct rte_bbdev *dev = cb_arg;
-	struct fpga_5gnr_fec_device *fpga_dev = dev->data->dev_private;
-	struct fpga_queue *q;
+	struct fpga_5gnr_fec_device *d = dev->data->dev_private;
+	struct fpga_5gnr_queue *q;
 	uint64_t ring_head;
 	uint64_t q_idx;
 	uint16_t queue_id;
@@ -677,7 +665,7 @@ fpga_dev_interrupt_handler(void *cb_arg)
 	/* Scan queue assigned to this device */
 	for (i = 0; i < FPGA_TOTAL_NUM_QUEUES; ++i) {
 		q_idx = 1ULL << i;
-		if (fpga_dev->q_bound_bit_map & q_idx) {
+		if (d->q_bound_bit_map & q_idx) {
 			queue_id = get_queue_id(dev->data, i);
 			if (queue_id == (uint16_t) -1)
 				continue;
@@ -698,9 +686,9 @@ fpga_dev_interrupt_handler(void *cb_arg)
 }
 
 static int
-fpga_queue_intr_enable(struct rte_bbdev *dev, uint16_t queue_id)
+fpga_5gnr_queue_intr_enable(struct rte_bbdev *dev, uint16_t queue_id)
 {
-	struct fpga_queue *q = dev->data->queues[queue_id].queue_private;
+	struct fpga_5gnr_queue *q = dev->data->queues[queue_id].queue_private;
 
 	if (!rte_intr_cap_multiple(dev->intr_handle))
 		return -ENOTSUP;
@@ -711,16 +699,16 @@ fpga_queue_intr_enable(struct rte_bbdev *dev, uint16_t queue_id)
 }
 
 static int
-fpga_queue_intr_disable(struct rte_bbdev *dev, uint16_t queue_id)
+fpga_5gnr_queue_intr_disable(struct rte_bbdev *dev, uint16_t queue_id)
 {
-	struct fpga_queue *q = dev->data->queues[queue_id].queue_private;
+	struct fpga_5gnr_queue *q = dev->data->queues[queue_id].queue_private;
 	q->irq_enable = 0;
 
 	return 0;
 }
 
 static int
-fpga_intr_enable(struct rte_bbdev *dev)
+fpga_5gnr_intr_enable(struct rte_bbdev *dev)
 {
 	int ret;
 	uint8_t i;
@@ -771,8 +759,7 @@ fpga_intr_enable(struct rte_bbdev *dev)
 		return ret;
 	}
 
-	ret = rte_intr_callback_register(dev->intr_handle,
-			fpga_dev_interrupt_handler, dev);
+	ret = rte_intr_callback_register(dev->intr_handle, fpga_5gnr_dev_interrupt_handler, dev);
 	if (ret < 0) {
 		rte_bbdev_log(ERR,
 				"Couldn't register interrupt callback for device: %s",
@@ -783,21 +770,21 @@ fpga_intr_enable(struct rte_bbdev *dev)
 	return 0;
 }
 
-static const struct rte_bbdev_ops fpga_ops = {
-	.setup_queues = fpga_setup_queues,
-	.intr_enable = fpga_intr_enable,
-	.close = fpga_dev_close,
-	.info_get = fpga_dev_info_get,
-	.queue_setup = fpga_queue_setup,
-	.queue_stop = fpga_queue_stop,
-	.queue_start = fpga_queue_start,
-	.queue_release = fpga_queue_release,
-	.queue_intr_enable = fpga_queue_intr_enable,
-	.queue_intr_disable = fpga_queue_intr_disable
+static const struct rte_bbdev_ops fpga_5gnr_ops = {
+	.setup_queues = fpga_5gnr_setup_queues,
+	.intr_enable = fpga_5gnr_intr_enable,
+	.close = fpga_5gnr_dev_close,
+	.info_get = fpga_5gnr_dev_info_get,
+	.queue_setup = fpga_5gnr_queue_setup,
+	.queue_stop = fpga_5gnr_queue_stop,
+	.queue_start = fpga_5gnr_queue_start,
+	.queue_release = fpga_5gnr_queue_release,
+	.queue_intr_enable = fpga_5gnr_queue_intr_enable,
+	.queue_intr_disable = fpga_5gnr_queue_intr_disable
 };
 
 static inline void
-fpga_dma_enqueue(struct fpga_queue *q, uint16_t num_desc,
+fpga_5gnr_dma_enqueue(struct fpga_5gnr_queue *q, uint16_t num_desc,
 		struct rte_bbdev_stats *queue_stats)
 {
 	uint64_t start_time = 0;
@@ -1488,7 +1475,7 @@ mbuf_append(struct rte_mbuf *m_head, struct rte_mbuf *m, uint16_t len)
 }
 
 static inline void
-fpga_mutex_acquisition(struct fpga_queue *q)
+fpga_5gnr_mutex_acquisition(struct fpga_5gnr_queue *q)
 {
 	uint32_t mutex_ctrl, mutex_read, cnt = 0;
 	/* Assign a unique id for the duration of the DDR access */
@@ -1497,14 +1484,10 @@ fpga_mutex_acquisition(struct fpga_queue *q)
 	mutex_ctrl = (q->ddr_mutex_uuid << 16) + 1;
 	do {
 		if (cnt > 0)
-			usleep(FPGA_TIMEOUT_CHECK_INTERVAL);
-		rte_bbdev_log_debug("Acquiring Mutex for %x\n",
-				q->ddr_mutex_uuid);
-		fpga_reg_write_32(q->d->mmio_base,
-				FPGA_5GNR_FEC_MUTEX,
-				mutex_ctrl);
-		mutex_read = fpga_reg_read_32(q->d->mmio_base,
-				FPGA_5GNR_FEC_MUTEX);
+			usleep(FPGA_5GNR_TIMEOUT_CHECK_INTERVAL);
+		rte_bbdev_log_debug("Acquiring Mutex for %x\n", q->ddr_mutex_uuid);
+		fpga_5gnr_reg_write_32(q->d->mmio_base, FPGA_5GNR_FEC_MUTEX, mutex_ctrl);
+		mutex_read = fpga_5gnr_reg_read_32(q->d->mmio_base, FPGA_5GNR_FEC_MUTEX);
 		rte_bbdev_log_debug("Mutex %x cnt %d owner %x\n",
 				mutex_read, cnt, q->ddr_mutex_uuid);
 		cnt++;
@@ -1512,27 +1495,24 @@ fpga_mutex_acquisition(struct fpga_queue *q)
 }
 
 static inline void
-fpga_mutex_free(struct fpga_queue *q)
+fpga_5gnr_mutex_free(struct fpga_5gnr_queue *q)
 {
 	uint32_t mutex_ctrl = q->ddr_mutex_uuid << 16;
-	fpga_reg_write_32(q->d->mmio_base,
-			FPGA_5GNR_FEC_MUTEX,
-			mutex_ctrl);
+	fpga_5gnr_reg_write_32(q->d->mmio_base, FPGA_5GNR_FEC_MUTEX, mutex_ctrl);
 }
 
 static inline int
-fpga_harq_write_loopback(struct fpga_queue *q,
+fpga_5gnr_harq_write_loopback(struct fpga_5gnr_queue *q,
 		struct rte_mbuf *harq_input, uint16_t harq_in_length,
 		uint32_t harq_in_offset, uint32_t harq_out_offset)
 {
-	fpga_mutex_acquisition(q);
+	fpga_5gnr_mutex_acquisition(q);
 	uint32_t out_offset = harq_out_offset;
 	uint32_t in_offset = harq_in_offset;
 	uint32_t left_length = harq_in_length;
 	uint32_t reg_32, increment = 0;
 	uint64_t *input = NULL;
-	uint32_t last_transaction = left_length
-			% FPGA_5GNR_FEC_DDR_WR_DATA_LEN_IN_BYTES;
+	uint32_t last_transaction = left_length % FPGA_5GNR_DDR_WR_DATA_LEN_IN_BYTES;
 	uint64_t last_word;
 
 	if (last_transaction > 0)
@@ -1542,70 +1522,63 @@ fpga_harq_write_loopback(struct fpga_queue *q,
 	 * Get HARQ buffer size for each VF/PF: When 0x00, there is no
 	 * available DDR space for the corresponding VF/PF.
 	 */
-	reg_32 = fpga_reg_read_32(q->d->mmio_base,
-			FPGA_5GNR_FEC_HARQ_BUF_SIZE_REGS);
+	reg_32 = fpga_5gnr_reg_read_32(q->d->mmio_base, FPGA_5GNR_FEC_HARQ_BUF_SIZE_REGS);
 	if (reg_32 < harq_in_length) {
 		left_length = reg_32;
 		rte_bbdev_log(ERR, "HARQ in length > HARQ buffer size\n");
 	}
 
-	input = rte_pktmbuf_mtod_offset(harq_input, uint64_t *, in_offset);
+	input = (uint64_t *)rte_pktmbuf_mtod_offset(harq_input, uint8_t *, in_offset);
 
 	while (left_length > 0) {
-		if (fpga_reg_read_8(q->d->mmio_base,
-				FPGA_5GNR_FEC_DDR4_ADDR_RDY_REGS) ==  1) {
-			fpga_reg_write_32(q->d->mmio_base,
+		if (fpga_5gnr_reg_read_8(q->d->mmio_base, FPGA_5GNR_FEC_DDR4_ADDR_RDY_REGS) ==  1) {
+			fpga_5gnr_reg_write_32(q->d->mmio_base,
 					FPGA_5GNR_FEC_DDR4_WR_ADDR_REGS,
 					out_offset);
-			fpga_reg_write_64(q->d->mmio_base,
+			fpga_5gnr_reg_write_64(q->d->mmio_base,
 					FPGA_5GNR_FEC_DDR4_WR_DATA_REGS,
 					input[increment]);
-			left_length -= FPGA_5GNR_FEC_DDR_WR_DATA_LEN_IN_BYTES;
-			out_offset += FPGA_5GNR_FEC_DDR_WR_DATA_LEN_IN_BYTES;
+			left_length -= FPGA_5GNR_DDR_WR_DATA_LEN_IN_BYTES;
+			out_offset += FPGA_5GNR_DDR_WR_DATA_LEN_IN_BYTES;
 			increment++;
-			fpga_reg_write_8(q->d->mmio_base,
-					FPGA_5GNR_FEC_DDR4_WR_DONE_REGS, 1);
+			fpga_5gnr_reg_write_8(q->d->mmio_base, FPGA_5GNR_FEC_DDR4_WR_DONE_REGS, 1);
 		}
 	}
 	while (last_transaction > 0) {
-		if (fpga_reg_read_8(q->d->mmio_base,
-				FPGA_5GNR_FEC_DDR4_ADDR_RDY_REGS) ==  1) {
-			fpga_reg_write_32(q->d->mmio_base,
+		if (fpga_5gnr_reg_read_8(q->d->mmio_base, FPGA_5GNR_FEC_DDR4_ADDR_RDY_REGS) ==  1) {
+			fpga_5gnr_reg_write_32(q->d->mmio_base,
 					FPGA_5GNR_FEC_DDR4_WR_ADDR_REGS,
 					out_offset);
 			last_word = input[increment];
 			last_word &= (uint64_t)(1 << (last_transaction * 4))
 					- 1;
-			fpga_reg_write_64(q->d->mmio_base,
+			fpga_5gnr_reg_write_64(q->d->mmio_base,
 					FPGA_5GNR_FEC_DDR4_WR_DATA_REGS,
 					last_word);
-			fpga_reg_write_8(q->d->mmio_base,
-					FPGA_5GNR_FEC_DDR4_WR_DONE_REGS, 1);
+			fpga_5gnr_reg_write_8(q->d->mmio_base, FPGA_5GNR_FEC_DDR4_WR_DONE_REGS, 1);
 			last_transaction = 0;
 		}
 	}
-	fpga_mutex_free(q);
+	fpga_5gnr_mutex_free(q);
 	return 1;
 }
 
 static inline int
-fpga_harq_read_loopback(struct fpga_queue *q,
+fpga_5gnr_harq_read_loopback(struct fpga_5gnr_queue *q,
 		struct rte_mbuf *harq_output, uint16_t harq_in_length,
 		uint32_t harq_in_offset, uint32_t harq_out_offset)
 {
-	fpga_mutex_acquisition(q);
+	fpga_5gnr_mutex_acquisition(q);
 	uint32_t left_length, in_offset = harq_in_offset;
 	uint64_t reg;
 	uint32_t increment = 0;
 	uint64_t *input = NULL;
-	uint32_t last_transaction = harq_in_length
-			% FPGA_5GNR_FEC_DDR_WR_DATA_LEN_IN_BYTES;
+	uint32_t last_transaction = harq_in_length % FPGA_5GNR_DDR_WR_DATA_LEN_IN_BYTES;
 
 	if (last_transaction > 0)
 		harq_in_length += (8 - last_transaction);
 
-	reg = fpga_reg_read_32(q->d->mmio_base,
-			FPGA_5GNR_FEC_HARQ_BUF_SIZE_REGS);
+	reg = fpga_5gnr_reg_read_32(q->d->mmio_base, FPGA_5GNR_FEC_HARQ_BUF_SIZE_REGS);
 	if (reg < harq_in_length) {
 		harq_in_length = reg;
 		rte_bbdev_log(ERR, "HARQ in length > HARQ buffer size\n");
@@ -1613,11 +1586,9 @@ fpga_harq_read_loopback(struct fpga_queue *q,
 
 	if (!mbuf_append(harq_output, harq_output, harq_in_length)) {
 		rte_bbdev_log(ERR, "HARQ output buffer warning %d %d\n",
-				harq_output->buf_len -
-				rte_pktmbuf_headroom(harq_output),
+				harq_output->buf_len - rte_pktmbuf_headroom(harq_output),
 				harq_in_length);
-		harq_in_length = harq_output->buf_len -
-				rte_pktmbuf_headroom(harq_output);
+		harq_in_length = harq_output->buf_len - rte_pktmbuf_headroom(harq_output);
 		if (!mbuf_append(harq_output, harq_output, harq_in_length)) {
 			rte_bbdev_log(ERR, "HARQ output buffer issue %d %d\n",
 					harq_output->buf_len, harq_in_length);
@@ -1626,39 +1597,34 @@ fpga_harq_read_loopback(struct fpga_queue *q,
 	}
 	left_length = harq_in_length;
 
-	input = rte_pktmbuf_mtod_offset(harq_output, uint64_t *,
-					harq_out_offset);
+	input = (uint64_t *)rte_pktmbuf_mtod_offset(harq_output, uint8_t *, harq_out_offset);
 
 	while (left_length > 0) {
-		fpga_reg_write_32(q->d->mmio_base,
-			FPGA_5GNR_FEC_DDR4_RD_ADDR_REGS, in_offset);
-		fpga_reg_write_8(q->d->mmio_base,
-				FPGA_5GNR_FEC_DDR4_RD_DONE_REGS, 1);
-		reg = fpga_reg_read_8(q->d->mmio_base,
-			FPGA_5GNR_FEC_DDR4_RD_RDY_REGS);
+		fpga_5gnr_reg_write_32(q->d->mmio_base,
+				FPGA_5GNR_FEC_DDR4_RD_ADDR_REGS,
+				in_offset);
+		fpga_5gnr_reg_write_8(q->d->mmio_base, FPGA_5GNR_FEC_DDR4_RD_DONE_REGS, 1);
+		reg = fpga_5gnr_reg_read_8(q->d->mmio_base, FPGA_5GNR_FEC_DDR4_RD_RDY_REGS);
 		while (reg != 1) {
-			reg = fpga_reg_read_8(q->d->mmio_base,
-				FPGA_5GNR_FEC_DDR4_RD_RDY_REGS);
-			if (reg == FPGA_DDR_OVERFLOW) {
-				rte_bbdev_log(ERR,
-						"Read address is overflow!\n");
+			reg = fpga_5gnr_reg_read_8(q->d->mmio_base, FPGA_5GNR_FEC_DDR4_RD_RDY_REGS);
+			if (reg == FPGA_5GNR_DDR_OVERFLOW) {
+				rte_bbdev_log(ERR, "Read address is overflow!\n");
 				return -1;
 			}
 		}
-		input[increment] = fpga_reg_read_64(q->d->mmio_base,
+		input[increment] = fpga_5gnr_reg_read_64(q->d->mmio_base,
 			FPGA_5GNR_FEC_DDR4_RD_DATA_REGS);
-		left_length -= FPGA_5GNR_FEC_DDR_RD_DATA_LEN_IN_BYTES;
-		in_offset += FPGA_5GNR_FEC_DDR_WR_DATA_LEN_IN_BYTES;
+		left_length -= FPGA_5GNR_DDR_RD_DATA_LEN_IN_BYTES;
+		in_offset += FPGA_5GNR_DDR_WR_DATA_LEN_IN_BYTES;
 		increment++;
-		fpga_reg_write_8(q->d->mmio_base,
-				FPGA_5GNR_FEC_DDR4_RD_DONE_REGS, 0);
+		fpga_5gnr_reg_write_8(q->d->mmio_base, FPGA_5GNR_FEC_DDR4_RD_DONE_REGS, 0);
 	}
-	fpga_mutex_free(q);
+	fpga_5gnr_mutex_free(q);
 	return 1;
 }
 
 static inline int
-enqueue_ldpc_enc_one_op_cb(struct fpga_queue *q, struct rte_bbdev_enc_op *op,
+enqueue_ldpc_enc_one_op_cb(struct fpga_5gnr_queue *q, struct rte_bbdev_enc_op *op,
 		uint16_t desc_offset)
 {
 	union fpga_dma_desc *desc;
@@ -1749,7 +1715,7 @@ enqueue_ldpc_enc_one_op_cb(struct fpga_queue *q, struct rte_bbdev_enc_op *op,
 }
 
 static inline int
-enqueue_ldpc_dec_one_op_cb(struct fpga_queue *q, struct rte_bbdev_dec_op *op,
+enqueue_ldpc_dec_one_op_cb(struct fpga_5gnr_queue *q, struct rte_bbdev_dec_op *op,
 		uint16_t desc_offset)
 {
 	union fpga_dma_desc *desc;
@@ -1779,24 +1745,21 @@ enqueue_ldpc_dec_one_op_cb(struct fpga_queue *q, struct rte_bbdev_dec_op *op,
 	ring_offset = ((q->tail + desc_offset) & q->sw_ring_wrap_mask);
 	desc = q->ring_addr + ring_offset;
 
-	if (check_bit(dec->op_flags,
-			RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_LOOPBACK)) {
+	if (check_bit(dec->op_flags, RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_LOOPBACK)) {
 		struct rte_mbuf *harq_in = dec->harq_combined_input.data;
 		struct rte_mbuf *harq_out = dec->harq_combined_output.data;
 		harq_in_length = dec->harq_combined_input.length;
 		uint32_t harq_in_offset = dec->harq_combined_input.offset;
 		uint32_t harq_out_offset = dec->harq_combined_output.offset;
 
-		if (check_bit(dec->op_flags,
-				RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_OUT_ENABLE
-				)) {
-			ret = fpga_harq_write_loopback(q, harq_in,
+		if (check_bit(dec->op_flags, RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_OUT_ENABLE)) {
+			ret = fpga_5gnr_harq_write_loopback(q, harq_in,
 					harq_in_length, harq_in_offset,
 					harq_out_offset);
 		} else if (check_bit(dec->op_flags,
 				RTE_BBDEV_LDPC_INTERNAL_HARQ_MEMORY_IN_ENABLE
 				)) {
-			ret = fpga_harq_read_loopback(q, harq_out,
+			ret = fpga_5gnr_harq_read_loopback(q, harq_out,
 				harq_in_length, harq_in_offset,
 				harq_out_offset);
 			dec->harq_combined_output.length = harq_in_length;
@@ -1804,14 +1767,15 @@ enqueue_ldpc_dec_one_op_cb(struct fpga_queue *q, struct rte_bbdev_dec_op *op,
 			rte_bbdev_log(ERR, "OP flag Err!");
 			ret = -1;
 		}
+
 		/* Set descriptor for dequeue */
 		desc->dec_req.done = 1;
 		desc->dec_req.error = 0;
 		desc->dec_req.op_addr = op;
 		desc->dec_req.cbs_in_op = 1;
+
 		/* Mark this dummy descriptor to be dropped by HW */
-		desc->dec_req.desc_idx = (ring_offset + 1)
-				& q->sw_ring_wrap_mask;
+		desc->dec_req.desc_idx = (ring_offset + 1) & q->sw_ring_wrap_mask;
 		return ret; /* Error or number of CB */
 	}
 
@@ -1887,13 +1851,13 @@ enqueue_ldpc_dec_one_op_cb(struct fpga_queue *q, struct rte_bbdev_dec_op *op,
 }
 
 static uint16_t
-fpga_enqueue_ldpc_enc(struct rte_bbdev_queue_data *q_data,
+fpga_5gnr_enqueue_ldpc_enc(struct rte_bbdev_queue_data *q_data,
 		struct rte_bbdev_enc_op **ops, uint16_t num)
 {
 	uint16_t i, total_enqueued_cbs = 0;
 	int32_t avail;
 	int enqueued_cbs;
-	struct fpga_queue *q = q_data->queue_private;
+	struct fpga_5gnr_queue *q = q_data->queue_private;
 	union fpga_dma_desc *desc;
 
 	/* Check if queue is not full */
@@ -1914,8 +1878,7 @@ fpga_enqueue_ldpc_enc(struct rte_bbdev_queue_data *q_data,
 		if (unlikely(avail - 1 < 0))
 			break;
 		avail -= 1;
-		enqueued_cbs = enqueue_ldpc_enc_one_op_cb(q, ops[i],
-				total_enqueued_cbs);
+		enqueued_cbs = enqueue_ldpc_enc_one_op_cb(q, ops[i], total_enqueued_cbs);
 
 		if (enqueued_cbs < 0)
 			break;
@@ -1934,7 +1897,7 @@ fpga_enqueue_ldpc_enc(struct rte_bbdev_queue_data *q_data,
 			& q->sw_ring_wrap_mask);
 	desc->enc_req.irq_en = q->irq_enable;
 
-	fpga_dma_enqueue(q, total_enqueued_cbs, &q_data->queue_stats);
+	fpga_5gnr_dma_enqueue(q, total_enqueued_cbs, &q_data->queue_stats);
 
 	/* Update stats */
 	q_data->queue_stats.enqueued_count += i;
@@ -1944,18 +1907,17 @@ fpga_enqueue_ldpc_enc(struct rte_bbdev_queue_data *q_data,
 }
 
 static uint16_t
-fpga_enqueue_ldpc_dec(struct rte_bbdev_queue_data *q_data,
+fpga_5gnr_enqueue_ldpc_dec(struct rte_bbdev_queue_data *q_data,
 		struct rte_bbdev_dec_op **ops, uint16_t num)
 {
 	uint16_t i, total_enqueued_cbs = 0;
 	int32_t avail;
 	int enqueued_cbs;
-	struct fpga_queue *q = q_data->queue_private;
+	struct fpga_5gnr_queue *q = q_data->queue_private;
 	union fpga_dma_desc *desc;
 
 	/* Check if queue is not full */
-	if (unlikely(((q->tail + 1) & q->sw_ring_wrap_mask) ==
-			q->head_free_desc))
+	if (unlikely(((q->tail + 1) & q->sw_ring_wrap_mask) == q->head_free_desc))
 		return 0;
 
 	/* Calculates available space */
@@ -1994,20 +1956,19 @@ fpga_enqueue_ldpc_dec(struct rte_bbdev_queue_data *q_data,
 	desc = q->ring_addr + ((q->tail + total_enqueued_cbs - 1)
 			& q->sw_ring_wrap_mask);
 	desc->enc_req.irq_en = q->irq_enable;
-	fpga_dma_enqueue(q, total_enqueued_cbs, &q_data->queue_stats);
+	fpga_5gnr_dma_enqueue(q, total_enqueued_cbs, &q_data->queue_stats);
 	return i;
 }
 
 
 static inline int
-dequeue_ldpc_enc_one_op_cb(struct fpga_queue *q, struct rte_bbdev_enc_op **op,
+dequeue_ldpc_enc_one_op_cb(struct fpga_5gnr_queue *q, struct rte_bbdev_enc_op **op,
 		uint16_t desc_offset)
 {
 	union fpga_dma_desc *desc;
 	int desc_error;
 	/* Set current desc */
-	desc = q->ring_addr + ((q->head_free_desc + desc_offset)
-			& q->sw_ring_wrap_mask);
+	desc = q->ring_addr + ((q->head_free_desc + desc_offset) & q->sw_ring_wrap_mask);
 
 	/*check if done */
 	if (desc->enc_req.done == 0)
@@ -2032,7 +1993,7 @@ dequeue_ldpc_enc_one_op_cb(struct fpga_queue *q, struct rte_bbdev_enc_op **op,
 
 
 static inline int
-dequeue_ldpc_dec_one_op_cb(struct fpga_queue *q, struct rte_bbdev_dec_op **op,
+dequeue_ldpc_dec_one_op_cb(struct fpga_5gnr_queue *q, struct rte_bbdev_dec_op **op,
 		uint16_t desc_offset)
 {
 	union fpga_dma_desc *desc;
@@ -2074,10 +2035,10 @@ dequeue_ldpc_dec_one_op_cb(struct fpga_queue *q, struct rte_bbdev_dec_op **op,
 }
 
 static uint16_t
-fpga_dequeue_ldpc_enc(struct rte_bbdev_queue_data *q_data,
+fpga_5gnr_dequeue_ldpc_enc(struct rte_bbdev_queue_data *q_data,
 		struct rte_bbdev_enc_op **ops, uint16_t num)
 {
-	struct fpga_queue *q = q_data->queue_private;
+	struct fpga_5gnr_queue *q = q_data->queue_private;
 	uint32_t avail = (q->tail - q->head_free_desc) & q->sw_ring_wrap_mask;
 	uint16_t i;
 	uint16_t dequeued_cbs = 0;
@@ -2106,10 +2067,10 @@ fpga_dequeue_ldpc_enc(struct rte_bbdev_queue_data *q_data,
 }
 
 static uint16_t
-fpga_dequeue_ldpc_dec(struct rte_bbdev_queue_data *q_data,
+fpga_5gnr_dequeue_ldpc_dec(struct rte_bbdev_queue_data *q_data,
 		struct rte_bbdev_dec_op **ops, uint16_t num)
 {
-	struct fpga_queue *q = q_data->queue_private;
+	struct fpga_5gnr_queue *q = q_data->queue_private;
 	uint32_t avail = (q->tail - q->head_free_desc) & q->sw_ring_wrap_mask;
 	uint16_t i;
 	uint16_t dequeued_cbs = 0;
@@ -2128,8 +2089,7 @@ fpga_dequeue_ldpc_dec(struct rte_bbdev_queue_data *q_data,
 	}
 
 	/* Update head */
-	q->head_free_desc = (q->head_free_desc + dequeued_cbs) &
-			q->sw_ring_wrap_mask;
+	q->head_free_desc = (q->head_free_desc + dequeued_cbs) & q->sw_ring_wrap_mask;
 
 	/* Update stats */
 	q_data->queue_stats.dequeued_count += i;
@@ -2144,15 +2104,14 @@ fpga_5gnr_fec_init(struct rte_bbdev *dev, struct rte_pci_driver *drv)
 {
 	struct rte_pci_device *pci_dev = RTE_DEV_TO_PCI(dev->device);
 
-	dev->dev_ops = &fpga_ops;
-	dev->enqueue_ldpc_enc_ops = fpga_enqueue_ldpc_enc;
-	dev->enqueue_ldpc_dec_ops = fpga_enqueue_ldpc_dec;
-	dev->dequeue_ldpc_enc_ops = fpga_dequeue_ldpc_enc;
-	dev->dequeue_ldpc_dec_ops = fpga_dequeue_ldpc_dec;
+	dev->dev_ops = &fpga_5gnr_ops;
+	dev->enqueue_ldpc_enc_ops = fpga_5gnr_enqueue_ldpc_enc;
+	dev->enqueue_ldpc_dec_ops = fpga_5gnr_enqueue_ldpc_dec;
+	dev->dequeue_ldpc_enc_ops = fpga_5gnr_dequeue_ldpc_enc;
+	dev->dequeue_ldpc_dec_ops = fpga_5gnr_dequeue_ldpc_dec;
 
 	((struct fpga_5gnr_fec_device *) dev->data->dev_private)->pf_device =
-			!strcmp(drv->driver.name,
-					RTE_STR(FPGA_5GNR_FEC_PF_DRIVER_NAME));
+			!strcmp(drv->driver.name, RTE_STR(FPGA_5GNR_FEC_PF_DRIVER_NAME));
 	((struct fpga_5gnr_fec_device *) dev->data->dev_private)->mmio_base =
 			pci_dev->mem_resource[0].addr;
 
@@ -2201,14 +2160,14 @@ fpga_5gnr_fec_probe(struct rte_pci_driver *pci_drv,
 	bbdev->intr_handle = pci_dev->intr_handle;
 	bbdev->data->socket_id = pci_dev->device.numa_node;
 
-	/* Invoke FEC FPGA device initialization function */
+	/* Invoke FPGA 5GNR FEC device initialization function */
 	fpga_5gnr_fec_init(bbdev, pci_drv);
 
 	rte_bbdev_log_debug("bbdev id = %u [%s]",
 			bbdev->data->dev_id, dev_name);
 
 	struct fpga_5gnr_fec_device *d = bbdev->data->dev_private;
-	uint32_t version_id = fpga_reg_read_32(d->mmio_base,
+	uint32_t version_id = fpga_5gnr_reg_read_32(d->mmio_base,
 			FPGA_5GNR_FEC_VERSION_ID);
 	rte_bbdev_log(INFO, "FEC FPGA RTL v%u.%u",
 		((uint16_t)(version_id >> 16)), ((uint16_t)version_id));
@@ -2254,8 +2213,7 @@ fpga_5gnr_fec_remove(struct rte_pci_device *pci_dev)
 	/* release bbdev from library */
 	ret = rte_bbdev_release(bbdev);
 	if (ret)
-		rte_bbdev_log(ERR, "Device %i failed to uninit: %i", dev_id,
-				ret);
+		rte_bbdev_log(ERR, "Device %i failed to uninit: %i", dev_id, ret);
 
 	rte_bbdev_log_debug("Destroyed bbdev = %u", dev_id);
 
@@ -2263,7 +2221,7 @@ fpga_5gnr_fec_remove(struct rte_pci_device *pci_dev)
 }
 
 static inline void
-set_default_fpga_conf(struct rte_fpga_5gnr_fec_conf *def_conf)
+fpga_5gnr_set_default_conf(struct rte_fpga_5gnr_fec_conf *def_conf)
 {
 	/* clear default configuration before initialization */
 	memset(def_conf, 0, sizeof(struct rte_fpga_5gnr_fec_conf));
@@ -2303,7 +2261,7 @@ rte_fpga_5gnr_fec_configure(const char *dev_name,
 	if (conf == NULL) {
 		rte_bbdev_log(ERR,
 				"FPGA Configuration was not provided. Default configuration will be loaded.");
-		set_default_fpga_conf(&def_conf);
+		fpga_5gnr_set_default_conf(&def_conf);
 		conf = &def_conf;
 	}
 
@@ -2314,13 +2272,13 @@ rte_fpga_5gnr_fec_configure(const char *dev_name,
 	 */
 	payload_16 = (conf->dl_bandwidth << 8) | conf->ul_bandwidth;
 	address = FPGA_5GNR_FEC_CONFIGURATION;
-	fpga_reg_write_16(d->mmio_base, address, payload_16);
+	fpga_5gnr_reg_write_16(d->mmio_base, address, payload_16);
 
 	/* Clear all queues registers */
-	payload_32 = FPGA_INVALID_HW_QUEUE_ID;
+	payload_32 = FPGA_5GNR_INVALID_HW_QUEUE_ID;
 	for (q_id = 0; q_id < FPGA_TOTAL_NUM_QUEUES; ++q_id) {
 		address = (q_id << 2) + FPGA_5GNR_FEC_QUEUE_MAP;
-		fpga_reg_write_32(d->mmio_base, address, payload_32);
+		fpga_5gnr_reg_write_32(d->mmio_base, address, payload_32);
 	}
 
 	/*
@@ -2381,7 +2339,7 @@ rte_fpga_5gnr_fec_configure(const char *dev_name,
 		payload_32 = 0x1;
 		for (q_id = 0; q_id < FPGA_TOTAL_NUM_QUEUES; ++q_id) {
 			address = (q_id << 2) + FPGA_5GNR_FEC_QUEUE_MAP;
-			fpga_reg_write_32(d->mmio_base, address, payload_32);
+			fpga_5gnr_reg_write_32(d->mmio_base, address, payload_32);
 		}
 	} else {
 		/* Calculate total number of UL and DL queues to configure */
@@ -2411,7 +2369,7 @@ rte_fpga_5gnr_fec_configure(const char *dev_name,
 				address = (total_ul_q_id << 2) +
 						FPGA_5GNR_FEC_QUEUE_MAP;
 				payload_32 = ((0x80 + vf_id) << 16) | 0x1;
-				fpga_reg_write_32(d->mmio_base, address,
+				fpga_5gnr_reg_write_32(d->mmio_base, address,
 						payload_32);
 			}
 		}
@@ -2422,7 +2380,7 @@ rte_fpga_5gnr_fec_configure(const char *dev_name,
 				address = ((total_dl_q_id + FPGA_NUM_UL_QUEUES)
 						<< 2) + FPGA_5GNR_FEC_QUEUE_MAP;
 				payload_32 = ((0x80 + vf_id) << 16) | 0x1;
-				fpga_reg_write_32(d->mmio_base, address,
+				fpga_5gnr_reg_write_32(d->mmio_base, address,
 						payload_32);
 			}
 		}
@@ -2431,17 +2389,17 @@ rte_fpga_5gnr_fec_configure(const char *dev_name,
 	/* Setting Load Balance Factor */
 	payload_16 = (conf->dl_load_balance << 8) | (conf->ul_load_balance);
 	address = FPGA_5GNR_FEC_LOAD_BALANCE_FACTOR;
-	fpga_reg_write_16(d->mmio_base, address, payload_16);
+	fpga_5gnr_reg_write_16(d->mmio_base, address, payload_16);
 
 	/* Setting length of ring descriptor entry */
-	payload_16 = FPGA_RING_DESC_ENTRY_LENGTH;
+	payload_16 = FPGA_5GNR_RING_DESC_ENTRY_LENGTH;
 	address = FPGA_5GNR_FEC_RING_DESC_LEN;
-	fpga_reg_write_16(d->mmio_base, address, payload_16);
+	fpga_5gnr_reg_write_16(d->mmio_base, address, payload_16);
 
 	/* Queue PF/VF mapping table is ready */
 	payload_8 = 0x1;
 	address = FPGA_5GNR_FEC_QUEUE_PF_VF_MAP_DONE;
-	fpga_reg_write_8(d->mmio_base, address, payload_8);
+	fpga_5gnr_reg_write_8(d->mmio_base, address, payload_8);
 
 	rte_bbdev_log_debug("PF FPGA 5GNR FEC configuration complete for %s",
 			dev_name);
@@ -2486,8 +2444,6 @@ static struct rte_pci_driver fpga_5gnr_fec_pci_vf_driver = {
 
 
 RTE_PMD_REGISTER_PCI(FPGA_5GNR_FEC_PF_DRIVER_NAME, fpga_5gnr_fec_pci_pf_driver);
-RTE_PMD_REGISTER_PCI_TABLE(FPGA_5GNR_FEC_PF_DRIVER_NAME,
-		pci_id_fpga_5gnr_fec_pf_map);
+RTE_PMD_REGISTER_PCI_TABLE(FPGA_5GNR_FEC_PF_DRIVER_NAME, pci_id_fpga_5gnr_fec_pf_map);
 RTE_PMD_REGISTER_PCI(FPGA_5GNR_FEC_VF_DRIVER_NAME, fpga_5gnr_fec_pci_vf_driver);
-RTE_PMD_REGISTER_PCI_TABLE(FPGA_5GNR_FEC_VF_DRIVER_NAME,
-		pci_id_fpga_5gnr_fec_vf_map);
+RTE_PMD_REGISTER_PCI_TABLE(FPGA_5GNR_FEC_VF_DRIVER_NAME, pci_id_fpga_5gnr_fec_vf_map);
