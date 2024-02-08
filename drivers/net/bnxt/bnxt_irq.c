@@ -17,6 +17,19 @@
  * Interrupts
  */
 
+static inline void bnxt_int_handler_rearm(struct bnxt *bp,
+					  struct bnxt_cp_ring_info *cpr,
+					  uint32_t raw_cons)
+{
+	cpr->cp_raw_cons = raw_cons;
+	if (BNXT_HAS_NQ(bp))
+		bnxt_db_nq_arm(cpr);
+	else
+		B_CP_DB_REARM(cpr, cpr->cp_raw_cons);
+}
+
+/* ARM the default CQ/NQ at intervals of 1/8th of ring size */
+#define BNXT_DB_REARM_FACTOR		8
 void bnxt_int_handler(void *param)
 {
 	struct rte_eth_dev *eth_dev = (struct rte_eth_dev *)param;
@@ -24,6 +37,7 @@ void bnxt_int_handler(void *param)
 	uint32_t cons, raw_cons, cp_ring_size;
 	struct bnxt_cp_ring_info *cpr;
 	struct cmpl_base *cmp;
+	uint16_t cnt = 0;
 
 
 	if (bp == NULL)
@@ -54,13 +68,15 @@ void bnxt_int_handler(void *param)
 
 		bnxt_event_hwrm_resp_handler(bp, cmp);
 		raw_cons = NEXT_RAW_CMP(raw_cons);
+		if (++cnt >= cp_ring_size / BNXT_DB_REARM_FACTOR) {
+			bnxt_int_handler_rearm(bp, cpr, raw_cons);
+			cnt = 0;
+		}
 	}
 
-	cpr->cp_raw_cons = raw_cons;
-	if (BNXT_HAS_NQ(bp))
-		bnxt_db_nq_arm(cpr);
-	else
-		B_CP_DB_REARM(cpr, cpr->cp_raw_cons);
+	/* cnt = 0 means no work or we rearmed already */
+	if (cnt > 0)
+		bnxt_int_handler_rearm(bp, cpr, raw_cons);
 
 	pthread_mutex_unlock(&bp->def_cp_lock);
 }
