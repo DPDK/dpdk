@@ -3577,6 +3577,8 @@ void bnxt_free_all_hwrm_resources(struct bnxt *bp)
 
 		rte_free(vnic->fw_grp_ids);
 		vnic->fw_grp_ids = NULL;
+		if (vnic->ref_cnt && !vnic->rx_queue_cnt)
+			vnic->ref_cnt--;
 	}
 	/* Ring resources */
 	bnxt_free_all_hwrm_rings(bp);
