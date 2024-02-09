@@ -2113,7 +2113,7 @@ Set the RSS (Receive Side Scaling) mode on or off::
                                  ip|tcp|udp|sctp|tunnel|vlan|none| \
                                  ipv4|ipv4-frag|ipv4-tcp|ipv4-udp|ipv4-sctp|ipv4-other| \
                                  ipv6|ipv6-frag|ipv6-tcp|ipv6-udp|ipv6-sctp| \
-                                 ipv6-other|ipv6-ex|ipv6-tcp-ex|ipv6-udp-ex| \
+                                 ipv6-other|ipv6-ex|ipv6-tcp-ex|ipv6-udp-ex|ipv6-flow-label| \
                                  l2-payload|port|vxlan|geneve|nvgre|gtpu|eth|s-vlan|c-vlan| \
                                  esp|ah|l2tpv3|pfcp|pppoe|ecpri|mpls|ipv4-chksum|l4-chksum| \
                                  l2tpv2|l3-pre96|l3-pre64|l3-pre56|l3-pre48|l3-pre40|l3-pre32| \

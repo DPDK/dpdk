@@ -148,6 +148,7 @@ const struct rss_type_info rss_type_table[] = {
 	{ "l4-src-only", RTE_ETH_RSS_L4_SRC_ONLY },
 	{ "l3-dst-only", RTE_ETH_RSS_L3_DST_ONLY },
 	{ "l3-src-only", RTE_ETH_RSS_L3_SRC_ONLY },
+	{ "ipv6-flow-label", RTE_ETH_RSS_IPV6_FLOW_LABEL },
 	{ NULL, 0},
 };
 

@@ -587,6 +587,7 @@ struct rte_eth_rss_conf {
 #define RTE_ETH_RSS_L4_CHKSUM          RTE_BIT64(35)
 
 #define RTE_ETH_RSS_L2TPV2             RTE_BIT64(36)
+#define RTE_ETH_RSS_IPV6_FLOW_LABEL    RTE_BIT64(37)
 
 /*
  * We use the following macros to combine with above RTE_ETH_RSS_* for
