@@ -137,8 +137,12 @@ mana_find_pmd_mr(struct mana_mr_btree *local_mr_btree, struct mana_priv *priv,
 
 try_again:
 	/* First try to find the MR in local queue tree */
-	mr = mana_mr_btree_lookup(local_mr_btree, &idx,
-				  (uintptr_t)mbuf->buf_addr, mbuf->buf_len);
+	ret = mana_mr_btree_lookup(local_mr_btree, &idx,
+				   (uintptr_t)mbuf->buf_addr, mbuf->buf_len,
+				   &mr);
+	if (ret)
+		return NULL;
+
 	if (mr) {
 		DP_LOG(DEBUG, "Local mr lkey %u addr 0x%" PRIxPTR " len %zu",
 		       mr->lkey, mr->addr, mr->len);
@@ -147,10 +151,13 @@ try_again:
 
 	/* If not found, try to find the MR in global tree */
 	rte_spinlock_lock(&priv->mr_btree_lock);
-	mr = mana_mr_btree_lookup(&priv->mr_btree, &idx,
-				  (uintptr_t)mbuf->buf_addr,
-				  mbuf->buf_len);
+	ret = mana_mr_btree_lookup(&priv->mr_btree, &idx,
+				   (uintptr_t)mbuf->buf_addr,
+				   mbuf->buf_len, &mr);
 	rte_spinlock_unlock(&priv->mr_btree_lock);
+
+	if (ret)
+		return NULL;
 
 	/* If found in the global tree, add it to the local tree */
 	if (mr) {
@@ -227,22 +234,23 @@ mana_mr_btree_expand(struct mana_mr_btree *bt, int n)
 /*
  * Look for a region of memory in MR cache.
  */
-struct mana_mr_cache *
-mana_mr_btree_lookup(struct mana_mr_btree *bt, uint16_t *idx,
-		     uintptr_t addr, size_t len)
+int mana_mr_btree_lookup(struct mana_mr_btree *bt, uint16_t *idx,
+			 uintptr_t addr, size_t len,
+			 struct mana_mr_cache **cache)
 {
 	struct mana_mr_cache *table;
 	uint16_t n;
 	uint16_t base = 0;
 	int ret;
 
-	n = bt->len;
+	*cache = NULL;
 
+	n = bt->len;
 	/* Try to double the cache if it's full */
 	if (n == bt->size) {
 		ret = mana_mr_btree_expand(bt, bt->size << 1);
 		if (ret)
-			return NULL;
+			return ret;
 	}
 
 	table = bt->table;
@@ -261,14 +269,16 @@ mana_mr_btree_lookup(struct mana_mr_btree *bt, uint16_t *idx,
 
 	*idx = base;
 
-	if (addr + len <= table[base].addr + table[base].len)
-		return &table[base];
+	if (addr + len <= table[base].addr + table[base].len) {
+		*cache = &table[base];
+		return 0;
+	}
 
 	DP_LOG(DEBUG,
 	       "addr 0x%" PRIxPTR " len %zu idx %u sum 0x%" PRIxPTR " not found",
 	       addr, len, *idx, addr + len);
 
-	return NULL;
+	return 0;
 }
 
 int
@@ -313,14 +323,21 @@ mana_mr_btree_insert(struct mana_mr_btree *bt, struct mana_mr_cache *entry)
 	struct mana_mr_cache *table;
 	uint16_t idx = 0;
 	uint16_t shift;
+	int ret;
 
-	if (mana_mr_btree_lookup(bt, &idx, entry->addr, entry->len)) {
+	ret = mana_mr_btree_lookup(bt, &idx, entry->addr, entry->len, &table);
+	if (ret)
+		return ret;
+
+	if (table) {
 		DP_LOG(DEBUG, "Addr 0x%" PRIxPTR " len %zu exists in btree",
 		       entry->addr, entry->len);
 		return 0;
 	}
 
 	if (bt->len >= bt->size) {
+		DP_LOG(ERR, "Btree overflow detected len %u size %u",
+		       bt->len, bt->size);
 		bt->overflow = 1;
 		return -1;
 	}
