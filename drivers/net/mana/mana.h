@@ -522,9 +522,9 @@ void mana_del_pmd_mr(struct mana_mr_cache *mr);
 void mana_mempool_chunk_cb(struct rte_mempool *mp, void *opaque,
 			   struct rte_mempool_memhdr *memhdr, unsigned int idx);
 
-struct mana_mr_cache *mana_mr_btree_lookup(struct mana_mr_btree *bt,
-					   uint16_t *idx,
-					   uintptr_t addr, size_t len);
+int mana_mr_btree_lookup(struct mana_mr_btree *bt, uint16_t *idx,
+			 uintptr_t addr, size_t len,
+			 struct mana_mr_cache **cache);
 int mana_mr_btree_insert(struct mana_mr_btree *bt, struct mana_mr_cache *entry);
 int mana_mr_btree_init(struct mana_mr_btree *bt, int n, int socket);
 void mana_mr_btree_free(struct mana_mr_btree *bt);
