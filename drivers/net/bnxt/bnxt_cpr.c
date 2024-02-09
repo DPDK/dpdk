@@ -100,6 +100,10 @@ static void bnxt_handle_event_error_report(struct bnxt *bp,
 		PMD_DRV_LOG(WARNING, "Port:%d Pause Storm detected!\n",
 			    bp->eth_dev->data->port_id);
 		break;
+	case HWRM_ASYNC_EVENT_CMPL_ERROR_REPORT_BASE_EVENT_DATA1_ERROR_TYPE_DUAL_DATA_RATE_NOT_SUPPORTED:
+		PMD_DRV_LOG(WARNING, "Port:%d Speed change not supported with dual rate transceivers on this board",
+			    bp->eth_dev->data->port_id);
+		break;
 	default:
 		PMD_DRV_LOG(INFO, "FW reported unknown error type data1 %d"
 			    " data2: %d\n", data1, data2);
