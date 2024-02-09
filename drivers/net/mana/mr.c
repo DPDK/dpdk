@@ -40,7 +40,7 @@ mana_new_pmd_mr(struct mana_mr_btree *local_tree, struct mana_priv *priv,
 	struct ibv_mr *ibv_mr;
 	struct mana_range ranges[pool->nb_mem_chunks];
 	uint32_t i;
-	struct mana_mr_cache *mr;
+	struct mana_mr_cache mr;
 	int ret;
 
 	rte_mempool_mem_iter(pool, mana_mempool_chunk_cb, ranges);
@@ -75,14 +75,13 @@ mana_new_pmd_mr(struct mana_mr_btree *local_tree, struct mana_priv *priv,
 			DP_LOG(DEBUG, "MR lkey %u addr %p len %zu",
 			       ibv_mr->lkey, ibv_mr->addr, ibv_mr->length);
 
-			mr = rte_calloc("MANA MR", 1, sizeof(*mr), 0);
-			mr->lkey = ibv_mr->lkey;
-			mr->addr = (uintptr_t)ibv_mr->addr;
-			mr->len = ibv_mr->length;
-			mr->verb_obj = ibv_mr;
+			mr.lkey = ibv_mr->lkey;
+			mr.addr = (uintptr_t)ibv_mr->addr;
+			mr.len = ibv_mr->length;
+			mr.verb_obj = ibv_mr;
 
 			rte_spinlock_lock(&priv->mr_btree_lock);
-			ret = mana_mr_btree_insert(&priv->mr_btree, mr);
+			ret = mana_mr_btree_insert(&priv->mr_btree, &mr);
 			rte_spinlock_unlock(&priv->mr_btree_lock);
 			if (ret) {
 				ibv_dereg_mr(ibv_mr);
@@ -90,7 +89,7 @@ mana_new_pmd_mr(struct mana_mr_btree *local_tree, struct mana_priv *priv,
 				return ret;
 			}
 
-			ret = mana_mr_btree_insert(local_tree, mr);
+			ret = mana_mr_btree_insert(local_tree, &mr);
 			if (ret) {
 				/* Don't need to clean up MR as it's already
 				 * in the global tree
