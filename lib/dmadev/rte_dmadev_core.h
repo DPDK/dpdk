@@ -73,7 +73,7 @@ struct rte_dma_fp_object {
 	rte_dma_completed_t        completed;
 	rte_dma_completed_status_t completed_status;
 	rte_dma_burst_capacity_t   burst_capacity;
-} __rte_aligned(128);
+} __rte_cache_aligned;
 
 extern struct rte_dma_fp_object *rte_dma_fp_objs;
 
