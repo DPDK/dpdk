@@ -2950,6 +2950,8 @@ mlx5dr_definer_conv_items_to_hl(struct mlx5dr_context *ctx,
 			ret = mlx5dr_definer_conv_item_vxlan_gpe(&cd, items, i);
 			item_flags |= MLX5_FLOW_LAYER_VXLAN_GPE;
 			break;
+		case RTE_FLOW_ITEM_TYPE_VOID:
+			break;
 		default:
 			DR_LOG(ERR, "Unsupported item type %d", items->type);
 			rte_errno = ENOTSUP;
@@ -3287,7 +3289,7 @@ mlx5dr_definer_find_best_match_fit(struct mlx5dr_context *ctx,
 	}
 
 	DR_LOG(ERR, "Unable to find supporting match/jumbo definer combination");
-	rte_errno = ENOTSUP;
+	rte_errno = E2BIG;
 	return rte_errno;
 }
 
