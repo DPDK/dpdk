@@ -1995,6 +1995,7 @@ struct mlx5_priv {
 	struct mlx5_aso_mtr_pool *hws_mpool; /* HW steering's Meter pool. */
 	struct mlx5_flow_hw_ctrl_rx *hw_ctrl_rx;
 	/**< HW steering templates used to create control flow rules. */
+	struct rte_flow_actions_template *action_template_drop[MLX5DR_TABLE_TYPE_MAX];
 #endif
 	struct rte_eth_dev *shared_host; /* Host device for HW steering. */
 	uint16_t shared_refcnt; /* HW steering host reference counter. */

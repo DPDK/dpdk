@@ -7011,6 +7011,50 @@ flow_hw_pattern_has_sq_match(const struct rte_flow_item *items)
 	return false;
 }
 
+static int
+pattern_template_validate(struct rte_eth_dev *dev,
+			  struct rte_flow_pattern_template *pt[], uint32_t pt_num)
+{
+	uint32_t group = 0;
+	struct mlx5_flow_template_table_cfg tbl_cfg = {
+		.attr = (struct rte_flow_template_table_attr) {
+			.nb_flows = 64,
+			.insertion_type = RTE_FLOW_TABLE_INSERTION_TYPE_PATTERN,
+			.hash_func = RTE_FLOW_TABLE_HASH_FUNC_DEFAULT,
+			.flow_attr = {
+				.ingress = pt[0]->attr.ingress,
+				.egress = pt[0]->attr.egress,
+				.transfer = pt[0]->attr.transfer
+			}
+		},
+		.external = true
+	};
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct rte_flow_actions_template *action_template;
+
+	if (pt[0]->attr.ingress) {
+		action_template = priv->action_template_drop[MLX5DR_TABLE_TYPE_NIC_RX];
+	} else if (pt[0]->attr.egress) {
+		action_template = priv->action_template_drop[MLX5DR_TABLE_TYPE_NIC_TX];
+	} else if (pt[0]->attr.transfer) {
+		action_template = priv->action_template_drop[MLX5DR_TABLE_TYPE_FDB];
+	} else {
+		rte_errno = EINVAL;
+		return rte_errno;
+	}
+	do {
+		struct rte_flow_template_table *tmpl_tbl;
+
+		tbl_cfg.attr.flow_attr.group = group;
+		tmpl_tbl = flow_hw_table_create(dev, &tbl_cfg, pt, pt_num,
+						&action_template, 1, NULL);
+		if (!tmpl_tbl)
+			return rte_errno;
+		flow_hw_table_destroy(dev, tmpl_tbl, NULL);
+	} while (++group <= 1);
+	return 0;
+}
+
 /**
  * Create flow item template.
  *
@@ -7161,6 +7205,9 @@ setup_pattern_template:
 		}
 	}
 	__atomic_fetch_add(&it->refcnt, 1, __ATOMIC_RELAXED);
+	rte_errno = pattern_template_validate(dev, &it, 1);
+	if (rte_errno)
+		goto error;
 	LIST_INSERT_HEAD(&priv->flow_hw_itt, it, next);
 	return it;
 error:
@@ -7168,6 +7215,8 @@ error:
 	mlx5_geneve_tlv_options_unregister(priv, &it->geneve_opt_mng);
 	claim_zero(mlx5dr_match_template_destroy(it->mt));
 	mlx5_free(it);
+	rte_flow_error_set(error, rte_errno, RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+			   "Failed to create pattern template");
 	return NULL;
 }
 
@@ -9379,6 +9428,67 @@ flow_hw_compare_config(const struct mlx5_flow_hw_attr *hw_attr,
 	return true;
 }
 
+/*
+ * No need to explicitly release drop action templates on port stop.
+ * Drop action templates release with other action templates during
+ * mlx5_dev_close -> flow_hw_resource_release -> flow_hw_actions_template_destroy
+ */
+static void
+action_template_drop_release(struct rte_eth_dev *dev)
+{
+	int i;
+	struct mlx5_priv *priv = dev->data->dev_private;
+
+	for (i = 0; i < MLX5DR_TABLE_TYPE_MAX; i++) {
+		if (!priv->action_template_drop[i])
+			continue;
+		flow_hw_actions_template_destroy(dev,
+						 priv->action_template_drop[i],
+						 NULL);
+		priv->action_template_drop[i] = NULL;
+	}
+}
+
+static int
+action_template_drop_init(struct rte_eth_dev *dev,
+			  struct rte_flow_error *error)
+{
+	const struct rte_flow_action drop[2] = {
+		[0] = { .type = RTE_FLOW_ACTION_TYPE_DROP },
+		[1] = { .type = RTE_FLOW_ACTION_TYPE_END },
+	};
+	const struct rte_flow_action *actions = drop;
+	const struct rte_flow_action *masks = drop;
+	const struct rte_flow_actions_template_attr attr[MLX5DR_TABLE_TYPE_MAX] = {
+		[MLX5DR_TABLE_TYPE_NIC_RX] = { .ingress = 1 },
+		[MLX5DR_TABLE_TYPE_NIC_TX] = { .egress = 1 },
+		[MLX5DR_TABLE_TYPE_FDB] = { .transfer = 1 }
+	};
+	struct mlx5_priv *priv = dev->data->dev_private;
+
+	priv->action_template_drop[MLX5DR_TABLE_TYPE_NIC_RX] =
+		flow_hw_actions_template_create(dev,
+						&attr[MLX5DR_TABLE_TYPE_NIC_RX],
+						actions, masks, error);
+	if (!priv->action_template_drop[MLX5DR_TABLE_TYPE_NIC_RX])
+		return -1;
+	priv->action_template_drop[MLX5DR_TABLE_TYPE_NIC_TX] =
+		flow_hw_actions_template_create(dev,
+						&attr[MLX5DR_TABLE_TYPE_NIC_TX],
+						actions, masks, error);
+	if (!priv->action_template_drop[MLX5DR_TABLE_TYPE_NIC_TX])
+		return -1;
+	if (priv->sh->config.dv_esw_en && priv->master) {
+		priv->action_template_drop[MLX5DR_TABLE_TYPE_FDB] =
+			flow_hw_actions_template_create(dev,
+							&attr[MLX5DR_TABLE_TYPE_FDB],
+							actions, masks, error);
+		if (!priv->action_template_drop[MLX5DR_TABLE_TYPE_FDB])
+			return -1;
+	}
+	return 0;
+}
+
 /**
  * Configure port HWS resources.
  *
@@ -9621,6 +9731,9 @@ flow_hw_configure(struct rte_eth_dev *dev,
 	rte_spinlock_init(&priv->hw_ctrl_lock);
 	LIST_INIT(&priv->hw_ctrl_flows);
 	LIST_INIT(&priv->hw_ext_ctrl_flows);
+	ret = action_template_drop_init(dev, error);
+	if (ret)
+		goto err;
 	ret = flow_hw_create_ctrl_rx_tables(dev);
 	if (ret) {
 		rte_flow_error_set(error, -ret, RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
@@ -9755,6 +9868,7 @@ err:
 		mlx5_hws_cnt_pool_destroy(priv->sh, priv->hws_cpool);
 		priv->hws_cpool = NULL;
 	}
+	action_template_drop_release(dev);
 	mlx5_flow_quota_destroy(dev);
 	flow_hw_destroy_send_to_kernel_action(priv);
 	flow_hw_free_vport_actions(priv);
@@ -9818,6 +9932,7 @@ flow_hw_resource_release(struct rte_eth_dev *dev)
 	flow_hw_flush_all_ctrl_flows(dev);
 	flow_hw_cleanup_tx_repr_tagging(dev);
 	flow_hw_cleanup_ctrl_rx_tables(dev);
+	action_template_drop_release(dev);
 	while (!LIST_EMPTY(&priv->flow_hw_grp)) {
 		grp = LIST_FIRST(&priv->flow_hw_grp);
 		flow_hw_group_unset_miss_group(dev, grp, NULL);
