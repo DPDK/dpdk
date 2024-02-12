@@ -178,6 +178,17 @@ typedef uint16_t unaligned_uint16_t;
 #endif
 
 /**
+ * Specify data or function section/segment.
+ */
+#ifdef RTE_TOOLCHAIN_MSVC
+#define __rte_section(name) \
+	__pragma(data_seg(name)) __declspec(allocate(name))
+#else
+#define __rte_section(name) \
+	__attribute__((section(name)))
+#endif
+
+/**
  * Tells compiler that the function returns a value that points to
  * memory, where the size is given by the one or two arguments.
  * Used by compiler to validate object size.
