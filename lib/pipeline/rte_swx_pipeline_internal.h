@@ -344,7 +344,10 @@ enum instruction_type {
 	INSTR_MOV_HH,  /* dst = H, src = H; size(dst) <= 64 bits, size(src) <= 64 bits. */
 	INSTR_MOV_DMA, /* dst and src in NBO format. */
 	INSTR_MOV_128, /* dst and src in NBO format, size(dst) = size(src) = 128 bits. */
+	INSTR_MOV_128_64, /* dst and src in NBO format, size(dst) = 128 bits, size(src) = 64 b. */
+	INSTR_MOV_64_128, /* dst and src in NBO format, size(dst) = 64 bits, size(src) = 128 b. */
 	INSTR_MOV_128_32, /* dst and src in NBO format, size(dst) = 128 bits, size(src) = 32 b. */
+	INSTR_MOV_32_128, /* dst and src in NBO format, size(dst) = 32 bits, size(src) = 128 b. */
 	INSTR_MOV_I,   /* dst = HMEF, src = I; size(dst) <= 64 bits. */
 
 	/* movh dst src
@@ -2711,6 +2714,39 @@ __instr_mov_128_exec(struct rte_swx_pipeline *p __rte_unused,
 }
 
 static inline void
+__instr_mov_128_64_exec(struct rte_swx_pipeline *p __rte_unused,
+			struct thread *t,
+			const struct instruction *ip)
+{
+	uint8_t *dst = t->structs[ip->mov.dst.struct_id] + ip->mov.dst.offset;
+	uint8_t *src = t->structs[ip->mov.src.struct_id] + ip->mov.src.offset;
+
+	uint64_t *dst64 = (uint64_t *)dst;
+	uint64_t *src64 = (uint64_t *)src;
+
+	TRACE("[Thread %2u] mov (128 <- 64)\n", p->thread_id);
+
+	dst64[0] = 0;
+	dst64[1] = src64[0];
+}
+
+static inline void
+__instr_mov_64_128_exec(struct rte_swx_pipeline *p __rte_unused,
+			struct thread *t,
+			const struct instruction *ip)
+{
+	uint8_t *dst = t->structs[ip->mov.dst.struct_id] + ip->mov.dst.offset;
+	uint8_t *src = t->structs[ip->mov.src.struct_id] + ip->mov.src.offset;
+
+	uint64_t *dst64 = (uint64_t *)dst;
+	uint64_t *src64 = (uint64_t *)src;
+
+	TRACE("[Thread %2u] mov (64 <- 128)\n", p->thread_id);
+
+	dst64[0] = src64[1];
+}
+
+static inline void
 __instr_mov_128_32_exec(struct rte_swx_pipeline *p __rte_unused,
 			struct thread *t,
 			const struct instruction *ip)
@@ -2727,6 +2763,22 @@ __instr_mov_128_32_exec(struct rte_swx_pipeline *p __rte_unused,
 	dst32[1] = 0;
 	dst32[2] = 0;
 	dst32[3] = src32[0];
+}
+
+static inline void
+__instr_mov_32_128_exec(struct rte_swx_pipeline *p __rte_unused,
+			struct thread *t,
+			const struct instruction *ip)
+{
+	uint8_t *dst = t->structs[ip->mov.dst.struct_id] + ip->mov.dst.offset;
+	uint8_t *src = t->structs[ip->mov.src.struct_id] + ip->mov.src.offset;
+
+	uint32_t *dst32 = (uint32_t *)dst;
+	uint32_t *src32 = (uint32_t *)src;
+
+	TRACE("[Thread %2u] mov (32 <- 128)\n", p->thread_id);
+
+	dst32[0] = src32[3];
 }
 
 static inline void
