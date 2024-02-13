@@ -116,7 +116,8 @@ bnxt_xmit_need_long_bd(struct rte_mbuf *tx_pkt, struct bnxt_tx_queue *txq)
 				RTE_MBUF_F_TX_VLAN | RTE_MBUF_F_TX_OUTER_IP_CKSUM |
 				RTE_MBUF_F_TX_TUNNEL_GRE | RTE_MBUF_F_TX_TUNNEL_VXLAN |
 				RTE_MBUF_F_TX_TUNNEL_GENEVE | RTE_MBUF_F_TX_IEEE1588_TMST |
-				RTE_MBUF_F_TX_QINQ | RTE_MBUF_F_TX_TUNNEL_VXLAN_GPE) ||
+				RTE_MBUF_F_TX_QINQ | RTE_MBUF_F_TX_TUNNEL_VXLAN_GPE |
+				RTE_MBUF_F_TX_UDP_SEG) ||
 	     (BNXT_TRUFLOW_EN(txq->bp) &&
 	      (txq->bp->tx_cfa_action || txq->vfr_tx_cfa_action)))
 		return true;

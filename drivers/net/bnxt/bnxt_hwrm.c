@@ -1141,6 +1141,8 @@ static int __bnxt_hwrm_func_qcaps(struct bnxt *bp)
 
 	bp->max_ring_grps = rte_le_to_cpu_32(resp->max_hw_ring_grps);
 	flags = rte_le_to_cpu_32(resp->flags);
+	flags_ext2 = rte_le_to_cpu_32(resp->flags_ext2);
+
 	if (BNXT_PF(bp)) {
 		bp->pf->port_id = resp->port_id;
 		bp->pf->first_vf_id = rte_le_to_cpu_16(resp->first_vf_id);
@@ -1225,7 +1227,6 @@ static int __bnxt_hwrm_func_qcaps(struct bnxt *bp)
 		PMD_DRV_LOG(DEBUG, "Tunnel parsing capability is disabled, flags : %#x\n",
 			    bp->tunnel_disable_flag);
 
-	flags_ext2 = rte_le_to_cpu_32(resp->flags_ext2);
 	if (flags_ext2 & HWRM_FUNC_QCAPS_OUTPUT_FLAGS_EXT2_RX_ALL_PKTS_TIMESTAMPS_SUPPORTED)
 		bp->fw_cap |= BNXT_FW_CAP_RX_ALL_PKT_TS;
 	if (flags_ext2 & HWRM_FUNC_QCAPS_OUTPUT_FLAGS_EXT2_UDP_GSO_SUPPORTED)
