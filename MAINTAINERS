@@ -140,6 +140,9 @@ F: buildtools/pmdinfogen.py
 F: usertools/dpdk-pmdinfo.py
 F: doc/guides/tools/pmdinfo.rst
 
+User tools
+M: Robin Jarry <rjarry@redhat.com>
+F: usertools/
 
 Environment Abstraction Layer
 -----------------------------
