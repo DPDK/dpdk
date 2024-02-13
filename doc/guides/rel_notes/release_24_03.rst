@@ -89,6 +89,11 @@ API Changes
    Also, make sure to start the actual text at the margin.
    =======================================================
 
+* eal: Removed ``typeof(type)`` from the expansion of ``RTE_DEFINE_PER_LCORE``
+  and ``RTE_DECLARE_PER_LCORE`` macros aligning them with their intended design.
+  If use with an expression is desired applications can adapt by supplying
+  ``typeof(e)`` as an argument.
+
 * gso: ``rte_gso_segment`` now returns -ENOTSUP for unknown protocols.
 
 

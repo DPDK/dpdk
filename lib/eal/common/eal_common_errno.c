@@ -28,7 +28,7 @@ rte_strerror(int errnum)
 	static const char *sep = "";
 #endif
 #define RETVAL_SZ 256
-	static RTE_DEFINE_PER_LCORE(char[RETVAL_SZ], retval);
+	static RTE_DEFINE_PER_LCORE(char, retval[RETVAL_SZ]);
 	char *ret = RTE_PER_LCORE(retval);
 
 	/* since some implementations of strerror_r throw an error
