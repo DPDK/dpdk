@@ -10,8 +10,8 @@ the structure of the result of a command execution.
 """
 
 
-import dataclasses
 from abc import ABC, abstractmethod
+from dataclasses import InitVar, dataclass, field
 from pathlib import PurePath
 
 from framework.config import NodeConfiguration
@@ -20,7 +20,7 @@ from framework.logger import DTSLOG
 from framework.settings import SETTINGS
 
 
-@dataclasses.dataclass(slots=True, frozen=True)
+@dataclass(slots=True, frozen=True)
 class CommandResult:
     """The result of remote execution of a command.
 
@@ -34,9 +34,25 @@ class CommandResult:
 
     name: str
     command: str
-    stdout: str
-    stderr: str
+    init_stdout: InitVar[str]
+    init_stderr: InitVar[str]
     return_code: int
+    stdout: str = field(init=False)
+    stderr: str = field(init=False)
+
+    def __post_init__(self, init_stdout: str, init_stderr: str) -> None:
+        """Strip the whitespaces from stdout and stderr.
+
+        The generated __init__ method uses object.__setattr__() when the dataclass is frozen,
+        so that's what we use here as well.
+
+        In order to get access to dataclass fields in the __post_init__ method,
+        we have to type them as InitVars. These InitVars are included in the __init__ method's
+        signature, so we have to exclude the actual stdout and stderr fields
+        from the __init__ method's signature, so that we have the proper number of arguments.
+        """
+        object.__setattr__(self, "stdout", init_stdout.strip())
+        object.__setattr__(self, "stderr", init_stderr.strip())
 
     def __str__(self) -> str:
         """Format the command outputs."""
