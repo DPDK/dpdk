@@ -310,7 +310,7 @@ F: examples/*/*_altivec.*
 F: examples/common/altivec/
 
 RISC-V
-M: Stanislaw Kardach <kda@semihalf.com>
+M: Stanislaw Kardach <stanislaw.kardach@gmail.com>
 F: config/riscv/
 F: doc/guides/linux_gsg/cross_build_dpdk_for_riscv.rst
 F: lib/eal/riscv/
