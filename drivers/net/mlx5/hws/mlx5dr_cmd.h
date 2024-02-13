@@ -246,6 +246,10 @@ struct mlx5dr_cmd_query_caps {
 	uint32_t shared_vhca_id;
 	char fw_ver[64];
 	bool ipsec_offload;
+	uint8_t encap_entropy_hash_type;
+	bool roce;
+	uint16_t roce_max_src_udp_port;
+	uint16_t roce_min_src_udp_port;
 };
 
 int mlx5dr_cmd_destroy_obj(struct mlx5dr_devx_obj *devx_obj);

@@ -279,6 +279,27 @@ struct mlx5dr_action_dest_attr {
 	} reformat;
 };
 
+union mlx5dr_crc_encap_entropy_hash_ip_field {
+	uint8_t  ipv6_addr[16];
+	struct {
+		uint8_t  reserved[12];
+		rte_be32_t  ipv4_addr;
+	};
+};
+
+struct mlx5dr_crc_encap_entropy_hash_fields {
+	union mlx5dr_crc_encap_entropy_hash_ip_field dst;
+	union mlx5dr_crc_encap_entropy_hash_ip_field src;
+	uint8_t next_protocol;
+	rte_be16_t dst_port;
+	rte_be16_t src_port;
+} __rte_packed;
+
+enum mlx5dr_crc_encap_entropy_hash_size {
+	MLX5DR_CRC_ENCAP_ENTROPY_HASH_SIZE_8,
+	MLX5DR_CRC_ENCAP_ENTROPY_HASH_SIZE_16,
+};
+
 /* Open a context used for direct rule insertion using hardware steering.
  * Each context can contain multiple tables of different types.
  *
@@ -844,5 +865,22 @@ int mlx5dr_send_queue_action(struct mlx5dr_context *ctx,
  * @return zero on success non zero otherwise.
  */
 int mlx5dr_debug_dump(struct mlx5dr_context *ctx, FILE *f);
+
+/* Calculate encap entropy hash value
+ *
+ * @param[in] ctx
+ *	The context to get from it's capabilities the entropy hash type.
+ * @param[in] data
+ *	The fields for the hash calculation.
+ * @param[in] entropy_res
+ *	An array to store the hash value to it.
+ * @param[in] res_size
+ *	The result size.
+ * @return zero on success non zero otherwise.
+ */
+int mlx5dr_crc_encap_entropy_hash_calc(struct mlx5dr_context *ctx,
+				       struct mlx5dr_crc_encap_entropy_hash_fields *data,
+				       uint8_t entropy_res[],
+				       enum mlx5dr_crc_encap_entropy_hash_size res_size);
 
 #endif

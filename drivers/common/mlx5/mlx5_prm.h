@@ -2125,7 +2125,10 @@ struct mlx5_ifc_flow_table_prop_layout_bits {
 struct mlx5_ifc_roce_caps_bits {
 	u8 reserved_0[0x1e];
 	u8 qp_ts_format[0x2];
-	u8 reserved_at_20[0x7e0];
+	u8 reserved_at_20[0xa0];
+	u8 r_roce_max_src_udp_port[0x10];
+	u8 r_roce_min_src_udp_port[0x10];
+	u8 reserved_at_e0[0x720];
 };
 
 struct mlx5_ifc_ft_fields_support_bits {
@@ -2360,7 +2363,8 @@ struct mlx5_ifc_cmd_hca_cap_2_bits {
 	u8 format_select_dw_gtpu_first_ext_dw_0[0x8];
 	u8 generate_wqe_type[0x20];
 	u8 reserved_at_2c0[0x160];
-	u8 reserved_at_420[0x1c];
+	u8 reserved_at_420[0x18];
+	u8 encap_entropy_hash_type[0x4];
 	u8 flow_table_hash_type[0x4];
 	u8 reserved_at_440[0x3c0];
 };

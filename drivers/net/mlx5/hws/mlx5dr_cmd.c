@@ -1103,6 +1103,8 @@ int mlx5dr_cmd_query_caps(struct ibv_context *ctx,
 	caps->ipsec_offload = MLX5_GET(query_hca_cap_out, out,
 				      capability.cmd_hca_cap.ipsec_offload);
 
+	caps->roce = MLX5_GET(query_hca_cap_out, out, capability.cmd_hca_cap.roce);
+
 	MLX5_SET(query_hca_cap_in, in, op_mod,
 		 MLX5_GET_HCA_CAP_OP_MOD_GENERAL_DEVICE_2 |
 		 MLX5_HCA_CAP_OPMOD_GET_CUR);
@@ -1157,6 +1159,9 @@ int mlx5dr_cmd_query_caps(struct ibv_context *ctx,
 
 	caps->flow_table_hash_type = MLX5_GET(query_hca_cap_out, out,
 					      capability.cmd_hca_cap_2.flow_table_hash_type);
+
+	caps->encap_entropy_hash_type = MLX5_GET(query_hca_cap_out, out,
+						 capability.cmd_hca_cap_2.encap_entropy_hash_type);
 
 	MLX5_SET(query_hca_cap_in, in, op_mod,
 		 MLX5_GET_HCA_CAP_OP_MOD_NIC_FLOW_TABLE |
@@ -1304,6 +1309,24 @@ int mlx5dr_cmd_query_caps(struct ibv_context *ctx,
 
 		caps->merged_eswitch = MLX5_GET(query_hca_cap_out, out,
 						capability.esw_cap.merged_eswitch);
+	}
+
+	if (caps->roce) {
+		MLX5_SET(query_hca_cap_in, in, op_mod,
+			 MLX5_GET_HCA_CAP_OP_MOD_ROCE |
+			 MLX5_HCA_CAP_OPMOD_GET_CUR);
+
+		ret = mlx5_glue->devx_general_cmd(ctx, in, sizeof(in), out, sizeof(out));
+		if (ret) {
+			DR_LOG(ERR, "Failed to query roce caps");
+			rte_errno = errno;
+			return rte_errno;
+		}
+
+		caps->roce_max_src_udp_port = MLX5_GET(query_hca_cap_out, out,
+						capability.roce_caps.r_roce_max_src_udp_port);
+		caps->roce_min_src_udp_port = MLX5_GET(query_hca_cap_out, out,
+						capability.roce_caps.r_roce_min_src_udp_port);
 	}
 
 	ret = mlx5_glue->query_device_ex(ctx, NULL, &attr_ex);
