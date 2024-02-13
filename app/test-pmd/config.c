@@ -3340,6 +3340,36 @@ port_flow_hash_calc(portid_t port_id, uint32_t table_id,
 	return 0;
 }
 
+/** Calculate the encap hash result for a given pattern. */
+int
+port_flow_hash_calc_encap(portid_t port_id,
+			  enum rte_flow_encap_hash_field encap_hash_field,
+			  const struct rte_flow_item pattern[])
+{
+	struct rte_flow_error error;
+	int ret = 0;
+	uint16_t hash = 0;
+	uint8_t len = encap_hash_field == RTE_FLOW_ENCAP_HASH_FIELD_SRC_PORT ? 2 : 1;
+
+	if (port_id_is_invalid(port_id, ENABLED_WARN) ||
+	    port_id == (portid_t)RTE_PORT_ALL) {
+		printf("Failed to calculate encap hash - not a valid port");
+		return -EINVAL;
+	}
+
+	ret = rte_flow_calc_encap_hash(port_id, pattern, encap_hash_field, len,
+				       (uint8_t *)&hash, &error);
+	if (ret < 0) {
+		printf("Failed to calculate encap hash");
+		return ret;
+	}
+	if (encap_hash_field == RTE_FLOW_ENCAP_HASH_FIELD_SRC_PORT)
+		printf("encap hash result %#x\n", hash);
+	else
+		printf("encap hash result %#x\n", *(uint8_t *)&hash);
+	return 0;
+}
+
 /** Pull queue operation results from the queue. */
 static int
 port_queue_aged_flow_destroy(portid_t port_id, queueid_t queue_id,

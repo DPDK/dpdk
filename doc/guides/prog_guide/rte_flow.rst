@@ -4226,6 +4226,20 @@ as it would be calculated in the HW.
                             uint8_t pattern_template_index,
 			                   uint32_t *hash, struct rte_flow_error *error);
 
+Calculate encapsulation hash
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Calculating hash of a packet as it would be calculated by the HW, when encapsulating
+a packet.
+
+When the HW execute an encapsulation action, for example VXLAN tunnel,
+it may calculate an hash of the packet to be encapsulated.
+This hash is stored in the outer header of the tunnel.
+This allow better spreading of traffic.
+
+This function can be used for packets of a flow that are not offloaded and
+pass through the SW instead of the HW, for example, SYN/FIN packets.
+
 .. _flow_isolated_mode:
 
 Flow isolated mode

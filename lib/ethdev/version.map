@@ -320,6 +320,7 @@ EXPERIMENTAL {
 	# added in 24.03
 	__rte_eth_trace_tx_queue_count;
 	rte_eth_find_rss_algo;
+	rte_flow_calc_encap_hash;
 };
 
 INTERNAL {

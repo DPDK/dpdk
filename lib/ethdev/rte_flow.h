@@ -6846,6 +6846,59 @@ rte_flow_calc_table_hash(uint16_t port_id, const struct rte_flow_template_table 
 			 const struct rte_flow_item pattern[], uint8_t pattern_template_index,
 			 uint32_t *hash, struct rte_flow_error *error);
 
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Destination field type for the hash calculation, when encap action is used.
+ * The encap field implies the size, meaning XXX_SRC_PORT hash len is 2 bytes,
+ * while XXX_NVGRE_FLOW_ID hash len is 1 byte.
+ *
+ * @see function rte_flow_calc_encap_hash
+ */
+enum rte_flow_encap_hash_field {
+	/** Calculate hash placed in UDP source port field. */
+	RTE_FLOW_ENCAP_HASH_FIELD_SRC_PORT,
+	/** Calculate hash placed in NVGRE flow ID field. */
+	RTE_FLOW_ENCAP_HASH_FIELD_NVGRE_FLOW_ID,
+};
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Simulate HW hash calculation that is done when an encap action is being used.
+ * This hash can be stored in tunnel outer header to improve packet distribution.
+ *
+ * @param[in] port_id
+ *   Port identifier of Ethernet device.
+ * @param[in] pattern
+ *   The values to be used in the hash calculation.
+ * @param[in] dest_field
+ *   Type of destination field for hash calculation.
+ * @param[in] hash_len
+ *   The length of the hash pointer in bytes. Should be according to dest_field.
+ * @param[out] hash
+ *   Used to return the calculated hash. It will be written in network order,
+ *   so hash[0] is the MSB.
+ *   The number of bytes is based on the destination field type.
+ * @param[out] error
+ *   Perform verbose error reporting if not NULL.
+ *   PMDs initialize this structure in case of error only.
+ *
+ * @return
+ *   - (0) if success.
+ *   - (-ENODEV) if *port_id* invalid.
+ *   - (-ENOTSUP) if underlying device does not support this functionality.
+ *   - (-EINVAL) if *pattern* doesn't hold enough information to calculate the hash
+ *               or the dest is not supported.
+ */
+__rte_experimental
+int
+rte_flow_calc_encap_hash(uint16_t port_id, const struct rte_flow_item pattern[],
+			 enum rte_flow_encap_hash_field dest_field, uint8_t hash_len,
+			 uint8_t *hash, struct rte_flow_error *error);
+
 #ifdef __cplusplus
 }
 #endif

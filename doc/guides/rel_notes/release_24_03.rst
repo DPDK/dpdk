@@ -76,6 +76,11 @@ New Features
   * Added a fath path function ``rte_eth_tx_queue_count``
     to get the number of used descriptors of a Tx queue.
 
+* **Added hash calculation of an encapsulated packet as done by the HW.**
+
+  Added function to calculate hash when doing tunnel encapsulation:
+  ``rte_flow_calc_encap_hash()``
+
 * **Added flow matching items.**
 
   * Added ``RTE_FLOW_ITEM_TYPE_COMPARE`` to allow matching

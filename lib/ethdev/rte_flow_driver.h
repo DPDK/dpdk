@@ -252,6 +252,11 @@ struct rte_flow_ops {
 		(struct rte_eth_dev *dev, const struct rte_flow_template_table *table,
 		 const struct rte_flow_item pattern[], uint8_t pattern_template_index,
 		 uint32_t *hash, struct rte_flow_error *error);
+	/** @see rte_flow_calc_encap_hash() */
+	int (*flow_calc_encap_hash)
+		(struct rte_eth_dev *dev, const struct rte_flow_item pattern[],
+		 enum rte_flow_encap_hash_field dest_field, uint8_t *hash,
+		 struct rte_flow_error *error);
 };
 
 /**

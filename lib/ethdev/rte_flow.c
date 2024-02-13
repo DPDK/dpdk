@@ -2562,6 +2562,35 @@ rte_flow_calc_table_hash(uint16_t port_id, const struct rte_flow_template_table 
 	return flow_err(port_id, ret, error);
 }
 
+int
+rte_flow_calc_encap_hash(uint16_t port_id, const struct rte_flow_item pattern[],
+			 enum rte_flow_encap_hash_field dest_field, uint8_t hash_len,
+			 uint8_t *hash, struct rte_flow_error *error)
+{
+	int ret;
+	struct rte_eth_dev *dev;
+	const struct rte_flow_ops *ops;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
+	ops = rte_flow_ops_get(port_id, error);
+	if (!ops || !ops->flow_calc_encap_hash)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+					  "calc encap hash is not supported");
+	if (dest_field > RTE_FLOW_ENCAP_HASH_FIELD_NVGRE_FLOW_ID)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+					  "hash dest field is not defined");
+	if ((dest_field == RTE_FLOW_ENCAP_HASH_FIELD_SRC_PORT && hash_len != 2) ||
+	    (dest_field == RTE_FLOW_ENCAP_HASH_FIELD_NVGRE_FLOW_ID && hash_len != 1))
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+					  "hash len doesn't match the requested field len");
+	dev = &rte_eth_devices[port_id];
+	ret = ops->flow_calc_encap_hash(dev, pattern, dest_field, hash, error);
+	return flow_err(port_id, ret, error);
+}
+
 static struct rte_flow *
 rte_flow_dummy_async_create(struct rte_eth_dev *dev __rte_unused,
 			    uint32_t queue __rte_unused,

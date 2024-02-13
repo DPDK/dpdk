@@ -3295,7 +3295,7 @@ The usual error message is shown when operations results cannot be pulled::
 Calculating hash
 ~~~~~~~~~~~~~~~~
 
-``flow hash`` calculates the hash for a given pattern.
+``flow hash {port_id} template_table`` calculates the hash for a given pattern.
 It is bound to ``rte_flow_calc_table_hash()``::
 
    flow hash {port_id} template_table {table_id}
@@ -3313,6 +3313,24 @@ Otherwise, it will show an error message of the form::
 
 This command uses the same pattern items as ``flow create``,
 their format is described in `Creating flow rules`_.
+
+Simulate encap hash calculation
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``flow hash {port_id} encap`` adds hash query, that returns the hash value
+that the HW will calculate when encapsulating a packet::
+
+   flow hash {port_id} encap {target field} pattern {item} [/ {item} [...]] / end
+
+If successful, it will show::
+
+   encap hash result #[...]
+
+The value will be shown as uint16_t without endian conversion.
+
+Otherwise it will show an error message of the form::
+
+   Failed to calculate encap hash - [...]
 
 Creating a tunnel stub for offload
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

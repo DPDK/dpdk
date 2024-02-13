@@ -219,6 +219,10 @@ enum index {
 	HASH_CALC_TABLE,
 	HASH_CALC_PATTERN_INDEX,
 	HASH_CALC_PATTERN,
+	HASH_CALC_ENCAP,
+	HASH_CALC_DEST,
+	ENCAP_HASH_FIELD_SRC_PORT,
+	ENCAP_HASH_FIELD_GRE_FLOW_ID,
 
 	/* Tunnel arguments. */
 	TUNNEL_CREATE,
@@ -1218,6 +1222,8 @@ struct buffer {
 			uint32_t pattern_n;
 			uint32_t actions_n;
 			uint8_t *data;
+			enum rte_flow_encap_hash_field field;
+			uint8_t encap_hash;
 		} vc; /**< Validate/create arguments. */
 		struct {
 			uint64_t *rule;
@@ -2614,6 +2620,18 @@ static const enum index action_nat64[] = {
 	ZERO,
 };
 
+static const enum index next_hash_subcmd[] = {
+	HASH_CALC_TABLE,
+	HASH_CALC_ENCAP,
+	ZERO,
+};
+
+static const enum index next_hash_encap_dest_subcmd[] = {
+	ENCAP_HASH_FIELD_SRC_PORT,
+	ENCAP_HASH_FIELD_GRE_FLOW_ID,
+	ZERO,
+};
+
 static int parse_set_raw_encap_decap(struct context *, const struct token *,
 				     const char *, unsigned int,
 				     void *, unsigned int);
@@ -3871,7 +3889,7 @@ static const struct token token_list[] = {
 	[HASH] = {
 		.name = "hash",
 		.help = "calculate hash for a given pattern in a given template table",
-		.next = NEXT(NEXT_ENTRY(HASH_CALC_TABLE), NEXT_ENTRY(COMMON_PORT_ID)),
+		.next = NEXT(next_hash_subcmd, NEXT_ENTRY(COMMON_PORT_ID)),
 		.args = ARGS(ARGS_ENTRY(struct buffer, port)),
 		.call = parse_hash,
 	},
@@ -3885,6 +3903,12 @@ static const struct token token_list[] = {
 					args.vc.table_id)),
 		.call = parse_hash,
 	},
+	[HASH_CALC_ENCAP] = {
+		.name = "encap",
+		.help = "calculates encap hash",
+		.next = NEXT(next_hash_encap_dest_subcmd),
+		.call = parse_hash,
+	},
 	[HASH_CALC_PATTERN_INDEX] = {
 		.name = "pattern_template",
 		.help = "specify pattern template id",
@@ -3892,6 +3916,18 @@ static const struct token token_list[] = {
 			     NEXT_ENTRY(COMMON_UNSIGNED)),
 		.args = ARGS(ARGS_ENTRY(struct buffer,
 					args.vc.pat_templ_id)),
+		.call = parse_hash,
+	},
+	[ENCAP_HASH_FIELD_SRC_PORT] = {
+		.name = "hash_field_sport",
+		.help = "the encap hash field is src port",
+		.next = NEXT(NEXT_ENTRY(ITEM_PATTERN)),
+		.call = parse_hash,
+	},
+	[ENCAP_HASH_FIELD_GRE_FLOW_ID] = {
+		.name = "hash_field_flow_id",
+		.help = "the encap hash field is NVGRE flow id",
+		.next = NEXT(NEXT_ENTRY(ITEM_PATTERN)),
 		.call = parse_hash,
 	},
 	/* Top-level command. */
@@ -11046,6 +11082,15 @@ parse_hash(struct context *ctx, const struct token *token,
 		ctx->object = out->args.vc.pattern;
 		ctx->objmask = NULL;
 		return len;
+	case HASH_CALC_ENCAP:
+		out->args.vc.encap_hash = 1;
+		return len;
+	case ENCAP_HASH_FIELD_SRC_PORT:
+		out->args.vc.field = RTE_FLOW_ENCAP_HASH_FIELD_SRC_PORT;
+		return len;
+	case ENCAP_HASH_FIELD_GRE_FLOW_ID:
+		out->args.vc.field = RTE_FLOW_ENCAP_HASH_FIELD_NVGRE_FLOW_ID;
+		return len;
 	default:
 		return -1;
 	}
@@ -13039,9 +13084,13 @@ cmd_flow_parsed(const struct buffer *in)
 		port_queue_flow_pull(in->port, in->queue);
 		break;
 	case HASH:
-		port_flow_hash_calc(in->port, in->args.vc.table_id,
-				    in->args.vc.pat_templ_id,
-				    in->args.vc.pattern);
+		if (!in->args.vc.encap_hash)
+			port_flow_hash_calc(in->port, in->args.vc.table_id,
+					    in->args.vc.pat_templ_id,
+					    in->args.vc.pattern);
+		else
+			port_flow_hash_calc_encap(in->port, in->args.vc.field,
+						  in->args.vc.pattern);
 		break;
 	case QUEUE_AGED:
 		port_queue_flow_aged(in->port, in->queue,
