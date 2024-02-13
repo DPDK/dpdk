@@ -3359,6 +3359,61 @@ instr_mov_i_exec(struct rte_swx_pipeline *p)
 }
 
 /*
+ * movh.
+ */
+static int
+instr_movh_translate(struct rte_swx_pipeline *p,
+		     struct action *action,
+		     char **tokens,
+		     int n_tokens,
+		     struct instruction *instr,
+		     struct instruction_data *data __rte_unused)
+{
+	char *dst = tokens[1], *src = tokens[2];
+	struct field *fdst, *fsrc;
+	uint32_t dst_struct_id = 0, src_struct_id = 0;
+
+	CHECK(n_tokens == 3, EINVAL);
+
+	fdst = struct_field_parse(p, NULL, dst, &dst_struct_id);
+	CHECK(fdst, EINVAL);
+	CHECK(!fdst->var_size, EINVAL);
+
+	fsrc = struct_field_parse(p, action, src, &src_struct_id);
+	CHECK(fsrc, EINVAL);
+	CHECK(!fsrc->var_size, EINVAL);
+
+	/* MOVH_64_128, MOVH_128_64. */
+	if ((dst[0] == 'h' && fdst->n_bits == 64 && fsrc->n_bits == 128) ||
+	    (fdst->n_bits == 128 && src[0] == 'h' && fsrc->n_bits == 64)) {
+		instr->type = INSTR_MOVH;
+
+		instr->mov.dst.struct_id = (uint8_t)dst_struct_id;
+		instr->mov.dst.n_bits = fdst->n_bits;
+		instr->mov.dst.offset = fdst->offset / 8;
+
+		instr->mov.src.struct_id = (uint8_t)src_struct_id;
+		instr->mov.src.n_bits = fsrc->n_bits;
+		instr->mov.src.offset = fsrc->offset / 8;
+		return 0;
+	}
+
+	CHECK(0, EINVAL);
+}
+
+static inline void
+instr_movh_exec(struct rte_swx_pipeline *p)
+{
+	struct thread *t = &p->threads[p->thread_id];
+	struct instruction *ip = t->ip;
+
+	__instr_movh_exec(p, t, ip);
+
+	/* Thread. */
+	thread_ip_inc(p);
+}
+
+/*
  * dma.
  */
 static inline void
@@ -6426,6 +6481,14 @@ instr_translate(struct rte_swx_pipeline *p,
 					   instr,
 					   data);
 
+	if (!strcmp(tokens[tpos], "movh"))
+		return instr_movh_translate(p,
+					    action,
+					    &tokens[tpos],
+					    n_tokens - tpos,
+					    instr,
+					    data);
+
 	if (!strcmp(tokens[tpos], "add"))
 		return instr_alu_add_translate(p,
 					       action,
@@ -7461,6 +7524,8 @@ static instr_exec_t instruction_table[] = {
 	[INSTR_MOV_128] = instr_mov_128_exec,
 	[INSTR_MOV_128_32] = instr_mov_128_32_exec,
 	[INSTR_MOV_I] = instr_mov_i_exec,
+
+	[INSTR_MOVH] = instr_movh_exec,
 
 	[INSTR_DMA_HT] = instr_dma_ht_exec,
 	[INSTR_DMA_HT2] = instr_dma_ht2_exec,
@@ -11787,6 +11852,8 @@ instr_type_to_name(struct instruction *instr)
 	case INSTR_MOV_128_32: return "INSTR_MOV_128_32";
 	case INSTR_MOV_I: return "INSTR_MOV_I";
 
+	case INSTR_MOVH: return "INSTR_MOVH";
+
 	case INSTR_DMA_HT: return "INSTR_DMA_HT";
 	case INSTR_DMA_HT2: return "INSTR_DMA_HT2";
 	case INSTR_DMA_HT3: return "INSTR_DMA_HT3";
@@ -12178,6 +12245,34 @@ instr_mov_export(struct instruction *instr, FILE *f)
 			instr->mov.dst.n_bits,
 			instr->mov.dst.offset,
 			instr->mov.src_val);
+}
+
+static void
+instr_movh_export(struct instruction *instr, FILE *f)
+{
+	fprintf(f,
+		"\t{\n"
+		"\t\t.type = %s,\n"
+		"\t\t.mov = {\n"
+		"\t\t\t.dst = {\n"
+		"\t\t\t\t.struct_id = %u,\n"
+		"\t\t\t\t.n_bits = %u,\n"
+		"\t\t\t\t.offset = %u,\n"
+		"\t\t\t},\n"
+		"\t\t\t.src = {\n"
+		"\t\t\t\t.struct_id = %u,\n"
+		"\t\t\t\t.n_bits = %u,\n"
+		"\t\t\t\t.offset = %u,\n"
+		"\t\t\t},\n"
+		"\t\t},\n"
+		"\t},\n",
+		instr_type_to_name(instr),
+		instr->mov.dst.struct_id,
+		instr->mov.dst.n_bits,
+		instr->mov.dst.offset,
+		instr->mov.src.struct_id,
+		instr->mov.src.n_bits,
+		instr->mov.src.offset);
 }
 
 static void
@@ -12828,6 +12923,8 @@ static instruction_export_t export_table[] = {
 	[INSTR_MOV_128_32] = instr_mov_export,
 	[INSTR_MOV_I] = instr_mov_export,
 
+	[INSTR_MOVH] = instr_movh_export,
+
 	[INSTR_DMA_HT]  = instr_dma_ht_export,
 	[INSTR_DMA_HT2] = instr_dma_ht_export,
 	[INSTR_DMA_HT3] = instr_dma_ht_export,
@@ -13056,6 +13153,8 @@ instr_type_to_func(struct instruction *instr)
 	case INSTR_MOV_128: return "__instr_mov_128_exec";
 	case INSTR_MOV_128_32: return "__instr_mov_128_32_exec";
 	case INSTR_MOV_I: return "__instr_mov_i_exec";
+
+	case INSTR_MOVH: return "__instr_movh_exec";
 
 	case INSTR_DMA_HT: return "__instr_dma_ht_exec";
 	case INSTR_DMA_HT2: return "__instr_dma_ht2_exec";

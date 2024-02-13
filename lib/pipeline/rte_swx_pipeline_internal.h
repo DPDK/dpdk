@@ -244,20 +244,34 @@ struct header_out_runtime {
  * Instruction.
  */
 
-/* Packet headers are always in Network Byte Order (NBO), i.e. big endian.
+/* Operand endianness conventions:
+ *
+ * Case 1: Small fields (i.e. fields with size <= 64 bits)
+ *
+ * Packet headers are always in Network Byte Order (NBO), i.e. big endian.
  * Packet meta-data fields are always assumed to be in Host Byte Order (HBO).
  * Table entry fields can be in either NBO or HBO; they are assumed to be in HBO
  * when transferred to packet meta-data and in NBO when transferred to packet
  * headers.
- */
-
-/* Notation conventions:
+ *
+ * Notation conventions:
  *    -Header field: H = h.header.field (dst/src)
  *    -Meta-data field: M = m.field (dst/src)
  *    -Extern object mailbox field: E = e.field (dst/src)
  *    -Extern function mailbox field: F = f.field (dst/src)
  *    -Table action data field: T = t.field (src only)
  *    -Immediate value: I = 32-bit unsigned value (src only)
+ *
+ * Case 2: Big fields (i.e. fields with size > 64 bits)
+ *
+ * The big fields are allowed in both headers and meta-data, but they are always
+ * stored in NBO. This is why the few instructions that accept a big field
+ * operand require that the other operand, in case it is a small operand, be
+ * stored in NBO as well, i.e. the small operand must be a header field
+ * (i.e. meta-data field not allowed in this case).
+ *
+ * Notation conventions:
+ *    -Header or meta-data big field: HM-NBO.
  */
 
 enum instruction_type {
@@ -332,6 +346,17 @@ enum instruction_type {
 	INSTR_MOV_128, /* dst and src in NBO format, size(dst) = size(src) = 128 bits. */
 	INSTR_MOV_128_32, /* dst and src in NBO format, size(dst) = 128 bits, size(src) = 32 b. */
 	INSTR_MOV_I,   /* dst = HMEF, src = I; size(dst) <= 64 bits. */
+
+	/* movh dst src
+	 * Read/write the upper half (i.e. bits 127 .. 64) of a 128-bit field into/from a 64-bit
+	 * header field:
+	 *
+	 *    dst64 = src128[127:64], where: dst64 = H, src128 = HM-NBO.
+	 *    dst128[127:64] = src64, where: dst128 = HM-NBO, src64 = H.
+	 *
+	 * Typically required for operations involving IPv6 addresses.
+	 */
+	INSTR_MOVH,
 
 	/* dma h.header t.field
 	 * memcpy(h.header, t.field, sizeof(h.header))
@@ -2712,6 +2737,25 @@ __instr_mov_i_exec(struct rte_swx_pipeline *p __rte_unused,
 	TRACE("[Thread %2u] mov m.f %" PRIx64 "\n", p->thread_id, ip->mov.src_val);
 
 	MOV_I(t, ip);
+}
+
+/*
+ * movh.
+ */
+static inline void
+__instr_movh_exec(struct rte_swx_pipeline *p __rte_unused,
+		  struct thread *t,
+		  const struct instruction *ip)
+{
+	uint8_t *dst = t->structs[ip->mov.dst.struct_id] + ip->mov.dst.offset;
+	uint8_t *src = t->structs[ip->mov.src.struct_id] + ip->mov.src.offset;
+
+	uint64_t *dst64 = (uint64_t *)dst;
+	uint64_t *src64 = (uint64_t *)src;
+
+	TRACE("[Thread %2u] movh\n", p->thread_id);
+
+	dst64[0] = src64[0];
 }
 
 /*
