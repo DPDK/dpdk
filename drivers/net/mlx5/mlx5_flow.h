@@ -2109,6 +2109,13 @@ typedef int
 			 const struct rte_flow_item pattern[],
 			 uint8_t pattern_template_index,
 			 uint32_t *hash, struct rte_flow_error *error);
+typedef int
+(*mlx5_flow_calc_encap_hash_t)
+			(struct rte_eth_dev *dev,
+			 const struct rte_flow_item pattern[],
+			 enum rte_flow_encap_hash_field dest_field,
+			 uint8_t *hash,
+			 struct rte_flow_error *error);
 
 struct mlx5_flow_driver_ops {
 	mlx5_flow_validate_t validate;
@@ -2182,6 +2189,7 @@ struct mlx5_flow_driver_ops {
 	mlx5_flow_async_action_list_handle_query_update_t
 		async_action_list_handle_query_update;
 	mlx5_flow_calc_table_hash_t flow_calc_table_hash;
+	mlx5_flow_calc_encap_hash_t flow_calc_encap_hash;
 };
 
 /* mlx5_flow.c */

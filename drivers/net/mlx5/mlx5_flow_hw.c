@@ -11591,6 +11591,71 @@ flow_hw_calc_table_hash(struct rte_eth_dev *dev,
 	return 0;
 }
 
+static int
+flow_hw_calc_encap_hash(struct rte_eth_dev *dev,
+			const struct rte_flow_item pattern[],
+			enum rte_flow_encap_hash_field dest_field,
+			uint8_t *hash,
+			struct rte_flow_error *error)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5dr_crc_encap_entropy_hash_fields data;
+	enum mlx5dr_crc_encap_entropy_hash_size res_size =
+			dest_field == RTE_FLOW_ENCAP_HASH_FIELD_SRC_PORT ?
+				MLX5DR_CRC_ENCAP_ENTROPY_HASH_SIZE_16 :
+				MLX5DR_CRC_ENCAP_ENTROPY_HASH_SIZE_8;
+	int res;
+
+	memset(&data, 0, sizeof(struct mlx5dr_crc_encap_entropy_hash_fields));
+
+	for (; pattern->type != RTE_FLOW_ITEM_TYPE_END; pattern++) {
+		switch (pattern->type) {
+		case RTE_FLOW_ITEM_TYPE_IPV4:
+			data.dst.ipv4_addr =
+				((const struct rte_flow_item_ipv4 *)(pattern->spec))->hdr.dst_addr;
+			data.src.ipv4_addr =
+				((const struct rte_flow_item_ipv4 *)(pattern->spec))->hdr.src_addr;
+			break;
+		case RTE_FLOW_ITEM_TYPE_IPV6:
+			memcpy(data.dst.ipv6_addr,
+			       ((const struct rte_flow_item_ipv6 *)(pattern->spec))->hdr.dst_addr,
+			       sizeof(data.dst.ipv6_addr));
+			memcpy(data.src.ipv6_addr,
+			       ((const struct rte_flow_item_ipv6 *)(pattern->spec))->hdr.src_addr,
+			       sizeof(data.src.ipv6_addr));
+			break;
+		case RTE_FLOW_ITEM_TYPE_UDP:
+			data.next_protocol = IPPROTO_UDP;
+			data.dst_port =
+				((const struct rte_flow_item_udp *)(pattern->spec))->hdr.dst_port;
+			data.src_port =
+				((const struct rte_flow_item_udp *)(pattern->spec))->hdr.src_port;
+			break;
+		case RTE_FLOW_ITEM_TYPE_TCP:
+			data.next_protocol = IPPROTO_TCP;
+			data.dst_port =
+				((const struct rte_flow_item_tcp *)(pattern->spec))->hdr.dst_port;
+			data.src_port =
+				((const struct rte_flow_item_tcp *)(pattern->spec))->hdr.src_port;
+			break;
+		case RTE_FLOW_ITEM_TYPE_ICMP:
+			data.next_protocol = IPPROTO_ICMP;
+			break;
+		case RTE_FLOW_ITEM_TYPE_ICMP6:
+			data.next_protocol = IPPROTO_ICMPV6;
+			break;
+		default:
+			break;
+		}
+	}
+	res = mlx5dr_crc_encap_entropy_hash_calc(priv->dr_ctx, &data, hash, res_size);
+	if (res)
+		return rte_flow_error_set(error, res,
+					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					  NULL, "error while calculating encap hash");
+	return 0;
+}
+
 const struct mlx5_flow_driver_ops mlx5_flow_hw_drv_ops = {
 	.info_get = flow_hw_info_get,
 	.configure = flow_hw_configure,
@@ -11636,6 +11701,7 @@ const struct mlx5_flow_driver_ops mlx5_flow_hw_drv_ops = {
 	.item_create = flow_dv_item_create,
 	.item_release = flow_dv_item_release,
 	.flow_calc_table_hash = flow_hw_calc_table_hash,
+	.flow_calc_encap_hash = flow_hw_calc_encap_hash,
 };
 
 /**

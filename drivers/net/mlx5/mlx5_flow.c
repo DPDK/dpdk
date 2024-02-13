@@ -1088,6 +1088,12 @@ mlx5_flow_calc_table_hash(struct rte_eth_dev *dev,
 			  const struct rte_flow_item pattern[],
 			  uint8_t pattern_template_index,
 			  uint32_t *hash, struct rte_flow_error *error);
+static int
+mlx5_flow_calc_encap_hash(struct rte_eth_dev *dev,
+			  const struct rte_flow_item pattern[],
+			  enum rte_flow_encap_hash_field dest_field,
+			  uint8_t *hash,
+			  struct rte_flow_error *error);
 
 static const struct rte_flow_ops mlx5_flow_ops = {
 	.validate = mlx5_flow_validate,
@@ -1126,6 +1132,7 @@ static const struct rte_flow_ops mlx5_flow_ops = {
 	.action_list_handle_query_update =
 		mlx5_flow_action_list_handle_query_update,
 	.flow_calc_table_hash = mlx5_flow_calc_table_hash,
+	.flow_calc_encap_hash = mlx5_flow_calc_encap_hash,
 };
 
 /* Tunnel information. */
@@ -10507,6 +10514,28 @@ mlx5_flow_calc_table_hash(struct rte_eth_dev *dev,
 					  NULL, "no query_update handler");
 	return fops->flow_calc_table_hash(dev, table, pattern, pattern_template_index,
 					  hash, error);
+}
+
+static int
+mlx5_flow_calc_encap_hash(struct rte_eth_dev *dev,
+			  const struct rte_flow_item pattern[],
+			  enum rte_flow_encap_hash_field dest_field,
+			  uint8_t *hash,
+			  struct rte_flow_error *error)
+{
+	enum mlx5_flow_drv_type drv_type = flow_get_drv_type(dev, NULL);
+	const struct mlx5_flow_driver_ops *fops;
+
+	if (drv_type == MLX5_FLOW_TYPE_MIN || drv_type == MLX5_FLOW_TYPE_MAX)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ACTION,
+					  NULL, "invalid driver type");
+	fops = flow_get_drv_ops(drv_type);
+	if (!fops || !fops->flow_calc_encap_hash)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ACTION,
+					  NULL, "no calc encap hash handler");
+	return fops->flow_calc_encap_hash(dev, pattern, dest_field, hash, error);
 }
 
 /**
