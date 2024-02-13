@@ -8,6 +8,7 @@
  */
 
 #include <sys/queue.h>
+#include <stdalign.h>
 #include <string.h>
 #include <errno.h>
 
@@ -91,7 +92,7 @@ sfc_dp_mport_register(void)
 	static const struct rte_mbuf_dynfield mport = {
 		.name = "rte_net_sfc_dynfield_mport",
 		.size = sizeof(efx_mport_id_t),
-		.align = __alignof__(efx_mport_id_t),
+		.align = alignof(efx_mport_id_t),
 	};
 	static const struct rte_mbuf_dynflag mport_override = {
 		.name = "rte_net_sfc_dynflag_mport_override",
@@ -134,7 +135,7 @@ sfc_dp_ft_ctx_id_register(void)
 	static const struct rte_mbuf_dynfield ft_ctx_id = {
 		.name = "rte_net_sfc_dynfield_ft_ctx_id",
 		.size = sizeof(uint8_t),
-		.align = __alignof__(uint8_t),
+		.align = alignof(uint8_t),
 	};
 
 	int field_offset;

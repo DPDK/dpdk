@@ -2,6 +2,7 @@
  * Copyright(c) 2022 Intel Corporation
  */
 
+#include <stdalign.h>
 #include <stdlib.h>
 #include <pthread.h>
 
@@ -633,7 +634,7 @@ rte_eth_ip_reassembly_dynfield_register(int *field_offset, int *flag_offset)
 	static const struct rte_mbuf_dynfield field_desc = {
 		.name = RTE_MBUF_DYNFIELD_IP_REASSEMBLY_NAME,
 		.size = sizeof(rte_eth_ip_reassembly_dynfield_t),
-		.align = __alignof__(rte_eth_ip_reassembly_dynfield_t),
+		.align = alignof(rte_eth_ip_reassembly_dynfield_t),
 	};
 	static const struct rte_mbuf_dynflag ip_reassembly_dynflag = {
 		.name = RTE_MBUF_DYNFLAG_IP_REASSEMBLY_INCOMPLETE_NAME,

@@ -2,6 +2,8 @@
  * Copyright(c) 2020 Intel Corporation
  */
 
+#include <stdalign.h>
+
 #include <rte_cryptodev.h>
 #include <rte_ethdev.h>
 #include <rte_security_driver.h>
@@ -1535,7 +1537,7 @@ iavf_security_init(struct iavf_adapter *adapter)
 	struct rte_mbuf_dynfield pkt_md_dynfield = {
 		.name = "iavf_ipsec_crypto_pkt_metadata",
 		.size = sizeof(struct iavf_ipsec_crypto_pkt_metadata),
-		.align = __alignof__(struct iavf_ipsec_crypto_pkt_metadata)
+		.align = alignof(struct iavf_ipsec_crypto_pkt_metadata)
 	};
 	struct virtchnl_ipsec_cap capabilities;
 	int rc;

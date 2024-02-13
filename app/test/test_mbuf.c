@@ -5,6 +5,7 @@
 #include "test.h"
 
 #include <string.h>
+#include <stdalign.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -2534,19 +2535,19 @@ test_mbuf_dyn(struct rte_mempool *pktmbuf_pool)
 	const struct rte_mbuf_dynfield dynfield = {
 		.name = "test-dynfield",
 		.size = sizeof(uint8_t),
-		.align = __alignof__(uint8_t),
+		.align = alignof(uint8_t),
 		.flags = 0,
 	};
 	const struct rte_mbuf_dynfield dynfield2 = {
 		.name = "test-dynfield2",
 		.size = sizeof(uint16_t),
-		.align = __alignof__(uint16_t),
+		.align = alignof(uint16_t),
 		.flags = 0,
 	};
 	const struct rte_mbuf_dynfield dynfield3 = {
 		.name = "test-dynfield3",
 		.size = sizeof(uint8_t),
-		.align = __alignof__(uint8_t),
+		.align = alignof(uint8_t),
 		.flags = 0,
 	};
 	const struct rte_mbuf_dynfield dynfield_fail_big = {
@@ -2564,7 +2565,7 @@ test_mbuf_dyn(struct rte_mempool *pktmbuf_pool)
 	const struct rte_mbuf_dynfield dynfield_fail_flag = {
 		.name = "test-dynfield",
 		.size = sizeof(uint8_t),
-		.align = __alignof__(uint8_t),
+		.align = alignof(uint8_t),
 		.flags = 1,
 	};
 	const struct rte_mbuf_dynflag dynflag_fail_flag = {

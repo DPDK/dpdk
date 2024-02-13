@@ -3,6 +3,8 @@
  * All rights reserved.
  */
 
+#include <stdalign.h>
+
 #include "nfp_ipsec.h"
 
 #include <rte_cryptodev.h>
@@ -1348,7 +1350,7 @@ nfp_ipsec_ctx_create(struct rte_eth_dev *dev,
 	static const struct rte_mbuf_dynfield pkt_md_dynfield = {
 		.name = "nfp_ipsec_crypto_pkt_metadata",
 		.size = sizeof(struct nfp_tx_ipsec_desc_msg),
-		.align = __alignof__(struct nfp_tx_ipsec_desc_msg),
+		.align = alignof(struct nfp_tx_ipsec_desc_msg),
 	};
 
 	ctx = rte_zmalloc("security_ctx",

@@ -2,6 +2,7 @@
  * Copyright(c) 2010-2016 Intel Corporation.
  */
 
+#include <stdalign.h>
 #include <stdlib.h>
 
 #include <rte_pmd_iavf.h>
@@ -41,7 +42,7 @@ cmd_enable_tx_lldp_parsed(void *parsed_result,
 	const struct rte_mbuf_dynfield iavf_tx_lldp_dynfield = {
 		.name = IAVF_TX_LLDP_DYNFIELD,
 		.size = sizeof(uint8_t),
-		.align = __alignof__(uint8_t),
+		.align = alignof(uint8_t),
 		.flags = 0
 	};
 	int offset;

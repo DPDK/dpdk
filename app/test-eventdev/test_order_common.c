@@ -2,6 +2,8 @@
  * Copyright(c) 2017 Cavium, Inc
  */
 
+#include <stdalign.h>
+
 #include "test_order_common.h"
 
 int
@@ -139,12 +141,12 @@ order_test_setup(struct evt_test *test, struct evt_options *opt)
 	static const struct rte_mbuf_dynfield flow_id_dynfield_desc = {
 		.name = "test_event_dynfield_flow_id",
 		.size = sizeof(flow_id_t),
-		.align = __alignof__(flow_id_t),
+		.align = alignof(flow_id_t),
 	};
 	static const struct rte_mbuf_dynfield seqn_dynfield_desc = {
 		.name = "test_event_dynfield_seqn",
 		.size = sizeof(seqn_t),
-		.align = __alignof__(seqn_t),
+		.align = alignof(seqn_t),
 	};
 
 	test_order = rte_zmalloc_socket(test->name, sizeof(struct test_order),

@@ -4,6 +4,7 @@
  * Copyright (c) 2020 Samsung Electronics Co., Ltd All Rights Reserved
  */
 
+#include <stdalign.h>
 #include <ctype.h>
 #include <stdlib.h>
 
@@ -38,7 +39,7 @@ rte_security_dynfield_register(void)
 	static const struct rte_mbuf_dynfield dynfield_desc = {
 		.name = RTE_SECURITY_DYNFIELD_NAME,
 		.size = sizeof(rte_security_dynfield_t),
-		.align = __alignof__(rte_security_dynfield_t),
+		.align = alignof(rte_security_dynfield_t),
 	};
 	rte_security_dynfield_offset =
 		rte_mbuf_dynfield_register(&dynfield_desc);
@@ -51,7 +52,7 @@ rte_security_oop_dynfield_register(void)
 	static const struct rte_mbuf_dynfield dynfield_desc = {
 		.name = RTE_SECURITY_OOP_DYNFIELD_NAME,
 		.size = sizeof(rte_security_oop_dynfield_t),
-		.align = __alignof__(rte_security_oop_dynfield_t),
+		.align = alignof(rte_security_oop_dynfield_t),
 	};
 
 	rte_security_oop_dynfield_offset =

@@ -2,6 +2,8 @@
  * Copyright(c) 2020 Intel Corporation
  */
 
+#include <stdalign.h>
+
 #include "test_ring_stress.h"
 
 /**
@@ -285,7 +287,7 @@ mt1_init(struct rte_ring **rng, void **data, uint32_t num)
 	*data = NULL;
 
 	sz = num * sizeof(*elm);
-	elm = rte_zmalloc(NULL, sz, __alignof__(*elm));
+	elm = rte_zmalloc(NULL, sz, alignof(typeof(*elm)));
 	if (elm == NULL) {
 		printf("%s: alloc(%zu) for %u elems data failed",
 			__func__, sz, num);
@@ -297,7 +299,7 @@ mt1_init(struct rte_ring **rng, void **data, uint32_t num)
 	/* alloc ring */
 	nr = 2 * num;
 	sz = rte_ring_get_memsize(nr);
-	r = rte_zmalloc(NULL, sz, __alignof__(*r));
+	r = rte_zmalloc(NULL, sz, alignof(typeof(*r)));
 	if (r == NULL) {
 		printf("%s: alloc(%zu) for FIFO with %u elems failed",
 			__func__, sz, nr);

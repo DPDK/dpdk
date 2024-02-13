@@ -7,6 +7,7 @@
  * Used as BSD-3 Licensed with permission from Kip Macy.
  */
 
+#include <stdalign.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdint.h>
@@ -288,7 +289,7 @@ rte_ring_create_elem(const char *name, unsigned int esize, unsigned int count,
 	 * rte_errno for us appropriately - hence no check in this function
 	 */
 	mz = rte_memzone_reserve_aligned(mz_name, ring_size, socket_id,
-					 mz_flags, __alignof__(*r));
+					 mz_flags, alignof(typeof(*r)));
 	if (mz != NULL) {
 		r = mz->addr;
 		/* no need to check return value here, we already checked the

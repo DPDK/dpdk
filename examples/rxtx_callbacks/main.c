@@ -2,6 +2,7 @@
  * Copyright(c) 2010-2015 Intel Corporation
  */
 
+#include <stdalign.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <inttypes.h>
@@ -292,7 +293,7 @@ main(int argc, char *argv[])
 	static const struct rte_mbuf_dynfield tsc_dynfield_desc = {
 		.name = "example_bbdev_dynfield_tsc",
 		.size = sizeof(tsc_t),
-		.align = __alignof__(tsc_t),
+		.align = alignof(tsc_t),
 	};
 
 	/* init EAL */

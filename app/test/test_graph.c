@@ -7,6 +7,7 @@
 #include <assert.h>
 #include <inttypes.h>
 #include <signal.h>
+#include <stdalign.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
@@ -935,7 +936,7 @@ graph_setup(void)
 	static const struct rte_mbuf_dynfield graph_dynfield_desc = {
 		.name = "test_graph_dynfield",
 		.size = sizeof(graph_dynfield_t),
-		.align = __alignof__(graph_dynfield_t),
+		.align = alignof(graph_dynfield_t),
 	};
 	graph_dynfield_offset =
 		rte_mbuf_dynfield_register(&graph_dynfield_desc);

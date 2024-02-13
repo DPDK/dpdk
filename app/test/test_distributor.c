@@ -5,6 +5,7 @@
 #include "test.h"
 
 #include <unistd.h>
+#include <stdalign.h>
 #include <string.h>
 #include <rte_cycles.h>
 #include <rte_errno.h>
@@ -831,7 +832,7 @@ test_distributor(void)
 	static const struct rte_mbuf_dynfield seq_dynfield_desc = {
 		.name = "test_distributor_dynfield_seq",
 		.size = sizeof(seq_dynfield_t),
-		.align = __alignof__(seq_dynfield_t),
+		.align = alignof(seq_dynfield_t),
 	};
 	seq_dynfield_offset =
 		rte_mbuf_dynfield_register(&seq_dynfield_desc);

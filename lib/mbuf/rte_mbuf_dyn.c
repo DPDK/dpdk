@@ -2,6 +2,7 @@
  * Copyright 2019 6WIND S.A.
  */
 
+#include <stdalign.h>
 #include <sys/queue.h>
 #include <stdint.h>
 #include <limits.h>
@@ -585,7 +586,7 @@ rte_mbuf_dyn_timestamp_register(int *field_offset, uint64_t *flag,
 	static const struct rte_mbuf_dynfield field_desc = {
 		.name = RTE_MBUF_DYNFIELD_TIMESTAMP_NAME,
 		.size = sizeof(rte_mbuf_timestamp_t),
-		.align = __alignof__(rte_mbuf_timestamp_t),
+		.align = alignof(rte_mbuf_timestamp_t),
 	};
 	struct rte_mbuf_dynflag flag_desc = {};
 	int offset;

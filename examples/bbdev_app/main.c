@@ -2,6 +2,7 @@
  * Copyright(c) 2017 Intel Corporation
  */
 
+#include <stdalign.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -1051,7 +1052,7 @@ main(int argc, char **argv)
 	static const struct rte_mbuf_dynfield input_dynfield_desc = {
 		.name = "example_bbdev_dynfield_input",
 		.size = sizeof(struct rte_mbuf *),
-		.align = __alignof__(struct rte_mbuf *),
+		.align = alignof(struct rte_mbuf *),
 	};
 
 	__atomic_store_n(&global_exit_flag, 0, __ATOMIC_RELAXED);

@@ -3,6 +3,7 @@
  * Copyright 2016 Mellanox Technologies, Ltd
  */
 
+#include <stdalign.h>
 #include <errno.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -281,7 +282,7 @@ rte_flow_dynf_metadata_register(void)
 	static const struct rte_mbuf_dynfield desc_offs = {
 		.name = RTE_MBUF_DYNFIELD_METADATA_NAME,
 		.size = sizeof(uint32_t),
-		.align = __alignof__(uint32_t),
+		.align = alignof(uint32_t),
 	};
 	static const struct rte_mbuf_dynflag desc_flag = {
 		.name = RTE_MBUF_DYNFLAG_METADATA_NAME,

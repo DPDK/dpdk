@@ -2,6 +2,7 @@
  * Copyright(c) 2016-2017 Intel Corporation
  */
 
+#include <stdalign.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdint.h>
@@ -3201,7 +3202,7 @@ worker_loopback(struct test *t, uint8_t disable_implicit_release)
 	static const struct rte_mbuf_dynfield counter_dynfield_desc = {
 		.name = "rte_event_sw_dynfield_selftest_counter",
 		.size = sizeof(counter_dynfield_t),
-		.align = __alignof__(counter_dynfield_t),
+		.align = alignof(counter_dynfield_t),
 	};
 	counter_dynfield_offset =
 		rte_mbuf_dynfield_register(&counter_dynfield_desc);

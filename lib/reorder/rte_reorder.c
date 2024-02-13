@@ -2,6 +2,7 @@
  * Copyright(c) 2010-2014 Intel Corporation
  */
 
+#include <stdalign.h>
 #include <string.h>
 #include <sys/queue.h>
 
@@ -72,7 +73,7 @@ rte_reorder_init(struct rte_reorder_buffer *b, unsigned int bufsize,
 	static const struct rte_mbuf_dynfield reorder_seqn_dynfield_desc = {
 		.name = RTE_REORDER_SEQN_DYNFIELD_NAME,
 		.size = sizeof(rte_reorder_seqn_t),
-		.align = __alignof__(rte_reorder_seqn_t),
+		.align = alignof(rte_reorder_seqn_t),
 	};
 
 	if (b == NULL) {

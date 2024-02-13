@@ -3,6 +3,7 @@
  */
 
 #include <sys/queue.h>
+#include <stdalign.h>
 #include <stdio.h>
 #include <errno.h>
 #include <stdint.h>
@@ -367,7 +368,7 @@ eth_vmxnet3_dev_init(struct rte_eth_dev *eth_dev)
 	static const struct rte_mbuf_dynfield vmxnet3_segs_dynfield_desc = {
 		.name = VMXNET3_SEGS_DYNFIELD_NAME,
 		.size = sizeof(vmxnet3_segs_dynfield_t),
-		.align = __alignof__(vmxnet3_segs_dynfield_t),
+		.align = alignof(vmxnet3_segs_dynfield_t),
 	};
 
 	PMD_INIT_FUNC_TRACE();

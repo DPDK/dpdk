@@ -2,6 +2,8 @@
  * Copyright(C) 2023 Marvell.
  */
 
+#include <stdalign.h>
+
 #include <rte_errno.h>
 #include <rte_pdcp.h>
 #include <rte_malloc.h>
@@ -32,7 +34,7 @@ pdcp_dynfield_register(void)
 	const struct rte_mbuf_dynfield dynfield_desc = {
 		.name = RTE_PDCP_DYNFIELD_NAME,
 		.size = sizeof(rte_pdcp_dynfield_t),
-		.align = __alignof__(rte_pdcp_dynfield_t),
+		.align = alignof(rte_pdcp_dynfield_t),
 	};
 
 	if (rte_pdcp_dynfield_offset != -1)

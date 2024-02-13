@@ -5,6 +5,8 @@
 #ifndef __NODE_PRIVATE_H__
 #define __NODE_PRIVATE_H__
 
+#include <stdalign.h>
+
 #include <rte_common.h>
 #include <rte_log.h>
 #include <rte_mbuf.h>
@@ -42,7 +44,7 @@ struct node_mbuf_priv1 {
 static const struct rte_mbuf_dynfield node_mbuf_priv1_dynfield_desc = {
 	.name = "rte_node_dynfield_priv1",
 	.size = sizeof(struct node_mbuf_priv1),
-	.align = __alignof__(struct node_mbuf_priv1),
+	.align = alignof(struct node_mbuf_priv1),
 };
 extern int node_mbuf_priv1_dynfield_offset;
 

@@ -2,6 +2,7 @@
  * Copyright(c) 2019 Intel Corporation
  */
 
+#include <stdalign.h>
 #include <string.h>
 #include <sys/queue.h>
 
@@ -90,7 +91,7 @@ rte_stack_create(const char *name, unsigned int count, int socket_id,
 	rte_mcfg_tailq_write_lock();
 
 	mz = rte_memzone_reserve_aligned(mz_name, sz, socket_id,
-					 0, __alignof__(*s));
+					 0, alignof(typeof(*s)));
 	if (mz == NULL) {
 		STACK_LOG_ERR("Cannot reserve stack memzone!");
 		rte_mcfg_tailq_write_unlock();

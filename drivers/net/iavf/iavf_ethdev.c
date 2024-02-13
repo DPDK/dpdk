@@ -4,6 +4,7 @@
 
 #include <ctype.h>
 #include <sys/queue.h>
+#include <stdalign.h>
 #include <stdio.h>
 #include <errno.h>
 #include <stdint.h>
@@ -55,7 +56,7 @@ static const char * const iavf_valid_args[] = {
 static const struct rte_mbuf_dynfield iavf_proto_xtr_metadata_param = {
 	.name = "intel_pmd_dynfield_proto_xtr_metadata",
 	.size = sizeof(uint32_t),
-	.align = __alignof__(uint32_t),
+	.align = alignof(uint32_t),
 	.flags = 0,
 };
 

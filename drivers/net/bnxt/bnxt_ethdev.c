@@ -4,6 +4,7 @@
  */
 
 #include <inttypes.h>
+#include <stdalign.h>
 #include <stdbool.h>
 
 #include <dev_driver.h>
@@ -5920,7 +5921,7 @@ static int bnxt_drv_init(struct rte_eth_dev *eth_dev)
 		static const struct rte_mbuf_dynfield bnxt_cfa_code_dynfield_desc = {
 			.name = RTE_PMD_BNXT_CFA_CODE_DYNFIELD_NAME,
 			.size = sizeof(bnxt_cfa_code_dynfield_t),
-			.align = __alignof__(bnxt_cfa_code_dynfield_t),
+			.align = alignof(bnxt_cfa_code_dynfield_t),
 		};
 		bnxt_cfa_code_dynfield_offset =
 			rte_mbuf_dynfield_register(&bnxt_cfa_code_dynfield_desc);
