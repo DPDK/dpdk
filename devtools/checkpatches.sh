@@ -151,6 +151,22 @@ check_forbidden_additions() { # <patch>
 		-f $(dirname $(readlink -f $0))/check-forbidden-tokens.awk \
 		"$1" || res=1
 
+	# forbid use of __alignof__
+	awk -v FOLDERS="lib drivers app examples" \
+		-v EXPRESSIONS='\\<__alignof__\\>' \
+		-v RET_ON_FAIL=1 \
+		-v MESSAGE='Using __alignof__, prefer C11 alignof' \
+		-f $(dirname $(readlink -f $0))/check-forbidden-tokens.awk \
+		"$1" || res=1
+
+	# forbid use of __typeof__
+	awk -v FOLDERS="lib drivers app examples" \
+		-v EXPRESSIONS='\\<__typeof__\\>' \
+		-v RET_ON_FAIL=1 \
+		-v MESSAGE='Using __typeof__, prefer typeof' \
+		-f $(dirname $(readlink -f $0))/check-forbidden-tokens.awk \
+		"$1" || res=1
+
 	# forbid use of non abstracted bit count operations
 	awk -v FOLDERS="lib drivers app examples" \
 		-v EXPRESSIONS='\\<__builtin_(clz|clzll|ctz|ctzll|popcount|popcountll)\\>' \
