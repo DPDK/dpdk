@@ -714,6 +714,7 @@ cmd_pipeline_libbuild(char **tokens,
 		 "-I %s/lib/eal/include "
 		 "-I %s/lib/eal/x86/include "
 		 "-I %s/lib/eal/include/generic "
+		 "-I %s/lib/log "
 		 "-I %s/lib/meter "
 		 "-I %s/lib/port "
 		 "-I %s/lib/table "
@@ -727,6 +728,7 @@ cmd_pipeline_libbuild(char **tokens,
 		 ">>%s 2>&1",
 		 obj_file,
 		 code_file,
+		 install_dir,
 		 install_dir,
 		 install_dir,
 		 install_dir,
