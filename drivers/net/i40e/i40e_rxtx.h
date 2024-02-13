@@ -45,11 +45,6 @@
 #define I40E_RX_DESC_EXT_STATUS_FLEXBL_MASK   0x03
 #define I40E_RX_DESC_EXT_STATUS_FLEXBL_FLEX   0x01
 
-#undef container_of
-#define container_of(ptr, type, member) ({ \
-		typeof(((type *)0)->member)(*__mptr) = (ptr); \
-		(type *)((char *)__mptr - offsetof(type, member)); })
-
 #define I40E_TD_CMD (I40E_TX_DESC_CMD_ICRC |\
 		     I40E_TX_DESC_CMD_EOP)
 

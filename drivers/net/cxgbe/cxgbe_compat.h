@@ -135,12 +135,6 @@ typedef uint64_t  dma_addr_t;
  */
 #define cxgbe_roundup(_p, _s) (((unsigned long)(_p) + (_s - 1)) & ~(_s - 1))
 
-#ifndef container_of
-#define container_of(ptr, type, member) ({ \
-		typeof(((type *)0)->member)(*__mptr) = (ptr); \
-		(type *)((char *)__mptr - offsetof(type, member)); })
-#endif
-
 #define ARRAY_SIZE(arr) RTE_DIM(arr)
 
 #define cpu_to_be16(o) rte_cpu_to_be_16(o)

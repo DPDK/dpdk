@@ -7,11 +7,6 @@
 
 #include "opae_osdep.h"
 
-#undef container_of
-#define container_of(ptr, type, member) ({ \
-		typeof(((type *)0)->member)(*__mptr) = (ptr); \
-		(type *)((char *)__mptr - offsetof(type, member)); })
-
 #define IFPGA_PAGE_SHIFT       12
 #define IFPGA_PAGE_SIZE        (1 << IFPGA_PAGE_SHIFT)
 #define IFPGA_PAGE_MASK        (~(IFPGA_PAGE_SIZE - 1))
