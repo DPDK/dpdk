@@ -261,8 +261,6 @@ memif_free_stored_mbufs(struct pmd_process_private *proc_private, struct memif_q
 	cur_tail = __atomic_load_n(&ring->tail, __ATOMIC_ACQUIRE);
 	while (mq->last_tail != cur_tail) {
 		RTE_MBUF_PREFETCH_TO_FREE(mq->buffers[(mq->last_tail + 1) & mask]);
-		/* Decrement refcnt and free mbuf. (current segment) */
-		rte_mbuf_refcnt_update(mq->buffers[mq->last_tail & mask], -1);
 		rte_pktmbuf_free_seg(mq->buffers[mq->last_tail & mask]);
 		mq->last_tail++;
 	}
@@ -707,10 +705,6 @@ memif_tx_one_zc(struct pmd_process_private *proc_private, struct memif_queue *mq
 next_in_chain:
 	/* store pointer to mbuf to free it later */
 	mq->buffers[slot & mask] = mbuf;
-	/* Increment refcnt to make sure the buffer is not freed before server
-	 * receives it. (current segment)
-	 */
-	rte_mbuf_refcnt_update(mbuf, 1);
 	/* populate descriptor */
 	d0 = &ring->desc[slot & mask];
 	d0->length = rte_pktmbuf_data_len(mbuf);
