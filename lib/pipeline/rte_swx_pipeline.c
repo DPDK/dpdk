@@ -340,7 +340,6 @@ port_in_build(struct rte_swx_pipeline *p)
 	uint32_t i;
 
 	CHECK(p->n_ports_in, EINVAL);
-	CHECK(rte_is_power_of_2(p->n_ports_in), EINVAL);
 
 	for (i = 0; i < p->n_ports_in; i++)
 		CHECK(port_in_find(p, i), EINVAL);

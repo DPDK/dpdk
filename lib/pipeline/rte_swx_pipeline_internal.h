@@ -1584,7 +1584,13 @@ struct rte_swx_pipeline {
 static inline void
 pipeline_port_inc(struct rte_swx_pipeline *p)
 {
-	p->port_id = (p->port_id + 1) & (p->n_ports_in - 1);
+	uint32_t port_id = p->port_id;
+
+	port_id++;
+	if (port_id == p->n_ports_in)
+		port_id = 0;
+
+	p->port_id = port_id;
 }
 
 static inline void
@@ -1797,9 +1803,9 @@ mirroring_handler(struct rte_swx_pipeline *p, struct thread *t, struct rte_swx_p
 static inline void
 __instr_tx_exec(struct rte_swx_pipeline *p, struct thread *t, const struct instruction *ip)
 {
-	uint64_t port_id = METADATA_READ(t, ip->io.io.offset, ip->io.io.n_bits);
-	struct port_out_runtime *port = &p->out[port_id];
 	struct rte_swx_pkt *pkt = &t->pkt;
+	struct port_out_runtime *port;
+	uint64_t port_id;
 
 	/* Recirculation: keep the current packet. */
 	if (t->recirculate) {
@@ -1814,6 +1820,15 @@ __instr_tx_exec(struct rte_swx_pipeline *p, struct thread *t, const struct instr
 
 		return;
 	}
+
+	/* If the output port ID is invalid, then set it to the drop output port that has been set
+	 * up internally by the pipeline for this purpose.
+	 */
+	port_id = METADATA_READ(t, ip->io.io.offset, ip->io.io.n_bits);
+	if (port_id >= p->n_ports_out)
+		port_id = p->n_ports_out - 1;
+
+	port = &p->out[port_id];
 
 	TRACE("[Thread %2u]: tx 1 pkt to port %u\n",
 	      p->thread_id,
@@ -1830,9 +1845,9 @@ __instr_tx_exec(struct rte_swx_pipeline *p, struct thread *t, const struct instr
 static inline void
 __instr_tx_i_exec(struct rte_swx_pipeline *p, struct thread *t, const struct instruction *ip)
 {
-	uint64_t port_id = ip->io.io.val;
-	struct port_out_runtime *port = &p->out[port_id];
 	struct rte_swx_pkt *pkt = &t->pkt;
+	struct port_out_runtime *port;
+	uint64_t port_id;
 
 	/* Recirculation: keep the current packet. */
 	if (t->recirculate) {
@@ -1847,6 +1862,19 @@ __instr_tx_i_exec(struct rte_swx_pipeline *p, struct thread *t, const struct ins
 
 		return;
 	}
+
+	/* If the output port ID is invalid, then set it to the drop output port that has been set
+	 * up internally by the pipeline for this purpose.
+	 *
+	 * This test cannot be done earlier at instruction translation time, even though the output
+	 * port ID is an immediate value, as the number of output ports is only known later at the
+	 * pipeline build time.
+	 */
+	port_id = ip->io.io.val;
+	if (port_id >= p->n_ports_out)
+		port_id = p->n_ports_out - 1;
+
+	port = &p->out[port_id];
 
 	TRACE("[Thread %2u]: tx (i) 1 pkt to port %u\n",
 	      p->thread_id,
