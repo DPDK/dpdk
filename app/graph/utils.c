@@ -9,16 +9,9 @@
 #include <string.h>
 
 #include <rte_common.h>
+#include <rte_string_fns.h>
 
 #include "module_api.h"
-
-#define white_spaces_skip(pos)			\
-({						\
-	__typeof__(pos) _p = (pos);		\
-	for ( ; isspace(*_p); _p++)		\
-		;				\
-	_p;					\
-})
 
 static void
 hex_string_to_uint64(uint64_t *dst, const char *hexs)
@@ -47,7 +40,7 @@ parser_uint64_read(uint64_t *value, const char *p)
 	char *next;
 	uint64_t val;
 
-	p = white_spaces_skip(p);
+	p = rte_str_skip_leading_spaces(p);
 	if (!isdigit(*p))
 		return -EINVAL;
 
@@ -73,7 +66,7 @@ parser_uint64_read(uint64_t *value, const char *p)
 		break;
 	}
 
-	p = white_spaces_skip(p);
+	p = rte_str_skip_leading_spaces(p);
 	if (*p != '\0')
 		return -EINVAL;
 

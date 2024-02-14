@@ -15,10 +15,12 @@
 extern "C" {
 #endif
 
+#include <ctype.h>
 #include <stdio.h>
 #include <string.h>
 
 #include <rte_common.h>
+#include <rte_compat.h>
 
 /**
  * Takes string "string" parameter and splits it at character "delim"
@@ -114,6 +116,31 @@ rte_strlcat(char *dst, const char *src, size_t size)
  */
 ssize_t
 rte_strscpy(char *dst, const char *src, size_t dsize);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Search for the first non whitespace character.
+ *
+ * @param src
+ *   The input string to be analysed.
+ *
+ * @return
+ *  The address of the first non whitespace character.
+ */
+__rte_experimental
+static inline const char *
+rte_str_skip_leading_spaces(const char *src)
+{
+	const char *p = src;
+
+	while (isspace(*p))
+		p++;
+
+	return p;
+}
+
 
 #ifdef __cplusplus
 }

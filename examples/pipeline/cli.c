@@ -19,6 +19,7 @@
 #include <rte_swx_pipeline.h>
 #include <rte_swx_ctl.h>
 #include <rte_swx_ipsec.h>
+#include <rte_string_fns.h>
 
 #include "cli.h"
 
@@ -45,21 +46,13 @@
 #define MSG_FILE_NOT_ENOUGH "Not enough rules in file \"%s\".\n"
 #define MSG_CMD_FAIL        "Command \"%s\" failed.\n"
 
-#define skip_white_spaces(pos)			\
-({						\
-	__typeof__(pos) _p = (pos);		\
-	for ( ; isspace(*_p); _p++)		\
-		;				\
-	_p;					\
-})
-
 static int
 parser_read_uint64(uint64_t *value, const char *p)
 {
 	char *next;
 	uint64_t val;
 
-	p = skip_white_spaces(p);
+	p = rte_str_skip_leading_spaces(p);
 	if (!isdigit(*p))
 		return -EINVAL;
 
@@ -85,7 +78,7 @@ parser_read_uint64(uint64_t *value, const char *p)
 		break;
 	}
 
-	p = skip_white_spaces(p);
+	p = rte_str_skip_leading_spaces(p);
 	if (*p != '\0')
 		return -EINVAL;
 

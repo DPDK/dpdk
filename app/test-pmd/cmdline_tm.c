@@ -11,6 +11,7 @@
 
 #include <rte_ethdev.h>
 #include <rte_flow.h>
+#include <rte_string_fns.h>
 #include <rte_tm.h>
 
 #include "testpmd.h"
@@ -18,14 +19,6 @@
 
 #define PARSE_DELIMITER				" \f\n\r\t\v"
 #define MAX_NUM_SHARED_SHAPERS		256
-
-#define skip_white_spaces(pos)			\
-({						\
-	__typeof__(pos) _p = (pos);		\
-	for ( ; isspace(*_p); _p++)		\
-		;				\
-	_p;					\
-})
 
 /** Display TM Error Message */
 static void
@@ -112,7 +105,7 @@ read_uint64(uint64_t *value, const char *p)
 	char *next;
 	uint64_t val;
 
-	p = skip_white_spaces(p);
+	p = rte_str_skip_leading_spaces(p);
 	if (!isdigit(*p))
 		return -EINVAL;
 
@@ -138,7 +131,7 @@ read_uint64(uint64_t *value, const char *p)
 		break;
 	}
 
-	p = skip_white_spaces(p);
+	p = rte_str_skip_leading_spaces(p);
 	if (*p != '\0')
 		return -EINVAL;
 
