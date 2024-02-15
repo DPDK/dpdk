@@ -1116,7 +1116,7 @@ delete_depth_big(struct __rte_lpm *i_lpm, uint32_t ip_masked,
 		 * Prevent the free of the tbl8 group from hoisting.
 		 */
 		i_lpm->lpm.tbl24[tbl24_index].valid = 0;
-		__atomic_thread_fence(__ATOMIC_RELEASE);
+		rte_atomic_thread_fence(rte_memory_order_release);
 		status = tbl8_free(i_lpm, tbl8_group_start);
 	} else if (tbl8_recycle_index > -1) {
 		/* Update tbl24 entry. */
@@ -1132,7 +1132,7 @@ delete_depth_big(struct __rte_lpm *i_lpm, uint32_t ip_masked,
 		 */
 		__atomic_store(&i_lpm->lpm.tbl24[tbl24_index], &new_tbl24_entry,
 				__ATOMIC_RELAXED);
-		__atomic_thread_fence(__ATOMIC_RELEASE);
+		rte_atomic_thread_fence(rte_memory_order_release);
 		status = tbl8_free(i_lpm, tbl8_group_start);
 	}
 #undef group_idx

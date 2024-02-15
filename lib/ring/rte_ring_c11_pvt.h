@@ -68,7 +68,7 @@ __rte_ring_move_prod_head(struct rte_ring *r, unsigned int is_sp,
 		n = max;
 
 		/* Ensure the head is read before tail */
-		__atomic_thread_fence(rte_memory_order_acquire);
+		rte_atomic_thread_fence(rte_memory_order_acquire);
 
 		/* load-acquire synchronize with store-release of ht->tail
 		 * in update_tail.
@@ -145,7 +145,7 @@ __rte_ring_move_cons_head(struct rte_ring *r, int is_sc,
 		n = max;
 
 		/* Ensure the head is read before tail */
-		__atomic_thread_fence(rte_memory_order_acquire);
+		rte_atomic_thread_fence(rte_memory_order_acquire);
 
 		/* this load-acquire synchronize with store-release of ht->tail
 		 * in update_tail.

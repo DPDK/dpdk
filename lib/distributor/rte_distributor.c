@@ -187,7 +187,7 @@ rte_distributor_return_pkt(struct rte_distributor *d,
 	}
 
 	/* Sync with distributor to acquire retptrs */
-	__atomic_thread_fence(rte_memory_order_acquire);
+	rte_atomic_thread_fence(rte_memory_order_acquire);
 	for (i = 0; i < RTE_DIST_BURST_SIZE; i++)
 		/* Switch off the return bit first */
 		buf->retptr64[i] = 0;

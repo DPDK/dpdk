@@ -83,7 +83,7 @@ rte_mcslock_lock(RTE_ATOMIC(rte_mcslock_t *) *msl, rte_mcslock_t *me)
 	 * store to prev->next. Otherwise it will cause a deadlock. Need a
 	 * store-load barrier.
 	 */
-	__rte_atomic_thread_fence(rte_memory_order_acq_rel);
+	rte_atomic_thread_fence(rte_memory_order_acq_rel);
 	/* If the lock has already been acquired, it first atomically
 	 * places the node at the end of the queue and then proceeds
 	 * to spin on me->locked until the previous lock holder resets
@@ -117,7 +117,7 @@ rte_mcslock_unlock(RTE_ATOMIC(rte_mcslock_t *) *msl, RTE_ATOMIC(rte_mcslock_t *)
 		 * while-loop first. This has the potential to cause a
 		 * deadlock. Need a load barrier.
 		 */
-		__rte_atomic_thread_fence(rte_memory_order_acquire);
+		rte_atomic_thread_fence(rte_memory_order_acquire);
 		/* More nodes added to the queue by other CPUs.
 		 * Wait until the next pointer is set.
 		 */

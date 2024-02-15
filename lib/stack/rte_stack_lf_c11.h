@@ -110,7 +110,7 @@ __rte_stack_lf_pop_elems(struct rte_stack_lf_list *list,
 		 * elements are properly ordered with respect to the head
 		 * pointer read.
 		 */
-		__atomic_thread_fence(rte_memory_order_acquire);
+		rte_atomic_thread_fence(rte_memory_order_acquire);
 
 		rte_prefetch0(old_head.top);
 

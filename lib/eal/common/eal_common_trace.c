@@ -526,7 +526,7 @@ __rte_trace_point_register(rte_trace_point_t *handle, const char *name,
 
 	/* Add the trace point at tail */
 	STAILQ_INSERT_TAIL(&tp_list, tp, next);
-	__atomic_thread_fence(rte_memory_order_release);
+	rte_atomic_thread_fence(rte_memory_order_release);
 
 	/* All Good !!! */
 	return 0;
