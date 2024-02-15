@@ -1,42 +1,24 @@
 ; SPDX-License-Identifier: BSD-3-Clause
 ; Copyright(c) 2020 Intel Corporation
 
+; The simplest pipeline processing with just packet reception and transmission. No header parsing,
+; table lookup or action execution involved. Packets received on port 0 are sent out on port 1,
+; those received on port 1 are sent out on port 0, etc.
+
 //
 // Meta-data.
 //
 struct metadata_t {
-	bit<32> port_in
-	bit<32> port_out
+	bit<32> port
 }
 
 metadata instanceof metadata_t
 
 //
-// Actions.
-//
-action NoAction args none {
-	return
-}
-
-//
-// Tables.
-//
-table stub {
-	key {
-	}
-
-	actions {
-		NoAction
-	}
-
-	default_action NoAction args none const
-}
-
-//
 // Pipeline.
 //
 apply {
-	rx m.port_in
-	table stub
-	tx m.port_in
+	rx m.port
+	xor m.port 1
+	tx m.port
 }

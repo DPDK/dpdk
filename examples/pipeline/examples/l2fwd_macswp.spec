@@ -1,6 +1,9 @@
 ; SPDX-License-Identifier: BSD-3-Clause
 ; Copyright(c) 2020 Intel Corporation
 
+; Layer 2 Forwarding with MACADDR swapping (i.e. within the Ethernet header of the output packet,
+; the destination MAC address is swapped with the source MAC address).
+
 //
 // Packet headers.
 //
@@ -23,36 +26,19 @@ struct metadata_t {
 metadata instanceof metadata_t
 
 //
-// Actions.
-//
-action macswp args none {
-	mov m.addr h.ethernet.dst_addr
-	mov h.ethernet.dst_addr h.ethernet.src_addr
-	mov h.ethernet.src_addr m.addr
-	return
-}
-
-//
-// Tables.
-//
-table stub {
-	key {
-	}
-
-	actions {
-		macswp
-	}
-
-	default_action macswp args none const
-}
-
-//
 // Pipeline.
 //
 apply {
 	rx m.port
 	extract h.ethernet
-	table stub
+
+	//
+	// Ethernet header: dst_addr swapped with src_addr.
+	//
+	mov m.addr h.ethernet.dst_addr
+	mov h.ethernet.dst_addr h.ethernet.src_addr
+	mov h.ethernet.src_addr m.addr
+
 	xor m.port 1
 	emit h.ethernet
 	tx m.port
