@@ -1574,6 +1574,43 @@ static const struct mlx5_counter_ctrl mlx5_counters_init[] = {
 		.dpdk_name = "tx_vport_bytes",
 		.ctr_name = "vport_tx_bytes",
 	},
+	/**
+	 * Device counters: These counters are for the
+	 * entire PCI device (NIC). These counters are
+	 * not counting on a per port/queue basis.
+	 */
+	{
+		.dpdk_name = "rx_pci_signal_integrity",
+		.ctr_name = "rx_pci_signal_integrity",
+	},
+	{
+		.dpdk_name = "tx_pci_signal_integrity",
+		.ctr_name = "tx_pci_signal_integrity",
+	},
+	{
+		.dpdk_name = "outbound_pci_buffer_overflow",
+		.ctr_name = "outbound_pci_buffer_overflow",
+	},
+	{
+		.dpdk_name = "outbound_pci_stalled_rd",
+		.ctr_name = "outbound_pci_stalled_rd",
+	},
+	{
+		.dpdk_name = "outbound_pci_stalled_wr",
+		.ctr_name = "outbound_pci_stalled_wr",
+	},
+	{
+		.dpdk_name = "outbound_pci_stalled_rd_events",
+		.ctr_name = "outbound_pci_stalled_rd_events",
+	},
+	{
+		.dpdk_name = "outbound_pci_stalled_wr_events",
+		.ctr_name = "outbound_pci_stalled_wr_events",
+	},
+	{
+		.dpdk_name = "dev_out_of_buffer",
+		.ctr_name = "dev_out_of_buffer",
+	},
 };
 
 static const unsigned int xstats_n = RTE_DIM(mlx5_counters_init);
