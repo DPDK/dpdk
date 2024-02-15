@@ -2993,11 +2993,20 @@ following sections.
 - Create a table::
 
    flow table {port_id} create
-       [table_id {id}]
+       [table_id {id}] [resizable]
        [group {group_id}] [priority {level}] [ingress] [egress] [transfer]
        rules_number {number}
        pattern_template {pattern_template_id}
        actions_template {actions_template_id}
+
+- Resize a table::
+
+   flow template_table {port_id} resize
+       table_resize_id {id} table_resize_rules_num {number}
+
+- Complete table resize::
+
+   flow template_table {port_id} resize_complete table {table_id}
 
 - Destroy a table::
 
@@ -3018,6 +3027,10 @@ following sections.
        actions_template {actions_template_index}
        pattern {item} [/ {item} [...]] / end
        actions {action} [/ {action} [...]] / end
+
+- Enqueue flow update following table resize::
+
+   flow queue {port_id} update_resized {table_id} rule {rule_id}
 
 - Enqueue destruction of specific flow rules::
 

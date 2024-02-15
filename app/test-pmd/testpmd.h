@@ -110,6 +110,7 @@ enum {
 enum {
 	QUEUE_JOB_TYPE_FLOW_CREATE,
 	QUEUE_JOB_TYPE_FLOW_DESTROY,
+	QUEUE_JOB_TYPE_FLOW_TRANSFER,
 	QUEUE_JOB_TYPE_FLOW_UPDATE,
 	QUEUE_JOB_TYPE_ACTION_CREATE,
 	QUEUE_JOB_TYPE_ACTION_DESTROY,
@@ -981,7 +982,12 @@ int port_flow_template_table_create(portid_t port_id, uint32_t id,
 		   uint32_t nb_actions_templates, uint32_t *actions_templates);
 int port_flow_template_table_destroy(portid_t port_id,
 			    uint32_t n, const uint32_t *table);
+int port_queue_flow_update_resized(portid_t port_id, queueid_t queue_id,
+				   bool postpone, uint32_t flow_id);
 int port_flow_template_table_flush(portid_t port_id);
+int port_flow_template_table_resize_complete(portid_t port_id, uint32_t table_id);
+int port_flow_template_table_resize(portid_t port_id,
+				    uint32_t table_id, uint32_t flows_num);
 int port_queue_group_set_miss_actions(portid_t port_id, const struct rte_flow_attr *attr,
 				      const struct rte_flow_action *actions);
 int port_queue_flow_create(portid_t port_id, queueid_t queue_id,

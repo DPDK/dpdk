@@ -257,6 +257,21 @@ struct rte_flow_ops {
 		(struct rte_eth_dev *dev, const struct rte_flow_item pattern[],
 		 enum rte_flow_encap_hash_field dest_field, uint8_t *hash,
 		 struct rte_flow_error *error);
+	/** @see rte_flow_template_table_resize() */
+	int (*flow_template_table_resize)(struct rte_eth_dev *dev,
+					  struct rte_flow_template_table *table,
+					  uint32_t nb_rules,
+					  struct rte_flow_error *error);
+	/** @see rte_flow_async_update_resized() */
+	int (*flow_update_resized)(struct rte_eth_dev *dev, uint32_t queue,
+				   const struct rte_flow_op_attr *attr,
+				   struct rte_flow *rule, void *user_data,
+				   struct rte_flow_error *error);
+	/** @see rte_flow_template_table_resize_complete() */
+	int (*flow_template_table_resize_complete)
+		(struct rte_eth_dev *dev,
+		 struct rte_flow_template_table *table,
+		 struct rte_flow_error *error);
 };
 
 /**

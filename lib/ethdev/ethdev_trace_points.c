@@ -777,3 +777,12 @@ RTE_TRACE_POINT_REGISTER(rte_flow_trace_async_action_list_handle_destroy,
 
 RTE_TRACE_POINT_REGISTER(rte_flow_trace_async_action_list_handle_query_update,
 			 lib.ethdev.flow.async_action_list_handle_query_update)
+
+RTE_TRACE_POINT_REGISTER(rte_flow_trace_template_table_resize,
+			 lib.ethdev.flow.template_table_resize)
+
+RTE_TRACE_POINT_REGISTER(rte_flow_trace_async_update_resized,
+			 lib.ethdev.flow.async_update_resized)
+
+RTE_TRACE_POINT_REGISTER(rte_flow_trace_table_resize_complete,
+			 lib.ethdev.flow.table_resize_complete)

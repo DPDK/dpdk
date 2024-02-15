@@ -88,6 +88,19 @@ New Features
   * Added ``RTE_FLOW_ITEM_TYPE_RANDOM`` to match a random value,
     and ``RTE_FLOW_FIELD_RANDOM`` to represent it with a field ID.
 
+* **Added flow template table resizing.**
+
+  * ``RTE_FLOW_TABLE_SPECIALIZE_RESIZABLE_TABLE`` table configuration bit.
+    Set at table creation to allow future resizing.
+  * ``rte_flow_template_table_resizable()``.
+    Query whether template table can be resized.
+  * ``rte_flow_template_table_resize()``.
+    Reconfigure template table for new flows capacity.
+  * ``rte_flow_async_update_resized()``.
+    Reconfigure flows for the updated table configuration.
+  * ``rte_flow_template_table_resize_complete()``.
+    Complete table resize.
+
 * **Updated Atomic Rules' Arkville driver.**
 
   * Added support for Atomic Rules' TK242 packet-capture family of devices

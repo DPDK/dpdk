@@ -134,6 +134,7 @@ enum index {
 	/* Queue arguments. */
 	QUEUE_CREATE,
 	QUEUE_DESTROY,
+	QUEUE_FLOW_UPDATE_RESIZED,
 	QUEUE_UPDATE,
 	QUEUE_AGED,
 	QUEUE_INDIRECT_ACTION,
@@ -191,8 +192,12 @@ enum index {
 	/* Table arguments. */
 	TABLE_CREATE,
 	TABLE_DESTROY,
+	TABLE_RESIZE,
+	TABLE_RESIZE_COMPLETE,
 	TABLE_CREATE_ID,
 	TABLE_DESTROY_ID,
+	TABLE_RESIZE_ID,
+	TABLE_RESIZE_RULES_NUMBER,
 	TABLE_INSERTION_TYPE,
 	TABLE_INSERTION_TYPE_NAME,
 	TABLE_HASH_FUNC,
@@ -204,6 +209,7 @@ enum index {
 	TABLE_TRANSFER,
 	TABLE_TRANSFER_WIRE_ORIG,
 	TABLE_TRANSFER_VPORT_ORIG,
+	TABLE_RESIZABLE,
 	TABLE_RULES_NUMBER,
 	TABLE_PATTERN_TEMPLATE,
 	TABLE_ACTIONS_TEMPLATE,
@@ -1361,6 +1367,8 @@ static const enum index next_group_attr[] = {
 static const enum index next_table_subcmd[] = {
 	TABLE_CREATE,
 	TABLE_DESTROY,
+	TABLE_RESIZE,
+	TABLE_RESIZE_COMPLETE,
 	ZERO,
 };
 
@@ -1375,6 +1383,7 @@ static const enum index next_table_attr[] = {
 	TABLE_TRANSFER,
 	TABLE_TRANSFER_WIRE_ORIG,
 	TABLE_TRANSFER_VPORT_ORIG,
+	TABLE_RESIZABLE,
 	TABLE_RULES_NUMBER,
 	TABLE_PATTERN_TEMPLATE,
 	TABLE_ACTIONS_TEMPLATE,
@@ -1391,6 +1400,7 @@ static const enum index next_table_destroy_attr[] = {
 static const enum index next_queue_subcmd[] = {
 	QUEUE_CREATE,
 	QUEUE_DESTROY,
+	QUEUE_FLOW_UPDATE_RESIZED,
 	QUEUE_UPDATE,
 	QUEUE_AGED,
 	QUEUE_INDIRECT_ACTION,
@@ -3460,6 +3470,19 @@ static const struct token token_list[] = {
 		.args = ARGS(ARGS_ENTRY(struct buffer, port)),
 		.call = parse_table_destroy,
 	},
+	[TABLE_RESIZE] = {
+		.name = "resize",
+		.help = "resize template table",
+		.next = NEXT(NEXT_ENTRY(TABLE_RESIZE_ID)),
+		.call = parse_table
+	},
+	[TABLE_RESIZE_COMPLETE] = {
+		.name = "resize_complete",
+		.help = "complete table resize",
+		.next = NEXT(NEXT_ENTRY(TABLE_DESTROY_ID)),
+		.args = ARGS(ARGS_ENTRY(struct buffer, port)),
+		.call = parse_table_destroy,
+	},
 	/* Table  arguments. */
 	[TABLE_CREATE_ID] = {
 		.name = "table_id",
@@ -3470,12 +3493,28 @@ static const struct token token_list[] = {
 	},
 	[TABLE_DESTROY_ID] = {
 		.name = "table",
-		.help = "specify table id to destroy",
+		.help = "table id",
 		.next = NEXT(next_table_destroy_attr,
 			     NEXT_ENTRY(COMMON_TABLE_ID)),
 		.args = ARGS(ARGS_ENTRY_PTR(struct buffer,
 					    args.table_destroy.table_id)),
 		.call = parse_table_destroy,
+	},
+	[TABLE_RESIZE_ID] = {
+		.name = "table_resize_id",
+		.help = "table resize id",
+		.next = NEXT(NEXT_ENTRY(TABLE_RESIZE_RULES_NUMBER),
+			     NEXT_ENTRY(COMMON_TABLE_ID)),
+		.args = ARGS(ARGS_ENTRY(struct buffer, args.table.id)),
+		.call = parse_table
+	},
+	[TABLE_RESIZE_RULES_NUMBER] = {
+		.name = "table_resize_rules_num",
+		.help = "table resize rules number",
+		.next = NEXT(NEXT_ENTRY(END), NEXT_ENTRY(COMMON_UNSIGNED)),
+		.args = ARGS(ARGS_ENTRY(struct buffer,
+					args.table.attr.nb_flows)),
+		.call = parse_table
 	},
 	[TABLE_INSERTION_TYPE] = {
 		.name = "insertion_type",
@@ -3546,6 +3585,12 @@ static const struct token token_list[] = {
 	[TABLE_TRANSFER_VPORT_ORIG] = {
 		.name = "vport_orig",
 		.help = "affect rule direction to transfer",
+		.next = NEXT(next_table_attr),
+		.call = parse_table,
+	},
+	[TABLE_RESIZABLE] = {
+		.name = "resizable",
+		.help = "set resizable attribute",
 		.next = NEXT(next_table_attr),
 		.call = parse_table,
 	},
@@ -3636,6 +3681,14 @@ static const struct token token_list[] = {
 	[QUEUE_DESTROY] = {
 		.name = "destroy",
 		.help = "destroy a flow rule",
+		.next = NEXT(NEXT_ENTRY(QUEUE_DESTROY_ID),
+			     NEXT_ENTRY(COMMON_QUEUE_ID)),
+		.args = ARGS(ARGS_ENTRY(struct buffer, queue)),
+		.call = parse_qo_destroy,
+	},
+	[QUEUE_FLOW_UPDATE_RESIZED] = {
+		.name = "update_resized",
+		.help = "update a flow after table resize",
 		.next = NEXT(NEXT_ENTRY(QUEUE_DESTROY_ID),
 			     NEXT_ENTRY(COMMON_QUEUE_ID)),
 		.args = ARGS(ARGS_ENTRY(struct buffer, queue)),
@@ -10780,6 +10833,7 @@ parse_table(struct context *ctx, const struct token *token,
 	}
 	switch (ctx->curr) {
 	case TABLE_CREATE:
+	case TABLE_RESIZE:
 		out->command = ctx->curr;
 		ctx->objdata = 0;
 		ctx->object = out;
@@ -10824,17 +10878,24 @@ parse_table(struct context *ctx, const struct token *token,
 	case TABLE_TRANSFER_WIRE_ORIG:
 		if (!out->args.table.attr.flow_attr.transfer)
 			return -1;
-		out->args.table.attr.specialize = RTE_FLOW_TABLE_SPECIALIZE_TRANSFER_WIRE_ORIG;
+		out->args.table.attr.specialize |= RTE_FLOW_TABLE_SPECIALIZE_TRANSFER_WIRE_ORIG;
 		return len;
 	case TABLE_TRANSFER_VPORT_ORIG:
 		if (!out->args.table.attr.flow_attr.transfer)
 			return -1;
-		out->args.table.attr.specialize = RTE_FLOW_TABLE_SPECIALIZE_TRANSFER_VPORT_ORIG;
+		out->args.table.attr.specialize |= RTE_FLOW_TABLE_SPECIALIZE_TRANSFER_VPORT_ORIG;
+		return len;
+	case TABLE_RESIZABLE:
+		out->args.table.attr.specialize |=
+			RTE_FLOW_TABLE_SPECIALIZE_RESIZABLE;
 		return len;
 	case TABLE_RULES_NUMBER:
 		ctx->objdata = 0;
 		ctx->object = out;
 		ctx->objmask = NULL;
+		return len;
+	case TABLE_RESIZE_ID:
+	case TABLE_RESIZE_RULES_NUMBER:
 		return len;
 	default:
 		return -1;
@@ -10857,7 +10918,8 @@ parse_table_destroy(struct context *ctx, const struct token *token,
 	if (!out)
 		return len;
 	if (!out->command || out->command == TABLE) {
-		if (ctx->curr != TABLE_DESTROY)
+		if (ctx->curr != TABLE_DESTROY &&
+		    ctx->curr != TABLE_RESIZE_COMPLETE)
 			return -1;
 		if (sizeof(*out) > size)
 			return -1;
@@ -10959,7 +11021,8 @@ parse_qo_destroy(struct context *ctx, const struct token *token,
 	if (!out)
 		return len;
 	if (!out->command || out->command == QUEUE) {
-		if (ctx->curr != QUEUE_DESTROY)
+		if (ctx->curr != QUEUE_DESTROY &&
+		    ctx->curr != QUEUE_FLOW_UPDATE_RESIZED)
 			return -1;
 		if (sizeof(*out) > size)
 			return -1;
@@ -13057,9 +13120,17 @@ cmd_flow_parsed(const struct buffer *in)
 					in->args.table_destroy.table_id_n,
 					in->args.table_destroy.table_id);
 		break;
+	case TABLE_RESIZE_COMPLETE:
+		port_flow_template_table_resize_complete
+			(in->port, in->args.table_destroy.table_id[0]);
+		break;
 	case GROUP_SET_MISS_ACTIONS:
 		port_queue_group_set_miss_actions(in->port, &in->args.vc.attr,
 						  in->args.vc.actions);
+		break;
+	case TABLE_RESIZE:
+		port_flow_template_table_resize(in->port, in->args.table.id,
+						in->args.table.attr.nb_flows);
 		break;
 	case QUEUE_CREATE:
 		port_queue_flow_create(in->port, in->queue, in->postpone,
@@ -13071,6 +13142,11 @@ cmd_flow_parsed(const struct buffer *in)
 		port_queue_flow_destroy(in->port, in->queue, in->postpone,
 					in->args.destroy.rule_n,
 					in->args.destroy.rule);
+		break;
+	case QUEUE_FLOW_UPDATE_RESIZED:
+		port_queue_flow_update_resized(in->port, in->queue,
+					       in->postpone,
+					       in->args.destroy.rule[0]);
 		break;
 	case QUEUE_UPDATE:
 		port_queue_flow_update(in->port, in->queue, in->postpone,

@@ -1404,6 +1404,19 @@ port_flow_new(const struct rte_flow_attr *attr,
 	return NULL;
 }
 
+static struct port_flow *
+port_flow_locate(struct port_flow *flows_list, uint32_t flow_id)
+{
+	struct port_flow *pf = flows_list;
+
+	while (pf) {
+		if (pf->id == flow_id)
+			break;
+		pf = pf->next;
+	}
+	return pf;
+}
+
 /** Print a message out of a flow error. */
 static int
 port_flow_complain(struct rte_flow_error *error)
@@ -1692,6 +1705,19 @@ table_alloc(uint32_t id, struct port_table **table,
 	*ppt = pt;
 	*table = pt;
 	return 0;
+}
+
+static struct port_table *
+port_table_locate(struct port_table *tables_list, uint32_t table_id)
+{
+	struct port_table *pt = tables_list;
+
+	while (pt) {
+		if (pt->id == table_id)
+			break;
+		pt = pt->next;
+	}
+	return pt;
 }
 
 /** Get info about flow management resources. */
@@ -2666,6 +2692,46 @@ port_flow_template_table_destroy(portid_t port_id,
 	return ret;
 }
 
+int
+port_flow_template_table_resize_complete(portid_t port_id, uint32_t table_id)
+{
+	struct rte_port *port;
+	struct port_table *pt;
+	struct rte_flow_error error = { 0, };
+	int ret;
+
+	if (port_id_is_invalid(port_id, ENABLED_WARN))
+		return -EINVAL;
+	port = &ports[port_id];
+	pt = port_table_locate(port->table_list, table_id);
+	if (!pt)
+		return -EINVAL;
+	ret = rte_flow_template_table_resize_complete(port_id,
+						      pt->table, &error);
+	return !ret ? 0 : port_flow_complain(&error);
+}
+
+int
+port_flow_template_table_resize(portid_t port_id,
+				uint32_t table_id, uint32_t flows_num)
+{
+	struct rte_port *port;
+	struct port_table *pt;
+	struct rte_flow_error error = { 0, };
+	int ret;
+
+	if (port_id_is_invalid(port_id, ENABLED_WARN))
+		return -EINVAL;
+	port = &ports[port_id];
+	pt = port_table_locate(port->table_list, table_id);
+	if (!pt)
+		return -EINVAL;
+	ret = rte_flow_template_table_resize(port_id, pt->table, flows_num, &error);
+	if (ret)
+		return port_flow_complain(&error);
+	return 0;
+}
+
 /** Flush table */
 int
 port_flow_template_table_flush(portid_t port_id)
@@ -2803,6 +2869,42 @@ port_queue_flow_create(portid_t port_id, queueid_t queue_id,
 	job->pf = pf;
 	port->flow_list = pf;
 	printf("Flow rule #%"PRIu64" creation enqueued\n", pf->id);
+	return 0;
+}
+
+int
+port_queue_flow_update_resized(portid_t port_id, queueid_t queue_id,
+			       bool postpone, uint32_t flow_id)
+{
+	const struct rte_flow_op_attr op_attr = { .postpone = postpone };
+	struct rte_flow_error error = { 0, };
+	struct port_flow *pf;
+	struct rte_port *port;
+	struct queue_job *job;
+	int ret;
+
+	if (port_id_is_invalid(port_id, ENABLED_WARN) ||
+	    port_id == (portid_t)RTE_PORT_ALL)
+		return -EINVAL;
+	port = &ports[port_id];
+	if (queue_id >= port->queue_nb) {
+		printf("Queue #%u is invalid\n", queue_id);
+		return -EINVAL;
+	}
+	pf = port_flow_locate(port->flow_list, flow_id);
+	if (!pf)
+		return -EINVAL;
+	job = calloc(1, sizeof(*job));
+	if (!job)
+		return -ENOMEM;
+	job->type = QUEUE_JOB_TYPE_FLOW_TRANSFER;
+	job->pf = pf;
+	ret = rte_flow_async_update_resized(port_id, queue_id, &op_attr,
+					    pf->flow, job, &error);
+	if (ret) {
+		free(job);
+		return port_flow_complain(&error);
+	}
 	return 0;
 }
 

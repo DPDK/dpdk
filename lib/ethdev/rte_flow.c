@@ -2591,6 +2591,83 @@ rte_flow_calc_encap_hash(uint16_t port_id, const struct rte_flow_item pattern[],
 	return flow_err(port_id, ret, error);
 }
 
+bool
+rte_flow_template_table_resizable(__rte_unused uint16_t port_id,
+				  const struct rte_flow_template_table_attr *tbl_attr)
+{
+	return (tbl_attr->specialize &
+		RTE_FLOW_TABLE_SPECIALIZE_RESIZABLE) != 0;
+}
+
+int
+rte_flow_template_table_resize(uint16_t port_id,
+			       struct rte_flow_template_table *table,
+			       uint32_t nb_rules,
+			       struct rte_flow_error *error)
+{
+	int ret;
+	struct rte_eth_dev *dev;
+	const struct rte_flow_ops *ops;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
+	ops = rte_flow_ops_get(port_id, error);
+	if (!ops || !ops->flow_template_table_resize)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+					  "flow_template_table_resize not supported");
+	dev = &rte_eth_devices[port_id];
+	ret = ops->flow_template_table_resize(dev, table, nb_rules, error);
+	ret = flow_err(port_id, ret, error);
+	rte_flow_trace_template_table_resize(port_id, table, nb_rules, ret);
+	return ret;
+}
+
+int
+rte_flow_async_update_resized(uint16_t port_id, uint32_t queue,
+			      const struct rte_flow_op_attr *attr,
+			      struct rte_flow *rule, void *user_data,
+			      struct rte_flow_error *error)
+{
+	int ret;
+	struct rte_eth_dev *dev;
+	const struct rte_flow_ops *ops;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
+	ops = rte_flow_ops_get(port_id, error);
+	if (!ops || !ops->flow_update_resized)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+					  "async_flow_async_transfer not supported");
+	dev = &rte_eth_devices[port_id];
+	ret = ops->flow_update_resized(dev, queue, attr, rule, user_data, error);
+	ret = flow_err(port_id, ret, error);
+	rte_flow_trace_async_update_resized(port_id, queue, attr,
+					    rule, user_data, ret);
+	return ret;
+}
+
+int
+rte_flow_template_table_resize_complete(uint16_t port_id,
+					struct rte_flow_template_table *table,
+					struct rte_flow_error *error)
+{
+	int ret;
+	struct rte_eth_dev *dev;
+	const struct rte_flow_ops *ops;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
+	ops = rte_flow_ops_get(port_id, error);
+	if (!ops || !ops->flow_template_table_resize_complete)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+					  "flow_template_table_transfer_complete not supported");
+	dev = &rte_eth_devices[port_id];
+	ret = ops->flow_template_table_resize_complete(dev, table, error);
+	ret = flow_err(port_id, ret, error);
+	rte_flow_trace_table_resize_complete(port_id, table, ret);
+	return ret;
+}
+
 static struct rte_flow *
 rte_flow_dummy_async_create(struct rte_eth_dev *dev __rte_unused,
 			    uint32_t queue __rte_unused,
