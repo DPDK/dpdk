@@ -5740,6 +5740,25 @@ ixgbevf_dev_rx_init(struct rte_eth_dev *dev)
 		IXGBE_PSRTYPE_RQPL_SHIFT;
 	IXGBE_WRITE_REG(hw, IXGBE_VFPSRTYPE, psrtype);
 
+	/* Initialize the rss for x550_vf cards if enabled */
+	switch (hw->mac.type) {
+	case ixgbe_mac_X550_vf:
+	case ixgbe_mac_X550EM_x_vf:
+	case ixgbe_mac_X550EM_a_vf:
+		switch (dev->data->dev_conf.rxmode.mq_mode) {
+		case RTE_ETH_MQ_RX_RSS:
+		case RTE_ETH_MQ_RX_DCB_RSS:
+		case RTE_ETH_MQ_RX_VMDQ_RSS:
+			ixgbe_rss_configure(dev);
+			break;
+		default:
+			break;
+		}
+		break;
+	default:
+		break;
+	}
+
 	ixgbe_set_rx_function(dev);
 
 	return 0;
