@@ -13,7 +13,7 @@ gve_tx_clean_dqo(struct gve_tx_queue *txq)
 	struct gve_tx_compl_desc *compl_desc;
 	struct gve_tx_queue *aim_txq;
 	uint16_t nb_desc_clean;
-	struct rte_mbuf *txe;
+	struct rte_mbuf *txe, *txe_next;
 	uint16_t compl_tag;
 	uint16_t next;
 
@@ -43,10 +43,15 @@ gve_tx_clean_dqo(struct gve_tx_queue *txq)
 		PMD_DRV_LOG(DEBUG, "GVE_COMPL_TYPE_DQO_REINJECTION !!!");
 		/* FALLTHROUGH */
 	case GVE_COMPL_TYPE_DQO_PKT:
+		/* free all segments. */
 		txe = aim_txq->sw_ring[compl_tag];
-		if (txe != NULL) {
+		while (txe != NULL) {
+			txe_next = txe->next;
 			rte_pktmbuf_free_seg(txe);
-			txe = NULL;
+			if (aim_txq->sw_ring[compl_tag] == txe)
+				aim_txq->sw_ring[compl_tag] = NULL;
+			txe = txe_next;
+			compl_tag = (compl_tag + 1) & (aim_txq->sw_size - 1);
 		}
 		break;
 	case GVE_COMPL_TYPE_DQO_MISS:
@@ -83,6 +88,7 @@ gve_tx_burst_dqo(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 	uint16_t tx_id;
 	uint16_t sw_id;
 	uint64_t bytes;
+	uint16_t first_sw_id;
 
 	sw_ring = txq->sw_ring;
 	txr = txq->tx_ring;
@@ -107,23 +113,25 @@ gve_tx_burst_dqo(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 
 		ol_flags = tx_pkt->ol_flags;
 		nb_used = tx_pkt->nb_segs;
-
+		first_sw_id = sw_id;
 		do {
-			txd = &txr[tx_id];
+			if (sw_ring[sw_id] != NULL)
+				PMD_DRV_LOG(DEBUG, "Overwriting an entry in sw_ring");
 
+			txd = &txr[tx_id];
 			sw_ring[sw_id] = tx_pkt;
 
 			/* fill Tx descriptor */
 			txd->pkt.buf_addr = rte_cpu_to_le_64(rte_mbuf_data_iova(tx_pkt));
 			txd->pkt.dtype = GVE_TX_PKT_DESC_DTYPE_DQO;
-			txd->pkt.compl_tag = rte_cpu_to_le_16(sw_id);
+			txd->pkt.compl_tag = rte_cpu_to_le_16(first_sw_id);
 			txd->pkt.buf_size = RTE_MIN(tx_pkt->data_len, GVE_TX_MAX_BUF_SIZE_DQO);
 
 			/* size of desc_ring and sw_ring could be different */
 			tx_id = (tx_id + 1) & mask;
 			sw_id = (sw_id + 1) & sw_mask;
 
-			bytes += tx_pkt->pkt_len;
+			bytes += tx_pkt->data_len;
 			tx_pkt = tx_pkt->next;
 		} while (tx_pkt);
 
