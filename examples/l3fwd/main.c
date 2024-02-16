@@ -1388,6 +1388,7 @@ l3fwd_poll_resource_setup(void)
 		fflush(stdout);
 		/* init RX queues */
 		for(queue = 0; queue < qconf->n_rx_queue; ++queue) {
+			struct rte_eth_conf local_conf;
 			struct rte_eth_rxconf rxq_conf;
 
 			portid = qconf->rx_queue_list[queue].port_id;
@@ -1408,8 +1409,14 @@ l3fwd_poll_resource_setup(void)
 					"Error during getting device (port %u) info: %s\n",
 					portid, strerror(-ret));
 
+			ret = rte_eth_dev_conf_get(portid, &local_conf);
+			if (ret != 0)
+				rte_exit(EXIT_FAILURE,
+					"Error during getting device (port %u) configuration: %s\n",
+					portid, strerror(-ret));
+
 			rxq_conf = dev_info.default_rxconf;
-			rxq_conf.offloads = port_conf.rxmode.offloads;
+			rxq_conf.offloads = local_conf.rxmode.offloads;
 			if (!per_port_pool)
 				ret = rte_eth_rx_queue_setup(portid, queueid,
 						nb_rxd, socketid,
