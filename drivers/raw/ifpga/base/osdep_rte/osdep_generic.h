@@ -44,15 +44,8 @@ extern int ifpga_rawdev_logtype;
 #define min(a, b) RTE_MIN(a, b)
 #define max(a, b) RTE_MAX(a, b)
 
-#define min_t(type, x, y) ({                    \
-	type __min1 = (x);                      \
-	type __min2 = (y);                      \
-	__min1 < __min2 ? __min1 : __min2; })
-
-#define max_t(type, x, y) ({                    \
-	type __max1 = (x);                      \
-	type __max2 = (y);                      \
-	__max1 > __max2 ? __max1 : __max2; })
+#define min_t(type, x, y) RTE_MIN_T(x, y, type)
+#define max_t(type, x, y) RTE_MAX_T(x, y, type)
 
 #define spinlock_t rte_spinlock_t
 #define spinlock_init(x) rte_spinlock_init(x)
