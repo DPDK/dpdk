@@ -867,17 +867,29 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 	nb_rx = rte_eth_rx_burst(fs->rx_port, fs->rx_queue, pkts_burst,
 				 nb_pkt_per_burst);
 	inc_rx_burst_stats(fs, nb_rx);
-	if (unlikely(nb_rx == 0))
-		return;
+	if (unlikely(nb_rx == 0)) {
+#ifndef RTE_LIB_GRO
+		return ;
+#else
+		gro_enable = gro_ports[fs->rx_port].enable;
+		/*
+		 * Check if packets need to be flushed in the GRO context
+		 * due to a timeout.
+		 *
+		 * Continue only in GRO heavyweight mode and if there are
+		 * packets in the GRO context.
+		 */
+		if (!gro_enable || (gro_flush_cycles == GRO_DEFAULT_FLUSH_CYCLES) ||
+			(rte_gro_get_pkt_count(current_fwd_lcore()->gro_ctx) == 0))
+			return ;
+#endif
+	}
 
 	fs->rx_packets += nb_rx;
 	rx_bad_ip_csum = 0;
 	rx_bad_l4_csum = 0;
 	rx_bad_outer_l4_csum = 0;
 	rx_bad_outer_ip_csum = 0;
-#ifdef RTE_LIB_GRO
-	gro_enable = gro_ports[fs->rx_port].enable;
-#endif
 
 	txp = &ports[fs->tx_port];
 	tx_offloads = txp->dev_conf.txmode.offloads;
@@ -1105,6 +1117,7 @@ tunnel_update:
 	}
 
 #ifdef RTE_LIB_GRO
+	gro_enable = gro_ports[fs->rx_port].enable;
 	if (unlikely(gro_enable)) {
 		if (gro_flush_cycles == GRO_DEFAULT_FLUSH_CYCLES) {
 			nb_rx = rte_gro_reassemble_burst(pkts_burst, nb_rx,
