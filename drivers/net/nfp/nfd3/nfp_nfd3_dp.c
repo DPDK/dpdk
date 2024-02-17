@@ -34,7 +34,8 @@ nfp_net_nfd3_tx_tso(struct nfp_net_txq *txq,
 		goto clean_txd;
 
 	ol_flags = mb->ol_flags;
-	if ((ol_flags & RTE_MBUF_F_TX_TCP_SEG) == 0)
+	if ((ol_flags & RTE_MBUF_F_TX_TCP_SEG) == 0 &&
+			(ol_flags & RTE_MBUF_F_TX_UDP_SEG) == 0)
 		goto clean_txd;
 
 	txd->l3_offset = mb->l2_len;
@@ -77,6 +78,10 @@ nfp_net_nfd3_tx_cksum(struct nfp_net_txq *txq,
 	/* Set TCP csum offload if TSO enabled. */
 	if ((ol_flags & RTE_MBUF_F_TX_TCP_SEG) != 0)
 		txd->flags |= NFD3_DESC_TX_TCP_CSUM;
+
+	/* Set UDP csum offload if UFO enabled. */
+	if ((ol_flags & RTE_MBUF_F_TX_UDP_SEG) != 0)
+		txd->flags |= NFD3_DESC_TX_UDP_CSUM;
 
 	/* IPv6 does not need checksum */
 	if ((ol_flags & RTE_MBUF_F_TX_IP_CKSUM) != 0)

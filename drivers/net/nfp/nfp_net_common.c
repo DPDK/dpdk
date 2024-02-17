@@ -312,7 +312,7 @@ nfp_net_log_device_information(const struct nfp_net_hw *hw)
 			hw->ver.major, hw->ver.minor, hw->max_mtu);
 
 	PMD_INIT_LOG(INFO, "CAP: %#x", cap);
-	PMD_INIT_LOG(INFO, "%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s",
+	PMD_INIT_LOG(INFO, "%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s",
 			cap & NFP_NET_CFG_CTRL_ENABLE        ? "ENABLE "      : "",
 			cap & NFP_NET_CFG_CTRL_PROMISC       ? "PROMISC "     : "",
 			cap & NFP_NET_CFG_CTRL_L2BC          ? "L2BCFILT "    : "",
@@ -340,7 +340,8 @@ nfp_net_log_device_information(const struct nfp_net_hw *hw)
 			cap & NFP_NET_CFG_CTRL_LSO2          ? "TSOv2 "       : "",
 			cap & NFP_NET_CFG_CTRL_RSS2          ? "RSSv2 "       : "",
 			cap & NFP_NET_CFG_CTRL_CSUM_COMPLETE ? "CSUM "        : "",
-			cap & NFP_NET_CFG_CTRL_LIVE_ADDR     ? "LIVE_ADDR "   : "");
+			cap & NFP_NET_CFG_CTRL_LIVE_ADDR     ? "LIVE_ADDR "   : "",
+			cap & NFP_NET_CFG_CTRL_USO           ? "USO"          : "");
 
 	PMD_INIT_LOG(INFO, "CAP_WORD1: %#x", cap_ext);
 	PMD_INIT_LOG(INFO, "%s%s%s%s%s%s%s",
@@ -537,6 +538,7 @@ nfp_check_offloads(struct rte_eth_dev *dev)
 
 	/* LSO offload */
 	if ((tx_offload & RTE_ETH_TX_OFFLOAD_TCP_TSO) != 0 ||
+			(tx_offload & RTE_ETH_TX_OFFLOAD_UDP_TSO) != 0 ||
 			(tx_offload & RTE_ETH_TX_OFFLOAD_VXLAN_TNL_TSO) != 0) {
 		if ((cap & NFP_NET_CFG_CTRL_LSO) != 0)
 			ctrl |= NFP_NET_CFG_CTRL_LSO;
@@ -1214,6 +1216,8 @@ nfp_net_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 
 	if ((cap & NFP_NET_CFG_CTRL_LSO_ANY) != 0) {
 		dev_info->tx_offload_capa |= RTE_ETH_TX_OFFLOAD_TCP_TSO;
+		if ((cap & NFP_NET_CFG_CTRL_USO) != 0)
+			dev_info->tx_offload_capa |= RTE_ETH_TX_OFFLOAD_UDP_TSO;
 		if ((cap & NFP_NET_CFG_CTRL_VXLAN) != 0)
 			dev_info->tx_offload_capa |= RTE_ETH_TX_OFFLOAD_VXLAN_TNL_TSO;
 	}

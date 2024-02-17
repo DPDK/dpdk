@@ -28,8 +28,9 @@ nfp_net_nfdk_tx_cksum(struct nfp_net_txq *txq,
 
 	ol_flags = mb->ol_flags;
 
-	/* Set TCP csum offload if TSO enabled. */
-	if ((ol_flags & RTE_MBUF_F_TX_TCP_SEG) != 0)
+	/* Set L4 csum offload if TSO/UFO enabled. */
+	if ((ol_flags & RTE_MBUF_F_TX_TCP_SEG) != 0 ||
+			(ol_flags & RTE_MBUF_F_TX_UDP_SEG) != 0)
 		flags |= NFDK_DESC_TX_L4_CSUM;
 
 	if ((ol_flags & RTE_MBUF_F_TX_TUNNEL_MASK) != 0)
@@ -61,7 +62,8 @@ nfp_net_nfdk_tx_tso(struct nfp_net_txq *txq,
 		return txd.raw;
 
 	ol_flags = mb->ol_flags;
-	if ((ol_flags & RTE_MBUF_F_TX_TCP_SEG) == 0)
+	if ((ol_flags & RTE_MBUF_F_TX_TCP_SEG) == 0 &&
+			(ol_flags & RTE_MBUF_F_TX_UDP_SEG) == 0)
 		return txd.raw;
 
 	txd.l3_offset = mb->l2_len;
