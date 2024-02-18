@@ -3616,7 +3616,8 @@ struct mlx5_ifc_stc_ste_param_insert_bits {
 	u8 action_type[0x4];
 	u8 encap[0x1];
 	u8 inline_data[0x1];
-	u8 reserved_at_6[0x4];
+	u8 push_esp[0x1];
+	u8 reserved_at_7[0x3];
 	u8 insert_anchor[0x6];
 	u8 reserved_at_10[0x1];
 	u8 insert_offset[0x7];

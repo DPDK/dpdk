@@ -149,6 +149,7 @@ struct mlx5dr_action {
 					uint8_t offset;
 					bool encap;
 					uint8_t require_reparse;
+					bool push_esp;
 				} reformat;
 				struct {
 					struct mlx5dr_action

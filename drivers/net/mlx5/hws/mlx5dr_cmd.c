@@ -486,6 +486,8 @@ mlx5dr_cmd_stc_modify_set_stc_param(struct mlx5dr_cmd_stc_modify_attr *stc_attr,
 			 MLX5_MODIFICATION_TYPE_INSERT);
 		MLX5_SET(stc_ste_param_insert, stc_parm, encap,
 			 stc_attr->insert_header.encap);
+		MLX5_SET(stc_ste_param_insert, stc_parm, push_esp,
+			 stc_attr->insert_header.push_esp);
 		MLX5_SET(stc_ste_param_insert, stc_parm, inline_data,
 			 stc_attr->insert_header.is_inline);
 		MLX5_SET(stc_ste_param_insert, stc_parm, insert_anchor,

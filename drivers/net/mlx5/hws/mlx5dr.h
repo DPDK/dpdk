@@ -192,6 +192,10 @@ struct mlx5dr_action_insert_header {
 	 * requiring device to update offloaded fields (for example IPv4 total length).
 	 */
 	bool encap;
+	/* It must be set when adding ESP header.
+	 * It's also sets the next_protocol value in the ipsec trailer.
+	 */
+	bool push_esp;
 };
 
 enum mlx5dr_action_remove_header_type {

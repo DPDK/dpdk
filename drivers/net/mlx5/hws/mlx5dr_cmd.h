@@ -122,6 +122,7 @@ struct mlx5dr_cmd_stc_modify_attr {
 			uint8_t encap;
 			uint16_t insert_anchor;
 			uint16_t insert_offset;
+			uint8_t push_esp;
 		} insert_header;
 		struct {
 			uint8_t aso_type;

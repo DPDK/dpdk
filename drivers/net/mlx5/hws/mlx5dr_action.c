@@ -598,6 +598,7 @@ static void mlx5dr_action_fill_stc_attr(struct mlx5dr_action *action,
 		attr->action_type = MLX5_IFC_STC_ACTION_TYPE_HEADER_INSERT;
 		attr->action_offset = MLX5DR_ACTION_OFFSET_DW6;
 		attr->insert_header.encap = action->reformat.encap;
+		attr->insert_header.push_esp = action->reformat.push_esp;
 		attr->insert_header.insert_anchor = action->reformat.anchor;
 		attr->insert_header.arg_id = action->reformat.arg_obj->id;
 		attr->insert_header.header_size = action->reformat.header_size;
@@ -635,6 +636,7 @@ static void mlx5dr_action_fill_stc_attr(struct mlx5dr_action *action,
 		attr->action_offset = MLX5DR_ACTION_OFFSET_DW6;
 		attr->reparse_mode = MLX5_IFC_STC_REPARSE_ALWAYS;
 		attr->insert_header.encap = 0;
+		attr->insert_header.push_esp = 0;
 		attr->insert_header.is_inline = 1;
 		attr->insert_header.insert_anchor = MLX5_HEADER_ANCHOR_PACKET_START;
 		attr->insert_header.insert_offset = MLX5DR_ACTION_HDR_LEN_L2_MACS;
@@ -1340,6 +1342,7 @@ mlx5dr_action_handle_insert_with_ptr(struct mlx5dr_action *action,
 			action[i].reformat.anchor = MLX5_HEADER_ANCHOR_PACKET_START;
 			action[i].reformat.offset = 0;
 			action[i].reformat.encap = 1;
+			action[i].reformat.push_esp = 0;
 		}
 
 		if (likely(reparse == MLX5DR_ACTION_STC_REPARSE_DEFAULT))
@@ -2087,6 +2090,7 @@ mlx5dr_action_create_insert_header_reparse(struct mlx5dr_context *ctx,
 
 		action[i].reformat.anchor = hdrs[i].anchor;
 		action[i].reformat.encap = hdrs[i].encap;
+		action[i].reformat.push_esp = hdrs[i].push_esp;
 		action[i].reformat.offset = hdrs[i].offset;
 		reformat_hdrs[i].sz = hdrs[i].hdr.sz;
 		reformat_hdrs[i].data = hdrs[i].hdr.data;
