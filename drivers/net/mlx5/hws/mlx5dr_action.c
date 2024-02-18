@@ -3308,7 +3308,8 @@ int mlx5dr_action_template_process(struct mlx5dr_action_template *at)
 		case MLX5DR_ACTION_TYP_REMOVE_HEADER:
 		case MLX5DR_ACTION_TYP_REFORMAT_TNL_L2_TO_L2:
 			/* Single remove header to header */
-			setter = mlx5dr_action_setter_find_first(last_setter, ASF_SINGLE1 | ASF_MODIFY);
+			setter = mlx5dr_action_setter_find_first(last_setter,
+					ASF_SINGLE1 | ASF_MODIFY | ASF_INSERT);
 			setter->flags |= ASF_SINGLE1 | ASF_REMOVE;
 			setter->set_single = &mlx5dr_action_setter_single;
 			setter->idx_single = i;
