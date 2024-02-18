@@ -1002,6 +1002,13 @@ mlx5dr_definer_conv_item_vxlan(struct mlx5dr_definer_conv_data *cd,
 	struct mlx5dr_definer_fc *fc;
 	bool inner = cd->tunnel;
 
+	if (m && (m->rsvd0[0] != 0 || m->rsvd0[1] != 0 || m->rsvd0[2] != 0 ||
+	    m->rsvd1 != 0)) {
+		DR_LOG(ERR, "reserved fields are not supported");
+		rte_errno = ENOTSUP;
+		return rte_errno;
+	}
+
 	if (inner) {
 		DR_LOG(ERR, "Inner VXLAN item not supported");
 		rte_errno = ENOTSUP;
