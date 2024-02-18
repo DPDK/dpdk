@@ -23,6 +23,9 @@ static void mlx5dr_rule_skip(struct mlx5dr_matcher *matcher,
 	*skip_rx = false;
 	*skip_tx = false;
 
+	if (unlikely(mlx5dr_matcher_is_insert_by_idx(matcher)))
+		return;
+
 	if (mt->item_flags & MLX5_FLOW_ITEM_REPRESENTED_PORT) {
 		v = items[mt->vport_item_id].spec;
 		vport = flow_hw_conv_port_id(v->port_id);
