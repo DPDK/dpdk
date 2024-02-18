@@ -183,6 +183,7 @@ struct mlx5dr_definer_conv_data {
 	X(SET,		ib_l4_udp_port,		UDP_ROCEV2_PORT,	rte_flow_item_ib_bth) \
 	X(SET,		ib_l4_opcode,		v->hdr.opcode,		rte_flow_item_ib_bth) \
 	X(SET,		ib_l4_bth_a,		v->hdr.a,		rte_flow_item_ib_bth) \
+	X(SET,		cvlan,			STE_CVLAN,		rte_flow_item_vlan) \
 
 /* Item set function format */
 #define X(set_type, func_name, value, item_type) \
@@ -769,6 +770,15 @@ mlx5dr_definer_conv_item_vlan(struct mlx5dr_definer_conv_data *cd,
 	struct mlx5dr_definer_fc *fc;
 	bool inner = cd->tunnel;
 
+	if (!cd->relaxed) {
+		/* Mark packet as tagged (CVLAN) */
+		fc = &cd->fc[DR_CALC_FNAME(VLAN_TYPE, inner)];
+		fc->item_idx = item_idx;
+		fc->tag_mask_set = &mlx5dr_definer_ones_set;
+		fc->tag_set = &mlx5dr_definer_cvlan_set;
+		DR_CALC_SET(fc, eth_l2, first_vlan_qualifier, inner);
+	}
+
 	if (!m)
 		return 0;
 
@@ -777,8 +787,7 @@ mlx5dr_definer_conv_item_vlan(struct mlx5dr_definer_conv_data *cd,
 		return rte_errno;
 	}
 
-	if (!cd->relaxed || m->has_more_vlan) {
-		/* Mark packet as tagged (CVLAN or SVLAN) even if TCI is not specified.*/
+	if (m->has_more_vlan) {
 		fc = &cd->fc[DR_CALC_FNAME(VLAN_TYPE, inner)];
 		fc->item_idx = item_idx;
 		fc->tag_mask_set = &mlx5dr_definer_ones_set;
