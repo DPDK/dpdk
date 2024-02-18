@@ -686,12 +686,16 @@ static int mlx5dr_matcher_check_and_process_at(struct mlx5dr_matcher *matcher,
 	bool valid;
 	int ret;
 
-	/* Check if action combinabtion is valid */
-	valid = mlx5dr_action_check_combo(at->action_type_arr, matcher->tbl->type);
-	if (!valid) {
-		DR_LOG(ERR, "Invalid combination in action template");
-		rte_errno = EINVAL;
-		return rte_errno;
+	if (!(at->flags & MLX5DR_ACTION_TEMPLATE_FLAG_RELAXED_ORDER)) {
+		/* Check if actions combinabtion is valid,
+		 * in the case of not relaxed actions order.
+		 */
+		valid = mlx5dr_action_check_combo(at->action_type_arr, matcher->tbl->type);
+		if (!valid) {
+			DR_LOG(ERR, "Invalid combination in action template");
+			rte_errno = EINVAL;
+			return rte_errno;
+		}
 	}
 
 	/* Process action template to setters */

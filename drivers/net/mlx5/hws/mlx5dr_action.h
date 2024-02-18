@@ -119,6 +119,7 @@ struct mlx5dr_action_template {
 	uint8_t num_of_action_stes;
 	uint8_t num_actions;
 	uint8_t only_term;
+	uint32_t flags;
 };
 
 struct mlx5dr_action {

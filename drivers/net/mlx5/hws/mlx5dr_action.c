@@ -3385,11 +3385,18 @@ int mlx5dr_action_template_process(struct mlx5dr_action_template *at)
 }
 
 struct mlx5dr_action_template *
-mlx5dr_action_template_create(const enum mlx5dr_action_type action_type[])
+mlx5dr_action_template_create(const enum mlx5dr_action_type action_type[],
+			      uint32_t flags)
 {
 	struct mlx5dr_action_template *at;
 	uint8_t num_actions = 0;
 	int i;
+
+	if (flags > MLX5DR_ACTION_TEMPLATE_FLAG_RELAXED_ORDER) {
+		DR_LOG(ERR, "Unsupported action template flag provided");
+		rte_errno = EINVAL;
+		return NULL;
+	}
 
 	at = simple_calloc(1, sizeof(*at));
 	if (!at) {
@@ -3397,6 +3404,8 @@ mlx5dr_action_template_create(const enum mlx5dr_action_type action_type[])
 		rte_errno = ENOMEM;
 		return NULL;
 	}
+
+	at->flags = flags;
 
 	while (action_type[num_actions++] != MLX5DR_ACTION_TYP_LAST)
 		;

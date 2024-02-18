@@ -6204,7 +6204,7 @@ flow_hw_dr_actions_template_create(struct rte_eth_dev *dev,
 		at->recom_off = recom_off;
 		action_types[recom_off] = recom_type;
 	}
-	dr_template = mlx5dr_action_template_create(action_types);
+	dr_template = mlx5dr_action_template_create(action_types, 0);
 	if (dr_template) {
 		at->dr_actions_num = curr_off;
 	} else {

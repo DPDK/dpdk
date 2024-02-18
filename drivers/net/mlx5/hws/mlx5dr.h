@@ -84,6 +84,11 @@ enum mlx5dr_match_template_flags {
 	MLX5DR_MATCH_TEMPLATE_FLAG_RELAXED_MATCH = 1,
 };
 
+enum mlx5dr_action_template_flags {
+	/* Allow relaxed actions order. */
+	MLX5DR_ACTION_TEMPLATE_FLAG_RELAXED_ORDER = 1 << 0,
+};
+
 enum mlx5dr_send_queue_actions {
 	/* Start executing all pending queued rules */
 	MLX5DR_SEND_QUEUE_ACTION_DRAIN_ASYNC = 1 << 0,
@@ -383,10 +388,13 @@ int mlx5dr_match_template_destroy(struct mlx5dr_match_template *mt);
  *	An array of actions based on the order of actions which will be provided
  *	with rule_actions to mlx5dr_rule_create. The last action is marked
  *	using MLX5DR_ACTION_TYP_LAST.
+ * @param[in] flags
+ *	Template creation flags
  * @return pointer to mlx5dr_action_template on success NULL otherwise
  */
 struct mlx5dr_action_template *
-mlx5dr_action_template_create(const enum mlx5dr_action_type action_type[]);
+mlx5dr_action_template_create(const enum mlx5dr_action_type action_type[],
+			      uint32_t flags);
 
 /* Destroy action template.
  *
