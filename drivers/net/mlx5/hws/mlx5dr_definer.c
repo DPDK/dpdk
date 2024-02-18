@@ -3296,9 +3296,8 @@ int mlx5dr_definer_get_id(struct mlx5dr_definer *definer)
 	return definer->obj->id;
 }
 
-static int
-mlx5dr_definer_compare(struct mlx5dr_definer *definer_a,
-		       struct mlx5dr_definer *definer_b)
+int mlx5dr_definer_compare(struct mlx5dr_definer *definer_a,
+			   struct mlx5dr_definer *definer_b)
 {
 	int i;
 

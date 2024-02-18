@@ -733,4 +733,7 @@ int mlx5dr_definer_init_cache(struct mlx5dr_definer_cache **cache);
 
 void mlx5dr_definer_uninit_cache(struct mlx5dr_definer_cache *cache);
 
+int mlx5dr_definer_compare(struct mlx5dr_definer *definer_a,
+			   struct mlx5dr_definer *definer_b);
+
 #endif

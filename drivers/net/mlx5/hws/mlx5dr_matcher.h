@@ -26,6 +26,7 @@ enum mlx5dr_matcher_flags {
 	MLX5DR_MATCHER_FLAGS_RANGE_DEFINER	= 1 << 0,
 	MLX5DR_MATCHER_FLAGS_HASH_DEFINER	= 1 << 1,
 	MLX5DR_MATCHER_FLAGS_COLLISION		= 1 << 2,
+	MLX5DR_MATCHER_FLAGS_RESIZABLE		= 1 << 3,
 };
 
 struct mlx5dr_match_template {
@@ -59,6 +60,14 @@ struct mlx5dr_matcher_action_ste {
 	uint8_t max_stes;
 };
 
+struct mlx5dr_matcher_resize_data {
+	struct mlx5dr_pool_chunk stc;
+	struct mlx5dr_devx_obj *action_ste_rtc_0;
+	struct mlx5dr_devx_obj *action_ste_rtc_1;
+	struct mlx5dr_pool *action_ste_pool;
+	LIST_ENTRY(mlx5dr_matcher_resize_data) next;
+};
+
 struct mlx5dr_matcher {
 	struct mlx5dr_table *tbl;
 	struct mlx5dr_matcher_attr attr;
@@ -71,10 +80,12 @@ struct mlx5dr_matcher {
 	uint8_t flags;
 	struct mlx5dr_devx_obj *end_ft;
 	struct mlx5dr_matcher *col_matcher;
+	struct mlx5dr_matcher *resize_dst;
 	struct mlx5dr_matcher_match_ste match_ste;
 	struct mlx5dr_matcher_action_ste action_ste;
 	struct mlx5dr_definer *hash_definer;
 	LIST_ENTRY(mlx5dr_matcher) next;
+	LIST_HEAD(resize_data_head, mlx5dr_matcher_resize_data) resize_data;
 };
 
 static inline bool
@@ -87,6 +98,16 @@ static inline bool
 mlx5dr_matcher_mt_is_range(struct mlx5dr_match_template *mt)
 {
 	return (!!mt->range_definer);
+}
+
+static inline bool mlx5dr_matcher_is_resizable(struct mlx5dr_matcher *matcher)
+{
+	return !!(matcher->flags & MLX5DR_MATCHER_FLAGS_RESIZABLE);
+}
+
+static inline bool mlx5dr_matcher_is_in_resize(struct mlx5dr_matcher *matcher)
+{
+	return !!matcher->resize_dst;
 }
 
 static inline bool mlx5dr_matcher_req_fw_wqe(struct mlx5dr_matcher *matcher)

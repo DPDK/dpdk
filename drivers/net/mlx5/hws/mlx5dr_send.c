@@ -444,6 +444,46 @@ void mlx5dr_send_engine_flush_queue(struct mlx5dr_send_engine *queue)
 	mlx5dr_send_engine_post_ring(sq, queue->uar, wqe_ctrl);
 }
 
+static void
+mlx5dr_send_engine_update_rule_resize(struct mlx5dr_send_engine *queue,
+				      struct mlx5dr_send_ring_priv *priv,
+				      enum rte_flow_op_status *status)
+{
+	switch (priv->rule->resize_info->state) {
+	case MLX5DR_RULE_RESIZE_STATE_WRITING:
+		if (priv->rule->status == MLX5DR_RULE_STATUS_FAILING) {
+			/* Backup original RTCs */
+			uint32_t orig_rtc_0 = priv->rule->resize_info->rtc_0;
+			uint32_t orig_rtc_1 = priv->rule->resize_info->rtc_1;
+
+			/* Delete partially failed move rule using resize_info */
+			priv->rule->resize_info->rtc_0 = priv->rule->rtc_0;
+			priv->rule->resize_info->rtc_1 = priv->rule->rtc_1;
+
+			/* Move rule to original RTC for future delete */
+			priv->rule->rtc_0 = orig_rtc_0;
+			priv->rule->rtc_1 = orig_rtc_1;
+		}
+		/* Clean leftovers */
+		mlx5dr_rule_move_hws_remove(priv->rule, queue, priv->user_data);
+		break;
+
+	case MLX5DR_RULE_RESIZE_STATE_DELETING:
+		if (priv->rule->status == MLX5DR_RULE_STATUS_FAILING) {
+			*status = RTE_FLOW_OP_ERROR;
+		} else {
+			*status = RTE_FLOW_OP_SUCCESS;
+			priv->rule->matcher = priv->rule->matcher->resize_dst;
+		}
+		priv->rule->resize_info->state = MLX5DR_RULE_RESIZE_STATE_IDLE;
+		priv->rule->status = MLX5DR_RULE_STATUS_CREATED;
+		break;
+
+	default:
+		break;
+	}
+}
+
 static void mlx5dr_send_engine_update_rule(struct mlx5dr_send_engine *queue,
 					   struct mlx5dr_send_ring_priv *priv,
 					   uint16_t wqe_cnt,
@@ -465,6 +505,11 @@ static void mlx5dr_send_engine_update_rule(struct mlx5dr_send_engine *queue,
 
 	/* Update rule status for the last completion */
 	if (!priv->rule->pending_wqes) {
+		if (unlikely(mlx5dr_rule_move_in_progress(priv->rule))) {
+			mlx5dr_send_engine_update_rule_resize(queue, priv, status);
+			return;
+		}
+
 		if (unlikely(priv->rule->status == MLX5DR_RULE_STATUS_FAILING)) {
 			/* Rule completely failed and doesn't require cleanup */
 			if (!priv->rule->rtc_0 && !priv->rule->rtc_1)

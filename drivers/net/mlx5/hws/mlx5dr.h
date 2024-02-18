@@ -139,6 +139,8 @@ struct mlx5dr_matcher_attr {
 	/* Define the insertion and distribution modes for this matcher */
 	enum mlx5dr_matcher_insert_mode insert_mode;
 	enum mlx5dr_matcher_distribute_mode distribute_mode;
+	/* Define whether the created matcher supports resizing into a bigger matcher */
+	bool resizable;
 	union {
 		struct {
 			uint8_t sz_row_log;
@@ -439,6 +441,43 @@ int mlx5dr_matcher_destroy(struct mlx5dr_matcher *matcher);
  */
 int mlx5dr_matcher_attach_at(struct mlx5dr_matcher *matcher,
 			     struct mlx5dr_action_template *at);
+
+/* Link two matchers and enable moving rules from src matcher to dst matcher.
+ * Both matchers must be in the same table type, must be created with 'resizable'
+ * property, and should have the same characteristics (e.g. same mt, same at).
+ *
+ * It is the user's responsibility to make sure that the dst matcher
+ * was allocated with the appropriate size.
+ *
+ * Once the function is completed, the user is:
+ *  - allowed to move rules from src into dst matcher
+ *  - no longer allowed to insert rules to the src matcher
+ *
+ * The user is always allowed to insert rules to the dst matcher and
+ * to delete rules from any matcher.
+ *
+ * @param[in] src_matcher
+ *	source matcher for moving rules from
+ * @param[in] dst_matcher
+ *	destination matcher for moving rules to
+ * @return zero on successful move, non zero otherwise.
+ */
+int mlx5dr_matcher_resize_set_target(struct mlx5dr_matcher *src_matcher,
+				     struct mlx5dr_matcher *dst_matcher);
+
+/* Enqueue moving rule operation: moving rule from src matcher to a dst matcher
+ *
+ * @param[in] src_matcher
+ *	matcher that the rule belongs to
+ * @param[in] rule
+ *	the rule to move
+ * @param[in] attr
+ *	rule attributes
+ * @return zero on success, non zero otherwise.
+ */
+int mlx5dr_matcher_resize_rule_move(struct mlx5dr_matcher *src_matcher,
+				    struct mlx5dr_rule *rule,
+				    struct mlx5dr_rule_attr *attr);
 
 /* Get the size of the rule handle (mlx5dr_rule) to be used on rule creation.
  *
