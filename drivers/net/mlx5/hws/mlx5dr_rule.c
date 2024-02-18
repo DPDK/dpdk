@@ -977,6 +977,12 @@ int mlx5dr_rule_action_update(struct mlx5dr_rule *rule_handle,
 	if (unlikely(mlx5dr_rule_enqueue_precheck_update(rule_handle, attr)))
 		return -rte_errno;
 
+	if (rule_handle->status != MLX5DR_RULE_STATUS_CREATED) {
+		DR_LOG(ERR, "Current rule status does not allow update");
+		rte_errno = EBUSY;
+		return -rte_errno;
+	}
+
 	ret = mlx5dr_rule_create_hws(rule_handle,
 				     attr,
 				     0,
