@@ -453,66 +453,66 @@ mlx5dr_cmd_stc_create(struct ibv_context *ctx,
 
 static int
 mlx5dr_cmd_stc_modify_set_stc_param(struct mlx5dr_cmd_stc_modify_attr *stc_attr,
-				    void *stc_parm)
+				    void *stc_param)
 {
 	switch (stc_attr->action_type) {
 	case MLX5_IFC_STC_ACTION_TYPE_COUNTER:
-		MLX5_SET(stc_ste_param_flow_counter, stc_parm, flow_counter_id, stc_attr->id);
+		MLX5_SET(stc_ste_param_flow_counter, stc_param, flow_counter_id, stc_attr->id);
 		break;
 	case MLX5_IFC_STC_ACTION_TYPE_JUMP_TO_TIR:
-		MLX5_SET(stc_ste_param_tir, stc_parm, tirn, stc_attr->dest_tir_num);
+		MLX5_SET(stc_ste_param_tir, stc_param, tirn, stc_attr->dest_tir_num);
 		break;
 	case MLX5_IFC_STC_ACTION_TYPE_JUMP_TO_FT:
-		MLX5_SET(stc_ste_param_table, stc_parm, table_id, stc_attr->dest_table_id);
+		MLX5_SET(stc_ste_param_table, stc_param, table_id, stc_attr->dest_table_id);
 		break;
 	case MLX5_IFC_STC_ACTION_TYPE_ACC_MODIFY_LIST:
-		MLX5_SET(stc_ste_param_header_modify_list, stc_parm,
+		MLX5_SET(stc_ste_param_header_modify_list, stc_param,
 			 header_modify_pattern_id, stc_attr->modify_header.pattern_id);
-		MLX5_SET(stc_ste_param_header_modify_list, stc_parm,
+		MLX5_SET(stc_ste_param_header_modify_list, stc_param,
 			 header_modify_argument_id, stc_attr->modify_header.arg_id);
 		break;
 	case MLX5_IFC_STC_ACTION_TYPE_HEADER_REMOVE:
-		MLX5_SET(stc_ste_param_remove, stc_parm, action_type,
+		MLX5_SET(stc_ste_param_remove, stc_param, action_type,
 			 MLX5_MODIFICATION_TYPE_REMOVE);
-		MLX5_SET(stc_ste_param_remove, stc_parm, decap,
+		MLX5_SET(stc_ste_param_remove, stc_param, decap,
 			 stc_attr->remove_header.decap);
-		MLX5_SET(stc_ste_param_remove, stc_parm, remove_start_anchor,
+		MLX5_SET(stc_ste_param_remove, stc_param, remove_start_anchor,
 			 stc_attr->remove_header.start_anchor);
-		MLX5_SET(stc_ste_param_remove, stc_parm, remove_end_anchor,
+		MLX5_SET(stc_ste_param_remove, stc_param, remove_end_anchor,
 			 stc_attr->remove_header.end_anchor);
 		break;
 	case MLX5_IFC_STC_ACTION_TYPE_HEADER_INSERT:
-		MLX5_SET(stc_ste_param_insert, stc_parm, action_type,
+		MLX5_SET(stc_ste_param_insert, stc_param, action_type,
 			 MLX5_MODIFICATION_TYPE_INSERT);
-		MLX5_SET(stc_ste_param_insert, stc_parm, encap,
+		MLX5_SET(stc_ste_param_insert, stc_param, encap,
 			 stc_attr->insert_header.encap);
-		MLX5_SET(stc_ste_param_insert, stc_parm, push_esp,
+		MLX5_SET(stc_ste_param_insert, stc_param, push_esp,
 			 stc_attr->insert_header.push_esp);
-		MLX5_SET(stc_ste_param_insert, stc_parm, inline_data,
+		MLX5_SET(stc_ste_param_insert, stc_param, inline_data,
 			 stc_attr->insert_header.is_inline);
-		MLX5_SET(stc_ste_param_insert, stc_parm, insert_anchor,
+		MLX5_SET(stc_ste_param_insert, stc_param, insert_anchor,
 			 stc_attr->insert_header.insert_anchor);
 		/* HW gets the next 2 sizes in words */
-		MLX5_SET(stc_ste_param_insert, stc_parm, insert_size,
+		MLX5_SET(stc_ste_param_insert, stc_param, insert_size,
 			 stc_attr->insert_header.header_size / W_SIZE);
-		MLX5_SET(stc_ste_param_insert, stc_parm, insert_offset,
+		MLX5_SET(stc_ste_param_insert, stc_param, insert_offset,
 			 stc_attr->insert_header.insert_offset / W_SIZE);
-		MLX5_SET(stc_ste_param_insert, stc_parm, insert_argument,
+		MLX5_SET(stc_ste_param_insert, stc_param, insert_argument,
 			 stc_attr->insert_header.arg_id);
 		break;
 	case MLX5_IFC_STC_ACTION_TYPE_COPY:
 	case MLX5_IFC_STC_ACTION_TYPE_SET:
 	case MLX5_IFC_STC_ACTION_TYPE_ADD:
 	case MLX5_IFC_STC_ACTION_TYPE_ADD_FIELD:
-		*(__be64 *)stc_parm = stc_attr->modify_action.data;
+		*(__be64 *)stc_param = stc_attr->modify_action.data;
 		break;
 	case MLX5_IFC_STC_ACTION_TYPE_JUMP_TO_VPORT:
 	case MLX5_IFC_STC_ACTION_TYPE_JUMP_TO_UPLINK:
-		MLX5_SET(stc_ste_param_vport, stc_parm, vport_number,
+		MLX5_SET(stc_ste_param_vport, stc_param, vport_number,
 			 stc_attr->vport.vport_num);
-		MLX5_SET(stc_ste_param_vport, stc_parm, eswitch_owner_vhca_id,
+		MLX5_SET(stc_ste_param_vport, stc_param, eswitch_owner_vhca_id,
 			 stc_attr->vport.esw_owner_vhca_id);
-		MLX5_SET(stc_ste_param_vport, stc_parm, eswitch_owner_vhca_id_valid, 1);
+		MLX5_SET(stc_ste_param_vport, stc_param, eswitch_owner_vhca_id_valid, 1);
 		break;
 	case MLX5_IFC_STC_ACTION_TYPE_DROP:
 	case MLX5_IFC_STC_ACTION_TYPE_NOP:
@@ -520,27 +520,27 @@ mlx5dr_cmd_stc_modify_set_stc_param(struct mlx5dr_cmd_stc_modify_attr *stc_attr,
 	case MLX5_IFC_STC_ACTION_TYPE_ALLOW:
 		break;
 	case MLX5_IFC_STC_ACTION_TYPE_ASO:
-		MLX5_SET(stc_ste_param_execute_aso, stc_parm, aso_object_id,
+		MLX5_SET(stc_ste_param_execute_aso, stc_param, aso_object_id,
 			 stc_attr->aso.devx_obj_id);
-		MLX5_SET(stc_ste_param_execute_aso, stc_parm, return_reg_id,
+		MLX5_SET(stc_ste_param_execute_aso, stc_param, return_reg_id,
 			 stc_attr->aso.return_reg_id);
-		MLX5_SET(stc_ste_param_execute_aso, stc_parm, aso_type,
+		MLX5_SET(stc_ste_param_execute_aso, stc_param, aso_type,
 			 stc_attr->aso.aso_type);
 		break;
 	case MLX5_IFC_STC_ACTION_TYPE_JUMP_TO_STE_TABLE:
-		MLX5_SET(stc_ste_param_ste_table, stc_parm, ste_obj_id,
+		MLX5_SET(stc_ste_param_ste_table, stc_param, ste_obj_id,
 			 stc_attr->ste_table.ste_obj_id);
-		MLX5_SET(stc_ste_param_ste_table, stc_parm, match_definer_id,
+		MLX5_SET(stc_ste_param_ste_table, stc_param, match_definer_id,
 			 stc_attr->ste_table.match_definer_id);
-		MLX5_SET(stc_ste_param_ste_table, stc_parm, log_hash_size,
+		MLX5_SET(stc_ste_param_ste_table, stc_param, log_hash_size,
 			 stc_attr->ste_table.log_hash_size);
 		break;
 	case MLX5_IFC_STC_ACTION_TYPE_REMOVE_WORDS:
-		MLX5_SET(stc_ste_param_remove_words, stc_parm, action_type,
+		MLX5_SET(stc_ste_param_remove_words, stc_param, action_type,
 			 MLX5_MODIFICATION_TYPE_REMOVE_WORDS);
-		MLX5_SET(stc_ste_param_remove_words, stc_parm, remove_start_anchor,
+		MLX5_SET(stc_ste_param_remove_words, stc_param, remove_start_anchor,
 			 stc_attr->remove_words.start_anchor);
-		MLX5_SET(stc_ste_param_remove_words, stc_parm,
+		MLX5_SET(stc_ste_param_remove_words, stc_param,
 			 remove_size, stc_attr->remove_words.num_of_words);
 		break;
 	default:
@@ -557,7 +557,7 @@ mlx5dr_cmd_stc_modify(struct mlx5dr_devx_obj *devx_obj,
 {
 	uint32_t out[MLX5_ST_SZ_DW(general_obj_out_cmd_hdr)] = {0};
 	uint32_t in[MLX5_ST_SZ_DW(create_stc_in)] = {0};
-	void *stc_parm;
+	void *stc_param;
 	void *attr;
 	int ret;
 
@@ -577,8 +577,8 @@ mlx5dr_cmd_stc_modify(struct mlx5dr_devx_obj *devx_obj,
 		   MLX5_IFC_MODIFY_STC_FIELD_SELECT_NEW_STC);
 
 	/* Set destination TIRN, TAG, FT ID, STE ID */
-	stc_parm = MLX5_ADDR_OF(stc, attr, stc_param);
-	ret = mlx5dr_cmd_stc_modify_set_stc_param(stc_attr, stc_parm);
+	stc_param = MLX5_ADDR_OF(stc, attr, stc_param);
+	ret = mlx5dr_cmd_stc_modify_set_stc_param(stc_attr, stc_param);
 	if (ret)
 		return ret;
 
