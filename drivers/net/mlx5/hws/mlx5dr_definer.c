@@ -1347,6 +1347,13 @@ mlx5dr_definer_conv_item_vxlan(struct mlx5dr_definer_conv_data *cd,
 	/* In order to match on VXLAN we must match on ether_type, ip_protocol
 	 * and l4_dport.
 	 */
+	if (m && (m->rsvd0[0] != 0 || m->rsvd0[1] != 0 || m->rsvd0[2] != 0 ||
+	    m->rsvd1 != 0)) {
+		DR_LOG(ERR, "reserved fields are not supported");
+		rte_errno = ENOTSUP;
+		return rte_errno;
+	}
+
 	if (!cd->relaxed) {
 		fc = &cd->fc[DR_CALC_FNAME(IP_PROTOCOL, inner)];
 		if (!fc->tag_set) {
