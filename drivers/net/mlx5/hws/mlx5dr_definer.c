@@ -100,6 +100,33 @@
 	__mlx5_dw_off(typ, fld))) >> __mlx5_dw_bit_off(typ, fld)) & \
 	__mlx5_mask(typ, fld))
 
+#define MAX_ROW_LOG 31
+
+enum header_layout {
+	MLX5DR_HL_IPV4_SRC = 64,
+	MLX5DR_HL_IPV4_DST = 65,
+	MAX_HL_PRIO,
+};
+
+/* Each row (i) indicates a different matcher size, and each column (j)
+ * represents {DW5, DW4, DW3, DW2, DW1, DW0}.
+ * For values 0,..,2^i, and j (DW) 0,..,5: optimal_dist_dw[i][j] is 1 if the
+ * number of different hash results on these values equals 2^i, meaning this
+ * DW hash distribution is complete.
+ */
+int optimal_dist_dw[MAX_ROW_LOG][DW_SELECTORS_MATCH] = {
+	{1, 1, 1, 1, 1, 1}, {0, 1, 1, 0, 1, 0}, {0, 1, 1, 0, 1, 0},
+	{1, 0, 1, 0, 1, 0}, {0, 0, 0, 1, 1, 0}, {0, 1, 1, 0, 1, 0},
+	{0, 0, 0, 0, 1, 0}, {0, 1, 1, 0, 1, 0}, {0, 0, 0, 0, 0, 0},
+	{1, 0, 1, 0, 0, 0}, {0, 0, 0, 0, 0, 0}, {0, 1, 0, 1, 0, 0},
+	{1, 0, 0, 0, 0, 0}, {0, 0, 1, 0, 0, 1}, {1, 1, 1, 0, 0, 0},
+	{1, 1, 1, 0, 1, 0}, {0, 0, 1, 1, 0, 0}, {0, 1, 1, 0, 0, 1},
+	{0, 0, 1, 0, 0, 1}, {0, 0, 1, 0, 0, 0}, {1, 0, 1, 1, 0, 0},
+	{1, 0, 1, 0, 0, 1}, {0, 0, 1, 1, 0, 1}, {1, 1, 1, 0, 0, 0},
+	{0, 1, 0, 1, 0, 1}, {0, 0, 0, 0, 0, 1}, {0, 0, 0, 1, 1, 1},
+	{0, 0, 1, 0, 0, 1}, {1, 1, 0, 1, 1, 0}, {0, 0, 0, 0, 1, 0},
+	{0, 0, 0, 1, 1, 0}};
+
 struct mlx5dr_definer_sel_ctrl {
 	uint8_t allowed_full_dw; /* Full DW selectors cover all offsets */
 	uint8_t allowed_lim_dw;  /* Limited DW selectors cover offset < 64 */
@@ -3185,6 +3212,37 @@ not_supported:
 	return rte_errno;
 }
 
+static void mlx5dr_definer_optimize_order(struct mlx5dr_definer *definer, int num_log)
+{
+	uint8_t hl_prio[MAX_HL_PRIO - 1] = {MLX5DR_HL_IPV4_SRC,
+					    MLX5DR_HL_IPV4_DST,
+					    MAX_HL_PRIO};
+	int dw = 0, i = 0, j;
+	int *dw_flag;
+	uint8_t tmp;
+
+	dw_flag = optimal_dist_dw[num_log];
+
+	while (hl_prio[i] != MAX_HL_PRIO) {
+		j = 0;
+		/* Finding a candidate to improve its hash distribution */
+		while (j < DW_SELECTORS_MATCH && (hl_prio[i] != definer->dw_selector[j]))
+			j++;
+
+		/* Finding a DW location with good hash distribution */
+		while (dw < DW_SELECTORS_MATCH && dw_flag[dw] == 0)
+			dw++;
+
+		if (dw < DW_SELECTORS_MATCH && j < DW_SELECTORS_MATCH) {
+			tmp = definer->dw_selector[dw];
+			definer->dw_selector[dw] = definer->dw_selector[j];
+			definer->dw_selector[j] = tmp;
+			dw++;
+		}
+		i++;
+	}
+}
+
 static int
 mlx5dr_definer_find_best_match_fit(struct mlx5dr_context *ctx,
 				   struct mlx5dr_definer *definer,
@@ -3354,6 +3412,12 @@ mlx5dr_definer_calc_layout(struct mlx5dr_matcher *matcher,
 		DR_LOG(ERR, "Failed to create match definer from header layout");
 		goto free_fc;
 	}
+
+	if (!mlx5dr_definer_is_jumbo(match_definer) &&
+	    !mlx5dr_matcher_req_fw_wqe(matcher) &&
+	    !mlx5dr_matcher_is_resizable(matcher) &&
+	    !mlx5dr_matcher_is_insert_by_idx(matcher))
+		mlx5dr_definer_optimize_order(match_definer, matcher->attr.rule.num_log);
 
 	/* Find the range definer layout for match templates fcrs */
 	ret = mlx5dr_definer_find_best_range_fit(range_definer, matcher);
