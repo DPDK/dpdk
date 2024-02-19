@@ -374,6 +374,25 @@ int vdpa_get_socket_file_name(const char *vf_name,
 	return 0;
 }
 
+bool vdpa_socket_file_exists(const char *sock_path)
+{
+	bool found = false;
+	int i;
+
+	if (!sock_path)
+		return false;
+
+	for (i = 0; i < RTE_MIN(MAX_VDPA_SAMPLE_PORTS, devcnt); i++) {
+		if (vports[i].dev &&
+			!strncmp(vports[i].ifname, sock_path, MAX_PATH_LEN)) {
+			found = true;
+			break;
+		}
+	}
+
+	return found;
+}
+
 static void
 vdpa_sample_quit(void)
 {

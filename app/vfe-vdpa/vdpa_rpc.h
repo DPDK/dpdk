@@ -42,4 +42,5 @@ int vdpa_with_socket_path_start(const char *vf_name,
 void vdpa_with_socket_path_stop(const char *vf_name);
 int vdpa_get_socket_file_name(const char *vf_name,
 		char *socket_file);
+bool vdpa_socket_file_exists(const char *socket_file);
 #endif /* _VDPA_RPC_H_ */

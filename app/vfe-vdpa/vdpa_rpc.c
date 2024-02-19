@@ -198,6 +198,10 @@ static cJSON *vdpa_vf_dev_add(char *vf_name,
 	cJSON *result = cJSON_CreateObject();
 	int ret;
 
+	if (vdpa_socket_file_exists(socket_file)) {
+		return vdpa_rpc_format_errno(result, -VFE_VDPA_ERR_ADD_VF_VHOST_SOCK_EXIST);
+	}
+
 	ret = rte_vdpa_vf_dev_add(vf_name, vm_uuid, vf_params);
 	if (ret) {
 		return vdpa_rpc_format_errno(result, ret);
