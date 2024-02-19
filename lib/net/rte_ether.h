@@ -46,6 +46,20 @@ extern "C" {
 
 #define RTE_ETHER_MIN_MTU 68 /**< Minimum MTU for IPv4 packets, see RFC 791. */
 
+/* VLAN header fields */
+#define RTE_VLAN_DEI_SHIFT	12
+#define RTE_VLAN_PRI_SHIFT	13
+#define RTE_VLAN_PRI_MASK	0xe000 /* Priority Code Point */
+#define RTE_VLAN_DEI_MASK	0x1000 /* Drop Eligible Indicator */
+#define RTE_VLAN_ID_MASK	0x0fff /* VLAN Identifier */
+
+#define RTE_VLAN_TCI_ID(vlan_tci)	((vlan_tci) & RTE_VLAN_ID_MASK)
+#define RTE_VLAN_TCI_PRI(vlan_tci)	(((vlan_tci) & RTE_VLAN_PRI_MASK) >> RTE_VLAN_PRI_SHIFT)
+#define RTE_VLAN_TCI_DEI(vlan_tci)	(((vlan_tci) & RTE_VLAN_DEI_MASK) >> RTE_VLAN_DEI_SHIFT)
+#define RTE_VLAN_TCI_MAKE(id, pri, dei)	((id) |					\
+					 ((pri) << RTE_VLAN_PRI_SHIFT) |	\
+					 ((dei) << RTE_VLAN_DEI_SHIFT))
+
 /**
  * Ethernet address:
  * A universally administered address is uniquely assigned to a device by its
