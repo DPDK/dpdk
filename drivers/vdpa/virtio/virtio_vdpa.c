@@ -1963,10 +1963,9 @@ virtio_vdpa_dev_do_remove(struct rte_pci_device *pci_dev, struct virtio_vdpa_pri
 			}
 			if (!rte_uuid_is_null(iommu_domain->vm_uuid))
 				TAILQ_REMOVE(&virtio_iommu_domain_list, iommu_domain, next);
+			rte_free(iommu_domain);
 		}	
 		pthread_mutex_unlock(&iommu_domain->domain_lock);
-
-		rte_free(iommu_domain);
 	}
 
 	if (priv->state_mz)
