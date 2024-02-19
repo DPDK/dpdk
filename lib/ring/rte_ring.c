@@ -23,6 +23,7 @@
 #include <rte_errno.h>
 #include <rte_string_fns.h>
 #include <rte_tailq.h>
+#include <rte_telemetry.h>
 
 #include "rte_ring.h"
 #include "rte_ring_elem.h"
@@ -423,4 +424,43 @@ rte_ring_lookup(const char *name)
 	}
 
 	return r;
+}
+
+static void
+ring_walk(void (*func)(struct rte_ring *, void *), void *arg)
+{
+	struct rte_ring_list *ring_list;
+	struct rte_tailq_entry *tailq_entry;
+
+	ring_list = RTE_TAILQ_CAST(rte_ring_tailq.head, rte_ring_list);
+	rte_mcfg_tailq_read_lock();
+
+	TAILQ_FOREACH(tailq_entry, ring_list, next) {
+		(*func)((struct rte_ring *) tailq_entry->data, arg);
+	}
+
+	rte_mcfg_tailq_read_unlock();
+}
+
+static void
+ring_list_cb(struct rte_ring *r, void *arg)
+{
+	struct rte_tel_data *d = (struct rte_tel_data *)arg;
+
+	rte_tel_data_add_array_string(d, r->name);
+}
+
+static int
+ring_handle_list(const char *cmd __rte_unused,
+		const char *params __rte_unused, struct rte_tel_data *d)
+{
+	rte_tel_data_start_array(d, RTE_TEL_STRING_VAL);
+	ring_walk(ring_list_cb, d);
+	return 0;
+}
+
+RTE_INIT(ring_init_telemetry)
+{
+	rte_telemetry_register_cmd("/ring/list", ring_handle_list,
+		"Returns list of available rings. Takes no parameters");
 }

@@ -18,3 +18,4 @@ indirect_headers += files (
         'rte_ring_rts.h',
         'rte_ring_rts_elem_pvt.h',
 )
+deps += ['telemetry']
