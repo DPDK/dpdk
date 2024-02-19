@@ -3808,6 +3808,90 @@ iavf_xmit_pkts_no_poll(void *tx_queue, struct rte_mbuf **tx_pkts,
 								tx_pkts, nb_pkts);
 }
 
+/* Tx mbuf check */
+static uint16_t
+iavf_xmit_pkts_check(void *tx_queue, struct rte_mbuf **tx_pkts,
+	      uint16_t nb_pkts)
+{
+	uint16_t idx;
+	uint64_t ol_flags;
+	struct rte_mbuf *mb;
+	uint16_t good_pkts = nb_pkts;
+	const char *reason = NULL;
+	bool pkt_error = false;
+	struct iavf_tx_queue *txq = tx_queue;
+	struct iavf_adapter *adapter = txq->vsi->adapter;
+	enum iavf_tx_burst_type tx_burst_type =
+		txq->vsi->adapter->tx_burst_type;
+
+	for (idx = 0; idx < nb_pkts; idx++) {
+		mb = tx_pkts[idx];
+		ol_flags = mb->ol_flags;
+
+		if ((adapter->devargs.mbuf_check & IAVF_MBUF_CHECK_F_TX_MBUF) &&
+		    (rte_mbuf_check(mb, 1, &reason) != 0)) {
+			PMD_TX_LOG(ERR, "INVALID mbuf: %s\n", reason);
+			pkt_error = true;
+			break;
+		}
+
+		if ((adapter->devargs.mbuf_check & IAVF_MBUF_CHECK_F_TX_SIZE) &&
+		    (mb->data_len < IAVF_TX_MIN_PKT_LEN ||
+		     mb->data_len > adapter->vf.max_pkt_len)) {
+			PMD_TX_LOG(ERR, "INVALID mbuf: data_len (%u) is out of range, reasonable range (%d - %u)\n",
+					mb->data_len, IAVF_TX_MIN_PKT_LEN, adapter->vf.max_pkt_len);
+			pkt_error = true;
+			break;
+		}
+
+		if (adapter->devargs.mbuf_check & IAVF_MBUF_CHECK_F_TX_SEGMENT) {
+			/* Check condition for nb_segs > IAVF_TX_MAX_MTU_SEG. */
+			if (!(ol_flags & (RTE_MBUF_F_TX_TCP_SEG | RTE_MBUF_F_TX_UDP_SEG))) {
+				if (mb->nb_segs > IAVF_TX_MAX_MTU_SEG) {
+					PMD_TX_LOG(ERR, "INVALID mbuf: nb_segs (%d) exceeds HW limit, maximum allowed value is %d\n",
+							mb->nb_segs, IAVF_TX_MAX_MTU_SEG);
+					pkt_error = true;
+					break;
+				}
+			} else if ((mb->tso_segsz < IAVF_MIN_TSO_MSS) ||
+				   (mb->tso_segsz > IAVF_MAX_TSO_MSS)) {
+				/* MSS outside the range are considered malicious */
+				PMD_TX_LOG(ERR, "INVALID mbuf: tso_segsz (%u) is out of range, reasonable range (%d - %u)\n",
+						mb->tso_segsz, IAVF_MIN_TSO_MSS, IAVF_MAX_TSO_MSS);
+				pkt_error = true;
+				break;
+			} else if (mb->nb_segs > txq->nb_tx_desc) {
+				PMD_TX_LOG(ERR, "INVALID mbuf: nb_segs out of ring length\n");
+				pkt_error = true;
+				break;
+			}
+		}
+
+		if (adapter->devargs.mbuf_check & IAVF_MBUF_CHECK_F_TX_OFFLOAD) {
+			if (ol_flags & IAVF_TX_OFFLOAD_NOTSUP_MASK) {
+				PMD_TX_LOG(ERR, "INVALID mbuf: TX offload is not supported\n");
+				pkt_error = true;
+				break;
+			}
+
+			if (!rte_validate_tx_offload(mb)) {
+				PMD_TX_LOG(ERR, "INVALID mbuf: TX offload setup error\n");
+				pkt_error = true;
+				break;
+			}
+		}
+	}
+
+	if (pkt_error) {
+		txq->mbuf_errors++;
+		good_pkts = idx;
+		if (good_pkts == 0)
+			return 0;
+	}
+
+	return iavf_tx_pkt_burst_ops[tx_burst_type](tx_queue, tx_pkts, good_pkts);
+}
+
 /* choose rx function*/
 void
 iavf_set_rx_function(struct rte_eth_dev *dev)
@@ -4053,6 +4137,7 @@ iavf_set_tx_function(struct rte_eth_dev *dev)
 	struct iavf_adapter *adapter =
 		IAVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 	enum iavf_tx_burst_type tx_burst_type;
+	int mbuf_check = adapter->devargs.mbuf_check;
 	int no_poll_on_link_down = adapter->devargs.no_poll_on_link_down;
 #ifdef RTE_ARCH_X86
 	struct iavf_tx_queue *txq;
@@ -4148,6 +4233,9 @@ iavf_set_tx_function(struct rte_eth_dev *dev)
 		if (no_poll_on_link_down) {
 			adapter->tx_burst_type = tx_burst_type;
 			dev->tx_pkt_burst = iavf_xmit_pkts_no_poll;
+		} else if (mbuf_check) {
+			adapter->tx_burst_type = tx_burst_type;
+			dev->tx_pkt_burst = iavf_xmit_pkts_check;
 		} else {
 			dev->tx_pkt_burst = iavf_tx_pkt_burst_ops[tx_burst_type];
 		}
@@ -4164,6 +4252,9 @@ normal:
 	if (no_poll_on_link_down) {
 		adapter->tx_burst_type = tx_burst_type;
 		dev->tx_pkt_burst = iavf_xmit_pkts_no_poll;
+	} else if (mbuf_check) {
+		adapter->tx_burst_type = tx_burst_type;
+		dev->tx_pkt_burst = iavf_xmit_pkts_check;
 	} else {
 		dev->tx_pkt_burst = iavf_tx_pkt_burst_ops[tx_burst_type];
 	}

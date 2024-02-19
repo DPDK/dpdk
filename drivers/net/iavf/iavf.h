@@ -114,9 +114,14 @@ struct iavf_ipsec_crypto_stats {
 	} ierrors;
 };
 
+struct iavf_mbuf_stats {
+	uint64_t tx_pkt_errors;
+};
+
 struct iavf_eth_xstats {
 	struct virtchnl_eth_stats eth_stats;
 	struct iavf_ipsec_crypto_stats ips_stats;
+	struct iavf_mbuf_stats mbuf_stats;
 };
 
 /* Structure that defines a VSI, associated with a adapter. */
@@ -310,6 +315,7 @@ struct iavf_devargs {
 	uint32_t watchdog_period;
 	int auto_reset;
 	int no_poll_on_link_down;
+	uint64_t mbuf_check;
 };
 
 struct iavf_security_ctx;
@@ -352,6 +358,11 @@ enum iavf_tx_burst_type {
 	IAVF_TX_AVX512_CTX,
 	IAVF_TX_AVX512_CTX_OFFLOAD,
 };
+
+#define IAVF_MBUF_CHECK_F_TX_MBUF        (1ULL << 0)
+#define IAVF_MBUF_CHECK_F_TX_SIZE        (1ULL << 1)
+#define IAVF_MBUF_CHECK_F_TX_SEGMENT     (1ULL << 2)
+#define IAVF_MBUF_CHECK_F_TX_OFFLOAD     (1ULL << 3)
 
 /* Structure to store private data for each VF instance. */
 struct iavf_adapter {

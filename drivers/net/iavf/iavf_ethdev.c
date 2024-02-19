@@ -14,6 +14,7 @@
 #include <inttypes.h>
 #include <rte_byteorder.h>
 #include <rte_common.h>
+#include <rte_os_shim.h>
 
 #include <rte_interrupts.h>
 #include <rte_debug.h>
@@ -40,6 +41,7 @@
 #define IAVF_RESET_WATCHDOG_ARG    "watchdog_period"
 #define IAVF_ENABLE_AUTO_RESET_ARG "auto_reset"
 #define IAVF_NO_POLL_ON_LINK_DOWN_ARG "no-poll-on-link-down"
+#define IAVF_MBUF_CHECK_ARG       "mbuf_check"
 uint64_t iavf_timestamp_dynflag;
 int iavf_timestamp_dynfield_offset = -1;
 int rte_pmd_iavf_tx_lldp_dynfield_offset = -1;
@@ -50,6 +52,7 @@ static const char * const iavf_valid_args[] = {
 	IAVF_RESET_WATCHDOG_ARG,
 	IAVF_ENABLE_AUTO_RESET_ARG,
 	IAVF_NO_POLL_ON_LINK_DOWN_ARG,
+	IAVF_MBUF_CHECK_ARG,
 	NULL
 };
 
@@ -177,6 +180,7 @@ static const struct rte_iavf_xstats_name_off rte_iavf_stats_strings[] = {
 	{"tx_broadcast_packets", _OFF_OF(eth_stats.tx_broadcast)},
 	{"tx_dropped_packets", _OFF_OF(eth_stats.tx_discards)},
 	{"tx_error_packets", _OFF_OF(eth_stats.tx_errors)},
+	{"tx_mbuf_error_packets", _OFF_OF(mbuf_stats.tx_pkt_errors)},
 
 	{"inline_ipsec_crypto_ipackets", _OFF_OF(ips_stats.icount)},
 	{"inline_ipsec_crypto_ibytes", _OFF_OF(ips_stats.ibytes)},
@@ -1843,6 +1847,9 @@ iavf_dev_xstats_reset(struct rte_eth_dev *dev)
 	iavf_dev_stats_reset(dev);
 	memset(&vf->vsi.eth_stats_offset.ips_stats, 0,
 			sizeof(struct iavf_ipsec_crypto_stats));
+	memset(&vf->vsi.eth_stats_offset.mbuf_stats, 0,
+			sizeof(struct iavf_mbuf_stats));
+
 	return 0;
 }
 
@@ -1882,6 +1889,19 @@ iavf_dev_update_ipsec_xstats(struct rte_eth_dev *ethdev,
 	}
 }
 
+static void
+iavf_dev_update_mbuf_stats(struct rte_eth_dev *ethdev,
+		struct iavf_mbuf_stats *mbuf_stats)
+{
+	uint16_t idx;
+	struct iavf_tx_queue *txq;
+
+	for (idx = 0; idx < ethdev->data->nb_tx_queues; idx++) {
+		txq = ethdev->data->tx_queues[idx];
+		mbuf_stats->tx_pkt_errors += txq->mbuf_errors;
+	}
+}
+
 static int iavf_dev_xstats_get(struct rte_eth_dev *dev,
 				 struct rte_eth_xstat *xstats, unsigned int n)
 {
@@ -1909,6 +1929,9 @@ static int iavf_dev_xstats_get(struct rte_eth_dev *dev,
 
 	if (iavf_ipsec_crypto_supported(adapter))
 		iavf_dev_update_ipsec_xstats(dev, &iavf_xtats.ips_stats);
+
+	if (adapter->devargs.mbuf_check)
+		iavf_dev_update_mbuf_stats(dev, &iavf_xtats.mbuf_stats);
 
 	/* loop over xstats array and values from pstats */
 	for (i = 0; i < IAVF_NB_XSTATS; i++) {
@@ -2292,6 +2315,57 @@ iavf_parse_watchdog_period(__rte_unused const char *key, const char *value, void
 	return 0;
 }
 
+static int
+iavf_parse_mbuf_check(__rte_unused const char *key, const char *value, void *args)
+{
+	char *cur;
+	char *tmp;
+	int str_len;
+	int valid_len;
+	int ret = 0;
+	uint64_t *mc_flags = args;
+	char *str2 = strdup(value);
+
+	if (str2 == NULL)
+		return -1;
+
+	str_len = strlen(str2);
+	if (str_len == 0) {
+		ret = -1;
+		goto err_end;
+	}
+
+	/* Try stripping the outer square brackets of the parameter string. */
+	if (str2[0] == '[' && str2[str_len - 1] == ']') {
+		if (str_len < 3) {
+			ret = -1;
+			goto err_end;
+		}
+		valid_len = str_len - 2;
+		memmove(str2, str2 + 1, valid_len);
+		memset(str2 + valid_len, '\0', 2);
+	}
+
+	cur = strtok_r(str2, ",", &tmp);
+	while (cur != NULL) {
+		if (!strcmp(cur, "mbuf"))
+			*mc_flags |= IAVF_MBUF_CHECK_F_TX_MBUF;
+		else if (!strcmp(cur, "size"))
+			*mc_flags |= IAVF_MBUF_CHECK_F_TX_SIZE;
+		else if (!strcmp(cur, "segment"))
+			*mc_flags |= IAVF_MBUF_CHECK_F_TX_SEGMENT;
+		else if (!strcmp(cur, "offload"))
+			*mc_flags |= IAVF_MBUF_CHECK_F_TX_OFFLOAD;
+		else
+			PMD_DRV_LOG(ERR, "Unsupported diagnostic type: %s", cur);
+		cur = strtok_r(NULL, ",", &tmp);
+	}
+
+err_end:
+	free(str2);
+	return ret;
+}
+
 static int iavf_parse_devargs(struct rte_eth_dev *dev)
 {
 	struct iavf_adapter *ad =
@@ -2345,6 +2419,11 @@ static int iavf_parse_devargs(struct rte_eth_dev *dev)
 		ret = -EINVAL;
 		goto bail;
 	}
+
+	ret = rte_kvargs_process(kvlist, IAVF_MBUF_CHECK_ARG,
+				 &iavf_parse_mbuf_check, &ad->devargs.mbuf_check);
+	if (ret)
+		goto bail;
 
 	ret = rte_kvargs_process(kvlist, IAVF_ENABLE_AUTO_RESET_ARG,
 				 &parse_bool, &ad->devargs.auto_reset);

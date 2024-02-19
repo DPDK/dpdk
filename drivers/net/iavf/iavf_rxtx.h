@@ -306,6 +306,8 @@ struct iavf_tx_queue {
 	uint16_t next_rs;              /* next to check DD,  for VPMD */
 	uint16_t ipsec_crypto_pkt_md_offset;
 
+	uint64_t mbuf_errors;
+
 	bool q_set;                    /* if rx queue has been configured */
 	bool tx_deferred_start;        /* don't start this queue in dev start */
 	const struct iavf_txq_ops *ops;
