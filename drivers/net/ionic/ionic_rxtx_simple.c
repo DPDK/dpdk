@@ -191,7 +191,6 @@ ionic_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	}
 
 	if (nb_tx > 0) {
-		rte_wmb();
 		ionic_txq_flush(q);
 
 		txq->last_wdog_cycles = rte_get_timer_cycles();
