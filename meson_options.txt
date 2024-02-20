@@ -50,6 +50,8 @@ option('mbuf_refcnt_atomic', type: 'boolean', value: true, description:
        'Atomically access the mbuf refcnt.')
 option('platform', type: 'string', value: 'native', description:
        'Platform to build, either "native", "generic" or a SoC. Please refer to the Linux build guide for more information.')
+option('pkt_mbuf_headroom', type: 'integer', value: 128, description:
+       'Default data offset (in bytes) in a packet buffer to leave room for additional headers.')
 option('enable_stdatomic', type: 'boolean', value: false, description:
        'enable use of C11 stdatomic')
 option('enable_trace_fp', type: 'boolean', value: false, description:
