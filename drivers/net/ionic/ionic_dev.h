@@ -171,6 +171,7 @@ struct ionic_dev_intf {
 			struct rte_eth_dev *eth_dev);
 	int  (*configure_intr)(struct ionic_adapter *adapter);
 	void (*unconfigure_intr)(struct ionic_adapter *adapter);
+	void (*poll)(struct ionic_adapter *adapter);
 	void (*unmap_bars)(struct ionic_adapter *adapter);
 };
 
@@ -245,7 +246,23 @@ ionic_q_flush(struct ionic_queue *q)
 {
 	uint64_t val = IONIC_DBELL_QID(q->hw_index) | q->head_idx;
 
+#if defined(RTE_LIBRTE_IONIC_PMD_BARRIER_ERRATA)
+	/* On some devices the standard 'dmb' barrier is insufficient */
+	asm volatile("dsb st" : : : "memory");
+	rte_write64_relaxed(rte_cpu_to_le_64(val), q->db);
+#else
 	rte_write64(rte_cpu_to_le_64(val), q->db);
+#endif
+}
+
+static inline bool
+ionic_is_embedded(void)
+{
+#if defined(RTE_LIBRTE_IONIC_PMD_EMBEDDED)
+	return true;
+#else
+	return false;
+#endif
 }
 
 #endif /* _IONIC_DEV_H_ */

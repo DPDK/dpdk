@@ -12,6 +12,7 @@ deps += ['common_ionic']
 sources = files(
         'ionic_dev.c',
         'ionic_dev_pci.c',
+        'ionic_dev_vdev.c',
         'ionic_ethdev.c',
         'ionic_lif.c',
         'ionic_mac_api.c',

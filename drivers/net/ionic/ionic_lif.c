@@ -540,6 +540,10 @@ ionic_lif_change_mtu(struct ionic_lif *lif, uint32_t new_mtu)
 		},
 	};
 
+	/* Not needed for embedded applications */
+	if (ionic_is_embedded())
+		return 0;
+
 	return ionic_adminq_post_wait(lif, &ctx);
 }
 
@@ -975,6 +979,13 @@ ionic_lif_queue_identify(struct ionic_lif *lif)
 
 		memset(qti, 0, sizeof(*qti));
 
+		if (ionic_is_embedded()) {
+			/* When embedded, FW will always match the driver */
+			qti->version = ionic_qtype_vers[qtype];
+			continue;
+		}
+
+		/* On the host, query the FW for info */
 		ionic_dev_cmd_queue_identify(idev, IONIC_LIF_TYPE_CLASSIC,
 			qtype, ionic_qtype_vers[qtype]);
 		err = ionic_dev_cmd_wait_check(idev, IONIC_DEVCMD_TIMEOUT);
@@ -1246,6 +1257,10 @@ ionic_lif_rss_setup(struct ionic_lif *lif)
 static void
 ionic_lif_rss_teardown(struct ionic_lif *lif)
 {
+	/* Not needed for embedded applications */
+	if (ionic_is_embedded())
+		return;
+
 	if (lif->rss_ind_tbl) {
 		lif->rss_ind_tbl = NULL;
 		lif->rss_ind_tbl_pa = 0;
@@ -1769,6 +1784,10 @@ ionic_lif_set_name(struct ionic_lif *lif)
 			.attr = IONIC_LIF_ATTR_NAME,
 		},
 	};
+
+	/* Not needed for embedded applications */
+	if (ionic_is_embedded())
+		return;
 
 	memcpy(ctx.cmd.lif_setattr.name, lif->name,
 		sizeof(ctx.cmd.lif_setattr.name) - 1);

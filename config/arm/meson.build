@@ -237,6 +237,33 @@ implementer_hisilicon = {
     }
 }
 
+implementer_ionic = {
+    'description': 'AMD Pensando',
+    'flags': [
+        ['RTE_MAX_NUMA_NODES', 1],
+        ['RTE_CACHE_LINE_SIZE', 64],
+        ['RTE_LIBRTE_VHOST_NUMA', false],
+        ['RTE_EAL_NUMA_AWARE_HUGEPAGES', false],
+        ['RTE_LIBRTE_IONIC_PMD_EMBEDDED', true],
+    ],
+    'part_number_config': {
+        '0xc1': {
+            'compiler_options':  ['-mcpu=cortex-a72'],
+            'flags': [
+                ['RTE_MAX_LCORE', 4],
+                ['RTE_LIBRTE_IONIC_PMD_BARRIER_ERRATA', true],
+            ]
+        },
+        '0xc2': {
+            'compiler_options':  ['-mcpu=cortex-a72'],
+            'flags': [
+                ['RTE_MAX_LCORE', 16],
+                ['RTE_LIBRTE_IONIC_PMD_BARRIER_ERRATA', true],
+            ]
+        }
+    }
+}
+
 implementer_phytium = {
     'description': 'Phytium',
     'flags': [
@@ -294,6 +321,7 @@ implementers = {
     '0x50': implementer_ampere,
     '0x51': implementer_qualcomm,
     '0x70': implementer_phytium,
+    '0x75': implementer_ionic,
     '0xc0': implementer_ampere,
 }
 
@@ -347,6 +375,12 @@ soc_bluefield = {
     'numa': false
 }
 
+soc_capri = {
+    'description': 'AMD Pensando Capri',
+    'implementer': '0x75',
+    'part_number': '0xc1'
+}
+
 soc_cdx = {
     'description': 'AMD CDX',
     'implementer': '0x41',
@@ -392,6 +426,12 @@ soc_dpaa = {
         ['RTE_MAX_NUMA_NODES', 1]
     ],
     'numa': false
+}
+
+soc_elba = {
+    'description': 'AMD Pensando Elba',
+    'implementer': '0x75',
+    'part_number': '0xc2'
 }
 
 soc_emag = {
@@ -526,11 +566,13 @@ ampereone:       Ampere AmpereOne
 armada:          Marvell ARMADA
 bluefield:       NVIDIA BlueField
 bluefield3:      NVIDIA BlueField-3
+capri:           AMD Pensando Capri
 cdx:             AMD CDX
 centriq2400:     Qualcomm Centriq 2400
 cn9k:            Marvell OCTEON 9
 cn10k:           Marvell OCTEON 10
 dpaa:            NXP DPAA
+elba:            AMD Pensando Elba
 emag:            Ampere eMAG
 ft2000plus:      Phytium FT-2000+
 tys2500:         Phytium TengYun S2500
@@ -557,11 +599,13 @@ socs = {
     'armada': soc_armada,
     'bluefield': soc_bluefield,
     'bluefield3': soc_bluefield3,
+    'capri': soc_capri,
     'cdx': soc_cdx,
     'centriq2400': soc_centriq2400,
     'cn9k': soc_cn9k,
     'cn10k' : soc_cn10k,
     'dpaa': soc_dpaa,
+    'elba': soc_elba,
     'emag': soc_emag,
     'ft2000plus': soc_ft2000plus,
     'tys2500': soc_tys2500,

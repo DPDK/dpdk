@@ -101,6 +101,7 @@ int ionic_rx_fill_sg(struct ionic_rx_qcq *rxq);
 static inline void
 ionic_rxq_flush(struct ionic_queue *q)
 {
+#ifndef RTE_LIBRTE_IONIC_PMD_EMBEDDED
 	struct ionic_rxq_desc *desc_base = q->base;
 	struct ionic_rxq_desc *cmb_desc_base = q->cmb_base;
 
@@ -122,6 +123,7 @@ ionic_rxq_flush(struct ionic_queue *q)
 		}
 		q->cmb_head_idx = q->head_idx;
 	}
+#endif /* RTE_LIBRTE_IONIC_PMD_EMBEDDED */
 
 	ionic_q_flush(q);
 }
@@ -129,6 +131,7 @@ ionic_rxq_flush(struct ionic_queue *q)
 static inline void
 ionic_txq_flush(struct ionic_queue *q)
 {
+#ifndef RTE_LIBRTE_IONIC_PMD_EMBEDDED
 	struct ionic_txq_desc *desc_base = q->base;
 	struct ionic_txq_desc *cmb_desc_base = q->cmb_base;
 
@@ -150,6 +153,7 @@ ionic_txq_flush(struct ionic_queue *q)
 		}
 		q->cmb_head_idx = q->head_idx;
 	}
+#endif /* RTE_LIBRTE_IONIC_PMD_EMBEDDED */
 
 	ionic_q_flush(q);
 }

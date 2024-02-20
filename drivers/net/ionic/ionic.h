@@ -15,7 +15,7 @@
 
 #define IONIC_DRV_NAME			"ionic"
 #define IONIC_DRV_DESCRIPTION		"AMD Pensando Ethernet NIC Driver"
-#define IONIC_DRV_VERSION		"0.11.0-49"
+#define IONIC_DRV_VERSION		"1.3.0-112"
 
 /* Vendor ID */
 #define IONIC_PENSANDO_VENDOR_ID	0x1dd8
