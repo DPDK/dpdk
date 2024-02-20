@@ -601,7 +601,8 @@ mlx5_rx_err_handle(struct mlx5_rxq_data *rxq, uint8_t vec,
  * @param mprq
  *   Indication if it is called from MPRQ.
  * @return
- *   0 in case of empty CQE, MLX5_REGULAR_ERROR_CQE_RET in case of error CQE,
+ *   0 in case of empty CQE,
+ *   MLX5_REGULAR_ERROR_CQE_RET in case of error CQE,
  *   MLX5_CRITICAL_ERROR_CQE_RET in case of error CQE lead to Rx queue reset,
  *   otherwise the packet size in regular RxQ,
  *   and striding byte count format in mprq case.
@@ -675,6 +676,11 @@ mlx5_rx_poll_len(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cqe,
 					if (ret == MLX5_RECOVERY_ERROR_RET ||
 						ret == MLX5_RECOVERY_COMPLETED_RET)
 						return MLX5_CRITICAL_ERROR_CQE_RET;
+					if (!mprq && ret == MLX5_RECOVERY_IGNORE_RET) {
+						*skip_cnt = 1;
+						++rxq->cq_ci;
+						return MLX5_ERROR_CQE_MASK;
+					}
 				} else {
 					return 0;
 				}
@@ -928,19 +934,18 @@ mlx5_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 			cqe = &(*rxq->cqes)[rxq->cq_ci & cqe_cnt];
 			len = mlx5_rx_poll_len(rxq, cqe, cqe_cnt, &mcqe, &skip_cnt, false);
 			if (unlikely(len & MLX5_ERROR_CQE_MASK)) {
+				/* We drop packets with non-critical errors */
+				rte_mbuf_raw_free(rep);
 				if (len == MLX5_CRITICAL_ERROR_CQE_RET) {
-					rte_mbuf_raw_free(rep);
 					rq_ci = rxq->rq_ci << sges_n;
 					break;
 				}
+				/* Skip specified amount of error CQEs packets */
 				rq_ci >>= sges_n;
 				rq_ci += skip_cnt;
 				rq_ci <<= sges_n;
-				idx = rq_ci & wqe_cnt;
-				wqe = &((volatile struct mlx5_wqe_data_seg *)rxq->wqes)[idx];
-				seg = (*rxq->elts)[idx];
-				cqe = &(*rxq->cqes)[rxq->cq_ci & cqe_cnt];
-				len = len & ~MLX5_ERROR_CQE_MASK;
+				MLX5_ASSERT(!pkt);
+				continue;
 			}
 			if (len == 0) {
 				rte_mbuf_raw_free(rep);
