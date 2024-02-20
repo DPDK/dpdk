@@ -695,23 +695,23 @@ dma_parse_args(int argc, char **argv, unsigned int nb_ports)
 		return ret;
 
 	/* check argument's value which parsing by autosave. */
-	if (dma_batch_sz <= 0 || dma_batch_sz > MAX_PKT_BURST) {
+	if (dma_batch_sz == 0 || dma_batch_sz > MAX_PKT_BURST) {
 		printf("Invalid dma batch size, %d.\n", dma_batch_sz);
 		return -1;
 	}
 
-	if (max_frame_size <= 0 || max_frame_size > RTE_ETHER_MAX_JUMBO_FRAME_LEN) {
+	if (max_frame_size > RTE_ETHER_MAX_JUMBO_FRAME_LEN) {
 		printf("Invalid max frame size, %d.\n", max_frame_size);
 		return -1;
 	}
 
-	if (nb_queues <= 0 || nb_queues > MAX_RX_QUEUES_COUNT) {
+	if (nb_queues == 0 || nb_queues > MAX_RX_QUEUES_COUNT) {
 		printf("Invalid RX queues number %d. Max %u\n",
 			nb_queues, MAX_RX_QUEUES_COUNT);
 		return -1;
 	}
 
-	if (ring_size <= 0) {
+	if (ring_size == 0) {
 		printf("Invalid ring size, %d.\n", ring_size);
 		return -1;
 	}
@@ -721,7 +721,7 @@ dma_parse_args(int argc, char **argv, unsigned int nb_ports)
 		ring_size = MBUF_RING_SIZE;
 	}
 
-	if (stats_interval <= 0) {
+	if (stats_interval == 0) {
 		printf("Invalid stats interval, setting to 1\n");
 		stats_interval = 1;	/* set to default */
 	}
