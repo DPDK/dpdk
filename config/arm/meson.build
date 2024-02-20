@@ -100,6 +100,16 @@ part_number_config_arm = {
             ['RTE_MAX_LCORE', 128],
             ['RTE_MAX_NUMA_NODES', 2]
         ]
+    },
+    '0xd4f': {
+        'march_features': ['sve2'],
+        'compiler_options': ['-mcpu=neoverse-v2'],
+        'flags': [
+            ['RTE_MACHINE', '"neoverse-v2"'],
+            ['RTE_ARM_FEATURE_ATOMICS', true],
+            ['RTE_MAX_LCORE', 144],
+            ['RTE_MAX_NUMA_NODES', 2]
+        ]
     }
 }
 implementer_arm = {
