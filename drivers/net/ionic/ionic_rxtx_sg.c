@@ -16,8 +16,7 @@
 #include <rte_prefetch.h>
 
 #include "ionic.h"
-#include "ionic_if.h"
-#include "ionic_dev.h"
+#include "ionic_ethdev.h"
 #include "ionic_lif.h"
 #include "ionic_rxtx.h"
 

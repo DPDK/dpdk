@@ -7,6 +7,8 @@ if is_windows
     subdir_done()
 endif
 
+deps += ['common_ionic']
+
 sources = files(
         'ionic_dev.c',
         'ionic_dev_pci.c',
@@ -19,3 +21,5 @@ sources = files(
         'ionic_rxtx_simple.c',
         'ionic_rxtx_sg.c',
 )
+
+includes += include_directories('../../common/ionic')

@@ -661,6 +661,7 @@ F: doc/guides/nics/features/axgbe.ini
 
 AMD Pensando ionic
 M: Andrew Boyer <andrew.boyer@amd.com>
+F: drivers/common/ionic/
 F: drivers/net/ionic/
 F: doc/guides/nics/ionic.rst
 F: doc/guides/nics/features/ionic.ini

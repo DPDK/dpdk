@@ -7,6 +7,7 @@ drivers = [
         'dpaax',
         'iavf',
         'idpf',
+        'ionic',
         'mvep',
         'octeontx',
 ]
