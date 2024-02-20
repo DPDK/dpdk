@@ -137,7 +137,7 @@ nfp_net_nfd3_tx_vlan(struct nfp_net_txq *txq,
 	}
 }
 
-static inline void
+static inline int
 nfp_net_nfd3_set_meta_data(struct nfp_net_meta_raw *meta_data,
 		struct nfp_net_txq *txq,
 		struct rte_mbuf *pkt)
@@ -174,7 +174,7 @@ nfp_net_nfd3_set_meta_data(struct nfp_net_meta_raw *meta_data,
 	}
 
 	if (meta_data->length == 0)
-		return;
+		return 0;
 
 	meta_info = meta_data->header;
 	meta_data->header = rte_cpu_to_be_32(meta_data->header);
@@ -188,15 +188,16 @@ nfp_net_nfd3_set_meta_data(struct nfp_net_meta_raw *meta_data,
 		case NFP_NET_META_VLAN:
 			if (vlan_layer > 0) {
 				PMD_DRV_LOG(ERR, "At most 1 layers of vlan is supported");
-				return;
+				return -EINVAL;
 			}
+
 			nfp_net_set_meta_vlan(meta_data, pkt, layer);
 			vlan_layer++;
 			break;
 		case NFP_NET_META_IPSEC:
 			if (ipsec_layer > 2) {
 				PMD_DRV_LOG(ERR, "At most 3 layers of ipsec is supported for now.");
-				return;
+				return -EINVAL;
 			}
 
 			nfp_net_set_meta_ipsec(meta_data, txq, pkt, layer, ipsec_layer);
@@ -204,11 +205,13 @@ nfp_net_nfd3_set_meta_data(struct nfp_net_meta_raw *meta_data,
 			break;
 		default:
 			PMD_DRV_LOG(ERR, "The metadata type not supported");
-			return;
+			return -ENOTSUP;
 		}
 
 		memcpy(meta, &meta_data->data[layer], sizeof(meta_data->data[layer]));
 	}
+
+	return 0;
 }
 
 uint16_t
@@ -225,6 +228,7 @@ nfp_net_nfd3_xmit_pkts_common(void *tx_queue,
 		uint16_t nb_pkts,
 		bool repr_flag)
 {
+	int ret;
 	uint16_t i;
 	uint8_t offset;
 	uint32_t pkt_size;
@@ -271,7 +275,10 @@ nfp_net_nfd3_xmit_pkts_common(void *tx_queue,
 		if (!repr_flag) {
 			struct nfp_net_meta_raw meta_data;
 			memset(&meta_data, 0, sizeof(meta_data));
-			nfp_net_nfd3_set_meta_data(&meta_data, txq, pkt);
+			ret = nfp_net_nfd3_set_meta_data(&meta_data, txq, pkt);
+			if (unlikely(ret != 0))
+				goto xmit_end;
+
 			offset = meta_data.length;
 		} else {
 			offset = FLOWER_PKT_DATA_OFFSET;
