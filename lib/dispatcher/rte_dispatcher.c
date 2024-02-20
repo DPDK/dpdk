@@ -48,6 +48,7 @@ struct rte_dispatcher_lcore {
 	struct rte_dispatcher_lcore_port ports[EVD_MAX_PORTS_PER_LCORE];
 	struct rte_dispatcher_handler handlers[EVD_MAX_HANDLERS];
 	struct rte_dispatcher_stats stats;
+	RTE_CACHE_GUARD;
 } __rte_cache_aligned;
 
 struct rte_dispatcher {
