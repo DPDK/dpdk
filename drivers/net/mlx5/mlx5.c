@@ -2279,7 +2279,7 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 		mlx5_free(priv->rxq_privs);
 		priv->rxq_privs = NULL;
 	}
-	if (priv->txqs != NULL) {
+	if (priv->txqs != NULL && dev->data->tx_queues != NULL) {
 		/* XXX race condition if mlx5_tx_burst() is still running. */
 		rte_delay_us_sleep(1000);
 		for (i = 0; (i != priv->txqs_n); ++i)
