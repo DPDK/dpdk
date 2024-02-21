@@ -1111,10 +1111,8 @@ struct rte_event_vector {
 		 * port and queue of the mbufs in the vector
 		 */
 		struct {
-			uint16_t port;
-			/* Ethernet device port id. */
-			uint16_t queue;
-			/* Ethernet device queue id. */
+			uint16_t port;   /**< Ethernet device port id. */
+			uint16_t queue;  /**< Ethernet device queue id. */
 		};
 	};
 	/**< Union to hold common attributes of the vector array. */
@@ -1143,7 +1141,11 @@ struct rte_event_vector {
 	 * vector array can be an array of mbufs or pointers or opaque u64
 	 * values.
 	 */
+#ifndef __DOXYGEN__
 } __rte_aligned(16);
+#else
+};
+#endif
 
 /* Scheduler type definitions */
 #define RTE_SCHED_TYPE_ORDERED          0
