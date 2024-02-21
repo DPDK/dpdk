@@ -11219,6 +11219,10 @@ flow_hw_get_q_aged_flows(struct rte_eth_dev *dev, uint32_t queue_id,
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 					  NULL, "empty context");
+	if (!priv->hws_age_req)
+		return rte_flow_error_set(error, ENOENT,
+					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					  NULL, "No aging initialized");
 	if (priv->hws_strict_queue) {
 		if (queue_id >= age_info->hw_q_age->nb_rings)
 			return rte_flow_error_set(error, EINVAL,
