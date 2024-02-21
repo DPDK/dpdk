@@ -498,8 +498,7 @@ struct rte_event;
  */
 
 /**
- * Get the total number of event devices that have been successfully
- * initialised.
+ * Get the total number of event devices.
  *
  * @return
  *   The total number of usable event devices.
@@ -514,8 +513,10 @@ rte_event_dev_count(void);
  *   Event device name to select the event device identifier.
  *
  * @return
- *   Returns event device identifier on success.
- *   - <0: Failure to find named event device.
+ *   Event device identifier (dev_id >= 0) on success.
+ *   Negative error code on failure:
+ *   - -EINVAL - input name parameter is invalid.
+ *   - -ENODEV - no event device found with that name.
  */
 int
 rte_event_dev_get_dev_id(const char *name);
@@ -528,7 +529,8 @@ rte_event_dev_get_dev_id(const char *name);
  * @return
  *   The NUMA socket id to which the device is connected or
  *   a default of zero if the socket could not be determined.
- *   -(-EINVAL)  dev_id value is out of range.
+ *   -EINVAL on error, where the given dev_id value does not
+ *   correspond to any event device.
  */
 int
 rte_event_dev_socket_id(uint8_t dev_id);
@@ -624,18 +626,20 @@ struct rte_event_dev_info {
 };
 
 /**
- * Retrieve the contextual information of an event device.
+ * Retrieve details of an event device's capabilities and configuration limits.
  *
  * @param dev_id
  *   The identifier of the device.
  *
  * @param[out] dev_info
  *   A pointer to a structure of type *rte_event_dev_info* to be filled with the
- *   contextual information of the device.
+ *   information about the device's capabilities.
  *
  * @return
- *   - 0: Success, driver updates the contextual information of the event device
- *   - <0: Error code returned by the driver info get function.
+ *   - 0: Success, information about the event device is present in dev_info.
+ *   - <0: Failure, error code returned by the function.
+ *     - -EINVAL - invalid input parameters, e.g. incorrect device id.
+ *     - -ENOTSUP - device does not support returning capabilities information.
  */
 int
 rte_event_dev_info_get(uint8_t dev_id, struct rte_event_dev_info *dev_info);
