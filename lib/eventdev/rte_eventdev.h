@@ -757,12 +757,14 @@ struct rte_event_dev_config {
 /**
  * Configure an event device.
  *
- * This function must be invoked first before any other function in the
- * API. This function can also be re-invoked when a device is in the
- * stopped state.
+ * This function must be invoked before any other configuration function in the
+ * API, when preparing an event device for application use.
+ * This function can also be re-invoked when a device is in the stopped state.
  *
- * The caller may use rte_event_dev_info_get() to get the capability of each
- * resources available for this event device.
+ * The caller should use rte_event_dev_info_get() to get the capabilities and
+ * resource limits for this event device before calling this API.
+ * Many values in the dev_conf input parameter are subject to limits given
+ * in the device information returned from rte_event_dev_info_get().
  *
  * @param dev_id
  *   The identifier of the device to configure.
@@ -772,6 +774,9 @@ struct rte_event_dev_config {
  * @return
  *   - 0: Success, device configured.
  *   - <0: Error code returned by the driver configuration function.
+ *     - -ENOTSUP - device does not support configuration.
+ *     - -EINVAL  - invalid input parameter.
+ *     - -EBUSY   - device has already been started.
  */
 int
 rte_event_dev_configure(uint8_t dev_id,
@@ -781,14 +786,35 @@ rte_event_dev_configure(uint8_t dev_id,
 
 /* Event queue configuration bitmap flags */
 #define RTE_EVENT_QUEUE_CFG_ALL_TYPES          (1ULL << 0)
-/**< Allow ATOMIC,ORDERED,PARALLEL schedule type enqueue
+/**< Allow events with schedule types ATOMIC, ORDERED, and PARALLEL to be enqueued to this queue.
  *
+ * The scheduling type to be used is that specified in each individual event.
+ * This flag can only be set when configuring queues on devices reporting the
+ * @ref RTE_EVENT_DEV_CAP_QUEUE_ALL_TYPES capability.
+ *
+ * Without this flag, only events with the specific scheduling type configured at queue setup
+ * can be sent to the queue.
+ *
+ * @see RTE_EVENT_DEV_CAP_QUEUE_ALL_TYPES
  * @see RTE_SCHED_TYPE_ORDERED, RTE_SCHED_TYPE_ATOMIC, RTE_SCHED_TYPE_PARALLEL
  * @see rte_event_enqueue_burst()
  */
 #define RTE_EVENT_QUEUE_CFG_SINGLE_LINK        (1ULL << 1)
 /**< This event queue links only to a single event port.
  *
+ * No load-balancing of events is performed, as all events
+ * sent to this queue end up at the same event port.
+ * The number of queues on which this flag is to be set must be
+ * configured at device configuration time, by setting
+ * @ref rte_event_dev_config.nb_single_link_event_port_queues
+ * parameter appropriately.
+ *
+ * This flag serves as a hint only, any devices without specific
+ * support for single-link queues can fall-back automatically to
+ * using regular queues with a single destination port.
+ *
+ *  @see rte_event_dev_info.max_single_link_event_port_queue_pairs
+ *  @see rte_event_dev_config.nb_single_link_event_port_queues
  *  @see rte_event_port_setup(), rte_event_port_link()
  */
 
@@ -796,56 +822,79 @@ rte_event_dev_configure(uint8_t dev_id,
 struct rte_event_queue_conf {
 	uint32_t nb_atomic_flows;
 	/**< The maximum number of active flows this queue can track at any
-	 * given time. If the queue is configured for atomic scheduling (by
-	 * applying the RTE_EVENT_QUEUE_CFG_ALL_TYPES flag to event_queue_cfg
-	 * or RTE_SCHED_TYPE_ATOMIC flag to schedule_type), then the
-	 * value must be in the range of [1, nb_event_queue_flows], which was
-	 * previously provided in rte_event_dev_configure().
+	 * given time.
+	 *
+	 * If the queue is configured for atomic scheduling (by
+	 * applying the @ref RTE_EVENT_QUEUE_CFG_ALL_TYPES flag to
+	 * @ref rte_event_queue_conf.event_queue_cfg
+	 * or @ref RTE_SCHED_TYPE_ATOMIC flag to @ref rte_event_queue_conf.schedule_type), then the
+	 * value must be in the range of [1, @ref rte_event_dev_config.nb_event_queue_flows],
+	 * which was previously provided in rte_event_dev_configure().
+	 *
+	 * If the queue is not configured for atomic scheduling this value is ignored.
 	 */
 	uint32_t nb_atomic_order_sequences;
 	/**< The maximum number of outstanding events waiting to be
 	 * reordered by this queue. In other words, the number of entries in
-	 * this queue’s reorder buffer.When the number of events in the
+	 * this queue’s reorder buffer. When the number of events in the
 	 * reorder buffer reaches to *nb_atomic_order_sequences* then the
-	 * scheduler cannot schedule the events from this queue and invalid
-	 * event will be returned from dequeue until one or more entries are
+	 * scheduler cannot schedule the events from this queue and no
+	 * events will be returned from dequeue until one or more entries are
 	 * freed up/released.
+	 *
 	 * If the queue is configured for ordered scheduling (by applying the
-	 * RTE_EVENT_QUEUE_CFG_ALL_TYPES flag to event_queue_cfg or
-	 * RTE_SCHED_TYPE_ORDERED flag to schedule_type), then the value must
-	 * be in the range of [1, nb_event_queue_flows], which was
+	 * @ref RTE_EVENT_QUEUE_CFG_ALL_TYPES flag to @ref rte_event_queue_conf.event_queue_cfg or
+	 * @ref RTE_SCHED_TYPE_ORDERED flag to @ref rte_event_queue_conf.schedule_type),
+	 * then the value must be in the range of
+	 * [1, @ref rte_event_dev_config.nb_event_queue_flows], which was
 	 * previously supplied to rte_event_dev_configure().
+	 *
+	 * If the queue is not configured for ordered scheduling, then this value is ignored.
 	 */
 	uint32_t event_queue_cfg;
 	/**< Queue cfg flags(EVENT_QUEUE_CFG_) */
 	uint8_t schedule_type;
 	/**< Queue schedule type(RTE_SCHED_TYPE_*).
-	 * Valid when RTE_EVENT_QUEUE_CFG_ALL_TYPES bit is not set in
-	 * event_queue_cfg.
+	 *
+	 * Valid when @ref RTE_EVENT_QUEUE_CFG_ALL_TYPES flag is not set in
+	 * @ref rte_event_queue_conf.event_queue_cfg.
+	 *
+	 * If the @ref RTE_EVENT_QUEUE_CFG_ALL_TYPES flag is set, then this field is ignored.
+	 *
+	 * @see RTE_SCHED_TYPE_ORDERED, RTE_SCHED_TYPE_ATOMIC, RTE_SCHED_TYPE_PARALLEL
 	 */
 	uint8_t priority;
 	/**< Priority for this event queue relative to other event queues.
+	 *
 	 * The requested priority should in the range of
-	 * [RTE_EVENT_DEV_PRIORITY_HIGHEST, RTE_EVENT_DEV_PRIORITY_LOWEST].
+	 * [@ref RTE_EVENT_DEV_PRIORITY_HIGHEST, @ref RTE_EVENT_DEV_PRIORITY_LOWEST].
 	 * The implementation shall normalize the requested priority to
 	 * event device supported priority value.
-	 * Valid when the device has RTE_EVENT_DEV_CAP_QUEUE_QOS capability
+	 *
+	 * Valid when the device has @ref RTE_EVENT_DEV_CAP_QUEUE_QOS capability,
+	 * ignored otherwise
 	 */
 	uint8_t weight;
 	/**< Weight of the event queue relative to other event queues.
+	 *
 	 * The requested weight should be in the range of
-	 * [RTE_EVENT_DEV_WEIGHT_HIGHEST, RTE_EVENT_DEV_WEIGHT_LOWEST].
+	 * [@ref RTE_EVENT_QUEUE_WEIGHT_HIGHEST, @ref RTE_EVENT_QUEUE_WEIGHT_LOWEST].
 	 * The implementation shall normalize the requested weight to event
 	 * device supported weight value.
-	 * Valid when the device has RTE_EVENT_DEV_CAP_QUEUE_QOS capability.
+	 *
+	 * Valid when the device has @ref RTE_EVENT_DEV_CAP_QUEUE_QOS capability,
+	 * ignored otherwise.
 	 */
 	uint8_t affinity;
 	/**< Affinity of the event queue relative to other event queues.
+	 *
 	 * The requested affinity should be in the range of
-	 * [RTE_EVENT_DEV_AFFINITY_HIGHEST, RTE_EVENT_DEV_AFFINITY_LOWEST].
+	 * [@ref RTE_EVENT_QUEUE_AFFINITY_HIGHEST, @ref RTE_EVENT_QUEUE_AFFINITY_LOWEST].
 	 * The implementation shall normalize the requested affinity to event
 	 * device supported affinity value.
-	 * Valid when the device has RTE_EVENT_DEV_CAP_QUEUE_QOS capability.
+	 *
+	 * Valid when the device has @ref RTE_EVENT_DEV_CAP_QUEUE_QOS capability,
+	 * ignored otherwise.
 	 */
 };
 
@@ -860,7 +909,7 @@ struct rte_event_queue_conf {
  *   The identifier of the device.
  * @param queue_id
  *   The index of the event queue to get the configuration information.
- *   The value must be in the range [0, nb_event_queues - 1]
+ *   The value must be less than @ref rte_event_dev_config.nb_event_queues
  *   previously supplied to rte_event_dev_configure().
  * @param[out] queue_conf
  *   The pointer to the default event queue configuration data.
@@ -880,8 +929,9 @@ rte_event_queue_default_conf_get(uint8_t dev_id, uint8_t queue_id,
  * @param dev_id
  *   The identifier of the device.
  * @param queue_id
- *   The index of the event queue to setup. The value must be in the range
- *   [0, nb_event_queues - 1] previously supplied to rte_event_dev_configure().
+ *   The index of the event queue to setup. The value must be
+ *   less than @ref rte_event_dev_config.nb_event_queues previously supplied to
+ *   rte_event_dev_configure().
  * @param queue_conf
  *   The pointer to the configuration data to be used for the event queue.
  *   NULL value is allowed, in which case default configuration	used.
@@ -890,60 +940,60 @@ rte_event_queue_default_conf_get(uint8_t dev_id, uint8_t queue_id,
  *
  * @return
  *   - 0: Success, event queue correctly set up.
- *   - <0: event queue configuration failed
+ *   - <0: event queue configuration failed.
  */
 int
 rte_event_queue_setup(uint8_t dev_id, uint8_t queue_id,
 		      const struct rte_event_queue_conf *queue_conf);
 
 /**
- * The priority of the queue.
+ * Queue attribute id for the priority of the queue.
  */
 #define RTE_EVENT_QUEUE_ATTR_PRIORITY 0
 /**
- * The number of atomic flows configured for the queue.
+ * Queue attribute id for the number of atomic flows configured for the queue.
  */
 #define RTE_EVENT_QUEUE_ATTR_NB_ATOMIC_FLOWS 1
 /**
- * The number of atomic order sequences configured for the queue.
+ * Queue attribute id for the number of atomic order sequences configured for the queue.
  */
 #define RTE_EVENT_QUEUE_ATTR_NB_ATOMIC_ORDER_SEQUENCES 2
 /**
- * The cfg flags for the queue.
+ * Queue attribute id for the configuration flags for the queue.
  */
 #define RTE_EVENT_QUEUE_ATTR_EVENT_QUEUE_CFG 3
 /**
- * The schedule type of the queue.
+ * Queue attribute id for the schedule type of the queue.
  */
 #define RTE_EVENT_QUEUE_ATTR_SCHEDULE_TYPE 4
 /**
- * The weight of the queue.
+ * Queue attribute id for the weight of the queue.
  */
 #define RTE_EVENT_QUEUE_ATTR_WEIGHT 5
 /**
- * Affinity of the queue.
+ * Queue attribute id for the affinity of the queue.
  */
 #define RTE_EVENT_QUEUE_ATTR_AFFINITY 6
 
 /**
- * Get an attribute from a queue.
+ * Get an attribute of an event queue.
  *
  * @param dev_id
- *   Eventdev id
+ *   The identifier of the device.
  * @param queue_id
- *   Eventdev queue id
+ *   The index of the event queue to query. The value must be less than
+ *   @ref rte_event_dev_config.nb_event_queues previously supplied to rte_event_dev_configure().
  * @param attr_id
- *   The attribute ID to retrieve
+ *   The attribute ID to retrieve (RTE_EVENT_QUEUE_ATTR_*).
  * @param[out] attr_value
- *   A pointer that will be filled in with the attribute value if successful
+ *   A pointer that will be filled in with the attribute value if successful.
  *
  * @return
  *   - 0: Successfully returned value
- *   - -EINVAL: invalid device, queue or attr_id provided, or attr_value was
- *		NULL
+ *   - -EINVAL: invalid device, queue or attr_id provided, or attr_value was NULL.
  *   - -EOVERFLOW: returned when attr_id is set to
- *   RTE_EVENT_QUEUE_ATTR_SCHEDULE_TYPE and event_queue_cfg is set to
- *   RTE_EVENT_QUEUE_CFG_ALL_TYPES
+ *   @ref RTE_EVENT_QUEUE_ATTR_SCHEDULE_TYPE and @ref RTE_EVENT_QUEUE_CFG_ALL_TYPES is
+ *   set in the queue configuration flags.
  */
 int
 rte_event_queue_attr_get(uint8_t dev_id, uint8_t queue_id, uint32_t attr_id,
@@ -953,19 +1003,20 @@ rte_event_queue_attr_get(uint8_t dev_id, uint8_t queue_id, uint32_t attr_id,
  * Set an event queue attribute.
  *
  * @param dev_id
- *   Eventdev id
+ *   The identifier of the device.
  * @param queue_id
- *   Eventdev queue id
+ *   The index of the event queue to configure. The value must be less than
+ *   @ref rte_event_dev_config.nb_event_queues previously supplied to rte_event_dev_configure().
  * @param attr_id
- *   The attribute ID to set
+ *   The attribute ID to set (RTE_EVENT_QUEUE_ATTR_*).
  * @param attr_value
- *   The attribute value to set
+ *   The attribute value to set.
  *
  * @return
  *   - 0: Successfully set attribute.
- *   - -EINVAL: invalid device, queue or attr_id.
- *   - -ENOTSUP: device does not support setting the event attribute.
- *   - <0: failed to set event queue attribute
+ *   - <0: failed to set event queue attribute.
+ *   -   -EINVAL: invalid device, queue or attr_id.
+ *   -   -ENOTSUP: device does not support setting the event attribute.
  */
 int
 rte_event_queue_attr_set(uint8_t dev_id, uint8_t queue_id, uint32_t attr_id,
@@ -983,7 +1034,10 @@ rte_event_queue_attr_set(uint8_t dev_id, uint8_t queue_id, uint32_t attr_id,
  */
 #define RTE_EVENT_PORT_CFG_SINGLE_LINK         (1ULL << 1)
 /**< This event port links only to a single event queue.
+ * The queue it links with should be similarly configured with the
+ * @ref RTE_EVENT_QUEUE_CFG_SINGLE_LINK flag.
  *
+ *  @see RTE_EVENT_QUEUE_CFG_SINGLE_LINK
  *  @see rte_event_port_setup(), rte_event_port_link()
  */
 #define RTE_EVENT_PORT_CFG_HINT_PRODUCER       (1ULL << 2)
@@ -999,7 +1053,7 @@ rte_event_queue_attr_set(uint8_t dev_id, uint8_t queue_id, uint32_t attr_id,
 #define RTE_EVENT_PORT_CFG_HINT_CONSUMER       (1ULL << 3)
 /**< Hint that this event port will primarily dequeue events from the system.
  * A PMD can optimize its internal workings by assuming that this port is
- * primarily going to consume events, and not enqueue FORWARD or RELEASE
+ * primarily going to consume events, and not enqueue NEW or FORWARD
  * events.
  *
  * Note that this flag is only a hint, so PMDs must operate under the
@@ -1025,48 +1079,55 @@ struct rte_event_port_conf {
 	/**< A backpressure threshold for new event enqueues on this port.
 	 * Use for *closed system* event dev where event capacity is limited,
 	 * and cannot exceed the capacity of the event dev.
+	 *
 	 * Configuring ports with different thresholds can make higher priority
 	 * traffic less likely to  be backpressured.
 	 * For example, a port used to inject NIC Rx packets into the event dev
 	 * can have a lower threshold so as not to overwhelm the device,
 	 * while ports used for worker pools can have a higher threshold.
-	 * This value cannot exceed the *nb_events_limit*
+	 * This value cannot exceed the @ref rte_event_dev_config.nb_events_limit value
 	 * which was previously supplied to rte_event_dev_configure().
-	 * This should be set to '-1' for *open system*.
+	 *
+	 * This should be set to '-1' for *open system*, i.e when
+	 * @ref rte_event_dev_info.max_num_events == -1.
 	 */
 	uint16_t dequeue_depth;
-	/**< Configure number of bulk dequeues for this event port.
-	 * This value cannot exceed the *nb_event_port_dequeue_depth*
-	 * which previously supplied to rte_event_dev_configure().
-	 * Ignored when device is not RTE_EVENT_DEV_CAP_BURST_MODE capable.
+	/**< Configure the maximum size of burst dequeues for this event port.
+	 * This value cannot exceed the @ref rte_event_dev_config.nb_event_port_dequeue_depth value
+	 * which was previously supplied to rte_event_dev_configure().
+	 *
+	 * Ignored when device does not support the @ref RTE_EVENT_DEV_CAP_BURST_MODE capability.
 	 */
 	uint16_t enqueue_depth;
-	/**< Configure number of bulk enqueues for this event port.
-	 * This value cannot exceed the *nb_event_port_enqueue_depth*
-	 * which previously supplied to rte_event_dev_configure().
-	 * Ignored when device is not RTE_EVENT_DEV_CAP_BURST_MODE capable.
+	/**< Configure the maximum size of burst enqueues to this event port.
+	 * This value cannot exceed the @ref rte_event_dev_config.nb_event_port_enqueue_depth value
+	 * which was previously supplied to rte_event_dev_configure().
+	 *
+	 * Ignored when device does not support the @ref RTE_EVENT_DEV_CAP_BURST_MODE capability.
 	 */
-	uint32_t event_port_cfg; /**< Port cfg flags(EVENT_PORT_CFG_) */
+	uint32_t event_port_cfg; /**< Port configuration flags(EVENT_PORT_CFG_) */
 };
 
 /**
  * Retrieve the default configuration information of an event port designated
  * by its *port_id* from the event driver for an event device.
  *
- * This function intended to be used in conjunction with rte_event_port_setup()
- * where caller needs to set up the port by overriding few default values.
+ * This function is intended to be used in conjunction with rte_event_port_setup()
+ * where the caller can set up the port by just overriding few default values.
  *
  * @param dev_id
  *   The identifier of the device.
  * @param port_id
  *   The index of the event port to get the configuration information.
- *   The value must be in the range [0, nb_event_ports - 1]
+ *   The value must be less than @ref rte_event_dev_config.nb_event_ports
  *   previously supplied to rte_event_dev_configure().
  * @param[out] port_conf
- *   The pointer to the default event port configuration data
+ *   The pointer to a structure to store the default event port configuration data.
  * @return
  *   - 0: Success, driver updates the default event port configuration data.
  *   - <0: Error code returned by the driver info get function.
+ *      - -EINVAL - invalid input parameter.
+ *      - -ENOTSUP - function is not supported for this device.
  *
  * @see rte_event_port_setup()
  */
@@ -1080,19 +1141,25 @@ rte_event_port_default_conf_get(uint8_t dev_id, uint8_t port_id,
  * @param dev_id
  *   The identifier of the device.
  * @param port_id
- *   The index of the event port to setup. The value must be in the range
- *   [0, nb_event_ports - 1] previously supplied to rte_event_dev_configure().
+ *   The index of the event port to setup. The value must be less than
+ *   @ref rte_event_dev_config.nb_event_ports previously supplied to
+ *   rte_event_dev_configure().
  * @param port_conf
- *   The pointer to the configuration data to be used for the queue.
- *   NULL value is allowed, in which case default configuration	used.
+ *   The pointer to the configuration data to be used for the port.
+ *   NULL value is allowed, in which case the default configuration is used.
  *
  * @see rte_event_port_default_conf_get()
  *
  * @return
  *   - 0: Success, event port correctly set up.
- *   - <0: Port configuration failed
- *   - (-EDQUOT) Quota exceeded(Application tried to link the queue configured
- *   with RTE_EVENT_QUEUE_CFG_SINGLE_LINK to more than one event ports)
+ *   - <0: Port configuration failed.
+ *     - -EINVAL - Invalid input parameter.
+ *     - -EBUSY - Port already started.
+ *     - -ENOTSUP - Function not supported on this device, or a NULL pointer passed
+ *        as the port_conf parameter, and no default configuration function available
+ *        for this device.
+ *     - -EDQUOT - Application tried to link a queue configured
+ *      with @ref RTE_EVENT_QUEUE_CFG_SINGLE_LINK to more than one event port.
  */
 int
 rte_event_port_setup(uint8_t dev_id, uint8_t port_id,
@@ -1122,8 +1189,8 @@ typedef void (*rte_eventdev_port_flush_t)(uint8_t dev_id,
  * @param dev_id
  *   The identifier of the device.
  * @param port_id
- *   The index of the event port to setup. The value must be in the range
- *   [0, nb_event_ports - 1] previously supplied to rte_event_dev_configure().
+ *   The index of the event port to quiesce. The value must be less than
+ *   @ref rte_event_dev_config.nb_event_ports previously supplied to rte_event_dev_configure().
  * @param release_cb
  *   Callback function invoked once per flushed event.
  * @param args
