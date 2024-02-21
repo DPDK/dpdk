@@ -392,19 +392,21 @@ crx_burst_vec_avx2(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 				0xFF, 0xFF, 3, 2,        /* pkt_len */
 				0xFF, 0xFF, 0xFF, 0xFF); /* pkt_type (zeroes) */
 	const __m256i flags_type_mask =
-		_mm256_set1_epi32(RX_PKT_CMPL_FLAGS_ITYPE_MASK);
+		_mm256_set1_epi32(RX_PKT_COMPRESS_CMPL_FLAGS_ITYPE_MASK);
 	const __m256i flags2_mask1 =
-		_mm256_set1_epi32(CMPL_FLAGS2_VLAN_TUN_MSK);
+		_mm256_set1_epi32(CMPL_FLAGS2_VLAN_TUN_MSK_CRX);
 	const __m256i flags2_mask2 =
-		_mm256_set1_epi32(RX_PKT_CMPL_FLAGS2_IP_TYPE);
+		_mm256_set1_epi32(RX_PKT_COMPRESS_CMPL_FLAGS_IP_TYPE);
 	const __m256i rss_mask =
-		_mm256_set1_epi32(RX_PKT_CMPL_FLAGS_RSS_VALID);
+		_mm256_set1_epi32(RX_PKT_COMPRESS_CMPL_FLAGS_RSS_VALID);
 	__m256i t0, t1, flags_type, flags2, index, errors;
 	__m256i ptype_idx, ptypes, is_tunnel;
 	__m256i mbuf01, mbuf23, mbuf45, mbuf67;
 	__m256i rearm0, rearm1, rearm2, rearm3, rearm4, rearm5, rearm6, rearm7;
 	__m256i ol_flags, ol_flags_hi;
 	__m256i rss_flags;
+	__m256i errors_v2;
+	__m256i cs_err_v2;
 
 	/* Validate ptype table indexing at build time. */
 	bnxt_check_ptype_constants();
@@ -447,7 +449,6 @@ crx_burst_vec_avx2(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 				  cons += BNXT_RX_DESCS_PER_LOOP_VEC256,
 				  mbcons += BNXT_RX_DESCS_PER_LOOP_VEC256) {
 		__m256i rxcmp0_1, rxcmp2_3, rxcmp4_5, rxcmp6_7, info3_v;
-		__m256i errors_v2;
 		uint32_t num_valid;
 
 		/* Copy eight mbuf pointers to output array. */
@@ -470,6 +471,7 @@ crx_burst_vec_avx2(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		rxcmp2_3 = _mm256_loadu_si256((void *)&cp_desc_ring[cons + 2]);
 		rte_compiler_barrier();
 		rxcmp0_1 = _mm256_loadu_si256((void *)&cp_desc_ring[cons + 0]);
+		rte_compiler_barrier();
 
 		/* Compute packet type table indices for eight packets. */
 		t0 = _mm256_unpacklo_epi32(rxcmp0_1, rxcmp2_3);
@@ -477,19 +479,19 @@ crx_burst_vec_avx2(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		flags_type = _mm256_unpacklo_epi64(t0, t1);
 		ptype_idx = _mm256_and_si256(flags_type, flags_type_mask);
 		ptype_idx = _mm256_srli_epi32(ptype_idx,
-					      RX_PKT_CMPL_FLAGS_ITYPE_SFT -
+					      RX_PKT_COMPRESS_CMPL_FLAGS_ITYPE_SFT -
 					      BNXT_PTYPE_TBL_TYPE_SFT);
 
-		t0 = _mm256_unpacklo_epi32(rxcmp0_1, rxcmp2_3);
-		t1 = _mm256_unpacklo_epi32(rxcmp4_5, rxcmp6_7);
-		flags2 = _mm256_unpackhi_epi64(t0, t1);
+		t0 = _mm256_unpackhi_epi32(rxcmp0_1, rxcmp2_3);
+		t1 = _mm256_unpackhi_epi32(rxcmp4_5, rxcmp6_7);
+		cs_err_v2 = _mm256_unpacklo_epi64(t0, t1);
 
-		t0 = _mm256_srli_epi32(_mm256_and_si256(flags2, flags2_mask1),
-				       RX_PKT_CMPL_FLAGS2_META_FORMAT_SFT -
+		t0 = _mm256_srli_epi32(_mm256_and_si256(cs_err_v2, flags2_mask1),
+				       RX_PKT_COMPRESS_CMPL_METADATA1_SFT -
 				       BNXT_PTYPE_TBL_VLAN_SFT);
 		ptype_idx = _mm256_or_si256(ptype_idx, t0);
 
-		t0 = _mm256_srli_epi32(_mm256_and_si256(flags2, flags2_mask2),
+		t0 = _mm256_srli_epi32(_mm256_and_si256(cs_err_v2, flags2_mask2),
 				       RX_PKT_CMPL_FLAGS2_IP_TYPE_SFT -
 				       BNXT_PTYPE_TBL_IP_VER_SFT);
 		ptype_idx = _mm256_or_si256(ptype_idx, t0);
@@ -505,17 +507,22 @@ crx_burst_vec_avx2(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		 * Compute ol_flags and checksum error table indices for eight
 		 * packets.
 		 */
-		is_tunnel = _mm256_and_si256(flags2, _mm256_set1_epi32(4));
+		is_tunnel = _mm256_and_si256(cs_err_v2,
+					     _mm256_set1_epi32(BNXT_CRX_TUN_CS_CALC));
 		is_tunnel = _mm256_slli_epi32(is_tunnel, 3);
-		flags2 = _mm256_and_si256(flags2, _mm256_set1_epi32(0x1F));
+
+		flags2 = _mm256_and_si256(cs_err_v2,
+					  _mm256_set1_epi32(BNXT_CRX_CQE_CSUM_CALC_MASK));
+		flags2 = _mm256_srli_epi64(flags2, 8);
 
 		/* Extract errors_v2 fields for eight packets. */
 		t0 = _mm256_unpackhi_epi32(rxcmp0_1, rxcmp2_3);
 		t1 = _mm256_unpackhi_epi32(rxcmp4_5, rxcmp6_7);
 		errors_v2 = _mm256_unpacklo_epi64(t0, t1);
 
-		errors = _mm256_srli_epi32(errors_v2, 4);
-		errors = _mm256_and_si256(errors, _mm256_set1_epi32(0xF));
+		/* Compute errors out of cs_err_v2 to index into flags table. */
+		errors = _mm256_and_si256(cs_err_v2, _mm256_set1_epi32(0xF0));
+		errors = _mm256_srli_epi32(errors, 4);
 		errors = _mm256_and_si256(errors, flags2);
 
 		index = _mm256_andnot_si256(errors, flags2);
