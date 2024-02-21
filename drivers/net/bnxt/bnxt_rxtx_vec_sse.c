@@ -129,6 +129,109 @@ descs_to_mbufs(__m128i mm_rxcmp[4], __m128i mm_rxcmp1[4],
 	_mm_store_si128((void *)&mbuf[3]->rearm_data,
 			_mm_or_si128(mbuf_init, _mm_set_epi64x(ol_flags, 0)));
 
+	/* Update mbuf rx_descriptor_fields1 for four packets. */
+	GET_DESC_FIELDS(mm_rxcmp[0], mm_rxcmp1[0], shuf_msk, ptype_idx, 0, t0);
+	_mm_store_si128((void *)&mbuf[0]->rx_descriptor_fields1, t0);
+
+	GET_DESC_FIELDS(mm_rxcmp[1], mm_rxcmp1[1], shuf_msk, ptype_idx, 1, t0);
+	_mm_store_si128((void *)&mbuf[1]->rx_descriptor_fields1, t0);
+
+	GET_DESC_FIELDS(mm_rxcmp[2], mm_rxcmp1[2], shuf_msk, ptype_idx, 2, t0);
+	_mm_store_si128((void *)&mbuf[2]->rx_descriptor_fields1, t0);
+
+	GET_DESC_FIELDS(mm_rxcmp[3], mm_rxcmp1[3], shuf_msk, ptype_idx, 3, t0);
+	_mm_store_si128((void *)&mbuf[3]->rx_descriptor_fields1, t0);
+}
+
+static inline void
+crx_descs_to_mbufs(__m128i mm_rxcmp[4], __m128i mm_rxcmp1[4],
+		   __m128i mbuf_init, const __m128i shuf_msk,
+		   struct rte_mbuf **mbuf, struct bnxt_rx_ring_info *rxr)
+{
+	const __m128i flags_type_mask =
+		_mm_set1_epi32(RX_PKT_COMPRESS_CMPL_FLAGS_ITYPE_MASK);
+	const __m128i flags2_mask1 =
+		_mm_set1_epi32(CMPL_FLAGS2_VLAN_TUN_MSK_CRX);
+	const __m128i flags2_mask2 =
+		_mm_set1_epi32(RX_PKT_COMPRESS_CMPL_FLAGS_IP_TYPE);
+	const __m128i rss_mask =
+		_mm_set1_epi32(RX_PKT_COMPRESS_CMPL_FLAGS_RSS_VALID);
+	const __m128i cs_err_mask =
+		_mm_set1_epi32(RX_PKT_COMPRESS_CMPL_CS_ERROR_CALC_MASK |
+			       BNXT_RXC_METADATA1_VLAN_VALID);
+	const __m128i crx_flags_mask =
+		_mm_set1_epi32(BNXT_CRX_CQE_CSUM_CALC_MASK);
+	const __m128i crx_tun_cs =
+		_mm_set1_epi32(BNXT_CRX_TUN_CS_CALC);
+	__m128i t0, t1, flags_type, flags, index, errors, rss_flags;
+	__m128i ptype_idx, is_tunnel;
+	uint32_t ol_flags;
+	__m128i cs_err;
+	__m128i t3, t4;
+
+	/* Validate ptype table indexing at build time. */
+	bnxt_check_ptype_constants();
+
+	/* Compute packet type table indexes for four packets */
+	t0 = _mm_unpacklo_epi32(mm_rxcmp[0], mm_rxcmp[1]);
+	t3 = _mm_unpackhi_epi32(mm_rxcmp[0], mm_rxcmp[1]);
+	t1 = _mm_unpacklo_epi32(mm_rxcmp[2], mm_rxcmp[3]);
+	t4 = _mm_unpackhi_epi32(mm_rxcmp[2], mm_rxcmp[3]);
+	flags_type = _mm_unpacklo_epi64(t0, t1);
+	ptype_idx = _mm_srli_epi32(_mm_and_si128(flags_type, flags_type_mask),
+			RX_PKT_CMPL_FLAGS_ITYPE_SFT - BNXT_PTYPE_TBL_TYPE_SFT);
+
+	flags = _mm_unpacklo_epi64(t0, t1);
+
+	ptype_idx = _mm_or_si128(ptype_idx,
+			_mm_srli_epi32(_mm_and_si128(flags, flags2_mask1),
+				       RX_PKT_CMPL_FLAGS2_META_FORMAT_SFT -
+				       BNXT_PTYPE_TBL_VLAN_SFT));
+	ptype_idx = _mm_or_si128(ptype_idx,
+			_mm_srli_epi32(_mm_and_si128(flags, flags2_mask2),
+				       RX_PKT_CMPL_FLAGS2_IP_TYPE_SFT -
+				       BNXT_PTYPE_TBL_IP_VER_SFT));
+
+	/* Extract RSS valid flags for four packets. */
+	rss_flags = _mm_srli_epi32(_mm_and_si128(flags, rss_mask), 9);
+
+	/* Extract cs_err fields for four packets. */
+	cs_err = _mm_unpacklo_epi64(t3, t4);
+	cs_err = _mm_and_si128(cs_err, cs_err_mask);
+	flags = _mm_and_si128(cs_err, crx_flags_mask);
+
+	/* Compute ol_flags and checksum error indexes for four packets. */
+	is_tunnel = _mm_and_si128(flags, crx_tun_cs);
+	is_tunnel = _mm_slli_epi32(is_tunnel, 0x20);
+	flags = _mm_or_si128(flags, is_tunnel);
+
+	flags = _mm_srli_si128(flags, 1);
+
+	errors = _mm_and_si128(cs_err, _mm_set1_epi32(0xF0));
+	errors = _mm_and_si128(_mm_srli_epi32(errors, 4), flags);
+
+	index = _mm_andnot_si128(errors, flags);
+	/* reuse is_tunnel - just shift right one bit to index correctly. */
+	errors = _mm_or_si128(errors, _mm_srli_epi32(is_tunnel, 1));
+	index = _mm_or_si128(index, is_tunnel);
+
+	/* Update mbuf rearm_data for four packets. */
+	GET_OL_FLAGS(rss_flags, index, errors, 0, ol_flags);
+	_mm_store_si128((void *)&mbuf[0]->rearm_data,
+			_mm_or_si128(mbuf_init, _mm_set_epi64x(ol_flags, 0)));
+
+	GET_OL_FLAGS(rss_flags, index, errors, 1, ol_flags);
+	_mm_store_si128((void *)&mbuf[1]->rearm_data,
+			_mm_or_si128(mbuf_init, _mm_set_epi64x(ol_flags, 0)));
+
+	GET_OL_FLAGS(rss_flags, index, errors, 2, ol_flags);
+	_mm_store_si128((void *)&mbuf[2]->rearm_data,
+			_mm_or_si128(mbuf_init, _mm_set_epi64x(ol_flags, 0)));
+
+	GET_OL_FLAGS(rss_flags, index, errors, 3, ol_flags);
+	_mm_store_si128((void *)&mbuf[3]->rearm_data,
+			_mm_or_si128(mbuf_init, _mm_set_epi64x(ol_flags, 0)));
+
 	/* Update mbuf rx_descriptor_fields1 for four packes. */
 	GET_DESC_FIELDS(mm_rxcmp[0], mm_rxcmp1[0], shuf_msk, ptype_idx, 0, t0);
 	_mm_store_si128((void *)&mbuf[0]->rx_descriptor_fields1, t0);
@@ -392,8 +495,8 @@ crx_burst_vec_sse(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		if (num_valid == 0)
 			break;
 
-		descs_to_mbufs(rxcmp, rxcmp1, mbuf_init, shuf_msk, &rx_pkts[nb_rx_pkts],
-			       rxr);
+		crx_descs_to_mbufs(rxcmp, rxcmp1, mbuf_init, shuf_msk,
+				   &rx_pkts[nb_rx_pkts], rxr);
 		nb_rx_pkts += num_valid;
 
 		if (num_valid < BNXT_RX_DESCS_PER_LOOP_VEC128)
