@@ -537,57 +537,88 @@ rte_event_dev_socket_id(uint8_t dev_id);
  * Event device information
  */
 struct rte_event_dev_info {
-	const char *driver_name;	/**< Event driver name */
-	struct rte_device *dev;	/**< Device information */
+	const char *driver_name;	/**< Event driver name. */
+	struct rte_device *dev;	/**< Device information. */
 	uint32_t min_dequeue_timeout_ns;
-	/**< Minimum supported global dequeue timeout(ns) by this device */
+	/**< Minimum global dequeue timeout(ns) supported by this device. */
 	uint32_t max_dequeue_timeout_ns;
-	/**< Maximum supported global dequeue timeout(ns) by this device */
+	/**< Maximum global dequeue timeout(ns) supported by this device. */
 	uint32_t dequeue_timeout_ns;
-	/**< Configured global dequeue timeout(ns) for this device */
+	/**< Configured global dequeue timeout(ns) for this device. */
 	uint8_t max_event_queues;
-	/**< Maximum event_queues supported by this device */
+	/**< Maximum event queues supported by this device.
+	 *
+	 * This count excludes any queues covered by @ref max_single_link_event_port_queue_pairs.
+	 */
 	uint32_t max_event_queue_flows;
-	/**< Maximum supported flows in an event queue by this device*/
+	/**< Maximum number of flows within an event queue supported by this device. */
 	uint8_t max_event_queue_priority_levels;
-	/**< Maximum number of event queue priority levels by this device.
-	 * Valid when the device has RTE_EVENT_DEV_CAP_QUEUE_QOS capability
+	/**< Maximum number of event queue priority levels supported by this device.
+	 *
+	 * Valid when the device has @ref RTE_EVENT_DEV_CAP_QUEUE_QOS capability.
+	 *
+	 * The implementation shall normalize priority values specified between
+	 * @ref RTE_EVENT_DEV_PRIORITY_HIGHEST and @ref RTE_EVENT_DEV_PRIORITY_LOWEST
+	 * to map them internally to this range of priorities.
+	 * [For devices supporting a power-of-2 number of priority levels, this
+	 * normalization will be done via a right-shift operation, so only the top
+	 * log2(max_levels) bits will be used by the event device.]
+	 *
+	 * @see rte_event_queue_conf.priority
 	 */
 	uint8_t max_event_priority_levels;
 	/**< Maximum number of event priority levels by this device.
-	 * Valid when the device has RTE_EVENT_DEV_CAP_EVENT_QOS capability
+	 *
+	 * Valid when the device has @ref RTE_EVENT_DEV_CAP_EVENT_QOS capability.
+	 *
+	 * The implementation shall normalize priority values specified between
+	 * @ref RTE_EVENT_DEV_PRIORITY_HIGHEST and @ref RTE_EVENT_DEV_PRIORITY_LOWEST
+	 * to map them internally to this range of priorities.
+	 * [For devices supporting a power-of-2 number of priority levels, this
+	 * normalization will be done via a right-shift operation, so only the top
+	 * log2(max_levels) bits will be used by the event device.]
+	 *
+	 * @see rte_event.priority
 	 */
 	uint8_t max_event_ports;
-	/**< Maximum number of event ports supported by this device */
+	/**< Maximum number of event ports supported by this device.
+	 *
+	 * This count excludes any ports covered by @ref max_single_link_event_port_queue_pairs.
+	 */
 	uint8_t max_event_port_dequeue_depth;
-	/**< Maximum number of events can be dequeued at a time from an
-	 * event port by this device.
-	 * A device that does not support bulk dequeue will set this as 1.
+	/**< Maximum number of events that can be dequeued at a time from an event port
+	 * on this device.
+	 *
+	 * A device that does not support burst dequeue
+	 * (@ref RTE_EVENT_DEV_CAP_BURST_MODE) will set this to 1.
 	 */
 	uint32_t max_event_port_enqueue_depth;
-	/**< Maximum number of events can be enqueued at a time from an
-	 * event port by this device.
-	 * A device that does not support bulk enqueue will set this as 1.
+	/**< Maximum number of events that can be enqueued at a time to an event port
+	 * on this device.
+	 *
+	 * A device that does not support burst enqueue
+	 * (@ref RTE_EVENT_DEV_CAP_BURST_MODE) will set this to 1.
 	 */
 	uint8_t max_event_port_links;
-	/**< Maximum number of queues that can be linked to a single event
-	 * port by this device.
+	/**< Maximum number of queues that can be linked to a single event port on this device.
 	 */
 	int32_t max_num_events;
 	/**< A *closed system* event dev has a limit on the number of events it
-	 * can manage at a time. An *open system* event dev does not have a
-	 * limit and will specify this as -1.
+	 * can manage at a time.
+	 * Once the number of events tracked by an eventdev exceeds this number,
+	 * any enqueues of NEW events will fail.
+	 * An *open system* event dev does not have a limit and will specify this as -1.
 	 */
 	uint32_t event_dev_cap;
-	/**< Event device capabilities(RTE_EVENT_DEV_CAP_)*/
+	/**< Event device capabilities flags (RTE_EVENT_DEV_CAP_*). */
 	uint8_t max_single_link_event_port_queue_pairs;
-	/**< Maximum number of event ports and queues that are optimized for
-	 * (and only capable of) single-link configurations supported by this
-	 * device. These ports and queues are not accounted for in
-	 * max_event_ports or max_event_queues.
+	/**< Maximum number of event ports and queues, supported by this device,
+	 * that are optimized for (and only capable of) single-link configurations.
+	 * These ports and queues are not accounted for in @ref max_event_ports
+	 * or @ref max_event_queues.
 	 */
 	uint8_t max_profiles_per_port;
-	/**< Maximum number of event queue profiles per event port.
+	/**< Maximum number of event queue link profiles per event port.
 	 * A device that doesn't support multiple profiles will set this as 1.
 	 */
 };
