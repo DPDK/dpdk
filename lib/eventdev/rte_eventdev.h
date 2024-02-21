@@ -12,24 +12,34 @@
  * @file
  *
  * RTE Event Device API
+ * ====================
  *
- * In a polling model, lcores poll ethdev ports and associated rx queues
- * directly to look for packet. In an event driven model, by contrast, lcores
- * call the scheduler that selects packets for them based on programmer
- * specified criteria. Eventdev library adds support for event driven
- * programming model, which offer applications automatic multicore scaling,
- * dynamic load balancing, pipelining, packet ingress order maintenance and
- * synchronization services to simplify application packet processing.
+ * In a traditional DPDK application model, the application polls Ethdev port RX
+ * queues to look for work, and processing is done in a run-to-completion manner,
+ * after which the packets are transmitted on a Ethdev TX queue. Load is
+ * distributed by statically assigning ports and queues to lcores, and NIC
+ * receive-side scaling (RSS), or similar, is employed to distribute network flows
+ * (and thus work) on the same port across multiple RX queues.
+ *
+ * In contrast, in an event-driven model, as supported by this "eventdev" library,
+ * incoming packets (or other input events) are fed into an event device, which
+ * schedules those packets across the available lcores, in accordance with its configuration.
+ * This event-driven programming model offers applications automatic multicore scaling,
+ * dynamic load balancing, pipelining, packet order maintenance, synchronization,
+ * and prioritization/quality of service.
  *
  * The Event Device API is composed of two parts:
  *
  * - The application-oriented Event API that includes functions to setup
  *   an event device (configure it, setup its queues, ports and start it), to
- *   establish the link between queues to port and to receive events, and so on.
+ *   establish the links between queues and ports to receive events, and so on.
  *
  * - The driver-oriented Event API that exports a function allowing
- *   an event poll Mode Driver (PMD) to simultaneously register itself as
+ *   an event poll Mode Driver (PMD) to register itself as
  *   an event device driver.
+ *
+ * Application-oriented Event API
+ * ------------------------------
  *
  * Event device components:
  *
@@ -75,27 +85,39 @@
  *            |                                                           |
  *            +-----------------------------------------------------------+
  *
- * Event device: A hardware or software-based event scheduler.
+ * **Event device**: A hardware or software-based event scheduler.
  *
- * Event: A unit of scheduling that encapsulates a packet or other datatype
- * like SW generated event from the CPU, Crypto work completion notification,
- * Timer expiry event notification etc as well as metadata.
- * The metadata includes flow ID, scheduling type, event priority, event_type,
- * sub_event_type etc.
+ * **Event**: Represents an item of work and is the smallest unit of scheduling.
+ * An event carries metadata, such as queue ID, scheduling type, and event priority,
+ * and data such as one or more packets or other kinds of buffers.
+ * Some examples of events are:
+ * - a software-generated item of work originating from a lcore,
+ *   perhaps carrying a packet to be processed.
+ * - a crypto work completion notification.
+ * - a timer expiry notification.
  *
- * Event queue: A queue containing events that are scheduled by the event dev.
+ * **Event queue**: A queue containing events that are to be scheduled by the event device.
  * An event queue contains events of different flows associated with scheduling
  * types, such as atomic, ordered, or parallel.
+ * Each event given to an event device must have a valid event queue id field in the metadata,
+ * to specify on which event queue in the device the event must be placed,
+ * for later scheduling.
  *
- * Event port: An application's interface into the event dev for enqueue and
+ * **Event port**: An application's interface into the event dev for enqueue and
  * dequeue operations. Each event port can be linked with one or more
  * event queues for dequeue operations.
+ * Enqueue and dequeue from a port is not thread-safe, and the expected use-case is
+ * that each port is polled by only a single lcore. [If this is not the case,
+ * a suitable synchronization mechanism should be used to prevent simultaneous
+ * access from multiple lcores.]
+ * To schedule events to an lcore, the event device will schedule them to the event port(s)
+ * being polled by that lcore.
  *
- * By default, all the functions of the Event Device API exported by a PMD
- * are lock-free functions which assume to not be invoked in parallel on
- * different logical cores to work on the same target object. For instance,
- * the dequeue function of a PMD cannot be invoked in parallel on two logical
- * cores to operates on same  event port. Of course, this function
+ * *NOTE*: By default, all the functions of the Event Device API exported by a PMD
+ * are non-thread-safe functions, which must not be invoked on the same object in parallel on
+ * different logical cores.
+ * For instance, the dequeue function of a PMD cannot be invoked in parallel on two logical
+ * cores to operate on same  event port. Of course, this function
  * can be invoked in parallel by different logical cores on different ports.
  * It is the responsibility of the upper level application to enforce this rule.
  *
@@ -107,22 +129,19 @@
  *
  * Event devices are dynamically registered during the PCI/SoC device probing
  * phase performed at EAL initialization time.
- * When an Event device is being probed, a *rte_event_dev* structure and
- * a new device identifier are allocated for that device. Then, the
- * event_dev_init() function supplied by the Event driver matching the probed
- * device is invoked to properly initialize the device.
+ * When an Event device is being probed, an *rte_event_dev* structure is allocated
+ * for it and the event_dev_init() function supplied by the Event driver
+ * is invoked to properly initialize the device.
  *
- * The role of the device init function consists of resetting the hardware or
- * software event driver implementations.
+ * The role of the device init function is to reset the device hardware or
+ * to initialize the software event driver implementation.
  *
- * If the device init operation is successful, the correspondence between
- * the device identifier assigned to the new device and its associated
- * *rte_event_dev* structure is effectively registered.
- * Otherwise, both the *rte_event_dev* structure and the device identifier are
- * freed.
+ * If the device init operation is successful, the device is assigned a device
+ * id (dev_id) for application use.
+ * Otherwise, the *rte_event_dev* structure is freed.
  *
  * The functions exported by the application Event API to setup a device
- * designated by its device identifier must be invoked in the following order:
+ * must be invoked in the following order:
  *     - rte_event_dev_configure()
  *     - rte_event_queue_setup()
  *     - rte_event_port_setup()
@@ -130,12 +149,17 @@
  *     - rte_event_dev_start()
  *
  * Then, the application can invoke, in any order, the functions
- * exported by the Event API to schedule events, dequeue events, enqueue events,
- * change event queue(s) to event port [un]link establishment and so on.
+ * exported by the Event API to dequeue events, enqueue events,
+ * and link and unlink event queue(s) to event ports.
  *
- * Application may use rte_event_[queue/port]_default_conf_get() to get the
- * default configuration to set up an event queue or event port by
- * overriding few default values.
+ * Before configuring a device, an application should call rte_event_dev_info_get()
+ * to determine the capabilities of the event device, and any queue or port
+ * limits of that device. The parameters set in the various device configuration
+ * structures may need to be adjusted based on the max values provided in the
+ * device information structure returned from the rte_event_dev_info_get() API.
+ * An application may use rte_event_queue_default_conf_get() or
+ * rte_event_port_default_conf_get() to get the default configuration
+ * to set up an event queue or event port by overriding few default values.
  *
  * If the application wants to change the configuration (i.e. call
  * rte_event_dev_configure(), rte_event_queue_setup(), or
@@ -145,7 +169,11 @@
  * when the device is stopped.
  *
  * Finally, an application can close an Event device by invoking the
- * rte_event_dev_close() function.
+ * rte_event_dev_close() function. Once closed, a device cannot be
+ * reconfigured or restarted.
+ *
+ * Driver-Oriented Event API
+ * -------------------------
  *
  * Each function of the application Event API invokes a specific function
  * of the PMD that controls the target device designated by its device
@@ -163,10 +191,13 @@
  * performs an indirect invocation of the corresponding driver function
  * supplied in the *event_dev_ops* structure of the *rte_event_dev* structure.
  *
- * For performance reasons, the address of the fast-path functions of the
- * Event driver is not contained in the *event_dev_ops* structure.
+ * For performance reasons, the addresses of the fast-path functions of the
+ * event driver are not contained in the *event_dev_ops* structure.
  * Instead, they are directly stored at the beginning of the *rte_event_dev*
  * structure to avoid an extra indirect memory access during their invocation.
+ *
+ * Event Enqueue, Dequeue and Scheduling
+ * -------------------------------------
  *
  * RTE event device drivers do not use interrupts for enqueue or dequeue
  * operation. Instead, Event drivers export Poll-Mode enqueue and dequeue
@@ -179,21 +210,22 @@
  * crypto work completion notification etc
  *
  * The *dequeue* operation gets one or more events from the event ports.
- * The application process the events and send to downstream event queue through
- * rte_event_enqueue_burst() if it is an intermediate stage of event processing,
- * on the final stage, the application may use Tx adapter API for maintaining
- * the ingress order and then send the packet/event on the wire.
+ * The application processes the events and sends them to a downstream event queue through
+ * rte_event_enqueue_burst(), if it is an intermediate stage of event processing.
+ * On the final stage of processing, the application may use the Tx adapter API for maintaining
+ * the event ingress order while sending the packet/event on the wire via NIC Tx.
  *
  * The point at which events are scheduled to ports depends on the device.
  * For hardware devices, scheduling occurs asynchronously without any software
  * intervention. Software schedulers can either be distributed
  * (each worker thread schedules events to its own port) or centralized
  * (a dedicated thread schedules to all ports). Distributed software schedulers
- * perform the scheduling in rte_event_dequeue_burst(), whereas centralized
- * scheduler logic need a dedicated service core for scheduling.
- * The RTE_EVENT_DEV_CAP_DISTRIBUTED_SCHED capability flag is not set
- * indicates the device is centralized and thus needs a dedicated scheduling
- * thread that repeatedly calls software specific scheduling function.
+ * perform the scheduling inside the enqueue or dequeue functions, whereas centralized
+ * software schedulers need a dedicated service core for scheduling.
+ * The absence of the RTE_EVENT_DEV_CAP_DISTRIBUTED_SCHED capability flag
+ * indicates that the device is centralized and thus needs a dedicated scheduling
+ * thread (generally an RTE service that should be mapped to one or more service cores)
+ * that repeatedly calls the software specific scheduling function.
  *
  * An event driven worker thread has following typical workflow on fastpath:
  * \code{.c}
