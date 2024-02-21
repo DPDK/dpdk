@@ -164,7 +164,8 @@ struct mlx5dr_definer_conv_data {
 	X(SET_BE32,	gre_opt_seq,		v->sequence.sequence,	rte_flow_item_gre_opt) \
 	X(SET_BE16,	gre_opt_checksum,	v->checksum_rsvd.checksum,	rte_flow_item_gre_opt) \
 	X(SET,		meter_color,		rte_col_2_mlx5_col(v->color),	rte_flow_item_meter_color) \
-	X(SET,		cvlan,			STE_CVLAN,		rte_flow_item_vlan)
+	X(SET,		cvlan,			STE_CVLAN,		rte_flow_item_vlan) \
+	X(SET_BE16,	inner_type,		v->inner_type,		rte_flow_item_vlan)
 
 /* Item set function format */
 #define X(set_type, func_name, value, item_type) \
@@ -513,7 +514,7 @@ mlx5dr_definer_conv_item_vlan(struct mlx5dr_definer_conv_data *cd,
 	if (m->inner_type) {
 		fc = &cd->fc[DR_CALC_FNAME(ETH_TYPE, inner)];
 		fc->item_idx = item_idx;
-		fc->tag_set = &mlx5dr_definer_eth_type_set;
+		fc->tag_set = &mlx5dr_definer_inner_type_set;
 		DR_CALC_SET(fc, eth_l2, l3_ethertype, inner);
 	}
 
