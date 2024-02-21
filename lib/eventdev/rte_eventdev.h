@@ -255,124 +255,178 @@ struct rte_event;
 /* Event device capability bitmap flags */
 #define RTE_EVENT_DEV_CAP_QUEUE_QOS           (1ULL << 0)
 /**< Event scheduling prioritization is based on the priority and weight
- * associated with each event queue. Events from a queue with highest priority
- * is scheduled first. If the queues are of same priority, weight of the queues
+ * associated with each event queue.
+ *
+ * Events from a queue with highest priority
+ * are scheduled first. If the queues are of same priority, weight of the queues
  * are considered to select a queue in a weighted round robin fashion.
  * Subsequent dequeue calls from an event port could see events from the same
  * event queue, if the queue is configured with an affinity count. Affinity
  * count is the number of subsequent dequeue calls, in which an event port
  * should use the same event queue if the queue is non-empty
  *
- *  @see rte_event_queue_setup(), rte_event_queue_attr_set()
+ * NOTE: A device may use both queue prioritization and event prioritization
+ * (@ref RTE_EVENT_DEV_CAP_EVENT_QOS capability) when making packet scheduling decisions.
+ *
+ *  @see rte_event_queue_setup()
+ *  @see rte_event_queue_attr_set()
  */
 #define RTE_EVENT_DEV_CAP_EVENT_QOS           (1ULL << 1)
 /**< Event scheduling prioritization is based on the priority associated with
- *  each event. Priority of each event is supplied in *rte_event* structure
- *  on each enqueue operation.
+ *  each event.
  *
+ *  Priority of each event is supplied in *rte_event* structure
+ *  on each enqueue operation.
+ *  If this capability is not set, the priority field of the event structure
+ *  is ignored for each event.
+ *
+ * NOTE: A device may use both queue prioritization (@ref RTE_EVENT_DEV_CAP_QUEUE_QOS capability)
+ * and event prioritization when making packet scheduling decisions.
+
  *  @see rte_event_enqueue_burst()
  */
 #define RTE_EVENT_DEV_CAP_DISTRIBUTED_SCHED   (1ULL << 2)
 /**< Event device operates in distributed scheduling mode.
- * In distributed scheduling mode, event scheduling happens in HW or
- * rte_event_dequeue_burst() or the combination of these two.
- * If the flag is not set then eventdev is centralized and thus needs a
- * dedicated service core that acts as a scheduling thread .
  *
- * @see rte_event_dequeue_burst()
+ * In distributed scheduling mode, event scheduling happens in HW or
+ * rte_event_dequeue_burst() / rte_event_enqueue_burst() or the combination of these two.
+ * If the flag is not set then eventdev is centralized and thus needs a
+ * dedicated service core that acts as a scheduling thread.
+ *
+ * @see rte_event_dev_service_id_get()
  */
 #define RTE_EVENT_DEV_CAP_QUEUE_ALL_TYPES     (1ULL << 3)
 /**< Event device is capable of accepting enqueued events, of any type
  * advertised as supported by the device, to all destination queues.
  *
- * When this capability is set, the "schedule_type" field of the
- * rte_event_queue_conf structure is ignored when a queue is being configured.
+ * When this capability is set, and @ref RTE_EVENT_QUEUE_CFG_ALL_TYPES flag is set
+ * in @ref rte_event_queue_conf.event_queue_cfg, the "schedule_type" field of the
+ * @ref rte_event_queue_conf structure is ignored when a queue is being configured.
  * Instead the "sched_type" field of each event enqueued is used to
  * select the scheduling to be performed on that event.
  *
- * If this capability is not set, the queue only supports events of the
- *  *RTE_SCHED_TYPE_* type specified in the rte_event_queue_conf structure
- *  at time of configuration.
+ * If this capability is not set, or the configuration flag is not set,
+ * the queue only supports events of the *RTE_SCHED_TYPE_* type specified
+ * in the @ref rte_event_queue_conf structure  at time of configuration.
+ * The behaviour when events of other scheduling types are sent to the queue is
+ * undefined.
  *
+ * @see RTE_EVENT_QUEUE_CFG_ALL_TYPES
  * @see RTE_SCHED_TYPE_ATOMIC
  * @see RTE_SCHED_TYPE_ORDERED
  * @see RTE_SCHED_TYPE_PARALLEL
+ * @see rte_event_queue_conf.event_queue_cfg
  * @see rte_event_queue_conf.schedule_type
+ * @see rte_event_enqueue_burst()
  */
 #define RTE_EVENT_DEV_CAP_BURST_MODE          (1ULL << 4)
 /**< Event device is capable of operating in burst mode for enqueue(forward,
- * release) and dequeue operation. If this capability is not set, application
- * still uses the rte_event_dequeue_burst() and rte_event_enqueue_burst() but
- * PMD accepts only one event at a time.
+ * release) and dequeue operation.
  *
- * @see rte_event_dequeue_burst() rte_event_enqueue_burst()
+ * If this capability is not set, application
+ * can still use the rte_event_dequeue_burst() and rte_event_enqueue_burst() but
+ * PMD accepts or returns only one event at a time.
+ *
+ * @see rte_event_dequeue_burst()
+ * @see rte_event_enqueue_burst()
  */
 #define RTE_EVENT_DEV_CAP_IMPLICIT_RELEASE_DISABLE    (1ULL << 5)
 /**< Event device ports support disabling the implicit release feature, in
  * which the port will release all unreleased events in its dequeue operation.
+ *
  * If this capability is set and the port is configured with implicit release
  * disabled, the application is responsible for explicitly releasing events
- * using either the RTE_EVENT_OP_FORWARD or the RTE_EVENT_OP_RELEASE event
+ * using either the @ref RTE_EVENT_OP_FORWARD or the @ref RTE_EVENT_OP_RELEASE event
  * enqueue operations.
  *
- * @see rte_event_dequeue_burst() rte_event_enqueue_burst()
+ * @see rte_event_dequeue_burst()
+ * @see rte_event_enqueue_burst()
  */
 
 #define RTE_EVENT_DEV_CAP_NONSEQ_MODE         (1ULL << 6)
-/**< Event device is capable of operating in none sequential mode. The path
- * of the event is not necessary to be sequential. Application can change
- * the path of event at runtime. If the flag is not set, then event each event
- * will follow a path from queue 0 to queue 1 to queue 2 etc. If the flag is
- * set, events may be sent to queues in any order. If the flag is not set, the
- * eventdev will return an error when the application enqueues an event for a
+/**< Event device is capable of operating in non-sequential mode.
+ *
+ * The path of the event is not necessary to be sequential. Application can change
+ * the path of event at runtime and events may be sent to queues in any order.
+ *
+ * If the flag is not set, then event each event will follow a path from queue 0
+ * to queue 1 to queue 2 etc.
+ * The eventdev will return an error when the application enqueues an event for a
  * qid which is not the next in the sequence.
  */
 
 #define RTE_EVENT_DEV_CAP_RUNTIME_PORT_LINK   (1ULL << 7)
-/**< Event device is capable of configuring the queue/port link at runtime.
+/**< Event device is capable of reconfiguring the queue/port link at runtime.
+ *
  * If the flag is not set, the eventdev queue/port link is only can be
- * configured during  initialization.
+ * configured during  initialization, or by stopping the device and
+ * then later restarting it after reconfiguration.
+ *
+ * @see rte_event_port_link()
+ * @see rte_event_port_unlink()
  */
 
 #define RTE_EVENT_DEV_CAP_MULTIPLE_QUEUE_PORT (1ULL << 8)
-/**< Event device is capable of setting up the link between multiple queue
- * with single port. If the flag is not set, the eventdev can only map a
- * single queue to each port or map a single queue to many port.
+/**< Event device is capable of setting up links between multiple queues and a single port.
+ *
+ * If the flag is not set, each port may only be linked to a single queue, and
+ * so can only receive events from that queue.
+ * However, each queue may be linked to multiple ports.
+ *
+ * @see rte_event_port_link()
  */
 
 #define RTE_EVENT_DEV_CAP_CARRY_FLOW_ID (1ULL << 9)
-/**< Event device preserves the flow ID from the enqueued
- * event to the dequeued event if the flag is set. Otherwise,
- * the content of this field is implementation dependent.
+/**< Event device preserves the flow ID from the enqueued event to the dequeued event.
+ *
+ * If this flag is not set,
+ * the content of the flow-id field in dequeued events is implementation dependent.
+ *
+ * @see rte_event_dequeue_burst()
  */
 
 #define RTE_EVENT_DEV_CAP_MAINTENANCE_FREE (1ULL << 10)
 /**< Event device *does not* require calls to rte_event_maintain().
+ *
  * An event device that does not set this flag requires calls to
  * rte_event_maintain() during periods when neither
  * rte_event_dequeue_burst() nor rte_event_enqueue_burst() are called
  * on a port. This will allow the event device to perform internal
  * processing, such as flushing buffered events, return credits to a
  * global pool, or process signaling related to load balancing.
+ *
+ * @see rte_event_maintain()
  */
 
 #define RTE_EVENT_DEV_CAP_RUNTIME_QUEUE_ATTR (1ULL << 11)
 /**< Event device is capable of changing the queue attributes at runtime i.e
- * after rte_event_queue_setup() or rte_event_start() call sequence. If this
- * flag is not set, eventdev queue attributes can only be configured during
+ * after rte_event_queue_setup() or rte_event_dev_start() call sequence.
+ *
+ * If this flag is not set, event queue attributes can only be configured during
  * rte_event_queue_setup().
+ *
+ * @see rte_event_queue_setup()
  */
 
 #define RTE_EVENT_DEV_CAP_PROFILE_LINK (1ULL << 12)
-/**< Event device is capable of supporting multiple link profiles per event port
- * i.e., the value of `rte_event_dev_info::max_profiles_per_port` is greater
- * than one.
+/**< Event device is capable of supporting multiple link profiles per event port.
+ *
+ * When set, the value of `rte_event_dev_info::max_profiles_per_port` is greater
+ * than one, and multiple profiles may be configured and then switched at runtime.
+ * If not set, only a single profile may be configured, which may itself be
+ * runtime adjustable (if @ref RTE_EVENT_DEV_CAP_RUNTIME_PORT_LINK is set).
+ *
+ * @see rte_event_port_profile_links_set()
+ * @see rte_event_port_profile_links_get()
+ * @see rte_event_port_profile_switch()
+ * @see RTE_EVENT_DEV_CAP_RUNTIME_PORT_LINK
  */
 
 #define RTE_EVENT_DEV_CAP_ATOMIC  (1ULL << 13)
 /**< Event device is capable of atomic scheduling.
  * When this flag is set, the application can configure queues with scheduling type
  * atomic on this event device.
+ *
  * @see RTE_SCHED_TYPE_ATOMIC
  */
 
@@ -380,6 +434,7 @@ struct rte_event;
 /**< Event device is capable of ordered scheduling.
  * When this flag is set, the application can configure queues with scheduling type
  * ordered on this event device.
+ *
  * @see RTE_SCHED_TYPE_ORDERED
  */
 
@@ -387,44 +442,59 @@ struct rte_event;
 /**< Event device is capable of parallel scheduling.
  * When this flag is set, the application can configure queues with scheduling type
  * parallel on this event device.
+ *
  * @see RTE_SCHED_TYPE_PARALLEL
  */
 
 /* Event device priority levels */
 #define RTE_EVENT_DEV_PRIORITY_HIGHEST   0
-/**< Highest priority expressed across eventdev subsystem
- * @see rte_event_queue_setup(), rte_event_enqueue_burst()
+/**< Highest priority level for events and queues.
+ *
+ * @see rte_event_queue_setup()
+ * @see rte_event_enqueue_burst()
  * @see rte_event_port_link()
  */
 #define RTE_EVENT_DEV_PRIORITY_NORMAL    128
-/**< Normal priority expressed across eventdev subsystem
- * @see rte_event_queue_setup(), rte_event_enqueue_burst()
+/**< Normal priority level for events and queues.
+ *
+ * @see rte_event_queue_setup()
+ * @see rte_event_enqueue_burst()
  * @see rte_event_port_link()
  */
 #define RTE_EVENT_DEV_PRIORITY_LOWEST    255
-/**< Lowest priority expressed across eventdev subsystem
- * @see rte_event_queue_setup(), rte_event_enqueue_burst()
+/**< Lowest priority level for events and queues.
+ *
+ * @see rte_event_queue_setup()
+ * @see rte_event_enqueue_burst()
  * @see rte_event_port_link()
  */
 
 /* Event queue scheduling weights */
 #define RTE_EVENT_QUEUE_WEIGHT_HIGHEST 255
-/**< Highest weight of an event queue
- * @see rte_event_queue_attr_get(), rte_event_queue_attr_set()
+/**< Highest weight of an event queue.
+ *
+ * @see rte_event_queue_attr_get()
+ * @see rte_event_queue_attr_set()
  */
 #define RTE_EVENT_QUEUE_WEIGHT_LOWEST 0
-/**< Lowest weight of an event queue
- * @see rte_event_queue_attr_get(), rte_event_queue_attr_set()
+/**< Lowest weight of an event queue.
+ *
+ * @see rte_event_queue_attr_get()
+ * @see rte_event_queue_attr_set()
  */
 
 /* Event queue scheduling affinity */
 #define RTE_EVENT_QUEUE_AFFINITY_HIGHEST 255
-/**< Highest scheduling affinity of an event queue
- * @see rte_event_queue_attr_get(), rte_event_queue_attr_set()
+/**< Highest scheduling affinity of an event queue.
+ *
+ * @see rte_event_queue_attr_get()
+ * @see rte_event_queue_attr_set()
  */
 #define RTE_EVENT_QUEUE_AFFINITY_LOWEST 0
-/**< Lowest scheduling affinity of an event queue
- * @see rte_event_queue_attr_get(), rte_event_queue_attr_set()
+/**< Lowest scheduling affinity of an event queue.
+ *
+ * @see rte_event_queue_attr_get()
+ * @see rte_event_queue_attr_set()
  */
 
 /**
