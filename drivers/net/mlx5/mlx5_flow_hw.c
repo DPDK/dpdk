@@ -8934,7 +8934,7 @@ flow_hw_create_ctrl_tables(struct rte_eth_dev *dev, struct rte_flow_error *error
 		}
 	}
 	/* Create LACP default miss table. */
-	if (!priv->sh->config.lacp_by_user && priv->pf_bond >= 0) {
+	if (!priv->sh->config.lacp_by_user && priv->pf_bond >= 0 && priv->master) {
 		lacp_rx_items_tmpl = flow_hw_create_lacp_rx_pattern_template(dev, error);
 		if (!lacp_rx_items_tmpl) {
 			DRV_LOG(ERR, "port %u failed to create pattern template"
@@ -12761,7 +12761,6 @@ mlx5_flow_hw_lacp_rx_flow(struct rte_eth_dev *dev)
 		.type = MLX5_HW_CTRL_FLOW_TYPE_LACP_RX,
 	};
 
-	MLX5_ASSERT(priv->master);
 	if (!priv->dr_ctx || !priv->hw_lacp_rx_tbl)
 		return 0;
 	return flow_hw_create_ctrl_flow(dev, dev, priv->hw_lacp_rx_tbl, eth_lacp, 0,
