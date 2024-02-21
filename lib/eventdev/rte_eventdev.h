@@ -1397,25 +1397,36 @@ struct rte_event_vector {
 /**< Ordered scheduling
  *
  * Events from an ordered flow of an event queue can be scheduled to multiple
- * ports for concurrent processing while maintaining the original event order.
- * This scheme enables the user to achieve high single flow throughput by
- * avoiding SW synchronization for ordering between ports which bound to cores.
+ * ports for concurrent processing while maintaining the original event order,
+ * i.e. the order in which they were first enqueued to that queue.
+ * This scheme allows events pertaining to the same, potentially large, flow to
+ * be processed in parallel on multiple cores without incurring any
+ * application-level order restoration logic overhead.
  *
- * The source flow ordering from an event queue is maintained when events are
- * enqueued to their destination queue within the same ordered flow context.
- * An event port holds the context until application call
- * rte_event_dequeue_burst() from the same port, which implicitly releases
- * the context.
- * User may allow the scheduler to release the context earlier than that
- * by invoking rte_event_enqueue_burst() with RTE_EVENT_OP_RELEASE operation.
+ * After events are dequeued from a set of ports, as those events are re-enqueued
+ * to another queue (with the op field set to @ref RTE_EVENT_OP_FORWARD), the event
+ * device restores the original event order - including events returned from all
+ * ports in the set - before the events are placed on the destination queue,
+ * for subsequent scheduling to ports.
  *
- * Events from the source queue appear in their original order when dequeued
- * from a destination queue.
- * Event ordering is based on the received event(s), but also other
- * (newly allocated or stored) events are ordered when enqueued within the same
- * ordered context. Events not enqueued (e.g. released or stored) within the
- * context are  considered missing from reordering and are skipped at this time
- * (but can be ordered again within another context).
+ * Any events not forwarded i.e. dropped explicitly via RELEASE or implicitly
+ * released by the next dequeue operation on a port, are skipped by the reordering
+ * stage and do not affect the reordering of other returned events.
+ *
+ * Any NEW events sent on a port are not ordered with respect to FORWARD events sent
+ * on the same port, since they have no original event order. They also are not
+ * ordered with respect to NEW events enqueued on other ports.
+ * However, NEW events to the same destination queue from the same port are guaranteed
+ * to be enqueued in the order they were submitted via rte_event_enqueue_burst().
+ *
+ * NOTE:
+ *   In restoring event order of forwarded events, the eventdev API guarantees that
+ *   all events from the same flow (i.e. same @ref rte_event.flow_id,
+ *   @ref rte_event.priority and @ref rte_event.queue_id) will be put in the original
+ *   order before being forwarded to the destination queue.
+ *   Some eventdevs may implement stricter ordering to achieve this aim,
+ *   for example, restoring the order across *all* flows dequeued from the same ORDERED
+ *   queue.
  *
  * @see rte_event_queue_setup(), rte_event_dequeue_burst(), RTE_EVENT_OP_RELEASE
  */
@@ -1423,18 +1434,26 @@ struct rte_event_vector {
 #define RTE_SCHED_TYPE_ATOMIC           1
 /**< Atomic scheduling
  *
- * Events from an atomic flow of an event queue can be scheduled only to a
+ * Events from an atomic flow, identified by a combination of @ref rte_event.flow_id,
+ * @ref rte_event.queue_id and @ref rte_event.priority, can be scheduled only to a
  * single port at a time. The port is guaranteed to have exclusive (atomic)
  * access to the associated flow context, which enables the user to avoid SW
- * synchronization. Atomic flows also help to maintain event ordering
- * since only one port at a time can process events from a flow of an
- * event queue.
+ * synchronization. Atomic flows also maintain event ordering
+ * since only one port at a time can process events from each flow of an
+ * event queue, and events within a flow are not reordered within the scheduler.
  *
- * The atomic queue synchronization context is dedicated to the port until
- * application call rte_event_dequeue_burst() from the same port,
- * which implicitly releases the context. User may allow the scheduler to
- * release the context earlier than that by invoking rte_event_enqueue_burst()
- * with RTE_EVENT_OP_RELEASE operation.
+ * An atomic flow is locked to a port when events from that flow are first
+ * scheduled to that port. That lock remains in place until the
+ * application calls rte_event_dequeue_burst() from the same port,
+ * which implicitly releases the lock (if @ref RTE_EVENT_PORT_CFG_DISABLE_IMPL_REL flag is not set).
+ * User may allow the scheduler to release the lock earlier than that by invoking
+ * rte_event_enqueue_burst() with RTE_EVENT_OP_RELEASE operation for each event from that flow.
+ *
+ * NOTE: Where multiple events from the same queue and atomic flow are scheduled to a port,
+ * the lock for that flow is only released once the last event from the flow is released,
+ * or forwarded to another queue. So long as there is at least one event from an atomic
+ * flow scheduled to a port/core (including any events in the port's dequeue queue, not yet read
+ * by the application), that port will hold the synchronization lock for that flow.
  *
  * @see rte_event_queue_setup(), rte_event_dequeue_burst(), RTE_EVENT_OP_RELEASE
  */
