@@ -1515,47 +1515,55 @@ struct rte_event_vector {
 
 /* Event enqueue operations */
 #define RTE_EVENT_OP_NEW                0
-/**< The event producers use this operation to inject a new event to the
- * event device.
+/**< The @ref rte_event.op field must be set to this operation type to inject a new event,
+ * i.e. one not previously dequeued, into the event device, to be scheduled
+ * for processing.
  */
 #define RTE_EVENT_OP_FORWARD            1
-/**< The CPU use this operation to forward the event to different event queue or
- * change to new application specific flow or schedule type to enable
- * pipelining.
+/**< The application must set the @ref rte_event.op field to this operation type to return a
+ * previously dequeued event to the event device to be scheduled for further processing.
  *
- * This operation must only be enqueued to the same port that the
+ * This event *must* be enqueued to the same port that the
  * event to be forwarded was dequeued from.
+ *
+ * The event's fields, including (but not limited to) flow_id, scheduling type,
+ * destination queue, and event payload e.g. mbuf pointer, may all be updated as
+ * desired by the application, but the @ref rte_event.impl_opaque field must
+ * be kept to the same value as was present when the event was dequeued.
  */
 #define RTE_EVENT_OP_RELEASE            2
 /**< Release the flow context associated with the schedule type.
  *
- * If current flow's scheduler type method is *RTE_SCHED_TYPE_ATOMIC*
- * then this function hints the scheduler that the user has completed critical
- * section processing in the current atomic context.
- * The scheduler is now allowed to schedule events from the same flow from
- * an event queue to another port. However, the context may be still held
- * until the next rte_event_dequeue_burst() call, this call allows but does not
- * force the scheduler to release the context early.
+ * If current flow's scheduler type method is @ref RTE_SCHED_TYPE_ATOMIC
+ * then this operation type hints the scheduler that the user has completed critical
+ * section processing for this event in the current atomic context, and that the
+ * scheduler may unlock any atomic locks held for this event.
+ * If this is the last event from an atomic flow, i.e. all flow locks are released
+ * (see @ref RTE_SCHED_TYPE_ATOMIC for details), the scheduler is now allowed to
+ * schedule events from that flow from to another port.
+ * However, the atomic locks may be still held until the next rte_event_dequeue_burst()
+ * call; enqueuing an event with opt type @ref RTE_EVENT_OP_RELEASE is a hint only,
+ * allowing the scheduler to release the atomic locks early, but not requiring it to do so.
  *
- * Early atomic context release may increase parallelism and thus system
+ * Early atomic lock release may increase parallelism and thus system
  * performance, but the user needs to design carefully the split into critical
  * vs non-critical sections.
  *
- * If current flow's scheduler type method is *RTE_SCHED_TYPE_ORDERED*
- * then this function hints the scheduler that the user has done all that need
- * to maintain event order in the current ordered context.
- * The scheduler is allowed to release the ordered context of this port and
- * avoid reordering any following enqueues.
+ * If current flow's scheduler type method is @ref RTE_SCHED_TYPE_ORDERED
+ * then this operation type informs the scheduler that the current event has
+ * completed processing and will not be returned to the scheduler, i.e.
+ * it has been dropped, and so the reordering context for that event
+ * should be considered filled.
  *
- * Early ordered context release may increase parallelism and thus system
- * performance.
+ * Events with this operation type must only be enqueued to the same port that the
+ * event to be released was dequeued from. The @ref rte_event.impl_opaque
+ * field in the release event must have the same value as that in the original dequeued event.
  *
- * If current flow's scheduler type method is *RTE_SCHED_TYPE_PARALLEL*
- * or no scheduling context is held then this function may be an NOOP,
- * depending on the implementation.
- *
- * This operation must only be enqueued to the same port that the
- * event to be released was dequeued from.
+ * If a dequeued event is re-enqueued with operation type of @ref RTE_EVENT_OP_RELEASE,
+ * then any subsequent enqueue of that event - or a copy of it - must be done as event of type
+ * @ref RTE_EVENT_OP_NEW, not @ref RTE_EVENT_OP_FORWARD. This is because any context for
+ * the originally dequeued event, i.e. atomic locks, or reorder buffer entries, will have
+ * been removed or invalidated by the release operation.
  */
 
 /**
@@ -1569,56 +1577,109 @@ struct rte_event {
 		/** Event attributes for dequeue or enqueue operation */
 		struct {
 			uint32_t flow_id:20;
-			/**< Targeted flow identifier for the enqueue and
-			 * dequeue operation.
-			 * The value must be in the range of
-			 * [0, nb_event_queue_flows - 1] which
-			 * previously supplied to rte_event_dev_configure().
+			/**< Target flow identifier for the enqueue and dequeue operation.
+			 *
+			 * For @ref RTE_SCHED_TYPE_ATOMIC, this field is used to identify a
+			 * flow for atomicity within a queue & priority level, such that events
+			 * from each individual flow will only be scheduled to one port at a time.
+			 *
+			 * This field is preserved between enqueue and dequeue when
+			 * a device reports the @ref RTE_EVENT_DEV_CAP_CARRY_FLOW_ID
+			 * capability. Otherwise the value is implementation dependent
+			 * on dequeue.
 			 */
 			uint32_t sub_event_type:8;
 			/**< Sub-event types based on the event source.
+			 *
+			 * This field is preserved between enqueue and dequeue.
+			 *
 			 * @see RTE_EVENT_TYPE_CPU
 			 */
 			uint32_t event_type:4;
-			/**< Event type to classify the event source.
-			 * @see RTE_EVENT_TYPE_ETHDEV, (RTE_EVENT_TYPE_*)
+			/**< Event type to classify the event source. (RTE_EVENT_TYPE_*)
+			 *
+			 * This field is preserved between enqueue and dequeue
 			 */
 			uint8_t op:2;
-			/**< The type of event enqueue operation - new/forward/
-			 * etc.This field is not preserved across an instance
-			 * and is undefined on dequeue.
-			 * @see RTE_EVENT_OP_NEW, (RTE_EVENT_OP_*)
+			/**< The type of event enqueue operation - new/forward/ etc.
+			 *
+			 * This field is *not* preserved across an instance
+			 * and is implementation dependent on dequeue.
+			 *
+			 * @see RTE_EVENT_OP_NEW
+			 * @see RTE_EVENT_OP_FORWARD
+			 * @see RTE_EVENT_OP_RELEASE
 			 */
 			uint8_t rsvd:4;
-			/**< Reserved for future use */
+			/**< Reserved for future use.
+			 *
+			 * Should be set to zero when initializing event structures.
+			 *
+			 * When forwarding or releasing existing events dequeued from the scheduler,
+			 * this field can be ignored.
+			 */
 			uint8_t sched_type:2;
 			/**< Scheduler synchronization type (RTE_SCHED_TYPE_*)
 			 * associated with flow id on a given event queue
 			 * for the enqueue and dequeue operation.
+			 *
+			 * This field is used to determine the scheduling type
+			 * for events sent to queues where @ref RTE_EVENT_QUEUE_CFG_ALL_TYPES
+			 * is configured.
+			 * For queues where only a single scheduling type is available,
+			 * this field must be set to match the configured scheduling type.
+			 *
+			 * This field is preserved between enqueue and dequeue.
+			 *
+			 * @see RTE_SCHED_TYPE_ORDERED
+			 * @see RTE_SCHED_TYPE_ATOMIC
+			 * @see RTE_SCHED_TYPE_PARALLEL
 			 */
 			uint8_t queue_id;
 			/**< Targeted event queue identifier for the enqueue or
 			 * dequeue operation.
-			 * The value must be in the range of
-			 * [0, nb_event_queues - 1] which previously supplied to
-			 * rte_event_dev_configure().
+			 * The value must be less than @ref rte_event_dev_config.nb_event_queues
+			 * which was previously supplied to rte_event_dev_configure().
+			 *
+			 * This field is preserved between enqueue on dequeue.
 			 */
 			uint8_t priority;
 			/**< Event priority relative to other events in the
 			 * event queue. The requested priority should in the
-			 * range of  [RTE_EVENT_DEV_PRIORITY_HIGHEST,
-			 * RTE_EVENT_DEV_PRIORITY_LOWEST].
+			 * range of  [@ref RTE_EVENT_DEV_PRIORITY_HIGHEST,
+			 * @ref RTE_EVENT_DEV_PRIORITY_LOWEST].
+			 *
 			 * The implementation shall normalize the requested
 			 * priority to supported priority value.
-			 * Valid when the device has
-			 * RTE_EVENT_DEV_CAP_EVENT_QOS capability.
+			 * [For devices with where the supported priority range is a power-of-2, the
+			 * normalization will be done via bit-shifting, so only the highest
+			 * log2(num_priorities) bits will be used by the event device]
+			 *
+			 * Valid when the device has @ref RTE_EVENT_DEV_CAP_EVENT_QOS capability
+			 * and this field is preserved between enqueue and dequeue,
+			 * though with possible loss of precision due to normalization and
+			 * subsequent de-normalization. (For example, if a device only supports 8
+			 * priority levels, only the high 3 bits of this field will be
+			 * used by that device, and hence only the value of those 3 bits are
+			 * guaranteed to be preserved between enqueue and dequeue.)
+			 *
+			 * Ignored when device does not support @ref RTE_EVENT_DEV_CAP_EVENT_QOS
+			 * capability, and it is implementation dependent if this field is preserved
+			 * between enqueue and dequeue.
 			 */
 			uint8_t impl_opaque;
-			/**< Implementation specific opaque value.
-			 * An implementation may use this field to hold
+			/**< Opaque field for event device use.
+			 *
+			 * An event driver implementation may use this field to hold an
 			 * implementation specific value to share between
 			 * dequeue and enqueue operation.
-			 * The application should not modify this field.
+			 *
+			 * The application must not modify this field.
+			 * Its value is implementation dependent on dequeue,
+			 * and must be returned unmodified on enqueue when
+			 * op type is @ref RTE_EVENT_OP_FORWARD or @ref RTE_EVENT_OP_RELEASE.
+			 * This field is ignored on events with op type
+			 * @ref RTE_EVENT_OP_NEW.
 			 */
 		};
 	};
