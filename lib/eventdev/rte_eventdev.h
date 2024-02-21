@@ -124,22 +124,6 @@
  * In all functions of the Event API, the Event device is
  * designated by an integer >= 0 named the device identifier *dev_id*
  *
- * At the Event driver level, Event devices are represented by a generic
- * data structure of type *rte_event_dev*.
- *
- * Event devices are dynamically registered during the PCI/SoC device probing
- * phase performed at EAL initialization time.
- * When an Event device is being probed, an *rte_event_dev* structure is allocated
- * for it and the event_dev_init() function supplied by the Event driver
- * is invoked to properly initialize the device.
- *
- * The role of the device init function is to reset the device hardware or
- * to initialize the software event driver implementation.
- *
- * If the device init operation is successful, the device is assigned a device
- * id (dev_id) for application use.
- * Otherwise, the *rte_event_dev* structure is freed.
- *
  * The functions exported by the application Event API to setup a device
  * must be invoked in the following order:
  *     - rte_event_dev_configure()
@@ -174,6 +158,22 @@
  *
  * Driver-Oriented Event API
  * -------------------------
+ *
+ * At the Event driver level, Event devices are represented by a generic
+ * data structure of type *rte_event_dev*.
+ *
+ * Event devices are dynamically registered during the PCI/SoC device probing
+ * phase performed at EAL initialization time.
+ * When an Event device is being probed, an *rte_event_dev* structure is allocated
+ * for it and the event_dev_init() function supplied by the Event driver
+ * is invoked to properly initialize the device.
+ *
+ * The role of the device init function is to reset the device hardware or
+ * to initialize the software event driver implementation.
+ *
+ * If the device init operation is successful, the device is assigned a device
+ * id (dev_id) for application use.
+ * Otherwise, the *rte_event_dev* structure is freed.
  *
  * Each function of the application Event API invokes a specific function
  * of the PMD that controls the target device designated by its device
