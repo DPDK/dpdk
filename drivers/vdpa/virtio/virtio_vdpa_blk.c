@@ -17,7 +17,8 @@
 				 (1ULL << VHOST_USER_PROTOCOL_F_MQ) | \
 				 (1ULL << VHOST_USER_PROTOCOL_F_HOST_NOTIFIER) | \
 				 (1ULL << VHOST_USER_PROTOCOL_F_LOG_SHMFD) | \
-				 (1ULL << VHOST_USER_PROTOCOL_F_REPLY_ACK))
+				 (1ULL << VHOST_USER_PROTOCOL_F_REPLY_ACK) | \
+				 (1ULL << VHOST_USER_PROTOCOL_F_PRESETUP))
 
 extern int virtio_vdpa_logtype;
 #define BLK_LOG(level, fmt, args...) \
