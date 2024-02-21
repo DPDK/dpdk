@@ -1201,19 +1201,21 @@ rte_event_port_quiesce(uint8_t dev_id, uint8_t port_id,
 		       rte_eventdev_port_flush_t release_cb, void *args);
 
 /**
- * The queue depth of the port on the enqueue side
+ * Port attribute id for the maximum size of a burst enqueue operation supported on a port.
  */
 #define RTE_EVENT_PORT_ATTR_ENQ_DEPTH 0
 /**
- * The queue depth of the port on the dequeue side
+ * Port attribute id for the maximum size of a dequeue burst which can be returned from a port.
  */
 #define RTE_EVENT_PORT_ATTR_DEQ_DEPTH 1
 /**
- * The new event threshold of the port
+ * Port attribute id for the new event threshold of the port.
+ * Once the number of events in the system exceeds this threshold, the enqueue of NEW-type
+ * events will fail.
  */
 #define RTE_EVENT_PORT_ATTR_NEW_EVENT_THRESHOLD 2
 /**
- * The implicit release disable attribute of the port
+ * Port attribute id for the implicit release disable attribute of the port.
  */
 #define RTE_EVENT_PORT_ATTR_IMPLICIT_RELEASE_DISABLE 3
 
@@ -1221,17 +1223,18 @@ rte_event_port_quiesce(uint8_t dev_id, uint8_t port_id,
  * Get an attribute from a port.
  *
  * @param dev_id
- *   Eventdev id
+ *   The identifier of the device.
  * @param port_id
- *   Eventdev port id
+ *   The index of the event port to query. The value must be less than
+ *   @ref rte_event_dev_config.nb_event_ports previously supplied to rte_event_dev_configure().
  * @param attr_id
- *   The attribute ID to retrieve
+ *   The attribute ID to retrieve (RTE_EVENT_PORT_ATTR_*)
  * @param[out] attr_value
  *   A pointer that will be filled in with the attribute value if successful
  *
  * @return
- *   - 0: Successfully returned value
- *   - (-EINVAL) Invalid device, port or attr_id, or attr_value was NULL
+ *   - 0: Successfully returned value.
+ *   - (-EINVAL) Invalid device, port or attr_id, or attr_value was NULL.
  */
 int
 rte_event_port_attr_get(uint8_t dev_id, uint8_t port_id, uint32_t attr_id,
@@ -1240,17 +1243,19 @@ rte_event_port_attr_get(uint8_t dev_id, uint8_t port_id, uint32_t attr_id,
 /**
  * Start an event device.
  *
- * The device start step is the last one and consists of setting the event
- * queues to start accepting the events and schedules to event ports.
+ * The device start step is the last one in device setup, and enables the event
+ * ports and queues to start accepting events and scheduling them to event ports.
  *
  * On success, all basic functions exported by the API (event enqueue,
  * event dequeue and so on) can be invoked.
  *
  * @param dev_id
- *   Event device identifier
+ *   Event device identifier.
  * @return
  *   - 0: Success, device started.
- *   - -ESTALE : Not all ports of the device are configured
+ *   - -EINVAL:  Invalid device id provided.
+ *   - -ENOTSUP: Device does not support this operation.
+ *   - -ESTALE : Not all ports of the device are configured.
  *   - -ENOLINK: Not all queues are linked, which could lead to deadlock.
  */
 int
@@ -1292,18 +1297,22 @@ typedef void (*rte_eventdev_stop_flush_t)(uint8_t dev_id,
  * callback function must be registered in every process that can call
  * rte_event_dev_stop().
  *
+ * Only one callback function may be registered. Each new call replaces
+ * the existing registered callback function with the new function passed in.
+ *
  * To unregister a callback, call this function with a NULL callback pointer.
  *
  * @param dev_id
  *   The identifier of the device.
  * @param callback
- *   Callback function invoked once per flushed event.
+ *   Callback function to be invoked once per flushed event.
+ *   Pass NULL to unset any previously-registered callback function.
  * @param userdata
  *   Argument supplied to callback.
  *
  * @return
  *  - 0 on success.
- *  - -EINVAL if *dev_id* is invalid
+ *  - -EINVAL if *dev_id* is invalid.
  *
  * @see rte_event_dev_stop()
  */
@@ -1314,12 +1323,14 @@ int rte_event_dev_stop_flush_callback_register(uint8_t dev_id,
  * Close an event device. The device cannot be restarted!
  *
  * @param dev_id
- *   Event device identifier
+ *   Event device identifier.
  *
  * @return
  *  - 0 on successfully closing device
- *  - <0 on failure to close device
- *  - (-EAGAIN) if device is busy
+ *  - <0 on failure to close device.
+ *    - -EINVAL - invalid device id.
+ *    - -ENOTSUP - operation not supported for this device.
+ *    - -EAGAIN - device is busy.
  */
 int
 rte_event_dev_close(uint8_t dev_id);
