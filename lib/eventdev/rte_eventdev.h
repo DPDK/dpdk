@@ -515,9 +515,9 @@ rte_event_dev_attr_get(uint8_t dev_id, uint32_t attr_id,
 struct rte_event_dev_config {
 	uint32_t dequeue_timeout_ns;
 	/**< rte_event_dequeue_burst() timeout on this device.
-	 * This value should be in the range of *min_dequeue_timeout_ns* and
-	 * *max_dequeue_timeout_ns* which previously provided in
-	 * rte_event_dev_info_get()
+	 * This value should be in the range of @ref rte_event_dev_info.min_dequeue_timeout_ns and
+	 * @ref rte_event_dev_info.max_dequeue_timeout_ns returned by
+	 * @ref rte_event_dev_info_get()
 	 * The value 0 is allowed, in which case, default dequeue timeout used.
 	 * @see RTE_EVENT_DEV_CFG_PER_DEQUEUE_TIMEOUT
 	 */
@@ -525,40 +525,53 @@ struct rte_event_dev_config {
 	/**< In a *closed system* this field is the limit on maximum number of
 	 * events that can be inflight in the eventdev at a given time. The
 	 * limit is required to ensure that the finite space in a closed system
-	 * is not overwhelmed. The value cannot exceed the *max_num_events*
-	 * as provided by rte_event_dev_info_get().
-	 * This value should be set to -1 for *open system*.
+	 * is not exhausted.
+	 * The value cannot exceed @ref rte_event_dev_info.max_num_events
+	 * returned by rte_event_dev_info_get().
+	 *
+	 * This value should be set to -1 for *open systems*, that is,
+	 * those systems returning -1 in @ref rte_event_dev_info.max_num_events.
+	 *
+	 * @see rte_event_port_conf.new_event_threshold
 	 */
 	uint8_t nb_event_queues;
 	/**< Number of event queues to configure on this device.
-	 * This value cannot exceed the *max_event_queues* which previously
-	 * provided in rte_event_dev_info_get()
+	 * This value *includes* any single-link queue-port pairs to be used.
+	 * This value cannot exceed @ref rte_event_dev_info.max_event_queues +
+	 * @ref rte_event_dev_info.max_single_link_event_port_queue_pairs
+	 * returned by rte_event_dev_info_get().
+	 * The number of non-single-link queues i.e. this value less
+	 * *nb_single_link_event_port_queues* in this struct, cannot exceed
+	 * @ref rte_event_dev_info.max_event_queues
 	 */
 	uint8_t nb_event_ports;
 	/**< Number of event ports to configure on this device.
-	 * This value cannot exceed the *max_event_ports* which previously
-	 * provided in rte_event_dev_info_get()
+	 * This value *includes* any single-link queue-port pairs to be used.
+	 * This value cannot exceed @ref rte_event_dev_info.max_event_ports +
+	 * @ref rte_event_dev_info.max_single_link_event_port_queue_pairs
+	 * returned by rte_event_dev_info_get().
+	 * The number of non-single-link ports i.e. this value less
+	 * *nb_single_link_event_port_queues* in this struct, cannot exceed
+	 * @ref rte_event_dev_info.max_event_ports
 	 */
 	uint32_t nb_event_queue_flows;
-	/**< Number of flows for any event queue on this device.
-	 * This value cannot exceed the *max_event_queue_flows* which previously
-	 * provided in rte_event_dev_info_get()
+	/**< Max number of flows needed for a single event queue on this device.
+	 * This value cannot exceed @ref rte_event_dev_info.max_event_queue_flows
+	 * returned by rte_event_dev_info_get()
 	 */
 	uint32_t nb_event_port_dequeue_depth;
-	/**< Maximum number of events can be dequeued at a time from an
-	 * event port by this device.
-	 * This value cannot exceed the *max_event_port_dequeue_depth*
-	 * which previously provided in rte_event_dev_info_get().
+	/**< Max number of events that can be dequeued at a time from an event port on this device.
+	 * This value cannot exceed @ref rte_event_dev_info.max_event_port_dequeue_depth
+	 * returned by rte_event_dev_info_get().
 	 * Ignored when device is not RTE_EVENT_DEV_CAP_BURST_MODE capable.
-	 * @see rte_event_port_setup()
+	 * @see rte_event_port_setup() rte_event_dequeue_burst()
 	 */
 	uint32_t nb_event_port_enqueue_depth;
-	/**< Maximum number of events can be enqueued at a time from an
-	 * event port by this device.
-	 * This value cannot exceed the *max_event_port_enqueue_depth*
-	 * which previously provided in rte_event_dev_info_get().
+	/**< Maximum number of events can be enqueued at a time to an event port on this device.
+	 * This value cannot exceed @ref rte_event_dev_info.max_event_port_enqueue_depth
+	 * returned by rte_event_dev_info_get().
 	 * Ignored when device is not RTE_EVENT_DEV_CAP_BURST_MODE capable.
-	 * @see rte_event_port_setup()
+	 * @see rte_event_port_setup() rte_event_enqueue_burst()
 	 */
 	uint32_t event_dev_cfg;
 	/**< Event device config flags(RTE_EVENT_DEV_CFG_)*/
@@ -568,7 +581,7 @@ struct rte_event_dev_config {
 	 * queues; this value cannot exceed *nb_event_ports* or
 	 * *nb_event_queues*. If the device has ports and queues that are
 	 * optimized for single-link usage, this field is a hint for how many
-	 * to allocate; otherwise, regular event ports and queues can be used.
+	 * to allocate; otherwise, regular event ports and queues will be used.
 	 */
 };
 
