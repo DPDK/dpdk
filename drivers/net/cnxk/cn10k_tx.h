@@ -331,9 +331,15 @@ cn10k_nix_tx_skeleton(struct cn10k_eth_txq *txq, uint64_t *cmd,
 		else
 			cmd[2] = NIX_SUBDC_EXT << 60;
 		cmd[3] = 0;
-		cmd[4] = (NIX_SUBDC_SG << 60) | BIT_ULL(48);
+		if (!(flags & NIX_TX_OFFLOAD_MBUF_NOFF_F))
+			cmd[4] = (NIX_SUBDC_SG << 60) | (NIX_SENDLDTYPE_LDWB << 58) | BIT_ULL(48);
+		else
+			cmd[4] = (NIX_SUBDC_SG << 60) | BIT_ULL(48);
 	} else {
-		cmd[2] = (NIX_SUBDC_SG << 60) | BIT_ULL(48);
+		if (!(flags & NIX_TX_OFFLOAD_MBUF_NOFF_F))
+			cmd[2] = (NIX_SUBDC_SG << 60) | (NIX_SENDLDTYPE_LDWB << 58) | BIT_ULL(48);
+		else
+			cmd[2] = (NIX_SUBDC_SG << 60) | BIT_ULL(48);
 	}
 }
 
@@ -1989,7 +1995,11 @@ cn10k_nix_xmit_pkts_vector(void *tx_queue, uint64_t *ws,
 
 	senddesc01_w1 = vdupq_n_u64(0);
 	senddesc23_w1 = senddesc01_w1;
-	sgdesc01_w0 = vdupq_n_u64((NIX_SUBDC_SG << 60) | BIT_ULL(48));
+	if (!(flags & NIX_TX_OFFLOAD_MBUF_NOFF_F))
+		sgdesc01_w0 = vdupq_n_u64((NIX_SUBDC_SG << 60) | (NIX_SENDLDTYPE_LDWB << 58) |
+					  BIT_ULL(48));
+	else
+		sgdesc01_w0 = vdupq_n_u64((NIX_SUBDC_SG << 60) | BIT_ULL(48));
 	sgdesc23_w0 = sgdesc01_w0;
 
 	if (flags & NIX_TX_NEED_EXT_HDR) {
