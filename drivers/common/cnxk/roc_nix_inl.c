@@ -933,7 +933,8 @@ roc_nix_inl_inb_init(struct roc_nix *roc_nix)
 	inl_dev = idev->nix_inl_dev;
 
 	roc_nix->custom_meta_aura_ena = (roc_nix->local_meta_aura_ena &&
-					 (inl_dev->is_multi_channel || roc_nix->custom_sa_action));
+					 ((inl_dev && inl_dev->is_multi_channel) ||
+					  roc_nix->custom_sa_action));
 	if (!roc_model_is_cn9k() && !roc_errata_nix_no_meta_aura()) {
 		nix->need_meta_aura = true;
 		if (!roc_nix->local_meta_aura_ena || roc_nix->custom_meta_aura_ena)
