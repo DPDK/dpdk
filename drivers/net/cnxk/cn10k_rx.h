@@ -705,7 +705,7 @@ nix_cqe_xtract_mseg(const union nix_rx_parse_u *rx, struct rte_mbuf *mbuf,
 	if (cq_w1 & BIT(11) && flags & NIX_RX_OFFLOAD_SECURITY_F) {
 		const uint64_t *wqe = (const uint64_t *)(mbuf + 1);
 
-		if (hdr->w0.pkt_fmt != ROC_IE_OT_SA_PKT_FMT_FULL)
+		if (!(flags & NIX_RX_REAS_F) || hdr->w0.pkt_fmt != ROC_IE_OT_SA_PKT_FMT_FULL)
 			rx = (const union nix_rx_parse_u *)(wqe + 1);
 	}
 
