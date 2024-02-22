@@ -474,6 +474,34 @@ roc_nix_inl_outb_lf_base_get(struct roc_nix *roc_nix)
 	return (struct roc_cpt_lf *)nix->cpt_lf_base;
 }
 
+struct roc_cpt_lf *
+roc_nix_inl_inb_inj_lf_get(struct roc_nix *roc_nix)
+{
+	struct nix *nix;
+	struct idev_cfg *idev = idev_get_cfg();
+	struct nix_inl_dev *inl_dev = NULL;
+	struct roc_cpt_lf *lf = NULL;
+
+	if (!idev)
+		return NULL;
+
+	inl_dev = idev->nix_inl_dev;
+
+	if (!inl_dev && roc_nix == NULL)
+		return NULL;
+
+	nix = roc_nix_to_nix_priv(roc_nix);
+
+	if (nix->inb_inl_dev && inl_dev && inl_dev->attach_cptlf &&
+	    inl_dev->rx_inj_ena)
+		return &inl_dev->cpt_lf[inl_dev->nb_cptlf - 1];
+
+	lf = roc_nix_inl_outb_lf_base_get(roc_nix);
+	if (lf)
+		lf += roc_nix->outb_nb_crypto_qs;
+	return lf;
+}
+
 uintptr_t
 roc_nix_inl_outb_sa_base_get(struct roc_nix *roc_nix)
 {
@@ -510,6 +538,35 @@ roc_nix_inl_inb_sa_base_get(struct roc_nix *roc_nix, bool inb_inl_dev)
 	}
 
 	return (uintptr_t)nix->inb_sa_base;
+}
+
+bool
+roc_nix_inl_inb_rx_inject_enable(struct roc_nix *roc_nix, bool inb_inl_dev)
+{
+	struct idev_cfg *idev = idev_get_cfg();
+	struct nix_inl_dev *inl_dev;
+	struct nix *nix = NULL;
+
+	if (idev == NULL)
+		return 0;
+
+	if (!inb_inl_dev && roc_nix == NULL)
+		return 0;
+
+	if (roc_nix) {
+		nix = roc_nix_to_nix_priv(roc_nix);
+		if (!nix->inl_inb_ena)
+			return 0;
+	}
+
+	if (inb_inl_dev) {
+		inl_dev = idev->nix_inl_dev;
+		if (inl_dev && inl_dev->attach_cptlf && inl_dev->rx_inj_ena &&
+		    roc_nix->rx_inj_ena)
+			return true;
+	}
+
+	return roc_nix->rx_inj_ena;
 }
 
 uint32_t
@@ -941,6 +998,7 @@ roc_nix_inl_outb_init(struct roc_nix *roc_nix)
 	bool ctx_ilen_valid = false;
 	size_t sa_sz, ring_sz;
 	uint8_t ctx_ilen = 0;
+	bool rx_inj = false;
 	uint16_t sso_pffunc;
 	uint8_t eng_grpmask;
 	uint64_t blkaddr, i;
@@ -958,6 +1016,12 @@ roc_nix_inl_outb_init(struct roc_nix *roc_nix)
 
 	/* Retrieve inline device if present */
 	inl_dev = idev->nix_inl_dev;
+	if (roc_nix->rx_inj_ena && !(nix->inb_inl_dev && inl_dev && inl_dev->attach_cptlf &&
+				     inl_dev->rx_inj_ena)) {
+		nb_lf++;
+		rx_inj = true;
+	}
+
 	sso_pffunc = inl_dev ? inl_dev->dev.pf_func : idev_sso_pffunc_get();
 	/* Use sso_pffunc if explicitly requested */
 	if (roc_nix->ipsec_out_sso_pffunc)
@@ -986,7 +1050,8 @@ roc_nix_inl_outb_init(struct roc_nix *roc_nix)
 		       1ULL << ROC_CPT_DFLT_ENG_GRP_SE_IE |
 		       1ULL << ROC_CPT_DFLT_ENG_GRP_AE);
 	rc = cpt_lfs_alloc(dev, eng_grpmask, blkaddr,
-			   !roc_nix->ipsec_out_sso_pffunc, ctx_ilen_valid, ctx_ilen, false, 0);
+			   !roc_nix->ipsec_out_sso_pffunc, ctx_ilen_valid, ctx_ilen,
+			   rx_inj, nb_lf - 1);
 	if (rc) {
 		plt_err("Failed to alloc CPT LF resources, rc=%d", rc);
 		goto lf_detach;
@@ -1632,7 +1697,7 @@ roc_nix_inl_sa_sync(struct roc_nix *roc_nix, void *sa, bool inb,
 	if (inb && get_inl_lf) {
 		outb_lf = NULL;
 		if (inl_dev && inl_dev->attach_cptlf)
-			outb_lf = &inl_dev->cpt_lf;
+			outb_lf = &inl_dev->cpt_lf[0];
 	}
 
 	if (outb_lf) {
@@ -1696,7 +1761,7 @@ roc_nix_inl_ctx_write(struct roc_nix *roc_nix, void *sa_dptr, void *sa_cptr,
 	if (inb && get_inl_lf) {
 		outb_lf = NULL;
 		if (inl_dev && inl_dev->attach_cptlf)
-			outb_lf = &inl_dev->cpt_lf;
+			outb_lf = &inl_dev->cpt_lf[0];
 	}
 
 	if (outb_lf) {

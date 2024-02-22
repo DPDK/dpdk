@@ -7,6 +7,7 @@
 #include <sys/types.h>
 
 #define NIX_INL_META_SIZE 384u
+#define NIX_INL_CPT_LF	2
 
 struct nix_inl_dev;
 struct nix_inl_qint {
@@ -31,7 +32,7 @@ struct nix_inl_dev {
 	uint16_t nix_msixoff;
 	uint16_t ssow_msixoff;
 	uint16_t sso_msixoff;
-	uint16_t cpt_msixoff;
+	uint16_t cpt_msixoff[NIX_INL_CPT_LF];
 
 	/* SSO data */
 	uint32_t xaq_buf_size;
@@ -62,9 +63,10 @@ struct nix_inl_dev {
 	/* NIX/CPT data */
 	void *inb_sa_base;
 	uint16_t inb_sa_sz;
+	uint8_t nb_cptlf;
 
 	/* CPT data */
-	struct roc_cpt_lf cpt_lf;
+	struct roc_cpt_lf cpt_lf[NIX_INL_CPT_LF];
 
 	/* OUTB soft expiry poll thread */
 	plt_thread_t soft_exp_poll_thread;
@@ -91,6 +93,7 @@ struct nix_inl_dev {
 	bool ts_ena;
 	uint32_t nb_meta_bufs;
 	uint32_t meta_buf_sz;
+	uint8_t rx_inj_ena; /* Rx Inject Enable */
 
 	/* NPC */
 	int *ipsec_index;

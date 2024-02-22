@@ -174,9 +174,9 @@ exit:
 static int
 nix_inl_cpt_setup(struct nix_inl_dev *inl_dev, bool inl_dev_sso)
 {
-	struct roc_cpt_lf *lf = &inl_dev->cpt_lf;
 	struct dev *dev = &inl_dev->dev;
 	bool ctx_ilen_valid = false;
+	struct roc_cpt_lf *lf;
 	uint8_t eng_grpmask;
 	uint8_t ctx_ilen = 0;
 	int rc;
@@ -194,27 +194,29 @@ nix_inl_cpt_setup(struct nix_inl_dev *inl_dev, bool inl_dev_sso)
 	}
 
 	rc = cpt_lfs_alloc(dev, eng_grpmask, RVU_BLOCK_ADDR_CPT0, inl_dev_sso, ctx_ilen_valid,
-			   ctx_ilen, false, 0);
+			   ctx_ilen, inl_dev->rx_inj_ena, inl_dev->nb_cptlf - 1);
 	if (rc) {
 		plt_err("Failed to alloc CPT LF resources, rc=%d", rc);
 		return rc;
 	}
 
-	/* Setup CPT LF for submitting control opcode */
-	lf = &inl_dev->cpt_lf;
-	lf->lf_id = 0;
-	lf->nb_desc = 0; /* Set to default */
-	lf->dev = &inl_dev->dev;
-	lf->msixoff = inl_dev->cpt_msixoff;
-	lf->pci_dev = inl_dev->pci_dev;
+	for (int i = 0; i < inl_dev->nb_cptlf; i++) {
+		/* Setup CPT LF for submitting control opcode */
+		lf = &inl_dev->cpt_lf[i];
+		lf->lf_id = i;
+		lf->nb_desc = 0; /* Set to default */
+		lf->dev = &inl_dev->dev;
+		lf->msixoff = inl_dev->cpt_msixoff[i];
+		lf->pci_dev = inl_dev->pci_dev;
 
-	rc = cpt_lf_init(lf);
-	if (rc) {
-		plt_err("Failed to initialize CPT LF, rc=%d", rc);
-		goto lf_free;
+		rc = cpt_lf_init(lf);
+		if (rc) {
+			plt_err("Failed to initialize CPT LF, rc=%d", rc);
+			goto lf_free;
+		}
+
+		roc_cpt_iq_enable(lf);
 	}
-
-	roc_cpt_iq_enable(lf);
 	return 0;
 lf_free:
 	rc |= cpt_lfs_free(dev);
@@ -224,21 +226,22 @@ lf_free:
 static int
 nix_inl_cpt_release(struct nix_inl_dev *inl_dev)
 {
-	struct roc_cpt_lf *lf = &inl_dev->cpt_lf;
 	struct dev *dev = &inl_dev->dev;
-	int rc;
+	int rc, i;
 
 	if (!inl_dev->attach_cptlf)
 		return 0;
 
 	/* Cleanup CPT LF queue */
-	cpt_lf_fini(lf);
+	for (i = 0; i < inl_dev->nb_cptlf; i++)
+		cpt_lf_fini(&inl_dev->cpt_lf[i]);
 
 	/* Free LF resources */
 	rc = cpt_lfs_free(dev);
-	if (!rc)
-		lf->dev = NULL;
-	else
+	if (!rc) {
+		for (i = 0; i < inl_dev->nb_cptlf; i++)
+			inl_dev->cpt_lf[i].dev = NULL;
+	} else
 		plt_err("Failed to free CPT LF resources, rc=%d", rc);
 	return rc;
 }
@@ -533,7 +536,7 @@ nix_inl_lf_attach(struct nix_inl_dev *inl_dev)
 	req->ssow = 1;
 	req->sso = 1;
 	if (inl_dev->attach_cptlf) {
-		req->cptlfs = 1;
+		req->cptlfs = inl_dev->nb_cptlf;
 		req->cpt_blkaddr = RVU_BLOCK_ADDR_CPT0;
 	}
 
@@ -550,7 +553,9 @@ nix_inl_lf_attach(struct nix_inl_dev *inl_dev)
 	inl_dev->nix_msixoff = msix_rsp->nix_msixoff;
 	inl_dev->ssow_msixoff = msix_rsp->ssow_msixoff[0];
 	inl_dev->sso_msixoff = msix_rsp->sso_msixoff[0];
-	inl_dev->cpt_msixoff = msix_rsp->cptlf_msixoff[0];
+
+	for (int i = 0; i < inl_dev->nb_cptlf; i++)
+		inl_dev->cpt_msixoff[i] = msix_rsp->cptlf_msixoff[i];
 
 	nix_blkaddr = nix_get_blkaddr(dev);
 	inl_dev->is_nix1 = (nix_blkaddr == RVU_BLOCK_ADDR_NIX1);
@@ -912,6 +917,12 @@ roc_nix_inl_dev_init(struct roc_nix_inl_dev *roc_inl_dev)
 	inl_dev->meta_buf_sz = roc_inl_dev->meta_buf_sz;
 	inl_dev->soft_exp_poll_freq = roc_inl_dev->soft_exp_poll_freq;
 
+	if (roc_inl_dev->rx_inj_ena) {
+		inl_dev->rx_inj_ena = 1;
+		inl_dev->nb_cptlf = NIX_INL_CPT_LF;
+	} else
+		inl_dev->nb_cptlf = 1;
+
 	if (roc_inl_dev->spb_drop_pc)
 		inl_dev->spb_drop_pc = roc_inl_dev->spb_drop_pc;
 	if (roc_inl_dev->lpb_drop_pc)
@@ -1068,7 +1079,7 @@ roc_nix_inl_dev_cpt_setup(bool use_inl_dev_sso)
 		return -ENOENT;
 	inl_dev = idev->nix_inl_dev;
 
-	if (inl_dev->cpt_lf.dev != NULL)
+	if (inl_dev->cpt_lf[0].dev != NULL)
 		return -EBUSY;
 
 	return nix_inl_cpt_setup(inl_dev, use_inl_dev_sso);
@@ -1084,7 +1095,7 @@ roc_nix_inl_dev_cpt_release(void)
 		return -ENOENT;
 	inl_dev = idev->nix_inl_dev;
 
-	if (inl_dev->cpt_lf.dev == NULL)
+	if (inl_dev->cpt_lf[0].dev == NULL)
 		return 0;
 
 	return nix_inl_cpt_release(inl_dev);

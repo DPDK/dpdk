@@ -142,9 +142,10 @@ struct roc_nix_inl_dev {
 	uint32_t nb_meta_bufs;
 	uint32_t meta_buf_sz;
 	uint32_t max_ipsec_rules;
+	uint8_t rx_inj_ena; /* Rx Inject Enable */
 	/* End of input parameters */
 
-#define ROC_NIX_INL_MEM_SZ (1280)
+#define ROC_NIX_INL_MEM_SZ (1408)
 	uint8_t reserved[ROC_NIX_INL_MEM_SZ] __plt_cache_aligned;
 } __plt_cache_aligned;
 
@@ -167,6 +168,7 @@ int __roc_api roc_nix_inl_inb_fini(struct roc_nix *roc_nix);
 bool __roc_api roc_nix_inl_inb_is_enabled(struct roc_nix *roc_nix);
 uintptr_t __roc_api roc_nix_inl_inb_sa_base_get(struct roc_nix *roc_nix,
 						bool inl_dev_sa);
+bool __roc_api roc_nix_inl_inb_rx_inject_enable(struct roc_nix *roc_nix, bool inl_dev_sa);
 uint32_t __roc_api roc_nix_inl_inb_spi_range(struct roc_nix *roc_nix,
 					     bool inl_dev_sa, uint32_t *min,
 					     uint32_t *max);
@@ -196,6 +198,7 @@ bool __roc_api roc_nix_inl_outb_is_enabled(struct roc_nix *roc_nix);
 uintptr_t __roc_api roc_nix_inl_outb_sa_base_get(struct roc_nix *roc_nix);
 struct roc_cpt_lf *__roc_api
 roc_nix_inl_outb_lf_base_get(struct roc_nix *roc_nix);
+struct roc_cpt_lf *__roc_api roc_nix_inl_inb_inj_lf_get(struct roc_nix *roc_nix);
 uint16_t __roc_api roc_nix_inl_outb_sso_pffunc_get(struct roc_nix *roc_nix);
 int __roc_api roc_nix_inl_cb_register(roc_nix_inl_sso_work_cb_t cb, void *args);
 int __roc_api roc_nix_inl_cb_unregister(roc_nix_inl_sso_work_cb_t cb,

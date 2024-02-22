@@ -243,6 +243,8 @@ INTERNAL {
 	roc_nix_inl_eng_caps_get;
 	roc_nix_inl_inb_is_enabled;
 	roc_nix_inl_inb_init;
+	roc_nix_inl_inb_inj_lf_get;
+	roc_nix_inl_inb_rx_inject_enable;
 	roc_nix_inl_inb_sa_base_get;
 	roc_nix_inl_inb_sa_get;
 	roc_nix_inl_inb_spi_range;
