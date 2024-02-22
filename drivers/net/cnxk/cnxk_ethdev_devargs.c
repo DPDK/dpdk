@@ -279,6 +279,7 @@ parse_val_u16(const char *key, const char *value, void *extra_args)
 #define CNXK_SQB_SLACK		"sqb_slack"
 #define CNXK_NIX_META_BUF_SZ	"meta_buf_sz"
 #define CNXK_FLOW_AGING_POLL_FREQ	"aging_poll_freq"
+#define CNXK_NIX_RX_INJ_ENABLE	"rx_inj_ena"
 
 int
 cnxk_ethdev_parse_devargs(struct rte_devargs *devargs, struct cnxk_eth_dev *dev)
@@ -305,6 +306,7 @@ cnxk_ethdev_parse_devargs(struct rte_devargs *devargs, struct cnxk_eth_dev *dev)
 	uint32_t meta_buf_sz = 0;
 	uint16_t no_inl_dev = 0;
 	uint8_t lock_rx_ctx = 0;
+	uint8_t rx_inj_ena = 0;
 
 	memset(&sdp_chan, 0, sizeof(sdp_chan));
 	memset(&pre_l2_info, 0, sizeof(struct flow_pre_l2_size_info));
@@ -355,6 +357,7 @@ cnxk_ethdev_parse_devargs(struct rte_devargs *devargs, struct cnxk_eth_dev *dev)
 	rte_kvargs_process(kvlist, CNXK_NIX_META_BUF_SZ, &parse_meta_bufsize, &meta_buf_sz);
 	rte_kvargs_process(kvlist, CNXK_FLOW_AGING_POLL_FREQ, &parse_val_u16,
 			   &aging_thread_poll_freq);
+	rte_kvargs_process(kvlist, CNXK_NIX_RX_INJ_ENABLE, &parse_flag, &rx_inj_ena);
 	rte_kvargs_free(kvlist);
 
 null_devargs:
@@ -387,6 +390,8 @@ null_devargs:
 	dev->npc.pre_l2_size_offset_mask = pre_l2_info.pre_l2_size_off_mask;
 	dev->npc.pre_l2_size_shift_dir = pre_l2_info.pre_l2_size_shift_dir;
 	dev->npc.flow_age.aging_poll_freq = aging_thread_poll_freq;
+	if (roc_feature_nix_has_rx_inject())
+		dev->nix.rx_inj_ena = rx_inj_ena;
 	return 0;
 exit:
 	return -EINVAL;
@@ -409,4 +414,5 @@ RTE_PMD_REGISTER_PARAM_STRING(net_cnxk,
 			      CNXK_SDP_CHANNEL_MASK "=<1-4095>/<1-4095>"
 			      CNXK_CUSTOM_SA_ACT "=1"
 			      CNXK_SQB_SLACK "=<12-512>"
-			      CNXK_FLOW_AGING_POLL_FREQ "=<10-65535>");
+			      CNXK_FLOW_AGING_POLL_FREQ "=<10-65535>"
+			      CNXK_NIX_RX_INJ_ENABLE "=1");

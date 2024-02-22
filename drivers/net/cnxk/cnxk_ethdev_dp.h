@@ -4,6 +4,7 @@
 #ifndef __CNXK_ETHDEV_DP_H__
 #define __CNXK_ETHDEV_DP_H__
 
+#include <rte_security_driver.h>
 #include <rte_mbuf.h>
 
 /* If PTP is enabled additional SEND MEM DESC is required which
@@ -80,6 +81,13 @@ struct cnxk_timesync_info {
 	int tstamp_dynfield_offset;
 	rte_iova_t tx_tstamp_iova;
 	uint64_t *tx_tstamp;
+} __plt_cache_aligned;
+
+struct cnxk_ethdev_inj_cfg {
+	uintptr_t lmt_base;
+	uint64_t io_addr;
+	uint64_t sa_base;
+	uint64_t cmd_w0;
 } __plt_cache_aligned;
 
 /* Inlines */

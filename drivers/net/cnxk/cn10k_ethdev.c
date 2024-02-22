@@ -593,6 +593,10 @@ cn10k_nix_dev_start(struct rte_eth_dev *eth_dev)
 	if (dev->rx_offload_flags & NIX_RX_OFFLOAD_SECURITY_F)
 		cn10k_nix_rx_queue_meta_aura_update(eth_dev);
 
+	/* Set flags for Rx Inject feature */
+	if (roc_idev_nix_rx_inject_get(nix->port_id))
+		dev->rx_offload_flags |= NIX_RX_SEC_REASSEMBLY_F;
+
 	cn10k_eth_set_tx_function(eth_dev);
 	cn10k_eth_set_rx_function(eth_dev);
 	return 0;

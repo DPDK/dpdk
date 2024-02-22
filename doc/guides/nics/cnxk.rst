@@ -416,6 +416,19 @@ Runtime Config Options
    With the above configuration, PMD would allocate meta buffers of size 512 for
    inline inbound IPsec processing second pass.
 
+- ``Rx Inject Enable inbound inline IPsec for second pass`` (default ``0``)
+
+   Rx packet inject feature for inbound inline IPsec processing can be enabled
+   by ``rx_inj_ena`` devargs parameter.
+   This option is for OCTEON CN106-B0/CN103XX SoC family.
+
+   For example::
+
+      -a 0002:02:00.0,rx_inj_ena=1
+
+   With the above configuration, driver would enable packet inject from ARM cores
+   to crypto to process and send back in Rx path.
+
 .. note::
 
    Above devarg parameters are configurable per device, user needs to pass the
@@ -612,6 +625,19 @@ Runtime Config Options for inline device
 
    With the above configuration, driver would poll for aging flows every 50
    seconds.
+
+- ``Rx Inject Enable inbound inline IPsec for second pass`` (default ``0``)
+
+   Rx packet inject feature for inbound inline IPsec processing can be enabled
+   by ``rx_inj_ena`` devargs parameter with both inline device and ethdev device.
+   This option is for OCTEON CN106-B0/CN103XX SoC family.
+
+   For example::
+
+      -a 0002:1d:00.0,rx_inj_ena=1
+
+   With the above configuration, driver would enable packet inject from ARM cores
+   to crypto to process and send back in Rx path.
 
 Debugging Options
 -----------------

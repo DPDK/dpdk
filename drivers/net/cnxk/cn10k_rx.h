@@ -5,6 +5,7 @@
 #define __CN10K_RX_H__
 
 #include <rte_ethdev.h>
+#include <rte_security_driver.h>
 #include <rte_vect.h>
 #include "cn10k_rxtx.h"
 
@@ -487,8 +488,19 @@ nix_sec_meta_to_mbuf_sc(uint64_t cq_w1, uint64_t cq_w5, const uint64_t sa_base,
 	inb_sa = roc_nix_inl_ot_ipsec_inb_sa(sa_base, sa_idx);
 	inb_priv = roc_nix_inl_ot_ipsec_inb_sa_sw_rsvd(inb_sa);
 
-	/* Update dynamic field with userdata */
-	*rte_security_dynfield(inner) = (uint64_t)inb_priv->userdata;
+	/* Cryptodev injected packet can be identified from SA IDX 0xFFFFFFFF, and
+	 * Ethdev injected packet can be identified with match ID 0xFFFF.
+	 */
+	if (flags & NIX_RX_REAS_F && (sa_idx == 0xFFFFFFFF || hdr->w0.match_id == 0xFFFFU)) {
+		*(uint64_t *)(&inner->rearm_data) = (mbuf_init & ~(BIT_ULL(16) - 1)) |
+						    inner->data_off;
+		if (hdr->w0.match_id == 0xFFFFU)
+			*rte_security_dynfield(inner) = (uint64_t)inb_priv->userdata;
+	} else {
+		/* Update dynamic field with userdata */
+		*rte_security_dynfield(inner) = (uint64_t)inb_priv->userdata;
+		*(uint64_t *)(&inner->rearm_data) = mbuf_init;
+	}
 
 	/* Get ucc from cpt parse header */
 	ucc = hdr->w3.hw_ccode;
@@ -502,7 +514,6 @@ nix_sec_meta_to_mbuf_sc(uint64_t cq_w1, uint64_t cq_w5, const uint64_t sa_base,
 
 	inner->pkt_len = len;
 	inner->data_len = len;
-	*(uint64_t *)(&inner->rearm_data) = mbuf_init;
 
 	inner->ol_flags = ((CPT_COMP_HWGOOD_MASK & (1U << ucc)) ?
 			   RTE_MBUF_F_RX_SEC_OFFLOAD :
@@ -567,11 +578,20 @@ nix_sec_meta_to_mbuf(uint64_t cq_w1, uint64_t cq_w5, uintptr_t inb_sa,
 	*ol_flags &= ~(RTE_MBUF_F_RX_L4_CKSUM_MASK |
 		       RTE_MBUF_F_RX_IP_CKSUM_MASK);
 
-	/* Get SPI from CPT_PARSE_S's cookie(already swapped) */
-	inb_priv = roc_nix_inl_ot_ipsec_inb_sa_sw_rsvd((void *)inb_sa);
 
-	/* Update dynamic field with userdata */
-	*rte_security_dynfield(inner) = (uint64_t)inb_priv->userdata;
+	if (flags & NIX_RX_REAS_F && !inb_sa) {
+		/* Clear and update original lower 16 bit of data offset */
+		*rearm = (*rearm & ~(BIT_ULL(16) - 1)) | inner->data_off;
+	} else {
+		/* Get SPI from CPT_PARSE_S's cookie(already swapped) */
+		inb_priv = roc_nix_inl_ot_ipsec_inb_sa_sw_rsvd((void *)inb_sa);
+		/* Update dynamic field with userdata */
+		*rte_security_dynfield(inner) = (uint64_t)inb_priv->userdata;
+	}
+
+	/* Clear and update original lower 16 bit of data offset */
+	if (flags & NIX_RX_REAS_F && hdr->w0.match_id == 0xFFFFU)
+		*rearm = (*rearm & ~(BIT_ULL(16) - 1)) | inner->data_off;
 
 	/* Mark inner mbuf as get */
 	if (!(flags & NIX_RX_REAS_F) ||
@@ -604,8 +624,10 @@ nix_sec_meta_to_mbuf(uint64_t cq_w1, uint64_t cq_w5, uintptr_t inb_sa,
 			*rearm = vsetq_lane_u64(mbuf_init, *rearm, 0);
 		} else {
 			/* Reassembly failure */
-			nix_sec_attach_frags(hdr, inner, inb_priv, mbuf_init);
-			*ol_flags |= inner->ol_flags;
+			if (inb_sa) {
+				nix_sec_attach_frags(hdr, inner, inb_priv, mbuf_init);
+				*ol_flags |= inner->ol_flags;
+			}
 		}
 	} else if (flags & NIX_RX_REAS_F) {
 		/* Without fragmentation but may have to handle OOP session */
@@ -703,7 +725,14 @@ nix_cqe_xtract_mseg(const union nix_rx_parse_u *rx, struct rte_mbuf *mbuf,
 		cq_w5 = *((const uint64_t *)rx + 4);
 	/* Use inner rx parse for meta pkts sg list */
 	if (cq_w1 & BIT(11) && flags & NIX_RX_OFFLOAD_SECURITY_F) {
-		const uint64_t *wqe = (const uint64_t *)(mbuf + 1);
+		const uint64_t *wqe;
+		/* Rx Inject packet must have Match ID 0xFFFF and for this
+		 * wqe will get from address stored at mbuf+1 location
+		 */
+		if ((flags & NIX_RX_REAS_F) && hdr->w0.match_id == 0xFFFFU)
+			wqe = (const uint64_t *)*((uint64_t *)(mbuf + 1));
+		else
+			wqe = (const uint64_t *)(mbuf + 1);
 
 		if (hdr->w0.pkt_fmt != ROC_IE_OT_SA_PKT_FMT_FULL)
 			rx = (const union nix_rx_parse_u *)(wqe + 1);
@@ -1192,6 +1221,187 @@ cn10k_nix_flush_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t pk
 }
 
 #if defined(RTE_ARCH_ARM64)
+static __rte_always_inline uint16_t
+cn10k_nix_rx_inj_prepare_mseg(struct rte_mbuf *m, uint64_t *cmd)
+{
+	union nix_send_sg_s *sg, l_sg;
+	struct rte_mbuf *m_next;
+	uint16_t segdw, nb_segs;
+	uint64_t len, dlen;
+	uint64_t *slist;
+
+	sg = (union nix_send_sg_s *)cmd;
+	l_sg.u = sg->u;
+	l_sg.u &= 0xC00000000000000; /* LD_TYPE */
+	l_sg.subdc = NIX_SUBDC_SG;
+	nb_segs = m->nb_segs;
+	len = m->pkt_len;
+	slist = &cmd[1];
+
+	/* Fill mbuf segments */
+	do {
+		*slist = rte_pktmbuf_iova(m);
+		dlen = m->data_len;
+		len -= dlen;
+
+		/* Set the segment length */
+		l_sg.u |= ((uint64_t)dlen << (l_sg.segs << 4));
+		l_sg.segs += 1;
+		slist++;
+		nb_segs--;
+		if (l_sg.segs > 2 && nb_segs) {
+			sg->u = l_sg.u;
+			/* Next SG subdesc */
+			sg = (union nix_send_sg_s *)slist;
+			l_sg.u = sg->u;
+			l_sg.u &= 0xC00000000000000; /* LD_TYPE */
+			l_sg.subdc = NIX_SUBDC_SG;
+			slist++;
+		}
+		m_next = m->next;
+		m->next = NULL;
+		m = m_next;
+	} while (nb_segs);
+
+	/* Add remaining bytes of data to last seg */
+	if (len) {
+		uint8_t shft = (l_sg.subdc == NIX_SUBDC_SG) ? ((l_sg.segs - 1) << 4) : 0;
+		dlen = ((l_sg.u >> shft) & 0xFFFFULL) + len;
+		l_sg.u = l_sg.u & ~(0xFFFFULL << shft);
+		l_sg.u |= dlen << shft;
+	}
+	/* Write the last subdc out */
+	sg->u = l_sg.u;
+
+	segdw = (uint64_t *)slist - cmd;
+	/* Roundup extra dwords to multiple of 2 */
+	segdw = (segdw >> 1) + (segdw & 0x1);
+	return segdw;
+}
+
+static __rte_always_inline uint16_t
+cn10k_nix_inj_pkts(struct rte_security_session **sess, struct cnxk_ethdev_inj_cfg *inj_cfg,
+		   struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
+{
+	uintptr_t c_lbase = inj_cfg->lmt_base;
+	struct cn10k_sec_sess_priv sess_priv;
+	uint64_t sa_base = inj_cfg->sa_base;
+	uint16_t c_lmt_id, burst, left, i;
+	uintptr_t cptres, rxphdr, dptr;
+	struct rte_mbuf *m, *last;
+	uint8_t lnum, shft, loff;
+	uint64x2_t cmd01, cmd23;
+	uint64_t ucode_cmd[4];
+	rte_iova_t c_io_addr;
+	uint64_t *laddr;
+	uint64_t sa, w0;
+	uint16_t segdw;
+
+	/* Get LMT base address and LMT ID as lcore id */
+	ROC_LMT_CPT_BASE_ID_GET(c_lbase, c_lmt_id);
+	c_io_addr = inj_cfg->io_addr;
+
+	left = nb_pkts;
+again:
+	burst = left > 32 ? 32 : left;
+
+	lnum = 0;
+	loff = 0;
+	shft = 16;
+
+	for (i = 0; i < burst; i++) {
+		m = tx_pkts[i];
+		sess_priv.u64 = sess[i]->fast_mdata;
+		last = rte_pktmbuf_lastseg(m);
+
+		cptres = rte_pktmbuf_mtod_offset(last, uintptr_t, last->data_len);
+		cptres += BIT_ULL(7);
+		cptres = (cptres - 1) & ~(BIT_ULL(7) - 1);
+
+		if (m->nb_segs > 1) {
+			/* Will reserve NIX Rx descriptor with SG list after end of
+			 * last mbuf data location. and pointer to this will be
+			 * stored at 1st mbuf space for Rx path multi-seg processing.
+			 */
+			/* Pointer to WQE header */
+			*(uint64_t *)(m + 1) = cptres;
+			/* Reserve 8 Dwords of WQE Hdr + Rx Parse Hdr */
+			rxphdr = cptres + 8;
+			dptr = rxphdr + 7 * 8;
+			/* Prepare Multiseg SG list */
+			segdw = cn10k_nix_rx_inj_prepare_mseg(m, (uint64_t *)(dptr));
+			*(uint64_t *)rxphdr = (uint64_t)(segdw - 1) << 12;
+			cptres += 64 + segdw * 16;
+			ucode_cmd[1] = dptr | ((uint64_t)m->nb_segs << 60);
+		} else {
+			dptr = (uint64_t)rte_pktmbuf_iova(m);
+			ucode_cmd[1] = dptr;
+		}
+
+		/* Prepare CPT instruction */
+		/* CPT word 0 and 1 */
+		cmd01 = vdupq_n_u64(0);
+		w0 = inj_cfg->cmd_w0 | ((uint64_t)m->l2_len - 2) << 24 | (uint64_t)m->l2_len << 16;
+		cmd01 = vsetq_lane_u64(w0, cmd01, 0);
+		cmd01 = vsetq_lane_u64(cptres, cmd01, 1);
+
+		/* CPT word 2 and 3 */
+		cmd23 = vdupq_n_u64(0);
+		/* Set PF func */
+		w0 &= 0xFFFF000000000000UL;
+		cmd23 = vsetq_lane_u64(w0, cmd23, 0);
+		cmd23 = vsetq_lane_u64(((uint64_t)m + sizeof(struct rte_mbuf)) | 1, cmd23, 1);
+
+		sa_base &= ~0xFFFFUL;
+		sa = (uintptr_t)roc_nix_inl_ot_ipsec_inb_sa(sa_base, sess_priv.sa_idx);
+		ucode_cmd[0] = (ROC_IE_OT_MAJOR_OP_PROCESS_INBOUND_IPSEC << 48 | 1UL << 54 |
+				((uint64_t)sess_priv.chksum) << 32 |
+				((uint64_t)sess_priv.dec_ttl) << 34 | m->pkt_len);
+
+		ucode_cmd[2] = 0;
+		ucode_cmd[3] = (ROC_CPT_DFLT_ENG_GRP_SE_IE << 61 | 1UL << 60 | sa);
+
+		/* Move to our line */
+		laddr = LMT_OFF(c_lbase, lnum, loff ? 64 : 0);
+
+		/* Write CPT instruction to lmt line */
+		vst1q_u64(laddr, cmd01);
+		vst1q_u64((laddr + 2), cmd23);
+
+		*(__uint128_t *)(laddr + 4) = *(__uint128_t *)ucode_cmd;
+		*(__uint128_t *)(laddr + 6) = *(__uint128_t *)(ucode_cmd + 2);
+
+		loff = !loff;
+		lnum = lnum + (loff ? 0 : 1);
+		shft = shft + (loff ? 0 : 3);
+	}
+
+	left -= burst;
+	tx_pkts += burst;
+	sess += burst;
+
+	cn10k_nix_sec_steorl(c_io_addr, c_lmt_id, lnum, loff, shft);
+
+	rte_io_wmb();
+	if (left)
+		goto again;
+
+	return nb_pkts;
+}
+#else
+static __rte_always_inline uint16_t
+cn10k_nix_inj_pkts(struct rte_security_session **sess, struct cnxk_ethdev_inj_cfg *inj_cfg,
+		   struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
+{
+	RTE_SET_USED(sess);
+	RTE_SET_USED(inj_cfg);
+	RTE_SET_USED(tx_pkts);
+	RTE_SET_USED(nb_pkts);
+	return 0;
+}
+#endif
+
+#if defined(RTE_ARCH_ARM64)
 
 static __rte_always_inline uint64_t
 nix_vlan_update(const uint64_t w2, uint64_t ol_flags, uint8x16_t *f)
@@ -1558,6 +1768,7 @@ cn10k_nix_recv_pkts_vector(void *args, struct rte_mbuf **mbufs, uint16_t pkts,
 			uint64x2_t inner0, inner1, inner2, inner3;
 			uint64x2_t wqe01, wqe23, sa01, sa23;
 			uint16x4_t lens, l2lens, ltypes;
+			uint64x2_t mask01, mask23;
 			uint8x8_t ucc;
 
 			cpth0 = (uintptr_t)mbuf0 + d_off;
@@ -1587,12 +1798,22 @@ cn10k_nix_recv_pkts_vector(void *args, struct rte_mbuf **mbufs, uint16_t pkts,
 
 			sa01 = vshrq_n_u64(sa01, 32);
 			sa23 = vshrq_n_u64(sa23, 32);
+
+			/* Crypto Look-aside Rx Inject case */
+			mask01 = vceqq_u64(sa01, vdupq_n_u64(0xFFFFFFFF));
+			mask23 = vceqq_u64(sa23, vdupq_n_u64(0xFFFFFFFF));
+
 			sa01 = vshlq_n_u64(sa01,
 					   ROC_NIX_INL_OT_IPSEC_INB_SA_SZ_LOG2);
 			sa23 = vshlq_n_u64(sa23,
 					   ROC_NIX_INL_OT_IPSEC_INB_SA_SZ_LOG2);
 			sa01 = vaddq_u64(sa01, vdupq_n_u64(sa_base));
 			sa23 = vaddq_u64(sa23, vdupq_n_u64(sa_base));
+
+			if (flags & NIX_RX_REAS_F) {
+				sa01 = vbicq_u64(sa01, mask01);
+				sa23 = vbicq_u64(sa23, mask23);
+			}
 
 			const uint8x16x2_t tbl = {{
 				{

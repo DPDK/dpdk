@@ -1253,6 +1253,52 @@ eth_sec_caps_add(struct rte_security_capability eth_sec_caps[], uint32_t *idx,
 	*idx += nb_caps;
 }
 
+static uint16_t __rte_hot
+cn10k_eth_sec_inb_rx_inject(void *device, struct rte_mbuf **pkts,
+			    struct rte_security_session **sess, uint16_t nb_pkts)
+{
+	struct rte_eth_dev *eth_dev = (struct rte_eth_dev *)device;
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+
+	return cn10k_nix_inj_pkts(sess, &dev->inj_cfg, pkts, nb_pkts);
+}
+
+static int
+cn10k_eth_sec_rx_inject_config(void *device, uint16_t port_id, bool enable)
+{
+	struct rte_eth_dev *eth_dev = (struct rte_eth_dev *)device;
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	uint64_t channel, pf_func, inj_match_id = 0xFFFFUL;
+	struct cnxk_ethdev_inj_cfg *inj_cfg;
+	struct roc_nix *nix = &dev->nix;
+	struct roc_cpt_lf *inl_lf;
+	uint64_t sa_base;
+
+	if (!rte_eth_dev_is_valid_port(port_id))
+		return -EINVAL;
+
+	if (eth_dev->data->dev_started || !eth_dev->data->dev_configured)
+		return -EBUSY;
+
+	if (!roc_nix_inl_inb_rx_inject_enable(nix, dev->inb.inl_dev))
+		return -ENOTSUP;
+
+	roc_idev_nix_rx_inject_set(port_id, enable);
+
+	inl_lf = roc_nix_inl_inb_inj_lf_get(nix);
+	sa_base = roc_nix_inl_inb_sa_base_get(nix, dev->inb.inl_dev);
+
+	inj_cfg = &dev->inj_cfg;
+	inj_cfg->sa_base = sa_base | eth_dev->data->port_id;
+	inj_cfg->io_addr = inl_lf->io_addr;
+	inj_cfg->lmt_base = nix->lmt_base;
+	channel = roc_nix_get_base_chan(nix);
+	pf_func = roc_nix_inl_dev_pffunc_get();
+	inj_cfg->cmd_w0 = pf_func << 48 | inj_match_id << 32 | channel << 4;
+
+	return 0;
+}
+
 void
 cn10k_eth_sec_ops_override(void)
 {
@@ -1287,4 +1333,6 @@ cn10k_eth_sec_ops_override(void)
 	cnxk_eth_sec_ops.session_stats_get = cn10k_eth_sec_session_stats_get;
 	cnxk_eth_sec_ops.macsec_sc_stats_get = cnxk_eth_macsec_sc_stats_get;
 	cnxk_eth_sec_ops.macsec_sa_stats_get = cnxk_eth_macsec_sa_stats_get;
+	cnxk_eth_sec_ops.rx_inject_configure = cn10k_eth_sec_rx_inject_config;
+	cnxk_eth_sec_ops.inb_pkt_rx_inject = cn10k_eth_sec_inb_rx_inject;
 }

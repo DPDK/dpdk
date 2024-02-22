@@ -424,6 +424,9 @@ struct cnxk_eth_dev {
 	/* MCS device */
 	struct cnxk_mcs_dev *mcs_dev;
 	struct cnxk_macsec_sess_list mcs_list;
+
+	/* Inject packets */
+	struct cnxk_ethdev_inj_cfg inj_cfg;
 };
 
 struct cnxk_eth_rxq_sp {

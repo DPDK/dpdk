@@ -191,4 +191,61 @@ handle_tx_completion_pkts(struct cn10k_eth_txq *txq, uint8_t mt_safe)
 		rte_spinlock_unlock(&txq->tx_compl.ext_buf_lock);
 }
 
+static __rte_always_inline uint64_t
+cn10k_cpt_tx_steor_data(void)
+{
+	/* We have two CPT instructions per LMTLine */
+	const uint64_t dw_m1 = ROC_CN10K_TWO_CPT_INST_DW_M1;
+	uint64_t data;
+
+	/* This will be moved to addr area */
+	data = dw_m1 << 16;
+	data |= dw_m1 << 19;
+	data |= dw_m1 << 22;
+	data |= dw_m1 << 25;
+	data |= dw_m1 << 28;
+	data |= dw_m1 << 31;
+	data |= dw_m1 << 34;
+	data |= dw_m1 << 37;
+	data |= dw_m1 << 40;
+	data |= dw_m1 << 43;
+	data |= dw_m1 << 46;
+	data |= dw_m1 << 49;
+	data |= dw_m1 << 52;
+	data |= dw_m1 << 55;
+	data |= dw_m1 << 58;
+	data |= dw_m1 << 61;
+
+	return data;
+}
+
+static __rte_always_inline void
+cn10k_nix_sec_steorl(uintptr_t io_addr, uint32_t lmt_id, uint8_t lnum,
+		     uint8_t loff, uint8_t shft)
+{
+	uint64_t data;
+	uintptr_t pa;
+
+	/* Check if there is any CPT instruction to submit */
+	if (!lnum && !loff)
+		return;
+
+	data = cn10k_cpt_tx_steor_data();
+	/* Update lmtline use for partial end line */
+	if (loff) {
+		data &= ~(0x7ULL << shft);
+		/* Update it to half full i.e 64B */
+		data |= (0x3UL << shft);
+	}
+
+	pa = io_addr | ((data >> 16) & 0x7) << 4;
+	data &= ~(0x7ULL << 16);
+	/* Update lines - 1 that contain valid data */
+	data |= ((uint64_t)(lnum + loff - 1)) << 12;
+	data |= (uint64_t)lmt_id;
+
+	/* STEOR */
+	roc_lmt_submit_steorl(data, pa);
+}
+
 #endif /* __CN10K_RXTX_H__ */
