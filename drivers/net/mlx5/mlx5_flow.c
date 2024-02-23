@@ -2504,7 +2504,7 @@ int
 flow_validate_modify_field_level(const struct rte_flow_action_modify_data *data,
 				 struct rte_flow_error *error)
 {
-	if (data->level == 0)
+	if (data->level == 0 || data->field == RTE_FLOW_FIELD_FLEX_ITEM)
 		return 0;
 	if (data->field != RTE_FLOW_FIELD_TAG &&
 	    data->field != (enum rte_flow_field_id)MLX5_RTE_FLOW_FIELD_META_REG)
