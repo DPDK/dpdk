@@ -6905,7 +6905,7 @@ static const struct token token_list[] = {
 		.comp = comp_none,
 	},
 	[ACTION_MODIFY_FIELD_SRC_TAG_INDEX] = {
-		.name = "stc_tag_index",
+		.name = "src_tag_index",
 		.help = "source field tag array",
 		.next = NEXT(action_modify_field_src,
 			     NEXT_ENTRY(COMMON_UNSIGNED)),
