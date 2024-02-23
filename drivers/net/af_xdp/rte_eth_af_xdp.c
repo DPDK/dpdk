@@ -960,6 +960,9 @@ remove_xdp_program(struct pmd_internals *internals)
 static void
 xdp_umem_destroy(struct xsk_umem_info *umem)
 {
+	(void)xsk_umem__delete(umem->umem);
+	umem->umem = NULL;
+
 #if defined(XDP_UMEM_UNALIGNED_CHUNK_FLAG)
 	umem->mb_pool = NULL;
 #else
@@ -992,11 +995,8 @@ eth_dev_close(struct rte_eth_dev *dev)
 			break;
 		xsk_socket__delete(rxq->xsk);
 
-		if (__atomic_fetch_sub(&rxq->umem->refcnt, 1, __ATOMIC_ACQUIRE) - 1
-				== 0) {
-			(void)xsk_umem__delete(rxq->umem->umem);
+		if (__atomic_fetch_sub(&rxq->umem->refcnt, 1, __ATOMIC_ACQUIRE) - 1 == 0)
 			xdp_umem_destroy(rxq->umem);
-		}
 
 		/* free pkt_tx_queue */
 		rte_free(rxq->pair);
