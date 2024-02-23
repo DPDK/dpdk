@@ -5036,7 +5036,8 @@ flow_hw_validate_action_modify_field(struct rte_eth_dev *dev,
 	ret = flow_validate_modify_field_level(&action_conf->dst, error);
 	if (ret)
 		return ret;
-	if (!flow_hw_modify_field_is_geneve_opt(action_conf->dst.field)) {
+	if (action_conf->dst.field != RTE_FLOW_FIELD_FLEX_ITEM &&
+	    !flow_hw_modify_field_is_geneve_opt(action_conf->dst.field)) {
 		if (action_conf->dst.tag_index &&
 		    !flow_modify_field_support_tag_array(action_conf->dst.field))
 			return rte_flow_error_set(error, EINVAL,
@@ -5061,7 +5062,8 @@ flow_hw_validate_action_modify_field(struct rte_eth_dev *dev,
 				"destination field mask and template are not equal");
 	if (action_conf->src.field != RTE_FLOW_FIELD_POINTER &&
 	    action_conf->src.field != RTE_FLOW_FIELD_VALUE) {
-		if (!flow_hw_modify_field_is_geneve_opt(action_conf->src.field)) {
+		if (action_conf->src.field != RTE_FLOW_FIELD_FLEX_ITEM &&
+		    !flow_hw_modify_field_is_geneve_opt(action_conf->src.field)) {
 			if (action_conf->src.tag_index &&
 			    !flow_modify_field_support_tag_array(action_conf->src.field))
 				return rte_flow_error_set(error, EINVAL,
