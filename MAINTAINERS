@@ -1749,7 +1749,7 @@ Graph
 M: Jerin Jacob <jerinj@marvell.com>
 M: Kiran Kumar K <kirankumark@marvell.com>
 M: Nithin Dabilpuram <ndabilpuram@marvell.com>
-M: Zhirun Yan <zhirun.yan@intel.com>
+M: Zhirun Yan <yanzhirun_163@163.com>
 F: lib/graph/
 F: doc/guides/prog_guide/graph_lib.rst
 F: app/test/test_graph*
