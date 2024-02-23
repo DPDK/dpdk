@@ -52,9 +52,9 @@ bnx2x_check_bull(struct bnx2x_softc *sc)
 
 	/* check the mac address and VLAN and allocate memory if valid */
 	if (valid_bitmap & (1 << MAC_ADDR_VALID) && memcmp(bull->mac, sc->old_bulletin.mac, ETH_ALEN))
-		rte_memcpy(&sc->link_params.mac_addr, bull->mac, ETH_ALEN);
+		memcpy(&sc->link_params.mac_addr, bull->mac, ETH_ALEN);
 	if (valid_bitmap & (1 << VLAN_VALID))
-		rte_memcpy(&bull->vlan, &sc->old_bulletin.vlan, RTE_VLAN_HLEN);
+		memcpy(&bull->vlan, &sc->old_bulletin.vlan, sizeof(bull->vlan));
 
 	sc->old_bulletin = *bull;
 
@@ -569,7 +569,7 @@ bnx2x_vf_set_mac(struct bnx2x_softc *sc, int set)
 
 	bnx2x_check_bull(sc);
 
-	rte_memcpy(query->filters[0].mac, sc->link_params.mac_addr, ETH_ALEN);
+	memcpy(query->filters[0].mac, sc->link_params.mac_addr, ETH_ALEN);
 
 	bnx2x_add_tlv(sc, query, query->first_tlv.tl.length,
 		      BNX2X_VF_TLV_LIST_END,
@@ -583,9 +583,9 @@ bnx2x_vf_set_mac(struct bnx2x_softc *sc, int set)
 	while (BNX2X_VF_STATUS_FAILURE == reply->status &&
 			bnx2x_check_bull(sc)) {
 		/* A new mac was configured by PF for us */
-		rte_memcpy(sc->link_params.mac_addr, sc->pf2vf_bulletin->mac,
+		memcpy(sc->link_params.mac_addr, sc->pf2vf_bulletin->mac,
 				ETH_ALEN);
-		rte_memcpy(query->filters[0].mac, sc->pf2vf_bulletin->mac,
+		memcpy(query->filters[0].mac, sc->pf2vf_bulletin->mac,
 				ETH_ALEN);
 
 		rc = bnx2x_do_req4pf(sc, sc->vf2pf_mbox_mapping.paddr);
@@ -622,10 +622,10 @@ bnx2x_vf_config_rss(struct bnx2x_softc *sc,
 		      BNX2X_VF_TLV_LIST_END,
 		      sizeof(struct channel_list_end_tlv));
 
-	rte_memcpy(query->rss_key, params->rss_key, sizeof(params->rss_key));
+	memcpy(query->rss_key, params->rss_key, sizeof(params->rss_key));
 	query->rss_key_size = T_ETH_RSS_KEY;
 
-	rte_memcpy(query->ind_table, params->ind_table, T_ETH_INDIRECTION_TABLE_SIZE);
+	memcpy(query->ind_table, params->ind_table, T_ETH_INDIRECTION_TABLE_SIZE);
 	query->ind_table_size = T_ETH_INDIRECTION_TABLE_SIZE;
 
 	query->rss_result_mask = params->rss_result_mask;
