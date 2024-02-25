@@ -1142,6 +1142,8 @@ tunnel_update:
 						gro_pkts_num);
 				fs->gro_times = 0;
 			}
+			if (nb_rx == 0)
+				return false;
 		}
 
 		pkts_ip_csum_recalc(pkts_burst, nb_rx, tx_offloads);
