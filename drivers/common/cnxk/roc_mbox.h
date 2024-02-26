@@ -1427,12 +1427,12 @@ struct nix_cn10k_aq_enq_req {
 struct nix_cn10k_aq_enq_rsp {
 	struct mbox_msghdr hdr;
 	union {
-		struct nix_cn10k_rq_ctx_s rq;
-		struct nix_cn10k_sq_ctx_s sq;
-		struct nix_cq_ctx_s cq;
-		struct nix_rsse_s rss;
-		struct nix_rx_mce_s mce;
-		struct nix_band_prof_s prof;
+		__io struct nix_cn10k_rq_ctx_s rq;
+		__io struct nix_cn10k_sq_ctx_s sq;
+		__io struct nix_cq_ctx_s cq;
+		__io struct nix_rsse_s rss;
+		__io struct nix_rx_mce_s mce;
+		__io struct nix_band_prof_s prof;
 	};
 };
 
@@ -1668,11 +1668,11 @@ struct nix_rq_cpt_field_mask_cfg_req {
 #define RQ_CTX_MASK_MAX 6
 	union {
 		uint64_t __io rq_ctx_word_set[RQ_CTX_MASK_MAX];
-		struct nix_cn10k_rq_ctx_s rq_set;
+		__io struct nix_cn10k_rq_ctx_s rq_set;
 	};
 	union {
 		uint64_t __io rq_ctx_word_mask[RQ_CTX_MASK_MAX];
-		struct nix_cn10k_rq_ctx_s rq_mask;
+		__io struct nix_cn10k_rq_ctx_s rq_mask;
 	};
 	struct nix_lf_rx_ipec_cfg1_req {
 		uint32_t __io spb_cpt_aura;
