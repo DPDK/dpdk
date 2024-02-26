@@ -342,6 +342,7 @@ INTERNAL {
 	roc_nix_rx_drop_re_set;
 	roc_nix_rx_queue_intr_disable;
 	roc_nix_rx_queue_intr_enable;
+	roc_nix_sq_desc_dump;
 	roc_nix_sq_dump;
 	roc_nix_sq_ena_dis;
 	roc_nix_sq_fini;

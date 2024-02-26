@@ -554,6 +554,8 @@ void __roc_api roc_nix_cqe_dump(FILE *file, const struct nix_cqe_hdr_s *cq);
 void __roc_api roc_nix_rq_dump(struct roc_nix_rq *rq, FILE *file);
 void __roc_api roc_nix_cq_dump(struct roc_nix_cq *cq, FILE *file);
 void __roc_api roc_nix_sq_dump(struct roc_nix_sq *sq, FILE *file);
+int __roc_api roc_nix_sq_desc_dump(struct roc_nix *roc_nix, uint16_t q, uint16_t offset,
+				   uint16_t num, FILE *file);
 void __roc_api roc_nix_tm_dump(struct roc_nix *roc_nix, FILE *file);
 void __roc_api roc_nix_dump(struct roc_nix *roc_nix, FILE *file);
 

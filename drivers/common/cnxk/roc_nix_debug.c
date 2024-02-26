@@ -1362,3 +1362,175 @@ roc_nix_inl_outb_cpt_lfs_dump(struct roc_nix *roc_nix, FILE *file)
 		cpt_lf_print(&lf_base[i]);
 	}
 }
+
+static void
+nix_tm_sqe_dump(uint64_t *sqe, int head_off, int end_off, int instr_sz, FILE *file, int full,
+		uint16_t *num)
+{
+	int i, j, inc = (8 * (0x2 >> instr_sz)), segs;
+	uint64_t *ptr;
+
+	if (!sqe || !(*num))
+		return;
+
+	ptr = sqe + (head_off * inc);
+	for (i = head_off; i < end_off; i++) {
+		if (!(*num))
+			return;
+		ptr = sqe + (i * inc);
+		nix_dump(file, "Entry : %d >>>>>\n", i);
+		nix_dump(file, "\t\tSEND_HDR[0]: 0x%016lx SEND_HDR[1]: 0x%016lx\n", *ptr,
+			 *(ptr + 1));
+		*num = *num - 1;
+		if (!full)
+			continue;
+		ptr += 2;
+		if (((*ptr >> 60) & 0xF) == NIX_SUBDC_EXT) {
+			nix_dump(file, "\t\tSUBDC_EXT[0]: 0x%016lx DUBDC_EXT[1]: 0x%016lx\n", *ptr,
+				 *(ptr + 1));
+			ptr += 2;
+		}
+		if (((*ptr >> 60) & 0xF) == NIX_SUBDC_AGE_AND_STATS) {
+			nix_dump(file,
+				 "\t\tSUBDC_AGE_STATS[0]: 0x%016lx SUBDC_AGE_STATS[1]: 0x%016lx\n",
+				 *ptr, *(ptr + 1));
+			ptr += 2;
+		}
+		if (((*ptr >> 60) & 0xF) == NIX_SUBDC_JUMP) {
+			nix_dump(file, "\t\tSUBDC_JUMP: 0x%016lx\n", *ptr);
+			ptr += 1;
+			ptr = (uint64_t *)*ptr;
+		}
+		if (((*ptr >> 60) & 0xF) == NIX_SUBDC_CRC) {
+			nix_dump(file, "\t\tSUBDC_CRC[0]: 0x%016lx SUBDC_CRC[1]: 0x%016lx\n", *ptr,
+				 *(ptr + 1));
+			ptr += 2;
+		}
+		/* We are not parsing immediate send descriptor */
+		if (((*ptr >> 60) & 0xF) == NIX_SUBDC_IMM) {
+			nix_dump(file, "\t\tSUBDC_IMM: 0x%016lx ", *ptr);
+			continue;
+		}
+		while (1) {
+			if (((*ptr >> 60) & 0xF) == NIX_SUBDC_SG) {
+				nix_dump(file, "\t\tSUBDC_SG: 0x%016lx   ", *ptr);
+				segs = (*ptr >> 48) & 0x3;
+				ptr += 1;
+				for (j = 0; j < segs; j++) {
+					nix_dump(file, "\t\t\t  0x%016lx   ", *ptr);
+					ptr += 1;
+				}
+				if (segs == 2)
+					ptr += 1;
+			} else if (((*ptr >> 60) & 0xF) == NIX_SUBDC_SG2) {
+				nix_dump(file, "\t\tSUBDC_SG2: 0x%016lx   ", *ptr);
+				ptr += 1;
+				nix_dump(file, "\t\t\t  0x%016lx   ", *ptr);
+				ptr += 1;
+			} else
+				break;
+		}
+	}
+}
+
+int
+roc_nix_sq_desc_dump(struct roc_nix *roc_nix, uint16_t q, uint16_t offset, uint16_t num, FILE *file)
+{
+	int head_off, count, rc = 0, tail_off, full = 0;
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	struct roc_nix_sq *sq = nix->sqs[q];
+	void *sqb_buf, *dat, *tail_sqb;
+	struct ndc_sync_op *ndc_req;
+	struct dev *dev = &nix->dev;
+	uint16_t sqes_per_sqb;
+	struct mbox *mbox;
+
+	mbox = dev->mbox;
+	/* Sync NDC-NIX-TX for LF */
+	ndc_req = mbox_alloc_msg_ndc_sync_op(mbox_get(mbox));
+	if (ndc_req == NULL) {
+		mbox_put(mbox);
+		return -EFAULT;
+	}
+
+	ndc_req->nix_lf_tx_sync = 1;
+	if (mbox_process(mbox))
+		rc |= NIX_ERR_NDC_SYNC;
+	mbox_put(mbox);
+
+	if (rc)
+		plt_err("NDC_SYNC failed rc %d", rc);
+
+	rc = nix_q_ctx_get(dev, NIX_AQ_CTYPE_SQ, q, (void *)&dat);
+	if (rc)
+		return rc;
+	if (roc_model_is_cn9k()) {
+		volatile struct nix_sq_ctx_s *ctx = (struct nix_sq_ctx_s *)dat;
+
+		if (ctx->mnq_dis || ctx->lmt_dis)
+			full = 1;
+
+		count = ctx->sqb_count;
+		sqb_buf = (void *)ctx->head_sqb;
+		tail_sqb = (void *)ctx->tail_sqb;
+		head_off = ctx->head_offset;
+		tail_off = ctx->tail_offset;
+	} else {
+		volatile struct nix_cn10k_sq_ctx_s *ctx = (struct nix_cn10k_sq_ctx_s *)dat;
+
+		if (ctx->mnq_dis || ctx->lmt_dis)
+			full = 1;
+
+		count = ctx->sqb_count;
+		sqb_buf = (void *)ctx->head_sqb;
+		tail_sqb = (void *)ctx->tail_sqb;
+		head_off = ctx->head_offset;
+		tail_off = ctx->tail_offset;
+	}
+	sqes_per_sqb = 1 << sq->sqes_per_sqb_log2;
+	while (count) {
+		void *next_sqb;
+
+		if (sqb_buf == tail_sqb) {
+			if ((head_off + offset) >= tail_off) /* Nothing to be dump */
+				return 0;
+			head_off += tail_off;
+			break;
+		} else if ((head_off + offset) >= sqes_per_sqb) {
+			next_sqb = *(void **)((uint64_t *)sqb_buf +
+					      (uint32_t)((sqes_per_sqb - 1) *
+							 (0x2 >> sq->max_sqe_sz) * 8));
+			/* While traffic running HW may freed/reused this SQE */
+			if (!next_sqb)
+				return 0;
+			sqb_buf = next_sqb;
+			head_off = 0;
+			count--;
+		} else {
+			head_off += offset;
+			break;
+		}
+	}
+	while (count) {
+		void *next_sqb;
+
+		if (sqb_buf == tail_sqb)
+			nix_tm_sqe_dump(sqb_buf, head_off, tail_off, sq->max_sqe_sz, file, full,
+					&num);
+		else
+			nix_tm_sqe_dump(sqb_buf, head_off, (sqes_per_sqb - 1), sq->max_sqe_sz, file,
+					full, &num);
+		if (!num)
+			break;
+		next_sqb = *(void **)((uint64_t *)sqb_buf +
+				      (uint32_t)((sqes_per_sqb - 1) * (0x2 >> sq->max_sqe_sz) * 8));
+		/* While traffic running HW may freed/reused this SQE */
+		if (!next_sqb)
+			return 0;
+		sqb_buf = next_sqb;
+		head_off = 0;
+		count--;
+	}
+
+	return 0;
+}
