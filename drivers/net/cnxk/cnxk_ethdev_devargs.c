@@ -75,7 +75,7 @@ parse_ipsec_out_max_sa(const char *key, const char *value, void *extra_args)
 	if (errno)
 		val = 0;
 
-	*(uint16_t *)extra_args = val;
+	*(uint32_t *)extra_args = val;
 
 	return 0;
 }
