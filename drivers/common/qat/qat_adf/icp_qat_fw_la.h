@@ -81,6 +81,15 @@ struct icp_qat_fw_la_bulk_req {
 #define ICP_QAT_FW_LA_PARTIAL_END 2
 #define QAT_LA_PARTIAL_BITPOS 0
 #define QAT_LA_PARTIAL_MASK 0x3
+#define QAT_LA_USE_EXTENDED_PROTOCOL_FLAGS_BITPOS 0
+#define QAT_LA_USE_EXTENDED_PROTOCOL_FLAGS 1
+#define QAT_LA_USE_EXTENDED_PROTOCOL_FLAGS_MASK 0x1
+#define QAT_LA_USE_WCP_SLICE 1
+#define QAT_LA_USE_WCP_SLICE_BITPOS 2
+#define QAT_LA_USE_WCP_SLICE_MASK 0x1
+#define QAT_LA_USE_WAT_SLICE_BITPOS 3
+#define QAT_LA_USE_WAT_SLICE 1
+#define QAT_LA_USE_WAT_SLICE_MASK 0x1
 #define ICP_QAT_FW_LA_FLAGS_BUILD(zuc_proto, gcm_iv_len, auth_rslt, proto, \
 	cmp_auth, ret_auth, update_state, \
 	ciph_iv, ciphcfg, partial) \
@@ -187,6 +196,21 @@ struct icp_qat_fw_la_bulk_req {
 #define ICP_QAT_FW_LA_PARTIAL_SET(flags, val) \
 	QAT_FIELD_SET(flags, val, QAT_LA_PARTIAL_BITPOS, \
 	QAT_LA_PARTIAL_MASK)
+
+#define ICP_QAT_FW_USE_EXTENDED_PROTOCOL_FLAGS_SET(flags, val)	\
+	QAT_FIELD_SET(flags, val,				\
+	QAT_LA_USE_EXTENDED_PROTOCOL_FLAGS_BITPOS,		\
+	QAT_LA_USE_EXTENDED_PROTOCOL_FLAGS_MASK)
+
+#define ICP_QAT_FW_USE_WCP_SLICE_SET(flags, val) \
+	QAT_FIELD_SET(flags, val, \
+	QAT_LA_USE_WCP_SLICE_BITPOS, \
+	QAT_LA_USE_WCP_SLICE_MASK)
+
+#define ICP_QAT_FW_USE_WAT_SLICE_SET(flags, val) \
+	QAT_FIELD_SET(flags, val, \
+	QAT_LA_USE_WAT_SLICE_BITPOS, \
+	QAT_LA_USE_WAT_SLICE_MASK)
 
 #define QAT_FW_LA_MODE2 1
 #define QAT_FW_LA_NO_MODE2 0

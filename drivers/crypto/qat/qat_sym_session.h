@@ -140,6 +140,8 @@ struct qat_sym_session {
 	uint8_t is_auth;
 	uint8_t is_cnt_zero;
 	/* Some generations need different setup of counter */
+	uint8_t is_zuc256;
+	uint8_t is_wireless;
 	uint32_t slice_types;
 	enum qat_sym_proto_flag qat_proto_flag;
 	qat_sym_build_request_t build_request[2];

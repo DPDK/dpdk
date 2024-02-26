@@ -75,7 +75,8 @@ struct icp_qat_fw_comn_req_hdr {
 	uint8_t service_type;
 	uint8_t hdr_flags;
 	uint16_t serv_specif_flags;
-	uint16_t comn_req_flags;
+	uint8_t comn_req_flags;
+	uint8_t ext_flags;
 };
 
 struct icp_qat_fw_comn_req_rqpars {
@@ -176,9 +177,6 @@ struct icp_qat_fw_comn_resp {
 #define QAT_COMN_PTR_TYPE_SGL 0x1
 #define QAT_COMN_CD_FLD_TYPE_64BIT_ADR 0x0
 #define QAT_COMN_CD_FLD_TYPE_16BYTE_DATA 0x1
-#define QAT_COMN_EXT_FLAGS_BITPOS 8
-#define QAT_COMN_EXT_FLAGS_MASK 0x1
-#define QAT_COMN_EXT_FLAGS_USED 0x1
 
 #define ICP_QAT_FW_COMN_FLAGS_BUILD(cdt, ptr) \
 	((((cdt) & QAT_COMN_CD_FLD_TYPE_MASK) << QAT_COMN_CD_FLD_TYPE_BITPOS) \
