@@ -93,7 +93,7 @@ for fast packet processing on x86 platforms.
 %prep
 %setup -q
 MESON_PARAMS=%{?meson_params}
-ENABLED_DRVS="vdpa/virtio,common/virtio,common/virtio_mi"
+ENABLED_DRVS="vdpa/virtio,common/virtio,common/virtio_mi,common/virtio_ha"
 
 %if %{with bluefield}
 MESON_PARAMS="$MESON_PARAMS --cross-file config/arm/arm64_bluefield_linux_native_gcc"
@@ -133,6 +133,7 @@ EOF
 %{dst_prefix}/bin/vfe-vhost*
 %{dst_prefix}/bin/vhostmgmt
 %{dst_prefix}/bin/dpdk-vfe-vdpa
+%{dst_prefix}/bin/dpdk-virtio-ha
 %{dst_prefix}/%{dst_lib}/*.so.*
 %{dst_prefix}/%{dst_lib}/dpdk/*/*.so.*
 /etc/ld.so.conf.d/%{name}-%{_arch}.conf

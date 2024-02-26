@@ -82,7 +82,7 @@ ifneq (,$(filter dpdk_config_options=%,$(DEB_BUILD_OPTIONS)))
     DPDK_CONFIG_OPTIONS ?= $(subst $(comma),$(space),$(patsubst dpdk_config_options=%,%,$(filter dpdk_config_options=%,$(DEB_BUILD_OPTIONS))))
 endif
 
-DPDK_ENABLED_DRVS := "net/vhost,net/virtio,vdpa/virtio,common/virtio,common/virtio_mi"
+DPDK_ENABLED_DRVS := "net/vhost,net/virtio,vdpa/virtio,common/virtio,common/virtio_mi,common/virtio_ha"
 
 # Change default max ethports to 1024
 DPDK_CONFIG_OPTIONS += -Dmax_ethports=1024
@@ -191,7 +191,9 @@ override_dh_auto_install-arch:
 	dh_install -p dpdk-vhost-vfe     $(PREFIX)/bin/vfe-vhost*
 	dh_install -p dpdk-vhost-vfe     $(PREFIX)/bin/vhostmgmt
 	dh_install -p dpdk-vhost-vfe     $(PREFIX)/bin/dpdk-vfe-vdpa
+	dh_install -p dpdk-vhost-vfe     $(PREFIX)/bin/dpdk-virtio-ha
 	dh_install -p dpdk-vhost-vfe     /usr/lib/systemd/system/vfe-vhostd.service
+	dh_install -p dpdk-vhost-vfe     /usr/lib/systemd/system/vfe-vhostd-ha.service
 	dh_install -p dpdk-vhost-vfe $(PREFIX)/lib/$(DEB_HOST_MULTIARCH)/*.so.*
 	dh_install -p dpdk-vhost-vfe $(PREFIX)/lib/$(DEB_HOST_MULTIARCH)/*/*/*.so.*
 	dh_install -p dpdk-vhost-vfe-dev $(PREFIX)/lib/$(DEB_HOST_MULTIARCH)/*.so
