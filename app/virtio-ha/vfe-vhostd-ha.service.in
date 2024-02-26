@@ -1,0 +1,14 @@
+[Unit]
+Description=Nvidia Vhost Acceleration High Availability Daemon
+After=network.target network.service networking.service
+
+[Service]
+Type=simple
+ExecStart=@prefix@/bin/vfe-vhostd-ha
+TimeoutSec=1800
+LimitCORE=infinity
+KillSignal=SIGTERM
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
