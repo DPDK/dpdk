@@ -67,7 +67,7 @@ bool mlx5dr_pat_require_reparse(__be64 *actions, uint16_t num_of_actions)
 
 		/* Below fields can change packet structure require a reparse */
 		if (field == MLX5_MODI_OUT_ETHERTYPE ||
-		    field == MLX5_MODI_OUT_IPV6_NEXT_HDR)
+		    field == MLX5_MODI_OUT_IP_PROTOCOL)
 			return true;
 	}
 

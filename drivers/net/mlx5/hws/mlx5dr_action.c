@@ -2291,7 +2291,7 @@ mlx5dr_action_create_pop_ipv6_route_ext_mhdr3(struct mlx5dr_action *action)
 	MLX5_SET(copy_action_in, cmd, length, 8);
 	MLX5_SET(copy_action_in, cmd, src_offset, 24);
 	MLX5_SET(copy_action_in, cmd, src_field, mod_id);
-	MLX5_SET(copy_action_in, cmd, dst_field, MLX5_MODI_OUT_IPV6_NEXT_HDR);
+	MLX5_SET(copy_action_in, cmd, dst_field, MLX5_MODI_OUT_IP_PROTOCOL);
 
 	pattern.data = (__be64 *)cmd;
 	pattern.sz = sizeof(cmd);
@@ -2352,7 +2352,7 @@ mlx5dr_action_create_push_ipv6_route_ext_mhdr1(struct mlx5dr_action *action)
 	/* Set ipv6.protocol to IPPROTO_ROUTING */
 	MLX5_SET(set_action_in, cmd, action_type, MLX5_MODIFICATION_TYPE_SET);
 	MLX5_SET(set_action_in, cmd, length, 8);
-	MLX5_SET(set_action_in, cmd, field, MLX5_MODI_OUT_IPV6_NEXT_HDR);
+	MLX5_SET(set_action_in, cmd, field, MLX5_MODI_OUT_IP_PROTOCOL);
 	MLX5_SET(set_action_in, cmd, data, IPPROTO_ROUTING);
 
 	pattern.data = (__be64 *)cmd;
