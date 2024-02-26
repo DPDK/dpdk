@@ -137,6 +137,7 @@ New Features
   * Added support for GENEVE matching and modifying in HWS flow engine.
   * Added support for modifying IPv4 proto field in HWS flow engine.
   * Added support for modifying IPsec ESP fields in HWS flow engine.
+  * Added support for modifying IPv6 traffic class field in HWS flow engine.
   * Added support for matching a random value.
   * Added support for comparing result between packet fields or value.
   * Added support for accumulating value of field into another one.

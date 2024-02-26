@@ -2878,7 +2878,7 @@ flow_hw_modify_field_construct(struct mlx5_hw_q_job *job,
 		 * bits left. Shift the data left for IPv6 DSCP
 		 */
 		if (field->id == MLX5_MODI_OUT_IPV6_TRAFFIC_CLASS &&
-		    !(mask & MLX5_IPV6_HDR_ECN_MASK))
+		    mhdr_action->dst.field == RTE_FLOW_FIELD_IPV6_DSCP)
 			data <<= MLX5_IPV6_HDR_DSCP_SHIFT;
 		data = (data & mask) >> off_b;
 		job->mhdr_cmd[i++].data1 = rte_cpu_to_be_32(data);
@@ -5067,6 +5067,7 @@ flow_hw_validate_modify_field_level(const struct rte_flow_field_data *data,
 	case RTE_FLOW_FIELD_IPV4_TTL:
 	case RTE_FLOW_FIELD_IPV4_SRC:
 	case RTE_FLOW_FIELD_IPV4_DST:
+	case RTE_FLOW_FIELD_IPV6_TRAFFIC_CLASS:
 	case RTE_FLOW_FIELD_IPV6_PAYLOAD_LEN:
 	case RTE_FLOW_FIELD_IPV6_HOPLIMIT:
 	case RTE_FLOW_FIELD_IPV6_SRC:

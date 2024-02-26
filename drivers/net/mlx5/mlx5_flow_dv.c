@@ -1394,6 +1394,7 @@ mlx5_flow_item_field_width(struct rte_eth_dev *dev,
 		return 32;
 	case RTE_FLOW_FIELD_IPV6_DSCP:
 		return 6;
+	case RTE_FLOW_FIELD_IPV6_TRAFFIC_CLASS:
 	case RTE_FLOW_FIELD_IPV6_HOPLIMIT:
 	case RTE_FLOW_FIELD_IPV6_PROTO:
 		return 8;
@@ -1790,6 +1791,16 @@ mlx5_flow_field_id_to_modify_info
 			info[idx] = (struct field_modify_info){1, 0,
 						MLX5_MODI_OUT_IP_DSCP};
 		}
+		if (mask)
+			mask[idx] = flow_modify_info_mask_8(width, off_be);
+		else
+			info[idx].offset = off_be;
+		break;
+	case RTE_FLOW_FIELD_IPV6_TRAFFIC_CLASS:
+		MLX5_ASSERT(data->offset + width <= 8);
+		off_be = 8 - (data->offset + width);
+		modi_id = CALC_MODI_ID(IPV6_TRAFFIC_CLASS, data->level);
+		info[idx] = (struct field_modify_info){1, 0, modi_id};
 		if (mask)
 			mask[idx] = flow_modify_info_mask_8(width, off_be);
 		else
