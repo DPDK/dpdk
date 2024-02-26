@@ -2387,10 +2387,14 @@ flow_validate_modify_field_level(const struct rte_flow_field_data *data,
 	if (data->level == 0 || data->field == RTE_FLOW_FIELD_FLEX_ITEM)
 		return 0;
 	if (data->field != RTE_FLOW_FIELD_TAG &&
-	    data->field != (enum rte_flow_field_id)MLX5_RTE_FLOW_FIELD_META_REG)
-		return rte_flow_error_set(error, ENOTSUP,
-					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
-					  "inner header fields modification is not supported");
+	    data->field != (enum rte_flow_field_id)MLX5_RTE_FLOW_FIELD_META_REG) {
+		if (data->level > 1)
+			return rte_flow_error_set(error, ENOTSUP,
+						  RTE_FLOW_ERROR_TYPE_ACTION,
+						  NULL,
+						  "inner header fields modification is not supported");
+		return 0;
+	}
 	if (data->tag_index != 0)
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,

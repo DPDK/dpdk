@@ -633,8 +633,6 @@ Limitations
 
   - Supports the 'set' and 'add' operations for ``RTE_FLOW_ACTION_TYPE_MODIFY_FIELD`` action.
   - Modification of an arbitrary place in a packet via the special ``RTE_FLOW_FIELD_START`` Field ID is not supported.
-  - Modification of the MPLS header is supported only in HWS and only to copy from,
-    the encapsulation level is always 0.
   - Modify field action using ``RTE_FLOW_FIELD_RANDOM`` is not supported.
   - Modification of the 802.1Q tag is not supported.
   - Modification of VXLAN network or GENEVE network ID is supported only for HW steering.
@@ -645,7 +643,6 @@ Limitations
     Only DWs configured in :ref:`parser creation <geneve_parser_api>` can be modified,
     'type' and 'class' fields can be modified when ``match_on_class_mode=2``.
   - Modification of GENEVE TLV option data supports one DW per action.
-  - Encapsulation levels are not supported, can modify outermost header fields only.
   - Offsets cannot skip past the boundary of a field.
   - If the field type is ``RTE_FLOW_FIELD_MAC_TYPE``
     and packet contains one or more VLAN headers,
@@ -659,6 +656,34 @@ Limitations
   - For flow metadata fields (e.g. META or TAG)
     offset specifies the number of bits to skip from field's start,
     starting from LSB in the least significant byte, in the host order.
+  - Modification of the MPLS header is supported with some limitations:
+
+    - Only in HW steering.
+    - Only in ``src`` field.
+    - Only for outermost tunnel header (``level=2``).
+      For ``RTE_FLOW_FIELD_MPLS``,
+      the default encapsulation level ``0`` describes the outermost tunnel header.
+
+      .. note::
+
+         The default encapsulation level ``0`` describes
+         the "outermost that match is supported",
+         currently it is the first tunnel,
+         but it can be changed to outer when it is supported.
+
+  - Default encapsulation level ``0`` describes outermost.
+  - Encapsulation level ``2`` is supported with some limitations:
+
+    - Only in HW steering.
+    - Only in ``src`` field.
+    - ``RTE_FLOW_FIELD_VLAN_ID`` is not supported.
+    - ``RTE_FLOW_FIELD_IPV4_PROTO`` is not supported.
+    - ``RTE_FLOW_FIELD_IPV6_PROTO/DSCP/ECN`` are not supported.
+    - ``RTE_FLOW_FIELD_ESP_PROTO/SPI/SEQ_NUM`` are not supported.
+    - ``RTE_FLOW_FIELD_TCP_SEQ/ACK_NUM`` are not supported.
+    - Second tunnel fields are not supported.
+
+  - Encapsulation levels greater than ``2`` are not supported.
 
 - Age action:
 

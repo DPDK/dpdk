@@ -5003,6 +5003,131 @@ flow_hw_modify_field_is_add_dst_valid(const struct rte_flow_action_modify_field 
 	return false;
 }
 
+/**
+ * Validate the level value for modify field action.
+ *
+ * @param[in] data
+ *   Pointer to the rte_flow_field_data structure either src or dst.
+ * @param[in] inner_supported
+ *   Indicator whether inner should be supported.
+ * @param[out] error
+ *   Pointer to error structure.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+static int
+flow_hw_validate_modify_field_level(const struct rte_flow_field_data *data,
+				    bool inner_supported,
+				    struct rte_flow_error *error)
+{
+	switch ((int)data->field) {
+	case RTE_FLOW_FIELD_START:
+	case RTE_FLOW_FIELD_VLAN_TYPE:
+	case RTE_FLOW_FIELD_RANDOM:
+	case RTE_FLOW_FIELD_FLEX_ITEM:
+		/*
+		 * Level shouldn't be valid since field isn't supported or
+		 * doesn't use 'level'.
+		 */
+		break;
+	case RTE_FLOW_FIELD_MARK:
+	case RTE_FLOW_FIELD_META:
+	case RTE_FLOW_FIELD_METER_COLOR:
+	case RTE_FLOW_FIELD_HASH_RESULT:
+		/* For meta data fields encapsulation level is don't-care. */
+		break;
+	case RTE_FLOW_FIELD_TAG:
+	case MLX5_RTE_FLOW_FIELD_META_REG:
+		/*
+		 * The tag array for RTE_FLOW_FIELD_TAG type is provided using
+		 * 'tag_index' field. In old API, it was provided using 'level'
+		 * field and it is still supported for backwards compatibility.
+		 * Therefore, for meta tag field only, level is matter. It is
+		 * taken as tag index when 'tag_index' field isn't set, and
+		 * return error otherwise.
+		 */
+		if (data->level > 0) {
+			if (data->tag_index > 0)
+				return rte_flow_error_set(error, EINVAL,
+							  RTE_FLOW_ERROR_TYPE_ACTION,
+							  data,
+							  "tag array can be provided using 'level' or 'tag_index' fields, not both");
+			DRV_LOG(WARNING,
+				"tag array provided in 'level' field instead of 'tag_index' field.");
+		}
+		break;
+	case RTE_FLOW_FIELD_MAC_DST:
+	case RTE_FLOW_FIELD_MAC_SRC:
+	case RTE_FLOW_FIELD_MAC_TYPE:
+	case RTE_FLOW_FIELD_IPV4_IHL:
+	case RTE_FLOW_FIELD_IPV4_TOTAL_LEN:
+	case RTE_FLOW_FIELD_IPV4_DSCP:
+	case RTE_FLOW_FIELD_IPV4_ECN:
+	case RTE_FLOW_FIELD_IPV4_TTL:
+	case RTE_FLOW_FIELD_IPV4_SRC:
+	case RTE_FLOW_FIELD_IPV4_DST:
+	case RTE_FLOW_FIELD_IPV6_PAYLOAD_LEN:
+	case RTE_FLOW_FIELD_IPV6_HOPLIMIT:
+	case RTE_FLOW_FIELD_IPV6_SRC:
+	case RTE_FLOW_FIELD_IPV6_DST:
+	case RTE_FLOW_FIELD_TCP_PORT_SRC:
+	case RTE_FLOW_FIELD_TCP_PORT_DST:
+	case RTE_FLOW_FIELD_TCP_FLAGS:
+	case RTE_FLOW_FIELD_TCP_DATA_OFFSET:
+	case RTE_FLOW_FIELD_UDP_PORT_SRC:
+	case RTE_FLOW_FIELD_UDP_PORT_DST:
+		if (data->level > 2)
+			return rte_flow_error_set(error, ENOTSUP,
+						  RTE_FLOW_ERROR_TYPE_ACTION,
+						  data,
+						  "second inner header fields modification is not supported");
+		if (inner_supported)
+			break;
+		/* Fallthrough */
+	case RTE_FLOW_FIELD_VLAN_ID:
+	case RTE_FLOW_FIELD_IPV4_PROTO:
+	case RTE_FLOW_FIELD_IPV6_PROTO:
+	case RTE_FLOW_FIELD_IPV6_DSCP:
+	case RTE_FLOW_FIELD_IPV6_ECN:
+	case RTE_FLOW_FIELD_TCP_SEQ_NUM:
+	case RTE_FLOW_FIELD_TCP_ACK_NUM:
+	case RTE_FLOW_FIELD_ESP_PROTO:
+	case RTE_FLOW_FIELD_ESP_SPI:
+	case RTE_FLOW_FIELD_ESP_SEQ_NUM:
+	case RTE_FLOW_FIELD_VXLAN_VNI:
+	case RTE_FLOW_FIELD_GENEVE_VNI:
+	case RTE_FLOW_FIELD_GENEVE_OPT_TYPE:
+	case RTE_FLOW_FIELD_GENEVE_OPT_CLASS:
+	case RTE_FLOW_FIELD_GENEVE_OPT_DATA:
+	case RTE_FLOW_FIELD_GTP_TEID:
+	case RTE_FLOW_FIELD_GTP_PSC_QFI:
+		if (data->level > 1)
+			return rte_flow_error_set(error, ENOTSUP,
+						  RTE_FLOW_ERROR_TYPE_ACTION,
+						  data,
+						  "inner header fields modification is not supported");
+		break;
+	case RTE_FLOW_FIELD_MPLS:
+		if (data->level == 1)
+			return rte_flow_error_set(error, ENOTSUP,
+						  RTE_FLOW_ERROR_TYPE_ACTION,
+						  data,
+						  "outer MPLS header modification is not supported");
+		if (data->level > 2)
+			return rte_flow_error_set(error, ENOTSUP,
+						  RTE_FLOW_ERROR_TYPE_ACTION,
+						  data,
+						  "inner MPLS header modification is not supported");
+		break;
+	case RTE_FLOW_FIELD_POINTER:
+	case RTE_FLOW_FIELD_VALUE:
+	default:
+		MLX5_ASSERT(false);
+	}
+	return 0;
+}
+
 static int
 flow_hw_validate_action_modify_field(struct rte_eth_dev *dev,
 				     const struct rte_flow_action *action,
@@ -5033,7 +5158,7 @@ flow_hw_validate_action_modify_field(struct rte_eth_dev *dev,
 		return rte_flow_error_set(error, EINVAL,
 				RTE_FLOW_ERROR_TYPE_ACTION, action,
 				"immediate value, pointer and hash result cannot be used as destination");
-	ret = flow_validate_modify_field_level(&action_conf->dst, error);
+	ret = flow_hw_validate_modify_field_level(&action_conf->dst, false, error);
 	if (ret)
 		return ret;
 	if (action_conf->dst.field != RTE_FLOW_FIELD_FLEX_ITEM &&
@@ -5082,7 +5207,7 @@ flow_hw_validate_action_modify_field(struct rte_eth_dev *dev,
 			return rte_flow_error_set(error, EINVAL,
 				RTE_FLOW_ERROR_TYPE_ACTION, action,
 				"source offset level must be fully masked");
-		ret = flow_validate_modify_field_level(&action_conf->src, error);
+		ret = flow_hw_validate_modify_field_level(&action_conf->src, true, error);
 		if (ret)
 			return ret;
 	}
@@ -5147,6 +5272,7 @@ flow_hw_validate_action_modify_field(struct rte_eth_dev *dev,
 				"invalid add_field destination");
 	return 0;
 }
+
 static int
 flow_hw_validate_action_port_representor(struct rte_eth_dev *dev __rte_unused,
 					 const struct rte_flow_actions_template_attr *attr,
