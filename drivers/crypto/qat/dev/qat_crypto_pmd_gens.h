@@ -1048,9 +1048,15 @@ qat_sym_crypto_feature_flags_get_gen1(struct qat_pci_device *qat_dev);
 int
 qat_sym_crypto_set_session_gen1(void *cryptodev, void *session);
 
+int
+qat_sym_crypto_set_session_gen4(void *cryptodev, void *session);
+
 void
 qat_sym_session_set_ext_hash_flags_gen2(struct qat_sym_session *session,
 		uint8_t hash_flag);
+
+int
+qat_sym_configure_raw_dp_ctx_gen4(void *_raw_dp_ctx, void *_ctx);
 
 int
 qat_asym_crypto_cap_get_gen1(struct qat_cryptodev_private *internals,

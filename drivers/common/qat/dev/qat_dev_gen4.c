@@ -10,6 +10,7 @@
 #include "adf_transport_access_macros_gen4vf.h"
 #include "adf_pf2vf_msg.h"
 #include "qat_pf2vf.h"
+#include "qat_dev_gens.h"
 
 #include <stdint.h>
 
@@ -60,7 +61,7 @@ qat_select_valid_queue_gen4(struct qat_pci_device *qat_dev, int qp_id,
 	return -1;
 }
 
-static const struct qat_qp_hw_data *
+const struct qat_qp_hw_data *
 qat_qp_get_hw_data_gen4(struct qat_pci_device *qat_dev,
 		enum qat_service_type service_type, uint16_t qp_id)
 {
@@ -74,7 +75,7 @@ qat_qp_get_hw_data_gen4(struct qat_pci_device *qat_dev,
 	return &dev_extra->qp_gen4_data[ring_pair][0];
 }
 
-static int
+int
 qat_qp_rings_per_service_gen4(struct qat_pci_device *qat_dev,
 		enum qat_service_type service)
 {
@@ -103,7 +104,7 @@ gen4_pick_service(uint8_t hw_service)
 	}
 }
 
-static int
+int
 qat_dev_read_config_gen4(struct qat_pci_device *qat_dev)
 {
 	int i = 0;
@@ -143,7 +144,7 @@ qat_dev_read_config_gen4(struct qat_pci_device *qat_dev)
 	return 0;
 }
 
-static void
+void
 qat_qp_build_ring_base_gen4(void *io_addr,
 			struct qat_queue *queue)
 {
@@ -155,7 +156,7 @@ qat_qp_build_ring_base_gen4(void *io_addr,
 		queue->hw_queue_number, queue_base);
 }
 
-static void
+void
 qat_qp_adf_arb_enable_gen4(const struct qat_queue *txq,
 			void *base_addr, rte_spinlock_t *lock)
 {
@@ -172,7 +173,7 @@ qat_qp_adf_arb_enable_gen4(const struct qat_queue *txq,
 	rte_spinlock_unlock(lock);
 }
 
-static void
+void
 qat_qp_adf_arb_disable_gen4(const struct qat_queue *txq,
 			void *base_addr, rte_spinlock_t *lock)
 {
@@ -189,7 +190,7 @@ qat_qp_adf_arb_disable_gen4(const struct qat_queue *txq,
 	rte_spinlock_unlock(lock);
 }
 
-static void
+void
 qat_qp_adf_configure_queues_gen4(struct qat_qp *qp)
 {
 	uint32_t q_tx_config, q_resp_config;
@@ -208,14 +209,14 @@ qat_qp_adf_configure_queues_gen4(struct qat_qp *qp)
 		q_resp_config);
 }
 
-static void
+void
 qat_qp_csr_write_tail_gen4(struct qat_qp *qp, struct qat_queue *q)
 {
 	WRITE_CSR_RING_TAIL_GEN4VF(qp->mmap_bar_addr,
 		q->hw_bundle_number, q->hw_queue_number, q->tail);
 }
 
-static void
+void
 qat_qp_csr_write_head_gen4(struct qat_qp *qp, struct qat_queue *q,
 			uint32_t new_head)
 {
@@ -223,7 +224,7 @@ qat_qp_csr_write_head_gen4(struct qat_qp *qp, struct qat_queue *q,
 			q->hw_bundle_number, q->hw_queue_number, new_head);
 }
 
-static void
+void
 qat_qp_csr_setup_gen4(struct qat_pci_device *qat_dev,
 			void *io_addr, struct qat_qp *qp)
 {
@@ -246,7 +247,7 @@ static struct qat_qp_hw_spec_funcs qat_qp_hw_spec_gen4 = {
 	.qat_qp_get_hw_data = qat_qp_get_hw_data_gen4,
 };
 
-static int
+int
 qat_reset_ring_pairs_gen4(struct qat_pci_device *qat_pci_dev)
 {
 	int ret = 0, i;
@@ -268,13 +269,13 @@ qat_reset_ring_pairs_gen4(struct qat_pci_device *qat_pci_dev)
 	return 0;
 }
 
-static const struct rte_mem_resource *
+const struct rte_mem_resource *
 qat_dev_get_transport_bar_gen4(struct rte_pci_device *pci_dev)
 {
 	return &pci_dev->mem_resource[0];
 }
 
-static int
+int
 qat_dev_get_misc_bar_gen4(struct rte_mem_resource **mem_resource,
 		struct rte_pci_device *pci_dev)
 {
@@ -282,14 +283,14 @@ qat_dev_get_misc_bar_gen4(struct rte_mem_resource **mem_resource,
 	return 0;
 }
 
-static int
+int
 qat_dev_get_slice_map_gen4(uint32_t *map __rte_unused,
 	const struct rte_pci_device *pci_dev __rte_unused)
 {
 	return 0;
 }
 
-static int
+int
 qat_dev_get_extra_size_gen4(void)
 {
 	return sizeof(struct qat_dev_gen4_extra);

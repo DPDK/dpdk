@@ -21,6 +21,7 @@ enum qat_device_gen {
 	QAT_GEN2,
 	QAT_GEN3,
 	QAT_GEN4,
+	QAT_GEN5,
 	QAT_N_GENS
 };
 

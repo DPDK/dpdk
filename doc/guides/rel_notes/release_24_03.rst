@@ -133,8 +133,10 @@ New Features
 
 * **Updated Intel QuickAssist Technology driver.**
 
-  * Enabled support for new QAT GEN3 (578a) devices in QAT crypto driver.
-  * Enabled ZUC256 cipher and auth algorithm for wireless slice enabled GEN3 device.
+  * Enabled support for new QAT GEN3 (578a) and QAT GEN5 (4946)
+    devices in QAT crypto driver.
+  * Enabled ZUC256 cipher and auth algorithm for wireless slice
+    enabled GEN3 and GEN5 devices.
 
 * **Updated Marvell cnxk crypto driver.**
 

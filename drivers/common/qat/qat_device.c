@@ -65,6 +65,9 @@ static const struct rte_pci_id pci_id_qat_map[] = {
 		{
 			RTE_PCI_DEVICE(0x8086, 0x4945),
 		},
+		{
+			RTE_PCI_DEVICE(0x8086, 0x4947),
+		},
 		{.device_id = 0},
 };
 
@@ -203,6 +206,8 @@ pick_gen(const struct rte_pci_device *pci_dev)
 	case 0x4943:
 	case 0x4945:
 		return QAT_GEN4;
+	case 0x4947:
+		return QAT_GEN5;
 	default:
 		QAT_LOG(ERR, "Invalid dev_id, can't determine generation");
 		return QAT_N_GENS;
@@ -212,7 +217,8 @@ pick_gen(const struct rte_pci_device *pci_dev)
 static int
 wireless_slice_support(uint16_t pci_dev_id)
 {
-	return pci_dev_id == 0x578b;
+	return pci_dev_id == 0x578b ||
+			pci_dev_id == 0x4947;
 }
 
 struct qat_pci_device *

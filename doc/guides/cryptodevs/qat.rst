@@ -27,6 +27,7 @@ poll mode crypto driver support for the following hardware accelerator devices:
 * ``Intel QuickAssist Technology C4xxx``
 * ``Intel QuickAssist Technology 4xxx``
 * ``Intel QuickAssist Technology 300xx``
+* ``Intel QuickAssist Technology 420xx``
 
 
 Features
@@ -179,6 +180,7 @@ poll mode crypto driver support for the following hardware accelerator devices:
 * ``Intel QuickAssist Technology 4xxx``
 * ``Intel QuickAssist Technology 401xxx``
 * ``Intel QuickAssist Technology 300xx``
+* ``Intel QuickAssist Technology 420xx``
 
 The QAT ASYM PMD has support for:
 
@@ -471,6 +473,8 @@ to see the full table)
    | Yes | Yes | Yes | 4   | 402xx    | linux/6.4+    | qat_4xxx      | 4xxx       | 4944   | 2    | 4945   | 16     |
    +-----+-----+-----+-----+----------+---------------+---------------+------------+--------+------+--------+--------+
    | Yes | No  | No  | 4   | 402xx    | IDZ/ N/A      | qat_4xxx      | 4xxx       | 4944   | 2    | 4945   | 16     |
+   +-----+-----+-----+-----+----------+---------------+---------------+------------+--------+------+--------+--------+
+   | Yes | Yes | Yes | 5   | 420xx    | linux/6.8+    | qat_420xx     | 420xx      | 4946   | 2    | 4947   | 16     |
    +-----+-----+-----+-----+----------+---------------+---------------+------------+--------+------+--------+--------+
 
 * Note: Symmetric mixed crypto algorithms feature on Gen 2 works only with IDZ driver version 4.9.0+

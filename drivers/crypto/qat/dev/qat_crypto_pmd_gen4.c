@@ -233,7 +233,7 @@ qat_sym_build_op_aead_gen4(void *in_op, struct qat_sym_session *ctx,
 	return 0;
 }
 
-static int
+int
 qat_sym_crypto_set_session_gen4(void *cdev, void *session)
 {
 	struct qat_sym_session *ctx = session;
@@ -385,7 +385,7 @@ qat_sym_dp_enqueue_aead_jobs_gen4(void *qp_data, uint8_t *drv_ctx,
 	return i;
 }
 
-static int
+int
 qat_sym_configure_raw_dp_ctx_gen4(void *_raw_dp_ctx, void *_ctx)
 {
 	struct rte_crypto_raw_dp_ctx *raw_dp_ctx = _raw_dp_ctx;

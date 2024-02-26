@@ -407,7 +407,7 @@ qat_sym_session_configure_cipher(struct rte_cryptodev *dev,
 			goto error_out;
 		}
 		session->qat_mode = ICP_QAT_HW_CIPHER_CTR_MODE;
-		if (qat_dev_gen == QAT_GEN4)
+		if (qat_dev_gen == QAT_GEN4 || qat_dev_gen == QAT_GEN5)
 			session->is_ucs = 1;
 		break;
 	case RTE_CRYPTO_CIPHER_SNOW3G_UEA2:
@@ -950,7 +950,7 @@ qat_sym_session_configure_auth(struct rte_cryptodev *dev,
 			session->auth_iv.length = AES_GCM_J0_LEN;
 		else
 			session->is_iv12B = 1;
-		if (qat_dev_gen == QAT_GEN4) {
+		if (qat_dev_gen == QAT_GEN4 || qat_dev_gen == QAT_GEN5) {
 			session->is_cnt_zero = 1;
 			session->is_ucs = 1;
 		}
@@ -1126,7 +1126,7 @@ qat_sym_session_configure_aead(struct rte_cryptodev *dev,
 		session->qat_mode = ICP_QAT_HW_CIPHER_CTR_MODE;
 		session->qat_hash_alg = ICP_QAT_HW_AUTH_ALGO_GALOIS_128;
 
-		if (qat_dev_gen == QAT_GEN4)
+		if (qat_dev_gen == QAT_GEN4 || qat_dev_gen == QAT_GEN5)
 			session->is_ucs = 1;
 		if (session->cipher_iv.length == 0) {
 			session->cipher_iv.length = AES_GCM_J0_LEN;
@@ -1146,13 +1146,13 @@ qat_sym_session_configure_aead(struct rte_cryptodev *dev,
 		}
 		session->qat_mode = ICP_QAT_HW_CIPHER_CTR_MODE;
 		session->qat_hash_alg = ICP_QAT_HW_AUTH_ALGO_AES_CBC_MAC;
-		if (qat_dev_gen == QAT_GEN4)
+		if (qat_dev_gen == QAT_GEN4 || qat_dev_gen == QAT_GEN5)
 			session->is_ucs = 1;
 		break;
 	case RTE_CRYPTO_AEAD_CHACHA20_POLY1305:
 		if (aead_xform->key.length != ICP_QAT_HW_CHACHAPOLY_KEY_SZ)
 			return -EINVAL;
-		if (qat_dev_gen == QAT_GEN4)
+		if (qat_dev_gen == QAT_GEN4 || qat_dev_gen == QAT_GEN5)
 			session->is_ucs = 1;
 		session->qat_cipher_alg =
 				ICP_QAT_HW_CIPHER_ALGO_CHACHA20_POLY1305;
@@ -2418,7 +2418,7 @@ int qat_sym_cd_auth_set(struct qat_sym_session *cdesc,
 		auth_param->u2.inner_prefix_sz =
 			qat_hash_get_block_size(cdesc->qat_hash_alg);
 		auth_param->hash_state_sz = digestsize;
-		if (qat_dev_gen == QAT_GEN4) {
+		if (qat_dev_gen == QAT_GEN4 || qat_dev_gen == QAT_GEN5) {
 			ICP_QAT_FW_HASH_FLAG_MODE2_SET(
 				hash_cd_ctrl->hash_flags,
 				QAT_FW_LA_MODE2);
@@ -2984,6 +2984,7 @@ qat_sym_cd_crc_set(struct qat_sym_session *cdesc,
 		cdesc->cd_cur_ptr += sizeof(struct icp_qat_hw_gen3_crc_cd);
 		break;
 	case QAT_GEN4:
+	case QAT_GEN5:
 		crc_cfg.mode = ICP_QAT_HW_CIPHER_ECB_MODE;
 		crc_cfg.algo = ICP_QAT_HW_CIPHER_ALGO_NULL;
 		crc_cfg.hash_cmp_val = 0;
