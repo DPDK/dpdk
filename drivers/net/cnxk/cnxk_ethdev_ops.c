@@ -544,8 +544,9 @@ cnxk_nix_mtu_set(struct rte_eth_dev *eth_dev, uint16_t mtu)
 	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
 	struct rte_eth_dev_data *data = eth_dev->data;
 	struct roc_nix *nix = &dev->nix;
+	struct cnxk_eth_rxq_sp *rxq_sp;
+	uint32_t buffsz = 0;
 	int rc = -EINVAL;
-	uint32_t buffsz;
 
 	frame_size += CNXK_NIX_TIMESYNC_RX_OFFSET * dev->ptp_en;
 
@@ -561,8 +562,24 @@ cnxk_nix_mtu_set(struct rte_eth_dev *eth_dev, uint16_t mtu)
 		goto exit;
 	}
 
-	buffsz = data->min_rx_buf_size - RTE_PKTMBUF_HEADROOM;
-	old_frame_size = data->mtu + CNXK_NIX_L2_OVERHEAD;
+	if (!eth_dev->data->nb_rx_queues)
+		goto skip_buffsz_check;
+
+	/* Perform buff size check */
+	if (data->min_rx_buf_size) {
+		buffsz = data->min_rx_buf_size;
+	} else if (eth_dev->data->rx_queues && eth_dev->data->rx_queues[0]) {
+		rxq_sp = cnxk_eth_rxq_to_sp(data->rx_queues[0]);
+
+		if (rxq_sp->qconf.mp)
+			buffsz = rte_pktmbuf_data_room_size(rxq_sp->qconf.mp);
+	}
+
+	/* Skip validation if RQ's are not yet setup */
+	if (!buffsz)
+		goto skip_buffsz_check;
+
+	buffsz -= RTE_PKTMBUF_HEADROOM;
 
 	/* Refuse MTU that requires the support of scattered packets
 	 * when this feature has not been enabled before.
@@ -580,6 +597,8 @@ cnxk_nix_mtu_set(struct rte_eth_dev *eth_dev, uint16_t mtu)
 		goto exit;
 	}
 
+skip_buffsz_check:
+	old_frame_size = data->mtu + CNXK_NIX_L2_OVERHEAD;
 	/* if new MTU was smaller than old one, then flush all SQs before MTU change */
 	if (old_frame_size > frame_size) {
 		if (data->dev_started) {
