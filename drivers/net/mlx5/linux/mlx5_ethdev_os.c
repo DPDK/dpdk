@@ -768,6 +768,47 @@ mlx5_dev_interrupt_device_fatal(struct mlx5_dev_ctx_shared *sh)
 	}
 }
 
+static bool
+mlx5_dev_nl_ifindex_verify(uint32_t if_index, struct mlx5_priv *priv)
+{
+	struct mlx5_bond_info *bond = &priv->sh->bond;
+	int i;
+
+	if (bond->n_port == 0)
+		return (if_index == priv->if_index);
+
+	if (if_index == bond->ifindex)
+		return true;
+	for (i = 0; i < bond->n_port; i++) {
+		if (i >= MLX5_BOND_MAX_PORTS)
+			return false;
+		if (if_index == bond->ports[i].ifindex)
+			return true;
+	}
+
+	return false;
+}
+
+static void
+mlx5_link_update_bond(struct rte_eth_dev *dev)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_bond_info *bond = &priv->sh->bond;
+	struct ifreq ifr = (struct ifreq) {
+		.ifr_flags = 0,
+	};
+	int ret;
+
+	ret = mlx5_ifreq_by_ifname(bond->ifname, SIOCGIFFLAGS, &ifr);
+	if (ret) {
+		DRV_LOG(WARNING, "ifname %s ioctl(SIOCGIFFLAGS) failed: %s",
+			bond->ifname, strerror(rte_errno));
+		return;
+	}
+	dev->data->dev_link.link_status =
+		((ifr.ifr_flags & IFF_UP) && (ifr.ifr_flags & IFF_RUNNING));
+}
+
 static void
 mlx5_dev_interrupt_nl_cb(struct nlmsghdr *hdr, void *cb_arg)
 {
@@ -790,16 +831,20 @@ mlx5_dev_interrupt_nl_cb(struct nlmsghdr *hdr, void *cb_arg)
 		    !dev->data->dev_conf.intr_conf.lsc)
 			break;
 		priv = dev->data->dev_private;
-		if (priv->if_index == if_index) {
+		if (mlx5_dev_nl_ifindex_verify(if_index, priv)) {
 			/* Block logical LSC events. */
 			uint16_t prev_status = dev->data->dev_link.link_status;
 
-			if (mlx5_link_update(dev, 0) < 0)
+			if (mlx5_link_update(dev, 0) < 0) {
 				DRV_LOG(ERR, "Failed to update link status: %s",
 					rte_strerror(rte_errno));
-			else if (prev_status != dev->data->dev_link.link_status)
-				rte_eth_dev_callback_process
-					(dev, RTE_ETH_EVENT_INTR_LSC, NULL);
+			} else {
+				if (priv->sh->bond.n_port)
+					mlx5_link_update_bond(dev);
+				if (prev_status != dev->data->dev_link.link_status)
+					rte_eth_dev_callback_process
+						(dev, RTE_ETH_EVENT_INTR_LSC, NULL);
+			}
 			break;
 		}
 	}
