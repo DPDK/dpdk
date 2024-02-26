@@ -484,6 +484,10 @@ tx_adapter_service(void)
 	int internal_port;
 	uint32_t cap;
 
+	/* Initialize mbufs */
+	for (i = 0; i < RING_SIZE; i++)
+		rte_pktmbuf_reset(&bufs[i]);
+
 	memset(&dev_conf, 0, sizeof(dev_conf));
 	err = rte_event_eth_tx_adapter_caps_get(TEST_DEV_ID, TEST_ETHDEV_ID,
 						&cap);
