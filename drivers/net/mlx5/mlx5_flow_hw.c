@@ -5068,6 +5068,7 @@ flow_hw_validate_modify_field_level(const struct rte_flow_field_data *data,
 	case RTE_FLOW_FIELD_IPV4_SRC:
 	case RTE_FLOW_FIELD_IPV4_DST:
 	case RTE_FLOW_FIELD_IPV6_TRAFFIC_CLASS:
+	case RTE_FLOW_FIELD_IPV6_FLOW_LABEL:
 	case RTE_FLOW_FIELD_IPV6_PAYLOAD_LEN:
 	case RTE_FLOW_FIELD_IPV6_HOPLIMIT:
 	case RTE_FLOW_FIELD_IPV6_SRC:
