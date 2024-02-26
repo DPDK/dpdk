@@ -959,6 +959,22 @@ struct nfp_fl_act_meter {
 	rte_be32_t profile_id;
 };
 
+/*
+ * Mark
+ *    3                   2                   1
+ *  1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * | res |  opcode |  res  | len_lw|            reserved           |
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |                         Mark                                  |
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ */
+struct nfp_fl_act_mark {
+	struct nfp_fl_act_head head;
+	rte_be16_t reserved;
+	rte_be32_t mark;
+};
+
 int nfp_flower_cmsg_mac_repr(struct nfp_app_fw_flower *app_fw_flower);
 int nfp_flower_cmsg_repr_reify(struct nfp_app_fw_flower *app_fw_flower,
 		struct nfp_flower_representor *repr);

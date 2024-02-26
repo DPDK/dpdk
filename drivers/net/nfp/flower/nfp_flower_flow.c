@@ -83,6 +83,7 @@
 #define NFP_FL_ACTION_OPCODE_METER              24
 #define NFP_FL_ACTION_OPCODE_CT_NAT_EXT         25
 #define NFP_FL_ACTION_OPCODE_PUSH_GENEVE        26
+#define NFP_FL_ACTION_OPCODE_SET_MARK           27
 #define NFP_FL_ACTION_OPCODE_NUM                32
 
 #define NFP_FL_OUT_FLAGS_LAST            RTE_BIT32(15)
@@ -1137,6 +1138,10 @@ nfp_flow_key_layers_calculate_actions(const struct rte_flow_action actions[],
 			break;
 		case RTE_FLOW_ACTION_TYPE_CONNTRACK:
 			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ACTION_TYPE_CONNTRACK detected");
+			break;
+		case RTE_FLOW_ACTION_TYPE_MARK:
+			key_ls->act_size += sizeof(struct nfp_fl_act_mark);
+			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ACTION_TYPE_MARK detected");
 			break;
 		default:
 			PMD_DRV_LOG(ERR, "Action type %d not supported.", action->type);
@@ -3487,6 +3492,23 @@ nfp_flow_action_meter(struct nfp_flower_representor *representor,
 	return 0;
 }
 
+static void
+nfp_flow_action_mark(char *act_data,
+		const struct rte_flow_action *action)
+{
+	struct nfp_fl_act_mark *fl_mark;
+	const struct rte_flow_action_mark *mark;
+	size_t act_size = sizeof(struct nfp_fl_act_mark);
+
+	mark = action->conf;
+
+	fl_mark = (struct nfp_fl_act_mark *)act_data;
+	fl_mark->head.jump_id = NFP_FL_ACTION_OPCODE_SET_MARK;
+	fl_mark->head.len_lw  = act_size >> NFP_FL_LW_SIZ;
+	fl_mark->reserved     = 0;
+	fl_mark->mark         = rte_cpu_to_be_32(mark->id);
+}
+
 static uint32_t
 nfp_flow_count_output(const struct rte_flow_action actions[])
 {
@@ -3733,6 +3755,11 @@ nfp_flow_compile_action(struct nfp_flower_representor *representor,
 			break;
 		case RTE_FLOW_ACTION_TYPE_CONNTRACK:
 			PMD_DRV_LOG(DEBUG, "Process RTE_FLOW_ACTION_TYPE_CONNTRACK");
+			break;
+		case RTE_FLOW_ACTION_TYPE_MARK:
+			PMD_DRV_LOG(DEBUG, "Process RTE_FLOW_ACTION_TYPE_MARK");
+			nfp_flow_action_mark(position, action);
+			position += sizeof(struct nfp_fl_act_mark);
 			break;
 		default:
 			PMD_DRV_LOG(ERR, "Unsupported action type: %d", action->type);
