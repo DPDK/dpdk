@@ -495,7 +495,7 @@ roc_nix_tm_hierarchy_disable(struct roc_nix *roc_nix)
 		if (!sq)
 			continue;
 
-		rc = roc_nix_tm_sq_aura_fc(sq, false);
+		rc = roc_nix_sq_ena_dis(sq, false);
 		if (rc) {
 			plt_err("Failed to disable sqb aura fc, rc=%d", rc);
 			goto cleanup;
@@ -607,7 +607,7 @@ roc_nix_tm_hierarchy_xmit_enable(struct roc_nix *roc_nix, enum roc_nix_tm_tree t
 		sq_id = node->id;
 		sq = nix->sqs[sq_id];
 
-		rc = roc_nix_tm_sq_aura_fc(sq, true);
+		rc = roc_nix_sq_ena_dis(sq, true);
 		if (rc) {
 			plt_err("TM sw xon failed on SQ %u, rc=%d", node->id,
 				rc);
