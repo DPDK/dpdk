@@ -6723,18 +6723,55 @@ flow_hw_prepend_item(const struct rte_flow_item *items,
 	return copied_items;
 }
 
-static inline bool
-flow_hw_item_compare_field_supported(enum rte_flow_field_id field)
+static int
+flow_hw_item_compare_field_validate(enum rte_flow_field_id arg_field,
+				    enum rte_flow_field_id base_field,
+				    struct rte_flow_error *error)
+{
+	switch (arg_field) {
+	case RTE_FLOW_FIELD_TAG:
+	case RTE_FLOW_FIELD_META:
+		break;
+	case RTE_FLOW_FIELD_RANDOM:
+		if (base_field == RTE_FLOW_FIELD_VALUE)
+			return 0;
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					  NULL,
+					  "compare random is supported only with immediate value");
+	default:
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					  NULL,
+					  "compare item argument field is not supported");
+	}
+	switch (base_field) {
+	case RTE_FLOW_FIELD_TAG:
+	case RTE_FLOW_FIELD_META:
+	case RTE_FLOW_FIELD_VALUE:
+		break;
+	default:
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					  NULL,
+					  "compare item base field is not supported");
+	}
+	return 0;
+}
+
+static inline uint32_t
+flow_hw_item_compare_width_supported(enum rte_flow_field_id field)
 {
 	switch (field) {
 	case RTE_FLOW_FIELD_TAG:
 	case RTE_FLOW_FIELD_META:
-	case RTE_FLOW_FIELD_VALUE:
-		return true;
+		return 32;
+	case RTE_FLOW_FIELD_RANDOM:
+		return 16;
 	default:
 		break;
 	}
-	return false;
+	return 0;
 }
 
 static int
@@ -6743,6 +6780,7 @@ flow_hw_validate_item_compare(const struct rte_flow_item *item,
 {
 	const struct rte_flow_item_compare *comp_m = item->mask;
 	const struct rte_flow_item_compare *comp_v = item->spec;
+	int ret;
 
 	if (unlikely(!comp_m))
 		return rte_flow_error_set(error, EINVAL,
@@ -6754,19 +6792,13 @@ flow_hw_validate_item_compare(const struct rte_flow_item *item,
 				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 				   NULL,
 				   "compare item only support full mask");
-	if (!flow_hw_item_compare_field_supported(comp_m->a.field) ||
-	    !flow_hw_item_compare_field_supported(comp_m->b.field))
-		return rte_flow_error_set(error, ENOTSUP,
-				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
-				   NULL,
-				   "compare item field not support");
-	if (comp_m->a.field == RTE_FLOW_FIELD_VALUE &&
-	    comp_m->b.field == RTE_FLOW_FIELD_VALUE)
-		return rte_flow_error_set(error, EINVAL,
-				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
-				   NULL,
-				   "compare between value is not valid");
+	ret = flow_hw_item_compare_field_validate(comp_m->a.field,
+						  comp_m->b.field, error);
+	if (ret < 0)
+		return ret;
 	if (comp_v) {
+		uint32_t width;
+
 		if (comp_v->operation != comp_m->operation ||
 		    comp_v->a.field != comp_m->a.field ||
 		    comp_v->b.field != comp_m->b.field)
@@ -6774,7 +6806,9 @@ flow_hw_validate_item_compare(const struct rte_flow_item *item,
 					   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 					   NULL,
 					   "compare item spec/mask not matching");
-		if ((comp_v->width & comp_m->width) != 32)
+		width = flow_hw_item_compare_width_supported(comp_v->a.field);
+		MLX5_ASSERT(width > 0);
+		if ((comp_v->width & comp_m->width) != width)
 			return rte_flow_error_set(error, EINVAL,
 					   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 					   NULL,
