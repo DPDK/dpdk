@@ -1143,6 +1143,9 @@ nfp_flow_key_layers_calculate_actions(const struct rte_flow_action actions[],
 			key_ls->act_size += sizeof(struct nfp_fl_act_mark);
 			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ACTION_TYPE_MARK detected");
 			break;
+		case RTE_FLOW_ACTION_TYPE_RSS:
+			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ACTION_TYPE_RSS detected");
+			break;
 		default:
 			PMD_DRV_LOG(ERR, "Action type %d not supported.", action->type);
 			return -ENOTSUP;
@@ -3509,6 +3512,116 @@ nfp_flow_action_mark(char *act_data,
 	fl_mark->mark         = rte_cpu_to_be_32(mark->id);
 }
 
+static int
+nfp_flow_action_rss_add(struct nfp_flower_representor *representor,
+		const struct rte_flow_action *action,
+		struct nfp_fl_rss **rss_store)
+{
+	int ret;
+	struct nfp_net_hw *pf_hw;
+	struct rte_eth_rss_conf rss_conf;
+	struct nfp_fl_rss *rss_store_tmp;
+	const struct rte_flow_action_rss *rss;
+	uint8_t rss_key[NFP_NET_CFG_RSS_KEY_SZ];
+
+	if (nfp_flower_repr_is_vf(representor))
+		return 0;
+
+	rss = action->conf;
+
+	if (rss->key_len > NFP_NET_CFG_RSS_KEY_SZ) {
+		PMD_DRV_LOG(ERR, "Unsupported rss key length.");
+		return -ENOTSUP;
+	}
+
+	rss_conf.rss_hf = 0;
+	rss_conf.rss_key = rss_key;
+	pf_hw = representor->app_fw_flower->pf_hw;
+	ret = nfp_net_rss_hash_conf_get(pf_hw->eth_dev, &rss_conf);
+	if (ret != 0) {
+		PMD_DRV_LOG(ERR, "Get RSS conf failed.");
+		return ret;
+	}
+
+	rss_store_tmp = calloc(1, sizeof(struct nfp_fl_rss));
+	if (rss_store_tmp == NULL) {
+		PMD_DRV_LOG(ERR, "Alloc memory for rss storage failed.");
+		return -ENOMEM;
+	}
+
+	if (rss->types != 0) {
+		rss_conf.rss_hf |= rss->types;
+
+		rss_store_tmp->types = rss->types;
+	}
+
+	if (rss->key_len != 0 && rss->key != NULL) {
+		memcpy(rss_conf.rss_key, rss->key, rss->key_len);
+		rss_conf.rss_key_len = rss->key_len;
+
+		memcpy(rss_store_tmp->key, rss->key, rss->key_len);
+		rss_store_tmp->key_len = rss->key_len;
+	}
+
+	ret = nfp_net_rss_hash_update(pf_hw->eth_dev, &rss_conf);
+	if (ret != 0) {
+		PMD_DRV_LOG(ERR, "Update RSS conf failed.");
+		free(rss_store_tmp);
+		return ret;
+	}
+
+	*rss_store = rss_store_tmp;
+
+	return 0;
+}
+
+static int
+nfp_flow_action_rss_del(struct nfp_flower_representor *representor,
+		struct rte_flow *nfp_flow)
+{
+	int ret;
+	struct nfp_net_hw *pf_hw;
+	struct nfp_fl_rss *rss_store;
+	struct rte_eth_rss_conf rss_conf;
+	uint8_t rss_key[NFP_NET_CFG_RSS_KEY_SZ];
+
+	if (nfp_flower_repr_is_vf(representor))
+		return 0;
+
+	rss_conf.rss_hf = 0;
+	rss_conf.rss_key = rss_key;
+	pf_hw = representor->app_fw_flower->pf_hw;
+	ret = nfp_net_rss_hash_conf_get(pf_hw->eth_dev, &rss_conf);
+	if (ret != 0) {
+		PMD_DRV_LOG(ERR, "Get RSS conf failed.");
+		goto exit;
+	}
+
+	rss_store = nfp_flow->rss;
+
+	if ((rss_conf.rss_hf & rss_store->types) != 0)
+		rss_conf.rss_hf &= (~(rss_store->types));
+
+	/* Need default RSS configuration */
+	if (rss_conf.rss_hf == 0)
+		rss_conf.rss_hf = RTE_ETH_RSS_IPV4 | RTE_ETH_RSS_IPV6;
+
+	if (rss_conf.rss_key_len == rss_store->key_len &&
+			memcmp(rss_conf.rss_key, rss_store->key, rss_store->key_len) == 0) {
+		rss_conf.rss_key = NULL;
+		rss_conf.rss_key_len = 0;
+	}
+
+	ret = nfp_net_rss_hash_update(pf_hw->eth_dev, &rss_conf);
+	if (ret != 0)
+		PMD_DRV_LOG(ERR, "Update RSS conf failed.");
+
+exit:
+	free(nfp_flow->rss);
+
+	return ret;
+}
+
 static uint32_t
 nfp_flow_count_output(const struct rte_flow_action actions[])
 {
@@ -3760,6 +3873,13 @@ nfp_flow_compile_action(struct nfp_flower_representor *representor,
 			PMD_DRV_LOG(DEBUG, "Process RTE_FLOW_ACTION_TYPE_MARK");
 			nfp_flow_action_mark(position, action);
 			position += sizeof(struct nfp_fl_act_mark);
+			break;
+		case RTE_FLOW_ACTION_TYPE_RSS:
+			PMD_DRV_LOG(DEBUG, "Process RTE_FLOW_ACTION_TYPE_RSS");
+			ret = nfp_flow_action_rss_add(representor, action, &nfp_flow->rss);
+			if (ret != 0)
+				return ret;
+			nfp_flow->type = NFP_FLOW_RSS;
 			break;
 		default:
 			PMD_DRV_LOG(ERR, "Unsupported action type: %d", action->type);
@@ -4098,6 +4218,10 @@ nfp_flow_destroy(struct rte_eth_dev *dev,
 
 		/* Delete the entry in pre tunnel table */
 		ret = nfp_pre_tun_table_check_del(representor, nfp_flow);
+		break;
+	case NFP_FLOW_RSS:
+		/* Clear corresponding RSS configuration */
+		ret = nfp_flow_action_rss_del(representor, nfp_flow);
 		break;
 	default:
 		PMD_DRV_LOG(ERR, "Invalid nfp flow type %d.", nfp_flow->type);

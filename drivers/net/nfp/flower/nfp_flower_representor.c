@@ -860,3 +860,9 @@ domain_free:
 
 	return ret;
 }
+
+bool
+nfp_flower_repr_is_vf(struct nfp_flower_representor *repr)
+{
+	return repr->repr_type == NFP_REPR_TYPE_VF;
+}

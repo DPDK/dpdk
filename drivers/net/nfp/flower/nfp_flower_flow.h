@@ -33,6 +33,7 @@ enum nfp_flow_type {
 	NFP_FLOW_COMMON,
 	NFP_FLOW_ENCAP,
 	NFP_FLOW_DECAP,
+	NFP_FLOW_RSS,
 };
 
 struct nfp_fl_key_ls {
@@ -121,6 +122,12 @@ struct nfp_ipv6_addr_entry {
 	int ref_count;
 };
 
+struct nfp_fl_rss {
+	uint8_t key[NFP_NET_CFG_RSS_KEY_SZ];
+	uint32_t key_len;
+	uint64_t types;
+};
+
 #define NFP_TUN_PRE_TUN_RULE_LIMIT  32
 
 struct nfp_flow_priv {
@@ -166,6 +173,7 @@ struct nfp_flow_priv {
 struct rte_flow {
 	struct nfp_fl_payload payload;
 	struct nfp_fl_tun tun;
+	struct nfp_fl_rss *rss;
 	size_t length;
 	uint32_t hash_key;
 	uint32_t mtr_id;
