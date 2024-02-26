@@ -31,6 +31,8 @@ nfp_flower_pf_start(struct rte_eth_dev *dev)
 	uint32_t new_ctrl;
 	uint32_t update = 0;
 	struct nfp_net_hw *net_hw;
+	struct rte_eth_conf *dev_conf;
+	struct rte_eth_rxmode *rxmode;
 	struct nfp_flower_representor *repr;
 
 	repr = dev->data->dev_private;
@@ -48,8 +50,14 @@ nfp_flower_pf_start(struct rte_eth_dev *dev)
 	/* Writing configuration parameters in the device */
 	nfp_net_params_setup(net_hw);
 
-	update |= NFP_NET_CFG_UPDATE_RSS;
-	new_ctrl |= nfp_net_cfg_ctrl_rss(hw->cap);
+	dev_conf = &dev->data->dev_conf;
+	rxmode = &dev_conf->rxmode;
+
+	if ((rxmode->mq_mode & RTE_ETH_MQ_RX_RSS_FLAG) != 0) {
+		nfp_net_rss_config_default(dev);
+		update |= NFP_NET_CFG_UPDATE_RSS;
+		new_ctrl |= nfp_net_cfg_ctrl_rss(hw->cap);
+	}
 
 	/* Enable device */
 	new_ctrl |= NFP_NET_CFG_CTRL_ENABLE;

@@ -41,6 +41,15 @@
 
 #define NFP_BEAT_LENGTH         8
 
+/* RSS capability*/
+#define NFP_NET_RSS_CAP (RTE_ETH_RSS_IPV4 | RTE_ETH_RSS_IPV6  | \
+				RTE_ETH_RSS_NONFRAG_IPV4_TCP  | \
+				RTE_ETH_RSS_NONFRAG_IPV4_UDP  | \
+				RTE_ETH_RSS_NONFRAG_IPV4_SCTP | \
+				RTE_ETH_RSS_NONFRAG_IPV6_TCP  | \
+				RTE_ETH_RSS_NONFRAG_IPV6_UDP  | \
+				RTE_ETH_RSS_NONFRAG_IPV6_SCTP)
+
 /*
  * Each PF has corresponding word to beat:
  * Offset | Usage

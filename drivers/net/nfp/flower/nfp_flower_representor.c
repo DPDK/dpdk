@@ -44,6 +44,12 @@ static int
 nfp_flower_repr_dev_infos_get(__rte_unused struct rte_eth_dev *dev,
 		struct rte_eth_dev_info *dev_info)
 {
+	struct nfp_net_hw *pf_hw;
+	struct nfp_flower_representor *repr;
+
+	repr = dev->data->dev_private;
+	pf_hw = repr->app_fw_flower->pf_hw;
+
 	/* Hardcoded pktlen and queues for now */
 	dev_info->max_rx_queues = 1;
 	dev_info->max_tx_queues = 1;
@@ -63,6 +69,13 @@ nfp_flower_repr_dev_infos_get(__rte_unused struct rte_eth_dev *dev,
 	dev_info->tx_offload_capa |= RTE_ETH_TX_OFFLOAD_MULTI_SEGS;
 
 	dev_info->max_mac_addrs = 1;
+
+	if ((pf_hw->super.cap & NFP_NET_CFG_CTRL_RSS_ANY) != 0) {
+		dev_info->rx_offload_capa |= RTE_ETH_RX_OFFLOAD_RSS_HASH;
+		dev_info->flow_type_rss_offloads = NFP_NET_RSS_CAP;
+		dev_info->reta_size = NFP_NET_CFG_RSS_ITBL_SZ;
+		dev_info->hash_key_size = NFP_NET_CFG_RSS_KEY_SZ;
+	}
 
 	return 0;
 }
