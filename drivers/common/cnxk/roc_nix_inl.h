@@ -4,24 +4,6 @@
 #ifndef _ROC_NIX_INL_H_
 #define _ROC_NIX_INL_H_
 
-/* ONF INB HW area */
-#define ROC_NIX_INL_ONF_IPSEC_INB_HW_SZ                                        \
-	PLT_ALIGN(sizeof(struct roc_onf_ipsec_inb_sa), ROC_ALIGN)
-/* ONF INB SW reserved area */
-#define ROC_NIX_INL_ONF_IPSEC_INB_SW_RSVD 384
-#define ROC_NIX_INL_ONF_IPSEC_INB_SA_SZ                                        \
-	(ROC_NIX_INL_ONF_IPSEC_INB_HW_SZ + ROC_NIX_INL_ONF_IPSEC_INB_SW_RSVD)
-#define ROC_NIX_INL_ONF_IPSEC_INB_SA_SZ_LOG2 9
-
-/* ONF OUTB HW area */
-#define ROC_NIX_INL_ONF_IPSEC_OUTB_HW_SZ                                       \
-	PLT_ALIGN(sizeof(struct roc_onf_ipsec_outb_sa), ROC_ALIGN)
-/* ONF OUTB SW reserved area */
-#define ROC_NIX_INL_ONF_IPSEC_OUTB_SW_RSVD 128
-#define ROC_NIX_INL_ONF_IPSEC_OUTB_SA_SZ                                       \
-	(ROC_NIX_INL_ONF_IPSEC_OUTB_HW_SZ + ROC_NIX_INL_ONF_IPSEC_OUTB_SW_RSVD)
-#define ROC_NIX_INL_ONF_IPSEC_OUTB_SA_SZ_LOG2 8
-
 /* ON INB HW area */
 #define ROC_NIX_INL_ON_IPSEC_INB_HW_SZ                                         \
 	PLT_ALIGN(sizeof(struct roc_ie_on_inb_sa), ROC_ALIGN)
@@ -31,10 +13,10 @@
 	(ROC_NIX_INL_ON_IPSEC_INB_HW_SZ + ROC_NIX_INL_ON_IPSEC_INB_SW_RSVD)
 #define ROC_NIX_INL_ON_IPSEC_INB_SA_SZ_LOG2 10
 
-/* ONF OUTB HW area */
+/* ON OUTB HW area */
 #define ROC_NIX_INL_ON_IPSEC_OUTB_HW_SZ                                        \
 	PLT_ALIGN(sizeof(struct roc_ie_on_outb_sa), ROC_ALIGN)
-/* ONF OUTB SW reserved area */
+/* ON OUTB SW reserved area */
 #define ROC_NIX_INL_ON_IPSEC_OUTB_SW_RSVD 256
 #define ROC_NIX_INL_ON_IPSEC_OUTB_SA_SZ                                        \
 	(ROC_NIX_INL_ON_IPSEC_OUTB_HW_SZ + ROC_NIX_INL_ON_IPSEC_OUTB_SW_RSVD)
@@ -84,34 +66,6 @@ static inline void *
 roc_nix_inl_on_ipsec_outb_sa_sw_rsvd(void *sa)
 {
 	return PLT_PTR_ADD(sa, ROC_NIX_INL_ON_IPSEC_OUTB_HW_SZ);
-}
-
-static inline struct roc_onf_ipsec_inb_sa *
-roc_nix_inl_onf_ipsec_inb_sa(uintptr_t base, uint64_t idx)
-{
-	uint64_t off = idx << ROC_NIX_INL_ONF_IPSEC_INB_SA_SZ_LOG2;
-
-	return PLT_PTR_ADD(base, off);
-}
-
-static inline struct roc_onf_ipsec_outb_sa *
-roc_nix_inl_onf_ipsec_outb_sa(uintptr_t base, uint64_t idx)
-{
-	uint64_t off = idx << ROC_NIX_INL_ONF_IPSEC_OUTB_SA_SZ_LOG2;
-
-	return PLT_PTR_ADD(base, off);
-}
-
-static inline void *
-roc_nix_inl_onf_ipsec_inb_sa_sw_rsvd(void *sa)
-{
-	return PLT_PTR_ADD(sa, ROC_NIX_INL_ONF_IPSEC_INB_HW_SZ);
-}
-
-static inline void *
-roc_nix_inl_onf_ipsec_outb_sa_sw_rsvd(void *sa)
-{
-	return PLT_PTR_ADD(sa, ROC_NIX_INL_ONF_IPSEC_OUTB_HW_SZ);
 }
 
 /* Inline device SSO Work callback */
