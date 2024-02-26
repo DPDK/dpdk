@@ -1387,6 +1387,9 @@ cn10k_nix_prepare_mseg_vec_list(struct rte_mbuf *m, uint64_t *cmd,
 	len -= dlen;
 	sg_u = sg_u | ((uint64_t)dlen);
 
+	/* Mark mempool object as "put" since it is freed by NIX */
+	RTE_MEMPOOL_CHECK_COOKIES(m->pool, (void **)&m, 1, 0);
+
 	nb_segs = m->nb_segs - 1;
 	m_next = m->next;
 
@@ -1433,6 +1436,9 @@ cn10k_nix_prepare_mseg_vec_list(struct rte_mbuf *m, uint64_t *cmd,
 			slist++;
 		}
 		m->next = NULL;
+		/* Mark mempool object as "put" since it is freed by NIX */
+		RTE_MEMPOOL_CHECK_COOKIES(m->pool, (void **)&m, 1, 0);
+
 		m = m_next;
 	} while (nb_segs);
 
@@ -1469,6 +1475,8 @@ cn10k_nix_prepare_mseg_vec(struct rte_mbuf *m, uint64_t *cmd, uint64x2_t *cmd0,
 			RTE_MEMPOOL_CHECK_COOKIES(m->pool, (void **)&m, 1, 0);
 		rte_io_wmb();
 #endif
+		/* Mark mempool object as "put" since it is freed by NIX */
+		RTE_MEMPOOL_CHECK_COOKIES(m->pool, (void **)&m, 1, 0);
 		return;
 	}
 
@@ -1513,6 +1521,11 @@ cn10k_nix_prep_lmt_mseg_vector(struct rte_mbuf **mbufs, uint64x2_t *cmd0,
 			*data128 |= ((__uint128_t)7) << *shift;
 			*shift += 3;
 
+			/* Mark mempool object as "put" since it is freed by NIX */
+			RTE_MEMPOOL_CHECK_COOKIES(mbufs[0]->pool, (void **)&mbufs[0], 1, 0);
+			RTE_MEMPOOL_CHECK_COOKIES(mbufs[1]->pool, (void **)&mbufs[1], 1, 0);
+			RTE_MEMPOOL_CHECK_COOKIES(mbufs[2]->pool, (void **)&mbufs[2], 1, 0);
+			RTE_MEMPOOL_CHECK_COOKIES(mbufs[3]->pool, (void **)&mbufs[3], 1, 0);
 			return 1;
 		}
 	}
@@ -1539,6 +1552,11 @@ cn10k_nix_prep_lmt_mseg_vector(struct rte_mbuf **mbufs, uint64x2_t *cmd0,
 				vst1q_u64(lmt_addr + 10, cmd2[j + 1]);
 				vst1q_u64(lmt_addr + 12, cmd1[j + 1]);
 				vst1q_u64(lmt_addr + 14, cmd3[j + 1]);
+
+				/* Mark mempool object as "put" since it is freed by NIX */
+				RTE_MEMPOOL_CHECK_COOKIES(mbufs[j]->pool, (void **)&mbufs[j], 1, 0);
+				RTE_MEMPOOL_CHECK_COOKIES(mbufs[j + 1]->pool,
+							  (void **)&mbufs[j + 1], 1, 0);
 			} else if (flags & NIX_TX_NEED_EXT_HDR) {
 				/* EXT header take 3 each, space for 2 segs.*/
 				cn10k_nix_prepare_mseg_vec(mbufs[j],
