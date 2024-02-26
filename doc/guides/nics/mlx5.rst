@@ -434,6 +434,7 @@ Limitations
   - Only single item is supported per pattern template.
   - Only 32-bit comparison is supported or 16-bit for random field.
   - Only supported for ``RTE_FLOW_FIELD_META``, ``RTE_FLOW_FIELD_TAG``,
+    ``RTE_FLOW_FIELD_ESP_SEQ_NUM``,
     ``RTE_FLOW_FIELD_RANDOM`` and ``RTE_FLOW_FIELD_VALUE``.
   - The field type ``RTE_FLOW_FIELD_VALUE`` must be the base (``b``) field.
   - The field type ``RTE_FLOW_FIELD_RANDOM`` can only be compared with

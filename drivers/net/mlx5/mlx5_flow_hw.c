@@ -6731,6 +6731,7 @@ flow_hw_item_compare_field_validate(enum rte_flow_field_id arg_field,
 	switch (arg_field) {
 	case RTE_FLOW_FIELD_TAG:
 	case RTE_FLOW_FIELD_META:
+	case RTE_FLOW_FIELD_ESP_SEQ_NUM:
 		break;
 	case RTE_FLOW_FIELD_RANDOM:
 		if (base_field == RTE_FLOW_FIELD_VALUE)
@@ -6749,6 +6750,7 @@ flow_hw_item_compare_field_validate(enum rte_flow_field_id arg_field,
 	case RTE_FLOW_FIELD_TAG:
 	case RTE_FLOW_FIELD_META:
 	case RTE_FLOW_FIELD_VALUE:
+	case RTE_FLOW_FIELD_ESP_SEQ_NUM:
 		break;
 	default:
 		return rte_flow_error_set(error, ENOTSUP,
@@ -6765,6 +6767,7 @@ flow_hw_item_compare_width_supported(enum rte_flow_field_id field)
 	switch (field) {
 	case RTE_FLOW_FIELD_TAG:
 	case RTE_FLOW_FIELD_META:
+	case RTE_FLOW_FIELD_ESP_SEQ_NUM:
 		return 32;
 	case RTE_FLOW_FIELD_RANDOM:
 		return 16;

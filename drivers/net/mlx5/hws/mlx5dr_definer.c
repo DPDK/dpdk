@@ -424,10 +424,20 @@ mlx5dr_definer_compare_base_value_set(const void *item_spec,
 
 	value = (const uint32_t *)&b->value[0];
 
-	if (a->field == RTE_FLOW_FIELD_RANDOM)
+	switch (a->field) {
+	case RTE_FLOW_FIELD_RANDOM:
 		*base = htobe32(*value << 16);
-	else
+		break;
+	case RTE_FLOW_FIELD_TAG:
+	case RTE_FLOW_FIELD_META:
 		*base = htobe32(*value);
+		break;
+	case RTE_FLOW_FIELD_ESP_SEQ_NUM:
+		*base = *value;
+		break;
+	default:
+		break;
+	}
 
 	MLX5_SET(ste_match_4dw_range_ctrl_dw, ctrl, base0, 1);
 }
@@ -2929,6 +2939,14 @@ mlx5dr_definer_conv_item_compare_field(const struct rte_flow_field_data *f,
 		fc->tag_mask_set = &mlx5dr_definer_ones_set;
 		fc->compare_idx = dw_offset;
 		DR_CALC_SET_HDR(fc, random_number, random_number);
+		break;
+	case RTE_FLOW_FIELD_ESP_SEQ_NUM:
+		fc = &cd->fc[MLX5DR_DEFINER_FNAME_ESP_SEQUENCE_NUMBER];
+		fc->item_idx = item_idx;
+		fc->tag_set = &mlx5dr_definer_compare_set;
+		fc->tag_mask_set = &mlx5dr_definer_ones_set;
+		fc->compare_idx = dw_offset;
+		DR_CALC_SET_HDR(fc, ipsec, sequence_number);
 		break;
 	default:
 		DR_LOG(ERR, "%u field is not supported", f->field);
