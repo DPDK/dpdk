@@ -1204,9 +1204,6 @@ extern const struct rte_flow_ops bnxt_flow_meter_ops;
 	} \
 } while (0)
 
-#define	BNXT_ETH_DEV_IS_REPRESENTOR(eth_dev)	\
-		((eth_dev)->data->dev_flags & RTE_ETH_DEV_REPRESENTOR)
-
 extern int bnxt_logtype_driver;
 #define RTE_LOGTYPE_BNXT bnxt_logtype_driver
 #define PMD_DRV_LOG_RAW(level, fmt, args...) \

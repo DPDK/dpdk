@@ -69,7 +69,7 @@ eth_representor_cmp(const char *key __rte_unused,
 	struct rte_eth_devargs eth_da;
 	uint16_t id = 0, nc, np, nf, i, c, p, f;
 
-	if ((data->dev_flags & RTE_ETH_DEV_REPRESENTOR) == 0)
+	if (!rte_eth_dev_is_repr(edev))
 		return -1; /* not a representor port */
 
 	/* Parse devargs representor values. */
@@ -143,7 +143,7 @@ eth_dev_match(const struct rte_eth_dev *edev,
 	}
 	/* if no representor key, default is to not match representor ports */
 	if (ret != 0)
-		if ((edev->data->dev_flags & RTE_ETH_DEV_REPRESENTOR) != 0)
+		if (rte_eth_dev_is_repr(edev))
 			return -1; /* do not match any representor */
 
 	return 0;

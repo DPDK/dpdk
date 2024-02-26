@@ -1066,7 +1066,7 @@ static const struct rte_mtr_ops nfp_mtr_ops = {
 int
 nfp_net_mtr_ops_get(struct rte_eth_dev *dev, void *arg)
 {
-	if ((dev->data->dev_flags & RTE_ETH_DEV_REPRESENTOR) == 0) {
+	if (!rte_eth_dev_is_repr(dev)) {
 		PMD_DRV_LOG(ERR, "Port is not a representor");
 		return -EINVAL;
 	}

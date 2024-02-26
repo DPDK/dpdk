@@ -1559,7 +1559,7 @@ bnxt_ulp_destroy_vfr_default_rules(struct bnxt *bp, bool global)
 	struct rte_eth_dev *vfr_eth_dev;
 	struct bnxt_representor *vfr_bp;
 
-	if (!BNXT_TRUFLOW_EN(bp) || BNXT_ETH_DEV_IS_REPRESENTOR(bp->eth_dev))
+	if (!BNXT_TRUFLOW_EN(bp) || rte_eth_dev_is_repr(bp->eth_dev))
 		return;
 
 	if (!bp->ulp_ctx || !bp->ulp_ctx->cfg_data)
@@ -2316,7 +2316,7 @@ bnxt_ulp_eth_dev_ptr2_cntxt_get(struct rte_eth_dev	*dev)
 {
 	struct bnxt *bp = (struct bnxt *)dev->data->dev_private;
 
-	if (BNXT_ETH_DEV_IS_REPRESENTOR(dev)) {
+	if (rte_eth_dev_is_repr(dev)) {
 		struct bnxt_representor *vfr = dev->data->dev_private;
 
 		bp = vfr->parent_dev->data->dev_private;

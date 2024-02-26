@@ -1386,7 +1386,7 @@ static int eth_enic_pci_remove(struct rte_pci_device *pci_dev)
 	ethdev = rte_eth_dev_allocated(pci_dev->device.name);
 	if (!ethdev)
 		return -ENODEV;
-	if (ethdev->data->dev_flags & RTE_ETH_DEV_REPRESENTOR)
+	if (rte_eth_dev_is_repr(ethdev))
 		return rte_eth_dev_destroy(ethdev, enic_vf_representor_uninit);
 	else
 		return rte_eth_dev_destroy(ethdev, eth_enic_dev_uninit);

@@ -824,7 +824,7 @@ int enic_alloc_rq(struct enic *enic, uint16_t queue_idx,
 	 * Representor uses a reserved PF queue. Translate representor
 	 * queue number to PF queue number.
 	 */
-	if (enic_is_vf_rep(enic)) {
+	if (rte_eth_dev_is_repr(enic->rte_dev)) {
 		RTE_ASSERT(queue_idx == 0);
 		vf = VF_ENIC_TO_VF_REP(enic);
 		sop_queue_idx = vf->pf_rq_sop_idx;
@@ -1053,7 +1053,7 @@ int enic_alloc_wq(struct enic *enic, uint16_t queue_idx,
 	 * Representor uses a reserved PF queue. Translate representor
 	 * queue number to PF queue number.
 	 */
-	if (enic_is_vf_rep(enic)) {
+	if (rte_eth_dev_is_repr(enic->rte_dev)) {
 		RTE_ASSERT(queue_idx == 0);
 		vf = VF_ENIC_TO_VF_REP(enic);
 		queue_idx = vf->pf_wq_idx;

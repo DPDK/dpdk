@@ -3525,7 +3525,7 @@ bnxt_flow_ops_get_op(struct rte_eth_dev *dev,
 	if (!bp)
 		return -EIO;
 
-	if (BNXT_ETH_DEV_IS_REPRESENTOR(dev)) {
+	if (rte_eth_dev_is_repr(dev)) {
 		struct bnxt_representor *vfr = dev->data->dev_private;
 		bp = vfr->parent_dev->data->dev_private;
 		/* parent is deleted while children are still valid */
@@ -6781,7 +6781,7 @@ static int bnxt_pci_remove(struct rte_pci_device *pci_dev)
 
 	PMD_DRV_LOG(DEBUG, "BNXT Port:%d pci remove\n", eth_dev->data->port_id);
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
-		if (eth_dev->data->dev_flags & RTE_ETH_DEV_REPRESENTOR)
+		if (rte_eth_dev_is_repr(eth_dev))
 			return rte_eth_dev_destroy(eth_dev,
 						   bnxt_representor_uninit);
 		else

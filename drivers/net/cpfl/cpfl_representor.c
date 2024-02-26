@@ -339,7 +339,7 @@ cpfl_repr_link_update(struct rte_eth_dev *ethdev,
 	struct cpfl_vport_id vi;
 	int ret;
 
-	if (!(ethdev->data->dev_flags & RTE_ETH_DEV_REPRESENTOR)) {
+	if (!rte_eth_dev_is_repr(ethdev)) {
 		PMD_INIT_LOG(ERR, "This ethdev is not representor.");
 		return -EINVAL;
 	}

@@ -4321,7 +4321,7 @@ int
 nfp_flow_ops_get(struct rte_eth_dev *dev,
 		const struct rte_flow_ops **ops)
 {
-	if ((dev->data->dev_flags & RTE_ETH_DEV_REPRESENTOR) == 0) {
+	if (!rte_eth_dev_is_repr(dev)) {
 		*ops = NULL;
 		PMD_DRV_LOG(ERR, "Port is not a representor.");
 		return -EINVAL;

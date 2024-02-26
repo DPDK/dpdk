@@ -706,7 +706,7 @@ static int eth_i40e_pci_remove(struct rte_pci_device *pci_dev)
 	if (!ethdev)
 		return 0;
 
-	if (ethdev->data->dev_flags & RTE_ETH_DEV_REPRESENTOR)
+	if (rte_eth_dev_is_repr(ethdev))
 		return rte_eth_dev_pci_generic_remove(pci_dev,
 					i40e_vf_representor_uninit);
 	else

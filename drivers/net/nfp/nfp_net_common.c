@@ -241,7 +241,7 @@ nfp_net_get_hw(const struct rte_eth_dev *dev)
 {
 	struct nfp_net_hw *hw;
 
-	if ((dev->data->dev_flags & RTE_ETH_DEV_REPRESENTOR) != 0) {
+	if (rte_eth_dev_is_repr(dev)) {
 		struct nfp_flower_representor *repr;
 		repr = dev->data->dev_private;
 		hw = repr->app_fw_flower->pf_hw;
@@ -2143,7 +2143,7 @@ nfp_net_firmware_version_get(struct rte_eth_dev *dev,
 
 	hw = nfp_net_get_hw(dev);
 
-	if ((dev->data->dev_flags & RTE_ETH_DEV_REPRESENTOR) != 0) {
+	if (rte_eth_dev_is_repr(dev)) {
 		snprintf(vnic_version, FW_VER_LEN, "%d.%d.%d.%d",
 			hw->ver.extend, hw->ver.class,
 			hw->ver.major, hw->ver.minor);

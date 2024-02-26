@@ -233,11 +233,6 @@ struct enic_vf_representor {
 #define VF_ENIC_TO_VF_REP(vf_enic) \
 	container_of(vf_enic, struct enic_vf_representor, enic)
 
-static inline int enic_is_vf_rep(struct enic *enic)
-{
-	return !!(enic->rte_dev->data->dev_flags & RTE_ETH_DEV_REPRESENTOR);
-}
-
 /* Compute ethdev's max packet size from MTU */
 static inline uint32_t enic_mtu_to_max_rx_pktlen(uint32_t mtu)
 {

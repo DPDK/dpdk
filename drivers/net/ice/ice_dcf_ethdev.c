@@ -2131,7 +2131,7 @@ eth_ice_dcf_pci_remove(struct rte_pci_device *pci_dev)
 	if (!eth_dev)
 		return 0;
 
-	if (eth_dev->data->dev_flags & RTE_ETH_DEV_REPRESENTOR)
+	if (rte_eth_dev_is_repr(eth_dev))
 		return rte_eth_dev_pci_generic_remove(pci_dev,
 						      ice_dcf_vf_repr_uninit);
 	else

@@ -1814,6 +1814,23 @@ rte_eth_representor_id_get(uint16_t port_id,
 			   uint16_t *repr_id);
 
 /**
+ * @internal
+ * Check if the ethdev is a representor port.
+ *
+ * @param dev
+ *  Pointer to struct rte_eth_dev.
+ *
+ * @return
+ *  false the ethdev is not a representor port.
+ *  true  the ethdev is a representor port.
+ */
+static inline bool
+rte_eth_dev_is_repr(const struct rte_eth_dev *dev)
+{
+	return ((dev->data->dev_flags & RTE_ETH_DEV_REPRESENTOR) != 0);
+}
+
+/**
  * PMD helper function to parse ethdev arguments
  *
  * @param devargs

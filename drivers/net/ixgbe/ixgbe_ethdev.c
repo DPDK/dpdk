@@ -1842,7 +1842,7 @@ static int eth_ixgbe_pci_remove(struct rte_pci_device *pci_dev)
 	if (!ethdev)
 		return 0;
 
-	if (ethdev->data->dev_flags & RTE_ETH_DEV_REPRESENTOR)
+	if (rte_eth_dev_is_repr(ethdev))
 		return rte_eth_dev_pci_generic_remove(pci_dev,
 					ixgbe_vf_representor_uninit);
 	else
