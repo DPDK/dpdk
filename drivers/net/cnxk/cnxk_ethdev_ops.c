@@ -1313,3 +1313,13 @@ nix_priority_flow_ctrl_sq_conf(struct rte_eth_dev *eth_dev, uint16_t qid,
 exit:
 	return rc;
 }
+
+int
+cnxk_nix_tx_descriptor_dump(const struct rte_eth_dev *eth_dev, uint16_t qid, uint16_t offset,
+			    uint16_t num, FILE *file)
+{
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	struct roc_nix *nix = &dev->nix;
+
+	return roc_nix_sq_desc_dump(nix, qid, offset, num, file);
+}

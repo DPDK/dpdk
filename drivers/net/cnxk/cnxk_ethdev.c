@@ -1821,6 +1821,7 @@ struct eth_dev_ops cnxk_eth_dev_ops = {
 	.cman_config_init = cnxk_nix_cman_config_init,
 	.cman_config_set = cnxk_nix_cman_config_set,
 	.cman_config_get = cnxk_nix_cman_config_get,
+	.eth_tx_descriptor_dump = cnxk_nix_tx_descriptor_dump,
 };
 
 void
