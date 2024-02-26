@@ -412,6 +412,86 @@ mlx5dr_definer_ptype_frag_set(struct mlx5dr_definer_fc *fc,
 }
 
 static void
+mlx5dr_definer_compare_base_value_set(const void *item_spec,
+				      uint8_t *tag)
+{
+	uint32_t *ctrl = &(((uint32_t *)tag)[MLX5DR_DEFINER_COMPARE_STE_ARGUMENT_1]);
+	uint32_t *base = &(((uint32_t *)tag)[MLX5DR_DEFINER_COMPARE_STE_BASE_0]);
+	const struct rte_flow_item_compare *v = item_spec;
+	const struct rte_flow_field_data *a = &v->a;
+	const struct rte_flow_field_data *b = &v->b;
+	const uint32_t *value;
+
+	value = (const uint32_t *)&b->value[0];
+
+	if (a->field == RTE_FLOW_FIELD_RANDOM)
+		*base = htobe32(*value << 16);
+	else
+		*base = htobe32(*value);
+
+	MLX5_SET(ste_match_4dw_range_ctrl_dw, ctrl, base0, 1);
+}
+
+static void
+mlx5dr_definer_compare_op_translate(enum rte_flow_item_compare_op op,
+				    uint8_t *tag)
+{
+	uint32_t *ctrl = &(((uint32_t *)tag)[MLX5DR_DEFINER_COMPARE_STE_ARGUMENT_1]);
+	uint8_t operator = 0;
+	uint8_t inverse = 0;
+
+	switch (op) {
+	case RTE_FLOW_ITEM_COMPARE_EQ:
+		operator = 2;
+		break;
+	case RTE_FLOW_ITEM_COMPARE_NE:
+		operator = 2;
+		inverse = 1;
+		break;
+	case RTE_FLOW_ITEM_COMPARE_LT:
+		inverse = 1;
+		break;
+	case RTE_FLOW_ITEM_COMPARE_LE:
+		operator = 1;
+		break;
+	case RTE_FLOW_ITEM_COMPARE_GT:
+		operator = 1;
+		inverse = 1;
+		break;
+	case RTE_FLOW_ITEM_COMPARE_GE:
+		break;
+	default:
+		DR_LOG(ERR, "Invalid operation type %d", op);
+		assert(false);
+	}
+
+	MLX5_SET(ste_match_4dw_range_ctrl_dw, ctrl, inverse0, inverse);
+	MLX5_SET(ste_match_4dw_range_ctrl_dw, ctrl, operator0, operator);
+}
+
+static void
+mlx5dr_definer_compare_arg_set(const void *item_spec,
+			       uint8_t *tag)
+{
+	const struct rte_flow_item_compare *v = item_spec;
+	enum rte_flow_item_compare_op op = v->operation;
+
+	mlx5dr_definer_compare_op_translate(op, tag);
+}
+
+static void
+mlx5dr_definer_compare_set(struct mlx5dr_definer_fc *fc,
+			   const void *item_spec,
+			   uint8_t *tag)
+{
+	if (fc->compare_idx == MLX5DR_DEFINER_COMPARE_ARGUMENT_0) {
+		mlx5dr_definer_compare_arg_set(item_spec, tag);
+		if (fc->compare_set_base)
+			mlx5dr_definer_compare_base_value_set(item_spec, tag);
+	}
+}
+
+static void
 mlx5dr_definer_integrity_set(struct mlx5dr_definer_fc *fc,
 			     const void *item_spec,
 			     uint8_t *tag)
@@ -2783,9 +2863,123 @@ mlx5dr_definer_conv_item_vxlan_gpe(struct mlx5dr_definer_conv_data *cd,
 }
 
 static int
+mlx5dr_definer_conv_item_compare_field(const struct rte_flow_field_data *f,
+				       const struct rte_flow_field_data *other_f,
+				       struct mlx5dr_definer_conv_data *cd,
+				       int item_idx,
+				       enum mlx5dr_definer_compare_dw_selectors dw_offset)
+{
+	struct mlx5dr_definer_fc *fc = NULL;
+	int reg;
+
+	if (f->offset) {
+		DR_LOG(ERR, "field offset %u is not supported, only offset zero supported",
+		       f->offset);
+		goto err_notsup;
+	}
+
+	switch (f->field) {
+	case RTE_FLOW_FIELD_META:
+		reg = flow_hw_get_reg_id_from_ctx(cd->ctx,
+						  RTE_FLOW_ITEM_TYPE_META, -1);
+		if (reg <= 0) {
+			DR_LOG(ERR, "Invalid register for compare metadata field");
+			rte_errno = EINVAL;
+			return rte_errno;
+		}
+
+		fc = mlx5dr_definer_get_register_fc(cd, reg);
+		if (!fc)
+			return rte_errno;
+
+		fc->item_idx = item_idx;
+		fc->tag_set = &mlx5dr_definer_compare_set;
+		fc->tag_mask_set = &mlx5dr_definer_ones_set;
+		fc->compare_idx = dw_offset;
+		break;
+	case RTE_FLOW_FIELD_TAG:
+		reg = flow_hw_get_reg_id_from_ctx(cd->ctx,
+						  RTE_FLOW_ITEM_TYPE_TAG,
+						  f->tag_index);
+		if (reg <= 0) {
+			DR_LOG(ERR, "Invalid register for compare tag field");
+			rte_errno = EINVAL;
+			return rte_errno;
+		}
+
+		fc = mlx5dr_definer_get_register_fc(cd, reg);
+		if (!fc)
+			return rte_errno;
+
+		fc->item_idx = item_idx;
+		fc->tag_set = &mlx5dr_definer_compare_set;
+		fc->tag_mask_set = &mlx5dr_definer_ones_set;
+		fc->compare_idx = dw_offset;
+		break;
+	case RTE_FLOW_FIELD_VALUE:
+		if (dw_offset == MLX5DR_DEFINER_COMPARE_ARGUMENT_0) {
+			DR_LOG(ERR, "Argument field does not support immediate value");
+			goto err_notsup;
+		}
+		break;
+	case RTE_FLOW_FIELD_RANDOM:
+		fc = &cd->fc[MLX5DR_DEFINER_FNAME_RANDOM_NUM];
+		fc->item_idx = item_idx;
+		fc->tag_set = &mlx5dr_definer_compare_set;
+		fc->tag_mask_set = &mlx5dr_definer_ones_set;
+		fc->compare_idx = dw_offset;
+		DR_CALC_SET_HDR(fc, random_number, random_number);
+		break;
+	default:
+		DR_LOG(ERR, "%u field is not supported", f->field);
+		goto err_notsup;
+	}
+
+	if (fc && other_f && other_f->field == RTE_FLOW_FIELD_VALUE)
+		fc->compare_set_base = true;
+
+	return 0;
+
+err_notsup:
+	rte_errno = ENOTSUP;
+	return rte_errno;
+}
+
+static int
+mlx5dr_definer_conv_item_compare(struct mlx5dr_definer_conv_data *cd,
+				 struct rte_flow_item *item,
+				 int item_idx)
+{
+	const struct rte_flow_item_compare *m = item->mask;
+	const struct rte_flow_field_data *a = &m->a;
+	const struct rte_flow_field_data *b = &m->b;
+	int ret;
+
+	if (m->width != 0xffffffff) {
+		DR_LOG(ERR, "compare item width of 0x%x is not supported, only full DW supported",
+				m->width);
+		rte_errno = ENOTSUP;
+		return rte_errno;
+	}
+
+	ret = mlx5dr_definer_conv_item_compare_field(a, b, cd, item_idx,
+						     MLX5DR_DEFINER_COMPARE_ARGUMENT_0);
+	if (ret)
+		return ret;
+
+	ret = mlx5dr_definer_conv_item_compare_field(b, NULL, cd, item_idx,
+						     MLX5DR_DEFINER_COMPARE_BASE_0);
+	if (ret)
+		return ret;
+
+	return 0;
+}
+
+static int
 mlx5dr_definer_conv_items_to_hl(struct mlx5dr_context *ctx,
 				struct mlx5dr_match_template *mt,
-				uint8_t *hl)
+				uint8_t *hl,
+				struct mlx5dr_matcher *matcher)
 {
 	struct mlx5dr_definer_fc fc[MLX5DR_DEFINER_FNAME_MAX] = {{0}};
 	struct mlx5dr_definer_conv_data cd = {0};
@@ -2804,6 +2998,11 @@ mlx5dr_definer_conv_items_to_hl(struct mlx5dr_context *ctx,
 		ret = mlx5dr_definer_check_item_range_supp(items);
 		if (ret)
 			return ret;
+
+		if (mlx5dr_matcher_is_compare(matcher)) {
+			DR_LOG(ERR, "Compare matcher not supported for more than one item");
+			goto not_supp;
+		}
 
 		switch ((int)items->type) {
 		case RTE_FLOW_ITEM_TYPE_ETH:
@@ -2950,12 +3149,20 @@ mlx5dr_definer_conv_items_to_hl(struct mlx5dr_context *ctx,
 			ret = mlx5dr_definer_conv_item_vxlan_gpe(&cd, items, i);
 			item_flags |= MLX5_FLOW_LAYER_VXLAN_GPE;
 			break;
+		case RTE_FLOW_ITEM_TYPE_COMPARE:
+			if (i) {
+				DR_LOG(ERR, "Compare matcher not supported for more than one item");
+				goto not_supp;
+			}
+			ret = mlx5dr_definer_conv_item_compare(&cd, items, i);
+			item_flags |= MLX5_FLOW_ITEM_COMPARE;
+			matcher->flags |= MLX5DR_MATCHER_FLAGS_COMPARE;
+			break;
 		case RTE_FLOW_ITEM_TYPE_VOID:
 			break;
 		default:
 			DR_LOG(ERR, "Unsupported item type %d", items->type);
-			rte_errno = ENOTSUP;
-			return rte_errno;
+			goto not_supp;
 		}
 
 		cd.last_item = items->type;
@@ -2976,6 +3183,10 @@ mlx5dr_definer_conv_items_to_hl(struct mlx5dr_context *ctx,
 	}
 
 	return 0;
+
+not_supp:
+	rte_errno = ENOTSUP;
+	return rte_errno;
 }
 
 static int
@@ -3393,6 +3604,7 @@ mlx5dr_definer_calc_layout(struct mlx5dr_matcher *matcher,
 {
 	struct mlx5dr_context *ctx = matcher->tbl->ctx;
 	struct mlx5dr_match_template *mt = matcher->mt;
+	struct mlx5dr_definer_fc *fc;
 	uint8_t *match_hl;
 	int i, ret;
 
@@ -3410,11 +3622,33 @@ mlx5dr_definer_calc_layout(struct mlx5dr_matcher *matcher,
 	 * and allocate the match and range field copy array (fc & fcr).
 	 */
 	for (i = 0; i < matcher->num_of_mt; i++) {
-		ret = mlx5dr_definer_conv_items_to_hl(ctx, &mt[i], match_hl);
+		ret = mlx5dr_definer_conv_items_to_hl(ctx, &mt[i], match_hl, matcher);
 		if (ret) {
 			DR_LOG(ERR, "Failed to convert items to header layout");
 			goto free_fc;
 		}
+	}
+
+	if (mlx5dr_matcher_is_compare(matcher)) {
+		ret = mlx5dr_matcher_validate_compare_attr(matcher);
+		if (ret)
+			goto free_fc;
+
+		/* Due some HW limitation need to fill unused
+		 * DW's 0-5 and byte selectors with 0xff.
+		 */
+		for (i = 0; i < DW_SELECTORS_MATCH; i++)
+			match_definer->dw_selector[i] = 0xff;
+
+		for (i = 0; i < BYTE_SELECTORS; i++)
+			match_definer->byte_selector[i] = 0xff;
+
+		for (i = 0; i < mt[0].fc_sz; i++) {
+			fc = &mt[0].fc[i];
+			match_definer->dw_selector[fc->compare_idx] = fc->byte_off / DW_SIZE;
+		}
+
+		goto out;
 	}
 
 	/* Find the match definer layout for header layout match union */
@@ -3437,6 +3671,7 @@ mlx5dr_definer_calc_layout(struct mlx5dr_matcher *matcher,
 		goto free_fc;
 	}
 
+out:
 	simple_free(match_hl);
 	return 0;
 

@@ -99,6 +99,7 @@ static int
 mlx5dr_debug_dump_matcher_match_template(FILE *f, struct mlx5dr_matcher *matcher)
 {
 	bool is_root = matcher->tbl->level == MLX5DR_ROOT_LEVEL;
+	bool is_compare = mlx5dr_matcher_is_compare(matcher);
 	enum mlx5dr_debug_res_type type;
 	int i, ret;
 
@@ -117,7 +118,8 @@ mlx5dr_debug_dump_matcher_match_template(FILE *f, struct mlx5dr_matcher *matcher
 			return rte_errno;
 		}
 
-		type = MLX5DR_DEBUG_RES_TYPE_MATCHER_TEMPLATE_MATCH_DEFINER;
+		type = is_compare ? MLX5DR_DEBUG_RES_TYPE_MATCHER_TEMPLATE_COMPARE_MATCH_DEFINER :
+				    MLX5DR_DEBUG_RES_TYPE_MATCHER_TEMPLATE_MATCH_DEFINER;
 		ret = mlx5dr_debug_dump_matcher_template_definer(f, mt, mt->definer, type);
 		if (ret)
 			return ret;

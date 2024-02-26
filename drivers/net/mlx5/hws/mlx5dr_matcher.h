@@ -27,6 +27,7 @@ enum mlx5dr_matcher_flags {
 	MLX5DR_MATCHER_FLAGS_HASH_DEFINER	= 1 << 1,
 	MLX5DR_MATCHER_FLAGS_COLLISION		= 1 << 2,
 	MLX5DR_MATCHER_FLAGS_RESIZABLE		= 1 << 3,
+	MLX5DR_MATCHER_FLAGS_COMPARE		= 1 << 4,
 };
 
 struct mlx5dr_match_template {
@@ -110,12 +111,19 @@ static inline bool mlx5dr_matcher_is_in_resize(struct mlx5dr_matcher *matcher)
 	return !!matcher->resize_dst;
 }
 
+static inline bool
+mlx5dr_matcher_is_compare(struct mlx5dr_matcher *matcher)
+{
+	return !!(matcher->flags & MLX5DR_MATCHER_FLAGS_COMPARE);
+}
+
 static inline bool mlx5dr_matcher_req_fw_wqe(struct mlx5dr_matcher *matcher)
 {
 	/* Currently HWS doesn't support hash different from match or range */
 	return unlikely(matcher->flags &
 			(MLX5DR_MATCHER_FLAGS_HASH_DEFINER |
-			 MLX5DR_MATCHER_FLAGS_RANGE_DEFINER));
+			 MLX5DR_MATCHER_FLAGS_RANGE_DEFINER |
+			 MLX5DR_MATCHER_FLAGS_COMPARE));
 }
 
 int mlx5dr_matcher_conv_items_to_prm(uint64_t *match_buf,
@@ -140,5 +148,7 @@ int mlx5dr_matcher_free_rtc_pointing(struct mlx5dr_context *ctx,
 				     uint32_t fw_ft_type,
 				     enum mlx5dr_table_type type,
 				     struct mlx5dr_devx_obj *devx_obj);
+
+int mlx5dr_matcher_validate_compare_attr(struct mlx5dr_matcher *matcher);
 
 #endif /* MLX5DR_MATCHER_H_ */

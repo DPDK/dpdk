@@ -485,6 +485,7 @@ static int mlx5dr_matcher_create_rtc(struct mlx5dr_matcher *matcher,
 		rtc_attr.log_depth = attr->table.sz_col_log;
 		rtc_attr.is_frst_jumbo = mlx5dr_matcher_mt_is_jumbo(mt);
 		rtc_attr.is_scnd_range = mlx5dr_matcher_mt_is_range(mt);
+		rtc_attr.is_compare = mlx5dr_matcher_is_compare(matcher);
 		rtc_attr.miss_ft_id = matcher->end_ft->id;
 
 		if (attr->insert_mode == MLX5DR_MATCHER_INSERT_BY_HASH) {
@@ -497,6 +498,10 @@ static int mlx5dr_matcher_create_rtc(struct mlx5dr_matcher *matcher,
 				rtc_attr.num_hash_definer = 1;
 				rtc_attr.match_definer_0 =
 					mlx5dr_definer_get_id(matcher->hash_definer);
+			} else if (mlx5dr_matcher_is_compare(matcher)) {
+				rtc_attr.match_definer_0 = ctx->caps->trivial_match_definer;
+				rtc_attr.fw_gen_wqe = true;
+				rtc_attr.num_hash_definer = 1;
 			} else {
 				/* The first mt is used since all share the same definer */
 				rtc_attr.match_definer_0 = mlx5dr_definer_get_id(mt->definer);
@@ -1634,4 +1639,52 @@ int mlx5dr_matcher_resize_rule_move(struct mlx5dr_matcher *src_matcher,
 out_einval:
 	rte_errno = EINVAL;
 	return -rte_errno;
+}
+
+int mlx5dr_matcher_validate_compare_attr(struct mlx5dr_matcher *matcher)
+{
+	struct mlx5dr_cmd_query_caps *caps = matcher->tbl->ctx->caps;
+	struct mlx5dr_matcher_attr *attr = &matcher->attr;
+
+	if (mlx5dr_table_is_root(matcher->tbl)) {
+		DR_LOG(ERR, "Compare matcher is not supported for root tables");
+		goto err;
+	}
+
+	if (attr->mode != MLX5DR_MATCHER_RESOURCE_MODE_HTABLE) {
+		DR_LOG(ERR, "Compare matcher is only supported with pre-defined table size");
+		goto err;
+	}
+
+	if (attr->insert_mode != MLX5DR_MATCHER_INSERT_BY_HASH ||
+		attr->distribute_mode != MLX5DR_MATCHER_DISTRIBUTE_BY_HASH) {
+		DR_LOG(ERR, "Gen WQE for compare matcher must be inserted and distribute by hash");
+		goto err;
+	}
+
+	if (matcher->num_of_mt != 1 || matcher->num_of_at != 1) {
+		DR_LOG(ERR, "Compare matcher match templates and action templates must be 1 for each");
+		goto err;
+	}
+
+	if (attr->table.sz_col_log || attr->table.sz_row_log) {
+		DR_LOG(ERR, "Compare matcher supports only 1x1 table size");
+		goto err;
+	}
+
+	if (attr->resizable) {
+		DR_LOG(ERR, "Compare matcher does not support resizeing");
+		goto err;
+	}
+
+	if (!IS_BIT_SET(caps->supp_ste_format_gen_wqe, MLX5_IFC_RTC_STE_FORMAT_4DW_RANGE)) {
+		DR_LOG(ERR, "Gen WQE Compare match format not supported");
+		goto err;
+	}
+
+	return 0;
+
+err:
+	rte_errno = ENOTSUP;
+	return rte_errno;
 }

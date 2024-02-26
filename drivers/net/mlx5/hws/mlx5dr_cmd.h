@@ -82,6 +82,7 @@ struct mlx5dr_cmd_rtc_create_attr {
 	uint8_t reparse_mode;
 	bool is_frst_jumbo;
 	bool is_scnd_range;
+	bool is_compare;
 };
 
 struct mlx5dr_cmd_alias_obj_create_attr {

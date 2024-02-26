@@ -3463,6 +3463,7 @@ enum mlx5_ifc_rtc_ste_format {
 	MLX5_IFC_RTC_STE_FORMAT_8DW = 0x4,
 	MLX5_IFC_RTC_STE_FORMAT_11DW = 0x5,
 	MLX5_IFC_RTC_STE_FORMAT_RANGE = 0x7,
+	MLX5_IFC_RTC_STE_FORMAT_4DW_RANGE = 0x8,
 };
 
 enum mlx5_ifc_rtc_reparse_mode {
@@ -3499,6 +3500,21 @@ struct mlx5_ifc_rtc_bits {
 	u8 miss_flow_table_id[0x18];
 	u8 match_definer_1[0x20];
 	u8 reserved_at_1a0[0x260];
+};
+
+struct mlx5_ifc_ste_match_4dw_range_ctrl_dw_bits {
+	u8 match[0x1];
+	u8 reserved_at_1[0x2];
+	u8 base1[0x1];
+	u8 inverse1[0x1];
+	u8 reserved_at_5[0x1];
+	u8 operator1[0x2];
+	u8 reserved_at_8[0x3];
+	u8 base0[0x1];
+	u8 inverse0[0x1];
+	u8 reserved_at_a[0x1];
+	u8 operator0[0x2];
+	u8 compare_delta[0x10];
 };
 
 struct mlx5_ifc_alias_context_bits {

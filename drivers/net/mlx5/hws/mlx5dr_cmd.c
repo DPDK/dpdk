@@ -370,9 +370,12 @@ mlx5dr_cmd_rtc_create(struct ibv_context *ctx,
 		 attr, obj_type, MLX5_GENERAL_OBJ_TYPE_RTC);
 
 	attr = MLX5_ADDR_OF(create_rtc_in, in, rtc);
-	MLX5_SET(rtc, attr, ste_format_0, rtc_attr->is_frst_jumbo ?
-		MLX5_IFC_RTC_STE_FORMAT_11DW :
-		MLX5_IFC_RTC_STE_FORMAT_8DW);
+	if (rtc_attr->is_compare) {
+		MLX5_SET(rtc, attr, ste_format_0, MLX5_IFC_RTC_STE_FORMAT_4DW_RANGE);
+	} else {
+		MLX5_SET(rtc, attr, ste_format_0, rtc_attr->is_frst_jumbo ?
+			 MLX5_IFC_RTC_STE_FORMAT_11DW : MLX5_IFC_RTC_STE_FORMAT_8DW);
+	}
 
 	if (rtc_attr->is_scnd_range) {
 		MLX5_SET(rtc, attr, ste_format_1, MLX5_IFC_RTC_STE_FORMAT_RANGE);
