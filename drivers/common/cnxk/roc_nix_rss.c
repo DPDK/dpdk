@@ -196,7 +196,7 @@ roc_nix_rss_reta_set(struct roc_nix *roc_nix, uint8_t group,
 	if (rc)
 		return rc;
 
-	memcpy(&nix->reta[group], reta, ROC_NIX_RSS_RETA_MAX);
+	memcpy(&nix->reta[group], reta, sizeof(uint16_t) * ROC_NIX_RSS_RETA_MAX);
 	return 0;
 }
 
@@ -209,7 +209,7 @@ roc_nix_rss_reta_get(struct roc_nix *roc_nix, uint8_t group,
 	if (group >= ROC_NIX_RSS_GRPS)
 		return NIX_ERR_PARAM;
 
-	memcpy(reta, &nix->reta[group], ROC_NIX_RSS_RETA_MAX);
+	memcpy(reta, &nix->reta[group], sizeof(uint16_t) * ROC_NIX_RSS_RETA_MAX);
 	return 0;
 }
 
