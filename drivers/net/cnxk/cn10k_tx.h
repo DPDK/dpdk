@@ -943,6 +943,7 @@ cn10k_nix_prepare_mseg(struct rte_mbuf *m, uint64_t *cmd, const uint16_t flags)
 	len -= sg_u & 0xFFFF;
 	nb_segs = m->nb_segs - 1;
 	m_next = m->next;
+	m->nb_segs = 1;
 	slist = &cmd[3 + off + 1];
 
 	/* Set invert df if buffer is not to be freed by H/W */
@@ -1404,6 +1405,7 @@ cn10k_nix_prepare_mseg_vec_list(struct rte_mbuf *m, uint64_t *cmd,
 #endif
 
 	m->next = NULL;
+	m->nb_segs = 1;
 	m = m_next;
 	/* Fill mbuf segments */
 	do {
