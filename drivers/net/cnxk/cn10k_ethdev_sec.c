@@ -14,6 +14,20 @@
 #include <cnxk_security.h>
 #include <roc_priv.h>
 
+PLT_STATIC_ASSERT(offsetof(struct rte_pmd_cnxk_ipsec_inb_sa, ctx.ar_winbits) ==
+		  offsetof(struct roc_ot_ipsec_inb_sa, ctx.ar_winbits));
+
+PLT_STATIC_ASSERT(offsetof(struct rte_pmd_cnxk_ipsec_outb_sa, ctx.mib_pkts) ==
+		  offsetof(struct roc_ot_ipsec_outb_sa, ctx.mib_pkts));
+
+PLT_STATIC_ASSERT(RTE_PMD_CNXK_CTX_MAX_CKEY_LEN == ROC_CTX_MAX_CKEY_LEN);
+PLT_STATIC_ASSERT(RTE_PMD_CNXK_CTX_MAX_OPAD_IPAD_LEN == RTE_PMD_CNXK_CTX_MAX_OPAD_IPAD_LEN);
+
+PLT_STATIC_ASSERT(RTE_PMD_CNXK_AR_WIN_SIZE_MIN == ROC_AR_WIN_SIZE_MIN);
+PLT_STATIC_ASSERT(RTE_PMD_CNXK_AR_WIN_SIZE_MAX == ROC_AR_WIN_SIZE_MAX);
+PLT_STATIC_ASSERT(RTE_PMD_CNXK_LOG_MIN_AR_WIN_SIZE_M1 == ROC_LOG_MIN_AR_WIN_SIZE_M1);
+PLT_STATIC_ASSERT(RTE_PMD_CNXK_AR_WINBITS_SZ == ROC_AR_WINBITS_SZ);
+
 static struct rte_cryptodev_capabilities cn10k_eth_sec_crypto_caps[] = {
 	{	/* AES GCM */
 		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
@@ -1143,7 +1157,7 @@ cn10k_eth_sec_session_update(void *device, struct rte_security_session *sess,
 
 int
 rte_pmd_cnxk_hw_sa_read(void *device, struct rte_security_session *sess,
-			void *data, uint32_t len)
+			union rte_pmd_cnxk_ipsec_hw_sa *data, uint32_t len)
 {
 	struct rte_eth_dev *eth_dev = (struct rte_eth_dev *)device;
 	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
@@ -1166,7 +1180,7 @@ rte_pmd_cnxk_hw_sa_read(void *device, struct rte_security_session *sess,
 
 int
 rte_pmd_cnxk_hw_sa_write(void *device, struct rte_security_session *sess,
-			 void *data, uint32_t len)
+			 union rte_pmd_cnxk_ipsec_hw_sa *data, uint32_t len)
 {
 	struct rte_eth_dev *eth_dev = (struct rte_eth_dev *)device;
 	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
