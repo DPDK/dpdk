@@ -255,6 +255,17 @@ qat_sym_crypto_cap_get_gen3(struct qat_cryptodev_private *internals,
 				RTE_CRYPTO_AUTH_SM3_HMAC))) {
 			continue;
 		}
+		if (internals->qat_dev->has_wireless_slice && (
+			check_auth_capa(&capabilities[iter],
+				RTE_CRYPTO_AUTH_KASUMI_F9) ||
+			check_cipher_capa(&capabilities[iter],
+				RTE_CRYPTO_CIPHER_KASUMI_F8) ||
+			check_cipher_capa(&capabilities[iter],
+				RTE_CRYPTO_CIPHER_DES_CBC) ||
+			check_cipher_capa(&capabilities[iter],
+				RTE_CRYPTO_CIPHER_DES_DOCSISBPI)))
+			continue;
+
 		memcpy(addr + curr_capa, capabilities + iter,
 			sizeof(struct rte_cryptodev_capabilities));
 		curr_capa++;

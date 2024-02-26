@@ -26,6 +26,7 @@ poll mode crypto driver support for the following hardware accelerator devices:
 * ``Intel QuickAssist Technology D15xx``
 * ``Intel QuickAssist Technology C4xxx``
 * ``Intel QuickAssist Technology 4xxx``
+* ``Intel QuickAssist Technology 300xx``
 
 
 Features
@@ -177,6 +178,7 @@ poll mode crypto driver support for the following hardware accelerator devices:
 * ``Intel QuickAssist Technology C4xxx``
 * ``Intel QuickAssist Technology 4xxx``
 * ``Intel QuickAssist Technology 401xxx``
+* ``Intel QuickAssist Technology 300xx``
 
 The QAT ASYM PMD has support for:
 

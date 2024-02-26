@@ -135,6 +135,8 @@ struct qat_pci_device {
 	/**< Per generation specific information */
 	uint32_t slice_map;
 	/**< Map of the crypto and compression slices */
+	uint16_t has_wireless_slice;
+	/**< Wireless Slices supported */
 };
 
 struct qat_gen_hw_data {
