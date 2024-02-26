@@ -484,7 +484,7 @@ skip_dev_init:
 	sdp_lbk_id_update(pci_dev, nix);
 	nix->pci_dev = pci_dev;
 	nix->reta_sz = reta_sz;
-	nix->mtu = ROC_NIX_DEFAULT_HW_FRS;
+	nix->mtu = roc_nix_max_pkt_len(roc_nix);
 	nix->dmac_flt_idx = -1;
 
 	/* Register error and ras interrupts */

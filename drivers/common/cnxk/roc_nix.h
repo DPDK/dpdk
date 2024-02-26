@@ -267,8 +267,6 @@ struct roc_nix_eeprom_info {
 #define ROC_NIX_RSS_KEY_LEN	     48 /* 352 Bits */
 #define ROC_NIX_RSS_MCAM_IDX_DEFAULT (-1)
 
-#define ROC_NIX_DEFAULT_HW_FRS 1514
-
 #define ROC_NIX_VWQE_MAX_SIZE_LOG2 11
 #define ROC_NIX_VWQE_MIN_SIZE_LOG2 2
 

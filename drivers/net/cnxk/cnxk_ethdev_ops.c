@@ -610,19 +610,9 @@ skip_buffsz_check:
 
 	frame_size -= RTE_ETHER_CRC_LEN;
 
-	/* Update mtu on Tx */
-	rc = roc_nix_mac_mtu_set(nix, frame_size);
-	if (rc) {
-		plt_err("Failed to set MTU, rc=%d", rc);
-		goto exit;
-	}
-
-	/* Sync same frame size on Rx */
+	/* Set frame size on Rx */
 	rc = roc_nix_mac_max_rx_len_set(nix, frame_size);
 	if (rc) {
-		/* Rollback to older mtu */
-		roc_nix_mac_mtu_set(nix,
-				    old_frame_size - RTE_ETHER_CRC_LEN);
 		plt_err("Failed to max Rx frame length, rc=%d", rc);
 		goto exit;
 	}
