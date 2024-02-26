@@ -24,6 +24,8 @@
 #define DROQ_REFILL_THRESHOLD  64
 #define OTX2_SDP_REQUEST_ISM   (0x1ULL << 63)
 
+typedef uint32_t (*otx_ep_check_pkt_count_t)(void *queue);
+
 static inline uint32_t
 otx_ep_incr_index(uint32_t index, uint32_t count, uint32_t max)
 {

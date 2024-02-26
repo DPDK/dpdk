@@ -11,6 +11,7 @@
 #include <rte_net.h>
 #include <ethdev_pci.h>
 
+#include "cnxk_ep_rx.h"
 #include "otx_ep_common.h"
 #include "otx_ep_vf.h"
 #include "otx_ep_rxtx.h"
@@ -159,6 +160,7 @@ otx_ep_init_instr_queue(struct otx_ep_device *otx_ep, int iq_no, int num_descs,
 		otx_ep->io_qmask.iq64B |= (1ull << iq_no);
 
 	iq->iqcmd_64B = (conf->iq.instr_type == 64);
+	iq->ism_ena = otx_ep->ism_ena;
 
 	/* Set up IQ registers */
 	ret = otx_ep->fn_list.setup_iq_regs(otx_ep, iq_no);
@@ -367,6 +369,7 @@ otx_ep_init_droq(struct otx_ep_device *otx_ep, uint32_t q_no,
 
 	droq->refill_threshold = c_refill_threshold;
 	droq->rearm_data = otx_ep_set_rearm_data(otx_ep);
+	droq->ism_ena = otx_ep->ism_ena;
 
 	/* Set up OQ registers */
 	ret = otx_ep->fn_list.setup_oq_regs(otx_ep, q_no);
@@ -460,8 +463,8 @@ otx_vf_update_read_index(struct otx_ep_instr_queue *iq)
 	 * number of PCIe writes.
 	 */
 	val = *iq->inst_cnt_ism;
-	iq->inst_cnt += val - iq->inst_cnt_ism_prev;
-	iq->inst_cnt_ism_prev = val;
+	iq->inst_cnt += val - iq->inst_cnt_prev;
+	iq->inst_cnt_prev = val;
 
 	if (val > (uint32_t)(1 << 31)) {
 		/*
@@ -477,7 +480,7 @@ otx_vf_update_read_index(struct otx_ep_instr_queue *iq)
 			rte_mb();
 		}
 
-		iq->inst_cnt_ism_prev = 0;
+		iq->inst_cnt_prev = 0;
 	}
 	rte_write64(OTX2_SDP_REQUEST_ISM, iq->inst_cnt_reg);
 
@@ -856,8 +859,8 @@ otx_ep_check_droq_pkts(struct otx_ep_droq *droq)
 	 * number of PCIe writes.
 	 */
 	val = *droq->pkts_sent_ism;
-	new_pkts = val - droq->pkts_sent_ism_prev;
-	droq->pkts_sent_ism_prev = val;
+	new_pkts = val - droq->pkts_sent_prev;
+	droq->pkts_sent_prev = val;
 
 	if (val > (uint32_t)(1 << 31)) {
 		/*
@@ -873,7 +876,7 @@ otx_ep_check_droq_pkts(struct otx_ep_droq *droq)
 			rte_mb();
 		}
 
-		droq->pkts_sent_ism_prev = 0;
+		droq->pkts_sent_prev = 0;
 	}
 	rte_write64(OTX2_SDP_REQUEST_ISM, droq->pkts_sent_reg);
 	droq->pkts_pending += new_pkts;

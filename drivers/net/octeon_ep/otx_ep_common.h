@@ -9,6 +9,7 @@
 #include <unistd.h>
 #include <assert.h>
 #include <rte_eal.h>
+#include <rte_kvargs.h>
 #include <rte_mempool.h>
 #include <rte_mbuf.h>
 #include <rte_io.h>
@@ -223,7 +224,7 @@ struct otx_ep_instr_queue {
 	uint8_t *base_addr;
 
 	/* track inst count locally to consolidate HW counter updates */
-	uint32_t inst_cnt_ism_prev;
+	uint32_t inst_cnt_prev;
 
 	/* Input ring index, where the driver should write the next packet */
 	uint32_t host_write_index;
@@ -260,6 +261,9 @@ struct otx_ep_instr_queue {
 
 	/* Number of  descriptors in this ring. */
 	uint32_t nb_desc;
+
+	/* Use ISM memory */
+	uint8_t ism_ena;
 
 	/* Size of the descriptor. */
 	uint8_t desc_size;
@@ -405,9 +409,12 @@ struct otx_ep_droq {
 	 */
 	void *pkts_sent_reg;
 
+	/* Use ISM memory */
+	uint8_t ism_ena;
+
 	/* Pointer to host memory copy of output packet count, set by ISM */
 	uint32_t *pkts_sent_ism;
-	uint32_t pkts_sent_ism_prev;
+	uint32_t pkts_sent_prev;
 
 	/* Statistics for this DROQ. */
 	struct otx_ep_droq_stats stats;
@@ -565,6 +572,9 @@ struct otx_ep_device {
 
 	/* Generation */
 	uint32_t chip_gen;
+
+	/* Use ISM memory */
+	uint8_t ism_ena;
 };
 
 int otx_ep_setup_iqs(struct otx_ep_device *otx_ep, uint32_t iq_no,

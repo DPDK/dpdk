@@ -15,6 +15,8 @@
 #define OTX_EP_DEV(_eth_dev) \
 	((struct otx_ep_device *)(_eth_dev)->data->dev_private)
 
+#define OTX_ISM_ENABLE	"ism_enable"
+
 static const struct rte_eth_desc_lim otx_ep_rx_desc_lim = {
 	.nb_max		= OTX_EP_MAX_OQ_DESCRIPTORS,
 	.nb_min		= OTX_EP_MIN_OQ_DESCRIPTORS,
@@ -26,6 +28,41 @@ static const struct rte_eth_desc_lim otx_ep_tx_desc_lim = {
 	.nb_min		= OTX_EP_MIN_IQ_DESCRIPTORS,
 	.nb_align	= OTX_EP_TXD_ALIGN,
 };
+
+static int
+parse_flag(const char *key, const char *value, void *extra_args)
+{
+	RTE_SET_USED(key);
+
+	*(uint8_t *)extra_args = atoi(value);
+
+	return 0;
+}
+
+static int
+otx_ethdev_parse_devargs(struct rte_devargs *devargs, struct otx_ep_device *otx_epvf)
+{
+	struct rte_kvargs *kvlist;
+	uint8_t ism_enable = 0;
+
+	if (devargs == NULL)
+		goto null_devargs;
+
+	kvlist = rte_kvargs_parse(devargs->args, NULL);
+	if (kvlist == NULL)
+		goto exit;
+
+	rte_kvargs_process(kvlist, OTX_ISM_ENABLE, &parse_flag, &ism_enable);
+	rte_kvargs_free(kvlist);
+
+null_devargs:
+	otx_epvf->ism_ena = !!ism_enable;
+
+	return 0;
+
+exit:
+	return -EINVAL;
+}
 
 static void
 otx_ep_set_tx_func(struct rte_eth_dev *eth_dev)
@@ -741,6 +778,12 @@ otx_ep_eth_dev_init(struct rte_eth_dev *eth_dev)
 		return 0;
 	}
 
+	/* Parse devargs string */
+	if (otx_ethdev_parse_devargs(eth_dev->device->devargs, otx_epvf)) {
+		otx_ep_err("Failed to parse devargs\n");
+		return -EINVAL;
+	}
+
 	rte_eth_copy_pci_info(eth_dev, pdev);
 	otx_epvf->eth_dev = eth_dev;
 	otx_epvf->port_id = eth_dev->data->port_id;
@@ -837,3 +880,5 @@ RTE_PMD_REGISTER_PCI(net_otx_ep, rte_otx_ep_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(net_otx_ep, pci_id_otx_ep_map);
 RTE_PMD_REGISTER_KMOD_DEP(net_otx_ep, "* igb_uio | vfio-pci");
 RTE_LOG_REGISTER_DEFAULT(otx_net_ep_logtype, NOTICE);
+RTE_PMD_REGISTER_PARAM_STRING(net_otx_ep,
+			      OTX_ISM_ENABLE "=<0|1>");

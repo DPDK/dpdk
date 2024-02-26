@@ -88,8 +88,9 @@ cnxk_ep_rx_refill(struct otx_ep_droq *droq)
 }
 
 static inline uint32_t
-cnxk_ep_check_rx_pkts(struct otx_ep_droq *droq)
+cnxk_ep_check_rx_ism_mem(void *rx_queue)
 {
+	struct otx_ep_droq *droq = (struct otx_ep_droq *)rx_queue;
 	uint32_t new_pkts;
 	uint32_t val;
 
@@ -98,8 +99,9 @@ cnxk_ep_check_rx_pkts(struct otx_ep_droq *droq)
 	 * number of PCIe writes.
 	 */
 	val = __atomic_load_n(droq->pkts_sent_ism, __ATOMIC_RELAXED);
-	new_pkts = val - droq->pkts_sent_ism_prev;
-	droq->pkts_sent_ism_prev = val;
+
+	new_pkts = val - droq->pkts_sent_prev;
+	droq->pkts_sent_prev = val;
 
 	if (val > RTE_BIT32(31)) {
 		/* Only subtract the packet count in the HW counter
@@ -113,11 +115,34 @@ cnxk_ep_check_rx_pkts(struct otx_ep_droq *droq)
 			rte_write64(OTX2_SDP_REQUEST_ISM, droq->pkts_sent_reg);
 			rte_mb();
 		}
-
-		droq->pkts_sent_ism_prev = 0;
+		droq->pkts_sent_prev = 0;
 	}
+
 	rte_write64(OTX2_SDP_REQUEST_ISM, droq->pkts_sent_reg);
-	droq->pkts_pending += new_pkts;
+
+	return new_pkts;
+}
+
+static inline uint32_t
+cnxk_ep_check_rx_pkt_reg(void *rx_queue)
+{
+	struct otx_ep_droq *droq = (struct otx_ep_droq *)rx_queue;
+	uint32_t new_pkts;
+	uint32_t val;
+
+	val = rte_read32(droq->pkts_sent_reg);
+
+	new_pkts = val - droq->pkts_sent_prev;
+	droq->pkts_sent_prev = val;
+
+	if (val > RTE_BIT32(31)) {
+		/* Only subtract the packet count in the HW counter
+		 * when count above halfway to saturation.
+		 */
+		rte_write64((uint64_t)val, droq->pkts_sent_reg);
+		rte_mb();
+		droq->pkts_sent_prev = 0;
+	}
 
 	return new_pkts;
 }
@@ -125,8 +150,11 @@ cnxk_ep_check_rx_pkts(struct otx_ep_droq *droq)
 static inline int16_t __rte_hot
 cnxk_ep_rx_pkts_to_process(struct otx_ep_droq *droq, uint16_t nb_pkts)
 {
+	const otx_ep_check_pkt_count_t cnxk_rx_pkt_count[2] = { cnxk_ep_check_rx_pkt_reg,
+								cnxk_ep_check_rx_ism_mem};
+
 	if (droq->pkts_pending < nb_pkts)
-		cnxk_ep_check_rx_pkts(droq);
+		droq->pkts_pending += cnxk_rx_pkt_count[droq->ism_ena](droq);
 
 	return RTE_MIN(nb_pkts, droq->pkts_pending);
 }

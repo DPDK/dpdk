@@ -155,7 +155,7 @@ cnxk_ep_vf_setup_iq_regs(struct otx_ep_device *otx_ep, uint32_t iq_no)
 	otx_ep_err("SDP_R[%d] INST Q ISM virt: %p, dma: 0x%" PRIX64, iq_no,
 		   (void *)iq->inst_cnt_ism, ism_addr);
 	*iq->inst_cnt_ism = 0;
-	iq->inst_cnt_ism_prev = 0;
+	iq->inst_cnt_prev = 0;
 	iq->partial_ih = ((uint64_t)otx_ep->pkind) << 36;
 
 	return 0;
@@ -240,7 +240,7 @@ cnxk_ep_vf_setup_oq_regs(struct otx_ep_device *otx_ep, uint32_t oq_no)
 	otx_ep_err("SDP_R[%d] OQ ISM virt: %p dma: 0x%" PRIX64,
 		    oq_no, (void *)droq->pkts_sent_ism, ism_addr);
 	*droq->pkts_sent_ism = 0;
-	droq->pkts_sent_ism_prev = 0;
+	droq->pkts_sent_prev = 0;
 
 	loop = OTX_EP_BUSY_LOOP_COUNT;
 	while (((rte_read32(droq->pkts_sent_reg)) != 0ull) && loop--) {

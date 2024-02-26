@@ -306,7 +306,7 @@ otx2_vf_setup_iq_regs(struct otx_ep_device *otx_ep, uint32_t iq_no)
 		   (void *)iq->inst_cnt_ism,
 		   (unsigned int)ism_addr);
 	*iq->inst_cnt_ism = 0;
-	iq->inst_cnt_ism_prev = 0;
+	iq->inst_cnt_prev = 0;
 	iq->partial_ih = ((uint64_t)otx_ep->pkind) << 36;
 
 	return 0;
@@ -392,7 +392,7 @@ otx2_vf_setup_oq_regs(struct otx_ep_device *otx_ep, uint32_t oq_no)
 		   (void *)droq->pkts_sent_ism,
 		   (unsigned int)ism_addr);
 	*droq->pkts_sent_ism = 0;
-	droq->pkts_sent_ism_prev = 0;
+	droq->pkts_sent_prev = 0;
 
 	loop = SDP_VF_BUSY_LOOP_COUNT;
 	while (((rte_read32(droq->pkts_sent_reg)) != 0ull) && loop--) {
