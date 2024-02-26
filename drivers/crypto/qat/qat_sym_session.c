@@ -922,11 +922,20 @@ qat_sym_session_configure_auth(struct rte_cryptodev *dev,
 		session->qat_hash_alg = ICP_QAT_HW_AUTH_ALGO_AES_XCBC_MAC;
 		break;
 	case RTE_CRYPTO_AUTH_AES_CMAC:
-		session->qat_hash_alg = ICP_QAT_HW_AUTH_ALGO_AES_XCBC_MAC;
 		session->aes_cmac = 1;
-		if (internals->qat_dev->has_wireless_slice) {
-			is_wireless = 1;
-			session->is_wireless = 1;
+		if (!internals->qat_dev->has_wireless_slice) {
+			session->qat_hash_alg = ICP_QAT_HW_AUTH_ALGO_AES_XCBC_MAC;
+			break;
+		}
+		is_wireless = 1;
+		session->is_wireless = 1;
+		switch (key_length) {
+		case ICP_QAT_HW_AES_128_KEY_SZ:
+			session->qat_hash_alg = ICP_QAT_HW_AUTH_ALGO_AES_128_CMAC;
+			break;
+		default:
+			QAT_LOG(ERR, "Invalid key length: %d", key_length);
+			return -ENOTSUP;
 		}
 		break;
 	case RTE_CRYPTO_AUTH_AES_GMAC:
@@ -1309,6 +1318,9 @@ static int qat_hash_get_state1_size(enum icp_qat_hw_auth_algo qat_hash_alg)
 	case ICP_QAT_HW_AUTH_ALGO_NULL:
 		return QAT_HW_ROUND_UP(ICP_QAT_HW_NULL_STATE1_SZ,
 						QAT_HW_DEFAULT_ALIGNMENT);
+	case ICP_QAT_HW_AUTH_ALGO_AES_128_CMAC:
+		return QAT_HW_ROUND_UP(ICP_QAT_HW_AES_CMAC_STATE1_SZ,
+						QAT_HW_DEFAULT_ALIGNMENT);
 	case ICP_QAT_HW_AUTH_ALGO_DELIMITER:
 		/* return maximum state1 size in this case */
 		return QAT_HW_ROUND_UP(ICP_QAT_HW_SHA512_STATE1_SZ,
@@ -1345,6 +1357,7 @@ static int qat_hash_get_digest_size(enum icp_qat_hw_auth_algo qat_hash_alg)
 	case ICP_QAT_HW_AUTH_ALGO_MD5:
 		return ICP_QAT_HW_MD5_STATE1_SZ;
 	case ICP_QAT_HW_AUTH_ALGO_AES_XCBC_MAC:
+	case ICP_QAT_HW_AUTH_ALGO_AES_128_CMAC:
 		return ICP_QAT_HW_AES_XCBC_MAC_STATE1_SZ;
 	case ICP_QAT_HW_AUTH_ALGO_DELIMITER:
 		/* return maximum digest size in this case */
@@ -2353,6 +2366,7 @@ int qat_sym_cd_auth_set(struct qat_sym_session *cdesc,
 		|| cdesc->qat_hash_alg == ICP_QAT_HW_AUTH_ALGO_ZUC_256_MAC_64
 		|| cdesc->qat_hash_alg == ICP_QAT_HW_AUTH_ALGO_ZUC_256_MAC_128
 		|| cdesc->qat_hash_alg == ICP_QAT_HW_AUTH_ALGO_AES_XCBC_MAC
+		|| cdesc->qat_hash_alg == ICP_QAT_HW_AUTH_ALGO_AES_128_CMAC
 		|| cdesc->qat_hash_alg == ICP_QAT_HW_AUTH_ALGO_AES_CBC_MAC
 		|| cdesc->qat_hash_alg == ICP_QAT_HW_AUTH_ALGO_NULL
 		|| cdesc->qat_hash_alg == ICP_QAT_HW_AUTH_ALGO_SM3
@@ -2592,6 +2606,12 @@ int qat_sym_cd_auth_set(struct qat_sym_session *cdesc,
 						  "(XCBC)precompute failed");
 			return -EFAULT;
 		}
+		break;
+	case ICP_QAT_HW_AUTH_ALGO_AES_128_CMAC:
+		state1_size = ICP_QAT_HW_AES_CMAC_STATE1_SZ;
+		memset(cdesc->cd_cur_ptr, 0, state1_size);
+		memcpy(cdesc->cd_cur_ptr + state1_size, authkey, authkeylen);
+		state2_size = ICP_QAT_HW_AES_128_CMAC_STATE2_SZ;
 		break;
 	case ICP_QAT_HW_AUTH_ALGO_GALOIS_128:
 	case ICP_QAT_HW_AUTH_ALGO_GALOIS_64:
