@@ -177,6 +177,7 @@ handle_tx_completion_pkts(struct cn10k_eth_txq *txq, uint8_t mt_safe)
 			m = m_next;
 		}
 		rte_pktmbuf_free_seg(m);
+		txq->tx_compl.ptr[tx_compl_s0->sqe_id] = NULL;
 
 		head++;
 		head &= qmask;

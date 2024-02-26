@@ -347,7 +347,13 @@ cn9k_nix_tx_queue_stop(struct rte_eth_dev *eth_dev, uint16_t qidx)
 		struct roc_nix_sq *sq = &dev->sqs[qidx];
 		do {
 			handle_tx_completion_pkts(txq, 0);
+			/* Check if SQ is empty */
 			roc_nix_sq_head_tail_get(nix, sq->qid, &head, &tail);
+			if (head != tail)
+				continue;
+
+			/* Check if completion CQ is empty */
+			roc_nix_cq_head_tail_get(nix, sq->cqid, &head, &tail);
 		} while (head != tail);
 	}
 
