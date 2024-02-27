@@ -19,6 +19,7 @@
  * Do not assume received VhostUserMsg fields contain sensible values!
  */
 
+#include <assert.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -56,13 +57,72 @@
 #define INFLIGHT_ALIGNMENT	64
 #define INFLIGHT_VERSION	0x1
 
-typedef struct vhost_message_handler {
+typedef const struct vhost_message_handler {
 	const char *description;
 	int (*callback)(struct virtio_net **pdev, struct vhu_msg_context *ctx,
 		int main_fd);
 	bool accepts_fd;
+	bool lock_all_qps;
 } vhost_message_handler_t;
 static vhost_message_handler_t vhost_message_handlers[];
+
+#define VHOST_MESSAGE_HANDLERS \
+VHOST_MESSAGE_HANDLER(VHOST_USER_NONE, NULL, false, false) \
+VHOST_MESSAGE_HANDLER(VHOST_USER_GET_FEATURES, vhost_user_get_features, false, false) \
+VHOST_MESSAGE_HANDLER(VHOST_USER_SET_FEATURES, vhost_user_set_features, false, true) \
+VHOST_MESSAGE_HANDLER(VHOST_USER_SET_OWNER, vhost_user_set_owner, false, true) \
+VHOST_MESSAGE_HANDLER(VHOST_USER_RESET_OWNER, vhost_user_reset_owner, false, false) \
+VHOST_MESSAGE_HANDLER(VHOST_USER_SET_MEM_TABLE, vhost_user_set_mem_table, true, true) \
+VHOST_MESSAGE_HANDLER(VHOST_USER_SET_LOG_BASE, vhost_user_set_log_base, true, true) \
+VHOST_MESSAGE_HANDLER(VHOST_USER_SET_LOG_FD, vhost_user_set_log_fd, true, true) \
+VHOST_MESSAGE_HANDLER(VHOST_USER_SET_VRING_NUM, vhost_user_set_vring_num, false, true) \
+VHOST_MESSAGE_HANDLER(VHOST_USER_SET_VRING_ADDR, vhost_user_set_vring_addr, false, true) \
+VHOST_MESSAGE_HANDLER(VHOST_USER_SET_VRING_BASE, vhost_user_set_vring_base, false, true) \
+VHOST_MESSAGE_HANDLER(VHOST_USER_GET_VRING_BASE, vhost_user_get_vring_base, false, false) \
+VHOST_MESSAGE_HANDLER(VHOST_USER_SET_VRING_KICK, vhost_user_set_vring_kick, true, true) \
+VHOST_MESSAGE_HANDLER(VHOST_USER_SET_VRING_CALL, vhost_user_set_vring_call, true, true) \
+VHOST_MESSAGE_HANDLER(VHOST_USER_SET_VRING_ERR, vhost_user_set_vring_err, true, true) \
+VHOST_MESSAGE_HANDLER(VHOST_USER_GET_PROTOCOL_FEATURES, vhost_user_get_protocol_features, \
+	false, false) \
+VHOST_MESSAGE_HANDLER(VHOST_USER_SET_PROTOCOL_FEATURES, vhost_user_set_protocol_features, \
+	false, true) \
+VHOST_MESSAGE_HANDLER(VHOST_USER_GET_QUEUE_NUM, vhost_user_get_queue_num, false, false) \
+VHOST_MESSAGE_HANDLER(VHOST_USER_SET_VRING_ENABLE, vhost_user_set_vring_enable, false, true) \
+VHOST_MESSAGE_HANDLER(VHOST_USER_SEND_RARP, vhost_user_send_rarp, false, true) \
+VHOST_MESSAGE_HANDLER(VHOST_USER_NET_SET_MTU, vhost_user_net_set_mtu, false, true) \
+VHOST_MESSAGE_HANDLER(VHOST_USER_SET_BACKEND_REQ_FD, vhost_user_set_req_fd, true, true) \
+VHOST_MESSAGE_HANDLER(VHOST_USER_IOTLB_MSG, vhost_user_iotlb_msg, false, false) \
+VHOST_MESSAGE_HANDLER(VHOST_USER_GET_CONFIG, vhost_user_get_config, false, false) \
+VHOST_MESSAGE_HANDLER(VHOST_USER_SET_CONFIG, vhost_user_set_config, false, false) \
+VHOST_MESSAGE_HANDLER(VHOST_USER_POSTCOPY_ADVISE, vhost_user_set_postcopy_advise, false, false) \
+VHOST_MESSAGE_HANDLER(VHOST_USER_POSTCOPY_LISTEN, vhost_user_set_postcopy_listen, false, false) \
+VHOST_MESSAGE_HANDLER(VHOST_USER_POSTCOPY_END, vhost_user_postcopy_end, false, false) \
+VHOST_MESSAGE_HANDLER(VHOST_USER_GET_INFLIGHT_FD, vhost_user_get_inflight_fd, false, false) \
+VHOST_MESSAGE_HANDLER(VHOST_USER_SET_INFLIGHT_FD, vhost_user_set_inflight_fd, true, false) \
+VHOST_MESSAGE_HANDLER(VHOST_USER_SET_STATUS, vhost_user_set_status, false, false) \
+VHOST_MESSAGE_HANDLER(VHOST_USER_GET_STATUS, vhost_user_get_status, false, false)
+
+#define VHOST_MESSAGE_HANDLER(id, handler, accepts_fd, lock_all_qps) \
+	id ## _LOCK_ALL_QPS = lock_all_qps,
+enum {
+	VHOST_MESSAGE_HANDLERS
+};
+#undef VHOST_MESSAGE_HANDLER
+
+/* vhost_user_msg_handler() locks all qps based on a handler's lock_all_qps.
+ * Later, a handler may need to ensure the vq has been locked (for example,
+ * when calling lock annotated helpers).
+ *
+ * Note: unfortunately, static_assert() does not see an array content as a
+ * constant expression. Because of this, we can't simply check for
+ * vhost_user_msg_handler[].lock_all_qps.
+ * Instead, define an enum for each handler.
+ */
+#define VHOST_USER_ASSERT_LOCK(dev, vq, id) do { \
+	static_assert(id ## _LOCK_ALL_QPS == true, \
+		#id " handler is not declared as locking all queue pairs"); \
+	vq_assert_lock(dev, vq); \
+} while (0)
 
 static int send_vhost_reply(struct virtio_net *dev, int sockfd, struct vhu_msg_context *ctx);
 static int read_vhost_message(struct virtio_net *dev, int sockfd, struct vhu_msg_context *ctx);
@@ -400,7 +460,7 @@ vhost_user_set_features(struct virtio_net **pdev,
 			cleanup_vq(vq, 1);
 			cleanup_vq_inflight(dev, vq);
 			/* vhost_user_lock_all_queue_pairs locked all qps */
-			vq_assert_lock(dev, vq);
+			VHOST_USER_ASSERT_LOCK(dev, vq, VHOST_USER_SET_FEATURES);
 			rte_rwlock_write_unlock(&vq->access_lock);
 			free_vq(dev, vq);
 		}
@@ -927,7 +987,7 @@ vhost_user_set_vring_addr(struct virtio_net **pdev,
 	vq = dev->virtqueue[ctx->msg.payload.addr.index];
 
 	/* vhost_user_lock_all_queue_pairs locked all qps */
-	vq_assert_lock(dev, vq);
+	VHOST_USER_ASSERT_LOCK(dev, vq, VHOST_USER_SET_VRING_ADDR);
 
 	access_ok = vq->access_ok;
 
@@ -1442,7 +1502,7 @@ vhost_user_set_mem_table(struct virtio_net **pdev,
 
 		if (vq->desc || vq->avail || vq->used) {
 			/* vhost_user_lock_all_queue_pairs locked all qps */
-			vq_assert_lock(dev, vq);
+			VHOST_USER_ASSERT_LOCK(dev, vq, VHOST_USER_SET_MEM_TABLE);
 
 			/*
 			 * If the memory table got updated, the ring addresses
@@ -2234,7 +2294,7 @@ vhost_user_set_vring_enable(struct virtio_net **pdev,
 	vq = dev->virtqueue[index];
 	if (!(dev->flags & VIRTIO_DEV_VDPA_CONFIGURED)) {
 		/* vhost_user_lock_all_queue_pairs locked all qps */
-		vq_assert_lock(dev, vq);
+		VHOST_USER_ASSERT_LOCK(dev, vq, VHOST_USER_SET_VRING_ENABLE);
 		if (enable && vq->async && vq->async->pkts_inflight_n) {
 			VHOST_CONFIG_LOG(dev->ifname, ERR,
 				"failed to enable vring. Inflight packets must be completed first");
@@ -2838,42 +2898,8 @@ vhost_user_set_status(struct virtio_net **pdev,
 	return RTE_VHOST_MSG_RESULT_OK;
 }
 
-#define VHOST_MESSAGE_HANDLERS \
-VHOST_MESSAGE_HANDLER(VHOST_USER_NONE, NULL, false) \
-VHOST_MESSAGE_HANDLER(VHOST_USER_GET_FEATURES, vhost_user_get_features, false) \
-VHOST_MESSAGE_HANDLER(VHOST_USER_SET_FEATURES, vhost_user_set_features, false) \
-VHOST_MESSAGE_HANDLER(VHOST_USER_SET_OWNER, vhost_user_set_owner, false) \
-VHOST_MESSAGE_HANDLER(VHOST_USER_RESET_OWNER, vhost_user_reset_owner, false) \
-VHOST_MESSAGE_HANDLER(VHOST_USER_SET_MEM_TABLE, vhost_user_set_mem_table, true) \
-VHOST_MESSAGE_HANDLER(VHOST_USER_SET_LOG_BASE, vhost_user_set_log_base, true) \
-VHOST_MESSAGE_HANDLER(VHOST_USER_SET_LOG_FD, vhost_user_set_log_fd, true) \
-VHOST_MESSAGE_HANDLER(VHOST_USER_SET_VRING_NUM, vhost_user_set_vring_num, false) \
-VHOST_MESSAGE_HANDLER(VHOST_USER_SET_VRING_ADDR, vhost_user_set_vring_addr, false) \
-VHOST_MESSAGE_HANDLER(VHOST_USER_SET_VRING_BASE, vhost_user_set_vring_base, false) \
-VHOST_MESSAGE_HANDLER(VHOST_USER_GET_VRING_BASE, vhost_user_get_vring_base, false) \
-VHOST_MESSAGE_HANDLER(VHOST_USER_SET_VRING_KICK, vhost_user_set_vring_kick, true) \
-VHOST_MESSAGE_HANDLER(VHOST_USER_SET_VRING_CALL, vhost_user_set_vring_call, true) \
-VHOST_MESSAGE_HANDLER(VHOST_USER_SET_VRING_ERR, vhost_user_set_vring_err, true) \
-VHOST_MESSAGE_HANDLER(VHOST_USER_GET_PROTOCOL_FEATURES, vhost_user_get_protocol_features, false) \
-VHOST_MESSAGE_HANDLER(VHOST_USER_SET_PROTOCOL_FEATURES, vhost_user_set_protocol_features, false) \
-VHOST_MESSAGE_HANDLER(VHOST_USER_GET_QUEUE_NUM, vhost_user_get_queue_num, false) \
-VHOST_MESSAGE_HANDLER(VHOST_USER_SET_VRING_ENABLE, vhost_user_set_vring_enable, false) \
-VHOST_MESSAGE_HANDLER(VHOST_USER_SEND_RARP, vhost_user_send_rarp, false) \
-VHOST_MESSAGE_HANDLER(VHOST_USER_NET_SET_MTU, vhost_user_net_set_mtu, false) \
-VHOST_MESSAGE_HANDLER(VHOST_USER_SET_BACKEND_REQ_FD, vhost_user_set_req_fd, true) \
-VHOST_MESSAGE_HANDLER(VHOST_USER_IOTLB_MSG, vhost_user_iotlb_msg, false) \
-VHOST_MESSAGE_HANDLER(VHOST_USER_GET_CONFIG, vhost_user_get_config, false) \
-VHOST_MESSAGE_HANDLER(VHOST_USER_SET_CONFIG, vhost_user_set_config, false) \
-VHOST_MESSAGE_HANDLER(VHOST_USER_POSTCOPY_ADVISE, vhost_user_set_postcopy_advise, false) \
-VHOST_MESSAGE_HANDLER(VHOST_USER_POSTCOPY_LISTEN, vhost_user_set_postcopy_listen, false) \
-VHOST_MESSAGE_HANDLER(VHOST_USER_POSTCOPY_END, vhost_user_postcopy_end, false) \
-VHOST_MESSAGE_HANDLER(VHOST_USER_GET_INFLIGHT_FD, vhost_user_get_inflight_fd, false) \
-VHOST_MESSAGE_HANDLER(VHOST_USER_SET_INFLIGHT_FD, vhost_user_set_inflight_fd, true) \
-VHOST_MESSAGE_HANDLER(VHOST_USER_SET_STATUS, vhost_user_set_status, false) \
-VHOST_MESSAGE_HANDLER(VHOST_USER_GET_STATUS, vhost_user_get_status, false)
-
-#define VHOST_MESSAGE_HANDLER(id, handler, accepts_fd) \
-	[id] = { #id, handler, accepts_fd },
+#define VHOST_MESSAGE_HANDLER(id, handler, accepts_fd, lock_all_qps) \
+	[id] = { #id, handler, accepts_fd, id ## _LOCK_ALL_QPS },
 static vhost_message_handler_t vhost_message_handlers[] = {
 	VHOST_MESSAGE_HANDLERS
 };
@@ -3141,31 +3167,11 @@ vhost_user_msg_handler(int vid, int fd)
 	 * inactive, so it is safe. Otherwise taking the access_lock
 	 * would cause a dead lock.
 	 */
-	switch (request) {
-	case VHOST_USER_SET_FEATURES:
-	case VHOST_USER_SET_PROTOCOL_FEATURES:
-	case VHOST_USER_SET_OWNER:
-	case VHOST_USER_SET_MEM_TABLE:
-	case VHOST_USER_SET_LOG_BASE:
-	case VHOST_USER_SET_LOG_FD:
-	case VHOST_USER_SET_VRING_NUM:
-	case VHOST_USER_SET_VRING_ADDR:
-	case VHOST_USER_SET_VRING_BASE:
-	case VHOST_USER_SET_VRING_KICK:
-	case VHOST_USER_SET_VRING_CALL:
-	case VHOST_USER_SET_VRING_ERR:
-	case VHOST_USER_SET_VRING_ENABLE:
-	case VHOST_USER_SEND_RARP:
-	case VHOST_USER_NET_SET_MTU:
-	case VHOST_USER_SET_BACKEND_REQ_FD:
+	if (msg_handler->lock_all_qps) {
 		if (!(dev->flags & VIRTIO_DEV_VDPA_CONFIGURED)) {
 			vhost_user_lock_all_queue_pairs(dev);
 			unlock_required = 1;
 		}
-		break;
-	default:
-		break;
-
 	}
 
 	handled = false;
