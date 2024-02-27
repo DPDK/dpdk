@@ -75,7 +75,7 @@ enum {
 /* Now, the maximal ports will be supported is 16, action number is 32M. */
 #define MLX5_INDIRECT_ACT_CT_MAX_PORT 0x10
 
-#define MLX5_INDIRECT_ACT_CT_OWNER_SHIFT 22
+#define MLX5_INDIRECT_ACT_CT_OWNER_SHIFT 25
 #define MLX5_INDIRECT_ACT_CT_OWNER_MASK (MLX5_INDIRECT_ACT_CT_MAX_PORT - 1)
 
 /* 29-31: type, 25-28: owner port, 0-24: index */
