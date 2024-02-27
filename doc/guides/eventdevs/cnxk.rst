@@ -198,6 +198,14 @@ Runtime Config Options
 
     -a 0002:0e:00.0,tim_eclk_freq=122880000-1000000000-0
 
+Power Saving on CN10K
+---------------------
+
+ARM cores can additionally use WFE when polling for transactions on SSO bus
+to save power i.e., in the event dequeue call ARM core can enter WFE and exit
+when either work has been scheduled or dequeue timeout has reached.
+This feature can be selected by configuring meson with ``RTE_ARM_USE_WFE`` enabled.
+
 Debugging Options
 -----------------
 
