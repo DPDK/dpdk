@@ -564,7 +564,7 @@ flow_hw_ct_compile(struct rte_eth_dev *dev,
 	struct mlx5_aso_ct_action *ct;
 
 	ct = mlx5_ipool_get(priv->hws_ctpool->cts, MLX5_ACTION_CTX_CT_GET_IDX(idx));
-	if (!ct || mlx5_aso_ct_available(priv->sh, queue, ct))
+	if (!ct || (!priv->shared_host && mlx5_aso_ct_available(priv->sh, queue, ct)))
 		return -1;
 	rule_act->action = priv->hws_ctpool->dr_action;
 	rule_act->aso_ct.offset = ct->offset;
@@ -3845,10 +3845,10 @@ __flow_hw_pull_indir_action_comp(struct rte_eth_dev *dev,
 		if (ret_comp < n_res && priv->hws_mpool)
 			ret_comp += mlx5_aso_pull_completion(&priv->hws_mpool->sq[queue],
 					&res[ret_comp], n_res - ret_comp);
+		if (ret_comp < n_res && priv->hws_ctpool)
+			ret_comp += mlx5_aso_pull_completion(&priv->ct_mng->aso_sqs[queue],
+					&res[ret_comp], n_res - ret_comp);
 	}
-	if (ret_comp < n_res && priv->hws_ctpool)
-		ret_comp += mlx5_aso_pull_completion(&priv->ct_mng->aso_sqs[queue],
-				&res[ret_comp], n_res - ret_comp);
 	if (ret_comp < n_res && priv->quota_ctx.sq)
 		ret_comp += mlx5_aso_pull_completion(&priv->quota_ctx.sq[queue],
 						     &res[ret_comp],
@@ -9029,15 +9029,19 @@ flow_hw_ct_mng_destroy(struct rte_eth_dev *dev,
 }
 
 static void
-flow_hw_ct_pool_destroy(struct rte_eth_dev *dev __rte_unused,
+flow_hw_ct_pool_destroy(struct rte_eth_dev *dev,
 			struct mlx5_aso_ct_pool *pool)
 {
+	struct mlx5_priv *priv = dev->data->dev_private;
+
 	if (pool->dr_action)
 		mlx5dr_action_destroy(pool->dr_action);
-	if (pool->devx_obj)
-		claim_zero(mlx5_devx_cmd_destroy(pool->devx_obj));
-	if (pool->cts)
-		mlx5_ipool_destroy(pool->cts);
+	if (!priv->shared_host) {
+		if (pool->devx_obj)
+			claim_zero(mlx5_devx_cmd_destroy(pool->devx_obj));
+		if (pool->cts)
+			mlx5_ipool_destroy(pool->cts);
+	}
 	mlx5_free(pool);
 }
 
@@ -9061,50 +9065,55 @@ flow_hw_ct_pool_create(struct rte_eth_dev *dev,
 		.type = "mlx5_hw_ct_action",
 	};
 	int reg_id;
-	uint32_t flags;
+	uint32_t flags = 0;
 
-	if (port_attr->flags & RTE_FLOW_PORT_FLAG_SHARE_INDIRECT) {
-		DRV_LOG(ERR, "Connection tracking is not supported "
-			     "in cross vHCA sharing mode");
-		rte_errno = ENOTSUP;
-		return NULL;
-	}
 	pool = mlx5_malloc(MLX5_MEM_ZERO, sizeof(*pool), 0, SOCKET_ID_ANY);
 	if (!pool) {
 		rte_errno = ENOMEM;
 		return NULL;
 	}
-	obj = mlx5_devx_cmd_create_conn_track_offload_obj(priv->sh->cdev->ctx,
-							  priv->sh->cdev->pdn,
-							  log_obj_size);
-	if (!obj) {
-		rte_errno = ENODATA;
-		DRV_LOG(ERR, "Failed to create conn_track_offload_obj using DevX.");
-		goto err;
+	if (!priv->shared_host) {
+		/*
+		 * No need for local cache if CT number is a small number. Since
+		 * flow insertion rate will be very limited in that case. Here let's
+		 * set the number to less than default trunk size 4K.
+		 */
+		if (nb_cts <= cfg.trunk_size) {
+			cfg.per_core_cache = 0;
+			cfg.trunk_size = nb_cts;
+		} else if (nb_cts <= MLX5_HW_IPOOL_SIZE_THRESHOLD) {
+			cfg.per_core_cache = MLX5_HW_IPOOL_CACHE_MIN;
+		}
+		cfg.max_idx = nb_cts;
+		pool->cts = mlx5_ipool_create(&cfg);
+		if (!pool->cts)
+			goto err;
+		obj = mlx5_devx_cmd_create_conn_track_offload_obj(priv->sh->cdev->ctx,
+								  priv->sh->cdev->pdn,
+								  log_obj_size);
+		if (!obj) {
+			rte_errno = ENODATA;
+			DRV_LOG(ERR, "Failed to create conn_track_offload_obj using DevX.");
+			goto err;
+		}
+		pool->devx_obj = obj;
+	} else {
+		struct rte_eth_dev *host_dev = priv->shared_host;
+		struct mlx5_priv *host_priv = host_dev->data->dev_private;
+
+		pool->devx_obj = host_priv->hws_ctpool->devx_obj;
+		pool->cts = host_priv->hws_ctpool->cts;
+		MLX5_ASSERT(pool->cts);
+		MLX5_ASSERT(!port_attr->nb_conn_tracks);
 	}
-	pool->devx_obj = obj;
 	reg_id = mlx5_flow_get_reg_id(dev, MLX5_ASO_CONNTRACK, 0, NULL);
-	flags = MLX5DR_ACTION_FLAG_HWS_RX | MLX5DR_ACTION_FLAG_HWS_TX;
+	flags |= MLX5DR_ACTION_FLAG_HWS_RX | MLX5DR_ACTION_FLAG_HWS_TX;
 	if (priv->sh->config.dv_esw_en && priv->master)
 		flags |= MLX5DR_ACTION_FLAG_HWS_FDB;
 	pool->dr_action = mlx5dr_action_create_aso_ct(priv->dr_ctx,
-						      (struct mlx5dr_devx_obj *)obj,
+						      (struct mlx5dr_devx_obj *)pool->devx_obj,
 						      reg_id - REG_C_0, flags);
 	if (!pool->dr_action)
-		goto err;
-	/*
-	 * No need for local cache if CT number is a small number. Since
-	 * flow insertion rate will be very limited in that case. Here let's
-	 * set the number to less than default trunk size 4K.
-	 */
-	if (nb_cts <= cfg.trunk_size) {
-		cfg.per_core_cache = 0;
-		cfg.trunk_size = nb_cts;
-	} else if (nb_cts <= MLX5_HW_IPOOL_SIZE_THRESHOLD) {
-		cfg.per_core_cache = MLX5_HW_IPOOL_CACHE_MIN;
-	}
-	pool->cts = mlx5_ipool_create(&cfg);
-	if (!pool->cts)
 		goto err;
 	pool->sq = priv->ct_mng->aso_sqs;
 	/* Assign the last extra ASO SQ as public SQ. */
@@ -9982,14 +9991,16 @@ flow_hw_configure(struct rte_eth_dev *dev,
 	if (!priv->shared_host)
 		flow_hw_create_send_to_kernel_actions(priv);
 	if (port_attr->nb_conn_tracks || (host_priv && host_priv->hws_ctpool)) {
-		mem_size = sizeof(struct mlx5_aso_sq) * nb_q_updated +
-			   sizeof(*priv->ct_mng);
-		priv->ct_mng = mlx5_malloc(MLX5_MEM_ZERO, mem_size,
-					   RTE_CACHE_LINE_SIZE, SOCKET_ID_ANY);
-		if (!priv->ct_mng)
-			goto err;
-		if (mlx5_aso_ct_queue_init(priv->sh, priv->ct_mng, nb_q_updated))
-			goto err;
+		if (!priv->shared_host) {
+			mem_size = sizeof(struct mlx5_aso_sq) * nb_q_updated +
+				sizeof(*priv->ct_mng);
+			priv->ct_mng = mlx5_malloc(MLX5_MEM_ZERO, mem_size,
+						RTE_CACHE_LINE_SIZE, SOCKET_ID_ANY);
+			if (!priv->ct_mng)
+				goto err;
+			if (mlx5_aso_ct_queue_init(priv->sh, priv->ct_mng, nb_q_updated))
+				goto err;
+		}
 		priv->hws_ctpool = flow_hw_ct_pool_create(dev, port_attr);
 		if (!priv->hws_ctpool)
 			goto err;
@@ -10212,17 +10223,20 @@ flow_hw_clear_port_info(struct rte_eth_dev *dev)
 }
 
 static int
-flow_hw_conntrack_destroy(struct rte_eth_dev *dev __rte_unused,
+flow_hw_conntrack_destroy(struct rte_eth_dev *dev,
 			  uint32_t idx,
 			  struct rte_flow_error *error)
 {
-	uint16_t owner = (uint16_t)MLX5_ACTION_CTX_CT_GET_OWNER(idx);
 	uint32_t ct_idx = MLX5_ACTION_CTX_CT_GET_IDX(idx);
-	struct rte_eth_dev *owndev = &rte_eth_devices[owner];
-	struct mlx5_priv *priv = owndev->data->dev_private;
+	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_aso_ct_pool *pool = priv->hws_ctpool;
 	struct mlx5_aso_ct_action *ct;
 
+	if (priv->shared_host)
+		return rte_flow_error_set(error, ENOTSUP,
+				RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				NULL,
+				"CT destruction is not allowed to guest port");
 	ct = mlx5_ipool_get(pool->cts, ct_idx);
 	if (!ct) {
 		return rte_flow_error_set(error, EINVAL,
@@ -10245,14 +10259,13 @@ flow_hw_conntrack_query(struct rte_eth_dev *dev, uint32_t queue, uint32_t idx,
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_aso_ct_pool *pool = priv->hws_ctpool;
 	struct mlx5_aso_ct_action *ct;
-	uint16_t owner = (uint16_t)MLX5_ACTION_CTX_CT_GET_OWNER(idx);
 	uint32_t ct_idx;
 
-	if (owner != PORT_ID(priv))
-		return rte_flow_error_set(error, EACCES,
+	if (priv->shared_host)
+		return rte_flow_error_set(error, ENOTSUP,
 				RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 				NULL,
-				"Can't query CT object owned by another port");
+				"CT query is not allowed to guest port");
 	ct_idx = MLX5_ACTION_CTX_CT_GET_IDX(idx);
 	ct = mlx5_ipool_get(pool->cts, ct_idx);
 	if (!ct) {
@@ -10282,15 +10295,14 @@ flow_hw_conntrack_update(struct rte_eth_dev *dev, uint32_t queue,
 	struct mlx5_aso_ct_pool *pool = priv->hws_ctpool;
 	struct mlx5_aso_ct_action *ct;
 	const struct rte_flow_action_conntrack *new_prf;
-	uint16_t owner = (uint16_t)MLX5_ACTION_CTX_CT_GET_OWNER(idx);
 	uint32_t ct_idx;
 	int ret = 0;
 
-	if (PORT_ID(priv) != owner)
-		return rte_flow_error_set(error, EACCES,
-					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
-					  NULL,
-					  "Can't update CT object owned by another port");
+	if (priv->shared_host)
+		return rte_flow_error_set(error, ENOTSUP,
+				RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				NULL,
+				"CT update is not allowed to guest port");
 	ct_idx = MLX5_ACTION_CTX_CT_GET_IDX(idx);
 	ct = mlx5_ipool_get(pool->cts, ct_idx);
 	if (!ct) {
@@ -10340,6 +10352,13 @@ flow_hw_conntrack_create(struct rte_eth_dev *dev, uint32_t queue,
 	int ret;
 	bool async = !!(queue != MLX5_HW_INV_QUEUE);
 
+	if (priv->shared_host) {
+		rte_flow_error_set(error, ENOTSUP,
+				RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				NULL,
+				"CT create is not allowed to guest port");
+		return NULL;
+	}
 	if (!pool) {
 		rte_flow_error_set(error, EINVAL,
 				   RTE_FLOW_ERROR_TYPE_ACTION, NULL,
