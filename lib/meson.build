@@ -73,6 +73,7 @@ if is_ms_compiler
             'log',
             'kvargs',
             'telemetry',
+            'eal',
     ]
 endif
 

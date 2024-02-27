@@ -39,7 +39,9 @@ extern "C" {
 #endif
 
 #ifdef RTE_TOOLCHAIN_MSVC
+#ifdef __cplusplus
 #define __extension__
+#endif
 #endif
 
 /*

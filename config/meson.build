@@ -39,13 +39,17 @@ if is_ms_compiler
     # temporarily disable msvc specific warnings
     # - 4244 compiler detected conversion of integer to smaller type
     # - 4267 compiler detected conversion of size_t to smaller type
-    add_project_arguments('/wd4244', '/wd4267', language: 'c')
+    # - 4146 unary minus applied to unsigned type
+    add_project_arguments('/wd4244', '/wd4267', '/wd4146', language: 'c')
 
     # enable non-locking atomic operations
     add_project_arguments('/experimental:c11atomics', language: 'c')
 
     # enable typeof operator
     add_project_arguments('/d1experimental:typeof', language: 'c')
+
+    # enable statement expressions extension
+    add_project_arguments('/experimental:statementExpressions', language: 'c')
 endif
 
 # set the major version, which might be used by drivers and libraries
