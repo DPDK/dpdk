@@ -4,11 +4,13 @@ After=network.target network.service networking.service
 
 [Service]
 Type=simple
-ExecStart=@prefix@/bin/vfe-vhostd -v --file-prefix=vfe-vhostd -a 0000:00:00.0 --log-level=.,debug --no-huge -- --client
+ExecStart=@prefix@/bin/vfe-vhostd -v --file-prefix=vfe-vhostd -a 0000:00:00.0 --log-level=.,debug --vfio-vf-token=cdc786f0-59d4-41d9-b554-fed36ff5e89f -- --client
 TimeoutSec=1800
 LimitCORE=infinity
 KillSignal=SIGTERM
 Restart=always
+StandardOutput=null
+StandardError=null
 
 [Install]
 WantedBy=multi-user.target
