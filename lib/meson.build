@@ -74,6 +74,7 @@ if is_ms_compiler
             'kvargs',
             'telemetry',
             'eal',
+            'ring',
     ]
 endif
 

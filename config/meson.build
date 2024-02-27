@@ -32,6 +32,9 @@ if is_ms_compiler
     # does not support inline assembly
     dpdk_conf.set('RTE_FORCE_INTRINSICS', 1)
 
+    # force the use of C++11 memory model in lib/ring
+    dpdk_conf.set('RTE_USE_C11_MEM_MODEL', true)
+
     # suppress warnings raised for using standard library functions
     # the MSVC compiler regards as unsafe but are used by DPDK
     dpdk_conf.set('_CRT_SECURE_NO_WARNINGS', 1)
