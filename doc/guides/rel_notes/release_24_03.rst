@@ -143,6 +143,9 @@ New Features
   * Added support for comparing result between packet fields or value.
   * Added support for accumulating value of field into another one.
   * Added support for copying inner fields in HWS flow engine.
+  * Added support for sharing indirect action objects
+    of type ``RTE_FLOW_ACTION_TYPE_METER_MARK``
+    in HWS flow engine.
 
 * **Updated Intel QuickAssist Technology driver.**
 

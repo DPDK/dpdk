@@ -17,11 +17,32 @@
 
 #ifdef HAVE_MLX5_HWS_SUPPORT
 
+static void
+mlx5_flow_meter_uninit_guest(struct rte_eth_dev *dev)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+
+	if (priv->hws_mpool) {
+		if (priv->hws_mpool->action) {
+			claim_zero(mlx5dr_action_destroy(priv->hws_mpool->action));
+			priv->hws_mpool->action = NULL;
+		}
+		priv->hws_mpool->devx_obj = NULL;
+		priv->hws_mpool->idx_pool = NULL;
+		mlx5_free(priv->hws_mpool);
+		priv->hws_mpool = NULL;
+	}
+}
+
 void
 mlx5_flow_meter_uninit(struct rte_eth_dev *dev)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 
+	if (priv->shared_host) {
+		mlx5_flow_meter_uninit_guest(dev);
+		return;
+	}
 	if (priv->mtr_policy_arr) {
 		mlx5_free(priv->mtr_policy_arr);
 		priv->mtr_policy_arr = NULL;
@@ -50,6 +71,54 @@ mlx5_flow_meter_uninit(struct rte_eth_dev *dev)
 		claim_zero(mlx5_devx_cmd_destroy(priv->mtr_bulk.devx_obj));
 		priv->mtr_bulk.devx_obj = NULL;
 	}
+}
+
+static int
+mlx5_flow_meter_init_guest(struct rte_eth_dev *dev)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct rte_eth_dev *host_dev = priv->shared_host;
+	struct mlx5_priv *host_priv = host_dev->data->dev_private;
+	int reg_id = 0;
+	uint32_t flags;
+	int ret = 0;
+
+	MLX5_ASSERT(priv->shared_host);
+	reg_id = mlx5_flow_get_reg_id(dev, MLX5_MTR_COLOR, 0, NULL);
+	if (reg_id < 0) {
+		rte_errno = ENOMEM;
+		ret = -rte_errno;
+		DRV_LOG(ERR, "Meter register is not available.");
+		goto err;
+	}
+	priv->hws_mpool = mlx5_malloc(MLX5_MEM_ZERO, sizeof(struct mlx5_aso_mtr_pool),
+				      RTE_CACHE_LINE_SIZE, SOCKET_ID_ANY);
+	if (!priv->hws_mpool) {
+		rte_errno = ENOMEM;
+		ret = -rte_errno;
+		DRV_LOG(ERR, "Meter ipool allocation failed.");
+		goto err;
+	}
+	MLX5_ASSERT(host_priv->hws_mpool->idx_pool);
+	MLX5_ASSERT(host_priv->hws_mpool->devx_obj);
+	priv->hws_mpool->idx_pool = host_priv->hws_mpool->idx_pool;
+	priv->hws_mpool->devx_obj = host_priv->hws_mpool->devx_obj;
+	flags = MLX5DR_ACTION_FLAG_HWS_RX | MLX5DR_ACTION_FLAG_HWS_TX;
+	if (priv->sh->config.dv_esw_en && priv->master)
+		flags |= MLX5DR_ACTION_FLAG_HWS_FDB;
+	priv->hws_mpool->action = mlx5dr_action_create_aso_meter
+			(priv->dr_ctx, (struct mlx5dr_devx_obj *)priv->hws_mpool->devx_obj,
+			 reg_id - REG_C_0, flags);
+	if (!priv->hws_mpool->action) {
+		rte_errno = ENOMEM;
+		ret = -rte_errno;
+		DRV_LOG(ERR, "Meter action creation failed.");
+		goto err;
+	}
+	return 0;
+err:
+	mlx5_flow_meter_uninit(dev);
+	return ret;
 }
 
 int
@@ -81,6 +150,8 @@ mlx5_flow_meter_init(struct rte_eth_dev *dev,
 		.type = "mlx5_hw_mtr_mark_action",
 	};
 
+	if (priv->shared_host)
+		return mlx5_flow_meter_init_guest(dev);
 	if (!nb_meters) {
 		ret = ENOTSUP;
 		rte_flow_error_set(&error, ENOMEM,
@@ -850,6 +921,9 @@ mlx5_flow_meter_profile_hws_add(struct rte_eth_dev *dev,
 	struct mlx5_flow_meter_profile *fmp;
 	int ret;
 
+	if (priv->shared_host)
+		return -rte_mtr_error_set(error, ENOTSUP, RTE_MTR_ERROR_TYPE_UNSPECIFIED, NULL,
+					  "Meter profiles cannot be created on guest port");
 	if (!priv->mtr_profile_arr)
 		return mlx5_flow_meter_profile_add(dev, meter_profile_id, profile, error);
 	/* Check input params. */
@@ -887,6 +961,9 @@ mlx5_flow_meter_profile_hws_delete(struct rte_eth_dev *dev,
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_flow_meter_profile *fmp;
 
+	if (priv->shared_host)
+		return -rte_mtr_error_set(error, ENOTSUP, RTE_MTR_ERROR_TYPE_UNSPECIFIED, NULL,
+					  "Meter profiles cannot be destroyed through guest port");
 	if (!priv->mtr_profile_arr)
 		return mlx5_flow_meter_profile_delete(dev, meter_profile_id, error);
 	/* Meter profile must exist. */

@@ -1545,7 +1545,8 @@ static rte_be32_t vlan_hdr_to_be32(const struct rte_flow_action *actions)
 static __rte_always_inline struct mlx5_aso_mtr *
 flow_hw_meter_mark_alloc(struct rte_eth_dev *dev, uint32_t queue,
 			 const struct rte_flow_action *action,
-			 void *user_data, bool push)
+			 void *user_data, bool push,
+			 struct rte_flow_error *error)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_aso_mtr_pool *pool = priv->hws_mpool;
@@ -1554,6 +1555,11 @@ flow_hw_meter_mark_alloc(struct rte_eth_dev *dev, uint32_t queue,
 	struct mlx5_flow_meter_info *fm;
 	uint32_t mtr_id;
 
+	if (priv->shared_host) {
+		rte_flow_error_set(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				   "Meter mark actions can only be created on the host port");
+		return NULL;
+	}
 	if (meter_mark->profile == NULL)
 		return NULL;
 	aso_mtr = mlx5_ipool_malloc(priv->hws_mpool->idx_pool, &mtr_id);
@@ -1592,13 +1598,14 @@ flow_hw_meter_mark_compile(struct rte_eth_dev *dev,
 			   const struct rte_flow_action *action,
 			   struct mlx5dr_rule_action *acts,
 			   uint32_t *index,
-			   uint32_t queue)
+			   uint32_t queue,
+			   struct rte_flow_error *error)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_aso_mtr_pool *pool = priv->hws_mpool;
 	struct mlx5_aso_mtr *aso_mtr;
 
-	aso_mtr = flow_hw_meter_mark_alloc(dev, queue, action, NULL, true);
+	aso_mtr = flow_hw_meter_mark_alloc(dev, queue, action, NULL, true, error);
 	if (!aso_mtr)
 		return -1;
 
@@ -2474,7 +2481,8 @@ __flow_hw_actions_translate(struct rte_eth_dev *dev,
 								 dr_pos, actions,
 								 acts->rule_acts,
 								 &acts->mtr_id,
-								 MLX5_HW_INV_QUEUE);
+								 MLX5_HW_INV_QUEUE,
+								 error);
 				if (err)
 					goto err;
 			} else if (__flow_hw_act_data_general_append(priv, acts,
@@ -3197,7 +3205,8 @@ flow_hw_actions_construct(struct rte_eth_dev *dev,
 			 */
 			ret = flow_hw_meter_mark_compile(dev,
 				act_data->action_dst, action,
-				rule_acts, &job->flow->mtr_id, MLX5_HW_INV_QUEUE);
+				rule_acts, &job->flow->mtr_id,
+				MLX5_HW_INV_QUEUE, error);
 			if (ret != 0)
 				return ret;
 			break;
@@ -3832,9 +3841,11 @@ __flow_hw_pull_indir_action_comp(struct rte_eth_dev *dev,
 		res[i].user_data = user_data;
 		res[i].status = RTE_FLOW_OP_SUCCESS;
 	}
-	if (ret_comp < n_res && priv->hws_mpool)
-		ret_comp += mlx5_aso_pull_completion(&priv->hws_mpool->sq[queue],
-				&res[ret_comp], n_res - ret_comp);
+	if (!priv->shared_host) {
+		if (ret_comp < n_res && priv->hws_mpool)
+			ret_comp += mlx5_aso_pull_completion(&priv->hws_mpool->sq[queue],
+					&res[ret_comp], n_res - ret_comp);
+	}
 	if (ret_comp < n_res && priv->hws_ctpool)
 		ret_comp += mlx5_aso_pull_completion(&priv->ct_mng->aso_sqs[queue],
 				&res[ret_comp], n_res - ret_comp);
@@ -5452,6 +5463,8 @@ flow_hw_validate_action_count(struct rte_eth_dev *dev,
  *   Pointer to rte_eth_dev structure.
  * @param[in] action
  *   Pointer to the indirect action.
+ * @param[in] indirect
+ *   If true, then provided action was passed using an indirect action.
  * @param[out] error
  *   Pointer to error structure.
  *
@@ -5461,6 +5474,7 @@ flow_hw_validate_action_count(struct rte_eth_dev *dev,
 static int
 flow_hw_validate_action_meter_mark(struct rte_eth_dev *dev,
 			      const struct rte_flow_action *action,
+			      bool indirect,
 			      struct rte_flow_error *error)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
@@ -5471,6 +5485,9 @@ flow_hw_validate_action_meter_mark(struct rte_eth_dev *dev,
 		return rte_flow_error_set(error, ENOTSUP,
 					  RTE_FLOW_ERROR_TYPE_ACTION, action,
 					  "meter_mark action not supported");
+	if (!indirect && priv->shared_host)
+		return rte_flow_error_set(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ACTION, action,
+					  "meter_mark action can only be used on host port");
 	if (!priv->hws_mpool)
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ACTION, action,
@@ -5514,7 +5531,7 @@ flow_hw_validate_action_indirect(struct rte_eth_dev *dev,
 	type = mask->type;
 	switch (type) {
 	case RTE_FLOW_ACTION_TYPE_METER_MARK:
-		ret = flow_hw_validate_action_meter_mark(dev, mask, error);
+		ret = flow_hw_validate_action_meter_mark(dev, mask, true, error);
 		if (ret < 0)
 			return ret;
 		*action_flags |= MLX5_FLOW_ACTION_METER;
@@ -5971,8 +5988,7 @@ mlx5_flow_hw_actions_validate(struct rte_eth_dev *dev,
 			action_flags |= MLX5_FLOW_ACTION_METER;
 			break;
 		case RTE_FLOW_ACTION_TYPE_METER_MARK:
-			ret = flow_hw_validate_action_meter_mark(dev, action,
-								 error);
+			ret = flow_hw_validate_action_meter_mark(dev, action, false, error);
 			if (ret < 0)
 				return ret;
 			action_flags |= MLX5_FLOW_ACTION_METER;
@@ -10420,7 +10436,7 @@ flow_hw_action_handle_validate(struct rte_eth_dev *dev, uint32_t queue,
 						  "CT pool not initialized");
 		return mlx5_validate_action_ct(dev, action->conf, error);
 	case RTE_FLOW_ACTION_TYPE_METER_MARK:
-		return flow_hw_validate_action_meter_mark(dev, action, error);
+		return flow_hw_validate_action_meter_mark(dev, action, true, error);
 	case RTE_FLOW_ACTION_TYPE_RSS:
 		return flow_dv_action_validate(dev, conf, action, error);
 	case RTE_FLOW_ACTION_TYPE_QUOTA:
@@ -10579,7 +10595,7 @@ flow_hw_action_handle_create(struct rte_eth_dev *dev, uint32_t queue,
 		break;
 	case RTE_FLOW_ACTION_TYPE_METER_MARK:
 		aso = true;
-		aso_mtr = flow_hw_meter_mark_alloc(dev, queue, action, job, push);
+		aso_mtr = flow_hw_meter_mark_alloc(dev, queue, action, job, push, error);
 		if (!aso_mtr)
 			break;
 		mtr_id = (MLX5_INDIRECT_ACTION_TYPE_METER_MARK <<
