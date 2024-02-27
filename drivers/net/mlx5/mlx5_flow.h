@@ -80,7 +80,12 @@ enum mlx5_indirect_type {
 #define MLX5_INDIRECT_ACT_CT_OWNER_SHIFT 25
 #define MLX5_INDIRECT_ACT_CT_OWNER_MASK (MLX5_INDIRECT_ACT_CT_MAX_PORT - 1)
 
-/* 29-31: type, 25-28: owner port, 0-24: index */
+/*
+ * When SW steering flow engine is used, the CT action handles are encoded in a following way:
+ * - bits 31:29 - type
+ * - bits 28:25 - port index of the action owner
+ * - bits 24:0 - action index
+ */
 #define MLX5_INDIRECT_ACT_CT_GEN_IDX(owner, index) \
 	((MLX5_INDIRECT_ACTION_TYPE_CT << MLX5_INDIRECT_ACTION_TYPE_OFFSET) | \
 	 (((owner) & MLX5_INDIRECT_ACT_CT_OWNER_MASK) << \
@@ -93,9 +98,14 @@ enum mlx5_indirect_type {
 #define MLX5_INDIRECT_ACT_CT_GET_IDX(index) \
 	((index) & ((1 << MLX5_INDIRECT_ACT_CT_OWNER_SHIFT) - 1))
 
-#define MLX5_ACTION_CTX_CT_GET_IDX  MLX5_INDIRECT_ACT_CT_GET_IDX
-#define MLX5_ACTION_CTX_CT_GET_OWNER MLX5_INDIRECT_ACT_CT_GET_OWNER
-#define MLX5_ACTION_CTX_CT_GEN_IDX MLX5_INDIRECT_ACT_CT_GEN_IDX
+/*
+ * When HW steering flow engine is used, the CT action handles are encoded in a following way:
+ * - bits 31:29 - type
+ * - bits 28:0 - action index
+ */
+#define MLX5_INDIRECT_ACT_HWS_CT_GEN_IDX(index) \
+	((struct rte_flow_action_handle *)(uintptr_t) \
+	 ((MLX5_INDIRECT_ACTION_TYPE_CT << MLX5_INDIRECT_ACTION_TYPE_OFFSET) | (index)))
 
 enum mlx5_indirect_list_type {
 	MLX5_INDIRECT_ACTION_LIST_TYPE_ERR = 0,

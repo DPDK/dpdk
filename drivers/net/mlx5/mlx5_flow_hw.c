@@ -563,7 +563,7 @@ flow_hw_ct_compile(struct rte_eth_dev *dev,
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_aso_ct_action *ct;
 
-	ct = mlx5_ipool_get(priv->hws_ctpool->cts, MLX5_ACTION_CTX_CT_GET_IDX(idx));
+	ct = mlx5_ipool_get(priv->hws_ctpool->cts, idx);
 	if (!ct || (!priv->shared_host && mlx5_aso_ct_available(priv->sh, queue, ct)))
 		return -1;
 	rule_act->action = priv->hws_ctpool->dr_action;
@@ -2462,8 +2462,7 @@ __flow_hw_actions_translate(struct rte_eth_dev *dev,
 			break;
 		case RTE_FLOW_ACTION_TYPE_CONNTRACK:
 			if (masks->conf) {
-				ct_idx = MLX5_ACTION_CTX_CT_GET_IDX
-					 ((uint32_t)(uintptr_t)actions->conf);
+				ct_idx = MLX5_INDIRECT_ACTION_IDX_GET(actions->conf);
 				if (flow_hw_ct_compile(dev, MLX5_HW_INV_QUEUE, ct_idx,
 						       &acts->rule_acts[dr_pos]))
 					goto err;
@@ -3180,8 +3179,7 @@ flow_hw_actions_construct(struct rte_eth_dev *dev,
 			job->flow->cnt_id = act_data->shared_counter.id;
 			break;
 		case RTE_FLOW_ACTION_TYPE_CONNTRACK:
-			ct_idx = MLX5_ACTION_CTX_CT_GET_IDX
-				 ((uint32_t)(uintptr_t)action->conf);
+			ct_idx = MLX5_INDIRECT_ACTION_IDX_GET(action->conf);
 			if (flow_hw_ct_compile(dev, queue, ct_idx,
 					       &rule_acts[act_data->action_dst]))
 				return -1;
@@ -3796,16 +3794,14 @@ flow_hw_pull_legacy_indirect_comp(struct rte_eth_dev *dev, struct mlx5_hw_q_job 
 			aso_mtr = mlx5_ipool_get(priv->hws_mpool->idx_pool, idx);
 			aso_mtr->state = ASO_METER_READY;
 		} else if (type == MLX5_INDIRECT_ACTION_TYPE_CT) {
-			idx = MLX5_ACTION_CTX_CT_GET_IDX
-			((uint32_t)(uintptr_t)job->action);
+			idx = MLX5_INDIRECT_ACTION_IDX_GET(job->action);
 			aso_ct = mlx5_ipool_get(priv->hws_ctpool->cts, idx);
 			aso_ct->state = ASO_CONNTRACK_READY;
 		}
 	} else if (job->type == MLX5_HW_Q_JOB_TYPE_QUERY) {
 		type = MLX5_INDIRECT_ACTION_TYPE_GET(job->action);
 		if (type == MLX5_INDIRECT_ACTION_TYPE_CT) {
-			idx = MLX5_ACTION_CTX_CT_GET_IDX
-			((uint32_t)(uintptr_t)job->action);
+			idx = MLX5_INDIRECT_ACTION_IDX_GET(job->action);
 			aso_ct = mlx5_ipool_get(priv->hws_ctpool->cts, idx);
 			mlx5_aso_ct_obj_analyze(job->query.user,
 						job->query.hw);
@@ -10227,7 +10223,6 @@ flow_hw_conntrack_destroy(struct rte_eth_dev *dev,
 			  uint32_t idx,
 			  struct rte_flow_error *error)
 {
-	uint32_t ct_idx = MLX5_ACTION_CTX_CT_GET_IDX(idx);
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_aso_ct_pool *pool = priv->hws_ctpool;
 	struct mlx5_aso_ct_action *ct;
@@ -10237,7 +10232,7 @@ flow_hw_conntrack_destroy(struct rte_eth_dev *dev,
 				RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 				NULL,
 				"CT destruction is not allowed to guest port");
-	ct = mlx5_ipool_get(pool->cts, ct_idx);
+	ct = mlx5_ipool_get(pool->cts, idx);
 	if (!ct) {
 		return rte_flow_error_set(error, EINVAL,
 				RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
@@ -10246,7 +10241,7 @@ flow_hw_conntrack_destroy(struct rte_eth_dev *dev,
 	}
 	__atomic_store_n(&ct->state, ASO_CONNTRACK_FREE,
 				 __ATOMIC_RELAXED);
-	mlx5_ipool_free(pool->cts, ct_idx);
+	mlx5_ipool_free(pool->cts, idx);
 	return 0;
 }
 
@@ -10259,15 +10254,13 @@ flow_hw_conntrack_query(struct rte_eth_dev *dev, uint32_t queue, uint32_t idx,
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_aso_ct_pool *pool = priv->hws_ctpool;
 	struct mlx5_aso_ct_action *ct;
-	uint32_t ct_idx;
 
 	if (priv->shared_host)
 		return rte_flow_error_set(error, ENOTSUP,
 				RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 				NULL,
 				"CT query is not allowed to guest port");
-	ct_idx = MLX5_ACTION_CTX_CT_GET_IDX(idx);
-	ct = mlx5_ipool_get(pool->cts, ct_idx);
+	ct = mlx5_ipool_get(pool->cts, idx);
 	if (!ct) {
 		return rte_flow_error_set(error, EINVAL,
 				RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
@@ -10295,7 +10288,6 @@ flow_hw_conntrack_update(struct rte_eth_dev *dev, uint32_t queue,
 	struct mlx5_aso_ct_pool *pool = priv->hws_ctpool;
 	struct mlx5_aso_ct_action *ct;
 	const struct rte_flow_action_conntrack *new_prf;
-	uint32_t ct_idx;
 	int ret = 0;
 
 	if (priv->shared_host)
@@ -10303,8 +10295,7 @@ flow_hw_conntrack_update(struct rte_eth_dev *dev, uint32_t queue,
 				RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 				NULL,
 				"CT update is not allowed to guest port");
-	ct_idx = MLX5_ACTION_CTX_CT_GET_IDX(idx);
-	ct = mlx5_ipool_get(pool->cts, ct_idx);
+	ct = mlx5_ipool_get(pool->cts, idx);
 	if (!ct) {
 		return rte_flow_error_set(error, EINVAL,
 				RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
@@ -10365,13 +10356,6 @@ flow_hw_conntrack_create(struct rte_eth_dev *dev, uint32_t queue,
 				   "CT is not enabled");
 		return 0;
 	}
-	if (dev->data->port_id >= MLX5_INDIRECT_ACT_CT_MAX_PORT) {
-		rte_flow_error_set(error, EINVAL,
-				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
-				   "CT supports port indexes up to "
-				   RTE_STR(MLX5_ACTION_CTX_CT_MAX_PORT));
-		return 0;
-	}
 	ct = mlx5_ipool_zmalloc(pool->cts, &ct_idx);
 	if (!ct) {
 		rte_flow_error_set(error, rte_errno,
@@ -10401,8 +10385,7 @@ flow_hw_conntrack_create(struct rte_eth_dev *dev, uint32_t queue,
 			return 0;
 		}
 	}
-	return (struct rte_flow_action_handle *)(uintptr_t)
-		MLX5_ACTION_CTX_CT_GEN_IDX(PORT_ID(priv), ct_idx);
+	return MLX5_INDIRECT_ACT_HWS_CT_GEN_IDX(ct_idx);
 }
 
 /**
@@ -10743,7 +10726,7 @@ flow_hw_action_handle_update(struct rte_eth_dev *dev, uint32_t queue,
 	case MLX5_INDIRECT_ACTION_TYPE_CT:
 		if (ct_conf->state)
 			aso = true;
-		ret = flow_hw_conntrack_update(dev, queue, update, act_idx,
+		ret = flow_hw_conntrack_update(dev, queue, update, idx,
 					       job, push, error);
 		break;
 	case MLX5_INDIRECT_ACTION_TYPE_METER_MARK:
@@ -10832,7 +10815,7 @@ flow_hw_action_handle_destroy(struct rte_eth_dev *dev, uint32_t queue,
 		mlx5_hws_cnt_shared_put(priv->hws_cpool, &act_idx);
 		break;
 	case MLX5_INDIRECT_ACTION_TYPE_CT:
-		ret = flow_hw_conntrack_destroy(dev, act_idx, error);
+		ret = flow_hw_conntrack_destroy(dev, idx, error);
 		break;
 	case MLX5_INDIRECT_ACTION_TYPE_METER_MARK:
 		aso_mtr = mlx5_ipool_get(pool->idx_pool, idx);
@@ -11118,6 +11101,7 @@ flow_hw_action_handle_query(struct rte_eth_dev *dev, uint32_t queue,
 	struct mlx5_hw_q_job *job = NULL;
 	uint32_t act_idx = (uint32_t)(uintptr_t)handle;
 	uint32_t type = act_idx >> MLX5_INDIRECT_ACTION_TYPE_OFFSET;
+	uint32_t idx = MLX5_INDIRECT_ACTION_IDX_GET(handle);
 	uint32_t age_idx = act_idx & MLX5_HWS_AGE_IDX_MASK;
 	int ret;
 	bool push = flow_hw_action_push(attr);
@@ -11141,7 +11125,7 @@ flow_hw_action_handle_query(struct rte_eth_dev *dev, uint32_t queue,
 		aso = true;
 		if (job)
 			job->query.user = data;
-		ret = flow_hw_conntrack_query(dev, queue, act_idx, data,
+		ret = flow_hw_conntrack_query(dev, queue, idx, data,
 					      job, push, error);
 		break;
 	case MLX5_INDIRECT_ACTION_TYPE_QUOTA:
