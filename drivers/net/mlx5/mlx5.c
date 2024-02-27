@@ -1689,7 +1689,8 @@ mlx5_init_shared_dev_registers(struct mlx5_dev_ctx_shared *sh)
 	} else {
 		DRV_LOG(DEBUG, "ASO register: NONE");
 	}
-	mlx5_init_hws_flow_tags_registers(sh);
+	if (sh->config.dv_flow_en == 2)
+		mlx5_init_hws_flow_tags_registers(sh);
 }
 
 /**
