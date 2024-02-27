@@ -82,16 +82,14 @@ They do this by:
 * Using the log-level definitions given in ``rte_log.h`` to allow short textual names to be used in
   place of the numeric log levels.
 
-The following code is taken from ``rte_dmadev.c`` and shows the log registration,
+The following code is taken from ``rte_cfgfile.c`` and shows the log registration,
 and subsequent definition of a shortcut logging macro.
 It can be used as a template for any new components using DPDK logging.
 
-.. code:: C
-
-	RTE_LOG_REGISTER_DEFAULT(rte_dma_logtype, INFO);
-	#define RTE_DMA_LOG(level, ...) \
-		rte_log(RTE_LOG_ ## level, rte_dma_logtype, RTE_FMT("dma: " \
-			RTE_FMT_HEAD(__VA_ARGS__,) "\n", RTE_FMT_TAIL(__VA_ARGS__,)))
+.. literalinclude:: ../../../lib/cfgfile/rte_cfgfile.c
+   :language: c
+   :start-after: Setting up dynamic logging 8<
+   :end-before: >8 End of setting up dynamic logging
 
 .. note::
 
@@ -104,10 +102,11 @@ It can be used as a template for any new components using DPDK logging.
 	and the logtype should be defined as an "extern int" in a common header file.
 	Any component-specific logging macro should similarly be defined in that header.
 
-Throughout the dmadev library, all logging calls are therefore of the form:
+Throughout the cfgfile library, all logging calls are therefore of the form:
 
 .. code:: C
 
-	RTE_DMA_LOG(ERR, "Name can't be NULL");
+	CFG_LOG(ERR, "missing cfgfile parameters");
 
-	RTE_DMA_LOG(WARNING, "Device %d already started", dev_id);
+	CFG_LOG(ERR, "invalid comment characters %c",
+	       params->comment_character);
