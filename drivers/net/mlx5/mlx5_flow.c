@@ -5458,8 +5458,8 @@ flow_meter_split_prep(struct rte_eth_dev *dev,
 	struct mlx5_rte_flow_item_tag *tag_item_spec;
 	struct mlx5_rte_flow_item_tag *tag_item_mask;
 	uint32_t tag_id = 0;
-	struct rte_flow_item *vlan_item_dst = NULL;
-	const struct rte_flow_item *vlan_item_src = NULL;
+	bool vlan_actions;
+	struct rte_flow_item *orig_sfx_items = sfx_items;
 	const struct rte_flow_item *orig_items = items;
 	struct rte_flow_action *hw_mtr_action;
 	struct rte_flow_action *action_pre_head = NULL;
@@ -5476,6 +5476,7 @@ flow_meter_split_prep(struct rte_eth_dev *dev,
 
 	/* Prepare the suffix subflow items. */
 	tag_item = sfx_items++;
+	tag_item->type = (enum rte_flow_item_type)MLX5_RTE_FLOW_ITEM_TYPE_TAG;
 	for (; items->type != RTE_FLOW_ITEM_TYPE_END; items++) {
 		int item_type = items->type;
 
@@ -5498,10 +5499,13 @@ flow_meter_split_prep(struct rte_eth_dev *dev,
 			sfx_items++;
 			break;
 		case RTE_FLOW_ITEM_TYPE_VLAN:
-			/* Determine if copy vlan item below. */
-			vlan_item_src = items;
-			vlan_item_dst = sfx_items++;
-			vlan_item_dst->type = RTE_FLOW_ITEM_TYPE_VOID;
+			/*
+			 * Copy VLAN items in case VLAN actions are performed.
+			 * If there are no VLAN actions, these items will be VOID.
+			 */
+			memcpy(sfx_items, items, sizeof(*sfx_items));
+			sfx_items->type = (enum rte_flow_item_type)MLX5_RTE_FLOW_ITEM_TYPE_VLAN;
+			sfx_items++;
 			break;
 		default:
 			break;
@@ -5518,6 +5522,7 @@ flow_meter_split_prep(struct rte_eth_dev *dev,
 		tag_action = actions_pre++;
 	}
 	/* Prepare the actions for prefix and suffix flow. */
+	vlan_actions = false;
 	for (; actions->type != RTE_FLOW_ACTION_TYPE_END; actions++) {
 		struct rte_flow_action *action_cur = NULL;
 
@@ -5548,16 +5553,7 @@ flow_meter_split_prep(struct rte_eth_dev *dev,
 			break;
 		case RTE_FLOW_ACTION_TYPE_OF_PUSH_VLAN:
 		case RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_VID:
-			if (vlan_item_dst && vlan_item_src) {
-				memcpy(vlan_item_dst, vlan_item_src,
-					sizeof(*vlan_item_dst));
-				/*
-				 * Convert to internal match item, it is used
-				 * for vlan push and set vid.
-				 */
-				vlan_item_dst->type = (enum rte_flow_item_type)
-						MLX5_RTE_FLOW_ITEM_TYPE_VLAN;
-			}
+			vlan_actions = true;
 			break;
 		case RTE_FLOW_ACTION_TYPE_COUNT:
 			if (fm->def_policy)
@@ -5571,6 +5567,14 @@ flow_meter_split_prep(struct rte_eth_dev *dev,
 			action_cur = (fm->def_policy) ?
 					actions_sfx++ : actions_pre++;
 		memcpy(action_cur, actions, sizeof(struct rte_flow_action));
+	}
+	/* If there are no VLAN actions, convert VLAN items to VOID in suffix flow items. */
+	if (!vlan_actions) {
+		struct rte_flow_item *it = orig_sfx_items;
+
+		for (; it->type != RTE_FLOW_ITEM_TYPE_END; it++)
+			if (it->type == (enum rte_flow_item_type)MLX5_RTE_FLOW_ITEM_TYPE_VLAN)
+				it->type = RTE_FLOW_ITEM_TYPE_VOID;
 	}
 	/* Add end action to the actions. */
 	actions_sfx->type = RTE_FLOW_ACTION_TYPE_END;
@@ -5661,8 +5665,6 @@ flow_meter_split_prep(struct rte_eth_dev *dev,
 	tag_action->type = (enum rte_flow_action_type)
 				MLX5_RTE_FLOW_ACTION_TYPE_TAG;
 	tag_action->conf = set_tag;
-	tag_item->type = (enum rte_flow_item_type)
-				MLX5_RTE_FLOW_ITEM_TYPE_TAG;
 	tag_item->spec = tag_item_spec;
 	tag_item->last = NULL;
 	tag_item->mask = tag_item_mask;
@@ -6490,6 +6492,19 @@ flow_meter_create_drop_flow_with_org_pattern(struct rte_eth_dev *dev,
 				&drop_split_info, error);
 }
 
+static int
+flow_count_vlan_items(const struct rte_flow_item items[])
+{
+	int items_n = 0;
+
+	for (; items->type != RTE_FLOW_ITEM_TYPE_END; items++) {
+		if (items->type == RTE_FLOW_ITEM_TYPE_VLAN ||
+		    items->type == (enum rte_flow_item_type)MLX5_RTE_FLOW_ITEM_TYPE_VLAN)
+			items_n++;
+	}
+	return items_n;
+}
+
 /**
  * The splitting for meter feature.
  *
@@ -6545,6 +6560,7 @@ flow_create_split_meter(struct rte_eth_dev *dev,
 	size_t act_size;
 	size_t item_size;
 	int actions_n = 0;
+	int vlan_items_n = 0;
 	int ret = 0;
 
 	if (priv->mtr_en)
@@ -6604,9 +6620,11 @@ flow_create_split_meter(struct rte_eth_dev *dev,
 		act_size = (sizeof(struct rte_flow_action) *
 			    (actions_n + METER_PREFIX_ACTION)) +
 			   sizeof(struct mlx5_rte_flow_action_set_tag);
-		/* Suffix items: tag, vlan, port id, end. */
-#define METER_SUFFIX_ITEM 4
-		item_size = sizeof(struct rte_flow_item) * METER_SUFFIX_ITEM +
+		/* Flow can have multiple VLAN items. Account for them in suffix items. */
+		vlan_items_n = flow_count_vlan_items(items);
+		/* Suffix items: tag, [vlans], port id, end. */
+#define METER_SUFFIX_ITEM 3
+		item_size = sizeof(struct rte_flow_item) * (METER_SUFFIX_ITEM + vlan_items_n) +
 			    sizeof(struct mlx5_rte_flow_item_tag) * 2;
 		sfx_actions = mlx5_malloc(MLX5_MEM_ZERO, (act_size + item_size),
 					  0, SOCKET_ID_ANY);
