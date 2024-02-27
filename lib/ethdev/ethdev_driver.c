@@ -546,6 +546,7 @@ eth_dev_tokenise_representor_list(char *p_val, struct rte_eth_devargs *eth_devar
 	}
 
 	memset(str, 0, BUFSIZ);
+	memset(da_val, 0, BUFSIZ);
 	/* Remove the exterior [] of the consolidated list */
 	strncpy(str, &p_val[1], len - 2);
 	while (1) {
