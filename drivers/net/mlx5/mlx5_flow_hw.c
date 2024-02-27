@@ -9857,6 +9857,13 @@ flow_hw_conntrack_create(struct rte_eth_dev *dev, uint32_t queue,
 				   "CT is not enabled");
 		return 0;
 	}
+	if (dev->data->port_id >= MLX5_INDIRECT_ACT_CT_MAX_PORT) {
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				   "CT supports port indexes up to "
+				   RTE_STR(MLX5_ACTION_CTX_CT_MAX_PORT));
+		return 0;
+	}
 	ct = mlx5_ipool_zmalloc(pool->cts, &ct_idx);
 	if (!ct) {
 		rte_flow_error_set(error, rte_errno,

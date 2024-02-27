@@ -13629,6 +13629,13 @@ flow_dv_translate_create_conntrack(struct rte_eth_dev *dev,
 		return rte_flow_error_set(error, ENOTSUP,
 					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
 					  "Connection is not supported");
+	if (dev->data->port_id >= MLX5_INDIRECT_ACT_CT_MAX_PORT) {
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				   "CT supports port indexes up to "
+				   RTE_STR(MLX5_ACTION_CTX_CT_MAX_PORT));
+		return 0;
+	}
 	idx = flow_dv_aso_ct_alloc(dev, error);
 	if (!idx)
 		return rte_flow_error_set(error, rte_errno,
@@ -16321,6 +16328,8 @@ flow_dv_action_create(struct rte_eth_dev *dev,
 	case RTE_FLOW_ACTION_TYPE_CONNTRACK:
 		ret = flow_dv_translate_create_conntrack(dev, action->conf,
 							 err);
+		if (!ret)
+			break;
 		idx = MLX5_INDIRECT_ACT_CT_GEN_IDX(PORT_ID(priv), ret);
 		break;
 	default:
