@@ -557,19 +557,32 @@ mlx5_hws_cnt_pool_get(struct mlx5_hws_cnt_pool *cpool, uint32_t *queue,
 }
 
 /**
- * Check if counter pool allocated for HWS is shared between ports.
+ * Decide if the given queue can be used to perform counter allocation/deallcation
+ * based on counter configuration
  *
  * @param[in] priv
  *   Pointer to the port private data structure.
+ * @param[in] queue
+ *   Pointer to the queue index.
  *
  * @return
- *   True if counter pools is shared between ports. False otherwise.
+ *   @p queue if cache related to the queue can be used. NULL otherwise.
  */
-static __rte_always_inline bool
-mlx5_hws_cnt_is_pool_shared(struct mlx5_priv *priv)
+static __rte_always_inline uint32_t *
+mlx5_hws_cnt_get_queue(struct mlx5_priv *priv, uint32_t *queue)
 {
-	return priv && priv->hws_cpool &&
-	    (priv->shared_refcnt || priv->hws_cpool->cfg.host_cpool != NULL);
+	if (priv && priv->hws_cpool) {
+		/* Do not use queue cache if counter pool is shared. */
+		if (priv->shared_refcnt || priv->hws_cpool->cfg.host_cpool != NULL)
+			return NULL;
+		/* Do not use queue cache if counter cache is disabled. */
+		if (priv->hws_cpool->cache == NULL)
+			return NULL;
+		return queue;
+	}
+	/* This case should not be reached if counter pool was successfully configured. */
+	MLX5_ASSERT(false);
+	return NULL;
 }
 
 static __rte_always_inline unsigned int

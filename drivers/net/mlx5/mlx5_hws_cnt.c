@@ -340,6 +340,55 @@ mlx5_hws_cnt_pool_deinit(struct mlx5_hws_cnt_pool * const cntp)
 	mlx5_free(cntp);
 }
 
+static bool
+mlx5_hws_cnt_should_enable_cache(const struct mlx5_hws_cnt_pool_cfg *pcfg,
+				 const struct mlx5_hws_cache_param *ccfg)
+{
+	/*
+	 * Enable cache if and only if there are enough counters requested
+	 * to populate all of the caches.
+	 */
+	return pcfg->request_num >= ccfg->q_num * ccfg->size;
+}
+
+static struct mlx5_hws_cnt_pool_caches *
+mlx5_hws_cnt_cache_init(const struct mlx5_hws_cnt_pool_cfg *pcfg,
+			const struct mlx5_hws_cache_param *ccfg)
+{
+	struct mlx5_hws_cnt_pool_caches *cache;
+	char mz_name[RTE_MEMZONE_NAMESIZE];
+	uint32_t qidx;
+
+	/* If counter pool is big enough, setup the counter pool cache. */
+	cache = mlx5_malloc(MLX5_MEM_ANY | MLX5_MEM_ZERO,
+			sizeof(*cache) +
+			sizeof(((struct mlx5_hws_cnt_pool_caches *)0)->qcache[0])
+				* ccfg->q_num, 0, SOCKET_ID_ANY);
+	if (cache == NULL)
+		return NULL;
+	/* Store the necessary cache parameters. */
+	cache->fetch_sz = ccfg->fetch_sz;
+	cache->preload_sz = ccfg->preload_sz;
+	cache->threshold = ccfg->threshold;
+	cache->q_num = ccfg->q_num;
+	for (qidx = 0; qidx < ccfg->q_num; qidx++) {
+		snprintf(mz_name, sizeof(mz_name), "%s_qc/%x", pcfg->name, qidx);
+		cache->qcache[qidx] = rte_ring_create(mz_name, ccfg->size,
+				SOCKET_ID_ANY,
+				RING_F_SP_ENQ | RING_F_SC_DEQ |
+				RING_F_EXACT_SZ);
+		if (cache->qcache[qidx] == NULL)
+			goto error;
+	}
+	return cache;
+
+error:
+	while (qidx--)
+		rte_ring_free(cache->qcache[qidx]);
+	mlx5_free(cache);
+	return NULL;
+}
+
 static struct mlx5_hws_cnt_pool *
 mlx5_hws_cnt_pool_init(struct mlx5_dev_ctx_shared *sh,
 		       const struct mlx5_hws_cnt_pool_cfg *pcfg,
@@ -348,7 +397,6 @@ mlx5_hws_cnt_pool_init(struct mlx5_dev_ctx_shared *sh,
 	char mz_name[RTE_MEMZONE_NAMESIZE];
 	struct mlx5_hws_cnt_pool *cntp;
 	uint64_t cnt_num = 0;
-	uint32_t qidx;
 
 	MLX5_ASSERT(pcfg);
 	MLX5_ASSERT(ccfg);
@@ -360,17 +408,6 @@ mlx5_hws_cnt_pool_init(struct mlx5_dev_ctx_shared *sh,
 	cntp->cfg = *pcfg;
 	if (cntp->cfg.host_cpool)
 		return cntp;
-	cntp->cache = mlx5_malloc(MLX5_MEM_ANY | MLX5_MEM_ZERO,
-			sizeof(*cntp->cache) +
-			sizeof(((struct mlx5_hws_cnt_pool_caches *)0)->qcache[0])
-				* ccfg->q_num, 0, SOCKET_ID_ANY);
-	if (cntp->cache == NULL)
-		goto error;
-	 /* store the necessary cache parameters. */
-	cntp->cache->fetch_sz = ccfg->fetch_sz;
-	cntp->cache->preload_sz = ccfg->preload_sz;
-	cntp->cache->threshold = ccfg->threshold;
-	cntp->cache->q_num = ccfg->q_num;
 	if (pcfg->request_num > sh->hws_max_nb_counters) {
 		DRV_LOG(ERR, "Counter number %u "
 			"is greater than the maximum supported (%u).",
@@ -418,13 +455,10 @@ mlx5_hws_cnt_pool_init(struct mlx5_dev_ctx_shared *sh,
 		DRV_LOG(ERR, "failed to create reuse list ring");
 		goto error;
 	}
-	for (qidx = 0; qidx < ccfg->q_num; qidx++) {
-		snprintf(mz_name, sizeof(mz_name), "%s_qc/%x", pcfg->name, qidx);
-		cntp->cache->qcache[qidx] = rte_ring_create(mz_name, ccfg->size,
-				SOCKET_ID_ANY,
-				RING_F_SP_ENQ | RING_F_SC_DEQ |
-				RING_F_EXACT_SZ);
-		if (cntp->cache->qcache[qidx] == NULL)
+	/* Allocate counter cache only if needed. */
+	if (mlx5_hws_cnt_should_enable_cache(pcfg, ccfg)) {
+		cntp->cache = mlx5_hws_cnt_cache_init(pcfg, ccfg);
+		if (cntp->cache == NULL)
 			goto error;
 	}
 	/* Initialize the time for aging-out calculation. */
