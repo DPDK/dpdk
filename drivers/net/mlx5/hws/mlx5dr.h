@@ -51,6 +51,7 @@ enum mlx5dr_action_type {
 	MLX5DR_ACTION_TYP_DEST_ARRAY,
 	MLX5DR_ACTION_TYP_POP_IPV6_ROUTE_EXT,
 	MLX5DR_ACTION_TYP_PUSH_IPV6_ROUTE_EXT,
+	MLX5DR_ACTION_TYP_NAT64,
 	MLX5DR_ACTION_TYP_MAX,
 };
 
@@ -867,6 +868,34 @@ mlx5dr_action_create_reformat_ipv6_ext(struct mlx5dr_context *ctx,
 				       struct mlx5dr_action_reformat_header *hdr,
 				       uint32_t log_bulk_size,
 				       uint32_t flags);
+
+enum mlx5dr_action_nat64_flags {
+	MLX5DR_ACTION_NAT64_V4_TO_V6 = 1 << 0,
+	MLX5DR_ACTION_NAT64_V6_TO_V4 = 1 << 1,
+	/* Indicates if to backup ipv4 addresses in last two registers */
+	MLX5DR_ACTION_NAT64_BACKUP_ADDR = 1 << 2,
+};
+
+struct mlx5dr_action_nat64_attr {
+	uint8_t num_of_registers;
+	uint8_t *registers;
+	enum mlx5dr_action_nat64_flags flags;
+};
+
+/* Create direct rule nat64 action.
+ *
+ * @param[in] ctx
+ *	The context in which the new action will be created.
+ * @param[in] attr
+ *	The relevant attribute of the NAT action.
+ * @param[in] flags
+ *	Action creation flags. (enum mlx5dr_action_flags)
+ * @return pointer to mlx5dr_action on success NULL otherwise.
+ */
+struct mlx5dr_action *
+mlx5dr_action_create_nat64(struct mlx5dr_context *ctx,
+			   struct mlx5dr_action_nat64_attr *attr,
+			   uint32_t flags);
 
 /* Destroy direct rule action.
  *
