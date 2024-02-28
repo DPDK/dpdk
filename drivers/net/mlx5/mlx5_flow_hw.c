@@ -5999,6 +5999,50 @@ flow_hw_validate_action_default_miss(struct rte_eth_dev *dev,
 }
 
 static int
+flow_hw_validate_action_nat64(struct rte_eth_dev *dev,
+			      const struct rte_flow_actions_template_attr *attr,
+			      const struct rte_flow_action *action,
+			      const struct rte_flow_action *mask,
+			      uint64_t action_flags,
+			      struct rte_flow_error *error)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	const struct rte_flow_action_nat64 *nat64_c;
+	enum rte_flow_nat64_type cov_type;
+
+	RTE_SET_USED(action_flags);
+	if (mask->conf && ((const struct rte_flow_action_nat64 *)mask->conf)->type) {
+		nat64_c = (const struct rte_flow_action_nat64 *)action->conf;
+		cov_type = nat64_c->type;
+		if ((attr->ingress && !priv->action_nat64[MLX5DR_TABLE_TYPE_NIC_RX][cov_type]) ||
+		    (attr->egress && !priv->action_nat64[MLX5DR_TABLE_TYPE_NIC_TX][cov_type]) ||
+		    (attr->transfer && !priv->action_nat64[MLX5DR_TABLE_TYPE_FDB][cov_type]))
+			goto err_out;
+	} else {
+		/*
+		 * Usually, the actions will be used on both directions. For non-masked actions,
+		 * both directions' actions will be checked.
+		 */
+		if (attr->ingress)
+			if (!priv->action_nat64[MLX5DR_TABLE_TYPE_NIC_RX][RTE_FLOW_NAT64_6TO4] ||
+			    !priv->action_nat64[MLX5DR_TABLE_TYPE_NIC_RX][RTE_FLOW_NAT64_4TO6])
+				goto err_out;
+		if (attr->egress)
+			if (!priv->action_nat64[MLX5DR_TABLE_TYPE_NIC_TX][RTE_FLOW_NAT64_6TO4] ||
+			    !priv->action_nat64[MLX5DR_TABLE_TYPE_NIC_TX][RTE_FLOW_NAT64_4TO6])
+				goto err_out;
+		if (attr->transfer)
+			if (!priv->action_nat64[MLX5DR_TABLE_TYPE_FDB][RTE_FLOW_NAT64_6TO4] ||
+			    !priv->action_nat64[MLX5DR_TABLE_TYPE_FDB][RTE_FLOW_NAT64_4TO6])
+				goto err_out;
+	}
+	return 0;
+err_out:
+	return rte_flow_error_set(error, EOPNOTSUPP, RTE_FLOW_ERROR_TYPE_ACTION,
+				  NULL, "NAT64 action is not supported.");
+}
+
+static int
 mlx5_flow_hw_actions_validate(struct rte_eth_dev *dev,
 			      const struct rte_flow_actions_template_attr *attr,
 			      const struct rte_flow_action actions[],
@@ -6197,6 +6241,13 @@ mlx5_flow_hw_actions_validate(struct rte_eth_dev *dev,
 				MLX5_HW_VLAN_PUSH_PCP_IDX :
 				MLX5_HW_VLAN_PUSH_VID_IDX;
 			action_flags |= MLX5_FLOW_ACTION_OF_PUSH_VLAN;
+			break;
+		case RTE_FLOW_ACTION_TYPE_NAT64:
+			ret = flow_hw_validate_action_nat64(dev, attr, action, mask,
+							    action_flags, error);
+			if (ret != 0)
+				return ret;
+			action_flags |= MLX5_FLOW_ACTION_NAT64;
 			break;
 		case RTE_FLOW_ACTION_TYPE_END:
 			actions_end = true;
