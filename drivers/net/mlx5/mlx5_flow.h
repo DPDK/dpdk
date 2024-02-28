@@ -1420,7 +1420,6 @@ struct mlx5_hw_encap_decap_action {
 	/* Is header_reformat action shared across flows in table. */
 	uint32_t shared:1;
 	uint32_t multi_pattern:1;
-	volatile uint32_t *multi_pattern_refcnt;
 	size_t data_size; /* Action metadata size. */
 	uint8_t data[]; /* Action data. */
 };
@@ -1443,7 +1442,6 @@ struct mlx5_hw_modify_header_action {
 	/* Is MODIFY_HEADER action shared across flows in table. */
 	uint32_t shared:1;
 	uint32_t multi_pattern:1;
-	volatile uint32_t *multi_pattern_refcnt;
 	/* Amount of modification commands stored in the precompiled buffer. */
 	uint32_t mhdr_cmds_num;
 	/* Precompiled modification commands. */
@@ -1497,6 +1495,76 @@ struct mlx5_flow_group {
 #define MLX5_HW_TBL_MAX_ITEM_TEMPLATE 2
 #define MLX5_HW_TBL_MAX_ACTION_TEMPLATE 32
 
+#define MLX5_MULTIPATTERN_ENCAP_NUM 5
+#define MLX5_MAX_TABLE_RESIZE_NUM 64
+
+struct mlx5_multi_pattern_segment {
+	uint32_t capacity;
+	uint32_t head_index;
+	struct mlx5dr_action *mhdr_action;
+	struct mlx5dr_action *reformat_action[MLX5_MULTIPATTERN_ENCAP_NUM];
+};
+
+struct mlx5_tbl_multi_pattern_ctx {
+	struct {
+		uint32_t elements_num;
+		struct mlx5dr_action_reformat_header reformat_hdr[MLX5_HW_TBL_MAX_ACTION_TEMPLATE];
+		/**
+		 * insert_header structure is larger than reformat_header.
+		 * Enclosing these structures with union will case a gap between
+		 * reformat_hdr array elements.
+		 * mlx5dr_action_create_reformat() expects adjacent array elements.
+		 */
+		struct mlx5dr_action_insert_header insert_hdr[MLX5_HW_TBL_MAX_ACTION_TEMPLATE];
+	} reformat[MLX5_MULTIPATTERN_ENCAP_NUM];
+
+	struct {
+		uint32_t elements_num;
+		struct mlx5dr_action_mh_pattern pattern[MLX5_HW_TBL_MAX_ACTION_TEMPLATE];
+	} mh;
+	struct mlx5_multi_pattern_segment segments[MLX5_MAX_TABLE_RESIZE_NUM];
+};
+
+static __rte_always_inline void
+mlx5_multi_pattern_activate(struct mlx5_tbl_multi_pattern_ctx *mpctx)
+{
+	mpctx->segments[0].head_index = 1;
+}
+
+static __rte_always_inline bool
+mlx5_is_multi_pattern_active(const struct mlx5_tbl_multi_pattern_ctx *mpctx)
+{
+	return mpctx->segments[0].head_index == 1;
+}
+
+static __rte_always_inline struct mlx5_multi_pattern_segment *
+mlx5_multi_pattern_segment_get_next(struct mlx5_tbl_multi_pattern_ctx *mpctx)
+{
+	int i;
+
+	for (i = 0; i < MLX5_MAX_TABLE_RESIZE_NUM; i++) {
+		if (!mpctx->segments[i].capacity)
+			return &mpctx->segments[i];
+	}
+	return NULL;
+}
+
+static __rte_always_inline struct mlx5_multi_pattern_segment *
+mlx5_multi_pattern_segment_find(struct mlx5_tbl_multi_pattern_ctx *mpctx,
+				uint32_t flow_resource_ix)
+{
+	int i;
+
+	for (i = 0; i < MLX5_MAX_TABLE_RESIZE_NUM; i++) {
+		uint32_t limit = mpctx->segments[i].head_index +
+				 mpctx->segments[i].capacity;
+
+		if (flow_resource_ix < limit)
+			return &mpctx->segments[i];
+	}
+	return NULL;
+}
+
 struct mlx5_flow_template_table_cfg {
 	struct rte_flow_template_table_attr attr; /* Table attributes passed through flow API. */
 	bool external; /* True if created by flow API, false if table is internal to PMD. */
@@ -1517,6 +1585,7 @@ struct rte_flow_template_table {
 	uint8_t nb_item_templates; /* Item template number. */
 	uint8_t nb_action_templates; /* Action template number. */
 	uint32_t refcnt; /* Table reference counter. */
+	struct mlx5_tbl_multi_pattern_ctx mpctx;
 };
 
 #endif

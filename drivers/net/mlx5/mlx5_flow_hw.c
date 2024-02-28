@@ -78,41 +78,14 @@ struct mlx5_indlst_legacy {
 #define MLX5_CONST_ENCAP_ITEM(encap_type, ptr) \
 (((const struct encap_type *)(ptr))->definition)
 
-struct mlx5_multi_pattern_ctx {
-	union {
-		struct mlx5dr_action_reformat_header reformat_hdr;
-		struct mlx5dr_action_mh_pattern mh_pattern;
-	};
-	union {
-		/* action template auxiliary structures for object destruction */
-		struct mlx5_hw_encap_decap_action *encap;
-		struct mlx5_hw_modify_header_action *mhdr;
-	};
-	/* multi pattern action */
-	struct mlx5dr_rule_action *rule_action;
-};
-
-#define MLX5_MULTIPATTERN_ENCAP_NUM 4
-
-struct mlx5_tbl_multi_pattern_ctx {
-	struct {
-		uint32_t elements_num;
-		struct mlx5_multi_pattern_ctx ctx[MLX5_HW_TBL_MAX_ACTION_TEMPLATE];
-	} reformat[MLX5_MULTIPATTERN_ENCAP_NUM];
-
-	struct {
-		uint32_t elements_num;
-		struct mlx5_multi_pattern_ctx ctx[MLX5_HW_TBL_MAX_ACTION_TEMPLATE];
-	} mh;
-};
-
-#define MLX5_EMPTY_MULTI_PATTERN_CTX {{{0,}},}
-
 static int
 mlx5_tbl_multi_pattern_process(struct rte_eth_dev *dev,
 			       struct rte_flow_template_table *tbl,
-			       struct mlx5_tbl_multi_pattern_ctx *mpat,
+			       struct mlx5_multi_pattern_segment *segment,
+			       uint32_t bulk_size,
 			       struct rte_flow_error *error);
+static void
+mlx5_destroy_multi_pattern_segment(struct mlx5_multi_pattern_segment *segment);
 
 static __rte_always_inline int
 mlx5_multi_pattern_reformat_to_index(enum mlx5dr_action_type type)
@@ -577,28 +550,14 @@ flow_hw_ct_compile(struct rte_eth_dev *dev,
 static void
 flow_hw_template_destroy_reformat_action(struct mlx5_hw_encap_decap_action *encap_decap)
 {
-	if (encap_decap->multi_pattern) {
-		uint32_t refcnt = __atomic_sub_fetch(encap_decap->multi_pattern_refcnt,
-						     1, __ATOMIC_RELAXED);
-		if (refcnt)
-			return;
-		mlx5_free((void *)(uintptr_t)encap_decap->multi_pattern_refcnt);
-	}
-	if (encap_decap->action)
+	if (encap_decap->action && !encap_decap->multi_pattern)
 		mlx5dr_action_destroy(encap_decap->action);
 }
 
 static void
 flow_hw_template_destroy_mhdr_action(struct mlx5_hw_modify_header_action *mhdr)
 {
-	if (mhdr->multi_pattern) {
-		uint32_t refcnt = __atomic_sub_fetch(mhdr->multi_pattern_refcnt,
-						     1, __ATOMIC_RELAXED);
-		if (refcnt)
-			return;
-		mlx5_free((void *)(uintptr_t)mhdr->multi_pattern_refcnt);
-	}
-	if (mhdr->action)
+	if (mhdr->action && !mhdr->multi_pattern)
 		mlx5dr_action_destroy(mhdr->action);
 }
 
@@ -1931,21 +1890,22 @@ mlx5_tbl_translate_reformat(struct mlx5_priv *priv,
 		acts->encap_decap->shared = true;
 	} else {
 		uint32_t ix;
-		typeof(mp_ctx->reformat[0]) *reformat_ctx = mp_ctx->reformat +
-							    mp_reformat_ix;
+		typeof(mp_ctx->reformat[0]) *reformat = mp_ctx->reformat +
+							mp_reformat_ix;
 
-		ix = reformat_ctx->elements_num++;
-		reformat_ctx->ctx[ix].reformat_hdr = hdr;
-		reformat_ctx->ctx[ix].rule_action = &acts->rule_acts[at->reformat_off];
-		reformat_ctx->ctx[ix].encap = acts->encap_decap;
+		ix = reformat->elements_num++;
+		reformat->reformat_hdr[ix] = hdr;
 		acts->rule_acts[at->reformat_off].reformat.hdr_idx = ix;
 		acts->encap_decap_pos = at->reformat_off;
+		acts->encap_decap->multi_pattern = 1;
 		acts->encap_decap->data_size = data_size;
+		acts->encap_decap->action_type = refmt_type;
 		ret = __flow_hw_act_data_encap_append
 			(priv, acts, (at->actions + reformat_src)->type,
 			 reformat_src, at->reformat_off, data_size);
 		if (ret)
 			return -rte_errno;
+		mlx5_multi_pattern_activate(mp_ctx);
 	}
 	return 0;
 }
@@ -1994,12 +1954,11 @@ mlx5_tbl_translate_modify_header(struct rte_eth_dev *dev,
 	} else {
 		typeof(mp_ctx->mh) *mh = &mp_ctx->mh;
 		uint32_t idx = mh->elements_num;
-		struct mlx5_multi_pattern_ctx *mh_ctx = mh->ctx + mh->elements_num++;
 
-		mh_ctx->mh_pattern = pattern;
-		mh_ctx->mhdr = acts->mhdr;
-		mh_ctx->rule_action = &acts->rule_acts[mhdr_ix];
+		mh->pattern[mh->elements_num++] = pattern;
+		acts->mhdr->multi_pattern = 1;
 		acts->rule_acts[mhdr_ix].modify_header.pattern_idx = idx;
+		mlx5_multi_pattern_activate(mp_ctx);
 	}
 	return 0;
 }
@@ -2559,16 +2518,17 @@ flow_hw_actions_translate(struct rte_eth_dev *dev,
 {
 	int ret;
 	uint32_t i;
-	struct mlx5_tbl_multi_pattern_ctx mpat = MLX5_EMPTY_MULTI_PATTERN_CTX;
 
 	for (i = 0; i < tbl->nb_action_templates; i++) {
 		if (__flow_hw_actions_translate(dev, &tbl->cfg,
 						&tbl->ats[i].acts,
 						tbl->ats[i].action_template,
-						&mpat, error))
+						&tbl->mpctx, error))
 			goto err;
 	}
-	ret = mlx5_tbl_multi_pattern_process(dev, tbl, &mpat, error);
+	ret = mlx5_tbl_multi_pattern_process(dev, tbl, &tbl->mpctx.segments[0],
+					     rte_log2_u32(tbl->cfg.attr.nb_flows),
+					     error);
 	if (ret)
 		goto err;
 	return 0;
@@ -2951,6 +2911,7 @@ flow_hw_actions_construct(struct rte_eth_dev *dev,
 	int ret;
 	uint32_t age_idx = 0;
 	struct mlx5_aso_mtr *aso_mtr;
+	struct mlx5_multi_pattern_segment *mp_segment;
 
 	rte_memcpy(rule_acts, hw_acts->rule_acts, sizeof(*rule_acts) * at->dr_actions_num);
 	attr.group = table->grp->group_id;
@@ -3081,6 +3042,11 @@ flow_hw_actions_construct(struct rte_eth_dev *dev,
 			MLX5_ASSERT(ipv6_push->size == act_data->ipv6_ext.len);
 			break;
 		case RTE_FLOW_ACTION_TYPE_MODIFY_FIELD:
+			mp_segment = mlx5_multi_pattern_segment_find
+					(&table->mpctx, job->flow->res_idx);
+			if (!mp_segment || !mp_segment->mhdr_action)
+				return -1;
+			rule_acts[hw_acts->mhdr->pos].action = mp_segment->mhdr_action;
 			if (action->type == RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_VID)
 				ret = flow_hw_set_vlan_vid_construct(dev, job,
 								     act_data,
@@ -3232,9 +3198,17 @@ flow_hw_actions_construct(struct rte_eth_dev *dev,
 				     age_idx);
 	}
 	if (hw_acts->encap_decap && !hw_acts->encap_decap->shared) {
-		rule_acts[hw_acts->encap_decap_pos].reformat.offset =
-				job->flow->res_idx - 1;
-		rule_acts[hw_acts->encap_decap_pos].reformat.data = buf;
+		int ix = mlx5_multi_pattern_reformat_to_index(hw_acts->encap_decap->action_type);
+		struct mlx5dr_rule_action *ra = &rule_acts[hw_acts->encap_decap_pos];
+
+		if (ix < 0)
+			return -1;
+		mp_segment = mlx5_multi_pattern_segment_find(&table->mpctx, job->flow->res_idx);
+		if (!mp_segment || !mp_segment->reformat_action[ix])
+			return -1;
+		ra->action = mp_segment->reformat_action[ix];
+		ra->reformat.offset = job->flow->res_idx - 1;
+		ra->reformat.data = buf;
 	}
 	if (hw_acts->push_remove && !hw_acts->push_remove->shared) {
 		rule_acts[hw_acts->push_remove_pos].ipv6_ext.offset =
@@ -4140,86 +4114,65 @@ flow_hw_q_flow_flush(struct rte_eth_dev *dev,
 static int
 mlx5_tbl_multi_pattern_process(struct rte_eth_dev *dev,
 			       struct rte_flow_template_table *tbl,
-			       struct mlx5_tbl_multi_pattern_ctx *mpat,
+			       struct mlx5_multi_pattern_segment *segment,
+			       uint32_t bulk_size,
 			       struct rte_flow_error *error)
 {
+	int ret = 0;
 	uint32_t i;
 	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_tbl_multi_pattern_ctx *mpctx = &tbl->mpctx;
 	const struct rte_flow_template_table_attr *table_attr = &tbl->cfg.attr;
 	const struct rte_flow_attr *attr = &table_attr->flow_attr;
 	enum mlx5dr_table_type type = get_mlx5dr_table_type(attr);
 	uint32_t flags = mlx5_hw_act_flag[!!attr->group][type];
-	struct mlx5dr_action *dr_action;
-	uint32_t bulk_size = rte_log2_u32(table_attr->nb_flows);
+	struct mlx5dr_action *dr_action = NULL;
 
 	for (i = 0; i < MLX5_MULTIPATTERN_ENCAP_NUM; i++) {
-		uint32_t j;
-		uint32_t *reformat_refcnt;
-		typeof(mpat->reformat[0]) *reformat = mpat->reformat + i;
-		struct mlx5dr_action_reformat_header hdr[MLX5_HW_TBL_MAX_ACTION_TEMPLATE];
+		typeof(mpctx->reformat[0]) *reformat = mpctx->reformat + i;
 		enum mlx5dr_action_type reformat_type =
 			mlx5_multi_pattern_reformat_index_to_type(i);
 
 		if (!reformat->elements_num)
 			continue;
-		for (j = 0; j < reformat->elements_num; j++)
-			hdr[j] = reformat->ctx[j].reformat_hdr;
-		reformat_refcnt = mlx5_malloc(MLX5_MEM_ZERO, sizeof(uint32_t), 0,
-					      rte_socket_id());
-		if (!reformat_refcnt)
-			return rte_flow_error_set(error, ENOMEM,
-						  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
-						  NULL, "failed to allocate multi-pattern encap counter");
-		*reformat_refcnt = reformat->elements_num;
-		dr_action = mlx5dr_action_create_reformat
-			(priv->dr_ctx, reformat_type, reformat->elements_num, hdr,
-			 bulk_size, flags);
+		dr_action = reformat_type == MLX5DR_ACTION_TYP_INSERT_HEADER ?
+			mlx5dr_action_create_insert_header
+			(priv->dr_ctx, reformat->elements_num,
+			 reformat->insert_hdr, bulk_size, flags) :
+			mlx5dr_action_create_reformat
+			(priv->dr_ctx, reformat_type, reformat->elements_num,
+			 reformat->reformat_hdr, bulk_size, flags);
 		if (!dr_action) {
-			mlx5_free(reformat_refcnt);
-			return rte_flow_error_set(error, rte_errno,
-						  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
-						  NULL,
-						  "failed to create multi-pattern encap action");
+			ret = rte_flow_error_set(error, rte_errno,
+						 RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+						 NULL,
+						 "failed to create multi-pattern encap action");
+			goto error;
 		}
-		for (j = 0; j < reformat->elements_num; j++) {
-			reformat->ctx[j].rule_action->action = dr_action;
-			reformat->ctx[j].encap->action = dr_action;
-			reformat->ctx[j].encap->multi_pattern = 1;
-			reformat->ctx[j].encap->multi_pattern_refcnt = reformat_refcnt;
-		}
+		segment->reformat_action[i] = dr_action;
 	}
-	if (mpat->mh.elements_num) {
-		typeof(mpat->mh) *mh = &mpat->mh;
-		struct mlx5dr_action_mh_pattern pattern[MLX5_HW_TBL_MAX_ACTION_TEMPLATE];
-		uint32_t *mh_refcnt = mlx5_malloc(MLX5_MEM_ZERO, sizeof(uint32_t),
-						 0, rte_socket_id());
-
-		if (!mh_refcnt)
-			return rte_flow_error_set(error, ENOMEM,
-						  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
-						  NULL, "failed to allocate modify header counter");
-		*mh_refcnt = mpat->mh.elements_num;
-		for (i = 0; i < mpat->mh.elements_num; i++)
-			pattern[i] = mh->ctx[i].mh_pattern;
+	if (mpctx->mh.elements_num) {
+		typeof(mpctx->mh) *mh = &mpctx->mh;
 		dr_action = mlx5dr_action_create_modify_header
-			(priv->dr_ctx, mpat->mh.elements_num, pattern,
+			(priv->dr_ctx, mpctx->mh.elements_num, mh->pattern,
 			 bulk_size, flags);
 		if (!dr_action) {
-			mlx5_free(mh_refcnt);
-			return rte_flow_error_set(error, rte_errno,
+			ret = rte_flow_error_set(error, rte_errno,
 						  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
-						  NULL,
-						  "failed to create multi-pattern header modify action");
+						  NULL, "failed to create multi-pattern header modify action");
+			goto error;
 		}
-		for (i = 0; i < mpat->mh.elements_num; i++) {
-			mh->ctx[i].rule_action->action = dr_action;
-			mh->ctx[i].mhdr->action = dr_action;
-			mh->ctx[i].mhdr->multi_pattern = 1;
-			mh->ctx[i].mhdr->multi_pattern_refcnt = mh_refcnt;
-		}
+		segment->mhdr_action = dr_action;
 	}
-
+	if (dr_action) {
+		segment->capacity = RTE_BIT32(bulk_size);
+		if (segment != &mpctx->segments[MLX5_MAX_TABLE_RESIZE_NUM - 1])
+			segment[1].head_index = segment->head_index + segment->capacity;
+	}
 	return 0;
+error:
+	mlx5_destroy_multi_pattern_segment(segment);
+	return ret;
 }
 
 static int
@@ -4232,7 +4185,6 @@ mlx5_hw_build_template_table(struct rte_eth_dev *dev,
 {
 	int ret;
 	uint8_t i;
-	struct mlx5_tbl_multi_pattern_ctx mpat = MLX5_EMPTY_MULTI_PATTERN_CTX;
 
 	for (i = 0; i < nb_action_templates; i++) {
 		uint32_t refcnt = __atomic_add_fetch(&action_templates[i]->refcnt, 1,
@@ -4253,16 +4205,21 @@ mlx5_hw_build_template_table(struct rte_eth_dev *dev,
 		ret = __flow_hw_actions_translate(dev, &tbl->cfg,
 						  &tbl->ats[i].acts,
 						  action_templates[i],
-						  &mpat, error);
+						  &tbl->mpctx, error);
 		if (ret) {
 			i++;
 			goto at_error;
 		}
 	}
 	tbl->nb_action_templates = nb_action_templates;
-	ret = mlx5_tbl_multi_pattern_process(dev, tbl, &mpat, error);
-	if (ret)
-		goto at_error;
+	if (mlx5_is_multi_pattern_active(&tbl->mpctx)) {
+		ret = mlx5_tbl_multi_pattern_process(dev, tbl,
+						     &tbl->mpctx.segments[0],
+						     rte_log2_u32(tbl->cfg.attr.nb_flows),
+						     error);
+		if (ret)
+			goto at_error;
+	}
 	return 0;
 
 at_error:
@@ -4631,6 +4588,28 @@ flow_hw_template_table_create(struct rte_eth_dev *dev,
 				    action_templates, nb_action_templates, error);
 }
 
+static void
+mlx5_destroy_multi_pattern_segment(struct mlx5_multi_pattern_segment *segment)
+{
+	int i;
+
+	if (segment->mhdr_action)
+		mlx5dr_action_destroy(segment->mhdr_action);
+	for (i = 0; i < MLX5_MULTIPATTERN_ENCAP_NUM; i++) {
+		if (segment->reformat_action[i])
+			mlx5dr_action_destroy(segment->reformat_action[i]);
+	}
+	segment->capacity = 0;
+}
+
+static void
+flow_hw_destroy_table_multi_pattern_ctx(struct rte_flow_template_table *table)
+{
+	int sx;
+
+	for (sx = 0; sx < MLX5_MAX_TABLE_RESIZE_NUM; sx++)
+		mlx5_destroy_multi_pattern_segment(table->mpctx.segments + sx);
+}
 /**
  * Destroy flow table.
  *
@@ -4676,6 +4655,7 @@ flow_hw_table_destroy(struct rte_eth_dev *dev,
 		__atomic_fetch_sub(&table->ats[i].action_template->refcnt,
 				   1, __ATOMIC_RELAXED);
 	}
+	flow_hw_destroy_table_multi_pattern_ctx(table);
 	mlx5dr_matcher_destroy(table->matcher);
 	mlx5_hlist_unregister(priv->sh->groups, &table->grp->entry);
 	mlx5_ipool_destroy(table->resource);
