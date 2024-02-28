@@ -31,6 +31,10 @@
 				  (bit_off))); \
 	} while (0)
 
+/* Getter function based on bit offset and mask, for 32bit DW*/
+#define DR_GET_32(p, byte_off, bit_off, mask) \
+	((rte_be_to_cpu_32(*((const rte_be32_t *)(p) + ((byte_off) / 4))) >> (bit_off)) & (mask))
+
 /* Setter function based on bit offset and mask */
 #define DR_SET(p, v, byte_off, bit_off, mask) \
 	do { \
@@ -271,7 +275,7 @@ mlx5dr_definer_integrity_set(struct mlx5dr_definer_fc *fc,
 {
 	bool inner = (fc->fname == MLX5DR_DEFINER_FNAME_INTEGRITY_I);
 	const struct rte_flow_item_integrity *v = item_spec;
-	uint32_t ok1_bits = 0;
+	uint32_t ok1_bits = DR_GET_32(tag, fc->byte_off, fc->bit_off, fc->bit_mask);
 
 	if (v->l3_ok)
 		ok1_bits |= inner ? BIT(MLX5DR_DEFINER_OKS1_SECOND_L3_OK) |
