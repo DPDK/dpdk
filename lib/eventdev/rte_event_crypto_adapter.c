@@ -245,20 +245,28 @@ eca_circular_buffer_flush_to_cdev(struct crypto_ops_circular_buffer *bufp,
 	struct rte_crypto_op **ops = bufp->op_buffer;
 
 	if (*tailp > *headp)
+		/* Flush ops from head pointer to (tail - head) OPs */
 		n = *tailp - *headp;
 	else if (*tailp < *headp)
+		/* Circ buffer - Rollover.
+		 * Flush OPs from head to max size of buffer.
+		 * Rest of the OPs will be flushed in next iteration.
+		 */
 		n = bufp->size - *headp;
 	else { /* head == tail case */
 		/* when head == tail,
 		 * circ buff is either full(tail pointer roll over) or empty
 		 */
 		if (bufp->count != 0) {
-			/* circ buffer is full */
-			n = bufp->count;
+			/* Circ buffer - FULL.
+			 * Flush OPs from head to max size of buffer.
+			 * Rest of the OPS will be flushed in next iteration.
+			 */
+			n = bufp->size - *headp;
 		} else {
-			/* circ buffer is empty */
+			/* Circ buffer - Empty */
 			*nb_ops_flushed = 0;
-			return 0;  /* buffer empty */
+			return 0;
 		}
 	}
 
