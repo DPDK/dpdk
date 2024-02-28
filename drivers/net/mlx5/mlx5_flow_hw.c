@@ -3123,8 +3123,7 @@ flow_hw_actions_construct(struct rte_eth_dev *dev,
 				break;
 			/* Fall-through. */
 		case RTE_FLOW_ACTION_TYPE_COUNT:
-			/* If the port is engaged in resource sharing, do not use queue cache. */
-			cnt_queue = mlx5_hws_cnt_is_pool_shared(priv) ? NULL : &queue;
+			cnt_queue = mlx5_hws_cnt_get_queue(priv, &queue);
 			ret = mlx5_hws_cnt_pool_get(priv->hws_cpool, cnt_queue, &cnt_id, age_idx);
 			if (ret != 0)
 				return ret;
@@ -3722,8 +3721,7 @@ flow_hw_age_count_release(struct mlx5_priv *priv, uint32_t queue,
 		}
 		return;
 	}
-	/* If the port is engaged in resource sharing, do not use queue cache. */
-	cnt_queue = mlx5_hws_cnt_is_pool_shared(priv) ? NULL : &queue;
+	cnt_queue = mlx5_hws_cnt_get_queue(priv, &queue);
 	/* Put the counter first to reduce the race risk in BG thread. */
 	mlx5_hws_cnt_pool_put(priv->hws_cpool, cnt_queue, &flow->cnt_id);
 	flow->cnt_id = 0;
