@@ -2459,6 +2459,19 @@ __flow_hw_actions_translate(struct rte_eth_dev *dev,
 			}
 			acts->rule_acts[dr_pos].action = priv->hw_def_miss;
 			break;
+		case RTE_FLOW_ACTION_TYPE_NAT64:
+			if (masks->conf &&
+			    ((const struct rte_flow_action_nat64 *)masks->conf)->type) {
+				const struct rte_flow_action_nat64 *nat64_c =
+					(const struct rte_flow_action_nat64 *)actions->conf;
+
+				acts->rule_acts[dr_pos].action =
+					priv->action_nat64[type][nat64_c->type];
+			} else if (__flow_hw_act_data_general_append(priv, acts,
+								     actions->type,
+								     src_pos, dr_pos))
+				goto err;
+			break;
 		case RTE_FLOW_ACTION_TYPE_END:
 			actions_end = true;
 			break;
@@ -2902,6 +2915,7 @@ flow_hw_actions_construct(struct rte_eth_dev *dev,
 	const struct rte_flow_action_ethdev *port_action = NULL;
 	const struct rte_flow_action_meter *meter = NULL;
 	const struct rte_flow_action_age *age = NULL;
+	const struct rte_flow_action_nat64 *nat64_c = NULL;
 	uint8_t *buf = job->encap_data;
 	uint8_t *push_buf = job->push_data;
 	struct rte_flow_attr attr = {
@@ -3172,6 +3186,11 @@ flow_hw_actions_construct(struct rte_eth_dev *dev,
 				MLX5_HW_INV_QUEUE, error);
 			if (ret != 0)
 				return ret;
+			break;
+		case RTE_FLOW_ACTION_TYPE_NAT64:
+			nat64_c = action->conf;
+			rule_acts[act_data->action_dst].action =
+				priv->action_nat64[table->type][nat64_c->type];
 			break;
 		default:
 			break;
@@ -6231,6 +6250,7 @@ static enum mlx5dr_action_type mlx5_hw_dr_action_types[] = {
 	[RTE_FLOW_ACTION_TYPE_SEND_TO_KERNEL] = MLX5DR_ACTION_TYP_DEST_ROOT,
 	[RTE_FLOW_ACTION_TYPE_IPV6_EXT_PUSH] = MLX5DR_ACTION_TYP_PUSH_IPV6_ROUTE_EXT,
 	[RTE_FLOW_ACTION_TYPE_IPV6_EXT_REMOVE] = MLX5DR_ACTION_TYP_POP_IPV6_ROUTE_EXT,
+	[RTE_FLOW_ACTION_TYPE_NAT64] = MLX5DR_ACTION_TYP_NAT64,
 };
 
 static inline void
