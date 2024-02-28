@@ -2789,8 +2789,7 @@ port_queue_flow_create(portid_t port_id, queueid_t queue_id,
 		flow = rte_flow_async_create_by_index(port_id, queue_id, &op_attr, pt->table,
 			rule_idx, actions, actions_idx, job, &error);
 	if (!flow) {
-		uint64_t flow_id = pf->id;
-		port_queue_flow_destroy(port_id, queue_id, true, 1, &flow_id);
+		free(pf);
 		free(job);
 		return port_flow_complain(&error);
 	}
