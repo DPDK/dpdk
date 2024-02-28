@@ -4368,12 +4368,23 @@ flow_hw_table_create(struct rte_eth_dev *dev,
 	matcher_attr.rule.num_log = rte_log2_u32(nb_flows);
 	/* Parse hints information. */
 	if (attr->specialize) {
-		if (attr->specialize == RTE_FLOW_TABLE_SPECIALIZE_TRANSFER_WIRE_ORIG)
-			matcher_attr.optimize_flow_src = MLX5DR_MATCHER_FLOW_SRC_WIRE;
-		else if (attr->specialize == RTE_FLOW_TABLE_SPECIALIZE_TRANSFER_VPORT_ORIG)
-			matcher_attr.optimize_flow_src = MLX5DR_MATCHER_FLOW_SRC_VPORT;
-		else
-			DRV_LOG(INFO, "Unsupported hint value %x", attr->specialize);
+		uint32_t val = RTE_FLOW_TABLE_SPECIALIZE_TRANSFER_WIRE_ORIG |
+			       RTE_FLOW_TABLE_SPECIALIZE_TRANSFER_VPORT_ORIG;
+
+		if ((attr->specialize & val) == val) {
+			DRV_LOG(INFO, "Invalid hint value %x",
+				attr->specialize);
+			rte_errno = EINVAL;
+			goto it_error;
+		}
+		if (attr->specialize &
+		    RTE_FLOW_TABLE_SPECIALIZE_TRANSFER_WIRE_ORIG)
+			matcher_attr.optimize_flow_src =
+				MLX5DR_MATCHER_FLOW_SRC_WIRE;
+		else if (attr->specialize &
+			 RTE_FLOW_TABLE_SPECIALIZE_TRANSFER_VPORT_ORIG)
+			matcher_attr.optimize_flow_src =
+				MLX5DR_MATCHER_FLOW_SRC_VPORT;
 	}
 	/* Build the item template. */
 	for (i = 0; i < nb_item_templates; i++) {
