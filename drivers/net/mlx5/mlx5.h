@@ -380,6 +380,9 @@ enum mlx5_hw_job_type {
 	MLX5_HW_Q_JOB_TYPE_UPDATE, /* Flow update job type. */
 	MLX5_HW_Q_JOB_TYPE_QUERY, /* Flow query job type. */
 	MLX5_HW_Q_JOB_TYPE_UPDATE_QUERY, /* Flow update and query job type. */
+	MLX5_HW_Q_JOB_TYPE_RSZTBL_FLOW_CREATE, /* Non-optimized flow create job type. */
+	MLX5_HW_Q_JOB_TYPE_RSZTBL_FLOW_DESTROY, /* Non-optimized destroy create job type. */
+	MLX5_HW_Q_JOB_TYPE_RSZTBL_FLOW_MOVE, /* Move flow after table resize. */
 };
 
 enum mlx5_hw_indirect_type {
@@ -422,6 +425,8 @@ struct mlx5_hw_q {
 	struct mlx5_hw_q_job **job; /* LIFO header. */
 	struct rte_ring *indir_cq; /* Indirect action SW completion queue. */
 	struct rte_ring *indir_iq; /* Indirect action SW in progress queue. */
+	struct rte_ring *flow_transfer_pending;
+	struct rte_ring *flow_transfer_completed;
 } __rte_cache_aligned;
 
 

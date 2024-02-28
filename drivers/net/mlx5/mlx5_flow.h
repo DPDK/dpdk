@@ -1227,6 +1227,7 @@ struct rte_flow {
 	uint32_t tunnel:1;
 	uint32_t meter:24; /**< Holds flow meter id. */
 	uint32_t indirect_type:2; /**< Indirect action type. */
+	uint32_t matcher_selector:1; /**< Matcher index in resizable table. */
 	uint32_t rix_mreg_copy;
 	/**< Index to metadata register copy table resource. */
 	uint32_t counter; /**< Holds flow counter. */
@@ -1272,6 +1273,7 @@ struct rte_flow_hw {
 	};
 	struct rte_flow_template_table *table; /* The table flow allcated from. */
 	uint8_t mt_idx;
+	uint8_t matcher_selector:1;
 	uint32_t age_idx;
 	cnt_id_t cnt_id;
 	uint32_t mtr_id;
@@ -1499,6 +1501,11 @@ struct mlx5_flow_group {
 #define MLX5_MAX_TABLE_RESIZE_NUM 64
 
 struct mlx5_multi_pattern_segment {
+	/*
+	 * Modify Header Argument Objects number allocated for action in that
+	 * segment.
+	 * Capacity is always power of 2.
+	 */
 	uint32_t capacity;
 	uint32_t head_index;
 	struct mlx5dr_action *mhdr_action;
@@ -1537,43 +1544,22 @@ mlx5_is_multi_pattern_active(const struct mlx5_tbl_multi_pattern_ctx *mpctx)
 	return mpctx->segments[0].head_index == 1;
 }
 
-static __rte_always_inline struct mlx5_multi_pattern_segment *
-mlx5_multi_pattern_segment_get_next(struct mlx5_tbl_multi_pattern_ctx *mpctx)
-{
-	int i;
-
-	for (i = 0; i < MLX5_MAX_TABLE_RESIZE_NUM; i++) {
-		if (!mpctx->segments[i].capacity)
-			return &mpctx->segments[i];
-	}
-	return NULL;
-}
-
-static __rte_always_inline struct mlx5_multi_pattern_segment *
-mlx5_multi_pattern_segment_find(struct mlx5_tbl_multi_pattern_ctx *mpctx,
-				uint32_t flow_resource_ix)
-{
-	int i;
-
-	for (i = 0; i < MLX5_MAX_TABLE_RESIZE_NUM; i++) {
-		uint32_t limit = mpctx->segments[i].head_index +
-				 mpctx->segments[i].capacity;
-
-		if (flow_resource_ix < limit)
-			return &mpctx->segments[i];
-	}
-	return NULL;
-}
-
 struct mlx5_flow_template_table_cfg {
 	struct rte_flow_template_table_attr attr; /* Table attributes passed through flow API. */
 	bool external; /* True if created by flow API, false if table is internal to PMD. */
 };
 
+struct mlx5_matcher_info {
+	struct mlx5dr_matcher *matcher; /* Template matcher. */
+	RTE_ATOMIC(uint32_t) refcnt;
+};
+
 struct rte_flow_template_table {
 	LIST_ENTRY(rte_flow_template_table) next;
 	struct mlx5_flow_group *grp; /* The group rte_flow_template_table uses. */
-	struct mlx5dr_matcher *matcher; /* Template matcher. */
+	struct mlx5_matcher_info matcher_info[2];
+	uint32_t matcher_selector;
+	rte_rwlock_t matcher_replace_rwlk; /* RW lock for resizable tables */
 	/* Item templates bind to the table. */
 	struct rte_flow_pattern_template *its[MLX5_HW_TBL_MAX_ITEM_TEMPLATE];
 	/* Action templates bind to the table. */
@@ -1586,7 +1572,33 @@ struct rte_flow_template_table {
 	uint8_t nb_action_templates; /* Action template number. */
 	uint32_t refcnt; /* Table reference counter. */
 	struct mlx5_tbl_multi_pattern_ctx mpctx;
+	struct mlx5dr_matcher_attr matcher_attr;
 };
+
+static __rte_always_inline struct mlx5dr_matcher *
+mlx5_table_matcher(const struct rte_flow_template_table *table)
+{
+	return table->matcher_info[table->matcher_selector].matcher;
+}
+
+static __rte_always_inline struct mlx5_multi_pattern_segment *
+mlx5_multi_pattern_segment_find(struct rte_flow_template_table *table,
+				uint32_t flow_resource_ix)
+{
+	int i;
+	struct mlx5_tbl_multi_pattern_ctx *mpctx = &table->mpctx;
+
+	if (likely(!rte_flow_template_table_resizable(0, &table->cfg.attr)))
+		return &mpctx->segments[0];
+	for (i = 0; i < MLX5_MAX_TABLE_RESIZE_NUM; i++) {
+		uint32_t limit = mpctx->segments[i].head_index +
+				 mpctx->segments[i].capacity;
+
+		if (flow_resource_ix < limit)
+			return &mpctx->segments[i];
+	}
+	return NULL;
+}
 
 #endif
 
@@ -2284,6 +2296,17 @@ typedef int
 			 enum rte_flow_encap_hash_field dest_field,
 			 uint8_t *hash,
 			 struct rte_flow_error *error);
+typedef int (*mlx5_table_resize_t)(struct rte_eth_dev *dev,
+				   struct rte_flow_template_table *table,
+				   uint32_t nb_rules, struct rte_flow_error *error);
+typedef int (*mlx5_flow_update_resized_t)
+			(struct rte_eth_dev *dev, uint32_t queue,
+			 const struct rte_flow_op_attr *attr,
+			 struct rte_flow *rule, void *user_data,
+			 struct rte_flow_error *error);
+typedef int (*table_resize_complete_t)(struct rte_eth_dev *dev,
+				       struct rte_flow_template_table *table,
+				       struct rte_flow_error *error);
 
 struct mlx5_flow_driver_ops {
 	mlx5_flow_validate_t validate;
@@ -2358,6 +2381,9 @@ struct mlx5_flow_driver_ops {
 		async_action_list_handle_query_update;
 	mlx5_flow_calc_table_hash_t flow_calc_table_hash;
 	mlx5_flow_calc_encap_hash_t flow_calc_encap_hash;
+	mlx5_table_resize_t table_resize;
+	mlx5_flow_update_resized_t flow_update_resized;
+	table_resize_complete_t table_resize_complete;
 };
 
 /* mlx5_flow.c */

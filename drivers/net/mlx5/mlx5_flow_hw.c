@@ -4,6 +4,7 @@
 
 #include <rte_flow.h>
 #include <rte_flow_driver.h>
+#include <rte_stdatomic.h>
 
 #include <mlx5_malloc.h>
 
@@ -2911,7 +2912,7 @@ flow_hw_actions_construct(struct rte_eth_dev *dev,
 	int ret;
 	uint32_t age_idx = 0;
 	struct mlx5_aso_mtr *aso_mtr;
-	struct mlx5_multi_pattern_segment *mp_segment;
+	struct mlx5_multi_pattern_segment *mp_segment = NULL;
 
 	rte_memcpy(rule_acts, hw_acts->rule_acts, sizeof(*rule_acts) * at->dr_actions_num);
 	attr.group = table->grp->group_id;
@@ -2925,17 +2926,20 @@ flow_hw_actions_construct(struct rte_eth_dev *dev,
 	} else {
 		attr.ingress = 1;
 	}
-	if (hw_acts->mhdr && hw_acts->mhdr->mhdr_cmds_num > 0) {
+	if (hw_acts->mhdr && hw_acts->mhdr->mhdr_cmds_num > 0 && !hw_acts->mhdr->shared) {
 		uint16_t pos = hw_acts->mhdr->pos;
 
-		if (!hw_acts->mhdr->shared) {
-			rule_acts[pos].modify_header.offset =
-						job->flow->res_idx - 1;
-			rule_acts[pos].modify_header.data =
-						(uint8_t *)job->mhdr_cmd;
-			rte_memcpy(job->mhdr_cmd, hw_acts->mhdr->mhdr_cmds,
-				   sizeof(*job->mhdr_cmd) * hw_acts->mhdr->mhdr_cmds_num);
-		}
+		mp_segment = mlx5_multi_pattern_segment_find(table, job->flow->res_idx);
+		if (!mp_segment || !mp_segment->mhdr_action)
+			return -1;
+		rule_acts[pos].action = mp_segment->mhdr_action;
+		/* offset is relative to DR action */
+		rule_acts[pos].modify_header.offset =
+					job->flow->res_idx - mp_segment->head_index;
+		rule_acts[pos].modify_header.data =
+					(uint8_t *)job->mhdr_cmd;
+		rte_memcpy(job->mhdr_cmd, hw_acts->mhdr->mhdr_cmds,
+			   sizeof(*job->mhdr_cmd) * hw_acts->mhdr->mhdr_cmds_num);
 	}
 	LIST_FOREACH(act_data, &hw_acts->act_list, next) {
 		uint32_t jump_group;
@@ -3042,11 +3046,6 @@ flow_hw_actions_construct(struct rte_eth_dev *dev,
 			MLX5_ASSERT(ipv6_push->size == act_data->ipv6_ext.len);
 			break;
 		case RTE_FLOW_ACTION_TYPE_MODIFY_FIELD:
-			mp_segment = mlx5_multi_pattern_segment_find
-					(&table->mpctx, job->flow->res_idx);
-			if (!mp_segment || !mp_segment->mhdr_action)
-				return -1;
-			rule_acts[hw_acts->mhdr->pos].action = mp_segment->mhdr_action;
 			if (action->type == RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_VID)
 				ret = flow_hw_set_vlan_vid_construct(dev, job,
 								     act_data,
@@ -3203,11 +3202,13 @@ flow_hw_actions_construct(struct rte_eth_dev *dev,
 
 		if (ix < 0)
 			return -1;
-		mp_segment = mlx5_multi_pattern_segment_find(&table->mpctx, job->flow->res_idx);
+		if (!mp_segment)
+			mp_segment = mlx5_multi_pattern_segment_find(table, job->flow->res_idx);
 		if (!mp_segment || !mp_segment->reformat_action[ix])
 			return -1;
 		ra->action = mp_segment->reformat_action[ix];
-		ra->reformat.offset = job->flow->res_idx - 1;
+		/* reformat offset is relative to selected DR action */
+		ra->reformat.offset = job->flow->res_idx - mp_segment->head_index;
 		ra->reformat.data = buf;
 	}
 	if (hw_acts->push_remove && !hw_acts->push_remove->shared) {
@@ -3379,10 +3380,26 @@ flow_hw_async_flow_create(struct rte_eth_dev *dev,
 					    pattern_template_index, job);
 	if (!rule_items)
 		goto error;
-	ret = mlx5dr_rule_create(table->matcher,
-				 pattern_template_index, rule_items,
-				 action_template_index, rule_acts,
-				 &rule_attr, (struct mlx5dr_rule *)flow->rule);
+	if (likely(!rte_flow_template_table_resizable(dev->data->port_id, &table->cfg.attr))) {
+		ret = mlx5dr_rule_create(table->matcher_info[0].matcher,
+					 pattern_template_index, rule_items,
+					 action_template_index, rule_acts,
+					 &rule_attr,
+					 (struct mlx5dr_rule *)flow->rule);
+	} else {
+		uint32_t selector;
+
+		job->type = MLX5_HW_Q_JOB_TYPE_RSZTBL_FLOW_CREATE;
+		rte_rwlock_read_lock(&table->matcher_replace_rwlk);
+		selector = table->matcher_selector;
+		ret = mlx5dr_rule_create(table->matcher_info[selector].matcher,
+					 pattern_template_index, rule_items,
+					 action_template_index, rule_acts,
+					 &rule_attr,
+					 (struct mlx5dr_rule *)flow->rule);
+		rte_rwlock_read_unlock(&table->matcher_replace_rwlk);
+		flow->matcher_selector = selector;
+	}
 	if (likely(!ret))
 		return (struct rte_flow *)flow;
 error:
@@ -3499,9 +3516,23 @@ flow_hw_async_flow_create_by_index(struct rte_eth_dev *dev,
 		rte_errno = EINVAL;
 		goto error;
 	}
-	ret = mlx5dr_rule_create(table->matcher,
-				 0, items, action_template_index, rule_acts,
-				 &rule_attr, (struct mlx5dr_rule *)flow->rule);
+	if (likely(!rte_flow_template_table_resizable(dev->data->port_id, &table->cfg.attr))) {
+		ret = mlx5dr_rule_create(table->matcher_info[0].matcher,
+					 0, items, action_template_index,
+					 rule_acts, &rule_attr,
+					 (struct mlx5dr_rule *)flow->rule);
+	} else {
+		uint32_t selector;
+
+		job->type = MLX5_HW_Q_JOB_TYPE_RSZTBL_FLOW_CREATE;
+		rte_rwlock_read_lock(&table->matcher_replace_rwlk);
+		selector = table->matcher_selector;
+		ret = mlx5dr_rule_create(table->matcher_info[selector].matcher,
+					 0, items, action_template_index,
+					 rule_acts, &rule_attr,
+					 (struct mlx5dr_rule *)flow->rule);
+		rte_rwlock_read_unlock(&table->matcher_replace_rwlk);
+	}
 	if (likely(!ret))
 		return (struct rte_flow *)flow;
 error:
@@ -3681,7 +3712,8 @@ flow_hw_async_flow_destroy(struct rte_eth_dev *dev,
 		return rte_flow_error_set(error, ENOMEM,
 					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
 					  "fail to destroy rte flow: flow queue full");
-	job->type = MLX5_HW_Q_JOB_TYPE_DESTROY;
+	job->type = !rte_flow_template_table_resizable(dev->data->port_id, &fh->table->cfg.attr) ?
+		    MLX5_HW_Q_JOB_TYPE_DESTROY : MLX5_HW_Q_JOB_TYPE_RSZTBL_FLOW_DESTROY;
 	job->user_data = user_data;
 	job->flow = fh;
 	rule_attr.user_data = job;
@@ -3791,6 +3823,26 @@ flow_hw_pull_legacy_indirect_comp(struct rte_eth_dev *dev, struct mlx5_hw_q_job 
 	}
 }
 
+static __rte_always_inline int
+mlx5_hw_pull_flow_transfer_comp(struct rte_eth_dev *dev,
+				uint32_t queue, struct rte_flow_op_result res[],
+				uint16_t n_res)
+{
+	uint32_t size, i;
+	struct mlx5_hw_q_job *job = NULL;
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct rte_ring *ring = priv->hw_q[queue].flow_transfer_completed;
+
+	size = RTE_MIN(rte_ring_count(ring), n_res);
+	for (i = 0; i < size; i++) {
+		res[i].status = RTE_FLOW_OP_SUCCESS;
+		rte_ring_dequeue(ring, (void **)&job);
+		res[i].user_data = job->user_data;
+		flow_hw_job_put(priv, job, queue);
+	}
+	return (int)size;
+}
+
 static inline int
 __flow_hw_pull_indir_action_comp(struct rte_eth_dev *dev,
 				 uint32_t queue,
@@ -3841,6 +3893,80 @@ __flow_hw_pull_indir_action_comp(struct rte_eth_dev *dev,
 	return ret_comp;
 }
 
+static __rte_always_inline void
+hw_cmpl_flow_update_or_destroy(struct rte_eth_dev *dev,
+			       struct mlx5_hw_q_job *job,
+			       uint32_t queue, struct rte_flow_error *error)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_aso_mtr_pool *pool = priv->hws_mpool;
+	struct rte_flow_hw *flow = job->flow;
+	struct rte_flow_template_table *table = flow->table;
+	/* Release the original resource index in case of update. */
+	uint32_t res_idx = flow->res_idx;
+
+	if (flow->fate_type == MLX5_FLOW_FATE_JUMP)
+		flow_hw_jump_release(dev, flow->jump);
+	else if (flow->fate_type == MLX5_FLOW_FATE_QUEUE)
+		mlx5_hrxq_obj_release(dev, flow->hrxq);
+	if (mlx5_hws_cnt_id_valid(flow->cnt_id))
+		flow_hw_age_count_release(priv, queue,
+					  flow, error);
+	if (flow->mtr_id) {
+		mlx5_ipool_free(pool->idx_pool,	flow->mtr_id);
+		flow->mtr_id = 0;
+	}
+	if (job->type != MLX5_HW_Q_JOB_TYPE_UPDATE) {
+		if (table) {
+			mlx5_ipool_free(table->resource, res_idx);
+			mlx5_ipool_free(table->flow, flow->idx);
+		}
+	} else {
+		rte_memcpy(flow, job->upd_flow,
+			   offsetof(struct rte_flow_hw, rule));
+		mlx5_ipool_free(table->resource, res_idx);
+	}
+}
+
+static __rte_always_inline void
+hw_cmpl_resizable_tbl(struct rte_eth_dev *dev,
+		      struct mlx5_hw_q_job *job,
+		      uint32_t queue, enum rte_flow_op_status status,
+		      struct rte_flow_error *error)
+{
+	struct rte_flow_hw *flow = job->flow;
+	struct rte_flow_template_table *table = flow->table;
+	uint32_t selector = flow->matcher_selector;
+	uint32_t other_selector = (selector + 1) & 1;
+
+	switch (job->type) {
+	case MLX5_HW_Q_JOB_TYPE_RSZTBL_FLOW_CREATE:
+		rte_atomic_fetch_add_explicit
+			(&table->matcher_info[selector].refcnt, 1,
+			 rte_memory_order_relaxed);
+		break;
+	case MLX5_HW_Q_JOB_TYPE_RSZTBL_FLOW_DESTROY:
+		rte_atomic_fetch_sub_explicit
+			(&table->matcher_info[selector].refcnt, 1,
+			 rte_memory_order_relaxed);
+		hw_cmpl_flow_update_or_destroy(dev, job, queue, error);
+		break;
+	case MLX5_HW_Q_JOB_TYPE_RSZTBL_FLOW_MOVE:
+		if (status == RTE_FLOW_OP_SUCCESS) {
+			rte_atomic_fetch_sub_explicit
+				(&table->matcher_info[selector].refcnt, 1,
+				 rte_memory_order_relaxed);
+			rte_atomic_fetch_add_explicit
+				(&table->matcher_info[other_selector].refcnt, 1,
+				 rte_memory_order_relaxed);
+			flow->matcher_selector = other_selector;
+		}
+		break;
+	default:
+		break;
+	}
+}
+
 /**
  * Pull the enqueued flows.
  *
@@ -3869,9 +3995,7 @@ flow_hw_pull(struct rte_eth_dev *dev,
 	     struct rte_flow_error *error)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_aso_mtr_pool *pool = priv->hws_mpool;
 	struct mlx5_hw_q_job *job;
-	uint32_t res_idx;
 	int ret, i;
 
 	/* 1. Pull the flow completion. */
@@ -3882,31 +4006,20 @@ flow_hw_pull(struct rte_eth_dev *dev,
 				"fail to query flow queue");
 	for (i = 0; i <  ret; i++) {
 		job = (struct mlx5_hw_q_job *)res[i].user_data;
-		/* Release the original resource index in case of update. */
-		res_idx = job->flow->res_idx;
 		/* Restore user data. */
 		res[i].user_data = job->user_data;
-		if (job->type == MLX5_HW_Q_JOB_TYPE_DESTROY ||
-		    job->type == MLX5_HW_Q_JOB_TYPE_UPDATE) {
-			if (job->flow->fate_type == MLX5_FLOW_FATE_JUMP)
-				flow_hw_jump_release(dev, job->flow->jump);
-			else if (job->flow->fate_type == MLX5_FLOW_FATE_QUEUE)
-				mlx5_hrxq_obj_release(dev, job->flow->hrxq);
-			if (mlx5_hws_cnt_id_valid(job->flow->cnt_id))
-				flow_hw_age_count_release(priv, queue,
-							  job->flow, error);
-			if (job->flow->mtr_id) {
-				mlx5_ipool_free(pool->idx_pool,	job->flow->mtr_id);
-				job->flow->mtr_id = 0;
-			}
-			if (job->type == MLX5_HW_Q_JOB_TYPE_DESTROY) {
-				mlx5_ipool_free(job->flow->table->resource, res_idx);
-				mlx5_ipool_free(job->flow->table->flow, job->flow->idx);
-			} else {
-				rte_memcpy(job->flow, job->upd_flow,
-					offsetof(struct rte_flow_hw, rule));
-				mlx5_ipool_free(job->flow->table->resource, res_idx);
-			}
+		switch (job->type) {
+		case MLX5_HW_Q_JOB_TYPE_DESTROY:
+		case MLX5_HW_Q_JOB_TYPE_UPDATE:
+			hw_cmpl_flow_update_or_destroy(dev, job, queue, error);
+			break;
+		case MLX5_HW_Q_JOB_TYPE_RSZTBL_FLOW_CREATE:
+		case MLX5_HW_Q_JOB_TYPE_RSZTBL_FLOW_MOVE:
+		case MLX5_HW_Q_JOB_TYPE_RSZTBL_FLOW_DESTROY:
+			hw_cmpl_resizable_tbl(dev, job, queue, res[i].status, error);
+			break;
+		default:
+			break;
 		}
 		flow_hw_job_put(priv, job, queue);
 	}
@@ -3914,7 +4027,24 @@ flow_hw_pull(struct rte_eth_dev *dev,
 	if (ret < n_res)
 		ret += __flow_hw_pull_indir_action_comp(dev, queue, &res[ret],
 							n_res - ret);
+	if (ret < n_res)
+		ret += mlx5_hw_pull_flow_transfer_comp(dev, queue, &res[ret],
+						       n_res - ret);
+
 	return ret;
+}
+
+static uint32_t
+mlx5_hw_push_queue(struct rte_ring *pending_q, struct rte_ring *cmpl_q)
+{
+	void *job = NULL;
+	uint32_t i, size = rte_ring_count(pending_q);
+
+	for (i = 0; i < size; i++) {
+		rte_ring_dequeue(pending_q, &job);
+		rte_ring_enqueue(cmpl_q, job);
+	}
+	return size;
 }
 
 static inline uint32_t
@@ -3922,16 +4052,11 @@ __flow_hw_push_action(struct rte_eth_dev *dev,
 		    uint32_t queue)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	struct rte_ring *iq = priv->hw_q[queue].indir_iq;
-	struct rte_ring *cq = priv->hw_q[queue].indir_cq;
-	void *job = NULL;
-	uint32_t ret, i;
+	struct mlx5_hw_q *hw_q = &priv->hw_q[queue];
 
-	ret = rte_ring_count(iq);
-	for (i = 0; i < ret; i++) {
-		rte_ring_dequeue(iq, &job);
-		rte_ring_enqueue(cq, job);
-	}
+	mlx5_hw_push_queue(hw_q->indir_iq, hw_q->indir_cq);
+	mlx5_hw_push_queue(hw_q->flow_transfer_pending,
+			   hw_q->flow_transfer_completed);
 	if (!priv->shared_host) {
 		if (priv->hws_ctpool)
 			mlx5_aso_push_wqe(priv->sh,
@@ -4340,6 +4465,8 @@ flow_hw_table_create(struct rte_eth_dev *dev,
 	grp = container_of(ge, struct mlx5_flow_group, entry);
 	tbl->grp = grp;
 	/* Prepare matcher information. */
+	matcher_attr.resizable = !!rte_flow_template_table_resizable
+					(dev->data->port_id, &table_cfg->attr);
 	matcher_attr.optimize_flow_src = MLX5DR_MATCHER_FLOW_SRC_ANY;
 	matcher_attr.priority = attr->flow_attr.priority;
 	matcher_attr.optimize_using_rule_idx = true;
@@ -4358,7 +4485,7 @@ flow_hw_table_create(struct rte_eth_dev *dev,
 			       RTE_FLOW_TABLE_SPECIALIZE_TRANSFER_VPORT_ORIG;
 
 		if ((attr->specialize & val) == val) {
-			DRV_LOG(INFO, "Invalid hint value %x",
+			DRV_LOG(ERR, "Invalid hint value %x",
 				attr->specialize);
 			rte_errno = EINVAL;
 			goto it_error;
@@ -4402,10 +4529,11 @@ flow_hw_table_create(struct rte_eth_dev *dev,
 		i = nb_item_templates;
 		goto it_error;
 	}
-	tbl->matcher = mlx5dr_matcher_create
+	tbl->matcher_info[0].matcher = mlx5dr_matcher_create
 		(tbl->grp->tbl, mt, nb_item_templates, at, nb_action_templates, &matcher_attr);
-	if (!tbl->matcher)
+	if (!tbl->matcher_info[0].matcher)
 		goto at_error;
+	tbl->matcher_attr = matcher_attr;
 	tbl->type = attr->flow_attr.transfer ? MLX5DR_TABLE_TYPE_FDB :
 		    (attr->flow_attr.egress ? MLX5DR_TABLE_TYPE_NIC_TX :
 		    MLX5DR_TABLE_TYPE_NIC_RX);
@@ -4413,6 +4541,7 @@ flow_hw_table_create(struct rte_eth_dev *dev,
 		LIST_INSERT_HEAD(&priv->flow_hw_tbl, tbl, next);
 	else
 		LIST_INSERT_HEAD(&priv->flow_hw_tbl_ongo, tbl, next);
+	rte_rwlock_init(&tbl->matcher_replace_rwlk);
 	return tbl;
 at_error:
 	for (i = 0; i < nb_action_templates; i++) {
@@ -4584,6 +4713,13 @@ flow_hw_template_table_create(struct rte_eth_dev *dev,
 
 	if (flow_hw_translate_group(dev, &cfg, group, &cfg.attr.flow_attr.group, error))
 		return NULL;
+	if (!cfg.attr.flow_attr.group &&
+	    rte_flow_template_table_resizable(dev->data->port_id, attr)) {
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				   "table cannot be resized: invalid group");
+		return NULL;
+	}
 	return flow_hw_table_create(dev, &cfg, item_templates, nb_item_templates,
 				    action_templates, nb_action_templates, error);
 }
@@ -4656,7 +4792,10 @@ flow_hw_table_destroy(struct rte_eth_dev *dev,
 				   1, __ATOMIC_RELAXED);
 	}
 	flow_hw_destroy_table_multi_pattern_ctx(table);
-	mlx5dr_matcher_destroy(table->matcher);
+	if (table->matcher_info[0].matcher)
+		mlx5dr_matcher_destroy(table->matcher_info[0].matcher);
+	if (table->matcher_info[1].matcher)
+		mlx5dr_matcher_destroy(table->matcher_info[1].matcher);
 	mlx5_hlist_unregister(priv->sh->groups, &table->grp->entry);
 	mlx5_ipool_destroy(table->resource);
 	mlx5_ipool_destroy(table->flow);
@@ -9666,6 +9805,16 @@ action_template_drop_init(struct rte_eth_dev *dev,
 	return 0;
 }
 
+static __rte_always_inline struct rte_ring *
+mlx5_hwq_ring_create(uint16_t port_id, uint32_t queue, uint32_t size, const char *str)
+{
+	char mz_name[RTE_MEMZONE_NAMESIZE];
+
+	snprintf(mz_name, sizeof(mz_name), "port_%u_%s_%u", port_id, str, queue);
+	return rte_ring_create(mz_name, size, SOCKET_ID_ANY,
+			       RING_F_SP_ENQ | RING_F_SC_DEQ | RING_F_EXACT_SZ);
+}
+
 /**
  * Configure port HWS resources.
  *
@@ -9793,7 +9942,6 @@ flow_hw_configure(struct rte_eth_dev *dev,
 		goto err;
 	}
 	for (i = 0; i < nb_q_updated; i++) {
-		char mz_name[RTE_MEMZONE_NAMESIZE];
 		uint8_t *encap = NULL, *push = NULL;
 		struct mlx5_modification_cmd *mhdr_cmd = NULL;
 		struct rte_flow_item *items = NULL;
@@ -9827,21 +9975,22 @@ flow_hw_configure(struct rte_eth_dev *dev,
 			job[j].upd_flow = &upd_flow[j];
 			priv->hw_q[i].job[j] = &job[j];
 		}
-		snprintf(mz_name, sizeof(mz_name), "port_%u_indir_act_cq_%u",
-			 dev->data->port_id, i);
-		priv->hw_q[i].indir_cq = rte_ring_create(mz_name,
-				_queue_attr[i]->size, SOCKET_ID_ANY,
-				RING_F_SP_ENQ | RING_F_SC_DEQ |
-				RING_F_EXACT_SZ);
+		/* Notice ring name length is limited. */
+		priv->hw_q[i].indir_cq = mlx5_hwq_ring_create
+			(dev->data->port_id, i, _queue_attr[i]->size, "indir_act_cq");
 		if (!priv->hw_q[i].indir_cq)
 			goto err;
-		snprintf(mz_name, sizeof(mz_name), "port_%u_indir_act_iq_%u",
-			 dev->data->port_id, i);
-		priv->hw_q[i].indir_iq = rte_ring_create(mz_name,
-				_queue_attr[i]->size, SOCKET_ID_ANY,
-				RING_F_SP_ENQ | RING_F_SC_DEQ |
-				RING_F_EXACT_SZ);
+		priv->hw_q[i].indir_iq = mlx5_hwq_ring_create
+			(dev->data->port_id, i, _queue_attr[i]->size, "indir_act_iq");
 		if (!priv->hw_q[i].indir_iq)
+			goto err;
+		priv->hw_q[i].flow_transfer_pending = mlx5_hwq_ring_create
+			(dev->data->port_id, i, _queue_attr[i]->size, "tx_pending");
+		if (!priv->hw_q[i].flow_transfer_pending)
+			goto err;
+		priv->hw_q[i].flow_transfer_completed = mlx5_hwq_ring_create
+			(dev->data->port_id, i, _queue_attr[i]->size, "tx_done");
+		if (!priv->hw_q[i].flow_transfer_completed)
 			goto err;
 	}
 	dr_ctx_attr.pd = priv->sh->cdev->pd;
@@ -10065,6 +10214,8 @@ err:
 	for (i = 0; i < nb_q_updated; i++) {
 		rte_ring_free(priv->hw_q[i].indir_iq);
 		rte_ring_free(priv->hw_q[i].indir_cq);
+		rte_ring_free(priv->hw_q[i].flow_transfer_pending);
+		rte_ring_free(priv->hw_q[i].flow_transfer_completed);
 	}
 	mlx5_free(priv->hw_q);
 	priv->hw_q = NULL;
@@ -10165,6 +10316,8 @@ flow_hw_resource_release(struct rte_eth_dev *dev)
 	for (i = 0; i < priv->nb_queue; i++) {
 		rte_ring_free(priv->hw_q[i].indir_iq);
 		rte_ring_free(priv->hw_q[i].indir_cq);
+		rte_ring_free(priv->hw_q[i].flow_transfer_pending);
+		rte_ring_free(priv->hw_q[i].flow_transfer_completed);
 	}
 	mlx5_free(priv->hw_q);
 	priv->hw_q = NULL;
@@ -11998,7 +12151,7 @@ flow_hw_calc_table_hash(struct rte_eth_dev *dev,
 	items = flow_hw_get_rule_items(dev, table, pattern,
 				       pattern_template_index,
 				       &job);
-	res = mlx5dr_rule_hash_calculate(table->matcher, items,
+	res = mlx5dr_rule_hash_calculate(mlx5_table_matcher(table), items,
 					 pattern_template_index,
 					 MLX5DR_RULE_HASH_CALC_MODE_RAW,
 					 hash);
@@ -12075,6 +12228,226 @@ flow_hw_calc_encap_hash(struct rte_eth_dev *dev,
 	return 0;
 }
 
+static int
+flow_hw_table_resize_multi_pattern_actions(struct rte_eth_dev *dev,
+					   struct rte_flow_template_table *table,
+					   uint32_t nb_flows,
+					   struct rte_flow_error *error)
+{
+	struct mlx5_multi_pattern_segment *segment = table->mpctx.segments;
+	uint32_t bulk_size;
+	int i, ret;
+
+	/**
+	 * Segment always allocates Modify Header Argument Objects number in
+	 * powers of 2.
+	 * On resize, PMD adds minimal required argument objects number.
+	 * For example, if table size was 10, it allocated 16 argument objects.
+	 * Resize to 15 will not add new objects.
+	 */
+	for (i = 1;
+	     i < MLX5_MAX_TABLE_RESIZE_NUM && segment->capacity;
+	     i++, segment++) {
+		/* keep the devtools/checkpatches.sh happy */
+	}
+	if (i == MLX5_MAX_TABLE_RESIZE_NUM)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					  table, "too many resizes");
+	if (segment->head_index - 1 >= nb_flows)
+		return 0;
+	bulk_size = rte_align32pow2(nb_flows - segment->head_index + 1);
+	ret = mlx5_tbl_multi_pattern_process(dev, table, segment,
+					     rte_log2_u32(bulk_size),
+					     error);
+	if (ret)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					  table, "too many resizes");
+	return i;
+}
+
+static int
+flow_hw_table_resize(struct rte_eth_dev *dev,
+		     struct rte_flow_template_table *table,
+		     uint32_t nb_flows,
+		     struct rte_flow_error *error)
+{
+	struct mlx5dr_action_template *at[MLX5_HW_TBL_MAX_ACTION_TEMPLATE];
+	struct mlx5dr_match_template *mt[MLX5_HW_TBL_MAX_ITEM_TEMPLATE];
+	struct mlx5dr_matcher_attr matcher_attr = table->matcher_attr;
+	struct mlx5_multi_pattern_segment *segment = NULL;
+	struct mlx5dr_matcher *matcher = NULL;
+	uint32_t i, selector = table->matcher_selector;
+	uint32_t other_selector = (selector + 1) & 1;
+	int ret;
+
+	if (!rte_flow_template_table_resizable(dev->data->port_id, &table->cfg.attr))
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					  table, "no resizable attribute");
+	if (table->matcher_info[other_selector].matcher)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					  table, "last table resize was not completed");
+	if (nb_flows <= table->cfg.attr.nb_flows)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					  table, "shrinking table is not supported");
+	ret = mlx5_ipool_resize(table->flow, nb_flows);
+	if (ret)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					  table, "cannot resize flows pool");
+	ret = mlx5_ipool_resize(table->resource, nb_flows);
+	if (ret)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					  table, "cannot resize resources pool");
+	if (mlx5_is_multi_pattern_active(&table->mpctx)) {
+		ret = flow_hw_table_resize_multi_pattern_actions(dev, table, nb_flows, error);
+		if (ret < 0)
+			return ret;
+		if (ret > 0)
+			segment = table->mpctx.segments + ret;
+	}
+	for (i = 0; i < table->nb_item_templates; i++)
+		mt[i] = table->its[i]->mt;
+	for (i = 0; i < table->nb_action_templates; i++)
+		at[i] = table->ats[i].action_template->tmpl;
+	nb_flows = rte_align32pow2(nb_flows);
+	matcher_attr.rule.num_log = rte_log2_u32(nb_flows);
+	matcher = mlx5dr_matcher_create(table->grp->tbl, mt,
+					table->nb_item_templates, at,
+					table->nb_action_templates,
+					&matcher_attr);
+	if (!matcher) {
+		ret = rte_flow_error_set(error, rte_errno,
+					 RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					 table, "failed to create new matcher");
+		goto error;
+	}
+	rte_rwlock_write_lock(&table->matcher_replace_rwlk);
+	ret = mlx5dr_matcher_resize_set_target
+			(table->matcher_info[selector].matcher, matcher);
+	if (ret) {
+		rte_rwlock_write_unlock(&table->matcher_replace_rwlk);
+		ret = rte_flow_error_set(error, rte_errno,
+					 RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					 table, "failed to initiate matcher swap");
+		goto error;
+	}
+	table->cfg.attr.nb_flows = nb_flows;
+	table->matcher_info[other_selector].matcher = matcher;
+	table->matcher_selector = other_selector;
+	rte_atomic_store_explicit(&table->matcher_info[other_selector].refcnt,
+				  0, rte_memory_order_relaxed);
+	rte_rwlock_write_unlock(&table->matcher_replace_rwlk);
+	return 0;
+error:
+	if (segment)
+		mlx5_destroy_multi_pattern_segment(segment);
+	if (matcher) {
+		ret = mlx5dr_matcher_destroy(matcher);
+		return rte_flow_error_set(error, rte_errno,
+					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					  table, "failed to destroy new matcher");
+	}
+	return ret;
+}
+
+static int
+flow_hw_table_resize_complete(__rte_unused struct rte_eth_dev *dev,
+			      struct rte_flow_template_table *table,
+			      struct rte_flow_error *error)
+{
+	int ret;
+	uint32_t selector = table->matcher_selector;
+	uint32_t other_selector = (selector + 1) & 1;
+	struct mlx5_matcher_info *matcher_info = &table->matcher_info[other_selector];
+	uint32_t matcher_refcnt;
+
+	if (!rte_flow_template_table_resizable(dev->data->port_id, &table->cfg.attr))
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					  table, "no resizable attribute");
+	matcher_refcnt = rte_atomic_load_explicit(&matcher_info->refcnt,
+						  rte_memory_order_relaxed);
+	if (!matcher_info->matcher || matcher_refcnt)
+		return rte_flow_error_set(error, EBUSY,
+					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					  table, "cannot complete table resize");
+	ret = mlx5dr_matcher_destroy(matcher_info->matcher);
+	if (ret)
+		return rte_flow_error_set(error, rte_errno,
+					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					  table, "failed to destroy retired matcher");
+	matcher_info->matcher = NULL;
+	return 0;
+}
+
+static int
+flow_hw_update_resized(struct rte_eth_dev *dev, uint32_t queue,
+		       const struct rte_flow_op_attr *attr,
+		       struct rte_flow *flow, void *user_data,
+		       struct rte_flow_error *error)
+{
+	int ret;
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_hw_q_job *job;
+	struct rte_flow_hw *hw_flow = (struct rte_flow_hw *)flow;
+	struct rte_flow_template_table *table = hw_flow->table;
+	uint32_t table_selector = table->matcher_selector;
+	uint32_t rule_selector = hw_flow->matcher_selector;
+	uint32_t other_selector;
+	struct mlx5dr_matcher *other_matcher;
+	struct mlx5dr_rule_attr rule_attr = {
+		.queue_id = queue,
+		.burst = attr->postpone,
+	};
+
+	/**
+	 * mlx5dr_matcher_resize_rule_move() accepts original table matcher -
+	 * the one that was used BEFORE table resize.
+	 * Since the function is called AFTER table resize,
+	 * `table->matcher_selector` always points to the new matcher and
+	 * `hw_flow->matcher_selector` points to a matcher used to create the flow.
+	 */
+	other_selector = rule_selector == table_selector ?
+			 (rule_selector + 1) & 1 : rule_selector;
+	other_matcher = table->matcher_info[other_selector].matcher;
+	if (!other_matcher)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+					  "no active table resize");
+	job = flow_hw_job_get(priv, queue);
+	if (!job)
+		return rte_flow_error_set(error, ENOMEM,
+					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+					  "queue is full");
+	job->type = MLX5_HW_Q_JOB_TYPE_RSZTBL_FLOW_MOVE;
+	job->user_data = user_data;
+	job->flow = hw_flow;
+	rule_attr.user_data = job;
+	if (rule_selector == table_selector) {
+		struct rte_ring *ring = !attr->postpone ?
+					priv->hw_q[queue].flow_transfer_completed :
+					priv->hw_q[queue].flow_transfer_pending;
+		rte_ring_enqueue(ring, job);
+		return 0;
+	}
+	ret = mlx5dr_matcher_resize_rule_move(other_matcher,
+					      (struct mlx5dr_rule *)hw_flow->rule,
+					      &rule_attr);
+	if (ret) {
+		flow_hw_job_put(priv, job, queue);
+		return rte_flow_error_set(error, rte_errno,
+					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+					  "flow transfer failed");
+	}
+	return 0;
+}
+
 const struct mlx5_flow_driver_ops mlx5_flow_hw_drv_ops = {
 	.info_get = flow_hw_info_get,
 	.configure = flow_hw_configure,
@@ -12086,11 +12459,14 @@ const struct mlx5_flow_driver_ops mlx5_flow_hw_drv_ops = {
 	.actions_template_destroy = flow_hw_actions_template_destroy,
 	.template_table_create = flow_hw_template_table_create,
 	.template_table_destroy = flow_hw_table_destroy,
+	.table_resize = flow_hw_table_resize,
 	.group_set_miss_actions = flow_hw_group_set_miss_actions,
 	.async_flow_create = flow_hw_async_flow_create,
 	.async_flow_create_by_index = flow_hw_async_flow_create_by_index,
 	.async_flow_update = flow_hw_async_flow_update,
 	.async_flow_destroy = flow_hw_async_flow_destroy,
+	.flow_update_resized = flow_hw_update_resized,
+	.table_resize_complete = flow_hw_table_resize_complete,
 	.pull = flow_hw_pull,
 	.push = flow_hw_push,
 	.async_action_create = flow_hw_action_handle_create,
