@@ -1412,10 +1412,12 @@ struct mlx5_hws_cnt_svc_mng {
 };
 
 #define MLX5_FLOW_HW_TAGS_MAX 12
+#define MLX5_FLOW_NAT64_REGS_MAX 3
 
 struct mlx5_dev_registers {
 	enum modify_reg aso_reg;
 	enum modify_reg hw_avl_tags[MLX5_FLOW_HW_TAGS_MAX];
+	enum modify_reg nat64_regs[MLX5_FLOW_NAT64_REGS_MAX];
 };
 
 #if defined(HAVE_MLX5DV_DR) && \

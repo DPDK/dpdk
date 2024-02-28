@@ -1644,6 +1644,15 @@ mlx5_init_hws_flow_tags_registers(struct mlx5_dev_ctx_shared *sh)
 		if (!!((1 << i) & masks))
 			reg->hw_avl_tags[j++] = mlx5_regc_value(i);
 	}
+	/*
+	 * Set the registers for NAT64 usage internally. REG_C_6 is always used.
+	 * The other 2 registers will be fetched from right to left, at least 2
+	 * tag registers should be available.
+	 */
+	MLX5_ASSERT(j >= (MLX5_FLOW_NAT64_REGS_MAX - 1));
+	reg->nat64_regs[0] = REG_C_6;
+	reg->nat64_regs[1] = reg->hw_avl_tags[j - 2];
+	reg->nat64_regs[2] = reg->hw_avl_tags[j - 1];
 }
 
 static void
