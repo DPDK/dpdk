@@ -152,6 +152,7 @@ Features
 - Matching on random value.
 - Modify IPv4/IPv6 ECN field.
 - Push or remove IPv6 routing extension.
+- NAT64.
 - RSS support in sample action.
 - E-Switch mirroring and jump.
 - E-Switch mirroring and modify.
@@ -724,6 +725,20 @@ Limitations
   - Only supports TCP or UDP as next layer.
   - IPv6 routing header must be the only present extension.
   - Not supported on guest port.
+
+- NAT64 action:
+
+  - Supported only with HW Steering enabled (``dv_flow_en`` = 2).
+  - FW version: at least ``XX.39.1002``.
+  - Supported only on non-root table.
+  - Actions order limitation should follow the modify fields action.
+  - The last 2 TAG registers will be used implicitly in address backup mode.
+  - Even if the action can be shared, new steering entries will be created per flow rule.
+    It is recommended a single rule with NAT64 should be shared
+    to reduce the duplication of entries.
+    The default address and other fields conversion will be handled with NAT64 action.
+    To support other address, new rule(s) with modify fields on the IP addresses should be created.
+  - TOS / Traffic Class is not supported now.
 
 - Hairpin:
 

@@ -169,6 +169,17 @@ struct mlx5_rte_flow_item_sq {
 	uint32_t queue; /* DevX SQ number */
 };
 
+/* Map from registers to modify fields. */
+extern enum mlx5_modification_field reg_to_field[];
+extern const size_t mlx5_mod_reg_size;
+
+static __rte_always_inline enum mlx5_modification_field
+mlx5_convert_reg_to_field(enum modify_reg reg)
+{
+	MLX5_ASSERT((size_t)reg < mlx5_mod_reg_size);
+	return reg_to_field[reg];
+}
+
 /* Feature name to allocate metadata register. */
 enum mlx5_feature_name {
 	MLX5_HAIRPIN_RX,

@@ -971,7 +971,7 @@ flow_dv_convert_action_modify_tcp_ack
 					     MLX5_MODIFICATION_TYPE_ADD, error);
 }
 
-static enum mlx5_modification_field reg_to_field[] = {
+enum mlx5_modification_field reg_to_field[] = {
 	[REG_NON] = MLX5_MODI_OUT_NONE,
 	[REG_A] = MLX5_MODI_META_DATA_REG_A,
 	[REG_B] = MLX5_MODI_META_DATA_REG_B,
@@ -988,6 +988,8 @@ static enum mlx5_modification_field reg_to_field[] = {
 	[REG_C_10] = MLX5_MODI_META_REG_C_10,
 	[REG_C_11] = MLX5_MODI_META_REG_C_11,
 };
+
+const size_t mlx5_mod_reg_size = RTE_DIM(reg_to_field);
 
 /**
  * Convert register set to DV specification.

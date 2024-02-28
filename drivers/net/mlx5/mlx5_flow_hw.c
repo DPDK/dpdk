@@ -7964,6 +7964,66 @@ flow_hw_destroy_send_to_kernel_action(struct mlx5_priv *priv)
 	}
 }
 
+static void
+flow_hw_destroy_nat64_actions(struct mlx5_priv *priv)
+{
+	uint32_t i;
+
+	for (i = MLX5DR_TABLE_TYPE_NIC_RX; i < MLX5DR_TABLE_TYPE_MAX; i++) {
+		if (priv->action_nat64[i][RTE_FLOW_NAT64_6TO4]) {
+			(void)mlx5dr_action_destroy(priv->action_nat64[i][RTE_FLOW_NAT64_6TO4]);
+			priv->action_nat64[i][RTE_FLOW_NAT64_6TO4] = NULL;
+		}
+		if (priv->action_nat64[i][RTE_FLOW_NAT64_4TO6]) {
+			(void)mlx5dr_action_destroy(priv->action_nat64[i][RTE_FLOW_NAT64_4TO6]);
+			priv->action_nat64[i][RTE_FLOW_NAT64_4TO6] = NULL;
+		}
+	}
+}
+
+static int
+flow_hw_create_nat64_actions(struct mlx5_priv *priv, struct rte_flow_error *error)
+{
+	struct mlx5dr_action_nat64_attr attr;
+	uint8_t regs[MLX5_FLOW_NAT64_REGS_MAX];
+	uint32_t i;
+	const uint32_t flags[MLX5DR_TABLE_TYPE_MAX] = {
+		MLX5DR_ACTION_FLAG_HWS_RX | MLX5DR_ACTION_FLAG_SHARED,
+		MLX5DR_ACTION_FLAG_HWS_TX | MLX5DR_ACTION_FLAG_SHARED,
+		MLX5DR_ACTION_FLAG_HWS_FDB | MLX5DR_ACTION_FLAG_SHARED,
+	};
+	struct mlx5dr_action *act;
+
+	attr.registers = regs;
+	/* Try to use 3 registers by default. */
+	attr.num_of_registers = MLX5_FLOW_NAT64_REGS_MAX;
+	for (i = 0; i < MLX5_FLOW_NAT64_REGS_MAX; i++) {
+		MLX5_ASSERT(priv->sh->registers.nat64_regs[i] != REG_NON);
+		regs[i] = mlx5_convert_reg_to_field(priv->sh->registers.nat64_regs[i]);
+	}
+	for (i = MLX5DR_TABLE_TYPE_NIC_RX; i < MLX5DR_TABLE_TYPE_MAX; i++) {
+		if (i == MLX5DR_TABLE_TYPE_FDB && !priv->sh->config.dv_esw_en)
+			continue;
+		attr.flags = (enum mlx5dr_action_nat64_flags)
+			     (MLX5DR_ACTION_NAT64_V6_TO_V4 | MLX5DR_ACTION_NAT64_BACKUP_ADDR);
+		act = mlx5dr_action_create_nat64(priv->dr_ctx, &attr, flags[i]);
+		if (!act)
+			return rte_flow_error_set(error, rte_errno,
+						  RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+						  "Failed to create v6 to v4 action.");
+		priv->action_nat64[i][RTE_FLOW_NAT64_6TO4] = act;
+		attr.flags = (enum mlx5dr_action_nat64_flags)
+			     (MLX5DR_ACTION_NAT64_V4_TO_V6 | MLX5DR_ACTION_NAT64_BACKUP_ADDR);
+		act = mlx5dr_action_create_nat64(priv->dr_ctx, &attr, flags[i]);
+		if (!act)
+			return rte_flow_error_set(error, rte_errno,
+						  RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+						  "Failed to create v4 to v6 action.");
+		priv->action_nat64[i][RTE_FLOW_NAT64_4TO6] = act;
+	}
+	return 0;
+}
+
 /**
  * Create an egress pattern template matching on source SQ.
  *
@@ -10175,6 +10235,9 @@ flow_hw_configure(struct rte_eth_dev *dev,
 				   NULL, "Failed to VLAN actions.");
 		goto err;
 	}
+	if (flow_hw_create_nat64_actions(priv, error))
+		DRV_LOG(WARNING, "Cannot create NAT64 action on port %u, "
+			"please check the FW version", dev->data->port_id);
 	if (_queue_attr)
 		mlx5_free(_queue_attr);
 	if (port_attr->flags & RTE_FLOW_PORT_FLAG_STRICT_QUEUE)
@@ -10208,6 +10271,7 @@ err:
 	}
 	if (priv->hw_def_miss)
 		mlx5dr_action_destroy(priv->hw_def_miss);
+	flow_hw_destroy_nat64_actions(priv);
 	flow_hw_destroy_vlan(dev);
 	if (dr_ctx)
 		claim_zero(mlx5dr_context_close(dr_ctx));
@@ -10291,6 +10355,7 @@ flow_hw_resource_release(struct rte_eth_dev *dev)
 	}
 	if (priv->hw_def_miss)
 		mlx5dr_action_destroy(priv->hw_def_miss);
+	flow_hw_destroy_nat64_actions(priv);
 	flow_hw_destroy_vlan(dev);
 	flow_hw_destroy_send_to_kernel_action(priv);
 	flow_hw_free_vport_actions(priv);

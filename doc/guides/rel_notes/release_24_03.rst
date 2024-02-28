@@ -81,12 +81,14 @@ New Features
   Added function to calculate hash when doing tunnel encapsulation:
   ``rte_flow_calc_encap_hash()``
 
-* **Added flow matching items.**
+* **Added flow matching items and action.**
 
   * Added ``RTE_FLOW_ITEM_TYPE_COMPARE`` to allow matching
     on comparison result between packet fields or value.
   * Added ``RTE_FLOW_ITEM_TYPE_RANDOM`` to match a random value,
     and ``RTE_FLOW_FIELD_RANDOM`` to represent it with a field ID.
+  * Added ``RTE_FLOW_ACTION_TYPE_NAT64`` to offload header conversion
+    between IPv4 and IPv6.
 
 * **Added flow template table resizing.**
 
@@ -143,6 +145,7 @@ New Features
   * Added support for comparing result between packet fields or value.
   * Added support for accumulating value of field into another one.
   * Added support for copying inner fields in HWS flow engine.
+  * Added support for ``RTE_FLOW_ACTION_TYPE_NAT64`` flow action in HWS flow engine.
   * Added support for sharing indirect action objects
     of type ``RTE_FLOW_ACTION_TYPE_METER_MARK`` and ``RTE_FLOW_ACTION_TYPE_CONNTRACK``
     in HWS flow engine.
