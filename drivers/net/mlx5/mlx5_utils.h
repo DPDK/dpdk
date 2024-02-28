@@ -428,6 +428,22 @@ void mlx5_ipool_flush_cache(struct mlx5_indexed_pool *pool);
 void *mlx5_ipool_get_next(struct mlx5_indexed_pool *pool, uint32_t *pos);
 
 /**
+ * This function resize the ipool.
+ *
+ * @param pool
+ *   Pointer to the index memory pool handler.
+ * @param num_entries
+ *   Number of entries to be added to the pool.
+ *   This number should be divisible by trunk_size.
+ *
+ * @return
+ *   - non-zero value on error.
+ *   - 0 on success.
+ *
+ */
+int mlx5_ipool_resize(struct mlx5_indexed_pool *pool, uint32_t num_entries);
+
+/**
  * This function allocates new empty Three-level table.
  *
  * @param type

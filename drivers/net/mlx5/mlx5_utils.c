@@ -809,6 +809,35 @@ mlx5_ipool_get_next(struct mlx5_indexed_pool *pool, uint32_t *pos)
 	return NULL;
 }
 
+int
+mlx5_ipool_resize(struct mlx5_indexed_pool *pool, uint32_t num_entries)
+{
+	uint32_t cur_max_idx;
+	uint32_t max_index = mlx5_trunk_idx_offset_get(pool, TRUNK_MAX_IDX + 1);
+
+	if (num_entries % pool->cfg.trunk_size) {
+		DRV_LOG(ERR, "num_entries param should be trunk_size(=%u) multiplication\n",
+			pool->cfg.trunk_size);
+		return -EINVAL;
+	}
+
+	mlx5_ipool_lock(pool);
+	cur_max_idx = pool->cfg.max_idx + num_entries;
+	/* If the ipool max idx is above maximum or uint overflow occurred. */
+	if (cur_max_idx > max_index || cur_max_idx < num_entries) {
+		DRV_LOG(ERR, "Ipool resize failed\n");
+		DRV_LOG(ERR, "Adding %u entries to existing %u entries, will cross max limit(=%u)\n",
+		num_entries, cur_max_idx, max_index);
+		mlx5_ipool_unlock(pool);
+		return -EINVAL;
+	}
+
+	/* Update maximum entries number. */
+	pool->cfg.max_idx = cur_max_idx;
+	mlx5_ipool_unlock(pool);
+	return 0;
+}
+
 void
 mlx5_ipool_dump(struct mlx5_indexed_pool *pool)
 {
