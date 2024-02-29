@@ -2514,10 +2514,6 @@ flow_hw_async_flow_create(struct rte_eth_dev *dev,
 	uint32_t flow_idx;
 	int ret;
 
-	if (unlikely((!dev->data->dev_started))) {
-		rte_errno = EINVAL;
-		goto error;
-	}
 	if (unlikely(!priv->hw_q[queue].job_idx)) {
 		rte_errno = ENOMEM;
 		goto error;
