@@ -1286,13 +1286,16 @@ _mlx5_os_read_dev_counters(struct rte_eth_dev *dev, int pf, uint64_t *stats)
 	struct mlx5_xstats_ctrl *xstats_ctrl = &priv->xstats_ctrl;
 	unsigned int i;
 	struct ifreq ifr;
-	unsigned int stats_sz = xstats_ctrl->stats_n * sizeof(uint64_t);
+	unsigned int max_stats_n = RTE_MAX(xstats_ctrl->stats_n, xstats_ctrl->stats_n_2nd);
+	unsigned int stats_sz = max_stats_n * sizeof(uint64_t);
 	unsigned char et_stat_buf[sizeof(struct ethtool_stats) + stats_sz];
 	struct ethtool_stats *et_stats = (struct ethtool_stats *)et_stat_buf;
 	int ret;
+	uint16_t i_idx, o_idx;
 
 	et_stats->cmd = ETHTOOL_GSTATS;
-	et_stats->n_stats = xstats_ctrl->stats_n;
+	/* Pass the maximum value, the driver may ignore this. */
+	et_stats->n_stats = max_stats_n;
 	ifr.ifr_data = (caddr_t)et_stats;
 	if (pf >= 0)
 		ret = mlx5_ifreq_by_ifname(priv->sh->bond.ports[pf].ifname,
@@ -1305,21 +1308,34 @@ _mlx5_os_read_dev_counters(struct rte_eth_dev *dev, int pf, uint64_t *stats)
 			dev->data->port_id);
 		return ret;
 	}
-	for (i = 0; i != xstats_ctrl->mlx5_stats_n; ++i) {
-		if (xstats_ctrl->info[i].dev)
-			continue;
-		stats[i] += (uint64_t)
-			    et_stats->data[xstats_ctrl->dev_table_idx[i]];
+	if (pf <= 0) {
+		for (i = 0; i != xstats_ctrl->mlx5_stats_n; i++) {
+			i_idx = xstats_ctrl->dev_table_idx[i];
+			if (i_idx == UINT16_MAX || xstats_ctrl->info[i].dev)
+				continue;
+			o_idx = xstats_ctrl->xstats_o_idx[i];
+			stats[o_idx] += (uint64_t)et_stats->data[i_idx];
+		}
+	} else {
+		for (i = 0; i != xstats_ctrl->mlx5_stats_n; i++) {
+			i_idx = xstats_ctrl->dev_table_idx_2nd[i];
+			if (i_idx == UINT16_MAX)
+				continue;
+			o_idx = xstats_ctrl->xstats_o_idx_2nd[i];
+			stats[o_idx] += (uint64_t)et_stats->data[i_idx];
+		}
 	}
 	return 0;
 }
 
-/**
+/*
  * Read device counters.
  *
  * @param dev
  *   Pointer to Ethernet device.
- * @param[out] stats
+ * @param bond_master
+ *   Indicate if the device is a bond master.
+ * @param stats
  *   Counters table output buffer.
  *
  * @return
@@ -1327,7 +1343,7 @@ _mlx5_os_read_dev_counters(struct rte_eth_dev *dev, int pf, uint64_t *stats)
  *   rte_errno is set.
  */
 int
-mlx5_os_read_dev_counters(struct rte_eth_dev *dev, uint64_t *stats)
+mlx5_os_read_dev_counters(struct rte_eth_dev *dev, bool bond_master, uint64_t *stats)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_xstats_ctrl *xstats_ctrl = &priv->xstats_ctrl;
@@ -1335,7 +1351,7 @@ mlx5_os_read_dev_counters(struct rte_eth_dev *dev, uint64_t *stats)
 
 	memset(stats, 0, sizeof(*stats) * xstats_ctrl->mlx5_stats_n);
 	/* Read ifreq counters. */
-	if (priv->master && priv->pf_bond >= 0) {
+	if (bond_master) {
 		/* Sum xstats from bonding device member ports. */
 		for (i = 0; i < priv->sh->bond.n_port; i++) {
 			ret = _mlx5_os_read_dev_counters(dev, i, stats);
@@ -1347,13 +1363,17 @@ mlx5_os_read_dev_counters(struct rte_eth_dev *dev, uint64_t *stats)
 		if (ret)
 			return ret;
 	}
-	/* Read IB counters. */
-	for (i = 0; i != xstats_ctrl->mlx5_stats_n; ++i) {
+	/*
+	 * Read IB counters.
+	 * The counters are unique per IB device but not per net IF.
+	 * In bonding mode, getting the stats name only from 1 port is enough.
+	 */
+	for (i = 0; i != xstats_ctrl->mlx5_stats_n; i++) {
 		if (!xstats_ctrl->info[i].dev)
 			continue;
 		/* return last xstats counter if fail to read. */
 		if (mlx5_os_read_dev_stat(priv, xstats_ctrl->info[i].ctr_name,
-			    &stats[i]) == 0)
+					  &stats[i]) == 0)
 			xstats_ctrl->xstats[i] = stats[i];
 		else
 			stats[i] = xstats_ctrl->xstats[i];
@@ -1361,18 +1381,24 @@ mlx5_os_read_dev_counters(struct rte_eth_dev *dev, uint64_t *stats)
 	return ret;
 }
 
-/**
+/*
  * Query the number of statistics provided by ETHTOOL.
  *
  * @param dev
  *   Pointer to Ethernet device.
+ * @param bond_master
+ *   Indicate if the device is a bond master.
+ * @param n_stats
+ *   Pointer to number of stats to store.
+ * @param n_stats_sec
+ *   Pointer to number of stats to store for the 2nd port of the bond.
  *
  * @return
- *   Number of statistics on success, negative errno value otherwise and
- *   rte_errno is set.
+ *   0 on success, negative errno value otherwise and rte_errno is set.
  */
 int
-mlx5_os_get_stats_n(struct rte_eth_dev *dev)
+mlx5_os_get_stats_n(struct rte_eth_dev *dev, bool bond_master,
+		    uint16_t *n_stats, uint16_t *n_stats_sec)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct ethtool_drvinfo drvinfo;
@@ -1381,18 +1407,34 @@ mlx5_os_get_stats_n(struct rte_eth_dev *dev)
 
 	drvinfo.cmd = ETHTOOL_GDRVINFO;
 	ifr.ifr_data = (caddr_t)&drvinfo;
-	if (priv->master && priv->pf_bond >= 0)
-		/* Bonding PF. */
+	/* Bonding PFs. */
+	if (bond_master) {
 		ret = mlx5_ifreq_by_ifname(priv->sh->bond.ports[0].ifname,
 					   SIOCETHTOOL, &ifr);
-	else
+		if (ret) {
+			DRV_LOG(WARNING, "bonding port %u unable to query number of"
+				" statistics for the 1st slave, %d", PORT_ID(priv), ret);
+			return ret;
+		}
+		*n_stats = drvinfo.n_stats;
+		ret = mlx5_ifreq_by_ifname(priv->sh->bond.ports[1].ifname,
+					   SIOCETHTOOL, &ifr);
+		if (ret) {
+			DRV_LOG(WARNING, "bonding port %u unable to query number of"
+				" statistics for the 2nd slave, %d", PORT_ID(priv), ret);
+			return ret;
+		}
+		*n_stats_sec = drvinfo.n_stats;
+	} else {
 		ret = mlx5_ifreq(dev, SIOCETHTOOL, &ifr);
-	if (ret) {
-		DRV_LOG(WARNING, "port %u unable to query number of statistics",
-			dev->data->port_id);
-		return ret;
+		if (ret) {
+			DRV_LOG(WARNING, "port %u unable to query number of statistics",
+				PORT_ID(priv));
+			return ret;
+		}
+		*n_stats = drvinfo.n_stats;
 	}
-	return drvinfo.n_stats;
+	return 0;
 }
 
 static const struct mlx5_counter_ctrl mlx5_counters_init[] = {
@@ -1615,6 +1657,101 @@ static const struct mlx5_counter_ctrl mlx5_counters_init[] = {
 
 static const unsigned int xstats_n = RTE_DIM(mlx5_counters_init);
 
+static int
+mlx5_os_get_stats_strings(struct rte_eth_dev *dev, bool bond_master,
+			  struct ethtool_gstrings *strings,
+			  uint32_t stats_n, uint32_t stats_n_2nd)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_xstats_ctrl *xstats_ctrl = &priv->xstats_ctrl;
+	struct ifreq ifr;
+	int ret;
+	uint32_t i, j, idx;
+
+	/* Ensure no out of bounds access before. */
+	MLX5_ASSERT(xstats_n <= MLX5_MAX_XSTATS);
+	strings->cmd = ETHTOOL_GSTRINGS;
+	strings->string_set = ETH_SS_STATS;
+	strings->len = stats_n;
+	ifr.ifr_data = (caddr_t)strings;
+	if (bond_master)
+		ret = mlx5_ifreq_by_ifname(priv->sh->bond.ports[0].ifname,
+					   SIOCETHTOOL, &ifr);
+	else
+		ret = mlx5_ifreq(dev, SIOCETHTOOL, &ifr);
+	if (ret) {
+		DRV_LOG(WARNING, "port %u unable to get statistic names with %d",
+			PORT_ID(priv), ret);
+		return ret;
+	}
+	/* Reorganize the orders to reduce the iterations. */
+	for (j = 0; j < xstats_n; j++) {
+		xstats_ctrl->dev_table_idx[j] = UINT16_MAX;
+		for (i = 0; i < stats_n; i++) {
+			const char *curr_string =
+				(const char *)&strings->data[i * ETH_GSTRING_LEN];
+
+			if (!strcmp(mlx5_counters_init[j].ctr_name, curr_string)) {
+				idx = xstats_ctrl->mlx5_stats_n++;
+				xstats_ctrl->dev_table_idx[j] = i;
+				xstats_ctrl->xstats_o_idx[j] = idx;
+				xstats_ctrl->info[idx] = mlx5_counters_init[j];
+			}
+		}
+	}
+	if (!bond_master) {
+		/* Add dev counters, unique per IB device. */
+		for (j = 0; j != xstats_n; j++) {
+			if (mlx5_counters_init[j].dev) {
+				idx = xstats_ctrl->mlx5_stats_n++;
+				xstats_ctrl->info[idx] = mlx5_counters_init[j];
+				xstats_ctrl->hw_stats[idx] = 0;
+			}
+		}
+		return 0;
+	}
+
+	strings->len = stats_n_2nd;
+	ret = mlx5_ifreq_by_ifname(priv->sh->bond.ports[1].ifname,
+				   SIOCETHTOOL, &ifr);
+	if (ret) {
+		DRV_LOG(WARNING, "port %u unable to get statistic names for 2nd slave with %d",
+			PORT_ID(priv), ret);
+		return ret;
+	}
+	/* The 2nd slave port may have a different strings set, based on the configuration. */
+	for (j = 0; j != xstats_n; j++) {
+		xstats_ctrl->dev_table_idx_2nd[j] = UINT16_MAX;
+		for (i = 0; i != stats_n_2nd; i++) {
+			const char *curr_string =
+				(const char *)&strings->data[i * ETH_GSTRING_LEN];
+
+			if (!strcmp(mlx5_counters_init[j].ctr_name, curr_string)) {
+				xstats_ctrl->dev_table_idx_2nd[j] = i;
+				if (xstats_ctrl->dev_table_idx[j] != UINT16_MAX) {
+					/* Already mapped in the 1st slave port. */
+					idx = xstats_ctrl->xstats_o_idx[j];
+					xstats_ctrl->xstats_o_idx_2nd[j] = idx;
+				} else {
+					/* Append the new items to the end of the map. */
+					idx = xstats_ctrl->mlx5_stats_n++;
+					xstats_ctrl->xstats_o_idx_2nd[j] = idx;
+					xstats_ctrl->info[idx] = mlx5_counters_init[j];
+				}
+			}
+		}
+	}
+	/* Dev counters are always at the last now. */
+	for (j = 0; j != xstats_n; j++) {
+		if (mlx5_counters_init[j].dev) {
+			idx = xstats_ctrl->mlx5_stats_n++;
+			xstats_ctrl->info[idx] = mlx5_counters_init[j];
+			xstats_ctrl->hw_stats[idx] = 0;
+		}
+	}
+	return 0;
+}
+
 /**
  * Init the structures to read device counters.
  *
@@ -1627,76 +1764,44 @@ mlx5_os_stats_init(struct rte_eth_dev *dev)
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_xstats_ctrl *xstats_ctrl = &priv->xstats_ctrl;
 	struct mlx5_stats_ctrl *stats_ctrl = &priv->stats_ctrl;
-	unsigned int i;
-	unsigned int j;
-	struct ifreq ifr;
 	struct ethtool_gstrings *strings = NULL;
-	unsigned int dev_stats_n;
+	uint16_t dev_stats_n = 0;
+	uint16_t dev_stats_n_2nd = 0;
+	unsigned int max_stats_n;
 	unsigned int str_sz;
 	int ret;
+	bool bond_master = (priv->master && priv->pf_bond >= 0);
 
 	/* So that it won't aggregate for each init. */
 	xstats_ctrl->mlx5_stats_n = 0;
-	ret = mlx5_os_get_stats_n(dev);
+	ret = mlx5_os_get_stats_n(dev, bond_master, &dev_stats_n, &dev_stats_n_2nd);
 	if (ret < 0) {
 		DRV_LOG(WARNING, "port %u no extended statistics available",
 			dev->data->port_id);
 		return;
 	}
-	dev_stats_n = ret;
+	max_stats_n = RTE_MAX(dev_stats_n, dev_stats_n_2nd);
 	/* Allocate memory to grab stat names and values. */
-	str_sz = dev_stats_n * ETH_GSTRING_LEN;
+	str_sz = max_stats_n * ETH_GSTRING_LEN;
 	strings = (struct ethtool_gstrings *)
 		  mlx5_malloc(0, str_sz + sizeof(struct ethtool_gstrings), 0,
 			      SOCKET_ID_ANY);
 	if (!strings) {
 		DRV_LOG(WARNING, "port %u unable to allocate memory for xstats",
-		     dev->data->port_id);
+			dev->data->port_id);
 		return;
 	}
-	strings->cmd = ETHTOOL_GSTRINGS;
-	strings->string_set = ETH_SS_STATS;
-	strings->len = dev_stats_n;
-	ifr.ifr_data = (caddr_t)strings;
-	if (priv->master && priv->pf_bond >= 0)
-		/* Bonding master. */
-		ret = mlx5_ifreq_by_ifname(priv->sh->bond.ports[0].ifname,
-					   SIOCETHTOOL, &ifr);
-	else
-		ret = mlx5_ifreq(dev, SIOCETHTOOL, &ifr);
-	if (ret) {
-		DRV_LOG(WARNING, "port %u unable to get statistic names",
+	ret = mlx5_os_get_stats_strings(dev, bond_master, strings,
+					dev_stats_n, dev_stats_n_2nd);
+	if (ret < 0) {
+		DRV_LOG(WARNING, "port %u failed to get the stats strings",
 			dev->data->port_id);
 		goto free;
 	}
-	for (i = 0; i != dev_stats_n; ++i) {
-		const char *curr_string = (const char *)
-			&strings->data[i * ETH_GSTRING_LEN];
-
-		for (j = 0; j != xstats_n; ++j) {
-			if (!strcmp(mlx5_counters_init[j].ctr_name,
-				    curr_string)) {
-				unsigned int idx = xstats_ctrl->mlx5_stats_n++;
-
-				xstats_ctrl->dev_table_idx[idx] = i;
-				xstats_ctrl->info[idx] = mlx5_counters_init[j];
-				break;
-			}
-		}
-	}
-	/* Add dev counters. */
-	MLX5_ASSERT(xstats_ctrl->mlx5_stats_n <= MLX5_MAX_XSTATS);
-	for (i = 0; i != xstats_n; ++i) {
-		if (mlx5_counters_init[i].dev) {
-			unsigned int idx = xstats_ctrl->mlx5_stats_n++;
-
-			xstats_ctrl->info[idx] = mlx5_counters_init[i];
-			xstats_ctrl->hw_stats[idx] = 0;
-		}
-	}
 	xstats_ctrl->stats_n = dev_stats_n;
+	xstats_ctrl->stats_n_2nd = dev_stats_n_2nd;
 	/* Copy to base at first time. */
-	ret = mlx5_os_read_dev_counters(dev, xstats_ctrl->base);
+	ret = mlx5_os_read_dev_counters(dev, bond_master, xstats_ctrl->base);
 	if (ret)
 		DRV_LOG(ERR, "port %u cannot read device counters: %s",
 			dev->data->port_id, strerror(rte_errno));

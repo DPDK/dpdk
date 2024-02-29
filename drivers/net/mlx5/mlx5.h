@@ -263,14 +263,22 @@ struct mlx5_counter_ctrl {
 struct mlx5_xstats_ctrl {
 	/* Number of device stats. */
 	uint16_t stats_n;
+	/* Number of device stats, for the 2nd port in bond. */
+	uint16_t stats_n_2nd;
 	/* Number of device stats identified by PMD. */
-	uint16_t  mlx5_stats_n;
+	uint16_t mlx5_stats_n;
 	/* Index in the device counters table. */
 	uint16_t dev_table_idx[MLX5_MAX_XSTATS];
+	/* Index in the output table. */
+	uint16_t xstats_o_idx[MLX5_MAX_XSTATS];
 	uint64_t base[MLX5_MAX_XSTATS];
 	uint64_t xstats[MLX5_MAX_XSTATS];
 	uint64_t hw_stats[MLX5_MAX_XSTATS];
 	struct mlx5_counter_ctrl info[MLX5_MAX_XSTATS];
+	/* Index in the device counters table, for the 2nd port in bond. */
+	uint16_t dev_table_idx_2nd[MLX5_MAX_XSTATS];
+	/* Index in the output table, for the 2nd port in bond. */
+	uint16_t xstats_o_idx_2nd[MLX5_MAX_XSTATS];
 };
 
 struct mlx5_stats_ctrl {
@@ -2182,8 +2190,9 @@ int mlx5_get_module_eeprom(struct rte_eth_dev *dev,
 			   struct rte_dev_eeprom_info *info);
 int mlx5_os_read_dev_stat(struct mlx5_priv *priv,
 			  const char *ctr_name, uint64_t *stat);
-int mlx5_os_read_dev_counters(struct rte_eth_dev *dev, uint64_t *stats);
-int mlx5_os_get_stats_n(struct rte_eth_dev *dev);
+int mlx5_os_read_dev_counters(struct rte_eth_dev *dev, bool bond_master, uint64_t *stats);
+int mlx5_os_get_stats_n(struct rte_eth_dev *dev, bool bond_master,
+			uint16_t *n_stats, uint16_t *n_stats_sec);
 void mlx5_os_stats_init(struct rte_eth_dev *dev);
 int mlx5_get_flag_dropless_rq(struct rte_eth_dev *dev);
 
