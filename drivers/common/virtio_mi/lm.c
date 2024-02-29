@@ -1117,7 +1117,7 @@ virtio_vdpa_mi_dev_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		} while(retries);
 	}
 
-	priv->vpdev = virtio_pci_dev_alloc(pci_dev, device_fd);
+	priv->vpdev = virtio_pci_dev_alloc(pci_dev, device_fd, false);
 	if (priv->vpdev == NULL) {
 		DRV_LOG(ERR, "%s failed to alloc virtio pci dev", devname);
 		ret = rte_errno ? -rte_errno : -VFE_VDPA_ERR_ADD_PF_PROBE_FAIL;

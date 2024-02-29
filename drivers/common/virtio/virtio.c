@@ -18,7 +18,7 @@
 #endif
 
 struct virtio_pci_dev *
-virtio_pci_dev_alloc(struct rte_pci_device *pci_dev, int dev_fd)
+virtio_pci_dev_alloc(struct rte_pci_device *pci_dev, int dev_fd, bool restore)
 {
 	struct virtio_pci_dev *vpdev;
 	struct virtio_hw *hw;
@@ -48,11 +48,13 @@ virtio_pci_dev_alloc(struct rte_pci_device *pci_dev, int dev_fd)
 		goto error;
 	}
 
-	/* Reset the device, so when device is used later, reset time is saved. */
-	ret = virtio_pci_dev_reset(vpdev, VIRTIO_VDPA_PROBE_RESET_TIME_OUT);
-	if (ret) {
-		rte_errno = VFE_VDPA_ERR_RESET_DEVICE_TIMEOUT;
-		goto error;
+	if (!restore) {
+		/* Reset the device, so when device is used later, reset time is saved. */
+		ret = virtio_pci_dev_reset(vpdev, VIRTIO_VDPA_PROBE_RESET_TIME_OUT);
+		if (ret) {
+			rte_errno = VFE_VDPA_ERR_RESET_DEVICE_TIMEOUT;
+			goto error;
+		}
 	}
 
 	/* Tell the device that driver has noticed it. */

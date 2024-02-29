@@ -2025,6 +2025,7 @@ virtio_vdpa_dev_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	uint32_t i;
 	size_t mz_len;
 	int retries = VIRTIO_VDPA_GET_GROUPE_RETRIES;
+	bool restore = false;
 
 	rte_pci_device_name(&pci_dev->addr, devname, RTE_DEV_NAME_MAX_LEN);
 
@@ -2104,6 +2105,7 @@ virtio_vdpa_dev_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	priv->iommu_domain = iommu_domain;
 
 	if (!strcmp(cached_ctx.vf_name.dev_bdf, devname)) {
+		restore = true;
 		container_fd = cached_ctx.ctx->vfio_container_fd;
 		group_fd = cached_ctx.ctx->vfio_group_fd;
 		device_fd = cached_ctx.ctx->vfio_device_fd;
@@ -2191,7 +2193,7 @@ virtio_vdpa_dev_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		priv->vfio_group_fd = group_fd;		
 	}
 
-	priv->vpdev = virtio_pci_dev_alloc(pci_dev, device_fd);
+	priv->vpdev = virtio_pci_dev_alloc(pci_dev, device_fd, restore);
 	if (priv->vpdev == NULL) {
 		DRV_LOG(ERR, "%s failed to alloc virito pci dev", devname);
 		rte_errno = rte_errno ? rte_errno : VFE_VDPA_ERR_ADD_VF_ALLOC;

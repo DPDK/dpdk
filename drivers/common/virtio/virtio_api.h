@@ -51,7 +51,7 @@ struct virtio_dev_run_state_info {
  * descriptor, alloc with the device fd that needs to be restored
  */
 __rte_internal
-struct virtio_pci_dev *virtio_pci_dev_alloc(struct rte_pci_device *pci_dev, int dev_fd);
+struct virtio_pci_dev *virtio_pci_dev_alloc(struct rte_pci_device *pci_dev, int dev_fd, bool restore);
 __rte_internal
 uint16_t virtio_pci_dev_nr_vq_get(struct virtio_pci_dev *vpdev);
 __rte_internal
