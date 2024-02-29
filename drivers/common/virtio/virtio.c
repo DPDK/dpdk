@@ -37,7 +37,7 @@ virtio_pci_dev_alloc(struct rte_pci_device *pci_dev, int dev_fd, bool restore)
 	ret = virtio_pci_dev_init(pci_dev, vpdev, dev_fd);
 	if (ret) {
 		PMD_INIT_LOG(ERR, "Failed to init virtio PCI device %s", pci_dev->device.name);
-		rte_errno = VFE_VDPA_ERR_ADD_PF_PROBE_FAIL;
+		rte_errno = VFE_VDPA_ERR_DEVICE_PROBE_FAIL;
 		goto error;
 	}
 

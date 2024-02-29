@@ -22,7 +22,7 @@ static const char *virtio_err_str[] =
 	"Device reset timeout",
 	"Devargs parse fail",
 	"PF device already add",
-	"PF device probe fail",
+	"Device probe fail",
 	"PF deviceid not support", /*10*/
 	"PF device feature does not meet requirements",
 	"Can't allocate admin queue",
