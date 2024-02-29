@@ -1082,8 +1082,11 @@ priv_flow_process(struct pmd_internals *pmd,
 		}
 		/* use flower filter type */
 		tap_nlattr_add(&flow->msg.nh, TCA_KIND, sizeof("flower"), "flower");
-		if (tap_nlattr_nested_start(&flow->msg, TCA_OPTIONS) < 0)
-			goto exit_item_not_supported;
+		if (tap_nlattr_nested_start(&flow->msg, TCA_OPTIONS) < 0) {
+			rte_flow_error_set(error, ENOMEM, RTE_FLOW_ERROR_TYPE_ACTION,
+					   actions, "could not allocated netlink msg");
+			goto exit_return_error;
+		}
 	}
 	for (; items->type != RTE_FLOW_ITEM_TYPE_END; ++items) {
 		const struct tap_flow_items *token = NULL;
@@ -1199,9 +1202,12 @@ actions:
 			if (action)
 				goto exit_action_not_supported;
 			action = 1;
-			if (!queue ||
-			    (queue->index > pmd->dev->data->nb_rx_queues - 1))
-				goto exit_action_not_supported;
+			if (queue->index >= pmd->dev->data->nb_rx_queues) {
+				rte_flow_error_set(error, ERANGE,
+						   RTE_FLOW_ERROR_TYPE_ACTION, actions,
+						   "queue index out of range");
+				goto exit_return_error;
+			}
 			if (flow) {
 				struct action_data adata = {
 					.id = "skbedit",
@@ -1227,7 +1233,7 @@ actions:
 			if (!pmd->rss_enabled) {
 				err = rss_enable(pmd, attr, error);
 				if (err)
-					goto exit_action_not_supported;
+					goto exit_return_error;
 			}
 			if (flow)
 				err = rss_add_actions(flow, pmd, rss, error);
@@ -1235,7 +1241,7 @@ actions:
 			goto exit_action_not_supported;
 		}
 		if (err)
-			goto exit_action_not_supported;
+			goto exit_return_error;
 	}
 	/* When fate is unknown, drop traffic. */
 	if (!action) {
@@ -1258,6 +1264,7 @@ exit_item_not_supported:
 exit_action_not_supported:
 	rte_flow_error_set(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ACTION,
 			   actions, "action not supported");
+exit_return_error:
 	return -rte_errno;
 }
 
