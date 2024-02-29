@@ -367,16 +367,113 @@ int rte_vlog(uint32_t level, uint32_t logtype, const char *format, va_list ap)
 #define RTE_LOG_CHECK_NO_NEWLINE(...)
 #endif
 
+/**
+ * Generates a log message with a single trailing newline.
+ *
+ * The RTE_LOG_LINE() is a helper that expands logging of a message
+ * with RTE_LOG() appending a single newline to the formatted message.
+ *
+ * @param l
+ *   Log level. A value between EMERG (1) and DEBUG (8). The short name
+ *   is expanded by the macro, so it cannot be an integer value.
+ * @param t
+ *   The log type, for example, EAL. The short name is expanded by the
+ *   macro, so it cannot be an integer value.
+ * @param ...
+ *   The fmt string, as in printf(3), followed by the variable arguments
+ *   required by the format.
+ */
 #define RTE_LOG_LINE(l, t, ...) do { \
 	RTE_LOG_CHECK_NO_NEWLINE(RTE_FMT_HEAD(__VA_ARGS__ ,)); \
 	RTE_LOG(l, t, RTE_FMT(RTE_FMT_HEAD(__VA_ARGS__ ,) "\n", \
 		RTE_FMT_TAIL(__VA_ARGS__ ,))); \
 } while (0)
 
+/**
+ * Generates a log message for data path with a single trailing newline.
+ *
+ * Similar to RTE_LOG_LINE(), except that it is removed at compilation
+ * time if the RTE_LOG_DP_LEVEL configuration option is lower than the
+ * log level argument.
+ *
+ * The RTE_LOG_LINE() is a helper that expands logging of a message
+ * with RTE_LOG_DP() appending a single newline to the formatted
+ * message.
+ *
+ * @param l
+ *   Log level. A value between EMERG (1) and DEBUG (8). The short name
+ *   is expanded by the macro, so it cannot be an integer value.
+ * @param t
+ *   The log type, for example, EAL. The short name is expanded by the
+ *   macro, so it cannot be an integer value.
+ * @param ...
+ *   The fmt string, as in printf(3), followed by the variable arguments
+ *   required by the format.
+ */
 #define RTE_LOG_DP_LINE(l, t, ...) do { \
 	RTE_LOG_CHECK_NO_NEWLINE(RTE_FMT_HEAD(__VA_ARGS__ ,)); \
 	RTE_LOG_DP(l, t, RTE_FMT(RTE_FMT_HEAD(__VA_ARGS__ ,) "\n", \
 		RTE_FMT_TAIL(__VA_ARGS__ ,))); \
+} while (0)
+
+#define RTE_LOG_COMMA ,
+
+/**
+ * Generates a log message with a supplied prefix and arguments with a
+ * single trailing newline.
+ *
+ * The RTE_LOG_LINE_PREFIX() is a helper that expands logging of a
+ * message with RTE_LOG() prepending the supplied prefix and arguments
+ * appending a single newline to the formatted message.
+ *
+ * @param l
+ *   Log level. A value between EMERG (1) and DEBUG (8). The short name
+ *   is expanded by the macro, so it cannot be an integer value.
+ * @param t
+ *   The log type, for example, EAL. The short name is expanded by the
+ *   macro, so it cannot be an integer value.
+ * @param prefix
+ *   The prefix format string.
+ * @param args
+ *   The arguments for the prefix format string. If args contains
+ *   multiple arguments use RTE_LOG_COMMA to defer expansion.
+ * @param ...
+ *   The fmt string, as in printf(3), followed by the variable arguments
+ *   required by the format.
+ */
+#define RTE_LOG_LINE_PREFIX(l, t, prefix, args, ...) do { \
+	RTE_LOG_CHECK_NO_NEWLINE(RTE_FMT_HEAD(prefix __VA_ARGS__ ,)); \
+	RTE_LOG(l, t, RTE_FMT(prefix RTE_FMT_HEAD(__VA_ARGS__ ,) "\n", \
+	    args RTE_LOG_COMMA RTE_FMT_TAIL(__VA_ARGS__ ,))); \
+} while (0)
+
+/**
+ * Generates a log message for the data path with a supplied prefix and
+ * arguments with a single trailing newline.
+ *
+ * The RTE_LOG_DP_LINE_PREFIX() is a helper that expands logging of a
+ * message with RTE_LOG_DP() prepending the supplied prefix and
+ * arguments appending a single newline to the formatted message.
+ *
+ * @param l
+ *   Log level. A value between EMERG (1) and DEBUG (8). The short name
+ *   is expanded by the macro, so it cannot be an integer value.
+ * @param t
+ *   The log type, for example, EAL. The short name is expanded by the
+ *   macro, so it cannot be an integer value.
+ * @param prefix
+ *   The prefix format string.
+ * @param args
+ *   The arguments for the prefix format string. If args contains
+ *   multiple arguments use RTE_LOG_COMMA to defer expansion.
+ * @param ...
+ *   The fmt string, as in printf(3), followed by the variable arguments
+ *   required by the format.
+ */
+#define RTE_LOG_DP_LINE_PREFIX(l, t, prefix, args, ...) do { \
+	RTE_LOG_CHECK_NO_NEWLINE(RTE_FMT_HEAD(prefix __VA_ARGS__ ,)); \
+	RTE_LOG_DP(l, t, RTE_FMT(prefix RTE_FMT_HEAD(__VA_ARGS__ ,) "\n", \
+	    args RTE_LOG_COMMA RTE_FMT_TAIL(__VA_ARGS__ ,))); \
 } while (0)
 
 #define RTE_LOG_REGISTER_IMPL(type, name, level)			    \
