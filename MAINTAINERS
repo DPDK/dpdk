@@ -1022,6 +1022,7 @@ F: doc/guides/nics/pcap_ring.rst
 F: doc/guides/nics/features/pcap.ini
 
 Tap PMD
+M: Stephen Hemminger <stephen@networkplumber.org>
 F: drivers/net/tap/
 F: doc/guides/nics/tap.rst
 F: doc/guides/nics/features/tap.ini
