@@ -38,10 +38,16 @@ struct lcore_dma_map_t {
 	uint16_t cnt;
 };
 
+struct test_vchan_dev_config {
+	struct rte_dma_port_param port;
+	uintptr_t raddr;
+};
+
 struct test_configure {
 	bool is_valid;
 	bool is_skip;
 	uint8_t test_type;
+	uint8_t transfer_dir;
 	const char *test_type_str;
 	uint16_t src_numa_node;
 	uint16_t dst_numa_node;
@@ -57,6 +63,7 @@ struct test_configure {
 	uint16_t test_secs;
 	const char *eal_args;
 	uint8_t scenario_id;
+	struct test_vchan_dev_config vchan_dev;
 };
 
 void mem_copy_benchmark(struct test_configure *cfg, bool is_dma);

@@ -16,6 +16,8 @@
 #include <rte_cfgfile.h>
 #include <rte_string_fns.h>
 #include <rte_lcore.h>
+#include <rte_dmadev.h>
+#include <rte_kvargs.h>
 
 #include "main.h"
 
@@ -325,6 +327,28 @@ out:
 	return args_nr;
 }
 
+static int populate_pcie_config(const char *key, const char *value, void *test)
+{
+	struct test_configure *test_case = (struct test_configure *)test;
+	char *endptr;
+	int ret = 0;
+
+	if (strcmp(key, "raddr") == 0)
+		test_case->vchan_dev.raddr = strtoull(value, &endptr, 16);
+	else if (strcmp(key, "coreid") == 0)
+		test_case->vchan_dev.port.pcie.coreid = (uint8_t)atoi(value);
+	else if (strcmp(key, "vfid") == 0)
+		test_case->vchan_dev.port.pcie.vfid = (uint16_t)atoi(value);
+	else if (strcmp(key, "pfid") == 0)
+		test_case->vchan_dev.port.pcie.pfid = (uint16_t)atoi(value);
+	else {
+		printf("Invalid config param: %s\n", key);
+		ret = -1;
+	}
+
+	return ret;
+}
+
 static uint16_t
 load_configs(const char *path)
 {
@@ -333,9 +357,12 @@ load_configs(const char *path)
 	struct test_configure *test_case;
 	char section_name[CFG_NAME_LEN];
 	const char *case_type;
+	const char *transfer_dir;
 	const char *lcore_dma;
 	const char *mem_size_str, *buf_size_str, *ring_size_str, *kick_batch_str;
 	const char *skip;
+	struct rte_kvargs *kvlist;
+	const char *vchan_dev;
 	int args_nr, nb_vp;
 	bool is_dma;
 
@@ -373,6 +400,22 @@ load_configs(const char *path)
 		if (strcmp(case_type, DMA_MEM_COPY) == 0) {
 			test_case->test_type = TEST_TYPE_DMA_MEM_COPY;
 			test_case->test_type_str = DMA_MEM_COPY;
+
+			transfer_dir = rte_cfgfile_get_entry(cfgfile, section_name, "direction");
+			if (transfer_dir == NULL) {
+				printf("Transfer direction not configured."
+					" Defaulting it to MEM to MEM transfer.\n");
+				test_case->transfer_dir = RTE_DMA_DIR_MEM_TO_MEM;
+			} else {
+				if (strcmp(transfer_dir, "mem2dev") == 0)
+					test_case->transfer_dir = RTE_DMA_DIR_MEM_TO_DEV;
+				else if (strcmp(transfer_dir, "dev2mem") == 0)
+					test_case->transfer_dir = RTE_DMA_DIR_DEV_TO_MEM;
+				else {
+					printf("Defaulting the test to MEM to MEM transfer\n");
+					test_case->transfer_dir = RTE_DMA_DIR_MEM_TO_MEM;
+				}
+			}
 			is_dma = true;
 		} else if (strcmp(case_type, CPU_MEM_COPY) == 0) {
 			test_case->test_type = TEST_TYPE_CPU_MEM_COPY;
@@ -382,6 +425,40 @@ load_configs(const char *path)
 			printf("Error: Wrong test case type %s in case%d.\n", case_type, i + 1);
 			test_case->is_valid = false;
 			continue;
+		}
+
+		if (test_case->transfer_dir == RTE_DMA_DIR_MEM_TO_DEV ||
+			test_case->transfer_dir == RTE_DMA_DIR_DEV_TO_MEM) {
+			vchan_dev = rte_cfgfile_get_entry(cfgfile, section_name, "vchan_dev");
+			if (vchan_dev == NULL) {
+				printf("Transfer direction mem2dev and dev2mem"
+				       " vhcan_dev shall be configured.\n");
+				test_case->is_valid = false;
+				continue;
+			}
+
+			kvlist = rte_kvargs_parse(vchan_dev, NULL);
+			if (kvlist == NULL) {
+				printf("rte_kvargs_parse() error");
+				test_case->is_valid = false;
+				continue;
+			}
+
+			if (rte_kvargs_process(kvlist, NULL, populate_pcie_config,
+					       (void *)test_case) < 0) {
+				printf("rte_kvargs_process() error\n");
+				rte_kvargs_free(kvlist);
+				test_case->is_valid = false;
+				continue;
+			}
+
+			if (!test_case->vchan_dev.raddr) {
+				printf("For mem2dev and dev2mem configure raddr\n");
+				rte_kvargs_free(kvlist);
+				test_case->is_valid = false;
+				continue;
+			}
+			rte_kvargs_free(kvlist);
 		}
 
 		test_case->src_numa_node = (int)atoi(rte_cfgfile_get_entry(cfgfile,

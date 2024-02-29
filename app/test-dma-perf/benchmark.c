@@ -127,17 +127,54 @@ cache_flush_buf(__rte_unused struct rte_mbuf **array,
 #endif
 }
 
+static int
+vchan_data_populate(uint32_t dev_id, struct rte_dma_vchan_conf *qconf,
+		    struct test_configure *cfg)
+{
+	struct rte_dma_info info;
+
+	qconf->direction = cfg->transfer_dir;
+
+	rte_dma_info_get(dev_id, &info);
+	if (!(RTE_BIT64(qconf->direction) & info.dev_capa))
+		return -1;
+
+	qconf->nb_desc = cfg->ring_size.cur;
+
+	switch (qconf->direction) {
+	case RTE_DMA_DIR_MEM_TO_DEV:
+		qconf->dst_port.pcie.vfen = 1;
+		qconf->dst_port.port_type = RTE_DMA_PORT_PCIE;
+		qconf->dst_port.pcie.coreid = cfg->vchan_dev.port.pcie.coreid;
+		qconf->dst_port.pcie.vfid = cfg->vchan_dev.port.pcie.vfid;
+		qconf->dst_port.pcie.pfid = cfg->vchan_dev.port.pcie.pfid;
+		break;
+	case RTE_DMA_DIR_DEV_TO_MEM:
+		qconf->src_port.pcie.vfen = 1;
+		qconf->src_port.port_type = RTE_DMA_PORT_PCIE;
+		qconf->src_port.pcie.coreid = cfg->vchan_dev.port.pcie.coreid;
+		qconf->src_port.pcie.vfid = cfg->vchan_dev.port.pcie.vfid;
+		qconf->src_port.pcie.pfid = cfg->vchan_dev.port.pcie.pfid;
+		break;
+	case RTE_DMA_DIR_MEM_TO_MEM:
+	case RTE_DMA_DIR_DEV_TO_DEV:
+		break;
+	}
+
+	return 0;
+}
+
 /* Configuration of device. */
 static void
-configure_dmadev_queue(uint32_t dev_id, uint32_t ring_size)
+configure_dmadev_queue(uint32_t dev_id, struct test_configure *cfg)
 {
 	uint16_t vchan = 0;
 	struct rte_dma_info info;
 	struct rte_dma_conf dev_config = { .nb_vchans = 1 };
-	struct rte_dma_vchan_conf qconf = {
-		.direction = RTE_DMA_DIR_MEM_TO_MEM,
-		.nb_desc = ring_size
-	};
+	struct rte_dma_vchan_conf qconf = { 0 };
+
+	if (vchan_data_populate(dev_id, &qconf, cfg) != 0)
+		rte_exit(EXIT_FAILURE, "Error with vchan data populate.\n");
 
 	if (rte_dma_configure(dev_id, &dev_config) != 0)
 		rte_exit(EXIT_FAILURE, "Error with dma configure.\n");
@@ -159,7 +196,6 @@ configure_dmadev_queue(uint32_t dev_id, uint32_t ring_size)
 static int
 config_dmadevs(struct test_configure *cfg)
 {
-	uint32_t ring_size = cfg->ring_size.cur;
 	struct lcore_dma_map_t *ldm = &cfg->lcore_dma_map;
 	uint32_t nb_workers = ldm->cnt;
 	uint32_t i;
@@ -176,7 +212,7 @@ config_dmadevs(struct test_configure *cfg)
 		}
 
 		ldm->dma_ids[i] = dev_id;
-		configure_dmadev_queue(dev_id, ring_size);
+		configure_dmadev_queue(dev_id, cfg);
 		++nb_dmadevs;
 	}
 
@@ -302,13 +338,23 @@ do_cpu_mem_copy(void *p)
 	return 0;
 }
 
+static void
+dummy_free_ext_buf(void *addr, void *opaque)
+{
+	RTE_SET_USED(addr);
+	RTE_SET_USED(opaque);
+}
+
 static int
 setup_memory_env(struct test_configure *cfg, struct rte_mbuf ***srcs,
 			struct rte_mbuf ***dsts)
 {
-	unsigned int buf_size = cfg->buf_size.cur;
+	static struct rte_mbuf_ext_shared_info *ext_buf_info;
+	unsigned int cur_buf_size = cfg->buf_size.cur;
+	unsigned int buf_size = cur_buf_size + RTE_PKTMBUF_HEADROOM;
 	unsigned int nr_sockets;
 	uint32_t nr_buf = cfg->nr_buf;
+	uint32_t i;
 
 	nr_sockets = rte_socket_count();
 	if (cfg->src_numa_node >= nr_sockets ||
@@ -321,7 +367,7 @@ setup_memory_env(struct test_configure *cfg, struct rte_mbuf ***srcs,
 			nr_buf,
 			0,
 			0,
-			buf_size + RTE_PKTMBUF_HEADROOM,
+			buf_size,
 			cfg->src_numa_node);
 	if (src_pool == NULL) {
 		PRINT_ERR("Error with source mempool creation.\n");
@@ -332,7 +378,7 @@ setup_memory_env(struct test_configure *cfg, struct rte_mbuf ***srcs,
 			nr_buf,
 			0,
 			0,
-			buf_size + RTE_PKTMBUF_HEADROOM,
+			buf_size,
 			cfg->dst_numa_node);
 	if (dst_pool == NULL) {
 		PRINT_ERR("Error with destination mempool creation.\n");
@@ -361,16 +407,51 @@ setup_memory_env(struct test_configure *cfg, struct rte_mbuf ***srcs,
 		return -1;
 	}
 
+	if (cfg->transfer_dir == RTE_DMA_DIR_DEV_TO_MEM ||
+	    cfg->transfer_dir == RTE_DMA_DIR_MEM_TO_DEV) {
+		ext_buf_info = rte_malloc(NULL, sizeof(struct rte_mbuf_ext_shared_info), 0);
+		if (ext_buf_info == NULL) {
+			printf("Error: ext_buf_info malloc failed.\n");
+			return -1;
+		}
+	}
+
+	if (cfg->transfer_dir == RTE_DMA_DIR_DEV_TO_MEM) {
+		ext_buf_info->free_cb = dummy_free_ext_buf;
+		ext_buf_info->fcb_opaque = NULL;
+		for (i = 0; i < nr_buf; i++) {
+			/* Using mbuf structure to hold remote iova address. */
+			rte_pktmbuf_attach_extbuf((*srcs)[i],
+				(void *)(cfg->vchan_dev.raddr + (i * buf_size)),
+				(rte_iova_t)(cfg->vchan_dev.raddr + (i * buf_size)),
+				0, ext_buf_info);
+			rte_mbuf_ext_refcnt_update(ext_buf_info, 1);
+		}
+	}
+
+	if (cfg->transfer_dir == RTE_DMA_DIR_MEM_TO_DEV) {
+		ext_buf_info->free_cb = dummy_free_ext_buf;
+		ext_buf_info->fcb_opaque = NULL;
+		for (i = 0; i < nr_buf; i++) {
+			/* Using mbuf structure to hold remote iova address. */
+			rte_pktmbuf_attach_extbuf((*dsts)[i],
+				(void *)(cfg->vchan_dev.raddr + (i * buf_size)),
+				(rte_iova_t)(cfg->vchan_dev.raddr + (i * buf_size)),
+				0, ext_buf_info);
+			rte_mbuf_ext_refcnt_update(ext_buf_info, 1);
+		}
+	}
+
 	return 0;
 }
 
 void
 mem_copy_benchmark(struct test_configure *cfg, bool is_dma)
 {
-	uint16_t i;
+	uint32_t i;
 	uint32_t offset;
 	unsigned int lcore_id = 0;
-	struct rte_mbuf **srcs = NULL, **dsts = NULL;
+	struct rte_mbuf **srcs = NULL, **dsts = NULL, **m = NULL;
 	struct lcore_dma_map_t *ldm = &cfg->lcore_dma_map;
 	unsigned int buf_size = cfg->buf_size.cur;
 	uint16_t kick_batch = cfg->kick_batch.cur;
@@ -476,6 +557,20 @@ mem_copy_benchmark(struct test_configure *cfg, bool is_dma)
 			avg_cycles_total / nb_workers, bandwidth_total, mops_total);
 
 out:
+
+	if (cfg->transfer_dir == RTE_DMA_DIR_DEV_TO_MEM)
+		m = srcs;
+	else if (cfg->transfer_dir == RTE_DMA_DIR_MEM_TO_DEV)
+		m = dsts;
+
+	if (m) {
+		for (i = 0; i < nr_buf; i++)
+			rte_pktmbuf_detach_extbuf(m[i]);
+
+		if (m[0]->shinfo && rte_mbuf_ext_refcnt_read(m[0]->shinfo) == 0)
+			rte_free(m[0]->shinfo);
+	}
+
 	/* free mbufs used in the test */
 	if (srcs != NULL)
 		rte_pktmbuf_free_bulk(srcs, nr_buf);
