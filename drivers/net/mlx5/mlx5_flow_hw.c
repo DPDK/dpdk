@@ -110,6 +110,9 @@ mlx5_tbl_multi_pattern_process(struct rte_eth_dev *dev,
 			       struct mlx5_tbl_multi_pattern_ctx *mpat,
 			       struct rte_flow_error *error);
 
+static __rte_always_inline enum mlx5_indirect_list_type
+flow_hw_inlist_type_get(const struct rte_flow_action *actions);
+
 static __rte_always_inline int
 mlx5_multi_pattern_reformat_to_index(enum mlx5dr_action_type type)
 {
@@ -5456,6 +5459,69 @@ mlx5_decap_encap_reformat_type(const struct rte_flow_action *actions,
 	       MLX5_FLOW_ACTION_ENCAP : MLX5_FLOW_ACTION_DECAP;
 }
 
+enum mlx5_hw_indirect_list_relative_position {
+	MLX5_INDIRECT_LIST_POSITION_UNKNOWN = -1,
+	MLX5_INDIRECT_LIST_POSITION_BEFORE_MH = 0,
+	MLX5_INDIRECT_LIST_POSITION_AFTER_MH,
+};
+
+static enum mlx5_hw_indirect_list_relative_position
+mlx5_hw_indirect_list_mh_position(const struct rte_flow_action *action)
+{
+	const struct rte_flow_action_indirect_list *conf = action->conf;
+	enum mlx5_indirect_list_type list_type = mlx5_get_indirect_list_type(conf->handle);
+	enum mlx5_hw_indirect_list_relative_position pos = MLX5_INDIRECT_LIST_POSITION_UNKNOWN;
+	const union {
+		struct mlx5_indlst_legacy *legacy;
+		struct mlx5_hw_encap_decap_action *reformat;
+		struct rte_flow_action_list_handle *handle;
+	} h = { .handle = conf->handle};
+
+	switch (list_type) {
+	case  MLX5_INDIRECT_ACTION_LIST_TYPE_LEGACY:
+		switch (h.legacy->legacy_type) {
+		case RTE_FLOW_ACTION_TYPE_AGE:
+		case RTE_FLOW_ACTION_TYPE_COUNT:
+		case RTE_FLOW_ACTION_TYPE_CONNTRACK:
+		case RTE_FLOW_ACTION_TYPE_METER_MARK:
+		case RTE_FLOW_ACTION_TYPE_QUOTA:
+			pos = MLX5_INDIRECT_LIST_POSITION_BEFORE_MH;
+			break;
+		case RTE_FLOW_ACTION_TYPE_RSS:
+			pos = MLX5_INDIRECT_LIST_POSITION_AFTER_MH;
+			break;
+		default:
+			pos = MLX5_INDIRECT_LIST_POSITION_UNKNOWN;
+			break;
+		}
+		break;
+	case MLX5_INDIRECT_ACTION_LIST_TYPE_MIRROR:
+		pos = MLX5_INDIRECT_LIST_POSITION_AFTER_MH;
+		break;
+	case MLX5_INDIRECT_ACTION_LIST_TYPE_REFORMAT:
+		switch (h.reformat->action_type) {
+		case MLX5DR_ACTION_TYP_REFORMAT_TNL_L2_TO_L2:
+		case MLX5DR_ACTION_TYP_REFORMAT_TNL_L3_TO_L2:
+			pos = MLX5_INDIRECT_LIST_POSITION_BEFORE_MH;
+			break;
+		case MLX5DR_ACTION_TYP_REFORMAT_L2_TO_TNL_L2:
+		case MLX5DR_ACTION_TYP_REFORMAT_L2_TO_TNL_L3:
+			pos = MLX5_INDIRECT_LIST_POSITION_AFTER_MH;
+			break;
+		default:
+			pos = MLX5_INDIRECT_LIST_POSITION_UNKNOWN;
+			break;
+		}
+		break;
+	default:
+		pos = MLX5_INDIRECT_LIST_POSITION_UNKNOWN;
+		break;
+	}
+	return pos;
+}
+
+#define MLX5_HW_EXPAND_MH_FAILED 0xffff
+
 static inline uint16_t
 flow_hw_template_expand_modify_field(struct rte_flow_action actions[],
 				     struct rte_flow_action masks[],
@@ -5492,6 +5558,7 @@ flow_hw_template_expand_modify_field(struct rte_flow_action actions[],
 	 * @see action_order_arr[]
 	 */
 	for (i = act_num - 2; (int)i >= 0; i--) {
+		enum mlx5_hw_indirect_list_relative_position pos;
 		enum rte_flow_action_type type = actions[i].type;
 		uint64_t reformat_type;
 
@@ -5521,6 +5588,13 @@ flow_hw_template_expand_modify_field(struct rte_flow_action actions[],
 			}
 			if (actions[i - 1].type == RTE_FLOW_ACTION_TYPE_RAW_DECAP)
 				i--;
+			break;
+		case RTE_FLOW_ACTION_TYPE_INDIRECT_LIST:
+			pos = mlx5_hw_indirect_list_mh_position(&actions[i]);
+			if (pos == MLX5_INDIRECT_LIST_POSITION_UNKNOWN)
+				return MLX5_HW_EXPAND_MH_FAILED;
+			if (pos == MLX5_INDIRECT_LIST_POSITION_BEFORE_MH)
+				goto insert;
 			break;
 		default:
 			i++; /* new MF inserted AFTER actions[i] */
@@ -6476,6 +6550,12 @@ flow_hw_actions_template_create(struct rte_eth_dev *dev,
 							   action_flags,
 							   act_num,
 							   expand_mf_num);
+		if (pos == MLX5_HW_EXPAND_MH_FAILED) {
+			rte_flow_error_set(error, ENOMEM,
+					   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					   NULL, "modify header expansion failed");
+			return NULL;
+		}
 		act_num += expand_mf_num;
 		for (i = pos + expand_mf_num; i < act_num; i++)
 			src_off[i] += expand_mf_num;
