@@ -7564,15 +7564,7 @@ flow_hw_pattern_validate(struct rte_eth_dev *dev,
 						  " when egress attribute is set");
 			break;
 		case RTE_FLOW_ITEM_TYPE_META:
-			if (!priv->sh->config.dv_esw_en ||
-			    priv->sh->config.dv_xmeta_en != MLX5_XMETA_MODE_META32_HWS) {
-				if (attr->ingress)
-					return rte_flow_error_set(error, EINVAL,
-								  RTE_FLOW_ERROR_TYPE_ITEM, NULL,
-								  "META item is not supported"
-								  " on current FW with ingress"
-								  " attribute");
-			}
+			/* ingress + group 0 is not supported */
 			break;
 		case RTE_FLOW_ITEM_TYPE_METER_COLOR:
 		{

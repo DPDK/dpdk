@@ -1305,7 +1305,8 @@ for an additional list of options shared with other mlx5 drivers.
     ``META`` related actions and items operate only within NIC Tx and
     NIC Rx steering domains, no ``MARK`` and ``META`` information crosses
     the domain boundaries. The ``MARK`` item is 24 bits wide, the ``META``
-    item is 32 bits wide and match supported on egress only.
+    item is 32 bits wide and match supported on egress only
+    when ``dv_flow_en`` = 1.
 
   - 1, this engages extensive metadata mode, the ``MARK`` and ``META``
     related actions and items operate within all supported steering domains,

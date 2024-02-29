@@ -1714,6 +1714,67 @@ mlx5_multi_pattern_segment_find(struct rte_flow_template_table *table,
 	return NULL;
 }
 
+/*
+ * Convert metadata or tag to the actual register.
+ * META: Fixed C_1 for FDB mode, REG_A for NIC TX and REG_B for NIC RX.
+ * TAG: C_x expect meter color reg and the reserved ones.
+ */
+static __rte_always_inline int
+flow_hw_get_reg_id_by_domain(struct rte_eth_dev *dev,
+			     enum rte_flow_item_type type,
+			     enum mlx5dr_table_type domain_type, uint32_t id)
+{
+	struct mlx5_dev_ctx_shared *sh = MLX5_SH(dev);
+	struct mlx5_dev_registers *reg = &sh->registers;
+
+	switch (type) {
+	case RTE_FLOW_ITEM_TYPE_META:
+		if (sh->config.dv_esw_en &&
+		    sh->config.dv_xmeta_en == MLX5_XMETA_MODE_META32_HWS) {
+			return REG_C_1;
+		}
+		/*
+		 * On root table - PMD allows only egress META matching, thus
+		 * REG_A matching is sufficient.
+		 *
+		 * On non-root tables - REG_A corresponds to general_purpose_lookup_field,
+		 * which translates to REG_A in NIC TX and to REG_B in NIC RX.
+		 * However, current FW does not implement REG_B case right now, so
+		 * REG_B case is return explicitly by this function for NIC RX.
+		 */
+		if (domain_type == MLX5DR_TABLE_TYPE_NIC_RX)
+			return REG_B;
+		return REG_A;
+	case RTE_FLOW_ITEM_TYPE_CONNTRACK:
+	case RTE_FLOW_ITEM_TYPE_METER_COLOR:
+		return reg->aso_reg;
+	case RTE_FLOW_ITEM_TYPE_TAG:
+		if (id == RTE_PMD_MLX5_LINEAR_HASH_TAG_INDEX)
+			return REG_C_3;
+		MLX5_ASSERT(id < MLX5_FLOW_HW_TAGS_MAX);
+		return reg->hw_avl_tags[id];
+	default:
+		return REG_NON;
+	}
+}
+
+static __rte_always_inline int
+flow_hw_get_reg_id_from_ctx(void *dr_ctx, enum rte_flow_item_type type,
+			    enum mlx5dr_table_type domain_type, uint32_t id)
+{
+	uint16_t port;
+
+	MLX5_ETH_FOREACH_DEV(port, NULL) {
+		struct mlx5_priv *priv;
+
+		priv = rte_eth_devices[port].data->dev_private;
+		if (priv->dr_ctx == dr_ctx)
+			return flow_hw_get_reg_id_by_domain(&rte_eth_devices[port],
+							    type, domain_type, id);
+	}
+	return REG_NON;
+}
+
 #endif
 
 /*
@@ -1925,70 +1986,19 @@ flow_hw_get_wire_port(struct ibv_context *ibctx)
 }
 #endif
 
-/*
- * Convert metadata or tag to the actual register.
- * META: Can only be used to match in the FDB in this stage, fixed C_1.
- * TAG: C_x expect meter color reg and the reserved ones.
- */
 static __rte_always_inline int
 flow_hw_get_reg_id(struct rte_eth_dev *dev,
 		   enum rte_flow_item_type type, uint32_t id)
 {
-	struct mlx5_dev_ctx_shared *sh = MLX5_SH(dev);
-	struct mlx5_dev_registers *reg = &sh->registers;
-
-	switch (type) {
-	case RTE_FLOW_ITEM_TYPE_META:
-#ifdef HAVE_MLX5_HWS_SUPPORT
-		if (sh->config.dv_esw_en &&
-		    sh->config.dv_xmeta_en == MLX5_XMETA_MODE_META32_HWS) {
-			return REG_C_1;
-		}
-#endif
-		/*
-		 * On root table - PMD allows only egress META matching, thus
-		 * REG_A matching is sufficient.
-		 *
-		 * On non-root tables - REG_A corresponds to general_purpose_lookup_field,
-		 * which translates to REG_A in NIC TX and to REG_B in NIC RX.
-		 * However, current FW does not implement REG_B case right now, so
-		 * REG_B case should be rejected on pattern template validation.
-		 */
-		return REG_A;
-	case RTE_FLOW_ITEM_TYPE_CONNTRACK:
-	case RTE_FLOW_ITEM_TYPE_METER_COLOR:
-		return reg->aso_reg;
-	case RTE_FLOW_ITEM_TYPE_TAG:
-		if (id == RTE_PMD_MLX5_LINEAR_HASH_TAG_INDEX)
-			return REG_C_3;
-		MLX5_ASSERT(id < MLX5_FLOW_HW_TAGS_MAX);
-		return reg->hw_avl_tags[id];
-	default:
-		return REG_NON;
-	}
-}
-
-static __rte_always_inline int
-flow_hw_get_reg_id_from_ctx(void *dr_ctx,
-			    enum rte_flow_item_type type, uint32_t id)
-{
-#ifdef HAVE_IBV_FLOW_DV_SUPPORT
-	uint16_t port;
-
-	MLX5_ETH_FOREACH_DEV(port, NULL) {
-		struct mlx5_priv *priv;
-
-		priv = rte_eth_devices[port].data->dev_private;
-		if (priv->dr_ctx == dr_ctx)
-			return flow_hw_get_reg_id(&rte_eth_devices[port],
-						  type, id);
-	}
+#if defined(HAVE_IBV_FLOW_DV_SUPPORT) || !defined(HAVE_INFINIBAND_VERBS_H)
+	return flow_hw_get_reg_id_by_domain(dev, type,
+					    MLX5DR_TABLE_TYPE_DONTCARE, id);
 #else
-	RTE_SET_USED(dr_ctx);
+	RTE_SET_USED(dev);
 	RTE_SET_USED(type);
 	RTE_SET_USED(id);
-#endif
 	return REG_NON;
+#endif
 }
 
 /**

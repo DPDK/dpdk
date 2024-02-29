@@ -18,6 +18,7 @@ enum mlx5dr_table_type {
 	MLX5DR_TABLE_TYPE_NIC_TX,
 	MLX5DR_TABLE_TYPE_FDB,
 	MLX5DR_TABLE_TYPE_MAX,
+	MLX5DR_TABLE_TYPE_DONTCARE = MLX5DR_TABLE_TYPE_MAX,
 };
 
 enum mlx5dr_matcher_resource_mode {
