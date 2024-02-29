@@ -11,6 +11,7 @@
 
 #include <rte_byteorder.h>
 #include <rte_jhash.h>
+#include <rte_random.h>
 #include <rte_malloc.h>
 #include <rte_eth_tap.h>
 #include <tap_flow.h>
@@ -1297,9 +1298,7 @@ tap_flow_validate(struct rte_eth_dev *dev,
  * In those rules, the handle (uint32_t) is the part that would identify
  * specifically each rule.
  *
- * On 32-bit architectures, the handle can simply be the flow's pointer address.
- * On 64-bit architectures, we rely on jhash(flow) to find a (sufficiently)
- * unique handle.
+ * Use jhash of the flow pointer to make a unique handle.
  *
  * @param[in, out] flow
  *   The flow that needs its handle set.
@@ -1309,16 +1308,18 @@ tap_flow_set_handle(struct rte_flow *flow)
 {
 	union {
 		struct rte_flow *flow;
-		const void *key;
-	} tmp;
-	uint32_t handle = 0;
+		uint32_t words[sizeof(flow) / sizeof(uint32_t)];
+	} tmp = {
+		.flow = flow,
+	};
+	uint32_t handle;
+	static uint64_t hash_seed;
 
-	tmp.flow = flow;
+	if (hash_seed == 0)
+		hash_seed = rte_rand();
 
-	if (sizeof(flow) > 4)
-		handle = rte_jhash(tmp.key, sizeof(flow), 1);
-	else
-		handle = (uintptr_t)flow;
+	handle = rte_jhash_32b(tmp.words, sizeof(flow) / sizeof(uint32_t), hash_seed);
+
 	/* must be at least 1 to avoid letting the kernel choose one for us */
 	if (!handle)
 		handle = 1;
