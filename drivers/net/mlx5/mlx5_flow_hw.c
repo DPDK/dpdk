@@ -2848,6 +2848,7 @@ flow_hw_shared_action_construct(struct rte_eth_dev *dev, uint32_t queue,
 				&rule_act->action,
 				&rule_act->counter.offset))
 			return -1;
+		flow->flags |= MLX5_FLOW_HW_FLOW_FLAG_CNT_ID;
 		flow->cnt_id = act_idx;
 		break;
 	case MLX5_INDIRECT_ACTION_TYPE_AGE:
@@ -2857,6 +2858,7 @@ flow_hw_shared_action_construct(struct rte_eth_dev *dev, uint32_t queue,
 		 * it in flow destroy.
 		 */
 		mlx5_flow_hw_aux_set_age_idx(flow, aux, act_idx);
+		flow->flags |= MLX5_FLOW_HW_FLOW_FLAG_AGE_IDX;
 		if (action_flags & MLX5_FLOW_ACTION_INDIRECT_COUNT)
 			/*
 			 * The mutual update for idirect AGE & COUNT will be
@@ -2872,6 +2874,7 @@ flow_hw_shared_action_construct(struct rte_eth_dev *dev, uint32_t queue,
 						  &param->queue_id, &age_cnt,
 						  idx) < 0)
 				return -1;
+			flow->flags |= MLX5_FLOW_HW_FLOW_FLAG_CNT_ID;
 			flow->cnt_id = age_cnt;
 			param->nb_cnts++;
 		} else {
@@ -3177,7 +3180,7 @@ flow_hw_actions_construct(struct rte_eth_dev *dev,
 			rule_acts[act_data->action_dst].action =
 			(!!attr.group) ? jump->hws_action : jump->root_action;
 			flow->jump = jump;
-			flow->fate_type = MLX5_FLOW_FATE_JUMP;
+			flow->flags |= MLX5_FLOW_HW_FLOW_FLAG_FATE_JUMP;
 			break;
 		case RTE_FLOW_ACTION_TYPE_RSS:
 		case RTE_FLOW_ACTION_TYPE_QUEUE:
@@ -3188,7 +3191,7 @@ flow_hw_actions_construct(struct rte_eth_dev *dev,
 				return -1;
 			rule_acts[act_data->action_dst].action = hrxq->action;
 			flow->hrxq = hrxq;
-			flow->fate_type = MLX5_FLOW_FATE_QUEUE;
+			flow->flags |= MLX5_FLOW_HW_FLOW_FLAG_FATE_HRXQ;
 			break;
 		case MLX5_RTE_FLOW_ACTION_TYPE_RSS:
 			item_flags = table->its[it_idx]->item_flags;
@@ -3271,7 +3274,7 @@ flow_hw_actions_construct(struct rte_eth_dev *dev,
 					(!!attr.group) ? jump->hws_action :
 							 jump->root_action;
 			flow->jump = jump;
-			flow->fate_type = MLX5_FLOW_FATE_JUMP;
+			flow->flags |= MLX5_FLOW_HW_FLOW_FLAG_FATE_JUMP;
 			if (mlx5_aso_mtr_wait(priv->sh, MLX5_HW_INV_QUEUE, aso_mtr))
 				return -1;
 			break;
@@ -3291,6 +3294,7 @@ flow_hw_actions_construct(struct rte_eth_dev *dev,
 			if (age_idx == 0)
 				return -rte_errno;
 			mlx5_flow_hw_aux_set_age_idx(flow, aux, age_idx);
+			flow->flags |= MLX5_FLOW_HW_FLOW_FLAG_AGE_IDX;
 			if (at->action_flags & MLX5_FLOW_ACTION_INDIRECT_COUNT)
 				/*
 				 * When AGE uses indirect counter, no need to
@@ -3312,6 +3316,7 @@ flow_hw_actions_construct(struct rte_eth_dev *dev,
 				 );
 			if (ret != 0)
 				return ret;
+			flow->flags |= MLX5_FLOW_HW_FLOW_FLAG_CNT_ID;
 			flow->cnt_id = cnt_id;
 			break;
 		case MLX5_RTE_FLOW_ACTION_TYPE_COUNT:
@@ -3323,6 +3328,7 @@ flow_hw_actions_construct(struct rte_eth_dev *dev,
 				 );
 			if (ret != 0)
 				return ret;
+			flow->flags |= MLX5_FLOW_HW_FLOW_FLAG_CNT_ID;
 			flow->cnt_id = act_data->shared_counter.id;
 			break;
 		case RTE_FLOW_ACTION_TYPE_CONNTRACK:
@@ -3355,6 +3361,7 @@ flow_hw_actions_construct(struct rte_eth_dev *dev,
 				return ret;
 			aux = mlx5_flow_hw_aux(dev->data->port_id, flow);
 			mlx5_flow_hw_aux_set_mtr_id(flow, aux, mtr_idx);
+			flow->flags |= MLX5_FLOW_HW_FLOW_FLAG_MTR_ID;
 			break;
 		case RTE_FLOW_ACTION_TYPE_NAT64:
 			nat64_c = action->conf;
@@ -3366,7 +3373,11 @@ flow_hw_actions_construct(struct rte_eth_dev *dev,
 		}
 	}
 	if (at->action_flags & MLX5_FLOW_ACTION_INDIRECT_COUNT) {
+		/* If indirect count is used, then CNT_ID flag should be set. */
+		MLX5_ASSERT(flow->flags & MLX5_FLOW_HW_FLOW_FLAG_CNT_ID);
 		if (at->action_flags & MLX5_FLOW_ACTION_INDIRECT_AGE) {
+			/* If indirect AGE is used, then AGE_IDX flag should be set. */
+			MLX5_ASSERT(flow->flags & MLX5_FLOW_HW_FLOW_FLAG_AGE_IDX);
 			aux = mlx5_flow_hw_aux(dev->data->port_id, flow);
 			age_idx = mlx5_flow_hw_aux_get_age_idx(flow, aux) &
 				  MLX5_HWS_AGE_IDX_MASK;
@@ -3404,8 +3415,10 @@ flow_hw_actions_construct(struct rte_eth_dev *dev,
 				flow->res_idx - 1;
 		rule_acts[hw_acts->push_remove_pos].ipv6_ext.header = ap->ipv6_push_data;
 	}
-	if (mlx5_hws_cnt_id_valid(hw_acts->cnt_id))
+	if (mlx5_hws_cnt_id_valid(hw_acts->cnt_id)) {
+		flow->flags |= MLX5_FLOW_HW_FLOW_FLAG_CNT_ID;
 		flow->cnt_id = hw_acts->cnt_id;
+	}
 	return 0;
 }
 
@@ -3518,7 +3531,7 @@ flow_hw_async_flow_create(struct rte_eth_dev *dev,
 				   "Port must be started before enqueueing flow operations");
 		return NULL;
 	}
-	flow = mlx5_ipool_zmalloc(table->flow, &flow_idx);
+	flow = mlx5_ipool_malloc(table->flow, &flow_idx);
 	if (!flow)
 		goto error;
 	rule_acts = flow_hw_get_dr_action_buffer(priv, table, action_template_index, queue);
@@ -3537,6 +3550,7 @@ flow_hw_async_flow_create(struct rte_eth_dev *dev,
 	} else {
 		flow->res_idx = flow_idx;
 	}
+	flow->flags = 0;
 	/*
 	 * Set the flow operation type here in order to know if the flow memory
 	 * should be freed or not when get the result from dequeue.
@@ -3588,6 +3602,7 @@ flow_hw_async_flow_create(struct rte_eth_dev *dev,
 					 (struct mlx5dr_rule *)flow->rule);
 		rte_rwlock_read_unlock(&table->matcher_replace_rwlk);
 		aux->matcher_selector = selector;
+		flow->flags |= MLX5_FLOW_HW_FLOW_FLAG_MATCHER_SELECTOR;
 	}
 	if (likely(!ret)) {
 		flow_hw_q_inc_flow_ops(priv, queue);
@@ -3661,7 +3676,7 @@ flow_hw_async_flow_create_by_index(struct rte_eth_dev *dev,
 				   "Flow rule index exceeds table size");
 		return NULL;
 	}
-	flow = mlx5_ipool_zmalloc(table->flow, &flow_idx);
+	flow = mlx5_ipool_malloc(table->flow, &flow_idx);
 	if (!flow)
 		goto error;
 	rule_acts = flow_hw_get_dr_action_buffer(priv, table, action_template_index, queue);
@@ -3680,6 +3695,7 @@ flow_hw_async_flow_create_by_index(struct rte_eth_dev *dev,
 	} else {
 		flow->res_idx = flow_idx;
 	}
+	flow->flags = 0;
 	/*
 	 * Set the flow operation type here in order to know if the flow memory
 	 * should be freed or not when get the result from dequeue.
@@ -3721,6 +3737,7 @@ flow_hw_async_flow_create_by_index(struct rte_eth_dev *dev,
 					 (struct mlx5dr_rule *)flow->rule);
 		rte_rwlock_read_unlock(&table->matcher_replace_rwlk);
 		aux->matcher_selector = selector;
+		flow->flags |= MLX5_FLOW_HW_FLOW_FLAG_MATCHER_SELECTOR;
 	}
 	if (likely(!ret)) {
 		flow_hw_q_inc_flow_ops(priv, queue);
@@ -3808,6 +3825,7 @@ flow_hw_async_flow_update(struct rte_eth_dev *dev,
 	} else {
 		nf->res_idx = of->res_idx;
 	}
+	nf->flags = 0;
 	/* Indicate the construction function to set the proper fields. */
 	nf->operation_type = MLX5_FLOW_HW_FLOW_OP_TYPE_UPDATE;
 	/*
@@ -3837,6 +3855,7 @@ flow_hw_async_flow_update(struct rte_eth_dev *dev,
 	 */
 	of->operation_type = MLX5_FLOW_HW_FLOW_OP_TYPE_UPDATE;
 	of->user_data = user_data;
+	of->flags |= MLX5_FLOW_HW_FLOW_FLAG_UPD_FLOW;
 	rule_attr.user_data = of;
 	ret = mlx5dr_rule_action_update((struct mlx5dr_rule *)of->rule,
 					action_template_index, rule_acts, &rule_attr);
@@ -3931,21 +3950,21 @@ flow_hw_age_count_release(struct mlx5_priv *priv, uint32_t queue,
 	uint32_t *cnt_queue;
 	uint32_t age_idx = aux->orig.age_idx;
 
+	MLX5_ASSERT(flow->flags & MLX5_FLOW_HW_FLOW_FLAG_CNT_ID);
 	if (mlx5_hws_cnt_is_shared(priv->hws_cpool, flow->cnt_id)) {
-		if (age_idx && !mlx5_hws_age_is_indirect(age_idx)) {
+		if ((flow->flags & MLX5_FLOW_HW_FLOW_FLAG_AGE_IDX) &&
+		    !mlx5_hws_age_is_indirect(age_idx)) {
 			/* Remove this AGE parameter from indirect counter. */
 			mlx5_hws_cnt_age_set(priv->hws_cpool, flow->cnt_id, 0);
 			/* Release the AGE parameter. */
 			mlx5_hws_age_action_destroy(priv, age_idx, error);
-			mlx5_flow_hw_aux_set_age_idx(flow, aux, 0);
 		}
 		return;
 	}
 	cnt_queue = mlx5_hws_cnt_get_queue(priv, &queue);
 	/* Put the counter first to reduce the race risk in BG thread. */
 	mlx5_hws_cnt_pool_put(priv->hws_cpool, cnt_queue, &flow->cnt_id);
-	flow->cnt_id = 0;
-	if (age_idx) {
+	if (flow->flags & MLX5_FLOW_HW_FLOW_FLAG_AGE_IDX) {
 		if (mlx5_hws_age_is_indirect(age_idx)) {
 			uint32_t idx = age_idx & MLX5_HWS_AGE_IDX_MASK;
 
@@ -3954,7 +3973,6 @@ flow_hw_age_count_release(struct mlx5_priv *priv, uint32_t queue,
 			/* Release the AGE parameter. */
 			mlx5_hws_age_action_destroy(priv, age_idx, error);
 		}
-		mlx5_flow_hw_aux_set_age_idx(flow, aux, age_idx);
 	}
 }
 
@@ -4084,34 +4102,35 @@ hw_cmpl_flow_update_or_destroy(struct rte_eth_dev *dev,
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_aso_mtr_pool *pool = priv->hws_mpool;
 	struct rte_flow_template_table *table = flow->table;
-	struct rte_flow_hw_aux *aux = mlx5_flow_hw_aux(dev->data->port_id, flow);
 	/* Release the original resource index in case of update. */
 	uint32_t res_idx = flow->res_idx;
 
-	if (flow->fate_type == MLX5_FLOW_FATE_JUMP)
-		flow_hw_jump_release(dev, flow->jump);
-	else if (flow->fate_type == MLX5_FLOW_FATE_QUEUE)
-		mlx5_hrxq_obj_release(dev, flow->hrxq);
-	if (mlx5_hws_cnt_id_valid(flow->cnt_id))
-		flow_hw_age_count_release(priv, queue,
-					  flow, error);
-	if (aux->orig.mtr_id) {
-		mlx5_ipool_free(pool->idx_pool,	aux->orig.mtr_id);
-		aux->orig.mtr_id = 0;
+	if (flow->flags & MLX5_FLOW_HW_FLOW_FLAGS_ALL) {
+		struct rte_flow_hw_aux *aux = mlx5_flow_hw_aux(dev->data->port_id, flow);
+
+		if (flow->flags & MLX5_FLOW_HW_FLOW_FLAG_FATE_JUMP)
+			flow_hw_jump_release(dev, flow->jump);
+		else if (flow->flags & MLX5_FLOW_HW_FLOW_FLAG_FATE_HRXQ)
+			mlx5_hrxq_obj_release(dev, flow->hrxq);
+		if (flow->flags & MLX5_FLOW_HW_FLOW_FLAG_CNT_ID)
+			flow_hw_age_count_release(priv, queue, flow, error);
+		if (flow->flags & MLX5_FLOW_HW_FLOW_FLAG_MTR_ID)
+			mlx5_ipool_free(pool->idx_pool, aux->orig.mtr_id);
+		if (flow->flags & MLX5_FLOW_HW_FLOW_FLAG_UPD_FLOW) {
+			struct rte_flow_hw *upd_flow = &aux->upd_flow;
+
+			rte_memcpy(flow, upd_flow, offsetof(struct rte_flow_hw, rule));
+			aux->orig = aux->upd;
+			flow->operation_type = MLX5_FLOW_HW_FLOW_OP_TYPE_CREATE;
+			if (table->resource)
+				mlx5_ipool_free(table->resource, res_idx);
+		}
 	}
-	if (flow->operation_type != MLX5_FLOW_HW_FLOW_OP_TYPE_UPDATE) {
+	if (flow->operation_type == MLX5_FLOW_HW_FLOW_OP_TYPE_DESTROY ||
+	    flow->operation_type == MLX5_FLOW_HW_FLOW_OP_TYPE_RSZ_TBL_DESTROY) {
 		if (table->resource)
 			mlx5_ipool_free(table->resource, res_idx);
 		mlx5_ipool_free(table->flow, flow->idx);
-	} else {
-		struct rte_flow_hw_aux *aux = mlx5_flow_hw_aux(dev->data->port_id, flow);
-		struct rte_flow_hw *upd_flow = &aux->upd_flow;
-
-		rte_memcpy(flow, upd_flow, offsetof(struct rte_flow_hw, rule));
-		aux->orig = aux->upd;
-		flow->operation_type = MLX5_FLOW_HW_FLOW_OP_TYPE_CREATE;
-		if (table->resource)
-			mlx5_ipool_free(table->resource, res_idx);
 	}
 }
 
@@ -4126,6 +4145,7 @@ hw_cmpl_resizable_tbl(struct rte_eth_dev *dev,
 	uint32_t selector = aux->matcher_selector;
 	uint32_t other_selector = (selector + 1) & 1;
 
+	MLX5_ASSERT(flow->flags & MLX5_FLOW_HW_FLOW_FLAG_MATCHER_SELECTOR);
 	switch (flow->operation_type) {
 	case MLX5_FLOW_HW_FLOW_OP_TYPE_RSZ_TBL_CREATE:
 		rte_atomic_fetch_add_explicit
@@ -11493,10 +11513,18 @@ flow_hw_query(struct rte_eth_dev *dev, struct rte_flow *flow,
 		case RTE_FLOW_ACTION_TYPE_VOID:
 			break;
 		case RTE_FLOW_ACTION_TYPE_COUNT:
+			if (!(hw_flow->flags & MLX5_FLOW_HW_FLOW_FLAG_CNT_ID))
+				return rte_flow_error_set(error, EINVAL,
+							  RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+							  "counter not defined in the rule");
 			ret = flow_hw_query_counter(dev, hw_flow->cnt_id, data,
 						    error);
 			break;
 		case RTE_FLOW_ACTION_TYPE_AGE:
+			if (!(hw_flow->flags & MLX5_FLOW_HW_FLOW_FLAG_AGE_IDX))
+				return rte_flow_error_set(error, EINVAL,
+							  RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+							  "age data not available");
 			aux = mlx5_flow_hw_aux(dev->data->port_id, hw_flow);
 			ret = flow_hw_query_age(dev, mlx5_flow_hw_aux_get_age_idx(hw_flow, aux),
 						data, error);
@@ -12789,6 +12817,7 @@ flow_hw_update_resized(struct rte_eth_dev *dev, uint32_t queue,
 		.burst = attr->postpone,
 	};
 
+	MLX5_ASSERT(hw_flow->flags & MLX5_FLOW_HW_FLOW_FLAG_MATCHER_SELECTOR);
 	/**
 	 * mlx5dr_matcher_resize_rule_move() accepts original table matcher -
 	 * the one that was used BEFORE table resize.

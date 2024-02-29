@@ -1279,6 +1279,26 @@ enum {
 	MLX5_FLOW_HW_FLOW_OP_TYPE_RSZ_TBL_MOVE,
 };
 
+enum {
+	MLX5_FLOW_HW_FLOW_FLAG_CNT_ID = RTE_BIT32(0),
+	MLX5_FLOW_HW_FLOW_FLAG_FATE_JUMP = RTE_BIT32(1),
+	MLX5_FLOW_HW_FLOW_FLAG_FATE_HRXQ = RTE_BIT32(2),
+	MLX5_FLOW_HW_FLOW_FLAG_AGE_IDX = RTE_BIT32(3),
+	MLX5_FLOW_HW_FLOW_FLAG_MTR_ID = RTE_BIT32(4),
+	MLX5_FLOW_HW_FLOW_FLAG_MATCHER_SELECTOR = RTE_BIT32(5),
+	MLX5_FLOW_HW_FLOW_FLAG_UPD_FLOW = RTE_BIT32(6),
+};
+
+#define MLX5_FLOW_HW_FLOW_FLAGS_ALL ( \
+		MLX5_FLOW_HW_FLOW_FLAG_CNT_ID | \
+		MLX5_FLOW_HW_FLOW_FLAG_FATE_JUMP | \
+		MLX5_FLOW_HW_FLOW_FLAG_FATE_HRXQ | \
+		MLX5_FLOW_HW_FLOW_FLAG_AGE_IDX | \
+		MLX5_FLOW_HW_FLOW_FLAG_MTR_ID | \
+		MLX5_FLOW_HW_FLOW_FLAG_MATCHER_SELECTOR | \
+		MLX5_FLOW_HW_FLOW_FLAG_UPD_FLOW \
+	)
+
 #ifdef PEDANTIC
 #pragma GCC diagnostic ignored "-Wpedantic"
 #endif
@@ -1295,8 +1315,8 @@ struct rte_flow_hw {
 	uint32_t res_idx;
 	/** HWS flow rule index passed to mlx5dr. */
 	uint32_t rule_idx;
-	/** Fate action type. */
-	uint32_t fate_type;
+	/** Which flow fields (inline or in auxiliary struct) are used. */
+	uint32_t flags;
 	/** Ongoing flow operation type. */
 	uint8_t operation_type;
 	/** Index of pattern template this flow is based on. */
