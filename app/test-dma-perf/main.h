@@ -40,6 +40,7 @@ struct lcore_dma_map_t {
 
 struct test_configure {
 	bool is_valid;
+	bool is_skip;
 	uint8_t test_type;
 	const char *test_type_str;
 	uint16_t src_numa_node;
