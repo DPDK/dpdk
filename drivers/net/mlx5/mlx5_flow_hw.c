@@ -1838,15 +1838,9 @@ flow_hw_translate_indirect_meter(struct rte_eth_dev *dev,
 	const struct rte_flow_indirect_update_flow_meter_mark **flow_conf =
 		(typeof(flow_conf))action_conf->conf;
 
-	/*
-	 * Masked indirect handle set dr5 action during template table
-	 * translation.
-	 */
-	if (!dr_rule->action) {
-		ret = flow_dr_set_meter(priv, dr_rule, action_conf);
-		if (ret)
-			return ret;
-	}
+	ret = flow_dr_set_meter(priv, dr_rule, action_conf);
+	if (ret)
+		return ret;
 	if (!act_data->shared_meter.conf_masked) {
 		if (flow_conf && flow_conf[0] && flow_conf[0]->init_color < RTE_COLORS)
 			flow_dr_mtr_flow_color(dr_rule, flow_conf[0]->init_color);
