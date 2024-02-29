@@ -34,6 +34,13 @@ struct worker_info {
 	uint32_t test_cpl;
 };
 
+struct sge_info {
+	struct rte_dma_sge *srcs;
+	struct rte_dma_sge *dsts;
+	uint8_t nb_srcs;
+	uint8_t nb_dsts;
+};
+
 struct lcore_params {
 	uint8_t scenario_id;
 	unsigned int lcore_id;
@@ -46,6 +53,7 @@ struct lcore_params {
 	uint16_t test_secs;
 	struct rte_mbuf **srcs;
 	struct rte_mbuf **dsts;
+	struct sge_info sge;
 	volatile struct worker_info worker_info;
 };
 
@@ -86,21 +94,31 @@ calc_result(uint32_t buf_size, uint32_t nr_buf, uint16_t nb_workers, uint16_t te
 }
 
 static void
-output_result(uint8_t scenario_id, uint32_t lcore_id, char *dma_name, uint16_t ring_size,
-			uint16_t kick_batch, uint64_t ave_cycle, uint32_t buf_size, uint32_t nr_buf,
-			float memory, float bandwidth, float mops, bool is_dma)
+output_result(struct test_configure *cfg, struct lcore_params *para,
+			uint16_t kick_batch, uint64_t ave_cycle, uint32_t buf_size,
+			uint32_t nr_buf, float memory, float bandwidth, float mops)
 {
-	if (is_dma)
-		printf("lcore %u, DMA %s, DMA Ring Size: %u, Kick Batch Size: %u.\n",
-				lcore_id, dma_name, ring_size, kick_batch);
-	else
+	uint16_t ring_size = cfg->ring_size.cur;
+	uint8_t scenario_id = cfg->scenario_id;
+	uint32_t lcore_id = para->lcore_id;
+	char *dma_name = para->dma_name;
+
+	if (cfg->is_dma) {
+		printf("lcore %u, DMA %s, DMA Ring Size: %u, Kick Batch Size: %u", lcore_id,
+		       dma_name, ring_size, kick_batch);
+		if (cfg->is_sg)
+			printf(" DMA src sges: %u, dst sges: %u",
+			       para->sge.nb_srcs, para->sge.nb_dsts);
+		printf(".\n");
+	} else {
 		printf("lcore %u\n", lcore_id);
+	}
 
 	printf("Average Cycles/op: %" PRIu64 ", Buffer Size: %u B, Buffer Number: %u, Memory: %.2lf MB, Frequency: %.3lf Ghz.\n",
 			ave_cycle, buf_size, nr_buf, memory, rte_get_timer_hz()/1000000000.0);
 	printf("Average Bandwidth: %.3lf Gbps, MOps: %.3lf\n", bandwidth, mops);
 
-	if (is_dma)
+	if (cfg->is_dma)
 		snprintf(output_str[lcore_id], MAX_OUTPUT_STR_LEN, CSV_LINE_DMA_FMT,
 			scenario_id, lcore_id, dma_name, ring_size, kick_batch, buf_size,
 			nr_buf, memory, ave_cycle, bandwidth, mops);
@@ -167,7 +185,7 @@ vchan_data_populate(uint32_t dev_id, struct rte_dma_vchan_conf *qconf,
 
 /* Configuration of device. */
 static void
-configure_dmadev_queue(uint32_t dev_id, struct test_configure *cfg)
+configure_dmadev_queue(uint32_t dev_id, struct test_configure *cfg, uint8_t sges_max)
 {
 	uint16_t vchan = 0;
 	struct rte_dma_info info;
@@ -190,6 +208,10 @@ configure_dmadev_queue(uint32_t dev_id, struct test_configure *cfg)
 		rte_exit(EXIT_FAILURE, "Error, no configured queues reported on device id. %u\n",
 				dev_id);
 
+	if (info.max_sges < sges_max)
+		rte_exit(EXIT_FAILURE, "Error with unsupported max_sges on device id %u.\n",
+				dev_id);
+
 	if (rte_dma_start(dev_id) != 0)
 		rte_exit(EXIT_FAILURE, "Error with dma start.\n");
 }
@@ -202,7 +224,11 @@ config_dmadevs(struct test_configure *cfg)
 	uint32_t i;
 	int dev_id;
 	uint16_t nb_dmadevs = 0;
+	uint8_t nb_sges = 0;
 	char *dma_name;
+
+	if (cfg->is_sg)
+		nb_sges = RTE_MAX(cfg->nb_src_sges, cfg->nb_dst_sges);
 
 	for (i = 0; i < ldm->cnt; i++) {
 		dma_name = ldm->dma_names[i];
@@ -213,7 +239,7 @@ config_dmadevs(struct test_configure *cfg)
 		}
 
 		ldm->dma_ids[i] = dev_id;
-		configure_dmadev_queue(dev_id, cfg);
+		configure_dmadev_queue(dev_id, cfg, nb_sges);
 		++nb_dmadevs;
 	}
 
@@ -253,7 +279,7 @@ do_dma_submit_and_poll(uint16_t dev_id, uint64_t *async_cnt,
 }
 
 static inline int
-do_dma_mem_copy(void *p)
+do_dma_plain_mem_copy(void *p)
 {
 	struct lcore_params *para = (struct lcore_params *)p;
 	volatile struct worker_info *worker_info = &(para->worker_info);
@@ -288,6 +314,65 @@ dma_copy:
 					error_exit(dev_id);
 			}
 			async_cnt++;
+
+			if ((async_cnt % kick_batch) == 0)
+				do_dma_submit_and_poll(dev_id, &async_cnt, worker_info);
+		}
+
+		if (worker_info->stop_flag)
+			break;
+	}
+
+	rte_dma_submit(dev_id, 0);
+	while ((async_cnt > 0) && (poll_cnt++ < POLL_MAX)) {
+		nr_cpl = rte_dma_completed(dev_id, 0, MAX_DMA_CPL_NB, NULL, NULL);
+		async_cnt -= nr_cpl;
+	}
+
+	return 0;
+}
+
+static inline int
+do_dma_sg_mem_copy(void *p)
+{
+	struct lcore_params *para = (struct lcore_params *)p;
+	volatile struct worker_info *worker_info = &(para->worker_info);
+	struct rte_dma_sge *src_sges = para->sge.srcs;
+	struct rte_dma_sge *dst_sges = para->sge.dsts;
+	const uint8_t nb_src_sges = para->sge.nb_srcs;
+	const uint8_t nb_dst_sges = para->sge.nb_dsts;
+	const uint16_t kick_batch = para->kick_batch;
+	const uint16_t dev_id = para->dev_id;
+	uint32_t nr_buf = para->nr_buf;
+	uint64_t async_cnt = 0;
+	uint32_t poll_cnt = 0;
+	uint16_t nr_cpl;
+	uint32_t i, j;
+	int ret;
+
+	nr_buf /= RTE_MAX(nb_src_sges, nb_dst_sges);
+	worker_info->stop_flag = false;
+	worker_info->ready_flag = true;
+
+	while (!worker_info->start_flag)
+		;
+
+	while (1) {
+		j = 0;
+		for (i = 0; i < nr_buf; i++) {
+dma_copy:
+			ret = rte_dma_copy_sg(dev_id, 0,
+				&src_sges[i * nb_src_sges], &dst_sges[j * nb_dst_sges],
+				nb_src_sges, nb_dst_sges, 0);
+			if (unlikely(ret < 0)) {
+				if (ret == -ENOSPC) {
+					do_dma_submit_and_poll(dev_id, &async_cnt, worker_info);
+					goto dma_copy;
+				} else
+					error_exit(dev_id);
+			}
+			async_cnt++;
+			j++;
 
 			if ((async_cnt % kick_batch) == 0)
 				do_dma_submit_and_poll(dev_id, &async_cnt, worker_info);
@@ -347,8 +432,9 @@ dummy_free_ext_buf(void *addr, void *opaque)
 }
 
 static int
-setup_memory_env(struct test_configure *cfg, struct rte_mbuf ***srcs,
-			struct rte_mbuf ***dsts)
+setup_memory_env(struct test_configure *cfg,
+			 struct rte_mbuf ***srcs, struct rte_mbuf ***dsts,
+			 struct rte_dma_sge **src_sges, struct rte_dma_sge **dst_sges)
 {
 	static struct rte_mbuf_ext_shared_info *ext_buf_info;
 	unsigned int cur_buf_size = cfg->buf_size.cur;
@@ -409,8 +495,8 @@ setup_memory_env(struct test_configure *cfg, struct rte_mbuf ***srcs,
 	}
 
 	for (i = 0; i < nr_buf; i++) {
-		memset(rte_pktmbuf_mtod((*srcs)[i], void *), rte_rand(), buf_size);
-		memset(rte_pktmbuf_mtod((*dsts)[i], void *), 0, buf_size);
+		memset(rte_pktmbuf_mtod((*srcs)[i], void *), rte_rand(), cur_buf_size);
+		memset(rte_pktmbuf_mtod((*dsts)[i], void *), 0, cur_buf_size);
 	}
 
 	if (cfg->transfer_dir == RTE_DMA_DIR_DEV_TO_MEM ||
@@ -448,20 +534,102 @@ setup_memory_env(struct test_configure *cfg, struct rte_mbuf ***srcs,
 		}
 	}
 
+	if (cfg->is_sg) {
+		uint8_t nb_src_sges = cfg->nb_src_sges;
+		uint8_t nb_dst_sges = cfg->nb_dst_sges;
+		uint32_t sglen_src, sglen_dst;
+
+		*src_sges = rte_zmalloc(NULL, nr_buf * sizeof(struct rte_dma_sge),
+					RTE_CACHE_LINE_SIZE);
+		if (*src_sges == NULL) {
+			printf("Error: src_sges array malloc failed.\n");
+			return -1;
+		}
+
+		*dst_sges = rte_zmalloc(NULL, nr_buf * sizeof(struct rte_dma_sge),
+					RTE_CACHE_LINE_SIZE);
+		if (*dst_sges == NULL) {
+			printf("Error: dst_sges array malloc failed.\n");
+			return -1;
+		}
+
+		sglen_src = cur_buf_size / nb_src_sges;
+		sglen_dst = cur_buf_size / nb_dst_sges;
+
+		for (i = 0; i < nr_buf; i++) {
+			(*src_sges)[i].addr = rte_pktmbuf_iova((*srcs)[i]);
+			(*src_sges)[i].length = sglen_src;
+			if (!((i+1) % nb_src_sges))
+				(*src_sges)[i].length += (cur_buf_size % nb_src_sges);
+
+			(*dst_sges)[i].addr = rte_pktmbuf_iova((*dsts)[i]);
+			(*dst_sges)[i].length = sglen_dst;
+			if (!((i+1) % nb_dst_sges))
+				(*dst_sges)[i].length += (cur_buf_size % nb_dst_sges);
+		}
+	}
+
 	return 0;
 }
 
-int
-mem_copy_benchmark(struct test_configure *cfg, bool is_dma)
+static uint32_t
+align_buffer_count(struct test_configure *cfg, uint32_t *nr_sgsrc, uint32_t *nr_sgdst)
 {
-	uint32_t i;
+	struct lcore_dma_map_t *ldm = &cfg->lcore_dma_map;
+	uint16_t nb_workers = ldm->cnt;
+	uint32_t nr_buf;
+
+	nr_buf = (cfg->mem_size.cur * 1024 * 1024) / (cfg->buf_size.cur * 2);
+	nr_buf -= (nr_buf % nb_workers);
+
+	if (nr_sgsrc == NULL || nr_sgdst == NULL)
+		return nr_buf;
+
+	if (cfg->is_sg) {
+		nr_buf /= nb_workers;
+		nr_buf -= nr_buf % (cfg->nb_src_sges * cfg->nb_dst_sges);
+		nr_buf *= nb_workers;
+
+		if (cfg->nb_dst_sges > cfg->nb_src_sges) {
+			*nr_sgsrc = (nr_buf / cfg->nb_dst_sges * cfg->nb_src_sges);
+			*nr_sgdst = nr_buf;
+		} else {
+			*nr_sgsrc = nr_buf;
+			*nr_sgdst = (nr_buf / cfg->nb_src_sges * cfg->nb_dst_sges);
+		}
+	}
+
+	return nr_buf;
+}
+
+static lcore_function_t *
+get_work_function(struct test_configure *cfg)
+{
+	lcore_function_t *fn;
+
+	if (cfg->is_dma) {
+		if (!cfg->is_sg)
+			fn = do_dma_plain_mem_copy;
+		else
+			fn = do_dma_sg_mem_copy;
+	} else {
+		fn = do_cpu_mem_copy;
+	}
+
+	return fn;
+}
+
+int
+mem_copy_benchmark(struct test_configure *cfg)
+{
+	uint32_t i, j;
 	uint32_t offset;
 	unsigned int lcore_id = 0;
 	struct rte_mbuf **srcs = NULL, **dsts = NULL, **m = NULL;
+	struct rte_dma_sge *src_sges = NULL, *dst_sges = NULL;
 	struct lcore_dma_map_t *ldm = &cfg->lcore_dma_map;
 	unsigned int buf_size = cfg->buf_size.cur;
 	uint16_t kick_batch = cfg->kick_batch.cur;
-	uint32_t nr_buf = cfg->nr_buf = (cfg->mem_size.cur * 1024 * 1024) / (cfg->buf_size.cur * 2);
 	uint16_t nb_workers = ldm->cnt;
 	uint16_t test_secs = cfg->test_secs;
 	float memory = 0;
@@ -469,12 +637,17 @@ mem_copy_benchmark(struct test_configure *cfg, bool is_dma)
 	uint32_t avg_cycles_total;
 	float mops, mops_total;
 	float bandwidth, bandwidth_total;
+	uint32_t nr_sgsrc = 0, nr_sgdst = 0;
+	uint32_t nr_buf;
 	int ret = 0;
 
-	if (setup_memory_env(cfg, &srcs, &dsts) < 0)
+	nr_buf = align_buffer_count(cfg, &nr_sgsrc, &nr_sgdst);
+	cfg->nr_buf = nr_buf;
+
+	if (setup_memory_env(cfg, &srcs, &dsts, &src_sges, &dst_sges) < 0)
 		goto out;
 
-	if (is_dma)
+	if (cfg->is_dma)
 		if (config_dmadevs(cfg) < 0)
 			goto out;
 
@@ -494,7 +667,7 @@ mem_copy_benchmark(struct test_configure *cfg, bool is_dma)
 			printf("lcore parameters malloc failure for lcore %d\n", lcore_id);
 			break;
 		}
-		if (is_dma) {
+		if (cfg->is_dma) {
 			lcores[i]->dma_name = ldm->dma_names[i];
 			lcores[i]->dev_id = ldm->dma_ids[i];
 			lcores[i]->kick_batch = kick_batch;
@@ -508,10 +681,15 @@ mem_copy_benchmark(struct test_configure *cfg, bool is_dma)
 		lcores[i]->scenario_id = cfg->scenario_id;
 		lcores[i]->lcore_id = lcore_id;
 
-		if (is_dma)
-			rte_eal_remote_launch(do_dma_mem_copy, (void *)(lcores[i]), lcore_id);
-		else
-			rte_eal_remote_launch(do_cpu_mem_copy, (void *)(lcores[i]), lcore_id);
+		if (cfg->is_sg) {
+			lcores[i]->sge.nb_srcs = cfg->nb_src_sges;
+			lcores[i]->sge.nb_dsts = cfg->nb_dst_sges;
+			lcores[i]->sge.srcs = src_sges + (nr_sgsrc / nb_workers * i);
+			lcores[i]->sge.dsts = dst_sges + (nr_sgdst / nb_workers * i);
+		}
+
+		rte_eal_remote_launch(get_work_function(cfg), (void *)(lcores[i]),
+				lcore_id);
 	}
 
 	while (1) {
@@ -543,12 +721,50 @@ mem_copy_benchmark(struct test_configure *cfg, bool is_dma)
 
 	rte_eal_mp_wait_lcore();
 
-	if (cfg->transfer_dir == RTE_DMA_DIR_MEM_TO_MEM) {
+	if (cfg->transfer_dir == RTE_DMA_DIR_MEM_TO_MEM && !cfg->is_sg) {
 		for (i = 0; i < (nr_buf / nb_workers) * nb_workers; i++) {
 			if (memcmp(rte_pktmbuf_mtod(srcs[i], void *),
 				   rte_pktmbuf_mtod(dsts[i], void *),
 				   cfg->buf_size.cur) != 0) {
 				printf("Copy validation fails for buffer number %d\n", i);
+				ret = -1;
+				goto out;
+			}
+		}
+	} else if (cfg->transfer_dir == RTE_DMA_DIR_MEM_TO_MEM && cfg->is_sg) {
+		size_t src_remsz = buf_size % cfg->nb_src_sges;
+		size_t dst_remsz = buf_size % cfg->nb_dst_sges;
+		size_t src_sz = buf_size / cfg->nb_src_sges;
+		size_t dst_sz = buf_size / cfg->nb_dst_sges;
+		uint8_t src[buf_size], dst[buf_size];
+		uint8_t *sbuf, *dbuf, *ptr;
+
+		for (i = 0; i < (nr_buf / RTE_MAX(cfg->nb_src_sges, cfg->nb_dst_sges)); i++) {
+			sbuf = src;
+			dbuf = dst;
+			ptr = NULL;
+
+			for (j = 0; j < cfg->nb_src_sges; j++) {
+				ptr = rte_pktmbuf_mtod(srcs[i * cfg->nb_src_sges + j], uint8_t *);
+				memcpy(sbuf, ptr, src_sz);
+				sbuf += src_sz;
+			}
+
+			if (src_remsz)
+				memcpy(sbuf, ptr + src_sz, src_remsz);
+
+			for (j = 0; j < cfg->nb_dst_sges; j++) {
+				ptr = rte_pktmbuf_mtod(dsts[i * cfg->nb_dst_sges + j], uint8_t *);
+				memcpy(dbuf, ptr, dst_sz);
+				dbuf += dst_sz;
+			}
+
+			if (dst_remsz)
+				memcpy(dbuf, ptr + dst_sz, dst_remsz);
+
+			if (memcmp(src, dst, buf_size) != 0) {
+				printf("SG Copy validation fails for buffer number %d\n",
+					i * cfg->nb_src_sges);
 				ret = -1;
 				goto out;
 			}
@@ -562,10 +778,8 @@ mem_copy_benchmark(struct test_configure *cfg, bool is_dma)
 		calc_result(buf_size, nr_buf, nb_workers, test_secs,
 			lcores[i]->worker_info.test_cpl,
 			&memory, &avg_cycles, &bandwidth, &mops);
-		output_result(cfg->scenario_id, lcores[i]->lcore_id,
-					lcores[i]->dma_name, cfg->ring_size.cur, kick_batch,
-					avg_cycles, buf_size, nr_buf / nb_workers, memory,
-					bandwidth, mops, is_dma);
+		output_result(cfg, lcores[i], kick_batch, avg_cycles, buf_size,
+			nr_buf / nb_workers, memory, bandwidth, mops);
 		mops_total += mops;
 		bandwidth_total += bandwidth;
 		avg_cycles_total += avg_cycles;
@@ -608,13 +822,20 @@ out:
 	rte_mempool_free(dst_pool);
 	dst_pool = NULL;
 
+	/* free sges for mbufs */
+	rte_free(src_sges);
+	src_sges = NULL;
+
+	rte_free(dst_sges);
+	dst_sges = NULL;
+
 	/* free the worker parameters */
 	for (i = 0; i < nb_workers; i++) {
 		rte_free(lcores[i]);
 		lcores[i] = NULL;
 	}
 
-	if (is_dma) {
+	if (cfg->is_dma) {
 		for (i = 0; i < nb_workers; i++) {
 			printf("Stopping dmadev %d\n", ldm->dma_ids[i]);
 			rte_dma_stop(ldm->dma_ids[i]);

@@ -53,11 +53,14 @@ struct test_configure {
 	uint16_t dst_numa_node;
 	uint16_t opcode;
 	bool is_dma;
+	bool is_sg;
 	struct lcore_dma_map_t lcore_dma_map;
 	struct test_configure_entry mem_size;
 	struct test_configure_entry buf_size;
 	struct test_configure_entry ring_size;
 	struct test_configure_entry kick_batch;
+	uint8_t nb_src_sges;
+	uint8_t nb_dst_sges;
 	uint8_t cache_flush;
 	uint32_t nr_buf;
 	uint16_t test_secs;
@@ -66,6 +69,6 @@ struct test_configure {
 	struct test_vchan_dev_config vchan_dev;
 };
 
-int mem_copy_benchmark(struct test_configure *cfg, bool is_dma);
+int mem_copy_benchmark(struct test_configure *cfg);
 
 #endif /* MAIN_H */
