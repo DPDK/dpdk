@@ -22,14 +22,24 @@ enum icp_qat_fw_la_cmd_id {
 	ICP_QAT_FW_LA_CMD_DELIMITER = 18
 };
 
+/* In GEN_LCE Command ID 4 corresponds to AEAD */
+#define ICP_QAT_FW_LA_CMD_AEAD 4
+
 #define ICP_QAT_FW_LA_ICV_VER_STATUS_PASS ICP_QAT_FW_COMN_STATUS_FLAG_OK
 #define ICP_QAT_FW_LA_ICV_VER_STATUS_FAIL ICP_QAT_FW_COMN_STATUS_FLAG_ERROR
 #define ICP_QAT_FW_LA_TRNG_STATUS_PASS ICP_QAT_FW_COMN_STATUS_FLAG_OK
 #define ICP_QAT_FW_LA_TRNG_STATUS_FAIL ICP_QAT_FW_COMN_STATUS_FLAG_ERROR
 
+/* GEN_LCE Hash, HMAC and GCM Verification Status */
+#define ICP_QAT_FW_LA_VER_STATUS_FAIL ICP_QAT_FW_COMN_GEN_LCE_STATUS_FLAG_ERROR
+
+
 struct icp_qat_fw_la_bulk_req {
 	struct icp_qat_fw_comn_req_hdr comn_hdr;
-	struct icp_qat_fw_comn_req_hdr_cd_pars cd_pars;
+	union {
+		struct icp_qat_fw_comn_req_hdr_cd_pars cd_pars;
+		struct lce_key_buff_desc key_buff;
+	};
 	struct icp_qat_fw_comn_req_mid comn_mid;
 	struct icp_qat_fw_comn_req_rqpars serv_specif_rqpars;
 	struct icp_qat_fw_comn_req_cd_ctrl cd_ctrl;
@@ -90,6 +100,21 @@ struct icp_qat_fw_la_bulk_req {
 #define QAT_LA_USE_WAT_SLICE_BITPOS 3
 #define QAT_LA_USE_WAT_SLICE 1
 #define QAT_LA_USE_WAT_SLICE_MASK 0x1
+
+/* GEN_LCE specific Crypto Flags fields */
+#define ICP_QAT_FW_SYM_AEAD_ALGO_BITPOS 6
+#define ICP_QAT_FW_SYM_AEAD_ALGO_MASK 0x3
+#define ICP_QAT_FW_SYM_IV_SIZE_BITPOS 9
+#define ICP_QAT_FW_SYM_IV_SIZE_MASK 0x3
+#define ICP_QAT_FW_SYM_IV_IN_DESC_BITPOS 11
+#define ICP_QAT_FW_SYM_IV_IN_DESC_MASK 0x1
+#define ICP_QAT_FW_SYM_IV_IN_DESC_VALID 1
+#define ICP_QAT_FW_SYM_DIRECTION_BITPOS 15
+#define ICP_QAT_FW_SYM_DIRECTION_MASK 0x1
+
+/* In GEN_LCE AEAD AES GCM Algorithm has ID 0 */
+#define QAT_LA_CRYPTO_AEAD_AES_GCM_GEN_LCE 0
+
 #define ICP_QAT_FW_LA_FLAGS_BUILD(zuc_proto, gcm_iv_len, auth_rslt, proto, \
 	cmp_auth, ret_auth, update_state, \
 	ciph_iv, ciphcfg, partial) \
@@ -211,6 +236,23 @@ struct icp_qat_fw_la_bulk_req {
 	QAT_FIELD_SET(flags, val, \
 	QAT_LA_USE_WAT_SLICE_BITPOS, \
 	QAT_LA_USE_WAT_SLICE_MASK)
+
+/* GEN_LCE specific Crypto Flags operations */
+#define ICP_QAT_FW_SYM_AEAD_ALGO_SET(flags, val) \
+	QAT_FIELD_SET(flags, val, ICP_QAT_FW_SYM_AEAD_ALGO_BITPOS, \
+	ICP_QAT_FW_SYM_AEAD_ALGO_MASK)
+
+#define ICP_QAT_FW_SYM_IV_SIZE_SET(flags, val) \
+	QAT_FIELD_SET(flags, val, ICP_QAT_FW_SYM_IV_SIZE_BITPOS, \
+	ICP_QAT_FW_SYM_IV_SIZE_MASK)
+
+#define ICP_QAT_FW_SYM_IV_IN_DESC_FLAG_SET(flags, val) \
+	QAT_FIELD_SET(flags, val, ICP_QAT_FW_SYM_IV_IN_DESC_BITPOS, \
+	ICP_QAT_FW_SYM_IV_IN_DESC_MASK)
+
+#define ICP_QAT_FW_SYM_DIR_FLAG_SET(flags, val) \
+	QAT_FIELD_SET(flags, val, ICP_QAT_FW_SYM_DIRECTION_BITPOS, \
+	ICP_QAT_FW_SYM_DIRECTION_MASK)
 
 #define QAT_FW_LA_MODE2 1
 #define QAT_FW_LA_NO_MODE2 0
@@ -432,6 +474,21 @@ struct icp_qat_fw_la_cipher_20_req_params {
 	uint64_t   spc_auth_res_addr;
 	uint8_t    reserved[3];
 	uint8_t    spc_auth_res_sz;
+};
+
+struct icp_qat_fw_la_cipher_30_req_params {
+		uint32_t   spc_aad_sz;
+		uint8_t    cipher_length;
+		uint8_t    reserved[2];
+		uint8_t    spc_auth_res_sz;
+		union {
+				uint32_t cipher_IV_array[ICP_QAT_FW_NUM_LONGWORDS_4];
+				struct {
+						uint64_t cipher_IV_ptr;
+						uint64_t resrvd1;
+			} s;
+
+		} u;
 };
 
 #endif

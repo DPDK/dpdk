@@ -28,6 +28,7 @@ poll mode crypto driver support for the following hardware accelerator devices:
 * ``Intel QuickAssist Technology 4xxx``
 * ``Intel QuickAssist Technology 300xx``
 * ``Intel QuickAssist Technology 420xx``
+* ``Intel QuickAssist Technology apfxx``
 
 
 Features

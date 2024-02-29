@@ -95,6 +95,12 @@
 /* Maximum data length for single pass GMAC: 2^14-1 */
 #define QAT_AES_GMAC_SPC_MAX_SIZE 16383
 
+/* Digest length for GCM Algo is 16 bytes */
+#define GCM_256_DIGEST_LEN 16
+
+/* IV length for GCM algo is 12 bytes */
+#define GCM_IV_LENGTH_GEN_LCE 12
+
 struct qat_sym_session;
 
 struct qat_sym_sgl {

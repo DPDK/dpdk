@@ -137,6 +137,7 @@ New Features
     devices in QAT crypto driver.
   * Enabled ZUC256 cipher and auth algorithm for wireless slice
     enabled GEN3 and GEN5 devices.
+  * Added support for GEN LCE (1454) device, for AES-GCM only.
 
 * **Updated Marvell cnxk crypto driver.**
 
