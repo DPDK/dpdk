@@ -2515,6 +2515,34 @@ err:
 				  "fail to create rte table");
 }
 
+static __rte_always_inline struct mlx5dr_rule_action *
+flow_hw_get_dr_action_buffer(struct mlx5_priv *priv,
+			     struct rte_flow_template_table *table,
+			     uint8_t action_template_index,
+			     uint32_t queue)
+{
+	uint32_t offset = action_template_index * priv->nb_queue + queue;
+
+	return &table->rule_acts[offset].acts[0];
+}
+
+static void
+flow_hw_populate_rule_acts_caches(struct rte_eth_dev *dev,
+				  struct rte_flow_template_table *table,
+				  uint8_t at_idx)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	uint32_t q;
+
+	for (q = 0; q < priv->nb_queue; ++q) {
+		struct mlx5dr_rule_action *rule_acts =
+				flow_hw_get_dr_action_buffer(priv, table, at_idx, q);
+
+		rte_memcpy(rule_acts, table->ats[at_idx].acts.rule_acts,
+			   sizeof(table->ats[at_idx].acts.rule_acts));
+	}
+}
+
 /**
  * Translate rte_flow actions to DR action.
  *
@@ -2542,6 +2570,7 @@ flow_hw_actions_translate(struct rte_eth_dev *dev,
 						tbl->ats[i].action_template,
 						&tbl->mpctx, error))
 			goto err;
+		flow_hw_populate_rule_acts_caches(dev, tbl, i);
 	}
 	ret = mlx5_tbl_multi_pattern_process(dev, tbl, &tbl->mpctx.segments[0],
 					     rte_log2_u32(tbl->cfg.attr.nb_flows),
@@ -2931,7 +2960,6 @@ flow_hw_actions_construct(struct rte_eth_dev *dev,
 	struct mlx5_aso_mtr *aso_mtr;
 	struct mlx5_multi_pattern_segment *mp_segment = NULL;
 
-	rte_memcpy(rule_acts, hw_acts->rule_acts, sizeof(*rule_acts) * at->dr_actions_num);
 	attr.group = table->grp->group_id;
 	ft_flag = mlx5_hw_act_flag[!!table->grp->group_id][table->type];
 	if (table->type == MLX5DR_TABLE_TYPE_FDB) {
@@ -3337,7 +3365,7 @@ flow_hw_async_flow_create(struct rte_eth_dev *dev,
 		.user_data = user_data,
 		.burst = attr->postpone,
 	};
-	struct mlx5dr_rule_action rule_acts[MLX5_HW_MAX_ACTS];
+	struct mlx5dr_rule_action *rule_acts;
 	struct rte_flow_hw *flow = NULL;
 	struct mlx5_hw_q_job *job = NULL;
 	const struct rte_flow_item *rule_items;
@@ -3360,6 +3388,7 @@ flow_hw_async_flow_create(struct rte_eth_dev *dev,
 	mlx5_ipool_malloc(table->resource, &res_idx);
 	if (!res_idx)
 		goto error;
+	rule_acts = flow_hw_get_dr_action_buffer(priv, table, action_template_index, queue);
 	/*
 	 * Set the table here in order to know the destination table
 	 * when free the flow afterward.
@@ -3481,7 +3510,7 @@ flow_hw_async_flow_create_by_index(struct rte_eth_dev *dev,
 		.user_data = user_data,
 		.burst = attr->postpone,
 	};
-	struct mlx5dr_rule_action rule_acts[MLX5_HW_MAX_ACTS];
+	struct mlx5dr_rule_action *rule_acts;
 	struct rte_flow_hw *flow = NULL;
 	struct mlx5_hw_q_job *job = NULL;
 	uint32_t flow_idx = 0;
@@ -3503,6 +3532,7 @@ flow_hw_async_flow_create_by_index(struct rte_eth_dev *dev,
 	mlx5_ipool_malloc(table->resource, &res_idx);
 	if (!res_idx)
 		goto error;
+	rule_acts = flow_hw_get_dr_action_buffer(priv, table, action_template_index, queue);
 	/*
 	 * Set the table here in order to know the destination table
 	 * when free the flow afterwards.
@@ -3612,7 +3642,7 @@ flow_hw_async_flow_update(struct rte_eth_dev *dev,
 		.user_data = user_data,
 		.burst = attr->postpone,
 	};
-	struct mlx5dr_rule_action rule_acts[MLX5_HW_MAX_ACTS];
+	struct mlx5dr_rule_action *rule_acts;
 	struct rte_flow_hw *of = (struct rte_flow_hw *)flow;
 	struct rte_flow_hw *nf;
 	struct rte_flow_template_table *table = of->table;
@@ -3630,6 +3660,7 @@ flow_hw_async_flow_update(struct rte_eth_dev *dev,
 		goto error;
 	nf = job->upd_flow;
 	memset(nf, 0, sizeof(struct rte_flow_hw));
+	rule_acts = flow_hw_get_dr_action_buffer(priv, table, action_template_index, queue);
 	/*
 	 * Set the table here in order to know the destination table
 	 * when free the flow afterwards.
@@ -4355,6 +4386,7 @@ mlx5_hw_build_template_table(struct rte_eth_dev *dev,
 			i++;
 			goto at_error;
 		}
+		flow_hw_populate_rule_acts_caches(dev, tbl, i);
 	}
 	tbl->nb_action_templates = nb_action_templates;
 	if (mlx5_is_multi_pattern_active(&tbl->mpctx)) {
@@ -4443,6 +4475,7 @@ flow_hw_table_create(struct rte_eth_dev *dev,
 	uint32_t i = 0, max_tpl = MLX5_HW_TBL_MAX_ITEM_TEMPLATE;
 	uint32_t nb_flows = rte_align32pow2(attr->nb_flows);
 	bool port_started = !!dev->data->dev_started;
+	size_t tbl_mem_size;
 	int err;
 
 	/* HWS layer accepts only 1 item template with root table. */
@@ -4462,8 +4495,16 @@ flow_hw_table_create(struct rte_eth_dev *dev,
 		rte_errno = EINVAL;
 		goto error;
 	}
+	/*
+	 * Amount of memory required for rte_flow_template_table struct:
+	 * - Size of the struct itself.
+	 * - VLA of DR rule action containers at the end =
+	 *     number of actions templates * number of queues * size of DR rule actions container.
+	 */
+	tbl_mem_size = sizeof(*tbl);
+	tbl_mem_size += nb_action_templates * priv->nb_queue * sizeof(tbl->rule_acts[0]);
 	/* Allocate the table memory. */
-	tbl = mlx5_malloc(MLX5_MEM_ZERO, sizeof(*tbl), 0, rte_socket_id());
+	tbl = mlx5_malloc(MLX5_MEM_ZERO, tbl_mem_size, RTE_CACHE_LINE_SIZE, rte_socket_id());
 	if (!tbl)
 		goto error;
 	tbl->cfg = *table_cfg;

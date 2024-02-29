@@ -1566,6 +1566,10 @@ struct mlx5_matcher_info {
 	RTE_ATOMIC(uint32_t) refcnt;
 };
 
+struct mlx5_dr_rule_action_container {
+	struct mlx5dr_rule_action acts[MLX5_HW_MAX_ACTS];
+} __rte_cache_aligned;
+
 struct rte_flow_template_table {
 	LIST_ENTRY(rte_flow_template_table) next;
 	struct mlx5_flow_group *grp; /* The group rte_flow_template_table uses. */
@@ -1585,6 +1589,15 @@ struct rte_flow_template_table {
 	uint32_t refcnt; /* Table reference counter. */
 	struct mlx5_tbl_multi_pattern_ctx mpctx;
 	struct mlx5dr_matcher_attr matcher_attr;
+	/**
+	 * Variable length array of containers containing precalculated templates of DR actions
+	 * arrays. This array is allocated at template table creation time and contains
+	 * one container per each queue, per each actions template.
+	 * Essentially rule_acts is a 2-dimensional array indexed with (AT index, queue) pair.
+	 * Each container will provide a local "queue buffer" to work on for flow creation
+	 * operations when using a given actions template.
+	 */
+	struct mlx5_dr_rule_action_container rule_acts[];
 };
 
 static __rte_always_inline struct mlx5dr_matcher *
