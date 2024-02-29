@@ -415,7 +415,6 @@ struct mlx5_hw_q_job {
 		/* Data extracted from hardware */
 		void *hw;
 	} query;
-	struct rte_flow_hw *upd_flow; /* Flow with updated values. */
 };
 
 /* HW steering job descriptor LIFO pool. */

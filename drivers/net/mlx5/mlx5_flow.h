@@ -1293,6 +1293,12 @@ struct rte_flow_hw {
 	uint8_t rule[]; /* HWS layer data struct. */
 } __rte_packed;
 
+/** Auxiliary data stored per flow which is not required to be stored in main flow structure. */
+struct rte_flow_hw_aux {
+	/** Placeholder flow struct used during flow rule update operation. */
+	struct rte_flow_hw upd_flow;
+};
+
 #ifdef PEDANTIC
 #pragma GCC diagnostic error "-Wpedantic"
 #endif
@@ -1601,6 +1607,7 @@ struct rte_flow_template_table {
 	/* Action templates bind to the table. */
 	struct mlx5_hw_action_template ats[MLX5_HW_TBL_MAX_ACTION_TEMPLATE];
 	struct mlx5_indexed_pool *flow; /* The table's flow ipool. */
+	struct rte_flow_hw_aux *flow_aux; /**< Auxiliary data stored per flow. */
 	struct mlx5_indexed_pool *resource; /* The table's resource ipool. */
 	struct mlx5_flow_template_table_cfg cfg;
 	uint32_t type; /* Flow table type RX/TX/FDB. */

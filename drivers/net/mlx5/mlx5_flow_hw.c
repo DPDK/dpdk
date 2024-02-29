@@ -79,6 +79,66 @@ struct mlx5_indlst_legacy {
 #define MLX5_CONST_ENCAP_ITEM(encap_type, ptr) \
 (((const struct encap_type *)(ptr))->definition)
 
+/**
+ * Returns the size of a struct with a following layout:
+ *
+ * @code{.c}
+ * struct rte_flow_hw {
+ *     // rte_flow_hw fields
+ *     uint8_t rule[mlx5dr_rule_get_handle_size()];
+ * };
+ * @endcode
+ *
+ * Such struct is used as a basic container for HW Steering flow rule.
+ */
+static size_t
+mlx5_flow_hw_entry_size(void)
+{
+	return sizeof(struct rte_flow_hw) + mlx5dr_rule_get_handle_size();
+}
+
+/**
+ * Returns the size of "auxed" rte_flow_hw structure which is assumed to be laid out as follows:
+ *
+ * @code{.c}
+ * struct {
+ *     struct rte_flow_hw {
+ *         // rte_flow_hw fields
+ *         uint8_t rule[mlx5dr_rule_get_handle_size()];
+ *     } flow;
+ *     struct rte_flow_hw_aux aux;
+ * };
+ * @endcode
+ *
+ * Such struct is used whenever rte_flow_hw_aux cannot be allocated separately from the rte_flow_hw
+ * e.g., when table is resizable.
+ */
+static size_t
+mlx5_flow_hw_auxed_entry_size(void)
+{
+	size_t rule_size = mlx5dr_rule_get_handle_size();
+
+	return sizeof(struct rte_flow_hw) + rule_size + sizeof(struct rte_flow_hw_aux);
+}
+
+/**
+ * Returns a valid pointer to rte_flow_hw_aux associated with given rte_flow_hw
+ * depending on template table configuration.
+ */
+static __rte_always_inline struct rte_flow_hw_aux *
+mlx5_flow_hw_aux(uint16_t port_id, struct rte_flow_hw *flow)
+{
+	struct rte_flow_template_table *table = flow->table;
+
+	if (rte_flow_template_table_resizable(port_id, &table->cfg.attr)) {
+		size_t offset = sizeof(struct rte_flow_hw) + mlx5dr_rule_get_handle_size();
+
+		return RTE_PTR_ADD(flow, offset);
+	} else {
+		return &table->flow_aux[flow->idx - 1];
+	}
+}
+
 static int
 mlx5_tbl_multi_pattern_process(struct rte_eth_dev *dev,
 			       struct rte_flow_template_table *tbl,
@@ -3657,6 +3717,7 @@ flow_hw_async_flow_update(struct rte_eth_dev *dev,
 	struct mlx5_flow_hw_action_params ap;
 	struct rte_flow_hw *of = (struct rte_flow_hw *)flow;
 	struct rte_flow_hw *nf;
+	struct rte_flow_hw_aux *aux;
 	struct rte_flow_template_table *table = of->table;
 	struct mlx5_hw_q_job *job = NULL;
 	uint32_t res_idx = 0;
@@ -3667,7 +3728,8 @@ flow_hw_async_flow_update(struct rte_eth_dev *dev,
 		rte_errno = ENOMEM;
 		goto error;
 	}
-	nf = job->upd_flow;
+	aux = mlx5_flow_hw_aux(dev->data->port_id, of);
+	nf = &aux->upd_flow;
 	memset(nf, 0, sizeof(struct rte_flow_hw));
 	rule_acts = flow_hw_get_dr_action_buffer(priv, table, action_template_index, queue);
 	/*
@@ -3714,11 +3776,8 @@ flow_hw_async_flow_update(struct rte_eth_dev *dev,
 		rte_errno = EINVAL;
 		goto error;
 	}
-	/*
-	 * Switch the old flow and the new flow.
-	 */
+	/* Switch to the old flow. New flow will retrieved from the table on completion. */
 	job->flow = of;
-	job->upd_flow = nf;
 	ret = mlx5dr_rule_action_update((struct mlx5dr_rule *)of->rule,
 					action_template_index, rule_acts, &rule_attr);
 	if (likely(!ret))
@@ -3990,8 +4049,10 @@ hw_cmpl_flow_update_or_destroy(struct rte_eth_dev *dev,
 			mlx5_ipool_free(table->flow, flow->idx);
 		}
 	} else {
-		rte_memcpy(flow, job->upd_flow,
-			   offsetof(struct rte_flow_hw, rule));
+		struct rte_flow_hw_aux *aux = mlx5_flow_hw_aux(dev->data->port_id, flow);
+		struct rte_flow_hw *upd_flow = &aux->upd_flow;
+
+		rte_memcpy(flow, upd_flow, offsetof(struct rte_flow_hw, rule));
 		if (table->resource)
 			mlx5_ipool_free(table->resource, res_idx);
 	}
@@ -4480,7 +4541,6 @@ flow_hw_table_create(struct rte_eth_dev *dev,
 		.data = &flow_attr,
 	};
 	struct mlx5_indexed_pool_config cfg = {
-		.size = sizeof(struct rte_flow_hw) + mlx5dr_rule_get_handle_size(),
 		.trunk_size = 1 << 12,
 		.per_core_cache = 1 << 13,
 		.need_lock = 1,
@@ -4501,6 +4561,9 @@ flow_hw_table_create(struct rte_eth_dev *dev,
 	if (!attr->flow_attr.group)
 		max_tpl = 1;
 	cfg.max_idx = nb_flows;
+	cfg.size = !rte_flow_template_table_resizable(dev->data->port_id, attr) ?
+		   mlx5_flow_hw_entry_size() :
+		   mlx5_flow_hw_auxed_entry_size();
 	/* For table has very limited flows, disable cache. */
 	if (nb_flows < cfg.trunk_size) {
 		cfg.per_core_cache = 0;
@@ -4530,6 +4593,11 @@ flow_hw_table_create(struct rte_eth_dev *dev,
 	/* Allocate flow indexed pool. */
 	tbl->flow = mlx5_ipool_create(&cfg);
 	if (!tbl->flow)
+		goto error;
+	/* Allocate table of auxiliary flow rule structs. */
+	tbl->flow_aux = mlx5_malloc(MLX5_MEM_ZERO, sizeof(struct rte_flow_hw_aux) * nb_flows,
+				    RTE_CACHE_LINE_SIZE, rte_dev_numa_node(dev->device));
+	if (!tbl->flow_aux)
 		goto error;
 	/* Register the flow group. */
 	ge = mlx5_hlist_register(priv->sh->groups, attr->flow_attr.group, &ctx);
@@ -4651,6 +4719,8 @@ error:
 		if (tbl->grp)
 			mlx5_hlist_unregister(priv->sh->groups,
 					      &tbl->grp->entry);
+		if (tbl->flow_aux)
+			mlx5_free(tbl->flow_aux);
 		if (tbl->flow)
 			mlx5_ipool_destroy(tbl->flow);
 		mlx5_free(tbl);
@@ -4889,6 +4959,7 @@ flow_hw_table_destroy(struct rte_eth_dev *dev,
 	mlx5_hlist_unregister(priv->sh->groups, &table->grp->entry);
 	if (table->resource)
 		mlx5_ipool_destroy(table->resource);
+	mlx5_free(table->flow_aux);
 	mlx5_ipool_destroy(table->flow);
 	mlx5_free(table);
 	return 0;
@@ -10204,8 +10275,7 @@ flow_hw_configure(struct rte_eth_dev *dev,
 			goto err;
 		}
 		mem_size += (sizeof(struct mlx5_hw_q_job *) +
-			     sizeof(struct mlx5_hw_q_job) +
-			     sizeof(struct rte_flow_hw)) * _queue_attr[i]->size;
+			     sizeof(struct mlx5_hw_q_job)) * _queue_attr[i]->size;
 	}
 	priv->hw_q = mlx5_malloc(MLX5_MEM_ZERO, mem_size,
 				 64, SOCKET_ID_ANY);
@@ -10214,23 +10284,17 @@ flow_hw_configure(struct rte_eth_dev *dev,
 		goto err;
 	}
 	for (i = 0; i < nb_q_updated; i++) {
-		struct rte_flow_hw *upd_flow = NULL;
-
 		priv->hw_q[i].job_idx = _queue_attr[i]->size;
 		priv->hw_q[i].size = _queue_attr[i]->size;
 		if (i == 0)
 			priv->hw_q[i].job = (struct mlx5_hw_q_job **)
 					    &priv->hw_q[nb_q_updated];
 		else
-			priv->hw_q[i].job = (struct mlx5_hw_q_job **)
-				&job[_queue_attr[i - 1]->size - 1].upd_flow[1];
+			priv->hw_q[i].job = (struct mlx5_hw_q_job **)&job[_queue_attr[i - 1]->size];
 		job = (struct mlx5_hw_q_job *)
 		      &priv->hw_q[i].job[_queue_attr[i]->size];
-		upd_flow = (struct rte_flow_hw *)&job[_queue_attr[i]->size];
-		for (j = 0; j < _queue_attr[i]->size; j++) {
-			job[j].upd_flow = &upd_flow[j];
+		for (j = 0; j < _queue_attr[i]->size; j++)
 			priv->hw_q[i].job[j] = &job[j];
-		}
 		/* Notice ring name length is limited. */
 		priv->hw_q[i].indir_cq = mlx5_hwq_ring_create
 			(dev->data->port_id, i, _queue_attr[i]->size, "indir_act_cq");
