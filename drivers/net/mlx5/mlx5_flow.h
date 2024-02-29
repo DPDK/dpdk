@@ -1283,31 +1283,60 @@ enum {
 #pragma GCC diagnostic ignored "-Wpedantic"
 #endif
 
-/* HWS flow struct. */
+/** HWS flow struct. */
 struct rte_flow_hw {
-	uint32_t idx; /* Flow index from indexed pool. */
-	uint32_t res_idx; /* Resource index from indexed pool. */
-	uint32_t fate_type; /* Fate action type. */
-	union {
-		/* Jump action. */
-		struct mlx5_hw_jump_action *jump;
-		struct mlx5_hrxq *hrxq; /* TIR action. */
-	};
-	struct rte_flow_template_table *table; /* The table flow allcated from. */
-	uint8_t mt_idx;
-	uint8_t matcher_selector:1;
-	uint32_t age_idx;
-	cnt_id_t cnt_id;
-	uint32_t mtr_id;
+	/** The table flow allcated from. */
+	struct rte_flow_template_table *table;
+	/** Application's private data passed to enqueued flow operation. */
+	void *user_data;
+	/** Flow index from indexed pool. */
+	uint32_t idx;
+	/** Resource index from indexed pool. */
+	uint32_t res_idx;
+	/** HWS flow rule index passed to mlx5dr. */
 	uint32_t rule_idx;
-	uint8_t operation_type; /**< Ongoing flow operation type. */
-	void *user_data; /**< Application's private data passed to enqueued flow operation. */
-	uint8_t padding[1]; /**< Padding for proper alignment of mlx5dr rule struct. */
-	uint8_t rule[]; /* HWS layer data struct. */
+	/** Fate action type. */
+	uint32_t fate_type;
+	/** Ongoing flow operation type. */
+	uint8_t operation_type;
+	/** Index of pattern template this flow is based on. */
+	uint8_t mt_idx;
+
+	/** COUNT action index. */
+	cnt_id_t cnt_id;
+	union {
+		/** Jump action. */
+		struct mlx5_hw_jump_action *jump;
+		/** TIR action. */
+		struct mlx5_hrxq *hrxq;
+	};
+
+	/**
+	 * Padding for alignment to 56 bytes.
+	 * Since mlx5dr rule is 72 bytes, whole flow is contained within 128 B (2 cache lines).
+	 * This space is reserved for future additions to flow struct.
+	 */
+	uint8_t padding[10];
+	/** HWS layer data struct. */
+	uint8_t rule[];
 } __rte_packed;
+
+/** Auxiliary data fields that are updatable. */
+struct rte_flow_hw_aux_fields {
+	/** AGE action index. */
+	uint32_t age_idx;
+	/** Direct meter (METER or METER_MARK) action index. */
+	uint32_t mtr_id;
+};
 
 /** Auxiliary data stored per flow which is not required to be stored in main flow structure. */
 struct rte_flow_hw_aux {
+	/** Auxiliary fields associated with the original flow. */
+	struct rte_flow_hw_aux_fields orig;
+	/** Auxiliary fields associated with the updated flow. */
+	struct rte_flow_hw_aux_fields upd;
+	/** Index of resizable matcher associated with this flow. */
+	uint8_t matcher_selector;
 	/** Placeholder flow struct used during flow rule update operation. */
 	struct rte_flow_hw upd_flow;
 };
