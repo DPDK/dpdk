@@ -3526,11 +3526,6 @@ flow_hw_async_flow_create(struct rte_eth_dev *dev,
 	uint32_t res_idx = 0;
 	int ret;
 
-	if (unlikely((!dev->data->dev_started))) {
-		rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
-				   "Port must be started before enqueueing flow operations");
-		return NULL;
-	}
 	flow = mlx5_ipool_malloc(table->flow, &flow_idx);
 	if (!flow)
 		goto error;
