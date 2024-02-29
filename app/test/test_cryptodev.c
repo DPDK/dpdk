@@ -12552,6 +12552,18 @@ test_AES_GCM_auth_decryption_test_case_256_7(void)
 }
 
 static int
+test_AES_GCM_auth_decryption_test_case_256_8(void)
+{
+	return test_authenticated_decryption(&gcm_test_case_256_8);
+}
+
+static int
+test_AES_GCM_auth_encryption_test_case_256_8(void)
+{
+	return test_authenticated_encryption(&gcm_test_case_256_8);
+}
+
+static int
 test_AES_GCM_auth_decryption_test_case_aad_1(void)
 {
 	return test_authenticated_decryption(&gcm_test_case_aad_1);
@@ -12670,10 +12682,15 @@ test_authenticated_encryption_oop(const struct aead_test_data *tdata)
 
 	/* Verify the capabilities */
 	struct rte_cryptodev_sym_capability_idx cap_idx;
+	const struct rte_cryptodev_symmetric_capability *capability;
 	cap_idx.type = RTE_CRYPTO_SYM_XFORM_AEAD;
 	cap_idx.algo.aead = tdata->algo;
-	if (rte_cryptodev_sym_capability_get(ts_params->valid_devs[0],
-			&cap_idx) == NULL)
+	capability = rte_cryptodev_sym_capability_get(ts_params->valid_devs[0], &cap_idx);
+	if (capability == NULL)
+		return TEST_SKIPPED;
+	if (rte_cryptodev_sym_capability_check_aead(
+		capability, tdata->key.len, tdata->auth_tag.len,
+		tdata->aad.len, tdata->iv.len))
 		return TEST_SKIPPED;
 
 	rte_cryptodev_info_get(ts_params->valid_devs[0], &dev_info);
@@ -12776,10 +12793,16 @@ test_authenticated_decryption_oop(const struct aead_test_data *tdata)
 
 	/* Verify the capabilities */
 	struct rte_cryptodev_sym_capability_idx cap_idx;
+	const struct rte_cryptodev_symmetric_capability *capability;
 	cap_idx.type = RTE_CRYPTO_SYM_XFORM_AEAD;
 	cap_idx.algo.aead = tdata->algo;
-	if (rte_cryptodev_sym_capability_get(ts_params->valid_devs[0],
-			&cap_idx) == NULL)
+	capability = rte_cryptodev_sym_capability_get(ts_params->valid_devs[0], &cap_idx);
+
+	if (capability == NULL)
+		return TEST_SKIPPED;
+
+	if (rte_cryptodev_sym_capability_check_aead(capability, tdata->key.len,
+			tdata->auth_tag.len, tdata->aad.len, tdata->iv.len))
 		return TEST_SKIPPED;
 
 	/* not supported with CPU crypto and raw data-path APIs*/
@@ -15806,10 +15829,14 @@ test_authenticated_encryption_SGL(const struct aead_test_data *tdata,
 
 	/* Verify the capabilities */
 	struct rte_cryptodev_sym_capability_idx cap_idx;
+	const struct rte_cryptodev_symmetric_capability *capability;
 	cap_idx.type = RTE_CRYPTO_SYM_XFORM_AEAD;
 	cap_idx.algo.aead = tdata->algo;
-	if (rte_cryptodev_sym_capability_get(ts_params->valid_devs[0],
-			&cap_idx) == NULL)
+	capability = rte_cryptodev_sym_capability_get(ts_params->valid_devs[0], &cap_idx);
+	if (capability == NULL)
+		return TEST_SKIPPED;
+	if (rte_cryptodev_sym_capability_check_aead(capability, tdata->key.len,
+			tdata->auth_tag.len, tdata->aad.len, tdata->iv.len))
 		return TEST_SKIPPED;
 
 	/*
@@ -17449,6 +17476,8 @@ static struct unit_test_suite cryptodev_aes_gcm_auth_testsuite  = {
 			test_AES_GCM_auth_encryption_test_case_256_6),
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_AES_GCM_auth_encryption_test_case_256_7),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_AES_GCM_auth_encryption_test_case_256_8),
 
 		/** AES GCM Authenticated Decryption 256 bits key */
 		TEST_CASE_ST(ut_setup, ut_teardown,
@@ -17465,6 +17494,8 @@ static struct unit_test_suite cryptodev_aes_gcm_auth_testsuite  = {
 			test_AES_GCM_auth_decryption_test_case_256_6),
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_AES_GCM_auth_decryption_test_case_256_7),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_AES_GCM_auth_decryption_test_case_256_8),
 
 		/** AES GCM Authenticated Encryption big aad size */
 		TEST_CASE_ST(ut_setup, ut_teardown,
