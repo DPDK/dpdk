@@ -2363,6 +2363,7 @@ virtio_vdpa_dev_pf_filter_dump(struct vdpa_vf_params *vf_info, int max_vf_num, s
 			vf_info[count].queue_num = priv->hw_nr_virtqs;
 			vf_info[count].queue_size = priv->vrings[0]->size;
 			vf_info[count].features = priv->guest_features;
+			vf_info[count].configured = priv->configured;
 			rte_uuid_unparse(priv->vm_uuid, vf_info[count].vm_uuid, sizeof(vf_info[count].vm_uuid));
 			strlcpy(vf_info[count].vf_name, priv->vdev->device->name, RTE_DEV_NAME_MAX_LEN);
 			count++;

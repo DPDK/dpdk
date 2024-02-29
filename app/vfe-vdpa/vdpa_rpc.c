@@ -244,6 +244,10 @@ static void vdpa_vf_info_reformat(cJSON *device, struct vdpa_vf_params *vf_param
 	cJSON_AddStringToObject(device, "vm_uuid", vf_params->vm_uuid);
 	if (!vdpa_get_socket_file_name(vf_params->vf_name, mac_string))
 		cJSON_AddStringToObject(device, "socket_file", mac_string);
+	if (vf_params->configured)
+		cJSON_AddTrueToObject(device, "configured");
+	else
+		cJSON_AddFalseToObject(device, "configured");
 }
 
 static cJSON *vdpa_vf_dev_info(const char *vf_name)
