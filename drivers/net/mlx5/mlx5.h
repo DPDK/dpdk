@@ -409,17 +409,12 @@ struct mlx5_hw_q_job {
 		const void *action; /* Indirect action attached to the job. */
 	};
 	void *user_data; /* Job user data. */
-	struct rte_flow_item *items;
-	union {
-		struct {
-			/* User memory for query output */
-			void *user;
-			/* Data extracted from hardware */
-			void *hw;
-		} __rte_packed query;
-		struct rte_flow_item_ethdev port_spec;
-		struct rte_flow_item_tag tag_spec;
-	} __rte_packed;
+	struct {
+		/* User memory for query output */
+		void *user;
+		/* Data extracted from hardware */
+		void *hw;
+	} query;
 	struct rte_flow_hw *upd_flow; /* Flow with updated values. */
 };
 

@@ -3278,44 +3278,44 @@ flow_hw_get_rule_items(struct rte_eth_dev *dev,
 		       const struct rte_flow_template_table *table,
 		       const struct rte_flow_item items[],
 		       uint8_t pattern_template_index,
-		       struct mlx5_hw_q_job *job)
+		       struct mlx5_flow_hw_pattern_params *pp)
 {
 	struct rte_flow_pattern_template *pt = table->its[pattern_template_index];
 
 	/* Only one implicit item can be added to flow rule pattern. */
 	MLX5_ASSERT(!pt->implicit_port || !pt->implicit_tag);
-	/* At least one item was allocated in job descriptor for items. */
+	/* At least one item was allocated in pattern params for items. */
 	MLX5_ASSERT(MLX5_HW_MAX_ITEMS >= 1);
 	if (pt->implicit_port) {
 		if (pt->orig_item_nb + 1 > MLX5_HW_MAX_ITEMS) {
 			rte_errno = ENOMEM;
 			return NULL;
 		}
-		/* Set up represented port item in job descriptor. */
-		job->port_spec = (struct rte_flow_item_ethdev){
+		/* Set up represented port item in pattern params. */
+		pp->port_spec = (struct rte_flow_item_ethdev){
 			.port_id = dev->data->port_id,
 		};
-		job->items[0] = (struct rte_flow_item){
+		pp->items[0] = (struct rte_flow_item){
 			.type = RTE_FLOW_ITEM_TYPE_REPRESENTED_PORT,
-			.spec = &job->port_spec,
+			.spec = &pp->port_spec,
 		};
-		rte_memcpy(&job->items[1], items, sizeof(*items) * pt->orig_item_nb);
-		return job->items;
+		rte_memcpy(&pp->items[1], items, sizeof(*items) * pt->orig_item_nb);
+		return pp->items;
 	} else if (pt->implicit_tag) {
 		if (pt->orig_item_nb + 1 > MLX5_HW_MAX_ITEMS) {
 			rte_errno = ENOMEM;
 			return NULL;
 		}
-		/* Set up tag item in job descriptor. */
-		job->tag_spec = (struct rte_flow_item_tag){
+		/* Set up tag item in pattern params. */
+		pp->tag_spec = (struct rte_flow_item_tag){
 			.data = flow_hw_tx_tag_regc_value(dev),
 		};
-		job->items[0] = (struct rte_flow_item){
+		pp->items[0] = (struct rte_flow_item){
 			.type = (enum rte_flow_item_type)MLX5_RTE_FLOW_ITEM_TYPE_TAG,
-			.spec = &job->tag_spec,
+			.spec = &pp->tag_spec,
 		};
-		rte_memcpy(&job->items[1], items, sizeof(*items) * pt->orig_item_nb);
-		return job->items;
+		rte_memcpy(&pp->items[1], items, sizeof(*items) * pt->orig_item_nb);
+		return pp->items;
 	} else {
 		return items;
 	}
@@ -3370,6 +3370,7 @@ flow_hw_async_flow_create(struct rte_eth_dev *dev,
 	};
 	struct mlx5dr_rule_action *rule_acts;
 	struct mlx5_flow_hw_action_params ap;
+	struct mlx5_flow_hw_pattern_params pp;
 	struct rte_flow_hw *flow = NULL;
 	struct mlx5_hw_q_job *job = NULL;
 	const struct rte_flow_item *rule_items;
@@ -3434,7 +3435,7 @@ flow_hw_async_flow_create(struct rte_eth_dev *dev,
 		goto error;
 	}
 	rule_items = flow_hw_get_rule_items(dev, table, items,
-					    pattern_template_index, job);
+					    pattern_template_index, &pp);
 	if (!rule_items)
 		goto error;
 	if (likely(!rte_flow_template_table_resizable(dev->data->port_id, &table->cfg.attr))) {
@@ -10203,11 +10204,8 @@ flow_hw_configure(struct rte_eth_dev *dev,
 			goto err;
 		}
 		mem_size += (sizeof(struct mlx5_hw_q_job *) +
-			    sizeof(struct mlx5_hw_q_job) +
-			    sizeof(struct rte_flow_item) *
-			    MLX5_HW_MAX_ITEMS +
-				sizeof(struct rte_flow_hw)) *
-			    _queue_attr[i]->size;
+			     sizeof(struct mlx5_hw_q_job) +
+			     sizeof(struct rte_flow_hw)) * _queue_attr[i]->size;
 	}
 	priv->hw_q = mlx5_malloc(MLX5_MEM_ZERO, mem_size,
 				 64, SOCKET_ID_ANY);
@@ -10216,7 +10214,6 @@ flow_hw_configure(struct rte_eth_dev *dev,
 		goto err;
 	}
 	for (i = 0; i < nb_q_updated; i++) {
-		struct rte_flow_item *items = NULL;
 		struct rte_flow_hw *upd_flow = NULL;
 
 		priv->hw_q[i].job_idx = _queue_attr[i]->size;
@@ -10229,12 +10226,8 @@ flow_hw_configure(struct rte_eth_dev *dev,
 				&job[_queue_attr[i - 1]->size - 1].upd_flow[1];
 		job = (struct mlx5_hw_q_job *)
 		      &priv->hw_q[i].job[_queue_attr[i]->size];
-		items = (struct rte_flow_item *)
-			 &job[_queue_attr[i]->size];
-		upd_flow = (struct rte_flow_hw *)
-			&items[_queue_attr[i]->size * MLX5_HW_MAX_ITEMS];
+		upd_flow = (struct rte_flow_hw *)&job[_queue_attr[i]->size];
 		for (j = 0; j < _queue_attr[i]->size; j++) {
-			job[j].items = &items[j * MLX5_HW_MAX_ITEMS];
 			job[j].upd_flow = &upd_flow[j];
 			priv->hw_q[i].job[j] = &job[j];
 		}
@@ -12411,14 +12404,12 @@ flow_hw_calc_table_hash(struct rte_eth_dev *dev,
 			 uint32_t *hash, struct rte_flow_error *error)
 {
 	const struct rte_flow_item *items;
-	/* Temp job to allow adding missing items */
-	static struct rte_flow_item tmp_items[MLX5_HW_MAX_ITEMS];
-	static struct mlx5_hw_q_job job = {.items = tmp_items};
+	struct mlx5_flow_hw_pattern_params pp;
 	int res;
 
 	items = flow_hw_get_rule_items(dev, table, pattern,
 				       pattern_template_index,
-				       &job);
+				       &pp);
 	res = mlx5dr_rule_hash_calculate(mlx5_table_matcher(table), items,
 					 pattern_template_index,
 					 MLX5DR_RULE_HASH_CALC_MODE_RAW,
