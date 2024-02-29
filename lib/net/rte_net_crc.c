@@ -73,8 +73,8 @@ static uint16_t max_simd_bitwidth;
 RTE_LOG_REGISTER_DEFAULT(libnet_logtype, INFO);
 #define RTE_LOGTYPE_NET libnet_logtype
 
-#define NET_LOG(level, fmt, args...) \
-	RTE_LOG_LINE(level, NET, "%s(): " fmt, __func__, ## args)
+#define NET_LOG(level, ...) \
+	RTE_LOG_LINE_PREFIX(level, NET, "%s(): ", __func__, __VA_ARGS__)
 
 /* Scalar handling */
 

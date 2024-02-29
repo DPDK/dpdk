@@ -26,9 +26,9 @@ extern int ipfrag_logtype;
 	RTE_LOG_LINE(level, IPFRAG, "" __VA_ARGS__)
 
 #ifdef RTE_LIBRTE_IP_FRAG_DEBUG
-#define	IP_FRAG_LOG(lvl, fmt, args...)	RTE_LOG(lvl, IPFRAG, fmt, ##args)
+#define IP_FRAG_LOG(lvl, ...) RTE_LOG(lvl, IPFRAG, __VA_ARGS__)
 #else
-#define	IP_FRAG_LOG(lvl, fmt, args...)	do {} while(0)
+#define IP_FRAG_LOG(lvl, ...) do {} while (0)
 #endif /* IP_FRAG_DEBUG */
 
 #define IPV4_KEYLEN 1

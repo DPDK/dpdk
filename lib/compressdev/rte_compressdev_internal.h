@@ -23,8 +23,8 @@ extern "C" {
 extern int compressdev_logtype;
 #define RTE_LOGTYPE_COMPRESSDEV compressdev_logtype
 
-#define COMPRESSDEV_LOG(level, fmt, args...) \
-	RTE_LOG_LINE(level, COMPRESSDEV, "%s(): " fmt, __func__, ## args)
+#define COMPRESSDEV_LOG(level, ...) \
+	RTE_LOG_LINE_PREFIX(level, COMPRESSDEV, "%s(): ", __func__, __VA_ARGS__)
 
 /**
  * Dequeue processed packets from queue pair of a device.

@@ -16,10 +16,9 @@ extern int rte_node_logtype;
 #define RTE_LOGTYPE_NODE rte_node_logtype
 
 #define NODE_LOG(level, node_name, ...)                                        \
-	RTE_LOG_LINE(level, NODE,                                              \
-		RTE_FMT("%s: %s():%u " RTE_FMT_HEAD(__VA_ARGS__ ,),            \
-			node_name, __func__, __LINE__,                         \
-			RTE_FMT_TAIL(__VA_ARGS__ ,)))
+	RTE_LOG_LINE_PREFIX(level, NODE, "%s: %s():%u ",                       \
+		node_name RTE_LOG_COMMA __func__ RTE_LOG_COMMA __LINE__,       \
+		__VA_ARGS__)
 
 #define node_err(node_name, ...) NODE_LOG(ERR, node_name, __VA_ARGS__)
 #define node_info(node_name, ...) NODE_LOG(INFO, node_name, __VA_ARGS__)

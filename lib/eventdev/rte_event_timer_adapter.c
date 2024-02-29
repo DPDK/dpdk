@@ -41,9 +41,8 @@ static struct rte_event_timer_adapter *adapters;
 static const struct event_timer_adapter_ops swtim_ops;
 
 #define EVTIM_LOG(level, logtype, ...) \
-	RTE_LOG_LINE(level, logtype, \
-		RTE_FMT("EVTIMER: %s() line %u: " RTE_FMT_HEAD(__VA_ARGS__ ,), \
-			__func__, __LINE__, RTE_FMT_TAIL(__VA_ARGS__ ,)))
+	RTE_LOG_LINE_PREFIX(level, logtype, \
+		"EVTIMER: %s() line %u: ", __func__ RTE_LOG_COMMA __LINE__, __VA_ARGS__)
 
 #define EVTIM_LOG_ERR(...) EVTIM_LOG(ERR, EVTIM, __VA_ARGS__)
 

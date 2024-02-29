@@ -19,8 +19,8 @@
 #include "rte_rcu_qsbr.h"
 #include "rcu_qsbr_pvt.h"
 
-#define RCU_LOG(level, fmt, args...) \
-	RTE_LOG_LINE(level, RCU, "%s(): " fmt, __func__, ## args)
+#define RCU_LOG(level, ...) \
+	RTE_LOG_LINE_PREFIX(level, RCU, "%s(): ", __func__, __VA_ARGS__)
 
 /* Get the memory size of QSBR variable */
 size_t

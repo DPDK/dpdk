@@ -16,11 +16,11 @@
 #include "eal_private.h"
 #include "eal_thread.h"
 
-#define trace_err(fmt, args...) \
-	EAL_LOG(ERR, "%s():%u " fmt, __func__, __LINE__, ## args)
+#define trace_err(...) \
+	RTE_LOG_LINE_PREFIX(ERR, EAL, "%s():%u ", __func__ RTE_LOG_COMMA __LINE__, __VA_ARGS__)
 
-#define trace_crit(fmt, args...) \
-	EAL_LOG(CRIT, "%s():%u " fmt, __func__, __LINE__, ## args)
+#define trace_crit(...) \
+	RTE_LOG_LINE_PREFIX(CRIT, EAL, "%s():%u ", __func__ RTE_LOG_COMMA __LINE__, __VA_ARGS__)
 
 #define TRACE_CTF_MAGIC 0xC1FC1FC1
 #define TRACE_MAX_ARGS	32

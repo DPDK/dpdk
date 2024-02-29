@@ -20,19 +20,20 @@
 RTE_LOG_REGISTER_SUFFIX(vhost_crypto_logtype, crypto, INFO);
 #define RTE_LOGTYPE_VHOST_CRYPTO	vhost_crypto_logtype
 
-#define VC_LOG_ERR(fmt, args...)				\
-	RTE_LOG_LINE(ERR, VHOST_CRYPTO, "%s() line %u: " fmt,	\
-		__func__, __LINE__, ## args)
-#define VC_LOG_INFO(fmt, args...)				\
-	RTE_LOG_LINE(INFO, VHOST_CRYPTO, "%s() line %u: " fmt,	\
-		__func__, __LINE__, ## args)
+#define VC_LOG_ERR(...)	\
+	RTE_LOG_LINE_PREFIX(ERR, VHOST_CRYPTO, "%s() line %u: ", \
+		__func__ RTE_LOG_COMMA __LINE__, __VA_ARGS__)
+
+#define VC_LOG_INFO(...) \
+	RTE_LOG_LINE_PREFIX(INFO, VHOST_CRYPTO, "%s() line %u: ", \
+		__func__ RTE_LOG_COMMA __LINE__, __VA_ARGS__)
 
 #ifdef RTE_LIBRTE_VHOST_DEBUG
-#define VC_LOG_DBG(fmt, args...)				\
-	RTE_LOG_LINE(DEBUG, VHOST_CRYPTO, "%s() line %u: " fmt,	\
-		__func__, __LINE__, ## args)
+#define VC_LOG_DBG(...)	\
+	RTE_LOG_LINE_PREFIX(DEBUG, VHOST_CRYPTO, "%s() line %u: ", \
+		__func__ RTE_LOG_COMMA __LINE__, __VA_ARGS__)
 #else
-#define VC_LOG_DBG(fmt, args...)
+#define VC_LOG_DBG(...)
 #endif
 
 #define VIRTIO_CRYPTO_FEATURES ((1ULL << VIRTIO_F_NOTIFY_ON_EMPTY) |	\

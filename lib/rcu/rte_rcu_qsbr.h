@@ -39,19 +39,19 @@ extern int rte_rcu_log_type;
 #define RTE_LOGTYPE_RCU rte_rcu_log_type
 
 #if RTE_LOG_DP_LEVEL >= RTE_LOG_DEBUG
-#define __RTE_RCU_DP_LOG(level, fmt, args...) \
-	RTE_LOG_LINE(level, RCU, "%s(): " fmt, __func__, ## args)
+#define __RTE_RCU_DP_LOG(level, ...) \
+	RTE_LOG_DP_LINE_PREFIX(level, RCU, "%s(): ", __func__, __VA_ARGS__)
 #else
-#define __RTE_RCU_DP_LOG(level, fmt, args...)
+#define __RTE_RCU_DP_LOG(level, ...)
 #endif
 
 #if defined(RTE_LIBRTE_RCU_DEBUG)
-#define __RTE_RCU_IS_LOCK_CNT_ZERO(v, thread_id, level, fmt, args...) do { \
+#define __RTE_RCU_IS_LOCK_CNT_ZERO(v, thread_id, level, ...) do { \
 	if (v->qsbr_cnt[thread_id].lock_cnt) \
-		RTE_LOG_LINE(level, RCU, "%s(): " fmt, __func__, ## args); \
+		RTE_LOG_LINE_PREFIX(level, RCU, "%s(): ", __func__, __VA_ARGS__); \
 } while (0)
 #else
-#define __RTE_RCU_IS_LOCK_CNT_ZERO(v, thread_id, level, fmt, args...)
+#define __RTE_RCU_IS_LOCK_CNT_ZERO(v, thread_id, level, ...)
 #endif
 
 /* Registered thread IDs are stored as a bitmap of 64b element array.

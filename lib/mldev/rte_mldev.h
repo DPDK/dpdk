@@ -146,8 +146,8 @@ extern "C" {
 extern int rte_ml_dev_logtype;
 #define RTE_LOGTYPE_MLDEV rte_ml_dev_logtype
 
-#define RTE_MLDEV_LOG(level, fmt, args...) \
-	RTE_LOG_LINE(level, MLDEV, "%s(): " fmt, __func__, ##args)
+#define RTE_MLDEV_LOG(level, ...) \
+	RTE_LOG_LINE_PREFIX(level, MLDEV, "%s(): ", __func__, __VA_ARGS__)
 
 #define RTE_ML_STR_MAX 128
 /**< Maximum length of name string */

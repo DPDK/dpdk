@@ -18,8 +18,8 @@
 RTE_LOG_REGISTER_DEFAULT(pdump_logtype, NOTICE);
 #define RTE_LOGTYPE_PDUMP pdump_logtype
 
-#define PDUMP_LOG_LINE(level, fmt, args...) \
-	RTE_LOG_LINE(level, PDUMP, "%s(): " fmt, __func__, ## args)
+#define PDUMP_LOG_LINE(level, ...) \
+	RTE_LOG_LINE_PREFIX(level, PDUMP, "%s(): ", __func__, __VA_ARGS__)
 
 /* Used for the multi-process communication */
 #define PDUMP_MP	"mp_pdump"
