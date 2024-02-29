@@ -1043,6 +1043,8 @@ void update_age_action_context(const struct rte_flow_action *actions,
 int mcast_addr_pool_destroy(portid_t port_id);
 int port_flow_destroy(portid_t port_id, uint32_t n, const uint64_t *rule,
 		      bool is_user_id);
+int port_flow_update(portid_t port_id, uint32_t rule,
+		     const struct rte_flow_action *actions, bool is_user_id);
 int port_flow_flush(portid_t port_id);
 int port_flow_dump(portid_t port_id, bool dump_all,
 			uint64_t rule, const char *file_name,

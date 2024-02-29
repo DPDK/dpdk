@@ -3829,6 +3829,49 @@ port_flow_destroy(portid_t port_id, uint32_t n, const uint64_t *rule,
 	return ret;
 }
 
+/** Update a flow rule with new actions. */
+int
+port_flow_update(portid_t port_id, uint32_t rule_id,
+		 const struct rte_flow_action *actions, bool is_user_id)
+{
+	struct rte_port *port;
+	struct port_flow **flow_list;
+
+	if (port_id_is_invalid(port_id, ENABLED_WARN) ||
+	    port_id == (portid_t)RTE_PORT_ALL)
+		return -EINVAL;
+	port = &ports[port_id];
+	flow_list = &port->flow_list;
+	while (*flow_list) {
+		struct port_flow *flow = *flow_list;
+		struct rte_flow_error error;
+
+		if (rule_id != (is_user_id ? flow->user_id : flow->id)) {
+			flow_list = &flow->next;
+			continue;
+		}
+		/*
+		 * Poisoning to make sure PMDs update it in case
+		 * of error.
+		 */
+		memset(&error, 0x33, sizeof(error));
+		if (rte_flow_actions_update(port_id, flow->flow, actions,
+					    &error))
+			return port_flow_complain(&error);
+		if (is_user_id)
+			printf("Flow rule #%"PRIu64" updated with new actions,"
+			       " user-id 0x%"PRIx64"\n",
+			       flow->id, flow->user_id);
+		else
+			printf("Flow rule #%"PRIu64
+			       " updated with new actions\n",
+			       flow->id);
+		return 0;
+	}
+	printf("Failed to find flow %"PRIu32"\n", rule_id);
+	return -EINVAL;
+}
+
 /** Remove all flow rules. */
 int
 port_flow_flush(portid_t port_id)

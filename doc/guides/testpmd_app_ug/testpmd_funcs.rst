@@ -3057,6 +3057,11 @@ following sections.
 
    flow destroy {port_id} rule {rule_id} [...] [user_id]
 
+- Update a flow rule with new actions::
+
+   flow update {port_id} {rule_id}
+       actions {action} [/ {action} [...]] / end [user_id]
+
 - Destroy all flow rules::
 
    flow flush {port_id}
@@ -4277,6 +4282,45 @@ Non-existent rule IDs are ignored::
    testpmd> flow destroy 0 rule 0
    Flow rule #0 destroyed
    testpmd>
+
+Updating flow rules with new actions
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``flow update`` updates a flow rule specified by a rule ID with a new action
+list by making a call to ``rte_flow_actions_update()``::
+
+   flow update {port_id} {rule_id}
+       actions {action} [/ {action} [...]] / end [user_id]
+
+If successful, it will show::
+
+   Flow rule #[...] updated with new actions
+
+Or if ``user_id`` flag is provided::
+
+   Flow rule #[...] updated with new actions, user-id [...]
+
+If a flow rule can not be found::
+
+   Failed to find flow [...]
+
+Otherwise it will show the usual error message of the form::
+
+   Caught error type [...] ([...]): [...]
+
+Optional ``user_id`` is a flag that signifies the rule ID is the one provided
+by the user at creation.
+
+Action list is identical to the one described for the ``flow create``.
+
+Creating, updating and destroying a flow rule::
+
+   testpmd> flow create 0 group 1 pattern eth / end actions drop / end
+   Flow rule #0 created
+   testpmd> flow update 0 0 actions queue index 1 / end
+   Flow rule #0 updated with new actions
+   testpmd> flow destroy 0 rule 0
+   Flow rule #0 destroyed
 
 Enqueueing destruction of flow rules
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

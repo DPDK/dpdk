@@ -851,6 +851,10 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"flow destroy {port_id} rule {rule_id} [...]\n"
 			"    Destroy specific flow rules.\n\n"
 
+			"flow update {port_id} {rule_id}"
+			" actions {action} [/ {action} [...]] / end [user_id]\n"
+			"    Update a flow rule with new actions.\n\n"
+
 			"flow flush {port_id}\n"
 			"    Destroy all flow rules.\n\n"
 
