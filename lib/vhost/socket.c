@@ -93,6 +93,7 @@ static struct vhost_user vhost_user = {
 		.fd = { [0 ... MAX_FDS - 1] = {-1, NULL, NULL, NULL, 0} },
 		.fd_mutex = PTHREAD_MUTEX_INITIALIZER,
 		.fd_pooling_mutex = PTHREAD_MUTEX_INITIALIZER,
+		.sync_mutex = PTHREAD_MUTEX_INITIALIZER,
 		.num = 0
 	},
 	.vsocket_cnt = 0,

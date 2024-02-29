@@ -36,6 +36,7 @@ static struct vduse vduse = {
 		.fd = { [0 ... MAX_FDS - 1] = {-1, NULL, NULL, NULL, 0} },
 		.fd_mutex = PTHREAD_MUTEX_INITIALIZER,
 		.fd_pooling_mutex = PTHREAD_MUTEX_INITIALIZER,
+		.sync_mutex = PTHREAD_MUTEX_INITIALIZER,
 		.num = 0
 	},
 };
@@ -618,7 +619,7 @@ vduse_device_destroy(const char *path)
 	vduse_device_stop(dev);
 
 	fdset_del(&vduse.fdset, dev->vduse_dev_fd);
-	fdset_pipe_notify(&vduse.fdset);
+	fdset_pipe_notify_sync(&vduse.fdset);
 
 	if (dev->vduse_dev_fd >= 0) {
 		close(dev->vduse_dev_fd);
