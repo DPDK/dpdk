@@ -500,6 +500,14 @@ int mlx5dr_matcher_resize_rule_move(struct mlx5dr_matcher *src_matcher,
  */
 bool mlx5dr_matcher_is_updatable(struct mlx5dr_matcher *matcher);
 
+/* Check matcher if might contain rules that need complex structure
+ *
+ * @param[in] matcher
+ *	that the rule belongs to.
+ * @return true when the matcher is contains such rules, false otherwise.
+ */
+bool mlx5dr_matcher_is_dependent(struct mlx5dr_matcher *matcher);
+
 /* Get the size of the rule handle (mlx5dr_rule) to be used on rule creation.
  *
  * @return size in bytes of rule handle struct.

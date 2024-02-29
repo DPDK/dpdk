@@ -1542,6 +1542,23 @@ bool mlx5dr_matcher_is_updatable(struct mlx5dr_matcher *matcher)
 	return true;
 }
 
+bool mlx5dr_matcher_is_dependent(struct mlx5dr_matcher *matcher)
+{
+	int i;
+
+	if (matcher->action_ste.max_stes || mlx5dr_matcher_req_fw_wqe(matcher))
+		return true;
+
+	for (i = 0; i < matcher->num_of_at; i++) {
+		struct mlx5dr_action_template *at = &matcher->at[i];
+
+		if (at->need_dep_write)
+			return true;
+	}
+
+	return false;
+}
+
 static int mlx5dr_matcher_resize_precheck(struct mlx5dr_matcher *src_matcher,
 					  struct mlx5dr_matcher *dst_matcher)
 {

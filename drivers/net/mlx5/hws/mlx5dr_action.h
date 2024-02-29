@@ -151,6 +151,8 @@ struct mlx5dr_action_template {
 	uint8_t num_of_action_stes;
 	uint8_t num_actions;
 	uint8_t only_term;
+	/* indicates rule might require dependent wqe */
+	bool need_dep_write;
 	uint32_t flags;
 };
 

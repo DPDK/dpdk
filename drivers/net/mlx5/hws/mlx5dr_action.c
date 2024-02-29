@@ -3686,6 +3686,7 @@ int mlx5dr_action_template_process(struct mlx5dr_action_template *at)
 			setter->flags |= ASF_SINGLE1 | ASF_REMOVE;
 			setter->set_single = &mlx5dr_action_setter_ipv6_route_ext_pop;
 			setter->idx_single = i;
+			at->need_dep_write = true;
 			break;
 
 		case MLX5DR_ACTION_TYP_PUSH_IPV6_ROUTE_EXT:
@@ -3712,6 +3713,7 @@ int mlx5dr_action_template_process(struct mlx5dr_action_template *at)
 			setter->set_double = &mlx5dr_action_setter_ipv6_route_ext_mhdr;
 			setter->idx_double = i;
 			setter->extra_data = 2;
+			at->need_dep_write = true;
 			break;
 
 		case MLX5DR_ACTION_TYP_MODIFY_HDR:
@@ -3720,6 +3722,7 @@ int mlx5dr_action_template_process(struct mlx5dr_action_template *at)
 			setter->flags |= ASF_DOUBLE | ASF_MODIFY;
 			setter->set_double = &mlx5dr_action_setter_modify_header;
 			setter->idx_double = i;
+			at->need_dep_write = true;
 			break;
 
 		case MLX5DR_ACTION_TYP_ASO_METER:
@@ -3747,6 +3750,7 @@ int mlx5dr_action_template_process(struct mlx5dr_action_template *at)
 			setter->flags |= ASF_DOUBLE | ASF_INSERT;
 			setter->set_double = &mlx5dr_action_setter_insert_ptr;
 			setter->idx_double = i;
+			at->need_dep_write = true;
 			break;
 
 		case MLX5DR_ACTION_TYP_REFORMAT_L2_TO_TNL_L3:
@@ -3757,6 +3761,7 @@ int mlx5dr_action_template_process(struct mlx5dr_action_template *at)
 			setter->idx_double = i;
 			setter->set_single = &mlx5dr_action_setter_common_decap;
 			setter->idx_single = i;
+			at->need_dep_write = true;
 			break;
 
 		case MLX5DR_ACTION_TYP_REFORMAT_TNL_L3_TO_L2:
@@ -3765,6 +3770,7 @@ int mlx5dr_action_template_process(struct mlx5dr_action_template *at)
 			setter->flags |= ASF_DOUBLE | ASF_MODIFY | ASF_INSERT;
 			setter->set_double = &mlx5dr_action_setter_tnl_l3_to_l2;
 			setter->idx_double = i;
+			at->need_dep_write = true;
 			break;
 
 		case MLX5DR_ACTION_TYP_TAG:
