@@ -315,6 +315,31 @@ static const struct rte_flow_item_eth ctrl_rx_eth_bcast_spec = {
 	.hdr.ether_type = 0,
 };
 
+static inline uint32_t
+flow_hw_q_pending(struct mlx5_priv *priv, uint32_t queue)
+{
+	struct mlx5_hw_q *q = &priv->hw_q[queue];
+
+	MLX5_ASSERT(q->size >= q->job_idx);
+	return (q->size - q->job_idx) + q->ongoing_flow_ops;
+}
+
+static inline void
+flow_hw_q_inc_flow_ops(struct mlx5_priv *priv, uint32_t queue)
+{
+	struct mlx5_hw_q *q = &priv->hw_q[queue];
+
+	q->ongoing_flow_ops++;
+}
+
+static inline void
+flow_hw_q_dec_flow_ops(struct mlx5_priv *priv, uint32_t queue)
+{
+	struct mlx5_hw_q *q = &priv->hw_q[queue];
+
+	q->ongoing_flow_ops--;
+}
+
 static __rte_always_inline struct mlx5_hw_q_job *
 flow_hw_job_get(struct mlx5_priv *priv, uint32_t queue)
 {
@@ -3432,20 +3457,15 @@ flow_hw_async_flow_create(struct rte_eth_dev *dev,
 	struct mlx5_flow_hw_action_params ap;
 	struct mlx5_flow_hw_pattern_params pp;
 	struct rte_flow_hw *flow = NULL;
-	struct mlx5_hw_q_job *job = NULL;
 	const struct rte_flow_item *rule_items;
 	uint32_t flow_idx = 0;
 	uint32_t res_idx = 0;
 	int ret;
 
 	if (unlikely((!dev->data->dev_started))) {
-		rte_errno = EINVAL;
-		goto error;
-	}
-	job = flow_hw_job_get(priv, queue);
-	if (!job) {
-		rte_errno = ENOMEM;
-		goto error;
+		rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				   "Port must be started before enqueueing flow operations");
+		return NULL;
 	}
 	flow = mlx5_ipool_zmalloc(table->flow, &flow_idx);
 	if (!flow)
@@ -3467,13 +3487,12 @@ flow_hw_async_flow_create(struct rte_eth_dev *dev,
 		flow->res_idx = flow_idx;
 	}
 	/*
-	 * Set the job type here in order to know if the flow memory
+	 * Set the flow operation type here in order to know if the flow memory
 	 * should be freed or not when get the result from dequeue.
 	 */
-	job->type = MLX5_HW_Q_JOB_TYPE_CREATE;
-	job->flow = flow;
-	job->user_data = user_data;
-	rule_attr.user_data = job;
+	flow->operation_type = MLX5_FLOW_HW_FLOW_OP_TYPE_CREATE;
+	flow->user_data = user_data;
+	rule_attr.user_data = flow;
 	/*
 	 * Indexed pool returns 1-based indices, but mlx5dr expects 0-based indices
 	 * for rule insertion hints.
@@ -3507,7 +3526,7 @@ flow_hw_async_flow_create(struct rte_eth_dev *dev,
 	} else {
 		uint32_t selector;
 
-		job->type = MLX5_HW_Q_JOB_TYPE_RSZTBL_FLOW_CREATE;
+		flow->operation_type = MLX5_FLOW_HW_FLOW_OP_TYPE_RSZ_TBL_CREATE;
 		rte_rwlock_read_lock(&table->matcher_replace_rwlk);
 		selector = table->matcher_selector;
 		ret = mlx5dr_rule_create(table->matcher_info[selector].matcher,
@@ -3518,15 +3537,15 @@ flow_hw_async_flow_create(struct rte_eth_dev *dev,
 		rte_rwlock_read_unlock(&table->matcher_replace_rwlk);
 		flow->matcher_selector = selector;
 	}
-	if (likely(!ret))
+	if (likely(!ret)) {
+		flow_hw_q_inc_flow_ops(priv, queue);
 		return (struct rte_flow *)flow;
+	}
 error:
 	if (table->resource && res_idx)
 		mlx5_ipool_free(table->resource, res_idx);
 	if (flow_idx)
 		mlx5_ipool_free(table->flow, flow_idx);
-	if (job)
-		flow_hw_job_put(priv, job, queue);
 	rte_flow_error_set(error, rte_errno,
 			   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
 			   "fail to create rte flow");
@@ -3581,19 +3600,14 @@ flow_hw_async_flow_create_by_index(struct rte_eth_dev *dev,
 	struct mlx5dr_rule_action *rule_acts;
 	struct mlx5_flow_hw_action_params ap;
 	struct rte_flow_hw *flow = NULL;
-	struct mlx5_hw_q_job *job = NULL;
 	uint32_t flow_idx = 0;
 	uint32_t res_idx = 0;
 	int ret;
 
 	if (unlikely(rule_index >= table->cfg.attr.nb_flows)) {
-		rte_errno = EINVAL;
-		goto error;
-	}
-	job = flow_hw_job_get(priv, queue);
-	if (!job) {
-		rte_errno = ENOMEM;
-		goto error;
+		rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				   "Flow rule index exceeds table size");
+		return NULL;
 	}
 	flow = mlx5_ipool_zmalloc(table->flow, &flow_idx);
 	if (!flow)
@@ -3615,13 +3629,12 @@ flow_hw_async_flow_create_by_index(struct rte_eth_dev *dev,
 		flow->res_idx = flow_idx;
 	}
 	/*
-	 * Set the job type here in order to know if the flow memory
+	 * Set the flow operation type here in order to know if the flow memory
 	 * should be freed or not when get the result from dequeue.
 	 */
-	job->type = MLX5_HW_Q_JOB_TYPE_CREATE;
-	job->flow = flow;
-	job->user_data = user_data;
-	rule_attr.user_data = job;
+	flow->operation_type = MLX5_FLOW_HW_FLOW_OP_TYPE_CREATE;
+	flow->user_data = user_data;
+	rule_attr.user_data = flow;
 	/* Set the rule index. */
 	flow->rule_idx = rule_index;
 	rule_attr.rule_idx = flow->rule_idx;
@@ -3646,7 +3659,7 @@ flow_hw_async_flow_create_by_index(struct rte_eth_dev *dev,
 	} else {
 		uint32_t selector;
 
-		job->type = MLX5_HW_Q_JOB_TYPE_RSZTBL_FLOW_CREATE;
+		flow->operation_type = MLX5_FLOW_HW_FLOW_OP_TYPE_RSZ_TBL_CREATE;
 		rte_rwlock_read_lock(&table->matcher_replace_rwlk);
 		selector = table->matcher_selector;
 		ret = mlx5dr_rule_create(table->matcher_info[selector].matcher,
@@ -3655,15 +3668,15 @@ flow_hw_async_flow_create_by_index(struct rte_eth_dev *dev,
 					 (struct mlx5dr_rule *)flow->rule);
 		rte_rwlock_read_unlock(&table->matcher_replace_rwlk);
 	}
-	if (likely(!ret))
+	if (likely(!ret)) {
+		flow_hw_q_inc_flow_ops(priv, queue);
 		return (struct rte_flow *)flow;
+	}
 error:
 	if (table->resource && res_idx)
 		mlx5_ipool_free(table->resource, res_idx);
 	if (flow_idx)
 		mlx5_ipool_free(table->flow, flow_idx);
-	if (job)
-		flow_hw_job_put(priv, job, queue);
 	rte_flow_error_set(error, rte_errno,
 			   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
 			   "fail to create rte flow");
@@ -3719,15 +3732,9 @@ flow_hw_async_flow_update(struct rte_eth_dev *dev,
 	struct rte_flow_hw *nf;
 	struct rte_flow_hw_aux *aux;
 	struct rte_flow_template_table *table = of->table;
-	struct mlx5_hw_q_job *job = NULL;
 	uint32_t res_idx = 0;
 	int ret;
 
-	job = flow_hw_job_get(priv, queue);
-	if (!job) {
-		rte_errno = ENOMEM;
-		goto error;
-	}
 	aux = mlx5_flow_hw_aux(dev->data->port_id, of);
 	nf = &aux->upd_flow;
 	memset(nf, 0, sizeof(struct rte_flow_hw));
@@ -3747,14 +3754,6 @@ flow_hw_async_flow_update(struct rte_eth_dev *dev,
 	} else {
 		nf->res_idx = of->res_idx;
 	}
-	/*
-	 * Set the job type here in order to know if the flow memory
-	 * should be freed or not when get the result from dequeue.
-	 */
-	job->type = MLX5_HW_Q_JOB_TYPE_UPDATE;
-	job->flow = nf;
-	job->user_data = user_data;
-	rule_attr.user_data = job;
 	/*
 	 * Indexed pool returns 1-based indices, but mlx5dr expects 0-based indices
 	 * for rule insertion hints.
@@ -3776,18 +3775,22 @@ flow_hw_async_flow_update(struct rte_eth_dev *dev,
 		rte_errno = EINVAL;
 		goto error;
 	}
-	/* Switch to the old flow. New flow will retrieved from the table on completion. */
-	job->flow = of;
+	/*
+	 * Set the flow operation type here in order to know if the flow memory
+	 * should be freed or not when get the result from dequeue.
+	 */
+	of->operation_type = MLX5_FLOW_HW_FLOW_OP_TYPE_UPDATE;
+	of->user_data = user_data;
+	rule_attr.user_data = of;
 	ret = mlx5dr_rule_action_update((struct mlx5dr_rule *)of->rule,
 					action_template_index, rule_acts, &rule_attr);
-	if (likely(!ret))
+	if (likely(!ret)) {
+		flow_hw_q_inc_flow_ops(priv, queue);
 		return 0;
+	}
 error:
 	if (table->resource && res_idx)
 		mlx5_ipool_free(table->resource, res_idx);
-	/* Flow created fail, return the descriptor and flow memory. */
-	if (job)
-		flow_hw_job_put(priv, job, queue);
 	return rte_flow_error_set(error, rte_errno,
 				  RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
 				  "fail to update rte flow");
@@ -3831,27 +3834,23 @@ flow_hw_async_flow_destroy(struct rte_eth_dev *dev,
 		.burst = attr->postpone,
 	};
 	struct rte_flow_hw *fh = (struct rte_flow_hw *)flow;
-	struct mlx5_hw_q_job *job;
+	bool resizable = rte_flow_template_table_resizable(dev->data->port_id,
+							   &fh->table->cfg.attr);
 	int ret;
 
-	job = flow_hw_job_get(priv, queue);
-	if (!job)
-		return rte_flow_error_set(error, ENOMEM,
-					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
-					  "fail to destroy rte flow: flow queue full");
-	job->type = !rte_flow_template_table_resizable(dev->data->port_id, &fh->table->cfg.attr) ?
-		    MLX5_HW_Q_JOB_TYPE_DESTROY : MLX5_HW_Q_JOB_TYPE_RSZTBL_FLOW_DESTROY;
-	job->user_data = user_data;
-	job->flow = fh;
-	rule_attr.user_data = job;
+	fh->operation_type = !resizable ?
+			     MLX5_FLOW_HW_FLOW_OP_TYPE_DESTROY :
+			     MLX5_FLOW_HW_FLOW_OP_TYPE_RSZ_TBL_DESTROY;
+	fh->user_data = user_data;
+	rule_attr.user_data = fh;
 	rule_attr.rule_idx = fh->rule_idx;
 	ret = mlx5dr_rule_destroy((struct mlx5dr_rule *)fh->rule, &rule_attr);
 	if (ret) {
-		flow_hw_job_put(priv, job, queue);
 		return rte_flow_error_set(error, rte_errno,
 					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
 					  "fail to destroy rte flow");
 	}
+	flow_hw_q_inc_flow_ops(priv, queue);
 	return 0;
 }
 
@@ -3955,16 +3954,16 @@ mlx5_hw_pull_flow_transfer_comp(struct rte_eth_dev *dev,
 				uint16_t n_res)
 {
 	uint32_t size, i;
-	struct mlx5_hw_q_job *job = NULL;
+	struct rte_flow_hw *flow = NULL;
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct rte_ring *ring = priv->hw_q[queue].flow_transfer_completed;
 
 	size = RTE_MIN(rte_ring_count(ring), n_res);
 	for (i = 0; i < size; i++) {
 		res[i].status = RTE_FLOW_OP_SUCCESS;
-		rte_ring_dequeue(ring, (void **)&job);
-		res[i].user_data = job->user_data;
-		flow_hw_job_put(priv, job, queue);
+		rte_ring_dequeue(ring, (void **)&flow);
+		res[i].user_data = flow->user_data;
+		flow_hw_q_dec_flow_ops(priv, queue);
 	}
 	return (int)size;
 }
@@ -4021,12 +4020,11 @@ __flow_hw_pull_indir_action_comp(struct rte_eth_dev *dev,
 
 static __rte_always_inline void
 hw_cmpl_flow_update_or_destroy(struct rte_eth_dev *dev,
-			       struct mlx5_hw_q_job *job,
+			       struct rte_flow_hw *flow,
 			       uint32_t queue, struct rte_flow_error *error)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_aso_mtr_pool *pool = priv->hws_mpool;
-	struct rte_flow_hw *flow = job->flow;
 	struct rte_flow_template_table *table = flow->table;
 	/* Release the original resource index in case of update. */
 	uint32_t res_idx = flow->res_idx;
@@ -4042,12 +4040,10 @@ hw_cmpl_flow_update_or_destroy(struct rte_eth_dev *dev,
 		mlx5_ipool_free(pool->idx_pool,	flow->mtr_id);
 		flow->mtr_id = 0;
 	}
-	if (job->type != MLX5_HW_Q_JOB_TYPE_UPDATE) {
-		if (table) {
-			if (table->resource)
-				mlx5_ipool_free(table->resource, res_idx);
-			mlx5_ipool_free(table->flow, flow->idx);
-		}
+	if (flow->operation_type != MLX5_FLOW_HW_FLOW_OP_TYPE_UPDATE) {
+		if (table->resource)
+			mlx5_ipool_free(table->resource, res_idx);
+		mlx5_ipool_free(table->flow, flow->idx);
 	} else {
 		struct rte_flow_hw_aux *aux = mlx5_flow_hw_aux(dev->data->port_id, flow);
 		struct rte_flow_hw *upd_flow = &aux->upd_flow;
@@ -4060,28 +4056,27 @@ hw_cmpl_flow_update_or_destroy(struct rte_eth_dev *dev,
 
 static __rte_always_inline void
 hw_cmpl_resizable_tbl(struct rte_eth_dev *dev,
-		      struct mlx5_hw_q_job *job,
+		      struct rte_flow_hw *flow,
 		      uint32_t queue, enum rte_flow_op_status status,
 		      struct rte_flow_error *error)
 {
-	struct rte_flow_hw *flow = job->flow;
 	struct rte_flow_template_table *table = flow->table;
 	uint32_t selector = flow->matcher_selector;
 	uint32_t other_selector = (selector + 1) & 1;
 
-	switch (job->type) {
-	case MLX5_HW_Q_JOB_TYPE_RSZTBL_FLOW_CREATE:
+	switch (flow->operation_type) {
+	case MLX5_FLOW_HW_FLOW_OP_TYPE_RSZ_TBL_CREATE:
 		rte_atomic_fetch_add_explicit
 			(&table->matcher_info[selector].refcnt, 1,
 			 rte_memory_order_relaxed);
 		break;
-	case MLX5_HW_Q_JOB_TYPE_RSZTBL_FLOW_DESTROY:
+	case MLX5_FLOW_HW_FLOW_OP_TYPE_RSZ_TBL_DESTROY:
 		rte_atomic_fetch_sub_explicit
 			(&table->matcher_info[selector].refcnt, 1,
 			 rte_memory_order_relaxed);
-		hw_cmpl_flow_update_or_destroy(dev, job, queue, error);
+		hw_cmpl_flow_update_or_destroy(dev, flow, queue, error);
 		break;
-	case MLX5_HW_Q_JOB_TYPE_RSZTBL_FLOW_MOVE:
+	case MLX5_FLOW_HW_FLOW_OP_TYPE_RSZ_TBL_MOVE:
 		if (status == RTE_FLOW_OP_SUCCESS) {
 			rte_atomic_fetch_sub_explicit
 				(&table->matcher_info[selector].refcnt, 1,
@@ -4125,7 +4120,6 @@ flow_hw_pull(struct rte_eth_dev *dev,
 	     struct rte_flow_error *error)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_hw_q_job *job;
 	int ret, i;
 
 	/* 1. Pull the flow completion. */
@@ -4135,23 +4129,24 @@ flow_hw_pull(struct rte_eth_dev *dev,
 				RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
 				"fail to query flow queue");
 	for (i = 0; i <  ret; i++) {
-		job = (struct mlx5_hw_q_job *)res[i].user_data;
+		struct rte_flow_hw *flow = res[i].user_data;
+
 		/* Restore user data. */
-		res[i].user_data = job->user_data;
-		switch (job->type) {
-		case MLX5_HW_Q_JOB_TYPE_DESTROY:
-		case MLX5_HW_Q_JOB_TYPE_UPDATE:
-			hw_cmpl_flow_update_or_destroy(dev, job, queue, error);
+		res[i].user_data = flow->user_data;
+		switch (flow->operation_type) {
+		case MLX5_FLOW_HW_FLOW_OP_TYPE_DESTROY:
+		case MLX5_FLOW_HW_FLOW_OP_TYPE_UPDATE:
+			hw_cmpl_flow_update_or_destroy(dev, flow, queue, error);
 			break;
-		case MLX5_HW_Q_JOB_TYPE_RSZTBL_FLOW_CREATE:
-		case MLX5_HW_Q_JOB_TYPE_RSZTBL_FLOW_MOVE:
-		case MLX5_HW_Q_JOB_TYPE_RSZTBL_FLOW_DESTROY:
-			hw_cmpl_resizable_tbl(dev, job, queue, res[i].status, error);
+		case MLX5_FLOW_HW_FLOW_OP_TYPE_RSZ_TBL_CREATE:
+		case MLX5_FLOW_HW_FLOW_OP_TYPE_RSZ_TBL_DESTROY:
+		case MLX5_FLOW_HW_FLOW_OP_TYPE_RSZ_TBL_MOVE:
+			hw_cmpl_resizable_tbl(dev, flow, queue, res[i].status, error);
 			break;
 		default:
 			break;
 		}
-		flow_hw_job_put(priv, job, queue);
+		flow_hw_q_dec_flow_ops(priv, queue);
 	}
 	/* 2. Pull indirect action comp. */
 	if (ret < n_res)
@@ -4195,7 +4190,7 @@ __flow_hw_push_action(struct rte_eth_dev *dev,
 			mlx5_aso_push_wqe(priv->sh,
 					  &priv->hws_mpool->sq[queue]);
 	}
-	return priv->hw_q[queue].size - priv->hw_q[queue].job_idx;
+	return flow_hw_q_pending(priv, queue);
 }
 
 static int
@@ -10286,6 +10281,7 @@ flow_hw_configure(struct rte_eth_dev *dev,
 	for (i = 0; i < nb_q_updated; i++) {
 		priv->hw_q[i].job_idx = _queue_attr[i]->size;
 		priv->hw_q[i].size = _queue_attr[i]->size;
+		priv->hw_q[i].ongoing_flow_ops = 0;
 		if (i == 0)
 			priv->hw_q[i].job = (struct mlx5_hw_q_job **)
 					    &priv->hw_q[nb_q_updated];
@@ -12717,7 +12713,6 @@ flow_hw_update_resized(struct rte_eth_dev *dev, uint32_t queue,
 {
 	int ret;
 	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_hw_q_job *job;
 	struct rte_flow_hw *hw_flow = (struct rte_flow_hw *)flow;
 	struct rte_flow_template_table *table = hw_flow->table;
 	uint32_t table_selector = table->matcher_selector;
@@ -12743,31 +12738,26 @@ flow_hw_update_resized(struct rte_eth_dev *dev, uint32_t queue,
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
 					  "no active table resize");
-	job = flow_hw_job_get(priv, queue);
-	if (!job)
-		return rte_flow_error_set(error, ENOMEM,
-					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
-					  "queue is full");
-	job->type = MLX5_HW_Q_JOB_TYPE_RSZTBL_FLOW_MOVE;
-	job->user_data = user_data;
-	job->flow = hw_flow;
-	rule_attr.user_data = job;
+	hw_flow->operation_type = MLX5_FLOW_HW_FLOW_OP_TYPE_RSZ_TBL_MOVE;
+	hw_flow->user_data = user_data;
+	rule_attr.user_data = hw_flow;
 	if (rule_selector == table_selector) {
 		struct rte_ring *ring = !attr->postpone ?
 					priv->hw_q[queue].flow_transfer_completed :
 					priv->hw_q[queue].flow_transfer_pending;
-		rte_ring_enqueue(ring, job);
+		rte_ring_enqueue(ring, hw_flow);
+		flow_hw_q_inc_flow_ops(priv, queue);
 		return 0;
 	}
 	ret = mlx5dr_matcher_resize_rule_move(other_matcher,
 					      (struct mlx5dr_rule *)hw_flow->rule,
 					      &rule_attr);
 	if (ret) {
-		flow_hw_job_put(priv, job, queue);
 		return rte_flow_error_set(error, rte_errno,
 					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
 					  "flow transfer failed");
 	}
+	flow_hw_q_inc_flow_ops(priv, queue);
 	return 0;
 }
 

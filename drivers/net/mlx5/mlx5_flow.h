@@ -1269,6 +1269,16 @@ typedef uint32_t cnt_id_t;
 
 #if defined(HAVE_IBV_FLOW_DV_SUPPORT) || !defined(HAVE_INFINIBAND_VERBS_H)
 
+enum {
+	MLX5_FLOW_HW_FLOW_OP_TYPE_NONE,
+	MLX5_FLOW_HW_FLOW_OP_TYPE_CREATE,
+	MLX5_FLOW_HW_FLOW_OP_TYPE_DESTROY,
+	MLX5_FLOW_HW_FLOW_OP_TYPE_UPDATE,
+	MLX5_FLOW_HW_FLOW_OP_TYPE_RSZ_TBL_CREATE,
+	MLX5_FLOW_HW_FLOW_OP_TYPE_RSZ_TBL_DESTROY,
+	MLX5_FLOW_HW_FLOW_OP_TYPE_RSZ_TBL_MOVE,
+};
+
 #ifdef PEDANTIC
 #pragma GCC diagnostic ignored "-Wpedantic"
 #endif
@@ -1290,6 +1300,9 @@ struct rte_flow_hw {
 	cnt_id_t cnt_id;
 	uint32_t mtr_id;
 	uint32_t rule_idx;
+	uint8_t operation_type; /**< Ongoing flow operation type. */
+	void *user_data; /**< Application's private data passed to enqueued flow operation. */
+	uint8_t padding[1]; /**< Padding for proper alignment of mlx5dr rule struct. */
 	uint8_t rule[]; /* HWS layer data struct. */
 } __rte_packed;
 

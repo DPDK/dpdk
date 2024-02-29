@@ -404,10 +404,7 @@ enum mlx5_hw_indirect_type {
 struct mlx5_hw_q_job {
 	uint32_t type; /* Job type. */
 	uint32_t indirect_type;
-	union {
-		struct rte_flow_hw *flow; /* Flow attached to the job. */
-		const void *action; /* Indirect action attached to the job. */
-	};
+	const void *action; /* Indirect action attached to the job. */
 	void *user_data; /* Job user data. */
 	struct {
 		/* User memory for query output */
@@ -420,7 +417,8 @@ struct mlx5_hw_q_job {
 /* HW steering job descriptor LIFO pool. */
 struct mlx5_hw_q {
 	uint32_t job_idx; /* Free job index. */
-	uint32_t size; /* LIFO size. */
+	uint32_t size; /* Job LIFO queue size. */
+	uint32_t ongoing_flow_ops; /* Number of ongoing flow operations. */
 	struct mlx5_hw_q_job **job; /* LIFO header. */
 	struct rte_ring *indir_cq; /* Indirect action SW completion queue. */
 	struct rte_ring *indir_iq; /* Indirect action SW in progress queue. */
