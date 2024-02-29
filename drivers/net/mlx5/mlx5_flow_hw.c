@@ -161,7 +161,7 @@ static int flow_hw_translate_group(struct rte_eth_dev *dev,
 				   struct rte_flow_error *error);
 static __rte_always_inline int
 flow_hw_set_vlan_vid_construct(struct rte_eth_dev *dev,
-			       struct mlx5_hw_q_job *job,
+			       struct mlx5_modification_cmd *mhdr_cmd,
 			       struct mlx5_action_construct_data *act_data,
 			       const struct mlx5_hw_actions *hw_acts,
 			       const struct rte_flow_action *action);
@@ -2815,7 +2815,7 @@ flow_hw_mhdr_cmd_is_nop(const struct mlx5_modification_cmd *cmd)
  *    0 on success, negative value otherwise and rte_errno is set.
  */
 static __rte_always_inline int
-flow_hw_modify_field_construct(struct mlx5_hw_q_job *job,
+flow_hw_modify_field_construct(struct mlx5_modification_cmd *mhdr_cmd,
 			       struct mlx5_action_construct_data *act_data,
 			       const struct mlx5_hw_actions *hw_acts,
 			       const struct rte_flow_action *action)
@@ -2874,7 +2874,7 @@ flow_hw_modify_field_construct(struct mlx5_hw_q_job *job,
 
 		if (i >= act_data->modify_header.mhdr_cmds_end)
 			return -1;
-		if (flow_hw_mhdr_cmd_is_nop(&job->mhdr_cmd[i])) {
+		if (flow_hw_mhdr_cmd_is_nop(&mhdr_cmd[i])) {
 			++i;
 			continue;
 		}
@@ -2894,7 +2894,7 @@ flow_hw_modify_field_construct(struct mlx5_hw_q_job *job,
 		    mhdr_action->dst.field == RTE_FLOW_FIELD_IPV6_DSCP)
 			data <<= MLX5_IPV6_HDR_DSCP_SHIFT;
 		data = (data & mask) >> off_b;
-		job->mhdr_cmd[i++].data1 = rte_cpu_to_be_32(data);
+		mhdr_cmd[i++].data1 = rte_cpu_to_be_32(data);
 		++field;
 	} while (field->size);
 	return 0;
@@ -2908,8 +2908,10 @@ flow_hw_modify_field_construct(struct mlx5_hw_q_job *job,
  *
  * @param[in] dev
  *   Pointer to the rte_eth_dev structure.
- * @param[in] job
- *   Pointer to job descriptor.
+ * @param[in] flow
+ *   Pointer to flow structure.
+ * @param[in] ap
+ *   Pointer to container for temporarily constructed actions' parameters.
  * @param[in] hw_acts
  *   Pointer to translated actions from template.
  * @param[in] it_idx
@@ -2926,7 +2928,8 @@ flow_hw_modify_field_construct(struct mlx5_hw_q_job *job,
  */
 static __rte_always_inline int
 flow_hw_actions_construct(struct rte_eth_dev *dev,
-			  struct mlx5_hw_q_job *job,
+			  struct rte_flow_hw *flow,
+			  struct mlx5_flow_hw_action_params *ap,
 			  const struct mlx5_hw_action_template *hw_at,
 			  const uint8_t it_idx,
 			  const struct rte_flow_action actions[],
@@ -2936,7 +2939,7 @@ flow_hw_actions_construct(struct rte_eth_dev *dev,
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_aso_mtr_pool *pool = priv->hws_mpool;
-	struct rte_flow_template_table *table = job->flow->table;
+	struct rte_flow_template_table *table = flow->table;
 	struct mlx5_action_construct_data *act_data;
 	const struct rte_flow_actions_template *at = hw_at->action_template;
 	const struct mlx5_hw_actions *hw_acts = &hw_at->acts;
@@ -2948,8 +2951,6 @@ flow_hw_actions_construct(struct rte_eth_dev *dev,
 	const struct rte_flow_action_meter *meter = NULL;
 	const struct rte_flow_action_age *age = NULL;
 	const struct rte_flow_action_nat64 *nat64_c = NULL;
-	uint8_t *buf = job->encap_data;
-	uint8_t *push_buf = job->push_data;
 	struct rte_flow_attr attr = {
 			.ingress = 1,
 	};
@@ -2974,17 +2975,17 @@ flow_hw_actions_construct(struct rte_eth_dev *dev,
 	if (hw_acts->mhdr && hw_acts->mhdr->mhdr_cmds_num > 0 && !hw_acts->mhdr->shared) {
 		uint16_t pos = hw_acts->mhdr->pos;
 
-		mp_segment = mlx5_multi_pattern_segment_find(table, job->flow->res_idx);
+		mp_segment = mlx5_multi_pattern_segment_find(table, flow->res_idx);
 		if (!mp_segment || !mp_segment->mhdr_action)
 			return -1;
 		rule_acts[pos].action = mp_segment->mhdr_action;
 		/* offset is relative to DR action */
 		rule_acts[pos].modify_header.offset =
-					job->flow->res_idx - mp_segment->head_index;
+					flow->res_idx - mp_segment->head_index;
 		rule_acts[pos].modify_header.data =
-					(uint8_t *)job->mhdr_cmd;
-		rte_memcpy(job->mhdr_cmd, hw_acts->mhdr->mhdr_cmds,
-			   sizeof(*job->mhdr_cmd) * hw_acts->mhdr->mhdr_cmds_num);
+					(uint8_t *)ap->mhdr_cmd;
+		rte_memcpy(ap->mhdr_cmd, hw_acts->mhdr->mhdr_cmds,
+			   sizeof(*ap->mhdr_cmd) * hw_acts->mhdr->mhdr_cmds_num);
 	}
 	LIST_FOREACH(act_data, &hw_acts->act_list, next) {
 		uint32_t jump_group;
@@ -3017,7 +3018,7 @@ flow_hw_actions_construct(struct rte_eth_dev *dev,
 		case RTE_FLOW_ACTION_TYPE_INDIRECT:
 			if (flow_hw_shared_action_construct
 					(dev, queue, action, table, it_idx,
-					 at->action_flags, job->flow,
+					 at->action_flags, flow,
 					 &rule_acts[act_data->action_dst]))
 				return -1;
 			break;
@@ -3042,8 +3043,8 @@ flow_hw_actions_construct(struct rte_eth_dev *dev,
 				return -1;
 			rule_acts[act_data->action_dst].action =
 			(!!attr.group) ? jump->hws_action : jump->root_action;
-			job->flow->jump = jump;
-			job->flow->fate_type = MLX5_FLOW_FATE_JUMP;
+			flow->jump = jump;
+			flow->fate_type = MLX5_FLOW_FATE_JUMP;
 			break;
 		case RTE_FLOW_ACTION_TYPE_RSS:
 		case RTE_FLOW_ACTION_TYPE_QUEUE:
@@ -3053,8 +3054,8 @@ flow_hw_actions_construct(struct rte_eth_dev *dev,
 			if (!hrxq)
 				return -1;
 			rule_acts[act_data->action_dst].action = hrxq->action;
-			job->flow->hrxq = hrxq;
-			job->flow->fate_type = MLX5_FLOW_FATE_QUEUE;
+			flow->hrxq = hrxq;
+			flow->fate_type = MLX5_FLOW_FATE_QUEUE;
 			break;
 		case MLX5_RTE_FLOW_ACTION_TYPE_RSS:
 			item_flags = table->its[it_idx]->item_flags;
@@ -3066,38 +3067,41 @@ flow_hw_actions_construct(struct rte_eth_dev *dev,
 		case RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP:
 			enc_item = ((const struct rte_flow_action_vxlan_encap *)
 				   action->conf)->definition;
-			if (flow_dv_convert_encap_data(enc_item, buf, &encap_len, NULL))
+			if (flow_dv_convert_encap_data(enc_item, ap->encap_data, &encap_len, NULL))
 				return -1;
 			break;
 		case RTE_FLOW_ACTION_TYPE_NVGRE_ENCAP:
 			enc_item = ((const struct rte_flow_action_nvgre_encap *)
 				   action->conf)->definition;
-			if (flow_dv_convert_encap_data(enc_item, buf, &encap_len, NULL))
+			if (flow_dv_convert_encap_data(enc_item, ap->encap_data, &encap_len, NULL))
 				return -1;
 			break;
 		case RTE_FLOW_ACTION_TYPE_RAW_ENCAP:
 			raw_encap_data =
 				(const struct rte_flow_action_raw_encap *)
 				 action->conf;
-			rte_memcpy((void *)buf, raw_encap_data->data, act_data->encap.len);
-			MLX5_ASSERT(raw_encap_data->size ==
-				    act_data->encap.len);
+			MLX5_ASSERT(raw_encap_data->size == act_data->encap.len);
+			if (unlikely(act_data->encap.len > MLX5_ENCAP_MAX_LEN))
+				return -1;
+			rte_memcpy(ap->encap_data, raw_encap_data->data, act_data->encap.len);
 			break;
 		case RTE_FLOW_ACTION_TYPE_IPV6_EXT_PUSH:
 			ipv6_push =
 				(const struct rte_flow_action_ipv6_ext_push *)action->conf;
-			rte_memcpy((void *)push_buf, ipv6_push->data,
-				   act_data->ipv6_ext.len);
 			MLX5_ASSERT(ipv6_push->size == act_data->ipv6_ext.len);
+			if (unlikely(act_data->ipv6_ext.len > MLX5_PUSH_MAX_LEN))
+				return -1;
+			rte_memcpy(ap->ipv6_push_data, ipv6_push->data,
+				   act_data->ipv6_ext.len);
 			break;
 		case RTE_FLOW_ACTION_TYPE_MODIFY_FIELD:
 			if (action->type == RTE_FLOW_ACTION_TYPE_OF_SET_VLAN_VID)
-				ret = flow_hw_set_vlan_vid_construct(dev, job,
+				ret = flow_hw_set_vlan_vid_construct(dev, ap->mhdr_cmd,
 								     act_data,
 								     hw_acts,
 								     action);
 			else
-				ret = flow_hw_modify_field_construct(job,
+				ret = flow_hw_modify_field_construct(ap->mhdr_cmd,
 								     act_data,
 								     hw_acts,
 								     action);
@@ -3133,8 +3137,8 @@ flow_hw_actions_construct(struct rte_eth_dev *dev,
 			rule_acts[act_data->action_dst + 1].action =
 					(!!attr.group) ? jump->hws_action :
 							 jump->root_action;
-			job->flow->jump = jump;
-			job->flow->fate_type = MLX5_FLOW_FATE_JUMP;
+			flow->jump = jump;
+			flow->fate_type = MLX5_FLOW_FATE_JUMP;
 			if (mlx5_aso_mtr_wait(priv->sh, MLX5_HW_INV_QUEUE, aso_mtr))
 				return -1;
 			break;
@@ -3148,11 +3152,11 @@ flow_hw_actions_construct(struct rte_eth_dev *dev,
 			 */
 			age_idx = mlx5_hws_age_action_create(priv, queue, 0,
 							     age,
-							     job->flow->res_idx,
+							     flow->res_idx,
 							     error);
 			if (age_idx == 0)
 				return -rte_errno;
-			job->flow->age_idx = age_idx;
+			flow->age_idx = age_idx;
 			if (at->action_flags & MLX5_FLOW_ACTION_INDIRECT_COUNT)
 				/*
 				 * When AGE uses indirect counter, no need to
@@ -3174,7 +3178,7 @@ flow_hw_actions_construct(struct rte_eth_dev *dev,
 				 );
 			if (ret != 0)
 				return ret;
-			job->flow->cnt_id = cnt_id;
+			flow->cnt_id = cnt_id;
 			break;
 		case MLX5_RTE_FLOW_ACTION_TYPE_COUNT:
 			ret = mlx5_hws_cnt_pool_get_action_offset
@@ -3185,7 +3189,7 @@ flow_hw_actions_construct(struct rte_eth_dev *dev,
 				 );
 			if (ret != 0)
 				return ret;
-			job->flow->cnt_id = act_data->shared_counter.id;
+			flow->cnt_id = act_data->shared_counter.id;
 			break;
 		case RTE_FLOW_ACTION_TYPE_CONNTRACK:
 			ct_idx = MLX5_INDIRECT_ACTION_IDX_GET(action->conf);
@@ -3212,8 +3216,7 @@ flow_hw_actions_construct(struct rte_eth_dev *dev,
 			 */
 			ret = flow_hw_meter_mark_compile(dev,
 				act_data->action_dst, action,
-				rule_acts, &job->flow->mtr_id,
-				MLX5_HW_INV_QUEUE, error);
+				rule_acts, &flow->mtr_id, MLX5_HW_INV_QUEUE, error);
 			if (ret != 0)
 				return ret;
 			break;
@@ -3228,9 +3231,9 @@ flow_hw_actions_construct(struct rte_eth_dev *dev,
 	}
 	if (at->action_flags & MLX5_FLOW_ACTION_INDIRECT_COUNT) {
 		if (at->action_flags & MLX5_FLOW_ACTION_INDIRECT_AGE) {
-			age_idx = job->flow->age_idx & MLX5_HWS_AGE_IDX_MASK;
+			age_idx = flow->age_idx & MLX5_HWS_AGE_IDX_MASK;
 			if (mlx5_hws_cnt_age_get(priv->hws_cpool,
-						 job->flow->cnt_id) != age_idx)
+						 flow->cnt_id) != age_idx)
 				/*
 				 * This is first use of this indirect counter
 				 * for this indirect AGE, need to increase the
@@ -3242,7 +3245,7 @@ flow_hw_actions_construct(struct rte_eth_dev *dev,
 		 * Update this indirect counter the indirect/direct AGE in which
 		 * using it.
 		 */
-		mlx5_hws_cnt_age_set(priv->hws_cpool, job->flow->cnt_id,
+		mlx5_hws_cnt_age_set(priv->hws_cpool, flow->cnt_id,
 				     age_idx);
 	}
 	if (hw_acts->encap_decap && !hw_acts->encap_decap->shared) {
@@ -3252,21 +3255,21 @@ flow_hw_actions_construct(struct rte_eth_dev *dev,
 		if (ix < 0)
 			return -1;
 		if (!mp_segment)
-			mp_segment = mlx5_multi_pattern_segment_find(table, job->flow->res_idx);
+			mp_segment = mlx5_multi_pattern_segment_find(table, flow->res_idx);
 		if (!mp_segment || !mp_segment->reformat_action[ix])
 			return -1;
 		ra->action = mp_segment->reformat_action[ix];
 		/* reformat offset is relative to selected DR action */
-		ra->reformat.offset = job->flow->res_idx - mp_segment->head_index;
-		ra->reformat.data = buf;
+		ra->reformat.offset = flow->res_idx - mp_segment->head_index;
+		ra->reformat.data = ap->encap_data;
 	}
 	if (hw_acts->push_remove && !hw_acts->push_remove->shared) {
 		rule_acts[hw_acts->push_remove_pos].ipv6_ext.offset =
-				job->flow->res_idx - 1;
-		rule_acts[hw_acts->push_remove_pos].ipv6_ext.header = push_buf;
+				flow->res_idx - 1;
+		rule_acts[hw_acts->push_remove_pos].ipv6_ext.header = ap->ipv6_push_data;
 	}
 	if (mlx5_hws_cnt_id_valid(hw_acts->cnt_id))
-		job->flow->cnt_id = hw_acts->cnt_id;
+		flow->cnt_id = hw_acts->cnt_id;
 	return 0;
 }
 
@@ -3366,6 +3369,7 @@ flow_hw_async_flow_create(struct rte_eth_dev *dev,
 		.burst = attr->postpone,
 	};
 	struct mlx5dr_rule_action *rule_acts;
+	struct mlx5_flow_hw_action_params ap;
 	struct rte_flow_hw *flow = NULL;
 	struct mlx5_hw_q_job *job = NULL;
 	const struct rte_flow_item *rule_items;
@@ -3422,7 +3426,7 @@ flow_hw_async_flow_create(struct rte_eth_dev *dev,
 	 * No need to copy and contrust a new "actions" list based on the
 	 * user's input, in order to save the cost.
 	 */
-	if (flow_hw_actions_construct(dev, job,
+	if (flow_hw_actions_construct(dev, flow, &ap,
 				      &table->ats[action_template_index],
 				      pattern_template_index, actions,
 				      rule_acts, queue, error)) {
@@ -3514,6 +3518,7 @@ flow_hw_async_flow_create_by_index(struct rte_eth_dev *dev,
 		.burst = attr->postpone,
 	};
 	struct mlx5dr_rule_action *rule_acts;
+	struct mlx5_flow_hw_action_params ap;
 	struct rte_flow_hw *flow = NULL;
 	struct mlx5_hw_q_job *job = NULL;
 	uint32_t flow_idx = 0;
@@ -3566,7 +3571,7 @@ flow_hw_async_flow_create_by_index(struct rte_eth_dev *dev,
 	 * No need to copy and contrust a new "actions" list based on the
 	 * user's input, in order to save the cost.
 	 */
-	if (flow_hw_actions_construct(dev, job,
+	if (flow_hw_actions_construct(dev, flow, &ap,
 				      &table->ats[action_template_index],
 				      0, actions, rule_acts, queue, error)) {
 		rte_errno = EINVAL;
@@ -3648,6 +3653,7 @@ flow_hw_async_flow_update(struct rte_eth_dev *dev,
 		.burst = attr->postpone,
 	};
 	struct mlx5dr_rule_action *rule_acts;
+	struct mlx5_flow_hw_action_params ap;
 	struct rte_flow_hw *of = (struct rte_flow_hw *)flow;
 	struct rte_flow_hw *nf;
 	struct rte_flow_template_table *table = of->table;
@@ -3700,7 +3706,7 @@ flow_hw_async_flow_update(struct rte_eth_dev *dev,
 	 * No need to copy and contrust a new "actions" list based on the
 	 * user's input, in order to save the cost.
 	 */
-	if (flow_hw_actions_construct(dev, job,
+	if (flow_hw_actions_construct(dev, nf, &ap,
 				      &table->ats[action_template_index],
 				      nf->mt_idx, actions,
 				      rule_acts, queue, error)) {
@@ -6754,7 +6760,7 @@ flow_hw_set_vlan_vid(struct rte_eth_dev *dev,
 
 static __rte_always_inline int
 flow_hw_set_vlan_vid_construct(struct rte_eth_dev *dev,
-			       struct mlx5_hw_q_job *job,
+			       struct mlx5_modification_cmd *mhdr_cmd,
 			       struct mlx5_action_construct_data *act_data,
 			       const struct mlx5_hw_actions *hw_acts,
 			       const struct rte_flow_action *action)
@@ -6782,8 +6788,7 @@ flow_hw_set_vlan_vid_construct(struct rte_eth_dev *dev,
 		.conf = &conf
 	};
 
-	return flow_hw_modify_field_construct(job, act_data, hw_acts,
-					      &modify_action);
+	return flow_hw_modify_field_construct(mhdr_cmd, act_data, hw_acts, &modify_action);
 }
 
 static int
@@ -10199,10 +10204,6 @@ flow_hw_configure(struct rte_eth_dev *dev,
 		}
 		mem_size += (sizeof(struct mlx5_hw_q_job *) +
 			    sizeof(struct mlx5_hw_q_job) +
-			    sizeof(uint8_t) * MLX5_ENCAP_MAX_LEN +
-			    sizeof(uint8_t) * MLX5_PUSH_MAX_LEN +
-			    sizeof(struct mlx5_modification_cmd) *
-			    MLX5_MHDR_MAX_CMD +
 			    sizeof(struct rte_flow_item) *
 			    MLX5_HW_MAX_ITEMS +
 				sizeof(struct rte_flow_hw)) *
@@ -10215,8 +10216,6 @@ flow_hw_configure(struct rte_eth_dev *dev,
 		goto err;
 	}
 	for (i = 0; i < nb_q_updated; i++) {
-		uint8_t *encap = NULL, *push = NULL;
-		struct mlx5_modification_cmd *mhdr_cmd = NULL;
 		struct rte_flow_item *items = NULL;
 		struct rte_flow_hw *upd_flow = NULL;
 
@@ -10230,20 +10229,11 @@ flow_hw_configure(struct rte_eth_dev *dev,
 				&job[_queue_attr[i - 1]->size - 1].upd_flow[1];
 		job = (struct mlx5_hw_q_job *)
 		      &priv->hw_q[i].job[_queue_attr[i]->size];
-		mhdr_cmd = (struct mlx5_modification_cmd *)
-			   &job[_queue_attr[i]->size];
-		encap = (uint8_t *)
-			 &mhdr_cmd[_queue_attr[i]->size * MLX5_MHDR_MAX_CMD];
-		push = (uint8_t *)
-			 &encap[_queue_attr[i]->size * MLX5_ENCAP_MAX_LEN];
 		items = (struct rte_flow_item *)
-			 &push[_queue_attr[i]->size * MLX5_PUSH_MAX_LEN];
+			 &job[_queue_attr[i]->size];
 		upd_flow = (struct rte_flow_hw *)
 			&items[_queue_attr[i]->size * MLX5_HW_MAX_ITEMS];
 		for (j = 0; j < _queue_attr[i]->size; j++) {
-			job[j].mhdr_cmd = &mhdr_cmd[j * MLX5_MHDR_MAX_CMD];
-			job[j].encap_data = &encap[j * MLX5_ENCAP_MAX_LEN];
-			job[j].push_data = &push[j * MLX5_PUSH_MAX_LEN];
 			job[j].items = &items[j * MLX5_HW_MAX_ITEMS];
 			job[j].upd_flow = &upd_flow[j];
 			priv->hw_q[i].job[j] = &job[j];

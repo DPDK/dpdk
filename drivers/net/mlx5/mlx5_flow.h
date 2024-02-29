@@ -1306,6 +1306,16 @@ typedef int
 
 #define MLX5_MHDR_MAX_CMD ((MLX5_MAX_MODIFY_NUM) * 2 + 1)
 
+/** Container for flow action data constructed during flow rule creation. */
+struct mlx5_flow_hw_action_params {
+	/** Array of constructed modify header commands. */
+	struct mlx5_modification_cmd mhdr_cmd[MLX5_MHDR_MAX_CMD];
+	/** Constructed encap/decap data buffer. */
+	uint8_t encap_data[MLX5_ENCAP_MAX_LEN];
+	/** Constructed IPv6 routing data buffer. */
+	uint8_t ipv6_push_data[MLX5_PUSH_MAX_LEN];
+};
+
 /* rte flow action translate to DR action struct. */
 struct mlx5_action_construct_data {
 	LIST_ENTRY(mlx5_action_construct_data) next;
