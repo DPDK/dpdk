@@ -492,6 +492,14 @@ int mlx5dr_matcher_resize_rule_move(struct mlx5dr_matcher *src_matcher,
 				    struct mlx5dr_rule *rule,
 				    struct mlx5dr_rule_attr *attr);
 
+/* Check matcher ability to update existing rules
+ *
+ * @param[in] matcher
+ *	that the rule belongs to.
+ * @return true when the matcher is updatable false otherwise.
+ */
+bool mlx5dr_matcher_is_updatable(struct mlx5dr_matcher *matcher);
+
 /* Get the size of the rule handle (mlx5dr_rule) to be used on rule creation.
  *
  * @return size in bytes of rule handle struct.

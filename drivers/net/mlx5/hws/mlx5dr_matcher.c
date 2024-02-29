@@ -1530,6 +1530,18 @@ int mlx5dr_match_template_destroy(struct mlx5dr_match_template *mt)
 	return 0;
 }
 
+bool mlx5dr_matcher_is_updatable(struct mlx5dr_matcher *matcher)
+{
+	if (mlx5dr_table_is_root(matcher->tbl) ||
+	    mlx5dr_matcher_req_fw_wqe(matcher) ||
+	    mlx5dr_matcher_is_resizable(matcher) ||
+	    (!matcher->attr.optimize_using_rule_idx &&
+	    !mlx5dr_matcher_is_insert_by_idx(matcher)))
+		return false;
+
+	return true;
+}
+
 static int mlx5dr_matcher_resize_precheck(struct mlx5dr_matcher *src_matcher,
 					  struct mlx5dr_matcher *dst_matcher)
 {
