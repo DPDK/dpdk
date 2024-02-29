@@ -228,7 +228,7 @@ DevX SDK Installation
 The DevX SDK must be installed on the machine building the Windows PMD.
 Additional information can be found at
 `How to Integrate Windows DevX in Your Development Environment
-<https://docs.nvidia.com/networking/display/winof2v260/RShim+Drivers+and+Usage#RShimDriversandUsage-DevXInterface>`_.
+<https://docs.nvidia.com/networking/display/winof2v290/devx+interface>`_.
 The minimal supported WinOF2 version is 2.60.
 
 
