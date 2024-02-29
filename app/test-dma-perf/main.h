@@ -66,6 +66,6 @@ struct test_configure {
 	struct test_vchan_dev_config vchan_dev;
 };
 
-void mem_copy_benchmark(struct test_configure *cfg, bool is_dma);
+int mem_copy_benchmark(struct test_configure *cfg, bool is_dma);
 
 #endif /* MAIN_H */

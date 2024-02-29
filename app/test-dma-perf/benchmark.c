@@ -12,6 +12,7 @@
 #include <rte_dmadev.h>
 #include <rte_malloc.h>
 #include <rte_lcore.h>
+#include <rte_random.h>
 
 #include "main.h"
 
@@ -407,6 +408,11 @@ setup_memory_env(struct test_configure *cfg, struct rte_mbuf ***srcs,
 		return -1;
 	}
 
+	for (i = 0; i < nr_buf; i++) {
+		memset(rte_pktmbuf_mtod((*srcs)[i], void *), rte_rand(), buf_size);
+		memset(rte_pktmbuf_mtod((*dsts)[i], void *), 0, buf_size);
+	}
+
 	if (cfg->transfer_dir == RTE_DMA_DIR_DEV_TO_MEM ||
 	    cfg->transfer_dir == RTE_DMA_DIR_MEM_TO_DEV) {
 		ext_buf_info = rte_malloc(NULL, sizeof(struct rte_mbuf_ext_shared_info), 0);
@@ -445,7 +451,7 @@ setup_memory_env(struct test_configure *cfg, struct rte_mbuf ***srcs,
 	return 0;
 }
 
-void
+int
 mem_copy_benchmark(struct test_configure *cfg, bool is_dma)
 {
 	uint32_t i;
@@ -463,6 +469,7 @@ mem_copy_benchmark(struct test_configure *cfg, bool is_dma)
 	uint32_t avg_cycles_total;
 	float mops, mops_total;
 	float bandwidth, bandwidth_total;
+	int ret = 0;
 
 	if (setup_memory_env(cfg, &srcs, &dsts) < 0)
 		goto out;
@@ -536,6 +543,18 @@ mem_copy_benchmark(struct test_configure *cfg, bool is_dma)
 
 	rte_eal_mp_wait_lcore();
 
+	if (cfg->transfer_dir == RTE_DMA_DIR_MEM_TO_MEM) {
+		for (i = 0; i < (nr_buf / nb_workers) * nb_workers; i++) {
+			if (memcmp(rte_pktmbuf_mtod(srcs[i], void *),
+				   rte_pktmbuf_mtod(dsts[i], void *),
+				   cfg->buf_size.cur) != 0) {
+				printf("Copy validation fails for buffer number %d\n", i);
+				ret = -1;
+				goto out;
+			}
+		}
+	}
+
 	mops_total = 0;
 	bandwidth_total = 0;
 	avg_cycles_total = 0;
@@ -601,4 +620,6 @@ out:
 			rte_dma_stop(ldm->dma_ids[i]);
 		}
 	}
+
+	return ret;
 }
