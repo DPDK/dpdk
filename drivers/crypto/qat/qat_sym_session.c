@@ -136,6 +136,9 @@ qat_sym_cd_auth_set(struct qat_sym_session *cdesc,
 static void
 qat_sym_session_init_common_hdr(struct qat_sym_session *session);
 
+static void
+qat_sym_session_init_gen_lce_hdr(struct qat_sym_session *session);
+
 /* Req/cd init functions */
 
 static void
@@ -757,6 +760,12 @@ qat_sym_session_set_parameters(struct rte_cryptodev *dev,
 		session->qat_cmd);
 		return -ENOTSUP;
 	}
+
+	if (qat_dev_gen == QAT_GEN_LCE) {
+		qat_sym_session_init_gen_lce_hdr(session);
+		return 0;
+	}
+
 	qat_sym_session_finalize(session);
 
 	return qat_sym_gen_dev_ops[qat_dev_gen].set_session((void *)dev,
@@ -1103,6 +1112,12 @@ qat_sym_session_configure_aead(struct rte_cryptodev *dev,
 			dev->data->dev_private;
 	enum qat_device_gen qat_dev_gen =
 			internals->qat_dev->qat_dev_gen;
+	if (qat_dev_gen == QAT_GEN_LCE) {
+		struct icp_qat_fw_la_bulk_req *req_tmpl = &session->fw_req;
+		struct lce_key_buff_desc *key_buff = &req_tmpl->key_buff;
+
+		key_buff->keybuff = session->key_paddr;
+	}
 
 	/*
 	 * Store AEAD IV parameters as cipher IV,
@@ -1166,9 +1181,14 @@ qat_sym_session_configure_aead(struct rte_cryptodev *dev,
 	}
 
 	if (session->is_single_pass) {
-		if (qat_sym_cd_cipher_set(session,
-				aead_xform->key.data, aead_xform->key.length))
-			return -EINVAL;
+		if (qat_dev_gen != QAT_GEN_LCE) {
+			if (qat_sym_cd_cipher_set(session,
+					aead_xform->key.data, aead_xform->key.length))
+				return -EINVAL;
+		} else {
+			session->auth_key_length = aead_xform->key.length;
+			memcpy(session->key_array, aead_xform->key.data, aead_xform->key.length);
+		}
 	} else if ((aead_xform->op == RTE_CRYPTO_AEAD_OP_ENCRYPT &&
 			aead_xform->algo == RTE_CRYPTO_AEAD_AES_GCM) ||
 			(aead_xform->op == RTE_CRYPTO_AEAD_OP_DECRYPT &&
@@ -2072,6 +2092,37 @@ qat_sym_session_init_common_hdr(struct qat_sym_session *session)
 					   ICP_QAT_FW_LA_NO_UPDATE_STATE);
 	ICP_QAT_FW_LA_DIGEST_IN_BUFFER_SET(header->serv_specif_flags,
 					ICP_QAT_FW_LA_NO_DIGEST_IN_BUFFER);
+}
+
+static void
+qat_sym_session_init_gen_lce_hdr(struct qat_sym_session *session)
+{
+	struct icp_qat_fw_la_bulk_req *req_tmpl = &session->fw_req;
+	struct icp_qat_fw_comn_req_hdr *header = &req_tmpl->comn_hdr;
+
+	/*
+	 * GEN_LCE specifies separate command id for AEAD operations but Cryptodev
+	 * API processes AEAD operations as Single pass Crypto operations.
+	 * Hence even for GEN_LCE, Session Algo Command ID is CIPHER.
+	 * Note, however Session Algo Mode is AEAD.
+	 */
+	header->service_cmd_id = ICP_QAT_FW_LA_CMD_AEAD;
+	header->service_type = ICP_QAT_FW_COMN_REQ_CPM_FW_LA;
+	header->hdr_flags = ICP_QAT_FW_COMN_HDR_FLAGS_BUILD_GEN_LCE(ICP_QAT_FW_COMN_REQ_FLAG_SET,
+			ICP_QAT_FW_COMN_GEN_LCE_DESC_LAYOUT);
+	header->comn_req_flags = ICP_QAT_FW_COMN_FLAGS_BUILD_GEN_LCE(QAT_COMN_PTR_TYPE_SGL,
+			QAT_COMN_KEY_BUFFER_USED);
+
+	ICP_QAT_FW_SYM_AEAD_ALGO_SET(header->serv_specif_flags, QAT_LA_CRYPTO_AEAD_AES_GCM_GEN_LCE);
+	ICP_QAT_FW_SYM_IV_SIZE_SET(header->serv_specif_flags, ICP_QAT_FW_LA_GCM_IV_LEN_12_OCTETS);
+	ICP_QAT_FW_SYM_IV_IN_DESC_FLAG_SET(header->serv_specif_flags,
+			ICP_QAT_FW_SYM_IV_IN_DESC_VALID);
+
+	if (session->qat_dir == ICP_QAT_HW_CIPHER_DECRYPT) {
+		ICP_QAT_FW_SYM_DIR_FLAG_SET(header->serv_specif_flags, ICP_QAT_HW_CIPHER_DECRYPT);
+	} else {
+		ICP_QAT_FW_SYM_DIR_FLAG_SET(header->serv_specif_flags, ICP_QAT_HW_CIPHER_ENCRYPT);
+	}
 }
 
 int qat_sym_cd_cipher_set(struct qat_sym_session *cdesc,

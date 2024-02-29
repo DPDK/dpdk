@@ -180,7 +180,13 @@ qat_sym_dequeue_burst(void *qp, struct rte_crypto_op **ops,
 		uint16_t nb_ops)
 {
 	return qat_dequeue_op_burst(qp, (void **)ops,
-				qat_sym_process_response, nb_ops);
+							qat_sym_process_response, nb_ops);
+}
+
+uint16_t
+qat_sym_dequeue_burst_gen_lce(void *qp, struct rte_crypto_op **ops, uint16_t nb_ops)
+{
+	return qat_dequeue_op_burst(qp, (void **)ops, qat_sym_process_response_gen_lce, nb_ops);
 }
 
 int
@@ -200,6 +206,7 @@ qat_sym_dev_create(struct qat_pci_device *qat_pci_dev,
 	char capa_memz_name[RTE_CRYPTODEV_NAME_MAX_LEN];
 	struct rte_cryptodev *cryptodev;
 	struct qat_cryptodev_private *internals;
+	enum qat_device_gen qat_dev_gen = qat_pci_dev->qat_dev_gen;
 	const struct qat_crypto_gen_dev_ops *gen_dev_ops =
 		&qat_sym_gen_dev_ops[qat_pci_dev->qat_dev_gen];
 
@@ -249,7 +256,10 @@ qat_sym_dev_create(struct qat_pci_device *qat_pci_dev,
 	cryptodev->dev_ops = gen_dev_ops->cryptodev_ops;
 
 	cryptodev->enqueue_burst = qat_sym_enqueue_burst;
-	cryptodev->dequeue_burst = qat_sym_dequeue_burst;
+	if (qat_dev_gen == QAT_GEN_LCE)
+		cryptodev->dequeue_burst = qat_sym_dequeue_burst_gen_lce;
+	else
+		cryptodev->dequeue_burst = qat_sym_dequeue_burst;
 
 	cryptodev->feature_flags = gen_dev_ops->get_feature_flags(qat_pci_dev);
 
