@@ -14,6 +14,7 @@
 #include <bus_pci_driver.h>
 #include <rte_byteorder.h>
 #include <rte_cycles.h>
+#include <rte_random.h>
 
 #include <rte_bbdev.h>
 #include <rte_bbdev_pmd.h>
@@ -1990,7 +1991,7 @@ fpga_5gnr_mutex_acquisition(struct fpga_5gnr_queue *q)
 {
 	uint32_t mutex_ctrl, mutex_read, cnt = 0;
 	/* Assign a unique id for the duration of the DDR access */
-	q->ddr_mutex_uuid = rand();
+	q->ddr_mutex_uuid = rte_rand();
 	/* Request and wait for acquisition of the mutex */
 	mutex_ctrl = (q->ddr_mutex_uuid << 16) + 1;
 	do {
