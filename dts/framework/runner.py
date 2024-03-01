@@ -19,9 +19,10 @@ and the test case stage runs test cases individually.
 
 import importlib
 import inspect
-import logging
+import os
 import re
 import sys
+from pathlib import Path
 from types import MethodType
 from typing import Iterable
 
@@ -38,7 +39,7 @@ from .exception import (
     SSHTimeoutError,
     TestCaseVerifyError,
 )
-from .logger import DTSLOG, getLogger
+from .logger import DTSLogger, DtsStage, get_dts_logger
 from .settings import SETTINGS
 from .test_result import (
     BuildTargetResult,
@@ -73,7 +74,7 @@ class DTSRunner:
     """
 
     _configuration: Configuration
-    _logger: DTSLOG
+    _logger: DTSLogger
     _result: DTSResult
     _test_suite_class_prefix: str
     _test_suite_module_prefix: str
@@ -83,7 +84,10 @@ class DTSRunner:
     def __init__(self):
         """Initialize the instance with configuration, logger, result and string constants."""
         self._configuration = load_config()
-        self._logger = getLogger("DTSRunner")
+        self._logger = get_dts_logger()
+        if not os.path.exists(SETTINGS.output_dir):
+            os.makedirs(SETTINGS.output_dir)
+        self._logger.add_dts_root_logger_handlers(SETTINGS.verbose, SETTINGS.output_dir)
         self._result = DTSResult(self._logger)
         self._test_suite_class_prefix = "Test"
         self._test_suite_module_prefix = "tests.TestSuite_"
@@ -137,6 +141,7 @@ class DTSRunner:
 
             # for all Execution sections
             for execution in self._configuration.executions:
+                self._logger.set_stage(DtsStage.execution_setup)
                 self._logger.info(
                     f"Running execution with SUT '{execution.system_under_test_node.name}'."
                 )
@@ -168,6 +173,7 @@ class DTSRunner:
 
         finally:
             try:
+                self._logger.set_stage(DtsStage.post_execution)
                 for node in (sut_nodes | tg_nodes).values():
                     node.close()
                 self._result.update_teardown(Result.PASS)
@@ -426,6 +432,7 @@ class DTSRunner:
 
         finally:
             try:
+                self._logger.set_stage(DtsStage.execution_teardown)
                 sut_node.tear_down_execution()
                 execution_result.update_teardown(Result.PASS)
             except Exception as e:
@@ -454,6 +461,7 @@ class DTSRunner:
                 with the current build target.
             test_suites_with_cases: The test suites with test cases to run.
         """
+        self._logger.set_stage(DtsStage.build_target_setup)
         self._logger.info(f"Running build target '{build_target.name}'.")
 
         try:
@@ -470,6 +478,7 @@ class DTSRunner:
 
         finally:
             try:
+                self._logger.set_stage(DtsStage.build_target_teardown)
                 sut_node.tear_down_build_target()
                 build_target_result.update_teardown(Result.PASS)
             except Exception as e:
@@ -542,6 +551,9 @@ class DTSRunner:
             BlockingTestSuiteError: If a blocking test suite fails.
         """
         test_suite_name = test_suite_with_cases.test_suite_class.__name__
+        self._logger.set_stage(
+            DtsStage.test_suite_setup, Path(SETTINGS.output_dir, test_suite_name)
+        )
         test_suite = test_suite_with_cases.test_suite_class(sut_node, tg_node)
         try:
             self._logger.info(f"Starting test suite setup: {test_suite_name}")
@@ -560,6 +572,7 @@ class DTSRunner:
             )
         finally:
             try:
+                self._logger.set_stage(DtsStage.test_suite_teardown)
                 test_suite.tear_down_suite()
                 sut_node.kill_cleanup_dpdk_apps()
                 test_suite_result.update_teardown(Result.PASS)
@@ -591,6 +604,7 @@ class DTSRunner:
             test_suite_result: The test suite level result object associated
                 with the current test suite.
         """
+        self._logger.set_stage(DtsStage.test_suite)
         for test_case_method in test_cases:
             test_case_name = test_case_method.__name__
             test_case_result = test_suite_result.add_test_case(test_case_name)
@@ -690,5 +704,4 @@ class DTSRunner:
         if self._logger:
             self._logger.info("DTS execution has ended.")
 
-        logging.shutdown()
         sys.exit(self._result.get_return_code())

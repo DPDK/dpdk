@@ -23,7 +23,7 @@ from framework.config import (
     NodeConfiguration,
 )
 from framework.exception import ConfigurationError
-from framework.logger import DTSLOG, getLogger
+from framework.logger import DTSLogger, get_dts_logger
 from framework.settings import SETTINGS
 
 from .cpu import (
@@ -63,7 +63,7 @@ class Node(ABC):
     name: str
     lcores: list[LogicalCore]
     ports: list[Port]
-    _logger: DTSLOG
+    _logger: DTSLogger
     _other_sessions: list[OSSession]
     _execution_config: ExecutionConfiguration
     virtual_devices: list[VirtualDevice]
@@ -82,7 +82,7 @@ class Node(ABC):
         """
         self.config = node_config
         self.name = node_config.name
-        self._logger = getLogger(self.name)
+        self._logger = get_dts_logger(self.name)
         self.main_session = create_session(self.config, self.name, self._logger)
 
         self._logger.info(f"Connected to node: {self.name}")
@@ -189,7 +189,7 @@ class Node(ABC):
         connection = create_session(
             self.config,
             session_name,
-            getLogger(session_name, node=self.name),
+            get_dts_logger(session_name),
         )
         self._other_sessions.append(connection)
         return connection
@@ -299,7 +299,6 @@ class Node(ABC):
             self.main_session.close()
         for session in self._other_sessions:
             session.close()
-        self._logger.logger_exit()
 
     @staticmethod
     def skip_setup(func: Callable[..., Any]) -> Callable[..., Any]:
@@ -314,7 +313,7 @@ class Node(ABC):
             return func
 
 
-def create_session(node_config: NodeConfiguration, name: str, logger: DTSLOG) -> OSSession:
+def create_session(node_config: NodeConfiguration, name: str, logger: DTSLogger) -> OSSession:
     """Factory for OS-aware sessions.
 
     Args:

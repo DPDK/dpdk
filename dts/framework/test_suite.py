@@ -21,7 +21,7 @@ from scapy.layers.l2 import Ether  # type: ignore[import]
 from scapy.packet import Packet, Padding  # type: ignore[import]
 
 from .exception import TestCaseVerifyError
-from .logger import DTSLOG, getLogger
+from .logger import DTSLogger, get_dts_logger
 from .testbed_model import Port, PortLink, SutNode, TGNode
 from .utils import get_packet_summaries
 
@@ -61,7 +61,7 @@ class TestSuite(object):
     #: Whether the test suite is blocking. A failure of a blocking test suite
     #: will block the execution of all subsequent test suites in the current build target.
     is_blocking: ClassVar[bool] = False
-    _logger: DTSLOG
+    _logger: DTSLogger
     _port_links: list[PortLink]
     _sut_port_ingress: Port
     _sut_port_egress: Port
@@ -88,7 +88,7 @@ class TestSuite(object):
         """
         self.sut_node = sut_node
         self.tg_node = tg_node
-        self._logger = getLogger(self.__class__.__name__)
+        self._logger = get_dts_logger(self.__class__.__name__)
         self._port_links = []
         self._process_links()
         self._sut_port_ingress, self._tg_port_egress = (

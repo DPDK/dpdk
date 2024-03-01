@@ -42,7 +42,7 @@ from .config import (
     TestSuiteConfig,
 )
 from .exception import DTSError, ErrorSeverity
-from .logger import DTSLOG
+from .logger import DTSLogger
 from .settings import SETTINGS
 from .test_suite import TestSuite
 
@@ -237,13 +237,13 @@ class DTSResult(BaseResult):
     """
 
     dpdk_version: str | None
-    _logger: DTSLOG
+    _logger: DTSLogger
     _errors: list[Exception]
     _return_code: ErrorSeverity
     _stats_result: Union["Statistics", None]
     _stats_filename: str
 
-    def __init__(self, logger: DTSLOG):
+    def __init__(self, logger: DTSLogger):
         """Extend the constructor with top-level specifics.
 
         Args:

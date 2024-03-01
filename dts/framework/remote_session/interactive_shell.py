@@ -20,7 +20,7 @@ from typing import Callable, ClassVar
 
 from paramiko import Channel, SSHClient, channel  # type: ignore[import]
 
-from framework.logger import DTSLOG
+from framework.logger import DTSLogger
 from framework.settings import SETTINGS
 
 
@@ -38,7 +38,7 @@ class InteractiveShell(ABC):
     _stdin: channel.ChannelStdinFile
     _stdout: channel.ChannelFile
     _ssh_channel: Channel
-    _logger: DTSLOG
+    _logger: DTSLogger
     _timeout: float
     _app_args: str
 
@@ -61,7 +61,7 @@ class InteractiveShell(ABC):
     def __init__(
         self,
         interactive_session: SSHClient,
-        logger: DTSLOG,
+        logger: DTSLogger,
         get_privileged_command: Callable[[str], str] | None,
         app_args: str = "",
         timeout: float = SETTINGS.timeout,

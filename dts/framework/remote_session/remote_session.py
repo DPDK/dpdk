@@ -9,14 +9,13 @@ This module contains the abstract base class for remote sessions and defines
 the structure of the result of a command execution.
 """
 
-
 from abc import ABC, abstractmethod
 from dataclasses import InitVar, dataclass, field
 from pathlib import PurePath
 
 from framework.config import NodeConfiguration
 from framework.exception import RemoteCommandExecutionError
-from framework.logger import DTSLOG
+from framework.logger import DTSLogger
 from framework.settings import SETTINGS
 
 
@@ -91,14 +90,14 @@ class RemoteSession(ABC):
     username: str
     password: str
     history: list[CommandResult]
-    _logger: DTSLOG
+    _logger: DTSLogger
     _node_config: NodeConfiguration
 
     def __init__(
         self,
         node_config: NodeConfiguration,
         session_name: str,
-        logger: DTSLOG,
+        logger: DTSLogger,
     ):
         """Connect to the node during initialization.
 
@@ -197,7 +196,6 @@ class RemoteSession(ABC):
         Args:
             force: Force the closure of the connection. This may not clean up all resources.
         """
-        self._logger.logger_exit()
         self._close(force)
 
     @abstractmethod

@@ -15,7 +15,7 @@ allowing it to send and receive data within that particular shell.
 # pylama:ignore=W0611
 
 from framework.config import NodeConfiguration
-from framework.logger import DTSLOG
+from framework.logger import DTSLogger
 
 from .interactive_remote_session import InteractiveRemoteSession
 from .interactive_shell import InteractiveShell
@@ -26,7 +26,7 @@ from .testpmd_shell import TestPmdShell
 
 
 def create_remote_session(
-    node_config: NodeConfiguration, name: str, logger: DTSLOG
+    node_config: NodeConfiguration, name: str, logger: DTSLogger
 ) -> RemoteSession:
     """Factory for non-interactive remote sessions.
 
@@ -45,7 +45,7 @@ def create_remote_session(
 
 
 def create_interactive_session(
-    node_config: NodeConfiguration, logger: DTSLOG
+    node_config: NodeConfiguration, logger: DTSLogger
 ) -> InteractiveRemoteSession:
     """Factory for interactive remote sessions.
 

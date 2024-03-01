@@ -6,8 +6,6 @@
 
 """The DTS executable."""
 
-import logging
-
 from framework import settings
 
 
@@ -30,5 +28,4 @@ def main() -> None:
 
 # Main program begins here
 if __name__ == "__main__":
-    logging.raiseExceptions = True
     main()

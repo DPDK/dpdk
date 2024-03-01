@@ -21,7 +21,6 @@ Example:
     the :attr:`~.node.Node.main_session` translates that to ``rm -rf`` if the node's OS is Linux
     and other commands for other OSs. It also translates the path to match the underlying OS.
 """
-
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
 from ipaddress import IPv4Interface, IPv6Interface
@@ -29,7 +28,7 @@ from pathlib import PurePath
 from typing import Type, TypeVar, Union
 
 from framework.config import Architecture, NodeConfiguration, NodeInfo
-from framework.logger import DTSLOG
+from framework.logger import DTSLogger
 from framework.remote_session import (
     CommandResult,
     InteractiveRemoteSession,
@@ -62,7 +61,7 @@ class OSSession(ABC):
 
     _config: NodeConfiguration
     name: str
-    _logger: DTSLOG
+    _logger: DTSLogger
     remote_session: RemoteSession
     interactive_session: InteractiveRemoteSession
 
@@ -70,7 +69,7 @@ class OSSession(ABC):
         self,
         node_config: NodeConfiguration,
         name: str,
-        logger: DTSLOG,
+        logger: DTSLogger,
     ):
         """Initialize the OS-aware session.
 
