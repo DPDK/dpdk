@@ -886,6 +886,7 @@ virtio_ha_client_dev_restore(void)
 				ret = -1;
 				goto err_vf_ctx;
 			}
+			sleep(4);
 err_vf_ctx:
 			free(vf_ctx);
 		}
