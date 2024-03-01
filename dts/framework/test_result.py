@@ -37,7 +37,7 @@ from .config import (
     BuildTargetInfo,
     Compiler,
     CPUType,
-    NodeConfiguration,
+    ExecutionConfiguration,
     NodeInfo,
     TestSuiteConfig,
 )
@@ -88,6 +88,8 @@ class Result(Enum):
     ERROR = auto()
     #:
     SKIP = auto()
+    #:
+    BLOCK = auto()
 
     def __bool__(self) -> bool:
         """Only PASS is True."""
@@ -141,20 +143,25 @@ class BaseResult(object):
     Attributes:
         setup_result: The result of the setup of the particular stage.
         teardown_result: The results of the teardown of the particular stage.
+        child_results: The results of the descendants in the results hierarchy.
     """
 
     setup_result: FixtureResult
     teardown_result: FixtureResult
-    _inner_results: MutableSequence["BaseResult"]
+    child_results: MutableSequence["BaseResult"]
 
     def __init__(self):
         """Initialize the constructor."""
         self.setup_result = FixtureResult()
         self.teardown_result = FixtureResult()
-        self._inner_results = []
+        self.child_results = []
 
     def update_setup(self, result: Result, error: Exception | None = None) -> None:
         """Store the setup result.
+
+        If the result is :attr:`~Result.BLOCK`, :attr:`~Result.ERROR` or :attr:`~Result.FAIL`,
+        then the corresponding child results in result hierarchy
+        are also marked with :attr:`~Result.BLOCK`.
 
         Args:
             result: The result of the setup.
@@ -162,6 +169,16 @@ class BaseResult(object):
         """
         self.setup_result.result = result
         self.setup_result.error = error
+
+        if result in [Result.BLOCK, Result.ERROR, Result.FAIL]:
+            self.update_teardown(Result.BLOCK)
+            self._block_result()
+
+    def _block_result(self) -> None:
+        r"""Mark the result as :attr:`~Result.BLOCK`\ed.
+
+        The blocking of child results should be done in overloaded methods.
+        """
 
     def update_teardown(self, result: Result, error: Exception | None = None) -> None:
         """Store the teardown result.
@@ -181,10 +198,8 @@ class BaseResult(object):
             errors.append(self.teardown_result.error)
         return errors
 
-    def _get_inner_errors(self) -> list[Exception]:
-        return [
-            error for inner_result in self._inner_results for error in inner_result.get_errors()
-        ]
+    def _get_child_errors(self) -> list[Exception]:
+        return [error for child_result in self.child_results for error in child_result.get_errors()]
 
     def get_errors(self) -> list[Exception]:
         """Compile errors from the whole result hierarchy.
@@ -192,7 +207,7 @@ class BaseResult(object):
         Returns:
             The errors from setup, teardown and all errors found in the whole result hierarchy.
         """
-        return self._get_setup_teardown_errors() + self._get_inner_errors()
+        return self._get_setup_teardown_errors() + self._get_child_errors()
 
     def add_stats(self, statistics: "Statistics") -> None:
         """Collate stats from the whole result hierarchy.
@@ -200,8 +215,8 @@ class BaseResult(object):
         Args:
             statistics: The :class:`Statistics` object where the stats will be collated.
         """
-        for inner_result in self._inner_results:
-            inner_result.add_stats(statistics)
+        for child_result in self.child_results:
+            child_result.add_stats(statistics)
 
 
 class DTSResult(BaseResult):
@@ -242,18 +257,18 @@ class DTSResult(BaseResult):
         self._stats_result = None
         self._stats_filename = os.path.join(SETTINGS.output_dir, "statistics.txt")
 
-    def add_execution(self, sut_node: NodeConfiguration) -> "ExecutionResult":
-        """Add and return the inner result (execution).
+    def add_execution(self, execution: ExecutionConfiguration) -> "ExecutionResult":
+        """Add and return the child result (execution).
 
         Args:
-            sut_node: The SUT node's test run configuration.
+            execution: The execution's test run configuration.
 
         Returns:
             The execution's result.
         """
-        execution_result = ExecutionResult(sut_node)
-        self._inner_results.append(execution_result)
-        return execution_result
+        result = ExecutionResult(execution)
+        self.child_results.append(result)
+        return result
 
     def add_error(self, error: Exception) -> None:
         """Record an error that occurred outside any execution.
@@ -266,8 +281,8 @@ class DTSResult(BaseResult):
     def process(self) -> None:
         """Process the data after a whole DTS run.
 
-        The data is added to inner objects during runtime and this object is not updated
-        at that time. This requires us to process the inner data after it's all been gathered.
+        The data is added to child objects during runtime and this object is not updated
+        at that time. This requires us to process the child data after it's all been gathered.
 
         The processing gathers all errors and the statistics of test case results.
         """
@@ -305,28 +320,30 @@ class ExecutionResult(BaseResult):
     The internal list stores the results of all build targets in a given execution.
 
     Attributes:
-        sut_node: The SUT node used in the execution.
         sut_os_name: The operating system of the SUT node.
         sut_os_version: The operating system version of the SUT node.
         sut_kernel_version: The operating system kernel version of the SUT node.
     """
 
-    sut_node: NodeConfiguration
     sut_os_name: str
     sut_os_version: str
     sut_kernel_version: str
+    _config: ExecutionConfiguration
+    _parent_result: DTSResult
+    _test_suites_with_cases: list[TestSuiteWithCases]
 
-    def __init__(self, sut_node: NodeConfiguration):
-        """Extend the constructor with the `sut_node`'s config.
+    def __init__(self, execution: ExecutionConfiguration):
+        """Extend the constructor with the execution's config and DTSResult.
 
         Args:
-            sut_node: The SUT node's test run configuration used in the execution.
+            execution: The execution's test run configuration.
         """
         super(ExecutionResult, self).__init__()
-        self.sut_node = sut_node
+        self._config = execution
+        self._test_suites_with_cases = []
 
     def add_build_target(self, build_target: BuildTargetConfiguration) -> "BuildTargetResult":
-        """Add and return the inner result (build target).
+        """Add and return the child result (build target).
 
         Args:
             build_target: The build target's test run configuration.
@@ -334,9 +351,34 @@ class ExecutionResult(BaseResult):
         Returns:
             The build target's result.
         """
-        build_target_result = BuildTargetResult(build_target)
-        self._inner_results.append(build_target_result)
-        return build_target_result
+        result = BuildTargetResult(
+            self._test_suites_with_cases,
+            build_target,
+        )
+        self.child_results.append(result)
+        return result
+
+    @property
+    def test_suites_with_cases(self) -> list[TestSuiteWithCases]:
+        """The test suites with test cases to be executed in this execution.
+
+        The test suites can only be assigned once.
+
+        Returns:
+            The list of test suites with test cases. If an error occurs between
+            the initialization of :class:`ExecutionResult` and assigning test cases to the instance,
+            return an empty list, representing that we don't know what to execute.
+        """
+        return self._test_suites_with_cases
+
+    @test_suites_with_cases.setter
+    def test_suites_with_cases(self, test_suites_with_cases: list[TestSuiteWithCases]) -> None:
+        if self._test_suites_with_cases:
+            raise ValueError(
+                "Attempted to assign test suites to an execution result "
+                "which already has test suites."
+            )
+        self._test_suites_with_cases = test_suites_with_cases
 
     def add_sut_info(self, sut_info: NodeInfo) -> None:
         """Add SUT information gathered at runtime.
@@ -347,6 +389,12 @@ class ExecutionResult(BaseResult):
         self.sut_os_name = sut_info.os_name
         self.sut_os_version = sut_info.os_version
         self.sut_kernel_version = sut_info.kernel_version
+
+    def _block_result(self) -> None:
+        r"""Mark the result as :attr:`~Result.BLOCK`\ed."""
+        for build_target in self._config.build_targets:
+            child_result = self.add_build_target(build_target)
+            child_result.update_setup(Result.BLOCK)
 
 
 class BuildTargetResult(BaseResult):
@@ -369,11 +417,17 @@ class BuildTargetResult(BaseResult):
     compiler: Compiler
     compiler_version: str | None
     dpdk_version: str | None
+    _test_suites_with_cases: list[TestSuiteWithCases]
 
-    def __init__(self, build_target: BuildTargetConfiguration):
-        """Extend the constructor with the `build_target`'s build target config.
+    def __init__(
+        self,
+        test_suites_with_cases: list[TestSuiteWithCases],
+        build_target: BuildTargetConfiguration,
+    ):
+        """Extend the constructor with the build target's config and ExecutionResult.
 
         Args:
+            test_suites_with_cases: The test suites with test cases to be run in this build target.
             build_target: The build target's test run configuration.
         """
         super(BuildTargetResult, self).__init__()
@@ -383,6 +437,23 @@ class BuildTargetResult(BaseResult):
         self.compiler = build_target.compiler
         self.compiler_version = None
         self.dpdk_version = None
+        self._test_suites_with_cases = test_suites_with_cases
+
+    def add_test_suite(
+        self,
+        test_suite_with_cases: TestSuiteWithCases,
+    ) -> "TestSuiteResult":
+        """Add and return the child result (test suite).
+
+        Args:
+            test_suite_with_cases: The test suite with test cases.
+
+        Returns:
+            The test suite's result.
+        """
+        result = TestSuiteResult(test_suite_with_cases)
+        self.child_results.append(result)
+        return result
 
     def add_build_target_info(self, versions: BuildTargetInfo) -> None:
         """Add information about the build target gathered at runtime.
@@ -393,15 +464,11 @@ class BuildTargetResult(BaseResult):
         self.compiler_version = versions.compiler_version
         self.dpdk_version = versions.dpdk_version
 
-    def add_test_suite(self, test_suite_name: str) -> "TestSuiteResult":
-        """Add and return the inner result (test suite).
-
-        Returns:
-            The test suite's result.
-        """
-        test_suite_result = TestSuiteResult(test_suite_name)
-        self._inner_results.append(test_suite_result)
-        return test_suite_result
+    def _block_result(self) -> None:
+        r"""Mark the result as :attr:`~Result.BLOCK`\ed."""
+        for test_suite_with_cases in self._test_suites_with_cases:
+            child_result = self.add_test_suite(test_suite_with_cases)
+            child_result.update_setup(Result.BLOCK)
 
 
 class TestSuiteResult(BaseResult):
@@ -410,29 +477,42 @@ class TestSuiteResult(BaseResult):
     The internal list stores the results of all test cases in a given test suite.
 
     Attributes:
-        suite_name: The test suite name.
+        test_suite_name: The test suite name.
     """
 
-    suite_name: str
+    test_suite_name: str
+    _test_suite_with_cases: TestSuiteWithCases
+    _parent_result: BuildTargetResult
+    _child_configs: list[str]
 
-    def __init__(self, suite_name: str):
-        """Extend the constructor with `suite_name`.
+    def __init__(self, test_suite_with_cases: TestSuiteWithCases):
+        """Extend the constructor with test suite's config and BuildTargetResult.
 
         Args:
-            suite_name: The test suite's name.
+            test_suite_with_cases: The test suite with test cases.
         """
         super(TestSuiteResult, self).__init__()
-        self.suite_name = suite_name
+        self.test_suite_name = test_suite_with_cases.test_suite_class.__name__
+        self._test_suite_with_cases = test_suite_with_cases
 
     def add_test_case(self, test_case_name: str) -> "TestCaseResult":
-        """Add and return the inner result (test case).
+        """Add and return the child result (test case).
+
+        Args:
+            test_case_name: The name of the test case.
 
         Returns:
             The test case's result.
         """
-        test_case_result = TestCaseResult(test_case_name)
-        self._inner_results.append(test_case_result)
-        return test_case_result
+        result = TestCaseResult(test_case_name)
+        self.child_results.append(result)
+        return result
+
+    def _block_result(self) -> None:
+        r"""Mark the result as :attr:`~Result.BLOCK`\ed."""
+        for test_case_method in self._test_suite_with_cases.test_cases:
+            child_result = self.add_test_case(test_case_method.__name__)
+            child_result.update_setup(Result.BLOCK)
 
 
 class TestCaseResult(BaseResult, FixtureResult):
@@ -449,7 +529,7 @@ class TestCaseResult(BaseResult, FixtureResult):
     test_case_name: str
 
     def __init__(self, test_case_name: str):
-        """Extend the constructor with `test_case_name`.
+        """Extend the constructor with test case's name and TestSuiteResult.
 
         Args:
             test_case_name: The test case's name.
@@ -470,7 +550,7 @@ class TestCaseResult(BaseResult, FixtureResult):
         self.result = result
         self.error = error
 
-    def _get_inner_errors(self) -> list[Exception]:
+    def _get_child_errors(self) -> list[Exception]:
         if self.error:
             return [self.error]
         return []
@@ -485,6 +565,10 @@ class TestCaseResult(BaseResult, FixtureResult):
             statistics: The :class:`Statistics` object where the stats will be added.
         """
         statistics += self.result
+
+    def _block_result(self) -> None:
+        r"""Mark the result as :attr:`~Result.BLOCK`\ed."""
+        self.update(Result.BLOCK)
 
     def __bool__(self) -> bool:
         """The test case passed only if setup, teardown and the test case itself passed."""

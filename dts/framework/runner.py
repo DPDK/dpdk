@@ -60,13 +60,15 @@ class DTSRunner:
     Each setup or teardown of each stage is recorded in a :class:`~framework.test_result.DTSResult`
     or one of its subclasses. The test case results are also recorded.
 
-    If an error occurs, the current stage is aborted, the error is recorded and the run continues in
-    the next iteration of the same stage. The return code is the highest `severity` of all
+    If an error occurs, the current stage is aborted, the error is recorded, everything in
+    the inner stages is marked as blocked and the run continues in the next iteration
+    of the same stage. The return code is the highest `severity` of all
     :class:`~.framework.exception.DTSError`\s.
 
     Example:
-        An error occurs in a build target setup. The current build target is aborted and the run
-        continues with the next build target. If the errored build target was the last one in the
+        An error occurs in a build target setup. The current build target is aborted,
+        all test suites and their test cases are marked as blocked and the run continues
+        with the next build target. If the errored build target was the last one in the
         given execution, the next execution begins.
     """
 
@@ -99,6 +101,10 @@ class DTSRunner:
         The tests suites are set up for each execution/build target tuple and each discovered
         test case within the test suite is set up, executed and torn down. After all test cases
         have been executed, the test suite is torn down and the next build target will be tested.
+
+        In order to properly mark test suites and test cases as blocked in case of a failure,
+        we need to have discovered which test suites and test cases to run before any failures
+        happen. The discovery happens at the earliest point at the start of each execution.
 
         All the nested steps look like this:
 
@@ -134,7 +140,7 @@ class DTSRunner:
                 self._logger.info(
                     f"Running execution with SUT '{execution.system_under_test_node.name}'."
                 )
-                execution_result = self._result.add_execution(execution.system_under_test_node)
+                execution_result = self._result.add_execution(execution)
                 # we don't want to modify the original config, so create a copy
                 execution_test_suites = list(execution.test_suites)
                 if not execution.skip_smoke_tests:
@@ -143,6 +149,7 @@ class DTSRunner:
                     test_suites_with_cases = self._get_test_suites_with_cases(
                         execution_test_suites, execution.func, execution.perf
                     )
+                    execution_result.test_suites_with_cases = test_suites_with_cases
                 except Exception as e:
                     self._logger.exception(
                         f"Invalid test suite configuration found: " f"{execution_test_suites}."
@@ -493,9 +500,7 @@ class DTSRunner:
         """
         end_build_target = False
         for test_suite_with_cases in test_suites_with_cases:
-            test_suite_result = build_target_result.add_test_suite(
-                test_suite_with_cases.test_suite_class.__name__
-            )
+            test_suite_result = build_target_result.add_test_suite(test_suite_with_cases)
             try:
                 self._run_test_suite(sut_node, tg_node, test_suite_result, test_suite_with_cases)
             except BlockingTestSuiteError as e:
