@@ -35,9 +35,9 @@ All of them use slots and are frozen:
 
 import json
 import os.path
-import pathlib
 from dataclasses import dataclass, fields
 from enum import auto, unique
+from pathlib import Path
 from typing import Union
 
 import warlock  # type: ignore[import]
@@ -53,7 +53,6 @@ from framework.config.types import (
     TrafficGeneratorConfigDict,
 )
 from framework.exception import ConfigurationError
-from framework.settings import SETTINGS
 from framework.utils import StrEnum
 
 
@@ -571,7 +570,7 @@ class Configuration:
         return Configuration(executions=executions)
 
 
-def load_config() -> Configuration:
+def load_config(config_file_path: Path) -> Configuration:
     """Load DTS test run configuration from a file.
 
     Load the YAML test run configuration file
@@ -581,13 +580,16 @@ def load_config() -> Configuration:
     The YAML test run configuration file is specified in the :option:`--config-file` command line
     argument or the :envvar:`DTS_CFG_FILE` environment variable.
 
+    Args:
+        config_file_path: The path to the YAML test run configuration file.
+
     Returns:
         The parsed test run configuration.
     """
-    with open(SETTINGS.config_file_path, "r") as f:
+    with open(config_file_path, "r") as f:
         config_data = yaml.safe_load(f)
 
-    schema_path = os.path.join(pathlib.Path(__file__).parent.resolve(), "conf_yaml_schema.json")
+    schema_path = os.path.join(Path(__file__).parent.resolve(), "conf_yaml_schema.json")
 
     with open(schema_path, "r") as f:
         schema = json.load(f)

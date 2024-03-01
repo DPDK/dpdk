@@ -24,7 +24,7 @@ import re
 import sys
 from pathlib import Path
 from types import MethodType
-from typing import Iterable
+from typing import Iterable, Sequence
 
 from .config import (
     BuildTargetConfiguration,
@@ -83,7 +83,7 @@ class DTSRunner:
 
     def __init__(self):
         """Initialize the instance with configuration, logger, result and string constants."""
-        self._configuration = load_config()
+        self._configuration = load_config(SETTINGS.config_file_path)
         self._logger = get_dts_logger()
         if not os.path.exists(SETTINGS.output_dir):
             os.makedirs(SETTINGS.output_dir)
@@ -129,7 +129,7 @@ class DTSRunner:
             #. Execution teardown
 
         The test cases are filtered according to the specification in the test run configuration and
-        the :option:`--test-cases` command line argument or
+        the :option:`--test-suite` command line argument or
         the :envvar:`DTS_TESTCASES` environment variable.
         """
         sut_nodes: dict[str, SutNode] = {}
@@ -147,7 +147,9 @@ class DTSRunner:
                 )
                 execution_result = self._result.add_execution(execution)
                 # we don't want to modify the original config, so create a copy
-                execution_test_suites = list(execution.test_suites)
+                execution_test_suites = list(
+                    SETTINGS.test_suites if SETTINGS.test_suites else execution.test_suites
+                )
                 if not execution.skip_smoke_tests:
                     execution_test_suites[:0] = [TestSuiteConfig.from_dict("smoke_tests")]
                 try:
@@ -226,7 +228,7 @@ class DTSRunner:
             test_suite_class = self._get_test_suite_class(test_suite_config.test_suite)
             test_cases = []
             func_test_cases, perf_test_cases = self._filter_test_cases(
-                test_suite_class, set(test_suite_config.test_cases + SETTINGS.test_cases)
+                test_suite_class, test_suite_config.test_cases
             )
             if func:
                 test_cases.extend(func_test_cases)
@@ -302,7 +304,7 @@ class DTSRunner:
         )
 
     def _filter_test_cases(
-        self, test_suite_class: type[TestSuite], test_cases_to_run: set[str]
+        self, test_suite_class: type[TestSuite], test_cases_to_run: Sequence[str]
     ) -> tuple[list[MethodType], list[MethodType]]:
         """Filter `test_cases_to_run` from `test_suite_class`.
 
@@ -331,7 +333,9 @@ class DTSRunner:
                 (name, method) for name, method in name_method_tuples if name in test_cases_to_run
             ]
             if len(name_method_tuples) < len(test_cases_to_run):
-                missing_test_cases = test_cases_to_run - {name for name, _ in name_method_tuples}
+                missing_test_cases = set(test_cases_to_run) - {
+                    name for name, _ in name_method_tuples
+                }
                 raise ConfigurationError(
                     f"Test cases {missing_test_cases} not found among methods "
                     f"of {test_suite_class.__name__}."

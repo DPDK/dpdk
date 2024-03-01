@@ -215,28 +215,30 @@ DTS is run with ``main.py`` located in the ``dts`` directory after entering Poet
 .. code-block:: console
 
    (dts-py3.10) $ ./main.py --help
-   usage: main.py [-h] [--config-file CONFIG_FILE] [--output-dir OUTPUT_DIR] [-t TIMEOUT] [-v] [-s] [--tarball TARBALL] [--compile-timeout COMPILE_TIMEOUT] [--test-cases TEST_CASES] [--re-run RE_RUN]
+   usage: main.py [-h] [--config-file CONFIG_FILE] [--output-dir OUTPUT_DIR] [-t TIMEOUT] [-v] [-s] [--tarball TARBALL] [--compile-timeout COMPILE_TIMEOUT] [--test-suite TEST_SUITE [TEST_CASES ...]] [--re-run RE_RUN]
 
    Run DPDK test suites. All options may be specified with the environment variables provided in brackets. Command line arguments have higher priority.
 
    options:
    -h, --help            show this help message and exit
    --config-file CONFIG_FILE
-                         [DTS_CFG_FILE] configuration file that describes the test cases, SUTs and targets. (default: ./conf.yaml)
+                         [DTS_CFG_FILE] The configuration file that describes the test cases, SUTs and targets. (default: ./conf.yaml)
    --output-dir OUTPUT_DIR, --output OUTPUT_DIR
                          [DTS_OUTPUT_DIR] Output directory where DTS logs and results are saved. (default: output)
    -t TIMEOUT, --timeout TIMEOUT
                          [DTS_TIMEOUT] The default timeout for all DTS operations except for compiling DPDK. (default: 15)
    -v, --verbose         [DTS_VERBOSE] Specify to enable verbose output, logging all messages to the console. (default: False)
-   -s, --skip-setup      [DTS_SKIP_SETUP] Specify to skip all setup steps on SUT and TG nodes. (default: None)
+   -s, --skip-setup      [DTS_SKIP_SETUP] Specify to skip all setup steps on SUT and TG nodes. (default: False)
    --tarball TARBALL, --snapshot TARBALL, --git-ref TARBALL
                          [DTS_DPDK_TARBALL] Path to DPDK source code tarball or a git commit ID, tag ID or tree ID to test. To test local changes, first commit them, then use the commit ID with this option. (default: dpdk.tar.xz)
    --compile-timeout COMPILE_TIMEOUT
                          [DTS_COMPILE_TIMEOUT] The timeout for compiling DPDK. (default: 1200)
-   --test-cases TEST_CASES
-                         [DTS_TESTCASES] Comma-separated list of test cases to execute. Unknown test cases will be silently ignored. (default: )
+   --test-suite TEST_SUITE [TEST_CASES ...]
+                         [DTS_TEST_SUITES] A list containing a test suite with test cases. The first parameter is the test suite name, and the rest are test case names, which are optional. May be specified multiple times. To specify multiple test suites in the environment
+                         variable, join the lists with a comma. Examples: --test-suite suite case case --test-suite suite case ... | DTS_TEST_SUITES='suite case case, suite case, ...' | --test-suite suite --test-suite suite case ... | DTS_TEST_SUITES='suite, suite case, ...'
+                         (default: [])
    --re-run RE_RUN, --re_run RE_RUN
-                         [DTS_RERUN] Re-run each test case the specified number of times if a test failure occurs (default: 0)
+                         [DTS_RERUN] Re-run each test case the specified number of times if a test failure occurs. (default: 0)
 
 
 The brackets contain the names of environment variables that set the same thing.
