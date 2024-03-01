@@ -72,7 +72,8 @@ tap_nl_init(uint32_t nl_groups)
 
 #ifdef NETLINK_EXT_ACK
 	/* Ask for extended ACK response. on older kernel will ignore request. */
-	setsockopt(fd, SOL_NETLINK, NETLINK_EXT_ACK, &one, sizeof(one));
+	if (setsockopt(fd, SOL_NETLINK, NETLINK_EXT_ACK, &one, sizeof(one)) < 0)
+		TAP_LOG(NOTICE, "Unable to request netlink error information");
 #endif
 
 	if (bind(fd, (struct sockaddr *)&local, sizeof(local)) < 0) {
