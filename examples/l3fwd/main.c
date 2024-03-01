@@ -1512,7 +1512,6 @@ main(int argc, char **argv)
 			l3fwd_lkp.main_loop = evt_rsrc->ops.fib_event_loop;
 		else
 			l3fwd_lkp.main_loop = evt_rsrc->ops.lpm_event_loop;
-		l3fwd_event_service_setup();
 	} else
 		l3fwd_poll_resource_setup();
 
@@ -1542,6 +1541,11 @@ main(int argc, char **argv)
 					rte_strerror(-ret), portid);
 		}
 	}
+
+#ifdef RTE_LIB_EVENTDEV
+	if (evt_rsrc->enabled)
+		l3fwd_event_service_setup();
+#endif
 
 	printf("\n");
 
