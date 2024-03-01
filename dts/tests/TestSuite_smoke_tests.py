@@ -21,7 +21,7 @@ from framework.test_suite import TestSuite
 from framework.utils import REGEX_FOR_PCI_ADDRESS
 
 
-class SmokeTests(TestSuite):
+class TestSmokeTests(TestSuite):
     """DPDK and infrastructure smoke test suite.
 
     The test cases validate the most basic DPDK functionality needed for all other test suites.

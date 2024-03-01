@@ -197,7 +197,7 @@
         },
         "cases": {
           "type": "array",
-          "description": "If specified, only this subset of test suite's test cases will be run. Unknown test cases will be silently ignored.",
+          "description": "If specified, only this subset of test suite's test cases will be run.",
           "items": {
             "type": "string"
           },

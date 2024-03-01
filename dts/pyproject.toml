@@ -44,6 +44,9 @@ linters = "mccabe,pycodestyle,pydocstyle,pyflakes"
 format = "pylint"
 max_line_length = 100
 
+[tool.pylama.linter.pycodestyle]
+ignore = "E203,W503"
+
 [tool.pylama.linter.pydocstyle]
 convention = "google"
 

@@ -11,25 +11,17 @@ needed by subclasses:
     * Testbed (SUT, TG) configuration,
     * Packet sending and verification,
     * Test case verification.
-
-The module also defines a function, :func:`get_test_suites`,
-for gathering test suites from a Python module.
 """
 
-import importlib
-import inspect
-import re
 from ipaddress import IPv4Interface, IPv6Interface, ip_interface
-from types import MethodType
-from typing import Any, ClassVar, Union
+from typing import ClassVar, Union
 
 from scapy.layers.inet import IP  # type: ignore[import]
 from scapy.layers.l2 import Ether  # type: ignore[import]
 from scapy.packet import Packet, Padding  # type: ignore[import]
 
-from .exception import ConfigurationError, TestCaseVerifyError
+from .exception import TestCaseVerifyError
 from .logger import DTSLOG, getLogger
-from .settings import SETTINGS
 from .testbed_model import Port, PortLink, SutNode, TGNode
 from .utils import get_packet_summaries
 
@@ -37,7 +29,6 @@ from .utils import get_packet_summaries
 class TestSuite(object):
     """The base class with building blocks needed by most test cases.
 
-        * Test case filtering and collection,
         * Test suite setup/cleanup methods to override,
         * Test case setup/cleanup methods to override,
         * Test case verification,
@@ -71,7 +62,6 @@ class TestSuite(object):
     #: will block the execution of all subsequent test suites in the current build target.
     is_blocking: ClassVar[bool] = False
     _logger: DTSLOG
-    _test_cases_to_run: list[str]
     _port_links: list[PortLink]
     _sut_port_ingress: Port
     _sut_port_egress: Port
@@ -86,24 +76,19 @@ class TestSuite(object):
         self,
         sut_node: SutNode,
         tg_node: TGNode,
-        test_cases: list[str],
     ):
         """Initialize the test suite testbed information and basic configuration.
 
-        Process what test cases to run, find links between ports and set up
-        default IP addresses to be used when configuring them.
+        Find links between ports and set up default IP addresses to be used when
+        configuring them.
 
         Args:
             sut_node: The SUT node where the test suite will run.
             tg_node: The TG node where the test suite will run.
-            test_cases: The list of test cases to execute.
-                If empty, all test cases will be executed.
         """
         self.sut_node = sut_node
         self.tg_node = tg_node
         self._logger = getLogger(self.__class__.__name__)
-        self._test_cases_to_run = test_cases
-        self._test_cases_to_run.extend(SETTINGS.test_cases)
         self._port_links = []
         self._process_links()
         self._sut_port_ingress, self._tg_port_egress = (
@@ -364,65 +349,3 @@ class TestSuite(object):
         if received_packet.src != expected_packet.src or received_packet.dst != expected_packet.dst:
             return False
         return True
-
-    def _get_functional_test_cases(self) -> list[MethodType]:
-        """Get all functional test cases defined in this TestSuite.
-
-        Returns:
-            The list of functional test cases of this TestSuite.
-        """
-        return self._get_test_cases(r"test_(?!perf_)")
-
-    def _get_test_cases(self, test_case_regex: str) -> list[MethodType]:
-        """Return a list of test cases matching test_case_regex.
-
-        Returns:
-            The list of test cases matching test_case_regex of this TestSuite.
-        """
-        self._logger.debug(f"Searching for test cases in {self.__class__.__name__}.")
-        filtered_test_cases = []
-        for test_case_name, test_case in inspect.getmembers(self, inspect.ismethod):
-            if self._should_be_executed(test_case_name, test_case_regex):
-                filtered_test_cases.append(test_case)
-        cases_str = ", ".join((x.__name__ for x in filtered_test_cases))
-        self._logger.debug(f"Found test cases '{cases_str}' in {self.__class__.__name__}.")
-        return filtered_test_cases
-
-    def _should_be_executed(self, test_case_name: str, test_case_regex: str) -> bool:
-        """Check whether the test case should be scheduled to be executed."""
-        match = bool(re.match(test_case_regex, test_case_name))
-        if self._test_cases_to_run:
-            return match and test_case_name in self._test_cases_to_run
-
-        return match
-
-
-def get_test_suites(testsuite_module_path: str) -> list[type[TestSuite]]:
-    r"""Find all :class:`TestSuite`\s in a Python module.
-
-    Args:
-        testsuite_module_path: The path to the Python module.
-
-    Returns:
-        The list of :class:`TestSuite`\s found within the Python module.
-
-    Raises:
-        ConfigurationError: The test suite module was not found.
-    """
-
-    def is_test_suite(object: Any) -> bool:
-        try:
-            if issubclass(object, TestSuite) and object is not TestSuite:
-                return True
-        except TypeError:
-            return False
-        return False
-
-    try:
-        testcase_module = importlib.import_module(testsuite_module_path)
-    except ModuleNotFoundError as e:
-        raise ConfigurationError(f"Test suite '{testsuite_module_path}' not found.") from e
-    return [
-        test_suite_class
-        for _, test_suite_class in inspect.getmembers(testcase_module, is_test_suite)
-    ]

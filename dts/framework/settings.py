@@ -253,8 +253,7 @@ def _get_parser() -> argparse.ArgumentParser:
         "--test-cases",
         action=_env_arg("DTS_TESTCASES"),
         default="",
-        help="[DTS_TESTCASES] Comma-separated list of test cases to execute. "
-        "Unknown test cases will be silently ignored.",
+        help="[DTS_TESTCASES] Comma-separated list of test cases to execute.",
     )
 
     parser.add_argument(

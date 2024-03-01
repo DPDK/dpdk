@@ -25,7 +25,9 @@ variable modify the directory where the files with results will be stored.
 
 import os.path
 from collections.abc import MutableSequence
+from dataclasses import dataclass
 from enum import Enum, auto
+from types import MethodType
 
 from .config import (
     OS,
@@ -36,10 +38,42 @@ from .config import (
     CPUType,
     NodeConfiguration,
     NodeInfo,
+    TestSuiteConfig,
 )
 from .exception import DTSError, ErrorSeverity
 from .logger import DTSLOG
 from .settings import SETTINGS
+from .test_suite import TestSuite
+
+
+@dataclass(slots=True, frozen=True)
+class TestSuiteWithCases:
+    """A test suite class with test case methods.
+
+    An auxiliary class holding a test case class with test case methods. The intended use of this
+    class is to hold a subset of test cases (which could be all test cases) because we don't have
+    all the data to instantiate the class at the point of inspection. The knowledge of this subset
+    is needed in case an error occurs before the class is instantiated and we need to record
+    which test cases were blocked by the error.
+
+    Attributes:
+        test_suite_class: The test suite class.
+        test_cases: The test case methods.
+    """
+
+    test_suite_class: type[TestSuite]
+    test_cases: list[MethodType]
+
+    def create_config(self) -> TestSuiteConfig:
+        """Generate a :class:`TestSuiteConfig` from the stored test suite with test cases.
+
+        Returns:
+            The :class:`TestSuiteConfig` representation.
+        """
+        return TestSuiteConfig(
+            test_suite=self.test_suite_class.__name__,
+            test_cases=[test_case.__name__ for test_case in self.test_cases],
+        )
 
 
 class Result(Enum):

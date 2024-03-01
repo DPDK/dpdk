@@ -36,7 +36,7 @@ All of them use slots and are frozen:
 import json
 import os.path
 import pathlib
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
 from enum import auto, unique
 from typing import Union
 
@@ -505,6 +505,28 @@ class ExecutionConfiguration:
             traffic_generator_node=traffic_generator_node,
             vdevs=vdevs,
         )
+
+    def copy_and_modify(self, **kwargs) -> "ExecutionConfiguration":
+        """Create a shallow copy with any of the fields modified.
+
+        The only new data are those passed to this method.
+        The rest are copied from the object's fields calling the method.
+
+        Args:
+            **kwargs: The names and types of keyword arguments are defined
+                by the fields of the :class:`ExecutionConfiguration` class.
+
+        Returns:
+            The copied and modified execution configuration.
+        """
+        new_config = {}
+        for field in fields(self):
+            if field.name in kwargs:
+                new_config[field.name] = kwargs[field.name]
+            else:
+                new_config[field.name] = getattr(self, field.name)
+
+        return ExecutionConfiguration(**new_config)
 
 
 @dataclass(slots=True, frozen=True)

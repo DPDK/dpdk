@@ -13,7 +13,7 @@ from scapy.layers.l2 import Ether  # type: ignore[import]
 from framework.test_suite import TestSuite
 
 
-class TestOSUdp(TestSuite):
+class TestOsUdp(TestSuite):
     """IPv4 UDP OS routing test suite."""
 
     def set_up_suite(self) -> None:
