@@ -441,6 +441,9 @@ mlx5_crypto_gcm_get_op_info(struct mlx5_crypto_qp *qp,
 	op_info->digest = NULL;
 	op_info->src_addr = aad_addr;
 	if (op->sym->m_dst && op->sym->m_dst != m_src) {
+		/* Add 2 for AAD and digest. */
+		MLX5_ASSERT((uint32_t)(m_dst->nb_segs + m_src->nb_segs + 2) <
+			    qp->priv->max_klm_num);
 		op_info->is_oop = true;
 		m_dst = op->sym->m_dst;
 		dst_addr = rte_pktmbuf_mtod_offset(m_dst, void *, op->sym->aead.data.offset);
@@ -457,6 +460,9 @@ mlx5_crypto_gcm_get_op_info(struct mlx5_crypto_qp *qp,
 			op_info->need_umr = true;
 			return;
 		}
+	} else {
+		/* Add 2 for AAD and digest. */
+		MLX5_ASSERT((uint32_t)(m_src->nb_segs) + 2 < qp->priv->max_klm_num);
 	}
 	if (m_src->nb_segs > 1) {
 		op_info->need_umr = true;
