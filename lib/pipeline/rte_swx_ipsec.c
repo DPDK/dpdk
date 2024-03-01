@@ -9,6 +9,7 @@
 #include <arpa/inet.h>
 
 #include <rte_common.h>
+#include <rte_random.h>
 #include <rte_ip.h>
 #include <rte_tailq.h>
 #include <rte_eal_memconfig.h>
@@ -1455,7 +1456,7 @@ crypto_xform_get(struct rte_swx_ipsec_sa_params *p,
 		switch (p->crypto.cipher_auth.cipher.alg) {
 		case RTE_CRYPTO_CIPHER_AES_CBC:
 		case RTE_CRYPTO_CIPHER_3DES_CBC:
-			salt = (uint32_t)rand();
+			salt = rte_rand();
 			break;
 
 		case RTE_CRYPTO_CIPHER_AES_CTR:
