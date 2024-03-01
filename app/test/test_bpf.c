@@ -3341,6 +3341,7 @@ test_bpf_filter_sanity(pcap_t *pcap)
 		struct rte_ipv4_hdr ip_hdr;
 	} *hdr;
 
+	memset(&mb, 0, sizeof(mb));
 	dummy_mbuf_prep(&mb, tbuf, sizeof(tbuf), plen);
 	m = &mb;
 
