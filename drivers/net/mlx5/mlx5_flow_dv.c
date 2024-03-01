@@ -17922,9 +17922,8 @@ __flow_dv_create_policy_matcher(struct rte_eth_dev *dev,
 		}
 	}
 	tbl_data = container_of(tbl_rsc, struct mlx5_flow_tbl_data_entry, tbl);
-	if (priority < RTE_COLOR_RED)
-		flow_dv_match_meta_reg(matcher.mask.buf,
-			(enum modify_reg)color_reg_c_idx, color_mask, color_mask);
+	flow_dv_match_meta_reg(matcher.mask.buf,
+		(enum modify_reg)color_reg_c_idx, color_mask, color_mask);
 	matcher.priority = priority;
 	matcher.crc = rte_raw_cksum((const void *)matcher.mask.buf,
 				    matcher.mask.size);
@@ -17975,7 +17974,6 @@ __flow_dv_create_domain_policy_rules(struct rte_eth_dev *dev,
 	int i;
 	int ret = mlx5_flow_get_reg_id(dev, MLX5_MTR_COLOR, 0, &flow_err);
 	struct mlx5_sub_policy_color_rule *color_rule;
-	bool svport_match;
 	struct mlx5_sub_policy_color_rule *tmp_rules[RTE_COLORS] = {NULL};
 
 	if (ret < 0)
@@ -18011,10 +18009,9 @@ __flow_dv_create_domain_policy_rules(struct rte_eth_dev *dev,
 		/* No use. */
 		attr.priority = i;
 		/* Create matchers for colors. */
-		svport_match = (i != RTE_COLOR_RED) ? match_src_port : false;
 		if (__flow_dv_create_policy_matcher(dev, color_reg_c_idx,
 				MLX5_MTR_POLICY_MATCHER_PRIO, sub_policy,
-				&attr, svport_match, NULL,
+				&attr, match_src_port, NULL,
 				&color_rule->matcher, &flow_err)) {
 			DRV_LOG(ERR, "Failed to create color%u matcher.", i);
 			goto err_exit;
@@ -18024,7 +18021,7 @@ __flow_dv_create_domain_policy_rules(struct rte_eth_dev *dev,
 				color_reg_c_idx, (enum rte_color)i,
 				color_rule->matcher,
 				acts[i].actions_n, acts[i].dv_actions,
-				svport_match, NULL, &color_rule->rule,
+				match_src_port, NULL, &color_rule->rule,
 				&attr)) {
 			DRV_LOG(ERR, "Failed to create color%u rule.", i);
 			goto err_exit;
@@ -18907,7 +18904,7 @@ flow_dv_meter_hierarchy_rule_create(struct rte_eth_dev *dev,
 	struct {
 		struct mlx5_flow_meter_policy *fm_policy;
 		struct mlx5_flow_meter_info *next_fm;
-		struct mlx5_sub_policy_color_rule *tag_rule[MLX5_MTR_RTE_COLORS];
+		struct mlx5_sub_policy_color_rule *tag_rule[RTE_COLORS];
 	} fm_info[MLX5_MTR_CHAIN_MAX_NUM] = { {0} };
 	uint32_t fm_cnt = 0;
 	uint32_t i, j;
@@ -18941,14 +18938,22 @@ flow_dv_meter_hierarchy_rule_create(struct rte_eth_dev *dev,
 		mtr_policy = fm_info[i].fm_policy;
 		rte_spinlock_lock(&mtr_policy->sl);
 		sub_policy = mtr_policy->sub_policys[domain][0];
-		for (j = 0; j < MLX5_MTR_RTE_COLORS; j++) {
+		for (j = 0; j < RTE_COLORS; j++) {
 			uint8_t act_n = 0;
-			struct mlx5_flow_dv_modify_hdr_resource *modify_hdr;
+			struct mlx5_flow_dv_modify_hdr_resource *modify_hdr = NULL;
 			struct mlx5_flow_dv_port_id_action_resource *port_action;
+			uint8_t fate_action;
 
-			if (mtr_policy->act_cnt[j].fate_action != MLX5_FLOW_FATE_MTR &&
-			    mtr_policy->act_cnt[j].fate_action != MLX5_FLOW_FATE_PORT_ID)
-				continue;
+			if (j == RTE_COLOR_RED) {
+				fate_action = MLX5_FLOW_FATE_DROP;
+			} else {
+				fate_action = mtr_policy->act_cnt[j].fate_action;
+				modify_hdr = mtr_policy->act_cnt[j].modify_hdr;
+				if (fate_action != MLX5_FLOW_FATE_MTR &&
+				    fate_action != MLX5_FLOW_FATE_PORT_ID &&
+				    fate_action != MLX5_FLOW_FATE_DROP)
+					continue;
+			}
 			color_rule = mlx5_malloc(MLX5_MEM_ZERO,
 						 sizeof(struct mlx5_sub_policy_color_rule),
 						 0, SOCKET_ID_ANY);
@@ -18960,9 +18965,8 @@ flow_dv_meter_hierarchy_rule_create(struct rte_eth_dev *dev,
 				goto err_exit;
 			}
 			color_rule->src_port = src_port;
-			modify_hdr = mtr_policy->act_cnt[j].modify_hdr;
 			/* Prepare to create color rule. */
-			if (mtr_policy->act_cnt[j].fate_action == MLX5_FLOW_FATE_MTR) {
+			if (fate_action == MLX5_FLOW_FATE_MTR) {
 				next_fm = fm_info[i].next_fm;
 				if (mlx5_flow_meter_attach(priv, next_fm, &attr, error)) {
 					mlx5_free(color_rule);
@@ -18989,7 +18993,7 @@ flow_dv_meter_hierarchy_rule_create(struct rte_eth_dev *dev,
 				}
 				acts.dv_actions[act_n++] = tbl_data->jump.action;
 				acts.actions_n = act_n;
-			} else {
+			} else if (fate_action == MLX5_FLOW_FATE_PORT_ID) {
 				port_action =
 					mlx5_ipool_get(priv->sh->ipool[MLX5_IPOOL_PORT_ID],
 						       mtr_policy->act_cnt[j].rix_port_id_action);
@@ -19001,6 +19005,9 @@ flow_dv_meter_hierarchy_rule_create(struct rte_eth_dev *dev,
 				if (modify_hdr)
 					acts.dv_actions[act_n++] = modify_hdr->action;
 				acts.dv_actions[act_n++] = port_action->action;
+				acts.actions_n = act_n;
+			} else {
+				acts.dv_actions[act_n++] = mtr_policy->dr_drop_action[domain];
 				acts.actions_n = act_n;
 			}
 			fm_info[i].tag_rule[j] = color_rule;
@@ -19033,7 +19040,7 @@ err_exit:
 		mtr_policy = fm_info[i].fm_policy;
 		rte_spinlock_lock(&mtr_policy->sl);
 		sub_policy = mtr_policy->sub_policys[domain][0];
-		for (j = 0; j < MLX5_MTR_RTE_COLORS; j++) {
+		for (j = 0; j < RTE_COLORS; j++) {
 			color_rule = fm_info[i].tag_rule[j];
 			if (!color_rule)
 				continue;
