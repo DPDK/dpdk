@@ -7,6 +7,7 @@
 #include "qede_ethdev.h"
 #include <rte_string_fns.h>
 #include <rte_alarm.h>
+#include <rte_random.h>
 #include <rte_kvargs.h>
 
 static const struct qed_eth_ops *qed_ops;
@@ -1040,9 +1041,8 @@ static void qede_prandom_bytes(uint32_t *buff)
 {
 	uint8_t i;
 
-	srand((unsigned int)time(NULL));
 	for (i = 0; i < ECORE_RSS_KEY_SIZE; i++)
-		buff[i] = rand();
+		buff[i] = rte_rand();
 }
 
 int qede_config_rss(struct rte_eth_dev *eth_dev)
