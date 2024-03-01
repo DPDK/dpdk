@@ -6224,7 +6224,6 @@ flow_hw_set_vlan_vid(struct rte_eth_dev *dev,
 			rm[set_vlan_vid_ix].conf)->vlan_vid != 0);
 	const struct rte_flow_action_of_set_vlan_vid *conf =
 		ra[set_vlan_vid_ix].conf;
-	rte_be16_t vid = masked ? conf->vlan_vid : 0;
 	int width = mlx5_flow_item_field_width(dev, RTE_FLOW_FIELD_VLAN_ID, 0,
 					       NULL, &error);
 	*spec = (typeof(*spec)) {
@@ -6235,8 +6234,6 @@ flow_hw_set_vlan_vid(struct rte_eth_dev *dev,
 		},
 		.src = {
 			.field = RTE_FLOW_FIELD_VALUE,
-			.level = vid,
-			.offset = 0,
 		},
 		.width = width,
 	};
@@ -6248,11 +6245,15 @@ flow_hw_set_vlan_vid(struct rte_eth_dev *dev,
 		},
 		.src = {
 			.field = RTE_FLOW_FIELD_VALUE,
-			.level = masked ? (1U << width) - 1 : 0,
-			.offset = 0,
 		},
 		.width = 0xffffffff,
 	};
+	if (masked) {
+		uint32_t mask_val = 0xffffffff;
+
+		rte_memcpy(spec->src.value, &conf->vlan_vid, sizeof(conf->vlan_vid));
+		rte_memcpy(mask->src.value, &mask_val, sizeof(mask_val));
+	}
 	ra[set_vlan_vid_ix].type = RTE_FLOW_ACTION_TYPE_MODIFY_FIELD;
 	ra[set_vlan_vid_ix].conf = spec;
 	rm[set_vlan_vid_ix].type = RTE_FLOW_ACTION_TYPE_MODIFY_FIELD;
@@ -6279,8 +6280,6 @@ flow_hw_set_vlan_vid_construct(struct rte_eth_dev *dev,
 		},
 		.src = {
 			.field = RTE_FLOW_FIELD_VALUE,
-			.level = vid,
-			.offset = 0,
 		},
 		.width = width,
 	};
@@ -6289,6 +6288,7 @@ flow_hw_set_vlan_vid_construct(struct rte_eth_dev *dev,
 		.conf = &conf
 	};
 
+	rte_memcpy(conf.src.value, &vid, sizeof(vid));
 	return flow_hw_modify_field_construct(job, act_data, hw_acts,
 					      &modify_action);
 }
