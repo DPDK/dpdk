@@ -502,6 +502,8 @@ pf_vf_mbox_send_up_msg(struct dev *dev, void *rec_msg)
 	size_t size;
 
 	size = PLT_ALIGN(mbox_id2size(msg->hdr.id), MBOX_MSG_ALIGN);
+	if (size < sizeof(struct mbox_msghdr))
+		return;
 	/* Send UP message to all VF's */
 	for (vf = 0; vf < vf_mbox->ndevs; vf++) {
 		/* VF active */
