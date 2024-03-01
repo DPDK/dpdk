@@ -225,6 +225,27 @@ The ctrl vNIC service handles various control messages, for example, the
 creation and configuration of representor port, the pattern and action of flow
 rules, the statistics of flow rules, etc.
 
+NFP devargs
+-----------
+
+- ``force_reload_fw`` (default **0**)
+
+   The NFP PF PMD supports force reload the firmware
+   and ignore the firmware version.
+   For example, user can force a PF with PCI ID 0000:af:00.0 reload firmware by:
+
+   .. code-block:: console
+
+      -a af:00.0,force_reload_fw=1 -- -i
+
+   .. note::
+
+      This parameter can be ignored in some case.
+
+      For example: when using a 2-port NFP card and both with this reload
+      firmware option, only the first one will cause the firmware reload
+      and the second one will be ignored.
+
 Metadata Format
 ---------------
 

@@ -9,6 +9,7 @@
 
 #include <eal_firmware.h>
 #include <rte_alarm.h>
+#include <rte_kvargs.h>
 
 #include "flower/nfp_flower.h"
 #include "nfd3/nfp_nfd3.h"
@@ -31,6 +32,71 @@
 #define NFP_NET_APP_CAP_SP_INDIFF       RTE_BIT64(0) /* Indifferent to port speed */
 
 #define NFP_PF_DRIVER_NAME net_nfp_pf
+#define NFP_PF_FORCE_RELOAD_FW   "force_reload_fw"
+
+static int
+nfp_devarg_handle_int(const char *key,
+		const char *value,
+		void *extra_args)
+{
+	char *end_ptr;
+	uint64_t *num = extra_args;
+
+	if (value == NULL)
+		return -EPERM;
+
+	*num = strtoul(value, &end_ptr, 10);
+	if (*num == ULONG_MAX) {
+		PMD_DRV_LOG(ERR, "%s: '%s' is not a valid param", key, value);
+		return -ERANGE;
+	} else if (value == end_ptr) {
+		return -EPERM;
+	}
+
+	return 0;
+}
+
+static void
+nfp_devarg_parse_force_reload_fw(struct rte_kvargs *kvlist,
+		bool *force_reload_fw)
+{
+	int ret;
+	uint64_t value;
+
+
+	if (rte_kvargs_count(kvlist, NFP_PF_FORCE_RELOAD_FW) != 1)
+		return;
+
+	ret = rte_kvargs_process(kvlist, NFP_PF_FORCE_RELOAD_FW, &nfp_devarg_handle_int, &value);
+	if (ret != 0)
+		return;
+
+	if (value == 1)
+		*force_reload_fw = true;
+	else if (value == 0)
+		*force_reload_fw = false;
+	else
+		PMD_DRV_LOG(ERR, "The param does not work, the format is %s=0/1",
+				NFP_PF_FORCE_RELOAD_FW);
+}
+
+static void
+nfp_devargs_parse(struct nfp_devargs *nfp_devargs_param,
+		const struct rte_devargs *devargs)
+{
+	struct rte_kvargs *kvlist;
+
+	if (devargs == NULL)
+		return;
+
+	kvlist = rte_kvargs_parse(devargs->args, NULL);
+	if (kvlist == NULL)
+		return;
+
+	nfp_devarg_parse_force_reload_fw(kvlist, &nfp_devargs_param->force_reload_fw);
+
+	rte_kvargs_free(kvlist);
+}
 
 static void
 nfp_net_pf_read_mac(struct nfp_app_fw_nic *app_fw_nic,
@@ -1116,7 +1182,8 @@ nfp_fw_reload(struct nfp_nsp *nsp,
 
 static bool
 nfp_fw_skip_load(const struct nfp_dev_info *dev_info,
-		struct nfp_multi_pf *multi_pf)
+		struct nfp_multi_pf *multi_pf,
+		bool *reload_fw)
 {
 	uint8_t i;
 	uint64_t tmp_beat;
@@ -1150,6 +1217,11 @@ nfp_fw_skip_load(const struct nfp_dev_info *dev_info,
 				in_use++;
 				abnormal--;
 				beat[port_num] = 0;
+				if (*reload_fw) {
+					*reload_fw = false;
+					PMD_DRV_LOG(ERR, "The param %s does not work",
+							NFP_PF_FORCE_RELOAD_FW);
+				}
 			}
 		}
 
@@ -1168,12 +1240,13 @@ nfp_fw_skip_load(const struct nfp_dev_info *dev_info,
 static int
 nfp_fw_reload_for_single_pf(struct nfp_nsp *nsp,
 		char *fw_name,
-		struct nfp_cpp *cpp)
+		struct nfp_cpp *cpp,
+		bool force_reload_fw)
 {
 	int ret;
 	bool fw_changed = true;
 
-	if (nfp_nsp_fw_loaded(nsp)) {
+	if (nfp_nsp_fw_loaded(nsp) && !force_reload_fw) {
 		ret = nfp_fw_check_change(cpp, fw_name, &fw_changed);
 		if (ret != 0)
 			return ret;
@@ -1194,11 +1267,13 @@ nfp_fw_reload_for_multi_pf(struct nfp_nsp *nsp,
 		char *fw_name,
 		struct nfp_cpp *cpp,
 		const struct nfp_dev_info *dev_info,
-		struct nfp_multi_pf *multi_pf)
+		struct nfp_multi_pf *multi_pf,
+		bool force_reload_fw)
 {
 	int err;
 	bool fw_changed = true;
 	bool skip_load_fw = false;
+	bool reload_fw = force_reload_fw;
 
 	err = nfp_net_keepalive_init(cpp, multi_pf);
 	if (err != 0) {
@@ -1212,16 +1287,16 @@ nfp_fw_reload_for_multi_pf(struct nfp_nsp *nsp,
 		goto keepalive_uninit;
 	}
 
-	if (nfp_nsp_fw_loaded(nsp)) {
+	if (nfp_nsp_fw_loaded(nsp) && !reload_fw) {
 		err = nfp_fw_check_change(cpp, fw_name, &fw_changed);
 		if (err != 0)
 			goto keepalive_stop;
 	}
 
-	if (!fw_changed)
-		skip_load_fw = nfp_fw_skip_load(dev_info, multi_pf);
+	if (!fw_changed || reload_fw)
+		skip_load_fw = nfp_fw_skip_load(dev_info, multi_pf, &reload_fw);
 
-	if (skip_load_fw)
+	if (skip_load_fw && !reload_fw)
 		return 0;
 
 	err = nfp_fw_reload(nsp, fw_name);
@@ -1246,7 +1321,8 @@ nfp_fw_setup(struct rte_pci_device *dev,
 		struct nfp_eth_table *nfp_eth_table,
 		struct nfp_hwinfo *hwinfo,
 		const struct nfp_dev_info *dev_info,
-		struct nfp_multi_pf *multi_pf)
+		struct nfp_multi_pf *multi_pf,
+		bool force_reload_fw)
 {
 	int err;
 	char fw_name[125];
@@ -1294,9 +1370,10 @@ nfp_fw_setup(struct rte_pci_device *dev,
 	}
 
 	if (multi_pf->enabled)
-		err = nfp_fw_reload_for_multi_pf(nsp, fw_name, cpp, dev_info, multi_pf);
+		err = nfp_fw_reload_for_multi_pf(nsp, fw_name, cpp, dev_info, multi_pf,
+				force_reload_fw);
 	else
-		err = nfp_fw_reload_for_single_pf(nsp, fw_name, cpp);
+		err = nfp_fw_reload_for_single_pf(nsp, fw_name, cpp, force_reload_fw);
 
 	nfp_nsp_close(nsp);
 	return err;
@@ -1769,8 +1846,10 @@ nfp_pf_init(struct rte_pci_device *pci_dev)
 		nfp_eth_set_configured(cpp, index, 0);
 	}
 
+	nfp_devargs_parse(&pf_dev->devargs, pci_dev->device.devargs);
+
 	if (nfp_fw_setup(pci_dev, cpp, nfp_eth_table, hwinfo,
-			dev_info, &pf_dev->multi_pf) != 0) {
+			dev_info, &pf_dev->multi_pf, pf_dev->devargs.force_reload_fw) != 0) {
 		PMD_INIT_LOG(ERR, "Error when uploading firmware");
 		ret = -EIO;
 		goto eth_table_cleanup;
@@ -2151,3 +2230,4 @@ static struct rte_pci_driver rte_nfp_net_pf_pmd = {
 RTE_PMD_REGISTER_PCI(NFP_PF_DRIVER_NAME, rte_nfp_net_pf_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(NFP_PF_DRIVER_NAME, pci_id_nfp_pf_net_map);
 RTE_PMD_REGISTER_KMOD_DEP(NFP_PF_DRIVER_NAME, "* igb_uio | uio_pci_generic | vfio");
+RTE_PMD_REGISTER_PARAM_STRING(NFP_PF_DRIVER_NAME, NFP_PF_FORCE_RELOAD_FW "=<0|1>");

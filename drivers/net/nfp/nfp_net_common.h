@@ -94,6 +94,11 @@ struct nfp_process_share {
 	struct nfp_flower_service *fl_service;
 };
 
+struct nfp_devargs {
+	/** Force reload firmware */
+	bool force_reload_fw;
+};
+
 struct nfp_pf_dev {
 	/** Backpointer to associated pci device */
 	struct rte_pci_device *pci_dev;
@@ -129,6 +134,9 @@ struct nfp_pf_dev {
 	/** Synchronized info */
 	struct nfp_sync *sync;
 	struct nfp_process_share process_share;
+
+	/** NFP devarg param */
+	struct nfp_devargs devargs;
 };
 
 #define NFP_NET_FLOW_LIMIT    1024
