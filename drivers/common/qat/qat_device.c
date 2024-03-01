@@ -71,6 +71,9 @@ static const struct rte_pci_id pci_id_qat_map[] = {
 		{
 			RTE_PCI_DEVICE(0x8086, 0x1454),
 		},
+		{
+			RTE_PCI_DEVICE(0x8086, 0x0da5),
+		},
 		{.device_id = 0},
 };
 
@@ -213,6 +216,8 @@ pick_gen(const struct rte_pci_device *pci_dev)
 		return QAT_GEN5;
 	case 0x1454:
 		return QAT_GEN_LCE;
+	case 0x0da5:
+		return QAT_VQAT;
 	default:
 		QAT_LOG(ERR, "Invalid dev_id, can't determine generation");
 		return QAT_N_GENS;
@@ -302,6 +307,7 @@ qat_pci_device_allocate(struct rte_pci_device *pci_dev,
 	strlcpy(qat_dev->name, name, QAT_DEV_NAME_MAX_LEN);
 	qat_dev->qat_dev_id = qat_dev_id;
 	qat_dev->qat_dev_gen = qat_dev_gen;
+	qat_pci_devs[qat_dev_id].pci_dev = pci_dev;
 
 	if (wireless_slice_support(pci_dev->id.device_id))
 		qat_dev->has_wireless_slice = 1;
@@ -350,7 +356,6 @@ qat_pci_device_allocate(struct rte_pci_device *pci_dev,
 	 * qat_dev to list of devices
 	 */
 	qat_pci_devs[qat_dev_id].mz = qat_dev_mz;
-	qat_pci_devs[qat_dev_id].pci_dev = pci_dev;
 	qat_nb_pci_devices++;
 
 	QAT_LOG(DEBUG, "QAT device %d found, name %s, total QATs %d",

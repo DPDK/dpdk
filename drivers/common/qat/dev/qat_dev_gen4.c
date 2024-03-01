@@ -144,6 +144,42 @@ qat_dev_read_config_gen4(struct qat_pci_device *qat_dev)
 	return 0;
 }
 
+static int
+qat_dev_read_config_vqat(struct qat_pci_device *qat_dev)
+{
+	int i = 0;
+	struct qat_dev_gen4_extra *dev_extra = qat_dev->dev_private;
+	struct qat_qp_hw_data *hw_data;
+	struct qat_device_info *qat_dev_instance =
+			&qat_pci_devs[qat_dev->qat_dev_id];
+	uint16_t sub_id = qat_dev_instance->pci_dev->id.subsystem_device_id;
+
+	for (; i < QAT_GEN4_BUNDLE_NUM; i++) {
+		hw_data = &dev_extra->qp_gen4_data[i][0];
+		memset(hw_data, 0, sizeof(*hw_data));
+		if (sub_id == ADF_VQAT_SYM_PCI_SUBSYSTEM_ID) {
+			hw_data->service_type = QAT_SERVICE_SYMMETRIC;
+			hw_data->tx_msg_size = 128;
+			hw_data->rx_msg_size = 32;
+		} else if (sub_id == ADF_VQAT_ASYM_PCI_SUBSYSTEM_ID) {
+			hw_data->service_type = QAT_SERVICE_ASYMMETRIC;
+			hw_data->tx_msg_size = 64;
+			hw_data->rx_msg_size = 32;
+		} else if (sub_id == ADF_VQAT_DC_PCI_SUBSYSTEM_ID) {
+			hw_data->service_type = QAT_SERVICE_COMPRESSION;
+			hw_data->tx_msg_size = 128;
+			hw_data->rx_msg_size = 32;
+		} else {
+			QAT_LOG(ERR, "Unrecognized subsystem id %hu", sub_id);
+			return -EINVAL;
+		}
+		hw_data->tx_ring_num = 0;
+		hw_data->rx_ring_num = 1;
+		hw_data->hw_bundle_num = i;
+	}
+	return 0;
+}
+
 void
 qat_qp_build_ring_base_gen4(void *io_addr,
 			struct qat_queue *queue)
@@ -269,6 +305,12 @@ qat_reset_ring_pairs_gen4(struct qat_pci_device *qat_pci_dev)
 	return 0;
 }
 
+static int
+qat_reset_ring_pairs_vqat(struct qat_pci_device *qat_pci_dev __rte_unused)
+{
+	return 0;
+}
+
 const struct rte_mem_resource *
 qat_dev_get_transport_bar_gen4(struct rte_pci_device *pci_dev)
 {
@@ -305,10 +347,21 @@ static struct qat_dev_hw_spec_funcs qat_dev_hw_spec_gen4 = {
 	.qat_dev_get_slice_map = qat_dev_get_slice_map_gen4,
 };
 
+static struct qat_dev_hw_spec_funcs qat_dev_hw_spec_vqat = {
+	.qat_dev_reset_ring_pairs = qat_reset_ring_pairs_vqat,
+	.qat_dev_get_transport_bar = qat_dev_get_transport_bar_gen4,
+	.qat_dev_get_misc_bar = qat_dev_get_misc_bar_gen4,
+	.qat_dev_read_config = qat_dev_read_config_vqat,
+	.qat_dev_get_extra_size = qat_dev_get_extra_size_gen4,
+	.qat_dev_get_slice_map = qat_dev_get_slice_map_gen4,
+};
+
 RTE_INIT(qat_dev_gen_4_init)
 {
-	qat_qp_hw_spec[QAT_GEN4] = &qat_qp_hw_spec_gen4;
+	qat_qp_hw_spec[QAT_VQAT] = qat_qp_hw_spec[QAT_GEN4] = &qat_qp_hw_spec_gen4;
 	qat_dev_hw_spec[QAT_GEN4] = &qat_dev_hw_spec_gen4;
+	qat_dev_hw_spec[QAT_VQAT] = &qat_dev_hw_spec_vqat;
 	qat_gen_config[QAT_GEN4].dev_gen = QAT_GEN4;
+	qat_gen_config[QAT_VQAT].dev_gen = QAT_VQAT;
 	qat_gen_config[QAT_GEN4].pf2vf_dev = &qat_pf2vf_gen4;
 }

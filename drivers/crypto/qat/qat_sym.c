@@ -209,11 +209,18 @@ qat_sym_dev_create(struct qat_pci_device *qat_pci_dev,
 	enum qat_device_gen qat_dev_gen = qat_pci_dev->qat_dev_gen;
 	const struct qat_crypto_gen_dev_ops *gen_dev_ops =
 		&qat_sym_gen_dev_ops[qat_pci_dev->qat_dev_gen];
+	uint16_t sub_id = qat_dev_instance->pci_dev->id.subsystem_device_id;
 
 	snprintf(name, RTE_CRYPTODEV_NAME_MAX_LEN, "%s_%s",
 			qat_pci_dev->name, "sym");
 	QAT_LOG(DEBUG, "Creating QAT SYM device %s", name);
 
+	if (qat_pci_dev->qat_dev_gen == QAT_VQAT &&
+		sub_id != ADF_VQAT_SYM_PCI_SUBSYSTEM_ID) {
+		QAT_LOG(ERR, "Device (vqat instance) %s does not support symmetric crypto",
+				name);
+		return -EFAULT;
+	}
 	if (gen_dev_ops->cryptodev_ops == NULL) {
 		QAT_LOG(ERR, "Device %s does not support symmetric crypto",
 				name);
