@@ -8,7 +8,6 @@ The module defines the :class:`TestSuite` class which doesn't contain any test c
 must be extended by subclasses which add test cases. The :class:`TestSuite` contains the basics
 needed by subclasses:
 
-    * Test suite and test case execution flow,
     * Testbed (SUT, TG) configuration,
     * Packet sending and verification,
     * Test case verification.
@@ -28,27 +27,22 @@ from scapy.layers.inet import IP  # type: ignore[import]
 from scapy.layers.l2 import Ether  # type: ignore[import]
 from scapy.packet import Packet, Padding  # type: ignore[import]
 
-from .exception import (
-    BlockingTestSuiteError,
-    ConfigurationError,
-    SSHTimeoutError,
-    TestCaseVerifyError,
-)
+from .exception import ConfigurationError, TestCaseVerifyError
 from .logger import DTSLOG, getLogger
 from .settings import SETTINGS
-from .test_result import BuildTargetResult, Result, TestCaseResult, TestSuiteResult
 from .testbed_model import Port, PortLink, SutNode, TGNode
 from .utils import get_packet_summaries
 
 
 class TestSuite(object):
-    """The base class with methods for handling the basic flow of a test suite.
+    """The base class with building blocks needed by most test cases.
 
         * Test case filtering and collection,
-        * Test suite setup/cleanup,
-        * Test setup/cleanup,
-        * Test case execution,
-        * Error handling and results storage.
+        * Test suite setup/cleanup methods to override,
+        * Test case setup/cleanup methods to override,
+        * Test case verification,
+        * Testbed configuration,
+        * Traffic sending and verification.
 
     Test cases are implemented by subclasses. Test cases are all methods starting with ``test_``,
     further divided into performance test cases (starting with ``test_perf_``)
@@ -59,10 +53,6 @@ class TestSuite(object):
     or in the :envvar:`DTS_TESTCASES` environment variable to filter which test cases to run.
     The union of both lists will be used. Any unknown test cases from the latter lists
     will be silently ignored.
-
-    If the :option:`--re-run` command line argument or the :envvar:`DTS_RERUN` environment variable
-    is set, in case of a test case failure, the test case will be executed again until it passes
-    or it fails that many times in addition of the first failure.
 
     The methods named ``[set_up|tear_down]_[suite|test_case]`` should be overridden in subclasses
     if the appropriate test suite/test case fixtures are needed.
@@ -82,8 +72,6 @@ class TestSuite(object):
     is_blocking: ClassVar[bool] = False
     _logger: DTSLOG
     _test_cases_to_run: list[str]
-    _func: bool
-    _result: TestSuiteResult
     _port_links: list[PortLink]
     _sut_port_ingress: Port
     _sut_port_egress: Port
@@ -99,30 +87,23 @@ class TestSuite(object):
         sut_node: SutNode,
         tg_node: TGNode,
         test_cases: list[str],
-        func: bool,
-        build_target_result: BuildTargetResult,
     ):
         """Initialize the test suite testbed information and basic configuration.
 
-        Process what test cases to run, create the associated
-        :class:`~.test_result.TestSuiteResult`, find links between ports
-        and set up default IP addresses to be used when configuring them.
+        Process what test cases to run, find links between ports and set up
+        default IP addresses to be used when configuring them.
 
         Args:
             sut_node: The SUT node where the test suite will run.
             tg_node: The TG node where the test suite will run.
             test_cases: The list of test cases to execute.
                 If empty, all test cases will be executed.
-            func: Whether to run functional tests.
-            build_target_result: The build target result this test suite is run in.
         """
         self.sut_node = sut_node
         self.tg_node = tg_node
         self._logger = getLogger(self.__class__.__name__)
         self._test_cases_to_run = test_cases
         self._test_cases_to_run.extend(SETTINGS.test_cases)
-        self._func = func
-        self._result = build_target_result.add_test_suite(self.__class__.__name__)
         self._port_links = []
         self._process_links()
         self._sut_port_ingress, self._tg_port_egress = (
@@ -384,62 +365,6 @@ class TestSuite(object):
             return False
         return True
 
-    def run(self) -> None:
-        """Set up, execute and tear down the whole suite.
-
-        Test suite execution consists of running all test cases scheduled to be executed.
-        A test case run consists of setup, execution and teardown of said test case.
-
-        Record the setup and the teardown and handle failures.
-
-        The list of scheduled test cases is constructed when creating the :class:`TestSuite` object.
-        """
-        test_suite_name = self.__class__.__name__
-
-        try:
-            self._logger.info(f"Starting test suite setup: {test_suite_name}")
-            self.set_up_suite()
-            self._result.update_setup(Result.PASS)
-            self._logger.info(f"Test suite setup successful: {test_suite_name}")
-        except Exception as e:
-            self._logger.exception(f"Test suite setup ERROR: {test_suite_name}")
-            self._result.update_setup(Result.ERROR, e)
-
-        else:
-            self._execute_test_suite()
-
-        finally:
-            try:
-                self.tear_down_suite()
-                self.sut_node.kill_cleanup_dpdk_apps()
-                self._result.update_teardown(Result.PASS)
-            except Exception as e:
-                self._logger.exception(f"Test suite teardown ERROR: {test_suite_name}")
-                self._logger.warning(
-                    f"Test suite '{test_suite_name}' teardown failed, "
-                    f"the next test suite may be affected."
-                )
-                self._result.update_setup(Result.ERROR, e)
-            if len(self._result.get_errors()) > 0 and self.is_blocking:
-                raise BlockingTestSuiteError(test_suite_name)
-
-    def _execute_test_suite(self) -> None:
-        """Execute all test cases scheduled to be executed in this suite."""
-        if self._func:
-            for test_case_method in self._get_functional_test_cases():
-                test_case_name = test_case_method.__name__
-                test_case_result = self._result.add_test_case(test_case_name)
-                all_attempts = SETTINGS.re_run + 1
-                attempt_nr = 1
-                self._run_test_case(test_case_method, test_case_result)
-                while not test_case_result and attempt_nr < all_attempts:
-                    attempt_nr += 1
-                    self._logger.info(
-                        f"Re-running FAILED test case '{test_case_name}'. "
-                        f"Attempt number {attempt_nr} out of {all_attempts}."
-                    )
-                    self._run_test_case(test_case_method, test_case_result)
-
     def _get_functional_test_cases(self) -> list[MethodType]:
         """Get all functional test cases defined in this TestSuite.
 
@@ -470,65 +395,6 @@ class TestSuite(object):
             return match and test_case_name in self._test_cases_to_run
 
         return match
-
-    def _run_test_case(
-        self, test_case_method: MethodType, test_case_result: TestCaseResult
-    ) -> None:
-        """Setup, execute and teardown a test case in this suite.
-
-        Record the result of the setup and the teardown and handle failures.
-        """
-        test_case_name = test_case_method.__name__
-
-        try:
-            # run set_up function for each case
-            self.set_up_test_case()
-            test_case_result.update_setup(Result.PASS)
-        except SSHTimeoutError as e:
-            self._logger.exception(f"Test case setup FAILED: {test_case_name}")
-            test_case_result.update_setup(Result.FAIL, e)
-        except Exception as e:
-            self._logger.exception(f"Test case setup ERROR: {test_case_name}")
-            test_case_result.update_setup(Result.ERROR, e)
-
-        else:
-            # run test case if setup was successful
-            self._execute_test_case(test_case_method, test_case_result)
-
-        finally:
-            try:
-                self.tear_down_test_case()
-                test_case_result.update_teardown(Result.PASS)
-            except Exception as e:
-                self._logger.exception(f"Test case teardown ERROR: {test_case_name}")
-                self._logger.warning(
-                    f"Test case '{test_case_name}' teardown failed, "
-                    f"the next test case may be affected."
-                )
-                test_case_result.update_teardown(Result.ERROR, e)
-                test_case_result.update(Result.ERROR)
-
-    def _execute_test_case(
-        self, test_case_method: MethodType, test_case_result: TestCaseResult
-    ) -> None:
-        """Execute one test case, record the result and handle failures."""
-        test_case_name = test_case_method.__name__
-        try:
-            self._logger.info(f"Starting test case execution: {test_case_name}")
-            test_case_method()
-            test_case_result.update(Result.PASS)
-            self._logger.info(f"Test case execution PASSED: {test_case_name}")
-
-        except TestCaseVerifyError as e:
-            self._logger.exception(f"Test case execution FAILED: {test_case_name}")
-            test_case_result.update(Result.FAIL, e)
-        except Exception as e:
-            self._logger.exception(f"Test case execution ERROR: {test_case_name}")
-            test_case_result.update(Result.ERROR, e)
-        except KeyboardInterrupt:
-            self._logger.error(f"Test case execution INTERRUPTED by user: {test_case_name}")
-            test_case_result.update(Result.SKIP)
-            raise KeyboardInterrupt("Stop DTS")
 
 
 def get_test_suites(testsuite_module_path: str) -> list[type[TestSuite]]:

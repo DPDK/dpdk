@@ -19,6 +19,7 @@ and the test case stage runs test cases individually.
 
 import logging
 import sys
+from types import MethodType
 
 from .config import (
     BuildTargetConfiguration,
@@ -26,10 +27,18 @@ from .config import (
     TestSuiteConfig,
     load_config,
 )
-from .exception import BlockingTestSuiteError
+from .exception import BlockingTestSuiteError, SSHTimeoutError, TestCaseVerifyError
 from .logger import DTSLOG, getLogger
-from .test_result import BuildTargetResult, DTSResult, ExecutionResult, Result
-from .test_suite import get_test_suites
+from .settings import SETTINGS
+from .test_result import (
+    BuildTargetResult,
+    DTSResult,
+    ExecutionResult,
+    Result,
+    TestCaseResult,
+    TestSuiteResult,
+)
+from .test_suite import TestSuite, get_test_suites
 from .testbed_model import SutNode, TGNode
 
 
@@ -227,7 +236,7 @@ class DTSRunner:
             build_target_result.update_setup(Result.FAIL, e)
 
         else:
-            self._run_all_suites(sut_node, tg_node, execution, build_target_result)
+            self._run_test_suites(sut_node, tg_node, execution, build_target_result)
 
         finally:
             try:
@@ -237,7 +246,7 @@ class DTSRunner:
                 self._logger.exception("Build target teardown failed.")
                 build_target_result.update_teardown(Result.FAIL, e)
 
-    def _run_all_suites(
+    def _run_test_suites(
         self,
         sut_node: SutNode,
         tg_node: TGNode,
@@ -248,6 +257,9 @@ class DTSRunner:
 
         The method assumes the build target we're testing has already been built on the SUT node.
         The current build target thus corresponds to the current DPDK build present on the SUT node.
+
+        If a blocking test suite (such as the smoke test suite) fails, the rest of the test suites
+        in the current build target won't be executed.
 
         Args:
             sut_node: The execution's SUT node.
@@ -262,7 +274,7 @@ class DTSRunner:
             execution.test_suites[:0] = [TestSuiteConfig.from_dict("smoke_tests")]
         for test_suite_config in execution.test_suites:
             try:
-                self._run_single_suite(
+                self._run_test_suite_module(
                     sut_node, tg_node, execution, build_target_result, test_suite_config
                 )
             except BlockingTestSuiteError as e:
@@ -276,7 +288,7 @@ class DTSRunner:
             if end_build_target:
                 break
 
-    def _run_single_suite(
+    def _run_test_suite_module(
         self,
         sut_node: SutNode,
         tg_node: TGNode,
@@ -284,10 +296,17 @@ class DTSRunner:
         build_target_result: BuildTargetResult,
         test_suite_config: TestSuiteConfig,
     ) -> None:
-        """Run all test suites in a single test suite module.
+        """Set up, execute and tear down all test suites in a single test suite module.
 
         The method assumes the build target we're testing has already been built on the SUT node.
         The current build target thus corresponds to the current DPDK build present on the SUT node.
+
+        Test suite execution consists of running the discovered test cases.
+        A test case run consists of setup, execution and teardown of said test case.
+
+        Record the setup and the teardown and handle failures.
+
+        The test cases to execute are discovered when creating the :class:`TestSuite` object.
 
         Args:
             sut_node: The execution's SUT node.
@@ -313,14 +332,140 @@ class DTSRunner:
 
         else:
             for test_suite_class in test_suite_classes:
-                test_suite = test_suite_class(
-                    sut_node,
-                    tg_node,
-                    test_suite_config.test_cases,
-                    execution.func,
-                    build_target_result,
+                test_suite = test_suite_class(sut_node, tg_node, test_suite_config.test_cases)
+
+                test_suite_name = test_suite.__class__.__name__
+                test_suite_result = build_target_result.add_test_suite(test_suite_name)
+                try:
+                    self._logger.info(f"Starting test suite setup: {test_suite_name}")
+                    test_suite.set_up_suite()
+                    test_suite_result.update_setup(Result.PASS)
+                    self._logger.info(f"Test suite setup successful: {test_suite_name}")
+                except Exception as e:
+                    self._logger.exception(f"Test suite setup ERROR: {test_suite_name}")
+                    test_suite_result.update_setup(Result.ERROR, e)
+
+                else:
+                    self._execute_test_suite(execution.func, test_suite, test_suite_result)
+
+                finally:
+                    try:
+                        test_suite.tear_down_suite()
+                        sut_node.kill_cleanup_dpdk_apps()
+                        test_suite_result.update_teardown(Result.PASS)
+                    except Exception as e:
+                        self._logger.exception(f"Test suite teardown ERROR: {test_suite_name}")
+                        self._logger.warning(
+                            f"Test suite '{test_suite_name}' teardown failed, "
+                            f"the next test suite may be affected."
+                        )
+                        test_suite_result.update_setup(Result.ERROR, e)
+                    if len(test_suite_result.get_errors()) > 0 and test_suite.is_blocking:
+                        raise BlockingTestSuiteError(test_suite_name)
+
+    def _execute_test_suite(
+        self, func: bool, test_suite: TestSuite, test_suite_result: TestSuiteResult
+    ) -> None:
+        """Execute all discovered test cases in `test_suite`.
+
+        If the :option:`--re-run` command line argument or the :envvar:`DTS_RERUN` environment
+        variable is set, in case of a test case failure, the test case will be executed again
+        until it passes or it fails that many times in addition of the first failure.
+
+        Args:
+            func: Whether to execute functional test cases.
+            test_suite: The test suite object.
+            test_suite_result: The test suite level result object associated
+                with the current test suite.
+        """
+        if func:
+            for test_case_method in test_suite._get_functional_test_cases():
+                test_case_name = test_case_method.__name__
+                test_case_result = test_suite_result.add_test_case(test_case_name)
+                all_attempts = SETTINGS.re_run + 1
+                attempt_nr = 1
+                self._run_test_case(test_suite, test_case_method, test_case_result)
+                while not test_case_result and attempt_nr < all_attempts:
+                    attempt_nr += 1
+                    self._logger.info(
+                        f"Re-running FAILED test case '{test_case_name}'. "
+                        f"Attempt number {attempt_nr} out of {all_attempts}."
+                    )
+                    self._run_test_case(test_suite, test_case_method, test_case_result)
+
+    def _run_test_case(
+        self,
+        test_suite: TestSuite,
+        test_case_method: MethodType,
+        test_case_result: TestCaseResult,
+    ) -> None:
+        """Setup, execute and teardown a test case in `test_suite`.
+
+        Record the result of the setup and the teardown and handle failures.
+
+        Args:
+            test_suite: The test suite object.
+            test_case_method: The test case method.
+            test_case_result: The test case level result object associated
+                with the current test case.
+        """
+        test_case_name = test_case_method.__name__
+
+        try:
+            # run set_up function for each case
+            test_suite.set_up_test_case()
+            test_case_result.update_setup(Result.PASS)
+        except SSHTimeoutError as e:
+            self._logger.exception(f"Test case setup FAILED: {test_case_name}")
+            test_case_result.update_setup(Result.FAIL, e)
+        except Exception as e:
+            self._logger.exception(f"Test case setup ERROR: {test_case_name}")
+            test_case_result.update_setup(Result.ERROR, e)
+
+        else:
+            # run test case if setup was successful
+            self._execute_test_case(test_case_method, test_case_result)
+
+        finally:
+            try:
+                test_suite.tear_down_test_case()
+                test_case_result.update_teardown(Result.PASS)
+            except Exception as e:
+                self._logger.exception(f"Test case teardown ERROR: {test_case_name}")
+                self._logger.warning(
+                    f"Test case '{test_case_name}' teardown failed, "
+                    f"the next test case may be affected."
                 )
-                test_suite.run()
+                test_case_result.update_teardown(Result.ERROR, e)
+                test_case_result.update(Result.ERROR)
+
+    def _execute_test_case(
+        self, test_case_method: MethodType, test_case_result: TestCaseResult
+    ) -> None:
+        """Execute one test case, record the result and handle failures.
+
+        Args:
+            test_case_method: The test case method.
+            test_case_result: The test case level result object associated
+                with the current test case.
+        """
+        test_case_name = test_case_method.__name__
+        try:
+            self._logger.info(f"Starting test case execution: {test_case_name}")
+            test_case_method()
+            test_case_result.update(Result.PASS)
+            self._logger.info(f"Test case execution PASSED: {test_case_name}")
+
+        except TestCaseVerifyError as e:
+            self._logger.exception(f"Test case execution FAILED: {test_case_name}")
+            test_case_result.update(Result.FAIL, e)
+        except Exception as e:
+            self._logger.exception(f"Test case execution ERROR: {test_case_name}")
+            test_case_result.update(Result.ERROR, e)
+        except KeyboardInterrupt:
+            self._logger.error(f"Test case execution INTERRUPTED by user: {test_case_name}")
+            test_case_result.update(Result.SKIP)
+            raise KeyboardInterrupt("Stop DTS")
 
     def _exit_dts(self) -> None:
         """Process all errors and exit with the proper exit code."""
