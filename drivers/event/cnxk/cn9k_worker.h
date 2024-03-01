@@ -749,7 +749,7 @@ static __rte_always_inline uint16_t
 cn9k_sso_hws_event_tx(uint64_t base, struct rte_event *ev, uint64_t *cmd,
 		      uint64_t *txq_data, const uint32_t flags)
 {
-	struct rte_mbuf *m = ev->mbuf;
+	struct rte_mbuf *m = ev->mbuf, *extm = NULL;
 	struct cn9k_eth_txq *txq;
 
 	/* Perform header writes before barrier for TSO */
@@ -770,7 +770,7 @@ cn9k_sso_hws_event_tx(uint64_t base, struct rte_event *ev, uint64_t *cmd,
 	if (cn9k_sso_sq_depth(txq) <= 0)
 		return 0;
 	cn9k_nix_tx_skeleton(txq, cmd, flags, 0);
-	cn9k_nix_xmit_prepare(txq, m, cmd, flags, txq->lso_tun_fmt, txq->mark_flag,
+	cn9k_nix_xmit_prepare(txq, m, &extm, cmd, flags, txq->lso_tun_fmt, txq->mark_flag,
 			      txq->mark_fmt);
 
 	if (flags & NIX_TX_OFFLOAD_SECURITY_F) {
@@ -792,7 +792,7 @@ cn9k_sso_hws_event_tx(uint64_t base, struct rte_event *ev, uint64_t *cmd,
 	}
 
 	if (flags & NIX_TX_MULTI_SEG_F) {
-		const uint16_t segdw = cn9k_nix_prepare_mseg(txq, m, cmd, flags);
+		const uint16_t segdw = cn9k_nix_prepare_mseg(txq, m, &extm, cmd, flags);
 		cn9k_nix_xmit_prepare_tstamp(txq, cmd, m->ol_flags, segdw,
 					     flags);
 		if (!CNXK_TT_FROM_EVENT(ev->event)) {
@@ -822,6 +822,9 @@ cn9k_sso_hws_event_tx(uint64_t base, struct rte_event *ev, uint64_t *cmd,
 	}
 
 done:
+	if (flags & NIX_TX_OFFLOAD_MBUF_NOFF_F && !txq->tx_compl.ena)
+		cn9k_nix_free_extmbuf(extm);
+
 	return 1;
 }
 

@@ -70,6 +70,7 @@ cn10k_sso_tx_one(struct cn10k_sso_hws *ws, struct rte_mbuf *m, uint64_t *cmd,
 		 const uint64_t *txq_data, const uint32_t flags)
 {
 	uint8_t lnum = 0, loff = 0, shft = 0;
+	struct rte_mbuf *extm = NULL;
 	struct cn10k_eth_txq *txq;
 	uintptr_t laddr;
 	uint16_t segdw;
@@ -90,7 +91,7 @@ cn10k_sso_tx_one(struct cn10k_sso_hws *ws, struct rte_mbuf *m, uint64_t *cmd,
 	if (flags & NIX_TX_OFFLOAD_TSO_F)
 		cn10k_nix_xmit_prepare_tso(m, flags);
 
-	cn10k_nix_xmit_prepare(txq, m, cmd, flags, txq->lso_tun_fmt, &sec,
+	cn10k_nix_xmit_prepare(txq, m, &extm, cmd, flags, txq->lso_tun_fmt, &sec,
 			       txq->mark_flag, txq->mark_fmt);
 
 	laddr = lmt_addr;
@@ -105,7 +106,7 @@ cn10k_sso_tx_one(struct cn10k_sso_hws *ws, struct rte_mbuf *m, uint64_t *cmd,
 	cn10k_nix_xmit_mv_lmt_base(laddr, cmd, flags);
 
 	if (flags & NIX_TX_MULTI_SEG_F)
-		segdw = cn10k_nix_prepare_mseg(txq, m, (uint64_t *)laddr, flags);
+		segdw = cn10k_nix_prepare_mseg(txq, m, &extm, (uint64_t *)laddr, flags);
 	else
 		segdw = cn10k_nix_tx_ext_subs(flags) + 2;
 
@@ -126,6 +127,9 @@ cn10k_sso_tx_one(struct cn10k_sso_hws *ws, struct rte_mbuf *m, uint64_t *cmd,
 
 	/* Memory barrier to make sure lmtst store completes */
 	rte_io_wmb();
+
+	if (flags & NIX_TX_OFFLOAD_MBUF_NOFF_F && !txq->tx_compl.ena)
+		cn10k_nix_free_extmbuf(extm);
 
 	return 1;
 }
