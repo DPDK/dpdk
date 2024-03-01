@@ -130,70 +130,6 @@ qat_get_qat_dev_from_pci_dev(struct rte_pci_device *pci_dev)
 	return qat_pci_get_named_dev(name);
 }
 
-static void
-qat_dev_parse_cmd(const char *str, struct qat_dev_cmd_param
-		*qat_dev_cmd_param)
-{
-	int i = 0;
-	const char *param;
-
-	while (1) {
-		char value_str[4] = { };
-
-		param = qat_dev_cmd_param[i].name;
-		if (param == NULL)
-			return;
-		long value = 0;
-		const char *arg = strstr(str, param);
-		const char *arg2 = NULL;
-
-		if (arg) {
-			arg2 = arg + strlen(param);
-			if (*arg2 != '=') {
-				QAT_LOG(DEBUG, "parsing error '=' sign"
-						" should immediately follow %s",
-						param);
-				arg2 = NULL;
-			} else
-				arg2++;
-		} else {
-			QAT_LOG(DEBUG, "%s not provided", param);
-		}
-		if (arg2) {
-			int iter = 0;
-			while (iter < 2) {
-				if (!isdigit(*(arg2 + iter)))
-					break;
-				iter++;
-			}
-			if (!iter) {
-				QAT_LOG(DEBUG, "parsing error %s"
-					       " no number provided",
-					       param);
-			} else {
-				memcpy(value_str, arg2, iter);
-				value = strtol(value_str, NULL, 10);
-				if (strcmp(param,
-					 SYM_CIPHER_CRC_ENABLE_NAME) == 0) {
-					if (value < 0 || value > 1) {
-						QAT_LOG(DEBUG, "The value for qat_sym_cipher_crc_enable should be set to 0 or 1, setting to 0");
-						value = 0;
-					}
-				} else if (value > MAX_QP_THRESHOLD_SIZE) {
-					QAT_LOG(DEBUG, "Exceeded max size of"
-						" threshold, setting to %d",
-						MAX_QP_THRESHOLD_SIZE);
-					value = MAX_QP_THRESHOLD_SIZE;
-				}
-				QAT_LOG(DEBUG, "parsing %s = %ld",
-						param, value);
-			}
-		}
-		qat_dev_cmd_param[i].val = value;
-		i++;
-	}
-}
-
 static enum qat_device_gen
 pick_gen(const struct rte_pci_device *pci_dev)
 {
@@ -231,9 +167,89 @@ wireless_slice_support(uint16_t pci_dev_id)
 			pci_dev_id == 0x4947;
 }
 
-struct qat_pci_device *
-qat_pci_device_allocate(struct rte_pci_device *pci_dev,
-		struct qat_dev_cmd_param *qat_dev_cmd_param)
+/* This function base on the atoi function peculiarity, non integral part
+ * other than the equals sign is ignored. It will not work with other conversion
+ * functions like strt*.
+ */
+char *qat_dev_cmdline_get_val(struct qat_pci_device *qat_dev,
+	const char *key)
+{
+	if (qat_dev->command_line == NULL)
+		return NULL;
+	key = strstr(qat_dev->command_line, key);
+	/* At this point, a key should be validated */
+	return key ? strchr(key, '=') + 1 : NULL;
+}
+
+static int cmdline_validate(const char *arg)
+{
+	int i, len;
+	char *eq_sign = strchr(arg, '=');
+	/* Check for the equal sign */
+	if (eq_sign == NULL) {
+		QAT_LOG(ERR, "malformed string, no equals sign, %s", arg);
+		return 0;
+	}
+	/* Check if an argument is not empty */
+	len = strlen(eq_sign) - 1;
+	if (len == 0) {
+		QAT_LOG(ERR, "malformed string, empty argument, %s", arg);
+		return 0;
+	}
+	len = eq_sign - arg;
+	for (i = 0; i < QAT_MAX_SERVICES + 1; i++) {
+		int j = 0;
+		const char *def = NULL;
+
+		if (!qat_cmdline_defines[i])
+			continue;
+		while ((def = qat_cmdline_defines[i][j++])) {
+			if (strncmp(def, arg, len))
+				continue;
+			QAT_LOG(DEBUG, "Found %s command line argument",
+				def);
+			return 1;
+		}
+	}
+	return 0;
+}
+
+static int
+qat_dev_parse_command_line(struct qat_pci_device *qat_dev,
+	struct rte_devargs *devargs)
+{
+	int len = 0;
+	char *token = NULL;
+
+	if (!devargs)
+		return 0;
+
+	len = strlen(devargs->drv_str);
+	if (len == 0)
+		return 0;
+	/* Allocate per-device command line */
+	qat_dev->command_line = rte_malloc(NULL, len, 0);
+	if (qat_dev->command_line == NULL) {
+		QAT_LOG(ERR, "Cannot allocate memory for command line");
+		return -1;
+	}
+	strcpy(qat_dev->command_line, devargs->drv_str);
+	token = strtok(qat_dev->command_line, ",");
+	while (token != NULL) {
+		if (!cmdline_validate(token)) {
+			QAT_LOG(ERR, "Incorrect command line argument: %s",
+				token);
+			return -1;
+		}
+		token = strtok(NULL, ",");
+	}
+	/* Copy once againe the entire string, strtok already altered the contents */
+	strcpy(qat_dev->command_line, devargs->drv_str);
+	return 0;
+}
+
+static struct qat_pci_device *
+qat_pci_device_allocate(struct rte_pci_device *pci_dev)
 {
 	struct qat_pci_device *qat_dev;
 	enum qat_device_gen qat_dev_gen;
@@ -244,6 +260,7 @@ qat_pci_device_allocate(struct rte_pci_device *pci_dev,
 	struct rte_mem_resource *mem_resource;
 	const struct rte_memzone *qat_dev_mz;
 	int qat_dev_size, extra_size;
+	char *cmdline = NULL;
 
 	rte_pci_device_name(&pci_dev->addr, name, sizeof(name));
 	snprintf(name+strlen(name), QAT_DEV_NAME_MAX_LEN-strlen(name), "_qat");
@@ -324,8 +341,14 @@ qat_pci_device_allocate(struct rte_pci_device *pci_dev,
 	} else
 		qat_dev->misc_bar_io_addr = NULL;
 
-	if (devargs && devargs->drv_str)
-		qat_dev_parse_cmd(devargs->drv_str, qat_dev_cmd_param);
+	/* Parse the command line */
+	if (qat_dev_parse_command_line(qat_dev, devargs))
+		goto error;
+
+	/* Parse the arguments */
+	cmdline = qat_dev_cmdline_get_val(qat_dev, QAT_LEGACY_CAPA);
+	if (cmdline)
+		qat_legacy_capa = atoi(cmdline);
 
 	if (qat_read_qp_config(qat_dev)) {
 		QAT_LOG(ERR,
@@ -363,6 +386,7 @@ qat_pci_device_allocate(struct rte_pci_device *pci_dev,
 
 	return qat_dev;
 error:
+	rte_free(qat_dev->command_line);
 	if (rte_memzone_free(qat_dev_mz)) {
 		QAT_LOG(DEBUG,
 			"QAT internal error! Trying to free already allocated memzone: %s",
@@ -434,27 +458,17 @@ static int qat_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	int sym_ret = 0, asym_ret = 0, comp_ret = 0;
 	int num_pmds_created = 0;
 	struct qat_pci_device *qat_pci_dev;
-	struct qat_dev_cmd_param qat_dev_cmd_param[] = {
-			{ QAT_LEGACY_CAPA, 0 },
-			{ SYM_ENQ_THRESHOLD_NAME, 0 },
-			{ ASYM_ENQ_THRESHOLD_NAME, 0 },
-			{ COMP_ENQ_THRESHOLD_NAME, 0 },
-			{ SYM_CIPHER_CRC_ENABLE_NAME, 0 },
-			[QAT_CMD_SLICE_MAP_POS] = { QAT_CMD_SLICE_MAP, 0},
-			{ NULL, 0 },
-	};
 
 	QAT_LOG(DEBUG, "Found QAT device at %02x:%02x.%x",
 			pci_dev->addr.bus,
 			pci_dev->addr.devid,
 			pci_dev->addr.function);
 
-	qat_pci_dev = qat_pci_device_allocate(pci_dev, qat_dev_cmd_param);
+	qat_pci_dev = qat_pci_device_allocate(pci_dev);
 	if (qat_pci_dev == NULL)
 		return -ENODEV;
 
-	qat_dev_cmd_param[QAT_CMD_SLICE_MAP_POS].val = qat_pci_dev->slice_map;
-	sym_ret = qat_sym_dev_create(qat_pci_dev, qat_dev_cmd_param);
+	sym_ret = qat_sym_dev_create(qat_pci_dev);
 	if (sym_ret == 0) {
 		num_pmds_created++;
 	}
@@ -463,7 +477,7 @@ static int qat_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 				"Failed to create QAT SYM PMD on device %s",
 				qat_pci_dev->name);
 
-	comp_ret = qat_comp_dev_create(qat_pci_dev, qat_dev_cmd_param);
+	comp_ret = qat_comp_dev_create(qat_pci_dev);
 	if (comp_ret == 0)
 		num_pmds_created++;
 	else
@@ -471,7 +485,7 @@ static int qat_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 				"Failed to create QAT COMP PMD on device %s",
 				qat_pci_dev->name);
 
-	asym_ret = qat_asym_dev_create(qat_pci_dev, qat_dev_cmd_param);
+	asym_ret = qat_asym_dev_create(qat_pci_dev);
 	if (asym_ret == 0)
 		num_pmds_created++;
 	else
@@ -508,15 +522,13 @@ static struct rte_pci_driver rte_qat_pmd = {
 };
 
 __rte_weak int
-qat_sym_dev_create(struct qat_pci_device *qat_pci_dev __rte_unused,
-		struct qat_dev_cmd_param *qat_dev_cmd_param __rte_unused)
+qat_sym_dev_create(struct qat_pci_device *qat_pci_dev __rte_unused)
 {
 	return 0;
 }
 
 __rte_weak int
-qat_asym_dev_create(struct qat_pci_device *qat_pci_dev __rte_unused,
-		const struct qat_dev_cmd_param *qat_dev_cmd_param __rte_unused)
+qat_asym_dev_create(struct qat_pci_device *qat_pci_dev __rte_unused)
 {
 	return 0;
 }
@@ -534,8 +546,7 @@ qat_asym_dev_destroy(struct qat_pci_device *qat_pci_dev __rte_unused)
 }
 
 __rte_weak int
-qat_comp_dev_create(struct qat_pci_device *qat_pci_dev __rte_unused,
-		struct qat_dev_cmd_param *qat_dev_cmd_param __rte_unused)
+qat_comp_dev_create(struct qat_pci_device *qat_pci_dev __rte_unused)
 {
 	return 0;
 }

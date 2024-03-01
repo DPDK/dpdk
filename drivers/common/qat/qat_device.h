@@ -16,15 +16,8 @@
 #define QAT_ATTACHED  (1)
 
 #define QAT_DEV_NAME_MAX_LEN	64
-
-#define QAT_LEGACY_CAPA "qat_legacy_capa"
-#define SYM_ENQ_THRESHOLD_NAME "qat_sym_enq_threshold"
-#define ASYM_ENQ_THRESHOLD_NAME "qat_asym_enq_threshold"
-#define COMP_ENQ_THRESHOLD_NAME "qat_comp_enq_threshold"
-#define SYM_CIPHER_CRC_ENABLE_NAME "qat_sym_cipher_crc_enable"
-#define QAT_CMD_SLICE_MAP "qat_cmd_slice_disable"
-#define QAT_CMD_SLICE_MAP_POS	5
 #define MAX_QP_THRESHOLD_SIZE	32
+#define QAT_LEGACY_CAPA "qat_legacy_capa"
 
 /**
  * Function prototypes for GENx specific device operations.
@@ -40,6 +33,9 @@ typedef int (*qat_dev_read_config_t)
 typedef int (*qat_dev_get_extra_size_t)(void);
 typedef int (*qat_dev_get_slice_map_t)(uint32_t *map,
 		const struct rte_pci_device *pci_dev);
+
+extern int qat_legacy_capa;
+char *qat_dev_cmdline_get_val(struct qat_pci_device *qat_dev, const char *key);
 
 struct qat_dev_hw_spec_funcs {
 	qat_dev_reset_ring_pairs_t	qat_dev_reset_ring_pairs;
@@ -137,6 +133,8 @@ struct qat_pci_device {
 	/**< Map of the crypto and compression slices */
 	uint16_t has_wireless_slice;
 	/**< Wireless Slices supported */
+	char *command_line;
+	/**< Map of the crypto and compression slices */
 };
 
 struct qat_gen_hw_data {
@@ -157,20 +155,14 @@ struct qat_pf2vf_dev {
 extern struct qat_gen_hw_data qat_gen_config[];
 
 struct qat_pci_device *
-qat_pci_device_allocate(struct rte_pci_device *pci_dev,
-		struct qat_dev_cmd_param *qat_dev_cmd_param);
-
-struct qat_pci_device *
 qat_get_qat_dev_from_pci_dev(struct rte_pci_device *pci_dev);
 
 /* declaration needed for weak functions */
 int
-qat_sym_dev_create(struct qat_pci_device *qat_pci_dev __rte_unused,
-		struct qat_dev_cmd_param *qat_dev_cmd_param);
+qat_sym_dev_create(struct qat_pci_device *qat_pci_dev __rte_unused);
 
 int
-qat_asym_dev_create(struct qat_pci_device *qat_pci_dev,
-		const struct qat_dev_cmd_param *qat_dev_cmd_param);
+qat_asym_dev_create(struct qat_pci_device *qat_pci_dev);
 
 int
 qat_sym_dev_destroy(struct qat_pci_device *qat_pci_dev __rte_unused);
@@ -179,8 +171,7 @@ int
 qat_asym_dev_destroy(struct qat_pci_device *qat_pci_dev __rte_unused);
 
 int
-qat_comp_dev_create(struct qat_pci_device *qat_pci_dev __rte_unused,
-		struct qat_dev_cmd_param *qat_dev_cmd_param);
+qat_comp_dev_create(struct qat_pci_device *qat_pci_dev __rte_unused);
 
 int
 qat_comp_dev_destroy(struct qat_pci_device *qat_pci_dev __rte_unused);

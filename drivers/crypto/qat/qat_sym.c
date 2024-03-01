@@ -13,12 +13,22 @@
 #include <rte_byteorder.h>
 #include <rte_security_driver.h>
 
+#include "qat_common.h"
 #include "qat_sym.h"
 #include "qat_crypto.h"
 #include "qat_qp.h"
 
 uint8_t qat_sym_driver_id;
 int qat_legacy_capa;
+
+#define SYM_ENQ_THRESHOLD_NAME "qat_sym_enq_threshold"
+#define SYM_CIPHER_CRC_ENABLE_NAME "qat_sym_cipher_crc_enable"
+
+static const char *const arguments[] = {
+	SYM_ENQ_THRESHOLD_NAME,
+	SYM_CIPHER_CRC_ENABLE_NAME,
+	NULL
+};
 
 struct qat_crypto_gen_dev_ops qat_sym_gen_dev_ops[QAT_N_GENS];
 
@@ -190,11 +200,9 @@ qat_sym_dequeue_burst_gen_lce(void *qp, struct rte_crypto_op **ops, uint16_t nb_
 }
 
 int
-qat_sym_dev_create(struct qat_pci_device *qat_pci_dev,
-		struct qat_dev_cmd_param *qat_dev_cmd_param)
+qat_sym_dev_create(struct qat_pci_device *qat_pci_dev)
 {
-	int i = 0, ret = 0;
-	uint16_t slice_map = 0;
+	int ret = 0;
 	struct qat_device_info *qat_dev_instance =
 			&qat_pci_devs[qat_pci_dev->qat_dev_id];
 	struct rte_cryptodev_pmd_init_params init_params = {
@@ -210,6 +218,7 @@ qat_sym_dev_create(struct qat_pci_device *qat_pci_dev,
 	const struct qat_crypto_gen_dev_ops *gen_dev_ops =
 		&qat_sym_gen_dev_ops[qat_pci_dev->qat_dev_gen];
 	uint16_t sub_id = qat_dev_instance->pci_dev->id.subsystem_device_id;
+	char *cmdline = NULL;
 
 	snprintf(name, RTE_CRYPTODEV_NAME_MAX_LEN, "%s_%s",
 			qat_pci_dev->name, "sym");
@@ -293,26 +302,23 @@ qat_sym_dev_create(struct qat_pci_device *qat_pci_dev,
 
 	internals = cryptodev->data->dev_private;
 	internals->qat_dev = qat_pci_dev;
-
 	internals->dev_id = cryptodev->data->dev_id;
 
-	while (qat_dev_cmd_param[i].name != NULL) {
-		if (!strcmp(qat_dev_cmd_param[i].name, SYM_ENQ_THRESHOLD_NAME))
-			internals->min_enq_burst_threshold =
-					qat_dev_cmd_param[i].val;
-		if (!strcmp(qat_dev_cmd_param[i].name,
-				SYM_CIPHER_CRC_ENABLE_NAME))
-			internals->cipher_crc_offload_enable =
-					qat_dev_cmd_param[i].val;
-		if (!strcmp(qat_dev_cmd_param[i].name, QAT_LEGACY_CAPA))
-			qat_legacy_capa = qat_dev_cmd_param[i].val;
-		if (!strcmp(qat_dev_cmd_param[i].name, QAT_CMD_SLICE_MAP))
-			slice_map = qat_dev_cmd_param[i].val;
-		i++;
+	cmdline = qat_dev_cmdline_get_val(qat_pci_dev,
+			SYM_ENQ_THRESHOLD_NAME);
+	if (cmdline) {
+		internals->min_enq_burst_threshold =
+			atoi(cmdline) > MAX_QP_THRESHOLD_SIZE ?
+			MAX_QP_THRESHOLD_SIZE :
+			atoi(cmdline);
 	}
+	cmdline = qat_dev_cmdline_get_val(qat_pci_dev,
+			SYM_CIPHER_CRC_ENABLE_NAME);
+	if (cmdline)
+		internals->cipher_crc_offload_enable = atoi(cmdline);
 
 	if (gen_dev_ops->get_capabilities(internals,
-			capa_memz_name, slice_map) < 0) {
+			capa_memz_name, qat_pci_dev->slice_map) < 0) {
 		QAT_LOG(ERR,
 			"Device cannot obtain capabilities, destroying PMD for %s",
 			name);
@@ -411,3 +417,8 @@ static struct cryptodev_driver qat_crypto_drv;
 RTE_PMD_REGISTER_CRYPTO_DRIVER(qat_crypto_drv,
 		cryptodev_qat_sym_driver,
 		qat_sym_driver_id);
+
+RTE_INIT(qat_sym_init)
+{
+	qat_cmdline_defines[QAT_SERVICE_SYMMETRIC] = arguments;
+}

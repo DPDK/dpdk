@@ -15,11 +15,18 @@
 #include "qat_pke.h"
 #include "qat_ec.h"
 
+#define ASYM_ENQ_THRESHOLD_NAME "qat_asym_enq_threshold"
 #define RSA_MODULUS_2048_BITS 2048
 
 uint8_t qat_asym_driver_id;
 
 struct qat_crypto_gen_dev_ops qat_asym_gen_dev_ops[QAT_N_GENS];
+
+
+static const char *const arguments[] = {
+	ASYM_ENQ_THRESHOLD_NAME,
+	NULL
+};
 
 /* An rte_driver is needed in the registration of both the device and the driver
  * with cryptodev.
@@ -1499,8 +1506,7 @@ qat_asym_init_op_cookie(void *op_cookie)
 }
 
 int
-qat_asym_dev_create(struct qat_pci_device *qat_pci_dev,
-		const struct qat_dev_cmd_param *qat_dev_cmd_param)
+qat_asym_dev_create(struct qat_pci_device *qat_pci_dev)
 {
 	struct qat_cryptodev_private *internals;
 	struct rte_cryptodev *cryptodev;
@@ -1515,9 +1521,8 @@ qat_asym_dev_create(struct qat_pci_device *qat_pci_dev,
 		&qat_asym_gen_dev_ops[qat_pci_dev->qat_dev_gen];
 	char name[RTE_CRYPTODEV_NAME_MAX_LEN];
 	char capa_memz_name[RTE_CRYPTODEV_NAME_MAX_LEN];
-	int i = 0;
-	uint16_t slice_map = 0;
 	uint16_t sub_id = qat_dev_instance->pci_dev->id.subsystem_device_id;
+	char *cmdline = NULL;
 
 	snprintf(name, RTE_CRYPTODEV_NAME_MAX_LEN, "%s_%s",
 			qat_pci_dev->name, "asym");
@@ -1580,18 +1585,16 @@ qat_asym_dev_create(struct qat_pci_device *qat_pci_dev,
 	internals->qat_dev = qat_pci_dev;
 	internals->dev_id = cryptodev->data->dev_id;
 
-	while (1) {
-		if (qat_dev_cmd_param[i].name == NULL)
-			break;
-		if (!strcmp(qat_dev_cmd_param[i].name, ASYM_ENQ_THRESHOLD_NAME))
-			internals->min_enq_burst_threshold =
-					qat_dev_cmd_param[i].val;
-		if (!strcmp(qat_dev_cmd_param[i].name, QAT_CMD_SLICE_MAP))
-			slice_map = qat_dev_cmd_param[i].val;
-		i++;
+	cmdline = qat_dev_cmdline_get_val(qat_pci_dev,
+			ASYM_ENQ_THRESHOLD_NAME);
+	if (cmdline) {
+		internals->min_enq_burst_threshold =
+			atoi(cmdline) > MAX_QP_THRESHOLD_SIZE ?
+			MAX_QP_THRESHOLD_SIZE :
+			atoi(cmdline);
 	}
 
-	if (slice_map & ICP_ACCEL_MASK_PKE_SLICE) {
+	if (qat_pci_dev->slice_map & ICP_ACCEL_MASK_PKE_SLICE) {
 		QAT_LOG(ERR, "Device %s does not support PKE slice",
 				name);
 		rte_cryptodev_pmd_destroy(cryptodev);
@@ -1601,7 +1604,7 @@ qat_asym_dev_create(struct qat_pci_device *qat_pci_dev,
 	}
 
 	if (gen_dev_ops->get_capabilities(internals,
-			capa_memz_name, slice_map) < 0) {
+			capa_memz_name, qat_pci_dev->slice_map) < 0) {
 		QAT_LOG(ERR,
 			"Device cannot obtain capabilities, destroying PMD for %s",
 			name);
@@ -1644,3 +1647,8 @@ static struct cryptodev_driver qat_crypto_drv;
 RTE_PMD_REGISTER_CRYPTO_DRIVER(qat_crypto_drv,
 		cryptodev_qat_asym_driver,
 		qat_asym_driver_id);
+
+RTE_INIT(qat_asym_init)
+{
+	qat_cmdline_defines[QAT_SERVICE_ASYMMETRIC] = arguments;
+}

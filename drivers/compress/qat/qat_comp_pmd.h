@@ -107,8 +107,7 @@ qat_comp_setup_inter_buffers(struct qat_comp_dev_private *comp_dev,
 		uint32_t buff_size);
 
 int
-qat_comp_dev_create(struct qat_pci_device *qat_pci_dev,
-		struct qat_dev_cmd_param *qat_dev_cmd_param);
+qat_comp_dev_create(struct qat_pci_device *qat_pci_dev);
 
 int
 qat_comp_dev_destroy(struct qat_pci_device *qat_pci_dev);

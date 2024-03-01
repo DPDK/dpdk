@@ -9,6 +9,13 @@
 
 #define QAT_PMD_COMP_SGL_DEF_SEGMENTS 16
 
+#define COMP_ENQ_THRESHOLD_NAME "qat_comp_enq_threshold"
+
+static const char *const arguments[] = {
+	COMP_ENQ_THRESHOLD_NAME,
+	NULL
+};
+
 struct qat_comp_gen_dev_ops qat_comp_gen_dev_ops[QAT_N_GENS];
 
 struct stream_create_info {
@@ -663,10 +670,8 @@ static const struct rte_driver compdev_qat_driver = {
 };
 
 int
-qat_comp_dev_create(struct qat_pci_device *qat_pci_dev,
-		struct qat_dev_cmd_param *qat_dev_cmd_param)
+qat_comp_dev_create(struct qat_pci_device *qat_pci_dev)
 {
-	int i = 0;
 	struct qat_device_info *qat_dev_instance =
 			&qat_pci_devs[qat_pci_dev->qat_dev_id];
 	struct rte_compressdev_pmd_init_params init_params = {
@@ -683,6 +688,7 @@ qat_comp_dev_create(struct qat_pci_device *qat_pci_dev,
 			&qat_comp_gen_dev_ops[qat_pci_dev->qat_dev_gen];
 	uint64_t capa_size;
 	uint16_t sub_id = qat_dev_instance->pci_dev->id.subsystem_device_id;
+	char *cmdline = NULL;
 
 	snprintf(name, RTE_COMPRESSDEV_NAME_MAX_LEN, "%s_%s",
 			qat_pci_dev->name, "comp");
@@ -765,13 +771,13 @@ qat_comp_dev_create(struct qat_pci_device *qat_pci_dev,
 	memcpy(comp_dev->capa_mz->addr, capabilities, capa_size);
 	comp_dev->qat_dev_capabilities = comp_dev->capa_mz->addr;
 
-	while (1) {
-		if (qat_dev_cmd_param[i].name == NULL)
-			break;
-		if (!strcmp(qat_dev_cmd_param[i].name, COMP_ENQ_THRESHOLD_NAME))
-			comp_dev->min_enq_burst_threshold =
-					qat_dev_cmd_param[i].val;
-		i++;
+	cmdline = qat_dev_cmdline_get_val(qat_pci_dev,
+			COMP_ENQ_THRESHOLD_NAME);
+	if (cmdline) {
+		comp_dev->min_enq_burst_threshold =
+			atoi(cmdline) > MAX_QP_THRESHOLD_SIZE ?
+			MAX_QP_THRESHOLD_SIZE :
+			atoi(cmdline);
 	}
 	qat_pci_dev->comp_dev = comp_dev;
 
@@ -803,4 +809,9 @@ qat_comp_dev_destroy(struct qat_pci_device *qat_pci_dev)
 	qat_pci_dev->comp_dev = NULL;
 
 	return 0;
+}
+
+RTE_INIT(qat_sym_init)
+{
+	qat_cmdline_defines[QAT_SERVICE_COMPRESSION] = arguments;
 }

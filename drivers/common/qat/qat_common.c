@@ -6,6 +6,17 @@
 #include "qat_device.h"
 #include "qat_logs.h"
 
+#define QAT_LEGACY_CAPA "qat_legacy_capa"
+
+static const char *const arguments[] = {
+	QAT_LEGACY_CAPA,
+	NULL
+};
+
+const char *const *qat_cmdline_defines[QAT_MAX_SERVICES + 1] = {
+	[QAT_MAX_SERVICES] = arguments,
+};
+
 const char *
 qat_service_get_str(enum qat_service_type type)
 {
