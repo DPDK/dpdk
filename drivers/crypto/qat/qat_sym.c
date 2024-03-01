@@ -19,7 +19,6 @@
 #include "qat_qp.h"
 
 uint8_t qat_sym_driver_id;
-int qat_legacy_capa;
 
 #define SYM_ENQ_THRESHOLD_NAME "qat_sym_enq_threshold"
 #define SYM_CIPHER_CRC_ENABLE_NAME "qat_sym_cipher_crc_enable"
