@@ -18,6 +18,7 @@ sources = files(
         'nfdk/nfp_nfdk_dp.c',
         'nfpcore/nfp_cppcore.c',
         'nfpcore/nfp_crc.c',
+        'nfpcore/nfp_elf.c',
         'nfpcore/nfp_hwinfo.c',
         'nfpcore/nfp_mip.c',
         'nfpcore/nfp_mutex.c',
