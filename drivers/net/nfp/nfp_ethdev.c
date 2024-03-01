@@ -14,6 +14,7 @@
 #include "nfd3/nfp_nfd3.h"
 #include "nfdk/nfp_nfdk.h"
 #include "nfpcore/nfp_cpp.h"
+#include "nfpcore/nfp_elf.h"
 #include "nfpcore/nfp_hwinfo.h"
 #include "nfpcore/nfp_rtsym.h"
 #include "nfpcore/nfp_nsp.h"
@@ -1071,6 +1072,35 @@ nfp_fw_unload(struct nfp_cpp *cpp)
 }
 
 static int
+nfp_fw_check_change(struct nfp_cpp *cpp,
+		char *fw_name,
+		bool *fw_changed)
+{
+	int ret;
+	struct nfp_net_hw hw;
+	uint32_t new_version = 0;
+	uint32_t old_version = 0;
+
+	ret = nfp_elf_get_fw_version(&new_version, fw_name);
+	if (ret != 0)
+		return ret;
+
+	hw.cpp = cpp;
+	nfp_net_get_fw_version(&hw, &old_version);
+
+	if (new_version != old_version) {
+		PMD_DRV_LOG(INFO, "FW version is changed, new %u, old %u",
+				new_version, old_version);
+		*fw_changed = true;
+	} else {
+		PMD_DRV_LOG(INFO, "FW version is not changed and is %u", new_version);
+		*fw_changed = false;
+	}
+
+	return 0;
+}
+
+static int
 nfp_fw_reload(struct nfp_nsp *nsp,
 		char *fw_name)
 {
@@ -1135,15 +1165,39 @@ nfp_fw_skip_load(const struct nfp_dev_info *dev_info,
 
 	return false;
 }
+static int
+nfp_fw_reload_for_single_pf(struct nfp_nsp *nsp,
+		char *fw_name,
+		struct nfp_cpp *cpp)
+{
+	int ret;
+	bool fw_changed = true;
+
+	if (nfp_nsp_fw_loaded(nsp)) {
+		ret = nfp_fw_check_change(cpp, fw_name, &fw_changed);
+		if (ret != 0)
+			return ret;
+	}
+
+	if (!fw_changed)
+		return 0;
+
+	ret = nfp_fw_reload(nsp, fw_name);
+	if (ret != 0)
+		return ret;
+
+	return 0;
+}
 
 static int
-nfp_fw_reload_for_multipf(struct nfp_nsp *nsp,
+nfp_fw_reload_for_multi_pf(struct nfp_nsp *nsp,
 		char *fw_name,
 		struct nfp_cpp *cpp,
 		const struct nfp_dev_info *dev_info,
 		struct nfp_multi_pf *multi_pf)
 {
 	int err;
+	bool fw_changed = true;
 	bool skip_load_fw = false;
 
 	err = nfp_net_keepalive_init(cpp, multi_pf);
@@ -1154,27 +1208,36 @@ nfp_fw_reload_for_multipf(struct nfp_nsp *nsp,
 
 	err = nfp_net_keepalive_start(multi_pf);
 	if (err != 0) {
-		nfp_net_keepalive_uninit(multi_pf);
 		PMD_DRV_LOG(ERR, "NFP write beat failed");
-		return err;
+		goto keepalive_uninit;
 	}
 
-	if (nfp_nsp_fw_loaded(nsp))
+	if (nfp_nsp_fw_loaded(nsp)) {
+		err = nfp_fw_check_change(cpp, fw_name, &fw_changed);
+		if (err != 0)
+			goto keepalive_stop;
+	}
+
+	if (!fw_changed)
 		skip_load_fw = nfp_fw_skip_load(dev_info, multi_pf);
 
 	if (skip_load_fw)
 		return 0;
 
 	err = nfp_fw_reload(nsp, fw_name);
-	if (err != 0) {
-		nfp_net_keepalive_stop(multi_pf);
-		nfp_net_keepalive_uninit(multi_pf);
-		return err;
-	}
+	if (err != 0)
+		goto keepalive_stop;
 
 	nfp_net_keepalive_clear_others(dev_info, multi_pf);
 
 	return 0;
+
+keepalive_stop:
+	nfp_net_keepalive_stop(multi_pf);
+keepalive_uninit:
+	nfp_net_keepalive_uninit(multi_pf);
+
+	return err;
 }
 
 static int
@@ -1231,9 +1294,9 @@ nfp_fw_setup(struct rte_pci_device *dev,
 	}
 
 	if (multi_pf->enabled)
-		err = nfp_fw_reload_for_multipf(nsp, fw_name, cpp, dev_info, multi_pf);
+		err = nfp_fw_reload_for_multi_pf(nsp, fw_name, cpp, dev_info, multi_pf);
 	else
-		err = nfp_fw_reload(nsp, fw_name);
+		err = nfp_fw_reload_for_single_pf(nsp, fw_name, cpp);
 
 	nfp_nsp_close(nsp);
 	return err;

@@ -2090,6 +2090,23 @@ nfp_net_get_nsp_info(struct nfp_net_hw *hw,
 	nfp_nsp_close(nsp);
 }
 
+void
+nfp_net_get_fw_version(struct nfp_net_hw *hw,
+		uint32_t *mip_version)
+{
+	struct nfp_mip *mip;
+
+	mip = nfp_mip_open(hw->cpp);
+	if (mip == NULL) {
+		*mip_version = 0;
+		return;
+	}
+
+	*mip_version = nfp_mip_fw_version(mip);
+
+	nfp_mip_close(mip);
+}
+
 static void
 nfp_net_get_mip_name(struct nfp_net_hw *hw,
 		char *mip_name)

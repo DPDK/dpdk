@@ -316,6 +316,8 @@ int nfp_net_fec_get(struct rte_eth_dev *dev,
 		uint32_t *fec_capa);
 int nfp_net_fec_set(struct rte_eth_dev *dev,
 		uint32_t fec_capa);
+void nfp_net_get_fw_version(struct nfp_net_hw *hw,
+		uint32_t *fw_version);
 
 #define NFP_PRIV_TO_APP_FW_NIC(app_fw_priv)\
 	((struct nfp_app_fw_nic *)app_fw_priv)
