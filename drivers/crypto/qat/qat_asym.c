@@ -1505,7 +1505,7 @@ qat_asym_init_op_cookie(void *op_cookie)
 	}
 }
 
-int
+static int
 qat_asym_dev_create(struct qat_pci_device *qat_pci_dev)
 {
 	struct qat_cryptodev_private *internals;
@@ -1614,31 +1614,32 @@ qat_asym_dev_create(struct qat_pci_device *qat_pci_dev)
 		return -1;
 	}
 
-	qat_pci_dev->asym_dev = internals;
+	qat_pci_dev->pmd[QAT_SERVICE_ASYMMETRIC] = internals;
 	internals->service_type = QAT_SERVICE_ASYMMETRIC;
 	QAT_LOG(DEBUG, "Created QAT ASYM device %s as cryptodev instance %d",
 			cryptodev->data->name, internals->dev_id);
 	return 0;
 }
 
-int
+static int
 qat_asym_dev_destroy(struct qat_pci_device *qat_pci_dev)
 {
 	struct rte_cryptodev *cryptodev;
+	struct qat_cryptodev_private *dev =
+		qat_pci_dev->pmd[QAT_SERVICE_ASYMMETRIC];
 
 	if (qat_pci_dev == NULL)
 		return -ENODEV;
-	if (qat_pci_dev->asym_dev == NULL)
+	if (dev == NULL)
 		return 0;
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
-		rte_memzone_free(qat_pci_dev->asym_dev->capa_mz);
+		rte_memzone_free(dev->capa_mz);
 
 	/* free crypto device */
-	cryptodev = rte_cryptodev_pmd_get_dev(
-			qat_pci_dev->asym_dev->dev_id);
+	cryptodev = rte_cryptodev_pmd_get_dev(dev->dev_id);
 	rte_cryptodev_pmd_destroy(cryptodev);
 	qat_pci_devs[qat_pci_dev->qat_dev_id].asym_rte_dev.name = NULL;
-	qat_pci_dev->asym_dev = NULL;
+	qat_pci_dev->pmd[QAT_SERVICE_ASYMMETRIC] = NULL;
 
 	return 0;
 }
@@ -1651,4 +1652,7 @@ RTE_PMD_REGISTER_CRYPTO_DRIVER(qat_crypto_drv,
 RTE_INIT(qat_asym_init)
 {
 	qat_cmdline_defines[QAT_SERVICE_ASYMMETRIC] = arguments;
+	qat_service[QAT_SERVICE_ASYMMETRIC].name = "asymmetric crypto";
+	qat_service[QAT_SERVICE_ASYMMETRIC].dev_create = qat_asym_dev_create;
+	qat_service[QAT_SERVICE_ASYMMETRIC].dev_destroy = qat_asym_dev_destroy;
 }

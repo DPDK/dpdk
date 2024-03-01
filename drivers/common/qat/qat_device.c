@@ -26,6 +26,8 @@
 struct qat_gen_hw_data qat_gen_config[QAT_N_GENS];
 struct qat_dev_hw_spec_funcs *qat_dev_hw_spec[QAT_N_GENS];
 
+struct qat_service qat_service[QAT_MAX_SERVICES];
+
 /* per-process array of device data */
 struct qat_device_info qat_pci_devs[RTE_PMD_QAT_MAX_PCI_DEVICES];
 static int qat_nb_pci_devices;
@@ -120,7 +122,7 @@ qat_pci_find_free_device_index(void)
 		return dev_id;
 }
 
-struct qat_pci_device *
+static struct qat_pci_device *
 qat_get_qat_dev_from_pci_dev(struct rte_pci_device *pci_dev)
 {
 	char name[QAT_DEV_NAME_MAX_LEN];
@@ -308,7 +310,8 @@ qat_pci_device_allocate(struct rte_pci_device *pci_dev)
 		return NULL;
 	}
 
-	qat_dev_size = sizeof(struct qat_pci_device) + extra_size;
+	qat_dev_size = sizeof(struct qat_pci_device) + sizeof(void *) *
+				QAT_MAX_SERVICES + extra_size;
 	qat_dev_mz = rte_memzone_reserve(name, qat_dev_size,
 		rte_socket_id(), 0);
 
@@ -400,7 +403,7 @@ qat_pci_device_release(struct rte_pci_device *pci_dev)
 {
 	struct qat_pci_device *qat_dev;
 	char name[QAT_DEV_NAME_MAX_LEN];
-	int busy = 0;
+	int busy = 0, i;
 
 	if (pci_dev == NULL)
 		return -EINVAL;
@@ -415,24 +418,16 @@ qat_pci_device_release(struct rte_pci_device *pci_dev)
 		/* Check that there are no service devs still on pci device */
 
 		if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
-			if (qat_dev->sym_dev != NULL) {
-				QAT_LOG(DEBUG, "QAT sym device %s is busy",
-					name);
+			for (i = 0; i < QAT_MAX_SERVICES; i++) {
+				if (qat_dev->pmd[i] == NULL)
+					continue;
+				QAT_LOG(DEBUG, "QAT %s device %s is busy",
+					qat_service[i].name, name);
 				busy = 1;
-			}
-			if (qat_dev->asym_dev != NULL) {
-				QAT_LOG(DEBUG, "QAT asym device %s is busy",
-					name);
-				busy = 1;
-			}
-			if (qat_dev->comp_dev != NULL) {
-				QAT_LOG(DEBUG, "QAT comp device %s is busy",
-					name);
-				busy = 1;
-			}
 			if (busy)
 				return -EBUSY;
 			rte_memzone_free(inst->mz);
+			}
 		}
 		memset(inst, 0, sizeof(struct qat_device_info));
 		qat_nb_pci_devices--;
@@ -446,17 +441,20 @@ static int
 qat_pci_dev_destroy(struct qat_pci_device *qat_pci_dev,
 		struct rte_pci_device *pci_dev)
 {
-	qat_sym_dev_destroy(qat_pci_dev);
-	qat_comp_dev_destroy(qat_pci_dev);
-	qat_asym_dev_destroy(qat_pci_dev);
+	int i;
+
+	for (i = 0; i < QAT_MAX_SERVICES; i++) {
+		if (!qat_service[i].dev_create)
+			continue;
+		qat_service[i].dev_destroy(qat_pci_dev);
+	}
 	return qat_pci_device_release(pci_dev);
 }
 
 static int qat_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		struct rte_pci_device *pci_dev)
 {
-	int sym_ret = 0, asym_ret = 0, comp_ret = 0;
-	int num_pmds_created = 0;
+	int i, ret = 0, num_pmds_created = 0;
 	struct qat_pci_device *qat_pci_dev;
 
 	QAT_LOG(DEBUG, "Found QAT device at %02x:%02x.%x",
@@ -468,30 +466,18 @@ static int qat_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	if (qat_pci_dev == NULL)
 		return -ENODEV;
 
-	sym_ret = qat_sym_dev_create(qat_pci_dev);
-	if (sym_ret == 0) {
-		num_pmds_created++;
+	for (i = 0; i < QAT_MAX_SERVICES; i++) {
+		if (!qat_service[i].dev_create)
+			continue;
+		ret = qat_service[i].dev_create(qat_pci_dev);
+		if (ret == 0)
+			num_pmds_created++;
+		else {
+			QAT_LOG(WARNING, "Failed to create %s PMD on device %s",
+				qat_service[i].name,
+				qat_pci_dev->name);
+		}
 	}
-	else
-		QAT_LOG(WARNING,
-				"Failed to create QAT SYM PMD on device %s",
-				qat_pci_dev->name);
-
-	comp_ret = qat_comp_dev_create(qat_pci_dev);
-	if (comp_ret == 0)
-		num_pmds_created++;
-	else
-		QAT_LOG(WARNING,
-				"Failed to create QAT COMP PMD on device %s",
-				qat_pci_dev->name);
-
-	asym_ret = qat_asym_dev_create(qat_pci_dev);
-	if (asym_ret == 0)
-		num_pmds_created++;
-	else
-		QAT_LOG(WARNING,
-				"Failed to create QAT ASYM PMD on device %s",
-				qat_pci_dev->name);
 
 	if (num_pmds_created == 0)
 		qat_pci_dev_destroy(qat_pci_dev, pci_dev);
@@ -520,42 +506,6 @@ static struct rte_pci_driver rte_qat_pmd = {
 	.probe = qat_pci_probe,
 	.remove = qat_pci_remove
 };
-
-__rte_weak int
-qat_sym_dev_create(struct qat_pci_device *qat_pci_dev __rte_unused)
-{
-	return 0;
-}
-
-__rte_weak int
-qat_asym_dev_create(struct qat_pci_device *qat_pci_dev __rte_unused)
-{
-	return 0;
-}
-
-__rte_weak int
-qat_sym_dev_destroy(struct qat_pci_device *qat_pci_dev __rte_unused)
-{
-	return 0;
-}
-
-__rte_weak int
-qat_asym_dev_destroy(struct qat_pci_device *qat_pci_dev __rte_unused)
-{
-	return 0;
-}
-
-__rte_weak int
-qat_comp_dev_create(struct qat_pci_device *qat_pci_dev __rte_unused)
-{
-	return 0;
-}
-
-__rte_weak int
-qat_comp_dev_destroy(struct qat_pci_device *qat_pci_dev __rte_unused)
-{
-	return 0;
-}
 
 RTE_PMD_REGISTER_PCI(QAT_PCI_NAME, rte_qat_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(QAT_PCI_NAME, pci_id_qat_map);
