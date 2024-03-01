@@ -220,7 +220,7 @@ l2fwd_main_loop(void)
 	}
 
 	uint64_t tsc_initial = rte_rdtsc();
-	uint64_t tsc_lifetime = (rand()&0x07) * rte_get_tsc_hz();
+	uint64_t tsc_lifetime = rte_rand_max(8 * rte_get_tsc_hz());
 
 	while (!terminate_signal_received) {
 		/* Keepalive heartbeat. 8< */
