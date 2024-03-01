@@ -18,7 +18,6 @@
 #include "qat_qp.h"
 
 uint8_t qat_sym_driver_id;
-int qat_legacy_capa;
 
 struct qat_crypto_gen_dev_ops qat_sym_gen_dev_ops[QAT_N_GENS];
 

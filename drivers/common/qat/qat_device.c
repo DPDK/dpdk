@@ -29,6 +29,7 @@ struct qat_dev_hw_spec_funcs *qat_dev_hw_spec[QAT_N_GENS];
 /* per-process array of device data */
 struct qat_device_info qat_pci_devs[RTE_PMD_QAT_MAX_PCI_DEVICES];
 static int qat_nb_pci_devices;
+int qat_legacy_capa;
 
 /*
  * The set of PCI devices this driver supports
