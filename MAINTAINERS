@@ -1142,6 +1142,7 @@ Marvell Nitrox
 M: Nagadheeraj Rottela <rnagadheeraj@marvell.com>
 M: Srikanth Jampala <jsrikanth@marvell.com>
 F: drivers/crypto/nitrox/
+F: drivers/common/nitrox/
 F: doc/guides/cryptodevs/nitrox.rst
 F: doc/guides/cryptodevs/features/nitrox.ini
 

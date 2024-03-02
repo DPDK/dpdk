@@ -120,5 +120,19 @@ static struct rte_pci_driver nitrox_pmd = {
 	.remove         = nitrox_pci_remove,
 };
 
+__rte_weak int
+nitrox_sym_pmd_create(struct nitrox_device *ndev)
+{
+	RTE_SET_USED(ndev);
+	return 0;
+}
+
+__rte_weak int
+nitrox_sym_pmd_destroy(struct nitrox_device *ndev)
+{
+	RTE_SET_USED(ndev);
+	return 0;
+}
+
 RTE_PMD_REGISTER_PCI(nitrox, nitrox_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(nitrox, pci_id_nitrox_map);

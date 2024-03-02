@@ -22,6 +22,13 @@ struct rid {
 	struct nitrox_softreq *sr;
 };
 
+struct nitrox_qp_stats {
+	uint64_t enqueued_count;
+	uint64_t dequeued_count;
+	uint64_t enqueue_err_count;
+	uint64_t dequeue_err_count;
+};
+
 struct nitrox_qp {
 	struct command_queue cmdq;
 	struct rid *ridq;
@@ -29,7 +36,7 @@ struct nitrox_qp {
 	uint32_t head;
 	uint32_t tail;
 	struct rte_mempool *sr_mp;
-	struct rte_cryptodev_stats stats;
+	struct nitrox_qp_stats stats;
 	uint16_t qno;
 	rte_atomic16_t pending_count;
 };
@@ -96,9 +103,11 @@ nitrox_qp_dequeue(struct nitrox_qp *qp)
 	rte_atomic16_dec(&qp->pending_count);
 }
 
+__rte_internal
 int nitrox_qp_setup(struct nitrox_qp *qp, uint8_t *bar_addr,
 		    const char *dev_name, uint32_t nb_descriptors,
 		    uint8_t inst_size, int socket_id);
+__rte_internal
 int nitrox_qp_release(struct nitrox_qp *qp, uint8_t *bar_addr);
 
 #endif /* _NITROX_QP_H_ */

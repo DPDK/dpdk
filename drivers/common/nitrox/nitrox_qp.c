@@ -2,7 +2,7 @@
  * Copyright(C) 2019 Marvell International Ltd.
  */
 
-#include <rte_cryptodev.h>
+#include <rte_memzone.h>
 #include <rte_malloc.h>
 
 #include "nitrox_qp.h"
