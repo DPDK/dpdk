@@ -5,6 +5,8 @@
 #ifndef _NITROX_COMP_REQMGR_H_
 #define _NITROX_COMP_REQMGR_H_
 
+struct nitrox_softreq;
+
 enum nitrox_comp_op {
 	NITROX_COMP_OP_DECOMPRESS,
 	NITROX_COMP_OP_COMPRESS,
@@ -36,5 +38,13 @@ struct nitrox_comp_xform {
 	enum nitrox_comp_level level;
 	enum nitrox_chksum_type chksum_type;
 };
+
+int nitrox_process_comp_req(struct rte_comp_op *op, struct nitrox_softreq *sr);
+int nitrox_check_comp_req(struct nitrox_softreq *sr, struct rte_comp_op **op);
+void *nitrox_comp_instr_addr(struct nitrox_softreq *sr);
+struct rte_mempool *nitrox_comp_req_pool_create(struct rte_compressdev *cdev,
+					       uint32_t nobjs, uint16_t qp_id,
+					       int socket_id);
+void nitrox_comp_req_pool_free(struct rte_mempool *mp);
 
 #endif /* _NITROX_COMP_REQMGR_H_ */

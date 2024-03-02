@@ -187,10 +187,17 @@ static int nitrox_comp_queue_pair_setup(struct rte_compressdev *dev,
 	if (unlikely(err))
 		goto qp_setup_err;
 
+	qp->sr_mp = nitrox_comp_req_pool_create(dev, qp->count, qp_id,
+						socket_id);
+	if (unlikely(!qp->sr_mp))
+		goto req_pool_err;
+
 	dev->data->queue_pairs[qp_id] = qp;
 	NITROX_LOG(DEBUG, "queue %d setup done\n", qp_id);
 	return 0;
 
+req_pool_err:
+	nitrox_qp_release(qp, ndev->bar_addr);
 qp_setup_err:
 	rte_free(qp);
 	return err;
@@ -224,6 +231,7 @@ static int nitrox_comp_queue_pair_release(struct rte_compressdev *dev,
 
 	dev->data->queue_pairs[qp_id] = NULL;
 	err = nitrox_qp_release(qp, ndev->bar_addr);
+	nitrox_comp_req_pool_free(qp->sr_mp);
 	rte_free(qp);
 	NITROX_LOG(DEBUG, "queue %d release done\n", qp_id);
 	return err;
@@ -349,24 +357,89 @@ static int nitrox_comp_private_xform_free(struct rte_compressdev *dev,
 	return 0;
 }
 
-static uint16_t nitrox_comp_dev_enq_burst(void *qp,
-					  struct rte_comp_op **ops,
-					  uint16_t nb_ops)
+static int nitrox_enq_single_op(struct nitrox_qp *qp, struct rte_comp_op *op)
 {
-	RTE_SET_USED(qp);
-	RTE_SET_USED(ops);
-	RTE_SET_USED(nb_ops);
+	struct nitrox_softreq *sr;
+	int err;
+
+	if (unlikely(rte_mempool_get(qp->sr_mp, (void **)&sr)))
+		return -ENOMEM;
+
+	err = nitrox_process_comp_req(op, sr);
+	if (unlikely(err)) {
+		rte_mempool_put(qp->sr_mp, sr);
+		return err;
+	}
+
+	nitrox_qp_enqueue(qp, nitrox_comp_instr_addr(sr), sr);
 	return 0;
 }
 
-static uint16_t nitrox_comp_dev_deq_burst(void *qp,
+static uint16_t nitrox_comp_dev_enq_burst(void *queue_pair,
 					  struct rte_comp_op **ops,
 					  uint16_t nb_ops)
 {
-	RTE_SET_USED(qp);
-	RTE_SET_USED(ops);
-	RTE_SET_USED(nb_ops);
+	struct nitrox_qp *qp = queue_pair;
+	uint16_t free_slots = 0;
+	uint16_t cnt = 0;
+	bool err = false;
+
+	free_slots = nitrox_qp_free_count(qp);
+	if (nb_ops > free_slots)
+		nb_ops = free_slots;
+
+	for (cnt = 0; cnt < nb_ops; cnt++) {
+		if (unlikely(nitrox_enq_single_op(qp, ops[cnt]))) {
+			err = true;
+			break;
+		}
+	}
+
+	nitrox_ring_dbell(qp, cnt);
+	qp->stats.enqueued_count += cnt;
+	if (unlikely(err))
+		qp->stats.enqueue_err_count++;
+
+	return cnt;
+}
+
+static int nitrox_deq_single_op(struct nitrox_qp *qp,
+				struct rte_comp_op **op_ptr)
+{
+	struct nitrox_softreq *sr;
+	int err;
+
+	sr = nitrox_qp_get_softreq(qp);
+	err = nitrox_check_comp_req(sr, op_ptr);
+	if (err == -EAGAIN)
+		return err;
+
+	nitrox_qp_dequeue(qp);
+	rte_mempool_put(qp->sr_mp, sr);
+	if (err == 0)
+		qp->stats.dequeued_count++;
+	else
+		qp->stats.dequeue_err_count++;
+
 	return 0;
+}
+
+static uint16_t nitrox_comp_dev_deq_burst(void *queue_pair,
+					  struct rte_comp_op **ops,
+					  uint16_t nb_ops)
+{
+	struct nitrox_qp *qp = queue_pair;
+	uint16_t filled_slots = nitrox_qp_used_count(qp);
+	int cnt = 0;
+
+	if (nb_ops > filled_slots)
+		nb_ops = filled_slots;
+
+	for (cnt = 0; cnt < nb_ops; cnt++)
+		if (nitrox_deq_single_op(qp, &ops[cnt]))
+			break;
+
+	return cnt;
 }
 
 static struct rte_compressdev_ops nitrox_compressdev_ops = {

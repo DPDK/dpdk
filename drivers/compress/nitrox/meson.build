@@ -10,6 +10,7 @@ deps += ['common_nitrox', 'bus_pci', 'compressdev']
 
 sources += files(
         'nitrox_comp.c',
+        'nitrox_comp_reqmgr.c',
 )
 
 includes += include_directories('../../common/nitrox')
