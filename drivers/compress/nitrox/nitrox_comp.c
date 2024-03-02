@@ -32,7 +32,9 @@ static const struct rte_compressdev_capabilities
 				      RTE_COMP_FF_SHAREABLE_PRIV_XFORM |
 				      RTE_COMP_FF_OOP_SGL_IN_SGL_OUT |
 				      RTE_COMP_FF_OOP_SGL_IN_LB_OUT |
-				      RTE_COMP_FF_OOP_LB_IN_SGL_OUT,
+				      RTE_COMP_FF_OOP_LB_IN_SGL_OUT |
+				      RTE_COMP_FF_STATEFUL_COMPRESSION |
+				      RTE_COMP_FF_STATEFUL_DECOMPRESSION,
 		.window_size = {
 			.min = NITROX_COMP_WINDOW_SIZE_MIN,
 			.max = NITROX_COMP_WINDOW_SIZE_MAX,
@@ -334,6 +336,13 @@ static int nitrox_comp_private_xform_create(struct rte_compressdev *dev,
 		goto err_exit;
 	}
 
+	nxform->context = NULL;
+	nxform->history_window = NULL;
+	nxform->window_size = 0;
+	nxform->hlen = 0;
+	nxform->exn = 0;
+	nxform->exbits = 0;
+	nxform->bf = true;
 	return 0;
 err_exit:
 	memset(nxform, 0, sizeof(*nxform));
@@ -357,6 +366,74 @@ static int nitrox_comp_private_xform_free(struct rte_compressdev *dev,
 	return 0;
 }
 
+static int nitrox_comp_stream_free(struct rte_compressdev *dev, void *stream)
+{
+	struct nitrox_comp_xform *nxform = stream;
+
+	if (unlikely(nxform == NULL))
+		return -EINVAL;
+
+	rte_free(nxform->history_window);
+	nxform->history_window = NULL;
+	rte_free(nxform->context);
+	nxform->context = NULL;
+	return nitrox_comp_private_xform_free(dev, stream);
+}
+
+static int nitrox_comp_stream_create(struct rte_compressdev *dev,
+			const struct rte_comp_xform *xform, void **stream)
+{
+	int err;
+	struct nitrox_comp_xform *nxform;
+	struct nitrox_comp_device *comp_dev = dev->data->dev_private;
+
+	err = nitrox_comp_private_xform_create(dev, xform, stream);
+	if (unlikely(err))
+		return err;
+
+	nxform = *stream;
+	if (xform->type == RTE_COMP_COMPRESS) {
+		uint8_t window_size = xform->compress.window_size;
+
+		if (unlikely(window_size < NITROX_COMP_WINDOW_SIZE_MIN ||
+			      window_size > NITROX_COMP_WINDOW_SIZE_MAX)) {
+			NITROX_LOG(ERR, "Invalid window size %d\n",
+				   window_size);
+			return -EINVAL;
+		}
+
+		if (window_size == NITROX_COMP_WINDOW_SIZE_MAX)
+			nxform->window_size = NITROX_CONSTANTS_MAX_SEARCH_DEPTH;
+		else
+			nxform->window_size = RTE_BIT32(window_size);
+	} else {
+		nxform->window_size = NITROX_DEFAULT_DEFLATE_SEARCH_DEPTH;
+	}
+
+	nxform->history_window = rte_zmalloc_socket(NULL, nxform->window_size,
+					8, comp_dev->xform_pool->socket_id);
+	if (unlikely(nxform->history_window == NULL)) {
+		err = -ENOMEM;
+		goto err_exit;
+	}
+
+	if (xform->type == RTE_COMP_COMPRESS)
+		return 0;
+
+	nxform->context = rte_zmalloc_socket(NULL,
+					NITROX_DECOMP_CTX_SIZE, 8,
+					comp_dev->xform_pool->socket_id);
+	if (unlikely(nxform->context == NULL)) {
+		err = -ENOMEM;
+		goto err_exit;
+	}
+
+	return 0;
+err_exit:
+	nitrox_comp_stream_free(dev, *stream);
+	return err;
+}
+
 static int nitrox_enq_single_op(struct nitrox_qp *qp, struct rte_comp_op *op)
 {
 	struct nitrox_softreq *sr;
@@ -371,8 +448,12 @@ static int nitrox_enq_single_op(struct nitrox_qp *qp, struct rte_comp_op *op)
 		return err;
 	}
 
-	nitrox_qp_enqueue(qp, nitrox_comp_instr_addr(sr), sr);
-	return 0;
+	if (op->status == RTE_COMP_OP_STATUS_SUCCESS)
+		err = nitrox_qp_enqueue_sr(qp, sr);
+	else
+		nitrox_qp_enqueue(qp, nitrox_comp_instr_addr(sr), sr);
+
+	return err;
 }
 
 static uint16_t nitrox_comp_dev_enq_burst(void *queue_pair,
@@ -382,6 +463,7 @@ static uint16_t nitrox_comp_dev_enq_burst(void *queue_pair,
 	struct nitrox_qp *qp = queue_pair;
 	uint16_t free_slots = 0;
 	uint16_t cnt = 0;
+	uint16_t dbcnt = 0;
 	bool err = false;
 
 	free_slots = nitrox_qp_free_count(qp);
@@ -393,9 +475,12 @@ static uint16_t nitrox_comp_dev_enq_burst(void *queue_pair,
 			err = true;
 			break;
 		}
+
+		if (ops[cnt]->status != RTE_COMP_OP_STATUS_SUCCESS)
+			dbcnt++;
 	}
 
-	nitrox_ring_dbell(qp, cnt);
+	nitrox_ring_dbell(qp, dbcnt);
 	qp->stats.enqueued_count += cnt;
 	if (unlikely(err))
 		qp->stats.enqueue_err_count++;
@@ -458,8 +543,8 @@ static struct rte_compressdev_ops nitrox_compressdev_ops = {
 
 		.private_xform_create	= nitrox_comp_private_xform_create,
 		.private_xform_free	= nitrox_comp_private_xform_free,
-		.stream_create		= NULL,
-		.stream_free		= NULL
+		.stream_create		= nitrox_comp_stream_create,
+		.stream_free		= nitrox_comp_stream_free,
 };
 
 int

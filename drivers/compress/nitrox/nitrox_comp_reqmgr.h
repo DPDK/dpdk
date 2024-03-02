@@ -37,6 +37,14 @@ struct nitrox_comp_xform {
 	enum nitrox_comp_algo algo;
 	enum nitrox_comp_level level;
 	enum nitrox_chksum_type chksum_type;
+	uint8_t *context;
+	uint8_t *history_window;
+	uint32_t chksum;
+	uint16_t window_size;
+	uint16_t hlen;
+	uint8_t exn;
+	uint8_t exbits;
+	bool bf;
 };
 
 int nitrox_process_comp_req(struct rte_comp_op *op, struct nitrox_softreq *sr);

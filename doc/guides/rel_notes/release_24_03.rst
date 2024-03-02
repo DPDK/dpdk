@@ -147,6 +147,11 @@ New Features
     to support TLS v1.2, TLS v1.3 and DTLS v1.2.
   * Added PMD API to allow raw submission of instructions to CPT.
 
+* **Added Marvell Nitrox compression driver.**
+
+  Added a new compression driver for Marvell Nitrox devices to support
+  deflate compression and decompression algorithm.
+
 * **Updated Marvell cnxk eventdev driver.**
 
   * Added power-saving during polling within the ``rte_event_dequeue_burst()`` API.

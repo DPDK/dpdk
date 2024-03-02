@@ -5,11 +5,13 @@
 #include <rte_compressdev_pmd.h>
 #include <rte_errno.h>
 #include <rte_malloc.h>
+#include <rte_hexdump.h>
 
 #include "nitrox_comp_reqmgr.h"
 #include "nitrox_logs.h"
 #include "rte_comp.h"
 
+#define NITROX_INSTR_BUFFER_DEBUG 0
 #define NITROX_ZIP_SGL_COUNT 16
 #define NITROX_ZIP_MAX_ZPTRS 2048
 #define NITROX_ZIP_MAX_DATASIZE ((1 << 24) - 1)
@@ -307,9 +309,216 @@ struct nitrox_softreq {
 	struct rte_comp_op *op;
 	struct nitrox_sgtable src;
 	struct nitrox_sgtable dst;
-	struct nitrox_comp_xform xform;
 	uint64_t timeout;
 };
+
+#if NITROX_INSTR_BUFFER_DEBUG
+static void nitrox_dump_databuf(const char *name, struct rte_mbuf *m,
+				uint32_t off, uint32_t datalen)
+{
+	uint32_t mlen;
+
+	if (!rte_log_can_log(nitrox_logtype, RTE_LOG_DEBUG))
+		return;
+
+	for (; m && off > rte_pktmbuf_data_len(m); m = m->next)
+		off -= rte_pktmbuf_data_len(m);
+
+	mlen = rte_pktmbuf_data_len(m) - off;
+	if (datalen <= mlen)
+		mlen = datalen;
+
+	rte_hexdump(rte_log_get_stream(), name,
+		    rte_pktmbuf_mtod_offset(m, char *, off), mlen);
+	for (m = m->next; m && datalen; m = m->next) {
+		mlen = rte_pktmbuf_data_len(m) < datalen ?
+			rte_pktmbuf_data_len(m) : datalen;
+		rte_hexdump(rte_log_get_stream(), name,
+			    rte_pktmbuf_mtod(m, char *), mlen);
+	}
+
+	NITROX_LOG(DEBUG, "\n");
+}
+
+static void nitrox_dump_zip_instr(struct nitrox_zip_instr *instr,
+				  union nitrox_zip_zptr *hptr_arr,
+				  union nitrox_zip_zptr *iptr_arr,
+				  union nitrox_zip_zptr *optr_arr)
+{
+	uint64_t value;
+	int i = 0;
+
+	NITROX_LOG(DEBUG, "\nZIP instruction..(%p)\n", instr);
+	NITROX_LOG(DEBUG, "\tWORD0 = 0x%016"PRIx64"\n", instr->w0.u64);
+	NITROX_LOG(DEBUG, "\t\tTOL        = %d\n", instr->w0.tol);
+	NITROX_LOG(DEBUG, "\t\tEXNUM      = %d\n", instr->w0.exn);
+	NITROX_LOG(DEBUG, "\t\tEXBITS     = %x\n", instr->w0.exbits);
+	NITROX_LOG(DEBUG, "\t\tCA         = %d\n", instr->w0.ca);
+	NITROX_LOG(DEBUG, "\t\tSF         = %d\n", instr->w0.sf);
+	NITROX_LOG(DEBUG, "\t\tSS         = %d\n", instr->w0.ss);
+	NITROX_LOG(DEBUG, "\t\tCC         = %d\n", instr->w0.cc);
+	NITROX_LOG(DEBUG, "\t\tEF         = %d\n", instr->w0.ef);
+	NITROX_LOG(DEBUG, "\t\tBF         = %d\n", instr->w0.bf);
+	NITROX_LOG(DEBUG, "\t\tCO         = %d\n", instr->w0.co);
+	NITROX_LOG(DEBUG, "\t\tDS         = %d\n", instr->w0.ds);
+	NITROX_LOG(DEBUG, "\t\tDG         = %d\n", instr->w0.dg);
+	NITROX_LOG(DEBUG, "\t\tHG         = %d\n", instr->w0.hg);
+	NITROX_LOG(DEBUG, "\n");
+
+	NITROX_LOG(DEBUG, "\tWORD1 = 0x%016"PRIx64"\n", instr->w1.u64);
+	NITROX_LOG(DEBUG, "\t\tHL         = %d\n", instr->w1.hl);
+	NITROX_LOG(DEBUG, "\t\tADLERCRC32 = 0x%08x\n", instr->w1.adlercrc32);
+	NITROX_LOG(DEBUG, "\n");
+
+	value = instr->w2.cptr;
+	NITROX_LOG(DEBUG, "\tWORD2 = 0x%016"PRIx64"\n", instr->w2.u64);
+	NITROX_LOG(DEBUG, "\t\tCPTR = 0x%11"PRIx64"\n", value);
+	NITROX_LOG(DEBUG, "\n");
+
+	value = instr->w3.hptr;
+	NITROX_LOG(DEBUG, "\tWORD3 = 0x%016"PRIx64"\n", instr->w3.u64);
+	NITROX_LOG(DEBUG, "\t\tHLEN       = %d\n", instr->w3.hlen);
+	NITROX_LOG(DEBUG, "\t\tHPTR = 0x%11"PRIx64"\n", value);
+
+	if (instr->w0.hg && hptr_arr) {
+		for (i = 0; i < instr->w3.hlen; i++) {
+			value = hptr_arr[i].s.addr;
+			NITROX_LOG(DEBUG, "\t\t\tZPTR[%d] : Length = %d Addr = 0x%11"PRIx64"\n",
+				     i, hptr_arr[i].s.length, value);
+		}
+	}
+
+	NITROX_LOG(DEBUG, "\n");
+
+	value = instr->w4.iptr;
+	NITROX_LOG(DEBUG, "\tWORD4 = 0x%016"PRIx64"\n", instr->w4.u64);
+	NITROX_LOG(DEBUG, "\t\tILEN       = %d\n", instr->w4.ilen);
+	NITROX_LOG(DEBUG, "\t\tIPTR       = 0x%11"PRIx64"\n", value);
+	if (instr->w0.dg && iptr_arr) {
+		for (i = 0; i < instr->w4.ilen; i++) {
+			value = iptr_arr[i].s.addr;
+			NITROX_LOG(DEBUG, "\t\t\tZPTR[%d] : Length = %d Addr = 0x%11"PRIx64"\n",
+				     i, iptr_arr[i].s.length, value);
+		}
+	}
+
+	NITROX_LOG(DEBUG, "\n");
+
+	value = instr->w5.optr;
+	NITROX_LOG(DEBUG, "\tWORD5 = 0x%016"PRIx64"\n", instr->w5.u64);
+	NITROX_LOG(DEBUG, "\t\t OLEN = %d\n", instr->w5.olen);
+	NITROX_LOG(DEBUG, "\t\t OPTR = 0x%11"PRIx64"\n", value);
+	if (instr->w0.ds && optr_arr) {
+		for (i = 0; i < instr->w5.olen; i++) {
+			value = optr_arr[i].s.addr;
+			NITROX_LOG(DEBUG, "\t\t\tZPTR[%d] : Length = %d Addr = 0x%11"PRIx64"\n",
+				     i, optr_arr[i].s.length, value);
+		}
+	}
+
+	NITROX_LOG(DEBUG, "\n");
+
+	value = instr->w6.rptr;
+	NITROX_LOG(DEBUG, "\tWORD6 = 0x%016"PRIx64"\n", instr->w6.u64);
+	NITROX_LOG(DEBUG, "\t\tRPTR = 0x%11"PRIx64"\n", value);
+	NITROX_LOG(DEBUG, "\n");
+
+	NITROX_LOG(DEBUG, "\tWORD7 = 0x%016"PRIx64"\n", instr->w7.u64);
+	NITROX_LOG(DEBUG, "\t\tGRP        = %x\n", instr->w7.grp);
+	NITROX_LOG(DEBUG, "\t\tADDR_MSB   = 0x%5x\n", instr->w7.addr_msb);
+	NITROX_LOG(DEBUG, "\n");
+}
+
+static void nitrox_dump_zip_result(struct nitrox_zip_instr *instr,
+				   struct nitrox_zip_result *result)
+{
+	NITROX_LOG(DEBUG, "ZIP result..(instr %p)\n", instr);
+	NITROX_LOG(DEBUG, "\tWORD0 = 0x%016"PRIx64"\n", result->w0.u64);
+	NITROX_LOG(DEBUG, "\t\tCRC32          = 0x%8x\n", result->w0.crc32);
+	NITROX_LOG(DEBUG, "\t\tADLER32        = 0x%8x\n", result->w0.adler32);
+	NITROX_LOG(DEBUG, "\n");
+
+	NITROX_LOG(DEBUG, "\tWORD1 = 0x%016"PRIx64"\n", result->w1.u64);
+	NITROX_LOG(DEBUG, "\t\tTBYTESWRITTEN  = %u\n", result->w1.tbyteswritten);
+	NITROX_LOG(DEBUG, "\t\tTBYTESREAD     = %u\n", result->w1.tbytesread);
+	NITROX_LOG(DEBUG, "\n");
+
+	NITROX_LOG(DEBUG, "\tWORD2 = 0x%016"PRIx64"\n", result->w2.u64);
+	NITROX_LOG(DEBUG, "\t\tTBITS          = %u\n", result->w2.tbits);
+	NITROX_LOG(DEBUG, "\t\tEXN            = %d\n", result->w2.exn);
+	NITROX_LOG(DEBUG, "\t\tEBITS          = %x\n", result->w2.exbits);
+	NITROX_LOG(DEBUG, "\t\tEF             = %d\n", result->w2.ef);
+	NITROX_LOG(DEBUG, "\t\tCOMPCODE       = 0x%2x\n", result->w2.compcode);
+	NITROX_LOG(DEBUG, "\n");
+}
+#else
+#define nitrox_dump_databuf(name, m, off, datalen)
+#define nitrox_dump_zip_instr(instr, hptr_arr, iptr_arr, optr_arr)
+#define nitrox_dump_zip_result(instr, result)
+#endif
+
+static int handle_zero_length_compression(struct nitrox_softreq *sr,
+					  struct nitrox_comp_xform *xform)
+{
+	union {
+		uint32_t num;
+		uint8_t bytes[4];
+	} fblk;
+	uint32_t dstlen, rlen;
+	struct rte_mbuf *m;
+	uint32_t off;
+	uint32_t mlen;
+	uint32_t i = 0;
+	uint8_t *ptr;
+
+	fblk.num = xform->exn ? (xform->exbits & 0x7F) : 0;
+	fblk.num |= (0x3 << xform->exn);
+	memset(&sr->zip_res, 0, sizeof(sr->zip_res));
+	sr->zip_res.w1.tbytesread = xform->hlen;
+	sr->zip_res.w1.tbyteswritten = 2;
+	sr->zip_res.w2.ef = 1;
+	if (xform->exn == 7)
+		sr->zip_res.w1.tbyteswritten++;
+
+	rlen = sr->zip_res.w1.tbyteswritten;
+	dstlen = rte_pktmbuf_pkt_len(sr->op->m_dst) - sr->op->dst.offset;
+	if (unlikely(dstlen < rlen))
+		return -EIO;
+
+	off = sr->op->dst.offset;
+	for (m = sr->op->m_dst; m && off > rte_pktmbuf_data_len(m); m = m->next)
+		off -= rte_pktmbuf_data_len(m);
+
+	if (unlikely(!m))
+		return -EIO;
+
+	mlen = rte_pktmbuf_data_len(m) - off;
+	if (rlen <= mlen)
+		mlen = rlen;
+
+	ptr = rte_pktmbuf_mtod_offset(m, uint8_t *, off);
+	memcpy(ptr, fblk.bytes, mlen);
+	i += mlen;
+	rlen -= mlen;
+	for (m = m->next; m && rlen; m = m->next) {
+		mlen = rte_pktmbuf_data_len(m) < rlen ?
+			rte_pktmbuf_data_len(m) : rlen;
+		ptr = rte_pktmbuf_mtod(m, uint8_t *);
+		memcpy(ptr, &fblk.bytes[i], mlen);
+		i += mlen;
+		rlen -= mlen;
+	}
+
+	if (unlikely(rlen != 0))
+		return -EIO;
+
+	sr->zip_res.w2.compcode = NITROX_CC_SUCCESS;
+	sr->op->status = RTE_COMP_OP_STATUS_SUCCESS;
+	sr->zip_res.w0.u64 = rte_cpu_to_be_64(sr->zip_res.w0.u64);
+	sr->zip_res.w1.u64 = rte_cpu_to_be_64(sr->zip_res.w1.u64);
+	sr->zip_res.w2.u64 = rte_cpu_to_be_64(sr->zip_res.w2.u64);
+	return 0;
+}
 
 static int create_sglist_from_mbuf(struct nitrox_sgtable *sgtbl,
 				   struct rte_mbuf *mbuf, uint32_t off,
@@ -398,10 +607,12 @@ static int create_sglist_from_mbuf(struct nitrox_sgtable *sgtbl,
 	return 0;
 }
 
-static int softreq_init(struct nitrox_softreq *sr)
+static int softreq_init(struct nitrox_softreq *sr,
+			struct nitrox_comp_xform *xform)
 {
 	struct rte_mempool *mp;
 	int err;
+	bool need_decomp_threshold;
 
 	mp = rte_mempool_from_obj(sr);
 	if (unlikely(mp == NULL))
@@ -413,15 +624,17 @@ static int softreq_init(struct nitrox_softreq *sr)
 	if (unlikely(err))
 		return err;
 
+	need_decomp_threshold = (sr->op->op_type == RTE_COMP_OP_STATELESS &&
+				 xform->op == NITROX_COMP_OP_DECOMPRESS);
 	err = create_sglist_from_mbuf(&sr->dst, sr->op->m_dst,
 			sr->op->dst.offset,
 			rte_pktmbuf_pkt_len(sr->op->m_dst) - sr->op->dst.offset,
-			(sr->xform.op == NITROX_COMP_OP_DECOMPRESS) ? 1 : 0,
+			need_decomp_threshold ? 1 : 0,
 			mp->socket_id);
 	if (unlikely(err))
 		return err;
 
-	if (sr->xform.op == NITROX_COMP_OP_DECOMPRESS) {
+	if (need_decomp_threshold) {
 		struct nitrox_zip_iova_addr zip_addr;
 		int i;
 
@@ -459,12 +672,12 @@ static void nitrox_zip_instr_to_b64(struct nitrox_softreq *sr)
 	instr->w7.u64 = rte_cpu_to_be_64(instr->w7.u64);
 }
 
-static int process_zip_stateless(struct nitrox_softreq *sr)
+static int process_zip_request(struct nitrox_softreq *sr)
 {
 	struct nitrox_zip_instr *instr;
 	struct nitrox_comp_xform *xform;
 	struct nitrox_zip_iova_addr zip_addr;
-	uint64_t iptr_msb, optr_msb, rptr_msb;
+	uint64_t iptr_msb, optr_msb, rptr_msb, cptr_msb, hptr_msb;
 	int err;
 
 	xform = sr->op->private_xform;
@@ -473,7 +686,14 @@ static int process_zip_stateless(struct nitrox_softreq *sr)
 		return -EINVAL;
 	}
 
-	if (unlikely(xform->op == NITROX_COMP_OP_COMPRESS &&
+	if (unlikely(sr->op->op_type == RTE_COMP_OP_STATEFUL &&
+		     xform->op == NITROX_COMP_OP_COMPRESS &&
+		     sr->op->flush_flag == RTE_COMP_FLUSH_FINAL &&
+		     sr->op->src.length == 0))
+		return handle_zero_length_compression(sr, xform);
+
+	if (unlikely(sr->op->op_type == RTE_COMP_OP_STATELESS &&
+		     xform->op == NITROX_COMP_OP_COMPRESS &&
 		     sr->op->flush_flag != RTE_COMP_FLUSH_FULL &&
 		     sr->op->flush_flag != RTE_COMP_FLUSH_FINAL)) {
 		NITROX_LOG(ERR, "Invalid flush flag %d in stateless op\n",
@@ -481,8 +701,7 @@ static int process_zip_stateless(struct nitrox_softreq *sr)
 		return -EINVAL;
 	}
 
-	sr->xform = *xform;
-	err = softreq_init(sr);
+	err = softreq_init(sr, xform);
 	if (unlikely(err))
 		return err;
 
@@ -490,10 +709,11 @@ static int process_zip_stateless(struct nitrox_softreq *sr)
 	memset(instr, 0, sizeof(*instr));
 	/* word 0 */
 	instr->w0.tol = sr->dst.total_bytes;
-	instr->w0.exn = 0;
-	instr->w0.exbits = 0;
+	instr->w0.exn = xform->exn;
+	instr->w0.exbits = xform->exbits;
 	instr->w0.ca = 0;
 	if (xform->op == NITROX_COMP_OP_DECOMPRESS ||
+	    sr->op->flush_flag == RTE_COMP_FLUSH_SYNC ||
 	    sr->op->flush_flag == RTE_COMP_FLUSH_FULL)
 		instr->w0.sf = 1;
 	else
@@ -501,13 +721,12 @@ static int process_zip_stateless(struct nitrox_softreq *sr)
 
 	instr->w0.ss = xform->level;
 	instr->w0.cc = xform->algo;
-	if (xform->op == NITROX_COMP_OP_COMPRESS &&
-	    sr->op->flush_flag == RTE_COMP_FLUSH_FINAL)
+	if (sr->op->flush_flag == RTE_COMP_FLUSH_FINAL)
 		instr->w0.ef = 1;
 	else
 		instr->w0.ef = 0;
 
-	instr->w0.bf = 1;
+	instr->w0.bf = xform->bf;
 	instr->w0.co = xform->op;
 	if (sr->dst.filled_sgls > 1)
 		instr->w0.ds = 1;
@@ -522,8 +741,11 @@ static int process_zip_stateless(struct nitrox_softreq *sr)
 	instr->w0.hg = 0;
 
 	/* word 1 */
-	instr->w1.hl = 0;
-	if (sr->op->input_chksum != 0)
+	instr->w1.hl = xform->hlen;
+	if (sr->op->op_type == RTE_COMP_OP_STATEFUL && !xform->bf)
+		instr->w1.adlercrc32 = xform->chksum;
+	else if (sr->op->op_type == RTE_COMP_OP_STATELESS &&
+		 sr->op->input_chksum != 0)
 		instr->w1.adlercrc32 = sr->op->input_chksum;
 	else if (xform->chksum_type == NITROX_CHKSUM_TYPE_ADLER32)
 		instr->w1.adlercrc32 = 1;
@@ -531,11 +753,23 @@ static int process_zip_stateless(struct nitrox_softreq *sr)
 		instr->w1.adlercrc32 = 0;
 
 	/* word 2 */
-	instr->w2.cptr = 0;
+	if (xform->context)
+		zip_addr.u64 = rte_malloc_virt2iova(xform->context);
+	else
+		zip_addr.u64 = 0;
+
+	instr->w2.cptr = zip_addr.zda.addr;
+	cptr_msb = zip_addr.zda.addr_msb;
 
 	/* word 3 */
-	instr->w3.hlen = 0;
-	instr->w3.hptr = 0;
+	instr->w3.hlen = xform->hlen;
+	if (xform->history_window)
+		zip_addr.u64 = rte_malloc_virt2iova(xform->history_window);
+	else
+		zip_addr.u64 = 0;
+
+	instr->w3.hptr = zip_addr.zda.addr;
+	hptr_msb = zip_addr.zda.addr_msb;
 
 	/* word 4 */
 	if (sr->src.filled_sgls == 1) {
@@ -568,7 +802,9 @@ static int process_zip_stateless(struct nitrox_softreq *sr)
 	instr->w6.rptr = zip_addr.zda.addr;
 	rptr_msb = zip_addr.zda.addr_msb;
 
-	if (iptr_msb != optr_msb || iptr_msb != rptr_msb) {
+	if (unlikely(iptr_msb != optr_msb || iptr_msb != rptr_msb ||
+	    (xform->history_window && (iptr_msb != hptr_msb)) ||
+	    (xform->context && (iptr_msb != cptr_msb)))) {
 		NITROX_LOG(ERR, "addr_msb is not same for all addresses\n");
 		return -ENOTSUP;
 	}
@@ -577,24 +813,11 @@ static int process_zip_stateless(struct nitrox_softreq *sr)
 	instr->w7.addr_msb = iptr_msb;
 	instr->w7.grp = 0;
 
+	nitrox_dump_zip_instr(instr, NULL, sr->src.sgl, sr->dst.sgl);
+	nitrox_dump_databuf("IN", sr->op->m_src, sr->op->src.offset,
+			    sr->op->src.length);
 	nitrox_zip_instr_to_b64(sr);
 	return 0;
-}
-
-static int process_zip_request(struct nitrox_softreq *sr)
-{
-	int err;
-
-	switch (sr->op->op_type) {
-	case RTE_COMP_OP_STATELESS:
-		err = process_zip_stateless(sr);
-		break;
-	default:
-		err = -EINVAL;
-		break;
-	}
-
-	return err;
 }
 
 int
@@ -603,6 +826,7 @@ nitrox_process_comp_req(struct rte_comp_op *op, struct nitrox_softreq *sr)
 	int err;
 
 	sr->op = op;
+	sr->op->status = RTE_COMP_OP_STATUS_NOT_PROCESSED;
 	err = process_zip_request(sr);
 	if (unlikely(err))
 		goto err_exit;
@@ -628,11 +852,217 @@ static struct nitrox_zip_result zip_result_to_cpu64(struct nitrox_zip_result *r)
 	return out_res;
 }
 
+static int post_process_zip_stateless(struct nitrox_softreq *sr,
+				      struct nitrox_comp_xform *xform,
+				      struct nitrox_zip_result *zip_res)
+{
+	int output_unused_bytes;
+
+	if (unlikely(zip_res->w2.compcode != NITROX_CC_SUCCESS)) {
+		struct rte_comp_op *op = sr->op;
+
+		NITROX_LOG(ERR, "Dequeue error 0x%x\n",
+			   zip_res->w2.compcode);
+		if (zip_res->w2.compcode == NITROX_CC_STOP ||
+		    zip_res->w2.compcode == NITROX_CC_DTRUNC)
+			op->status = RTE_COMP_OP_STATUS_OUT_OF_SPACE_TERMINATED;
+		else
+			op->status = RTE_COMP_OP_STATUS_ERROR;
+
+		op->consumed = 0;
+		op->produced = 0;
+		return -EFAULT;
+	}
+
+	output_unused_bytes = sr->dst.total_bytes - zip_res->w1.tbyteswritten;
+	if (unlikely(xform->op == NITROX_COMP_OP_DECOMPRESS &&
+		     output_unused_bytes < NITROX_ZIP_MAX_ONFSIZE)) {
+		NITROX_LOG(ERR, "TOL %d, Total bytes written %d\n",
+			   sr->dst.total_bytes, zip_res->w1.tbyteswritten);
+		sr->op->status = RTE_COMP_OP_STATUS_OUT_OF_SPACE_TERMINATED;
+		sr->op->consumed = 0;
+		sr->op->produced = sr->dst.total_bytes - NITROX_ZIP_MAX_ONFSIZE;
+		return -EIO;
+	}
+
+	if (xform->chksum_type == NITROX_CHKSUM_TYPE_CRC32)
+		sr->op->output_chksum = zip_res->w0.crc32;
+	else if (xform->chksum_type == NITROX_CHKSUM_TYPE_ADLER32)
+		sr->op->output_chksum = zip_res->w0.adler32;
+
+	sr->op->consumed = RTE_MIN(sr->op->src.length,
+				   (uint32_t)zip_res->w1.tbytesread);
+	sr->op->produced = zip_res->w1.tbyteswritten;
+	sr->op->status = RTE_COMP_OP_STATUS_SUCCESS;
+	return 0;
+}
+
+static int update_history(struct rte_mbuf *mbuf, uint32_t off, uint16_t datalen,
+			   uint8_t *dst)
+{
+	struct rte_mbuf *m;
+	uint32_t mlen;
+	uint16_t copied = 0;
+
+	for (m = mbuf; m && off > rte_pktmbuf_data_len(m); m = m->next)
+		off -= rte_pktmbuf_data_len(m);
+
+	if (unlikely(!m)) {
+		NITROX_LOG(ERR, "Failed to update history. Invalid mbuf\n");
+		return -EINVAL;
+	}
+
+	mlen = rte_pktmbuf_data_len(m) - off;
+	if (datalen <= mlen)
+		mlen = datalen;
+
+	memcpy(&dst[copied], rte_pktmbuf_mtod_offset(m, char *, off), mlen);
+	copied += mlen;
+	datalen -= mlen;
+	for (m = m->next; m && datalen; m = m->next) {
+		mlen = rte_pktmbuf_data_len(m) < datalen ?
+			rte_pktmbuf_data_len(m) : datalen;
+		memcpy(&dst[copied], rte_pktmbuf_mtod(m, char *), mlen);
+		copied += mlen;
+		datalen -= mlen;
+	}
+
+	if (unlikely(datalen != 0)) {
+		NITROX_LOG(ERR, "Failed to update history. Invalid datalen\n");
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static void reset_nitrox_xform(struct nitrox_comp_xform *xform)
+{
+	xform->hlen = 0;
+	xform->exn = 0;
+	xform->exbits = 0;
+	xform->bf = true;
+}
+
+static int post_process_zip_stateful(struct nitrox_softreq *sr,
+				     struct nitrox_comp_xform *xform,
+				     struct nitrox_zip_result *zip_res)
+{
+	uint32_t bytesread = 0;
+	uint32_t chksum = 0;
+
+	if (unlikely(zip_res->w2.compcode == NITROX_CC_DTRUNC)) {
+		sr->op->consumed = 0;
+		sr->op->produced = 0;
+		xform->hlen = 0;
+		sr->op->status = RTE_COMP_OP_STATUS_OUT_OF_SPACE_RECOVERABLE;
+		NITROX_LOG(ERR, "Dequeue compress DTRUNC error\n");
+		return 0;
+	} else if (unlikely(zip_res->w2.compcode == NITROX_CC_STOP)) {
+		sr->op->status = RTE_COMP_OP_STATUS_OUT_OF_SPACE_RECOVERABLE;
+		NITROX_LOG(NOTICE, "Dequeue decompress dynamic STOP\n");
+	} else if (zip_res->w2.compcode == NITROX_CC_SUCCESS) {
+		sr->op->status = RTE_COMP_OP_STATUS_SUCCESS;
+	} else {
+		xform->hlen = 0;
+		xform->exn = 0;
+		xform->exbits = 0;
+		xform->bf = true;
+		sr->op->status = RTE_COMP_OP_STATUS_ERROR;
+		NITROX_LOG(ERR, "Dequeue error 0x%x\n",
+			   zip_res->w2.compcode);
+		return -EFAULT;
+	}
+
+	if (xform->op == NITROX_COMP_OP_COMPRESS) {
+		if (zip_res->w1.tbytesread < xform->hlen) {
+			NITROX_LOG(ERR, "Invalid bytesread\n");
+			reset_nitrox_xform(xform);
+			sr->op->status = RTE_COMP_OP_STATUS_ERROR;
+			return -EFAULT;
+		}
+
+		bytesread = zip_res->w1.tbytesread - xform->hlen;
+	} else {
+		bytesread = RTE_MIN(sr->op->src.length,
+				    (uint32_t)zip_res->w1.tbytesread);
+	}
+
+	if ((xform->op == NITROX_COMP_OP_COMPRESS &&
+	    (sr->op->flush_flag == RTE_COMP_FLUSH_NONE ||
+	    sr->op->flush_flag == RTE_COMP_FLUSH_SYNC)) ||
+	    (xform->op == NITROX_COMP_OP_DECOMPRESS && !zip_res->w2.ef)) {
+		struct rte_mbuf *mbuf;
+		uint32_t pktlen, m_off;
+		int err;
+
+		if (xform->op == NITROX_COMP_OP_COMPRESS) {
+			mbuf = sr->op->m_src;
+			pktlen = bytesread;
+			m_off = sr->op->src.offset;
+		} else {
+			mbuf = sr->op->m_dst;
+			pktlen = zip_res->w1.tbyteswritten;
+			m_off = sr->op->dst.offset;
+		}
+
+		if (pktlen >= xform->window_size) {
+			m_off += pktlen - xform->window_size;
+			err = update_history(mbuf, m_off, xform->window_size,
+				       xform->history_window);
+			xform->hlen = xform->window_size;
+		} else if ((xform->hlen + pktlen) <= xform->window_size) {
+			err = update_history(mbuf, m_off, pktlen,
+				       &xform->history_window[xform->hlen]);
+			xform->hlen += pktlen;
+		} else {
+			uint16_t shift_off, shift_len;
+
+			shift_off = pktlen + xform->hlen - xform->window_size;
+			shift_len = xform->hlen - shift_off;
+			memmove(xform->history_window,
+				&xform->history_window[shift_off],
+				shift_len);
+			err = update_history(mbuf, m_off, pktlen,
+				       &xform->history_window[shift_len]);
+			xform->hlen = xform->window_size;
+
+		}
+
+		if (unlikely(err)) {
+			sr->op->status = RTE_COMP_OP_STATUS_ERROR;
+			return err;
+		}
+
+		if (xform->op == NITROX_COMP_OP_COMPRESS) {
+			xform->exn = zip_res->w2.exn;
+			xform->exbits = zip_res->w2.exbits;
+		}
+
+		xform->bf = false;
+	} else {
+		reset_nitrox_xform(xform);
+	}
+
+	if (xform->chksum_type == NITROX_CHKSUM_TYPE_CRC32)
+		chksum = zip_res->w0.crc32;
+	else if (xform->chksum_type == NITROX_CHKSUM_TYPE_ADLER32)
+		chksum = zip_res->w0.adler32;
+
+	if (xform->bf)
+		sr->op->output_chksum = chksum;
+	else
+		xform->chksum = chksum;
+
+	sr->op->consumed = bytesread;
+	sr->op->produced = zip_res->w1.tbyteswritten;
+	return 0;
+}
+
 int
 nitrox_check_comp_req(struct nitrox_softreq *sr, struct rte_comp_op **op)
 {
 	struct nitrox_zip_result zip_res;
-	int output_unused_bytes;
+	struct nitrox_comp_xform *xform;
 	int err = 0;
 
 	zip_res = zip_result_to_cpu64(&sr->zip_res);
@@ -647,36 +1077,14 @@ nitrox_check_comp_req(struct nitrox_softreq *sr, struct rte_comp_op **op)
 		}
 	}
 
-	if (unlikely(zip_res.w2.compcode != NITROX_CC_SUCCESS)) {
-		struct rte_comp_op *op = sr->op;
+	xform = sr->op->private_xform;
+	if (sr->op->op_type == RTE_COMP_OP_STATELESS)
+		err = post_process_zip_stateless(sr, xform, &zip_res);
+	else
+		err = post_process_zip_stateful(sr, xform, &zip_res);
 
-		NITROX_LOG(ERR, "Op dequeue error 0x%x\n",
-			   zip_res.w2.compcode);
-		if (zip_res.w2.compcode == NITROX_CC_STOP ||
-		    zip_res.w2.compcode == NITROX_CC_DTRUNC)
-			op->status = RTE_COMP_OP_STATUS_OUT_OF_SPACE_TERMINATED;
-		else
-			op->status = RTE_COMP_OP_STATUS_ERROR;
-
-		op->consumed = 0;
-		op->produced = 0;
-		err = -EFAULT;
-		goto exit;
-	}
-
-	output_unused_bytes = sr->dst.total_bytes - zip_res.w1.tbyteswritten;
-	if (unlikely(sr->xform.op == NITROX_COMP_OP_DECOMPRESS &&
-		     output_unused_bytes < NITROX_ZIP_MAX_ONFSIZE)) {
-		NITROX_LOG(ERR, "TOL %d, Total bytes written %d\n",
-			   sr->dst.total_bytes, zip_res.w1.tbyteswritten);
-		sr->op->status = RTE_COMP_OP_STATUS_OUT_OF_SPACE_TERMINATED;
-		sr->op->consumed = 0;
-		sr->op->produced = sr->dst.total_bytes - NITROX_ZIP_MAX_ONFSIZE;
-		err = -EIO;
-		goto exit;
-	}
-
-	if (sr->xform.op == NITROX_COMP_OP_COMPRESS &&
+	if (sr->op->status == RTE_COMP_OP_STATUS_SUCCESS &&
+	    xform->op == NITROX_COMP_OP_COMPRESS &&
 	    sr->op->flush_flag == RTE_COMP_FLUSH_FINAL &&
 	    zip_res.w2.exn) {
 		uint32_t datalen = zip_res.w1.tbyteswritten;
@@ -696,17 +1104,11 @@ nitrox_check_comp_req(struct nitrox_softreq *sr, struct rte_comp_op **op)
 		*last_byte = zip_res.w2.exbits & 0xFF;
 	}
 
-	sr->op->consumed = zip_res.w1.tbytesread;
-	sr->op->produced = zip_res.w1.tbyteswritten;
-	if (sr->xform.chksum_type == NITROX_CHKSUM_TYPE_CRC32)
-		sr->op->output_chksum = zip_res.w0.crc32;
-	else if (sr->xform.chksum_type == NITROX_CHKSUM_TYPE_ADLER32)
-		sr->op->output_chksum = zip_res.w0.adler32;
-
-	sr->op->status = RTE_COMP_OP_STATUS_SUCCESS;
-	err = 0;
 exit:
 	*op = sr->op;
+	nitrox_dump_zip_result(&sr->instr, &zip_res);
+	nitrox_dump_databuf("OUT after", sr->op->m_dst, sr->op->dst.offset,
+		sr->op->produced);
 	return err;
 }
 
