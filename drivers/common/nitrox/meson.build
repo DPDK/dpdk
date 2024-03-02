@@ -16,3 +16,4 @@ sources += files(
 )
 
 includes += include_directories('../../crypto/nitrox')
+includes += include_directories('../../compress/nitrox')

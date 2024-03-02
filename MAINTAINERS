@@ -1215,6 +1215,13 @@ F: drivers/compress/isal/
 F: doc/guides/compressdevs/isal.rst
 F: doc/guides/compressdevs/features/isal.ini
 
+Marvell Nitrox
+M: Nagadheeraj Rottela <rnagadheeraj@marvell.com>
+F: drivers/compress/nitrox/
+F: drivers/common/nitrox/
+F: doc/guides/compressdevs/nitrox.rst
+F: doc/guides/compressdevs/features/nitrox.ini
+
 NVIDIA mlx5
 M: Matan Azrad <matan@nvidia.com>
 F: drivers/compress/mlx5/
