@@ -5,17 +5,22 @@
 #include <rte_compressdev_pmd.h>
 #include <rte_comp.h>
 #include <rte_errno.h>
+#include <rte_malloc.h>
 
 #include "nitrox_comp.h"
 #include "nitrox_device.h"
 #include "nitrox_logs.h"
 #include "nitrox_comp_reqmgr.h"
+#include "nitrox_qp.h"
 
 static const char nitrox_comp_drv_name[] = RTE_STR(COMPRESSDEV_NAME_NITROX_PMD);
 static const struct rte_driver nitrox_rte_comp_drv = {
 	.name = nitrox_comp_drv_name,
 	.alias = nitrox_comp_drv_name
 };
+
+static int nitrox_comp_queue_pair_release(struct rte_compressdev *dev,
+					  uint16_t qp_id);
 
 static const struct rte_compressdev_capabilities
 				nitrox_comp_pmd_capabilities[] = {
@@ -84,7 +89,14 @@ static void nitrox_comp_dev_stop(struct rte_compressdev *dev)
 
 static int nitrox_comp_dev_close(struct rte_compressdev *dev)
 {
+	int i, ret;
 	struct nitrox_comp_device *comp_dev = dev->data->dev_private;
+
+	for (i = 0; i < dev->data->nb_queue_pairs; i++) {
+		ret = nitrox_comp_queue_pair_release(dev, i);
+		if (ret)
+			return ret;
+	}
 
 	rte_mempool_free(comp_dev->xform_pool);
 	comp_dev->xform_pool = NULL;
@@ -94,13 +106,33 @@ static int nitrox_comp_dev_close(struct rte_compressdev *dev)
 static void nitrox_comp_stats_get(struct rte_compressdev *dev,
 				  struct rte_compressdev_stats *stats)
 {
-	RTE_SET_USED(dev);
-	RTE_SET_USED(stats);
+	int qp_id;
+
+	for (qp_id = 0; qp_id < dev->data->nb_queue_pairs; qp_id++) {
+		struct nitrox_qp *qp = dev->data->queue_pairs[qp_id];
+
+		if (!qp)
+			continue;
+
+		stats->enqueued_count += qp->stats.enqueued_count;
+		stats->dequeued_count += qp->stats.dequeued_count;
+		stats->enqueue_err_count += qp->stats.enqueue_err_count;
+		stats->dequeue_err_count += qp->stats.dequeue_err_count;
+	}
 }
 
 static void nitrox_comp_stats_reset(struct rte_compressdev *dev)
 {
-	RTE_SET_USED(dev);
+	int qp_id;
+
+	for (qp_id = 0; qp_id < dev->data->nb_queue_pairs; qp_id++) {
+		struct nitrox_qp *qp = dev->data->queue_pairs[qp_id];
+
+		if (!qp)
+			continue;
+
+		memset(&qp->stats, 0, sizeof(qp->stats));
+	}
 }
 
 static void nitrox_comp_dev_info_get(struct rte_compressdev *dev,
@@ -121,19 +153,80 @@ static int nitrox_comp_queue_pair_setup(struct rte_compressdev *dev,
 					uint16_t qp_id,
 					uint32_t max_inflight_ops, int socket_id)
 {
-	RTE_SET_USED(dev);
-	RTE_SET_USED(qp_id);
-	RTE_SET_USED(max_inflight_ops);
-	RTE_SET_USED(socket_id);
-	return -1;
+	struct nitrox_comp_device *comp_dev = dev->data->dev_private;
+	struct nitrox_device *ndev = comp_dev->ndev;
+	struct nitrox_qp *qp = NULL;
+	int err;
+
+	NITROX_LOG(DEBUG, "queue %d\n", qp_id);
+	if (qp_id >= ndev->nr_queues) {
+		NITROX_LOG(ERR, "queue %u invalid, max queues supported %d\n",
+			   qp_id, ndev->nr_queues);
+		return -EINVAL;
+	}
+
+	if (dev->data->queue_pairs[qp_id]) {
+		err = nitrox_comp_queue_pair_release(dev, qp_id);
+		if (err)
+			return err;
+	}
+
+	qp = rte_zmalloc_socket("nitrox PMD qp", sizeof(*qp),
+				RTE_CACHE_LINE_SIZE,
+				socket_id);
+	if (!qp) {
+		NITROX_LOG(ERR, "Failed to allocate nitrox qp\n");
+		return -ENOMEM;
+	}
+
+	qp->type = NITROX_QUEUE_ZIP;
+	qp->qno = qp_id;
+	err = nitrox_qp_setup(qp, ndev->bar_addr, dev->data->name,
+			      max_inflight_ops, ZIP_INSTR_SIZE,
+			      socket_id);
+	if (unlikely(err))
+		goto qp_setup_err;
+
+	dev->data->queue_pairs[qp_id] = qp;
+	NITROX_LOG(DEBUG, "queue %d setup done\n", qp_id);
+	return 0;
+
+qp_setup_err:
+	rte_free(qp);
+	return err;
 }
 
 static int nitrox_comp_queue_pair_release(struct rte_compressdev *dev,
 					  uint16_t qp_id)
 {
-	RTE_SET_USED(dev);
-	RTE_SET_USED(qp_id);
-	return 0;
+	struct nitrox_comp_device *comp_dev = dev->data->dev_private;
+	struct nitrox_device *ndev = comp_dev->ndev;
+	struct nitrox_qp *qp;
+	int err;
+
+	NITROX_LOG(DEBUG, "queue %d\n", qp_id);
+	if (qp_id >= ndev->nr_queues) {
+		NITROX_LOG(ERR, "queue %u invalid, max queues supported %d\n",
+			   qp_id, ndev->nr_queues);
+		return -EINVAL;
+	}
+
+	qp = dev->data->queue_pairs[qp_id];
+	if (!qp) {
+		NITROX_LOG(DEBUG, "queue %u already freed\n", qp_id);
+		return 0;
+	}
+
+	if (!nitrox_qp_is_empty(qp)) {
+		NITROX_LOG(ERR, "queue %d not empty\n", qp_id);
+		return -EAGAIN;
+	}
+
+	dev->data->queue_pairs[qp_id] = NULL;
+	err = nitrox_qp_release(qp, ndev->bar_addr);
+	rte_free(qp);
+	NITROX_LOG(DEBUG, "queue %d release done\n", qp_id);
+	return err;
 }
 
 static int nitrox_comp_private_xform_create(struct rte_compressdev *dev,

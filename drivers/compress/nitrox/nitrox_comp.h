@@ -18,6 +18,7 @@
 #define NITROX_COMP_LEVEL_MEDIUM_END 6
 #define NITROX_COMP_LEVEL_BEST_START 7
 #define NITROX_COMP_LEVEL_BEST_END 9
+#define ZIP_INSTR_SIZE 64
 
 struct nitrox_comp_device {
 	struct rte_compressdev *cdev;
