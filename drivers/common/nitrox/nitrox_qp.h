@@ -8,8 +8,15 @@
 #include <stdbool.h>
 
 #include <rte_io.h>
+#include "nitrox_hal.h"
 
 struct nitrox_softreq;
+
+enum nitrox_queue_type {
+	NITROX_QUEUE_SE,
+	NITROX_QUEUE_AE,
+	NITROX_QUEUE_ZIP,
+};
 
 struct command_queue {
 	const struct rte_memzone *mz;
@@ -30,6 +37,8 @@ struct nitrox_qp_stats {
 };
 
 struct nitrox_qp {
+	enum nitrox_queue_type type;
+	uint8_t *bar_addr;
 	struct command_queue cmdq;
 	struct rid *ridq;
 	uint32_t count;
@@ -38,14 +47,16 @@ struct nitrox_qp {
 	struct rte_mempool *sr_mp;
 	struct nitrox_qp_stats stats;
 	uint16_t qno;
-	rte_atomic16_t pending_count;
+	RTE_ATOMIC(uint16_t) pending_count;
 };
 
 static inline uint16_t
 nitrox_qp_free_count(struct nitrox_qp *qp)
 {
-	uint16_t pending_count = rte_atomic16_read(&qp->pending_count);
+	uint16_t pending_count;
 
+	pending_count = rte_atomic_load_explicit(&qp->pending_count,
+						 rte_memory_order_relaxed);
 	RTE_ASSERT(qp->count >= pending_count);
 	return (qp->count - pending_count);
 }
@@ -53,13 +64,15 @@ nitrox_qp_free_count(struct nitrox_qp *qp)
 static inline bool
 nitrox_qp_is_empty(struct nitrox_qp *qp)
 {
-	return (rte_atomic16_read(&qp->pending_count) == 0);
+	return (rte_atomic_load_explicit(&qp->pending_count,
+					 rte_memory_order_relaxed) == 0);
 }
 
 static inline uint16_t
 nitrox_qp_used_count(struct nitrox_qp *qp)
 {
-	return rte_atomic16_read(&qp->pending_count);
+	return rte_atomic_load_explicit(&qp->pending_count,
+					 rte_memory_order_relaxed);
 }
 
 static inline struct nitrox_softreq *
@@ -67,7 +80,7 @@ nitrox_qp_get_softreq(struct nitrox_qp *qp)
 {
 	uint32_t tail = qp->tail % qp->count;
 
-	rte_smp_rmb();
+	rte_atomic_thread_fence(rte_memory_order_acquire);
 	return qp->ridq[tail].sr;
 }
 
@@ -92,15 +105,35 @@ nitrox_qp_enqueue(struct nitrox_qp *qp, void *instr, struct nitrox_softreq *sr)
 	memcpy(&qp->cmdq.ring[head * qp->cmdq.instr_size],
 	       instr, qp->cmdq.instr_size);
 	qp->ridq[head].sr = sr;
-	rte_smp_wmb();
-	rte_atomic16_inc(&qp->pending_count);
+	rte_atomic_thread_fence(rte_memory_order_release);
+	rte_atomic_fetch_add_explicit(&qp->pending_count, 1,
+				      rte_memory_order_relaxed);
+}
+
+static inline int
+nitrox_qp_enqueue_sr(struct nitrox_qp *qp, struct nitrox_softreq *sr)
+{
+	uint32_t head = qp->head % qp->count;
+	int err;
+
+	err = inc_zqmq_next_cmd(qp->bar_addr, qp->qno);
+	if (unlikely(err))
+		return err;
+
+	qp->head++;
+	qp->ridq[head].sr = sr;
+	rte_atomic_thread_fence(rte_memory_order_release);
+	rte_atomic_fetch_add_explicit(&qp->pending_count, 1,
+				      rte_memory_order_relaxed);
+	return 0;
 }
 
 static inline void
 nitrox_qp_dequeue(struct nitrox_qp *qp)
 {
 	qp->tail++;
-	rte_atomic16_dec(&qp->pending_count);
+	rte_atomic_fetch_sub_explicit(&qp->pending_count, 1,
+				      rte_memory_order_relaxed);
 }
 
 __rte_internal

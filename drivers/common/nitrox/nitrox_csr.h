@@ -25,6 +25,18 @@
 /* AQM Virtual Function Registers */
 #define AQMQ_QSZX(_i)			(0x20008UL + ((_i) * 0x40000UL))
 
+/* ZQM virtual function registers */
+#define ZQMQ_DRBLX(_i)			(0x30000UL + ((_i) * 0x40000UL))
+#define ZQMQ_QSZX(_i)			(0x30008UL + ((_i) * 0x40000UL))
+#define ZQMQ_BADRX(_i)			(0x30010UL + ((_i) * 0x40000UL))
+#define ZQMQ_NXT_CMDX(_i)		(0x30018UL + ((_i) * 0x40000UL))
+#define ZQMQ_CMD_CNTX(_i)		(0x30020UL + ((_i) * 0x40000UL))
+#define ZQMQ_CMP_THRX(_i)		(0x30028UL + ((_i) * 0x40000UL))
+#define ZQMQ_CMP_CNTX(_i)		(0x30030UL + ((_i) * 0x40000UL))
+#define ZQMQ_TIMER_LDX(_i)		(0x30038UL + ((_i) * 0x40000UL))
+#define ZQMQ_ENX(_i)			(0x30048UL + ((_i) * 0x40000UL))
+#define ZQMQ_ACTIVITY_STATX(_i)		(0x30050UL + ((_i) * 0x40000UL))
+
 static inline uint64_t
 nitrox_read_csr(uint8_t *bar_addr, uint64_t offset)
 {

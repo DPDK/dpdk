@@ -20,6 +20,7 @@ nitrox_setup_cmdq(struct nitrox_qp *qp, uint8_t *bar_addr,
 	const struct rte_memzone *mz;
 	size_t cmdq_size = qp->count * instr_size;
 	uint64_t offset;
+	int err = 0;
 
 	snprintf(mz_name, sizeof(mz_name), "%s_cmdq_%d", dev_name, qp->qno);
 	mz = rte_memzone_reserve_aligned(mz_name, cmdq_size, socket_id,
@@ -32,14 +33,34 @@ nitrox_setup_cmdq(struct nitrox_qp *qp, uint8_t *bar_addr,
 		return -ENOMEM;
 	}
 
+	switch (qp->type) {
+	case NITROX_QUEUE_SE:
+		offset = NPS_PKT_IN_INSTR_BAOFF_DBELLX(qp->qno);
+		qp->cmdq.dbell_csr_addr = NITROX_CSR_ADDR(bar_addr, offset);
+		setup_nps_pkt_input_ring(bar_addr, qp->qno, qp->count,
+					 mz->iova);
+		setup_nps_pkt_solicit_output_port(bar_addr, qp->qno);
+		break;
+	case NITROX_QUEUE_ZIP:
+		offset = ZQMQ_DRBLX(qp->qno);
+		qp->cmdq.dbell_csr_addr = NITROX_CSR_ADDR(bar_addr, offset);
+		err = setup_zqmq_input_ring(bar_addr, qp->qno, qp->count,
+					    mz->iova);
+		break;
+	default:
+		NITROX_LOG(ERR, "Invalid queue type %d\n", qp->type);
+		err = -EINVAL;
+		break;
+	}
+
+	if (err) {
+		rte_memzone_free(mz);
+		return err;
+	}
+
 	qp->cmdq.mz = mz;
-	offset = NPS_PKT_IN_INSTR_BAOFF_DBELLX(qp->qno);
-	qp->cmdq.dbell_csr_addr = NITROX_CSR_ADDR(bar_addr, offset);
 	qp->cmdq.ring = mz->addr;
 	qp->cmdq.instr_size = instr_size;
-	setup_nps_pkt_input_ring(bar_addr, qp->qno, qp->count, mz->iova);
-	setup_nps_pkt_solicit_output_port(bar_addr, qp->qno);
-
 	return 0;
 }
 
@@ -62,8 +83,23 @@ nitrox_setup_ridq(struct nitrox_qp *qp, int socket_id)
 static int
 nitrox_release_cmdq(struct nitrox_qp *qp, uint8_t *bar_addr)
 {
-	nps_pkt_solicited_port_disable(bar_addr, qp->qno);
-	nps_pkt_input_ring_disable(bar_addr, qp->qno);
+	int err = 0;
+
+	switch (qp->type) {
+	case NITROX_QUEUE_SE:
+		nps_pkt_solicited_port_disable(bar_addr, qp->qno);
+		nps_pkt_input_ring_disable(bar_addr, qp->qno);
+		break;
+	case NITROX_QUEUE_ZIP:
+		err = zqmq_input_ring_disable(bar_addr, qp->qno);
+		break;
+	default:
+		err = -EINVAL;
+	}
+
+	if (err)
+		return err;
+
 	return rte_memzone_free(qp->cmdq.mz);
 }
 
@@ -83,9 +119,11 @@ nitrox_qp_setup(struct nitrox_qp *qp, uint8_t *bar_addr, const char *dev_name,
 		return -EINVAL;
 	}
 
+	qp->bar_addr = bar_addr;
 	qp->count = count;
 	qp->head = qp->tail = 0;
-	rte_atomic16_init(&qp->pending_count);
+	rte_atomic_store_explicit(&qp->pending_count, 0,
+				  rte_memory_order_relaxed);
 	err = nitrox_setup_cmdq(qp, bar_addr, dev_name, instr_size, socket_id);
 	if (err)
 		return err;
