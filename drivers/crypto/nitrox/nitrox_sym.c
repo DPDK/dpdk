@@ -198,6 +198,7 @@ nitrox_sym_dev_qp_setup(struct rte_cryptodev *cdev, uint16_t qp_id,
 		return -ENOMEM;
 	}
 
+	qp->type = NITROX_QUEUE_SE;
 	qp->qno = qp_id;
 	err = nitrox_qp_setup(qp, ndev->bar_addr, cdev->data->name,
 			      qp_conf->nb_descriptors, NPS_PKT_IN_INSTR_SIZE,
