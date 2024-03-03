@@ -570,6 +570,8 @@ npc_parse_actions(struct roc_npc *roc_npc, const struct roc_npc_attr *attr,
 	flow->ctr_id = NPC_COUNTER_NONE;
 	flow->mtr_id = ROC_NIX_MTR_ID_INVALID;
 	pf_func = npc->pf_func;
+	if (flow->has_rep)
+		pf_func = flow->rep_pf_func;
 
 	for (; actions->type != ROC_NPC_ACTION_TYPE_END; actions++) {
 		switch (actions->type) {
@@ -788,9 +790,12 @@ npc_parse_actions(struct roc_npc *roc_npc, const struct roc_npc_attr *attr,
 
 		if (req_act & ROC_NPC_ACTION_TYPE_DROP) {
 			flow->npc_action = NIX_TX_ACTIONOP_DROP;
-		} else if ((req_act & ROC_NPC_ACTION_TYPE_COUNT) ||
-			   vlan_insert_action) {
+		} else if ((req_act & ROC_NPC_ACTION_TYPE_COUNT) || vlan_insert_action) {
 			flow->npc_action = NIX_TX_ACTIONOP_UCAST_DEFAULT;
+			if (flow->rep_act_rep) {
+				flow->npc_action = NIX_TX_ACTIONOP_UCAST_CHAN;
+				flow->npc_action |= (uint64_t)0x3f << 12;
+			}
 		} else {
 			plt_err("Unsupported action for egress");
 			errcode = NPC_ERR_ACTION_NOTSUP;
@@ -802,7 +807,9 @@ npc_parse_actions(struct roc_npc *roc_npc, const struct roc_npc_attr *attr,
 			flow->mcast_channels[1] = npc->channel;
 		}
 
-		goto set_pf_func;
+		/* PF func who is sending the packet */
+		flow->tx_pf_func = pf_func;
+		goto done;
 	} else {
 		if (vlan_insert_action) {
 			errcode = NPC_ERR_ACTION_NOTSUP;
@@ -881,10 +888,10 @@ npc_parse_actions(struct roc_npc *roc_npc, const struct roc_npc_attr *attr,
 	if (mark)
 		flow->npc_action |= (uint64_t)mark << 40;
 
-set_pf_func:
 	/* Ideally AF must ensure that correct pf_func is set */
 	flow->npc_action |= (uint64_t)pf_func << 4;
 
+done:
 	return 0;
 
 err_exit:
@@ -898,10 +905,14 @@ npc_parse_pattern(struct npc *npc, const struct roc_npc_item_info pattern[],
 		  struct roc_npc_flow *flow, struct npc_parse_state *pst)
 {
 	npc_parse_stage_func_t parse_stage_funcs[] = {
-		npc_parse_meta_items, npc_parse_mark_item, npc_parse_pre_l2, npc_parse_cpt_hdr,
-		npc_parse_higig2_hdr, npc_parse_tx_queue,  npc_parse_la,     npc_parse_lb,
-		npc_parse_lc,	      npc_parse_ld,	   npc_parse_le,     npc_parse_lf,
-		npc_parse_lg,	      npc_parse_lh,
+		npc_parse_meta_items, npc_parse_port_representor_id,
+		npc_parse_mark_item,  npc_parse_pre_l2,
+		npc_parse_cpt_hdr,    npc_parse_higig2_hdr,
+		npc_parse_tx_queue,   npc_parse_la,
+		npc_parse_lb,	      npc_parse_lc,
+		npc_parse_ld,	      npc_parse_le,
+		npc_parse_lf,	      npc_parse_lg,
+		npc_parse_lh,
 	};
 	uint8_t layer = 0;
 	int key_offset;
@@ -1140,15 +1151,20 @@ npc_rss_action_program(struct roc_npc *roc_npc,
 		       struct roc_npc_flow *flow)
 {
 	const struct roc_npc_action_rss *rss;
+	struct roc_npc *npc = roc_npc;
 	uint32_t rss_grp;
 	uint8_t alg_idx;
 	int rc;
 
+	if (flow->has_rep) {
+		npc = roc_npc->rep_npc;
+		npc->flowkey_cfg_state = roc_npc->flowkey_cfg_state;
+	}
+
 	for (; actions->type != ROC_NPC_ACTION_TYPE_END; actions++) {
 		if (actions->type == ROC_NPC_ACTION_TYPE_RSS) {
 			rss = (const struct roc_npc_action_rss *)actions->conf;
-			rc = npc_rss_action_configure(roc_npc, rss, &alg_idx,
-						      &rss_grp, flow->mcam_id);
+			rc = npc_rss_action_configure(npc, rss, &alg_idx, &rss_grp, flow->mcam_id);
 			if (rc)
 				return rc;
 
@@ -1171,7 +1187,7 @@ npc_vtag_cfg_delete(struct roc_npc *roc_npc, struct roc_npc_flow *flow)
 	struct roc_nix *roc_nix = roc_npc->roc_nix;
 	struct nix_vtag_config *vtag_cfg;
 	struct nix_vtag_config_rsp *rsp;
-	struct mbox *mbox;
+	struct mbox *mbox, *ombox;
 	struct nix *nix;
 	int rc = 0;
 
@@ -1181,7 +1197,10 @@ npc_vtag_cfg_delete(struct roc_npc *roc_npc, struct roc_npc_flow *flow)
 	} tx_vtag_action;
 
 	nix = roc_nix_to_nix_priv(roc_nix);
-	mbox = mbox_get((&nix->dev)->mbox);
+	ombox = (&nix->dev)->mbox;
+	if (flow->has_rep)
+		ombox = flow->rep_mbox;
+	mbox = mbox_get(ombox);
 
 	tx_vtag_action.reg = flow->vtag_action;
 	vtag_cfg = mbox_alloc_msg_nix_vtag_cfg(mbox);
@@ -1400,6 +1419,7 @@ npc_vtag_strip_action_configure(struct mbox *mbox,
 
 	rx_vtag_action |= (NIX_RX_VTAGACTION_VTAG_VALID << 15);
 	rx_vtag_action |= ((uint64_t)NPC_LID_LB << 8);
+	rx_vtag_action |= ((uint64_t)NIX_RX_VTAG_TYPE6 << 12);
 	rx_vtag_action |= NIX_RX_VTAGACTION_VTAG0_RELPTR;
 
 	if (*strip_cnt == 2) {
@@ -1432,6 +1452,8 @@ npc_vtag_action_program(struct roc_npc *roc_npc,
 
 	nix = roc_nix_to_nix_priv(roc_nix);
 	mbox = (&nix->dev)->mbox;
+	if (flow->has_rep)
+		mbox = flow->rep_mbox;
 
 	memset(vlan_info, 0, sizeof(vlan_info));
 
@@ -1448,6 +1470,7 @@ npc_vtag_action_program(struct roc_npc *roc_npc,
 			if (rc)
 				return rc;
 
+			plt_npc_dbg("VLAN strip action, strip_cnt %d", strip_cnt);
 			if (strip_cnt == 2)
 				actions++;
 
@@ -1587,6 +1610,25 @@ roc_npc_flow_create(struct roc_npc *roc_npc, const struct roc_npc_attr *attr,
 	memset(flow, 0, sizeof(*flow));
 	memset(&parse_state, 0, sizeof(parse_state));
 
+	flow->port_id = -1;
+	if (roc_npc->rep_npc) {
+		flow->rep_channel =
+			(roc_npc->rep_rx_channel == 0) ?
+				roc_nix_to_nix_priv(roc_npc->rep_npc->roc_nix)->rx_chan_base :
+				roc_npc->rep_rx_channel;
+		flow->rep_pf_func = roc_npc->rep_pf_func;
+		flow->rep_act_pf_func = roc_npc->rep_act_pf_func;
+		flow->rep_act_rep = roc_npc->rep_act_rep;
+		flow->rep_mbox = roc_npc_to_npc_priv(roc_npc->rep_npc)->mbox;
+		flow->has_rep = true;
+		flow->is_rep_vf = !roc_nix_is_pf(roc_npc->rep_npc->roc_nix);
+		flow->port_id = roc_npc->rep_port_id;
+		flow->rep_npc = roc_npc_to_npc_priv(roc_npc->rep_npc);
+		roc_npc->rep_act_rep = false;
+		roc_npc->rep_act_pf_func = 0;
+		roc_npc->rep_rx_channel = 0;
+	}
+
 	parse_state.dst_pf_func = dst_pf_func;
 
 	rc = npc_parse_rule(roc_npc, attr, pattern, actions, flow, &parse_state);
@@ -1629,6 +1671,7 @@ roc_npc_flow_create(struct roc_npc *roc_npc, const struct roc_npc_attr *attr,
 		*errcode = rc;
 		goto set_rss_failed;
 	}
+	roc_npc->rep_npc = NULL;
 
 	if (flow->has_age_action)
 		npc_age_flow_list_entry_add(roc_npc, flow);
@@ -1641,6 +1684,7 @@ roc_npc_flow_create(struct roc_npc *roc_npc, const struct roc_npc_attr *attr,
 	TAILQ_FOREACH(flow_iter, list, next) {
 		if (flow_iter->mcam_id > flow->mcam_id) {
 			TAILQ_INSERT_BEFORE(flow_iter, flow, next);
+			roc_npc->rep_npc = NULL;
 			return flow;
 		}
 	}
@@ -1649,6 +1693,7 @@ roc_npc_flow_create(struct roc_npc *roc_npc, const struct roc_npc_attr *attr,
 	return flow;
 
 set_rss_failed:
+	roc_npc->rep_npc = NULL;
 	if (flow->use_pre_alloc == 0) {
 		rc = roc_npc_mcam_free_entry(roc_npc, flow->mcam_id);
 		if (rc != 0) {
@@ -1660,6 +1705,7 @@ set_rss_failed:
 		npc_inline_dev_ipsec_action_free(npc, flow);
 	}
 err_exit:
+	roc_npc->rep_npc = NULL;
 	plt_free(flow);
 	return NULL;
 }
@@ -1667,7 +1713,11 @@ err_exit:
 int
 npc_rss_group_free(struct npc *npc, struct roc_npc_flow *flow)
 {
+	struct npc *lnpc = npc;
 	uint32_t rss_grp;
+
+	if (flow->has_rep)
+		lnpc = flow->rep_npc;
 
 	if ((flow->npc_action & 0xF) == NIX_RX_ACTIONOP_RSS) {
 		rss_grp = (flow->npc_action >> NPC_RSS_ACT_GRP_OFFSET) &
@@ -1675,7 +1725,7 @@ npc_rss_group_free(struct npc *npc, struct roc_npc_flow *flow)
 		if (rss_grp == 0 || rss_grp >= npc->rss_grps)
 			return -EINVAL;
 
-		plt_bitmap_clear(npc->rss_grp_entries, rss_grp);
+		plt_bitmap_clear(lnpc->rss_grp_entries, rss_grp);
 	}
 
 	return 0;
@@ -1770,7 +1820,7 @@ done:
 }
 
 void
-roc_npc_flow_dump(FILE *file, struct roc_npc *roc_npc)
+roc_npc_flow_dump(FILE *file, struct roc_npc *roc_npc, int rep_port_id)
 {
 	struct npc *npc = roc_npc_to_npc_priv(roc_npc);
 	struct roc_npc_flow *flow_iter;
@@ -1784,12 +1834,14 @@ roc_npc_flow_dump(FILE *file, struct roc_npc *roc_npc)
 
 		/* List in ascending order of mcam entries */
 		TAILQ_FOREACH(flow_iter, list, next) {
-			roc_npc_flow_mcam_dump(file, roc_npc, flow_iter);
+			if (rep_port_id == -1 || rep_port_id == flow_iter->port_id)
+				roc_npc_flow_mcam_dump(file, roc_npc, flow_iter);
 		}
 	}
 
 	TAILQ_FOREACH(flow_iter, &npc->ipsec_list, next) {
-		roc_npc_flow_mcam_dump(file, roc_npc, flow_iter);
+		if (rep_port_id == -1 || rep_port_id == flow_iter->port_id)
+			roc_npc_flow_mcam_dump(file, roc_npc, flow_iter);
 	}
 }
 

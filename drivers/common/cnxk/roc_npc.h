@@ -42,6 +42,7 @@ enum roc_npc_item_type {
 	ROC_NPC_ITEM_TYPE_MARK,
 	ROC_NPC_ITEM_TYPE_TX_QUEUE,
 	ROC_NPC_ITEM_TYPE_IPV6_ROUTING_EXT,
+	ROC_NPC_ITEM_TYPE_REPRESENTED_PORT,
 	ROC_NPC_ITEM_TYPE_END,
 };
 
@@ -324,6 +325,7 @@ struct roc_npc_flow {
 	struct roc_npc_flow_dump_data dump_data[ROC_NPC_MAX_FLOW_PATTERNS];
 	uint16_t num_patterns;
 	struct roc_npc_spi_to_sa_action_info spi_to_sa_info;
+	uint16_t tx_pf_func;
 	bool is_validate;
 	uint16_t match_id;
 	uint8_t is_inline_dev;
@@ -332,6 +334,15 @@ struct roc_npc_flow {
 	void *age_context;
 	uint32_t timeout;
 	bool has_age_action;
+	uint16_t rep_pf_func;
+	uint16_t rep_act_pf_func;
+	bool rep_act_rep;
+	uint16_t rep_channel;
+	struct mbox *rep_mbox;
+	bool has_rep;
+	bool is_rep_vf;
+	struct npc *rep_npc;
+	int port_id;
 	bool is_sampling_rule;
 	uint32_t recv_queue;
 	uint32_t mcast_grp_index;
@@ -407,6 +418,12 @@ struct roc_npc {
 	uint16_t sdp_channel;
 	uint16_t sdp_channel_mask;
 	struct roc_npc_flow_age flow_age;
+	struct roc_npc *rep_npc;
+	uint16_t rep_pf_func;
+	uint16_t rep_rx_channel;
+	uint16_t rep_act_pf_func;
+	bool rep_act_rep;
+	int rep_port_id;
 
 #define ROC_NPC_MEM_SZ (6 * 1024)
 	uint8_t reserved[ROC_NPC_MEM_SZ];
@@ -448,7 +465,7 @@ int __roc_api roc_npc_get_free_mcam_entry(struct roc_npc *roc_npc, struct roc_np
 int __roc_api roc_npc_inl_mcam_read_counter(uint32_t ctr_id, uint64_t *count);
 int __roc_api roc_npc_inl_mcam_clear_counter(uint32_t ctr_id);
 int __roc_api roc_npc_mcam_free_all_resources(struct roc_npc *roc_npc);
-void __roc_api roc_npc_flow_dump(FILE *file, struct roc_npc *roc_npc);
+void __roc_api roc_npc_flow_dump(FILE *file, struct roc_npc *roc_npc, int rep_port_id);
 void __roc_api roc_npc_flow_mcam_dump(FILE *file, struct roc_npc *roc_npc,
 				      struct roc_npc_flow *mcam);
 int __roc_api roc_npc_mark_actions_get(struct roc_npc *roc_npc);

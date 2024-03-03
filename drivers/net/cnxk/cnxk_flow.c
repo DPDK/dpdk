@@ -594,7 +594,7 @@ cnxk_flow_dev_dump(struct rte_eth_dev *eth_dev, struct rte_flow *flow,
 		return -EINVAL;
 	}
 
-	roc_npc_flow_dump(file, npc);
+	roc_npc_flow_dump(file, npc, -1);
 
 	return 0;
 }
