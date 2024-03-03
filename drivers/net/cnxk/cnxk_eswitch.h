@@ -13,11 +13,10 @@
 #include "cn10k_tx.h"
 
 #define CNXK_ESWITCH_CTRL_MSG_SOCK_PATH "/tmp/cxk_rep_ctrl_msg_sock"
+#define CNXK_ESWITCH_VLAN_TPID		ROC_ESWITCH_VLAN_TPID
 #define CNXK_REP_ESWITCH_DEV_MZ		"cnxk_eswitch_dev"
-#define CNXK_ESWITCH_VLAN_TPID		0x8100
 #define CNXK_ESWITCH_MAX_TXQ		256
 #define CNXK_ESWITCH_MAX_RXQ		256
-#define CNXK_ESWITCH_LBK_CHAN		63
 #define CNXK_ESWITCH_VFPF_SHIFT		8
 
 #define CNXK_ESWITCH_QUEUE_STATE_RELEASED   0
@@ -25,6 +24,7 @@
 #define CNXK_ESWITCH_QUEUE_STATE_STARTED    2
 #define CNXK_ESWITCH_QUEUE_STATE_STOPPED    3
 
+TAILQ_HEAD(eswitch_flow_list, roc_npc_flow);
 enum cnxk_esw_da_pattern_type {
 	CNXK_ESW_DA_TYPE_LIST = 0,
 	CNXK_ESW_DA_TYPE_PFVF,
@@ -39,6 +39,9 @@ struct cnxk_esw_repr_hw_info {
 	uint16_t pfvf;
 	/* representor port id assigned to representee */
 	uint16_t port_id;
+	uint16_t num_flow_entries;
+
+	TAILQ_HEAD(flow_list, roc_npc_flow) repr_flow_list;
 };
 
 /* Structure representing per devarg information - this can be per representee
@@ -90,7 +93,6 @@ struct cnxk_eswitch_cxq {
 	uint8_t state;
 };
 
-TAILQ_HEAD(eswitch_flow_list, roc_npc_flow);
 struct cnxk_eswitch_dev {
 	/* Input parameters */
 	struct plt_pci_device *pci_dev;
@@ -115,6 +117,13 @@ struct cnxk_eswitch_dev {
 	uint16_t nb_txq;
 	uint16_t rep_cnt;
 	uint8_t configured;
+
+	/* NPC rxtx rules */
+	struct flow_list esw_flow_list;
+	uint16_t num_entries;
+	bool eswitch_vf_rules_setup;
+	uint16_t esw_pf_entry;
+	uint16_t esw_vf_entry;
 
 	/* Eswitch Representors Devargs */
 	uint16_t nb_esw_da;
@@ -144,7 +153,10 @@ cnxk_eswitch_pmd_priv(void)
 	return mz->addr;
 }
 
+/* HW Resources */
 int cnxk_eswitch_nix_rsrc_start(struct cnxk_eswitch_dev *eswitch_dev);
+struct cnxk_esw_repr_hw_info *cnxk_eswitch_representor_hw_info(struct cnxk_eswitch_dev *eswitch_dev,
+							       uint16_t hw_func);
 int cnxk_eswitch_repr_devargs(struct rte_pci_device *pci_dev, struct cnxk_eswitch_dev *eswitch_dev);
 int cnxk_eswitch_representor_info_get(struct cnxk_eswitch_dev *eswitch_dev,
 				      struct rte_eth_representor_info *info);
@@ -158,4 +170,11 @@ int cnxk_eswitch_rxq_start(struct cnxk_eswitch_dev *eswitch_dev, uint16_t qid);
 int cnxk_eswitch_rxq_stop(struct cnxk_eswitch_dev *eswitch_dev, uint16_t qid);
 int cnxk_eswitch_txq_start(struct cnxk_eswitch_dev *eswitch_dev, uint16_t qid);
 int cnxk_eswitch_txq_stop(struct cnxk_eswitch_dev *eswitch_dev, uint16_t qid);
+/* Flow Rules */
+int cnxk_eswitch_flow_rules_install(struct cnxk_eswitch_dev *eswitch_dev, uint16_t hw_func);
+int cnxk_eswitch_flow_rules_delete(struct cnxk_eswitch_dev *eswitch_dev, uint16_t hw_func);
+int cnxk_eswitch_pfvf_flow_rules_install(struct cnxk_eswitch_dev *eswitch_dev, bool is_vf);
+int cnxk_eswitch_flow_rule_shift(uint16_t hw_func, uint16_t *new_entry);
+int cnxk_eswitch_flow_rules_remove_list(struct cnxk_eswitch_dev *eswitch_dev,
+					struct flow_list *list, uint16_t hw_func);
 #endif /* __CNXK_ESWITCH_H__ */

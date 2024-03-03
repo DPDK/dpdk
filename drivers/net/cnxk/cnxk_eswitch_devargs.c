@@ -72,6 +72,7 @@ populate_repr_hw_info(struct cnxk_eswitch_dev *eswitch_dev, struct rte_eth_devar
 		esw_da->repr_hw_info[i].pfvf = (eth_da->type == RTE_ETH_REPRESENTOR_PF) ?
 						       eth_da->ports[0] :
 						       eth_da->representor_ports[i];
+		TAILQ_INIT(&esw_da->repr_hw_info[i].repr_flow_list);
 		plt_esw_dbg("	HW func %x index %d type %d", hw_func, j, eth_da->type);
 	}
 
