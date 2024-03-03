@@ -211,18 +211,17 @@ exit:
 }
 
 int
-roc_nix_vlan_tpid_set(struct roc_nix *roc_nix, uint32_t type, uint16_t tpid)
+nix_vlan_tpid_set(struct mbox *mbox, uint16_t pcifunc, uint32_t type, uint16_t tpid)
 {
-	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
-	struct dev *dev = &nix->dev;
-	struct mbox *mbox = mbox_get(dev->mbox);
 	struct nix_set_vlan_tpid *tpid_cfg;
 	int rc = -ENOSPC;
 
-	tpid_cfg = mbox_alloc_msg_nix_set_vlan_tpid(mbox);
+	/* Configuring for PF */
+	tpid_cfg = mbox_alloc_msg_nix_set_vlan_tpid(mbox_get(mbox));
 	if (tpid_cfg == NULL)
 		goto exit;
 	tpid_cfg->tpid = tpid;
+	tpid_cfg->hdr.pcifunc = pcifunc;
 
 	if (type & ROC_NIX_VLAN_TYPE_OUTER)
 		tpid_cfg->vlan_type = NIX_VLAN_TYPE_OUTER;
@@ -232,5 +231,19 @@ roc_nix_vlan_tpid_set(struct roc_nix *roc_nix, uint32_t type, uint16_t tpid)
 	rc = mbox_process(mbox);
 exit:
 	mbox_put(mbox);
+	return rc;
+}
+
+int
+roc_nix_vlan_tpid_set(struct roc_nix *roc_nix, uint32_t type, uint16_t tpid)
+{
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	struct dev *dev = &nix->dev;
+	int rc;
+
+	rc = nix_vlan_tpid_set(dev->mbox, dev->pf_func, type, tpid);
+	if (rc)
+		plt_err("Failed to set tpid for PF, rc %d", rc);
+
 	return rc;
 }

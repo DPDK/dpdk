@@ -304,3 +304,18 @@ roc_eswitch_npc_rss_action_configure(struct roc_npc *roc_npc, struct roc_npc_flo
 		((uint64_t)(rss_grp_idx & NPC_RSS_ACT_GRP_MASK) << NPC_RSS_ACT_GRP_OFFSET);
 	return 0;
 }
+
+int
+roc_eswitch_nix_vlan_tpid_set(struct roc_nix *roc_nix, uint32_t type, uint16_t tpid, bool is_vf)
+{
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	struct dev *dev = &nix->dev;
+	int rc;
+
+	/* Configuring for PF/VF */
+	rc = nix_vlan_tpid_set(dev->mbox, dev->pf_func | is_vf, type, tpid);
+	if (rc)
+		plt_err("Failed to set tpid for PF, rc %d", rc);
+
+	return rc;
+}

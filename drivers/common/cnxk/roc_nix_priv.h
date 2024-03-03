@@ -469,13 +469,12 @@ void nix_tm_shaper_profile_free(struct nix_tm_shaper_profile *profile);
 uint64_t nix_get_blkaddr(struct dev *dev);
 void nix_lf_rq_dump(__io struct nix_cn10k_rq_ctx_s *ctx, FILE *file);
 int nix_lf_gen_reg_dump(uintptr_t nix_lf_base, uint64_t *data);
-int nix_lf_stat_reg_dump(uintptr_t nix_lf_base, uint64_t *data,
-			 uint8_t lf_tx_stats, uint8_t lf_rx_stats);
-int nix_lf_int_reg_dump(uintptr_t nix_lf_base, uint64_t *data, uint16_t qints,
-			uint16_t cints);
-int nix_q_ctx_get(struct dev *dev, uint8_t ctype, uint16_t qid,
-		  __io void **ctx_p);
+int nix_lf_stat_reg_dump(uintptr_t nix_lf_base, uint64_t *data, uint8_t lf_tx_stats,
+			 uint8_t lf_rx_stats);
+int nix_lf_int_reg_dump(uintptr_t nix_lf_base, uint64_t *data, uint16_t qints, uint16_t cints);
+int nix_q_ctx_get(struct dev *dev, uint8_t ctype, uint16_t qid, __io void **ctx_p);
 uint8_t nix_tm_lbk_relchan_get(struct nix *nix);
+int nix_vlan_tpid_set(struct mbox *mbox, uint16_t pcifunc, uint32_t type, uint16_t tpid);
 
 /*
  * Telemetry

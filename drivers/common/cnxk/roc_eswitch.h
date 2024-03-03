@@ -19,4 +19,8 @@ int __roc_api roc_eswitch_npc_mcam_delete_rule(struct roc_npc *roc_npc, struct r
 int __roc_api roc_eswitch_npc_rss_action_configure(struct roc_npc *roc_npc,
 						   struct roc_npc_flow *flow, uint32_t flowkey_cfg,
 						   uint16_t *reta_tbl);
+
+/* NIX */
+int __roc_api roc_eswitch_nix_vlan_tpid_set(struct roc_nix *nix, uint32_t type, uint16_t tpid,
+					    bool is_vf);
 #endif /* __ROC_ESWITCH_H__ */
