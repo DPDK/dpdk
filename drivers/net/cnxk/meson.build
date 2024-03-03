@@ -37,6 +37,7 @@ sources = files(
         'cnxk_ptp.c',
         'cnxk_flow.c',
         'cnxk_rep.c',
+        'cnxk_rep_msg.c',
         'cnxk_rep_ops.c',
         'cnxk_stats.c',
         'cnxk_tm.c',

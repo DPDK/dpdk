@@ -9,6 +9,27 @@
 
 #define CNXK_NIX_DEF_SQ_COUNT 512
 
+int
+cnxk_eswitch_representor_id(struct cnxk_eswitch_dev *eswitch_dev, uint16_t hw_func,
+			    uint16_t *rep_id)
+{
+	struct cnxk_esw_repr_hw_info *repr_info;
+	int rc = 0;
+
+	repr_info = cnxk_eswitch_representor_hw_info(eswitch_dev, hw_func);
+	if (!repr_info) {
+		plt_warn("Failed to get representor group for %x", hw_func);
+		rc = -ENOENT;
+		goto fail;
+	}
+
+	*rep_id = repr_info->rep_id;
+
+	return 0;
+fail:
+	return rc;
+}
+
 struct cnxk_esw_repr_hw_info *
 cnxk_eswitch_representor_hw_info(struct cnxk_eswitch_dev *eswitch_dev, uint16_t hw_func)
 {
@@ -86,8 +107,41 @@ cnxk_eswitch_dev_remove(struct rte_pci_device *pci_dev)
 	}
 
 	/* Remove representor devices associated with PF */
-	if (eswitch_dev->repr_cnt.nb_repr_created)
+	if (eswitch_dev->repr_cnt.nb_repr_created) {
+		/* Exiting the rep msg ctrl thread */
+		if (eswitch_dev->start_ctrl_msg_thrd) {
+			uint32_t sunlen;
+			struct sockaddr_un sun = {0};
+			int sock_fd = 0;
+
+			eswitch_dev->start_ctrl_msg_thrd = false;
+			if (!eswitch_dev->client_connected) {
+				plt_esw_dbg("Establishing connection for teardown");
+				sock_fd = socket(AF_UNIX, SOCK_STREAM, 0);
+				if (sock_fd == -1) {
+					plt_err("Failed to open socket. err %d", -errno);
+					return -errno;
+				}
+				sun.sun_family = AF_UNIX;
+				sunlen = sizeof(struct sockaddr_un);
+				strncpy(sun.sun_path, CNXK_ESWITCH_CTRL_MSG_SOCK_PATH,
+					sizeof(sun.sun_path) - 1);
+
+				if (connect(sock_fd, (struct sockaddr *)&sun, sunlen) < 0) {
+					plt_err("Failed to connect socket: %s, err %d",
+						CNXK_ESWITCH_CTRL_MSG_SOCK_PATH, errno);
+					close(sock_fd);
+					return -errno;
+				}
+			}
+			rte_thread_join(eswitch_dev->rep_ctrl_msg_thread, NULL);
+			if (!eswitch_dev->client_connected)
+				close(sock_fd);
+		}
+
+		/* Remove representor devices associated with PF */
 		cnxk_rep_dev_remove(eswitch_dev);
+	}
 
 	/* Cleanup NPC rxtx flow rules */
 	cnxk_eswitch_flow_rules_remove_list(eswitch_dev, &eswitch_dev->esw_flow_list,
@@ -106,13 +160,6 @@ cnxk_eswitch_nix_rsrc_start(struct cnxk_eswitch_dev *eswitch_dev)
 {
 	int rc;
 
-	/* Enable Rx in NPC */
-	rc = roc_nix_npc_rx_ena_dis(&eswitch_dev->nix, true);
-	if (rc) {
-		plt_err("Failed to enable NPC rx %d", rc);
-		goto done;
-	}
-
 	/* Install eswitch PF mcam rules */
 	rc = cnxk_eswitch_pfvf_flow_rules_install(eswitch_dev, false);
 	if (rc) {
@@ -125,6 +172,13 @@ cnxk_eswitch_nix_rsrc_start(struct cnxk_eswitch_dev *eswitch_dev)
 					   CNXK_ESWITCH_VLAN_TPID, false);
 	if (rc) {
 		plt_err("Failed to configure tpid, rc %d", rc);
+		goto done;
+	}
+
+	/* Enable Rx in NPC */
+	rc = roc_nix_npc_rx_ena_dis(&eswitch_dev->nix, true);
+	if (rc) {
+		plt_err("Failed to enable NPC rx %d", rc);
 		goto done;
 	}
 

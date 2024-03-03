@@ -133,6 +133,12 @@ struct cnxk_eswitch_dev {
 	/* No of representors */
 	struct cnxk_eswitch_repr_cnt repr_cnt;
 
+	/* Representor control channel field */
+	bool start_ctrl_msg_thrd;
+	rte_thread_t rep_ctrl_msg_thread;
+	bool client_connected;
+	int sock_fd;
+
 	/* Port representor fields */
 	rte_spinlock_t rep_lock;
 	uint16_t nb_switch_domain;
@@ -155,6 +161,8 @@ cnxk_eswitch_pmd_priv(void)
 
 /* HW Resources */
 int cnxk_eswitch_nix_rsrc_start(struct cnxk_eswitch_dev *eswitch_dev);
+int cnxk_eswitch_representor_id(struct cnxk_eswitch_dev *eswitch_dev, uint16_t hw_func,
+				uint16_t *rep_id);
 struct cnxk_esw_repr_hw_info *cnxk_eswitch_representor_hw_info(struct cnxk_eswitch_dev *eswitch_dev,
 							       uint16_t hw_func);
 int cnxk_eswitch_repr_devargs(struct rte_pci_device *pci_dev, struct cnxk_eswitch_dev *eswitch_dev);

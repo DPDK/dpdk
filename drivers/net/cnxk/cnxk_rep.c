@@ -2,6 +2,7 @@
  * Copyright(C) 2024 Marvell.
  */
 #include <cnxk_rep.h>
+#include <cnxk_rep_msg.h>
 
 #define PF_SHIFT 10
 #define PF_MASK	 0x3F
@@ -23,6 +24,48 @@ switch_domain_id_allocate(struct cnxk_eswitch_dev *eswitch_dev, uint16_t pf)
 	}
 
 	return RTE_ETH_DEV_SWITCH_DOMAIN_ID_INVALID;
+}
+
+int
+cnxk_rep_state_update(struct cnxk_eswitch_dev *eswitch_dev, uint16_t hw_func, uint16_t *rep_id)
+{
+	struct cnxk_rep_dev *rep_dev = NULL;
+	struct rte_eth_dev *rep_eth_dev;
+	int i, rc = 0;
+
+	/* Delete the individual PFVF flows as common eswitch VF rule will be used. */
+	rc = cnxk_eswitch_flow_rules_delete(eswitch_dev, hw_func);
+	if (rc) {
+		if (rc != -ENOENT) {
+			plt_err("Failed to delete %x flow rules", hw_func);
+			goto fail;
+		}
+	}
+	/* Rep ID for respective HW func */
+	rc = cnxk_eswitch_representor_id(eswitch_dev, hw_func, rep_id);
+	if (rc) {
+		if (rc != -ENOENT) {
+			plt_err("Failed to get rep info for %x", hw_func);
+			goto fail;
+		}
+	}
+	/* Update the state - representee is standalone or part of companian app */
+	for (i = 0; i < eswitch_dev->repr_cnt.nb_repr_probed; i++) {
+		rep_eth_dev = eswitch_dev->rep_info[i].rep_eth_dev;
+		if (!rep_eth_dev) {
+			plt_err("Failed to get rep ethdev handle");
+			rc = -EINVAL;
+			goto fail;
+		}
+
+		rep_dev = cnxk_rep_pmd_priv(rep_eth_dev);
+		if (rep_dev->hw_func == hw_func && rep_dev->is_vf_active)
+			rep_dev->native_repte = false;
+	}
+
+	return 0;
+fail:
+	return rc;
 }
 
 int
@@ -249,6 +292,15 @@ cnxk_rep_dev_probe(struct rte_pci_device *pci_dev, struct cnxk_eswitch_dev *eswi
 		}
 	}
 	eswitch_dev->last_probed = i;
+
+	/* Launch a thread to handle control messages */
+	if (!eswitch_dev->start_ctrl_msg_thrd) {
+		rc = cnxk_rep_msg_control_thread_launch(eswitch_dev);
+		if (rc) {
+			plt_err("Failed to launch message ctrl thread");
+			goto fail;
+		}
+	}
 
 	return 0;
 fail:
