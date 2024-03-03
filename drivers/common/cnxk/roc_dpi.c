@@ -83,6 +83,9 @@ roc_dpi_configure(struct roc_dpi *roc_dpi, uint32_t chunk_sz, uint64_t aura, uin
 	mbox_msg.s.aura = aura;
 	mbox_msg.s.sso_pf_func = idev_sso_pffunc_get();
 	mbox_msg.s.npa_pf_func = idev_npa_pffunc_get();
+	mbox_msg.s.wqecsoff = idev_dma_cs_offset_get();
+	if (mbox_msg.s.wqecsoff)
+		mbox_msg.s.wqecs = 1;
 
 	rc = send_msg_to_pf(&pci_dev->addr, (const char *)&mbox_msg,
 			    sizeof(dpi_mbox_msg_t));
@@ -94,7 +97,7 @@ roc_dpi_configure(struct roc_dpi *roc_dpi, uint32_t chunk_sz, uint64_t aura, uin
 }
 
 int
-roc_dpi_dev_init(struct roc_dpi *roc_dpi)
+roc_dpi_dev_init(struct roc_dpi *roc_dpi, uint8_t offset)
 {
 	struct plt_pci_device *pci_dev = roc_dpi->pci_dev;
 	uint16_t vfid;
@@ -103,6 +106,7 @@ roc_dpi_dev_init(struct roc_dpi *roc_dpi)
 	vfid = ((pci_dev->addr.devid & 0x1F) << 3) | (pci_dev->addr.function & 0x7);
 	vfid -= 1;
 	roc_dpi->vfid = vfid;
+	idev_dma_cs_offset_set(offset);
 
 	return 0;
 }

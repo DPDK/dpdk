@@ -31,6 +31,10 @@ typedef union dpi_mbox_msg_t {
 		uint64_t sso_pf_func : 16;
 		/* NPA PF function */
 		uint64_t npa_pf_func : 16;
+		/* WQE queue DMA completion status enable */
+		uint64_t wqecs : 1;
+		/* WQE queue DMA completion status offset */
+		uint64_t wqecsoff : 8;
 	} s;
 } dpi_mbox_msg_t;
 

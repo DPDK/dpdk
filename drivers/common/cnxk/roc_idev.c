@@ -301,6 +301,26 @@ idev_sso_set(struct roc_sso *sso)
 		__atomic_store_n(&idev->sso, sso, __ATOMIC_RELEASE);
 }
 
+void
+idev_dma_cs_offset_set(uint8_t offset)
+{
+	struct idev_cfg *idev = idev_get_cfg();
+
+	if (idev != NULL)
+		idev->dma_cs_offset = offset;
+}
+
+uint8_t
+idev_dma_cs_offset_get(void)
+{
+	struct idev_cfg *idev = idev_get_cfg();
+
+	if (idev != NULL)
+		return idev->dma_cs_offset;
+
+	return 0;
+}
+
 uint64_t
 roc_idev_nix_inl_meta_aura_get(void)
 {
