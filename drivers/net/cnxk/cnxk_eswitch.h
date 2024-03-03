@@ -177,4 +177,9 @@ int cnxk_eswitch_pfvf_flow_rules_install(struct cnxk_eswitch_dev *eswitch_dev, b
 int cnxk_eswitch_flow_rule_shift(uint16_t hw_func, uint16_t *new_entry);
 int cnxk_eswitch_flow_rules_remove_list(struct cnxk_eswitch_dev *eswitch_dev,
 					struct flow_list *list, uint16_t hw_func);
+/* RX TX fastpath routines */
+uint16_t cnxk_eswitch_dev_tx_burst(struct cnxk_eswitch_dev *eswitch_dev, uint16_t qid,
+				   struct rte_mbuf **pkts, uint16_t nb_tx, const uint16_t flags);
+uint16_t cnxk_eswitch_dev_rx_burst(struct cnxk_eswitch_dev *eswitch_dev, uint16_t qid,
+				   struct rte_mbuf **pkts, uint16_t nb_pkts);
 #endif /* __CNXK_ESWITCH_H__ */

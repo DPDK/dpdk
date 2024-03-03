@@ -31,6 +31,7 @@ sources = files(
         'cnxk_eswitch.c',
         'cnxk_eswitch_devargs.c',
         'cnxk_eswitch_flow.c',
+        'cnxk_eswitch_rxtx.c',
         'cnxk_link.c',
         'cnxk_lookup.c',
         'cnxk_ptp.c',
