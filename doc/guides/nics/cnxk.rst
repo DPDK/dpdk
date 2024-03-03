@@ -38,6 +38,7 @@ Features of the CNXK Ethdev PMD are:
 - Ingress meter support
 - Queue based priority flow control support
 - Port representors
+- Represented port pattern matching and action
 
 Prerequisites
 -------------

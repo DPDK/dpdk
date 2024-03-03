@@ -4,67 +4,48 @@
 #include <cnxk_flow.h>
 
 const struct cnxk_rte_flow_term_info term[] = {
-	[RTE_FLOW_ITEM_TYPE_ETH] = {ROC_NPC_ITEM_TYPE_ETH,
-				    sizeof(struct rte_flow_item_eth)},
-	[RTE_FLOW_ITEM_TYPE_VLAN] = {ROC_NPC_ITEM_TYPE_VLAN,
-				     sizeof(struct rte_flow_item_vlan)},
-	[RTE_FLOW_ITEM_TYPE_E_TAG] = {ROC_NPC_ITEM_TYPE_E_TAG,
-				      sizeof(struct rte_flow_item_e_tag)},
-	[RTE_FLOW_ITEM_TYPE_IPV4] = {ROC_NPC_ITEM_TYPE_IPV4,
-				     sizeof(struct rte_flow_item_ipv4)},
-	[RTE_FLOW_ITEM_TYPE_IPV6] = {ROC_NPC_ITEM_TYPE_IPV6,
-				     sizeof(struct rte_flow_item_ipv6)},
-	[RTE_FLOW_ITEM_TYPE_IPV6_FRAG_EXT] = {
-			ROC_NPC_ITEM_TYPE_IPV6_FRAG_EXT,
-			sizeof(struct rte_flow_item_ipv6_frag_ext)},
-	[RTE_FLOW_ITEM_TYPE_ARP_ETH_IPV4] = {
-			ROC_NPC_ITEM_TYPE_ARP_ETH_IPV4,
-			sizeof(struct rte_flow_item_arp_eth_ipv4)},
-	[RTE_FLOW_ITEM_TYPE_MPLS] = {ROC_NPC_ITEM_TYPE_MPLS,
-				     sizeof(struct rte_flow_item_mpls)},
-	[RTE_FLOW_ITEM_TYPE_ICMP] = {ROC_NPC_ITEM_TYPE_ICMP,
-				     sizeof(struct rte_flow_item_icmp)},
-	[RTE_FLOW_ITEM_TYPE_UDP] = {ROC_NPC_ITEM_TYPE_UDP,
-				    sizeof(struct rte_flow_item_udp)},
-	[RTE_FLOW_ITEM_TYPE_TCP] = {ROC_NPC_ITEM_TYPE_TCP,
-				    sizeof(struct rte_flow_item_tcp)},
-	[RTE_FLOW_ITEM_TYPE_SCTP] = {ROC_NPC_ITEM_TYPE_SCTP,
-				     sizeof(struct rte_flow_item_sctp)},
-	[RTE_FLOW_ITEM_TYPE_ESP] = {ROC_NPC_ITEM_TYPE_ESP,
-				    sizeof(struct rte_flow_item_esp)},
-	[RTE_FLOW_ITEM_TYPE_GRE] = {ROC_NPC_ITEM_TYPE_GRE,
-				    sizeof(struct rte_flow_item_gre)},
-	[RTE_FLOW_ITEM_TYPE_NVGRE] = {ROC_NPC_ITEM_TYPE_NVGRE,
-				      sizeof(struct rte_flow_item_nvgre)},
-	[RTE_FLOW_ITEM_TYPE_VXLAN] = {ROC_NPC_ITEM_TYPE_VXLAN,
-				      sizeof(struct rte_flow_item_vxlan)},
-	[RTE_FLOW_ITEM_TYPE_GTPC] = {ROC_NPC_ITEM_TYPE_GTPC,
-				     sizeof(struct rte_flow_item_gtp)},
-	[RTE_FLOW_ITEM_TYPE_GTPU] = {ROC_NPC_ITEM_TYPE_GTPU,
-				     sizeof(struct rte_flow_item_gtp)},
+	[RTE_FLOW_ITEM_TYPE_ETH] = {ROC_NPC_ITEM_TYPE_ETH, sizeof(struct rte_flow_item_eth)},
+	[RTE_FLOW_ITEM_TYPE_VLAN] = {ROC_NPC_ITEM_TYPE_VLAN, sizeof(struct rte_flow_item_vlan)},
+	[RTE_FLOW_ITEM_TYPE_E_TAG] = {ROC_NPC_ITEM_TYPE_E_TAG, sizeof(struct rte_flow_item_e_tag)},
+	[RTE_FLOW_ITEM_TYPE_IPV4] = {ROC_NPC_ITEM_TYPE_IPV4, sizeof(struct rte_flow_item_ipv4)},
+	[RTE_FLOW_ITEM_TYPE_IPV6] = {ROC_NPC_ITEM_TYPE_IPV6, sizeof(struct rte_flow_item_ipv6)},
+	[RTE_FLOW_ITEM_TYPE_IPV6_FRAG_EXT] = {ROC_NPC_ITEM_TYPE_IPV6_FRAG_EXT,
+					      sizeof(struct rte_flow_item_ipv6_frag_ext)},
+	[RTE_FLOW_ITEM_TYPE_ARP_ETH_IPV4] = {ROC_NPC_ITEM_TYPE_ARP_ETH_IPV4,
+					     sizeof(struct rte_flow_item_arp_eth_ipv4)},
+	[RTE_FLOW_ITEM_TYPE_MPLS] = {ROC_NPC_ITEM_TYPE_MPLS, sizeof(struct rte_flow_item_mpls)},
+	[RTE_FLOW_ITEM_TYPE_ICMP] = {ROC_NPC_ITEM_TYPE_ICMP, sizeof(struct rte_flow_item_icmp)},
+	[RTE_FLOW_ITEM_TYPE_UDP] = {ROC_NPC_ITEM_TYPE_UDP, sizeof(struct rte_flow_item_udp)},
+	[RTE_FLOW_ITEM_TYPE_TCP] = {ROC_NPC_ITEM_TYPE_TCP, sizeof(struct rte_flow_item_tcp)},
+	[RTE_FLOW_ITEM_TYPE_SCTP] = {ROC_NPC_ITEM_TYPE_SCTP, sizeof(struct rte_flow_item_sctp)},
+	[RTE_FLOW_ITEM_TYPE_ESP] = {ROC_NPC_ITEM_TYPE_ESP, sizeof(struct rte_flow_item_esp)},
+	[RTE_FLOW_ITEM_TYPE_GRE] = {ROC_NPC_ITEM_TYPE_GRE, sizeof(struct rte_flow_item_gre)},
+	[RTE_FLOW_ITEM_TYPE_NVGRE] = {ROC_NPC_ITEM_TYPE_NVGRE, sizeof(struct rte_flow_item_nvgre)},
+	[RTE_FLOW_ITEM_TYPE_VXLAN] = {ROC_NPC_ITEM_TYPE_VXLAN, sizeof(struct rte_flow_item_vxlan)},
+	[RTE_FLOW_ITEM_TYPE_GTPC] = {ROC_NPC_ITEM_TYPE_GTPC, sizeof(struct rte_flow_item_gtp)},
+	[RTE_FLOW_ITEM_TYPE_GTPU] = {ROC_NPC_ITEM_TYPE_GTPU, sizeof(struct rte_flow_item_gtp)},
 	[RTE_FLOW_ITEM_TYPE_GENEVE] = {ROC_NPC_ITEM_TYPE_GENEVE,
 				       sizeof(struct rte_flow_item_geneve)},
-	[RTE_FLOW_ITEM_TYPE_VXLAN_GPE] = {
-			ROC_NPC_ITEM_TYPE_VXLAN_GPE,
-			sizeof(struct rte_flow_item_vxlan_gpe)},
+	[RTE_FLOW_ITEM_TYPE_VXLAN_GPE] = {ROC_NPC_ITEM_TYPE_VXLAN_GPE,
+					  sizeof(struct rte_flow_item_vxlan_gpe)},
 	[RTE_FLOW_ITEM_TYPE_IPV6_EXT] = {ROC_NPC_ITEM_TYPE_IPV6_EXT,
 					 sizeof(struct rte_flow_item_ipv6_ext)},
 	[RTE_FLOW_ITEM_TYPE_VOID] = {ROC_NPC_ITEM_TYPE_VOID, 0},
 	[RTE_FLOW_ITEM_TYPE_ANY] = {ROC_NPC_ITEM_TYPE_ANY, 0},
-	[RTE_FLOW_ITEM_TYPE_GRE_KEY] = {ROC_NPC_ITEM_TYPE_GRE_KEY,
-					sizeof(uint32_t)},
+	[RTE_FLOW_ITEM_TYPE_GRE_KEY] = {ROC_NPC_ITEM_TYPE_GRE_KEY, sizeof(uint32_t)},
 	[RTE_FLOW_ITEM_TYPE_HIGIG2] = {ROC_NPC_ITEM_TYPE_HIGIG2,
 				       sizeof(struct rte_flow_item_higig2_hdr)},
-	[RTE_FLOW_ITEM_TYPE_RAW] = {ROC_NPC_ITEM_TYPE_RAW,
-				    sizeof(struct rte_flow_item_raw)},
-	[RTE_FLOW_ITEM_TYPE_MARK] = {ROC_NPC_ITEM_TYPE_MARK,
-				     sizeof(struct rte_flow_item_mark)},
+	[RTE_FLOW_ITEM_TYPE_RAW] = {ROC_NPC_ITEM_TYPE_RAW, sizeof(struct rte_flow_item_raw)},
+	[RTE_FLOW_ITEM_TYPE_MARK] = {ROC_NPC_ITEM_TYPE_MARK, sizeof(struct rte_flow_item_mark)},
 	[RTE_FLOW_ITEM_TYPE_IPV6_ROUTING_EXT] = {ROC_NPC_ITEM_TYPE_IPV6_ROUTING_EXT,
-				     sizeof(struct rte_flow_item_ipv6_routing_ext)},
+						 sizeof(struct rte_flow_item_ipv6_routing_ext)},
 	[RTE_FLOW_ITEM_TYPE_TX_QUEUE] = {ROC_NPC_ITEM_TYPE_TX_QUEUE,
-				     sizeof(struct rte_flow_item_tx_queue)},
+					 sizeof(struct rte_flow_item_tx_queue)},
+	[RTE_FLOW_ITEM_TYPE_REPRESENTED_PORT] = {ROC_NPC_ITEM_TYPE_REPRESENTED_PORT,
+						 sizeof(struct rte_flow_item_ethdev)},
 	[RTE_FLOW_ITEM_TYPE_PPPOES] = {ROC_NPC_ITEM_TYPE_PPPOES,
-				     sizeof(struct rte_flow_item_pppoe)}};
+				       sizeof(struct rte_flow_item_pppoe)}
+};
 
 static int
 npc_rss_action_validate(struct rte_eth_dev *eth_dev, const struct rte_flow_attr *attr,
@@ -372,6 +353,11 @@ cnxk_map_flow_data(struct rte_eth_dev *eth_dev, const struct rte_flow_attr *attr
 		   struct roc_npc_action_sample *in_sample_actions, uint32_t *flowkey_cfg,
 		   uint16_t *dst_pf_func)
 {
+	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
+	const struct rte_flow_item_ethdev *rep_eth_dev;
+	struct rte_eth_dev *portid_eth_dev;
+	char if_name[RTE_ETH_NAME_MAX_LEN];
+	struct cnxk_eth_dev *hw_dst;
 	int i = 0;
 
 	in_attr->priority = attr->priority;
@@ -384,6 +370,27 @@ cnxk_map_flow_data(struct rte_eth_dev *eth_dev, const struct rte_flow_attr *attr
 		in_pattern[i].mask = pattern->mask;
 		in_pattern[i].type = term[pattern->type].item_type;
 		in_pattern[i].size = term[pattern->type].item_size;
+		if (pattern->type == RTE_FLOW_ITEM_TYPE_REPRESENTED_PORT) {
+			rep_eth_dev = (const struct rte_flow_item_ethdev *)pattern->spec;
+			if (rte_eth_dev_get_name_by_port(rep_eth_dev->port_id, if_name)) {
+				plt_err("Name not found for output port id");
+				return -EINVAL;
+			}
+			portid_eth_dev = rte_eth_dev_allocated(if_name);
+			if (!portid_eth_dev) {
+				plt_err("eth_dev not found for output port id");
+				return -EINVAL;
+			}
+			if (strcmp(portid_eth_dev->device->driver->name,
+				   eth_dev->device->driver->name) != 0) {
+				plt_err("Output port not under same driver");
+				return -EINVAL;
+			}
+			hw_dst = portid_eth_dev->data->dev_private;
+			dev->npc.rep_npc = &hw_dst->npc;
+			dev->npc.rep_port_id = rep_eth_dev->port_id;
+			dev->npc.rep_pf_func = hw_dst->npc.pf_func;
+		}
 		pattern++;
 		i++;
 	}
