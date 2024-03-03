@@ -121,5 +121,13 @@ uint16_t cnxk_rep_tx_burst_dummy(void *tx_queue, struct rte_mbuf **tx_pkts, uint
 uint16_t cnxk_rep_rx_burst_dummy(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts);
 void cnxk_rep_tx_queue_stop(struct rte_eth_dev *ethdev, uint16_t queue_id);
 void cnxk_rep_rx_queue_stop(struct rte_eth_dev *ethdev, uint16_t queue_id);
+int cnxk_rep_xstats_get(struct rte_eth_dev *eth_dev, struct rte_eth_xstat *stats, unsigned int n);
+int cnxk_rep_xstats_reset(struct rte_eth_dev *eth_dev);
+int cnxk_rep_xstats_get_names(struct rte_eth_dev *eth_dev, struct rte_eth_xstat_name *xstats_names,
+			      unsigned int n);
+int cnxk_rep_xstats_get_by_id(struct rte_eth_dev *eth_dev, const uint64_t *ids, uint64_t *values,
+			      unsigned int n);
+int cnxk_rep_xstats_get_names_by_id(struct rte_eth_dev *eth_dev, const uint64_t *ids,
+				    struct rte_eth_xstat_name *xstats_names, unsigned int n);
 
 #endif /* __CNXK_REP_H__ */
