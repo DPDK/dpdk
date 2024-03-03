@@ -28,6 +28,7 @@ sources = files(
         'cnxk_ethdev_sec.c',
         'cnxk_ethdev_telemetry.c',
         'cnxk_ethdev_sec_telemetry.c',
+        'cnxk_eswitch.c',
         'cnxk_link.c',
         'cnxk_lookup.c',
         'cnxk_ptp.c',
