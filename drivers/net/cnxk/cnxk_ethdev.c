@@ -390,7 +390,7 @@ nix_update_flow_ctrl_config(struct rte_eth_dev *eth_dev)
 	struct cnxk_fc_cfg *fc = &dev->fc_cfg;
 	struct rte_eth_fc_conf fc_cfg = {0};
 
-	if (roc_nix_is_sdp(&dev->nix))
+	if (roc_nix_is_sdp(&dev->nix) || roc_nix_is_esw(&dev->nix))
 		return 0;
 
 	/* Don't do anything if PFC is enabled */
@@ -1449,12 +1449,14 @@ skip_lbk_setup:
 		goto cq_fini;
 
 	/* Init flow control configuration */
-	fc_cfg.type = ROC_NIX_FC_RXCHAN_CFG;
-	fc_cfg.rxchan_cfg.enable = true;
-	rc = roc_nix_fc_config_set(nix, &fc_cfg);
-	if (rc) {
-		plt_err("Failed to initialize flow control rc=%d", rc);
-		goto cq_fini;
+	if (!roc_nix_is_esw(nix)) {
+		fc_cfg.type = ROC_NIX_FC_RXCHAN_CFG;
+		fc_cfg.rxchan_cfg.enable = true;
+		rc = roc_nix_fc_config_set(nix, &fc_cfg);
+		if (rc) {
+			plt_err("Failed to initialize flow control rc=%d", rc);
+			goto cq_fini;
+		}
 	}
 
 	/* Update flow control configuration to PMD */
@@ -1977,11 +1979,21 @@ cnxk_eth_dev_init(struct rte_eth_dev *eth_dev)
 		TAILQ_INIT(&dev->mcs_list);
 	}
 
-	plt_nix_dbg("Port=%d pf=%d vf=%d ver=%s hwcap=0x%" PRIx64
-		    " rxoffload_capa=0x%" PRIx64 " txoffload_capa=0x%" PRIx64,
-		    eth_dev->data->port_id, roc_nix_get_pf(nix),
-		    roc_nix_get_vf(nix), CNXK_ETH_DEV_PMD_VERSION, dev->hwcap,
-		    dev->rx_offload_capa, dev->tx_offload_capa);
+	/* Reserve a switch domain for eswitch device */
+	if (pci_dev->id.device_id == PCI_DEVID_CNXK_RVU_ESWITCH_VF) {
+		eth_dev->data->dev_flags |= RTE_ETH_DEV_REPRESENTOR;
+		rc = rte_eth_switch_domain_alloc(&dev->switch_domain_id);
+		if (rc) {
+			plt_err("Failed to alloc switch domain: %d", rc);
+			goto free_mac_addrs;
+		}
+	}
+
+	plt_nix_dbg("Port=%d pf=%d vf=%d ver=%s hwcap=0x%" PRIx64 " rxoffload_capa=0x%" PRIx64
+		    " txoffload_capa=0x%" PRIx64,
+		    eth_dev->data->port_id, roc_nix_get_pf(nix), roc_nix_get_vf(nix),
+		    CNXK_ETH_DEV_PMD_VERSION, dev->hwcap, dev->rx_offload_capa,
+		    dev->tx_offload_capa);
 	return 0;
 
 free_mac_addrs:
@@ -2046,6 +2058,11 @@ cnxk_eth_dev_uninit(struct rte_eth_dev *eth_dev, bool reset)
 				plt_err("Failed to reset PFC. error code(%d)", rc);
 		}
 	}
+
+	/* Free switch domain ID reserved for eswitch device */
+	if ((eth_dev->data->dev_flags & RTE_ETH_DEV_REPRESENTOR) &&
+	    rte_eth_switch_domain_free(dev->switch_domain_id))
+		plt_err("Failed to free switch domain");
 
 	/* Disable and free rte_meter entries */
 	nix_meter_fini(dev);

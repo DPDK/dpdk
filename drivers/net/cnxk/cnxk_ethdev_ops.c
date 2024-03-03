@@ -70,6 +70,10 @@ cnxk_nix_info_get(struct rte_eth_dev *eth_dev, struct rte_eth_dev_info *devinfo)
 			    RTE_ETH_DEV_CAPA_FLOW_RULE_KEEP;
 
 	devinfo->max_rx_mempools = CNXK_NIX_NUM_POOLS_MAX;
+	if (eth_dev->data->dev_flags & RTE_ETH_DEV_REPRESENTOR) {
+		devinfo->switch_info.name = eth_dev->device->name;
+		devinfo->switch_info.domain_id = dev->switch_domain_id;
+	}
 
 	return 0;
 }

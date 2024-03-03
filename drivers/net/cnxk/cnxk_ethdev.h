@@ -427,6 +427,9 @@ struct cnxk_eth_dev {
 
 	/* Inject packets */
 	struct cnxk_ethdev_inj_cfg inj_cfg;
+
+	/* Eswitch domain ID */
+	uint16_t switch_domain_id;
 };
 
 struct cnxk_eth_rxq_sp {
