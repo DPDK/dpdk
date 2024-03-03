@@ -819,6 +819,7 @@ M: Nithin Dabilpuram <ndabilpuram@marvell.com>
 M: Kiran Kumar K <kirankumark@marvell.com>
 M: Sunil Kumar Kori <skori@marvell.com>
 M: Satha Rao <skoteshwar@marvell.com>
+M: Harman Kalra <hkalra@marvell.com>
 T: git://dpdk.org/next/dpdk-next-net-mrvl
 F: drivers/common/cnxk/
 F: drivers/net/cnxk/

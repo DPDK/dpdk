@@ -66,6 +66,11 @@ struct cnxk_eswitch_repr_cnt {
 	uint16_t nb_repr_started;
 };
 
+struct cnxk_eswitch_switch_domain {
+	uint16_t switch_domain_id;
+	uint16_t pf;
+};
+
 struct cnxk_rep_info {
 	struct rte_eth_dev *rep_eth_dev;
 };
@@ -121,7 +126,8 @@ struct cnxk_eswitch_dev {
 
 	/* Port representor fields */
 	rte_spinlock_t rep_lock;
-	uint16_t switch_domain_id;
+	uint16_t nb_switch_domain;
+	struct cnxk_eswitch_switch_domain sw_dom[RTE_MAX_ETHPORTS];
 	uint16_t eswitch_vdev;
 	struct cnxk_rep_info *rep_info;
 };
