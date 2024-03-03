@@ -89,6 +89,7 @@ INTERNAL {
 	roc_error_msg_get;
 	roc_eswitch_nix_process_repte_notify_cb_register;
 	roc_eswitch_nix_process_repte_notify_cb_unregister;
+	roc_eswitch_nix_repte_stats;
 	roc_eswitch_nix_vlan_tpid_set;
 	roc_eswitch_npc_mcam_delete_rule;
 	roc_eswitch_npc_mcam_rx_rule;

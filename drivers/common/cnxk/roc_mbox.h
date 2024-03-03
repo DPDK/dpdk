@@ -306,6 +306,7 @@ struct mbox_msghdr {
 	M(NIX_MCAST_GRP_DESTROY, 0x802c, nix_mcast_grp_destroy, nix_mcast_grp_destroy_req, msg_rsp)\
 	M(NIX_MCAST_GRP_UPDATE, 0x802d, nix_mcast_grp_update, nix_mcast_grp_update_req,            \
 	  nix_mcast_grp_update_rsp)                                                                \
+	M(NIX_GET_LF_STATS,    0x802e, nix_get_lf_stats, nix_get_lf_stats_req, nix_lf_stats_rsp)   \
 	/* MCS mbox IDs (range 0xa000 - 0xbFFF) */                                                 \
 	M(MCS_ALLOC_RESOURCES, 0xa000, mcs_alloc_resources, mcs_alloc_rsrc_req,                    \
 	  mcs_alloc_rsrc_rsp)                                                                      \
@@ -1848,6 +1849,36 @@ struct nix_mcast_grp_update_req {
 struct nix_mcast_grp_update_rsp {
 	struct mbox_msghdr hdr;
 	uint32_t __io mce_start_index;
+};
+
+struct nix_get_lf_stats_req {
+	struct mbox_msghdr hdr;
+	uint16_t __io pcifunc;
+	uint64_t __io rsvd;
+};
+
+struct nix_lf_stats_rsp {
+	struct mbox_msghdr hdr;
+	uint16_t __io pcifunc;
+	struct {
+		uint64_t __io octs;
+		uint64_t __io ucast;
+		uint64_t __io bcast;
+		uint64_t __io mcast;
+		uint64_t __io drop;
+		uint64_t __io drop_octs;
+		uint64_t __io drop_mcast;
+		uint64_t __io drop_bcast;
+		uint64_t __io err;
+		uint64_t __io rsvd[5];
+	} rx;
+	struct {
+		uint64_t __io ucast;
+		uint64_t __io bcast;
+		uint64_t __io mcast;
+		uint64_t __io drop;
+		uint64_t __io octs;
+	} tx;
 };
 
 /* Global NIX inline IPSec configuration */

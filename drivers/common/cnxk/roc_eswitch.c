@@ -342,3 +342,48 @@ roc_eswitch_nix_process_repte_notify_cb_unregister(struct roc_nix *roc_nix)
 
 	dev->ops->repte_notify = NULL;
 }
+
+int
+roc_eswitch_nix_repte_stats(struct roc_nix *roc_nix, uint16_t pf_func, struct roc_nix_stats *stats)
+{
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	struct dev *dev = &nix->dev;
+	struct nix_get_lf_stats_req *req;
+	struct nix_lf_stats_rsp *rsp;
+	struct mbox *mbox;
+	int rc;
+
+	mbox = mbox_get(dev->mbox);
+	req = mbox_alloc_msg_nix_get_lf_stats(mbox);
+	if (!req) {
+		rc = -ENOSPC;
+		goto exit;
+	}
+
+	req->hdr.pcifunc = roc_nix_get_pf_func(roc_nix);
+	req->pcifunc = pf_func;
+
+	rc = mbox_process_msg(mbox, (void *)&rsp);
+	if (rc)
+		goto exit;
+
+	stats->rx_octs = rsp->rx.octs;
+	stats->rx_ucast = rsp->rx.ucast;
+	stats->rx_bcast = rsp->rx.bcast;
+	stats->rx_mcast = rsp->rx.mcast;
+	stats->rx_drop = rsp->rx.drop;
+	stats->rx_drop_octs = rsp->rx.drop_octs;
+	stats->rx_drop_bcast = rsp->rx.drop_bcast;
+	stats->rx_drop_mcast = rsp->rx.drop_mcast;
+	stats->rx_err = rsp->rx.err;
+
+	stats->tx_ucast = rsp->tx.ucast;
+	stats->tx_bcast = rsp->tx.bcast;
+	stats->tx_mcast = rsp->tx.mcast;
+	stats->tx_drop = rsp->tx.drop;
+	stats->tx_octs = rsp->tx.octs;
+
+exit:
+	mbox_put(mbox);
+	return rc;
+}
