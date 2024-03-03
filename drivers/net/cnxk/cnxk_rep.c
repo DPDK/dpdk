@@ -4,6 +4,8 @@
 #include <cnxk_rep.h>
 #include <cnxk_rep_msg.h>
 
+#define REPTE_MSG_PROC_THRD_NAME_MAX_LEN 30
+
 #define PF_SHIFT 10
 #define PF_MASK	 0x3F
 
@@ -86,12 +88,306 @@ cnxk_rep_dev_remove(struct cnxk_eswitch_dev *eswitch_dev)
 {
 	int i, rc = 0;
 
+	roc_eswitch_nix_process_repte_notify_cb_unregister(&eswitch_dev->nix);
 	for (i = 0; i < eswitch_dev->nb_switch_domain; i++) {
 		rc = rte_eth_switch_domain_free(eswitch_dev->sw_dom[i].switch_domain_id);
 		if (rc)
 			plt_err("Failed to alloc switch domain: %d", rc);
 	}
 
+	return rc;
+}
+
+static int
+cnxk_representee_release(struct cnxk_eswitch_dev *eswitch_dev, uint16_t hw_func)
+{
+	struct cnxk_rep_dev *rep_dev = NULL;
+	struct rte_eth_dev *rep_eth_dev;
+	int i, rc = 0;
+
+	for (i = 0; i < eswitch_dev->repr_cnt.nb_repr_probed; i++) {
+		rep_eth_dev = eswitch_dev->rep_info[i].rep_eth_dev;
+		if (!rep_eth_dev) {
+			plt_err("Failed to get rep ethdev handle");
+			rc = -EINVAL;
+			goto done;
+		}
+
+		rep_dev = cnxk_rep_pmd_priv(rep_eth_dev);
+		if (rep_dev->hw_func == hw_func &&
+		    (!rep_dev->native_repte || rep_dev->is_vf_active)) {
+			rep_dev->is_vf_active = false;
+			rc = cnxk_rep_dev_stop(rep_eth_dev);
+			if (rc) {
+				plt_err("Failed to stop repr port %d, rep id %d", rep_dev->port_id,
+					rep_dev->rep_id);
+				goto done;
+			}
+
+			cnxk_rep_rx_queue_release(rep_eth_dev, 0);
+			cnxk_rep_tx_queue_release(rep_eth_dev, 0);
+			plt_rep_dbg("Released representor ID %d representing %x", rep_dev->rep_id,
+				    hw_func);
+			break;
+		}
+	}
+done:
+	return rc;
+}
+
+static int
+cnxk_representee_setup(struct cnxk_eswitch_dev *eswitch_dev, uint16_t hw_func, uint16_t rep_id)
+{
+	struct cnxk_rep_dev *rep_dev = NULL;
+	struct rte_eth_dev *rep_eth_dev;
+	int i, rc = 0;
+
+	for (i = 0; i < eswitch_dev->repr_cnt.nb_repr_probed; i++) {
+		rep_eth_dev = eswitch_dev->rep_info[i].rep_eth_dev;
+		if (!rep_eth_dev) {
+			plt_err("Failed to get rep ethdev handle");
+			rc = -EINVAL;
+			goto done;
+		}
+
+		rep_dev = cnxk_rep_pmd_priv(rep_eth_dev);
+		if (rep_dev->hw_func == hw_func && !rep_dev->is_vf_active) {
+			rep_dev->is_vf_active = true;
+			rep_dev->native_repte = true;
+			if (rep_dev->rep_id != rep_id) {
+				plt_err("Rep ID assigned during init %d does not match %d",
+					rep_dev->rep_id, rep_id);
+				rc = -EINVAL;
+				goto done;
+			}
+
+			rc = cnxk_rep_rx_queue_setup(rep_eth_dev, rep_dev->rxq->qid,
+						     rep_dev->rxq->nb_desc, 0,
+						     rep_dev->rxq->rx_conf, rep_dev->rxq->mpool);
+			if (rc) {
+				plt_err("Failed to setup rxq repr port %d, rep id %d",
+					rep_dev->port_id, rep_dev->rep_id);
+				goto done;
+			}
+
+			rc = cnxk_rep_tx_queue_setup(rep_eth_dev, rep_dev->txq->qid,
+						     rep_dev->txq->nb_desc, 0,
+						     rep_dev->txq->tx_conf);
+			if (rc) {
+				plt_err("Failed to setup txq repr port %d, rep id %d",
+					rep_dev->port_id, rep_dev->rep_id);
+				goto done;
+			}
+
+			rc = cnxk_rep_dev_start(rep_eth_dev);
+			if (rc) {
+				plt_err("Failed to start repr port %d, rep id %d", rep_dev->port_id,
+					rep_dev->rep_id);
+				goto done;
+			}
+			break;
+		}
+	}
+done:
+	return rc;
+}
+
+static int
+cnxk_representee_state_msg_process(struct cnxk_eswitch_dev *eswitch_dev, uint16_t hw_func,
+				   bool enable)
+{
+	struct cnxk_eswitch_devargs *esw_da;
+	uint16_t rep_id = UINT16_MAX;
+	int rc = 0, i, j;
+
+	/* Traversing the initialized represented list */
+	for (i = 0; i < eswitch_dev->nb_esw_da; i++) {
+		esw_da = &eswitch_dev->esw_da[i];
+		for (j = 0; j < esw_da->nb_repr_ports; j++) {
+			if (esw_da->repr_hw_info[j].hw_func == hw_func) {
+				rep_id = esw_da->repr_hw_info[j].rep_id;
+				break;
+			}
+		}
+		if (rep_id != UINT16_MAX)
+			break;
+	}
+	/* No action on PF func for which representor has not been created */
+	if (rep_id == UINT16_MAX)
+		goto done;
+
+	if (enable) {
+		rc = cnxk_representee_setup(eswitch_dev, hw_func, rep_id);
+		if (rc) {
+			plt_err("Failed to setup representee, err %d", rc);
+			goto fail;
+		}
+		plt_rep_dbg("		Representor ID %d representing %x", rep_id, hw_func);
+		rc = cnxk_eswitch_flow_rules_install(eswitch_dev, hw_func);
+		if (rc) {
+			plt_err("Failed to install rxtx flow rules for %x", hw_func);
+			goto fail;
+		}
+	} else {
+		rc = cnxk_eswitch_flow_rules_delete(eswitch_dev, hw_func);
+		if (rc) {
+			plt_err("Failed to delete flow rules for %x", hw_func);
+			goto fail;
+		}
+		rc = cnxk_representee_release(eswitch_dev, hw_func);
+		if (rc) {
+			plt_err("Failed to release representee, err %d", rc);
+			goto fail;
+		}
+	}
+
+done:
+	return 0;
+fail:
+	return rc;
+}
+
+static int
+cnxk_representee_mtu_msg_process(struct cnxk_eswitch_dev *eswitch_dev, uint16_t hw_func,
+				 uint16_t rep_id, uint16_t mtu)
+{
+	struct cnxk_rep_dev *rep_dev = NULL;
+	struct rte_eth_dev *rep_eth_dev;
+	int rc = 0;
+	int i;
+
+	for (i = 0; i < eswitch_dev->repr_cnt.nb_repr_probed; i++) {
+		rep_eth_dev = eswitch_dev->rep_info[i].rep_eth_dev;
+		if (!rep_eth_dev) {
+			plt_err("Failed to get rep ethdev handle");
+			rc = -EINVAL;
+			goto done;
+		}
+
+		rep_dev = cnxk_rep_pmd_priv(rep_eth_dev);
+		if (rep_dev->rep_id == rep_id) {
+			plt_rep_dbg("Setting MTU as %d for hw_func %x rep_id %d\n", mtu, hw_func,
+				    rep_id);
+			rep_dev->repte_mtu = mtu;
+			break;
+		}
+	}
+
+done:
+	return rc;
+}
+
+static int
+cnxk_representee_msg_process(struct cnxk_eswitch_dev *eswitch_dev,
+			     struct roc_eswitch_repte_notify_msg *notify_msg)
+{
+	int rc = 0;
+
+	switch (notify_msg->type) {
+	case ROC_ESWITCH_REPTE_STATE:
+		plt_rep_dbg("	   type %d: hw_func %x action %s", notify_msg->type,
+			    notify_msg->state.hw_func,
+			    notify_msg->state.enable ? "enable" : "disable");
+		rc = cnxk_representee_state_msg_process(eswitch_dev, notify_msg->state.hw_func,
+							notify_msg->state.enable);
+		break;
+	case ROC_ESWITCH_REPTE_MTU:
+		plt_rep_dbg("	   type %d: hw_func %x rep_id %d mtu %d", notify_msg->type,
+			    notify_msg->mtu.hw_func, notify_msg->mtu.rep_id, notify_msg->mtu.mtu);
+		rc = cnxk_representee_mtu_msg_process(eswitch_dev, notify_msg->mtu.hw_func,
+						      notify_msg->mtu.rep_id, notify_msg->mtu.mtu);
+		break;
+	default:
+		plt_err("Invalid notification msg received %d", notify_msg->type);
+		break;
+	};
+
+	return rc;
+}
+
+static uint32_t
+cnxk_representee_msg_thread_main(void *arg)
+{
+	struct cnxk_eswitch_dev *eswitch_dev = (struct cnxk_eswitch_dev *)arg;
+	struct cnxk_esw_repte_msg_proc *repte_msg_proc;
+	struct cnxk_esw_repte_msg *msg, *next_msg;
+	int count, rc;
+
+	repte_msg_proc = &eswitch_dev->repte_msg_proc;
+	pthread_mutex_lock(&eswitch_dev->repte_msg_proc.mutex);
+	while (eswitch_dev->repte_msg_proc.start_thread) {
+		do {
+			rc = pthread_cond_wait(&eswitch_dev->repte_msg_proc.repte_msg_cond,
+					       &eswitch_dev->repte_msg_proc.mutex);
+		} while (rc != 0);
+
+		/* Go through list pushed from interrupt context and process each message */
+		next_msg = TAILQ_FIRST(&repte_msg_proc->msg_list);
+		count = 0;
+		while (next_msg) {
+			msg = next_msg;
+			count++;
+			plt_rep_dbg("	Processing msg %d: ", count);
+			/* Unlocking for interrupt thread to grab lock
+			 * while thread process the message.
+			 */
+			pthread_mutex_unlock(&eswitch_dev->repte_msg_proc.mutex);
+			/* Processing the message */
+			cnxk_representee_msg_process(eswitch_dev, msg->notify_msg);
+			/* Locking as cond wait will unlock before wait */
+			pthread_mutex_lock(&eswitch_dev->repte_msg_proc.mutex);
+			next_msg = TAILQ_NEXT(msg, next);
+			TAILQ_REMOVE(&repte_msg_proc->msg_list, msg, next);
+			rte_free(msg->notify_msg);
+			rte_free(msg);
+		}
+	}
+
+	pthread_mutex_unlock(&eswitch_dev->repte_msg_proc.mutex);
+
+	return 0;
+}
+
+static int
+cnxk_representee_notification(void *roc_nix, struct roc_eswitch_repte_notify_msg *notify_msg)
+{
+	struct cnxk_esw_repte_msg_proc *repte_msg_proc;
+	struct cnxk_eswitch_dev *eswitch_dev;
+	struct cnxk_esw_repte_msg *msg;
+	int rc = 0;
+
+	RTE_SET_USED(roc_nix);
+	eswitch_dev = cnxk_eswitch_pmd_priv();
+	if (!eswitch_dev) {
+		plt_err("Failed to get PF ethdev handle");
+		rc = -EINVAL;
+		goto done;
+	}
+
+	repte_msg_proc = &eswitch_dev->repte_msg_proc;
+	msg = rte_zmalloc("msg", sizeof(struct cnxk_esw_repte_msg), 0);
+	if (!msg) {
+		plt_err("Failed to allocate memory for repte msg");
+		rc = -ENOMEM;
+		goto done;
+	}
+
+	msg->notify_msg = plt_zmalloc(sizeof(struct roc_eswitch_repte_notify_msg), 0);
+	if (!msg->notify_msg) {
+		plt_err("Failed to allocate memory");
+		rc = -ENOMEM;
+		goto done;
+	}
+
+	rte_memcpy(msg->notify_msg, notify_msg, sizeof(struct roc_eswitch_repte_notify_msg));
+	plt_rep_dbg("Pushing new notification : msg type %d", msg->notify_msg->type);
+	pthread_mutex_lock(&eswitch_dev->repte_msg_proc.mutex);
+	TAILQ_INSERT_TAIL(&repte_msg_proc->msg_list, msg, next);
+	/* Signal vf message handler thread */
+	pthread_cond_signal(&eswitch_dev->repte_msg_proc.repte_msg_cond);
+	pthread_mutex_unlock(&eswitch_dev->repte_msg_proc.mutex);
+
+done:
 	return rc;
 }
 
@@ -263,6 +559,7 @@ fail:
 int
 cnxk_rep_dev_probe(struct rte_pci_device *pci_dev, struct cnxk_eswitch_dev *eswitch_dev)
 {
+	char name[REPTE_MSG_PROC_THRD_NAME_MAX_LEN];
 	struct cnxk_eswitch_devargs *esw_da;
 	uint16_t num_rep;
 	int i, j, rc;
@@ -302,7 +599,36 @@ cnxk_rep_dev_probe(struct rte_pci_device *pci_dev, struct cnxk_eswitch_dev *eswi
 		}
 	}
 
+	if (!eswitch_dev->repte_msg_proc.start_thread) {
+		/* Register callback for representee notification */
+		if (roc_eswitch_nix_process_repte_notify_cb_register(&eswitch_dev->nix,
+							     cnxk_representee_notification)) {
+			plt_err("Failed to register callback for representee notification");
+			rc = -EINVAL;
+			goto fail;
+		}
+
+		/* Create a thread for handling msgs from VFs */
+		TAILQ_INIT(&eswitch_dev->repte_msg_proc.msg_list);
+		pthread_cond_init(&eswitch_dev->repte_msg_proc.repte_msg_cond, NULL);
+		pthread_mutex_init(&eswitch_dev->repte_msg_proc.mutex, NULL);
+
+		rte_strscpy(name, "repte_msg_proc_thrd", REPTE_MSG_PROC_THRD_NAME_MAX_LEN);
+		eswitch_dev->repte_msg_proc.start_thread = true;
+		rc =
+		rte_thread_create_internal_control(&eswitch_dev->repte_msg_proc.repte_msg_thread,
+						   name, cnxk_representee_msg_thread_main,
+						   eswitch_dev);
+		if (rc != 0) {
+			plt_err("Failed to create thread for VF mbox handling\n");
+			goto thread_fail;
+		}
+	}
+
 	return 0;
+thread_fail:
+	pthread_mutex_destroy(&eswitch_dev->repte_msg_proc.mutex);
+	pthread_cond_destroy(&eswitch_dev->repte_msg_proc.repte_msg_cond);
 fail:
 	return rc;
 }

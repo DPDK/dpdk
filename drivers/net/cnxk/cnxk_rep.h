@@ -10,6 +10,40 @@
 /* Common ethdev ops */
 extern struct eth_dev_ops cnxk_rep_dev_ops;
 
+struct cnxk_rep_queue_stats {
+	uint64_t pkts;
+	uint64_t bytes;
+};
+
+struct cnxk_rep_rxq {
+	/* Parent rep device */
+	struct cnxk_rep_dev *rep_dev;
+	/* Queue ID */
+	uint16_t qid;
+	/* No of desc */
+	uint16_t nb_desc;
+	/* mempool handle */
+	struct rte_mempool *mpool;
+	/* RX config parameters */
+	const struct rte_eth_rxconf *rx_conf;
+	/* Per queue TX statistics */
+	struct cnxk_rep_queue_stats stats;
+};
+
+struct cnxk_rep_txq {
+	/* Parent rep device */
+	struct cnxk_rep_dev *rep_dev;
+	/* Queue ID */
+	uint16_t qid;
+	/* No of desc */
+	uint16_t nb_desc;
+	/* TX config parameters */
+	const struct rte_eth_txconf *tx_conf;
+	/* Per queue TX statistics */
+	struct cnxk_rep_queue_stats stats;
+};
+
+/* Representor port configurations */
 struct cnxk_rep_dev {
 	uint16_t port_id;
 	uint16_t rep_id;
@@ -18,7 +52,10 @@ struct cnxk_rep_dev {
 	uint16_t hw_func;
 	bool is_vf_active;
 	bool native_repte;
+	struct cnxk_rep_rxq *rxq;
+	struct cnxk_rep_txq *txq;
 	uint8_t mac_addr[RTE_ETHER_ADDR_LEN];
+	uint16_t repte_mtu;
 };
 
 static inline struct cnxk_rep_dev *

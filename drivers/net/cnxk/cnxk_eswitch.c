@@ -139,6 +139,14 @@ cnxk_eswitch_dev_remove(struct rte_pci_device *pci_dev)
 				close(sock_fd);
 		}
 
+		if (eswitch_dev->repte_msg_proc.start_thread) {
+			eswitch_dev->repte_msg_proc.start_thread = false;
+			pthread_cond_signal(&eswitch_dev->repte_msg_proc.repte_msg_cond);
+			rte_thread_join(eswitch_dev->repte_msg_proc.repte_msg_thread, NULL);
+			pthread_mutex_destroy(&eswitch_dev->repte_msg_proc.mutex);
+			pthread_cond_destroy(&eswitch_dev->repte_msg_proc.repte_msg_cond);
+		}
+
 		/* Remove representor devices associated with PF */
 		cnxk_rep_dev_remove(eswitch_dev);
 	}

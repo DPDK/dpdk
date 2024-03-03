@@ -30,6 +30,22 @@ enum cnxk_esw_da_pattern_type {
 	CNXK_ESW_DA_TYPE_PFVF,
 };
 
+struct cnxk_esw_repte_msg {
+	struct roc_eswitch_repte_notify_msg *notify_msg;
+
+	TAILQ_ENTRY(cnxk_esw_repte_msg) next;
+};
+
+struct cnxk_esw_repte_msg_proc {
+	bool start_thread;
+	uint8_t msg_avail;
+	rte_thread_t repte_msg_thread;
+	pthread_cond_t repte_msg_cond;
+	pthread_mutex_t mutex;
+
+	TAILQ_HEAD(esw_repte_msg_list, cnxk_esw_repte_msg) msg_list;
+};
+
 struct cnxk_esw_repr_hw_info {
 	/* Representee pcifunc value */
 	uint16_t hw_func;
@@ -138,6 +154,9 @@ struct cnxk_eswitch_dev {
 	rte_thread_t rep_ctrl_msg_thread;
 	bool client_connected;
 	int sock_fd;
+
+	/* Representee notification */
+	struct cnxk_esw_repte_msg_proc repte_msg_proc;
 
 	/* Port representor fields */
 	rte_spinlock_t rep_lock;
