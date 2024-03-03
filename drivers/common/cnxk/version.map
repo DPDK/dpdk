@@ -8,12 +8,14 @@ INTERNAL {
 	cnxk_logtype_base;
 	cnxk_logtype_cpt;
 	cnxk_logtype_dpi;
+	cnxk_logtype_esw;
 	cnxk_logtype_mbox;
 	cnxk_logtype_ml;
 	cnxk_logtype_nix;
 	cnxk_logtype_npa;
 	cnxk_logtype_npc;
 	cnxk_logtype_ree;
+	cnxk_logtype_rep;
 	cnxk_logtype_sso;
 	cnxk_logtype_tim;
 	cnxk_logtype_tm;
@@ -216,6 +218,7 @@ INTERNAL {
 	roc_nix_get_base_chan;
 	roc_nix_get_pf;
 	roc_nix_get_pf_func;
+	roc_nix_max_rep_count;
 	roc_nix_get_rx_chan_cnt;
 	roc_nix_get_vf;
 	roc_nix_get_vwqe_interval;

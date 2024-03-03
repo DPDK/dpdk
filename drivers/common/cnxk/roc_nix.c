@@ -533,3 +533,34 @@ fini:
 	rc |= dev_fini(&nix->dev, nix->pci_dev);
 	return rc;
 }
+
+int
+roc_nix_max_rep_count(struct roc_nix *roc_nix)
+{
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	struct dev *dev = &nix->dev;
+	struct mbox *mbox = mbox_get(dev->mbox);
+	struct get_rep_cnt_rsp *rsp;
+	struct msg_req *req;
+	int rc, i;
+
+	req = mbox_alloc_msg_get_rep_cnt(mbox);
+	if (!req) {
+		rc = -ENOSPC;
+		goto exit;
+	}
+
+	req->hdr.pcifunc = roc_nix_get_pf_func(roc_nix);
+
+	rc = mbox_process_msg(mbox, (void *)&rsp);
+	if (rc)
+		goto exit;
+
+	roc_nix->rep_cnt = rsp->rep_cnt;
+	for (i = 0; i < rsp->rep_cnt; i++)
+		roc_nix->rep_pfvf_map[i] = rsp->rep_pfvf_map[i];
+
+exit:
+	mbox_put(mbox);
+	return rc;
+}

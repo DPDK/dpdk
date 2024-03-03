@@ -68,6 +68,7 @@ struct mbox_msghdr {
 	M(NDC_SYNC_OP, 0x009, ndc_sync_op, ndc_sync_op, msg_rsp)               \
 	M(LMTST_TBL_SETUP, 0x00a, lmtst_tbl_setup, lmtst_tbl_setup_req,        \
 	  msg_rsp)                                                             \
+	M(GET_REP_CNT, 0x00d, get_rep_cnt, msg_req, get_rep_cnt_rsp)           \
 	/* CGX mbox IDs (range 0x200 - 0x3FF) */                               \
 	M(CGX_START_RXTX, 0x200, cgx_start_rxtx, msg_req, msg_rsp)             \
 	M(CGX_STOP_RXTX, 0x201, cgx_stop_rxtx, msg_req, msg_rsp)               \
@@ -546,6 +547,13 @@ struct lmtst_tbl_setup_req {
 	uint8_t __io use_local_lmt_region;
 	uint64_t __io lmt_iova;
 	uint64_t __io rsvd[2]; /* Future use */
+};
+
+#define MAX_PFVF_REP 64
+struct get_rep_cnt_rsp {
+	struct mbox_msghdr hdr;
+	uint16_t __io rep_cnt;
+	uint16_t __io rep_pfvf_map[MAX_PFVF_REP];
 };
 
 /* CGX mbox message formats */

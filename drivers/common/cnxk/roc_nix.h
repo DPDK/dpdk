@@ -482,6 +482,8 @@ struct roc_nix {
 	uint32_t buf_sz;
 	uint64_t meta_aura_handle;
 	uintptr_t meta_mempool;
+	uint16_t rep_cnt;
+	uint16_t rep_pfvf_map[MAX_PFVF_REP];
 	TAILQ_ENTRY(roc_nix) next;
 
 #define ROC_NIX_MEM_SZ (6 * 1070)
@@ -1014,4 +1016,5 @@ int __roc_api roc_nix_mcast_list_setup(struct mbox *mbox, uint8_t intf, int nb_e
 				       uint16_t *pf_funcs, uint16_t *channels, uint32_t *rqs,
 				       uint32_t *grp_index, uint32_t *start_index);
 int __roc_api roc_nix_mcast_list_free(struct mbox *mbox, uint32_t mcast_grp_index);
+int __roc_api roc_nix_max_rep_count(struct roc_nix *roc_nix);
 #endif /* _ROC_NIX_H_ */
