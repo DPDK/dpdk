@@ -73,12 +73,16 @@ fail:
 int
 cnxk_rep_dev_uninit(struct rte_eth_dev *ethdev)
 {
+	struct cnxk_rep_dev *rep_dev = cnxk_rep_pmd_priv(ethdev);
+
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
 
 	plt_rep_dbg("Representor port:%d uninit", ethdev->data->port_id);
 	rte_free(ethdev->data->mac_addrs);
 	ethdev->data->mac_addrs = NULL;
+
+	rep_dev->parent_dev->repr_cnt.nb_repr_probed--;
 
 	return 0;
 }
@@ -432,26 +436,6 @@ fail:
 	return rc;
 }
 
-static uint16_t
-cnxk_rep_tx_burst(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
-{
-	PLT_SET_USED(tx_queue);
-	PLT_SET_USED(tx_pkts);
-	PLT_SET_USED(nb_pkts);
-
-	return 0;
-}
-
-static uint16_t
-cnxk_rep_rx_burst(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
-{
-	PLT_SET_USED(rx_queue);
-	PLT_SET_USED(rx_pkts);
-	PLT_SET_USED(nb_pkts);
-
-	return 0;
-}
-
 static int
 cnxk_rep_dev_init(struct rte_eth_dev *eth_dev, void *params)
 {
@@ -481,8 +465,8 @@ cnxk_rep_dev_init(struct rte_eth_dev *eth_dev, void *params)
 	eth_dev->dev_ops = &cnxk_rep_dev_ops;
 
 	/* Rx/Tx functions stubs to avoid crashing */
-	eth_dev->rx_pkt_burst = cnxk_rep_rx_burst;
-	eth_dev->tx_pkt_burst = cnxk_rep_tx_burst;
+	eth_dev->rx_pkt_burst = cnxk_rep_rx_burst_dummy;
+	eth_dev->tx_pkt_burst = cnxk_rep_tx_burst_dummy;
 
 	/* Only single queues for representor devices */
 	eth_dev->data->nb_rx_queues = 1;

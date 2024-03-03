@@ -19,6 +19,8 @@ typedef enum CNXK_REP_MSG {
 	CNXK_REP_MSG_READY = 0,
 	CNXK_REP_MSG_ACK,
 	CNXK_REP_MSG_EXIT,
+	/* Ethernet operation msgs */
+	CNXK_REP_MSG_ETH_SET_MAC,
 	/* End of messaging sequence */
 	CNXK_REP_MSG_END,
 } cnxk_rep_msg_t;
@@ -80,6 +82,12 @@ typedef struct cnxk_rep_msg_exit_data {
 	uint16_t nb_ports;
 	uint16_t data[];
 } __rte_packed cnxk_rep_msg_exit_data_t;
+
+/* Ethernet op - set mac */
+typedef struct cnxk_rep_msg_eth_mac_set_meta {
+	uint16_t portid;
+	uint8_t addr_bytes[RTE_ETHER_ADDR_LEN];
+} __rte_packed cnxk_rep_msg_eth_set_mac_meta_t;
 
 void cnxk_rep_msg_populate_command(void *buffer, uint32_t *length, cnxk_rep_msg_t type,
 				   uint32_t size);

@@ -7,6 +7,13 @@
 #ifndef __CNXK_REP_H__
 #define __CNXK_REP_H__
 
+#define CNXK_REP_TX_OFFLOAD_CAPA                                                                   \
+	(RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE | RTE_ETH_TX_OFFLOAD_VLAN_INSERT |                      \
+	 RTE_ETH_TX_OFFLOAD_MULTI_SEGS)
+
+#define CNXK_REP_RX_OFFLOAD_CAPA                                                                   \
+	(RTE_ETH_RX_OFFLOAD_SCATTER | RTE_ETH_RX_OFFLOAD_RSS_HASH | RTE_ETH_RX_OFFLOAD_VLAN_STRIP)
+
 /* Common ethdev ops */
 extern struct eth_dev_ops cnxk_rep_dev_ops;
 
@@ -58,12 +65,33 @@ struct cnxk_rep_dev {
 	uint16_t repte_mtu;
 };
 
+/* Inline functions */
+static inline void
+cnxk_rep_lock(struct cnxk_rep_dev *rep)
+{
+	rte_spinlock_lock(&rep->parent_dev->rep_lock);
+}
+
+static inline void
+cnxk_rep_unlock(struct cnxk_rep_dev *rep)
+{
+	rte_spinlock_unlock(&rep->parent_dev->rep_lock);
+}
+
 static inline struct cnxk_rep_dev *
 cnxk_rep_pmd_priv(const struct rte_eth_dev *eth_dev)
 {
 	return eth_dev->data->dev_private;
 }
 
+static __rte_always_inline void
+cnxk_rep_pool_buffer_stats(struct rte_mempool *pool)
+{
+	plt_rep_dbg("        pool %s size %d buffer count in use  %d available %d\n", pool->name,
+		    pool->size, rte_mempool_in_use_count(pool), rte_mempool_avail_count(pool));
+}
+
+/* Prototypes */
 int cnxk_rep_dev_probe(struct rte_pci_device *pci_dev, struct cnxk_eswitch_dev *eswitch_dev);
 int cnxk_rep_dev_remove(struct cnxk_eswitch_dev *eswitch_dev);
 int cnxk_rep_dev_uninit(struct rte_eth_dev *ethdev);
@@ -86,5 +114,12 @@ int cnxk_rep_stats_get(struct rte_eth_dev *eth_dev, struct rte_eth_stats *stats)
 int cnxk_rep_stats_reset(struct rte_eth_dev *eth_dev);
 int cnxk_rep_flow_ops_get(struct rte_eth_dev *ethdev, const struct rte_flow_ops **ops);
 int cnxk_rep_state_update(struct cnxk_eswitch_dev *eswitch_dev, uint16_t hw_func, uint16_t *rep_id);
+int cnxk_rep_promiscuous_enable(struct rte_eth_dev *ethdev);
+int cnxk_rep_promiscuous_disable(struct rte_eth_dev *ethdev);
+int cnxk_rep_mac_addr_set(struct rte_eth_dev *eth_dev, struct rte_ether_addr *addr);
+uint16_t cnxk_rep_tx_burst_dummy(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts);
+uint16_t cnxk_rep_rx_burst_dummy(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts);
+void cnxk_rep_tx_queue_stop(struct rte_eth_dev *ethdev, uint16_t queue_id);
+void cnxk_rep_rx_queue_stop(struct rte_eth_dev *ethdev, uint16_t queue_id);
 
 #endif /* __CNXK_REP_H__ */
