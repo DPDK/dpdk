@@ -170,6 +170,7 @@ struct nix {
 	uintptr_t base;
 	bool sdp_link;
 	bool lbk_link;
+	bool esw_link;
 	bool ptp_en;
 	bool is_nix1;
 

@@ -13,6 +13,14 @@ roc_nix_is_lbk(struct roc_nix *roc_nix)
 	return nix->lbk_link;
 }
 
+bool
+roc_nix_is_esw(struct roc_nix *roc_nix)
+{
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+
+	return nix->esw_link;
+}
+
 int
 roc_nix_get_base_chan(struct roc_nix *roc_nix)
 {
@@ -156,7 +164,7 @@ roc_nix_max_pkt_len(struct roc_nix *roc_nix)
 	if (roc_model_is_cn9k())
 		return NIX_CN9K_MAX_HW_FRS;
 
-	if (nix->lbk_link)
+	if (nix->lbk_link || nix->esw_link)
 		return NIX_LBK_MAX_HW_FRS;
 
 	return NIX_RPM_MAX_HW_FRS;
@@ -351,7 +359,7 @@ roc_nix_get_hw_info(struct roc_nix *roc_nix)
 	rc = mbox_process_msg(mbox, (void *)&hw_info);
 	if (rc == 0) {
 		nix->vwqe_interval = hw_info->vwqe_delay;
-		if (nix->lbk_link)
+		if (nix->lbk_link || nix->esw_link)
 			roc_nix->dwrr_mtu = hw_info->lbk_dwrr_mtu;
 		else if (nix->sdp_link)
 			roc_nix->dwrr_mtu = hw_info->sdp_dwrr_mtu;
@@ -368,6 +376,7 @@ sdp_lbk_id_update(struct plt_pci_device *pci_dev, struct nix *nix)
 {
 	nix->sdp_link = false;
 	nix->lbk_link = false;
+	nix->esw_link = false;
 
 	/* Update SDP/LBK link based on PCI device id */
 	switch (pci_dev->id.device_id) {
@@ -377,6 +386,9 @@ sdp_lbk_id_update(struct plt_pci_device *pci_dev, struct nix *nix)
 		break;
 	case PCI_DEVID_CNXK_RVU_AF_VF:
 		nix->lbk_link = true;
+		break;
+	case PCI_DEVID_CNXK_RVU_ESWITCH_VF:
+		nix->esw_link = true;
 		break;
 	default:
 		break;

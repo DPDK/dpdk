@@ -526,6 +526,7 @@ int __roc_api roc_nix_dev_fini(struct roc_nix *roc_nix);
 
 /* Type */
 bool __roc_api roc_nix_is_lbk(struct roc_nix *roc_nix);
+bool __roc_api roc_nix_is_esw(struct roc_nix *roc_nix);
 bool __roc_api roc_nix_is_sdp(struct roc_nix *roc_nix);
 bool __roc_api roc_nix_is_pf(struct roc_nix *roc_nix);
 bool __roc_api roc_nix_is_vf_or_sdp(struct roc_nix *roc_nix);

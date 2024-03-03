@@ -278,6 +278,7 @@ INTERNAL {
 	roc_nix_inl_outb_cpt_lfs_dump;
 	roc_nix_cpt_ctx_cache_sync;
 	roc_nix_is_lbk;
+	roc_nix_is_esw;
 	roc_nix_is_pf;
 	roc_nix_is_sdp;
 	roc_nix_is_vf_or_sdp;
