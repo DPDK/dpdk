@@ -1,6 +1,9 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  * Copyright(C) 2024 Marvell.
  */
+
+#include <regex.h>
+
 #include <cnxk_eswitch.h>
 #include <cnxk_ethdev.h>
 
@@ -89,6 +92,17 @@ cnxk_rep_pool_buffer_stats(struct rte_mempool *pool)
 {
 	plt_rep_dbg("        pool %s size %d buffer count in use  %d available %d\n", pool->name,
 		    pool->size, rte_mempool_in_use_count(pool), rte_mempool_avail_count(pool));
+}
+
+static inline int
+cnxk_ethdev_is_representor(const char *if_name)
+{
+	regex_t regex;
+	int val;
+
+	val = regcomp(&regex, "net_.*_representor_.*", 0);
+	val = regexec(&regex, if_name, 0, NULL, 0);
+	return (val == 0);
 }
 
 /* Prototypes */

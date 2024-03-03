@@ -39,6 +39,7 @@ Features of the CNXK Ethdev PMD are:
 - Queue based priority flow control support
 - Port representors
 - Represented port pattern matching and action
+- Port representor pattern matching and action
 
 Prerequisites
 -------------

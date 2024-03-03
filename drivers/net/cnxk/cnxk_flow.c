@@ -2,6 +2,7 @@
  * Copyright(C) 2021 Marvell.
  */
 #include <cnxk_flow.h>
+#include <cnxk_rep.h>
 
 const struct cnxk_rte_flow_term_info term[] = {
 	[RTE_FLOW_ITEM_TYPE_ETH] = {ROC_NPC_ITEM_TYPE_ETH, sizeof(struct rte_flow_item_eth)},
@@ -186,10 +187,43 @@ roc_npc_parse_sample_subaction(struct rte_eth_dev *eth_dev, const struct rte_flo
 }
 
 static int
+representor_portid_action(struct roc_npc_action *in_actions, struct rte_eth_dev *portid_eth_dev,
+			  uint16_t *dst_pf_func, uint8_t has_tunnel_pattern, int *act_cnt)
+{
+	struct rte_eth_dev *rep_eth_dev = portid_eth_dev;
+	struct rte_flow_action_mark *act_mark;
+	struct cnxk_rep_dev *rep_dev;
+	/* For inserting an action in the list */
+	int i = *act_cnt;
+
+	rep_dev = cnxk_rep_pmd_priv(rep_eth_dev);
+	*dst_pf_func = rep_dev->hw_func;
+
+	/* Add Mark action */
+	i++;
+	act_mark = plt_zmalloc(sizeof(struct rte_flow_action_mark), 0);
+	if (!act_mark) {
+		plt_err("Error allocation memory");
+		return -ENOMEM;
+	}
+
+	/* Mark ID format: (tunnel type - VxLAN, Geneve << 6) | Tunnel decap */
+	act_mark->id = has_tunnel_pattern ? ((has_tunnel_pattern << 6) | 5) : 1;
+	in_actions[i].type = ROC_NPC_ACTION_TYPE_MARK;
+	in_actions[i].conf = (struct rte_flow_action_mark *)act_mark;
+
+	*act_cnt = i;
+	plt_rep_dbg("Rep port %d ID %d mark ID is %d rep_dev->hw_func 0x%x", rep_dev->port_id,
+		    rep_dev->rep_id, act_mark->id, rep_dev->hw_func);
+
+	return 0;
+}
+
+static int
 cnxk_map_actions(struct rte_eth_dev *eth_dev, const struct rte_flow_attr *attr,
 		 const struct rte_flow_action actions[], struct roc_npc_action in_actions[],
 		 struct roc_npc_action_sample *in_sample_actions, uint32_t *flowkey_cfg,
-		 uint16_t *dst_pf_func)
+		 uint16_t *dst_pf_func, uint8_t has_tunnel_pattern)
 {
 	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
 	const struct rte_flow_action_queue *act_q = NULL;
@@ -238,6 +272,7 @@ cnxk_map_actions(struct rte_eth_dev *eth_dev, const struct rte_flow_attr *attr,
 			break;
 
 		case RTE_FLOW_ACTION_TYPE_REPRESENTED_PORT:
+		case RTE_FLOW_ACTION_TYPE_PORT_REPRESENTOR:
 		case RTE_FLOW_ACTION_TYPE_PORT_ID:
 			in_actions[i].type = ROC_NPC_ACTION_TYPE_PORT_ID;
 			in_actions[i].conf = actions->conf;
@@ -256,14 +291,27 @@ cnxk_map_actions(struct rte_eth_dev *eth_dev, const struct rte_flow_attr *attr,
 				plt_err("eth_dev not found for output port id");
 				goto err_exit;
 			}
-			if (strcmp(portid_eth_dev->device->driver->name,
-				   eth_dev->device->driver->name) != 0) {
-				plt_err("Output port not under same driver");
-				goto err_exit;
+
+			if (cnxk_ethdev_is_representor(if_name)) {
+				plt_rep_dbg("Representor port %d act port %d", port_act->id,
+					    act_ethdev->port_id);
+				if (representor_portid_action(in_actions, portid_eth_dev,
+							      dst_pf_func, has_tunnel_pattern,
+							      &i)) {
+					plt_err("Representor port action set failed");
+					goto err_exit;
+				}
+			} else {
+				if (strcmp(portid_eth_dev->device->driver->name,
+					   eth_dev->device->driver->name) != 0) {
+					plt_err("Output port not under same driver");
+					goto err_exit;
+				}
+
+				hw_dst = portid_eth_dev->data->dev_private;
+				roc_npc_dst = &hw_dst->npc;
+				*dst_pf_func = roc_npc_dst->pf_func;
 			}
-			hw_dst = portid_eth_dev->data->dev_private;
-			roc_npc_dst = &hw_dst->npc;
-			*dst_pf_func = roc_npc_dst->pf_func;
 			break;
 
 		case RTE_FLOW_ACTION_TYPE_QUEUE:
@@ -324,6 +372,8 @@ cnxk_map_actions(struct rte_eth_dev *eth_dev, const struct rte_flow_attr *attr,
 			in_actions[i].type = ROC_NPC_ACTION_TYPE_SAMPLE;
 			in_actions[i].conf = in_sample_actions;
 			break;
+		case RTE_FLOW_ACTION_TYPE_VXLAN_DECAP:
+			continue;
 		default:
 			plt_npc_dbg("Action is not supported = %d", actions->type);
 			goto err_exit;
@@ -346,12 +396,8 @@ err_exit:
 }
 
 static int
-cnxk_map_flow_data(struct rte_eth_dev *eth_dev, const struct rte_flow_attr *attr,
-		   const struct rte_flow_item pattern[], const struct rte_flow_action actions[],
-		   struct roc_npc_attr *in_attr, struct roc_npc_item_info in_pattern[],
-		   struct roc_npc_action in_actions[],
-		   struct roc_npc_action_sample *in_sample_actions, uint32_t *flowkey_cfg,
-		   uint16_t *dst_pf_func)
+cnxk_map_pattern(struct rte_eth_dev *eth_dev, const struct rte_flow_item pattern[],
+		 struct roc_npc_item_info in_pattern[], uint8_t *has_tunnel_pattern)
 {
 	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
 	const struct rte_flow_item_ethdev *rep_eth_dev;
@@ -359,10 +405,6 @@ cnxk_map_flow_data(struct rte_eth_dev *eth_dev, const struct rte_flow_attr *attr
 	char if_name[RTE_ETH_NAME_MAX_LEN];
 	struct cnxk_eth_dev *hw_dst;
 	int i = 0;
-
-	in_attr->priority = attr->priority;
-	in_attr->ingress = attr->ingress;
-	in_attr->egress = attr->egress;
 
 	while (pattern->type != RTE_FLOW_ITEM_TYPE_END) {
 		in_pattern[i].spec = pattern->spec;
@@ -374,30 +416,81 @@ cnxk_map_flow_data(struct rte_eth_dev *eth_dev, const struct rte_flow_attr *attr
 			rep_eth_dev = (const struct rte_flow_item_ethdev *)pattern->spec;
 			if (rte_eth_dev_get_name_by_port(rep_eth_dev->port_id, if_name)) {
 				plt_err("Name not found for output port id");
-				return -EINVAL;
+				goto fail;
 			}
 			portid_eth_dev = rte_eth_dev_allocated(if_name);
 			if (!portid_eth_dev) {
 				plt_err("eth_dev not found for output port id");
-				return -EINVAL;
+				goto fail;
 			}
 			if (strcmp(portid_eth_dev->device->driver->name,
 				   eth_dev->device->driver->name) != 0) {
 				plt_err("Output port not under same driver");
-				return -EINVAL;
+				goto fail;
 			}
-			hw_dst = portid_eth_dev->data->dev_private;
-			dev->npc.rep_npc = &hw_dst->npc;
-			dev->npc.rep_port_id = rep_eth_dev->port_id;
-			dev->npc.rep_pf_func = hw_dst->npc.pf_func;
+			if (cnxk_ethdev_is_representor(if_name)) {
+				/* Case where represented port not part of same
+				 * app and represented by a representor port.
+				 */
+				struct cnxk_rep_dev *rep_dev;
+				struct cnxk_eswitch_dev *eswitch_dev;
+
+				rep_dev = cnxk_rep_pmd_priv(portid_eth_dev);
+				eswitch_dev = rep_dev->parent_dev;
+				dev->npc.rep_npc = &eswitch_dev->npc;
+				dev->npc.rep_port_id = rep_eth_dev->port_id;
+				dev->npc.rep_pf_func = rep_dev->hw_func;
+				plt_rep_dbg("Represented port %d act port %d rep_dev->hw_func 0x%x",
+					    rep_eth_dev->port_id, eth_dev->data->port_id,
+					    rep_dev->hw_func);
+			} else {
+				/* Case where represented port part of same app
+				 * as PF.
+				 */
+				hw_dst = portid_eth_dev->data->dev_private;
+				dev->npc.rep_npc = &hw_dst->npc;
+				dev->npc.rep_port_id = rep_eth_dev->port_id;
+				dev->npc.rep_pf_func = hw_dst->npc.pf_func;
+			}
 		}
+
+		if (pattern->type == RTE_FLOW_ITEM_TYPE_VXLAN ||
+		    pattern->type == RTE_FLOW_ITEM_TYPE_VXLAN_GPE ||
+		    pattern->type == RTE_FLOW_ITEM_TYPE_GRE)
+			*has_tunnel_pattern = pattern->type;
+
 		pattern++;
 		i++;
 	}
 	in_pattern[i].type = ROC_NPC_ITEM_TYPE_END;
+	return 0;
+fail:
+	return -EINVAL;
+}
+
+static int
+cnxk_map_flow_data(struct rte_eth_dev *eth_dev, const struct rte_flow_attr *attr,
+		   const struct rte_flow_item pattern[], const struct rte_flow_action actions[],
+		   struct roc_npc_attr *in_attr, struct roc_npc_item_info in_pattern[],
+		   struct roc_npc_action in_actions[],
+		   struct roc_npc_action_sample *in_sample_actions, uint32_t *flowkey_cfg,
+		   uint16_t *dst_pf_func)
+{
+	uint8_t has_tunnel_pattern = 0;
+	int rc;
+
+	in_attr->priority = attr->priority;
+	in_attr->ingress = attr->ingress;
+	in_attr->egress = attr->egress;
+
+	rc = cnxk_map_pattern(eth_dev, pattern, in_pattern, &has_tunnel_pattern);
+	if (rc) {
+		plt_err("Failed to map pattern list");
+		return rc;
+	}
 
 	return cnxk_map_actions(eth_dev, attr, actions, in_actions, in_sample_actions, flowkey_cfg,
-				dst_pf_func);
+				dst_pf_func, has_tunnel_pattern);
 }
 
 static int
@@ -461,6 +554,7 @@ cnxk_flow_create(struct rte_eth_dev *eth_dev, const struct rte_flow_attr *attr,
 	int rc;
 
 	memset(&in_sample_action, 0, sizeof(in_sample_action));
+	memset(&in_attr, 0, sizeof(struct roc_npc_attr));
 	rc = cnxk_map_flow_data(eth_dev, attr, pattern, actions, &in_attr, in_pattern, in_actions,
 				&in_sample_action, &npc->flowkey_cfg_state, &dst_pf_func);
 	if (rc) {
@@ -649,6 +743,75 @@ cnxk_flow_get_aged_flows(struct rte_eth_dev *eth_dev, void **context,
 	return cnt;
 }
 
+static int
+cnxk_flow_tunnel_decap_set(__rte_unused struct rte_eth_dev *dev, struct rte_flow_tunnel *tunnel,
+			   struct rte_flow_action **pmd_actions, uint32_t *num_of_actions,
+			   __rte_unused struct rte_flow_error *err)
+{
+	struct rte_flow_action *nfp_action;
+
+	nfp_action = rte_zmalloc("nfp_tun_action", sizeof(struct rte_flow_action), 0);
+	if (nfp_action == NULL) {
+		plt_err("Alloc memory for nfp tunnel action failed.");
+		return -ENOMEM;
+	}
+
+	if (tunnel->is_ipv6)
+		nfp_action->conf = (void *)~0;
+
+	switch (tunnel->type) {
+	case RTE_FLOW_ITEM_TYPE_VXLAN:
+		nfp_action->type = RTE_FLOW_ACTION_TYPE_VXLAN_DECAP;
+		*pmd_actions = nfp_action;
+		*num_of_actions = 1;
+		break;
+	default:
+		*pmd_actions = NULL;
+		*num_of_actions = 0;
+		rte_free(nfp_action);
+		break;
+	}
+
+	return 0;
+}
+
+static int
+cnxk_flow_tunnel_action_decap_release(__rte_unused struct rte_eth_dev *dev,
+				      struct rte_flow_action *pmd_actions, uint32_t num_of_actions,
+				      __rte_unused struct rte_flow_error *err)
+{
+	uint32_t i;
+	struct rte_flow_action *nfp_action;
+
+	for (i = 0; i < num_of_actions; i++) {
+		nfp_action = &pmd_actions[i];
+		nfp_action->conf = NULL;
+		rte_free(nfp_action);
+	}
+
+	return 0;
+}
+
+static int
+cnxk_flow_tunnel_match(__rte_unused struct rte_eth_dev *dev,
+		       __rte_unused struct rte_flow_tunnel *tunnel,
+		       __rte_unused struct rte_flow_item **pmd_items, uint32_t *num_of_items,
+		       __rte_unused struct rte_flow_error *err)
+{
+	*num_of_items = 0;
+
+	return 0;
+}
+
+static int
+cnxk_flow_tunnel_item_release(__rte_unused struct rte_eth_dev *dev,
+			      __rte_unused struct rte_flow_item *pmd_items,
+			      __rte_unused uint32_t num_of_items,
+			      __rte_unused struct rte_flow_error *err)
+{
+	return 0;
+}
+
 struct rte_flow_ops cnxk_flow_ops = {
 	.validate = cnxk_flow_validate,
 	.flush = cnxk_flow_flush,
@@ -656,4 +819,8 @@ struct rte_flow_ops cnxk_flow_ops = {
 	.isolate = cnxk_flow_isolate,
 	.dev_dump = cnxk_flow_dev_dump,
 	.get_aged_flows = cnxk_flow_get_aged_flows,
+	.tunnel_match = cnxk_flow_tunnel_match,
+	.tunnel_item_release = cnxk_flow_tunnel_item_release,
+	.tunnel_decap_set = cnxk_flow_tunnel_decap_set,
+	.tunnel_action_decap_release = cnxk_flow_tunnel_action_decap_release,
 };
