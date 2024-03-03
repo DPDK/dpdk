@@ -540,6 +540,75 @@ pf_vf_mbox_send_up_msg(struct dev *dev, void *rec_msg)
 }
 
 static int
+mbox_up_handler_rep_repte_notify(struct dev *dev, struct rep_repte_req *req, struct msg_rsp *rsp)
+{
+	struct roc_eswitch_repte_notify_msg *notify_msg;
+	int rc = 0;
+
+	plt_base_dbg("pf:%d/vf:%d msg id 0x%x (%s) from: pf:%d/vf:%d", dev_get_pf(dev->pf_func),
+		     dev_get_vf(dev->pf_func), req->hdr.id, mbox_id2name(req->hdr.id),
+		     dev_get_pf(req->hdr.pcifunc), dev_get_vf(req->hdr.pcifunc));
+
+	plt_base_dbg("repte pcifunc %x, enable %d", req->repte_pcifunc, req->enable);
+	if (dev->ops && dev->ops->repte_notify) {
+		notify_msg = plt_zmalloc(sizeof(struct roc_eswitch_repte_notify_msg), 0);
+		if (!notify_msg) {
+			plt_err("Failed to allocate memory");
+			rc = -ENOMEM;
+			goto fail;
+		}
+		notify_msg->type = ROC_ESWITCH_REPTE_STATE;
+		notify_msg->state.hw_func = req->repte_pcifunc;
+		notify_msg->state.enable = req->enable;
+
+		rc = dev->ops->repte_notify(dev->roc_nix, (void *)notify_msg);
+		if (rc < 0)
+			plt_err("Failed to sent new representee %x notification to %s",
+				req->repte_pcifunc, (req->enable == true) ? "enable" : "disable");
+
+		plt_free(notify_msg);
+	}
+fail:
+	rsp->hdr.rc = rc;
+	return rc;
+}
+
+static int
+mbox_up_handler_rep_set_mtu(struct dev *dev, struct rep_mtu *req, struct msg_rsp *rsp)
+{
+	struct roc_eswitch_repte_notify_msg *notify_msg;
+	int rc = 0;
+
+	plt_base_dbg("pf:%d/vf:%d msg id 0x%x (%s) from: pf:%d/vf:%d", dev_get_pf(dev->pf_func),
+		     dev_get_vf(dev->pf_func), req->hdr.id, mbox_id2name(req->hdr.id),
+		     dev_get_pf(req->hdr.pcifunc), dev_get_vf(req->hdr.pcifunc));
+
+	plt_base_dbg("rep pcifunc %x, rep id %d mtu %d", req->rep_pcifunc, req->rep_id, req->mtu);
+	if (dev->ops && dev->ops->repte_notify) {
+		notify_msg = plt_zmalloc(sizeof(struct roc_eswitch_repte_notify_msg), 0);
+		if (!notify_msg) {
+			plt_err("Failed to allocate memory");
+			rc = -ENOMEM;
+			goto fail;
+		}
+		notify_msg->type = ROC_ESWITCH_REPTE_MTU;
+		notify_msg->mtu.hw_func = req->rep_pcifunc;
+		notify_msg->mtu.rep_id = req->rep_id;
+		notify_msg->mtu.mtu = req->mtu;
+
+		rc = dev->ops->repte_notify(dev->roc_nix, (void *)notify_msg);
+		if (rc < 0)
+			plt_err("Failed to send new mtu notification for representee %x ",
+				req->rep_pcifunc);
+
+		plt_free(notify_msg);
+	}
+fail:
+	rsp->hdr.rc = rc;
+	return rc;
+}
+
+static int
 mbox_up_handler_mcs_intr_notify(struct dev *dev, struct mcs_intr_info *info, struct msg_rsp *rsp)
 {
 	struct roc_mcs_event_desc desc = {0};
@@ -713,6 +782,7 @@ mbox_process_msgs_up(struct dev *dev, struct mbox_msghdr *req)
 	}
 		MBOX_UP_CGX_MESSAGES
 		MBOX_UP_MCS_MESSAGES
+		MBOX_UP_REP_MESSAGES
 #undef M
 	}
 

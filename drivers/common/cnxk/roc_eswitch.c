@@ -319,3 +319,26 @@ roc_eswitch_nix_vlan_tpid_set(struct roc_nix *roc_nix, uint32_t type, uint16_t t
 
 	return rc;
 }
+
+int
+roc_eswitch_nix_process_repte_notify_cb_register(struct roc_nix *roc_nix,
+						 process_repte_notify_t proc_repte_nt)
+{
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	struct dev *dev = &nix->dev;
+
+	if (proc_repte_nt == NULL)
+		return NIX_ERR_PARAM;
+
+	dev->ops->repte_notify = (repte_notify_t)proc_repte_nt;
+	return 0;
+}
+
+void
+roc_eswitch_nix_process_repte_notify_cb_unregister(struct roc_nix *roc_nix)
+{
+	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
+	struct dev *dev = &nix->dev;
+
+	dev->ops->repte_notify = NULL;
+}
