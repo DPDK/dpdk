@@ -4,7 +4,7 @@
 #include "roc_api.h"
 #include "roc_priv.h"
 
-static int
+int
 npc_mcam_alloc_counter(struct mbox *mbox, uint16_t *ctr)
 {
 	struct npc_mcam_alloc_counter_req *req;

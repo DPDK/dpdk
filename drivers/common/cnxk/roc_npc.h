@@ -431,7 +431,8 @@ int __roc_api roc_npc_mcam_enable_all_entries(struct roc_npc *roc_npc, bool enab
 int __roc_api roc_npc_mcam_alloc_entry(struct roc_npc *roc_npc, struct roc_npc_flow *mcam,
 				       struct roc_npc_flow *ref_mcam, int prio, int *resp_count);
 int __roc_api roc_npc_mcam_alloc_entries(struct roc_npc *roc_npc, int ref_entry, int *alloc_entry,
-					 int req_count, int priority, int *resp_count);
+					 int req_count, int priority, int *resp_count,
+					 bool is_conti);
 int __roc_api roc_npc_mcam_ena_dis_entry(struct roc_npc *roc_npc, struct roc_npc_flow *mcam,
 					 bool enable);
 int __roc_api roc_npc_mcam_write_entry(struct roc_npc *roc_npc, struct roc_npc_flow *mcam);
@@ -442,6 +443,8 @@ int __roc_api roc_npc_get_low_priority_mcam(struct roc_npc *roc_npc);
 int __roc_api roc_npc_mcam_free_counter(struct roc_npc *roc_npc, uint16_t ctr_id);
 int __roc_api roc_npc_mcam_read_counter(struct roc_npc *roc_npc, uint32_t ctr_id, uint64_t *count);
 int __roc_api roc_npc_mcam_clear_counter(struct roc_npc *roc_npc, uint32_t ctr_id);
+int __roc_api roc_npc_mcam_alloc_counter(struct roc_npc *roc_npc, uint16_t *ctr_id);
+int __roc_api roc_npc_get_free_mcam_entry(struct roc_npc *roc_npc, struct roc_npc_flow *flow);
 int __roc_api roc_npc_inl_mcam_read_counter(uint32_t ctr_id, uint64_t *count);
 int __roc_api roc_npc_inl_mcam_clear_counter(uint32_t ctr_id);
 int __roc_api roc_npc_mcam_free_all_resources(struct roc_npc *roc_npc);

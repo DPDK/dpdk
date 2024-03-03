@@ -117,4 +117,7 @@
 /* MACsec */
 #include "roc_mcs.h"
 
+/* Eswitch */
+#include "roc_eswitch.h"
+
 #endif /* _ROC_API_H_ */

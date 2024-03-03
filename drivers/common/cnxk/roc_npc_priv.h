@@ -432,6 +432,7 @@ roc_npc_to_npc_priv(struct roc_npc *npc)
 	return (struct npc *)npc->reserved;
 }
 
+int npc_mcam_alloc_counter(struct mbox *mbox, uint16_t *ctr);
 int npc_mcam_free_counter(struct mbox *mbox, uint16_t ctr_id);
 int npc_mcam_read_counter(struct mbox *mbox, uint32_t ctr_id, uint64_t *count);
 int npc_mcam_clear_counter(struct mbox *mbox, uint32_t ctr_id);
@@ -480,7 +481,6 @@ uint64_t npc_get_kex_capability(struct npc *npc);
 int npc_process_ipv6_field_hash(const struct roc_npc_flow_item_ipv6 *ipv6_spec,
 				const struct roc_npc_flow_item_ipv6 *ipv6_mask,
 				struct npc_parse_state *pst, uint8_t type);
-int npc_rss_free_grp_get(struct npc *npc, uint32_t *grp);
 int npc_rss_action_configure(struct roc_npc *roc_npc, const struct roc_npc_action_rss *rss,
 			     uint8_t *alg_idx, uint32_t *rss_grp, uint32_t mcam_id);
 int npc_rss_action_program(struct roc_npc *roc_npc, const struct roc_npc_action actions[],
@@ -496,4 +496,5 @@ void npc_aged_flows_bitmap_free(struct roc_npc *roc_npc);
 int npc_aging_ctrl_thread_create(struct roc_npc *roc_npc, const struct roc_npc_action_age *age,
 				 struct roc_npc_flow *flow);
 void npc_aging_ctrl_thread_destroy(struct roc_npc *roc_npc);
+int npc_rss_free_grp_get(struct npc *npc, uint32_t *pos);
 #endif /* _ROC_NPC_PRIV_H_ */

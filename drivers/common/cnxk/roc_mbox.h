@@ -388,6 +388,18 @@ enum rvu_af_status {
 	RVU_INVALID_VF_ID = -256,
 };
 
+/* For NIX RX vtag action  */
+enum nix_rx_vtag0_type {
+	NIX_RX_VTAG_TYPE0,
+	NIX_RX_VTAG_TYPE1,
+	NIX_RX_VTAG_TYPE2,
+	NIX_RX_VTAG_TYPE3,
+	NIX_RX_VTAG_TYPE4,
+	NIX_RX_VTAG_TYPE5,
+	NIX_RX_VTAG_TYPE6,
+	NIX_RX_VTAG_TYPE7,
+};
+
 struct ready_msg_rsp {
 	struct mbox_msghdr hdr;
 	uint16_t __io sclk_freq; /* SCLK frequency */
@@ -2446,6 +2458,8 @@ enum header_fields {
 	NPC_DMAC,
 	NPC_SMAC,
 	NPC_ETYPE,
+	NPC_VLAN_ETYPE_CTAG, /* 0x8100 */
+	NPC_VLAN_ETYPE_STAG, /* 0x88A8 */
 	NPC_OUTER_VID,
 	NPC_TOS,
 	NPC_SIP_IPV4,
@@ -2474,12 +2488,27 @@ struct flow_msg {
 		uint32_t __io ip4dst;
 		uint32_t __io ip6dst[4];
 	};
+	union {
+		uint32_t spi;
+	};
 	uint8_t __io tos;
 	uint8_t __io ip_ver;
 	uint8_t __io ip_proto;
 	uint8_t __io tc;
 	uint16_t __io sport;
 	uint16_t __io dport;
+	union {
+		uint8_t __io ip_flag;
+		uint8_t __io next_header;
+	};
+	uint16_t __io vlan_itci;
+	uint8_t __io icmp_type;
+	uint8_t __io icmp_code;
+	uint16_t __io tcp_flags;
+	uint32_t __io gtpu_teid;
+	uint32_t __io gtpc_teid;
+	uint32_t __io mpls_lse[4];
+	uint16_t __io sq_id;
 };
 
 struct npc_install_flow_req {
@@ -2489,6 +2518,7 @@ struct npc_install_flow_req {
 	uint64_t __io features;
 	uint16_t __io entry;
 	uint16_t __io channel;
+	uint16_t __io chan_mask;
 	uint8_t __io intf;
 	uint8_t __io set_cntr;
 	uint8_t __io default_rule;
@@ -2511,6 +2541,8 @@ struct npc_install_flow_req {
 	uint8_t __io vtag0_op;
 	uint16_t __io vtag1_def;
 	uint8_t __io vtag1_op;
+	/* old counter value */
+	uint16_t __io cntr_val;
 };
 
 struct npc_install_flow_rsp {
@@ -2525,6 +2557,7 @@ struct npc_delete_flow_req {
 	uint16_t __io start; /*Disable range of entries */
 	uint16_t __io end;
 	uint8_t __io all; /* PF + VFs */
+	uint16_t __io vf; /* Requesting VF */
 };
 
 struct npc_mcam_read_entry_req {

@@ -87,6 +87,10 @@ INTERNAL {
 	roc_dpi_disable;
 	roc_dpi_enable;
 	roc_error_msg_get;
+	roc_eswitch_npc_mcam_delete_rule;
+	roc_eswitch_npc_mcam_rx_rule;
+	roc_eswitch_npc_mcam_tx_rule;
+	roc_eswitch_npc_rss_action_configure;
 	roc_hash_md5_gen;
 	roc_hash_sha1_gen;
 	roc_hash_sha256_gen;
@@ -446,6 +450,7 @@ INTERNAL {
 	roc_npc_flow_dump;
 	roc_npc_flow_mcam_dump;
 	roc_npc_flow_parse;
+	roc_npc_get_free_mcam_entry;
 	roc_npc_get_low_priority_mcam;
 	roc_npc_init;
 	roc_npc_kex_capa_get;
@@ -453,6 +458,7 @@ INTERNAL {
 	roc_npc_mark_actions_sub_return;
 	roc_npc_vtag_actions_get;
 	roc_npc_vtag_actions_sub_return;
+	roc_npc_mcam_alloc_counter;
 	roc_npc_mcam_alloc_entries;
 	roc_npc_mcam_alloc_entry;
 	roc_npc_mcam_clear_counter;

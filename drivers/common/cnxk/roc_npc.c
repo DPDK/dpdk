@@ -77,8 +77,23 @@ roc_npc_inl_mcam_clear_counter(uint32_t ctr_id)
 }
 
 int
-roc_npc_mcam_read_counter(struct roc_npc *roc_npc, uint32_t ctr_id,
-			  uint64_t *count)
+roc_npc_mcam_alloc_counter(struct roc_npc *roc_npc, uint16_t *ctr_id)
+{
+	struct npc *npc = roc_npc_to_npc_priv(roc_npc);
+
+	return npc_mcam_alloc_counter(npc->mbox, ctr_id);
+}
+
+int
+roc_npc_get_free_mcam_entry(struct roc_npc *roc_npc, struct roc_npc_flow *flow)
+{
+	struct npc *npc = roc_npc_to_npc_priv(roc_npc);
+
+	return npc_get_free_mcam_entry(npc->mbox, flow, npc);
+}
+
+int
+roc_npc_mcam_read_counter(struct roc_npc *roc_npc, uint32_t ctr_id, uint64_t *count)
 {
 	struct npc *npc = roc_npc_to_npc_priv(roc_npc);
 
@@ -157,14 +172,13 @@ roc_npc_mcam_free_all_resources(struct roc_npc *roc_npc)
 }
 
 int
-roc_npc_mcam_alloc_entries(struct roc_npc *roc_npc, int ref_entry,
-			   int *alloc_entry, int req_count, int priority,
-			   int *resp_count)
+roc_npc_mcam_alloc_entries(struct roc_npc *roc_npc, int ref_entry, int *alloc_entry, int req_count,
+			   int priority, int *resp_count, bool is_conti)
 {
 	struct npc *npc = roc_npc_to_npc_priv(roc_npc);
 
 	return npc_mcam_alloc_entries(npc->mbox, ref_entry, alloc_entry, req_count, priority,
-				      resp_count, 0);
+				      resp_count, is_conti);
 }
 
 int
