@@ -350,6 +350,9 @@ INTERNAL {
 	rte_eth_hairpin_queue_peer_unbind;
 	rte_eth_hairpin_queue_peer_update;
 	rte_eth_ip_reassembly_dynfield_register;
+	rte_eth_link_speed_ethtool; # WINDOWS_NO_EXPORT
+	rte_eth_link_speed_glink; # WINDOWS_NO_EXPORT
+	rte_eth_link_speed_gset; # WINDOWS_NO_EXPORT
 	rte_eth_pkt_burst_dummy;
 	rte_eth_representor_id_get;
 	rte_eth_switch_domain_alloc;
