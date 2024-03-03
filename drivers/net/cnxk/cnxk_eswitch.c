@@ -7,12 +7,52 @@
 #define CNXK_NIX_DEF_SQ_COUNT 512
 
 static int
+eswitch_hw_rsrc_cleanup(struct cnxk_eswitch_dev *eswitch_dev, struct rte_pci_device *pci_dev)
+{
+	struct roc_nix *nix;
+	int rc = 0;
+
+	nix = &eswitch_dev->nix;
+
+	roc_nix_unregister_queue_irqs(nix);
+	roc_nix_tm_fini(nix);
+	rc = roc_nix_lf_free(nix);
+	if (rc) {
+		plt_err("Failed to cleanup sq, rc %d", rc);
+		goto exit;
+	}
+
+	/* Check if this device is hosting common resource */
+	nix = roc_idev_npa_nix_get();
+	if (!nix || nix->pci_dev != pci_dev) {
+		rc = 0;
+		goto exit;
+	}
+
+	/* Try nix fini now */
+	rc = roc_nix_dev_fini(nix);
+	if (rc == -EAGAIN) {
+		plt_info("Common resource in use by other devices %s", pci_dev->name);
+		goto exit;
+	} else if (rc) {
+		plt_err("Failed in nix dev fini, rc=%d", rc);
+		goto exit;
+	}
+
+	rte_free(eswitch_dev->txq);
+	rte_free(eswitch_dev->rxq);
+	rte_free(eswitch_dev->cxq);
+
+exit:
+	return rc;
+}
+
+static int
 cnxk_eswitch_dev_remove(struct rte_pci_device *pci_dev)
 {
 	struct cnxk_eswitch_dev *eswitch_dev;
 	int rc = 0;
 
-	PLT_SET_USED(pci_dev);
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
 
@@ -21,6 +61,9 @@ cnxk_eswitch_dev_remove(struct rte_pci_device *pci_dev)
 		rc = -EINVAL;
 		goto exit;
 	}
+
+	/* Cleanup HW resources */
+	eswitch_hw_rsrc_cleanup(eswitch_dev, pci_dev);
 
 	rte_free(eswitch_dev);
 exit:
@@ -319,6 +362,170 @@ fail:
 }
 
 static int
+nix_lf_setup(struct cnxk_eswitch_dev *eswitch_dev)
+{
+	uint16_t nb_rxq, nb_txq, nb_cq;
+	struct roc_nix_fc_cfg fc_cfg;
+	struct roc_nix *nix;
+	uint64_t rx_cfg;
+	void *qs;
+	int rc;
+
+	/* Initialize base roc nix */
+	nix = &eswitch_dev->nix;
+	nix->pci_dev = eswitch_dev->pci_dev;
+	nix->hw_vlan_ins = true;
+	nix->reta_sz = ROC_NIX_RSS_RETA_SZ_256;
+	rc = roc_nix_dev_init(nix);
+	if (rc) {
+		plt_err("Failed to init nix eswitch device, rc=%d(%s)", rc, roc_error_msg_get(rc));
+		goto fail;
+	}
+
+	/* Get the representors count */
+	rc = roc_nix_max_rep_count(&eswitch_dev->nix);
+	if (rc) {
+		plt_err("Failed to get rep cnt, rc=%d(%s)", rc, roc_error_msg_get(rc));
+		goto free_cqs;
+	}
+
+	/* Allocating an NIX LF */
+	nb_rxq = CNXK_ESWITCH_MAX_RXQ;
+	nb_txq = CNXK_ESWITCH_MAX_TXQ;
+	nb_cq = CNXK_ESWITCH_MAX_RXQ;
+	rx_cfg = ROC_NIX_LF_RX_CFG_DIS_APAD;
+	rc = roc_nix_lf_alloc(nix, nb_rxq, nb_txq, rx_cfg);
+	if (rc) {
+		plt_err("lf alloc failed = %s(%d)", roc_error_msg_get(rc), rc);
+		goto dev_fini;
+	}
+
+	if (nb_rxq) {
+		/* Allocate memory for eswitch rq's and cq's */
+		qs = plt_zmalloc(sizeof(struct cnxk_eswitch_rxq) * nb_rxq, 0);
+		if (!qs) {
+			plt_err("Failed to alloc eswitch rxq");
+			goto lf_free;
+		}
+		eswitch_dev->rxq = qs;
+	}
+
+	if (nb_txq) {
+		/* Allocate memory for roc sq's */
+		qs = plt_zmalloc(sizeof(struct cnxk_eswitch_txq) * nb_txq, 0);
+		if (!qs) {
+			plt_err("Failed to alloc eswitch txq");
+			goto free_rqs;
+		}
+		eswitch_dev->txq = qs;
+	}
+
+	if (nb_cq) {
+		qs = plt_zmalloc(sizeof(struct cnxk_eswitch_cxq) * nb_cq, 0);
+		if (!qs) {
+			plt_err("Failed to alloc eswitch cxq");
+			goto free_sqs;
+		}
+		eswitch_dev->cxq = qs;
+	}
+
+	eswitch_dev->nb_rxq = nb_rxq;
+	eswitch_dev->nb_txq = nb_txq;
+
+	/* Re-enable NIX LF error interrupts */
+	roc_nix_err_intr_ena_dis(nix, true);
+	roc_nix_ras_intr_ena_dis(nix, true);
+
+	rc = roc_nix_lso_fmt_setup(nix);
+	if (rc) {
+		plt_err("lso setup failed = %s(%d)", roc_error_msg_get(rc), rc);
+		goto free_cqs;
+	}
+
+	rc = roc_nix_switch_hdr_set(nix, 0, 0, 0, 0);
+	if (rc) {
+		plt_err("switch hdr set failed = %s(%d)", roc_error_msg_get(rc), rc);
+		goto free_cqs;
+	}
+
+	rc = roc_nix_tm_init(nix);
+	if (rc) {
+		plt_err("tm failed = %s(%d)", roc_error_msg_get(rc), rc);
+		goto free_cqs;
+	}
+
+	/* Register queue IRQs */
+	rc = roc_nix_register_queue_irqs(nix);
+	if (rc) {
+		plt_err("Failed to register queue interrupts rc=%d", rc);
+		goto tm_fini;
+	}
+
+	/* Enable default tree */
+	rc = roc_nix_tm_hierarchy_enable(nix, ROC_NIX_TM_DEFAULT, false);
+	if (rc) {
+		plt_err("tm default hierarchy enable failed = %s(%d)", roc_error_msg_get(rc), rc);
+		goto q_irq_fini;
+	}
+
+	memset(&fc_cfg, 0, sizeof(struct roc_nix_fc_cfg));
+	fc_cfg.rxchan_cfg.enable = false;
+	rc = roc_nix_fc_config_set(nix, &fc_cfg);
+	if (rc) {
+		plt_err("Failed to setup flow control, rc=%d(%s)", rc, roc_error_msg_get(rc));
+		goto q_irq_fini;
+	}
+
+	roc_nix_fc_mode_get(nix);
+
+	return rc;
+q_irq_fini:
+	roc_nix_unregister_queue_irqs(nix);
+tm_fini:
+	roc_nix_tm_fini(nix);
+free_cqs:
+	rte_free(eswitch_dev->cxq);
+free_sqs:
+	rte_free(eswitch_dev->txq);
+free_rqs:
+	rte_free(eswitch_dev->rxq);
+lf_free:
+	roc_nix_lf_free(nix);
+dev_fini:
+	roc_nix_dev_fini(nix);
+fail:
+	return rc;
+}
+
+static int
+eswitch_hw_rsrc_setup(struct cnxk_eswitch_dev *eswitch_dev, struct rte_pci_device *pci_dev)
+{
+	struct roc_nix *nix;
+	int rc;
+
+	nix = &eswitch_dev->nix;
+	rc = nix_lf_setup(eswitch_dev);
+	if (rc) {
+		plt_err("Failed to setup hw rsrc, rc=%d(%s)", rc, roc_error_msg_get(rc));
+		goto fail;
+	}
+
+	/* Initialize roc npc */
+	eswitch_dev->npc.roc_nix = nix;
+	eswitch_dev->npc.flow_max_priority = 3;
+	eswitch_dev->npc.flow_prealloc_size = 1;
+	rc = roc_npc_init(&eswitch_dev->npc);
+	if (rc)
+		goto rsrc_cleanup;
+
+	return rc;
+rsrc_cleanup:
+	eswitch_hw_rsrc_cleanup(eswitch_dev, pci_dev);
+fail:
+	return rc;
+}
+
+static int
 cnxk_eswitch_dev_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 {
 	struct cnxk_eswitch_dev *eswitch_dev;
@@ -347,6 +554,12 @@ cnxk_eswitch_dev_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pc
 
 		eswitch_dev = mz->addr;
 		eswitch_dev->pci_dev = pci_dev;
+
+		rc = eswitch_hw_rsrc_setup(eswitch_dev, pci_dev);
+		if (rc) {
+			plt_err("Failed to setup hw rsrc, rc=%d(%s)", rc, roc_error_msg_get(rc));
+			goto free_mem;
+		}
 	}
 
 	/* Spinlock for synchronization between representors traffic and control
@@ -355,6 +568,8 @@ cnxk_eswitch_dev_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pc
 	rte_spinlock_init(&eswitch_dev->rep_lock);
 
 	return rc;
+free_mem:
+	rte_memzone_free(mz);
 fail:
 	return rc;
 }
