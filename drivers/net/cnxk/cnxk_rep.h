@@ -20,6 +20,9 @@
 /* Common ethdev ops */
 extern struct eth_dev_ops cnxk_rep_dev_ops;
 
+/* Flow ops for representor ports */
+extern struct rte_flow_ops cnxk_rep_flow_ops;
+
 struct cnxk_rep_queue_stats {
 	uint64_t pkts;
 	uint64_t bytes;

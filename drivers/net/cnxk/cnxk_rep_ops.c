@@ -647,7 +647,8 @@ int
 cnxk_rep_flow_ops_get(struct rte_eth_dev *ethdev, const struct rte_flow_ops **ops)
 {
 	PLT_SET_USED(ethdev);
-	PLT_SET_USED(ops);
+	*ops = &cnxk_rep_flow_ops;
+
 	return 0;
 }
 

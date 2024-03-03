@@ -16,8 +16,13 @@ struct cnxk_rte_flow_term_info {
 	uint16_t item_size;
 };
 
-struct roc_npc_flow *cnxk_flow_create(struct rte_eth_dev *dev,
-				      const struct rte_flow_attr *attr,
+struct cnxk_rte_flow_action_info {
+	uint16_t conf_size;
+};
+
+extern const struct cnxk_rte_flow_term_info term[];
+
+struct roc_npc_flow *cnxk_flow_create(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 				      const struct rte_flow_item pattern[],
 				      const struct rte_flow_action actions[],
 				      struct rte_flow_error *error);

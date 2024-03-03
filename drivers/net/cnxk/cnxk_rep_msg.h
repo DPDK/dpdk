@@ -12,6 +12,10 @@
 typedef enum CNXK_TYPE {
 	CNXK_TYPE_HEADER = 0,
 	CNXK_TYPE_MSG,
+	CNXK_TYPE_ATTR,
+	CNXK_TYPE_PATTERN,
+	CNXK_TYPE_ACTION,
+	CNXK_TYPE_FLOW
 } cnxk_type_t;
 
 typedef enum CNXK_REP_MSG {
@@ -23,6 +27,8 @@ typedef enum CNXK_REP_MSG {
 	CNXK_REP_MSG_ETH_SET_MAC,
 	CNXK_REP_MSG_ETH_STATS_GET,
 	CNXK_REP_MSG_ETH_STATS_CLEAR,
+	/* Flow operation msgs */
+	CNXK_REP_MSG_FLOW_CREATE,
 	/* End of messaging sequence */
 	CNXK_REP_MSG_END,
 } cnxk_rep_msg_t;
@@ -95,6 +101,27 @@ typedef struct cnxk_rep_msg_eth_mac_set_meta {
 typedef struct cnxk_rep_msg_eth_stats_meta {
 	uint16_t portid;
 } __rte_packed cnxk_rep_msg_eth_stats_meta_t;
+
+/* Flow create msg meta */
+typedef struct cnxk_rep_msg_flow_create_meta {
+	uint16_t portid;
+	uint16_t nb_pattern;
+	uint16_t nb_action;
+} __rte_packed cnxk_rep_msg_flow_create_meta_t;
+
+/* Type pattern meta */
+typedef struct cnxk_pattern_hdr {
+	uint16_t type;
+	uint16_t spec_sz;
+	uint16_t last_sz;
+	uint16_t mask_sz;
+} __rte_packed cnxk_pattern_hdr_t;
+
+/* Type action meta */
+typedef struct cnxk_action_hdr {
+	uint16_t type;
+	uint16_t conf_sz;
+} __rte_packed cnxk_action_hdr_t;
 
 void cnxk_rep_msg_populate_command(void *buffer, uint32_t *length, cnxk_rep_msg_t type,
 				   uint32_t size);
