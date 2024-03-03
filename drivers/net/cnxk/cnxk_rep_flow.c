@@ -268,6 +268,222 @@ populate_action_data(void *buffer, uint32_t *length, const struct rte_flow_actio
 }
 
 static int
+process_flow_destroy(struct cnxk_rep_dev *rep_dev, void *flow, cnxk_rep_msg_ack_data_t *adata)
+{
+	cnxk_rep_msg_flow_destroy_meta_t msg_fd_meta;
+	uint32_t len = 0, rc;
+	void *buffer;
+	size_t size;
+
+	/* If representor not representing any active VF, return 0 */
+	if (!rep_dev->is_vf_active)
+		return 0;
+
+	size = MAX_BUFFER_SIZE;
+	buffer = plt_zmalloc(size, 0);
+	if (!buffer) {
+		plt_err("Failed to allocate mem");
+		rc = -ENOMEM;
+		goto fail;
+	}
+
+	cnxk_rep_msg_populate_header(buffer, &len);
+
+	msg_fd_meta.portid = rep_dev->rep_id;
+	msg_fd_meta.flow = (uint64_t)flow;
+	plt_rep_dbg("Flow Destroy: flow 0x%" PRIu64 ", portid %d", msg_fd_meta.flow,
+		    msg_fd_meta.portid);
+	cnxk_rep_msg_populate_command_meta(buffer, &len, &msg_fd_meta,
+					   sizeof(cnxk_rep_msg_flow_destroy_meta_t),
+					   CNXK_REP_MSG_FLOW_DESTROY);
+	cnxk_rep_msg_populate_msg_end(buffer, &len);
+
+	rc = cnxk_rep_msg_send_process(rep_dev, buffer, len, adata);
+	if (rc) {
+		plt_err("Failed to process the message, err %d", rc);
+		goto fail;
+	}
+
+	return 0;
+fail:
+	return rc;
+}
+
+static int
+copy_flow_dump_file(FILE *target)
+{
+	FILE *source = NULL;
+	int pos;
+	char ch;
+
+	source = fopen(DEFAULT_DUMP_FILE_NAME, "r");
+	if (source == NULL) {
+		plt_err("Failed to read default dump file: %s, err %d", DEFAULT_DUMP_FILE_NAME,
+			errno);
+		return errno;
+	}
+
+	fseek(source, 0L, SEEK_END);
+	pos = ftell(source);
+	fseek(source, 0L, SEEK_SET);
+	while (pos--) {
+		ch = fgetc(source);
+		fputc(ch, target);
+	}
+
+	fclose(source);
+
+	/* Remove the default file after reading */
+	remove(DEFAULT_DUMP_FILE_NAME);
+
+	return 0;
+}
+
+static int
+process_flow_dump(struct cnxk_rep_dev *rep_dev, struct rte_flow *flow, FILE *file,
+		  cnxk_rep_msg_ack_data_t *adata)
+{
+	cnxk_rep_msg_flow_dump_meta_t msg_fp_meta;
+	uint32_t len = 0, rc;
+	void *buffer;
+	size_t size;
+
+	size = MAX_BUFFER_SIZE;
+	buffer = plt_zmalloc(size, 0);
+	if (!buffer) {
+		plt_err("Failed to allocate mem");
+		rc = -ENOMEM;
+		goto fail;
+	}
+
+	cnxk_rep_msg_populate_header(buffer, &len);
+
+	msg_fp_meta.portid = rep_dev->rep_id;
+	msg_fp_meta.flow = (uint64_t)flow;
+	msg_fp_meta.is_stdout = (file == stdout) ? 1 : 0;
+
+	plt_rep_dbg("Flow Dump: flow 0x%" PRIu64 ", portid %d stdout %d", msg_fp_meta.flow,
+		    msg_fp_meta.portid, msg_fp_meta.is_stdout);
+	cnxk_rep_msg_populate_command_meta(buffer, &len, &msg_fp_meta,
+					   sizeof(cnxk_rep_msg_flow_dump_meta_t),
+					   CNXK_REP_MSG_FLOW_DUMP);
+	cnxk_rep_msg_populate_msg_end(buffer, &len);
+
+	rc = cnxk_rep_msg_send_process(rep_dev, buffer, len, adata);
+	if (rc) {
+		plt_err("Failed to process the message, err %d", rc);
+		goto fail;
+	}
+
+	/* Copy contents from default file to user file */
+	if (file != stdout)
+		copy_flow_dump_file(file);
+
+	return 0;
+fail:
+	return rc;
+}
+
+static int
+process_flow_flush(struct cnxk_rep_dev *rep_dev, cnxk_rep_msg_ack_data_t *adata)
+{
+	cnxk_rep_msg_flow_flush_meta_t msg_ff_meta;
+	uint32_t len = 0, rc;
+	void *buffer;
+	size_t size;
+
+	size = MAX_BUFFER_SIZE;
+	buffer = plt_zmalloc(size, 0);
+	if (!buffer) {
+		plt_err("Failed to allocate mem");
+		rc = -ENOMEM;
+		goto fail;
+	}
+
+	cnxk_rep_msg_populate_header(buffer, &len);
+
+	msg_ff_meta.portid = rep_dev->rep_id;
+	plt_rep_dbg("Flow Flush: portid %d", msg_ff_meta.portid);
+	cnxk_rep_msg_populate_command_meta(buffer, &len, &msg_ff_meta,
+					   sizeof(cnxk_rep_msg_flow_flush_meta_t),
+					   CNXK_REP_MSG_FLOW_FLUSH);
+	cnxk_rep_msg_populate_msg_end(buffer, &len);
+
+	rc = cnxk_rep_msg_send_process(rep_dev, buffer, len, adata);
+	if (rc) {
+		plt_err("Failed to process the message, err %d", rc);
+		goto fail;
+	}
+
+	return 0;
+fail:
+	return rc;
+}
+
+static int
+process_flow_query(struct cnxk_rep_dev *rep_dev, struct rte_flow *flow,
+		   const struct rte_flow_action *action, void *data, cnxk_rep_msg_ack_data_t *adata)
+{
+	cnxk_rep_msg_flow_query_meta_t *msg_fq_meta;
+	struct rte_flow_query_count *query = data;
+	uint32_t len = 0, rc, sz, total_sz;
+	uint64_t action_data[BUFSIZ];
+	void *buffer;
+	size_t size;
+
+	size = MAX_BUFFER_SIZE;
+	buffer = plt_zmalloc(size, 0);
+	if (!buffer) {
+		plt_err("Failed to allocate mem");
+		rc = -ENOMEM;
+		goto fail;
+	}
+
+	cnxk_rep_msg_populate_header(buffer, &len);
+
+	memset(action_data, 0, BUFSIZ * sizeof(uint64_t));
+	sz = prepare_action_data(action, 1, action_data);
+	total_sz = sz + sizeof(cnxk_rep_msg_flow_query_meta_t);
+
+	msg_fq_meta = plt_zmalloc(total_sz, 0);
+	if (!msg_fq_meta) {
+		plt_err("Failed to allocate memory");
+		rc = -ENOMEM;
+		goto fail;
+	}
+
+	msg_fq_meta->portid = rep_dev->rep_id;
+	msg_fq_meta->reset = query->reset;
+	;
+	msg_fq_meta->flow = (uint64_t)flow;
+	/* Populate the action data */
+	rte_memcpy(msg_fq_meta->action_data, action_data, sz);
+	msg_fq_meta->action_data_sz = sz;
+
+	plt_rep_dbg("Flow query: flow 0x%" PRIu64 ", portid %d, action type %d total sz %d "
+		    "action sz %d", msg_fq_meta->flow, msg_fq_meta->portid, action->type, total_sz,
+		    sz);
+	cnxk_rep_msg_populate_command_meta(buffer, &len, msg_fq_meta, total_sz,
+					   CNXK_REP_MSG_FLOW_QUERY);
+	cnxk_rep_msg_populate_msg_end(buffer, &len);
+
+	rc = cnxk_rep_msg_send_process(rep_dev, buffer, len, adata);
+	if (rc) {
+		plt_err("Failed to process the message, err %d", rc);
+		goto free;
+	}
+
+	rte_free(msg_fq_meta);
+
+	return 0;
+
+free:
+	rte_free(msg_fq_meta);
+fail:
+	return rc;
+}
+
+static int
 process_flow_rule(struct cnxk_rep_dev *rep_dev, const struct rte_flow_attr *attr,
 		  const struct rte_flow_item pattern[], const struct rte_flow_action actions[],
 		  cnxk_rep_msg_ack_data_t *adata, cnxk_rep_msg_t msg)
@@ -396,6 +612,204 @@ fail:
 	return NULL;
 }
 
+static int
+cnxk_rep_flow_validate(struct rte_eth_dev *eth_dev, const struct rte_flow_attr *attr,
+		       const struct rte_flow_item pattern[], const struct rte_flow_action actions[],
+		       struct rte_flow_error *error)
+{
+	struct cnxk_rep_dev *rep_dev = cnxk_rep_pmd_priv(eth_dev);
+	cnxk_rep_msg_ack_data_t adata;
+	int rc = 0;
+
+	/* If representor not representing any active VF, return 0 */
+	if (!rep_dev->is_vf_active) {
+		rte_flow_error_set(error, -EAGAIN, RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				   "Represented VF not active yet");
+		return 0;
+	}
+
+	if (rep_dev->native_repte)
+		return cnxk_flow_validate_common(eth_dev, attr, pattern, actions, error, true);
+
+	rc = process_flow_rule(rep_dev, attr, pattern, actions, &adata, CNXK_REP_MSG_FLOW_VALIDATE);
+	if (!rc || adata.u.sval < 0) {
+		if (adata.u.sval < 0) {
+			rc = (int)adata.u.sval;
+			rte_flow_error_set(error, adata.u.sval, RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					   NULL, "Failed to validate flow");
+			goto fail;
+		}
+	} else {
+		rte_flow_error_set(error, rc, RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				   "Failed to validate flow");
+	}
+
+	plt_rep_dbg("Flow %p validated successfully", adata.u.data);
+
+fail:
+	return rc;
+}
+
+static int
+cnxk_rep_flow_destroy(struct rte_eth_dev *eth_dev, struct rte_flow *flow,
+		      struct rte_flow_error *error)
+{
+	struct cnxk_rep_dev *rep_dev = cnxk_rep_pmd_priv(eth_dev);
+	cnxk_rep_msg_ack_data_t adata;
+	int rc;
+
+	/* If representor not representing any active VF, return 0 */
+	if (!rep_dev->is_vf_active) {
+		rte_flow_error_set(error, -EAGAIN, RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				   "Represented VF not active yet");
+		return 0;
+	}
+
+	if (rep_dev->native_repte)
+		return cnxk_flow_destroy_common(eth_dev, (struct roc_npc_flow *)flow, error, true);
+
+	rc = process_flow_destroy(rep_dev, flow, &adata);
+	if (rc || adata.u.sval < 0) {
+		if (adata.u.sval < 0)
+			rc = adata.u.sval;
+
+		rte_flow_error_set(error, rc, RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				   "Failed to destroy flow");
+		goto fail;
+	}
+
+	return 0;
+fail:
+	return rc;
+}
+
+static int
+cnxk_rep_flow_query(struct rte_eth_dev *eth_dev, struct rte_flow *flow,
+		    const struct rte_flow_action *action, void *data, struct rte_flow_error *error)
+{
+	struct cnxk_rep_dev *rep_dev = cnxk_rep_pmd_priv(eth_dev);
+	cnxk_rep_msg_ack_data_t adata;
+	int rc;
+
+	/* If representor not representing any active VF, return 0 */
+	if (!rep_dev->is_vf_active) {
+		rte_flow_error_set(error, -EAGAIN, RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				   "Represented VF not active yet");
+		return 0;
+	}
+
+	if (action->type != RTE_FLOW_ACTION_TYPE_COUNT) {
+		rc = -ENOTSUP;
+		rte_flow_error_set(error, rc, RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				   "Only COUNT is supported in query");
+		goto fail;
+	}
+
+	if (rep_dev->native_repte)
+		return cnxk_flow_query_common(eth_dev, flow, action, data, error, true);
+
+	rc = process_flow_query(rep_dev, flow, action, data, &adata);
+	if (rc || adata.u.sval < 0) {
+		if (adata.u.sval < 0)
+			rc = adata.u.sval;
+
+		rte_flow_error_set(error, rc, RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				   "Failed to query the flow");
+		goto fail;
+	}
+
+	rte_memcpy(data, adata.u.data, adata.size);
+
+	return 0;
+fail:
+	return rc;
+}
+
+static int
+cnxk_rep_flow_flush(struct rte_eth_dev *eth_dev, struct rte_flow_error *error)
+{
+	struct cnxk_rep_dev *rep_dev = cnxk_rep_pmd_priv(eth_dev);
+	cnxk_rep_msg_ack_data_t adata;
+	int rc;
+
+	/* If representor not representing any active VF, return 0 */
+	if (!rep_dev->is_vf_active) {
+		rte_flow_error_set(error, -EAGAIN, RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				   "Represented VF not active yet");
+		return 0;
+	}
+
+	if (rep_dev->native_repte)
+		return cnxk_flow_flush_common(eth_dev, error, true);
+
+	rc = process_flow_flush(rep_dev, &adata);
+	if (rc || adata.u.sval < 0) {
+		if (adata.u.sval < 0)
+			rc = adata.u.sval;
+
+		rte_flow_error_set(error, rc, RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				   "Failed to destroy flow");
+		goto fail;
+	}
+
+	return 0;
+fail:
+	return rc;
+}
+
+static int
+cnxk_rep_flow_dev_dump(struct rte_eth_dev *eth_dev, struct rte_flow *flow, FILE *file,
+		       struct rte_flow_error *error)
+{
+	struct cnxk_rep_dev *rep_dev = cnxk_rep_pmd_priv(eth_dev);
+	cnxk_rep_msg_ack_data_t adata;
+	int rc;
+
+	/* If representor not representing any active VF, return 0 */
+	if (!rep_dev->is_vf_active) {
+		rte_flow_error_set(error, -EAGAIN, RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				   "Represented VF not active yet");
+		return 0;
+	}
+
+	if (rep_dev->native_repte)
+		return cnxk_flow_dev_dump_common(eth_dev, flow, file, error, true);
+
+	rc = process_flow_dump(rep_dev, flow, file, &adata);
+	if (rc || adata.u.sval < 0) {
+		if (adata.u.sval < 0)
+			rc = adata.u.sval;
+
+		rte_flow_error_set(error, rc, RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				   "Failed to destroy flow");
+		goto fail;
+	}
+
+	return 0;
+fail:
+	return rc;
+}
+
+static int
+cnxk_rep_flow_isolate(struct rte_eth_dev *eth_dev __rte_unused, int enable __rte_unused,
+		      struct rte_flow_error *error)
+{
+	/* If we support, we need to un-install the default mcam
+	 * entry for this port.
+	 */
+
+	rte_flow_error_set(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+			   "Flow isolation not supported");
+
+	return -rte_errno;
+}
+
 struct rte_flow_ops cnxk_rep_flow_ops = {
+	.validate = cnxk_rep_flow_validate,
 	.create = cnxk_rep_flow_create,
+	.destroy = cnxk_rep_flow_destroy,
+	.query = cnxk_rep_flow_query,
+	.flush = cnxk_rep_flow_flush,
+	.isolate = cnxk_rep_flow_isolate,
+	.dev_dump = cnxk_rep_flow_dev_dump,
 };

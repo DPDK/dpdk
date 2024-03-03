@@ -29,6 +29,11 @@ typedef enum CNXK_REP_MSG {
 	CNXK_REP_MSG_ETH_STATS_CLEAR,
 	/* Flow operation msgs */
 	CNXK_REP_MSG_FLOW_CREATE,
+	CNXK_REP_MSG_FLOW_DESTROY,
+	CNXK_REP_MSG_FLOW_VALIDATE,
+	CNXK_REP_MSG_FLOW_FLUSH,
+	CNXK_REP_MSG_FLOW_DUMP,
+	CNXK_REP_MSG_FLOW_QUERY,
 	/* End of messaging sequence */
 	CNXK_REP_MSG_END,
 } cnxk_rep_msg_t;
@@ -108,6 +113,33 @@ typedef struct cnxk_rep_msg_flow_create_meta {
 	uint16_t nb_pattern;
 	uint16_t nb_action;
 } __rte_packed cnxk_rep_msg_flow_create_meta_t;
+
+/* Flow destroy msg meta */
+typedef struct cnxk_rep_msg_flow_destroy_meta {
+	uint64_t flow;
+	uint16_t portid;
+} __rte_packed cnxk_rep_msg_flow_destroy_meta_t;
+
+/* Flow flush msg meta */
+typedef struct cnxk_rep_msg_flow_flush_meta {
+	uint16_t portid;
+} __rte_packed cnxk_rep_msg_flow_flush_meta_t;
+
+/* Flow dump msg meta */
+typedef struct cnxk_rep_msg_flow_dump_meta {
+	uint64_t flow;
+	uint16_t portid;
+	uint8_t is_stdout;
+} __rte_packed cnxk_rep_msg_flow_dump_meta_t;
+
+/* Flow query msg meta */
+typedef struct cnxk_rep_msg_flow_query_meta {
+	uint64_t flow;
+	uint16_t portid;
+	uint8_t reset;
+	uint32_t action_data_sz;
+	uint8_t action_data[];
+} __rte_packed cnxk_rep_msg_flow_query_meta_t;
 
 /* Type pattern meta */
 typedef struct cnxk_pattern_hdr {
