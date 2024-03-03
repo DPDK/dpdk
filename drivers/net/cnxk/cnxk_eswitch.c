@@ -388,6 +388,7 @@ nix_lf_setup(struct cnxk_eswitch_dev *eswitch_dev)
 		plt_err("Failed to get rep cnt, rc=%d(%s)", rc, roc_error_msg_get(rc));
 		goto free_cqs;
 	}
+	eswitch_dev->repr_cnt.max_repr = eswitch_dev->nix.rep_cnt;
 
 	/* Allocating an NIX LF */
 	nb_rxq = CNXK_ESWITCH_MAX_RXQ;
@@ -525,11 +526,73 @@ fail:
 	return rc;
 }
 
+int
+cnxk_eswitch_representor_info_get(struct cnxk_eswitch_dev *eswitch_dev,
+				  struct rte_eth_representor_info *info)
+{
+	struct cnxk_eswitch_devargs *esw_da;
+	int rc = 0, n_entries, i, j = 0, k = 0;
+
+	for (i = 0; i < eswitch_dev->nb_esw_da; i++) {
+		for (j = 0; j < eswitch_dev->esw_da[i].nb_repr_ports; j++)
+			k++;
+	}
+	n_entries = k;
+
+	if (info == NULL)
+		goto out;
+
+	if ((uint32_t)n_entries > info->nb_ranges_alloc)
+		n_entries = info->nb_ranges_alloc;
+
+	k = 0;
+	info->controller = 0;
+	info->pf = 0;
+	for (i = 0; i < eswitch_dev->nb_esw_da; i++) {
+		esw_da = &eswitch_dev->esw_da[i];
+		info->ranges[k].type = esw_da->da.type;
+		switch (esw_da->da.type) {
+		case RTE_ETH_REPRESENTOR_PF:
+			info->ranges[k].controller = 0;
+			info->ranges[k].pf = esw_da->repr_hw_info[0].pfvf;
+			info->ranges[k].vf = 0;
+			info->ranges[k].id_base = info->ranges[i].pf;
+			info->ranges[k].id_end = info->ranges[i].pf;
+			snprintf(info->ranges[k].name, sizeof(info->ranges[k].name), "pf%d",
+				 info->ranges[k].pf);
+			k++;
+			break;
+		case RTE_ETH_REPRESENTOR_VF:
+			for (j = 0; j < esw_da->nb_repr_ports; j++) {
+				info->ranges[k].controller = 0;
+				info->ranges[k].pf = esw_da->da.ports[0];
+				info->ranges[k].vf = esw_da->repr_hw_info[j].pfvf;
+				info->ranges[k].id_base = esw_da->repr_hw_info[j].port_id;
+				info->ranges[k].id_end = esw_da->repr_hw_info[j].port_id;
+				snprintf(info->ranges[k].name, sizeof(info->ranges[k].name),
+					 "pf%dvf%d", info->ranges[k].pf, info->ranges[k].vf);
+				k++;
+			}
+			break;
+		default:
+			plt_err("Invalid type %d", esw_da->da.type);
+			rc = 0;
+			goto fail;
+		};
+	}
+	info->nb_ranges = k;
+fail:
+	return rc;
+out:
+	return n_entries;
+}
+
 static int
 cnxk_eswitch_dev_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 {
 	struct cnxk_eswitch_dev *eswitch_dev;
 	const struct rte_memzone *mz = NULL;
+	uint16_t num_reps;
 	int rc = -ENOMEM;
 
 	RTE_SET_USED(pci_drv);
@@ -562,12 +625,37 @@ cnxk_eswitch_dev_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pc
 		}
 	}
 
+	if (pci_dev->device.devargs) {
+		rc = cnxk_eswitch_repr_devargs(pci_dev, eswitch_dev);
+		if (rc)
+			goto rsrc_cleanup;
+	}
+
+	if (eswitch_dev->repr_cnt.nb_repr_created > eswitch_dev->repr_cnt.max_repr) {
+		plt_err("Representors to be created %d can be greater than max allowed %d",
+			eswitch_dev->repr_cnt.nb_repr_created, eswitch_dev->repr_cnt.max_repr);
+		rc = -EINVAL;
+		goto rsrc_cleanup;
+	}
+
+	num_reps = eswitch_dev->repr_cnt.nb_repr_created;
+	if (!num_reps) {
+		plt_err("No representors enabled");
+		goto fail;
+	}
+
+	plt_esw_dbg("Max no of reps %d reps to be created %d Eswtch pfunc %x",
+		    eswitch_dev->repr_cnt.max_repr, eswitch_dev->repr_cnt.nb_repr_created,
+		    roc_nix_get_pf_func(&eswitch_dev->nix));
+
 	/* Spinlock for synchronization between representors traffic and control
 	 * messages
 	 */
 	rte_spinlock_init(&eswitch_dev->rep_lock);
 
 	return rc;
+rsrc_cleanup:
+	eswitch_hw_rsrc_cleanup(eswitch_dev, pci_dev);
 free_mem:
 	rte_memzone_free(mz);
 fail:
