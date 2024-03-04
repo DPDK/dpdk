@@ -986,16 +986,19 @@ vhost_user_set_vring_addr(struct virtio_net **pdev,
 	/* addr->index refers to the queue index. The txq 1, rxq is 0. */
 	vq = dev->virtqueue[ctx->msg.payload.addr.index];
 
-	/* vhost_user_lock_all_queue_pairs locked all qps */
-	VHOST_USER_ASSERT_LOCK(dev, vq, VHOST_USER_SET_VRING_ADDR);
-
-	access_ok = vq->access_ok;
-
 	/*
 	 * Rings addresses should not be interpreted as long as the ring is not
 	 * started and enabled
 	 */
 	memcpy(&vq->ring_addrs, addr, sizeof(*addr));
+
+	if (dev->flags & VIRTIO_DEV_VDPA_CONFIGURED)
+		goto out;
+
+	/* vhost_user_lock_all_queue_pairs locked all qps */
+	VHOST_USER_ASSERT_LOCK(dev, vq, VHOST_USER_SET_VRING_ADDR);
+
+	access_ok = vq->access_ok;
 
 	vring_invalidate(dev, vq);
 
@@ -1006,6 +1009,7 @@ vhost_user_set_vring_addr(struct virtio_net **pdev,
 		*pdev = dev;
 	}
 
+out:
 	return RTE_VHOST_MSG_RESULT_OK;
 }
 
