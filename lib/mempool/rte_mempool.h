@@ -34,6 +34,7 @@
  * user cache created with rte_mempool_cache_create().
  */
 
+#include <stdalign.h>
 #include <stdio.h>
 #include <stdint.h>
 #include <inttypes.h>
@@ -109,7 +110,7 @@ struct rte_mempool_cache {
 	 * Cache is allocated to this size to allow it to overflow in certain
 	 * cases to avoid needless emptying of cache.
 	 */
-	void *objs[RTE_MEMPOOL_CACHE_MAX_SIZE * 2] __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) void *objs[RTE_MEMPOOL_CACHE_MAX_SIZE * 2];
 } __rte_cache_aligned;
 
 /**

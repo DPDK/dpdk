@@ -2,8 +2,9 @@
  * Copyright(c) 2010-2014 Intel Corporation
  */
 
-#include <string.h>
+#include <stdalign.h>
 #include <stdio.h>
+#include <string.h>
 
 #include <rte_common.h>
 #include <rte_malloc.h>
@@ -39,7 +40,7 @@ struct rte_table_array {
 	uint32_t entry_pos_mask;
 
 	/* Internal table */
-	uint8_t array[0] __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) uint8_t array[0];
 } __rte_cache_aligned;
 
 static void *

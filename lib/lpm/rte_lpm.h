@@ -12,6 +12,7 @@
  */
 
 #include <errno.h>
+#include <stdalign.h>
 #include <stdint.h>
 
 #include <rte_branch_prediction.h>
@@ -118,8 +119,8 @@ struct rte_lpm_config {
 /** @internal LPM structure. */
 struct rte_lpm {
 	/* LPM Tables. */
-	struct rte_lpm_tbl_entry tbl24[RTE_LPM_TBL24_NUM_ENTRIES]
-			__rte_cache_aligned; /**< LPM tbl24 table. */
+	alignas(RTE_CACHE_LINE_SIZE) struct rte_lpm_tbl_entry tbl24[RTE_LPM_TBL24_NUM_ENTRIES];
+			/**< LPM tbl24 table. */
 	struct rte_lpm_tbl_entry *tbl8; /**< LPM tbl8 table. */
 };
 

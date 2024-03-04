@@ -2,8 +2,9 @@
  * Copyright(c) 2010-2014 Intel Corporation
  */
 
-#include <string.h>
+#include <stdalign.h>
 #include <stdio.h>
+#include <string.h>
 
 #include <rte_common.h>
 #include <rte_malloc.h>
@@ -47,7 +48,7 @@ struct rte_table_acl {
 	uint8_t *acl_rule_memory; /* Memory to store the rules */
 
 	/* Memory to store the action table and stack of free entries */
-	uint8_t memory[0] __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) uint8_t memory[0];
 };
 
 

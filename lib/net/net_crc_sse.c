@@ -2,6 +2,7 @@
  * Copyright(c) 2017-2020 Intel Corporation
  */
 
+#include <stdalign.h>
 #include <string.h>
 
 #include <rte_common.h>
@@ -18,8 +19,8 @@ struct crc_pclmulqdq_ctx {
 	__m128i rk7_rk8;
 };
 
-static struct crc_pclmulqdq_ctx crc32_eth_pclmulqdq __rte_aligned(16);
-static struct crc_pclmulqdq_ctx crc16_ccitt_pclmulqdq __rte_aligned(16);
+static alignas(16) struct crc_pclmulqdq_ctx crc32_eth_pclmulqdq;
+static alignas(16) struct crc_pclmulqdq_ctx crc16_ccitt_pclmulqdq;
 /**
  * @brief Performs one folding round
  *
@@ -96,11 +97,11 @@ crcr32_reduce_128_to_64(__m128i data128, __m128i precomp)
 static __rte_always_inline uint32_t
 crcr32_reduce_64_to_32(__m128i data64, __m128i precomp)
 {
-	static const uint32_t mask1[4] __rte_aligned(16) = {
+	static const alignas(16) uint32_t mask1[4] = {
 		0xffffffff, 0xffffffff, 0x00000000, 0x00000000
 	};
 
-	static const uint32_t mask2[4] __rte_aligned(16) = {
+	static const alignas(16) uint32_t mask2[4] = {
 		0x00000000, 0xffffffff, 0xffffffff, 0xffffffff
 	};
 	__m128i tmp0, tmp1, tmp2;
@@ -118,7 +119,7 @@ crcr32_reduce_64_to_32(__m128i data64, __m128i precomp)
 	return _mm_extract_epi32(tmp2, 2);
 }
 
-static const uint8_t crc_xmm_shift_tab[48] __rte_aligned(16) = {
+static const alignas(16) uint8_t crc_xmm_shift_tab[48] = {
 	0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
 	0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
 	0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
@@ -175,7 +176,7 @@ crc32_eth_calc_pclmulqdq(
 
 		if (unlikely(data_len < 16)) {
 			/* 0 to 15 bytes */
-			uint8_t buffer[16] __rte_aligned(16);
+			alignas(16) uint8_t buffer[16];
 
 			memset(buffer, 0, sizeof(buffer));
 			memcpy(buffer, data, data_len);
@@ -212,11 +213,11 @@ crc32_eth_calc_pclmulqdq(
 partial_bytes:
 	if (likely(n < data_len)) {
 
-		const uint32_t mask3[4] __rte_aligned(16) = {
+		const alignas(16) uint32_t mask3[4] = {
 			0x80808080, 0x80808080, 0x80808080, 0x80808080
 		};
 
-		const uint8_t shf_table[32] __rte_aligned(16) = {
+		const alignas(16) uint8_t shf_table[32] = {
 			0x00, 0x81, 0x82, 0x83, 0x84, 0x85, 0x86, 0x87,
 			0x88, 0x89, 0x8a, 0x8b, 0x8c, 0x8d, 0x8e, 0x8f,
 			0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,

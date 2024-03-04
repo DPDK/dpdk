@@ -17,8 +17,9 @@ extern "C" {
 #endif
 
 #include <assert.h>
-#include <stdint.h>
 #include <limits.h>
+#include <stdint.h>
+#include <stdalign.h>
 
 #include <rte_config.h>
 
@@ -548,8 +549,8 @@ rte_is_aligned(const void * const __rte_restrict ptr, const unsigned int align)
 #define __rte_cache_min_aligned __rte_aligned(RTE_CACHE_LINE_MIN_SIZE)
 
 #define _RTE_CACHE_GUARD_HELPER2(unique) \
-	char cache_guard_ ## unique[RTE_CACHE_LINE_SIZE * RTE_CACHE_GUARD_LINES] \
-	__rte_cache_aligned
+	alignas(RTE_CACHE_LINE_SIZE) \
+	char cache_guard_ ## unique[RTE_CACHE_LINE_SIZE * RTE_CACHE_GUARD_LINES]
 #define _RTE_CACHE_GUARD_HELPER1(unique) _RTE_CACHE_GUARD_HELPER2(unique)
 /**
  * Empty cache lines, to guard against false sharing-like effects

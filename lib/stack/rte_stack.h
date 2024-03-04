@@ -19,6 +19,8 @@
 extern "C" {
 #endif
 
+#include <stdalign.h>
+
 #include <rte_debug.h>
 #include <rte_errno.h>
 #include <rte_memzone.h>
@@ -42,7 +44,7 @@ struct rte_stack_lf_head {
 
 struct rte_stack_lf_list {
 	/** List head */
-	struct rte_stack_lf_head head __rte_aligned(16);
+	alignas(16) struct rte_stack_lf_head head;
 	/** List len */
 	RTE_ATOMIC(uint64_t) len;
 };
@@ -52,11 +54,11 @@ struct rte_stack_lf_list {
  */
 struct rte_stack_lf {
 	/** LIFO list of elements */
-	struct rte_stack_lf_list used __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) struct rte_stack_lf_list used;
 	/** LIFO list of free elements */
-	struct rte_stack_lf_list free __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) struct rte_stack_lf_list free;
 	/** LIFO elements */
-	struct rte_stack_lf_elem elems[] __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) struct rte_stack_lf_elem elems[];
 };
 
 /* Structure containing the LIFO, its current length, and a lock for mutual
@@ -73,7 +75,7 @@ struct rte_stack_std {
  */
 struct rte_stack {
 	/** Name of the stack. */
-	char name[RTE_STACK_NAMESIZE] __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) char name[RTE_STACK_NAMESIZE];
 	/** Memzone containing the rte_stack structure. */
 	const struct rte_memzone *memzone;
 	uint32_t capacity; /**< Usable size of the stack. */

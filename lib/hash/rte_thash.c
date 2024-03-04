@@ -2,6 +2,7 @@
  * Copyright(c) 2021 Intel Corporation
  */
 
+#include <stdalign.h>
 #include <sys/queue.h>
 
 #include <rte_thash.h>
@@ -80,7 +81,7 @@ struct rte_thash_subtuple_helper {
 	uint32_t	tuple_offset;	/** < Offset in bits of the subtuple */
 	uint32_t	tuple_len;	/** < Length in bits of the subtuple */
 	uint32_t	lsb_msk;	/** < (1 << reta_sz_log) - 1 */
-	__extension__ uint32_t	compl_table[0] __rte_cache_aligned;
+	__extension__ alignas(RTE_CACHE_LINE_SIZE) uint32_t	compl_table[0];
 	/** < Complementary table */
 };
 

@@ -2,6 +2,7 @@
  * Copyright(c) 2020 Intel Corporation
  */
 
+#include <stdalign.h>
 
 #include <rte_common.h>
 
@@ -20,8 +21,8 @@ struct crc_vpclmulqdq_ctx {
 	__m128i fold_1x128b;
 };
 
-static struct crc_vpclmulqdq_ctx crc32_eth __rte_aligned(64);
-static struct crc_vpclmulqdq_ctx crc16_ccitt __rte_aligned(64);
+static alignas(64) struct crc_vpclmulqdq_ctx crc32_eth;
+static alignas(64) struct crc_vpclmulqdq_ctx crc16_ccitt;
 
 static uint16_t byte_len_to_mask_table[] = {
 	0x0000, 0x0001, 0x0003, 0x0007,
@@ -30,18 +31,18 @@ static uint16_t byte_len_to_mask_table[] = {
 	0x0fff, 0x1fff, 0x3fff, 0x7fff,
 	0xffff};
 
-static const uint8_t shf_table[32] __rte_aligned(16) = {
+static const alignas(16) uint8_t shf_table[32] = {
 	0x00, 0x81, 0x82, 0x83, 0x84, 0x85, 0x86, 0x87,
 	0x88, 0x89, 0x8a, 0x8b, 0x8c, 0x8d, 0x8e, 0x8f,
 	0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
 	0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f
 };
 
-static const uint32_t mask[4] __rte_aligned(16) = {
+static const alignas(16) uint32_t mask[4] = {
 	0xffffffff, 0xffffffff, 0x00000000, 0x00000000
 };
 
-static const uint32_t mask2[4] __rte_aligned(16) = {
+static const alignas(16) uint32_t mask2[4] = {
 	0x00000000, 0xffffffff, 0xffffffff, 0xffffffff
 };
 
@@ -93,7 +94,7 @@ last_two_xmm(const uint8_t *data, uint32_t data_len, uint32_t n, __m128i res,
 	uint32_t offset;
 	__m128i res2, res3, res4, pshufb_shf;
 
-	const uint32_t mask3[4] __rte_aligned(16) = {
+	const alignas(16) uint32_t mask3[4] = {
 		   0x80808080, 0x80808080, 0x80808080, 0x80808080
 	};
 

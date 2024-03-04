@@ -6,6 +6,8 @@
 #ifndef _TRIE_H_
 #define _TRIE_H_
 
+#include <stdalign.h>
+
 /**
  * @file
  * RTE IPv6 Longest Prefix Match (LPM)
@@ -36,7 +38,7 @@ struct rte_trie_tbl {
 	uint32_t	*tbl8_pool;	/**< bitmap containing free tbl8 idxes*/
 	uint32_t	tbl8_pool_pos;
 	/* tbl24 table. */
-	__extension__ uint64_t	tbl24[0] __rte_cache_aligned;
+	__extension__ alignas(RTE_CACHE_LINE_SIZE) uint64_t	tbl24[0];
 };
 
 static inline uint32_t

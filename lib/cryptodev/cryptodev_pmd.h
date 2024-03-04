@@ -151,7 +151,7 @@ struct rte_cryptodev_sym_session {
 	rte_iova_t driver_priv_data_iova;
 	/**< Session driver data IOVA address */
 
-	RTE_MARKER cacheline1 __rte_cache_min_aligned;
+	alignas(RTE_CACHE_LINE_MIN_SIZE) RTE_MARKER cacheline1;
 	/**< Second cache line - start of the driver session data */
 	uint8_t driver_priv_data[];
 	/**< Driver specific session data, variable size */

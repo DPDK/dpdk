@@ -2,6 +2,8 @@
  * Copyright (C) 2020 Marvell.
  */
 
+#include <stdalign.h>
+
 #include <rte_graph.h>
 #include <rte_graph_worker.h>
 
@@ -9,7 +11,7 @@
 #include "node_private.h"
 
 /* Next node for each ptype, default is '0' is "pkt_drop" */
-static const uint8_t p_nxt[256] __rte_cache_aligned = {
+static const alignas(RTE_CACHE_LINE_SIZE) uint8_t p_nxt[256] = {
 	[RTE_PTYPE_L3_IPV4] = PKT_CLS_NEXT_IP4_LOOKUP,
 
 	[RTE_PTYPE_L3_IPV4_EXT] = PKT_CLS_NEXT_IP4_LOOKUP,

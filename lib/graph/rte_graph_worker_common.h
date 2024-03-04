@@ -12,6 +12,8 @@
  * process, enqueue and move streams of objects to the next nodes.
  */
 
+#include <stdalign.h>
+
 #include <rte_common.h>
 #include <rte_cycles.h>
 #include <rte_prefetch.h>
@@ -57,7 +59,8 @@ struct rte_graph {
 	union {
 		/* Fast schedule area for mcore dispatch model */
 		struct {
-			struct rte_graph_rq_head *rq __rte_cache_aligned; /* The run-queue */
+			alignas(RTE_CACHE_LINE_SIZE) struct rte_graph_rq_head *rq;
+				/* The run-queue */
 			struct rte_graph_rq_head rq_head; /* The head for run-queue list */
 
 			unsigned int lcore_id;  /**< The graph running Lcore. */
@@ -109,7 +112,7 @@ struct rte_node {
 	};
 	/* Fast path area  */
 #define RTE_NODE_CTX_SZ 16
-	uint8_t ctx[RTE_NODE_CTX_SZ] __rte_cache_aligned; /**< Node Context. */
+	alignas(RTE_CACHE_LINE_SIZE) uint8_t ctx[RTE_NODE_CTX_SZ]; /**< Node Context. */
 	uint16_t size;		/**< Total number of objects available. */
 	uint16_t idx;		/**< Number of objects used. */
 	rte_graph_off_t off;	/**< Offset of node in the graph reel. */
@@ -124,7 +127,7 @@ struct rte_node {
 			rte_node_process_t process; /**< Process function. */
 			uint64_t process_u64;
 		};
-	struct rte_node *nodes[] __rte_cache_min_aligned; /**< Next nodes. */
+	alignas(RTE_CACHE_LINE_MIN_SIZE) struct rte_node *nodes[]; /**< Next nodes. */
 } __rte_cache_aligned;
 
 /**

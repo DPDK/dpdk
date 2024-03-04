@@ -2,14 +2,16 @@
  * Copyright(c) 2015 Cavium, Inc
  */
 
+#include <stdalign.h>
+
 #include "acl_run.h"
 #include "acl_vect.h"
 
-struct _neon_acl_const {
+alignas(RTE_CACHE_LINE_SIZE) struct _neon_acl_const {
 	rte_xmm_t xmm_shuffle_input;
 	rte_xmm_t xmm_index_mask;
 	rte_xmm_t range_base;
-} neon_acl_const __rte_cache_aligned = {
+} neon_acl_const = {
 	{
 		.u32 = {0x00000000, 0x04040404, 0x08080808, 0x0c0c0c0c}
 	},

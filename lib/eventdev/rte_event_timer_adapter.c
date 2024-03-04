@@ -6,6 +6,7 @@
 #include <ctype.h>
 #include <string.h>
 #include <inttypes.h>
+#include <stdalign.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <math.h>
@@ -631,9 +632,9 @@ struct swtim {
 	/* Identifier of timer data instance */
 	uint32_t timer_data_id;
 	/* Track which cores have actually armed a timer */
-	struct {
+	alignas(RTE_CACHE_LINE_SIZE) struct {
 		RTE_ATOMIC(uint16_t) v;
-	} __rte_cache_aligned in_use[RTE_MAX_LCORE];
+	} in_use[RTE_MAX_LCORE];
 	/* Track which cores' timer lists should be polled */
 	RTE_ATOMIC(unsigned int) poll_lcores[RTE_MAX_LCORE];
 	/* The number of lists that should be polled */

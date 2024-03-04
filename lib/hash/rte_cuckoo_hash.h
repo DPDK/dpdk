@@ -11,6 +11,8 @@
 #ifndef _RTE_CUCKOO_HASH_H_
 #define _RTE_CUCKOO_HASH_H_
 
+#include <stdalign.h>
+
 #if defined(RTE_ARCH_X86)
 #include "rte_cmp_x86.h"
 #endif
@@ -170,7 +172,7 @@ struct rte_hash {
 
 	/* Fields used in lookup */
 
-	uint32_t key_len __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) uint32_t key_len;
 	/**< Length of hash key. */
 	uint8_t hw_trans_mem_support;
 	/**< If hardware transactional memory is used. */

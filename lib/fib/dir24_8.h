@@ -6,6 +6,8 @@
 #ifndef _DIR24_8_H_
 #define _DIR24_8_H_
 
+#include <stdalign.h>
+
 #include <rte_prefetch.h>
 #include <rte_branch_prediction.h>
 
@@ -32,7 +34,7 @@ struct dir24_8_tbl {
 	uint64_t	*tbl8;		/**< tbl8 table. */
 	uint64_t	*tbl8_idxes;	/**< bitmap containing free tbl8 idxes*/
 	/* tbl24 table. */
-	__extension__ uint64_t	tbl24[0] __rte_cache_aligned;
+	__extension__ alignas(RTE_CACHE_LINE_SIZE) uint64_t	tbl24[0];
 };
 
 static inline void *

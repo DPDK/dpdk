@@ -26,6 +26,7 @@ extern "C" {
 #endif
 
 #include <inttypes.h>
+#include <stdalign.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdint.h>
@@ -92,21 +93,21 @@ struct rte_rcu_qsbr_cnt {
  * 2) Register thread ID array
  */
 struct rte_rcu_qsbr {
-	RTE_ATOMIC(uint64_t) token __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) RTE_ATOMIC(uint64_t) token;
 	/**< Counter to allow for multiple concurrent quiescent state queries */
 	RTE_ATOMIC(uint64_t) acked_token;
 	/**< Least token acked by all the threads in the last call to
 	 *   rte_rcu_qsbr_check API.
 	 */
 
-	uint32_t num_elems __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) uint32_t num_elems;
 	/**< Number of elements in the thread ID array */
 	RTE_ATOMIC(uint32_t) num_threads;
 	/**< Number of threads currently using this QS variable */
 	uint32_t max_threads;
 	/**< Maximum number of threads using this QS variable */
 
-	struct rte_rcu_qsbr_cnt qsbr_cnt[0] __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) struct rte_rcu_qsbr_cnt qsbr_cnt[0];
 	/**< Quiescent state counter array of 'max_threads' elements */
 
 	/**< Registered thread IDs are stored in a bitmap array,

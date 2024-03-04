@@ -1,8 +1,10 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  * Copyright(c) 2010-2017 Intel Corporation
  */
-#include <string.h>
+
+#include <stdalign.h>
 #include <stdio.h>
+#include <string.h>
 
 #include <rte_common.h>
 #include <rte_malloc.h>
@@ -42,7 +44,7 @@ struct rte_table_hash {
 	struct rte_hash *h_table;
 
 	/* Lookup table */
-	uint8_t memory[0] __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) uint8_t memory[0];
 };
 
 static int

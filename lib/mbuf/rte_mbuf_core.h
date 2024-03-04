@@ -16,6 +16,7 @@
  * New fields and flags should fit in the "dynamic space".
  */
 
+#include <stdalign.h>
 #include <stdint.h>
 
 #include <rte_byteorder.h>
@@ -476,7 +477,7 @@ struct rte_mbuf {
 	 * same mbuf cacheline0 layout for 32-bit and 64-bit. This makes
 	 * working on vector drivers easier.
 	 */
-	rte_iova_t buf_iova __rte_aligned(sizeof(rte_iova_t));
+	alignas(sizeof(rte_iova_t)) rte_iova_t buf_iova;
 #else
 	/**
 	 * Next segment of scattered packet.
@@ -595,7 +596,7 @@ struct rte_mbuf {
 	struct rte_mempool *pool; /**< Pool from which mbuf was allocated. */
 
 	/* second cache line - fields only used in slow path or on TX */
-	RTE_MARKER cacheline1 __rte_cache_min_aligned;
+	alignas(RTE_CACHE_LINE_MIN_SIZE) RTE_MARKER cacheline1;
 
 #if RTE_IOVA_IN_MBUF
 	/**

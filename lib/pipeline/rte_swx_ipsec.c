@@ -1,6 +1,8 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  * Copyright(c) 2022 Intel Corporation
  */
+
+#include <stdalign.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <errno.h>
@@ -154,7 +156,7 @@ struct rte_swx_ipsec {
 	/*
 	 * Table memory.
 	 */
-	uint8_t memory[] __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) uint8_t memory[];
 };
 
 static inline struct ipsec_sa *

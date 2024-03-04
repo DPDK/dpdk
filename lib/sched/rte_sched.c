@@ -2,6 +2,7 @@
  * Copyright(c) 2010-2014 Intel Corporation
  */
 
+#include <stdalign.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -164,7 +165,7 @@ struct rte_sched_subport {
 	double tc_ov_rate;
 
 	/* Statistics */
-	struct rte_sched_subport_stats stats __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) struct rte_sched_subport_stats stats;
 
 	/* subport profile */
 	uint32_t profile;
@@ -193,7 +194,7 @@ struct rte_sched_subport {
 
 	/* Bitmap */
 	struct rte_bitmap *bmp;
-	uint32_t grinder_base_bmp_pos[RTE_SCHED_PORT_N_GRINDERS] __rte_aligned_16;
+	alignas(16) uint32_t grinder_base_bmp_pos[RTE_SCHED_PORT_N_GRINDERS];
 
 	/* Grinders */
 	struct rte_sched_grinder grinder[RTE_SCHED_PORT_N_GRINDERS];
@@ -212,7 +213,7 @@ struct rte_sched_subport {
 	struct rte_sched_pipe_profile *pipe_profiles;
 	uint8_t *bmp_array;
 	struct rte_mbuf **queue_array;
-	uint8_t memory[0] __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) uint8_t memory[0];
 } __rte_cache_aligned;
 
 struct rte_sched_port {
@@ -244,7 +245,7 @@ struct rte_sched_port {
 
 	/* Large data structures */
 	struct rte_sched_subport_profile *subport_profiles;
-	struct rte_sched_subport *subports[0] __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) struct rte_sched_subport *subports[0];
 } __rte_cache_aligned;
 
 enum rte_sched_subport_array {
