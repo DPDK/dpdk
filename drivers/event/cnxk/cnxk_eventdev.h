@@ -284,4 +284,7 @@ int cnxk_crypto_adapter_qp_add(const struct rte_eventdev *event_dev,
 			       const struct rte_event_crypto_adapter_queue_conf *conf);
 int cnxk_crypto_adapter_qp_del(const struct rte_cryptodev *cdev, int32_t queue_pair_id);
 
+int cnxk_dma_adapter_vchan_add(const struct rte_eventdev *event_dev,
+			       const int16_t dma_dev_id, uint16_t vchan_id);
+int cnxk_dma_adapter_vchan_del(const int16_t dma_dev_id, uint16_t vchan_id);
 #endif /* __CNXK_EVENTDEV_H__ */

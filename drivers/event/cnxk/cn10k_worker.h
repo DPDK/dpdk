@@ -7,6 +7,7 @@
 
 #include <rte_eventdev.h>
 #include "cn10k_cryptodev_event_dp.h"
+#include "cnxk_dma_event_dp.h"
 #include "cn10k_rx.h"
 #include "cnxk_worker.h"
 #include "cn10k_eventdev.h"
@@ -236,6 +237,8 @@ cn10k_sso_hws_post_process(struct cn10k_sso_hws *ws, uint64_t *u64,
 		/* Mark vector mempool object as get */
 		RTE_MEMPOOL_CHECK_COOKIES(rte_mempool_from_obj((void *)u64[1]),
 					  (void **)&u64[1], 1, 1);
+	} else if (CNXK_EVENT_TYPE_FROM_TAG(u64[0]) == RTE_EVENT_TYPE_DMADEV) {
+		u64[1] = cnxk_dma_adapter_dequeue(u64[1]);
 	}
 }
 

@@ -8,6 +8,9 @@
 #include "cn10k_cryptodev_ops.h"
 #include "cnxk_eventdev.h"
 #include "cnxk_worker.h"
+#include "cnxk_dma_event_dp.h"
+
+#include <rte_dmadev_pmd.h>
 
 #define CN10K_SET_EVDEV_DEQ_OP(dev, deq_op, deq_ops)                           \
 	deq_op = deq_ops[dev->rx_offloads & (NIX_RX_OFFLOAD_MAX - 1)]
@@ -476,6 +479,8 @@ cn10k_sso_fp_fns_set(struct rte_eventdev *event_dev)
 		event_dev->ca_enqueue = cn10k_cpt_sg_ver2_crypto_adapter_enqueue;
 	else
 		event_dev->ca_enqueue = cn10k_cpt_sg_ver1_crypto_adapter_enqueue;
+
+	event_dev->dma_enqueue = cn10k_dma_adapter_enqueue;
 
 	if (dev->tx_offloads & NIX_TX_MULTI_SEG_F)
 		CN10K_SET_EVDEV_ENQ_OP(dev, event_dev->txa_enqueue, sso_hws_tx_adptr_enq_seg);
@@ -1020,6 +1025,67 @@ cn10k_crypto_adapter_vec_limits(const struct rte_eventdev *event_dev,
 	return 0;
 }
 
+static int
+cn10k_dma_adapter_caps_get(const struct rte_eventdev *event_dev,
+			   const int16_t dma_dev_id, uint32_t *caps)
+{
+	struct rte_dma_dev *dma_dev;
+
+	RTE_SET_USED(event_dev);
+
+	dma_dev = rte_dma_pmd_get_dev_by_id(dma_dev_id);
+	if (dma_dev == NULL)
+		return -EINVAL;
+
+	CNXK_VALID_DEV_OR_ERR_RET(dma_dev->device, "cnxk_dmadev_pci_driver", EINVAL);
+
+	*caps = RTE_EVENT_DMA_ADAPTER_CAP_INTERNAL_PORT_OP_FWD;
+
+	return 0;
+}
+
+static int
+cn10k_dma_adapter_vchan_add(const struct rte_eventdev *event_dev,
+			    const int16_t dma_dev_id, uint16_t vchan_id,
+			    const struct rte_event *event)
+{
+	struct rte_dma_dev *dma_dev;
+	int ret;
+
+	RTE_SET_USED(event);
+	dma_dev = rte_dma_pmd_get_dev_by_id(dma_dev_id);
+	if (dma_dev == NULL)
+		return -EINVAL;
+
+	CNXK_VALID_DEV_OR_ERR_RET(dma_dev->device, "cnxk_dmadev_pci_driver", EINVAL);
+
+	cn10k_sso_fp_fns_set((struct rte_eventdev *)(uintptr_t)event_dev);
+
+	ret = cnxk_dma_adapter_vchan_add(event_dev, dma_dev_id, vchan_id);
+	cn10k_sso_set_priv_mem(event_dev, NULL);
+
+	return ret;
+}
+
+static int
+cn10k_dma_adapter_vchan_del(const struct rte_eventdev *event_dev,
+			    const int16_t dma_dev_id, uint16_t vchan_id)
+{
+	struct rte_dma_dev *dma_dev;
+
+	RTE_SET_USED(event_dev);
+
+	dma_dev = rte_dma_pmd_get_dev_by_id(dma_dev_id);
+	if (dma_dev == NULL)
+		return -EINVAL;
+
+	CNXK_VALID_DEV_OR_ERR_RET(dma_dev->device, "cnxk_dmadev_pci_driver", EINVAL);
+
+	return cnxk_dma_adapter_vchan_del(dma_dev_id, vchan_id);
+}
+
+
+
 static struct eventdev_ops cn10k_sso_dev_ops = {
 	.dev_infos_get = cn10k_sso_info_get,
 	.dev_configure = cn10k_sso_dev_configure,
@@ -1060,6 +1126,10 @@ static struct eventdev_ops cn10k_sso_dev_ops = {
 	.crypto_adapter_queue_pair_add = cn10k_crypto_adapter_qp_add,
 	.crypto_adapter_queue_pair_del = cn10k_crypto_adapter_qp_del,
 	.crypto_adapter_vector_limits_get = cn10k_crypto_adapter_vec_limits,
+
+	.dma_adapter_caps_get = cn10k_dma_adapter_caps_get,
+	.dma_adapter_vchan_add = cn10k_dma_adapter_vchan_add,
+	.dma_adapter_vchan_del = cn10k_dma_adapter_vchan_del,
 
 	.xstats_get = cnxk_sso_xstats_get,
 	.xstats_reset = cnxk_sso_xstats_reset,

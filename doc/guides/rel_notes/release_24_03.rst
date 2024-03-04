@@ -141,6 +141,7 @@ New Features
 * **Updated Marvell cnxk eventdev driver.**
 
   * Added power-saving during polling within the ``rte_event_dequeue_burst()`` API.
+  * Added support for DMA adapter.
 
 
 Removed Items
