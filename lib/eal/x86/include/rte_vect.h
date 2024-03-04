@@ -11,6 +11,7 @@
  * RTE SSE/AVX related header.
  */
 
+#include <assert.h>
 #include <stdint.h>
 #include <rte_config.h>
 #include <rte_common.h>
@@ -33,8 +34,10 @@ extern "C" {
 
 typedef __m128i xmm_t;
 
-#define	XMM_SIZE	(sizeof(xmm_t))
+#define	XMM_SIZE	16
 #define	XMM_MASK	(XMM_SIZE - 1)
+
+static_assert(sizeof(xmm_t) == XMM_SIZE, "");
 
 typedef union rte_xmm {
 	xmm_t    x;
