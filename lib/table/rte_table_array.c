@@ -28,7 +28,7 @@
 
 #endif
 
-struct rte_table_array {
+struct __rte_cache_aligned rte_table_array {
 	struct rte_table_stats stats;
 
 	/* Input parameters */
@@ -41,7 +41,7 @@ struct rte_table_array {
 
 	/* Internal table */
 	alignas(RTE_CACHE_LINE_SIZE) uint8_t array[0];
-} __rte_cache_aligned;
+};
 
 static void *
 rte_table_array_create(void *params, int socket_id, uint32_t entry_size)

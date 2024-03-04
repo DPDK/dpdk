@@ -473,7 +473,7 @@ enum rte_event_timer_state {
  * The generic *rte_event_timer* structure to hold the event timer attributes
  * for arm and cancel operations.
  */
-struct rte_event_timer {
+struct __rte_cache_aligned rte_event_timer {
 	struct rte_event ev;
 	/**<
 	 * Expiry event attributes.  On successful event timer timeout,
@@ -504,7 +504,7 @@ struct rte_event_timer {
 	/**< Memory to store user specific metadata.
 	 * The event timer adapter implementation should not modify this area.
 	 */
-} __rte_cache_aligned;
+};
 
 typedef uint16_t (*rte_event_timer_arm_burst_t)(
 		const struct rte_event_timer_adapter *adapter,
@@ -526,7 +526,7 @@ typedef uint16_t (*rte_event_timer_cancel_burst_t)(
 /**
  * @internal Data structure associated with each event timer adapter.
  */
-struct rte_event_timer_adapter {
+struct __rte_cache_aligned rte_event_timer_adapter {
 	rte_event_timer_arm_burst_t arm_burst;
 	/**< Pointer to driver arm_burst function. */
 	rte_event_timer_arm_tmo_tick_burst_t arm_tmo_tick_burst;
@@ -540,7 +540,7 @@ struct rte_event_timer_adapter {
 
 	uint8_t allocated : 1;
 	/**< Flag to indicate that this adapter has been allocated */
-} __rte_cache_aligned;
+};
 
 #define ADAPTER_VALID_OR_ERR_RET(adapter, retval) do {		\
 	if (adapter == NULL || !adapter->allocated)		\

@@ -12,8 +12,6 @@ extern "C" {
 #include <stdint.h>
 #include <sys/types.h>
 
-#define __rte_aligned_16 __rte_aligned(16)
-
 #if 0
 static inline uint32_t
 rte_min_pos_4_u16(uint16_t *x)

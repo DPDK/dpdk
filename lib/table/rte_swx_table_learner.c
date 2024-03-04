@@ -145,13 +145,13 @@ struct table_params {
 	size_t total_size;
 };
 
-struct table {
+struct __rte_cache_aligned table {
 	/* Table parameters. */
 	struct table_params params;
 
 	/* Table buckets. */
 	uint8_t buckets[];
-} __rte_cache_aligned;
+};
 
 /* The timeout (in cycles) is stored in the table as a 32-bit value by truncating its least
  * significant 32 bits. Therefore, to make sure the time is always advancing when adding the timeout

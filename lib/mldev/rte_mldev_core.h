@@ -626,7 +626,7 @@ struct rte_ml_dev_data {
  *
  * The data structure associated with each ML device.
  */
-struct rte_ml_dev {
+struct __rte_cache_aligned rte_ml_dev {
 	/** Pointer to PMD enqueue function. */
 	mldev_enqueue_t enqueue_burst;
 
@@ -647,7 +647,7 @@ struct rte_ml_dev {
 
 	/** Flag indicating the device is attached. */
 	__extension__ uint8_t attached : 1;
-} __rte_cache_aligned;
+};
 
 /**
  * @internal

@@ -48,7 +48,7 @@ struct rte_eth_rxtx_callback {
  * memory. This split allows the function pointer and driver data to be per-
  * process, while the actual configuration data for the device is shared.
  */
-struct rte_eth_dev {
+struct __rte_cache_aligned rte_eth_dev {
 	eth_rx_burst_t rx_pkt_burst; /**< Pointer to PMD receive function */
 	eth_tx_burst_t tx_pkt_burst; /**< Pointer to PMD transmit function */
 
@@ -93,7 +93,7 @@ struct rte_eth_dev {
 
 	enum rte_eth_dev_state state; /**< Flag indicating the port state */
 	void *security_ctx; /**< Context for security ops */
-} __rte_cache_aligned;
+};
 
 struct rte_eth_dev_sriov;
 struct rte_eth_dev_owner;
@@ -104,7 +104,7 @@ struct rte_eth_dev_owner;
  * device. This structure is safe to place in shared memory to be common
  * among different processes in a multi-process configuration.
  */
-struct rte_eth_dev_data {
+struct __rte_cache_aligned rte_eth_dev_data {
 	char name[RTE_ETH_NAME_MAX_LEN]; /**< Unique identifier name */
 
 	void **rx_queues; /**< Array of pointers to Rx queues */
@@ -190,7 +190,7 @@ struct rte_eth_dev_data {
 	uint16_t backer_port_id;
 
 	pthread_mutex_t flow_ops_mutex; /**< rte_flow ops mutex */
-} __rte_cache_aligned;
+};
 
 /**
  * @internal

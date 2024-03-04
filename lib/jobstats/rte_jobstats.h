@@ -32,7 +32,7 @@ struct rte_jobstats;
 typedef void (*rte_job_update_period_cb_t)(struct rte_jobstats *job,
 		int64_t job_result);
 
-struct rte_jobstats {
+struct __rte_cache_aligned rte_jobstats {
 	uint64_t period;
 	/**< Estimated period of execution. */
 
@@ -65,9 +65,9 @@ struct rte_jobstats {
 
 	struct rte_jobstats_context *context;
 	/**< Job stats context object that is executing this job. */
-} __rte_cache_aligned;
+};
 
-struct rte_jobstats_context {
+struct __rte_cache_aligned rte_jobstats_context {
 	/** Variable holding time at different points:
 	 * -# loop start time if loop was started but no job executed yet.
 	 * -# job start time if job is currently executing.
@@ -111,7 +111,7 @@ struct rte_jobstats_context {
 
 	uint64_t loop_cnt;
 	/**< Total count of executed loops with at least one executed job. */
-} __rte_cache_aligned;
+};
 
 /**
  * Initialize given context object with default values.

@@ -432,7 +432,7 @@ typedef int (*rte_flow_async_action_list_handle_query_update_t)(
  *
  * Fast path async flow functions are held in a flat array, one entry per ethdev.
  */
-struct rte_flow_fp_ops {
+struct __rte_cache_aligned rte_flow_fp_ops {
 	rte_flow_async_create_t async_create;
 	rte_flow_async_create_by_index_t async_create_by_index;
 	rte_flow_async_actions_update_t async_actions_update;
@@ -447,7 +447,7 @@ struct rte_flow_fp_ops {
 	rte_flow_async_action_list_handle_create_t async_action_list_handle_create;
 	rte_flow_async_action_list_handle_destroy_t async_action_list_handle_destroy;
 	rte_flow_async_action_list_handle_query_update_t async_action_list_handle_query_update;
-} __rte_cache_aligned;
+};
 
 /**
  * @internal

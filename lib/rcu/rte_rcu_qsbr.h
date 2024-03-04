@@ -70,7 +70,7 @@ extern int rte_rcu_log_type;
 #define RTE_QSBR_THRID_INVALID 0xffffffff
 
 /* Worker thread counter */
-struct rte_rcu_qsbr_cnt {
+struct __rte_cache_aligned rte_rcu_qsbr_cnt {
 	RTE_ATOMIC(uint64_t) cnt;
 	/**< Quiescent state counter. Value 0 indicates the thread is offline
 	 *   64b counter is used to avoid adding more code to address
@@ -79,7 +79,7 @@ struct rte_rcu_qsbr_cnt {
 	 */
 	RTE_ATOMIC(uint32_t) lock_cnt;
 	/**< Lock counter. Used when RTE_LIBRTE_RCU_DEBUG is enabled */
-} __rte_cache_aligned;
+};
 
 #define __RTE_QSBR_CNT_THR_OFFLINE 0
 #define __RTE_QSBR_CNT_INIT 1
@@ -92,7 +92,7 @@ struct rte_rcu_qsbr_cnt {
  * 1) Quiescent state counter array
  * 2) Register thread ID array
  */
-struct rte_rcu_qsbr {
+struct __rte_cache_aligned rte_rcu_qsbr {
 	alignas(RTE_CACHE_LINE_SIZE) RTE_ATOMIC(uint64_t) token;
 	/**< Counter to allow for multiple concurrent quiescent state queries */
 	RTE_ATOMIC(uint64_t) acked_token;
@@ -113,7 +113,7 @@ struct rte_rcu_qsbr {
 	/**< Registered thread IDs are stored in a bitmap array,
 	 *   after the quiescent state counter array.
 	 */
-} __rte_cache_aligned;
+};
 
 /**
  * Call back function called to free the resources.

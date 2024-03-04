@@ -42,7 +42,7 @@
 
 #define ECA_ADAPTER_ARRAY "crypto_adapter_array"
 
-struct crypto_ops_circular_buffer {
+struct __rte_cache_aligned crypto_ops_circular_buffer {
 	/* index of head element in circular buffer */
 	uint16_t head;
 	/* index of tail element in circular buffer */
@@ -53,9 +53,9 @@ struct crypto_ops_circular_buffer {
 	uint16_t size;
 	/* Pointer to hold rte_crypto_ops for batching */
 	struct rte_crypto_op **op_buffer;
-} __rte_cache_aligned;
+};
 
-struct event_crypto_adapter {
+struct __rte_cache_aligned event_crypto_adapter {
 	/* Event device identifier */
 	uint8_t eventdev_id;
 	/* Event port identifier */
@@ -98,10 +98,10 @@ struct event_crypto_adapter {
 	uint16_t nb_qps;
 	/* Adapter mode */
 	enum rte_event_crypto_adapter_mode mode;
-} __rte_cache_aligned;
+};
 
 /* Per crypto device information */
-struct crypto_device_info {
+struct __rte_cache_aligned crypto_device_info {
 	/* Pointer to cryptodev */
 	struct rte_cryptodev *dev;
 	/* Pointer to queue pair info */
@@ -118,15 +118,15 @@ struct crypto_device_info {
 	 * be invoked if not already invoked
 	 */
 	uint16_t num_qpairs;
-} __rte_cache_aligned;
+};
 
 /* Per queue pair information */
-struct crypto_queue_pair_info {
+struct __rte_cache_aligned crypto_queue_pair_info {
 	/* Set to indicate queue pair is enabled */
 	bool qp_enabled;
 	/* Circular buffer for batching crypto ops to cdev */
 	struct crypto_ops_circular_buffer cbuf;
-} __rte_cache_aligned;
+};
 
 static struct event_crypto_adapter **event_crypto_adapter;
 

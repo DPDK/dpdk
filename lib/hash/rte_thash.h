@@ -99,14 +99,14 @@ struct rte_ipv6_tuple {
 	};
 };
 
+#ifdef RTE_ARCH_X86
+union __rte_aligned(XMM_SIZE) rte_thash_tuple {
+#else
 union rte_thash_tuple {
+#endif
 	struct rte_ipv4_tuple	v4;
 	struct rte_ipv6_tuple	v6;
-#ifdef RTE_ARCH_X86
-} __rte_aligned(XMM_SIZE);
-#else
 };
-#endif
 
 /**
  * Prepare special converted key to use with rte_softrss_be()

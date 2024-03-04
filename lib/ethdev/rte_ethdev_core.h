@@ -84,7 +84,7 @@ struct rte_ethdev_qdata {
  * On 64-bit systems contents of this structure occupy exactly two 64B lines.
  * On 32-bit systems contents of this structure fits into one 64B line.
  */
-struct rte_eth_fp_ops {
+struct __rte_cache_aligned rte_eth_fp_ops {
 
 	/**@{*/
 	/**
@@ -124,7 +124,7 @@ struct rte_eth_fp_ops {
 	uintptr_t reserved2[1];
 	/**@}*/
 
-} __rte_cache_aligned;
+};
 
 extern struct rte_eth_fp_ops rte_eth_fp_ops[RTE_MAX_ETHPORTS];
 

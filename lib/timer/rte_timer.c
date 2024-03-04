@@ -24,7 +24,7 @@
 /**
  * Per-lcore info for timers.
  */
-struct priv_timer {
+struct __rte_cache_aligned priv_timer {
 	struct rte_timer pending_head;  /**< dummy timer instance to head up list */
 	rte_spinlock_t list_lock;       /**< lock to protect list access */
 
@@ -44,7 +44,7 @@ struct priv_timer {
 	/** per-lcore statistics */
 	struct rte_timer_debug_stats stats;
 #endif
-} __rte_cache_aligned;
+};
 
 #define FL_ALLOCATED	(1 << 0)
 struct rte_timer_data {

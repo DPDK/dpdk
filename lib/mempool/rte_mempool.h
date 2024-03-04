@@ -67,7 +67,7 @@ extern "C" {
  * captured since they can be calculated from other stats.
  * For example: put_cache_objs = put_objs - put_common_pool_objs.
  */
-struct rte_mempool_debug_stats {
+struct __rte_cache_aligned rte_mempool_debug_stats {
 	uint64_t put_bulk;             /**< Number of puts. */
 	uint64_t put_objs;             /**< Number of objects successfully put. */
 	uint64_t put_common_pool_bulk; /**< Number of bulks enqueued in common pool. */
@@ -81,13 +81,13 @@ struct rte_mempool_debug_stats {
 	uint64_t get_success_blks;     /**< Successful allocation number of contiguous blocks. */
 	uint64_t get_fail_blks;        /**< Failed allocation number of contiguous blocks. */
 	RTE_CACHE_GUARD;
-} __rte_cache_aligned;
+};
 #endif
 
 /**
  * A structure that stores a per-core object cache.
  */
-struct rte_mempool_cache {
+struct __rte_cache_aligned rte_mempool_cache {
 	uint32_t size;	      /**< Size of the cache */
 	uint32_t flushthresh; /**< Threshold before we flush excess elements */
 	uint32_t len;	      /**< Current cache count */
@@ -111,7 +111,7 @@ struct rte_mempool_cache {
 	 * cases to avoid needless emptying of cache.
 	 */
 	alignas(RTE_CACHE_LINE_SIZE) void *objs[RTE_MEMPOOL_CACHE_MAX_SIZE * 2];
-} __rte_cache_aligned;
+};
 
 /**
  * A structure that stores the size of mempool elements.
@@ -219,15 +219,15 @@ struct rte_mempool_memhdr {
  * The structure is cache-line aligned to avoid ABI breakages in
  * a number of cases when something small is added.
  */
-struct rte_mempool_info {
+struct __rte_cache_aligned rte_mempool_info {
 	/** Number of objects in the contiguous block */
 	unsigned int contig_block_size;
-} __rte_cache_aligned;
+};
 
 /**
  * The RTE mempool structure.
  */
-struct rte_mempool {
+struct __rte_cache_aligned rte_mempool {
 	char name[RTE_MEMPOOL_NAMESIZE]; /**< Name of mempool. */
 	union {
 		void *pool_data;         /**< Ring or pool to store objects. */
@@ -269,7 +269,7 @@ struct rte_mempool {
 	 */
 	struct rte_mempool_debug_stats stats[RTE_MAX_LCORE + 1];
 #endif
-}  __rte_cache_aligned;
+};
 
 /** Spreading among memory channels not required. */
 #define RTE_MEMPOOL_F_NO_SPREAD		0x0001
@@ -689,7 +689,7 @@ typedef int (*rte_mempool_get_info_t)(const struct rte_mempool *mp,
 
 
 /** Structure defining mempool operations structure */
-struct rte_mempool_ops {
+struct __rte_cache_aligned rte_mempool_ops {
 	char name[RTE_MEMPOOL_OPS_NAMESIZE]; /**< Name of mempool ops struct. */
 	rte_mempool_alloc_t alloc;       /**< Allocate private data. */
 	rte_mempool_free_t free;         /**< Free the external pool. */
@@ -714,7 +714,7 @@ struct rte_mempool_ops {
 	 * Dequeue a number of contiguous object blocks.
 	 */
 	rte_mempool_dequeue_contig_blocks_t dequeue_contig_blocks;
-} __rte_cache_aligned;
+};
 
 #define RTE_MEMPOOL_MAX_OPS_IDX 16  /**< Max registered ops structs */
 
@@ -727,14 +727,14 @@ struct rte_mempool_ops {
  * any function pointers stored directly in the mempool struct would not be.
  * This results in us simply having "ops_index" in the mempool struct.
  */
-struct rte_mempool_ops_table {
+struct __rte_cache_aligned rte_mempool_ops_table {
 	rte_spinlock_t sl;     /**< Spinlock for add/delete. */
 	uint32_t num_ops;      /**< Number of used ops structs in the table. */
 	/**
 	 * Storage for all possible ops structs.
 	 */
 	struct rte_mempool_ops ops[RTE_MEMPOOL_MAX_OPS_IDX];
-} __rte_cache_aligned;
+};
 
 /** Array of registered ops structs. */
 extern struct rte_mempool_ops_table rte_mempool_ops_table;

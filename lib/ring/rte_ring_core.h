@@ -130,20 +130,20 @@ struct rte_ring {
 	RTE_CACHE_GUARD;
 
 	/** Ring producer status. */
-	union {
+	union __rte_cache_aligned {
 		struct rte_ring_headtail prod;
 		struct rte_ring_hts_headtail hts_prod;
 		struct rte_ring_rts_headtail rts_prod;
-	}  __rte_cache_aligned;
+	};
 
 	RTE_CACHE_GUARD;
 
 	/** Ring consumer status. */
-	union {
+	union __rte_cache_aligned {
 		struct rte_ring_headtail cons;
 		struct rte_ring_hts_headtail hts_cons;
 		struct rte_ring_rts_headtail rts_cons;
-	}  __rte_cache_aligned;
+	};
 
 	RTE_CACHE_GUARD;
 };

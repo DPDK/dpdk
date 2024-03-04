@@ -70,11 +70,11 @@ struct node {
  * Structure that holds the graph scheduling workqueue node stream.
  * Used for mcore dispatch model.
  */
-struct graph_mcore_dispatch_wq_node {
+struct __rte_cache_aligned graph_mcore_dispatch_wq_node {
 	rte_graph_off_t node_off;
 	uint16_t nb_objs;
 	void *objs[RTE_GRAPH_BURST_SIZE];
-} __rte_cache_aligned;
+};
 
 /**
  * @internal

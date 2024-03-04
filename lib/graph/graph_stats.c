@@ -28,7 +28,7 @@ struct cluster_node {
 	struct rte_node *nodes[];
 };
 
-struct rte_graph_cluster_stats {
+struct __rte_cache_aligned rte_graph_cluster_stats {
 	/* Header */
 	rte_graph_cluster_stats_cb_t fn;
 	uint32_t cluster_node_size; /* Size of struct cluster_node */
@@ -38,7 +38,7 @@ struct rte_graph_cluster_stats {
 	size_t sz;
 
 	struct cluster_node clusters[];
-} __rte_cache_aligned;
+};
 
 #define boarder_model_dispatch()                                                              \
 	fprintf(f, "+-------------------------------+---------------+--------" \

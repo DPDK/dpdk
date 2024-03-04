@@ -55,12 +55,12 @@ struct acl_flow_data {
  * Structure to maintain running results for
  * a single packet (up to 4 tries).
  */
-struct completion {
+struct __rte_aligned(XMM_SIZE) completion {
 	uint32_t *results;                          /* running results. */
 	int32_t   priority[RTE_ACL_MAX_CATEGORIES]; /* running priorities. */
 	uint32_t  count;                            /* num of remaining tries */
 	/* true for allocated struct */
-} __rte_aligned(XMM_SIZE);
+};
 
 /*
  * One parms structure for each slot in the search engine.

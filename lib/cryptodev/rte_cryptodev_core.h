@@ -40,7 +40,7 @@ struct rte_cryptodev_qpdata {
 	struct rte_cryptodev_cb_rcu *deq_cb;
 };
 
-struct rte_crypto_fp_ops {
+struct __rte_cache_aligned rte_crypto_fp_ops {
 	/** PMD enqueue burst function. */
 	enqueue_pkt_burst_t enqueue_burst;
 	/** PMD dequeue burst function. */
@@ -49,7 +49,7 @@ struct rte_crypto_fp_ops {
 	struct rte_cryptodev_qpdata qp;
 	/** Reserved for future ops. */
 	uintptr_t reserved[3];
-} __rte_cache_aligned;
+};
 
 extern struct rte_crypto_fp_ops rte_crypto_fp_ops[RTE_CRYPTO_MAX_DEVS];
 

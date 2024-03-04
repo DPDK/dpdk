@@ -29,7 +29,7 @@
 		"/sys/devices/system/cpu/intel_uncore_frequency/package_%02u_die_%02u/initial_min_freq_khz"
 
 
-struct uncore_power_info {
+struct __rte_cache_aligned uncore_power_info {
 	unsigned int die;                  /* Core die id */
 	unsigned int pkg;                  /* Package id */
 	uint32_t freqs[MAX_UNCORE_FREQS];  /* Frequency array */
@@ -41,7 +41,7 @@ struct uncore_power_info {
 	uint32_t org_max_freq;             /* Original max freq of uncore */
 	uint32_t init_max_freq;            /* System max uncore freq */
 	uint32_t init_min_freq;            /* System min uncore freq */
-} __rte_cache_aligned;
+};
 
 static struct uncore_power_info uncore_info[RTE_MAX_NUMA_NODES][MAX_NUMA_DIE];
 

@@ -69,7 +69,7 @@ typedef uint16_t (*compressdev_enqueue_pkt_burst_t)(void *qp,
 		struct rte_comp_op **ops, uint16_t nb_ops);
 
 /** The data structure associated with each comp device. */
-struct rte_compressdev {
+struct __rte_cache_aligned rte_compressdev {
 	compressdev_dequeue_pkt_burst_t dequeue_burst;
 	/**< Pointer to PMD receive function */
 	compressdev_enqueue_pkt_burst_t enqueue_burst;
@@ -87,7 +87,7 @@ struct rte_compressdev {
 	__extension__
 	uint8_t attached : 1;
 	/**< Flag indicating the device is attached */
-} __rte_cache_aligned;
+};
 
 /**
  *
@@ -96,7 +96,7 @@ struct rte_compressdev {
  * This structure is safe to place in shared memory to be common among
  * different processes in a multi-process configuration.
  */
-struct rte_compressdev_data {
+struct __rte_cache_aligned rte_compressdev_data {
 	uint8_t dev_id;
 	/**< Compress device identifier */
 	int socket_id;
@@ -115,7 +115,7 @@ struct rte_compressdev_data {
 
 	void *dev_private;
 	/**< PMD-specific private data */
-} __rte_cache_aligned;
+};
 
 #ifdef __cplusplus
 }

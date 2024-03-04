@@ -72,7 +72,7 @@ struct eth_rx_poll_entry {
 	uint16_t eth_rx_qid;
 };
 
-struct eth_rx_vector_data {
+struct __rte_cache_aligned eth_rx_vector_data {
 	TAILQ_ENTRY(eth_rx_vector_data) next;
 	uint16_t port;
 	uint16_t queue;
@@ -82,7 +82,7 @@ struct eth_rx_vector_data {
 	uint64_t vector_timeout_ticks;
 	struct rte_mempool *vector_pool;
 	struct rte_event_vector *vector_ev;
-} __rte_cache_aligned;
+};
 
 TAILQ_HEAD(eth_rx_vector_data_list, eth_rx_vector_data);
 
@@ -103,7 +103,7 @@ struct eth_event_enqueue_buffer {
 	uint16_t last_mask;
 };
 
-struct event_eth_rx_adapter {
+struct __rte_cache_aligned event_eth_rx_adapter {
 	/* RSS key */
 	uint8_t rss_key_be[RSS_KEY_SIZE];
 	/* Event device identifier */
@@ -188,7 +188,7 @@ struct event_eth_rx_adapter {
 	uint8_t rxa_started;
 	/* Adapter ID */
 	uint8_t id;
-} __rte_cache_aligned;
+};
 
 /* Per eth device */
 struct eth_device_info {

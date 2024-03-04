@@ -356,7 +356,7 @@ struct rte_comp_xform {
  * Comp operations are enqueued and dequeued in comp PMDs using the
  * rte_compressdev_enqueue_burst() / rte_compressdev_dequeue_burst() APIs
  */
-struct rte_comp_op {
+struct __rte_cache_aligned rte_comp_op {
 	enum rte_comp_op_type op_type;
 	union {
 		void *private_xform;
@@ -478,7 +478,7 @@ struct rte_comp_op {
 	 * will be set to RTE_COMP_OP_STATUS_SUCCESS after operation
 	 * is successfully processed by a PMD
 	 */
-} __rte_cache_aligned;
+};
 
 /**
  * Creates an operation pool

@@ -421,7 +421,7 @@ struct rte_ml_buff_seg {
  * This structure contains data related to performing an ML operation on the buffers using
  * the model specified through model_id.
  */
-struct rte_ml_op {
+struct __rte_cache_aligned rte_ml_op {
 	uint16_t model_id;
 	/**< Model ID to be used for the operation. */
 	uint16_t nb_batches;
@@ -469,7 +469,7 @@ struct rte_ml_op {
 	 * dequeue and enqueue operation.
 	 * The application should not modify this field.
 	 */
-} __rte_cache_aligned;
+};
 
 /* Enqueue/Dequeue operations */
 

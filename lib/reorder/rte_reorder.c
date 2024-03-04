@@ -37,16 +37,16 @@ EAL_REGISTER_TAILQ(rte_reorder_tailq)
 int rte_reorder_seqn_dynfield_offset = -1;
 
 /* A generic circular buffer */
-struct cir_buffer {
+struct __rte_cache_aligned cir_buffer {
 	unsigned int size;   /**< Number of entries that can be stored */
 	unsigned int mask;   /**< [buffer_size - 1]: used for wrap-around */
 	unsigned int head;   /**< insertion point in buffer */
 	unsigned int tail;   /**< extraction point in buffer */
 	struct rte_mbuf **entries;
-} __rte_cache_aligned;
+};
 
 /* The reorder buffer data structure itself */
-struct rte_reorder_buffer {
+struct __rte_cache_aligned rte_reorder_buffer {
 	char name[RTE_REORDER_NAMESIZE];
 	uint32_t min_seqn;  /**< Lowest seq. number that can be in the buffer */
 	unsigned int memsize; /**< memory area size of reorder buffer */
@@ -54,7 +54,7 @@ struct rte_reorder_buffer {
 
 	struct cir_buffer ready_buf; /**< temp buffer for dequeued entries */
 	struct cir_buffer order_buf; /**< buffer used to reorder entries */
-} __rte_cache_aligned;
+};
 
 static void
 rte_reorder_free_mbufs(struct rte_reorder_buffer *b);

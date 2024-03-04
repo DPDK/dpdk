@@ -55,7 +55,7 @@ struct rte_ipsec_sa_pkt_func {
  * - pointer to security/crypto session, plus other related data
  * - session/device specific functions to prepare/process IPsec packets.
  */
-struct rte_ipsec_session {
+struct __rte_cache_aligned rte_ipsec_session {
 	/**
 	 * SA that session belongs to.
 	 * Note that multiple sessions can belong to the same SA.
@@ -77,7 +77,7 @@ struct rte_ipsec_session {
 	};
 	/** functions to prepare/process IPsec packets */
 	struct rte_ipsec_sa_pkt_func pkt_func;
-} __rte_cache_aligned;
+};
 
 /**
  * Checks that inside given rte_ipsec_session crypto/security fields

@@ -272,7 +272,7 @@ struct vhost_async {
 /**
  * Structure contains variables relevant to RX/TX virtqueues.
  */
-struct vhost_virtqueue {
+struct __rte_cache_aligned vhost_virtqueue {
 	union {
 		struct vring_desc	*desc;
 		struct vring_packed_desc   *desc_packed;
@@ -351,7 +351,7 @@ struct vhost_virtqueue {
 	struct virtqueue_stats	stats;
 
 	RTE_ATOMIC(bool) irq_pending;
-} __rte_cache_aligned;
+};
 
 /* Virtio device status as per Virtio specification */
 #define VIRTIO_DEVICE_STATUS_RESET		0x00
@@ -479,7 +479,7 @@ struct inflight_mem_info {
  * Device structure contains all configuration information relating
  * to the device.
  */
-struct virtio_net {
+struct __rte_cache_aligned virtio_net {
 	/* Frontend (QEMU) memory and memory region information */
 	struct rte_vhost_memory	*mem;
 	uint64_t		features;
@@ -538,7 +538,7 @@ struct virtio_net {
 	struct rte_vhost_user_extern_ops extern_ops;
 
 	struct vhost_backend_ops *backend_ops;
-} __rte_cache_aligned;
+};
 
 static inline void
 vq_assert_lock__(struct virtio_net *dev, struct vhost_virtqueue *vq, const char *func)

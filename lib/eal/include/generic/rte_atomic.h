@@ -1094,7 +1094,7 @@ static inline void rte_atomic64_clear(rte_atomic64_t *v)
 /**
  * 128-bit integer structure.
  */
-typedef struct {
+typedef struct __rte_aligned(16) {
 	union {
 		uint64_t val[2];
 #ifdef RTE_ARCH_64
@@ -1103,7 +1103,7 @@ typedef struct {
 #endif
 #endif
 	};
-} __rte_aligned(16) rte_int128_t;
+} rte_int128_t;
 
 #ifdef __DOXYGEN__
 

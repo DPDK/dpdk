@@ -336,6 +336,21 @@ check_internal_tags() { # <patch>
 	return $res
 }
 
+check_aligned_attributes() { # <patch>
+	res=0
+
+	for token in __rte_aligned __rte_cache_aligned __rte_cache_min_aligned; do
+		if [ $(grep -E '^\+.*\<'$token'\>' "$1" | \
+				grep -vE '\<(struct|union)[[:space:]]*'$token'\>' | \
+				wc -l) != 0 ]; then
+			echo "Please use $token only for struct or union types alignment."
+			res=1
+		fi
+	done
+
+	return $res
+}
+
 check_release_notes() { # <patch>
 	rel_notes_prefix=doc/guides/rel_notes/release_
 	IFS=. read year month release < VERSION
@@ -439,6 +454,14 @@ check () { # <patch-file> <commit>
 
 	! $verbose || printf '\nChecking __rte_internal tags:\n'
 	report=$(check_internal_tags "$tmpinput")
+	if [ $? -ne 0 ] ; then
+		$headline_printed || print_headline "$subject"
+		printf '%s\n' "$report"
+		ret=1
+	fi
+
+	! $verbose || printf '\nChecking alignment attributes:\n'
+	report=$(check_aligned_attributes "$tmpinput")
 	if [ $? -ne 0 ] ; then
 		$headline_printed || print_headline "$subject"
 		printf '%s\n' "$report"

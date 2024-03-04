@@ -73,7 +73,7 @@ struct rte_stack_std {
 /* The RTE stack structure contains the LIFO structure itself, plus metadata
  * such as its name and memzone pointer.
  */
-struct rte_stack {
+struct __rte_cache_aligned rte_stack {
 	/** Name of the stack. */
 	alignas(RTE_CACHE_LINE_SIZE) char name[RTE_STACK_NAMESIZE];
 	/** Memzone containing the rte_stack structure. */
@@ -84,7 +84,7 @@ struct rte_stack {
 		struct rte_stack_lf stack_lf; /**< Lock-free LIFO structure. */
 		struct rte_stack_std stack_std;	/**< LIFO structure. */
 	};
-} __rte_cache_aligned;
+};
 
 /**
  * The stack uses lock-free push and pop functions. This flag is only

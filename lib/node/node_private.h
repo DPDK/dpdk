@@ -50,9 +50,9 @@ extern int node_mbuf_priv1_dynfield_offset;
 /**
  * Node mbuf private area 2.
  */
-struct node_mbuf_priv2 {
+struct __rte_cache_aligned node_mbuf_priv2 {
 	uint64_t priv_data;
-} __rte_cache_aligned;
+};
 
 #define NODE_MBUF_PRIV2_SIZE sizeof(struct node_mbuf_priv2)
 

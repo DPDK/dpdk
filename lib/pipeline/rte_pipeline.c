@@ -104,7 +104,7 @@ struct rte_table {
 
 #define RTE_PIPELINE_MAX_NAME_SZ                           124
 
-struct rte_pipeline {
+struct __rte_cache_aligned rte_pipeline {
 	/* Input parameters */
 	char name[RTE_PIPELINE_MAX_NAME_SZ];
 	int socket_id;
@@ -132,7 +132,7 @@ struct rte_pipeline {
 	uint64_t pkts_mask;
 	uint64_t n_pkts_ah_drop;
 	uint64_t pkts_drop_mask;
-} __rte_cache_aligned;
+};
 
 static inline uint32_t
 rte_mask_get_next(uint64_t mask, uint32_t pos)

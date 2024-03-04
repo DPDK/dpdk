@@ -109,7 +109,7 @@ struct txa_service_queue_info {
 };
 
 /* PMD private structure */
-struct txa_service_data {
+struct __rte_cache_aligned txa_service_data {
 	/* Max mbufs processed in any service function invocation */
 	uint32_t max_nb_tx;
 	/* Number of Tx queues in adapter */
@@ -144,7 +144,7 @@ struct txa_service_data {
 	int64_t service_id;
 	/* Memory allocation name */
 	char mem_name[TXA_MEM_NAME_LEN];
-} __rte_cache_aligned;
+};
 
 /* Per eth device structure */
 struct txa_service_ethdev {

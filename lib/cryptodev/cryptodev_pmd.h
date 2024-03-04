@@ -61,7 +61,7 @@ struct rte_cryptodev_pmd_init_params {
  * This structure is safe to place in shared memory to be common among
  * different processes in a multi-process configuration.
  */
-struct rte_cryptodev_data {
+struct __rte_cache_aligned rte_cryptodev_data {
 	/** Device ID for this instance */
 	uint8_t dev_id;
 	/** Socket ID where memory is allocated */
@@ -82,10 +82,10 @@ struct rte_cryptodev_data {
 
 	/** PMD-specific private data */
 	void *dev_private;
-} __rte_cache_aligned;
+};
 
 /** @internal The data structure associated with each crypto device. */
-struct rte_cryptodev {
+struct __rte_cache_aligned rte_cryptodev {
 	/** Pointer to PMD dequeue function. */
 	dequeue_pkt_burst_t dequeue_burst;
 	/** Pointer to PMD enqueue function. */
@@ -117,7 +117,7 @@ struct rte_cryptodev {
 	struct rte_cryptodev_cb_rcu *enq_cbs;
 	/** User application callback for post dequeue processing */
 	struct rte_cryptodev_cb_rcu *deq_cbs;
-} __rte_cache_aligned;
+};
 
 /** Global structure used for maintaining state of allocated crypto devices */
 struct rte_cryptodev_global {

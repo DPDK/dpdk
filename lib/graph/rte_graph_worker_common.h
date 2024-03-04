@@ -45,7 +45,7 @@ SLIST_HEAD(rte_graph_rq_head, rte_graph);
  *
  * Data structure to hold graph data.
  */
-struct rte_graph {
+struct __rte_cache_aligned rte_graph {
 	/* Fast path area. */
 	uint32_t tail;		     /**< Tail of circular buffer. */
 	uint32_t head;		     /**< Head of circular buffer. */
@@ -80,14 +80,14 @@ struct rte_graph {
 	uint64_t nb_pkt_to_capture;
 	char pcap_filename[RTE_GRAPH_PCAP_FILE_SZ];  /**< Pcap filename. */
 	uint64_t fence;			/**< Fence. */
-} __rte_cache_aligned;
+};
 
 /**
  * @internal
  *
  * Data structure to hold node data.
  */
-struct rte_node {
+struct __rte_cache_aligned rte_node {
 	/* Slow path area  */
 	uint64_t fence;		/**< Fence. */
 	rte_graph_off_t next;	/**< Index to next node. */
@@ -128,7 +128,7 @@ struct rte_node {
 			uint64_t process_u64;
 		};
 	alignas(RTE_CACHE_LINE_MIN_SIZE) struct rte_node *nodes[]; /**< Next nodes. */
-} __rte_cache_aligned;
+};
 
 /**
  * @internal

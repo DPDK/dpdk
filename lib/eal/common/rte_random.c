@@ -13,14 +13,14 @@
 #include <rte_lcore.h>
 #include <rte_random.h>
 
-struct rte_rand_state {
+struct __rte_cache_aligned rte_rand_state {
 	uint64_t z1;
 	uint64_t z2;
 	uint64_t z3;
 	uint64_t z4;
 	uint64_t z5;
 	RTE_CACHE_GUARD;
-} __rte_cache_aligned;
+};
 
 /* One instance each for every lcore id-equipped thread, and one
  * additional instance to be shared by all others threads (i.e., all

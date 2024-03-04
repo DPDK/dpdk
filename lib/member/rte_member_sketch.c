@@ -23,7 +23,7 @@
 #include "rte_member_sketch_avx512.h"
 #endif /* CC_AVX512_SUPPORT */
 
-struct sketch_runtime {
+struct __rte_cache_aligned sketch_runtime {
 	uint64_t pkt_cnt;
 	uint32_t until_next;
 	int converged;
@@ -31,7 +31,7 @@ struct sketch_runtime {
 	struct node *report_array;
 	void *key_slots;
 	struct rte_ring *free_key_slots;
-} __rte_cache_aligned;
+};
 
 /*
  * Geometric sampling to calculate how many packets needs to be

@@ -41,7 +41,7 @@ enum power_state {
 /**
  * Power info per lcore.
  */
-struct acpi_power_info {
+struct __rte_cache_aligned acpi_power_info {
 	unsigned int lcore_id;               /**< Logical core id */
 	uint32_t freqs[RTE_MAX_LCORE_FREQS]; /**< Frequency array */
 	uint32_t nb_freqs;                   /**< number of available freqs */
@@ -51,7 +51,7 @@ struct acpi_power_info {
 	RTE_ATOMIC(uint32_t) state;          /**< Power in use state */
 	uint16_t turbo_available;            /**< Turbo Boost available */
 	uint16_t turbo_enable;               /**< Turbo Boost enable/disable */
-} __rte_cache_aligned;
+};
 
 static struct acpi_power_info lcore_power_info[RTE_MAX_LCORE];
 

@@ -55,7 +55,7 @@ struct queue_list_entry {
 	const struct rte_eth_rxtx_callback *cb;
 };
 
-struct pmd_core_cfg {
+struct __rte_cache_aligned pmd_core_cfg {
 	TAILQ_HEAD(queue_list_head, queue_list_entry) head;
 	/**< List of queues associated with this lcore */
 	size_t n_queues;
@@ -68,7 +68,7 @@ struct pmd_core_cfg {
 	/**< Number of queues ready to enter power optimized state */
 	uint64_t sleep_target;
 	/**< Prevent a queue from triggering sleep multiple times */
-} __rte_cache_aligned;
+};
 static struct pmd_core_cfg lcore_cfgs[RTE_MAX_LCORE];
 
 static inline bool

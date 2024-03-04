@@ -94,7 +94,7 @@ __extension__ ({                 \
 #define RTE_X86_ZMM_SIZE	(sizeof(__m512i))
 #define RTE_X86_ZMM_MASK	(RTE_X86_ZMM_SIZE - 1)
 
-typedef union __rte_x86_zmm {
+typedef union __rte_aligned(RTE_X86_ZMM_SIZE) __rte_x86_zmm {
 	__m512i	 z;
 	ymm_t    y[RTE_X86_ZMM_SIZE / sizeof(ymm_t)];
 	xmm_t    x[RTE_X86_ZMM_SIZE / sizeof(xmm_t)];
@@ -103,7 +103,7 @@ typedef union __rte_x86_zmm {
 	uint32_t u32[RTE_X86_ZMM_SIZE / sizeof(uint32_t)];
 	uint64_t u64[RTE_X86_ZMM_SIZE / sizeof(uint64_t)];
 	double   pd[RTE_X86_ZMM_SIZE / sizeof(double)];
-} __rte_aligned(RTE_X86_ZMM_SIZE) __rte_x86_zmm_t;
+} __rte_x86_zmm_t;
 
 #endif /* __AVX512F__ */
 

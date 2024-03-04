@@ -34,7 +34,7 @@ typedef int32_t
 			struct rte_mempool *pool_direct,
 			struct rte_mempool *pool_indirect);
 
-struct rte_port_ring_reader_frag {
+struct __rte_cache_aligned rte_port_ring_reader_frag {
 	struct rte_port_in_stats stats;
 
 	/* Input parameters */
@@ -53,7 +53,7 @@ struct rte_port_ring_reader_frag {
 	uint32_t pos_frags;
 
 	frag_op f_frag;
-} __rte_cache_aligned;
+};
 
 static void *
 rte_port_ring_reader_frag_create(void *params, int socket_id, int is_ipv4)

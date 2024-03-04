@@ -333,12 +333,12 @@ struct rte_eth_stats {
  * A structure used to retrieve link-level information of an Ethernet port.
  */
 __extension__
-struct rte_eth_link {
+struct __rte_aligned(8) rte_eth_link { /**< aligned for atomic64 read/write */
 	uint32_t link_speed;        /**< RTE_ETH_SPEED_NUM_ */
 	uint16_t link_duplex  : 1;  /**< RTE_ETH_LINK_[HALF/FULL]_DUPLEX */
 	uint16_t link_autoneg : 1;  /**< RTE_ETH_LINK_[AUTONEG/FIXED] */
 	uint16_t link_status  : 1;  /**< RTE_ETH_LINK_[DOWN/UP] */
-} __rte_aligned(8);      /**< aligned for atomic64 read/write */
+};
 
 /**@{@name Link negotiation
  * Constants used in link management.
@@ -1836,7 +1836,7 @@ struct rte_eth_dev_info {
  * Ethernet device Rx queue information structure.
  * Used to retrieve information about configured queue.
  */
-struct rte_eth_rxq_info {
+struct __rte_cache_min_aligned rte_eth_rxq_info {
 	struct rte_mempool *mp;     /**< mempool used by that queue. */
 	struct rte_eth_rxconf conf; /**< queue config parameters. */
 	uint8_t scattered_rx;       /**< scattered packets Rx supported. */
@@ -1850,17 +1850,17 @@ struct rte_eth_rxq_info {
 	 * Value 0 means that the threshold monitoring is disabled.
 	 */
 	uint8_t avail_thresh;
-} __rte_cache_min_aligned;
+};
 
 /**
  * Ethernet device Tx queue information structure.
  * Used to retrieve information about configured queue.
  */
-struct rte_eth_txq_info {
+struct __rte_cache_min_aligned rte_eth_txq_info {
 	struct rte_eth_txconf conf; /**< queue config parameters. */
 	uint16_t nb_desc;           /**< configured number of TXDs. */
 	uint8_t queue_state;        /**< one of RTE_ETH_QUEUE_STATE_*. */
-} __rte_cache_min_aligned;
+};
 
 /**
  * @warning
@@ -1870,7 +1870,7 @@ struct rte_eth_txq_info {
  * Used to retrieve Rx queue information when Tx queue reusing mbufs and moving
  * them into Rx mbuf ring.
  */
-struct rte_eth_recycle_rxq_info {
+struct __rte_cache_min_aligned rte_eth_recycle_rxq_info {
 	struct rte_mbuf **mbuf_ring; /**< mbuf ring of Rx queue. */
 	struct rte_mempool *mp;     /**< mempool of Rx queue. */
 	uint16_t *refill_head;      /**< head of Rx queue refilling mbufs. */
@@ -1884,7 +1884,7 @@ struct rte_eth_recycle_rxq_info {
 	 * Value 0 means that PMD drivers have no requirement for this.
 	 */
 	uint16_t refill_requirement;
-} __rte_cache_min_aligned;
+};
 
 /* Generic Burst mode flag definition, values can be ORed. */
 

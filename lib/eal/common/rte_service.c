@@ -32,7 +32,7 @@
 #define RUNSTATE_RUNNING 1
 
 /* internal representation of a service */
-struct rte_service_spec_impl {
+struct __rte_cache_aligned rte_service_spec_impl {
 	/* public part of the struct */
 	struct rte_service_spec spec;
 
@@ -53,7 +53,7 @@ struct rte_service_spec_impl {
 	 * on currently.
 	 */
 	RTE_ATOMIC(uint32_t) num_mapped_cores;
-} __rte_cache_aligned;
+};
 
 struct service_stats {
 	RTE_ATOMIC(uint64_t) calls;
@@ -61,7 +61,7 @@ struct service_stats {
 };
 
 /* the internal values of a service core */
-struct core_state {
+struct __rte_cache_aligned core_state {
 	/* map of services IDs are run on this core */
 	uint64_t service_mask;
 	RTE_ATOMIC(uint8_t) runstate; /* running or stopped */
@@ -71,7 +71,7 @@ struct core_state {
 	RTE_ATOMIC(uint64_t) loops;
 	RTE_ATOMIC(uint64_t) cycles;
 	struct service_stats service_stats[RTE_SERVICE_NUM_MAX];
-} __rte_cache_aligned;
+};
 
 static uint32_t rte_service_count;
 static struct rte_service_spec_impl *rte_services;

@@ -71,9 +71,9 @@ extern "C" {
  * administrator and does not contain OUIs.
  * See http://standards.ieee.org/regauth/groupmac/tutorial.html
  */
-struct rte_ether_addr {
+struct __rte_aligned(2) rte_ether_addr {
 	uint8_t addr_bytes[RTE_ETHER_ADDR_LEN]; /**< Addr bytes in tx order */
-} __rte_aligned(2);
+};
 
 #define RTE_ETHER_LOCAL_ADMIN_ADDR 0x02 /**< Locally assigned Eth. address. */
 #define RTE_ETHER_GROUP_ADDR  0x01 /**< Multicast or broadcast Eth. address. */
@@ -290,11 +290,11 @@ rte_ether_unformat_addr(const char *str, struct rte_ether_addr *eth_addr);
  * Ethernet header: Contains the destination address, source address
  * and frame type.
  */
-struct rte_ether_hdr {
+struct __rte_aligned(2) rte_ether_hdr {
 	struct rte_ether_addr dst_addr; /**< Destination address. */
 	struct rte_ether_addr src_addr; /**< Source address. */
 	rte_be16_t ether_type; /**< Frame type. */
-} __rte_aligned(2);
+};
 
 /**
  * Ethernet VLAN Header.

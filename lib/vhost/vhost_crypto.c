@@ -191,7 +191,7 @@ static int get_iv_len(enum rte_crypto_cipher_algorithm algo)
  * one DPDK crypto device that deals with all crypto workloads. It is declared
  * here and defined in vhost_crypto.c
  */
-struct vhost_crypto {
+struct __rte_cache_aligned vhost_crypto {
 	/** Used to lookup DPDK Cryptodev Session based on VIRTIO crypto
 	 *  session ID.
 	 */
@@ -214,7 +214,7 @@ struct vhost_crypto {
 	struct virtio_net *dev;
 
 	uint8_t option;
-} __rte_cache_aligned;
+};
 
 struct vhost_crypto_writeback_data {
 	uint8_t *src;

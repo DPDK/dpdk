@@ -464,7 +464,7 @@ enum {
 /**
  * The generic rte_mbuf, containing a packet mbuf.
  */
-struct rte_mbuf {
+struct __rte_cache_aligned rte_mbuf {
 	RTE_MARKER cacheline0;
 
 	void *buf_addr;           /**< Virtual address of segment buffer. */
@@ -663,7 +663,7 @@ struct rte_mbuf {
 	uint16_t timesync;
 
 	uint32_t dynfield1[9]; /**< Reserved for dynamic fields. */
-} __rte_cache_aligned;
+};
 
 /**
  * Function typedef of callback to free externally attached buffer.

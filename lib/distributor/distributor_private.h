@@ -53,10 +53,10 @@
  * the next cache line to worker 0, we pad this out to three cache lines.
  * Only 64-bits of the memory is actually used though.
  */
-union rte_distributor_buffer_single {
+union __rte_cache_aligned rte_distributor_buffer_single {
 	volatile RTE_ATOMIC(int64_t) bufptr64;
 	char pad[RTE_CACHE_LINE_SIZE*3];
-} __rte_cache_aligned;
+};
 
 /*
  * Transfer up to 8 mbufs at a time to/from workers, and
@@ -64,12 +64,12 @@ union rte_distributor_buffer_single {
  */
 #define RTE_DIST_BURST_SIZE 8
 
-struct rte_distributor_backlog {
+struct __rte_cache_aligned rte_distributor_backlog {
 	unsigned int start;
 	unsigned int count;
 	alignas(RTE_CACHE_LINE_SIZE) int64_t pkts[RTE_DIST_BURST_SIZE];
 	uint16_t *tags; /* will point to second cacheline of inflights */
-} __rte_cache_aligned;
+};
 
 
 struct rte_distributor_returned_pkts {

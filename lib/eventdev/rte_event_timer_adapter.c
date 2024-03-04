@@ -512,11 +512,11 @@ rte_event_timer_remaining_ticks_get(
 
 #define EXP_TIM_BUF_SZ 128
 
-struct event_buffer {
+struct __rte_cache_aligned event_buffer {
 	size_t head;
 	size_t tail;
 	struct rte_event events[EVENT_BUFFER_SZ];
-} __rte_cache_aligned;
+};
 
 static inline bool
 event_buffer_full(struct event_buffer *bufp)

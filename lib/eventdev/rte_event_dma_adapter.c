@@ -26,7 +26,7 @@
 	} while (0)
 
 /* DMA ops circular buffer */
-struct dma_ops_circular_buffer {
+struct __rte_cache_aligned dma_ops_circular_buffer {
 	/* Index of head element */
 	uint16_t head;
 
@@ -41,19 +41,19 @@ struct dma_ops_circular_buffer {
 
 	/* Pointer to hold rte_event_dma_adapter_op for processing */
 	struct rte_event_dma_adapter_op **op_buffer;
-} __rte_cache_aligned;
+};
 
 /* Vchan information */
-struct dma_vchan_info {
+struct __rte_cache_aligned dma_vchan_info {
 	/* Set to indicate vchan queue is enabled */
 	bool vq_enabled;
 
 	/* Circular buffer for batching DMA ops to dma_dev */
 	struct dma_ops_circular_buffer dma_buf;
-} __rte_cache_aligned;
+};
 
 /* DMA device information */
-struct dma_device_info {
+struct __rte_cache_aligned dma_device_info {
 	/* Pointer to vchan queue info */
 	struct dma_vchan_info *vchanq;
 
@@ -81,9 +81,9 @@ struct dma_device_info {
 	 * transfer uses a hardware mechanism
 	 */
 	uint8_t internal_event_port;
-} __rte_cache_aligned;
+};
 
-struct event_dma_adapter {
+struct __rte_cache_aligned event_dma_adapter {
 	/* Event device identifier */
 	uint8_t eventdev_id;
 
@@ -145,7 +145,7 @@ struct event_dma_adapter {
 
 	/* Per instance stats structure */
 	struct rte_event_dma_adapter_stats dma_stats;
-} __rte_cache_aligned;
+};
 
 static struct event_dma_adapter **event_dma_adapter;
 

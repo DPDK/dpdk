@@ -49,7 +49,7 @@ enum power_state {
 	POWER_UNKNOWN
 };
 
-struct pstate_power_info {
+struct __rte_cache_aligned pstate_power_info {
 	unsigned int lcore_id;               /**< Logical core id */
 	uint32_t freqs[RTE_MAX_LCORE_FREQS]; /**< Frequency array */
 	uint32_t nb_freqs;                   /**< number of available freqs */
@@ -64,7 +64,7 @@ struct pstate_power_info {
 	uint16_t turbo_available;            /**< Turbo Boost available */
 	uint16_t turbo_enable;               /**< Turbo Boost enable/disable */
 	uint16_t priority_core;              /**< High Performance core */
-} __rte_cache_aligned;
+};
 
 
 static struct pstate_power_info lcore_power_info[RTE_MAX_LCORE];

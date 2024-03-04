@@ -200,7 +200,7 @@ struct rte_graph_cluster_stats_param {
  *
  * @see struct rte_graph_cluster_stats_param::fn
  */
-struct rte_graph_cluster_node_stats {
+struct __rte_cache_aligned rte_graph_cluster_node_stats {
 	uint64_t ts;	    /**< Current timestamp. */
 	uint64_t calls;	    /**< Current number of calls made. */
 	uint64_t objs;      /**< Current number of objs processed. */
@@ -225,7 +225,7 @@ struct rte_graph_cluster_node_stats {
 	rte_node_t id;	/**< Node identifier of stats. */
 	uint64_t hz;	/**< Cycles per seconds. */
 	char name[RTE_NODE_NAMESIZE];	/**< Name of the node. */
-} __rte_cache_aligned;
+};
 
 /**
  * Create Graph.
