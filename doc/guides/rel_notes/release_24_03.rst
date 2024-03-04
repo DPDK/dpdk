@@ -116,6 +116,7 @@ New Features
   * Added support for ``RTE_FLOW_ITEM_TYPE_PPPOES`` flow item.
   * Added support for ``RTE_FLOW_ACTION_TYPE_SAMPLE`` flow item.
   * Added support for Rx inject.
+  * Added support for ``rte_eth_tx_queue_count()``.
   * Optimized SW external mbuf free for better performance and avoid SQ corruption.
 
 * **Updated Marvell OCTEON EP driver.**

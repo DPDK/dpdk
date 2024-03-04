@@ -20,6 +20,24 @@ pick_tx_func(struct rte_eth_dev *eth_dev,
 			eth_dev->tx_pkt_burst;
 }
 
+#if defined(RTE_ARCH_ARM64)
+static int
+cn9k_nix_tx_queue_count(void *tx_queue)
+{
+	struct cn9k_eth_txq *txq = (struct cn9k_eth_txq *)tx_queue;
+
+	return cnxk_nix_tx_queue_count(txq->fc_mem, txq->sqes_per_sqb_log2);
+}
+
+static int
+cn9k_nix_tx_queue_sec_count(void *tx_queue)
+{
+	struct cn9k_eth_txq *txq = (struct cn9k_eth_txq *)tx_queue;
+
+	return cnxk_nix_tx_queue_sec_count(txq->fc_mem, txq->sqes_per_sqb_log2, txq->cpt_fc);
+}
+#endif
+
 void
 cn9k_eth_set_tx_function(struct rte_eth_dev *eth_dev)
 {
@@ -59,6 +77,11 @@ cn9k_eth_set_tx_function(struct rte_eth_dev *eth_dev)
 		if (dev->tx_offloads & RTE_ETH_TX_OFFLOAD_MULTI_SEGS)
 			pick_tx_func(eth_dev, nix_eth_tx_vec_burst_mseg);
 	}
+	if (dev->tx_offloads & RTE_ETH_TX_OFFLOAD_SECURITY)
+		eth_dev->tx_queue_count = cn9k_nix_tx_queue_sec_count;
+	else
+		eth_dev->tx_queue_count = cn9k_nix_tx_queue_count;
+
 
 	rte_mb();
 #else
