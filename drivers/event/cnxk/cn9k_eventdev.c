@@ -460,6 +460,7 @@ cn9k_sso_fp_fns_set(struct rte_eventdev *event_dev)
 		}
 	}
 	event_dev->ca_enqueue = cn9k_sso_hws_ca_enq;
+	event_dev->dma_enqueue = cn9k_dma_adapter_enqueue;
 
 	if (dev->tx_offloads & NIX_TX_MULTI_SEG_F)
 		CN9K_SET_EVDEV_ENQ_OP(dev, event_dev->txa_enqueue,
@@ -475,6 +476,7 @@ cn9k_sso_fp_fns_set(struct rte_eventdev *event_dev)
 		event_dev->enqueue_forward_burst =
 			cn9k_sso_hws_dual_enq_fwd_burst;
 		event_dev->ca_enqueue = cn9k_sso_hws_dual_ca_enq;
+		event_dev->dma_enqueue = cn9k_dma_adapter_dual_enqueue;
 		event_dev->profile_switch = cn9k_sso_hws_dual_profile_switch;
 
 		if (dev->rx_offloads & NIX_RX_MULTI_SEG_F) {

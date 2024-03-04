@@ -8,6 +8,13 @@ foreach flag: error_cflags
     endif
 endforeach
 
-deps += ['bus_pci', 'common_cnxk', 'dmadev']
+driver_sdk_headers = files(
+        'cnxk_dma_event_dp.h',
+)
+
+deps += ['bus_pci', 'common_cnxk', 'dmadev', 'eventdev']
+
+includes += include_directories('../../event/cnxk')
+
 sources = files('cnxk_dmadev.c', 'cnxk_dmadev_fp.c')
 require_iova_in_mbuf = false

@@ -1,0 +1,10 @@
+INTERNAL {
+	global:
+
+	cn10k_dma_adapter_enqueue;
+	cn9k_dma_adapter_enqueue;
+	cn9k_dma_adapter_dual_enqueue;
+	cnxk_dma_adapter_dequeue;
+
+	local: *;
+};

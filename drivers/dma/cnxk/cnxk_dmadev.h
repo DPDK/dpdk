@@ -14,10 +14,13 @@
 #include <rte_eal.h>
 #include <rte_lcore.h>
 #include <rte_mbuf_pool_ops.h>
+#include <rte_mcslock.h>
 #include <rte_mempool.h>
 #include <rte_pci.h>
 
 #include <roc_api.h>
+
+#include "cnxk_dma_event_dp.h"
 
 #define CNXK_DPI_MAX_POINTER		    15
 #define CNXK_DPI_STRM_INC(s, var)	    ((s).var = ((s).var + 1) & (s).max_cnt)
@@ -39,6 +42,11 @@
  * upon successful request completion engine reset to completion status
  */
 #define CNXK_DPI_REQ_CDATA 0xFF
+
+/* Set Completion data to 0xDEADBEEF when request submitted for SSO.
+ * This helps differentiate if the dequeue is called after cnxk enueue.
+ */
+#define CNXK_DPI_REQ_SSO_CDATA    0xDEADBEEF
 
 union cnxk_dpi_instr_cmd {
 	uint64_t u;
@@ -85,7 +93,10 @@ union cnxk_dpi_instr_cmd {
 
 struct cnxk_dpi_compl_s {
 	uint64_t cdata;
-	void *cb_data;
+	void *op;
+	uint16_t dev_id;
+	uint16_t vchan;
+	uint32_t wqecs;
 };
 
 struct cnxk_dpi_cdesc_data_s {
@@ -93,6 +104,11 @@ struct cnxk_dpi_cdesc_data_s {
 	uint16_t max_cnt;
 	uint16_t head;
 	uint16_t tail;
+};
+
+struct cnxk_dma_adapter_info {
+	bool enabled;               /* Set if vchan queue is added to dma adapter. */
+	struct rte_mempool *req_mp; /* DMA inflight request mempool. */
 };
 
 struct cnxk_dpi_conf {
@@ -103,6 +119,7 @@ struct cnxk_dpi_conf {
 	uint16_t desc_idx;
 	struct rte_dma_stats stats;
 	uint64_t completed_offset;
+	struct cnxk_dma_adapter_info adapter_info;
 };
 
 struct cnxk_dpi_vf_s {
@@ -112,6 +129,7 @@ struct cnxk_dpi_vf_s {
 	uint16_t chunk_size_m1;
 	struct rte_mempool *chunk_pool;
 	struct cnxk_dpi_conf conf[CNXK_DPI_MAX_VCHANS_PER_QUEUE];
+	RTE_ATOMIC(rte_mcslock_t *) mcs_lock;
 	/* Slow path */
 	struct roc_dpi rdpi;
 	uint32_t aura;

@@ -316,7 +316,7 @@ foreach flag: extra_flags
 endforeach
 
 headers = files('rte_pmd_cnxk_eventdev.h')
-deps += ['bus_pci', 'common_cnxk', 'net_cnxk', 'crypto_cnxk']
+deps += ['bus_pci', 'common_cnxk', 'net_cnxk', 'crypto_cnxk', 'dma_cnxk']
 
 require_iova_in_mbuf = false
 

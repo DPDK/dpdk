@@ -11,6 +11,7 @@
 #include "cnxk_ethdev.h"
 #include "cnxk_eventdev.h"
 #include "cnxk_worker.h"
+#include "cnxk_dma_event_dp.h"
 #include "cn9k_cryptodev_ops.h"
 
 #include "cn9k_ethdev.h"

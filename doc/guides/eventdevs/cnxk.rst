@@ -235,3 +235,8 @@ ethernet devices connected to event device to override this applications can
 use `force_rx_bp=1` device arguments.
 Using unique mempool per each ethernet device is recommended when they are
 connected to event device.
+
+DMA adapter new mode support
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+DMA driver does not support DMA adapter configured in new mode.
