@@ -15,6 +15,7 @@
 #include "nfpcore/nfp_mip.h"
 #include "nfpcore/nfp_nsp.h"
 #include "nfp_logs.h"
+#include "nfp_net_meta.h"
 
 #define NFP_TX_MAX_SEG       UINT8_MAX
 #define NFP_TX_MAX_MTU_SEG   8
@@ -2036,29 +2037,6 @@ nfp_net_check_dma_mask(struct nfp_net_hw *hw,
 	}
 
 	return 0;
-}
-
-void
-nfp_net_init_metadata_format(struct nfp_net_hw *hw)
-{
-	/*
-	 * ABI 4.x and ctrl vNIC always use chained metadata, in other cases we allow use of
-	 * single metadata if only RSS(v1) is supported by hw capability, and RSS(v2)
-	 * also indicate that we are using chained metadata.
-	 */
-	if (hw->ver.major == 4) {
-		hw->meta_format = NFP_NET_METAFORMAT_CHAINED;
-	} else if ((hw->super.cap & NFP_NET_CFG_CTRL_CHAIN_META) != 0) {
-		hw->meta_format = NFP_NET_METAFORMAT_CHAINED;
-		/*
-		 * RSS is incompatible with chained metadata. hw->super.cap just represents
-		 * firmware's ability rather than the firmware's configuration. We decide
-		 * to reduce the confusion to allow us can use hw->super.cap to identify RSS later.
-		 */
-		hw->super.cap &= ~NFP_NET_CFG_CTRL_RSS;
-	} else {
-		hw->meta_format = NFP_NET_METAFORMAT_SINGLE;
-	}
 }
 
 void

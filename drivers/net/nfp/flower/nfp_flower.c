@@ -16,6 +16,7 @@
 #include "../nfp_cpp_bridge.h"
 #include "../nfp_logs.h"
 #include "../nfp_mtr.h"
+#include "../nfp_net_meta.h"
 #include "nfp_flower_ctrl.h"
 #include "nfp_flower_representor.h"
 #include "nfp_flower_service.h"

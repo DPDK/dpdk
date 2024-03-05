@@ -16,6 +16,7 @@
 #include "nfpcore/nfp_sync.h"
 #include "nfp_net_ctrl.h"
 #include "nfp_service.h"
+#include "nfp_net_meta.h"
 
 /* Interrupt definitions */
 #define NFP_NET_IRQ_LSC_IDX             0
@@ -65,11 +66,6 @@
 enum nfp_app_fw_id {
 	NFP_APP_FW_CORE_NIC               = 0x1,
 	NFP_APP_FW_FLOWER_NIC             = 0x3,
-};
-
-enum nfp_net_meta_format {
-	NFP_NET_METAFORMAT_SINGLE,
-	NFP_NET_METAFORMAT_CHAINED,
 };
 
 /* Parsed control BAR TLV capabilities */
@@ -306,7 +302,6 @@ void nfp_net_tx_desc_limits(struct nfp_net_hw *hw,
 		uint16_t *min_tx_desc,
 		uint16_t *max_tx_desc);
 int nfp_net_check_dma_mask(struct nfp_net_hw *hw, char *name);
-void nfp_net_init_metadata_format(struct nfp_net_hw *hw);
 void nfp_net_cfg_read_version(struct nfp_net_hw *hw);
 int nfp_net_firmware_version_get(struct rte_eth_dev *dev, char *fw_version, size_t fw_size);
 bool nfp_net_is_valid_nfd_version(struct nfp_net_fw_ver version);

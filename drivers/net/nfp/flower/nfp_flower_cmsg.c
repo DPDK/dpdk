@@ -7,6 +7,7 @@
 
 #include "../nfpcore/nfp_nsp.h"
 #include "../nfp_logs.h"
+#include "../nfp_net_meta.h"
 #include "nfp_flower_ctrl.h"
 #include "nfp_flower_representor.h"
 

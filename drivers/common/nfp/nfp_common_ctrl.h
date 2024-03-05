@@ -13,47 +13,6 @@
  */
 #define NFP_NET_CFG_BAR_SZ              (32 * 1024)
 
-/* Offset in Freelist buffer where packet starts on RX */
-#define NFP_NET_RX_OFFSET               32
-
-/* Working with metadata api (NFD version > 3.0) */
-#define NFP_NET_META_FIELD_SIZE         4
-#define NFP_NET_META_FIELD_MASK ((1 << NFP_NET_META_FIELD_SIZE) - 1)
-#define NFP_NET_META_HEADER_SIZE        4
-#define NFP_NET_META_NFDK_LENGTH        8
-
-/* Working with metadata vlan api (NFD version >= 2.0) */
-#define NFP_NET_META_VLAN_INFO          16
-#define NFP_NET_META_VLAN_OFFLOAD       31
-#define NFP_NET_META_VLAN_TPID          3
-#define NFP_NET_META_VLAN_MASK          ((1 << NFP_NET_META_VLAN_INFO) - 1)
-#define NFP_NET_META_VLAN_TPID_MASK     ((1 << NFP_NET_META_VLAN_TPID) - 1)
-#define NFP_NET_META_TPID(d)            (((d) >> NFP_NET_META_VLAN_INFO) & \
-						NFP_NET_META_VLAN_TPID_MASK)
-
-/* Prepend field types */
-#define NFP_NET_META_HASH               1 /* Next field carries hash type */
-#define NFP_NET_META_MARK               2
-#define NFP_NET_META_VLAN               4
-#define NFP_NET_META_PORTID             5
-#define NFP_NET_META_IPSEC              9
-
-#define NFP_META_PORT_ID_CTRL           ~0U
-
-/* Hash type prepended when a RSS hash was computed */
-#define NFP_NET_RSS_NONE                0
-#define NFP_NET_RSS_IPV4                1
-#define NFP_NET_RSS_IPV6                2
-#define NFP_NET_RSS_IPV6_EX             3
-#define NFP_NET_RSS_IPV4_TCP            4
-#define NFP_NET_RSS_IPV6_TCP            5
-#define NFP_NET_RSS_IPV6_EX_TCP         6
-#define NFP_NET_RSS_IPV4_UDP            7
-#define NFP_NET_RSS_IPV6_UDP            8
-#define NFP_NET_RSS_IPV6_EX_UDP         9
-#define NFP_NET_RSS_IPV4_SCTP           10
-#define NFP_NET_RSS_IPV6_SCTP           11
-
 /*
  * @NFP_NET_TXR_MAX:         Maximum number of TX rings
  * @NFP_NET_TXR_MASK:        Mask for TX rings

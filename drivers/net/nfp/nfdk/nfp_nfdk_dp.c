@@ -11,6 +11,7 @@
 
 #include "../flower/nfp_flower.h"
 #include "../nfp_logs.h"
+#include "../nfp_net_meta.h"
 
 #define NFDK_TX_DESC_GATHER_MAX         17
 

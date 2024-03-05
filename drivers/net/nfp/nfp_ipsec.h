@@ -168,12 +168,6 @@ struct nfp_net_ipsec_data {
 	struct nfp_ipsec_session *sa_entries[NFP_NET_IPSEC_MAX_SA_CNT];
 };
 
-enum nfp_ipsec_meta_layer {
-	NFP_IPSEC_META_SAIDX,       /**< Order of SA index in metadata */
-	NFP_IPSEC_META_SEQLOW,      /**< Order of Sequence Number (low 32bits) in metadata */
-	NFP_IPSEC_META_SEQHI,       /**< Order of Sequence Number (high 32bits) in metadata */
-};
-
 int nfp_ipsec_init(struct rte_eth_dev *dev);
 void nfp_ipsec_uninit(struct rte_eth_dev *dev);
 

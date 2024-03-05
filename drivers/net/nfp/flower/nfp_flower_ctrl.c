@@ -10,6 +10,7 @@
 #include "../nfd3/nfp_nfd3.h"
 #include "../nfdk/nfp_nfdk.h"
 #include "../nfp_logs.h"
+#include "../nfp_net_meta.h"
 #include "nfp_flower_representor.h"
 #include "nfp_mtr.h"
 #include "nfp_flower_service.h"

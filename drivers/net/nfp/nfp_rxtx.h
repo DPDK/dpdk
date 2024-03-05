@@ -8,18 +8,6 @@
 
 #include <ethdev_driver.h>
 
-#define NFP_DESC_META_LEN(d) ((d)->rxd.meta_len_dd & PCIE_DESC_RX_META_LEN_MASK)
-
-/* Maximum number of NFP packet metadata fields. */
-#define NFP_META_MAX_FIELDS      8
-
-/* Describe the raw metadata format. */
-struct nfp_net_meta_raw {
-	uint32_t header; /**< Field type header (see format in nfp.rst) */
-	uint32_t data[NFP_META_MAX_FIELDS]; /**< Array of each fields data member */
-	uint8_t length; /**< Number of valid fields in @header */
-};
-
 /* Descriptor alignment */
 #define NFP_ALIGN_RING_DESC 128
 
@@ -238,13 +226,5 @@ int nfp_net_tx_queue_setup(struct rte_eth_dev *dev,
 		unsigned int socket_id,
 		const struct rte_eth_txconf *tx_conf);
 uint32_t nfp_net_tx_free_bufs(struct nfp_net_txq *txq);
-void nfp_net_set_meta_vlan(struct nfp_net_meta_raw *meta_data,
-		struct rte_mbuf *pkt,
-		uint8_t layer);
-void nfp_net_set_meta_ipsec(struct nfp_net_meta_raw *meta_data,
-		struct nfp_net_txq *txq,
-		struct rte_mbuf *pkt,
-		uint8_t layer,
-		uint8_t ipsec_layer);
 
 #endif /* __NFP_RXTX_H__ */

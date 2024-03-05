@@ -18,6 +18,7 @@
 #include "nfp_net_common.h"
 #include "nfp_net_ctrl.h"
 #include "nfp_rxtx.h"
+#include "nfp_net_meta.h"
 
 #define NFP_UDP_ESP_PORT            4500
 

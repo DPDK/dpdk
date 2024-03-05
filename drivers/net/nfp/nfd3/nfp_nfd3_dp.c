@@ -10,6 +10,7 @@
 
 #include "../flower/nfp_flower.h"
 #include "../nfp_logs.h"
+#include "../nfp_net_meta.h"
 
 /* Flags in the host TX descriptor */
 #define NFD3_DESC_TX_CSUM               RTE_BIT32(7)
