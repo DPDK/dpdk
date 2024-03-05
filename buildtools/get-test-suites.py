@@ -19,7 +19,7 @@ def get_fast_test_params(test_name, ln):
     return f":{nohuge.strip().lower()}:{asan.strip().lower()}"
 
 for fname in input_list:
-    with open(fname) as f:
+    with open(fname, "r", encoding="utf-8") as f:
         contents = [ln.strip() for ln in f.readlines()]
         test_lines = [ln for ln in contents if test_def_regex.match(ln)]
         non_suite_tests.extend([non_suite_regex.match(ln).group(1)
