@@ -300,7 +300,7 @@ nfp_net_meta_set_vlan(struct nfp_net_meta_raw *meta_data,
 	tpid = RTE_ETHER_TYPE_VLAN;
 	vlan_tci = pkt->vlan_tci;
 
-	meta_data->data[layer] = rte_cpu_to_be_32(tpid << 16 | vlan_tci);
+	meta_data->data[layer] = tpid << 16 | vlan_tci;
 }
 
 void

@@ -181,9 +181,8 @@ nfp_net_nfd3_set_meta_data(struct nfp_net_meta_raw *meta_data,
 		return 0;
 
 	meta_info = meta_data->header;
-	meta_data->header = rte_cpu_to_be_32(meta_data->header);
 	meta = rte_pktmbuf_prepend(pkt, meta_data->length);
-	memcpy(meta, &meta_data->header, sizeof(meta_data->header));
+	*(rte_be32_t *)meta = rte_cpu_to_be_32(meta_data->header);
 	meta += NFP_NET_META_HEADER_SIZE;
 
 	for (; meta_info != 0; meta_info >>= NFP_NET_META_FIELD_SIZE, layer++,
@@ -211,7 +210,7 @@ nfp_net_nfd3_set_meta_data(struct nfp_net_meta_raw *meta_data,
 			return -ENOTSUP;
 		}
 
-		memcpy(meta, &meta_data->data[layer], sizeof(meta_data->data[layer]));
+		*(rte_be32_t *)meta = rte_cpu_to_be_32(meta_data->data[layer]);
 	}
 
 	return 0;
