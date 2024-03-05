@@ -7,5 +7,7 @@ EXPERIMENTAL {
 
 	# added in 19.11
 	rte_pmd_ice_dump_package;
+
+	# added in 22.11
 	rte_pmd_ice_dump_switch;
 };
