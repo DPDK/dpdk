@@ -111,6 +111,7 @@ struct icp_qat_fw_la_bulk_req {
 #define ICP_QAT_FW_SYM_IV_IN_DESC_VALID 1
 #define ICP_QAT_FW_SYM_DIRECTION_BITPOS 15
 #define ICP_QAT_FW_SYM_DIRECTION_MASK 0x1
+#define ICP_QAT_FW_SYM_COMM_ADDR_SGL 1
 
 /* In GEN_LCE AEAD AES GCM Algorithm has ID 0 */
 #define QAT_LA_CRYPTO_AEAD_AES_GCM_GEN_LCE 0
