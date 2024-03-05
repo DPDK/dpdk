@@ -31,7 +31,7 @@ nfp_flower_cmsg_init(struct nfp_app_fw_flower *app_fw_flower,
 	pkt = rte_pktmbuf_mtod(m, char *);
 	PMD_DRV_LOG(DEBUG, "flower_cmsg_init using pkt at %p", pkt);
 
-	new_size += nfp_flower_pkt_add_metadata(app_fw_flower, m, NFP_META_PORT_ID_CTRL);
+	new_size += nfp_flower_pkt_add_metadata(app_fw_flower, m, NFP_NET_META_PORT_ID_CTRL);
 
 	/* Now the ctrl header */
 	hdr = (struct nfp_flower_cmsg_hdr *)pkt;

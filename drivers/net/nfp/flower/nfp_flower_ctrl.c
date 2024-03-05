@@ -475,7 +475,7 @@ nfp_flower_cmsg_rx(struct nfp_app_fw_flower *app_fw_flower,
 		meta_type = rte_be_to_cpu_32(*(uint32_t *)(meta - 8));
 		meta_info = rte_be_to_cpu_32(*(uint32_t *)(meta - 4));
 		if (meta_type != NFP_NET_META_PORTID ||
-				meta_info != NFP_META_PORT_ID_CTRL) {
+				meta_info != NFP_NET_META_PORT_ID_CTRL) {
 			PMD_DRV_LOG(ERR, "Incorrect metadata for ctrl packet!");
 			rte_pktmbuf_free(pkts_burst[i]);
 			continue;

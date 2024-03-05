@@ -9,18 +9,18 @@
 #include "nfp_rxtx.h"
 
 /* Hash type prepended when a RSS hash was computed */
-#define NFP_NET_RSS_NONE                0
-#define NFP_NET_RSS_IPV4                1
-#define NFP_NET_RSS_IPV6                2
-#define NFP_NET_RSS_IPV6_EX             3
-#define NFP_NET_RSS_IPV4_TCP            4
-#define NFP_NET_RSS_IPV6_TCP            5
-#define NFP_NET_RSS_IPV6_EX_TCP         6
-#define NFP_NET_RSS_IPV4_UDP            7
-#define NFP_NET_RSS_IPV6_UDP            8
-#define NFP_NET_RSS_IPV6_EX_UDP         9
-#define NFP_NET_RSS_IPV4_SCTP           10
-#define NFP_NET_RSS_IPV6_SCTP           11
+#define NFP_NET_META_RSS_NONE           0
+#define NFP_NET_META_RSS_IPV4           1
+#define NFP_NET_META_RSS_IPV6           2
+#define NFP_NET_META_RSS_IPV6_EX        3
+#define NFP_NET_META_RSS_IPV4_TCP       4
+#define NFP_NET_META_RSS_IPV6_TCP       5
+#define NFP_NET_META_RSS_IPV6_EX_TCP    6
+#define NFP_NET_META_RSS_IPV4_UDP       7
+#define NFP_NET_META_RSS_IPV6_UDP       8
+#define NFP_NET_META_RSS_IPV6_EX_UDP    9
+#define NFP_NET_META_RSS_IPV4_SCTP      10
+#define NFP_NET_META_RSS_IPV6_SCTP      11
 
 /* Offset in Freelist buffer where packet starts on RX */
 #define NFP_NET_RX_OFFSET               32
@@ -47,15 +47,15 @@
 #define NFP_NET_META_PORTID             5
 #define NFP_NET_META_IPSEC              9
 
-#define NFP_META_PORT_ID_CTRL           ~0U
+#define NFP_NET_META_PORT_ID_CTRL       ~0U
 
 #define NFP_DESC_META_LEN(d) ((d)->rxd.meta_len_dd & PCIE_DESC_RX_META_LEN_MASK)
 
 /* Maximum number of NFP packet metadata fields. */
-#define NFP_META_MAX_FIELDS      8
+#define NFP_NET_META_MAX_FIELDS      8
 
 /* Maximum number of supported VLANs in parsed form packet metadata. */
-#define NFP_META_MAX_VLANS       2
+#define NFP_NET_META_MAX_VLANS       2
 
 enum nfp_net_meta_format {
 	NFP_NET_METAFORMAT_SINGLE,
@@ -65,12 +65,12 @@ enum nfp_net_meta_format {
 /* Describe the raw metadata format. */
 struct nfp_net_meta_raw {
 	uint32_t header; /**< Field type header (see format in nfp.rst) */
-	uint32_t data[NFP_META_MAX_FIELDS]; /**< Array of each fields data member */
+	uint32_t data[NFP_NET_META_MAX_FIELDS]; /**< Array of each fields data member */
 	uint8_t length; /**< Number of valid fields in @header */
 };
 
 /* Record metadata parsed from packet */
-struct nfp_meta_parsed {
+struct nfp_net_meta_parsed {
 	uint32_t port_id;         /**< Port id value */
 	uint32_t sa_idx;          /**< IPsec SA index */
 	uint32_t hash;            /**< RSS hash value */
@@ -87,7 +87,7 @@ struct nfp_meta_parsed {
 		uint8_t offload;  /**< Flag indicates whether VLAN is offloaded */
 		uint8_t tpid;     /**< Vlan TPID */
 		uint16_t tci;     /**< Vlan TCI (PCP + Priority + VID) */
-	} vlan[NFP_META_MAX_VLANS];
+	} vlan[NFP_NET_META_MAX_VLANS];
 };
 
 void nfp_net_init_metadata_format(struct nfp_net_hw *hw);
@@ -95,7 +95,7 @@ void nfp_net_parse_meta(struct nfp_net_rx_desc *rxds,
 		struct nfp_net_rxq *rxq,
 		struct nfp_net_hw *hw,
 		struct rte_mbuf *mb,
-		struct nfp_meta_parsed *meta);
+		struct nfp_net_meta_parsed *meta);
 void nfp_net_set_meta_vlan(struct nfp_net_meta_raw *meta_data,
 		struct rte_mbuf *pkt,
 		uint8_t layer);

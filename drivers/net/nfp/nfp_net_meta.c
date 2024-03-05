@@ -9,17 +9,17 @@
 #include "nfp_ipsec.h"
 #include "nfp_logs.h"
 
-enum nfp_ipsec_meta_layer {
-	NFP_IPSEC_META_SAIDX,       /**< Order of SA index in metadata */
-	NFP_IPSEC_META_SEQLOW,      /**< Order of Sequence Number (low 32bits) in metadata */
-	NFP_IPSEC_META_SEQHI,       /**< Order of Sequence Number (high 32bits) in metadata */
+enum nfp_net_meta_ipsec_layer {
+	NFP_NET_META_IPSEC_SAIDX,       /**< Order of SA index in metadata */
+	NFP_NET_META_IPSEC_SEQLOW,      /**< Order of Sequence Number (low 32bits) in metadata */
+	NFP_NET_META_IPSEC_SEQHI,       /**< Order of Sequence Number (high 32bits) in metadata */
 };
 
 /* Parse the chained metadata from packet */
 static bool
 nfp_net_parse_chained_meta(uint8_t *meta_base,
 		rte_be32_t meta_header,
-		struct nfp_meta_parsed *meta)
+		struct nfp_net_meta_parsed *meta)
 {
 	uint32_t meta_info;
 	uint32_t vlan_info;
@@ -75,7 +75,7 @@ nfp_net_parse_chained_meta(uint8_t *meta_base,
 static inline void
 nfp_net_parse_single_meta(uint8_t *meta_base,
 		rte_be32_t meta_header,
-		struct nfp_meta_parsed *meta)
+		struct nfp_net_meta_parsed *meta)
 {
 	meta->hash_type = rte_be_to_cpu_32(meta_header);
 	meta->hash = rte_be_to_cpu_32(*(rte_be32_t *)(meta_base + 4));
@@ -83,7 +83,7 @@ nfp_net_parse_single_meta(uint8_t *meta_base,
 
 /* Set mbuf hash data based on the metadata info */
 static void
-nfp_net_parse_meta_hash(const struct nfp_meta_parsed *meta,
+nfp_net_parse_meta_hash(const struct nfp_net_meta_parsed *meta,
 		struct nfp_net_rxq *rxq,
 		struct rte_mbuf *mbuf)
 {
@@ -98,7 +98,7 @@ nfp_net_parse_meta_hash(const struct nfp_meta_parsed *meta,
 
 /* Set mbuf vlan_strip data based on metadata info */
 static void
-nfp_net_parse_meta_vlan(const struct nfp_meta_parsed *meta,
+nfp_net_parse_meta_vlan(const struct nfp_net_meta_parsed *meta,
 		struct nfp_net_rx_desc *rxd,
 		struct nfp_net_rxq *rxq,
 		struct rte_mbuf *mb)
@@ -146,7 +146,7 @@ nfp_net_parse_meta_vlan(const struct nfp_meta_parsed *meta,
  * qinq not set & vlan not set: meta->vlan_layer=0
  */
 static void
-nfp_net_parse_meta_qinq(const struct nfp_meta_parsed *meta,
+nfp_net_parse_meta_qinq(const struct nfp_net_meta_parsed *meta,
 		struct nfp_net_rxq *rxq,
 		struct rte_mbuf *mb)
 {
@@ -156,7 +156,7 @@ nfp_net_parse_meta_qinq(const struct nfp_meta_parsed *meta,
 			(hw->cap & NFP_NET_CFG_CTRL_RXQINQ) == 0)
 		return;
 
-	if (meta->vlan_layer < NFP_META_MAX_VLANS)
+	if (meta->vlan_layer < NFP_NET_META_MAX_VLANS)
 		return;
 
 	if (meta->vlan[0].offload == 0)
@@ -175,7 +175,7 @@ nfp_net_parse_meta_qinq(const struct nfp_meta_parsed *meta,
  * Extract and decode metadata info and set the mbuf ol_flags.
  */
 static void
-nfp_net_parse_meta_ipsec(struct nfp_meta_parsed *meta,
+nfp_net_parse_meta_ipsec(struct nfp_net_meta_parsed *meta,
 		struct nfp_net_rxq *rxq,
 		struct rte_mbuf *mbuf)
 {
@@ -202,7 +202,7 @@ nfp_net_parse_meta_ipsec(struct nfp_meta_parsed *meta,
 }
 
 static void
-nfp_net_parse_meta_mark(const struct nfp_meta_parsed *meta,
+nfp_net_parse_meta_mark(const struct nfp_net_meta_parsed *meta,
 		struct rte_mbuf *mbuf)
 {
 	if (((meta->flags >> NFP_NET_META_MARK) & 0x1) == 0)
@@ -218,7 +218,7 @@ nfp_net_parse_meta(struct nfp_net_rx_desc *rxds,
 		struct nfp_net_rxq *rxq,
 		struct nfp_net_hw *hw,
 		struct rte_mbuf *mb,
-		struct nfp_meta_parsed *meta)
+		struct nfp_net_meta_parsed *meta)
 {
 	uint8_t *meta_base;
 	rte_be32_t meta_header;
@@ -305,13 +305,13 @@ nfp_net_set_meta_ipsec(struct nfp_net_meta_raw *meta_data,
 	desc_md = RTE_MBUF_DYNFIELD(pkt, offset, struct nfp_tx_ipsec_desc_msg *);
 
 	switch (ipsec_layer) {
-	case NFP_IPSEC_META_SAIDX:
+	case NFP_NET_META_IPSEC_SAIDX:
 		meta_data->data[layer] = desc_md->sa_idx;
 		break;
-	case NFP_IPSEC_META_SEQLOW:
+	case NFP_NET_META_IPSEC_SEQLOW:
 		meta_data->data[layer] = desc_md->esn.low;
 		break;
-	case NFP_IPSEC_META_SEQHI:
+	case NFP_NET_META_IPSEC_SEQHI:
 		meta_data->data[layer] = desc_md->esn.hi;
 		break;
 	default:
