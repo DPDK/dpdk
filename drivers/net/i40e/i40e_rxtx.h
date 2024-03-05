@@ -162,6 +162,8 @@ struct i40e_tx_queue {
 	uint16_t tx_next_dd;
 	uint16_t tx_next_rs;
 	bool q_set; /**< indicate if tx queue has been configured */
+	uint64_t mbuf_errors;
+
 	bool tx_deferred_start; /**< don't start this queue in dev start */
 	uint8_t dcb_tc;         /**< Traffic class of tx queue */
 	uint64_t offloads; /**< Tx offload flags of RTE_ETH_TX_OFFLOAD_* */

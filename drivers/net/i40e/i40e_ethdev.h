@@ -1109,6 +1109,10 @@ struct i40e_vf_msg_cfg {
 	uint32_t ignore_second;
 };
 
+struct i40e_mbuf_stats {
+	uint64_t tx_pkt_errors;
+};
+
 /*
  * Structure to store private data specific for PF instance.
  */
@@ -1123,6 +1127,7 @@ struct i40e_pf {
 
 	struct i40e_hw_port_stats stats_offset;
 	struct i40e_hw_port_stats stats;
+	struct i40e_mbuf_stats mbuf_stats;
 	u64 rx_err1;	/* rxerr1 */
 	u64 rx_err1_offset;
 
@@ -1225,6 +1230,11 @@ struct i40e_vsi_vlan_pvid_info {
 #define I40E_MAX_PKT_TYPE  256
 #define I40E_FLOW_TYPE_MAX 64
 
+#define I40E_MBUF_CHECK_F_TX_MBUF        (1ULL << 0)
+#define I40E_MBUF_CHECK_F_TX_SIZE        (1ULL << 1)
+#define I40E_MBUF_CHECK_F_TX_SEGMENT     (1ULL << 2)
+#define I40E_MBUF_CHECK_F_TX_OFFLOAD     (1ULL << 3)
+
 /*
  * Structure to store private data for each PF/VF instance.
  */
@@ -1240,6 +1250,10 @@ struct i40e_adapter {
 	bool rx_vec_allowed;
 	bool tx_simple_allowed;
 	bool tx_vec_allowed;
+
+	uint64_t mbuf_check; /* mbuf check flags. */
+	uint16_t max_pkt_len; /* Maximum packet length */
+	eth_tx_burst_t tx_pkt_burst;
 
 	/* For PTP */
 	struct rte_timecounter systime_tc;

@@ -1536,6 +1536,111 @@ i40e_xmit_pkts_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
 	return nb_tx;
 }
 
+/* Tx mbuf check */
+static uint16_t
+i40e_xmit_pkts_check(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
+{
+	struct i40e_tx_queue *txq = tx_queue;
+	uint16_t idx;
+	uint64_t ol_flags;
+	struct rte_mbuf *mb;
+	bool pkt_error = false;
+	const char *reason = NULL;
+	uint16_t good_pkts = nb_pkts;
+	struct i40e_adapter *adapter = txq->vsi->adapter;
+
+	for (idx = 0; idx < nb_pkts; idx++) {
+		mb = tx_pkts[idx];
+		ol_flags = mb->ol_flags;
+
+		if ((adapter->mbuf_check & I40E_MBUF_CHECK_F_TX_MBUF) &&
+		    (rte_mbuf_check(mb, 0, &reason) != 0)) {
+			PMD_TX_LOG(ERR, "INVALID mbuf: %s\n", reason);
+			pkt_error = true;
+			break;
+		}
+
+		if ((adapter->mbuf_check & I40E_MBUF_CHECK_F_TX_SIZE) &&
+		    (mb->data_len > mb->pkt_len ||
+		     mb->data_len < I40E_TX_MIN_PKT_LEN ||
+		     mb->data_len > adapter->max_pkt_len)) {
+			PMD_TX_LOG(ERR, "INVALID mbuf: data_len (%u) is out of range, reasonable range (%d - %u)\n",
+				mb->data_len, I40E_TX_MIN_PKT_LEN, adapter->max_pkt_len);
+			pkt_error = true;
+			break;
+		}
+
+		if (adapter->mbuf_check & I40E_MBUF_CHECK_F_TX_SEGMENT) {
+			if (!(ol_flags & RTE_MBUF_F_TX_TCP_SEG)) {
+				/**
+				 * No TSO case: nb->segs, pkt_len to not exceed
+				 * the limites.
+				 */
+				if (mb->nb_segs > I40E_TX_MAX_MTU_SEG) {
+					PMD_TX_LOG(ERR, "INVALID mbuf: nb_segs (%d) exceeds HW limit, maximum allowed value is %d\n",
+						mb->nb_segs, I40E_TX_MAX_MTU_SEG);
+					pkt_error = true;
+					break;
+				}
+				if (mb->pkt_len > I40E_FRAME_SIZE_MAX) {
+					PMD_TX_LOG(ERR, "INVALID mbuf: pkt_len (%d) exceeds HW limit, maximum allowed value is %d\n",
+						mb->nb_segs, I40E_FRAME_SIZE_MAX);
+					pkt_error = true;
+					break;
+				}
+			} else if (ol_flags & RTE_MBUF_F_TX_TCP_SEG) {
+				/** TSO case: tso_segsz, nb_segs, pkt_len not exceed
+				 * the limits.
+				 */
+				if (mb->tso_segsz < I40E_MIN_TSO_MSS ||
+				    mb->tso_segsz > I40E_MAX_TSO_MSS) {
+					/**
+					 * MSS outside the range are considered malicious
+					 */
+					PMD_TX_LOG(ERR, "INVALID mbuf: tso_segsz (%u) is out of range, reasonable range (%d - %u)\n",
+						mb->tso_segsz, I40E_MIN_TSO_MSS, I40E_MAX_TSO_MSS);
+					pkt_error = true;
+					break;
+				}
+				if (mb->nb_segs > ((struct i40e_tx_queue *)tx_queue)->nb_tx_desc) {
+					PMD_TX_LOG(ERR, "INVALID mbuf: nb_segs out of ring length\n");
+					pkt_error = true;
+					break;
+				}
+				if (mb->pkt_len > I40E_TSO_FRAME_SIZE_MAX) {
+					PMD_TX_LOG(ERR, "INVALID mbuf: pkt_len (%d) exceeds HW limit, maximum allowed value is %d\n",
+						mb->nb_segs, I40E_TSO_FRAME_SIZE_MAX);
+					pkt_error = true;
+					break;
+				}
+			}
+		}
+
+		if (adapter->mbuf_check & I40E_MBUF_CHECK_F_TX_OFFLOAD) {
+			if (ol_flags & I40E_TX_OFFLOAD_NOTSUP_MASK) {
+				PMD_TX_LOG(ERR, "INVALID mbuf: TX offload is not supported\n");
+				pkt_error = true;
+				break;
+			}
+
+			if (!rte_validate_tx_offload(mb)) {
+				PMD_TX_LOG(ERR, "INVALID mbuf: TX offload setup error\n");
+				pkt_error = true;
+				break;
+			}
+		}
+	}
+
+	if (pkt_error) {
+		txq->mbuf_errors++;
+		good_pkts = idx;
+		if (good_pkts == 0)
+			return 0;
+	}
+
+	return adapter->tx_pkt_burst(tx_queue, tx_pkts, good_pkts);
+}
+
 /*********************************************************************
  *
  *  TX simple prep functions
@@ -3468,6 +3573,7 @@ i40e_set_tx_function(struct rte_eth_dev *dev)
 {
 	struct i40e_adapter *ad =
 		I40E_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
+	uint64_t mbuf_check = ad->mbuf_check;
 	int i;
 
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
@@ -3529,6 +3635,11 @@ i40e_set_tx_function(struct rte_eth_dev *dev)
 		PMD_INIT_LOG(DEBUG, "Xmit tx finally be used.");
 		dev->tx_pkt_burst = i40e_xmit_pkts;
 		dev->tx_pkt_prepare = i40e_prep_pkts;
+	}
+
+	if (mbuf_check) {
+		ad->tx_pkt_burst = dev->tx_pkt_burst;
+		dev->tx_pkt_burst = i40e_xmit_pkts_check;
 	}
 }
 

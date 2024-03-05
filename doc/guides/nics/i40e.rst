@@ -275,6 +275,20 @@ Runtime Configuration
 
   -a 84:00.0,vf_msg_cfg=80@120:180
 
+- ``Support Tx diagnostics`` (default ``not enabled``)
+
+  Set the ``devargs`` parameter ``mbuf_check`` to enable Tx diagnostics.
+  For example, ``-a 18:01.0,mbuf_check=<case>`` or ``-a 18:01.0,mbuf_check=[<case1>,<case2>...]``.
+  Also, ``xstats_get`` can be used to get the error counts,
+  which are collected in ``tx_mbuf_error_packets`` xstats.
+  For example, to show the statistics in testpmd, use: ``testpmd> show port xstats all``.
+  Supported values for the ``<case>`` parameter:
+
+  * ``mbuf``: Check for corrupted mbuf.
+  * ``size``: Check min/max packet length according to HW spec.
+  * ``segment``: Check number of mbuf segments not exceed hw limitation.
+  * ``offload``: Check any unsupported offload flag.
+
 Vector RX Pre-conditions
 ~~~~~~~~~~~~~~~~~~~~~~~~
 For Vector RX it is assumed that the number of descriptor rings will be a power
