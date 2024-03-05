@@ -5,6 +5,7 @@ DPDK_24 {
 EXPERIMENTAL {
 	global:
 
+	# added in 19.05
 	rte_pmd_atl_macsec_enable;
 	rte_pmd_atl_macsec_disable;
 	rte_pmd_atl_macsec_config_txsc;

@@ -332,6 +332,22 @@ Note that marking an API as experimental is a multi step process.
 To mark an API as experimental, the symbols which are desired to be exported
 must be placed in an EXPERIMENTAL version block in the corresponding libraries'
 version map script.
+Experimental symbols must be commented so that it is clear in which DPDK
+version they were introduced.
+
+.. code-block:: none
+
+   EXPERIMENTAL {
+           global:
+
+           # added in 20.11
+           rte_foo_init;
+           rte_foo_configure;
+
+           # added in 21.02
+           rte_foo_cleanup;
+   ...
+
 Secondly, the corresponding prototypes of those exported functions (in the
 development header files), must be marked with the ``__rte_experimental`` tag
 (see ``rte_compat.h``).

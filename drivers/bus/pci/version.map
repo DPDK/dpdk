@@ -17,6 +17,7 @@ DPDK_24 {
 EXPERIMENTAL {
 	global:
 
+	# added in 20.11
 	rte_pci_find_ext_capability;
 
 	# added in 21.08

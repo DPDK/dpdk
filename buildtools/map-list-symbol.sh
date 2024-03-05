@@ -29,7 +29,7 @@ while getopts 'S:s:qV:' name; do
 		version=$OPTARG
 	;;
 	?)
-		echo 'usage: $0 [-S section] [-s symbol] [-V version] [-q]'
+		echo 'usage: $0 [-S section] [-s symbol] [-V [version|unset]] [-q]'
 		exit 1
 	;;
 	esac
@@ -61,8 +61,12 @@ for file in $@; do
 		if (current_section == "") {
 			next;
 		}
-		if ("'$version'" != "" && "'$version'" != current_version) {
-			next;
+		if ("'$version'" != "") {
+			if ("'$version'" == "unset" && current_version != "") {
+				next;
+			} else if ("'$version'" != "unset" && "'$version'" != current_version) {
+				next;
+			}
 		}
 		gsub(";","");
 		if ("'$symbol'" == "all" || $1 == "'$symbol'") {

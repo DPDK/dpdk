@@ -97,4 +97,19 @@ if [ -n "$bad_format_maps" ] ; then
     ret=1
 fi
 
+find_non_versioned_maps ()
+{
+    for map in $@ ; do
+        [ $(buildtools/map-list-symbol.sh -S EXPERIMENTAL -V unset $map | wc -l) = '0' ] ||
+            echo $map
+    done
+}
+
+non_versioned_maps=$(find_non_versioned_maps $@)
+if [ -n "$non_versioned_maps" ] ; then
+    echo "Found non versioned maps:"
+    echo "$non_versioned_maps"
+    ret=1
+fi
+
 exit $ret

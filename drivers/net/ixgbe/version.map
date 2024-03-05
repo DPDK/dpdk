@@ -43,6 +43,7 @@ DPDK_24 {
 EXPERIMENTAL {
 	global:
 
+	# added in 20.08
 	rte_pmd_ixgbe_get_fdir_info;
 	rte_pmd_ixgbe_get_fdir_stats;
 };

@@ -1,6 +1,7 @@
 EXPERIMENTAL {
 	global:
 
+	# added in 22.11
 	rte_ml_dequeue_burst;
 	rte_ml_dev_close;
 	rte_ml_dev_configure;

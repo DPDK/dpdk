@@ -5,6 +5,7 @@ DPDK_24 {
 EXPERIMENTAL {
 	global:
 
+	# added in 20.11
 	rte_fpga_5gnr_fec_configure;
 
 };

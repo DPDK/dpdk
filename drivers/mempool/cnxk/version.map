@@ -4,6 +4,8 @@ DPDK_24 {
 
 EXPERIMENTAL {
 	global:
+
+	# added in 23.07
 	rte_pmd_cnxk_mempool_is_hwpool;
 	rte_pmd_cnxk_mempool_mbuf_exchange;
 	rte_pmd_cnxk_mempool_range_check_disable;

@@ -5,5 +5,6 @@ DPDK_24 {
 EXPERIMENTAL {
 	global:
 
+	# added in 22.11
 	rte_acc_configure;
 };

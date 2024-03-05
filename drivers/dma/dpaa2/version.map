@@ -3,6 +3,9 @@ DPDK_24 {
 };
 
 EXPERIMENTAL {
+	global:
+
+	# added in 22.07
 	rte_dpaa2_qdma_completed_multi;
 	rte_dpaa2_qdma_copy_multi;
 	rte_dpaa2_qdma_vchan_fd_us_enable;
