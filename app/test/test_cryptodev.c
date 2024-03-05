@@ -1615,7 +1615,7 @@ ext_mbuf_create(struct rte_mempool *mbuf_pool, int pkt_len,
 			goto fail;
 		}
 
-		/* Save shared data (like callback function) in external buffer’s end */
+		/* Save shared data (like callback function) in external buffer's end */
 		ret_shinfo = rte_pktmbuf_ext_shinfo_init_helper(ext_buf_addr, &buf_len,
 			ext_mbuf_callback_fn_free, &freed);
 		if (ret_shinfo == NULL) {
