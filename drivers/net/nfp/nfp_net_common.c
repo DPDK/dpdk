@@ -1312,7 +1312,7 @@ nfp_net_common_init(struct rte_pci_device *pci_dev,
 	hw->max_mtu = nn_cfg_readl(&hw->super, NFP_NET_CFG_MAX_MTU);
 	hw->flbufsz = DEFAULT_FLBUF_SIZE;
 
-	nfp_net_init_metadata_format(hw);
+	nfp_net_meta_init_format(hw);
 
 	/* Read the Rx offset configured from firmware */
 	if (hw->ver.major < 2)

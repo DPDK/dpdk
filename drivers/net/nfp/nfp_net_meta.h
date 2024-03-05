@@ -90,16 +90,16 @@ struct nfp_net_meta_parsed {
 	} vlan[NFP_NET_META_MAX_VLANS];
 };
 
-void nfp_net_init_metadata_format(struct nfp_net_hw *hw);
-void nfp_net_parse_meta(struct nfp_net_rx_desc *rxds,
+void nfp_net_meta_init_format(struct nfp_net_hw *hw);
+void nfp_net_meta_parse(struct nfp_net_rx_desc *rxds,
 		struct nfp_net_rxq *rxq,
 		struct nfp_net_hw *hw,
 		struct rte_mbuf *mb,
 		struct nfp_net_meta_parsed *meta);
-void nfp_net_set_meta_vlan(struct nfp_net_meta_raw *meta_data,
+void nfp_net_meta_set_vlan(struct nfp_net_meta_raw *meta_data,
 		struct rte_mbuf *pkt,
 		uint8_t layer);
-void nfp_net_set_meta_ipsec(struct nfp_net_meta_raw *meta_data,
+void nfp_net_meta_set_ipsec(struct nfp_net_meta_raw *meta_data,
 		struct nfp_net_txq *txq,
 		struct rte_mbuf *pkt,
 		uint8_t layer,

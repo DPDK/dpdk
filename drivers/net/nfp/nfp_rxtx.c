@@ -498,7 +498,7 @@ nfp_net_recv_pkts(void *rx_queue,
 		mb->port = rxq->port_id;
 
 		struct nfp_net_meta_parsed meta = {};
-		nfp_net_parse_meta(rxds, rxq, hw, mb, &meta);
+		nfp_net_meta_parse(rxds, rxq, hw, mb, &meta);
 
 		nfp_net_parse_ptype(rxq, rxds, mb);
 

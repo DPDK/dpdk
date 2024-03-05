@@ -17,7 +17,7 @@ enum nfp_net_meta_ipsec_layer {
 
 /* Parse the chained metadata from packet */
 static bool
-nfp_net_parse_chained_meta(uint8_t *meta_base,
+nfp_net_meta_parse_chained(uint8_t *meta_base,
 		rte_be32_t meta_header,
 		struct nfp_net_meta_parsed *meta)
 {
@@ -73,7 +73,7 @@ nfp_net_parse_chained_meta(uint8_t *meta_base,
  * Get it from metadata area.
  */
 static inline void
-nfp_net_parse_single_meta(uint8_t *meta_base,
+nfp_net_meta_parse_single(uint8_t *meta_base,
 		rte_be32_t meta_header,
 		struct nfp_net_meta_parsed *meta)
 {
@@ -83,7 +83,7 @@ nfp_net_parse_single_meta(uint8_t *meta_base,
 
 /* Set mbuf hash data based on the metadata info */
 static void
-nfp_net_parse_meta_hash(const struct nfp_net_meta_parsed *meta,
+nfp_net_meta_parse_hash(const struct nfp_net_meta_parsed *meta,
 		struct nfp_net_rxq *rxq,
 		struct rte_mbuf *mbuf)
 {
@@ -98,7 +98,7 @@ nfp_net_parse_meta_hash(const struct nfp_net_meta_parsed *meta,
 
 /* Set mbuf vlan_strip data based on metadata info */
 static void
-nfp_net_parse_meta_vlan(const struct nfp_net_meta_parsed *meta,
+nfp_net_meta_parse_vlan(const struct nfp_net_meta_parsed *meta,
 		struct nfp_net_rx_desc *rxd,
 		struct nfp_net_rxq *rxq,
 		struct rte_mbuf *mb)
@@ -146,7 +146,7 @@ nfp_net_parse_meta_vlan(const struct nfp_net_meta_parsed *meta,
  * qinq not set & vlan not set: meta->vlan_layer=0
  */
 static void
-nfp_net_parse_meta_qinq(const struct nfp_net_meta_parsed *meta,
+nfp_net_meta_parse_qinq(const struct nfp_net_meta_parsed *meta,
 		struct nfp_net_rxq *rxq,
 		struct rte_mbuf *mb)
 {
@@ -175,7 +175,7 @@ nfp_net_parse_meta_qinq(const struct nfp_net_meta_parsed *meta,
  * Extract and decode metadata info and set the mbuf ol_flags.
  */
 static void
-nfp_net_parse_meta_ipsec(struct nfp_net_meta_parsed *meta,
+nfp_net_meta_parse_ipsec(struct nfp_net_meta_parsed *meta,
 		struct nfp_net_rxq *rxq,
 		struct rte_mbuf *mbuf)
 {
@@ -202,7 +202,7 @@ nfp_net_parse_meta_ipsec(struct nfp_net_meta_parsed *meta,
 }
 
 static void
-nfp_net_parse_meta_mark(const struct nfp_net_meta_parsed *meta,
+nfp_net_meta_parse_mark(const struct nfp_net_meta_parsed *meta,
 		struct rte_mbuf *mbuf)
 {
 	if (((meta->flags >> NFP_NET_META_MARK) & 0x1) == 0)
@@ -214,7 +214,7 @@ nfp_net_parse_meta_mark(const struct nfp_net_meta_parsed *meta,
 
 /* Parse the metadata from packet */
 void
-nfp_net_parse_meta(struct nfp_net_rx_desc *rxds,
+nfp_net_meta_parse(struct nfp_net_rx_desc *rxds,
 		struct nfp_net_rxq *rxq,
 		struct nfp_net_hw *hw,
 		struct rte_mbuf *mb,
@@ -231,20 +231,20 @@ nfp_net_parse_meta(struct nfp_net_rx_desc *rxds,
 
 	switch (hw->meta_format) {
 	case NFP_NET_METAFORMAT_CHAINED:
-		if (nfp_net_parse_chained_meta(meta_base, meta_header, meta)) {
-			nfp_net_parse_meta_hash(meta, rxq, mb);
-			nfp_net_parse_meta_vlan(meta, rxds, rxq, mb);
-			nfp_net_parse_meta_qinq(meta, rxq, mb);
-			nfp_net_parse_meta_ipsec(meta, rxq, mb);
-			nfp_net_parse_meta_mark(meta, mb);
+		if (nfp_net_meta_parse_chained(meta_base, meta_header, meta)) {
+			nfp_net_meta_parse_hash(meta, rxq, mb);
+			nfp_net_meta_parse_vlan(meta, rxds, rxq, mb);
+			nfp_net_meta_parse_qinq(meta, rxq, mb);
+			nfp_net_meta_parse_ipsec(meta, rxq, mb);
+			nfp_net_meta_parse_mark(meta, mb);
 		} else {
 			PMD_RX_LOG(DEBUG, "RX chained metadata format is wrong!");
 		}
 		break;
 	case NFP_NET_METAFORMAT_SINGLE:
 		if ((rxds->rxd.flags & PCIE_DESC_RX_RSS) != 0) {
-			nfp_net_parse_single_meta(meta_base, meta_header, meta);
-			nfp_net_parse_meta_hash(meta, rxq, mb);
+			nfp_net_meta_parse_single(meta_base, meta_header, meta);
+			nfp_net_meta_parse_hash(meta, rxq, mb);
 		}
 		break;
 	default:
@@ -253,7 +253,7 @@ nfp_net_parse_meta(struct nfp_net_rx_desc *rxds,
 }
 
 void
-nfp_net_init_metadata_format(struct nfp_net_hw *hw)
+nfp_net_meta_init_format(struct nfp_net_hw *hw)
 {
 	/*
 	 * ABI 4.x and ctrl vNIC always use chained metadata, in other cases we allow use of
@@ -276,7 +276,7 @@ nfp_net_init_metadata_format(struct nfp_net_hw *hw)
 }
 
 void
-nfp_net_set_meta_vlan(struct nfp_net_meta_raw *meta_data,
+nfp_net_meta_set_vlan(struct nfp_net_meta_raw *meta_data,
 		struct rte_mbuf *pkt,
 		uint8_t layer)
 {
@@ -290,7 +290,7 @@ nfp_net_set_meta_vlan(struct nfp_net_meta_raw *meta_data,
 }
 
 void
-nfp_net_set_meta_ipsec(struct nfp_net_meta_raw *meta_data,
+nfp_net_meta_set_ipsec(struct nfp_net_meta_raw *meta_data,
 		struct nfp_net_txq *txq,
 		struct rte_mbuf *pkt,
 		uint8_t layer,

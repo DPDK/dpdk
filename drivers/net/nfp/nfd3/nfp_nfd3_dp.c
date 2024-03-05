@@ -194,8 +194,7 @@ nfp_net_nfd3_set_meta_data(struct nfp_net_meta_raw *meta_data,
 				PMD_DRV_LOG(ERR, "At most 1 layers of vlan is supported");
 				return -EINVAL;
 			}
-
-			nfp_net_set_meta_vlan(meta_data, pkt, layer);
+			nfp_net_meta_set_vlan(meta_data, pkt, layer);
 			vlan_layer++;
 			break;
 		case NFP_NET_META_IPSEC:
@@ -204,7 +203,7 @@ nfp_net_nfd3_set_meta_data(struct nfp_net_meta_raw *meta_data,
 				return -EINVAL;
 			}
 
-			nfp_net_set_meta_ipsec(meta_data, txq, pkt, layer, ipsec_layer);
+			nfp_net_meta_set_ipsec(meta_data, txq, pkt, layer, ipsec_layer);
 			ipsec_layer++;
 			break;
 		default:
