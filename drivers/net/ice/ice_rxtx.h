@@ -45,6 +45,25 @@
 
 #define ICE_TX_MIN_PKT_LEN 17
 
+#define ICE_TX_OFFLOAD_MASK (    \
+		RTE_MBUF_F_TX_OUTER_IPV6 |	 \
+		RTE_MBUF_F_TX_OUTER_IPV4 |	 \
+		RTE_MBUF_F_TX_OUTER_IP_CKSUM |  \
+		RTE_MBUF_F_TX_VLAN |        \
+		RTE_MBUF_F_TX_IPV6 |		 \
+		RTE_MBUF_F_TX_IPV4 |		 \
+		RTE_MBUF_F_TX_IP_CKSUM |        \
+		RTE_MBUF_F_TX_L4_MASK |         \
+		RTE_MBUF_F_TX_IEEE1588_TMST |	 \
+		RTE_MBUF_F_TX_TCP_SEG |         \
+		RTE_MBUF_F_TX_QINQ |        \
+		RTE_MBUF_F_TX_TUNNEL_MASK |	 \
+		RTE_MBUF_F_TX_UDP_SEG |	 \
+		RTE_MBUF_F_TX_OUTER_UDP_CKSUM)
+
+#define ICE_TX_OFFLOAD_NOTSUP_MASK \
+		(RTE_MBUF_F_TX_OFFLOAD_MASK ^ ICE_TX_OFFLOAD_MASK)
+
 extern uint64_t ice_timestamp_dynflag;
 extern int ice_timestamp_dynfield_offset;
 
@@ -164,6 +183,7 @@ struct ice_tx_queue {
 	struct ice_vsi *vsi; /* the VSI this queue belongs to */
 	uint16_t tx_next_dd;
 	uint16_t tx_next_rs;
+	uint64_t mbuf_errors;
 	bool tx_deferred_start; /* don't start this queue in dev start */
 	bool q_set; /* indicate if tx queue has been configured */
 	ice_tx_release_mbufs_t tx_rel_mbufs;
