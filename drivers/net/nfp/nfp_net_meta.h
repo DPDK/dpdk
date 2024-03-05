@@ -77,7 +77,6 @@ struct nfp_net_meta_parsed {
 	uint32_t mark_id;         /**< Mark id value */
 	uint16_t flags;           /**< Bitmap to indicate if meta exist */
 	uint8_t hash_type;        /**< RSS hash type */
-	uint8_t ipsec_type;       /**< IPsec type */
 	uint8_t vlan_layer;       /**< The valid number of value in @vlan[] */
 	/**
 	 * Holds information parses from NFP_NET_META_VLAN.

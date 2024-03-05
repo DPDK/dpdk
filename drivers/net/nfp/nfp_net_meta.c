@@ -27,13 +27,16 @@ nfp_net_meta_parse_chained(uint8_t *meta_base,
 
 	meta_info = rte_be_to_cpu_32(meta_header);
 	meta_offset = meta_base + 4;
+	meta->flags = 0;
 
 	for (; meta_info != 0; meta_info >>= NFP_NET_META_FIELD_SIZE, meta_offset += 4) {
 		switch (meta_info & NFP_NET_META_FIELD_MASK) {
 		case NFP_NET_META_PORTID:
+			meta->flags |= (1 << NFP_NET_META_PORTID);
 			meta->port_id = rte_be_to_cpu_32(*(rte_be32_t *)meta_offset);
 			break;
 		case NFP_NET_META_HASH:
+			meta->flags |= (1 << NFP_NET_META_HASH);
 			/* Next field type is about the hash type */
 			meta_info >>= NFP_NET_META_FIELD_SIZE;
 			/* Hash value is in the data field */
@@ -41,6 +44,7 @@ nfp_net_meta_parse_chained(uint8_t *meta_base,
 			meta->hash_type = meta_info & NFP_NET_META_FIELD_MASK;
 			break;
 		case NFP_NET_META_VLAN:
+			meta->flags |= (1 << NFP_NET_META_VLAN);
 			vlan_info = rte_be_to_cpu_32(*(rte_be32_t *)meta_offset);
 			meta->vlan[meta->vlan_layer].offload =
 					vlan_info >> NFP_NET_META_VLAN_OFFLOAD;
@@ -50,8 +54,8 @@ nfp_net_meta_parse_chained(uint8_t *meta_base,
 			meta->vlan_layer++;
 			break;
 		case NFP_NET_META_IPSEC:
+			meta->flags |= (1 << NFP_NET_META_IPSEC);
 			meta->sa_idx = rte_be_to_cpu_32(*(rte_be32_t *)meta_offset);
-			meta->ipsec_type = meta_info & NFP_NET_META_FIELD_MASK;
 			break;
 		case NFP_NET_META_MARK:
 			meta->flags |= (1 << NFP_NET_META_MARK);
@@ -77,6 +81,7 @@ nfp_net_meta_parse_single(uint8_t *meta_base,
 		rte_be32_t meta_header,
 		struct nfp_net_meta_parsed *meta)
 {
+	meta->flags |= (1 << NFP_NET_META_HASH);
 	meta->hash_type = rte_be_to_cpu_32(meta_header);
 	meta->hash = rte_be_to_cpu_32(*(rte_be32_t *)(meta_base + 4));
 }
@@ -90,6 +95,9 @@ nfp_net_meta_parse_hash(const struct nfp_net_meta_parsed *meta,
 	struct nfp_net_hw *hw = rxq->hw;
 
 	if ((hw->super.ctrl & NFP_NET_CFG_CTRL_RSS_ANY) == 0)
+		return;
+
+	if (((meta->flags >> NFP_NET_META_HASH) & 0x1) == 0)
 		return;
 
 	mbuf->hash.rss = meta->hash;
@@ -107,6 +115,9 @@ nfp_net_meta_parse_vlan(const struct nfp_net_meta_parsed *meta,
 
 	/* Skip if hardware don't support setting vlan. */
 	if ((ctrl & (NFP_NET_CFG_CTRL_RXVLAN | NFP_NET_CFG_CTRL_RXVLAN_V2)) == 0)
+		return;
+
+	if (((meta->flags >> NFP_NET_META_VLAN) & 0x1) == 0)
 		return;
 
 	/*
@@ -156,6 +167,9 @@ nfp_net_meta_parse_qinq(const struct nfp_net_meta_parsed *meta,
 			(hw->cap & NFP_NET_CFG_CTRL_RXQINQ) == 0)
 		return;
 
+	if (((meta->flags >> NFP_NET_META_VLAN) & 0x1) == 0)
+		return;
+
 	if (meta->vlan_layer < NFP_NET_META_MAX_VLANS)
 		return;
 
@@ -184,11 +198,11 @@ nfp_net_meta_parse_ipsec(struct nfp_net_meta_parsed *meta,
 	struct nfp_net_hw *hw;
 	struct nfp_tx_ipsec_desc_msg *desc_md;
 
+	if (((meta->flags >> NFP_NET_META_IPSEC) & 0x1) == 0)
+		return;
+
 	hw = rxq->hw;
 	sa_idx = meta->sa_idx;
-
-	if (meta->ipsec_type != NFP_NET_META_IPSEC)
-		return;
 
 	if (sa_idx >= NFP_NET_IPSEC_MAX_SA_CNT) {
 		mbuf->ol_flags |= RTE_MBUF_F_RX_SEC_OFFLOAD_FAILED;
