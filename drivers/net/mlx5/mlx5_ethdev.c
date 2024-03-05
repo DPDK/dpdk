@@ -242,8 +242,8 @@ mlx5_set_default_params(struct rte_eth_dev *dev, struct rte_eth_dev_info *info)
 	info->default_txportconf.ring_size = 256;
 	info->default_rxportconf.burst_size = MLX5_RX_DEFAULT_BURST;
 	info->default_txportconf.burst_size = MLX5_TX_DEFAULT_BURST;
-	if ((priv->link_speed_capa & RTE_ETH_LINK_SPEED_200G) |
-		(priv->link_speed_capa & RTE_ETH_LINK_SPEED_100G)) {
+	if (priv->link_speed_capa >> rte_bsf32(RTE_ETH_LINK_SPEED_100G)) {
+		/* if supports at least 100G */
 		info->default_rxportconf.nb_queues = 16;
 		info->default_txportconf.nb_queues = 16;
 		if (dev->data->nb_rx_queues > 2 ||
