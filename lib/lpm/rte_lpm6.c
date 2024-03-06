@@ -107,7 +107,7 @@ struct rte_lpm6 {
 
 	struct rte_lpm_tbl8_hdr *tbl8_hdrs; /* array of tbl8 headers */
 
-	alignas(RTE_CACHE_LINE_SIZE) struct rte_lpm6_tbl_entry tbl8[0];
+	alignas(RTE_CACHE_LINE_SIZE) struct rte_lpm6_tbl_entry tbl8[];
 			/**< LPM tbl8 table. */
 };
 
