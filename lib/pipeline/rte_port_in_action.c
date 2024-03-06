@@ -283,7 +283,7 @@ rte_port_in_action_profile_free(struct rte_port_in_action_profile *profile)
 struct rte_port_in_action {
 	struct ap_config cfg;
 	struct ap_data data;
-	alignas(RTE_CACHE_LINE_SIZE) uint8_t memory[0];
+	alignas(RTE_CACHE_LINE_SIZE) uint8_t memory[];
 };
 
 static __rte_always_inline void *
