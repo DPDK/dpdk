@@ -537,6 +537,19 @@ soc_n2 = {
     'numa': false
 }
 
+soc_odyssey = {
+    'description': 'Marvell Odyssey',
+    'implementer': '0x41',
+    'part_number': '0xd4f',
+    'extra_march_features': ['crypto'],
+    'numa': false,
+    'flags': [
+        ['RTE_MAX_LCORE', 80],
+        ['RTE_MAX_NUMA_NODES', 1],
+        ['RTE_MEMPOOL_ALIGN', 128],
+    ],
+}
+
 soc_cn9k = {
     'description': 'Marvell OCTEON 9',
     'implementer': '0x43',
@@ -622,6 +635,7 @@ kunpeng920:      HiSilicon Kunpeng 920
 kunpeng930:      HiSilicon Kunpeng 930
 n1sdp:           Arm Neoverse N1SDP
 n2:              Arm Neoverse N2
+odyssey:         Marvell Odyssey
 stingray:        Broadcom Stingray
 thunderx2:       Marvell ThunderX2 T99
 thunderxt88:     Marvell ThunderX T88
@@ -658,6 +672,7 @@ socs = {
     'kunpeng930': soc_kunpeng930,
     'n1sdp': soc_n1sdp,
     'n2': soc_n2,
+    'odyssey' : soc_odyssey,
     'stingray': soc_stingray,
     'thunderx2': soc_thunderx2,
     'thunderxt88': soc_thunderxt88,
