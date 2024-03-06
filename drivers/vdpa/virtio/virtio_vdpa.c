@@ -496,10 +496,14 @@ virtio_vdpa_dev_notifier_work(void *arg)
 	if (work->vq_idx == RTE_VHOST_QUEUE_ALL) {
 		nr_virtqs = rte_vhost_get_vring_num(work->priv->vid);
 		i = 0;
-		for(; i < nr_virtqs; i++)
+		for(; i < nr_virtqs; i++) {
 			virtio_pci_dev_queue_notify(work->priv->vpdev, i);
-	} else
+			rte_vhost_vring_call(work->priv->vid, i);
+		}
+	} else {
 		virtio_pci_dev_queue_notify(work->priv->vpdev, work->vq_idx);
+		rte_vhost_vring_call(work->priv->vid, work->vq_idx);
+	}
 
 	rte_free(work);
 	return ret;
