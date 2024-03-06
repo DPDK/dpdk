@@ -7695,48 +7695,57 @@ flow_hw_pattern_has_sq_match(const struct rte_flow_item *items)
 	return false;
 }
 
+/*
+ * Verify that the tested flow patterns fits STE size limit in HWS group.
+ *
+ *
+ * Return values:
+ * 0       : Tested patterns fit STE size limit
+ * -EINVAL : Invalid parameters detected
+ * -E2BIG  : Tested patterns exceed STE size limit
+ */
 static int
 pattern_template_validate(struct rte_eth_dev *dev,
 			  struct rte_flow_pattern_template *pt[], uint32_t pt_num)
 {
-	uint32_t group = 0;
+	struct rte_flow_error error;
 	struct mlx5_flow_template_table_cfg tbl_cfg = {
-		.attr = (struct rte_flow_template_table_attr) {
+		.attr = {
 			.nb_flows = 64,
 			.insertion_type = RTE_FLOW_TABLE_INSERTION_TYPE_PATTERN,
 			.hash_func = RTE_FLOW_TABLE_HASH_FUNC_DEFAULT,
 			.flow_attr = {
+				.group = 1,
 				.ingress = pt[0]->attr.ingress,
 				.egress = pt[0]->attr.egress,
 				.transfer = pt[0]->attr.transfer
 			}
-		},
-		.external = true
+		}
 	};
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct rte_flow_actions_template *action_template;
+	struct rte_flow_template_table *tmpl_tbl;
+	int ret;
 
-	if (pt[0]->attr.ingress) {
+	if (pt[0]->attr.ingress)
 		action_template = priv->action_template_drop[MLX5DR_TABLE_TYPE_NIC_RX];
-	} else if (pt[0]->attr.egress) {
+	else if (pt[0]->attr.egress)
 		action_template = priv->action_template_drop[MLX5DR_TABLE_TYPE_NIC_TX];
-	} else if (pt[0]->attr.transfer) {
+	else if (pt[0]->attr.transfer)
 		action_template = priv->action_template_drop[MLX5DR_TABLE_TYPE_FDB];
+	else
+		return -EINVAL;
+	if (pt[0]->item_flags & MLX5_FLOW_ITEM_COMPARE)
+		tbl_cfg.attr.nb_flows = 1;
+	tmpl_tbl = flow_hw_table_create(dev, &tbl_cfg, pt, pt_num,
+					&action_template, 1, NULL);
+	if (tmpl_tbl) {
+		ret = 0;
+		flow_hw_table_destroy(dev, tmpl_tbl, &error);
 	} else {
-		rte_errno = EINVAL;
-		return rte_errno;
+		ret = rte_errno == E2BIG ? -E2BIG : 0;
 	}
-	do {
-		struct rte_flow_template_table *tmpl_tbl;
-
-		tbl_cfg.attr.flow_attr.group = group;
-		tmpl_tbl = flow_hw_table_create(dev, &tbl_cfg, pt, pt_num,
-						&action_template, 1, NULL);
-		if (!tmpl_tbl)
-			return rte_errno;
-		flow_hw_table_destroy(dev, tmpl_tbl, NULL);
-	} while (++group <= 1);
-	return 0;
+	return ret;
 }
 
 /**
