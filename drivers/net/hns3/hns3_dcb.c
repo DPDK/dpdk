@@ -1499,7 +1499,6 @@ hns3_dcb_info_update(struct hns3_adapter *hns, uint8_t num_tc)
 static int
 hns3_dcb_hw_configure(struct hns3_adapter *hns)
 {
-	struct rte_eth_dcb_rx_conf *dcb_rx_conf;
 	struct hns3_pf *pf = &hns->pf;
 	struct hns3_hw *hw = &hns->hw;
 	enum hns3_fc_status fc_status = hw->current_fc_status;
@@ -1519,12 +1518,8 @@ hns3_dcb_hw_configure(struct hns3_adapter *hns)
 	}
 
 	if (hw->data->dev_conf.dcb_capability_en & RTE_ETH_DCB_PFC_SUPPORT) {
-		dcb_rx_conf = &hw->data->dev_conf.rx_adv_conf.dcb_rx_conf;
-		if (dcb_rx_conf->nb_tcs == 0)
-			hw->dcb_info.pfc_en = 1; /* tc0 only */
-		else
-			hw->dcb_info.pfc_en =
-			RTE_LEN2MASK((uint8_t)dcb_rx_conf->nb_tcs, uint8_t);
+		hw->dcb_info.pfc_en =
+			RTE_LEN2MASK((uint8_t)HNS3_MAX_USER_PRIO, uint8_t);
 
 		hw->dcb_info.hw_pfc_map =
 				hns3_dcb_undrop_tc_map(hw, hw->dcb_info.pfc_en);
