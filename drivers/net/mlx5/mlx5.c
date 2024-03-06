@@ -2355,6 +2355,7 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 	mlx5_indirect_list_handles_release(dev);
 #ifdef HAVE_MLX5_HWS_SUPPORT
 	flow_hw_destroy_vport_action(dev);
+	/* dr context will be closed after mlx5_os_free_shared_dr. */
 	flow_hw_resource_release(dev);
 	flow_hw_clear_port_info(dev);
 	if (priv->tlv_options != NULL) {
@@ -2391,6 +2392,12 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 		mlx5_hlist_destroy(priv->mreg_cp_tbl);
 	mlx5_mprq_free_mp(dev);
 	mlx5_os_free_shared_dr(priv);
+#ifdef HAVE_MLX5_HWS_SUPPORT
+	if (priv->dr_ctx) {
+		claim_zero(mlx5dr_context_close(priv->dr_ctx));
+		priv->dr_ctx = NULL;
+	}
+#endif
 	if (priv->rss_conf.rss_key != NULL)
 		mlx5_free(priv->rss_conf.rss_key);
 	if (priv->reta_idx != NULL)

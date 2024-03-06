@@ -10734,13 +10734,11 @@ flow_hw_resource_release(struct rte_eth_dev *dev)
 	}
 	mlx5_free(priv->hw_q);
 	priv->hw_q = NULL;
-	claim_zero(mlx5dr_context_close(priv->dr_ctx));
 	if (priv->shared_host) {
 		struct mlx5_priv *host_priv = priv->shared_host->data->dev_private;
 		__atomic_fetch_sub(&host_priv->shared_refcnt, 1, __ATOMIC_RELAXED);
 		priv->shared_host = NULL;
 	}
-	priv->dr_ctx = NULL;
 	mlx5_free(priv->hw_attr);
 	priv->hw_attr = NULL;
 	priv->nb_queue = 0;
