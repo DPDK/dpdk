@@ -38,7 +38,7 @@ struct rte_trie_tbl {
 	uint32_t	*tbl8_pool;	/**< bitmap containing free tbl8 idxes*/
 	uint32_t	tbl8_pool_pos;
 	/* tbl24 table. */
-	__extension__ alignas(RTE_CACHE_LINE_SIZE) uint64_t	tbl24[0];
+	alignas(RTE_CACHE_LINE_SIZE) uint64_t	tbl24[];
 };
 
 static inline uint32_t
