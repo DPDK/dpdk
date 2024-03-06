@@ -6287,6 +6287,72 @@ flow_hw_create_ctrl_jump_table(struct rte_eth_dev *dev,
 	return flow_hw_table_create(dev, &cfg, &it, 1, &at, 1, error);
 }
 
+/**
+ * Cleans up all template tables and pattern, and actions templates used for
+ * FDB control flow rules.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ */
+static void
+flow_hw_cleanup_ctrl_fdb_tables(struct rte_eth_dev *dev)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_flow_hw_ctrl_fdb *hw_ctrl_fdb;
+
+	if (!priv->hw_ctrl_fdb)
+		return;
+	hw_ctrl_fdb = priv->hw_ctrl_fdb;
+	/* Clean up templates used for LACP default miss table. */
+	if (hw_ctrl_fdb->hw_lacp_rx_tbl)
+		claim_zero(flow_hw_table_destroy(dev, hw_ctrl_fdb->hw_lacp_rx_tbl, NULL));
+	if (hw_ctrl_fdb->lacp_rx_actions_tmpl)
+		claim_zero(flow_hw_actions_template_destroy(dev, hw_ctrl_fdb->lacp_rx_actions_tmpl,
+			   NULL));
+	if (hw_ctrl_fdb->lacp_rx_items_tmpl)
+		claim_zero(flow_hw_pattern_template_destroy(dev, hw_ctrl_fdb->lacp_rx_items_tmpl,
+			   NULL));
+	/* Clean up templates used for default Tx metadata copy. */
+	if (hw_ctrl_fdb->hw_tx_meta_cpy_tbl)
+		claim_zero(flow_hw_table_destroy(dev, hw_ctrl_fdb->hw_tx_meta_cpy_tbl, NULL));
+	if (hw_ctrl_fdb->tx_meta_actions_tmpl)
+		claim_zero(flow_hw_actions_template_destroy(dev, hw_ctrl_fdb->tx_meta_actions_tmpl,
+			   NULL));
+	if (hw_ctrl_fdb->tx_meta_items_tmpl)
+		claim_zero(flow_hw_pattern_template_destroy(dev, hw_ctrl_fdb->tx_meta_items_tmpl,
+			   NULL));
+	/* Clean up templates used for default FDB jump rule. */
+	if (hw_ctrl_fdb->hw_esw_zero_tbl)
+		claim_zero(flow_hw_table_destroy(dev, hw_ctrl_fdb->hw_esw_zero_tbl, NULL));
+	if (hw_ctrl_fdb->jump_one_actions_tmpl)
+		claim_zero(flow_hw_actions_template_destroy(dev, hw_ctrl_fdb->jump_one_actions_tmpl,
+			   NULL));
+	if (hw_ctrl_fdb->port_items_tmpl)
+		claim_zero(flow_hw_pattern_template_destroy(dev, hw_ctrl_fdb->port_items_tmpl,
+			   NULL));
+	/* Clean up templates used for default SQ miss flow rules - non-root table. */
+	if (hw_ctrl_fdb->hw_esw_sq_miss_tbl)
+		claim_zero(flow_hw_table_destroy(dev, hw_ctrl_fdb->hw_esw_sq_miss_tbl, NULL));
+	if (hw_ctrl_fdb->regc_sq_items_tmpl)
+		claim_zero(flow_hw_pattern_template_destroy(dev, hw_ctrl_fdb->regc_sq_items_tmpl,
+			   NULL));
+	if (hw_ctrl_fdb->port_actions_tmpl)
+		claim_zero(flow_hw_actions_template_destroy(dev, hw_ctrl_fdb->port_actions_tmpl,
+			   NULL));
+	/* Clean up templates used for default SQ miss flow rules - root table. */
+	if (hw_ctrl_fdb->hw_esw_sq_miss_root_tbl)
+		claim_zero(flow_hw_table_destroy(dev, hw_ctrl_fdb->hw_esw_sq_miss_root_tbl, NULL));
+	if (hw_ctrl_fdb->regc_jump_actions_tmpl)
+		claim_zero(flow_hw_actions_template_destroy(dev,
+			   hw_ctrl_fdb->regc_jump_actions_tmpl, NULL));
+	if (hw_ctrl_fdb->esw_mgr_items_tmpl)
+		claim_zero(flow_hw_pattern_template_destroy(dev, hw_ctrl_fdb->esw_mgr_items_tmpl,
+			   NULL));
+	/* Clean up templates structure for FDB control flow rules. */
+	mlx5_free(hw_ctrl_fdb);
+	priv->hw_ctrl_fdb = NULL;
+}
+
 /*
  * Create a table on the root group to for the LACP traffic redirecting.
  *
@@ -6336,110 +6402,109 @@ flow_hw_create_lacp_rx_table(struct rte_eth_dev *dev,
  * @return
  *   0 on success, negative values otherwise
  */
-static __rte_unused int
+static int
 flow_hw_create_ctrl_tables(struct rte_eth_dev *dev, struct rte_flow_error *error)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	struct rte_flow_pattern_template *esw_mgr_items_tmpl = NULL;
-	struct rte_flow_pattern_template *regc_sq_items_tmpl = NULL;
-	struct rte_flow_pattern_template *port_items_tmpl = NULL;
-	struct rte_flow_pattern_template *tx_meta_items_tmpl = NULL;
-	struct rte_flow_pattern_template *lacp_rx_items_tmpl = NULL;
-	struct rte_flow_actions_template *regc_jump_actions_tmpl = NULL;
-	struct rte_flow_actions_template *port_actions_tmpl = NULL;
-	struct rte_flow_actions_template *jump_one_actions_tmpl = NULL;
-	struct rte_flow_actions_template *tx_meta_actions_tmpl = NULL;
-	struct rte_flow_actions_template *lacp_rx_actions_tmpl = NULL;
+	struct mlx5_flow_hw_ctrl_fdb *hw_ctrl_fdb;
 	uint32_t xmeta = priv->sh->config.dv_xmeta_en;
 	uint32_t repr_matching = priv->sh->config.repr_matching;
-	int ret;
 
+	MLX5_ASSERT(priv->hw_ctrl_fdb == NULL);
+	hw_ctrl_fdb = mlx5_malloc(MLX5_MEM_ZERO, sizeof(*hw_ctrl_fdb), 0, SOCKET_ID_ANY);
+	if (!hw_ctrl_fdb) {
+		DRV_LOG(ERR, "port %u failed to allocate memory for FDB control flow templates",
+			dev->data->port_id);
+		rte_errno = ENOMEM;
+		goto err;
+	}
+	priv->hw_ctrl_fdb = hw_ctrl_fdb;
 	/* Create templates and table for default SQ miss flow rules - root table. */
-	esw_mgr_items_tmpl = flow_hw_create_ctrl_esw_mgr_pattern_template(dev, error);
-	if (!esw_mgr_items_tmpl) {
+	hw_ctrl_fdb->esw_mgr_items_tmpl = flow_hw_create_ctrl_esw_mgr_pattern_template(dev, error);
+	if (!hw_ctrl_fdb->esw_mgr_items_tmpl) {
 		DRV_LOG(ERR, "port %u failed to create E-Switch Manager item"
 			" template for control flows", dev->data->port_id);
 		goto err;
 	}
-	regc_jump_actions_tmpl = flow_hw_create_ctrl_regc_jump_actions_template(dev, error);
-	if (!regc_jump_actions_tmpl) {
+	hw_ctrl_fdb->regc_jump_actions_tmpl = flow_hw_create_ctrl_regc_jump_actions_template
+			(dev, error);
+	if (!hw_ctrl_fdb->regc_jump_actions_tmpl) {
 		DRV_LOG(ERR, "port %u failed to create REG_C set and jump action template"
 			" for control flows", dev->data->port_id);
 		goto err;
 	}
-	MLX5_ASSERT(priv->hw_esw_sq_miss_root_tbl == NULL);
-	priv->hw_esw_sq_miss_root_tbl = flow_hw_create_ctrl_sq_miss_root_table
-			(dev, esw_mgr_items_tmpl, regc_jump_actions_tmpl, error);
-	if (!priv->hw_esw_sq_miss_root_tbl) {
+	hw_ctrl_fdb->hw_esw_sq_miss_root_tbl = flow_hw_create_ctrl_sq_miss_root_table
+			(dev, hw_ctrl_fdb->esw_mgr_items_tmpl, hw_ctrl_fdb->regc_jump_actions_tmpl,
+			 error);
+	if (!hw_ctrl_fdb->hw_esw_sq_miss_root_tbl) {
 		DRV_LOG(ERR, "port %u failed to create table for default sq miss (root table)"
 			" for control flows", dev->data->port_id);
 		goto err;
 	}
 	/* Create templates and table for default SQ miss flow rules - non-root table. */
-	regc_sq_items_tmpl = flow_hw_create_ctrl_regc_sq_pattern_template(dev, error);
-	if (!regc_sq_items_tmpl) {
+	hw_ctrl_fdb->regc_sq_items_tmpl = flow_hw_create_ctrl_regc_sq_pattern_template(dev, error);
+	if (!hw_ctrl_fdb->regc_sq_items_tmpl) {
 		DRV_LOG(ERR, "port %u failed to create SQ item template for"
 			" control flows", dev->data->port_id);
 		goto err;
 	}
-	port_actions_tmpl = flow_hw_create_ctrl_port_actions_template(dev, error);
-	if (!port_actions_tmpl) {
+	hw_ctrl_fdb->port_actions_tmpl = flow_hw_create_ctrl_port_actions_template(dev, error);
+	if (!hw_ctrl_fdb->port_actions_tmpl) {
 		DRV_LOG(ERR, "port %u failed to create port action template"
 			" for control flows", dev->data->port_id);
 		goto err;
 	}
-	MLX5_ASSERT(priv->hw_esw_sq_miss_tbl == NULL);
-	priv->hw_esw_sq_miss_tbl = flow_hw_create_ctrl_sq_miss_table(dev, regc_sq_items_tmpl,
-								     port_actions_tmpl, error);
-	if (!priv->hw_esw_sq_miss_tbl) {
+	hw_ctrl_fdb->hw_esw_sq_miss_tbl = flow_hw_create_ctrl_sq_miss_table
+			(dev, hw_ctrl_fdb->regc_sq_items_tmpl, hw_ctrl_fdb->port_actions_tmpl,
+			 error);
+	if (!hw_ctrl_fdb->hw_esw_sq_miss_tbl) {
 		DRV_LOG(ERR, "port %u failed to create table for default sq miss (non-root table)"
 			" for control flows", dev->data->port_id);
 		goto err;
 	}
 	/* Create templates and table for default FDB jump flow rules. */
-	port_items_tmpl = flow_hw_create_ctrl_port_pattern_template(dev, error);
-	if (!port_items_tmpl) {
+	hw_ctrl_fdb->port_items_tmpl = flow_hw_create_ctrl_port_pattern_template(dev, error);
+	if (!hw_ctrl_fdb->port_items_tmpl) {
 		DRV_LOG(ERR, "port %u failed to create SQ item template for"
 			" control flows", dev->data->port_id);
 		goto err;
 	}
-	jump_one_actions_tmpl = flow_hw_create_ctrl_jump_actions_template
+	hw_ctrl_fdb->jump_one_actions_tmpl = flow_hw_create_ctrl_jump_actions_template
 			(dev, MLX5_HW_LOWEST_USABLE_GROUP, error);
-	if (!jump_one_actions_tmpl) {
+	if (!hw_ctrl_fdb->jump_one_actions_tmpl) {
 		DRV_LOG(ERR, "port %u failed to create jump action template"
 			" for control flows", dev->data->port_id);
 		goto err;
 	}
-	MLX5_ASSERT(priv->hw_esw_zero_tbl == NULL);
-	priv->hw_esw_zero_tbl = flow_hw_create_ctrl_jump_table(dev, port_items_tmpl,
-							       jump_one_actions_tmpl,
-							       error);
-	if (!priv->hw_esw_zero_tbl) {
+	hw_ctrl_fdb->hw_esw_zero_tbl = flow_hw_create_ctrl_jump_table
+			(dev, hw_ctrl_fdb->port_items_tmpl, hw_ctrl_fdb->jump_one_actions_tmpl,
+			 error);
+	if (!hw_ctrl_fdb->hw_esw_zero_tbl) {
 		DRV_LOG(ERR, "port %u failed to create table for default jump to group 1"
 			" for control flows", dev->data->port_id);
 		goto err;
 	}
 	/* Create templates and table for default Tx metadata copy flow rule. */
 	if (!repr_matching && xmeta == MLX5_XMETA_MODE_META32_HWS) {
-		tx_meta_items_tmpl =
+		hw_ctrl_fdb->tx_meta_items_tmpl =
 			flow_hw_create_tx_default_mreg_copy_pattern_template(dev, error);
-		if (!tx_meta_items_tmpl) {
+		if (!hw_ctrl_fdb->tx_meta_items_tmpl) {
 			DRV_LOG(ERR, "port %u failed to Tx metadata copy pattern"
 				" template for control flows", dev->data->port_id);
 			goto err;
 		}
-		tx_meta_actions_tmpl =
+		hw_ctrl_fdb->tx_meta_actions_tmpl =
 			flow_hw_create_tx_default_mreg_copy_actions_template(dev, error);
-		if (!tx_meta_actions_tmpl) {
+		if (!hw_ctrl_fdb->tx_meta_actions_tmpl) {
 			DRV_LOG(ERR, "port %u failed to Tx metadata copy actions"
 				" template for control flows", dev->data->port_id);
 			goto err;
 		}
-		MLX5_ASSERT(priv->hw_tx_meta_cpy_tbl == NULL);
-		priv->hw_tx_meta_cpy_tbl =
-			flow_hw_create_tx_default_mreg_copy_table(dev, tx_meta_items_tmpl,
-								  tx_meta_actions_tmpl, error);
-		if (!priv->hw_tx_meta_cpy_tbl) {
+		hw_ctrl_fdb->hw_tx_meta_cpy_tbl =
+			flow_hw_create_tx_default_mreg_copy_table
+				(dev, hw_ctrl_fdb->tx_meta_items_tmpl,
+				 hw_ctrl_fdb->tx_meta_actions_tmpl, error);
+		if (!hw_ctrl_fdb->hw_tx_meta_cpy_tbl) {
 			DRV_LOG(ERR, "port %u failed to create table for default"
 				" Tx metadata copy flow rule", dev->data->port_id);
 			goto err;
@@ -6447,71 +6512,34 @@ flow_hw_create_ctrl_tables(struct rte_eth_dev *dev, struct rte_flow_error *error
 	}
 	/* Create LACP default miss table. */
 	if (!priv->sh->config.lacp_by_user && priv->pf_bond >= 0 && priv->master) {
-		lacp_rx_items_tmpl = flow_hw_create_lacp_rx_pattern_template(dev, error);
-		if (!lacp_rx_items_tmpl) {
+		hw_ctrl_fdb->lacp_rx_items_tmpl =
+				flow_hw_create_lacp_rx_pattern_template(dev, error);
+		if (!hw_ctrl_fdb->lacp_rx_items_tmpl) {
 			DRV_LOG(ERR, "port %u failed to create pattern template"
 				" for LACP Rx traffic", dev->data->port_id);
 			goto err;
 		}
-		lacp_rx_actions_tmpl = flow_hw_create_lacp_rx_actions_template(dev, error);
-		if (!lacp_rx_actions_tmpl) {
+		hw_ctrl_fdb->lacp_rx_actions_tmpl =
+				flow_hw_create_lacp_rx_actions_template(dev, error);
+		if (!hw_ctrl_fdb->lacp_rx_actions_tmpl) {
 			DRV_LOG(ERR, "port %u failed to create actions template"
 				" for LACP Rx traffic", dev->data->port_id);
 			goto err;
 		}
-		priv->hw_lacp_rx_tbl = flow_hw_create_lacp_rx_table(dev, lacp_rx_items_tmpl,
-								    lacp_rx_actions_tmpl, error);
-		if (!priv->hw_lacp_rx_tbl) {
+		hw_ctrl_fdb->hw_lacp_rx_tbl = flow_hw_create_lacp_rx_table
+				(dev, hw_ctrl_fdb->lacp_rx_items_tmpl,
+				 hw_ctrl_fdb->lacp_rx_actions_tmpl, error);
+		if (!hw_ctrl_fdb->hw_lacp_rx_tbl) {
 			DRV_LOG(ERR, "port %u failed to create template table for"
 				" for LACP Rx traffic", dev->data->port_id);
 			goto err;
 		}
 	}
 	return 0;
+
 err:
-	/* Do not overwrite the rte_errno. */
-	ret = -rte_errno;
-	if (ret == 0)
-		ret = rte_flow_error_set(error, EINVAL,
-					 RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
-					 "Failed to create control tables.");
-	if (priv->hw_tx_meta_cpy_tbl) {
-		flow_hw_table_destroy(dev, priv->hw_tx_meta_cpy_tbl, NULL);
-		priv->hw_tx_meta_cpy_tbl = NULL;
-	}
-	if (priv->hw_esw_zero_tbl) {
-		flow_hw_table_destroy(dev, priv->hw_esw_zero_tbl, NULL);
-		priv->hw_esw_zero_tbl = NULL;
-	}
-	if (priv->hw_esw_sq_miss_tbl) {
-		flow_hw_table_destroy(dev, priv->hw_esw_sq_miss_tbl, NULL);
-		priv->hw_esw_sq_miss_tbl = NULL;
-	}
-	if (priv->hw_esw_sq_miss_root_tbl) {
-		flow_hw_table_destroy(dev, priv->hw_esw_sq_miss_root_tbl, NULL);
-		priv->hw_esw_sq_miss_root_tbl = NULL;
-	}
-	if (lacp_rx_actions_tmpl)
-		flow_hw_actions_template_destroy(dev, lacp_rx_actions_tmpl, NULL);
-	if (tx_meta_actions_tmpl)
-		flow_hw_actions_template_destroy(dev, tx_meta_actions_tmpl, NULL);
-	if (jump_one_actions_tmpl)
-		flow_hw_actions_template_destroy(dev, jump_one_actions_tmpl, NULL);
-	if (port_actions_tmpl)
-		flow_hw_actions_template_destroy(dev, port_actions_tmpl, NULL);
-	if (regc_jump_actions_tmpl)
-		flow_hw_actions_template_destroy(dev, regc_jump_actions_tmpl, NULL);
-	if (lacp_rx_items_tmpl)
-		flow_hw_pattern_template_destroy(dev, lacp_rx_items_tmpl, NULL);
-	if (tx_meta_items_tmpl)
-		flow_hw_pattern_template_destroy(dev, tx_meta_items_tmpl, NULL);
-	if (port_items_tmpl)
-		flow_hw_pattern_template_destroy(dev, port_items_tmpl, NULL);
-	if (regc_sq_items_tmpl)
-		flow_hw_pattern_template_destroy(dev, regc_sq_items_tmpl, NULL);
-	if (esw_mgr_items_tmpl)
-		flow_hw_pattern_template_destroy(dev, esw_mgr_items_tmpl, NULL);
-	return ret;
+	flow_hw_cleanup_ctrl_fdb_tables(dev);
+	return -EINVAL;
 }
 
 static void
@@ -7308,6 +7336,7 @@ err:
 		mlx5_hws_cnt_pool_destroy(priv->sh, priv->hws_cpool);
 		priv->hws_cpool = NULL;
 	}
+	flow_hw_cleanup_ctrl_fdb_tables(dev);
 	flow_hw_free_vport_actions(priv);
 	for (i = 0; i < MLX5_HW_ACTION_FLAG_MAX; i++) {
 		if (priv->hw_drop[i])
@@ -7357,6 +7386,7 @@ flow_hw_resource_release(struct rte_eth_dev *dev)
 		return;
 	flow_hw_rxq_flag_set(dev, false);
 	flow_hw_flush_all_ctrl_flows(dev);
+	flow_hw_cleanup_ctrl_fdb_tables(dev);
 	flow_hw_cleanup_tx_repr_tagging(dev);
 	flow_hw_cleanup_ctrl_rx_tables(dev);
 	while (!LIST_EMPTY(&priv->flow_hw_tbl_ongo)) {
@@ -8958,8 +8988,9 @@ mlx5_flow_hw_esw_create_sq_miss_flow(struct rte_eth_dev *dev, uint32_t sqn, bool
 			       proxy_port_id, port_id);
 		return 0;
 	}
-	if (!proxy_priv->hw_esw_sq_miss_root_tbl ||
-	    !proxy_priv->hw_esw_sq_miss_tbl) {
+	if (!proxy_priv->hw_ctrl_fdb ||
+	    !proxy_priv->hw_ctrl_fdb->hw_esw_sq_miss_root_tbl ||
+	    !proxy_priv->hw_ctrl_fdb->hw_esw_sq_miss_tbl) {
 		DRV_LOG(ERR, "Transfer proxy port (port %u) of port %u was configured, but "
 			     "default flow tables were not created.",
 			     proxy_port_id, port_id);
@@ -8991,7 +9022,8 @@ mlx5_flow_hw_esw_create_sq_miss_flow(struct rte_eth_dev *dev, uint32_t sqn, bool
 	actions[2] = (struct rte_flow_action) {
 		.type = RTE_FLOW_ACTION_TYPE_END,
 	};
-	ret = flow_hw_create_ctrl_flow(dev, proxy_dev, proxy_priv->hw_esw_sq_miss_root_tbl,
+	ret = flow_hw_create_ctrl_flow(dev, proxy_dev,
+				       proxy_priv->hw_ctrl_fdb->hw_esw_sq_miss_root_tbl,
 				       items, 0, actions, 0, &flow_info, external);
 	if (ret) {
 		DRV_LOG(ERR, "Port %u failed to create root SQ miss flow rule for SQ %u, ret %d",
@@ -9022,7 +9054,8 @@ mlx5_flow_hw_esw_create_sq_miss_flow(struct rte_eth_dev *dev, uint32_t sqn, bool
 		.type = RTE_FLOW_ACTION_TYPE_END,
 	};
 	flow_info.type = MLX5_HW_CTRL_FLOW_TYPE_SQ_MISS;
-	ret = flow_hw_create_ctrl_flow(dev, proxy_dev, proxy_priv->hw_esw_sq_miss_tbl,
+	ret = flow_hw_create_ctrl_flow(dev, proxy_dev,
+				       proxy_priv->hw_ctrl_fdb->hw_esw_sq_miss_tbl,
 				       items, 0, actions, 0, &flow_info, external);
 	if (ret) {
 		DRV_LOG(ERR, "Port %u failed to create HWS SQ miss flow rule for SQ %u, ret %d",
@@ -9068,8 +9101,9 @@ mlx5_flow_hw_esw_destroy_sq_miss_flow(struct rte_eth_dev *dev, uint32_t sqn)
 	proxy_priv = proxy_dev->data->dev_private;
 	if (!proxy_priv->dr_ctx)
 		return 0;
-	if (!proxy_priv->hw_esw_sq_miss_root_tbl ||
-	    !proxy_priv->hw_esw_sq_miss_tbl)
+	if (!proxy_priv->hw_ctrl_fdb ||
+	    !proxy_priv->hw_ctrl_fdb->hw_esw_sq_miss_root_tbl ||
+	    !proxy_priv->hw_ctrl_fdb->hw_esw_sq_miss_tbl)
 		return 0;
 	cf = LIST_FIRST(&proxy_priv->hw_ctrl_flows);
 	while (cf != NULL) {
@@ -9136,7 +9170,7 @@ mlx5_flow_hw_esw_create_default_jump_flow(struct rte_eth_dev *dev)
 			       proxy_port_id, port_id);
 		return 0;
 	}
-	if (!proxy_priv->hw_esw_zero_tbl) {
+	if (!proxy_priv->hw_ctrl_fdb || !proxy_priv->hw_ctrl_fdb->hw_esw_zero_tbl) {
 		DRV_LOG(ERR, "Transfer proxy port (port %u) of port %u was configured, but "
 			     "default flow tables were not created.",
 			     proxy_port_id, port_id);
@@ -9144,7 +9178,7 @@ mlx5_flow_hw_esw_create_default_jump_flow(struct rte_eth_dev *dev)
 		return -rte_errno;
 	}
 	return flow_hw_create_ctrl_flow(dev, proxy_dev,
-					proxy_priv->hw_esw_zero_tbl,
+					proxy_priv->hw_ctrl_fdb->hw_esw_zero_tbl,
 					items, 0, actions, 0, &flow_info, false);
 }
 
@@ -9196,10 +9230,12 @@ mlx5_flow_hw_create_tx_default_mreg_copy_flow(struct rte_eth_dev *dev)
 	};
 
 	MLX5_ASSERT(priv->master);
-	if (!priv->dr_ctx || !priv->hw_tx_meta_cpy_tbl)
+	if (!priv->dr_ctx ||
+	    !priv->hw_ctrl_fdb ||
+	    !priv->hw_ctrl_fdb->hw_tx_meta_cpy_tbl)
 		return 0;
 	return flow_hw_create_ctrl_flow(dev, dev,
-					priv->hw_tx_meta_cpy_tbl,
+					priv->hw_ctrl_fdb->hw_tx_meta_cpy_tbl,
 					eth_all, 0, copy_reg_action, 0, &flow_info, false);
 }
 
@@ -9291,10 +9327,11 @@ mlx5_flow_hw_lacp_rx_flow(struct rte_eth_dev *dev)
 		.type = MLX5_HW_CTRL_FLOW_TYPE_LACP_RX,
 	};
 
-	if (!priv->dr_ctx || !priv->hw_lacp_rx_tbl)
+	if (!priv->dr_ctx || !priv->hw_ctrl_fdb || !priv->hw_ctrl_fdb->hw_lacp_rx_tbl)
 		return 0;
-	return flow_hw_create_ctrl_flow(dev, dev, priv->hw_lacp_rx_tbl, eth_lacp, 0,
-					miss_action, 0, &flow_info, false);
+	return flow_hw_create_ctrl_flow(dev, dev,
+					priv->hw_ctrl_fdb->hw_lacp_rx_tbl,
+					eth_lacp, 0, miss_action, 0, &flow_info, false);
 }
 
 static uint32_t
