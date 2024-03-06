@@ -106,6 +106,7 @@ struct mlx5dr_send_ring_dep_wqe {
 	uint32_t rtc_1;
 	uint32_t retry_rtc_0;
 	uint32_t retry_rtc_1;
+	uint32_t direct_index;
 	void *user_data;
 };
 
