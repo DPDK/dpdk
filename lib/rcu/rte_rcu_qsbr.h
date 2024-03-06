@@ -107,7 +107,7 @@ struct __rte_cache_aligned rte_rcu_qsbr {
 	uint32_t max_threads;
 	/**< Maximum number of threads using this QS variable */
 
-	alignas(RTE_CACHE_LINE_SIZE) struct rte_rcu_qsbr_cnt qsbr_cnt[0];
+	alignas(RTE_CACHE_LINE_SIZE) struct rte_rcu_qsbr_cnt qsbr_cnt[];
 	/**< Quiescent state counter array of 'max_threads' elements */
 
 	/**< Registered thread IDs are stored in a bitmap array,
