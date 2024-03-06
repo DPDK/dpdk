@@ -40,7 +40,7 @@ struct __rte_cache_aligned rte_table_array {
 	uint32_t entry_pos_mask;
 
 	/* Internal table */
-	alignas(RTE_CACHE_LINE_SIZE) uint8_t array[0];
+	alignas(RTE_CACHE_LINE_SIZE) uint8_t array[];
 };
 
 static void *

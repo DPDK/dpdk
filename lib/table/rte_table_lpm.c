@@ -48,7 +48,7 @@ struct rte_table_lpm {
 
 	/* Next Hop Table (NHT) */
 	uint32_t nht_users[RTE_TABLE_LPM_MAX_NEXT_HOPS];
-	alignas(RTE_CACHE_LINE_SIZE) uint8_t nht[0];
+	alignas(RTE_CACHE_LINE_SIZE) uint8_t nht[];
 };
 
 static void *

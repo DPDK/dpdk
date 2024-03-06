@@ -48,7 +48,7 @@ struct rte_table_acl {
 	uint8_t *acl_rule_memory; /* Memory to store the rules */
 
 	/* Memory to store the action table and stack of free entries */
-	alignas(RTE_CACHE_LINE_SIZE) uint8_t memory[0];
+	alignas(RTE_CACHE_LINE_SIZE) uint8_t memory[];
 };
 
 

@@ -44,7 +44,7 @@ struct rte_table_hash {
 	struct rte_hash *h_table;
 
 	/* Lookup table */
-	alignas(RTE_CACHE_LINE_SIZE) uint8_t memory[0];
+	alignas(RTE_CACHE_LINE_SIZE) uint8_t memory[];
 };
 
 static int

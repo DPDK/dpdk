@@ -81,7 +81,7 @@ struct rte_table_hash {
 	uint32_t *stack;
 
 	/* Lookup table */
-	alignas(RTE_CACHE_LINE_SIZE) uint8_t memory[0];
+	alignas(RTE_CACHE_LINE_SIZE) uint8_t memory[];
 };
 
 static int
