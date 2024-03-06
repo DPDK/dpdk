@@ -7407,8 +7407,6 @@ flow_hw_resource_release(struct rte_eth_dev *dev)
 	}
 	mlx5_free(priv->hw_q);
 	priv->hw_q = NULL;
-	claim_zero(mlx5dr_context_close(priv->dr_ctx));
-	priv->dr_ctx = NULL;
 	priv->nb_queue = 0;
 }
 
