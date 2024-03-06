@@ -81,7 +81,7 @@ struct rte_thash_subtuple_helper {
 	uint32_t	tuple_offset;	/** < Offset in bits of the subtuple */
 	uint32_t	tuple_len;	/** < Length in bits of the subtuple */
 	uint32_t	lsb_msk;	/** < (1 << reta_sz_log) - 1 */
-	__extension__ alignas(RTE_CACHE_LINE_SIZE) uint32_t	compl_table[0];
+	alignas(RTE_CACHE_LINE_SIZE) uint32_t	compl_table[];
 	/** < Complementary table */
 };
 
@@ -94,7 +94,7 @@ struct rte_thash_ctx {
 	uint32_t	flags;
 	uint64_t	*matrices;
 	/**< matrices used with rte_thash_gfni implementation */
-	uint8_t		hash_key[0];
+	uint8_t		hash_key[];
 };
 
 int
