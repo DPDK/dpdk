@@ -85,7 +85,7 @@ struct __rte_lpm {
  * depth  (IN)		: range = 1 - 32
  * mask   (OUT)		: 32bit mask
  */
-static uint32_t __attribute__((pure))
+static uint32_t __rte_pure
 depth_to_mask(uint8_t depth)
 {
 	VERIFY_DEPTH(depth);
@@ -99,7 +99,7 @@ depth_to_mask(uint8_t depth)
 /*
  * Converts given depth value to its corresponding range value.
  */
-static uint32_t __attribute__((pure))
+static uint32_t __rte_pure
 depth_to_range(uint8_t depth)
 {
 	VERIFY_DEPTH(depth);

@@ -1128,7 +1128,7 @@ rte_lpm6_delete_all(struct rte_lpm6 *lpm)
  * Convert a depth to a one byte long mask
  *   Example: 4 will be converted to 0xF0
  */
-static uint8_t __attribute__((pure))
+static uint8_t __rte_pure
 depth_to_mask_1b(uint8_t depth)
 {
 	/* To calculate a mask start with a 1 on the left hand side and right

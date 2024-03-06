@@ -137,6 +137,15 @@ typedef uint16_t unaligned_uint16_t;
 #define __rte_weak __attribute__((__weak__))
 
 /**
+ * Mark a function to be pure.
+ */
+#ifdef RTE_TOOLCHAIN_MSVC
+#define __rte_pure
+#else
+#define __rte_pure __attribute__((pure))
+#endif
+
+/**
  * Force symbol to be generated even if it appears to be unused.
  */
 #ifdef RTE_TOOLCHAIN_MSVC

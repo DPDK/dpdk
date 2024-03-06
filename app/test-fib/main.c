@@ -137,13 +137,13 @@ get_rnd_rng(uint64_t l, uint64_t u)
 		return (rte_rand() % (u - l) + l);
 }
 
-static __rte_always_inline __attribute__((pure)) uint8_t
+static __rte_always_inline __rte_pure uint8_t
 bits_in_nh(uint8_t nh_sz)
 {
 	return 8 * (1 << nh_sz);
 }
 
-static  __rte_always_inline __attribute__((pure)) uint64_t
+static  __rte_always_inline __rte_pure uint64_t
 get_max_nh(uint8_t nh_sz)
 {
 	/* min between fib and lpm6 which is 21 bits */
