@@ -58,14 +58,16 @@ static void mlx5dr_rule_init_dep_wqe(struct mlx5dr_send_ring_dep_wqe *dep_wqe,
 				     struct mlx5dr_rule *rule,
 				     const struct rte_flow_item *items,
 				     struct mlx5dr_match_template *mt,
-				     void *user_data)
+				     struct mlx5dr_rule_attr *attr)
 {
 	struct mlx5dr_matcher *matcher = rule->matcher;
 	struct mlx5dr_table *tbl = matcher->tbl;
 	bool skip_rx, skip_tx;
 
 	dep_wqe->rule = rule;
-	dep_wqe->user_data = user_data;
+	dep_wqe->user_data = attr->user_data;
+	dep_wqe->direct_index = mlx5dr_matcher_is_insert_by_idx(matcher) ?
+		attr->rule_idx : 0;
 
 	if (!items) { /* rule update */
 		dep_wqe->rtc_0 = rule->rtc_0;
@@ -374,8 +376,8 @@ static int mlx5dr_rule_create_hws_fw_wqe(struct mlx5dr_rule *rule,
 	}
 
 	mlx5dr_rule_create_init(rule, &ste_attr, &apply, false);
-	mlx5dr_rule_init_dep_wqe(&match_wqe, rule, items, mt, attr->user_data);
-	mlx5dr_rule_init_dep_wqe(&range_wqe, rule, items, mt, attr->user_data);
+	mlx5dr_rule_init_dep_wqe(&match_wqe, rule, items, mt, attr);
+	mlx5dr_rule_init_dep_wqe(&range_wqe, rule, items, mt, attr);
 
 	ste_attr.direct_index = 0;
 	ste_attr.rtc_0 = match_wqe.rtc_0;
@@ -482,7 +484,7 @@ static int mlx5dr_rule_create_hws(struct mlx5dr_rule *rule,
 	 * dep_wqe buffers (ctrl, data) are also reused for all STE writes.
 	 */
 	dep_wqe = mlx5dr_send_add_new_dep_wqe(queue);
-	mlx5dr_rule_init_dep_wqe(dep_wqe, rule, items, mt, attr->user_data);
+	mlx5dr_rule_init_dep_wqe(dep_wqe, rule, items, mt, attr);
 
 	ste_attr.wqe_ctrl = &dep_wqe->wqe_ctrl;
 	ste_attr.wqe_data = &dep_wqe->wqe_data;
@@ -544,8 +546,7 @@ static int mlx5dr_rule_create_hws(struct mlx5dr_rule *rule,
 			ste_attr.used_id_rtc_1 = &rule->rtc_1;
 			ste_attr.retry_rtc_0 = dep_wqe->retry_rtc_0;
 			ste_attr.retry_rtc_1 = dep_wqe->retry_rtc_1;
-			ste_attr.direct_index = mlx5dr_matcher_is_insert_by_idx(matcher) ?
-						attr->rule_idx : 0;
+			ste_attr.direct_index = dep_wqe->direct_index;
 		} else {
 			apply.next_direct_idx = --ste_attr.direct_index;
 		}
