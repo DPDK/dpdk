@@ -1894,11 +1894,7 @@ struct mlx5_priv {
 	rte_spinlock_t hw_ctrl_lock;
 	LIST_HEAD(hw_ctrl_flow, mlx5_hw_ctrl_flow) hw_ctrl_flows;
 	LIST_HEAD(hw_ext_ctrl_flow, mlx5_hw_ctrl_flow) hw_ext_ctrl_flows;
-	struct rte_flow_template_table *hw_esw_sq_miss_root_tbl;
-	struct rte_flow_template_table *hw_esw_sq_miss_tbl;
-	struct rte_flow_template_table *hw_esw_zero_tbl;
-	struct rte_flow_template_table *hw_tx_meta_cpy_tbl;
-	struct rte_flow_template_table *hw_lacp_rx_tbl;
+	struct mlx5_flow_hw_ctrl_fdb *hw_ctrl_fdb;
 	struct rte_flow_pattern_template *hw_tx_repr_tagging_pt;
 	struct rte_flow_actions_template *hw_tx_repr_tagging_at;
 	struct rte_flow_template_table *hw_tx_repr_tagging_tbl;

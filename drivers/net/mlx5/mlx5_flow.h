@@ -2775,6 +2775,25 @@ struct mlx5_flow_hw_ctrl_rx {
 						[MLX5_FLOW_HW_CTRL_RX_EXPANDED_RSS_MAX];
 };
 
+/* Contains all templates required for control flow rules in FDB with HWS. */
+struct mlx5_flow_hw_ctrl_fdb {
+	struct rte_flow_pattern_template *esw_mgr_items_tmpl;
+	struct rte_flow_actions_template *regc_jump_actions_tmpl;
+	struct rte_flow_template_table *hw_esw_sq_miss_root_tbl;
+	struct rte_flow_pattern_template *regc_sq_items_tmpl;
+	struct rte_flow_actions_template *port_actions_tmpl;
+	struct rte_flow_template_table *hw_esw_sq_miss_tbl;
+	struct rte_flow_pattern_template *port_items_tmpl;
+	struct rte_flow_actions_template *jump_one_actions_tmpl;
+	struct rte_flow_template_table *hw_esw_zero_tbl;
+	struct rte_flow_pattern_template *tx_meta_items_tmpl;
+	struct rte_flow_actions_template *tx_meta_actions_tmpl;
+	struct rte_flow_template_table *hw_tx_meta_cpy_tbl;
+	struct rte_flow_pattern_template *lacp_rx_items_tmpl;
+	struct rte_flow_actions_template *lacp_rx_actions_tmpl;
+	struct rte_flow_template_table *hw_lacp_rx_tbl;
+};
+
 #define MLX5_CTRL_PROMISCUOUS    (RTE_BIT32(0))
 #define MLX5_CTRL_ALL_MULTICAST  (RTE_BIT32(1))
 #define MLX5_CTRL_BROADCAST      (RTE_BIT32(2))
