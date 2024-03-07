@@ -16,9 +16,6 @@ struct mempool_config {
 	int numa_node;
 };
 
-extern cmdline_parse_inst_t mempool_config_cmd_ctx;
-extern cmdline_parse_inst_t mempool_help_cmd_ctx;
-
 int mempool_process(struct mempool_config *config);
 
 #endif

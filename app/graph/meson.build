@@ -25,3 +25,11 @@ sources = files(
         'neigh.c',
         'utils.c',
 )
+
+cmd_h = custom_target('commands_hdr',
+        output: 'commands.h',
+        input: files('commands.list'),
+        capture: true,
+        command: [cmdline_gen_cmd, '--context-name=modules_ctx', '@INPUT@']
+)
+sources += cmd_h

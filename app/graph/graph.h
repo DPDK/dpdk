@@ -7,11 +7,6 @@
 
 #include <cmdline_parse.h>
 
-extern cmdline_parse_inst_t graph_config_cmd_ctx;
-extern cmdline_parse_inst_t graph_start_cmd_ctx;
-extern cmdline_parse_inst_t graph_stats_cmd_ctx;
-extern cmdline_parse_inst_t graph_help_cmd_ctx;
-
 int graph_walk_start(void *conf);
 void graph_stats_print(void);
 void graph_pcap_config_get(uint8_t *pcap_ena, uint64_t *num_pkts, char **file);

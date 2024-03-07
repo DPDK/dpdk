@@ -9,16 +9,6 @@
 
 #define ETHDEV_IPV6_ADDR_LEN	16
 
-extern cmdline_parse_inst_t ethdev_show_cmd_ctx;
-extern cmdline_parse_inst_t ethdev_stats_cmd_ctx;
-extern cmdline_parse_inst_t ethdev_mtu_cmd_ctx;
-extern cmdline_parse_inst_t ethdev_prom_mode_cmd_ctx;
-extern cmdline_parse_inst_t ethdev_ip4_cmd_ctx;
-extern cmdline_parse_inst_t ethdev_ip6_cmd_ctx;
-extern cmdline_parse_inst_t ethdev_forward_cmd_ctx;
-extern cmdline_parse_inst_t ethdev_cmd_ctx;
-extern cmdline_parse_inst_t ethdev_help_cmd_ctx;
-
 struct ipv4_addr_config {
 	uint32_t ip;
 	uint32_t mask;

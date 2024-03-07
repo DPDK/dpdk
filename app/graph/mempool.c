@@ -47,9 +47,9 @@ mempool_process(struct mempool_config *config)
 	return 0;
 }
 
-static void
-cli_mempool_help(__rte_unused void *parsed_result, __rte_unused struct cmdline *cl,
-		 __rte_unused void *data)
+void
+cmd_help_mempool_parsed(__rte_unused void *parsed_result, __rte_unused struct cmdline *cl,
+			__rte_unused void *data)
 {
 	size_t len;
 
@@ -63,10 +63,10 @@ cli_mempool_help(__rte_unused void *parsed_result, __rte_unused struct cmdline *
 	conn->msg_out_len_max -= len;
 }
 
-static void
-cli_mempool(void *parsed_result, __rte_unused struct cmdline *cl, __rte_unused void *data)
+void
+cmd_mempool_parsed(void *parsed_result, __rte_unused struct cmdline *cl, __rte_unused void *data)
 {
-	struct mempool_config_cmd_tokens *res = parsed_result;
+	struct cmd_mempool_result *res = parsed_result;
 	struct mempool_config config;
 	int rc = -EINVAL;
 
@@ -82,59 +82,3 @@ cli_mempool(void *parsed_result, __rte_unused struct cmdline *cl, __rte_unused v
 	if (rc < 0)
 		printf(MSG_CMD_FAIL, "mempool");
 }
-
-cmdline_parse_token_string_t mempool_config_add_mempool =
-	TOKEN_STRING_INITIALIZER(struct mempool_config_cmd_tokens, mempool, "mempool");
-cmdline_parse_token_string_t mempool_config_add_name =
-	TOKEN_STRING_INITIALIZER(struct mempool_config_cmd_tokens, name, NULL);
-cmdline_parse_token_string_t mempool_config_add_size =
-	TOKEN_STRING_INITIALIZER(struct mempool_config_cmd_tokens, size, "size");
-cmdline_parse_token_num_t mempool_config_add_buf_sz =
-	TOKEN_NUM_INITIALIZER(struct mempool_config_cmd_tokens, buf_sz, RTE_UINT16);
-cmdline_parse_token_string_t mempool_config_add_buffers =
-	TOKEN_STRING_INITIALIZER(struct mempool_config_cmd_tokens, buffers, "buffers");
-cmdline_parse_token_num_t mempool_config_add_nb_bufs =
-	TOKEN_NUM_INITIALIZER(struct mempool_config_cmd_tokens, nb_bufs, RTE_UINT16);
-cmdline_parse_token_string_t mempool_config_add_cache =
-	TOKEN_STRING_INITIALIZER(struct mempool_config_cmd_tokens, cache, "cache");
-cmdline_parse_token_num_t mempool_config_add_cache_size =
-	TOKEN_NUM_INITIALIZER(struct mempool_config_cmd_tokens, cache_size, RTE_UINT16);
-cmdline_parse_token_string_t mempool_config_add_numa =
-	TOKEN_STRING_INITIALIZER(struct mempool_config_cmd_tokens, numa, "numa");
-cmdline_parse_token_num_t mempool_config_add_node =
-	TOKEN_NUM_INITIALIZER(struct mempool_config_cmd_tokens, node, RTE_UINT16);
-
-cmdline_parse_inst_t mempool_config_cmd_ctx = {
-	.f = cli_mempool,
-	.data = NULL,
-	.help_str = cmd_mempool_help,
-	.tokens = {
-		(void *)&mempool_config_add_mempool,
-		(void *)&mempool_config_add_name,
-		(void *)&mempool_config_add_size,
-		(void *)&mempool_config_add_buf_sz,
-		(void *)&mempool_config_add_buffers,
-		(void *)&mempool_config_add_nb_bufs,
-		(void *)&mempool_config_add_cache,
-		(void *)&mempool_config_add_cache_size,
-		(void *)&mempool_config_add_numa,
-		(void *)&mempool_config_add_node,
-		NULL,
-	},
-};
-
-cmdline_parse_token_string_t mempool_help_cmd =
-	TOKEN_STRING_INITIALIZER(struct mempool_help_cmd_tokens, help, "help");
-cmdline_parse_token_string_t mempool_help_mempool =
-	TOKEN_STRING_INITIALIZER(struct mempool_help_cmd_tokens, mempool, "mempool");
-
-cmdline_parse_inst_t mempool_help_cmd_ctx = {
-	.f = cli_mempool_help,
-	.data = NULL,
-	.help_str = "",
-	.tokens = {
-		(void *)&mempool_help_cmd,
-		(void *)&mempool_help_mempool,
-		NULL,
-	},
-};

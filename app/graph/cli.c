@@ -19,34 +19,6 @@
 #define CMD_MAX_TOKENS 256
 #define MAX_LINE_SIZE 2048
 
-cmdline_parse_ctx_t modules_ctx[] = {
-	(cmdline_parse_inst_t *)&graph_config_cmd_ctx,
-	(cmdline_parse_inst_t *)&graph_start_cmd_ctx,
-	(cmdline_parse_inst_t *)&graph_stats_cmd_ctx,
-	(cmdline_parse_inst_t *)&graph_help_cmd_ctx,
-	(cmdline_parse_inst_t *)&mempool_config_cmd_ctx,
-	(cmdline_parse_inst_t *)&mempool_help_cmd_ctx,
-	(cmdline_parse_inst_t *)&ethdev_show_cmd_ctx,
-	(cmdline_parse_inst_t *)&ethdev_stats_cmd_ctx,
-	(cmdline_parse_inst_t *)&ethdev_mtu_cmd_ctx,
-	(cmdline_parse_inst_t *)&ethdev_prom_mode_cmd_ctx,
-	(cmdline_parse_inst_t *)&ethdev_ip4_cmd_ctx,
-	(cmdline_parse_inst_t *)&ethdev_ip6_cmd_ctx,
-	(cmdline_parse_inst_t *)&ethdev_forward_cmd_ctx,
-	(cmdline_parse_inst_t *)&ethdev_cmd_ctx,
-	(cmdline_parse_inst_t *)&ethdev_help_cmd_ctx,
-	(cmdline_parse_inst_t *)&ethdev_rx_cmd_ctx,
-	(cmdline_parse_inst_t *)&ethdev_rx_help_cmd_ctx,
-	(cmdline_parse_inst_t *)&ipv4_lookup_cmd_ctx,
-	(cmdline_parse_inst_t *)&ipv4_lookup_help_cmd_ctx,
-	(cmdline_parse_inst_t *)&ipv6_lookup_cmd_ctx,
-	(cmdline_parse_inst_t *)&ipv6_lookup_help_cmd_ctx,
-	(cmdline_parse_inst_t *)&neigh_v4_cmd_ctx,
-	(cmdline_parse_inst_t *)&neigh_v6_cmd_ctx,
-	(cmdline_parse_inst_t *)&neigh_help_cmd_ctx,
-	NULL,
-};
-
 static struct cmdline *cl;
 
 static int

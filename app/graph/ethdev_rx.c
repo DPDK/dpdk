@@ -83,83 +83,34 @@ ethdev_rx_map_add(char *name, uint32_t queue, uint32_t core)
 	return 0;
 }
 
-static void
-cli_ethdev_rx_help(__rte_unused void *parsed_result, __rte_unused struct cmdline *cl,
-		   __rte_unused void *data)
+void
+cmd_help_ethdev_rx_parsed(__rte_unused void *parsed_result, __rte_unused struct cmdline *cl,
+			  __rte_unused void *data)
 {
 	size_t len;
 
 	len = strlen(conn->msg_out);
 	conn->msg_out += len;
 	snprintf(conn->msg_out, conn->msg_out_len_max, "\n%s\n%s\n",
-		 "----------------------------- ethdev_rx command help -----------------------------",
+		 "---------------------------- ethdev_rx command help ----------------------------",
 		 cmd_ethdev_rx_help);
 
 	len = strlen(conn->msg_out);
 	conn->msg_out_len_max -= len;
 }
 
-static void
-cli_ethdev_rx(void *parsed_result, __rte_unused struct cmdline *cl, void *data __rte_unused)
+void
+cmd_ethdev_rx_map_port_parsed(void *parsed_result, __rte_unused struct cmdline *cl,
+			      void *data __rte_unused)
 {
-	struct ethdev_rx_cmd_tokens *res = parsed_result;
+	struct cmd_ethdev_rx_map_port_result *res = parsed_result;
 	int rc = -EINVAL;
 
 	rc = ethdev_rx_map_add(res->dev, res->qid, res->core_id);
 	if (rc < 0) {
 		cli_exit();
-		printf(MSG_CMD_FAIL, res->cmd);
+		printf(MSG_CMD_FAIL, res->ethdev_rx);
 		rte_exit(EXIT_FAILURE, "input core is Invalid\n");
 	}
 
 }
-
-cmdline_parse_token_string_t ethdev_rx_cmd =
-	TOKEN_STRING_INITIALIZER(struct ethdev_rx_cmd_tokens, cmd, "ethdev_rx");
-cmdline_parse_token_string_t ethdev_rx_map =
-	TOKEN_STRING_INITIALIZER(struct ethdev_rx_cmd_tokens, map, "map");
-cmdline_parse_token_string_t ethdev_rx_port =
-	TOKEN_STRING_INITIALIZER(struct ethdev_rx_cmd_tokens, port, "port");
-cmdline_parse_token_string_t ethdev_rx_dev =
-	TOKEN_STRING_INITIALIZER(struct ethdev_rx_cmd_tokens, dev, NULL);
-cmdline_parse_token_string_t ethdev_rx_queue =
-	TOKEN_STRING_INITIALIZER(struct ethdev_rx_cmd_tokens, queue, "queue");
-cmdline_parse_token_num_t ethdev_rx_qid =
-	TOKEN_NUM_INITIALIZER(struct ethdev_rx_cmd_tokens, qid, RTE_UINT32);
-cmdline_parse_token_string_t ethdev_rx_core =
-	TOKEN_STRING_INITIALIZER(struct ethdev_rx_cmd_tokens, core, "core");
-cmdline_parse_token_num_t ethdev_rx_core_id =
-	TOKEN_NUM_INITIALIZER(struct ethdev_rx_cmd_tokens, core_id, RTE_UINT32);
-
-cmdline_parse_inst_t ethdev_rx_cmd_ctx = {
-	.f = cli_ethdev_rx,
-	.data = NULL,
-	.help_str = cmd_ethdev_rx_help,
-	.tokens = {
-		(void *)&ethdev_rx_cmd,
-		(void *)&ethdev_rx_map,
-		(void *)&ethdev_rx_port,
-		(void *)&ethdev_rx_dev,
-		(void *)&ethdev_rx_queue,
-		(void *)&ethdev_rx_qid,
-		(void *)&ethdev_rx_core,
-		(void *)&ethdev_rx_core_id,
-		NULL,
-	},
-};
-
-cmdline_parse_token_string_t ethdev_rx_help_cmd =
-	TOKEN_STRING_INITIALIZER(struct ethdev_rx_help_cmd_tokens, cmd, "help");
-cmdline_parse_token_string_t ethdev_rx_help_module =
-	TOKEN_STRING_INITIALIZER(struct ethdev_rx_help_cmd_tokens, module, "ethdev_rx");
-
-cmdline_parse_inst_t ethdev_rx_help_cmd_ctx = {
-	.f = cli_ethdev_rx_help,
-	.data = NULL,
-	.help_str = "",
-	.tokens = {
-		(void *)&ethdev_rx_help_cmd,
-		(void *)&ethdev_rx_help_module,
-		NULL,
-	},
-};

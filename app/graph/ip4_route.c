@@ -20,7 +20,6 @@ cmd_ipv4_lookup_help[] = "ipv4_lookup route add ipv4 <ip> netmask <mask> via <ip
 
 struct ip4_route route4 = TAILQ_HEAD_INITIALIZER(route4);
 
-
 void
 route_ip4_list_clean(void)
 {
@@ -127,9 +126,9 @@ route_ip4_add_to_lookup(void)
 	return 0;
 }
 
-static void
-cli_ipv4_lookup_help(__rte_unused void *parsed_result, __rte_unused struct cmdline *cl,
-		     __rte_unused void *data)
+void
+cmd_help_ipv4_lookup_parsed(__rte_unused void *parsed_result, __rte_unused struct cmdline *cl,
+			    __rte_unused void *data)
 {
 	size_t len;
 
@@ -143,82 +142,19 @@ cli_ipv4_lookup_help(__rte_unused void *parsed_result, __rte_unused struct cmdli
 	conn->msg_out_len_max -= len;
 }
 
-static void
-cli_ipv4_lookup(void *parsed_result, __rte_unused struct cmdline *cl, void *data __rte_unused)
+void
+cmd_ipv4_lookup_route_add_ipv4_parsed(void *parsed_result, __rte_unused struct cmdline *cl,
+				      void *data __rte_unused)
 {
-	struct ip4_lookup_cmd_tokens *res = parsed_result;
+	struct cmd_ipv4_lookup_route_add_ipv4_result *res = parsed_result;
 	struct route_ipv4_config config;
 	int rc = -EINVAL;
 
-	if (parser_ip4_read(&config.ip, res->ip)) {
-		printf(MSG_ARG_INVALID, "ipv4");
-		return;
-	}
-
-	if (parser_ip4_read(&config.netmask, res->mask)) {
-		printf(MSG_ARG_INVALID, "netmask");
-		return;
-	}
-
-	if (parser_ip4_read(&config.via, res->via_ip)) {
-		printf(MSG_ARG_INVALID, "via ip");
-		return;
-	}
+	config.ip = rte_be_to_cpu_32(res->ip.addr.ipv4.s_addr);
+	config.netmask = rte_be_to_cpu_32(res->mask.addr.ipv4.s_addr);
+	config.via = rte_be_to_cpu_32(res->via_ip.addr.ipv4.s_addr);
 
 	rc = route_ip4_add(&config);
 	if (rc < 0)
-		printf(MSG_CMD_FAIL, res->cmd);
+		printf(MSG_CMD_FAIL, res->ipv4_lookup);
 }
-
-cmdline_parse_token_string_t ip4_lookup_cmd =
-	TOKEN_STRING_INITIALIZER(struct ip4_lookup_cmd_tokens, cmd, "ipv4_lookup");
-cmdline_parse_token_string_t ip4_lookup_route =
-	TOKEN_STRING_INITIALIZER(struct ip4_lookup_cmd_tokens, route, "route");
-cmdline_parse_token_string_t ip4_lookup_add =
-	TOKEN_STRING_INITIALIZER(struct ip4_lookup_cmd_tokens, add, "add");
-cmdline_parse_token_string_t ip4_lookup_ip4 =
-	TOKEN_STRING_INITIALIZER(struct ip4_lookup_cmd_tokens, ip4, "ipv4");
-cmdline_parse_token_string_t ip4_lookup_ip =
-	TOKEN_STRING_INITIALIZER(struct ip4_lookup_cmd_tokens, ip, NULL);
-cmdline_parse_token_string_t ip4_lookup_netmask =
-	TOKEN_STRING_INITIALIZER(struct ip4_lookup_cmd_tokens, netmask, "netmask");
-cmdline_parse_token_string_t ip4_lookup_mask =
-	TOKEN_STRING_INITIALIZER(struct ip4_lookup_cmd_tokens, mask, NULL);
-cmdline_parse_token_string_t ip4_lookup_via =
-	TOKEN_STRING_INITIALIZER(struct ip4_lookup_cmd_tokens, via, "via");
-cmdline_parse_token_string_t ip4_lookup_via_ip =
-	TOKEN_STRING_INITIALIZER(struct ip4_lookup_cmd_tokens, via_ip, NULL);
-
-cmdline_parse_inst_t ipv4_lookup_cmd_ctx = {
-	.f = cli_ipv4_lookup,
-	.data = NULL,
-	.help_str = cmd_ipv4_lookup_help,
-	.tokens = {
-		(void *)&ip4_lookup_cmd,
-		(void *)&ip4_lookup_route,
-		(void *)&ip4_lookup_add,
-		(void *)&ip4_lookup_ip4,
-		(void *)&ip4_lookup_ip,
-		(void *)&ip4_lookup_netmask,
-		(void *)&ip4_lookup_mask,
-		(void *)&ip4_lookup_via,
-		(void *)&ip4_lookup_via_ip,
-		NULL,
-	},
-};
-
-cmdline_parse_token_string_t ipv4_lookup_help_cmd =
-	TOKEN_STRING_INITIALIZER(struct ipv4_lookup_help_cmd_tokens, cmd, "help");
-cmdline_parse_token_string_t ipv4_lookup_help_module =
-	TOKEN_STRING_INITIALIZER(struct ipv4_lookup_help_cmd_tokens, module, "ipv4_lookup");
-
-cmdline_parse_inst_t ipv4_lookup_help_cmd_ctx = {
-	.f = cli_ipv4_lookup_help,
-	.data = NULL,
-	.help_str = "",
-	.tokens = {
-		(void *)&ipv4_lookup_help_cmd,
-		(void *)&ipv4_lookup_help_module,
-		NULL,
-	},
-};

@@ -235,18 +235,16 @@ neigh_ip6_add_to_rewrite(void)
 	return 0;
 }
 
-static void
-cli_neigh_v4(void *parsed_result, __rte_unused struct cmdline *cl, void *data __rte_unused)
+void
+cmd_neigh_add_ipv4_parsed(void *parsed_result, __rte_unused struct cmdline *cl,
+			  void *data __rte_unused)
 {
-	struct neigh_v4_cmd_tokens *res = parsed_result;
+	struct cmd_neigh_add_ipv4_result *res = parsed_result;
 	int rc = -EINVAL;
 	uint64_t mac;
 	uint32_t ip;
 
-	if (parser_ip4_read(&ip, res->ip)) {
-		printf(MSG_ARG_INVALID, "ip");
-		return;
-	}
+	ip = rte_be_to_cpu_32(res->ip.addr.ipv4.s_addr);
 
 	if (parser_mac_read(&mac, res->mac)) {
 		printf(MSG_ARG_INVALID, "mac");
@@ -255,21 +253,20 @@ cli_neigh_v4(void *parsed_result, __rte_unused struct cmdline *cl, void *data __
 
 	rc = neigh_ip4_add(ip, mac);
 	if (rc < 0)
-		printf(MSG_CMD_FAIL, res->cmd);
+		printf(MSG_CMD_FAIL, res->neigh);
 }
 
-static void
-cli_neigh_v6(void *parsed_result, __rte_unused struct cmdline *cl, void *data __rte_unused)
+void
+cmd_neigh_add_ipv6_parsed(void *parsed_result, __rte_unused struct cmdline *cl,
+			  void *data __rte_unused)
 {
-	struct neigh_v6_cmd_tokens *res = parsed_result;
+	struct cmd_neigh_add_ipv6_result *res = parsed_result;
 	uint8_t ip[ETHDEV_IPV6_ADDR_LEN];
-	int rc = -EINVAL;
+	int rc = -EINVAL, i;
 	uint64_t mac;
 
-	if (parser_ip6_read(ip, res->ip)) {
-		printf(MSG_ARG_INVALID, "ip");
-		return;
-	}
+	for (i = 0; i < ETHDEV_IPV6_ADDR_LEN; i++)
+		ip[i] = res->ip.addr.ipv6.s6_addr[i];
 
 	if (parser_mac_read(&mac, res->mac)) {
 		printf(MSG_ARG_INVALID, "mac");
@@ -278,12 +275,12 @@ cli_neigh_v6(void *parsed_result, __rte_unused struct cmdline *cl, void *data __
 
 	rc = neigh_ip6_add(ip, mac);
 	if (rc < 0)
-		printf(MSG_CMD_FAIL, res->cmd);
+		printf(MSG_CMD_FAIL, res->neigh);
 }
 
-static void
-cli_neigh_help(__rte_unused void *parsed_result, __rte_unused struct cmdline *cl,
-	       __rte_unused void *data)
+void
+cmd_help_neigh_parsed(__rte_unused void *parsed_result, __rte_unused struct cmdline *cl,
+		      __rte_unused void *data)
 {
 	size_t len;
 
@@ -296,69 +293,3 @@ cli_neigh_help(__rte_unused void *parsed_result, __rte_unused struct cmdline *cl
 	len = strlen(conn->msg_out);
 	conn->msg_out_len_max -= len;
 }
-
-cmdline_parse_token_string_t neigh_v4_cmd =
-	TOKEN_STRING_INITIALIZER(struct neigh_v4_cmd_tokens, cmd, "neigh");
-cmdline_parse_token_string_t neigh_v4_add =
-	TOKEN_STRING_INITIALIZER(struct neigh_v4_cmd_tokens, add, "add");
-cmdline_parse_token_string_t neigh_v4_ip4 =
-	TOKEN_STRING_INITIALIZER(struct neigh_v4_cmd_tokens, ip4, "ipv4");
-cmdline_parse_token_string_t neigh_v4_ip =
-	TOKEN_STRING_INITIALIZER(struct neigh_v4_cmd_tokens, ip, NULL);
-cmdline_parse_token_string_t neigh_v4_mac =
-	TOKEN_STRING_INITIALIZER(struct neigh_v4_cmd_tokens, mac, NULL);
-
-cmdline_parse_inst_t neigh_v4_cmd_ctx = {
-	.f = cli_neigh_v4,
-	.data = NULL,
-	.help_str = cmd_neigh_v4_help,
-	.tokens = {
-		(void *)&neigh_v4_cmd,
-		(void *)&neigh_v4_add,
-		(void *)&neigh_v4_ip4,
-		(void *)&neigh_v4_ip,
-		(void *)&neigh_v4_mac,
-		NULL,
-	},
-};
-
-cmdline_parse_token_string_t neigh_v6_cmd =
-	TOKEN_STRING_INITIALIZER(struct neigh_v6_cmd_tokens, cmd, "neigh");
-cmdline_parse_token_string_t neigh_v6_add =
-	TOKEN_STRING_INITIALIZER(struct neigh_v6_cmd_tokens, add, "add");
-cmdline_parse_token_string_t neigh_v6_ip6 =
-	TOKEN_STRING_INITIALIZER(struct neigh_v6_cmd_tokens, ip6, "ipv6");
-cmdline_parse_token_string_t neigh_v6_ip =
-	TOKEN_STRING_INITIALIZER(struct neigh_v6_cmd_tokens, ip, NULL);
-cmdline_parse_token_string_t neigh_v6_mac =
-	TOKEN_STRING_INITIALIZER(struct neigh_v6_cmd_tokens, mac, NULL);
-
-cmdline_parse_inst_t neigh_v6_cmd_ctx = {
-	.f = cli_neigh_v6,
-	.data = NULL,
-	.help_str = cmd_neigh_v6_help,
-	.tokens = {
-		(void *)&neigh_v6_cmd,
-		(void *)&neigh_v6_add,
-		(void *)&neigh_v6_ip6,
-		(void *)&neigh_v6_ip,
-		(void *)&neigh_v6_mac,
-		NULL,
-	},
-};
-
-cmdline_parse_token_string_t neigh_help_cmd =
-	TOKEN_STRING_INITIALIZER(struct neigh_help_cmd_tokens, cmd, "help");
-cmdline_parse_token_string_t neigh_help_module =
-	TOKEN_STRING_INITIALIZER(struct neigh_help_cmd_tokens, module, "neigh");
-
-cmdline_parse_inst_t neigh_help_cmd_ctx = {
-	.f = cli_neigh_help,
-	.data = NULL,
-	.help_str = "",
-	.tokens = {
-		(void *)&neigh_help_cmd,
-		(void *)&neigh_help_module,
-		NULL,
-	},
-};

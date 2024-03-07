@@ -10,6 +10,7 @@
 
 #include "cli.h"
 #include "conn.h"
+#include "commands.h"
 #include "ethdev.h"
 #include "ethdev_rx.h"
 #include "graph.h"

@@ -20,7 +20,7 @@
 #define RTE_LOGTYPE_APP_GRAPH RTE_LOGTYPE_USER1
 
 static const char
-cmd_graph_help[] = "graph <usecases> bsz <size> tmo <ns> coremask <bitmask> "
+cmd_graph_help[] = "graph <usecases> coremask <bitmask> bsz <size> tmo <ns> "
 		   "model <rtc | mcd | default> pcap_enable <0 | 1> num_pcap_pkts <num>"
 		   "pcap_file <output_capture_file>";
 
@@ -244,8 +244,8 @@ graph_stats_print_to_file(void)
 	fclose(fp);
 }
 
-static void
-cli_graph_stats(__rte_unused void *parsed_result, __rte_unused struct cmdline *cl,
+void
+cmd_graph_stats_show_parsed(__rte_unused void *parsed_result, __rte_unused struct cmdline *cl,
 		__rte_unused void *data)
 {
 	graph_stats_print_to_file();
@@ -257,8 +257,8 @@ graph_status_get(void)
 	return graph_started;
 }
 
-static void
-cli_graph_start(__rte_unused void *parsed_result, __rte_unused struct cmdline *cl,
+void
+cmd_graph_start_parsed(__rte_unused void *parsed_result, __rte_unused struct cmdline *cl,
 		__rte_unused void *data)
 {
 	struct rte_node_ethdev_config *conf;
@@ -394,10 +394,10 @@ graph_coremask_get(void)
 	return graph_config.params.coremask;
 }
 
-static void
-cli_graph(void *parsed_result, __rte_unused struct cmdline *cl, __rte_unused void *data)
+void
+cmd_graph_parsed(void *parsed_result, __rte_unused struct cmdline *cl, __rte_unused void *data)
 {
-	struct graph_config_cmd_tokens *res = parsed_result;
+	struct cmd_graph_result *res = parsed_result;
 	struct graph_config config;
 	char *model_name;
 	uint8_t model;
@@ -430,9 +430,9 @@ cli_graph(void *parsed_result, __rte_unused struct cmdline *cl, __rte_unused voi
 	}
 }
 
-static void
-cli_graph_help(__rte_unused void *parsed_result, __rte_unused struct cmdline *cl,
-	       __rte_unused void *data)
+void
+cmd_help_graph_parsed(__rte_unused void *parsed_result, __rte_unused struct cmdline *cl,
+		      __rte_unused void *data)
 {
 	size_t len;
 
@@ -445,112 +445,3 @@ cli_graph_help(__rte_unused void *parsed_result, __rte_unused struct cmdline *cl
 	len = strlen(conn->msg_out);
 	conn->msg_out_len_max -= len;
 }
-
-cmdline_parse_token_string_t graph_display_graph =
-	TOKEN_STRING_INITIALIZER(struct graph_stats_cmd_tokens, graph, "graph");
-cmdline_parse_token_string_t graph_display_stats =
-	TOKEN_STRING_INITIALIZER(struct graph_stats_cmd_tokens, stats, "stats");
-cmdline_parse_token_string_t graph_display_show =
-	TOKEN_STRING_INITIALIZER(struct graph_stats_cmd_tokens, show, "show");
-
-cmdline_parse_inst_t graph_stats_cmd_ctx = {
-	.f = cli_graph_stats,
-	.data = NULL,
-	.help_str = "graph stats show",
-	.tokens = {
-		(void *)&graph_display_graph,
-		(void *)&graph_display_stats,
-		(void *)&graph_display_show,
-		NULL,
-	},
-};
-
-cmdline_parse_token_string_t graph_config_start_graph =
-	TOKEN_STRING_INITIALIZER(struct graph_start_cmd_tokens, graph, "graph");
-cmdline_parse_token_string_t graph_config_start =
-	TOKEN_STRING_INITIALIZER(struct graph_start_cmd_tokens, start, "start");
-
-cmdline_parse_inst_t graph_start_cmd_ctx = {
-	.f = cli_graph_start,
-	.data = NULL,
-	.help_str = "graph start",
-	.tokens = {
-		(void *)&graph_config_start_graph,
-		(void *)&graph_config_start,
-		NULL,
-	},
-};
-
-cmdline_parse_token_string_t graph_config_add_graph =
-	TOKEN_STRING_INITIALIZER(struct graph_config_cmd_tokens, graph, "graph");
-cmdline_parse_token_string_t graph_config_add_usecase =
-	TOKEN_STRING_INITIALIZER(struct graph_config_cmd_tokens, usecase, NULL);
-cmdline_parse_token_string_t graph_config_add_coremask =
-	TOKEN_STRING_INITIALIZER(struct graph_config_cmd_tokens, coremask, "coremask");
-cmdline_parse_token_num_t graph_config_add_mask =
-	TOKEN_NUM_INITIALIZER(struct graph_config_cmd_tokens, mask, RTE_UINT64);
-cmdline_parse_token_string_t graph_config_add_bsz =
-	TOKEN_STRING_INITIALIZER(struct graph_config_cmd_tokens, bsz, "bsz");
-cmdline_parse_token_num_t graph_config_add_size =
-	TOKEN_NUM_INITIALIZER(struct graph_config_cmd_tokens, size, RTE_UINT16);
-cmdline_parse_token_string_t graph_config_add_tmo =
-	TOKEN_STRING_INITIALIZER(struct graph_config_cmd_tokens, tmo, "tmo");
-cmdline_parse_token_num_t graph_config_add_ns =
-	TOKEN_NUM_INITIALIZER(struct graph_config_cmd_tokens, ns, RTE_UINT64);
-cmdline_parse_token_string_t graph_config_add_model =
-	TOKEN_STRING_INITIALIZER(struct graph_config_cmd_tokens, model, "model");
-cmdline_parse_token_string_t graph_config_add_model_name =
-	TOKEN_STRING_INITIALIZER(struct graph_config_cmd_tokens, model_name, "rtc#mcd#default");
-cmdline_parse_token_string_t graph_config_add_capt_ena =
-	TOKEN_STRING_INITIALIZER(struct graph_config_cmd_tokens, capt_ena, "pcap_enable");
-cmdline_parse_token_num_t graph_config_add_pcap_ena =
-	TOKEN_NUM_INITIALIZER(struct graph_config_cmd_tokens, pcap_ena, RTE_UINT8);
-cmdline_parse_token_string_t graph_config_add_capt_pkts_count =
-	TOKEN_STRING_INITIALIZER(struct graph_config_cmd_tokens, capt_pkts_count, "num_pcap_pkts");
-cmdline_parse_token_num_t graph_config_add_num_pcap_pkts =
-	TOKEN_NUM_INITIALIZER(struct graph_config_cmd_tokens, num_pcap_pkts, RTE_UINT64);
-cmdline_parse_token_string_t graph_config_add_capt_file =
-	TOKEN_STRING_INITIALIZER(struct graph_config_cmd_tokens, capt_file, "pcap_file");
-cmdline_parse_token_string_t graph_config_add_pcap_file =
-	TOKEN_STRING_INITIALIZER(struct graph_config_cmd_tokens, pcap_file, NULL);
-
-cmdline_parse_inst_t graph_config_cmd_ctx = {
-	.f = cli_graph,
-	.data = NULL,
-	.help_str = cmd_graph_help,
-	.tokens = {
-		(void *)&graph_config_add_graph,
-		(void *)&graph_config_add_usecase,
-		(void *)&graph_config_add_coremask,
-		(void *)&graph_config_add_mask,
-		(void *)&graph_config_add_bsz,
-		(void *)&graph_config_add_size,
-		(void *)&graph_config_add_tmo,
-		(void *)&graph_config_add_ns,
-		(void *)&graph_config_add_model,
-		(void *)&graph_config_add_model_name,
-		(void *)&graph_config_add_capt_ena,
-		(void *)&graph_config_add_pcap_ena,
-		(void *)&graph_config_add_capt_pkts_count,
-		(void *)&graph_config_add_num_pcap_pkts,
-		(void *)&graph_config_add_capt_file,
-		(void *)&graph_config_add_pcap_file,
-		NULL,
-	},
-};
-
-cmdline_parse_token_string_t graph_help_cmd =
-	TOKEN_STRING_INITIALIZER(struct graph_help_cmd_tokens, help, "help");
-cmdline_parse_token_string_t graph_help_graph =
-	TOKEN_STRING_INITIALIZER(struct graph_help_cmd_tokens, graph, "graph");
-
-cmdline_parse_inst_t graph_help_cmd_ctx = {
-	.f = cli_graph_help,
-	.data = NULL,
-	.help_str = "",
-	.tokens = {
-		(void *)&graph_help_cmd,
-		(void *)&graph_help_graph,
-		NULL,
-	},
-};

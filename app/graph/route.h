@@ -7,11 +7,6 @@
 
 #define MAX_ROUTE_ENTRIES 32
 
-extern cmdline_parse_inst_t ipv4_lookup_cmd_ctx;
-extern cmdline_parse_inst_t ipv6_lookup_cmd_ctx;
-extern cmdline_parse_inst_t ipv4_lookup_help_cmd_ctx;
-extern cmdline_parse_inst_t ipv6_lookup_help_cmd_ctx;
-
 struct route_ipv4_config {
 	TAILQ_ENTRY(route_ipv4_config) next;
 	uint32_t ip;

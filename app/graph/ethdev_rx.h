@@ -29,8 +29,6 @@ uint8_t ethdev_rx_num_rx_queues_get(uint16_t port);
 
 extern struct rte_node_ethdev_config ethdev_conf[RTE_MAX_ETHPORTS];
 extern struct lcore_conf lcore_conf[RTE_MAX_LCORE];
-extern cmdline_parse_inst_t ethdev_rx_help_cmd_ctx;
-extern cmdline_parse_inst_t ethdev_rx_cmd_ctx;
 extern struct lcore_params *lcore_params;
 extern uint16_t nb_lcore_params;
 
