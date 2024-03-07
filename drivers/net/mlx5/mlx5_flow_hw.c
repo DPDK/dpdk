@@ -104,6 +104,12 @@ struct mlx5_tbl_multi_pattern_ctx {
 
 #define MLX5_EMPTY_MULTI_PATTERN_CTX {{{0,}},}
 
+static __rte_always_inline struct mlx5_hw_q_job *
+flow_hw_action_job_init(struct mlx5_priv *priv, uint32_t queue,
+			const struct rte_flow_action_handle *handle,
+			void *user_data, void *query_data,
+			enum mlx5_hw_job_type type,
+			struct rte_flow_error *error);
 static int
 mlx5_tbl_multi_pattern_process(struct rte_eth_dev *dev,
 			       struct rte_flow_template_table *tbl,
@@ -276,21 +282,6 @@ static const struct rte_flow_item_eth ctrl_rx_eth_bcast_spec = {
 	.hdr.src_addr.addr_bytes = "\x00\x00\x00\x00\x00\x00",
 	.hdr.ether_type = 0,
 };
-
-static __rte_always_inline struct mlx5_hw_q_job *
-flow_hw_job_get(struct mlx5_priv *priv, uint32_t queue)
-{
-	MLX5_ASSERT(priv->hw_q[queue].job_idx <= priv->hw_q[queue].size);
-	return priv->hw_q[queue].job_idx ?
-	       priv->hw_q[queue].job[--priv->hw_q[queue].job_idx] : NULL;
-}
-
-static __rte_always_inline void
-flow_hw_job_put(struct mlx5_priv *priv, struct mlx5_hw_q_job *job, uint32_t queue)
-{
-	MLX5_ASSERT(priv->hw_q[queue].job_idx < priv->hw_q[queue].size);
-	priv->hw_q[queue].job[priv->hw_q[queue].job_idx++] = job;
-}
 
 static inline enum mlx5dr_matcher_insert_mode
 flow_hw_matcher_insert_mode_get(enum rte_flow_table_insertion_type insert_type)
@@ -1458,7 +1449,7 @@ flow_hw_meter_compile(struct rte_eth_dev *dev,
 	acts->rule_acts[jump_pos].action = (!!group) ?
 				    acts->jump->hws_action :
 				    acts->jump->root_action;
-	if (mlx5_aso_mtr_wait(priv->sh, MLX5_HW_INV_QUEUE, aso_mtr))
+	if (mlx5_aso_mtr_wait(priv, aso_mtr, true))
 		return -ENOMEM;
 	return 0;
 }
@@ -1535,7 +1526,7 @@ static rte_be32_t vlan_hdr_to_be32(const struct rte_flow_action *actions)
 static __rte_always_inline struct mlx5_aso_mtr *
 flow_hw_meter_mark_alloc(struct rte_eth_dev *dev, uint32_t queue,
 			 const struct rte_flow_action *action,
-			 void *user_data, bool push)
+			 struct mlx5_hw_q_job *job, bool push)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_aso_mtr_pool *pool = priv->hws_mpool;
@@ -1543,6 +1534,8 @@ flow_hw_meter_mark_alloc(struct rte_eth_dev *dev, uint32_t queue,
 	struct mlx5_aso_mtr *aso_mtr;
 	struct mlx5_flow_meter_info *fm;
 	uint32_t mtr_id;
+	uintptr_t handle = (uintptr_t)MLX5_INDIRECT_ACTION_TYPE_METER_MARK <<
+					MLX5_INDIRECT_ACTION_TYPE_OFFSET;
 
 	if (meter_mark->profile == NULL)
 		return NULL;
@@ -1561,15 +1554,16 @@ flow_hw_meter_mark_alloc(struct rte_eth_dev *dev, uint32_t queue,
 			  ASO_METER_WAIT : ASO_METER_WAIT_ASYNC;
 	aso_mtr->offset = mtr_id - 1;
 	aso_mtr->init_color = fm->color_aware ? RTE_COLORS : RTE_COLOR_GREEN;
+	job->action = (void *)(handle | mtr_id);
 	/* Update ASO flow meter by wqe. */
-	if (mlx5_aso_meter_update_by_wqe(priv->sh, queue, aso_mtr,
-					 &priv->mtr_bulk, user_data, push)) {
+	if (mlx5_aso_meter_update_by_wqe(priv, queue, aso_mtr,
+					 &priv->mtr_bulk, job, push)) {
 		mlx5_ipool_free(pool->idx_pool, mtr_id);
 		return NULL;
 	}
 	/* Wait for ASO object completion. */
 	if (queue == MLX5_HW_INV_QUEUE &&
-	    mlx5_aso_mtr_wait(priv->sh, MLX5_HW_INV_QUEUE, aso_mtr)) {
+	    mlx5_aso_mtr_wait(priv, aso_mtr, true)) {
 		mlx5_ipool_free(pool->idx_pool, mtr_id);
 		return NULL;
 	}
@@ -1587,10 +1581,17 @@ flow_hw_meter_mark_compile(struct rte_eth_dev *dev,
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_aso_mtr_pool *pool = priv->hws_mpool;
 	struct mlx5_aso_mtr *aso_mtr;
+	struct mlx5_hw_q_job *job =
+		flow_hw_action_job_init(priv, queue, NULL, NULL, NULL,
+					MLX5_HW_Q_JOB_TYPE_CREATE, NULL);
 
-	aso_mtr = flow_hw_meter_mark_alloc(dev, queue, action, NULL, true);
-	if (!aso_mtr)
+	if (!job)
 		return -1;
+	aso_mtr = flow_hw_meter_mark_alloc(dev, queue, action, job, true);
+	if (!aso_mtr) {
+		flow_hw_job_put(priv, job, queue);
+		return -1;
+	}
 
 	/* Compile METER_MARK action */
 	acts[aso_mtr_pos].action = pool->action;
@@ -3099,7 +3100,7 @@ flow_hw_actions_construct(struct rte_eth_dev *dev,
 							 jump->root_action;
 			job->flow->jump = jump;
 			job->flow->fate_type = MLX5_FLOW_FATE_JUMP;
-			if (mlx5_aso_mtr_wait(priv->sh, MLX5_HW_INV_QUEUE, aso_mtr))
+			if (mlx5_aso_mtr_wait(priv, aso_mtr, true))
 				return -1;
 			break;
 		case RTE_FLOW_ACTION_TYPE_AGE:
@@ -3777,13 +3778,6 @@ flow_hw_pull_legacy_indirect_comp(struct rte_eth_dev *dev, struct mlx5_hw_q_job 
 						job->query.hw);
 			aso_ct->state = ASO_CONNTRACK_READY;
 		}
-	} else {
-		/*
-		 * rte_flow_op_result::user data can point to
-		 * struct mlx5_aso_mtr object as well
-		 */
-		if (queue != CTRL_QUEUE_ID(priv))
-			MLX5_ASSERT(false);
 	}
 }
 
@@ -10067,7 +10061,8 @@ flow_hw_action_job_init(struct mlx5_priv *priv, uint32_t queue,
 {
 	struct mlx5_hw_q_job *job;
 
-	MLX5_ASSERT(queue != MLX5_HW_INV_QUEUE);
+	if (queue == MLX5_HW_INV_QUEUE)
+		queue = CTRL_QUEUE_ID(priv);
 	job = flow_hw_job_get(priv, queue);
 	if (!job) {
 		rte_flow_error_set(error, ENOMEM,
@@ -10080,6 +10075,17 @@ flow_hw_action_job_init(struct mlx5_priv *priv, uint32_t queue,
 	job->user_data = user_data;
 	job->query.user = query_data;
 	return job;
+}
+
+struct mlx5_hw_q_job *
+mlx5_flow_action_job_init(struct mlx5_priv *priv, uint32_t queue,
+			  const struct rte_flow_action_handle *handle,
+			  void *user_data, void *query_data,
+			  enum mlx5_hw_job_type type,
+			  struct rte_flow_error *error)
+{
+	return flow_hw_action_job_init(priv, queue, handle, user_data, query_data,
+				       type, error);
 }
 
 static __rte_always_inline void
@@ -10141,12 +10147,12 @@ flow_hw_action_handle_create(struct rte_eth_dev *dev, uint32_t queue,
 	const struct rte_flow_action_age *age;
 	struct mlx5_aso_mtr *aso_mtr;
 	cnt_id_t cnt_id;
-	uint32_t mtr_id;
 	uint32_t age_idx;
 	bool push = flow_hw_action_push(attr);
 	bool aso = false;
+	bool force_job = action->type == RTE_FLOW_ACTION_TYPE_METER_MARK;
 
-	if (attr) {
+	if (attr || force_job) {
 		job = flow_hw_action_job_init(priv, queue, NULL, user_data,
 					      NULL, MLX5_HW_Q_JOB_TYPE_CREATE,
 					      error);
@@ -10201,9 +10207,7 @@ flow_hw_action_handle_create(struct rte_eth_dev *dev, uint32_t queue,
 		aso_mtr = flow_hw_meter_mark_alloc(dev, queue, action, job, push);
 		if (!aso_mtr)
 			break;
-		mtr_id = (MLX5_INDIRECT_ACTION_TYPE_METER_MARK <<
-			MLX5_INDIRECT_ACTION_TYPE_OFFSET) | (aso_mtr->fm.meter_id);
-		handle = (struct rte_flow_action_handle *)(uintptr_t)mtr_id;
+		handle = (void *)(uintptr_t)job->action;
 		break;
 	case RTE_FLOW_ACTION_TYPE_RSS:
 		handle = flow_dv_action_create(dev, conf, action, error);
@@ -10218,7 +10222,7 @@ flow_hw_action_handle_create(struct rte_eth_dev *dev, uint32_t queue,
 				   NULL, "action type not supported");
 		break;
 	}
-	if (job) {
+	if (job && !force_job) {
 		job->action = handle;
 		job->indirect_type = MLX5_HW_INDIRECT_TYPE_LEGACY;
 		flow_hw_action_finalize(dev, queue, job, push, aso,
@@ -10251,15 +10255,17 @@ mlx5_flow_update_meter_mark(struct rte_eth_dev *dev, uint32_t queue,
 		fm->color_aware = meter_mark->color_mode;
 	if (upd_meter_mark->state_valid)
 		fm->is_enable = meter_mark->state;
+	aso_mtr->state = (queue == MLX5_HW_INV_QUEUE) ?
+			 ASO_METER_WAIT : ASO_METER_WAIT_ASYNC;
 	/* Update ASO flow meter by wqe. */
-	if (mlx5_aso_meter_update_by_wqe(priv->sh, queue,
+	if (mlx5_aso_meter_update_by_wqe(priv, queue,
 					 aso_mtr, &priv->mtr_bulk, job, push))
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 					  NULL, "Unable to update ASO meter WQE");
 	/* Wait for ASO object completion. */
 	if (queue == MLX5_HW_INV_QUEUE &&
-	    mlx5_aso_mtr_wait(priv->sh, MLX5_HW_INV_QUEUE, aso_mtr))
+	    mlx5_aso_mtr_wait(priv, aso_mtr, true))
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 					  NULL, "Unable to wait for ASO meter CQE");
@@ -10305,8 +10311,9 @@ flow_hw_action_handle_update(struct rte_eth_dev *dev, uint32_t queue,
 	int ret = 0;
 	bool push = flow_hw_action_push(attr);
 	bool aso = false;
+	bool force_job = type == MLX5_INDIRECT_ACTION_TYPE_METER_MARK;
 
-	if (attr) {
+	if (attr || force_job) {
 		job = flow_hw_action_job_init(priv, queue, handle, user_data,
 					      NULL, MLX5_HW_Q_JOB_TYPE_UPDATE,
 					      error);
@@ -10343,7 +10350,7 @@ flow_hw_action_handle_update(struct rte_eth_dev *dev, uint32_t queue,
 					  "action type not supported");
 		break;
 	}
-	if (job)
+	if (job && !force_job)
 		flow_hw_action_finalize(dev, queue, job, push, aso, ret == 0);
 	return ret;
 }
@@ -10386,8 +10393,9 @@ flow_hw_action_handle_destroy(struct rte_eth_dev *dev, uint32_t queue,
 	bool push = flow_hw_action_push(attr);
 	bool aso = false;
 	int ret = 0;
+	bool force_job = type == MLX5_INDIRECT_ACTION_TYPE_METER_MARK;
 
-	if (attr) {
+	if (attr || force_job) {
 		job = flow_hw_action_job_init(priv, queue, handle, user_data,
 					      NULL, MLX5_HW_Q_JOB_TYPE_DESTROY,
 					      error);
@@ -10423,7 +10431,7 @@ flow_hw_action_handle_destroy(struct rte_eth_dev *dev, uint32_t queue,
 		fm = &aso_mtr->fm;
 		fm->is_enable = 0;
 		/* Update ASO flow meter by wqe. */
-		if (mlx5_aso_meter_update_by_wqe(priv->sh, queue, aso_mtr,
+		if (mlx5_aso_meter_update_by_wqe(priv, queue, aso_mtr,
 						 &priv->mtr_bulk, job, push)) {
 			ret = -EINVAL;
 			rte_flow_error_set(error, EINVAL,
@@ -10433,7 +10441,7 @@ flow_hw_action_handle_destroy(struct rte_eth_dev *dev, uint32_t queue,
 		}
 		/* Wait for ASO object completion. */
 		if (queue == MLX5_HW_INV_QUEUE &&
-		    mlx5_aso_mtr_wait(priv->sh, MLX5_HW_INV_QUEUE, aso_mtr)) {
+		    mlx5_aso_mtr_wait(priv, aso_mtr, true)) {
 			ret = -EINVAL;
 			rte_flow_error_set(error, EINVAL,
 				RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
@@ -10457,7 +10465,7 @@ flow_hw_action_handle_destroy(struct rte_eth_dev *dev, uint32_t queue,
 					  "action type not supported");
 		break;
 	}
-	if (job)
+	if (job && !force_job)
 		flow_hw_action_finalize(dev, queue, job, push, aso, ret == 0);
 	return ret;
 }
