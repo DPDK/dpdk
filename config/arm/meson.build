@@ -109,6 +109,7 @@ part_number_config_arm = {
         'march': 'armv9-a',
         'march_features': ['sve2'],
         'mcpu' : 'neoverse-v2',
+        'fallback_march': 'armv8.5-a',
         'flags': [
             ['RTE_MACHINE', '"neoverse-v2"'],
             ['RTE_ARM_FEATURE_ATOMICS', true],
