@@ -618,6 +618,7 @@ mlx5_flow_meter_profile_get(struct rte_eth_dev *dev,
 							meter_profile_id);
 }
 
+#if defined(HAVE_MLX5_HWS_SUPPORT)
 /**
  * Callback to add MTR profile with HWS.
  *
@@ -697,6 +698,7 @@ mlx5_flow_meter_profile_hws_delete(struct rte_eth_dev *dev,
 	memset(fmp, 0, sizeof(struct mlx5_flow_meter_profile));
 	return 0;
 }
+#endif
 
 /**
  * Find policy by id.
@@ -839,6 +841,7 @@ mlx5_flow_meter_policy_validate(struct rte_eth_dev *dev,
 	return 0;
 }
 
+#if defined(HAVE_MLX5_HWS_SUPPORT)
 /**
  * Callback to check MTR policy action validate for HWS
  *
@@ -875,6 +878,7 @@ mlx5_flow_meter_policy_hws_validate(struct rte_eth_dev *dev,
 	}
 	return 0;
 }
+#endif
 
 static int
 __mlx5_flow_meter_policy_delete(struct rte_eth_dev *dev,
@@ -1201,6 +1205,7 @@ mlx5_flow_meter_policy_get(struct rte_eth_dev *dev,
 							      &policy_idx);
 }
 
+#if defined(HAVE_MLX5_HWS_SUPPORT)
 /**
  * Callback to delete MTR policy for HWS.
  *
@@ -1523,7 +1528,7 @@ policy_add_err:
 				  RTE_MTR_ERROR_TYPE_UNSPECIFIED,
 				  NULL, "Failed to create meter policy.");
 }
-
+#endif
 /**
  * Check meter validation.
  *
@@ -1893,6 +1898,7 @@ error:
 		NULL, "Failed to create devx meter.");
 }
 
+#if defined(HAVE_MLX5_HWS_SUPPORT)
 /**
  * Create meter rules.
  *
@@ -1976,6 +1982,7 @@ mlx5_flow_meter_hws_create(struct rte_eth_dev *dev, uint32_t meter_id,
 	__atomic_fetch_add(&policy->ref_cnt, 1, __ATOMIC_RELAXED);
 	return 0;
 }
+#endif
 
 static int
 mlx5_flow_meter_params_flush(struct rte_eth_dev *dev,
@@ -2460,6 +2467,7 @@ static const struct rte_mtr_ops mlx5_flow_mtr_ops = {
 	.stats_read = mlx5_flow_meter_stats_read,
 };
 
+#if defined(HAVE_MLX5_HWS_SUPPORT)
 static const struct rte_mtr_ops mlx5_flow_mtr_hws_ops = {
 	.capabilities_get = mlx5_flow_mtr_cap_get,
 	.meter_profile_add = mlx5_flow_meter_profile_hws_add,
@@ -2478,6 +2486,7 @@ static const struct rte_mtr_ops mlx5_flow_mtr_hws_ops = {
 	.stats_update = NULL,
 	.stats_read = NULL,
 };
+#endif
 
 /**
  * Get meter operations.
@@ -2493,12 +2502,16 @@ static const struct rte_mtr_ops mlx5_flow_mtr_hws_ops = {
 int
 mlx5_flow_meter_ops_get(struct rte_eth_dev *dev __rte_unused, void *arg)
 {
+#if defined(HAVE_MLX5_HWS_SUPPORT)
 	struct mlx5_priv *priv = dev->data->dev_private;
 
 	if (priv->sh->config.dv_flow_en == 2)
 		*(const struct rte_mtr_ops **)arg = &mlx5_flow_mtr_hws_ops;
 	else
 		*(const struct rte_mtr_ops **)arg = &mlx5_flow_mtr_ops;
+#else
+	*(const struct rte_mtr_ops **)arg = &mlx5_flow_mtr_ops;
+#endif
 	return 0;
 }
 
@@ -2877,7 +2890,6 @@ mlx5_flow_meter_flush(struct rte_eth_dev *dev, struct rte_mtr_error *error)
 	struct mlx5_flow_meter_profile *fmp;
 	struct mlx5_legacy_flow_meter *legacy_fm;
 	struct mlx5_flow_meter_info *fm;
-	struct mlx5_flow_meter_policy *policy;
 	struct mlx5_flow_meter_sub_policy *sub_policy;
 	void *tmp;
 	uint32_t i, mtr_idx, policy_idx;
@@ -2945,15 +2957,20 @@ mlx5_flow_meter_flush(struct rte_eth_dev *dev, struct rte_mtr_error *error)
 		mlx5_l3t_destroy(priv->policy_idx_tbl);
 		priv->policy_idx_tbl = NULL;
 	}
+#if defined(HAVE_MLX5_HWS_SUPPORT)
 	if (priv->mtr_policy_arr) {
+		struct mlx5_flow_meter_policy *policy;
+
 		for (i = 0; i < priv->mtr_config.nb_meter_policies; i++) {
 			policy = mlx5_flow_meter_policy_find(dev, i,
 							     &policy_idx);
-			if (policy->initialized)
+			if (policy->initialized) {
 				mlx5_flow_meter_policy_hws_delete(dev, i,
 								  error);
+			}
 		}
 	}
+#endif
 	if (priv->mtr_profile_tbl) {
 		MLX5_L3T_FOREACH(priv->mtr_profile_tbl, i, entry) {
 			fmp = entry;
@@ -2967,14 +2984,17 @@ mlx5_flow_meter_flush(struct rte_eth_dev *dev, struct rte_mtr_error *error)
 		mlx5_l3t_destroy(priv->mtr_profile_tbl);
 		priv->mtr_profile_tbl = NULL;
 	}
+#if defined(HAVE_MLX5_HWS_SUPPORT)
 	if (priv->mtr_profile_arr) {
 		for (i = 0; i < priv->mtr_config.nb_meter_profiles; i++) {
 			fmp = mlx5_flow_meter_profile_find(priv, i);
-			if (fmp->initialized)
+			if (fmp->initialized) {
 				mlx5_flow_meter_profile_hws_delete(dev, i,
 								   error);
+			}
 		}
 	}
+#endif
 	/* Delete default policy table. */
 	mlx5_flow_destroy_def_policy(dev);
 	if (priv->sh->refcnt == 1)
