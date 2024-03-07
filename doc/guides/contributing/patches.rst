@@ -56,7 +56,7 @@ To label a file as dual-licensed with BSD-3-Clause and GPL-2.0 (e.g., for code
 that is shared between the kernel and userspace), the following text would be
 used:
 
-``SPDX-License-Identifier: (BSD-3-Clause OR GPL-2.0)``
+``SPDX-License-Identifier: BSD-3-Clause OR GPL-2.0``
 
 Refer to ``licenses/README`` for more details.
 

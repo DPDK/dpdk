@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: (BSD-3-Clause OR GPL-2.0)
+/* SPDX-License-Identifier: BSD-3-Clause OR GPL-2.0
  * Copyright(c) 2015-2018 Intel Corporation
  */
 #ifndef ADF_TRANSPORT_ACCESS_MACROS_H

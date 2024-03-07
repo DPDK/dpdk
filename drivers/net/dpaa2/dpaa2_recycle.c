@@ -1,7 +1,5 @@
-/* * SPDX-License-Identifier: BSD-3-Clause
- *
- *   Copyright 2019-2021 NXP
- *
+/* SPDX-License-Identifier: BSD-3-Clause
+ * Copyright 2019-2021 NXP
  */
 
 #include <time.h>

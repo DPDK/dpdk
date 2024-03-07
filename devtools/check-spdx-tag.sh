@@ -19,16 +19,40 @@ no_license_list=\
 ':^.git* :^.mailmap :^.ci/* :^README :^*/README* :^MAINTAINERS :^VERSION :^ABI_VERSION '\
 ':^license/ :^config/ :^buildtools/ :^*.abignore :^*.cocci :^*/poetry.lock '\
 ':^*/Kbuild :^kernel/linux/uapi/version '\
-':^*.ini :^*.data :^*.json :^*.cfg :^*.txt :^*.svg :^*.png'
+':^*.ini :^*.data :^*.json :^*.cfg :^*.txt :^*.md :^*.svg :^*.png'
 
 check_spdx() {
     if $verbose ; then
 	echo "Files without SPDX License"
 	echo "--------------------------"
     fi
+
     git grep -L SPDX-License-Identifier -- $no_license_list > $tmpfile
 
     missing_spdx=$(wc -l < $tmpfile)
+    $quiet || cat $tmpfile
+
+    if $verbose ; then
+	echo
+	echo "Files with wrong SPDX format"
+	echo "----------------------------"
+    fi
+
+    files_without_spdx=$(cat $tmpfile)
+    git grep -LE '(/\*|#|;|\.\.) *SPDX-License-Identifier: [A-Z(]' -- $no_license_list > $tmpfile
+    for file in $files_without_spdx ; do
+	sed -i "/^$file$/d" $tmpfile
+    done
+
+    warnings=$(($warnings + $(wc -l < $tmpfile)))
+    $quiet || cat $tmpfile
+
+    files_with_andor=$(git grep -lEi 'SPDX-License-Identifier:.*\<(AND|OR)\>' -- $no_license_list)
+    for file in $files_with_andor ; do
+	grep -LE 'SPDX-License-Identifier:.*\<(AND|OR)\>' "$file"
+    done > $tmpfile
+
+    warnings=$(($warnings + $(wc -l < $tmpfile)))
     $quiet || cat $tmpfile
 }
 
@@ -46,6 +70,7 @@ check_licenses() {
 	echo "Files with wrong license and no exception"
 	echo "-----------------------------------------"
     fi
+
     exceptions=$(build_exceptions_list)
     git grep -l SPDX-License-Identifier: -- $no_license_list $exceptions |
     xargs grep -L -E 'SPDX-License-Identifier:[[:space:]]*(\(?|.* OR )BSD-3-Clause' > $tmpfile
@@ -63,7 +88,7 @@ check_boilerplate() {
     git grep -l Redistribution -- \
 	':^license/' ':^/devtools/check-spdx-tag.sh' > $tmpfile
 
-    warnings=$(wc -l <$tmpfile)
+    warnings=$(($warnings + $(wc -l <$tmpfile)))
     $quiet || cat $tmpfile
 }
 
@@ -89,5 +114,7 @@ $verbose && echo
 check_boilerplate
 $verbose && echo
 
-echo "total: $missing_spdx missing SPDX, $wrong_license license errors, $warnings warnings"
+if [ $missing_spdx -gt 0 -o $wrong_license -gt 0 -o $warnings -gt 0 ] || ! $quiet ; then
+    echo "total: $missing_spdx missing SPDX, $wrong_license license errors, $warnings warnings"
+fi
 exit $((missing_spdx + wrong_license))

@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: (BSD-3-Clause OR LGPL-2.1)
+/* SPDX-License-Identifier: BSD-3-Clause OR LGPL-2.1
  * Copyright(c) 2010-2013 Intel Corporation.
  * Copyright(c) 2014-2017 Wind River Systems, Inc.
  */

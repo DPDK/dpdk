@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: (BSD-3-Clause OR GPL-2.0)
+/* SPDX-License-Identifier: BSD-3-Clause OR GPL-2.0
  * Copyright 2019-2024 NXP
  */
 #ifndef __FSL_DPRTC_H

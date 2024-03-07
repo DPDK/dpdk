@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: (BSD-3-Clause OR GPL-2.0) */
-/* Copyright (C) 2014-2017 aQuantia Corporation. */
+/* SPDX-License-Identifier: BSD-3-Clause OR GPL-2.0
+ * Copyright (C) 2014-2017 aQuantia Corporation.
+ */
 
 /* File hw_atl_b0_internal.h: Definition of Atlantic B0 chip specific
  * constants.
