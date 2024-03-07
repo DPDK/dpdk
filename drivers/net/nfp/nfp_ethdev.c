@@ -920,10 +920,9 @@ port_cleanup:
 			struct rte_eth_dev *tmp_dev;
 			tmp_dev = app_fw_nic->ports[i]->eth_dev;
 			rte_eth_dev_release_port(tmp_dev);
-			app_fw_nic->ports[i] = NULL;
 		}
 	}
-	nfp_cpp_area_free(pf_dev->ctrl_area);
+	nfp_cpp_area_release_free(pf_dev->ctrl_area);
 app_cleanup:
 	rte_free(app_fw_nic);
 
