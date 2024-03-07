@@ -2033,6 +2033,30 @@ enum dr_dump_rec_type {
 	DR_DUMP_REC_TYPE_PMD_COUNTER = 4430,
 };
 
+#if defined(HAVE_MLX5_HWS_SUPPORT)
+static __rte_always_inline struct mlx5_hw_q_job *
+flow_hw_job_get(struct mlx5_priv *priv, uint32_t queue)
+{
+	MLX5_ASSERT(priv->hw_q[queue].job_idx <= priv->hw_q[queue].size);
+	return priv->hw_q[queue].job_idx ?
+	       priv->hw_q[queue].job[--priv->hw_q[queue].job_idx] : NULL;
+}
+
+static __rte_always_inline void
+flow_hw_job_put(struct mlx5_priv *priv, struct mlx5_hw_q_job *job, uint32_t queue)
+{
+	MLX5_ASSERT(priv->hw_q[queue].job_idx < priv->hw_q[queue].size);
+	priv->hw_q[queue].job[priv->hw_q[queue].job_idx++] = job;
+}
+
+struct mlx5_hw_q_job *
+mlx5_flow_action_job_init(struct mlx5_priv *priv, uint32_t queue,
+			  const struct rte_flow_action_handle *handle,
+			  void *user_data, void *query_data,
+			  enum mlx5_hw_job_type type,
+			  struct rte_flow_error *error);
+#endif
+
 /**
  * Indicates whether HW objects operations can be created by DevX.
  *
@@ -2443,11 +2467,12 @@ int mlx5_aso_flow_hit_queue_poll_start(struct mlx5_dev_ctx_shared *sh);
 int mlx5_aso_flow_hit_queue_poll_stop(struct mlx5_dev_ctx_shared *sh);
 void mlx5_aso_queue_uninit(struct mlx5_dev_ctx_shared *sh,
 			   enum mlx5_access_aso_opc_mod aso_opc_mod);
-int mlx5_aso_meter_update_by_wqe(struct mlx5_dev_ctx_shared *sh, uint32_t queue,
-		struct mlx5_aso_mtr *mtr, struct mlx5_mtr_bulk *bulk,
-		void *user_data, bool push);
-int mlx5_aso_mtr_wait(struct mlx5_dev_ctx_shared *sh, uint32_t queue,
-		struct mlx5_aso_mtr *mtr);
+int mlx5_aso_meter_update_by_wqe(struct mlx5_priv *priv, uint32_t queue,
+				 struct mlx5_aso_mtr *mtr,
+				 struct mlx5_mtr_bulk *bulk,
+				 struct mlx5_hw_q_job *job, bool push);
+int mlx5_aso_mtr_wait(struct mlx5_priv *priv,
+		      struct mlx5_aso_mtr *mtr, bool is_tmpl_api);
 int mlx5_aso_ct_update_by_wqe(struct mlx5_dev_ctx_shared *sh, uint32_t queue,
 			      struct mlx5_aso_ct_action *ct,
 			      const struct rte_flow_action_conntrack *profile,
