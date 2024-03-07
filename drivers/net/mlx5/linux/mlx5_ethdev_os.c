@@ -671,7 +671,7 @@ mlx5_dev_get_flow_ctrl(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 	ifr.ifr_data = (void *)&ethpause;
 	ret = mlx5_ifreq(dev, SIOCETHTOOL, &ifr);
 	if (ret) {
-		DRV_LOG(WARNING,
+		DRV_LOG(DEBUG,
 			"port %u ioctl(SIOCETHTOOL, ETHTOOL_GPAUSEPARAM) failed:"
 			" %s",
 			dev->data->port_id, strerror(rte_errno));
