@@ -3099,6 +3099,7 @@ port_queue_flow_update(portid_t port_id, queueid_t queue_id,
 int
 port_queue_action_handle_create(portid_t port_id, uint32_t queue_id,
 				bool postpone, uint32_t id,
+				bool indirect_list,
 				const struct rte_flow_indir_action_conf *conf,
 				const struct rte_flow_action *action)
 {
@@ -3108,8 +3109,6 @@ port_queue_action_handle_create(portid_t port_id, uint32_t queue_id,
 	int ret;
 	struct rte_flow_error error;
 	struct queue_job *job;
-	bool is_indirect_list = action[1].type != RTE_FLOW_ACTION_TYPE_END;
-
 
 	ret = action_alloc(port_id, id, &pia);
 	if (ret)
@@ -3131,7 +3130,7 @@ port_queue_action_handle_create(portid_t port_id, uint32_t queue_id,
 	/* Poisoning to make sure PMDs update it in case of error. */
 	memset(&error, 0x88, sizeof(error));
 
-	if (is_indirect_list)
+	if (indirect_list)
 		queue_action_list_handle_create(port_id, queue_id, pia, job,
 						&attr, conf, action, &error);
 	else

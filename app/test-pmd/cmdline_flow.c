@@ -13237,6 +13237,7 @@ cmd_flow_parsed(const struct buffer *in)
 		port_queue_action_handle_create(
 				in->port, in->queue, in->postpone,
 				in->args.vc.attr.group,
+				in->command == QUEUE_INDIRECT_ACTION_LIST_CREATE,
 				&((const struct rte_flow_indir_action_conf) {
 					.ingress = in->args.vc.attr.ingress,
 					.egress = in->args.vc.attr.egress,

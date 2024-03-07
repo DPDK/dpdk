@@ -1002,6 +1002,7 @@ int port_queue_flow_update(portid_t port_id, queueid_t queue_id,
 			   const struct rte_flow_action *actions);
 int port_queue_action_handle_create(portid_t port_id, uint32_t queue_id,
 			bool postpone, uint32_t id,
+			bool indirect_list,
 			const struct rte_flow_indir_action_conf *conf,
 			const struct rte_flow_action *action);
 int port_queue_action_handle_destroy(portid_t port_id,
