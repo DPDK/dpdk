@@ -450,6 +450,7 @@ void nfp_net_close_tx_queue(struct rte_eth_dev *dev);
 int nfp_net_set_vxlan_port(struct nfp_net_hw *hw, size_t idx, uint16_t port);
 int nfp_net_check_dma_mask(struct nfp_net_hw *hw, char *name);
 void nfp_net_irq_unmask(struct rte_eth_dev *dev);
+void nfp_pf_uninit(struct nfp_pf_dev *pf_dev);
 
 #define NFP_NET_DEV_PRIVATE_TO_HW(adapter)\
 	(&((struct nfp_net_adapter *)adapter)->hw)
