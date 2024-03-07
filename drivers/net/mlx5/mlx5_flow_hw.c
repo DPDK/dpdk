@@ -109,6 +109,7 @@ flow_hw_action_job_init(struct mlx5_priv *priv, uint32_t queue,
 			const struct rte_flow_action_handle *handle,
 			void *user_data, void *query_data,
 			enum mlx5_hw_job_type type,
+			enum mlx5_hw_indirect_type indirect_type,
 			struct rte_flow_error *error);
 static int
 mlx5_tbl_multi_pattern_process(struct rte_eth_dev *dev,
@@ -1583,7 +1584,8 @@ flow_hw_meter_mark_compile(struct rte_eth_dev *dev,
 	struct mlx5_aso_mtr *aso_mtr;
 	struct mlx5_hw_q_job *job =
 		flow_hw_action_job_init(priv, queue, NULL, NULL, NULL,
-					MLX5_HW_Q_JOB_TYPE_CREATE, NULL);
+					MLX5_HW_Q_JOB_TYPE_CREATE,
+					MLX5_HW_INDIRECT_TYPE_LEGACY, NULL);
 
 	if (!job)
 		return -1;
@@ -10057,6 +10059,7 @@ flow_hw_action_job_init(struct mlx5_priv *priv, uint32_t queue,
 			const struct rte_flow_action_handle *handle,
 			void *user_data, void *query_data,
 			enum mlx5_hw_job_type type,
+			enum mlx5_hw_indirect_type indirect_type,
 			struct rte_flow_error *error)
 {
 	struct mlx5_hw_q_job *job;
@@ -10074,6 +10077,7 @@ flow_hw_action_job_init(struct mlx5_priv *priv, uint32_t queue,
 	job->action = handle;
 	job->user_data = user_data;
 	job->query.user = query_data;
+	job->indirect_type = indirect_type;
 	return job;
 }
 
@@ -10085,7 +10089,7 @@ mlx5_flow_action_job_init(struct mlx5_priv *priv, uint32_t queue,
 			  struct rte_flow_error *error)
 {
 	return flow_hw_action_job_init(priv, queue, handle, user_data, query_data,
-				       type, error);
+				       type, MLX5_HW_INDIRECT_TYPE_LEGACY, error);
 }
 
 static __rte_always_inline void
@@ -10155,7 +10159,7 @@ flow_hw_action_handle_create(struct rte_eth_dev *dev, uint32_t queue,
 	if (attr || force_job) {
 		job = flow_hw_action_job_init(priv, queue, NULL, user_data,
 					      NULL, MLX5_HW_Q_JOB_TYPE_CREATE,
-					      error);
+					      MLX5_HW_INDIRECT_TYPE_LEGACY, error);
 		if (!job)
 			return NULL;
 	}
@@ -10224,7 +10228,6 @@ flow_hw_action_handle_create(struct rte_eth_dev *dev, uint32_t queue,
 	}
 	if (job && !force_job) {
 		job->action = handle;
-		job->indirect_type = MLX5_HW_INDIRECT_TYPE_LEGACY;
 		flow_hw_action_finalize(dev, queue, job, push, aso,
 					handle != NULL);
 	}
@@ -10316,7 +10319,7 @@ flow_hw_action_handle_update(struct rte_eth_dev *dev, uint32_t queue,
 	if (attr || force_job) {
 		job = flow_hw_action_job_init(priv, queue, handle, user_data,
 					      NULL, MLX5_HW_Q_JOB_TYPE_UPDATE,
-					      error);
+					      MLX5_HW_INDIRECT_TYPE_LEGACY, error);
 		if (!job)
 			return -rte_errno;
 	}
@@ -10398,7 +10401,7 @@ flow_hw_action_handle_destroy(struct rte_eth_dev *dev, uint32_t queue,
 	if (attr || force_job) {
 		job = flow_hw_action_job_init(priv, queue, handle, user_data,
 					      NULL, MLX5_HW_Q_JOB_TYPE_DESTROY,
-					      error);
+					      MLX5_HW_INDIRECT_TYPE_LEGACY, error);
 		if (!job)
 			return -rte_errno;
 	}
@@ -10711,7 +10714,7 @@ flow_hw_action_handle_query(struct rte_eth_dev *dev, uint32_t queue,
 	if (attr) {
 		job = flow_hw_action_job_init(priv, queue, handle, user_data,
 					      data, MLX5_HW_Q_JOB_TYPE_QUERY,
-					      error);
+					      MLX5_HW_INDIRECT_TYPE_LEGACY, error);
 		if (!job)
 			return -rte_errno;
 	}
@@ -10765,7 +10768,7 @@ flow_hw_async_action_handle_query_update
 		job = flow_hw_action_job_init(priv, queue, handle, user_data,
 					      query,
 					      MLX5_HW_Q_JOB_TYPE_UPDATE_QUERY,
-					      error);
+					      MLX5_HW_INDIRECT_TYPE_LEGACY, error);
 		if (!job)
 			return -rte_errno;
 	}
@@ -11445,7 +11448,7 @@ flow_hw_async_action_list_handle_create(struct rte_eth_dev *dev, uint32_t queue,
 	if (attr) {
 		job = flow_hw_action_job_init(priv, queue, NULL, user_data,
 					      NULL, MLX5_HW_Q_JOB_TYPE_CREATE,
-					      error);
+					      MLX5_HW_INDIRECT_TYPE_LIST, error);
 		if (!job)
 			return NULL;
 	}
@@ -11465,7 +11468,6 @@ flow_hw_async_action_list_handle_create(struct rte_eth_dev *dev, uint32_t queue,
 	}
 	if (job) {
 		job->action = handle;
-		job->indirect_type = MLX5_HW_INDIRECT_TYPE_LIST;
 		flow_hw_action_finalize(dev, queue, job, push, false,
 					handle != NULL);
 	}
@@ -11510,7 +11512,7 @@ flow_hw_async_action_list_handle_destroy
 	if (attr) {
 		job = flow_hw_action_job_init(priv, queue, NULL, user_data,
 					      NULL, MLX5_HW_Q_JOB_TYPE_DESTROY,
-					      error);
+					      MLX5_HW_INDIRECT_TYPE_LIST, error);
 		if (!job)
 			return rte_errno;
 	}
