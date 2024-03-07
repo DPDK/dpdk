@@ -41,10 +41,15 @@ DPDK_24 {
 	rte_thash_get_gfni_matrices;
 	rte_thash_get_helper;
 	rte_thash_get_key;
-	rte_thash_gfni;
-	rte_thash_gfni_bulk;
 	rte_thash_gfni_supported;
 	rte_thash_init_ctx;
 
 	local: *;
+};
+
+INTERNAL {
+	global:
+
+	rte_thash_gfni_stub;
+	rte_thash_gfni_bulk_stub;
 };
