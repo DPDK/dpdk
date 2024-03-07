@@ -410,6 +410,16 @@ soc_centriq2400 = {
     'numa': false
 }
 
+soc_cn9k = {
+    'description': 'Marvell OCTEON 9',
+    'implementer': '0x43',
+    'part_number': '0xb2',
+    'numa': false,
+    'flags': [
+        ['RTE_IOVA_IN_MBUF', 0]
+    ]
+}
+
 soc_cn10k = {
     'description' : 'Marvell OCTEON 10',
     'implementer' : '0x41',
@@ -548,16 +558,6 @@ soc_odyssey = {
         ['RTE_MAX_NUMA_NODES', 1],
         ['RTE_MEMPOOL_ALIGN', 128],
     ],
-}
-
-soc_cn9k = {
-    'description': 'Marvell OCTEON 9',
-    'implementer': '0x43',
-    'part_number': '0xb2',
-    'numa': false,
-    'flags': [
-        ['RTE_IOVA_IN_MBUF', 0]
-    ]
 }
 
 soc_stingray = {
