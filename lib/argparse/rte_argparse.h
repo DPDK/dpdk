@@ -144,7 +144,7 @@ struct rte_argparse_arg {
  * @return
  *   0 on success. Otherwise negative value is returned.
  */
-typedef int (*arg_parser_t)(uint32_t index, const char *value, void *opaque);
+typedef int (*rte_arg_parser_t)(uint32_t index, const char *value, void *opaque);
 
 /**
  * A structure used to hold argparse's configuration.
@@ -161,7 +161,7 @@ struct rte_argparse {
 	/** Whether exit when error. */
 	bool exit_on_error;
 	/** User callback for parsing arguments. */
-	arg_parser_t callback;
+	rte_arg_parser_t callback;
 	/** Opaque which used to invoke callback. */
 	void *opaque;
 	/** Reserved field used for future extension. */
