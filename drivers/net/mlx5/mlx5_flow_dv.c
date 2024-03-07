@@ -19361,8 +19361,7 @@ flow_dv_get_aged_flows(struct rte_eth_dev *dev,
 	LIST_FOREACH(act, &age_info->aged_aso, next) {
 		nb_flows++;
 		if (nb_contexts) {
-			context[nb_flows - 1] =
-						act->age_params.context;
+			context[nb_flows - 1] = act->age_params.context;
 			if (!(--nb_contexts))
 				break;
 		}
