@@ -1605,30 +1605,34 @@ app_cleanup:
 static int
 nfp_net_hwinfo_set(uint8_t function_id,
 		struct nfp_rtsym_table *sym_tbl,
-		struct nfp_cpp *cpp)
+		struct nfp_cpp *cpp,
+		enum nfp_app_fw_id app_fw_id)
 {
 	int ret = 0;
 	uint64_t app_cap;
-	uint8_t sp_indiff;
 	struct nfp_nsp *nsp;
+	uint8_t sp_indiff = 1;
 	char hw_info[RTE_ETH_NAME_MAX_LEN];
 	char app_cap_name[RTE_ETH_NAME_MAX_LEN];
 
-	/* Read the app capabilities of the firmware loaded */
-	snprintf(app_cap_name, sizeof(app_cap_name), "_pf%u_net_app_cap", function_id);
-	app_cap = nfp_rtsym_read_le(sym_tbl, app_cap_name, &ret);
-	if (ret != 0) {
-		PMD_INIT_LOG(ERR, "Couldn't read app_fw_cap from firmware.");
-		return ret;
+	if (app_fw_id != NFP_APP_FW_FLOWER_NIC) {
+		/* Read the app capabilities of the firmware loaded */
+		snprintf(app_cap_name, sizeof(app_cap_name), "_pf%u_net_app_cap", function_id);
+		app_cap = nfp_rtsym_read_le(sym_tbl, app_cap_name, &ret);
+		if (ret != 0) {
+			PMD_INIT_LOG(ERR, "Could not read app_fw_cap from firmware.");
+			return ret;
+		}
+
+		/* Calculate the value of sp_indiff and write to hw_info */
+		sp_indiff = app_cap & NFP_NET_APP_CAP_SP_INDIFF;
 	}
 
-	/* Calculate the value of sp_indiff and write to hw_info */
-	sp_indiff = app_cap & NFP_NET_APP_CAP_SP_INDIFF;
 	snprintf(hw_info, sizeof(hw_info), "sp_indiff=%u", sp_indiff);
 
 	nsp = nfp_nsp_open(cpp);
 	if (nsp == NULL) {
-		PMD_INIT_LOG(ERR, "Couldn't get NSP.");
+		PMD_INIT_LOG(ERR, "Could not get NSP.");
 		return -EIO;
 	}
 
@@ -1873,7 +1877,7 @@ nfp_pf_init(struct rte_pci_device *pci_dev)
 	}
 
 	/* Write sp_indiff to hw_info */
-	ret = nfp_net_hwinfo_set(function_id, sym_tbl, cpp);
+	ret = nfp_net_hwinfo_set(function_id, sym_tbl, cpp, app_fw_id);
 	if (ret != 0) {
 		PMD_INIT_LOG(ERR, "Failed to set hwinfo.");
 		ret = -EIO;
