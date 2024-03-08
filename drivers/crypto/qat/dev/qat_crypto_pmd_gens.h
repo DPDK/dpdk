@@ -925,10 +925,12 @@ enqueue_one_aead_job_gen1(struct qat_sym_session *ctx,
 		*(uint8_t *)&cipher_param->u.cipher_IV_array[0] =
 			q - ICP_QAT_HW_CCM_NONCE_OFFSET;
 
-		rte_memcpy((uint8_t *)aad->va +
-				ICP_QAT_HW_CCM_NONCE_OFFSET,
-			(uint8_t *)iv->va + ICP_QAT_HW_CCM_NONCE_OFFSET,
-			ctx->cipher_iv.length);
+		if (ctx->aad_len > 0) {
+			rte_memcpy((uint8_t *)aad->va +
+					ICP_QAT_HW_CCM_NONCE_OFFSET,
+				(uint8_t *)iv->va + ICP_QAT_HW_CCM_NONCE_OFFSET,
+				ctx->cipher_iv.length);
+		}
 		break;
 	default:
 		break;
