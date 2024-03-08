@@ -71,7 +71,7 @@ static inline void
 rte_thash_gfni_bulk(const uint64_t *mtrx, int len, uint8_t *tuple[],
 	uint32_t val[], uint32_t num)
 {
-	return rte_thash_gfni_bulk_stub(mtrx, len, tuple, val, num);
+	rte_thash_gfni_bulk_stub(mtrx, len, tuple, val, num);
 }
 
 #endif /* RTE_THASH_GFNI_DEFINED */
