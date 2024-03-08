@@ -1193,7 +1193,13 @@ nfp_fw_skip_load(const struct nfp_dev_info *dev_info,
 	uint32_t offset[dev_info->pf_num_per_unit];
 	uint8_t abnormal = dev_info->pf_num_per_unit;
 
+	sleep(1);
 	for (port_num = 0; port_num < dev_info->pf_num_per_unit; port_num++) {
+		if (port_num == multi_pf->function_id) {
+			abnormal--;
+			continue;
+		}
+
 		offset[port_num] = NFP_BEAT_OFFSET(port_num);
 		beat[port_num] = nn_readq(multi_pf->beat_addr + offset[port_num]);
 		if (beat[port_num] == 0)
