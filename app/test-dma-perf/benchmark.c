@@ -24,7 +24,7 @@
 #define CSV_LINE_DMA_FMT "Scenario %u,%u,%s,%u,%u,%u,%u,%.2lf,%" PRIu64 ",%.3lf,%.3lf\n"
 #define CSV_LINE_CPU_FMT "Scenario %u,%u,NA,NA,NA,%u,%u,%.2lf,%" PRIu64 ",%.3lf,%.3lf\n"
 
-#define CSV_TOTAL_LINE_FMT "Scenario %u Summary, , , , , ,%u,%.2lf,%u,%.3lf,%.3lf\n"
+#define CSV_TOTAL_LINE_FMT "Scenario %u Summary, , , , , ,%u,%.2lf,%.1lf,%.3lf,%.3lf\n"
 
 struct worker_info {
 	bool ready_flag;
@@ -784,10 +784,11 @@ mem_copy_benchmark(struct test_configure *cfg)
 		bandwidth_total += bandwidth;
 		avg_cycles_total += avg_cycles;
 	}
-	printf("\nTotal Bandwidth: %.3lf Gbps, Total MOps: %.3lf\n", bandwidth_total, mops_total);
+	printf("\nAverage Cycles/op per worker: %.1lf, Total Bandwidth: %.3lf Gbps, Total MOps: %.3lf\n",
+		(avg_cycles_total * (float) 1.0) / nb_workers, bandwidth_total, mops_total);
 	snprintf(output_str[MAX_WORKER_NB], MAX_OUTPUT_STR_LEN, CSV_TOTAL_LINE_FMT,
 			cfg->scenario_id, nr_buf, memory * nb_workers,
-			avg_cycles_total / nb_workers, bandwidth_total, mops_total);
+			(avg_cycles_total * (float) 1.0) / nb_workers, bandwidth_total, mops_total);
 
 out:
 
