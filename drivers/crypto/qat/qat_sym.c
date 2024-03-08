@@ -345,11 +345,11 @@ static int
 qat_sym_dev_destroy(struct qat_pci_device *qat_pci_dev)
 {
 	struct rte_cryptodev *cryptodev;
-	struct qat_cryptodev_private *dev =
-		qat_pci_dev->pmd[QAT_SERVICE_SYMMETRIC];
+	struct qat_cryptodev_private *dev;
 
 	if (qat_pci_dev == NULL)
 		return -ENODEV;
+	dev = qat_pci_dev->pmd[QAT_SERVICE_SYMMETRIC];
 	if (dev == NULL)
 		return 0;
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY)

@@ -792,12 +792,14 @@ qat_comp_dev_create(struct qat_pci_device *qat_pci_dev)
 static int
 qat_comp_dev_destroy(struct qat_pci_device *qat_pci_dev)
 {
-	struct qat_comp_dev_private *dev =
-		qat_pci_dev->pmd[QAT_SERVICE_COMPRESSION];
+	struct qat_comp_dev_private *dev;
 
 	if (qat_pci_dev == NULL)
 		return -ENODEV;
 
+	dev = qat_pci_dev->pmd[QAT_SERVICE_COMPRESSION];
+	if (dev == NULL)
+		return 0;
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
 		rte_memzone_free(dev->capa_mz);
 

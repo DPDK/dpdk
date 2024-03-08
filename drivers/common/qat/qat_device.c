@@ -420,15 +420,15 @@ qat_pci_device_release(struct rte_pci_device *pci_dev)
 
 		if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
 			for (i = 0; i < QAT_MAX_SERVICES; i++) {
-				if (qat_dev->pmd[i] == NULL)
-					continue;
-				QAT_LOG(DEBUG, "QAT %s device %s is busy",
-					qat_service[i].name, name);
-				busy = 1;
+				if (qat_dev->pmd[i] != NULL) {
+					QAT_LOG(DEBUG, "QAT %s device %s is busy",
+						qat_service[i].name, name);
+					busy = 1;
+				}
+			}
 			if (busy)
 				return -EBUSY;
 			rte_memzone_free(inst->mz);
-			}
 		}
 		memset(inst, 0, sizeof(struct qat_device_info));
 		qat_nb_pci_devices--;
@@ -445,7 +445,7 @@ qat_pci_dev_destroy(struct qat_pci_device *qat_pci_dev,
 	int i;
 
 	for (i = 0; i < QAT_MAX_SERVICES; i++) {
-		if (!qat_service[i].dev_create)
+		if (!qat_service[i].dev_destroy)
 			continue;
 		qat_service[i].dev_destroy(qat_pci_dev);
 	}
