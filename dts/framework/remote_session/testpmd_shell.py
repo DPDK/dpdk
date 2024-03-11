@@ -118,7 +118,7 @@ class TestPmdShell(InteractiveShell):
         Also find the number of pci addresses which were allowed on the command line when the app
         was started.
         """
-        self._app_args += " -- -i --mask-event intr_lsc"
+        self._app_args += " -i --mask-event intr_lsc"
         self.number_of_ports = self._app_args.count("-a ")
         super()._start_application(get_privileged_command)
 
