@@ -36,11 +36,6 @@ struct sa_ctrl_word {
 	uint32_t spare2 :1;      /**< Must be set to 0 */
 };
 
-union nfp_ip_addr {
-	struct in6_addr v6;
-	struct in_addr v4;
-};
-
 struct ipsec_add_sa {
 	uint32_t cipher_key[8];           /**< Cipher Key */
 	union {
@@ -60,8 +55,8 @@ struct ipsec_add_sa {
 	uint8_t spare1;
 	uint32_t soft_byte_cnt;           /**< Soft lifetime byte count */
 	uint32_t hard_byte_cnt;           /**< Hard lifetime byte count */
-	union nfp_ip_addr src_ip;         /**< Src IP addr */
-	union nfp_ip_addr dst_ip;         /**< Dst IP addr */
+	uint32_t src_ip[4];               /**< Src IP addr */
+	uint32_t dst_ip[4];               /**< Dst IP addr */
 	uint16_t natt_dst_port;           /**< NAT-T UDP Header dst port */
 	uint16_t natt_src_port;           /**< NAT-T UDP Header src port */
 	uint32_t soft_lifetime_limit;     /**< Soft lifetime time limit */
