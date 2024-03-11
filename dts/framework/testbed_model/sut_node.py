@@ -30,6 +30,7 @@ from framework.utils import MesonArgs
 from .cpu import LogicalCoreCount, LogicalCoreList
 from .node import Node
 from .os_session import InteractiveShellType, OSSession
+from .port import Port
 from .virtual_device import VirtualDevice
 
 
@@ -46,6 +47,7 @@ class EalParameters(object):
         prefix: str,
         no_pci: bool,
         vdevs: list[VirtualDevice],
+        ports: list[Port],
         other_eal_param: str,
     ):
         """Initialize the parameters according to inputs.
@@ -63,6 +65,7 @@ class EalParameters(object):
                     VirtualDevice('net_ring0'),
                     VirtualDevice('net_ring1')
                 ]
+            ports: The list of ports to allow.
             other_eal_param: user defined DPDK EAL parameters, e.g.:
                 ``other_eal_param='--single-file-segments'``
         """
@@ -73,6 +76,7 @@ class EalParameters(object):
             self._prefix = f"--file-prefix={prefix}"
         self._no_pci = "--no-pci" if no_pci else ""
         self._vdevs = " ".join(f"--vdev {vdev}" for vdev in vdevs)
+        self._ports = " ".join(f"-a {port.pci}" for port in ports)
         self._other_eal_param = other_eal_param
 
     def __str__(self) -> str:
@@ -83,6 +87,7 @@ class EalParameters(object):
             f"{self._prefix} "
             f"{self._no_pci} "
             f"{self._vdevs} "
+            f"{self._ports} "
             f"{self._other_eal_param}"
         )
 
@@ -347,6 +352,7 @@ class SutNode(Node):
         append_prefix_timestamp: bool = True,
         no_pci: bool = False,
         vdevs: list[VirtualDevice] | None = None,
+        ports: list[Port] | None = None,
         other_eal_param: str = "",
     ) -> "EalParameters":
         """Compose the EAL parameters.
@@ -370,6 +376,8 @@ class SutNode(Node):
                     VirtualDevice('net_ring0'),
                     VirtualDevice('net_ring1')
                 ]
+            ports: The list of ports to allow. If :data:`None`, all ports listed in `self.ports`
+                will be allowed.
             other_eal_param: user defined DPDK EAL parameters, e.g.:
                 ``other_eal_param='--single-file-segments'``.
 
@@ -388,12 +396,16 @@ class SutNode(Node):
         if vdevs is None:
             vdevs = []
 
+        if ports is None:
+            ports = self.ports
+
         return EalParameters(
             lcore_list=lcore_list,
             memory_channels=self.config.memory_channels,
             prefix=prefix,
             no_pci=no_pci,
             vdevs=vdevs,
+            ports=ports,
             other_eal_param=other_eal_param,
         )
 
