@@ -146,6 +146,13 @@ class RemoteCommandExecutionError(DTSError):
         return f"Command {self.command} returned a non-zero exit code: {self._command_return_code}"
 
 
+class InteractiveCommandExecutionError(DTSError):
+    """An unsuccessful execution of a remote command in an interactive environment."""
+
+    #:
+    severity: ClassVar[ErrorSeverity] = ErrorSeverity.REMOTE_CMD_EXEC_ERR
+
+
 class RemoteDirectoryExistsError(DTSError):
     """A directory that exists on a remote node."""
 
