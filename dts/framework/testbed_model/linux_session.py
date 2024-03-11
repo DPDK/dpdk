@@ -198,6 +198,14 @@ class LinuxSession(PosixSession):
             verify=True,
         )
 
+    def configure_port_mtu(self, mtu: int, port: Port) -> None:
+        """Overrides :meth:`~.os_session.OSSession.configure_port_mtu`."""
+        self.send_command(
+            f"ip link set dev {port.logical_name} mtu {mtu}",
+            privileged=True,
+            verify=True,
+        )
+
     def configure_ipv4_forwarding(self, enable: bool) -> None:
         """Overrides :meth:`~.os_session.OSSession.configure_ipv4_forwarding`."""
         state = 1 if enable else 0
