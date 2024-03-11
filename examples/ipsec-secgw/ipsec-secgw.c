@@ -2056,10 +2056,10 @@ port_init(uint16_t portid, uint64_t req_rx_offloads, uint64_t req_tx_offloads,
 
 			/* Register Rx callback if ptypes are not supported */
 			if (!ptype_supported &&
-			    !rte_eth_add_rx_callback(portid, queue,
+			    !rte_eth_add_rx_callback(portid, rx_queueid,
 						     parse_ptype_cb, NULL)) {
 				printf("Failed to add rx callback: port=%d, "
-				       "queue=%d\n", portid, queue);
+				       "rx_queueid=%d\n", portid, rx_queueid);
 			}
 
 
