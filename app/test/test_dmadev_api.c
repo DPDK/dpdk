@@ -82,6 +82,7 @@ testsuite_teardown(void)
 	dst = NULL;
 	/* Ensure the dmadev is stopped. */
 	rte_dma_stop(test_dev_id);
+	rte_dma_stats_reset(test_dev_id, RTE_DMA_ALL_VCHAN);
 
 	rte_log_set_level_pattern("lib.dmadev", RTE_LOG_INFO);
 }
