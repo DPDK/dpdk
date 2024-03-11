@@ -617,6 +617,8 @@ rte_eth_devargs_parse(const char *dargs, struct rte_eth_devargs *eth_devargs,
 	unsigned int i;
 	int result = 0;
 
+	memset(eth_devargs, 0, nb_da * sizeof(*eth_devargs));
+
 	result = eth_dev_devargs_tokenise(&args, dargs);
 	if (result < 0)
 		goto parse_cleanup;
