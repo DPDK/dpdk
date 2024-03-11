@@ -15,7 +15,11 @@ from framework.config import TGNodeConfiguration
 
 from .node import Node
 from .port import Port
-from .traffic_generator import CapturingTrafficGenerator, create_traffic_generator
+from .traffic_generator import (
+    CapturingTrafficGenerator,
+    PacketFilteringConfig,
+    create_traffic_generator,
+)
 
 
 class TGNode(Node):
@@ -53,6 +57,7 @@ class TGNode(Node):
         packet: Packet,
         send_port: Port,
         receive_port: Port,
+        filter_config: PacketFilteringConfig = PacketFilteringConfig(),
         duration: float = 1,
     ) -> list[Packet]:
         """Send `packet`, return received traffic.
@@ -65,13 +70,18 @@ class TGNode(Node):
             packet: The packet to send.
             send_port: The egress port on the TG node.
             receive_port: The ingress port in the TG node.
+            filter_config: The filter to use when capturing packets.
             duration: Capture traffic for this amount of time after sending `packet`.
 
         Returns:
              A list of received packets. May be empty if no packets are captured.
         """
         return self.traffic_generator.send_packet_and_capture(
-            packet, send_port, receive_port, duration
+            packet,
+            send_port,
+            receive_port,
+            filter_config,
+            duration,
         )
 
     def close(self) -> None:

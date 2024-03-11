@@ -23,6 +23,7 @@ from scapy.packet import Packet, Padding  # type: ignore[import]
 from .exception import TestCaseVerifyError
 from .logger import DTSLogger, get_dts_logger
 from .testbed_model import Port, PortLink, SutNode, TGNode
+from .testbed_model.traffic_generator import PacketFilteringConfig
 from .utils import get_packet_summaries
 
 
@@ -174,7 +175,12 @@ class TestSuite(object):
     def _configure_ipv4_forwarding(self, enable: bool) -> None:
         self.sut_node.configure_ipv4_forwarding(enable)
 
-    def send_packet_and_capture(self, packet: Packet, duration: float = 1) -> list[Packet]:
+    def send_packet_and_capture(
+        self,
+        packet: Packet,
+        filter_config: PacketFilteringConfig = PacketFilteringConfig(),
+        duration: float = 1,
+    ) -> list[Packet]:
         """Send and receive `packet` using the associated TG.
 
         Send `packet` through the appropriate interface and receive on the appropriate interface.
@@ -182,6 +188,7 @@ class TestSuite(object):
 
         Args:
             packet: The packet to send.
+            filter_config: The filter to use when capturing packets.
             duration: Capture traffic for this amount of time after sending `packet`.
 
         Returns:
@@ -189,7 +196,11 @@ class TestSuite(object):
         """
         packet = self._adjust_addresses(packet)
         return self.tg_node.send_packet_and_capture(
-            packet, self._tg_port_egress, self._tg_port_ingress, duration
+            packet,
+            self._tg_port_egress,
+            self._tg_port_ingress,
+            filter_config,
+            duration,
         )
 
     def get_expected_packet(self, packet: Packet) -> Packet:

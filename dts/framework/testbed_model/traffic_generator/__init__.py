@@ -14,11 +14,16 @@ performance testing. In functional testing, we need to be able to dissect each a
 and a capturing traffic generator is required.
 """
 
+# pylama:ignore=W0611
+
 from framework.config import ScapyTrafficGeneratorConfig, TrafficGeneratorType
 from framework.exception import ConfigurationError
 from framework.testbed_model.node import Node
 
-from .capturing_traffic_generator import CapturingTrafficGenerator
+from .capturing_traffic_generator import (
+    CapturingTrafficGenerator,
+    PacketFilteringConfig,
+)
 from .scapy import ScapyTrafficGenerator
 
 

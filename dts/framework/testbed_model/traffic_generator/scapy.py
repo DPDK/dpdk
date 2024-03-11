@@ -32,6 +32,7 @@ from framework.testbed_model.port import Port
 
 from .capturing_traffic_generator import (
     CapturingTrafficGenerator,
+    PacketFilteringConfig,
     _get_default_capture_name,
 )
 
@@ -69,6 +70,7 @@ def scapy_send_packets_and_capture(
     send_iface: str,
     recv_iface: str,
     duration: float,
+    sniff_filter: str,
 ) -> list[bytes]:
     """The RPC function to send and capture packets.
 
@@ -90,6 +92,7 @@ def scapy_send_packets_and_capture(
         iface=recv_iface,
         store=True,
         started_callback=lambda *args: scapy.all.sendp(scapy_packets, iface=send_iface),
+        filter=sniff_filter,
     )
     sniffer.start()
     time.sleep(duration)
@@ -260,11 +263,34 @@ class ScapyTrafficGenerator(CapturingTrafficGenerator):
         packets = [packet.build() for packet in packets]
         self.rpc_server_proxy.scapy_send_packets(packets, port.logical_name)
 
+    def _create_packet_filter(self, filter_config: PacketFilteringConfig) -> str:
+        """Combines filter settings from `filter_config` into a BPF that scapy can use.
+
+        Scapy allows for the use of Berkeley Packet Filters (BPFs) to filter what packets are
+        collected based on various attributes of the packet.
+
+        Args:
+            filter_config: Config class that specifies which filters should be applied.
+
+        Returns:
+            A string representing the combination of BPF filters to be passed to scapy. For
+            example:
+
+            "ether[12:2] != 0x88cc && ether[12:2] != 0x0806"
+        """
+        bpf_filter = []
+        if filter_config.no_arp:
+            bpf_filter.append("ether[12:2] != 0x0806")
+        if filter_config.no_lldp:
+            bpf_filter.append("ether[12:2] != 0x88cc")
+        return " && ".join(bpf_filter)
+
     def _send_packets_and_capture(
         self,
         packets: list[Packet],
         send_port: Port,
         receive_port: Port,
+        filter_config: PacketFilteringConfig,
         duration: float,
         capture_name: str = _get_default_capture_name(),
     ) -> list[Packet]:
@@ -277,6 +303,7 @@ class ScapyTrafficGenerator(CapturingTrafficGenerator):
             send_port.logical_name,
             receive_port.logical_name,
             duration,
+            self._create_packet_filter(filter_config),
         )  # type: ignore[assignment]
 
         scapy_packets = [Ether(packet.data) for packet in xmlrpc_packets]
