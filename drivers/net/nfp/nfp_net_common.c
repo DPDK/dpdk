@@ -2073,7 +2073,7 @@ nfp_net_firmware_version_get(struct rte_eth_dev *dev,
 
 	hw = nfp_net_get_hw(dev);
 
-	if ((dev->data->dev_flags & RTE_ETH_DEV_REPRESENTOR) != 0) {
+	if ((dev->data->dev_flags & RTE_ETH_DEV_REPRESENTOR) == 0) {
 		snprintf(vnic_version, FW_VER_LEN, "%d.%d.%d.%d",
 			hw->ver.extend, hw->ver.class,
 			hw->ver.major, hw->ver.minor);
