@@ -107,6 +107,7 @@ New Features
 
   * Removed the reporting of ``rx_overruns`` errors from xstats
     and instead updated ``imissed`` counter with its value.
+  * Added support for sub-optimal configuration notifications from the device.
 
 * **Updated Atomic Rules' Arkville driver.**
 

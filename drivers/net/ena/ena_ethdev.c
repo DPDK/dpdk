@@ -36,6 +36,10 @@
 
 #define ENA_MIN_RING_DESC	128
 
+#define BITS_PER_BYTE 8
+
+#define BITS_PER_TYPE(type) (sizeof(type) * BITS_PER_BYTE)
+
 /*
  * We should try to keep ENA_CLEANUP_BUF_SIZE lower than
  * RTE_MEMPOOL_CACHE_MAX_SIZE, so we can fit this in mempool local cache.
@@ -1842,7 +1846,8 @@ static int ena_device_init(struct ena_adapter *adapter,
 		      BIT(ENA_ADMIN_NOTIFICATION) |
 		      BIT(ENA_ADMIN_KEEP_ALIVE) |
 		      BIT(ENA_ADMIN_FATAL_ERROR) |
-		      BIT(ENA_ADMIN_WARNING);
+		      BIT(ENA_ADMIN_WARNING) |
+		      BIT(ENA_ADMIN_CONF_NOTIFICATIONS);
 
 	aenq_groups &= get_feat_ctx->aenq.supported_groups;
 
@@ -4021,6 +4026,22 @@ static void ena_keep_alive(void *adapter_data,
 	adapter->dev_stats.tx_drops = tx_drops;
 }
 
+static void ena_suboptimal_configuration(__rte_unused void *adapter_data,
+					 struct ena_admin_aenq_entry *aenq_e)
+{
+	struct ena_admin_aenq_conf_notifications_desc *desc;
+	int bit, num_bits;
+
+	desc = (struct ena_admin_aenq_conf_notifications_desc *)aenq_e;
+	num_bits = BITS_PER_TYPE(desc->notifications_bitmap);
+	for (bit = 0; bit < num_bits; bit++) {
+		if (desc->notifications_bitmap & RTE_BIT64(bit)) {
+			PMD_DRV_LOG(WARNING,
+				"Sub-optimal configuration notification code: %d\n", bit + 1);
+		}
+	}
+}
+
 /**
  * This handler will called for unknown event group or unimplemented handlers
  **/
@@ -4035,7 +4056,8 @@ static struct ena_aenq_handlers aenq_handlers = {
 	.handlers = {
 		[ENA_ADMIN_LINK_CHANGE] = ena_update_on_link_change,
 		[ENA_ADMIN_NOTIFICATION] = ena_notification,
-		[ENA_ADMIN_KEEP_ALIVE] = ena_keep_alive
+		[ENA_ADMIN_KEEP_ALIVE] = ena_keep_alive,
+		[ENA_ADMIN_CONF_NOTIFICATIONS] = ena_suboptimal_configuration
 	},
 	.unimplemented_handler = unimplemented_aenq_handler
 };
