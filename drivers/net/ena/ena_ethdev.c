@@ -2542,7 +2542,9 @@ static int ena_infos_get(struct rte_eth_dev *dev,
 			RTE_ETH_LINK_SPEED_25G  |
 			RTE_ETH_LINK_SPEED_40G  |
 			RTE_ETH_LINK_SPEED_50G  |
-			RTE_ETH_LINK_SPEED_100G;
+			RTE_ETH_LINK_SPEED_100G |
+			RTE_ETH_LINK_SPEED_200G |
+			RTE_ETH_LINK_SPEED_400G;
 
 	/* Inform framework about available features */
 	dev_info->rx_offload_capa = ena_get_rx_port_offloads(adapter);
