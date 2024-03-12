@@ -144,8 +144,14 @@ enum ena_admin_get_stats_scope {
 	ENA_ADMIN_ETH_TRAFFIC                       = 1,
 };
 
-enum ena_admin_get_phc_type {
-	ENA_ADMIN_PHC_TYPE_READLESS                 = 0,
+enum ena_admin_phc_feature_version {
+	/* Readless with error_bound */
+	ENA_ADMIN_PHC_FEATURE_VERSION_0             = 0,
+};
+
+enum ena_admin_phc_error_flags {
+	ENA_ADMIN_PHC_ERROR_FLAG_TIMESTAMP   = BIT(0),
+	ENA_ADMIN_PHC_ERROR_FLAG_ERROR_BOUND = BIT(1),
 };
 
 /* ENA SRD configuration for ENI */
@@ -987,7 +993,8 @@ struct ena_admin_host_info {
 	 * 5 : reserved
 	 * 6 : rx_page_reuse
 	 * 7 : tx_ipv6_csum_offload
-	 * 31:8 : reserved
+	 * 8 : phc
+	 * 31:9 : reserved
 	 */
 	uint32_t driver_supported_features;
 };
@@ -1073,10 +1080,10 @@ struct ena_admin_queue_ext_feature_desc {
 };
 
 struct ena_admin_feature_phc_desc {
-	/* PHC type as defined in enum ena_admin_get_phc_type,
-	 * used only for GET command.
+	/* PHC version as defined in enum ena_admin_phc_feature_version,
+	 * used only for GET command as max supported PHC version by the device.
 	 */
-	uint8_t type;
+	uint8_t version;
 
 	/* Reserved - MBZ */
 	uint8_t reserved1[3];
@@ -1272,13 +1279,23 @@ struct ena_admin_ena_mmio_req_read_less_resp {
 };
 
 struct ena_admin_phc_resp {
+	/* Request Id, received from DB register */
 	uint16_t req_id;
 
 	uint8_t reserved1[6];
 
+	/* PHC timestamp (nsec) */
 	uint64_t timestamp;
 
-	uint8_t reserved2[48];
+	uint8_t reserved2[8];
+
+	/* Timestamp error limit (nsec) */
+	uint32_t error_bound;
+
+	/* Bit field of enum ena_admin_phc_error_flags */
+	uint32_t error_flags;
+
+	uint8_t reserved3[32];
 };
 
 /* aq_common_desc */
@@ -1381,6 +1398,8 @@ struct ena_admin_phc_resp {
 #define ENA_ADMIN_HOST_INFO_RX_PAGE_REUSE_MASK              BIT(6)
 #define ENA_ADMIN_HOST_INFO_TX_IPV6_CSUM_OFFLOAD_SHIFT      7
 #define ENA_ADMIN_HOST_INFO_TX_IPV6_CSUM_OFFLOAD_MASK       BIT(7)
+#define ENA_ADMIN_HOST_INFO_PHC_SHIFT                       8
+#define ENA_ADMIN_HOST_INFO_PHC_MASK                        BIT(8)
 
 /* feature_rss_ind_table */
 #define ENA_ADMIN_FEATURE_RSS_IND_TABLE_ONE_ENTRY_UPDATE_MASK BIT(0)
@@ -1877,6 +1896,18 @@ static inline uint8_t get_ena_admin_feature_rss_ind_table_one_entry_update(const
 static inline void set_ena_admin_feature_rss_ind_table_one_entry_update(struct ena_admin_feature_rss_ind_table *p, uint8_t val)
 {
 	p->flags |= val & ENA_ADMIN_FEATURE_RSS_IND_TABLE_ONE_ENTRY_UPDATE_MASK;
+}
+
+static inline uint32_t get_ena_admin_host_info_phc(const struct ena_admin_host_info *p)
+{
+	return (p->driver_supported_features &
+		ENA_ADMIN_HOST_INFO_PHC_MASK) >> ENA_ADMIN_HOST_INFO_PHC_SHIFT;
+}
+
+static inline void set_ena_admin_host_info_phc(struct ena_admin_host_info *p, uint32_t val)
+{
+	p->driver_supported_features |= (val << ENA_ADMIN_HOST_INFO_PHC_SHIFT) &
+					 ENA_ADMIN_HOST_INFO_PHC_MASK;
 }
 
 static inline uint8_t get_ena_admin_aenq_common_desc_phase(const struct ena_admin_aenq_common_desc *p)
