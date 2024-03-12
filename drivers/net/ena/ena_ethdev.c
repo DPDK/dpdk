@@ -42,6 +42,8 @@
 
 #define DECIMAL_BASE 10
 
+#define MAX_WIDE_LLQ_DEPTH_UNSUPPORTED 0
+
 /*
  * We should try to keep ENA_CLEANUP_BUF_SIZE lower than
  * RTE_MEMPOOL_CACHE_MAX_SIZE, so we can fit this in mempool local cache.
@@ -1067,7 +1069,7 @@ static int
 ena_calc_io_queue_size(struct ena_calc_queue_size_ctx *ctx,
 		       bool use_large_llq_hdr)
 {
-	struct ena_admin_feature_llq_desc *llq = &ctx->get_feat_ctx->llq;
+	struct ena_admin_feature_llq_desc *dev = &ctx->get_feat_ctx->llq;
 	struct ena_com_dev *ena_dev = ctx->ena_dev;
 	uint32_t max_tx_queue_size;
 	uint32_t max_rx_queue_size;
@@ -1082,7 +1084,7 @@ ena_calc_io_queue_size(struct ena_calc_queue_size_ctx *ctx,
 		if (ena_dev->tx_mem_queue_type ==
 		    ENA_ADMIN_PLACEMENT_POLICY_DEV) {
 			max_tx_queue_size = RTE_MIN(max_tx_queue_size,
-				llq->max_llq_depth);
+				dev->max_llq_depth);
 		} else {
 			max_tx_queue_size = RTE_MIN(max_tx_queue_size,
 				max_queue_ext->max_tx_sq_depth);
@@ -1102,7 +1104,7 @@ ena_calc_io_queue_size(struct ena_calc_queue_size_ctx *ctx,
 		if (ena_dev->tx_mem_queue_type ==
 		    ENA_ADMIN_PLACEMENT_POLICY_DEV) {
 			max_tx_queue_size = RTE_MIN(max_tx_queue_size,
-				llq->max_llq_depth);
+				dev->max_llq_depth);
 		} else {
 			max_tx_queue_size = RTE_MIN(max_tx_queue_size,
 				max_queues->max_sq_depth);
@@ -1118,18 +1120,28 @@ ena_calc_io_queue_size(struct ena_calc_queue_size_ctx *ctx,
 	max_rx_queue_size = rte_align32prevpow2(max_rx_queue_size);
 	max_tx_queue_size = rte_align32prevpow2(max_tx_queue_size);
 
-	if (use_large_llq_hdr) {
-		if ((llq->entry_size_ctrl_supported &
-		     ENA_ADMIN_LIST_ENTRY_SIZE_256B) &&
-		    (ena_dev->tx_mem_queue_type ==
-		     ENA_ADMIN_PLACEMENT_POLICY_DEV)) {
-			max_tx_queue_size /= 2;
-			PMD_INIT_LOG(INFO,
-				"Forcing large headers and decreasing maximum Tx queue size to %d\n",
+	if (ena_dev->tx_mem_queue_type == ENA_ADMIN_PLACEMENT_POLICY_DEV && use_large_llq_hdr) {
+		/* intersection between driver configuration and device capabilities */
+		if (dev->entry_size_ctrl_supported & ENA_ADMIN_LIST_ENTRY_SIZE_256B) {
+			if (dev->max_wide_llq_depth == MAX_WIDE_LLQ_DEPTH_UNSUPPORTED) {
+				/* Devices that do not support the double-sized ENA memory BAR will
+				 * report max_wide_llq_depth as 0. In such case, driver halves the
+				 * queue depth when working in large llq policy.
+				 */
+				max_tx_queue_size >>= 1;
+				PMD_INIT_LOG(INFO,
+					"large LLQ policy requires limiting Tx queue size to %u entries\n",
 				max_tx_queue_size);
+			} else if (dev->max_wide_llq_depth < max_tx_queue_size) {
+				/* In case the queue depth that the driver calculated exceeds
+				 * the maximal value that the device allows, it will be limited
+				 * to that maximal value
+				 */
+				max_tx_queue_size = dev->max_wide_llq_depth;
+			}
 		} else {
-			PMD_INIT_LOG(ERR,
-				"Forcing large headers failed: LLQ is disabled or device does not support large headers\n");
+			PMD_INIT_LOG(INFO,
+				"Forcing large LLQ headers failed since device lacks this support\n");
 		}
 	}
 
