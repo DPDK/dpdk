@@ -64,7 +64,7 @@ static int ena_com_write_bounce_buffer_to_dev(struct ena_com_io_sq *io_sq,
 
 		io_sq->entries_in_tx_burst_left--;
 		ena_trc_dbg(ena_com_io_sq_to_ena_dev(io_sq),
-			    "Decreasing entries_in_tx_burst_left of queue %d to %d\n",
+			    "Decreasing entries_in_tx_burst_left of queue %u to %u\n",
 			    io_sq->qid, io_sq->entries_in_tx_burst_left);
 	}
 
@@ -258,7 +258,7 @@ static int ena_com_cdesc_rx_pkt_get(struct ena_com_io_cq *io_cq,
 		if (unlikely((status & ENA_ETH_IO_RX_CDESC_BASE_FIRST_MASK) >>
 		    ENA_ETH_IO_RX_CDESC_BASE_FIRST_SHIFT && count != 0)) {
 			ena_trc_err(dev,
-				    "First bit is on in descriptor #%d on q_id: %d, req_id: %u\n",
+				    "First bit is on in descriptor #%u on q_id: %u, req_id: %u\n",
 				    count, io_cq->qid, cdesc->req_id);
 			return ENA_COM_FAULT;
 		}
@@ -267,7 +267,7 @@ static int ena_com_cdesc_rx_pkt_get(struct ena_com_io_cq *io_cq,
 					ENA_ETH_IO_RX_CDESC_BASE_MBZ17_MASK)) &&
 			      ena_com_get_cap(dev, ENA_ADMIN_CDESC_MBZ))) {
 			ena_trc_err(dev,
-				    "Corrupted RX descriptor #%d on q_id: %d, req_id: %u\n",
+				    "Corrupted RX descriptor #%u on q_id: %u, req_id: %u\n",
 				    count, io_cq->qid, cdesc->req_id);
 			return ENA_COM_FAULT;
 		}
@@ -287,7 +287,7 @@ static int ena_com_cdesc_rx_pkt_get(struct ena_com_io_cq *io_cq,
 		io_cq->cur_rx_pkt_cdesc_start_idx = head_masked;
 
 		ena_trc_dbg(ena_com_io_cq_to_ena_dev(io_cq),
-			    "ENA q_id: %d packets were completed. first desc idx %u descs# %d\n",
+			    "ENA q_id: %u packets were completed. first desc idx %u descs# %u\n",
 			    io_cq->qid, *first_cdesc_idx, count);
 	} else {
 		io_cq->cur_rx_pkt_cdesc_count = count;
@@ -393,7 +393,7 @@ static void ena_com_rx_set_flags(struct ena_com_io_cq *io_cq,
 		ENA_ETH_IO_RX_CDESC_BASE_IPV4_FRAG_SHIFT;
 
 	ena_trc_dbg(ena_com_io_cq_to_ena_dev(io_cq),
-		    "l3_proto %d l4_proto %d l3_csum_err %d l4_csum_err %d hash %d frag %d cdesc_status %x\n",
+		    "l3_proto %d l4_proto %d l3_csum_err %d l4_csum_err %d hash %u frag %d cdesc_status %x\n",
 		    ena_rx_ctx->l3_proto,
 		    ena_rx_ctx->l4_proto,
 		    ena_rx_ctx->l3_csum_err,
@@ -433,7 +433,7 @@ int ena_com_prepare_tx(struct ena_com_io_sq *io_sq,
 
 	if (unlikely(header_len > io_sq->tx_max_header_size)) {
 		ena_trc_err(ena_com_io_sq_to_ena_dev(io_sq),
-			    "Header size is too large %d max header: %d\n",
+			    "Header size is too large %u max header: %u\n",
 			    header_len, io_sq->tx_max_header_size);
 		return ENA_COM_INVAL;
 	}
@@ -591,12 +591,12 @@ int ena_com_rx_pkt(struct ena_com_io_cq *io_cq,
 	}
 
 	ena_trc_dbg(ena_com_io_cq_to_ena_dev(io_cq),
-		    "Fetch rx packet: queue %d completed desc: %d\n",
+		    "Fetch rx packet: queue %u completed desc: %u\n",
 		    io_cq->qid, nb_hw_desc);
 
 	if (unlikely(nb_hw_desc > ena_rx_ctx->max_bufs)) {
 		ena_trc_err(ena_com_io_cq_to_ena_dev(io_cq),
-			    "Too many RX cdescs (%d) > MAX(%d)\n",
+			    "Too many RX cdescs (%u) > MAX(%u)\n",
 			    nb_hw_desc, ena_rx_ctx->max_bufs);
 		return ENA_COM_NO_SPACE;
 	}
@@ -621,7 +621,7 @@ int ena_com_rx_pkt(struct ena_com_io_cq *io_cq,
 	io_sq->next_to_comp += nb_hw_desc;
 
 	ena_trc_dbg(ena_com_io_cq_to_ena_dev(io_cq),
-		    "[%s][QID#%d] Updating SQ head to: %d\n", __func__,
+		    "Updating Queue %u, SQ head to: %u\n",
 		    io_sq->qid, io_sq->next_to_comp);
 
 	/* Get rx flags from the last pkt */
@@ -659,8 +659,8 @@ int ena_com_add_single_rx_desc(struct ena_com_io_sq *io_sq,
 	desc->req_id = req_id;
 
 	ena_trc_dbg(ena_com_io_sq_to_ena_dev(io_sq),
-		    "[%s] Adding single RX desc, Queue: %u, req_id: %u\n",
-		    __func__, io_sq->qid, req_id);
+		    "Adding single RX desc, Queue: %u, req_id: %u\n",
+		    io_sq->qid, req_id);
 
 	desc->buff_addr_lo = (u32)ena_buf->paddr;
 	desc->buff_addr_hi =
