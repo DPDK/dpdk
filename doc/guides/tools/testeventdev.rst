@@ -124,6 +124,10 @@ The following are the application command-line options:
 
         Use crypto device as producer.
 
+* ``--prod_type_dmadev``
+
+        Use DMA device as producer.
+
 * ``--timer_tick_nsec``
 
        Used to dictate number of nano seconds between bucket traversal of the
@@ -156,6 +160,10 @@ The following are the application command-line options:
 
         Set crypto adapter mode. Use 0 for OP_NEW (default) and 1 for
         OP_FORWARD mode.
+
+* ``--dma_adptr_mode``
+
+        Set dma adapter mode. DMA adapter supports only OP_FORWARD mode.
 
 * ``--crypto_op_type``
 
@@ -459,6 +467,7 @@ Supported application command line options are following::
         --prod_type_timerdev_burst
         --prod_type_timerdev
         --prod_type_cryptodev
+        --prod_type_dmadev
         --prod_enq_burst_sz
         --timer_tick_nsec
         --max_tmo_nsec
@@ -467,6 +476,7 @@ Supported application command line options are following::
         --nb_timer_adptrs
         --deq_tmo_nsec
         --crypto_adptr_mode
+        --dma_adptr_mode
 
 Example
 ^^^^^^^
@@ -500,6 +510,14 @@ Example command to run perf queue test with event timer adapter:
    sudo  <build_dir>/app/dpdk-test-eventdev -c 0xfff1 \
                 -- --wlcores 4 --plcores 12 --test perf_queue --stlist=a \
                 --prod_type_timerdev --fwd_latency
+
+Example command to run perf queue test with event DMA adapter:
+
+.. code-block:: console
+
+   sudo <build_dir>/app/dpdk-test-eventdev -c 0x1f -s 0x2 \
+               -- --test=perf_queue --plcores= 2 --wlcore=3 --stlist=a \
+               --prod_type_dmadev --dma_adptr_mode=1
 
 PERF_ATQ Test
 ~~~~~~~~~~~~~~~
@@ -570,6 +588,7 @@ Supported application command line options are following::
         --prod_type_timerdev_burst
         --prod_type_timerdev
         --prod_type_cryptodev
+        --prod_type_dmadev
         --timer_tick_nsec
         --max_tmo_nsec
         --expiry_nsec
@@ -577,6 +596,7 @@ Supported application command line options are following::
         --nb_timer_adptrs
         --deq_tmo_nsec
         --crypto_adptr_mode
+        --dma_adptr_mode
 
 Example
 ^^^^^^^
@@ -596,6 +616,13 @@ Example command to run perf ``all types queue`` test with event timer adapter:
                 -- --wlcores 4 --plcores 12 --test perf_atq --verbose 20 \
                 --stlist=a --prod_type_timerdev --fwd_latency
 
+Example command to run perf atq test with event DMA adapter:
+
+.. code-block:: console
+
+   sudo <build_dir>/app/dpdk-test-eventdev -c 0x1f -s 0x2 \
+               -- --test=perf_atq --plcores= 2 --wlcore=3 --stlist=a \
+               --prod_type_dmadev --dma_adptr_mode=1
 
 PIPELINE_QUEUE Test
 ~~~~~~~~~~~~~~~~~~~

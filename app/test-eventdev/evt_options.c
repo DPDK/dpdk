@@ -147,6 +147,36 @@ evt_parse_timer_prod_type_burst(struct evt_options *opt,
 }
 
 static int
+evt_parse_dma_prod_type(struct evt_options *opt,
+			   const char *arg __rte_unused)
+{
+	opt->prod_type = EVT_PROD_TYPE_EVENT_DMA_ADPTR;
+
+	/* Only Forward mode is supported for DMA adapter. */
+	opt->dma_adptr_mode = RTE_EVENT_DMA_ADAPTER_OP_FORWARD;
+
+	return 0;
+}
+
+static int
+evt_parse_dma_adptr_mode(struct evt_options *opt, const char *arg)
+{
+	uint8_t mode;
+	int ret;
+
+	ret = parser_read_uint8(&mode, arg);
+	if (mode != RTE_EVENT_DMA_ADAPTER_OP_FORWARD) {
+		RTE_LOG(ERR, USER1, "DMA adapter is supported in forward mode only\n");
+		return -EINVAL;
+	}
+
+	opt->dma_adptr_mode = RTE_EVENT_DMA_ADAPTER_OP_FORWARD;
+
+	return ret;
+}
+
+
+static int
 evt_parse_crypto_prod_type(struct evt_options *opt,
 			   const char *arg __rte_unused)
 {
@@ -446,6 +476,7 @@ usage(char *program)
 		"\t--queue_priority   : enable queue priority\n"
 		"\t--deq_tmo_nsec     : global dequeue timeout\n"
 		"\t--prod_type_ethdev : use ethernet device as producer.\n"
+		"\t--prod_type_dmadev : use dma device as producer.\n"
 		"\t--prod_type_cryptodev : use crypto device as producer.\n"
 		"\t--prod_type_timerdev : use event timer device as producer.\n"
 		"\t                     expiry_nsec would be the timeout\n"
@@ -457,6 +488,7 @@ usage(char *program)
 		"\t--timer_tick_nsec  : timer tick interval in ns.\n"
 		"\t--max_tmo_nsec     : max timeout interval in ns.\n"
 		"\t--expiry_nsec      : event timer expiry ns.\n"
+		"\t--dma_adptr_mode   : 1 for OP_FORWARD mode (default).\n"
 		"\t--crypto_adptr_mode : 0 for OP_NEW mode (default) and\n"
 		"\t                      1 for OP_FORWARD mode.\n"
 		"\t--crypto_op_type   : 0 for SYM ops (default) and\n"
@@ -540,9 +572,11 @@ static struct option lgopts[] = {
 	{ EVT_QUEUE_PRIORITY,      0, 0, 0 },
 	{ EVT_DEQ_TMO_NSEC,        1, 0, 0 },
 	{ EVT_PROD_ETHDEV,         0, 0, 0 },
+	{ EVT_PROD_DMADEV,         0, 0, 0 },
 	{ EVT_PROD_CRYPTODEV,      0, 0, 0 },
 	{ EVT_PROD_TIMERDEV,       0, 0, 0 },
 	{ EVT_PROD_TIMERDEV_BURST, 0, 0, 0 },
+	{ EVT_DMA_ADPTR_MODE,      1, 0, 0 },
 	{ EVT_CRYPTO_ADPTR_MODE,   1, 0, 0 },
 	{ EVT_CRYPTO_OP_TYPE,	   1, 0, 0 },
 	{ EVT_CRYPTO_CIPHER_ALG,   1, 0, 0 },
@@ -589,8 +623,10 @@ evt_opts_parse_long(int opt_idx, struct evt_options *opt)
 		{ EVT_DEQ_TMO_NSEC, evt_parse_deq_tmo_nsec},
 		{ EVT_PROD_ETHDEV, evt_parse_eth_prod_type},
 		{ EVT_PROD_CRYPTODEV, evt_parse_crypto_prod_type},
+		{ EVT_PROD_DMADEV, evt_parse_dma_prod_type},
 		{ EVT_PROD_TIMERDEV, evt_parse_timer_prod_type},
 		{ EVT_PROD_TIMERDEV_BURST, evt_parse_timer_prod_type_burst},
+		{ EVT_DMA_ADPTR_MODE, evt_parse_dma_adptr_mode},
 		{ EVT_CRYPTO_ADPTR_MODE, evt_parse_crypto_adptr_mode},
 		{ EVT_CRYPTO_OP_TYPE, evt_parse_crypto_op_type},
 		{ EVT_CRYPTO_CIPHER_ALG, evt_parse_crypto_cipher_alg},

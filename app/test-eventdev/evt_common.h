@@ -9,6 +9,7 @@
 #include <rte_crypto.h>
 #include <rte_debug.h>
 #include <rte_event_crypto_adapter.h>
+#include <rte_event_dma_adapter.h>
 #include <rte_eventdev.h>
 #include <rte_service.h>
 
@@ -42,6 +43,7 @@ enum evt_prod_type {
 	EVT_PROD_TYPE_ETH_RX_ADPTR,  /* Producer type Eth Rx Adapter. */
 	EVT_PROD_TYPE_EVENT_TIMER_ADPTR,  /* Producer type Timer Adapter. */
 	EVT_PROD_TYPE_EVENT_CRYPTO_ADPTR,  /* Producer type Crypto Adapter. */
+	EVT_PROD_TYPE_EVENT_DMA_ADPTR,  /* Producer type DMA Adapter. */
 	EVT_PROD_TYPE_MAX,
 };
 
@@ -86,6 +88,7 @@ struct evt_options {
 	uint64_t timer_tick_nsec;
 	uint64_t optm_timer_tick_nsec;
 	enum evt_prod_type prod_type;
+	enum rte_event_dma_adapter_mode dma_adptr_mode;
 	enum rte_event_crypto_adapter_mode crypto_adptr_mode;
 	enum rte_crypto_op_type crypto_op_type;
 	enum rte_crypto_cipher_algorithm crypto_cipher_alg;

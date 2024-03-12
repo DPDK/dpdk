@@ -176,6 +176,11 @@ New Features
   * Added power-saving during polling within the ``rte_event_dequeue_burst()`` API.
   * Added support for DMA adapter.
 
+* **Added DMA producer mode in eventdev test.**
+
+  Added DMA producer mode to measure performance of ``OP_FORWARD`` mode
+  of event DMA adapter.
+
 
 Removed Items
 -------------

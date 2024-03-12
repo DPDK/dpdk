@@ -31,6 +31,8 @@ typedef int (*evt_test_ethdev_setup_t)
 		(struct evt_test *test, struct evt_options *opt);
 typedef int (*evt_test_cryptodev_setup_t)
 		(struct evt_test *test, struct evt_options *opt);
+typedef int (*evt_test_dmadev_setup_t)
+		(struct evt_test *test, struct evt_options *opt);
 typedef int (*evt_test_eventdev_setup_t)
 		(struct evt_test *test, struct evt_options *opt);
 typedef int (*evt_test_launch_lcores_t)
@@ -44,6 +46,8 @@ typedef void (*evt_test_ethdev_destroy_t)
 typedef void (*evt_test_ethdev_rx_stop_t)(struct evt_test *test,
 					  struct evt_options *opt);
 typedef void (*evt_test_cryptodev_destroy_t)
+		(struct evt_test *test, struct evt_options *opt);
+typedef void (*evt_test_dmadev_destroy_t)
 		(struct evt_test *test, struct evt_options *opt);
 typedef void (*evt_test_mempool_destroy_t)
 		(struct evt_test *test, struct evt_options *opt);
@@ -59,12 +63,14 @@ struct evt_test_ops {
 	evt_test_ethdev_setup_t ethdev_setup;
 	evt_test_eventdev_setup_t eventdev_setup;
 	evt_test_cryptodev_setup_t cryptodev_setup;
+	evt_test_dmadev_setup_t dmadev_setup;
 	evt_test_launch_lcores_t launch_lcores;
 	evt_test_result_t test_result;
 	evt_test_eventdev_destroy_t eventdev_destroy;
 	evt_test_ethdev_rx_stop_t ethdev_rx_stop;
 	evt_test_ethdev_destroy_t ethdev_destroy;
 	evt_test_cryptodev_destroy_t cryptodev_destroy;
+	evt_test_dmadev_destroy_t dmadev_destroy;
 	evt_test_mempool_destroy_t mempool_destroy;
 	evt_test_destroy_t test_destroy;
 };

@@ -49,7 +49,8 @@ perf_atq_worker(void *arg, const int enable_fwd_latency)
 			continue;
 		}
 
-		if (prod_crypto_type && (ev.event_type == RTE_EVENT_TYPE_CRYPTODEV)) {
+		if ((prod_type == EVT_PROD_TYPE_EVENT_CRYPTO_ADPTR) &&
+		    (ev.event_type == RTE_EVENT_TYPE_CRYPTODEV)) {
 			if (perf_handle_crypto_ev(&ev, &pe, enable_fwd_latency))
 				continue;
 		}
@@ -62,11 +63,11 @@ perf_atq_worker(void *arg, const int enable_fwd_latency)
 		/* last stage in pipeline */
 		if (unlikely(stage == laststage)) {
 			if (enable_fwd_latency)
-				cnt = perf_process_last_stage_latency(pool, prod_crypto_type,
+				cnt = perf_process_last_stage_latency(pool, prod_type,
 					&ev, w, bufs, sz, cnt);
 			else
-				cnt = perf_process_last_stage(pool, prod_crypto_type, &ev, w,
-					 bufs, sz, cnt);
+				cnt = perf_process_last_stage(pool, prod_type, &ev, w,
+					bufs, sz, cnt);
 		} else {
 			atq_fwd_event(&ev, sched_type_list, nb_stages);
 			do {
@@ -99,7 +100,8 @@ perf_atq_worker_burst(void *arg, const int enable_fwd_latency)
 		}
 
 		for (i = 0; i < nb_rx; i++) {
-			if (prod_crypto_type && (ev[i].event_type == RTE_EVENT_TYPE_CRYPTODEV)) {
+			if ((prod_type == EVT_PROD_TYPE_EVENT_CRYPTO_ADPTR) &&
+			    (ev[i].event_type == RTE_EVENT_TYPE_CRYPTODEV)) {
 				if (perf_handle_crypto_ev(&ev[i], &pe, enable_fwd_latency))
 					continue;
 			}
@@ -116,9 +118,9 @@ perf_atq_worker_burst(void *arg, const int enable_fwd_latency)
 			if (unlikely(stage == laststage)) {
 				if (enable_fwd_latency)
 					cnt = perf_process_last_stage_latency(pool,
-						prod_crypto_type, &ev[i], w, bufs, sz, cnt);
+						prod_type, &ev[i], w, bufs, sz, cnt);
 				else
-					cnt = perf_process_last_stage(pool, prod_crypto_type,
+					cnt = perf_process_last_stage(pool, prod_type,
 						&ev[i], w, bufs, sz, cnt);
 
 				ev[i].op = RTE_EVENT_OP_RELEASE;
@@ -149,7 +151,7 @@ perf_atq_worker_vector(void *arg, const int enable_fwd_latency)
 
 	RTE_SET_USED(sz);
 	RTE_SET_USED(cnt);
-	RTE_SET_USED(prod_crypto_type);
+	RTE_SET_USED(prod_type);
 
 	while (t->done == false) {
 		deq = rte_event_dequeue_burst(dev, port, &ev, 1, 0);
@@ -329,6 +331,20 @@ perf_atq_eventdev_setup(struct evt_test *test, struct evt_options *opt)
 				return ret;
 			}
 		}
+	} else if (opt->prod_type == EVT_PROD_TYPE_EVENT_DMA_ADPTR) {
+		uint8_t dma_dev_id = 0, dma_dev_count;
+
+		dma_dev_count = rte_dma_count_avail();
+		if (dma_dev_count == 0) {
+			evt_err("No dma devices available\n");
+			return -ENODEV;
+		}
+
+		ret = rte_dma_start(dma_dev_id);
+		if (ret) {
+			evt_err("Failed to start dmadev %u", dma_dev_id);
+			return ret;
+		}
 	}
 
 	return 0;
@@ -371,6 +387,7 @@ static const struct evt_test_ops perf_atq =  {
 	.test_setup         = perf_test_setup,
 	.ethdev_setup       = perf_ethdev_setup,
 	.cryptodev_setup    = perf_cryptodev_setup,
+	.dmadev_setup       = perf_dmadev_setup,
 	.ethdev_rx_stop     = perf_ethdev_rx_stop,
 	.mempool_setup      = perf_mempool_setup,
 	.eventdev_setup     = perf_atq_eventdev_setup,
@@ -379,6 +396,7 @@ static const struct evt_test_ops perf_atq =  {
 	.mempool_destroy    = perf_mempool_destroy,
 	.ethdev_destroy     = perf_ethdev_destroy,
 	.cryptodev_destroy  = perf_cryptodev_destroy,
+	.dmadev_destroy     = perf_dmadev_destroy,
 	.test_result        = perf_test_result,
 	.test_destroy       = perf_test_destroy,
 };

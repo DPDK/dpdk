@@ -27,6 +27,7 @@
 #include "evt_test.h"
 
 #define TEST_PERF_CA_ID 0
+#define TEST_PERF_DA_ID 0
 
 struct test_perf;
 
@@ -43,11 +44,19 @@ struct crypto_adptr_data {
 	uint16_t cdev_qp_id;
 	void **crypto_sess;
 };
+
+struct dma_adptr_data {
+	uint8_t dma_dev_id;
+	uint16_t vchan_id;
+	void **dma_op;
+};
+
 struct prod_data {
 	uint8_t dev_id;
 	uint8_t port_id;
 	uint8_t queue_id;
 	struct crypto_adptr_data ca;
+	struct dma_adptr_data da;
 	struct test_perf *t;
 } __rte_cache_aligned;
 
@@ -72,6 +81,7 @@ struct test_perf {
 	struct rte_mempool *ca_sess_pool;
 	struct rte_mempool *ca_asym_sess_pool;
 	struct rte_mempool *ca_vector_pool;
+	struct rte_mempool *da_op_pool;
 } __rte_cache_aligned;
 
 struct perf_elt {
@@ -95,9 +105,8 @@ struct perf_elt {
 	const uint8_t port = w->port_id;\
 	const uint8_t prod_timer_type = \
 		opt->prod_type == EVT_PROD_TYPE_EVENT_TIMER_ADPTR;\
-	const uint8_t prod_crypto_type = \
-		opt->prod_type == EVT_PROD_TYPE_EVENT_CRYPTO_ADPTR;\
 	uint8_t *const sched_type_list = &t->sched_type_list[0];\
+	const enum evt_prod_type prod_type = opt->prod_type;\
 	struct rte_mempool *const pool = t->pool;\
 	const uint8_t nb_stages = t->opt->nb_stages;\
 	const uint8_t laststage = nb_stages - 1;\
@@ -206,9 +215,9 @@ perf_handle_crypto_vector_ev(struct rte_event *ev, struct perf_elt **pe,
 }
 
 static __rte_always_inline int
-perf_process_last_stage(struct rte_mempool *const pool, uint8_t prod_crypto_type,
-		struct rte_event *const ev, struct worker_data *const w,
-		void *bufs[], int const buf_sz, uint8_t count)
+perf_process_last_stage(struct rte_mempool *const pool, enum evt_prod_type prod_type,
+			struct rte_event *const ev, struct worker_data *const w,
+			void *bufs[], int const buf_sz, uint8_t count)
 {
 	void *to_free_in_bulk;
 
@@ -219,7 +228,7 @@ perf_process_last_stage(struct rte_mempool *const pool, uint8_t prod_crypto_type
 	rte_atomic_thread_fence(__ATOMIC_RELEASE);
 	w->processed_pkts++;
 
-	if (prod_crypto_type) {
+	if (prod_type == EVT_PROD_TYPE_EVENT_CRYPTO_ADPTR) {
 		struct rte_crypto_op *op = ev->event_ptr;
 		struct rte_mbuf *m;
 
@@ -234,6 +243,8 @@ perf_process_last_stage(struct rte_mempool *const pool, uint8_t prod_crypto_type
 			to_free_in_bulk = op->asym->modex.result.data;
 		}
 		rte_crypto_op_free(op);
+	} else if (prod_type == EVT_PROD_TYPE_EVENT_DMA_ADPTR) {
+		return count;
 	} else {
 		to_free_in_bulk = ev->event_ptr;
 	}
@@ -248,9 +259,9 @@ perf_process_last_stage(struct rte_mempool *const pool, uint8_t prod_crypto_type
 }
 
 static __rte_always_inline uint8_t
-perf_process_last_stage_latency(struct rte_mempool *const pool, uint8_t prod_crypto_type,
-		struct rte_event *const ev, struct worker_data *const w,
-		void *bufs[], int const buf_sz, uint8_t count)
+perf_process_last_stage_latency(struct rte_mempool *const pool, enum evt_prod_type prod_type,
+				struct rte_event *const ev, struct worker_data *const w,
+				void *bufs[], int const buf_sz, uint8_t count)
 {
 	uint64_t latency;
 	struct perf_elt *pe;
@@ -262,7 +273,7 @@ perf_process_last_stage_latency(struct rte_mempool *const pool, uint8_t prod_cry
 	rte_atomic_thread_fence(__ATOMIC_RELEASE);
 	w->processed_pkts++;
 
-	if (prod_crypto_type) {
+	if (prod_type == EVT_PROD_TYPE_EVENT_CRYPTO_ADPTR) {
 		struct rte_crypto_op *op = ev->event_ptr;
 		struct rte_mbuf *m;
 
@@ -280,6 +291,8 @@ perf_process_last_stage_latency(struct rte_mempool *const pool, uint8_t prod_cry
 			to_free_in_bulk = op->asym->modex.result.data;
 		}
 		rte_crypto_op_free(op);
+	} else if (prod_type == EVT_PROD_TYPE_EVENT_DMA_ADPTR) {
+		return count;
 	} else {
 		pe = ev->event_ptr;
 		to_free_in_bulk = pe;
@@ -346,6 +359,7 @@ int perf_opt_check(struct evt_options *opt, uint64_t nb_queues);
 int perf_test_setup(struct evt_test *test, struct evt_options *opt);
 int perf_ethdev_setup(struct evt_test *test, struct evt_options *opt);
 int perf_cryptodev_setup(struct evt_test *test, struct evt_options *opt);
+int perf_dmadev_setup(struct evt_test *test, struct evt_options *opt);
 int perf_mempool_setup(struct evt_test *test, struct evt_options *opt);
 int perf_event_dev_port_setup(struct evt_test *test, struct evt_options *opt,
 				uint8_t stride, uint8_t nb_queues,
@@ -357,6 +371,7 @@ void perf_opt_dump(struct evt_options *opt, uint8_t nb_queues);
 void perf_test_destroy(struct evt_test *test, struct evt_options *opt);
 void perf_eventdev_destroy(struct evt_test *test, struct evt_options *opt);
 void perf_cryptodev_destroy(struct evt_test *test, struct evt_options *opt);
+void perf_dmadev_destroy(struct evt_test *test, struct evt_options *opt);
 void perf_ethdev_destroy(struct evt_test *test, struct evt_options *opt);
 void perf_ethdev_rx_stop(struct evt_test *test, struct evt_options *opt);
 void perf_mempool_destroy(struct evt_test *test, struct evt_options *opt);

@@ -559,6 +559,54 @@ crypto_adapter_enq_op_fwd(struct prod_data *p)
 		       __func__, rte_lcore_id(), alloc_failures);
 }
 
+static inline void
+dma_adapter_enq_op_fwd(struct prod_data *p)
+{
+	struct test_perf *t = p->t;
+	const uint32_t nb_flows = t->nb_flows;
+	const uint64_t nb_pkts = t->nb_pkts;
+	struct rte_event_dma_adapter_op *op;
+	const uint8_t dev_id = p->dev_id;
+	struct evt_options *opt = t->opt;
+	const uint8_t port = p->port_id;
+	uint32_t flow_counter = 0;
+	struct rte_event ev;
+	uint64_t count = 0;
+
+	if (opt->verbose_level > 1)
+		printf("%s(): lcore %d port %d queue %d dma_dev_id %u dma_dev_vchan_id %u\n",
+		       __func__, rte_lcore_id(), port, p->queue_id,
+		       p->da.dma_dev_id, p->da.vchan_id);
+
+	ev.event = 0;
+	ev.op = RTE_EVENT_OP_NEW;
+	ev.queue_id = p->queue_id;
+	ev.sched_type = RTE_SCHED_TYPE_ATOMIC;
+	ev.event_type = RTE_EVENT_TYPE_CPU;
+
+	while (count < nb_pkts && t->done == false) {
+		op = p->da.dma_op[flow_counter++ % nb_flows];
+		ev.event_ptr = op;
+
+		while (rte_event_dma_adapter_enqueue(dev_id, port, &ev, 1) != 1 &&
+						     t->done == false)
+			rte_pause();
+
+		count++;
+	}
+}
+
+static inline int
+perf_event_dma_producer(void *arg)
+{
+	struct prod_data *p = arg;
+
+	/* Only fwd mode is supported. */
+	dma_adapter_enq_op_fwd(p);
+
+	return 0;
+}
+
 static inline int
 perf_event_crypto_producer(void *arg)
 {
@@ -841,7 +889,9 @@ perf_producer_wrapper(void *arg)
 			return perf_event_crypto_producer_burst(arg);
 		else
 			return perf_event_crypto_producer(arg);
-	}
+	} else if (t->opt->prod_type == EVT_PROD_TYPE_EVENT_DMA_ADPTR)
+		return perf_event_dma_producer(arg);
+
 	return 0;
 }
 
@@ -952,7 +1002,9 @@ perf_launch_lcores(struct evt_test *test, struct evt_options *opt,
 				    opt->prod_type ==
 					    EVT_PROD_TYPE_EVENT_TIMER_ADPTR ||
 				    opt->prod_type ==
-					    EVT_PROD_TYPE_EVENT_CRYPTO_ADPTR) {
+					    EVT_PROD_TYPE_EVENT_CRYPTO_ADPTR ||
+				    opt->prod_type ==
+					    EVT_PROD_TYPE_EVENT_DMA_ADPTR) {
 					t->done = true;
 					break;
 				}
@@ -962,7 +1014,8 @@ perf_launch_lcores(struct evt_test *test, struct evt_options *opt,
 		if (new_cycles - dead_lock_cycles > dead_lock_sample &&
 		    (opt->prod_type == EVT_PROD_TYPE_SYNT ||
 		     opt->prod_type == EVT_PROD_TYPE_EVENT_TIMER_ADPTR ||
-		     opt->prod_type == EVT_PROD_TYPE_EVENT_CRYPTO_ADPTR)) {
+		     opt->prod_type == EVT_PROD_TYPE_EVENT_CRYPTO_ADPTR ||
+		     opt->prod_type == EVT_PROD_TYPE_EVENT_DMA_ADPTR)) {
 			remaining = t->outstand_pkts - processed_pkts(t);
 			if (dead_lock_remaining == remaining) {
 				rte_event_dev_dump(opt->dev_id, stdout);
@@ -1158,6 +1211,39 @@ perf_event_crypto_adapter_setup(struct test_perf *t, struct prod_data *p)
 
 	ret = rte_event_crypto_adapter_queue_pair_add(
 		TEST_PERF_CA_ID, p->ca.cdev_id, p->ca.cdev_qp_id, &conf);
+
+	return ret;
+}
+
+static int
+perf_event_dma_adapter_setup(struct test_perf *t, struct prod_data *p)
+{
+	struct evt_options *opt = t->opt;
+	struct rte_event event;
+	uint32_t cap;
+	int ret;
+
+	ret = rte_event_dma_adapter_caps_get(p->dev_id, p->da.dma_dev_id, &cap);
+	if (ret) {
+		evt_err("Failed to get dma adapter capabilities");
+		return ret;
+	}
+
+	if (((opt->dma_adptr_mode == RTE_EVENT_DMA_ADAPTER_OP_NEW) &&
+	     !(cap & RTE_EVENT_DMA_ADAPTER_CAP_INTERNAL_PORT_OP_NEW)) ||
+	    ((opt->dma_adptr_mode == RTE_EVENT_DMA_ADAPTER_OP_FORWARD) &&
+	     !(cap & RTE_EVENT_DMA_ADAPTER_CAP_INTERNAL_PORT_OP_FWD))) {
+		evt_err("dma adapter %s mode unsupported\n",
+			opt->dma_adptr_mode ? "OP_FORWARD" : "OP_NEW");
+		return -ENOTSUP;
+	}
+
+	if (cap & RTE_EVENT_DMA_ADAPTER_CAP_INTERNAL_PORT_VCHAN_EV_BIND)
+		ret = rte_event_dma_adapter_vchan_add(TEST_PERF_DA_ID, p->da.dma_dev_id,
+						      p->da.vchan_id, &event);
+	else
+		ret = rte_event_dma_adapter_vchan_add(TEST_PERF_DA_ID, p->da.dma_dev_id,
+						      p->da.vchan_id, NULL);
 
 	return ret;
 }
@@ -1401,6 +1487,77 @@ perf_event_dev_port_setup(struct evt_test *test, struct evt_options *opt,
 			qp_id++;
 			prod++;
 		}
+	}  else if (opt->prod_type == EVT_PROD_TYPE_EVENT_DMA_ADPTR) {
+		struct rte_event_port_conf conf = *port_conf;
+		struct rte_event_dma_adapter_op *op;
+		struct rte_mempool *pool = t->pool;
+		uint8_t dma_dev_id = 0;
+		uint16_t vchan_id = 0;
+
+		ret = rte_event_dma_adapter_create(TEST_PERF_DA_ID, opt->dev_id, &conf, 0);
+		if (ret) {
+			evt_err("Failed to create dma adapter");
+			return ret;
+		}
+
+		prod = 0;
+		for (; port < perf_nb_event_ports(opt); port++) {
+			struct prod_data *p = &t->prod[port];
+			struct rte_event *response_info;
+			uint32_t flow_id;
+
+			p->dev_id = opt->dev_id;
+			p->port_id = port;
+			p->queue_id = prod * stride;
+			p->da.dma_dev_id = dma_dev_id;
+			p->da.vchan_id = vchan_id;
+			p->da.dma_op = rte_zmalloc_socket(NULL, sizeof(void *) * t->nb_flows,
+					RTE_CACHE_LINE_SIZE, opt->socket_id);
+
+			p->t = t;
+
+			ret = perf_event_dma_adapter_setup(t, p);
+			if (ret)
+				return ret;
+
+			for (flow_id = 0; flow_id < t->nb_flows; flow_id++) {
+				rte_mempool_get(t->da_op_pool, (void **)&op);
+
+				op->src_seg = rte_malloc(NULL, sizeof(struct rte_dma_sge), 0);
+				op->dst_seg = rte_malloc(NULL, sizeof(struct rte_dma_sge), 0);
+
+				op->src_seg->addr = rte_pktmbuf_iova(rte_pktmbuf_alloc(pool));
+				op->dst_seg->addr = rte_pktmbuf_iova(rte_pktmbuf_alloc(pool));
+				op->src_seg->length = 1024;
+				op->dst_seg->length = 1024;
+				op->nb_src = 1;
+				op->nb_dst = 1;
+				op->flags = RTE_DMA_OP_FLAG_SUBMIT;
+				op->op_mp = t->da_op_pool;
+				op->dma_dev_id = dma_dev_id;
+				op->vchan = vchan_id;
+
+				response_info = (struct rte_event *)((uint8_t *)op +
+						 sizeof(struct rte_event_dma_adapter_op));
+				response_info->queue_id = p->queue_id;
+				response_info->sched_type = RTE_SCHED_TYPE_ATOMIC;
+				response_info->flow_id = flow_id;
+
+				p->da.dma_op[flow_id] = op;
+			}
+
+			conf.event_port_cfg |=
+				RTE_EVENT_PORT_CFG_HINT_PRODUCER |
+				RTE_EVENT_PORT_CFG_HINT_CONSUMER;
+
+			ret = rte_event_port_setup(opt->dev_id, port, &conf);
+			if (ret) {
+				evt_err("failed to setup port %d", port);
+				return ret;
+			}
+
+			prod++;
+		}
 	} else {
 		prod = 0;
 		for ( ; port < perf_nb_event_ports(opt); port++) {
@@ -1463,7 +1620,8 @@ perf_opt_check(struct evt_options *opt, uint64_t nb_queues)
 
 	if (opt->prod_type == EVT_PROD_TYPE_SYNT ||
 	    opt->prod_type == EVT_PROD_TYPE_EVENT_TIMER_ADPTR ||
-	    opt->prod_type == EVT_PROD_TYPE_EVENT_CRYPTO_ADPTR) {
+	    opt->prod_type == EVT_PROD_TYPE_EVENT_CRYPTO_ADPTR ||
+	    opt->prod_type == EVT_PROD_TYPE_EVENT_DMA_ADPTR) {
 		/* Validate producer lcores */
 		if (evt_lcores_has_overlap(opt->plcores,
 					rte_get_main_lcore())) {
@@ -1853,6 +2011,96 @@ perf_cryptodev_destroy(struct evt_test *test, struct evt_options *opt)
 	rte_mempool_free(t->ca_sess_pool);
 	rte_mempool_free(t->ca_asym_sess_pool);
 	rte_mempool_free(t->ca_vector_pool);
+}
+
+int
+perf_dmadev_setup(struct evt_test *test, struct evt_options *opt)
+{
+	const struct rte_dma_conf conf = { .nb_vchans = 1};
+	const struct rte_dma_vchan_conf qconf = {
+			.direction = RTE_DMA_DIR_MEM_TO_MEM,
+			.nb_desc = 1024,
+	};
+	struct test_perf *t = evt_test_priv(test);
+	uint8_t dma_dev_count, dma_dev_id = 0;
+	unsigned int elt_size;
+	int vchan_id;
+	int ret;
+
+	if (opt->prod_type != EVT_PROD_TYPE_EVENT_DMA_ADPTR)
+		return 0;
+
+	dma_dev_count = rte_dma_count_avail();
+	if (dma_dev_count == 0) {
+		evt_err("No dma devices available\n");
+		return -ENODEV;
+	}
+
+	elt_size = sizeof(struct rte_event_dma_adapter_op) + sizeof(struct rte_event);
+	t->da_op_pool = rte_mempool_create("dma_op_pool", opt->pool_sz, elt_size, 256,
+					   0, NULL, NULL, NULL, NULL, rte_socket_id(), 0);
+	if (t->da_op_pool == NULL) {
+		evt_err("Failed to create dma op pool");
+		return -ENOMEM;
+	}
+
+	ret = rte_dma_configure(dma_dev_id, &conf);
+	if (ret) {
+		evt_err("Failed to configure dma dev (%u)", dma_dev_id);
+		goto err;
+	}
+
+	for (vchan_id = 0; vchan_id < conf.nb_vchans; vchan_id++) {
+		ret = rte_dma_vchan_setup(dma_dev_id, vchan_id, &qconf);
+		if (ret) {
+			evt_err("Failed to setup vchan on dma dev %u\n",
+				dma_dev_id);
+			goto err;
+		}
+	}
+
+	return 0;
+err:
+	rte_dma_close(dma_dev_id);
+	rte_mempool_free(t->da_op_pool);
+
+	return ret;
+}
+
+void
+perf_dmadev_destroy(struct evt_test *test, struct evt_options *opt)
+{
+	uint8_t dma_dev_id = 0;
+	struct test_perf *t = evt_test_priv(test);
+	uint16_t port;
+
+	if (opt->prod_type != EVT_PROD_TYPE_EVENT_DMA_ADPTR)
+		return;
+
+	for (port = t->nb_workers; port < perf_nb_event_ports(opt); port++) {
+		struct prod_data *p = &t->prod[port];
+		struct rte_event_dma_adapter_op *op;
+		uint32_t flow_id;
+
+		for (flow_id = 0; flow_id < t->nb_flows; flow_id++) {
+			op = p->da.dma_op[flow_id];
+
+			rte_pktmbuf_free((struct rte_mbuf *)(uintptr_t)op->src_seg->addr);
+			rte_pktmbuf_free((struct rte_mbuf *)(uintptr_t)op->dst_seg->addr);
+			rte_free(op->src_seg);
+			rte_free(op->dst_seg);
+			rte_mempool_put(op->op_mp, op);
+		}
+
+		rte_event_dma_adapter_vchan_del(TEST_PERF_DA_ID, p->da.dma_dev_id, p->da.vchan_id);
+	}
+
+	rte_event_dma_adapter_free(TEST_PERF_DA_ID);
+
+	rte_dma_stop(dma_dev_id);
+	rte_dma_close(dma_dev_id);
+
+	rte_mempool_free(t->da_op_pool);
 }
 
 int
