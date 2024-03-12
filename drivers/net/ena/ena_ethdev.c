@@ -867,6 +867,7 @@ static int ena_close(struct rte_eth_dev *dev)
 	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
 	struct ena_adapter *adapter = dev->data->dev_private;
 	int ret = 0;
+	int rc;
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
@@ -875,16 +876,16 @@ static int ena_close(struct rte_eth_dev *dev)
 		ret = ena_stop(dev);
 	adapter->state = ENA_ADAPTER_STATE_CLOSED;
 
+	rte_intr_disable(intr_handle);
+	rc = rte_intr_callback_unregister_sync(intr_handle, ena_interrupt_handler_rte, dev);
+	if (unlikely(rc != 0))
+		PMD_INIT_LOG(ERR, "Failed to unregister interrupt handler\n");
+
 	ena_rx_queue_release_all(dev);
 	ena_tx_queue_release_all(dev);
 
 	rte_free(adapter->drv_stats);
 	adapter->drv_stats = NULL;
-
-	rte_intr_disable(intr_handle);
-	rte_intr_callback_unregister(intr_handle,
-				     ena_interrupt_handler_rte,
-				     dev);
 
 	/*
 	 * MAC is not allocated dynamically. Setting NULL should prevent from
