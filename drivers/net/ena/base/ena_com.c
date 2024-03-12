@@ -1914,15 +1914,14 @@ int ena_com_phc_get_timestamp(struct ena_com_dev *ena_dev, u64 *timestamp)
 
 		/* PHC is in active state, update statistics according to req_id and error_flags */
 		if ((READ_ONCE16(read_resp->req_id) != phc->req_id) ||
-		    (read_resp->error_flags & ENA_PHC_ERROR_FLAGS)) {
+		    (read_resp->error_flags & ENA_PHC_ERROR_FLAGS))
 			/* Device didn't update req_id during blocking time or timestamp is invalid,
 			 * this indicates on a device error
 			 */
 			phc->stats.phc_err++;
-		} else {
+		else
 			/* Device updated req_id during blocking time with valid timestamp */
 			phc->stats.phc_exp++;
-		}
 	}
 
 	/* Setting relative timeouts */
@@ -2431,7 +2430,7 @@ void ena_com_aenq_intr_handler(struct ena_com_dev *ena_dev, void *data)
 		timestamp = (u64)aenq_common->timestamp_low |
 			((u64)aenq_common->timestamp_high << 32);
 
-		ena_trc_dbg(ena_dev, "AENQ! Group[%x] Syndrome[%x] timestamp: [%" ENA_PRIU64 "s]\n",
+		ena_trc_dbg(ena_dev, "AENQ! Group[%x] Syndrome[%x] timestamp: [%" ENA_PRIu64 "s]\n",
 			    aenq_common->group,
 			    aenq_common->syndrome,
 			    timestamp);
@@ -3233,15 +3232,14 @@ int ena_com_allocate_customer_metrics_buffer(struct ena_com_dev *ena_dev)
 {
 	struct ena_customer_metrics *customer_metrics = &ena_dev->customer_metrics;
 
+	customer_metrics->buffer_len = ENA_CUSTOMER_METRICS_BUFFER_SIZE;
 	ENA_MEM_ALLOC_COHERENT(ena_dev->dmadev,
 			       customer_metrics->buffer_len,
 			       customer_metrics->buffer_virt_addr,
 			       customer_metrics->buffer_dma_addr,
 			       customer_metrics->buffer_dma_handle);
-	if (unlikely(customer_metrics->buffer_virt_addr == NULL))
+	if (unlikely(!customer_metrics->buffer_virt_addr))
 		return ENA_COM_NO_MEM;
-
-	customer_metrics->buffer_len = ENA_CUSTOMER_METRICS_BUFFER_SIZE;
 
 	return 0;
 }
@@ -3285,7 +3283,6 @@ void ena_com_delete_customer_metrics_buffer(struct ena_com_dev *ena_dev)
 				      customer_metrics->buffer_dma_addr,
 				      customer_metrics->buffer_dma_handle);
 		customer_metrics->buffer_virt_addr = NULL;
-		customer_metrics->buffer_len = 0;
 	}
 }
 
