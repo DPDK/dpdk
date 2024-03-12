@@ -3122,8 +3122,7 @@ ena_tx_cleanup_mbuf_fast(struct rte_mbuf **mbufs_to_clean,
 		m_next = mbuf->next;
 		mbufs_to_clean[mbuf_cnt++] = mbuf;
 		if (mbuf_cnt == buf_size) {
-			rte_mempool_put_bulk(mbufs_to_clean[0]->pool, (void **)mbufs_to_clean,
-				(unsigned int)mbuf_cnt);
+			rte_pktmbuf_free_bulk(mbufs_to_clean, mbuf_cnt);
 			mbuf_cnt = 0;
 		}
 		mbuf = m_next;
@@ -3191,8 +3190,7 @@ static int ena_tx_cleanup(void *txp, uint32_t free_pkt_cnt)
 	}
 
 	if (mbuf_cnt != 0)
-		rte_mempool_put_bulk(mbufs_to_clean[0]->pool,
-			(void **)mbufs_to_clean, mbuf_cnt);
+		rte_pktmbuf_free_bulk(mbufs_to_clean, mbuf_cnt);
 
 	/* Notify completion handler that full cleanup was performed */
 	if (free_pkt_cnt == 0 || total_tx_pkts < cleanup_budget)
