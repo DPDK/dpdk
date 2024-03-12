@@ -79,7 +79,7 @@ static int ena_com_mem_addr_set(struct ena_com_dev *ena_dev,
 				       struct ena_common_mem_addr *ena_addr,
 				       dma_addr_t addr)
 {
-	if ((addr & GENMASK_ULL(ena_dev->dma_addr_bits - 1, 0)) != addr) {
+	if (unlikely((addr & GENMASK_ULL(ena_dev->dma_addr_bits - 1, 0)) != addr)) {
 		ena_trc_err(ena_dev, "DMA address has more bits than the device supports\n");
 		return ENA_COM_INVAL;
 	}
@@ -99,7 +99,7 @@ static int ena_com_admin_init_sq(struct ena_com_admin_queue *admin_queue)
 	ENA_MEM_ALLOC_COHERENT(admin_queue->q_dmadev, size, sq->entries, sq->dma_addr,
 			       sq->mem_handle);
 
-	if (!sq->entries) {
+	if (unlikely(!sq->entries)) {
 		ena_trc_err(ena_dev, "Memory allocation failed\n");
 		return ENA_COM_NO_MEM;
 	}
@@ -122,7 +122,7 @@ static int ena_com_admin_init_cq(struct ena_com_admin_queue *admin_queue)
 	ENA_MEM_ALLOC_COHERENT(admin_queue->q_dmadev, size, cq->entries, cq->dma_addr,
 			       cq->mem_handle);
 
-	if (!cq->entries)  {
+	if (unlikely(!cq->entries))  {
 		ena_trc_err(ena_dev, "Memory allocation failed\n");
 		return ENA_COM_NO_MEM;
 	}
@@ -147,7 +147,7 @@ static int ena_com_admin_init_aenq(struct ena_com_dev *ena_dev,
 			aenq->dma_addr,
 			aenq->mem_handle);
 
-	if (!aenq->entries) {
+	if (unlikely(!aenq->entries)) {
 		ena_trc_err(ena_dev, "Memory allocation failed\n");
 		return ENA_COM_NO_MEM;
 	}
@@ -233,7 +233,7 @@ static struct ena_comp_ctx *__ena_com_submit_admin_cmd(struct ena_com_admin_queu
 
 	/* In case of queue FULL */
 	cnt = (u16)ATOMIC32_READ(&admin_queue->outstanding_cmds);
-	if (cnt >= admin_queue->q_depth) {
+	if (unlikely(cnt >= admin_queue->q_depth)) {
 		ena_trc_dbg(admin_queue->ena_dev, "Admin queue is full.\n");
 		admin_queue->stats.out_of_space++;
 		return ERR_PTR(ENA_COM_NO_SPACE);
@@ -357,7 +357,7 @@ static int ena_com_init_io_sq(struct ena_com_dev *ena_dev,
 					       io_sq->desc_addr.mem_handle);
 		}
 
-		if (!io_sq->desc_addr.virt_addr) {
+		if (unlikely(!io_sq->desc_addr.virt_addr)) {
 			ena_trc_err(ena_dev, "Memory allocation failed\n");
 			return ENA_COM_NO_MEM;
 		}
@@ -382,7 +382,7 @@ static int ena_com_init_io_sq(struct ena_com_dev *ena_dev,
 		if (!io_sq->bounce_buf_ctrl.base_buffer)
 			io_sq->bounce_buf_ctrl.base_buffer = ENA_MEM_ALLOC(ena_dev->dmadev, size);
 
-		if (!io_sq->bounce_buf_ctrl.base_buffer) {
+		if (unlikely(!io_sq->bounce_buf_ctrl.base_buffer)) {
 			ena_trc_err(ena_dev, "Bounce buffer memory allocation failed\n");
 			return ENA_COM_NO_MEM;
 		}
@@ -447,7 +447,7 @@ static int ena_com_init_io_cq(struct ena_com_dev *ena_dev,
 					       ENA_CDESC_RING_SIZE_ALIGNMENT);
 	}
 
-	if (!io_cq->cdesc_addr.virt_addr) {
+	if (unlikely(!io_cq->cdesc_addr.virt_addr)) {
 		ena_trc_err(ena_dev, "Memory allocation failed\n");
 		return ENA_COM_NO_MEM;
 	}
@@ -577,7 +577,7 @@ static int ena_com_wait_and_process_admin_cq_polling(struct ena_comp_ctx *comp_c
 		if (comp_ctx->status != ENA_CMD_SUBMITTED)
 			break;
 
-		if (ENA_TIME_EXPIRE(timeout)) {
+		if (unlikely(ENA_TIME_EXPIRE(timeout))) {
 			ena_trc_err(admin_queue->ena_dev,
 				    "Wait for completion (polling) timeout\n");
 			/* ENA didn't have any completion */
@@ -776,7 +776,7 @@ static int ena_com_config_llq_info(struct ena_com_dev *ena_dev,
 			llq_default_cfg->llq_ring_entry_size_value;
 
 	rc = ena_com_set_llq(ena_dev);
-	if (rc)
+	if (unlikely(rc))
 		ena_trc_err(ena_dev, "Cannot set LLQ configuration: %d\n", rc);
 
 	return rc;
@@ -882,7 +882,7 @@ static u32 ena_com_reg_bar_read32(struct ena_com_dev *ena_dev, u16 offset)
 		goto err;
 	}
 
-	if (read_resp->reg_off != offset) {
+	if (unlikely(read_resp->reg_off != offset)) {
 		ena_trc_err(ena_dev, "Read failure: wrong offset provided\n");
 		ret = ENA_MMIO_READ_TIMEOUT;
 	} else {
@@ -1006,7 +1006,7 @@ static int wait_for_reset_state(struct ena_com_dev *ena_dev, u32 timeout,
 			exp_state)
 			return 0;
 
-		if (ENA_TIME_EXPIRE(timeout_stamp))
+		if (unlikely(ENA_TIME_EXPIRE(timeout_stamp)))
 			return ENA_COM_TIMER_EXPIRED;
 
 		ena_delay_exponential_backoff_us(exp++, ena_dev->ena_min_poll_delay_us);
@@ -1467,7 +1467,7 @@ int ena_com_get_io_handlers(struct ena_com_dev *ena_dev, u16 qid,
 			    struct ena_com_io_sq **io_sq,
 			    struct ena_com_io_cq **io_cq)
 {
-	if (qid >= ENA_TOTAL_NUM_QUEUES) {
+	if (unlikely(qid >= ENA_TOTAL_NUM_QUEUES)) {
 		ena_trc_err(ena_dev, "Invalid queue number %d but the max is %d\n",
 			    qid, ENA_TOTAL_NUM_QUEUES);
 		return ENA_COM_INVAL;
@@ -1575,7 +1575,7 @@ int ena_com_set_aenq_config(struct ena_com_dev *ena_dev, u32 groups_flag)
 	int ret;
 
 	ret = ena_com_get_feature(ena_dev, &get_resp, ENA_ADMIN_AENQ_CONFIG, 0);
-	if (ret) {
+	if (unlikely(ret)) {
 		ena_trc_info(ena_dev, "Can't get aenq configuration\n");
 		return ret;
 	}
@@ -1622,7 +1622,7 @@ int ena_com_get_dma_width(struct ena_com_dev *ena_dev)
 
 	ena_trc_dbg(ena_dev, "ENA dma width: %d\n", width);
 
-	if ((width < 32) || width > ENA_MAX_PHYS_ADDR_SIZE_BITS) {
+	if (unlikely(width < 32 || width > ENA_MAX_PHYS_ADDR_SIZE_BITS)) {
 		ena_trc_err(ena_dev, "DMA width illegal value: %d\n", width);
 		return ENA_COM_INVAL;
 	}
@@ -2092,15 +2092,15 @@ int ena_com_admin_init(struct ena_com_dev *ena_dev,
 	ENA_SPINLOCK_INIT(admin_queue->q_lock);
 
 	ret = ena_com_init_comp_ctxt(admin_queue);
-	if (ret)
+	if (unlikely(ret))
 		goto error;
 
 	ret = ena_com_admin_init_sq(admin_queue);
-	if (ret)
+	if (unlikely(ret))
 		goto error;
 
 	ret = ena_com_admin_init_cq(admin_queue);
-	if (ret)
+	if (unlikely(ret))
 		goto error;
 
 	admin_queue->sq.db_addr = (u32 __iomem *)((uintptr_t)ena_dev->reg_bar +
@@ -2133,7 +2133,7 @@ int ena_com_admin_init(struct ena_com_dev *ena_dev,
 	ENA_REG_WRITE32(ena_dev->bus, aq_caps, ena_dev->reg_bar + ENA_REGS_AQ_CAPS_OFF);
 	ENA_REG_WRITE32(ena_dev->bus, acq_caps, ena_dev->reg_bar + ENA_REGS_ACQ_CAPS_OFF);
 	ret = ena_com_admin_init_aenq(ena_dev, aenq_handlers);
-	if (ret)
+	if (unlikely(ret))
 		goto error;
 
 	admin_queue->ena_dev = ena_dev;
@@ -2153,7 +2153,7 @@ int ena_com_create_io_queue(struct ena_com_dev *ena_dev,
 	struct ena_com_io_cq *io_cq;
 	int ret;
 
-	if (ctx->qid >= ENA_TOTAL_NUM_QUEUES) {
+	if (unlikely(ctx->qid >= ENA_TOTAL_NUM_QUEUES)) {
 		ena_trc_err(ena_dev, "Qid (%d) is bigger than max num of queues (%d)\n",
 			    ctx->qid, ENA_TOTAL_NUM_QUEUES);
 		return ENA_COM_INVAL;
@@ -2184,18 +2184,18 @@ int ena_com_create_io_queue(struct ena_com_dev *ena_dev,
 			ENA_MIN32(ena_dev->tx_max_header_size, SZ_256);
 
 	ret = ena_com_init_io_sq(ena_dev, ctx, io_sq);
-	if (ret)
+	if (unlikely(ret))
 		goto error;
 	ret = ena_com_init_io_cq(ena_dev, ctx, io_cq);
-	if (ret)
+	if (unlikely(ret))
 		goto error;
 
 	ret = ena_com_create_io_cq(ena_dev, io_cq);
-	if (ret)
+	if (unlikely(ret))
 		goto error;
 
 	ret = ena_com_create_io_sq(ena_dev, io_sq, io_cq->idx);
-	if (ret)
+	if (unlikely(ret))
 		goto destroy_io_cq;
 
 	return 0;
@@ -2212,7 +2212,7 @@ void ena_com_destroy_io_queue(struct ena_com_dev *ena_dev, u16 qid)
 	struct ena_com_io_sq *io_sq;
 	struct ena_com_io_cq *io_cq;
 
-	if (qid >= ENA_TOTAL_NUM_QUEUES) {
+	if (unlikely(qid >= ENA_TOTAL_NUM_QUEUES)) {
 		ena_trc_err(ena_dev, "Qid (%d) is bigger than max num of queues (%d)\n",
 			    qid, ENA_TOTAL_NUM_QUEUES);
 		return;
@@ -2513,7 +2513,7 @@ int ena_com_dev_reset(struct ena_com_dev *ena_dev,
 
 	rc = wait_for_reset_state(ena_dev, timeout,
 				  ENA_REGS_DEV_STS_RESET_IN_PROGRESS_MASK);
-	if (rc != 0) {
+	if (unlikely(rc)) {
 		ena_trc_err(ena_dev, "Reset indication didn't turn on\n");
 		return rc;
 	}
@@ -2521,7 +2521,7 @@ int ena_com_dev_reset(struct ena_com_dev *ena_dev,
 	/* reset done */
 	ENA_REG_WRITE32(ena_dev->bus, 0, ena_dev->reg_bar + ENA_REGS_DEV_CTL_OFF);
 	rc = wait_for_reset_state(ena_dev, timeout, 0);
-	if (rc != 0) {
+	if (unlikely(rc)) {
 		ena_trc_err(ena_dev, "Reset indication didn't turn off\n");
 		return rc;
 	}
@@ -3383,7 +3383,7 @@ int ena_com_config_dev_mode(struct ena_com_dev *ena_dev,
 	}
 
 	rc = ena_com_config_llq_info(ena_dev, llq_features, llq_default_cfg);
-	if (rc)
+	if (unlikely(rc))
 		return rc;
 
 	ena_dev->tx_max_header_size = llq_info->desc_list_entry_size -
