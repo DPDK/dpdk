@@ -531,8 +531,8 @@ __extension__ ({
 __extension__ ({
 	ENA_TOUCH(rsp);
 	ENA_TOUCH(ena_dev);
-	if (stats != (struct ena_admin_eni_stats *)&adapter->metrics_stats)
-		rte_memcpy(stats, &adapter->metrics_stats, sizeof(*stats));
+	if (stats != (struct ena_admin_eni_stats *)adapter->metrics_stats)
+		rte_memcpy(stats, adapter->metrics_stats, sizeof(*stats));
 }),
 	struct ena_com_dev *ena_dev, struct ena_admin_eni_stats *stats);
 
@@ -590,9 +590,8 @@ __extension__ ({
 __extension__ ({
 	ENA_TOUCH(rsp);
 	ENA_TOUCH(ena_dev);
-	ENA_TOUCH(buf_size);
-	if (buf != (char *)&adapter->metrics_stats)
-		rte_memcpy(buf, &adapter->metrics_stats, adapter->metrics_num * sizeof(uint64_t));
+	if (buf != (char *)adapter->metrics_stats)
+		rte_memcpy(buf, adapter->metrics_stats, buf_size);
 }),
 	struct ena_com_dev *ena_dev, char *buf, size_t buf_size);
 
@@ -4088,7 +4087,7 @@ ena_mp_primary_handle(const struct rte_mp_msg *mp_msg, const void *peer)
 	case ENA_MP_CUSTOMER_METRICS_GET:
 		res = ena_com_get_customer_metrics(ena_dev,
 				(char *)adapter->metrics_stats,
-				sizeof(uint64_t) * adapter->metrics_num);
+				adapter->metrics_num * sizeof(uint64_t));
 		break;
 	case ENA_MP_SRD_STATS_GET:
 		res = ena_com_get_ena_srd_info(ena_dev,
