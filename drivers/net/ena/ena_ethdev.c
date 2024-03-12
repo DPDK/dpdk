@@ -3,6 +3,7 @@
  * All rights reserved.
  */
 
+#include <rte_alarm.h>
 #include <rte_string_fns.h>
 #include <rte_errno.h>
 #include <rte_version.h>
@@ -35,6 +36,8 @@
 #define ARRAY_SIZE(x) RTE_DIM(x)
 
 #define ENA_MIN_RING_DESC	128
+
+#define USEC_PER_MSEC		1000UL
 
 #define BITS_PER_BYTE 8
 
@@ -90,6 +93,14 @@ struct ena_stats {
  * huge performance degradation on 6th generation AWS instances.
  */
 #define ENA_DEVARG_ENABLE_LLQ "enable_llq"
+/*
+ * Controls the period of time (in milliseconds) between two consecutive inspections of
+ * the control queues when the driver is in poll mode and not using interrupts.
+ * By default, this value is zero, indicating that the driver will not be in poll mode and will
+ * use interrupts. A non-zero value for this argument is mandatory when using uio_pci_generic
+ * driver.
+ */
+#define ENA_DEVARG_CONTROL_PATH_POLL_INTERVAL "control_path_poll_interval"
 
 /*
  * Each rte_memzone should have unique name.
@@ -266,7 +277,8 @@ static uint64_t ena_get_rx_queue_offloads(struct ena_adapter *adapter);
 static uint64_t ena_get_tx_queue_offloads(struct ena_adapter *adapter);
 static int ena_infos_get(struct rte_eth_dev *dev,
 			 struct rte_eth_dev_info *dev_info);
-static void ena_interrupt_handler_rte(void *cb_arg);
+static void ena_control_path_handler(void *cb_arg);
+static void ena_control_path_poll_handler(void *cb_arg);
 static void ena_timer_wd_callback(struct rte_timer *timer, void *arg);
 static void ena_destroy_device(struct rte_eth_dev *eth_dev);
 static int eth_ena_dev_init(struct rte_eth_dev *eth_dev);
@@ -878,10 +890,14 @@ static int ena_close(struct rte_eth_dev *dev)
 		ret = ena_stop(dev);
 	adapter->state = ENA_ADAPTER_STATE_CLOSED;
 
-	rte_intr_disable(intr_handle);
-	rc = rte_intr_callback_unregister_sync(intr_handle, ena_interrupt_handler_rte, dev);
-	if (unlikely(rc != 0))
-		PMD_INIT_LOG(ERR, "Failed to unregister interrupt handler\n");
+	if (!adapter->control_path_poll_interval) {
+		rte_intr_disable(intr_handle);
+		rc = rte_intr_callback_unregister_sync(intr_handle, ena_control_path_handler, dev);
+		if (unlikely(rc != 0))
+			PMD_INIT_LOG(ERR, "Failed to unregister interrupt handler\n");
+	} else {
+		rte_eal_alarm_cancel(ena_control_path_poll_handler, dev);
+	}
 
 	ena_rx_queue_release_all(dev);
 	ena_tx_queue_release_all(dev);
@@ -1885,15 +1901,33 @@ err_mmio_read_less:
 	return rc;
 }
 
-static void ena_interrupt_handler_rte(void *cb_arg)
+static void ena_control_path_handler(void *cb_arg)
 {
 	struct rte_eth_dev *dev = cb_arg;
 	struct ena_adapter *adapter = dev->data->dev_private;
 	struct ena_com_dev *ena_dev = &adapter->ena_dev;
 
-	ena_com_admin_q_comp_intr_handler(ena_dev);
-	if (likely(adapter->state != ENA_ADAPTER_STATE_CLOSED))
+	if (likely(adapter->state != ENA_ADAPTER_STATE_CLOSED)) {
+		ena_com_admin_q_comp_intr_handler(ena_dev);
 		ena_com_aenq_intr_handler(ena_dev, dev);
+	}
+}
+
+static void ena_control_path_poll_handler(void *cb_arg)
+{
+	struct rte_eth_dev *dev = cb_arg;
+	struct ena_adapter *adapter = dev->data->dev_private;
+	int rc;
+
+	if (likely(adapter->state != ENA_ADAPTER_STATE_CLOSED)) {
+		ena_control_path_handler(cb_arg);
+		rc = rte_eal_alarm_set(adapter->control_path_poll_interval,
+				       ena_control_path_poll_handler, cb_arg);
+		if (unlikely(rc != 0)) {
+			PMD_DRV_LOG(ERR, "Failed to retrigger control path alarm\n");
+			ena_trigger_reset(adapter, ENA_REGS_RESET_GENERIC);
+		}
+	}
 }
 
 static void check_for_missing_keep_alive(struct ena_adapter *adapter)
@@ -2363,20 +2397,29 @@ static int eth_ena_dev_init(struct rte_eth_dev *eth_dev)
 
 	rte_spinlock_init(&adapter->admin_lock);
 
-	rte_intr_callback_register(intr_handle,
-				   ena_interrupt_handler_rte,
-				   eth_dev);
-	rte_intr_enable(intr_handle);
-	ena_com_set_admin_polling_mode(ena_dev, false);
+	if (!adapter->control_path_poll_interval) {
+		/* Control path interrupt mode */
+		rte_intr_callback_register(intr_handle, ena_control_path_handler, eth_dev);
+		rte_intr_enable(intr_handle);
+		ena_com_set_admin_polling_mode(ena_dev, false);
+	} else {
+		/* Control path polling mode */
+		rc = rte_eal_alarm_set(adapter->control_path_poll_interval,
+				       ena_control_path_poll_handler, eth_dev);
+		if (unlikely(rc != 0)) {
+			PMD_DRV_LOG(ERR, "Failed to set control path alarm\n");
+			goto err_control_path_destroy;
+		}
+	}
 	ena_com_admin_aenq_enable(ena_dev);
-
 	rte_timer_init(&adapter->timer_wd);
 
 	adapters_found++;
 	adapter->state = ENA_ADAPTER_STATE_INIT;
 
 	return 0;
-
+err_control_path_destroy:
+	rte_free(adapter->drv_stats);
 err_rss_destroy:
 	ena_com_rss_destroy(ena_dev);
 err_delete_debug_area:
@@ -3657,9 +3700,9 @@ static int ena_process_uint_devarg(const char *key,
 {
 	struct ena_adapter *adapter = opaque;
 	char *str_end;
-	uint64_t uint_value;
+	uint64_t uint64_value;
 
-	uint_value = strtoull(value, &str_end, DECIMAL_BASE);
+	uint64_value = strtoull(value, &str_end, DECIMAL_BASE);
 	if (value == str_end) {
 		PMD_INIT_LOG(ERR,
 			"Invalid value for key '%s'. Only uint values are accepted.\n",
@@ -3668,12 +3711,12 @@ static int ena_process_uint_devarg(const char *key,
 	}
 
 	if (strcmp(key, ENA_DEVARG_MISS_TXC_TO) == 0) {
-		if (uint_value > ENA_MAX_TX_TIMEOUT_SECONDS) {
+		if (uint64_value > ENA_MAX_TX_TIMEOUT_SECONDS) {
 			PMD_INIT_LOG(ERR,
 				"Tx timeout too high: %" PRIu64 " sec. Maximum allowed: %d sec.\n",
-				uint_value, ENA_MAX_TX_TIMEOUT_SECONDS);
+				uint64_value, ENA_MAX_TX_TIMEOUT_SECONDS);
 			return -EINVAL;
-		} else if (uint_value == 0) {
+		} else if (uint64_value == 0) {
 			PMD_INIT_LOG(INFO,
 				"Check for missing Tx completions has been disabled.\n");
 			adapter->missing_tx_completion_to =
@@ -3681,9 +3724,27 @@ static int ena_process_uint_devarg(const char *key,
 		} else {
 			PMD_INIT_LOG(INFO,
 				"Tx packet completion timeout set to %" PRIu64 " seconds.\n",
-				uint_value);
+				uint64_value);
 			adapter->missing_tx_completion_to =
-				uint_value * rte_get_timer_hz();
+				uint64_value * rte_get_timer_hz();
+		}
+	} else if (strcmp(key, ENA_DEVARG_CONTROL_PATH_POLL_INTERVAL) == 0) {
+		if (uint64_value > ENA_MAX_CONTROL_PATH_POLL_INTERVAL_MSEC) {
+			PMD_INIT_LOG(ERR,
+				"Control path polling interval is too long: %" PRIu64 " msecs. "
+				"Maximum allowed: %d msecs.\n",
+				uint64_value, ENA_MAX_CONTROL_PATH_POLL_INTERVAL_MSEC);
+			return -EINVAL;
+		} else if (uint64_value == 0) {
+			PMD_INIT_LOG(INFO,
+				"Control path polling interval is set to zero. Operating in "
+				"interrupt mode.\n");
+				adapter->control_path_poll_interval = 0;
+		} else {
+			PMD_INIT_LOG(INFO,
+				"Control path polling interval is set to %" PRIu64 " msecs.\n",
+				uint64_value);
+				adapter->control_path_poll_interval = uint64_value * USEC_PER_MSEC;
 		}
 	}
 
@@ -3728,6 +3789,7 @@ static int ena_parse_devargs(struct ena_adapter *adapter,
 		ENA_DEVARG_NORMAL_LLQ_HDR,
 		ENA_DEVARG_MISS_TXC_TO,
 		ENA_DEVARG_ENABLE_LLQ,
+		ENA_DEVARG_CONTROL_PATH_POLL_INTERVAL,
 		NULL,
 	};
 	struct rte_kvargs *kvlist;
@@ -3757,6 +3819,12 @@ static int ena_parse_devargs(struct ena_adapter *adapter,
 		goto exit;
 	rc = rte_kvargs_process(kvlist, ENA_DEVARG_ENABLE_LLQ,
 		ena_process_bool_devarg, adapter);
+	if (rc != 0)
+		goto exit;
+	rc = rte_kvargs_process(kvlist, ENA_DEVARG_CONTROL_PATH_POLL_INTERVAL,
+		ena_process_uint_devarg, adapter);
+	if (rc != 0)
+		goto exit;
 
 exit:
 	rte_kvargs_free(kvlist);
@@ -3979,7 +4047,8 @@ RTE_PMD_REGISTER_PARAM_STRING(net_ena,
 	ENA_DEVARG_LARGE_LLQ_HDR "=<0|1> "
 	ENA_DEVARG_NORMAL_LLQ_HDR "=<0|1> "
 	ENA_DEVARG_ENABLE_LLQ "=<0|1> "
-	ENA_DEVARG_MISS_TXC_TO "=<uint>");
+	ENA_DEVARG_MISS_TXC_TO "=<uint>"
+	ENA_DEVARG_CONTROL_PATH_POLL_INTERVAL "=<0-1000>");
 RTE_LOG_REGISTER_SUFFIX(ena_logtype_init, init, NOTICE);
 RTE_LOG_REGISTER_SUFFIX(ena_logtype_driver, driver, NOTICE);
 #ifdef RTE_ETHDEV_DEBUG_RX

@@ -44,6 +44,8 @@
 #define ENA_MONITORED_TX_QUEUES		3
 #define ENA_DEFAULT_MISSING_COMP	256U
 
+#define ENA_MAX_CONTROL_PATH_POLL_INTERVAL_MSEC 1000
+
 /* While processing submitted and completed descriptors (rx and tx path
  * respectively) in a loop it is desired to:
  *  - perform batch submissions while populating submission queue
@@ -347,6 +349,9 @@ struct ena_adapter {
 	uint64_t tx_cleanup_stall_delay;
 
 	uint64_t memzone_cnt;
+
+	/* Time (in microseconds) of the control path queues monitoring interval */
+	uint64_t control_path_poll_interval;
 
 	/*
 	 * Helper variables for holding the information about the supported
