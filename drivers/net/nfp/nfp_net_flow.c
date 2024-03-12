@@ -564,8 +564,9 @@ nfp_net_flow_action_mark(struct rte_flow *nfp_flow,
 	action_data->mark_id = mark->id;
 }
 
-static void
-nfp_net_flow_action_queue(struct rte_flow *nfp_flow,
+static int
+nfp_net_flow_action_queue(struct rte_eth_dev *dev,
+		struct rte_flow *nfp_flow,
 		const struct rte_flow_action *action)
 {
 	struct nfp_net_cmsg_action *action_data;
@@ -573,15 +574,24 @@ nfp_net_flow_action_queue(struct rte_flow *nfp_flow,
 
 	action_data = (struct nfp_net_cmsg_action *)nfp_flow->payload.action_data;
 	queue = action->conf;
+	if (queue->index >= dev->data->nb_rx_queues ||
+			dev->data->rx_queues[queue->index] == NULL) {
+		PMD_DRV_LOG(ERR, "Queue index is illegal");
+		return -EINVAL;
+	}
 
 	action_data->action |= NFP_NET_CMSG_ACTION_QUEUE;
 	action_data->queue = queue->index;
+
+	return 0;
 }
 
 static int
-nfp_net_flow_compile_actions(const struct rte_flow_action actions[],
+nfp_net_flow_compile_actions(struct rte_eth_dev *dev,
+		const struct rte_flow_action actions[],
 		struct rte_flow *nfp_flow)
 {
+	int ret = 0;
 	const struct rte_flow_action *action;
 
 	for (action = actions; action->type != RTE_FLOW_ACTION_TYPE_END; ++action) {
@@ -596,7 +606,7 @@ nfp_net_flow_compile_actions(const struct rte_flow_action actions[],
 			break;
 		case RTE_FLOW_ACTION_TYPE_QUEUE:
 			PMD_DRV_LOG(DEBUG, "Process RTE_FLOW_ACTION_TYPE_QUEUE");
-			nfp_net_flow_action_queue(nfp_flow, action);
+			ret = nfp_net_flow_action_queue(dev, nfp_flow, action);
 			break;
 		default:
 			PMD_DRV_LOG(ERR, "Unsupported action type: %d", action->type);
@@ -604,7 +614,7 @@ nfp_net_flow_compile_actions(const struct rte_flow_action actions[],
 		}
 	}
 
-	return 0;
+	return ret;
 }
 
 static void
@@ -670,7 +680,7 @@ nfp_net_flow_setup(struct rte_eth_dev *dev,
 		goto free_flow;
 	}
 
-	ret = nfp_net_flow_compile_actions(actions, nfp_flow);
+	ret = nfp_net_flow_compile_actions(dev, actions, nfp_flow);
 	if (ret != 0) {
 		PMD_DRV_LOG(ERR, "NFP flow action process failed.");
 		goto free_flow;
