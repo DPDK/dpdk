@@ -2596,8 +2596,10 @@ static int ena_infos_get(struct rte_eth_dev *dev,
 	dev_info->tx_desc_lim.nb_mtu_seg_max = RTE_MIN(ENA_PKT_MAX_BUFS,
 					adapter->max_tx_sgl_size);
 
-	dev_info->default_rxportconf.ring_size = ENA_DEFAULT_RING_SIZE;
-	dev_info->default_txportconf.ring_size = ENA_DEFAULT_RING_SIZE;
+	dev_info->default_rxportconf.ring_size = RTE_MIN(ENA_DEFAULT_RING_SIZE,
+							 dev_info->rx_desc_lim.nb_max);
+	dev_info->default_txportconf.ring_size = RTE_MIN(ENA_DEFAULT_RING_SIZE,
+							 dev_info->tx_desc_lim.nb_max);
 
 	dev_info->err_handle_mode = RTE_ETH_ERROR_HANDLE_MODE_PASSIVE;
 
