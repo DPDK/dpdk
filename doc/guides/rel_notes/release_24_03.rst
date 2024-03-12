@@ -103,6 +103,11 @@ New Features
   * ``rte_flow_template_table_resize_complete()``.
     Complete table resize.
 
+* **Updated Amazon ena (Elastic Network Adapter) net driver.**
+
+  * Removed the reporting of ``rx_overruns`` errors from xstats
+    and instead updated ``imissed`` counter with its value.
+
 * **Updated Atomic Rules' Arkville driver.**
 
   * Added support for Atomic Rules' TK242 packet-capture family of devices

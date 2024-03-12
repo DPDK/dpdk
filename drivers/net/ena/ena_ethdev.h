@@ -219,7 +219,6 @@ struct ena_stats_dev {
 	 * As a workaround it is being published as an extended statistic.
 	 */
 	u64 tx_drops;
-	u64 rx_overruns;
 };
 
 struct ena_stats_metrics {

@@ -93,7 +93,6 @@ static const struct ena_stats ena_stats_global_strings[] = {
 	ENA_STAT_GLOBAL_ENTRY(dev_start),
 	ENA_STAT_GLOBAL_ENTRY(dev_stop),
 	ENA_STAT_GLOBAL_ENTRY(tx_drops),
-	ENA_STAT_GLOBAL_ENTRY(rx_overruns),
 };
 
 /*
@@ -4014,9 +4013,12 @@ static void ena_keep_alive(void *adapter_data,
 	tx_drops = ((uint64_t)desc->tx_drops_high << 32) | desc->tx_drops_low;
 	rx_overruns = ((uint64_t)desc->rx_overruns_high << 32) | desc->rx_overruns_low;
 
-	adapter->drv_stats->rx_drops = rx_drops;
+	/*
+	 * Depending on its acceleration support, the device updates a different statistic when
+	 * Rx packet is dropped because there are no available buffers to accommodate it.
+	 */
+	adapter->drv_stats->rx_drops = rx_drops + rx_overruns;
 	adapter->dev_stats.tx_drops = tx_drops;
-	adapter->dev_stats.rx_overruns = rx_overruns;
 }
 
 /**
