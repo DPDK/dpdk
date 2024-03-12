@@ -340,5 +340,6 @@ static __rte_always_inline int ena_bits_per_u64(uint64_t bitmap)
 	return count;
 }
 
+#define ENA_ADMIN_OS_DPDK 3
 
 #endif /* DPDK_ENA_COM_ENA_PLAT_DPDK_H_ */
