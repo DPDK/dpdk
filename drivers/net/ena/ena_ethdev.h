@@ -85,6 +85,14 @@ enum ena_ring_type {
 	ENA_RING_TYPE_TX = 2,
 };
 
+typedef enum ena_llq_policy_t {
+	ENA_LLQ_POLICY_DISABLED    = 0, /* Host queues */
+	ENA_LLQ_POLICY_RECOMMENDED = 1, /* Device recommendation */
+	ENA_LLQ_POLICY_NORMAL      = 2, /* 128B long LLQ entry */
+	ENA_LLQ_POLICY_LARGE       = 3, /* 256B long LLQ entry */
+	ENA_LLQ_POLICY_LAST,
+} ena_llq_policy;
+
 struct ena_tx_buffer {
 	struct rte_mbuf *mbuf;
 	unsigned int tx_descs;
@@ -328,9 +336,10 @@ struct ena_adapter {
 	uint32_t active_aenq_groups;
 
 	bool trigger_reset;
-
 	bool enable_llq;
 	bool use_large_llq_hdr;
+	bool use_normal_llq_hdr;
+	ena_llq_policy llq_header_policy;
 
 	uint32_t last_tx_comp_qid;
 	uint64_t missing_tx_completion_to;
