@@ -237,6 +237,8 @@ nfp_net_flow_merge_ipv4(struct rte_flow *nfp_flow,
 	const struct rte_flow_item_ipv4 *mask;
 	const struct rte_flow_item_ipv4 *spec;
 
+	nfp_flow->payload.cmsg_type = NFP_NET_CFG_MBOX_CMD_FS_ADD_V4;
+
 	spec = item->spec;
 	if (spec == NULL) {
 		PMD_DRV_LOG(DEBUG, "NFP flow merge ipv4: no item->spec!");
@@ -245,7 +247,6 @@ nfp_net_flow_merge_ipv4(struct rte_flow *nfp_flow,
 
 	mask = (item->mask != NULL) ? item->mask : proc->mask_default;
 
-	nfp_flow->payload.cmsg_type = NFP_NET_CFG_MBOX_CMD_FS_ADD_V4;
 	ipv4 = (struct nfp_net_cmsg_match_v4 *)nfp_flow->payload.match_data;
 
 	ipv4->l4_protocol_mask = mask->hdr.next_proto_id;
@@ -269,6 +270,8 @@ nfp_net_flow_merge_ipv6(struct rte_flow *nfp_flow,
 	const struct rte_flow_item_ipv6 *mask;
 	const struct rte_flow_item_ipv6 *spec;
 
+	nfp_flow->payload.cmsg_type = NFP_NET_CFG_MBOX_CMD_FS_ADD_V6;
+
 	spec = item->spec;
 	if (spec == NULL) {
 		PMD_DRV_LOG(DEBUG, "NFP flow merge ipv6: no item->spec!");
@@ -277,7 +280,6 @@ nfp_net_flow_merge_ipv6(struct rte_flow *nfp_flow,
 
 	mask = (item->mask != NULL) ? item->mask : proc->mask_default;
 
-	nfp_flow->payload.cmsg_type = NFP_NET_CFG_MBOX_CMD_FS_ADD_V6;
 	ipv6 = (struct nfp_net_cmsg_match_v6 *)nfp_flow->payload.match_data;
 
 	ipv6->l4_protocol_mask = mask->hdr.proto;
