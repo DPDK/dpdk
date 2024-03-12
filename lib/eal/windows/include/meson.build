@@ -6,4 +6,5 @@ includes += include_directories('.')
 headers += files(
         'rte_os.h',
         'rte_windows.h',
+        'sched.h',
 )
