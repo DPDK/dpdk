@@ -116,6 +116,7 @@ test_tls_record_td_prepare(const struct crypto_param *param1, const struct crypt
 		}
 	} else {
 		mac_len = td->xform.aead.aead.digest_length;
+		roundup_len = 0;
 		exp_nonce_len = 8;
 	}
 
@@ -123,7 +124,10 @@ test_tls_record_td_prepare(const struct crypto_param *param1, const struct crypt
 	case RTE_SECURITY_VERSION_TLS_1_2:
 	case RTE_SECURITY_VERSION_TLS_1_3:
 		hdr_len = sizeof(struct rte_tls_hdr);
-		min_padding = 1;
+		if (td->aead)
+			min_padding = 0;
+		else
+			min_padding = 1;
 		break;
 	case RTE_SECURITY_VERSION_DTLS_1_2:
 		hdr_len = sizeof(struct rte_dtls_hdr);
@@ -139,7 +143,9 @@ test_tls_record_td_prepare(const struct crypto_param *param1, const struct crypt
 
 	/* Padding */
 	tls_pkt_size += min_padding;
-	tls_pkt_size = RTE_ALIGN_MUL_CEIL(tls_pkt_size, roundup_len);
+
+	if (roundup_len)
+		tls_pkt_size = RTE_ALIGN_MUL_CEIL(tls_pkt_size, roundup_len);
 
 	/* Explicit nonce */
 	tls_pkt_size += exp_nonce_len;

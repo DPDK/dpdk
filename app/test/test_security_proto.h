@@ -27,16 +27,19 @@ static const struct crypto_param aead_list[] = {
 		.type = RTE_CRYPTO_SYM_XFORM_AEAD,
 		.alg.aead =  RTE_CRYPTO_AEAD_AES_GCM,
 		.key_length = 16,
+		.digest_length = 16,
 	},
 	{
 		.type = RTE_CRYPTO_SYM_XFORM_AEAD,
 		.alg.aead = RTE_CRYPTO_AEAD_AES_GCM,
 		.key_length = 24,
+		.digest_length = 16,
 	},
 	{
 		.type = RTE_CRYPTO_SYM_XFORM_AEAD,
 		.alg.aead = RTE_CRYPTO_AEAD_AES_GCM,
 		.key_length = 32,
+		.digest_length = 16,
 	},
 	{
 		.type = RTE_CRYPTO_SYM_XFORM_AEAD,
