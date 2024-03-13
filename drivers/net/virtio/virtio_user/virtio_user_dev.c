@@ -445,8 +445,9 @@ virtio_user_dev_init_notify(struct virtio_user_dev *dev)
 		dev->kickfds[i] = kickfd;
 	}
 
-	if (dev->ops->map_notification_area)
-		if (dev->ops->map_notification_area(dev))
+	if (dev->device_features & (1ULL << VIRTIO_F_NOTIFICATION_DATA))
+		if (dev->ops->map_notification_area &&
+				dev->ops->map_notification_area(dev))
 			goto err;
 
 	return 0;
