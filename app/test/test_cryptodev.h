@@ -182,15 +182,8 @@ create_segmented_mbuf(struct rte_mempool *mbuf_pool, int pkt_len,
 		int nb_segs, uint8_t pattern) {
 
 	struct rte_mbuf *m = NULL, *mbuf = NULL;
+	int size, t_len, data_len = 0;
 	uint8_t *dst;
-	int data_len = 0;
-	int i, size;
-	int t_len;
-
-	if (pkt_len < 1) {
-		printf("Packet size must be 1 or more (is %d)\n", pkt_len);
-		return NULL;
-	}
 
 	if (nb_segs < 1) {
 		printf("Number of segments must be 1 or more (is %d)\n",
@@ -202,16 +195,16 @@ create_segmented_mbuf(struct rte_mempool *mbuf_pool, int pkt_len,
 	size = pkt_len;
 
 	/* Create chained mbuf_src and fill it generated data */
-	for (i = 0; size > 0; i++) {
+	do {
 
 		m = rte_pktmbuf_alloc(mbuf_pool);
-		if (i == 0)
-			mbuf = m;
-
 		if (m == NULL) {
 			printf("Cannot create segment for source mbuf");
 			goto fail;
 		}
+
+		if (mbuf == NULL)
+			mbuf = m;
 
 		/* Make sure if tailroom is zeroed */
 		memset(m->buf_addr, pattern, m->buf_len);
@@ -229,7 +222,8 @@ create_segmented_mbuf(struct rte_mempool *mbuf_pool, int pkt_len,
 
 		size -= data_len;
 
-	}
+	} while (size > 0);
+
 	return mbuf;
 
 fail:
