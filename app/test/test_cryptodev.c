@@ -11827,6 +11827,10 @@ test_tls_record_proto_process(const struct tls_record_test_data td[],
 		.protocol = RTE_SECURITY_PROTOCOL_TLS_RECORD,
 	};
 
+	if ((tls_record_xform.ver == RTE_SECURITY_VERSION_DTLS_1_2) &&
+	    (sess_type == RTE_SECURITY_TLS_SESS_TYPE_READ))
+		sess_conf.tls_record.dtls_1_2.ar_win_sz = flags->ar_win_size;
+
 	if (td[0].aead)
 		test_tls_record_imp_nonce_update(&td[0], &tls_record_xform);
 
@@ -11851,6 +11855,17 @@ test_tls_record_proto_process(const struct tls_record_test_data td[],
 		return TEST_SKIPPED;
 
 	for (i = 0; i < nb_td; i++) {
+		if (flags->ar_win_size &&
+			(sess_type == RTE_SECURITY_TLS_SESS_TYPE_WRITE)) {
+			sess_conf.tls_record.dtls_1_2.seq_no =
+				td[i].tls_record_xform.dtls_1_2.seq_no;
+			ret = rte_security_session_update(ctx, ut_params->sec_session, &sess_conf);
+			if (ret) {
+				printf("Could not update sequence number in session\n");
+				return TEST_SKIPPED;
+			}
+		}
+
 		/* Setup source mbuf payload */
 		ut_params->ibuf = create_segmented_mbuf(ts_params->mbuf_pool, td[i].input_text.len,
 				nb_segs, 0);
@@ -11890,17 +11905,19 @@ test_tls_record_proto_process(const struct tls_record_test_data td[],
 		/* Process crypto operation */
 		process_crypto_request(dev_id, ut_params->op);
 
-		ret = test_tls_record_status_check(ut_params->op);
+		ret = test_tls_record_status_check(ut_params->op, &td[i]);
 		if (ret != TEST_SUCCESS)
 			goto crypto_op_free;
 
 		if (res_d != NULL)
 			res_d_tmp = &res_d[i];
 
-		ret = test_tls_record_post_process(ut_params->ibuf, &td[i], res_d_tmp, silent);
-		if (ret != TEST_SUCCESS)
-			goto crypto_op_free;
-
+		if (ut_params->op->status == RTE_CRYPTO_OP_STATUS_SUCCESS) {
+			ret = test_tls_record_post_process(ut_params->ibuf, &td[i], res_d_tmp,
+							   silent);
+			if (ret != TEST_SUCCESS)
+				goto crypto_op_free;
+		}
 
 		rte_crypto_op_free(ut_params->op);
 		ut_params->op = NULL;
@@ -12188,6 +12205,90 @@ test_dtls_1_2_record_proto_display_list(void)
 	flags.tls_version = RTE_SECURITY_VERSION_DTLS_1_2;
 
 	return test_tls_record_proto_all(&flags);
+}
+
+static int
+test_dtls_pkt_replay(const uint64_t seq_no[],
+		      bool replayed_pkt[], uint32_t nb_pkts,
+		      struct tls_record_test_flags *flags)
+{
+	struct tls_record_test_data td_outb[TEST_SEC_PKTS_MAX];
+	struct tls_record_test_data td_inb[TEST_SEC_PKTS_MAX];
+	unsigned int i, idx, pass_cnt = 0;
+	int ret;
+
+	for (i = 0; i < RTE_DIM(sec_alg_list); i++) {
+		test_tls_record_td_prepare(sec_alg_list[i].param1, sec_alg_list[i].param2, flags,
+					   td_outb, nb_pkts, 0);
+
+		for (idx = 0; idx < nb_pkts; idx++)
+			td_outb[idx].tls_record_xform.dtls_1_2.seq_no = seq_no[idx];
+
+		ret = test_tls_record_proto_process(td_outb, td_inb, nb_pkts, true, flags);
+		if (ret == TEST_SKIPPED)
+			continue;
+
+		if (ret == TEST_FAILED)
+			return TEST_FAILED;
+
+		test_tls_record_td_update(td_inb, td_outb, nb_pkts, flags);
+
+		for (idx = 0; idx < nb_pkts; idx++) {
+			td_inb[idx].tls_record_xform.dtls_1_2.ar_win_sz = flags->ar_win_size;
+			/* Set antireplay flag for packets to be dropped */
+			td_inb[idx].ar_packet = replayed_pkt[idx];
+		}
+
+		ret = test_tls_record_proto_process(td_inb, NULL, nb_pkts, true, flags);
+		if (ret == TEST_SKIPPED)
+			continue;
+
+		if (ret == TEST_FAILED)
+			return TEST_FAILED;
+
+		if (flags->display_alg)
+			test_sec_alg_display(sec_alg_list[i].param1, sec_alg_list[i].param2);
+
+		pass_cnt++;
+	}
+
+	if (pass_cnt > 0)
+		return TEST_SUCCESS;
+	else
+		return TEST_SKIPPED;
+}
+
+static int
+test_dtls_1_2_record_proto_antireplay(void)
+{
+	struct tls_record_test_flags flags;
+	uint64_t winsz = 64, seq_no[5];
+	uint32_t nb_pkts = 5;
+	bool replayed_pkt[5];
+
+	memset(&flags, 0, sizeof(flags));
+
+	flags.tls_version = RTE_SECURITY_VERSION_DTLS_1_2;
+	flags.ar_win_size = winsz;
+
+	/* 1. Advance the TOP of the window to WS * 2 */
+	seq_no[0] = winsz * 2;
+	/* 2. Test sequence number within the new window(WS + 1) */
+	seq_no[1] = winsz + 1;
+	/* 3. Test sequence number less than the window BOTTOM */
+	seq_no[2] = winsz;
+	/* 4. Test sequence number in the middle of the window */
+	seq_no[3] = winsz + (winsz / 2);
+	/* 5. Test replay of the packet in the middle of the window */
+	seq_no[4] = winsz + (winsz / 2);
+
+	replayed_pkt[0] = false;
+	replayed_pkt[1] = false;
+	replayed_pkt[2] = true;
+	replayed_pkt[3] = false;
+	replayed_pkt[4] = true;
+
+	return test_dtls_pkt_replay(seq_no, replayed_pkt, nb_pkts, &flags);
 }
 
 static int
@@ -17505,6 +17606,10 @@ static struct unit_test_suite dtls12_record_proto_testsuite  = {
 			"Zero len DTLS record with content type as ctrl",
 			ut_setup_security, ut_teardown,
 			test_dtls_1_2_record_proto_zero_len_non_app),
+		TEST_CASE_NAMED_ST(
+			"Antireplay with window size 64",
+			ut_setup_security, ut_teardown,
+			test_dtls_1_2_record_proto_antireplay),
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}
 };

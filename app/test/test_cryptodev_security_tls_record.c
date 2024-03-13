@@ -12,9 +12,20 @@
 #include "test_security_proto.h"
 
 int
-test_tls_record_status_check(struct rte_crypto_op *op)
+test_tls_record_status_check(struct rte_crypto_op *op,
+			     const struct tls_record_test_data *td)
 {
 	int ret = TEST_SUCCESS;
+
+	if ((td->tls_record_xform.type == RTE_SECURITY_TLS_SESS_TYPE_READ) &&
+	     td->ar_packet) {
+		if (op->status != RTE_CRYPTO_OP_STATUS_ERROR) {
+			printf("Anti replay test case failed\n");
+			return TEST_FAILED;
+		} else {
+			return TEST_SUCCESS;
+		}
+	}
 
 	if (op->status != RTE_CRYPTO_OP_STATUS_SUCCESS)
 		ret = TEST_FAILED;
@@ -101,81 +112,80 @@ test_tls_record_td_prepare(const struct crypto_param *param1, const struct crypt
 			td->xform.chain.auth.auth.key.length = param2->key_length;
 			td->xform.chain.auth.auth.digest_length = param2->digest_length;
 		}
-	}
 
-	if (flags->data_walkthrough || flags->zero_len) {
-		test_sec_proto_pattern_set(td->input_text.data, data_len);
-		td->input_text.len = data_len;
-	}
+		if (flags->data_walkthrough || flags->zero_len) {
+			test_sec_proto_pattern_set(td->input_text.data, data_len);
+			td->input_text.len = data_len;
+		}
 
-	if (flags->content_type == TLS_RECORD_TEST_CONTENT_TYPE_CUSTOM)
-		td->app_type = RTE_TLS_TYPE_MAX;
-	else if (flags->content_type == TLS_RECORD_TEST_CONTENT_TYPE_HANDSHAKE)
-		td->app_type = RTE_TLS_TYPE_HANDSHAKE;
+		if (flags->content_type == TLS_RECORD_TEST_CONTENT_TYPE_CUSTOM)
+			td->app_type = RTE_TLS_TYPE_MAX;
+		else if (flags->content_type == TLS_RECORD_TEST_CONTENT_TYPE_HANDSHAKE)
+			td->app_type = RTE_TLS_TYPE_HANDSHAKE;
 
-	tls_pkt_size = td->input_text.len;
+		tls_pkt_size = td->input_text.len;
 
-	if (!td->aead) {
-		mac_len = td->xform.chain.auth.auth.digest_length;
-		switch (td->xform.chain.cipher.cipher.algo) {
-		case RTE_CRYPTO_CIPHER_3DES_CBC:
-			roundup_len = 8;
+		if (!td->aead) {
+			mac_len = td->xform.chain.auth.auth.digest_length;
+			switch (td->xform.chain.cipher.cipher.algo) {
+			case RTE_CRYPTO_CIPHER_3DES_CBC:
+				roundup_len = 8;
+				exp_nonce_len = 8;
+				break;
+			case RTE_CRYPTO_CIPHER_AES_CBC:
+				roundup_len = 16;
+				exp_nonce_len = 16;
+				break;
+			default:
+				roundup_len = 0;
+				exp_nonce_len = 0;
+				break;
+			}
+		} else {
+			mac_len = td->xform.aead.aead.digest_length;
+			roundup_len = 0;
 			exp_nonce_len = 8;
+		}
+
+		switch (td->tls_record_xform.ver) {
+		case RTE_SECURITY_VERSION_TLS_1_2:
+		case RTE_SECURITY_VERSION_TLS_1_3:
+			hdr_len = sizeof(struct rte_tls_hdr);
+			if (td->aead)
+				min_padding = 0;
+			else
+				min_padding = 1;
 			break;
-		case RTE_CRYPTO_CIPHER_AES_CBC:
-			roundup_len = 16;
-			exp_nonce_len = 16;
+		case RTE_SECURITY_VERSION_DTLS_1_2:
+			hdr_len = sizeof(struct rte_dtls_hdr);
+			if (td->aead)
+				min_padding = 0;
+			else
+				min_padding = 1;
 			break;
 		default:
-			roundup_len = 0;
-			exp_nonce_len = 0;
+			hdr_len = 0;
+			min_padding = 0;
 			break;
 		}
-	} else {
-		mac_len = td->xform.aead.aead.digest_length;
-		roundup_len = 0;
-		exp_nonce_len = 8;
+
+		tls_pkt_size += mac_len;
+
+		/* Padding */
+		tls_pkt_size += min_padding;
+
+		if (roundup_len)
+			tls_pkt_size = RTE_ALIGN_MUL_CEIL(tls_pkt_size, roundup_len);
+
+		/* Explicit nonce */
+		tls_pkt_size += exp_nonce_len;
+
+		/* Add TLS header */
+		tls_pkt_size += hdr_len;
+
+		td->output_text.len = tls_pkt_size;
+
 	}
-
-	switch (td->tls_record_xform.ver) {
-	case RTE_SECURITY_VERSION_TLS_1_2:
-	case RTE_SECURITY_VERSION_TLS_1_3:
-		hdr_len = sizeof(struct rte_tls_hdr);
-		if (td->aead)
-			min_padding = 0;
-		else
-			min_padding = 1;
-		break;
-	case RTE_SECURITY_VERSION_DTLS_1_2:
-		hdr_len = sizeof(struct rte_dtls_hdr);
-		if (td->aead)
-			min_padding = 0;
-		else
-			min_padding = 1;
-		break;
-	default:
-		hdr_len = 0;
-		min_padding = 0;
-		break;
-	}
-
-	tls_pkt_size += mac_len;
-
-	/* Padding */
-	tls_pkt_size += min_padding;
-
-	if (roundup_len)
-		tls_pkt_size = RTE_ALIGN_MUL_CEIL(tls_pkt_size, roundup_len);
-
-	/* Explicit nonce */
-	tls_pkt_size += exp_nonce_len;
-
-	/* Add TLS header */
-	tls_pkt_size += hdr_len;
-
-	td->output_text.len = tls_pkt_size;
-
-	RTE_SET_USED(flags);
 }
 
 void

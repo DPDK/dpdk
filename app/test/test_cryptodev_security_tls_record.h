@@ -89,16 +89,18 @@ struct tls_record_test_data {
 	struct rte_security_tls_record_xform tls_record_xform;
 	uint8_t app_type;
 	bool aead;
+	bool ar_packet;
 };
 
 struct tls_record_test_flags {
 	bool display_alg;
-	uint8_t nb_segs_in_mbuf;
 	bool data_walkthrough;
-	enum rte_security_tls_version tls_version;
 	bool pkt_corruption;
-	enum tls_record_test_content_type content_type;
 	bool zero_len;
+	uint8_t nb_segs_in_mbuf;
+	enum rte_security_tls_version tls_version;
+	enum tls_record_test_content_type content_type;
+	int ar_win_size;
 };
 
 extern struct tls_record_test_data tls_test_data_aes_128_gcm_v1;
@@ -123,7 +125,8 @@ extern struct tls_record_test_data dtls_test_data_aes_256_cbc_sha384_hmac;
 extern struct tls_record_test_data dtls_test_data_3des_cbc_sha1_hmac;
 extern struct tls_record_test_data dtls_test_data_null_cipher_sha1_hmac;
 
-int test_tls_record_status_check(struct rte_crypto_op *op);
+int test_tls_record_status_check(struct rte_crypto_op *op,
+				 const struct tls_record_test_data *td);
 
 int test_tls_record_sec_caps_verify(struct rte_security_tls_record_xform *tls_record_xform,
 				    const struct rte_security_capability *sec_cap, bool silent);
