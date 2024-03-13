@@ -12000,8 +12000,13 @@ again:
 		if (ret == TEST_SKIPPED)
 			continue;
 
-		if (ret == TEST_FAILED)
-			return TEST_FAILED;
+		if (flags->pkt_corruption) {
+			if (ret == TEST_SUCCESS)
+				return TEST_FAILED;
+		} else {
+			if (ret == TEST_FAILED)
+				return TEST_FAILED;
+		}
 
 		if (flags->data_walkthrough && (++payload_len <= max_payload_len))
 			goto again;
@@ -12087,6 +12092,20 @@ static int
 test_tls_1_2_record_proto_sgl_data_walkthrough(void)
 {
 	return test_tls_record_proto_sgl_data_walkthrough(RTE_SECURITY_VERSION_TLS_1_2);
+}
+
+static int
+test_tls_record_proto_corrupt_pkt(void)
+{
+	struct tls_record_test_flags flags = {
+		.pkt_corruption = 1
+	};
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	struct rte_cryptodev_info dev_info;
+
+	rte_cryptodev_info_get(ts_params->valid_devs[0], &dev_info);
+
+	return test_tls_record_proto_all(&flags);
 }
 
 static int
@@ -17209,6 +17228,10 @@ static struct unit_test_suite tls12_record_proto_testsuite  = {
 			"Multi-segmented mode data walkthrough",
 			ut_setup_security, ut_teardown,
 			test_tls_1_2_record_proto_sgl_data_walkthrough),
+		TEST_CASE_NAMED_ST(
+			"TLS packet header corruption",
+			ut_setup_security, ut_teardown,
+			test_tls_record_proto_corrupt_pkt),
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}
 };

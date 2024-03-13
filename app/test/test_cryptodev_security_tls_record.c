@@ -185,6 +185,10 @@ test_tls_record_td_update(struct tls_record_test_data td_inb[],
 		       td_outb[i].input_text.len);
 		td_inb[i].output_text.len = td_outb->input_text.len;
 
+		/* Corrupt the content type in the TLS header of encrypted packet */
+		if (flags->pkt_corruption)
+			td_inb[i].input_text.data[0] = ~td_inb[i].input_text.data[0];
+
 		/* Clear outbound specific flags */
 		td_inb[i].tls_record_xform.options.iv_gen_disable = 0;
 	}

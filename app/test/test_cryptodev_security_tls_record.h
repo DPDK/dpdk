@@ -88,6 +88,7 @@ struct tls_record_test_flags {
 	uint8_t nb_segs_in_mbuf;
 	bool data_walkthrough;
 	enum rte_security_tls_version tls_version;
+	bool pkt_corruption;
 };
 
 extern struct tls_record_test_data tls_test_data_aes_128_gcm_v1;
