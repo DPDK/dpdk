@@ -21,10 +21,12 @@ struct mana_shared_data {
 #define MANA_MAX_MAC_ADDR 1
 
 #define MANA_DEV_RX_OFFLOAD_SUPPORT ( \
+		RTE_ETH_RX_OFFLOAD_VLAN_STRIP | \
 		RTE_ETH_RX_OFFLOAD_CHECKSUM | \
 		RTE_ETH_RX_OFFLOAD_RSS_HASH)
 
 #define MANA_DEV_TX_OFFLOAD_SUPPORT ( \
+		RTE_ETH_TX_OFFLOAD_VLAN_INSERT | \
 		RTE_ETH_TX_OFFLOAD_MULTI_SEGS | \
 		RTE_ETH_TX_OFFLOAD_IPV4_CKSUM | \
 		RTE_ETH_TX_OFFLOAD_TCP_CKSUM | \
@@ -344,6 +346,8 @@ struct mana_priv {
 
 	/* IB device port */
 	uint8_t dev_port;
+
+	uint8_t vlan_strip;
 
 	struct ibv_context *ib_ctx;
 	struct ibv_pd *ib_pd;

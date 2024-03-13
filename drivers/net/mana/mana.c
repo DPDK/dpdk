@@ -94,6 +94,9 @@ mana_dev_configure(struct rte_eth_dev *dev)
 		return -EINVAL;
 	}
 
+	priv->vlan_strip = !!(dev_conf->rxmode.offloads &
+			      RTE_ETH_RX_OFFLOAD_VLAN_STRIP);
+
 	priv->num_queues = dev->data->nb_rx_queues;
 
 	manadv_set_context_attr(priv->ib_ctx, MANADV_CTX_ATTR_BUF_ALLOCATORS,

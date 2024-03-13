@@ -254,7 +254,18 @@ mana_tx_burst(void *dpdk_txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		}
 
 		/* Fill in the oob */
-		tx_oob.short_oob.packet_format = SHORT_PACKET_FORMAT;
+		if (m_pkt->ol_flags & RTE_MBUF_F_TX_VLAN) {
+			tx_oob.short_oob.packet_format = LONG_PACKET_FORMAT;
+			tx_oob.long_oob.inject_vlan_prior_tag = 1;
+			tx_oob.long_oob.priority_code_point =
+				RTE_VLAN_TCI_PRI(m_pkt->vlan_tci);
+			tx_oob.long_oob.drop_eligible_indicator =
+				RTE_VLAN_TCI_DEI(m_pkt->vlan_tci);
+			tx_oob.long_oob.vlan_identifier =
+				RTE_VLAN_TCI_ID(m_pkt->vlan_tci);
+		} else {
+			tx_oob.short_oob.packet_format = SHORT_PACKET_FORMAT;
+		}
 		tx_oob.short_oob.tx_is_outer_ipv4 =
 			m_pkt->ol_flags & RTE_MBUF_F_TX_IPV4 ? 1 : 0;
 		tx_oob.short_oob.tx_is_outer_ipv6 =
@@ -409,8 +420,12 @@ mana_tx_burst(void *dpdk_txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 
 		work_req.sgl = sgl.gdma_sgl;
 		work_req.num_sgl_elements = m_pkt->nb_segs;
-		work_req.inline_oob_size_in_bytes =
-			sizeof(struct transmit_short_oob_v2);
+		if (tx_oob.short_oob.packet_format == SHORT_PACKET_FORMAT)
+			work_req.inline_oob_size_in_bytes =
+				sizeof(struct transmit_short_oob_v2);
+		else
+			work_req.inline_oob_size_in_bytes =
+				sizeof(struct transmit_oob_v2);
 		work_req.inline_oob_data = &tx_oob;
 		work_req.flags = 0;
 		work_req.client_data_unit = NOT_USING_CLIENT_DATA_UNIT;
