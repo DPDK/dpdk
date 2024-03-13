@@ -85,7 +85,7 @@ struct tls_record_test_data {
 
 struct tls_record_test_flags {
 	bool display_alg;
-	int nb_segs_in_mbuf;
+	uint8_t nb_segs_in_mbuf;
 	bool data_walkthrough;
 	enum rte_security_tls_version tls_version;
 };
