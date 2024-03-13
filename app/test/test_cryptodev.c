@@ -12484,6 +12484,42 @@ test_dtls_1_2_record_proto_zero_len_non_app(void)
 }
 
 static int
+test_dtls_1_2_record_proto_dm_opt_padding(void)
+{
+	return test_tls_record_proto_opt_padding(1, 0, RTE_SECURITY_VERSION_DTLS_1_2);
+}
+
+static int
+test_dtls_1_2_record_proto_dm_opt_padding_1(void)
+{
+	return test_tls_record_proto_opt_padding(25, 0, RTE_SECURITY_VERSION_DTLS_1_2);
+}
+
+static int
+test_dtls_1_2_record_proto_sg_opt_padding(void)
+{
+	return test_tls_record_proto_opt_padding(1, 5, RTE_SECURITY_VERSION_DTLS_1_2);
+}
+
+static int
+test_dtls_1_2_record_proto_sg_opt_padding_1(void)
+{
+	return test_tls_record_proto_opt_padding(8, 4, RTE_SECURITY_VERSION_DTLS_1_2);
+}
+
+static int
+test_dtls_1_2_record_proto_sg_opt_padding_2(void)
+{
+	return test_tls_record_proto_opt_padding(8, 5, RTE_SECURITY_VERSION_DTLS_1_2);
+}
+
+static int
+test_dtls_1_2_record_proto_sg_opt_padding_max(void)
+{
+	return test_tls_record_proto_opt_padding(33, 4, RTE_SECURITY_VERSION_DTLS_1_2);
+}
+
+static int
 test_tls_1_3_record_proto_corrupt_pkt(void)
 {
 	struct tls_record_test_flags flags = {
@@ -17824,6 +17860,30 @@ static struct unit_test_suite dtls12_record_proto_testsuite  = {
 			"Antireplay with window size 4096",
 			ut_setup_security, ut_teardown,
 			test_dtls_1_2_record_proto_antireplay4096),
+		TEST_CASE_NAMED_ST(
+			"DTLS record DM mode with optional padding < 2 blocks",
+			ut_setup_security, ut_teardown,
+			test_dtls_1_2_record_proto_dm_opt_padding),
+		TEST_CASE_NAMED_ST(
+			"DTLS record DM mode with optional padding > 2 blocks",
+			ut_setup_security, ut_teardown,
+			test_dtls_1_2_record_proto_dm_opt_padding_1),
+		TEST_CASE_NAMED_ST(
+			"DTLS record SG mode with optional padding < 2 blocks",
+			ut_setup_security, ut_teardown,
+			test_dtls_1_2_record_proto_sg_opt_padding),
+		TEST_CASE_NAMED_ST(
+			"DTLS record SG mode with optional padding > 2 blocks",
+			ut_setup_security, ut_teardown,
+			test_dtls_1_2_record_proto_sg_opt_padding_1),
+		TEST_CASE_NAMED_ST(
+			"DTLS record SG mode with optional padding > 2 blocks",
+			ut_setup_security, ut_teardown,
+			test_dtls_1_2_record_proto_sg_opt_padding_2),
+		TEST_CASE_NAMED_ST(
+			"DTLS record SG mode with optional padding > max range",
+			ut_setup_security, ut_teardown,
+			test_dtls_1_2_record_proto_sg_opt_padding_max),
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}
 };
