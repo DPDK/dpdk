@@ -275,9 +275,9 @@ tls_record_hdr_verify(const struct tls_record_test_data *td, const uint8_t *outp
 		hdr_len = sizeof(struct rte_tls_hdr);
 	} else if (td->tls_record_xform.ver == RTE_SECURITY_VERSION_TLS_1_3) {
 		const struct rte_tls_hdr *hdr = (const struct rte_tls_hdr *)output_text;
-		if (rte_be_to_cpu_16(hdr->version) != RTE_TLS_VERSION_1_3) {
+		if (rte_be_to_cpu_16(hdr->version) != RTE_TLS_VERSION_1_2) {
 			printf("Incorrect header version [expected - %4x, received - %4x]\n",
-			       RTE_TLS_VERSION_1_3, rte_be_to_cpu_16(hdr->version));
+			       RTE_TLS_VERSION_1_2, rte_be_to_cpu_16(hdr->version));
 			return TEST_FAILED;
 		}
 		content_type = hdr->type;
@@ -297,10 +297,18 @@ tls_record_hdr_verify(const struct tls_record_test_data *td, const uint8_t *outp
 		return TEST_FAILED;
 	}
 
-	if (content_type != td->app_type) {
-		printf("Incorrect content type in packet [expected - %d, received - %d]\n",
-		       td->app_type, content_type);
-		return TEST_FAILED;
+	if (td->tls_record_xform.ver == RTE_SECURITY_VERSION_TLS_1_3) {
+		if (content_type != RTE_TLS_TYPE_APPDATA) {
+			printf("Incorrect content type in packet [expected - %d, received - %d]\n",
+			       td->app_type, content_type);
+			return TEST_FAILED;
+		}
+	} else {
+		if (content_type != td->app_type) {
+			printf("Incorrect content type in packet [expected - %d, received - %d]\n",
+			       td->app_type, content_type);
+			return TEST_FAILED;
+		}
 	}
 
 	if (length != td->output_text.len - hdr_len) {
