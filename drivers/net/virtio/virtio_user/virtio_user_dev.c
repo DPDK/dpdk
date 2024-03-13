@@ -215,6 +215,12 @@ virtio_user_start_device(struct virtio_user_dev *dev)
 	if (ret < 0)
 		goto error;
 
+	if (dev->scvq) {
+		ret = dev->ops->cvq_enable(dev, 1);
+		if (ret < 0)
+			goto error;
+	}
+
 	dev->started = true;
 
 	pthread_mutex_unlock(&dev->mutex);
@@ -243,6 +249,12 @@ int virtio_user_stop_device(struct virtio_user_dev *dev)
 
 	for (i = 0; i < dev->max_queue_pairs; ++i) {
 		ret = dev->ops->enable_qp(dev, i, 0);
+		if (ret < 0)
+			goto err;
+	}
+
+	if (dev->scvq) {
+		ret = dev->ops->cvq_enable(dev, 0);
 		if (ret < 0)
 			goto err;
 	}
@@ -725,7 +737,7 @@ virtio_user_dev_init(struct virtio_user_dev *dev, char *path, uint16_t queues,
 	if (virtio_user_dev_init_max_queue_pairs(dev, queues))
 		dev->unsupported_features |= (1ull << VIRTIO_NET_F_MQ);
 
-	if (dev->max_queue_pairs > 1)
+	if (dev->max_queue_pairs > 1 || dev->hw_cvq)
 		cq = 1;
 
 	if (!mrg_rxbuf)
@@ -743,8 +755,9 @@ virtio_user_dev_init(struct virtio_user_dev *dev, char *path, uint16_t queues,
 		dev->unsupported_features |= (1ull << VIRTIO_NET_F_MAC);
 
 	if (cq) {
-		/* device does not really need to know anything about CQ,
-		 * so if necessary, we just claim to support CQ
+		/* Except for vDPA, the device does not really need to know
+		 * anything about CQ, so if necessary, we just claim to support
+		 * control queue.
 		 */
 		dev->frontend_features |= (1ull << VIRTIO_NET_F_CTRL_VQ);
 	} else {
@@ -843,9 +856,6 @@ virtio_user_handle_mq(struct virtio_user_dev *dev, uint16_t q_pairs)
 		ret |= dev->ops->enable_qp(dev, i, 1);
 	for (i = q_pairs; i < dev->max_queue_pairs; ++i)
 		ret |= dev->ops->enable_qp(dev, i, 0);
-
-	if (dev->scvq)
-		ret |= dev->ops->cvq_enable(dev, 1);
 
 	dev->queue_pairs = q_pairs;
 
