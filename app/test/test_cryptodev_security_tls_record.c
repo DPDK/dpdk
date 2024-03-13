@@ -70,7 +70,7 @@ test_tls_record_td_read_from_write(const struct tls_record_test_data *td_out,
 	}
 }
 
-void
+int
 test_tls_record_td_prepare(const struct crypto_param *param1, const struct crypto_param *param2,
 			   const struct tls_record_test_flags *flags,
 			   struct tls_record_test_data *td_array,
@@ -78,6 +78,10 @@ test_tls_record_td_prepare(const struct crypto_param *param1, const struct crypt
 {
 	int i, min_padding, hdr_len, tls_pkt_size, mac_len = 0, exp_nonce_len = 0, roundup_len = 0;
 	struct tls_record_test_data *td = NULL;
+
+	if ((flags->tls_version == RTE_SECURITY_VERSION_TLS_1_3) &&
+	    (param1->type != RTE_CRYPTO_SYM_XFORM_AEAD))
+		return TEST_SKIPPED;
 
 	memset(td_array, 0, nb_td * sizeof(*td));
 
@@ -88,10 +92,17 @@ test_tls_record_td_prepare(const struct crypto_param *param1, const struct crypt
 
 		if (param1->type == RTE_CRYPTO_SYM_XFORM_AEAD) {
 			/* Copy template for packet & key fields */
-			if (flags->tls_version == RTE_SECURITY_VERSION_DTLS_1_2)
-				memcpy(td, &dtls_test_data_aes_128_gcm, sizeof(*td));
-			else
+			switch (flags->tls_version) {
+			case RTE_SECURITY_VERSION_TLS_1_2:
 				memcpy(td, &tls_test_data_aes_128_gcm_v1, sizeof(*td));
+				break;
+			case RTE_SECURITY_VERSION_DTLS_1_2:
+				memcpy(td, &dtls_test_data_aes_128_gcm, sizeof(*td));
+				break;
+			case RTE_SECURITY_VERSION_TLS_1_3:
+				memcpy(td, &tls13_test_data_aes_128_gcm, sizeof(*td));
+				break;
+			}
 
 			td->aead = true;
 			td->xform.aead.aead.algo = param1->alg.aead;
@@ -127,6 +138,7 @@ test_tls_record_td_prepare(const struct crypto_param *param1, const struct crypt
 
 		if (!td->aead) {
 			mac_len = td->xform.chain.auth.auth.digest_length;
+			min_padding = 1;
 			switch (td->xform.chain.cipher.cipher.algo) {
 			case RTE_CRYPTO_CIPHER_3DES_CBC:
 				roundup_len = 8;
@@ -143,30 +155,28 @@ test_tls_record_td_prepare(const struct crypto_param *param1, const struct crypt
 			}
 		} else {
 			mac_len = td->xform.aead.aead.digest_length;
+			min_padding = 0;
 			roundup_len = 0;
-			exp_nonce_len = 8;
+			if (td->tls_record_xform.ver == RTE_SECURITY_VERSION_TLS_1_3)
+				exp_nonce_len = 0;
+			else
+				exp_nonce_len = 8;
 		}
 
 		switch (td->tls_record_xform.ver) {
 		case RTE_SECURITY_VERSION_TLS_1_2:
+			hdr_len = sizeof(struct rte_tls_hdr);
+			break;
 		case RTE_SECURITY_VERSION_TLS_1_3:
 			hdr_len = sizeof(struct rte_tls_hdr);
-			if (td->aead)
-				min_padding = 0;
-			else
-				min_padding = 1;
+			/* Add 1 byte for content type in packet */
+			tls_pkt_size += 1;
 			break;
 		case RTE_SECURITY_VERSION_DTLS_1_2:
 			hdr_len = sizeof(struct rte_dtls_hdr);
-			if (td->aead)
-				min_padding = 0;
-			else
-				min_padding = 1;
 			break;
 		default:
-			hdr_len = 0;
-			min_padding = 0;
-			break;
+			return TEST_SKIPPED;
 		}
 
 		tls_pkt_size += mac_len;
@@ -186,6 +196,7 @@ test_tls_record_td_prepare(const struct crypto_param *param1, const struct crypt
 		td->output_text.len = tls_pkt_size;
 
 	}
+	return TEST_SUCCESS;
 }
 
 void

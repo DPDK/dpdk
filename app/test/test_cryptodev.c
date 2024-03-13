@@ -11889,8 +11889,9 @@ test_tls_record_proto_process(const struct tls_record_test_data td[],
 		ut_params->op->param1.tls_record.content_type = td[i].app_type;
 
 		/* Copy IV in crypto operation when IV generation is disabled */
-		if (sess_type == RTE_SECURITY_TLS_SESS_TYPE_WRITE &&
-		    tls_record_xform.options.iv_gen_disable == 1) {
+		if ((sess_type == RTE_SECURITY_TLS_SESS_TYPE_WRITE) &&
+		    (tls_record_xform.ver != RTE_SECURITY_VERSION_TLS_1_3) &&
+		    (tls_record_xform.options.iv_gen_disable == 1)) {
 			uint8_t *iv;
 			int len;
 
@@ -12005,8 +12006,10 @@ test_tls_record_proto_all(const struct tls_record_test_flags *flags)
 		if (flags->zero_len)
 			payload_len = 0;
 again:
-		test_tls_record_td_prepare(sec_alg_list[i].param1, sec_alg_list[i].param2, flags,
-					   td_outb, nb_pkts, payload_len);
+		ret = test_tls_record_td_prepare(sec_alg_list[i].param1, sec_alg_list[i].param2,
+						 flags, td_outb, nb_pkts, payload_len);
+		if (ret == TEST_SKIPPED)
+			continue;
 
 		ret = test_tls_record_proto_process(td_outb, td_inb, nb_pkts, true, flags);
 		if (ret == TEST_SKIPPED)
@@ -12218,8 +12221,10 @@ test_dtls_pkt_replay(const uint64_t seq_no[],
 	int ret;
 
 	for (i = 0; i < RTE_DIM(sec_alg_list); i++) {
-		test_tls_record_td_prepare(sec_alg_list[i].param1, sec_alg_list[i].param2, flags,
-					   td_outb, nb_pkts, 0);
+		ret = test_tls_record_td_prepare(sec_alg_list[i].param1, sec_alg_list[i].param2,
+						 flags, td_outb, nb_pkts, 0);
+		if (ret == TEST_SKIPPED)
+			continue;
 
 		for (idx = 0; idx < nb_pkts; idx++)
 			td_outb[idx].tls_record_xform.dtls_1_2.seq_no = seq_no[idx];
