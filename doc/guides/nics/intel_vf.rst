@@ -730,3 +730,13 @@ and has this issue.
 
 Set the parameter `--force-max-simd-bitwidth` as 64/128/256
 to avoid selecting AVX-512 Tx path.
+
+ice: VLAN tag length not included in MTU
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+When configuring MTU for a VF, MTU must not include VLAN tag length.
+In practice, when kernel driver configures VLAN filtering for a VF,
+the VLAN header tag length will be automatically added to MTU when configuring queues.
+As a consequence, when attempting to configure a VF port with MTU that,
+together with a VLAN tag header, exceeds maximum supported MTU,
+port configuration will fail if kernel driver has configured VLAN filtering on that VF.
