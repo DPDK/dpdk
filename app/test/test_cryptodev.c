@@ -12215,6 +12215,67 @@ test_dtls_1_2_record_proto_sgl_data_walkthrough(void)
 	return test_tls_record_proto_sgl_data_walkthrough(RTE_SECURITY_VERSION_DTLS_1_2);
 }
 
+static int
+test_dtls_1_2_record_proto_corrupt_pkt(void)
+{
+	struct tls_record_test_flags flags = {
+		.pkt_corruption = 1,
+		.tls_version = RTE_SECURITY_VERSION_DTLS_1_2
+	};
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	struct rte_cryptodev_info dev_info;
+
+	rte_cryptodev_info_get(ts_params->valid_devs[0], &dev_info);
+
+	return test_tls_record_proto_all(&flags);
+}
+
+static int
+test_dtls_1_2_record_proto_custom_content_type(void)
+{
+	struct tls_record_test_flags flags = {
+		.content_type = TLS_RECORD_TEST_CONTENT_TYPE_CUSTOM,
+		.tls_version = RTE_SECURITY_VERSION_DTLS_1_2
+	};
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	struct rte_cryptodev_info dev_info;
+
+	rte_cryptodev_info_get(ts_params->valid_devs[0], &dev_info);
+
+	return test_tls_record_proto_all(&flags);
+}
+
+static int
+test_dtls_1_2_record_proto_zero_len(void)
+{
+	struct tls_record_test_flags flags = {
+		.zero_len = 1,
+		.tls_version = RTE_SECURITY_VERSION_DTLS_1_2
+	};
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	struct rte_cryptodev_info dev_info;
+
+	rte_cryptodev_info_get(ts_params->valid_devs[0], &dev_info);
+
+	return test_tls_record_proto_all(&flags);
+}
+
+static int
+test_dtls_1_2_record_proto_zero_len_non_app(void)
+{
+	struct tls_record_test_flags flags = {
+		.zero_len = 1,
+		.content_type = TLS_RECORD_TEST_CONTENT_TYPE_HANDSHAKE,
+		.tls_version = RTE_SECURITY_VERSION_DTLS_1_2
+	};
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	struct rte_cryptodev_info dev_info;
+
+	rte_cryptodev_info_get(ts_params->valid_devs[0], &dev_info);
+
+	return test_tls_record_proto_all(&flags);
+}
+
 #endif
 
 static int
@@ -17409,6 +17470,22 @@ static struct unit_test_suite dtls12_record_proto_testsuite  = {
 			"Multi-segmented mode data walkthrough",
 			ut_setup_security, ut_teardown,
 			test_dtls_1_2_record_proto_sgl_data_walkthrough),
+		TEST_CASE_NAMED_ST(
+			"Packet corruption",
+			ut_setup_security, ut_teardown,
+			test_dtls_1_2_record_proto_corrupt_pkt),
+		TEST_CASE_NAMED_ST(
+			"Custom content type",
+			ut_setup_security, ut_teardown,
+			test_dtls_1_2_record_proto_custom_content_type),
+		TEST_CASE_NAMED_ST(
+			"Zero len DTLS record with content type as app",
+			ut_setup_security, ut_teardown,
+			test_dtls_1_2_record_proto_zero_len),
+		TEST_CASE_NAMED_ST(
+			"Zero len DTLS record with content type as ctrl",
+			ut_setup_security, ut_teardown,
+			test_dtls_1_2_record_proto_zero_len_non_app),
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}
 };
