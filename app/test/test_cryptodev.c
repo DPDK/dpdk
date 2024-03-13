@@ -12259,12 +12259,12 @@ test_dtls_pkt_replay(const uint64_t seq_no[],
 }
 
 static int
-test_dtls_1_2_record_proto_antireplay(void)
+test_dtls_1_2_record_proto_antireplay(uint64_t winsz)
 {
 	struct tls_record_test_flags flags;
-	uint64_t winsz = 64, seq_no[5];
 	uint32_t nb_pkts = 5;
 	bool replayed_pkt[5];
+	uint64_t seq_no[5];
 
 	memset(&flags, 0, sizeof(flags));
 
@@ -12289,6 +12289,48 @@ test_dtls_1_2_record_proto_antireplay(void)
 	replayed_pkt[4] = true;
 
 	return test_dtls_pkt_replay(seq_no, replayed_pkt, nb_pkts, &flags);
+}
+
+static int
+test_dtls_1_2_record_proto_antireplay64(void)
+{
+	return test_dtls_1_2_record_proto_antireplay(64);
+}
+
+static int
+test_dtls_1_2_record_proto_antireplay128(void)
+{
+	return test_dtls_1_2_record_proto_antireplay(128);
+}
+
+static int
+test_dtls_1_2_record_proto_antireplay256(void)
+{
+	return test_dtls_1_2_record_proto_antireplay(256);
+}
+
+static int
+test_dtls_1_2_record_proto_antireplay512(void)
+{
+	return test_dtls_1_2_record_proto_antireplay(512);
+}
+
+static int
+test_dtls_1_2_record_proto_antireplay1024(void)
+{
+	return test_dtls_1_2_record_proto_antireplay(1024);
+}
+
+static int
+test_dtls_1_2_record_proto_antireplay2048(void)
+{
+	return test_dtls_1_2_record_proto_antireplay(2048);
+}
+
+static int
+test_dtls_1_2_record_proto_antireplay4096(void)
+{
+	return test_dtls_1_2_record_proto_antireplay(4096);
 }
 
 static int
@@ -17609,7 +17651,31 @@ static struct unit_test_suite dtls12_record_proto_testsuite  = {
 		TEST_CASE_NAMED_ST(
 			"Antireplay with window size 64",
 			ut_setup_security, ut_teardown,
-			test_dtls_1_2_record_proto_antireplay),
+			test_dtls_1_2_record_proto_antireplay64),
+		TEST_CASE_NAMED_ST(
+			"Antireplay with window size 128",
+			ut_setup_security, ut_teardown,
+			test_dtls_1_2_record_proto_antireplay128),
+		TEST_CASE_NAMED_ST(
+			"Antireplay with window size 256",
+			ut_setup_security, ut_teardown,
+			test_dtls_1_2_record_proto_antireplay256),
+		TEST_CASE_NAMED_ST(
+			"Antireplay with window size 512",
+			ut_setup_security, ut_teardown,
+			test_dtls_1_2_record_proto_antireplay512),
+		TEST_CASE_NAMED_ST(
+			"Antireplay with window size 1024",
+			ut_setup_security, ut_teardown,
+			test_dtls_1_2_record_proto_antireplay1024),
+		TEST_CASE_NAMED_ST(
+			"Antireplay with window size 2048",
+			ut_setup_security, ut_teardown,
+			test_dtls_1_2_record_proto_antireplay2048),
+		TEST_CASE_NAMED_ST(
+			"Antireplay with window size 4096",
+			ut_setup_security, ut_teardown,
+			test_dtls_1_2_record_proto_antireplay4096),
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}
 };
