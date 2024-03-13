@@ -12062,6 +12062,19 @@ test_tls_1_2_record_proto_sgl(void)
 }
 
 static int
+test_dtls_1_2_record_proto_data_walkthrough(void)
+{
+	struct tls_record_test_flags flags;
+
+	memset(&flags, 0, sizeof(flags));
+
+	flags.data_walkthrough = true;
+	flags.tls_version = RTE_SECURITY_VERSION_DTLS_1_2;
+
+	return test_tls_record_proto_all(&flags);
+}
+
+static int
 test_dtls_1_2_record_proto_display_list(void)
 {
 	struct tls_record_test_flags flags;
@@ -17255,6 +17268,10 @@ static struct unit_test_suite dtls12_record_proto_testsuite  = {
 			"Combined test alg list",
 			ut_setup_security, ut_teardown,
 			test_dtls_1_2_record_proto_display_list),
+		TEST_CASE_NAMED_ST(
+			"Data walkthrough combined test alg list",
+			ut_setup_security, ut_teardown,
+			test_dtls_1_2_record_proto_data_walkthrough),
 		TEST_CASE_NAMED_ST(
 			"Multi-segmented mode",
 			ut_setup_security, ut_teardown,

@@ -143,7 +143,10 @@ test_tls_record_td_prepare(const struct crypto_param *param1, const struct crypt
 		break;
 	case RTE_SECURITY_VERSION_DTLS_1_2:
 		hdr_len = sizeof(struct rte_dtls_hdr);
-		min_padding = 0;
+		if (td->aead)
+			min_padding = 0;
+		else
+			min_padding = 1;
 		break;
 	default:
 		hdr_len = 0;
