@@ -11984,6 +11984,9 @@ test_tls_record_proto_all(const struct tls_record_test_flags *flags)
 		payload_len = TLS_RECORD_PLAINTEXT_MIN_LEN;
 		if (flags->nb_segs_in_mbuf)
 			payload_len = RTE_MAX(payload_len, flags->nb_segs_in_mbuf);
+
+		if (flags->zero_len)
+			payload_len = 0;
 again:
 		test_tls_record_td_prepare(sec_alg_list[i].param1, sec_alg_list[i].param2, flags,
 					   td_outb, nb_pkts, payload_len);
@@ -11992,8 +11995,16 @@ again:
 		if (ret == TEST_SKIPPED)
 			continue;
 
-		if (ret == TEST_FAILED)
+		if (flags->zero_len &&
+		    ((flags->content_type == TLS_RECORD_TEST_CONTENT_TYPE_HANDSHAKE) ||
+		    (flags->content_type == TLS_RECORD_TEST_CONTENT_TYPE_HANDSHAKE) ||
+		    (flags->content_type == TLS_RECORD_TEST_CONTENT_TYPE_HANDSHAKE))) {
+			if (ret == TEST_SUCCESS)
+				return TEST_FAILED;
+			goto skip_decrypt;
+		} else if (ret == TEST_FAILED) {
 			return TEST_FAILED;
+		}
 
 		test_tls_record_td_update(td_inb, td_outb, nb_pkts, flags);
 
@@ -12009,6 +12020,7 @@ again:
 				return TEST_FAILED;
 		}
 
+skip_decrypt:
 		if (flags->data_walkthrough && (++payload_len <= max_payload_len))
 			goto again;
 
@@ -12114,6 +12126,35 @@ test_tls_record_proto_custom_content_type(void)
 {
 	struct tls_record_test_flags flags = {
 		.content_type = TLS_RECORD_TEST_CONTENT_TYPE_CUSTOM
+	};
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	struct rte_cryptodev_info dev_info;
+
+	rte_cryptodev_info_get(ts_params->valid_devs[0], &dev_info);
+
+	return test_tls_record_proto_all(&flags);
+}
+
+static int
+test_tls_record_proto_zero_len(void)
+{
+	struct tls_record_test_flags flags = {
+		.zero_len = 1
+	};
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	struct rte_cryptodev_info dev_info;
+
+	rte_cryptodev_info_get(ts_params->valid_devs[0], &dev_info);
+
+	return test_tls_record_proto_all(&flags);
+}
+
+static int
+test_tls_record_proto_zero_len_non_app(void)
+{
+	struct tls_record_test_flags flags = {
+		.zero_len = 1,
+		.content_type = TLS_RECORD_TEST_CONTENT_TYPE_HANDSHAKE,
 	};
 	struct crypto_testsuite_params *ts_params = &testsuite_params;
 	struct rte_cryptodev_info dev_info;
@@ -17251,6 +17292,14 @@ static struct unit_test_suite tls12_record_proto_testsuite  = {
 			"Custom content type",
 			ut_setup_security, ut_teardown,
 			test_tls_record_proto_custom_content_type),
+		TEST_CASE_NAMED_ST(
+			"Zero len TLS record with content type as app",
+			ut_setup_security, ut_teardown,
+			test_tls_record_proto_zero_len),
+		TEST_CASE_NAMED_ST(
+			"Zero len TLS record with content type as ctrl",
+			ut_setup_security, ut_teardown,
+			test_tls_record_proto_zero_len_non_app),
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}
 };

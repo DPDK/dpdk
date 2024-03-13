@@ -98,6 +98,7 @@ struct tls_record_test_flags {
 	enum rte_security_tls_version tls_version;
 	bool pkt_corruption;
 	enum tls_record_test_content_type content_type;
+	bool zero_len;
 };
 
 extern struct tls_record_test_data tls_test_data_aes_128_gcm_v1;
@@ -140,5 +141,4 @@ void test_tls_record_td_update(struct tls_record_test_data td_inb[],
 
 int test_tls_record_post_process(const struct rte_mbuf *m, const struct tls_record_test_data *td,
 				 struct tls_record_test_data *res_d, bool silent);
-
 #endif

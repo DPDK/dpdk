@@ -103,13 +103,15 @@ test_tls_record_td_prepare(const struct crypto_param *param1, const struct crypt
 		}
 	}
 
-	if (flags->data_walkthrough) {
+	if (flags->data_walkthrough || flags->zero_len) {
 		test_sec_proto_pattern_set(td->input_text.data, data_len);
 		td->input_text.len = data_len;
 	}
 
 	if (flags->content_type == TLS_RECORD_TEST_CONTENT_TYPE_CUSTOM)
 		td->app_type = RTE_TLS_TYPE_MAX;
+	else if (flags->content_type == TLS_RECORD_TEST_CONTENT_TYPE_HANDSHAKE)
+		td->app_type = RTE_TLS_TYPE_HANDSHAKE;
 
 	tls_pkt_size = td->input_text.len;
 
@@ -232,6 +234,7 @@ test_tls_record_res_d_prepare(const uint8_t *output_text, uint32_t len,
 
 	memcpy(&res_d->input_text.data, output_text, len);
 	res_d->input_text.len = len;
+	res_d->output_text.len = td->input_text.len;
 
 	res_d->tls_record_xform.type = RTE_SECURITY_TLS_SESS_TYPE_READ;
 	if (res_d->aead) {
