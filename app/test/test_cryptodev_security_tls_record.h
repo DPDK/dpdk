@@ -10,7 +10,37 @@
 
 #include "test_security_proto.h"
 
-#define TLS_RECORD_MAX_LEN 16384u
+/* TLS 1.2 Ciphertext length can be up to (2^14 + 2048 + 5 (TLS Header)) Bytes */
+#define TLS_1_2_RECORD_CIPHERTEXT_MAX_LEN  (4096u)
+static_assert(TLS_1_2_RECORD_CIPHERTEXT_MAX_LEN <= TEST_SEC_CIPHERTEXT_MAX_LEN,
+	      "TEST_SEC_CIPHERTEXT_MAX_LEN should be at least RECORD MAX LEN!");
+
+/* TLS 1.2 Plaintext length can be up to (2^14 + 1024) Bytes */
+#define TLS_1_2_RECORD_PLAINTEXT_MAX_LEN   (3072u)
+static_assert(TLS_1_2_RECORD_PLAINTEXT_MAX_LEN <= TEST_SEC_CLEARTEXT_MAX_LEN,
+	      "TEST_SEC_CLEARTEXT_MAX_LEN should be at least RECORD MAX LEN!");
+
+/* DTLS 1.2 Ciphertext length is similar to TLS 1.2 */
+#define DTLS_1_2_RECORD_CIPHERTEXT_MAX_LEN (4096u)
+static_assert(DTLS_1_2_RECORD_CIPHERTEXT_MAX_LEN <= TEST_SEC_CIPHERTEXT_MAX_LEN,
+	      "TEST_SEC_CIPHERTEXT_MAX_LEN should be at least RECORD MAX LEN!");
+
+/* DTLS 1.2 Plaintext length is similar to TLS 1.2 */
+#define DTLS_1_2_RECORD_PLAINTEXT_MAX_LEN  (3072u)
+static_assert(DTLS_1_2_RECORD_PLAINTEXT_MAX_LEN <= TEST_SEC_CLEARTEXT_MAX_LEN,
+	      "TEST_SEC_CLEARTEXT_MAX_LEN should be at least RECORD MAX LEN!");
+
+/* TLS 1.3 Ciphertext length can be up to (2^14 + 256 + 5 (TLS Header)) Bytes */
+#define TLS_1_3_RECORD_CIPHERTEXT_MAX_LEN  (4096u)
+static_assert(TLS_1_3_RECORD_CIPHERTEXT_MAX_LEN <= TEST_SEC_CIPHERTEXT_MAX_LEN,
+	      "TEST_SEC_CIPHERTEXT_MAX_LEN should be at least RECORD MAX LEN!");
+
+/* TLS 1.3 Plaintext length can be up to 2^14 Bytes */
+#define TLS_1_3_RECORD_PLAINTEXT_MAX_LEN   (3072u)
+static_assert(TLS_1_3_RECORD_PLAINTEXT_MAX_LEN <= TEST_SEC_CLEARTEXT_MAX_LEN,
+	      "TEST_SEC_CLEARTEXT_MAX_LEN should be at least RECORD MAX LEN!");
+
+#define TLS_RECORD_PLAINTEXT_MIN_LEN       (1u)
 
 struct tls_record_test_data {
 	struct {
@@ -22,12 +52,12 @@ struct tls_record_test_data {
 	} auth_key;
 
 	struct {
-		uint8_t data[TLS_RECORD_MAX_LEN];
+		uint8_t data[TEST_SEC_CIPHERTEXT_MAX_LEN];
 		unsigned int len;
 	} input_text;
 
 	struct {
-		uint8_t data[TLS_RECORD_MAX_LEN];
+		uint8_t data[TEST_SEC_CIPHERTEXT_MAX_LEN];
 		unsigned int len;
 	} output_text;
 
@@ -56,6 +86,8 @@ struct tls_record_test_data {
 struct tls_record_test_flags {
 	bool display_alg;
 	int nb_segs_in_mbuf;
+	bool data_walkthrough;
+	enum rte_security_tls_version tls_version;
 };
 
 extern struct tls_record_test_data tls_test_data_aes_128_gcm_v1;
@@ -89,7 +121,8 @@ void test_tls_record_td_read_from_write(const struct tls_record_test_data *td_ou
 void test_tls_record_td_prepare(const struct crypto_param *param1,
 				const struct crypto_param *param2,
 				const struct tls_record_test_flags *flags,
-				struct tls_record_test_data *td_array, int nb_td);
+				struct tls_record_test_data *td_array, int nb_td,
+				unsigned int data_len);
 
 void test_tls_record_td_update(struct tls_record_test_data td_inb[],
 			       const struct tls_record_test_data td_outb[], int nb_td,

@@ -62,7 +62,8 @@ test_tls_record_td_read_from_write(const struct tls_record_test_data *td_out,
 void
 test_tls_record_td_prepare(const struct crypto_param *param1, const struct crypto_param *param2,
 			   const struct tls_record_test_flags *flags,
-			   struct tls_record_test_data *td_array, int nb_td)
+			   struct tls_record_test_data *td_array,
+			   int nb_td, unsigned int data_len)
 {
 	int i, min_padding, hdr_len, tls_pkt_size, mac_len = 0, exp_nonce_len = 0, roundup_len = 0;
 	struct tls_record_test_data *td = NULL;
@@ -76,7 +77,10 @@ test_tls_record_td_prepare(const struct crypto_param *param1, const struct crypt
 
 		if (param1->type == RTE_CRYPTO_SYM_XFORM_AEAD) {
 			/* Copy template for packet & key fields */
-			memcpy(td, &tls_test_data_aes_128_gcm_v1, sizeof(*td));
+			if (flags->tls_version == RTE_SECURITY_VERSION_DTLS_1_2)
+				memcpy(td, &dtls_test_data_aes_128_gcm, sizeof(*td));
+			else
+				memcpy(td, &tls_test_data_aes_128_gcm_v1, sizeof(*td));
 
 			td->aead = true;
 			td->xform.aead.aead.algo = param1->alg.aead;
@@ -84,7 +88,10 @@ test_tls_record_td_prepare(const struct crypto_param *param1, const struct crypt
 			td->xform.aead.aead.digest_length = param1->digest_length;
 		} else {
 			/* Copy template for packet & key fields */
-			memcpy(td, &tls_test_data_aes_128_cbc_sha1_hmac, sizeof(*td));
+			if (flags->tls_version == RTE_SECURITY_VERSION_DTLS_1_2)
+				memcpy(td, &dtls_test_data_aes_128_cbc_sha1_hmac, sizeof(*td));
+			else
+				memcpy(td, &tls_test_data_aes_128_cbc_sha1_hmac, sizeof(*td));
 
 			td->aead = false;
 			td->xform.chain.cipher.cipher.algo = param1->alg.cipher;
@@ -94,6 +101,11 @@ test_tls_record_td_prepare(const struct crypto_param *param1, const struct crypt
 			td->xform.chain.auth.auth.key.length = param2->key_length;
 			td->xform.chain.auth.auth.digest_length = param2->digest_length;
 		}
+	}
+
+	if (flags->data_walkthrough) {
+		test_sec_proto_pattern_set(td->input_text.data, data_len);
+		td->input_text.len = data_len;
 	}
 
 	tls_pkt_size = td->input_text.len;
@@ -221,6 +233,7 @@ test_tls_record_res_d_prepare(const uint8_t *output_text, uint32_t len,
 
 	return TEST_SUCCESS;
 }
+
 static int
 tls_record_hdr_verify(const struct tls_record_test_data *td, const uint8_t *output_text)
 {
@@ -280,13 +293,13 @@ int
 test_tls_record_post_process(const struct rte_mbuf *m, const struct tls_record_test_data *td,
 			     struct tls_record_test_data *res_d, bool silent)
 {
+	uint8_t output_text[TEST_SEC_CIPHERTEXT_MAX_LEN];
 	uint32_t len = rte_pktmbuf_pkt_len(m), data_len;
-	uint8_t output_text[TLS_RECORD_MAX_LEN];
 	const struct rte_mbuf *seg;
 	const uint8_t *output;
 	int ret;
 
-	memset(output_text, 0, TLS_RECORD_MAX_LEN);
+	memset(output_text, 0, TEST_SEC_CIPHERTEXT_MAX_LEN);
 
 	/*
 	 * Actual data in packet might be less in error cases, hence take minimum of pkt_len and sum
@@ -300,7 +313,7 @@ test_tls_record_post_process(const struct rte_mbuf *m, const struct tls_record_t
 	}
 
 	len = RTE_MIN(len, data_len);
-	TEST_ASSERT(len <= TLS_RECORD_MAX_LEN, "Invalid packet length: %u", len);
+	TEST_ASSERT(len <= TEST_SEC_CIPHERTEXT_MAX_LEN, "Invalid packet length: %u", len);
 
 	/* Copy mbuf payload to continuous buffer */
 	output = rte_pktmbuf_read(m, 0, len, output_text);

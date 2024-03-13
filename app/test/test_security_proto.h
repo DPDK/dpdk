@@ -8,6 +8,10 @@
 #include <rte_cryptodev.h>
 #include <rte_security.h>
 
+#include "test_cryptodev.h"
+
+#define TEST_SEC_CLEARTEXT_MAX_LEN  (MBUF_DATAPAYLOAD_SIZE - 1024)
+#define TEST_SEC_CIPHERTEXT_MAX_LEN (MBUF_DATAPAYLOAD_SIZE)
 #define TEST_SEC_PKTS_MAX 32
 
 struct crypto_param {
@@ -185,5 +189,9 @@ int test_sec_crypto_caps_auth_verify(const struct rte_security_capability *sec_c
 		struct rte_crypto_sym_xform *auth);
 
 void test_sec_alg_display(const struct crypto_param *param1, const struct crypto_param *param2);
+
+void test_sec_proto_pattern_generate(void);
+
+void test_sec_proto_pattern_set(uint8_t *buf, int len);
 
 #endif

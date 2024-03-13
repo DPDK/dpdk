@@ -13,6 +13,8 @@ struct crypto_param_comb sec_alg_list[RTE_DIM(aead_list) +
 
 struct crypto_param_comb sec_auth_only_alg_list[2 * (RTE_DIM(auth_list) - 1)];
 
+static uint8_t cleartext_pattern[TEST_SEC_CLEARTEXT_MAX_LEN];
+
 void
 test_sec_alg_list_populate(void)
 {
@@ -151,4 +153,19 @@ test_sec_alg_display(const struct crypto_param *param1, const struct crypto_para
 			printf(" [%dB ICV]", param2->digest_length);
 	}
 	printf("\n");
+}
+
+void
+test_sec_proto_pattern_generate(void)
+{
+	unsigned int i;
+
+	for (i = 0; i < TEST_SEC_CLEARTEXT_MAX_LEN; i++)
+		cleartext_pattern[i] = (i + 1) & 0xff;
+}
+
+void
+test_sec_proto_pattern_set(uint8_t *buf, int len)
+{
+	rte_memcpy(buf, cleartext_pattern, len);
 }

@@ -858,6 +858,8 @@ ipsec_proto_testsuite_setup(void)
 static int
 tls_record_proto_testsuite_setup(void)
 {
+	test_sec_proto_pattern_generate();
+
 	return sec_proto_testsuite_setup(RTE_SECURITY_PROTOCOL_TLS_RECORD);
 }
 
@@ -11958,14 +11960,30 @@ test_tls_record_proto_known_vec_read(const void *test_data)
 static int
 test_tls_record_proto_all(const struct tls_record_test_flags *flags)
 {
+	unsigned int i, nb_pkts = 1, pass_cnt = 0, payload_len, max_payload_len;
 	struct tls_record_test_data td_outb[TEST_SEC_PKTS_MAX];
 	struct tls_record_test_data td_inb[TEST_SEC_PKTS_MAX];
-	unsigned int i, nb_pkts = 1, pass_cnt = 0;
 	int ret;
 
+	switch (flags->tls_version) {
+	case RTE_SECURITY_VERSION_TLS_1_2:
+		max_payload_len = TLS_1_2_RECORD_PLAINTEXT_MAX_LEN;
+		break;
+	case RTE_SECURITY_VERSION_TLS_1_3:
+		max_payload_len = TLS_1_3_RECORD_PLAINTEXT_MAX_LEN;
+		break;
+	case RTE_SECURITY_VERSION_DTLS_1_2:
+		max_payload_len = DTLS_1_2_RECORD_PLAINTEXT_MAX_LEN;
+		break;
+	default:
+		max_payload_len = 0;
+	}
+
 	for (i = 0; i < RTE_DIM(sec_alg_list); i++) {
+		payload_len = TLS_RECORD_PLAINTEXT_MIN_LEN;
+again:
 		test_tls_record_td_prepare(sec_alg_list[i].param1, sec_alg_list[i].param2, flags,
-					   td_outb, nb_pkts);
+					   td_outb, nb_pkts, payload_len);
 
 		ret = test_tls_record_proto_process(td_outb, td_inb, nb_pkts, true, flags);
 		if (ret == TEST_SKIPPED)
@@ -11983,6 +12001,9 @@ test_tls_record_proto_all(const struct tls_record_test_flags *flags)
 		if (ret == TEST_FAILED)
 			return TEST_FAILED;
 
+		if (flags->data_walkthrough && (++payload_len <= max_payload_len))
+			goto again;
+
 		if (flags->display_alg)
 			test_sec_alg_display(sec_alg_list[i].param1, sec_alg_list[i].param2);
 
@@ -11996,22 +12017,69 @@ test_tls_record_proto_all(const struct tls_record_test_flags *flags)
 }
 
 static int
-test_tls_record_proto_display_list(void)
+test_tls_1_2_record_proto_data_walkthrough(void)
+{
+	struct tls_record_test_flags flags;
+
+	memset(&flags, 0, sizeof(flags));
+
+	flags.data_walkthrough = true;
+	flags.tls_version = RTE_SECURITY_VERSION_TLS_1_2;
+
+	return test_tls_record_proto_all(&flags);
+}
+
+static int
+test_tls_1_2_record_proto_display_list(void)
 {
 	struct tls_record_test_flags flags;
 
 	memset(&flags, 0, sizeof(flags));
 
 	flags.display_alg = true;
+	flags.tls_version = RTE_SECURITY_VERSION_TLS_1_2;
 
 	return test_tls_record_proto_all(&flags);
 }
 
 static int
-test_tls_record_proto_sgl(void)
+test_tls_1_2_record_proto_sgl(void)
 {
 	struct tls_record_test_flags flags = {
-		.nb_segs_in_mbuf = 5
+		.nb_segs_in_mbuf = 5,
+		.tls_version = RTE_SECURITY_VERSION_TLS_1_2
+	};
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	struct rte_cryptodev_info dev_info;
+
+	rte_cryptodev_info_get(ts_params->valid_devs[0], &dev_info);
+	if (!(dev_info.feature_flags & RTE_CRYPTODEV_FF_IN_PLACE_SGL)) {
+		printf("Device doesn't support in-place scatter-gather. Test Skipped.\n");
+		return TEST_SKIPPED;
+	}
+
+	return test_tls_record_proto_all(&flags);
+}
+
+static int
+test_dtls_1_2_record_proto_display_list(void)
+{
+	struct tls_record_test_flags flags;
+
+	memset(&flags, 0, sizeof(flags));
+
+	flags.display_alg = true;
+	flags.tls_version = RTE_SECURITY_VERSION_DTLS_1_2;
+
+	return test_tls_record_proto_all(&flags);
+}
+
+static int
+test_dtls_1_2_record_proto_sgl(void)
+{
+	struct tls_record_test_flags flags = {
+		.nb_segs_in_mbuf = 5,
+		.tls_version = RTE_SECURITY_VERSION_DTLS_1_2
 	};
 	struct crypto_testsuite_params *ts_params = &testsuite_params;
 	struct rte_cryptodev_info dev_info;
@@ -17081,11 +17149,15 @@ static struct unit_test_suite tls12_record_proto_testsuite  = {
 		TEST_CASE_NAMED_ST(
 			"Combined test alg list",
 			ut_setup_security, ut_teardown,
-			test_tls_record_proto_display_list),
+			test_tls_1_2_record_proto_display_list),
+		TEST_CASE_NAMED_ST(
+			"Data walkthrough combined test alg list",
+			ut_setup_security, ut_teardown,
+			test_tls_1_2_record_proto_data_walkthrough),
 		TEST_CASE_NAMED_ST(
 			"Multi-segmented mode",
 			ut_setup_security, ut_teardown,
-			test_tls_record_proto_sgl),
+			test_tls_1_2_record_proto_sgl),
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}
 };
@@ -17182,11 +17254,11 @@ static struct unit_test_suite dtls12_record_proto_testsuite  = {
 		TEST_CASE_NAMED_ST(
 			"Combined test alg list",
 			ut_setup_security, ut_teardown,
-			test_tls_record_proto_display_list),
+			test_dtls_1_2_record_proto_display_list),
 		TEST_CASE_NAMED_ST(
 			"Multi-segmented mode",
 			ut_setup_security, ut_teardown,
-			test_tls_record_proto_sgl),
+			test_dtls_1_2_record_proto_sgl),
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}
 };
