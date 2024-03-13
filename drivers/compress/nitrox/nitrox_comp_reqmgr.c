@@ -1096,9 +1096,19 @@ nitrox_check_comp_req(struct nitrox_softreq *sr, struct rte_comp_op **op)
 		for (; m && off > rte_pktmbuf_data_len(m); m = m->next)
 			off -= rte_pktmbuf_data_len(m);
 
+		if (unlikely(m == NULL)) {
+			err = -EINVAL;
+			goto exit;
+		}
+
 		mlen = rte_pktmbuf_data_len(m) - off;
 		for (; m && (datalen > mlen); m = m->next)
 			datalen -= mlen;
+
+		if (unlikely(m == NULL)) {
+			err = -EINVAL;
+			goto exit;
+		}
 
 		last_byte = rte_pktmbuf_mtod_offset(m, uint8_t *, datalen - 1);
 		*last_byte = zip_res.w2.exbits & 0xFF;
