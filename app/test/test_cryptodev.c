@@ -17274,6 +17274,10 @@ static struct unit_test_suite tls12_record_proto_testsuite  = {
 			ut_setup_security, ut_teardown,
 			test_tls_record_proto_known_vec, &tls_test_data_aes_256_cbc_sha256_hmac),
 		TEST_CASE_NAMED_WITH_DATA(
+			"Write record known vector AES-256-CBC-SHA384",
+			ut_setup_security, ut_teardown,
+			test_tls_record_proto_known_vec, &tls_test_data_aes_256_cbc_sha384_hmac),
+		TEST_CASE_NAMED_WITH_DATA(
 			"Write record known vector 3DES-CBC-SHA1-HMAC",
 			ut_setup_security, ut_teardown,
 			test_tls_record_proto_known_vec, &tls_test_data_3des_cbc_sha1_hmac),
@@ -17316,6 +17320,11 @@ static struct unit_test_suite tls12_record_proto_testsuite  = {
 			ut_setup_security, ut_teardown,
 			test_tls_record_proto_known_vec_read,
 			&tls_test_data_aes_256_cbc_sha256_hmac),
+		TEST_CASE_NAMED_WITH_DATA(
+			"Read record known vector AES-256-CBC-SHA384",
+			ut_setup_security, ut_teardown,
+			test_tls_record_proto_known_vec_read,
+			&tls_test_data_aes_256_cbc_sha384_hmac),
 		TEST_CASE_NAMED_WITH_DATA(
 			"Read record known vector 3DES-CBC-SHA1-HMAC",
 			ut_setup_security, ut_teardown,
@@ -17398,6 +17407,11 @@ static struct unit_test_suite dtls12_record_proto_testsuite  = {
 			test_tls_record_proto_known_vec,
 			&dtls_test_data_aes_256_cbc_sha256_hmac),
 		TEST_CASE_NAMED_WITH_DATA(
+			"Write record known vector AES-256-CBC-SHA384",
+			ut_setup_security, ut_teardown,
+			test_tls_record_proto_known_vec,
+			&dtls_test_data_aes_256_cbc_sha384_hmac),
+		TEST_CASE_NAMED_WITH_DATA(
 			"Write record known vector 3DES-CBC-SHA1-HMAC",
 			ut_setup_security, ut_teardown,
 			test_tls_record_proto_known_vec,
@@ -17439,6 +17453,11 @@ static struct unit_test_suite dtls12_record_proto_testsuite  = {
 			ut_setup_security, ut_teardown,
 			test_tls_record_proto_known_vec_read,
 			&dtls_test_data_aes_256_cbc_sha256_hmac),
+		TEST_CASE_NAMED_WITH_DATA(
+			"Read record known vector AES-256-CBC-SHA384",
+			ut_setup_security, ut_teardown,
+			test_tls_record_proto_known_vec_read,
+			&dtls_test_data_aes_256_cbc_sha384_hmac),
 		TEST_CASE_NAMED_WITH_DATA(
 			"Read record known vector 3DES-CBC-SHA1-HMAC",
 			ut_setup_security, ut_teardown,
