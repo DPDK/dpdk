@@ -12424,6 +12424,20 @@ test_dtls_1_2_record_proto_zero_len_non_app(void)
 	return test_tls_record_proto_all(&flags);
 }
 
+static int
+test_tls_1_3_record_proto_corrupt_pkt(void)
+{
+	struct tls_record_test_flags flags = {
+		.pkt_corruption = 1,
+		.tls_version = RTE_SECURITY_VERSION_TLS_1_3
+	};
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	struct rte_cryptodev_info dev_info;
+
+	rte_cryptodev_info_get(ts_params->valid_devs[0], &dev_info);
+
+	return test_tls_record_proto_all(&flags);
+}
 #endif
 
 static int
@@ -17714,7 +17728,10 @@ static struct unit_test_suite tls13_record_proto_testsuite  = {
 			"Read record known vector CHACHA20-POLY1305",
 			ut_setup_security, ut_teardown,
 			test_tls_record_proto_known_vec_read, &tls13_test_data_chacha20_poly1305),
-
+		TEST_CASE_NAMED_ST(
+			"TLS-1.3 record header corruption",
+			ut_setup_security, ut_teardown,
+			test_tls_1_3_record_proto_corrupt_pkt),
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}
 };
