@@ -11834,6 +11834,9 @@ test_tls_record_proto_process(const struct tls_record_test_data td[],
 	if (td[0].aead)
 		test_tls_record_imp_nonce_update(&td[0], &tls_record_xform);
 
+	if (flags->opt_padding)
+		tls_record_xform.options.extra_padding_enable = 1;
+
 	sess_conf.tls_record = tls_record_xform;
 
 	if (td[0].aead) {
@@ -11888,6 +11891,9 @@ test_tls_record_proto_process(const struct tls_record_test_data td[],
 		ut_params->op->sym->m_dst = NULL;
 		ut_params->op->param1.tls_record.content_type = td[i].app_type;
 
+		if (flags->opt_padding)
+			ut_params->op->aux_flags = flags->opt_padding;
+
 		/* Copy IV in crypto operation when IV generation is disabled */
 		if ((sess_type == RTE_SECURITY_TLS_SESS_TYPE_WRITE) &&
 		    (tls_record_xform.ver != RTE_SECURITY_VERSION_TLS_1_3) &&
@@ -11915,7 +11921,7 @@ test_tls_record_proto_process(const struct tls_record_test_data td[],
 
 		if (ut_params->op->status == RTE_CRYPTO_OP_STATUS_SUCCESS) {
 			ret = test_tls_record_post_process(ut_params->ibuf, &td[i], res_d_tmp,
-							   silent);
+							   silent, flags);
 			if (ret != TEST_SUCCESS)
 				goto crypto_op_free;
 		}
@@ -12182,6 +12188,59 @@ test_tls_record_proto_zero_len_non_app(void)
 	rte_cryptodev_info_get(ts_params->valid_devs[0], &dev_info);
 
 	return test_tls_record_proto_all(&flags);
+}
+
+static int
+test_tls_record_proto_opt_padding(uint8_t padding, uint8_t num_segs,
+				  enum rte_security_tls_version tls_version)
+{
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	struct rte_cryptodev_info dev_info;
+	struct tls_record_test_flags flags = {
+		.nb_segs_in_mbuf = num_segs,
+		.tls_version = tls_version,
+		.opt_padding = padding
+	};
+
+	rte_cryptodev_info_get(ts_params->valid_devs[0], &dev_info);
+
+	return test_tls_record_proto_all(&flags);
+}
+
+static int
+test_tls_record_proto_dm_opt_padding(void)
+{
+	return test_tls_record_proto_opt_padding(1, 0, RTE_SECURITY_VERSION_TLS_1_2);
+}
+
+static int
+test_tls_record_proto_dm_opt_padding_1(void)
+{
+	return test_tls_record_proto_opt_padding(25, 0, RTE_SECURITY_VERSION_TLS_1_2);
+}
+
+static int
+test_tls_record_proto_sg_opt_padding(void)
+{
+	return test_tls_record_proto_opt_padding(1, 2, RTE_SECURITY_VERSION_TLS_1_2);
+}
+
+static int
+test_tls_record_proto_sg_opt_padding_1(void)
+{
+	return test_tls_record_proto_opt_padding(8, 4, RTE_SECURITY_VERSION_TLS_1_2);
+}
+
+static int
+test_tls_record_proto_sg_opt_padding_2(void)
+{
+	return test_tls_record_proto_opt_padding(8, 5, RTE_SECURITY_VERSION_TLS_1_2);
+}
+
+static int
+test_tls_record_proto_sg_opt_padding_max(void)
+{
+	return test_tls_record_proto_opt_padding(33, 4, RTE_SECURITY_VERSION_TLS_1_2);
 }
 
 static int
@@ -17578,6 +17637,30 @@ static struct unit_test_suite tls12_record_proto_testsuite  = {
 			"Zero len TLS record with content type as ctrl",
 			ut_setup_security, ut_teardown,
 			test_tls_record_proto_zero_len_non_app),
+		TEST_CASE_NAMED_ST(
+			"TLS record DM mode with optional padding < 2 blocks",
+			ut_setup_security, ut_teardown,
+			test_tls_record_proto_dm_opt_padding),
+		TEST_CASE_NAMED_ST(
+			"TLS record DM mode with optional padding > 2 blocks",
+			ut_setup_security, ut_teardown,
+			test_tls_record_proto_dm_opt_padding_1),
+		TEST_CASE_NAMED_ST(
+			"TLS record SG mode with optional padding < 2 blocks",
+			ut_setup_security, ut_teardown,
+			test_tls_record_proto_sg_opt_padding),
+		TEST_CASE_NAMED_ST(
+			"TLS record SG mode with optional padding > 2 blocks",
+			ut_setup_security, ut_teardown,
+			test_tls_record_proto_sg_opt_padding_1),
+		TEST_CASE_NAMED_ST(
+			"TLS record SG mode with optional padding > 2 blocks",
+			ut_setup_security, ut_teardown,
+			test_tls_record_proto_sg_opt_padding_2),
+		TEST_CASE_NAMED_ST(
+			"TLS record SG mode with optional padding > max range",
+			ut_setup_security, ut_teardown,
+			test_tls_record_proto_sg_opt_padding_max),
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}
 };

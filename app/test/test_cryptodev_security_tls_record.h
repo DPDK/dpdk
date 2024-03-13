@@ -97,7 +97,9 @@ struct tls_record_test_flags {
 	bool data_walkthrough;
 	bool pkt_corruption;
 	bool zero_len;
+	bool padding_corruption;
 	uint8_t nb_segs_in_mbuf;
+	uint8_t opt_padding;
 	enum rte_security_tls_version tls_version;
 	enum tls_record_test_content_type content_type;
 	int ar_win_size;
@@ -148,5 +150,6 @@ void test_tls_record_td_update(struct tls_record_test_data td_inb[],
 			       const struct tls_record_test_flags *flags);
 
 int test_tls_record_post_process(const struct rte_mbuf *m, const struct tls_record_test_data *td,
-				 struct tls_record_test_data *res_d, bool silent);
+				 struct tls_record_test_data *res_d, bool silent,
+				 const struct tls_record_test_flags *flags);
 #endif

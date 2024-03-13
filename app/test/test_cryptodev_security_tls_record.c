@@ -269,7 +269,8 @@ test_tls_record_res_d_prepare(const uint8_t *output_text, uint32_t len,
 }
 
 static int
-tls_record_hdr_verify(const struct tls_record_test_data *td, const uint8_t *output_text)
+tls_record_hdr_verify(const struct tls_record_test_data *td, const uint8_t *output_text,
+		      const struct tls_record_test_flags *flags)
 {
 	uint16_t length, hdr_len;
 	uint8_t content_type;
@@ -322,10 +323,22 @@ tls_record_hdr_verify(const struct tls_record_test_data *td, const uint8_t *outp
 		}
 	}
 
-	if (length != td->output_text.len - hdr_len) {
-		printf("Incorrect packet length [expected - %d, received - %d]\n",
-		       td->output_text.len - hdr_len, length);
-		return TEST_FAILED;
+	if (!flags->opt_padding) {
+		if (length != td->output_text.len - hdr_len) {
+			printf("Incorrect packet length [expected - %d, received - %d]\n",
+			       td->output_text.len - hdr_len, length);
+			return TEST_FAILED;
+		}
+	} else {
+		int pad_len = (flags->opt_padding * 8) > 256 ? 256 : (flags->opt_padding * 8);
+		int expect_len = td->output_text.len - hdr_len + pad_len;
+
+		if (length - expect_len > 32) {
+			printf("Incorrect packet length [expected - %d, received - %d]\n",
+			       expect_len, length);
+			return TEST_FAILED;
+		}
+
 	}
 
 	return TEST_SUCCESS;
@@ -333,7 +346,8 @@ tls_record_hdr_verify(const struct tls_record_test_data *td, const uint8_t *outp
 
 int
 test_tls_record_post_process(const struct rte_mbuf *m, const struct tls_record_test_data *td,
-			     struct tls_record_test_data *res_d, bool silent)
+			     struct tls_record_test_data *res_d, bool silent,
+			     const struct tls_record_test_flags *flags)
 {
 	uint8_t output_text[TEST_SEC_CIPHERTEXT_MAX_LEN];
 	uint32_t len = rte_pktmbuf_pkt_len(m), data_len;
@@ -365,7 +379,7 @@ test_tls_record_post_process(const struct rte_mbuf *m, const struct tls_record_t
 	}
 
 	if (td->tls_record_xform.type == RTE_SECURITY_TLS_SESS_TYPE_WRITE) {
-		ret = tls_record_hdr_verify(td, output_text);
+		ret = tls_record_hdr_verify(td, output_text, flags);
 		if (ret != TEST_SUCCESS)
 			return ret;
 	}
