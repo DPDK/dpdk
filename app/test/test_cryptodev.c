@@ -17680,6 +17680,40 @@ static struct unit_test_suite dtls12_record_proto_testsuite  = {
 	}
 };
 
+static struct unit_test_suite tls13_record_proto_testsuite  = {
+	.suite_name = "TLS 1.3 Record Protocol Unit Test Suite",
+	.setup = tls_record_proto_testsuite_setup,
+	.unit_test_cases = {
+		TEST_CASE_NAMED_WITH_DATA(
+			"Write record known vector AES-GCM-128",
+			ut_setup_security, ut_teardown,
+			test_tls_record_proto_known_vec, &tls13_test_data_aes_128_gcm),
+		TEST_CASE_NAMED_WITH_DATA(
+			"Write record known vector AES-GCM-256",
+			ut_setup_security, ut_teardown,
+			test_tls_record_proto_known_vec, &tls13_test_data_aes_256_gcm),
+		TEST_CASE_NAMED_WITH_DATA(
+			"Write record known vector CHACHA20-POLY1305",
+			ut_setup_security, ut_teardown,
+			test_tls_record_proto_known_vec, &tls13_test_data_chacha20_poly1305),
+
+		TEST_CASE_NAMED_WITH_DATA(
+			"Read record known vector AES-GCM-128",
+			ut_setup_security, ut_teardown,
+			test_tls_record_proto_known_vec_read, &tls13_test_data_aes_128_gcm),
+		TEST_CASE_NAMED_WITH_DATA(
+			"Read record known vector AES-GCM-256",
+			ut_setup_security, ut_teardown,
+			test_tls_record_proto_known_vec_read, &tls13_test_data_aes_256_gcm),
+		TEST_CASE_NAMED_WITH_DATA(
+			"Read record known vector CHACHA20-POLY1305",
+			ut_setup_security, ut_teardown,
+			test_tls_record_proto_known_vec_read, &tls13_test_data_chacha20_poly1305),
+
+		TEST_CASES_END() /**< NULL terminate unit test array */
+	}
+};
+
 #define ADD_UPLINK_TESTCASE(data)						\
 	TEST_CASE_NAMED_WITH_DATA(data.test_descr_uplink, ut_setup_security,	\
 	ut_teardown, test_docsis_proto_uplink, (const void *) &data),		\
@@ -18699,6 +18733,7 @@ run_cryptodev_testsuite(const char *pmd_name)
 		&docsis_proto_testsuite,
 		&tls12_record_proto_testsuite,
 		&dtls12_record_proto_testsuite,
+		&tls13_record_proto_testsuite,
 #endif
 		&end_testsuite
 	};

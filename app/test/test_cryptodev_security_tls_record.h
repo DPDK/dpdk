@@ -124,6 +124,9 @@ extern struct tls_record_test_data dtls_test_data_aes_256_cbc_sha256_hmac;
 extern struct tls_record_test_data dtls_test_data_aes_256_cbc_sha384_hmac;
 extern struct tls_record_test_data dtls_test_data_3des_cbc_sha1_hmac;
 extern struct tls_record_test_data dtls_test_data_null_cipher_sha1_hmac;
+extern struct tls_record_test_data tls13_test_data_aes_128_gcm;
+extern struct tls_record_test_data tls13_test_data_aes_256_gcm;
+extern struct tls_record_test_data tls13_test_data_chacha20_poly1305;
 
 int test_tls_record_status_check(struct rte_crypto_op *op,
 				 const struct tls_record_test_data *td);
