@@ -11873,6 +11873,11 @@ test_tls_record_proto_process(const struct tls_record_test_data td[],
 		ut_params->ibuf = create_segmented_mbuf(ts_params->mbuf_pool, td[i].input_text.len,
 				nb_segs, 0);
 		pktmbuf_write(ut_params->ibuf, 0, td[i].input_text.len, td[i].input_text.data);
+		if (flags->out_of_place)
+			ut_params->obuf = create_segmented_mbuf(ts_params->mbuf_pool,
+					td[i].output_text.len, nb_segs, 0);
+		else
+			ut_params->obuf = NULL;
 
 		/* Generate crypto op data structure */
 		ut_params->op = rte_crypto_op_alloc(ts_params->op_mpool,
@@ -11888,7 +11893,7 @@ test_tls_record_proto_process(const struct tls_record_test_data td[],
 
 		/* Set crypto operation mbufs */
 		ut_params->op->sym->m_src = ut_params->ibuf;
-		ut_params->op->sym->m_dst = NULL;
+		ut_params->op->sym->m_dst = ut_params->obuf;
 		ut_params->op->param1.tls_record.content_type = td[i].app_type;
 
 		if (flags->opt_padding)
@@ -11920,7 +11925,10 @@ test_tls_record_proto_process(const struct tls_record_test_data td[],
 			res_d_tmp = &res_d[i];
 
 		if (ut_params->op->status == RTE_CRYPTO_OP_STATUS_SUCCESS) {
-			ret = test_tls_record_post_process(ut_params->ibuf, &td[i], res_d_tmp,
+			struct rte_mbuf *buf = flags->out_of_place ? ut_params->obuf :
+						ut_params->ibuf;
+
+			ret = test_tls_record_post_process(buf, &td[i], res_d_tmp,
 							   silent, flags);
 			if (ret != TEST_SUCCESS)
 				goto crypto_op_free;
@@ -11929,6 +11937,11 @@ test_tls_record_proto_process(const struct tls_record_test_data td[],
 		rte_crypto_op_free(ut_params->op);
 		ut_params->op = NULL;
 
+		if (flags->out_of_place) {
+			rte_pktmbuf_free(ut_params->obuf);
+			ut_params->obuf = NULL;
+		}
+
 		rte_pktmbuf_free(ut_params->ibuf);
 		ut_params->ibuf = NULL;
 	}
@@ -11936,6 +11949,11 @@ test_tls_record_proto_process(const struct tls_record_test_data td[],
 crypto_op_free:
 	rte_crypto_op_free(ut_params->op);
 	ut_params->op = NULL;
+
+	if (flags->out_of_place) {
+		rte_pktmbuf_free(ut_params->obuf);
+		ut_params->obuf = NULL;
+	}
 
 	rte_pktmbuf_free(ut_params->ibuf);
 	ut_params->ibuf = NULL;
@@ -12125,6 +12143,32 @@ test_tls_record_proto_sgl_data_walkthrough(enum rte_security_tls_version tls_ver
 	}
 
 	return test_tls_record_proto_all(&flags);
+}
+
+static int
+test_tls_record_proto_sgl_oop(enum rte_security_tls_version tls_version)
+{
+	struct tls_record_test_flags flags = {
+		.nb_segs_in_mbuf = 5,
+		.out_of_place = true,
+		.tls_version = tls_version
+	};
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	struct rte_cryptodev_info dev_info;
+
+	rte_cryptodev_info_get(ts_params->valid_devs[0], &dev_info);
+	if (!(dev_info.feature_flags & RTE_CRYPTODEV_FF_IN_PLACE_SGL)) {
+		printf("Device doesn't support in-place scatter-gather. Test Skipped.\n");
+		return TEST_SKIPPED;
+	}
+
+	return test_tls_record_proto_all(&flags);
+}
+
+static int
+test_tls_1_2_record_proto_sgl_oop(void)
+{
+	return test_tls_record_proto_sgl_oop(RTE_SECURITY_VERSION_TLS_1_2);
 }
 
 static int
@@ -17657,6 +17701,10 @@ static struct unit_test_suite tls12_record_proto_testsuite  = {
 			"Multi-segmented mode data walkthrough",
 			ut_setup_security, ut_teardown,
 			test_tls_1_2_record_proto_sgl_data_walkthrough),
+		TEST_CASE_NAMED_ST(
+			"Multi-segmented mode out of place",
+			ut_setup_security, ut_teardown,
+			test_tls_1_2_record_proto_sgl_oop),
 		TEST_CASE_NAMED_ST(
 			"TLS packet header corruption",
 			ut_setup_security, ut_teardown,
