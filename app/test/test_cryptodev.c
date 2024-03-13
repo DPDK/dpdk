@@ -21,6 +21,7 @@
 #include <rte_ip.h>
 #include <rte_string_fns.h>
 #include <rte_tcp.h>
+#include <rte_tls.h>
 #include <rte_udp.h>
 
 #ifdef RTE_CRYPTO_SCHEDULER
@@ -12109,6 +12110,20 @@ test_tls_record_proto_corrupt_pkt(void)
 }
 
 static int
+test_tls_record_proto_custom_content_type(void)
+{
+	struct tls_record_test_flags flags = {
+		.content_type = TLS_RECORD_TEST_CONTENT_TYPE_CUSTOM
+	};
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	struct rte_cryptodev_info dev_info;
+
+	rte_cryptodev_info_get(ts_params->valid_devs[0], &dev_info);
+
+	return test_tls_record_proto_all(&flags);
+}
+
+static int
 test_dtls_1_2_record_proto_data_walkthrough(void)
 {
 	struct tls_record_test_flags flags;
@@ -17232,6 +17247,10 @@ static struct unit_test_suite tls12_record_proto_testsuite  = {
 			"TLS packet header corruption",
 			ut_setup_security, ut_teardown,
 			test_tls_record_proto_corrupt_pkt),
+		TEST_CASE_NAMED_ST(
+			"Custom content type",
+			ut_setup_security, ut_teardown,
+			test_tls_record_proto_custom_content_type),
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}
 };

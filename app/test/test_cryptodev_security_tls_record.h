@@ -42,6 +42,14 @@ static_assert(TLS_1_3_RECORD_PLAINTEXT_MAX_LEN <= TEST_SEC_CLEARTEXT_MAX_LEN,
 
 #define TLS_RECORD_PLAINTEXT_MIN_LEN       (1u)
 
+enum tls_record_test_content_type {
+	TLS_RECORD_TEST_CONTENT_TYPE_APP,
+	/* For verifying zero packet length */
+	TLS_RECORD_TEST_CONTENT_TYPE_HANDSHAKE,
+	/* For verifying handling of custom content types */
+	TLS_RECORD_TEST_CONTENT_TYPE_CUSTOM,
+};
+
 struct tls_record_test_data {
 	struct {
 		uint8_t data[32];
@@ -89,6 +97,7 @@ struct tls_record_test_flags {
 	bool data_walkthrough;
 	enum rte_security_tls_version tls_version;
 	bool pkt_corruption;
+	enum tls_record_test_content_type content_type;
 };
 
 extern struct tls_record_test_data tls_test_data_aes_128_gcm_v1;

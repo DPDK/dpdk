@@ -108,6 +108,9 @@ test_tls_record_td_prepare(const struct crypto_param *param1, const struct crypt
 		td->input_text.len = data_len;
 	}
 
+	if (flags->content_type == TLS_RECORD_TEST_CONTENT_TYPE_CUSTOM)
+		td->app_type = RTE_TLS_TYPE_MAX;
+
 	tls_pkt_size = td->input_text.len;
 
 	if (!td->aead) {
