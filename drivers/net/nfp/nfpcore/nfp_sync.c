@@ -9,6 +9,7 @@
 #include <rte_malloc.h>
 #include <rte_memzone.h>
 #include <rte_spinlock.h>
+#include <rte_string_fns.h>
 
 #include "nfp_logs.h"
 
@@ -266,7 +267,7 @@ nfp_sync_pci_inner_handle_alloc(struct nfp_sync *sync,
 	for (i = 0; i < NFP_SYNC_PCI_MAX; i++) {
 		if (strlen(sync->pci[i].pci_name) == 0) {
 			pci_avail_id = i;
-			strcpy(sync->pci[pci_avail_id].pci_name, pci_name);
+			rte_strlcpy(sync->pci[pci_avail_id].pci_name, pci_name, PCI_PRI_STR_SIZE);
 			goto common_alloc;
 		}
 	}
