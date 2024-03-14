@@ -263,22 +263,6 @@ alloc_devargs(const char *name, const char *args)
 	return devargs;
 }
 
-static struct rte_devargs *
-vdev_devargs_lookup(const char *name)
-{
-	struct rte_devargs *devargs;
-	char dev_name[32];
-
-	RTE_EAL_DEVARGS_FOREACH("vdev", devargs) {
-		devargs->bus->parse(devargs->name, &dev_name);
-		if (strcmp(dev_name, name) == 0) {
-			VDEV_LOG(INFO, "devargs matched %s", dev_name);
-			return devargs;
-		}
-	}
-	return NULL;
-}
-
 static int
 insert_vdev(const char *name, const char *args,
 		struct rte_vdev_device **p_dev,
@@ -291,10 +275,7 @@ insert_vdev(const char *name, const char *args,
 	if (name == NULL)
 		return -EINVAL;
 
-	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
-		devargs = alloc_devargs(name, args);
-	else
-		devargs = vdev_devargs_lookup(name);
+	devargs = alloc_devargs(name, args);
 
 	if (!devargs)
 		return -ENOMEM;
