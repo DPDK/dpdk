@@ -324,14 +324,13 @@ nfp_elf_fwinfo_next(struct nfp_elf *ectx,
 }
 
 static const char *
-nfp_elf_fwinfo_lookup(struct nfp_elf *ectx,
+nfp_elf_fwinfo_lookup(const char *strtab,
+		ssize_t tab_sz,
 		const char *key)
 {
 	size_t s_len;
 	const char *s;
 	size_t key_len = strlen(key);
-	const char *strtab = ectx->fw_info_strtab;
-	ssize_t tab_sz = (ssize_t)ectx->fw_info_strtab_sz;
 
 	if (strtab == NULL)
 		return NULL;
@@ -610,7 +609,9 @@ nfp_elf_populate_fw_mip(struct nfp_elf *ectx,
 {
 	uint8_t *pu8;
 	const char *nx;
+	ssize_t tab_sz;
 	uint64_t sh_size;
+	const char *str_tab;
 	uint64_t sh_offset;
 	uint32_t first_entry;
 	const struct nfp_mip *mip;
@@ -662,7 +663,9 @@ nfp_elf_populate_fw_mip(struct nfp_elf *ectx,
 		}
 	}
 
-	ectx->fw_mip.fw_typeid = nfp_elf_fwinfo_lookup(ectx, "TypeId");
+	str_tab = ectx->fw_info_strtab;
+	tab_sz = (ssize_t)ectx->fw_info_strtab_sz;
+	ectx->fw_mip.fw_typeid = nfp_elf_fwinfo_lookup(str_tab, tab_sz, "TypeId");
 
 	/*
 	 * TypeId will be the last reserved key-value pair, so skip
