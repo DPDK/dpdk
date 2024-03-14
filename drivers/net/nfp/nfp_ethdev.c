@@ -936,7 +936,6 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 	err = nfp_net_tlv_caps_parse(eth_dev);
 	if (err != 0) {
 		PMD_INIT_LOG(ERR, "Failed to parser TLV caps");
-		return err;
 		goto free_area;
 	}
 
