@@ -148,7 +148,7 @@ implementer_cavium = {
         },
         '0xa3': {
             'march': 'armv8-a',
-            'march_features': ['crc'],
+            'march_features': ['crc', 'crypto'],
             'mcpu': 'thunderxt83',
             'flags': flags_part_number_thunderx
         },
