@@ -898,15 +898,19 @@ nfp_elf_read_first_symtab(struct nfp_elf *ectx)
 	size_t idx;
 	uint32_t sh_type;
 	uint64_t sh_size;
-	struct nfp_elf_elf64_shdr *sec;
+	struct nfp_elf_elf64_shdr *sec = NULL;
 
-	for (idx = 0, sec = ectx->shdrs; idx < ectx->shdrs_cnt; idx++, sec++) {
+	for (idx = 0; idx < ectx->shdrs_cnt; idx++) {
+		sec = &ectx->shdrs[idx];
 		if (sec != NULL) {
 			sh_type = rte_le_to_cpu_32(sec->sh_type);
 			if (sh_type == NFP_ELF_SHT_SYMTAB)
 				break;
 		}
 	}
+
+	if (sec == NULL)
+		return -EINVAL;
 
 	sh_size = rte_le_to_cpu_64(sec->sh_size);
 
