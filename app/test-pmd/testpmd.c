@@ -4700,7 +4700,6 @@ main(int argc, char** argv)
 	if (record_core_cycles)
 		rte_lcore_register_usage_cb(lcore_usage_callback);
 
-#ifdef RTE_LIB_CMDLINE
 	if (init_cmdline() != 0)
 		rte_exit(EXIT_FAILURE,
 			"Could not initialise cmdline context.\n");
@@ -4714,9 +4713,7 @@ main(int argc, char** argv)
 			start_packet_forwarding(0);
 		}
 		prompt();
-	} else
-#endif
-	{
+	} else {
 		printf("No commandline core given, start packet forwarding\n");
 		start_packet_forwarding(tx_first);
 		if (stats_period != 0) {

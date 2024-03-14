@@ -45,10 +45,8 @@ usage(char* progname)
 {
 	printf("\nUsage: %s [EAL options] -- [testpmd options]\n\n",
 	       progname);
-#ifdef RTE_LIB_CMDLINE
 	printf("  --interactive: run in interactive mode.\n");
 	printf("  --cmdline-file: execute cli commands before startup.\n");
-#endif
 	printf("  --auto-start: start forwarding on init "
 	       "[always when non-interactive].\n");
 	printf("  --help: display this message and quit.\n");
@@ -95,12 +93,10 @@ usage(char* progname)
 	printf("  --max-pkt-len=N: set the maximum size of packet to N bytes.\n");
 	printf("  --max-lro-pkt-size=N: set the maximum LRO aggregated packet "
 	       "size to N bytes.\n");
-#ifdef RTE_LIB_CMDLINE
 	printf("  --eth-peers-configfile=name: config file with ethernet addresses "
 	       "of peer ports.\n");
 	printf("  --eth-peer=X,M:M:M:M:M:M: set the MAC address of the X peer "
 	       "port (0 <= X < %d).\n", RTE_MAX_ETHPORTS);
-#endif
 	printf("  --disable-crc-strip: disable CRC stripping by hardware.\n");
 	printf("  --enable-scatter: enable scattered Rx.\n");
 	printf("  --enable-lro: enable large receive offload.\n");
@@ -210,7 +206,6 @@ usage(char* progname)
 	       "    0x01 - hairpin ports loop, 0x00 - hairpin port self\n");
 }
 
-#ifdef RTE_LIB_CMDLINE
 static int
 init_peer_eth_addrs(const char *config_filename)
 {
@@ -240,7 +235,6 @@ init_peer_eth_addrs(const char *config_filename)
 	nb_peer_eth_addrs = (portid_t) i;
 	return 0;
 }
-#endif
 
 /*
  * Parse the coremask given as argument (hexadecimal string) and set
@@ -610,13 +604,11 @@ launch_args_parse(int argc, char** argv)
 
 	static struct option lgopts[] = {
 		{ "help",			0, 0, 0 },
-#ifdef RTE_LIB_CMDLINE
 		{ "interactive",		0, 0, 0 },
 		{ "cmdline-file",		1, 0, 0 },
 		{ "auto-start",			0, 0, 0 },
 		{ "eth-peers-configfile",	1, 0, 0 },
 		{ "eth-peer",			1, 0, 0 },
-#endif
 		{ "tx-first",			0, 0, 0 },
 		{ "stats-period",		1, 0, 0 },
 		{ "display-xstats",		1, 0, 0 },
@@ -725,20 +717,13 @@ launch_args_parse(int argc, char** argv)
 
 	argvopt = argv;
 
-#ifdef RTE_LIB_CMDLINE
-#define SHORTOPTS "i"
-#else
-#define SHORTOPTS ""
-#endif
-	while ((opt = getopt_long(argc, argvopt, SHORTOPTS "ah",
+	while ((opt = getopt_long(argc, argvopt, "iah",
 				 lgopts, &opt_idx)) != EOF) {
 		switch (opt) {
-#ifdef RTE_LIB_CMDLINE
 		case 'i':
 			printf("Interactive-mode selected\n");
 			interactive = 1;
 			break;
-#endif
 		case 'a':
 			printf("Auto-start selected\n");
 			auto_start = 1;
@@ -749,7 +734,6 @@ launch_args_parse(int argc, char** argv)
 				usage(argv[0]);
 				exit(EXIT_SUCCESS);
 			}
-#ifdef RTE_LIB_CMDLINE
 			if (!strcmp(lgopts[opt_idx].name, "interactive")) {
 				printf("Interactive-mode selected\n");
 				interactive = 1;
@@ -817,7 +801,6 @@ launch_args_parse(int argc, char** argv)
 						 port_end);
 				nb_peer_eth_addrs++;
 			}
-#endif
 			if (!strcmp(lgopts[opt_idx].name, "tx-ip")) {
 				struct in_addr in;
 				char *end;
