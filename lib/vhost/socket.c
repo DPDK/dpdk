@@ -68,7 +68,7 @@ struct vhost_user_connection {
 	TAILQ_ENTRY(vhost_user_connection) next;
 };
 
-#define MAX_VHOST_SOCKET 1024
+#define MAX_VHOST_SOCKET 2048
 struct vhost_user {
 	struct vhost_user_socket *vsockets[MAX_VHOST_SOCKET];
 	struct fdset fdset;

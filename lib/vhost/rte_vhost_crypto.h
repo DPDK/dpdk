@@ -20,7 +20,7 @@ struct rte_crypto_op;
 #define VHOST_CRYPTO_MBUF_POOL_SIZE		(8192)
 #define VHOST_CRYPTO_MAX_BURST_SIZE		(64)
 #define VHOST_CRYPTO_MAX_DATA_SIZE		(4096)
-#define VHOST_CRYPTO_SESSION_MAP_ENTRIES	(1024) /**< Max nb sessions */
+#define VHOST_CRYPTO_SESSION_MAP_ENTRIES	(2048) /**< Max nb sessions */
 /** max nb virtual queues in a burst for finalizing*/
 #define VIRTIO_CRYPTO_MAX_NUM_BURST_VQS		(64)
 #define VHOST_CRYPTO_MAX_IV_LEN			(32)

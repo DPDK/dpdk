@@ -119,7 +119,7 @@ extern "C" {
 #define VHOST_USER_F_PROTOCOL_FEATURES	30
 #endif
 
-#define RTE_MAX_VHOST_DEVICE	1024
+#define RTE_MAX_VHOST_DEVICE	2048
 
 struct rte_vdpa_device;
 

@@ -8,7 +8,7 @@
 #include <poll.h>
 #include <sys/time.h>
 
-#define MAX_FDS 1024
+#define MAX_FDS 2048
 
 typedef void (*fd_cb)(int fd, void *dat, int *remove);
 
