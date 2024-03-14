@@ -776,7 +776,7 @@ launch_args_parse(int argc, char** argv)
 				n = strtoul(optarg, &end, 10);
 				if ((optarg[0] == '\0') || (end == NULL) ||
 						(*end != '\0'))
-					break;
+					rte_exit(EXIT_FAILURE, "Invalid stats-period value\n");
 
 				stats_period = n;
 				break;
