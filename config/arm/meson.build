@@ -94,6 +94,7 @@ part_number_config_arm = {
     '0xd49': {
         'march': 'armv9-a',
         'march_features': ['sve2'],
+        'fallback_march': 'armv8.5-a',
         'mcpu': 'neoverse-n2',
         'flags': [
             ['RTE_MACHINE', '"neoverse-n2"'],
@@ -844,6 +845,11 @@ if update_flags
                     break
                 endif
             endforeach
+            if (part_number_config.has_key('fallback_march') and
+                candidate_march != part_number_config['march'] and
+                cc.has_argument('-march=' + part_number_config['fallback_march']))
+                    candidate_march = part_number_config['fallback_march']
+            endif
         endif
 
         if candidate_march != part_number_config['march']
