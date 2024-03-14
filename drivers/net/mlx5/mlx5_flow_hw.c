@@ -2170,6 +2170,7 @@ flow_hw_actions_construct(struct rte_eth_dev *dev,
 		struct mlx5_hrxq *hrxq;
 		uint32_t ct_idx;
 		cnt_id_t cnt_id;
+		uint32_t *cnt_queue;
 		uint32_t mtr_id;
 
 		action = &actions[act_data->action_src];
@@ -2321,8 +2322,8 @@ flow_hw_actions_construct(struct rte_eth_dev *dev,
 				break;
 			/* Fall-through. */
 		case RTE_FLOW_ACTION_TYPE_COUNT:
-			ret = mlx5_hws_cnt_pool_get(priv->hws_cpool, &queue,
-						    &cnt_id, age_idx);
+			cnt_queue = mlx5_hws_cnt_get_queue(priv, &queue);
+			ret = mlx5_hws_cnt_pool_get(priv->hws_cpool, cnt_queue, &cnt_id, age_idx);
 			if (ret != 0)
 				return ret;
 			ret = mlx5_hws_cnt_pool_get_action_offset
@@ -2654,6 +2655,8 @@ flow_hw_age_count_release(struct mlx5_priv *priv, uint32_t queue,
 			  struct rte_flow_hw *flow,
 			  struct rte_flow_error *error)
 {
+	uint32_t *cnt_queue;
+
 	if (mlx5_hws_cnt_is_shared(priv->hws_cpool, flow->cnt_id)) {
 		if (flow->age_idx && !mlx5_hws_age_is_indirect(flow->age_idx)) {
 			/* Remove this AGE parameter from indirect counter. */
@@ -2664,8 +2667,9 @@ flow_hw_age_count_release(struct mlx5_priv *priv, uint32_t queue,
 		}
 		return;
 	}
+	cnt_queue = mlx5_hws_cnt_get_queue(priv, &queue);
 	/* Put the counter first to reduce the race risk in BG thread. */
-	mlx5_hws_cnt_pool_put(priv->hws_cpool, &queue, &flow->cnt_id);
+	mlx5_hws_cnt_pool_put(priv->hws_cpool, cnt_queue, &flow->cnt_id);
 	flow->cnt_id = 0;
 	if (flow->age_idx) {
 		if (mlx5_hws_age_is_indirect(flow->age_idx)) {

@@ -533,6 +533,32 @@ mlx5_hws_cnt_pool_get(struct mlx5_hws_cnt_pool *cpool, uint32_t *queue,
 	return 0;
 }
 
+/**
+ * Decide if the given queue can be used to perform counter allocation/deallcation
+ * based on counter configuration
+ *
+ * @param[in] priv
+ *   Pointer to the port private data structure.
+ * @param[in] queue
+ *   Pointer to the queue index.
+ *
+ * @return
+ *   @p queue if cache related to the queue can be used. NULL otherwise.
+ */
+static __rte_always_inline uint32_t *
+mlx5_hws_cnt_get_queue(struct mlx5_priv *priv, uint32_t *queue)
+{
+	if (priv && priv->hws_cpool) {
+		/* Do not use queue cache if counter cache is disabled. */
+		if (priv->hws_cpool->cache == NULL)
+			return NULL;
+		return queue;
+	}
+	/* This case should not be reached if counter pool was successfully configured. */
+	MLX5_ASSERT(false);
+	return NULL;
+}
+
 static __rte_always_inline unsigned int
 mlx5_hws_cnt_pool_get_size(struct mlx5_hws_cnt_pool *cpool)
 {
