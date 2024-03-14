@@ -1469,7 +1469,7 @@ launch_args_parse(int argc, char** argv)
 			break;
 		default:
 			usage(argv[0]);
-			fprintf(stderr, "Invalid option: %s\n", argv[optind]);
+			fprintf(stderr, "Invalid option: %s\n", argv[optind - 1]);
 			rte_exit(EXIT_FAILURE,
 				 "Command line is incomplete or incorrect\n");
 			break;
