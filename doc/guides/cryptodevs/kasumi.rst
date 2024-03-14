@@ -69,12 +69,6 @@ Once it is downloaded, extract it and follow these steps:
     make
     make install
 
-.. note::
-
-   Compilation of the Multi-Buffer library is broken when GCC < 5.0, if library <= v0.53.
-   If a lower GCC version than 5.0, the workaround proposed by the following link
-   should be used: `<https://github.com/intel/intel-ipsec-mb/issues/40>`_.
-
 As a reference, the following table shows a mapping between the past DPDK versions
 and the external crypto libraries supported by them:
 
@@ -85,12 +79,9 @@ and the external crypto libraries supported by them:
    =============  ================================
    DPDK version   Crypto library version
    =============  ================================
-   16.11 - 19.11  LibSSO KASUMI
-   20.02 - 21.08  Multi-buffer library 0.53 - 1.3*
-   21.11+         Multi-buffer library 1.0  - 1.5*
+   20.02 - 21.08  Multi-buffer library 0.53 - 1.3
+   21.11+         Multi-buffer library 1.0  - 1.5
    =============  ================================
-
-\* Multi-buffer library 1.0 or newer only works for Meson but not Make build system.
 
 Initialization
 --------------

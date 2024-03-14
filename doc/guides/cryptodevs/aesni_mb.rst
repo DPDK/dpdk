@@ -121,12 +121,6 @@ Once it is downloaded, extract it and follow these steps:
     make
     make install
 
-.. note::
-
-   Compilation of the Multi-Buffer library is broken when GCC < 5.0, if library <= v0.53.
-   If a lower GCC version than 5.0, the workaround proposed by the following link
-   should be used: `<https://github.com/intel/intel-ipsec-mb/issues/40>`_.
-
 As a reference, the following table shows a mapping between the past DPDK versions
 and the Multi-Buffer library version supported by them:
 
@@ -137,19 +131,9 @@ and the Multi-Buffer library version supported by them:
    ==============  ============================
    DPDK version    Multi-buffer library version
    ==============  ============================
-   2.2 - 16.11     0.43 - 0.44
-   17.02           0.44
-   17.05 - 17.08   0.45 - 0.48
-   17.11           0.47 - 0.48
-   18.02           0.48
-   18.05 - 19.02   0.49 - 0.52
-   19.05 - 19.08   0.52
-   19.11 - 20.08   0.52 - 0.55
-   20.11 - 21.08   0.53 - 1.3*
-   21.11+          1.0  - 1.5*
+   20.11 - 21.08   0.53 - 1.3
+   21.11+          1.0  - 1.5
    ==============  ============================
-
-\* Multi-buffer library 1.0 or newer only works for Meson but not Make build system.
 
 Initialization
 --------------
