@@ -90,6 +90,7 @@ nfp_service_enable(const struct rte_service_spec *service_spec,
 int
 nfp_service_disable(struct nfp_service_info *info)
 {
+	int ret;
 	uint32_t i;
 	const char *service_name;
 
@@ -107,10 +108,16 @@ nfp_service_disable(struct nfp_service_info *info)
 			break;
 		rte_delay_ms(1);
 	}
+
 	if (i == NFP_SERVICE_DISABLE_WAIT_COUNT)
 		PMD_DRV_LOG(ERR, "Could not stop service %s", service_name);
 
-	rte_service_map_lcore_set(info->id, info->lcore, 0);
+	ret = rte_service_map_lcore_set(info->id, info->lcore, 0);
+	if (ret != 0) {
+		PMD_DRV_LOG(DEBUG, "Could not unmap flower service");
+		return -ENOENT;
+	}
+
 	rte_service_component_unregister(info->id);
 
 	return 0;
