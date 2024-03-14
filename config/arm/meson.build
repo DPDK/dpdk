@@ -92,6 +92,7 @@ part_number_config_arm = {
         'march': 'armv8.4-a',
     },
     '0xd49': {
+        'march': 'armv9-a',
         'march_features': ['sve2'],
         'mcpu': 'neoverse-n2',
         'flags': [
@@ -102,6 +103,7 @@ part_number_config_arm = {
         ]
     },
     '0xd4f': {
+        'march': 'armv9-a',
         'march_features': ['sve2'],
         'mcpu' : 'neoverse-v2',
         'flags': [
@@ -827,7 +829,7 @@ if update_flags
         if part_number_config.get('force_march', false)
             candidate_march = part_number_config['march']
         else
-            supported_marchs = ['armv8.6-a', 'armv8.5-a', 'armv8.4-a', 'armv8.3-a',
+            supported_marchs = ['armv9-a', 'armv8.6-a', 'armv8.5-a', 'armv8.4-a', 'armv8.3-a',
                                 'armv8.2-a', 'armv8.1-a', 'armv8-a']
             check_compiler_support = false
             foreach supported_march: supported_marchs
