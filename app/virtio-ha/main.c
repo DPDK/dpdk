@@ -30,18 +30,100 @@ enum ha_msg_hdlr_res {
 	HA_MSG_HDLR_REPLY = 2, /* Message handling success and need reply */
 };
 
-typedef void (*fd_cb)(int fd, void *data);
+struct prio_chnl_vf_cache_entry {
+	TAILQ_ENTRY(prio_chnl_vf_cache_entry) next;
+	struct virtio_dev_name vf_name;
+};
+TAILQ_HEAD(prio_chnl_vf_cache, prio_chnl_vf_cache_entry);
+
 typedef int (*ha_message_handler_t)(struct virtio_ha_msg *msg);
 
-struct ha_event_handler {
-	void *data;
-	int sock;
-	fd_cb cb;
-};
-
 static struct virtio_ha_device_list hs;
-static struct ha_event_handler msg_hdlr;
+static pthread_mutex_t prio_chnl_mutex = PTHREAD_MUTEX_INITIALIZER;
+static bool monitor_started;
+static struct prio_chnl_vf_cache vf_cache;
+static struct virtio_ha_event_handler msg_hdlr;
 static struct virtio_ha_msg *msg;
+
+static int
+ha_server_send_prio_msg(struct virtio_ha_msg *prio_msg, struct virtio_dev_name *vf_name)
+{
+	prio_msg->hdr.size = sizeof(struct virtio_dev_name);
+	prio_msg->hdr.type = VIRTIO_HA_PRIO_CHNL_ADD_VF;
+	prio_msg->iov.iov_len = sizeof(struct virtio_dev_name);
+	prio_msg->iov.iov_base = vf_name;
+	if (virtio_ha_send_msg(hs.prio_chnl_fd, prio_msg) < 0) {
+		HA_APP_LOG(ERR, "Failed to send ha priority msg for vf %s", vf_name->dev_bdf);
+		return -1;
+	}
+
+	HA_APP_LOG(INFO, "Send ha priority msg for vf %s", vf_name->dev_bdf);
+
+	return 0;
+}
+
+static int
+ha_server_app_set_prio_chnl(struct virtio_ha_msg *msg)
+{
+	struct prio_chnl_vf_cache_entry *ent;
+	struct virtio_ha_msg *prio_msg = NULL;
+	int ret = HA_MSG_HDLR_SUCCESS;
+
+	if (msg->nr_fds != 1)
+		return HA_MSG_HDLR_ERR;
+
+	pthread_mutex_lock(&prio_chnl_mutex);
+	hs.prio_chnl_fd = msg->fds[0];
+
+	if (!TAILQ_EMPTY(&vf_cache)) {
+		prio_msg = virtio_ha_alloc_msg();
+		if (!prio_msg) {
+			HA_APP_LOG(ERR, "Failed to alloc priority msg");
+			ret = HA_MSG_HDLR_ERR;
+			goto err;
+		}
+
+		TAILQ_FOREACH(ent, &vf_cache, next) {
+			if (ha_server_send_prio_msg(prio_msg, &ent->vf_name)) {
+				ret = HA_MSG_HDLR_ERR;
+				goto err;
+			}
+		}
+	}
+
+	HA_APP_LOG(INFO, "Set up priority channel fd %d", msg->fds[0]);
+
+err:
+	if (prio_msg)
+		virtio_ha_free_msg(prio_msg);
+	pthread_mutex_unlock(&prio_chnl_mutex);
+	return ret;
+}
+
+static int
+ha_server_app_remove_prio_chnl(__attribute__((__unused__)) struct virtio_ha_msg *msg)
+{
+	struct prio_chnl_vf_cache_entry *entry, *nxt;
+
+	pthread_mutex_lock(&prio_chnl_mutex);
+	close(hs.prio_chnl_fd);
+	hs.prio_chnl_fd = -1;
+	for (entry = TAILQ_FIRST(&vf_cache);
+		 entry != NULL; entry = nxt) {
+		nxt = TAILQ_NEXT(entry, next);
+		TAILQ_REMOVE(&vf_cache, entry, next);
+		free(entry);
+	}
+	pthread_mutex_unlock(&prio_chnl_mutex);
+
+	pthread_cancel(hs.prio_thread);
+	pthread_join(hs.prio_thread, NULL);
+	monitor_started = false;
+
+	HA_APP_LOG(INFO, "Removed priority channel");
+
+	return HA_MSG_HDLR_SUCCESS;
+}
 
 static int
 ha_server_app_query_pf_list(struct virtio_ha_msg *msg)
@@ -623,6 +705,8 @@ ha_server_cleanup_global_dma(void)
 }
 
 static ha_message_handler_t ha_message_handlers[VIRTIO_HA_MESSAGE_MAX] = {
+	[VIRTIO_HA_APP_SET_PRIO_CHNL] = ha_server_app_set_prio_chnl,
+	[VIRTIO_HA_APP_REMOVE_PRIO_CHNL] = ha_server_app_remove_prio_chnl,
 	[VIRTIO_HA_APP_QUERY_PF_LIST] = ha_server_app_query_pf_list,
 	[VIRTIO_HA_APP_QUERY_VF_LIST] = ha_server_app_query_vf_list,
 	[VIRTIO_HA_APP_QUERY_PF_CTX] = ha_server_app_query_pf_ctx,
@@ -701,12 +785,103 @@ add_connection(int fd, void *data)
 	return;
 }
 
+static void *
+monitor_vhostfd_thread(void *arg)
+{
+	struct virtio_ha_vf_dev_list *vf_list = NULL;
+	struct virtio_ha_pf_dev_list *list = &hs.pf_list;
+	struct virtio_ha_pf_dev *dev;
+	struct virtio_ha_vf_dev *vf_dev;
+	struct epoll_event event, *evs;
+	struct virtio_ha_msg *prio_msg;
+	struct prio_chnl_vf_cache_entry *ent;
+	int epfd, i, nev, nr_vhost = 0;
+
+	epfd = epoll_create(1);
+	if (epfd < 0) {
+		HA_APP_LOG(ERR, "Failed to create epoll fd");
+		return arg;
+	}
+
+	TAILQ_FOREACH(dev, list, next) {
+		vf_list = &dev->vf_list;
+		TAILQ_FOREACH(vf_dev, vf_list, next) {
+			event.events = EPOLLIN;
+			event.data.ptr = vf_dev;
+
+			if (vf_dev->vhost_fd == -1)
+				continue;
+
+			if (epoll_ctl(epfd, EPOLL_CTL_ADD, vf_dev->vhost_fd, &event) < 0) {
+				HA_APP_LOG(ERR, "Failed to epoll ctl add for vhost fd %d", vf_dev->vhost_fd);
+				goto err;
+			} else {
+				nr_vhost++;
+			}
+		}
+	}
+
+	evs = malloc(nr_vhost * sizeof(struct epoll_event));
+	if (!evs) {
+		HA_APP_LOG(ERR, "Failed to alloc epoll events");
+		goto err;
+	}
+
+	memset(evs, 0, nr_vhost * sizeof(struct epoll_event));
+
+	prio_msg = virtio_ha_alloc_msg();
+	if (!prio_msg) {
+		HA_APP_LOG(ERR, "Failed to alloc ha priority msg");
+		goto err_msg;
+	}
+
+	HA_APP_LOG(INFO, "HA server starts to monitor vhost fds");
+
+	while (1) {
+		nev = epoll_wait(epfd, evs, nr_vhost, -1);
+		for (i = 0; i < nev; i++) {
+			vf_dev = (struct virtio_ha_vf_dev *)evs[i].data.ptr;
+			pthread_mutex_lock(&prio_chnl_mutex);
+			if (hs.prio_chnl_fd != -1) {
+				/* Priority channel is already set up */
+				if (ha_server_send_prio_msg(prio_msg, &vf_dev->vf_devargs.vf_name) < 0) {
+					pthread_mutex_unlock(&prio_chnl_mutex);
+					goto exit;
+				}
+			} else {
+				/* Priority channel is not yet set up. so store the vf info in cache layer */
+				ent = malloc(sizeof(struct prio_chnl_vf_cache_entry));
+				if (!ent) {
+					HA_APP_LOG(ERR, "Failed to alloc priority chnl cache entry");
+					pthread_mutex_unlock(&prio_chnl_mutex);
+					goto exit;
+				}
+				memset(ent, 0, sizeof(*ent));
+				memcpy(&ent->vf_name, &vf_dev->vf_devargs.vf_name, sizeof(struct virtio_dev_name));
+				TAILQ_INSERT_TAIL(&vf_cache, ent, next);
+			}
+			pthread_mutex_unlock(&prio_chnl_mutex);
+
+			if (epoll_ctl(epfd, EPOLL_CTL_DEL, vf_dev->vhost_fd, &evs[i]) < 0)
+				HA_APP_LOG(ERR, "Failed to epoll ctl del for vhost fd %d", vf_dev->vhost_fd);
+		}
+	}
+
+exit:
+	virtio_ha_free_msg(prio_msg);
+err_msg:
+	free(evs);
+err:
+	close(epfd);
+	return arg;
+}
+
 int
 main(__attribute__((__unused__)) int argc, __attribute__((__unused__)) char *argv[])
 {
 	struct sockaddr_un addr;
 	struct epoll_event event, ev[2];
-	struct ha_event_handler hdl, *handler;
+	struct virtio_ha_event_handler hdl, *handler;
 	int sock, epfd, nev, i;
 
 	msg = virtio_ha_alloc_msg();
@@ -743,8 +918,12 @@ main(__attribute__((__unused__)) int argc, __attribute__((__unused__)) char *arg
 
 	TAILQ_INIT(&hs.pf_list);
 	TAILQ_INIT(&hs.dma_tbl);
+	TAILQ_INIT(&vf_cache);
 	hs.nr_pf = 0;
 	hs.global_cfd = -1;
+	/* No need to take prio_chnl_mutex in this case */
+	hs.prio_chnl_fd = -1;
+	monitor_started = false;
 
 	hdl.sock = sock;
 	hdl.cb = add_connection;
@@ -761,12 +940,24 @@ main(__attribute__((__unused__)) int argc, __attribute__((__unused__)) char *arg
 	while (1) {
 		nev = epoll_wait(epfd, ev, 2, -1);
 		for (i = 0; i < nev; i++) {
-			handler = (struct ha_event_handler *)ev[i].data.ptr;
+			handler = (struct virtio_ha_event_handler *)ev[i].data.ptr;
 			if ((ev[i].events & EPOLLERR) || (ev[i].events & EPOLLHUP)) {
 				if (epoll_ctl(epfd, EPOLL_CTL_DEL, handler->sock, &ev[i]) < 0)
 					HA_APP_LOG(ERR, "Failed to epoll ctl del for fd %d", handler->sock);
 				close(handler->sock);
 				ha_server_cleanup_global_dma();
+				pthread_mutex_lock(&prio_chnl_mutex);
+				if (hs.prio_chnl_fd != -1) {
+					close(hs.prio_chnl_fd);
+					hs.prio_chnl_fd = -1;
+				}
+				pthread_mutex_unlock(&prio_chnl_mutex);
+				if (monitor_started) {
+					/* vdpa service quits before recovery finishes */
+					pthread_cancel(hs.prio_thread);
+					pthread_join(hs.prio_thread, NULL);
+				}
+				pthread_create(&hs.prio_thread, NULL, monitor_vhostfd_thread, NULL);
 			} else { /* EPOLLIN */
 				handler->cb(handler->sock, handler->data);
 			}

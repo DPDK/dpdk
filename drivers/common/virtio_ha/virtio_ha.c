@@ -26,6 +26,7 @@ static bool ipc_client_sync;
 static const struct virtio_ha_dev_ctx_cb *pf_ctx_cb;
 static const struct virtio_ha_dev_ctx_cb *vf_ctx_cb;
 static struct virtio_ha_device_list client_devs;
+static struct virtio_ha_msg *prio_msg;
 
 static void sync_dev_context_to_ha(void);
 
@@ -323,6 +324,7 @@ virtio_ha_ipc_client_init(void)
 	TAILQ_INIT(&client_devs.dma_tbl);
 	client_devs.nr_pf = 0;
 	client_devs.global_cfd = -1;
+	client_devs.prio_chnl_fd = -1;
 
 	ipc_client_sock = socket(AF_UNIX, SOCK_STREAM, 0);
 	if (ipc_client_sock < 0) {
@@ -348,6 +350,203 @@ virtio_ha_ipc_client_init(void)
 	}
 
 	return 0;
+}
+
+static void
+prio_chnl_message_handler(int fd, void *data)
+{
+	struct virtio_ha_vf_restore_queue *rq = (struct virtio_ha_vf_restore_queue *)data;
+	struct virtio_ha_vf_to_restore *vf_dev;
+	struct virtio_dev_name *vf;
+	bool found = false;
+	int ret;
+
+	virtio_ha_reset_msg(prio_msg);
+
+	ret = virtio_ha_recv_msg(fd, prio_msg);
+	if (ret <= 0) {
+		if (ret < 0)
+			HA_IPC_LOG(ERR, "Failed to recv ha priority msg");
+		else
+			HA_IPC_LOG(ERR, "Client closed");
+		return;
+	}
+
+	if (prio_msg->hdr.type != VIRTIO_HA_PRIO_CHNL_ADD_VF) {
+		HA_IPC_LOG(ERR, "Received wrong msg %d on priority channel", prio_msg->hdr.type);
+		goto err;
+	}
+
+	if (prio_msg->hdr.size != sizeof(struct virtio_dev_name) ||
+		prio_msg->iov.iov_len != sizeof(struct virtio_dev_name)) {
+		HA_IPC_LOG(ERR, "Received wrong msg len(hdr_size %u, iov_len %lu) on priority channel",
+			prio_msg->hdr.size, prio_msg->iov.iov_len);
+		goto err;
+	}
+
+	vf = (struct virtio_dev_name *)prio_msg->iov.iov_base;
+	pthread_mutex_lock(&rq->lock);
+	TAILQ_FOREACH(vf_dev, &rq->non_prio_q, next) {
+		if (!strcmp(vf_dev->vf_devargs.vf_name.dev_bdf, vf->dev_bdf)) {
+			found = true;
+			break;
+		}
+	}
+
+	if (!found)
+		goto unlock;
+
+	TAILQ_REMOVE(&rq->non_prio_q, vf_dev, next);
+	TAILQ_INSERT_TAIL(&rq->prio_q, vf_dev, next);
+	HA_IPC_LOG(INFO, "Add vf %s to priority queue", vf_dev->vf_devargs.vf_name.dev_bdf);
+
+unlock:
+	pthread_mutex_unlock(&rq->lock);
+err:
+	free(prio_msg->iov.iov_base);
+	return;	
+}
+
+static void *
+prio_chnl_thread(void *arg)
+{
+	struct epoll_event event, ev;
+	struct virtio_ha_event_handler hdl, *handler;
+	int epfd, nev;
+
+	epfd = epoll_create(1);
+	if (epfd < 0) {
+		HA_IPC_LOG(ERR, "Failed to create epoll fd");
+		return NULL;
+	}
+
+	hdl.sock = client_devs.prio_chnl_fd;
+	hdl.cb = prio_chnl_message_handler;
+	hdl.data = arg;
+	event.events = EPOLLIN | EPOLLHUP | EPOLLERR;
+	event.data.ptr = &hdl;
+	if (epoll_ctl(epfd, EPOLL_CTL_ADD, hdl.sock, &event) < 0) {
+		HA_IPC_LOG(ERR, "Failed to epoll ctl add for priority channel");
+		return NULL;
+	}
+
+	while (1) {
+		nev = epoll_wait(epfd, &ev, 1, -1);
+		if (nev > 0) {
+			handler = (struct virtio_ha_event_handler *)ev.data.ptr;
+			if ((ev.events & EPOLLERR) || (ev.events & EPOLLHUP)) {
+				if (epoll_ctl(epfd, EPOLL_CTL_DEL, handler->sock, &ev) < 0)
+					HA_IPC_LOG(ERR, "Failed to epoll ctl del for fd %d", handler->sock);
+				close(handler->sock);
+				close(epfd);
+				break;
+			} else { /* EPOLLIN */
+				handler->cb(handler->sock, handler->data);
+			}
+		}
+	}
+
+	return NULL;
+}
+
+int
+virtio_ha_prio_chnl_init(struct virtio_ha_vf_restore_queue *rq)
+{
+	struct virtio_ha_msg *msg;
+	int ret, sv[2];
+
+	while (__atomic_load_n(&ipc_client_sync, __ATOMIC_RELAXED))
+		;
+
+	if (!__atomic_load_n(&ipc_client_connected, __ATOMIC_RELAXED))
+		return 0;
+
+	ret = socketpair(AF_UNIX, SOCK_STREAM, 0, sv);
+	if (ret) {
+		HA_IPC_LOG(ERR, "Failed to create socket pair");
+		return -1;
+	}
+
+	client_devs.prio_chnl_fd = sv[0];
+
+	prio_msg = virtio_ha_alloc_msg();
+	if (!prio_msg) {
+		HA_IPC_LOG(ERR, "Failed to alloc ha priority msg");
+		ret = -1;
+		goto err;
+	}
+
+	ret = pthread_create(&client_devs.prio_thread, NULL, prio_chnl_thread, (void *)rq);
+	if (ret < 0) {
+		HA_IPC_LOG(ERR, "Failed to create priority thread");
+		ret = -1;
+		goto err;
+	}
+
+	msg = virtio_ha_alloc_msg();
+	if (!msg) {
+		HA_IPC_LOG(ERR, "Failed to alloc ipc client msg");
+		ret = -1;
+		goto err;
+	}
+
+	msg->hdr.type = VIRTIO_HA_APP_SET_PRIO_CHNL;
+	msg->nr_fds = 1;
+	msg->fds[0] = sv[1];
+	ret = virtio_ha_send_msg(ipc_client_sock, msg);
+	if (ret < 0) {
+		HA_IPC_LOG(ERR, "Failed to send msg");
+		goto err;
+	}
+
+	virtio_ha_free_msg(msg);
+	close(sv[1]);
+
+	return 0;
+
+err:
+	close(sv[0]);
+	close(sv[1]);
+	return ret;
+}
+
+void
+virtio_ha_prio_chnl_destroy(void)
+{
+	struct virtio_ha_msg *msg;
+	int ret;
+
+	while (__atomic_load_n(&ipc_client_sync, __ATOMIC_RELAXED))
+		;
+
+	if (client_devs.prio_chnl_fd != -1)
+		close(client_devs.prio_chnl_fd);
+
+	if (!prio_msg)
+		virtio_ha_free_msg(prio_msg);
+
+	pthread_cancel(client_devs.prio_thread);
+	pthread_join(client_devs.prio_thread, NULL);
+
+	if (!__atomic_load_n(&ipc_client_connected, __ATOMIC_RELAXED))
+		return;
+
+	msg = virtio_ha_alloc_msg();
+	if (!msg) {
+		HA_IPC_LOG(ERR, "Failed to alloc ipc client msg");
+		return;
+	}
+
+	msg->hdr.type = VIRTIO_HA_APP_REMOVE_PRIO_CHNL;
+	ret = virtio_ha_send_msg(ipc_client_sock, msg);
+	if (ret < 0) {
+		HA_IPC_LOG(ERR, "Failed to send msg");
+		return;
+	}
+
+	virtio_ha_free_msg(msg);
+
+	return;
 }
 
 static struct virtio_ha_pf_dev *

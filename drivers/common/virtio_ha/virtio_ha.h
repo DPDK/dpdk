@@ -6,6 +6,7 @@
 #define _VIRTIO_HA_H_
 
 #include <stdint.h>
+#include <pthread.h>
 
 #include <rte_pci.h>
 #include <rte_uuid.h>
@@ -20,25 +21,29 @@ struct virtio_dev_name;
 
 typedef void (*ctx_set_cb)(const struct virtio_dev_name *dev, const void *ctx);
 typedef void (*ctx_unset_cb)(const struct virtio_dev_name *dev);
+typedef void (*fd_cb)(int fd, void *data);
 
 enum virtio_ha_msg_type {
-	VIRTIO_HA_APP_QUERY_PF_LIST = 0,
-	VIRTIO_HA_APP_QUERY_VF_LIST = 1,
-	VIRTIO_HA_APP_QUERY_PF_CTX = 2,
-	VIRTIO_HA_APP_QUERY_VF_CTX = 3,
-	VIRTIO_HA_PF_STORE_CTX = 4,
-	VIRTIO_HA_PF_REMOVE_CTX = 5,
-	VIRTIO_HA_VF_STORE_DEVARG_VFIO_FDS = 6,
-	VIRTIO_HA_VF_STORE_VHOST_FD = 7,
-	VIRTIO_HA_VF_STORE_DMA_TBL = 8,
-	VIRTIO_HA_VF_REMOVE_DEVARG_VFIO_FDS = 9,
-	VIRTIO_HA_VF_REMOVE_VHOST_FD = 10,
-	VIRTIO_HA_VF_REMOVE_DMA_TBL = 11,
-	VIRTIO_HA_GLOBAL_STORE_CONTAINER = 12,
-	VIRTIO_HA_GLOBAL_QUERY_CONTAINER = 13,
-	VIRTIO_HA_GLOBAL_STORE_DMA_MAP = 14,
-	VIRTIO_HA_GLOBAL_REMOVE_DMA_MAP = 15,
-	VIRTIO_HA_MESSAGE_MAX = 16,
+	VIRTIO_HA_APP_SET_PRIO_CHNL = 0,
+	VIRTIO_HA_APP_REMOVE_PRIO_CHNL = 1,
+	VIRTIO_HA_APP_QUERY_PF_LIST = 2,
+	VIRTIO_HA_APP_QUERY_VF_LIST = 3,
+	VIRTIO_HA_APP_QUERY_PF_CTX = 4,
+	VIRTIO_HA_APP_QUERY_VF_CTX = 5,
+	VIRTIO_HA_PF_STORE_CTX = 6,
+	VIRTIO_HA_PF_REMOVE_CTX = 7,
+	VIRTIO_HA_VF_STORE_DEVARG_VFIO_FDS = 8,
+	VIRTIO_HA_VF_STORE_VHOST_FD = 9,
+	VIRTIO_HA_VF_STORE_DMA_TBL = 10,
+	VIRTIO_HA_VF_REMOVE_DEVARG_VFIO_FDS = 11,
+	VIRTIO_HA_VF_REMOVE_VHOST_FD = 12,
+	VIRTIO_HA_VF_REMOVE_DMA_TBL = 13,
+	VIRTIO_HA_GLOBAL_STORE_CONTAINER = 14,
+	VIRTIO_HA_GLOBAL_QUERY_CONTAINER = 15,
+	VIRTIO_HA_GLOBAL_STORE_DMA_MAP = 16,
+	VIRTIO_HA_GLOBAL_REMOVE_DMA_MAP = 17,
+	VIRTIO_HA_PRIO_CHNL_ADD_VF = 18,
+	VIRTIO_HA_MESSAGE_MAX = 19,
 };
 
 struct virtio_ha_msg_hdr {
@@ -122,11 +127,33 @@ struct virtio_ha_device_list {
 	struct virtio_ha_global_dma_tbl dma_tbl;
 	uint32_t nr_pf;
 	int global_cfd;
+	int prio_chnl_fd;
+	pthread_t prio_thread;
 };
 
 struct virtio_ha_dev_ctx_cb {
 	ctx_set_cb set;
 	ctx_unset_cb unset;
+};
+
+struct virtio_ha_vf_to_restore {
+	TAILQ_ENTRY(virtio_ha_vf_to_restore) next;
+	struct vdpa_vf_with_devargs vf_devargs;
+	struct virtio_dev_name pf_name;
+};
+
+TAILQ_HEAD(virtio_ha_vf_restore_list, virtio_ha_vf_to_restore);
+
+struct virtio_ha_vf_restore_queue {
+	struct virtio_ha_vf_restore_list prio_q;
+	struct virtio_ha_vf_restore_list non_prio_q;
+	pthread_mutex_t lock;
+};
+
+struct virtio_ha_event_handler {
+	void *data;
+	int sock;
+	fd_cb cb;
 };
 
 /* IPC client/server allocate an HA message */
@@ -178,6 +205,12 @@ int virtio_ha_vf_ctx_set(const struct virtio_dev_name *vf, const struct vdpa_vf_
 
 /* App unset VF context from VF driver */
 int virtio_ha_vf_ctx_unset(const struct virtio_dev_name *vf);
+
+/* App set VF priority channel to HA service */
+int virtio_ha_prio_chnl_init(struct virtio_ha_vf_restore_queue *rq);
+
+/* App remove VF priority channel from HA service */
+void virtio_ha_prio_chnl_destroy(void);
 
 
 /* PF driver register PF context set/remove callbacks */
