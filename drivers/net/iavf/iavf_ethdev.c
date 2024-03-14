@@ -3041,6 +3041,16 @@ iavf_dev_reset(struct rte_eth_dev *dev)
 	struct iavf_adapter *adapter =
 		IAVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 	struct iavf_hw *hw = IAVF_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
+
+	if (!vf->in_reset_recovery) {
+		ret = iavf_aq_send_msg_to_pf(hw, VIRTCHNL_OP_RESET_VF,
+						IAVF_SUCCESS, NULL, 0, NULL);
+		if (ret) {
+			PMD_DRV_LOG(ERR, "fail to send cmd VIRTCHNL_OP_RESET_VF");
+			return ret;
+		}
+	}
 
 	/*
 	 * Check whether the VF reset has been done and inform application,
