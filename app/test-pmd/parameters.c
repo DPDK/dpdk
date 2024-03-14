@@ -1098,10 +1098,6 @@ launch_args_parse(int argc, char** argv)
 						  n + nb_rxq,
 						  get_allowed_max_nb_rxq(&pid));
 			}
-			if (!nb_rxq && !nb_txq) {
-				rte_exit(EXIT_FAILURE, "Either rx or tx queues should "
-						"be non-zero\n");
-			}
 			if (!strcmp(lgopts[opt_idx].name, "hairpin-mode")) {
 				char *end = NULL;
 				unsigned int n;

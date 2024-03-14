@@ -4619,8 +4619,7 @@ main(int argc, char** argv)
 	}
 
 	if (!nb_rxq && !nb_txq)
-		fprintf(stderr,
-			"Warning: Either rx or tx queues should be non-zero\n");
+		rte_exit(EXIT_FAILURE, "Either rx or tx queues should be non-zero\n");
 
 	if (nb_rxq > 1 && nb_rxq > nb_txq)
 		fprintf(stderr,
