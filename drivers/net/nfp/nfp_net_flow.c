@@ -180,6 +180,7 @@ static int
 nfp_net_flow_calculate_items(const struct rte_flow_item items[],
 		uint32_t *match_len)
 {
+	int ret = -EINVAL;
 	const struct rte_flow_item *item;
 
 	for (item = items; item->type != RTE_FLOW_ITEM_TYPE_END; ++item) {
@@ -187,7 +188,8 @@ nfp_net_flow_calculate_items(const struct rte_flow_item items[],
 		case RTE_FLOW_ITEM_TYPE_ETH:
 			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ITEM_TYPE_ETH detected");
 			*match_len = sizeof(struct nfp_net_cmsg_match_eth);
-			return 0;
+			ret = 0;
+			break;
 		case RTE_FLOW_ITEM_TYPE_IPV4:
 			PMD_DRV_LOG(DEBUG, "RTE_FLOW_ITEM_TYPE_IPV4 detected");
 			*match_len = sizeof(struct nfp_net_cmsg_match_v4);
@@ -203,7 +205,7 @@ nfp_net_flow_calculate_items(const struct rte_flow_item items[],
 		}
 	}
 
-	return -EINVAL;
+	return ret;
 }
 
 static int
