@@ -138,7 +138,7 @@ gve_tx_burst_dqo(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		/* fill the last descriptor with End of Packet (EOP) bit */
 		txd->pkt.end_of_packet = 1;
 
-		if (ol_flags & GVE_TX_CKSUM_OFFLOAD_MASK)
+		if (ol_flags & GVE_TX_CKSUM_OFFLOAD_MASK_DQO)
 			txd->pkt.checksum_offload_enable = 1;
 
 		txq->nb_free -= nb_used;

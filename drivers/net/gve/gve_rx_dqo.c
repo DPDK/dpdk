@@ -75,6 +75,40 @@ gve_rx_refill_dqo(struct gve_rx_queue *rxq)
 	rxq->bufq_tail = next_avail;
 }
 
+static inline uint16_t
+gve_parse_csum_ol_flags(volatile struct gve_rx_compl_desc_dqo *rx_desc,
+		struct gve_priv *priv) {
+	uint64_t ol_flags = 0;
+	struct gve_ptype ptype =
+		priv->ptype_lut_dqo->ptypes[rx_desc->packet_type];
+
+	if (!rx_desc->l3_l4_processed)
+		return ol_flags;
+
+	if (ptype.l3_type == GVE_L3_TYPE_IPV4) {
+		if (rx_desc->csum_ip_err)
+			ol_flags |= RTE_MBUF_F_RX_IP_CKSUM_BAD;
+		else
+			ol_flags |= RTE_MBUF_F_RX_IP_CKSUM_GOOD;
+	}
+
+	if (rx_desc->csum_l4_err) {
+		ol_flags |= RTE_MBUF_F_RX_L4_CKSUM_BAD;
+		return ol_flags;
+	}
+	switch (ptype.l4_type) {
+	case GVE_L4_TYPE_TCP:
+	case GVE_L4_TYPE_UDP:
+	case GVE_L4_TYPE_ICMP:
+	case GVE_L4_TYPE_SCTP:
+		ol_flags |= RTE_MBUF_F_RX_L4_CKSUM_GOOD;
+		break;
+	default:
+		break;
+	}
+	return ol_flags;
+}
+
 uint16_t
 gve_rx_burst_dqo(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 {
@@ -125,8 +159,8 @@ gve_rx_burst_dqo(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		rxm->data_len = pkt_len;
 		rxm->port = rxq->port_id;
 		rxm->ol_flags = 0;
-
-		rxm->ol_flags |= RTE_MBUF_F_RX_RSS_HASH;
+		rxm->ol_flags |= RTE_MBUF_F_RX_RSS_HASH |
+				gve_parse_csum_ol_flags(rx_desc, rxq->hw);
 		rxm->hash.rss = rte_be_to_cpu_32(rx_desc->hash);
 
 		rx_pkts[nb_rx++] = rxm;

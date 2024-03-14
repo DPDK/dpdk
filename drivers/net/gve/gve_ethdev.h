@@ -36,6 +36,10 @@
 		RTE_MBUF_F_TX_L4_MASK  |	\
 		RTE_MBUF_F_TX_TCP_SEG)
 
+#define GVE_TX_CKSUM_OFFLOAD_MASK_DQO (		\
+		GVE_TX_CKSUM_OFFLOAD_MASK |	\
+		RTE_MBUF_F_TX_IP_CKSUM)
+
 #define GVE_RTE_RSS_OFFLOAD_ALL (	\
 	RTE_ETH_RSS_IPV4 |		\
 	RTE_ETH_RSS_NONFRAG_IPV4_TCP |	\
@@ -295,6 +299,7 @@ struct gve_priv {
 	uint16_t stats_end_idx; /* end index of array of stats written by NIC */
 
 	struct gve_rss_config rss_config;
+	struct gve_ptype_lut *ptype_lut_dqo;
 };
 
 static inline bool

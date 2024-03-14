@@ -434,8 +434,14 @@ gve_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 		RTE_ETH_TX_OFFLOAD_SCTP_CKSUM	|
 		RTE_ETH_TX_OFFLOAD_TCP_TSO;
 
-	if (priv->queue_format == GVE_DQO_RDA_FORMAT)
-		dev_info->rx_offload_capa |= RTE_ETH_RX_OFFLOAD_TCP_LRO;
+	if (!gve_is_gqi(priv)) {
+		dev_info->tx_offload_capa |= RTE_ETH_TX_OFFLOAD_IPV4_CKSUM;
+		dev_info->rx_offload_capa |=
+				RTE_ETH_RX_OFFLOAD_IPV4_CKSUM   |
+				RTE_ETH_RX_OFFLOAD_UDP_CKSUM	|
+				RTE_ETH_RX_OFFLOAD_TCP_CKSUM	|
+				RTE_ETH_RX_OFFLOAD_TCP_LRO;
+	}
 
 	dev_info->default_rxconf = (struct rte_eth_rxconf) {
 		.rx_free_thresh = GVE_DEFAULT_RX_FREE_THRESH,
@@ -938,6 +944,11 @@ gve_teardown_device_resources(struct gve_priv *priv)
 		if (err)
 			PMD_DRV_LOG(ERR, "Could not deconfigure device resources: err=%d", err);
 	}
+
+	if (!gve_is_gqi(priv)) {
+		rte_free(priv->ptype_lut_dqo);
+		priv->ptype_lut_dqo = NULL;
+	}
 	gve_free_counter_array(priv);
 	gve_free_irq_db(priv);
 	gve_clear_device_resources_ok(priv);
@@ -997,8 +1008,25 @@ gve_setup_device_resources(struct gve_priv *priv)
 		PMD_DRV_LOG(ERR, "Could not config device resources: err=%d", err);
 		goto free_irq_dbs;
 	}
-	return 0;
+	if (!gve_is_gqi(priv)) {
+		priv->ptype_lut_dqo = rte_zmalloc("gve_ptype_lut_dqo",
+			sizeof(struct gve_ptype_lut), 0);
+		if (priv->ptype_lut_dqo == NULL) {
+			PMD_DRV_LOG(ERR, "Failed to alloc ptype lut.");
+			err = -ENOMEM;
+			goto free_irq_dbs;
+		}
+		err = gve_adminq_get_ptype_map_dqo(priv, priv->ptype_lut_dqo);
+		if (unlikely(err)) {
+			PMD_DRV_LOG(ERR, "Failed to get ptype map: err=%d", err);
+			goto free_ptype_lut;
+		}
+	}
 
+	return 0;
+free_ptype_lut:
+	rte_free(priv->ptype_lut_dqo);
+	priv->ptype_lut_dqo = NULL;
 free_irq_dbs:
 	gve_free_irq_db(priv);
 free_cnt_array:
