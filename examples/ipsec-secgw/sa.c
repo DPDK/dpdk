@@ -374,6 +374,7 @@ parse_sa_tokens(char **tokens, uint32_t n_tokens,
 	uint32_t ti; /*token index*/
 	uint32_t *ri /*rule index*/;
 	struct ipsec_sa_cnt *sa_cnt;
+	rte_be32_t salt; /*big-endian salt*/
 	uint32_t cipher_algo_p = 0;
 	uint32_t auth_algo_p = 0;
 	uint32_t aead_algo_p = 0;
@@ -508,8 +509,8 @@ parse_sa_tokens(char **tokens, uint32_t n_tokens,
 			if (algo->algo == RTE_CRYPTO_CIPHER_AES_CTR) {
 				key_len -= 4;
 				rule->cipher_key_len = key_len;
-				memcpy(&rule->salt,
-					&rule->cipher_key[key_len], 4);
+				memcpy(&salt, &rule->cipher_key[key_len], 4);
+				rule->salt = rte_be_to_cpu_32(salt);
 			}
 
 			cipher_algo_p = 1;
@@ -573,8 +574,8 @@ parse_sa_tokens(char **tokens, uint32_t n_tokens,
 				key_len -= 4;
 				rule->auth_key_len = key_len;
 				rule->iv_len = algo->iv_len;
-				memcpy(&rule->salt,
-					&rule->auth_key[key_len], 4);
+				memcpy(&salt, &rule->auth_key[key_len], 4);
+				rule->salt = rte_be_to_cpu_32(salt);
 			}
 
 			auth_algo_p = 1;
@@ -632,8 +633,8 @@ parse_sa_tokens(char **tokens, uint32_t n_tokens,
 
 			key_len -= 4;
 			rule->cipher_key_len = key_len;
-			memcpy(&rule->salt,
-				&rule->cipher_key[key_len], 4);
+			memcpy(&salt, &rule->cipher_key[key_len], 4);
+			rule->salt = rte_be_to_cpu_32(salt);
 
 			aead_algo_p = 1;
 			continue;
