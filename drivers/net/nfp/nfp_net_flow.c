@@ -349,12 +349,15 @@ nfp_flow_merge_l4(struct rte_flow *nfp_flow,
 
 		ipv4->src_port = rte_be_to_cpu_16(spec->hdr.src_port);
 		ipv4->dst_port = rte_be_to_cpu_16(spec->hdr.dst_port);
-	} else {
+	} else if (ipv6 != NULL) {
 		ipv6->src_port_mask = rte_be_to_cpu_16(mask->hdr.src_port);
 		ipv6->dst_port_mask = rte_be_to_cpu_16(mask->hdr.dst_port);
 
 		ipv6->src_port = rte_be_to_cpu_16(spec->hdr.src_port);
 		ipv6->dst_port = rte_be_to_cpu_16(spec->hdr.dst_port);
+	} else {
+		PMD_DRV_LOG(ERR, "No valid L3 layer pointer.");
+		return -EINVAL;
 	}
 
 	return 0;
