@@ -1128,7 +1128,9 @@ launch_args_parse(int argc, char** argv)
 								0,
 								&dev_info);
 					if (ret != 0)
-						return;
+						rte_exit(EXIT_FAILURE, "Failed to get driver "
+							"recommended burst size, please provide a "
+							"value between 1 and %d\n", MAX_PKT_BURST);
 
 					rec_nb_pkts = dev_info
 						.default_rxportconf.burst_size;
