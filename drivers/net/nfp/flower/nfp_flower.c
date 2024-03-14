@@ -1176,7 +1176,8 @@ nfp_uninit_app_fw_flower(struct nfp_pf_dev *pf_dev)
 	nfp_cpp_area_free(pf_dev->ctrl_area);
 	rte_free(app_fw_flower->pf_hw);
 	nfp_flow_priv_uninit(pf_dev);
-	rte_eth_switch_domain_free(app_fw_flower->switch_domain_id);
+	if (rte_eth_switch_domain_free(app_fw_flower->switch_domain_id) != 0)
+		PMD_DRV_LOG(WARNING, "Failed to free switch domain for device");
 	rte_free(app_fw_flower);
 }
 
