@@ -123,6 +123,10 @@ New Features
 
   * Added support for 5760X device family.
 
+* **Updated HiSilicon hns3 ethdev driver.**
+
+  * Added new device supporting RDMA/DCB/ROH with PCI IDs: ``0xa227, 0xa22c``.
+
 * **Updated Marvell cnxk net driver.**
 
   * Added support for port representors.
