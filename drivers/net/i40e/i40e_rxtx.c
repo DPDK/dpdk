@@ -1563,7 +1563,7 @@ i40e_xmit_pkts_check(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts
 		ol_flags = mb->ol_flags;
 
 		if ((adapter->mbuf_check & I40E_MBUF_CHECK_F_TX_MBUF) &&
-		    (rte_mbuf_check(mb, 0, &reason) != 0)) {
+		    (rte_mbuf_check(mb, 1, &reason) != 0)) {
 			PMD_TX_LOG(ERR, "INVALID mbuf: %s\n", reason);
 			pkt_error = true;
 			break;
