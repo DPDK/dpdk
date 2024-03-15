@@ -28,7 +28,8 @@ tls_xform_cipher_auth_verify(struct rte_crypto_sym_xform *cipher_xform,
 	switch (c_algo) {
 	case RTE_CRYPTO_CIPHER_NULL:
 		if ((a_algo == RTE_CRYPTO_AUTH_MD5_HMAC) || (a_algo == RTE_CRYPTO_AUTH_SHA1_HMAC) ||
-		    (a_algo == RTE_CRYPTO_AUTH_SHA256_HMAC))
+		    (a_algo == RTE_CRYPTO_AUTH_SHA256_HMAC) ||
+		    (a_algo == RTE_CRYPTO_AUTH_SHA384_HMAC))
 			ret = 0;
 		break;
 	case RTE_CRYPTO_CIPHER_3DES_CBC:
@@ -37,7 +38,8 @@ tls_xform_cipher_auth_verify(struct rte_crypto_sym_xform *cipher_xform,
 		break;
 	case RTE_CRYPTO_CIPHER_AES_CBC:
 		if ((a_algo == RTE_CRYPTO_AUTH_SHA1_HMAC) ||
-		    (a_algo == RTE_CRYPTO_AUTH_SHA256_HMAC))
+		    (a_algo == RTE_CRYPTO_AUTH_SHA256_HMAC) ||
+		    (a_algo == RTE_CRYPTO_AUTH_SHA384_HMAC))
 			ret = 0;
 		break;
 	default:
@@ -69,7 +71,8 @@ tls_xform_auth_verify(struct rte_crypto_sym_xform *crypto_xform)
 
 	if (((a_algo == RTE_CRYPTO_AUTH_MD5_HMAC) && (keylen == 16)) ||
 	    ((a_algo == RTE_CRYPTO_AUTH_SHA1_HMAC) && (keylen == 20)) ||
-	    ((a_algo == RTE_CRYPTO_AUTH_SHA256_HMAC) && (keylen == 32)))
+	    ((a_algo == RTE_CRYPTO_AUTH_SHA256_HMAC) && (keylen == 32)) ||
+	    ((a_algo == RTE_CRYPTO_AUTH_SHA384_HMAC) && (keylen == 48)))
 		return 0;
 
 	return -EINVAL;
@@ -93,6 +96,9 @@ tls_xform_aead_verify(struct rte_security_tls_record_xform *tls_xform,
 		if ((keylen == 16) || (keylen == 32))
 			return 0;
 	}
+
+	if ((crypto_xform->aead.algo == RTE_CRYPTO_AEAD_CHACHA20_POLY1305) && (keylen == 32))
+		return 0;
 
 	return -EINVAL;
 }
@@ -251,6 +257,9 @@ tls_write_rlens_get(struct rte_security_tls_record_xform *tls_xfrm,
 	case RTE_CRYPTO_AUTH_SHA256_HMAC:
 		mac_len = 32;
 		break;
+	case RTE_CRYPTO_AUTH_SHA384_HMAC:
+		mac_len = 32;
+		break;
 	default:
 		mac_len = 0;
 		break;
@@ -339,15 +348,20 @@ tls_read_sa_fill(struct roc_ie_ot_tls_read_sa *read_sa,
 	cipher_key = read_sa->cipher_key;
 
 	/* Set encryption algorithm */
-	if ((crypto_xfrm->type == RTE_CRYPTO_SYM_XFORM_AEAD) &&
-	    (crypto_xfrm->aead.algo == RTE_CRYPTO_AEAD_AES_GCM)) {
-		read_sa->w2.s.cipher_select = ROC_IE_OT_TLS_CIPHER_AES_GCM;
-
+	if (crypto_xfrm->type == RTE_CRYPTO_SYM_XFORM_AEAD) {
 		length = crypto_xfrm->aead.key.length;
-		if (length == 16)
-			read_sa->w2.s.aes_key_len = ROC_IE_OT_TLS_AES_KEY_LEN_128;
-		else
+		if (crypto_xfrm->aead.algo == RTE_CRYPTO_AEAD_AES_GCM) {
+			read_sa->w2.s.cipher_select = ROC_IE_OT_TLS_CIPHER_AES_GCM;
+			if (length == 16)
+				read_sa->w2.s.aes_key_len = ROC_IE_OT_TLS_AES_KEY_LEN_128;
+			else
+				read_sa->w2.s.aes_key_len = ROC_IE_OT_TLS_AES_KEY_LEN_256;
+		}
+
+		if (crypto_xfrm->aead.algo == RTE_CRYPTO_AEAD_CHACHA20_POLY1305) {
+			read_sa->w2.s.cipher_select = ROC_IE_OT_TLS_CIPHER_CHACHA_POLY;
 			read_sa->w2.s.aes_key_len = ROC_IE_OT_TLS_AES_KEY_LEN_256;
+		}
 
 		key = crypto_xfrm->aead.key.data;
 		memcpy(cipher_key, key, length);
@@ -397,6 +411,8 @@ tls_read_sa_fill(struct roc_ie_ot_tls_read_sa *read_sa,
 		read_sa->w2.s.mac_select = ROC_IE_OT_TLS_MAC_SHA1;
 	else if (auth_xfrm->auth.algo == RTE_CRYPTO_AUTH_SHA256_HMAC)
 		read_sa->w2.s.mac_select = ROC_IE_OT_TLS_MAC_SHA2_256;
+	else if (auth_xfrm->auth.algo == RTE_CRYPTO_AUTH_SHA384_HMAC)
+		read_sa->w2.s.mac_select = ROC_IE_OT_TLS_MAC_SHA2_384;
 	else
 		return -EINVAL;
 
@@ -476,15 +492,19 @@ tls_write_sa_fill(struct roc_ie_ot_tls_write_sa *write_sa,
 	cipher_key = write_sa->cipher_key;
 
 	/* Set encryption algorithm */
-	if ((crypto_xfrm->type == RTE_CRYPTO_SYM_XFORM_AEAD) &&
-	    (crypto_xfrm->aead.algo == RTE_CRYPTO_AEAD_AES_GCM)) {
-		write_sa->w2.s.cipher_select = ROC_IE_OT_TLS_CIPHER_AES_GCM;
-
+	if (crypto_xfrm->type == RTE_CRYPTO_SYM_XFORM_AEAD) {
 		length = crypto_xfrm->aead.key.length;
-		if (length == 16)
-			write_sa->w2.s.aes_key_len = ROC_IE_OT_TLS_AES_KEY_LEN_128;
-		else
+		if (crypto_xfrm->aead.algo == RTE_CRYPTO_AEAD_AES_GCM) {
+			write_sa->w2.s.cipher_select = ROC_IE_OT_TLS_CIPHER_AES_GCM;
+			if (length == 16)
+				write_sa->w2.s.aes_key_len = ROC_IE_OT_TLS_AES_KEY_LEN_128;
+			else
+				write_sa->w2.s.aes_key_len = ROC_IE_OT_TLS_AES_KEY_LEN_256;
+		}
+		if (crypto_xfrm->aead.algo == RTE_CRYPTO_AEAD_CHACHA20_POLY1305) {
+			write_sa->w2.s.cipher_select = ROC_IE_OT_TLS_CIPHER_CHACHA_POLY;
 			write_sa->w2.s.aes_key_len = ROC_IE_OT_TLS_AES_KEY_LEN_256;
+		}
 
 		key = crypto_xfrm->aead.key.data;
 		memcpy(cipher_key, key, length);
@@ -538,6 +558,8 @@ tls_write_sa_fill(struct roc_ie_ot_tls_write_sa *write_sa,
 			write_sa->w2.s.mac_select = ROC_IE_OT_TLS_MAC_SHA1;
 		else if (auth_xfrm->auth.algo == RTE_CRYPTO_AUTH_SHA256_HMAC)
 			write_sa->w2.s.mac_select = ROC_IE_OT_TLS_MAC_SHA2_256;
+		else if (auth_xfrm->auth.algo == RTE_CRYPTO_AUTH_SHA384_HMAC)
+			write_sa->w2.s.mac_select = ROC_IE_OT_TLS_MAC_SHA2_384;
 		else
 			return -EINVAL;
 

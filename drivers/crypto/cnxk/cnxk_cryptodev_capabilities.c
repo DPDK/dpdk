@@ -1639,6 +1639,27 @@ static const struct rte_cryptodev_capabilities sec_tls12_caps_sha1_sha2[] = {
 			}, }
 		}, }
 	},
+	{	/* SHA384 HMAC */
+		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
+		{.sym = {
+			.xform_type = RTE_CRYPTO_SYM_XFORM_AUTH,
+			{.auth = {
+				.algo = RTE_CRYPTO_AUTH_SHA384_HMAC,
+				.block_size = 64,
+				.key_size = {
+					.min = 48,
+					.max = 48,
+					.increment = 0
+				},
+				.digest_size = {
+					.min = 48,
+					.max = 48,
+					.increment = 0
+				},
+			}, }
+		}, }
+	},
+
 };
 
 static const struct rte_cryptodev_capabilities sec_tls13_caps_aes[] = {
@@ -1672,6 +1693,37 @@ static const struct rte_cryptodev_capabilities sec_tls13_caps_aes[] = {
 			}, }
 		}, }
 	},
+	{	/* CHACHA POLY */
+		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
+		{.sym = {
+			.xform_type = RTE_CRYPTO_SYM_XFORM_AEAD,
+			{.aead = {
+				.algo = RTE_CRYPTO_AEAD_CHACHA20_POLY1305,
+				.block_size = 64,
+				.key_size = {
+					.min = 32,
+					.max = 32,
+					.increment = 0
+				},
+				.digest_size = {
+					.min = 16,
+					.max = 16,
+					.increment = 0
+				},
+				.aad_size = {
+					.min = 5,
+					.max = 5,
+					.increment = 0
+				},
+				.iv_size = {
+					.min = 0,
+					.max = 0,
+					.increment = 0
+				}
+			}, }
+		}, }
+	},
+
 };
 
 

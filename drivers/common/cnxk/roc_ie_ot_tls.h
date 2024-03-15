@@ -39,6 +39,7 @@ enum roc_ie_ot_tls_cipher_type {
 	ROC_IE_OT_TLS_CIPHER_AES_CBC = 3,
 	ROC_IE_OT_TLS_CIPHER_AES_GCM = 7,
 	ROC_IE_OT_TLS_CIPHER_AES_CCM = 10,
+	ROC_IE_OT_TLS_CIPHER_CHACHA_POLY = 9,
 };
 
 enum roc_ie_ot_tls_ver {
