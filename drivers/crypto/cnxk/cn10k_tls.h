@@ -25,6 +25,10 @@ struct cn10k_tls_record {
 	};
 } __rte_aligned(ROC_ALIGN);
 
+int cn10k_tls_record_session_update(struct cnxk_cpt_vf *vf, struct cnxk_cpt_qp *qp,
+				    struct cn10k_sec_session *sess,
+				    struct rte_security_session_conf *conf);
+
 int cn10k_tls_record_session_create(struct cnxk_cpt_vf *vf, struct cnxk_cpt_qp *qp,
 				    struct rte_security_tls_record_xform *tls_xfrm,
 				    struct rte_crypto_sym_xform *crypto_xfrm,

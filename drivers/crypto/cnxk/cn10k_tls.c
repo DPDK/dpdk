@@ -782,6 +782,23 @@ sa_dptr_free:
 }
 
 int
+cn10k_tls_record_session_update(struct cnxk_cpt_vf *vf, struct cnxk_cpt_qp *qp,
+				struct cn10k_sec_session *sess,
+				struct rte_security_session_conf *conf)
+{
+	struct roc_cpt *roc_cpt;
+	int ret;
+
+	if (conf->tls_record.type == RTE_SECURITY_TLS_SESS_TYPE_READ)
+		return -ENOTSUP;
+
+	roc_cpt = &vf->cpt;
+	ret = cn10k_tls_write_sa_create(roc_cpt, &qp->lf, &conf->tls_record, conf->crypto_xform,
+					(struct cn10k_sec_session *)sess);
+	return ret;
+}
+
+int
 cn10k_tls_record_session_create(struct cnxk_cpt_vf *vf, struct cnxk_cpt_qp *qp,
 				struct rte_security_tls_record_xform *tls_xfrm,
 				struct rte_crypto_sym_xform *crypto_xfrm,
