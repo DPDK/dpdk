@@ -2319,6 +2319,7 @@ cmd_config_rss_hash_algo_parsed(void *parsed_result,
 		return;
 	}
 
+	rss_conf.algorithm = algorithm;
 	ret = rte_eth_dev_rss_hash_update(res->port_id, &rss_conf);
 	if (ret != 0) {
 		fprintf(stderr, "failed to set port %u RSS hash algorithm\n",
