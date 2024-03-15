@@ -73,12 +73,10 @@ process_outb_sa(struct roc_cpt_lf *lf, struct rte_crypto_op *cop, struct cn10k_s
 	roc_cpt_lf_ctx_reload(lf, &sess->sa.out_sa);
 	rte_delay_ms(1);
 #endif
+	const uint64_t ol_flags = m_src->ol_flags;
 
-	if (m_src->ol_flags & RTE_MBUF_F_TX_IP_CKSUM)
-		inst_w4_u64 &= ~BIT_ULL(33);
-
-	if (m_src->ol_flags & RTE_MBUF_F_TX_L4_MASK)
-		inst_w4_u64 &= ~BIT_ULL(32);
+	inst_w4_u64 &= ~(((uint64_t)(!!(ol_flags & RTE_MBUF_F_TX_IP_CKSUM)) << 33) |
+			 ((uint64_t)(!!(ol_flags & RTE_MBUF_F_TX_L4_MASK)) << 32));
 
 	if (likely(m_src->next == NULL)) {
 		if (unlikely(rte_pktmbuf_tailroom(m_src) < sess->max_extended_len)) {
