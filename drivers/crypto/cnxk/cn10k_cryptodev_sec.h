@@ -16,6 +16,15 @@
 
 #define SEC_SESS_SIZE sizeof(struct rte_security_session)
 
+struct cn10k_tls_opt {
+	uint16_t pad_shift : 3;
+	uint16_t enable_padding : 1;
+	uint16_t tail_fetch_len : 2;
+	uint16_t tls_ver : 2;
+	uint16_t is_write : 1;
+	uint16_t mac_len : 7;
+};
+
 struct cn10k_sec_session {
 	uint8_t rte_sess[SEC_SESS_SIZE];
 
@@ -29,16 +38,12 @@ struct cn10k_sec_session {
 	uint8_t proto;
 	uint8_t iv_length;
 	union {
+		uint16_t u16;
+		struct cn10k_tls_opt tls_opt;
 		struct {
 			uint8_t ip_csum;
 			uint8_t is_outbound : 1;
 		} ipsec;
-		struct {
-			uint8_t enable_padding : 1;
-			uint8_t tail_fetch_len : 2;
-			uint8_t is_write : 1;
-			uint8_t rvsd : 4;
-		} tls;
 	};
 	/** Queue pair */
 	struct cnxk_cpt_qp *qp;

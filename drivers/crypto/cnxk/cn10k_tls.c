@@ -119,8 +119,14 @@ cnxk_tls_xform_verify(struct rte_security_tls_record_xform *tls_xform,
 	    (tls_xform->type != RTE_SECURITY_TLS_SESS_TYPE_WRITE))
 		return -EINVAL;
 
-	if (crypto_xform->type == RTE_CRYPTO_SYM_XFORM_AEAD)
+	if (crypto_xform->type == RTE_CRYPTO_SYM_XFORM_AEAD) {
+		/* optional padding is not allowed in TLS-1.2 for AEAD */
+		if ((tls_xform->ver == RTE_SECURITY_VERSION_TLS_1_2) &&
+		    (tls_xform->options.extra_padding_enable == 1))
+			return -EINVAL;
+
 		return tls_xform_aead_verify(tls_xform, crypto_xform);
+	}
 
 	/* TLS-1.3 only support AEAD.
 	 * Control should not reach here for TLS-1.3
@@ -321,7 +327,7 @@ tls_read_ctx_size(struct roc_ie_ot_tls_read_sa *sa, enum rte_security_tls_versio
 static int
 tls_read_sa_fill(struct roc_ie_ot_tls_read_sa *read_sa,
 		 struct rte_security_tls_record_xform *tls_xfrm,
-		 struct rte_crypto_sym_xform *crypto_xfrm)
+		 struct rte_crypto_sym_xform *crypto_xfrm, struct cn10k_tls_opt *tls_opt)
 {
 	enum rte_security_tls_version tls_ver = tls_xfrm->ver;
 	struct rte_crypto_sym_xform *auth_xfrm, *cipher_xfrm;
@@ -405,16 +411,26 @@ tls_read_sa_fill(struct roc_ie_ot_tls_read_sa *read_sa,
 		memcpy(cipher_key, key, length);
 	}
 
-	if (auth_xfrm->auth.algo == RTE_CRYPTO_AUTH_MD5_HMAC)
+	switch (auth_xfrm->auth.algo) {
+	case RTE_CRYPTO_AUTH_MD5_HMAC:
 		read_sa->w2.s.mac_select = ROC_IE_OT_TLS_MAC_MD5;
-	else if (auth_xfrm->auth.algo == RTE_CRYPTO_AUTH_SHA1_HMAC)
+		tls_opt->mac_len = 0;
+		break;
+	case RTE_CRYPTO_AUTH_SHA1_HMAC:
 		read_sa->w2.s.mac_select = ROC_IE_OT_TLS_MAC_SHA1;
-	else if (auth_xfrm->auth.algo == RTE_CRYPTO_AUTH_SHA256_HMAC)
+		tls_opt->mac_len = 20;
+		break;
+	case RTE_CRYPTO_AUTH_SHA256_HMAC:
 		read_sa->w2.s.mac_select = ROC_IE_OT_TLS_MAC_SHA2_256;
-	else if (auth_xfrm->auth.algo == RTE_CRYPTO_AUTH_SHA384_HMAC)
+		tls_opt->mac_len = 32;
+		break;
+	case RTE_CRYPTO_AUTH_SHA384_HMAC:
 		read_sa->w2.s.mac_select = ROC_IE_OT_TLS_MAC_SHA2_384;
-	else
+		tls_opt->mac_len = 48;
+		break;
+	default:
 		return -EINVAL;
+	}
 
 	roc_se_hmac_opad_ipad_gen(read_sa->w2.s.mac_select, auth_xfrm->auth.key.data,
 				  auth_xfrm->auth.key.length, read_sa->tls_12.opad_ipad,
@@ -622,6 +638,7 @@ cn10k_tls_read_sa_create(struct roc_cpt *roc_cpt, struct roc_cpt_lf *lf,
 			 struct cn10k_sec_session *sec_sess)
 {
 	struct roc_ie_ot_tls_read_sa *sa_dptr;
+	uint8_t tls_ver = tls_xfrm->ver;
 	struct cn10k_tls_record *tls;
 	union cpt_inst_w4 inst_w4;
 	void *read_sa;
@@ -638,7 +655,7 @@ cn10k_tls_read_sa_create(struct roc_cpt *roc_cpt, struct roc_cpt_lf *lf,
 	}
 
 	/* Translate security parameters to SA */
-	ret = tls_read_sa_fill(sa_dptr, tls_xfrm, crypto_xfrm);
+	ret = tls_read_sa_fill(sa_dptr, tls_xfrm, crypto_xfrm, &sec_sess->tls_opt);
 	if (ret) {
 		plt_err("Could not fill read session parameters");
 		goto sa_dptr_free;
@@ -658,19 +675,20 @@ cn10k_tls_read_sa_create(struct roc_cpt *roc_cpt, struct roc_cpt_lf *lf,
 
 	/* pre-populate CPT INST word 4 */
 	inst_w4.u64 = 0;
-	if ((sa_dptr->w2.s.version_select == ROC_IE_OT_TLS_VERSION_TLS_12) ||
-	    (sa_dptr->w2.s.version_select == ROC_IE_OT_TLS_VERSION_DTLS_12)) {
+	if ((tls_ver == RTE_SECURITY_VERSION_TLS_1_2) ||
+	    (tls_ver == RTE_SECURITY_VERSION_DTLS_1_2)) {
 		inst_w4.s.opcode_major = ROC_IE_OT_TLS_MAJOR_OP_RECORD_DEC | ROC_IE_OT_INPLACE_BIT;
-		sec_sess->tls.tail_fetch_len = 0;
+		sec_sess->tls_opt.tail_fetch_len = 0;
 		if (sa_dptr->w2.s.cipher_select == ROC_IE_OT_TLS_CIPHER_3DES)
-			sec_sess->tls.tail_fetch_len = 1;
+			sec_sess->tls_opt.tail_fetch_len = 1;
 		else if (sa_dptr->w2.s.cipher_select == ROC_IE_OT_TLS_CIPHER_AES_CBC)
-			sec_sess->tls.tail_fetch_len = 2;
-	} else if (sa_dptr->w2.s.version_select == ROC_IE_OT_TLS_VERSION_TLS_13) {
+			sec_sess->tls_opt.tail_fetch_len = 2;
+	} else if (tls_xfrm->ver == RTE_SECURITY_VERSION_TLS_1_3) {
 		inst_w4.s.opcode_major =
 			ROC_IE_OT_TLS13_MAJOR_OP_RECORD_DEC | ROC_IE_OT_INPLACE_BIT;
 	}
 
+	sec_sess->tls_opt.tls_ver = tls_ver;
 	sec_sess->inst.w4 = inst_w4.u64;
 	sec_sess->inst.w7 = cpt_inst_w7_get(roc_cpt, read_sa);
 
@@ -706,6 +724,7 @@ cn10k_tls_write_sa_create(struct roc_cpt *roc_cpt, struct roc_cpt_lf *lf,
 			  struct cn10k_sec_session *sec_sess)
 {
 	struct roc_ie_ot_tls_write_sa *sa_dptr;
+	uint8_t tls_ver = tls_xfrm->ver;
 	struct cn10k_tls_record *tls;
 	union cpt_inst_w4 inst_w4;
 	void *write_sa;
@@ -739,17 +758,23 @@ cn10k_tls_write_sa_create(struct roc_cpt *roc_cpt, struct roc_cpt_lf *lf,
 		sec_sess->iv_length = crypto_xfrm->next->cipher.iv.length;
 	}
 
-	sec_sess->tls.is_write = 1;
-	sec_sess->tls.enable_padding = tls_xfrm->options.extra_padding_enable;
+	sec_sess->tls_opt.is_write = 1;
+	sec_sess->tls_opt.pad_shift = 0;
+	sec_sess->tls_opt.tls_ver = tls_ver;
+	sec_sess->tls_opt.enable_padding = tls_xfrm->options.extra_padding_enable;
 	sec_sess->max_extended_len = tls_write_rlens_get(tls_xfrm, crypto_xfrm);
 	sec_sess->proto = RTE_SECURITY_PROTOCOL_TLS_RECORD;
 
 	/* pre-populate CPT INST word 4 */
 	inst_w4.u64 = 0;
-	if ((sa_dptr->w2.s.version_select == ROC_IE_OT_TLS_VERSION_TLS_12) ||
-	    (sa_dptr->w2.s.version_select == ROC_IE_OT_TLS_VERSION_DTLS_12)) {
+	if ((tls_ver == RTE_SECURITY_VERSION_TLS_1_2) ||
+	    (tls_ver == RTE_SECURITY_VERSION_DTLS_1_2)) {
 		inst_w4.s.opcode_major = ROC_IE_OT_TLS_MAJOR_OP_RECORD_ENC | ROC_IE_OT_INPLACE_BIT;
-	} else if (sa_dptr->w2.s.version_select == ROC_IE_OT_TLS_VERSION_TLS_13) {
+		if (sa_dptr->w2.s.cipher_select == ROC_IE_OT_TLS_CIPHER_3DES)
+			sec_sess->tls_opt.pad_shift = 3;
+		else
+			sec_sess->tls_opt.pad_shift = 4;
+	} else if (tls_ver == RTE_SECURITY_VERSION_TLS_1_3) {
 		inst_w4.s.opcode_major =
 			ROC_IE_OT_TLS13_MAJOR_OP_RECORD_ENC | ROC_IE_OT_INPLACE_BIT;
 	}
@@ -838,7 +863,7 @@ cn10k_sec_tls_session_destroy(struct cnxk_cpt_qp *qp, struct cn10k_sec_session *
 
 	ret = -1;
 
-	if (sess->tls.is_write) {
+	if (sess->tls_opt.is_write) {
 		sa_dptr = plt_zmalloc(sizeof(struct roc_ie_ot_tls_write_sa), 8);
 		if (sa_dptr != NULL) {
 			tls_write_sa_init(sa_dptr);

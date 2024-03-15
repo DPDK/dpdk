@@ -21,15 +21,20 @@ process_tls_write(struct roc_cpt_lf *lf, struct rte_crypto_op *cop, struct cn10k
 		  struct cpt_qp_meta_info *m_info, struct cpt_inflight_req *infl_req,
 		  struct cpt_inst_s *inst, const bool is_sg_ver2)
 {
+	struct cn10k_tls_opt tls_opt = sess->tls_opt;
 	struct rte_crypto_sym_op *sym_op = cop->sym;
 #ifdef LA_IPSEC_DEBUG
 	struct roc_ie_ot_tls_write_sa *write_sa;
 #endif
 	struct rte_mbuf *m_src = sym_op->m_src;
+	uint32_t pad_len, pad_bytes;
 	struct rte_mbuf *last_seg;
 	union cpt_inst_w4 w4;
 	void *m_data = NULL;
 	uint8_t *in_buffer;
+
+	pad_bytes = (cop->aux_flags * 8) > 0xff ? 0xff : (cop->aux_flags * 8);
+	pad_len = (pad_bytes >> tls_opt.pad_shift) * tls_opt.enable_padding;
 
 #ifdef LA_IPSEC_DEBUG
 	write_sa = &sess->tls_rec.write_sa;
@@ -94,7 +99,7 @@ process_tls_write(struct roc_cpt_lf *lf, struct rte_crypto_op *cop, struct cn10k
 		w4.s.dlen = m_src->data_len;
 
 		w4.s.param2 = cop->param1.tls_record.content_type;
-		w4.s.opcode_minor = sess->tls.enable_padding * cop->aux_flags * 8;
+		w4.s.opcode_minor = pad_len;
 
 		inst->w4.u64 = w4.u64;
 	} else if (is_sg_ver2 == false) {
@@ -148,10 +153,10 @@ process_tls_write(struct roc_cpt_lf *lf, struct rte_crypto_op *cop, struct cn10k
 		w4.s.param1 = rte_pktmbuf_pkt_len(m_src);
 		w4.s.param2 = cop->param1.tls_record.content_type;
 		w4.s.opcode_major |= (uint64_t)ROC_DMA_MODE_SG;
-		w4.s.opcode_minor = sess->tls.enable_padding * cop->aux_flags * 8;
+		w4.s.opcode_minor = pad_len;
 
 		/* Output Scatter List */
-		last_seg->data_len += sess->max_extended_len;
+		last_seg->data_len += sess->max_extended_len + pad_bytes;
 		inst->w4.u64 = w4.u64;
 	} else {
 		struct roc_sg2list_comp *scatter_comp, *gather_comp;
@@ -198,11 +203,11 @@ process_tls_write(struct roc_cpt_lf *lf, struct rte_crypto_op *cop, struct cn10k
 		w4.u64 = sess->inst.w4;
 		w4.s.dlen = rte_pktmbuf_pkt_len(m_src);
 		w4.s.opcode_major &= (~(ROC_IE_OT_INPLACE_BIT));
-		w4.s.opcode_minor = sess->tls.enable_padding * cop->aux_flags * 8;
+		w4.s.opcode_minor = pad_len;
 		w4.s.param1 = w4.s.dlen;
 		w4.s.param2 = cop->param1.tls_record.content_type;
 		/* Output Scatter List */
-		last_seg->data_len += sess->max_extended_len;
+		last_seg->data_len += sess->max_extended_len + pad_bytes;
 		inst->w4.u64 = w4.u64;
 	}
 
@@ -234,7 +239,7 @@ process_tls_read(struct rte_crypto_op *cop, struct cn10k_sec_session *sess,
 		inst->w4.u64 = w4.u64;
 	} else if (is_sg_ver2 == false) {
 		struct roc_sglist_comp *scatter_comp, *gather_comp;
-		int tail_len = sess->tls.tail_fetch_len * 16;
+		int tail_len = sess->tls_opt.tail_fetch_len * 16;
 		int pkt_len = rte_pktmbuf_pkt_len(m_src);
 		uint32_t g_size_bytes, s_size_bytes;
 		uint16_t *sg_hdr;
@@ -289,7 +294,7 @@ process_tls_read(struct rte_crypto_op *cop, struct cn10k_sec_session *sess,
 		inst->w4.u64 = w4.u64;
 	} else {
 		struct roc_sg2list_comp *scatter_comp, *gather_comp;
-		int tail_len = sess->tls.tail_fetch_len * 16;
+		int tail_len = sess->tls_opt.tail_fetch_len * 16;
 		int pkt_len = rte_pktmbuf_pkt_len(m_src);
 		union cpt_inst_w5 cpt_inst_w5;
 		union cpt_inst_w6 cpt_inst_w6;
