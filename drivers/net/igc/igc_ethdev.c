@@ -2855,7 +2855,7 @@ eth_igc_timesync_disable(struct rte_eth_dev *dev)
 	IGC_WRITE_REG(hw, IGC_TSYNCRXCTL, 0);
 
 	val = IGC_READ_REG(hw, IGC_RXPBS);
-	val &= IGC_RXPBS_CFG_TS_EN;
+	val &= ~IGC_RXPBS_CFG_TS_EN;
 	IGC_WRITE_REG(hw, IGC_RXPBS, val);
 
 	val = IGC_READ_REG(hw, IGC_SRRCTL(0));
