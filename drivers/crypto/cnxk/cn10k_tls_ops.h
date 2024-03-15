@@ -27,6 +27,7 @@ process_tls_write(struct roc_cpt_lf *lf, struct rte_crypto_op *cop, struct cn10k
 	struct roc_ie_ot_tls_write_sa *write_sa;
 #endif
 	struct rte_mbuf *m_src = sym_op->m_src;
+	struct rte_mbuf *m_dst = sym_op->m_dst;
 	uint32_t pad_len, pad_bytes;
 	struct rte_mbuf *last_seg;
 	union cpt_inst_w4 w4;
@@ -191,7 +192,9 @@ process_tls_write(struct roc_cpt_lf *lf, struct rte_crypto_op *cop, struct cn10k
 		i = 0;
 		scatter_comp = (struct roc_sg2list_comp *)((uint8_t *)gather_comp + g_size_bytes);
 
-		i = fill_sg2_comp_from_pkt(scatter_comp, i, m_src);
+		if (m_dst == NULL)
+			m_dst = m_src;
+		i = fill_sg2_comp_from_pkt(scatter_comp, i, m_dst);
 
 		cpt_inst_w6.s.scatter_sz = ((i + 2) / 3);
 
@@ -221,6 +224,7 @@ process_tls_read(struct rte_crypto_op *cop, struct cn10k_sec_session *sess,
 {
 	struct rte_crypto_sym_op *sym_op = cop->sym;
 	struct rte_mbuf *m_src = sym_op->m_src;
+	struct rte_mbuf *m_dst = sym_op->m_dst;
 	union cpt_inst_w4 w4;
 	uint8_t *in_buffer;
 	void *m_data;
@@ -334,7 +338,9 @@ process_tls_read(struct rte_crypto_op *cop, struct cn10k_sec_session *sess,
 		i = 0;
 		scatter_comp = (struct roc_sg2list_comp *)((uint8_t *)gather_comp + g_size_bytes);
 
-		i = fill_sg2_comp_from_pkt(scatter_comp, i, m_src);
+		if (m_dst == NULL)
+			m_dst = m_src;
+		i = fill_sg2_comp_from_pkt(scatter_comp, i, m_dst);
 
 		cpt_inst_w6.s.scatter_sz = ((i + 2) / 3);
 
