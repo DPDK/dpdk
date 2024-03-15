@@ -76,7 +76,7 @@ cn10k_ipsec_outb_sa_create(struct roc_cpt *roc_cpt, struct roc_cpt_lf *lf,
 	}
 #endif
 
-	sec_sess->ipsec.is_outbound = true;
+	sec_sess->ipsec.is_outbound = 1;
 
 	/* Get Rlen calculation data */
 	ret = cnxk_ipsec_outb_rlens_get(&rlens, ipsec_xfrm, crypto_xfrm);
@@ -177,7 +177,7 @@ cn10k_ipsec_inb_sa_create(struct roc_cpt *roc_cpt, struct roc_cpt_lf *lf,
 		goto sa_dptr_free;
 	}
 
-	sec_sess->ipsec.is_outbound = false;
+	sec_sess->ipsec.is_outbound = 0;
 	sec_sess->inst.w7 = cpt_inst_w7_get(roc_cpt, in_sa);
 
 	/* Save index/SPI in cookie, specific required for Rx Inject */

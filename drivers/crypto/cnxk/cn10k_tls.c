@@ -739,7 +739,7 @@ cn10k_tls_write_sa_create(struct roc_cpt *roc_cpt, struct roc_cpt_lf *lf,
 		sec_sess->iv_length = crypto_xfrm->next->cipher.iv.length;
 	}
 
-	sec_sess->tls.is_write = true;
+	sec_sess->tls.is_write = 1;
 	sec_sess->tls.enable_padding = tls_xfrm->options.extra_padding_enable;
 	sec_sess->max_extended_len = tls_write_rlens_get(tls_xfrm, crypto_xfrm);
 	sec_sess->proto = RTE_SECURITY_PROTOCOL_TLS_RECORD;
