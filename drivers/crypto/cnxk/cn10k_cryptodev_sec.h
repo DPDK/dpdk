@@ -33,7 +33,8 @@ struct cn10k_sec_session {
 		} ipsec;
 		struct {
 			uint8_t enable_padding : 1;
-			uint8_t rvsd : 7;
+			uint8_t tail_fetch_len : 2;
+			uint8_t rvsd : 5;
 			bool is_write;
 		} tls;
 	};

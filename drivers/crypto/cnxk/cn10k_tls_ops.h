@@ -234,7 +234,10 @@ process_tls_read(struct rte_crypto_op *cop, struct cn10k_sec_session *sess,
 		inst->w4.u64 = w4.u64;
 	} else if (is_sg_ver2 == false) {
 		struct roc_sglist_comp *scatter_comp, *gather_comp;
+		int tail_len = sess->tls.tail_fetch_len * 16;
+		int pkt_len = rte_pktmbuf_pkt_len(m_src);
 		uint32_t g_size_bytes, s_size_bytes;
+		uint16_t *sg_hdr;
 		uint32_t dlen;
 		int i;
 
@@ -244,16 +247,25 @@ process_tls_read(struct rte_crypto_op *cop, struct cn10k_sec_session *sess,
 			return -ENOMEM;
 		}
 
-		in_buffer = (uint8_t *)m_data;
-		((uint16_t *)in_buffer)[0] = 0;
-		((uint16_t *)in_buffer)[1] = 0;
-
 		/* Input Gather List */
+		in_buffer = (uint8_t *)m_data;
+		sg_hdr = (uint16_t *)(in_buffer + 32);
+		gather_comp = (struct roc_sglist_comp *)((uint8_t *)sg_hdr + 8);
 		i = 0;
-		gather_comp = (struct roc_sglist_comp *)((uint8_t *)in_buffer + 8);
+		/* Add the last blocks as first gather component for tail fetch. */
+		if (tail_len) {
+			const uint8_t *output;
 
+			output = rte_pktmbuf_read(m_src, pkt_len - tail_len, tail_len, in_buffer);
+			if (output != in_buffer)
+				rte_memcpy(in_buffer, output, tail_len);
+			i = fill_sg_comp(gather_comp, i, (uint64_t)in_buffer, tail_len);
+		}
+
+		sg_hdr[0] = 0;
+		sg_hdr[1] = 0;
 		i = fill_sg_comp_from_pkt(gather_comp, i, m_src);
-		((uint16_t *)in_buffer)[2] = rte_cpu_to_be_16(i);
+		sg_hdr[2] = rte_cpu_to_be_16(i);
 
 		g_size_bytes = ((i + 3) / 4) * sizeof(struct roc_sglist_comp);
 
@@ -261,7 +273,7 @@ process_tls_read(struct rte_crypto_op *cop, struct cn10k_sec_session *sess,
 		scatter_comp = (struct roc_sglist_comp *)((uint8_t *)gather_comp + g_size_bytes);
 
 		i = fill_sg_comp_from_pkt(scatter_comp, i, m_src);
-		((uint16_t *)in_buffer)[3] = rte_cpu_to_be_16(i);
+		sg_hdr[3] = rte_cpu_to_be_16(i);
 
 		s_size_bytes = ((i + 3) / 4) * sizeof(struct roc_sglist_comp);
 
@@ -273,10 +285,12 @@ process_tls_read(struct rte_crypto_op *cop, struct cn10k_sec_session *sess,
 		w4.u64 = sess->inst.w4;
 		w4.s.dlen = dlen;
 		w4.s.opcode_major |= (uint64_t)ROC_DMA_MODE_SG;
-		w4.s.param1 = rte_pktmbuf_pkt_len(m_src);
+		w4.s.param1 = pkt_len;
 		inst->w4.u64 = w4.u64;
 	} else {
 		struct roc_sg2list_comp *scatter_comp, *gather_comp;
+		int tail_len = sess->tls.tail_fetch_len * 16;
+		int pkt_len = rte_pktmbuf_pkt_len(m_src);
 		union cpt_inst_w5 cpt_inst_w5;
 		union cpt_inst_w6 cpt_inst_w6;
 		uint32_t g_size_bytes;
@@ -292,7 +306,21 @@ process_tls_read(struct rte_crypto_op *cop, struct cn10k_sec_session *sess,
 		/* Input Gather List */
 		i = 0;
 
-		gather_comp = (struct roc_sg2list_comp *)((uint8_t *)in_buffer);
+		/* First 32 bytes in m_data are rsvd for tail fetch.
+		 * SG list start from 32 byte onwards.
+		 */
+		gather_comp = (struct roc_sg2list_comp *)((uint8_t *)(in_buffer + 32));
+
+		/* Add the last blocks as first gather component for tail fetch. */
+		if (tail_len) {
+			const uint8_t *output;
+
+			output = rte_pktmbuf_read(m_src, pkt_len - tail_len, tail_len, in_buffer);
+			if (output != in_buffer)
+				rte_memcpy(in_buffer, output, tail_len);
+			i = fill_sg2_comp(gather_comp, i, (uint64_t)in_buffer, tail_len);
+		}
+
 		i = fill_sg2_comp_from_pkt(gather_comp, i, m_src);
 
 		cpt_inst_w5.s.gather_sz = ((i + 2) / 3);
@@ -311,7 +339,7 @@ process_tls_read(struct rte_crypto_op *cop, struct cn10k_sec_session *sess,
 		inst->w5.u64 = cpt_inst_w5.u64;
 		inst->w6.u64 = cpt_inst_w6.u64;
 		w4.u64 = sess->inst.w4;
-		w4.s.dlen = rte_pktmbuf_pkt_len(m_src);
+		w4.s.dlen = pkt_len + tail_len;
 		w4.s.param1 = w4.s.dlen;
 		w4.s.opcode_major &= (~(ROC_IE_OT_INPLACE_BIT));
 		inst->w4.u64 = w4.u64;

@@ -639,6 +639,11 @@ cn10k_tls_read_sa_create(struct roc_cpt *roc_cpt, struct roc_cpt_lf *lf,
 	if ((sa_dptr->w2.s.version_select == ROC_IE_OT_TLS_VERSION_TLS_12) ||
 	    (sa_dptr->w2.s.version_select == ROC_IE_OT_TLS_VERSION_DTLS_12)) {
 		inst_w4.s.opcode_major = ROC_IE_OT_TLS_MAJOR_OP_RECORD_DEC | ROC_IE_OT_INPLACE_BIT;
+		sec_sess->tls.tail_fetch_len = 0;
+		if (sa_dptr->w2.s.cipher_select == ROC_IE_OT_TLS_CIPHER_3DES)
+			sec_sess->tls.tail_fetch_len = 1;
+		else if (sa_dptr->w2.s.cipher_select == ROC_IE_OT_TLS_CIPHER_AES_CBC)
+			sec_sess->tls.tail_fetch_len = 2;
 	} else if (sa_dptr->w2.s.version_select == ROC_IE_OT_TLS_VERSION_TLS_13) {
 		inst_w4.s.opcode_major =
 			ROC_IE_OT_TLS13_MAJOR_OP_RECORD_DEC | ROC_IE_OT_INPLACE_BIT;
