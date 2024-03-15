@@ -68,6 +68,16 @@ struct roc_ie_ot_tls_read_ctx_update_reg {
 	uint64_t ar_winbits[ROC_IE_OT_TLS_AR_WINBITS_SZ];
 };
 
+struct roc_ie_ot_tls_1_3_read_ctx_update_reg {
+	uint64_t rsvd0;
+	uint64_t ar_valid_mask;
+	uint64_t hard_life;
+	uint64_t soft_life;
+	uint64_t mib_octs;
+	uint64_t mib_pkts;
+	uint64_t rsvd1;
+};
+
 union roc_ie_ot_tls_param2 {
 	uint16_t u16;
 	struct {
@@ -137,11 +147,8 @@ struct roc_ie_ot_tls_read_sa {
 
 	union {
 		struct {
-			/* Word10 */
-			uint64_t w10_rsvd6;
-
-			/* Word11 - Word25 */
-			struct roc_ie_ot_tls_read_ctx_update_reg ctx;
+			/* Word10 - Word16 */
+			struct roc_ie_ot_tls_1_3_read_ctx_update_reg ctx;
 		} tls_13;
 
 		struct {
