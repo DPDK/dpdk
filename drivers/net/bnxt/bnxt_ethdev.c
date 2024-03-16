@@ -4949,8 +4949,7 @@ static int bnxt_alloc_ctx_mem_blk(struct bnxt *bp,
 						rmem->nr_pages * 8,
 						bp->eth_dev->device->numa_node,
 						RTE_MEMZONE_2MB |
-						RTE_MEMZONE_SIZE_HINT_ONLY |
-						RTE_MEMZONE_IOVA_CONTIG,
+						RTE_MEMZONE_SIZE_HINT_ONLY,
 						BNXT_PAGE_SIZE);
 			if (mz == NULL)
 				return -ENOMEM;
@@ -4974,8 +4973,7 @@ static int bnxt_alloc_ctx_mem_blk(struct bnxt *bp,
 						 mem_size,
 						 bp->eth_dev->device->numa_node,
 						 RTE_MEMZONE_1GB |
-						 RTE_MEMZONE_SIZE_HINT_ONLY |
-						 RTE_MEMZONE_IOVA_CONTIG,
+						 RTE_MEMZONE_SIZE_HINT_ONLY,
 						 BNXT_PAGE_SIZE);
 		if (mz == NULL)
 			return -ENOMEM;

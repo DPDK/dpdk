@@ -161,8 +161,7 @@ int bnxt_alloc_vnic_attributes(struct bnxt *bp, bool reconfig)
 						 entry_length * bp->max_vnics,
 						 bp->eth_dev->device->numa_node,
 						 RTE_MEMZONE_2MB |
-						 RTE_MEMZONE_SIZE_HINT_ONLY |
-						 RTE_MEMZONE_IOVA_CONTIG,
+						 RTE_MEMZONE_SIZE_HINT_ONLY,
 						 BNXT_PAGE_SIZE);
 		if (mz == NULL) {
 			PMD_DRV_LOG(ERR,
