@@ -2539,6 +2539,8 @@ static const struct ixgbe_txq_ops def_txq_ops = {
 void __rte_cold
 ixgbe_set_tx_function(struct rte_eth_dev *dev, struct ixgbe_tx_queue *txq)
 {
+	if (txq)
+		return;
 	/* Use a simple Tx queue (no offloads, no multi segs) if possible */
 	if ((txq->offloads == 0) &&
 #ifdef RTE_LIB_SECURITY
@@ -4953,12 +4955,13 @@ ixgbe_set_rx_function(struct rte_eth_dev *dev)
 
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
 		struct ixgbe_rx_queue *rxq = dev->data->rx_queues[i];
-
-		rxq->rx_using_sse = rx_using_sse;
+		if (rxq) {
+			rxq->rx_using_sse = rx_using_sse;
 #ifdef RTE_LIB_SECURITY
-		rxq->using_ipsec = !!(dev->data->dev_conf.rxmode.offloads &
-				RTE_ETH_RX_OFFLOAD_SECURITY);
+			rxq->using_ipsec = !!(dev->data->dev_conf.rxmode.offloads &
+					RTE_ETH_RX_OFFLOAD_SECURITY);
 #endif
+		}
 	}
 }
 
