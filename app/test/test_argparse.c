@@ -288,13 +288,6 @@ test_argparse_invalid_arg_flags(void)
 	ret = rte_argparse_parse(obj, default_argc, default_argv);
 	TEST_ASSERT(ret == -EINVAL, "Argparse parse expect failed!");
 
-	obj = test_argparse_init_obj();
-	obj->args[0].val_saver = NULL;
-	obj->args[0].flags = RTE_ARGPARSE_ARG_REQUIRED_VALUE | RTE_ARGPARSE_ARG_SUPPORT_MULTI;
-	obj->callback = NULL;
-	ret = rte_argparse_parse(obj, default_argc, default_argv);
-	TEST_ASSERT(ret == -EINVAL, "Argparse parse expect failed!");
-
 	return 0;
 }
 

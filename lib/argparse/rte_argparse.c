@@ -195,12 +195,6 @@ verify_arg_flags(const struct rte_argparse *obj, uint32_t index)
 		return -EINVAL;
 	}
 
-	if (obj->callback == NULL) {
-		ARGPARSE_LOG(ERR, "argument %s should use callback to parse, but callback is NULL!",
-			     arg->name_long);
-		return -EINVAL;
-	}
-
 	return 0;
 }
 
