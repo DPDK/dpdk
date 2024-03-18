@@ -180,11 +180,13 @@ dump_pkt_burst(uint16_t port_id, uint16_t queue, struct rte_mbuf *pkts[],
 		if (is_timestamp_enabled(mb))
 			MKDUMPSTR(print_buf, buf_size, cur_len,
 				  " - timestamp %"PRIu64" ", get_timestamp(mb));
-		if (ol_flags & RTE_MBUF_F_RX_QINQ)
+		if ((is_rx && (ol_flags & RTE_MBUF_F_RX_QINQ) != 0) ||
+				(!is_rx && (ol_flags & RTE_MBUF_F_TX_QINQ) != 0))
 			MKDUMPSTR(print_buf, buf_size, cur_len,
 				  " - QinQ VLAN tci=0x%x, VLAN tci outer=0x%x",
 				  mb->vlan_tci, mb->vlan_tci_outer);
-		else if (ol_flags & RTE_MBUF_F_RX_VLAN)
+		else if ((is_rx && (ol_flags & RTE_MBUF_F_RX_VLAN) != 0) ||
+				(!is_rx && (ol_flags & RTE_MBUF_F_TX_VLAN) != 0))
 			MKDUMPSTR(print_buf, buf_size, cur_len,
 				  " - VLAN tci=0x%x", mb->vlan_tci);
 		if (!is_rx && (ol_flags & RTE_MBUF_DYNFLAG_TX_METADATA))
