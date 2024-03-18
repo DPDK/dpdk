@@ -37,52 +37,40 @@
 extern "C" {
 #endif
 
-/**
- * Flag definition (in bitmask form) for an argument.
+/**@{@name Flag definition (in bitmask form) for an argument
+ *
+ * @note Bits[0~1] represent the argument whether has value,
+ * bits[2~9] represent the value type which used when autosave.
+ *
+ * @see struct rte_argparse_arg::flags
  */
-enum rte_argparse_flag {
-	/*
-	 * Bits 0-1: represent the argument whether has value.
-	 */
-
-	/** The argument has no value. */
-	RTE_ARGPARSE_ARG_NO_VALUE = RTE_SHIFT_VAL64(1, 0),
-	/** The argument must have a value. */
-	RTE_ARGPARSE_ARG_REQUIRED_VALUE = RTE_SHIFT_VAL64(2, 0),
-	/** The argument has optional value. */
-	RTE_ARGPARSE_ARG_OPTIONAL_VALUE = RTE_SHIFT_VAL64(3, 0),
-
-
-	/*
-	 * Bits 2-9: represent the value type which used when autosave
-	 */
-
-	/** The argument's value is int type. */
-	RTE_ARGPARSE_ARG_VALUE_INT = RTE_SHIFT_VAL64(1, 2),
-	/** The argument's value is uint8 type. */
-	RTE_ARGPARSE_ARG_VALUE_U8 = RTE_SHIFT_VAL64(2, 2),
-	/** The argument's value is uint16 type. */
-	RTE_ARGPARSE_ARG_VALUE_U16 = RTE_SHIFT_VAL64(3, 2),
-	/** The argument's value is uint32 type. */
-	RTE_ARGPARSE_ARG_VALUE_U32 = RTE_SHIFT_VAL64(4, 2),
-	/** The argument's value is uint64 type. */
-	RTE_ARGPARSE_ARG_VALUE_U64 = RTE_SHIFT_VAL64(5, 2),
-	/** Max value type. */
-	RTE_ARGPARSE_ARG_VALUE_MAX = RTE_SHIFT_VAL64(6, 2),
-
-
-	/**
-	 * Bit 10: flag for that argument support occur multiple times.
-	 * This flag can be set only when the argument is optional.
-	 * When this flag is set, the callback type must be used for parsing.
-	 */
-	RTE_ARGPARSE_ARG_SUPPORT_MULTI = RTE_BIT64(10),
-
-	/**
-	 * Bits 48-63: reserved for this library implementation usage.
-	 */
-	RTE_ARGPARSE_ARG_RESERVED_FIELD = RTE_GENMASK64(63, 48),
-};
+/** The argument has no value. */
+#define RTE_ARGPARSE_ARG_NO_VALUE       RTE_SHIFT_VAL64(1, 0)
+/** The argument must have a value. */
+#define RTE_ARGPARSE_ARG_REQUIRED_VALUE RTE_SHIFT_VAL64(2, 0)
+/** The argument has optional value. */
+#define RTE_ARGPARSE_ARG_OPTIONAL_VALUE RTE_SHIFT_VAL64(3, 0)
+/** The argument's value is int type. */
+#define RTE_ARGPARSE_ARG_VALUE_INT      RTE_SHIFT_VAL64(1, 2)
+/** The argument's value is uint8 type. */
+#define RTE_ARGPARSE_ARG_VALUE_U8       RTE_SHIFT_VAL64(2, 2)
+/** The argument's value is uint16 type. */
+#define RTE_ARGPARSE_ARG_VALUE_U16      RTE_SHIFT_VAL64(3, 2)
+/** The argument's value is uint32 type. */
+#define RTE_ARGPARSE_ARG_VALUE_U32      RTE_SHIFT_VAL64(4, 2)
+/** The argument's value is uint64 type. */
+#define RTE_ARGPARSE_ARG_VALUE_U64      RTE_SHIFT_VAL64(5, 2)
+/** Max value type. */
+#define RTE_ARGPARSE_ARG_VALUE_MAX      RTE_SHIFT_VAL64(6, 2)
+/**
+ * Flag for that argument support occur multiple times.
+ * This flag can be set only when the argument is optional.
+ * When this flag is set, the callback type must be used for parsing.
+ */
+#define RTE_ARGPARSE_ARG_SUPPORT_MULTI  RTE_BIT64(10)
+/** Reserved for this library implementation usage. */
+#define RTE_ARGPARSE_ARG_RESERVED_FIELD RTE_GENMASK64(63, 48)
+/**@}*/
 
 /**
  * A structure used to hold argument's configuration.
@@ -126,7 +114,7 @@ struct rte_argparse_arg {
 	 */
 	void *val_set;
 
-	/** @see rte_argparse_flag */
+	/** Flag definition (RTE_ARGPARSE_ARG_*) for the argument. */
 	uint64_t flags;
 };
 
