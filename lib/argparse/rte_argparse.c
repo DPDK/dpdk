@@ -67,7 +67,7 @@ verify_arg_name(const struct rte_argparse_arg *arg)
 			return -EINVAL;
 		}
 		if (arg->name_long[1] != '-') {
-			ARGPARSE_LOG(ERR, "optional long name %s must only start with '--'",
+			ARGPARSE_LOG(ERR, "optional long name %s doesn't start with '--'",
 				     arg->name_long);
 			return -EINVAL;
 		}
@@ -101,7 +101,7 @@ static int
 verify_arg_help(const struct rte_argparse_arg *arg)
 {
 	if (arg->help == NULL) {
-		ARGPARSE_LOG(ERR, "argument %s must have help info!", arg->name_long);
+		ARGPARSE_LOG(ERR, "argument %s doesn't have help info!", arg->name_long);
 		return -EINVAL;
 	}
 
@@ -116,13 +116,13 @@ verify_arg_has_val(const struct rte_argparse_arg *arg)
 	if (is_arg_positional(arg)) {
 		if (has_val == RTE_ARGPARSE_ARG_REQUIRED_VALUE)
 			return 0;
-		ARGPARSE_LOG(ERR, "argument %s is positional, should has zero or required-val!",
+		ARGPARSE_LOG(ERR, "argument %s is positional, must config required-val!",
 			     arg->name_long);
 		return -EINVAL;
 	}
 
 	if (has_val == 0) {
-		ARGPARSE_LOG(ERR, "argument %s is optional, has-val config wrong!",
+		ARGPARSE_LOG(ERR, "argument %s is optional, has-value config wrong!",
 			     arg->name_long);
 		return -EINVAL;
 	}
@@ -140,13 +140,13 @@ verify_arg_saver(const struct rte_argparse *obj, uint32_t index)
 
 	if (arg->val_saver == NULL) {
 		if (val_type != 0) {
-			ARGPARSE_LOG(ERR, "argument %s parse by callback, val-type must be zero!",
+			ARGPARSE_LOG(ERR, "argument %s parsed by callback, value-type should not be set!",
 				     arg->name_long);
 			return -EINVAL;
 		}
 
 		if (obj->callback == NULL) {
-			ARGPARSE_LOG(ERR, "argument %s parse by callback, but callback is NULL!",
+			ARGPARSE_LOG(ERR, "argument %s parsed by callback, but callback is NULL!",
 				     arg->name_long);
 			return -EINVAL;
 		}
@@ -155,12 +155,12 @@ verify_arg_saver(const struct rte_argparse *obj, uint32_t index)
 	}
 
 	if (val_type == 0 || val_type >= cmp_max) {
-		ARGPARSE_LOG(ERR, "argument %s val-type config wrong!", arg->name_long);
+		ARGPARSE_LOG(ERR, "argument %s value-type config wrong!", arg->name_long);
 		return -EINVAL;
 	}
 
 	if (has_val == RTE_ARGPARSE_ARG_REQUIRED_VALUE && arg->val_set != NULL) {
-		ARGPARSE_LOG(ERR, "argument %s has required value, val-set should be NULL!",
+		ARGPARSE_LOG(ERR, "argument %s has required value, value-set should be NULL!",
 			     arg->name_long);
 		return -EINVAL;
 	}
@@ -175,7 +175,8 @@ verify_arg_flags(const struct rte_argparse *obj, uint32_t index)
 	uint32_t unused_bits = arg_attr_unused_bits(arg);
 
 	if (unused_bits != 0) {
-		ARGPARSE_LOG(ERR, "argument %s flags set wrong!", arg->name_long);
+		ARGPARSE_LOG(ERR, "argument %s flags unused bits should not be set!",
+			     arg->name_long);
 		return -EINVAL;
 	}
 
@@ -189,7 +190,7 @@ verify_arg_flags(const struct rte_argparse *obj, uint32_t index)
 	}
 
 	if (arg->val_saver != NULL) {
-		ARGPARSE_LOG(ERR, "argument %s could occur multiple times, should use callback to parse!",
+		ARGPARSE_LOG(ERR, "argument %s supports multiple times, should use callback to parse!",
 			     arg->name_long);
 		return -EINVAL;
 	}
@@ -536,8 +537,10 @@ parse_arg_autosave(struct rte_argparse_arg *arg, const char *value)
 	return ret;
 }
 
+/* arg_parse indicates the name entered by the user, which can be long-name or short-name. */
 static int
-parse_arg_val(struct rte_argparse *obj, struct rte_argparse_arg *arg, char *value)
+parse_arg_val(struct rte_argparse *obj, const char *arg_name,
+	      struct rte_argparse_arg *arg, char *value)
 {
 	int ret;
 
@@ -546,7 +549,7 @@ parse_arg_val(struct rte_argparse *obj, struct rte_argparse_arg *arg, char *valu
 	else
 		ret = parse_arg_autosave(arg, value);
 	if (ret != 0) {
-		ARGPARSE_LOG(ERR, "argument %s parse value fail!", arg->name_long);
+		ARGPARSE_LOG(ERR, "argument %s parse value fail!", arg_name);
 		return ret;
 	}
 
@@ -582,7 +585,7 @@ parse_args(struct rte_argparse *obj, int argc, char **argv, bool *show_help)
 				return -EINVAL;
 			}
 			arg = find_position_arg(obj, position_index);
-			ret = parse_arg_val(obj, arg, curr_argv);
+			ret = parse_arg_val(obj, arg->name_long, arg, curr_argv);
 			if (ret != 0)
 				return ret;
 			continue;
@@ -629,7 +632,7 @@ parse_args(struct rte_argparse *obj, int argc, char **argv, bool *show_help)
 			/* Do nothing, because it's optional value, only support arg=val or arg. */
 		}
 
-		ret = parse_arg_val(obj, arg, value);
+		ret = parse_arg_val(obj, arg_name, arg, value);
 		if (ret != 0)
 			return ret;
 
