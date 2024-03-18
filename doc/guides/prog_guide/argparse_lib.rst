@@ -90,9 +90,9 @@ The following code demonstrates how to use:
    }
 
 In this example, the arguments which start with a hyphen (-) are optional
-arguments (they're "--aaa"/"--bbb"/"--ccc"/"--ddd"/"--eee"/"--fff"); and the
-arguments which don't start with a hyphen (-) are positional arguments
-(they're "ooo"/"ppp").
+arguments (they're ``--aaa``/``--bbb``/``--ccc``/``--ddd``/``--eee``/``--fff``);
+and the arguments which don't start with a hyphen (-) are positional arguments
+(they're ``ooo``/``ppp``).
 
 Every argument must be set whether to carry a value (one of
 ``RTE_ARGPARSE_ARG_NO_VALUE``, ``RTE_ARGPARSE_ARG_REQUIRED_VALUE`` and
@@ -106,23 +106,23 @@ User Input Requirements
 ~~~~~~~~~~~~~~~~~~~~~~~
 
 For optional arguments which take no-value,
-the following mode is supported (take above "--aaa" as an example):
+the following mode is supported (take above ``--aaa`` as an example):
 
-- The single mode: "--aaa" or "-a".
+- The single mode: ``--aaa`` or ``-a``.
 
 For optional arguments which take required-value,
-the following two modes are supported (take above "--bbb" as an example):
+the following two modes are supported (take above ``--bbb`` as an example):
 
-- The kv mode: "--bbb=1234" or "-b=1234".
+- The kv mode: ``--bbb=1234`` or ``-b=1234``.
 
-- The split mode: "--bbb 1234" or "-b 1234".
+- The split mode: ``--bbb 1234`` or ``-b 1234``.
 
 For optional arguments which take optional-value,
-the following two modes are supported (take above "--ccc" as an example):
+the following two modes are supported (take above ``--ccc`` as an example):
 
-- The single mode: "--ccc" or "-c".
+- The single mode: ``--ccc`` or ``-c``.
 
-- The kv mode: "--ccc=123" or "-c=123".
+- The kv mode: ``--ccc=123`` or ``-c=123``.
 
 For positional arguments which must take required-value,
 their values are parsing in the order defined.
@@ -130,7 +130,7 @@ their values are parsing in the order defined.
 .. note::
 
    The compact mode is not supported.
-   Take above "-a" and "-d" as an example, don't support "-ad" input.
+   Take above ``-a`` and ``-d`` as an example, don't support ``-ad`` input.
 
 Parsing by autosave way
 ~~~~~~~~~~~~~~~~~~~~~~~
@@ -139,23 +139,23 @@ Argument of known value type (e.g. ``RTE_ARGPARSE_ARG_VALUE_INT``)
 could be parsed using this autosave way,
 and its result will save in the ``val_saver`` field.
 
-In the above example, the arguments "--aaa"/"--bbb"/"--ccc" and "ooo"
+In the above example, the arguments ``--aaa``/``--bbb``/``--ccc`` and ``ooo``
 both use this way, the parsing is as follows:
 
-- For argument "--aaa", it is configured as no-value,
+- For argument ``--aaa``, it is configured as no-value,
   so the ``aaa_val`` will be set to ``val_set`` field
   which is 100 in the above example.
 
-- For argument "--bbb", it is configured as required-value,
+- For argument ``--bbb``, it is configured as required-value,
   so the ``bbb_val`` will be set to user input's value
-  (e.g. will be set to 1234 with input "--bbb 1234").
+  (e.g. will be set to 1234 with input ``--bbb 1234``).
 
-- For argument "--ccc", it is configured as optional-value,
-  if user only input "--ccc" then the ``ccc_val`` will be set to ``val_set`` field
-  which is 200 in the above example;
-  if user input "--ccc=123", then the ``ccc_val`` will be set to 123.
+- For argument ``--ccc``, it is configured as optional-value,
+  if user only input ``--ccc`` then the ``ccc_val`` will be set to ``val_set``
+  field which is 200 in the above example;
+  if user input ``--ccc=123``, then the ``ccc_val`` will be set to 123.
 
-- For argument "ooo", it is positional argument,
+- For argument ``ooo``, it is positional argument,
   the ``ooo_val`` will be set to user input's value.
 
 Parsing by callback way
@@ -165,7 +165,8 @@ It could also choose to use callback to parse,
 just define a unique index for the argument
 and make the ``val_save`` field to be NULL also zero value-type.
 
-In the above example, the arguments "--ddd"/"--eee"/"--fff" and "ppp" both use this way.
+In the above example, the arguments ``--ddd``/``--eee``/``--fff`` and ``ppp``
+both use this way.
 
 Multiple times argument
 ~~~~~~~~~~~~~~~~~~~~~~~
@@ -178,7 +179,7 @@ For example:
 
    { "--xyz", "-x", "xyz argument", NULL, (void *)10, RTE_ARGPARSE_ARG_REQUIRED_VALUE | RTE_ARGPARSE_ARG_SUPPORT_MULTI },
 
-Then the user input could contain multiple "--xyz" arguments.
+Then the user input could contain multiple ``--xyz`` arguments.
 
 .. note::
 

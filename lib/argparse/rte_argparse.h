@@ -83,8 +83,8 @@ extern "C" {
 struct rte_argparse_arg {
 	/**
 	 * Long name of the argument:
-	 * 1) If the argument is optional, it must start with '--'.
-	 * 2) If the argument is positional, it must not start with '-'.
+	 * 1) If the argument is optional, it must start with ``--``.
+	 * 2) If the argument is positional, it must not start with ``-``.
 	 * 3) Other case will be considered as error.
 	 */
 	const char *name_long;
