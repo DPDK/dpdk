@@ -15,9 +15,6 @@ RTE_LOG_REGISTER_DEFAULT(rte_argparse_logtype, INFO);
 #define ARGPARSE_LOG(level, ...) \
 	RTE_LOG_LINE(level, ARGPARSE, "" __VA_ARGS__)
 
-#define ARG_ATTR_HAS_VAL_MASK		RTE_GENMASK64(1, 0)
-#define ARG_ATTR_VAL_TYPE_MASK		RTE_GENMASK64(9, 2)
-#define ARG_ATTR_SUPPORT_MULTI_MASK	RTE_BIT64(10)
 #define ARG_ATTR_FLAG_PARSED_MASK	RTE_BIT64(63)
 
 static inline bool
@@ -35,26 +32,27 @@ is_arg_positional(const struct rte_argparse_arg *arg)
 static inline uint32_t
 arg_attr_has_val(const struct rte_argparse_arg *arg)
 {
-	return RTE_FIELD_GET64(ARG_ATTR_HAS_VAL_MASK, arg->flags);
+	return RTE_FIELD_GET64(RTE_ARGPARSE_HAS_VAL_BITMASK, arg->flags);
 }
 
 static inline uint32_t
 arg_attr_val_type(const struct rte_argparse_arg *arg)
 {
-	return RTE_FIELD_GET64(ARG_ATTR_VAL_TYPE_MASK, arg->flags);
+	return RTE_FIELD_GET64(RTE_ARGPARSE_VAL_TYPE_BITMASK, arg->flags);
 }
 
 static inline bool
 arg_attr_flag_multi(const struct rte_argparse_arg *arg)
 {
-	return RTE_FIELD_GET64(ARG_ATTR_SUPPORT_MULTI_MASK, arg->flags);
+	return RTE_FIELD_GET64(RTE_ARGPARSE_ARG_SUPPORT_MULTI, arg->flags);
 }
 
-static inline uint32_t
+static inline uint64_t
 arg_attr_unused_bits(const struct rte_argparse_arg *arg)
 {
-#define USED_BIT_MASK	(ARG_ATTR_HAS_VAL_MASK | ARG_ATTR_VAL_TYPE_MASK | \
-			 ARG_ATTR_SUPPORT_MULTI_MASK)
+#define USED_BIT_MASK	(RTE_ARGPARSE_HAS_VAL_BITMASK | \
+			 RTE_ARGPARSE_VAL_TYPE_BITMASK | \
+			 RTE_ARGPARSE_ARG_SUPPORT_MULTI)
 	return arg->flags & ~USED_BIT_MASK;
 }
 
@@ -133,7 +131,8 @@ verify_arg_has_val(const struct rte_argparse_arg *arg)
 static int
 verify_arg_saver(const struct rte_argparse *obj, uint32_t index)
 {
-	uint32_t cmp_max = RTE_FIELD_GET64(ARG_ATTR_VAL_TYPE_MASK, RTE_ARGPARSE_ARG_VALUE_MAX);
+	uint32_t cmp_max = RTE_FIELD_GET64(RTE_ARGPARSE_VAL_TYPE_BITMASK,
+					   RTE_ARGPARSE_ARG_VALUE_MAX);
 	const struct rte_argparse_arg *arg = &obj->args[index];
 	uint32_t val_type = arg_attr_val_type(arg);
 	uint32_t has_val = arg_attr_has_val(arg);
@@ -172,7 +171,7 @@ static int
 verify_arg_flags(const struct rte_argparse *obj, uint32_t index)
 {
 	const struct rte_argparse_arg *arg = &obj->args[index];
-	uint32_t unused_bits = arg_attr_unused_bits(arg);
+	uint64_t unused_bits = arg_attr_unused_bits(arg);
 
 	if (unused_bits != 0) {
 		ARGPARSE_LOG(ERR, "argument %s flags unused bits should not be set!",
@@ -768,7 +767,8 @@ error:
 int
 rte_argparse_parse_type(const char *str, uint64_t val_type, void *val)
 {
-	uint32_t cmp_max = RTE_FIELD_GET64(ARG_ATTR_VAL_TYPE_MASK, RTE_ARGPARSE_ARG_VALUE_MAX);
+	uint32_t cmp_max = RTE_FIELD_GET64(RTE_ARGPARSE_VAL_TYPE_BITMASK,
+					   RTE_ARGPARSE_ARG_VALUE_MAX);
 	struct rte_argparse_arg arg = {
 		.name_long = str,
 		.name_short = NULL,

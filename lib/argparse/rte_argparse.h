@@ -72,6 +72,11 @@ extern "C" {
 #define RTE_ARGPARSE_ARG_RESERVED_FIELD RTE_GENMASK64(63, 48)
 /**@}*/
 
+/** Bitmask used to get the argument whether has value. */
+#define RTE_ARGPARSE_HAS_VAL_BITMASK	RTE_GENMASK64(1, 0)
+/** Bitmask used to get the argument's value type. */
+#define RTE_ARGPARSE_VAL_TYPE_BITMASK	RTE_GENMASK64(9, 2)
+
 /**
  * A structure used to hold argument's configuration.
  */
