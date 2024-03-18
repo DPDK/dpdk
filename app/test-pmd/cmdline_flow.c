@@ -7839,11 +7839,13 @@ static const struct token token_list[] = {
 		.type = "UNSIGNED",
 		.help = "unsigned integer value",
 		.call = parse_indlst_id2ptr,
+		.comp = comp_none,
 	},
 	[INDIRECT_LIST_ACTION_ID2PTR_CONF] = {
 		.type = "UNSIGNED",
 		.help = "unsigned integer value",
 		.call = parse_indlst_id2ptr,
+		.comp = comp_none,
 	},
 	[ACTION_SHARED_INDIRECT] = {
 		.name = "shared_indirect",
@@ -11912,34 +11914,36 @@ parse_indlst_id2ptr(struct context *ctx, const struct token *token,
 	uint32_t id;
 	int ret;
 
-	if (!action)
-		return -1;
 	ctx->objdata = 0;
 	ctx->object = &id;
 	ctx->objmask = NULL;
 	ret = parse_int(ctx, token, str, len, ctx->object, sizeof(id));
+	ctx->object = action;
 	if (ret != (int)len)
 		return ret;
-	ctx->object = action;
-	action_conf = (void *)(uintptr_t)action->conf;
-	action_conf->conf = NULL;
-	switch (ctx->curr) {
-	case INDIRECT_LIST_ACTION_ID2PTR_HANDLE:
-	action_conf->handle = (typeof(action_conf->handle))
-				port_action_handle_get_by_id(ctx->port, id);
-		if (!action_conf->handle) {
-			printf("no indirect list handle for id %u\n", id);
-			return -1;
+
+	/* set handle and conf */
+	if (action) {
+		action_conf = (void *)(uintptr_t)action->conf;
+		action_conf->conf = NULL;
+		switch (ctx->curr) {
+		case INDIRECT_LIST_ACTION_ID2PTR_HANDLE:
+		action_conf->handle = (typeof(action_conf->handle))
+					port_action_handle_get_by_id(ctx->port, id);
+			if (!action_conf->handle) {
+				printf("no indirect list handle for id %u\n", id);
+				return -1;
+			}
+			break;
+		case INDIRECT_LIST_ACTION_ID2PTR_CONF:
+			indlst_conf = indirect_action_list_conf_get(id);
+			if (!indlst_conf)
+				return -1;
+			action_conf->conf = (const void **)indlst_conf->conf;
+			break;
+		default:
+			break;
 		}
-		break;
-	case INDIRECT_LIST_ACTION_ID2PTR_CONF:
-		indlst_conf = indirect_action_list_conf_get(id);
-		if (!indlst_conf)
-			return -1;
-		action_conf->conf = (const void **)indlst_conf->conf;
-		break;
-	default:
-		break;
 	}
 	return ret;
 }
