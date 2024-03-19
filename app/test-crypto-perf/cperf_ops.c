@@ -728,7 +728,10 @@ cperf_set_ops_aead(struct rte_crypto_op **ops,
 	}
 
 	if ((options->test == CPERF_TEST_TYPE_VERIFY) ||
-			(options->test == CPERF_TEST_TYPE_LATENCY)) {
+	    (options->test == CPERF_TEST_TYPE_LATENCY) ||
+	    (options->test == CPERF_TEST_TYPE_THROUGHPUT &&
+	     (options->aead_op == RTE_CRYPTO_AEAD_OP_DECRYPT ||
+	      options->cipher_op == RTE_CRYPTO_CIPHER_OP_DECRYPT))) {
 		for (i = 0; i < nb_ops; i++) {
 			uint8_t *iv_ptr = rte_crypto_op_ctod_offset(ops[i],
 					uint8_t *, iv_offset);

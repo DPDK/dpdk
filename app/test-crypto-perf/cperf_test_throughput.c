@@ -108,6 +108,26 @@ err:
 	return NULL;
 }
 
+static void
+cperf_verify_init_ops(struct rte_mempool *mp __rte_unused,
+		      void *opaque_arg,
+		      void *obj,
+		      __rte_unused unsigned int i)
+{
+	uint16_t iv_offset = sizeof(struct rte_crypto_op) +
+		sizeof(struct rte_crypto_sym_op);
+	uint32_t imix_idx = 0;
+	struct cperf_throughput_ctx *ctx = opaque_arg;
+	struct rte_crypto_op *op = obj;
+
+	(ctx->populate_ops)(&op, ctx->src_buf_offset,
+			ctx->dst_buf_offset,
+			1, ctx->sess, ctx->options,
+			ctx->test_vector, iv_offset, &imix_idx, NULL);
+
+	cperf_mbuf_set(op->sym->m_src, ctx->options, ctx->test_vector);
+}
+
 int
 cperf_throughput_test_runner(void *test_ctx)
 {
@@ -153,6 +173,9 @@ cperf_throughput_test_runner(void *test_ctx)
 	uint16_t iv_offset = sizeof(struct rte_crypto_op) +
 		sizeof(struct rte_crypto_sym_op);
 
+	if (ctx->options->out_of_place)
+		rte_mempool_obj_iter(ctx->pool, cperf_verify_init_ops, (void *)ctx);
+
 	while (test_burst_size <= ctx->options->max_burst_size) {
 		uint64_t ops_enqd = 0, ops_enqd_total = 0, ops_enqd_failed = 0;
 		uint64_t ops_deqd = 0, ops_deqd_total = 0, ops_deqd_failed = 0;
@@ -185,11 +208,12 @@ cperf_throughput_test_runner(void *test_ctx)
 			}
 
 			/* Setup crypto op, attach mbuf etc */
-			(ctx->populate_ops)(ops, ctx->src_buf_offset,
-					ctx->dst_buf_offset,
-					ops_needed, ctx->sess,
-					ctx->options, ctx->test_vector,
-					iv_offset, &imix_idx, &tsc_start);
+			if (!ctx->options->out_of_place)
+				(ctx->populate_ops)(ops, ctx->src_buf_offset,
+						ctx->dst_buf_offset,
+						ops_needed, ctx->sess,
+						ctx->options, ctx->test_vector,
+						iv_offset, &imix_idx, &tsc_start);
 
 			/**
 			 * When ops_needed is smaller than ops_enqd, the

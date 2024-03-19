@@ -1408,6 +1408,14 @@ cperf_options_check(struct cperf_options *options)
 		}
 	}
 
+	if (options->test == CPERF_TEST_TYPE_THROUGHPUT &&
+	    (options->aead_op == RTE_CRYPTO_AEAD_OP_DECRYPT ||
+	     options->auth_op == RTE_CRYPTO_AUTH_OP_VERIFY) &&
+	    !options->out_of_place) {
+		RTE_LOG(ERR, USER1, "Only out-of-place is allowed in throughput decryption.\n");
+		return -EINVAL;
+	}
+
 	if (options->op_type == CPERF_CIPHER_ONLY ||
 			options->op_type == CPERF_CIPHER_THEN_AUTH ||
 			options->op_type == CPERF_AUTH_THEN_CIPHER) {
