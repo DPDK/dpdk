@@ -10497,10 +10497,7 @@ flow_hw_action_handle_destroy(struct rte_eth_dev *dev, uint32_t queue,
 				NULL, "Unable to wait for ASO meter CQE");
 			break;
 		}
-		if (!job)
-			mlx5_ipool_free(pool->idx_pool, idx);
-		else
-			aso = true;
+		aso = true;
 		break;
 	case MLX5_INDIRECT_ACTION_TYPE_RSS:
 		ret = flow_dv_action_destroy(dev, handle, error);
