@@ -523,7 +523,7 @@ nfp_aesgcm_iv_update(struct ipsec_add_sa *cfg,
 	char *iv_b;
 	char *iv_str;
 	const rte_be32_t *iv_value;
-	uint8_t cfg_iv[NFP_ESP_IV_LENGTH];
+	uint8_t cfg_iv[NFP_ESP_IV_LENGTH] = {};
 
 	iv_str = strdup(iv_string);
 	if (iv_str == NULL) {
