@@ -316,11 +316,8 @@ static int bnxt_prod_ag_mbuf(struct bnxt_rx_queue *rxq)
 
 	/* TODO batch allocation for better performance */
 	while (rte_bitmap_get(rxr->ag_bitmap, bmap_next)) {
-		if (unlikely(bnxt_alloc_ag_data(rxq, rxr, raw_next))) {
-			PMD_DRV_LOG_LINE(ERR, "agg mbuf alloc failed: prod=0x%x",
-				    raw_next);
+		if (unlikely(bnxt_alloc_ag_data(rxq, rxr, raw_next)))
 			break;
-		}
 		rte_bitmap_clear(rxr->ag_bitmap, bmap_next);
 		rxr->ag_raw_prod = raw_next;
 		raw_next = RING_NEXT(raw_next);
@@ -1092,8 +1089,6 @@ static int bnxt_crx_pkt(struct rte_mbuf **rx_pkt,
 	bnxt_set_vlan_crx(rxcmp, mbuf);
 
 	if (bnxt_alloc_rx_data(rxq, rxr, raw_prod)) {
-		PMD_DRV_LOG_LINE(ERR, "mbuf alloc failed with prod=0x%x",
-			    raw_prod);
 		rc = -ENOMEM;
 		goto rx;
 	}
@@ -1271,8 +1266,6 @@ reuse_rx_mbuf:
 	 */
 	raw_prod = RING_NEXT(raw_prod);
 	if (bnxt_alloc_rx_data(rxq, rxr, raw_prod)) {
-		PMD_DRV_LOG_LINE(ERR, "mbuf alloc failed with prod=0x%x",
-			    raw_prod);
 		rc = -ENOMEM;
 		goto rx;
 	}
