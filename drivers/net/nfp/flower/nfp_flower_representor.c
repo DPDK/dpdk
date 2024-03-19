@@ -305,6 +305,54 @@ nfp_flower_repr_tx_burst(void *tx_queue,
 	return sent;
 }
 
+static void
+nfp_flower_repr_free_queue(struct nfp_flower_representor *repr)
+{
+	uint16_t i;
+	struct rte_eth_dev *eth_dev = repr->eth_dev;
+
+	for (i = 0; i < eth_dev->data->nb_tx_queues; i++)
+		rte_free(eth_dev->data->tx_queues[i]);
+
+	for (i = 0; i < eth_dev->data->nb_rx_queues; i++)
+		rte_free(eth_dev->data->rx_queues[i]);
+}
+
+static void
+nfp_flower_pf_repr_close_queue(struct nfp_flower_representor *repr)
+{
+	struct rte_eth_dev *eth_dev = repr->eth_dev;
+
+	/*
+	 * We assume that the DPDK application is stopping all the
+	 * threads/queues before calling the device close function.
+	 */
+	nfp_net_disable_queues(eth_dev);
+
+	/* Clear queues */
+	nfp_net_close_tx_queue(eth_dev);
+	nfp_net_close_rx_queue(eth_dev);
+}
+
+static void
+nfp_flower_repr_close_queue(struct nfp_flower_representor *repr)
+{
+	switch (repr->repr_type) {
+	case NFP_REPR_TYPE_PHYS_PORT:
+		nfp_flower_repr_free_queue(repr);
+		break;
+	case NFP_REPR_TYPE_PF:
+		nfp_flower_pf_repr_close_queue(repr);
+		break;
+	case NFP_REPR_TYPE_VF:
+		nfp_flower_repr_free_queue(repr);
+		break;
+	default:
+		PMD_DRV_LOG(ERR, "Unsupported repr port type.");
+		break;
+	}
+}
+
 static int
 nfp_flower_repr_uninit(struct rte_eth_dev *eth_dev)
 {
@@ -362,8 +410,6 @@ nfp_flower_repr_dev_close(struct rte_eth_dev *dev)
 	uint16_t i;
 	struct nfp_net_hw *hw;
 	struct nfp_pf_dev *pf_dev;
-	struct nfp_net_txq *this_tx_q;
-	struct nfp_net_rxq *this_rx_q;
 	struct nfp_flower_representor *repr;
 	struct nfp_app_fw_flower *app_fw_flower;
 
@@ -375,25 +421,10 @@ nfp_flower_repr_dev_close(struct rte_eth_dev *dev)
 	hw = app_fw_flower->pf_hw;
 	pf_dev = hw->pf_dev;
 
-	/*
-	 * We assume that the DPDK application is stopping all the
-	 * threads/queues before calling the device close function.
-	 */
-	nfp_net_disable_queues(dev);
-
-	/* Clear queues */
-	for (i = 0; i < dev->data->nb_tx_queues; i++) {
-		this_tx_q = dev->data->tx_queues[i];
-		nfp_net_reset_tx_queue(this_tx_q);
-	}
-
-	for (i = 0; i < dev->data->nb_rx_queues; i++) {
-		this_rx_q = dev->data->rx_queues[i];
-		nfp_net_reset_rx_queue(this_rx_q);
-	}
-
 	if (pf_dev->app_fw_id != NFP_APP_FW_FLOWER_NIC)
 		return -EINVAL;
+
+	nfp_flower_repr_close_queue(repr);
 
 	nfp_flower_repr_free(repr, repr->repr_type);
 
