@@ -12,11 +12,15 @@
 /* Drop by default when receive desc is not available. */
 #define BNXT_DEFAULT_RX_DROP_EN		1
 
+#define BNXT_MEM_POOL_IDX_0		0
+#define BNXT_MEM_POOL_IDX_1		1
+
 struct bnxt;
 struct bnxt_rx_ring_info;
 struct bnxt_cp_ring_info;
 struct bnxt_rx_queue {
 	struct rte_mempool	*mb_pool; /* mbuf pool for RX ring */
+	struct rte_mempool	*agg_mb_pool; /* mbuf pool for AGG ring */
 	uint64_t		mbuf_initializer; /* val to init mbuf */
 	uint16_t		nb_rx_desc; /* num of RX desc */
 	uint16_t		rx_free_thresh; /* max free RX desc to hold */

@@ -84,7 +84,7 @@ static inline int bnxt_alloc_ag_data(struct bnxt_rx_queue *rxq,
 		return -EINVAL;
 	}
 
-	mbuf = __bnxt_alloc_rx_data(rxq->mb_pool);
+	mbuf = __bnxt_alloc_rx_data(rxq->agg_mb_pool);
 	if (!mbuf) {
 		rte_atomic_fetch_add_explicit(&rxq->rx_mbuf_alloc_fail, 1,
 				rte_memory_order_relaxed);
@@ -1673,7 +1673,7 @@ int bnxt_init_one_rx_ring(struct bnxt_rx_queue *rxq)
 		for (i = 0; i < max_aggs; i++) {
 			if (unlikely(!rxr->tpa_info[i].mbuf)) {
 				rxr->tpa_info[i].mbuf =
-					__bnxt_alloc_rx_data(rxq->mb_pool);
+					__bnxt_alloc_rx_data(rxq->agg_mb_pool);
 				if (!rxr->tpa_info[i].mbuf) {
 					rte_atomic_fetch_add_explicit(&rxq->rx_mbuf_alloc_fail, 1,
 							rte_memory_order_relaxed);

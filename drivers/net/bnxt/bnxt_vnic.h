@@ -84,6 +84,7 @@ struct bnxt_vnic_info {
 	enum rte_eth_hash_function hash_f;
 	enum rte_eth_hash_function hash_f_local;
 	uint64_t	rss_types_local;
+	uint16_t	hds_threshold;
 	uint8_t         metadata_format;
 	uint8_t         state;
 };

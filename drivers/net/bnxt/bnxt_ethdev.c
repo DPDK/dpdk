@@ -1270,6 +1270,11 @@ found:
 	dev_info->vmdq_pool_base = 0;
 	dev_info->vmdq_queue_base = 0;
 
+	dev_info->rx_seg_capa.max_nseg = BNXT_MAX_BUFFER_SPLIT_SEGS;
+	dev_info->rx_seg_capa.multi_pools = BNXT_MULTI_POOL_BUF_SPLIT_CAP;
+	dev_info->rx_seg_capa.offset_allowed = BNXT_BUF_SPLIT_OFFSET_CAP;
+	dev_info->rx_seg_capa.offset_align_log2 = BNXT_BUF_SPLIT_ALIGN_CAP;
+
 	dev_info->err_handle_mode = RTE_ETH_ERROR_HANDLE_MODE_PROACTIVE;
 
 	return 0;

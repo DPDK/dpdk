@@ -29,7 +29,8 @@ uint64_t bnxt_get_rx_port_offloads(struct bnxt *bp)
 			  RTE_ETH_RX_OFFLOAD_TCP_CKSUM   |
 			  RTE_ETH_RX_OFFLOAD_KEEP_CRC    |
 			  RTE_ETH_RX_OFFLOAD_SCATTER |
-			  RTE_ETH_RX_OFFLOAD_RSS_HASH;
+			  RTE_ETH_RX_OFFLOAD_RSS_HASH |
+			  RTE_ETH_RX_OFFLOAD_BUFFER_SPLIT;
 
 	/* In P7 platform if truflow is enabled then vlan offload is disabled*/
 	if (!(BNXT_TRUFLOW_EN(bp) && BNXT_CHIP_P7(bp)))
@@ -332,14 +333,29 @@ int bnxt_rx_queue_setup_op(struct rte_eth_dev *eth_dev,
 			       const struct rte_eth_rxconf *rx_conf,
 			       struct rte_mempool *mp)
 {
-	struct bnxt *bp = eth_dev->data->dev_private;
 	uint64_t rx_offloads = eth_dev->data->dev_conf.rxmode.offloads;
+	uint8_t rs = !!(rx_offloads & RTE_ETH_RX_OFFLOAD_BUFFER_SPLIT);
+	struct bnxt *bp = eth_dev->data->dev_private;
+	struct rte_eth_rxseg_split *rx_seg =
+			(struct rte_eth_rxseg_split *)rx_conf->rx_seg;
+	uint16_t n_seg = rx_conf->rx_nseg;
 	struct bnxt_rx_queue *rxq;
 	int rc = 0;
 
 	rc = is_bnxt_in_error(bp);
 	if (rc)
 		return rc;
+
+	if (n_seg > 1 && !rs) {
+		PMD_DRV_LOG_LINE(ERR, "n_seg %d does not match buffer split %d setting",
+				n_seg, rs);
+		return -EINVAL;
+	}
+
+	if (n_seg > BNXT_MAX_BUFFER_SPLIT_SEGS) {
+		PMD_DRV_LOG_LINE(ERR, "n_seg %d not supported", n_seg);
+		return -EINVAL;
+	}
 
 	if (queue_idx >= bnxt_max_rings(bp)) {
 		PMD_DRV_LOG_LINE(ERR,
@@ -365,7 +381,14 @@ int bnxt_rx_queue_setup_op(struct rte_eth_dev *eth_dev,
 		return -ENOMEM;
 	}
 	rxq->bp = bp;
-	rxq->mb_pool = mp;
+	if (n_seg > 1) {
+		rxq->mb_pool = rx_seg[BNXT_MEM_POOL_IDX_0].mp;
+		rxq->agg_mb_pool = rx_seg[BNXT_MEM_POOL_IDX_1].mp;
+	} else {
+		rxq->mb_pool = mp;
+		rxq->agg_mb_pool = mp;
+	}
+
 	rxq->nb_rx_desc = nb_desc;
 	rxq->rx_free_thresh =
 		RTE_MIN(rte_align32pow2(nb_desc) / 4, RTE_BNXT_MAX_RX_BURST);
@@ -411,6 +434,7 @@ int bnxt_rx_queue_setup_op(struct rte_eth_dev *eth_dev,
 
 	rxq->rx_started = rxq->rx_deferred_start ? false : true;
 	rxq->vnic = bnxt_get_default_vnic(bp);
+	rxq->vnic->hds_threshold = n_seg ? rxq->vnic->hds_threshold : 0;
 
 	return 0;
 err:

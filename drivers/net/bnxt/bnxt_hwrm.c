@@ -3041,10 +3041,14 @@ int bnxt_hwrm_vnic_rss_cfg(struct bnxt *bp,
 int bnxt_hwrm_vnic_plcmode_cfg(struct bnxt *bp,
 			struct bnxt_vnic_info *vnic)
 {
-	int rc = 0;
-	struct hwrm_vnic_plcmodes_cfg_input req = {.req_type = 0 };
 	struct hwrm_vnic_plcmodes_cfg_output *resp = bp->hwrm_cmd_resp_addr;
+	struct rte_eth_conf *dev_conf = &bp->eth_dev->data->dev_conf;
+	struct hwrm_vnic_plcmodes_cfg_input req = {.req_type = 0 };
+	uint64_t rx_offloads = dev_conf->rxmode.offloads;
+	uint8_t rs = !!(rx_offloads & RTE_ETH_RX_OFFLOAD_BUFFER_SPLIT);
+	uint32_t flags, enables;
 	uint16_t size;
+	int rc = 0;
 
 	if (vnic->fw_vnic_id == INVALID_HW_RING_ID) {
 		PMD_DRV_LOG_LINE(DEBUG, "VNIC ID %x", vnic->fw_vnic_id);
@@ -3052,19 +3056,26 @@ int bnxt_hwrm_vnic_plcmode_cfg(struct bnxt *bp,
 	}
 
 	HWRM_PREP(&req, HWRM_VNIC_PLCMODES_CFG, BNXT_USE_CHIMP_MB);
-
-	req.flags = rte_cpu_to_le_32(
-			HWRM_VNIC_PLCMODES_CFG_INPUT_FLAGS_JUMBO_PLACEMENT);
-
-	req.enables = rte_cpu_to_le_32(
-		HWRM_VNIC_PLCMODES_CFG_INPUT_ENABLES_JUMBO_THRESH_VALID);
+	flags = HWRM_VNIC_PLCMODES_CFG_INPUT_FLAGS_JUMBO_PLACEMENT;
+	enables = HWRM_VNIC_PLCMODES_CFG_INPUT_ENABLES_JUMBO_THRESH_VALID;
 
 	size = rte_pktmbuf_data_room_size(bp->rx_queues[0]->mb_pool);
 	size -= RTE_PKTMBUF_HEADROOM;
 	size = RTE_MIN(BNXT_MAX_PKT_LEN, size);
-
 	req.jumbo_thresh = rte_cpu_to_le_16(size);
+
+	if (rs & vnic->hds_threshold) {
+		flags |=
+			HWRM_VNIC_PLCMODES_CFG_INPUT_FLAGS_HDS_IPV4 |
+			HWRM_VNIC_PLCMODES_CFG_INPUT_FLAGS_HDS_IPV6;
+		req.hds_threshold = rte_cpu_to_le_16(vnic->hds_threshold);
+		enables |=
+		HWRM_VNIC_PLCMODES_CFG_INPUT_ENABLES_HDS_THRESHOLD_VALID;
+	}
+
 	req.vnic_id = rte_cpu_to_le_16(vnic->fw_vnic_id);
+	req.flags = rte_cpu_to_le_32(flags);
+	req.enables = rte_cpu_to_le_32(enables);
 
 	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req), BNXT_USE_CHIMP_MB);
 

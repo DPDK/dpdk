@@ -770,6 +770,11 @@ enum bnxt_session_type {
 	BNXT_SESSION_TYPE_LAST
 };
 
+#define BNXT_MAX_BUFFER_SPLIT_SEGS		2
+#define BNXT_MULTI_POOL_BUF_SPLIT_CAP		1
+#define BNXT_BUF_SPLIT_OFFSET_CAP		1
+#define BNXT_BUF_SPLIT_ALIGN_CAP		0
+
 struct bnxt {
 	void				*bar0;
 
