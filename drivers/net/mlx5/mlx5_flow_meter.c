@@ -2265,7 +2265,7 @@ mlx5_flow_meter_hws_create(struct rte_eth_dev *dev, uint32_t meter_id,
 	ret = mlx5_aso_meter_update_by_wqe(priv, MLX5_HW_INV_QUEUE, aso_mtr,
 					   &priv->mtr_bulk, job, true);
 	if (ret) {
-		flow_hw_job_put(priv, job, MLX5_HW_INV_QUEUE);
+		flow_hw_job_put(priv, job, CTRL_QUEUE_ID(priv));
 		return -rte_mtr_error_set(error, ENOTSUP,
 					  RTE_MTR_ERROR_TYPE_UNSPECIFIED,
 					  NULL, "Failed to create devx meter.");
