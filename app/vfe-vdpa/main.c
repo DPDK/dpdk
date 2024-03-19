@@ -21,7 +21,6 @@
 #include <virtio_lm.h>
 #include <rte_vf_rpc.h>
 #include <rte_vfio.h>
-#include <virtio_ha.h>
 #include <virtio_vdpa.h>
 
 #include <cmdline_parse.h>
@@ -31,6 +30,7 @@
 #include <cmdline.h>
 
 #include "vdpa_rpc.h"
+#include "vdpa_ha.c"
 
 static struct vdpa_rpc_context vdpa_rpc_ctx;
 
@@ -731,248 +731,10 @@ cmdline_parse_ctx_t main_ctx[] = {
 	NULL,
 };
 
-static void
-virtio_ha_client_dma_map(uint64_t iova, uint64_t len, bool map)
-{
-	struct virtio_ha_global_dma_map dma_map = {.iova = iova, .size = len};
-	int ret;
-
-	if (map) {
-		ret = virtio_ha_global_dma_map_store(&dma_map);
-		if (ret < 0)
-			RTE_LOG(ERR, VDPA, "Failed to store dma map\n");
-	} else {
-		ret = virtio_ha_global_dma_map_remove(&dma_map);
-		if (ret < 0)
-			RTE_LOG(ERR, VDPA, "Failed to remove dma map\n");	
-	}
-
-	return;
-}
-
-static void
-virtio_ha_client_cfd_store(int container_fd)
-{
-	int ret;
-
-	ret = virtio_ha_global_cfd_store(container_fd);
-	if (ret < 0)
-		RTE_LOG(ERR, VDPA, "Failed to store container fd\n");
-
-	return;
-}
-
-static int
-virtio_ha_client_start(void)
-{
-	int ret, vfio_container_fd = -1; 
-
-	ret = virtio_ha_ipc_client_init();
-	if (ret) {
-		RTE_LOG(ERR, VDPA, "Failed to init ha ipc client\n");
-		return -1;		
-	}
-
-	rte_vfio_register_dma_cb(virtio_ha_client_dma_map, virtio_ha_client_cfd_store);
-
-	ret = virtio_ha_global_cfd_query(&vfio_container_fd);
-	if (ret < 0) {
-		RTE_LOG(ERR, VDPA, "Failed to query global container fd\n");
-		return -1;
-	} else {
-		RTE_LOG(INFO, VDPA, "Query success: global container fd(%d)\n", vfio_container_fd);
-	}
-
-	rte_vfio_restore_default_cfd(vfio_container_fd);
-
-	return 0;
-}
-
-static int
-virtio_ha_client_dev_restore(void)
-{
-	struct virtio_dev_name *pf_list = NULL;
-	struct vdpa_vf_with_devargs *vf_list = NULL;
-	struct vdpa_vf_ctx *vf_ctx = NULL;
-	struct virtio_pf_ctx pf_ctx;
-	struct virtio_ha_vf_restore_queue rq;
-	struct virtio_ha_vf_to_restore *vf_dev, *next;
-	int ret, i, j, nr_pf, nr_vf, total_vf = 0;
-
-	ret = virtio_ha_pf_list_query(&pf_list);
-	if (ret < 0) {
-		RTE_LOG(ERR, VDPA, "Failed to query pf list\n");
-		return -1;
-	} else if (ret == 0) {
-		RTE_LOG(INFO, VDPA, "Query success: 0 pf to restore\n");
-		return 0;
-	} else {
-		RTE_LOG(INFO, VDPA, "Query success: %d pf to restore\n", ret);
-	}
-
-	nr_pf = ret;
-
-	TAILQ_INIT(&rq.non_prio_q);
-	TAILQ_INIT(&rq.prio_q);
-	pthread_mutex_init(&rq.lock, NULL);
-
-	for (i = 0; i < nr_pf; i++) {
-		ret = virtio_ha_pf_ctx_query(pf_list + i, &pf_ctx);
-		if (ret < 0) {
-			RTE_LOG(ERR, VDPA, "Failed to query pf ctx\n");
-			ret = -1;
-			goto err;
-		}
-
-		ret = virtio_ha_pf_ctx_set(pf_list + i, &pf_ctx);
-		if (ret < 0) {
-			RTE_LOG(ERR, VDPA, "Failed to set pf ctx in pf driver\n");
-			ret = -1;
-			goto err;
-		}
-
-		ret = rte_vdpa_pf_dev_add(pf_list[i].dev_bdf);
-		if (ret < 0) {
-			RTE_LOG(ERR, VDPA, "Failed to restore pf\n");
-			ret = -1;
-			goto err;
-		}
-
-		ret = virtio_ha_pf_ctx_unset(pf_list + i);
-		if (ret < 0) {
-			RTE_LOG(ERR, VDPA, "Failed to unset pf ctx in pf driver\n");
-			ret = -1;
-			goto err;
-		}
-	}
-
-	for (i = 0; i < nr_pf; i++) {
-		ret = virtio_ha_vf_list_query(pf_list + i, &vf_list);
-		if (ret < 0) {
-			RTE_LOG(ERR, VDPA, "Failed to query vf list of %s\n", pf_list[i].dev_bdf);
-			ret = -1;
-			goto err;		
-		} else {
-			RTE_LOG(INFO, VDPA, "Query success: %d vf of pf %s to restore\n",
-				ret, pf_list[i].dev_bdf);
-		}
-
-		nr_vf = ret;
-		total_vf += nr_vf;
-
-		/* No need to take priority queue lock as the priority channel is not inited yet */
-		for (j = 0; j < nr_vf; j++) {
-			vf_dev = malloc(sizeof(struct virtio_ha_vf_to_restore));
-			if (!vf_dev) {
-				RTE_LOG(ERR, VDPA, "Failed to alloc restore vf\n");
-				pthread_mutex_unlock(&rq.lock);
-				free(vf_list);
-				ret = -1;
-				goto err;
-			}
-			memcpy(&vf_dev->vf_devargs, vf_list + j, sizeof(struct vdpa_vf_with_devargs));
-			memcpy(&vf_dev->pf_name, pf_list + i, sizeof(struct virtio_dev_name));
-			TAILQ_INSERT_TAIL(&rq.non_prio_q, vf_dev, next);
-		}
-
-		free(vf_list);
-		vf_list = NULL;
-	}
-
-	ret = virtio_ha_prio_chnl_init(&rq);
-	if (ret) {
-		RTE_LOG(ERR, VDPA, "Failed to init priority channel\n");
-		goto err;
-	}
-
-	while (total_vf > 0 && ret != -1) {
-		pthread_mutex_lock(&rq.lock);
-
-		if (TAILQ_EMPTY(&rq.prio_q)) {
-			vf_dev = TAILQ_FIRST(&rq.non_prio_q);
-			TAILQ_REMOVE(&rq.non_prio_q, vf_dev, next);
-		} else {
-			vf_dev = TAILQ_FIRST(&rq.prio_q);
-			TAILQ_REMOVE(&rq.prio_q, vf_dev, next);
-		}
-
-		pthread_mutex_unlock(&rq.lock);
-
-		ret = virtio_ha_vf_ctx_query(&vf_dev->vf_devargs.vf_name, &vf_dev->pf_name, &vf_ctx);
-		if (ret < 0) {
-			RTE_LOG(ERR, VDPA, "Failed to query vf ctx\n");
-			ret = -1;
-			goto err;
-		}
-
-		ret = virtio_ha_vf_ctx_set(&vf_dev->vf_devargs.vf_name, vf_ctx);
-		if (ret < 0) {
-			RTE_LOG(ERR, VDPA, "Failed to set vf ctx in vf driver\n");
-			ret = -1;
-			goto err_vf_ctx;
-		}
-
-		ret = rte_vdpa_vf_dev_add(vf_list[j].vf_name.dev_bdf, vf_list[j].vm_uuid, NULL, stage1);
-		if (ret < 0) {
-			RTE_LOG(ERR, VDPA, "Failed to restore vf\n");
-			ret = -1;
-			goto err_vf_ctx;
-		}
-
-		ret = virtio_ha_vf_vhost_fd_remove(&vf_dev->vf_devargs.vf_name, &vf_dev->pf_name);
-		if (ret < 0) {
-			RTE_LOG(ERR, VDPA, "Failed to close vhost fd\n");
-			ret = -1;
-			goto err_vf_ctx;
-		}
-
-		ret = vdpa_with_socket_path_start(vf_dev->vf_devargs.vf_name.dev_bdf,
-			vf_dev->vf_devargs.vhost_sock_addr);
-		if (ret < 0) {
-			RTE_LOG(ERR, VDPA, "Failed to start vdpa\n");
-			ret = -1;
-			goto err_vf_ctx;
-		}
-
-		ret = virtio_ha_vf_ctx_unset(&vf_dev->vf_devargs.vf_name);
-		if (ret < 0) {
-			RTE_LOG(ERR, VDPA, "Failed to unset vf ctx in vf driver\n");
-			ret = -1;
-			goto err_vf_ctx;
-		}
-
-		total_vf--;
-err_vf_ctx:
-		free(vf_ctx);
-		free(vf_dev);
-	}
-
-err:
-	free(pf_list);
-	if (!TAILQ_EMPTY(&rq.prio_q)) {
-		for (vf_dev = TAILQ_FIRST(&rq.prio_q);
-				vf_dev != NULL; vf_dev = next) {
-			next = TAILQ_NEXT(vf_dev, next);
-			TAILQ_REMOVE(&rq.prio_q, vf_dev, next);
-			free(vf_dev);
-		}
-	}
-	if (!TAILQ_EMPTY(&rq.non_prio_q)) {
-		for (vf_dev = TAILQ_FIRST(&rq.non_prio_q);
-				vf_dev != NULL; vf_dev = next) {
-			next = TAILQ_NEXT(vf_dev, next);
-			TAILQ_REMOVE(&rq.non_prio_q, vf_dev, next);
-			free(vf_dev);
-		}
-	}
-	virtio_ha_prio_chnl_destroy();
-	return ret;
-}
-
 int
 main(int argc, char *argv[])
 {
-	int ret;
+	int ret, total_vf = 0;
 	rte_uuid_t vf_token;
 	sigset_t set;
 	pthread_t thread_s;
@@ -1015,14 +777,20 @@ main(int argc, char *argv[])
 	if (ret < 0)
 		rte_exit(EXIT_FAILURE, "invalid argument\n");
 
-	ret = virtio_ha_client_dev_restore();
+	ret = virtio_ha_client_dev_restore_pf(&total_vf);
 	if (ret < 0)
-		rte_exit(EXIT_FAILURE, "ha client dev restore failed\n");
+		rte_exit(EXIT_FAILURE, "ha client dev restore pf failed\n");
 	
 	ret = vdpa_rpc_start(&vdpa_rpc_ctx);
 	if (ret < 0)
 		rte_exit(EXIT_FAILURE, "rpc init failed\n");
 	rpc_start = true;
+
+	if (total_vf > 0) {
+		ret = virtio_ha_client_dev_restore_vf(total_vf);
+		if (ret < 0)
+			rte_exit(EXIT_FAILURE, "ha client dev restore vf failed\n");
+	}
 
 	/* loop for exit the application */
 	while (1)

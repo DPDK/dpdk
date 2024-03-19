@@ -18,12 +18,14 @@
 #include <rte_version.h>
 #include <virtio_api.h>
 #include <virtio_lm.h>
+#include <virtio_ha.h>
 #include <virtio_admin.h>
 #include <rte_vf_rpc.h>
 
 #include "jsonrpc-c.h"
 #include "jsonrpc-client.h"
 #include "vdpa_rpc.h"
+#include "vdpa_ha.h"
 
 /* VDPA RPC */
 /* For string conversion */
@@ -114,16 +116,25 @@ static cJSON *vdpa_pf_dev_remove(const char *pf_name)
 {
 	cJSON *result = cJSON_CreateObject();
 	struct vdpa_vf_params vf_para;
-	int max_vf_num;
+	int max_vf_num, ret;
+
+	if (virtio_ha_client_pf_has_restore_vf(pf_name))
+		return vdpa_rpc_format_errno(result, -VFE_VDPA_ERR_REMOVE_PF_WITH_VF);
 
 	max_vf_num = rte_vdpa_get_vf_list(pf_name, &vf_para, 1);
 	if (max_vf_num > 0) {
 		return vdpa_rpc_format_errno(result, -VFE_VDPA_ERR_REMOVE_PF_WITH_VF);
 	}
 
+	virtio_ha_dev_lock();
+
 	rte_vdpa_pf_ctrl_ctx_remove(true);
 
-	return vdpa_rpc_format_errno(result, rte_vdpa_pf_dev_remove(pf_name));
+	ret = rte_vdpa_pf_dev_remove(pf_name);
+
+	virtio_ha_dev_unlock();
+
+	return vdpa_rpc_format_errno(result, ret);
 }
 
 static cJSON *vdpa_pf_dev_list(void)
@@ -201,24 +212,38 @@ static cJSON *vdpa_vf_dev_add(char *vf_name,
 	cJSON *result = cJSON_CreateObject();
 	int ret;
 
+	if (virtio_ha_client_vf_in_restore(vf_name))
+		return vdpa_rpc_format_errno(result, -VFE_VDPA_ERR_ADD_VF_ALREADY_ADD);
+
 	if (vdpa_socket_file_exists(socket_file)) {
 		return vdpa_rpc_format_errno(result, -VFE_VDPA_ERR_ADD_VF_VHOST_SOCK_EXIST);
 	}
 
+	virtio_ha_dev_lock();
 	ret = rte_vdpa_vf_dev_add(vf_name, vm_uuid, vf_params, stage1);
 	if (ret) {
 		return vdpa_rpc_format_errno(result, ret);
 	}
 	ret = vdpa_with_socket_path_start(vf_name, socket_file);
+	virtio_ha_dev_unlock();
+
 	return vdpa_rpc_format_errno(result, ret);
 }
 
 static cJSON *vdpa_vf_dev_remove(const char *vf_name)
 {
 	cJSON *result = cJSON_CreateObject();
+	int ret;
 
+	if (virtio_ha_client_vf_in_restore(vf_name))
+		return vdpa_rpc_format_errno(result, -VFE_VDPA_ERR_REMOVE_VF_RESTORE_IN_PROGRESS);
+
+	virtio_ha_dev_lock();
 	vdpa_with_socket_path_stop(vf_name);
-	return vdpa_rpc_format_errno(result, rte_vdpa_vf_dev_remove(vf_name));
+	ret = rte_vdpa_vf_dev_remove(vf_name);
+	virtio_ha_dev_unlock();
+
+	return vdpa_rpc_format_errno(result, ret);
 }
 
 static void vdpa_vf_info_reformat(cJSON *device, struct vdpa_vf_params *vf_params)
@@ -228,6 +253,7 @@ static void vdpa_vf_info_reformat(cJSON *device, struct vdpa_vf_params *vf_param
 	uint8_t *addr_bytes = vf_params->mac.addr_bytes;
 
 	cJSON_AddStringToObject(device, "vf", vf_params->vf_name);
+	cJSON_AddTrueToObject(device, "probed");
 	JSON_STR_NUM_TO_OBJ(device, "msix_num", "%u",
 				vf_params->msix_num);
 	JSON_STR_NUM_TO_OBJ(device, "queue_num", "%u",
@@ -251,12 +277,27 @@ static void vdpa_vf_info_reformat(cJSON *device, struct vdpa_vf_params *vf_param
 		cJSON_AddFalseToObject(device, "configured");
 }
 
+static void vdpa_vf_info_reformat_with_devarg(cJSON *device, struct vdpa_vf_with_devargs *args)
+{
+	cJSON_AddStringToObject(device, "vf", args->vf_name.dev_bdf);
+	cJSON_AddFalseToObject(device, "probed");
+	cJSON_AddStringToObject(device, "vm_uuid", args->vm_uuid);
+	cJSON_AddStringToObject(device, "socket_file", args->vhost_sock_addr);
+}
+
 static cJSON *vdpa_vf_dev_info(const char *vf_name)
 {
 	cJSON *result = cJSON_CreateObject();
 	struct vdpa_vf_params vf_info = {0};
+	struct vdpa_vf_with_devargs arg;
 	cJSON *device = NULL;
 	int ret = 0;
+
+	if (virtio_ha_client_vf_restore_devargs(vf_name, &arg)) {
+		device = cJSON_CreateObject();
+		vdpa_vf_info_reformat_with_devarg(device, &arg);
+		goto exit;
+	}
 
 	ret = rte_vdpa_get_vf_info(vf_name, &vf_info);
 	if (ret) {
@@ -264,6 +305,7 @@ static cJSON *vdpa_vf_dev_info(const char *vf_name)
 	}
 	device = cJSON_CreateObject();
 	vdpa_vf_info_reformat(device, &vf_info);
+exit:
 	cJSON_AddItemToObject(result, "device", device);
 	return vdpa_rpc_format_errno(result, ret);;
 }
@@ -273,12 +315,15 @@ static cJSON *vdpa_vf_dev_list(const char *pf_name)
 	cJSON *result = cJSON_CreateObject();
 	cJSON *devices = cJSON_CreateArray();
 	struct vdpa_vf_params *vf_info = NULL;
+	struct vdpa_vf_with_devargs *vf_list = NULL;
 	cJSON *device = NULL;
 	int max_vf_num, i;
+	uint32_t vf_restore, j;
 	int ret = 0;
 
 	vf_info = rte_zmalloc(NULL,
 		sizeof(struct vdpa_vf_params) * MAX_VDPA_SAMPLE_PORTS, 0);
+	virtio_ha_dev_lock();
 	max_vf_num = rte_vdpa_get_vf_list(pf_name, vf_info,
 			MAX_VDPA_SAMPLE_PORTS);
 	if (max_vf_num <= 0) {
@@ -293,6 +338,17 @@ static cJSON *vdpa_vf_dev_list(const char *pf_name)
 		vdpa_vf_info_reformat(device, &vf_info[i]);
 		cJSON_AddItemToArray(devices, device);
 	}
+
+	vf_restore = virtio_ha_client_pf_vf_list(pf_name, &vf_list);
+	if (vf_restore != 0) {
+		for (j = 0; j < vf_restore; j++) {
+			device = cJSON_CreateObject();
+			vdpa_vf_info_reformat_with_devarg(device, vf_list + j);
+			cJSON_AddItemToArray(devices, device);
+		}
+		free(vf_list);
+	}
+	virtio_ha_dev_unlock();
 	cJSON_AddItemToObject(result, "devices", devices);
 	rte_free(vf_info);
 	return vdpa_rpc_format_errno(result, ret);
@@ -303,6 +359,12 @@ static cJSON *vdpa_vf_dev_debug(const char *vf_name,
 {
 	struct vdpa_vf_params vf_info = {0};
 	cJSON *result = cJSON_CreateObject();
+
+	if (virtio_ha_client_vf_in_restore(vf_name)) {
+		cJSON_AddStringToObject(result, "Error",
+		"VF is in restore state");
+		return result;
+	}
 
 	if (rte_vdpa_get_vf_info(vf_name, &vf_info)) {
 		cJSON_AddStringToObject(result, "Error",
