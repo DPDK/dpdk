@@ -4293,6 +4293,9 @@ ixgbe_dev_link_update_share(struct rte_eth_dev *dev,
 	int wait = 1;
 	u32 esdp_reg;
 
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return -1;
+
 	memset(&link, 0, sizeof(link));
 	link.link_status = RTE_ETH_LINK_DOWN;
 	link.link_speed = RTE_ETH_SPEED_NUM_NONE;
