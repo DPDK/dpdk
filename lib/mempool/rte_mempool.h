@@ -1521,7 +1521,7 @@ rte_mempool_do_generic_get(struct rte_mempool *mp, void **obj_table,
 	/* The cache is a stack, so copy will be in reverse order. */
 	cache_objs = &cache->objs[cache->len];
 
-	if (__extension__(__builtin_constant_p(n)) && n <= cache->len) {
+	if (__rte_constant(n) && n <= cache->len) {
 		/*
 		 * The request size is known at build time, and
 		 * the entire request can be satisfied from the cache,
@@ -1542,8 +1542,7 @@ rte_mempool_do_generic_get(struct rte_mempool *mp, void **obj_table,
 	 * If the request size 'n' is known at build time, the above comparison
 	 * ensures that n > cache->len here, so omit RTE_MIN().
 	 */
-	len = __extension__(__builtin_constant_p(n)) ? cache->len :
-			RTE_MIN(n, cache->len);
+	len = __rte_constant(n) ? cache->len : RTE_MIN(n, cache->len);
 	cache->len -= len;
 	remaining = n - len;
 	for (index = 0; index < len; index++)
@@ -1554,7 +1553,7 @@ rte_mempool_do_generic_get(struct rte_mempool *mp, void **obj_table,
 	 * where the entire request can be satisfied from the cache
 	 * has already been handled above, so omit handling it here.
 	 */
-	if (!__extension__(__builtin_constant_p(n)) && remaining == 0) {
+	if (!__rte_constant(n) && remaining == 0) {
 		/* The entire request is satisfied from the cache. */
 
 		RTE_MEMPOOL_CACHE_STAT_ADD(cache, get_success_bulk, 1);
