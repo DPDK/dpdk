@@ -44,6 +44,12 @@ extern "C" {
 #endif
 #endif
 
+#ifdef RTE_TOOLCHAIN_MSVC
+#define __rte_constant(e) 0
+#else
+#define __rte_constant(e) __extension__(__builtin_constant_p(e))
+#endif
+
 /*
  * RTE_TOOLCHAIN_GCC is defined if the target is built with GCC,
  * while a host application (like pmdinfogen) may have another compiler.
