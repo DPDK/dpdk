@@ -445,11 +445,16 @@ setup_memory_env(struct test_configure *cfg,
 	unsigned int nr_sockets;
 	uint32_t nr_buf = cfg->nr_buf;
 	uint32_t i;
+	bool is_src_numa_incorrect, is_dst_numa_incorrect;
 
 	nr_sockets = rte_socket_count();
-	if (cfg->src_numa_node >= nr_sockets ||
-		cfg->dst_numa_node >= nr_sockets) {
-		printf("Error: Source or destination numa exceeds the acture numa nodes.\n");
+	is_src_numa_incorrect = (cfg->src_numa_node >= nr_sockets);
+	is_dst_numa_incorrect = (cfg->dst_numa_node >= nr_sockets);
+
+	if (is_src_numa_incorrect || is_dst_numa_incorrect) {
+		PRINT_ERR("Error: Incorrect NUMA config for %s.\n",
+			(is_src_numa_incorrect && is_dst_numa_incorrect) ? "source & destination" :
+				(is_src_numa_incorrect) ? "source" : "destination");
 		return -1;
 	}
 
