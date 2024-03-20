@@ -157,15 +157,24 @@ static int
 dma_dev_data_prepare(void)
 {
 	size_t size;
+	void *ptr;
 
 	if (rte_dma_devices != NULL)
 		return 0;
 
-	size = dma_devices_max * sizeof(struct rte_dma_dev);
-	rte_dma_devices = malloc(size);
-	if (rte_dma_devices == NULL)
+	/* The DMA device object is expected to align cacheline,
+	 * but the return value of malloc may not be aligned to the cache line.
+	 * Therefore, extra memory is applied for realignment.
+	 * Note: posix_memalign/aligned_alloc are not used
+	 * because not always available, depending on libc.
+	 */
+	size = dma_devices_max * sizeof(struct rte_dma_dev) + RTE_CACHE_LINE_SIZE;
+	ptr = malloc(size);
+	if (ptr == NULL)
 		return -ENOMEM;
-	memset(rte_dma_devices, 0, size);
+	memset(ptr, 0, size);
+
+	rte_dma_devices = RTE_PTR_ALIGN(ptr, RTE_CACHE_LINE_SIZE);
 
 	return 0;
 }
