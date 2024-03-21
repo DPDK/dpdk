@@ -249,6 +249,174 @@ virtio_pci_dev_state_dev_status_set(void *state, uint8_t dev_status)
 
 	state_info->common_cfg.device_status = dev_status;
 }
+
+static struct virtio_field_hdr *
+virtio_pci_dev_state_filed_find(struct virtio_field_hdr *f_hdr, uint32_t field_cnt, uint32_t f_type,
+						void *state, uint32_t state_size)
+{
+	while(field_cnt) {
+		if (rte_le_to_cpu_32(f_hdr->type) == f_type) {
+			return f_hdr;
+		}
+		f_hdr = (struct virtio_field_hdr *)((uint8_t *)(f_hdr + 1) + rte_le_to_cpu_32(f_hdr->size));
+		if (((uint8_t *)f_hdr - (uint8_t *)state) > state_size) {
+			PMD_INIT_LOG(ERR, "TLV exceed state size, tlv:%p state:%p size:%d\n", f_hdr, state, state_size);
+			return NULL;
+		}
+		field_cnt--;
+	}
+
+	return NULL;
+}
+
+static struct virtio_field_hdr *
+virtio_pci_dev_state_queue_filed_find(struct virtio_field_hdr *f_hdr, uint32_t field_cnt,
+						void *state, uint32_t state_size, uint16_t qidx)
+{
+	struct virtio_dev_q_cfg *tmp_q_cfg;
+
+	while(field_cnt) {
+		if (rte_le_to_cpu_32(f_hdr->type) == VIRTIO_DEV_QUEUE_CFG) {
+			tmp_q_cfg = (struct virtio_dev_q_cfg *)(f_hdr + 1);
+			if (qidx == rte_le_to_cpu_16(tmp_q_cfg->queue_index))
+				return f_hdr;
+		}
+
+		f_hdr = (struct virtio_field_hdr *)((uint8_t *)(f_hdr + 1) + rte_le_to_cpu_32(f_hdr->size));
+		if (((uint8_t *)f_hdr - (uint8_t *)state) > state_size) {
+			PMD_INIT_LOG(ERR, "TLV exceed state size, tlv:%p state:%p size:%d\n", f_hdr, state, state_size);
+			return NULL;
+		}
+		field_cnt--;
+	}
+
+	return NULL;
+}
+static void
+virtio_pci_dev_q_cfg_dump(struct virtio_dev_q_cfg *tmp_q_cfg)
+{
+	PMD_DUMP_LOG(INFO, ">>> qid:%d size: %d msix: %d enable: %d notify_offset: %d desc 0x%lx driver 0x%lx device 0x%lx notify data: %d reset: %d\r\n",
+			rte_le_to_cpu_16(tmp_q_cfg->queue_index),
+			rte_le_to_cpu_16(tmp_q_cfg->queue_size),
+			rte_le_to_cpu_16(tmp_q_cfg->queue_msix_vector),
+			rte_le_to_cpu_16(tmp_q_cfg->queue_enable),
+			rte_le_to_cpu_16(tmp_q_cfg->queue_notify_off),
+			rte_le_to_cpu_64(tmp_q_cfg->queue_desc),
+			rte_le_to_cpu_64(tmp_q_cfg->queue_driver),
+			rte_le_to_cpu_64(tmp_q_cfg->queue_device),
+			rte_le_to_cpu_16(tmp_q_cfg->queue_notify_data),
+			rte_le_to_cpu_16(tmp_q_cfg->queue_reset));
+}
+
+static void
+virtio_pci_dev_common_cfg_dump(struct virtio_pci_state_common_cfg *common_cfg)
+{
+	PMD_DUMP_LOG(INFO, ">>> dev_ftr_sel: %d dev_ftrs: 0x%lx drv_ftr_sel: %d drv_ftrs: 0x%lx msi_x: 0x%0x num_queues: %d queue_select: %d status: 0x%0x config_gen: %d\n",
+			rte_le_to_cpu_32(common_cfg->device_feature_select),
+			rte_le_to_cpu_64(common_cfg->device_feature),
+			rte_le_to_cpu_32(common_cfg->driver_feature_select),
+			rte_le_to_cpu_64(common_cfg->driver_feature),
+			rte_le_to_cpu_16(common_cfg->msix_config),
+			rte_le_to_cpu_16(common_cfg->num_queues),
+			rte_le_to_cpu_16(common_cfg->queue_select),
+			common_cfg->device_status,
+			common_cfg->config_generation);
+}
+
+bool
+virtio_pci_dev_state_compare(struct virtio_pci_dev *vpdev, void *state, uint32_t state_size,
+					  void *state_remote, uint32_t state_size_remote)
+{
+	struct virtio_dev_state_hdr *hdr,*hdr_remote;
+	struct virtio_field_hdr *f_hdr,*f_hdr_remote,*f_hdr_tmp;
+	struct virtio_dev_q_cfg *tmp_q_cfg;
+	uint32_t field_cnt, field_cnt_remote;
+	struct virtio_pci_state_common_cfg *common_cfg, *common_cfg_remote;
+	struct virtio_hw *hw;
+
+	hw = &vpdev->hw;
+
+	hdr = state;
+	field_cnt = rte_le_to_cpu_32(hdr->virtio_field_count);
+	hdr_remote = state_remote;
+	field_cnt_remote = rte_le_to_cpu_32(hdr_remote->virtio_field_count);
+
+	f_hdr = (struct virtio_field_hdr *)(hdr + 1);
+	f_hdr_remote = (struct virtio_field_hdr *)(hdr_remote + 1);
+	while(field_cnt) {
+		switch (rte_le_to_cpu_32(f_hdr->type)) {
+			case VIRTIO_DEV_PCI_COMMON_CFG:
+				f_hdr_tmp = virtio_pci_dev_state_filed_find(f_hdr_remote, field_cnt_remote,
+									    f_hdr->type, state_remote, state_size_remote);
+				common_cfg = (struct virtio_pci_state_common_cfg *)(f_hdr + 1);
+				common_cfg_remote = (struct virtio_pci_state_common_cfg *)(f_hdr_tmp + 1);
+				if((common_cfg->device_feature != common_cfg_remote->device_feature) ||
+				   (common_cfg->driver_feature != common_cfg_remote->driver_feature) ||
+				   (common_cfg->msix_config != common_cfg_remote->msix_config) ||
+				   (common_cfg->num_queues != common_cfg_remote->num_queues) ||
+				   (common_cfg->device_status != common_cfg_remote->device_status)) {
+					PMD_DUMP_LOG(INFO, "VIRTIO_DEV_PCI_COMMON_CFG, local size:%d bytes \n", f_hdr->size);
+					virtio_pci_dev_common_cfg_dump(common_cfg);
+					PMD_DUMP_LOG(INFO, "VIRTIO_DEV_PCI_COMMON_CFG, remote size:%d bytes \n", f_hdr_tmp->size);
+					virtio_pci_dev_common_cfg_dump(common_cfg_remote);
+					return false;
+				}
+				break;
+			case VIRTIO_DEV_CFG_SPACE:
+				f_hdr_tmp = virtio_pci_dev_state_filed_find(f_hdr_remote, field_cnt_remote,
+									    f_hdr->type, state_remote, state_size_remote);
+				if (hw->virtio_dev_sp_ops->dev_cfg_compare) {
+					if (hw->virtio_dev_sp_ops->dev_cfg_compare(hw, f_hdr, f_hdr_tmp))
+						break;
+					else
+						return false;
+				}
+
+				if(memcmp(f_hdr, f_hdr_tmp, f_hdr->size + sizeof(*f_hdr))) {
+					PMD_DUMP_LOG(INFO, "VIRTIO_DEV_CFG_SPACE, local size:%d bytes \n", f_hdr->size);
+					hw->virtio_dev_sp_ops->dev_cfg_dump(f_hdr);
+					if(f_hdr_tmp) {
+						PMD_DUMP_LOG(INFO, "VIRTIO_DEV_CFG_SPACE, remote size:%d bytes \n", f_hdr_tmp->size);
+						hw->virtio_dev_sp_ops->dev_cfg_dump(f_hdr_tmp);
+					}
+					return false;
+				}
+				break;
+			case VIRTIO_DEV_SPLIT_Q_RUN_STATE:
+				break;
+			case VIRTIO_DEV_QUEUE_CFG:
+				tmp_q_cfg = (struct virtio_dev_q_cfg *)(f_hdr + 1);
+				f_hdr_tmp = virtio_pci_dev_state_queue_filed_find(f_hdr_remote, field_cnt_remote,
+									state_remote, state_size_remote,
+									rte_le_to_cpu_16(tmp_q_cfg->queue_index));
+				if(memcmp(f_hdr, f_hdr_tmp, f_hdr->size + sizeof(*f_hdr))) {
+					PMD_DUMP_LOG(INFO, "VIRTIO_DEV_QUEUE_CFG, local size:%d bytes \n", f_hdr->size);
+					virtio_pci_dev_q_cfg_dump(tmp_q_cfg);
+
+					if(f_hdr_tmp) {
+						PMD_DUMP_LOG(INFO, "VIRTIO_DEV_QUEUE_CFG, remote size:%d bytes \n", f_hdr_tmp->size);
+						tmp_q_cfg = (struct virtio_dev_q_cfg *)(f_hdr_tmp + 1);
+						virtio_pci_dev_q_cfg_dump(tmp_q_cfg);
+					}
+					return false;
+				}
+				break;
+			default:
+				break;
+		}
+		f_hdr = (struct virtio_field_hdr *)((uint8_t *)(f_hdr + 1) + rte_le_to_cpu_32(f_hdr->size));
+		field_cnt--;
+
+		if ((uint8_t *)f_hdr > ((uint8_t *)state + state_size)) {
+			PMD_DUMP_LOG(ERR, "state compare pointer exceed!\r\n");
+			return false;
+		}
+	}
+
+	PMD_DUMP_LOG(INFO, "--------------state compare same--------------\r\n");
+	return true;
+}
+
 void
 virtio_pci_dev_state_dump(struct virtio_pci_dev *vpdev, void *state, uint32_t state_size)
 {
@@ -277,16 +445,7 @@ virtio_pci_dev_state_dump(struct virtio_pci_dev *vpdev, void *state, uint32_t st
 					PMD_DUMP_LOG(INFO, ">> VIRTIO_DEV_PCI_COMMON_CFG is truncated\n");
 					break;
 				}
-				PMD_DUMP_LOG(INFO, ">>> dev_ftr_sel: %d dev_ftrs: 0x%lx drv_ftr_sel: %d drv_ftrs: 0x%lx msi_x: 0x%0x num_queues: %d queue_select: %d status: 0x%0x config_gen: %d\n",
-									rte_le_to_cpu_32(common_cfg->device_feature_select),
-									rte_le_to_cpu_64(common_cfg->device_feature),
-									rte_le_to_cpu_32(common_cfg->driver_feature_select),
-									rte_le_to_cpu_64(common_cfg->driver_feature),
-									rte_le_to_cpu_16(common_cfg->msix_config),
-									rte_le_to_cpu_16(common_cfg->num_queues),
-									rte_le_to_cpu_16(common_cfg->queue_select),
-									common_cfg->device_status,
-									common_cfg->config_generation);
+				virtio_pci_dev_common_cfg_dump(common_cfg);
 				break;
 			case VIRTIO_DEV_SPLIT_Q_RUN_STATE:
 				tmp_hw_idx = (struct virtio_dev_split_q_run_state *)(f_hdr + 1);
@@ -307,17 +466,7 @@ virtio_pci_dev_state_dump(struct virtio_pci_dev *vpdev, void *state, uint32_t st
 					PMD_DUMP_LOG(INFO, ">> VIRTIO_DEV_QUEUE_CFG is truncated\n");
 					break;
 				}
-				PMD_DUMP_LOG(INFO, ">>> qid:%d size: %d msix: %d enable: %d notify_offset: %d desc 0x%lx driver 0x%lx device 0x%lx notify data: %d reset: %d\r\n",
-									rte_le_to_cpu_16(tmp_q_cfg->queue_index),
-									rte_le_to_cpu_16(tmp_q_cfg->queue_size),
-									rte_le_to_cpu_16(tmp_q_cfg->queue_msix_vector),
-									rte_le_to_cpu_16(tmp_q_cfg->queue_enable),
-									rte_le_to_cpu_16(tmp_q_cfg->queue_notify_off),
-									rte_le_to_cpu_64(tmp_q_cfg->queue_desc),
-									rte_le_to_cpu_64(tmp_q_cfg->queue_driver),
-									rte_le_to_cpu_64(tmp_q_cfg->queue_device),
-									rte_le_to_cpu_16(tmp_q_cfg->queue_notify_data),
-									rte_le_to_cpu_16(tmp_q_cfg->queue_reset));
+				virtio_pci_dev_q_cfg_dump(tmp_q_cfg);
 				break;
 			case VIRTIO_DEV_CFG_SPACE:
 				hw->virtio_dev_sp_ops->dev_cfg_dump(f_hdr);

@@ -88,6 +88,44 @@ modern_net_dev_cfg_dump(void *f_hdr)
 		  dev_cfg->status, dev_cfg->max_virtqueue_pairs, dev_cfg->mtu);
 }
 
+static bool
+modern_net_dev_cfg_compare(struct virtio_hw *hw, void *f_hdr, void *f_hdr_r)
+{
+	struct virtio_field_hdr *tmp_f_hdr= f_hdr, *tmp_f_hdr_r= f_hdr_r;
+	const struct virtio_net_config *dev_cfg, *dev_cfg_r;
+	int i;
+
+	dev_cfg = (struct virtio_net_config *)(tmp_f_hdr + 1);
+	dev_cfg_r = (struct virtio_net_config *)(tmp_f_hdr_r + 1);
+
+	for(i = 0; i < RTE_ETHER_ADDR_LEN; i++) {
+		if (dev_cfg->mac[i] != dev_cfg_r->mac[i]) {
+			PMD_DUMP_LOG(INFO, ">> virtio_net_config, mac diff:%d -%d i:%d bytes\n",
+				dev_cfg->mac[i], dev_cfg_r->mac[i], i);
+			return false;
+		}
+	}
+
+	if ((dev_cfg->status != dev_cfg_r->status) ||
+	    (dev_cfg->max_virtqueue_pairs != dev_cfg_r->max_virtqueue_pairs) ||
+	    (dev_cfg->mtu != dev_cfg_r->mtu)) {
+		PMD_DUMP_LOG(INFO, ">> virtio_net_config, diff:%d-%d %d-%d %d-%d\n",
+			dev_cfg->status, dev_cfg_r->status,
+			dev_cfg->max_virtqueue_pairs, dev_cfg_r->max_virtqueue_pairs, dev_cfg->mtu, dev_cfg_r->mtu);
+		return false;
+	}
+	if (virtio_with_feature(hw, VIRTIO_NET_F_SPEED_DUPLEX)) {
+		if ((dev_cfg->speed != dev_cfg_r->speed) ||
+		    (dev_cfg->duplex != dev_cfg_r->duplex)) {
+			PMD_DUMP_LOG(INFO, ">> virtio_net_config, speed diff:%d-%d %d-%d\n",
+				dev_cfg->speed, dev_cfg_r->speed, dev_cfg->duplex, dev_cfg_r->duplex);
+			return false;
+		}
+	}
+
+	return true;
+}
+
 static void
 modern_net_dev_state_init(void *state)
 {
@@ -106,5 +144,6 @@ const struct virtio_dev_specific_ops virtio_net_dev_pci_modern_ops = {
 	.get_queue_offset = modern_net_get_queue_offset,
 	.get_state_size = modern_net_get_state_size,
 	.dev_cfg_dump = modern_net_dev_cfg_dump,
+	.dev_cfg_compare = modern_net_dev_cfg_compare,
 	.dev_state_init = modern_net_dev_state_init,
 };

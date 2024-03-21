@@ -85,5 +85,6 @@ const struct virtio_dev_specific_ops virtio_blk_dev_pci_modern_ops = {
 	.get_queue_offset = modern_blk_get_queue_offset,
 	.get_state_size = modern_blk_get_state_size,
 	.dev_cfg_dump = modern_blk_dev_cfg_dump,
+	.dev_cfg_compare = NULL,
 	.dev_state_init = NULL,
 };
