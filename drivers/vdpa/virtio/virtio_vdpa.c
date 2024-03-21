@@ -1149,7 +1149,7 @@ virtio_vdpa_dev_close_work(void *arg)
 }
 
 static int
-virtio_vdpa_save_state_update_hwidx(struct virtio_vdpa_priv *priv, int num_vr)
+virtio_vdpa_save_state_update_hwidx(struct virtio_vdpa_priv *priv, int num_vr, bool update_idx)
 {
 	struct virtio_admin_migration_get_internal_state_pending_bytes_result res;
 	struct virtio_dev_run_state_info *tmp_hw_idx;
@@ -1208,6 +1208,9 @@ virtio_vdpa_save_state_update_hwidx(struct virtio_vdpa_priv *priv, int num_vr)
 		ret = -EIO;
 		goto out;
 	}
+
+	if (!update_idx)
+		goto out;
 
 	tmp_hw_idx = rte_zmalloc(NULL, num_vr * sizeof(struct virtio_dev_run_state_info), 0);
 	if (!tmp_hw_idx) {
@@ -1329,7 +1332,7 @@ virtio_vdpa_dev_close(int vid)
 	}
 
 	num_vr = rte_vhost_get_vring_num(priv->vid);
-	virtio_vdpa_save_state_update_hwidx(priv, num_vr);
+	virtio_vdpa_save_state_update_hwidx(priv, num_vr, true);
 
 	/* Disable all queues */
 	for (i = 0; i < num_vr; i++) {
@@ -1437,30 +1440,31 @@ virtio_vdpa_dev_config(int vid)
 													VIRTIO_CONFIG_STATUS_FEATURES_OK |
 													VIRTIO_CONFIG_STATUS_DRIVER_OK);
 
-	ret = virtio_vdpa_cmd_restore_state(priv->pf_priv, priv->vf_id, 0, priv->state_size, priv->state_mz->iova);
-	if (ret) {
-		DRV_LOG(ERR, "%s vfid %d failed restore state ret:%d", vdev->device->name, priv->vf_id, ret);
-		virtio_pci_dev_state_dump(priv->vpdev , priv->state_mz->addr, priv->state_size);
-		rte_errno = rte_errno ? rte_errno : EINVAL;
-		return -rte_errno;
-	}
+	if (!priv->restore) {
+		ret = virtio_vdpa_cmd_restore_state(priv->pf_priv, priv->vf_id, 0, priv->state_size, priv->state_mz->iova);
+		if (ret) {
+			DRV_LOG(ERR, "%s vfid %d failed restore state ret:%d", vdev->device->name, priv->vf_id, ret);
+			virtio_pci_dev_state_dump(priv->vpdev , priv->state_mz->addr, priv->state_size);
+			rte_errno = rte_errno ? rte_errno : EINVAL;
+			return -rte_errno;
+		}
 
-	ret = virtio_vdpa_cmd_set_status(priv->pf_priv, priv->vf_id, VIRTIO_S_QUIESCED);
-	if (ret) {
-		DRV_LOG(ERR, "%s vfid %d failed unfreeze ret:%d", vdev->device->name, priv->vf_id, ret);
-		rte_errno = rte_errno ? rte_errno : EINVAL;
-		return -rte_errno;
-	}
-	priv->lm_status = VIRTIO_S_QUIESCED;
+		ret = virtio_vdpa_cmd_set_status(priv->pf_priv, priv->vf_id, VIRTIO_S_QUIESCED);
+		if (ret) {
+			DRV_LOG(ERR, "%s vfid %d failed unfreeze ret:%d", vdev->device->name, priv->vf_id, ret);
+			rte_errno = rte_errno ? rte_errno : EINVAL;
+			return -rte_errno;
+		}
+		priv->lm_status = VIRTIO_S_QUIESCED;
 
-	ret = virtio_vdpa_cmd_set_status(priv->pf_priv, priv->vf_id, VIRTIO_S_RUNNING);
-	if (ret) {
-		DRV_LOG(ERR, "%s vfid %d failed unquiesced ret:%d", vdev->device->name, priv->vf_id, ret);
-		rte_errno = rte_errno ? rte_errno : EINVAL;
-		return -rte_errno;
+		ret = virtio_vdpa_cmd_set_status(priv->pf_priv, priv->vf_id, VIRTIO_S_RUNNING);
+		if (ret) {
+			DRV_LOG(ERR, "%s vfid %d failed unquiesced ret:%d", vdev->device->name, priv->vf_id, ret);
+			rte_errno = rte_errno ? rte_errno : EINVAL;
+			return -rte_errno;
+		}
+		priv->lm_status = VIRTIO_S_RUNNING;
 	}
-	priv->lm_status = VIRTIO_S_RUNNING;
-
 	DRV_LOG(INFO, "%s vid %d move to driver ok", vdev->device->name, vid);
 
 	virtio_vdpa_lcore_id = rte_get_next_lcore(virtio_vdpa_lcore_id, 1, 1);
@@ -2041,7 +2045,6 @@ virtio_vdpa_dev_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	uint32_t i;
 	size_t mz_len;
 	int retries = VIRTIO_VDPA_GET_GROUPE_RETRIES;
-	bool restore = false;
 	struct timeval start, end;
 	uint64_t time_used;
 
@@ -2133,7 +2136,7 @@ virtio_vdpa_dev_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	priv->iommu_domain = iommu_domain;
 
 	if (!strcmp(cached_ctx.vf_name.dev_bdf, devname)) {
-		restore = true;
+		priv->restore = true;
 		container_fd = cached_ctx.ctx->vfio_container_fd;
 		group_fd = cached_ctx.ctx->vfio_group_fd;
 		device_fd = cached_ctx.ctx->vfio_device_fd;
@@ -2221,7 +2224,7 @@ virtio_vdpa_dev_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		priv->vfio_group_fd = group_fd;		
 	}
 
-	priv->vpdev = virtio_pci_dev_alloc(pci_dev, device_fd, restore);
+	priv->vpdev = virtio_pci_dev_alloc(pci_dev, device_fd, priv->restore);
 	if (priv->vpdev == NULL) {
 		DRV_LOG(ERR, "%s failed to alloc virito pci dev", devname);
 		rte_errno = rte_errno ? rte_errno : VFE_VDPA_ERR_ADD_VF_ALLOC;
@@ -2321,24 +2324,6 @@ virtio_vdpa_dev_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		goto error;
 	}
 
-	ret = virtio_vdpa_cmd_set_status(priv->pf_priv, priv->vf_id, VIRTIO_S_QUIESCED);
-	if (ret) {
-		DRV_LOG(ERR, "%s vfid %d failed suspend ret:%d", devname, priv->vf_id, ret);
-		rte_errno = rte_errno ? rte_errno : VFE_VDPA_ERR_ADD_VF_SET_STATUS_QUIESCED;
-		goto error;
-	}
-
-	priv->lm_status = VIRTIO_S_QUIESCED;
-
-	ret = virtio_vdpa_cmd_set_status(priv->pf_priv, priv->vf_id, VIRTIO_S_FREEZED);
-	if (ret) {
-		DRV_LOG(ERR, "%s vfid %d failed suspend ret:%d", devname, priv->vf_id, ret);
-		rte_errno = rte_errno ? rte_errno : VFE_VDPA_ERR_ADD_VF_SET_STATUS_FREEZED;
-		goto error;
-	}
-
-	priv->lm_status = VIRTIO_S_FREEZED;
-
 	/* Init remote state mz */
 
 	ret = snprintf(mz_name, RTE_MEMZONE_NAMESIZE, "%s_remote_mz", devname);
@@ -2360,6 +2345,28 @@ virtio_vdpa_dev_probe(struct rte_pci_driver *pci_drv __rte_unused,
 
 	mz_len = priv->state_mz_remote->len;
 	memset(priv->state_mz_remote->addr, 0, mz_len);
+
+	if (!priv->restore) {
+		ret = virtio_vdpa_cmd_set_status(priv->pf_priv, priv->vf_id, VIRTIO_S_QUIESCED);
+		if (ret) {
+			DRV_LOG(ERR, "%s vfid %d failed suspend ret:%d", devname, priv->vf_id, ret);
+			rte_errno = rte_errno ? rte_errno : VFE_VDPA_ERR_ADD_VF_SET_STATUS_QUIESCED;
+			goto error;
+		}
+
+		priv->lm_status = VIRTIO_S_QUIESCED;
+
+		ret = virtio_vdpa_cmd_set_status(priv->pf_priv, priv->vf_id, VIRTIO_S_FREEZED);
+		if (ret) {
+			DRV_LOG(ERR, "%s vfid %d failed suspend ret:%d", devname, priv->vf_id, ret);
+			rte_errno = rte_errno ? rte_errno : VFE_VDPA_ERR_ADD_VF_SET_STATUS_FREEZED;
+			goto error;
+		}
+
+		priv->lm_status = VIRTIO_S_FREEZED;
+	} else {
+		virtio_vdpa_save_state_update_hwidx(priv, 0, false);
+	}
 
 	pthread_mutex_lock(&priv_list_lock);
 	TAILQ_INSERT_TAIL(&virtio_priv_list, priv, next);

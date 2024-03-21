@@ -82,6 +82,7 @@ struct virtio_vdpa_priv {
 	bool mem_tbl_set;
 	bool ctx_stored;
 	bool fd_args_stored;
+	bool restore;
 	struct virtio_dev_name vf_name;
 	struct virtio_dev_name pf_name;
 };
