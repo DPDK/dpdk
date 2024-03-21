@@ -145,7 +145,6 @@ ha_server_app_query_vf_ctx(struct virtio_ha_msg *msg)
 	struct virtio_ha_pf_dev_list *list = &hs.pf_list;
 	struct virtio_ha_vf_dev_list *vf_list = NULL;
 	uint32_t nr_vf;
-	struct timeval start;
 
 	TAILQ_FOREACH(dev, list, next) {
 		if (!strcmp(dev->pf_name.dev_bdf, msg->hdr.bdf)) {
@@ -173,12 +172,6 @@ ha_server_app_query_vf_ctx(struct virtio_ha_msg *msg)
 			msg->fds[0] = vf_dev->vf_ctx.vfio_container_fd;
 			msg->fds[1] = vf_dev->vf_ctx.vfio_group_fd;
 			msg->fds[2] = vf_dev->vf_ctx.vfio_device_fd;
-
-			gettimeofday(&start, NULL);
-			HA_APP_LOG(INFO, "System time when close fd (dev %s): %lu.%06lu",
-				vf->vf_name.dev_bdf, start.tv_sec, start.tv_usec);
-			close(vf_dev->vhost_fd);
-			vf_dev->vhost_fd = -1;
 			HA_APP_LOG(INFO, "Got vf %s ctx query and reply with container fd %d group fd %d "
 				"and device fd %d", vf->vf_name.dev_bdf, msg->fds[0], msg->fds[1], msg->fds[2]);
 			break;
@@ -451,6 +444,7 @@ ha_server_remove_vhost_fd(struct virtio_ha_msg *msg)
 	struct virtio_ha_pf_dev *dev;
 	struct virtio_ha_vf_dev *vf_dev;
 	struct virtio_dev_name *vf_name;
+	struct timeval start;
 	bool found = false;
 
 	TAILQ_FOREACH(dev, list, next) {
@@ -467,7 +461,9 @@ ha_server_remove_vhost_fd(struct virtio_ha_msg *msg)
 	vf_name = (struct virtio_dev_name *)msg->iov.iov_base;
 	TAILQ_FOREACH(vf_dev, vf_list, next) {
 		if (!strcmp(vf_dev->vf_devargs.vf_name.dev_bdf, vf_name->dev_bdf)) {
-			HA_APP_LOG(INFO, "Removed vf %s vhost fd %d", vf_name->dev_bdf, vf_dev->vhost_fd);
+			gettimeofday(&start, NULL);
+			HA_APP_LOG(INFO, "System time close vhost fd:%d (dev %s): %lu.%06lu",
+				vf_dev->vhost_fd, vf_name->dev_bdf, start.tv_sec, start.tv_usec);
 			close(vf_dev->vhost_fd);
 			vf_dev->vhost_fd = -1;
 			break;

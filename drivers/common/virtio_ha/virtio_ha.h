@@ -215,7 +215,6 @@ int virtio_ha_vf_vhost_fd_store(struct virtio_dev_name *vf,
 	const struct virtio_dev_name *pf, int fd);
 
 /* VF driver remove VF vhost-user socket fd from HA service */
-__rte_internal
 int virtio_ha_vf_vhost_fd_remove(struct virtio_dev_name *vf, 
 	const struct virtio_dev_name *pf);
 

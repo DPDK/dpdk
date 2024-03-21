@@ -872,6 +872,13 @@ virtio_ha_client_dev_restore(void)
 				goto err_vf_ctx;
 			}
 
+			ret = virtio_ha_vf_vhost_fd_remove(&vf_list[j].vf_name, pf_list + i);
+			if (ret < 0) {
+				RTE_LOG(ERR, VDPA, "Failed to close vhost fd\n");
+				ret = -1;
+				goto err_vf_ctx;
+			}
+
 			ret = vdpa_with_socket_path_start(vf_list[j].vf_name.dev_bdf,
 				vf_list[j].vhost_sock_addr);
 			if (ret < 0) {
