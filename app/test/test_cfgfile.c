@@ -168,7 +168,7 @@ test_cfgfile_invalid_section_header(void)
 	struct rte_cfgfile *cfgfile;
 
 	cfgfile = rte_cfgfile_load(CFG_FILES_ETC "/invalid_section.ini", 0);
-	TEST_ASSERT_NULL(cfgfile, "Expected failured did not occur");
+	TEST_ASSERT_NULL(cfgfile, "Expected failure did not occur");
 
 	return 0;
 }
@@ -185,7 +185,7 @@ test_cfgfile_invalid_comment(void)
 
 	cfgfile = rte_cfgfile_load_with_params(CFG_FILES_ETC "/sample2.ini", 0,
 					       &params);
-	TEST_ASSERT_NULL(cfgfile, "Expected failured did not occur");
+	TEST_ASSERT_NULL(cfgfile, "Expected failure did not occur");
 
 	return 0;
 }
@@ -196,7 +196,7 @@ test_cfgfile_invalid_key_value_pair(void)
 	struct rte_cfgfile *cfgfile;
 
 	cfgfile = rte_cfgfile_load(CFG_FILES_ETC "/empty_key_value.ini", 0);
-	TEST_ASSERT_NULL(cfgfile, "Expected failured did not occur");
+	TEST_ASSERT_NULL(cfgfile, "Expected failure did not occur");
 
 	return 0;
 }
@@ -236,7 +236,7 @@ test_cfgfile_missing_section(void)
 	struct rte_cfgfile *cfgfile;
 
 	cfgfile = rte_cfgfile_load(CFG_FILES_ETC "/missing_section.ini", 0);
-	TEST_ASSERT_NULL(cfgfile, "Expected failured did not occur");
+	TEST_ASSERT_NULL(cfgfile, "Expected failure did not occur");
 
 	return 0;
 }
