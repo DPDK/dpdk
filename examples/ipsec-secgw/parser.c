@@ -388,7 +388,7 @@ cfg_parse_neigh(void *parsed_result, __rte_unused struct cmdline *cl,
 	rc = parse_mac(res->mac, &mac);
 	APP_CHECK(rc == 0, st, "invalid ether addr:%s", res->mac);
 	rc = add_dst_ethaddr(res->port, &mac);
-	APP_CHECK(rc == 0, st, "invalid port numer:%hu", res->port);
+	APP_CHECK(rc == 0, st, "invalid port number:%hu", res->port);
 	if (st->status < 0)
 		return;
 }
