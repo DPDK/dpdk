@@ -518,7 +518,7 @@ nfp_net_recv_pkts(void *rx_queue,
 		if (unlikely(rxq->rd_p == rxq->rx_count)) /* Wrapping */
 			rxq->rd_p = 0;
 
-		if (meta.port_id == 0) {
+		if (((meta.flags >> NFP_NET_META_PORTID) & 0x1) == 0) {
 			rx_pkts[avail++] = mb;
 		} else if (nfp_flower_pf_dispatch_pkts(hw, mb, meta.port_id)) {
 			avail_multiplexed++;
