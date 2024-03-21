@@ -143,7 +143,7 @@ test_power(void)
 		/* Test setting a valid environment */
 		ret = rte_power_set_env(envs[i]);
 		if (ret != 0) {
-			printf("Unexpectedly unsucceeded on setting a valid environment\n");
+			printf("Unexpectedly unsuccessful on setting a valid environment\n");
 			return -1;
 		}
 
