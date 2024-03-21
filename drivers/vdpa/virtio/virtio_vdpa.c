@@ -1190,9 +1190,8 @@ virtio_vdpa_save_state_update_hwidx(struct virtio_vdpa_priv *priv, int num_vr, b
 	}
 
 	if (res.pending_bytes ==0) {
-		DRV_LOG(ERR, "Dev:%s pending bytes is 0", vdev->device->name);
-		ret = -EIO;
-		goto out;
+		res.pending_bytes = VIRTIO_VDPA_REMOTE_STATE_DEFAULT_SIZE;
+		DRV_LOG(ERR, "Dev:%s pending bytes is 0 use 8k instead", vdev->device->name);
 	}
 
 	DRV_LOG(INFO, "Dev:%s pending bytes is 0x%" PRIx64, vdev->device->name,
