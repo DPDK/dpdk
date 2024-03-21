@@ -350,6 +350,13 @@ static void mlx5dr_rule_move_init(struct mlx5dr_rule *rule,
 	rule->resize_info->state = MLX5DR_RULE_RESIZE_STATE_WRITING;
 }
 
+bool mlx5dr_rule_move_in_progress(struct mlx5dr_rule *rule)
+{
+	return mlx5dr_matcher_is_in_resize(rule->matcher) &&
+	       rule->resize_info &&
+	       rule->resize_info->state != MLX5DR_RULE_RESIZE_STATE_IDLE;
+}
+
 static int mlx5dr_rule_create_hws_fw_wqe(struct mlx5dr_rule *rule,
 					 struct mlx5dr_rule_attr *attr,
 					 uint8_t mt_idx,

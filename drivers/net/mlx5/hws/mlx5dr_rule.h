@@ -72,10 +72,6 @@ int mlx5dr_rule_move_hws_remove(struct mlx5dr_rule *rule,
 int mlx5dr_rule_move_hws_add(struct mlx5dr_rule *rule,
 			     struct mlx5dr_rule_attr *attr);
 
-static inline bool mlx5dr_rule_move_in_progress(struct mlx5dr_rule *rule)
-{
-	return rule->resize_info &&
-	       rule->resize_info->state != MLX5DR_RULE_RESIZE_STATE_IDLE;
-}
+bool mlx5dr_rule_move_in_progress(struct mlx5dr_rule *rule);
 
 #endif /* MLX5DR_RULE_H_ */
