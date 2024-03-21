@@ -22,6 +22,7 @@ virtio_pci_dev_alloc(struct rte_pci_device *pci_dev, int dev_fd, bool restore)
 {
 	struct virtio_pci_dev *vpdev;
 	struct virtio_hw *hw;
+	uint8_t satuts;
 	int ret;
 
 	vpdev = rte_zmalloc("virtio pci device", sizeof(*vpdev), RTE_CACHE_LINE_SIZE);
@@ -48,7 +49,11 @@ virtio_pci_dev_alloc(struct rte_pci_device *pci_dev, int dev_fd, bool restore)
 		goto error;
 	}
 
-	if (!restore) {
+	satuts = virtio_pci_dev_get_status(vpdev);
+	if (satuts & VIRTIO_CONFIG_STATUS_DEV_NEED_RESET)
+		PMD_INIT_LOG(ERR, "device status is 0x%x, reset", satuts);
+
+	if ((satuts & VIRTIO_CONFIG_STATUS_DEV_NEED_RESET) || (!restore)) {
 		/* Reset the device, so when device is used later, reset time is saved. */
 		ret = virtio_pci_dev_reset(vpdev, VIRTIO_VDPA_PROBE_RESET_TIME_OUT);
 		if (ret) {
