@@ -1373,6 +1373,7 @@ virtio_vdpa_dev_config(int vid)
 	struct vdpa_vf_with_devargs vf_dev;
 	int ret, i, vhost_sock_fd;
 	struct timeval start, end;
+	bool compare = true;
 	uint64_t time_used;
 
 	gettimeofday(&start, NULL);
@@ -1439,8 +1440,32 @@ virtio_vdpa_dev_config(int vid)
 													VIRTIO_CONFIG_STATUS_DRIVER |
 													VIRTIO_CONFIG_STATUS_FEATURES_OK |
 													VIRTIO_CONFIG_STATUS_DRIVER_OK);
+	if (priv->restore) {
+		compare = virtio_pci_dev_state_compare(priv->vpdev, priv->state_mz->addr,
+						priv->state_size, priv->state_mz_remote->addr,
+						priv->state_mz_remote->len);
+		if (!compare) {
+			ret = virtio_vdpa_cmd_set_status(priv->pf_priv, priv->vf_id, VIRTIO_S_QUIESCED);
+			if (ret) {
+				DRV_LOG(ERR, "%s vfid %d failed suspend ret:%d", vdev->device->name, priv->vf_id, ret);
+				rte_errno = rte_errno ? rte_errno : VFE_VDPA_ERR_ADD_VF_SET_STATUS_QUIESCED;
+				return -rte_errno;
+			}
 
-	if (!priv->restore) {
+			priv->lm_status = VIRTIO_S_QUIESCED;
+
+			ret = virtio_vdpa_cmd_set_status(priv->pf_priv, priv->vf_id, VIRTIO_S_FREEZED);
+			if (ret) {
+				DRV_LOG(ERR, "%s vfid %d failed suspend ret:%d", vdev->device->name, priv->vf_id, ret);
+				rte_errno = rte_errno ? rte_errno : VFE_VDPA_ERR_ADD_VF_SET_STATUS_FREEZED;
+				return -rte_errno;
+			}
+
+			priv->lm_status = VIRTIO_S_FREEZED;
+		}
+	}
+
+	if ((!priv->restore) || (!compare)) {
 		ret = virtio_vdpa_cmd_restore_state(priv->pf_priv, priv->vf_id, 0, priv->state_size, priv->state_mz->iova);
 		if (ret) {
 			DRV_LOG(ERR, "%s vfid %d failed restore state ret:%d", vdev->device->name, priv->vf_id, ret);
@@ -1465,6 +1490,8 @@ virtio_vdpa_dev_config(int vid)
 		}
 		priv->lm_status = VIRTIO_S_RUNNING;
 	}
+
+	priv->restore = false;
 	DRV_LOG(INFO, "%s vid %d move to driver ok", vdev->device->name, vid);
 
 	virtio_vdpa_lcore_id = rte_get_next_lcore(virtio_vdpa_lcore_id, 1, 1);
