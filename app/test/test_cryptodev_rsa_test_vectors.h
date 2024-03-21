@@ -72,7 +72,7 @@ struct rsa_test_data_2 {
 };
 
 static const struct
-rsa_test_data_2 RSA_vector_128_20_3_None = {
+rsa_test_data_2 rsa_vector_128_20_3_none = {
 	.description =
 		"RSA Encryption Decryption (n=128, pt=20, e=3) EXP, QT",
 	.xform_type = RTE_CRYPTO_ASYM_XFORM_RSA,
