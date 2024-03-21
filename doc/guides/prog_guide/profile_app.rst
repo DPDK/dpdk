@@ -59,7 +59,7 @@ addition to the standard events, ``perf`` can be used to profile arm64
 specific PMU (Performance Monitor Unit) events through raw events (``-e``
 ``-rXX``).
 
-For more derails refer to the
+For more details refer to the
 `ARM64 specific PMU events enumeration <http://infocenter.arm.com/help/index.jsp?topic=/com.arm.doc.100095_0002_04_en/way1382543438508.html>`_.
 
 
