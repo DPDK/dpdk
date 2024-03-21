@@ -1594,6 +1594,28 @@ flow_hw_get_reg_id(enum rte_flow_item_type type, uint32_t id)
 	}
 }
 
+static __rte_always_inline int
+flow_hw_get_port_id_from_ctx(void *dr_ctx, uint32_t *port_val)
+{
+#if defined(HAVE_IBV_FLOW_DV_SUPPORT) || !defined(HAVE_INFINIBAND_VERBS_H)
+	uint32_t port;
+
+	MLX5_ETH_FOREACH_DEV(port, NULL) {
+		struct mlx5_priv *priv;
+		priv = rte_eth_devices[port].data->dev_private;
+
+		if (priv->dr_ctx == dr_ctx) {
+			*port_val = port;
+			return 0;
+		}
+	}
+#else
+	RTE_SET_USED(dr_ctx);
+	RTE_SET_USED(port_val);
+#endif
+	return -EINVAL;
+}
+
 void flow_hw_set_port_info(struct rte_eth_dev *dev);
 void flow_hw_clear_port_info(struct rte_eth_dev *dev);
 
