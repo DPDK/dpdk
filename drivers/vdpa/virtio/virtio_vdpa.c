@@ -1112,6 +1112,9 @@ virtio_vdpa_features_set(int vid)
 	/* TO_DO: check why --- */
 	features |= (1ULL << VIRTIO_F_IOMMU_PLATFORM);
 	features |= (1ULL << VIRTIO_F_RING_RESET);
+	if (priv->dev_ops->set_vdpa_feature)
+		priv->dev_ops->set_vdpa_feature(&features);
+
 	if (priv->configured)
 		DRV_LOG(ERR, "%s vid %d set feature after driver ok, only when live migration", priv->vdev->device->name, vid);
 	else

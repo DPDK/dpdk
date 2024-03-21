@@ -171,5 +171,6 @@ struct virtio_vdpa_device_callback virtio_vdpa_blk_callback = {
 	.unreg_dev_intr = virtio_vdpa_blk_unreg_dev_interrupt,
 	.vdpa_queue_num_unit_get = virtio_vdpa_blk_queue_num_unit_get,
 	.add_vdpa_feature = NULL,
+	.set_vdpa_feature = NULL,
 };
 

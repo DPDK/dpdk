@@ -56,9 +56,15 @@ virtio_vdpa_net_queue_num_unit_get(void)
 }
 
 static void
-virtio_vdpa_net_add_vdap_feature(uint64_t *features)
+virtio_vdpa_net_add_vdpa_feature(uint64_t *features)
 {
 	*features |= (1ULL << VIRTIO_NET_F_GUEST_ANNOUNCE);
+}
+
+static void
+virtio_vdpa_net_set_vdpa_feature(uint64_t *features)
+{
+	*features &= (~(1ULL << VIRTIO_NET_F_GUEST_ANNOUNCE));
 }
 
 struct virtio_vdpa_device_callback virtio_vdpa_net_callback = {
@@ -67,6 +73,7 @@ struct virtio_vdpa_device_callback virtio_vdpa_net_callback = {
 	.reg_dev_intr = NULL,
 	.unreg_dev_intr = NULL,
 	.vdpa_queue_num_unit_get = virtio_vdpa_net_queue_num_unit_get,
-	.add_vdpa_feature = virtio_vdpa_net_add_vdap_feature,
+	.add_vdpa_feature = virtio_vdpa_net_add_vdpa_feature,
+	.set_vdpa_feature = virtio_vdpa_net_set_vdpa_feature,
 };
 
