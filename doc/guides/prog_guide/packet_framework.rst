@@ -512,7 +512,7 @@ the number of L2 or L3 cache memory misses is greatly reduced, hence one of the 
 This is because the cost of L2/L3 cache memory miss on memory read accesses is high, as usually due to data dependency between instructions,
 the CPU execution units have to stall until the read operation is completed from L3 cache memory or external DRAM memory.
 By using prefetch instructions, the latency of memory read accesses is hidden,
-provided that it is preformed early enough before the respective data structure is actually used.
+provided that it is performed early enough before the respective data structure is actually used.
 
 By splitting the processing into several stages that are executed on different packets (the packets from the input burst are interlaced),
 enough work is created to allow the prefetch instructions to complete successfully (before the prefetched data structures are actually accessed) and
