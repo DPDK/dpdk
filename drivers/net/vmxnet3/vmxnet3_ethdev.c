@@ -1932,11 +1932,13 @@ done:
 static int
 vmxnet3_dev_rx_queue_intr_enable(struct rte_eth_dev *dev, uint16_t queue_id)
 {
+#ifndef RTE_EXEC_ENV_FREEBSD
 	struct vmxnet3_hw *hw = dev->data->dev_private;
 
 	vmxnet3_enable_intr(hw,
 			    rte_intr_vec_list_index_get(dev->intr_handle,
 							       queue_id));
+#endif
 
 	return 0;
 }
