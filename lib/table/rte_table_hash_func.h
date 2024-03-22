@@ -14,23 +14,6 @@ extern "C" {
 #include <rte_compat.h>
 #include <rte_common.h>
 
-__rte_experimental
-static inline uint64_t
-rte_crc32_u64_generic(uint64_t crc, uint64_t value)
-{
-	int i;
-
-	crc = (crc & 0xFFFFFFFFLLU) ^ value;
-	for (i = 63; i >= 0; i--) {
-		uint64_t mask;
-
-		mask = -(crc & 1LLU);
-		crc = (crc >> 1LLU) ^ (0x82F63B78LLU & mask);
-	}
-
-	return crc;
-}
-
 #if defined(RTE_ARCH_X86_64)
 
 #include <x86intrin.h>
@@ -48,7 +31,17 @@ rte_crc32_u64(uint64_t crc, uint64_t v)
 static inline uint64_t
 rte_crc32_u64(uint64_t crc, uint64_t v)
 {
-	return rte_crc32_u64_generic(crc, v);
+	int i;
+
+	crc = (crc & 0xFFFFFFFFLLU) ^ v;
+	for (i = 63; i >= 0; i--) {
+		uint64_t mask;
+
+		mask = -(crc & 1LLU);
+		crc = (crc >> 1LLU) ^ (0x82F63B78LLU & mask);
+	}
+
+	return crc;
 }
 
 #endif
