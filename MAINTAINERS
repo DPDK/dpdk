@@ -724,7 +724,6 @@ F: doc/guides/nics/enic.rst
 F: doc/guides/nics/features/enic.ini
 
 Google Virtual Ethernet
-M: Junfeng Guo <junfeng.guo@intel.com>
 M: Jeroen de Borst <jeroendb@google.com>
 M: Rushil Gupta <rushilg@google.com>
 M: Joshua Washington <joshwash@google.com>
@@ -805,7 +804,6 @@ F: doc/guides/nics/cpfl.rst
 F: doc/guides/nics/features/cpfl.ini
 
 Intel igc
-M: Junfeng Guo <junfeng.guo@intel.com>
 T: git://dpdk.org/next/dpdk-next-net-intel
 F: drivers/net/igc/
 F: doc/guides/nics/igc.rst
@@ -1465,7 +1463,6 @@ F: drivers/raw/cnxk_gpio/
 
 NTB
 M: Jingjing Wu <jingjing.wu@intel.com>
-M: Junfeng Guo <junfeng.guo@intel.com>
 F: drivers/raw/ntb/
 F: doc/guides/rawdevs/ntb.rst
 F: examples/ntb/
