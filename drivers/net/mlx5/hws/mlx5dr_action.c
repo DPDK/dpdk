@@ -1465,7 +1465,9 @@ mlx5dr_action_handle_tunnel_l3_to_l2(struct mlx5dr_action *action,
 
 	/* Create a full modify header action list in case shared */
 	mlx5dr_action_prepare_decap_l3_actions(hdrs->sz, mh_data, &num_of_actions);
-	mlx5dr_action_prepare_decap_l3_data(hdrs->data, mh_data, num_of_actions);
+
+	if (action->flags & MLX5DR_ACTION_FLAG_SHARED)
+		mlx5dr_action_prepare_decap_l3_data(hdrs->data, mh_data, num_of_actions);
 
 	/* All DecapL3 cases require the same max arg size */
 	arg_obj = mlx5dr_arg_create_modify_header_arg(ctx,
