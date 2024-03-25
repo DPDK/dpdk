@@ -16,34 +16,38 @@
 #define VDPA_MAX_SOCK_LEN 108 /* Follow definition of struct sockaddr_un in sys/un.h */
 #define VIRTIO_HA_MAX_FDS 3
 #define VIRTIO_HA_MAX_MEM_REGIONS 8
+#define VIRTIO_HA_VERSION_SIZE 64
+#define VIRTIO_HA_TIME_SIZE 32
 
 struct virtio_dev_name;
 
 typedef void (*ctx_set_cb)(const struct virtio_dev_name *dev, const void *ctx);
 typedef void (*ctx_unset_cb)(const struct virtio_dev_name *dev);
 typedef void (*fd_cb)(int fd, void *data);
+typedef void (*ver_time_set)(char *version, char *buildtime);
 
 enum virtio_ha_msg_type {
-	VIRTIO_HA_APP_SET_PRIO_CHNL = 0,
-	VIRTIO_HA_APP_REMOVE_PRIO_CHNL = 1,
-	VIRTIO_HA_APP_QUERY_PF_LIST = 2,
-	VIRTIO_HA_APP_QUERY_VF_LIST = 3,
-	VIRTIO_HA_APP_QUERY_PF_CTX = 4,
-	VIRTIO_HA_APP_QUERY_VF_CTX = 5,
-	VIRTIO_HA_PF_STORE_CTX = 6,
-	VIRTIO_HA_PF_REMOVE_CTX = 7,
-	VIRTIO_HA_VF_STORE_DEVARG_VFIO_FDS = 8,
-	VIRTIO_HA_VF_STORE_VHOST_FD = 9,
-	VIRTIO_HA_VF_STORE_DMA_TBL = 10,
-	VIRTIO_HA_VF_REMOVE_DEVARG_VFIO_FDS = 11,
-	VIRTIO_HA_VF_REMOVE_VHOST_FD = 12,
-	VIRTIO_HA_VF_REMOVE_DMA_TBL = 13,
-	VIRTIO_HA_GLOBAL_STORE_CONTAINER = 14,
-	VIRTIO_HA_GLOBAL_QUERY_CONTAINER = 15,
-	VIRTIO_HA_GLOBAL_STORE_DMA_MAP = 16,
-	VIRTIO_HA_GLOBAL_REMOVE_DMA_MAP = 17,
-	VIRTIO_HA_PRIO_CHNL_ADD_VF = 18,
-	VIRTIO_HA_MESSAGE_MAX = 19,
+	VIRTIO_HA_APP_QUERY_VERSION = 0,
+	VIRTIO_HA_APP_SET_PRIO_CHNL = 1,
+	VIRTIO_HA_APP_REMOVE_PRIO_CHNL = 2,
+	VIRTIO_HA_APP_QUERY_PF_LIST = 3,
+	VIRTIO_HA_APP_QUERY_VF_LIST = 4,
+	VIRTIO_HA_APP_QUERY_PF_CTX = 5,
+	VIRTIO_HA_APP_QUERY_VF_CTX = 6,
+	VIRTIO_HA_PF_STORE_CTX = 7,
+	VIRTIO_HA_PF_REMOVE_CTX = 8,
+	VIRTIO_HA_VF_STORE_DEVARG_VFIO_FDS = 9,
+	VIRTIO_HA_VF_STORE_VHOST_FD = 10,
+	VIRTIO_HA_VF_STORE_DMA_TBL = 11,
+	VIRTIO_HA_VF_REMOVE_DEVARG_VFIO_FDS = 12,
+	VIRTIO_HA_VF_REMOVE_VHOST_FD = 13,
+	VIRTIO_HA_VF_REMOVE_DMA_TBL = 14,
+	VIRTIO_HA_GLOBAL_STORE_CONTAINER = 15,
+	VIRTIO_HA_GLOBAL_QUERY_CONTAINER = 16,
+	VIRTIO_HA_GLOBAL_STORE_DMA_MAP = 17,
+	VIRTIO_HA_GLOBAL_REMOVE_DMA_MAP = 18,
+	VIRTIO_HA_PRIO_CHNL_ADD_VF = 19,
+	VIRTIO_HA_MESSAGE_MAX = 20,
 };
 
 struct virtio_ha_msg_hdr {
@@ -156,6 +160,11 @@ struct virtio_ha_event_handler {
 	fd_cb cb;
 };
 
+struct virtio_ha_version {
+	char version[VIRTIO_HA_VERSION_SIZE];
+	char time[VIRTIO_HA_TIME_SIZE];
+};
+
 /* IPC client/server allocate an HA message */
 struct virtio_ha_msg *virtio_ha_alloc_msg(void);
 
@@ -178,7 +187,7 @@ int virtio_ha_recv_msg(int sockfd, struct virtio_ha_msg *msg);
 /* IPC client init
  * return 0 on success or negative val on failure
  */
-int virtio_ha_ipc_client_init(void);
+int virtio_ha_ipc_client_init(ver_time_set set_ver);
 
 /* App query PF list from HA service, return number of PF */
 int virtio_ha_pf_list_query(struct virtio_dev_name **list);

@@ -30,6 +30,8 @@
 /* VDPA RPC */
 /* For string conversion */
 char string[MAX_JSON_STRING_LEN];
+char *rpc_ha_version;
+char *rpc_ha_buildtime;
 
 #define JSON_STR_NUM_TO_OBJ(obj, str, format, num) do { \
 	memset(string, 0, MAX_JSON_STRING_LEN); \
@@ -460,7 +462,18 @@ static cJSON *version(__rte_unused jrpc_context *ctx,
 				__rte_unused cJSON *id)
 {
 	cJSON *result = cJSON_CreateObject();
-	cJSON_AddStringToObject(result, "vesion", rte_version());
+	char time[32];
+	snprintf(time, 32, "%s %s", __DATE__, __TIME__);
+	cJSON_AddStringToObject(result, "vfe-vhostd version", rte_version());
+	cJSON_AddStringToObject(result, "vfe-vhostd build time", time);
+	if (!rpc_ha_version)
+		cJSON_AddStringToObject(result, "vfe-vhostd-ha version", "Not Known Due to HA Disconnected");
+	else
+		cJSON_AddStringToObject(result, "vfe-vhostd-ha version", rpc_ha_version);
+	if (!rpc_ha_buildtime)
+		cJSON_AddStringToObject(result, "vfe-vhostd-ha build time", "Not Known Due to HA Disconnected");
+	else
+		cJSON_AddStringToObject(result, "vfe-vhostd-ha build time", rpc_ha_buildtime);
 	return vdpa_rpc_format_errno(result, 0);
 }
 
@@ -475,6 +488,13 @@ static void *vdpa_rpc_handler(void *ctx)
 	jrpc_register_procedure(&rpc_ctx->rpc_server, version, "version", ctx);
 	jrpc_server_run(&rpc_ctx->rpc_server);
 	pthread_exit(NULL);
+}
+
+void
+vdpa_rpc_set_ha_version_time(char *version, char *buildtime)
+{
+	rpc_ha_version = version;
+	rpc_ha_buildtime = buildtime;
 }
 
 int

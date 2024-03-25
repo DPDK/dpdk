@@ -35,6 +35,7 @@ struct vdpa_rpc_context {
 	pthread_mutex_t		rpc_lock;
 };
 
+void vdpa_rpc_set_ha_version_time(char *version, char *buildtime);
 int vdpa_rpc_start(struct vdpa_rpc_context *rpc_ctx);
 void vdpa_rpc_stop(struct vdpa_rpc_context *rpc_ctx);
 int vdpa_with_socket_path_start(const char *vf_name,

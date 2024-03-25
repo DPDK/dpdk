@@ -7,7 +7,7 @@
 
 #include <virtio_ha.h>
 
-int virtio_ha_client_start(void);
+int virtio_ha_client_start(ver_time_set set_ver);
 int virtio_ha_client_dev_restore_pf(int *total_vf);
 int virtio_ha_client_dev_restore_vf(int total_vf);
 bool virtio_ha_client_pf_has_restore_vf(const char *pf_name);

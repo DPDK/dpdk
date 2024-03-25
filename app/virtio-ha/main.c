@@ -15,6 +15,7 @@
 #include <sys/time.h>
 
 #include <rte_log.h>
+#include <rte_version.h>
 
 #include <virtio_ha.h>
 
@@ -44,6 +45,29 @@ static bool monitor_started;
 static struct prio_chnl_vf_cache vf_cache;
 static struct virtio_ha_event_handler msg_hdlr;
 static struct virtio_ha_msg *msg;
+
+static int
+ha_server_app_query_version(struct virtio_ha_msg *msg)
+{
+	struct virtio_ha_version *ver;
+
+	ver = malloc(sizeof(struct virtio_ha_version));
+	if (!ver) {
+		HA_APP_LOG(ERR, "Failed to alloc ha version");
+		return HA_MSG_HDLR_ERR;		
+	}
+	memset(ver, 0, sizeof(struct virtio_ha_version));
+
+	msg->iov.iov_len = msg->hdr.size = sizeof(struct virtio_ha_version);
+	msg->iov.iov_base = ver;
+
+	strcpy(ver->version, rte_version());
+	snprintf(ver->time, VIRTIO_HA_TIME_SIZE, "%s %s", __DATE__, __TIME__);
+
+	HA_APP_LOG(INFO, "Got version query (%s %s)", ver->version, ver->time);
+
+	return HA_MSG_HDLR_REPLY;
+}
 
 static int
 ha_server_send_prio_msg(struct virtio_ha_msg *prio_msg, struct virtio_dev_name *vf_name)
@@ -705,6 +729,7 @@ ha_server_cleanup_global_dma(void)
 }
 
 static ha_message_handler_t ha_message_handlers[VIRTIO_HA_MESSAGE_MAX] = {
+	[VIRTIO_HA_APP_QUERY_VERSION] = ha_server_app_query_version,
 	[VIRTIO_HA_APP_SET_PRIO_CHNL] = ha_server_app_set_prio_chnl,
 	[VIRTIO_HA_APP_REMOVE_PRIO_CHNL] = ha_server_app_remove_prio_chnl,
 	[VIRTIO_HA_APP_QUERY_PF_LIST] = ha_server_app_query_pf_list,

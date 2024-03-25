@@ -47,11 +47,11 @@ virtio_ha_client_cfd_store(int container_fd)
 }
 
 int
-virtio_ha_client_start(void)
+virtio_ha_client_start(ver_time_set set_ver)
 {
 	int ret, vfio_container_fd = -1; 
 
-	ret = virtio_ha_ipc_client_init();
+	ret = virtio_ha_ipc_client_init(set_ver);
 	if (ret) {
 		RTE_LOG(ERR, HA, "Failed to init ha ipc client\n");
 		return -1;		

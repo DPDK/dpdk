@@ -755,10 +755,10 @@ main(int argc, char *argv[])
 	if (ret!= 0)
 		rte_exit(EXIT_FAILURE, "sig thread create failed\n");
 
-	ret = virtio_ha_client_start();
+	ret = virtio_ha_client_start(vdpa_rpc_set_ha_version_time);
 	if (ret < 0)
 		rte_exit(EXIT_FAILURE, "ha client start failed\n");
-	
+
 	ret = rte_eal_init(argc, argv);
 	if (ret < 0)
 		rte_exit(EXIT_FAILURE, "eal init failed\n");

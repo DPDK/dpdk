@@ -27,8 +27,9 @@ static const struct virtio_ha_dev_ctx_cb *pf_ctx_cb;
 static const struct virtio_ha_dev_ctx_cb *vf_ctx_cb;
 static struct virtio_ha_device_list client_devs;
 static struct virtio_ha_msg *prio_msg;
+struct virtio_ha_version *ha_ver;
 
-static void sync_dev_context_to_ha(void);
+static void sync_dev_context_to_ha(ver_time_set set_ver);
 
 struct virtio_ha_msg *
 virtio_ha_alloc_msg(void)
@@ -254,11 +255,14 @@ out:
 }
 
 static void *
-ipc_connection_handler(__rte_unused void *ptr)
+ipc_connection_handler(void *ptr)
 {
 	struct epoll_event event, ev;
 	struct sockaddr_un addr;
+	ver_time_set set_ver;
 	int epfd, nev;
+
+	set_ver = (ver_time_set)ptr;
 
 	epfd = epoll_create(1);
 	if (epfd < 0) {
@@ -284,6 +288,7 @@ ipc_connection_handler(__rte_unused void *ptr)
 				if ((ev.events & EPOLLERR) || (ev.events & EPOLLHUP)) {
 					HA_IPC_LOG(ERR, "Disconnected from ipc server");
 					__atomic_store_n(&ipc_client_connected, false, __ATOMIC_RELAXED);
+					set_ver(NULL, NULL);
 
 					if (epoll_ctl(epfd, EPOLL_CTL_DEL, ipc_client_sock, &event) < 0)
 						HA_IPC_LOG(ERR, "Failed to epoll ctl del for fd %d", ipc_client_sock);
@@ -305,7 +310,7 @@ ipc_connection_handler(__rte_unused void *ptr)
 				}
 				__atomic_store_n(&ipc_client_connected, true, __ATOMIC_RELAXED);
 				__atomic_store_n(&ipc_client_sync, true, __ATOMIC_RELAXED);
-				sync_dev_context_to_ha();
+				sync_dev_context_to_ha(set_ver);
 				__atomic_store_n(&ipc_client_sync, false, __ATOMIC_RELAXED);
 			} else {
 				sleep(1);
@@ -314,8 +319,45 @@ ipc_connection_handler(__rte_unused void *ptr)
     }
 }
 
+static int
+virtio_ha_version_query(struct virtio_ha_version *ver)
+{
+	struct virtio_ha_msg *msg;
+	int ret;
+
+	msg = virtio_ha_alloc_msg();
+	if (!msg) {
+		HA_IPC_LOG(ERR, "Failed to alloc ipc client msg");
+		return -1;
+	}
+
+	msg->hdr.type = VIRTIO_HA_APP_QUERY_VERSION;
+	ret = virtio_ha_send_msg(ipc_client_sock, msg);
+	if (ret < 0) {
+		HA_IPC_LOG(ERR, "Failed to send msg");
+		return -1;
+	}
+
+	ret = virtio_ha_recv_msg(ipc_client_sock, msg);
+	if (ret < 0) {
+		HA_IPC_LOG(ERR, "Failed to recv msg");
+		return -1;
+	}
+
+	if (msg->iov.iov_len != sizeof(struct virtio_ha_version)) {
+		HA_IPC_LOG(ERR, "Wrong iov len");
+		return -1;		
+	}
+
+	memcpy(ver, msg->iov.iov_base, sizeof(struct virtio_ha_version));
+	free(msg->iov.iov_base);
+	virtio_ha_free_msg(msg);
+
+	return 0;
+}
+
 int
-virtio_ha_ipc_client_init(void)
+virtio_ha_ipc_client_init(ver_time_set set_ver)
 {
 	struct sockaddr_un addr;
 	pthread_t thread;
@@ -326,10 +368,16 @@ virtio_ha_ipc_client_init(void)
 	client_devs.global_cfd = -1;
 	client_devs.prio_chnl_fd = -1;
 
+	ha_ver = malloc(sizeof(struct virtio_ha_version));
+	if (!ha_ver) {
+		HA_IPC_LOG(ERR, "Failed to alloc ha version");
+		return -1;
+	}
+
 	ipc_client_sock = socket(AF_UNIX, SOCK_STREAM, 0);
 	if (ipc_client_sock < 0) {
 		HA_IPC_LOG(ERR, "Failed to create ipc client socket");
-		return -1;
+		goto err;
 	}
 
 	addr.sun_family = AF_UNIX;
@@ -337,19 +385,31 @@ virtio_ha_ipc_client_init(void)
 	if (connect(ipc_client_sock, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
 		HA_IPC_LOG(INFO, "Failed to connect to ipc server, starting non-HA mode");
 		__atomic_store_n(&ipc_client_connected, false, __ATOMIC_RELAXED);
+		set_ver(NULL, NULL);
 	} else {
 		HA_IPC_LOG(INFO, "Connected to ipc server, starting HA mode");
 		__atomic_store_n(&ipc_client_connected, true, __ATOMIC_RELAXED);
+		if (virtio_ha_version_query(ha_ver)) {
+			HA_IPC_LOG(ERR, "Failed to query HA version");
+			goto err_sock;
+		}
+		set_ver(ha_ver->version, ha_ver->time);		
 	}
 
 	__atomic_store_n(&ipc_client_sync, false, __ATOMIC_RELAXED);
 
-	if (pthread_create(&thread, NULL, &ipc_connection_handler, NULL) != 0) {
+	if (pthread_create(&thread, NULL, &ipc_connection_handler, set_ver) != 0) {
 		HA_IPC_LOG(ERR, "Failed to create ipc conn handler");
-		return -1;
+		goto err_sock;
 	}
 
 	return 0;
+
+err_sock:
+	close(ipc_client_sock);
+err:
+	free(ha_ver);
+	return -1;
 }
 
 static void
@@ -1584,13 +1644,21 @@ virtio_ha_global_dma_map_remove(struct virtio_ha_global_dma_map *map)
 }
 
 static void
-sync_dev_context_to_ha(void)
+sync_dev_context_to_ha(ver_time_set set_ver)
 {
 	struct virtio_ha_pf_dev *dev;
 	struct virtio_ha_vf_dev *vf_dev;
 	struct virtio_ha_vf_dev_list *vf_list;
 	struct virtio_ha_global_dma_entry *entry;
 	int ret;
+
+	ret = virtio_ha_version_query(ha_ver);
+	if (ret) {
+		HA_IPC_LOG(ERR, "Failed to query version");
+		return;
+	}
+
+	set_ver(ha_ver->version, ha_ver->time);
 
 	ret = virtio_ha_global_cfd_store_no_cache(client_devs.global_cfd);
 	if (ret) {
