@@ -1918,8 +1918,7 @@ port_action_handle_flush(portid_t port_id)
 		/* Poisoning to make sure PMDs update it in case of error. */
 		memset(&error, 0x44, sizeof(error));
 		if (pia->handle != NULL) {
-			ret = pia->type ==
-			      RTE_FLOW_ACTION_TYPE_INDIRECT_LIST ?
+			ret = pia->type == RTE_FLOW_ACTION_TYPE_INDIRECT_LIST ?
 			      rte_flow_action_list_handle_destroy
 				      (port_id, pia->list_handle, &error) :
 			      rte_flow_action_handle_destroy
@@ -1929,11 +1928,9 @@ port_action_handle_flush(portid_t port_id)
 				       pia->id);
 				ret = port_flow_complain(&error);
 			}
-			tmp = &pia->next;
-		} else {
-			*tmp = pia->next;
-			free(pia);
 		}
+		*tmp = pia->next;
+		free(pia);
 	}
 	return ret;
 }
