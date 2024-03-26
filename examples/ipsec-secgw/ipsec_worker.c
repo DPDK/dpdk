@@ -1598,8 +1598,7 @@ ipsec_poll_mode_wrkr_inl_pr(void)
 	int32_t socket_id;
 	uint32_t lcore_id;
 	int32_t i, nb_rx;
-	uint16_t portid;
-	uint8_t queueid;
+	uint16_t portid, queueid;
 
 	prev_tsc = 0;
 	lcore_id = rte_lcore_id();
@@ -1633,7 +1632,7 @@ ipsec_poll_mode_wrkr_inl_pr(void)
 		portid = rxql[i].port_id;
 		queueid = rxql[i].queue_id;
 		RTE_LOG(INFO, IPSEC,
-			" -- lcoreid=%u portid=%u rxqueueid=%hhu\n",
+			" -- lcoreid=%u portid=%u rxqueueid=%" PRIu16 "\n",
 			lcore_id, portid, queueid);
 	}
 
@@ -1729,8 +1728,7 @@ ipsec_poll_mode_wrkr_inl_pr_ss(void)
 	uint32_t i, nb_rx, j;
 	int32_t socket_id;
 	uint32_t lcore_id;
-	uint16_t portid;
-	uint8_t queueid;
+	uint16_t portid, queueid;
 
 	prev_tsc = 0;
 	lcore_id = rte_lcore_id();
@@ -1764,7 +1762,7 @@ ipsec_poll_mode_wrkr_inl_pr_ss(void)
 		portid = rxql[i].port_id;
 		queueid = rxql[i].queue_id;
 		RTE_LOG(INFO, IPSEC,
-			" -- lcoreid=%u portid=%u rxqueueid=%hhu\n",
+			" -- lcoreid=%u portid=%u rxqueueid=%" PRIu16 "\n",
 			lcore_id, portid, queueid);
 	}
 
