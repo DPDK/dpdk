@@ -259,7 +259,7 @@ create_lookaside_session(struct ipsec_ctx *ipsec_ctx_lcore[],
 			continue;
 
 		/* Looking for cryptodev, which can handle this SA */
-		key.lcore_id = (uint8_t)lcore_id;
+		key.lcore_id = lcore_id;
 		key.cipher_algo = (uint8_t)sa->cipher_algo;
 		key.auth_algo = (uint8_t)sa->auth_algo;
 		key.aead_algo = (uint8_t)sa->aead_algo;
