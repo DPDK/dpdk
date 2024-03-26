@@ -221,7 +221,7 @@ static const char *cfgfile;
 struct __rte_cache_aligned lcore_params {
 	uint16_t port_id;
 	uint16_t queue_id;
-	uint8_t lcore_id;
+	uint32_t lcore_id;
 };
 
 static struct lcore_params lcore_params_array[MAX_LCORE_PARAMS];
@@ -807,7 +807,7 @@ check_flow_params(uint16_t fdir_portid, uint8_t fdir_qid)
 static int32_t
 check_poll_mode_params(struct eh_conf *eh_conf)
 {
-	uint8_t lcore;
+	uint32_t lcore;
 	uint16_t portid;
 	uint16_t i;
 	int32_t socket_id;
@@ -826,13 +826,13 @@ check_poll_mode_params(struct eh_conf *eh_conf)
 	for (i = 0; i < nb_lcore_params; ++i) {
 		lcore = lcore_params[i].lcore_id;
 		if (!rte_lcore_is_enabled(lcore)) {
-			printf("error: lcore %hhu is not enabled in "
+			printf("error: lcore %u is not enabled in "
 				"lcore mask\n", lcore);
 			return -1;
 		}
 		socket_id = rte_lcore_to_socket_id(lcore);
 		if (socket_id != 0 && numa_on == 0) {
-			printf("warning: lcore %hhu is on socket %d "
+			printf("warning: lcore %u is on socket %d "
 				"with numa off\n",
 				lcore, socket_id);
 		}
@@ -867,7 +867,7 @@ static int32_t
 init_lcore_rx_queues(void)
 {
 	uint16_t i, nb_rx_queue;
-	uint8_t lcore;
+	uint32_t lcore;
 
 	for (i = 0; i < nb_lcore_params; ++i) {
 		lcore = lcore_params[i].lcore_id;
@@ -1048,7 +1048,11 @@ parse_config(const char *q_arg)
 	char *str_fld[_NUM_FLD];
 	int32_t i;
 	uint32_t size;
-	uint32_t max_fld[_NUM_FLD] = {255, RTE_MAX_QUEUES_PER_PORT, 255};
+	uint32_t max_fld[_NUM_FLD] = {
+		255,
+		RTE_MAX_QUEUES_PER_PORT,
+		RTE_MAX_LCORE
+	};
 
 	nb_lcore_params = 0;
 
@@ -1082,7 +1086,7 @@ parse_config(const char *q_arg)
 		lcore_params_array[nb_lcore_params].queue_id =
 			(uint16_t)int_fld[FLD_QUEUE];
 		lcore_params_array[nb_lcore_params].lcore_id =
-			(uint8_t)int_fld[FLD_LCORE];
+			(uint32_t)int_fld[FLD_LCORE];
 		++nb_lcore_params;
 	}
 	lcore_params = lcore_params_array;
@@ -1918,7 +1922,8 @@ port_init(uint16_t portid, uint64_t req_rx_offloads, uint64_t req_tx_offloads,
 	struct rte_eth_dev_info dev_info;
 	struct rte_eth_txconf *txconf;
 	uint16_t nb_tx_queue, nb_rx_queue;
-	uint16_t tx_queueid, rx_queueid, queue, lcore_id;
+	uint16_t tx_queueid, rx_queueid, queue;
+	uint32_t lcore_id;
 	int32_t ret, socket_id;
 	struct lcore_conf *qconf;
 	struct rte_ether_addr ethaddr;

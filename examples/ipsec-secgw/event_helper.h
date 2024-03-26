@@ -102,7 +102,7 @@ struct eh_event_link_info {
 		/**< Event port ID */
 	uint8_t eventq_id;
 		/**< Event queue to be linked to the port */
-	uint8_t lcore_id;
+	uint32_t lcore_id;
 		/**< Lcore to be polling on this port */
 };
 

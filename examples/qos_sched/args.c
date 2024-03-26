@@ -184,10 +184,10 @@ app_parse_flow_conf(const char *conf_str)
 
 	pconf->rx_port = vals[0];
 	pconf->tx_port = vals[1];
-	pconf->rx_core = (uint8_t)vals[2];
-	pconf->wt_core = (uint8_t)vals[3];
+	pconf->rx_core = vals[2];
+	pconf->wt_core = vals[3];
 	if (ret == 5)
-		pconf->tx_core = (uint8_t)vals[4];
+		pconf->tx_core = vals[4];
 	else
 		pconf->tx_core = pconf->wt_core;
 

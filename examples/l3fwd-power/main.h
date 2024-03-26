@@ -10,7 +10,7 @@
 struct __rte_cache_aligned lcore_params {
 	uint16_t port_id;
 	uint16_t queue_id;
-	uint8_t lcore_id;
+	uint32_t lcore_id;
 };
 
 extern struct lcore_params *lcore_params;
