@@ -68,10 +68,7 @@ The code that launches the function on each lcore is as follows:
 
 The following code is equivalent and simpler:
 
-.. literalinclude:: ../../../examples/helloworld/main.c
-    :language: c
-    :start-after: Simpler equivalent. 8<
-    :end-before: >8 End of simpler equivalent.
-    :dedent: 2
+.. code-block:: c
+    rte_eal_mp_remote_launch(lcore_hello, NULL, CALL_MAIN);
 
 Refer to the *DPDK API Reference* for detailed information on the rte_eal_mp_remote_launch() function.
