@@ -133,7 +133,7 @@ parse_perf_config(const char *q_arg)
 	int i;
 	unsigned int size;
 	unsigned int max_fld[_NUM_FLD] = {
-		255,
+		RTE_MAX_ETHPORTS,
 		RTE_MAX_QUEUES_PER_PORT,
 		255,
 		RTE_MAX_LCORE
@@ -168,7 +168,7 @@ parse_perf_config(const char *q_arg)
 			return -1;
 		}
 		prf_lc_prms[nb_prf_lc_prms].port_id =
-				(uint8_t)int_fld[FLD_PORT];
+				(uint16_t)int_fld[FLD_PORT];
 		prf_lc_prms[nb_prf_lc_prms].queue_id =
 				(uint16_t)int_fld[FLD_QUEUE];
 		prf_lc_prms[nb_prf_lc_prms].high_perf =
