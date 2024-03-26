@@ -214,7 +214,7 @@ enum freq_scale_hint_t
 
 struct __rte_cache_aligned lcore_rx_queue {
 	uint16_t port_id;
-	uint8_t queue_id;
+	uint16_t queue_id;
 	enum freq_scale_hint_t freq_up_hint;
 	uint32_t zero_rx_packet_count;
 	uint32_t idle_hint;
@@ -838,7 +838,7 @@ sleep_until_rx_interrupt(int num, int lcore)
 	struct rte_epoll_event event[num];
 	int n, i;
 	uint16_t port_id;
-	uint8_t queue_id;
+	uint16_t queue_id;
 	void *data;
 
 	if (status[lcore].wakeup) {
@@ -850,9 +850,9 @@ sleep_until_rx_interrupt(int num, int lcore)
 	n = rte_epoll_wait(RTE_EPOLL_PER_THREAD, event, num, 10);
 	for (i = 0; i < n; i++) {
 		data = event[i].epdata.data;
-		port_id = ((uintptr_t)data) >> CHAR_BIT;
+		port_id = ((uintptr_t)data) >> (sizeof(uint16_t) * CHAR_BIT);
 		queue_id = ((uintptr_t)data) &
-			RTE_LEN2MASK(CHAR_BIT, uint8_t);
+			RTE_LEN2MASK((sizeof(uint16_t) * CHAR_BIT), uint16_t);
 		RTE_LOG(INFO, L3FWD_POWER,
 			"lcore %u is waked up from rx interrupt on"
 			" port %d queue %d\n",
@@ -867,7 +867,7 @@ static void turn_on_off_intr(struct lcore_conf *qconf, bool on)
 {
 	int i;
 	struct lcore_rx_queue *rx_queue;
-	uint8_t queue_id;
+	uint16_t queue_id;
 	uint16_t port_id;
 
 	for (i = 0; i < qconf->n_rx_queue; ++i) {
@@ -887,7 +887,7 @@ static void turn_on_off_intr(struct lcore_conf *qconf, bool on)
 static int event_register(struct lcore_conf *qconf)
 {
 	struct lcore_rx_queue *rx_queue;
-	uint8_t queueid;
+	uint16_t queueid;
 	uint16_t portid;
 	uint32_t data;
 	int ret;
@@ -897,7 +897,7 @@ static int event_register(struct lcore_conf *qconf)
 		rx_queue = &(qconf->rx_queue_list[i]);
 		portid = rx_queue->port_id;
 		queueid = rx_queue->queue_id;
-		data = portid << CHAR_BIT | queueid;
+		data = portid << (sizeof(uint16_t) * CHAR_BIT) | queueid;
 
 		ret = rte_eth_dev_rx_intr_ctl_q(portid, queueid,
 						RTE_EPOLL_PER_THREAD,
@@ -917,8 +917,7 @@ static int main_intr_loop(__rte_unused void *dummy)
 	unsigned int lcore_id;
 	uint64_t prev_tsc, diff_tsc, cur_tsc;
 	int i, j, nb_rx;
-	uint8_t queueid;
-	uint16_t portid;
+	uint16_t portid, queueid;
 	struct lcore_conf *qconf;
 	struct lcore_rx_queue *rx_queue;
 	uint32_t lcore_rx_idle_count = 0;
@@ -946,7 +945,7 @@ static int main_intr_loop(__rte_unused void *dummy)
 		portid = qconf->rx_queue_list[i].port_id;
 		queueid = qconf->rx_queue_list[i].queue_id;
 		RTE_LOG(INFO, L3FWD_POWER,
-				" -- lcoreid=%u portid=%u rxqueueid=%hhu\n",
+				" -- lcoreid=%u portid=%u rxqueueid=%" PRIu16 "\n",
 				lcore_id, portid, queueid);
 	}
 
@@ -1083,8 +1082,7 @@ main_telemetry_loop(__rte_unused void *dummy)
 	unsigned int lcore_id;
 	uint64_t prev_tsc, diff_tsc, cur_tsc, prev_tel_tsc;
 	int i, j, nb_rx;
-	uint8_t queueid;
-	uint16_t portid;
+	uint16_t portid, queueid;
 	struct lcore_conf *qconf;
 	struct lcore_rx_queue *rx_queue;
 	uint64_t ep_nep[2] = {0}, fp_nfp[2] = {0};
@@ -1114,7 +1112,7 @@ main_telemetry_loop(__rte_unused void *dummy)
 		portid = qconf->rx_queue_list[i].port_id;
 		queueid = qconf->rx_queue_list[i].queue_id;
 		RTE_LOG(INFO, L3FWD_POWER, " -- lcoreid=%u portid=%u "
-			"rxqueueid=%hhu\n", lcore_id, portid, queueid);
+			"rxqueueid=%" PRIu16 "\n", lcore_id, portid, queueid);
 	}
 
 	while (!is_done()) {
@@ -1205,8 +1203,7 @@ main_legacy_loop(__rte_unused void *dummy)
 	uint64_t prev_tsc, diff_tsc, cur_tsc, tim_res_tsc, hz;
 	uint64_t prev_tsc_power = 0, cur_tsc_power, diff_tsc_power;
 	int i, j, nb_rx;
-	uint8_t queueid;
-	uint16_t portid;
+	uint16_t portid, queueid;
 	struct lcore_conf *qconf;
 	struct lcore_rx_queue *rx_queue;
 	enum freq_scale_hint_t lcore_scaleup_hint;
@@ -1234,7 +1231,7 @@ main_legacy_loop(__rte_unused void *dummy)
 		portid = qconf->rx_queue_list[i].port_id;
 		queueid = qconf->rx_queue_list[i].queue_id;
 		RTE_LOG(INFO, L3FWD_POWER, " -- lcoreid=%u portid=%u "
-			"rxqueueid=%hhu\n", lcore_id, portid, queueid);
+			"rxqueueid=%" PRIu16 "\n", lcore_id, portid, queueid);
 	}
 
 	/* add into event wait list */
@@ -1399,14 +1396,14 @@ start_rx:
 static int
 check_lcore_params(void)
 {
-	uint8_t queue, lcore;
-	uint16_t i;
+	uint16_t queue, i;
+	uint8_t lcore;
 	int socketid;
 
 	for (i = 0; i < nb_lcore_params; ++i) {
 		queue = lcore_params[i].queue_id;
 		if (queue >= MAX_RX_QUEUE_PER_PORT) {
-			printf("invalid queue number: %hhu\n", queue);
+			printf("invalid queue number: %" PRIu16 "\n", queue);
 			return -1;
 		}
 		lcore = lcore_params[i].lcore_id;
@@ -1451,7 +1448,7 @@ check_port_config(void)
 	return 0;
 }
 
-static uint8_t
+static uint16_t
 get_port_n_rx_queues(const uint16_t port)
 {
 	int queue = -1;
@@ -1462,7 +1459,7 @@ get_port_n_rx_queues(const uint16_t port)
 				lcore_params[i].queue_id > queue)
 			queue = lcore_params[i].queue_id;
 	}
-	return (uint8_t)(++queue);
+	return (uint16_t)(++queue);
 }
 
 static int
@@ -1661,6 +1658,7 @@ parse_config(const char *q_arg)
 	char *str_fld[_NUM_FLD];
 	int i;
 	unsigned size;
+	unsigned int max_fld[_NUM_FLD] = {255, RTE_MAX_QUEUES_PER_PORT, 255};
 
 	nb_lcore_params = 0;
 
@@ -1680,8 +1678,7 @@ parse_config(const char *q_arg)
 		for (i = 0; i < _NUM_FLD; i++){
 			errno = 0;
 			int_fld[i] = strtoul(str_fld[i], &end, 0);
-			if (errno != 0 || end == str_fld[i] || int_fld[i] >
-									255)
+			if (errno != 0 || end == str_fld[i] || int_fld[i] > max_fld[i])
 				return -1;
 		}
 		if (nb_lcore_params >= MAX_LCORE_PARAMS) {
@@ -1692,7 +1689,7 @@ parse_config(const char *q_arg)
 		lcore_params_array[nb_lcore_params].port_id =
 				(uint8_t)int_fld[FLD_PORT];
 		lcore_params_array[nb_lcore_params].queue_id =
-				(uint8_t)int_fld[FLD_QUEUE];
+				(uint16_t)int_fld[FLD_QUEUE];
 		lcore_params_array[nb_lcore_params].lcore_id =
 				(uint8_t)int_fld[FLD_LCORE];
 		++nb_lcore_params;
@@ -2501,8 +2498,8 @@ main(int argc, char **argv)
 	uint64_t hz;
 	uint32_t n_tx_queue, nb_lcores;
 	uint32_t dev_rxq_num, dev_txq_num;
-	uint8_t nb_rx_queue, queue, socketid;
-	uint16_t portid;
+	uint8_t socketid;
+	uint16_t portid, nb_rx_queue, queue;
 	const char *ptr_strings[NUM_TELSTATS];
 
 	/* init EAL */

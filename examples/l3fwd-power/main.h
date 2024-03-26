@@ -9,7 +9,7 @@
 #define MAX_LCORE_PARAMS 1024
 struct __rte_cache_aligned lcore_params {
 	uint16_t port_id;
-	uint8_t queue_id;
+	uint16_t queue_id;
 	uint8_t lcore_id;
 };
 

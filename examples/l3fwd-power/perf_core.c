@@ -22,7 +22,7 @@ static uint16_t nb_hp_lcores;
 
 struct __rte_cache_aligned perf_lcore_params {
 	uint16_t port_id;
-	uint8_t queue_id;
+	uint16_t queue_id;
 	uint8_t high_perf;
 	uint8_t lcore_idx;
 };
@@ -132,6 +132,7 @@ parse_perf_config(const char *q_arg)
 	char *str_fld[_NUM_FLD];
 	int i;
 	unsigned int size;
+	unsigned int max_fld[_NUM_FLD] = {255, RTE_MAX_QUEUES_PER_PORT, 255, 255};
 
 	nb_prf_lc_prms = 0;
 
@@ -152,7 +153,8 @@ parse_perf_config(const char *q_arg)
 		for (i = 0; i < _NUM_FLD; i++) {
 			errno = 0;
 			int_fld[i] = strtoul(str_fld[i], &end, 0);
-			if (errno != 0 || end == str_fld[i] || int_fld[i] > 255)
+			if (errno != 0 || end == str_fld[i] || int_fld[i] > max_fld[i])
+
 				return -1;
 		}
 		if (nb_prf_lc_prms >= MAX_LCORE_PARAMS) {
@@ -163,7 +165,7 @@ parse_perf_config(const char *q_arg)
 		prf_lc_prms[nb_prf_lc_prms].port_id =
 				(uint8_t)int_fld[FLD_PORT];
 		prf_lc_prms[nb_prf_lc_prms].queue_id =
-				(uint8_t)int_fld[FLD_QUEUE];
+				(uint16_t)int_fld[FLD_QUEUE];
 		prf_lc_prms[nb_prf_lc_prms].high_perf =
 				!!(uint8_t)int_fld[FLD_LCORE_HP];
 		prf_lc_prms[nb_prf_lc_prms].lcore_idx =
