@@ -256,11 +256,11 @@ extern struct offloads tx_offloads;
  * (hash key calculation reads 8 bytes if this struct is size 5 bytes).
  */
 struct cdev_key {
-	uint16_t lcore_id;
+	uint32_t lcore_id;
 	uint8_t cipher_algo;
 	uint8_t auth_algo;
 	uint8_t aead_algo;
-	uint8_t padding[3]; /* padding to 8-byte size should be zeroed */
+	uint8_t padding; /* padding to 8-byte size should be zeroed */
 };
 
 struct socket_ctx {

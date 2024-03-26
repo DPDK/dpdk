@@ -97,7 +97,7 @@ static struct lcore_conf lcore_conf[RTE_MAX_LCORE];
 struct lcore_params {
 	uint16_t port_id;
 	uint16_t queue_id;
-	uint8_t lcore_id;
+	uint32_t lcore_id;
 } __rte_cache_aligned;
 
 static struct lcore_params lcore_params_array[MAX_LCORE_PARAMS];
@@ -152,7 +152,7 @@ check_lcore_params(void)
 {
 	uint16_t queue, i;
 	int socketid;
-	uint8_t lcore;
+	uint32_t lcore;
 
 	for (i = 0; i < nb_lcore_params; ++i) {
 		queue = lcore_params[i].queue_id;
@@ -162,7 +162,7 @@ check_lcore_params(void)
 		}
 		lcore = lcore_params[i].lcore_id;
 		if (!rte_lcore_is_enabled(lcore)) {
-			printf("Error: lcore %hhu is not enabled in lcore mask\n",
+			printf("Error: lcore %u is not enabled in lcore mask\n",
 			       lcore);
 			return -1;
 		}
@@ -173,7 +173,7 @@ check_lcore_params(void)
 		}
 		socketid = rte_lcore_to_socket_id(lcore);
 		if ((socketid != 0) && (numa_on == 0)) {
-			printf("Warning: lcore %hhu is on socket %d with numa off\n",
+			printf("Warning: lcore %u is on socket %d with numa off\n",
 			       lcore, socketid);
 		}
 	}
@@ -227,7 +227,7 @@ static int
 init_lcore_rx_queues(void)
 {
 	uint16_t i, nb_rx_queue;
-	uint8_t lcore;
+	uint32_t lcore;
 
 	for (i = 0; i < nb_lcore_params; ++i) {
 		lcore = lcore_params[i].lcore_id;
@@ -235,7 +235,7 @@ init_lcore_rx_queues(void)
 		if (nb_rx_queue >= MAX_RX_QUEUE_PER_LCORE) {
 			printf("Error: too many queues (%u) for lcore: %u\n",
 			       (unsigned int)nb_rx_queue + 1,
-			       (unsigned int)lcore);
+			       lcore);
 			return -1;
 		}
 
@@ -358,7 +358,7 @@ parse_config(const char *q_arg)
 		lcore_params_array[nb_lcore_params].queue_id =
 			(uint16_t)int_fld[FLD_QUEUE];
 		lcore_params_array[nb_lcore_params].lcore_id =
-			(uint8_t)int_fld[FLD_LCORE];
+			(uint32_t)int_fld[FLD_LCORE];
 		++nb_lcore_params;
 	}
 	lcore_params = lcore_params_array;
