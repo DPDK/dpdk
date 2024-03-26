@@ -78,8 +78,8 @@ struct l3fwd_event_resources {
 	uint8_t deq_depth;
 	uint8_t has_burst;
 	uint8_t enabled;
-	uint8_t eth_rx_queues;
 	uint8_t vector_enabled;
+	uint16_t eth_rx_queues;
 	uint16_t vector_size;
 	uint64_t vector_tmo_ns;
 };

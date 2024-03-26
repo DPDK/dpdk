@@ -586,7 +586,7 @@ em_main_loop(__rte_unused void *dummy)
 	unsigned lcore_id;
 	uint64_t prev_tsc, diff_tsc, cur_tsc;
 	int i, nb_rx;
-	uint8_t queueid;
+	uint16_t queueid;
 	uint16_t portid;
 	struct lcore_conf *qconf;
 	const uint64_t drain_tsc = (rte_get_tsc_hz() + US_PER_S - 1) /
@@ -609,7 +609,7 @@ em_main_loop(__rte_unused void *dummy)
 		portid = qconf->rx_queue_list[i].port_id;
 		queueid = qconf->rx_queue_list[i].queue_id;
 		RTE_LOG(INFO, L3FWD,
-			" -- lcoreid=%u portid=%u rxqueueid=%hhu\n",
+			" -- lcoreid=%u portid=%u rxqueueid=%" PRIu16 "\n",
 			lcore_id, portid, queueid);
 	}
 
