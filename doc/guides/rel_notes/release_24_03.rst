@@ -298,6 +298,22 @@ Tested Platforms
    Also, make sure to start the actual text at the margin.
    =======================================================
 
+* AMD platforms
+
+  * CPU
+
+    * AMD EPYC\ |trade| 7543 32-Core Processor @ 3.70GHz
+
+      * BIOS 7.00.30.00
+
+    * AMD EPYC\ |trade| 8534 64-Core Processor @ 3.10GHz
+
+      * BIOS 7.00.00.00
+
+  * OS:
+
+    * Ubuntu 22.04.4 LTS
+
 * Intel\ |reg| platforms with Intel\ |reg| NICs combinations
 
   * CPU
