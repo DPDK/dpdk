@@ -448,7 +448,7 @@ parse_config(const char *q_arg)
 		}
 
 		lcore_params_array[nb_lcore_params].port_id =
-			(uint8_t)int_fld[FLD_PORT];
+			(uint16_t)int_fld[FLD_PORT];
 		lcore_params_array[nb_lcore_params].queue_id =
 			(uint16_t)int_fld[FLD_QUEUE];
 		lcore_params_array[nb_lcore_params].lcore_id =
