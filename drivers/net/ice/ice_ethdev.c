@@ -3840,7 +3840,10 @@ ice_dev_start(struct rte_eth_dev *dev)
 	ice_set_tx_function(dev);
 
 	mask = RTE_ETH_VLAN_STRIP_MASK | RTE_ETH_VLAN_FILTER_MASK |
-			RTE_ETH_VLAN_EXTEND_MASK | RTE_ETH_QINQ_STRIP_MASK;
+			RTE_ETH_VLAN_EXTEND_MASK;
+	if (ice_is_dvm_ena(hw))
+		mask |= RTE_ETH_QINQ_STRIP_MASK;
+
 	ret = ice_vlan_offload_set(dev, mask);
 	if (ret) {
 		PMD_INIT_LOG(ERR, "Unable to set VLAN offload");
@@ -4910,19 +4913,35 @@ ice_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 			ice_vsi_config_vlan_filter(vsi, false);
 	}
 
-	if (mask & RTE_ETH_VLAN_STRIP_MASK) {
-		if (rxmode->offloads & RTE_ETH_RX_OFFLOAD_VLAN_STRIP)
-			ice_vsi_config_vlan_stripping(vsi, true);
-		else
-			ice_vsi_config_vlan_stripping(vsi, false);
-	}
+	struct ice_hw *hw = ICE_VSI_TO_HW(vsi);
+	if (!ice_is_dvm_ena(hw)) {
+		if (mask & RTE_ETH_VLAN_STRIP_MASK) {
+			if (rxmode->offloads & RTE_ETH_RX_OFFLOAD_VLAN_STRIP)
+				ice_vsi_config_vlan_stripping(vsi, true);
+			else
+				ice_vsi_config_vlan_stripping(vsi, false);
+		}
 
-	if (mask & RTE_ETH_QINQ_STRIP_MASK) {
-		/* Enable or disable outer VLAN stripping */
-		if (rxmode->offloads & RTE_ETH_RX_OFFLOAD_QINQ_STRIP)
-			ice_vsi_config_outer_vlan_stripping(vsi, true);
-		else
-			ice_vsi_config_outer_vlan_stripping(vsi, false);
+		if (mask & RTE_ETH_QINQ_STRIP_MASK) {
+			PMD_DRV_LOG(ERR, "Single VLAN mode (SVM) does not support qinq");
+			return -ENOTSUP;
+		}
+	} else {
+		if ((mask & RTE_ETH_VLAN_STRIP_MASK) |
+				(mask & RTE_ETH_QINQ_STRIP_MASK)) {
+			if (rxmode->offloads & (RTE_ETH_RX_OFFLOAD_VLAN_STRIP |
+						RTE_ETH_RX_OFFLOAD_QINQ_STRIP))
+				ice_vsi_config_outer_vlan_stripping(vsi, true);
+			else
+				ice_vsi_config_outer_vlan_stripping(vsi, false);
+		}
+
+		if (mask & RTE_ETH_QINQ_STRIP_MASK) {
+			if (rxmode->offloads & RTE_ETH_RX_OFFLOAD_QINQ_STRIP)
+				ice_vsi_config_vlan_stripping(vsi, true);
+			else
+				ice_vsi_config_vlan_stripping(vsi, false);
+		}
 	}
 
 	return 0;
