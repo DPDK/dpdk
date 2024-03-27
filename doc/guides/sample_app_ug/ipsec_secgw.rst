@@ -765,6 +765,7 @@ where each options means:
  ``<mss>``
 
  * Maximum segment size for TSO offload, available for egress SAs only.
+   Currently only supports TCP/IP.
 
  * Optional: Yes, TSO offload not set by default
 
