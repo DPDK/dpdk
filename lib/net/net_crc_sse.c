@@ -6,11 +6,10 @@
 #include <string.h>
 
 #include <rte_common.h>
+#include <rte_vect.h>
 #include <rte_branch_prediction.h>
 
 #include "net_crc.h"
-
-#include <x86intrin.h>
 
 /** PCLMULQDQ CRC computation context structure */
 struct crc_pclmulqdq_ctx {
@@ -272,12 +271,9 @@ rte_net_crc_sse42_init(void)
 	p =  0x10811LLU;
 
 	/** Save the params in context structure */
-	crc16_ccitt_pclmulqdq.rk1_rk2 =
-		_mm_setr_epi64(_mm_cvtsi64_m64(k1), _mm_cvtsi64_m64(k2));
-	crc16_ccitt_pclmulqdq.rk5_rk6 =
-		_mm_setr_epi64(_mm_cvtsi64_m64(k5), _mm_cvtsi64_m64(k6));
-	crc16_ccitt_pclmulqdq.rk7_rk8 =
-		_mm_setr_epi64(_mm_cvtsi64_m64(q), _mm_cvtsi64_m64(p));
+	crc16_ccitt_pclmulqdq.rk1_rk2 = _mm_set_epi64x(k2, k1);
+	crc16_ccitt_pclmulqdq.rk5_rk6 = _mm_set_epi64x(k6, k5);
+	crc16_ccitt_pclmulqdq.rk7_rk8 = _mm_set_epi64x(p, q);
 
 	/** Initialize CRC32 data */
 	k1 = 0xccaa009eLLU;
@@ -288,18 +284,9 @@ rte_net_crc_sse42_init(void)
 	p =  0x1db710641LLU;
 
 	/** Save the params in context structure */
-	crc32_eth_pclmulqdq.rk1_rk2 =
-		_mm_setr_epi64(_mm_cvtsi64_m64(k1), _mm_cvtsi64_m64(k2));
-	crc32_eth_pclmulqdq.rk5_rk6 =
-		_mm_setr_epi64(_mm_cvtsi64_m64(k5), _mm_cvtsi64_m64(k6));
-	crc32_eth_pclmulqdq.rk7_rk8 =
-		_mm_setr_epi64(_mm_cvtsi64_m64(q), _mm_cvtsi64_m64(p));
-
-	/**
-	 * Reset the register as following calculation may
-	 * use other data types such as float, double, etc.
-	 */
-	_mm_empty();
+	crc32_eth_pclmulqdq.rk1_rk2 = _mm_set_epi64x(k2, k1);
+	crc32_eth_pclmulqdq.rk5_rk6 = _mm_set_epi64x(k6, k5);
+	crc32_eth_pclmulqdq.rk7_rk8 = _mm_set_epi64x(p, q);
 }
 
 uint32_t
