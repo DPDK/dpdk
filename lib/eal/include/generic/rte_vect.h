@@ -15,7 +15,11 @@
 
 #include <stdint.h>
 
-#ifndef RTE_TOOLCHAIN_MSVC
+#ifdef RTE_TOOLCHAIN_MSVC
+
+#include <intrin.h>
+
+#else
 
 /* Unsigned vector types */
 
