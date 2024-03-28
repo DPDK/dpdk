@@ -34,6 +34,22 @@ const char * const virtio_user_backend_strings[] = {
 };
 
 static int
+virtio_user_destroy_queue(struct virtio_user_dev *dev, uint32_t queue_sel)
+{
+	struct vhost_vring_state state;
+	int ret;
+
+	state.index = queue_sel;
+	ret = dev->ops->get_vring_base(dev, &state);
+	if (ret < 0) {
+		PMD_DRV_LOG(ERR, "(%s) Failed to destroy queue %u", dev->path, queue_sel);
+		return -1;
+	}
+
+	return 0;
+}
+
+static int
 virtio_user_create_queue(struct virtio_user_dev *dev, uint32_t queue_sel)
 {
 	/* Of all per virtqueue MSGs, make sure VHOST_SET_VRING_CALL come
@@ -237,7 +253,6 @@ error:
 
 int virtio_user_stop_device(struct virtio_user_dev *dev)
 {
-	struct vhost_vring_state state;
 	uint32_t i;
 	int ret;
 
@@ -258,14 +273,8 @@ int virtio_user_stop_device(struct virtio_user_dev *dev)
 	}
 
 	/* Stop the backend. */
-	for (i = 0; i < dev->max_queue_pairs * 2; ++i) {
-		state.index = i;
-		ret = dev->ops->get_vring_base(dev, &state);
-		if (ret < 0) {
-			PMD_DRV_LOG(ERR, "(%s) get_vring_base failed, index=%u", dev->path, i);
-			goto err;
-		}
-	}
+	if (virtio_user_foreach_queue(dev, virtio_user_destroy_queue) < 0)
+		goto err;
 
 	dev->started = false;
 
