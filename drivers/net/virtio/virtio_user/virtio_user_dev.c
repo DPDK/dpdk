@@ -129,7 +129,7 @@ err:
 }
 
 static int
-virtio_user_queue_setup(struct virtio_user_dev *dev,
+virtio_user_foreach_queue(struct virtio_user_dev *dev,
 			int (*fn)(struct virtio_user_dev *, uint32_t))
 {
 	uint32_t i, nr_vq;
@@ -138,12 +138,9 @@ virtio_user_queue_setup(struct virtio_user_dev *dev,
 	if (dev->hw_cvq)
 		nr_vq++;
 
-	for (i = 0; i < nr_vq; i++) {
-		if (fn(dev, i) < 0) {
-			PMD_DRV_LOG(ERR, "(%s) setup VQ %u failed", dev->path, i);
+	for (i = 0; i < nr_vq; i++)
+		if (fn(dev, i) < 0)
 			return -1;
-		}
-	}
 
 	return 0;
 }
@@ -157,7 +154,7 @@ virtio_user_dev_set_features(struct virtio_user_dev *dev)
 	pthread_mutex_lock(&dev->mutex);
 
 	/* Step 0: tell vhost to create queues */
-	if (virtio_user_queue_setup(dev, virtio_user_create_queue) < 0)
+	if (virtio_user_foreach_queue(dev, virtio_user_create_queue) < 0)
 		goto error;
 
 	features = dev->features;
@@ -205,7 +202,7 @@ virtio_user_start_device(struct virtio_user_dev *dev)
 		goto error;
 
 	/* Step 3: kick queues */
-	ret = virtio_user_queue_setup(dev, virtio_user_kick_queue);
+	ret = virtio_user_foreach_queue(dev, virtio_user_kick_queue);
 	if (ret < 0)
 		goto error;
 
