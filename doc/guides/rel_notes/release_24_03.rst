@@ -57,13 +57,13 @@ New Features
 
 * **Added HiSilicon UACCE bus support.**
 
-  UACCE (Unified/User-space-access-intended Accelerator Framework) bus driver
-  has been added, so that the accelerator devices could be seen in DPDK and could
-  be further registered such as a compress, crypto, DMA and ethernet devices.
+  Added UACCE (Unified/User-space-access-intended Accelerator Framework) bus
+  driver so that the accelerator devices such as a compress, crypto,
+  DMA and ethernet devices could be seen and registered in DPDK.
 
 * **Introduced argument parsing library.**
 
-  The argparse library was added to ease writing user-friendly applications,
+  The argparse library was added to help writing user-friendly applications,
   replacing ``getopt()`` usage.
 
 * **Improved RSS hash algorithm support.**
@@ -73,8 +73,8 @@ New Features
 
 * **Added query of used descriptors number in Tx queue.**
 
-  * Added a fath path function ``rte_eth_tx_queue_count``
-    to get the number of used descriptors of a Tx queue.
+  * Added a fast path function ``rte_eth_tx_queue_count``
+    to get the number of used descriptors for a Tx queue.
 
 * **Added hash calculation of an encapsulated packet as done by the HW.**
 
@@ -111,7 +111,7 @@ New Features
   * Added ``normal_llq_hdr`` devarg that enforces normal LLQ header policy.
   * Added support for LLQ header size recommendation from the device.
   * Allowed large LLQ with 1024 entries when the device supports enlarged memory BAR.
-  * Added `control_poll_interval` devarg that configure control-path to work in poll-mode.
+  * Added `control_poll_interval` devarg that configures the control-path to work in poll-mode.
   * Added support for binding ports to `uio_pci_generic` kernel module.
 
 * **Updated Atomic Rules' Arkville driver.**
@@ -184,7 +184,7 @@ New Features
 * **Added Marvell Nitrox compression driver.**
 
   Added a new compression driver for Marvell Nitrox devices to support
-  deflate compression and decompression algorithm.
+  the deflate compression and decompression algorithm.
 
 * **Updated Marvell cnxk eventdev driver.**
 
@@ -240,7 +240,7 @@ API Changes
 * eal: Improved ``RTE_BUILD_BUG_ON`` by using C11 ``static_assert``.
   Non-constant expressions are now rejected instead of being silently ignored.
 
-* gso: ``rte_gso_segment`` now returns -ENOTSUP for unknown protocols.
+* gso: ``rte_gso_segment`` now returns ``-ENOTSUP`` for unknown protocols.
 
 * ethdev: Renamed structure ``rte_flow_action_modify_data`` to be
   ``rte_flow_field_data`` for more generic usage.
@@ -352,7 +352,8 @@ Tested Platforms
       * Firmware version: 4.40 0x8001c982 1.3534.0
       * Device id (pf/vf): 8086:1593 / 8086:1889
       * Driver version(out-tree): 1.13.7 (ice)
-      * Driver version(in-tree): 5.15.0-82-generic (Ubuntu22.04.3)/ 5.14.0-284.11.1.rt14.296.el9_2.x86_64 (RHEL9.2) (ice)
+      * Driver version(in-tree): 5.15.0-82-generic (Ubuntu22.04.3) /
+        5.14.0-284.11.1.rt14.296.el9_2.x86_64 (RHEL9.2) (ice)
       * OS Default DDP: 1.3.35.0
       * COMMS DDP: 1.3.45.0
       * Wireless Edge DDP: 1.3.13.0
@@ -407,7 +408,8 @@ Tested Platforms
       * Firmware version: 0x000161bf
       * Device id (pf/vf): 8086:10fb / 8086:10ed
       * Driver version(out-tree): 5.19.9 (ixgbe)
-      * Driver version(in-tree): 5.15.0-82-generic (Ubuntu22.04.3)/ 5.14.0-284.11.1.el9_2.x86_64 (RHEL9.2)(ixgbe)
+      * Driver version(in-tree): 5.15.0-82-generic (Ubuntu22.04.3) /
+        5.14.0-284.11.1.el9_2.x86_64 (RHEL9.2)(ixgbe)
 
     * Intel\ |reg| Ethernet Converged Network Adapter X710-DA4 (4x10G)
 
@@ -427,7 +429,8 @@ Tested Platforms
       * Firmware version: 9.40 0x8000ed12 1.3429.0
       * Device id (pf/vf): 8086:158b / 8086:154c
       * Driver version(out-tree): 2.24.6 (i40e)
-      * Driver version(in-tree): 5.15.0-82-generic (Ubuntu22.04.3)/5.14.0-284.11.1.el9_2.x86_64 (RHEL9.2)(i40e)
+      * Driver version(in-tree): 5.15.0-82-generic (Ubuntu22.04.3) /
+        5.14.0-284.11.1.el9_2.x86_64 (RHEL9.2)(i40e)
 
     * Intel\ |reg| Ethernet Converged Network Adapter XL710-QDA2 (2X40G)
 
