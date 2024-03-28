@@ -34,6 +34,45 @@ const char * const virtio_user_backend_strings[] = {
 };
 
 static int
+virtio_user_uninit_notify_queue(struct virtio_user_dev *dev, uint32_t queue_sel)
+{
+	if (dev->kickfds[queue_sel] >= 0) {
+		close(dev->kickfds[queue_sel]);
+		dev->kickfds[queue_sel] = -1;
+	}
+
+	if (dev->callfds[queue_sel] >= 0) {
+		close(dev->callfds[queue_sel]);
+		dev->callfds[queue_sel] = -1;
+	}
+
+	return 0;
+}
+
+static int
+virtio_user_init_notify_queue(struct virtio_user_dev *dev, uint32_t queue_sel)
+{
+	/* May use invalid flag, but some backend uses kickfd and
+	 * callfd as criteria to judge if dev is alive. so finally we
+	 * use real event_fd.
+	 */
+	dev->callfds[queue_sel] = eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK);
+	if (dev->callfds[queue_sel] < 0) {
+		PMD_DRV_LOG(ERR, "(%s) Failed to setup callfd for queue %u: %s",
+				dev->path, queue_sel, strerror(errno));
+		return -1;
+	}
+	dev->kickfds[queue_sel] = eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK);
+	if (dev->kickfds[queue_sel] < 0) {
+		PMD_DRV_LOG(ERR, "(%s) Failed to setup kickfd for queue %u: %s",
+				dev->path, queue_sel, strerror(errno));
+		return -1;
+	}
+
+	return 0;
+}
+
+static int
 virtio_user_destroy_queue(struct virtio_user_dev *dev, uint32_t queue_sel)
 {
 	struct vhost_vring_state state;
@@ -423,33 +462,9 @@ out:
 static int
 virtio_user_dev_init_notify(struct virtio_user_dev *dev)
 {
-	uint32_t i, j, nr_vq;
-	int callfd;
-	int kickfd;
 
-	nr_vq = dev->max_queue_pairs * 2;
-	if (dev->hw_cvq)
-		nr_vq++;
-
-	for (i = 0; i < nr_vq; i++) {
-		/* May use invalid flag, but some backend uses kickfd and
-		 * callfd as criteria to judge if dev is alive. so finally we
-		 * use real event_fd.
-		 */
-		callfd = eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK);
-		if (callfd < 0) {
-			PMD_DRV_LOG(ERR, "(%s) callfd error, %s", dev->path, strerror(errno));
-			goto err;
-		}
-		kickfd = eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK);
-		if (kickfd < 0) {
-			close(callfd);
-			PMD_DRV_LOG(ERR, "(%s) kickfd error, %s", dev->path, strerror(errno));
-			goto err;
-		}
-		dev->callfds[i] = callfd;
-		dev->kickfds[i] = kickfd;
-	}
+	if (virtio_user_foreach_queue(dev, virtio_user_init_notify_queue) < 0)
+		goto err;
 
 	if (dev->device_features & (1ULL << VIRTIO_F_NOTIFICATION_DATA))
 		if (dev->ops->map_notification_area &&
@@ -458,16 +473,7 @@ virtio_user_dev_init_notify(struct virtio_user_dev *dev)
 
 	return 0;
 err:
-	for (j = 0; j < i; j++) {
-		if (dev->kickfds[j] >= 0) {
-			close(dev->kickfds[j]);
-			dev->kickfds[j] = -1;
-		}
-		if (dev->callfds[j] >= 0) {
-			close(dev->callfds[j]);
-			dev->callfds[j] = -1;
-		}
-	}
+	virtio_user_foreach_queue(dev, virtio_user_uninit_notify_queue);
 
 	return -1;
 }
@@ -475,18 +481,8 @@ err:
 static void
 virtio_user_dev_uninit_notify(struct virtio_user_dev *dev)
 {
-	uint32_t i;
+	virtio_user_foreach_queue(dev, virtio_user_uninit_notify_queue);
 
-	for (i = 0; i < dev->max_queue_pairs * 2; ++i) {
-		if (dev->kickfds[i] >= 0) {
-			close(dev->kickfds[i]);
-			dev->kickfds[i] = -1;
-		}
-		if (dev->callfds[i] >= 0) {
-			close(dev->callfds[i]);
-			dev->callfds[i] = -1;
-		}
-	}
 	if (dev->ops->unmap_notification_area && dev->notify_area)
 		dev->ops->unmap_notification_area(dev);
 }
