@@ -3484,6 +3484,35 @@ virtio_dev_tx_single_packed(struct virtio_net *dev,
 	return ret;
 }
 
+static __rte_always_inline uint16_t
+get_nb_avail_entries_packed(const struct vhost_virtqueue *__rte_restrict vq,
+			    uint16_t max_nb_avail_entries)
+{
+	const struct vring_packed_desc *descs = vq->desc_packed;
+	bool avail_wrap = vq->avail_wrap_counter;
+	uint16_t avail_idx = vq->last_avail_idx;
+	uint16_t nb_avail_entries = 0;
+	uint16_t flags;
+
+	while (nb_avail_entries < max_nb_avail_entries) {
+		flags = descs[avail_idx].flags;
+
+		if ((avail_wrap != !!(flags & VRING_DESC_F_AVAIL)) ||
+		    (avail_wrap == !!(flags & VRING_DESC_F_USED)))
+			return nb_avail_entries;
+
+		if (!(flags & VRING_DESC_F_NEXT))
+			++nb_avail_entries;
+
+		if (unlikely(++avail_idx >= vq->size)) {
+			avail_idx -= vq->size;
+			avail_wrap = !avail_wrap;
+		}
+	}
+
+	return nb_avail_entries;
+}
+
 __rte_always_inline
 static uint16_t
 virtio_dev_tx_packed(struct virtio_net *dev,
@@ -3496,6 +3525,10 @@ virtio_dev_tx_packed(struct virtio_net *dev,
 	__rte_shared_locks_required(&vq->iotlb_lock)
 {
 	uint32_t pkt_idx = 0;
+
+	count = get_nb_avail_entries_packed(vq, count);
+	if (count == 0)
+		return 0;
 
 	if (rte_pktmbuf_alloc_bulk(mbuf_pool, pkts, count)) {
 		vq->stats.mbuf_alloc_failed += count;
