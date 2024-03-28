@@ -20,6 +20,7 @@
 #include <rte_malloc.h>
 
 #include "vhost.h"
+#include "virtio.h"
 #include "virtio_user_dev.h"
 #include "../virtio_ethdev.h"
 
@@ -608,7 +609,7 @@ virtio_user_alloc_vrings(struct virtio_user_dev *dev)
 	bool packed_ring = !!(dev->device_features & (1ull << VIRTIO_F_RING_PACKED));
 
 	nr_vrings = dev->max_queue_pairs * 2;
-	if (dev->device_features & (1ull << VIRTIO_NET_F_MQ))
+	if (dev->device_features & (1ull << VIRTIO_NET_F_CTRL_VQ))
 		nr_vrings++;
 
 	dev->callfds = rte_zmalloc("virtio_user_dev", nr_vrings * sizeof(*dev->callfds), 0);
