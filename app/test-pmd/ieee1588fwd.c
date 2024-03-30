@@ -197,14 +197,23 @@ ieee1588_packet_fwd(struct fwd_stream *fs)
 static int
 port_ieee1588_fwd_begin(portid_t pi)
 {
-	rte_eth_timesync_enable(pi);
-	return 0;
+	int ret;
+
+	ret = rte_eth_timesync_enable(pi);
+	if (ret)
+		printf("Port %u enable PTP failed, ret = %d\n", pi, ret);
+
+	return ret;
 }
 
 static void
 port_ieee1588_fwd_end(portid_t pi)
 {
-	rte_eth_timesync_disable(pi);
+	int ret;
+
+	ret = rte_eth_timesync_disable(pi);
+	if (ret)
+		printf("Port %u disable PTP failed, ret = %d\n", pi, ret);
 }
 
 static void
