@@ -544,6 +544,13 @@ nfp_net_nfdk_tx_queue_setup(struct rte_eth_dev *dev,
 		return -ENOMEM;
 	}
 
+	if (hw->txrwb_mz != NULL) {
+		txq->txrwb = (uint64_t *)hw->txrwb_mz->addr + queue_idx;
+		txq->txrwb_dma = (uint64_t)hw->txrwb_mz->iova +
+				queue_idx * sizeof(uint64_t);
+		nn_cfg_writeq(&hw->super, NFP_NET_CFG_TXR_WB_ADDR(queue_idx), txq->txrwb_dma);
+	}
+
 	nfp_net_reset_tx_queue(txq);
 
 	dev->data->tx_queues[queue_idx] = txq;

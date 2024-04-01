@@ -168,6 +168,9 @@ struct nfp_net_hw {
 	/** Backpointer to the eth_dev of this port */
 	struct rte_eth_dev *eth_dev;
 
+	/** TX pointer ring write back memzone */
+	const struct rte_memzone *txrwb_mz;
+
 	/** Info from the firmware */
 	struct nfp_net_fw_ver ver;
 	uint32_t max_mtu;
@@ -321,6 +324,8 @@ int nfp_net_fec_set(struct rte_eth_dev *dev,
 		uint32_t fec_capa);
 void nfp_net_get_fw_version(struct nfp_net_hw *hw,
 		uint32_t *fw_version);
+int nfp_net_txrwb_alloc(struct rte_eth_dev *eth_dev);
+void nfp_net_txrwb_free(struct rte_eth_dev *eth_dev);
 
 #define NFP_PRIV_TO_APP_FW_NIC(app_fw_priv)\
 	((struct nfp_app_fw_nic *)app_fw_priv)

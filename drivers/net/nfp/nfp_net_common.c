@@ -2039,6 +2039,40 @@ nfp_net_check_dma_mask(struct nfp_net_hw *hw,
 	return 0;
 }
 
+int
+nfp_net_txrwb_alloc(struct rte_eth_dev *eth_dev)
+{
+	struct nfp_net_hw *net_hw;
+	char mz_name[RTE_MEMZONE_NAMESIZE];
+
+	net_hw = nfp_net_get_hw(eth_dev);
+	snprintf(mz_name, sizeof(mz_name), "%s_TXRWB", eth_dev->data->name);
+	net_hw->txrwb_mz = rte_memzone_reserve_aligned(mz_name,
+			net_hw->max_tx_queues * sizeof(uint64_t),
+			rte_socket_id(),
+			RTE_MEMZONE_IOVA_CONTIG, RTE_CACHE_LINE_SIZE);
+	if (net_hw->txrwb_mz == NULL) {
+		PMD_INIT_LOG(ERR, "Failed to alloc %s for TX ring write back",
+				mz_name);
+		return -ENOMEM;
+	}
+
+	return 0;
+}
+
+void
+nfp_net_txrwb_free(struct rte_eth_dev *eth_dev)
+{
+	struct nfp_net_hw *net_hw;
+
+	net_hw = nfp_net_get_hw(eth_dev);
+	if (net_hw->txrwb_mz == NULL)
+		return;
+
+	rte_memzone_free(net_hw->txrwb_mz);
+	net_hw->txrwb_mz = NULL;
+}
+
 void
 nfp_net_cfg_read_version(struct nfp_net_hw *hw)
 {

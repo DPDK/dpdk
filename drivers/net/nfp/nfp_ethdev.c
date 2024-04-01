@@ -360,6 +360,9 @@ nfp_net_start(struct rte_eth_dev *dev)
 	if ((hw->cap & NFP_NET_CFG_CTRL_RINGCFG) != 0)
 		new_ctrl |= NFP_NET_CFG_CTRL_RINGCFG;
 
+	if ((hw->cap & NFP_NET_CFG_CTRL_TXRWB) != 0)
+		new_ctrl |= NFP_NET_CFG_CTRL_TXRWB;
+
 	if (nfp_reconfig(hw, new_ctrl, update) != 0)
 		return -EIO;
 
@@ -577,6 +580,8 @@ nfp_net_uninit(struct rte_eth_dev *eth_dev)
 		nfp_net_flow_priv_uninit(net_hw->pf_dev, net_hw->idx);
 
 	rte_free(net_hw->eth_xstats_base);
+	if ((net_hw->super.cap & NFP_NET_CFG_CTRL_TXRWB) != 0)
+		nfp_net_txrwb_free(eth_dev);
 	nfp_ipsec_uninit(eth_dev);
 	if (net_hw->mac_stats_area != NULL)
 		nfp_cpp_area_release_free(net_hw->mac_stats_area);
@@ -987,6 +992,12 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 		goto xstats_free;
 	}
 
+	if ((hw->cap & NFP_NET_CFG_CTRL_TXRWB) != 0) {
+		err = nfp_net_txrwb_alloc(eth_dev);
+		if (err != 0)
+			goto xstats_free;
+	}
+
 	nfp_net_pf_read_mac(app_fw_nic, port);
 	nfp_write_mac(hw, &hw->mac_addr.addr_bytes[0]);
 
@@ -1025,12 +1036,15 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 		err = nfp_net_flow_priv_init(pf_dev, port);
 		if (err != 0) {
 			PMD_INIT_LOG(ERR, "Init net flow priv failed");
-			goto xstats_free;
+			goto txrwb_free;
 		}
 	}
 
 	return 0;
 
+txrwb_free:
+	if ((hw->cap & NFP_NET_CFG_CTRL_TXRWB) != 0)
+		nfp_net_txrwb_free(eth_dev);
 xstats_free:
 	rte_free(net_hw->eth_xstats_base);
 ipsec_exit:

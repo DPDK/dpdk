@@ -695,6 +695,26 @@ nfp_net_rx_queue_setup(struct rte_eth_dev *dev,
 	return 0;
 }
 
+static inline uint32_t
+nfp_net_read_tx_free_qcp(struct nfp_net_txq *txq)
+{
+	/*
+	 * If TX ring pointer write back is not supported, do a PCIe read.
+	 * Otherwise read qcp value from write back dma address.
+	 */
+	if (txq->txrwb == NULL)
+		return nfp_qcp_read(txq->qcp_q, NFP_QCP_READ_PTR);
+
+	/*
+	 * In most cases the TX count is a power of two and the costly modulus
+	 * operation can be substituted with a subtraction and an AND operation.
+	 */
+	if (rte_is_power_of_2(txq->tx_count) == 1)
+		return (*txq->txrwb) & (txq->tx_count - 1);
+	else
+		return (*txq->txrwb) % txq->tx_count;
+}
+
 /**
  * Check for descriptors with a complete status
  *
@@ -714,7 +734,7 @@ nfp_net_tx_free_bufs(struct nfp_net_txq *txq)
 			" status", txq->qidx);
 
 	/* Work out how many packets have been sent */
-	qcp_rd_p = nfp_qcp_read(txq->qcp_q, NFP_QCP_READ_PTR);
+	qcp_rd_p = nfp_net_read_tx_free_qcp(txq);
 
 	if (qcp_rd_p == txq->rd_p) {
 		PMD_TX_LOG(DEBUG, "queue %hu: It seems harrier is not sending "
@@ -761,9 +781,13 @@ void
 nfp_net_tx_queue_release(struct rte_eth_dev *dev,
 		uint16_t queue_idx)
 {
+	struct nfp_net_hw *net_hw;
 	struct nfp_net_txq *txq = dev->data->tx_queues[queue_idx];
 
 	if (txq != NULL) {
+		net_hw = nfp_net_get_hw(dev);
+		if (net_hw->txrwb_mz != NULL)
+			nn_cfg_writeq(&net_hw->super, NFP_NET_CFG_TXR_WB_ADDR(queue_idx), 0);
 		nfp_net_tx_queue_release_mbufs(txq);
 		rte_eth_dma_zone_free(dev, "tx_ring", queue_idx);
 		rte_free(txq->txbufs);
@@ -777,6 +801,8 @@ nfp_net_reset_tx_queue(struct nfp_net_txq *txq)
 	nfp_net_tx_queue_release_mbufs(txq);
 	txq->wr_p = 0;
 	txq->rd_p = 0;
+	if (txq->txrwb != NULL)
+		*txq->txrwb = 0;
 }
 
 int
