@@ -1056,10 +1056,6 @@ rte_mempool_dump_cache(FILE *f, const struct rte_mempool *mp)
 	return count;
 }
 
-#ifndef __INTEL_COMPILER
-#pragma GCC diagnostic ignored "-Wcast-qual"
-#endif
-
 /* check and update cookies or panic (internal) */
 void rte_mempool_check_cookies(const struct rte_mempool *mp,
 	void * const *obj_table_const, unsigned n, int free)
@@ -1074,7 +1070,7 @@ void rte_mempool_check_cookies(const struct rte_mempool *mp,
 
 	/* Force to drop the "const" attribute. This is done only when
 	 * DEBUG is enabled */
-	tmp = (void *) obj_table_const;
+	tmp = (void *)(uintptr_t)obj_table_const;
 	obj_table = tmp;
 
 	while (n--) {
@@ -1181,10 +1177,6 @@ mempool_audit_cookies(struct rte_mempool *mp)
 }
 #else
 #define mempool_audit_cookies(mp) do {} while(0)
-#endif
-
-#ifndef __INTEL_COMPILER
-#pragma GCC diagnostic error "-Wcast-qual"
 #endif
 
 /* check cookies before and after objects */
