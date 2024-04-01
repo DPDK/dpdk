@@ -164,7 +164,6 @@ mempool_add_elem(struct rte_mempool *mp, __rte_unused void *opaque,
 		 void *obj, rte_iova_t iova)
 {
 	struct rte_mempool_objhdr *hdr;
-	struct rte_mempool_objtlr *tlr __rte_unused;
 
 	/* set mempool ptr in header */
 	hdr = RTE_PTR_SUB(obj, sizeof(*hdr));
@@ -175,8 +174,7 @@ mempool_add_elem(struct rte_mempool *mp, __rte_unused void *opaque,
 
 #ifdef RTE_LIBRTE_MEMPOOL_DEBUG
 	hdr->cookie = RTE_MEMPOOL_HEADER_COOKIE2;
-	tlr = rte_mempool_get_trailer(obj);
-	tlr->cookie = RTE_MEMPOOL_TRAILER_COOKIE;
+	rte_mempool_get_trailer(obj)->cookie = RTE_MEMPOOL_TRAILER_COOKIE;
 #endif
 }
 
