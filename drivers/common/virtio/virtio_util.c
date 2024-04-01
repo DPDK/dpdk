@@ -52,6 +52,7 @@ static const char *virtio_err_str[] =
 	"Fail in calling rte_vhost_driver_start",
 	"Can't allocate iommu domain",
 	"Vhost socket file already exists",
+	"Exceed max VFIO group number",
 };
 
 const char *rte_vdpa_err_str_get(int32_t err)

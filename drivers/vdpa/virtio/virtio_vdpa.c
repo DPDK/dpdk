@@ -2109,6 +2109,12 @@ virtio_vdpa_dev_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		pthread_mutex_init(&iommu_domain->domain_lock, NULL);
 	}
 
+	if (iommu_domain->container_ref_cnt == RTE_MAX_VFIO_GROUPS) {
+		DRV_LOG(ERR, "%s failed to add in iommu domain as max VFIO group num reached", devname);
+		rte_errno = VFE_VDPA_ERR_ADD_VF_EXCEED_MAX_GROUP_NUM;
+		goto error;
+	}
+
 	priv->iommu_domain = iommu_domain;
 
 	if (!strcmp(cached_ctx.vf_name.dev_bdf, devname)) {
