@@ -30,10 +30,12 @@ uint64_t bnxt_get_rx_port_offloads(struct bnxt *bp)
 			  RTE_ETH_RX_OFFLOAD_KEEP_CRC    |
 			  RTE_ETH_RX_OFFLOAD_VLAN_FILTER |
 			  RTE_ETH_RX_OFFLOAD_VLAN_EXTEND |
-			  RTE_ETH_RX_OFFLOAD_TCP_LRO |
 			  RTE_ETH_RX_OFFLOAD_SCATTER |
 			  RTE_ETH_RX_OFFLOAD_RSS_HASH;
 
+	if ((BNXT_CHIP_P7(bp) && !bnxt_compressed_rx_cqe_mode_enabled(bp)) ||
+	    BNXT_CHIP_P5(bp))
+		rx_offload_capa |= RTE_ETH_RX_OFFLOAD_TCP_LRO;
 	if (bp->flags & BNXT_FLAG_PTP_SUPPORTED)
 		rx_offload_capa |= RTE_ETH_RX_OFFLOAD_TIMESTAMP;
 	if (bp->vnic_cap_flags & BNXT_VNIC_CAP_VLAN_RX_STRIP)
@@ -243,6 +245,9 @@ void bnxt_rx_queue_release_mbufs(struct bnxt_rx_queue *rxq)
 			}
 		}
 	}
+
+	if (bnxt_compressed_rx_cqe_mode_enabled(rxq->bp))
+		return;
 
 	/* Free up mbufs in TPA */
 	tpa_info = rxq->rx_ring->tpa_info;

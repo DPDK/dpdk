@@ -1671,6 +1671,9 @@ int bnxt_init_one_rx_ring(struct bnxt_rx_queue *rxq)
 	}
 	PMD_DRV_LOG_LINE(DEBUG, "AGG Done!");
 
+	if (bnxt_compressed_rx_cqe_mode_enabled(rxq->bp))
+		return 0;
+
 	if (rxr->tpa_info) {
 		unsigned int max_aggs = BNXT_TPA_MAX_AGGS(rxq->bp);
 
