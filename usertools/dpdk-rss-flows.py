@@ -37,11 +37,24 @@ class Packet:
             l4_dport=self.l4_sport,
         )
 
-    def hash_data(self, use_l4_port: bool = False) -> bytes:
-        data = self.ip_src.packed + self.ip_dst.packed
+    def hash_data(self, use_l4_port: bool = False, symmetric: bool = False) -> bytes:
+        ip_src = self.ip_src.packed
+        ip_dst = self.ip_dst.packed
+        l4_sport = self.l4_sport
+        l4_dport = self.l4_dport
+        if symmetric:
+            ip_src = bytes(a ^ b for a, b in zip(self.ip_src.packed, self.ip_dst.packed))
+            ip_dst = bytes(a ^ b for a, b in zip(self.ip_src.packed, self.ip_dst.packed))
+            l4_sport = self.l4_sport ^ self.l4_dport
+            l4_dport = self.l4_sport ^ self.l4_dport
+
+
+        data = ip_src + ip_dst
+        
         if use_l4_port:
-            data += struct.pack(">H", self.l4_sport)
-            data += struct.pack(">H", self.l4_dport)
+            data += struct.pack(">H", l4_sport)
+            data += struct.pack(">H", l4_dport)
+
         return data
 
 
@@ -75,11 +88,13 @@ class RSSAlgo:
         key: bytes,
         reta_size: int,
         use_l4_port: bool,
+        is_symmetric : bool = False
     ):
         self.queues_count = queues_count
         self.reta = tuple(i % queues_count for i in range(reta_size))
         self.key = key
         self.use_l4_port = use_l4_port
+        self.is_symmetric = is_symmetric
 
     def toeplitz_hash(self, data: bytes) -> int:
         # see rte_softrss_* in lib/hash/rte_thash.h
@@ -105,7 +120,7 @@ class RSSAlgo:
         return hash_value.value
 
     def get_queue_index(self, packet: Packet) -> int:
-        bytes_to_hash = packet.hash_data(self.use_l4_port)
+        bytes_to_hash = packet.hash_data(self.use_l4_port, self.is_symmetric)
 
         # get the 32bit hash of the packet
         hash_value = self.toeplitz_hash(bytes_to_hash)
@@ -349,6 +364,12 @@ def parse_args():
         Size of the redirection table or "RETA" (default: depends on driver if
         using a well-known driver name, otherwise 128).
         """,
+    ),
+    parser.add_argument(
+        "-sym",
+        "--symmetric",
+        action="store_true",
+        help="""  Use symmetric hash function""",
     )
     parser.add_argument(
         "-a",
@@ -417,6 +438,7 @@ def main():
         key=args.rss_key,
         reta_size=args.reta_size,
         use_l4_port=use_l4_port,
+        is_symmetric=args.symmetric
     )
     template = TrafficTemplate(
         args.ip_src,
