@@ -68,16 +68,6 @@ libraries = [
         'node',
 ]
 
-if is_ms_compiler
-    libraries = [
-            'log',
-            'kvargs',
-            'telemetry',
-            'eal',
-            'ring',
-    ]
-endif
-
 always_enable = [
         'cmdline',
         'eal',

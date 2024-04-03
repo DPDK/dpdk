@@ -1,6 +1,12 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2017 Intel Corporation
 
+if is_ms_compiler
+    build = false
+    reason = 'not supported building with Visual Studio Toolset'
+    subdir_done()
+endif
+
 sources = files(
         'rte_mbuf.c',
         'rte_mbuf_ptype.c',

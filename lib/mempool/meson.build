@@ -1,6 +1,12 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2017 Intel Corporation
 
+if is_ms_compiler
+    build = false
+    reason = 'not supported building with Visual Studio Toolset'
+    subdir_done()
+endif
+
 extra_flags = []
 
 foreach flag: extra_flags
