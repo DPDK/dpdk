@@ -7047,6 +7047,38 @@ mlx5_flow_hw_cleanup_ctrl_rx_templates(struct rte_eth_dev *dev)
 	}
 }
 
+static int
+flow_hw_validate_attributes(const struct rte_flow_port_attr *port_attr,
+			    uint16_t nb_queue,
+			    const struct rte_flow_queue_attr *queue_attr[],
+			    struct rte_flow_error *error)
+{
+	uint32_t size;
+	unsigned int i;
+
+	if (port_attr == NULL)
+		return rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+					  "Port attributes must be non-NULL");
+
+	if (nb_queue == 0)
+		return rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+					  "At least one flow queue is required");
+
+	if (queue_attr == NULL)
+		return rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+					  "Queue attributes must be non-NULL");
+
+	size = queue_attr[0]->size;
+	for (i = 1; i < nb_queue; ++i) {
+		if (queue_attr[i]->size != size)
+			return rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+						  NULL,
+						  "All flow queues must have the same size");
+	}
+
+	return 0;
+}
+
 /**
  * Configure port HWS resources.
  *
@@ -7096,10 +7128,8 @@ flow_hw_configure(struct rte_eth_dev *dev,
 	int ret = 0;
 	uint32_t action_flags;
 
-	if (!port_attr || !nb_queue || !queue_attr) {
-		rte_errno = EINVAL;
-		goto err;
-	}
+	if (flow_hw_validate_attributes(port_attr, nb_queue, queue_attr, error))
+		return -rte_errno;
 	/* In case re-configuring, release existing context at first. */
 	if (priv->dr_ctx) {
 		/* */
@@ -7132,14 +7162,6 @@ flow_hw_configure(struct rte_eth_dev *dev,
 	/* Allocate the queue job descriptor LIFO. */
 	mem_size = sizeof(priv->hw_q[0]) * nb_q_updated;
 	for (i = 0; i < nb_q_updated; i++) {
-		/*
-		 * Check if the queues' size are all the same as the
-		 * limitation from HWS layer.
-		 */
-		if (_queue_attr[i]->size != _queue_attr[0]->size) {
-			rte_errno = EINVAL;
-			goto err;
-		}
 		mem_size += (sizeof(struct mlx5_hw_q_job *) +
 			    sizeof(struct mlx5_hw_q_job) +
 			    sizeof(uint8_t) * MLX5_ENCAP_MAX_LEN +
@@ -7347,12 +7369,14 @@ err:
 	flow_hw_destroy_vlan(dev);
 	if (dr_ctx)
 		claim_zero(mlx5dr_context_close(dr_ctx));
-	for (i = 0; i < nb_q_updated; i++) {
-		rte_ring_free(priv->hw_q[i].indir_iq);
-		rte_ring_free(priv->hw_q[i].indir_cq);
+	if (priv->hw_q) {
+		for (i = 0; i < nb_q_updated; i++) {
+			rte_ring_free(priv->hw_q[i].indir_iq);
+			rte_ring_free(priv->hw_q[i].indir_cq);
+		}
+		mlx5_free(priv->hw_q);
+		priv->hw_q = NULL;
 	}
-	mlx5_free(priv->hw_q);
-	priv->hw_q = NULL;
 	if (priv->acts_ipool) {
 		mlx5_ipool_destroy(priv->acts_ipool);
 		priv->acts_ipool = NULL;
