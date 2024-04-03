@@ -11,7 +11,7 @@ Building the DPDK and its applications requires one of the following
 environments:
 
 * LLVM 14.0.0 (or later) and Microsoft MSVC linker.
-* The MinGW-w64 toolchain (either native or cross).
+* The MinGW-w64 10.0 (or later) toolchain (either native or cross).
 * Microsoft Visual Studio 2022 (any edition).
 
   - note Microsoft Visual Studio 2022 does not currently build enough
@@ -48,10 +48,6 @@ and ensure the Windows SDK is selected.
 
 Option 2. MinGW-w64 Toolchain
 -----------------------------
-
-On Linux, i.e. for cross-compilation, install MinGW-w64 via a package manager.
-Version 4.0.4 for Ubuntu 16.04 cannot be used due to a
-`MinGW-w64 bug <https://sourceforge.net/p/mingw-w64/bugs/562/>`_.
 
 On Windows, obtain the latest version installer from
 `MinGW-w64 repository <https://sourceforge.net/projects/mingw-w64/files/>`_.
