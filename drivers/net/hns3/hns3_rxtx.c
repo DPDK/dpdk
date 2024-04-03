@@ -2669,6 +2669,7 @@ hns3_recv_scattered_pkts(void *rx_queue,
 			continue;
 		}
 
+		first_seg->ol_flags = 0;
 		if (unlikely(bd_base_info & BIT(HNS3_RXD_TS_VLD_B)))
 			hns3_rx_ptp_timestamp_handle(rxq, first_seg, timestamp);
 
@@ -2698,7 +2699,7 @@ hns3_recv_scattered_pkts(void *rx_queue,
 
 		first_seg->port = rxq->port_id;
 		first_seg->hash.rss = rte_le_to_cpu_32(rxd.rx.rss_hash);
-		first_seg->ol_flags = RTE_MBUF_F_RX_RSS_HASH;
+		first_seg->ol_flags |= RTE_MBUF_F_RX_RSS_HASH;
 		if (unlikely(bd_base_info & BIT(HNS3_RXD_LUM_B))) {
 			first_seg->hash.fdir.hi =
 				rte_le_to_cpu_16(rxd.rx.fd_id);
