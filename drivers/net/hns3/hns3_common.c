@@ -224,7 +224,7 @@ hns3_parse_dev_caps_mask(const char *key, const char *value, void *extra_args)
 static int
 hns3_parse_mbx_time_limit(const char *key, const char *value, void *extra_args)
 {
-	uint32_t val;
+	uint64_t val;
 
 	RTE_SET_USED(key);
 
