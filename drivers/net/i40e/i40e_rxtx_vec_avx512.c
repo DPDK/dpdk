@@ -826,7 +826,7 @@ i40e_tx_free_bufs_avx512(struct i40e_tx_queue *txq)
 		free[0] = m;
 		nb_free = 1;
 		for (i = 1; i < n; i++) {
-			rte_prefetch0(&txep[i + 3].mbuf->cacheline1);
+			rte_mbuf_prefetch_part2(txep[i + 3].mbuf);
 			m = rte_pktmbuf_prefree_seg(txep[i].mbuf);
 			if (likely(m)) {
 				if (likely(m->pool == free[0]->pool)) {
