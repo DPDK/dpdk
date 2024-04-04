@@ -34,6 +34,12 @@
 ; Temporary exceptions till next major ABI version ;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 [suppress_type]
+	name = rte_mbuf
+	type_kind = struct
+	has_size_change = no
+	has_data_member = {cacheline0, rearm_data, rx_descriptor_fields1, cacheline1}
+
+[suppress_type]
 	name = rte_pipeline_table_entry
 
 [suppress_type]
