@@ -1017,9 +1017,6 @@ set_cpu_mb_job_params(IMB_JOB *job, struct aesni_mb_session *session,
 		job->u.XCBC._k1_expanded = session->auth.xcbc.k1_expanded;
 		job->u.XCBC._k2 = session->auth.xcbc.k2;
 		job->u.XCBC._k3 = session->auth.xcbc.k3;
-
-		job->enc_keys = session->cipher.expanded_aes_keys.encode;
-		job->dec_keys = session->cipher.expanded_aes_keys.decode;
 		break;
 
 	case IMB_AUTH_AES_CCM:
@@ -1034,8 +1031,6 @@ set_cpu_mb_job_params(IMB_JOB *job, struct aesni_mb_session *session,
 		job->u.CMAC._key_expanded = session->auth.cmac.expkey;
 		job->u.CMAC._skey1 = session->auth.cmac.skey1;
 		job->u.CMAC._skey2 = session->auth.cmac.skey2;
-		job->enc_keys = session->cipher.expanded_aes_keys.encode;
-		job->dec_keys = session->cipher.expanded_aes_keys.decode;
 		break;
 
 	case IMB_AUTH_AES_GMAC:
@@ -1331,24 +1326,17 @@ set_mb_job_params(IMB_JOB *job, struct ipsec_mb_qp *qp,
 		job->u.XCBC._k1_expanded = session->auth.xcbc.k1_expanded;
 		job->u.XCBC._k2 = session->auth.xcbc.k2;
 		job->u.XCBC._k3 = session->auth.xcbc.k3;
-
-		job->enc_keys = session->cipher.expanded_aes_keys.encode;
-		job->dec_keys = session->cipher.expanded_aes_keys.decode;
 		break;
 
 	case IMB_AUTH_AES_CCM:
 		job->u.CCM.aad = op->sym->aead.aad.data + 18;
 		job->u.CCM.aad_len_in_bytes = session->aead.aad_len;
-		job->enc_keys = session->cipher.expanded_aes_keys.encode;
-		job->dec_keys = session->cipher.expanded_aes_keys.decode;
 		break;
 
 	case IMB_AUTH_AES_CMAC:
 		job->u.CMAC._key_expanded = session->auth.cmac.expkey;
 		job->u.CMAC._skey1 = session->auth.cmac.skey1;
 		job->u.CMAC._skey2 = session->auth.cmac.skey2;
-		job->enc_keys = session->cipher.expanded_aes_keys.encode;
-		job->dec_keys = session->cipher.expanded_aes_keys.decode;
 		break;
 
 	case IMB_AUTH_AES_GMAC:
@@ -1396,8 +1384,6 @@ set_mb_job_params(IMB_JOB *job, struct ipsec_mb_qp *qp,
 			job->cipher_mode = IMB_CIPHER_CHACHA20_POLY1305_SGL;
 			job->hash_alg = IMB_AUTH_CHACHA20_POLY1305_SGL;
 		}
-		job->enc_keys = session->cipher.expanded_aes_keys.encode;
-		job->dec_keys = session->cipher.expanded_aes_keys.encode;
 		break;
 	default:
 		job->u.HMAC._hashed_auth_key_xor_ipad =
