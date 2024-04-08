@@ -6352,11 +6352,14 @@ int bnxt_hwrm_func_backing_store_qcaps_v2(struct bnxt *bp)
 	uint16_t types, type;
 	int rc;
 
-	for (types = 0, type = 0; types < bp->ctx->types && type != BNXT_CTX_INV; types++) {
-		struct bnxt_ctx_mem *ctxm = &bp->ctx->ctx_arr[types];
+	types = 0;
+	type = 0;
+	do {
+		struct bnxt_ctx_mem *ctxm;
 		uint8_t init_val, init_off, i;
 		uint32_t *p;
 		uint32_t flags;
+		bool cnt = true;
 
 		HWRM_PREP(&req, HWRM_FUNC_BACKING_STORE_QCAPS_V2, BNXT_USE_CHIMP_MB);
 		req.type = rte_cpu_to_le_16(type);
@@ -6365,9 +6368,12 @@ int bnxt_hwrm_func_backing_store_qcaps_v2(struct bnxt *bp)
 
 		flags = rte_le_to_cpu_32(resp->flags);
 		type = rte_le_to_cpu_16(resp->next_valid_type);
-		if (!(flags & HWRM_FUNC_BACKING_STORE_QCAPS_V2_OUTPUT_FLAGS_TYPE_VALID))
+		if (!(flags & HWRM_FUNC_BACKING_STORE_QCAPS_V2_OUTPUT_FLAGS_TYPE_VALID)) {
+			cnt = false;
 			goto next;
+		}
 
+		ctxm = &bp->ctx->ctx_arr[types];
 		ctxm->type = rte_le_to_cpu_16(resp->type);
 
 		ctxm->flags = flags;
@@ -6404,8 +6410,10 @@ int bnxt_hwrm_func_backing_store_qcaps_v2(struct bnxt *bp)
 		last_valid_type = ctxm->type;
 		last_valid_idx = types;
 next:
+		if (cnt)
+			types++;
 		HWRM_UNLOCK();
-	}
+	} while (types < bp->ctx->types && type != BNXT_CTX_INV);
 	ctx->ctx_arr[last_valid_idx].last = true;
 	PMD_DRV_LOG(DEBUG, "Last valid type 0x%x\n", last_valid_type);
 
