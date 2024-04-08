@@ -77,6 +77,10 @@ if build
                      dependencies : bpf_dep, args: cflags)
       cflags += ['-DRTE_NET_AF_XDP_LIBBPF_XDP_ATTACH']
   endif
+  if cc.has_function('xsk_socket__update_xskmap', prefix : xsk_check_prefix,
+                     dependencies : ext_deps, args: cflags)
+      cflags += ['-DETH_AF_XDP_UPDATE_XSKMAP']
+  endif
 endif
 
 require_iova_in_mbuf = false

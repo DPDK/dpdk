@@ -46,6 +46,21 @@ create_shared_socket(struct xsk_socket **xsk_ptr __rte_unused,
 }
 #endif
 
+#ifdef ETH_AF_XDP_UPDATE_XSKMAP
+static __rte_always_inline int
+update_xskmap(struct xsk_socket *xsk, int map_fd, int xsk_queue_idx __rte_unused)
+{
+	return xsk_socket__update_xskmap(xsk, map_fd);
+}
+#else
+static __rte_always_inline int
+update_xskmap(struct xsk_socket *xsk, int map_fd, int xsk_queue_idx)
+{
+	int fd = xsk_socket__fd(xsk);
+	return bpf_map_update_elem(map_fd, &xsk_queue_idx, &fd, 0);
+}
+#endif
+
 #ifdef XDP_USE_NEED_WAKEUP
 static int
 tx_syscall_needed(struct xsk_ring_prod *q)
