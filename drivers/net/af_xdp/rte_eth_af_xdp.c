@@ -83,12 +83,13 @@ RTE_LOG_REGISTER_DEFAULT(af_xdp_logtype, NOTICE);
 
 #define ETH_AF_XDP_MP_KEY "afxdp_mp_send_fds"
 
+#define DP_BASE_PATH			"/tmp/afxdp_dp"
+#define DP_UDS_SOCK             "afxdp.sock"
 #define MAX_LONG_OPT_SZ			64
 #define UDS_MAX_FD_NUM			2
 #define UDS_MAX_CMD_LEN			64
 #define UDS_MAX_CMD_RESP		128
 #define UDS_XSK_MAP_FD_MSG		"/xsk_map_fd"
-#define UDS_SOCK			"/tmp/afxdp.sock"
 #define UDS_CONNECT_MSG			"/connect"
 #define UDS_HOST_OK_MSG			"/host_ok"
 #define UDS_HOST_NAK_MSG		"/host_nak"
@@ -171,6 +172,7 @@ struct pmd_internals {
 	bool custom_prog_configured;
 	bool force_copy;
 	bool use_cni;
+	char dp_path[PATH_MAX];
 	struct bpf_map *map;
 
 	struct rte_ether_addr eth_addr;
@@ -191,6 +193,7 @@ struct pmd_process_private {
 #define ETH_AF_XDP_BUDGET_ARG			"busy_budget"
 #define ETH_AF_XDP_FORCE_COPY_ARG		"force_copy"
 #define ETH_AF_XDP_USE_CNI_ARG			"use_cni"
+#define ETH_AF_XDP_DP_PATH_ARG			"dp_path"
 
 static const char * const valid_arguments[] = {
 	ETH_AF_XDP_IFACE_ARG,
@@ -201,6 +204,7 @@ static const char * const valid_arguments[] = {
 	ETH_AF_XDP_BUDGET_ARG,
 	ETH_AF_XDP_FORCE_COPY_ARG,
 	ETH_AF_XDP_USE_CNI_ARG,
+	ETH_AF_XDP_DP_PATH_ARG,
 	NULL
 };
 
@@ -1352,7 +1356,7 @@ err_prefer:
 }
 
 static int
-init_uds_sock(struct sockaddr_un *server)
+init_uds_sock(struct sockaddr_un *server, const char *dp_path)
 {
 	int sock;
 
@@ -1363,7 +1367,7 @@ init_uds_sock(struct sockaddr_un *server)
 	}
 
 	server->sun_family = AF_UNIX;
-	strlcpy(server->sun_path, UDS_SOCK, sizeof(server->sun_path));
+	strlcpy(server->sun_path, dp_path, sizeof(server->sun_path));
 
 	if (connect(sock, (struct sockaddr *)server, sizeof(struct sockaddr_un)) < 0) {
 		close(sock);
@@ -1383,7 +1387,7 @@ struct msg_internal {
 };
 
 static int
-send_msg(int sock, char *request, int *fd)
+send_msg(int sock, char *request, int *fd, const char *dp_path)
 {
 	int snd;
 	struct iovec iov;
@@ -1394,7 +1398,7 @@ send_msg(int sock, char *request, int *fd)
 
 	memset(&dst, 0, sizeof(dst));
 	dst.sun_family = AF_UNIX;
-	strlcpy(dst.sun_path, UDS_SOCK, sizeof(dst.sun_path));
+	strlcpy(dst.sun_path, dp_path, sizeof(dst.sun_path));
 
 	/* Initialize message header structure */
 	memset(&msgh, 0, sizeof(msgh));
@@ -1471,8 +1475,8 @@ read_msg(int sock, char *response, struct sockaddr_un *s, int *fd)
 }
 
 static int
-make_request_cni(int sock, struct sockaddr_un *server, char *request,
-		 int *req_fd, char *response, int *out_fd)
+make_request_dp(int sock, struct sockaddr_un *server, char *request,
+		 int *req_fd, char *response, int *out_fd, const char *dp_path)
 {
 	int rval;
 
@@ -1484,7 +1488,7 @@ make_request_cni(int sock, struct sockaddr_un *server, char *request,
 	if (req_fd == NULL)
 		rval = write(sock, request, strlen(request));
 	else
-		rval = send_msg(sock, request, req_fd);
+		rval = send_msg(sock, request, req_fd, dp_path);
 
 	if (rval < 0) {
 		AF_XDP_LOG(ERR, "Write error %s\n", strerror(errno));
@@ -1508,7 +1512,7 @@ check_response(char *response, char *exp_resp, long size)
 }
 
 static int
-get_cni_fd(char *if_name)
+uds_get_xskmap_fd(char *if_name, const char *dp_path)
 {
 	char request[UDS_MAX_CMD_LEN], response[UDS_MAX_CMD_RESP];
 	char hostname[MAX_LONG_OPT_SZ], exp_resp[UDS_MAX_CMD_RESP];
@@ -1521,14 +1525,14 @@ get_cni_fd(char *if_name)
 		return -1;
 
 	memset(&server, 0, sizeof(server));
-	sock = init_uds_sock(&server);
+	sock = init_uds_sock(&server, dp_path);
 	if (sock < 0)
 		return -1;
 
-	/* Initiates handshake to CNI send: /connect,hostname */
+	/* Initiates handshake to the AF_XDP Device Plugin send: /connect,hostname */
 	snprintf(request, sizeof(request), "%s,%s", UDS_CONNECT_MSG, hostname);
 	memset(response, 0, sizeof(response));
-	if (make_request_cni(sock, &server, request, NULL, response, &out_fd) < 0) {
+	if (make_request_dp(sock, &server, request, NULL, response, &out_fd, dp_path) < 0) {
 		AF_XDP_LOG(ERR, "Error in processing cmd [%s]\n", request);
 		goto err_close;
 	}
@@ -1542,7 +1546,7 @@ get_cni_fd(char *if_name)
 	/* Request for "/version" */
 	strlcpy(request, UDS_VERSION_MSG, UDS_MAX_CMD_LEN);
 	memset(response, 0, sizeof(response));
-	if (make_request_cni(sock, &server, request, NULL, response, &out_fd) < 0) {
+	if (make_request_dp(sock, &server, request, NULL, response, &out_fd, dp_path) < 0) {
 		AF_XDP_LOG(ERR, "Error in processing cmd [%s]\n", request);
 		goto err_close;
 	}
@@ -1550,7 +1554,7 @@ get_cni_fd(char *if_name)
 	/* Request for file descriptor for netdev name*/
 	snprintf(request, sizeof(request), "%s,%s", UDS_XSK_MAP_FD_MSG, if_name);
 	memset(response, 0, sizeof(response));
-	if (make_request_cni(sock, &server, request, NULL, response, &out_fd) < 0) {
+	if (make_request_dp(sock, &server, request, NULL, response, &out_fd, dp_path) < 0) {
 		AF_XDP_LOG(ERR, "Error in processing cmd [%s]\n", request);
 		goto err_close;
 	}
@@ -1572,7 +1576,7 @@ get_cni_fd(char *if_name)
 	/* Initiate close connection */
 	strlcpy(request, UDS_FIN_MSG, UDS_MAX_CMD_LEN);
 	memset(response, 0, sizeof(response));
-	if (make_request_cni(sock, &server, request, NULL, response, &out_fd) < 0) {
+	if (make_request_dp(sock, &server, request, NULL, response, &out_fd, dp_path) < 0) {
 		AF_XDP_LOG(ERR, "Error in processing cmd [%s]\n", request);
 		goto err_close;
 	}
@@ -1697,21 +1701,21 @@ xsk_configure(struct pmd_internals *internals, struct pkt_rx_queue *rxq,
 	}
 
 	if (internals->use_cni) {
-		int err, fd, map_fd;
+		int err, map_fd;
 
-		/* get socket fd from CNI plugin */
-		map_fd = get_cni_fd(internals->if_name);
+		/* get socket fd from AF_XDP Device Plugin */
+		map_fd = uds_get_xskmap_fd(internals->if_name, internals->dp_path);
 		if (map_fd < 0) {
-			AF_XDP_LOG(ERR, "Failed to receive CNI plugin fd\n");
+			AF_XDP_LOG(ERR, "Failed to receive xskmap fd from AF_XDP Device Plugin\n");
 			goto out_xsk;
 		}
-		/* get socket fd */
-		fd = xsk_socket__fd(rxq->xsk);
-		err = bpf_map_update_elem(map_fd, &rxq->xsk_queue_idx, &fd, 0);
+
+		err = update_xskmap(rxq->xsk, map_fd, rxq->xsk_queue_idx);
 		if (err) {
-			AF_XDP_LOG(ERR, "Failed to insert unprivileged xsk in map.\n");
+			AF_XDP_LOG(ERR, "Failed to insert xsk in map.\n");
 			goto out_xsk;
 		}
+
 	} else if (rxq->busy_budget) {
 		ret = configure_preferred_busy_poll(rxq);
 		if (ret) {
@@ -1883,13 +1887,13 @@ static const struct eth_dev_ops ops = {
 	.get_monitor_addr = eth_get_monitor_addr,
 };
 
-/* CNI option works in unprivileged container environment
- * and ethernet device functionality will be reduced. So
- * additional customiszed eth_dev_ops struct is needed
- * for cni. Promiscuous enable and disable functionality
- * is removed.
+/* AF_XDP Device Plugin option works in unprivileged
+ * container environments and ethernet device functionality
+ * will be reduced. So additional customised eth_dev_ops
+ * struct is needed for the Device Plugin. Promiscuous
+ * enable and disable functionality is removed.
  **/
-static const struct eth_dev_ops ops_cni = {
+static const struct eth_dev_ops ops_afxdp_dp = {
 	.dev_start = eth_dev_start,
 	.dev_stop = eth_dev_stop,
 	.dev_close = eth_dev_close,
@@ -2025,7 +2029,8 @@ xdp_get_channels_info(const char *if_name, int *max_queues,
 static int
 parse_parameters(struct rte_kvargs *kvlist, char *if_name, int *start_queue,
 		 int *queue_cnt, int *shared_umem, char *prog_path,
-		 int *busy_budget, int *force_copy, int *use_cni)
+		 int *busy_budget, int *force_copy, int *use_cni,
+		 char *dp_path)
 {
 	int ret;
 
@@ -2071,6 +2076,11 @@ parse_parameters(struct rte_kvargs *kvlist, char *if_name, int *start_queue,
 	if (ret < 0)
 		goto free_kvlist;
 
+	ret = rte_kvargs_process(kvlist, ETH_AF_XDP_DP_PATH_ARG,
+				 &parse_prog_arg, dp_path);
+	if (ret < 0)
+		goto free_kvlist;
+
 free_kvlist:
 	rte_kvargs_free(kvlist);
 	return ret;
@@ -2110,7 +2120,7 @@ static struct rte_eth_dev *
 init_internals(struct rte_vdev_device *dev, const char *if_name,
 	       int start_queue_idx, int queue_cnt, int shared_umem,
 	       const char *prog_path, int busy_budget, int force_copy,
-	       int use_cni)
+	       int use_cni, const char *dp_path)
 {
 	const char *name = rte_vdev_device_name(dev);
 	const unsigned int numa_node = dev->device.numa_node;
@@ -2140,6 +2150,7 @@ init_internals(struct rte_vdev_device *dev, const char *if_name,
 	internals->shared_umem = shared_umem;
 	internals->force_copy = force_copy;
 	internals->use_cni = use_cni;
+	strlcpy(internals->dp_path, dp_path, PATH_MAX);
 
 	if (xdp_get_channels_info(if_name, &internals->max_queue_cnt,
 				  &internals->combined_queue_cnt)) {
@@ -2201,7 +2212,7 @@ init_internals(struct rte_vdev_device *dev, const char *if_name,
 	if (!internals->use_cni)
 		eth_dev->dev_ops = &ops;
 	else
-		eth_dev->dev_ops = &ops_cni;
+		eth_dev->dev_ops = &ops_afxdp_dp;
 
 	eth_dev->rx_pkt_burst = eth_af_xdp_rx;
 	eth_dev->tx_pkt_burst = eth_af_xdp_tx;
@@ -2330,6 +2341,7 @@ rte_pmd_af_xdp_probe(struct rte_vdev_device *dev)
 	int busy_budget = -1, ret;
 	int force_copy = 0;
 	int use_cni = 0;
+	char dp_path[PATH_MAX] = {'\0'};
 	struct rte_eth_dev *eth_dev = NULL;
 	const char *name = rte_vdev_device_name(dev);
 
@@ -2372,7 +2384,7 @@ rte_pmd_af_xdp_probe(struct rte_vdev_device *dev)
 
 	if (parse_parameters(kvlist, if_name, &xsk_start_queue_idx,
 			     &xsk_queue_cnt, &shared_umem, prog_path,
-			     &busy_budget, &force_copy, &use_cni) < 0) {
+			     &busy_budget, &force_copy, &use_cni, dp_path) < 0) {
 		AF_XDP_LOG(ERR, "Invalid kvargs value\n");
 		return -EINVAL;
 	}
@@ -2386,7 +2398,19 @@ rte_pmd_af_xdp_probe(struct rte_vdev_device *dev)
 	if (use_cni && strnlen(prog_path, PATH_MAX)) {
 		AF_XDP_LOG(ERR, "When '%s' parameter is used, '%s' parameter is not valid\n",
 			ETH_AF_XDP_USE_CNI_ARG, ETH_AF_XDP_PROG_ARG);
-			return -EINVAL;
+		return -EINVAL;
+	}
+
+	if (use_cni && !strnlen(dp_path, PATH_MAX)) {
+		snprintf(dp_path, sizeof(dp_path), "%s/%s/%s", DP_BASE_PATH, if_name, DP_UDS_SOCK);
+		AF_XDP_LOG(INFO, "'%s' parameter not provided, setting value to '%s'\n",
+			ETH_AF_XDP_DP_PATH_ARG, dp_path);
+	}
+
+	if (!use_cni && strnlen(dp_path, PATH_MAX)) {
+		AF_XDP_LOG(ERR, "'%s' parameter is set, but '%s' was not enabled\n",
+			ETH_AF_XDP_DP_PATH_ARG, ETH_AF_XDP_USE_CNI_ARG);
+		return -EINVAL;
 	}
 
 	if (strlen(if_name) == 0) {
@@ -2412,7 +2436,7 @@ rte_pmd_af_xdp_probe(struct rte_vdev_device *dev)
 
 	eth_dev = init_internals(dev, if_name, xsk_start_queue_idx,
 				 xsk_queue_cnt, shared_umem, prog_path,
-				 busy_budget, force_copy, use_cni);
+				 busy_budget, force_copy, use_cni, dp_path);
 	if (eth_dev == NULL) {
 		AF_XDP_LOG(ERR, "Failed to init internals\n");
 		return -1;
@@ -2473,4 +2497,5 @@ RTE_PMD_REGISTER_PARAM_STRING(net_af_xdp,
 			      "xdp_prog=<string> "
 			      "busy_budget=<int> "
 			      "force_copy=<int> "
-			      "use_cni=<int> ");
+			      "use_cni=<int> "
+			      "dp_path=<string> ");

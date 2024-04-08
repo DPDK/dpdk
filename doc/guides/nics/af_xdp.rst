@@ -171,6 +171,21 @@ enable the `AF_XDP Device Plugin for Kubernetes`_ with a DPDK application/pod.
    so enabling and disabling of the promiscuous mode through the DPDK application
    is also not supported.
 
+dp_path
+~~~~~~~
+
+The EAL vdev argument ``dp_path`` is used alongside the ``use_cni`` argument
+to explicitly tell the AF_XDP PMD where to find the UDS
+to interact with the `AF_XDP Device Plugin for Kubernetes`_.
+If this argument is not passed alongside the ``use_cni`` argument
+then the AF_XDP PMD configures it internally.
+
+.. _AF_XDP Device Plugin for Kubernetes: https://github.com/intel/afxdp-plugins-for-kubernetes
+
+.. code-block:: console
+
+   --vdev=net_af_xdp0,use_cni=1,dp_path="/tmp/afxdp_dp/<<interface name>>/afxdp.sock"
+
 Limitations
 -----------
 
