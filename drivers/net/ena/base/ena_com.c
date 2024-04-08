@@ -3141,16 +3141,18 @@ int ena_com_allocate_debug_area(struct ena_com_dev *ena_dev,
 int ena_com_allocate_customer_metrics_buffer(struct ena_com_dev *ena_dev)
 {
 	struct ena_customer_metrics *customer_metrics = &ena_dev->customer_metrics;
+	customer_metrics->buffer_len = ENA_CUSTOMER_METRICS_BUFFER_SIZE;
+	customer_metrics->buffer_virt_addr = NULL;
 
 	ENA_MEM_ALLOC_COHERENT(ena_dev->dmadev,
 			       customer_metrics->buffer_len,
 			       customer_metrics->buffer_virt_addr,
 			       customer_metrics->buffer_dma_addr,
 			       customer_metrics->buffer_dma_handle);
-	if (unlikely(customer_metrics->buffer_virt_addr == NULL))
+	if (unlikely(customer_metrics->buffer_virt_addr == NULL)) {
+		customer_metrics->buffer_len = 0;
 		return ENA_COM_NO_MEM;
-
-	customer_metrics->buffer_len = ENA_CUSTOMER_METRICS_BUFFER_SIZE;
+	}
 
 	return 0;
 }
