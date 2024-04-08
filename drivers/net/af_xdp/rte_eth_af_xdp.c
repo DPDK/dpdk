@@ -85,6 +85,7 @@ RTE_LOG_REGISTER_DEFAULT(af_xdp_logtype, NOTICE);
 
 #define DP_BASE_PATH			"/tmp/afxdp_dp"
 #define DP_UDS_SOCK             "afxdp.sock"
+#define DP_XSK_MAP				"xsks_map"
 #define MAX_LONG_OPT_SZ			64
 #define UDS_MAX_FD_NUM			2
 #define UDS_MAX_CMD_LEN			64
@@ -172,6 +173,7 @@ struct pmd_internals {
 	bool custom_prog_configured;
 	bool force_copy;
 	bool use_cni;
+	bool use_pinned_map;
 	char dp_path[PATH_MAX];
 	struct bpf_map *map;
 
@@ -193,6 +195,7 @@ struct pmd_process_private {
 #define ETH_AF_XDP_BUDGET_ARG			"busy_budget"
 #define ETH_AF_XDP_FORCE_COPY_ARG		"force_copy"
 #define ETH_AF_XDP_USE_CNI_ARG			"use_cni"
+#define ETH_AF_XDP_USE_PINNED_MAP_ARG	"use_pinned_map"
 #define ETH_AF_XDP_DP_PATH_ARG			"dp_path"
 
 static const char * const valid_arguments[] = {
@@ -204,6 +207,7 @@ static const char * const valid_arguments[] = {
 	ETH_AF_XDP_BUDGET_ARG,
 	ETH_AF_XDP_FORCE_COPY_ARG,
 	ETH_AF_XDP_USE_CNI_ARG,
+	ETH_AF_XDP_USE_PINNED_MAP_ARG,
 	ETH_AF_XDP_DP_PATH_ARG,
 	NULL
 };
@@ -1260,6 +1264,21 @@ err:
 #endif
 
 static int
+get_pinned_map(const char *dp_path, int *map_fd)
+{
+	*map_fd  = bpf_obj_get(dp_path);
+	if (!*map_fd) {
+		AF_XDP_LOG(ERR, "Failed to find xsks_map in %s\n", dp_path);
+		return -1;
+	}
+
+	AF_XDP_LOG(INFO, "Successfully retrieved map %s with fd %d\n",
+				dp_path, *map_fd);
+
+	return 0;
+}
+
+static int
 load_custom_xdp_prog(const char *prog_path, int if_index, struct bpf_map **map)
 {
 	int ret, prog_fd;
@@ -1646,7 +1665,7 @@ xsk_configure(struct pmd_internals *internals, struct pkt_rx_queue *rxq,
 #endif
 
 	/* Disable libbpf from loading XDP program */
-	if (internals->use_cni)
+	if (internals->use_cni || internals->use_pinned_map)
 		cfg.libbpf_flags |= XSK_LIBBPF_FLAGS__INHIBIT_PROG_LOAD;
 
 	if (strnlen(internals->prog_path, PATH_MAX)) {
@@ -1700,14 +1719,23 @@ xsk_configure(struct pmd_internals *internals, struct pkt_rx_queue *rxq,
 		}
 	}
 
-	if (internals->use_cni) {
+	if (internals->use_cni || internals->use_pinned_map) {
 		int err, map_fd;
 
-		/* get socket fd from AF_XDP Device Plugin */
-		map_fd = uds_get_xskmap_fd(internals->if_name, internals->dp_path);
-		if (map_fd < 0) {
-			AF_XDP_LOG(ERR, "Failed to receive xskmap fd from AF_XDP Device Plugin\n");
-			goto out_xsk;
+		if (internals->use_cni) {
+			/* get socket fd from AF_XDP Device Plugin */
+			map_fd = uds_get_xskmap_fd(internals->if_name, internals->dp_path);
+			if (map_fd < 0) {
+				AF_XDP_LOG(ERR, "Failed to receive xskmap fd from AF_XDP Device Plugin\n");
+				goto out_xsk;
+			}
+		} else {
+			/* get socket fd from AF_XDP plugin */
+			err = get_pinned_map(internals->dp_path, &map_fd);
+			if (err < 0 || map_fd < 0) {
+				AF_XDP_LOG(ERR, "Failed to retrieve pinned map fd\n");
+				goto out_xsk;
+			}
 		}
 
 		err = update_xskmap(rxq->xsk, map_fd, rxq->xsk_queue_idx);
@@ -2030,7 +2058,7 @@ static int
 parse_parameters(struct rte_kvargs *kvlist, char *if_name, int *start_queue,
 		 int *queue_cnt, int *shared_umem, char *prog_path,
 		 int *busy_budget, int *force_copy, int *use_cni,
-		 char *dp_path)
+		 int *use_pinned_map, char *dp_path)
 {
 	int ret;
 
@@ -2073,6 +2101,11 @@ parse_parameters(struct rte_kvargs *kvlist, char *if_name, int *start_queue,
 
 	ret = rte_kvargs_process(kvlist, ETH_AF_XDP_USE_CNI_ARG,
 				 &parse_integer_arg, use_cni);
+	if (ret < 0)
+		goto free_kvlist;
+
+	ret = rte_kvargs_process(kvlist, ETH_AF_XDP_USE_PINNED_MAP_ARG,
+				 &parse_integer_arg, use_pinned_map);
 	if (ret < 0)
 		goto free_kvlist;
 
@@ -2120,7 +2153,7 @@ static struct rte_eth_dev *
 init_internals(struct rte_vdev_device *dev, const char *if_name,
 	       int start_queue_idx, int queue_cnt, int shared_umem,
 	       const char *prog_path, int busy_budget, int force_copy,
-	       int use_cni, const char *dp_path)
+	       int use_cni, int use_pinned_map, const char *dp_path)
 {
 	const char *name = rte_vdev_device_name(dev);
 	const unsigned int numa_node = dev->device.numa_node;
@@ -2150,6 +2183,7 @@ init_internals(struct rte_vdev_device *dev, const char *if_name,
 	internals->shared_umem = shared_umem;
 	internals->force_copy = force_copy;
 	internals->use_cni = use_cni;
+	internals->use_pinned_map = use_pinned_map;
 	strlcpy(internals->dp_path, dp_path, PATH_MAX);
 
 	if (xdp_get_channels_info(if_name, &internals->max_queue_cnt,
@@ -2209,7 +2243,7 @@ init_internals(struct rte_vdev_device *dev, const char *if_name,
 	eth_dev->data->dev_link = pmd_link;
 	eth_dev->data->mac_addrs = &internals->eth_addr;
 	eth_dev->data->dev_flags |= RTE_ETH_DEV_AUTOFILL_QUEUE_XSTATS;
-	if (!internals->use_cni)
+	if (!internals->use_cni && !internals->use_pinned_map)
 		eth_dev->dev_ops = &ops;
 	else
 		eth_dev->dev_ops = &ops_afxdp_dp;
@@ -2341,6 +2375,7 @@ rte_pmd_af_xdp_probe(struct rte_vdev_device *dev)
 	int busy_budget = -1, ret;
 	int force_copy = 0;
 	int use_cni = 0;
+	int use_pinned_map = 0;
 	char dp_path[PATH_MAX] = {'\0'};
 	struct rte_eth_dev *eth_dev = NULL;
 	const char *name = rte_vdev_device_name(dev);
@@ -2384,20 +2419,29 @@ rte_pmd_af_xdp_probe(struct rte_vdev_device *dev)
 
 	if (parse_parameters(kvlist, if_name, &xsk_start_queue_idx,
 			     &xsk_queue_cnt, &shared_umem, prog_path,
-			     &busy_budget, &force_copy, &use_cni, dp_path) < 0) {
+			     &busy_budget, &force_copy, &use_cni, &use_pinned_map,
+			     dp_path) < 0) {
 		AF_XDP_LOG(ERR, "Invalid kvargs value\n");
 		return -EINVAL;
 	}
 
-	if (use_cni && busy_budget > 0) {
+	if (use_cni && use_pinned_map) {
 		AF_XDP_LOG(ERR, "When '%s' parameter is used, '%s' parameter is not valid\n",
-			ETH_AF_XDP_USE_CNI_ARG, ETH_AF_XDP_BUDGET_ARG);
+			ETH_AF_XDP_USE_CNI_ARG, ETH_AF_XDP_USE_PINNED_MAP_ARG);
 		return -EINVAL;
 	}
 
-	if (use_cni && strnlen(prog_path, PATH_MAX)) {
-		AF_XDP_LOG(ERR, "When '%s' parameter is used, '%s' parameter is not valid\n",
-			ETH_AF_XDP_USE_CNI_ARG, ETH_AF_XDP_PROG_ARG);
+	if ((use_cni || use_pinned_map) && busy_budget > 0) {
+		AF_XDP_LOG(ERR, "When '%s' or '%s' parameter is used, '%s' parameter is not valid\n",
+			ETH_AF_XDP_USE_CNI_ARG, ETH_AF_XDP_USE_PINNED_MAP_ARG,
+			ETH_AF_XDP_BUDGET_ARG);
+		return -EINVAL;
+	}
+
+	if ((use_cni || use_pinned_map) && strnlen(prog_path, PATH_MAX)) {
+		AF_XDP_LOG(ERR, "When '%s' or '%s' parameter is used, '%s' parameter is not valid\n",
+			ETH_AF_XDP_USE_CNI_ARG, ETH_AF_XDP_USE_PINNED_MAP_ARG,
+			ETH_AF_XDP_PROG_ARG);
 		return -EINVAL;
 	}
 
@@ -2407,9 +2451,16 @@ rte_pmd_af_xdp_probe(struct rte_vdev_device *dev)
 			ETH_AF_XDP_DP_PATH_ARG, dp_path);
 	}
 
-	if (!use_cni && strnlen(dp_path, PATH_MAX)) {
-		AF_XDP_LOG(ERR, "'%s' parameter is set, but '%s' was not enabled\n",
-			ETH_AF_XDP_DP_PATH_ARG, ETH_AF_XDP_USE_CNI_ARG);
+	if (use_pinned_map && !strnlen(dp_path, PATH_MAX)) {
+		snprintf(dp_path, sizeof(dp_path), "%s/%s/%s", DP_BASE_PATH, if_name, DP_XSK_MAP);
+		AF_XDP_LOG(INFO, "'%s' parameter not provided, setting value to '%s'\n",
+			ETH_AF_XDP_DP_PATH_ARG, dp_path);
+	}
+
+	if ((!use_cni && !use_pinned_map) && strnlen(dp_path, PATH_MAX)) {
+		AF_XDP_LOG(ERR, "'%s' parameter is set, but '%s' or '%s' were not enabled\n",
+			ETH_AF_XDP_DP_PATH_ARG, ETH_AF_XDP_USE_CNI_ARG,
+			ETH_AF_XDP_USE_PINNED_MAP_ARG);
 		return -EINVAL;
 	}
 
@@ -2436,7 +2487,8 @@ rte_pmd_af_xdp_probe(struct rte_vdev_device *dev)
 
 	eth_dev = init_internals(dev, if_name, xsk_start_queue_idx,
 				 xsk_queue_cnt, shared_umem, prog_path,
-				 busy_budget, force_copy, use_cni, dp_path);
+				 busy_budget, force_copy, use_cni, use_pinned_map,
+				 dp_path);
 	if (eth_dev == NULL) {
 		AF_XDP_LOG(ERR, "Failed to init internals\n");
 		return -1;
@@ -2498,4 +2550,5 @@ RTE_PMD_REGISTER_PARAM_STRING(net_af_xdp,
 			      "busy_budget=<int> "
 			      "force_copy=<int> "
 			      "use_cni=<int> "
+			      "use_pinned_map=<int> "
 			      "dp_path=<string> ");

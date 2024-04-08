@@ -54,11 +54,21 @@ should be used when creating the socket
 to instruct libbpf not to load the default libbpf program on the netdev.
 Instead the loading is handled by the AF_XDP Device Plugin.
 
-The EAL vdev argument ``dp_path`` is used alongside the ``use_cni`` argument
-to explicitly tell the AF_XDP PMD where to find the UDS
-to interact with the AF_XDP Device Plugin.
-If this argument is not passed alongside the ``use_cni`` argument
-then the AF_XDP PMD configures it internally.
+The EAL vdev argument ``use_pinned_map`` is used indicate to the AF_XDP PMD
+to retrieve the XSKMAP fd from a pinned eBPF map.
+This map is expected to be pinned by an external entity like the AF_XDP Device Plugin.
+This enabled unprivileged pods to create and use AF_XDP sockets.
+When this flag is set, the ``XSK_LIBBPF_FLAGS__INHIBIT_PROG_LOAD`` libbpf flag
+is used by the AF_XDP PMD when creating the AF_XDP socket.
+
+The EAL vdev argument ``dp_path`` is used alongside the ``use_cni`` or ``use_pinned_map``
+arguments to explicitly tell the AF_XDP PMD where to find either:
+
+1. The UDS to interact with the AF_XDP Device Plugin. OR
+2. The pinned xskmap to use when creating AF_XDP sockets.
+
+If this argument is not passed alongside the ``use_cni`` or ``use_pinned_map`` arguments
+then the AF_XDP PMD configures it internally to the `AF_XDP Device Plugin for Kubernetes`_.
 
 .. note::
 
@@ -316,8 +326,17 @@ Run dpdk-testpmd with the AF_XDP Device Plugin + CNI
            --no-mlockall --in-memory \
            -- -i --a --nb-cores=2 --rxq=1 --txq=1 --forward-mode=macswap;
 
+  Or
+
+  .. code-block:: console
+
+     kubectl exec -i <Pod name> --container <containers name> -- \
+           /<Path>/dpdk-testpmd -l 0,1 --no-pci \
+           --vdev=net_af_xdp0,use_pinned_map=1,iface=<interface name>,dp_path="/tmp/afxdp_dp/<interface name>/xsks_map" \
+           --no-mlockall --in-memory \
+           -- -i --a --nb-cores=2 --rxq=1 --txq=1 --forward-mode=macswap;
+
 .. note::
 
-   If the ``dp_path`` parameter isn't explicitly set (like the example above),
-   the AF_XDP PMD will set the parameter value to
-   ``/tmp/afxdp_dp/<<interface name>>/afxdp.sock``.
+   If the ``dp_path`` parameter isn't explicitly set with ``use_cni`` or ``use_pinned_map``
+   the AF_XDP PMD will set the parameter values to the `AF_XDP Device Plugin for Kubernetes`_ defaults.

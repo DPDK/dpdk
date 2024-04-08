@@ -59,11 +59,17 @@ New Features
 
   * Enabled multi-interface (UDS) support with AF_XDP Device Plugin.
 
-    The vdev argument for the AF_XDP PMD ``use_cni`` previously limited
-    a pod to using only a single netdev/interface.
-    The latest changes (adding the ``dp_path`` parameter) remove this limitation
-    and maintain backward compatibility for any applications already using
-    the ``use_cni`` vdev argument with the AF_XDP Device Plugin.
+    The argument ``use_cni`` was limiting a pod to a single netdev/interface.
+    The new ``dp_path`` parameter removed this limitation
+    and maintains backward compatibility for applications using the ``use_cni``
+    vdev argument with the AF_XDP Device Plugin.
+
+  * Integrated AF_XDP Device Plugin eBPF map pinning support.
+
+    The argument ``use_map_pinning`` was added to allow Kubernetes Pods
+    to use AF_XDP with DPDK, and run with limited privileges,
+    without having to do a full handshake over a Unix Domain Socket
+    with the Device Plugin.
 
 
 Removed Items
