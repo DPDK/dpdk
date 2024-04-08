@@ -8,7 +8,7 @@ HowTo Guides
     :maxdepth: 2
     :numbered:
 
-    af_xdp_cni
+    af_xdp_dp
     lm_bond_virtio_sriov
     lm_virtio_vhost_user
     flow_bifurcation
