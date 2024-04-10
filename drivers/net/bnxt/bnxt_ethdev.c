@@ -2966,7 +2966,7 @@ bnxt_vlan_offload_set_op(struct rte_eth_dev *dev, int mask)
 {
 	uint64_t rx_offloads = dev->data->dev_conf.rxmode.offloads;
 	struct bnxt *bp = dev->data->dev_private;
-	int rc;
+	int rc = 0;
 
 	rc = is_bnxt_in_error(bp);
 	if (rc)
@@ -2975,6 +2975,10 @@ bnxt_vlan_offload_set_op(struct rte_eth_dev *dev, int mask)
 	/* Filter settings will get applied when port is started */
 	if (!dev->data->dev_started)
 		return 0;
+
+	/* For P7 platform, cannot support if truflow is enabled */
+	if (BNXT_TRUFLOW_EN(bp) && BNXT_CHIP_P7(bp))
+		return rc;
 
 	if (mask & RTE_ETH_VLAN_FILTER_MASK) {
 		/* Enable or disable VLAN filtering */
