@@ -1935,7 +1935,7 @@ vhost_enqueue_async_packed(struct virtio_net *dev,
 	else
 		max_tries = 1;
 
-	while (size > 0) {
+	do {
 		/*
 		 * if we tried all available ring items, and still
 		 * can't get enough buf, it means something abnormal
@@ -1962,7 +1962,7 @@ vhost_enqueue_async_packed(struct virtio_net *dev,
 		avail_idx += desc_count;
 		if (avail_idx >= vq->size)
 			avail_idx -= vq->size;
-	}
+	} while (size > 0);
 
 	if (unlikely(mbuf_to_desc(dev, vq, pkt, buf_vec, nr_vec, *nr_buffers, true) < 0))
 		return -1;
