@@ -2315,14 +2315,6 @@ virtio_vdpa_dev_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		goto error;
 	}
 
-	ret = virtio_pci_dev_interrupts_alloc(priv->vpdev, priv->nvec);
-	if (ret) {
-		DRV_LOG(ERR, "%s error alloc virtio dev interrupts ret:%d %s",
-					devname, ret, strerror(errno));
-		rte_errno = VFE_VDPA_ERR_ADD_VF_INTERRUPT_ALLOC;
-		goto error;
-	}
-
 	state_len = virtio_pci_dev_state_size_get(priv->vpdev);
 	DRV_LOG(INFO, "%s state len:%d", devname, state_len);
 	/*contoller use snap_dma_q_read to get data from host,len:
@@ -2345,24 +2337,6 @@ virtio_vdpa_dev_probe(struct rte_pci_driver *pci_drv __rte_unused,
 
 	mz_len = priv->state_mz->len;
 	memset(priv->state_mz->addr, 0, mz_len);
-
-	if (priv->dev_ops->reg_dev_intr) {
-		ret = priv->dev_ops->reg_dev_intr(priv);
-		if (ret) {
-			DRV_LOG(ERR, "%s register dev interrupt fail ret:%d", devname, ret);
-			rte_errno = rte_errno ? rte_errno : VFE_VDPA_ERR_ADD_VF_REGISTER_INTERRUPT;
-			goto error;
-		}
-
-		fd = rte_intr_fd_get(priv->pdev->intr_handle);
-		ret = virtio_pci_dev_interrupt_enable(priv->vpdev, fd, 0);
-		if (ret) {
-			DRV_LOG(ERR, "%s error enabling virtio dev interrupts: %d(%s)",
-					devname, ret, strerror(errno));
-			rte_errno = rte_errno ? rte_errno : VFE_VDPA_ERR_ADD_VF_ENABLE_INTERRUPT;
-			goto error;
-		}
-	}
 
 	ret = virtio_pci_dev_state_bar_copy(priv->vpdev, priv->state_mz->addr, state_len);
 	if (ret) {
@@ -2415,6 +2389,36 @@ virtio_vdpa_dev_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	} else {
 		virtio_vdpa_save_state_update_hwidx(priv, 0, false);
 	}
+
+	/* After restart from HA and interrupts alloc might cause traffic stop,
+	 * move to bottom AMAP to save downtime
+	 */
+	ret = virtio_pci_dev_interrupts_alloc(priv->vpdev, priv->nvec);
+	if (ret) {
+		DRV_LOG(ERR, "%s error alloc virtio dev interrupts ret:%d %s",
+					devname, ret, strerror(errno));
+		rte_errno = VFE_VDPA_ERR_ADD_VF_INTERRUPT_ALLOC;
+		goto error;
+	}
+
+	if (priv->dev_ops->reg_dev_intr) {
+		ret = priv->dev_ops->reg_dev_intr(priv);
+		if (ret) {
+			DRV_LOG(ERR, "%s register dev interrupt fail ret:%d", devname, ret);
+			rte_errno = rte_errno ? rte_errno : VFE_VDPA_ERR_ADD_VF_REGISTER_INTERRUPT;
+			goto error;
+		}
+
+		fd = rte_intr_fd_get(priv->pdev->intr_handle);
+		ret = virtio_pci_dev_interrupt_enable(priv->vpdev, fd, 0);
+		if (ret) {
+			DRV_LOG(ERR, "%s error enabling virtio dev interrupts: %d(%s)",
+					devname, ret, strerror(errno));
+			rte_errno = rte_errno ? rte_errno : VFE_VDPA_ERR_ADD_VF_ENABLE_INTERRUPT;
+			goto error;
+		}
+	}
+
 
 	pthread_mutex_lock(&priv_list_lock);
 	TAILQ_INSERT_TAIL(&virtio_priv_list, priv, next);
