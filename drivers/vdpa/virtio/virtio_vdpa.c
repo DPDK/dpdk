@@ -1688,6 +1688,28 @@ virtio_vdpa_dev_presetup_done(int vid)
 			VIRTIO_CONFIG_STATUS_FEATURES_OK |
 			VIRTIO_CONFIG_STATUS_DRIVER_OK);
 
+	if (priv->restore) {
+		ret = virtio_vdpa_cmd_set_status(priv->pf_priv, priv->vf_id, VIRTIO_S_QUIESCED);
+		if (ret) {
+			DRV_LOG(ERR, "%s vfid %d failed suspend ret:%d", vdev->device->name, priv->vf_id, ret);
+			rte_errno = rte_errno ? rte_errno : VFE_VDPA_ERR_ADD_VF_SET_STATUS_QUIESCED;
+			return -rte_errno;
+		}
+
+		priv->lm_status = VIRTIO_S_QUIESCED;
+
+		ret = virtio_vdpa_cmd_set_status(priv->pf_priv, priv->vf_id, VIRTIO_S_FREEZED);
+		if (ret) {
+			DRV_LOG(ERR, "%s vfid %d failed suspend ret:%d", vdev->device->name, priv->vf_id, ret);
+			rte_errno = rte_errno ? rte_errno : VFE_VDPA_ERR_ADD_VF_SET_STATUS_FREEZED;
+			return -rte_errno;
+		}
+
+		priv->lm_status = VIRTIO_S_FREEZED;
+		/* No need to on stage2 when presetup, compare can be done on controller side */
+		priv->restore = false;
+	}
+
 	ret = virtio_vdpa_cmd_restore_state(priv->pf_priv, priv->vf_id, 0,
 			priv->state_size, priv->state_mz->iova);
 	if (ret) {
