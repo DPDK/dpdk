@@ -353,6 +353,7 @@ axgbe_dev_start(struct rte_eth_dev *dev)
 	int ret;
 	struct rte_eth_dev_data *dev_data = dev->data;
 	uint16_t max_pkt_len;
+	uint16_t i;
 
 	dev->dev_ops = &axgbe_eth_dev_ops;
 
@@ -396,6 +397,11 @@ axgbe_dev_start(struct rte_eth_dev *dev)
 		dev->rx_pkt_burst = &eth_axgbe_recv_scattered_pkts;
 	else
 		dev->rx_pkt_burst = &axgbe_recv_pkts;
+
+	for (i = 0; i < dev->data->nb_rx_queues; i++)
+		dev->data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STARTED;
+	for (i = 0; i < dev->data->nb_tx_queues; i++)
+		dev->data->tx_queue_state[i] = RTE_ETH_QUEUE_STATE_STARTED;
 
 	return 0;
 }
