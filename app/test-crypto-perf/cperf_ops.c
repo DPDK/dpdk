@@ -43,10 +43,8 @@ test_ipsec_vec_populate(struct rte_mbuf *m, const struct cperf_options *options,
 	struct rte_ipv4_hdr *ip = rte_pktmbuf_mtod(m, struct rte_ipv4_hdr *);
 
 	if (options->is_outbound) {
-		memcpy(ip, test_vector->plaintext.data,
-		       sizeof(struct rte_ipv4_hdr));
-
-		ip->total_length = rte_cpu_to_be_16(m->data_len);
+		memcpy(ip, test_vector->plaintext.data, sizeof(struct rte_ipv4_hdr));
+		ip->total_length = rte_cpu_to_be_16(m->pkt_len);
 	}
 }
 
@@ -131,8 +129,6 @@ cperf_set_ops_security_ipsec(struct rte_crypto_op **ops,
 {
 	void *sec_sess = sess;
 	const uint32_t test_buffer_size = options->test_buffer_size;
-	const uint32_t headroom_sz = options->headroom_sz;
-	const uint32_t segment_sz = options->segment_sz;
 	uint64_t tsc_start_temp, tsc_end_temp;
 	uint16_t i = 0;
 
@@ -141,20 +137,27 @@ cperf_set_ops_security_ipsec(struct rte_crypto_op **ops,
 	for (i = 0; i < nb_ops; i++) {
 		struct rte_crypto_sym_op *sym_op = ops[i]->sym;
 		struct rte_mbuf *m = sym_op->m_src;
+		uint32_t offset = test_buffer_size;
 
 		ops[i]->status = RTE_CRYPTO_OP_STATUS_NOT_PROCESSED;
 		rte_security_attach_session(ops[i], sec_sess);
-		sym_op->m_src = (struct rte_mbuf *)((uint8_t *)ops[i] +
-							src_buf_offset);
+		sym_op->m_src = (struct rte_mbuf *)((uint8_t *)ops[i] + src_buf_offset);
+		sym_op->m_src->pkt_len = test_buffer_size;
 
-		/* In case of IPsec, headroom is consumed by PMD,
-		 * hence resetting it.
+		while ((m->next != NULL) && (offset >= m->data_len)) {
+			offset -= m->data_len;
+			m = m->next;
+		}
+		m->data_len = offset;
+		/*
+		 * If there is not enough room in segment,
+		 * place the digest in the next segment
 		 */
-		m->data_off = headroom_sz;
-
-		m->buf_len = segment_sz;
-		m->data_len = test_buffer_size;
-		m->pkt_len = test_buffer_size;
+		if (rte_pktmbuf_tailroom(m) < options->digest_sz) {
+			m = m->next;
+			offset = 0;
+		}
+		m->next = NULL;
 
 		sym_op->m_dst = NULL;
 	}
@@ -186,8 +189,6 @@ cperf_set_ops_security_tls(struct rte_crypto_op **ops,
 		uint64_t *tsc_start)
 {
 	const uint32_t test_buffer_size = options->test_buffer_size;
-	const uint32_t headroom_sz = options->headroom_sz;
-	const uint32_t segment_sz = options->segment_sz;
 	uint16_t i = 0;
 
 	RTE_SET_USED(imix_idx);
@@ -197,16 +198,28 @@ cperf_set_ops_security_tls(struct rte_crypto_op **ops,
 	for (i = 0; i < nb_ops; i++) {
 		struct rte_crypto_sym_op *sym_op = ops[i]->sym;
 		struct rte_mbuf *m = sym_op->m_src;
+		uint32_t offset = test_buffer_size;
 
 		ops[i]->status = RTE_CRYPTO_OP_STATUS_NOT_PROCESSED;
 		ops[i]->param1.tls_record.content_type = 0x17;
 		rte_security_attach_session(ops[i], sess);
 		sym_op->m_src = (struct rte_mbuf *)((uint8_t *)ops[i] + src_buf_offset);
+		sym_op->m_src->pkt_len = test_buffer_size;
 
-		m->data_off = headroom_sz;
-		m->buf_len = segment_sz;
-		m->data_len = test_buffer_size;
-		m->pkt_len = test_buffer_size;
+		while ((m->next != NULL) && (offset >= m->data_len)) {
+			offset -= m->data_len;
+			m = m->next;
+		}
+		m->data_len = offset;
+		/*
+		 * If there is not enough room in segment,
+		 * place the digest in the next segment
+		 */
+		if ((rte_pktmbuf_tailroom(m)) < options->digest_sz) {
+			m = m->next;
+			m->data_len = 0;
+		}
+		m->next = NULL;
 
 		sym_op->m_dst = NULL;
 	}
