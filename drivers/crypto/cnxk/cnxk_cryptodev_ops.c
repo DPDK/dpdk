@@ -496,6 +496,22 @@ exit:
 	return ret;
 }
 
+uint32_t
+cnxk_cpt_qp_depth_used(void *qptr)
+{
+	struct cnxk_cpt_qp *qp = qptr;
+	struct pending_queue *pend_q;
+	union cpt_fc_write_s fc;
+
+	pend_q = &qp->pend_q;
+
+	fc.u64[0] = rte_atomic_load_explicit((RTE_ATOMIC(uint64_t)*)(qp->lmtline.fc_addr),
+			rte_memory_order_relaxed);
+
+	return RTE_MAX(pending_queue_infl_cnt(pend_q->head, pend_q->tail, pend_q->pq_mask),
+		       fc.s.qsize);
+}
+
 unsigned int
 cnxk_cpt_sym_session_get_size(struct rte_cryptodev *dev __rte_unused)
 {

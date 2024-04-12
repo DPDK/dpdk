@@ -142,6 +142,8 @@ int cnxk_ae_session_cfg(struct rte_cryptodev *dev,
 void cnxk_cpt_dump_on_err(struct cnxk_cpt_qp *qp);
 int cnxk_cpt_queue_pair_event_error_query(struct rte_cryptodev *dev, uint16_t qp_id);
 
+uint32_t cnxk_cpt_qp_depth_used(void *qptr);
+
 static __rte_always_inline void
 pending_queue_advance(uint64_t *index, const uint64_t mask)
 {

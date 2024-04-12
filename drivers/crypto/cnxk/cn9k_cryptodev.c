@@ -15,6 +15,7 @@
 #include "cn9k_ipsec.h"
 #include "cnxk_cryptodev.h"
 #include "cnxk_cryptodev_capabilities.h"
+#include "cnxk_cryptodev_ops.h"
 #include "cnxk_cryptodev_sec.h"
 
 #include "roc_api.h"
@@ -96,6 +97,7 @@ cn9k_cpt_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	dev->dev_ops = &cn9k_cpt_ops;
 	dev->driver_id = cn9k_cryptodev_driver_id;
 	dev->feature_flags = cnxk_cpt_default_ff_get();
+	dev->qp_depth_used = cnxk_cpt_qp_depth_used;
 
 	cnxk_cpt_caps_populate(vf);
 

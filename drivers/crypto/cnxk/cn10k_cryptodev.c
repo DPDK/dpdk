@@ -99,6 +99,7 @@ cn10k_cpt_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	dev->driver_id = cn10k_cryptodev_driver_id;
 	dev->feature_flags = cnxk_cpt_default_ff_get();
 
+	dev->qp_depth_used = cnxk_cpt_qp_depth_used;
 	cn10k_cpt_set_enqdeq_fns(dev, vf);
 	cn10k_sec_ops_override();
 
