@@ -2400,6 +2400,121 @@ static const uint8_t ms_hmac_digest2[] = {
 
 /* End Session 2 */
 
+#define MAX_OPS_PROCESSED (MAX_NUM_OPS_INFLIGHT - 1)
+static int
+test_queue_pair_descriptor_count(void)
+{
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	struct crypto_unittest_params *ut_params = &unittest_params;
+	struct rte_crypto_op *ops_deq[MAX_OPS_PROCESSED] = { NULL };
+	struct rte_crypto_op *ops[MAX_OPS_PROCESSED] = { NULL };
+	struct rte_cryptodev_sym_capability_idx cap_idx;
+	int qp_depth = 0;
+	int i;
+
+	RTE_VERIFY(gbl_action_type != RTE_SECURITY_ACTION_TYPE_CPU_CRYPTO);
+
+	/* Verify if the queue pair depth API is supported by driver */
+	qp_depth = rte_cryptodev_qp_depth_used(ts_params->valid_devs[0], 0);
+	if (qp_depth == -ENOTSUP)
+		return TEST_SKIPPED;
+
+	/* Verify the capabilities */
+	cap_idx.type = RTE_CRYPTO_SYM_XFORM_AUTH;
+	cap_idx.algo.auth = RTE_CRYPTO_AUTH_SHA1_HMAC;
+	if (rte_cryptodev_sym_capability_get(ts_params->valid_devs[0], &cap_idx) == NULL)
+		return TEST_SKIPPED;
+
+	cap_idx.type = RTE_CRYPTO_SYM_XFORM_CIPHER;
+	cap_idx.algo.cipher = RTE_CRYPTO_CIPHER_AES_CBC;
+	if (rte_cryptodev_sym_capability_get(ts_params->valid_devs[0], &cap_idx) == NULL)
+		return TEST_SKIPPED;
+
+	/* Setup Cipher Parameters */
+	ut_params->cipher_xform.type = RTE_CRYPTO_SYM_XFORM_CIPHER;
+	ut_params->cipher_xform.next = &ut_params->auth_xform;
+	ut_params->cipher_xform.cipher.algo = RTE_CRYPTO_CIPHER_AES_CBC;
+	ut_params->cipher_xform.cipher.op = RTE_CRYPTO_CIPHER_OP_ENCRYPT;
+	ut_params->cipher_xform.cipher.key.data = aes_cbc_key;
+	ut_params->cipher_xform.cipher.key.length = CIPHER_KEY_LENGTH_AES_CBC;
+	ut_params->cipher_xform.cipher.iv.offset = IV_OFFSET;
+	ut_params->cipher_xform.cipher.iv.length = CIPHER_IV_LENGTH_AES_CBC;
+
+	/* Setup HMAC Parameters */
+	ut_params->auth_xform.type = RTE_CRYPTO_SYM_XFORM_AUTH;
+	ut_params->auth_xform.next = NULL;
+	ut_params->auth_xform.auth.op = RTE_CRYPTO_AUTH_OP_GENERATE;
+	ut_params->auth_xform.auth.algo = RTE_CRYPTO_AUTH_SHA1_HMAC;
+	ut_params->auth_xform.auth.key.length = HMAC_KEY_LENGTH_SHA1;
+	ut_params->auth_xform.auth.key.data = hmac_sha1_key;
+	ut_params->auth_xform.auth.digest_length = DIGEST_BYTE_LENGTH_SHA1;
+
+	rte_errno = 0;
+	ut_params->sess = rte_cryptodev_sym_session_create(ts_params->valid_devs[0],
+			&ut_params->cipher_xform, ts_params->session_mpool);
+	if (rte_errno == ENOTSUP)
+		return TEST_SKIPPED;
+
+	TEST_ASSERT_NOT_NULL(ut_params->sess, "Session creation failed");
+
+	TEST_ASSERT_EQUAL(rte_crypto_op_bulk_alloc(ts_params->op_mpool,
+			RTE_CRYPTO_OP_TYPE_SYMMETRIC, ops, MAX_OPS_PROCESSED),
+			MAX_OPS_PROCESSED, "failed to generate burst of crypto ops");
+
+	/* Generate crypto op data structure */
+	for (i = 0; i < MAX_OPS_PROCESSED; i++) {
+		struct rte_mbuf *m;
+		uint8_t *digest;
+
+		/* Generate test mbuf data and space for digest */
+		m = setup_test_string(ts_params->mbuf_pool, catch_22_quote, QUOTE_512_BYTES, 0);
+		TEST_ASSERT_NOT_NULL(m, "Failed to allocate mbuf");
+
+		digest = (uint8_t *)rte_pktmbuf_append(m, DIGEST_BYTE_LENGTH_SHA1);
+		TEST_ASSERT_NOT_NULL(digest, "no room to append digest");
+
+		rte_crypto_op_attach_sym_session(ops[i], ut_params->sess);
+
+		/* set crypto operation source mbuf */
+		ops[i]->sym->m_src = m;
+
+		/* Set crypto operation authentication parameters */
+		ops[i]->sym->auth.digest.data = digest;
+		ops[i]->sym->auth.digest.phys_addr = rte_pktmbuf_iova_offset(m, QUOTE_512_BYTES);
+
+		ops[i]->sym->auth.data.offset = 0;
+		ops[i]->sym->auth.data.length = QUOTE_512_BYTES;
+
+		/* Copy IV at the end of the crypto operation */
+		memcpy(rte_crypto_op_ctod_offset(ops[i], uint8_t *, IV_OFFSET), aes_cbc_iv,
+				CIPHER_IV_LENGTH_AES_CBC);
+
+		/* Set crypto operation cipher parameters */
+		ops[i]->sym->cipher.data.offset = 0;
+		ops[i]->sym->cipher.data.length = QUOTE_512_BYTES;
+
+		TEST_ASSERT_EQUAL(rte_cryptodev_enqueue_burst(ts_params->valid_devs[0], 0,
+					&ops[i], 1), 1, "Error enqueuing");
+	}
+
+	for (i = 0; i < MAX_OPS_PROCESSED; i++) {
+		qp_depth = rte_cryptodev_qp_depth_used(ts_params->valid_devs[0], 0);
+		TEST_ASSERT_EQUAL(qp_depth, MAX_OPS_PROCESSED - i,
+			"Crypto queue pair depth used does not match with inflight ops");
+
+		while (rte_cryptodev_dequeue_burst(ts_params->valid_devs[0], 0,
+					&ops_deq[i], 1) == 0)
+			rte_pause();
+
+		TEST_ASSERT_EQUAL(ops_deq[i]->status, RTE_CRYPTO_OP_STATUS_SUCCESS,
+				"crypto op processing failed");
+
+		rte_pktmbuf_free(ops_deq[i]->sym->m_src);
+		rte_crypto_op_free(ops_deq[i]);
+	}
+
+	return TEST_SUCCESS;
+}
 
 static int
 test_AES_CBC_HMAC_SHA1_encrypt_digest(void)
@@ -18068,6 +18183,8 @@ static struct unit_test_suite cryptodev_gen_testsuite  = {
 				test_queue_pair_descriptor_setup),
 		TEST_CASE_ST(ut_setup, ut_teardown,
 				test_device_configure_invalid_queue_pair_ids),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+				test_queue_pair_descriptor_count),
 		TEST_CASE_ST(ut_setup, ut_teardown, test_stats),
 		TEST_CASE_ST(ut_setup, ut_teardown, test_enq_callback_setup),
 		TEST_CASE_ST(ut_setup, ut_teardown, test_deq_callback_setup),
