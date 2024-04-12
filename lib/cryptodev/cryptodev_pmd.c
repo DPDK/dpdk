@@ -236,6 +236,7 @@ cryptodev_fp_ops_set(struct rte_crypto_fp_ops *fp_ops,
 	fp_ops->qp.data = dev->data->queue_pairs;
 	fp_ops->qp.enq_cb = dev->enq_cbs;
 	fp_ops->qp.deq_cb = dev->deq_cbs;
+	fp_ops->qp_depth_used = dev->qp_depth_used;
 }
 
 void *

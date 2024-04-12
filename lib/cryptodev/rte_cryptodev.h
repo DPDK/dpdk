@@ -2005,6 +2005,51 @@ rte_cryptodev_enqueue_burst(uint8_t dev_id, uint16_t qp_id,
 	return fp_ops->enqueue_burst(qp, ops, nb_ops);
 }
 
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change, or be removed, without prior notice
+ *
+ * Get the number of used descriptors or depth of a cryptodev queue pair.
+ *
+ * This function retrieves the number of used descriptors in a crypto queue.
+ * Applications can use this API in the fast path to inspect QP occupancy and
+ * take appropriate action.
+ *
+ * Since it is a fast-path function, no check is performed on dev_id and qp_id.
+ * Caller must therefore ensure that the device is enabled and queue pair is setup.
+ *
+ * @param	dev_id		The identifier of the device.
+ * @param	qp_id		The index of the queue pair for which used descriptor
+ *				count is to be retrieved. The value
+ *				must be in the range [0, nb_queue_pairs - 1]
+ *				previously supplied to *rte_cryptodev_configure*.
+ *
+ * @return
+ *  The number of used descriptors on the specified queue pair, or:
+ *   - (-ENOTSUP) if the device does not support this function.
+ */
+
+__rte_experimental
+static inline int
+rte_cryptodev_qp_depth_used(uint8_t dev_id, uint16_t qp_id)
+{
+	const struct rte_crypto_fp_ops *fp_ops;
+	void *qp;
+	int rc;
+
+	fp_ops = &rte_crypto_fp_ops[dev_id];
+	qp = fp_ops->qp.data[qp_id];
+
+	if (fp_ops->qp_depth_used == NULL) {
+		rc = -ENOTSUP;
+		goto out;
+	}
+
+	rc = fp_ops->qp_depth_used(qp);
+out:
+	rte_cryptodev_trace_qp_depth_used(dev_id, qp_id);
+	return rc;
+}
 
 
 #ifdef __cplusplus

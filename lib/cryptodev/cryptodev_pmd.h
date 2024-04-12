@@ -117,6 +117,8 @@ struct __rte_cache_aligned rte_cryptodev {
 	struct rte_cryptodev_cb_rcu *enq_cbs;
 	/** User application callback for post dequeue processing */
 	struct rte_cryptodev_cb_rcu *deq_cbs;
+	/** Pointer to PMD function to get used queue pair depth */
+	crypto_qp_depth_used_t qp_depth_used;
 };
 
 /** Global structure used for maintaining state of allocated crypto devices */

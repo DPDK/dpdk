@@ -194,3 +194,6 @@ RTE_TRACE_POINT_REGISTER(rte_cryptodev_trace_op_pool_create,
 
 RTE_TRACE_POINT_REGISTER(rte_cryptodev_trace_count,
 	lib.cryptodev.count)
+
+RTE_TRACE_POINT_REGISTER(rte_cryptodev_trace_qp_depth_used,
+	lib.cryptodev.qp_depth_used)
