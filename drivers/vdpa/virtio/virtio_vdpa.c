@@ -1038,6 +1038,8 @@ virtio_vdpa_features_set(int vid)
 	uint64_t log_base, log_size, max_phy, log_size_align;
 	uint64_t features;
 	struct virtio_sge lb_sge;
+	struct timeval start, end;
+	uint64_t time_used;
 	rte_iova_t iova;
 	int ret;
 
@@ -1064,6 +1066,11 @@ virtio_vdpa_features_set(int vid)
 		return ret;
 	}
 	if (RTE_VHOST_NEED_LOG(features) && priv->configured) {
+
+		gettimeofday(&start, NULL);
+		DRV_LOG(INFO, "System time of dirty logging start (dev %s): %lu.%06lu",
+			vdev->device->name, start.tv_sec, start.tv_usec);
+
 		ret = rte_vhost_get_log_base(vid, &log_base, &log_size);
 		if (ret) {
 			DRV_LOG(ERR, "%s failed to get log base",
@@ -1099,8 +1106,14 @@ virtio_vdpa_features_set(int vid)
 		}
 
 		ret = virtio_vdpa_cmd_dirty_page_start_track(priv->pf_priv, priv->vf_id, VIRTIO_M_DIRTY_TRACK_PUSH_BITMAP, PAGE_SIZE, 0, max_phy, 1, &lb_sge);
-		DRV_LOG(INFO, "%s vfid %d start track max phy:%" PRIx64 "log_base %" PRIx64 "log_size %" PRIx64,
-					priv->vdev->device->name, priv->vf_id, max_phy , log_base, log_size);
+		gettimeofday(&end, NULL);
+
+		time_used = (end.tv_sec - start.tv_sec) * 1e6 + end.tv_usec - start.tv_usec;
+
+		DRV_LOG(INFO, "%s vfid %d start track max phy:%" PRIx64 "log_base %" PRIx64
+				"log_size %" PRIx64 "at %lu.%06lu took %lu us.",
+					priv->vdev->device->name, priv->vf_id, max_phy ,
+					log_base, log_size, end.tv_sec, end.tv_usec, time_used);
 		if (ret) {
 			DRV_LOG(ERR, "%s failed to start track ret:%d",
 						priv->vdev->device->name, ret);
@@ -1256,14 +1269,18 @@ virtio_vdpa_dev_close(int vid)
 	uint64_t features = 0, max_phy, log_base, log_size, log_size_align;
 	uint16_t num_vr;
 	rte_iova_t iova;
-	uint64_t t_start = rte_rdtsc_precise();
-	uint64_t t_end;
+	struct timeval start, end;
+	uint64_t time_used;
 	int ret, i;
 
 	if (priv == NULL) {
 		DRV_LOG(ERR, "Invalid vDPA device: %s", vdev->device->name);
 		return -ENODEV;
 	}
+
+	gettimeofday(&start, NULL);
+	DRV_LOG(INFO, "System time of dev close start (dev %s): %lu.%06lu",
+		vdev->device->name, start.tv_sec, start.tv_usec);
 
 	virtio_vdpa_doorbell_relay_disable(priv);
 	if (!priv->configured) {
@@ -1354,9 +1371,12 @@ virtio_vdpa_dev_close(int vid)
 	}
 	priv->dev_work_flag = VIRTIO_VDPA_DEV_CLOSE_WORK_START;
 
-	t_end  = rte_rdtsc_precise();
-	DRV_LOG(INFO, "%s vid %d was closed, took %lu us.", priv->vdev->device->name,
-			vid, (t_end - t_start) * 1000000 / rte_get_tsc_hz());
+	gettimeofday(&end, NULL);
+
+	time_used = (end.tv_sec - start.tv_sec) * 1e6 + end.tv_usec - start.tv_usec;
+	DRV_LOG(INFO, "%s vid %d was close at %lu.%06lu, took %lu us.", vdev->device->name,
+			vid, end.tv_sec, end.tv_usec, time_used);
+
 	priv->ctx_stored = false;
 	return ret;
 }
@@ -1514,12 +1534,10 @@ virtio_vdpa_dev_config(int vid)
 
 	priv->configured = 1;
 	gettimeofday(&end, NULL);
-	DRV_LOG(INFO, "System time when config done (dev %s): %lu.%06lu",
-		priv->vf_name.dev_bdf, start.tv_sec, start.tv_usec);
 
 	time_used = (end.tv_sec - start.tv_sec) * 1e6 + end.tv_usec - start.tv_usec;
-	DRV_LOG(INFO, "%s vid %d was configured, took %lu us.", vdev->device->name,
-			vid, time_used);
+	DRV_LOG(INFO, "%s vid %d was configured at %lu.%06lu, took %lu us.", vdev->device->name,
+			vid, end.tv_sec, end.tv_usec, time_used);
 
 	if (!priv->ctx_stored) {
 		if (!priv->fd_args_stored) {
@@ -1644,9 +1662,14 @@ virtio_vdpa_dev_presetup_done(int vid)
 	struct virtio_vdpa_priv *priv =
 		virtio_vdpa_find_priv_resource_by_vdev(vdev);
 	uint16_t last_avail_idx, last_used_idx, nr_virtqs;
+	struct timeval start, end;
+	uint64_t time_used;
 	int ret, i;
 
-	DRV_LOG(INFO, "virtio vDPA presetup");
+	gettimeofday(&start, NULL);
+	DRV_LOG(INFO, "virtio vDPA presetup start (dev %s): %lu.%06lu",
+		vdev->device->name, start.tv_sec, start.tv_usec);
+
 	nr_virtqs = rte_vhost_get_vring_num(vid);
 	if (priv->nvec < (nr_virtqs + 1)) {
 		DRV_LOG(ERR, "%s warning: dev interrupts %d less than queue: %d",
@@ -1719,6 +1742,12 @@ virtio_vdpa_dev_presetup_done(int vid)
 		rte_errno = rte_errno ? rte_errno : EINVAL;
 		return -rte_errno;
 	}
+
+	gettimeofday(&end, NULL);
+
+	time_used = (end.tv_sec - start.tv_sec) * 1e6 + end.tv_usec - start.tv_usec;
+	DRV_LOG(INFO, "%s vid %d was presetup at %lu.%06lu, took %lu us.", vdev->device->name,
+			vid, end.tv_sec, end.tv_usec, time_used);
 
 	return 0;
 }
