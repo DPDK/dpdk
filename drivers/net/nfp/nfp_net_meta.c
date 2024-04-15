@@ -27,7 +27,6 @@ nfp_net_meta_parse_chained(uint8_t *meta_base,
 
 	meta_info = rte_be_to_cpu_32(meta_header);
 	meta_offset = meta_base + 4;
-	meta->flags = 0;
 
 	for (; meta_info != 0; meta_info >>= NFP_NET_META_FIELD_SIZE, meta_offset += 4) {
 		switch (meta_info & NFP_NET_META_FIELD_MASK) {
@@ -236,6 +235,8 @@ nfp_net_meta_parse(struct nfp_net_rx_desc *rxds,
 {
 	uint8_t *meta_base;
 	rte_be32_t meta_header;
+
+	meta->flags = 0;
 
 	if (unlikely(NFP_DESC_META_LEN(rxds) == 0))
 		return;
