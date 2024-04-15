@@ -212,13 +212,13 @@ enum freq_scale_hint_t
 	FREQ_HIGHEST  =       2
 };
 
-struct lcore_rx_queue {
+struct __rte_cache_aligned lcore_rx_queue {
 	uint16_t port_id;
 	uint8_t queue_id;
 	enum freq_scale_hint_t freq_up_hint;
 	uint32_t zero_rx_packet_count;
 	uint32_t idle_hint;
-} __rte_cache_aligned;
+};
 
 #define MAX_RX_QUEUE_PER_LCORE 16
 #define MAX_TX_QUEUE_PER_PORT RTE_MAX_ETHPORTS
@@ -329,8 +329,8 @@ static lookup_struct_t *ipv6_l3fwd_lookup_struct[NB_SOCKETS];
 
 #define L3FWD_HASH_ENTRIES	1024
 
-static uint16_t ipv4_l3fwd_out_if[L3FWD_HASH_ENTRIES] __rte_cache_aligned;
-static uint16_t ipv6_l3fwd_out_if[L3FWD_HASH_ENTRIES] __rte_cache_aligned;
+static alignas(RTE_CACHE_LINE_SIZE) uint16_t ipv4_l3fwd_out_if[L3FWD_HASH_ENTRIES];
+static alignas(RTE_CACHE_LINE_SIZE) uint16_t ipv6_l3fwd_out_if[L3FWD_HASH_ENTRIES];
 #endif
 
 #if (APP_LOOKUP_METHOD == APP_LOOKUP_LPM)
@@ -357,7 +357,7 @@ typedef struct rte_lpm lookup_struct_t;
 static lookup_struct_t *ipv4_l3fwd_lookup_struct[NB_SOCKETS];
 #endif
 
-struct lcore_conf {
+struct __rte_cache_aligned lcore_conf {
 	uint16_t n_rx_queue;
 	struct lcore_rx_queue rx_queue_list[MAX_RX_QUEUE_PER_LCORE];
 	uint16_t n_tx_port;
@@ -366,9 +366,9 @@ struct lcore_conf {
 	struct rte_eth_dev_tx_buffer *tx_buffer[RTE_MAX_ETHPORTS];
 	lookup_struct_t * ipv4_lookup_struct;
 	lookup_struct_t * ipv6_lookup_struct;
-} __rte_cache_aligned;
+};
 
-struct lcore_stats {
+struct __rte_cache_aligned lcore_stats {
 	/* total sleep time in ms since last frequency scaling down */
 	uint32_t sleep_time;
 	/* number of long sleep recently */
@@ -399,10 +399,10 @@ struct lcore_stats {
 	uint64_t fp_nfp[2];
 	enum busy_rate br;
 	rte_spinlock_t telemetry_lock;
-} __rte_cache_aligned;
+};
 
-static struct lcore_conf lcore_conf[RTE_MAX_LCORE] __rte_cache_aligned;
-static struct lcore_stats stats[RTE_MAX_LCORE] __rte_cache_aligned;
+static alignas(RTE_CACHE_LINE_SIZE) struct lcore_conf lcore_conf[RTE_MAX_LCORE];
+static alignas(RTE_CACHE_LINE_SIZE) struct lcore_stats stats[RTE_MAX_LCORE];
 static struct rte_timer power_timers[RTE_MAX_LCORE];
 
 static inline uint32_t power_idle_heuristic(uint32_t zero_rx_packet_count);
@@ -832,9 +832,9 @@ sleep_until_rx_interrupt(int num, int lcore)
 	 * back to sleep again without log spamming. Avoid cache line sharing
 	 * to prevent threads stepping on each others' toes.
 	 */
-	static struct {
+	static alignas(RTE_CACHE_LINE_SIZE) struct {
 		bool wakeup;
-	} __rte_cache_aligned status[RTE_MAX_LCORE];
+	} status[RTE_MAX_LCORE];
 	struct rte_epoll_event event[num];
 	int n, i;
 	uint16_t port_id;

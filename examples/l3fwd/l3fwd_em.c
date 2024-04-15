@@ -208,8 +208,8 @@ ipv6_hash_crc(const void *data, __rte_unused uint32_t data_len,
 	return init_val;
 }
 
-static uint8_t ipv4_l3fwd_out_if[L3FWD_HASH_ENTRIES] __rte_cache_aligned;
-static uint8_t ipv6_l3fwd_out_if[L3FWD_HASH_ENTRIES] __rte_cache_aligned;
+static alignas(RTE_CACHE_LINE_SIZE) uint8_t ipv4_l3fwd_out_if[L3FWD_HASH_ENTRIES];
+static alignas(RTE_CACHE_LINE_SIZE) uint8_t ipv6_l3fwd_out_if[L3FWD_HASH_ENTRIES];
 
 static rte_xmm_t mask0;
 static rte_xmm_t mask1;

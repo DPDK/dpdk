@@ -47,13 +47,13 @@ struct block {
 	void *block;
 };
 
-struct thread {
+struct __rte_cache_aligned thread {
 	struct rte_swx_pipeline *pipelines[THREAD_PIPELINES_MAX];
 	struct block *blocks[THREAD_BLOCKS_MAX];
 	volatile uint64_t n_pipelines;
 	volatile uint64_t n_blocks;
 	int enabled;
-} __rte_cache_aligned;
+};
 
 static struct thread threads[RTE_MAX_LCORE];
 

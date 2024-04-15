@@ -120,16 +120,16 @@ struct app_config_params {
 	uint16_t num_dec_cores;
 };
 
-struct lcore_statistics {
+struct __rte_cache_aligned lcore_statistics {
 	unsigned int enqueued;
 	unsigned int dequeued;
 	unsigned int rx_lost_packets;
 	unsigned int enc_to_dec_lost_packets;
 	unsigned int tx_lost_packets;
-} __rte_cache_aligned;
+};
 
 /** each lcore configuration */
-struct lcore_conf {
+struct __rte_cache_aligned lcore_conf {
 	uint64_t core_type;
 
 	unsigned int port_id;
@@ -148,7 +148,7 @@ struct lcore_conf {
 	struct rte_ring *enc_to_dec_ring;
 
 	struct lcore_statistics *lcore_stats;
-} __rte_cache_aligned;
+};
 
 struct stats_lcore_params {
 	struct lcore_conf *lconf;

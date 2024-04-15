@@ -201,7 +201,7 @@ struct l2fwd_crypto_params {
 };
 
 /** lcore configuration */
-struct lcore_queue_conf {
+struct __rte_cache_aligned lcore_queue_conf {
 	unsigned nb_rx_ports;
 	uint16_t rx_port_list[MAX_RX_QUEUE_PER_LCORE];
 
@@ -210,7 +210,7 @@ struct lcore_queue_conf {
 
 	struct op_buffer op_buf[RTE_CRYPTO_MAX_DEVS];
 	struct pkt_buffer pkt_buf[RTE_MAX_ETHPORTS];
-} __rte_cache_aligned;
+};
 
 struct lcore_queue_conf lcore_queue_conf[RTE_MAX_LCORE];
 
@@ -230,7 +230,7 @@ static struct {
 } session_pool_socket[RTE_MAX_NUMA_NODES];
 
 /* Per-port statistics struct */
-struct l2fwd_port_statistics {
+struct __rte_cache_aligned l2fwd_port_statistics {
 	uint64_t tx;
 	uint64_t rx;
 
@@ -238,14 +238,14 @@ struct l2fwd_port_statistics {
 	uint64_t crypto_dequeued;
 
 	uint64_t dropped;
-} __rte_cache_aligned;
+};
 
-struct l2fwd_crypto_statistics {
+struct __rte_cache_aligned l2fwd_crypto_statistics {
 	uint64_t enqueued;
 	uint64_t dequeued;
 
 	uint64_t errors;
-} __rte_cache_aligned;
+};
 
 struct l2fwd_port_statistics port_statistics[RTE_MAX_ETHPORTS];
 struct l2fwd_crypto_statistics crypto_statistics[RTE_CRYPTO_MAX_DEVS];

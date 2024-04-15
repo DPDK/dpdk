@@ -112,7 +112,7 @@ ipsec_mask_saptr(void *ptr)
 	return (struct ipsec_sa *)i;
 }
 
-struct ipsec_sa {
+struct __rte_cache_aligned ipsec_sa {
 	struct rte_ipsec_session sessions[IPSEC_SESSION_MAX];
 	uint32_t spi;
 	struct cdev_qp *cqp[RTE_MAX_LCORE];
@@ -170,7 +170,7 @@ struct ipsec_sa {
 	struct rte_flow_item_esp esp_spec;
 	struct rte_flow *flow;
 	struct rte_security_session_conf sess_conf;
-} __rte_cache_aligned;
+};
 
 struct ipsec_xf {
 	struct rte_crypto_sym_xform a;
@@ -190,12 +190,12 @@ struct sa_ctx {
 	struct ipsec_sa sa[];
 };
 
-struct ipsec_mbuf_metadata {
+struct __rte_cache_aligned ipsec_mbuf_metadata {
 	struct ipsec_sa *sa;
 	struct rte_crypto_op cop;
 	struct rte_crypto_sym_op sym_cop;
 	uint8_t buf[32];
-} __rte_cache_aligned;
+};
 
 #define IS_TRANSPORT(flags) ((flags) & TRANSPORT)
 
@@ -224,7 +224,7 @@ struct cdev_qp {
 	uint16_t qp;
 	uint16_t in_flight;
 	uint16_t len;
-	struct rte_crypto_op *buf[MAX_PKT_BURST] __rte_aligned(sizeof(void *));
+	struct rte_crypto_op *buf[MAX_PKT_BURST];
 };
 
 struct ipsec_ctx {
@@ -235,7 +235,7 @@ struct ipsec_ctx {
 	uint16_t nb_qps;
 	uint16_t last_qp;
 	struct cdev_qp tbl[MAX_QP_PER_LCORE];
-	struct rte_mbuf *ol_pkts[MAX_PKT_BURST] __rte_aligned(sizeof(void *));
+	struct rte_mbuf *ol_pkts[MAX_PKT_BURST];
 	uint16_t ol_pkts_cnt;
 	uint64_t ipv4_offloads;
 	uint64_t ipv6_offloads;
@@ -283,18 +283,18 @@ struct cnt_blk {
 	uint32_t cnt;
 } __rte_packed;
 
-struct lcore_rx_queue {
+struct __rte_cache_aligned lcore_rx_queue {
 	uint16_t port_id;
 	uint8_t queue_id;
 	void *sec_ctx;
-} __rte_cache_aligned;
+};
 
 struct buffer {
 	uint16_t len;
-	struct rte_mbuf *m_table[MAX_PKT_BURST] __rte_aligned(sizeof(void *));
+	struct rte_mbuf *m_table[MAX_PKT_BURST];
 };
 
-struct lcore_conf {
+struct __rte_cache_aligned lcore_conf {
 	uint16_t nb_rx_queue;
 	struct lcore_rx_queue rx_queue_list[MAX_RX_QUEUE_PER_LCORE];
 	uint16_t tx_queue_id[RTE_MAX_ETHPORTS];
@@ -308,7 +308,7 @@ struct lcore_conf {
 		struct rte_mempool *pool_indir;
 		struct rte_ip_frag_death_row dr;
 	} frag;
-} __rte_cache_aligned;
+};
 
 extern struct lcore_conf lcore_conf[RTE_MAX_LCORE];
 

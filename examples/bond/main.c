@@ -346,7 +346,7 @@ struct global_flag_stru_t *global_flag_stru_p = &global_flag_stru;
  */
 static int lcore_main(__rte_unused void *arg1)
 {
-	struct rte_mbuf *pkts[MAX_PKT_BURST] __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) struct rte_mbuf *pkts[MAX_PKT_BURST];
 	struct rte_ether_addr dst_addr;
 
 	struct rte_ether_addr bond_mac_addr;

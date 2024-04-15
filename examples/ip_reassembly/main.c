@@ -148,14 +148,14 @@ struct tx_lcore_stat {
 #define MAX_TX_QUEUE_PER_PORT 16
 #define MAX_RX_QUEUE_PER_PORT 128
 
-struct lcore_queue_conf {
+struct __rte_cache_aligned lcore_queue_conf {
 	uint16_t n_rx_queue;
 	struct rx_queue rx_queue_list[MAX_RX_QUEUE_PER_LCORE];
 	uint16_t tx_queue_id[RTE_MAX_ETHPORTS];
 	struct rte_ip_frag_death_row death_row;
 	struct mbuf_table *tx_mbufs[RTE_MAX_ETHPORTS];
 	struct tx_lcore_stat tx_stat;
-} __rte_cache_aligned;
+};
 static struct lcore_queue_conf lcore_queue_conf[RTE_MAX_LCORE];
 
 static struct rte_eth_conf port_conf = {

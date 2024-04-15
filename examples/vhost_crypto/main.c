@@ -42,7 +42,7 @@ struct lcore_option {
 	uint16_t qid;
 };
 
-struct vhost_crypto_info {
+struct __rte_cache_aligned vhost_crypto_info {
 	int vids[MAX_NB_SOCKETS];
 	uint32_t nb_vids;
 	struct rte_mempool *sess_pool;
@@ -51,7 +51,7 @@ struct vhost_crypto_info {
 	uint32_t qid;
 	uint32_t nb_inflight_ops;
 	volatile uint32_t initialized[MAX_NB_SOCKETS];
-} __rte_cache_aligned;
+};
 
 struct vhost_crypto_options {
 	struct lcore_option los[MAX_NB_WORKER_CORES];

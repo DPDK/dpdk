@@ -24,10 +24,10 @@
 #include "commands.h"
 
 /* Per-port statistics struct */
-struct ntb_port_statistics {
+struct __rte_cache_aligned ntb_port_statistics {
 	uint64_t tx;
 	uint64_t rx;
-} __rte_cache_aligned;
+};
 /* Port 0: NTB dev, Port 1: ethdev when iofwd. */
 struct ntb_port_statistics ntb_port_stats[2];
 

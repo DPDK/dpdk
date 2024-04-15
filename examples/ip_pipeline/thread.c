@@ -63,7 +63,7 @@ struct pipeline_data {
 	uint8_t buffer[TABLE_RULE_ACTION_SIZE_MAX];
 };
 
-struct thread_data {
+struct __rte_cache_aligned thread_data {
 	struct rte_pipeline *p[THREAD_PIPELINES_MAX];
 	uint32_t n_pipelines;
 
@@ -73,7 +73,7 @@ struct thread_data {
 	uint64_t timer_period; /* Measured in CPU cycles. */
 	uint64_t time_next;
 	uint64_t time_next_min;
-} __rte_cache_aligned;
+};
 
 static struct thread_data thread_data[RTE_MAX_LCORE];
 

@@ -37,11 +37,11 @@ struct route_table {
 /*
  * Conf required by event mode worker with tx internal port
  */
-struct lcore_conf_ev_tx_int_port_wrkr {
+struct __rte_cache_aligned lcore_conf_ev_tx_int_port_wrkr {
 	struct ipsec_ctx inbound;
 	struct ipsec_ctx outbound;
 	struct route_table rt;
-} __rte_cache_aligned;
+};
 
 void ipsec_poll_mode_worker(void);
 void ipsec_poll_mode_wrkr_inl_pr(void);

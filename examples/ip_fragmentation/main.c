@@ -135,12 +135,12 @@ struct rx_queue {
 
 #define MAX_RX_QUEUE_PER_LCORE 16
 #define MAX_TX_QUEUE_PER_PORT 16
-struct lcore_queue_conf {
+struct __rte_cache_aligned lcore_queue_conf {
 	uint16_t n_rx_queue;
 	uint16_t tx_queue_id[RTE_MAX_ETHPORTS];
 	struct rx_queue rx_queue_list[MAX_RX_QUEUE_PER_LCORE];
 	struct mbuf_table tx_mbufs[RTE_MAX_ETHPORTS];
-} __rte_cache_aligned;
+};
 struct lcore_queue_conf lcore_queue_conf[RTE_MAX_LCORE];
 
 static struct rte_eth_conf port_conf = {

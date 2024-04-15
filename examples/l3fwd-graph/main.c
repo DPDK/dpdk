@@ -97,22 +97,22 @@ struct lcore_rx_queue {
 static uint8_t model_conf = RTE_GRAPH_MODEL_DEFAULT;
 
 /* Lcore conf */
-struct lcore_conf {
+struct __rte_cache_aligned lcore_conf {
 	uint16_t n_rx_queue;
 	struct lcore_rx_queue rx_queue_list[MAX_RX_QUEUE_PER_LCORE];
 
 	struct rte_graph *graph;
 	char name[RTE_GRAPH_NAMESIZE];
 	rte_graph_t graph_id;
-} __rte_cache_aligned;
+};
 
 static struct lcore_conf lcore_conf[RTE_MAX_LCORE];
 
-struct lcore_params {
+struct __rte_cache_aligned lcore_params {
 	uint16_t port_id;
 	uint8_t queue_id;
 	uint8_t lcore_id;
-} __rte_cache_aligned;
+};
 
 static struct lcore_params lcore_params_array[MAX_LCORE_PARAMS];
 static struct lcore_params lcore_params_array_default[] = {

@@ -66,7 +66,7 @@ struct vhost_block_dev {
 	uint8_t *data;
 };
 
-struct vhost_blk_ctrlr {
+struct __rte_cache_aligned vhost_blk_ctrlr {
 	uint8_t started;
 	/** ID for vhost library. */
 	int vid;
@@ -76,7 +76,7 @@ struct vhost_blk_ctrlr {
 	struct vhost_block_dev *bdev;
 	/** VM memory region */
 	struct rte_vhost_memory *mem;
-} __rte_cache_aligned;
+};
 
 #define VHOST_BLK_MAX_IOVS 128
 

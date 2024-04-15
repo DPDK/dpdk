@@ -62,7 +62,7 @@ void
 app_rx_thread(struct thread_conf **confs)
 {
 	uint32_t i, nb_rx;
-	struct rte_mbuf *rx_mbufs[burst_conf.rx_burst] __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) struct rte_mbuf *rx_mbufs[burst_conf.rx_burst];
 	struct thread_conf *conf;
 	int conf_idx = 0;
 

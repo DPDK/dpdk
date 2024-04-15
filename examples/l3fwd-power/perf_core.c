@@ -20,12 +20,12 @@
 static uint16_t hp_lcores[RTE_MAX_LCORE];
 static uint16_t nb_hp_lcores;
 
-struct perf_lcore_params {
+struct __rte_cache_aligned perf_lcore_params {
 	uint16_t port_id;
 	uint8_t queue_id;
 	uint8_t high_perf;
 	uint8_t lcore_idx;
-} __rte_cache_aligned;
+};
 
 static struct perf_lcore_params prf_lc_prms[MAX_LCORE_PARAMS];
 static uint16_t nb_prf_lc_prms;

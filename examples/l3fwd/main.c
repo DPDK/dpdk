@@ -96,11 +96,11 @@ struct lcore_conf lcore_conf[RTE_MAX_LCORE];
 
 struct parm_cfg parm_config;
 
-struct lcore_params {
+struct __rte_cache_aligned lcore_params {
 	uint16_t port_id;
 	uint8_t queue_id;
 	uint8_t lcore_id;
-} __rte_cache_aligned;
+};
 
 static struct lcore_params lcore_params_array[MAX_LCORE_PARAMS];
 static struct lcore_params lcore_params_array_default[] = {
