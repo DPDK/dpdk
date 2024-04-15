@@ -1816,7 +1816,7 @@ mlx5_devx_cmd_create_rqt(void *ctx,
 	uint32_t out[MLX5_ST_SZ_DW(create_rqt_out)] = {0};
 	void *rqt_ctx;
 	struct mlx5_devx_obj *rqt = NULL;
-	int i;
+	unsigned int i;
 
 	in = mlx5_malloc(MLX5_MEM_ZERO, inlen, 0, SOCKET_ID_ANY);
 	if (!in) {
@@ -1869,7 +1869,7 @@ mlx5_devx_cmd_modify_rqt(struct mlx5_devx_obj *rqt,
 	uint32_t out[MLX5_ST_SZ_DW(modify_rqt_out)] = {0};
 	uint32_t *in = mlx5_malloc(MLX5_MEM_ZERO, inlen, 0, SOCKET_ID_ANY);
 	void *rqt_ctx;
-	int i;
+	unsigned int i;
 	int ret;
 
 	if (!in) {
