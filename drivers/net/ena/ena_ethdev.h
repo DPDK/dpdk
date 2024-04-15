@@ -142,7 +142,7 @@ struct ena_stats_rx {
 	u64 bad_req_id;
 };
 
-struct ena_ring {
+struct __rte_cache_aligned ena_ring {
 	u16 next_to_use;
 	u16 next_to_clean;
 	uint64_t last_cleanup_ticks;
@@ -175,8 +175,7 @@ struct ena_ring {
 		uint16_t rx_free_thresh;
 	};
 
-	struct ena_com_rx_buf_info ena_bufs[ENA_PKT_MAX_BUFS]
-						__rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) struct ena_com_rx_buf_info ena_bufs[ENA_PKT_MAX_BUFS];
 
 	struct rte_mempool *mb_pool;
 	unsigned int port_id;
@@ -201,7 +200,7 @@ struct ena_ring {
 	unsigned int numa_socket_id;
 
 	uint32_t missing_tx_completion_threshold;
-} __rte_cache_aligned;
+};
 
 enum ena_adapter_state {
 	ENA_ADAPTER_STATE_FREE    = 0,
@@ -288,15 +287,15 @@ struct ena_adapter {
 	/* OS defined structs */
 	struct rte_eth_dev_data *edev_data;
 
-	struct ena_com_dev ena_dev __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) struct ena_com_dev ena_dev;
 
 	/* TX */
-	struct ena_ring tx_ring[ENA_MAX_NUM_QUEUES] __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) struct ena_ring tx_ring[ENA_MAX_NUM_QUEUES];
 	u32 max_tx_ring_size;
 	u16 max_tx_sgl_size;
 
 	/* RX */
-	struct ena_ring rx_ring[ENA_MAX_NUM_QUEUES] __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) struct ena_ring rx_ring[ENA_MAX_NUM_QUEUES];
 	u32 max_rx_ring_size;
 	u16 max_rx_sgl_size;
 
@@ -357,9 +356,9 @@ struct ena_adapter {
 	 * Helper variables for holding the information about the supported
 	 * metrics.
 	 */
-	uint64_t metrics_stats[ENA_MAX_CUSTOMER_METRICS] __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) uint64_t metrics_stats[ENA_MAX_CUSTOMER_METRICS];
 	uint16_t metrics_num;
-	struct ena_stats_srd srd_stats __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) struct ena_stats_srd srd_stats;
 };
 
 int ena_mp_indirect_table_set(struct ena_adapter *adapter);

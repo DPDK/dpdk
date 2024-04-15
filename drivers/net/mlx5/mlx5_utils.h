@@ -235,7 +235,7 @@ struct mlx5_indexed_trunk {
 	uint32_t next; /* Next free trunk in free list. */
 	uint32_t free; /* Free entries available */
 	struct rte_bitmap *bmp;
-	uint8_t data[] __rte_cache_aligned; /* Entry data start. */
+	alignas(RTE_CACHE_LINE_SIZE) uint8_t data[]; /* Entry data start. */
 };
 
 struct mlx5_indexed_cache {

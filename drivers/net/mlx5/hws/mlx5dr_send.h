@@ -144,7 +144,7 @@ struct mlx5dr_completed_poll {
 	uint16_t mask;
 };
 
-struct mlx5dr_send_engine {
+struct __rte_cache_aligned mlx5dr_send_engine {
 	struct mlx5dr_send_ring send_ring[MLX5DR_NUM_SEND_RINGS]; /* For now 1:1 mapping */
 	struct mlx5dv_devx_uar *uar; /* Uar is shared between rings of a queue */
 	struct mlx5dr_completed_poll completed;
@@ -153,7 +153,7 @@ struct mlx5dr_send_engine {
 	uint16_t rings;
 	uint16_t num_entries;
 	bool err;
-} __rte_cache_aligned;
+};
 
 struct mlx5dr_send_engine_post_ctrl {
 	struct mlx5dr_send_engine *queue;

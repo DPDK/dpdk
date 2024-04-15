@@ -100,7 +100,7 @@ struct rte_avp_fifo {
 /*
  * AVP packet buffer header used to define the exchange of packet data.
  */
-struct rte_avp_desc {
+struct __rte_cache_aligned rte_avp_desc {
 	uint64_t pad0;
 	void *pkt_mbuf; /**< Reference to packet mbuf */
 	uint8_t pad1[14];
@@ -114,7 +114,7 @@ struct rte_avp_desc {
 	uint32_t pad3;
 	uint16_t vlan_tci; /**< VLAN Tag Control Identifier (CPU order). */
 	uint32_t pad4;
-} __rte_packed __rte_cache_aligned;
+} __rte_packed;
 
 
 /**{ AVP device features */

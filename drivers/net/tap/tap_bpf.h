@@ -50,7 +50,7 @@ enum bpf_map_type {
 };
 
 /* union of anonymous structs used with TAP BPF commands */
-union bpf_attr {
+union __rte_aligned(8) bpf_attr {
 	/* BPF_MAP_CREATE command */
 	struct {
 		__u32	map_type;
@@ -84,7 +84,7 @@ union bpf_attr {
 		__u32		kern_version;
 		__u32		prog_flags;
 	};
-} __rte_aligned(8);
+};
 
 #ifndef __NR_bpf
 # if defined(__i386__)

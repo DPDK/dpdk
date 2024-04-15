@@ -44,7 +44,7 @@ struct mrvl_crypto_private {
 };
 
 /** MRVL crypto queue pair structure. */
-struct mrvl_crypto_qp {
+struct __rte_cache_aligned mrvl_crypto_qp {
 	/** SAM CIO (MUSDK Queue Pair equivalent).*/
 	struct sam_cio *cio;
 
@@ -59,10 +59,10 @@ struct mrvl_crypto_qp {
 
 	/** CIO initialization parameters.*/
 	struct sam_cio_params cio_params;
-} __rte_cache_aligned;
+};
 
 /** MRVL crypto private session structure. */
-struct mrvl_crypto_session {
+struct __rte_cache_aligned mrvl_crypto_session {
 	/** Crypto operations chain order. */
 	enum mrvl_crypto_chain_order chain_order;
 
@@ -74,12 +74,12 @@ struct mrvl_crypto_session {
 
 	/** Cipher IV offset. */
 	uint16_t cipher_iv_offset;
-} __rte_cache_aligned;
+};
 
-struct mrvl_crypto_src_table {
+struct __rte_cache_aligned mrvl_crypto_src_table {
 	uint16_t iter_ops;
 	struct sam_buf_info src_bd[MRVL_MAX_SEGMENTS];
-} __rte_cache_aligned;
+};
 
 /** Set and validate MRVL crypto session parameters */
 int

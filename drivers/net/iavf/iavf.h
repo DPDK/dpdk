@@ -375,7 +375,7 @@ struct iavf_adapter {
 	/* For vector PMD */
 	bool rx_vec_allowed;
 	bool tx_vec_allowed;
-	uint32_t ptype_tbl[IAVF_MAX_PKT_TYPE] __rte_cache_min_aligned;
+	alignas(RTE_CACHE_LINE_MIN_SIZE) uint32_t ptype_tbl[IAVF_MAX_PKT_TYPE];
 	bool stopped;
 	bool closed;
 	bool no_poll;

@@ -1101,8 +1101,8 @@ ixgbe_prep_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
  * Use 2 different table for normal packet and tunnel packet
  * to save the space.
  */
-const uint32_t
-	ptype_table[IXGBE_PACKET_TYPE_MAX] __rte_cache_aligned = {
+const alignas(RTE_CACHE_LINE_SIZE) uint32_t
+	ptype_table[IXGBE_PACKET_TYPE_MAX] = {
 	[IXGBE_PACKET_TYPE_ETHER] = RTE_PTYPE_L2_ETHER,
 	[IXGBE_PACKET_TYPE_IPV4] = RTE_PTYPE_L2_ETHER |
 		RTE_PTYPE_L3_IPV4,
@@ -1187,8 +1187,8 @@ const uint32_t
 		RTE_PTYPE_INNER_L3_IPV6_EXT | RTE_PTYPE_INNER_L4_SCTP,
 };
 
-const uint32_t
-	ptype_table_tn[IXGBE_PACKET_TYPE_TN_MAX] __rte_cache_aligned = {
+const alignas(RTE_CACHE_LINE_SIZE) uint32_t
+	ptype_table_tn[IXGBE_PACKET_TYPE_TN_MAX] = {
 	[IXGBE_PACKET_TYPE_NVGRE] = RTE_PTYPE_L2_ETHER |
 		RTE_PTYPE_L3_IPV4_EXT_UNKNOWN | RTE_PTYPE_TUNNEL_GRE |
 		RTE_PTYPE_INNER_L2_ETHER,
@@ -1429,7 +1429,7 @@ ixgbe_rxd_pkt_info_to_pkt_type(uint32_t pkt_info, uint16_t ptype_mask)
 static inline uint64_t
 ixgbe_rxd_pkt_info_to_pkt_flags(uint16_t pkt_info)
 {
-	static uint64_t ip_rss_types_map[16] __rte_cache_aligned = {
+	static alignas(RTE_CACHE_LINE_SIZE) uint64_t ip_rss_types_map[16] = {
 		0, RTE_MBUF_F_RX_RSS_HASH, RTE_MBUF_F_RX_RSS_HASH, RTE_MBUF_F_RX_RSS_HASH,
 		0, RTE_MBUF_F_RX_RSS_HASH, 0, RTE_MBUF_F_RX_RSS_HASH,
 		RTE_MBUF_F_RX_RSS_HASH, 0, 0, 0,

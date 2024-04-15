@@ -99,7 +99,7 @@ struct armv8_crypto_private {
 };
 
 /** ARMv8 crypto queue pair */
-struct armv8_crypto_qp {
+struct __rte_cache_aligned armv8_crypto_qp {
 	uint16_t id;
 	/**< Queue Pair Identifier */
 	struct rte_ring *processed_ops;
@@ -115,10 +115,10 @@ struct armv8_crypto_qp {
 	 * by the driver when verifying a digest provided
 	 * by the user (using authentication verify operation)
 	 */
-} __rte_cache_aligned;
+};
 
 /** ARMv8 crypto private session structure */
-struct armv8_crypto_session {
+struct __rte_cache_aligned armv8_crypto_session {
 	enum armv8_crypto_chain_order chain_order;
 	/**< chain order mode */
 	crypto_func_t crypto_func;
@@ -160,11 +160,9 @@ struct armv8_crypto_session {
 			} auth;
 
 			struct {
-				uint8_t i_key_pad[SHA_BLOCK_MAX]
-							__rte_cache_aligned;
+				alignas(RTE_CACHE_LINE_SIZE) uint8_t i_key_pad[SHA_BLOCK_MAX];
 				/**< inner pad (max supported block length) */
-				uint8_t o_key_pad[SHA_BLOCK_MAX]
-							__rte_cache_aligned;
+				alignas(RTE_CACHE_LINE_SIZE) uint8_t o_key_pad[SHA_BLOCK_MAX];
 				/**< outer pad (max supported block length) */
 				uint8_t key[SHA_BLOCK_MAX];
 				/**< HMAC key (max supported block length)*/
@@ -174,7 +172,7 @@ struct armv8_crypto_session {
 		/* Digest length */
 	} auth;
 
-} __rte_cache_aligned;
+};
 
 /** Set and validate ARMv8 crypto session parameters */
 extern int armv8_crypto_set_session_parameters(

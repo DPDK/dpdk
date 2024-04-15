@@ -319,12 +319,12 @@ enum mlx5_mpw_mode {
 };
 
 /* WQE Control segment. */
-struct mlx5_wqe_cseg {
+struct __rte_aligned(MLX5_WSEG_SIZE) mlx5_wqe_cseg {
 	uint32_t opcode;
 	uint32_t sq_ds;
 	uint32_t flags;
 	uint32_t misc;
-} __rte_packed __rte_aligned(MLX5_WSEG_SIZE);
+} __rte_packed;
 
 /*
  * WQE CSEG opcode field size is 32 bits, divided:

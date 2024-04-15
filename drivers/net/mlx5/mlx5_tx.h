@@ -83,9 +83,9 @@ uint16_t mlx5_tx_burst_##func(void *txq, \
 extern uint64_t rte_net_mlx5_dynf_inline_mask;
 #define RTE_MBUF_F_TX_DYNF_NOINLINE rte_net_mlx5_dynf_inline_mask
 
-extern uint32_t mlx5_ptype_table[] __rte_cache_aligned;
-extern uint8_t mlx5_cksum_table[1 << 10] __rte_cache_aligned;
-extern uint8_t mlx5_swp_types_table[1 << 10] __rte_cache_aligned;
+extern alignas(RTE_CACHE_LINE_SIZE) uint32_t mlx5_ptype_table[];
+extern alignas(RTE_CACHE_LINE_SIZE) uint8_t mlx5_cksum_table[1 << 10];
+extern alignas(RTE_CACHE_LINE_SIZE) uint8_t mlx5_swp_types_table[1 << 10];
 
 struct mlx5_txq_stats {
 #ifdef MLX5_PMD_SOFT_COUNTERS
@@ -112,7 +112,7 @@ struct mlx5_txq_local {
 
 /* TX queue descriptor. */
 __extension__
-struct mlx5_txq_data {
+struct __rte_cache_aligned mlx5_txq_data {
 	uint16_t elts_head; /* Current counter in (*elts)[]. */
 	uint16_t elts_tail; /* Counter of first element awaiting completion. */
 	uint16_t elts_comp; /* elts index since last completion request. */
@@ -173,7 +173,7 @@ struct mlx5_txq_data {
 	struct mlx5_uar_data uar_data;
 	struct rte_mbuf *elts[];
 	/* Storage for queued packets, must be the last field. */
-} __rte_cache_aligned;
+};
 
 /* TX queue control descriptor. */
 __extension__

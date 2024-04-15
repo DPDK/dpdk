@@ -92,7 +92,7 @@ cnxk_tim_timer_arm_tmo_brst(const struct rte_event_timer_adapter *adptr,
 			    const uint64_t timeout_tick,
 			    const uint16_t nb_timers, const uint8_t flags)
 {
-	struct cnxk_tim_ent entry[CNXK_TIM_MAX_BURST] __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) struct cnxk_tim_ent entry[CNXK_TIM_MAX_BURST];
 	struct cnxk_tim_ring *tim_ring = adptr->data->adapter_priv;
 	uint16_t set_timers = 0;
 	uint16_t arr_idx = 0;

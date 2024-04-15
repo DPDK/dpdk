@@ -123,7 +123,7 @@ enum timvf_clk_src {
 };
 
 /* TIM_MEM_BUCKET */
-struct tim_mem_bucket {
+struct __rte_aligned(8) tim_mem_bucket {
 	uint64_t first_chunk;
 	union {
 		uint64_t w1;
@@ -139,7 +139,7 @@ struct tim_mem_bucket {
 	};
 	uint64_t current_chunk;
 	uint64_t pad;
-} __rte_packed __rte_aligned(8);
+} __rte_packed;
 
 struct tim_mem_entry {
 	uint64_t w0;
@@ -160,7 +160,7 @@ typedef struct tim_mem_entry * (*refill_chunk)(
 		struct tim_mem_bucket * const bkt,
 		struct timvf_ring * const timr);
 
-struct timvf_ring {
+struct __rte_cache_aligned timvf_ring {
 	bkt_id get_target_bkt;
 	refill_chunk refill_chunk;
 	struct rte_reciprocal_u64 fast_div;
@@ -178,7 +178,7 @@ struct timvf_ring {
 	uint64_t nb_timers;
 	enum timvf_clk_src clk_src;
 	uint16_t tim_ring_id;
-} __rte_cache_aligned;
+};
 
 static __rte_always_inline uint32_t
 bkt_mod(const uint32_t rel_bkt, const uint32_t nb_bkts)

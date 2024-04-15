@@ -36,9 +36,9 @@ uint16_t evdev_refcnt;
 #define OCTEONTX_QLM_MODE_SGMII  7
 #define OCTEONTX_QLM_MODE_XFI   12
 
-struct evdev_priv_data {
+struct __rte_cache_aligned evdev_priv_data {
 	OFFLOAD_FLAGS; /*Sequence should not be changed */
-} __rte_cache_aligned;
+};
 
 struct octeontx_vdev_init_params {
 	uint8_t	nr_port;

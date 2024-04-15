@@ -162,7 +162,7 @@ typedef struct __rte_packed {
 } memif_desc_t;
 
 #define MEMIF_CACHELINE_ALIGN_MARK(mark) \
-	RTE_MARKER mark __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) RTE_MARKER mark;
 
 typedef struct {
 	MEMIF_CACHELINE_ALIGN_MARK(cacheline0);

@@ -415,7 +415,7 @@ struct mlx5_hw_q_job {
 };
 
 /* HW steering job descriptor LIFO pool. */
-struct mlx5_hw_q {
+struct __rte_cache_aligned mlx5_hw_q {
 	uint32_t job_idx; /* Free job index. */
 	uint32_t size; /* Job LIFO queue size. */
 	uint32_t ongoing_flow_ops; /* Number of ongoing flow operations. */
@@ -424,7 +424,7 @@ struct mlx5_hw_q {
 	struct rte_ring *indir_iq; /* Indirect action SW in progress queue. */
 	struct rte_ring *flow_transfer_pending;
 	struct rte_ring *flow_transfer_completed;
-} __rte_cache_aligned;
+};
 
 
 #define MLX5_COUNTER_POOLS_MAX_NUM (1 << 15)
@@ -1405,7 +1405,7 @@ struct mlx5_hws_cnt_svc_mng {
 	uint32_t query_interval;
 	rte_thread_t service_thread;
 	uint8_t svc_running;
-	struct mlx5_hws_aso_mng aso_mng __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) struct mlx5_hws_aso_mng aso_mng;
 };
 
 #define MLX5_FLOW_HW_TAGS_MAX 12

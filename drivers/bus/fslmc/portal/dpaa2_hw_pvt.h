@@ -151,7 +151,7 @@ typedef void (dpaa2_queue_cb_dqrr_t)(struct qbman_swp *swp,
 typedef void (dpaa2_queue_cb_eqresp_free_t)(uint16_t eqresp_ci,
 					struct dpaa2_queue *dpaa2_q);
 
-struct dpaa2_queue {
+struct __rte_cache_aligned dpaa2_queue {
 	struct rte_mempool *mb_pool; /**< mbuf pool to populate RX ring. */
 	union {
 		struct rte_eth_dev_data *eth_data;
@@ -179,7 +179,7 @@ struct dpaa2_queue {
 	uint16_t resv;
 	uint64_t offloads;
 	uint64_t lpbk_cntx;
-} __rte_cache_aligned;
+};
 
 struct swp_active_dqs {
 	struct qbman_result *global_active_dqs;

@@ -43,7 +43,7 @@ enum dep_type {
  * Care is needed when accessing and the layout is important, especially to
  * limit the adjacent cache-line HW prefetcher from impacting performance.
  */
-struct shared_state {
+struct __rte_cache_aligned shared_state {
 	/* Last known minimum sequence number of dependencies, used for multi
 	 * thread operation
 	 */
@@ -54,7 +54,7 @@ struct shared_state {
 	struct opdl_stage *stage;  /* back pointer */
 	uint32_t tail;  /* Tail sequence number */
 	char _pad3[RTE_CACHE_LINE_SIZE * 2];
-} __rte_cache_aligned;
+};
 
 /* A structure to keep track of "unfinished" claims. This is only used for
  * stages that are threadsafe. Each lcore accesses its own instance of this
@@ -63,7 +63,7 @@ struct shared_state {
  * forward the shared tail when the shared tail matches the tail value recorded
  * here.
  */
-struct claim_manager {
+struct __rte_cache_aligned claim_manager {
 	uint32_t num_to_disclaim;
 	uint32_t num_claimed;
 	uint32_t mgr_head;
@@ -72,13 +72,13 @@ struct claim_manager {
 		uint32_t head;
 		uint32_t tail;
 	} claims[OPDL_DISCLAIMS_PER_LCORE];
-} __rte_cache_aligned;
+};
 
 /* Context for each stage of opdl_ring.
  * Calculations on sequence numbers need to be done with other uint32_t values
  * so that results are modulus 2^32, and not undefined.
  */
-struct opdl_stage {
+struct __rte_cache_aligned opdl_stage {
 	struct opdl_ring *t;  /* back pointer, set at init */
 	uint32_t num_slots;  /* Number of slots for entries, set at init */
 	uint32_t index;  /* ID for this stage, set at init */
@@ -99,14 +99,13 @@ struct opdl_stage {
 	/* Direct dependencies of this stage */
 	struct shared_state **deps;
 	/* Other stages read this! */
-	struct shared_state shared __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) struct shared_state shared;
 	/* For managing disclaims in multi-threaded processing stages */
-	struct claim_manager pending_disclaims[RTE_MAX_LCORE]
-					       __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) struct claim_manager pending_disclaims[RTE_MAX_LCORE];
 	uint32_t shadow_head;  /* Shadow head for single-thread operation */
 	uint32_t queue_id;     /* ID of Queue which is assigned to this stage */
 	uint32_t pos;		/* Atomic scan position */
-} __rte_cache_aligned;
+};
 
 /* Context for opdl_ring */
 struct opdl_ring {
@@ -120,7 +119,7 @@ struct opdl_ring {
 	/* Stages indexed by ID */
 	struct opdl_stage *stages;
 	/* Memory for storing slot data */
-	uint8_t slots[0] __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) uint8_t slots[0];
 };
 
 

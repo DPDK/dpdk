@@ -261,15 +261,15 @@ struct load_command_s {
  * will be type-casted to this one
  * this one.
  */
-struct sec_sd_t {
+struct __rte_aligned(64) sec_sd_t {
 	uint32_t rsvd[MAX_DESC_SIZE_WORDS];
-} __rte_packed __rte_aligned(64);
+} __rte_packed;
 
 /* Structure encompassing a job descriptor which processes
  * a single packet from a context. The job descriptor references
  * a shared descriptor from a SEC context.
  */
-struct sec_job_descriptor_t {
+struct __rte_aligned(64) sec_job_descriptor_t {
 	struct descriptor_header_s deschdr;
 	dma_addr_t sd_ptr;
 	struct seq_out_command_s seq_out;
@@ -280,6 +280,6 @@ struct sec_job_descriptor_t {
 	uint32_t in_ext_length;
 	struct load_command_s load_dpovrd;
 	uint32_t dpovrd;
-} __rte_packed __rte_aligned(64);
+} __rte_packed;
 
 #endif

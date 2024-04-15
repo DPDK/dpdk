@@ -24,17 +24,17 @@ extern int skeleton_eventdev_logtype;
 	rte_log(RTE_LOG_ERR, skeleton_eventdev_logtype, \
 		"%s(): " fmt "\n", __func__, ## args)
 
-struct skeleton_eventdev {
+struct __rte_cache_aligned skeleton_eventdev {
 	uintptr_t reg_base;
 	uint16_t device_id;
 	uint16_t vendor_id;
 	uint16_t subsystem_device_id;
 	uint16_t subsystem_vendor_id;
-} __rte_cache_aligned;
+};
 
-struct skeleton_port {
+struct __rte_cache_aligned skeleton_port {
 	uint8_t port_id;
-} __rte_cache_aligned;
+};
 
 static inline struct skeleton_eventdev *
 skeleton_pmd_priv(const struct rte_eventdev *eventdev)

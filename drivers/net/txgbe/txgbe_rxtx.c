@@ -1107,7 +1107,7 @@ txgbe_rxd_pkt_info_to_pkt_type(uint32_t pkt_info, uint16_t ptid_mask)
 static inline uint64_t
 txgbe_rxd_pkt_info_to_pkt_flags(uint32_t pkt_info)
 {
-	static uint64_t ip_rss_types_map[16] __rte_cache_aligned = {
+	static alignas(RTE_CACHE_LINE_SIZE) uint64_t ip_rss_types_map[16] = {
 		0, RTE_MBUF_F_RX_RSS_HASH, RTE_MBUF_F_RX_RSS_HASH, RTE_MBUF_F_RX_RSS_HASH,
 		0, RTE_MBUF_F_RX_RSS_HASH, 0, RTE_MBUF_F_RX_RSS_HASH,
 		RTE_MBUF_F_RX_RSS_HASH, 0, 0, 0,

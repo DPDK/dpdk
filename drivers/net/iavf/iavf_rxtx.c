@@ -4449,8 +4449,7 @@ iavf_dev_tx_desc_status(void *tx_queue, uint16_t offset)
 static inline uint32_t
 iavf_get_default_ptype(uint16_t ptype)
 {
-	static const uint32_t ptype_tbl[IAVF_MAX_PKT_TYPE]
-		__rte_cache_aligned = {
+	static const alignas(RTE_CACHE_LINE_SIZE) uint32_t ptype_tbl[IAVF_MAX_PKT_TYPE] = {
 		/* L2 types */
 		/* [0] reserved */
 		[1] = RTE_PTYPE_L2_ETHER,

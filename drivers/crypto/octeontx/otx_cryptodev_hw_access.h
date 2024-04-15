@@ -77,7 +77,7 @@ struct command_queue {
 /**
  * CPT VF device structure
  */
-struct cpt_vf {
+struct __rte_cache_aligned cpt_vf {
 	/** CPT instance */
 	struct cpt_instance instance;
 	/** Register start address */
@@ -111,7 +111,7 @@ struct cpt_vf {
 
 	/** Device name */
 	char dev_name[32];
-} __rte_cache_aligned;
+};
 
 /*
  * CPT Registers map for 81xx

@@ -41,7 +41,7 @@ struct bm_mc_result;	/* MC result */
  * pool id specific to this buffer is needed (BM_RCR_VERB_CMD_BPID_MULTI,
  * BM_MCC_VERB_ACQUIRE), the 'bpid' field is used.
  */
-struct bm_buffer {
+struct __rte_aligned(8) bm_buffer {
 	union {
 		struct {
 #if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
@@ -67,7 +67,7 @@ struct bm_buffer {
 		};
 		u64 opaque;
 	};
-} __rte_aligned(8);
+};
 static inline u64 bm_buffer_get64(const struct bm_buffer *buf)
 {
 	return buf->addr;

@@ -53,9 +53,8 @@ static inline void dump_rxd(union fm10k_rx_desc *rxd)
 static inline void
 rx_desc_to_ol_flags(struct rte_mbuf *m, const union fm10k_rx_desc *d)
 {
-	static const uint32_t
-		ptype_table[FM10K_RXD_PKTTYPE_MASK >> FM10K_RXD_PKTTYPE_SHIFT]
-			__rte_cache_aligned = {
+	static const alignas(RTE_CACHE_LINE_SIZE) uint32_t
+		ptype_table[FM10K_RXD_PKTTYPE_MASK >> FM10K_RXD_PKTTYPE_SHIFT] = {
 		[FM10K_PKTTYPE_OTHER] = RTE_PTYPE_L2_ETHER,
 		[FM10K_PKTTYPE_IPV4] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV4,
 		[FM10K_PKTTYPE_IPV4_EX] = RTE_PTYPE_L2_ETHER |

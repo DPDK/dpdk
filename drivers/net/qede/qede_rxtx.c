@@ -38,7 +38,7 @@ static inline int qede_alloc_rx_buffer(struct qede_rx_queue *rxq)
 
 static inline int qede_alloc_rx_bulk_mbufs(struct qede_rx_queue *rxq, int count)
 {
-	void *obj_p[QEDE_MAX_BULK_ALLOC_COUNT] __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) void *obj_p[QEDE_MAX_BULK_ALLOC_COUNT];
 	struct rte_mbuf *mbuf = NULL;
 	struct eth_rx_bd *rx_bd;
 	dma_addr_t mapping;
@@ -1124,8 +1124,8 @@ static inline uint32_t qede_rx_cqe_to_pkt_type_inner(uint16_t flags)
 	uint16_t val;
 
 	/* Lookup table */
-	static const uint32_t
-	ptype_lkup_tbl[QEDE_PKT_TYPE_MAX] __rte_cache_aligned = {
+	static const alignas(RTE_CACHE_LINE_SIZE) uint32_t
+	ptype_lkup_tbl[QEDE_PKT_TYPE_MAX] = {
 		[QEDE_PKT_TYPE_IPV4] = RTE_PTYPE_INNER_L3_IPV4		|
 				       RTE_PTYPE_INNER_L2_ETHER,
 		[QEDE_PKT_TYPE_IPV6] = RTE_PTYPE_INNER_L3_IPV6		|
@@ -1197,8 +1197,8 @@ static inline uint32_t qede_rx_cqe_to_pkt_type(uint16_t flags)
 	uint16_t val;
 
 	/* Lookup table */
-	static const uint32_t
-	ptype_lkup_tbl[QEDE_PKT_TYPE_MAX] __rte_cache_aligned = {
+	static const alignas(RTE_CACHE_LINE_SIZE) uint32_t
+	ptype_lkup_tbl[QEDE_PKT_TYPE_MAX] = {
 		[QEDE_PKT_TYPE_IPV4] = RTE_PTYPE_L3_IPV4 | RTE_PTYPE_L2_ETHER,
 		[QEDE_PKT_TYPE_IPV6] = RTE_PTYPE_L3_IPV6 | RTE_PTYPE_L2_ETHER,
 		[QEDE_PKT_TYPE_IPV4_TCP] = RTE_PTYPE_L3_IPV4	|
@@ -1398,8 +1398,8 @@ static inline uint32_t qede_rx_cqe_to_tunn_pkt_type(uint16_t flags)
 	uint32_t val;
 
 	/* Lookup table */
-	static const uint32_t
-	ptype_tunn_lkup_tbl[QEDE_PKT_TYPE_TUNN_MAX_TYPE] __rte_cache_aligned = {
+	static const alignas(RTE_CACHE_LINE_SIZE) uint32_t
+	ptype_tunn_lkup_tbl[QEDE_PKT_TYPE_TUNN_MAX_TYPE] = {
 		[QEDE_PKT_TYPE_UNKNOWN] = RTE_PTYPE_UNKNOWN,
 		[QEDE_PKT_TYPE_TUNN_GENEVE] = RTE_PTYPE_TUNNEL_GENEVE,
 		[QEDE_PKT_TYPE_TUNN_GRE] = RTE_PTYPE_TUNNEL_GRE,

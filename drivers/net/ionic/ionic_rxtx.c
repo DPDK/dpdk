@@ -607,8 +607,7 @@ ionic_dev_rx_queue_setup(struct rte_eth_dev *eth_dev,
 }
 
 #define IONIC_CSUM_FLAG_MASK (IONIC_RXQ_COMP_CSUM_F_VLAN - 1)
-const uint64_t ionic_csum_flags[IONIC_CSUM_FLAG_MASK]
-		__rte_cache_aligned = {
+const alignas(RTE_CACHE_LINE_SIZE) uint64_t ionic_csum_flags[IONIC_CSUM_FLAG_MASK] = {
 	/* IP_BAD set */
 	[IONIC_RXQ_COMP_CSUM_F_IP_BAD] = RTE_MBUF_F_RX_IP_CKSUM_BAD,
 	[IONIC_RXQ_COMP_CSUM_F_IP_BAD | IONIC_RXQ_COMP_CSUM_F_TCP_OK] =
@@ -637,8 +636,7 @@ const uint64_t ionic_csum_flags[IONIC_CSUM_FLAG_MASK]
 };
 
 /* RTE_PTYPE_UNKNOWN is 0x0 */
-const uint32_t ionic_ptype_table[IONIC_RXQ_COMP_PKT_TYPE_MASK]
-		__rte_cache_aligned = {
+const alignas(RTE_CACHE_LINE_SIZE) uint32_t ionic_ptype_table[IONIC_RXQ_COMP_PKT_TYPE_MASK] = {
 	[IONIC_PKT_TYPE_NON_IP]   = RTE_PTYPE_UNKNOWN,
 	[IONIC_PKT_TYPE_IPV4]     = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV4,
 	[IONIC_PKT_TYPE_IPV4_TCP] =

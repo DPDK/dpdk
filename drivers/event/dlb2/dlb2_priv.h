@@ -429,13 +429,13 @@ enum dlb2_cos {
 	DLB2_COS_NUM_VALS
 };
 
-struct dlb2_hw_dev {
+struct __rte_cache_aligned dlb2_hw_dev {
 	struct dlb2_config cfg;
 	struct dlb2_hw_resource_info info;
 	void *pf_dev; /* opaque pointer to PF PMD dev (struct dlb2_dev) */
 	uint32_t domain_id;
 	rte_spinlock_t resource_lock; /* for MP support */
-} __rte_cache_aligned;
+};
 
 /* End HW related defines and structs */
 
@@ -516,13 +516,13 @@ struct dlb2_port_stats {
 	struct dlb2_queue_stats queue[DLB2_MAX_NUM_QUEUES_ALL];
 };
 
-struct dlb2_eventdev_port {
+struct __rte_cache_aligned dlb2_eventdev_port {
 	struct dlb2_port qm_port; /* hw specific data structure */
 	struct rte_event_port_conf conf; /* user-supplied configuration */
 	uint16_t inflight_credits; /* num credits this port has right now */
 	uint16_t credit_update_quanta;
 	struct dlb2_eventdev *dlb2; /* backlink optimization */
-	struct dlb2_port_stats stats __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) struct dlb2_port_stats stats;
 	struct dlb2_event_queue_link link[DLB2_MAX_NUM_QIDS_PER_LDB_CQ];
 	int num_links;
 	uint32_t id; /* port id */
@@ -539,7 +539,7 @@ struct dlb2_eventdev_port {
 	uint8_t implicit_release; /* release events before dequeuing */
 	uint32_t cq_weight; /* DLB2.5 and above ldb ports only */
 	int cos_id; /*ldb port class of service */
-}  __rte_cache_aligned;
+};
 
 struct dlb2_queue {
 	uint32_t num_qid_inflights; /* User config */
@@ -624,14 +624,14 @@ struct dlb2_eventdev {
 			uint16_t max_ldb_credits;
 			uint16_t max_dir_credits;
 			/* use __atomic builtins */ /* shared hw cred */
-			uint32_t ldb_credit_pool __rte_cache_aligned;
+			alignas(RTE_CACHE_LINE_SIZE) uint32_t ldb_credit_pool;
 			/* use __atomic builtins */ /* shared hw cred */
-			uint32_t dir_credit_pool __rte_cache_aligned;
+			alignas(RTE_CACHE_LINE_SIZE) uint32_t dir_credit_pool;
 		};
 		struct {
 			uint16_t max_credits;
 			/* use __atomic builtins */ /* shared hw cred */
-			uint32_t credit_pool __rte_cache_aligned;
+			alignas(RTE_CACHE_LINE_SIZE) uint32_t credit_pool;
 		};
 	};
 	uint32_t cos_ports[DLB2_COS_NUM_VALS]; /* total ldb ports in each class */

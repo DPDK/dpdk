@@ -62,7 +62,7 @@ struct openssl_private {
 };
 
 /** OPENSSL crypto queue pair */
-struct openssl_qp {
+struct __rte_cache_aligned openssl_qp {
 	uint16_t id;
 	/**< Queue Pair Identifier */
 	char name[RTE_CRYPTODEV_NAME_MAX_LEN];
@@ -78,10 +78,10 @@ struct openssl_qp {
 	 * by the driver when verifying a digest provided
 	 * by the user (using authentication verify operation)
 	 */
-} __rte_cache_aligned;
+};
 
 /** OPENSSL crypto private session structure */
-struct openssl_session {
+struct __rte_cache_aligned openssl_session {
 	enum openssl_chain_order chain_order;
 	/**< chain order mode */
 
@@ -166,10 +166,10 @@ struct openssl_session {
 		/**< digest length */
 	} auth;
 
-} __rte_cache_aligned;
+};
 
 /** OPENSSL crypto private asymmetric session structure */
-struct openssl_asym_session {
+struct __rte_cache_aligned openssl_asym_session {
 	enum rte_crypto_asym_xform_type xfrm_type;
 	union {
 		struct rsa {
@@ -213,7 +213,7 @@ struct openssl_asym_session {
 #endif
 		} sm2;
 	} u;
-} __rte_cache_aligned;
+};
 /** Set and validate OPENSSL crypto session parameters */
 extern int
 openssl_set_session_parameters(struct openssl_session *sess,

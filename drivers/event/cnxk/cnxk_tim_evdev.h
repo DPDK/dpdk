@@ -123,7 +123,7 @@ struct cnxk_tim_bkt {
 	uint64_t pad;
 };
 
-struct cnxk_tim_ring {
+struct __rte_cache_aligned cnxk_tim_ring {
 	uint16_t nb_chunk_slots;
 	uint32_t nb_bkts;
 	uintptr_t tbase;
@@ -149,7 +149,7 @@ struct cnxk_tim_ring {
 	uint64_t nb_chunks;
 	uint64_t chunk_sz;
 	enum roc_tim_clk_src clk_src;
-} __rte_cache_aligned;
+};
 
 struct cnxk_tim_ent {
 	uint64_t w0;

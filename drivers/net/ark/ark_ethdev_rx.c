@@ -28,7 +28,7 @@ static uint32_t eth_ark_rx_jumbo(struct ark_rx_queue *queue,
 static inline int eth_ark_rx_seed_mbufs(struct ark_rx_queue *queue);
 
 /* ************************************************************************* */
-struct ark_rx_queue {
+struct __rte_cache_aligned ark_rx_queue {
 	/* array of mbufs to populate */
 	struct rte_mbuf **reserve_q;
 	/* array of physical addresses of the mbuf data pointer */
@@ -60,10 +60,10 @@ struct ark_rx_queue {
 	uint32_t unused;
 
 	/* next cache line - fields written by device */
-	RTE_MARKER cacheline1 __rte_cache_min_aligned;
+	alignas(RTE_CACHE_LINE_MIN_SIZE) RTE_MARKER cacheline1;
 
 	volatile uint32_t prod_index;	/* step 2 filled by FPGA */
-} __rte_cache_aligned;
+};
 
 /* ************************************************************************* */
 static int

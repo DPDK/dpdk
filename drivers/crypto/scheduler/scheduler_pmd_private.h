@@ -27,7 +27,7 @@ struct scheduler_worker {
 	uint8_t driver_id;
 };
 
-struct scheduler_ctx {
+struct __rte_cache_aligned scheduler_ctx {
 	void *private_ctx;
 	/**< private scheduler context pointer */
 
@@ -55,15 +55,15 @@ struct scheduler_ctx {
 
 	char *init_worker_names[RTE_CRYPTODEV_SCHEDULER_MAX_NB_WORKERS];
 	int nb_init_workers;
-} __rte_cache_aligned;
+};
 
-struct scheduler_qp_ctx {
+struct __rte_cache_aligned scheduler_qp_ctx {
 	void *private_qp_ctx;
 
 	uint32_t max_nb_objs;
 
 	struct rte_ring *order_ring;
-} __rte_cache_aligned;
+};
 
 struct scheduler_session_ctx {
 	uint32_t ref_cnt;

@@ -186,9 +186,9 @@ struct ntb_tx_queue {
 };
 
 struct ntb_header {
-	uint16_t avail_cnt __rte_cache_aligned;
-	uint16_t used_cnt __rte_cache_aligned;
-	struct ntb_desc desc_ring[] __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) uint16_t avail_cnt;
+	alignas(RTE_CACHE_LINE_SIZE) uint16_t used_cnt;
+	alignas(RTE_CACHE_LINE_SIZE) struct ntb_desc desc_ring[];
 };
 
 /* ntb private data. */

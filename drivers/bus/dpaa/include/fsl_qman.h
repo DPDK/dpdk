@@ -124,7 +124,7 @@ enum qm_fd_format {
 #define QM_FD_COMPOUND	QM_FD_FORMAT_COMPOUND
 
 /* "Frame Descriptor (FD)" */
-struct qm_fd {
+struct __rte_aligned(8) qm_fd {
 	union {
 		struct {
 #if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
@@ -200,7 +200,7 @@ struct qm_fd {
 		u32 cmd;
 		u32 status;
 	};
-} __rte_aligned(8);
+};
 #define QM_FD_DD_NULL		0x00
 #define QM_FD_PID_MASK		0x3f
 static inline u64 qm_fd_addr_get64(const struct qm_fd *fd)
@@ -330,9 +330,9 @@ struct __rte_aligned(8) qm_dqrr_entry {
 
 /* "ERN Message Response" */
 /* "FQ State Change Notification" */
-struct qm_mr_entry {
+struct __rte_aligned(8) qm_mr_entry {
 	union {
-		struct {
+		alignas(8) struct {
 			u8 verb;
 			u8 dca;
 			u16 seqnum;
@@ -341,8 +341,8 @@ struct qm_mr_entry {
 			u32 fqid;	/* 24-bit */
 			u32 tag;
 			struct qm_fd fd; /* this has alignment 8 */
-		} __packed __rte_aligned(8) ern;
-		struct {
+		} __packed ern;
+		alignas(8) struct {
 			u8 verb;
 #if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
 			u8 colour:2;	/* See QM_MR_DCERN_COLOUR_* */
@@ -359,18 +359,18 @@ struct qm_mr_entry {
 			u32 fqid;	/* 24-bit */
 			u32 tag;
 			struct qm_fd fd; /* this has alignment 8 */
-		} __packed __rte_aligned(8) dcern;
-		struct {
+		} __packed dcern;
+		alignas(8) struct {
 			u8 verb;
 			u8 fqs;		/* Frame Queue Status */
 			u8 __reserved1[6];
 			u32 fqid;	/* 24-bit */
 			u32 contextB;
 			u8 __reserved2[16];
-		} __packed __rte_aligned(8) fq;	/* FQRN/FQRNI/FQRL/FQPN */
+		} __packed fq;	/* FQRN/FQRNI/FQRL/FQPN */
 	};
 	u8 __reserved2[32];
-} __packed __rte_aligned(8);
+} __packed;
 #define QM_MR_VERB_VBIT			0x80
 /*
  * ERNs originating from direct-connect portals ("dcern") use 0x20 as a verb

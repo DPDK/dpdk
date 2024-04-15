@@ -767,7 +767,7 @@ struct hns3_ptype_table {
 	 * descriptor, it functions only when firmware report the capability of
 	 * HNS3_CAPS_RXD_ADV_LAYOUT_B and driver enabled it.
 	 */
-	uint32_t ptype[HNS3_PTYPE_NUM] __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) uint32_t ptype[HNS3_PTYPE_NUM];
 };
 
 #define HNS3_FIXED_MAX_TQP_NUM_MODE		0
@@ -872,7 +872,7 @@ struct hns3_adapter {
 	uint64_t dev_caps_mask;
 	uint16_t mbx_time_limit_ms; /* wait time for mbx message */
 
-	struct hns3_ptype_table ptype_tbl __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) struct hns3_ptype_table ptype_tbl;
 };
 
 enum hns3_dev_cap {

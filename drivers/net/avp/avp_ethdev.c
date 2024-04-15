@@ -154,7 +154,7 @@ static const struct eth_dev_ops avp_eth_dev_ops = {
  * Defines the AVP device attributes which are attached to an RTE ethernet
  * device
  */
-struct avp_dev {
+struct __rte_cache_aligned avp_dev {
 	uint32_t magic; /**< Memory validation marker */
 	uint64_t device_id; /**< Unique system identifier */
 	struct rte_ether_addr ethaddr; /**< Host specified MAC address */
@@ -190,12 +190,12 @@ struct avp_dev {
 	void *sync_addr; /**< Req/Resp Mem address */
 	void *host_mbuf_addr; /**< (host) MBUF pool start address */
 	void *mbuf_addr; /**< MBUF pool start address */
-} __rte_cache_aligned;
+};
 
 /* RTE ethernet private data */
-struct avp_adapter {
+struct __rte_cache_aligned avp_adapter {
 	struct avp_dev avp;
-} __rte_cache_aligned;
+};
 
 
 /* 32-bit MMIO register write */

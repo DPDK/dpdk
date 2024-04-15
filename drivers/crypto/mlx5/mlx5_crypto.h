@@ -80,12 +80,12 @@ struct mlx5_crypto_qp {
 	uint16_t cpy_tag_op;
 };
 
-struct mlx5_crypto_dek {
+struct __rte_cache_aligned mlx5_crypto_dek {
 	struct mlx5_list_entry entry; /* Pointer to DEK hash list entry. */
 	struct mlx5_devx_obj *obj; /* Pointer to DEK DevX object. */
 	uint8_t data[MLX5_CRYPTO_KEY_LENGTH]; /* DEK key data. */
 	uint32_t size; /* key+keytag size. */
-} __rte_cache_aligned;
+};
 
 struct mlx5_crypto_devarg_params {
 	bool login_devarg;

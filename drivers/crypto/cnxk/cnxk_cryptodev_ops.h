@@ -42,7 +42,7 @@ struct cpt_qp_meta_info {
 #define CPT_OP_FLAGS_IPSEC_DIR_INBOUND (1 << 2)
 #define CPT_OP_FLAGS_IPSEC_INB_REPLAY  (1 << 3)
 
-struct cpt_inflight_req {
+struct __rte_aligned(ROC_ALIGN) cpt_inflight_req {
 	union cpt_res_s res;
 	union {
 		void *opaque;
@@ -59,7 +59,7 @@ struct cpt_inflight_req {
 	uint8_t *rptr;
 #endif
 	void *qp;
-} __rte_aligned(ROC_ALIGN);
+};
 
 PLT_STATIC_ASSERT(sizeof(struct cpt_inflight_req) == ROC_CACHE_LINE_SZ);
 

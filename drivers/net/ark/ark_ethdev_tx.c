@@ -21,7 +21,7 @@
 #endif
 
 /* ************************************************************************* */
-struct ark_tx_queue {
+struct __rte_cache_aligned ark_tx_queue {
 	union ark_tx_meta *meta_q;
 	struct rte_mbuf **bufs;
 
@@ -48,9 +48,9 @@ struct ark_tx_queue {
 	uint16_t queue_index;
 
 	/* next cache line - fields written by device */
-	RTE_MARKER cacheline1 __rte_cache_min_aligned;
+	alignas(RTE_CACHE_LINE_MIN_SIZE) RTE_MARKER cacheline1;
 	volatile int32_t cons_index;		/* hw is done, can be freed */
-} __rte_cache_aligned;
+};
 
 /* Forward declarations */
 static int eth_ark_tx_jumbo(struct ark_tx_queue *queue,

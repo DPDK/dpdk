@@ -71,7 +71,7 @@ struct octeontx_send_hdr_s {
 	union octeontx_send_hdr_w1_u w1;
 };
 
-static const uint32_t __rte_cache_aligned
+static const alignas(RTE_CACHE_LINE_SIZE) uint32_t
 ptype_table[PTYPE_SIZE][PTYPE_SIZE][PTYPE_SIZE] = {
 	[LC_NONE][LE_NONE][LF_NONE] = RTE_PTYPE_UNKNOWN,
 	[LC_NONE][LE_NONE][LF_IPSEC_ESP] = RTE_PTYPE_UNKNOWN,

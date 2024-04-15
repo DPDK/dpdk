@@ -234,15 +234,15 @@ struct opdl_evdev {
 	uint32_t nb_q_md;
 
 	/* Internal queues - one per logical queue */
-	struct opdl_queue
-		queue[RTE_EVENT_MAX_QUEUES_PER_DEV] __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) struct opdl_queue
+		queue[RTE_EVENT_MAX_QUEUES_PER_DEV];
 
 	uint32_t nb_queues;
 
 	struct opdl_stage_meta_data s_md[OPDL_PORTS_MAX];
 
 	/* Contains all ports - load balanced and directed */
-	struct opdl_port ports[OPDL_PORTS_MAX] __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) struct opdl_port ports[OPDL_PORTS_MAX];
 	uint32_t nb_ports;
 
 	uint8_t q_map_ex_to_in[OPDL_INVALID_QID];

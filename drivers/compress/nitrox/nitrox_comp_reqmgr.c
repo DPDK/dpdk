@@ -304,7 +304,7 @@ struct nitrox_sgtable {
 
 struct nitrox_softreq {
 	struct nitrox_zip_instr instr;
-	struct nitrox_zip_result zip_res __rte_aligned(8);
+	alignas(8) struct nitrox_zip_result zip_res;
 	uint8_t decomp_threshold[NITROX_ZIP_MAX_ONFSIZE];
 	struct rte_comp_op *op;
 	struct nitrox_sgtable src;

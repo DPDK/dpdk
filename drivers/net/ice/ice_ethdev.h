@@ -605,7 +605,7 @@ struct ice_adapter {
 	bool tx_vec_allowed;
 	bool tx_simple_allowed;
 	/* ptype mapping table */
-	uint32_t ptype_tbl[ICE_MAX_PKT_TYPE] __rte_cache_min_aligned;
+	alignas(RTE_CACHE_LINE_MIN_SIZE) uint32_t ptype_tbl[ICE_MAX_PKT_TYPE];
 	bool is_safe_mode;
 	struct ice_devargs devargs;
 	enum ice_pkg_type active_pkg_type; /* loaded ddp package type */

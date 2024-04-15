@@ -61,11 +61,11 @@ struct qat_flat_buf {
 }
 
 __extension__
-struct qat_sgl {
+struct __rte_cache_aligned qat_sgl {
 	qat_sgl_hdr;
 	/* flexible array of flat buffers*/
 	struct qat_flat_buf buffers[0];
-} __rte_packed __rte_cache_aligned;
+} __rte_packed;
 
 /** Common, i.e. not service-specific, statistics */
 struct qat_common_stats {

@@ -61,14 +61,14 @@ static const struct rte_cryptodev_capabilities kasumi_capabilities[] = {
 };
 
 /** KASUMI private session structure */
-struct kasumi_session {
+struct __rte_cache_aligned kasumi_session {
 	/* Keys have to be 16-byte aligned */
 	kasumi_key_sched_t pKeySched_cipher;
 	kasumi_key_sched_t pKeySched_hash;
 	enum ipsec_mb_operation op;
 	enum rte_crypto_auth_operation auth_op;
 	uint16_t cipher_iv_offset;
-} __rte_cache_aligned;
+};
 
 struct kasumi_qp_data {
 	uint8_t temp_digest[KASUMI_DIGEST_LENGTH];

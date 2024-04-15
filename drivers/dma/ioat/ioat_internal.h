@@ -12,7 +12,7 @@ struct ioat_dmadev {
 	struct rte_dma_vchan_conf qcfg;
 	struct rte_dma_stats stats;
 
-	volatile uint16_t *doorbell __rte_cache_aligned;
+	volatile alignas(RTE_CACHE_LINE_SIZE) uint16_t *doorbell;
 	phys_addr_t status_addr;
 	phys_addr_t ring_addr;
 
@@ -25,7 +25,7 @@ struct ioat_dmadev {
 	unsigned int failure; /* Used to store chanerr for error handling. */
 
 	/* To report completions, the device will write status back here. */
-	volatile uint64_t status __rte_cache_aligned;
+	volatile alignas(RTE_CACHE_LINE_SIZE) uint64_t status;
 
 	/* Pointer to the register bar. */
 	volatile struct ioat_registers *regs;

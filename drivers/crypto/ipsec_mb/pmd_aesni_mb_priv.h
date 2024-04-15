@@ -848,7 +848,7 @@ get_digest_byte_length(IMB_HASH_ALG algo)
 }
 
 /** AES-NI multi-buffer private session structure */
-struct aesni_mb_session {
+struct __rte_cache_aligned aesni_mb_session {
 	IMB_JOB template_job;
 	/*< Template job structure */
 	uint32_t session_id;
@@ -869,9 +869,9 @@ struct aesni_mb_session {
 	struct {
 		union {
 			struct {
-				uint32_t encode[60] __rte_aligned(16);
+				alignas(16) uint32_t encode[60];
 				/* *< encode key */
-				uint32_t decode[60] __rte_aligned(16);
+				alignas(16) uint32_t decode[60];
 				/* *< decode key */
 			} expanded_aes_keys;
 			/* *< Expanded AES keys - Allocating space to
@@ -903,9 +903,9 @@ struct aesni_mb_session {
 		/* *< auth operation generate or verify */
 		union {
 			struct {
-				uint8_t inner[128] __rte_aligned(16);
+				alignas(16) uint8_t inner[128];
 				/* *< inner pad */
-				uint8_t outer[128] __rte_aligned(16);
+				alignas(16) uint8_t outer[128];
 				/* *< outer pad */
 			} pads;
 			/* *< HMAC Authentication pads -
@@ -915,20 +915,20 @@ struct aesni_mb_session {
 			 */
 
 			struct {
-				uint32_t k1_expanded[44] __rte_aligned(16);
+				alignas(16) uint32_t k1_expanded[44];
 				/* *< k1 (expanded key). */
-				uint8_t k2[16] __rte_aligned(16);
+				alignas(16) uint8_t k2[16];
 				/* *< k2. */
-				uint8_t k3[16] __rte_aligned(16);
+				alignas(16) uint8_t k3[16];
 				/* *< k3. */
 			} xcbc;
 
 			struct {
-				uint32_t expkey[60] __rte_aligned(16);
+				alignas(16) uint32_t expkey[60];
 				/* *< k1 (expanded key). */
-				uint32_t skey1[4] __rte_aligned(16);
+				alignas(16) uint32_t skey1[4];
 				/* *< k2. */
-				uint32_t skey2[4] __rte_aligned(16);
+				alignas(16) uint32_t skey2[4];
 				/* *< k3. */
 			} cmac;
 			/* *< Expanded XCBC authentication keys */
@@ -943,7 +943,7 @@ struct aesni_mb_session {
 		uint16_t req_digest_len;
 
 	} auth;
-} __rte_cache_aligned;
+};
 
 typedef void (*hash_one_block_t)(const void *data, void *digest);
 typedef void (*aes_keyexp_t)(const void *key, void *enc_exp_keys,

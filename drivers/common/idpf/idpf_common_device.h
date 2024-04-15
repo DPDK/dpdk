@@ -52,7 +52,7 @@ struct idpf_adapter {
 	uint32_t cmd_retval; /* return value of the cmd response from cp */
 	uint8_t *mbx_resp; /* buffer to store the mailbox response from cp */
 
-	uint32_t ptype_tbl[IDPF_MAX_PKT_TYPE] __rte_cache_min_aligned;
+	alignas(RTE_CACHE_LINE_MIN_SIZE) uint32_t ptype_tbl[IDPF_MAX_PKT_TYPE];
 
 	bool is_tx_singleq; /* true - single queue model, false - split queue model */
 	bool is_rx_singleq; /* true - single queue model, false - split queue model */

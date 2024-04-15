@@ -27,7 +27,7 @@ struct nfp_tx_ipsec_desc_msg {
 	} esn;                  /**< Extended Sequence Number */
 };
 
-struct nfp_net_txq {
+struct __rte_aligned(64) nfp_net_txq {
 	/** Backpointer to nfp_net structure */
 	struct nfp_net_hw *hw;
 
@@ -77,7 +77,7 @@ struct nfp_net_txq {
 	 * in a cache line.
 	 */
 	uint64_t dma;
-} __rte_aligned(64);
+};
 
 /* RX and freelist descriptor format */
 #define PCIE_DESC_RX_DD                 (1 << 7)
@@ -129,7 +129,7 @@ struct nfp_net_rx_desc {
 	};
 };
 
-struct nfp_net_rxq {
+struct __rte_aligned(64) nfp_net_rxq {
 	/** Backpointer to nfp_net structure */
 	struct nfp_net_hw *hw;
 
@@ -197,7 +197,7 @@ struct nfp_net_rxq {
 
 	/** DMA address of the queue */
 	uint64_t dma;
-} __rte_aligned(64);
+};
 
 static inline void
 nfp_net_mbuf_alloc_failed(struct nfp_net_rxq *rxq)

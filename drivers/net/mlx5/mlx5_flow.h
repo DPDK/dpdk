@@ -1654,9 +1654,9 @@ struct mlx5_matcher_info {
 	RTE_ATOMIC(uint32_t) refcnt;
 };
 
-struct mlx5_dr_rule_action_container {
+struct __rte_cache_aligned mlx5_dr_rule_action_container {
 	struct mlx5dr_rule_action acts[MLX5_HW_MAX_ACTS];
-} __rte_cache_aligned;
+};
 
 struct rte_flow_template_table {
 	LIST_ENTRY(rte_flow_template_table) next;

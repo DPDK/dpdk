@@ -134,7 +134,7 @@ enum ssovf_type {
 	OCTEONTX_SSO_HWS,  /* SSO hardware workslot vf */
 };
 
-struct ssovf_evdev {
+struct __rte_cache_aligned ssovf_evdev {
 	OFFLOAD_FLAGS; /*Sequence should not be changed */
 	uint8_t max_event_queues;
 	uint8_t max_event_ports;
@@ -150,10 +150,10 @@ struct ssovf_evdev {
 	uint8_t *rxq_pool_rcnt;
 	uint16_t tim_ring_cnt;
 	uint16_t *tim_ring_ids;
-} __rte_cache_aligned;
+};
 
 /* Event port aka HWS */
-struct ssows {
+struct __rte_cache_aligned ssows {
 	uint8_t cur_tt;
 	uint8_t cur_grp;
 	uint8_t swtag_req;
@@ -162,7 +162,7 @@ struct ssows {
 	uint8_t *grps[SSO_MAX_VHGRP];
 	uint8_t port;
 	void *lookup_mem;
-} __rte_cache_aligned;
+};
 
 static inline struct ssovf_evdev *
 ssovf_pmd_priv(const struct rte_eventdev *eventdev)

@@ -95,8 +95,7 @@ struct qman_portal {
 	 * to 2 ** 10 to ensure DQRR index calculations based shadow copy
 	 * address (6 bits for address shift + 4 bits for the DQRR size).
 	 */
-	struct qm_dqrr_entry shadow_dqrr[QM_DQRR_SIZE]
-		    __rte_aligned(1024);
+	alignas(1024) struct qm_dqrr_entry shadow_dqrr[QM_DQRR_SIZE];
 #endif
 };
 

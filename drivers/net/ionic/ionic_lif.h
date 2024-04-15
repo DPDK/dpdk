@@ -98,7 +98,7 @@ struct ionic_rx_qcq {
 	struct ionic_rx_stats stats;
 
 	/* cacheline4+ */
-	struct rte_mbuf *mbs[IONIC_MBUF_BULK_ALLOC] __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) struct rte_mbuf *mbs[IONIC_MBUF_BULK_ALLOC];
 
 	struct ionic_admin_ctx admin_ctx;
 };

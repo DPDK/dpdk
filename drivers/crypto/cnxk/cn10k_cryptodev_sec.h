@@ -25,7 +25,7 @@ struct cn10k_tls_opt {
 	uint16_t mac_len : 7;
 };
 
-struct cn10k_sec_session {
+struct __rte_aligned(ROC_ALIGN) cn10k_sec_session {
 	uint8_t rte_sess[SEC_SESS_SIZE];
 
 	/** PMD private space */
@@ -57,7 +57,7 @@ struct cn10k_sec_session {
 		struct cn10k_ipsec_sa sa;
 		struct cn10k_tls_record tls_rec;
 	};
-} __rte_aligned(ROC_ALIGN);
+};
 
 static inline uint64_t
 cpt_inst_w7_get(struct roc_cpt *roc_cpt, void *cptr)

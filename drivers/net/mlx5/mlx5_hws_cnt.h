@@ -97,11 +97,11 @@ struct mlx5_hws_cnt_pool_caches {
 	struct rte_ring *qcache[];
 };
 
-struct mlx5_hws_cnt_pool {
+struct __rte_cache_aligned mlx5_hws_cnt_pool {
 	LIST_ENTRY(mlx5_hws_cnt_pool) next;
-	struct mlx5_hws_cnt_pool_cfg cfg __rte_cache_aligned;
-	struct mlx5_hws_cnt_dcs_mng dcs_mng __rte_cache_aligned;
-	uint32_t query_gen __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) struct mlx5_hws_cnt_pool_cfg cfg;
+	alignas(RTE_CACHE_LINE_SIZE) struct mlx5_hws_cnt_dcs_mng dcs_mng;
+	alignas(RTE_CACHE_LINE_SIZE) uint32_t query_gen;
 	struct mlx5_hws_cnt *pool;
 	struct mlx5_hws_cnt_raw_data_mng *raw_mng;
 	struct rte_ring *reuse_list;
@@ -110,7 +110,7 @@ struct mlx5_hws_cnt_pool {
 	struct mlx5_hws_cnt_pool_caches *cache;
 	uint64_t time_of_last_age_check;
 	struct mlx5_priv *priv;
-} __rte_cache_aligned;
+};
 
 /* HWS AGE status. */
 enum {
@@ -133,7 +133,7 @@ enum {
 };
 
 /* HWS counter age parameter. */
-struct mlx5_hws_age_param {
+struct __rte_cache_aligned mlx5_hws_age_param {
 	uint32_t timeout; /* Aging timeout in seconds (atomically accessed). */
 	uint32_t sec_since_last_hit;
 	/* Time in seconds since last hit (atomically accessed). */
@@ -149,7 +149,7 @@ struct mlx5_hws_age_param {
 	cnt_id_t own_cnt_index;
 	/* Counter action created specifically for this AGE action. */
 	void *context; /* Flow AGE context. */
-} __rte_packed __rte_cache_aligned;
+} __rte_packed;
 
 
 /**

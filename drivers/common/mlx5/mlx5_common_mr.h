@@ -91,7 +91,7 @@ struct mlx5_mr_share_cache {
 } __rte_packed;
 
 /* Multi-Packet RQ buffer header. */
-struct mlx5_mprq_buf {
+struct __rte_cache_aligned mlx5_mprq_buf {
 	struct rte_mempool *mp;
 	uint16_t refcnt; /* Atomically accessed refcnt. */
 	struct rte_mbuf_ext_shared_info shinfos[];
@@ -100,7 +100,7 @@ struct mlx5_mprq_buf {
 	 * More memory will be allocated for the first stride head-room and for
 	 * the strides data.
 	 */
-} __rte_cache_aligned;
+};
 
 __rte_internal
 void mlx5_mprq_buf_free_cb(void *addr, void *opaque);

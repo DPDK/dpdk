@@ -279,7 +279,7 @@ uint16_t i40e_xmit_pkts_vec_avx512(void *tx_queue,
 static inline uint32_t
 i40e_get_default_pkt_type(uint8_t ptype)
 {
-	static const uint32_t type_table[UINT8_MAX + 1] __rte_cache_aligned = {
+	static const alignas(RTE_CACHE_LINE_SIZE) uint32_t type_table[UINT8_MAX + 1] = {
 		/* L2 types */
 		/* [0] reserved */
 		[1] = RTE_PTYPE_L2_ETHER,

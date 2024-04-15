@@ -178,7 +178,7 @@ static inline uint32_t ccp_pci_reg_read(void *base, int offset)
 /**
  * A structure describing a CCP command queue.
  */
-struct ccp_queue {
+struct __rte_cache_aligned ccp_queue {
 	struct ccp_device *dev;
 	char memz_name[RTE_MEMZONE_NAMESIZE];
 
@@ -214,12 +214,12 @@ struct ccp_queue {
 	/**< lsb assigned for sha ctx */
 	uint32_t sb_hmac;
 	/**< lsb assigned for hmac ctx */
-} __rte_cache_aligned;
+};
 
 /**
  * A structure describing a CCP device.
  */
-struct ccp_device {
+struct __rte_cache_aligned ccp_device {
 	TAILQ_ENTRY(ccp_device) next;
 	int id;
 	/**< ccp dev id on platform */
@@ -237,7 +237,7 @@ struct ccp_device {
 	/**< current queue index */
 	int hwrng_retries;
 	/**< retry counter for CCP TRNG */
-} __rte_cache_aligned;
+};
 
 /**< CCP H/W engine related */
 /**

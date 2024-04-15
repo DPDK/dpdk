@@ -46,7 +46,7 @@ struct ccp_private {
 };
 
 /* CCP batch info */
-struct ccp_batch_info {
+struct __rte_cache_aligned ccp_batch_info {
 	struct rte_crypto_op *op[CCP_MAX_BURST];
 	/**< optable populated at enque time from app*/
 	int op_idx;
@@ -66,10 +66,10 @@ struct ccp_batch_info {
 	int lsb_buf_idx;
 	uint16_t auth_ctr;
 	/**< auth only ops batch for CPU based auth */
-} __rte_cache_aligned;
+};
 
 /**< CCP crypto queue pair */
-struct ccp_qp {
+struct __rte_cache_aligned ccp_qp {
 	uint16_t id;
 	/**< Queue Pair Identifier */
 	char name[RTE_CRYPTODEV_NAME_MAX_LEN];
@@ -91,7 +91,7 @@ struct ccp_qp {
 	 * by the driver when verifying a digest provided
 	 * by the user (using authentication verify operation)
 	 */
-} __rte_cache_aligned;
+};
 
 
 /**< device specific operations function pointer structure */

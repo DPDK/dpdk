@@ -1261,9 +1261,9 @@ struct i40e_adapter {
 	struct rte_timecounter tx_tstamp_tc;
 
 	/* ptype mapping table */
-	uint32_t ptype_tbl[I40E_MAX_PKT_TYPE] __rte_cache_min_aligned;
+	alignas(RTE_CACHE_LINE_MIN_SIZE) uint32_t ptype_tbl[I40E_MAX_PKT_TYPE];
 	/* flow type to pctype mapping table */
-	uint64_t pctypes_tbl[I40E_FLOW_TYPE_MAX] __rte_cache_min_aligned;
+	alignas(RTE_CACHE_LINE_MIN_SIZE) uint64_t pctypes_tbl[I40E_FLOW_TYPE_MAX];
 	uint64_t flow_types_mask;
 	uint64_t pctypes_mask;
 

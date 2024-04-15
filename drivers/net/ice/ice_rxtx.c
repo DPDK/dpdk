@@ -4013,8 +4013,7 @@ ice_tx_burst_mode_get(struct rte_eth_dev *dev, __rte_unused uint16_t queue_id,
 static inline uint32_t
 ice_get_default_pkt_type(uint16_t ptype)
 {
-	static const uint32_t type_table[ICE_MAX_PKT_TYPE]
-		__rte_cache_aligned = {
+	static const alignas(RTE_CACHE_LINE_SIZE) uint32_t type_table[ICE_MAX_PKT_TYPE] = {
 		/* L2 types */
 		/* [0] reserved */
 		[1] = RTE_PTYPE_L2_ETHER,

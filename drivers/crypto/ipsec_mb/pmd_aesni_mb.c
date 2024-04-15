@@ -32,8 +32,8 @@ calculate_auth_precomputes(hash_one_block_t one_block_hash,
 {
 	uint32_t i, length;
 
-	uint8_t ipad_buf[blocksize] __rte_aligned(16);
-	uint8_t opad_buf[blocksize] __rte_aligned(16);
+	alignas(16) uint8_t ipad_buf[blocksize];
+	alignas(16) uint8_t opad_buf[blocksize];
 
 	/* Setup inner and outer pads */
 	memset(ipad_buf, HMAC_IPAD_VALUE, blocksize);

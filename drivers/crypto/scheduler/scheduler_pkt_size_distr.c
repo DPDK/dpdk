@@ -20,12 +20,12 @@ struct psd_scheduler_ctx {
 };
 
 /** pkt size based scheduler queue pair context */
-struct psd_scheduler_qp_ctx {
+struct __rte_cache_aligned psd_scheduler_qp_ctx {
 	struct scheduler_worker primary_worker;
 	struct scheduler_worker secondary_worker;
 	uint32_t threshold;
 	uint8_t deq_idx;
-} __rte_cache_aligned;
+};
 
 /** scheduling operation variables' wrapping */
 struct psd_schedule_op {

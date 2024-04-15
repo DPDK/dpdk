@@ -72,7 +72,7 @@ static const char * const turbo_sw_valid_params[] = {
 };
 
 /* queue */
-struct turbo_sw_queue {
+struct __rte_cache_aligned turbo_sw_queue {
 	/* Ring for processed (encoded/decoded) operations which are ready to
 	 * be dequeued.
 	 */
@@ -95,7 +95,7 @@ struct turbo_sw_queue {
 	uint8_t *adapter_output;
 	/* Operation type of this queue */
 	enum rte_bbdev_op_type type;
-} __rte_cache_aligned;
+};
 
 
 #ifdef RTE_BBDEV_SDK_AVX2

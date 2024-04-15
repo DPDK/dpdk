@@ -146,7 +146,7 @@ timvf_timer_arm_tmo_brst(const struct rte_event_timer_adapter *adptr,
 	uint16_t idx;
 	uint16_t arr_idx = 0;
 	struct timvf_ring *timr = adptr->data->adapter_priv;
-	struct tim_mem_entry entry[TIMVF_MAX_BURST] __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) struct tim_mem_entry entry[TIMVF_MAX_BURST];
 
 	if (unlikely(!timeout_tick || timeout_tick >= timr->nb_bkts)) {
 		const enum rte_event_timer_state state = timeout_tick ?

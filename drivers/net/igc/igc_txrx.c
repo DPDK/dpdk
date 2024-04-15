@@ -148,8 +148,8 @@ rx_desc_statuserr_to_pkt_flags(uint32_t statuserr)
 static inline uint32_t
 rx_desc_pkt_info_to_pkt_type(uint32_t pkt_info)
 {
-	static const uint32_t
-		ptype_table[IGC_PACKET_TYPE_MAX] __rte_cache_aligned = {
+	static const alignas(RTE_CACHE_LINE_SIZE) uint32_t
+		ptype_table[IGC_PACKET_TYPE_MAX] = {
 		[IGC_PACKET_TYPE_IPV4] = RTE_PTYPE_L2_ETHER |
 			RTE_PTYPE_L3_IPV4,
 		[IGC_PACKET_TYPE_IPV4_EXT] = RTE_PTYPE_L2_ETHER |

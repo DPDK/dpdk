@@ -81,7 +81,7 @@ typedef int (*qat_op_dequeue_t)(void **op, uint8_t *resp, void *op_cookie,
 
 #define QAT_BUILD_REQUEST_MAX_OPAQUE_SIZE	2
 
-struct qat_qp {
+struct __rte_cache_aligned qat_qp {
 	void			*mmap_bar_addr;
 	struct qat_queue	tx_q;
 	struct qat_queue	rx_q;
@@ -95,10 +95,10 @@ struct qat_qp {
 	struct qat_pci_device *qat_dev;
 	/**< qat device this qp is on */
 	uint32_t enqueued;
-	uint32_t dequeued __rte_aligned(4);
+	alignas(sizeof(uint32_t)) uint32_t dequeued;
 	uint16_t max_inflights;
 	uint16_t min_enq_burst_threshold;
-} __rte_cache_aligned;
+};
 
 /**
  * Structure with data needed for creation of queue pair.

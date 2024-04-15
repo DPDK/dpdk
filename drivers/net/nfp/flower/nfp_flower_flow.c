@@ -141,11 +141,11 @@ struct nfp_mask_id_entry {
 	uint8_t mask_id;
 };
 
-struct nfp_pre_tun_entry {
+struct __rte_aligned(32) nfp_pre_tun_entry {
 	uint16_t mac_index;
 	uint16_t ref_cnt;
 	struct rte_ether_addr mac_addr;
-} __rte_aligned(32);
+};
 
 static inline struct nfp_flow_priv *
 nfp_flow_dev_to_priv(struct rte_eth_dev *dev)

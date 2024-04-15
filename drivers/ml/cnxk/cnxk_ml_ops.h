@@ -19,7 +19,7 @@
 #endif
 
 /* Request structure */
-struct cnxk_ml_req {
+struct __rte_aligned(ROC_ALIGN) cnxk_ml_req {
 	/* Device specific request */
 	union {
 		/* CN10K */
@@ -39,7 +39,7 @@ struct cnxk_ml_req {
 
 	/* Op */
 	struct rte_ml_op *op;
-} __rte_aligned(ROC_ALIGN);
+};
 
 /* Request queue */
 struct cnxk_ml_queue {

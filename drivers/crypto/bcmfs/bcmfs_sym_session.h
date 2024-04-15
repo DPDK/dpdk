@@ -24,7 +24,7 @@ enum bcmfs_sym_chain_order {
 };
 
 /* BCMFS_SYM crypto private session structure */
-struct bcmfs_sym_session {
+struct __rte_cache_aligned bcmfs_sym_session {
 	enum bcmfs_sym_chain_order chain_order;
 
 	/* Cipher Parameters */
@@ -83,7 +83,7 @@ struct bcmfs_sym_session {
 	} aead;
 
 	bool cipher_first;
-} __rte_cache_aligned;
+};
 
 int
 bcmfs_process_crypto_op(struct rte_crypto_op *op,

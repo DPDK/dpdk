@@ -126,7 +126,7 @@ static uint16_t
 cn9k_cpt_enqueue_burst(void *qptr, struct rte_crypto_op **ops, uint16_t nb_ops)
 {
 	struct cpt_inflight_req *infl_req_1, *infl_req_2;
-	struct cpt_inst_s inst[2] __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) struct cpt_inst_s inst[2];
 	struct rte_crypto_op *op_1, *op_2;
 	uint16_t nb_allowed, count = 0;
 	struct cnxk_cpt_qp *qp = qptr;

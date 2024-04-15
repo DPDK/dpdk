@@ -31,7 +31,7 @@ enum cpt_dp_thread_type {
 
 #define SYM_SESS_SIZE sizeof(struct rte_cryptodev_sym_session)
 
-struct cnxk_se_sess {
+struct __rte_aligned(ROC_ALIGN) cnxk_se_sess {
 	uint8_t rte_sess[SYM_SESS_SIZE];
 
 	uint8_t aes_gcm : 1;
@@ -67,7 +67,7 @@ struct cnxk_se_sess {
 	struct cnxk_cpt_qp *qp;
 	struct roc_se_ctx roc_se_ctx;
 	struct roc_cpt_lf *lf;
-} __rte_aligned(ROC_ALIGN);
+};
 
 struct cnxk_sym_dp_ctx {
 	struct cnxk_se_sess *sess;

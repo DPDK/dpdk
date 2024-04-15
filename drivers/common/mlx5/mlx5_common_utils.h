@@ -29,7 +29,7 @@ struct mlx5_list;
  */
 struct mlx5_list_entry {
 	LIST_ENTRY(mlx5_list_entry) next; /* Entry pointers in the list. */
-	uint32_t ref_cnt __rte_aligned(8); /* 0 means, entry is invalid. */
+	alignas(8) uint32_t ref_cnt; /* 0 means, entry is invalid. */
 	uint32_t lcore_idx;
 	union {
 		struct mlx5_list_entry *gentry;
@@ -37,10 +37,10 @@ struct mlx5_list_entry {
 	};
 } __rte_packed;
 
-struct mlx5_list_cache {
+struct __rte_cache_aligned mlx5_list_cache {
 	LIST_HEAD(mlx5_list_head, mlx5_list_entry) h;
 	uint32_t inv_cnt; /* Invalid entries counter. */
-} __rte_cache_aligned;
+};
 
 /**
  * Type of callback function for entry removal.
@@ -243,9 +243,9 @@ mlx5_list_get_entry_num(struct mlx5_list *list);
 /********************* Hash List **********************/
 
 /* Hash list bucket. */
-struct mlx5_hlist_bucket {
+struct __rte_cache_aligned mlx5_hlist_bucket {
 	struct mlx5_list_inconst l;
-} __rte_cache_aligned;
+};
 
 /**
  * Hash list table structure
@@ -257,7 +257,7 @@ struct mlx5_hlist {
 	uint8_t flags;
 	bool direct_key; /* Whether to use the key directly as hash index. */
 	struct mlx5_list_const l_const; /* List constant data. */
-	struct mlx5_hlist_bucket buckets[] __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) struct mlx5_hlist_bucket buckets[];
 };
 
 /**

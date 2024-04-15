@@ -147,10 +147,10 @@ struct mrvl_priv {
 	uint16_t bpool_init_size; /**< Configured BPool size  */
 
 	/** Mapping for DPDK rx queue->(TC, MRVL relative inq) */
-	struct {
+	alignas(RTE_CACHE_LINE_SIZE) struct {
 		uint8_t tc;  /**< Traffic Class */
 		uint8_t inq; /**< Relative in-queue number */
-	} rxq_map[MRVL_PP2_RXQ_MAX] __rte_cache_aligned;
+	} rxq_map[MRVL_PP2_RXQ_MAX];
 
 	/* Configuration data, used sporadically. */
 	uint8_t pp_id;

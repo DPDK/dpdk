@@ -57,12 +57,12 @@ struct slow_protocol {
 } __rte_packed;
 
 /** Generic slow protocol frame type structure */
-struct slow_protocol_frame {
+struct __rte_aligned(2) slow_protocol_frame {
 	struct rte_ether_hdr eth_hdr;
 	struct slow_protocol slow_protocol;
-} __rte_packed __rte_aligned(2);
+} __rte_packed;
 
-struct port_params {
+struct __rte_aligned(2) port_params {
 	uint16_t system_priority;
 	/**< System priority (unused in current implementation) */
 	struct rte_ether_addr system;
@@ -73,18 +73,18 @@ struct port_params {
 	/**< Priority of this (unused in current implementation) */
 	uint16_t port_number;
 	/**< Port number. It corresponds to member port id. */
-} __rte_packed __rte_aligned(2);
+} __rte_packed;
 
-struct lacpdu_actor_partner_params {
+struct __rte_aligned(2) lacpdu_actor_partner_params {
 	uint8_t tlv_type_info;
 	uint8_t info_length;
 	struct port_params port_params;
 	uint8_t state;
 	uint8_t reserved_3[3];
-} __rte_packed __rte_aligned(2);
+} __rte_packed;
 
 /** LACPDU structure (5.4.2 in 802.1AX documentation). */
-struct lacpdu {
+struct __rte_aligned(2) lacpdu {
 	uint8_t subtype;
 	uint8_t version_number;
 
@@ -99,15 +99,15 @@ struct lacpdu {
 	uint8_t tlv_type_terminator;
 	uint8_t terminator_length;
 	uint8_t reserved_50[50];
-} __rte_packed __rte_aligned(2);
+} __rte_packed;
 
 /** LACPDU frame: Contains ethernet header and LACPDU. */
-struct lacpdu_header {
+struct __rte_aligned(2) lacpdu_header {
 	struct rte_ether_hdr eth_hdr;
 	struct lacpdu lacpdu;
-} __rte_packed __rte_aligned(2);
+} __rte_packed;
 
-struct marker {
+struct __rte_aligned(2) marker {
 	uint8_t subtype;
 	uint8_t version_number;
 
@@ -121,12 +121,12 @@ struct marker {
 	uint8_t tlv_type_terminator;
 	uint8_t terminator_length;
 	uint8_t reserved_90[90];
-} __rte_packed __rte_aligned(2);
+} __rte_packed;
 
-struct marker_header {
+struct __rte_aligned(2) marker_header {
 	struct rte_ether_hdr eth_hdr;
 	struct marker marker;
-} __rte_packed __rte_aligned(2);
+} __rte_packed;
 
 struct rte_eth_bond_8023ad_conf {
 	uint32_t fast_periodic_ms;

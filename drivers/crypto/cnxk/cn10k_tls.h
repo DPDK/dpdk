@@ -16,14 +16,14 @@
 /* Forward declaration */
 struct cn10k_sec_session;
 
-struct cn10k_tls_record {
+struct __rte_aligned(ROC_ALIGN) cn10k_tls_record {
 	union {
 		/** Read SA */
 		struct roc_ie_ot_tls_read_sa read_sa;
 		/** Write SA */
 		struct roc_ie_ot_tls_write_sa write_sa;
 	};
-} __rte_aligned(ROC_ALIGN);
+};
 
 int cn10k_tls_record_session_update(struct cnxk_cpt_vf *vf, struct cnxk_cpt_qp *qp,
 				    struct cn10k_sec_session *sess,

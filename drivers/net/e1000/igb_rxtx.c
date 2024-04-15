@@ -705,8 +705,8 @@ eth_igb_prep_pkts(__rte_unused void *tx_queue, struct rte_mbuf **tx_pkts,
 static inline uint32_t
 igb_rxd_pkt_info_to_pkt_type(uint16_t pkt_info)
 {
-	static const uint32_t
-		ptype_table[IGB_PACKET_TYPE_MAX] __rte_cache_aligned = {
+	static const alignas(RTE_CACHE_LINE_SIZE) uint32_t
+		ptype_table[IGB_PACKET_TYPE_MAX] = {
 		[IGB_PACKET_TYPE_IPV4] = RTE_PTYPE_L2_ETHER |
 			RTE_PTYPE_L3_IPV4,
 		[IGB_PACKET_TYPE_IPV4_EXT] = RTE_PTYPE_L2_ETHER |

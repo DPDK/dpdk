@@ -47,9 +47,9 @@ struct bbdev_private {
 };
 
 /* queue */
-struct bbdev_queue {
+struct __rte_cache_aligned bbdev_queue {
 	struct rte_ring *processed_pkts;  /* Ring for processed packets */
-} __rte_cache_aligned;
+};
 
 /* Get device info */
 static void

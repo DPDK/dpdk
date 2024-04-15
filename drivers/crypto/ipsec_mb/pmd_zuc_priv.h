@@ -64,14 +64,14 @@ static const struct rte_cryptodev_capabilities zuc_capabilities[] = {
 };
 
 /** ZUC private session structure */
-struct zuc_session {
+struct __rte_cache_aligned zuc_session {
 	enum ipsec_mb_operation op;
 	enum rte_crypto_auth_operation auth_op;
 	uint8_t pKey_cipher[ZUC_IV_KEY_LENGTH];
 	uint8_t pKey_hash[ZUC_IV_KEY_LENGTH];
 	uint16_t cipher_iv_offset;
 	uint16_t auth_iv_offset;
-} __rte_cache_aligned;
+};
 
 struct zuc_qp_data {
 

@@ -131,7 +131,7 @@ enum dsw_migration_state {
 	DSW_MIGRATION_STATE_UNPAUSING
 };
 
-struct dsw_port {
+struct __rte_cache_aligned dsw_port {
 	uint16_t id;
 
 	/* Keeping a pointer here to avoid container_of() calls, which
@@ -222,22 +222,22 @@ struct dsw_port {
 	 */
 	struct rte_event in_buffer[DSW_MAX_EVENTS];
 
-	struct rte_event_ring *in_ring __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) struct rte_event_ring *in_ring;
 
-	struct rte_ring *ctl_in_ring __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) struct rte_ring *ctl_in_ring;
 
 	/* Estimate of current port load. */
-	int16_t load __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) int16_t load;
 	/* Estimate of flows currently migrating to this port. */
-	int32_t immigration_load __rte_cache_aligned;
-} __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) int32_t immigration_load;
+};
 
 struct dsw_queue {
 	uint8_t schedule_type;
 	uint64_t serving_ports;
 	uint16_t num_serving_ports;
 
-	uint8_t flow_to_port_map[DSW_MAX_FLOWS] __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) uint8_t flow_to_port_map[DSW_MAX_FLOWS];
 };
 
 /* Limited by the size of the 'serving_ports' bitmask */
@@ -252,19 +252,19 @@ struct dsw_evdev {
 	uint8_t num_queues;
 	int32_t max_inflight;
 
-	int32_t credits_on_loan __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) int32_t credits_on_loan;
 };
 
 #define DSW_CTL_PAUS_REQ (0)
 #define DSW_CTL_UNPAUS_REQ (1)
 #define DSW_CTL_CFM (2)
 
-struct dsw_ctl_msg {
+struct __rte_aligned(4) dsw_ctl_msg {
 	uint8_t type;
 	uint8_t originating_port_id;
 	uint8_t qfs_len;
 	struct dsw_queue_flow qfs[DSW_MAX_FLOWS_PER_MIGRATION];
-} __rte_aligned(4);
+};
 
 uint16_t dsw_event_enqueue(void *port, const struct rte_event *event);
 uint16_t dsw_event_enqueue_burst(void *port,

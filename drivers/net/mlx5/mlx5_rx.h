@@ -79,7 +79,7 @@ struct mlx5_eth_rxseg {
 };
 
 /* RX queue descriptor. */
-struct mlx5_rxq_data {
+struct __rte_cache_aligned mlx5_rxq_data {
 	unsigned int csum:1; /* Enable checksum offloading. */
 	unsigned int hw_timestamp:1; /* Enable HW timestamp. */
 	unsigned int rt_timestamp:1; /* Realtime timestamp format. */
@@ -146,7 +146,7 @@ struct mlx5_rxq_data {
 	uint32_t rxseg_n; /* Number of split segment descriptions. */
 	struct mlx5_eth_rxseg rxseg[MLX5_MAX_RXQ_NSEG];
 	/* Buffer split segment descriptions - sizes, offsets, pools. */
-} __rte_cache_aligned;
+};
 
 /* RX queue control descriptor. */
 struct mlx5_rxq_ctrl {

@@ -30,7 +30,7 @@ struct zlib_private {
 	struct rte_mempool *mp;
 };
 
-struct zlib_qp {
+struct __rte_cache_aligned zlib_qp {
 	struct rte_ring *processed_pkts;
 	/**< Ring for placing process packets */
 	struct rte_compressdev_stats qp_stats;
@@ -39,7 +39,7 @@ struct zlib_qp {
 	/**< Queue Pair Identifier */
 	char name[RTE_COMPRESSDEV_NAME_MAX_LEN];
 	/**< Unique Queue Pair Name */
-} __rte_cache_aligned;
+};
 
 /* Algorithm handler function prototype */
 typedef void (*comp_func_t)(struct rte_comp_op *op, z_stream *strm);
@@ -47,19 +47,19 @@ typedef void (*comp_func_t)(struct rte_comp_op *op, z_stream *strm);
 typedef int (*comp_free_t)(z_stream *strm);
 
 /** ZLIB Stream structure */
-struct zlib_stream {
+struct __rte_cache_aligned zlib_stream {
 	z_stream strm;
 	/**< zlib stream structure */
 	comp_func_t comp;
 	/**< Operation (compression/decompression) */
 	comp_free_t free;
 	/**< Free Operation (compression/decompression) */
-} __rte_cache_aligned;
+};
 
 /** ZLIB private xform structure */
-struct zlib_priv_xform {
+struct __rte_cache_aligned zlib_priv_xform {
 	struct zlib_stream stream;
-} __rte_cache_aligned;
+};
 
 int
 zlib_set_stream_parameters(const struct rte_comp_xform *xform,

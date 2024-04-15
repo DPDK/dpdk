@@ -473,7 +473,7 @@ static inline struct rte_mbuf *bnxt_tpa_end(
 	return mbuf;
 }
 
-uint32_t bnxt_ptype_table[BNXT_PTYPE_TBL_DIM] __rte_cache_aligned;
+alignas(RTE_CACHE_LINE_SIZE) uint32_t bnxt_ptype_table[BNXT_PTYPE_TBL_DIM];
 
 static void __rte_cold
 bnxt_init_ptype_table(void)

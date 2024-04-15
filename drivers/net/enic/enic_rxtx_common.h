@@ -114,7 +114,7 @@ enic_cq_rx_flags_to_pkt_type(struct cq_desc *cqd, uint8_t tnl)
 	 * Also, as there is no tunnel type info (VXLAN, NVGRE, or GENEVE), set
 	 * RTE_PTYPE_TUNNEL_GRENAT..
 	 */
-	static const uint32_t cq_type_table[128] __rte_cache_aligned = {
+	static const alignas(RTE_CACHE_LINE_SIZE) uint32_t cq_type_table[128] = {
 		[0x00] = RTE_PTYPE_UNKNOWN,
 		[0x01] = RTE_PTYPE_UNKNOWN |
 			 RTE_PTYPE_TUNNEL_GRENAT |
