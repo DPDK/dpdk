@@ -47,7 +47,7 @@ struct aead_test_data {
 	} key;
 
 	struct {
-		uint8_t data[64] __rte_aligned(16);
+		alignas(16) uint8_t data[64];
 		unsigned len;
 	} iv;
 
@@ -79,7 +79,7 @@ struct gmac_test_data {
 	} key;
 
 	struct {
-		uint8_t data[64] __rte_aligned(16);
+		alignas(16) uint8_t data[64];
 		unsigned len;
 	} iv;
 
@@ -2025,7 +2025,7 @@ struct cryptodev_perf_test_data {
 	} key;
 
 	struct {
-		uint8_t data[64] __rte_aligned(16);
+		alignas(16) uint8_t data[64];
 		unsigned len;
 	} iv;
 

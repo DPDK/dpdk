@@ -31,14 +31,14 @@
 
 struct test_pipeline;
 
-struct worker_data {
+struct __rte_cache_aligned worker_data {
 	uint64_t processed_pkts;
 	uint8_t dev_id;
 	uint8_t port_id;
 	struct test_pipeline *t;
-} __rte_cache_aligned;
+};
 
-struct test_pipeline {
+struct __rte_cache_aligned test_pipeline {
 	/* Don't change the offset of "done". Signal handler use this memory
 	 * to terminate all lcores work.
 	 */
@@ -52,8 +52,8 @@ struct test_pipeline {
 	struct rte_mempool *pool[RTE_MAX_ETHPORTS];
 	struct worker_data worker[EVT_MAX_PORTS];
 	struct evt_options *opt;
-	uint8_t sched_type_list[EVT_MAX_STAGES] __rte_cache_aligned;
-} __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) uint8_t sched_type_list[EVT_MAX_STAGES];
+};
 
 #define BURST_SIZE 16
 
@@ -62,7 +62,7 @@ struct test_pipeline {
 	struct test_pipeline *t = w->t;   \
 	const uint8_t dev = w->dev_id;    \
 	const uint8_t port = w->port_id;  \
-	struct rte_event ev __rte_cache_aligned
+	alignas(RTE_CACHE_LINE_SIZE) struct rte_event ev
 
 #define PIPELINE_WORKER_SINGLE_STAGE_BURST_INIT \
 	int i;                                  \
@@ -70,7 +70,7 @@ struct test_pipeline {
 	struct test_pipeline *t = w->t;         \
 	const uint8_t dev = w->dev_id;          \
 	const uint8_t port = w->port_id;        \
-	struct rte_event ev[BURST_SIZE + 1] __rte_cache_aligned
+	alignas(RTE_CACHE_LINE_SIZE) struct rte_event ev[BURST_SIZE + 1]
 
 #define PIPELINE_WORKER_MULTI_STAGE_INIT                         \
 	struct worker_data *w  = arg;                            \
@@ -81,7 +81,7 @@ struct test_pipeline {
 	const uint8_t last_queue = t->opt->nb_stages - 1;        \
 	uint8_t *const sched_type_list = &t->sched_type_list[0]; \
 	const uint8_t nb_stages = t->opt->nb_stages + 1;	 \
-	struct rte_event ev __rte_cache_aligned
+	alignas(RTE_CACHE_LINE_SIZE) struct rte_event ev
 
 #define PIPELINE_WORKER_MULTI_STAGE_BURST_INIT                   \
 	int i;                                                   \
@@ -93,7 +93,7 @@ struct test_pipeline {
 	const uint8_t last_queue = t->opt->nb_stages - 1;        \
 	uint8_t *const sched_type_list = &t->sched_type_list[0]; \
 	const uint8_t nb_stages = t->opt->nb_stages + 1;	 \
-	struct rte_event ev[BURST_SIZE + 1] __rte_cache_aligned
+	alignas(RTE_CACHE_LINE_SIZE) struct rte_event ev[BURST_SIZE + 1]
 
 static __rte_always_inline void
 pipeline_fwd_event(struct rte_event *ev, uint8_t sched)

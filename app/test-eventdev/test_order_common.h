@@ -39,7 +39,7 @@ struct prod_data {
 	struct test_order *t;
 };
 
-struct test_order {
+struct __rte_cache_aligned test_order {
 	/* Don't change the offset of "err". Signal handler use this memory
 	 * to terminate all lcores work.
 	 */
@@ -60,7 +60,7 @@ struct test_order {
 	uint32_t *producer_flow_seq;
 	uint32_t *expected_flow_seq;
 	struct evt_options *opt;
-} __rte_cache_aligned;
+};
 
 static inline void
 order_flow_id_copy_from_mbuf(struct test_order *t, struct rte_event *event)

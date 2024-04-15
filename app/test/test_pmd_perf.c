@@ -94,12 +94,12 @@ enum {
 	LCORE_USED,
 };
 
-struct lcore_conf {
+struct __rte_cache_aligned lcore_conf {
 	uint8_t status;
 	uint8_t socketid;
 	uint16_t nb_ports;
 	uint16_t portlist[RTE_MAX_ETHPORTS];
-} __rte_cache_aligned;
+};
 
 struct lcore_conf lcore_conf[RTE_MAX_LCORE];
 

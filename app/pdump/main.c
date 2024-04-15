@@ -106,7 +106,7 @@ struct pdump_stats {
 	uint64_t freed_pkts;
 };
 
-struct pdump_tuples {
+struct __rte_cache_aligned pdump_tuples {
 	/* cli params */
 	uint16_t port;
 	char *device_id;
@@ -133,7 +133,7 @@ struct pdump_tuples {
 
 	/* stats */
 	struct pdump_stats stats;
-} __rte_cache_aligned;
+};
 static struct pdump_tuples pdump_t[APP_ARG_TCPDUMP_MAX_TUPLES];
 
 struct parse_val {

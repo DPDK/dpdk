@@ -12,13 +12,13 @@
 
 #include "test.h"
 
-struct data {
+struct __rte_cache_aligned data {
 	rte_seqlock_t lock;
 
 	uint64_t a;
-	uint64_t b __rte_cache_aligned;
-	uint64_t c __rte_cache_aligned;
-} __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) uint64_t b;
+	alignas(RTE_CACHE_LINE_SIZE) uint64_t c;
+};
 
 struct reader {
 	struct data *data;

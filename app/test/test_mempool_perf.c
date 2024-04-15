@@ -101,9 +101,9 @@ static unsigned n_keep;
 static int use_constant_values;
 
 /* number of enqueues / dequeues */
-struct mempool_test_stats {
+struct __rte_cache_aligned mempool_test_stats {
 	uint64_t enq_count;
-} __rte_cache_aligned;
+};
 
 static struct mempool_test_stats stats[RTE_MAX_LCORE];
 
@@ -124,7 +124,7 @@ static __rte_always_inline int
 test_loop(struct rte_mempool *mp, struct rte_mempool_cache *cache,
 	  unsigned int x_keep, unsigned int x_get_bulk, unsigned int x_put_bulk)
 {
-	void *obj_table[MAX_KEEP] __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) void *obj_table[MAX_KEEP];
 	unsigned int idx;
 	unsigned int i;
 	int ret;

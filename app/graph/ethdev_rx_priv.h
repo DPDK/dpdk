@@ -14,10 +14,10 @@
 #define MAX_JUMBO_PKT_LEN  9600
 #define NB_SOCKETS 8
 
-struct lcore_params {
+struct __rte_cache_aligned lcore_params {
 	uint16_t port_id;
 	uint8_t queue_id;
 	uint8_t lcore_id;
-} __rte_cache_aligned;
+};
 
 #endif

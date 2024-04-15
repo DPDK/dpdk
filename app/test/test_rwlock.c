@@ -42,7 +42,7 @@ enum {
 	LC_TYPE_WRLOCK,
 };
 
-static struct {
+static alignas(RTE_CACHE_LINE_SIZE) struct {
 	rte_rwlock_t lock;
 	uint64_t tick;
 
@@ -50,9 +50,9 @@ static struct {
 		uint8_t u8[RTE_CACHE_LINE_SIZE];
 		uint64_t u64[RTE_CACHE_LINE_SIZE / sizeof(uint64_t)];
 	} data;
-} __rte_cache_aligned try_rwlock_data;
+} try_rwlock_data;
 
-struct try_rwlock_lcore {
+struct __rte_cache_aligned try_rwlock_lcore {
 	int32_t rc;
 	int32_t type;
 	struct {
@@ -60,7 +60,7 @@ struct try_rwlock_lcore {
 		uint64_t fail;
 		uint64_t success;
 	} stat;
-} __rte_cache_aligned;
+};
 
 static struct try_rwlock_lcore try_lcore_data[RTE_MAX_LCORE];
 

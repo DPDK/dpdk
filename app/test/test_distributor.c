@@ -53,9 +53,9 @@ static volatile int zero_sleep; /**< thr0 has quit basic loop and is sleeping*/
 static volatile unsigned worker_idx;
 static volatile unsigned zero_idx;
 
-struct worker_stats {
+struct __rte_cache_aligned worker_stats {
 	volatile unsigned handled_packets;
-} __rte_cache_aligned;
+};
 struct worker_stats worker_stats[RTE_MAX_LCORE];
 
 /* returns the total count of the number of packets handled by the worker
@@ -87,7 +87,7 @@ clear_packet_count(void)
 static int
 handle_work(void *arg)
 {
-	struct rte_mbuf *buf[8] __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) struct rte_mbuf *buf[8];
 	struct worker_params *wp = arg;
 	struct rte_distributor *db = wp->dist;
 	unsigned int num;
@@ -306,7 +306,7 @@ sanity_test(struct worker_params *wp, struct rte_mempool *p)
 static int
 handle_work_with_free_mbufs(void *arg)
 {
-	struct rte_mbuf *buf[8] __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) struct rte_mbuf *buf[8];
 	struct worker_params *wp = arg;
 	struct rte_distributor *d = wp->dist;
 	unsigned int i;
@@ -375,7 +375,7 @@ sanity_test_with_mbuf_alloc(struct worker_params *wp, struct rte_mempool *p)
 static int
 handle_work_for_shutdown_test(void *arg)
 {
-	struct rte_mbuf *buf[8] __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) struct rte_mbuf *buf[8];
 	struct worker_params *wp = arg;
 	struct rte_distributor *d = wp->dist;
 	unsigned int num;
@@ -592,7 +592,7 @@ test_flush_with_worker_shutdown(struct worker_params *wp,
 static int
 handle_and_mark_work(void *arg)
 {
-	struct rte_mbuf *buf[8] __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) struct rte_mbuf *buf[8];
 	struct worker_params *wp = arg;
 	struct rte_distributor *db = wp->dist;
 	unsigned int num, i;

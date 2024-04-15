@@ -17,13 +17,13 @@ struct lcore_rx_queue {
 	char node_name[RTE_NODE_NAMESIZE];
 };
 
-struct lcore_conf {
+struct __rte_cache_aligned lcore_conf {
 	uint16_t n_rx_queue;
 	struct lcore_rx_queue rx_queue_list[ETHDEV_RX_QUEUE_PER_LCORE_MAX];
 	struct rte_graph *graph;
 	char name[RTE_GRAPH_NAMESIZE];
 	rte_graph_t graph_id;
-} __rte_cache_aligned;
+};
 
 uint8_t ethdev_rx_num_rx_queues_get(uint16_t port);
 

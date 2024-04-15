@@ -32,7 +32,7 @@ struct mixed_cipher_auth_test_data {
 	} cipher_key;
 
 	struct {
-		uint8_t data[64] __rte_aligned(16);
+		alignas(16) uint8_t data[64];
 		unsigned int len; /* length must be in Bytes */
 	} cipher_iv;
 

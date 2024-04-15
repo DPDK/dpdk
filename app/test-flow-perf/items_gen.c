@@ -52,8 +52,8 @@ static void
 add_ipv4(struct rte_flow_item *items,
 	uint8_t items_counter, struct additional_para para)
 {
-	static struct rte_flow_item_ipv4 ipv4_specs[RTE_MAX_LCORE] __rte_cache_aligned;
-	static struct rte_flow_item_ipv4 ipv4_masks[RTE_MAX_LCORE] __rte_cache_aligned;
+	static alignas(RTE_CACHE_LINE_SIZE) struct rte_flow_item_ipv4 ipv4_specs[RTE_MAX_LCORE];
+	static alignas(RTE_CACHE_LINE_SIZE) struct rte_flow_item_ipv4 ipv4_masks[RTE_MAX_LCORE];
 	uint8_t ti = para.core_idx;
 
 	ipv4_specs[ti].hdr.src_addr = RTE_BE32(para.src_ip);
@@ -69,8 +69,8 @@ static void
 add_ipv6(struct rte_flow_item *items,
 	uint8_t items_counter, struct additional_para para)
 {
-	static struct rte_flow_item_ipv6 ipv6_specs[RTE_MAX_LCORE] __rte_cache_aligned;
-	static struct rte_flow_item_ipv6 ipv6_masks[RTE_MAX_LCORE] __rte_cache_aligned;
+	static alignas(RTE_CACHE_LINE_SIZE) struct rte_flow_item_ipv6 ipv6_specs[RTE_MAX_LCORE];
+	static alignas(RTE_CACHE_LINE_SIZE) struct rte_flow_item_ipv6 ipv6_masks[RTE_MAX_LCORE];
 	uint8_t ti = para.core_idx;
 	uint8_t i;
 
@@ -118,8 +118,8 @@ add_vxlan(struct rte_flow_item *items,
 	uint8_t items_counter,
 	struct additional_para para)
 {
-	static struct rte_flow_item_vxlan vxlan_specs[RTE_MAX_LCORE] __rte_cache_aligned;
-	static struct rte_flow_item_vxlan vxlan_masks[RTE_MAX_LCORE] __rte_cache_aligned;
+	static alignas(RTE_CACHE_LINE_SIZE) struct rte_flow_item_vxlan vxlan_specs[RTE_MAX_LCORE];
+	static alignas(RTE_CACHE_LINE_SIZE) struct rte_flow_item_vxlan vxlan_masks[RTE_MAX_LCORE];
 	uint8_t ti = para.core_idx;
 	uint32_t vni_value;
 	uint8_t i;
@@ -145,8 +145,10 @@ add_vxlan_gpe(struct rte_flow_item *items,
 	uint8_t items_counter,
 	__rte_unused struct additional_para para)
 {
-	static struct rte_flow_item_vxlan_gpe vxlan_gpe_specs[RTE_MAX_LCORE] __rte_cache_aligned;
-	static struct rte_flow_item_vxlan_gpe vxlan_gpe_masks[RTE_MAX_LCORE] __rte_cache_aligned;
+	static alignas(RTE_CACHE_LINE_SIZE)
+	    struct rte_flow_item_vxlan_gpe vxlan_gpe_specs[RTE_MAX_LCORE];
+	static alignas(RTE_CACHE_LINE_SIZE)
+	    struct rte_flow_item_vxlan_gpe vxlan_gpe_masks[RTE_MAX_LCORE];
 	uint8_t ti = para.core_idx;
 	uint32_t vni_value;
 	uint8_t i;
@@ -189,8 +191,8 @@ add_geneve(struct rte_flow_item *items,
 	uint8_t items_counter,
 	__rte_unused struct additional_para para)
 {
-	static struct rte_flow_item_geneve geneve_specs[RTE_MAX_LCORE] __rte_cache_aligned;
-	static struct rte_flow_item_geneve geneve_masks[RTE_MAX_LCORE] __rte_cache_aligned;
+	static alignas(RTE_CACHE_LINE_SIZE) struct rte_flow_item_geneve geneve_specs[RTE_MAX_LCORE];
+	static alignas(RTE_CACHE_LINE_SIZE) struct rte_flow_item_geneve geneve_masks[RTE_MAX_LCORE];
 	uint8_t ti = para.core_idx;
 	uint32_t vni_value;
 	uint8_t i;

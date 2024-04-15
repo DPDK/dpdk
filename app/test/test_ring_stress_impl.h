@@ -24,7 +24,7 @@ enum {
 	WRK_CMD_RUN,
 };
 
-static uint32_t wrk_cmd __rte_cache_aligned = WRK_CMD_STOP;
+static alignas(RTE_CACHE_LINE_SIZE) uint32_t wrk_cmd = WRK_CMD_STOP;
 
 /* test run-time in seconds */
 static const uint32_t run_time = 60;
@@ -41,14 +41,14 @@ struct lcore_stat {
 	} op;
 };
 
-struct lcore_arg {
+struct __rte_cache_aligned lcore_arg {
 	struct rte_ring *rng;
 	struct lcore_stat stats;
-} __rte_cache_aligned;
+};
 
-struct ring_elem {
+struct __rte_cache_aligned ring_elem {
 	uint32_t cnt[RTE_CACHE_LINE_SIZE / sizeof(uint32_t)];
-} __rte_cache_aligned;
+};
 
 /*
  * redefinable functions

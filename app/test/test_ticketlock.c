@@ -95,8 +95,8 @@ test_ticketlock_recursive_per_core(__rte_unused void *arg)
 }
 
 static rte_ticketlock_t lk = RTE_TICKETLOCK_INITIALIZER;
-static uint64_t lcount __rte_cache_aligned;
-static uint64_t lcore_count[RTE_MAX_LCORE] __rte_cache_aligned;
+static alignas(RTE_CACHE_LINE_SIZE) uint64_t lcount;
+static alignas(RTE_CACHE_LINE_SIZE) uint64_t lcore_count[RTE_MAX_LCORE];
 static uint64_t time_cost[RTE_MAX_LCORE];
 
 #define MAX_LOOP 10000

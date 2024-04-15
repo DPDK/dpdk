@@ -31,13 +31,13 @@
 
 struct test_perf;
 
-struct worker_data {
+struct __rte_cache_aligned worker_data {
 	uint64_t processed_pkts;
 	uint64_t latency;
 	uint8_t dev_id;
 	uint8_t port_id;
 	struct test_perf *t;
-} __rte_cache_aligned;
+};
 
 struct crypto_adptr_data {
 	uint8_t cdev_id;
@@ -51,16 +51,16 @@ struct dma_adptr_data {
 	void **dma_op;
 };
 
-struct prod_data {
+struct __rte_cache_aligned prod_data {
 	uint8_t dev_id;
 	uint8_t port_id;
 	uint8_t queue_id;
 	struct crypto_adptr_data ca;
 	struct dma_adptr_data da;
 	struct test_perf *t;
-} __rte_cache_aligned;
+};
 
-struct test_perf {
+struct __rte_cache_aligned test_perf {
 	/* Don't change the offset of "done". Signal handler use this memory
 	 * to terminate all lcores work.
 	 */
@@ -74,17 +74,17 @@ struct test_perf {
 	struct prod_data prod[EVT_MAX_PORTS];
 	struct worker_data worker[EVT_MAX_PORTS];
 	struct evt_options *opt;
-	uint8_t sched_type_list[EVT_MAX_STAGES] __rte_cache_aligned;
-	struct rte_event_timer_adapter *timer_adptr[
-		RTE_EVENT_TIMER_ADAPTER_NUM_MAX] __rte_cache_aligned;
+	alignas(RTE_CACHE_LINE_SIZE) uint8_t sched_type_list[EVT_MAX_STAGES];
+	alignas(RTE_CACHE_LINE_SIZE) struct rte_event_timer_adapter *timer_adptr[
+		RTE_EVENT_TIMER_ADAPTER_NUM_MAX];
 	struct rte_mempool *ca_op_pool;
 	struct rte_mempool *ca_sess_pool;
 	struct rte_mempool *ca_asym_sess_pool;
 	struct rte_mempool *ca_vector_pool;
 	struct rte_mempool *da_op_pool;
-} __rte_cache_aligned;
+};
 
-struct perf_elt {
+struct __rte_cache_aligned perf_elt {
 	union {
 		struct rte_event_timer tim;
 		struct {
@@ -92,7 +92,7 @@ struct perf_elt {
 			uint64_t timestamp;
 		};
 	};
-} __rte_cache_aligned;
+};
 
 #define BURST_SIZE 16
 #define MAX_PROD_ENQ_BURST_SIZE 128
@@ -111,7 +111,7 @@ struct perf_elt {
 	const uint8_t nb_stages = t->opt->nb_stages;\
 	const uint8_t laststage = nb_stages - 1;\
 	uint8_t cnt = 0;\
-	void *bufs[16] __rte_cache_aligned;\
+	alignas(RTE_CACHE_LINE_SIZE) void *bufs[16];\
 	int const sz = RTE_DIM(bufs);\
 	uint8_t stage;\
 	struct perf_elt *pe = NULL;\
