@@ -164,7 +164,7 @@ calc_latency(uint16_t pid __rte_unused,
 	 * a constant smoothing factor between 0 and 1. The value
 	 * is used below for measuring average latency.
 	 */
-	const float alpha = 0.2;
+	const float alpha = 0.2f;
 
 	now = rte_rdtsc();
 	for (i = 0; i < nb_pkts; i++) {
