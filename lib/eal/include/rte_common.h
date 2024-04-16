@@ -267,7 +267,7 @@ static void __attribute__((destructor(RTE_PRIO(prio)), used)) func(void)
 #define RTE_FINI_PRIO(name, priority) \
 	static void name(void); \
 	__pragma(const_seg(DTOR_PRIORITY_TO_SECTION(priority))) \
-	__declspec(allocate(DTOR_PRIORITY_TO_SECTION(priority))) name ## _pointer = &name; \
+	__declspec(allocate(DTOR_PRIORITY_TO_SECTION(priority))) void *name ## _pointer = &name; \
 	__pragma(const_seg()) \
 	static void name(void)
 #endif
