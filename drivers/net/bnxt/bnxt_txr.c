@@ -308,10 +308,15 @@ static uint16_t bnxt_start_xmit(struct rte_mbuf *tx_pkt,
 		 */
 		txbd1->kid_or_ts_high_mss = 0;
 
-		if (txq->vfr_tx_cfa_action)
-			txbd1->cfa_action = txq->vfr_tx_cfa_action;
-		else
-			txbd1->cfa_action = txq->bp->tx_cfa_action;
+		if (txq->vfr_tx_cfa_action) {
+			txbd1->cfa_action = txq->vfr_tx_cfa_action & 0xffff;
+			txbd1->cfa_action_high = (txq->vfr_tx_cfa_action >> 16) &
+				TX_BD_LONG_CFA_ACTION_HIGH_MASK;
+		} else {
+			txbd1->cfa_action = txq->bp->tx_cfa_action & 0xffff;
+			txbd1->cfa_action_high = (txq->bp->tx_cfa_action >> 16) &
+				TX_BD_LONG_CFA_ACTION_HIGH_MASK;
+		}
 
 		if (tx_pkt->ol_flags & RTE_MBUF_F_TX_TCP_SEG ||
 		    tx_pkt->ol_flags & RTE_MBUF_F_TX_UDP_SEG) {
