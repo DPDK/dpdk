@@ -2296,11 +2296,13 @@ int
 mlx5_dev_close(struct rte_eth_dev *dev)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_dev_ctx_shared *sh = priv->sh;
+	struct mlx5_dev_ctx_shared *sh;
 	unsigned int i;
 	int ret;
 
 	if (rte_eal_process_type() == RTE_PROC_SECONDARY) {
+		if (!priv)
+			DRV_LOG(WARNING, "primary process is already closed");
 		/* Check if process_private released. */
 		if (!dev->process_private)
 			return 0;
@@ -2309,6 +2311,7 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 		rte_eth_dev_release_port(dev);
 		return 0;
 	}
+	sh = priv->sh;
 	if (!sh)
 		return 0;
 	if (priv->shared_refcnt) {
@@ -2327,9 +2330,7 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 	}
 #endif
 	DRV_LOG(DEBUG, "port %u closing device \"%s\"",
-		dev->data->port_id,
-		((priv->sh->cdev->ctx != NULL) ?
-		mlx5_os_get_ctx_device_name(priv->sh->cdev->ctx) : ""));
+		dev->data->port_id, sh->ibdev_name);
 	/*
 	 * If default mreg copy action is removed at the stop stage,
 	 * the search will return none and nothing will be done anymore.
@@ -2403,7 +2404,7 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 		mlx5_free(priv->rss_conf.rss_key);
 	if (priv->reta_idx != NULL)
 		mlx5_free(priv->reta_idx);
-	if (priv->sh->dev_cap.vf)
+	if (sh->dev_cap.vf)
 		mlx5_os_mac_addr_flush(dev);
 	if (priv->nl_socket_route >= 0)
 		close(priv->nl_socket_route);
@@ -2446,7 +2447,7 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 	if (priv->hrxqs)
 		mlx5_list_destroy(priv->hrxqs);
 	mlx5_free(priv->ext_rxqs);
-	priv->sh->port[priv->dev_port - 1].nl_ih_port_id = RTE_MAX_ETHPORTS;
+	sh->port[priv->dev_port - 1].nl_ih_port_id = RTE_MAX_ETHPORTS;
 	/*
 	 * The interrupt handler port id must be reset before priv is reset
 	 * since 'mlx5_dev_interrupt_nl_cb' uses priv.
@@ -2458,7 +2459,7 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 	 * mlx5_os_mac_addr_flush() uses ibdev_path for retrieving
 	 * ifindex if Netlink fails.
 	 */
-	mlx5_free_shared_dev_ctx(priv->sh);
+	mlx5_free_shared_dev_ctx(sh);
 	if (priv->domain_id != RTE_ETH_DEV_SWITCH_DOMAIN_ID_INVALID) {
 		unsigned int c = 0;
 		uint16_t port_id;
