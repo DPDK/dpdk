@@ -280,6 +280,9 @@ will use automatic PMD power management.
 This mode is limited to one queue per core,
 and has three available power management schemes:
 
+``baseline``
+  This mode will not enable any power saving features.
+
 ``monitor``
   This will use ``rte_power_monitor()`` function to enter
   a power-optimized state (subject to platform support).
