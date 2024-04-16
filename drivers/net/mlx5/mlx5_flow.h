@@ -1992,7 +1992,7 @@ flow_hw_get_reg_id(struct rte_eth_dev *dev,
 {
 #if defined(HAVE_IBV_FLOW_DV_SUPPORT) || !defined(HAVE_INFINIBAND_VERBS_H)
 	return flow_hw_get_reg_id_by_domain(dev, type,
-					    MLX5DR_TABLE_TYPE_DONTCARE, id);
+					    MLX5DR_TABLE_TYPE_MAX, id);
 #else
 	RTE_SET_USED(dev);
 	RTE_SET_USED(type);

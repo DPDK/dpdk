@@ -152,6 +152,7 @@ struct mlx5dr_definer_conv_data {
 	uint8_t geneve_opt_ok_idx;
 	uint8_t geneve_opt_data_idx;
 	enum rte_flow_item_type last_item;
+	enum mlx5dr_table_type table_type;
 };
 
 /* Xmacro used to create generic item setter from items */
@@ -1754,7 +1755,7 @@ mlx5dr_definer_conv_item_tag(struct mlx5dr_definer_conv_data *cd,
 	if (item->type == RTE_FLOW_ITEM_TYPE_TAG)
 		reg = flow_hw_get_reg_id_from_ctx(cd->ctx,
 						  RTE_FLOW_ITEM_TYPE_TAG,
-						  MLX5DR_TABLE_TYPE_DONTCARE,
+						  cd->table_type,
 						  v->index);
 	else
 		reg = (int)v->index;
@@ -1817,8 +1818,7 @@ mlx5dr_definer_conv_item_quota(struct mlx5dr_definer_conv_data *cd,
 {
 	int mtr_reg = flow_hw_get_reg_id_from_ctx(cd->ctx,
 						  RTE_FLOW_ITEM_TYPE_METER_COLOR,
-						  MLX5DR_TABLE_TYPE_DONTCARE,
-						  0);
+						  cd->table_type, 0);
 	struct mlx5dr_definer_fc *fc;
 
 	if (mtr_reg < 0) {
@@ -1837,7 +1837,6 @@ mlx5dr_definer_conv_item_quota(struct mlx5dr_definer_conv_data *cd,
 
 static int
 mlx5dr_definer_conv_item_metadata(struct mlx5dr_definer_conv_data *cd,
-				  enum mlx5dr_table_type table_domain_type,
 				  struct rte_flow_item *item,
 				  int item_idx)
 {
@@ -1850,7 +1849,7 @@ mlx5dr_definer_conv_item_metadata(struct mlx5dr_definer_conv_data *cd,
 		return 0;
 
 	reg = flow_hw_get_reg_id_from_ctx(cd->ctx, RTE_FLOW_ITEM_TYPE_META,
-					  table_domain_type, -1);
+					  cd->table_type, -1);
 	if (reg <= 0) {
 		DR_LOG(ERR, "Invalid register for item metadata");
 		rte_errno = EINVAL;
@@ -2159,7 +2158,7 @@ mlx5dr_definer_conv_item_conntrack(struct mlx5dr_definer_conv_data *cd,
 
 	reg = flow_hw_get_reg_id_from_ctx(cd->ctx,
 					  RTE_FLOW_ITEM_TYPE_CONNTRACK,
-					  MLX5DR_TABLE_TYPE_DONTCARE, -1);
+					  cd->table_type, -1);
 	if (reg <= 0) {
 		DR_LOG(ERR, "Invalid register for item conntrack");
 		rte_errno = EINVAL;
@@ -2302,7 +2301,7 @@ mlx5dr_definer_conv_item_meter_color(struct mlx5dr_definer_conv_data *cd,
 
 	reg = flow_hw_get_reg_id_from_ctx(cd->ctx,
 					  RTE_FLOW_ITEM_TYPE_METER_COLOR,
-					  MLX5DR_TABLE_TYPE_DONTCARE, 0);
+					  cd->table_type, 0);
 	MLX5_ASSERT(reg > 0);
 
 	fc = mlx5dr_definer_get_register_fc(cd, reg);
@@ -2897,7 +2896,6 @@ mlx5dr_definer_conv_item_compare_field(const struct rte_flow_field_data *f,
 				       const struct rte_flow_field_data *other_f,
 				       struct mlx5dr_definer_conv_data *cd,
 				       int item_idx,
-				       enum mlx5dr_table_type table_domain_type,
 				       enum mlx5dr_definer_compare_dw_selectors dw_offset)
 {
 	struct mlx5dr_definer_fc *fc = NULL;
@@ -2913,7 +2911,7 @@ mlx5dr_definer_conv_item_compare_field(const struct rte_flow_field_data *f,
 	case RTE_FLOW_FIELD_META:
 		reg = flow_hw_get_reg_id_from_ctx(cd->ctx,
 						  RTE_FLOW_ITEM_TYPE_META,
-						  table_domain_type, -1);
+						  cd->table_type, -1);
 		if (reg <= 0) {
 			DR_LOG(ERR, "Invalid register for compare metadata field");
 			rte_errno = EINVAL;
@@ -2932,7 +2930,7 @@ mlx5dr_definer_conv_item_compare_field(const struct rte_flow_field_data *f,
 	case RTE_FLOW_FIELD_TAG:
 		reg = flow_hw_get_reg_id_from_ctx(cd->ctx,
 						  RTE_FLOW_ITEM_TYPE_TAG,
-						  MLX5DR_TABLE_TYPE_DONTCARE,
+						  cd->table_type,
 						  f->tag_index);
 		if (reg <= 0) {
 			DR_LOG(ERR, "Invalid register for compare tag field");
@@ -2988,7 +2986,6 @@ err_notsup:
 
 static int
 mlx5dr_definer_conv_item_compare(struct mlx5dr_definer_conv_data *cd,
-				 enum mlx5dr_table_type table_domain_type,
 				 struct rte_flow_item *item,
 				 int item_idx)
 {
@@ -3005,13 +3002,11 @@ mlx5dr_definer_conv_item_compare(struct mlx5dr_definer_conv_data *cd,
 	}
 
 	ret = mlx5dr_definer_conv_item_compare_field(a, b, cd, item_idx,
-						     table_domain_type,
 						     MLX5DR_DEFINER_COMPARE_ARGUMENT_0);
 	if (ret)
 		return ret;
 
 	ret = mlx5dr_definer_conv_item_compare_field(b, NULL, cd, item_idx,
-						     table_domain_type,
 						     MLX5DR_DEFINER_COMPARE_BASE_0);
 	if (ret)
 		return ret;
@@ -3034,6 +3029,7 @@ mlx5dr_definer_conv_items_to_hl(struct mlx5dr_context *ctx,
 	cd.fc = fc;
 	cd.ctx = ctx;
 	cd.relaxed = mt->flags & MLX5DR_MATCH_TEMPLATE_FLAG_RELAXED_MATCH;
+	cd.table_type = matcher->tbl->type;
 
 	/* Collect all RTE fields to the field array and set header layout */
 	for (i = 0; items->type != RTE_FLOW_ITEM_TYPE_END; i++, items++) {
@@ -3107,7 +3103,7 @@ mlx5dr_definer_conv_items_to_hl(struct mlx5dr_context *ctx,
 			item_flags |= MLX5_FLOW_ITEM_TAG;
 			break;
 		case RTE_FLOW_ITEM_TYPE_META:
-			ret = mlx5dr_definer_conv_item_metadata(&cd, matcher->tbl->type, items, i);
+			ret = mlx5dr_definer_conv_item_metadata(&cd, items, i);
 			item_flags |= MLX5_FLOW_ITEM_METADATA;
 			break;
 		case RTE_FLOW_ITEM_TYPE_GRE:
@@ -3198,7 +3194,7 @@ mlx5dr_definer_conv_items_to_hl(struct mlx5dr_context *ctx,
 				DR_LOG(ERR, "Compare matcher not supported for more than one item");
 				goto not_supp;
 			}
-			ret = mlx5dr_definer_conv_item_compare(&cd, matcher->tbl->type, items, i);
+			ret = mlx5dr_definer_conv_item_compare(&cd, items, i);
 			item_flags |= MLX5_FLOW_ITEM_COMPARE;
 			matcher->flags |= MLX5DR_MATCHER_FLAGS_COMPARE;
 			break;
