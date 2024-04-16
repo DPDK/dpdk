@@ -171,6 +171,7 @@ struct mlx5dr_definer_conv_data {
 	X(SET,		ipv4_version,		STE_IPV4,		rte_ipv4_hdr) \
 	X(SET_BE16,	ipv4_frag,		v->fragment_offset,	rte_ipv4_hdr) \
 	X(SET_BE16,	ipv4_len,		v->total_length,	rte_ipv4_hdr) \
+	X(SET_BE16,	ipv4_identification,	v->packet_id,		rte_ipv4_hdr) \
 	X(SET,          ip_fragmented,          !!v->fragment_offset,   rte_ipv4_hdr) \
 	X(SET_BE16,	ipv6_payload_len,	v->hdr.payload_len,	rte_flow_item_ipv6) \
 	X(SET,		ipv6_proto,		v->hdr.proto,		rte_flow_item_ipv6) \
@@ -1026,7 +1027,7 @@ mlx5dr_definer_conv_item_ipv4(struct mlx5dr_definer_conv_data *cd,
 	if (!m)
 		return 0;
 
-	if (m->packet_id || m->hdr_checksum ||
+	if (m->hdr_checksum ||
 	    (l && (l->next_proto_id || l->type_of_service))) {
 		rte_errno = ENOTSUP;
 		return rte_errno;
@@ -1058,6 +1059,14 @@ mlx5dr_definer_conv_item_ipv4(struct mlx5dr_definer_conv_data *cd,
 		fc->item_idx = item_idx;
 		fc->tag_set = &mlx5dr_definer_ipv4_next_proto_set;
 		DR_CALC_SET(fc, eth_l3, protocol_next_header, inner);
+	}
+
+	if (m->packet_id) {
+		fc = &cd->fc[DR_CALC_FNAME(IP_ID, inner)];
+		fc->item_idx = item_idx;
+		fc->is_range = l && l->packet_id;
+		fc->tag_set = &mlx5dr_definer_ipv4_identification_set;
+		DR_CALC_SET(fc, eth_l3, identification, inner);
 	}
 
 	if (m->total_length) {
