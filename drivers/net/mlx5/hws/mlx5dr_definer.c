@@ -2500,11 +2500,6 @@ mlx5dr_definer_conv_item_geneve_opt(struct mlx5dr_definer_conv_data *cd,
 		goto out_not_supp;
 	}
 
-	if (m->option_class && m->option_class != RTE_BE16(UINT16_MAX)) {
-		DR_LOG(ERR, "Geneve option class has invalid mask");
-		goto out_not_supp;
-	}
-
 	ret = mlx5_get_geneve_hl_data(cd->ctx,
 				      v->option_type,
 				      v->option_class,
@@ -2514,6 +2509,11 @@ mlx5dr_definer_conv_item_geneve_opt(struct mlx5dr_definer_conv_data *cd,
 				      &ok_bit_on_class);
 	if (ret) {
 		DR_LOG(ERR, "Geneve opt type and class %d not supported", v->option_type);
+		goto out_not_supp;
+	}
+
+	if (ok_bit_on_class && m->option_class != RTE_BE16(UINT16_MAX)) {
+		DR_LOG(ERR, "Geneve option class has invalid mask");
 		goto out_not_supp;
 	}
 
