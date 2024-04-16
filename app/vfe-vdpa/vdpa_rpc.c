@@ -193,6 +193,7 @@ static cJSON *mgmtpf(jrpc_context *ctx, cJSON *params, cJSON *id)
 	return result;
 }
 
+extern int stage1;
 static cJSON *vdpa_vf_dev_add(char *vf_name,
 			struct vdpa_vf_params *vf_params,
 			const char *socket_file, const char *vm_uuid)
@@ -204,7 +205,7 @@ static cJSON *vdpa_vf_dev_add(char *vf_name,
 		return vdpa_rpc_format_errno(result, -VFE_VDPA_ERR_ADD_VF_VHOST_SOCK_EXIST);
 	}
 
-	ret = rte_vdpa_vf_dev_add(vf_name, vm_uuid, vf_params);
+	ret = rte_vdpa_vf_dev_add(vf_name, vm_uuid, vf_params, stage1);
 	if (ret) {
 		return vdpa_rpc_format_errno(result, ret);
 	}

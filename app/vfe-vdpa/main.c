@@ -52,6 +52,7 @@ static char iface[MAX_IF_PATH_LEN];
 static int devcnt;
 static int interactive;
 static int client_mode;
+int stage1 = 0;
 
 static int
 vdpa_alloc_vport_res(void)
@@ -76,7 +77,8 @@ vdpa_usage(const char *prgname)
 	printf("Usage: %s [EAL options] -- "
 				 "	--interactive|-i: run in interactive mode.\n"
 				 "	--iface <path>: specify the path prefix of the socket files, e.g. /tmp/vhost-user-.\n"
-				 "	--client: register a vhost-user socket as client mode.\n",
+				 "	--client: register a vhost-user socket as client mode.\n"
+				 "	--stage1: fall back to stage1.\n",
 				 prgname);
 }
 
@@ -88,6 +90,7 @@ parse_args(int argc, char **argv)
 		{"iface", required_argument, NULL, 0},
 		{"interactive", no_argument, &interactive, 1},
 		{"client", no_argument, &client_mode, 1},
+		{"stage1", no_argument, &stage1, 1},
 		{NULL, 0, 0, 0},
 	};
 	int opt, idx;
@@ -865,7 +868,7 @@ virtio_ha_client_dev_restore(void)
 				goto err_vf_list;
 			}
 
-			ret = rte_vdpa_vf_dev_add(vf_list[j].vf_name.dev_bdf, vf_list[j].vm_uuid, NULL);
+			ret = rte_vdpa_vf_dev_add(vf_list[j].vf_name.dev_bdf, vf_list[j].vm_uuid, NULL, stage1);
 			if (ret < 0) {
 				RTE_LOG(ERR, VDPA, "Failed to restore vf\n");
 				ret = -1;

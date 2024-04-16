@@ -61,7 +61,7 @@ enum vdpa_vf_debug_test_type {
 };
 
 int
-rte_vdpa_vf_dev_add(char *vf_name, const char *vm_uuid, struct vdpa_vf_params *vf_params);
+rte_vdpa_vf_dev_add(char *vf_name, const char *vm_uuid, struct vdpa_vf_params *vf_params, int stage1);
 
 int
 rte_vdpa_vf_dev_remove(const char *vf_name);

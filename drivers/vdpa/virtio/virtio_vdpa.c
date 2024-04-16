@@ -27,6 +27,7 @@ RTE_LOG_REGISTER(virtio_vdpa_logtype, pmd.vdpa.virtio, NOTICE);
 		"VIRTIO VDPA %s(): " fmt "\n", __func__, ##args)
 
 int virtio_vdpa_lcore_id = 0;
+static int stage1 = 0;
 #define VIRTIO_VDPA_DEV_CLOSE_WORK_CLEAN 0
 #define VIRTIO_VDPA_DEV_CLOSE_WORK_START 1
 #define VIRTIO_VDPA_DEV_CLOSE_WORK_DONE 2
@@ -1811,6 +1812,17 @@ static int vdpa_check_handler(__rte_unused const char *key,
 	return 0;
 }
 
+static int vdpa_stage_handler(__rte_unused const char *key,
+		const char *value, __rte_unused void *ret_val)
+{
+	if (strcmp(value, VIRTIO_ARG_VDPA_VALUE_STAGE) == 0)
+		stage1 = 1;
+	else
+		stage1 = 0;
+
+	return 0;
+}
+
 static int vm_uuid_check_handler(__rte_unused const char *key,
 		const char *value, void *ret_val)
 {
@@ -1856,6 +1868,16 @@ virtio_pci_devargs_parse(struct rte_devargs *devargs, int *vdpa, rte_uuid_t vm_u
 		if (ret < 0)
 			DRV_LOG(ERR, "Failed to parse %s", VIRTIO_ARG_VM_UUID);
 	}
+
+	if (rte_kvargs_count(kvlist, VIRTIO_ARG_VDPA_STAGE) == 1) {
+		/* stage mode selected, debug only
+		 */
+		ret = rte_kvargs_process(kvlist, VIRTIO_ARG_VDPA_STAGE,
+				vdpa_stage_handler, NULL);
+		if (ret < 0)
+			DRV_LOG(ERR, "Failed to parse %s", VIRTIO_ARG_VDPA_STAGE);
+	}
+
 
 	rte_kvargs_free(kvlist);
 
@@ -2308,6 +2330,10 @@ virtio_vdpa_dev_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		goto error;
 	}
 
+	if(stage1) {
+		DRV_LOG(INFO, "Use stage1 mode");
+		priv->restore = false;
+	}
 	if (priv->pdev->id.device_id == VIRTIO_PCI_MODERN_DEVICEID_NET)
 		priv->dev_ops = &virtio_vdpa_net_callback;
 	else if (priv->pdev->id.device_id == VIRTIO_PCI_MODERN_DEVICEID_BLK)
