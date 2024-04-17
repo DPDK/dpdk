@@ -48,6 +48,8 @@ cnxk_inl_dev = {'Class': '08', 'Vendor': '177d', 'Device': 'a0f0,a0f1',
 
 hisilicon_dma = {'Class': '08', 'Vendor': '19e5', 'Device': 'a122',
                  'SVendor': None, 'SDevice': None}
+odm_dma = {'Class': '08', 'Vendor': '177d', 'Device': 'a08c',
+           'SVendor': None, 'SDevice': None}
 
 intel_dlb = {'Class': '0b', 'Vendor': '8086', 'Device': '270b,2710,2714',
              'SVendor': None, 'SDevice': None}
@@ -82,7 +84,8 @@ network_devices = [network_class, cavium_pkx, avp_vnic, ifpga_class]
 baseband_devices = [acceleration_class]
 crypto_devices = [encryption_class, intel_processor_class]
 dma_devices = [cnxk_dma, hisilicon_dma,
-               intel_idxd_spr, intel_ioat_bdw, intel_ioat_icx, intel_ioat_skx]
+               intel_idxd_spr, intel_ioat_bdw, intel_ioat_icx, intel_ioat_skx,
+               odm_dma]
 eventdev_devices = [cavium_sso, cavium_tim, intel_dlb, cnxk_sso]
 mempool_devices = [cavium_fpa, cnxk_npa]
 compress_devices = [cavium_zip]
