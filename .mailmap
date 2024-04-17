@@ -174,7 +174,7 @@ Ben Walker <benjamin.walker@intel.com>
 Bernard Iremonger <bernard.iremonger@intel.com>
 Bert van Leeuwen <bert.vanleeuwen@netronome.com>
 Bhagyada Modali <bhagyada.modali@amd.com>
-Bharat Mota <bmota@vmware.com>
+Bharat Mota <bharat.mota@broadcom.com> <bmota@vmware.com>
 Bhuvan Mital <bhuvan.mital@amd.com>
 Bill Hong <bhong@brocade.com>
 Billy McFall <bmcfall@redhat.com>
@@ -185,7 +185,7 @@ Bin Zheng <zhengbin.89740@bytedance.com>
 Björn Töpel <bjorn.topel@intel.com>
 Bo Chen <box.c.chen@intel.com>
 Boleslav Stankevich <boleslav.stankevich@oktetlabs.ru>
-Boon Ang <bang@vmware.com>
+Boon Ang <boon.ang@broadcom.com> <bang@vmware.com>
 Boris Ouretskey <borisusun@gmail.com>
 Boris Pismenny <borisp@mellanox.com>
 Brad Larson <bradley.larson@amd.com>
@@ -475,7 +475,7 @@ Guduri Prathyusha <gprathyusha@caviumnetworks.com>
 Guido Barzini <gbarzini@solarflare.com>
 Guillaume Gaudonville <guillaume.gaudonville@6wind.com>
 Guinan Sun <guinanx.sun@intel.com>
-Guolin Yang <gyang@vmware.com>
+Guolin Yang <guolin.yang@broadcom.com> <gyang@vmware.com>
 Guo Xin <gxin@ezchip.com>
 Guoyang Zhou <zhouguoyang@huawei.com>
 Guruprasad Rao <guruprasadx.rao@intel.com>
@@ -670,13 +670,13 @@ Jing Chen <jing.d.chen@intel.com>
 Jingguo Fu <jingguox.fu@intel.com>
 Jingjing Wu <jingjing.wu@intel.com>
 Jingzhao Ni <jingzhao.ni@arm.com>
-Jin Heo <heoj@vmware.com>
+Jin Heo <jin.heo@broadcom.com> <heoj@vmware.com>
 Jin Ling <jin.ling@intel.com>
 Jin Liu <jin.liu@corigine.com>
 Jin Yu <jin.yu@intel.com>
 Jiri Slaby <jslaby@suse.cz>
 Job Abraham <job.abraham@intel.com>
-Jochen Behrens <jbehrens@vmware.com>
+Jochen Behrens <jochen.behrens@broadcom.com> <jbehrens@vmware.com>
 Joey Xing <joey.xing@jaguarmicro.com>
 Johan Faltstrom <johan.faltstrom@netinsight.net>
 Johan Källström <johan.kallstrom@ericsson.com>
@@ -1090,7 +1090,7 @@ Padraig Connolly <padraig.j.connolly@intel.com>
 Pallantla Poornima <pallantlax.poornima@intel.com>
 Pallavi Kadam <pallavi.kadam@intel.com>
 Pandi Kumar Maharajan <pandi.maharajan@intel.com>
-Pankaj Gupta <pagupta@vmware.com> <pagupta@redhat.com>
+Pankaj Gupta <pankaj.gupta@broadcom.com> <pagupta@vmware.com> <pagupta@redhat.com>
 Panu Matilainen <pmatilai@redhat.com>
 Paolo Valerio <pvalerio@redhat.com>
 Parav Pandit <parav@nvidia.com> <parav@mellanox.com>
