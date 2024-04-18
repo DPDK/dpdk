@@ -134,7 +134,7 @@ a vxlan-encapsulated tcp packet:
 
     mb->l2_len = len(out_eth)
     mb->l3_len = len(out_ip)
-    mb->ol_flags |= RTE_MBUF_F_TX_IPV4 | RTE_MBUF_F_TX_IP_CSUM
+    mb->ol_flags |= RTE_MBUF_F_TX_IPV4 | RTE_MBUF_F_TX_IP_CKSUM
     set out_ip checksum to 0 in the packet
 
   This is supported on hardware advertising RTE_ETH_TX_OFFLOAD_IPV4_CKSUM.
@@ -143,7 +143,7 @@ a vxlan-encapsulated tcp packet:
 
     mb->l2_len = len(out_eth)
     mb->l3_len = len(out_ip)
-    mb->ol_flags |= RTE_MBUF_F_TX_IPV4 | RTE_MBUF_F_TX_IP_CSUM | RTE_MBUF_F_TX_UDP_CKSUM
+    mb->ol_flags |= RTE_MBUF_F_TX_IPV4 | RTE_MBUF_F_TX_IP_CKSUM | RTE_MBUF_F_TX_UDP_CKSUM
     set out_ip checksum to 0 in the packet
     set out_udp checksum to pseudo header using rte_ipv4_phdr_cksum()
 
@@ -154,7 +154,7 @@ a vxlan-encapsulated tcp packet:
 
     mb->l2_len = len(out_eth + out_ip + out_udp + vxlan + in_eth)
     mb->l3_len = len(in_ip)
-    mb->ol_flags |= RTE_MBUF_F_TX_IPV4 | RTE_MBUF_F_TX_IP_CSUM
+    mb->ol_flags |= RTE_MBUF_F_TX_IPV4 | RTE_MBUF_F_TX_IP_CKSUM
     set in_ip checksum to 0 in the packet
 
   This is similar to case 1), but l2_len is different. It is supported
@@ -165,7 +165,7 @@ a vxlan-encapsulated tcp packet:
 
     mb->l2_len = len(out_eth + out_ip + out_udp + vxlan + in_eth)
     mb->l3_len = len(in_ip)
-    mb->ol_flags |= RTE_MBUF_F_TX_IPV4 | RTE_MBUF_F_TX_IP_CSUM | RTE_MBUF_F_TX_TCP_CKSUM
+    mb->ol_flags |= RTE_MBUF_F_TX_IPV4 | RTE_MBUF_F_TX_IP_CKSUM | RTE_MBUF_F_TX_TCP_CKSUM
     set in_ip checksum to 0 in the packet
     set in_tcp checksum to pseudo header using rte_ipv4_phdr_cksum()
 

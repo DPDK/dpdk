@@ -560,7 +560,7 @@ cn9k_nix_xmit_prepare_tstamp(struct cn9k_eth_txq *txq, uint64_t *cmd,
 
 		send_mem = (struct nix_send_mem_s *)(cmd + off);
 
-		/* Packets for which PKT_TX_IEEE1588_TMST is not set, tx tstamp
+		/* Packets for which RTE_MBUF_F_TX_IEEE1588_TMST is not set, Tx tstamp
 		 * should not be recorded, hence changing the alg type to
 		 * NIX_SENDMEMALG_SUB and also changing send mem addr field to
 		 * next 8 bytes as it corrupts the actual Tx tstamp registered
