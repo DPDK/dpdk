@@ -1260,6 +1260,69 @@ out:
 }
 
 static int
+virtio_vdpa_dev_state_run(struct virtio_vdpa_priv *priv)
+{
+	int ret;
+
+	if (priv->lm_status == VIRTIO_S_RUNNING) {
+		DRV_LOG(INFO, "%s vfid %d already running", priv->vdev->device->name, priv->vf_id);
+		return 0;
+	}
+
+	ret = virtio_vdpa_cmd_set_status(priv->pf_priv, priv->vf_id, VIRTIO_S_QUIESCED);
+	if (ret) {
+		DRV_LOG(ERR, "%s vfid %d failed unfreeze ret:%d",
+			priv->vdev->device->name, priv->vf_id, ret);
+		rte_errno = rte_errno ? rte_errno : EINVAL;
+		return -rte_errno;
+	}
+	priv->lm_status = VIRTIO_S_QUIESCED;
+
+	ret = virtio_vdpa_cmd_set_status(priv->pf_priv, priv->vf_id, VIRTIO_S_RUNNING);
+	if (ret) {
+		DRV_LOG(ERR, "%s vfid %d failed unquiesced ret:%d",
+			priv->vdev->device->name, priv->vf_id, ret);
+		rte_errno = rte_errno ? rte_errno : EINVAL;
+		return -rte_errno;
+	}
+	priv->lm_status = VIRTIO_S_RUNNING;
+
+	return 0;
+}
+
+static int
+virtio_vdpa_dev_state_freeze(struct virtio_vdpa_priv *priv)
+{
+	int ret;
+
+	if (priv->lm_status == VIRTIO_S_FREEZED) {
+		DRV_LOG(INFO, "%s vfid %d already freezed", priv->vdev->device->name, priv->vf_id);
+		return 0;
+	}
+
+	if (priv->lm_status != VIRTIO_S_QUIESCED) {
+		ret = virtio_vdpa_cmd_set_status(priv->pf_priv, priv->vf_id, VIRTIO_S_QUIESCED);
+		if (ret) {
+			DRV_LOG(ERR, "%s vfid %d failed suspend ret:%d",
+				priv->vdev->device->name, priv->vf_id, ret);
+			rte_errno = rte_errno ? rte_errno : VFE_VDPA_ERR_ADD_VF_SET_STATUS_QUIESCED;
+			return -rte_errno;
+		}
+		priv->lm_status = VIRTIO_S_QUIESCED;
+	}
+
+	ret = virtio_vdpa_cmd_set_status(priv->pf_priv, priv->vf_id, VIRTIO_S_FREEZED);
+	if (ret) {
+		DRV_LOG(ERR, "%s vfid %d failed suspend ret:%d", priv->vdev->device->name, priv->vf_id, ret);
+		rte_errno = rte_errno ? rte_errno : VFE_VDPA_ERR_ADD_VF_SET_STATUS_FREEZED;
+		return -rte_errno;
+	}
+	priv->lm_status = VIRTIO_S_FREEZED;
+
+	return 0;
+}
+
+static int
 virtio_vdpa_dev_close(int vid)
 {
 	struct rte_vdpa_device *vdev = rte_vhost_get_vdpa_device(vid);
@@ -1289,19 +1352,11 @@ virtio_vdpa_dev_close(int vid)
 
 	priv->configured = false;
 
-	/* Suspend */
-	ret = virtio_vdpa_cmd_set_status(priv->pf_priv, priv->vf_id, VIRTIO_S_QUIESCED);
+	ret = virtio_vdpa_dev_state_freeze(priv);
 	if (ret) {
-		DRV_LOG(ERR, "%s vfid %d failed suspend ret:%d", vdev->device->name, priv->vf_id, ret);
-		// Don't return in device close, try to release all resource.
+		DRV_LOG(ERR, "%s vfid %d failed close state modify ret:%d",
+				vdev->device->name, priv->vf_id, ret);
 	}
-	priv->lm_status = VIRTIO_S_QUIESCED;
-
-	ret = virtio_vdpa_cmd_set_status(priv->pf_priv, priv->vf_id, VIRTIO_S_FREEZED);
-	if (ret) {
-		DRV_LOG(ERR, "%s vfid %d failed suspend ret:%d", vdev->device->name, priv->vf_id, ret);
-	}
-	priv->lm_status = VIRTIO_S_FREEZED;
 
 	rte_vhost_get_negotiated_features(vid, &features);
 	if (RTE_VHOST_NEED_LOG(features)) {
@@ -1462,28 +1517,16 @@ virtio_vdpa_dev_config(int vid)
 		compare = virtio_pci_dev_state_compare(priv->vpdev, priv->state_mz->addr,
 						priv->state_size, priv->state_mz_remote->addr,
 						priv->state_mz_remote->len);
-		if (!compare) {
-			ret = virtio_vdpa_cmd_set_status(priv->pf_priv, priv->vf_id, VIRTIO_S_QUIESCED);
-			if (ret) {
-				DRV_LOG(ERR, "%s vfid %d failed suspend ret:%d", vdev->device->name, priv->vf_id, ret);
-				rte_errno = rte_errno ? rte_errno : VFE_VDPA_ERR_ADD_VF_SET_STATUS_QUIESCED;
-				return -rte_errno;
-			}
-
-			priv->lm_status = VIRTIO_S_QUIESCED;
-
-			ret = virtio_vdpa_cmd_set_status(priv->pf_priv, priv->vf_id, VIRTIO_S_FREEZED);
-			if (ret) {
-				DRV_LOG(ERR, "%s vfid %d failed suspend ret:%d", vdev->device->name, priv->vf_id, ret);
-				rte_errno = rte_errno ? rte_errno : VFE_VDPA_ERR_ADD_VF_SET_STATUS_FREEZED;
-				return -rte_errno;
-			}
-
-			priv->lm_status = VIRTIO_S_FREEZED;
-		}
 	}
 
 	if ((!priv->restore) || (!compare)) {
+
+		ret = virtio_vdpa_dev_state_freeze(priv);
+		if (ret) {
+			DRV_LOG(ERR, "%s vfid %d failed state modify ret:%d", vdev->device->name, priv->vf_id, ret);
+			return ret;
+		}
+
 		ret = virtio_vdpa_cmd_restore_state(priv->pf_priv, priv->vf_id, 0, priv->state_size, priv->state_mz->iova);
 		if (ret) {
 			DRV_LOG(ERR, "%s vfid %d failed restore state ret:%d", vdev->device->name, priv->vf_id, ret);
@@ -1492,21 +1535,11 @@ virtio_vdpa_dev_config(int vid)
 			return -rte_errno;
 		}
 
-		ret = virtio_vdpa_cmd_set_status(priv->pf_priv, priv->vf_id, VIRTIO_S_QUIESCED);
+		ret = virtio_vdpa_dev_state_run(priv);
 		if (ret) {
-			DRV_LOG(ERR, "%s vfid %d failed unfreeze ret:%d", vdev->device->name, priv->vf_id, ret);
-			rte_errno = rte_errno ? rte_errno : EINVAL;
-			return -rte_errno;
+			DRV_LOG(ERR, "%s vfid %d failed modify running ret:%d", vdev->device->name, priv->vf_id, ret);
+			return ret;
 		}
-		priv->lm_status = VIRTIO_S_QUIESCED;
-
-		ret = virtio_vdpa_cmd_set_status(priv->pf_priv, priv->vf_id, VIRTIO_S_RUNNING);
-		if (ret) {
-			DRV_LOG(ERR, "%s vfid %d failed unquiesced ret:%d", vdev->device->name, priv->vf_id, ret);
-			rte_errno = rte_errno ? rte_errno : EINVAL;
-			return -rte_errno;
-		}
-		priv->lm_status = VIRTIO_S_RUNNING;
 	}
 
 	priv->restore = false;
@@ -1710,27 +1743,15 @@ virtio_vdpa_dev_presetup_done(int vid)
 			VIRTIO_CONFIG_STATUS_FEATURES_OK |
 			VIRTIO_CONFIG_STATUS_DRIVER_OK);
 
-	if (priv->restore) {
-		ret = virtio_vdpa_cmd_set_status(priv->pf_priv, priv->vf_id, VIRTIO_S_QUIESCED);
-		if (ret) {
-			DRV_LOG(ERR, "%s vfid %d failed suspend ret:%d", vdev->device->name, priv->vf_id, ret);
-			rte_errno = rte_errno ? rte_errno : VFE_VDPA_ERR_ADD_VF_SET_STATUS_QUIESCED;
-			return -rte_errno;
-		}
-
-		priv->lm_status = VIRTIO_S_QUIESCED;
-
-		ret = virtio_vdpa_cmd_set_status(priv->pf_priv, priv->vf_id, VIRTIO_S_FREEZED);
-		if (ret) {
-			DRV_LOG(ERR, "%s vfid %d failed suspend ret:%d", vdev->device->name, priv->vf_id, ret);
-			rte_errno = rte_errno ? rte_errno : VFE_VDPA_ERR_ADD_VF_SET_STATUS_FREEZED;
-			return -rte_errno;
-		}
-
-		priv->lm_status = VIRTIO_S_FREEZED;
-		/* No need to on stage2 when presetup, compare can be done on controller side */
-		priv->restore = false;
+	ret = virtio_vdpa_dev_state_freeze(priv);
+	if (ret) {
+		DRV_LOG(ERR, "%s vfid %d failed presetup state modify ret:%d",
+			vdev->device->name, priv->vf_id, ret);
+		return ret;
 	}
+
+	/* No need to on stage2 when presetup, compare can be done on controller side */
+	priv->restore = false;
 
 	ret = virtio_vdpa_cmd_restore_state(priv->pf_priv, priv->vf_id, 0,
 			priv->state_size, priv->state_mz->iova);
@@ -2025,22 +2046,6 @@ virtio_vdpa_dev_do_remove(struct rte_pci_device *pci_dev, struct virtio_vdpa_pri
 		if (ret) {
 			DRV_LOG(ERR, "%s unregister dev interrupt fail ret:%d", pci_dev->name, ret);
 		}
-	}
-
-	if (priv->lm_status == VIRTIO_S_FREEZED) {
-		ret = virtio_vdpa_cmd_set_status(priv->pf_priv, priv->vf_id, VIRTIO_S_QUIESCED);
-		if (ret) {
-			DRV_LOG(ERR, "%s vfid %d failed unfreeze ret:%d", pci_dev->name, priv->vf_id, ret);
-		}
-		priv->lm_status = VIRTIO_S_QUIESCED;
-	}
-
-	if (priv->lm_status == VIRTIO_S_QUIESCED) {
-		ret = virtio_vdpa_cmd_set_status(priv->pf_priv, priv->vf_id, VIRTIO_S_RUNNING);
-		if (ret) {
-			DRV_LOG(ERR, "%s vfid %d failed unquiesced ret:%d", pci_dev->name, priv->vf_id, ret);
-		}
-		priv->lm_status = VIRTIO_S_RUNNING;
 	}
 
 	if (priv->vdev)
@@ -2410,25 +2415,7 @@ virtio_vdpa_dev_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	mz_len = priv->state_mz_remote->len;
 	memset(priv->state_mz_remote->addr, 0, mz_len);
 
-	if (!priv->restore) {
-		ret = virtio_vdpa_cmd_set_status(priv->pf_priv, priv->vf_id, VIRTIO_S_QUIESCED);
-		if (ret) {
-			DRV_LOG(ERR, "%s vfid %d failed suspend ret:%d", devname, priv->vf_id, ret);
-			rte_errno = rte_errno ? rte_errno : VFE_VDPA_ERR_ADD_VF_SET_STATUS_QUIESCED;
-			goto error;
-		}
-
-		priv->lm_status = VIRTIO_S_QUIESCED;
-
-		ret = virtio_vdpa_cmd_set_status(priv->pf_priv, priv->vf_id, VIRTIO_S_FREEZED);
-		if (ret) {
-			DRV_LOG(ERR, "%s vfid %d failed suspend ret:%d", devname, priv->vf_id, ret);
-			rte_errno = rte_errno ? rte_errno : VFE_VDPA_ERR_ADD_VF_SET_STATUS_FREEZED;
-			goto error;
-		}
-
-		priv->lm_status = VIRTIO_S_FREEZED;
-	} else {
+	if (priv->restore) {
 		virtio_vdpa_save_state_update_hwidx(priv, 0, false);
 	}
 
