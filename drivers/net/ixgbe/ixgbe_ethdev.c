@@ -4672,14 +4672,20 @@ ixgbe_dev_interrupt_action(struct rte_eth_dev *dev)
 			timeout = IXGBE_LINK_DOWN_CHECK_TIMEOUT;
 
 		ixgbe_dev_link_status_print(dev);
-		if (rte_eal_alarm_set(timeout * 1000,
-				      ixgbe_dev_interrupt_delayed_handler, (void *)dev) < 0)
-			PMD_DRV_LOG(ERR, "Error setting alarm");
-		else {
-			/* remember original mask */
-			intr->mask_original = intr->mask;
-			/* only disable lsc interrupt */
-			intr->mask &= ~IXGBE_EIMS_LSC;
+
+		/* Don't program delayed handler if LSC interrupt is disabled.
+		 * It means one is already programmed.
+		 */
+		if (intr->mask & IXGBE_EIMS_LSC) {
+			if (rte_eal_alarm_set(timeout * 1000,
+					      ixgbe_dev_interrupt_delayed_handler, (void *)dev) < 0)
+				PMD_DRV_LOG(ERR, "Error setting alarm");
+			else {
+				/* remember original mask */
+				intr->mask_original = intr->mask;
+				/* only disable lsc interrupt */
+				intr->mask &= ~IXGBE_EIMS_LSC;
+			}
 		}
 	}
 
