@@ -3629,47 +3629,6 @@ hns3_pkt_need_linearized(struct rte_mbuf *tx_pkts, uint32_t bd_num,
 	return false;
 }
 
-static void
-hns3_outer_header_cksum_prepare(struct rte_mbuf *m)
-{
-	uint64_t ol_flags = m->ol_flags;
-	uint32_t paylen, hdr_len, l4_proto;
-	struct rte_udp_hdr *udp_hdr;
-
-	if (!(ol_flags & (RTE_MBUF_F_TX_OUTER_IPV4 | RTE_MBUF_F_TX_OUTER_IPV6)) &&
-			((ol_flags & RTE_MBUF_F_TX_OUTER_UDP_CKSUM) ||
-			!(ol_flags & RTE_MBUF_F_TX_TCP_SEG)))
-		return;
-
-	if (ol_flags & RTE_MBUF_F_TX_OUTER_IPV4) {
-		struct rte_ipv4_hdr *ipv4_hdr;
-
-		ipv4_hdr = rte_pktmbuf_mtod_offset(m, struct rte_ipv4_hdr *,
-			m->outer_l2_len);
-		l4_proto = ipv4_hdr->next_proto_id;
-	} else {
-		struct rte_ipv6_hdr *ipv6_hdr;
-
-		ipv6_hdr = rte_pktmbuf_mtod_offset(m, struct rte_ipv6_hdr *,
-					   m->outer_l2_len);
-		l4_proto = ipv6_hdr->proto;
-	}
-
-	if (l4_proto != IPPROTO_UDP)
-		return;
-
-	/* driver should ensure the outer udp cksum is 0 for TUNNEL TSO */
-	hdr_len = m->l2_len + m->l3_len + m->l4_len;
-	hdr_len += m->outer_l2_len + m->outer_l3_len;
-	paylen = m->pkt_len - hdr_len;
-	if (paylen <= m->tso_segsz)
-		return;
-	udp_hdr = rte_pktmbuf_mtod_offset(m, struct rte_udp_hdr *,
-					  m->outer_l2_len +
-					  m->outer_l3_len);
-	udp_hdr->dgram_cksum = 0;
-}
-
 static int
 hns3_check_tso_pkt_valid(struct rte_mbuf *m)
 {
@@ -3847,7 +3806,6 @@ hns3_prep_pkt_proc(struct hns3_tx_queue *tx_queue, struct rte_mbuf *m)
 			 * checksum of packets that need TSO, so network driver
 			 * software not need to recalculate it.
 			 */
-			hns3_outer_header_cksum_prepare(m);
 			return 0;
 		}
 	}
@@ -3860,8 +3818,6 @@ hns3_prep_pkt_proc(struct hns3_tx_queue *tx_queue, struct rte_mbuf *m)
 
 	if (!hns3_validate_tunnel_cksum(tx_queue, m))
 		return 0;
-
-	hns3_outer_header_cksum_prepare(m);
 
 	return 0;
 }
