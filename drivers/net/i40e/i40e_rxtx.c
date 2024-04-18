@@ -295,6 +295,15 @@ i40e_parse_tunneling_params(uint64_t ol_flags,
 	 */
 	*cd_tunneling |= (tx_offload.l2_len >> 1) <<
 		I40E_TXD_CTX_QW0_NATLEN_SHIFT;
+
+	/**
+	 * Calculate the tunneling UDP checksum (only supported with X722).
+	 * Shall be set only if L4TUNT = 01b and EIPT is not zero
+	 */
+	if ((*cd_tunneling & I40E_TXD_CTX_QW0_EXT_IP_MASK) &&
+			(*cd_tunneling & I40E_TXD_CTX_UDP_TUNNELING) &&
+			(ol_flags & RTE_MBUF_F_TX_OUTER_UDP_CKSUM))
+		*cd_tunneling |= I40E_TXD_CTX_QW0_L4T_CS_MASK;
 }
 
 static inline void
