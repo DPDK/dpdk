@@ -3627,58 +3627,6 @@ hns3_pkt_need_linearized(struct rte_mbuf *tx_pkts, uint32_t bd_num,
 	return false;
 }
 
-static bool
-hns3_outer_ipv4_cksum_prepared(struct rte_mbuf *m, uint64_t ol_flags,
-				uint32_t *l4_proto)
-{
-	struct rte_ipv4_hdr *ipv4_hdr;
-	ipv4_hdr = rte_pktmbuf_mtod_offset(m, struct rte_ipv4_hdr *,
-					   m->outer_l2_len);
-	if (ol_flags & RTE_MBUF_F_TX_OUTER_IP_CKSUM)
-		ipv4_hdr->hdr_checksum = 0;
-	if (ol_flags & RTE_MBUF_F_TX_OUTER_UDP_CKSUM) {
-		struct rte_udp_hdr *udp_hdr;
-		/*
-		 * If OUTER_UDP_CKSUM is support, HW can calculate the pseudo
-		 * header for TSO packets
-		 */
-		if (ol_flags & RTE_MBUF_F_TX_TCP_SEG)
-			return true;
-		udp_hdr = rte_pktmbuf_mtod_offset(m, struct rte_udp_hdr *,
-				m->outer_l2_len + m->outer_l3_len);
-		udp_hdr->dgram_cksum = rte_ipv4_phdr_cksum(ipv4_hdr, ol_flags);
-
-		return true;
-	}
-	*l4_proto = ipv4_hdr->next_proto_id;
-	return false;
-}
-
-static bool
-hns3_outer_ipv6_cksum_prepared(struct rte_mbuf *m, uint64_t ol_flags,
-				uint32_t *l4_proto)
-{
-	struct rte_ipv6_hdr *ipv6_hdr;
-	ipv6_hdr = rte_pktmbuf_mtod_offset(m, struct rte_ipv6_hdr *,
-					   m->outer_l2_len);
-	if (ol_flags & RTE_MBUF_F_TX_OUTER_UDP_CKSUM) {
-		struct rte_udp_hdr *udp_hdr;
-		/*
-		 * If OUTER_UDP_CKSUM is support, HW can calculate the pseudo
-		 * header for TSO packets
-		 */
-		if (ol_flags & RTE_MBUF_F_TX_TCP_SEG)
-			return true;
-		udp_hdr = rte_pktmbuf_mtod_offset(m, struct rte_udp_hdr *,
-				m->outer_l2_len + m->outer_l3_len);
-		udp_hdr->dgram_cksum = rte_ipv6_phdr_cksum(ipv6_hdr, ol_flags);
-
-		return true;
-	}
-	*l4_proto = ipv6_hdr->proto;
-	return false;
-}
-
 static void
 hns3_outer_header_cksum_prepare(struct rte_mbuf *m)
 {
@@ -3686,29 +3634,38 @@ hns3_outer_header_cksum_prepare(struct rte_mbuf *m)
 	uint32_t paylen, hdr_len, l4_proto;
 	struct rte_udp_hdr *udp_hdr;
 
-	if (!(ol_flags & (RTE_MBUF_F_TX_OUTER_IPV4 | RTE_MBUF_F_TX_OUTER_IPV6)))
+	if (!(ol_flags & (RTE_MBUF_F_TX_OUTER_IPV4 | RTE_MBUF_F_TX_OUTER_IPV6)) &&
+			((ol_flags & RTE_MBUF_F_TX_OUTER_UDP_CKSUM) ||
+			!(ol_flags & RTE_MBUF_F_TX_TCP_SEG)))
 		return;
 
 	if (ol_flags & RTE_MBUF_F_TX_OUTER_IPV4) {
-		if (hns3_outer_ipv4_cksum_prepared(m, ol_flags, &l4_proto))
-			return;
+		struct rte_ipv4_hdr *ipv4_hdr;
+
+		ipv4_hdr = rte_pktmbuf_mtod_offset(m, struct rte_ipv4_hdr *,
+			m->outer_l2_len);
+		l4_proto = ipv4_hdr->next_proto_id;
 	} else {
-		if (hns3_outer_ipv6_cksum_prepared(m, ol_flags, &l4_proto))
-			return;
+		struct rte_ipv6_hdr *ipv6_hdr;
+
+		ipv6_hdr = rte_pktmbuf_mtod_offset(m, struct rte_ipv6_hdr *,
+					   m->outer_l2_len);
+		l4_proto = ipv6_hdr->proto;
 	}
 
+	if (l4_proto != IPPROTO_UDP)
+		return;
+
 	/* driver should ensure the outer udp cksum is 0 for TUNNEL TSO */
-	if (l4_proto == IPPROTO_UDP && (ol_flags & RTE_MBUF_F_TX_TCP_SEG)) {
-		hdr_len = m->l2_len + m->l3_len + m->l4_len;
-		hdr_len += m->outer_l2_len + m->outer_l3_len;
-		paylen = m->pkt_len - hdr_len;
-		if (paylen <= m->tso_segsz)
-			return;
-		udp_hdr = rte_pktmbuf_mtod_offset(m, struct rte_udp_hdr *,
-						  m->outer_l2_len +
-						  m->outer_l3_len);
-		udp_hdr->dgram_cksum = 0;
-	}
+	hdr_len = m->l2_len + m->l3_len + m->l4_len;
+	hdr_len += m->outer_l2_len + m->outer_l3_len;
+	paylen = m->pkt_len - hdr_len;
+	if (paylen <= m->tso_segsz)
+		return;
+	udp_hdr = rte_pktmbuf_mtod_offset(m, struct rte_udp_hdr *,
+					  m->outer_l2_len +
+					  m->outer_l3_len);
+	udp_hdr->dgram_cksum = 0;
 }
 
 static int

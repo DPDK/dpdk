@@ -121,7 +121,7 @@ rte_net_intel_cksum_flags_prepare(struct rte_mbuf *m, uint64_t ol_flags)
 	 * no offloads are requested.
 	 */
 	if (!(ol_flags & (RTE_MBUF_F_TX_IP_CKSUM | RTE_MBUF_F_TX_L4_MASK | RTE_MBUF_F_TX_TCP_SEG |
-			  RTE_MBUF_F_TX_OUTER_IP_CKSUM)))
+			  RTE_MBUF_F_TX_OUTER_IP_CKSUM | RTE_MBUF_F_TX_OUTER_UDP_CKSUM)))
 		return 0;
 
 	if (ol_flags & (RTE_MBUF_F_TX_OUTER_IPV4 | RTE_MBUF_F_TX_OUTER_IPV6)) {
@@ -134,6 +134,21 @@ rte_net_intel_cksum_flags_prepare(struct rte_mbuf *m, uint64_t ol_flags)
 			ipv4_hdr = rte_pktmbuf_mtod_offset(m,
 					struct rte_ipv4_hdr *, m->outer_l2_len);
 			ipv4_hdr->hdr_checksum = 0;
+		}
+		if (ol_flags & RTE_MBUF_F_TX_OUTER_UDP_CKSUM) {
+			if (ol_flags & RTE_MBUF_F_TX_OUTER_IPV4) {
+				ipv4_hdr = rte_pktmbuf_mtod_offset(m, struct rte_ipv4_hdr *,
+					m->outer_l2_len);
+				udp_hdr = (struct rte_udp_hdr *)((char *)ipv4_hdr +
+					m->outer_l3_len);
+				udp_hdr->dgram_cksum = rte_ipv4_phdr_cksum(ipv4_hdr, m->ol_flags);
+			} else {
+				ipv6_hdr = rte_pktmbuf_mtod_offset(m, struct rte_ipv6_hdr *,
+					m->outer_l2_len);
+				udp_hdr = rte_pktmbuf_mtod_offset(m, struct rte_udp_hdr *,
+					 m->outer_l2_len + m->outer_l3_len);
+				udp_hdr->dgram_cksum = rte_ipv6_phdr_cksum(ipv6_hdr, m->ol_flags);
+			}
 		}
 	}
 
