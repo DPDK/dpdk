@@ -1455,6 +1455,20 @@ ice_interrupt_handler(void *param)
 				    "%d by TCLAN on TX queue %d PF# %d",
 				    event, queue, pf_num);
 		}
+
+		reg = ICE_READ_REG(hw, GL_MDET_TX_TDPU);
+		if (reg & GL_MDET_TX_TDPU_VALID_M) {
+			pf_num = (reg & GL_MDET_TX_TDPU_PF_NUM_M) >>
+				 GL_MDET_TX_TDPU_PF_NUM_S;
+			event = (reg & GL_MDET_TX_TDPU_MAL_TYPE_M) >>
+				GL_MDET_TX_TDPU_MAL_TYPE_S;
+			queue = (reg & GL_MDET_TX_TDPU_QNUM_M) >>
+				GL_MDET_TX_TDPU_QNUM_S;
+
+			PMD_DRV_LOG(WARNING, "Malicious Driver Detection event "
+				    "%d by TDPU on TX queue %d PF# %d",
+				    event, queue, pf_num);
+		}
 	}
 done:
 	/* Enable interrupt */
