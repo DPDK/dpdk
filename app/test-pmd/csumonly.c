@@ -612,19 +612,13 @@ process_outer_cksums(void *outer_l3_hdr, struct testpmd_offload_info *info,
 		return ol_flags;
 	}
 
-	/* outer UDP checksum is done in software. In the other side, for
-	 * UDP tunneling, like VXLAN or Geneve, outer UDP checksum can be
-	 * set to zero.
+	/* Outer UDP checksum is done in software.
 	 *
 	 * If a packet will be TSOed into small packets by NIC, we cannot
 	 * set/calculate a non-zero checksum, because it will be a wrong
 	 * value after the packet be split into several small packets.
 	 */
-	if (tso_enabled)
-		udp_hdr->dgram_cksum = 0;
-
-	/* do not recalculate udp cksum if it was 0 */
-	if (udp_hdr->dgram_cksum != 0) {
+	if (!tso_enabled && udp_hdr->dgram_cksum != 0) {
 		udp_hdr->dgram_cksum = 0;
 		udp_hdr->dgram_cksum = get_udptcp_checksum(m, outer_l3_hdr,
 					info->outer_l2_len + info->outer_l3_len,
