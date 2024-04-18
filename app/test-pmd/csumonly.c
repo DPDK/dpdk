@@ -583,15 +583,17 @@ process_outer_cksums(void *outer_l3_hdr, struct testpmd_offload_info *info,
 	uint64_t ol_flags = 0;
 
 	if (info->outer_ethertype == _htons(RTE_ETHER_TYPE_IPV4)) {
-		ipv4_hdr->hdr_checksum = 0;
 		ol_flags |= RTE_MBUF_F_TX_OUTER_IPV4;
 
-		if (tx_offloads	& RTE_ETH_TX_OFFLOAD_OUTER_IPV4_CKSUM)
+		if (tx_offloads	& RTE_ETH_TX_OFFLOAD_OUTER_IPV4_CKSUM) {
 			ol_flags |= RTE_MBUF_F_TX_OUTER_IP_CKSUM;
-		else
+		} else {
+			ipv4_hdr->hdr_checksum = 0;
 			ipv4_hdr->hdr_checksum = rte_ipv4_cksum(ipv4_hdr);
-	} else
+		}
+	} else {
 		ol_flags |= RTE_MBUF_F_TX_OUTER_IPV6;
+	}
 
 	if (info->outer_l4_proto != IPPROTO_UDP)
 		return ol_flags;
