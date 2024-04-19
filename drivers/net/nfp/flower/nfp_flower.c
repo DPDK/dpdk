@@ -271,15 +271,15 @@ nfp_flower_init_ctrl_vnic(struct nfp_app_fw_flower *app_fw_flower,
 	}
 
 	/* Allocate memory for the eth_dev of the vNIC */
-	hw->eth_dev = rte_zmalloc("nfp_ctrl_vnic",
+	app_fw_flower->ctrl_ethdev = rte_zmalloc("nfp_ctrl_vnic",
 			sizeof(struct rte_eth_dev), RTE_CACHE_LINE_SIZE);
-	if (hw->eth_dev == NULL) {
+	if (app_fw_flower->ctrl_ethdev == NULL) {
 		PMD_INIT_LOG(ERR, "Could not allocate ctrl vnic");
 		return -ENOMEM;
 	}
 
 	/* Grab the pointer to the newly created rte_eth_dev here */
-	eth_dev = hw->eth_dev;
+	eth_dev = app_fw_flower->ctrl_ethdev;
 
 	/* Also allocate memory for the data part of the eth_dev */
 	eth_dev->data = rte_zmalloc("nfp_ctrl_vnic_data",
@@ -529,7 +529,7 @@ nfp_flower_cleanup_ctrl_vnic(struct nfp_app_fw_flower *app_fw_flower,
 	char ctrl_rxring_name[RTE_MEMZONE_NAMESIZE];
 
 	hw = app_fw_flower->ctrl_hw;
-	eth_dev = hw->eth_dev;
+	eth_dev = app_fw_flower->ctrl_ethdev;
 
 	pci_name = strchr(hw_priv->pf_dev->pci_dev->name, ':') + 1;
 
@@ -562,15 +562,17 @@ nfp_flower_cleanup_ctrl_vnic(struct nfp_app_fw_flower *app_fw_flower,
 }
 
 static int
-nfp_flower_start_ctrl_vnic(struct nfp_net_hw *net_hw)
+nfp_flower_start_ctrl_vnic(struct nfp_app_fw_flower *app_fw_flower)
 {
 	int ret;
 	uint32_t update;
 	uint32_t new_ctrl;
 	struct nfp_hw *hw;
 	struct rte_eth_dev *dev;
+	struct nfp_net_hw *net_hw;
 
-	dev = net_hw->eth_dev;
+	net_hw = app_fw_flower->ctrl_hw;
+	dev = app_fw_flower->ctrl_ethdev;
 	hw = &net_hw->super;
 
 	/* Disabling queues just in case... */
@@ -736,7 +738,7 @@ nfp_init_app_fw_flower(struct nfp_net_hw_priv *hw_priv)
 	}
 
 	/* Start the ctrl vNIC */
-	ret = nfp_flower_start_ctrl_vnic(app_fw_flower->ctrl_hw);
+	ret = nfp_flower_start_ctrl_vnic(app_fw_flower);
 	if (ret != 0) {
 		PMD_INIT_LOG(ERR, "Could not start flower ctrl vNIC");
 		goto ctrl_vnic_cleanup;

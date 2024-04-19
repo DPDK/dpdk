@@ -63,12 +63,14 @@ struct nfp_app_fw_flower {
 
 	/** Pointer to the PF vNIC */
 	struct nfp_net_hw *pf_hw;
+	struct rte_eth_dev *pf_ethdev;
 
 	/** Pointer to a mempool for the Ctrl vNIC */
 	struct rte_mempool *ctrl_pktmbuf_pool;
 
 	/** Pointer to the ctrl vNIC */
 	struct nfp_net_hw *ctrl_hw;
+	struct rte_eth_dev *ctrl_ethdev;
 
 	/** Ctrl vNIC Rx counter */
 	uint64_t ctrl_vnic_rx_count;

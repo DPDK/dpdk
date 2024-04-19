@@ -153,12 +153,10 @@ nfp_flower_ctrl_vnic_nfd3_xmit(struct nfp_app_fw_flower *app_fw_flower,
 	uint32_t free_descs;
 	struct rte_mbuf **lmbuf;
 	struct nfp_net_txq *txq;
-	struct nfp_net_hw *ctrl_hw;
 	struct rte_eth_dev *ctrl_dev;
 	struct nfp_net_nfd3_tx_desc *txds;
 
-	ctrl_hw = app_fw_flower->ctrl_hw;
-	ctrl_dev = ctrl_hw->eth_dev;
+	ctrl_dev = app_fw_flower->ctrl_ethdev;
 
 	/* Flower ctrl vNIC only has a single tx queue */
 	txq = ctrl_dev->data->tx_queues[0];
@@ -232,7 +230,7 @@ nfp_flower_ctrl_vnic_nfdk_xmit(struct nfp_app_fw_flower *app_fw_flower,
 	struct rte_eth_dev *ctrl_dev;
 	struct nfp_net_nfdk_tx_desc *ktxds;
 
-	ctrl_dev = app_fw_flower->ctrl_hw->eth_dev;
+	ctrl_dev = app_fw_flower->ctrl_ethdev;
 
 	/* Flower ctrl vNIC only has a single tx queue */
 	txq = ctrl_dev->data->tx_queues[0];
@@ -511,7 +509,7 @@ nfp_flower_ctrl_vnic_process(struct nfp_app_fw_flower *app_fw_flower)
 	struct rte_eth_dev *ctrl_eth_dev;
 	struct rte_mbuf *pkts_burst[MAX_PKT_BURST];
 
-	ctrl_eth_dev = app_fw_flower->ctrl_hw->eth_dev;
+	ctrl_eth_dev = app_fw_flower->ctrl_ethdev;
 
 	/* Ctrl vNIC only has a single Rx queue */
 	rxq = ctrl_eth_dev->data->rx_queues[0];

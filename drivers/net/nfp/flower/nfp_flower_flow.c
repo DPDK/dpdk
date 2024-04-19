@@ -3518,7 +3518,7 @@ nfp_flow_action_rss_add(struct nfp_flower_representor *representor,
 		struct nfp_fl_rss **rss_store)
 {
 	int ret;
-	struct nfp_net_hw *pf_hw;
+	struct rte_eth_dev *eth_dev;
 	struct rte_eth_rss_conf rss_conf;
 	struct nfp_fl_rss *rss_store_tmp;
 	const struct rte_flow_action_rss *rss;
@@ -3536,8 +3536,8 @@ nfp_flow_action_rss_add(struct nfp_flower_representor *representor,
 
 	rss_conf.rss_hf = 0;
 	rss_conf.rss_key = rss_key;
-	pf_hw = representor->app_fw_flower->pf_hw;
-	ret = nfp_net_rss_hash_conf_get(pf_hw->eth_dev, &rss_conf);
+	eth_dev = representor->app_fw_flower->pf_ethdev;
+	ret = nfp_net_rss_hash_conf_get(eth_dev, &rss_conf);
 	if (ret != 0) {
 		PMD_DRV_LOG(ERR, "Get RSS conf failed.");
 		return ret;
@@ -3563,7 +3563,7 @@ nfp_flow_action_rss_add(struct nfp_flower_representor *representor,
 		rss_store_tmp->key_len = rss->key_len;
 	}
 
-	ret = nfp_net_rss_hash_update(pf_hw->eth_dev, &rss_conf);
+	ret = nfp_net_rss_hash_update(eth_dev, &rss_conf);
 	if (ret != 0) {
 		PMD_DRV_LOG(ERR, "Update RSS conf failed.");
 		free(rss_store_tmp);
@@ -3580,7 +3580,7 @@ nfp_flow_action_rss_del(struct nfp_flower_representor *representor,
 		struct rte_flow *nfp_flow)
 {
 	int ret;
-	struct nfp_net_hw *pf_hw;
+	struct rte_eth_dev *eth_dev;
 	struct nfp_fl_rss *rss_store;
 	struct rte_eth_rss_conf rss_conf;
 	uint8_t rss_key[NFP_NET_CFG_RSS_KEY_SZ];
@@ -3590,8 +3590,8 @@ nfp_flow_action_rss_del(struct nfp_flower_representor *representor,
 
 	rss_conf.rss_hf = 0;
 	rss_conf.rss_key = rss_key;
-	pf_hw = representor->app_fw_flower->pf_hw;
-	ret = nfp_net_rss_hash_conf_get(pf_hw->eth_dev, &rss_conf);
+	eth_dev = representor->app_fw_flower->pf_ethdev;
+	ret = nfp_net_rss_hash_conf_get(eth_dev, &rss_conf);
 	if (ret != 0) {
 		PMD_DRV_LOG(ERR, "Get RSS conf failed.");
 		goto exit;
@@ -3612,7 +3612,7 @@ nfp_flow_action_rss_del(struct nfp_flower_representor *representor,
 		rss_conf.rss_key_len = 0;
 	}
 
-	ret = nfp_net_rss_hash_update(pf_hw->eth_dev, &rss_conf);
+	ret = nfp_net_rss_hash_update(eth_dev, &rss_conf);
 	if (ret != 0)
 		PMD_DRV_LOG(ERR, "Update RSS conf failed.");
 

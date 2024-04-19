@@ -20,7 +20,6 @@ struct nfp_flower_representor {
 	struct rte_ring *ring;
 	struct rte_eth_link link;
 	struct rte_eth_stats repr_stats;
-	struct rte_eth_dev *eth_dev;
 };
 
 int nfp_flower_repr_create(struct nfp_app_fw_flower *app_fw_flower,

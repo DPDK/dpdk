@@ -167,9 +167,6 @@ struct nfp_net_hw {
 	/** The parent class */
 	struct nfp_hw super;
 
-	/** Backpointer to the eth_dev of this port */
-	struct rte_eth_dev *eth_dev;
-
 	/** TX pointer ring write back memzone */
 	const struct rte_memzone *txrwb_mz;
 

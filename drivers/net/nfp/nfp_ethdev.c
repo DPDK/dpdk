@@ -100,15 +100,14 @@ nfp_devargs_parse(struct nfp_devargs *nfp_devargs_param,
 
 static void
 nfp_net_pf_read_mac(struct nfp_app_fw_nic *app_fw_nic,
-		uint16_t port)
+		uint16_t port,
+		struct nfp_net_hw_priv *hw_priv)
 {
 	struct nfp_net_hw *hw;
-	struct nfp_net_hw_priv *hw_priv;
 	struct nfp_eth_table *nfp_eth_table;
 
 	/* Grab a pointer to the correct physical port */
 	hw = app_fw_nic->ports[port];
-	hw_priv = hw->eth_dev->process_private;
 
 	nfp_eth_table = hw_priv->pf_dev->nfp_eth_table;
 
@@ -582,17 +581,14 @@ nfp_net_uninit(struct rte_eth_dev *eth_dev)
 
 static void
 nfp_cleanup_port_app_fw_nic(struct nfp_pf_dev *pf_dev,
-		uint8_t id)
+		uint8_t id,
+		struct rte_eth_dev *eth_dev)
 {
-	struct rte_eth_dev *eth_dev;
 	struct nfp_app_fw_nic *app_fw_nic;
 
 	app_fw_nic = pf_dev->app_fw_priv;
 	if (app_fw_nic->ports[id] != NULL) {
-		eth_dev = app_fw_nic->ports[id]->eth_dev;
-		if (eth_dev != NULL)
-			nfp_net_uninit(eth_dev);
-
+		nfp_net_uninit(eth_dev);
 		app_fw_nic->ports[id] = NULL;
 	}
 }
@@ -691,7 +687,7 @@ nfp_net_close(struct rte_eth_dev *dev)
 	if (pf_dev->app_fw_id != NFP_APP_FW_CORE_NIC)
 		return -EINVAL;
 
-	nfp_cleanup_port_app_fw_nic(pf_dev, hw->idx);
+	nfp_cleanup_port_app_fw_nic(pf_dev, hw->idx, dev);
 
 	for (i = 0; i < app_fw_nic->total_phyports; i++) {
 		id = nfp_function_id_get(pf_dev, i);
@@ -971,7 +967,6 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 
 	net_hw->tx_bar = pf_dev->qc_bar + tx_base * NFP_QCP_QUEUE_ADDR_SZ;
 	net_hw->rx_bar = pf_dev->qc_bar + rx_base * NFP_QCP_QUEUE_ADDR_SZ;
-	eth_dev->data->dev_private = net_hw;
 
 	PMD_INIT_LOG(DEBUG, "ctrl_bar: %p, tx_bar: %p, rx_bar: %p",
 			hw->ctrl_bar, net_hw->tx_bar, net_hw->rx_bar);
@@ -1002,7 +997,7 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 			goto xstats_free;
 	}
 
-	nfp_net_pf_read_mac(app_fw_nic, port);
+	nfp_net_pf_read_mac(app_fw_nic, port, hw_priv);
 	nfp_write_mac(hw, &hw->mac_addr.addr_bytes[0]);
 
 	if (rte_is_valid_assigned_ether_addr(&hw->mac_addr) == 0) {
@@ -1580,7 +1575,6 @@ nfp_init_app_fw_nic(struct nfp_net_hw_priv *hw_priv)
 		/* Add this device to the PF's array of physical ports */
 		app_fw_nic->ports[id] = hw;
 
-		hw->eth_dev = eth_dev;
 		hw->idx = id;
 		hw->nfp_idx = nfp_eth_table->ports[id].index;
 
@@ -1605,12 +1599,18 @@ nfp_init_app_fw_nic(struct nfp_net_hw_priv *hw_priv)
 
 port_cleanup:
 	for (i = 0; i < app_fw_nic->total_phyports; i++) {
-		id = nfp_function_id_get(pf_dev, i);
-		hw = app_fw_nic->ports[id];
+		struct rte_eth_dev *eth_dev;
 
-		if (hw != NULL && hw->eth_dev != NULL) {
-			nfp_net_uninit(hw->eth_dev);
-			rte_eth_dev_release_port(hw->eth_dev);
+		if (pf_dev->multi_pf.enabled)
+			snprintf(port_name, sizeof(port_name), "%s",
+					pf_dev->pci_dev->device.name);
+		else
+			snprintf(port_name, sizeof(port_name), "%s_port%u",
+					pf_dev->pci_dev->device.name, i);
+		eth_dev = rte_eth_dev_get_by_name(port_name);
+		if (eth_dev != NULL) {
+			nfp_net_uninit(eth_dev);
+			rte_eth_dev_release_port(eth_dev);
 		}
 	}
 	nfp_cpp_area_release_free(pf_dev->ctrl_area);
