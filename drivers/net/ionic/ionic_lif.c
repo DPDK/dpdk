@@ -990,13 +990,13 @@ ionic_lif_queue_identify(struct ionic_lif *lif)
 			qtype, ionic_qtype_vers[qtype]);
 		err = ionic_dev_cmd_wait_check(idev, IONIC_DEVCMD_TIMEOUT);
 		if (err == -EINVAL) {
-			IONIC_PRINT(ERR, "qtype %d not supported\n", qtype);
+			IONIC_PRINT(ERR, "qtype %d not supported", qtype);
 			continue;
 		} else if (err == -EIO) {
-			IONIC_PRINT(ERR, "q_ident failed, older FW\n");
+			IONIC_PRINT(ERR, "q_ident failed, older FW");
 			return;
 		} else if (err) {
-			IONIC_PRINT(ERR, "q_ident failed, qtype %d: %d\n",
+			IONIC_PRINT(ERR, "q_ident failed, qtype %d: %d",
 				qtype, err);
 			return;
 		}
@@ -1380,7 +1380,7 @@ ionic_lif_handle_fw_down(struct ionic_lif *lif)
 
 	if (lif->state & IONIC_LIF_F_UP) {
 		IONIC_PRINT(NOTICE,
-			"Surprise FW stop, stopping %s\n", lif->name);
+			"Surprise FW stop, stopping %s", lif->name);
 		ionic_lif_stop(lif);
 	}
 
