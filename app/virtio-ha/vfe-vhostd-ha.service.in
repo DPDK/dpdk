@@ -6,6 +6,7 @@ After=network.target network.service networking.service
 Type=simple
 ExecStart=@prefix@/bin/vfe-vhostd-ha
 TimeoutSec=1800
+LimitNOFILE=200000
 LimitCORE=infinity
 KillSignal=SIGTERM
 Restart=always
