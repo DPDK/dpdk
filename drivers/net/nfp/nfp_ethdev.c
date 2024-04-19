@@ -224,7 +224,7 @@ nfp_net_speed_configure(struct rte_eth_dev *dev)
 		}
 	}
 
-	nsp = nfp_eth_config_start(net_hw->cpp, eth_port->index);
+	nsp = nfp_eth_config_start(hw_priv->pf_dev->cpp, eth_port->index);
 	if (nsp == NULL) {
 		PMD_DRV_LOG(ERR, "Couldn't get NSP.");
 		return -EIO;
@@ -267,7 +267,6 @@ nfp_net_start(struct rte_eth_dev *dev)
 	uint16_t i;
 	struct nfp_hw *hw;
 	uint32_t new_ctrl;
-	struct nfp_cpp *cpp;
 	uint32_t update = 0;
 	uint32_t cap_extend;
 	uint32_t intr_vector;
@@ -402,13 +401,8 @@ nfp_net_start(struct rte_eth_dev *dev)
 		goto error;
 	}
 
-	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
-		cpp = net_hw->cpp;
-	else
-		cpp = pf_dev->cpp;
-
 	/* Configure the physical port up */
-	nfp_eth_set_configured(cpp, net_hw->nfp_idx, 1);
+	nfp_eth_set_configured(pf_dev->cpp, net_hw->nfp_idx, 1);
 
 	for (i = 0; i < dev->data->nb_rx_queues; i++)
 		dev->data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STARTED;
@@ -440,38 +434,26 @@ error:
 static int
 nfp_net_set_link_up(struct rte_eth_dev *dev)
 {
-	struct nfp_cpp *cpp;
 	struct nfp_net_hw *hw;
 	struct nfp_net_hw_priv *hw_priv;
 
 	hw = dev->data->dev_private;
 	hw_priv = dev->process_private;
 
-	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
-		cpp = hw->cpp;
-	else
-		cpp = hw_priv->pf_dev->cpp;
-
-	return nfp_eth_set_configured(cpp, hw->nfp_idx, 1);
+	return nfp_eth_set_configured(hw_priv->pf_dev->cpp, hw->nfp_idx, 1);
 }
 
 /* Set the link down. */
 static int
 nfp_net_set_link_down(struct rte_eth_dev *dev)
 {
-	struct nfp_cpp *cpp;
 	struct nfp_net_hw *hw;
 	struct nfp_net_hw_priv *hw_priv;
 
 	hw = dev->data->dev_private;
 	hw_priv = dev->process_private;
 
-	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
-		cpp = hw->cpp;
-	else
-		cpp = hw_priv->pf_dev->cpp;
-
-	return nfp_eth_set_configured(cpp, hw->nfp_idx, 0);
+	return nfp_eth_set_configured(hw_priv->pf_dev->cpp, hw->nfp_idx, 0);
 }
 
 static uint8_t
@@ -1178,7 +1160,6 @@ nfp_fw_check_change(struct nfp_cpp *cpp,
 		bool *fw_changed)
 {
 	int ret;
-	struct nfp_net_hw hw;
 	uint32_t new_version = 0;
 	uint32_t old_version = 0;
 
@@ -1186,8 +1167,7 @@ nfp_fw_check_change(struct nfp_cpp *cpp,
 	if (ret != 0)
 		return ret;
 
-	hw.cpp = cpp;
-	nfp_net_get_fw_version(&hw, &old_version);
+	nfp_net_get_fw_version(cpp, &old_version);
 
 	if (new_version != old_version) {
 		PMD_DRV_LOG(INFO, "FW version is changed, new %u, old %u",
@@ -1600,7 +1580,6 @@ nfp_init_app_fw_nic(struct nfp_net_hw_priv *hw_priv)
 		/* Add this device to the PF's array of physical ports */
 		app_fw_nic->ports[id] = hw;
 
-		hw->cpp = pf_dev->cpp;
 		hw->eth_dev = eth_dev;
 		hw->idx = id;
 		hw->nfp_idx = nfp_eth_table->ports[id].index;

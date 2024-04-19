@@ -201,7 +201,6 @@ struct nfp_net_hw {
 	struct rte_eth_stats eth_stats_base;
 	struct rte_eth_xstat *eth_xstats_base;
 
-	struct nfp_cpp *cpp;
 	struct nfp_cpp_area *ctrl_area;
 	struct nfp_cpp_area *mac_stats_area;
 	uint8_t *mac_stats_bar;
@@ -322,7 +321,7 @@ int nfp_net_fec_get(struct rte_eth_dev *dev,
 		uint32_t *fec_capa);
 int nfp_net_fec_set(struct rte_eth_dev *dev,
 		uint32_t fec_capa);
-void nfp_net_get_fw_version(struct nfp_net_hw *hw,
+void nfp_net_get_fw_version(struct nfp_cpp *cpp,
 		uint32_t *fw_version);
 int nfp_net_txrwb_alloc(struct rte_eth_dev *eth_dev);
 void nfp_net_txrwb_free(struct rte_eth_dev *eth_dev);

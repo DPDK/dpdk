@@ -695,7 +695,7 @@ nfp_net_speed_aneg_update(struct rte_eth_dev *dev,
 
 	/* Compare whether the current status has changed. */
 	if (dev->data->dev_link.link_status != link->link_status) {
-		nfp_eth_table = nfp_eth_read_ports(hw->cpp);
+		nfp_eth_table = nfp_eth_read_ports(hw_priv->pf_dev->cpp);
 		if (nfp_eth_table == NULL) {
 			PMD_DRV_LOG(DEBUG, "Error reading NFP ethernet table.");
 			return -EIO;
@@ -2094,12 +2094,12 @@ nfp_net_cfg_read_version(struct nfp_net_hw *hw)
 }
 
 static void
-nfp_net_get_nsp_info(struct nfp_net_hw *hw,
+nfp_net_get_nsp_info(struct nfp_net_hw_priv *hw_priv,
 		char *nsp_version)
 {
 	struct nfp_nsp *nsp;
 
-	nsp = nfp_nsp_open(hw->cpp);
+	nsp = nfp_nsp_open(hw_priv->pf_dev->cpp);
 	if (nsp == NULL)
 		return;
 
@@ -2111,12 +2111,12 @@ nfp_net_get_nsp_info(struct nfp_net_hw *hw,
 }
 
 void
-nfp_net_get_fw_version(struct nfp_net_hw *hw,
+nfp_net_get_fw_version(struct nfp_cpp *cpp,
 		uint32_t *mip_version)
 {
 	struct nfp_mip *mip;
 
-	mip = nfp_mip_open(hw->cpp);
+	mip = nfp_mip_open(cpp);
 	if (mip == NULL) {
 		*mip_version = 0;
 		return;
@@ -2128,12 +2128,12 @@ nfp_net_get_fw_version(struct nfp_net_hw *hw,
 }
 
 static void
-nfp_net_get_mip_name(struct nfp_net_hw *hw,
+nfp_net_get_mip_name(struct nfp_net_hw_priv *hw_priv,
 		char *mip_name)
 {
 	struct nfp_mip *mip;
 
-	mip = nfp_mip_open(hw->cpp);
+	mip = nfp_mip_open(hw_priv->pf_dev->cpp);
 	if (mip == NULL)
 		return;
 
@@ -2185,8 +2185,8 @@ nfp_net_firmware_version_get(struct rte_eth_dev *dev,
 		snprintf(vnic_version, FW_VER_LEN, "*");
 	}
 
-	nfp_net_get_nsp_info(hw, nsp_version);
-	nfp_net_get_mip_name(hw, mip_name);
+	nfp_net_get_nsp_info(hw_priv, nsp_version);
+	nfp_net_get_mip_name(hw_priv, mip_name);
 	nfp_net_get_app_name(hw_priv, app_name);
 
 	snprintf(fw_version, FW_VER_LEN, "%s %s %s %s",
@@ -2220,7 +2220,6 @@ nfp_net_is_valid_nfd_version(struct nfp_net_fw_ver version)
 int
 nfp_net_stop(struct rte_eth_dev *dev)
 {
-	struct nfp_cpp *cpp;
 	struct nfp_net_hw *hw;
 	struct nfp_net_hw_priv *hw_priv;
 
@@ -2233,12 +2232,7 @@ nfp_net_stop(struct rte_eth_dev *dev)
 	nfp_net_stop_tx_queue(dev);
 	nfp_net_stop_rx_queue(dev);
 
-	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
-		cpp = hw->cpp;
-	else
-		cpp = hw_priv->pf_dev->cpp;
-
-	nfp_eth_set_configured(cpp, hw->nfp_idx, 0);
+	nfp_eth_set_configured(hw_priv->pf_dev->cpp, hw->nfp_idx, 0);
 
 	return 0;
 }
@@ -2285,7 +2279,7 @@ nfp_net_flow_ctrl_get(struct rte_eth_dev *dev,
 }
 
 static int
-nfp_net_pause_frame_set(struct nfp_net_hw *net_hw,
+nfp_net_pause_frame_set(struct nfp_net_hw_priv *hw_priv,
 		struct nfp_eth_table_port *eth_port,
 		enum rte_eth_fc_mode mode)
 {
@@ -2293,7 +2287,7 @@ nfp_net_pause_frame_set(struct nfp_net_hw *net_hw,
 	bool flag;
 	struct nfp_nsp *nsp;
 
-	nsp = nfp_eth_config_start(net_hw->cpp, eth_port->index);
+	nsp = nfp_eth_config_start(hw_priv->pf_dev->cpp, eth_port->index);
 	if (nsp == NULL) {
 		PMD_DRV_LOG(ERR, "NFP error when obtaining NSP handle.");
 		return -EIO;
@@ -2350,7 +2344,7 @@ nfp_net_flow_ctrl_set(struct rte_eth_dev *dev,
 	if (set_mode == original_mode)
 		return 0;
 
-	ret = nfp_net_pause_frame_set(net_hw, eth_port, set_mode);
+	ret = nfp_net_pause_frame_set(hw_priv, eth_port, set_mode);
 	if (ret != 0)
 		return ret;
 
@@ -2438,7 +2432,7 @@ nfp_net_fec_get(struct rte_eth_dev *dev,
 		return -EINVAL;
 
 	if (dev->data->dev_link.link_status == RTE_ETH_LINK_DOWN) {
-		nfp_eth_table = nfp_eth_read_ports(hw->cpp);
+		nfp_eth_table = nfp_eth_read_ports(hw_priv->pf_dev->cpp);
 		hw_priv->pf_dev->nfp_eth_table->ports[hw->idx] = nfp_eth_table->ports[hw->idx];
 		free(nfp_eth_table);
 	}
@@ -2520,5 +2514,5 @@ nfp_net_fec_set(struct rte_eth_dev *dev,
 		return -EIO;
 	}
 
-	return nfp_eth_set_fec(hw->cpp, eth_port->index, fec);
+	return nfp_eth_set_fec(hw_priv->pf_dev->cpp, eth_port->index, fec);
 }

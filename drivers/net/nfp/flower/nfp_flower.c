@@ -707,7 +707,6 @@ nfp_init_app_fw_flower(struct nfp_net_hw_priv *hw_priv)
 	/* Fill in the PF vNIC and populate app struct */
 	app_fw_flower->pf_hw = pf_hw;
 	pf_hw->super.ctrl_bar = pf_dev->ctrl_bar;
-	pf_hw->cpp = pf_dev->cpp;
 
 	ret = nfp_flower_init_vnic_common(hw_priv, pf_hw, "pf_vnic");
 	if (ret != 0) {
@@ -729,9 +728,6 @@ nfp_init_app_fw_flower(struct nfp_net_hw_priv *hw_priv)
 		ret = -ENODEV;
 		goto pf_cpp_area_cleanup;
 	}
-
-	/* Now populate the ctrl vNIC */
-	ctrl_hw->cpp = pf_dev->cpp;
 
 	ret = nfp_flower_init_ctrl_vnic(app_fw_flower, hw_priv);
 	if (ret != 0) {
