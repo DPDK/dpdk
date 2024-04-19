@@ -31,21 +31,6 @@ struct __rte_aligned(64) nfp_net_txq {
 	/** Backpointer to nfp_net structure */
 	struct nfp_net_hw *hw;
 
-	/** Point to the base of the queue structure on the NFP. */
-	uint8_t *qcp_q;
-
-	/**
-	 * Host side read and write pointer, they are free running and
-	 * have little relation to the QCP pointers.
-	 */
-	uint32_t wr_p;
-	uint32_t rd_p;
-
-	/** The size of the queue in number of descriptors. */
-	uint32_t tx_count;
-
-	uint32_t tx_free_thresh;
-
 	/**
 	 * For each descriptor keep a reference to the mbuf and
 	 * DMA address used until completion is signalled.
@@ -61,6 +46,18 @@ struct __rte_aligned(64) nfp_net_txq {
 		struct nfp_net_nfdk_tx_desc *ktxds;
 	};
 
+	/**
+	 * Host side read and write pointer, they are free running and
+	 * have little relation to the QCP pointers.
+	 */
+	uint32_t wr_p;
+	uint32_t rd_p;
+
+	/** The size of the queue in number of descriptors. */
+	uint32_t tx_count;
+
+	uint32_t tx_free_thresh;
+
 	/** The index of the QCP queue relative to the TX queue BAR. */
 	uint32_t tx_qcidx;
 
@@ -72,8 +69,8 @@ struct __rte_aligned(64) nfp_net_txq {
 	uint16_t data_pending;
 
 	/**
-	 * At this point 58 bytes have been used for all the fields in the
-	 * TX critical path. We have room for 6 bytes and still all placed
+	 * At this point 50 bytes have been used for all the fields in the
+	 * TX critical path. We have room for 14 bytes and still all placed
 	 * in a cache line.
 	 */
 	uint64_t dma;
@@ -83,6 +80,9 @@ struct __rte_aligned(64) nfp_net_txq {
 
 	/** TX pointer ring write back area DMA address */
 	uint64_t txrwb_dma;
+
+	/** Point to the base of the queue structure on the NFP. */
+	uint8_t *qcp_q;
 };
 
 /* RX and freelist descriptor format */
@@ -146,19 +146,6 @@ struct __rte_aligned(64) nfp_net_rxq {
 	uint8_t *qcp_fl;
 
 	/**
-	 * Host side read pointer, free running and have little relation
-	 * to the QCP pointers. It is where the driver start reading
-	 * descriptors for newly arrive packets from.
-	 */
-	uint32_t rd_p;
-
-	/**
-	 * The index of the QCP queue relative to the RX queue BAR
-	 * used for the freelist.
-	 */
-	uint32_t fl_qcidx;
-
-	/**
 	 * For each buffer placed on the freelist, record the
 	 * associated mbuf.
 	 */
@@ -177,6 +164,14 @@ struct __rte_aligned(64) nfp_net_rxq {
 	 * safely copied to the mbuf using the NFP_NET_RX_OFFSET.
 	 */
 	struct rte_mempool *mem_pool;
+
+	/**
+	 * Host side read pointer, free running and have little relation
+	 * to the QCP pointers. It is where the driver start reading
+	 * descriptors for newly arrive packets from.
+	 */
+	uint32_t rd_p;
+
 	uint16_t mbuf_size;
 
 	/**
@@ -186,9 +181,6 @@ struct __rte_aligned(64) nfp_net_rxq {
 	uint16_t rx_free_thresh;
 	uint16_t nb_rx_hold;
 
-	 /** The size of the queue in number of descriptors */
-	uint16_t rx_count;
-
 	/** Referencing dev->data->port_id */
 	uint16_t port_id;
 
@@ -196,10 +188,19 @@ struct __rte_aligned(64) nfp_net_rxq {
 	uint16_t qidx;
 
 	/**
-	 * At this point 60 bytes have been used for all the fields in the
-	 * RX critical path. We have room for 4 bytes and still all placed
+	 * At this point 54 bytes have been used for all the fields in the
+	 * RX critical path. We have room for 10 bytes and still all placed
 	 * in a cache line.
 	 */
+
+	/** The size of the queue in number of descriptors */
+	uint16_t rx_count;
+
+	/**
+	 * The index of the QCP queue relative to the RX queue BAR
+	 * used for the freelist.
+	 */
+	uint32_t fl_qcidx;
 
 	/** DMA address of the queue */
 	uint64_t dma;
