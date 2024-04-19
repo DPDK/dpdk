@@ -104,8 +104,7 @@ nfp_flower_support_decap_v2(const struct nfp_app_fw_flower *app_fw_flower)
 	return app_fw_flower->ext_features & NFP_FL_FEATS_DECAP_V2;
 }
 
-int nfp_init_app_fw_flower(struct nfp_net_hw_priv *hw_priv,
-		const struct nfp_dev_info *dev_info);
+int nfp_init_app_fw_flower(struct nfp_net_hw_priv *hw_priv);
 void nfp_uninit_app_fw_flower(struct nfp_net_hw_priv *hw_priv);
 int nfp_secondary_init_app_fw_flower(struct nfp_net_hw_priv *hw_priv);
 bool nfp_flower_pf_dispatch_pkts(struct nfp_net_hw_priv *hw_priv,

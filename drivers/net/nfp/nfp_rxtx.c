@@ -606,10 +606,12 @@ nfp_net_rx_queue_setup(struct rte_eth_dev *dev,
 	struct nfp_net_hw *hw;
 	struct nfp_net_rxq *rxq;
 	const struct rte_memzone *tz;
+	struct nfp_net_hw_priv *hw_priv;
 
 	hw = nfp_net_get_hw(dev);
+	hw_priv = dev->process_private;
 
-	nfp_net_rx_desc_limits(hw, &min_rx_desc, &max_rx_desc);
+	nfp_net_rx_desc_limits(hw_priv, &min_rx_desc, &max_rx_desc);
 
 	/* Validating number of descriptors */
 	rx_desc_sz = nb_desc * sizeof(struct nfp_net_rx_desc);

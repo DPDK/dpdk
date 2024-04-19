@@ -372,7 +372,7 @@ nfp_flower_init_ctrl_vnic(struct nfp_app_fw_flower *app_fw_flower,
 		 */
 		tz = rte_eth_dma_zone_reserve(eth_dev, ctrl_rxring_name, i,
 				sizeof(struct nfp_net_rx_desc) *
-				hw->dev_info->max_qc_size,
+				hw_priv->dev_info->max_qc_size,
 				NFP_MEMZONE_ALIGN, numa_node);
 		if (tz == NULL) {
 			PMD_DRV_LOG(ERR, "Error allocating rx dma");
@@ -430,7 +430,7 @@ nfp_flower_init_ctrl_vnic(struct nfp_app_fw_flower *app_fw_flower,
 		 */
 		tz = rte_eth_dma_zone_reserve(eth_dev, ctrl_txring_name, i,
 				sizeof(struct nfp_net_nfd3_tx_desc) *
-				hw->dev_info->max_qc_size,
+				hw_priv->dev_info->max_qc_size,
 				NFP_MEMZONE_ALIGN, numa_node);
 		if (tz == NULL) {
 			PMD_DRV_LOG(ERR, "Error allocating tx dma");
@@ -639,8 +639,7 @@ nfp_flower_nfd_func_register(struct nfp_app_fw_flower *app_fw_flower)
 }
 
 int
-nfp_init_app_fw_flower(struct nfp_net_hw_priv *hw_priv,
-		const struct nfp_dev_info *dev_info)
+nfp_init_app_fw_flower(struct nfp_net_hw_priv *hw_priv)
 {
 	int ret;
 	int err;
@@ -709,7 +708,6 @@ nfp_init_app_fw_flower(struct nfp_net_hw_priv *hw_priv,
 	app_fw_flower->pf_hw = pf_hw;
 	pf_hw->super.ctrl_bar = pf_dev->ctrl_bar;
 	pf_hw->cpp = pf_dev->cpp;
-	pf_hw->dev_info = dev_info;
 
 	ret = nfp_flower_init_vnic_common(hw_priv, pf_hw, "pf_vnic");
 	if (ret != 0) {
@@ -734,7 +732,6 @@ nfp_init_app_fw_flower(struct nfp_net_hw_priv *hw_priv,
 
 	/* Now populate the ctrl vNIC */
 	ctrl_hw->cpp = pf_dev->cpp;
-	ctrl_hw->dev_info = dev_info;
 
 	ret = nfp_flower_init_ctrl_vnic(app_fw_flower, hw_priv);
 	if (ret != 0) {

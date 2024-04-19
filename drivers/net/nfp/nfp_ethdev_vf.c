@@ -162,14 +162,17 @@ nfp_netvf_close(struct rte_eth_dev *dev)
 {
 	struct nfp_net_hw *net_hw;
 	struct rte_pci_device *pci_dev;
+	struct nfp_net_hw_priv *hw_priv;
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
 
 	net_hw = dev->data->dev_private;
 	pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+	hw_priv = dev->process_private;
 
 	rte_free(net_hw->eth_xstats_base);
+	rte_free(hw_priv);
 
 	/*
 	 * We assume that the DPDK application is stopping all the
@@ -255,6 +258,7 @@ nfp_netvf_init(struct rte_eth_dev *eth_dev)
 	uint64_t tx_bar_off = 0;
 	uint64_t rx_bar_off = 0;
 	struct rte_pci_device *pci_dev;
+	struct nfp_net_hw_priv *hw_priv;
 	const struct nfp_dev_info *dev_info;
 
 	port = eth_dev->data->port_id;
@@ -267,7 +271,6 @@ nfp_netvf_init(struct rte_eth_dev *eth_dev)
 	}
 
 	net_hw = eth_dev->data->dev_private;
-	net_hw->dev_info = dev_info;
 	hw = &net_hw->super;
 
 	hw->ctrl_bar = pci_dev->mem_resource[0].addr;
@@ -283,6 +286,17 @@ nfp_netvf_init(struct rte_eth_dev *eth_dev)
 		return err;
 
 	nfp_netvf_ethdev_ops_mount(net_hw, eth_dev);
+
+	hw_priv = rte_zmalloc(NULL, sizeof(*hw_priv), 0);
+	if (hw_priv == NULL) {
+		PMD_INIT_LOG(ERR, "Can not alloc memory for hw priv data");
+		err = -ENOMEM;
+		goto hw_priv_free;
+	}
+
+	hw_priv->dev_info = dev_info;
+
+	eth_dev->process_private = hw_priv;
 
 	/* For secondary processes, the primary has done all the work */
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
@@ -366,6 +380,8 @@ nfp_netvf_init(struct rte_eth_dev *eth_dev)
 
 free_xstats:
 	rte_free(net_hw->eth_xstats_base);
+hw_priv_free:
+	rte_free(hw_priv);
 
 	return err;
 }

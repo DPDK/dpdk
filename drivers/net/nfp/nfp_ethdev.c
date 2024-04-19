@@ -1494,8 +1494,7 @@ end:
 }
 
 static int
-nfp_init_app_fw_nic(struct nfp_net_hw_priv *hw_priv,
-		const struct nfp_dev_info *dev_info)
+nfp_init_app_fw_nic(struct nfp_net_hw_priv *hw_priv)
 {
 	uint8_t i;
 	uint8_t id;
@@ -1601,7 +1600,6 @@ nfp_init_app_fw_nic(struct nfp_net_hw_priv *hw_priv,
 		/* Add this device to the PF's array of physical ports */
 		app_fw_nic->ports[id] = hw;
 
-		hw->dev_info = dev_info;
 		hw->cpp = pf_dev->cpp;
 		hw->eth_dev = eth_dev;
 		hw->idx = id;
@@ -1968,6 +1966,7 @@ nfp_pf_init(struct rte_pci_device *pci_dev)
 	PMD_INIT_LOG(DEBUG, "qc_bar address: %p", pf_dev->qc_bar);
 
 	hw_priv->pf_dev = pf_dev;
+	hw_priv->dev_info = dev_info;
 
 	/*
 	 * PF initialization has been done at this point. Call app specific
@@ -1982,7 +1981,7 @@ nfp_pf_init(struct rte_pci_device *pci_dev)
 		}
 
 		PMD_INIT_LOG(INFO, "Initializing coreNIC");
-		ret = nfp_init_app_fw_nic(hw_priv, dev_info);
+		ret = nfp_init_app_fw_nic(hw_priv);
 		if (ret != 0) {
 			PMD_INIT_LOG(ERR, "Could not initialize coreNIC!");
 			goto hwqueues_cleanup;
@@ -1990,7 +1989,7 @@ nfp_pf_init(struct rte_pci_device *pci_dev)
 		break;
 	case NFP_APP_FW_FLOWER_NIC:
 		PMD_INIT_LOG(INFO, "Initializing Flower");
-		ret = nfp_init_app_fw_flower(hw_priv, dev_info);
+		ret = nfp_init_app_fw_flower(hw_priv);
 		if (ret != 0) {
 			PMD_INIT_LOG(ERR, "Could not initialize Flower!");
 			goto hwqueues_cleanup;
@@ -2187,6 +2186,7 @@ nfp_pf_secondary_init(struct rte_pci_device *pci_dev)
 	pf_dev->sync = sync;
 
 	hw_priv->pf_dev = pf_dev;
+	hw_priv->dev_info = dev_info;
 
 	/* Call app specific init code now */
 	switch (app_fw_id) {

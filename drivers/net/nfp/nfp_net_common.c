@@ -1144,16 +1144,17 @@ nfp_net_xstats_reset(struct rte_eth_dev *dev)
 }
 
 void
-nfp_net_rx_desc_limits(struct nfp_net_hw *hw,
+nfp_net_rx_desc_limits(struct nfp_net_hw_priv *hw_priv,
 		uint16_t *min_rx_desc,
 		uint16_t *max_rx_desc)
 {
-	*max_rx_desc = hw->dev_info->max_qc_size;
-	*min_rx_desc = hw->dev_info->min_qc_size;
+	*max_rx_desc = hw_priv->dev_info->max_qc_size;
+	*min_rx_desc = hw_priv->dev_info->min_qc_size;
 }
 
 void
 nfp_net_tx_desc_limits(struct nfp_net_hw *hw,
+		struct nfp_net_hw_priv *hw_priv,
 		uint16_t *min_tx_desc,
 		uint16_t *max_tx_desc)
 {
@@ -1164,8 +1165,8 @@ nfp_net_tx_desc_limits(struct nfp_net_hw *hw,
 	else
 		tx_dpp = NFDK_TX_DESC_PER_SIMPLE_PKT;
 
-	*max_tx_desc = hw->dev_info->max_qc_size / tx_dpp;
-	*min_tx_desc = hw->dev_info->min_qc_size / tx_dpp;
+	*max_tx_desc = hw_priv->dev_info->max_qc_size / tx_dpp;
+	*min_tx_desc = hw_priv->dev_info->min_qc_size / tx_dpp;
 }
 
 int
@@ -1183,8 +1184,8 @@ nfp_net_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	hw = nfp_net_get_hw(dev);
 	hw_priv = dev->process_private;
 
-	nfp_net_rx_desc_limits(hw, &min_rx_desc, &max_rx_desc);
-	nfp_net_tx_desc_limits(hw, &min_tx_desc, &max_tx_desc);
+	nfp_net_rx_desc_limits(hw_priv, &min_rx_desc, &max_rx_desc);
+	nfp_net_tx_desc_limits(hw, hw_priv, &min_tx_desc, &max_tx_desc);
 
 	dev_info->max_rx_queues = (uint16_t)hw->max_rx_queues;
 	dev_info->max_tx_queues = (uint16_t)hw->max_tx_queues;

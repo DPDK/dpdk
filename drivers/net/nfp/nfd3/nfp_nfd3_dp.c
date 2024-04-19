@@ -385,10 +385,12 @@ nfp_net_nfd3_tx_queue_setup(struct rte_eth_dev *dev,
 	struct nfp_net_txq *txq;
 	uint16_t tx_free_thresh;
 	const struct rte_memzone *tz;
+	struct nfp_net_hw_priv *hw_priv;
 
 	hw = nfp_net_get_hw(dev);
+	hw_priv = dev->process_private;
 
-	nfp_net_tx_desc_limits(hw, &min_tx_desc, &max_tx_desc);
+	nfp_net_tx_desc_limits(hw, hw_priv, &min_tx_desc, &max_tx_desc);
 
 	/* Validating number of descriptors */
 	tx_desc_sz = nb_desc * sizeof(struct nfp_net_nfd3_tx_desc);
