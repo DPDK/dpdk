@@ -683,10 +683,8 @@ nfp_flower_repr_free_all(struct nfp_app_fw_flower *app_fw_flower)
 		repr = app_fw_flower->vf_reprs[i];
 		if (repr != NULL) {
 			eth_dev = rte_eth_dev_get_by_name(repr->name);
-			if (eth_dev != NULL) {
-				nfp_flower_repr_free(eth_dev, NFP_REPR_TYPE_VF);
-				app_fw_flower->vf_reprs[i] = NULL;
-			}
+			if (eth_dev != NULL)
+				rte_eth_dev_destroy(eth_dev, nfp_flower_repr_uninit);
 		}
 	}
 
@@ -694,20 +692,16 @@ nfp_flower_repr_free_all(struct nfp_app_fw_flower *app_fw_flower)
 		repr = app_fw_flower->phy_reprs[i];
 		if (repr != NULL) {
 			eth_dev = rte_eth_dev_get_by_name(repr->name);
-			if (eth_dev != NULL) {
-				nfp_flower_repr_free(eth_dev, NFP_REPR_TYPE_PHYS_PORT);
-				app_fw_flower->phy_reprs[i] = NULL;
-			}
+			if (eth_dev != NULL)
+				rte_eth_dev_destroy(eth_dev, nfp_flower_repr_uninit);
 		}
 	}
 
 	repr = app_fw_flower->pf_repr;
 	if (repr != NULL) {
 		eth_dev = rte_eth_dev_get_by_name(repr->name);
-		if (eth_dev != NULL) {
-			nfp_flower_repr_free(eth_dev, NFP_REPR_TYPE_PF);
-			app_fw_flower->pf_repr = NULL;
-		}
+		if (eth_dev != NULL)
+			rte_eth_dev_destroy(eth_dev, nfp_flower_pf_repr_uninit);
 	}
 }
 

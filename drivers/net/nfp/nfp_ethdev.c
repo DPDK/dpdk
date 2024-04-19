@@ -34,6 +34,16 @@
 #define NFP_PF_DRIVER_NAME net_nfp_pf
 #define NFP_PF_FORCE_RELOAD_FW   "force_reload_fw"
 
+struct nfp_net_init {
+	/** Sequential physical port number, only valid for CoreNIC firmware */
+	uint8_t idx;
+
+	/** Internal port number as seen from NFP */
+	uint8_t nfp_idx;
+
+	struct nfp_net_hw_priv *hw_priv;
+};
+
 static int
 nfp_devarg_handle_int(const char *key,
 		const char *value,
@@ -559,7 +569,7 @@ nfp_net_keepalive_stop(struct nfp_multi_pf *multi_pf)
 	rte_eal_alarm_cancel(nfp_net_beat_timer, (void *)multi_pf);
 }
 
-static void
+static int
 nfp_net_uninit(struct rte_eth_dev *eth_dev)
 {
 	struct nfp_net_hw *net_hw;
@@ -577,6 +587,8 @@ nfp_net_uninit(struct rte_eth_dev *eth_dev)
 	nfp_ipsec_uninit(eth_dev);
 	if (net_hw->mac_stats_area != NULL)
 		nfp_cpp_area_release_free(net_hw->mac_stats_area);
+
+	return 0;
 }
 
 static void
@@ -875,7 +887,8 @@ nfp_net_ethdev_ops_mount(struct nfp_net_hw *hw,
 }
 
 static int
-nfp_net_init(struct rte_eth_dev *eth_dev)
+nfp_net_init(struct rte_eth_dev *eth_dev,
+		void *para)
 {
 	int err;
 	uint16_t port;
@@ -884,12 +897,18 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 	struct nfp_hw *hw;
 	struct nfp_net_hw *net_hw;
 	struct nfp_pf_dev *pf_dev;
+	struct nfp_net_init *hw_init;
 	struct rte_pci_device *pci_dev;
 	struct nfp_net_hw_priv *hw_priv;
 	struct nfp_app_fw_nic *app_fw_nic;
 
 	pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
 	net_hw = eth_dev->data->dev_private;
+
+	hw_init = para;
+	net_hw->idx      = hw_init->idx;
+	net_hw->nfp_idx  = hw_init->nfp_idx;
+	eth_dev->process_private = hw_init->hw_priv;
 
 	/* Use backpointer here to the PF of this eth_dev */
 	hw_priv = eth_dev->process_private;
@@ -898,7 +917,10 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 	/* Use backpointer to the CoreNIC app struct */
 	app_fw_nic = NFP_PRIV_TO_APP_FW_NIC(pf_dev->app_fw_priv);
 
-	port = ((struct nfp_net_hw *)eth_dev->data->dev_private)->idx;
+	/* Add this device to the PF's array of physical ports */
+	app_fw_nic->ports[net_hw->idx] = net_hw;
+
+	port = net_hw->idx;
 	if (port > 7) {
 		PMD_DRV_LOG(ERR, "Port value is wrong");
 		return -ENODEV;
@@ -1475,15 +1497,15 @@ nfp_init_app_fw_nic(struct nfp_net_hw_priv *hw_priv)
 	uint8_t id;
 	int ret = 0;
 	uint32_t total_vnics;
-	struct nfp_net_hw *hw;
-	unsigned int numa_node;
-	struct rte_eth_dev *eth_dev;
 	struct nfp_app_fw_nic *app_fw_nic;
 	struct nfp_eth_table *nfp_eth_table;
 	char bar_name[RTE_ETH_NAME_MAX_LEN];
 	char port_name[RTE_ETH_NAME_MAX_LEN];
 	char vnic_name[RTE_ETH_NAME_MAX_LEN];
 	struct nfp_pf_dev *pf_dev = hw_priv->pf_dev;
+	struct nfp_net_init hw_init = {
+		.hw_priv = hw_priv,
+	};
 
 	nfp_eth_table = pf_dev->nfp_eth_table;
 	PMD_INIT_LOG(INFO, "Total physical ports: %d", nfp_eth_table->count);
@@ -1543,7 +1565,6 @@ nfp_init_app_fw_nic(struct nfp_net_hw_priv *hw_priv)
 	PMD_INIT_LOG(DEBUG, "ctrl bar: %p", pf_dev->ctrl_bar);
 
 	/* Loop through all physical ports on PF */
-	numa_node = rte_socket_id();
 	for (i = 0; i < app_fw_nic->total_phyports; i++) {
 		if (pf_dev->multi_pf.enabled)
 			snprintf(port_name, sizeof(port_name), "%s",
@@ -1552,46 +1573,14 @@ nfp_init_app_fw_nic(struct nfp_net_hw_priv *hw_priv)
 			snprintf(port_name, sizeof(port_name), "%s_port%u",
 					pf_dev->pci_dev->device.name, i);
 
-		/* Allocate a eth_dev for this phyport */
-		eth_dev = rte_eth_dev_allocate(port_name);
-		if (eth_dev == NULL) {
-			ret = -ENODEV;
-			goto port_cleanup;
-		}
-
-		/* Allocate memory for this phyport */
-		eth_dev->data->dev_private = rte_zmalloc_socket(port_name,
-				sizeof(struct nfp_net_hw),
-				RTE_CACHE_LINE_SIZE, numa_node);
-		if (eth_dev->data->dev_private == NULL) {
-			ret = -ENOMEM;
-			rte_eth_dev_release_port(eth_dev);
-			goto port_cleanup;
-		}
-
-		hw = eth_dev->data->dev_private;
 		id = nfp_function_id_get(pf_dev, i);
-
-		/* Add this device to the PF's array of physical ports */
-		app_fw_nic->ports[id] = hw;
-
-		hw->idx = id;
-		hw->nfp_idx = nfp_eth_table->ports[id].index;
-
-		eth_dev->device = &pf_dev->pci_dev->device;
-		eth_dev->process_private = hw_priv;
-
-		/*
-		 * Ctrl/tx/rx BAR mappings and remaining init happens in
-		 * @nfp_net_init()
-		 */
-		ret = nfp_net_init(eth_dev);
-		if (ret != 0) {
-			ret = -ENODEV;
+		hw_init.idx = id;
+		hw_init.nfp_idx = nfp_eth_table->ports[id].index;
+		ret = rte_eth_dev_create(&pf_dev->pci_dev->device, port_name,
+				sizeof(struct nfp_net_hw), NULL, NULL,
+				nfp_net_init, &hw_init);
+		if (ret != 0)
 			goto port_cleanup;
-		}
-
-		rte_eth_dev_probing_finish(eth_dev);
 
 	} /* End loop, all ports on this PF */
 
@@ -1608,10 +1597,8 @@ port_cleanup:
 			snprintf(port_name, sizeof(port_name), "%s_port%u",
 					pf_dev->pci_dev->device.name, i);
 		eth_dev = rte_eth_dev_get_by_name(port_name);
-		if (eth_dev != NULL) {
-			nfp_net_uninit(eth_dev);
-			rte_eth_dev_release_port(eth_dev);
-		}
+		if (eth_dev != NULL)
+			rte_eth_dev_destroy(eth_dev, nfp_net_uninit);
 	}
 	nfp_cpp_area_release_free(pf_dev->ctrl_area);
 app_cleanup:
@@ -2013,6 +2000,20 @@ hw_priv_free:
 }
 
 static int
+nfp_secondary_net_init(struct rte_eth_dev *eth_dev,
+		void *para)
+{
+	struct nfp_net_hw *net_hw;
+
+	net_hw = eth_dev->data->dev_private;
+	nfp_net_ethdev_ops_mount(net_hw, eth_dev);
+
+	eth_dev->process_private = para;
+
+	return 0;
+}
+
+static int
 nfp_secondary_init_app_fw_nic(struct nfp_net_hw_priv *hw_priv)
 {
 	uint32_t i;
@@ -2020,7 +2021,6 @@ nfp_secondary_init_app_fw_nic(struct nfp_net_hw_priv *hw_priv)
 	int ret = 0;
 	uint8_t function_id;
 	uint32_t total_vnics;
-	struct nfp_net_hw *hw;
 	char pf_name[RTE_ETH_NAME_MAX_LEN];
 	struct nfp_pf_dev *pf_dev = hw_priv->pf_dev;
 
@@ -2034,7 +2034,6 @@ nfp_secondary_init_app_fw_nic(struct nfp_net_hw_priv *hw_priv)
 	}
 
 	for (i = 0; i < total_vnics; i++) {
-		struct rte_eth_dev *eth_dev;
 		char port_name[RTE_ETH_NAME_MAX_LEN];
 
 		if (nfp_check_multi_pf_from_fw(total_vnics))
@@ -2045,18 +2044,13 @@ nfp_secondary_init_app_fw_nic(struct nfp_net_hw_priv *hw_priv)
 					pf_dev->pci_dev->device.name, i);
 
 		PMD_INIT_LOG(DEBUG, "Secondary attaching to port %s", port_name);
-		eth_dev = rte_eth_dev_attach_secondary(port_name);
-		if (eth_dev == NULL) {
+		ret = rte_eth_dev_create(&pf_dev->pci_dev->device, port_name, 0,
+				NULL, NULL, nfp_secondary_net_init, hw_priv);
+		if (ret != 0) {
 			PMD_INIT_LOG(ERR, "Secondary process attach to port %s failed", port_name);
 			ret = -ENODEV;
 			break;
 		}
-
-		eth_dev->process_private = hw_priv;
-		hw = eth_dev->data->dev_private;
-		nfp_net_ethdev_ops_mount(hw, eth_dev);
-
-		rte_eth_dev_probing_finish(eth_dev);
 	}
 
 	return ret;

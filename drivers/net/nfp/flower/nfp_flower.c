@@ -798,25 +798,36 @@ nfp_uninit_app_fw_flower(struct nfp_net_hw_priv *hw_priv)
 	rte_free(app_fw_flower);
 }
 
-int
-nfp_secondary_init_app_fw_flower(struct nfp_net_hw_priv *hw_priv)
+static int
+nfp_secondary_flower_init(struct rte_eth_dev *eth_dev,
+		void *para)
 {
-	struct rte_eth_dev *eth_dev;
-	const char *port_name = "pf_vnic_eth_dev";
-
-	PMD_INIT_LOG(DEBUG, "Secondary attaching to port %s", port_name);
-
-	eth_dev = rte_eth_dev_attach_secondary(port_name);
-	if (eth_dev == NULL) {
-		PMD_INIT_LOG(ERR, "Secondary process attach to port %s failed", port_name);
-		return -ENODEV;
-	}
-
-	eth_dev->process_private = hw_priv;
+	eth_dev->process_private = para;
 	eth_dev->dev_ops = &nfp_flower_pf_vnic_ops;
 	eth_dev->rx_pkt_burst = nfp_net_recv_pkts;
 	eth_dev->tx_pkt_burst = nfp_flower_pf_xmit_pkts;
-	rte_eth_dev_probing_finish(eth_dev);
+
+	return 0;
+}
+
+int
+nfp_secondary_init_app_fw_flower(struct nfp_net_hw_priv *hw_priv)
+{
+	int ret;
+	const char *pci_name;
+	char port_name[RTE_ETH_NAME_MAX_LEN];
+
+	pci_name = strchr(hw_priv->pf_dev->pci_dev->name, ':') + 1;
+	snprintf(port_name, RTE_ETH_NAME_MAX_LEN, "%s_repr_pf", pci_name);
+
+	PMD_INIT_LOG(DEBUG, "Secondary attaching to port %s", port_name);
+
+	ret = rte_eth_dev_create(&hw_priv->pf_dev->pci_dev->device, port_name, 0, NULL,
+			NULL, nfp_secondary_flower_init, hw_priv);
+	if (ret != 0) {
+		PMD_INIT_LOG(ERR, "Secondary process attach to port %s failed", port_name);
+		return -ENODEV;
+	}
 
 	return 0;
 }
