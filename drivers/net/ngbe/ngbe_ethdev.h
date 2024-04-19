@@ -130,6 +130,7 @@ struct ngbe_adapter {
 	struct ngbe_vf_info        *vfdata;
 	struct ngbe_uta_info       uta_info;
 	bool                       rx_bulk_alloc_allowed;
+	bool                       rx_vec_allowed;
 	struct rte_timecounter     systime_tc;
 	struct rte_timecounter     rx_tstamp_tc;
 	struct rte_timecounter     tx_tstamp_tc;

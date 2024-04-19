@@ -19,4 +19,10 @@ sources = files(
 
 deps += ['hash']
 
+if arch_subdir == 'x86'
+    sources += files('ngbe_rxtx_vec_sse.c')
+elif arch_subdir == 'arm'
+    sources += files('ngbe_rxtx_vec_neon.c')
+endif
+
 includes += include_directories('base')
