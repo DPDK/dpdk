@@ -25,28 +25,32 @@ static void
 __hws_cnt_id_load(struct mlx5_hws_cnt_pool *cpool)
 {
 	uint32_t preload;
-	uint32_t q_num = cpool->cache->q_num;
+	uint32_t q_num;
 	uint32_t cnt_num = mlx5_hws_cnt_pool_get_size(cpool);
 	cnt_id_t cnt_id;
 	uint32_t qidx, iidx = 0;
 	struct rte_ring *qcache = NULL;
 
-	/*
-	 * Counter ID order is important for tracking the max number of in used
-	 * counter for querying, which means counter internal index order must
-	 * be from zero to the number user configured, i.e: 0 - 8000000.
-	 * Need to load counter ID in this order into the cache firstly,
-	 * and then the global free list.
-	 * In the end, user fetch the counter from minimal to the maximum.
-	 */
-	preload = RTE_MIN(cpool->cache->preload_sz, cnt_num / q_num);
-	for (qidx = 0; qidx < q_num; qidx++) {
-		for (; iidx < preload * (qidx + 1); iidx++) {
-			cnt_id = mlx5_hws_cnt_id_gen(cpool, iidx);
-			qcache = cpool->cache->qcache[qidx];
-			if (qcache)
-				rte_ring_enqueue_elem(qcache, &cnt_id,
-						sizeof(cnt_id));
+	/* If counter cache was disabled, only free list must prepopulated. */
+	if (cpool->cache != NULL) {
+		q_num = cpool->cache->q_num;
+		/*
+		 * Counter ID order is important for tracking the max number of in used
+		 * counter for querying, which means counter internal index order must
+		 * be from zero to the number user configured, i.e: 0 - 8000000.
+		 * Need to load counter ID in this order into the cache firstly,
+		 * and then the global free list.
+		 * In the end, user fetch the counter from minimal to the maximum.
+		 */
+		preload = RTE_MIN(cpool->cache->preload_sz, cnt_num / q_num);
+		for (qidx = 0; qidx < q_num; qidx++) {
+			for (; iidx < preload * (qidx + 1); iidx++) {
+				cnt_id = mlx5_hws_cnt_id_gen(cpool, iidx);
+				qcache = cpool->cache->qcache[qidx];
+				if (qcache)
+					rte_ring_enqueue_elem(qcache, &cnt_id,
+							sizeof(cnt_id));
+			}
 		}
 	}
 	for (; iidx < cnt_num; iidx++) {
