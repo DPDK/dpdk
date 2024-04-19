@@ -28,9 +28,9 @@ struct nfp_flower_service {
 };
 
 static struct nfp_flower_service *
-nfp_flower_service_handle_get(struct nfp_app_fw_flower *app)
+nfp_flower_service_handle_get(struct nfp_net_hw_priv *hw_priv)
 {
-	return app->pf_hw->pf_dev->process_share.fl_service;
+	return hw_priv->pf_dev->process_share.fl_service;
 }
 
 static int
@@ -100,13 +100,13 @@ nfp_flower_service_insert(struct nfp_app_fw_flower *app,
 }
 
 int
-nfp_flower_service_start(void *app_fw_flower)
+nfp_flower_service_start(void *app_fw_flower,
+		struct nfp_net_hw_priv *hw_priv)
 {
 	int ret;
 	struct nfp_flower_service *service_handle;
-	struct nfp_app_fw_flower *app = app_fw_flower;
 
-	service_handle = nfp_flower_service_handle_get(app);
+	service_handle = nfp_flower_service_handle_get(hw_priv);
 	if (service_handle == NULL) {
 		PMD_DRV_LOG(ERR, "Can not get service handle");
 		return -EINVAL;
@@ -122,7 +122,7 @@ nfp_flower_service_start(void *app_fw_flower)
 	}
 
 	/* Insert the NIC to flower service slot */
-	ret = nfp_flower_service_insert(app, service_handle);
+	ret = nfp_flower_service_insert(app_fw_flower, service_handle);
 	if (ret == MAX_FLOWER_SERVICE_SLOT) {
 		PMD_DRV_LOG(ERR, "Flower ctrl vnic service slot over %u",
 				MAX_FLOWER_SERVICE_SLOT);
@@ -133,14 +133,14 @@ nfp_flower_service_start(void *app_fw_flower)
 }
 
 void
-nfp_flower_service_stop(void *app_fw_flower)
+nfp_flower_service_stop(void *app_fw_flower,
+		struct nfp_net_hw_priv *hw_priv)
 {
 	uint16_t slot;
 	uint16_t count;
 	struct nfp_flower_service *service_handle;
-	struct nfp_app_fw_flower *app = app_fw_flower;
 
-	service_handle = nfp_flower_service_handle_get(app);
+	service_handle = nfp_flower_service_handle_get(hw_priv);
 	if (service_handle == NULL) {
 		PMD_DRV_LOG(ERR, "Can not get service handle");
 		return;
@@ -149,7 +149,7 @@ nfp_flower_service_stop(void *app_fw_flower)
 	rte_spinlock_lock(&service_handle->spinlock);
 	for (slot = 0; slot < MAX_FLOWER_SERVICE_SLOT; slot++) {
 		/* The app only in one slot */
-		if (service_handle->slots[slot] != app)
+		if (service_handle->slots[slot] != app_fw_flower)
 			continue;
 
 		service_handle->slots[slot] = NULL;
@@ -157,7 +157,7 @@ nfp_flower_service_stop(void *app_fw_flower)
 	rte_spinlock_unlock(&service_handle->spinlock);
 
 	/* Determine whether to disable service */
-	count = nfp_sync_handle_count_get(app->pf_hw->pf_dev->sync, NULL,
+	count = nfp_sync_handle_count_get(hw_priv->pf_dev->sync, NULL,
 			service_handle);
 	if (count > 1)
 		return;
@@ -167,11 +167,10 @@ nfp_flower_service_stop(void *app_fw_flower)
 }
 
 int
-nfp_flower_service_sync_alloc(void *app_fw_flower)
+nfp_flower_service_sync_alloc(struct nfp_net_hw_priv *hw_priv)
 {
 	struct nfp_flower_service *service_handle;
-	struct nfp_app_fw_flower *app = app_fw_flower;
-	struct nfp_pf_dev *pf_dev = app->pf_hw->pf_dev;
+	struct nfp_pf_dev *pf_dev = hw_priv->pf_dev;
 
 	service_handle = nfp_sync_handle_alloc(pf_dev->sync, NULL,
 			NFP_SYNC_MAGIC_FL_SERVICE,
@@ -185,10 +184,9 @@ nfp_flower_service_sync_alloc(void *app_fw_flower)
 }
 
 void
-nfp_flower_service_sync_free(void *app_fw_flower)
+nfp_flower_service_sync_free(struct nfp_net_hw_priv *hw_priv)
 {
-	struct nfp_app_fw_flower *app = app_fw_flower;
-	struct nfp_pf_dev *pf_dev = app->pf_hw->pf_dev;
+	struct nfp_pf_dev *pf_dev = hw_priv->pf_dev;
 
 	nfp_sync_handle_free(pf_dev->sync, NULL, pf_dev->process_share.fl_service);
 

@@ -30,6 +30,7 @@ struct nfp_tx_ipsec_desc_msg {
 struct __rte_aligned(64) nfp_net_txq {
 	/** Backpointer to nfp_net structure */
 	struct nfp_net_hw *hw;
+	struct nfp_net_hw_priv *hw_priv;
 
 	/**
 	 * For each descriptor keep a reference to the mbuf and
@@ -69,8 +70,8 @@ struct __rte_aligned(64) nfp_net_txq {
 	uint16_t data_pending;
 
 	/**
-	 * At this point 50 bytes have been used for all the fields in the
-	 * TX critical path. We have room for 14 bytes and still all placed
+	 * At this point 58 bytes have been used for all the fields in the
+	 * TX critical path. We have room for 6 bytes and still all placed
 	 * in a cache line.
 	 */
 	uint64_t dma;
@@ -138,6 +139,7 @@ struct nfp_net_rx_desc {
 struct __rte_aligned(64) nfp_net_rxq {
 	/** Backpointer to nfp_net structure */
 	struct nfp_net_hw *hw;
+	struct nfp_net_hw_priv *hw_priv;
 
 	/**
 	 * Point to the base addresses of the freelist queue
@@ -188,8 +190,8 @@ struct __rte_aligned(64) nfp_net_rxq {
 	uint16_t qidx;
 
 	/**
-	 * At this point 54 bytes have been used for all the fields in the
-	 * RX critical path. We have room for 10 bytes and still all placed
+	 * At this point 62 bytes have been used for all the fields in the
+	 * RX critical path. We have room for 2 bytes and still all placed
 	 * in a cache line.
 	 */
 

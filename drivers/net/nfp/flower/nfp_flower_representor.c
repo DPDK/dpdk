@@ -83,17 +83,17 @@ nfp_flower_repr_dev_infos_get(__rte_unused struct rte_eth_dev *dev,
 static int
 nfp_flower_repr_dev_start(struct rte_eth_dev *dev)
 {
+	uint16_t i;
+	struct nfp_net_hw_priv *hw_priv;
 	struct nfp_flower_representor *repr;
 	struct nfp_app_fw_flower *app_fw_flower;
-	uint16_t i;
 
 	repr = dev->data->dev_private;
+	hw_priv = dev->process_private;
 	app_fw_flower = repr->app_fw_flower;
 
-	if (repr->repr_type == NFP_REPR_TYPE_PHYS_PORT) {
-		nfp_eth_set_configured(app_fw_flower->pf_hw->pf_dev->cpp,
-				repr->nfp_idx, 1);
-	}
+	if (repr->repr_type == NFP_REPR_TYPE_PHYS_PORT)
+		nfp_eth_set_configured(hw_priv->pf_dev->cpp, repr->nfp_idx, 1);
 
 	nfp_flower_cmsg_port_mod(app_fw_flower, repr->port_id, true);
 
@@ -108,19 +108,19 @@ nfp_flower_repr_dev_start(struct rte_eth_dev *dev)
 static int
 nfp_flower_repr_dev_stop(struct rte_eth_dev *dev)
 {
+	uint16_t i;
+	struct nfp_net_hw_priv *hw_priv;
 	struct nfp_flower_representor *repr;
 	struct nfp_app_fw_flower *app_fw_flower;
-	uint16_t i;
 
 	repr = dev->data->dev_private;
+	hw_priv = dev->process_private;
 	app_fw_flower = repr->app_fw_flower;
 
 	nfp_flower_cmsg_port_mod(app_fw_flower, repr->port_id, false);
 
-	if (repr->repr_type == NFP_REPR_TYPE_PHYS_PORT) {
-		nfp_eth_set_configured(app_fw_flower->pf_hw->pf_dev->cpp,
-				repr->nfp_idx, 0);
-	}
+	if (repr->repr_type == NFP_REPR_TYPE_PHYS_PORT)
+		nfp_eth_set_configured(hw_priv->pf_dev->cpp, repr->nfp_idx, 0);
 
 	for (i = 0; i < dev->data->nb_rx_queues; i++)
 		dev->data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
@@ -408,8 +408,8 @@ static int
 nfp_flower_repr_dev_close(struct rte_eth_dev *dev)
 {
 	uint16_t i;
-	struct nfp_net_hw *hw;
 	struct nfp_pf_dev *pf_dev;
+	struct nfp_net_hw_priv *hw_priv;
 	struct nfp_flower_representor *repr;
 	struct nfp_app_fw_flower *app_fw_flower;
 
@@ -417,9 +417,10 @@ nfp_flower_repr_dev_close(struct rte_eth_dev *dev)
 		return 0;
 
 	repr = dev->data->dev_private;
+	hw_priv = dev->process_private;
+
 	app_fw_flower = repr->app_fw_flower;
-	hw = app_fw_flower->pf_hw;
-	pf_dev = hw->pf_dev;
+	pf_dev = hw_priv->pf_dev;
 
 	if (pf_dev->app_fw_id != NFP_APP_FW_FLOWER_NIC)
 		return -EINVAL;
@@ -442,14 +443,14 @@ nfp_flower_repr_dev_close(struct rte_eth_dev *dev)
 		return 0;
 
 	/* Stop flower service first */
-	nfp_flower_service_stop(app_fw_flower);
+	nfp_flower_service_stop(app_fw_flower, hw_priv);
 
 	/* Disable cpp service */
 	nfp_service_disable(&pf_dev->cpp_service_info);
 
 	/* Now it is safe to free all PF resources */
-	nfp_uninit_app_fw_flower(pf_dev);
-	nfp_pf_uninit(pf_dev);
+	nfp_uninit_app_fw_flower(hw_priv);
+	nfp_pf_uninit(hw_priv);
 
 	return 0;
 }
@@ -708,8 +709,43 @@ nfp_flower_repr_free_all(struct nfp_app_fw_flower *app_fw_flower)
 	}
 }
 
+static void
+nfp_flower_repr_priv_init(struct nfp_app_fw_flower *app_fw_flower,
+		struct nfp_net_hw_priv *hw_priv)
+{
+	uint32_t i;
+	struct rte_eth_dev *eth_dev;
+	struct nfp_flower_representor *repr;
+
+	repr = app_fw_flower->pf_repr;
+	if (repr != NULL) {
+		eth_dev = repr->eth_dev;
+		if (eth_dev != NULL)
+			eth_dev->process_private = hw_priv;
+	}
+
+	for (i = 0; i < NFP_MAX_PHYPORTS; i++) {
+		repr = app_fw_flower->phy_reprs[i];
+		if (repr != NULL) {
+			eth_dev = repr->eth_dev;
+			if (eth_dev != NULL)
+				eth_dev->process_private = hw_priv;
+		}
+	}
+
+	for (i = 0; i < MAX_FLOWER_VFS; i++) {
+		repr = app_fw_flower->vf_reprs[i];
+		if (repr != NULL) {
+			eth_dev = repr->eth_dev;
+			if (eth_dev != NULL)
+				eth_dev->process_private = hw_priv;
+		}
+	}
+}
+
 static int
-nfp_flower_repr_alloc(struct nfp_app_fw_flower *app_fw_flower)
+nfp_flower_repr_alloc(struct nfp_app_fw_flower *app_fw_flower,
+		struct nfp_net_hw_priv *hw_priv)
 {
 	int i;
 	int ret;
@@ -723,11 +759,11 @@ nfp_flower_repr_alloc(struct nfp_app_fw_flower *app_fw_flower)
 		.app_fw_flower    = app_fw_flower,
 	};
 
-	nfp_eth_table = app_fw_flower->pf_hw->pf_dev->nfp_eth_table;
+	nfp_eth_table = hw_priv->pf_dev->nfp_eth_table;
 	eth_dev = app_fw_flower->ctrl_hw->eth_dev;
 
 	/* Send a NFP_FLOWER_CMSG_TYPE_MAC_REPR cmsg to hardware */
-	ret = nfp_flower_cmsg_mac_repr(app_fw_flower);
+	ret = nfp_flower_cmsg_mac_repr(app_fw_flower, nfp_eth_table);
 	if (ret != 0) {
 		PMD_INIT_LOG(ERR, "Cloud not send mac repr cmsgs");
 		return ret;
@@ -739,7 +775,7 @@ nfp_flower_repr_alloc(struct nfp_app_fw_flower *app_fw_flower)
 	/* PF vNIC reprs get a random MAC address */
 	rte_eth_random_addr(flower_repr.mac_addr.addr_bytes);
 
-	pci_dev = app_fw_flower->pf_hw->pf_dev->pci_dev;
+	pci_dev = hw_priv->pf_dev->pci_dev;
 
 	pci_name = strchr(pci_dev->name, ':') + 1;
 
@@ -813,6 +849,8 @@ nfp_flower_repr_alloc(struct nfp_app_fw_flower *app_fw_flower)
 	if (i < app_fw_flower->num_vf_reprs)
 		goto repr_free;
 
+	nfp_flower_repr_priv_init(app_fw_flower, hw_priv);
+
 	return 0;
 
 repr_free:
@@ -822,7 +860,8 @@ repr_free:
 }
 
 int
-nfp_flower_repr_create(struct nfp_app_fw_flower *app_fw_flower)
+nfp_flower_repr_create(struct nfp_app_fw_flower *app_fw_flower,
+		struct nfp_net_hw_priv *hw_priv)
 {
 	int ret;
 	struct nfp_pf_dev *pf_dev;
@@ -832,7 +871,7 @@ nfp_flower_repr_create(struct nfp_app_fw_flower *app_fw_flower)
 		.nb_representor_ports = 0
 	};
 
-	pf_dev = app_fw_flower->pf_hw->pf_dev;
+	pf_dev = hw_priv->pf_dev;
 	pci_dev = pf_dev->pci_dev;
 
 	/* Allocate a switch domain for the flower app */
@@ -876,7 +915,7 @@ nfp_flower_repr_create(struct nfp_app_fw_flower *app_fw_flower)
 	PMD_INIT_LOG(INFO, "%d number of VF reprs", app_fw_flower->num_vf_reprs);
 	PMD_INIT_LOG(INFO, "%d number of phyport reprs", app_fw_flower->num_phyport_reprs);
 
-	ret = nfp_flower_repr_alloc(app_fw_flower);
+	ret = nfp_flower_repr_alloc(app_fw_flower, hw_priv);
 	if (ret != 0) {
 		PMD_INIT_LOG(ERR, "representors allocation failed");
 		ret = -EINVAL;

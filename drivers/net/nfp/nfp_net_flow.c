@@ -658,10 +658,12 @@ nfp_net_flow_setup(struct rte_eth_dev *dev,
 	struct nfp_net_priv *priv;
 	struct rte_flow *nfp_flow;
 	struct rte_flow *flow_find;
+	struct nfp_net_hw_priv *hw_priv;
 	struct nfp_app_fw_nic *app_fw_nic;
 
 	hw = dev->data->dev_private;
-	app_fw_nic = NFP_PRIV_TO_APP_FW_NIC(hw->pf_dev->app_fw_priv);
+	hw_priv = dev->process_private;
+	app_fw_nic = NFP_PRIV_TO_APP_FW_NIC(hw_priv->pf_dev->app_fw_priv);
 	priv = app_fw_nic->ports[hw->idx]->priv;
 
 	ret = nfp_net_flow_calculate_items(items, &match_len);
@@ -775,10 +777,12 @@ nfp_net_flow_validate(struct rte_eth_dev *dev,
 	struct nfp_net_hw *hw;
 	struct rte_flow *nfp_flow;
 	struct nfp_net_priv *priv;
+	struct nfp_net_hw_priv *hw_priv;
 	struct nfp_app_fw_nic *app_fw_nic;
 
 	hw = dev->data->dev_private;
-	app_fw_nic = NFP_PRIV_TO_APP_FW_NIC(hw->pf_dev->app_fw_priv);
+	hw_priv = dev->process_private;
+	app_fw_nic = NFP_PRIV_TO_APP_FW_NIC(hw_priv->pf_dev->app_fw_priv);
 	priv = app_fw_nic->ports[hw->idx]->priv;
 
 	nfp_flow = nfp_net_flow_setup(dev, attr, items, actions);
@@ -811,10 +815,12 @@ nfp_net_flow_create(struct rte_eth_dev *dev,
 	struct nfp_net_hw *hw;
 	struct rte_flow *nfp_flow;
 	struct nfp_net_priv *priv;
+	struct nfp_net_hw_priv *hw_priv;
 	struct nfp_app_fw_nic *app_fw_nic;
 
 	hw = dev->data->dev_private;
-	app_fw_nic = NFP_PRIV_TO_APP_FW_NIC(hw->pf_dev->app_fw_priv);
+	hw_priv = dev->process_private;
+	app_fw_nic = NFP_PRIV_TO_APP_FW_NIC(hw_priv->pf_dev->app_fw_priv);
 	priv = app_fw_nic->ports[hw->idx]->priv;
 
 	nfp_flow = nfp_net_flow_setup(dev, attr, items, actions);
@@ -861,10 +867,12 @@ nfp_net_flow_destroy(struct rte_eth_dev *dev,
 	struct nfp_net_hw *hw;
 	struct nfp_net_priv *priv;
 	struct rte_flow *flow_find;
+	struct nfp_net_hw_priv *hw_priv;
 	struct nfp_app_fw_nic *app_fw_nic;
 
 	hw = dev->data->dev_private;
-	app_fw_nic = NFP_PRIV_TO_APP_FW_NIC(hw->pf_dev->app_fw_priv);
+	hw_priv = dev->process_private;
+	app_fw_nic = NFP_PRIV_TO_APP_FW_NIC(hw_priv->pf_dev->app_fw_priv);
 	priv = app_fw_nic->ports[hw->idx]->priv;
 
 	/* Find the flow in flow hash table */
@@ -920,10 +928,12 @@ nfp_net_flow_flush(struct rte_eth_dev *dev,
 	struct nfp_net_hw *hw;
 	struct rte_flow *nfp_flow;
 	struct rte_hash *flow_table;
+	struct nfp_net_hw_priv *hw_priv;
 	struct nfp_app_fw_nic *app_fw_nic;
 
 	hw = dev->data->dev_private;
-	app_fw_nic = NFP_PRIV_TO_APP_FW_NIC(hw->pf_dev->app_fw_priv);
+	hw_priv = dev->process_private;
+	app_fw_nic = NFP_PRIV_TO_APP_FW_NIC(hw_priv->pf_dev->app_fw_priv);
 	flow_table = app_fw_nic->ports[hw->idx]->priv->flow_table;
 
 	while (rte_hash_iterate(flow_table, &next_key, &next_data, &iter) >= 0) {

@@ -555,6 +555,7 @@ nfp_net_nfdk_tx_queue_setup(struct rte_eth_dev *dev,
 
 	dev->data->tx_queues[queue_idx] = txq;
 	txq->hw = hw;
+	txq->hw_priv = dev->process_private;
 
 	/*
 	 * Telling the HW about the physical address of the TX ring and number

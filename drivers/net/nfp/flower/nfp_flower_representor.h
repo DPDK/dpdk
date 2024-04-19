@@ -23,7 +23,8 @@ struct nfp_flower_representor {
 	struct rte_eth_dev *eth_dev;
 };
 
-int nfp_flower_repr_create(struct nfp_app_fw_flower *app_fw_flower);
+int nfp_flower_repr_create(struct nfp_app_fw_flower *app_fw_flower,
+		struct nfp_net_hw_priv *hw_priv);
 bool nfp_flower_repr_is_vf(struct nfp_flower_representor *repr);
 
 #endif /* __NFP_FLOWER_REPRESENTOR_H__ */

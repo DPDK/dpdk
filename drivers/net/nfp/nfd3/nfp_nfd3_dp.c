@@ -469,6 +469,7 @@ nfp_net_nfd3_tx_queue_setup(struct rte_eth_dev *dev,
 	nfp_net_reset_tx_queue(txq);
 
 	txq->hw = hw;
+	txq->hw_priv = dev->process_private;
 
 	/*
 	 * Telling the HW about the physical address of the TX ring and number

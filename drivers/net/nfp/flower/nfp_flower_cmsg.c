@@ -81,7 +81,8 @@ nfp_flower_cmsg_mac_repr_fill(struct rte_mbuf *m,
 }
 
 int
-nfp_flower_cmsg_mac_repr(struct nfp_app_fw_flower *app_fw_flower)
+nfp_flower_cmsg_mac_repr(struct nfp_app_fw_flower *app_fw_flower,
+		struct nfp_eth_table *nfp_eth_table)
 {
 	uint8_t i;
 	uint16_t cnt;
@@ -89,7 +90,6 @@ nfp_flower_cmsg_mac_repr(struct nfp_app_fw_flower *app_fw_flower)
 	uint32_t nbi_port;
 	uint32_t phys_port;
 	struct rte_mbuf *mbuf;
-	struct nfp_eth_table *nfp_eth_table;
 
 	mbuf = rte_pktmbuf_alloc(app_fw_flower->ctrl_pktmbuf_pool);
 	if (mbuf == NULL) {
@@ -100,7 +100,6 @@ nfp_flower_cmsg_mac_repr(struct nfp_app_fw_flower *app_fw_flower)
 	nfp_flower_cmsg_mac_repr_init(mbuf, app_fw_flower);
 
 	/* Fill in the mac repr cmsg */
-	nfp_eth_table = app_fw_flower->pf_hw->pf_dev->nfp_eth_table;
 	for (i = 0; i < app_fw_flower->num_phyport_reprs; i++) {
 		nbi = nfp_eth_table->ports[i].nbi;
 		nbi_port = nfp_eth_table->ports[i].base;

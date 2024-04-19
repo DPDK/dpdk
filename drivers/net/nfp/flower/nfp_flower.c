@@ -102,14 +102,14 @@ static const struct eth_dev_ops nfp_flower_pf_vnic_ops = {
 };
 
 static inline struct nfp_flower_representor *
-nfp_flower_get_repr(struct nfp_net_hw *hw,
+nfp_flower_get_repr(struct nfp_net_hw_priv *hw_priv,
 		uint32_t port_id)
 {
 	uint8_t port;
 	struct nfp_app_fw_flower *app_fw_flower;
 
 	/* Obtain handle to app_fw_flower here */
-	app_fw_flower = NFP_PRIV_TO_APP_FW_FLOWER(hw->pf_dev->app_fw_priv);
+	app_fw_flower = NFP_PRIV_TO_APP_FW_FLOWER(hw_priv->pf_dev->app_fw_priv);
 
 	switch (NFP_FLOWER_CMSG_PORT_TYPE(port_id)) {
 	case NFP_FLOWER_CMSG_PORT_TYPE_PHYS_PORT:
@@ -126,15 +126,15 @@ nfp_flower_get_repr(struct nfp_net_hw *hw,
 }
 
 bool
-nfp_flower_pf_dispatch_pkts(struct nfp_net_hw *hw,
+nfp_flower_pf_dispatch_pkts(struct nfp_net_hw_priv *hw_priv,
 		struct rte_mbuf *mbuf,
 		uint32_t port_id)
 {
 	struct nfp_flower_representor *repr;
 
-	repr = nfp_flower_get_repr(hw, port_id);
+	repr = nfp_flower_get_repr(hw_priv, port_id);
 	if (repr == NULL) {
-		PMD_RX_LOG(ERR, "Can not get repr for port %u", hw->idx);
+		PMD_RX_LOG(ERR, "Can not get repr for port %u", port_id);
 		return false;
 	}
 
@@ -189,13 +189,14 @@ nfp_flower_pf_xmit_pkts(void *tx_queue,
 	struct nfp_app_fw_flower *app_fw_flower;
 
 	txq = tx_queue;
-	app_fw_flower = txq->hw->pf_dev->app_fw_priv;
+	app_fw_flower = txq->hw_priv->pf_dev->app_fw_priv;
 
 	return app_fw_flower->nfd_func.pf_xmit_t(tx_queue, tx_pkts, nb_pkts);
 }
 
 static int
-nfp_flower_init_vnic_common(struct nfp_net_hw *hw,
+nfp_flower_init_vnic_common(struct nfp_net_hw_priv *hw_priv,
+		struct nfp_net_hw *hw,
 		const char *vnic_type)
 {
 	int err;
@@ -205,8 +206,8 @@ nfp_flower_init_vnic_common(struct nfp_net_hw *hw,
 	struct nfp_pf_dev *pf_dev;
 	struct rte_pci_device *pci_dev;
 
-	pf_dev = hw->pf_dev;
-	pci_dev = hw->pf_dev->pci_dev;
+	pf_dev = hw_priv->pf_dev;
+	pci_dev = pf_dev->pci_dev;
 
 	PMD_INIT_LOG(DEBUG, "%s vNIC ctrl bar: %p", vnic_type, hw->super.ctrl_bar);
 
@@ -239,13 +240,15 @@ nfp_flower_init_vnic_common(struct nfp_net_hw *hw,
 }
 
 static int
-nfp_flower_init_ctrl_vnic(struct nfp_net_hw *hw)
+nfp_flower_init_ctrl_vnic(struct nfp_app_fw_flower *app_fw_flower,
+		struct nfp_net_hw_priv *hw_priv)
 {
 	uint16_t i;
 	int ret = 0;
 	uint16_t n_txq;
 	uint16_t n_rxq;
 	const char *pci_name;
+	struct nfp_net_hw *hw;
 	unsigned int numa_node;
 	struct rte_mempool *mp;
 	struct nfp_net_rxq *rxq;
@@ -253,16 +256,15 @@ nfp_flower_init_ctrl_vnic(struct nfp_net_hw *hw)
 	struct nfp_pf_dev *pf_dev;
 	struct rte_eth_dev *eth_dev;
 	const struct rte_memzone *tz;
-	struct nfp_app_fw_flower *app_fw_flower;
 	char ctrl_rxring_name[RTE_MEMZONE_NAMESIZE];
 	char ctrl_txring_name[RTE_MEMZONE_NAMESIZE];
 	char ctrl_pktmbuf_pool_name[RTE_MEMZONE_NAMESIZE];
 
 	/* Set up some pointers here for ease of use */
-	pf_dev = hw->pf_dev;
-	app_fw_flower = NFP_PRIV_TO_APP_FW_FLOWER(pf_dev->app_fw_priv);
+	pf_dev = hw_priv->pf_dev;
+	hw = app_fw_flower->ctrl_hw;
 
-	ret = nfp_flower_init_vnic_common(hw, "ctrl_vnic");
+	ret = nfp_flower_init_vnic_common(hw_priv, hw, "ctrl_vnic");
 	if (ret != 0) {
 		PMD_INIT_LOG(ERR, "Could not init pf vnic");
 		return -EINVAL;
@@ -397,6 +399,7 @@ nfp_flower_init_ctrl_vnic(struct nfp_net_hw *hw)
 		nfp_net_reset_rx_queue(rxq);
 
 		rxq->hw = hw;
+		rxq->hw_priv = hw_priv;
 
 		/*
 		 * Telling the HW about the physical address of the RX ring and number
@@ -462,6 +465,7 @@ nfp_flower_init_ctrl_vnic(struct nfp_net_hw *hw)
 		nfp_net_reset_tx_queue(txq);
 
 		txq->hw = hw;
+		txq->hw_priv = hw_priv;
 
 		/*
 		 * Telling the HW about the physical address of the TX ring and number
@@ -472,7 +476,7 @@ nfp_flower_init_ctrl_vnic(struct nfp_net_hw *hw)
 	}
 
 	/* Alloc sync memory zone */
-	ret = nfp_flower_service_sync_alloc(app_fw_flower);
+	ret = nfp_flower_service_sync_alloc(hw_priv);
 	if (ret != 0) {
 		PMD_INIT_LOG(ERR, "Alloc sync memory zone failed");
 		goto tx_queue_setup_cleanup;
@@ -512,21 +516,22 @@ eth_dev_cleanup:
 }
 
 static void
-nfp_flower_cleanup_ctrl_vnic(struct nfp_net_hw *hw)
+nfp_flower_cleanup_ctrl_vnic(struct nfp_app_fw_flower *app_fw_flower,
+		struct nfp_net_hw_priv *hw_priv)
 {
 	uint32_t i;
 	const char *pci_name;
+	struct nfp_net_hw *hw;
 	struct nfp_net_rxq *rxq;
 	struct nfp_net_txq *txq;
 	struct rte_eth_dev *eth_dev;
-	struct nfp_app_fw_flower *app_fw_flower;
 	char ctrl_txring_name[RTE_MEMZONE_NAMESIZE];
 	char ctrl_rxring_name[RTE_MEMZONE_NAMESIZE];
 
+	hw = app_fw_flower->ctrl_hw;
 	eth_dev = hw->eth_dev;
-	app_fw_flower = NFP_PRIV_TO_APP_FW_FLOWER(hw->pf_dev->app_fw_priv);
 
-	pci_name = strchr(app_fw_flower->pf_hw->pf_dev->pci_dev->name, ':') + 1;
+	pci_name = strchr(hw_priv->pf_dev->pci_dev->name, ':') + 1;
 
 	snprintf(ctrl_txring_name, sizeof(ctrl_txring_name), "%s_cttx_ring", pci_name);
 	for (i = 0; i < hw->max_tx_queues; i++) {
@@ -548,7 +553,7 @@ nfp_flower_cleanup_ctrl_vnic(struct nfp_net_hw *hw)
 		}
 	}
 
-	nfp_flower_service_sync_free(app_fw_flower);
+	nfp_flower_service_sync_free(hw_priv);
 	rte_free(eth_dev->data->tx_queues);
 	rte_free(eth_dev->data->rx_queues);
 	rte_mempool_free(app_fw_flower->ctrl_pktmbuf_pool);
@@ -634,7 +639,7 @@ nfp_flower_nfd_func_register(struct nfp_app_fw_flower *app_fw_flower)
 }
 
 int
-nfp_init_app_fw_flower(struct nfp_pf_dev *pf_dev,
+nfp_init_app_fw_flower(struct nfp_net_hw_priv *hw_priv,
 		const struct nfp_dev_info *dev_info)
 {
 	int ret;
@@ -644,6 +649,7 @@ nfp_init_app_fw_flower(struct nfp_pf_dev *pf_dev,
 	struct nfp_net_hw *pf_hw;
 	struct nfp_net_hw *ctrl_hw;
 	struct nfp_app_fw_flower *app_fw_flower;
+	struct nfp_pf_dev *pf_dev = hw_priv->pf_dev;
 
 	numa_node = rte_socket_id();
 
@@ -702,11 +708,10 @@ nfp_init_app_fw_flower(struct nfp_pf_dev *pf_dev,
 	/* Fill in the PF vNIC and populate app struct */
 	app_fw_flower->pf_hw = pf_hw;
 	pf_hw->super.ctrl_bar = pf_dev->ctrl_bar;
-	pf_hw->pf_dev = pf_dev;
 	pf_hw->cpp = pf_dev->cpp;
 	pf_hw->dev_info = dev_info;
 
-	ret = nfp_flower_init_vnic_common(app_fw_flower->pf_hw, "pf_vnic");
+	ret = nfp_flower_init_vnic_common(hw_priv, pf_hw, "pf_vnic");
 	if (ret != 0) {
 		PMD_INIT_LOG(ERR, "Could not initialize flower PF vNIC");
 		goto pf_cpp_area_cleanup;
@@ -728,11 +733,10 @@ nfp_init_app_fw_flower(struct nfp_pf_dev *pf_dev,
 	}
 
 	/* Now populate the ctrl vNIC */
-	ctrl_hw->pf_dev = pf_dev;
 	ctrl_hw->cpp = pf_dev->cpp;
 	ctrl_hw->dev_info = dev_info;
 
-	ret = nfp_flower_init_ctrl_vnic(app_fw_flower->ctrl_hw);
+	ret = nfp_flower_init_ctrl_vnic(app_fw_flower, hw_priv);
 	if (ret != 0) {
 		PMD_INIT_LOG(ERR, "Could not initialize flower ctrl vNIC");
 		goto ctrl_cpp_area_cleanup;
@@ -746,14 +750,14 @@ nfp_init_app_fw_flower(struct nfp_pf_dev *pf_dev,
 	}
 
 	/* Start up flower services */
-	ret = nfp_flower_service_start(app_fw_flower);
+	ret = nfp_flower_service_start(app_fw_flower, hw_priv);
 	if (ret != 0) {
 		PMD_INIT_LOG(ERR, "Could not enable flower services");
 		ret = -ESRCH;
 		goto ctrl_vnic_cleanup;
 	}
 
-	ret = nfp_flower_repr_create(app_fw_flower);
+	ret = nfp_flower_repr_create(app_fw_flower, hw_priv);
 	if (ret != 0) {
 		PMD_INIT_LOG(ERR, "Could not create representor ports");
 		goto ctrl_vnic_service_stop;
@@ -762,9 +766,9 @@ nfp_init_app_fw_flower(struct nfp_pf_dev *pf_dev,
 	return 0;
 
 ctrl_vnic_service_stop:
-	nfp_flower_service_stop(app_fw_flower);
+	nfp_flower_service_stop(app_fw_flower, hw_priv);
 ctrl_vnic_cleanup:
-	nfp_flower_cleanup_ctrl_vnic(app_fw_flower->ctrl_hw);
+	nfp_flower_cleanup_ctrl_vnic(app_fw_flower, hw_priv);
 ctrl_cpp_area_cleanup:
 	nfp_cpp_area_free(ctrl_hw->ctrl_area);
 pf_cpp_area_cleanup:
@@ -782,12 +786,13 @@ app_cleanup:
 }
 
 void
-nfp_uninit_app_fw_flower(struct nfp_pf_dev *pf_dev)
+nfp_uninit_app_fw_flower(struct nfp_net_hw_priv *hw_priv)
 {
 	struct nfp_app_fw_flower *app_fw_flower;
+	struct nfp_pf_dev *pf_dev = hw_priv->pf_dev;
 
 	app_fw_flower = pf_dev->app_fw_priv;
-	nfp_flower_cleanup_ctrl_vnic(app_fw_flower->ctrl_hw);
+	nfp_flower_cleanup_ctrl_vnic(app_fw_flower, hw_priv);
 	nfp_cpp_area_free(app_fw_flower->ctrl_hw->ctrl_area);
 	nfp_cpp_area_free(pf_dev->ctrl_area);
 	rte_free(app_fw_flower->pf_hw);
@@ -799,7 +804,7 @@ nfp_uninit_app_fw_flower(struct nfp_pf_dev *pf_dev)
 }
 
 int
-nfp_secondary_init_app_fw_flower(struct nfp_pf_dev *pf_dev)
+nfp_secondary_init_app_fw_flower(struct nfp_net_hw_priv *hw_priv)
 {
 	struct rte_eth_dev *eth_dev;
 	const char *port_name = "pf_vnic_eth_dev";
@@ -812,7 +817,7 @@ nfp_secondary_init_app_fw_flower(struct nfp_pf_dev *pf_dev)
 		return -ENODEV;
 	}
 
-	eth_dev->process_private = pf_dev;
+	eth_dev->process_private = hw_priv;
 	eth_dev->dev_ops = &nfp_flower_pf_vnic_ops;
 	eth_dev->rx_pkt_burst = nfp_net_recv_pkts;
 	eth_dev->tx_pkt_burst = nfp_flower_pf_xmit_pkts;

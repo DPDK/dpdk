@@ -975,7 +975,8 @@ struct nfp_fl_act_mark {
 	rte_be32_t mark;
 };
 
-int nfp_flower_cmsg_mac_repr(struct nfp_app_fw_flower *app_fw_flower);
+int nfp_flower_cmsg_mac_repr(struct nfp_app_fw_flower *app_fw_flower,
+		struct nfp_eth_table *nfp_eth_table);
 int nfp_flower_cmsg_repr_reify(struct nfp_app_fw_flower *app_fw_flower,
 		struct nfp_flower_representor *repr);
 int nfp_flower_cmsg_port_mod(struct nfp_app_fw_flower *app_fw_flower,

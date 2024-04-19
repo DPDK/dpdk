@@ -103,12 +103,14 @@ nfp_net_pf_read_mac(struct nfp_app_fw_nic *app_fw_nic,
 		uint16_t port)
 {
 	struct nfp_net_hw *hw;
+	struct nfp_net_hw_priv *hw_priv;
 	struct nfp_eth_table *nfp_eth_table;
 
 	/* Grab a pointer to the correct physical port */
 	hw = app_fw_nic->ports[port];
+	hw_priv = hw->eth_dev->process_private;
 
-	nfp_eth_table = app_fw_nic->pf_dev->nfp_eth_table;
+	nfp_eth_table = hw_priv->pf_dev->nfp_eth_table;
 
 	rte_ether_addr_copy(&nfp_eth_table->ports[port].mac_addr, &hw->super.mac_addr);
 }
@@ -183,8 +185,7 @@ nfp_net_nfp4000_speed_configure_check(uint16_t port_id,
 }
 
 static int
-nfp_net_speed_configure(struct rte_eth_dev *dev,
-		struct nfp_net_hw *net_hw)
+nfp_net_speed_configure(struct rte_eth_dev *dev)
 {
 	int ret;
 	uint32_t speed_capa;
@@ -193,11 +194,13 @@ nfp_net_speed_configure(struct rte_eth_dev *dev,
 	uint32_t configure_speed;
 	struct nfp_eth_table_port *eth_port;
 	struct nfp_eth_table *nfp_eth_table;
+	struct nfp_net_hw *net_hw = dev->data->dev_private;
+	struct nfp_net_hw_priv *hw_priv = dev->process_private;
 
-	nfp_eth_table = net_hw->pf_dev->nfp_eth_table;
+	nfp_eth_table = hw_priv->pf_dev->nfp_eth_table;
 	eth_port = &nfp_eth_table->ports[net_hw->idx];
 
-	speed_capa = net_hw->pf_dev->speed_capa;
+	speed_capa = hw_priv->pf_dev->speed_capa;
 	if (speed_capa == 0) {
 		PMD_DRV_LOG(ERR, "Speed_capa is invalid.");
 		return -EINVAL;
@@ -272,12 +275,14 @@ nfp_net_start(struct rte_eth_dev *dev)
 	struct nfp_net_hw *net_hw;
 	struct nfp_pf_dev *pf_dev;
 	struct rte_eth_rxmode *rxmode;
+	struct nfp_net_hw_priv *hw_priv;
 	struct nfp_app_fw_nic *app_fw_nic;
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
 
 	net_hw = dev->data->dev_private;
-	pf_dev = net_hw->pf_dev;
+	hw_priv = dev->process_private;
+	pf_dev = hw_priv->pf_dev;
 	app_fw_nic = NFP_PRIV_TO_APP_FW_NIC(pf_dev->app_fw_priv);
 	hw = &net_hw->super;
 
@@ -288,7 +293,7 @@ nfp_net_start(struct rte_eth_dev *dev)
 	nfp_net_enable_queues(dev);
 
 	/* Configure the port speed and the auto-negotiation mode. */
-	ret = nfp_net_speed_configure(dev, net_hw);
+	ret = nfp_net_speed_configure(dev);
 	if (ret < 0) {
 		PMD_DRV_LOG(ERR, "Failed to set the speed and auto-negotiation mode.");
 		return ret;
@@ -400,7 +405,7 @@ nfp_net_start(struct rte_eth_dev *dev)
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
 		cpp = net_hw->cpp;
 	else
-		cpp = ((struct nfp_pf_dev *)(dev->process_private))->cpp;
+		cpp = pf_dev->cpp;
 
 	/* Configure the physical port up */
 	nfp_eth_set_configured(cpp, net_hw->nfp_idx, 1);
@@ -437,13 +442,15 @@ nfp_net_set_link_up(struct rte_eth_dev *dev)
 {
 	struct nfp_cpp *cpp;
 	struct nfp_net_hw *hw;
+	struct nfp_net_hw_priv *hw_priv;
 
 	hw = dev->data->dev_private;
+	hw_priv = dev->process_private;
 
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
 		cpp = hw->cpp;
 	else
-		cpp = ((struct nfp_pf_dev *)(dev->process_private))->cpp;
+		cpp = hw_priv->pf_dev->cpp;
 
 	return nfp_eth_set_configured(cpp, hw->nfp_idx, 1);
 }
@@ -454,13 +461,15 @@ nfp_net_set_link_down(struct rte_eth_dev *dev)
 {
 	struct nfp_cpp *cpp;
 	struct nfp_net_hw *hw;
+	struct nfp_net_hw_priv *hw_priv;
 
 	hw = dev->data->dev_private;
+	hw_priv = dev->process_private;
 
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
 		cpp = hw->cpp;
 	else
-		cpp = ((struct nfp_pf_dev *)(dev->process_private))->cpp;
+		cpp = hw_priv->pf_dev->cpp;
 
 	return nfp_eth_set_configured(cpp, hw->nfp_idx, 0);
 }
@@ -573,11 +582,13 @@ static void
 nfp_net_uninit(struct rte_eth_dev *eth_dev)
 {
 	struct nfp_net_hw *net_hw;
+	struct nfp_net_hw_priv *hw_priv;
 
 	net_hw = eth_dev->data->dev_private;
+	hw_priv = eth_dev->process_private;
 
 	if ((net_hw->super.cap_ext & NFP_NET_CFG_CTRL_FLOW_STEER) != 0)
-		nfp_net_flow_priv_uninit(net_hw->pf_dev, net_hw->idx);
+		nfp_net_flow_priv_uninit(hw_priv->pf_dev, net_hw->idx);
 
 	rte_free(net_hw->eth_xstats_base);
 	if ((net_hw->super.cap & NFP_NET_CFG_CTRL_TXRWB) != 0)
@@ -612,8 +623,10 @@ nfp_uninit_app_fw_nic(struct nfp_pf_dev *pf_dev)
 }
 
 void
-nfp_pf_uninit(struct nfp_pf_dev *pf_dev)
+nfp_pf_uninit(struct nfp_net_hw_priv *hw_priv)
 {
+	struct nfp_pf_dev *pf_dev = hw_priv->pf_dev;
+
 	nfp_cpp_area_release_free(pf_dev->qc_area);
 	free(pf_dev->sym_tbl);
 	if (pf_dev->multi_pf.enabled) {
@@ -626,15 +639,19 @@ nfp_pf_uninit(struct nfp_pf_dev *pf_dev)
 	nfp_cpp_free(pf_dev->cpp);
 	nfp_sync_free(pf_dev->sync);
 	rte_free(pf_dev);
+	rte_free(hw_priv);
 }
 
 static int
-nfp_pf_secondary_uninit(struct nfp_pf_dev *pf_dev)
+nfp_pf_secondary_uninit(struct nfp_net_hw_priv *hw_priv)
 {
+	struct nfp_pf_dev *pf_dev = hw_priv->pf_dev;
+
 	free(pf_dev->sym_tbl);
 	nfp_cpp_free(pf_dev->cpp);
 	nfp_sync_free(pf_dev->sync);
 	rte_free(pf_dev);
+	rte_free(hw_priv);
 
 	return 0;
 }
@@ -648,7 +665,10 @@ nfp_net_close(struct rte_eth_dev *dev)
 	struct nfp_net_hw *hw;
 	struct nfp_pf_dev *pf_dev;
 	struct rte_pci_device *pci_dev;
+	struct nfp_net_hw_priv *hw_priv;
 	struct nfp_app_fw_nic *app_fw_nic;
+
+	hw_priv = dev->process_private;
 
 	/*
 	 * In secondary process, a released eth device can be found by its name
@@ -660,12 +680,12 @@ nfp_net_close(struct rte_eth_dev *dev)
 		if (dev->state == RTE_ETH_DEV_UNUSED)
 			return 0;
 
-		nfp_pf_secondary_uninit(dev->process_private);
+		nfp_pf_secondary_uninit(hw_priv);
 		return 0;
 	}
 
 	hw = dev->data->dev_private;
-	pf_dev = hw->pf_dev;
+	pf_dev = hw_priv->pf_dev;
 	pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	app_fw_nic = NFP_PRIV_TO_APP_FW_NIC(pf_dev->app_fw_priv);
 
@@ -707,7 +727,7 @@ nfp_net_close(struct rte_eth_dev *dev)
 			nfp_net_dev_interrupt_handler, (void *)dev);
 
 	nfp_uninit_app_fw_nic(pf_dev);
-	nfp_pf_uninit(pf_dev);
+	nfp_pf_uninit(hw_priv);
 
 	return 0;
 }
@@ -887,13 +907,15 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 	struct nfp_net_hw *net_hw;
 	struct nfp_pf_dev *pf_dev;
 	struct rte_pci_device *pci_dev;
+	struct nfp_net_hw_priv *hw_priv;
 	struct nfp_app_fw_nic *app_fw_nic;
 
 	pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
 	net_hw = eth_dev->data->dev_private;
 
 	/* Use backpointer here to the PF of this eth_dev */
-	pf_dev = net_hw->pf_dev;
+	hw_priv = eth_dev->process_private;
+	pf_dev = hw_priv->pf_dev;
 
 	/* Use backpointer to the CoreNIC app struct */
 	app_fw_nic = NFP_PRIV_TO_APP_FW_NIC(pf_dev->app_fw_priv);
@@ -915,8 +937,8 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 		uint32_t min_size;
 
 		hw->ctrl_bar = pf_dev->ctrl_bar;
-		min_size = NFP_MAC_STATS_SIZE * net_hw->pf_dev->nfp_eth_table->max_index;
-		net_hw->mac_stats_bar = nfp_rtsym_map(net_hw->pf_dev->sym_tbl, "_mac_stats",
+		min_size = NFP_MAC_STATS_SIZE * pf_dev->nfp_eth_table->max_index;
+		net_hw->mac_stats_bar = nfp_rtsym_map(pf_dev->sym_tbl, "_mac_stats",
 				min_size, &net_hw->mac_stats_area);
 		if (net_hw->mac_stats_bar == NULL) {
 			PMD_INIT_LOG(ERR, "nfp_rtsym_map fails for _mac_stats_bar");
@@ -1472,7 +1494,7 @@ end:
 }
 
 static int
-nfp_init_app_fw_nic(struct nfp_pf_dev *pf_dev,
+nfp_init_app_fw_nic(struct nfp_net_hw_priv *hw_priv,
 		const struct nfp_dev_info *dev_info)
 {
 	uint8_t i;
@@ -1487,6 +1509,7 @@ nfp_init_app_fw_nic(struct nfp_pf_dev *pf_dev,
 	char bar_name[RTE_ETH_NAME_MAX_LEN];
 	char port_name[RTE_ETH_NAME_MAX_LEN];
 	char vnic_name[RTE_ETH_NAME_MAX_LEN];
+	struct nfp_pf_dev *pf_dev = hw_priv->pf_dev;
 
 	nfp_eth_table = pf_dev->nfp_eth_table;
 	PMD_INIT_LOG(INFO, "Total physical ports: %d", nfp_eth_table->count);
@@ -1529,7 +1552,6 @@ nfp_init_app_fw_nic(struct nfp_pf_dev *pf_dev,
 
 	/* Populate coreNIC app properties */
 	app_fw_nic->total_phyports = total_vnics;
-	app_fw_nic->pf_dev = pf_dev;
 	if (total_vnics > 1)
 		app_fw_nic->multiport = true;
 
@@ -1580,13 +1602,13 @@ nfp_init_app_fw_nic(struct nfp_pf_dev *pf_dev,
 		app_fw_nic->ports[id] = hw;
 
 		hw->dev_info = dev_info;
-		hw->pf_dev = pf_dev;
 		hw->cpp = pf_dev->cpp;
 		hw->eth_dev = eth_dev;
 		hw->idx = id;
 		hw->nfp_idx = nfp_eth_table->ports[id].index;
 
 		eth_dev->device = &pf_dev->pci_dev->device;
+		eth_dev->process_private = hw_priv;
 
 		/*
 		 * Ctrl/tx/rx BAR mappings and remaining init happens in
@@ -1792,6 +1814,7 @@ nfp_pf_init(struct rte_pci_device *pci_dev)
 	enum nfp_app_fw_id app_fw_id;
 	char name[RTE_ETH_NAME_MAX_LEN];
 	struct nfp_rtsym_table *sym_tbl;
+	struct nfp_net_hw_priv *hw_priv;
 	char app_name[RTE_ETH_NAME_MAX_LEN];
 	struct nfp_eth_table *nfp_eth_table;
 	const struct nfp_dev_info *dev_info;
@@ -1810,13 +1833,20 @@ nfp_pf_init(struct rte_pci_device *pci_dev)
 		return -ENODEV;
 	}
 
+	hw_priv = rte_zmalloc(NULL, sizeof(*hw_priv), 0);
+	if (hw_priv == NULL) {
+		PMD_INIT_LOG(ERR, "Can not alloc memory for hw priv data");
+		return -ENOMEM;
+	}
+
 	/* Allocate memory for the PF "device" */
 	function_id = (pci_dev->addr.function) & 0x07;
 	snprintf(name, sizeof(name), "nfp_pf%u", function_id);
 	pf_dev = rte_zmalloc(name, sizeof(*pf_dev), 0);
 	if (pf_dev == NULL) {
 		PMD_INIT_LOG(ERR, "Can't allocate memory for the PF device");
-		return -ENOMEM;
+		ret = -ENOMEM;
+		goto hw_priv_free;
 	}
 
 	sync = nfp_sync_alloc();
@@ -1937,6 +1967,8 @@ nfp_pf_init(struct rte_pci_device *pci_dev)
 
 	PMD_INIT_LOG(DEBUG, "qc_bar address: %p", pf_dev->qc_bar);
 
+	hw_priv->pf_dev = pf_dev;
+
 	/*
 	 * PF initialization has been done at this point. Call app specific
 	 * init code now.
@@ -1950,7 +1982,7 @@ nfp_pf_init(struct rte_pci_device *pci_dev)
 		}
 
 		PMD_INIT_LOG(INFO, "Initializing coreNIC");
-		ret = nfp_init_app_fw_nic(pf_dev, dev_info);
+		ret = nfp_init_app_fw_nic(hw_priv, dev_info);
 		if (ret != 0) {
 			PMD_INIT_LOG(ERR, "Could not initialize coreNIC!");
 			goto hwqueues_cleanup;
@@ -1958,7 +1990,7 @@ nfp_pf_init(struct rte_pci_device *pci_dev)
 		break;
 	case NFP_APP_FW_FLOWER_NIC:
 		PMD_INIT_LOG(INFO, "Initializing Flower");
-		ret = nfp_init_app_fw_flower(pf_dev, dev_info);
+		ret = nfp_init_app_fw_flower(hw_priv, dev_info);
 		if (ret != 0) {
 			PMD_INIT_LOG(ERR, "Could not initialize Flower!");
 			goto hwqueues_cleanup;
@@ -1996,12 +2028,14 @@ sync_free:
 	nfp_sync_free(sync);
 pf_cleanup:
 	rte_free(pf_dev);
+hw_priv_free:
+	rte_free(hw_priv);
 
 	return ret;
 }
 
 static int
-nfp_secondary_init_app_fw_nic(struct nfp_pf_dev *pf_dev)
+nfp_secondary_init_app_fw_nic(struct nfp_net_hw_priv *hw_priv)
 {
 	uint32_t i;
 	int err = 0;
@@ -2010,6 +2044,7 @@ nfp_secondary_init_app_fw_nic(struct nfp_pf_dev *pf_dev)
 	uint32_t total_vnics;
 	struct nfp_net_hw *hw;
 	char pf_name[RTE_ETH_NAME_MAX_LEN];
+	struct nfp_pf_dev *pf_dev = hw_priv->pf_dev;
 
 	/* Read the number of vNIC's created for the PF */
 	function_id = (pf_dev->pci_dev->addr.function) & 0x07;
@@ -2039,7 +2074,7 @@ nfp_secondary_init_app_fw_nic(struct nfp_pf_dev *pf_dev)
 			break;
 		}
 
-		eth_dev->process_private = pf_dev;
+		eth_dev->process_private = hw_priv;
 		hw = eth_dev->data->dev_private;
 		nfp_net_ethdev_ops_mount(hw, eth_dev);
 
@@ -2065,6 +2100,7 @@ nfp_pf_secondary_init(struct rte_pci_device *pci_dev)
 	enum nfp_app_fw_id app_fw_id;
 	char name[RTE_ETH_NAME_MAX_LEN];
 	struct nfp_rtsym_table *sym_tbl;
+	struct nfp_net_hw_priv *hw_priv;
 	const struct nfp_dev_info *dev_info;
 	char app_name[RTE_ETH_NAME_MAX_LEN];
 
@@ -2082,12 +2118,19 @@ nfp_pf_secondary_init(struct rte_pci_device *pci_dev)
 		return -ENODEV;
 	}
 
+	hw_priv = rte_zmalloc(NULL, sizeof(*hw_priv), 0);
+	if (hw_priv == NULL) {
+		PMD_INIT_LOG(ERR, "Can not alloc memory for hw priv data");
+		return -ENOMEM;
+	}
+
 	/* Allocate memory for the PF "device" */
 	snprintf(name, sizeof(name), "nfp_pf%d", 0);
 	pf_dev = rte_zmalloc(name, sizeof(*pf_dev), 0);
 	if (pf_dev == NULL) {
 		PMD_INIT_LOG(ERR, "Can't allocate memory for the PF device");
-		return -ENOMEM;
+		ret = -ENOMEM;
+		goto hw_priv_free;
 	}
 
 	sync = nfp_sync_alloc();
@@ -2143,11 +2186,13 @@ nfp_pf_secondary_init(struct rte_pci_device *pci_dev)
 	pf_dev->pci_dev = pci_dev;
 	pf_dev->sync = sync;
 
+	hw_priv->pf_dev = pf_dev;
+
 	/* Call app specific init code now */
 	switch (app_fw_id) {
 	case NFP_APP_FW_CORE_NIC:
 		PMD_INIT_LOG(INFO, "Initializing coreNIC");
-		ret = nfp_secondary_init_app_fw_nic(pf_dev);
+		ret = nfp_secondary_init_app_fw_nic(hw_priv);
 		if (ret != 0) {
 			PMD_INIT_LOG(ERR, "Could not initialize coreNIC!");
 			goto sym_tbl_cleanup;
@@ -2155,7 +2200,7 @@ nfp_pf_secondary_init(struct rte_pci_device *pci_dev)
 		break;
 	case NFP_APP_FW_FLOWER_NIC:
 		PMD_INIT_LOG(INFO, "Initializing Flower");
-		ret = nfp_secondary_init_app_fw_flower(pf_dev);
+		ret = nfp_secondary_init_app_fw_flower(hw_priv);
 		if (ret != 0) {
 			PMD_INIT_LOG(ERR, "Could not initialize Flower!");
 			goto sym_tbl_cleanup;
@@ -2177,6 +2222,8 @@ sync_free:
 	nfp_sync_free(sync);
 pf_cleanup:
 	rte_free(pf_dev);
+hw_priv_free:
+	rte_free(hw_priv);
 
 	return ret;
 }

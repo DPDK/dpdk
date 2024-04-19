@@ -12,7 +12,6 @@
 #include <nfp_dev.h>
 #include <rte_spinlock.h>
 
-#include "flower/nfp_flower_service.h"
 #include "nfpcore/nfp_sync.h"
 #include "nfp_net_ctrl.h"
 #include "nfp_service.h"
@@ -86,6 +85,8 @@ struct nfp_multi_pf {
 	uint8_t *beat_addr;
 };
 
+struct nfp_flower_service;
+
 struct nfp_process_share {
 	struct nfp_flower_service *fl_service;
 };
@@ -145,9 +146,6 @@ struct nfp_net_priv {
 };
 
 struct nfp_app_fw_nic {
-	/** Backpointer to the PF device */
-	struct nfp_pf_dev *pf_dev;
-
 	/**
 	 * Array of physical ports belonging to this CoreNIC app.
 	 * This is really a list of vNIC's, one for each physical port.
@@ -158,12 +156,13 @@ struct nfp_app_fw_nic {
 	uint8_t total_phyports;
 };
 
+struct nfp_net_hw_priv {
+	struct nfp_pf_dev *pf_dev;
+};
+
 struct nfp_net_hw {
 	/** The parent class */
 	struct nfp_hw super;
-
-	/** Backpointer to the PF this port belongs to */
-	struct nfp_pf_dev *pf_dev;
 
 	/** Backpointer to the eth_dev of this port */
 	struct rte_eth_dev *eth_dev;
@@ -314,7 +313,7 @@ int nfp_net_flow_ctrl_get(struct rte_eth_dev *dev,
 		struct rte_eth_fc_conf *fc_conf);
 int nfp_net_flow_ctrl_set(struct rte_eth_dev *dev,
 		struct rte_eth_fc_conf *fc_conf);
-void nfp_pf_uninit(struct nfp_pf_dev *pf_dev);
+void nfp_pf_uninit(struct nfp_net_hw_priv *hw_priv);
 int nfp_net_fec_get_capability(struct rte_eth_dev *dev,
 		struct rte_eth_fec_capa *speed_fec_capa,
 		unsigned int num);
