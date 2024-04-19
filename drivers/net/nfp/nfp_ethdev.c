@@ -2123,7 +2123,7 @@ nfp_pf_secondary_init(struct rte_pci_device *pci_dev)
 	if (sym_tbl == NULL) {
 		PMD_INIT_LOG(ERR, "Something is wrong with the firmware symbol table");
 		ret = -EIO;
-		goto sync_free;
+		goto cpp_cleanup;
 	}
 
 	/* Read the app ID of the firmware loaded */
@@ -2171,6 +2171,8 @@ nfp_pf_secondary_init(struct rte_pci_device *pci_dev)
 
 sym_tbl_cleanup:
 	free(sym_tbl);
+cpp_cleanup:
+	nfp_cpp_free(cpp);
 sync_free:
 	nfp_sync_free(sync);
 pf_cleanup:
