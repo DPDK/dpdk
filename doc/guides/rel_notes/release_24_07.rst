@@ -71,6 +71,10 @@ New Features
     without having to do a full handshake over a Unix Domain Socket
     with the Device Plugin.
 
+* **Updated Wangxun txgbe driver.**
+
+  * Added SSE/NEON vector datapath.
+
 
 Removed Items
 -------------

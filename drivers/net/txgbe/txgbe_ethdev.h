@@ -364,6 +364,7 @@ struct txgbe_adapter {
 	struct txgbe_ipsec          ipsec;
 #endif
 	bool rx_bulk_alloc_allowed;
+	bool rx_vec_allowed;
 	struct rte_timecounter      systime_tc;
 	struct rte_timecounter      rx_tstamp_tc;
 	struct rte_timecounter      tx_tstamp_tc;

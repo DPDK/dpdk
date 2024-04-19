@@ -603,6 +603,7 @@ txgbevf_dev_configure(struct rte_eth_dev *dev)
 	 * allocation or vector Rx preconditions we will reset it.
 	 */
 	adapter->rx_bulk_alloc_allowed = true;
+	adapter->rx_vec_allowed = true;
 
 	return 0;
 }

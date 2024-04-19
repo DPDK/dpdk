@@ -1544,6 +1544,7 @@ txgbe_dev_configure(struct rte_eth_dev *dev)
 	 * allocation Rx preconditions we will reset it.
 	 */
 	adapter->rx_bulk_alloc_allowed = true;
+	adapter->rx_vec_allowed = true;
 
 	return 0;
 }
@@ -2730,6 +2731,10 @@ const uint32_t *
 txgbe_dev_supported_ptypes_get(struct rte_eth_dev *dev, size_t *no_of_elements)
 {
 	if (dev->rx_pkt_burst == txgbe_recv_pkts ||
+#if defined(RTE_ARCH_X86) || defined(RTE_ARCH_ARM)
+	    dev->rx_pkt_burst == txgbe_recv_pkts_vec ||
+	    dev->rx_pkt_burst == txgbe_recv_scattered_pkts_vec ||
+#endif
 	    dev->rx_pkt_burst == txgbe_recv_pkts_lro_single_alloc ||
 	    dev->rx_pkt_burst == txgbe_recv_pkts_lro_bulk_alloc ||
 	    dev->rx_pkt_burst == txgbe_recv_pkts_bulk_alloc)
