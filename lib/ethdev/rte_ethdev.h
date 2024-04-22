@@ -331,13 +331,18 @@ struct rte_eth_stats {
 /**
  * A structure used to retrieve link-level information of an Ethernet port.
  */
-__extension__
 struct rte_eth_link {
-	uint32_t link_speed;        /**< RTE_ETH_SPEED_NUM_ */
-	uint16_t link_duplex  : 1;  /**< RTE_ETH_LINK_[HALF/FULL]_DUPLEX */
-	uint16_t link_autoneg : 1;  /**< RTE_ETH_LINK_[AUTONEG/FIXED] */
-	uint16_t link_status  : 1;  /**< RTE_ETH_LINK_[DOWN/UP] */
-} __rte_aligned(8);      /**< aligned for atomic64 read/write */
+	union {
+		RTE_ATOMIC(uint64_t) val64; /**< used for atomic64 read/write */
+		__extension__
+		struct {
+			uint32_t link_speed;	    /**< RTE_ETH_SPEED_NUM_ */
+			uint16_t link_duplex  : 1;  /**< RTE_ETH_LINK_[HALF/FULL]_DUPLEX */
+			uint16_t link_autoneg : 1;  /**< RTE_ETH_LINK_[AUTONEG/FIXED] */
+			uint16_t link_status  : 1;  /**< RTE_ETH_LINK_[DOWN/UP] */
+		};
+	};
+};
 
 /**@{@name Link negotiation
  * Constants used in link management.
