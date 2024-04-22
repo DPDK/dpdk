@@ -130,8 +130,6 @@ static cJSON *vdpa_pf_dev_remove(const char *pf_name)
 
 	virtio_ha_dev_lock();
 
-	rte_vdpa_pf_ctrl_ctx_remove(true);
-
 	ret = rte_vdpa_pf_dev_remove(pf_name);
 
 	virtio_ha_dev_unlock();

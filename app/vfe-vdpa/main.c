@@ -343,8 +343,6 @@ void vdpa_with_socket_path_stop(const char *vf_name)
 		return;
 	}
 
-	rte_vdpa_vf_ctrl_ctx_remove(true);
-
 	if (vport->ifname[0] != '\0') {
 		close_vdpa(vport);
 		memset(vport, 0, sizeof(*vport));
