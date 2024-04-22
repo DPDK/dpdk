@@ -335,7 +335,7 @@ int app_init(void)
 	for(i = 0; i < nb_pfc; i++) {
 		uint32_t socket = rte_lcore_to_socket_id(qos_conf[i].rx_core);
 		struct rte_ring *ring;
-		struct rte_eth_link link = {0};
+		struct rte_eth_link link;
 		int retry_count = 100, retry_delay = 100; /* try every 100ms for 10 sec */
 
 		snprintf(ring_name, MAX_NAME_LEN, "ring-%u-%u", i, qos_conf[i].rx_core);
@@ -367,6 +367,7 @@ int app_init(void)
 		app_init_port(qos_conf[i].rx_port, qos_conf[i].mbuf_pool);
 		app_init_port(qos_conf[i].tx_port, qos_conf[i].mbuf_pool);
 
+		memset(&link, 0, sizeof(link));
 		rte_eth_link_get(qos_conf[i].tx_port, &link);
 		if (link.link_status == 0)
 			printf("Waiting for link on port %u\n", qos_conf[i].tx_port);

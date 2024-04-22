@@ -1674,18 +1674,13 @@ static inline int
 rte_eth_linkstatus_set(struct rte_eth_dev *dev,
 		       const struct rte_eth_link *new_link)
 {
-	RTE_ATOMIC(uint64_t) *dev_link = (uint64_t __rte_atomic *)&(dev->data->dev_link);
-	union {
-		uint64_t val64;
-		struct rte_eth_link link;
-	} orig;
+	struct rte_eth_link old_link;
 
-	RTE_BUILD_BUG_ON(sizeof(*new_link) != sizeof(uint64_t));
+	old_link.val64 = rte_atomic_exchange_explicit(&dev->data->dev_link.val64,
+						      new_link->val64,
+						      rte_memory_order_seq_cst);
 
-	orig.val64 = rte_atomic_exchange_explicit(dev_link, *(const uint64_t *)new_link,
-					rte_memory_order_seq_cst);
-
-	return (orig.link.link_status == new_link->link_status) ? -1 : 0;
+	return (old_link.link_status == new_link->link_status) ? -1 : 0;
 }
 
 /**
@@ -1701,12 +1696,11 @@ static inline void
 rte_eth_linkstatus_get(const struct rte_eth_dev *dev,
 		       struct rte_eth_link *link)
 {
-	RTE_ATOMIC(uint64_t) *src = (uint64_t __rte_atomic *)&(dev->data->dev_link);
-	uint64_t *dst = (uint64_t *)link;
+	struct rte_eth_link curr_link;
 
-	RTE_BUILD_BUG_ON(sizeof(*link) != sizeof(uint64_t));
-
-	*dst = rte_atomic_load_explicit(src, rte_memory_order_seq_cst);
+	curr_link.val64 = rte_atomic_load_explicit(&dev->data->dev_link.val64,
+						   rte_memory_order_seq_cst);
+	rte_atomic_store_explicit(&link->val64, curr_link.val64, rte_memory_order_seq_cst);
 }
 
 /**
