@@ -13,7 +13,6 @@ authors = [
     "Jeremy Spewock <jspewock@iol.unh.edu>"
 ]
 maintainers = [
-    "Lijuan Tu <lijuan.tu@intel.com>",
     "Juraj Linkeš <juraj.linkes@pantheon.tech>"
 ]
 documentation = "https://doc.dpdk.org/guides/tools/dts.html"

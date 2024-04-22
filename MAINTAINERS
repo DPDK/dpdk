@@ -746,7 +746,6 @@ F: doc/guides/nics/features/hns3.ini
 Huawei hinic
 M: Ziyang Xuan <xuanziyang2@huawei.com>
 M: Xiaoyun Wang <cloud.wangxiaoyun@huawei.com>
-M: Guoyang Zhou <zhouguoyang@huawei.com>
 F: drivers/net/hinic/
 F: doc/guides/nics/hinic.rst
 F: doc/guides/nics/features/hinic.ini
@@ -1875,7 +1874,6 @@ F: app/proc-info/
 F: doc/guides/tools/proc_info.rst
 
 DTS
-M: Lijuan Tu <lijuan.tu@intel.com>
 M: Juraj Linkeš <juraj.linkes@pantheon.tech>
 F: dts/
 F: devtools/dts-check-format.sh
