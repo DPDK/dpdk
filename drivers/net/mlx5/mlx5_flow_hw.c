@@ -111,6 +111,10 @@ flow_hw_action_job_init(struct mlx5_priv *priv, uint32_t queue,
 			enum mlx5_hw_job_type type,
 			enum mlx5_hw_indirect_type indirect_type,
 			struct rte_flow_error *error);
+static void
+flow_hw_age_count_release(struct mlx5_priv *priv, uint32_t queue, struct rte_flow_hw *flow,
+			  struct rte_flow_error *error);
+
 static int
 mlx5_tbl_multi_pattern_process(struct rte_eth_dev *dev,
 			       struct rte_flow_template_table *tbl,
@@ -2866,6 +2870,30 @@ flow_hw_modify_field_construct(struct mlx5_hw_q_job *job,
 }
 
 /**
+ * Release any actions allocated for the flow rule during actions construction.
+ *
+ * @param[in] flow
+ *   Pointer to flow structure.
+ */
+static void
+flow_hw_release_actions(struct rte_eth_dev *dev,
+			uint32_t queue,
+			struct rte_flow_hw *flow)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_aso_mtr_pool *pool = priv->hws_mpool;
+
+	if (flow->fate_type == MLX5_FLOW_FATE_JUMP)
+		flow_hw_jump_release(dev, flow->jump);
+	else if (flow->fate_type == MLX5_FLOW_FATE_QUEUE)
+		mlx5_hrxq_obj_release(dev, flow->hrxq);
+	if (mlx5_hws_cnt_id_valid(flow->cnt_id))
+		flow_hw_age_count_release(priv, queue, flow, NULL);
+	if (flow->mtr_id)
+		mlx5_ipool_free(pool->idx_pool, flow->mtr_id);
+}
+
+/**
  * Construct flow action array.
  *
  * For action template contains dynamic actions, these actions need to
@@ -2980,7 +3008,7 @@ flow_hw_actions_construct(struct rte_eth_dev *dev,
 					(dev, queue, action, table, it_idx,
 					 at->action_flags, job->flow,
 					 &rule_acts[act_data->action_dst]))
-				return -1;
+				goto error;
 			break;
 		case RTE_FLOW_ACTION_TYPE_VOID:
 			break;
@@ -3000,7 +3028,7 @@ flow_hw_actions_construct(struct rte_eth_dev *dev,
 			jump = flow_hw_jump_action_register
 				(dev, &table->cfg, jump_group, NULL);
 			if (!jump)
-				return -1;
+				goto error;
 			rule_acts[act_data->action_dst].action =
 			(!!attr.group) ? jump->hws_action : jump->root_action;
 			job->flow->jump = jump;
@@ -3012,7 +3040,7 @@ flow_hw_actions_construct(struct rte_eth_dev *dev,
 					ft_flag,
 					action);
 			if (!hrxq)
-				return -1;
+				goto error;
 			rule_acts[act_data->action_dst].action = hrxq->action;
 			job->flow->hrxq = hrxq;
 			job->flow->fate_type = MLX5_FLOW_FATE_QUEUE;
@@ -3022,19 +3050,19 @@ flow_hw_actions_construct(struct rte_eth_dev *dev,
 			if (flow_hw_shared_action_get
 				(dev, act_data, item_flags,
 				 &rule_acts[act_data->action_dst]))
-				return -1;
+				goto error;
 			break;
 		case RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP:
 			enc_item = ((const struct rte_flow_action_vxlan_encap *)
 				   action->conf)->definition;
 			if (flow_dv_convert_encap_data(enc_item, buf, &encap_len, NULL))
-				return -1;
+				goto error;
 			break;
 		case RTE_FLOW_ACTION_TYPE_NVGRE_ENCAP:
 			enc_item = ((const struct rte_flow_action_nvgre_encap *)
 				   action->conf)->definition;
 			if (flow_dv_convert_encap_data(enc_item, buf, &encap_len, NULL))
-				return -1;
+				goto error;
 			break;
 		case RTE_FLOW_ACTION_TYPE_RAW_ENCAP:
 			raw_encap_data =
@@ -3063,12 +3091,12 @@ flow_hw_actions_construct(struct rte_eth_dev *dev,
 								     hw_acts,
 								     action);
 			if (ret)
-				return -1;
+				goto error;
 			break;
 		case RTE_FLOW_ACTION_TYPE_REPRESENTED_PORT:
 			port_action = action->conf;
 			if (!priv->hw_vport[port_action->port_id])
-				return -1;
+				goto error;
 			rule_acts[act_data->action_dst].action =
 					priv->hw_vport[port_action->port_id];
 			break;
@@ -3088,7 +3116,7 @@ flow_hw_actions_construct(struct rte_eth_dev *dev,
 			jump = flow_hw_jump_action_register
 				(dev, &table->cfg, aso_mtr->fm.group, NULL);
 			if (!jump)
-				return -1;
+				goto error;
 			MLX5_ASSERT
 				(!rule_acts[act_data->action_dst + 1].action);
 			rule_acts[act_data->action_dst + 1].action =
@@ -3097,7 +3125,7 @@ flow_hw_actions_construct(struct rte_eth_dev *dev,
 			job->flow->jump = jump;
 			job->flow->fate_type = MLX5_FLOW_FATE_JUMP;
 			if (mlx5_aso_mtr_wait(priv, aso_mtr, true))
-				return -1;
+				goto error;
 			break;
 		case RTE_FLOW_ACTION_TYPE_AGE:
 			age = action->conf;
@@ -3112,7 +3140,7 @@ flow_hw_actions_construct(struct rte_eth_dev *dev,
 							     job->flow->res_idx,
 							     error);
 			if (age_idx == 0)
-				return -rte_errno;
+				goto error;
 			job->flow->age_idx = age_idx;
 			if (at->action_flags & MLX5_FLOW_ACTION_INDIRECT_COUNT)
 				/*
@@ -3126,7 +3154,7 @@ flow_hw_actions_construct(struct rte_eth_dev *dev,
 			cnt_queue = mlx5_hws_cnt_get_queue(priv, &queue);
 			ret = mlx5_hws_cnt_pool_get(priv->hws_cpool, cnt_queue, &cnt_id, age_idx);
 			if (ret != 0)
-				return ret;
+				goto error;
 			ret = mlx5_hws_cnt_pool_get_action_offset
 				(priv->hws_cpool,
 				 cnt_id,
@@ -3134,7 +3162,7 @@ flow_hw_actions_construct(struct rte_eth_dev *dev,
 				 &rule_acts[act_data->action_dst].counter.offset
 				 );
 			if (ret != 0)
-				return ret;
+				goto error;
 			job->flow->cnt_id = cnt_id;
 			break;
 		case MLX5_RTE_FLOW_ACTION_TYPE_COUNT:
@@ -3145,7 +3173,7 @@ flow_hw_actions_construct(struct rte_eth_dev *dev,
 				 &rule_acts[act_data->action_dst].counter.offset
 				 );
 			if (ret != 0)
-				return ret;
+				goto error;
 			job->flow->cnt_id = act_data->shared_counter.id;
 			break;
 		case RTE_FLOW_ACTION_TYPE_CONNTRACK:
@@ -3153,7 +3181,7 @@ flow_hw_actions_construct(struct rte_eth_dev *dev,
 				 ((uint32_t)(uintptr_t)action->conf);
 			if (flow_hw_ct_compile(dev, queue, ct_idx,
 					       &rule_acts[act_data->action_dst]))
-				return -1;
+				goto error;
 			break;
 		case MLX5_RTE_FLOW_ACTION_TYPE_METER_MARK:
 			mtr_id = act_data->shared_meter.id &
@@ -3161,7 +3189,7 @@ flow_hw_actions_construct(struct rte_eth_dev *dev,
 			/* Find ASO object. */
 			aso_mtr = mlx5_ipool_get(pool->idx_pool, mtr_id);
 			if (!aso_mtr)
-				return -1;
+				goto error;
 			rule_acts[act_data->action_dst].action =
 							pool->action;
 			rule_acts[act_data->action_dst].aso_meter.offset =
@@ -3176,7 +3204,7 @@ flow_hw_actions_construct(struct rte_eth_dev *dev,
 				act_data->action_dst, action,
 				rule_acts, &job->flow->mtr_id, MLX5_HW_INV_QUEUE);
 			if (ret != 0)
-				return ret;
+				goto error;
 			break;
 		default:
 			break;
@@ -3214,6 +3242,11 @@ flow_hw_actions_construct(struct rte_eth_dev *dev,
 	if (mlx5_hws_cnt_id_valid(hw_acts->cnt_id))
 		job->flow->cnt_id = hw_acts->cnt_id;
 	return 0;
+
+error:
+	flow_hw_release_actions(dev, queue, job->flow);
+	rte_errno = EINVAL;
+	return -rte_errno;
 }
 
 static const struct rte_flow_item *
@@ -3363,10 +3396,8 @@ flow_hw_async_flow_create(struct rte_eth_dev *dev,
 	if (flow_hw_actions_construct(dev, job,
 				      &table->ats[action_template_index],
 				      pattern_template_index, actions,
-				      rule_acts, queue, error)) {
-		rte_errno = EINVAL;
+				      rule_acts, queue, error))
 		goto error;
-	}
 	rule_items = flow_hw_get_rule_items(dev, table, items,
 					    pattern_template_index, job);
 	if (!rule_items)
