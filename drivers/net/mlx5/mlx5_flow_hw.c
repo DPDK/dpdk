@@ -9705,6 +9705,14 @@ flow_hw_configure(struct rte_eth_dev *dev,
 		priv->hws_strict_queue = 1;
 	return 0;
 err:
+	priv->hws_strict_queue = 0;
+	flow_hw_destroy_vlan(dev);
+	if (priv->hws_age_req)
+		mlx5_hws_age_pool_destroy(priv);
+	if (priv->hws_cpool) {
+		mlx5_hws_cnt_pool_destroy(priv->sh, priv->hws_cpool);
+		priv->hws_cpool = NULL;
+	}
 	if (priv->hws_ctpool) {
 		flow_hw_ct_pool_destroy(dev, priv->hws_ctpool);
 		priv->hws_ctpool = NULL;
@@ -9713,27 +9721,37 @@ err:
 		flow_hw_ct_mng_destroy(dev, priv->ct_mng);
 		priv->ct_mng = NULL;
 	}
-	if (priv->hws_age_req)
-		mlx5_hws_age_pool_destroy(priv);
-	if (priv->hws_cpool) {
-		mlx5_hws_cnt_pool_destroy(priv->sh, priv->hws_cpool);
-		priv->hws_cpool = NULL;
-	}
-	mlx5_flow_quota_destroy(dev);
 	flow_hw_destroy_send_to_kernel_action(priv);
 	flow_hw_cleanup_ctrl_fdb_tables(dev);
 	flow_hw_free_vport_actions(priv);
-	for (i = 0; i < MLX5_HW_ACTION_FLAG_MAX; i++) {
-		if (priv->hw_drop[i])
-			mlx5dr_action_destroy(priv->hw_drop[i]);
-		if (priv->hw_tag[i])
-			mlx5dr_action_destroy(priv->hw_tag[i]);
-	}
-	if (priv->hw_def_miss)
+	if (priv->hw_def_miss) {
 		mlx5dr_action_destroy(priv->hw_def_miss);
-	flow_hw_destroy_vlan(dev);
-	if (dr_ctx)
+		priv->hw_def_miss = NULL;
+	}
+	flow_hw_cleanup_tx_repr_tagging(dev);
+	for (i = 0; i < MLX5_HW_ACTION_FLAG_MAX; i++) {
+		if (priv->hw_drop[i]) {
+			mlx5dr_action_destroy(priv->hw_drop[i]);
+			priv->hw_drop[i] = NULL;
+		}
+		if (priv->hw_tag[i]) {
+			mlx5dr_action_destroy(priv->hw_tag[i]);
+			priv->hw_tag[i] = NULL;
+		}
+	}
+	mlx5_flow_meter_uninit(dev);
+	mlx5_flow_quota_destroy(dev);
+	flow_hw_cleanup_ctrl_rx_tables(dev);
+	if (dr_ctx) {
 		claim_zero(mlx5dr_context_close(dr_ctx));
+		priv->dr_ctx = NULL;
+	}
+	if (priv->shared_host) {
+		struct mlx5_priv *host_priv = priv->shared_host->data->dev_private;
+
+		__atomic_fetch_sub(&host_priv->shared_refcnt, 1, __ATOMIC_RELAXED);
+		priv->shared_host = NULL;
+	}
 	if (priv->hw_q) {
 		for (i = 0; i < nb_q_updated; i++) {
 			rte_ring_free(priv->hw_q[i].indir_iq);
@@ -9746,14 +9764,11 @@ err:
 		mlx5_ipool_destroy(priv->acts_ipool);
 		priv->acts_ipool = NULL;
 	}
-	if (_queue_attr)
-		mlx5_free(_queue_attr);
-	if (priv->shared_host) {
-		__atomic_fetch_sub(&host_priv->shared_refcnt, 1, __ATOMIC_RELAXED);
-		priv->shared_host = NULL;
-	}
 	mlx5_free(priv->hw_attr);
 	priv->hw_attr = NULL;
+	priv->nb_queue = 0;
+	if (_queue_attr)
+		mlx5_free(_queue_attr);
 	/* Do not overwrite the internal errno information. */
 	if (ret)
 		return ret;
