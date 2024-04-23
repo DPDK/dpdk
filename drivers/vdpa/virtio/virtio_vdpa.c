@@ -1444,6 +1444,7 @@ virtio_vdpa_dev_config(int vid)
 	uint16_t last_avail_idx, last_used_idx, nr_virtqs;
 	struct virtio_vdpa_notifier_work *notify_work;
 	struct vdpa_vf_with_devargs vf_dev;
+	struct rte_vhost_vring vq;
 	int ret, i, vhost_sock_fd;
 	struct timeval start, end;
 	bool compare = true;
@@ -1527,6 +1528,34 @@ virtio_vdpa_dev_config(int vid)
 			return ret;
 		}
 
+		/* In case of recovery, hw idx might changed and device is ready before dev config.
+		 * If we use idx from qemu, it will lag behind, so read from memory to get idx
+		 */
+		if (!compare) {
+			for (i = 0; i < nr_virtqs; i++) {
+				if (!priv->vrings[i]->conf_enable)
+					continue;
+				ret = rte_vhost_get_vhost_vring(vid, i, &vq);
+				if (ret) {
+					DRV_LOG(ERR, "%s vfid %d failed get vring ret:%d",
+						vdev->device->name, priv->vf_id, ret);
+					rte_errno = rte_errno ? rte_errno : EINVAL;
+					return -rte_errno;
+				}
+				DRV_LOG(INFO, "%s vid %d qid %d recover last_avail_idx:%d,last_used_idx:%d",
+								vdev->device->name, vid,
+								i, vq.used->idx, vq.used->idx);
+
+				ret = virtio_pci_dev_state_hw_idx_set(priv->vpdev, i ,
+								vq.used->idx,
+								vq.used->idx, priv->state_mz->addr);
+				if (ret) {
+					DRV_LOG(ERR, "%s error set dev state ret:%d", vdev->device->name, ret);
+					rte_errno = rte_errno ? rte_errno : EINVAL;
+					return -rte_errno;
+				}
+			}
+		}
 		ret = virtio_vdpa_cmd_restore_state(priv->pf_priv, priv->vf_id, 0, priv->state_size, priv->state_mz->iova);
 		if (ret) {
 			DRV_LOG(ERR, "%s vfid %d failed restore state ret:%d", vdev->device->name, priv->vf_id, ret);
