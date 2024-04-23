@@ -22,45 +22,6 @@
 #include "vhost.h"
 #include "vhost_user.h"
 
-
-TAILQ_HEAD(vhost_user_connection_list, vhost_user_connection);
-
-/*
- * Every time rte_vhost_driver_register() is invoked, an associated
- * vhost_user_socket struct will be created.
- */
-struct vhost_user_socket {
-	struct vhost_user_connection_list conn_list;
-	pthread_mutex_t conn_mutex;
-	char *path;
-	int socket_fd;
-	struct sockaddr_un un;
-	bool is_server;
-	bool reconnect;
-	bool iommu_support;
-	bool use_builtin_virtio_net;
-	bool extbuf;
-	bool linearbuf;
-	bool async_copy;
-	bool net_compliant_ol_flags;
-
-	/*
-	 * The "supported_features" indicates the feature bits the
-	 * vhost driver supports. The "features" indicates the feature
-	 * bits after the rte_vhost_driver_features_disable/enable().
-	 * It is also the final feature bits used for vhost-user
-	 * features negotiation.
-	 */
-	uint64_t supported_features;
-	uint64_t features;
-
-	uint64_t protocol_features;
-
-	struct rte_vdpa_device *vdpa_dev;
-
-	struct rte_vhost_device_ops const *notify_ops;
-};
-
 struct vhost_user_connection {
 	struct vhost_user_socket *vsocket;
 	int connfd;
@@ -333,6 +294,11 @@ vhost_user_read_cb(int connfd, void *dat, int *remove)
 			vhost_user_start_client(vsocket);
 		}
 
+		if (vsocket->is_server) {
+			vsocket->timeout_enabled = true;
+			gettimeofday(&vsocket->timestamp, NULL);
+		}
+
 		pthread_mutex_lock(&vsocket->conn_mutex);
 		TAILQ_REMOVE(&vsocket->conn_list, conn, next);
 		pthread_mutex_unlock(&vsocket->conn_mutex);
@@ -399,6 +365,8 @@ vhost_user_start_server(struct vhost_user_socket *vsocket)
 	if (ret < 0)
 		goto err;
 
+	vsocket->timeout_enabled = true;
+	gettimeofday(&vsocket->timestamp, NULL);
 	ret = fdset_add(&vhost_user.fdset, fd, vhost_user_server_new_connection,
 		  NULL, vsocket, true);
 	if (ret < 0) {

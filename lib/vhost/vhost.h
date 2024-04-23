@@ -13,6 +13,7 @@
 #include <linux/vhost.h>
 #include <linux/virtio_net.h>
 #include <sys/socket.h>
+#include <sys/un.h>
 #include <linux/if.h>
 
 #include <rte_log.h>
@@ -90,6 +91,46 @@
 #define vhost_for_each_try_unroll(iter, val, num) \
 	for (iter = val; iter < num; iter++)
 #endif
+
+TAILQ_HEAD(vhost_user_connection_list, vhost_user_connection);
+
+/*
+ * Every time rte_vhost_driver_register() is invoked, an associated
+ * vhost_user_socket struct will be created.
+ */
+struct vhost_user_socket {
+	struct vhost_user_connection_list conn_list;
+	pthread_mutex_t conn_mutex;
+	char *path;
+	int socket_fd;
+	struct sockaddr_un un;
+	bool is_server;
+	bool reconnect;
+	bool iommu_support;
+	bool use_builtin_virtio_net;
+	bool extbuf;
+	bool linearbuf;
+	bool async_copy;
+	bool net_compliant_ol_flags;
+
+	/*
+	 * The "supported_features" indicates the feature bits the
+	 * vhost driver supports. The "features" indicates the feature
+	 * bits after the rte_vhost_driver_features_disable/enable().
+	 * It is also the final feature bits used for vhost-user
+	 * features negotiation.
+	 */
+	uint64_t supported_features;
+	uint64_t features;
+
+	uint64_t protocol_features;
+
+	struct rte_vdpa_device *vdpa_dev;
+
+	struct rte_vhost_device_ops const *notify_ops;
+	bool timeout_enabled;
+	struct timeval timestamp;
+};
 
 /**
  * Structure contains buffer address, length and descriptor index

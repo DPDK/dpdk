@@ -19,7 +19,6 @@ struct fdentry {
 	void *dat;	/* fd context */
 	int busy;	/* whether this entry is being used in cb. */
 	bool check_timeout; /* whether to check connection timeout */
-	struct timeval timestamp; /* Timestamp value for timeout check */
 };
 
 struct fdset {

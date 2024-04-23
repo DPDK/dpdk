@@ -1840,6 +1840,10 @@ virtio_vdpa_dev_mem_tbl_cleanup(struct rte_vdpa_device *vdev)
 			mem->regions[i].guest_phys_addr, mem->regions[i].size);
 		if (ret < 0)
 			DRV_LOG(ERR, "Failed to DMA unmap region %u: %s", i, vdev->device->name);
+
+		DRV_LOG(INFO, "DMA unmap region: GPA 0x%" PRIx64 ", HPA 0x%" PRIx64
+			", size 0x%" PRIx64 ".", mem->regions[i].guest_phys_addr,
+			mem->regions[i].host_phys_addr, mem->regions[i].size);
 	}
 	mem->nregions = 0;
 }

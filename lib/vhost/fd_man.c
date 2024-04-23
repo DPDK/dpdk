@@ -90,8 +90,6 @@ fdset_add_fd(struct fdset *pfdset, int idx, int fd,
 	pfdentry->wcb = wcb;
 	pfdentry->dat = dat;
 	pfdentry->check_timeout = check_timeout;
-	if (check_timeout)
-		gettimeofday(&pfdentry->timestamp, NULL);
 
 	pfd->fd = fd;
 	pfd->events  = rcb ? POLLIN : 0;
@@ -226,6 +224,7 @@ fdset_event_dispatch(void *arg)
 	struct rte_vdpa_device *vdpa_dev;
 	struct timeval time;
 	double time_passed;
+	struct vhost_user_socket *vsock;
 	fd_cb rcb, wcb;
 	void *dat;
 	int fd, numfds;
@@ -271,14 +270,16 @@ fdset_event_dispatch(void *arg)
 			}
 
 			if (pfdentry->check_timeout) {
-				gettimeofday(&time, NULL);
-				time_passed = (time.tv_sec - pfdentry->timestamp.tv_sec) * 1e6;
-				time_passed = (time_passed + (time.tv_usec - pfdentry->timestamp.tv_usec)) * 1e-6;
-				if (time_passed > VHOST_SOCK_TIME_OUT) {
-					vdpa_dev = (struct rte_vdpa_device *)pfdentry->dat;
-					vdpa_dev->ops->mem_tbl_cleanup(vdpa_dev);
-					pfdentry->check_timeout = false;
-					//TO-DO: how to handle client disconnect?
+				vsock = (struct vhost_user_socket *)pfdentry->dat;
+				if (vsock->timeout_enabled) {
+					gettimeofday(&time, NULL);
+					time_passed = (time.tv_sec - vsock->timestamp.tv_sec) * 1e6;
+					time_passed = (time_passed + (time.tv_usec - vsock->timestamp.tv_usec)) * 1e-6;
+					if (time_passed > VHOST_SOCK_TIME_OUT) {
+						vdpa_dev = vsock->vdpa_dev;
+						vdpa_dev->ops->mem_tbl_cleanup(vdpa_dev);
+						vsock->timeout_enabled = false;
+					}
 				}
 			}
 
@@ -292,8 +293,9 @@ fdset_event_dispatch(void *arg)
 			rcb = pfdentry->rcb;
 			wcb = pfdentry->wcb;
 			dat = pfdentry->dat;
-			pfdentry->check_timeout = false;
 			pfdentry->busy = 1;
+			if (pfdentry->check_timeout)
+				vsock->timeout_enabled = false;
 
 			pthread_mutex_unlock(&pfdset->fd_mutex);
 
