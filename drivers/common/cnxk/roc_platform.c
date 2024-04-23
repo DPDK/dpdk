@@ -85,17 +85,17 @@ roc_plt_init(void)
 	return 0;
 }
 
-RTE_LOG_REGISTER_DEFAULT(cnxk_logtype_base, NOTICE);
-RTE_LOG_REGISTER_DEFAULT(cnxk_logtype_mbox, NOTICE);
-RTE_LOG_REGISTER_DEFAULT(cnxk_logtype_cpt, NOTICE);
-RTE_LOG_REGISTER_DEFAULT(cnxk_logtype_ml, NOTICE);
-RTE_LOG_REGISTER_DEFAULT(cnxk_logtype_npa, NOTICE);
-RTE_LOG_REGISTER_DEFAULT(cnxk_logtype_nix, NOTICE);
-RTE_LOG_REGISTER_DEFAULT(cnxk_logtype_npc, NOTICE);
-RTE_LOG_REGISTER_DEFAULT(cnxk_logtype_sso, NOTICE);
-RTE_LOG_REGISTER_DEFAULT(cnxk_logtype_tim, NOTICE);
-RTE_LOG_REGISTER_DEFAULT(cnxk_logtype_tm, NOTICE);
-RTE_LOG_REGISTER_DEFAULT(cnxk_logtype_dpi, NOTICE);
-RTE_LOG_REGISTER_DEFAULT(cnxk_logtype_rep, NOTICE);
-RTE_LOG_REGISTER_DEFAULT(cnxk_logtype_esw, NOTICE);
-RTE_LOG_REGISTER_DEFAULT(cnxk_logtype_ree, NOTICE);
+RTE_LOG_REGISTER_SUFFIX(cnxk_logtype_base, base, NOTICE);
+RTE_LOG_REGISTER_SUFFIX(cnxk_logtype_mbox, mbox, NOTICE);
+RTE_LOG_REGISTER_SUFFIX(cnxk_logtype_cpt, crypto, NOTICE);
+RTE_LOG_REGISTER_SUFFIX(cnxk_logtype_ml, ml, NOTICE);
+RTE_LOG_REGISTER_SUFFIX(cnxk_logtype_npa, mempool, NOTICE);
+RTE_LOG_REGISTER_SUFFIX(cnxk_logtype_nix, nix, NOTICE);
+RTE_LOG_REGISTER_SUFFIX(cnxk_logtype_npc, flow, NOTICE);
+RTE_LOG_REGISTER_SUFFIX(cnxk_logtype_sso, event, NOTICE);
+RTE_LOG_REGISTER_SUFFIX(cnxk_logtype_tim, timer, NOTICE);
+RTE_LOG_REGISTER_SUFFIX(cnxk_logtype_tm, tm, NOTICE);
+RTE_LOG_REGISTER_SUFFIX(cnxk_logtype_dpi, dpi, NOTICE);
+RTE_LOG_REGISTER_SUFFIX(cnxk_logtype_rep, rep, NOTICE);
+RTE_LOG_REGISTER_SUFFIX(cnxk_logtype_esw, esw, NOTICE);
+RTE_LOG_REGISTER_SUFFIX(cnxk_logtype_ree, ree, NOTICE);
