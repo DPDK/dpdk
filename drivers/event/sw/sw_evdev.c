@@ -228,9 +228,7 @@ qid_init(struct sw_evdev *sw, unsigned int idx, int type,
 		const struct rte_event_queue_conf *queue_conf)
 {
 	unsigned int i;
-	int dev_id = sw->data->dev_id;
 	int socket_id = sw->data->socket_id;
-	char buf[IQ_ROB_NAMESIZE];
 	struct sw_qid *qid = &sw->qids[idx];
 
 	/* Initialize the FID structures to no pinning (-1), and zero packets */
@@ -260,8 +258,7 @@ qid_init(struct sw_evdev *sw, unsigned int idx, int type,
 			goto cleanup;
 		}
 
-		snprintf(buf, sizeof(buf), "sw%d_iq_%d_rob", dev_id, i);
-		qid->reorder_buffer = rte_zmalloc_socket(buf,
+		qid->reorder_buffer = rte_zmalloc_socket(NULL,
 				window_size * sizeof(qid->reorder_buffer[0]),
 				0, socket_id);
 		if (!qid->reorder_buffer) {
