@@ -294,8 +294,10 @@ fdset_event_dispatch(void *arg)
 			wcb = pfdentry->wcb;
 			dat = pfdentry->dat;
 			pfdentry->busy = 1;
-			if (pfdentry->check_timeout)
+			if (pfdentry->check_timeout) {
+				vsock = (struct vhost_user_socket *)pfdentry->dat;
 				vsock->timeout_enabled = false;
+			}
 
 			pthread_mutex_unlock(&pfdset->fd_mutex);
 

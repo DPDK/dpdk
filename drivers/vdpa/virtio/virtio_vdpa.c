@@ -34,6 +34,7 @@ static int stage1 = 0;
 #define VIRTIO_VDPA_DEV_CLOSE_WORK_ERR 3
 
 #define VIRTIO_VDPA_STATE_ALIGN 4096
+#define VIRTIO_VDPA_MAX_IOMMU_DOMAIN 2048
 
 #define RTE_ROUNDUP(x, y) ((((x) + ((y) - 1)) / (y)) * (y))
 
@@ -49,8 +50,8 @@ static TAILQ_HEAD(virtio_vdpa_privs, virtio_vdpa_priv) virtio_priv_list =
 						  TAILQ_HEAD_INITIALIZER(virtio_priv_list);
 static pthread_mutex_t priv_list_lock = PTHREAD_MUTEX_INITIALIZER;
 
-static TAILQ_HEAD(virtio_vdpa_iommu_domains, virtio_vdpa_iommu_domain) virtio_iommu_domain_list =
-						  TAILQ_HEAD_INITIALIZER(virtio_iommu_domain_list);
+static struct virtio_vdpa_iommu_domain *virtio_iommu_domains[VIRTIO_VDPA_MAX_IOMMU_DOMAIN];
+static pthread_mutex_t iommu_domain_locks[VIRTIO_VDPA_MAX_IOMMU_DOMAIN];
 
 
 static struct virtio_ha_vf_drv_ctx cached_ctx;
@@ -95,33 +96,66 @@ virtio_vdpa_find_priv_resource_by_vdev(const struct rte_vdpa_device *vdev)
 	return priv;
 }
 
-static struct virtio_vdpa_iommu_domain *
-virtio_vdpa_find_iommu_domain_by_uuid(const rte_uuid_t vm_uuid)
+static int
+find_iommu_free_slot(void)
+{
+	int i;
+
+	for (i = 0; i < VIRTIO_VDPA_MAX_IOMMU_DOMAIN; i++) {
+		if (virtio_iommu_domains[i] == NULL)
+			break;
+	}
+
+	return i;
+}
+
+static int
+alloc_iommu_domain(void)
 {
 	struct virtio_vdpa_iommu_domain *iommu_domain;
-	bool found = false;
+	int i;
 
-	TAILQ_FOREACH(iommu_domain, &virtio_iommu_domain_list, next) {
-		if (rte_uuid_compare(vm_uuid, iommu_domain->vm_uuid) == 0) {
-			found = true;
-			break;
-		}
+	i = find_iommu_free_slot();
+	if (i == VIRTIO_VDPA_MAX_IOMMU_DOMAIN) {
+		DRV_LOG(ERR, "No free iommu slot");
+		return -1;
 	}
 
-	if (!found) {
-		iommu_domain = rte_zmalloc("iommu domain", sizeof(*iommu_domain),
-			RTE_CACHE_LINE_SIZE);
-		if (iommu_domain == NULL)
-			return NULL;
-		rte_uuid_copy(iommu_domain->vm_uuid, vm_uuid);
-		iommu_domain->vfio_container_fd = -1;
-		iommu_domain->container_ref_cnt = 0;
-		iommu_domain->mem_tbl_ref_cnt = 0;
-		pthread_mutex_init(&iommu_domain->domain_lock, NULL);
-		TAILQ_INSERT_TAIL(&virtio_iommu_domain_list, iommu_domain, next);
+	iommu_domain = rte_zmalloc("iommu domain", sizeof(*iommu_domain),
+		RTE_CACHE_LINE_SIZE);
+	if (iommu_domain == NULL) {
+		DRV_LOG(ERR, "Failed to alloc iommu domain");
+		return -1;
 	}
 
-	return iommu_domain;
+	iommu_domain->vfio_container_fd = -1;
+	iommu_domain->container_ref_cnt = 0;
+	iommu_domain->mem_tbl_ref_cnt = 0;
+	virtio_iommu_domains[i] = iommu_domain;
+
+	return i;
+}
+
+static int
+virtio_vdpa_find_iommu_domain_by_uuid(const rte_uuid_t vm_uuid)
+{
+	int i;
+
+	for (i = 0; i < VIRTIO_VDPA_MAX_IOMMU_DOMAIN &&
+			virtio_iommu_domains[i] != NULL; i++) {
+		if (rte_uuid_compare(vm_uuid, virtio_iommu_domains[i]->vm_uuid) == 0)
+			break;	
+	}
+
+	/* No existing iommu domain, allocate one */
+	if (i == VIRTIO_VDPA_MAX_IOMMU_DOMAIN) {
+		i = alloc_iommu_domain();
+		if (i < 0)
+			return i;
+		rte_uuid_copy(virtio_iommu_domains[i]->vm_uuid, vm_uuid);
+	}
+
+	return i;
 }
 
 const struct rte_memzone *
@@ -811,8 +845,10 @@ virtio_vdpa_dev_cleanup(int vid)
 	if (ret < 0)
 		DRV_LOG(ERR, "Failed to remove mem table: %s", vdev->device->name);
 
-	iommu_domain = priv->iommu_domain;
-	pthread_mutex_lock(&iommu_domain->domain_lock);
+	pthread_mutex_lock(&iommu_domain_locks[priv->iommu_idx]);
+	iommu_domain = virtio_iommu_domains[priv->iommu_idx];
+	if (iommu_domain == NULL)
+		goto unlock;
 	if (priv->mem_tbl_set) {
 		iommu_domain->mem_tbl_ref_cnt--;
 		priv->mem_tbl_set = false;
@@ -831,7 +867,8 @@ virtio_vdpa_dev_cleanup(int vid)
 err:
 		iommu_domain->mem.nregions = 0;
 	}
-	pthread_mutex_unlock(&iommu_domain->domain_lock);			
+unlock:
+	pthread_mutex_unlock(&iommu_domain_locks[priv->iommu_idx]);			
 
 	return 0;
 }
@@ -873,9 +910,8 @@ virtio_vdpa_find_mem_in_iommu_domain(const struct rte_vhost_mem_region *key,
 }
 
 static void
-virtio_vdpa_dev_store_mem_tbl(struct virtio_vdpa_priv *priv)
+virtio_vdpa_dev_store_mem_tbl(struct virtio_vdpa_priv *priv, struct virtio_vdpa_iommu_domain *iommu_domain)
 {
-	struct virtio_vdpa_iommu_domain *iommu_domain = priv->iommu_domain;
 	struct virtio_vdpa_dma_mem *mem;
 	uint32_t i;
 
@@ -941,8 +977,10 @@ virtio_vdpa_dev_set_mem_table(int vid)
 		}
 	}
 
-	iommu_domain = priv->iommu_domain;
-	pthread_mutex_lock(&iommu_domain->domain_lock);
+	pthread_mutex_lock(&iommu_domain_locks[priv->iommu_idx]);
+	iommu_domain = virtio_iommu_domains[priv->iommu_idx];
+	if (iommu_domain == NULL)
+		goto err;
 	/* Unmap region does not exist in current */
 	for (i = 0; i < iommu_domain->mem.nregions; i++) {
 		reg = &iommu_domain->mem.regions[i];
@@ -1019,10 +1057,10 @@ virtio_vdpa_dev_set_mem_table(int vid)
 		iommu_domain->mem_tbl_ref_cnt++;
 	}
 
-	virtio_vdpa_dev_store_mem_tbl(priv);
+	virtio_vdpa_dev_store_mem_tbl(priv, iommu_domain);
 
 err:
-	pthread_mutex_unlock(&iommu_domain->domain_lock);
+	pthread_mutex_unlock(&iommu_domain_locks[priv->iommu_idx]);
 	return ret;
 }
 
@@ -1618,6 +1656,7 @@ virtio_vdpa_dev_config(int vid)
 			vid, end.tv_sec, end.tv_usec, time_used);
 
 	if (!priv->ctx_stored) {
+		struct virtio_vdpa_iommu_domain *iommu_domain;
 		if (!priv->fd_args_stored) {
 			/* If we restored from cached_ctx in probe, devargs and fds should be the same,
 			 * so don't store them again
@@ -1650,13 +1689,20 @@ virtio_vdpa_dev_config(int vid)
 		ret = virtio_ha_vf_vhost_fd_store(&priv->vf_name, &priv->pf_name, vhost_sock_fd);
 		if (ret) {
 			DRV_LOG(ERR, "Failed to store vhost fd (vid %d)", vid);
-			return 0;			
+			return 0;
 		}
 
 		priv->ctx_stored = true;
 
-		if (priv->mem_tbl_set)
-			virtio_vdpa_dev_store_mem_tbl(priv);
+		if (priv->mem_tbl_set) {
+			pthread_mutex_lock(&iommu_domain_locks[priv->iommu_idx]);
+			iommu_domain = virtio_iommu_domains[priv->iommu_idx];
+			if (iommu_domain == NULL)
+				goto unlock;
+			virtio_vdpa_dev_store_mem_tbl(priv, iommu_domain);
+unlock:
+			pthread_mutex_unlock(&iommu_domain_locks[priv->iommu_idx]);
+		}
 	}
 
 	return 0;
@@ -1823,7 +1869,7 @@ virtio_vdpa_dev_mem_tbl_cleanup(struct rte_vdpa_device *vdev)
 {
 	struct virtio_vdpa_priv *priv =
 		virtio_vdpa_find_priv_resource_by_vdev(vdev);
-	struct virtio_vdpa_vf_drv_mem *mem = &priv->iommu_domain->mem;
+	struct virtio_vdpa_vf_drv_mem *mem;
 	uint32_t i;
 	int ret;
 
@@ -1835,8 +1881,12 @@ virtio_vdpa_dev_mem_tbl_cleanup(struct rte_vdpa_device *vdev)
 	 * layer does not have the DMA mapping information (the corresponding HVA does
 	 * not exist)
 	 */
+	pthread_mutex_lock(&iommu_domain_locks[priv->iommu_idx]);
+	if (!virtio_iommu_domains[priv->iommu_idx])
+		goto unlock;
+	mem = &virtio_iommu_domains[priv->iommu_idx]->mem;
 	for (i = 0; i < mem->nregions; i++) {
-		ret = virtio_vdpa_raw_vfio_dma_unmap(priv->iommu_domain->vfio_container_fd,	
+		ret = virtio_vdpa_raw_vfio_dma_unmap(virtio_iommu_domains[priv->iommu_idx]->vfio_container_fd,
 			mem->regions[i].guest_phys_addr, mem->regions[i].size);
 		if (ret < 0)
 			DRV_LOG(ERR, "Failed to DMA unmap region %u: %s", i, vdev->device->name);
@@ -1846,6 +1896,8 @@ virtio_vdpa_dev_mem_tbl_cleanup(struct rte_vdpa_device *vdev)
 			mem->regions[i].host_phys_addr, mem->regions[i].size);
 	}
 	mem->nregions = 0;
+unlock:
+	pthread_mutex_unlock(&iommu_domain_locks[priv->iommu_idx]);
 }
 
 static struct rte_vdpa_dev_ops virtio_vdpa_ops = {
@@ -2065,7 +2117,7 @@ virtio_vdpa_get_vfid(const char *pf_name, const char *vf_name, int *vfid)
 static int
 virtio_vdpa_dev_do_remove(struct rte_pci_device *pci_dev, struct virtio_vdpa_priv *priv)
 {
-	struct virtio_vdpa_iommu_domain *iommu_domain = priv->iommu_domain;
+	struct virtio_vdpa_iommu_domain *iommu_domain;
 	int ret;
 
 	if (!priv)
@@ -2116,20 +2168,20 @@ virtio_vdpa_dev_do_remove(struct rte_pci_device *pci_dev, struct virtio_vdpa_pri
 		virtio_pci_dev_free(priv->vpdev);
 	}
 
+	pthread_mutex_lock(&iommu_domain_locks[priv->iommu_idx]);
+	iommu_domain = virtio_iommu_domains[priv->iommu_idx];
 	if (iommu_domain) {
-		pthread_mutex_lock(&iommu_domain->domain_lock);
 		iommu_domain->container_ref_cnt--;
 		if (iommu_domain->container_ref_cnt == 0) {
 			if (priv->vfio_container_fd >= 0) {
 				rte_vfio_container_destroy(priv->vfio_container_fd);
 				priv->vfio_container_fd = -1;
 			}
-			if (!rte_uuid_is_null(iommu_domain->vm_uuid))
-				TAILQ_REMOVE(&virtio_iommu_domain_list, iommu_domain, next);
+			virtio_iommu_domains[priv->iommu_idx] = NULL;
 			rte_free(iommu_domain);
-		}	
-		pthread_mutex_unlock(&iommu_domain->domain_lock);
+		}
 	}
+	pthread_mutex_unlock(&iommu_domain_locks[priv->iommu_idx]);
 
 	if (priv->state_mz)
 		rte_memzone_free(priv->state_mz);
@@ -2173,9 +2225,10 @@ static int
 virtio_vdpa_dev_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		struct rte_pci_device *pci_dev)
 {
+	static bool domain_init = false;
 	int vdpa = 0;
 	rte_uuid_t vm_uuid = {0};
-	int ret, fd, vf_id = 0, state_len;
+	int ret, fd, vf_id = 0, state_len, iommu_idx;
 	struct virtio_vdpa_priv *priv;
 	struct virtio_vdpa_iommu_domain *iommu_domain;
 	const struct virtio_vdpa_dma_mem *mem;
@@ -2188,6 +2241,14 @@ virtio_vdpa_dev_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	int retries = VIRTIO_VDPA_GET_GROUPE_RETRIES;
 	struct timeval start, end;
 	uint64_t time_used;
+
+	if (!domain_init) {
+		for (i = 0; i < VIRTIO_VDPA_MAX_IOMMU_DOMAIN; i++) {
+			pthread_mutex_init(&iommu_domain_locks[i], NULL);
+			virtio_iommu_domains[i] = NULL;
+		}
+		domain_init = true;
+	}
 
 	rte_pci_device_name(&pci_dev->addr, devname, RTE_DEV_NAME_MAX_LEN);
 
@@ -2248,33 +2309,32 @@ virtio_vdpa_dev_probe(struct rte_pci_driver *pci_drv __rte_unused,
 
 	rte_uuid_copy(priv->vm_uuid, vm_uuid);
 	if (!rte_uuid_is_null(vm_uuid)) {
-		iommu_domain = virtio_vdpa_find_iommu_domain_by_uuid(vm_uuid);
-		if (!iommu_domain) {
+		iommu_idx = virtio_vdpa_find_iommu_domain_by_uuid(vm_uuid);
+		if (iommu_idx < 0) {
 			DRV_LOG(ERR, "%s failed to alloc domain with UUID", devname);
 			rte_errno = VFE_VDPA_ERR_ADD_VF_IOMMU_DOMAIN_ALLOC;
 			goto error;
 		}
 	} else {
-		iommu_domain = rte_zmalloc("iommu domain", sizeof(*iommu_domain),
-			RTE_CACHE_LINE_SIZE);
-		if (!iommu_domain) {
-			DRV_LOG(ERR, "%s failed to alloc domain without UUID", devname);
+		iommu_idx = alloc_iommu_domain();
+		if (iommu_idx < 0) {
+			DRV_LOG(ERR, "%s failed to alloc domain", devname);
 			rte_errno = VFE_VDPA_ERR_ADD_VF_IOMMU_DOMAIN_ALLOC;
 			goto error;
 		}
-		iommu_domain->vfio_container_fd = -1;
-		iommu_domain->container_ref_cnt = 0;
-		iommu_domain->mem_tbl_ref_cnt = 0;
-		pthread_mutex_init(&iommu_domain->domain_lock, NULL);
 	}
+
+	pthread_mutex_lock(&iommu_domain_locks[iommu_idx]);
+	iommu_domain = virtio_iommu_domains[iommu_idx];
 
 	if (iommu_domain->container_ref_cnt == RTE_MAX_VFIO_GROUPS) {
 		DRV_LOG(ERR, "%s failed to add in iommu domain as max VFIO group num reached", devname);
 		rte_errno = VFE_VDPA_ERR_ADD_VF_EXCEED_MAX_GROUP_NUM;
 		goto error;
 	}
+	pthread_mutex_unlock(&iommu_domain_locks[iommu_idx]);
 
-	priv->iommu_domain = iommu_domain;
+	priv->iommu_idx = iommu_idx;
 
 	if (!strcmp(cached_ctx.vf_name.dev_bdf, devname)) {
 		priv->restore = true;
@@ -2285,6 +2345,7 @@ virtio_vdpa_dev_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		 * needs to restore memory table. It's assumed that those devices'
 		 * memory table is the same.
 		 */
+		pthread_mutex_lock(&iommu_domain_locks[iommu_idx]);
 		if (iommu_domain->vfio_container_fd == -1) {
 			mem = &cached_ctx.ctx->mem;
 			for (i = 0; i < mem->nregions; i++) {
@@ -2294,11 +2355,13 @@ virtio_vdpa_dev_probe(struct rte_pci_driver *pci_drv __rte_unused,
 			}
 			iommu_domain->mem.nregions = mem->nregions;
 		}
+		iommu_domain->mem_tbl_ref_cnt++;
+		pthread_mutex_unlock(&iommu_domain_locks[iommu_idx]);
 		priv->mem_tbl_set = true;
 		priv->fd_args_stored = true;
-		iommu_domain->mem_tbl_ref_cnt++;
 	}
 
+	pthread_mutex_lock(&iommu_domain_locks[iommu_idx]);
 	if (iommu_domain->vfio_container_fd == -1) {
 		if (container_fd != -1) {
 			iommu_domain->vfio_container_fd = container_fd;
@@ -2319,6 +2382,7 @@ virtio_vdpa_dev_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	}
 	iommu_domain->container_ref_cnt++;
 	priv->vfio_container_fd = iommu_domain->vfio_container_fd;
+	pthread_mutex_unlock(&iommu_domain_locks[iommu_idx]);
 
 	ret = rte_vfio_get_group_num(rte_pci_get_sysfs_path(), devname,
 			&iommu_group_num);

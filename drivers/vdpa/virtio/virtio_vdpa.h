@@ -34,7 +34,6 @@ struct virtio_vdpa_iommu_domain {
 	struct virtio_vdpa_vf_drv_mem mem;
 	int container_ref_cnt;
 	int mem_tbl_ref_cnt;
-	pthread_mutex_t domain_lock;
 };
 
 struct virtio_vdpa_vring_info {
@@ -63,8 +62,8 @@ struct virtio_vdpa_priv {
 	const struct rte_memzone *state_mz; /* This is used to formmat state  at local */
 	const struct rte_memzone *state_mz_remote; /* This is used get state frome contoller */
 	const struct virtio_vdpa_device_callback *dev_ops;
-	struct virtio_vdpa_iommu_domain *iommu_domain;
 	pthread_t notify_tid;
+	int iommu_idx;
 	enum virtio_internal_status lm_status;
 	int state_size;
 	int vfio_container_fd;
