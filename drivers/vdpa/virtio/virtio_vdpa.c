@@ -38,6 +38,10 @@ static int stage1 = 0;
 
 #define RTE_ROUNDUP(x, y) ((((x) + ((y) - 1)) / (y)) * (y))
 
+#ifndef PAGE_SIZE
+#define PAGE_SIZE   (sysconf(_SC_PAGESIZE))
+#endif
+
 struct virtio_ha_vf_drv_ctx {
 	struct virtio_dev_name vf_name;
 	const struct vdpa_vf_ctx *ctx;
@@ -1064,9 +1068,130 @@ err:
 	return ret;
 }
 
-#ifndef PAGE_SIZE
-#define PAGE_SIZE   (sysconf(_SC_PAGESIZE))
-#endif
+static int
+virtio_vdpa_start_logging(struct virtio_vdpa_priv *priv)
+{
+	uint64_t log_base, log_size, max_phy, log_size_align;
+	rte_iova_t iova;
+	struct virtio_sge lb_sge;
+	struct timeval start, end;
+	uint64_t time_used;
+	int ret;
+
+	if (priv->log_started) {
+		DRV_LOG(WARNING, "%s logging has stated", priv->vdev->device->name);
+		return 0;
+	}
+
+	gettimeofday(&start, NULL);
+	DRV_LOG(INFO, "System time of dirty logging start (dev %s): %lu.%06lu",
+		priv->vdev->device->name, start.tv_sec, start.tv_usec);
+
+	ret = rte_vhost_get_log_base(priv->vid, &log_base, &log_size);
+	if (ret) {
+		DRV_LOG(ERR, "%s failed to get log base", priv->vdev->device->name);
+		return ret;
+	}
+
+	iova = rte_mem_virt2iova((void *)log_base);
+	if (iova == RTE_BAD_IOVA) {
+		DRV_LOG(ERR, "%s log get iova failed ret:%d",
+					priv->vdev->device->name, ret);
+		return ret;
+	}
+	log_size_align = RTE_ROUNDUP(log_size, getpagesize());
+	DRV_LOG(INFO, "log buffer %" PRIx64 " iova %" PRIx64 " log size %" PRIx64
+				" log size align %" PRIx64,
+				log_base, iova, log_size, log_size_align);
+
+	ret = rte_vfio_container_dma_map(RTE_VFIO_DEFAULT_CONTAINER_FD, log_base,
+					 iova, log_size_align);
+	if (ret < 0) {
+		DRV_LOG(ERR, "%s log buffer DMA map failed ret:%d",
+					priv->vdev->device->name, ret);
+		return ret;
+	}
+
+	lb_sge.addr = log_base;
+	lb_sge.len = log_size;
+	ret = virtio_vdpa_max_phy_addr_get(priv, &max_phy);
+
+	if (ret) {
+		DRV_LOG(ERR, "%s failed to get max phy addr", priv->vdev->device->name);
+		goto error_unmap;
+	}
+
+	ret = virtio_vdpa_cmd_dirty_page_start_track(priv->pf_priv, priv->vf_id,
+			VIRTIO_M_DIRTY_TRACK_PUSH_BITMAP, PAGE_SIZE, 0, max_phy, 1, &lb_sge);
+	if (!ret)
+		priv->log_started = true;
+
+	gettimeofday(&end, NULL);
+	time_used = (end.tv_sec - start.tv_sec) * 1e6 + end.tv_usec - start.tv_usec;
+	DRV_LOG(INFO, "%s vfid %d start track max phy:%" PRIx64 "log_base %" PRIx64
+			"log_size %" PRIx64 "at %lu.%06lu took %lu us.",
+			priv->vdev->device->name, priv->vf_id, max_phy ,
+			log_base, log_size, end.tv_sec, end.tv_usec, time_used);
+	return ret;
+
+error_unmap:
+	rte_vfio_container_dma_unmap(RTE_VFIO_DEFAULT_CONTAINER_FD, log_base,
+					 iova, log_size_align);
+	return ret;
+}
+
+static int
+virtio_vdpa_stop_logging(struct virtio_vdpa_priv *priv)
+{
+	uint64_t max_phy, log_base, log_size, log_size_align;
+	rte_iova_t iova;
+	int ret;
+
+	if (!priv->log_started) {
+		DRV_LOG(WARNING, "%s logging has stopped", priv->vdev->device->name);
+		return 0;
+	}
+
+	ret = virtio_vdpa_max_phy_addr_get(priv, &max_phy);
+	if (ret) {
+		DRV_LOG(ERR, "%s failed to get max phy addr",
+					priv->vdev->device->name);
+	}
+
+	ret = virtio_vdpa_cmd_dirty_page_stop_track(priv->pf_priv, priv->vf_id, max_phy);
+	if (ret) {
+		DRV_LOG(ERR, "%s failed to stop track max_phy %" PRIx64 " ret:%d",
+					priv->vdev->device->name, max_phy, ret);
+	}
+
+	ret = rte_vhost_get_log_base(priv->vid, &log_base, &log_size);
+	if (ret) {
+		DRV_LOG(ERR, "%s failed to get log base",
+					priv->vdev->device->name);
+	}
+
+	DRV_LOG(INFO, "%s vfid %d stop track max phy:%" PRIx64 "log_base %" PRIx64 "log_size %" PRIx64,
+				priv->vdev->device->name, priv->vf_id, max_phy , log_base, log_size);
+
+	iova = rte_mem_virt2iova((void *)log_base);
+	if (iova == RTE_BAD_IOVA) {
+		DRV_LOG(ERR, "%s log get iova failed ret:%d",
+					priv->vdev->device->name, ret);
+	}
+
+	log_size_align = RTE_ROUNDUP(log_size, getpagesize());
+	DRV_LOG(INFO, "log buffer %" PRIx64 " iova %" PRIx64 " log size align %" PRIx64,
+			log_base, iova, log_size_align);
+
+	ret = rte_vfio_container_dma_unmap(RTE_VFIO_DEFAULT_CONTAINER_FD, log_base,
+					 iova, log_size_align);
+	if (ret < 0) {
+		DRV_LOG(ERR, "%s log buffer DMA map failed ret:%d",
+					priv->vdev->device->name, ret);
+	}
+	priv->log_started = false;
+	return ret;
+}
 
 static int
 virtio_vdpa_features_set(int vid)
@@ -1074,12 +1199,7 @@ virtio_vdpa_features_set(int vid)
 	struct rte_vdpa_device *vdev = rte_vhost_get_vdpa_device(vid);
 	struct virtio_vdpa_priv *priv =
 		virtio_vdpa_find_priv_resource_by_vdev(vdev);
-	uint64_t log_base, log_size, max_phy, log_size_align;
 	uint64_t features;
-	struct virtio_sge lb_sge;
-	struct timeval start, end;
-	uint64_t time_used;
-	rte_iova_t iova;
 	int ret;
 
 	if (priv == NULL) {
@@ -1105,61 +1225,15 @@ virtio_vdpa_features_set(int vid)
 		return ret;
 	}
 	if (RTE_VHOST_NEED_LOG(features) && priv->configured) {
-
-		gettimeofday(&start, NULL);
-		DRV_LOG(INFO, "System time of dirty logging start (dev %s): %lu.%06lu",
-			vdev->device->name, start.tv_sec, start.tv_usec);
-
-		ret = rte_vhost_get_log_base(vid, &log_base, &log_size);
-		if (ret) {
-			DRV_LOG(ERR, "%s failed to get log base",
-						priv->vdev->device->name);
-			return ret;
-		}
-
-		iova = rte_mem_virt2iova((void *)log_base);
-		if (iova == RTE_BAD_IOVA) {
-			DRV_LOG(ERR, "%s log get iova failed ret:%d",
-						priv->vdev->device->name, ret);
-			return ret;
-		}
-		log_size_align = RTE_ROUNDUP(log_size, getpagesize());
-		DRV_LOG(INFO, "log buffer %" PRIx64 " iova %" PRIx64 " log size %" PRIx64 " log size align %" PRIx64,
-				log_base, iova, log_size, log_size_align);
-
-		ret = rte_vfio_container_dma_map(RTE_VFIO_DEFAULT_CONTAINER_FD, log_base,
-						 iova, log_size_align);
-		if (ret < 0) {
-			DRV_LOG(ERR, "%s log buffer DMA map failed ret:%d",
-						priv->vdev->device->name, ret);
-			return ret;
-		}
-
-		lb_sge.addr = log_base;
-		lb_sge.len = log_size;
-		ret = virtio_vdpa_max_phy_addr_get(priv, &max_phy);
-		if (ret) {
-			DRV_LOG(ERR, "%s failed to get max phy addr",
-						priv->vdev->device->name);
-			return ret;
-		}
-
-		ret = virtio_vdpa_cmd_dirty_page_start_track(priv->pf_priv, priv->vf_id, VIRTIO_M_DIRTY_TRACK_PUSH_BITMAP, PAGE_SIZE, 0, max_phy, 1, &lb_sge);
-		gettimeofday(&end, NULL);
-
-		time_used = (end.tv_sec - start.tv_sec) * 1e6 + end.tv_usec - start.tv_usec;
-
-		DRV_LOG(INFO, "%s vfid %d start track max phy:%" PRIx64 "log_base %" PRIx64
-				"log_size %" PRIx64 "at %lu.%06lu took %lu us.",
-					priv->vdev->device->name, priv->vf_id, max_phy ,
-					log_base, log_size, end.tv_sec, end.tv_usec, time_used);
+		ret = virtio_vdpa_start_logging(priv);
 		if (ret) {
 			DRV_LOG(ERR, "%s failed to start track ret:%d",
 						priv->vdev->device->name, ret);
 			return ret;
 		}
-
 		/* TO_DO: add log op */
+	} else if (!(RTE_VHOST_NEED_LOG(features) && priv->configured)) {
+		virtio_vdpa_stop_logging(priv);
 	}
 
 	/* TO_DO: check why --- */
@@ -1368,9 +1442,8 @@ virtio_vdpa_dev_close(int vid)
 	struct rte_vdpa_device *vdev = rte_vhost_get_vdpa_device(vid);
 	struct virtio_vdpa_priv *priv =
 		virtio_vdpa_find_priv_resource_by_vdev(vdev);
-	uint64_t features = 0, max_phy, log_base, log_size, log_size_align;
+	uint64_t features = 0;
 	uint16_t num_vr;
-	rte_iova_t iova;
 	struct timeval start, end;
 	uint64_t time_used;
 	int ret, i;
@@ -1413,45 +1486,7 @@ virtio_vdpa_dev_close(int vid)
 
 	rte_vhost_get_negotiated_features(vid, &features);
 	if (RTE_VHOST_NEED_LOG(features)) {
-
-		ret = virtio_vdpa_max_phy_addr_get(priv, &max_phy);
-		if (ret) {
-			DRV_LOG(ERR, "%s failed to get max phy addr",
-						priv->vdev->device->name);
-		}
-
-		ret = virtio_vdpa_cmd_dirty_page_stop_track(priv->pf_priv, priv->vf_id, max_phy);
-		if (ret) {
-			DRV_LOG(ERR, "%s failed to stop track max_phy %" PRIx64 " ret:%d",
-						priv->vdev->device->name, max_phy, ret);
-		}
-
-		ret = rte_vhost_get_log_base(priv->vid, &log_base, &log_size);
-		if (ret) {
-			DRV_LOG(ERR, "%s failed to get log base",
-						priv->vdev->device->name);
-		}
-
-		DRV_LOG(INFO, "%s vfid %d stop track max phy:%" PRIx64 "log_base %" PRIx64 "log_size %" PRIx64,
-					priv->vdev->device->name, priv->vf_id, max_phy , log_base, log_size);
-
-		iova = rte_mem_virt2iova((void *)log_base);
-		if (iova == RTE_BAD_IOVA) {
-			DRV_LOG(ERR, "%s log get iova failed ret:%d",
-						priv->vdev->device->name, ret);
-		}
-
-		log_size_align = RTE_ROUNDUP(log_size, getpagesize());
-		DRV_LOG(INFO, "log buffer %" PRIx64 " iova %" PRIx64 " log size align %" PRIx64,
-				log_base, iova, log_size_align);
-
-		ret = rte_vfio_container_dma_unmap(RTE_VFIO_DEFAULT_CONTAINER_FD, log_base,
-						 iova, log_size_align);
-		if (ret < 0) {
-			DRV_LOG(ERR, "%s log buffer DMA map failed ret:%d",
-						priv->vdev->device->name, ret);
-		}
-
+		virtio_vdpa_stop_logging(priv);
 	}
 
 	num_vr = rte_vhost_get_vring_num(priv->vid);
