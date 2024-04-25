@@ -15,7 +15,6 @@ test_sources = files(
         'test_barrier.c',
         'test_bitops.c',
         'test_bitmap.c',
-        'test_bpf.c',
         'test_byteorder.c',
         'test_cksum.c',
         'test_cksum_perf.c',
@@ -161,8 +160,6 @@ fast_tests = [
         ['acl_autotest', true, true],
         ['atomic_autotest', false, true],
         ['bitmap_autotest', true, true],
-        ['bpf_autotest', true, true],
-        ['bpf_convert_autotest', true, true],
         ['bitops_autotest', true, true],
         ['byteorder_autotest', true, true],
         ['cksum_autotest', true, true],
@@ -428,6 +425,14 @@ if dpdk_conf.has('RTE_HAS_LIBPCAP')
     if dpdk_conf.has('RTE_LIB_PCAPNG')
         test_sources += 'test_pcapng.c'
     endif
+endif
+
+if arch_subdir != 'x86' or dpdk_conf.get('RTE_ARCH_64')
+    test_sources += 'test_bpf.c'
+    fast_tests += [
+        ['bpf_autotest', true, true],
+        ['bpf_convert_autotest', true, true],
+    ]
 endif
 
 if cc.has_argument('-Wno-format-truncation')
