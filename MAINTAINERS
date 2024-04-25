@@ -648,6 +648,7 @@ F: doc/guides/nics/features/afpacket.ini
 
 Linux AF_XDP
 M: Ciara Loftus <ciara.loftus@intel.com>
+M: Maryam Tahhan <mtahhan@redhat.com>
 F: drivers/net/af_xdp/
 F: doc/guides/nics/af_xdp.rst
 F: doc/guides/nics/features/af_xdp.ini
