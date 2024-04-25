@@ -138,6 +138,11 @@ Removed Items
    Also, make sure to start the actual text at the margin.
    =======================================================
 
+* **Disabled the BPF library and net/af_xdp for 32-bit x86.**
+
+  BPF is not supported and the librte-bpf test fails on 32-bit x86 kernels.
+  So disable the library and the pmd.
+
 
 API Changes
 -----------
