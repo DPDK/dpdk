@@ -64,6 +64,7 @@ struct virtio_vdpa_priv {
 	const struct rte_memzone *state_mz_remote; /* This is used get state frome contoller */
 	const struct virtio_vdpa_device_callback *dev_ops;
 	struct virtio_vdpa_iommu_domain *iommu_domain;
+	pthread_t notify_tid;
 	enum virtio_internal_status lm_status;
 	int state_size;
 	int vfio_container_fd;
@@ -83,6 +84,7 @@ struct virtio_vdpa_priv {
 	bool ctx_stored;
 	bool fd_args_stored;
 	bool restore;
+	bool is_notify_thread_started;
 	struct virtio_dev_name vf_name;
 	struct virtio_dev_name pf_name;
 };
