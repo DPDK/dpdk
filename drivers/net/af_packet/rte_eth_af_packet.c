@@ -6,6 +6,7 @@
  * All rights reserved.
  */
 
+#include <rte_common.h>
 #include <rte_string_fns.h>
 #include <rte_mbuf.h>
 #include <ethdev_driver.h>
@@ -39,7 +40,7 @@
 #define DFLT_FRAME_SIZE		(1 << 11)
 #define DFLT_FRAME_COUNT	(1 << 9)
 
-struct pkt_rx_queue {
+struct __rte_cache_aligned pkt_rx_queue {
 	int sockfd;
 
 	struct iovec *rd;
@@ -55,7 +56,7 @@ struct pkt_rx_queue {
 	volatile unsigned long rx_bytes;
 };
 
-struct pkt_tx_queue {
+struct __rte_cache_aligned pkt_tx_queue {
 	int sockfd;
 	unsigned int frame_data_size;
 
