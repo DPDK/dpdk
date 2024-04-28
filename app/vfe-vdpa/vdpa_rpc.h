@@ -13,7 +13,6 @@
 
 #include "jsonrpc-c.h"
 
-#define MAX_PATH_LEN 128
 #define MAX_IF_PATH_LEN 120
 /* VDPA RPC */
 #define VIRTNET_FEATURE_SZ	64
@@ -38,6 +37,8 @@ struct vdpa_rpc_context {
 void vdpa_rpc_set_ha_version_time(char *version, char *buildtime);
 int vdpa_rpc_start(struct vdpa_rpc_context *rpc_ctx);
 void vdpa_rpc_stop(struct vdpa_rpc_context *rpc_ctx);
+void vdpa_with_socket_file_gen(const char *vf_name, char *ifname,
+		const char *socket_file);
 int vdpa_with_socket_path_start(const char *vf_name,
 		const char *socket_file);
 void vdpa_with_socket_path_stop(const char *vf_name);

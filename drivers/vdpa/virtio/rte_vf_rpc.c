@@ -28,9 +28,9 @@ extern int virtio_vdpa_logtype;
 
 int
 rte_vdpa_vf_dev_add(char *vf_name, const char *vm_uuid,
-	struct vdpa_vf_params *vf_params __rte_unused, int stage1)
+	struct vdpa_vf_params *vf_params __rte_unused, int stage1, const char *ifname)
 {
-	char args[RTE_DEV_NAME_MAX_LEN * 2];
+	char args[RTE_DEV_NAME_MAX_LEN * 2 + MAX_PATH_LEN];
 	int offset = 0;
 
 	if (!vf_name)
@@ -43,7 +43,9 @@ rte_vdpa_vf_dev_add(char *vf_name, const char *vm_uuid,
 		offset = snprintf(args, RTE_DEV_NAME_MAX_LEN, "%s=%s", VIRTIO_ARG_VDPA, VIRTIO_ARG_VDPA_VALUE_VF);
 
 	if (stage1)
-		snprintf(args + offset, RTE_DEV_NAME_MAX_LEN, ",%s=%s", VIRTIO_ARG_VDPA_STAGE, VIRTIO_ARG_VDPA_VALUE_STAGE);
+		offset += snprintf(args + offset, RTE_DEV_NAME_MAX_LEN, ",%s=%s", VIRTIO_ARG_VDPA_STAGE, VIRTIO_ARG_VDPA_VALUE_STAGE);
+
+	offset += snprintf(args + offset, MAX_PATH_LEN, ",%s=%s", VIRTIO_ARG_VDPA_SOCK_PATH, ifname);
 
 	if(virtio_vdpa_find_priv_resource_by_name(vf_name))
 		return -VFE_VDPA_ERR_ADD_VF_ALREADY_ADD;

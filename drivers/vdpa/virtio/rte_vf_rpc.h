@@ -60,8 +60,11 @@ enum vdpa_vf_debug_test_type {
 	VDPA_DEBUG_CMD_MAX_INVALID,
 };
 
+#define MAX_PATH_LEN 128
+
 int
-rte_vdpa_vf_dev_add(char *vf_name, const char *vm_uuid, struct vdpa_vf_params *vf_params, int stage1);
+rte_vdpa_vf_dev_add(char *vf_name, const char *vm_uuid, struct vdpa_vf_params *vf_params,
+			int stage1, const char *ifname);
 
 int
 rte_vdpa_vf_dev_remove(const char *vf_name);

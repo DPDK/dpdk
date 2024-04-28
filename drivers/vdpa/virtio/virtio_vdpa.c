@@ -1531,7 +1531,6 @@ virtio_vdpa_dev_config(int vid)
 		virtio_vdpa_find_priv_resource_by_vdev(vdev);
 	uint16_t last_avail_idx, last_used_idx, nr_virtqs;
 	struct virtio_vdpa_notifier_work *notify_work;
-	struct vdpa_vf_with_devargs vf_dev;
 	struct rte_vhost_vring vq;
 	int ret, i, vhost_sock_fd;
 	struct timeval start, end;
@@ -1692,28 +1691,6 @@ virtio_vdpa_dev_config(int vid)
 
 	if (!priv->ctx_stored) {
 		struct virtio_vdpa_iommu_domain *iommu_domain;
-		if (!priv->fd_args_stored) {
-			/* If we restored from cached_ctx in probe, devargs and fds should be the same,
-			 * so don't store them again
-			 */
-			strcpy(vf_dev.vf_name.dev_bdf, priv->vf_name.dev_bdf);
-			rte_uuid_unparse(priv->vm_uuid, vf_dev.vm_uuid, RTE_UUID_STRLEN);
-
-			ret = rte_vhost_get_ifname(vid, vf_dev.vhost_sock_addr, VDPA_MAX_SOCK_LEN);
-			if (ret) {
-				DRV_LOG(ERR, "Failed to get vhost sock addr (vid %d)", vid);
-				return 0;
-			}
-
-			ret = virtio_ha_vf_devargs_fds_store(&vf_dev, &priv->pf_name, priv->vfio_container_fd,
-				priv->vfio_group_fd, priv->vfio_dev_fd);
-			if (ret) {
-				DRV_LOG(ERR, "Failed to store vf devargs and vfio fds (vid %d)", vid);
-				return 0;
-			}
-
-			priv->fd_args_stored = true;
-		}
 
 		vhost_sock_fd = rte_vhost_get_conn_fd(vid);
 		if (vhost_sock_fd < 0) {
@@ -1988,8 +1965,15 @@ static int vm_uuid_check_handler(__rte_unused const char *key,
 		return 0;
 }
 
+static int vdpa_sock_path_handler(__rte_unused const char *key,
+		const char *value, __rte_unused void *ret_val)
+{
+	strncpy(ret_val, value, MAX_PATH_LEN);
+	return 0;
+}
+
 static int
-virtio_pci_devargs_parse(struct rte_devargs *devargs, int *vdpa, rte_uuid_t vm_uuid)
+virtio_pci_devargs_parse(struct rte_devargs *devargs, int *vdpa, rte_uuid_t vm_uuid, char *sock_path)
 {
 	struct rte_kvargs *kvlist;
 	int ret = 0;
@@ -2034,6 +2018,12 @@ virtio_pci_devargs_parse(struct rte_devargs *devargs, int *vdpa, rte_uuid_t vm_u
 			DRV_LOG(ERR, "Failed to parse %s", VIRTIO_ARG_VDPA_STAGE);
 	}
 
+	if (rte_kvargs_count(kvlist, VIRTIO_ARG_VDPA_SOCK_PATH) == 1) {
+		ret = rte_kvargs_process(kvlist, VIRTIO_ARG_VDPA_SOCK_PATH,
+				vdpa_sock_path_handler, sock_path);
+		if (ret < 0)
+			DRV_LOG(ERR, "Failed to parse %s", VIRTIO_ARG_VDPA_SOCK_PATH);
+	}
 
 	rte_kvargs_free(kvlist);
 
@@ -2226,9 +2216,11 @@ virtio_vdpa_dev_do_remove(struct rte_pci_device *pci_dev, struct virtio_vdpa_pri
 	if (priv->vdpa_dp_map)
 		rte_memzone_free(priv->vdpa_dp_map);
 
-	ret = virtio_ha_vf_devargs_fds_remove(&priv->vf_name, &priv->pf_name);
-	if (ret < 0)
-		DRV_LOG(ERR, "Failed to remove vf devargs and fds: %s", priv->vf_name.dev_bdf);
+	if (priv->fd_args_stored) {
+		ret = virtio_ha_vf_devargs_fds_remove(&priv->vf_name, &priv->pf_name);
+		if (ret < 0)
+			DRV_LOG(ERR, "Failed to remove vf devargs and fds: %s", priv->vf_name.dev_bdf);
+	}
 
 	rte_free(priv);
 
@@ -2276,6 +2268,7 @@ virtio_vdpa_dev_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	int retries = VIRTIO_VDPA_GET_GROUPE_RETRIES;
 	struct timeval start, end;
 	uint64_t time_used;
+	struct vdpa_vf_with_devargs vf_dev;
 
 	if (!domain_init) {
 		for (i = 0; i < VIRTIO_VDPA_MAX_IOMMU_DOMAIN; i++) {
@@ -2291,7 +2284,7 @@ virtio_vdpa_dev_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	DRV_LOG(INFO, "System time when probe start (dev %s): %lu.%06lu",
 		devname, start.tv_sec, start.tv_usec);
 
-	ret = virtio_pci_devargs_parse(pci_dev->device.devargs, &vdpa, vm_uuid);
+	ret = virtio_pci_devargs_parse(pci_dev->device.devargs, &vdpa, vm_uuid, vf_dev.vhost_sock_addr);
 	if (ret < 0) {
 		DRV_LOG(ERR, "Devargs parsing is failed %d dev:%s", ret, devname);
 		return ret;
@@ -2601,6 +2594,22 @@ virtio_vdpa_dev_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	pthread_mutex_lock(&priv_list_lock);
 	TAILQ_INSERT_TAIL(&virtio_priv_list, priv, next);
 	pthread_mutex_unlock(&priv_list_lock);
+
+	if (!priv->fd_args_stored) {
+		/* If we restored from cached_ctx in probe, devargs and fds should be the same,
+		 * so don't store them again
+		 */
+		strcpy(vf_dev.vf_name.dev_bdf, priv->vf_name.dev_bdf);
+		rte_uuid_unparse(priv->vm_uuid, vf_dev.vm_uuid, RTE_UUID_STRLEN);
+
+		ret = virtio_ha_vf_devargs_fds_store(&vf_dev, &priv->pf_name, priv->vfio_container_fd,
+			priv->vfio_group_fd, priv->vfio_dev_fd);
+		if (ret) {
+			DRV_LOG(ERR, "%s failed to store vf devargs and vfio fds", devname);
+			goto error;
+		}
+		priv->fd_args_stored = true;
+	}
 
 	gettimeofday(&end, NULL);
 	DRV_LOG(INFO, "System time when probe done (dev %s): %lu.%06lu",

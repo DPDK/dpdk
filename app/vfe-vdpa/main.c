@@ -276,13 +276,9 @@ close_vdpa(struct vdpa_port *vport)
 	}
 }
 
-int vdpa_with_socket_path_start(const char *vf_name,
+void vdpa_with_socket_file_gen(const char *vf_name, char *ifname,
 		const char *socket_file)
 {
-	struct rte_vdpa_device *dev;
-	char ifname[MAX_PATH_LEN];
-	int vport_num, ret = 0;
-
 	if (iface[0] == '\0' && !socket_file) {
 		/* Default socket path: /tmp/vf- */
 		snprintf(ifname, MAX_PATH_LEN,
@@ -295,6 +291,14 @@ int vdpa_with_socket_path_start(const char *vf_name,
 			snprintf(ifname, MAX_PATH_LEN,
 				"%s%s", iface, vf_name);
 	}
+}
+
+int vdpa_with_socket_path_start(const char *vf_name,
+		const char *ifname)
+{
+	struct rte_vdpa_device *dev;
+	int vport_num, ret = 0;
+
 	vport_num = vdpa_alloc_vport_res();
 	if (vport_num < 0) {
 		RTE_LOG(ERR, VDPA, "Unable to find vdpa device vport resource for %s.\n",

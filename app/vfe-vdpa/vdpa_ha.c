@@ -233,7 +233,8 @@ virtio_ha_client_dev_restore_vf(int total_vf)
 			goto err_vf_ctx;
 		}
 
-		ret = rte_vdpa_vf_dev_add(vf_dev->vf_devargs.vf_name.dev_bdf, vf_dev->vf_devargs.vm_uuid, NULL, stage1);
+		ret = rte_vdpa_vf_dev_add(vf_dev->vf_devargs.vf_name.dev_bdf, vf_dev->vf_devargs.vm_uuid,
+					NULL, stage1, vf_dev->vf_devargs.vhost_sock_addr);
 		if (ret < 0) {
 			RTE_LOG(ERR, HA, "Failed to restore vf\n");
 			pthread_mutex_unlock(&vf_restore_lock);

@@ -210,6 +210,7 @@ static cJSON *vdpa_vf_dev_add(char *vf_name,
 			const char *socket_file, const char *vm_uuid)
 {
 	cJSON *result = cJSON_CreateObject();
+	char ifname[MAX_PATH_LEN];
 	int ret;
 
 	if (virtio_ha_client_vf_in_restore(vf_name))
@@ -220,11 +221,12 @@ static cJSON *vdpa_vf_dev_add(char *vf_name,
 	}
 
 	virtio_ha_dev_lock();
-	ret = rte_vdpa_vf_dev_add(vf_name, vm_uuid, vf_params, stage1);
+	vdpa_with_socket_file_gen(vf_name, ifname, socket_file);
+	ret = rte_vdpa_vf_dev_add(vf_name, vm_uuid, vf_params, stage1, ifname);
 	if (ret) {
 		return vdpa_rpc_format_errno(result, ret);
 	}
-	ret = vdpa_with_socket_path_start(vf_name, socket_file);
+	ret = vdpa_with_socket_path_start(vf_name, ifname);
 	virtio_ha_dev_unlock();
 
 	return vdpa_rpc_format_errno(result, ret);
