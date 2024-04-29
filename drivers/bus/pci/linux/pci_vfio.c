@@ -80,7 +80,7 @@ pci_vfio_read_config(const struct rte_pci_device *dev,
 	if ((uint64_t)len + offs > size)
 		return -1;
 
-	return pread64(fd, buf, len, offset + offs);
+	return pread(fd, buf, len, offset + offs);
 }
 
 int
@@ -101,7 +101,7 @@ pci_vfio_write_config(const struct rte_pci_device *dev,
 	if ((uint64_t)len + offs > size)
 		return -1;
 
-	return pwrite64(fd, buf, len, offset + offs);
+	return pwrite(fd, buf, len, offset + offs);
 }
 
 /* get PCI BAR number where MSI-X interrupts are */
@@ -155,7 +155,7 @@ pci_vfio_enable_bus_memory(struct rte_pci_device *dev, int dev_fd)
 		return -1;
 	}
 
-	ret = pread64(dev_fd, &cmd, sizeof(cmd), offset + RTE_PCI_COMMAND);
+	ret = pread(dev_fd, &cmd, sizeof(cmd), offset + RTE_PCI_COMMAND);
 
 	if (ret != sizeof(cmd)) {
 		RTE_LOG(ERR, EAL, "Cannot read command from PCI config space!\n");
@@ -166,7 +166,7 @@ pci_vfio_enable_bus_memory(struct rte_pci_device *dev, int dev_fd)
 		return 0;
 
 	cmd |= RTE_PCI_COMMAND_MEMORY;
-	ret = pwrite64(dev_fd, &cmd, sizeof(cmd), offset + RTE_PCI_COMMAND);
+	ret = pwrite(dev_fd, &cmd, sizeof(cmd), offset + RTE_PCI_COMMAND);
 
 	if (ret != sizeof(cmd)) {
 		RTE_LOG(ERR, EAL, "Cannot write command to PCI config space!\n");
@@ -425,7 +425,7 @@ pci_vfio_is_ioport_bar(const struct rte_pci_device *dev, int vfio_dev_fd,
 		return -1;
 	}
 
-	ret = pread64(vfio_dev_fd, &ioport_bar, sizeof(ioport_bar),
+	ret = pread(vfio_dev_fd, &ioport_bar, sizeof(ioport_bar),
 			  offset + RTE_PCI_BASE_ADDRESS_0 + bar_index * 4);
 	if (ret != sizeof(ioport_bar)) {
 		RTE_LOG(ERR, EAL, "Cannot read command (%x) from config space!\n",
@@ -1250,7 +1250,7 @@ pci_vfio_ioport_read(struct rte_pci_ioport *p,
 	if (vfio_dev_fd < 0)
 		return;
 
-	if (pread64(vfio_dev_fd, data,
+	if (pread(vfio_dev_fd, data,
 		    len, p->base + offset) <= 0)
 		RTE_LOG(ERR, EAL,
 			"Can't read from PCI bar (%" PRIu64 ") : offset (%x)\n",
@@ -1267,7 +1267,7 @@ pci_vfio_ioport_write(struct rte_pci_ioport *p,
 	if (vfio_dev_fd < 0)
 		return;
 
-	if (pwrite64(vfio_dev_fd, data,
+	if (pwrite(vfio_dev_fd, data,
 		     len, p->base + offset) <= 0)
 		RTE_LOG(ERR, EAL,
 			"Can't write to PCI bar (%" PRIu64 ") : offset (%x)\n",
@@ -1298,7 +1298,7 @@ pci_vfio_mmio_read(const struct rte_pci_device *dev, int bar,
 	if ((uint64_t)len + offs > size)
 		return -1;
 
-	return pread64(fd, buf, len, offset + offs);
+	return pread(fd, buf, len, offset + offs);
 }
 
 int
@@ -1318,7 +1318,7 @@ pci_vfio_mmio_write(const struct rte_pci_device *dev, int bar,
 	if ((uint64_t)len + offs > size)
 		return -1;
 
-	return pwrite64(fd, buf, len, offset + offs);
+	return pwrite(fd, buf, len, offset + offs);
 }
 
 int
