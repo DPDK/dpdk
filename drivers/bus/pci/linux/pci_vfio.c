@@ -53,7 +53,7 @@ pci_vfio_read_config(const struct rte_intr_handle *intr_handle,
 	if (vfio_dev_fd < 0)
 		return -1;
 
-	return pread64(vfio_dev_fd, buf, len,
+	return pread(vfio_dev_fd, buf, len,
 	       VFIO_GET_REGION_ADDR(VFIO_PCI_CONFIG_REGION_INDEX) + offs);
 }
 
@@ -66,7 +66,7 @@ pci_vfio_write_config(const struct rte_intr_handle *intr_handle,
 	if (vfio_dev_fd < 0)
 		return -1;
 
-	return pwrite64(vfio_dev_fd, buf, len,
+	return pwrite(vfio_dev_fd, buf, len,
 	       VFIO_GET_REGION_ADDR(VFIO_PCI_CONFIG_REGION_INDEX) + offs);
 }
 
@@ -80,7 +80,7 @@ pci_vfio_get_msix_bar(int fd, struct pci_msix_table *msix_table)
 	uint8_t cap_id, cap_offset;
 
 	/* read PCI capability pointer from config space */
-	ret = pread64(fd, &reg, sizeof(reg),
+	ret = pread(fd, &reg, sizeof(reg),
 			VFIO_GET_REGION_ADDR(VFIO_PCI_CONFIG_REGION_INDEX) +
 			PCI_CAPABILITY_LIST);
 	if (ret != sizeof(reg)) {
@@ -95,7 +95,7 @@ pci_vfio_get_msix_bar(int fd, struct pci_msix_table *msix_table)
 	while (cap_offset) {
 
 		/* read PCI capability ID */
-		ret = pread64(fd, &reg, sizeof(reg),
+		ret = pread(fd, &reg, sizeof(reg),
 				VFIO_GET_REGION_ADDR(VFIO_PCI_CONFIG_REGION_INDEX) +
 				cap_offset);
 		if (ret != sizeof(reg)) {
@@ -109,7 +109,7 @@ pci_vfio_get_msix_bar(int fd, struct pci_msix_table *msix_table)
 
 		/* if we haven't reached MSI-X, check next capability */
 		if (cap_id != PCI_CAP_ID_MSIX) {
-			ret = pread64(fd, &reg, sizeof(reg),
+			ret = pread(fd, &reg, sizeof(reg),
 					VFIO_GET_REGION_ADDR(VFIO_PCI_CONFIG_REGION_INDEX) +
 					cap_offset);
 			if (ret != sizeof(reg)) {
@@ -126,7 +126,7 @@ pci_vfio_get_msix_bar(int fd, struct pci_msix_table *msix_table)
 		/* else, read table offset */
 		else {
 			/* table offset resides in the next 4 bytes */
-			ret = pread64(fd, &reg, sizeof(reg),
+			ret = pread(fd, &reg, sizeof(reg),
 					VFIO_GET_REGION_ADDR(VFIO_PCI_CONFIG_REGION_INDEX) +
 					cap_offset + 4);
 			if (ret != sizeof(reg)) {
@@ -135,7 +135,7 @@ pci_vfio_get_msix_bar(int fd, struct pci_msix_table *msix_table)
 				return -1;
 			}
 
-			ret = pread64(fd, &flags, sizeof(flags),
+			ret = pread(fd, &flags, sizeof(flags),
 					VFIO_GET_REGION_ADDR(VFIO_PCI_CONFIG_REGION_INDEX) +
 					cap_offset + 2);
 			if (ret != sizeof(flags)) {
@@ -162,7 +162,7 @@ pci_vfio_enable_bus_memory(int dev_fd)
 	uint16_t cmd;
 	int ret;
 
-	ret = pread64(dev_fd, &cmd, sizeof(cmd),
+	ret = pread(dev_fd, &cmd, sizeof(cmd),
 		      VFIO_GET_REGION_ADDR(VFIO_PCI_CONFIG_REGION_INDEX) +
 		      PCI_COMMAND);
 
@@ -175,7 +175,7 @@ pci_vfio_enable_bus_memory(int dev_fd)
 		return 0;
 
 	cmd |= PCI_COMMAND_MEMORY;
-	ret = pwrite64(dev_fd, &cmd, sizeof(cmd),
+	ret = pwrite(dev_fd, &cmd, sizeof(cmd),
 		       VFIO_GET_REGION_ADDR(VFIO_PCI_CONFIG_REGION_INDEX) +
 		       PCI_COMMAND);
 
@@ -194,7 +194,7 @@ pci_vfio_set_bus_master(int dev_fd, bool op)
 	uint16_t reg;
 	int ret;
 
-	ret = pread64(dev_fd, &reg, sizeof(reg),
+	ret = pread(dev_fd, &reg, sizeof(reg),
 			VFIO_GET_REGION_ADDR(VFIO_PCI_CONFIG_REGION_INDEX) +
 			PCI_COMMAND);
 	if (ret != sizeof(reg)) {
@@ -208,7 +208,7 @@ pci_vfio_set_bus_master(int dev_fd, bool op)
 	else
 		reg &= ~(PCI_COMMAND_MASTER);
 
-	ret = pwrite64(dev_fd, &reg, sizeof(reg),
+	ret = pwrite(dev_fd, &reg, sizeof(reg),
 			VFIO_GET_REGION_ADDR(VFIO_PCI_CONFIG_REGION_INDEX) +
 			PCI_COMMAND);
 
@@ -464,7 +464,7 @@ pci_vfio_is_ioport_bar(int vfio_dev_fd, int bar_index)
 	uint32_t ioport_bar;
 	int ret;
 
-	ret = pread64(vfio_dev_fd, &ioport_bar, sizeof(ioport_bar),
+	ret = pread(vfio_dev_fd, &ioport_bar, sizeof(ioport_bar),
 			  VFIO_GET_REGION_ADDR(VFIO_PCI_CONFIG_REGION_INDEX)
 			  + PCI_BASE_ADDRESS_0 + bar_index*4);
 	if (ret != sizeof(ioport_bar)) {
@@ -1133,7 +1133,7 @@ pci_vfio_ioport_read(struct rte_pci_ioport *p,
 	if (vfio_dev_fd < 0)
 		return;
 
-	if (pread64(vfio_dev_fd, data,
+	if (pread(vfio_dev_fd, data,
 		    len, p->base + offset) <= 0)
 		RTE_LOG(ERR, EAL,
 			"Can't read from PCI bar (%" PRIu64 ") : offset (%x)\n",
@@ -1150,7 +1150,7 @@ pci_vfio_ioport_write(struct rte_pci_ioport *p,
 	if (vfio_dev_fd < 0)
 		return;
 
-	if (pwrite64(vfio_dev_fd, data,
+	if (pwrite(vfio_dev_fd, data,
 		     len, p->base + offset) <= 0)
 		RTE_LOG(ERR, EAL,
 			"Can't write to PCI bar (%" PRIu64 ") : offset (%x)\n",
