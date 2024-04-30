@@ -149,6 +149,7 @@ Environment Abstraction Layer
 T: git://dpdk.org/dpdk
 
 EAL API and common code
+M: Tyler Retzlaff <roretzla@linux.microsoft.com>
 F: lib/eal/common/
 F: lib/eal/unix/
 F: lib/eal/include/
