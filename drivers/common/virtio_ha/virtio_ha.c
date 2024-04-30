@@ -1692,16 +1692,22 @@ sync_dev_context_to_ha(ver_time_set set_ver)
 				continue;
 			}
 
-			ret = virtio_ha_vf_vhost_fd_store_no_cache(&vf_dev->vf_devargs.vf_name, &dev->pf_name, vf_dev->vhost_fd);
-			if (ret) {
-				HA_IPC_LOG(ERR, "Failed to sync vf vhost fd");
-				continue;
+			if (vf_dev->vhost_fd != -1) {
+				ret = virtio_ha_vf_vhost_fd_store_no_cache(&vf_dev->vf_devargs.vf_name,
+						&dev->pf_name, vf_dev->vhost_fd);
+				if (ret) {
+					HA_IPC_LOG(ERR, "Failed to sync vf vhost fd");
+					continue;
+				}
 			}
 
-			ret = virtio_ha_vf_mem_tbl_store_no_cache(&vf_dev->vf_devargs.vf_name, &dev->pf_name, &vf_dev->vf_ctx.mem);
-			if (ret) {
-				HA_IPC_LOG(ERR, "Failed to sync vf memory table");
-				continue;
+			if (vf_dev->vf_ctx.mem.nregions != 0) {
+				ret = virtio_ha_vf_mem_tbl_store_no_cache(&vf_dev->vf_devargs.vf_name,
+						&dev->pf_name, &vf_dev->vf_ctx.mem);
+				if (ret) {
+					HA_IPC_LOG(ERR, "Failed to sync vf memory table");
+					continue;
+				}
 			}
 		}
 	}
