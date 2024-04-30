@@ -103,6 +103,7 @@ The public API headers are grouped by topics:
   [service cores](@ref rte_service.h),
   [keepalive](@ref rte_keepalive.h),
   [power/freq](@ref rte_power.h),
+  [power/uncore](@ref rte_power_uncore.h),
   [PMD power](@ref rte_power_pmd_mgmt.h)
 
 - **layers**:
