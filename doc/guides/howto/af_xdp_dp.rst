@@ -22,7 +22,7 @@ while the CNI configures and plumbs network interfaces for the Pod.
 This document explains how to use the `AF_XDP Device Plugin for Kubernetes`_
 with a DPDK application using the :doc:`../nics/af_xdp`.
 
-.. _AF_XDP Device Plugin for Kubernetes: https://github.com/intel/afxdp-plugins-for-kubernetes
+.. _AF_XDP Device Plugin for Kubernetes: https://github.com/redhat-et/afxdp-plugins-for-kubernetes
 
 
 Background
@@ -90,7 +90,7 @@ then the AF_XDP PMD configures it internally to the `AF_XDP Device Plugin for Ku
    with (older) versions of the AF_XDP DP <= commit id `38317c2`_
    by explicitly setting ``dp_path`` to ``/tmp/afxdp.sock``.
 
-.. _38317c2: https://github.com/intel/afxdp-plugins-for-kubernetes/commit/38317c256b5c7dfb39e013a0f76010c2ded03669
+.. _38317c2: https://github.com/redhat-et/afxdp-plugins-for-kubernetes/commit/38317c256b5c7dfb39e013a0f76010c2ded03669
 
 Prerequisites
 -------------
@@ -183,7 +183,7 @@ Run dpdk-testpmd with the AF_XDP Device Plugin + CNI
 
   .. code-block:: console
 
-     # git clone https://github.com/intel/afxdp-plugins-for-kubernetes.git
+     # git clone https://github.com/redhat-et/afxdp-plugins-for-kubernetes.git
 
   .. note::
 
@@ -199,7 +199,7 @@ Run dpdk-testpmd with the AF_XDP Device Plugin + CNI
 * Make sure to modify the image used by the `daemonset.yml`_ file
   in the deployments directory with the following configuration:
 
-  .. _daemonset.yml : https://github.com/intel/afxdp-plugins-for-kubernetes/blob/main/deployments/daemonset.yml
+  .. _daemonset.yml : https://github.com/redhat-et/afxdp-plugins-for-kubernetes/blob/main/deployments/daemonset.yml
 
   .. code-block:: yaml
 
@@ -210,7 +210,7 @@ Run dpdk-testpmd with the AF_XDP Device Plugin + CNI
      This will select the AF_XDP DP image that was built locally.
      Detailed configuration options can be found in the AF_XDP Device Plugin `readme`_ .
 
-  .. _readme: https://github.com/intel/afxdp-plugins-for-kubernetes#readme
+  .. _readme: https://github.com/redhat-et/afxdp-plugins-for-kubernetes#readme
 
 * Deploy the AF_XDP Device Plugin and CNI
 
@@ -258,7 +258,7 @@ Run dpdk-testpmd with the AF_XDP Device Plugin + CNI
 
   For further reference please use the example provided by the AF_XDP DP `nad.yaml`_
 
-  .. _nad.yaml: https://github.com/intel/afxdp-plugins-for-kubernetes/blob/main/examples/network-attachment-definition.yaml
+  .. _nad.yaml: https://github.com/redhat-et/afxdp-plugins-for-kubernetes/blob/main/examples/network-attachment-definition.yaml
 
 * Run the Pod
 
@@ -304,7 +304,7 @@ Run dpdk-testpmd with the AF_XDP Device Plugin + CNI
 
   For further reference please see the `pod.yaml`_
 
-  .. _pod.yaml: https://github.com/intel/afxdp-plugins-for-kubernetes/blob/main/examples/pod-spec.yaml
+  .. _pod.yaml: https://github.com/redhat-et/afxdp-plugins-for-kubernetes/blob/main/examples/pod-spec.yaml
 
 * Run DPDK with a command like the following:
 

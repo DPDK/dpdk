@@ -157,7 +157,7 @@ use_cni
 The EAL vdev argument ``use_cni`` is used to indicate that the user wishes to
 enable the `AF_XDP Device Plugin for Kubernetes`_ with a DPDK application/pod.
 
-.. _AF_XDP Device Plugin for Kubernetes: https://github.com/intel/afxdp-plugins-for-kubernetes
+.. _AF_XDP Device Plugin for Kubernetes: https://github.com/redhat-et/afxdp-plugins-for-kubernetes
 
 .. code-block:: console
 
@@ -178,7 +178,7 @@ The EAL vdev argument ``use_pinned_map`` is used to indicate that the user wishe
 load a pinned xskmap mounted by `AF_XDP Device Plugin for Kubernetes`_ in the DPDK
 application/pod.
 
-.. _AF_XDP Device Plugin for Kubernetes: https://github.com/intel/afxdp-plugins-for-kubernetes
+.. _AF_XDP Device Plugin for Kubernetes: https://github.com/redhat-et/afxdp-plugins-for-kubernetes
 
 .. code-block:: console
 
@@ -202,7 +202,7 @@ to explicitly tell the AF_XDP PMD where to find either:
 If this argument is not passed alongside the ``use_cni`` or ``use_pinned_map`` arguments then
 the AF_XDP PMD configures it internally to the `AF_XDP Device Plugin for Kubernetes`_.
 
-.. _AF_XDP Device Plugin for Kubernetes: https://github.com/intel/afxdp-plugins-for-kubernetes
+.. _AF_XDP Device Plugin for Kubernetes: https://github.com/redhat-et/afxdp-plugins-for-kubernetes
 
 .. code-block:: console
 
