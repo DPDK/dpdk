@@ -157,7 +157,7 @@ use_cni
 The EAL vdev argument ``use_cni`` is used to indicate that the user wishes to
 enable the `AF_XDP Device Plugin for Kubernetes`_ with a DPDK application/pod.
 
-.. _AF_XDP Device Plugin for Kubernetes: https://github.com/intel/afxdp-plugins-for-kubernetes
+.. _AF_XDP Device Plugin for Kubernetes: https://github.com/redhat-et/afxdp-plugins-for-kubernetes
 
 .. code-block:: console
 
@@ -180,7 +180,7 @@ to interact with the `AF_XDP Device Plugin for Kubernetes`_.
 If this argument is not passed alongside the ``use_cni`` argument
 then the AF_XDP PMD configures it internally.
 
-.. _AF_XDP Device Plugin for Kubernetes: https://github.com/intel/afxdp-plugins-for-kubernetes
+.. _AF_XDP Device Plugin for Kubernetes: https://github.com/redhat-et/afxdp-plugins-for-kubernetes
 
 .. code-block:: console
 
