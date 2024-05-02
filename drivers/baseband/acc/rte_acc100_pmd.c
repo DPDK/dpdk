@@ -1152,7 +1152,6 @@ acc100_fcw_ld_fill(struct rte_bbdev_dec_op *op, struct acc_fcw_ld *fcw,
 	uint16_t harq_out_length, harq_in_length, ncb_p, k0_p, parity_offset;
 	uint32_t harq_index;
 	uint32_t l;
-	bool harq_prun = false;
 	uint32_t max_hc_in;
 
 	fcw->qm = op->ldpc_dec.q_m;
@@ -1199,13 +1198,6 @@ acc100_fcw_ld_fill(struct rte_bbdev_dec_op *op, struct acc_fcw_ld *fcw,
 	fcw->llr_pack_mode = check_bit(op->ldpc_dec.op_flags,
 			RTE_BBDEV_LDPC_LLR_COMPRESSION);
 	harq_index = hq_index(op->ldpc_dec.harq_combined_output.offset);
-#ifdef ACC100_EXT_MEM
-	/* Limit cases when HARQ pruning is valid */
-	harq_prun = ((op->ldpc_dec.harq_combined_output.offset %
-			ACC_HARQ_OFFSET) == 0) &&
-			(op->ldpc_dec.harq_combined_output.offset <= UINT16_MAX
-			* ACC_HARQ_OFFSET);
-#endif
 	if (fcw->hcin_en > 0) {
 		harq_in_length = op->ldpc_dec.harq_combined_input.length;
 		if (fcw->hcin_decomp_mode > 0)
@@ -1221,16 +1213,9 @@ acc100_fcw_ld_fill(struct rte_bbdev_dec_op *op, struct acc_fcw_ld *fcw,
 		if (fcw->hcin_decomp_mode > 0)
 			harq_in_length = RTE_ALIGN_FLOOR(harq_in_length, ACC100_HARQ_ALIGN_COMP);
 
-		if ((harq_layout[harq_index].offset > 0) && harq_prun) {
-			rte_bbdev_log_debug("HARQ IN offset unexpected for now\n");
-			fcw->hcin_size0 = harq_layout[harq_index].size0;
-			fcw->hcin_offset = harq_layout[harq_index].offset;
-			fcw->hcin_size1 = harq_in_length - harq_layout[harq_index].offset;
-		} else {
-			fcw->hcin_size0 = harq_in_length;
-			fcw->hcin_offset = 0;
-			fcw->hcin_size1 = 0;
-		}
+		fcw->hcin_size0 = harq_in_length;
+		fcw->hcin_offset = 0;
+		fcw->hcin_size1 = 0;
 	} else {
 		fcw->hcin_size0 = 0;
 		fcw->hcin_offset = 0;
@@ -1296,15 +1281,9 @@ acc100_fcw_ld_fill(struct rte_bbdev_dec_op *op, struct acc_fcw_ld *fcw,
 		if (fcw->hcout_comp_mode > 0)
 			harq_out_length = RTE_ALIGN_FLOOR(harq_out_length, ACC100_HARQ_ALIGN_COMP);
 
-		if ((k0_p > fcw->hcin_size0 + ACC_HARQ_OFFSET_THRESHOLD) && harq_prun) {
-			fcw->hcout_size0 = (uint16_t) fcw->hcin_size0;
-			fcw->hcout_offset = k0_p & 0xFFC0;
-			fcw->hcout_size1 = harq_out_length - fcw->hcout_offset;
-		} else {
-			fcw->hcout_size0 = harq_out_length;
-			fcw->hcout_size1 = 0;
-			fcw->hcout_offset = 0;
-		}
+		fcw->hcout_size0 = harq_out_length;
+		fcw->hcout_size1 = 0;
+		fcw->hcout_offset = 0;
 
 		if (fcw->hcout_size0 == 0) {
 			rte_bbdev_log(ERR, " Invalid FCW : HCout %d",
