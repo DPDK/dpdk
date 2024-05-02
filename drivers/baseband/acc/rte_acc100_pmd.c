@@ -1640,59 +1640,6 @@ acc100_dma_desc_ld_fill(struct rte_bbdev_dec_op *op,
 	return 0;
 }
 
-static inline void
-acc100_dma_desc_ld_update(struct rte_bbdev_dec_op *op,
-		struct acc_dma_req_desc *desc,
-		struct rte_mbuf *input, struct rte_mbuf *h_output,
-		uint32_t *in_offset, uint32_t *h_out_offset,
-		uint32_t *h_out_length,
-		union acc_harq_layout_data *harq_layout)
-{
-	int next_triplet = 1; /* FCW already done */
-	desc->data_ptrs[next_triplet].address =
-			rte_pktmbuf_iova_offset(input, *in_offset);
-	next_triplet++;
-
-	if (check_bit(op->ldpc_dec.op_flags,
-				RTE_BBDEV_LDPC_HQ_COMBINE_IN_ENABLE)) {
-		struct rte_bbdev_op_data hi = op->ldpc_dec.harq_combined_input;
-		desc->data_ptrs[next_triplet].address = hi.offset;
-#ifndef ACC100_EXT_MEM
-		desc->data_ptrs[next_triplet].address =
-				rte_pktmbuf_iova_offset(hi.data, hi.offset);
-#endif
-		next_triplet++;
-	}
-
-	desc->data_ptrs[next_triplet].address =
-			rte_pktmbuf_iova_offset(h_output, *h_out_offset);
-	*h_out_length = desc->data_ptrs[next_triplet].blen;
-	next_triplet++;
-
-	if (check_bit(op->ldpc_dec.op_flags, RTE_BBDEV_LDPC_HQ_COMBINE_OUT_ENABLE)) {
-		struct rte_bbdev_dec_op *prev_op;
-		uint32_t harq_idx, prev_harq_idx;
-		desc->data_ptrs[next_triplet].address = op->ldpc_dec.harq_combined_output.offset;
-		/* Adjust based on previous operation */
-		prev_op = desc->op_addr;
-		op->ldpc_dec.harq_combined_output.length =
-				prev_op->ldpc_dec.harq_combined_output.length;
-		harq_idx = hq_index(op->ldpc_dec.harq_combined_output.offset);
-		prev_harq_idx = hq_index(prev_op->ldpc_dec.harq_combined_output.offset);
-		harq_layout[harq_idx].val = harq_layout[prev_harq_idx].val;
-#ifndef ACC100_EXT_MEM
-		struct rte_bbdev_op_data ho =
-				op->ldpc_dec.harq_combined_output;
-		desc->data_ptrs[next_triplet].address =
-				rte_pktmbuf_iova_offset(ho.data, ho.offset);
-#endif
-		next_triplet++;
-	}
-
-	op->ldpc_dec.hard_output.length += *h_out_length;
-	desc->op_addr = op;
-}
-
 #ifndef RTE_LIBRTE_BBDEV_SKIP_VALIDATE
 /* Validates turbo encoder parameters */
 static inline int
@@ -2935,8 +2882,7 @@ derm_workaround_recommended(struct rte_bbdev_op_ldpc_dec *ldpc_dec, struct acc_q
 /** Enqueue one decode operations for ACC100 device in CB mode */
 static inline int
 enqueue_ldpc_dec_one_op_cb(struct acc_queue *q, struct rte_bbdev_dec_op *op,
-		uint16_t total_enqueued_cbs, bool same_op,
-		struct rte_bbdev_queue_data *q_data)
+		uint16_t total_enqueued_cbs, struct rte_bbdev_queue_data *q_data)
 {
 	int ret;
 	if (unlikely(check_bit(op->ldpc_dec.op_flags,
@@ -2969,93 +2915,73 @@ enqueue_ldpc_dec_one_op_cb(struct acc_queue *q, struct rte_bbdev_dec_op *op,
 #endif
 	union acc_harq_layout_data *harq_layout = q->d->harq_layout;
 
-	if (same_op) {
-		union acc_dma_desc *prev_desc;
-		prev_desc = acc_desc(q, total_enqueued_cbs - 1);
-		uint8_t *prev_ptr = (uint8_t *) prev_desc;
-		uint8_t *new_ptr = (uint8_t *) desc;
-		/* Copy first 4 words and BDESCs */
-		rte_memcpy(new_ptr, prev_ptr, ACC_5GUL_SIZE_0);
-		rte_memcpy(new_ptr + ACC_5GUL_OFFSET_0,
-				prev_ptr + ACC_5GUL_OFFSET_0,
-				ACC_5GUL_SIZE_1);
-		desc->req.op_addr = prev_desc->req.op_addr;
-		/* Copy FCW */
-		rte_memcpy(new_ptr + ACC_DESC_FCW_OFFSET,
-				prev_ptr + ACC_DESC_FCW_OFFSET,
-				ACC_FCW_LD_BLEN);
-		acc100_dma_desc_ld_update(op, &desc->req, input, h_output,
-				&in_offset, &h_out_offset,
-				&h_out_length, harq_layout);
-	} else {
-		struct acc_fcw_ld *fcw;
-		uint32_t seg_total_left;
+	struct acc_fcw_ld *fcw;
+	uint32_t seg_total_left;
 
-		if (derm_workaround_recommended(&op->ldpc_dec, q)) {
-			#ifdef RTE_BBDEV_SDK_AVX512
-			struct rte_bbdev_op_ldpc_dec *dec = &op->ldpc_dec;
-			struct bblib_rate_dematching_5gnr_request derm_req;
-			struct bblib_rate_dematching_5gnr_response derm_resp;
-			uint8_t *in;
+	if (derm_workaround_recommended(&op->ldpc_dec, q)) {
+		#ifdef RTE_BBDEV_SDK_AVX512
+		struct rte_bbdev_op_ldpc_dec *dec = &op->ldpc_dec;
+		struct bblib_rate_dematching_5gnr_request derm_req;
+		struct bblib_rate_dematching_5gnr_response derm_resp;
+		uint8_t *in;
 
-			/* Checking input size is matching with E */
-			if (dec->input.data->data_len < (dec->cb_params.e % 65536)) {
-				rte_bbdev_log(ERR, "deRM: Input size mismatch");
-				return -EFAULT;
-			}
-			/* Run first deRM processing in SW */
-			in = rte_pktmbuf_mtod_offset(dec->input.data, uint8_t *, in_offset);
-			derm_req.p_in = (int8_t *) in;
-			derm_req.p_harq = (int8_t *) q->derm_buffer;
-			derm_req.base_graph = dec->basegraph;
-			derm_req.zc = dec->z_c;
-			derm_req.ncb = dec->n_cb;
-			derm_req.e = dec->cb_params.e;
-			if (derm_req.e > ACC_MAX_E) {
-				rte_bbdev_log(WARNING,
-						"deRM: E %d > %d max",
-						derm_req.e, ACC_MAX_E);
-				derm_req.e = ACC_MAX_E;
-			}
-			derm_req.k0 = 0; /* Actual output from SDK */
-			derm_req.isretx = false;
-			derm_req.rvid = dec->rv_index;
-			derm_req.modulation_order = dec->q_m;
-			derm_req.start_null_index =
-					(dec->basegraph == 1 ? 22 : 10)
-					* dec->z_c - 2 * dec->z_c
-					- dec->n_filler;
-			derm_req.num_of_null = dec->n_filler;
-			bblib_rate_dematching_5gnr(&derm_req, &derm_resp);
-			/* Force back the HW DeRM */
-			dec->q_m = 1;
-			dec->cb_params.e = dec->n_cb - dec->n_filler;
-			dec->rv_index = 0;
-			rte_memcpy(in, q->derm_buffer, dec->cb_params.e);
-			/* Capture counter when pre-processing is used */
-			q_data->queue_stats.enqueue_warn_count++;
-			#else
-			RTE_SET_USED(q_data);
-			rte_bbdev_log(INFO, "Corner case may require deRM pre-processing in SDK");
-			#endif
+		/* Checking input size is matching with E */
+		if (dec->input.data->data_len < (dec->cb_params.e % 65536)) {
+			rte_bbdev_log(ERR, "deRM: Input size mismatch");
+			return -EFAULT;
 		}
-
-		fcw = &desc->req.fcw_ld;
-		q->d->fcw_ld_fill(op, fcw, harq_layout);
-
-		/* Special handling when using mbuf or not */
-		if (check_bit(op->ldpc_dec.op_flags, RTE_BBDEV_LDPC_DEC_SCATTER_GATHER))
-			seg_total_left = rte_pktmbuf_data_len(input) - in_offset;
-		else
-			seg_total_left = fcw->rm_e;
-
-		ret = acc100_dma_desc_ld_fill(op, &desc->req, &input, h_output,
-				&in_offset, &h_out_offset,
-				&h_out_length, &mbuf_total_left,
-				&seg_total_left, fcw);
-		if (unlikely(ret < 0))
-			return ret;
+		/* Run first deRM processing in SW */
+		in = rte_pktmbuf_mtod_offset(dec->input.data, uint8_t *, in_offset);
+		derm_req.p_in = (int8_t *) in;
+		derm_req.p_harq = (int8_t *) q->derm_buffer;
+		derm_req.base_graph = dec->basegraph;
+		derm_req.zc = dec->z_c;
+		derm_req.ncb = dec->n_cb;
+		derm_req.e = dec->cb_params.e;
+		if (derm_req.e > ACC_MAX_E) {
+			rte_bbdev_log(WARNING,
+					"deRM: E %d > %d max",
+					derm_req.e, ACC_MAX_E);
+			derm_req.e = ACC_MAX_E;
+		}
+		derm_req.k0 = 0; /* Actual output from SDK */
+		derm_req.isretx = false;
+		derm_req.rvid = dec->rv_index;
+		derm_req.modulation_order = dec->q_m;
+		derm_req.start_null_index =
+				(dec->basegraph == 1 ? 22 : 10)
+				* dec->z_c - 2 * dec->z_c
+				- dec->n_filler;
+		derm_req.num_of_null = dec->n_filler;
+		bblib_rate_dematching_5gnr(&derm_req, &derm_resp);
+		/* Force back the HW DeRM */
+		dec->q_m = 1;
+		dec->cb_params.e = dec->n_cb - dec->n_filler;
+		dec->rv_index = 0;
+		rte_memcpy(in, q->derm_buffer, dec->cb_params.e);
+		/* Capture counter when pre-processing is used */
+		q_data->queue_stats.enqueue_warn_count++;
+		#else
+		RTE_SET_USED(q_data);
+		rte_bbdev_log(INFO, "Corner case may require deRM pre-processing in SDK");
+		#endif
 	}
+
+	fcw = &desc->req.fcw_ld;
+	q->d->fcw_ld_fill(op, fcw, harq_layout);
+
+	/* Special handling when using mbuf or not */
+	if (check_bit(op->ldpc_dec.op_flags, RTE_BBDEV_LDPC_DEC_SCATTER_GATHER))
+		seg_total_left = rte_pktmbuf_data_len(input) - in_offset;
+	else
+		seg_total_left = fcw->rm_e;
+
+	ret = acc100_dma_desc_ld_fill(op, &desc->req, &input, h_output,
+			&in_offset, &h_out_offset,
+			&h_out_length, &mbuf_total_left,
+			&seg_total_left, fcw);
+	if (unlikely(ret < 0))
+		return ret;
 
 	/* Hard output */
 	mbuf_append(h_output_head, h_output, h_out_length);
@@ -3553,7 +3479,7 @@ acc100_enqueue_ldpc_dec_cb(struct rte_bbdev_queue_data *q_data,
 	int32_t avail = acc_ring_avail_enq(q);
 	uint16_t i;
 	int ret;
-	bool same_op = false;
+
 	for (i = 0; i < num; ++i) {
 		/* Check if there are available space for further processing */
 		if (unlikely(avail < 1)) {
@@ -3562,16 +3488,13 @@ acc100_enqueue_ldpc_dec_cb(struct rte_bbdev_queue_data *q_data,
 		}
 		avail -= 1;
 
-		if (i > 0)
-			same_op = cmp_ldpc_dec_op(&ops[i-1]);
-		rte_bbdev_log(INFO, "Op %d %d %d %d %d %d %d %d %d %d %d %d\n",
+		rte_bbdev_log(INFO, "Op %d %d %d %d %d %d %d %d %d %d %d\n",
 			i, ops[i]->ldpc_dec.op_flags, ops[i]->ldpc_dec.rv_index,
 			ops[i]->ldpc_dec.iter_max, ops[i]->ldpc_dec.iter_count,
 			ops[i]->ldpc_dec.basegraph, ops[i]->ldpc_dec.z_c,
 			ops[i]->ldpc_dec.n_cb, ops[i]->ldpc_dec.q_m,
-			ops[i]->ldpc_dec.n_filler, ops[i]->ldpc_dec.cb_params.e,
-			same_op);
-		ret = enqueue_ldpc_dec_one_op_cb(q, ops[i], i, same_op, q_data);
+			ops[i]->ldpc_dec.n_filler, ops[i]->ldpc_dec.cb_params.e);
+		ret = enqueue_ldpc_dec_one_op_cb(q, ops[i], i, q_data);
 		if (ret < 0) {
 			acc_enqueue_invalid(q_data);
 			break;
