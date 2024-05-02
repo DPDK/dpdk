@@ -1112,6 +1112,9 @@ acc_dma_enqueue(struct acc_queue *q, uint16_t n,
 				req_elem_addr,
 				(void *)q->mmio_reg_enqueue);
 
+		q->aq_enqueued++;
+		q->sw_ring_head += enq_batch_size;
+
 		rte_wmb();
 
 		/* Start time measurement for enqueue function offload. */
@@ -1122,8 +1125,6 @@ acc_dma_enqueue(struct acc_queue *q, uint16_t n,
 
 		queue_stats->acc_offload_cycles += rte_rdtsc_precise() - start_time;
 
-		q->aq_enqueued++;
-		q->sw_ring_head += enq_batch_size;
 		n -= enq_batch_size;
 
 	} while (n);
