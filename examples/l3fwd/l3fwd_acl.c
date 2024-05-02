@@ -1073,9 +1073,9 @@ acl_main_loop(__rte_unused void *dummy)
 
 					l3fwd_acl_send_packets(
 						qconf,
-						pkts_burst,
+						acl_search.m_ipv4,
 						acl_search.res_ipv4,
-						nb_rx);
+						acl_search.num_ipv4);
 				}
 
 				if (acl_search.num_ipv6) {
@@ -1088,9 +1088,9 @@ acl_main_loop(__rte_unused void *dummy)
 
 					l3fwd_acl_send_packets(
 						qconf,
-						pkts_burst,
+						acl_search.m_ipv6,
 						acl_search.res_ipv6,
-						nb_rx);
+						acl_search.num_ipv6);
 				}
 			}
 		}
