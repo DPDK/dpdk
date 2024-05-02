@@ -4253,7 +4253,7 @@ poweron_cleanup(struct rte_bbdev *bbdev, struct acc_device *d,
 		acc_reg_write(d, HWPfQmgrIngressAq + 0x100, enq_req.val);
 		usleep(ACC_LONG_WAIT * 100);
 		if (desc->req.word0 != 2)
-			rte_bbdev_log(WARNING, "DMA Response %#"PRIx32"\n", desc->req.word0);
+			rte_bbdev_log(WARNING, "DMA Response %#"PRIx32, desc->req.word0);
 	}
 
 	/* Reset LDPC Cores */
