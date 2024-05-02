@@ -1152,7 +1152,6 @@ acc100_fcw_ld_fill(struct rte_bbdev_dec_op *op, struct acc_fcw_ld *fcw,
 	uint16_t harq_out_length, harq_in_length, ncb_p, k0_p, parity_offset;
 	uint32_t harq_index;
 	uint32_t l;
-	uint32_t max_hc_in;
 
 	fcw->qm = op->ldpc_dec.q_m;
 	fcw->nfiller = op->ldpc_dec.n_filler;
@@ -1222,21 +1221,6 @@ acc100_fcw_ld_fill(struct rte_bbdev_dec_op *op, struct acc_fcw_ld *fcw,
 		fcw->hcin_size1 = 0;
 	}
 
-	/* Enforce additional check on FCW validity */
-	max_hc_in = RTE_ALIGN_CEIL(fcw->ncb - fcw->nfiller, ACC_HARQ_ALIGN_64B);
-	if ((fcw->hcin_size0 > max_hc_in) ||
-			(fcw->hcin_size1 + fcw->hcin_offset > max_hc_in) ||
-			((fcw->hcin_size0 > fcw->hcin_offset) &&
-			(fcw->hcin_size1 != 0))) {
-		rte_bbdev_log(ERR, " Invalid FCW : HCIn %d %d %d, Ncb %d F %d",
-				fcw->hcin_size0, fcw->hcin_size1,
-				fcw->hcin_offset,
-				fcw->ncb, fcw->nfiller);
-		/* Disable HARQ input in that case to carry forward */
-		op->ldpc_dec.op_flags ^= RTE_BBDEV_LDPC_HQ_COMBINE_IN_ENABLE;
-		fcw->hcin_en = 0;
-	}
-
 	fcw->itmax = op->ldpc_dec.iter_max;
 	fcw->itstop = check_bit(op->ldpc_dec.op_flags,
 			RTE_BBDEV_LDPC_ITERATION_STOP_ENABLE);
@@ -1286,8 +1270,7 @@ acc100_fcw_ld_fill(struct rte_bbdev_dec_op *op, struct acc_fcw_ld *fcw,
 		fcw->hcout_offset = 0;
 
 		if (fcw->hcout_size0 == 0) {
-			rte_bbdev_log(ERR, " Invalid FCW : HCout %d",
-				fcw->hcout_size0);
+			rte_bbdev_log(ERR, " Disabling HARQ output as size is zero");
 			op->ldpc_dec.op_flags ^= RTE_BBDEV_LDPC_HQ_COMBINE_OUT_ENABLE;
 			fcw->hcout_en = 0;
 		}
