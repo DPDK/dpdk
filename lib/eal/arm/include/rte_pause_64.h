@@ -11,6 +11,7 @@ extern "C" {
 #endif
 
 #include <rte_common.h>
+#include <rte_stdatomic.h>
 
 #ifdef RTE_ARM_USE_WFE
 #define RTE_WAIT_UNTIL_EQUAL_ARCH_DEFINED
@@ -149,7 +150,7 @@ static inline void rte_pause(void)
 
 static __rte_always_inline void
 rte_wait_until_equal_16(volatile uint16_t *addr, uint16_t expected,
-		int memorder)
+		rte_memory_order memorder)
 {
 	uint16_t value;
 
@@ -168,7 +169,7 @@ rte_wait_until_equal_16(volatile uint16_t *addr, uint16_t expected,
 
 static __rte_always_inline void
 rte_wait_until_equal_32(volatile uint32_t *addr, uint32_t expected,
-		int memorder)
+		rte_memory_order memorder)
 {
 	uint32_t value;
 
@@ -187,7 +188,7 @@ rte_wait_until_equal_32(volatile uint32_t *addr, uint32_t expected,
 
 static __rte_always_inline void
 rte_wait_until_equal_64(volatile uint64_t *addr, uint64_t expected,
-		int memorder)
+		rte_memory_order memorder)
 {
 	uint64_t value;
 
