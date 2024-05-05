@@ -986,7 +986,8 @@ static int
 asym_set_input(struct icp_qat_fw_pke_request *qat_req,
 		struct qat_asym_op_cookie *cookie,
 		const struct rte_crypto_asym_op *asym_op,
-		const struct rte_crypto_asym_xform *xform)
+		const struct rte_crypto_asym_xform *xform,
+		uint8_t legacy_alg)
 {
 	switch (xform->xform_type) {
 	case RTE_CRYPTO_ASYM_XFORM_MODEX:
@@ -995,7 +996,7 @@ asym_set_input(struct icp_qat_fw_pke_request *qat_req,
 		return modinv_set_input(qat_req, cookie, asym_op, xform);
 	case RTE_CRYPTO_ASYM_XFORM_RSA:{
 		if (unlikely((xform->rsa.n.length < RSA_MODULUS_2048_BITS)
-					&& (qat_legacy_capa == 0)))
+					&& (legacy_alg == 0)))
 			return RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
 		return rsa_set_input(qat_req, cookie, asym_op, xform);
 	}
@@ -1029,9 +1030,10 @@ asym_set_input(struct icp_qat_fw_pke_request *qat_req,
 }
 
 static int
-qat_asym_build_request(void *in_op, uint8_t *out_msg, void *op_cookie,
-			__rte_unused uint64_t *opaque,
-			__rte_unused enum qat_device_gen qat_dev_gen)
+qat_asym_build_request(void *in_op,
+	uint8_t *out_msg,
+	void *op_cookie,
+	struct qat_qp *qp)
 {
 	struct rte_crypto_op *op = (struct rte_crypto_op *)in_op;
 	struct rte_crypto_asym_op *asym_op = op->asym;
@@ -1065,7 +1067,8 @@ qat_asym_build_request(void *in_op, uint8_t *out_msg, void *op_cookie,
 		op->status = RTE_CRYPTO_OP_STATUS_INVALID_SESSION;
 		goto error;
 	}
-	err = asym_set_input(qat_req, cookie, asym_op, xform);
+	err = asym_set_input(qat_req, cookie, asym_op, xform,
+		qp->qat_dev->options.legacy_alg);
 	if (err) {
 		op->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
 		goto error;
@@ -1354,9 +1357,11 @@ qat_asym_session_configure(struct rte_cryptodev *dev __rte_unused,
 		struct rte_crypto_asym_xform *xform,
 		struct rte_cryptodev_asym_session *session)
 {
+	struct qat_cryptodev_private *crypto_qat;
 	struct qat_asym_session *qat_session;
 	int ret = 0;
 
+	crypto_qat = dev->data->dev_private;
 	qat_session = (struct qat_asym_session *) session->sess_private_data;
 	memset(qat_session, 0, sizeof(*qat_session));
 
@@ -1370,7 +1375,7 @@ qat_asym_session_configure(struct rte_cryptodev *dev __rte_unused,
 		break;
 	case RTE_CRYPTO_ASYM_XFORM_RSA: {
 		if (unlikely((xform->rsa.n.length < RSA_MODULUS_2048_BITS)
-					&& (qat_legacy_capa == 0))) {
+				&& (crypto_qat->qat_dev->options.legacy_alg == 0))) {
 			ret = -ENOTSUP;
 			return ret;
 		}
@@ -1594,7 +1599,7 @@ qat_asym_dev_create(struct qat_pci_device *qat_pci_dev)
 			atoi(cmdline);
 	}
 
-	if (qat_pci_dev->slice_map & ICP_ACCEL_MASK_PKE_SLICE) {
+	if (qat_pci_dev->options.slice_map & ICP_ACCEL_MASK_PKE_SLICE) {
 		QAT_LOG(ERR, "Device %s does not support PKE slice",
 				name);
 		rte_cryptodev_pmd_destroy(cryptodev);
@@ -1604,7 +1609,7 @@ qat_asym_dev_create(struct qat_pci_device *qat_pci_dev)
 	}
 
 	if (gen_dev_ops->get_capabilities(internals,
-			capa_memz_name, qat_pci_dev->slice_map) < 0) {
+			capa_memz_name, qat_pci_dev->options.slice_map) < 0) {
 		QAT_LOG(ERR,
 			"Device cannot obtain capabilities, destroying PMD for %s",
 			name);

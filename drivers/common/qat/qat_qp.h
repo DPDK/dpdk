@@ -12,6 +12,7 @@
 
 #define QAT_QP_MIN_INFL_THRESHOLD	256
 
+struct qat_qp;
 struct qat_pci_device;
 
 /**
@@ -57,7 +58,7 @@ struct qat_queue {
  *   - EINVAL if error
  **/
 typedef int (*qat_op_build_request_t)(void *in_op, uint8_t *out_msg,
-		void *op_cookie, uint64_t *opaque, enum qat_device_gen dev_gen);
+		void *op_cookie, struct qat_qp *qp);
 
 /**
  * Type define qat_op_dequeue_t function pointer, passed in as argument

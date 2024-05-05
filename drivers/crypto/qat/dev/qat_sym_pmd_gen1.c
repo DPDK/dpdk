@@ -164,7 +164,7 @@ qat_sym_crypto_cap_get_gen1(struct qat_cryptodev_private *internals,
 	uint32_t legacy_size = sizeof(qat_sym_crypto_legacy_caps_gen1);
 	legacy_capa_num = legacy_size/sizeof(struct rte_cryptodev_capabilities);
 
-	if (unlikely(qat_legacy_capa))
+	if (unlikely(internals->qat_dev->options.legacy_alg))
 		size = size + legacy_size;
 
 	internals->capa_mz = rte_memzone_lookup(capa_memz_name);
@@ -184,7 +184,7 @@ qat_sym_crypto_cap_get_gen1(struct qat_cryptodev_private *internals,
 
 	struct rte_cryptodev_capabilities *capabilities;
 
-	if (unlikely(qat_legacy_capa)) {
+	if (unlikely(internals->qat_dev->options.legacy_alg)) {
 		capabilities = qat_sym_crypto_legacy_caps_gen1;
 		memcpy(addr, capabilities, legacy_size);
 		addr += legacy_capa_num;
@@ -292,7 +292,7 @@ qat_sym_build_op_auth_gen1(void *in_op, struct qat_sym_session *ctx,
 	cdev = rte_cryptodev_pmd_get_dev(ctx->dev_id);
 	internals = cdev->data->dev_private;
 
-	if (internals->qat_dev->has_wireless_slice && !ctx->is_gmac)
+	if (internals->qat_dev->options.has_wireless_slice && !ctx->is_gmac)
 		ICP_QAT_FW_LA_CIPH_IV_FLD_FLAG_SET(
 				req->comn_hdr.serv_specif_flags, 0);
 

@@ -634,7 +634,7 @@ qat_enqueue_op_burst(void *qp, qat_op_build_request_t op_build_request,
 	while (nb_ops_sent != nb_ops_possible) {
 		ret = op_build_request(*ops, base_addr + tail,
 				tmp_qp->op_cookies[tail >> queue->trailz],
-				tmp_qp->opaque, tmp_qp->qat_dev_gen);
+				tmp_qp);
 
 		if (ret != 0) {
 			tmp_qp->stats.enqueue_err_count++;

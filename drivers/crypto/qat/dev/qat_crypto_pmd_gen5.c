@@ -167,7 +167,7 @@ qat_sym_crypto_cap_get_gen5(struct qat_cryptodev_private *internals,
 	legacy_capa_num = legacy_size/sizeof(struct rte_cryptodev_capabilities);
 	capa_num = RTE_DIM(qat_sym_crypto_caps_gen5);
 
-	if (unlikely(qat_legacy_capa))
+	if (unlikely(internals->qat_dev->options.legacy_alg))
 		size = size + legacy_size;
 
 	internals->capa_mz = rte_memzone_lookup(capa_memz_name);
@@ -187,7 +187,7 @@ qat_sym_crypto_cap_get_gen5(struct qat_cryptodev_private *internals,
 
 	struct rte_cryptodev_capabilities *capabilities;
 
-	if (unlikely(qat_legacy_capa)) {
+	if (unlikely(internals->qat_dev->options.legacy_alg)) {
 		capabilities = qat_sym_crypto_legacy_caps_gen5;
 		memcpy(addr, capabilities, legacy_size);
 		addr += legacy_capa_num;

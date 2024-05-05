@@ -31,7 +31,6 @@ struct qat_service qat_service[QAT_MAX_SERVICES];
 /* per-process array of device data */
 struct qat_device_info qat_pci_devs[RTE_PMD_QAT_MAX_PCI_DEVICES];
 static int qat_nb_pci_devices;
-int qat_legacy_capa;
 
 /*
  * The set of PCI devices this driver supports
@@ -331,7 +330,7 @@ qat_pci_device_allocate(struct rte_pci_device *pci_dev)
 	qat_pci_devs[qat_dev_id].pci_dev = pci_dev;
 
 	if (wireless_slice_support(pci_dev->id.device_id))
-		qat_dev->has_wireless_slice = 1;
+		qat_dev->options.has_wireless_slice = 1;
 
 	ops_hw = qat_dev_hw_spec[qat_dev->qat_dev_gen];
 	NOT_NULL(ops_hw->qat_dev_get_misc_bar, goto error,
@@ -352,7 +351,7 @@ qat_pci_device_allocate(struct rte_pci_device *pci_dev)
 	/* Parse the arguments */
 	cmdline = qat_dev_cmdline_get_val(qat_dev, QAT_LEGACY_CAPA);
 	if (cmdline)
-		qat_legacy_capa = atoi(cmdline);
+		qat_dev->options.legacy_alg = atoi(cmdline);
 
 	if (qat_read_qp_config(qat_dev)) {
 		QAT_LOG(ERR,
@@ -372,7 +371,7 @@ qat_pci_device_allocate(struct rte_pci_device *pci_dev)
 	NOT_NULL(ops_hw->qat_dev_get_slice_map, goto error,
 		"QAT internal error! Read slice function not set, gen : %d",
 		qat_dev_gen);
-	if (ops_hw->qat_dev_get_slice_map(&qat_dev->slice_map, pci_dev) < 0) {
+	if (ops_hw->qat_dev_get_slice_map(&qat_dev->options.slice_map, pci_dev) < 0) {
 		RTE_LOG(ERR, EAL,
 			"Cannot read slice configuration\n");
 		goto error;

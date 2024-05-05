@@ -19,6 +19,15 @@
 
 extern const char *const *qat_cmdline_defines[];
 
+struct qat_options {
+	uint32_t slice_map;
+	/**< Map of the crypto and compression slices */
+	uint16_t has_wireless_slice;
+	/**< Wireless Slices supported */
+	uint8_t legacy_alg;
+	/**< are legacy algorithm supported */
+};
+
 enum qat_device_gen {
 	QAT_GEN1,
 	QAT_GEN2,

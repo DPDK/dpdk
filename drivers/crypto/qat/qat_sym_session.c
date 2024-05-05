@@ -422,7 +422,7 @@ qat_sym_session_configure_cipher(struct rte_cryptodev *dev,
 			goto error_out;
 		}
 		session->qat_mode = ICP_QAT_HW_CIPHER_ECB_MODE;
-		if (internals->qat_dev->has_wireless_slice)
+		if (internals->qat_dev->options.has_wireless_slice)
 			is_wireless = 1;
 		break;
 	case RTE_CRYPTO_CIPHER_NULL:
@@ -543,7 +543,7 @@ qat_sym_session_configure_cipher(struct rte_cryptodev *dev,
 		session->qat_mode = ICP_QAT_HW_CIPHER_ECB_MODE;
 		if (cipher_xform->key.length == ICP_QAT_HW_ZUC_256_KEY_SZ)
 			session->is_zuc256 = 1;
-		if (internals->qat_dev->has_wireless_slice)
+		if (internals->qat_dev->options.has_wireless_slice)
 			is_wireless = 1;
 		break;
 	case RTE_CRYPTO_CIPHER_AES_XTS:
@@ -933,7 +933,7 @@ qat_sym_session_configure_auth(struct rte_cryptodev *dev,
 		break;
 	case RTE_CRYPTO_AUTH_AES_CMAC:
 		session->aes_cmac = 1;
-		if (!internals->qat_dev->has_wireless_slice) {
+		if (!internals->qat_dev->options.has_wireless_slice) {
 			session->qat_hash_alg = ICP_QAT_HW_AUTH_ALGO_AES_XCBC_MAC;
 			break;
 		}
@@ -968,7 +968,7 @@ qat_sym_session_configure_auth(struct rte_cryptodev *dev,
 		break;
 	case RTE_CRYPTO_AUTH_SNOW3G_UIA2:
 		session->qat_hash_alg = ICP_QAT_HW_AUTH_ALGO_SNOW_3G_UIA2;
-		if (internals->qat_dev->has_wireless_slice) {
+		if (internals->qat_dev->options.has_wireless_slice) {
 			is_wireless = 1;
 			session->is_wireless = 1;
 			hash_flag = 1 << ICP_QAT_FW_AUTH_HDR_FLAG_SNOW3G_UIA2_BITPOS;
@@ -1012,7 +1012,7 @@ qat_sym_session_configure_auth(struct rte_cryptodev *dev,
 			QAT_LOG(ERR, "Invalid key length: %d", key_length);
 			return -ENOTSUP;
 		}
-		if (internals->qat_dev->has_wireless_slice) {
+		if (internals->qat_dev->options.has_wireless_slice) {
 			is_wireless = 1;
 			session->is_wireless = 1;
 			hash_flag = 1 << ICP_QAT_FW_AUTH_HDR_FLAG_ZUC_EIA3_BITPOS;
