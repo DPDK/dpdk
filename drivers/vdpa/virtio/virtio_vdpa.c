@@ -145,9 +145,9 @@ virtio_vdpa_find_iommu_domain_by_uuid(const rte_uuid_t vm_uuid)
 {
 	int i;
 
-	for (i = 0; i < VIRTIO_VDPA_MAX_IOMMU_DOMAIN &&
-			virtio_iommu_domains[i] != NULL; i++) {
-		if (rte_uuid_compare(vm_uuid, virtio_iommu_domains[i]->vm_uuid) == 0)
+	for (i = 0; i < VIRTIO_VDPA_MAX_IOMMU_DOMAIN; i++) {
+		if (virtio_iommu_domains[i] != NULL &&
+			rte_uuid_compare(vm_uuid, virtio_iommu_domains[i]->vm_uuid) == 0)
 			break;	
 	}
 
