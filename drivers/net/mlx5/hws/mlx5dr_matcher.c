@@ -877,7 +877,7 @@ static int mlx5dr_matcher_bind_mt(struct mlx5dr_matcher *matcher)
 	/* Calculate match, range and hash definers */
 	ret = mlx5dr_definer_matcher_init(ctx, matcher);
 	if (ret) {
-		DR_LOG(ERR, "Failed to set matcher templates with match definers");
+		DR_LOG(DEBUG, "Failed to set matcher templates with match definers");
 		return ret;
 	}
 

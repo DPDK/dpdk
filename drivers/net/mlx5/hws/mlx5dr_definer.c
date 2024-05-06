@@ -3539,7 +3539,7 @@ mlx5dr_definer_find_best_match_fit(struct mlx5dr_context *ctx,
 		return 0;
 	}
 
-	DR_LOG(ERR, "Unable to find supporting match/jumbo definer combination");
+	DR_LOG(DEBUG, "Unable to find supporting match/jumbo definer combination");
 	rte_errno = E2BIG;
 	return rte_errno;
 }
@@ -3694,7 +3694,7 @@ mlx5dr_definer_calc_layout(struct mlx5dr_matcher *matcher,
 	/* Find the match definer layout for header layout match union */
 	ret = mlx5dr_definer_find_best_match_fit(ctx, match_definer, match_hl);
 	if (ret) {
-		DR_LOG(ERR, "Failed to create match definer from header layout");
+		DR_LOG(DEBUG, "Failed to create match definer from header layout");
 		goto free_fc;
 	}
 
@@ -4046,7 +4046,7 @@ int mlx5dr_definer_matcher_init(struct mlx5dr_context *ctx,
 
 	ret = mlx5dr_definer_calc_layout(matcher, &match_layout, &range_layout);
 	if (ret) {
-		DR_LOG(ERR, "Failed to calculate matcher definer layout");
+		DR_LOG(DEBUG, "Failed to calculate matcher definer layout");
 		return ret;
 	}
 
