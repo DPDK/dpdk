@@ -153,7 +153,7 @@ mlx5dr_debug_dump_matcher_action_template(FILE *f, struct mlx5dr_matcher *matche
 			      MLX5DR_DEBUG_RES_TYPE_MATCHER_ACTION_TEMPLATE,
 			      (uint64_t)(uintptr_t)at,
 			      (uint64_t)(uintptr_t)matcher,
-			      at->only_term ? 0 : 1,
+			      at->only_term,
 			      is_root ? 0 : at->num_of_action_stes,
 			      at->num_actions);
 		if (ret < 0) {
