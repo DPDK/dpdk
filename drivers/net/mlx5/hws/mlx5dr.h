@@ -81,6 +81,7 @@ enum mlx5dr_action_aso_ct_flags {
 };
 
 enum mlx5dr_match_template_flags {
+	MLX5DR_MATCH_TEMPLATE_FLAG_NONE = 0,
 	/* Allow relaxed matching by skipping derived dependent match fields. */
 	MLX5DR_MATCH_TEMPLATE_FLAG_RELAXED_MATCH = 1,
 };
