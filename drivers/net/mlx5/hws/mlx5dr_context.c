@@ -263,6 +263,7 @@ struct mlx5dr_context *mlx5dr_context_open(struct ibv_context *ibv_ctx,
 free_caps:
 	simple_free(ctx->caps);
 free_ctx:
+	pthread_spin_destroy(&ctx->ctrl_lock);
 	simple_free(ctx);
 	return NULL;
 }
