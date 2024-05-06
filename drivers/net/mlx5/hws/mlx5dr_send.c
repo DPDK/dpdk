@@ -729,7 +729,6 @@ static int mlx5dr_send_ring_open_sq(struct mlx5dr_context *ctx,
 	buf_sz = queue->num_entries * MAX_WQES_PER_RULE;
 	sq_log_buf_sz = log2above(buf_sz);
 	sq_buf_sz = 1 << (sq_log_buf_sz + log2above(MLX5_SEND_WQE_BB));
-	sq->reg_addr = queue->uar->reg_addr;
 
 	page_size = sysconf(_SC_PAGESIZE);
 	buf_aligned = align(sq_buf_sz, page_size);

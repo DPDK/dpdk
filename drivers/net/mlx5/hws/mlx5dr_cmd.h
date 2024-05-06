@@ -194,8 +194,6 @@ struct mlx5dr_cmd_query_ft_caps {
 struct mlx5dr_cmd_query_vport_caps {
 	uint16_t vport_num;
 	uint16_t esw_owner_vhca_id;
-	uint32_t metadata_c;
-	uint32_t metadata_c_mask;
 };
 
 struct mlx5dr_cmd_generate_wqe_attr {
@@ -207,7 +205,6 @@ struct mlx5dr_cmd_generate_wqe_attr {
 };
 
 struct mlx5dr_cmd_query_caps {
-	uint32_t wire_regc;
 	uint32_t wire_regc_mask;
 	uint32_t flex_protocols;
 	uint8_t wqe_based_update;

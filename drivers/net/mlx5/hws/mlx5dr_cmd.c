@@ -1344,12 +1344,10 @@ int mlx5dr_cmd_query_caps(struct ibv_context *ctx,
 	strlcpy(caps->fw_ver, attr_ex.orig_attr.fw_ver, sizeof(caps->fw_ver));
 
 	port_info = flow_hw_get_wire_port(ctx);
-	if (port_info) {
-		caps->wire_regc = port_info->regc_value;
+	if (port_info)
 		caps->wire_regc_mask = port_info->regc_mask;
-	} else {
+	else
 		DR_LOG(INFO, "Failed to query wire port regc value");
-	}
 
 	return ret;
 }
@@ -1373,11 +1371,6 @@ int mlx5dr_cmd_query_ib_port(struct ibv_context *ctx,
 
 	vport_caps->vport_num = port_info.vport_id;
 	vport_caps->esw_owner_vhca_id = port_info.esw_owner_vhca_id;
-
-	if (port_info.query_flags & MLX5_PORT_QUERY_REG_C0) {
-		vport_caps->metadata_c = port_info.vport_meta_tag;
-		vport_caps->metadata_c_mask = port_info.vport_meta_mask;
-	}
 
 	return 0;
 }

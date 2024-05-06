@@ -114,7 +114,6 @@ struct mlx5dr_send_ring_sq {
 	char *buf;
 	uint32_t sqn;
 	__be32 *db;
-	void *reg_addr;
 	uint16_t cur_post;
 	uint16_t buf_mask;
 	struct mlx5dr_send_ring_priv *wr_priv;
