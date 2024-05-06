@@ -758,7 +758,7 @@ free_value:
 free_attr:
 	simple_free(attr);
 
-	return -rte_errno;
+	return rte_errno;
 }
 
 static int mlx5dr_rule_destroy_root(struct mlx5dr_rule *rule,
