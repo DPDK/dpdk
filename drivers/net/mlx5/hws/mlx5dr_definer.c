@@ -1842,7 +1842,7 @@ mlx5dr_definer_find_best_hl_fit(struct mlx5dr_context *ctx,
 		return 0;
 	}
 
-	DR_LOG(ERR, "Unable to find supporting match/jumbo definer combination");
+	DR_LOG(DEBUG, "Unable to find supporting match/jumbo definer combination");
 	rte_errno = ENOTSUP;
 	return rte_errno;
 }
@@ -1934,7 +1934,7 @@ int mlx5dr_definer_get(struct mlx5dr_context *ctx,
 	/* Convert items to hl and allocate the field copy array (fc) */
 	ret = mlx5dr_definer_conv_items_to_hl(ctx, mt, hl);
 	if (ret) {
-		DR_LOG(ERR, "Failed to convert items to hl");
+		DR_LOG(DEBUG, "Failed to convert items to hl");
 		goto free_hl;
 	}
 
