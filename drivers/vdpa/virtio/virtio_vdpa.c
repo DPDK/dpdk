@@ -2375,7 +2375,7 @@ virtio_vdpa_dev_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		 */
 		pthread_mutex_lock(&iommu_domain_locks[iommu_idx]);
 		if (iommu_domain->vfio_container_fd == -1) {
-			mem = &cached_ctx.ctx->mem;
+			mem = &cached_ctx.ctx->ctt.mem;
 			for (i = 0; i < mem->nregions; i++) {
 				iommu_domain->mem.regions[i].guest_phys_addr = mem->regions[i].guest_phys_addr;
 				iommu_domain->mem.regions[i].host_phys_addr = mem->regions[i].host_phys_addr;

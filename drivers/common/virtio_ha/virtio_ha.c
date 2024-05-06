@@ -816,8 +816,6 @@ virtio_ha_pf_ctx_query(const struct virtio_dev_name *pf, struct virtio_pf_ctx *c
 	ctx->vfio_group_fd = msg->fds[0];
 	ctx->vfio_device_fd = msg->fds[1];
 
-	virtio_ha_free_msg(msg);
-
 	TAILQ_FOREACH(dev, &client_devs.pf_list, next) {
 		if (!strcmp(dev->pf_name.dev_bdf, pf->dev_bdf)) {
 			dev->pf_ctx.vfio_group_fd = msg->fds[0];
@@ -825,6 +823,8 @@ virtio_ha_pf_ctx_query(const struct virtio_dev_name *pf, struct virtio_pf_ctx *c
 			break;
 		}
 	}
+
+	virtio_ha_free_msg(msg);
 
 	return 0;
 }
@@ -836,7 +836,6 @@ virtio_ha_vf_ctx_query(struct virtio_dev_name *vf,
 	struct virtio_ha_pf_dev *dev;
 	struct virtio_ha_vf_dev *vf_dev;
 	struct virtio_ha_vf_dev_list *vf_list;
-	struct virtio_vdpa_dma_mem *mem;
 	struct virtio_ha_msg *msg;
 	bool found = false;
 	int ret;
@@ -875,9 +874,7 @@ virtio_ha_vf_ctx_query(struct virtio_dev_name *vf,
 		return -1;
 	}
 
-	mem = (struct virtio_vdpa_dma_mem *)msg->iov.iov_base;
-	*ctx = malloc(sizeof(struct vdpa_vf_ctx) +
-		sizeof(struct virtio_vdpa_mem_region) * mem->nregions);
+	*ctx = malloc(sizeof(int) * 3 + msg->iov.iov_len);
 	if (*ctx == NULL) {
 		HA_IPC_LOG(ERR, "Failed to alloc vf ctx");
 		return -1;			
@@ -886,10 +883,7 @@ virtio_ha_vf_ctx_query(struct virtio_dev_name *vf,
 	(*ctx)->vfio_container_fd = msg->fds[0];
 	(*ctx)->vfio_group_fd = msg->fds[1];
 	(*ctx)->vfio_device_fd = msg->fds[2];
-	memcpy(&(*ctx)->mem, mem, msg->iov.iov_len);
-	free(msg->iov.iov_base);//TO-DO: should make ctx->mem a pointer?
-
-	virtio_ha_free_msg(msg);
+	memcpy(&(*ctx)->ctt, msg->iov.iov_base, msg->iov.iov_len);
 
 	TAILQ_FOREACH(dev, &client_devs.pf_list, next) {
 		if (!strcmp(dev->pf_name.dev_bdf, pf->dev_bdf)) {
@@ -907,10 +901,13 @@ virtio_ha_vf_ctx_query(struct virtio_dev_name *vf,
 			vf_dev->vf_ctx.vfio_container_fd = msg->fds[0];
 			vf_dev->vf_ctx.vfio_group_fd = msg->fds[1];
 			vf_dev->vf_ctx.vfio_device_fd = msg->fds[2];
-			memcpy(&vf_dev->vf_ctx.mem, &(*ctx)->mem, msg->iov.iov_len);
+			memcpy(&vf_dev->vf_ctx.ctt, msg->iov.iov_base, msg->iov.iov_len);
 			break;
 		}
 	}
+
+	free(msg->iov.iov_base);
+	virtio_ha_free_msg(msg);
 
 	return 0;
 }
@@ -1402,7 +1399,7 @@ virtio_ha_vf_mem_tbl_store(const struct virtio_dev_name *vf,
 		mem->nregions * sizeof(struct virtio_vdpa_mem_region);
 	TAILQ_FOREACH(vf_dev, vf_list, next) {
 		if (!strcmp(vf_dev->vf_devargs.vf_name.dev_bdf, vf->dev_bdf)) {
-			memcpy(&vf_dev->vf_ctx.mem, mem, len);
+			memcpy(&vf_dev->vf_ctx.ctt.mem, mem, len);
 			break;
 		}
 	}
@@ -1439,7 +1436,7 @@ virtio_ha_vf_mem_tbl_remove(struct virtio_dev_name *vf,
 
 	TAILQ_FOREACH(vf_dev, vf_list, next) {
 		if (!strcmp(vf_dev->vf_devargs.vf_name.dev_bdf, vf->dev_bdf)) {
-			mem = &vf_dev->vf_ctx.mem;
+			mem = &vf_dev->vf_ctx.ctt.mem;
 			mem->nregions = 0;
 			break;
 		}
@@ -1701,9 +1698,9 @@ sync_dev_context_to_ha(ver_time_set set_ver)
 				}
 			}
 
-			if (vf_dev->vf_ctx.mem.nregions != 0) {
+			if (vf_dev->vf_ctx.ctt.mem.nregions != 0) {
 				ret = virtio_ha_vf_mem_tbl_store_no_cache(&vf_dev->vf_devargs.vf_name,
-						&dev->pf_name, &vf_dev->vf_ctx.mem);
+						&dev->pf_name, &vf_dev->vf_ctx.ctt.mem);
 				if (ret) {
 					HA_IPC_LOG(ERR, "Failed to sync vf memory table");
 					continue;

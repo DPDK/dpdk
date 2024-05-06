@@ -251,6 +251,7 @@ ha_server_app_query_vf_ctx(struct virtio_ha_msg *msg)
 	struct virtio_ha_pf_dev_list *list = &hs.pf_list;
 	struct virtio_ha_vf_dev_list *vf_list = NULL;
 	uint32_t nr_vf;
+	struct vdpa_vf_ctx_content *vf_ctt;
 
 	TAILQ_FOREACH(dev, list, next) {
 		if (!strcmp(dev->pf_name.dev_bdf, msg->hdr.bdf)) {
@@ -266,14 +267,19 @@ ha_server_app_query_vf_ctx(struct virtio_ha_msg *msg)
 	vf = (struct vdpa_vf_with_devargs *)msg->iov.iov_base;
 	TAILQ_FOREACH(vf_dev, vf_list, next) {
 		if (!strcmp(vf_dev->vf_devargs.vf_name.dev_bdf, vf->vf_name.dev_bdf)) {
-			msg->iov.iov_len = sizeof(struct virtio_vdpa_dma_mem) +
-				vf_dev->vf_ctx.mem.nregions * sizeof(struct virtio_vdpa_mem_region);
+			msg->iov.iov_len = sizeof(struct vdpa_vf_ctx_content) +
+				vf_dev->vf_ctx.ctt.mem.nregions * sizeof(struct virtio_vdpa_mem_region);
 			msg->iov.iov_base = malloc(msg->iov.iov_len);
 			if (msg->iov.iov_base == NULL) {
 				HA_APP_LOG(ERR, "Failed to alloc vf mem table");
 				return HA_MSG_HDLR_ERR;
 			}
-			memcpy(msg->iov.iov_base, &vf_dev->vf_ctx.mem, msg->iov.iov_len);
+			vf_ctt = (struct vdpa_vf_ctx_content *)msg->iov.iov_base;
+			if (vf_dev->vhost_fd == -1)
+				vf_ctt->vhost_fd_saved = false;
+			else
+				vf_ctt->vhost_fd_saved = true;
+			memcpy((void *)&vf_ctt->mem, &vf_dev->vf_ctx.ctt.mem, msg->iov.iov_len);
 			msg->nr_fds = 3;
 			msg->fds[0] = vf_dev->vf_ctx.vfio_container_fd;
 			msg->fds[1] = vf_dev->vf_ctx.vfio_group_fd;
@@ -483,7 +489,7 @@ ha_server_store_dma_tbl(struct virtio_ha_msg *msg)
 	TAILQ_FOREACH(vf_dev, vf_list, next) {
 		if (!strcmp(vf_dev->vf_devargs.vf_name.dev_bdf, vf_name->dev_bdf)) {
 			mem = (struct virtio_vdpa_dma_mem *)(vf_name + 1);
-			memcpy(&vf_dev->vf_ctx.mem, mem, len);
+			memcpy(&vf_dev->vf_ctx.ctt.mem, mem, len);
 			HA_APP_LOG(INFO, "Stored vf %s DMA memory table:", vf_name->dev_bdf);
 			for (i = 0; i < mem->nregions; i++) {
 				HA_APP_LOG(INFO, "Region %u: GPA 0x%" PRIx64 " HPA 0x%" PRIx64 " Size 0x%" PRIx64,
@@ -604,7 +610,7 @@ ha_server_remove_dma_tbl(struct virtio_ha_msg *msg)
 	vf_name = (struct virtio_dev_name *)msg->iov.iov_base;
 	TAILQ_FOREACH(vf_dev, vf_list, next) {
 		if (!strcmp(vf_dev->vf_devargs.vf_name.dev_bdf, vf_name->dev_bdf)) {
-			mem = &vf_dev->vf_ctx.mem;
+			mem = &vf_dev->vf_ctx.ctt.mem;
 			mem->nregions = 0;
 			HA_APP_LOG(INFO, "Removed vf %s DMA memory table", vf_name->dev_bdf);
 			break;

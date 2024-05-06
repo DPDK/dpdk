@@ -246,12 +246,14 @@ virtio_ha_client_dev_restore_vf(int total_vf)
 			goto err_vf_ctx;
 		}
 
-		ret = virtio_ha_vf_vhost_fd_remove(&vf_dev->vf_devargs.vf_name, &vf_dev->pf_name);
-		if (ret < 0) {
-			RTE_LOG(ERR, HA, "Failed to close vhost fd\n");
-			pthread_mutex_unlock(&vf_restore_lock);
-			ret = -1;
-			goto err_vf_ctx;
+		if (vf_ctx->ctt.vhost_fd_saved) {
+			ret = virtio_ha_vf_vhost_fd_remove(&vf_dev->vf_devargs.vf_name, &vf_dev->pf_name);
+			if (ret < 0) {
+				RTE_LOG(ERR, HA, "Failed to close vhost fd\n");
+				pthread_mutex_unlock(&vf_restore_lock);
+				ret = -1;
+				goto err_vf_ctx;
+			}
 		}
 
 		ret = vdpa_with_socket_path_start(vf_dev->vf_devargs.vf_name.dev_bdf,
@@ -272,15 +274,17 @@ virtio_ha_client_dev_restore_vf(int total_vf)
 		}
 		pthread_mutex_unlock(&vf_restore_lock);
 		total_vf--;
-		for (i = 0; i < MAX_WAIT_ROUND; i++) {
-			ret = rte_vdpa_get_vf_info(vf_dev->vf_devargs.vf_name.dev_bdf, &vf_info);
-			if (ret < 0) {
-				RTE_LOG(WARNING, HA, "Failed to get VF info\n");
-				continue;				
+		if (vf_ctx->ctt.vhost_fd_saved) {
+			for (i = 0; i < MAX_WAIT_ROUND; i++) {
+				ret = rte_vdpa_get_vf_info(vf_dev->vf_devargs.vf_name.dev_bdf, &vf_info);
+				if (ret < 0) {
+					RTE_LOG(WARNING, HA, "Failed to get VF info\n");
+					continue;				
+				}
+				if (vf_info.configured)
+					break;
+				usleep(WAIT_INTERVAL);
 			}
-			if (vf_info.configured)
-				break;
-			usleep(WAIT_INTERVAL);
 		}
 err_vf_ctx:
 		free(vf_ctx);

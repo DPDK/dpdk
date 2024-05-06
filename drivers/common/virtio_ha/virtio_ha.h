@@ -100,11 +100,16 @@ struct virtio_vdpa_dma_mem {
 	struct virtio_vdpa_mem_region regions[];
 };
 
+struct vdpa_vf_ctx_content {
+	bool vhost_fd_saved;
+    struct virtio_vdpa_dma_mem mem;
+};
+
 struct vdpa_vf_ctx {
     int vfio_container_fd;
     int vfio_group_fd;
     int vfio_device_fd;
-    struct virtio_vdpa_dma_mem mem;
+	struct vdpa_vf_ctx_content ctt;
 };
 
 struct virtio_ha_vf_dev {
