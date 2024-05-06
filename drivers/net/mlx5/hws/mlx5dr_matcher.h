@@ -62,6 +62,7 @@ struct mlx5dr_matcher_action_ste {
 };
 
 struct mlx5dr_matcher_resize_data {
+	struct mlx5dr_pool_chunk ste;
 	struct mlx5dr_pool_chunk stc;
 	struct mlx5dr_devx_obj *action_ste_rtc_0;
 	struct mlx5dr_devx_obj *action_ste_rtc_1;

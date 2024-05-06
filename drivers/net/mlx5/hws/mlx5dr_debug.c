@@ -206,6 +206,7 @@ static int mlx5dr_debug_dump_matcher(FILE *f, struct mlx5dr_matcher *matcher)
 	bool is_shared = mlx5dr_context_shared_gvmi_used(matcher->tbl->ctx);
 	bool is_root = matcher->tbl->level == MLX5DR_ROOT_LEVEL;
 	enum mlx5dr_table_type tbl_type = matcher->tbl->type;
+	struct mlx5dr_matcher_resize_data *resize_data;
 	struct mlx5dr_cmd_ft_query_attr ft_attr = {0};
 	struct mlx5dr_devx_obj *ste_0, *ste_1 = NULL;
 	struct mlx5dr_pool_chunk *ste;
@@ -287,6 +288,28 @@ static int mlx5dr_debug_dump_matcher(FILE *f, struct mlx5dr_matcher *matcher)
 	ret = mlx5dr_debug_dump_matcher_action_template(f, matcher);
 	if (ret)
 		return ret;
+
+	LIST_FOREACH(resize_data, &matcher->resize_data, next) {
+		ste = &resize_data->ste;
+		ste_pool = resize_data->action_ste_pool;
+		if (ste_pool) {
+			ste_0 = mlx5dr_pool_chunk_get_base_devx_obj(ste_pool, ste);
+			if (tbl_type == MLX5DR_TABLE_TYPE_FDB)
+				ste_1 = mlx5dr_pool_chunk_get_base_devx_obj_mirror(ste_pool, ste);
+		} else {
+			ste_0 = NULL;
+			ste_1 = NULL;
+		}
+		ret = fprintf(f, "%d,0x%" PRIx64 ",%d,%d,%d,%d\n",
+			      MLX5DR_DEBUG_RES_TYPE_MATCHER_RESIZABLE_ACTION_ARRAY,
+			      (uint64_t)(uintptr_t)matcher,
+			      resize_data->action_ste_rtc_0 ? resize_data->action_ste_rtc_0->id : 0,
+			      ste_0 ? (int)ste_0->id : -1,
+			      resize_data->action_ste_rtc_1 ? resize_data->action_ste_rtc_1->id : 0,
+			      ste_1 ? (int)ste_1->id : -1);
+		if (ret < 0)
+			return ret;
+	}
 
 	return 0;
 

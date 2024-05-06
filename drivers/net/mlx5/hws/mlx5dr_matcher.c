@@ -724,6 +724,7 @@ mlx5dr_matcher_resize_init(struct mlx5dr_matcher *src_matcher)
 		return rte_errno;
 	}
 
+	resize_data->ste = src_matcher->action_ste.ste;
 	resize_data->stc = src_matcher->action_ste.stc;
 	resize_data->action_ste_rtc_0 = src_matcher->action_ste.rtc_0;
 	resize_data->action_ste_rtc_1 = src_matcher->action_ste.rtc_1;
