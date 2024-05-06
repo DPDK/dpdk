@@ -611,8 +611,7 @@ static int mlx5dr_table_set_default_miss_not_valid(struct mlx5dr_table *tbl,
 
 	if (mlx5dr_table_is_root(tbl) ||
 	    (miss_tbl && mlx5dr_table_is_root(miss_tbl)) ||
-	    (miss_tbl && miss_tbl->type != tbl->type) ||
-	    (miss_tbl && tbl->default_miss.miss_tbl)) {
+	    (miss_tbl && miss_tbl->type != tbl->type)) {
 		DR_LOG(ERR, "Invalid arguments");
 		rte_errno = EINVAL;
 		return -rte_errno;
@@ -625,6 +624,7 @@ int mlx5dr_table_set_default_miss(struct mlx5dr_table *tbl,
 				  struct mlx5dr_table *miss_tbl)
 {
 	struct mlx5dr_context *ctx = tbl->ctx;
+	struct mlx5dr_table *old_miss_tbl;
 	int ret;
 
 	ret = mlx5dr_table_set_default_miss_not_valid(tbl, miss_tbl);
@@ -632,15 +632,16 @@ int mlx5dr_table_set_default_miss(struct mlx5dr_table *tbl,
 		return ret;
 
 	pthread_spin_lock(&ctx->ctrl_lock);
-
+	old_miss_tbl = tbl->default_miss.miss_tbl;
 	ret = mlx5dr_table_connect_to_miss_table(tbl, miss_tbl);
 	if (ret)
 		goto out;
 
+	if (old_miss_tbl)
+		LIST_REMOVE(tbl, default_miss.next);
+
 	if (miss_tbl)
 		LIST_INSERT_HEAD(&miss_tbl->default_miss.head, tbl, default_miss.next);
-	else
-		LIST_REMOVE(tbl, default_miss.next);
 
 	pthread_spin_unlock(&ctx->ctrl_lock);
 	return 0;
