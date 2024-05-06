@@ -594,7 +594,7 @@ static void mlx5dr_send_engine_poll_cq(struct mlx5dr_send_engine *queue,
 	    cqe_owner != sw_own)
 		return;
 
-	if (unlikely(mlx5dv_get_cqe_opcode(cqe) != MLX5_CQE_REQ))
+	if (unlikely(cqe_opcode != MLX5_CQE_REQ))
 		queue->err = true;
 
 	rte_io_rmb();
@@ -611,6 +611,7 @@ static void mlx5dr_send_engine_poll_cq(struct mlx5dr_send_engine *queue,
 	cq->poll_wqe = (wqe_cnt + priv->num_wqebbs) & sq->buf_mask;
 	mlx5dr_send_engine_update(queue, cqe, priv, res, i, res_nb, wqe_cnt);
 	cq->cons_index++;
+	*cq->db = htobe32(cq->cons_index & 0xffffff);
 }
 
 static void mlx5dr_send_engine_poll_cqs(struct mlx5dr_send_engine *queue,
@@ -620,13 +621,9 @@ static void mlx5dr_send_engine_poll_cqs(struct mlx5dr_send_engine *queue,
 {
 	int j;
 
-	for (j = 0; j < MLX5DR_NUM_SEND_RINGS; j++) {
+	for (j = 0; j < MLX5DR_NUM_SEND_RINGS; j++)
 		mlx5dr_send_engine_poll_cq(queue, &queue->send_ring[j],
 					   res, polled, res_nb);
-
-		*queue->send_ring[j].send_cq.db =
-			htobe32(queue->send_ring[j].send_cq.cons_index & 0xffffff);
-	}
 }
 
 static void mlx5dr_send_engine_poll_list(struct mlx5dr_send_engine *queue,
