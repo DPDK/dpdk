@@ -203,8 +203,6 @@ struct mlx5dr_send_ste_attr {
  *   value to write in CPU endian format.
  * @param addr
  *   Address to write to.
- * @param lock
- *   Address of the lock to use for that UAR access.
  */
 static __rte_always_inline void
 mlx5dr_uar_write64_relaxed(uint64_t val, void *addr)
