@@ -785,6 +785,13 @@ static int mlx5dr_matcher_bind_at(struct mlx5dr_matcher *matcher)
 	if (matcher->flags & MLX5DR_MATCHER_FLAGS_COLLISION)
 		return 0;
 
+	if (matcher->attr.max_num_of_at_attach &&
+	    mlx5dr_matcher_req_fw_wqe(matcher)) {
+		DR_LOG(ERR, "FW extended matcher doesn't support additional at");
+		rte_errno = ENOTSUP;
+		return rte_errno;
+	}
+
 	for (i = 0; i < matcher->num_of_at; i++) {
 		struct mlx5dr_action_template *at = &matcher->at[i];
 
