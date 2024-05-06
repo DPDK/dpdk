@@ -970,13 +970,8 @@ free_uar:
 
 static void __mlx5dr_send_queues_close(struct mlx5dr_context *ctx, uint16_t queues)
 {
-	struct mlx5dr_send_engine *queue;
-
-	while (queues--) {
-		queue = &ctx->send_queue[queues];
-
-		mlx5dr_send_queue_close(queue);
-	}
+	while (queues--)
+		mlx5dr_send_queue_close(&ctx->send_queue[queues]);
 }
 
 void mlx5dr_send_queues_close(struct mlx5dr_context *ctx)
