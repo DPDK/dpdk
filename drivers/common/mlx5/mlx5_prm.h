@@ -2116,8 +2116,8 @@ struct mlx5_ifc_cmd_hca_cap_2_bits {
 	u8 reserved_at_d0[0x3];
 	u8 log_conn_track_max_alloc[0x5];
 	u8 reserved_at_d8[0x3];
-	u8 log_max_conn_track_offload[0x5];
-	u8 reserved_at_e0[0x20]; /* End of DW7. */
+	u8 log_max_conn_track_offload[0x5]; /* End of DW7. */
+	u8 reserved_at_e0[0x20];
 	u8 reserved_at_100[0x60];
 	u8 reserved_at_160[0x3];
 	u8 hairpin_sq_wqe_bb_size[0x5];
@@ -3311,7 +3311,7 @@ struct mlx5_ifc_stc_ste_param_vport_bits {
 	u8 eswitch_owner_vhca_id[0x10];
 	u8 vport_number[0x10];
 	u8 eswitch_owner_vhca_id_valid[0x1];
-	u8 reserved_at_21[0x59];
+	u8 reserved_at_21[0x5f];
 };
 
 union mlx5_ifc_stc_param_bits {
