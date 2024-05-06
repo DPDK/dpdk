@@ -195,8 +195,13 @@ mlx5dr_rule_save_delete_info(struct mlx5dr_rule *rule,
 		rule->tag_ptr = simple_calloc(2, sizeof(*rule->tag_ptr));
 		assert(rule->tag_ptr);
 
-		src_tag = (uint8_t *)ste_attr->wqe_data->tag;
-		memcpy(rule->tag_ptr[0].match, src_tag, MLX5DR_MATCH_TAG_SZ);
+		if (is_jumbo)
+			memcpy(rule->tag_ptr[0].jumbo, ste_attr->wqe_data->action,
+			       MLX5DR_JUMBO_TAG_SZ);
+		else
+			memcpy(rule->tag_ptr[0].match, ste_attr->wqe_data->tag,
+			       MLX5DR_MATCH_TAG_SZ);
+
 		rule->tag_ptr[1].reserved[0] = ste_attr->send_attr.match_definer_id;
 
 		/* Save range definer id and tag for delete */
