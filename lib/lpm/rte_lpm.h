@@ -337,7 +337,6 @@ rte_lpm_lookup_bulk_func(const struct rte_lpm *lpm, const uint32_t *ips,
 		uint32_t *next_hops, const unsigned n)
 {
 	unsigned i;
-	unsigned tbl24_indexes[n];
 	const uint32_t *ptbl;
 
 	/* DEBUG: Check user input arguments. */
@@ -345,12 +344,10 @@ rte_lpm_lookup_bulk_func(const struct rte_lpm *lpm, const uint32_t *ips,
 			(next_hops == NULL)), -EINVAL);
 
 	for (i = 0; i < n; i++) {
-		tbl24_indexes[i] = ips[i] >> 8;
-	}
+		unsigned int tbl24_index = ips[i] >> 8;
 
-	for (i = 0; i < n; i++) {
 		/* Simply copy tbl24 entry to output */
-		ptbl = (const uint32_t *)&lpm->tbl24[tbl24_indexes[i]];
+		ptbl = (const uint32_t *)&lpm->tbl24[tbl24_index];
 		next_hops[i] = *ptbl;
 
 		/* Overwrite output with tbl8 entry if needed */
