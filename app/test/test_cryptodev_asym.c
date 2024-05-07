@@ -54,11 +54,15 @@ union test_case_structure {
 	struct rsa_test_data_2 rsa_data;
 };
 
+struct vector_details {
+	uint32_t vector_size;
+	const void *address;
+};
 struct test_cases_array {
 	uint32_t size;
-	const void *address[TEST_VECTOR_SIZE];
+	struct vector_details details[TEST_VECTOR_SIZE];
 };
-static struct test_cases_array test_vector = {0, { NULL } };
+static struct test_cases_array test_vector = {0, {} };
 
 static uint32_t test_index;
 
@@ -525,14 +529,14 @@ error_exit:
 }
 
 static int
-test_one_case(const void *test_case, int sessionless)
+test_one_case(struct vector_details test_case, int sessionless)
 {
 	int status = TEST_SUCCESS, i = 0;
 	char test_msg[ASYM_TEST_MSG_LEN + 1];
 
 	/* Map the case to union */
 	union test_case_structure tc;
-	memcpy(&tc, test_case, sizeof(tc));
+	rte_memcpy(&tc, test_case.address, RTE_MIN(sizeof(tc), test_case.vector_size));
 
 	if (tc.modex.xform_type == RTE_CRYPTO_ASYM_XFORM_MODEX
 			|| tc.modex.xform_type == RTE_CRYPTO_ASYM_XFORM_MODINV) {
@@ -584,7 +588,8 @@ load_test_vectors(void)
 				"TEST_VECTOR_SIZE too small\n");
 			return -1;
 		}
-		test_vector.address[test_vector.size] = &modex_test_case[i];
+		test_vector.details[test_vector.size].address = &modex_test_case[i];
+		test_vector.details[test_vector.size].vector_size = sizeof(modex_test_case[i]);
 		test_vector.size++;
 	}
 	/* Load MODINV vector*/
@@ -595,7 +600,8 @@ load_test_vectors(void)
 				"TEST_VECTOR_SIZE too small\n");
 			return -1;
 		}
-		test_vector.address[test_vector.size] = &modinv_test_case[i];
+		test_vector.details[test_vector.size].address = &modinv_test_case[i];
+		test_vector.details[test_vector.size].vector_size = sizeof(modinv_test_case[i]);
 		test_vector.size++;
 	}
 	/* Load RSA vector*/
@@ -606,7 +612,8 @@ load_test_vectors(void)
 				"TEST_VECTOR_SIZE too small\n");
 			return -1;
 		}
-		test_vector.address[test_vector.size] = &rsa_test_case_list[i];
+		test_vector.details[test_vector.size].address = &rsa_test_case_list[i];
+		test_vector.details[test_vector.size].vector_size = sizeof(rsa_test_case_list[i]);
 		test_vector.size++;
 	}
 	return 0;
@@ -631,12 +638,12 @@ test_one_by_one(void)
 	/* Go through all test cases */
 	test_index = 0;
 	for (i = 0; i < test_vector.size; i++) {
-		if (test_one_case(test_vector.address[i], 0) != TEST_SUCCESS)
+		if (test_one_case(test_vector.details[i], 0) != TEST_SUCCESS)
 			status = TEST_FAILED;
 	}
 	if (sessionless) {
 		for (i = 0; i < test_vector.size; i++) {
-			if (test_one_case(test_vector.address[i], 1)
+			if (test_one_case(test_vector.details[i], 1)
 					!= TEST_SUCCESS)
 				status = TEST_FAILED;
 		}
