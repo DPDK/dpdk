@@ -15,6 +15,8 @@
 
 #include "eal_firmware.h"
 
+static const char * const compression_suffixes[] = { "xz", "zst" };
+
 #ifdef RTE_HAS_LIBARCHIVE
 
 struct firmware_read_ctx {
@@ -36,7 +38,11 @@ firmware_open(struct firmware_read_ctx *ctx, const char *name, size_t blocksize)
 
 	err = archive_read_support_filter_xz(ctx->a);
 	if (err != ARCHIVE_OK && err != ARCHIVE_WARN)
-		goto error;
+		RTE_LOG(DEBUG, EAL, "could not initialise libarchive for xz compression\n");
+
+	err = archive_read_support_filter_zstd(ctx->a);
+	if (err != ARCHIVE_OK && err != ARCHIVE_WARN)
+		RTE_LOG(DEBUG, EAL, "could not initialise libarchive for zstd compression\n");
 
 	if (archive_read_open_filename(ctx->a, name, blocksize) != ARCHIVE_OK)
 		goto error;
@@ -147,16 +153,21 @@ rte_firmware_read(const char *name, void **buf, size_t *bufsz)
 
 	ret = firmware_read(name, buf, bufsz);
 	if (ret < 0) {
-		snprintf(path, sizeof(path), "%s.xz", name);
-		path[PATH_MAX - 1] = '\0';
+		unsigned int i;
+
+		for (i = 0; i < RTE_DIM(compression_suffixes); i++) {
+			snprintf(path, sizeof(path), "%s.%s", name, compression_suffixes[i]);
+			path[PATH_MAX - 1] = '\0';
+			if (access(path, F_OK) != 0)
+				continue;
 #ifndef RTE_HAS_LIBARCHIVE
-		if (access(path, F_OK) == 0) {
 			RTE_LOG(WARNING, EAL, "libarchive not linked, %s cannot be decompressed\n",
 				path);
-		}
 #else
-		ret = firmware_read(path, buf, bufsz);
+			ret = firmware_read(path, buf, bufsz);
 #endif
+			break;
+		}
 	}
 	return ret;
 }
