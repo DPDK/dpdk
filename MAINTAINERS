@@ -1764,7 +1764,7 @@ F: lib/latencystats/
 F: app/test/test_latencystats.c
 
 Telemetry
-M: Ciara Power <ciara.power@intel.com>
+M: Bruce Richardson <bruce.richardson@intel.com>
 F: lib/telemetry/
 F: doc/guides/prog_guide/telemetry_lib.rst
 F: app/test/test_telemetry*
