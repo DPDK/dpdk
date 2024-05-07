@@ -157,9 +157,9 @@ calc_latency(uint16_t pid __rte_unused,
 		uint16_t nb_pkts,
 		void *_ __rte_unused)
 {
-	unsigned int i, cnt = 0;
+	unsigned int i;
 	uint64_t now;
-	float latency[nb_pkts];
+	float latency;
 	static float prev_latency;
 	/*
 	 * Alpha represents degree of weighting decrease in EWMA,
@@ -169,13 +169,14 @@ calc_latency(uint16_t pid __rte_unused,
 	const float alpha = 0.2f;
 
 	now = rte_rdtsc();
-	for (i = 0; i < nb_pkts; i++) {
-		if (pkts[i]->ol_flags & timestamp_dynflag)
-			latency[cnt++] = now - *timestamp_dynfield(pkts[i]);
-	}
 
 	rte_spinlock_lock(&glob_stats->lock);
-	for (i = 0; i < cnt; i++) {
+	for (i = 0; i < nb_pkts; i++) {
+		if (!(pkts[i]->ol_flags & timestamp_dynflag))
+			continue;
+
+		latency = now - *timestamp_dynfield(pkts[i]);
+
 		/*
 		 * The jitter is calculated as statistical mean of interpacket
 		 * delay variation. The "jitter estimate" is computed by taking
@@ -187,22 +188,22 @@ calc_latency(uint16_t pid __rte_unused,
 		 * Reference: Calculated as per RFC 5481, sec 4.1,
 		 * RFC 3393 sec 4.5, RFC 1889 sec.
 		 */
-		glob_stats->jitter +=  (fabsf(prev_latency - latency[i])
+		glob_stats->jitter +=  (fabsf(prev_latency - latency)
 					- glob_stats->jitter)/16;
 		if (glob_stats->min_latency == 0)
-			glob_stats->min_latency = latency[i];
-		else if (latency[i] < glob_stats->min_latency)
-			glob_stats->min_latency = latency[i];
-		else if (latency[i] > glob_stats->max_latency)
-			glob_stats->max_latency = latency[i];
+			glob_stats->min_latency = latency;
+		else if (latency < glob_stats->min_latency)
+			glob_stats->min_latency = latency;
+		else if (latency > glob_stats->max_latency)
+			glob_stats->max_latency = latency;
 		/*
 		 * The average latency is measured using exponential moving
 		 * average, i.e. using EWMA
 		 * https://en.wikipedia.org/wiki/Moving_average
 		 */
 		glob_stats->avg_latency +=
-			alpha * (latency[i] - glob_stats->avg_latency);
-		prev_latency = latency[i];
+			alpha * (latency - glob_stats->avg_latency);
+		prev_latency = latency;
 	}
 	rte_spinlock_unlock(&glob_stats->lock);
 
