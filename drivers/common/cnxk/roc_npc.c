@@ -389,6 +389,8 @@ roc_npc_fini(struct roc_npc *roc_npc)
 	struct npc *npc = roc_npc_to_npc_priv(roc_npc);
 	int rc;
 
+	npc_aging_ctrl_thread_destroy(roc_npc);
+
 	rc = npc_flow_free_all_resources(npc);
 	if (rc) {
 		plt_err("Error when deleting NPC MCAM entries, counters");
@@ -1810,8 +1812,7 @@ roc_npc_flow_destroy(struct roc_npc *roc_npc, struct roc_npc_flow *flow)
 	if (flow->has_age_action)
 		npc_age_flow_list_entry_delete(roc_npc, flow);
 
-	if (roc_npc->flow_age.age_flow_refcnt == 0 &&
-		plt_thread_is_valid(roc_npc->flow_age.aged_flows_poll_thread))
+	if (roc_npc->flow_age.age_flow_refcnt == 0)
 		npc_aging_ctrl_thread_destroy(roc_npc);
 
 done:
