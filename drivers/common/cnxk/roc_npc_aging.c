@@ -303,9 +303,11 @@ npc_aging_ctrl_thread_destroy(struct roc_npc *roc_npc)
 	struct roc_npc_flow_age *flow_age;
 
 	flow_age = &roc_npc->flow_age;
-	flow_age->aged_flows_get_thread_exit = true;
-	plt_thread_join(flow_age->aged_flows_poll_thread, NULL);
-	npc_aged_flows_bitmap_free(roc_npc);
+	if (plt_thread_is_valid(flow_age->aged_flows_poll_thread)) {
+		flow_age->aged_flows_get_thread_exit = true;
+		plt_thread_join(flow_age->aged_flows_poll_thread, NULL);
+		npc_aged_flows_bitmap_free(roc_npc);
+	}
 }
 
 void *
