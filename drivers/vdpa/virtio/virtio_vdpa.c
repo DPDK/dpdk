@@ -550,7 +550,6 @@ virtio_vdpa_dev_notifier(void *arg)
 		rte_vhost_vring_call(work->priv->vid, work->vq_idx);
 	}
 
-	rte_free(work);
 	return NULL;
 }
 
@@ -1633,23 +1632,16 @@ virtio_vdpa_dev_config(int vid)
 	priv->restore = false;
 	DRV_LOG(INFO, "%s vid %d move to driver ok", vdev->device->name, vid);
 
-	notify_work = rte_zmalloc(NULL, sizeof(*notify_work), 0);
-	if (!notify_work) {
-		DRV_LOG(ERR, "%s vfid %d failed to alloc notify thread", priv->vdev->device->name, priv->vf_id);
-		rte_errno = rte_errno ? rte_errno : ENOMEM;
-		return -rte_errno;
-	}
-
-	notify_work->priv = priv;
-	notify_work->vq_idx = RTE_VHOST_QUEUE_ALL;
+	priv->notify_work.priv = priv;
+	priv->notify_work.vq_idx = RTE_VHOST_QUEUE_ALL;
 	DRV_LOG(INFO, "%s vfid %d launch all vq notifier thread",
 			priv->vdev->device->name, priv->vf_id);
 	priv->is_notify_thread_started = false;
-	ret = pthread_create(&priv->notify_tid, NULL,virtio_vdpa_dev_notifier, notify_work);
+	ret = pthread_create(&priv->notify_tid, NULL,virtio_vdpa_dev_notifier, &priv->notify_work);
 	if (ret) {
 		DRV_LOG(ERR, "%s vfid %d failed launch notifier thread ret:%d",
 				priv->vdev->device->name, priv->vf_id, ret);
-		rte_free(notify_work);
+		rte_errno = rte_errno ? rte_errno : EINVAL;
 		return -rte_errno;
 	}
 	priv->is_notify_thread_started = true;

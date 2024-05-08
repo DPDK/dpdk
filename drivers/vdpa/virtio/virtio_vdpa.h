@@ -50,6 +50,11 @@ struct virtio_vdpa_vring_info {
 	struct virtio_vdpa_priv *priv;
 };
 
+struct virtio_vdpa_notifier_work {
+	struct virtio_vdpa_priv *priv;
+	uint16_t vq_idx;
+};
+
 #define VIRTIO_VDPA_DRIVER_NAME vdpa_virtio
 
 struct virtio_vdpa_priv {
@@ -89,11 +94,7 @@ struct virtio_vdpa_priv {
 	bool log_started;
 	struct virtio_dev_name vf_name;
 	struct virtio_dev_name pf_name;
-};
-
-struct virtio_vdpa_notifier_work {
-	struct virtio_vdpa_priv *priv;
-	uint16_t vq_idx;
+	struct virtio_vdpa_notifier_work notify_work;
 };
 
 #define VIRTIO_VDPA_REMOTE_STATE_DEFAULT_SIZE 8192
