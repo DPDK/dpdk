@@ -3192,6 +3192,9 @@ mlx5dr_definer_conv_items_to_hl(struct mlx5dr_context *ctx,
 			item_flags |= MLX5_FLOW_ITEM_COMPARE;
 			matcher->flags |= MLX5DR_MATCHER_FLAGS_COMPARE;
 			break;
+		case RTE_FLOW_ITEM_TYPE_NSH:
+			item_flags |= MLX5_FLOW_ITEM_NSH;
+			break;
 		case RTE_FLOW_ITEM_TYPE_VOID:
 			break;
 		default:

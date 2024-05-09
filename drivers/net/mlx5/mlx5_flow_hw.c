@@ -7482,6 +7482,14 @@ flow_hw_validate_item_compare(const struct rte_flow_item *item,
 	return 0;
 }
 
+static inline int
+mlx5_hw_validate_item_nsh(struct rte_eth_dev *dev,
+			  const struct rte_flow_item *item,
+			  struct rte_flow_error *error)
+{
+	return mlx5_flow_validate_item_nsh(dev, item, error);
+}
+
 static int
 flow_hw_pattern_validate(struct rte_eth_dev *dev,
 			 const struct rte_flow_pattern_template_attr *attr,
@@ -7677,6 +7685,11 @@ flow_hw_pattern_validate(struct rte_eth_dev *dev,
 			 * Current HWS model allows item mask in pattern
 			 * template and item spec in flow rule.
 			 */
+			break;
+		case RTE_FLOW_ITEM_TYPE_NSH:
+			ret = mlx5_hw_validate_item_nsh(dev, &items[i], error);
+			if (ret < 0)
+				return ret;
 			break;
 		case RTE_FLOW_ITEM_TYPE_END:
 			items_end = true;
