@@ -769,7 +769,7 @@ rte_pmd_init_internals(struct rte_vdev_device *dev,
 
 #if defined(PACKET_FANOUT)
 	fanout_arg = (getpid() ^ (*internals)->if_index) & 0xffff;
-	fanout_arg |= (PACKET_FANOUT_HASH | PACKET_FANOUT_FLAG_DEFRAG) << 16;
+	fanout_arg |= PACKET_FANOUT_HASH << 16;
 #if defined(PACKET_FANOUT_FLAG_ROLLOVER)
 	fanout_arg |= PACKET_FANOUT_FLAG_ROLLOVER << 16;
 #endif
