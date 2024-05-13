@@ -922,7 +922,7 @@ virtio_pci_dev_reset(struct virtio_pci_dev *vpdev, uint32_t time_out_ms)
 {
 	uint32_t retry = 0;
 	struct virtio_hw *hw = &vpdev->hw;
-	const int wait_unit = 100; /* sleep wait_unit ms */
+	const int wait_unit = 1; /* sleep wait_unit ms */
 
 	time_out_ms /= wait_unit;
 	VIRTIO_OPS(hw)->set_status(hw, VIRTIO_CONFIG_STATUS_RESET);
