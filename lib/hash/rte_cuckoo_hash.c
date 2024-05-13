@@ -1551,6 +1551,7 @@ rte_hash_rcu_qsbr_add(struct rte_hash *h, struct rte_hash_rcu_config *cfg)
 		if (params.size == 0)
 			params.size = total_entries;
 		params.trigger_reclaim_limit = cfg->trigger_reclaim_limit;
+		params.max_reclaim_size = cfg->max_reclaim_size;
 		if (params.max_reclaim_size == 0)
 			params.max_reclaim_size = RTE_HASH_RCU_DQ_RECLAIM_MAX;
 		params.esize = sizeof(struct __rte_hash_rcu_dq_entry);
