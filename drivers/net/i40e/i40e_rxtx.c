@@ -273,6 +273,7 @@ i40e_parse_tunneling_params(uint64_t ol_flags,
 		/* for non UDP / GRE tunneling, set to 00b */
 		break;
 	case RTE_MBUF_F_TX_TUNNEL_VXLAN:
+	case RTE_MBUF_F_TX_TUNNEL_GTP:
 	case RTE_MBUF_F_TX_TUNNEL_GENEVE:
 		*cd_tunneling |= I40E_TXD_CTX_UDP_TUNNELING;
 		break;
