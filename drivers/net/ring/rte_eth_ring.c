@@ -44,8 +44,8 @@ enum dev_action {
 
 struct ring_queue {
 	struct rte_ring *rng;
-	uint64_t rx_pkts;
-	uint64_t tx_pkts;
+	RTE_ATOMIC(uint64_t) rx_pkts;
+	RTE_ATOMIC(uint64_t) tx_pkts;
 };
 
 struct pmd_internals {
@@ -82,7 +82,7 @@ eth_ring_rx(void *q, struct rte_mbuf **bufs, uint16_t nb_bufs)
 	if (r->rng->flags & RING_F_SC_DEQ)
 		r->rx_pkts += nb_rx;
 	else
-		__atomic_fetch_add(&r->rx_pkts, nb_rx, __ATOMIC_RELAXED);
+		rte_atomic_fetch_add_explicit(&r->rx_pkts, nb_rx, rte_memory_order_relaxed);
 	return nb_rx;
 }
 
@@ -96,7 +96,7 @@ eth_ring_tx(void *q, struct rte_mbuf **bufs, uint16_t nb_bufs)
 	if (r->rng->flags & RING_F_SP_ENQ)
 		r->tx_pkts += nb_tx;
 	else
-		__atomic_fetch_add(&r->tx_pkts, nb_tx, __ATOMIC_RELAXED);
+		rte_atomic_fetch_add_explicit(&r->tx_pkts, nb_tx, rte_memory_order_relaxed);
 	return nb_tx;
 }
 

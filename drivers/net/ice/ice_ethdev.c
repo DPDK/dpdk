@@ -4062,9 +4062,9 @@ ice_atomic_read_link_status(struct rte_eth_dev *dev,
 	struct rte_eth_link *src = &dev->data->dev_link;
 
 	/* NOTE: review for potential ordering optimization */
-	if (!__atomic_compare_exchange_n((uint64_t *)dst, (uint64_t *)dst,
-			*(uint64_t *)src, 0,
-			__ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST))
+	if (!rte_atomic_compare_exchange_strong_explicit((uint64_t __rte_atomic *)dst,
+			(uint64_t *)dst, *(uint64_t *)src,
+			rte_memory_order_seq_cst, rte_memory_order_seq_cst))
 		return -1;
 
 	return 0;
@@ -4078,9 +4078,9 @@ ice_atomic_write_link_status(struct rte_eth_dev *dev,
 	struct rte_eth_link *src = link;
 
 	/* NOTE: review for potential ordering optimization */
-	if (!__atomic_compare_exchange_n((uint64_t *)dst, (uint64_t *)dst,
-			*(uint64_t *)src, 0,
-			__ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST))
+	if (!rte_atomic_compare_exchange_strong_explicit((uint64_t __rte_atomic *)dst,
+			(uint64_t *)dst, *(uint64_t *)src,
+			rte_memory_order_seq_cst, rte_memory_order_seq_cst))
 		return -1;
 
 	return 0;

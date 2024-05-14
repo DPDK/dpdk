@@ -151,7 +151,7 @@ mp_req_on_rxtx(struct rte_eth_dev *dev, enum hns3_mp_req_type type)
 	int i;
 
 	if (rte_eal_process_type() == RTE_PROC_SECONDARY ||
-		__atomic_load_n(&hw->secondary_cnt, __ATOMIC_RELAXED) == 0)
+		rte_atomic_load_explicit(&hw->secondary_cnt, rte_memory_order_relaxed) == 0)
 		return;
 
 	if (!mp_req_type_is_valid(type)) {
@@ -277,7 +277,7 @@ hns3_mp_init(struct rte_eth_dev *dev)
 				     ret);
 			return ret;
 		}
-		__atomic_fetch_add(&hw->secondary_cnt, 1, __ATOMIC_RELAXED);
+		rte_atomic_fetch_add_explicit(&hw->secondary_cnt, 1, rte_memory_order_relaxed);
 	} else {
 		ret = hns3_mp_init_primary();
 		if (ret) {
@@ -297,7 +297,7 @@ void hns3_mp_uninit(struct rte_eth_dev *dev)
 	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
-		__atomic_fetch_sub(&hw->secondary_cnt, 1, __ATOMIC_RELAXED);
+		rte_atomic_fetch_sub_explicit(&hw->secondary_cnt, 1, rte_memory_order_relaxed);
 
 	process_data.eth_dev_cnt--;
 	if (process_data.eth_dev_cnt == 0) {

@@ -59,7 +59,7 @@ struct vring_used_elem {
 
 struct vring_used {
 	uint16_t flags;
-	uint16_t idx;
+	RTE_ATOMIC(uint16_t) idx;
 	struct vring_used_elem ring[];
 };
 
@@ -70,7 +70,7 @@ struct vring_packed_desc {
 	uint64_t addr;
 	uint32_t len;
 	uint16_t id;
-	uint16_t flags;
+	RTE_ATOMIC(uint16_t) flags;
 };
 
 #define RING_EVENT_FLAGS_ENABLE 0x0

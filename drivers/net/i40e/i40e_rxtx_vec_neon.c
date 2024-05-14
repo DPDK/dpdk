@@ -425,7 +425,7 @@ _recv_raw_pkts_vec(struct i40e_rx_queue *__rte_restrict rxq,
 		descs[0] =  vld1q_u64((uint64_t *)(rxdp));
 
 		/* Use acquire fence to order loads of descriptor qwords */
-		rte_atomic_thread_fence(__ATOMIC_ACQUIRE);
+		rte_atomic_thread_fence(rte_memory_order_acquire);
 		/* A.2 reload qword0 to make it ordered after qword1 load */
 		descs[3] = vld1q_lane_u64((uint64_t *)(rxdp + 3), descs[3], 0);
 		descs[2] = vld1q_lane_u64((uint64_t *)(rxdp + 2), descs[2], 0);

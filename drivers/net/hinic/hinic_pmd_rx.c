@@ -1004,7 +1004,7 @@ u16 hinic_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, u16 nb_pkts)
 	while (pkts < nb_pkts) {
 		 /* 2. current ci is done */
 		rx_cqe = &rxq->rx_cqe[sw_ci];
-		status = __atomic_load_n(&rx_cqe->status, __ATOMIC_ACQUIRE);
+		status = rte_atomic_load_explicit(&rx_cqe->status, rte_memory_order_acquire);
 		if (!HINIC_GET_RX_DONE_BE(status))
 			break;
 

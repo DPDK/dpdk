@@ -592,8 +592,8 @@ idpf_split_rx_bufq_refill(struct idpf_rx_queue *rx_bufq)
 			next_avail = 0;
 			rx_bufq->nb_rx_hold -= delta;
 		} else {
-			__atomic_fetch_add(&rx_bufq->rx_stats.mbuf_alloc_failed,
-					   nb_desc - next_avail, __ATOMIC_RELAXED);
+			rte_atomic_fetch_add_explicit(&rx_bufq->rx_stats.mbuf_alloc_failed,
+					   nb_desc - next_avail, rte_memory_order_relaxed);
 			RX_LOG(DEBUG, "RX mbuf alloc failed port_id=%u queue_id=%u",
 			       rx_bufq->port_id, rx_bufq->queue_id);
 			return;
@@ -612,8 +612,8 @@ idpf_split_rx_bufq_refill(struct idpf_rx_queue *rx_bufq)
 			next_avail += nb_refill;
 			rx_bufq->nb_rx_hold -= nb_refill;
 		} else {
-			__atomic_fetch_add(&rx_bufq->rx_stats.mbuf_alloc_failed,
-					   nb_desc - next_avail, __ATOMIC_RELAXED);
+			rte_atomic_fetch_add_explicit(&rx_bufq->rx_stats.mbuf_alloc_failed,
+					   nb_desc - next_avail, rte_memory_order_relaxed);
 			RX_LOG(DEBUG, "RX mbuf alloc failed port_id=%u queue_id=%u",
 			       rx_bufq->port_id, rx_bufq->queue_id);
 		}
@@ -1093,7 +1093,8 @@ idpf_dp_singleq_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 
 		nmb = rte_mbuf_raw_alloc(rxq->mp);
 		if (unlikely(nmb == NULL)) {
-			__atomic_fetch_add(&rxq->rx_stats.mbuf_alloc_failed, 1, __ATOMIC_RELAXED);
+			rte_atomic_fetch_add_explicit(&rxq->rx_stats.mbuf_alloc_failed, 1,
+					rte_memory_order_relaxed);
 			RX_LOG(DEBUG, "RX mbuf alloc failed port_id=%u "
 			       "queue_id=%u", rxq->port_id, rxq->queue_id);
 			break;
@@ -1203,7 +1204,8 @@ idpf_dp_singleq_recv_scatter_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 
 		nmb = rte_mbuf_raw_alloc(rxq->mp);
 		if (unlikely(!nmb)) {
-			__atomic_fetch_add(&rxq->rx_stats.mbuf_alloc_failed, 1, __ATOMIC_RELAXED);
+			rte_atomic_fetch_add_explicit(&rxq->rx_stats.mbuf_alloc_failed, 1,
+					rte_memory_order_relaxed);
 			RX_LOG(DEBUG, "RX mbuf alloc failed port_id=%u "
 			       "queue_id=%u", rxq->port_id, rxq->queue_id);
 			break;

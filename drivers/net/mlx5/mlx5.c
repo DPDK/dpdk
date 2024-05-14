@@ -855,8 +855,8 @@ mlx5_flow_aso_ct_mng_close(struct mlx5_dev_ctx_shared *sh)
 		ct_pool = mng->pools[idx];
 		for (i = 0; i < MLX5_ASO_CT_ACTIONS_PER_POOL; i++) {
 			ct = &ct_pool->actions[i];
-			val = __atomic_fetch_sub(&ct->refcnt, 1,
-						 __ATOMIC_RELAXED);
+			val = rte_atomic_fetch_sub_explicit(&ct->refcnt, 1,
+						 rte_memory_order_relaxed);
 			MLX5_ASSERT(val == 1);
 			if (val > 1)
 				cnt++;
@@ -1082,7 +1082,8 @@ mlx5_alloc_srh_flex_parser(struct rte_eth_dev *dev)
 		DRV_LOG(ERR, "Dynamic flex parser is not supported on HWS");
 		return -ENOTSUP;
 	}
-	if (__atomic_fetch_add(&priv->sh->srh_flex_parser.refcnt, 1, __ATOMIC_RELAXED) + 1 > 1)
+	if (rte_atomic_fetch_add_explicit(&priv->sh->srh_flex_parser.refcnt, 1,
+			rte_memory_order_relaxed) + 1 > 1)
 		return 0;
 	priv->sh->srh_flex_parser.flex.devx_fp = mlx5_malloc(MLX5_MEM_ZERO,
 			sizeof(struct mlx5_flex_parser_devx), 0, SOCKET_ID_ANY);
@@ -1173,7 +1174,7 @@ mlx5_free_srh_flex_parser(struct rte_eth_dev *dev)
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_internal_flex_parser_profile *fp = &priv->sh->srh_flex_parser;
 
-	if (__atomic_fetch_sub(&fp->refcnt, 1, __ATOMIC_RELAXED) - 1)
+	if (rte_atomic_fetch_sub_explicit(&fp->refcnt, 1, rte_memory_order_relaxed) - 1)
 		return;
 	mlx5_devx_cmd_destroy(fp->flex.devx_fp->devx_obj);
 	mlx5_free(fp->flex.devx_fp);

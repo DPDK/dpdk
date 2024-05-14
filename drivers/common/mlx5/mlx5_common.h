@@ -195,7 +195,7 @@ check_cqe_error(const uint8_t op_code)
 	/* Prevent speculative reading of other fields in CQE until
 	 * CQE is valid.
 	 */
-	rte_atomic_thread_fence(__ATOMIC_ACQUIRE);
+	rte_atomic_thread_fence(rte_memory_order_acquire);
 
 	if (unlikely(op_code == MLX5_CQE_RESP_ERR ||
 		     op_code == MLX5_CQE_REQ_ERR))

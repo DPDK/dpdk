@@ -240,7 +240,7 @@ struct mlx5_indexed_trunk {
 
 struct mlx5_indexed_cache {
 	struct mlx5_indexed_trunk **trunks;
-	volatile uint32_t n_trunk_valid; /* Trunks allocated. */
+	volatile RTE_ATOMIC(uint32_t) n_trunk_valid; /* Trunks allocated. */
 	uint32_t n_trunk; /* Trunk pointer array size. */
 	uint32_t ref_cnt;
 	uint32_t len;
@@ -266,7 +266,7 @@ struct mlx5_indexed_pool {
 			uint32_t free_list; /* Index to first free trunk. */
 		};
 		struct {
-			struct mlx5_indexed_cache *gc;
+			RTE_ATOMIC(struct mlx5_indexed_cache *) gc;
 			/* Global cache. */
 			struct mlx5_ipool_per_lcore *cache[RTE_MAX_LCORE + 1];
 			/* Local cache. */

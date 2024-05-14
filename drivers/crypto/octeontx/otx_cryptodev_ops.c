@@ -652,7 +652,7 @@ submit_request_to_sso(struct ssows *ws, uintptr_t req,
 	if (!rsp_info->sched_type)
 		ssows_head_wait(ws);
 
-	rte_atomic_thread_fence(__ATOMIC_RELEASE);
+	rte_atomic_thread_fence(rte_memory_order_release);
 	ssovf_store_pair(add_work, req, ws->grps[rsp_info->queue_id]);
 }
 
@@ -896,7 +896,7 @@ otx_cpt_pkt_dequeue(void *qptr, struct rte_crypto_op **ops, uint16_t nb_ops,
 	pcount = pending_queue_level(pqueue, DEFAULT_CMD_QLEN);
 
 	/* Ensure pcount isn't read before data lands */
-	rte_atomic_thread_fence(__ATOMIC_ACQUIRE);
+	rte_atomic_thread_fence(rte_memory_order_acquire);
 
 	count = (nb_ops > pcount) ? pcount : nb_ops;
 

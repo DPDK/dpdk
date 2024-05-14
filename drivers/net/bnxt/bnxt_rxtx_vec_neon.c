@@ -240,7 +240,7 @@ recv_burst_vec_neon(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		rxcmp1[0] = vld1q_u32((void *)&cpr->cp_desc_ring[cons + 1]);
 
 		/* Use acquire fence to order loads of descriptor words. */
-		rte_atomic_thread_fence(__ATOMIC_ACQUIRE);
+		rte_atomic_thread_fence(rte_memory_order_acquire);
 		/* Reload lower 64b of descriptors to make it ordered after info3_v. */
 		rxcmp1[3] = vreinterpretq_u32_u64(vld1q_lane_u64
 				((void *)&cpr->cp_desc_ring[cons + 7],

@@ -48,7 +48,7 @@ struct idpf_adapter {
 	struct idpf_hw hw;
 	struct virtchnl2_version_info virtchnl_version;
 	struct virtchnl2_get_capabilities caps;
-	volatile uint32_t pend_cmd; /* pending command not finished */
+	volatile RTE_ATOMIC(uint32_t) pend_cmd; /* pending command not finished */
 	uint32_t cmd_retval; /* return value of the cmd response from cp */
 	uint8_t *mbx_resp; /* buffer to store the mailbox response from cp */
 
@@ -179,8 +179,8 @@ static inline bool
 atomic_set_cmd(struct idpf_adapter *adapter, uint32_t ops)
 {
 	uint32_t op_unk = VIRTCHNL2_OP_UNKNOWN;
-	bool ret = __atomic_compare_exchange(&adapter->pend_cmd, &op_unk, &ops,
-					    0, __ATOMIC_ACQUIRE, __ATOMIC_ACQUIRE);
+	bool ret = rte_atomic_compare_exchange_strong_explicit(&adapter->pend_cmd, &op_unk, ops,
+					    rte_memory_order_acquire, rte_memory_order_acquire);
 
 	if (!ret)
 		DRV_LOG(ERR, "There is incomplete cmd %d", adapter->pend_cmd);

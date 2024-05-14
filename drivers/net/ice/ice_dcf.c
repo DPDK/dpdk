@@ -764,7 +764,7 @@ ice_dcf_init_hw(struct rte_eth_dev *eth_dev, struct ice_dcf_hw *hw)
 	rte_spinlock_init(&hw->vc_cmd_queue_lock);
 	TAILQ_INIT(&hw->vc_cmd_queue);
 
-	__atomic_store_n(&hw->vsi_update_thread_num, 0, __ATOMIC_RELAXED);
+	rte_atomic_store_explicit(&hw->vsi_update_thread_num, 0, rte_memory_order_relaxed);
 
 	hw->arq_buf = rte_zmalloc("arq_buf", ICE_DCF_AQ_BUF_SZ, 0);
 	if (hw->arq_buf == NULL) {
@@ -888,8 +888,8 @@ ice_dcf_uninit_hw(struct rte_eth_dev *eth_dev, struct ice_dcf_hw *hw)
 				     ice_dcf_dev_interrupt_handler, hw);
 
 	/* Wait for all `ice-thread` threads to exit. */
-	while (__atomic_load_n(&hw->vsi_update_thread_num,
-		__ATOMIC_ACQUIRE) != 0)
+	while (rte_atomic_load_explicit(&hw->vsi_update_thread_num,
+		rte_memory_order_acquire) != 0)
 		rte_delay_ms(ICE_DCF_CHECK_INTERVAL);
 
 	ice_dcf_mode_disable(hw);

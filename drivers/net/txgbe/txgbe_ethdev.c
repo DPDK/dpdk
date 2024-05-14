@@ -595,7 +595,7 @@ eth_txgbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params __rte_unused)
 		return 0;
 	}
 
-	__atomic_clear(&ad->link_thread_running, __ATOMIC_SEQ_CST);
+	rte_atomic_store_explicit(&ad->link_thread_running, 0, rte_memory_order_seq_cst);
 	rte_eth_copy_pci_info(eth_dev, pci_dev);
 
 	hw->hw_addr = (void *)pci_dev->mem_resource[0].addr;
@@ -2834,7 +2834,7 @@ txgbe_dev_wait_setup_link_complete(struct rte_eth_dev *dev, uint32_t timeout_ms)
 	struct txgbe_adapter *ad = TXGBE_DEV_ADAPTER(dev);
 	uint32_t timeout = timeout_ms ? timeout_ms : WARNING_TIMEOUT;
 
-	while (__atomic_load_n(&ad->link_thread_running, __ATOMIC_SEQ_CST)) {
+	while (rte_atomic_load_explicit(&ad->link_thread_running, rte_memory_order_seq_cst)) {
 		msec_delay(1);
 		timeout--;
 
@@ -2859,7 +2859,7 @@ txgbe_dev_setup_link_thread_handler(void *param)
 
 	rte_thread_detach(rte_thread_self());
 	txgbe_dev_setup_link_alarm_handler(dev);
-	__atomic_clear(&ad->link_thread_running, __ATOMIC_SEQ_CST);
+	rte_atomic_store_explicit(&ad->link_thread_running, 0, rte_memory_order_seq_cst);
 	return 0;
 }
 
@@ -2908,7 +2908,8 @@ txgbe_dev_link_update_share(struct rte_eth_dev *dev,
 		} else if (hw->phy.media_type == txgbe_media_type_fiber &&
 				dev->data->dev_conf.intr_conf.lsc != 0) {
 			txgbe_dev_wait_setup_link_complete(dev, 0);
-			if (!__atomic_test_and_set(&ad->link_thread_running, __ATOMIC_SEQ_CST)) {
+			if (!rte_atomic_exchange_explicit(&ad->link_thread_running, 1,
+					rte_memory_order_seq_cst)) {
 				/* To avoid race condition between threads, set
 				 * the TXGBE_FLAG_NEED_LINK_CONFIG flag only
 				 * when there is no link thread running.
@@ -2918,7 +2919,8 @@ txgbe_dev_link_update_share(struct rte_eth_dev *dev,
 						"txgbe-link",
 						txgbe_dev_setup_link_thread_handler, dev) < 0) {
 					PMD_DRV_LOG(ERR, "Create link thread failed!");
-					__atomic_clear(&ad->link_thread_running, __ATOMIC_SEQ_CST);
+					rte_atomic_store_explicit(&ad->link_thread_running, 0,
+							rte_memory_order_seq_cst);
 				}
 			} else {
 				PMD_DRV_LOG(ERR,

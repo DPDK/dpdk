@@ -171,8 +171,8 @@ struct hns3_hw_error_desc {
 };
 
 int hns3_enable_hw_error_intr(struct hns3_adapter *hns, bool en);
-void hns3_handle_msix_error(struct hns3_adapter *hns, uint64_t *levels);
-void hns3_handle_ras_error(struct hns3_adapter *hns, uint64_t *levels);
+void hns3_handle_msix_error(struct hns3_adapter *hns, RTE_ATOMIC(uint64_t) *levels);
+void hns3_handle_ras_error(struct hns3_adapter *hns, RTE_ATOMIC(uint64_t) *levels);
 void hns3_config_mac_tnl_int(struct hns3_hw *hw, bool en);
 void hns3_handle_error(struct hns3_adapter *hns);
 

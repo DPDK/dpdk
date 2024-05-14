@@ -1441,7 +1441,7 @@ continue_dev_stop:
 	rte_delay_us_sleep(1000 * priv->rxqs_n);
 	DRV_LOG(DEBUG, "port %u stopping device", dev->data->port_id);
 	if (priv->sh->config.dv_flow_en == 2) {
-		if (!__atomic_load_n(&priv->hws_mark_refcnt, __ATOMIC_RELAXED))
+		if (!rte_atomic_load_explicit(&priv->hws_mark_refcnt, rte_memory_order_relaxed))
 			flow_hw_rxq_flag_set(dev, false);
 	} else {
 		mlx5_flow_stop_default(dev);

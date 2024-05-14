@@ -173,7 +173,7 @@ get_dev_stat(struct dlb2_eventdev *dlb2, uint16_t obj_idx __rte_unused,
 	case nb_events_limit:
 		return dlb2->new_event_limit;
 	case inflight_events:
-		return __atomic_load_n(&dlb2->inflights, __ATOMIC_SEQ_CST);
+		return rte_atomic_load_explicit(&dlb2->inflights, rte_memory_order_seq_cst);
 	case ldb_pool_size:
 		return dlb2->num_ldb_credits;
 	case dir_pool_size:

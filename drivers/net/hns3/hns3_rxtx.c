@@ -4464,7 +4464,7 @@ hns3_set_rxtx_function(struct rte_eth_dev *eth_dev)
 	struct hns3_adapter *hns = eth_dev->data->dev_private;
 
 	if (hns->hw.adapter_state == HNS3_NIC_STARTED &&
-	    __atomic_load_n(&hns->hw.reset.resetting, __ATOMIC_RELAXED) == 0) {
+	    rte_atomic_load_explicit(&hns->hw.reset.resetting, rte_memory_order_relaxed) == 0) {
 		eth_dev->rx_pkt_burst = hns3_get_rx_function(eth_dev);
 		eth_dev->rx_descriptor_status = hns3_dev_rx_descriptor_status;
 		eth_dev->tx_pkt_burst = hw->set_link_down ?
@@ -4530,7 +4530,7 @@ hns3_dev_rx_queue_start(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 
 	rte_spinlock_lock(&hw->lock);
 
-	if (__atomic_load_n(&hw->reset.resetting, __ATOMIC_RELAXED)) {
+	if (rte_atomic_load_explicit(&hw->reset.resetting, rte_memory_order_relaxed)) {
 		hns3_err(hw, "fail to start Rx queue during resetting.");
 		rte_spinlock_unlock(&hw->lock);
 		return -EIO;
@@ -4586,7 +4586,7 @@ hns3_dev_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 
 	rte_spinlock_lock(&hw->lock);
 
-	if (__atomic_load_n(&hw->reset.resetting, __ATOMIC_RELAXED)) {
+	if (rte_atomic_load_explicit(&hw->reset.resetting, rte_memory_order_relaxed)) {
 		hns3_err(hw, "fail to stop Rx queue during resetting.");
 		rte_spinlock_unlock(&hw->lock);
 		return -EIO;
@@ -4615,7 +4615,7 @@ hns3_dev_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 
 	rte_spinlock_lock(&hw->lock);
 
-	if (__atomic_load_n(&hw->reset.resetting, __ATOMIC_RELAXED)) {
+	if (rte_atomic_load_explicit(&hw->reset.resetting, rte_memory_order_relaxed)) {
 		hns3_err(hw, "fail to start Tx queue during resetting.");
 		rte_spinlock_unlock(&hw->lock);
 		return -EIO;
@@ -4648,7 +4648,7 @@ hns3_dev_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 
 	rte_spinlock_lock(&hw->lock);
 
-	if (__atomic_load_n(&hw->reset.resetting, __ATOMIC_RELAXED)) {
+	if (rte_atomic_load_explicit(&hw->reset.resetting, rte_memory_order_relaxed)) {
 		hns3_err(hw, "fail to stop Tx queue during resetting.");
 		rte_spinlock_unlock(&hw->lock);
 		return -EIO;

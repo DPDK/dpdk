@@ -44,12 +44,12 @@ static int
 hns3_allocate_dma_mem(struct hns3_hw *hw, struct hns3_cmq_ring *ring,
 		      uint64_t size, uint32_t alignment)
 {
-	static uint64_t hns3_dma_memzone_id;
+	static RTE_ATOMIC(uint64_t) hns3_dma_memzone_id;
 	const struct rte_memzone *mz = NULL;
 	char z_name[RTE_MEMZONE_NAMESIZE];
 
 	snprintf(z_name, sizeof(z_name), "hns3_dma_%" PRIu64,
-		__atomic_fetch_add(&hns3_dma_memzone_id, 1, __ATOMIC_RELAXED));
+		rte_atomic_fetch_add_explicit(&hns3_dma_memzone_id, 1, rte_memory_order_relaxed));
 	mz = rte_memzone_reserve_bounded(z_name, size, SOCKET_ID_ANY,
 					 RTE_MEMZONE_IOVA_CONTIG, alignment,
 					 RTE_PGSIZE_2M);
@@ -198,8 +198,8 @@ hns3_cmd_csq_clean(struct hns3_hw *hw)
 		hns3_err(hw, "wrong cmd addr(%0x) head (%u, %u-%u)", addr, head,
 			 csq->next_to_use, csq->next_to_clean);
 		if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
-			__atomic_store_n(&hw->reset.disable_cmd, 1,
-					 __ATOMIC_RELAXED);
+			rte_atomic_store_explicit(&hw->reset.disable_cmd, 1,
+					 rte_memory_order_relaxed);
 			hns3_schedule_delayed_reset(HNS3_DEV_HW_TO_ADAPTER(hw));
 		}
 
@@ -313,7 +313,7 @@ static int hns3_cmd_poll_reply(struct hns3_hw *hw)
 		if (hns3_cmd_csq_done(hw))
 			return 0;
 
-		if (__atomic_load_n(&hw->reset.disable_cmd, __ATOMIC_RELAXED)) {
+		if (rte_atomic_load_explicit(&hw->reset.disable_cmd, rte_memory_order_relaxed)) {
 			hns3_err(hw,
 				 "Don't wait for reply because of disable_cmd");
 			return -EBUSY;
@@ -360,7 +360,7 @@ hns3_cmd_send(struct hns3_hw *hw, struct hns3_cmd_desc *desc, int num)
 	int retval;
 	uint32_t ntc;
 
-	if (__atomic_load_n(&hw->reset.disable_cmd, __ATOMIC_RELAXED))
+	if (rte_atomic_load_explicit(&hw->reset.disable_cmd, rte_memory_order_relaxed))
 		return -EBUSY;
 
 	rte_spinlock_lock(&hw->cmq.csq.lock);
@@ -747,7 +747,7 @@ hns3_cmd_init(struct hns3_hw *hw)
 		ret = -EBUSY;
 		goto err_cmd_init;
 	}
-	__atomic_store_n(&hw->reset.disable_cmd, 0, __ATOMIC_RELAXED);
+	rte_atomic_store_explicit(&hw->reset.disable_cmd, 0, rte_memory_order_relaxed);
 
 	ret = hns3_cmd_query_firmware_version_and_capability(hw);
 	if (ret) {
@@ -790,7 +790,7 @@ hns3_cmd_init(struct hns3_hw *hw)
 	return 0;
 
 err_cmd_init:
-	__atomic_store_n(&hw->reset.disable_cmd, 1, __ATOMIC_RELAXED);
+	rte_atomic_store_explicit(&hw->reset.disable_cmd, 1, rte_memory_order_relaxed);
 	return ret;
 }
 
@@ -819,7 +819,7 @@ hns3_cmd_uninit(struct hns3_hw *hw)
 	if (!hns->is_vf)
 		(void)hns3_firmware_compat_config(hw, false);
 
-	__atomic_store_n(&hw->reset.disable_cmd, 1, __ATOMIC_RELAXED);
+	rte_atomic_store_explicit(&hw->reset.disable_cmd, 1, rte_memory_order_relaxed);
 
 	/*
 	 * A delay is added to ensure that the register cleanup operations

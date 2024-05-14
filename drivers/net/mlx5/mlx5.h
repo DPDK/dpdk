@@ -378,7 +378,7 @@ struct mlx5_drop {
 struct mlx5_lb_ctx {
 	struct ibv_qp *qp; /* QP object. */
 	void *ibv_cq; /* Completion queue. */
-	uint16_t refcnt; /* Reference count for representors. */
+	RTE_ATOMIC(uint16_t) refcnt; /* Reference count for representors. */
 };
 
 /* HW steering queue job descriptor type. */
@@ -481,10 +481,10 @@ enum mlx5_counter_type {
 
 /* Counter age parameter. */
 struct mlx5_age_param {
-	uint16_t state; /**< Age state (atomically accessed). */
+	RTE_ATOMIC(uint16_t) state; /**< Age state (atomically accessed). */
 	uint16_t port_id; /**< Port id of the counter. */
 	uint32_t timeout:24; /**< Aging timeout in seconds. */
-	uint32_t sec_since_last_hit;
+	RTE_ATOMIC(uint32_t) sec_since_last_hit;
 	/**< Time in seconds since last hit (atomically accessed). */
 	void *context; /**< Flow counter age context. */
 };
@@ -497,7 +497,7 @@ struct flow_counter_stats {
 /* Shared counters information for counters. */
 struct mlx5_flow_counter_shared {
 	union {
-		uint32_t refcnt; /* Only for shared action management. */
+		RTE_ATOMIC(uint32_t) refcnt; /* Only for shared action management. */
 		uint32_t id; /* User counter ID for legacy sharing. */
 	};
 };
@@ -588,7 +588,7 @@ TAILQ_HEAD(mlx5_counter_pools, mlx5_flow_counter_pool);
 
 /* Counter global management structure. */
 struct mlx5_flow_counter_mng {
-	volatile uint16_t n_valid; /* Number of valid pools. */
+	volatile RTE_ATOMIC(uint16_t) n_valid; /* Number of valid pools. */
 	uint16_t last_pool_idx; /* Last used pool index */
 	int min_id; /* The minimum counter ID in the pools. */
 	int max_id; /* The maximum counter ID in the pools. */
@@ -654,7 +654,7 @@ struct mlx5_aso_sq {
 struct mlx5_aso_age_action {
 	LIST_ENTRY(mlx5_aso_age_action) next;
 	void *dr_action;
-	uint32_t refcnt;
+	RTE_ATOMIC(uint32_t) refcnt;
 	/* Following fields relevant only when action is active. */
 	uint16_t offset; /* Offset of ASO Flow Hit flag in DevX object. */
 	struct mlx5_age_param age_params;
@@ -688,7 +688,7 @@ struct mlx5_geneve_tlv_option_resource {
 	rte_be16_t option_class; /* geneve tlv opt class.*/
 	uint8_t option_type; /* geneve tlv opt type.*/
 	uint8_t length; /* geneve tlv opt length. */
-	uint32_t refcnt; /* geneve tlv object reference counter */
+	RTE_ATOMIC(uint32_t) refcnt; /* geneve tlv object reference counter */
 };
 
 
@@ -903,7 +903,7 @@ struct mlx5_flow_meter_policy {
 	uint16_t group;
 	/* The group. */
 	rte_spinlock_t sl;
-	uint32_t ref_cnt;
+	RTE_ATOMIC(uint32_t) ref_cnt;
 	/* Use count. */
 	struct rte_flow_pattern_template *hws_item_templ;
 	/* Hardware steering item templates. */
@@ -1038,7 +1038,7 @@ struct mlx5_flow_meter_profile {
 		struct mlx5_flow_meter_srtcm_rfc2697_prm srtcm_prm;
 		/**< srtcm_rfc2697 struct. */
 	};
-	uint32_t ref_cnt; /**< Use count. */
+	RTE_ATOMIC(uint32_t) ref_cnt; /**< Use count. */
 	uint32_t g_support:1; /**< If G color will be generated. */
 	uint32_t y_support:1; /**< If Y color will be generated. */
 	uint32_t initialized:1; /**< Initialized. */
@@ -1078,7 +1078,7 @@ struct mlx5_aso_mtr {
 	enum mlx5_aso_mtr_type type;
 	struct mlx5_flow_meter_info fm;
 	/**< Pointer to the next aso flow meter structure. */
-	uint8_t state; /**< ASO flow meter state. */
+	RTE_ATOMIC(uint8_t) state; /**< ASO flow meter state. */
 	uint32_t offset;
 	enum rte_color init_color;
 };
@@ -1124,7 +1124,7 @@ struct mlx5_flow_mtr_mng {
 	/* Default policy table. */
 	uint32_t def_policy_id;
 	/* Default policy id. */
-	uint32_t def_policy_ref_cnt;
+	RTE_ATOMIC(uint32_t) def_policy_ref_cnt;
 	/** def_policy meter use count. */
 	struct mlx5_flow_tbl_resource *drop_tbl[MLX5_MTR_DOMAIN_MAX];
 	/* Meter drop table. */
@@ -1197,8 +1197,8 @@ struct mlx5_txpp_wq {
 
 /* Tx packet pacing internal timestamp. */
 struct mlx5_txpp_ts {
-	uint64_t ci_ts;
-	uint64_t ts;
+	RTE_ATOMIC(uint64_t) ci_ts;
+	RTE_ATOMIC(uint64_t) ts;
 };
 
 /* Tx packet pacing structure. */
@@ -1221,12 +1221,12 @@ struct mlx5_dev_txpp {
 	struct mlx5_txpp_ts ts; /* Cached completion id/timestamp. */
 	uint32_t sync_lost:1; /* ci/timestamp synchronization lost. */
 	/* Statistics counters. */
-	uint64_t err_miss_int; /* Missed service interrupt. */
-	uint64_t err_rearm_queue; /* Rearm Queue errors. */
-	uint64_t err_clock_queue; /* Clock Queue errors. */
-	uint64_t err_ts_past; /* Timestamp in the past. */
-	uint64_t err_ts_future; /* Timestamp in the distant future. */
-	uint64_t err_ts_order; /* Timestamp not in ascending order. */
+	RTE_ATOMIC(uint64_t) err_miss_int; /* Missed service interrupt. */
+	RTE_ATOMIC(uint64_t) err_rearm_queue; /* Rearm Queue errors. */
+	RTE_ATOMIC(uint64_t) err_clock_queue; /* Clock Queue errors. */
+	RTE_ATOMIC(uint64_t) err_ts_past; /* Timestamp in the past. */
+	RTE_ATOMIC(uint64_t) err_ts_future; /* Timestamp in the distant future. */
+	RTE_ATOMIC(uint64_t) err_ts_order; /* Timestamp not in ascending order. */
 };
 
 /* Sample ID information of eCPRI flex parser structure. */
@@ -1287,16 +1287,16 @@ struct mlx5_aso_ct_action {
 	void *dr_action_orig;
 	/* General action object for reply dir. */
 	void *dr_action_rply;
-	uint32_t refcnt; /* Action used count in device flows. */
+	RTE_ATOMIC(uint32_t) refcnt; /* Action used count in device flows. */
 	uint32_t offset; /* Offset of ASO CT in DevX objects bulk. */
 	uint16_t peer; /* The only peer port index could also use this CT. */
-	enum mlx5_aso_ct_state state; /* ASO CT state. */
+	RTE_ATOMIC(enum mlx5_aso_ct_state) state; /* ASO CT state. */
 	bool is_original; /* The direction of the DR action to be used. */
 };
 
 /* CT action object state update. */
 #define MLX5_ASO_CT_UPDATE_STATE(c, s) \
-	__atomic_store_n(&((c)->state), (s), __ATOMIC_RELAXED)
+	rte_atomic_store_explicit(&((c)->state), (s), rte_memory_order_relaxed)
 
 #ifdef PEDANTIC
 #pragma GCC diagnostic ignored "-Wpedantic"
@@ -1370,7 +1370,7 @@ struct mlx5_flex_pattern_field {
 /* Port flex item context. */
 struct mlx5_flex_item {
 	struct mlx5_flex_parser_devx *devx_fp; /* DevX flex parser object. */
-	uint32_t refcnt; /* Atomically accessed refcnt by flows. */
+	RTE_ATOMIC(uint32_t) refcnt; /* Atomically accessed refcnt by flows. */
 	enum rte_flow_item_flex_tunnel_mode tunnel_mode; /* Tunnel mode. */
 	uint32_t mapnum; /* Number of pattern translation entries. */
 	struct mlx5_flex_pattern_field map[MLX5_FLEX_ITEM_MAPPING_NUM];
@@ -1383,7 +1383,7 @@ struct mlx5_flex_item {
 #define MLX5_SRV6_SAMPLE_NUM 5
 /* Mlx5 internal flex parser profile structure. */
 struct mlx5_internal_flex_parser_profile {
-	uint32_t refcnt;
+	RTE_ATOMIC(uint32_t) refcnt;
 	struct mlx5_flex_item flex; /* Hold map info for modify field. */
 };
 
@@ -1512,9 +1512,9 @@ struct mlx5_dev_ctx_shared {
 #if defined(HAVE_IBV_FLOW_DV_SUPPORT) || !defined(HAVE_INFINIBAND_VERBS_H)
 	struct mlx5_send_to_kernel_action send_to_kernel_action[MLX5DR_TABLE_TYPE_MAX];
 #endif
-	struct mlx5_hlist *encaps_decaps; /* Encap/decap action hash list. */
-	struct mlx5_hlist *modify_cmds;
-	struct mlx5_hlist *tag_table;
+	RTE_ATOMIC(struct mlx5_hlist *) encaps_decaps; /* Encap/decap action hash list. */
+	RTE_ATOMIC(struct mlx5_hlist *) modify_cmds;
+	RTE_ATOMIC(struct mlx5_hlist *) tag_table;
 	struct mlx5_list *port_id_action_list; /* Port ID action list. */
 	struct mlx5_list *push_vlan_action_list; /* Push VLAN actions. */
 	struct mlx5_list *sample_action_list; /* List of sample actions. */
@@ -1525,7 +1525,7 @@ struct mlx5_dev_ctx_shared {
 	/* SW steering counters management structure. */
 	void *default_miss_action; /* Default miss action. */
 	struct mlx5_indexed_pool *ipool[MLX5_IPOOL_MAX];
-	struct mlx5_indexed_pool *mdh_ipools[MLX5_MAX_MODIFY_NUM];
+	RTE_ATOMIC(struct mlx5_indexed_pool *) mdh_ipools[MLX5_MAX_MODIFY_NUM];
 	/* Shared interrupt handler section. */
 	struct rte_intr_handle *intr_handle; /* Interrupt handler for device. */
 	struct rte_intr_handle *intr_handle_devx; /* DEVX interrupt handler. */
@@ -1570,7 +1570,7 @@ struct mlx5_dev_ctx_shared {
  * Caution, secondary process may rebuild the struct during port start.
  */
 struct mlx5_proc_priv {
-	void *hca_bar;
+	RTE_ATOMIC(void *) hca_bar;
 	/* Mapped HCA PCI BAR area. */
 	size_t uar_table_sz;
 	/* Size of UAR register table. */
@@ -1635,7 +1635,7 @@ struct mlx5_rxq_obj {
 /* Indirection table. */
 struct mlx5_ind_table_obj {
 	LIST_ENTRY(mlx5_ind_table_obj) next; /* Pointer to the next element. */
-	uint32_t refcnt; /* Reference counter. */
+	RTE_ATOMIC(uint32_t) refcnt; /* Reference counter. */
 	union {
 		void *ind_table; /**< Indirection table. */
 		struct mlx5_devx_obj *rqt; /* DevX RQT object. */
@@ -1826,7 +1826,7 @@ enum mlx5_quota_state {
 };
 
 struct mlx5_quota {
-	uint8_t state; /* object state */
+	RTE_ATOMIC(uint8_t) state; /* object state */
 	uint8_t mode;  /* metering mode */
 	/**
 	 * Keep track of application update types.
@@ -1955,7 +1955,7 @@ struct mlx5_priv {
 	uint32_t flex_item_map; /* Map of allocated flex item elements. */
 	uint32_t nb_queue; /* HW steering queue number. */
 	struct mlx5_hws_cnt_pool *hws_cpool; /* HW steering's counter pool. */
-	uint32_t hws_mark_refcnt; /* HWS mark action reference counter. */
+	RTE_ATOMIC(uint32_t) hws_mark_refcnt; /* HWS mark action reference counter. */
 	struct rte_pmd_mlx5_flow_engine_mode_info mode_info; /* Process set flow engine info. */
 	struct mlx5_flow_hw_attr *hw_attr; /* HW Steering port configuration. */
 #if defined(HAVE_IBV_FLOW_DV_SUPPORT) || !defined(HAVE_INFINIBAND_VERBS_H)
@@ -2007,7 +2007,7 @@ struct mlx5_priv {
 
 #endif
 	struct rte_eth_dev *shared_host; /* Host device for HW steering. */
-	uint16_t shared_refcnt; /* HW steering host reference counter. */
+	RTE_ATOMIC(uint16_t) shared_refcnt; /* HW steering host reference counter. */
 };
 
 #define PORT_ID(priv) ((priv)->dev_data->port_id)

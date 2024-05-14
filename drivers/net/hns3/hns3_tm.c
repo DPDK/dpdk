@@ -1051,7 +1051,7 @@ hns3_tm_hierarchy_commit(struct rte_eth_dev *dev,
 	if (error == NULL)
 		return -EINVAL;
 
-	if (__atomic_load_n(&hw->reset.resetting, __ATOMIC_RELAXED)) {
+	if (rte_atomic_load_explicit(&hw->reset.resetting, rte_memory_order_relaxed)) {
 		error->type = RTE_TM_ERROR_TYPE_UNSPECIFIED;
 		error->message = "device is resetting";
 		/* don't goto fail_clear, user may try later */
@@ -1141,7 +1141,7 @@ hns3_tm_node_shaper_update(struct rte_eth_dev *dev,
 	if (error == NULL)
 		return -EINVAL;
 
-	if (__atomic_load_n(&hw->reset.resetting, __ATOMIC_RELAXED)) {
+	if (rte_atomic_load_explicit(&hw->reset.resetting, rte_memory_order_relaxed)) {
 		error->type = RTE_TM_ERROR_TYPE_UNSPECIFIED;
 		error->message = "device is resetting";
 		return -EBUSY;

@@ -218,7 +218,7 @@ struct otx_ep_iq_config {
  */
 struct otx_ep_instr_queue {
 	/* Location in memory updated by SDP ISM */
-	uint32_t *inst_cnt_ism;
+	RTE_ATOMIC(uint32_t) *inst_cnt_ism;
 	struct rte_mbuf **mbuf_list;
 	/* Pointer to the Virtual Base addr of the input ring. */
 	uint8_t *base_addr;
@@ -413,7 +413,7 @@ struct otx_ep_droq {
 	uint8_t ism_ena;
 
 	/* Pointer to host memory copy of output packet count, set by ISM */
-	uint32_t *pkts_sent_ism;
+	RTE_ATOMIC(uint32_t) *pkts_sent_ism;
 	uint32_t pkts_sent_prev;
 
 	/* Statistics for this DROQ. */

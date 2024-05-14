@@ -37,7 +37,7 @@ enum hns3vf_evt_cause {
 };
 
 static enum hns3_reset_level hns3vf_get_reset_level(struct hns3_hw *hw,
-						    uint64_t *levels);
+						    RTE_ATOMIC(uint64_t) *levels);
 static int hns3vf_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu);
 static int hns3vf_dev_configure_vlan(struct rte_eth_dev *dev);
 
@@ -484,7 +484,7 @@ hns3vf_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 	 * MTU value issued by hns3 VF PMD must be less than or equal to
 	 * PF's MTU.
 	 */
-	if (__atomic_load_n(&hw->reset.resetting, __ATOMIC_RELAXED)) {
+	if (rte_atomic_load_explicit(&hw->reset.resetting, rte_memory_order_relaxed)) {
 		hns3_err(hw, "Failed to set mtu during resetting");
 		return -EIO;
 	}
@@ -565,7 +565,7 @@ hns3vf_check_event_cause(struct hns3_adapter *hns, uint32_t *clearval)
 		rst_ing_reg = hns3_read_dev(hw, HNS3_FUN_RST_ING);
 		hns3_warn(hw, "resetting reg: 0x%x", rst_ing_reg);
 		hns3_atomic_set_bit(HNS3_VF_RESET, &hw->reset.pending);
-		__atomic_store_n(&hw->reset.disable_cmd, 1, __ATOMIC_RELAXED);
+		rte_atomic_store_explicit(&hw->reset.disable_cmd, 1, rte_memory_order_relaxed);
 		val = hns3_read_dev(hw, HNS3_VF_RST_ING);
 		hns3_write_dev(hw, HNS3_VF_RST_ING, val | HNS3_VF_RST_ING_BIT);
 		val = cmdq_stat_reg & ~BIT(HNS3_VECTOR0_RST_INT_B);
@@ -634,8 +634,8 @@ hns3vf_update_push_lsc_cap(struct hns3_hw *hw, bool supported)
 	struct hns3_vf *vf = HNS3_DEV_HW_TO_VF(hw);
 
 	if (vf->pf_push_lsc_cap == HNS3_PF_PUSH_LSC_CAP_UNKNOWN)
-		__atomic_compare_exchange(&vf->pf_push_lsc_cap, &exp, &val, 0,
-					  __ATOMIC_ACQUIRE, __ATOMIC_ACQUIRE);
+		rte_atomic_compare_exchange_strong_explicit(&vf->pf_push_lsc_cap, &exp, val,
+					  rte_memory_order_acquire, rte_memory_order_acquire);
 }
 
 static void
@@ -650,8 +650,8 @@ hns3vf_get_push_lsc_cap(struct hns3_hw *hw)
 	struct hns3_vf *vf = HNS3_DEV_HW_TO_VF(hw);
 	struct hns3_vf_to_pf_msg req;
 
-	__atomic_store_n(&vf->pf_push_lsc_cap, HNS3_PF_PUSH_LSC_CAP_UNKNOWN,
-			 __ATOMIC_RELEASE);
+	rte_atomic_store_explicit(&vf->pf_push_lsc_cap, HNS3_PF_PUSH_LSC_CAP_UNKNOWN,
+			 rte_memory_order_release);
 
 	hns3vf_mbx_setup(&req, HNS3_MBX_GET_LINK_STATUS, 0);
 	(void)hns3vf_mbx_send(hw, &req, false, NULL, 0);
@@ -666,7 +666,7 @@ hns3vf_get_push_lsc_cap(struct hns3_hw *hw)
 		 * mailbox from PF driver to get this capability.
 		 */
 		hns3vf_handle_mbx_msg(hw);
-		if (__atomic_load_n(&vf->pf_push_lsc_cap, __ATOMIC_ACQUIRE) !=
+		if (rte_atomic_load_explicit(&vf->pf_push_lsc_cap, rte_memory_order_acquire) !=
 			HNS3_PF_PUSH_LSC_CAP_UNKNOWN)
 			break;
 		remain_ms--;
@@ -677,10 +677,10 @@ hns3vf_get_push_lsc_cap(struct hns3_hw *hw)
 	 * state: unknown (means pf not ack), not_supported, supported.
 	 * Here config it as 'not_supported' when it's 'unknown' state.
 	 */
-	__atomic_compare_exchange(&vf->pf_push_lsc_cap, &exp, &val, 0,
-				  __ATOMIC_ACQUIRE, __ATOMIC_ACQUIRE);
+	rte_atomic_compare_exchange_strong_explicit(&vf->pf_push_lsc_cap, &exp, val,
+				  rte_memory_order_acquire, rte_memory_order_acquire);
 
-	if (__atomic_load_n(&vf->pf_push_lsc_cap, __ATOMIC_ACQUIRE) ==
+	if (rte_atomic_load_explicit(&vf->pf_push_lsc_cap, rte_memory_order_acquire) ==
 		HNS3_PF_PUSH_LSC_CAP_SUPPORTED) {
 		hns3_info(hw, "detect PF support push link status change!");
 	} else {
@@ -920,7 +920,7 @@ hns3vf_request_link_info(struct hns3_hw *hw)
 	bool send_req;
 	int ret;
 
-	if (__atomic_load_n(&hw->reset.resetting, __ATOMIC_RELAXED))
+	if (rte_atomic_load_explicit(&hw->reset.resetting, rte_memory_order_relaxed))
 		return;
 
 	send_req = vf->pf_push_lsc_cap == HNS3_PF_PUSH_LSC_CAP_NOT_SUPPORTED ||
@@ -956,7 +956,7 @@ hns3vf_update_link_status(struct hns3_hw *hw, uint8_t link_status,
 	 * sending request to PF kernel driver, then could update link status by
 	 * process PF kernel driver's link status mailbox message.
 	 */
-	if (!__atomic_load_n(&vf->poll_job_started, __ATOMIC_RELAXED))
+	if (!rte_atomic_load_explicit(&vf->poll_job_started, rte_memory_order_relaxed))
 		return;
 
 	if (hw->adapter_state != HNS3_NIC_STARTED)
@@ -994,7 +994,7 @@ hns3vf_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)
 	struct hns3_hw *hw = &hns->hw;
 	int ret;
 
-	if (__atomic_load_n(&hw->reset.resetting, __ATOMIC_RELAXED)) {
+	if (rte_atomic_load_explicit(&hw->reset.resetting, rte_memory_order_relaxed)) {
 		hns3_err(hw,
 			 "vf set vlan id failed during resetting, vlan_id =%u",
 			 vlan_id);
@@ -1059,7 +1059,7 @@ hns3vf_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 	unsigned int tmp_mask;
 	int ret = 0;
 
-	if (__atomic_load_n(&hw->reset.resetting, __ATOMIC_RELAXED)) {
+	if (rte_atomic_load_explicit(&hw->reset.resetting, rte_memory_order_relaxed)) {
 		hns3_err(hw, "vf set vlan offload failed during resetting, mask = 0x%x",
 			 mask);
 		return -EIO;
@@ -1252,7 +1252,7 @@ hns3vf_start_poll_job(struct rte_eth_dev *dev)
 	if (vf->pf_push_lsc_cap == HNS3_PF_PUSH_LSC_CAP_SUPPORTED)
 		vf->req_link_info_cnt = HNS3_REQUEST_LINK_INFO_REMAINS_CNT;
 
-	__atomic_store_n(&vf->poll_job_started, 1, __ATOMIC_RELAXED);
+	rte_atomic_store_explicit(&vf->poll_job_started, 1, rte_memory_order_relaxed);
 
 	hns3vf_service_handler(dev);
 }
@@ -1264,7 +1264,7 @@ hns3vf_stop_poll_job(struct rte_eth_dev *dev)
 
 	rte_eal_alarm_cancel(hns3vf_service_handler, dev);
 
-	__atomic_store_n(&vf->poll_job_started, 0, __ATOMIC_RELAXED);
+	rte_atomic_store_explicit(&vf->poll_job_started, 0, rte_memory_order_relaxed);
 }
 
 static int
@@ -1500,10 +1500,10 @@ hns3vf_do_stop(struct hns3_adapter *hns)
 	 * during reset and is required to be released after the reset is
 	 * completed.
 	 */
-	if (__atomic_load_n(&hw->reset.resetting,  __ATOMIC_RELAXED) == 0)
+	if (rte_atomic_load_explicit(&hw->reset.resetting,  rte_memory_order_relaxed) == 0)
 		hns3_dev_release_mbufs(hns);
 
-	if (__atomic_load_n(&hw->reset.disable_cmd, __ATOMIC_RELAXED) == 0) {
+	if (rte_atomic_load_explicit(&hw->reset.disable_cmd, rte_memory_order_relaxed) == 0) {
 		hns3_configure_all_mac_addr(hns, true);
 		ret = hns3_reset_all_tqps(hns);
 		if (ret) {
@@ -1528,7 +1528,7 @@ hns3vf_dev_stop(struct rte_eth_dev *dev)
 	hns3_stop_rxtx_datapath(dev);
 
 	rte_spinlock_lock(&hw->lock);
-	if (__atomic_load_n(&hw->reset.resetting, __ATOMIC_RELAXED) == 0) {
+	if (rte_atomic_load_explicit(&hw->reset.resetting, rte_memory_order_relaxed) == 0) {
 		hns3_stop_tqps(hw);
 		hns3vf_do_stop(hns);
 		hns3_unmap_rx_interrupt(dev);
@@ -1643,7 +1643,7 @@ hns3vf_dev_start(struct rte_eth_dev *dev)
 	int ret;
 
 	PMD_INIT_FUNC_TRACE();
-	if (__atomic_load_n(&hw->reset.resetting, __ATOMIC_RELAXED))
+	if (rte_atomic_load_explicit(&hw->reset.resetting, rte_memory_order_relaxed))
 		return -EBUSY;
 
 	rte_spinlock_lock(&hw->lock);
@@ -1773,7 +1773,7 @@ hns3vf_is_reset_pending(struct hns3_adapter *hns)
 
 	last_req = hns3vf_get_reset_level(hw, &hw->reset.pending);
 	if (last_req == HNS3_NONE_RESET || last_req < new_req) {
-		__atomic_store_n(&hw->reset.disable_cmd, 1, __ATOMIC_RELAXED);
+		rte_atomic_store_explicit(&hw->reset.disable_cmd, 1, rte_memory_order_relaxed);
 		hns3_schedule_delayed_reset(hns);
 		hns3_warn(hw, "High level reset detected, delay do reset");
 		return true;
@@ -1847,7 +1847,7 @@ hns3vf_prepare_reset(struct hns3_adapter *hns)
 		if (ret)
 			return ret;
 	}
-	__atomic_store_n(&hw->reset.disable_cmd, 1, __ATOMIC_RELAXED);
+	rte_atomic_store_explicit(&hw->reset.disable_cmd, 1, rte_memory_order_relaxed);
 
 	return 0;
 }
@@ -1888,7 +1888,7 @@ hns3vf_stop_service(struct hns3_adapter *hns)
 	 * from table space. Hence, for function reset software intervention is
 	 * required to delete the entries.
 	 */
-	if (__atomic_load_n(&hw->reset.disable_cmd, __ATOMIC_RELAXED) == 0)
+	if (rte_atomic_load_explicit(&hw->reset.disable_cmd, rte_memory_order_relaxed) == 0)
 		hns3_configure_all_mc_mac_addr(hns, true);
 	rte_spinlock_unlock(&hw->lock);
 
@@ -2030,7 +2030,7 @@ err_mc_mac:
 }
 
 static enum hns3_reset_level
-hns3vf_get_reset_level(struct hns3_hw *hw, uint64_t *levels)
+hns3vf_get_reset_level(struct hns3_hw *hw, RTE_ATOMIC(uint64_t) *levels)
 {
 	enum hns3_reset_level reset_level;
 
@@ -2070,10 +2070,10 @@ hns3vf_reset_service(void *param)
 	 * The interrupt may have been lost. It is necessary to handle
 	 * the interrupt to recover from the error.
 	 */
-	if (__atomic_load_n(&hw->reset.schedule, __ATOMIC_RELAXED) ==
+	if (rte_atomic_load_explicit(&hw->reset.schedule, rte_memory_order_relaxed) ==
 			    SCHEDULE_DEFERRED) {
-		__atomic_store_n(&hw->reset.schedule, SCHEDULE_REQUESTED,
-				 __ATOMIC_RELAXED);
+		rte_atomic_store_explicit(&hw->reset.schedule, SCHEDULE_REQUESTED,
+				 rte_memory_order_relaxed);
 		hns3_err(hw, "Handling interrupts in delayed tasks");
 		hns3vf_interrupt_handler(&rte_eth_devices[hw->data->port_id]);
 		reset_level = hns3vf_get_reset_level(hw, &hw->reset.pending);
@@ -2082,7 +2082,7 @@ hns3vf_reset_service(void *param)
 			hns3_atomic_set_bit(HNS3_VF_RESET, &hw->reset.pending);
 		}
 	}
-	__atomic_store_n(&hw->reset.schedule, SCHEDULE_NONE, __ATOMIC_RELAXED);
+	rte_atomic_store_explicit(&hw->reset.schedule, SCHEDULE_NONE, rte_memory_order_relaxed);
 
 	/*
 	 * Hardware reset has been notified, we now have to poll & check if
@@ -2278,7 +2278,7 @@ hns3vf_dev_init(struct rte_eth_dev *eth_dev)
 
 	hw->adapter_state = HNS3_NIC_INITIALIZED;
 
-	if (__atomic_load_n(&hw->reset.schedule, __ATOMIC_RELAXED) ==
+	if (rte_atomic_load_explicit(&hw->reset.schedule, rte_memory_order_relaxed) ==
 			    SCHEDULE_PENDING) {
 		hns3_err(hw, "Reschedule reset service after dev_init");
 		hns3_schedule_reset(hns);

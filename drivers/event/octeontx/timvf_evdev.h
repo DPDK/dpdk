@@ -126,15 +126,15 @@ enum timvf_clk_src {
 struct __rte_aligned(8) tim_mem_bucket {
 	uint64_t first_chunk;
 	union {
-		uint64_t w1;
+		RTE_ATOMIC(uint64_t) w1;
 		struct {
-			uint32_t nb_entry;
+			RTE_ATOMIC(uint32_t) nb_entry;
 			uint8_t sbt:1;
 			uint8_t hbt:1;
 			uint8_t bsk:1;
 			uint8_t rsvd:5;
-			uint8_t lock;
-			int16_t chunk_remainder;
+			RTE_ATOMIC(uint8_t) lock;
+			RTE_ATOMIC(int16_t) chunk_remainder;
 		};
 	};
 	uint64_t current_chunk;

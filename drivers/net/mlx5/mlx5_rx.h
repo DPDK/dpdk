@@ -173,7 +173,7 @@ struct mlx5_rxq_ctrl {
 /* RX queue private data. */
 struct mlx5_rxq_priv {
 	uint16_t idx; /* Queue index. */
-	uint32_t refcnt; /* Reference counter. */
+	RTE_ATOMIC(uint32_t) refcnt; /* Reference counter. */
 	struct mlx5_rxq_ctrl *ctrl; /* Shared Rx Queue. */
 	LIST_ENTRY(mlx5_rxq_priv) owner_entry; /* Entry in shared rxq_ctrl. */
 	struct mlx5_priv *priv; /* Back pointer to private data. */
@@ -188,7 +188,7 @@ struct mlx5_rxq_priv {
 /* External RX queue descriptor. */
 struct mlx5_external_rxq {
 	uint32_t hw_id; /* Queue index in the Hardware. */
-	uint32_t refcnt; /* Reference counter. */
+	RTE_ATOMIC(uint32_t) refcnt; /* Reference counter. */
 };
 
 /* mlx5_rxq.c */
@@ -412,7 +412,7 @@ mprq_buf_replace(struct mlx5_rxq_data *rxq, uint16_t rq_idx)
 	struct mlx5_mprq_buf *buf = (*rxq->mprq_bufs)[rq_idx];
 	void *addr;
 
-	if (__atomic_load_n(&buf->refcnt, __ATOMIC_RELAXED) > 1) {
+	if (rte_atomic_load_explicit(&buf->refcnt, rte_memory_order_relaxed) > 1) {
 		MLX5_ASSERT(rep != NULL);
 		/* Replace MPRQ buf. */
 		(*rxq->mprq_bufs)[rq_idx] = rep;
@@ -524,9 +524,9 @@ mprq_buf_to_pkt(struct mlx5_rxq_data *rxq, struct rte_mbuf *pkt, uint32_t len,
 		void *buf_addr;
 
 		/* Increment the refcnt of the whole chunk. */
-		__atomic_fetch_add(&buf->refcnt, 1, __ATOMIC_RELAXED);
-		MLX5_ASSERT(__atomic_load_n(&buf->refcnt,
-			    __ATOMIC_RELAXED) <= strd_n + 1);
+		rte_atomic_fetch_add_explicit(&buf->refcnt, 1, rte_memory_order_relaxed);
+		MLX5_ASSERT(rte_atomic_load_explicit(&buf->refcnt,
+			    rte_memory_order_relaxed) <= strd_n + 1);
 		buf_addr = RTE_PTR_SUB(addr, RTE_PKTMBUF_HEADROOM);
 		/*
 		 * MLX5 device doesn't use iova but it is necessary in a
@@ -666,7 +666,7 @@ mlx5_is_external_rxq(struct rte_eth_dev *dev, uint16_t queue_idx)
 	if (!priv->ext_rxqs || queue_idx < RTE_PMD_MLX5_EXTERNAL_RX_QUEUE_ID_MIN)
 		return false;
 	rxq = &priv->ext_rxqs[queue_idx - RTE_PMD_MLX5_EXTERNAL_RX_QUEUE_ID_MIN];
-	return !!__atomic_load_n(&rxq->refcnt, __ATOMIC_RELAXED);
+	return !!rte_atomic_load_explicit(&rxq->refcnt, rte_memory_order_relaxed);
 }
 
 #define LWM_COOKIE_RXQID_OFFSET 0

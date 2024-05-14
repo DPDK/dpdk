@@ -65,7 +65,7 @@ hns3_get_mbx_resp(struct hns3_hw *hw, uint16_t code, uint16_t subcode,
 
 	mbx_time_limit = (uint32_t)hns->mbx_time_limit_ms * US_PER_MS;
 	while (wait_time < mbx_time_limit) {
-		if (__atomic_load_n(&hw->reset.disable_cmd, __ATOMIC_RELAXED)) {
+		if (rte_atomic_load_explicit(&hw->reset.disable_cmd, rte_memory_order_relaxed)) {
 			hns3_err(hw, "Don't wait for mbx response because of "
 				 "disable_cmd");
 			return -EBUSY;
@@ -382,7 +382,7 @@ hns3pf_handle_mbx_msg(struct hns3_hw *hw)
 	rte_spinlock_lock(&hw->cmq.crq.lock);
 
 	while (!hns3_cmd_crq_empty(hw)) {
-		if (__atomic_load_n(&hw->reset.disable_cmd, __ATOMIC_RELAXED)) {
+		if (rte_atomic_load_explicit(&hw->reset.disable_cmd, rte_memory_order_relaxed)) {
 			rte_spinlock_unlock(&hw->cmq.crq.lock);
 			return;
 		}
@@ -457,7 +457,7 @@ hns3vf_handle_mbx_msg(struct hns3_hw *hw)
 	}
 
 	while (!hns3_cmd_crq_empty(hw)) {
-		if (__atomic_load_n(&hw->reset.disable_cmd, __ATOMIC_RELAXED)) {
+		if (rte_atomic_load_explicit(&hw->reset.disable_cmd, rte_memory_order_relaxed)) {
 			rte_spinlock_unlock(&hw->cmq.crq.lock);
 			return;
 		}

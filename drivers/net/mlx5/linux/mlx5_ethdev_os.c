@@ -1918,9 +1918,9 @@ int mlx5_txpp_map_hca_bar(struct rte_eth_dev *dev)
 		return -ENOTSUP;
 	}
 	/* Check there is no concurrent mapping in other thread. */
-	if (!__atomic_compare_exchange_n(&ppriv->hca_bar, &expected,
-					 base, false,
-					 __ATOMIC_RELAXED, __ATOMIC_RELAXED))
+	if (!rte_atomic_compare_exchange_strong_explicit(&ppriv->hca_bar, &expected,
+					 base,
+					 rte_memory_order_relaxed, rte_memory_order_relaxed))
 		rte_mem_unmap(base, MLX5_ST_SZ_BYTES(initial_seg));
 	return 0;
 }

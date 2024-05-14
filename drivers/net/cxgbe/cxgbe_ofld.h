@@ -60,10 +60,10 @@ struct tid_info {
 	unsigned int atids_in_use;
 
 	/* TIDs in the TCAM */
-	u32 tids_in_use;
+	RTE_ATOMIC(u32) tids_in_use;
 	/* TIDs in the HASH */
-	u32 hash_tids_in_use;
-	u32 conns_in_use;
+	RTE_ATOMIC(u32) hash_tids_in_use;
+	RTE_ATOMIC(u32) conns_in_use;
 
 	alignas(RTE_CACHE_LINE_SIZE) rte_spinlock_t atid_lock;
 	rte_spinlock_t ftid_lock;

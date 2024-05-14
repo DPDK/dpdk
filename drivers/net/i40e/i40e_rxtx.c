@@ -486,7 +486,7 @@ i40e_rx_scan_hw_ring(struct i40e_rx_queue *rxq)
 		}
 
 		/* This barrier is to order loads of different words in the descriptor */
-		rte_atomic_thread_fence(__ATOMIC_ACQUIRE);
+		rte_atomic_thread_fence(rte_memory_order_acquire);
 
 		/* Compute how many status bits were set */
 		for (j = 0, nb_dd = 0; j < I40E_LOOK_AHEAD; j++) {
@@ -745,7 +745,7 @@ i40e_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		 * Use acquire fence to ensure that qword1 which includes DD
 		 * bit is loaded before loading of other descriptor words.
 		 */
-		rte_atomic_thread_fence(__ATOMIC_ACQUIRE);
+		rte_atomic_thread_fence(rte_memory_order_acquire);
 
 		rxd = *rxdp;
 		nb_hold++;
@@ -867,7 +867,7 @@ i40e_recv_scattered_pkts(void *rx_queue,
 		 * Use acquire fence to ensure that qword1 which includes DD
 		 * bit is loaded before loading of other descriptor words.
 		 */
-		rte_atomic_thread_fence(__ATOMIC_ACQUIRE);
+		rte_atomic_thread_fence(rte_memory_order_acquire);
 
 		rxd = *rxdp;
 		nb_hold++;

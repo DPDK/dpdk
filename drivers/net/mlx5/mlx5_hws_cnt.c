@@ -149,7 +149,7 @@ mlx5_hws_aging_check(struct mlx5_priv *priv, struct mlx5_hws_cnt_pool *cpool)
 		}
 		if (param->timeout == 0)
 			continue;
-		switch (__atomic_load_n(&param->state, __ATOMIC_RELAXED)) {
+		switch (rte_atomic_load_explicit(&param->state, rte_memory_order_relaxed)) {
 		case HWS_AGE_AGED_OUT_NOT_REPORTED:
 		case HWS_AGE_AGED_OUT_REPORTED:
 			/* Already aged-out, no action is needed. */
@@ -171,8 +171,8 @@ mlx5_hws_aging_check(struct mlx5_priv *priv, struct mlx5_hws_cnt_pool *cpool)
 		hits = rte_be_to_cpu_64(stats[i].hits);
 		if (param->nb_cnts == 1) {
 			if (hits != param->accumulator_last_hits) {
-				__atomic_store_n(&param->sec_since_last_hit, 0,
-						 __ATOMIC_RELAXED);
+				rte_atomic_store_explicit(&param->sec_since_last_hit, 0,
+						 rte_memory_order_relaxed);
 				param->accumulator_last_hits = hits;
 				continue;
 			}
@@ -184,8 +184,8 @@ mlx5_hws_aging_check(struct mlx5_priv *priv, struct mlx5_hws_cnt_pool *cpool)
 			param->accumulator_cnt = 0;
 			if (param->accumulator_last_hits !=
 						param->accumulator_hits) {
-				__atomic_store_n(&param->sec_since_last_hit,
-						 0, __ATOMIC_RELAXED);
+				rte_atomic_store_explicit(&param->sec_since_last_hit,
+						 0, rte_memory_order_relaxed);
 				param->accumulator_last_hits =
 							param->accumulator_hits;
 				param->accumulator_hits = 0;
@@ -193,9 +193,9 @@ mlx5_hws_aging_check(struct mlx5_priv *priv, struct mlx5_hws_cnt_pool *cpool)
 			}
 			param->accumulator_hits = 0;
 		}
-		if (__atomic_fetch_add(&param->sec_since_last_hit, time_delta,
-				       __ATOMIC_RELAXED) + time_delta <=
-		   __atomic_load_n(&param->timeout, __ATOMIC_RELAXED))
+		if (rte_atomic_fetch_add_explicit(&param->sec_since_last_hit, time_delta,
+				       rte_memory_order_relaxed) + time_delta <=
+		   rte_atomic_load_explicit(&param->timeout, rte_memory_order_relaxed))
 			continue;
 		/* Prepare the relevant ring for this AGE parameter */
 		if (priv->hws_strict_queue)
@@ -203,10 +203,10 @@ mlx5_hws_aging_check(struct mlx5_priv *priv, struct mlx5_hws_cnt_pool *cpool)
 		else
 			r = age_info->hw_age.aged_list;
 		/* Changing the state atomically and insert it into the ring. */
-		if (__atomic_compare_exchange_n(&param->state, &expected1,
+		if (rte_atomic_compare_exchange_strong_explicit(&param->state, &expected1,
 						HWS_AGE_AGED_OUT_NOT_REPORTED,
-						false, __ATOMIC_RELAXED,
-						__ATOMIC_RELAXED)) {
+						rte_memory_order_relaxed,
+						rte_memory_order_relaxed)) {
 			int ret = rte_ring_enqueue_burst_elem(r, &age_idx,
 							      sizeof(uint32_t),
 							      1, NULL);
@@ -221,11 +221,10 @@ mlx5_hws_aging_check(struct mlx5_priv *priv, struct mlx5_hws_cnt_pool *cpool)
 			 */
 			expected2 = HWS_AGE_AGED_OUT_NOT_REPORTED;
 			if (ret == 0 &&
-			    !__atomic_compare_exchange_n(&param->state,
+			    !rte_atomic_compare_exchange_strong_explicit(&param->state,
 							 &expected2, expected1,
-							 false,
-							 __ATOMIC_RELAXED,
-							 __ATOMIC_RELAXED) &&
+							 rte_memory_order_relaxed,
+							 rte_memory_order_relaxed) &&
 			    expected2 == HWS_AGE_FREE)
 				mlx5_hws_age_param_free(priv,
 							param->own_cnt_index,
@@ -235,10 +234,10 @@ mlx5_hws_aging_check(struct mlx5_priv *priv, struct mlx5_hws_cnt_pool *cpool)
 			if (!priv->hws_strict_queue)
 				MLX5_AGE_SET(age_info, MLX5_AGE_EVENT_NEW);
 		} else {
-			__atomic_compare_exchange_n(&param->state, &expected2,
+			rte_atomic_compare_exchange_strong_explicit(&param->state, &expected2,
 						  HWS_AGE_AGED_OUT_NOT_REPORTED,
-						  false, __ATOMIC_RELAXED,
-						  __ATOMIC_RELAXED);
+						  rte_memory_order_relaxed,
+						  rte_memory_order_relaxed);
 		}
 	}
 	/* The event is irrelevant in strict queue mode. */
@@ -796,8 +795,8 @@ mlx5_hws_age_action_destroy(struct mlx5_priv *priv, uint32_t idx,
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
 					  "invalid AGE parameter index");
-	switch (__atomic_exchange_n(&param->state, HWS_AGE_FREE,
-				    __ATOMIC_RELAXED)) {
+	switch (rte_atomic_exchange_explicit(&param->state, HWS_AGE_FREE,
+				    rte_memory_order_relaxed)) {
 	case HWS_AGE_CANDIDATE:
 	case HWS_AGE_AGED_OUT_REPORTED:
 		mlx5_hws_age_param_free(priv, param->own_cnt_index, ipool, idx);
@@ -862,8 +861,8 @@ mlx5_hws_age_action_create(struct mlx5_priv *priv, uint32_t queue_id,
 				   "cannot allocate AGE parameter");
 		return 0;
 	}
-	MLX5_ASSERT(__atomic_load_n(&param->state,
-				    __ATOMIC_RELAXED) == HWS_AGE_FREE);
+	MLX5_ASSERT(rte_atomic_load_explicit(&param->state,
+				    rte_memory_order_relaxed) == HWS_AGE_FREE);
 	if (shared) {
 		param->nb_cnts = 0;
 		param->accumulator_hits = 0;
@@ -914,9 +913,9 @@ mlx5_hws_age_action_update(struct mlx5_priv *priv, uint32_t idx,
 					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
 					  "invalid AGE parameter index");
 	if (update_ade->timeout_valid) {
-		uint32_t old_timeout = __atomic_exchange_n(&param->timeout,
+		uint32_t old_timeout = rte_atomic_exchange_explicit(&param->timeout,
 							   update_ade->timeout,
-							   __ATOMIC_RELAXED);
+							   rte_memory_order_relaxed);
 
 		if (old_timeout == 0)
 			sec_since_last_hit_reset = true;
@@ -935,8 +934,8 @@ mlx5_hws_age_action_update(struct mlx5_priv *priv, uint32_t idx,
 		state_update = true;
 	}
 	if (sec_since_last_hit_reset)
-		__atomic_store_n(&param->sec_since_last_hit, 0,
-				 __ATOMIC_RELAXED);
+		rte_atomic_store_explicit(&param->sec_since_last_hit, 0,
+				 rte_memory_order_relaxed);
 	if (state_update) {
 		uint16_t expected = HWS_AGE_AGED_OUT_NOT_REPORTED;
 
@@ -945,13 +944,13 @@ mlx5_hws_age_action_update(struct mlx5_priv *priv, uint32_t idx,
 		 *  - AGED_OUT_NOT_REPORTED -> CANDIDATE_INSIDE_RING
 		 *  - AGED_OUT_REPORTED -> CANDIDATE
 		 */
-		if (!__atomic_compare_exchange_n(&param->state, &expected,
+		if (!rte_atomic_compare_exchange_strong_explicit(&param->state, &expected,
 						 HWS_AGE_CANDIDATE_INSIDE_RING,
-						 false, __ATOMIC_RELAXED,
-						 __ATOMIC_RELAXED) &&
+						 rte_memory_order_relaxed,
+						 rte_memory_order_relaxed) &&
 		    expected == HWS_AGE_AGED_OUT_REPORTED)
-			__atomic_store_n(&param->state, HWS_AGE_CANDIDATE,
-					 __ATOMIC_RELAXED);
+			rte_atomic_store_explicit(&param->state, HWS_AGE_CANDIDATE,
+					 rte_memory_order_relaxed);
 	}
 	return 0;
 }
@@ -976,9 +975,9 @@ mlx5_hws_age_context_get(struct mlx5_priv *priv, uint32_t idx)
 	uint16_t expected = HWS_AGE_AGED_OUT_NOT_REPORTED;
 
 	MLX5_ASSERT(param != NULL);
-	if (__atomic_compare_exchange_n(&param->state, &expected,
-					HWS_AGE_AGED_OUT_REPORTED, false,
-					__ATOMIC_RELAXED, __ATOMIC_RELAXED))
+	if (rte_atomic_compare_exchange_strong_explicit(&param->state, &expected,
+					HWS_AGE_AGED_OUT_REPORTED,
+					rte_memory_order_relaxed, rte_memory_order_relaxed))
 		return param->context;
 	switch (expected) {
 	case HWS_AGE_FREE:
@@ -990,8 +989,8 @@ mlx5_hws_age_context_get(struct mlx5_priv *priv, uint32_t idx)
 		mlx5_hws_age_param_free(priv, param->own_cnt_index, ipool, idx);
 		break;
 	case HWS_AGE_CANDIDATE_INSIDE_RING:
-		__atomic_store_n(&param->state, HWS_AGE_CANDIDATE,
-				 __ATOMIC_RELAXED);
+		rte_atomic_store_explicit(&param->state, HWS_AGE_CANDIDATE,
+				 rte_memory_order_relaxed);
 		break;
 	case HWS_AGE_CANDIDATE:
 		/*

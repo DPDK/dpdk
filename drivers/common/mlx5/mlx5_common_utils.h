@@ -29,7 +29,7 @@ struct mlx5_list;
  */
 struct mlx5_list_entry {
 	LIST_ENTRY(mlx5_list_entry) next; /* Entry pointers in the list. */
-	alignas(8) uint32_t ref_cnt; /* 0 means, entry is invalid. */
+	alignas(8) RTE_ATOMIC(uint32_t) ref_cnt; /* 0 means, entry is invalid. */
 	uint32_t lcore_idx;
 	union {
 		struct mlx5_list_entry *gentry;
@@ -39,7 +39,7 @@ struct mlx5_list_entry {
 
 struct __rte_cache_aligned mlx5_list_cache {
 	LIST_HEAD(mlx5_list_head, mlx5_list_entry) h;
-	uint32_t inv_cnt; /* Invalid entries counter. */
+	RTE_ATOMIC(uint32_t) inv_cnt; /* Invalid entries counter. */
 };
 
 /**
@@ -111,7 +111,7 @@ struct mlx5_list_const {
 struct mlx5_list_inconst {
 	rte_rwlock_t lock; /* read/write lock. */
 	volatile uint32_t gen_cnt; /* List modification may update it. */
-	volatile uint32_t count; /* number of entries in list. */
+	volatile RTE_ATOMIC(uint32_t) count; /* number of entries in list. */
 	struct mlx5_list_cache *cache[MLX5_LIST_MAX];
 	/* Lcore cache, last index is the global cache. */
 };

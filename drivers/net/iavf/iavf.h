@@ -238,8 +238,8 @@ struct iavf_info {
 	struct virtchnl_vlan_caps vlan_v2_caps;
 	uint64_t supported_rxdid;
 	uint8_t *proto_xtr; /* proto xtr type for all queues */
-	volatile enum virtchnl_ops pend_cmd; /* pending command not finished */
-	uint32_t pend_cmd_count;
+	volatile RTE_ATOMIC(enum virtchnl_ops) pend_cmd; /* pending command not finished */
+	RTE_ATOMIC(uint32_t) pend_cmd_count;
 	int cmd_retval; /* return value of the cmd response from PF */
 	uint8_t *aq_resp; /* buffer to store the adminq response from PF */
 
@@ -456,13 +456,13 @@ static inline int
 _atomic_set_cmd(struct iavf_info *vf, enum virtchnl_ops ops)
 {
 	enum virtchnl_ops op_unk = VIRTCHNL_OP_UNKNOWN;
-	int ret = __atomic_compare_exchange(&vf->pend_cmd, &op_unk, &ops,
-			0, __ATOMIC_ACQUIRE, __ATOMIC_ACQUIRE);
+	int ret = rte_atomic_compare_exchange_strong_explicit(&vf->pend_cmd, &op_unk, ops,
+			rte_memory_order_acquire, rte_memory_order_acquire);
 
 	if (!ret)
 		PMD_DRV_LOG(ERR, "There is incomplete cmd %d", vf->pend_cmd);
 
-	__atomic_store_n(&vf->pend_cmd_count, 1, __ATOMIC_RELAXED);
+	rte_atomic_store_explicit(&vf->pend_cmd_count, 1, rte_memory_order_relaxed);
 
 	return !ret;
 }
@@ -472,13 +472,13 @@ static inline int
 _atomic_set_async_response_cmd(struct iavf_info *vf, enum virtchnl_ops ops)
 {
 	enum virtchnl_ops op_unk = VIRTCHNL_OP_UNKNOWN;
-	int ret = __atomic_compare_exchange(&vf->pend_cmd, &op_unk, &ops,
-			0, __ATOMIC_ACQUIRE, __ATOMIC_ACQUIRE);
+	int ret = rte_atomic_compare_exchange_strong_explicit(&vf->pend_cmd, &op_unk, ops,
+			rte_memory_order_acquire, rte_memory_order_acquire);
 
 	if (!ret)
 		PMD_DRV_LOG(ERR, "There is incomplete cmd %d", vf->pend_cmd);
 
-	__atomic_store_n(&vf->pend_cmd_count, 2, __ATOMIC_RELAXED);
+	rte_atomic_store_explicit(&vf->pend_cmd_count, 2, rte_memory_order_relaxed);
 
 	return !ret;
 }

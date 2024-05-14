@@ -2055,9 +2055,9 @@ mlx5_flow_meter_create(struct rte_eth_dev *dev, uint32_t meter_id,
 			NULL, "Meter profile id not valid.");
 	/* Meter policy must exist. */
 	if (params->meter_policy_id == priv->sh->mtrmng->def_policy_id) {
-		__atomic_fetch_add
+		rte_atomic_fetch_add_explicit
 			(&priv->sh->mtrmng->def_policy_ref_cnt,
-			1, __ATOMIC_RELAXED);
+			1, rte_memory_order_relaxed);
 		domain_bitmap = MLX5_MTR_ALL_DOMAIN_BIT;
 		if (!priv->sh->config.dv_esw_en)
 			domain_bitmap &= ~MLX5_MTR_DOMAIN_TRANSFER_BIT;
@@ -2137,7 +2137,7 @@ mlx5_flow_meter_create(struct rte_eth_dev *dev, uint32_t meter_id,
 	fm->is_enable = params->meter_enable;
 	fm->shared = !!shared;
 	fm->color_aware = !!params->use_prev_mtr_color;
-	__atomic_fetch_add(&fm->profile->ref_cnt, 1, __ATOMIC_RELAXED);
+	rte_atomic_fetch_add_explicit(&fm->profile->ref_cnt, 1, rte_memory_order_relaxed);
 	if (params->meter_policy_id == priv->sh->mtrmng->def_policy_id) {
 		fm->def_policy = 1;
 		fm->flow_ipool = mlx5_ipool_create(&flow_ipool_cfg);
@@ -2166,7 +2166,7 @@ mlx5_flow_meter_create(struct rte_eth_dev *dev, uint32_t meter_id,
 	}
 	fm->active_state = params->meter_enable;
 	if (mtr_policy)
-		__atomic_fetch_add(&mtr_policy->ref_cnt, 1, __ATOMIC_RELAXED);
+		rte_atomic_fetch_add_explicit(&mtr_policy->ref_cnt, 1, rte_memory_order_relaxed);
 	return 0;
 error:
 	mlx5_flow_destroy_mtr_tbls(dev, fm);
@@ -2271,8 +2271,8 @@ mlx5_flow_meter_hws_create(struct rte_eth_dev *dev, uint32_t meter_id,
 					  NULL, "Failed to create devx meter.");
 	}
 	fm->active_state = params->meter_enable;
-	__atomic_fetch_add(&fm->profile->ref_cnt, 1, __ATOMIC_RELAXED);
-	__atomic_fetch_add(&policy->ref_cnt, 1, __ATOMIC_RELAXED);
+	rte_atomic_fetch_add_explicit(&fm->profile->ref_cnt, 1, rte_memory_order_relaxed);
+	rte_atomic_fetch_add_explicit(&policy->ref_cnt, 1, rte_memory_order_relaxed);
 	return 0;
 }
 #endif
@@ -2295,7 +2295,7 @@ mlx5_flow_meter_params_flush(struct rte_eth_dev *dev,
 	if (fmp == NULL)
 		return -1;
 	/* Update dependencies. */
-	__atomic_fetch_sub(&fmp->ref_cnt, 1, __ATOMIC_RELAXED);
+	rte_atomic_fetch_sub_explicit(&fmp->ref_cnt, 1, rte_memory_order_relaxed);
 	fm->profile = NULL;
 	/* Remove from list. */
 	if (!priv->sh->meter_aso_en) {
@@ -2313,15 +2313,15 @@ mlx5_flow_meter_params_flush(struct rte_eth_dev *dev,
 	}
 	mlx5_flow_destroy_mtr_tbls(dev, fm);
 	if (fm->def_policy)
-		__atomic_fetch_sub(&priv->sh->mtrmng->def_policy_ref_cnt,
-				1, __ATOMIC_RELAXED);
+		rte_atomic_fetch_sub_explicit(&priv->sh->mtrmng->def_policy_ref_cnt,
+				1, rte_memory_order_relaxed);
 	if (priv->sh->meter_aso_en) {
 		if (!fm->def_policy) {
 			mtr_policy = mlx5_flow_meter_policy_find(dev,
 						fm->policy_id, NULL);
 			if (mtr_policy)
-				__atomic_fetch_sub(&mtr_policy->ref_cnt,
-						1, __ATOMIC_RELAXED);
+				rte_atomic_fetch_sub_explicit(&mtr_policy->ref_cnt,
+						1, rte_memory_order_relaxed);
 			fm->policy_id = 0;
 		}
 		fm->def_policy = 0;
@@ -2424,13 +2424,13 @@ mlx5_flow_meter_hws_destroy(struct rte_eth_dev *dev, uint32_t meter_id,
 					  RTE_MTR_ERROR_TYPE_UNSPECIFIED,
 					  NULL, "Meter object is being used.");
 	/* Destroy the meter profile. */
-	__atomic_fetch_sub(&fm->profile->ref_cnt,
-						1, __ATOMIC_RELAXED);
+	rte_atomic_fetch_sub_explicit(&fm->profile->ref_cnt,
+						1, rte_memory_order_relaxed);
 	/* Destroy the meter policy. */
 	policy = mlx5_flow_meter_policy_find(dev,
 			fm->policy_id, NULL);
-	__atomic_fetch_sub(&policy->ref_cnt,
-						1, __ATOMIC_RELAXED);
+	rte_atomic_fetch_sub_explicit(&policy->ref_cnt,
+						1, rte_memory_order_relaxed);
 	memset(fm, 0, sizeof(struct mlx5_flow_meter_info));
 	return 0;
 }

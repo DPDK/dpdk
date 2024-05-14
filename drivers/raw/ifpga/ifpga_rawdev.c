@@ -73,7 +73,7 @@ static const struct rte_pci_id pci_ifpga_map[] = {
 
 static struct ifpga_rawdev ifpga_rawdevices[IFPGA_RAWDEV_NUM];
 
-static int ifpga_monitor_refcnt;
+static RTE_ATOMIC(int) ifpga_monitor_refcnt;
 static rte_thread_t ifpga_monitor_start_thread;
 
 static struct ifpga_rawdev *
@@ -512,7 +512,7 @@ ifpga_rawdev_gsd_handle(__rte_unused void *param)
 	int gsd_enable, ret;
 #define MS 1000
 
-	while (__atomic_load_n(&ifpga_monitor_refcnt, __ATOMIC_RELAXED)) {
+	while (rte_atomic_load_explicit(&ifpga_monitor_refcnt, rte_memory_order_relaxed)) {
 		gsd_enable = 0;
 		for (i = 0; i < IFPGA_RAWDEV_NUM; i++) {
 			ifpga_rdev = &ifpga_rawdevices[i];
@@ -549,7 +549,7 @@ ifpga_monitor_start_func(struct ifpga_rawdev *dev)
 
 	dev->poll_enabled = 1;
 
-	if (!__atomic_fetch_add(&ifpga_monitor_refcnt, 1, __ATOMIC_RELAXED)) {
+	if (!rte_atomic_fetch_add_explicit(&ifpga_monitor_refcnt, 1, rte_memory_order_relaxed)) {
 		ret = rte_thread_create_internal_control(&ifpga_monitor_start_thread,
 				"ifpga-mon", ifpga_rawdev_gsd_handle, NULL);
 		if (ret != 0) {
@@ -573,7 +573,8 @@ ifpga_monitor_stop_func(struct ifpga_rawdev *dev)
 
 	dev->poll_enabled = 0;
 
-	if (!(__atomic_fetch_sub(&ifpga_monitor_refcnt, 1, __ATOMIC_RELAXED) - 1) &&
+	if (!(rte_atomic_fetch_sub_explicit(&ifpga_monitor_refcnt, 1,
+			rte_memory_order_relaxed) - 1) &&
 		ifpga_monitor_start_thread.opaque_id != 0) {
 		ret = pthread_cancel((pthread_t)ifpga_monitor_start_thread.opaque_id);
 		if (ret)

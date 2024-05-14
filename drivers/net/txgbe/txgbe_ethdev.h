@@ -372,7 +372,7 @@ struct txgbe_adapter {
 	/* For RSS reta table update */
 	uint8_t rss_reta_updated;
 
-	uint32_t link_thread_running;
+	RTE_ATOMIC(uint32_t) link_thread_running;
 	rte_thread_t link_thread_tid;
 };
 

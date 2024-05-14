@@ -300,8 +300,9 @@ cpfl_get_mbuf_alloc_failed_stats(struct rte_eth_dev *dev)
 
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
 		cpfl_rxq = dev->data->rx_queues[i];
-		mbuf_alloc_failed += __atomic_load_n(&cpfl_rxq->base.rx_stats.mbuf_alloc_failed,
-						     __ATOMIC_RELAXED);
+		mbuf_alloc_failed +=
+			rte_atomic_load_explicit(&cpfl_rxq->base.rx_stats.mbuf_alloc_failed,
+						 rte_memory_order_relaxed);
 	}
 
 	return mbuf_alloc_failed;
@@ -349,7 +350,8 @@ cpfl_reset_mbuf_alloc_failed_stats(struct rte_eth_dev *dev)
 
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
 		cpfl_rxq = dev->data->rx_queues[i];
-		__atomic_store_n(&cpfl_rxq->base.rx_stats.mbuf_alloc_failed, 0, __ATOMIC_RELAXED);
+		rte_atomic_store_explicit(&cpfl_rxq->base.rx_stats.mbuf_alloc_failed, 0,
+					  rte_memory_order_relaxed);
 	}
 }
 

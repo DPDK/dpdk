@@ -279,7 +279,9 @@ mlx5_vdpa_mem_register(struct mlx5_vdpa_priv *priv)
 	uint8_t mode = 0;
 	int ret = -rte_errno;
 	uint32_t i, thrd_idx, data[1];
-	uint32_t remaining_cnt = 0, err_cnt = 0, task_num = 0;
+	RTE_ATOMIC(uint32_t) remaining_cnt = 0;
+	RTE_ATOMIC(uint32_t) err_cnt = 0;
+	uint32_t task_num = 0;
 	struct rte_vhost_memory *mem = mlx5_vdpa_vhost_mem_regions_prepare
 			(priv->vid, &mode, &priv->vmem_info.size,
 			&priv->vmem_info.gcd, &priv->vmem_info.entries_num);

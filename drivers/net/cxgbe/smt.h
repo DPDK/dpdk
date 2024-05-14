@@ -23,7 +23,7 @@ struct smt_entry {
 	u16 pfvf;
 	u16 hw_idx;
 	u8 src_mac[RTE_ETHER_ADDR_LEN];
-	u32 refcnt;
+	RTE_ATOMIC(u32) refcnt;
 	rte_spinlock_t lock;
 };
 

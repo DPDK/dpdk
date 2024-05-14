@@ -135,7 +135,7 @@ struct gve_dma_mem {
 static inline void *
 gve_alloc_dma_mem(struct gve_dma_mem *mem, u64 size)
 {
-	static uint16_t gve_dma_memzone_id;
+	static RTE_ATOMIC(uint16_t) gve_dma_memzone_id;
 	const struct rte_memzone *mz = NULL;
 	char z_name[RTE_MEMZONE_NAMESIZE];
 
@@ -143,7 +143,7 @@ gve_alloc_dma_mem(struct gve_dma_mem *mem, u64 size)
 		return NULL;
 
 	snprintf(z_name, sizeof(z_name), "gve_dma_%u",
-		 __atomic_fetch_add(&gve_dma_memzone_id, 1, __ATOMIC_RELAXED));
+		 rte_atomic_fetch_add_explicit(&gve_dma_memzone_id, 1, rte_memory_order_relaxed));
 	mz = rte_memzone_reserve_aligned(z_name, size, SOCKET_ID_ANY,
 					 RTE_MEMZONE_IOVA_CONTIG,
 					 PAGE_SIZE);

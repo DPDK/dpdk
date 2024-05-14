@@ -142,7 +142,7 @@ cpuwork_thread(void *param)
 		else if (desc->op == SKELDMA_OP_FILL)
 			do_fill(desc);
 
-		__atomic_fetch_add(&hw->completed_count, 1, __ATOMIC_RELEASE);
+		rte_atomic_fetch_add_explicit(&hw->completed_count, 1, rte_memory_order_release);
 		(void)rte_ring_enqueue(hw->desc_completed, (void *)desc);
 	}
 
@@ -335,7 +335,8 @@ skeldma_vchan_status(const struct rte_dma_dev *dev,
 	RTE_SET_USED(vchan);
 
 	*status = RTE_DMA_VCHAN_IDLE;
-	if (hw->submitted_count != __atomic_load_n(&hw->completed_count, __ATOMIC_ACQUIRE)
+	if (hw->submitted_count != rte_atomic_load_explicit(&hw->completed_count,
+			rte_memory_order_acquire)
 			|| hw->zero_req_count == 0)
 		*status = RTE_DMA_VCHAN_ACTIVE;
 	return 0;

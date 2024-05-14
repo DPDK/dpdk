@@ -313,7 +313,7 @@ mlx5_flow_tunnel_ip_check(const struct rte_flow_item *item __rte_unused,
 }
 
 static inline struct mlx5_hlist *
-flow_dv_hlist_prepare(struct mlx5_dev_ctx_shared *sh, struct mlx5_hlist **phl,
+flow_dv_hlist_prepare(struct mlx5_dev_ctx_shared *sh, RTE_ATOMIC(struct mlx5_hlist *) *phl,
 		     const char *name, uint32_t size, bool direct_key,
 		     bool lcores_share, void *ctx,
 		     mlx5_list_create_cb cb_create,
@@ -327,7 +327,7 @@ flow_dv_hlist_prepare(struct mlx5_dev_ctx_shared *sh, struct mlx5_hlist **phl,
 	struct mlx5_hlist *expected = NULL;
 	char s[MLX5_NAME_SIZE];
 
-	hl = __atomic_load_n(phl, __ATOMIC_SEQ_CST);
+	hl = rte_atomic_load_explicit(phl, rte_memory_order_seq_cst);
 	if (likely(hl))
 		return hl;
 	snprintf(s, sizeof(s), "%s_%s", sh->ibdev_name, name);
@@ -341,11 +341,11 @@ flow_dv_hlist_prepare(struct mlx5_dev_ctx_shared *sh, struct mlx5_hlist **phl,
 				   "cannot allocate resource memory");
 		return NULL;
 	}
-	if (!__atomic_compare_exchange_n(phl, &expected, hl, false,
-					 __ATOMIC_SEQ_CST,
-					 __ATOMIC_SEQ_CST)) {
+	if (!rte_atomic_compare_exchange_strong_explicit(phl, &expected, hl,
+					 rte_memory_order_seq_cst,
+					 rte_memory_order_seq_cst)) {
 		mlx5_hlist_destroy(hl);
-		hl = __atomic_load_n(phl, __ATOMIC_SEQ_CST);
+		hl = rte_atomic_load_explicit(phl, rte_memory_order_seq_cst);
 	}
 	return hl;
 }
@@ -6139,8 +6139,8 @@ flow_dv_modify_match_cb(void *tool_ctx __rte_unused,
 static struct mlx5_indexed_pool *
 flow_dv_modify_ipool_get(struct mlx5_dev_ctx_shared *sh, uint8_t index)
 {
-	struct mlx5_indexed_pool *ipool = __atomic_load_n
-				     (&sh->mdh_ipools[index], __ATOMIC_SEQ_CST);
+	struct mlx5_indexed_pool *ipool = rte_atomic_load_explicit
+				     (&sh->mdh_ipools[index], rte_memory_order_seq_cst);
 
 	if (!ipool) {
 		struct mlx5_indexed_pool *expected = NULL;
@@ -6165,13 +6165,13 @@ flow_dv_modify_ipool_get(struct mlx5_dev_ctx_shared *sh, uint8_t index)
 		ipool = mlx5_ipool_create(&cfg);
 		if (!ipool)
 			return NULL;
-		if (!__atomic_compare_exchange_n(&sh->mdh_ipools[index],
-						 &expected, ipool, false,
-						 __ATOMIC_SEQ_CST,
-						 __ATOMIC_SEQ_CST)) {
+		if (!rte_atomic_compare_exchange_strong_explicit(&sh->mdh_ipools[index],
+						 &expected, ipool,
+						 rte_memory_order_seq_cst,
+						 rte_memory_order_seq_cst)) {
 			mlx5_ipool_destroy(ipool);
-			ipool = __atomic_load_n(&sh->mdh_ipools[index],
-						__ATOMIC_SEQ_CST);
+			ipool = rte_atomic_load_explicit(&sh->mdh_ipools[index],
+						rte_memory_order_seq_cst);
 		}
 	}
 	return ipool;
@@ -6992,9 +6992,9 @@ flow_dv_counter_remove_from_age(struct rte_eth_dev *dev,
 
 	age_info = GET_PORT_AGE_INFO(priv);
 	age_param = flow_dv_counter_idx_get_age(dev, counter);
-	if (!__atomic_compare_exchange_n(&age_param->state, &expected,
-					 AGE_FREE, false, __ATOMIC_RELAXED,
-					 __ATOMIC_RELAXED)) {
+	if (!rte_atomic_compare_exchange_strong_explicit(&age_param->state, &expected,
+					 AGE_FREE, rte_memory_order_relaxed,
+					 rte_memory_order_relaxed)) {
 		/**
 		 * We need the lock even it is age timeout,
 		 * since counter may still in process.
@@ -7002,7 +7002,7 @@ flow_dv_counter_remove_from_age(struct rte_eth_dev *dev,
 		rte_spinlock_lock(&age_info->aged_sl);
 		TAILQ_REMOVE(&age_info->aged_counters, cnt, next);
 		rte_spinlock_unlock(&age_info->aged_sl);
-		__atomic_store_n(&age_param->state, AGE_FREE, __ATOMIC_RELAXED);
+		rte_atomic_store_explicit(&age_param->state, AGE_FREE, rte_memory_order_relaxed);
 	}
 }
 
@@ -7038,8 +7038,8 @@ flow_dv_counter_free(struct rte_eth_dev *dev, uint32_t counter)
 		 * indirect action API, shared info is 1 before the reduction,
 		 * so this condition is failed and function doesn't return here.
 		 */
-		if (__atomic_fetch_sub(&cnt->shared_info.refcnt, 1,
-				       __ATOMIC_RELAXED) - 1)
+		if (rte_atomic_fetch_sub_explicit(&cnt->shared_info.refcnt, 1,
+				       rte_memory_order_relaxed) - 1)
 			return;
 	}
 	cnt->pool = pool;
@@ -10203,8 +10203,8 @@ flow_dev_geneve_tlv_option_resource_register(struct rte_eth_dev *dev,
 			geneve_opt_v->option_type &&
 			geneve_opt_resource->length ==
 			geneve_opt_v->option_len) {
-			__atomic_fetch_add(&geneve_opt_resource->refcnt, 1,
-					   __ATOMIC_RELAXED);
+			rte_atomic_fetch_add_explicit(&geneve_opt_resource->refcnt, 1,
+					   rte_memory_order_relaxed);
 		} else {
 			ret = rte_flow_error_set(error, ENOMEM,
 				RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
@@ -10243,8 +10243,8 @@ flow_dev_geneve_tlv_option_resource_register(struct rte_eth_dev *dev,
 		geneve_opt_resource->option_class = geneve_opt_v->option_class;
 		geneve_opt_resource->option_type = geneve_opt_v->option_type;
 		geneve_opt_resource->length = geneve_opt_v->option_len;
-		__atomic_store_n(&geneve_opt_resource->refcnt, 1,
-				__ATOMIC_RELAXED);
+		rte_atomic_store_explicit(&geneve_opt_resource->refcnt, 1,
+				rte_memory_order_relaxed);
 	}
 exit:
 	rte_spinlock_unlock(&sh->geneve_tlv_opt_sl);
@@ -12192,8 +12192,8 @@ flow_dv_translate_create_counter(struct rte_eth_dev *dev,
 		(void *)(uintptr_t)(dev_flow->flow_idx);
 	age_param->timeout = age->timeout;
 	age_param->port_id = dev->data->port_id;
-	__atomic_store_n(&age_param->sec_since_last_hit, 0, __ATOMIC_RELAXED);
-	__atomic_store_n(&age_param->state, AGE_CANDIDATE, __ATOMIC_RELAXED);
+	rte_atomic_store_explicit(&age_param->sec_since_last_hit, 0, rte_memory_order_relaxed);
+	rte_atomic_store_explicit(&age_param->state, AGE_CANDIDATE, rte_memory_order_relaxed);
 	return counter;
 }
 
@@ -13241,9 +13241,9 @@ flow_dv_aso_age_remove_from_age(struct rte_eth_dev *dev,
 	uint16_t expected = AGE_CANDIDATE;
 
 	age_info = GET_PORT_AGE_INFO(priv);
-	if (!__atomic_compare_exchange_n(&age_param->state, &expected,
-					 AGE_FREE, false, __ATOMIC_RELAXED,
-					 __ATOMIC_RELAXED)) {
+	if (!rte_atomic_compare_exchange_strong_explicit(&age_param->state, &expected,
+					 AGE_FREE, rte_memory_order_relaxed,
+					 rte_memory_order_relaxed)) {
 		/**
 		 * We need the lock even it is age timeout,
 		 * since age action may still in process.
@@ -13251,7 +13251,7 @@ flow_dv_aso_age_remove_from_age(struct rte_eth_dev *dev,
 		rte_spinlock_lock(&age_info->aged_sl);
 		LIST_REMOVE(age, next);
 		rte_spinlock_unlock(&age_info->aged_sl);
-		__atomic_store_n(&age_param->state, AGE_FREE, __ATOMIC_RELAXED);
+		rte_atomic_store_explicit(&age_param->state, AGE_FREE, rte_memory_order_relaxed);
 	}
 }
 
@@ -13275,7 +13275,7 @@ flow_dv_aso_age_release(struct rte_eth_dev *dev, uint32_t age_idx)
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_aso_age_mng *mng = priv->sh->aso_age_mng;
 	struct mlx5_aso_age_action *age = flow_aso_age_get_by_idx(dev, age_idx);
-	uint32_t ret = __atomic_fetch_sub(&age->refcnt, 1, __ATOMIC_RELAXED) - 1;
+	uint32_t ret = rte_atomic_fetch_sub_explicit(&age->refcnt, 1, rte_memory_order_relaxed) - 1;
 
 	if (!ret) {
 		flow_dv_aso_age_remove_from_age(dev, age);
@@ -13451,7 +13451,7 @@ flow_dv_aso_age_alloc(struct rte_eth_dev *dev, struct rte_flow_error *error)
 			return 0; /* 0 is an error. */
 		}
 	}
-	__atomic_store_n(&age_free->refcnt, 1, __ATOMIC_RELAXED);
+	rte_atomic_store_explicit(&age_free->refcnt, 1, rte_memory_order_relaxed);
 	return pool->index | ((age_free->offset + 1) << 16);
 }
 
@@ -13481,10 +13481,10 @@ flow_dv_aso_age_params_init(struct rte_eth_dev *dev,
 	aso_age->age_params.context = context;
 	aso_age->age_params.timeout = timeout;
 	aso_age->age_params.port_id = dev->data->port_id;
-	__atomic_store_n(&aso_age->age_params.sec_since_last_hit, 0,
-			 __ATOMIC_RELAXED);
-	__atomic_store_n(&aso_age->age_params.state, AGE_CANDIDATE,
-			 __ATOMIC_RELAXED);
+	rte_atomic_store_explicit(&aso_age->age_params.sec_since_last_hit, 0,
+			 rte_memory_order_relaxed);
+	rte_atomic_store_explicit(&aso_age->age_params.state, AGE_CANDIDATE,
+			 rte_memory_order_relaxed);
 }
 
 static void
@@ -13666,12 +13666,12 @@ flow_dv_aso_ct_dev_release(struct rte_eth_dev *dev, uint32_t idx)
 	uint32_t ret;
 	struct mlx5_aso_ct_action *ct = flow_aso_ct_get_by_dev_idx(dev, idx);
 	enum mlx5_aso_ct_state state =
-			__atomic_load_n(&ct->state, __ATOMIC_RELAXED);
+			rte_atomic_load_explicit(&ct->state, rte_memory_order_relaxed);
 
 	/* Cannot release when CT is in the ASO SQ. */
 	if (state == ASO_CONNTRACK_WAIT || state == ASO_CONNTRACK_QUERY)
 		return -1;
-	ret = __atomic_fetch_sub(&ct->refcnt, 1, __ATOMIC_RELAXED) - 1;
+	ret = rte_atomic_fetch_sub_explicit(&ct->refcnt, 1, rte_memory_order_relaxed) - 1;
 	if (!ret) {
 		if (ct->dr_action_orig) {
 #ifdef HAVE_MLX5_DR_ACTION_ASO_CT
@@ -13861,7 +13861,7 @@ flow_dv_aso_ct_alloc(struct rte_eth_dev *dev, struct rte_flow_error *error)
 	pool = container_of(ct, struct mlx5_aso_ct_pool, actions[ct->offset]);
 	ct_idx = MLX5_MAKE_CT_IDX(pool->index, ct->offset);
 	/* 0: inactive, 1: created, 2+: used by flows. */
-	__atomic_store_n(&ct->refcnt, 1, __ATOMIC_RELAXED);
+	rte_atomic_store_explicit(&ct->refcnt, 1, rte_memory_order_relaxed);
 	reg_c = mlx5_flow_get_reg_id(dev, MLX5_ASO_CONNTRACK, 0, error);
 	if (!ct->dr_action_orig) {
 #ifdef HAVE_MLX5_DR_ACTION_ASO_CT
@@ -14813,8 +14813,8 @@ flow_dv_translate(struct rte_eth_dev *dev,
 			age_act = flow_aso_age_get_by_idx(dev, owner_idx);
 			if (flow->age == 0) {
 				flow->age = owner_idx;
-				__atomic_fetch_add(&age_act->refcnt, 1,
-						   __ATOMIC_RELAXED);
+				rte_atomic_fetch_add_explicit(&age_act->refcnt, 1,
+						   rte_memory_order_relaxed);
 			}
 			age_act_pos = actions_n++;
 			action_flags |= MLX5_FLOW_ACTION_AGE;
@@ -14851,9 +14851,9 @@ flow_dv_translate(struct rte_eth_dev *dev,
 			} else {
 				if (flow->counter == 0) {
 					flow->counter = owner_idx;
-					__atomic_fetch_add
+					rte_atomic_fetch_add_explicit
 						(&cnt_act->shared_info.refcnt,
-						 1, __ATOMIC_RELAXED);
+						 1, rte_memory_order_relaxed);
 				}
 				/* Save information first, will apply later. */
 				action_flags |= MLX5_FLOW_ACTION_COUNT;
@@ -15185,8 +15185,8 @@ flow_dv_translate(struct rte_eth_dev *dev,
 				flow->indirect_type =
 						MLX5_INDIRECT_ACTION_TYPE_CT;
 				flow->ct = owner_idx;
-				__atomic_fetch_add(&ct->refcnt, 1,
-						   __ATOMIC_RELAXED);
+				rte_atomic_fetch_add_explicit(&ct->refcnt, 1,
+						   rte_memory_order_relaxed);
 			}
 			actions_n++;
 			action_flags |= MLX5_FLOW_ACTION_CT;
@@ -15855,7 +15855,7 @@ flow_dv_shared_rss_action_release(struct rte_eth_dev *dev, uint32_t srss)
 
 	shared_rss = mlx5_ipool_get
 			(priv->sh->ipool[MLX5_IPOOL_RSS_SHARED_ACTIONS], srss);
-	__atomic_fetch_sub(&shared_rss->refcnt, 1, __ATOMIC_RELAXED);
+	rte_atomic_fetch_sub_explicit(&shared_rss->refcnt, 1, rte_memory_order_relaxed);
 }
 
 void
@@ -16038,8 +16038,8 @@ flow_dev_geneve_tlv_option_resource_release(struct mlx5_dev_ctx_shared *sh)
 				sh->geneve_tlv_option_resource;
 	rte_spinlock_lock(&sh->geneve_tlv_opt_sl);
 	if (geneve_opt_resource) {
-		if (!(__atomic_fetch_sub(&geneve_opt_resource->refcnt, 1,
-					 __ATOMIC_RELAXED) - 1)) {
+		if (!(rte_atomic_fetch_sub_explicit(&geneve_opt_resource->refcnt, 1,
+					 rte_memory_order_relaxed) - 1)) {
 			claim_zero(mlx5_devx_cmd_destroy
 					(geneve_opt_resource->obj));
 			mlx5_free(sh->geneve_tlv_option_resource);
@@ -16448,7 +16448,7 @@ __flow_dv_action_rss_create(struct rte_eth_dev *dev,
 	/* Update queue with indirect table queue memoyr. */
 	origin->queue = shared_rss->ind_tbl->queues;
 	rte_spinlock_init(&shared_rss->action_rss_sl);
-	__atomic_fetch_add(&shared_rss->refcnt, 1, __ATOMIC_RELAXED);
+	rte_atomic_fetch_add_explicit(&shared_rss->refcnt, 1, rte_memory_order_relaxed);
 	rte_spinlock_lock(&priv->shared_act_sl);
 	ILIST_INSERT(priv->sh->ipool[MLX5_IPOOL_RSS_SHARED_ACTIONS],
 		     &priv->rss_shared_actions, idx, shared_rss, next);
@@ -16494,9 +16494,9 @@ __flow_dv_action_rss_release(struct rte_eth_dev *dev, uint32_t idx,
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
 					  "invalid shared action");
-	if (!__atomic_compare_exchange_n(&shared_rss->refcnt, &old_refcnt,
-					 0, 0, __ATOMIC_ACQUIRE,
-					 __ATOMIC_RELAXED))
+	if (!rte_atomic_compare_exchange_strong_explicit(&shared_rss->refcnt, &old_refcnt,
+					 0, rte_memory_order_acquire,
+					 rte_memory_order_relaxed))
 		return rte_flow_error_set(error, EBUSY,
 					  RTE_FLOW_ERROR_TYPE_ACTION,
 					  NULL,
@@ -16632,10 +16632,10 @@ flow_dv_action_destroy(struct rte_eth_dev *dev,
 		return __flow_dv_action_rss_release(dev, idx, error);
 	case MLX5_INDIRECT_ACTION_TYPE_COUNT:
 		cnt = flow_dv_counter_get_by_idx(dev, idx, NULL);
-		if (!__atomic_compare_exchange_n(&cnt->shared_info.refcnt,
-						 &no_flow_refcnt, 1, false,
-						 __ATOMIC_ACQUIRE,
-						 __ATOMIC_RELAXED))
+		if (!rte_atomic_compare_exchange_strong_explicit(&cnt->shared_info.refcnt,
+						 &no_flow_refcnt, 1,
+						 rte_memory_order_acquire,
+						 rte_memory_order_relaxed))
 			return rte_flow_error_set(error, EBUSY,
 						  RTE_FLOW_ERROR_TYPE_ACTION,
 						  NULL,
@@ -17595,13 +17595,13 @@ flow_dv_action_query(struct rte_eth_dev *dev,
 	case MLX5_INDIRECT_ACTION_TYPE_AGE:
 		age_param = &flow_aso_age_get_by_idx(dev, idx)->age_params;
 		resp = data;
-		resp->aged = __atomic_load_n(&age_param->state,
-					      __ATOMIC_RELAXED) == AGE_TMOUT ?
+		resp->aged = rte_atomic_load_explicit(&age_param->state,
+					      rte_memory_order_relaxed) == AGE_TMOUT ?
 									  1 : 0;
 		resp->sec_since_last_hit_valid = !resp->aged;
 		if (resp->sec_since_last_hit_valid)
-			resp->sec_since_last_hit = __atomic_load_n
-			     (&age_param->sec_since_last_hit, __ATOMIC_RELAXED);
+			resp->sec_since_last_hit = rte_atomic_load_explicit
+			     (&age_param->sec_since_last_hit, rte_memory_order_relaxed);
 		return 0;
 	case MLX5_INDIRECT_ACTION_TYPE_COUNT:
 		return flow_dv_query_count(dev, idx, data, error);
@@ -17678,12 +17678,12 @@ flow_dv_query_age(struct rte_eth_dev *dev, struct rte_flow *flow,
 					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 					  NULL, "age data not available");
 	}
-	resp->aged = __atomic_load_n(&age_param->state, __ATOMIC_RELAXED) ==
+	resp->aged = rte_atomic_load_explicit(&age_param->state, rte_memory_order_relaxed) ==
 				     AGE_TMOUT ? 1 : 0;
 	resp->sec_since_last_hit_valid = !resp->aged;
 	if (resp->sec_since_last_hit_valid)
-		resp->sec_since_last_hit = __atomic_load_n
-			     (&age_param->sec_since_last_hit, __ATOMIC_RELAXED);
+		resp->sec_since_last_hit = rte_atomic_load_explicit
+			     (&age_param->sec_since_last_hit, rte_memory_order_relaxed);
 	return 0;
 }
 

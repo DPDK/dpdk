@@ -948,7 +948,7 @@ virtio_user_handle_ctrl_msg_split(struct virtio_user_dev *dev, struct vring *vri
 static inline int
 desc_is_avail(struct vring_packed_desc *desc, bool wrap_counter)
 {
-	uint16_t flags = __atomic_load_n(&desc->flags, __ATOMIC_ACQUIRE);
+	uint16_t flags = rte_atomic_load_explicit(&desc->flags, rte_memory_order_acquire);
 
 	return wrap_counter == !!(flags & VRING_PACKED_DESC_F_AVAIL) &&
 		wrap_counter != !!(flags & VRING_PACKED_DESC_F_USED);
@@ -1037,8 +1037,8 @@ virtio_user_handle_cq_packed(struct virtio_user_dev *dev, uint16_t queue_idx)
 		if (vq->used_wrap_counter)
 			flags |= VRING_PACKED_DESC_F_AVAIL_USED;
 
-		__atomic_store_n(&vring->desc[vq->used_idx].flags, flags,
-				 __ATOMIC_RELEASE);
+		rte_atomic_store_explicit(&vring->desc[vq->used_idx].flags, flags,
+				 rte_memory_order_release);
 
 		vq->used_idx += n_descs;
 		if (vq->used_idx >= dev->queue_size) {
@@ -1057,9 +1057,9 @@ virtio_user_handle_cq_split(struct virtio_user_dev *dev, uint16_t queue_idx)
 	struct vring *vring = &dev->vrings.split[queue_idx];
 
 	/* Consume avail ring, using used ring idx as first one */
-	while (__atomic_load_n(&vring->used->idx, __ATOMIC_RELAXED)
+	while (rte_atomic_load_explicit(&vring->used->idx, rte_memory_order_relaxed)
 	       != vring->avail->idx) {
-		avail_idx = __atomic_load_n(&vring->used->idx, __ATOMIC_RELAXED)
+		avail_idx = rte_atomic_load_explicit(&vring->used->idx, rte_memory_order_relaxed)
 			    & (vring->num - 1);
 		desc_idx = vring->avail->ring[avail_idx];
 
@@ -1070,7 +1070,7 @@ virtio_user_handle_cq_split(struct virtio_user_dev *dev, uint16_t queue_idx)
 		uep->id = desc_idx;
 		uep->len = n_descs;
 
-		__atomic_fetch_add(&vring->used->idx, 1, __ATOMIC_RELAXED);
+		rte_atomic_fetch_add_explicit(&vring->used->idx, 1, rte_memory_order_relaxed);
 	}
 }
 

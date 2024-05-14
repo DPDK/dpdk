@@ -3673,8 +3673,8 @@ dequeue_enc_one_op_cb(struct acc_queue *q, struct rte_bbdev_enc_op **ref_op,
 
 	desc_idx = acc_desc_idx_tail(q, *dequeued_descs);
 	desc = q->ring_addr + desc_idx;
-	atom_desc.atom_hdr = __atomic_load_n((uint64_t *)desc,
-			__ATOMIC_RELAXED);
+	atom_desc.atom_hdr = rte_atomic_load_explicit((uint64_t __rte_atomic *)desc,
+			rte_memory_order_relaxed);
 
 	/* Check fdone bit */
 	if (!(atom_desc.rsp.val & ACC_FDONE))
@@ -3728,8 +3728,8 @@ dequeue_enc_one_op_tb(struct acc_queue *q, struct rte_bbdev_enc_op **ref_op,
 	uint16_t current_dequeued_descs = 0, descs_in_tb;
 
 	desc = acc_desc_tail(q, *dequeued_descs);
-	atom_desc.atom_hdr = __atomic_load_n((uint64_t *)desc,
-			__ATOMIC_RELAXED);
+	atom_desc.atom_hdr = rte_atomic_load_explicit((uint64_t __rte_atomic *)desc,
+			rte_memory_order_relaxed);
 
 	/* Check fdone bit */
 	if (!(atom_desc.rsp.val & ACC_FDONE))
@@ -3742,8 +3742,8 @@ dequeue_enc_one_op_tb(struct acc_queue *q, struct rte_bbdev_enc_op **ref_op,
 	/* Check if last CB in TB is ready to dequeue (and thus
 	 * the whole TB) - checking sdone bit. If not return.
 	 */
-	atom_desc.atom_hdr = __atomic_load_n((uint64_t *)last_desc,
-			__ATOMIC_RELAXED);
+	atom_desc.atom_hdr = rte_atomic_load_explicit((uint64_t __rte_atomic *)last_desc,
+			rte_memory_order_relaxed);
 	if (!(atom_desc.rsp.val & ACC_SDONE))
 		return -1;
 
@@ -3755,8 +3755,8 @@ dequeue_enc_one_op_tb(struct acc_queue *q, struct rte_bbdev_enc_op **ref_op,
 
 	while (i < descs_in_tb) {
 		desc = acc_desc_tail(q, *dequeued_descs);
-		atom_desc.atom_hdr = __atomic_load_n((uint64_t *)desc,
-				__ATOMIC_RELAXED);
+		atom_desc.atom_hdr = rte_atomic_load_explicit((uint64_t __rte_atomic *)desc,
+				rte_memory_order_relaxed);
 		rsp.val = atom_desc.rsp.val;
 		rte_bbdev_log_debug("Resp. desc %p: %x descs %d cbs %d\n",
 				desc, rsp.val, descs_in_tb, desc->req.numCBs);
@@ -3793,8 +3793,8 @@ dequeue_dec_one_op_cb(struct rte_bbdev_queue_data *q_data,
 	struct rte_bbdev_dec_op *op;
 
 	desc = acc_desc_tail(q, dequeued_cbs);
-	atom_desc.atom_hdr = __atomic_load_n((uint64_t *)desc,
-			__ATOMIC_RELAXED);
+	atom_desc.atom_hdr = rte_atomic_load_explicit((uint64_t __rte_atomic *)desc,
+			rte_memory_order_relaxed);
 
 	/* Check fdone bit */
 	if (!(atom_desc.rsp.val & ACC_FDONE))
@@ -3846,8 +3846,8 @@ dequeue_ldpc_dec_one_op_cb(struct rte_bbdev_queue_data *q_data,
 	struct rte_bbdev_dec_op *op;
 
 	desc = acc_desc_tail(q, dequeued_cbs);
-	atom_desc.atom_hdr = __atomic_load_n((uint64_t *)desc,
-			__ATOMIC_RELAXED);
+	atom_desc.atom_hdr = rte_atomic_load_explicit((uint64_t __rte_atomic *)desc,
+			rte_memory_order_relaxed);
 
 	/* Check fdone bit */
 	if (!(atom_desc.rsp.val & ACC_FDONE))
@@ -3902,8 +3902,8 @@ dequeue_dec_one_op_tb(struct acc_queue *q, struct rte_bbdev_dec_op **ref_op,
 	uint8_t cbs_in_tb = 1, cb_idx = 0;
 
 	desc = acc_desc_tail(q, dequeued_cbs);
-	atom_desc.atom_hdr = __atomic_load_n((uint64_t *)desc,
-			__ATOMIC_RELAXED);
+	atom_desc.atom_hdr = rte_atomic_load_explicit((uint64_t __rte_atomic *)desc,
+			rte_memory_order_relaxed);
 
 	/* Check fdone bit */
 	if (!(atom_desc.rsp.val & ACC_FDONE))
@@ -3919,8 +3919,8 @@ dequeue_dec_one_op_tb(struct acc_queue *q, struct rte_bbdev_dec_op **ref_op,
 	/* Check if last CB in TB is ready to dequeue (and thus
 	 * the whole TB) - checking sdone bit. If not return.
 	 */
-	atom_desc.atom_hdr = __atomic_load_n((uint64_t *)last_desc,
-			__ATOMIC_RELAXED);
+	atom_desc.atom_hdr = rte_atomic_load_explicit((uint64_t __rte_atomic *)last_desc,
+			rte_memory_order_relaxed);
 	if (!(atom_desc.rsp.val & ACC_SDONE))
 		return -1;
 
@@ -3930,8 +3930,8 @@ dequeue_dec_one_op_tb(struct acc_queue *q, struct rte_bbdev_dec_op **ref_op,
 	/* Read remaining CBs if exists */
 	while (cb_idx < cbs_in_tb) {
 		desc = acc_desc_tail(q, dequeued_cbs);
-		atom_desc.atom_hdr = __atomic_load_n((uint64_t *)desc,
-				__ATOMIC_RELAXED);
+		atom_desc.atom_hdr = rte_atomic_load_explicit((uint64_t __rte_atomic *)desc,
+				rte_memory_order_relaxed);
 		rsp.val = atom_desc.rsp.val;
 		rte_bbdev_log_debug("Resp. desc %p: %x r %d c %d\n",
 						desc, rsp.val, cb_idx, cbs_in_tb);

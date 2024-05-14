@@ -416,7 +416,7 @@ mlx5_rxq_releasable(struct rte_eth_dev *dev, uint16_t idx)
 		rte_errno = EINVAL;
 		return -rte_errno;
 	}
-	return (__atomic_load_n(&rxq->refcnt, __ATOMIC_RELAXED) == 1);
+	return (rte_atomic_load_explicit(&rxq->refcnt, rte_memory_order_relaxed) == 1);
 }
 
 /* Fetches and drops all SW-owned and error CQEs to synchronize CQ. */
@@ -1319,7 +1319,7 @@ mlx5_mprq_buf_init(struct rte_mempool *mp, void *opaque_arg,
 
 	memset(_m, 0, sizeof(*buf));
 	buf->mp = mp;
-	__atomic_store_n(&buf->refcnt, 1, __ATOMIC_RELAXED);
+	rte_atomic_store_explicit(&buf->refcnt, 1, rte_memory_order_relaxed);
 	for (j = 0; j != strd_n; ++j) {
 		shinfo = &buf->shinfos[j];
 		shinfo->free_cb = mlx5_mprq_buf_free_cb;
@@ -2037,7 +2037,7 @@ mlx5_rxq_ref(struct rte_eth_dev *dev, uint16_t idx)
 	struct mlx5_rxq_priv *rxq = mlx5_rxq_get(dev, idx);
 
 	if (rxq != NULL)
-		__atomic_fetch_add(&rxq->refcnt, 1, __ATOMIC_RELAXED);
+		rte_atomic_fetch_add_explicit(&rxq->refcnt, 1, rte_memory_order_relaxed);
 	return rxq;
 }
 
@@ -2059,7 +2059,7 @@ mlx5_rxq_deref(struct rte_eth_dev *dev, uint16_t idx)
 
 	if (rxq == NULL)
 		return 0;
-	return __atomic_fetch_sub(&rxq->refcnt, 1, __ATOMIC_RELAXED) - 1;
+	return rte_atomic_fetch_sub_explicit(&rxq->refcnt, 1, rte_memory_order_relaxed) - 1;
 }
 
 /**
@@ -2138,7 +2138,7 @@ mlx5_ext_rxq_ref(struct rte_eth_dev *dev, uint16_t idx)
 {
 	struct mlx5_external_rxq *rxq = mlx5_ext_rxq_get(dev, idx);
 
-	__atomic_fetch_add(&rxq->refcnt, 1, __ATOMIC_RELAXED);
+	rte_atomic_fetch_add_explicit(&rxq->refcnt, 1, rte_memory_order_relaxed);
 	return rxq;
 }
 
@@ -2158,7 +2158,7 @@ mlx5_ext_rxq_deref(struct rte_eth_dev *dev, uint16_t idx)
 {
 	struct mlx5_external_rxq *rxq = mlx5_ext_rxq_get(dev, idx);
 
-	return __atomic_fetch_sub(&rxq->refcnt, 1, __ATOMIC_RELAXED) - 1;
+	return rte_atomic_fetch_sub_explicit(&rxq->refcnt, 1, rte_memory_order_relaxed) - 1;
 }
 
 /**
@@ -2447,8 +2447,8 @@ mlx5_ind_table_obj_get(struct rte_eth_dev *dev, const uint16_t *queues,
 		    (memcmp(ind_tbl->queues, queues,
 			    ind_tbl->queues_n * sizeof(ind_tbl->queues[0]))
 		     == 0)) {
-			__atomic_fetch_add(&ind_tbl->refcnt, 1,
-					   __ATOMIC_RELAXED);
+			rte_atomic_fetch_add_explicit(&ind_tbl->refcnt, 1,
+					   rte_memory_order_relaxed);
 			break;
 		}
 	}
@@ -2479,7 +2479,7 @@ mlx5_ind_table_obj_release(struct rte_eth_dev *dev,
 	unsigned int ret;
 
 	rte_rwlock_write_lock(&priv->ind_tbls_lock);
-	ret = __atomic_fetch_sub(&ind_tbl->refcnt, 1, __ATOMIC_RELAXED) - 1;
+	ret = rte_atomic_fetch_sub_explicit(&ind_tbl->refcnt, 1, rte_memory_order_relaxed) - 1;
 	if (!ret)
 		LIST_REMOVE(ind_tbl, next);
 	rte_rwlock_write_unlock(&priv->ind_tbls_lock);
@@ -2561,7 +2561,7 @@ mlx5_ind_table_obj_setup(struct rte_eth_dev *dev,
 		}
 		return ret;
 	}
-	__atomic_fetch_add(&ind_tbl->refcnt, 1, __ATOMIC_RELAXED);
+	rte_atomic_fetch_add_explicit(&ind_tbl->refcnt, 1, rte_memory_order_relaxed);
 	return 0;
 }
 
@@ -2626,7 +2626,7 @@ mlx5_ind_table_obj_check_standalone(struct rte_eth_dev *dev __rte_unused,
 {
 	uint32_t refcnt;
 
-	refcnt = __atomic_load_n(&ind_tbl->refcnt, __ATOMIC_RELAXED);
+	refcnt = rte_atomic_load_explicit(&ind_tbl->refcnt, rte_memory_order_relaxed);
 	if (refcnt <= 1)
 		return 0;
 	/*
@@ -3258,8 +3258,8 @@ rte_pmd_mlx5_external_rx_queue_id_map(uint16_t port_id, uint16_t dpdk_idx,
 	ext_rxq = mlx5_external_rx_queue_get_validate(port_id, dpdk_idx);
 	if (ext_rxq == NULL)
 		return -rte_errno;
-	if (!__atomic_compare_exchange_n(&ext_rxq->refcnt, &unmapped, 1, false,
-					 __ATOMIC_RELAXED, __ATOMIC_RELAXED)) {
+	if (!rte_atomic_compare_exchange_strong_explicit(&ext_rxq->refcnt, &unmapped, 1,
+					 rte_memory_order_relaxed, rte_memory_order_relaxed)) {
 		if (ext_rxq->hw_id != hw_idx) {
 			DRV_LOG(ERR, "Port %u external RxQ index %u "
 				"is already mapped to HW index (requesting is "
@@ -3296,8 +3296,8 @@ rte_pmd_mlx5_external_rx_queue_id_unmap(uint16_t port_id, uint16_t dpdk_idx)
 		rte_errno = EINVAL;
 		return -rte_errno;
 	}
-	if (!__atomic_compare_exchange_n(&ext_rxq->refcnt, &mapped, 0, false,
-					 __ATOMIC_RELAXED, __ATOMIC_RELAXED)) {
+	if (!rte_atomic_compare_exchange_strong_explicit(&ext_rxq->refcnt, &mapped, 0,
+					 rte_memory_order_relaxed, rte_memory_order_relaxed)) {
 		DRV_LOG(ERR, "Port %u external RxQ index %u doesn't exist.",
 			port_id, dpdk_idx);
 		rte_errno = EINVAL;

@@ -2025,7 +2025,7 @@ iavf_rx_scan_hw_ring_flex_rxd(struct iavf_rx_queue *rxq,
 			s[j] = rte_le_to_cpu_16(rxdp[j].wb.status_error0);
 
 		/* This barrier is to order loads of different words in the descriptor */
-		rte_atomic_thread_fence(__ATOMIC_ACQUIRE);
+		rte_atomic_thread_fence(rte_memory_order_acquire);
 
 		/* Compute how many contiguous DD bits were set */
 		for (j = 0, nb_dd = 0; j < IAVF_LOOK_AHEAD; j++) {
@@ -2152,7 +2152,7 @@ iavf_rx_scan_hw_ring(struct iavf_rx_queue *rxq, struct rte_mbuf **rx_pkts, uint1
 		}
 
 		/* This barrier is to order loads of different words in the descriptor */
-		rte_atomic_thread_fence(__ATOMIC_ACQUIRE);
+		rte_atomic_thread_fence(rte_memory_order_acquire);
 
 		/* Compute how many contiguous DD bits were set */
 		for (j = 0, nb_dd = 0; j < IAVF_LOOK_AHEAD; j++) {

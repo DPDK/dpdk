@@ -97,7 +97,7 @@
 #define IDPF_RX_SPLIT_BUFQ2_ID	2
 
 struct idpf_rx_stats {
-	uint64_t mbuf_alloc_failed;
+	RTE_ATOMIC(uint64_t) mbuf_alloc_failed;
 };
 
 struct idpf_rx_queue {

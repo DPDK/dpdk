@@ -86,7 +86,7 @@ mlx5_flex_alloc(struct mlx5_priv *priv)
 			MLX5_ASSERT(!item->refcnt);
 			MLX5_ASSERT(!item->devx_fp);
 			item->devx_fp = NULL;
-			__atomic_store_n(&item->refcnt, 0, __ATOMIC_RELEASE);
+			rte_atomic_store_explicit(&item->refcnt, 0, rte_memory_order_release);
 			priv->flex_item_map |= 1u << idx;
 		}
 	}
@@ -107,7 +107,7 @@ mlx5_flex_free(struct mlx5_priv *priv, struct mlx5_flex_item *item)
 		MLX5_ASSERT(!item->refcnt);
 		MLX5_ASSERT(!item->devx_fp);
 		item->devx_fp = NULL;
-		__atomic_store_n(&item->refcnt, 0, __ATOMIC_RELEASE);
+		rte_atomic_store_explicit(&item->refcnt, 0, rte_memory_order_release);
 		priv->flex_item_map &= ~(1u << idx);
 		rte_spinlock_unlock(&priv->flex_item_sl);
 	}
@@ -379,7 +379,7 @@ mlx5_flex_acquire_index(struct rte_eth_dev *dev,
 		return ret;
 	}
 	if (acquire)
-		__atomic_fetch_add(&flex->refcnt, 1, __ATOMIC_RELEASE);
+		rte_atomic_fetch_add_explicit(&flex->refcnt, 1, rte_memory_order_release);
 	return ret;
 }
 
@@ -414,7 +414,7 @@ mlx5_flex_release_index(struct rte_eth_dev *dev,
 		rte_errno = -EINVAL;
 		return -EINVAL;
 	}
-	__atomic_fetch_sub(&flex->refcnt, 1, __ATOMIC_RELEASE);
+	rte_atomic_fetch_sub_explicit(&flex->refcnt, 1, rte_memory_order_release);
 	return 0;
 }
 
@@ -1337,7 +1337,7 @@ flow_dv_item_create(struct rte_eth_dev *dev,
 	}
 	flex->devx_fp = container_of(ent, struct mlx5_flex_parser_devx, entry);
 	/* Mark initialized flex item valid. */
-	__atomic_fetch_add(&flex->refcnt, 1, __ATOMIC_RELEASE);
+	rte_atomic_fetch_add_explicit(&flex->refcnt, 1, rte_memory_order_release);
 	return (struct rte_flow_item_flex_handle *)flex;
 
 error:
@@ -1378,8 +1378,8 @@ flow_dv_item_release(struct rte_eth_dev *dev,
 					  RTE_FLOW_ERROR_TYPE_ITEM, NULL,
 					  "invalid flex item handle value");
 	}
-	if (!__atomic_compare_exchange_n(&flex->refcnt, &old_refcnt, 0, 0,
-					 __ATOMIC_ACQUIRE, __ATOMIC_RELAXED)) {
+	if (!rte_atomic_compare_exchange_strong_explicit(&flex->refcnt, &old_refcnt, 0,
+					 rte_memory_order_acquire, rte_memory_order_relaxed)) {
 		rte_spinlock_unlock(&priv->flex_item_sl);
 		return rte_flow_error_set(error, EBUSY,
 					  RTE_FLOW_ERROR_TYPE_ITEM, NULL,

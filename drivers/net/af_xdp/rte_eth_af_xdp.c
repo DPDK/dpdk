@@ -116,7 +116,7 @@ struct xsk_umem_info {
 	const struct rte_memzone *mz;
 	struct rte_mempool *mb_pool;
 	void *buffer;
-	uint8_t refcnt;
+	RTE_ATOMIC(uint8_t) refcnt;
 	uint32_t max_xsks;
 };
 
@@ -995,7 +995,8 @@ eth_dev_close(struct rte_eth_dev *dev)
 			break;
 		xsk_socket__delete(rxq->xsk);
 
-		if (__atomic_fetch_sub(&rxq->umem->refcnt, 1, __ATOMIC_ACQUIRE) - 1 == 0)
+		if (rte_atomic_fetch_sub_explicit(&rxq->umem->refcnt, 1,
+				rte_memory_order_acquire) - 1 == 0)
 			xdp_umem_destroy(rxq->umem);
 
 		/* free pkt_tx_queue */
@@ -1097,8 +1098,8 @@ get_shared_umem(struct pkt_rx_queue *rxq, const char *ifname,
 					ret = -1;
 					goto out;
 				}
-				if (__atomic_load_n(&internals->rx_queues[i].umem->refcnt,
-						    __ATOMIC_ACQUIRE)) {
+				if (rte_atomic_load_explicit(&internals->rx_queues[i].umem->refcnt,
+						    rte_memory_order_acquire)) {
 					*umem = internals->rx_queues[i].umem;
 					goto out;
 				}
@@ -1131,11 +1132,11 @@ xsk_umem_info *xdp_umem_configure(struct pmd_internals *internals,
 			return NULL;
 
 		if (umem != NULL &&
-			__atomic_load_n(&umem->refcnt, __ATOMIC_ACQUIRE) <
+			rte_atomic_load_explicit(&umem->refcnt, rte_memory_order_acquire) <
 					umem->max_xsks) {
 			AF_XDP_LOG(INFO, "%s,qid%i sharing UMEM\n",
 					internals->if_name, rxq->xsk_queue_idx);
-			__atomic_fetch_add(&umem->refcnt, 1, __ATOMIC_ACQUIRE);
+			rte_atomic_fetch_add_explicit(&umem->refcnt, 1, rte_memory_order_acquire);
 		}
 	}
 
@@ -1177,7 +1178,7 @@ xsk_umem_info *xdp_umem_configure(struct pmd_internals *internals,
 						mb_pool->name, umem->max_xsks);
 		}
 
-		__atomic_store_n(&umem->refcnt, 1, __ATOMIC_RELEASE);
+		rte_atomic_store_explicit(&umem->refcnt, 1, rte_memory_order_release);
 	}
 
 	return umem;
@@ -1606,7 +1607,8 @@ xsk_configure(struct pmd_internals *internals, struct pkt_rx_queue *rxq,
 	if (rxq->umem == NULL)
 		return -ENOMEM;
 	txq->umem = rxq->umem;
-	reserve_before = __atomic_load_n(&rxq->umem->refcnt, __ATOMIC_ACQUIRE) <= 1;
+	reserve_before = rte_atomic_load_explicit(&rxq->umem->refcnt,
+			rte_memory_order_acquire) <= 1;
 
 #if defined(XDP_UMEM_UNALIGNED_CHUNK_FLAG)
 	ret = rte_pktmbuf_alloc_bulk(rxq->umem->mb_pool, fq_bufs, reserve_size);
@@ -1723,7 +1725,7 @@ xsk_configure(struct pmd_internals *internals, struct pkt_rx_queue *rxq,
 out_xsk:
 	xsk_socket__delete(rxq->xsk);
 out_umem:
-	if (__atomic_fetch_sub(&rxq->umem->refcnt, 1, __ATOMIC_ACQUIRE) - 1 == 0)
+	if (rte_atomic_fetch_sub_explicit(&rxq->umem->refcnt, 1, rte_memory_order_acquire) - 1 == 0)
 		xdp_umem_destroy(rxq->umem);
 
 	return ret;

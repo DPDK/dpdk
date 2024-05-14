@@ -101,7 +101,7 @@ struct __rte_cache_aligned mlx5_hws_cnt_pool {
 	LIST_ENTRY(mlx5_hws_cnt_pool) next;
 	alignas(RTE_CACHE_LINE_SIZE) struct mlx5_hws_cnt_pool_cfg cfg;
 	alignas(RTE_CACHE_LINE_SIZE) struct mlx5_hws_cnt_dcs_mng dcs_mng;
-	alignas(RTE_CACHE_LINE_SIZE) uint32_t query_gen;
+	alignas(RTE_CACHE_LINE_SIZE) RTE_ATOMIC(uint32_t) query_gen;
 	struct mlx5_hws_cnt *pool;
 	struct mlx5_hws_cnt_raw_data_mng *raw_mng;
 	struct rte_ring *reuse_list;
@@ -134,10 +134,10 @@ enum {
 
 /* HWS counter age parameter. */
 struct __rte_cache_aligned mlx5_hws_age_param {
-	uint32_t timeout; /* Aging timeout in seconds (atomically accessed). */
-	uint32_t sec_since_last_hit;
+	RTE_ATOMIC(uint32_t) timeout; /* Aging timeout in seconds (atomically accessed). */
+	RTE_ATOMIC(uint32_t) sec_since_last_hit;
 	/* Time in seconds since last hit (atomically accessed). */
-	uint16_t state; /* AGE state (atomically accessed). */
+	RTE_ATOMIC(uint16_t) state; /* AGE state (atomically accessed). */
 	uint64_t accumulator_last_hits;
 	/* Last total value of hits for comparing. */
 	uint64_t accumulator_hits;
@@ -426,7 +426,7 @@ mlx5_hws_cnt_pool_put(struct mlx5_hws_cnt_pool *cpool, uint32_t *queue,
 	iidx = mlx5_hws_cnt_iidx(hpool, *cnt_id);
 	hpool->pool[iidx].in_used = false;
 	hpool->pool[iidx].query_gen_when_free =
-		__atomic_load_n(&hpool->query_gen, __ATOMIC_RELAXED);
+		rte_atomic_load_explicit(&hpool->query_gen, rte_memory_order_relaxed);
 	if (likely(queue != NULL) && cpool->cfg.host_cpool == NULL)
 		qcache = hpool->cache->qcache[*queue];
 	if (unlikely(qcache == NULL)) {

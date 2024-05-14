@@ -28,7 +28,7 @@ struct vmbus_message {
  */
 
 struct vmbus_mon_trig {
-	uint32_t	pending;
+	RTE_ATOMIC(uint32_t)	pending;
 	uint32_t	armed;
 } __rte_packed;
 

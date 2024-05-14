@@ -3119,7 +3119,8 @@ vrb_dequeue_enc_one_op_cb(struct acc_queue *q, struct rte_bbdev_enc_op **ref_op,
 
 	desc_idx = acc_desc_idx_tail(q, *dequeued_descs);
 	desc = q->ring_addr + desc_idx;
-	atom_desc.atom_hdr = __atomic_load_n((uint64_t *)desc, __ATOMIC_RELAXED);
+	atom_desc.atom_hdr = rte_atomic_load_explicit((uint64_t __rte_atomic *)desc,
+			rte_memory_order_relaxed);
 
 	if (*dequeued_ops + desc->req.numCBs > max_requested_ops)
 		return -1;
@@ -3157,7 +3158,8 @@ vrb2_dequeue_ldpc_enc_one_op_tb(struct acc_queue *q, struct rte_bbdev_enc_op **r
 	struct rte_bbdev_enc_op *op;
 
 	desc = acc_desc_tail(q, *dequeued_descs);
-	atom_desc.atom_hdr = __atomic_load_n((uint64_t *)desc, __ATOMIC_RELAXED);
+	atom_desc.atom_hdr = rte_atomic_load_explicit((uint64_t __rte_atomic *)desc,
+			rte_memory_order_relaxed);
 
 	/* Check fdone bit. */
 	if (!(atom_desc.rsp.val & ACC_FDONE))
@@ -3192,7 +3194,8 @@ vrb_dequeue_enc_one_op_tb(struct acc_queue *q, struct rte_bbdev_enc_op **ref_op,
 	uint16_t current_dequeued_descs = 0, descs_in_tb;
 
 	desc = acc_desc_tail(q, *dequeued_descs);
-	atom_desc.atom_hdr = __atomic_load_n((uint64_t *)desc, __ATOMIC_RELAXED);
+	atom_desc.atom_hdr = rte_atomic_load_explicit((uint64_t __rte_atomic *)desc,
+			rte_memory_order_relaxed);
 
 	if (*dequeued_ops + 1 > max_requested_ops)
 		return -1;
@@ -3208,7 +3211,8 @@ vrb_dequeue_enc_one_op_tb(struct acc_queue *q, struct rte_bbdev_enc_op **ref_op,
 	/* Check if last CB in TB is ready to dequeue (and thus
 	 * the whole TB) - checking sdone bit. If not return.
 	 */
-	atom_desc.atom_hdr = __atomic_load_n((uint64_t *)last_desc, __ATOMIC_RELAXED);
+	atom_desc.atom_hdr = rte_atomic_load_explicit((uint64_t __rte_atomic *)last_desc,
+			rte_memory_order_relaxed);
 	if (!(atom_desc.rsp.val & ACC_SDONE))
 		return -1;
 
@@ -3220,7 +3224,8 @@ vrb_dequeue_enc_one_op_tb(struct acc_queue *q, struct rte_bbdev_enc_op **ref_op,
 
 	while (i < descs_in_tb) {
 		desc = acc_desc_tail(q, *dequeued_descs);
-		atom_desc.atom_hdr = __atomic_load_n((uint64_t *)desc, __ATOMIC_RELAXED);
+		atom_desc.atom_hdr = rte_atomic_load_explicit((uint64_t __rte_atomic *)desc,
+				rte_memory_order_relaxed);
 		rsp.val = atom_desc.rsp.val;
 
 		vrb_update_dequeued_operation(desc, rsp, &op->status, aq_dequeued, true, false);
@@ -3246,7 +3251,8 @@ vrb_dequeue_dec_one_op_cb(struct rte_bbdev_queue_data *q_data,
 	struct rte_bbdev_dec_op *op;
 
 	desc = acc_desc_tail(q, dequeued_cbs);
-	atom_desc.atom_hdr = __atomic_load_n((uint64_t *)desc, __ATOMIC_RELAXED);
+	atom_desc.atom_hdr = rte_atomic_load_explicit((uint64_t __rte_atomic *)desc,
+			rte_memory_order_relaxed);
 
 	/* Check fdone bit. */
 	if (!(atom_desc.rsp.val & ACC_FDONE))
@@ -3290,7 +3296,8 @@ vrb_dequeue_ldpc_dec_one_op_cb(struct rte_bbdev_queue_data *q_data,
 	struct rte_bbdev_dec_op *op;
 
 	desc = acc_desc_tail(q, dequeued_cbs);
-	atom_desc.atom_hdr = __atomic_load_n((uint64_t *)desc, __ATOMIC_RELAXED);
+	atom_desc.atom_hdr = rte_atomic_load_explicit((uint64_t __rte_atomic *)desc,
+			rte_memory_order_relaxed);
 
 	/* Check fdone bit. */
 	if (!(atom_desc.rsp.val & ACC_FDONE))
@@ -3346,7 +3353,8 @@ vrb_dequeue_dec_one_op_tb(struct acc_queue *q, struct rte_bbdev_dec_op **ref_op,
 	uint32_t tb_crc_check = 0;
 
 	desc = acc_desc_tail(q, dequeued_cbs);
-	atom_desc.atom_hdr = __atomic_load_n((uint64_t *)desc, __ATOMIC_RELAXED);
+	atom_desc.atom_hdr = rte_atomic_load_explicit((uint64_t __rte_atomic *)desc,
+			rte_memory_order_relaxed);
 
 	/* Check fdone bit. */
 	if (!(atom_desc.rsp.val & ACC_FDONE))
@@ -3362,7 +3370,8 @@ vrb_dequeue_dec_one_op_tb(struct acc_queue *q, struct rte_bbdev_dec_op **ref_op,
 	/* Check if last CB in TB is ready to dequeue (and thus the whole TB) - checking sdone bit.
 	 * If not return.
 	 */
-	atom_desc.atom_hdr = __atomic_load_n((uint64_t *)last_desc, __ATOMIC_RELAXED);
+	atom_desc.atom_hdr = rte_atomic_load_explicit((uint64_t __rte_atomic *)last_desc,
+			rte_memory_order_relaxed);
 	if (!(atom_desc.rsp.val & ACC_SDONE))
 		return -1;
 
@@ -3372,7 +3381,8 @@ vrb_dequeue_dec_one_op_tb(struct acc_queue *q, struct rte_bbdev_dec_op **ref_op,
 	/* Read remaining CBs if exists. */
 	while (cb_idx < cbs_in_tb) {
 		desc = acc_desc_tail(q, dequeued_cbs);
-		atom_desc.atom_hdr = __atomic_load_n((uint64_t *)desc, __ATOMIC_RELAXED);
+		atom_desc.atom_hdr = rte_atomic_load_explicit((uint64_t __rte_atomic *)desc,
+				rte_memory_order_relaxed);
 		rsp.val = atom_desc.rsp.val;
 		rte_bbdev_log_debug("Resp. desc %p: %x %x %x", desc,
 				rsp.val, desc->rsp.add_info_0,
@@ -3790,7 +3800,8 @@ vrb_dequeue_fft_one_op(struct rte_bbdev_queue_data *q_data,
 	struct rte_bbdev_fft_op *op;
 
 	desc = acc_desc_tail(q, dequeued_cbs);
-	atom_desc.atom_hdr = __atomic_load_n((uint64_t *)desc, __ATOMIC_RELAXED);
+	atom_desc.atom_hdr = rte_atomic_load_explicit((uint64_t __rte_atomic *)desc,
+			rte_memory_order_relaxed);
 
 	/* Check fdone bit */
 	if (!(atom_desc.rsp.val & ACC_FDONE))
@@ -4116,7 +4127,8 @@ dequeue_mldts_one_op(struct rte_bbdev_queue_data *q_data,
 	uint8_t descs_in_op, i;
 
 	desc = acc_desc_tail(q, dequeued_ops);
-	atom_desc.atom_hdr = __atomic_load_n((uint64_t *)desc, __ATOMIC_RELAXED);
+	atom_desc.atom_hdr = rte_atomic_load_explicit((uint64_t __rte_atomic *)desc,
+			rte_memory_order_relaxed);
 
 	/* Check fdone bit. */
 	if (!(atom_desc.rsp.val & ACC_FDONE))
@@ -4127,7 +4139,8 @@ dequeue_mldts_one_op(struct rte_bbdev_queue_data *q_data,
 		/* Get last CB. */
 		last_desc = acc_desc_tail(q, dequeued_ops + descs_in_op - 1);
 		/* Check if last op is ready to dequeue by checking fdone bit. If not exit. */
-		atom_desc.atom_hdr = __atomic_load_n((uint64_t *)last_desc, __ATOMIC_RELAXED);
+		atom_desc.atom_hdr = rte_atomic_load_explicit((uint64_t __rte_atomic *)last_desc,
+				rte_memory_order_relaxed);
 		if (!(atom_desc.rsp.val & ACC_FDONE))
 			return -1;
 #ifdef RTE_LIBRTE_BBDEV_DEBUG
@@ -4137,8 +4150,9 @@ dequeue_mldts_one_op(struct rte_bbdev_queue_data *q_data,
 		for (i = 1; i < descs_in_op - 1; i++) {
 			last_desc = q->ring_addr + ((q->sw_ring_tail + dequeued_ops + i)
 					& q->sw_ring_wrap_mask);
-			atom_desc.atom_hdr = __atomic_load_n((uint64_t *)last_desc,
-					__ATOMIC_RELAXED);
+			atom_desc.atom_hdr = rte_atomic_load_explicit(
+					(uint64_t __rte_atomic *)last_desc,
+					rte_memory_order_relaxed);
 			if (!(atom_desc.rsp.val & ACC_FDONE))
 				return -1;
 		}
@@ -4154,7 +4168,8 @@ dequeue_mldts_one_op(struct rte_bbdev_queue_data *q_data,
 
 	for (i = 0; i < descs_in_op; i++) {
 		desc = q->ring_addr + ((q->sw_ring_tail + dequeued_ops + i) & q->sw_ring_wrap_mask);
-		atom_desc.atom_hdr = __atomic_load_n((uint64_t *)desc, __ATOMIC_RELAXED);
+		atom_desc.atom_hdr = rte_atomic_load_explicit((uint64_t __rte_atomic *)desc,
+				rte_memory_order_relaxed);
 		rsp.val = atom_desc.rsp.val;
 
 		vrb_update_dequeued_operation(desc, rsp, &op->status, aq_dequeued, true, false);

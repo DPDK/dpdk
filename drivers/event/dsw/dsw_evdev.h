@@ -227,9 +227,9 @@ struct __rte_cache_aligned dsw_port {
 	alignas(RTE_CACHE_LINE_SIZE) struct rte_ring *ctl_in_ring;
 
 	/* Estimate of current port load. */
-	alignas(RTE_CACHE_LINE_SIZE) int16_t load;
+	alignas(RTE_CACHE_LINE_SIZE) RTE_ATOMIC(int16_t) load;
 	/* Estimate of flows currently migrating to this port. */
-	alignas(RTE_CACHE_LINE_SIZE) int32_t immigration_load;
+	alignas(RTE_CACHE_LINE_SIZE) RTE_ATOMIC(int32_t) immigration_load;
 };
 
 struct dsw_queue {
@@ -252,7 +252,7 @@ struct dsw_evdev {
 	uint8_t num_queues;
 	int32_t max_inflight;
 
-	alignas(RTE_CACHE_LINE_SIZE) int32_t credits_on_loan;
+	alignas(RTE_CACHE_LINE_SIZE) RTE_ATOMIC(int32_t) credits_on_loan;
 };
 
 #define DSW_CTL_PAUS_REQ (0)

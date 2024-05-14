@@ -621,7 +621,7 @@ struct ice_adapter {
 	struct ice_fdir_prof_info fdir_prof_info[ICE_MAX_PTGS];
 	struct ice_rss_prof_info rss_prof_info[ICE_MAX_PTGS];
 	/* True if DCF state of the associated PF is on */
-	bool dcf_state_on;
+	RTE_ATOMIC(bool) dcf_state_on;
 	/* Set bit if the engine is disabled */
 	unsigned long disabled_engine_mask;
 	struct ice_parser *psr;

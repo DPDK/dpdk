@@ -179,7 +179,7 @@ struct __rte_cache_aligned mlx5_txq_data {
 __extension__
 struct mlx5_txq_ctrl {
 	LIST_ENTRY(mlx5_txq_ctrl) next; /* Pointer to the next element. */
-	uint32_t refcnt; /* Reference counter. */
+	RTE_ATOMIC(uint32_t) refcnt; /* Reference counter. */
 	unsigned int socket; /* CPU socket ID for allocations. */
 	bool is_hairpin; /* Whether TxQ type is Hairpin. */
 	unsigned int max_inline_data; /* Max inline data. */
@@ -339,8 +339,8 @@ mlx5_txpp_convert_tx_ts(struct mlx5_dev_ctx_shared *sh, uint64_t mts)
 		 * the service thread, data should be re-read.
 		 */
 		rte_compiler_barrier();
-		ci = __atomic_load_n(&sh->txpp.ts.ci_ts, __ATOMIC_RELAXED);
-		ts = __atomic_load_n(&sh->txpp.ts.ts, __ATOMIC_RELAXED);
+		ci = rte_atomic_load_explicit(&sh->txpp.ts.ci_ts, rte_memory_order_relaxed);
+		ts = rte_atomic_load_explicit(&sh->txpp.ts.ts, rte_memory_order_relaxed);
 		rte_compiler_barrier();
 		if (!((ts ^ ci) << (64 - MLX5_CQ_INDEX_WIDTH)))
 			break;
@@ -350,8 +350,8 @@ mlx5_txpp_convert_tx_ts(struct mlx5_dev_ctx_shared *sh, uint64_t mts)
 	mts -= ts;
 	if (unlikely(mts >= UINT64_MAX / 2)) {
 		/* We have negative integer, mts is in the past. */
-		__atomic_fetch_add(&sh->txpp.err_ts_past,
-				   1, __ATOMIC_RELAXED);
+		rte_atomic_fetch_add_explicit(&sh->txpp.err_ts_past,
+				   1, rte_memory_order_relaxed);
 		return -1;
 	}
 	tick = sh->txpp.tick;
@@ -360,8 +360,8 @@ mlx5_txpp_convert_tx_ts(struct mlx5_dev_ctx_shared *sh, uint64_t mts)
 	mts = (mts + tick - 1) / tick;
 	if (unlikely(mts >= (1 << MLX5_CQ_INDEX_WIDTH) / 2 - 1)) {
 		/* We have mts is too distant future. */
-		__atomic_fetch_add(&sh->txpp.err_ts_future,
-				   1, __ATOMIC_RELAXED);
+		rte_atomic_fetch_add_explicit(&sh->txpp.err_ts_future,
+				   1, rte_memory_order_relaxed);
 		return -1;
 	}
 	mts <<= 64 - MLX5_CQ_INDEX_WIDTH;
@@ -1743,8 +1743,8 @@ mlx5_tx_schedule_send(struct mlx5_txq_data *restrict txq,
 		/* Convert the timestamp into completion to wait. */
 		ts = *RTE_MBUF_DYNFIELD(loc->mbuf, txq->ts_offset, uint64_t *);
 		if (txq->ts_last && ts < txq->ts_last)
-			__atomic_fetch_add(&txq->sh->txpp.err_ts_order,
-					   1, __ATOMIC_RELAXED);
+			rte_atomic_fetch_add_explicit(&txq->sh->txpp.err_ts_order,
+					   1, rte_memory_order_relaxed);
 		txq->ts_last = ts;
 		wqe = txq->wqes + (txq->wqe_ci & txq->wqe_m);
 		sh = txq->sh;

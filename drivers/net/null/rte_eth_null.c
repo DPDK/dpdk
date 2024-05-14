@@ -37,8 +37,8 @@ struct null_queue {
 	struct rte_mempool *mb_pool;
 	struct rte_mbuf *dummy_packet;
 
-	uint64_t rx_pkts;
-	uint64_t tx_pkts;
+	RTE_ATOMIC(uint64_t) rx_pkts;
+	RTE_ATOMIC(uint64_t) tx_pkts;
 };
 
 struct pmd_options {
@@ -102,7 +102,7 @@ eth_null_rx(void *q, struct rte_mbuf **bufs, uint16_t nb_bufs)
 	}
 
 	/* NOTE: review for potential ordering optimization */
-	__atomic_fetch_add(&h->rx_pkts, i, __ATOMIC_SEQ_CST);
+	rte_atomic_fetch_add_explicit(&h->rx_pkts, i, rte_memory_order_seq_cst);
 
 	return i;
 }
@@ -130,7 +130,7 @@ eth_null_copy_rx(void *q, struct rte_mbuf **bufs, uint16_t nb_bufs)
 	}
 
 	/* NOTE: review for potential ordering optimization */
-	__atomic_fetch_add(&h->rx_pkts, i, __ATOMIC_SEQ_CST);
+	rte_atomic_fetch_add_explicit(&h->rx_pkts, i, rte_memory_order_seq_cst);
 
 	return i;
 }
@@ -155,7 +155,7 @@ eth_null_tx(void *q, struct rte_mbuf **bufs, uint16_t nb_bufs)
 		rte_pktmbuf_free(bufs[i]);
 
 	/* NOTE: review for potential ordering optimization */
-	__atomic_fetch_add(&h->tx_pkts, i, __ATOMIC_SEQ_CST);
+	rte_atomic_fetch_add_explicit(&h->tx_pkts, i, rte_memory_order_seq_cst);
 
 	return i;
 }
@@ -178,7 +178,7 @@ eth_null_copy_tx(void *q, struct rte_mbuf **bufs, uint16_t nb_bufs)
 	}
 
 	/* NOTE: review for potential ordering optimization */
-	__atomic_fetch_add(&h->tx_pkts, i, __ATOMIC_SEQ_CST);
+	rte_atomic_fetch_add_explicit(&h->tx_pkts, i, rte_memory_order_seq_cst);
 
 	return i;
 }

@@ -51,11 +51,11 @@ static const struct rte_memzone **ecore_mz_mapping;
 /* Counter to track current memzone allocated */
 static uint16_t ecore_mz_count;
 
-static uint32_t ref_cnt;
+static RTE_ATOMIC(uint32_t) ref_cnt;
 
 int ecore_mz_mapping_alloc(void)
 {
-	if (__atomic_fetch_add(&ref_cnt, 1, __ATOMIC_RELAXED) == 0) {
+	if (rte_atomic_fetch_add_explicit(&ref_cnt, 1, rte_memory_order_relaxed) == 0) {
 		ecore_mz_mapping = rte_calloc("ecore_mz_map",
 				rte_memzone_max_get(), sizeof(struct rte_memzone *), 0);
 	}
@@ -68,7 +68,7 @@ int ecore_mz_mapping_alloc(void)
 
 void ecore_mz_mapping_free(void)
 {
-	if (__atomic_fetch_sub(&ref_cnt, 1, __ATOMIC_RELAXED) - 1 == 0) {
+	if (rte_atomic_fetch_sub_explicit(&ref_cnt, 1, rte_memory_order_relaxed) - 1 == 0) {
 		rte_free(ecore_mz_mapping);
 		ecore_mz_mapping = NULL;
 	}

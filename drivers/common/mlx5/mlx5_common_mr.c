@@ -35,7 +35,7 @@ struct mlx5_range {
 /** Memory region for a mempool. */
 struct mlx5_mempool_mr {
 	struct mlx5_pmd_mr pmd_mr;
-	uint32_t refcnt; /**< Number of mempools sharing this MR. */
+	RTE_ATOMIC(uint32_t) refcnt; /**< Number of mempools sharing this MR. */
 };
 
 /* Mempool registration. */
@@ -56,11 +56,11 @@ mlx5_mprq_buf_free_cb(void *addr __rte_unused, void *opaque)
 {
 	struct mlx5_mprq_buf *buf = opaque;
 
-	if (__atomic_load_n(&buf->refcnt, __ATOMIC_RELAXED) == 1) {
+	if (rte_atomic_load_explicit(&buf->refcnt, rte_memory_order_relaxed) == 1) {
 		rte_mempool_put(buf->mp, buf);
-	} else if (unlikely(__atomic_fetch_sub(&buf->refcnt, 1,
-					       __ATOMIC_RELAXED) - 1 == 0)) {
-		__atomic_store_n(&buf->refcnt, 1, __ATOMIC_RELAXED);
+	} else if (unlikely(rte_atomic_fetch_sub_explicit(&buf->refcnt, 1,
+					       rte_memory_order_relaxed) - 1 == 0)) {
+		rte_atomic_store_explicit(&buf->refcnt, 1, rte_memory_order_relaxed);
 		rte_mempool_put(buf->mp, buf);
 	}
 }
@@ -1650,7 +1650,7 @@ mlx5_mempool_reg_attach(struct mlx5_mempool_reg *mpr)
 	unsigned int i;
 
 	for (i = 0; i < mpr->mrs_n; i++)
-		__atomic_fetch_add(&mpr->mrs[i].refcnt, 1, __ATOMIC_RELAXED);
+		rte_atomic_fetch_add_explicit(&mpr->mrs[i].refcnt, 1, rte_memory_order_relaxed);
 }
 
 /**
@@ -1665,8 +1665,8 @@ mlx5_mempool_reg_detach(struct mlx5_mempool_reg *mpr)
 	bool ret = false;
 
 	for (i = 0; i < mpr->mrs_n; i++)
-		ret |= __atomic_fetch_sub(&mpr->mrs[i].refcnt, 1,
-					  __ATOMIC_RELAXED) - 1 == 0;
+		ret |= rte_atomic_fetch_sub_explicit(&mpr->mrs[i].refcnt, 1,
+					  rte_memory_order_relaxed) - 1 == 0;
 	return ret;
 }
 

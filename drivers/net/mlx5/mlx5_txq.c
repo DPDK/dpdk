@@ -1108,7 +1108,7 @@ mlx5_txq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		rte_errno = ENOMEM;
 		goto error;
 	}
-	__atomic_fetch_add(&tmpl->refcnt, 1, __ATOMIC_RELAXED);
+	rte_atomic_fetch_add_explicit(&tmpl->refcnt, 1, rte_memory_order_relaxed);
 	tmpl->is_hairpin = false;
 	LIST_INSERT_HEAD(&priv->txqsctrl, tmpl, next);
 	return tmpl;
@@ -1153,7 +1153,7 @@ mlx5_txq_hairpin_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	tmpl->txq.idx = idx;
 	tmpl->hairpin_conf = *hairpin_conf;
 	tmpl->is_hairpin = true;
-	__atomic_fetch_add(&tmpl->refcnt, 1, __ATOMIC_RELAXED);
+	rte_atomic_fetch_add_explicit(&tmpl->refcnt, 1, rte_memory_order_relaxed);
 	LIST_INSERT_HEAD(&priv->txqsctrl, tmpl, next);
 	return tmpl;
 }
@@ -1178,7 +1178,7 @@ mlx5_txq_get(struct rte_eth_dev *dev, uint16_t idx)
 
 	if (txq_data) {
 		ctrl = container_of(txq_data, struct mlx5_txq_ctrl, txq);
-		__atomic_fetch_add(&ctrl->refcnt, 1, __ATOMIC_RELAXED);
+		rte_atomic_fetch_add_explicit(&ctrl->refcnt, 1, rte_memory_order_relaxed);
 	}
 	return ctrl;
 }
@@ -1203,7 +1203,7 @@ mlx5_txq_release(struct rte_eth_dev *dev, uint16_t idx)
 	if (priv->txqs == NULL || (*priv->txqs)[idx] == NULL)
 		return 0;
 	txq_ctrl = container_of((*priv->txqs)[idx], struct mlx5_txq_ctrl, txq);
-	if (__atomic_fetch_sub(&txq_ctrl->refcnt, 1, __ATOMIC_RELAXED) - 1 > 1)
+	if (rte_atomic_fetch_sub_explicit(&txq_ctrl->refcnt, 1, rte_memory_order_relaxed) - 1 > 1)
 		return 1;
 	if (txq_ctrl->obj) {
 		priv->obj_ops.txq_obj_release(txq_ctrl->obj);
@@ -1219,7 +1219,7 @@ mlx5_txq_release(struct rte_eth_dev *dev, uint16_t idx)
 		txq_free_elts(txq_ctrl);
 		dev->data->tx_queue_state[idx] = RTE_ETH_QUEUE_STATE_STOPPED;
 	}
-	if (!__atomic_load_n(&txq_ctrl->refcnt, __ATOMIC_RELAXED)) {
+	if (!rte_atomic_load_explicit(&txq_ctrl->refcnt, rte_memory_order_relaxed)) {
 		if (!txq_ctrl->is_hairpin)
 			mlx5_mr_btree_free(&txq_ctrl->txq.mr_ctrl.cache_bh);
 		LIST_REMOVE(txq_ctrl, next);
@@ -1249,7 +1249,7 @@ mlx5_txq_releasable(struct rte_eth_dev *dev, uint16_t idx)
 	if (!(*priv->txqs)[idx])
 		return -1;
 	txq = container_of((*priv->txqs)[idx], struct mlx5_txq_ctrl, txq);
-	return (__atomic_load_n(&txq->refcnt, __ATOMIC_RELAXED) == 1);
+	return (rte_atomic_load_explicit(&txq->refcnt, rte_memory_order_relaxed) == 1);
 }
 
 /**

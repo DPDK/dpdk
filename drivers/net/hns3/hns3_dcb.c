@@ -648,7 +648,7 @@ hns3_set_rss_size(struct hns3_hw *hw, uint16_t nb_rx_q)
 	 * and configured directly to the hardware in the RESET_STAGE_RESTORE
 	 * stage of the reset process.
 	 */
-	if (__atomic_load_n(&hw->reset.resetting, __ATOMIC_RELAXED) == 0) {
+	if (rte_atomic_load_explicit(&hw->reset.resetting, rte_memory_order_relaxed) == 0) {
 		for (i = 0; i < hw->rss_ind_tbl_size; i++)
 			rss_cfg->rss_indirection_tbl[i] =
 							i % hw->alloc_rss_size;

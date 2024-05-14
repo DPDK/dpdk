@@ -475,7 +475,8 @@ otx_vf_update_read_index(struct otx_ep_instr_queue *iq)
 		rte_mb();
 
 		rte_write64(OTX2_SDP_REQUEST_ISM, iq->inst_cnt_reg);
-		while (__atomic_load_n(iq->inst_cnt_ism, __ATOMIC_RELAXED) >= val) {
+		while (rte_atomic_load_explicit(iq->inst_cnt_ism,
+				rte_memory_order_relaxed) >= val) {
 			rte_write64(OTX2_SDP_REQUEST_ISM, iq->inst_cnt_reg);
 			rte_mb();
 		}
@@ -871,7 +872,8 @@ otx_ep_check_droq_pkts(struct otx_ep_droq *droq)
 		rte_mb();
 
 		rte_write64(OTX2_SDP_REQUEST_ISM, droq->pkts_sent_reg);
-		while (__atomic_load_n(droq->pkts_sent_ism, __ATOMIC_RELAXED) >= val) {
+		while (rte_atomic_load_explicit(droq->pkts_sent_ism,
+				rte_memory_order_relaxed) >= val) {
 			rte_write64(OTX2_SDP_REQUEST_ISM, droq->pkts_sent_reg);
 			rte_mb();
 		}

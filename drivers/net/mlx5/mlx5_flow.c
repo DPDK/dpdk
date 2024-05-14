@@ -4623,8 +4623,8 @@ flow_get_shared_rss_action(struct rte_eth_dev *dev,
 			shared_rss = mlx5_ipool_get
 				(priv->sh->ipool[MLX5_IPOOL_RSS_SHARED_ACTIONS],
 									   idx);
-			__atomic_fetch_add(&shared_rss->refcnt, 1,
-					   __ATOMIC_RELAXED);
+			rte_atomic_fetch_add_explicit(&shared_rss->refcnt, 1,
+					   rte_memory_order_relaxed);
 			return idx;
 		default:
 			break;
@@ -7459,7 +7459,7 @@ flow_list_create(struct rte_eth_dev *dev, enum mlx5_flow_type type,
 	if (tunnel) {
 		flow->tunnel = 1;
 		flow->tunnel_id = tunnel->tunnel_id;
-		__atomic_fetch_add(&tunnel->refctn, 1, __ATOMIC_RELAXED);
+		rte_atomic_fetch_add_explicit(&tunnel->refctn, 1, rte_memory_order_relaxed);
 		mlx5_free(default_miss_ctx.queue);
 	}
 	mlx5_flow_pop_thread_workspace();
@@ -7470,10 +7470,10 @@ error:
 	flow_mreg_del_copy_action(dev, flow);
 	flow_drv_destroy(dev, flow);
 	if (rss_desc->shared_rss)
-		__atomic_fetch_sub(&((struct mlx5_shared_action_rss *)
+		rte_atomic_fetch_sub_explicit(&((struct mlx5_shared_action_rss *)
 			mlx5_ipool_get
 			(priv->sh->ipool[MLX5_IPOOL_RSS_SHARED_ACTIONS],
-			rss_desc->shared_rss))->refcnt, 1, __ATOMIC_RELAXED);
+			rss_desc->shared_rss))->refcnt, 1, rte_memory_order_relaxed);
 	mlx5_ipool_free(priv->flows[type], idx);
 	rte_errno = ret; /* Restore rte_errno. */
 	ret = rte_errno;
@@ -7976,7 +7976,8 @@ flow_list_destroy(struct rte_eth_dev *dev, enum mlx5_flow_type type,
 
 		tunnel = mlx5_find_tunnel_id(dev, flow->tunnel_id);
 		RTE_VERIFY(tunnel);
-		if (!(__atomic_fetch_sub(&tunnel->refctn, 1, __ATOMIC_RELAXED) - 1))
+		if (!(rte_atomic_fetch_sub_explicit(&tunnel->refctn, 1,
+				rte_memory_order_relaxed) - 1))
 			mlx5_flow_tunnel_free(dev, tunnel);
 	}
 	flow_mreg_del_copy_action(dev, flow);
@@ -9456,7 +9457,7 @@ mlx5_set_query_alarm(struct mlx5_dev_ctx_shared *sh)
 {
 	uint32_t pools_n, us;
 
-	pools_n = __atomic_load_n(&sh->sws_cmng.n_valid, __ATOMIC_RELAXED);
+	pools_n = rte_atomic_load_explicit(&sh->sws_cmng.n_valid, rte_memory_order_relaxed);
 	us = MLX5_POOL_QUERY_FREQ_US / pools_n;
 	DRV_LOG(DEBUG, "Set alarm for %u pools each %u us", pools_n, us);
 	if (rte_eal_alarm_set(us, mlx5_flow_query_alarm, sh)) {
@@ -9558,17 +9559,17 @@ mlx5_flow_aging_check(struct mlx5_dev_ctx_shared *sh,
 	for (i = 0; i < MLX5_COUNTERS_PER_POOL; ++i) {
 		cnt = MLX5_POOL_GET_CNT(pool, i);
 		age_param = MLX5_CNT_TO_AGE(cnt);
-		if (__atomic_load_n(&age_param->state,
-				    __ATOMIC_RELAXED) != AGE_CANDIDATE)
+		if (rte_atomic_load_explicit(&age_param->state,
+				    rte_memory_order_relaxed) != AGE_CANDIDATE)
 			continue;
 		if (cur->data[i].hits != prev->data[i].hits) {
-			__atomic_store_n(&age_param->sec_since_last_hit, 0,
-					 __ATOMIC_RELAXED);
+			rte_atomic_store_explicit(&age_param->sec_since_last_hit, 0,
+					 rte_memory_order_relaxed);
 			continue;
 		}
-		if (__atomic_fetch_add(&age_param->sec_since_last_hit,
+		if (rte_atomic_fetch_add_explicit(&age_param->sec_since_last_hit,
 				       time_delta,
-				       __ATOMIC_RELAXED) + time_delta <= age_param->timeout)
+				       rte_memory_order_relaxed) + time_delta <= age_param->timeout)
 			continue;
 		/**
 		 * Hold the lock first, or if between the
@@ -9579,10 +9580,10 @@ mlx5_flow_aging_check(struct mlx5_dev_ctx_shared *sh,
 		priv = rte_eth_devices[age_param->port_id].data->dev_private;
 		age_info = GET_PORT_AGE_INFO(priv);
 		rte_spinlock_lock(&age_info->aged_sl);
-		if (__atomic_compare_exchange_n(&age_param->state, &expected,
-						AGE_TMOUT, false,
-						__ATOMIC_RELAXED,
-						__ATOMIC_RELAXED)) {
+		if (rte_atomic_compare_exchange_strong_explicit(&age_param->state, &expected,
+						AGE_TMOUT,
+						rte_memory_order_relaxed,
+						rte_memory_order_relaxed)) {
 			TAILQ_INSERT_TAIL(&age_info->aged_counters, cnt, next);
 			MLX5_AGE_SET(age_info, MLX5_AGE_EVENT_NEW);
 		}
@@ -11407,7 +11408,7 @@ tunnel_element_release_hit(struct rte_eth_dev *dev,
 {
 	struct tunnel_db_element_release_ctx *ctx = x;
 	ctx->ret = 0;
-	if (!(__atomic_fetch_sub(&tunnel->refctn, 1, __ATOMIC_RELAXED) - 1))
+	if (!(rte_atomic_fetch_sub_explicit(&tunnel->refctn, 1, rte_memory_order_relaxed) - 1))
 		mlx5_flow_tunnel_free(dev, tunnel);
 }
 

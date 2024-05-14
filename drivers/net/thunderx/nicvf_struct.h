@@ -20,8 +20,8 @@ struct __rte_cache_aligned nicvf_rbdr {
 	struct rbdr_entry_t *desc;
 	nicvf_iova_addr_t phys;
 	uint32_t buffsz;
-	uint32_t tail;
-	uint32_t next_tail;
+	RTE_ATOMIC(uint32_t) tail;
+	RTE_ATOMIC(uint32_t) next_tail;
 	uint32_t head;
 	uint32_t qlen_mask;
 };

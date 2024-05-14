@@ -136,7 +136,8 @@ idxd_pci_dev_close(struct rte_dma_dev *dev)
 	 * the PCI struct
 	 */
 	/* NOTE: review for potential ordering optimization */
-	is_last_wq = (__atomic_fetch_sub(&idxd->u.pci->ref_count, 1, __ATOMIC_SEQ_CST) == 1);
+	is_last_wq = (rte_atomic_fetch_sub_explicit(&idxd->u.pci->ref_count, 1,
+			rte_memory_order_seq_cst) == 1);
 	if (is_last_wq) {
 		/* disable the device */
 		err_code = idxd_pci_dev_command(idxd, idxd_disable_dev);
@@ -330,9 +331,9 @@ idxd_dmadev_probe_pci(struct rte_pci_driver *drv, struct rte_pci_device *dev)
 			return ret;
 		}
 		qid = rte_dma_get_dev_id_by_name(qname);
-		max_qid = __atomic_load_n(
+		max_qid = rte_atomic_load_explicit(
 			&((struct idxd_dmadev *)rte_dma_fp_objs[qid].dev_private)->u.pci->ref_count,
-			__ATOMIC_SEQ_CST);
+			rte_memory_order_seq_cst);
 
 		/* we have queue 0 done, now configure the rest of the queues */
 		for (qid = 1; qid < max_qid; qid++) {
@@ -389,7 +390,7 @@ idxd_dmadev_probe_pci(struct rte_pci_driver *drv, struct rte_pci_device *dev)
 				free(idxd.u.pci);
 			return ret;
 		}
-		__atomic_fetch_add(&idxd.u.pci->ref_count, 1, __ATOMIC_SEQ_CST);
+		rte_atomic_fetch_add_explicit(&idxd.u.pci->ref_count, 1, rte_memory_order_seq_cst);
 	}
 
 	return 0;

@@ -93,7 +93,7 @@ struct mlx5_mr_share_cache {
 /* Multi-Packet RQ buffer header. */
 struct __rte_cache_aligned mlx5_mprq_buf {
 	struct rte_mempool *mp;
-	uint16_t refcnt; /* Atomically accessed refcnt. */
+	RTE_ATOMIC(uint16_t) refcnt; /* Atomically accessed refcnt. */
 	struct rte_mbuf_ext_shared_info shinfos[];
 	/*
 	 * Shared information per stride.

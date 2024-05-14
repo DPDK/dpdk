@@ -33,7 +33,8 @@ dsw_port_acquire_credits(struct dsw_evdev *dsw, struct dsw_port *port,
 	}
 
 	total_on_loan =
-		__atomic_load_n(&dsw->credits_on_loan, __ATOMIC_RELAXED);
+		rte_atomic_load_explicit(&dsw->credits_on_loan,
+					 rte_memory_order_relaxed);
 	available = dsw->max_inflight - total_on_loan;
 	acquired_credits = RTE_MAX(missing_credits, DSW_PORT_MIN_CREDITS);
 
@@ -45,13 +46,16 @@ dsw_port_acquire_credits(struct dsw_evdev *dsw, struct dsw_port *port,
 	 * allocation.
 	 */
 	new_total_on_loan =
-	    __atomic_fetch_add(&dsw->credits_on_loan, acquired_credits,
-			       __ATOMIC_RELAXED) + acquired_credits;
+	    rte_atomic_fetch_add_explicit(&dsw->credits_on_loan,
+					  acquired_credits,
+					  rte_memory_order_relaxed) +
+					  acquired_credits;
 
 	if (unlikely(new_total_on_loan > dsw->max_inflight)) {
 		/* Some other port took the last credits */
-		__atomic_fetch_sub(&dsw->credits_on_loan, acquired_credits,
-				   __ATOMIC_RELAXED);
+		rte_atomic_fetch_sub_explicit(&dsw->credits_on_loan,
+					      acquired_credits,
+					      rte_memory_order_relaxed);
 		return false;
 	}
 
@@ -77,8 +81,9 @@ dsw_port_return_credits(struct dsw_evdev *dsw, struct dsw_port *port,
 
 		port->inflight_credits = leave_credits;
 
-		__atomic_fetch_sub(&dsw->credits_on_loan, return_credits,
-				   __ATOMIC_RELAXED);
+		rte_atomic_fetch_sub_explicit(&dsw->credits_on_loan,
+					      return_credits,
+					      rte_memory_order_relaxed);
 
 		DSW_LOG_DP_PORT(DEBUG, port->id,
 				"Returned %d tokens to pool.\n",
@@ -156,19 +161,22 @@ dsw_port_load_update(struct dsw_port *port, uint64_t now)
 	int16_t period_load;
 	int16_t new_load;
 
-	old_load = __atomic_load_n(&port->load, __ATOMIC_RELAXED);
+	old_load = rte_atomic_load_explicit(&port->load,
+					    rte_memory_order_relaxed);
 
 	period_load = dsw_port_load_close_period(port, now);
 
 	new_load = (period_load + old_load*DSW_OLD_LOAD_WEIGHT) /
 		(DSW_OLD_LOAD_WEIGHT+1);
 
-	__atomic_store_n(&port->load, new_load, __ATOMIC_RELAXED);
+	rte_atomic_store_explicit(&port->load, new_load,
+				  rte_memory_order_relaxed);
 
 	/* The load of the recently immigrated flows should hopefully
 	 * be reflected the load estimate by now.
 	 */
-	__atomic_store_n(&port->immigration_load, 0, __ATOMIC_RELAXED);
+	rte_atomic_store_explicit(&port->immigration_load, 0,
+				  rte_memory_order_relaxed);
 }
 
 static void
@@ -390,10 +398,11 @@ dsw_retrieve_port_loads(struct dsw_evdev *dsw, int16_t *port_loads,
 
 	for (i = 0; i < dsw->num_ports; i++) {
 		int16_t measured_load =
-			__atomic_load_n(&dsw->ports[i].load, __ATOMIC_RELAXED);
+			rte_atomic_load_explicit(&dsw->ports[i].load,
+						 rte_memory_order_relaxed);
 		int32_t immigration_load =
-			__atomic_load_n(&dsw->ports[i].immigration_load,
-					__ATOMIC_RELAXED);
+			rte_atomic_load_explicit(&dsw->ports[i].immigration_load,
+					         rte_memory_order_relaxed);
 		int32_t load = measured_load + immigration_load;
 
 		load = RTE_MIN(load, DSW_MAX_LOAD);
@@ -523,8 +532,10 @@ dsw_select_emigration_target(struct dsw_evdev *dsw,
 	target_qfs[*targets_len] = *candidate_qf;
 	(*targets_len)++;
 
-	__atomic_fetch_add(&dsw->ports[candidate_port_id].immigration_load,
-			   candidate_flow_load, __ATOMIC_RELAXED);
+	rte_atomic_fetch_add_explicit(
+				&dsw->ports[candidate_port_id].immigration_load,
+				      candidate_flow_load,
+				      rte_memory_order_relaxed);
 
 	return true;
 }
@@ -882,7 +893,8 @@ dsw_port_consider_emigration(struct dsw_evdev *dsw,
 	}
 
 	source_port_load =
-		__atomic_load_n(&source_port->load, __ATOMIC_RELAXED);
+		rte_atomic_load_explicit(&source_port->load,
+					 rte_memory_order_relaxed);
 	if (source_port_load < DSW_MIN_SOURCE_LOAD_FOR_MIGRATION) {
 		DSW_LOG_DP_PORT(DEBUG, source_port->id,
 		      "Load %d is below threshold level %d.\n",
@@ -1301,7 +1313,8 @@ dsw_event_enqueue_burst_generic(struct dsw_port *source_port,
 	 * above the water mark.
 	 */
 	if (unlikely(num_new > 0 &&
-		     __atomic_load_n(&dsw->credits_on_loan, __ATOMIC_RELAXED) >
+		     rte_atomic_load_explicit(&dsw->credits_on_loan,
+					      rte_memory_order_relaxed) >
 		     source_port->new_event_threshold))
 		return 0;
 

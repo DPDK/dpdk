@@ -175,10 +175,11 @@ struct mlx5_nl_port_info {
 	uint16_t state; /**< IB device port state (out). */
 };
 
-uint32_t atomic_sn;
+RTE_ATOMIC(uint32_t) atomic_sn;
 
 /* Generate Netlink sequence number. */
-#define MLX5_NL_SN_GENERATE (__atomic_fetch_add(&atomic_sn, 1, __ATOMIC_RELAXED) + 1)
+#define MLX5_NL_SN_GENERATE (rte_atomic_fetch_add_explicit(&atomic_sn, 1, \
+	rte_memory_order_relaxed) + 1)
 
 /**
  * Opens a Netlink socket.

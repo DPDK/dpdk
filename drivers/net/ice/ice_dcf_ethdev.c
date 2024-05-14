@@ -1743,7 +1743,7 @@ bool
 ice_dcf_adminq_need_retry(struct ice_adapter *ad)
 {
 	return ad->hw.dcf_enabled &&
-	       !__atomic_load_n(&ad->dcf_state_on, __ATOMIC_RELAXED);
+	       !rte_atomic_load_explicit(&ad->dcf_state_on, rte_memory_order_relaxed);
 }
 
 /* Add UDP tunneling port */
@@ -1944,12 +1944,12 @@ ice_dcf_dev_init(struct rte_eth_dev *eth_dev)
 	adapter->real_hw.vc_event_msg_cb = ice_dcf_handle_pf_event_msg;
 	if (ice_dcf_init_hw(eth_dev, &adapter->real_hw) != 0) {
 		PMD_INIT_LOG(ERR, "Failed to init DCF hardware");
-		__atomic_store_n(&parent_adapter->dcf_state_on, false,
-				 __ATOMIC_RELAXED);
+		rte_atomic_store_explicit(&parent_adapter->dcf_state_on, false,
+				 rte_memory_order_relaxed);
 		return -1;
 	}
 
-	__atomic_store_n(&parent_adapter->dcf_state_on, true, __ATOMIC_RELAXED);
+	rte_atomic_store_explicit(&parent_adapter->dcf_state_on, true, rte_memory_order_relaxed);
 
 	if (ice_dcf_init_parent_adapter(eth_dev) != 0) {
 		PMD_INIT_LOG(ERR, "Failed to init DCF parent adapter");

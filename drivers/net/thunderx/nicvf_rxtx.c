@@ -374,8 +374,8 @@ nicvf_fill_rbdr(struct nicvf_rxq *rxq, int to_fill)
 	NICVF_RX_ASSERT((unsigned int)to_fill <= (qlen_mask -
 		(nicvf_addr_read(rbdr->rbdr_status) & NICVF_RBDR_COUNT_MASK)));
 
-	next_tail = __atomic_fetch_add(&rbdr->next_tail, to_fill,
-					__ATOMIC_ACQUIRE);
+	next_tail = rte_atomic_fetch_add_explicit(&rbdr->next_tail, to_fill,
+					rte_memory_order_acquire);
 	ltail = next_tail;
 	for (i = 0; i < to_fill; i++) {
 		struct rbdr_entry_t *entry = desc + (ltail & qlen_mask);
@@ -385,9 +385,10 @@ nicvf_fill_rbdr(struct nicvf_rxq *rxq, int to_fill)
 		ltail++;
 	}
 
-	rte_wait_until_equal_32(&rbdr->tail, next_tail, __ATOMIC_RELAXED);
+	rte_wait_until_equal_32((uint32_t *)(uintptr_t)&rbdr->tail, next_tail,
+			rte_memory_order_relaxed);
 
-	__atomic_store_n(&rbdr->tail, ltail, __ATOMIC_RELEASE);
+	rte_atomic_store_explicit(&rbdr->tail, ltail, rte_memory_order_release);
 	nicvf_addr_write(door, to_fill);
 	return to_fill;
 }

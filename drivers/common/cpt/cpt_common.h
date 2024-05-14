@@ -73,7 +73,7 @@ pending_queue_commit(struct pending_queue *q, unsigned int cnt,
 			const unsigned int qsize)
 {
 	/* Ensure ordering between setting the entry and updating the tail */
-	rte_atomic_thread_fence(__ATOMIC_RELEASE);
+	rte_atomic_thread_fence(rte_memory_order_release);
 
 	q->tail = (q->tail + cnt) & (qsize - 1);
 }

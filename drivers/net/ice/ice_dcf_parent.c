@@ -123,8 +123,8 @@ ice_dcf_vsi_update_service_handler(void *param)
 		container_of(hw, struct ice_dcf_adapter, real_hw);
 	struct ice_adapter *parent_adapter = &adapter->parent;
 
-	__atomic_fetch_add(&hw->vsi_update_thread_num, 1,
-		__ATOMIC_RELAXED);
+	rte_atomic_fetch_add_explicit(&hw->vsi_update_thread_num, 1,
+		rte_memory_order_relaxed);
 
 	rte_thread_detach(rte_thread_self());
 
@@ -133,8 +133,8 @@ ice_dcf_vsi_update_service_handler(void *param)
 	rte_spinlock_lock(&vsi_update_lock);
 
 	if (!ice_dcf_handle_vsi_update_event(hw)) {
-		__atomic_store_n(&parent_adapter->dcf_state_on, true,
-				 __ATOMIC_RELAXED);
+		rte_atomic_store_explicit(&parent_adapter->dcf_state_on, true,
+				 rte_memory_order_relaxed);
 		ice_dcf_update_vf_vsi_map(&adapter->parent.hw,
 					  hw->num_vfs, hw->vf_vsi_map);
 	}
@@ -156,8 +156,8 @@ ice_dcf_vsi_update_service_handler(void *param)
 
 	free(param);
 
-	__atomic_fetch_sub(&hw->vsi_update_thread_num, 1,
-		__ATOMIC_RELEASE);
+	rte_atomic_fetch_sub_explicit(&hw->vsi_update_thread_num, 1,
+		rte_memory_order_release);
 
 	return 0;
 }
@@ -269,8 +269,8 @@ ice_dcf_handle_pf_event_msg(struct ice_dcf_hw *dcf_hw,
 		PMD_DRV_LOG(DEBUG, "VIRTCHNL_EVENT_DCF_VSI_MAP_UPDATE event : VF%u with VSI num %u",
 			    pf_msg->event_data.vf_vsi_map.vf_id,
 			    pf_msg->event_data.vf_vsi_map.vsi_id);
-		__atomic_store_n(&parent_adapter->dcf_state_on, false,
-				 __ATOMIC_RELAXED);
+		rte_atomic_store_explicit(&parent_adapter->dcf_state_on, false,
+				 rte_memory_order_relaxed);
 		start_vsi_reset_thread(dcf_hw, true,
 				       pf_msg->event_data.vf_vsi_map.vf_id);
 		break;

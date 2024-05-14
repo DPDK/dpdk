@@ -1005,7 +1005,7 @@ dlb2_eventdev_configure(const struct rte_eventdev *dev)
 	}
 
 	dlb2->new_event_limit = config->nb_events_limit;
-	__atomic_store_n(&dlb2->inflights, 0, __ATOMIC_SEQ_CST);
+	rte_atomic_store_explicit(&dlb2->inflights, 0, rte_memory_order_seq_cst);
 
 	/* Save number of ports/queues for this event dev */
 	dlb2->num_ports = config->nb_event_ports;
@@ -2668,10 +2668,10 @@ dlb2_port_credits_get(struct dlb2_port *qm_port,
 		batch_size = credits;
 
 	if (likely(credits &&
-		   __atomic_compare_exchange_n(
+		   rte_atomic_compare_exchange_strong_explicit(
 			qm_port->credit_pool[type],
-			&credits, credits - batch_size, false,
-			__ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST)))
+			&credits, credits - batch_size,
+			rte_memory_order_seq_cst, rte_memory_order_seq_cst)))
 		return batch_size;
 	else
 		return 0;
@@ -2687,7 +2687,7 @@ dlb2_replenish_sw_credits(struct dlb2_eventdev *dlb2,
 		/* Replenish credits, saving one quanta for enqueues */
 		uint16_t val = ev_port->inflight_credits - quanta;
 
-		__atomic_fetch_sub(&dlb2->inflights, val, __ATOMIC_SEQ_CST);
+		rte_atomic_fetch_sub_explicit(&dlb2->inflights, val, rte_memory_order_seq_cst);
 		ev_port->inflight_credits -= val;
 	}
 }
@@ -2696,8 +2696,8 @@ static inline int
 dlb2_check_enqueue_sw_credits(struct dlb2_eventdev *dlb2,
 			      struct dlb2_eventdev_port *ev_port)
 {
-	uint32_t sw_inflights = __atomic_load_n(&dlb2->inflights,
-						__ATOMIC_SEQ_CST);
+	uint32_t sw_inflights = rte_atomic_load_explicit(&dlb2->inflights,
+						rte_memory_order_seq_cst);
 	const int num = 1;
 
 	if (unlikely(ev_port->inflight_max < sw_inflights)) {
@@ -2719,8 +2719,8 @@ dlb2_check_enqueue_sw_credits(struct dlb2_eventdev *dlb2,
 			return 1;
 		}
 
-		__atomic_fetch_add(&dlb2->inflights, credit_update_quanta,
-				   __ATOMIC_SEQ_CST);
+		rte_atomic_fetch_add_explicit(&dlb2->inflights, credit_update_quanta,
+				   rte_memory_order_seq_cst);
 		ev_port->inflight_credits += (credit_update_quanta);
 
 		if (ev_port->inflight_credits < num) {
@@ -3234,17 +3234,17 @@ dlb2_port_credits_inc(struct dlb2_port *qm_port, int num)
 		if (qm_port->dlb2->version == DLB2_HW_V2) {
 			qm_port->cached_ldb_credits += num;
 			if (qm_port->cached_ldb_credits >= 2 * batch_size) {
-				__atomic_fetch_add(
+				rte_atomic_fetch_add_explicit(
 					qm_port->credit_pool[DLB2_LDB_QUEUE],
-					batch_size, __ATOMIC_SEQ_CST);
+					batch_size, rte_memory_order_seq_cst);
 				qm_port->cached_ldb_credits -= batch_size;
 			}
 		} else {
 			qm_port->cached_credits += num;
 			if (qm_port->cached_credits >= 2 * batch_size) {
-				__atomic_fetch_add(
+				rte_atomic_fetch_add_explicit(
 				      qm_port->credit_pool[DLB2_COMBINED_POOL],
-				      batch_size, __ATOMIC_SEQ_CST);
+				      batch_size, rte_memory_order_seq_cst);
 				qm_port->cached_credits -= batch_size;
 			}
 		}
@@ -3252,17 +3252,17 @@ dlb2_port_credits_inc(struct dlb2_port *qm_port, int num)
 		if (qm_port->dlb2->version == DLB2_HW_V2) {
 			qm_port->cached_dir_credits += num;
 			if (qm_port->cached_dir_credits >= 2 * batch_size) {
-				__atomic_fetch_add(
+				rte_atomic_fetch_add_explicit(
 					qm_port->credit_pool[DLB2_DIR_QUEUE],
-					batch_size, __ATOMIC_SEQ_CST);
+					batch_size, rte_memory_order_seq_cst);
 				qm_port->cached_dir_credits -= batch_size;
 			}
 		} else {
 			qm_port->cached_credits += num;
 			if (qm_port->cached_credits >= 2 * batch_size) {
-				__atomic_fetch_add(
+				rte_atomic_fetch_add_explicit(
 				      qm_port->credit_pool[DLB2_COMBINED_POOL],
-				      batch_size, __ATOMIC_SEQ_CST);
+				      batch_size, rte_memory_order_seq_cst);
 				qm_port->cached_credits -= batch_size;
 			}
 		}

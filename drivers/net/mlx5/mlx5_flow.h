@@ -1049,7 +1049,7 @@ struct mlx5_flow_tunnel {
 	LIST_ENTRY(mlx5_flow_tunnel) chain;
 	struct rte_flow_tunnel app_tunnel;	/** app tunnel copy */
 	uint32_t tunnel_id;			/** unique tunnel ID */
-	uint32_t refctn;
+	RTE_ATOMIC(uint32_t) refctn;
 	struct rte_flow_action action;
 	struct rte_flow_item item;
 	struct mlx5_hlist *groups;		/** tunnel groups */
@@ -1470,7 +1470,7 @@ struct rte_flow_pattern_template {
 	struct mlx5dr_match_template *mt; /* mlx5 match template. */
 	uint64_t item_flags; /* Item layer flags. */
 	uint64_t orig_item_nb; /* Number of pattern items provided by the user (with END item). */
-	uint32_t refcnt;  /* Reference counter. */
+	RTE_ATOMIC(uint32_t) refcnt;  /* Reference counter. */
 	/*
 	 * If true, then rule pattern should be prepended with
 	 * represented_port pattern item.
@@ -1502,7 +1502,7 @@ struct rte_flow_actions_template {
 	uint16_t reformat_off; /* Offset of DR reformat action. */
 	uint16_t mhdr_off; /* Offset of DR modify header action. */
 	uint16_t recom_off;  /* Offset of DR IPv6 routing push remove action. */
-	uint32_t refcnt; /* Reference counter. */
+	RTE_ATOMIC(uint32_t) refcnt; /* Reference counter. */
 	uint8_t flex_item; /* flex item index. */
 };
 
@@ -1855,7 +1855,7 @@ static const uint64_t mlx5_rss_hash_fields[] = {
 /* Shared RSS action structure */
 struct mlx5_shared_action_rss {
 	ILIST_ENTRY(uint32_t)next; /**< Index to the next RSS structure. */
-	uint32_t refcnt; /**< Atomically accessed refcnt. */
+	RTE_ATOMIC(uint32_t) refcnt; /**< Atomically accessed refcnt. */
 	struct rte_flow_action_rss origin; /**< Original rte RSS action. */
 	uint8_t key[MLX5_RSS_HASH_KEY_LEN]; /**< RSS hash key. */
 	struct mlx5_ind_table_obj *ind_tbl;

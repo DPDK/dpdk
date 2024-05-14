@@ -38,8 +38,8 @@ idpf_singleq_rearm_common(struct idpf_rx_queue *rxq)
 						dma_addr0);
 			}
 		}
-		__atomic_fetch_add(&rxq->rx_stats.mbuf_alloc_failed,
-				   IDPF_RXQ_REARM_THRESH, __ATOMIC_RELAXED);
+		rte_atomic_fetch_add_explicit(&rxq->rx_stats.mbuf_alloc_failed,
+				   IDPF_RXQ_REARM_THRESH, rte_memory_order_relaxed);
 		return;
 	}
 	struct rte_mbuf *mb0, *mb1, *mb2, *mb3;
@@ -168,8 +168,8 @@ idpf_singleq_rearm(struct idpf_rx_queue *rxq)
 							 dma_addr0);
 				}
 			}
-			__atomic_fetch_add(&rxq->rx_stats.mbuf_alloc_failed,
-					   IDPF_RXQ_REARM_THRESH, __ATOMIC_RELAXED);
+			rte_atomic_fetch_add_explicit(&rxq->rx_stats.mbuf_alloc_failed,
+					   IDPF_RXQ_REARM_THRESH, rte_memory_order_relaxed);
 			return;
 		}
 	}
@@ -564,8 +564,8 @@ idpf_splitq_rearm_common(struct idpf_rx_queue *rx_bufq)
 						dma_addr0);
 			}
 		}
-	__atomic_fetch_add(&rx_bufq->rx_stats.mbuf_alloc_failed,
-			   IDPF_RXQ_REARM_THRESH, __ATOMIC_RELAXED);
+	rte_atomic_fetch_add_explicit(&rx_bufq->rx_stats.mbuf_alloc_failed,
+			   IDPF_RXQ_REARM_THRESH, rte_memory_order_relaxed);
 		return;
 	}
 
@@ -638,8 +638,8 @@ idpf_splitq_rearm(struct idpf_rx_queue *rx_bufq)
 							 dma_addr0);
 				}
 			}
-		__atomic_fetch_add(&rx_bufq->rx_stats.mbuf_alloc_failed,
-				   IDPF_RXQ_REARM_THRESH, __ATOMIC_RELAXED);
+		rte_atomic_fetch_add_explicit(&rx_bufq->rx_stats.mbuf_alloc_failed,
+				   IDPF_RXQ_REARM_THRESH, rte_memory_order_relaxed);
 			return;
 		}
 	}
