@@ -271,6 +271,7 @@ af_xdp_rx_zc(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 	unsigned long rx_bytes = 0;
 	int i;
 	struct rte_mbuf *fq_bufs[ETH_AF_XDP_RX_BATCH_SIZE];
+	struct rte_eth_dev *dev = &rte_eth_devices[rxq->port];
 
 	nb_pkts = xsk_ring_cons__peek(rx, nb_pkts, &idx_rx);
 
@@ -298,6 +299,7 @@ af_xdp_rx_zc(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 		 * xsk_ring_cons__peek
 		 */
 		rx->cached_cons -= nb_pkts;
+		dev->data->rx_mbuf_alloc_failed += nb_pkts;
 		return 0;
 	}
 
@@ -349,6 +351,7 @@ af_xdp_rx_cp(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 	int i;
 	uint32_t free_thresh = fq->size >> 1;
 	struct rte_mbuf *mbufs[ETH_AF_XDP_RX_BATCH_SIZE];
+	struct rte_eth_dev *dev = &rte_eth_devices[rxq->port];
 
 	if (xsk_prod_nb_free(fq, free_thresh) >= free_thresh)
 		(void)reserve_fill_queue(umem, nb_pkts, NULL, fq);
@@ -367,6 +370,8 @@ af_xdp_rx_cp(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 		 * xsk_ring_cons__peek
 		 */
 		rx->cached_cons -= nb_pkts;
+		dev->data->rx_mbuf_alloc_failed += nb_pkts;
+
 		return 0;
 	}
 
