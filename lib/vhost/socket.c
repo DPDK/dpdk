@@ -45,6 +45,7 @@ struct vhost_user_socket {
 	bool async_copy;
 	bool net_compliant_ol_flags;
 	bool stats_enabled;
+	bool async_connect;
 
 	/*
 	 * The "supported_features" indicates the feature bits the
@@ -533,21 +534,23 @@ vhost_user_start_client(struct vhost_user_socket *vsocket)
 	const char *path = vsocket->path;
 	struct vhost_user_reconnect *reconn;
 
-	ret = vhost_user_connect_nonblock(vsocket->path, fd, (struct sockaddr *)&vsocket->un,
-					  sizeof(vsocket->un));
-	if (ret == 0) {
-		vhost_user_add_connection(fd, vsocket);
-		return 0;
+	if (!vsocket->async_connect || !vsocket->reconnect) {
+		ret = vhost_user_connect_nonblock(vsocket->path, fd,
+			(struct sockaddr *)&vsocket->un, sizeof(vsocket->un));
+		if (ret == 0) {
+			vhost_user_add_connection(fd, vsocket);
+			return 0;
+		}
+
+		VHOST_CONFIG_LOG(path, WARNING, "failed to connect: %s", strerror(errno));
+
+		if (ret == -2 || !vsocket->reconnect) {
+			close(fd);
+			return -1;
+		}
+
+		VHOST_CONFIG_LOG(path, INFO, "reconnecting...");
 	}
-
-	VHOST_CONFIG_LOG(path, WARNING, "failed to connect: %s", strerror(errno));
-
-	if (ret == -2 || !vsocket->reconnect) {
-		close(fd);
-		return -1;
-	}
-
-	VHOST_CONFIG_LOG(path, INFO, "reconnecting...");
 	reconn = malloc(sizeof(*reconn));
 	if (reconn == NULL) {
 		VHOST_CONFIG_LOG(path, ERR, "failed to allocate memory for reconnect");
@@ -930,6 +933,7 @@ rte_vhost_driver_register(const char *path, uint64_t flags)
 	vsocket->async_copy = flags & RTE_VHOST_USER_ASYNC_COPY;
 	vsocket->net_compliant_ol_flags = flags & RTE_VHOST_USER_NET_COMPLIANT_OL_FLAGS;
 	vsocket->stats_enabled = flags & RTE_VHOST_USER_NET_STATS_ENABLE;
+	vsocket->async_connect = flags & RTE_VHOST_USER_ASYNC_CONNECT;
 	if (vsocket->is_vduse)
 		vsocket->iommu_support = true;
 	else
