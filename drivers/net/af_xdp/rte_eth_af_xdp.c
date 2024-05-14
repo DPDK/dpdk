@@ -125,7 +125,6 @@ struct xsk_umem_info {
 struct rx_stats {
 	uint64_t rx_pkts;
 	uint64_t rx_bytes;
-	uint64_t rx_dropped;
 	uint64_t imissed_offset;
 };
 
@@ -884,7 +883,6 @@ eth_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 
 		stats->ipackets += stats->q_ipackets[i];
 		stats->ibytes += stats->q_ibytes[i];
-		stats->imissed += rxq->stats.rx_dropped;
 		stats->oerrors += txq->stats.tx_dropped;
 		fd = process_private->rxq_xsk_fds[i];
 		ret = fd >= 0 ? getsockopt(fd, SOL_XDP, XDP_STATISTICS,
