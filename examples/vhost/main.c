@@ -1052,10 +1052,10 @@ sync_virtio_xmit(struct vhost_dev *dst_vdev, struct vhost_dev *src_vdev,
 	}
 
 	if (enable_stats) {
-		__atomic_fetch_add(&dst_vdev->stats.rx_total_atomic, 1,
-				__ATOMIC_SEQ_CST);
-		__atomic_fetch_add(&dst_vdev->stats.rx_atomic, ret,
-				__ATOMIC_SEQ_CST);
+		rte_atomic_fetch_add_explicit(&dst_vdev->stats.rx_total_atomic, 1,
+				rte_memory_order_seq_cst);
+		rte_atomic_fetch_add_explicit(&dst_vdev->stats.rx_atomic, ret,
+				rte_memory_order_seq_cst);
 		src_vdev->stats.tx_total++;
 		src_vdev->stats.tx += ret;
 	}
@@ -1072,10 +1072,10 @@ drain_vhost(struct vhost_dev *vdev)
 	ret = vdev_queue_ops[vdev->vid].enqueue_pkt_burst(vdev, VIRTIO_RXQ, m, nr_xmit);
 
 	if (enable_stats) {
-		__atomic_fetch_add(&vdev->stats.rx_total_atomic, nr_xmit,
-				__ATOMIC_SEQ_CST);
-		__atomic_fetch_add(&vdev->stats.rx_atomic, ret,
-				__ATOMIC_SEQ_CST);
+		rte_atomic_fetch_add_explicit(&vdev->stats.rx_total_atomic, nr_xmit,
+				rte_memory_order_seq_cst);
+		rte_atomic_fetch_add_explicit(&vdev->stats.rx_atomic, ret,
+				rte_memory_order_seq_cst);
 	}
 
 	if (!dma_bind[vid2socketid[vdev->vid]].dmas[VIRTIO_RXQ].async_enabled) {
@@ -1404,10 +1404,10 @@ drain_eth_rx(struct vhost_dev *vdev)
 	}
 
 	if (enable_stats) {
-		__atomic_fetch_add(&vdev->stats.rx_total_atomic, rx_count,
-				__ATOMIC_SEQ_CST);
-		__atomic_fetch_add(&vdev->stats.rx_atomic, enqueue_count,
-				__ATOMIC_SEQ_CST);
+		rte_atomic_fetch_add_explicit(&vdev->stats.rx_total_atomic, rx_count,
+				rte_memory_order_seq_cst);
+		rte_atomic_fetch_add_explicit(&vdev->stats.rx_atomic, enqueue_count,
+				rte_memory_order_seq_cst);
 	}
 
 	if (!dma_bind[vid2socketid[vdev->vid]].dmas[VIRTIO_RXQ].async_enabled) {
@@ -1832,10 +1832,10 @@ print_stats(__rte_unused void *arg)
 			tx         = vdev->stats.tx;
 			tx_dropped = tx_total - tx;
 
-			rx_total = __atomic_load_n(&vdev->stats.rx_total_atomic,
-				__ATOMIC_SEQ_CST);
-			rx         = __atomic_load_n(&vdev->stats.rx_atomic,
-				__ATOMIC_SEQ_CST);
+			rx_total = rte_atomic_load_explicit(&vdev->stats.rx_total_atomic,
+				rte_memory_order_seq_cst);
+			rx         = rte_atomic_load_explicit(&vdev->stats.rx_atomic,
+				rte_memory_order_seq_cst);
 			rx_dropped = rx_total - rx;
 
 			printf("Statistics for device %d\n"

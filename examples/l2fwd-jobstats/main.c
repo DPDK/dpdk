@@ -80,7 +80,7 @@ struct __rte_cache_aligned lcore_queue_conf {
 	struct rte_jobstats idle_job;
 	struct rte_jobstats_context jobs_context;
 
-	uint16_t stats_read_pending;
+	RTE_ATOMIC(uint16_t) stats_read_pending;
 	rte_spinlock_t lock;
 };
 /* >8 End of list of queues to be polled for given lcore. */
@@ -151,9 +151,9 @@ show_lcore_stats(unsigned lcore_id)
 	uint64_t collection_time = rte_get_timer_cycles();
 
 	/* Ask forwarding thread to give us stats. */
-	__atomic_store_n(&qconf->stats_read_pending, 1, __ATOMIC_RELAXED);
+	rte_atomic_store_explicit(&qconf->stats_read_pending, 1, rte_memory_order_relaxed);
 	rte_spinlock_lock(&qconf->lock);
-	__atomic_store_n(&qconf->stats_read_pending, 0, __ATOMIC_RELAXED);
+	rte_atomic_store_explicit(&qconf->stats_read_pending, 0, rte_memory_order_relaxed);
 
 	/* Collect context statistics. */
 	stats_period = ctx->state_time - ctx->start_time;
@@ -522,8 +522,9 @@ l2fwd_main_loop(void)
 				repeats++;
 				need_manage = qconf->flush_timer.expire < now;
 				/* Check if we was esked to give a stats. */
-				stats_read_pending = __atomic_load_n(&qconf->stats_read_pending,
-						__ATOMIC_RELAXED);
+				stats_read_pending = rte_atomic_load_explicit(
+					&qconf->stats_read_pending,
+					rte_memory_order_relaxed);
 				need_manage |= stats_read_pending;
 
 				for (i = 0; i < qconf->n_rx_port && !need_manage; i++)

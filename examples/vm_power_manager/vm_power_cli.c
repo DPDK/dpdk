@@ -74,7 +74,8 @@ cmd_show_vm_parsed(void *parsed_result, struct cmdline *cl,
 	for (i = 0; i < info.num_channels; i++) {
 		cmdline_printf(cl, "  [%u]: %s, status = ", i,
 				info.channels[i].channel_path);
-		switch (info.channels[i].status) {
+		switch (rte_atomic_load_explicit(&info.channels[i].status,
+				rte_memory_order_relaxed)) {
 		case CHANNEL_MGR_CHANNEL_CONNECTED:
 			cmdline_printf(cl, "CONNECTED\n");
 			break;

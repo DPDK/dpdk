@@ -13,6 +13,8 @@ extern "C" {
 #include <linux/un.h>
 #include <stdbool.h>
 
+#include <rte_stdatomic.h>
+
 /* Maximum name length including '\0' terminator */
 #define CHANNEL_MGR_MAX_NAME_LEN    64
 
@@ -58,7 +60,7 @@ enum vm_status { CHANNEL_MGR_VM_INACTIVE = 0, CHANNEL_MGR_VM_ACTIVE};
  */
 struct channel_info {
 	char channel_path[UNIX_PATH_MAX]; /**< Path to host socket */
-	volatile uint32_t status;    /**< Connection status(enum channel_status) */
+	volatile RTE_ATOMIC(uint32_t) status;    /**< Connection status(enum channel_status) */
 	int fd;                      /**< AF_UNIX socket fd */
 	unsigned channel_num;        /**< CHANNEL_MGR_SOCKET_PATH/<vm_name>.channel_num */
 	enum channel_type type;      /**< Binary, ini, json, etc. */
