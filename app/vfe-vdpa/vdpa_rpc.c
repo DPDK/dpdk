@@ -223,12 +223,12 @@ static cJSON *vdpa_vf_dev_add(char *vf_name,
 	virtio_ha_dev_lock();
 	vdpa_with_socket_file_gen(vf_name, ifname, socket_file);
 	ret = rte_vdpa_vf_dev_add(vf_name, vm_uuid, vf_params, stage1, ifname);
-	if (ret) {
-		return vdpa_rpc_format_errno(result, ret);
-	}
+	if (ret)
+		goto err;
 	ret = vdpa_with_socket_path_start(vf_name, ifname);
-	virtio_ha_dev_unlock();
 
+err:
+	virtio_ha_dev_unlock();
 	return vdpa_rpc_format_errno(result, ret);
 }
 
@@ -329,6 +329,7 @@ static cJSON *vdpa_vf_dev_list(const char *pf_name)
 	max_vf_num = rte_vdpa_get_vf_list(pf_name, vf_info,
 			MAX_VDPA_SAMPLE_PORTS);
 	if (max_vf_num <= 0) {
+		virtio_ha_dev_unlock();
 		return vdpa_rpc_format_errno(result, max_vf_num);
 	}
 	if (max_vf_num > MAX_VDPA_SAMPLE_PORTS) {
