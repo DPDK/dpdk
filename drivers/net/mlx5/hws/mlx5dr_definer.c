@@ -197,7 +197,8 @@ struct mlx5dr_definer_conv_data {
 	X(SET,		gtp_next_ext_hdr,	GTP_PDU_SC,		rte_flow_item_gtp_psc) \
 	X(SET,		gtp_ext_hdr_pdu,	v->hdr.type,		rte_flow_item_gtp_psc) \
 	X(SET,		gtp_ext_hdr_qfi,	v->hdr.qfi,		rte_flow_item_gtp_psc) \
-	X(SET,		vxlan_flags,		v->flags,		rte_flow_item_vxlan) \
+	X(SET_BE32,	vxlan_vx_flags,		v->hdr.vx_flags,	rte_flow_item_vxlan) \
+	X(SET_BE32,	vxlan_vx_vni,		v->hdr.vx_vni,		rte_flow_item_vxlan) \
 	X(SET,		vxlan_udp_port,		UDP_VXLAN_PORT,		rte_flow_item_vxlan) \
 	X(SET,		vxlan_gpe_udp_port,	UDP_VXLAN_GPE_PORT,	rte_flow_item_vxlan_gpe) \
 	X(SET,		vxlan_gpe_flags,	v->flags,		rte_flow_item_vxlan_gpe) \
@@ -592,16 +593,6 @@ mlx5dr_definer_gre_key_set(struct mlx5dr_definer_fc *fc,
 	const rte_be32_t *v = item_spec;
 
 	DR_SET_BE32(tag, *v, fc->byte_off, fc->bit_off, fc->bit_mask);
-}
-
-static void
-mlx5dr_definer_vxlan_vni_set(struct mlx5dr_definer_fc *fc,
-			     const void *item_spec,
-			     uint8_t *tag)
-{
-	const struct rte_flow_item_vxlan *v = item_spec;
-
-	memcpy(tag + fc->byte_off, v->vni, sizeof(v->vni));
 }
 
 static void
@@ -1549,13 +1540,6 @@ mlx5dr_definer_conv_item_vxlan(struct mlx5dr_definer_conv_data *cd,
 	struct mlx5dr_definer_fc *fc;
 	bool inner = cd->tunnel;
 
-	if (m && (m->rsvd0[0] != 0 || m->rsvd0[1] != 0 || m->rsvd0[2] != 0 ||
-	    m->rsvd1 != 0)) {
-		DR_LOG(ERR, "reserved fields are not supported");
-		rte_errno = ENOTSUP;
-		return rte_errno;
-	}
-
 	if (inner) {
 		DR_LOG(ERR, "Inner VXLAN item not supported");
 		rte_errno = ENOTSUP;
@@ -1584,22 +1568,18 @@ mlx5dr_definer_conv_item_vxlan(struct mlx5dr_definer_conv_data *cd,
 	if (!m)
 		return 0;
 
-	if (m->flags) {
-		fc = &cd->fc[MLX5DR_DEFINER_FNAME_VXLAN_FLAGS];
+	if (m->hdr.vx_flags) {
+		fc = &cd->fc[MLX5DR_DEFINER_FNAME_VXLAN_DW0];
 		fc->item_idx = item_idx;
-		fc->tag_set = &mlx5dr_definer_vxlan_flags_set;
+		fc->tag_set = &mlx5dr_definer_vxlan_vx_flags_set;
 		DR_CALC_SET_HDR(fc, tunnel_header, tunnel_header_0);
-		fc->bit_mask = __mlx5_mask(header_vxlan, flags);
-		fc->bit_off = __mlx5_dw_bit_off(header_vxlan, flags);
 	}
 
-	if (!is_mem_zero(m->vni, 3)) {
-		fc = &cd->fc[MLX5DR_DEFINER_FNAME_VXLAN_VNI];
+	if (m->hdr.vx_vni) {
+		fc = &cd->fc[MLX5DR_DEFINER_FNAME_VXLAN_DW1];
 		fc->item_idx = item_idx;
-		fc->tag_set = &mlx5dr_definer_vxlan_vni_set;
+		fc->tag_set = &mlx5dr_definer_vxlan_vx_vni_set;
 		DR_CALC_SET_HDR(fc, tunnel_header, tunnel_header_1);
-		fc->bit_mask = __mlx5_mask(header_vxlan, vni);
-		fc->bit_off = __mlx5_dw_bit_off(header_vxlan, vni);
 	}
 
 	return 0;

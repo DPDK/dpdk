@@ -302,21 +302,19 @@ Limitations
   size and ``txq_inline_min`` settings and may be from 2 (worst case forced by maximal
   inline settings) to 58.
 
-- Match on VXLAN supports the following fields only:
+- Match on VXLAN supports any bits in the tunnel header
 
-     - VNI
-     - Last reserved 8-bits
-
-  Last reserved 8-bits matching is only supported When using DV flow
-  engine (``dv_flow_en`` = 1).
-  For ConnectX-5, the UDP destination port must be the standard one (4789).
-  Group zero's behavior may differ which depends on FW.
-  Matching value equals 0 (value & mask) is not supported.
+  - Flag 8-bits and first 24-bits reserved fields matching
+    is only supported when using DV flow engine (``dv_flow_en`` = 2).
+  - For ConnectX-5, the UDP destination port must be the standard one (4789).
+  - Default UDP destination is 4789 if not explicitly specified.
+  - Group zero's behavior may differ which depends on FW.
 
 - Matching on VXLAN-GPE header fields:
 
      - ``rsvd0``/``rsvd1`` matching support depends on FW version
        when using DV flow engine (``dv_flow_en`` = 1).
+     - ``protocol`` should be explicitly specified in HWS (``dv_flow_en`` = 2).
 
 - L3 VXLAN and VXLAN-GPE tunnels cannot be supported together with MPLSoGRE and MPLSoUDP.
 
