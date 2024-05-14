@@ -133,6 +133,7 @@ struct pkt_rx_queue {
 	struct xsk_umem_info *umem;
 	struct xsk_socket *xsk;
 	struct rte_mempool *mb_pool;
+	uint16_t port;
 
 	struct rx_stats stats;
 
@@ -368,6 +369,7 @@ af_xdp_rx_zc(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 		bufs[i]->data_off = offset - sizeof(struct rte_mbuf) -
 			rte_pktmbuf_priv_size(umem->mb_pool) -
 			umem->mb_pool->header_size;
+		bufs[i]->port = rxq->port;
 
 		rte_pktmbuf_pkt_len(bufs[i]) = len;
 		rte_pktmbuf_data_len(bufs[i]) = len;
@@ -434,6 +436,7 @@ af_xdp_rx_cp(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 		rte_pktmbuf_data_len(mbufs[i]) = len;
 		rx_bytes += len;
 		bufs[i] = mbufs[i];
+		bufs[i]->port = rxq->port;
 	}
 
 	xsk_ring_cons__release(rx, nb_pkts);
@@ -1812,6 +1815,8 @@ eth_rx_queue_setup(struct rte_eth_dev *dev,
 	rxq->fds[0].events = POLLIN;
 
 	process_private->rxq_xsk_fds[rx_queue_id] = rxq->fds[0].fd;
+
+	rxq->port = dev->data->port_id;
 
 	dev->data->rx_queues[rx_queue_id] = rxq;
 	return 0;
