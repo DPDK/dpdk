@@ -126,6 +126,7 @@ struct rx_stats {
 	uint64_t rx_pkts;
 	uint64_t rx_bytes;
 	uint64_t rx_dropped;
+	uint64_t imissed_offset;
 };
 
 struct pkt_rx_queue {
@@ -892,7 +893,7 @@ eth_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 			AF_XDP_LOG(ERR, "getsockopt() failed for XDP_STATISTICS.\n");
 			return -1;
 		}
-		stats->imissed += xdp_stats.rx_dropped;
+		stats->imissed += xdp_stats.rx_dropped - rxq->stats.imissed_offset;
 
 		stats->opackets += stats->q_opackets[i];
 		stats->obytes += stats->q_obytes[i];
@@ -905,13 +906,25 @@ static int
 eth_stats_reset(struct rte_eth_dev *dev)
 {
 	struct pmd_internals *internals = dev->data->dev_private;
-	int i;
+	struct pmd_process_private *process_private = dev->process_private;
+	struct xdp_statistics xdp_stats;
+	socklen_t optlen;
+	int i, ret, fd;
 
 	for (i = 0; i < internals->queue_cnt; i++) {
 		memset(&internals->rx_queues[i].stats, 0,
 					sizeof(struct rx_stats));
 		memset(&internals->tx_queues[i].stats, 0,
 					sizeof(struct tx_stats));
+		fd = process_private->rxq_xsk_fds[i];
+		optlen = sizeof(struct xdp_statistics);
+		ret = fd >= 0 ? getsockopt(fd, SOL_XDP, XDP_STATISTICS,
+					   &xdp_stats, &optlen) : -1;
+		if (ret != 0) {
+			AF_XDP_LOG(ERR, "getsockopt() failed for XDP_STATISTICS.\n");
+			return -1;
+		}
+		internals->rx_queues[i].stats.imissed_offset = xdp_stats.rx_dropped;
 	}
 
 	return 0;
