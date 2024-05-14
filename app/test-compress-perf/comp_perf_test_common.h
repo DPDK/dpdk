@@ -14,7 +14,7 @@ struct cperf_mem_resources {
 	uint16_t qp_id;
 	uint8_t lcore_id;
 
-	uint16_t print_info_once;
+	RTE_ATOMIC(uint16_t) print_info_once;
 
 	uint32_t total_bufs;
 	uint8_t *compressed_data;

@@ -537,7 +537,7 @@ main_loop(__rte_unused void *args)
 	return 0;
 }
 
-static uint64_t start;
+static RTE_ATOMIC(uint64_t) start;
 
 static inline int
 poll_burst(void *args)
@@ -575,7 +575,7 @@ poll_burst(void *args)
 		num[portid] = pkt_per_port;
 	}
 
-	rte_wait_until_equal_64(&start, 1, __ATOMIC_ACQUIRE);
+	rte_wait_until_equal_64((uint64_t *)(uintptr_t)&start, 1, rte_memory_order_acquire);
 
 	cur_tsc = rte_rdtsc();
 	while (total) {
@@ -629,9 +629,9 @@ exec_burst(uint32_t flags, int lcore)
 
 	/* only when polling first */
 	if (flags == SC_BURST_POLL_FIRST)
-		__atomic_store_n(&start, 1, __ATOMIC_RELAXED);
+		rte_atomic_store_explicit(&start, 1, rte_memory_order_relaxed);
 	else
-		__atomic_store_n(&start, 0, __ATOMIC_RELAXED);
+		rte_atomic_store_explicit(&start, 0, rte_memory_order_relaxed);
 
 	/* start polling thread
 	 * if in POLL_FIRST mode, poll once launched;
@@ -655,7 +655,7 @@ exec_burst(uint32_t flags, int lcore)
 
 	/* only when polling second  */
 	if (flags == SC_BURST_XMIT_FIRST)
-		__atomic_store_n(&start, 1, __ATOMIC_RELEASE);
+		rte_atomic_store_explicit(&start, 1, rte_memory_order_release);
 
 	/* wait for polling finished */
 	diff_tsc = rte_eal_wait_lcore(lcore);

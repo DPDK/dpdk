@@ -216,7 +216,7 @@ cperf_verify_test_runner(void *test_ctx)
 	uint64_t ops_deqd = 0, ops_deqd_total = 0, ops_deqd_failed = 0;
 	uint64_t ops_failed = 0;
 
-	static uint16_t display_once;
+	static RTE_ATOMIC(uint16_t) display_once;
 
 	uint64_t i;
 	uint16_t ops_unused = 0;
@@ -370,8 +370,8 @@ cperf_verify_test_runner(void *test_ctx)
 
 	uint16_t exp = 0;
 	if (!ctx->options->csv) {
-		if (__atomic_compare_exchange_n(&display_once, &exp, 1, 0,
-				__ATOMIC_RELAXED, __ATOMIC_RELAXED))
+		if (rte_atomic_compare_exchange_strong_explicit(&display_once, &exp, 1,
+				rte_memory_order_relaxed, rte_memory_order_relaxed))
 			printf("%12s%12s%12s%12s%12s%12s%12s%12s\n\n",
 				"lcore id", "Buf Size", "Burst size",
 				"Enqueued", "Dequeued", "Failed Enq",
@@ -388,8 +388,8 @@ cperf_verify_test_runner(void *test_ctx)
 				ops_deqd_failed,
 				ops_failed);
 	} else {
-		if (__atomic_compare_exchange_n(&display_once, &exp, 1, 0,
-				__ATOMIC_RELAXED, __ATOMIC_RELAXED))
+		if (rte_atomic_compare_exchange_strong_explicit(&display_once, &exp, 1,
+				rte_memory_order_relaxed, rte_memory_order_relaxed))
 			printf("\n# lcore id, Buffer Size(B), "
 				"Burst Size,Enqueued,Dequeued,Failed Enq,"
 				"Failed Deq,Failed Ops\n");

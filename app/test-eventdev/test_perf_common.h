@@ -225,7 +225,7 @@ perf_process_last_stage(struct rte_mempool *const pool, enum evt_prod_type prod_
 	 * stored before updating the number of
 	 * processed packets for worker lcores
 	 */
-	rte_atomic_thread_fence(__ATOMIC_RELEASE);
+	rte_atomic_thread_fence(rte_memory_order_release);
 	w->processed_pkts++;
 
 	if (prod_type == EVT_PROD_TYPE_EVENT_CRYPTO_ADPTR) {
@@ -270,7 +270,7 @@ perf_process_last_stage_latency(struct rte_mempool *const pool, enum evt_prod_ty
 	/* Release fence here ensures event_prt is stored before updating the number of processed
 	 * packets for worker lcores.
 	 */
-	rte_atomic_thread_fence(__ATOMIC_RELEASE);
+	rte_atomic_thread_fence(rte_memory_order_release);
 	w->processed_pkts++;
 
 	if (prod_type == EVT_PROD_TYPE_EVENT_CRYPTO_ADPTR) {
@@ -325,7 +325,7 @@ perf_process_vector_last_stage(struct rte_mempool *const pool,
 	/* Release fence here ensures event_prt is stored before updating the number of processed
 	 * packets for worker lcores.
 	 */
-	rte_atomic_thread_fence(__ATOMIC_RELEASE);
+	rte_atomic_thread_fence(rte_memory_order_release);
 	w->processed_pkts += vec->nb_elem;
 
 	if (enable_fwd_latency) {

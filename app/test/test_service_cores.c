@@ -59,15 +59,15 @@ static int32_t dummy_mt_unsafe_cb(void *args)
 	 * test, because two threads are concurrently in a non-MT safe callback.
 	 */
 	uint32_t *test_params = args;
-	uint32_t *lock = &test_params[0];
+	RTE_ATOMIC(uint32_t) *lock = (uint32_t __rte_atomic *)&test_params[0];
 	uint32_t *pass_test = &test_params[1];
 	uint32_t exp = 0;
-	int lock_taken = __atomic_compare_exchange_n(lock, &exp, 1, 0,
-					__ATOMIC_RELAXED, __ATOMIC_RELAXED);
+	int lock_taken = rte_atomic_compare_exchange_strong_explicit(lock, &exp, 1,
+					rte_memory_order_relaxed, rte_memory_order_relaxed);
 	if (lock_taken) {
 		/* delay with the lock held */
 		rte_delay_ms(250);
-		__atomic_store_n(lock, 0, __ATOMIC_RELAXED);
+		rte_atomic_store_explicit(lock, 0, rte_memory_order_relaxed);
 	} else {
 		/* 2nd thread will fail to take lock, so clear pass flag */
 		*pass_test = 0;
@@ -86,15 +86,15 @@ static int32_t dummy_mt_safe_cb(void *args)
 	 *    that 2 threads are running the callback at the same time: MT safe
 	 */
 	uint32_t *test_params = args;
-	uint32_t *lock = &test_params[0];
+	RTE_ATOMIC(uint32_t) *lock = (uint32_t __rte_atomic *)&test_params[0];
 	uint32_t *pass_test = &test_params[1];
 	uint32_t exp = 0;
-	int lock_taken = __atomic_compare_exchange_n(lock, &exp, 1, 0,
-					__ATOMIC_RELAXED, __ATOMIC_RELAXED);
+	int lock_taken = rte_atomic_compare_exchange_strong_explicit(lock, &exp, 1,
+					rte_memory_order_relaxed, rte_memory_order_relaxed);
 	if (lock_taken) {
 		/* delay with the lock held */
 		rte_delay_ms(250);
-		__atomic_store_n(lock, 0, __ATOMIC_RELAXED);
+		rte_atomic_store_explicit(lock, 0, rte_memory_order_relaxed);
 	} else {
 		/* 2nd thread will fail to take lock, so set pass flag */
 		*pass_test = 1;
@@ -748,15 +748,15 @@ delay_as_a_mt_safe_service(void *args)
 
 	/* retrieve done flag and lock to add/sub */
 	uint32_t *done = &params[0];
-	uint32_t *lock = &params[1];
+	RTE_ATOMIC(uint32_t) *lock = (uint32_t __rte_atomic *)&params[1];
 
 	while (!*done) {
-		__atomic_fetch_add(lock, 1, __ATOMIC_RELAXED);
+		rte_atomic_fetch_add_explicit(lock, 1, rte_memory_order_relaxed);
 		rte_delay_us(500);
-		if (__atomic_load_n(lock, __ATOMIC_RELAXED) > 1)
+		if (rte_atomic_load_explicit(lock, rte_memory_order_relaxed) > 1)
 			/* pass: second core has simultaneously incremented */
 			*done = 1;
-		__atomic_fetch_sub(lock, 1, __ATOMIC_RELAXED);
+		rte_atomic_fetch_sub_explicit(lock, 1, rte_memory_order_relaxed);
 	}
 
 	return 0;

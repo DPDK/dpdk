@@ -107,7 +107,7 @@ cperf_throughput_test_runner(void *test_ctx)
 	uint8_t burst_size_idx = 0;
 	uint32_t imix_idx = 0;
 
-	static uint16_t display_once;
+	static RTE_ATOMIC(uint16_t) display_once;
 
 	struct rte_crypto_op *ops[ctx->options->max_burst_size];
 	struct rte_crypto_op *ops_processed[ctx->options->max_burst_size];
@@ -277,8 +277,8 @@ cperf_throughput_test_runner(void *test_ctx)
 
 		uint16_t exp = 0;
 		if (!ctx->options->csv) {
-			if (__atomic_compare_exchange_n(&display_once, &exp, 1, 0,
-					__ATOMIC_RELAXED, __ATOMIC_RELAXED))
+			if (rte_atomic_compare_exchange_strong_explicit(&display_once, &exp, 1,
+					rte_memory_order_relaxed, rte_memory_order_relaxed))
 				printf("%12s%12s%12s%12s%12s%12s%12s%12s%12s%12s\n\n",
 					"lcore id", "Buf Size", "Burst Size",
 					"Enqueued", "Dequeued", "Failed Enq",
@@ -298,8 +298,8 @@ cperf_throughput_test_runner(void *test_ctx)
 					throughput_gbps,
 					cycles_per_packet);
 		} else {
-			if (__atomic_compare_exchange_n(&display_once, &exp, 1, 0,
-					__ATOMIC_RELAXED, __ATOMIC_RELAXED))
+			if (rte_atomic_compare_exchange_strong_explicit(&display_once, &exp, 1,
+					rte_memory_order_relaxed, rte_memory_order_relaxed))
 				printf("#lcore id,Buffer Size(B),"
 					"Burst Size,Enqueued,Dequeued,Failed Enq,"
 					"Failed Deq,Ops(Millions),Throughput(Gbps),"

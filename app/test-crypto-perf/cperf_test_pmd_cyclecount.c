@@ -396,7 +396,7 @@ cperf_pmd_cyclecount_test_runner(void *test_ctx)
 	state.lcore = rte_lcore_id();
 	state.linearize = 0;
 
-	static uint16_t display_once;
+	static RTE_ATOMIC(uint16_t) display_once;
 	static bool warmup = true;
 
 	/*
@@ -443,8 +443,8 @@ cperf_pmd_cyclecount_test_runner(void *test_ctx)
 
 		uint16_t exp = 0;
 		if (!opts->csv) {
-			if (__atomic_compare_exchange_n(&display_once, &exp, 1, 0,
-					__ATOMIC_RELAXED, __ATOMIC_RELAXED))
+			if (rte_atomic_compare_exchange_strong_explicit(&display_once, &exp, 1,
+					rte_memory_order_relaxed, rte_memory_order_relaxed))
 				printf(PRETTY_HDR_FMT, "lcore id", "Buf Size",
 						"Burst Size", "Enqueued",
 						"Dequeued", "Enq Retries",
@@ -460,8 +460,8 @@ cperf_pmd_cyclecount_test_runner(void *test_ctx)
 					state.cycles_per_enq,
 					state.cycles_per_deq);
 		} else {
-			if (__atomic_compare_exchange_n(&display_once, &exp, 1, 0,
-					__ATOMIC_RELAXED, __ATOMIC_RELAXED))
+			if (rte_atomic_compare_exchange_strong_explicit(&display_once, &exp, 1,
+					rte_memory_order_relaxed, rte_memory_order_relaxed))
 				printf(CSV_HDR_FMT, "# lcore id", "Buf Size",
 						"Burst Size", "Enqueued",
 						"Dequeued", "Enq Retries",

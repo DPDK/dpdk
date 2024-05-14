@@ -25,13 +25,15 @@ static uint32_t *keys;
 static uint32_t *hash_data[TOTAL_ENTRY];
 static volatile uint8_t writer_done;
 static volatile uint8_t all_registered;
-static volatile uint32_t thr_id;
+static volatile RTE_ATOMIC(uint32_t) thr_id;
 
 static struct rte_rcu_qsbr *t[RTE_MAX_LCORE];
 static struct rte_hash *h;
 static char hash_name[8];
-static uint64_t updates, checks;
-static uint64_t update_cycles, check_cycles;
+static RTE_ATOMIC(uint64_t) updates;
+static RTE_ATOMIC(uint64_t) checks;
+static RTE_ATOMIC(uint64_t) update_cycles;
+static RTE_ATOMIC(uint64_t) check_cycles;
 
 /* Scale down results to 1000 operations to support lower
  * granularity clocks.
@@ -44,7 +46,7 @@ alloc_thread_id(void)
 {
 	uint32_t tmp_thr_id;
 
-	tmp_thr_id = __atomic_fetch_add(&thr_id, 1, __ATOMIC_RELAXED);
+	tmp_thr_id = rte_atomic_fetch_add_explicit(&thr_id, 1, rte_memory_order_relaxed);
 	if (tmp_thr_id >= RTE_MAX_LCORE)
 		printf("Invalid thread id %u\n", tmp_thr_id);
 
@@ -81,8 +83,8 @@ test_rcu_qsbr_reader_perf(void *arg)
 	}
 
 	cycles = rte_rdtsc_precise() - begin;
-	__atomic_fetch_add(&update_cycles, cycles, __ATOMIC_RELAXED);
-	__atomic_fetch_add(&updates, loop_cnt, __ATOMIC_RELAXED);
+	rte_atomic_fetch_add_explicit(&update_cycles, cycles, rte_memory_order_relaxed);
+	rte_atomic_fetch_add_explicit(&updates, loop_cnt, rte_memory_order_relaxed);
 
 	/* Make the thread offline */
 	rte_rcu_qsbr_thread_offline(t[0], thread_id);
@@ -113,8 +115,8 @@ test_rcu_qsbr_writer_perf(void *arg)
 	} while (loop_cnt < 20000000);
 
 	cycles = rte_rdtsc_precise() - begin;
-	__atomic_fetch_add(&check_cycles, cycles, __ATOMIC_RELAXED);
-	__atomic_fetch_add(&checks, loop_cnt, __ATOMIC_RELAXED);
+	rte_atomic_fetch_add_explicit(&check_cycles, cycles, rte_memory_order_relaxed);
+	rte_atomic_fetch_add_explicit(&checks, loop_cnt, rte_memory_order_relaxed);
 	return 0;
 }
 
@@ -130,15 +132,15 @@ test_rcu_qsbr_perf(void)
 
 	writer_done = 0;
 
-	__atomic_store_n(&updates, 0, __ATOMIC_RELAXED);
-	__atomic_store_n(&update_cycles, 0, __ATOMIC_RELAXED);
-	__atomic_store_n(&checks, 0, __ATOMIC_RELAXED);
-	__atomic_store_n(&check_cycles, 0, __ATOMIC_RELAXED);
+	rte_atomic_store_explicit(&updates, 0, rte_memory_order_relaxed);
+	rte_atomic_store_explicit(&update_cycles, 0, rte_memory_order_relaxed);
+	rte_atomic_store_explicit(&checks, 0, rte_memory_order_relaxed);
+	rte_atomic_store_explicit(&check_cycles, 0, rte_memory_order_relaxed);
 
 	printf("\nPerf Test: %d Readers/1 Writer('wait' in qsbr_check == true)\n",
 		num_cores - 1);
 
-	__atomic_store_n(&thr_id, 0, __ATOMIC_SEQ_CST);
+	rte_atomic_store_explicit(&thr_id, 0, rte_memory_order_seq_cst);
 
 	if (all_registered == 1)
 		tmp_num_cores = num_cores - 1;
@@ -168,15 +170,16 @@ test_rcu_qsbr_perf(void)
 	rte_eal_mp_wait_lcore();
 
 	printf("Total quiescent state updates = %"PRIi64"\n",
-		__atomic_load_n(&updates, __ATOMIC_RELAXED));
+		rte_atomic_load_explicit(&updates, rte_memory_order_relaxed));
 	printf("Cycles per %d quiescent state updates: %"PRIi64"\n",
 		RCU_SCALE_DOWN,
-		__atomic_load_n(&update_cycles, __ATOMIC_RELAXED) /
-		(__atomic_load_n(&updates, __ATOMIC_RELAXED) / RCU_SCALE_DOWN));
-	printf("Total RCU checks = %"PRIi64"\n", __atomic_load_n(&checks, __ATOMIC_RELAXED));
+		rte_atomic_load_explicit(&update_cycles, rte_memory_order_relaxed) /
+		(rte_atomic_load_explicit(&updates, rte_memory_order_relaxed) / RCU_SCALE_DOWN));
+	printf("Total RCU checks = %"PRIi64"\n", rte_atomic_load_explicit(&checks,
+			rte_memory_order_relaxed));
 	printf("Cycles per %d checks: %"PRIi64"\n", RCU_SCALE_DOWN,
-		__atomic_load_n(&check_cycles, __ATOMIC_RELAXED) /
-		(__atomic_load_n(&checks, __ATOMIC_RELAXED) / RCU_SCALE_DOWN));
+		rte_atomic_load_explicit(&check_cycles, rte_memory_order_relaxed) /
+		(rte_atomic_load_explicit(&checks, rte_memory_order_relaxed) / RCU_SCALE_DOWN));
 
 	rte_free(t[0]);
 
@@ -193,10 +196,10 @@ test_rcu_qsbr_rperf(void)
 	size_t sz;
 	unsigned int i, tmp_num_cores;
 
-	__atomic_store_n(&updates, 0, __ATOMIC_RELAXED);
-	__atomic_store_n(&update_cycles, 0, __ATOMIC_RELAXED);
+	rte_atomic_store_explicit(&updates, 0, rte_memory_order_relaxed);
+	rte_atomic_store_explicit(&update_cycles, 0, rte_memory_order_relaxed);
 
-	__atomic_store_n(&thr_id, 0, __ATOMIC_SEQ_CST);
+	rte_atomic_store_explicit(&thr_id, 0, rte_memory_order_seq_cst);
 
 	printf("\nPerf Test: %d Readers\n", num_cores);
 
@@ -220,11 +223,11 @@ test_rcu_qsbr_rperf(void)
 	rte_eal_mp_wait_lcore();
 
 	printf("Total quiescent state updates = %"PRIi64"\n",
-		__atomic_load_n(&updates, __ATOMIC_RELAXED));
+		rte_atomic_load_explicit(&updates, rte_memory_order_relaxed));
 	printf("Cycles per %d quiescent state updates: %"PRIi64"\n",
 		RCU_SCALE_DOWN,
-		__atomic_load_n(&update_cycles, __ATOMIC_RELAXED) /
-		(__atomic_load_n(&updates, __ATOMIC_RELAXED) / RCU_SCALE_DOWN));
+		rte_atomic_load_explicit(&update_cycles, rte_memory_order_relaxed) /
+		(rte_atomic_load_explicit(&updates, rte_memory_order_relaxed) / RCU_SCALE_DOWN));
 
 	rte_free(t[0]);
 
@@ -241,10 +244,10 @@ test_rcu_qsbr_wperf(void)
 	size_t sz;
 	unsigned int i;
 
-	__atomic_store_n(&checks, 0, __ATOMIC_RELAXED);
-	__atomic_store_n(&check_cycles, 0, __ATOMIC_RELAXED);
+	rte_atomic_store_explicit(&checks, 0, rte_memory_order_relaxed);
+	rte_atomic_store_explicit(&check_cycles, 0, rte_memory_order_relaxed);
 
-	__atomic_store_n(&thr_id, 0, __ATOMIC_SEQ_CST);
+	rte_atomic_store_explicit(&thr_id, 0, rte_memory_order_seq_cst);
 
 	printf("\nPerf test: %d Writers ('wait' in qsbr_check == false)\n",
 		num_cores);
@@ -266,10 +269,11 @@ test_rcu_qsbr_wperf(void)
 	/* Wait until all readers have exited */
 	rte_eal_mp_wait_lcore();
 
-	printf("Total RCU checks = %"PRIi64"\n", __atomic_load_n(&checks, __ATOMIC_RELAXED));
+	printf("Total RCU checks = %"PRIi64"\n", rte_atomic_load_explicit(&checks,
+			rte_memory_order_relaxed));
 	printf("Cycles per %d checks: %"PRIi64"\n", RCU_SCALE_DOWN,
-		__atomic_load_n(&check_cycles, __ATOMIC_RELAXED) /
-		(__atomic_load_n(&checks, __ATOMIC_RELAXED) / RCU_SCALE_DOWN));
+		rte_atomic_load_explicit(&check_cycles, rte_memory_order_relaxed) /
+		(rte_atomic_load_explicit(&checks, rte_memory_order_relaxed) / RCU_SCALE_DOWN));
 
 	rte_free(t[0]);
 
@@ -317,8 +321,8 @@ test_rcu_qsbr_hash_reader(void *arg)
 	} while (!writer_done);
 
 	cycles = rte_rdtsc_precise() - begin;
-	__atomic_fetch_add(&update_cycles, cycles, __ATOMIC_RELAXED);
-	__atomic_fetch_add(&updates, loop_cnt, __ATOMIC_RELAXED);
+	rte_atomic_fetch_add_explicit(&update_cycles, cycles, rte_memory_order_relaxed);
+	rte_atomic_fetch_add_explicit(&updates, loop_cnt, rte_memory_order_relaxed);
 
 	rte_rcu_qsbr_thread_unregister(temp, thread_id);
 
@@ -389,12 +393,12 @@ test_rcu_qsbr_sw_sv_1qs(void)
 
 	writer_done = 0;
 
-	__atomic_store_n(&updates, 0, __ATOMIC_RELAXED);
-	__atomic_store_n(&update_cycles, 0, __ATOMIC_RELAXED);
-	__atomic_store_n(&checks, 0, __ATOMIC_RELAXED);
-	__atomic_store_n(&check_cycles, 0, __ATOMIC_RELAXED);
+	rte_atomic_store_explicit(&updates, 0, rte_memory_order_relaxed);
+	rte_atomic_store_explicit(&update_cycles, 0, rte_memory_order_relaxed);
+	rte_atomic_store_explicit(&checks, 0, rte_memory_order_relaxed);
+	rte_atomic_store_explicit(&check_cycles, 0, rte_memory_order_relaxed);
 
-	__atomic_store_n(&thr_id, 0, __ATOMIC_SEQ_CST);
+	rte_atomic_store_explicit(&thr_id, 0, rte_memory_order_seq_cst);
 
 	printf("\nPerf test: 1 writer, %d readers, 1 QSBR variable, 1 QSBR Query, Blocking QSBR Check\n", num_cores);
 
@@ -453,8 +457,8 @@ test_rcu_qsbr_sw_sv_1qs(void)
 	}
 
 	cycles = rte_rdtsc_precise() - begin;
-	__atomic_fetch_add(&check_cycles, cycles, __ATOMIC_RELAXED);
-	__atomic_fetch_add(&checks, i, __ATOMIC_RELAXED);
+	rte_atomic_fetch_add_explicit(&check_cycles, cycles, rte_memory_order_relaxed);
+	rte_atomic_fetch_add_explicit(&checks, i, rte_memory_order_relaxed);
 
 	writer_done = 1;
 
@@ -467,12 +471,12 @@ test_rcu_qsbr_sw_sv_1qs(void)
 
 	printf("Following numbers include calls to rte_hash functions\n");
 	printf("Cycles per 1 quiescent state update(online/update/offline): %"PRIi64"\n",
-		__atomic_load_n(&update_cycles, __ATOMIC_RELAXED) /
-		__atomic_load_n(&updates, __ATOMIC_RELAXED));
+		rte_atomic_load_explicit(&update_cycles, rte_memory_order_relaxed) /
+		rte_atomic_load_explicit(&updates, rte_memory_order_relaxed));
 
 	printf("Cycles per 1 check(start, check): %"PRIi64"\n\n",
-		__atomic_load_n(&check_cycles, __ATOMIC_RELAXED) /
-		__atomic_load_n(&checks, __ATOMIC_RELAXED));
+		rte_atomic_load_explicit(&check_cycles, rte_memory_order_relaxed) /
+		rte_atomic_load_explicit(&checks, rte_memory_order_relaxed));
 
 	rte_free(t[0]);
 
@@ -511,7 +515,7 @@ test_rcu_qsbr_sw_sv_1qs_non_blocking(void)
 
 	printf("Perf test: 1 writer, %d readers, 1 QSBR variable, 1 QSBR Query, Non-Blocking QSBR check\n", num_cores);
 
-	__atomic_store_n(&thr_id, 0, __ATOMIC_RELAXED);
+	rte_atomic_store_explicit(&thr_id, 0, rte_memory_order_relaxed);
 
 	if (all_registered == 1)
 		tmp_num_cores = num_cores;
@@ -570,8 +574,8 @@ test_rcu_qsbr_sw_sv_1qs_non_blocking(void)
 	}
 
 	cycles = rte_rdtsc_precise() - begin;
-	__atomic_fetch_add(&check_cycles, cycles, __ATOMIC_RELAXED);
-	__atomic_fetch_add(&checks, i, __ATOMIC_RELAXED);
+	rte_atomic_fetch_add_explicit(&check_cycles, cycles, rte_memory_order_relaxed);
+	rte_atomic_fetch_add_explicit(&checks, i, rte_memory_order_relaxed);
 
 	writer_done = 1;
 	/* Wait and check return value from reader threads */
@@ -583,12 +587,12 @@ test_rcu_qsbr_sw_sv_1qs_non_blocking(void)
 
 	printf("Following numbers include calls to rte_hash functions\n");
 	printf("Cycles per 1 quiescent state update(online/update/offline): %"PRIi64"\n",
-		__atomic_load_n(&update_cycles, __ATOMIC_RELAXED) /
-		__atomic_load_n(&updates, __ATOMIC_RELAXED));
+		rte_atomic_load_explicit(&update_cycles, rte_memory_order_relaxed) /
+		rte_atomic_load_explicit(&updates, rte_memory_order_relaxed));
 
 	printf("Cycles per 1 check(start, check): %"PRIi64"\n\n",
-		__atomic_load_n(&check_cycles, __ATOMIC_RELAXED) /
-		__atomic_load_n(&checks, __ATOMIC_RELAXED));
+		rte_atomic_load_explicit(&check_cycles, rte_memory_order_relaxed) /
+		rte_atomic_load_explicit(&checks, rte_memory_order_relaxed));
 
 	rte_free(t[0]);
 
@@ -622,10 +626,10 @@ test_rcu_qsbr_main(void)
 		return TEST_SKIPPED;
 	}
 
-	__atomic_store_n(&updates, 0, __ATOMIC_RELAXED);
-	__atomic_store_n(&update_cycles, 0, __ATOMIC_RELAXED);
-	__atomic_store_n(&checks, 0, __ATOMIC_RELAXED);
-	__atomic_store_n(&check_cycles, 0, __ATOMIC_RELAXED);
+	rte_atomic_store_explicit(&updates, 0, rte_memory_order_relaxed);
+	rte_atomic_store_explicit(&update_cycles, 0, rte_memory_order_relaxed);
+	rte_atomic_store_explicit(&checks, 0, rte_memory_order_relaxed);
+	rte_atomic_store_explicit(&check_cycles, 0, rte_memory_order_relaxed);
 
 	num_cores = 0;
 	RTE_LCORE_FOREACH_WORKER(core_id) {

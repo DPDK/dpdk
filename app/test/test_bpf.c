@@ -39,8 +39,8 @@ test_bpf(void)
  */
 
 struct dummy_offset {
-	uint64_t u64;
-	uint32_t u32;
+	RTE_ATOMIC(uint64_t) u64;
+	RTE_ATOMIC(uint32_t) u32;
 	uint16_t u16;
 	uint8_t  u8;
 };
@@ -1581,32 +1581,46 @@ test_xadd1_check(uint64_t rc, const void *arg)
 	memset(&dfe, 0, sizeof(dfe));
 
 	rv = 1;
-	__atomic_fetch_add(&dfe.u32, rv, __ATOMIC_RELAXED);
-	__atomic_fetch_add(&dfe.u64, rv, __ATOMIC_RELAXED);
+	rte_atomic_fetch_add_explicit((uint32_t __rte_atomic *)&dfe.u32, rv,
+			rte_memory_order_relaxed);
+	rte_atomic_fetch_add_explicit((uint64_t __rte_atomic *)&dfe.u64, rv,
+			rte_memory_order_relaxed);
 
 	rv = -1;
-	__atomic_fetch_add(&dfe.u32, rv, __ATOMIC_RELAXED);
-	__atomic_fetch_add(&dfe.u64, rv, __ATOMIC_RELAXED);
+	rte_atomic_fetch_add_explicit((uint32_t __rte_atomic *)&dfe.u32, rv,
+			rte_memory_order_relaxed);
+	rte_atomic_fetch_add_explicit((uint64_t __rte_atomic *)&dfe.u64, rv,
+			rte_memory_order_relaxed);
 
 	rv = (int32_t)TEST_FILL_1;
-	__atomic_fetch_add(&dfe.u32, rv, __ATOMIC_RELAXED);
-	__atomic_fetch_add(&dfe.u64, rv, __ATOMIC_RELAXED);
+	rte_atomic_fetch_add_explicit((uint32_t __rte_atomic *)&dfe.u32, rv,
+			rte_memory_order_relaxed);
+	rte_atomic_fetch_add_explicit((uint64_t __rte_atomic *)&dfe.u64, rv,
+			rte_memory_order_relaxed);
 
 	rv = TEST_MUL_1;
-	__atomic_fetch_add(&dfe.u32, rv, __ATOMIC_RELAXED);
-	__atomic_fetch_add(&dfe.u64, rv, __ATOMIC_RELAXED);
+	rte_atomic_fetch_add_explicit((uint32_t __rte_atomic *)&dfe.u32, rv,
+			rte_memory_order_relaxed);
+	rte_atomic_fetch_add_explicit((uint64_t __rte_atomic *)&dfe.u64, rv,
+			rte_memory_order_relaxed);
 
 	rv = TEST_MUL_2;
-	__atomic_fetch_add(&dfe.u32, rv, __ATOMIC_RELAXED);
-	__atomic_fetch_add(&dfe.u64, rv, __ATOMIC_RELAXED);
+	rte_atomic_fetch_add_explicit((uint32_t __rte_atomic *)&dfe.u32, rv,
+			rte_memory_order_relaxed);
+	rte_atomic_fetch_add_explicit((uint64_t __rte_atomic *)&dfe.u64, rv,
+			rte_memory_order_relaxed);
 
 	rv = TEST_JCC_2;
-	__atomic_fetch_add(&dfe.u32, rv, __ATOMIC_RELAXED);
-	__atomic_fetch_add(&dfe.u64, rv, __ATOMIC_RELAXED);
+	rte_atomic_fetch_add_explicit((uint32_t __rte_atomic *)&dfe.u32, rv,
+			rte_memory_order_relaxed);
+	rte_atomic_fetch_add_explicit((uint64_t __rte_atomic *)&dfe.u64, rv,
+			rte_memory_order_relaxed);
 
 	rv = TEST_JCC_3;
-	__atomic_fetch_add(&dfe.u32, rv, __ATOMIC_RELAXED);
-	__atomic_fetch_add(&dfe.u64, rv, __ATOMIC_RELAXED);
+	rte_atomic_fetch_add_explicit((uint32_t __rte_atomic *)&dfe.u32, rv,
+			rte_memory_order_relaxed);
+	rte_atomic_fetch_add_explicit((uint64_t __rte_atomic *)&dfe.u64, rv,
+			rte_memory_order_relaxed);
 
 	return cmp_res(__func__, 1, rc, &dfe, dft, sizeof(dfe));
 }

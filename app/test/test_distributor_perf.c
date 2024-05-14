@@ -31,7 +31,7 @@ test_distributor_perf(void)
 
 /* static vars - zero initialized by default */
 static volatile int quit;
-static volatile unsigned worker_idx;
+static volatile RTE_ATOMIC(unsigned int) worker_idx;
 
 struct __rte_cache_aligned worker_stats {
 	volatile unsigned handled_packets;
@@ -121,7 +121,7 @@ handle_work(void *arg)
 	struct rte_distributor *d = arg;
 	unsigned int num = 0;
 	int i;
-	unsigned int id = __atomic_fetch_add(&worker_idx, 1, __ATOMIC_RELAXED);
+	unsigned int id = rte_atomic_fetch_add_explicit(&worker_idx, 1, rte_memory_order_relaxed);
 	alignas(RTE_CACHE_LINE_SIZE) struct rte_mbuf *buf[8];
 
 	for (i = 0; i < 8; i++)

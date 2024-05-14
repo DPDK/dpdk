@@ -51,7 +51,7 @@
 
 /* command line flags */
 static const char *progname;
-static bool quit_signal;
+static RTE_ATOMIC(bool) quit_signal;
 static bool group_read;
 static bool quiet;
 static bool use_pcapng = true;
@@ -475,7 +475,7 @@ static void parse_opts(int argc, char **argv)
 static void
 signal_handler(int sig_num __rte_unused)
 {
-	__atomic_store_n(&quit_signal, true, __ATOMIC_RELAXED);
+	rte_atomic_store_explicit(&quit_signal, true, rte_memory_order_relaxed);
 }
 
 
@@ -490,7 +490,7 @@ static void statistics_loop(void)
 	printf("%-15s  %10s  %10s\n",
 	       "Interface", "Received", "Dropped");
 
-	while (!__atomic_load_n(&quit_signal, __ATOMIC_RELAXED)) {
+	while (!rte_atomic_load_explicit(&quit_signal, rte_memory_order_relaxed)) {
 		RTE_ETH_FOREACH_DEV(p) {
 			if (rte_eth_dev_get_name_by_port(p, name) < 0)
 				continue;
@@ -528,7 +528,7 @@ cleanup_pdump_resources(void)
 static void
 monitor_primary(void *arg __rte_unused)
 {
-	if (__atomic_load_n(&quit_signal, __ATOMIC_RELAXED))
+	if (rte_atomic_load_explicit(&quit_signal, rte_memory_order_relaxed))
 		return;
 
 	if (rte_eal_primary_proc_alive(NULL)) {
@@ -536,7 +536,7 @@ monitor_primary(void *arg __rte_unused)
 	} else {
 		fprintf(stderr,
 			"Primary process is no longer active, exiting...\n");
-		__atomic_store_n(&quit_signal, true, __ATOMIC_RELAXED);
+		rte_atomic_store_explicit(&quit_signal, true, rte_memory_order_relaxed);
 	}
 }
 
@@ -983,7 +983,7 @@ int main(int argc, char **argv)
 		show_count(0);
 	}
 
-	while (!__atomic_load_n(&quit_signal, __ATOMIC_RELAXED)) {
+	while (!rte_atomic_load_explicit(&quit_signal, rte_memory_order_relaxed)) {
 		if (process_ring(out, r) < 0) {
 			fprintf(stderr, "pcapng file write failed; %s\n",
 				strerror(errno));
