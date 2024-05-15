@@ -25,8 +25,6 @@ The DPDK development process has the following features:
 * Patches are reviewed publicly on the mailing list.
 * Successfully reviewed patches are merged to the repository.
 * Patches should be sent to the target repository or sub-tree, see below.
-* All sub-repositories are merged into main repository for ``-rc1`` and ``-rc2`` versions of the release.
-* After the ``-rc2`` release all patches should target the main repository.
 
 The mailing list for DPDK development is `dev@dpdk.org <https://mails.dpdk.org/archives/dev/>`_.
 Contributors will need to `register for the mailing list <https://mails.dpdk.org/listinfo/dev>`_ in order to submit patches.
