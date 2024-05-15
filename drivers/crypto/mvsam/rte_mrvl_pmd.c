@@ -60,7 +60,7 @@ struct __rte_aligned(32) cipher_params_mapping {
 struct __rte_aligned(32) auth_params_mapping {
 	enum algo_supported supported;  /**< On/off switch */
 	enum sam_auth_alg   auth_alg;   /**< Auth algorithm */
-}
+};
 
 /**
  * Map of supported cipher algorithms.
