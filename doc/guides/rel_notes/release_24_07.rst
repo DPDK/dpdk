@@ -125,6 +125,10 @@ New Features
     (released) the previous event batch. This in turn facilities DSW
     use alongside high-latency look-aside hardware accelerators.
 
+* **Added defer queue reclamation in the hash library.**
+
+  Added an API that allows the user to reclaim the defer queue with RCU.
+
 
 Removed Items
 -------------

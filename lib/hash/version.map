@@ -53,3 +53,10 @@ INTERNAL {
 	rte_thash_gfni_stub;
 	rte_thash_gfni_bulk_stub;
 };
+
+EXPERIMENTAL {
+	global:
+
+	# added in 24.07
+	rte_hash_rcu_qsbr_dq_reclaim;
+};

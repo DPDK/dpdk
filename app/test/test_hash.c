@@ -2184,6 +2184,90 @@ test_hash_rcu_qsbr_sync_mode(uint8_t ext_bkt)
 }
 
 /*
+ * rte_hash_rcu_qsbr_dq_reclaim unit test.
+ */
+static int
+test_hash_rcu_qsbr_dq_reclaim(void)
+{
+	size_t sz;
+	int32_t status;
+	unsigned int total_entries = 8;
+	unsigned int freed, pending, available;
+	uint32_t reclaim_keys[8] = {10, 11, 12, 13, 14, 15, 16, 17};
+	struct rte_hash_rcu_config rcu_cfg = {0};
+	struct rte_hash_parameters hash_params = {
+			.name = "test_hash_rcu_qsbr_dq_reclaim",
+			.entries = total_entries,
+			.key_len = sizeof(uint32_t),
+			.hash_func = NULL,
+			.hash_func_init_val = 0,
+			.socket_id = 0,
+	};
+
+	hash_params.extra_flag = RTE_HASH_EXTRA_FLAGS_RW_CONCURRENCY_LF;
+
+	g_qsv = NULL;
+	g_handle = NULL;
+
+	printf("\n# Running RCU QSBR DQ mode, reclaim defer queue functional test\n");
+
+	g_handle = rte_hash_create(&hash_params);
+	RETURN_IF_ERROR_RCU_QSBR(g_handle == NULL, "Hash creation failed");
+
+	/* Create RCU QSBR variable */
+	sz = rte_rcu_qsbr_get_memsize(RTE_MAX_LCORE);
+	g_qsv = (struct rte_rcu_qsbr *)rte_zmalloc_socket(
+			NULL, sz, RTE_CACHE_LINE_SIZE, SOCKET_ID_ANY);
+	RETURN_IF_ERROR_RCU_QSBR(g_qsv == NULL, "RCU QSBR variable creation failed");
+
+	status = rte_rcu_qsbr_init(g_qsv, RTE_MAX_LCORE);
+	RETURN_IF_ERROR_RCU_QSBR(status != 0, "RCU QSBR variable initialization failed");
+
+	rcu_cfg.v = g_qsv;
+	rcu_cfg.dq_size = total_entries;
+	rcu_cfg.mode = RTE_HASH_QSBR_MODE_DQ;
+
+	/* Attach RCU QSBR to hash table */
+	status = rte_hash_rcu_qsbr_add(g_handle, &rcu_cfg);
+	RETURN_IF_ERROR_RCU_QSBR(status != 0, "Attach RCU QSBR to hash table failed");
+
+	/* Register pseudo reader */
+	status = rte_rcu_qsbr_thread_register(g_qsv, 0);
+	RETURN_IF_ERROR_RCU_QSBR(status != 0, "RCU QSBR thread registration failed");
+	rte_rcu_qsbr_thread_online(g_qsv, 0);
+
+	/* Fill half of the hash table */
+	for (size_t i = 0; i < total_entries / 2; i++)
+		status = rte_hash_add_key(g_handle, &reclaim_keys[i]);
+
+	/* Try to put these elements into the defer queue*/
+	for (size_t i = 0; i < total_entries / 2; i++)
+		rte_hash_del_key(g_handle, &reclaim_keys[i]);
+
+	/* Reader quiescent */
+	rte_rcu_qsbr_quiescent(g_qsv, 0);
+
+	status = rte_hash_add_key(g_handle, &reclaim_keys[0]);
+	RETURN_IF_ERROR_RCU_QSBR(status < 0, "failed to add key (pos[%u]=%d)", 0, status);
+
+	/* This should be (total_entries / 2) + 1 (last add) */
+	unsigned int hash_size = rte_hash_count(g_handle);
+
+	/* Freed size should be (total_entries / 2) */
+	rte_hash_rcu_qsbr_dq_reclaim(g_handle, &freed, &pending, &available);
+
+	rte_hash_free(g_handle);
+	rte_free(g_qsv);
+
+	if (hash_size != (total_entries / 2 + 1) || freed != (total_entries / 2)) {
+		printf("Failed to reclaim defer queue\n");
+		return -1;
+	}
+
+	return 0;
+}
+
+/*
  * Do all unit and performance tests.
  */
 static int
@@ -2259,6 +2343,9 @@ test_hash(void)
 		return -1;
 
 	if (test_hash_rcu_qsbr_sync_mode(1) < 0)
+		return -1;
+
+	if (test_hash_rcu_qsbr_dq_reclaim() < 0)
 		return -1;
 
 	return 0;

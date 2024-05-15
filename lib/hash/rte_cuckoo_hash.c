@@ -1590,6 +1590,27 @@ rte_hash_rcu_qsbr_add(struct rte_hash *h, struct rte_hash_rcu_config *cfg)
 	return 0;
 }
 
+int rte_hash_rcu_qsbr_dq_reclaim(struct rte_hash *h, unsigned int *freed, unsigned int *pending,
+				 unsigned int *available)
+{
+	int ret;
+
+	if (h == NULL || h->hash_rcu_cfg == NULL) {
+		HASH_LOG(ERR, "Invalid input parameter");
+		rte_errno = EINVAL;
+		return 1;
+	}
+
+	ret = rte_rcu_qsbr_dq_reclaim(h->dq, h->hash_rcu_cfg->max_reclaim_size, freed, pending,
+				      available);
+	if (ret != 0) {
+		HASH_LOG(ERR, "%s: could not reclaim the defer queue in hash table", __func__);
+		return 1;
+	}
+
+	return 0;
+}
+
 static inline void
 remove_entry(const struct rte_hash *h, struct rte_hash_bucket *bkt,
 		unsigned int i)
