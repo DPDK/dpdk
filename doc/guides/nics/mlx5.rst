@@ -879,6 +879,16 @@ Limitations
 
   Matching on checksum and sequence needs MLNX_OFED 5.6+.
 
+- Matching on NVGRE header:
+
+  - c_rc_k_s_rsvd0_ver
+  - protocol
+  - tni
+  - flow_id
+
+  In SW steering (``dv_flow_en`` = 1), only tni is supported.
+  In HW steering (``dv_flow_en`` = 2), all fields are supported.
+
 - The NIC egress flow rules on representor port are not supported.
 
 - A driver limitation for ``RTE_FLOW_ACTION_TYPE_PORT_REPRESENTOR`` action

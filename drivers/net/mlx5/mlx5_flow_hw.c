@@ -7665,6 +7665,7 @@ flow_hw_pattern_validate(struct rte_eth_dev *dev,
 		case RTE_FLOW_ITEM_TYPE_GRE:
 		case RTE_FLOW_ITEM_TYPE_GRE_KEY:
 		case RTE_FLOW_ITEM_TYPE_GRE_OPTION:
+		case RTE_FLOW_ITEM_TYPE_NVGRE:
 		case RTE_FLOW_ITEM_TYPE_ICMP:
 		case RTE_FLOW_ITEM_TYPE_ICMP6:
 		case RTE_FLOW_ITEM_TYPE_ICMP6_ECHO_REQUEST:

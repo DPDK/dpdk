@@ -15,6 +15,9 @@
 #define UDP_GENEVE_PORT 6081
 #define UDP_ROCEV2_PORT	4791
 #define DR_FLOW_LAYER_TUNNEL_NO_MPLS (MLX5_FLOW_LAYER_TUNNEL & ~MLX5_FLOW_LAYER_MPLS)
+#define NVGRE_PORT 0x6558
+#define NVGRE_C_RSVD0_VER 0x2000
+#define NVGRE_C_RSVD0_VER_MASK 0xB000
 
 #define STE_NO_VLAN	0x0
 #define STE_SVLAN	0x1
@@ -217,6 +220,12 @@ struct mlx5dr_definer_conv_data {
 	X(SET_BE32,	gre_opt_key,		v->key.key,		rte_flow_item_gre_opt) \
 	X(SET_BE32,	gre_opt_seq,		v->sequence.sequence,	rte_flow_item_gre_opt) \
 	X(SET_BE16,	gre_opt_checksum,	v->checksum_rsvd.checksum,	rte_flow_item_gre_opt) \
+	X(SET,		nvgre_def_c_rsvd0_ver,	NVGRE_C_RSVD0_VER,	rte_flow_item_nvgre) \
+	X(SET,		nvgre_def_c_rsvd0_ver_mask,	NVGRE_C_RSVD0_VER_MASK,	rte_flow_item_nvgre) \
+	X(SET,		nvgre_def_protocol,	NVGRE_PORT,		rte_flow_item_nvgre) \
+	X(SET_BE16,	nvgre_c_rsvd0_ver,	v->c_k_s_rsvd0_ver,	rte_flow_item_nvgre) \
+	X(SET_BE16,	nvgre_protocol,		v->protocol,		rte_flow_item_nvgre) \
+	X(SET_BE32P,	nvgre_dw1,		&v->tni[0],		rte_flow_item_nvgre) \
 	X(SET,		meter_color,		rte_col_2_mlx5_col(v->color),	rte_flow_item_meter_color) \
 	X(SET_BE32,     ipsec_spi,              v->hdr.spi,             rte_flow_item_esp) \
 	X(SET_BE32,     ipsec_sequence_number,  v->hdr.seq,             rte_flow_item_esp) \
@@ -1995,6 +2004,80 @@ mlx5dr_definer_conv_item_gre_key(struct mlx5dr_definer_conv_data *cd,
 }
 
 static int
+mlx5dr_definer_conv_item_nvgre(struct mlx5dr_definer_conv_data *cd,
+				struct rte_flow_item *item,
+				int item_idx)
+{
+	const struct rte_flow_item_nvgre *m = item->mask;
+	struct mlx5dr_definer_fc *fc;
+	bool inner = cd->tunnel;
+
+	if (inner) {
+		DR_LOG(ERR, "Inner gre item not supported");
+		rte_errno = ENOTSUP;
+		return rte_errno;
+	}
+
+	if (!cd->relaxed) {
+		fc = &cd->fc[DR_CALC_FNAME(IP_PROTOCOL, inner)];
+		if (!fc->tag_set) {
+			fc = &cd->fc[DR_CALC_FNAME(IP_PROTOCOL, inner)];
+			fc->item_idx = item_idx;
+			fc->tag_mask_set = &mlx5dr_definer_ones_set;
+			fc->tag_set = &mlx5dr_definer_ipv4_protocol_gre_set;
+			DR_CALC_SET(fc, eth_l3, protocol_next_header, inner);
+		}
+
+		fc = &cd->fc[MLX5DR_DEFINER_FNAME_NVGRE_C_K_S];
+		fc->item_idx = item_idx;
+		fc->tag_set = &mlx5dr_definer_nvgre_def_c_rsvd0_ver_set;
+		fc->tag_mask_set = &mlx5dr_definer_nvgre_def_c_rsvd0_ver_mask_set;
+		DR_CALC_SET_HDR(fc, tunnel_header, tunnel_header_0);
+		fc->bit_mask = __mlx5_mask(header_gre, c_rsvd0_ver);
+		fc->bit_off = __mlx5_dw_bit_off(header_gre, c_rsvd0_ver);
+
+		fc = &cd->fc[MLX5DR_DEFINER_FNAME_NVGRE_PROTOCOL];
+		fc->item_idx = item_idx;
+		fc->tag_set = &mlx5dr_definer_nvgre_def_protocol_set;
+		fc->tag_mask_set = &mlx5dr_definer_ones_set;
+		DR_CALC_SET_HDR(fc, tunnel_header, tunnel_header_0);
+		fc->byte_off += MLX5_BYTE_OFF(header_gre, gre_protocol);
+		fc->bit_mask = __mlx5_mask(header_gre, gre_protocol);
+		fc->bit_off = __mlx5_dw_bit_off(header_gre, gre_protocol);
+	}
+
+	if (!m)
+		return 0;
+
+	if (m->c_k_s_rsvd0_ver) {
+		fc = &cd->fc[MLX5DR_DEFINER_FNAME_NVGRE_C_K_S];
+		fc->item_idx = item_idx;
+		fc->tag_set = &mlx5dr_definer_nvgre_c_rsvd0_ver_set;
+		DR_CALC_SET_HDR(fc, tunnel_header, tunnel_header_0);
+		fc->bit_mask = __mlx5_mask(header_gre, c_rsvd0_ver);
+		fc->bit_off = __mlx5_dw_bit_off(header_gre, c_rsvd0_ver);
+	}
+
+	if (m->protocol) {
+		fc = &cd->fc[MLX5DR_DEFINER_FNAME_NVGRE_PROTOCOL];
+		fc->item_idx = item_idx;
+		fc->tag_set = &mlx5dr_definer_nvgre_protocol_set;
+		DR_CALC_SET_HDR(fc, tunnel_header, tunnel_header_0);
+		fc->byte_off += MLX5_BYTE_OFF(header_gre, gre_protocol);
+		fc->bit_mask = __mlx5_mask(header_gre, gre_protocol);
+		fc->bit_off = __mlx5_dw_bit_off(header_gre, gre_protocol);
+	}
+
+	if (!is_mem_zero(m->tni, 4)) {
+		fc = &cd->fc[MLX5DR_DEFINER_FNAME_NVGRE_DW1];
+		fc->item_idx = item_idx;
+		fc->tag_set = &mlx5dr_definer_nvgre_dw1_set;
+		DR_CALC_SET_HDR(fc, tunnel_header, tunnel_header_2);
+	}
+	return 0;
+}
+
+static int
 mlx5dr_definer_conv_item_ptype(struct mlx5dr_definer_conv_data *cd,
 			       struct rte_flow_item *item,
 			       int item_idx)
@@ -3176,6 +3259,10 @@ mlx5dr_definer_conv_items_to_hl(struct mlx5dr_context *ctx,
 			item_flags |= MLX5_FLOW_ITEM_NSH;
 			break;
 		case RTE_FLOW_ITEM_TYPE_VOID:
+			break;
+		case RTE_FLOW_ITEM_TYPE_NVGRE:
+			ret = mlx5dr_definer_conv_item_nvgre(&cd, items, i);
+			item_flags |= MLX5_FLOW_LAYER_NVGRE;
 			break;
 		default:
 			DR_LOG(ERR, "Unsupported item type %d", items->type);
