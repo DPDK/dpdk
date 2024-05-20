@@ -849,6 +849,11 @@ virtio_vdpa_dev_cleanup(int vid)
 	if (ret < 0)
 		DRV_LOG(ERR, "Failed to remove mem table: %s", vdev->device->name);
 
+	if (priv->restore) {
+		virtio_pci_dev_reset(priv->vpdev, VIRTIO_VDPA_PROBE_RESET_TIME_OUT);
+		priv->restore = false;
+	}
+
 	pthread_mutex_lock(&iommu_domain_locks[priv->iommu_idx]);
 	iommu_domain = virtio_iommu_domains[priv->iommu_idx];
 	if (iommu_domain == NULL)
@@ -1888,6 +1893,11 @@ virtio_vdpa_dev_mem_tbl_cleanup(struct rte_vdpa_device *vdev)
 	ret = virtio_ha_vf_mem_tbl_remove(&priv->vf_name, &priv->pf_name);
 	if (ret < 0)
 		DRV_LOG(ERR, "Failed to remove mem table: %s", vdev->device->name);
+
+	if (priv->restore) {
+		virtio_pci_dev_reset(priv->vpdev, VIRTIO_VDPA_PROBE_RESET_TIME_OUT);
+		priv->restore = false;
+	}
 
 	/* Don't call rte_vfio_container_dma_unmap() because at this time, DPDK EAL
 	 * layer does not have the DMA mapping information (the corresponding HVA does
