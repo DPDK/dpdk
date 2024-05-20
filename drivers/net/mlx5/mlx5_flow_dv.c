@@ -14146,7 +14146,8 @@ error:
 	SILIST_FOREACH(priv->sh->ipool[MLX5_IPOOL_MLX5_FLOW], flow->dev_handles,
 		       handle_idx, dh, next) {
 		/* hrxq is union, don't clear it if the flag is not set. */
-		if (dh->fate_action == MLX5_FLOW_FATE_QUEUE && dh->rix_hrxq) {
+		if (dh->fate_action == MLX5_FLOW_FATE_QUEUE && dh->rix_hrxq &&
+		    !dh->dvh.rix_sample && !dh->dvh.rix_dest_array) {
 			mlx5_hrxq_release(dev, dh->rix_hrxq);
 			dh->rix_hrxq = 0;
 		} else if (dh->fate_action == MLX5_FLOW_FATE_SHARED_RSS) {
