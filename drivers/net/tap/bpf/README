@@ -1,0 +1,49 @@
+This is the BPF program used to implement Receive Side Scaling (RSS)
+across multiple queues if required by a flow action. The program is
+loaded into the kernel when first RSS flow rule is created and is never unloaded.
+
+When flow rules with the TAP device, packets are first handled by the
+ingress queue discipline that then runs a series of classifier filter rules.
+The first stage is the flow based classifier (flower); for RSS queue
+action the second stage is an the kernel skbedit action which sets
+the skb mark to a key based on the flow id; the final stage
+is this BPF program which then maps flow id and packet header
+into a queue id.
+
+This version is built the BPF Compile Once — Run Everywhere (CO-RE)
+framework and uses libbpf and bpftool.
+
+Limitations
+-----------
+- requires libbpf to run
+
+- rebuilding the BPF requires the clang compiler with bpf available
+  as a target architecture and bpftool to convert object to headers.
+
+  Some older versions of Ubuntu do not have a working bpftool package.
+
+- only standard Toeplitz hash with standard 40 byte key is supported.
+
+- the number of flow rules using RSS is limited to 32.
+
+Building
+--------
+During the DPDK build process the meson build file checks that
+libbpf, bpftool, and clang are available. If everything works then
+BPF RSS is enabled.
+
+The steps are:
+
+1. Uses clang to compile tap_rss.c to produce tap_rss.bpf.o
+
+2. Uses bpftool generate a skeleton header file tap_rss.skel.h
+   from tap_rss.bpf.o. This header contains wrapper functions for
+   managing the BPF and the actual BPF code as a large byte array.
+
+3. The header file is include in tap_flow.c so that it can load
+   the BPF code (via libbpf).
+
+References
+----------
+BPF and XDP reference guide
+https://docs.cilium.io/en/latest/bpf/progtypes/
