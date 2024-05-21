@@ -5,15 +5,13 @@
 #ifndef _TAP_RSS_H_
 #define _TAP_RSS_H_
 
-#ifndef TAP_MAX_QUEUES
-#define TAP_MAX_QUEUES 16
+/* Size of the map from BPF classid to queue table */
+#ifndef TAP_RSS_MAX
+#define TAP_RSS_MAX	32
 #endif
 
-/* Fixed RSS hash key size in bytes. */
+/* Standard Toeplitz hash key size */
 #define TAP_RSS_HASH_KEY_SIZE 40
-
-/* Supported RSS */
-#define TAP_RSS_HF_MASK (~(RTE_ETH_RSS_IP | RTE_ETH_RSS_UDP | RTE_ETH_RSS_TCP))
 
 /* hashed fields for RSS */
 enum hash_field {

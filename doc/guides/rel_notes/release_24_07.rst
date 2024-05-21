@@ -87,6 +87,10 @@ New Features
 
   * Updated to support up to 8 queues when used by secondary process.
 
+  * Fixed support of RSS flow action to work with current Linux kernels
+    and BPF tooling.
+    Will only be enabled if clang, libbpf 1.0 and bpftool are available.
+
 * **Updated Wangxun ngbe driver.**
 
   * Added SSE/NEON vector datapath.

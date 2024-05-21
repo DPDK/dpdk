@@ -81,10 +81,8 @@ struct pmd_internals {
 #ifdef HAVE_TCA_FLOWER
 	int nlsk_fd;                      /* Netlink socket fd */
 	int flow_isolate;                 /* 1 if flow isolation is enabled */
-	int rss_enabled;                  /* 1 if RSS is enabled, else 0 */
-	/* implicit rules set when RSS is enabled */
-	int map_fd;                       /* BPF RSS map fd */
-	int bpf_fd[RTE_PMD_TAP_MAX_QUEUES];/* List of bpf fds per queue */
+
+	struct tap_rss *rss;		  /* BPF program */
 
 	LIST_HEAD(tap_flows, rte_flow) flows;        /* rte_flow rules */
 	/* implicit rte_flow rules set when a remote device is active */

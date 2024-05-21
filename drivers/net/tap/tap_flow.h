@@ -9,7 +9,11 @@
 #include <rte_flow.h>
 #include <rte_flow_driver.h>
 #include <rte_eth_tap.h>
-#include <tap_autoconf.h>
+
+/**
+ * Mask of unsupported RSS types
+ */
+#define TAP_RSS_HF_MASK (~(RTE_ETH_RSS_IP | RTE_ETH_RSS_UDP | RTE_ETH_RSS_TCP))
 
 /**
  * In TC, priority 0 means we require the kernel to allocate one for us.
@@ -41,11 +45,6 @@ enum implicit_rule_index {
 	TAP_REMOTE_MAX_IDX,
 };
 
-enum bpf_fd_idx {
-	SEC_L3_L4,
-	SEC_MAX,
-};
-
 int tap_dev_flow_ops_get(struct rte_eth_dev *dev,
 			 const struct rte_flow_ops **ops);
 int tap_flow_flush(struct rte_eth_dev *dev, struct rte_flow_error *error);
@@ -57,10 +56,6 @@ int tap_flow_implicit_destroy(struct pmd_internals *pmd,
 int tap_flow_implicit_flush(struct pmd_internals *pmd,
 			    struct rte_flow_error *error);
 
-int tap_flow_bpf_cls_q(__u32 queue_idx);
-int tap_flow_bpf_calc_l3_l4_hash(__u32 key_idx, int map_fd);
-int tap_flow_bpf_rss_map_create(unsigned int key_size, unsigned int value_size,
-			unsigned int max_entries);
-int tap_flow_bpf_update_rss_elem(int fd, void *key, void *value);
+void tap_flow_bpf_destroy(struct pmd_internals *pmd);
 
 #endif /* _TAP_FLOW_H_ */
