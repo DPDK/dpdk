@@ -128,7 +128,8 @@ vhost_user_write(int fd, struct vhost_user_msg *msg, int *fds, int fd_num)
 	cmsg->cmsg_len = CMSG_LEN(fd_size);
 	cmsg->cmsg_level = SOL_SOCKET;
 	cmsg->cmsg_type = SCM_RIGHTS;
-	memcpy(CMSG_DATA(cmsg), fds, fd_size);
+	if (fd_size > 0)
+		memcpy(CMSG_DATA(cmsg), fds, fd_size);
 
 	do {
 		r = sendmsg(fd, &msgh, 0);
