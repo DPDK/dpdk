@@ -11,9 +11,11 @@
 
 #include <rte_byteorder.h>
 #include <rte_jhash.h>
+#include <rte_thash.h>
 #include <rte_random.h>
 #include <rte_malloc.h>
 #include <rte_eth_tap.h>
+
 #include <tap_flow.h>
 #include <tap_autoconf.h>
 #include <tap_tcmsgs.h>
@@ -2061,6 +2063,21 @@ static int bpf_rss_key(enum bpf_rss_key_e cmd, __u32 *key_idx)
 	return err;
 }
 
+
+/* Default RSS hash key also used by mlx devices */
+static const uint8_t rss_hash_default_key[] = {
+	0x2c, 0xc6, 0x81, 0xd1,
+	0x5b, 0xdb, 0xf4, 0xf7,
+	0xfc, 0xa2, 0x83, 0x19,
+	0xdb, 0x1a, 0x3e, 0x94,
+	0x6b, 0x9e, 0x38, 0xd9,
+	0x2c, 0x9c, 0x03, 0xd1,
+	0xad, 0x99, 0x44, 0xa7,
+	0xd9, 0x56, 0x3d, 0x59,
+	0x06, 0x3c, 0x25, 0xf3,
+	0xfc, 0x1f, 0xdc, 0x2a,
+};
+
 /**
  * Add RSS hash calculations and queue selection
  *
@@ -2079,11 +2096,11 @@ static int rss_add_actions(struct rte_flow *flow, struct pmd_internals *pmd,
 			   const struct rte_flow_action_rss *rss,
 			   struct rte_flow_error *error)
 {
-	/* 4096 is the maximum number of instructions for a BPF program */
+	struct rss_key rss_entry = { };
+	const uint8_t *key_in;
+	uint32_t hash_type = 0;
 	unsigned int i;
 	int err;
-	struct rss_key rss_entry = { .hash_fields = 0,
-				     .key_size = 0 };
 
 	/* Check supported RSS features */
 	if (rss->func != RTE_ETH_HASH_FUNCTION_DEFAULT)
@@ -2094,6 +2111,51 @@ static int rss_add_actions(struct rte_flow *flow, struct pmd_internals *pmd,
 		return rte_flow_error_set
 			(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
 			 "a nonzero RSS encapsulation level is not supported");
+
+	if (rss->queue_num == 0 || rss->queue_num >= TAP_MAX_QUEUES)
+		return rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+					  "invalid number of queues");
+
+	/*
+	 * Follow the semantics of RSS key (see rte_ethdev.h)
+	 * There are two valid cases:
+	 *   1. key_length of zero, and key must be NULL;
+	 *      this uses the default driver key.
+	 *
+	 *   2. key_length is the TAP_RSS_HASH_KEY_SIZE (40 bytes)
+	 *      and the key must not be NULL.
+	 *
+	 * Anything else is an error.
+	 */
+	if (rss->key_len == 0) {
+		if (rss->key != NULL)
+			return rte_flow_error_set(error, ENOTSUP,
+						  RTE_FLOW_ERROR_TYPE_ACTION_CONF,
+						  &rss->key_len, "RSS hash key length 0");
+		key_in = rss_hash_default_key;
+	} else {
+		if (rss->key_len != TAP_RSS_HASH_KEY_SIZE)
+			return rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+						  NULL, "RSS hash invalid key length");
+		if (rss->key == NULL)
+			return rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+						  NULL, "RSS hash key is NULL");
+		key_in = rss->key;
+	}
+
+	if (rss->types & TAP_RSS_HF_MASK)
+		return rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					  NULL, "RSS hash type not supported");
+
+	if (rss->types & (RTE_ETH_RSS_NONFRAG_IPV4_UDP | RTE_ETH_RSS_NONFRAG_IPV4_TCP))
+		hash_type |= RTE_BIT32(HASH_FIELD_IPV4_L3_L4);
+	else if (rss->types & (RTE_ETH_RSS_IPV4 | RTE_ETH_RSS_FRAG_IPV4))
+		hash_type |= RTE_BIT32(HASH_FIELD_IPV4_L3);
+
+	if (rss->types & (RTE_ETH_RSS_NONFRAG_IPV6_UDP | RTE_ETH_RSS_NONFRAG_IPV6_TCP))
+		hash_type |= RTE_BIT32(HASH_FIELD_IPV6_L3_L4);
+	else if (rss->types & (RTE_ETH_RSS_IPV6 | RTE_ETH_RSS_FRAG_IPV6 | RTE_ETH_RSS_IPV6_EX))
+		hash_type |= RTE_BIT32(HASH_FIELD_IPV6_L3);
 
 	/* Get a new map key for a new RSS rule */
 	err = bpf_rss_key(KEY_CMD_GET, &flow->key_idx);
@@ -2109,8 +2171,11 @@ static int rss_add_actions(struct rte_flow *flow, struct pmd_internals *pmd,
 	rss_entry.nb_queues = rss->queue_num;
 	for (i = 0; i < rss->queue_num; i++)
 		rss_entry.queues[i] = rss->queue[i];
-	rss_entry.hash_fields =
-		(1 << HASH_FIELD_IPV4_L3_L4) | (1 << HASH_FIELD_IPV6_L3_L4);
+
+	rss_entry.hash_fields = hash_type;
+	rte_convert_rss_key((const uint32_t *)key_in, (uint32_t *)rss_entry.key,
+			    TAP_RSS_HASH_KEY_SIZE);
+
 
 	/* Add this RSS entry to map */
 	err = tap_flow_bpf_update_rss_elem(pmd->map_fd,

@@ -24,11 +24,10 @@ enum hash_field {
 };
 
 struct rss_key {
-	 __u8 key[128];
 	__u32 hash_fields;
-	__u32 key_size;
-	__u32 queues[TAP_MAX_QUEUES];
+	__u8 key[TAP_RSS_HASH_KEY_SIZE];
 	__u32 nb_queues;
+	__u32 queues[TAP_MAX_QUEUES];
 } __attribute__((packed));
 
 #endif /* _TAP_RSS_H_ */
