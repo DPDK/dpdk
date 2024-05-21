@@ -1958,7 +1958,6 @@ static int rss_enable(struct pmd_internals *pmd,
 				errno, strerror(errno));
 			return err;
 		}
-		LIST_INSERT_HEAD(&pmd->rss_flows, rss_flow, next);
 	}
 
 	pmd->rss_enabled = 1;

@@ -21,12 +21,6 @@ enum hash_field {
 	HASH_FIELD_IPV4_L3_L4,	/* IPv4 src/dst addr + L4 src/dst ports */
 	HASH_FIELD_IPV6_L3,	/* IPv6 src/dst addr */
 	HASH_FIELD_IPV6_L3_L4,	/* IPv6 src/dst addr + L4 src/dst ports */
-	HASH_FIELD_L2_SRC,	/* Ethernet src addr */
-	HASH_FIELD_L2_DST,	/* Ethernet dst addr */
-	HASH_FIELD_L3_SRC,	/* L3 src addr */
-	HASH_FIELD_L3_DST,	/* L3 dst addr */
-	HASH_FIELD_L4_SRC,	/* TCP/UDP src ports */
-	HASH_FIELD_L4_DST,	/* TCP/UDP dst ports */
 };
 
 struct rss_key {

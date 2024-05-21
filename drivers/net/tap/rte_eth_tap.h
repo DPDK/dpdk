@@ -77,14 +77,12 @@ struct pmd_internals {
 	int ioctl_sock;                   /* socket for ioctl calls */
 	int nlsk_fd;                      /* Netlink socket fd */
 	int flow_isolate;                 /* 1 if flow isolation is enabled */
-	int flower_support;               /* 1 if kernel supports, else 0 */
-	int flower_vlan_support;          /* 1 if kernel supports, else 0 */
 	int rss_enabled;                  /* 1 if RSS is enabled, else 0 */
 	int persist;			  /* 1 if keep link up, else 0 */
 	/* implicit rules set when RSS is enabled */
 	int map_fd;                       /* BPF RSS map fd */
 	int bpf_fd[RTE_PMD_TAP_MAX_QUEUES];/* List of bpf fds per queue */
-	LIST_HEAD(tap_rss_flows, rte_flow) rss_flows;
+
 	LIST_HEAD(tap_flows, rte_flow) flows;        /* rte_flow rules */
 	/* implicit rte_flow rules set when a remote device is active */
 	LIST_HEAD(tap_implicit_flows, rte_flow) implicit_flows;
