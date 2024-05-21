@@ -31,43 +31,6 @@ struct bnxt_plcmodes_cfg {
 	uint16_t	hds_threshold;
 };
 
-const char *bnxt_backing_store_types[] = {
-	"Queue pair",
-	"Shared receive queue",
-	"Completion queue",
-	"Virtual NIC",
-	"Statistic context",
-	"Slow-path TQM ring",
-	"Fast-path TQM ring",
-	"Unused",
-	"Unused",
-	"Unused",
-	"Unused",
-	"Unused",
-	"Unused",
-	"Unused",
-	"MR and MAV Context",
-	"TIM",
-	"Unused",
-	"Unused",
-	"Unused",
-	"Tx key context",
-	"Rx key context",
-	"Mid-path TQM ring",
-	"SQ Doorbell shadow region",
-	"RQ Doorbell shadow region",
-	"SRQ Doorbell shadow region",
-	"CQ Doorbell shadow region",
-	"QUIC Tx key context",
-	"QUIC Rx key context",
-	"Invalid type",
-	"Invalid type",
-	"Invalid type",
-	"Invalid type",
-	"Invalid type",
-	"Invalid type"
-};
-
 const char *media_type[] = { "Unknown", "Twisted Pair",
 	"Direct Attached Copper", "Fiber"
 };
@@ -6402,8 +6365,8 @@ int bnxt_hwrm_func_backing_store_qcaps_v2(struct bnxt *bp)
 			ctxm->split[i] = rte_le_to_cpu_32(*p);
 
 		PMD_DRV_LOG(DEBUG,
-			    "type:%s size:%d multiple:%d max:%d min:%d split:%d init_val:%d init_off:%d init:%d bmap:0x%x\n",
-			    bnxt_backing_store_types[ctxm->type], ctxm->entry_size,
+			    "type:0x%x size:%d multiple:%d max:%d min:%d split:%d init_val:%d init_off:%d init:%d bmap:0x%x\n",
+			    ctxm->type, ctxm->entry_size,
 			    ctxm->entry_multiple, ctxm->max_entries, ctxm->min_entries,
 			    ctxm->split_entry_cnt, init_val, init_off,
 			    BNXT_CTX_INIT_VALID(flags), ctxm->instance_bmap);
@@ -6446,8 +6409,7 @@ int bnxt_hwrm_func_backing_store_types_count(struct bnxt *bp)
 		HWRM_UNLOCK();
 
 		if (flags & HWRM_FUNC_BACKING_STORE_QCAPS_V2_OUTPUT_FLAGS_TYPE_VALID) {
-			PMD_DRV_LOG(DEBUG, "Valid types 0x%x - %s\n",
-				    req.type, bnxt_backing_store_types[req.type]);
+			PMD_DRV_LOG(DEBUG, "Valid types 0x%x\n", req.type);
 			types++;
 		}
 	} while (type != HWRM_FUNC_BACKING_STORE_QCAPS_V2_OUTPUT_TYPE_INVALID);
@@ -6625,8 +6587,8 @@ int bnxt_hwrm_func_backing_store_cfg_v2(struct bnxt *bp,
 				      &req.page_size_pbl_level,
 				      &req.page_dir);
 		PMD_DRV_LOG(DEBUG,
-			    "Backing store config V2 type:%s last %d, instance %d, hw %d\n",
-			    bnxt_backing_store_types[req.type], ctxm->last, j, w);
+			    "Backing store config V2 type:0x%x last %d, instance %d, hw %d\n",
+			    req.type, ctxm->last, j, w);
 		if (ctxm->last && i == (w - 1))
 			req.flags =
 			rte_cpu_to_le_32(BACKING_STORE_CFG_V2_IN_FLG_CFG_ALL_DONE);
