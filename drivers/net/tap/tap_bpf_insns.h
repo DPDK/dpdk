@@ -3,8 +3,6 @@
  * This not the original source file. Do NOT edit it.
  */
 
-#include <tap_bpf.h>
-
 static struct bpf_insn cls_q_insns[] = {
 	{0x61,    2,    1,       52, 0x00000000},
 	{0x18,    3,    0,        0, 0xdeadbeef},

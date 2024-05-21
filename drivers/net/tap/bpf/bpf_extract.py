@@ -65,7 +65,6 @@ def write_header(out, source):
         print(f' * Auto-generated from {source}', file=out)
     print(" * This not the original source file. Do NOT edit it.", file=out)
     print(" */\n", file=out)
-    print("#include <tap_bpf.h>", file=out)
 
 
 def main():

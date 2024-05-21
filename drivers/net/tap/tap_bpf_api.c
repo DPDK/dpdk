@@ -2,18 +2,18 @@
  * Copyright 2017 Mellanox Technologies, Ltd
  */
 
-#include <errno.h>
-#include <string.h>
 #include <unistd.h>
-#include <sys/queue.h>
+#include <syscall.h>
+#include <linux/bpf.h>
 
-#include <rte_malloc.h>
-#include <rte_eth_tap.h>
 #include <tap_flow.h>
 #include <tap_autoconf.h>
-#include <tap_tcmsgs.h>
-#include <tap_bpf.h>
+
 #include <tap_bpf_insns.h>
+
+
+static int bpf_load(enum bpf_prog_type type, const struct bpf_insn *insns,
+		size_t insns_cnt, const char *license);
 
 /**
  * Load BPF program (section cls_q) into the kernel and return a bpf fd
@@ -89,7 +89,13 @@ static inline __u64 ptr_to_u64(const void *ptr)
 static inline int sys_bpf(enum bpf_cmd cmd, union bpf_attr *attr,
 			unsigned int size)
 {
+#ifdef __NR_bpf
 	return syscall(__NR_bpf, cmd, attr, size);
+#else
+	TAP_LOG(ERR, "No bpf syscall, kernel headers too old?\n");
+	errno = ENOSYS;
+	return -1;
+#endif
 }
 
 /**
