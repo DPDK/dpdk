@@ -110,7 +110,8 @@ pcapng_add_option(struct pcapng_option *popt, uint16_t code,
 {
 	popt->code = code;
 	popt->length = len;
-	memcpy(popt->data, data, len);
+	if (len > 0)
+		memcpy(popt->data, data, len);
 
 	return (struct pcapng_option *)((uint8_t *)popt + pcapng_optlen(len));
 }
