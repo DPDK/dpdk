@@ -1595,7 +1595,7 @@ tap_flow_isolate(struct rte_eth_dev *dev,
 	 * If netdevice is there, setup appropriate flow rules immediately.
 	 * Otherwise it will be set when bringing up the netdevice (tun_alloc).
 	 */
-	if (!process_private->rxq_fds[0])
+	if (process_private->rxq_fds[0] == -1)
 		return 0;
 	if (set) {
 		struct rte_flow *remote_flow;
