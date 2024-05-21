@@ -68,9 +68,11 @@ tap_rx_intr_vec_install(struct rte_eth_dev *dev)
 	}
 	for (i = 0; i < n; i++) {
 		struct rx_queue *rxq = pmd->dev->data->rx_queues[i];
+		int fd = process_private->fds[i];
 
 		/* Skip queues that cannot request interrupts. */
-		if (!rxq || process_private->rxq_fds[i] == -1) {
+		if (!rxq || fd == -1) {
+			/* Use invalid intr_vec[] index to disable entry. */
 			/* Use invalid intr_vec[] index to disable entry. */
 			if (rte_intr_vec_list_index_set(intr_handle, i,
 			RTE_INTR_VEC_RXTX_OFFSET + RTE_MAX_RXTX_INTR_VEC_ID))
@@ -80,8 +82,7 @@ tap_rx_intr_vec_install(struct rte_eth_dev *dev)
 		if (rte_intr_vec_list_index_set(intr_handle, i,
 					RTE_INTR_VEC_RXTX_OFFSET + count))
 			return -rte_errno;
-		if (rte_intr_efds_index_set(intr_handle, count,
-						   process_private->rxq_fds[i]))
+		if (rte_intr_efds_index_set(intr_handle, count, fd))
 			return -rte_errno;
 		count++;
 	}

@@ -96,8 +96,7 @@ struct pmd_internals {
 };
 
 struct pmd_process_private {
-	int rxq_fds[RTE_PMD_TAP_MAX_QUEUES];
-	int txq_fds[RTE_PMD_TAP_MAX_QUEUES];
+	int fds[RTE_PMD_TAP_MAX_QUEUES];
 };
 
 /* tap_intr.c */
