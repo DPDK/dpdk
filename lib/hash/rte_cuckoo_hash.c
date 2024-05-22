@@ -481,7 +481,7 @@ err:
 	rte_free(buckets);
 	rte_free(buckets_ext);
 	rte_free(k);
-	rte_free(tbl_chng_cnt);
+	rte_free((void *)(uintptr_t)tbl_chng_cnt);
 	rte_free(ext_bkt_to_free);
 	return NULL;
 }
@@ -526,7 +526,7 @@ rte_hash_free(struct rte_hash *h)
 	rte_free(h->key_store);
 	rte_free(h->buckets);
 	rte_free(h->buckets_ext);
-	rte_free(h->tbl_chng_cnt);
+	rte_free((void *)(uintptr_t)h->tbl_chng_cnt);
 	rte_free(h->ext_bkt_to_free);
 	rte_free(h->hash_rcu_cfg);
 	rte_free(h);
