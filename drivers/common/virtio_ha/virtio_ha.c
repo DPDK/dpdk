@@ -184,7 +184,8 @@ send_fd_message(int sockfd, struct iovec *iov, size_t nr_iov, int *fds, int fd_n
 			sockfd, strerror(errno));
 		return ret;
 	} else if (ret != (int)msg_sz) {
-		HA_IPC_LOG(ERR, "Failed to send complete msg on fd %d", sockfd);
+		HA_IPC_LOG(ERR, "Failed to send complete msg (sz %d instead of %lu fd %d)",
+			ret, msg_sz, sockfd);
 		return -1;		
 	}
 
@@ -224,7 +225,7 @@ virtio_ha_recv_msg(int sockfd, struct virtio_ha_msg *msg)
 		goto out;
 
 	if (ret != sizeof(*hdr)) {
-		HA_IPC_LOG(ERR, "Unexpected header size read\n");
+		HA_IPC_LOG(ERR, "Unexpected header size read (%d instead of %lu)", ret, sizeof(*hdr));
 		ret = -1;
 		goto out;
 	}
@@ -233,7 +234,7 @@ virtio_ha_recv_msg(int sockfd, struct virtio_ha_msg *msg)
 		msg->iov.iov_len = hdr->size;
 		msg->iov.iov_base = malloc(msg->iov.iov_len);
 		if (msg->iov.iov_base == NULL) {
-			HA_IPC_LOG(ERR, "Failed to alloc message payload when read message");
+			HA_IPC_LOG(ERR, "Failed to alloc message payload (sz %u) when read message", hdr->size);
 			ret = -1;
 			goto out;
 		}
@@ -241,7 +242,8 @@ virtio_ha_recv_msg(int sockfd, struct virtio_ha_msg *msg)
 		if (ret <= 0)
 			goto out;
 		if (ret != (int)msg->iov.iov_len) {
-			HA_IPC_LOG(ERR, "Failed to read complete message payload (fd %d)", sockfd);
+			HA_IPC_LOG(ERR, "Failed to read complete message payload (%d instead of %lu,fd %d)",
+				ret, msg->iov.iov_len, sockfd);
 			ret = -1;
 			goto out;
 		}
@@ -1567,8 +1569,8 @@ virtio_ha_global_dma_map_no_cache(struct virtio_ha_global_dma_map *map, bool is_
 	}
 
 	msg->hdr.type = is_map ? VIRTIO_HA_GLOBAL_STORE_DMA_MAP : VIRTIO_HA_GLOBAL_REMOVE_DMA_MAP;
-	msg->hdr.size = sizeof(struct virtio_ha_global_dma_entry);
-	msg->iov.iov_len = sizeof(struct virtio_ha_global_dma_entry);
+	msg->hdr.size = sizeof(struct virtio_ha_global_dma_map);
+	msg->iov.iov_len = sizeof(struct virtio_ha_global_dma_map);
 	msg->iov.iov_base = (void *)map;
 	ret = virtio_ha_send_msg(ipc_client_sock, msg);
 	if (ret < 0) {
