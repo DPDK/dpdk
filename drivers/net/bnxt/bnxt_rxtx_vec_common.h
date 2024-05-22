@@ -88,7 +88,11 @@ bnxt_rxq_rearm(struct bnxt_rx_queue *rxq, struct bnxt_rx_ring_info *rxr)
 	}
 
 	rxq->rxrearm_start += nb;
-	bnxt_db_write(&rxr->rx_db, rxq->rxrearm_start - 1);
+	/*
+	 * We can pass rxq->rxrearm_star - 1 as well, but then the epoch
+	 * bit calculation is messed up.
+	 */
+	bnxt_db_write(&rxr->rx_db, rxr->rx_raw_prod);
 	if (rxq->rxrearm_start >= rxq->nb_rx_desc)
 		rxq->rxrearm_start = 0;
 
