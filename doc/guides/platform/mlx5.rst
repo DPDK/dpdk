@@ -133,12 +133,23 @@ The following dependencies are not part of DPDK and must be installed separately
   - ``mlx5_ib``: InfiniBand device driver.
   - ``ib_uverbs``: user space driver for Verbs (entry point for ``libibverbs``).
 
-- **Firmware update**
+- **Firmware**
 
-  NVIDIA MLNX_OFED/EN releases include firmware updates.
+  Minimal supported firmware version:
 
-  Because each release provides new features, these updates must be applied to
-  match the kernel modules and libraries they come with.
+  - ConnectX-4: **12.21.1000** and above.
+  - ConnectX-4 Lx: **14.21.1000** and above.
+  - ConnectX-5: **16.21.1000** and above.
+  - ConnectX-5 Ex: **16.21.1000** and above.
+  - ConnectX-6: **20.27.0090** and above.
+  - ConnectX-6 Dx: **22.27.0090** and above.
+  - ConnectX-6 Lx: **26.27.0090** and above.
+  - ConnectX-7: **28.33.2028** and above.
+  - BlueField: **18.25.1010** and above.
+  - BlueField-2: **24.28.1002** and above.
+  - BlueField-3: **32.36.3126** and above.
+
+  New features may be added in more recent firmwares.
 
 Libraries and kernel modules can be provided either by the Linux distribution,
 or by installing NVIDIA MLNX_OFED/EN which provides compatibility with older kernels.
@@ -166,6 +177,11 @@ It is possible to build rdma-core as static libraries starting with version 21::
     ninja
     ninja install
 
+The firmware can be updated with `mlxup
+<https://docs.nvidia.com/networking/display/mlxupfwutility>`_.
+The latest firmwares can be downloaded at
+https://network.nvidia.com/support/firmware/firmware-downloads/
+
 
 NVIDIA MLNX_OFED/EN
 ^^^^^^^^^^^^^^^^^^^
@@ -176,19 +192,6 @@ The minimal supported versions are:
 
 - NVIDIA MLNX_OFED version: **4.5** and above.
 - NVIDIA MLNX_EN version: **4.5** and above.
-- Firmware version:
-
-  - ConnectX-4: **12.21.1000** and above.
-  - ConnectX-4 Lx: **14.21.1000** and above.
-  - ConnectX-5: **16.21.1000** and above.
-  - ConnectX-5 Ex: **16.21.1000** and above.
-  - ConnectX-6: **20.27.0090** and above.
-  - ConnectX-6 Dx: **22.27.0090** and above.
-  - ConnectX-6 Lx: **26.27.0090** and above.
-  - ConnectX-7: **28.33.2028** and above.
-  - BlueField: **18.25.1010** and above.
-  - BlueField-2: **24.28.1002** and above.
-  - BlueField-3: **32.36.3126** and above.
 
 The firmware, the libraries libibverbs, libmlx5, and mlnx-ofed-kernel modules
 are packaged in `NVIDIA MLNX_OFED
@@ -207,6 +210,10 @@ After downloading, it can be installed with this command::
 After installing, the firmware version can be checked::
 
    ibv_devinfo
+
+The firmware updates are included in NVIDIA MLNX_OFED/EN packages.
+Because each release provides new features, these updates must be applied
+to match the kernel modules and libraries they come with.
 
 .. note::
 
