@@ -1384,6 +1384,13 @@ cnxk_nix_configure(struct rte_eth_dev *eth_dev)
 		goto free_nix_lf;
 	}
 
+	/* Overwrite default RSS setup if requested by user */
+	rc = cnxk_nix_rss_hash_update(eth_dev, &conf->rx_adv_conf.rss_conf);
+	if (rc) {
+		plt_err("Failed to configure rss rc=%d", rc);
+		goto free_nix_lf;
+	}
+
 	/* Init the default TM scheduler hierarchy */
 	rc = roc_nix_tm_init(nix);
 	if (rc) {
