@@ -98,6 +98,9 @@ struct nfp_pf_dev {
 
 	uint8_t *qc_bar;
 
+	struct nfp_cpp_area *mac_stats_area;
+	uint8_t *mac_stats_bar;
+
 	struct nfp_hwinfo *hwinfo;
 	struct nfp_rtsym_table *sym_tbl;
 
@@ -165,8 +168,6 @@ struct nfp_net_hw {
 
 	struct nfp_cpp *cpp;
 	struct nfp_cpp_area *ctrl_area;
-	struct nfp_cpp_area *mac_stats_area;
-	uint8_t *mac_stats_bar;
 	uint8_t *mac_stats;
 
 	/** Sequential physical port number, only valid for CoreNIC firmware */

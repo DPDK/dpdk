@@ -318,8 +318,6 @@ nfp_net_uninit(struct rte_eth_dev *eth_dev)
 	net_hw = eth_dev->data->dev_private;
 	rte_free(net_hw->eth_xstats_base);
 	nfp_ipsec_uninit(eth_dev);
-	if (net_hw->mac_stats_area != NULL)
-		nfp_cpp_area_release_free(net_hw->mac_stats_area);
 }
 
 static void
@@ -349,6 +347,7 @@ nfp_uninit_app_fw_nic(struct nfp_pf_dev *pf_dev)
 void
 nfp_pf_uninit(struct nfp_pf_dev *pf_dev)
 {
+	nfp_cpp_area_release_free(pf_dev->mac_stats_area);
 	nfp_cpp_area_release_free(pf_dev->qc_area);
 	free(pf_dev->sym_tbl);
 	if (pf_dev->multi_pf.enabled) {
@@ -639,43 +638,31 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 
 	rte_eth_copy_pci_info(eth_dev, pci_dev);
 
-	if (port == 0 || pf_dev->multi_pf.enabled) {
-		uint32_t min_size;
-
+	if (pf_dev->multi_pf.enabled)
 		hw->ctrl_bar = pf_dev->ctrl_bar;
-		min_size = NFP_MAC_STATS_SIZE * net_hw->pf_dev->nfp_eth_table->max_index;
-		net_hw->mac_stats_bar = nfp_rtsym_map(net_hw->pf_dev->sym_tbl, "_mac_stats",
-				min_size, &net_hw->mac_stats_area);
-		if (net_hw->mac_stats_bar == NULL) {
-			PMD_INIT_LOG(ERR, "nfp_rtsym_map fails for _mac_stats_bar");
-			return -EIO;
-		}
-
-		net_hw->mac_stats = net_hw->mac_stats_bar;
-	} else {
-		/* Use port offset in pf ctrl_bar for this ports control bar */
+	else
 		hw->ctrl_bar = pf_dev->ctrl_bar + (port * NFP_NET_CFG_BAR_SZ);
-		net_hw->mac_stats = app_fw_nic->ports[0]->mac_stats_bar +
+
+	net_hw->mac_stats = pf_dev->mac_stats_bar +
 				(net_hw->nfp_idx * NFP_MAC_STATS_SIZE);
-	}
 
 	PMD_INIT_LOG(DEBUG, "ctrl bar: %p", hw->ctrl_bar);
 	PMD_INIT_LOG(DEBUG, "MAC stats: %p", net_hw->mac_stats);
 
 	err = nfp_net_common_init(pci_dev, net_hw);
 	if (err != 0)
-		goto free_area;
+		return err;
 
 	err = nfp_net_tlv_caps_parse(eth_dev);
 	if (err != 0) {
 		PMD_INIT_LOG(ERR, "Failed to parser TLV caps");
-		goto free_area;
+		return err;
 	}
 
 	err = nfp_ipsec_init(eth_dev);
 	if (err != 0) {
 		PMD_INIT_LOG(ERR, "Failed to init IPsec module");
-		goto free_area;
+		return err;
 	}
 
 	nfp_net_ethdev_ops_mount(net_hw, eth_dev);
@@ -760,9 +747,6 @@ xstats_free:
 	rte_free(net_hw->eth_xstats_base);
 ipsec_exit:
 	nfp_ipsec_uninit(eth_dev);
-free_area:
-	if (net_hw->mac_stats_area != NULL)
-		nfp_cpp_area_release_free(net_hw->mac_stats_area);
 
 	return err;
 }
@@ -1335,6 +1319,14 @@ nfp_pf_init(struct rte_pci_device *pci_dev)
 
 	PMD_INIT_LOG(DEBUG, "qc_bar address: %p", pf_dev->qc_bar);
 
+	pf_dev->mac_stats_bar = nfp_rtsym_map(sym_tbl, "_mac_stats",
+			NFP_MAC_STATS_SIZE * nfp_eth_table->max_index,
+			&pf_dev->mac_stats_area);
+	if (pf_dev->mac_stats_bar == NULL) {
+		PMD_INIT_LOG(ERR, "nfp_rtsym_map fails for _mac_stats");
+		goto hwqueues_cleanup;
+	}
+
 	/*
 	 * PF initialization has been done at this point. Call app specific
 	 * init code now.
@@ -1344,14 +1336,14 @@ nfp_pf_init(struct rte_pci_device *pci_dev)
 		if (pf_dev->multi_pf.enabled) {
 			ret = nfp_enable_multi_pf(pf_dev);
 			if (ret != 0)
-				goto hwqueues_cleanup;
+				goto mac_stats_cleanup;
 		}
 
 		PMD_INIT_LOG(INFO, "Initializing coreNIC");
 		ret = nfp_init_app_fw_nic(pf_dev, dev_info);
 		if (ret != 0) {
 			PMD_INIT_LOG(ERR, "Could not initialize coreNIC!");
-			goto hwqueues_cleanup;
+			goto mac_stats_cleanup;
 		}
 		break;
 	case NFP_APP_FW_FLOWER_NIC:
@@ -1359,13 +1351,13 @@ nfp_pf_init(struct rte_pci_device *pci_dev)
 		ret = nfp_init_app_fw_flower(pf_dev, dev_info);
 		if (ret != 0) {
 			PMD_INIT_LOG(ERR, "Could not initialize Flower!");
-			goto hwqueues_cleanup;
+			goto mac_stats_cleanup;
 		}
 		break;
 	default:
 		PMD_INIT_LOG(ERR, "Unsupported Firmware loaded");
 		ret = -EINVAL;
-		goto hwqueues_cleanup;
+		goto mac_stats_cleanup;
 	}
 
 	/* Register the CPP bridge service here for primary use */
@@ -1375,6 +1367,8 @@ nfp_pf_init(struct rte_pci_device *pci_dev)
 
 	return 0;
 
+mac_stats_cleanup:
+	nfp_cpp_area_release_free(pf_dev->mac_stats_area);
 hwqueues_cleanup:
 	nfp_cpp_area_release_free(pf_dev->qc_area);
 sym_tbl_cleanup:
