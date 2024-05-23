@@ -20,10 +20,14 @@ struct nfp_flower_representor {
 	struct rte_ring *ring;
 	struct rte_eth_link link;
 	struct rte_eth_stats repr_stats;
+
+	struct rte_eth_xstat *repr_xstats_base;
+	uint8_t *mac_stats;
 };
 
 int nfp_flower_repr_create(struct nfp_app_fw_flower *app_fw_flower,
 		struct nfp_net_hw_priv *hw_priv);
 bool nfp_flower_repr_is_vf(struct nfp_flower_representor *repr);
+int nfp_flower_repr_stats_reset(struct rte_eth_dev *ethdev);
 
 #endif /* __NFP_FLOWER_REPRESENTOR_H__ */

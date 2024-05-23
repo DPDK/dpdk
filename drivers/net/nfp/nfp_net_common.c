@@ -954,12 +954,23 @@ uint32_t
 nfp_net_xstats_size(const struct rte_eth_dev *dev)
 {
 	uint32_t count;
+	bool vf_flag = false;
 	struct nfp_net_hw *hw;
+	struct nfp_flower_representor *repr;
 	const uint32_t size = RTE_DIM(nfp_net_xstats);
 
-	/* If the device is a VF, then there will be no MAC stats */
-	hw = nfp_net_get_hw(dev);
-	if (hw->mac_stats == NULL) {
+	if (rte_eth_dev_is_repr(dev)) {
+		repr = dev->data->dev_private;
+		if (repr->mac_stats == NULL)
+			vf_flag = true;
+	} else {
+		hw = dev->data->dev_private;
+		if (hw->mac_stats == NULL)
+			vf_flag = true;
+	}
+
+	/* If the device is a VF or VF-repr, then there will be no MAC stats */
+	if (vf_flag) {
 		for (count = 0; count < size; count++) {
 			if (nfp_net_xstats[count].group == NFP_XSTAT_GROUP_MAC)
 				break;
@@ -989,14 +1000,29 @@ nfp_net_xstats_value(const struct rte_eth_dev *dev,
 		bool raw)
 {
 	uint64_t value;
+	uint8_t *mac_stats;
 	struct nfp_net_hw *hw;
 	struct nfp_xstat xstat;
+	struct rte_eth_xstat *xstats_base;
+	struct nfp_flower_representor *repr;
 
-	hw = nfp_net_get_hw(dev);
+	if (rte_eth_dev_is_repr(dev)) {
+		repr = dev->data->dev_private;
+		hw = repr->app_fw_flower->pf_hw;
+
+		mac_stats = repr->mac_stats;
+		xstats_base = repr->repr_xstats_base;
+	} else {
+		hw = dev->data->dev_private;
+
+		mac_stats = hw->mac_stats;
+		xstats_base = hw->eth_xstats_base;
+	}
+
 	xstat = nfp_net_xstats[index];
 
 	if (xstat.group == NFP_XSTAT_GROUP_MAC)
-		value = nn_readq(hw->mac_stats + xstat.offset);
+		value = nn_readq(mac_stats + xstat.offset);
 	else
 		value = nn_cfg_readq(&hw->super, xstat.offset);
 
@@ -1009,7 +1035,7 @@ nfp_net_xstats_value(const struct rte_eth_dev *dev,
 	 * baseline value. The result is the count of this statistic since the last time
 	 * it was "reset".
 	 */
-	return value - hw->eth_xstats_base[index].value;
+	return value - xstats_base[index].value;
 }
 
 /* NOTE: All callers ensure dev is always set. */
@@ -1130,17 +1156,29 @@ nfp_net_xstats_reset(struct rte_eth_dev *dev)
 	uint32_t id;
 	uint32_t read_size;
 	struct nfp_net_hw *hw;
+	struct rte_eth_xstat *xstats_base;
+	struct nfp_flower_representor *repr;
 
-	hw = nfp_net_get_hw(dev);
 	read_size = nfp_net_xstats_size(dev);
 
+	if (rte_eth_dev_is_repr(dev)) {
+		repr = dev->data->dev_private;
+		xstats_base = repr->repr_xstats_base;
+	} else {
+		hw = dev->data->dev_private;
+		xstats_base = hw->eth_xstats_base;
+	}
+
 	for (id = 0; id < read_size; id++) {
-		hw->eth_xstats_base[id].id = id;
-		hw->eth_xstats_base[id].value = nfp_net_xstats_value(dev, id, true);
+		xstats_base[id].id = id;
+		xstats_base[id].value = nfp_net_xstats_value(dev, id, true);
 	}
 
 	/* Successfully reset xstats, now call function to reset basic stats. */
-	return nfp_net_stats_reset(dev);
+	if (rte_eth_dev_is_repr(dev))
+		return nfp_flower_repr_stats_reset(dev);
+	else
+		return nfp_net_stats_reset(dev);
 }
 
 void

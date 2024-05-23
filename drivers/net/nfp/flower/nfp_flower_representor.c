@@ -199,7 +199,7 @@ nfp_flower_repr_stats_get(struct rte_eth_dev *ethdev,
 	return 0;
 }
 
-static int
+int
 nfp_flower_repr_stats_reset(struct rte_eth_dev *ethdev)
 {
 	struct nfp_flower_representor *repr;
@@ -228,6 +228,8 @@ nfp_flower_repr_rx_burst(void *rx_queue,
 		struct rte_mbuf **rx_pkts,
 		uint16_t nb_pkts)
 {
+	uint32_t i;
+	uint32_t data_len;
 	unsigned int available = 0;
 	unsigned int total_dequeue;
 	struct nfp_net_rxq *rxq;
@@ -255,7 +257,13 @@ nfp_flower_repr_rx_burst(void *rx_queue,
 				"received: %u, available: %u", repr->name,
 				repr->port_id, total_dequeue, available);
 
+		data_len = 0;
+		for (i = 0; i < total_dequeue; i++)
+			data_len += rx_pkts[i]->data_len;
+
 		repr->repr_stats.ipackets += total_dequeue;
+		repr->repr_stats.q_ipackets[rxq->qidx] += total_dequeue;
+		repr->repr_stats.q_ibytes[rxq->qidx] += data_len;
 	}
 
 	return total_dequeue;
@@ -268,6 +276,7 @@ nfp_flower_repr_tx_burst(void *tx_queue,
 {
 	uint16_t i;
 	uint16_t sent;
+	uint32_t data_len;
 	void *pf_tx_queue;
 	struct nfp_net_txq *txq;
 	struct rte_eth_dev *dev;
@@ -297,7 +306,14 @@ nfp_flower_repr_tx_burst(void *tx_queue,
 	if (sent != 0) {
 		PMD_TX_LOG(DEBUG, "Representor Tx burst for %s, port_id: %#x transmitted: %hu",
 				repr->name, repr->port_id, sent);
+
+		data_len = 0;
+		for (i = 0; i < sent; i++)
+			data_len += tx_pkts[i]->data_len;
+
 		repr->repr_stats.opackets += sent;
+		repr->repr_stats.q_opackets[txq->qidx] += sent;
+		repr->repr_stats.q_obytes[txq->qidx] += data_len;
 	}
 
 	return sent;
@@ -356,6 +372,7 @@ nfp_flower_repr_uninit(struct rte_eth_dev *eth_dev)
 	struct nfp_flower_representor *repr;
 
 	repr = eth_dev->data->dev_private;
+	rte_free(repr->repr_xstats_base);
 	rte_ring_free(repr->ring);
 
 	if (repr->repr_type == NFP_REPR_TYPE_PHYS_PORT) {
@@ -497,6 +514,12 @@ static const struct eth_dev_ops nfp_flower_repr_dev_ops = {
 
 	.flow_ops_get         = nfp_flow_ops_get,
 	.mtr_ops_get          = nfp_net_mtr_ops_get,
+
+	.xstats_get             = nfp_net_xstats_get,
+	.xstats_reset           = nfp_net_xstats_reset,
+	.xstats_get_names       = nfp_net_xstats_get_names,
+	.xstats_get_by_id       = nfp_net_xstats_get_by_id,
+	.xstats_get_names_by_id = nfp_net_xstats_get_names_by_id,
 };
 
 static uint32_t
@@ -548,7 +571,8 @@ nfp_flower_pf_repr_init(struct rte_eth_dev *eth_dev,
 	eth_dev->dev_ops = &nfp_flower_pf_repr_dev_ops;
 	eth_dev->rx_pkt_burst = nfp_net_recv_pkts;
 	eth_dev->tx_pkt_burst = nfp_flower_pf_xmit_pkts;
-	eth_dev->data->dev_flags |= RTE_ETH_DEV_REPRESENTOR;
+	eth_dev->data->dev_flags |= RTE_ETH_DEV_REPRESENTOR |
+			RTE_ETH_DEV_AUTOFILL_QUEUE_XSTATS;
 
 	eth_dev->data->representor_id = 0;
 
@@ -582,6 +606,7 @@ nfp_flower_repr_init(struct rte_eth_dev *eth_dev,
 	int ret;
 	uint16_t index;
 	unsigned int numa_node;
+	struct nfp_net_hw_priv *hw_priv;
 	char ring_name[RTE_ETH_NAME_MAX_LEN];
 	struct nfp_app_fw_flower *app_fw_flower;
 	struct nfp_flower_representor *repr;
@@ -593,6 +618,7 @@ nfp_flower_repr_init(struct rte_eth_dev *eth_dev,
 
 	/* Memory has been allocated in the eth_dev_create() function */
 	repr = eth_dev->data->dev_private;
+	hw_priv = eth_dev->process_private;
 
 	/*
 	 * We need multiproduce rings as we can have multiple PF ports.
@@ -620,7 +646,8 @@ nfp_flower_repr_init(struct rte_eth_dev *eth_dev,
 	eth_dev->dev_ops = &nfp_flower_repr_dev_ops;
 	eth_dev->rx_pkt_burst = nfp_flower_repr_rx_burst;
 	eth_dev->tx_pkt_burst = nfp_flower_repr_tx_burst;
-	eth_dev->data->dev_flags |= RTE_ETH_DEV_REPRESENTOR;
+	eth_dev->data->dev_flags |= RTE_ETH_DEV_REPRESENTOR |
+			RTE_ETH_DEV_AUTOFILL_QUEUE_XSTATS;
 
 	if (repr->repr_type == NFP_REPR_TYPE_PHYS_PORT)
 		eth_dev->data->representor_id = repr->vf_id;
@@ -660,6 +687,20 @@ nfp_flower_repr_init(struct rte_eth_dev *eth_dev,
 	} else {
 		index = repr->vf_id;
 		app_fw_flower->vf_reprs[index] = repr;
+	}
+
+	if (repr->repr_type == NFP_REPR_TYPE_PHYS_PORT) {
+		repr->mac_stats = hw_priv->pf_dev->mac_stats_bar +
+				(repr->nfp_idx * NFP_MAC_STATS_SIZE);
+	}
+
+	/* Allocate memory for extended statistics counters */
+	repr->repr_xstats_base = rte_zmalloc("rte_eth_xstat",
+			sizeof(struct rte_eth_xstat) * nfp_net_xstats_size(eth_dev), 0);
+	if (repr->repr_xstats_base == NULL) {
+		PMD_INIT_LOG(ERR, "No memory for xstats base on device %s!", repr->name);
+		ret = -ENOMEM;
+		goto mac_cleanup;
 	}
 
 	return 0;
