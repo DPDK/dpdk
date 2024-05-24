@@ -22,9 +22,6 @@
 
 #include "mlx5_defs.h"
 
-/* Convert a bit number to the corresponding 64-bit mask */
-#define MLX5_BITSHIFT(v) (UINT64_C(1) << (v))
-
 /* Save and restore errno around argument evaluation. */
 #define ERRNO_SAFE(x) ((errno = (int []){ errno, ((x), 0) }[0]))
 
