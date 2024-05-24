@@ -199,6 +199,8 @@ post_process_raw_dp_op(void *user_data,	uint32_t index __rte_unused,
 static struct crypto_testsuite_params testsuite_params = { NULL };
 struct crypto_testsuite_params *p_testsuite_params = &testsuite_params;
 static struct crypto_unittest_params unittest_params;
+static bool enq_cb_called;
+static bool deq_cb_called;
 
 int
 process_sym_raw_dp_op(uint8_t dev_id, uint16_t qp_id,
@@ -14671,6 +14673,7 @@ test_enq_callback(uint16_t dev_id, uint16_t qp_id, struct rte_crypto_op **ops,
 	RTE_SET_USED(ops);
 	RTE_SET_USED(user_param);
 
+	enq_cb_called = true;
 	printf("crypto enqueue callback called\n");
 	return nb_ops;
 }
@@ -14684,21 +14687,58 @@ test_deq_callback(uint16_t dev_id, uint16_t qp_id, struct rte_crypto_op **ops,
 	RTE_SET_USED(ops);
 	RTE_SET_USED(user_param);
 
+	deq_cb_called = true;
 	printf("crypto dequeue callback called\n");
 	return nb_ops;
 }
 
 /*
- * Thread using enqueue/dequeue callback with RCU.
+ * Process enqueue/dequeue NULL crypto request to verify callback with RCU.
  */
 static int
-test_enqdeq_callback_thread(void *arg)
+test_enqdeq_callback_null_cipher(void)
 {
-	RTE_SET_USED(arg);
-	/* DP thread calls rte_cryptodev_enqueue_burst()/
-	 * rte_cryptodev_dequeue_burst() and invokes callback.
-	 */
-	test_null_burst_operation();
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	struct crypto_unittest_params *ut_params = &unittest_params;
+
+	/* Setup Cipher Parameters */
+	ut_params->cipher_xform.type = RTE_CRYPTO_SYM_XFORM_CIPHER;
+	ut_params->cipher_xform.next = &ut_params->auth_xform;
+
+	ut_params->cipher_xform.cipher.algo = RTE_CRYPTO_CIPHER_NULL;
+	ut_params->cipher_xform.cipher.op = RTE_CRYPTO_CIPHER_OP_ENCRYPT;
+
+	/* Setup Auth Parameters */
+	ut_params->auth_xform.type = RTE_CRYPTO_SYM_XFORM_AUTH;
+	ut_params->auth_xform.next = NULL;
+
+	ut_params->auth_xform.auth.algo = RTE_CRYPTO_AUTH_NULL;
+	ut_params->auth_xform.auth.op = RTE_CRYPTO_AUTH_OP_GENERATE;
+
+	/* Create Crypto session */
+	ut_params->sess = rte_cryptodev_sym_session_create(ts_params->valid_devs[0],
+				&ut_params->auth_xform, ts_params->session_mpool);
+	TEST_ASSERT_NOT_NULL(ut_params->sess, "Session creation failed");
+
+	ut_params->op = rte_crypto_op_alloc(ts_params->op_mpool, RTE_CRYPTO_OP_TYPE_SYMMETRIC);
+	TEST_ASSERT_NOT_NULL(ut_params->op, "Failed to allocate symmetric crypto op");
+
+	/* Allocate mbuf */
+	ut_params->ibuf = rte_pktmbuf_alloc(ts_params->mbuf_pool);
+	TEST_ASSERT_NOT_NULL(ut_params->ibuf, "Failed to allocate mbuf");
+
+	/* Append some random data */
+	TEST_ASSERT_NOT_NULL(rte_pktmbuf_append(ut_params->ibuf, sizeof(unsigned int)),
+			"no room to append data");
+
+	rte_crypto_op_attach_sym_session(ut_params->op, ut_params->sess);
+
+	ut_params->op->sym->m_src = ut_params->ibuf;
+
+	/* Process crypto operation */
+	TEST_ASSERT_NOT_NULL(process_crypto_request(ts_params->valid_devs[0], ut_params->op),
+			"failed to process sym crypto op");
+
 	return 0;
 }
 
@@ -14706,6 +14746,7 @@ static int
 test_enq_callback_setup(void)
 {
 	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	struct rte_cryptodev_sym_capability_idx cap_idx;
 	struct rte_cryptodev_info dev_info;
 	struct rte_cryptodev_qp_conf qp_conf = {
 		.nb_descriptors = MAX_NUM_OPS_INFLIGHT
@@ -14713,6 +14754,19 @@ test_enq_callback_setup(void)
 
 	struct rte_cryptodev_cb *cb;
 	uint16_t qp_id = 0;
+	int j = 0;
+
+	/* Verify the crypto capabilities for which enqueue/dequeue is done. */
+	cap_idx.type = RTE_CRYPTO_SYM_XFORM_AUTH;
+	cap_idx.algo.auth = RTE_CRYPTO_AUTH_NULL;
+	if (rte_cryptodev_sym_capability_get(ts_params->valid_devs[0],
+			&cap_idx) == NULL)
+		return TEST_SKIPPED;
+	cap_idx.type = RTE_CRYPTO_SYM_XFORM_CIPHER;
+	cap_idx.algo.cipher = RTE_CRYPTO_CIPHER_NULL;
+	if (rte_cryptodev_sym_capability_get(ts_params->valid_devs[0],
+			&cap_idx) == NULL)
+		return TEST_SKIPPED;
 
 	/* Stop the device in case it's started so it can be configured */
 	rte_cryptodev_stop(ts_params->valid_devs[0]);
@@ -14736,6 +14790,7 @@ test_enq_callback_setup(void)
 			qp_conf.nb_descriptors, qp_id,
 			ts_params->valid_devs[0]);
 
+	enq_cb_called = false;
 	/* Test with invalid crypto device */
 	cb = rte_cryptodev_add_enq_callback(RTE_CRYPTO_MAX_DEVS,
 			qp_id, test_enq_callback, NULL);
@@ -14768,12 +14823,11 @@ test_enq_callback_setup(void)
 
 	rte_cryptodev_start(ts_params->valid_devs[0]);
 
-	/* Launch a thread */
-	rte_eal_remote_launch(test_enqdeq_callback_thread, NULL,
-				rte_get_next_lcore(-1, 1, 0));
+	TEST_ASSERT_SUCCESS(test_enqdeq_callback_null_cipher(), "Crypto Processing failed");
 
-	/* Wait until reader exited. */
-	rte_eal_mp_wait_lcore();
+	/* Wait until callback not called. */
+	while (!enq_cb_called && (j++ < 10))
+		rte_delay_ms(10);
 
 	/* Test with invalid crypto device */
 	TEST_ASSERT_FAIL(rte_cryptodev_remove_enq_callback(
@@ -14798,6 +14852,8 @@ test_enq_callback_setup(void)
 			"qp %u on cryptodev %u",
 			qp_id, ts_params->valid_devs[0]);
 
+	TEST_ASSERT(enq_cb_called == true, "Crypto enqueue callback not called");
+
 	return TEST_SUCCESS;
 }
 
@@ -14805,6 +14861,7 @@ static int
 test_deq_callback_setup(void)
 {
 	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	struct rte_cryptodev_sym_capability_idx cap_idx;
 	struct rte_cryptodev_info dev_info;
 	struct rte_cryptodev_qp_conf qp_conf = {
 		.nb_descriptors = MAX_NUM_OPS_INFLIGHT
@@ -14812,6 +14869,19 @@ test_deq_callback_setup(void)
 
 	struct rte_cryptodev_cb *cb;
 	uint16_t qp_id = 0;
+	int j = 0;
+
+	/* Verify the crypto capabilities for which enqueue/dequeue is done. */
+	cap_idx.type = RTE_CRYPTO_SYM_XFORM_AUTH;
+	cap_idx.algo.auth = RTE_CRYPTO_AUTH_NULL;
+	if (rte_cryptodev_sym_capability_get(ts_params->valid_devs[0],
+			&cap_idx) == NULL)
+		return TEST_SKIPPED;
+	cap_idx.type = RTE_CRYPTO_SYM_XFORM_CIPHER;
+	cap_idx.algo.cipher = RTE_CRYPTO_CIPHER_NULL;
+	if (rte_cryptodev_sym_capability_get(ts_params->valid_devs[0],
+			&cap_idx) == NULL)
+		return TEST_SKIPPED;
 
 	/* Stop the device in case it's started so it can be configured */
 	rte_cryptodev_stop(ts_params->valid_devs[0]);
@@ -14835,6 +14905,7 @@ test_deq_callback_setup(void)
 			qp_conf.nb_descriptors, qp_id,
 			ts_params->valid_devs[0]);
 
+	deq_cb_called = false;
 	/* Test with invalid crypto device */
 	cb = rte_cryptodev_add_deq_callback(RTE_CRYPTO_MAX_DEVS,
 			qp_id, test_deq_callback, NULL);
@@ -14867,12 +14938,11 @@ test_deq_callback_setup(void)
 
 	rte_cryptodev_start(ts_params->valid_devs[0]);
 
-	/* Launch a thread */
-	rte_eal_remote_launch(test_enqdeq_callback_thread, NULL,
-				rte_get_next_lcore(-1, 1, 0));
+	TEST_ASSERT_SUCCESS(test_enqdeq_callback_null_cipher(), "Crypto processing failed");
 
-	/* Wait until reader exited. */
-	rte_eal_mp_wait_lcore();
+	/* Wait until callback not called. */
+	while (!deq_cb_called && (j++ < 10))
+		rte_delay_ms(10);
 
 	/* Test with invalid crypto device */
 	TEST_ASSERT_FAIL(rte_cryptodev_remove_deq_callback(
@@ -14896,6 +14966,8 @@ test_deq_callback_setup(void)
 			"Failed test to remove callback on "
 			"qp %u on cryptodev %u",
 			qp_id, ts_params->valid_devs[0]);
+
+	TEST_ASSERT(deq_cb_called == true, "Crypto dequeue callback not called");
 
 	return TEST_SUCCESS;
 }
