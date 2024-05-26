@@ -769,15 +769,19 @@ flow_hw_shared_action_translate(struct rte_eth_dev *dev,
 		if (!shared_rss || __flow_hw_act_data_shared_rss_append
 		    (priv, acts,
 		    (enum rte_flow_action_type)MLX5_RTE_FLOW_ACTION_TYPE_RSS,
-		    action_src, action_dst, idx, shared_rss))
+		    action_src, action_dst, idx, shared_rss)) {
+			DRV_LOG(WARNING, "Indirect RSS action index %d translate failed", act_idx);
 			return -1;
+		}
 		break;
 	case MLX5_INDIRECT_ACTION_TYPE_COUNT:
 		if (__flow_hw_act_data_shared_cnt_append(priv, acts,
 			(enum rte_flow_action_type)
 			MLX5_RTE_FLOW_ACTION_TYPE_COUNT,
-			action_src, action_dst, act_idx))
+			action_src, action_dst, act_idx)) {
+			DRV_LOG(WARNING, "Indirect count action translate failed");
 			return -1;
+		}
 		break;
 	case MLX5_INDIRECT_ACTION_TYPE_AGE:
 		/* Not supported, prevent by validate function. */
@@ -785,15 +789,19 @@ flow_hw_shared_action_translate(struct rte_eth_dev *dev,
 		break;
 	case MLX5_INDIRECT_ACTION_TYPE_CT:
 		if (flow_hw_ct_compile(dev, MLX5_HW_INV_QUEUE,
-				       idx, &acts->rule_acts[action_dst]))
+				       idx, &acts->rule_acts[action_dst])) {
+			DRV_LOG(WARNING, "Indirect CT action translate failed");
 			return -1;
+		}
 		break;
 	case MLX5_INDIRECT_ACTION_TYPE_METER_MARK:
 		if (__flow_hw_act_data_shared_mtr_append(priv, acts,
 			(enum rte_flow_action_type)
 			MLX5_RTE_FLOW_ACTION_TYPE_METER_MARK,
-			action_src, action_dst, idx))
+			action_src, action_dst, idx)) {
+			DRV_LOG(WARNING, "Indirect meter mark action translate failed");
 			return -1;
+		}
 		break;
 	default:
 		DRV_LOG(WARNING, "Unsupported shared action type:%d", type);
@@ -1758,6 +1766,9 @@ __flow_hw_actions_translate(struct rte_eth_dev *dev,
 	}
 	return 0;
 err:
+	/* If rte_errno was not initialized and reached error state. */
+	if (!rte_errno)
+		rte_errno = EINVAL;
 	err = rte_errno;
 	__flow_hw_action_template_destroy(dev, acts);
 	return rte_flow_error_set(error, err,
