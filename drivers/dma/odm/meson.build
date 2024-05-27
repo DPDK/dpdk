@@ -9,6 +9,6 @@ endif
 
 deps += ['bus_pci', 'dmadev', 'eal', 'mempool', 'pci']
 
-sources = files('odm_dmadev.c')
+sources = files('odm_dmadev.c', 'odm.c')
 
 pmd_supports_disable_iova_as_pa = true

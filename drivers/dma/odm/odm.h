@@ -5,6 +5,10 @@
 #ifndef _ODM_H_
 #define _ODM_H_
 
+#include <stdint.h>
+
+#include <rte_common.h>
+#include <rte_compat.h>
 #include <rte_log.h>
 
 extern int odm_logtype;
@@ -48,6 +52,9 @@ extern int odm_logtype;
 #define ODM_HDR_CT_CW_NC 0x1
 
 #define ODM_MAX_QUEUES_PER_DEV 16
+
+#define odm_read64(addr)       rte_read64_relaxed((volatile void *)(addr))
+#define odm_write64(val, addr) rte_write64_relaxed((val), (volatile void *)(addr))
 
 #define odm_err(...)                                                                               \
 	rte_log(RTE_LOG_ERR, odm_logtype,                                                          \
@@ -131,5 +138,8 @@ struct __rte_cache_aligned odm_dev {
 	uint8_t max_qs;
 	uint8_t num_qs;
 };
+
+int odm_dev_init(struct odm_dev *odm);
+int odm_dev_fini(struct odm_dev *odm);
 
 #endif /* _ODM_H_ */

@@ -23,6 +23,7 @@ odm_dmadev_probe(struct rte_pci_driver *pci_drv __rte_unused, struct rte_pci_dev
 	char name[RTE_DEV_NAME_MAX_LEN];
 	struct odm_dev *odm = NULL;
 	struct rte_dma_dev *dmadev;
+	int rc;
 
 	if (!pci_dev->mem_resource[0].addr)
 		return -ENODEV;
@@ -37,8 +38,20 @@ odm_dmadev_probe(struct rte_pci_driver *pci_drv __rte_unused, struct rte_pci_dev
 	}
 
 	odm_info("DMA device %s probed", name);
+	odm = dmadev->data->dev_private;
+
+	odm->pci_dev = pci_dev;
+
+	rc = odm_dev_init(odm);
+	if (rc < 0)
+		goto dma_pmd_release;
 
 	return 0;
+
+dma_pmd_release:
+	rte_dma_pmd_release(name);
+
+	return rc;
 }
 
 static int
