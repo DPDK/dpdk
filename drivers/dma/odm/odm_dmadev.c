@@ -87,14 +87,73 @@ odm_dmadev_close(struct rte_dma_dev *dev)
 	return 0;
 }
 
+static int
+odm_stats_get(const struct rte_dma_dev *dev, uint16_t vchan, struct rte_dma_stats *rte_stats,
+	      uint32_t size)
+{
+	struct odm_dev *odm = dev->fp_obj->dev_private;
+
+	if (size < sizeof(rte_stats))
+		return -EINVAL;
+	if (rte_stats == NULL)
+		return -EINVAL;
+
+	if (vchan != RTE_DMA_ALL_VCHAN) {
+		struct rte_dma_stats *stats = (struct rte_dma_stats *)&odm->vq[vchan].stats;
+
+		*rte_stats = *stats;
+	} else {
+		int i;
+
+		for (i = 0; i < odm->num_qs; i++) {
+			struct rte_dma_stats *stats = (struct rte_dma_stats *)&odm->vq[i].stats;
+
+			rte_stats->submitted += stats->submitted;
+			rte_stats->completed += stats->completed;
+			rte_stats->errors += stats->errors;
+		}
+	}
+
+	return 0;
+}
+
+static void
+odm_vq_stats_reset(struct vq_stats *vq_stats)
+{
+	vq_stats->completed_offset += vq_stats->completed;
+	vq_stats->completed = 0;
+	vq_stats->errors = 0;
+	vq_stats->submitted = 0;
+}
+
+static int
+odm_stats_reset(struct rte_dma_dev *dev, uint16_t vchan)
+{
+	struct odm_dev *odm = dev->fp_obj->dev_private;
+	struct vq_stats *vq_stats;
+	int i;
+
+	if (vchan != RTE_DMA_ALL_VCHAN) {
+		vq_stats = &odm->vq[vchan].stats;
+		odm_vq_stats_reset(vq_stats);
+	} else {
+		for (i = 0; i < odm->num_qs; i++) {
+			vq_stats = &odm->vq[i].stats;
+			odm_vq_stats_reset(vq_stats);
+		}
+	}
+
+	return 0;
+}
+
 static const struct rte_dma_dev_ops odm_dmadev_ops = {
 	.dev_close = odm_dmadev_close,
 	.dev_configure = odm_dmadev_configure,
 	.dev_info_get = odm_dmadev_info_get,
 	.dev_start = odm_dmadev_start,
 	.dev_stop = odm_dmadev_stop,
-	.stats_get = NULL,
-	.stats_reset = NULL,
+	.stats_get = odm_stats_get,
+	.stats_reset = odm_stats_reset,
 	.vchan_setup = odm_dmadev_vchan_setup,
 };
 
