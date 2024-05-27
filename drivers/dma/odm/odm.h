@@ -9,7 +9,9 @@
 
 #include <rte_common.h>
 #include <rte_compat.h>
+#include <rte_io.h>
 #include <rte_log.h>
+#include <rte_memzone.h>
 
 extern int odm_logtype;
 
@@ -52,6 +54,14 @@ extern int odm_logtype;
 #define ODM_HDR_CT_CW_NC 0x1
 
 #define ODM_MAX_QUEUES_PER_DEV 16
+
+#define ODM_IRING_MAX_SIZE	 (256 * 1024)
+#define ODM_IRING_ENTRY_SIZE_MIN 4
+#define ODM_IRING_ENTRY_SIZE_MAX 13
+#define ODM_IRING_MAX_WORDS	 (ODM_IRING_MAX_SIZE / 8)
+#define ODM_IRING_MAX_ENTRY	 (ODM_IRING_MAX_WORDS / ODM_IRING_ENTRY_SIZE_MIN)
+
+#define ODM_MAX_POINTER 4
 
 #define odm_read64(addr)       rte_read64_relaxed((volatile void *)(addr))
 #define odm_write64(val, addr) rte_write64_relaxed((val), (volatile void *)(addr))
@@ -131,8 +141,48 @@ union odm_vdma_counts_s {
 	} s;
 };
 
+struct vq_stats {
+	uint64_t submitted;
+	uint64_t completed;
+	uint64_t errors;
+	/*
+	 * Since stats.completed is used to return completion index, account for any packets
+	 * received before stats is reset.
+	 */
+	uint64_t completed_offset;
+};
+
+struct odm_queue {
+	struct odm_dev *dev;
+	/* Instructions that are prepared on the iring, but is not pushed to hw yet. */
+	uint16_t pending_submit_cnt;
+	/* Length (in words) of instructions that are not yet pushed to hw. */
+	uint16_t pending_submit_len;
+	uint16_t desc_idx;
+	/* Instruction ring head. Used for enqueue. */
+	uint16_t iring_head;
+	/* Completion ring head. Used for dequeue. */
+	uint16_t cring_head;
+	/* Extra instruction size ring head. Used in enqueue-dequeue.*/
+	uint16_t ins_ring_head;
+	/* Extra instruction size ring tail. Used in enqueue-dequeue.*/
+	uint16_t ins_ring_tail;
+	/* Instruction size available.*/
+	uint16_t iring_sz_available;
+	/* Number of 8-byte words in iring.*/
+	uint16_t iring_max_words;
+	/* Number of words in cring.*/
+	uint16_t cring_max_entry;
+	/* Extra instruction size used per inflight instruction.*/
+	uint8_t *extra_ins_sz;
+	struct vq_stats stats;
+	const struct rte_memzone *iring_mz;
+	const struct rte_memzone *cring_mz;
+};
+
 struct __rte_cache_aligned odm_dev {
 	struct rte_pci_device *pci_dev;
+	struct odm_queue vq[ODM_MAX_QUEUES_PER_DEV];
 	uint8_t *rbase;
 	uint16_t vfid;
 	uint8_t max_qs;
@@ -141,5 +191,9 @@ struct __rte_cache_aligned odm_dev {
 
 int odm_dev_init(struct odm_dev *odm);
 int odm_dev_fini(struct odm_dev *odm);
+int odm_configure(struct odm_dev *odm);
+int odm_enable(struct odm_dev *odm);
+int odm_disable(struct odm_dev *odm);
+int odm_vchan_setup(struct odm_dev *odm, int vchan, int nb_desc);
 
 #endif /* _ODM_H_ */
