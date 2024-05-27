@@ -1269,6 +1269,12 @@ T: git://dpdk.org/next/dpdk-next-net-mrvl
 F: drivers/dma/cnxk/
 F: doc/guides/dmadevs/cnxk.rst
 
+Marvell Odyssey ODM DMA
+M: Gowrishankar Muthukrishnan <gmuthukrishn@marvell.com>
+M: Vidya Sagar Velumuri <vvelumuri@marvell.com>
+T: git://dpdk.org/next/dpdk-next-net-mrvl
+F: drivers/dma/odm/
+
 NXP DPAA DMA
 M: Gagandeep Singh <g.singh@nxp.com>
 M: Sachin Saxena <sachin.saxena@oss.nxp.com>
