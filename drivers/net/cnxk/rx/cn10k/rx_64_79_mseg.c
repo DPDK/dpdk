@@ -8,9 +8,13 @@
 #error "roc_api.h is included"
 #endif
 
+#if !defined(CNXK_DIS_TMPLT_FUNC)
+
 #define R(name, flags)                                                         \
 	NIX_RX_RECV_MSEG(cn10k_nix_recv_pkts_mseg_##name, flags)               \
 	NIX_RX_RECV_MSEG(cn10k_nix_recv_pkts_reas_mseg_##name, flags | NIX_RX_REAS_F)
 
 NIX_RX_FASTPATH_MODES_64_79
 #undef R
+
+#endif

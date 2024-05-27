@@ -3619,4 +3619,12 @@ NIX_TX_FASTPATH_MODES
 			(flags) | NIX_TX_MULTI_SEG_F);                         \
 	}
 
+uint16_t __rte_noinline __rte_hot cn10k_nix_xmit_pkts_all_offload(void *tx_queue,
+								  struct rte_mbuf **tx_pkts,
+								  uint16_t pkts);
+
+uint16_t __rte_noinline __rte_hot cn10k_nix_xmit_pkts_vec_all_offload(void *tx_queue,
+								      struct rte_mbuf **tx_pkts,
+								      uint16_t pkts);
+
 #endif /* __CN10K_TX_H__ */

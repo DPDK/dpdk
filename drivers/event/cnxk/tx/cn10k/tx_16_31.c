@@ -8,7 +8,11 @@
 #error "roc_api.h is included"
 #endif
 
+#if !defined(CNXK_DIS_TMPLT_FUNC)
+
 #define T(name, sz, flags) SSO_TX(cn10k_sso_hws_tx_adptr_enq_##name, sz, flags)
 
 NIX_TX_FASTPATH_MODES_16_31
 #undef T
+
+#endif

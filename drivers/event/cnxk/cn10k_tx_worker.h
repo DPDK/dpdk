@@ -280,4 +280,9 @@ NIX_TX_FASTPATH_MODES
 			(flags) | NIX_TX_MULTI_SEG_F);                         \
 	}
 
+uint16_t __rte_hot cn10k_sso_hws_tx_adptr_enq_seg_all_offload(void *port, struct rte_event ev[],
+							      uint16_t nb_events);
+uint16_t __rte_hot cn10k_sso_hws_tx_adptr_enq_seg_all_offload_tst(void *port, struct rte_event ev[],
+								  uint16_t nb_events);
+
 #endif

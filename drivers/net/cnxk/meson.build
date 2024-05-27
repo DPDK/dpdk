@@ -44,6 +44,13 @@ sources = files(
         'cnxk_tm.c',
 )
 
+disable_template = false
+if meson.version().version_compare('>=1.1.0')
+        if '-DCNXK_DIS_TMPLT_FUNC' in meson.build_options()
+                disable_template = true
+        endif
+endif
+
 if soc_type == 'cn9k' or soc_type == 'all'
 # CN9K
 sources += files(
@@ -54,7 +61,7 @@ sources += files(
         'cn9k_tx_select.c',
 )
 
-if host_machine.cpu_family().startswith('aarch')
+if host_machine.cpu_family().startswith('aarch') and not disable_template
 sources += files(
         'rx/cn9k/rx_0_15.c',
         'rx/cn9k/rx_16_31.c',
@@ -88,6 +95,7 @@ sources += files(
         'rx/cn9k/rx_80_95_vec_mseg.c',
         'rx/cn9k/rx_96_111_vec_mseg.c',
         'rx/cn9k/rx_112_127_vec_mseg.c',
+        'rx/cn9k/rx_all_offload.c',
 )
 
 sources += files(
@@ -123,6 +131,12 @@ sources += files(
         'tx/cn9k/tx_80_95_vec_mseg.c',
         'tx/cn9k/tx_96_111_vec_mseg.c',
         'tx/cn9k/tx_112_127_vec_mseg.c',
+        'tx/cn9k/tx_all_offload.c',
+)
+else
+sources += files(
+        'rx/cn9k/rx_all_offload.c',
+        'tx/cn9k/tx_all_offload.c',
 )
 endif
 endif
@@ -137,7 +151,7 @@ sources += files(
         'cn10k_tx_select.c',
 )
 
-if host_machine.cpu_family().startswith('aarch')
+if host_machine.cpu_family().startswith('aarch') and not disable_template
 sources += files(
         'rx/cn10k/rx_0_15.c',
         'rx/cn10k/rx_16_31.c',
@@ -171,6 +185,7 @@ sources += files(
         'rx/cn10k/rx_80_95_vec_mseg.c',
         'rx/cn10k/rx_96_111_vec_mseg.c',
         'rx/cn10k/rx_112_127_vec_mseg.c',
+        'rx/cn10k/rx_all_offload.c',
 )
 
 sources += files(
@@ -206,6 +221,12 @@ sources += files(
         'tx/cn10k/tx_80_95_vec_mseg.c',
         'tx/cn10k/tx_96_111_vec_mseg.c',
         'tx/cn10k/tx_112_127_vec_mseg.c',
+        'tx/cn10k/tx_all_offload.c',
+)
+else
+sources += files(
+        'rx/cn10k/rx_all_offload.c',
+        'tx/cn10k/tx_all_offload.c',
 )
 endif
 endif

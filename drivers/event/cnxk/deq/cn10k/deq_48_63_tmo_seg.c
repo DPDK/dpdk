@@ -8,6 +8,8 @@
 #error "roc_api.h is included"
 #endif
 
+#if !defined(CNXK_DIS_TMPLT_FUNC)
+
 #define R(name, flags)                                                         \
 	SSO_DEQ_TMO_SEG(cn10k_sso_hws_deq_tmo_seg_##name, flags)               \
 	SSO_DEQ_TMO_SEG(cn10k_sso_hws_reas_deq_tmo_seg_##name,                 \
@@ -15,3 +17,5 @@
 
 NIX_RX_FASTPATH_MODES_48_63
 #undef R
+
+#endif

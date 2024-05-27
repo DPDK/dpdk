@@ -542,6 +542,33 @@ NIX_RX_FASTPATH_MODES
 		return fn(port, ev, timeout_ticks);                            \
 	}
 
+uint16_t __rte_hot cn9k_sso_hws_deq_all_offload(void *port, struct rte_event *ev,
+						uint64_t timeout_ticks);
+
+uint16_t __rte_hot cn9k_sso_hws_deq_dual_all_offload(void *port, struct rte_event *ev,
+						     uint64_t timeout_ticks);
+
+uint16_t __rte_hot cn9k_sso_hws_deq_burst_all_offload(void *port, struct rte_event ev[],
+						      uint16_t nb_events, uint64_t timeout_ticks);
+
+uint16_t __rte_hot cn9k_sso_hws_deq_dual_burst_all_offload(void *port, struct rte_event ev[],
+							   uint16_t nb_events,
+							   uint64_t timeout_ticks);
+
+uint16_t __rte_hot cn9k_sso_hws_deq_all_offload_tst(void *port, struct rte_event *ev,
+						    uint64_t timeout_ticks);
+
+uint16_t __rte_hot cn9k_sso_hws_deq_dual_all_offload_tst(void *port, struct rte_event *ev,
+							 uint64_t timeout_ticks);
+
+uint16_t __rte_hot cn9k_sso_hws_deq_burst_all_offload_tst(void *port, struct rte_event ev[],
+							  uint16_t nb_events,
+							  uint64_t timeout_ticks);
+
+uint16_t __rte_hot cn9k_sso_hws_deq_dual_burst_all_offload_tst(void *port, struct rte_event ev[],
+							       uint16_t nb_events,
+							       uint64_t timeout_ticks);
+
 static __rte_always_inline void
 cn9k_sso_txq_fc_wait(const struct cn9k_eth_txq *txq)
 {
@@ -888,5 +915,18 @@ NIX_TX_FASTPATH_MODES
 					     (uint64_t *)ws->tx_adptr_data,    \
 					     (flags) | NIX_TX_MULTI_SEG_F);    \
 	}
+
+uint16_t __rte_hot cn9k_sso_hws_tx_adptr_enq_seg_all_offload(void *port, struct rte_event ev[],
+							     uint16_t nb_events);
+
+uint16_t __rte_hot cn9k_sso_hws_tx_adptr_enq_dual_seg_all_offload(void *port, struct rte_event ev[],
+								  uint16_t nb_events);
+
+uint16_t __rte_hot cn9k_sso_hws_tx_adptr_enq_seg_all_offload_tst(void *port, struct rte_event ev[],
+								 uint16_t nb_events);
+
+uint16_t __rte_hot cn9k_sso_hws_tx_adptr_enq_dual_seg_all_offload_tst(void *port,
+								      struct rte_event ev[],
+								      uint16_t nb_events);
 
 #endif

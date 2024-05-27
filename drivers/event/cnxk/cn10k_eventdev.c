@@ -305,13 +305,12 @@ cn10k_sso_updt_tx_adptr_data(const struct rte_eventdev *event_dev)
 	return 0;
 }
 
-static void
-cn10k_sso_fp_fns_set(struct rte_eventdev *event_dev)
-{
 #if defined(RTE_ARCH_ARM64)
+static inline void
+cn10k_sso_fp_tmplt_fns_set(struct rte_eventdev *event_dev)
+{
+#if !defined(CNXK_DIS_TMPLT_FUNC)
 	struct cnxk_sso_evdev *dev = cnxk_sso_pmd_priv(event_dev);
-
-	struct roc_cpt *cpt = roc_idev_cpt_get();
 	const event_dequeue_t sso_hws_deq[NIX_RX_OFFLOAD_MAX] = {
 #define R(name, flags)[flags] = cn10k_sso_hws_deq_##name,
 		NIX_RX_FASTPATH_MODES
@@ -423,10 +422,6 @@ cn10k_sso_fp_fns_set(struct rte_eventdev *event_dev)
 #undef T
 	};
 
-	event_dev->enqueue = cn10k_sso_hws_enq;
-	event_dev->enqueue_burst = cn10k_sso_hws_enq_burst;
-	event_dev->enqueue_new_burst = cn10k_sso_hws_enq_new_burst;
-	event_dev->enqueue_forward_burst = cn10k_sso_hws_enq_fwd_burst;
 	if (dev->rx_offloads & NIX_RX_MULTI_SEG_F) {
 		if (dev->rx_offloads & NIX_RX_REAS_F) {
 			CN10K_SET_EVDEV_DEQ_OP(dev, event_dev->dequeue, sso_hws_reas_deq_seg);
@@ -474,6 +469,56 @@ cn10k_sso_fp_fns_set(struct rte_eventdev *event_dev)
 		}
 	}
 
+	if (dev->tx_offloads & NIX_TX_MULTI_SEG_F)
+		CN10K_SET_EVDEV_ENQ_OP(dev, event_dev->txa_enqueue, sso_hws_tx_adptr_enq_seg);
+	else
+		CN10K_SET_EVDEV_ENQ_OP(dev, event_dev->txa_enqueue, sso_hws_tx_adptr_enq);
+
+	event_dev->txa_enqueue_same_dest = event_dev->txa_enqueue;
+#else
+	RTE_SET_USED(event_dev);
+#endif
+}
+
+static inline void
+cn10k_sso_fp_blk_fns_set(struct rte_eventdev *event_dev)
+{
+#if defined(CNXK_DIS_TMPLT_FUNC)
+	struct cnxk_sso_evdev *dev = cnxk_sso_pmd_priv(event_dev);
+
+	event_dev->dequeue = cn10k_sso_hws_deq_all_offload;
+	event_dev->dequeue_burst = cn10k_sso_hws_deq_burst_all_offload;
+	if (dev->rx_offloads & NIX_RX_OFFLOAD_TSTAMP_F) {
+		event_dev->dequeue = cn10k_sso_hws_deq_all_offload_tst;
+		event_dev->dequeue_burst = cn10k_sso_hws_deq_burst_all_offload_tst;
+	}
+	event_dev->txa_enqueue = cn10k_sso_hws_tx_adptr_enq_seg_all_offload;
+	event_dev->txa_enqueue_same_dest = cn10k_sso_hws_tx_adptr_enq_seg_all_offload;
+	if (dev->tx_offloads & (NIX_TX_OFFLOAD_OL3_OL4_CSUM_F | NIX_TX_OFFLOAD_VLAN_QINQ_F |
+				NIX_TX_OFFLOAD_TSO_F | NIX_TX_OFFLOAD_TSTAMP_F)) {
+		event_dev->txa_enqueue = cn10k_sso_hws_tx_adptr_enq_seg_all_offload_tst;
+		event_dev->txa_enqueue_same_dest = cn10k_sso_hws_tx_adptr_enq_seg_all_offload_tst;
+	}
+#else
+	RTE_SET_USED(event_dev);
+#endif
+}
+#endif
+
+static void
+cn10k_sso_fp_fns_set(struct rte_eventdev *event_dev)
+{
+#if defined(RTE_ARCH_ARM64)
+	struct roc_cpt *cpt = roc_idev_cpt_get();
+
+	cn10k_sso_fp_blk_fns_set(event_dev);
+	cn10k_sso_fp_tmplt_fns_set(event_dev);
+
+	event_dev->enqueue = cn10k_sso_hws_enq;
+	event_dev->enqueue_burst = cn10k_sso_hws_enq_burst;
+	event_dev->enqueue_new_burst = cn10k_sso_hws_enq_new_burst;
+	event_dev->enqueue_forward_burst = cn10k_sso_hws_enq_fwd_burst;
+
 	if ((cpt != NULL) && cpt->hw_caps[CPT_ENG_TYPE_SE].sg_ver2 &&
 	    cpt->hw_caps[CPT_ENG_TYPE_IE].sg_ver2)
 		event_dev->ca_enqueue = cn10k_cpt_sg_ver2_crypto_adapter_enqueue;
@@ -481,13 +526,6 @@ cn10k_sso_fp_fns_set(struct rte_eventdev *event_dev)
 		event_dev->ca_enqueue = cn10k_cpt_sg_ver1_crypto_adapter_enqueue;
 
 	event_dev->dma_enqueue = cn10k_dma_adapter_enqueue;
-
-	if (dev->tx_offloads & NIX_TX_MULTI_SEG_F)
-		CN10K_SET_EVDEV_ENQ_OP(dev, event_dev->txa_enqueue, sso_hws_tx_adptr_enq_seg);
-	else
-		CN10K_SET_EVDEV_ENQ_OP(dev, event_dev->txa_enqueue, sso_hws_tx_adptr_enq);
-
-	event_dev->txa_enqueue_same_dest = event_dev->txa_enqueue;
 	event_dev->profile_switch = cn10k_sso_hws_profile_switch;
 #else
 	RTE_SET_USED(event_dev);

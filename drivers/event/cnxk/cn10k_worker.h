@@ -517,4 +517,14 @@ NIX_RX_FASTPATH_MODES
 		return fn(port, ev, timeout_ticks);                            \
 	}
 
+uint16_t __rte_hot cn10k_sso_hws_deq_all_offload(void *port, struct rte_event *ev,
+						 uint64_t timeout_ticks);
+uint16_t __rte_hot cn10k_sso_hws_deq_burst_all_offload(void *port, struct rte_event ev[],
+						       uint16_t nb_events, uint64_t timeout_ticks);
+uint16_t __rte_hot cn10k_sso_hws_deq_all_offload_tst(void *port, struct rte_event *ev,
+						     uint64_t timeout_ticks);
+uint16_t __rte_hot cn10k_sso_hws_deq_burst_all_offload_tst(void *port, struct rte_event ev[],
+							   uint16_t nb_events,
+							   uint64_t timeout_ticks);
+
 #endif
