@@ -9,6 +9,7 @@
 #include <rte_common.h>
 #include <rte_dmadev.h>
 #include <rte_dmadev_pmd.h>
+#include <rte_memcpy.h>
 #include <rte_pci.h>
 
 #include "odm.h"
@@ -85,6 +86,238 @@ odm_dmadev_close(struct rte_dma_dev *dev)
 	odm_dev_fini(odm);
 
 	return 0;
+}
+
+static int
+odm_dmadev_copy(void *dev_private, uint16_t vchan, rte_iova_t src, rte_iova_t dst, uint32_t length,
+		uint64_t flags)
+{
+	uint16_t pending_submit_len, pending_submit_cnt, iring_sz_available, iring_head;
+	const int num_words = ODM_IRING_ENTRY_SIZE_MIN;
+	struct odm_dev *odm = dev_private;
+	uint64_t *iring_head_ptr;
+	struct odm_queue *vq;
+	uint64_t h;
+
+	const union odm_instr_hdr_s hdr = {
+		.s.ct = ODM_HDR_CT_CW_NC,
+		.s.xtype = ODM_XTYPE_INTERNAL,
+		.s.nfst = 1,
+		.s.nlst = 1,
+	};
+
+	vq = &odm->vq[vchan];
+
+	h = length;
+	h |= ((uint64_t)length << 32);
+
+	const uint16_t max_iring_words = vq->iring_max_words;
+
+	iring_sz_available = vq->iring_sz_available;
+	pending_submit_len = vq->pending_submit_len;
+	pending_submit_cnt = vq->pending_submit_cnt;
+	iring_head_ptr = vq->iring_mz->addr;
+	iring_head = vq->iring_head;
+
+	if (iring_sz_available < num_words)
+		return -ENOSPC;
+
+	if ((iring_head + num_words) >= max_iring_words) {
+
+		iring_head_ptr[iring_head] = hdr.u;
+		iring_head = (iring_head + 1) % max_iring_words;
+
+		iring_head_ptr[iring_head] = h;
+		iring_head = (iring_head + 1) % max_iring_words;
+
+		iring_head_ptr[iring_head] = src;
+		iring_head = (iring_head + 1) % max_iring_words;
+
+		iring_head_ptr[iring_head] = dst;
+		iring_head = (iring_head + 1) % max_iring_words;
+	} else {
+		iring_head_ptr[iring_head++] = hdr.u;
+		iring_head_ptr[iring_head++] = h;
+		iring_head_ptr[iring_head++] = src;
+		iring_head_ptr[iring_head++] = dst;
+	}
+
+	pending_submit_len += num_words;
+
+	if (flags & RTE_DMA_OP_FLAG_SUBMIT) {
+		rte_wmb();
+		odm_write64(pending_submit_len, odm->rbase + ODM_VDMA_DBELL(vchan));
+		vq->stats.submitted += pending_submit_cnt + 1;
+		vq->pending_submit_len = 0;
+		vq->pending_submit_cnt = 0;
+	} else {
+		vq->pending_submit_len = pending_submit_len;
+		vq->pending_submit_cnt++;
+	}
+
+	vq->iring_head = iring_head;
+
+	vq->iring_sz_available = iring_sz_available - num_words;
+
+	/* No extra space to save. Skip entry in extra space ring. */
+	vq->ins_ring_head = (vq->ins_ring_head + 1) % vq->cring_max_entry;
+
+	return vq->desc_idx++;
+}
+
+static inline void
+odm_dmadev_fill_sg(uint64_t *cmd, const struct rte_dma_sge *src, const struct rte_dma_sge *dst,
+		   uint16_t nb_src, uint16_t nb_dst, union odm_instr_hdr_s *hdr)
+{
+	int i = 0, j = 0;
+	uint64_t h = 0;
+
+	cmd[j++] = hdr->u;
+	/* When nb_src is even */
+	if (!(nb_src & 0x1)) {
+		/* Fill the iring with src pointers */
+		for (i = 1; i < nb_src; i += 2) {
+			h = ((uint64_t)src[i].length << 32) | src[i - 1].length;
+			cmd[j++] = h;
+			cmd[j++] = src[i - 1].addr;
+			cmd[j++] = src[i].addr;
+		}
+
+		/* Fill the iring with dst pointers */
+		for (i = 1; i < nb_dst; i += 2) {
+			h = ((uint64_t)dst[i].length << 32) | dst[i - 1].length;
+			cmd[j++] = h;
+			cmd[j++] = dst[i - 1].addr;
+			cmd[j++] = dst[i].addr;
+		}
+
+		/* Handle the last dst pointer when nb_dst is odd */
+		if (nb_dst & 0x1) {
+			h = dst[nb_dst - 1].length;
+			cmd[j++] = h;
+			cmd[j++] = dst[nb_dst - 1].addr;
+			cmd[j++] = 0;
+		}
+	} else {
+		/* When nb_src is odd */
+
+		/* Fill the iring with src pointers */
+		for (i = 1; i < nb_src; i += 2) {
+			h = ((uint64_t)src[i].length << 32) | src[i - 1].length;
+			cmd[j++] = h;
+			cmd[j++] = src[i - 1].addr;
+			cmd[j++] = src[i].addr;
+		}
+
+		/* Handle the last src pointer */
+		h = ((uint64_t)dst[0].length << 32) | src[nb_src - 1].length;
+		cmd[j++] = h;
+		cmd[j++] = src[nb_src - 1].addr;
+		cmd[j++] = dst[0].addr;
+
+		/* Fill the iring with dst pointers */
+		for (i = 2; i < nb_dst; i += 2) {
+			h = ((uint64_t)dst[i].length << 32) | dst[i - 1].length;
+			cmd[j++] = h;
+			cmd[j++] = dst[i - 1].addr;
+			cmd[j++] = dst[i].addr;
+		}
+
+		/* Handle the last dst pointer when nb_dst is even */
+		if (!(nb_dst & 0x1)) {
+			h = dst[nb_dst - 1].length;
+			cmd[j++] = h;
+			cmd[j++] = dst[nb_dst - 1].addr;
+			cmd[j++] = 0;
+		}
+	}
+}
+
+static int
+odm_dmadev_copy_sg(void *dev_private, uint16_t vchan, const struct rte_dma_sge *src,
+		   const struct rte_dma_sge *dst, uint16_t nb_src, uint16_t nb_dst, uint64_t flags)
+{
+	uint16_t pending_submit_len, pending_submit_cnt, iring_head, ins_ring_head;
+	uint16_t iring_sz_available, i, nb, num_words;
+	uint64_t cmd[ODM_IRING_ENTRY_SIZE_MAX];
+	struct odm_dev *odm = dev_private;
+	uint32_t s_sz = 0, d_sz = 0;
+	uint64_t *iring_head_ptr;
+	struct odm_queue *vq;
+	union odm_instr_hdr_s hdr = {
+		.s.ct = ODM_HDR_CT_CW_NC,
+		.s.xtype = ODM_XTYPE_INTERNAL,
+	};
+
+	vq = &odm->vq[vchan];
+	const uint16_t max_iring_words = vq->iring_max_words;
+
+	iring_head_ptr = vq->iring_mz->addr;
+	iring_head = vq->iring_head;
+	iring_sz_available = vq->iring_sz_available;
+	ins_ring_head = vq->ins_ring_head;
+	pending_submit_len = vq->pending_submit_len;
+	pending_submit_cnt = vq->pending_submit_cnt;
+
+	if (unlikely(nb_src > 4 || nb_dst > 4))
+		return -EINVAL;
+
+	for (i = 0; i < nb_src; i++)
+		s_sz += src[i].length;
+
+	for (i = 0; i < nb_dst; i++)
+		d_sz += dst[i].length;
+
+	if (s_sz != d_sz)
+		return -EINVAL;
+
+	nb = nb_src + nb_dst;
+	hdr.s.nfst = nb_src;
+	hdr.s.nlst = nb_dst;
+	num_words = 1 + 3 * (nb / 2 + (nb & 0x1));
+
+	if (iring_sz_available < num_words)
+		return -ENOSPC;
+
+	if ((iring_head + num_words) >= max_iring_words) {
+		uint16_t words_avail = max_iring_words - iring_head;
+		uint16_t words_pend = num_words - words_avail;
+
+		if (unlikely(words_avail + words_pend > ODM_IRING_ENTRY_SIZE_MAX))
+			return -ENOSPC;
+
+		odm_dmadev_fill_sg(cmd, src, dst, nb_src, nb_dst, &hdr);
+		rte_memcpy((void *)&iring_head_ptr[iring_head], (void *)cmd, words_avail * 8);
+		rte_memcpy((void *)iring_head_ptr, (void *)&cmd[words_avail], words_pend * 8);
+		iring_head = words_pend;
+	} else {
+		odm_dmadev_fill_sg(&iring_head_ptr[iring_head], src, dst, nb_src, nb_dst, &hdr);
+		iring_head += num_words;
+	}
+
+	pending_submit_len += num_words;
+
+	if (flags & RTE_DMA_OP_FLAG_SUBMIT) {
+		rte_wmb();
+		odm_write64(pending_submit_len, odm->rbase + ODM_VDMA_DBELL(vchan));
+		vq->stats.submitted += pending_submit_cnt + 1;
+		vq->pending_submit_len = 0;
+		vq->pending_submit_cnt = 0;
+	} else {
+		vq->pending_submit_len = pending_submit_len;
+		vq->pending_submit_cnt++;
+	}
+
+	vq->iring_head = iring_head;
+
+	vq->iring_sz_available = iring_sz_available - num_words;
+
+	/* Save extra space used for the instruction. */
+	vq->extra_ins_sz[ins_ring_head] = num_words - 4;
+
+	vq->ins_ring_head = (ins_ring_head + 1) % vq->cring_max_entry;
+
+	return vq->desc_idx++;
 }
 
 static int
@@ -183,6 +416,9 @@ odm_dmadev_probe(struct rte_pci_driver *pci_drv __rte_unused, struct rte_pci_dev
 	dmadev->device = &pci_dev->device;
 	dmadev->fp_obj->dev_private = odm;
 	dmadev->dev_ops = &odm_dmadev_ops;
+
+	dmadev->fp_obj->copy = odm_dmadev_copy;
+	dmadev->fp_obj->copy_sg = odm_dmadev_copy_sg;
 
 	odm->pci_dev = pci_dev;
 
