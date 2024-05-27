@@ -1274,6 +1274,7 @@ M: Gowrishankar Muthukrishnan <gmuthukrishn@marvell.com>
 M: Vidya Sagar Velumuri <vvelumuri@marvell.com>
 T: git://dpdk.org/next/dpdk-next-net-mrvl
 F: drivers/dma/odm/
+F: doc/guides/dmadevs/odm.rst
 
 NXP DPAA DMA
 M: Gagandeep Singh <g.singh@nxp.com>

@@ -103,6 +103,10 @@ New Features
 
   * Added SSE/NEON vector datapath.
 
+* **Added Marvell Odyssey ODM DMA driver.**
+
+  * Added Marvell Odyssey ODM DMA device PMD.
+
 * **Updated the DSW event device.**
 
   * Added support for ``RTE_EVENT_DEV_CAP_IMPLICIT_RELEASE_DISABLE``,

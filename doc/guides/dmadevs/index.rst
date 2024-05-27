@@ -17,3 +17,4 @@ an application through DMA API.
    hisilicon
    idxd
    ioat
+   odm

@@ -321,6 +321,251 @@ odm_dmadev_copy_sg(void *dev_private, uint16_t vchan, const struct rte_dma_sge *
 }
 
 static int
+odm_dmadev_fill(void *dev_private, uint16_t vchan, uint64_t pattern, rte_iova_t dst,
+		uint32_t length, uint64_t flags)
+{
+	uint16_t pending_submit_len, pending_submit_cnt, iring_sz_available, iring_head;
+	const int num_words = ODM_IRING_ENTRY_SIZE_MIN;
+	struct odm_dev *odm = dev_private;
+	uint64_t *iring_head_ptr;
+	struct odm_queue *vq;
+	uint64_t h;
+
+	vq = &odm->vq[vchan];
+
+	union odm_instr_hdr_s hdr = {
+		.s.ct = ODM_HDR_CT_CW_NC,
+		.s.nfst = 0,
+		.s.nlst = 1,
+	};
+
+	h = (uint64_t)length;
+
+	switch (pattern) {
+	case 0:
+		hdr.s.xtype = ODM_XTYPE_FILL0;
+		break;
+	case 0xffffffffffffffff:
+		hdr.s.xtype = ODM_XTYPE_FILL1;
+		break;
+	default:
+		return -ENOTSUP;
+	}
+
+	const uint16_t max_iring_words = vq->iring_max_words;
+
+	iring_sz_available = vq->iring_sz_available;
+	pending_submit_len = vq->pending_submit_len;
+	pending_submit_cnt = vq->pending_submit_cnt;
+	iring_head_ptr = vq->iring_mz->addr;
+	iring_head = vq->iring_head;
+
+	if (iring_sz_available < num_words)
+		return -ENOSPC;
+
+	if ((iring_head + num_words) >= max_iring_words) {
+
+		iring_head_ptr[iring_head] = hdr.u;
+		iring_head = (iring_head + 1) % max_iring_words;
+
+		iring_head_ptr[iring_head] = h;
+		iring_head = (iring_head + 1) % max_iring_words;
+
+		iring_head_ptr[iring_head] = dst;
+		iring_head = (iring_head + 1) % max_iring_words;
+
+		iring_head_ptr[iring_head] = 0;
+		iring_head = (iring_head + 1) % max_iring_words;
+	} else {
+		iring_head_ptr[iring_head] = hdr.u;
+		iring_head_ptr[iring_head + 1] = h;
+		iring_head_ptr[iring_head + 2] = dst;
+		iring_head_ptr[iring_head + 3] = 0;
+		iring_head += num_words;
+	}
+
+	pending_submit_len += num_words;
+
+	if (flags & RTE_DMA_OP_FLAG_SUBMIT) {
+		rte_wmb();
+		odm_write64(pending_submit_len, odm->rbase + ODM_VDMA_DBELL(vchan));
+		vq->stats.submitted += pending_submit_cnt + 1;
+		vq->pending_submit_len = 0;
+		vq->pending_submit_cnt = 0;
+	} else {
+		vq->pending_submit_len = pending_submit_len;
+		vq->pending_submit_cnt++;
+	}
+
+	vq->iring_head = iring_head;
+	vq->iring_sz_available = iring_sz_available - num_words;
+
+	/* No extra space to save. Skip entry in extra space ring. */
+	vq->ins_ring_head = (vq->ins_ring_head + 1) % vq->cring_max_entry;
+
+	vq->iring_sz_available = iring_sz_available - num_words;
+
+	return vq->desc_idx++;
+}
+
+static uint16_t
+odm_dmadev_completed(void *dev_private, uint16_t vchan, const uint16_t nb_cpls, uint16_t *last_idx,
+		     bool *has_error)
+{
+	const union odm_cmpl_ent_s cmpl_zero = {0};
+	uint16_t cring_head, iring_sz_available;
+	struct odm_dev *odm = dev_private;
+	union odm_cmpl_ent_s cmpl;
+	struct odm_queue *vq;
+	uint64_t nb_err = 0;
+	uint32_t *cmpl_ptr;
+	int cnt;
+
+	vq = &odm->vq[vchan];
+	const uint32_t *base_addr = vq->cring_mz->addr;
+	const uint16_t cring_max_entry = vq->cring_max_entry;
+
+	cring_head = vq->cring_head;
+	iring_sz_available = vq->iring_sz_available;
+
+	if (unlikely(vq->stats.submitted == vq->stats.completed)) {
+		*last_idx = (vq->stats.completed_offset + vq->stats.completed - 1) & 0xFFFF;
+		return 0;
+	}
+
+	for (cnt = 0; cnt < nb_cpls; cnt++) {
+		cmpl_ptr = RTE_PTR_ADD(base_addr, cring_head * sizeof(cmpl));
+		cmpl.u = rte_atomic_load_explicit((RTE_ATOMIC(uint32_t) *)cmpl_ptr,
+						  rte_memory_order_relaxed);
+		if (!cmpl.s.valid)
+			break;
+
+		if (cmpl.s.cmp_code)
+			nb_err++;
+
+		/* Free space for enqueue */
+		iring_sz_available += 4 + vq->extra_ins_sz[cring_head];
+
+		/* Clear instruction extra space */
+		vq->extra_ins_sz[cring_head] = 0;
+
+		rte_atomic_store_explicit((RTE_ATOMIC(uint32_t) *)cmpl_ptr, cmpl_zero.u,
+					  rte_memory_order_relaxed);
+		cring_head = (cring_head + 1) % cring_max_entry;
+	}
+
+	vq->stats.errors += nb_err;
+
+	if (unlikely(has_error != NULL && nb_err))
+		*has_error = true;
+
+	vq->cring_head = cring_head;
+	vq->iring_sz_available = iring_sz_available;
+
+	vq->stats.completed += cnt;
+
+	*last_idx = (vq->stats.completed_offset + vq->stats.completed - 1) & 0xFFFF;
+
+	return cnt;
+}
+
+static uint16_t
+odm_dmadev_completed_status(void *dev_private, uint16_t vchan, const uint16_t nb_cpls,
+			    uint16_t *last_idx, enum rte_dma_status_code *status)
+{
+	const union odm_cmpl_ent_s cmpl_zero = {0};
+	uint16_t cring_head, iring_sz_available;
+	struct odm_dev *odm = dev_private;
+	union odm_cmpl_ent_s cmpl;
+	struct odm_queue *vq;
+	uint32_t *cmpl_ptr;
+	int cnt;
+
+	vq = &odm->vq[vchan];
+	const uint32_t *base_addr = vq->cring_mz->addr;
+	const uint16_t cring_max_entry = vq->cring_max_entry;
+
+	cring_head = vq->cring_head;
+	iring_sz_available = vq->iring_sz_available;
+
+	if (vq->stats.submitted == vq->stats.completed) {
+		*last_idx = (vq->stats.completed_offset + vq->stats.completed - 1) & 0xFFFF;
+		return 0;
+	}
+
+#ifdef ODM_DEBUG
+	odm_debug("cring_head: 0x%" PRIx16, cring_head);
+	odm_debug("Submitted: 0x%" PRIx64, vq->stats.submitted);
+	odm_debug("Completed: 0x%" PRIx64, vq->stats.completed);
+	odm_debug("Hardware count: 0x%" PRIx64, odm_read64(odm->rbase + ODM_VDMA_CNT(vchan)));
+#endif
+
+	for (cnt = 0; cnt < nb_cpls; cnt++) {
+		cmpl_ptr = RTE_PTR_ADD(base_addr, cring_head * sizeof(cmpl));
+		cmpl.u = rte_atomic_load_explicit((RTE_ATOMIC(uint32_t) *)cmpl_ptr,
+						  rte_memory_order_relaxed);
+		if (!cmpl.s.valid)
+			break;
+
+		status[cnt] = cmpl.s.cmp_code;
+
+		if (cmpl.s.cmp_code)
+			vq->stats.errors++;
+
+		/* Free space for enqueue */
+		iring_sz_available += 4 + vq->extra_ins_sz[cring_head];
+
+		/* Clear instruction extra space */
+		vq->extra_ins_sz[cring_head] = 0;
+
+		rte_atomic_store_explicit((RTE_ATOMIC(uint32_t) *)cmpl_ptr, cmpl_zero.u,
+					  rte_memory_order_relaxed);
+		cring_head = (cring_head + 1) % cring_max_entry;
+	}
+
+	vq->cring_head = cring_head;
+	vq->iring_sz_available = iring_sz_available;
+
+	vq->stats.completed += cnt;
+
+	*last_idx = (vq->stats.completed_offset + vq->stats.completed - 1) & 0xFFFF;
+
+	return cnt;
+}
+
+static int
+odm_dmadev_submit(void *dev_private, uint16_t vchan)
+{
+	struct odm_dev *odm = dev_private;
+	uint16_t pending_submit_len;
+	struct odm_queue *vq;
+
+	vq = &odm->vq[vchan];
+	pending_submit_len = vq->pending_submit_len;
+
+	if (pending_submit_len == 0)
+		return 0;
+
+	rte_wmb();
+	odm_write64(pending_submit_len, odm->rbase + ODM_VDMA_DBELL(vchan));
+	vq->pending_submit_len = 0;
+	vq->stats.submitted += vq->pending_submit_cnt;
+	vq->pending_submit_cnt = 0;
+
+	return 0;
+}
+
+static uint16_t
+odm_dmadev_burst_capacity(const void *dev_private, uint16_t vchan __rte_unused)
+{
+	const struct odm_dev *odm = dev_private;
+	const struct odm_queue *vq;
+
+	vq = &odm->vq[vchan];
+	return (vq->iring_sz_available / ODM_IRING_ENTRY_SIZE_MIN);
+}
+
+static int
 odm_stats_get(const struct rte_dma_dev *dev, uint16_t vchan, struct rte_dma_stats *rte_stats,
 	      uint32_t size)
 {
@@ -419,6 +664,11 @@ odm_dmadev_probe(struct rte_pci_driver *pci_drv __rte_unused, struct rte_pci_dev
 
 	dmadev->fp_obj->copy = odm_dmadev_copy;
 	dmadev->fp_obj->copy_sg = odm_dmadev_copy_sg;
+	dmadev->fp_obj->fill = odm_dmadev_fill;
+	dmadev->fp_obj->submit = odm_dmadev_submit;
+	dmadev->fp_obj->completed = odm_dmadev_completed;
+	dmadev->fp_obj->completed_status = odm_dmadev_completed_status;
+	dmadev->fp_obj->burst_capacity = odm_dmadev_burst_capacity;
 
 	odm->pci_dev = pci_dev;
 
