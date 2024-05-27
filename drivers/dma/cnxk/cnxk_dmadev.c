@@ -278,6 +278,7 @@ cnxk_dmadev_start(struct rte_dma_dev *dev)
 	struct cnxk_dpi_vf_s *dpivf = dev->fp_obj->dev_private;
 	struct cnxk_dpi_conf *dpi_conf;
 	uint32_t chunks, nb_desc = 0;
+	uint32_t queue_buf_sz;
 	int i, j, rc = 0;
 	void *chunk;
 
@@ -295,34 +296,44 @@ cnxk_dmadev_start(struct rte_dma_dev *dev)
 		dpi_conf->completed_offset = 0;
 	}
 
-	chunks = CNXK_DPI_CHUNKS_FROM_DESC(CNXK_DPI_QUEUE_BUF_SIZE, nb_desc);
-	rc = cnxk_dmadev_chunk_pool_create(dev, chunks, CNXK_DPI_QUEUE_BUF_SIZE);
+	queue_buf_sz = CNXK_DPI_QUEUE_BUF_SIZE_V2;
+	/* Max block size allowed by cnxk mempool driver is (128 * 1024).
+	 * Block size = elt_size + mp->header + mp->trailer.
+	 *
+	 * Note from cn9k mempool driver:
+	 * In cn9k additional padding of 128 bytes is added to mempool->trailer to
+	 * ensure that the element size always occupies odd number of cachelines
+	 * to ensure even distribution of elements among L1D cache sets.
+	 */
+	if (!roc_model_is_cn10k())
+		queue_buf_sz = CNXK_DPI_QUEUE_BUF_SIZE_V2 - 128;
+
+	chunks = CNXK_DPI_CHUNKS_FROM_DESC(queue_buf_sz, nb_desc);
+	rc = cnxk_dmadev_chunk_pool_create(dev, chunks, queue_buf_sz);
 	if (rc < 0) {
 		plt_err("DMA pool configure failed err = %d", rc);
-		goto done;
+		goto error;
 	}
 
 	rc = rte_mempool_get(dpivf->chunk_pool, &chunk);
 	if (rc < 0) {
 		plt_err("DMA failed to get chunk pointer err = %d", rc);
 		rte_mempool_free(dpivf->chunk_pool);
-		goto done;
+		goto error;
 	}
 
-	rc = roc_dpi_configure(&dpivf->rdpi, CNXK_DPI_QUEUE_BUF_SIZE, dpivf->aura, (uint64_t)chunk);
+	rc = roc_dpi_configure_v2(&dpivf->rdpi, queue_buf_sz, dpivf->aura, (uint64_t)chunk);
 	if (rc < 0) {
 		plt_err("DMA configure failed err = %d", rc);
 		rte_mempool_free(dpivf->chunk_pool);
-		goto done;
+		goto error;
 	}
-
 	dpivf->chunk_base = chunk;
 	dpivf->chunk_head = 0;
-	dpivf->chunk_size_m1 = (CNXK_DPI_QUEUE_BUF_SIZE >> 3) - 2;
+	dpivf->chunk_size_m1 = (queue_buf_sz >> 3) - 2;
 
 	roc_dpi_enable(&dpivf->rdpi);
-
-done:
+error:
 	return rc;
 }
 
@@ -330,11 +341,9 @@ static int
 cnxk_dmadev_stop(struct rte_dma_dev *dev)
 {
 	struct cnxk_dpi_vf_s *dpivf = dev->fp_obj->dev_private;
-	uint64_t reg;
 
-	reg = plt_read64(dpivf->rdpi.rbase + DPI_VDMA_SADDR);
-	while (!(reg & BIT_ULL(63)))
-		reg = plt_read64(dpivf->rdpi.rbase + DPI_VDMA_SADDR);
+	if (roc_dpi_wait_queue_idle(&dpivf->rdpi))
+		return -EAGAIN;
 
 	roc_dpi_disable(&dpivf->rdpi);
 	rte_mempool_free(dpivf->chunk_pool);

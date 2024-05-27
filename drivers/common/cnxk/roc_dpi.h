@@ -16,7 +16,10 @@ int __roc_api roc_dpi_dev_fini(struct roc_dpi *roc_dpi);
 
 int __roc_api roc_dpi_configure(struct roc_dpi *dpi, uint32_t chunk_sz, uint64_t aura,
 				uint64_t chunk_base);
+int __roc_api roc_dpi_configure_v2(struct roc_dpi *roc_dpi, uint32_t chunk_sz, uint64_t aura,
+				   uint64_t chunk_base);
 int __roc_api roc_dpi_enable(struct roc_dpi *dpi);
+int __roc_api roc_dpi_wait_queue_idle(struct roc_dpi *dpi);
 int __roc_api roc_dpi_disable(struct roc_dpi *dpi);
 
 #endif

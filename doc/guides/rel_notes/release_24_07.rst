@@ -103,6 +103,12 @@ New Features
 
   * Added SSE/NEON vector datapath.
 
+* **Updated Marvell CNXK DMA driver.**
+
+  * Updated DMA driver internal pool to use higher chunk size,
+    effectively reducing the number of mempool allocs needed,
+    thereby increasing DMA performance.
+
 * **Added Marvell Odyssey ODM DMA driver.**
 
   * Added Marvell Odyssey ODM DMA device PMD.
