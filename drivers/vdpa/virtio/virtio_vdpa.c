@@ -1887,6 +1887,7 @@ virtio_vdpa_dev_mem_tbl_cleanup(struct rte_vdpa_device *vdev)
 	struct virtio_vdpa_priv *priv =
 		virtio_vdpa_find_priv_resource_by_vdev(vdev);
 	struct virtio_vdpa_vf_drv_mem *mem;
+	struct virtio_vdpa_iommu_domain *iommu_domain;
 	uint32_t i;
 	int ret;
 
@@ -1904,20 +1905,27 @@ virtio_vdpa_dev_mem_tbl_cleanup(struct rte_vdpa_device *vdev)
 	 * not exist)
 	 */
 	pthread_mutex_lock(&iommu_domain_locks[priv->iommu_idx]);
-	if (!virtio_iommu_domains[priv->iommu_idx])
+	iommu_domain = virtio_iommu_domains[priv->iommu_idx];
+	if (!iommu_domain)
 		goto unlock;
-	mem = &virtio_iommu_domains[priv->iommu_idx]->mem;
-	for (i = 0; i < mem->nregions; i++) {
-		ret = virtio_vdpa_raw_vfio_dma_unmap(virtio_iommu_domains[priv->iommu_idx]->vfio_container_fd,
-			mem->regions[i].guest_phys_addr, mem->regions[i].size);
-		if (ret < 0)
-			DRV_LOG(ERR, "Failed to DMA unmap region %u: %s", i, vdev->device->name);
-
-		DRV_LOG(INFO, "DMA unmap region: GPA 0x%" PRIx64 ", HPA 0x%" PRIx64
-			", size 0x%" PRIx64 ".", mem->regions[i].guest_phys_addr,
-			mem->regions[i].host_phys_addr, mem->regions[i].size);
+	if (priv->mem_tbl_set) {
+		iommu_domain->mem_tbl_ref_cnt--;
+		priv->mem_tbl_set = false;
 	}
-	mem->nregions = 0;
+	if (iommu_domain->mem_tbl_ref_cnt == 0) {
+		mem = &iommu_domain->mem;
+		for (i = 0; i < mem->nregions; i++) {
+			ret = virtio_vdpa_raw_vfio_dma_unmap(iommu_domain->vfio_container_fd,
+				mem->regions[i].guest_phys_addr, mem->regions[i].size);
+			if (ret < 0)
+				DRV_LOG(ERR, "Failed to DMA unmap region %u: %s", i, vdev->device->name);
+
+			DRV_LOG(INFO, "DMA unmap region: GPA 0x%" PRIx64 ", HPA 0x%" PRIx64
+				", size 0x%" PRIx64 ".", mem->regions[i].guest_phys_addr,
+				mem->regions[i].host_phys_addr, mem->regions[i].size);
+		}
+		mem->nregions = 0;
+	}
 unlock:
 	pthread_mutex_unlock(&iommu_domain_locks[priv->iommu_idx]);
 }
@@ -2393,9 +2401,8 @@ virtio_vdpa_dev_probe(struct rte_pci_driver *pci_drv __rte_unused,
 			}
 			iommu_domain->mem.nregions = mem->nregions;
 		}
-		iommu_domain->mem_tbl_ref_cnt++;
 		pthread_mutex_unlock(&iommu_domain_locks[iommu_idx]);
-		priv->mem_tbl_set = true;
+		priv->mem_tbl_set = false;
 		priv->fd_args_stored = true;
 	}
 
