@@ -1114,6 +1114,13 @@ nfp_fw_get_name(struct rte_pci_device *dev,
 		}
 	}
 
+	/* And then try the model name */
+	snprintf(card_desc, sizeof(card_desc), "%s.nffw", nfp_fw_model);
+	snprintf(fw_name, fw_size, "%s/%s", DEFAULT_FW_PATH, card_desc);
+	PMD_DRV_LOG(DEBUG, "Trying with fw file: %s", fw_name);
+	if (access(fw_name, F_OK) == 0)
+		return 0;
+
 	/* Finally try the card type and media */
 	snprintf(card_desc, sizeof(card_desc), "nic_%s_%dx%d.nffw",
 			nfp_fw_model, nfp_eth_table->count,
