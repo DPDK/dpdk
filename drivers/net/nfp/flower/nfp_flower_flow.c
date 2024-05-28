@@ -1316,17 +1316,17 @@ nfp_flow_merge_ipv4(__rte_unused struct nfp_app_fw_flower *app_fw_flower,
 			ipv4_udp_tun->ipv4.dst   = hdr->dst_addr;
 		}
 	} else {
-		if (spec == NULL) {
-			PMD_DRV_LOG(DEBUG, "nfp flow merge ipv4: no item->spec!");
-			goto ipv4_end;
-		}
-
 		/*
 		 * Reserve space for L4 info.
 		 * rte_flow has ipv4 before L4 but NFP flower fw requires L4 before ipv4.
 		 */
 		if ((meta_tci->nfp_flow_key_layer & NFP_FLOWER_LAYER_TP) != 0)
 			*mbuf_off += sizeof(struct nfp_flower_tp_ports);
+
+		if (spec == NULL) {
+			PMD_DRV_LOG(DEBUG, "nfp flow merge ipv4: no item->spec!");
+			goto ipv4_end;
+		}
 
 		hdr = is_mask ? &mask->hdr : &spec->hdr;
 		ipv4 = (struct nfp_flower_ipv4 *)*mbuf_off;
@@ -1399,17 +1399,17 @@ nfp_flow_merge_ipv6(__rte_unused struct nfp_app_fw_flower *app_fw_flower,
 					sizeof(ipv6_udp_tun->ipv6.ipv6_dst));
 		}
 	} else {
-		if (spec == NULL) {
-			PMD_DRV_LOG(DEBUG, "nfp flow merge ipv6: no item->spec!");
-			goto ipv6_end;
-		}
-
 		/*
 		 * Reserve space for L4 info.
 		 * rte_flow has ipv6 before L4 but NFP flower fw requires L4 before ipv6.
 		 */
 		if ((meta_tci->nfp_flow_key_layer & NFP_FLOWER_LAYER_TP) != 0)
 			*mbuf_off += sizeof(struct nfp_flower_tp_ports);
+
+		if (spec == NULL) {
+			PMD_DRV_LOG(DEBUG, "nfp flow merge ipv6: no item->spec!");
+			goto ipv6_end;
+		}
 
 		hdr = is_mask ? &mask->hdr : &spec->hdr;
 		vtc_flow = rte_be_to_cpu_32(hdr->vtc_flow);
@@ -1445,23 +1445,34 @@ nfp_flow_merge_tcp(__rte_unused struct nfp_app_fw_flower *app_fw_flower,
 	const struct rte_flow_item_tcp *mask;
 	struct nfp_flower_meta_tci *meta_tci;
 
-	spec = item->spec;
-	if (spec == NULL) {
-		PMD_DRV_LOG(DEBUG, "nfp flow merge tcp: no item->spec!");
-		return 0;
-	}
-
 	meta_tci = (struct nfp_flower_meta_tci *)nfp_flow->payload.unmasked_data;
 	if ((meta_tci->nfp_flow_key_layer & NFP_FLOWER_LAYER_IPV4) != 0) {
 		ipv4  = (struct nfp_flower_ipv4 *)
 				(*mbuf_off - sizeof(struct nfp_flower_ipv4));
+		if (is_mask)
+			ipv4->ip_ext.proto = 0xFF;
+		else
+			ipv4->ip_ext.proto = IPPROTO_TCP;
 		ports = (struct nfp_flower_tp_ports *)
 				((char *)ipv4 - sizeof(struct nfp_flower_tp_ports));
-	} else { /* IPv6 */
+	} else if ((meta_tci->nfp_flow_key_layer & NFP_FLOWER_LAYER_IPV6) != 0) {
 		ipv6  = (struct nfp_flower_ipv6 *)
 				(*mbuf_off - sizeof(struct nfp_flower_ipv6));
+		if (is_mask)
+			ipv6->ip_ext.proto = 0xFF;
+		else
+			ipv6->ip_ext.proto = IPPROTO_TCP;
 		ports = (struct nfp_flower_tp_ports *)
 				((char *)ipv6 - sizeof(struct nfp_flower_tp_ports));
+	} else {
+		PMD_DRV_LOG(ERR, "nfp flow merge tcp: no L3 layer!");
+		return -EINVAL;
+	}
+
+	spec = item->spec;
+	if (spec == NULL) {
+		PMD_DRV_LOG(DEBUG, "nfp flow merge tcp: no item->spec!");
+		return 0;
 	}
 
 	mask = item->mask ? item->mask : proc->mask_default;
