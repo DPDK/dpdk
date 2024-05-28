@@ -473,6 +473,7 @@ struct roc_nix {
 	bool force_rx_aura_bp;
 	bool custom_meta_aura_ena;
 	bool rx_inj_ena;
+	uint32_t root_sched_weight;
 	/* End of input parameters */
 	/* LMT line base for "Per Core Tx LMT line" mode*/
 	uintptr_t lmt_base;
