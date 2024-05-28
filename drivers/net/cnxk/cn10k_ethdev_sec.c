@@ -1101,8 +1101,8 @@ cn10k_eth_sec_session_update(void *device, struct rte_security_session *sess,
 {
 	struct rte_eth_dev *eth_dev = (struct rte_eth_dev *)device;
 	struct cnxk_eth_dev *dev = cnxk_eth_pmd_priv(eth_dev);
-	struct roc_ot_ipsec_inb_sa *inb_sa_dptr;
 	struct rte_security_ipsec_xform *ipsec;
+	struct cn10k_sec_sess_priv sess_priv;
 	struct rte_crypto_sym_xform *crypto;
 	struct cnxk_eth_sec_sess *eth_sec;
 	bool inbound;
@@ -1123,6 +1123,11 @@ cn10k_eth_sec_session_update(void *device, struct rte_security_session *sess,
 	eth_sec->spi = conf->ipsec.spi;
 
 	if (inbound) {
+		struct roc_ot_ipsec_inb_sa *inb_sa_dptr, *inb_sa;
+		struct cn10k_inb_priv_data *inb_priv;
+
+		inb_sa = eth_sec->sa;
+		inb_priv = roc_nix_inl_ot_ipsec_inb_sa_sw_rsvd(inb_sa);
 		inb_sa_dptr = (struct roc_ot_ipsec_inb_sa *)dev->inb.sa_dptr;
 		memset(inb_sa_dptr, 0, sizeof(struct roc_ot_ipsec_inb_sa));
 
@@ -1130,26 +1135,74 @@ cn10k_eth_sec_session_update(void *device, struct rte_security_session *sess,
 					       true);
 		if (rc)
 			return -EINVAL;
+		/* Use cookie for original data */
+		inb_sa_dptr->w1.s.cookie = inb_sa->w1.s.cookie;
+
+		if (ipsec->options.stats == 1) {
+			/* Enable mib counters */
+			inb_sa_dptr->w0.s.count_mib_bytes = 1;
+			inb_sa_dptr->w0.s.count_mib_pkts = 1;
+		}
+
+		/* Enable out-of-place processing */
+		if (ipsec->options.ingress_oop)
+			inb_sa_dptr->w0.s.pkt_format = ROC_IE_OT_SA_PKT_FMT_FULL;
 
 		rc = roc_nix_inl_ctx_write(&dev->nix, inb_sa_dptr, eth_sec->sa,
 					   eth_sec->inb,
 					   sizeof(struct roc_ot_ipsec_inb_sa));
 		if (rc)
 			return -EINVAL;
-	} else {
-		struct roc_ot_ipsec_outb_sa *outb_sa_dptr;
 
+		/* Save userdata in inb private area */
+		inb_priv->userdata = conf->userdata;
+	} else {
+		struct roc_ot_ipsec_outb_sa *outb_sa_dptr, *outb_sa;
+		struct cn10k_outb_priv_data *outb_priv;
+		struct cnxk_ipsec_outb_rlens *rlens;
+
+		outb_sa = eth_sec->sa;
+		outb_priv = roc_nix_inl_ot_ipsec_outb_sa_sw_rsvd(outb_sa);
+		rlens = &outb_priv->rlens;
 		outb_sa_dptr = (struct roc_ot_ipsec_outb_sa *)dev->outb.sa_dptr;
 		memset(outb_sa_dptr, 0, sizeof(struct roc_ot_ipsec_outb_sa));
 
 		rc = cnxk_ot_ipsec_outb_sa_fill(outb_sa_dptr, ipsec, crypto);
 		if (rc)
 			return -EINVAL;
+
+		/* Save rlen info */
+		cnxk_ipsec_outb_rlens_get(rlens, ipsec, crypto);
+
+		if (ipsec->options.stats == 1) {
+			/* Enable mib counters */
+			outb_sa_dptr->w0.s.count_mib_bytes = 1;
+			outb_sa_dptr->w0.s.count_mib_pkts = 1;
+		}
+
+		sess_priv.u64 = 0;
+		sess_priv.sa_idx = outb_priv->sa_idx;
+		sess_priv.roundup_byte = rlens->roundup_byte;
+		sess_priv.roundup_len = rlens->roundup_len;
+		sess_priv.partial_len = rlens->partial_len;
+		sess_priv.mode = outb_sa_dptr->w2.s.ipsec_mode;
+		sess_priv.outer_ip_ver = outb_sa_dptr->w2.s.outer_ip_ver;
+		/* Propagate inner checksum enable from SA to fast path */
+		sess_priv.chksum =
+			(!ipsec->options.ip_csum_enable << 1 | !ipsec->options.l4_csum_enable);
+		sess_priv.dec_ttl = ipsec->options.dec_ttl;
+		if (roc_feature_nix_has_inl_ipsec_mseg() && dev->outb.cpt_eng_caps & BIT_ULL(35))
+			sess_priv.nixtx_off = 1;
+
 		rc = roc_nix_inl_ctx_write(&dev->nix, outb_sa_dptr, eth_sec->sa,
 					   eth_sec->inb,
 					   sizeof(struct roc_ot_ipsec_outb_sa));
 		if (rc)
 			return -EINVAL;
+
+		/* Save userdata */
+		outb_priv->userdata = conf->userdata;
+		sess->fast_mdata = sess_priv.u64;
 	}
 
 	return 0;
