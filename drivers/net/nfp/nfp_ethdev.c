@@ -1065,16 +1065,18 @@ ipsec_exit:
 
 static int
 nfp_fw_get_name(struct rte_pci_device *dev,
-		struct nfp_nsp *nsp,
-		char *card,
+		struct nfp_cpp *cpp,
+		struct nfp_eth_table *nfp_eth_table,
+		struct nfp_hwinfo *hwinfo,
 		char *fw_name,
 		size_t fw_size)
 {
 	char serial[40];
 	uint16_t interface;
+	char card_desc[100];
 	uint32_t cpp_serial_len;
+	const char *nfp_fw_model;
 	const uint8_t *cpp_serial;
-	struct nfp_cpp *cpp = nfp_nsp_cpp(nsp);
 
 	cpp_serial_len = nfp_cpp_serial(cpp, &cpp_serial);
 	if (cpp_serial_len != NFP_SERIAL_LEN)
@@ -1103,8 +1105,20 @@ nfp_fw_get_name(struct rte_pci_device *dev,
 	if (access(fw_name, F_OK) == 0)
 		return 0;
 
+	nfp_fw_model = nfp_hwinfo_lookup(hwinfo, "nffw.partno");
+	if (nfp_fw_model == NULL) {
+		nfp_fw_model = nfp_hwinfo_lookup(hwinfo, "assembly.partno");
+		if (nfp_fw_model == NULL) {
+			PMD_DRV_LOG(ERR, "firmware model NOT found");
+			return -EIO;
+		}
+	}
+
 	/* Finally try the card type and media */
-	snprintf(fw_name, fw_size, "%s/%s", DEFAULT_FW_PATH, card);
+	snprintf(card_desc, sizeof(card_desc), "nic_%s_%dx%d.nffw",
+			nfp_fw_model, nfp_eth_table->count,
+			nfp_eth_table->ports[0].speed / 1000);
+	snprintf(fw_name, fw_size, "%s/%s", DEFAULT_FW_PATH, card_desc);
 	PMD_DRV_LOG(DEBUG, "Trying with fw file: %s", fw_name);
 	if (access(fw_name, F_OK) == 0)
 		return 0;
@@ -1348,47 +1362,18 @@ nfp_fw_setup(struct rte_pci_device *dev,
 {
 	int err;
 	char fw_name[125];
-	char card_desc[100];
 	struct nfp_nsp *nsp;
-	const char *nfp_fw_model;
 
-	nfp_fw_model = nfp_hwinfo_lookup(hwinfo, "nffw.partno");
-	if (nfp_fw_model == NULL)
-		nfp_fw_model = nfp_hwinfo_lookup(hwinfo, "assembly.partno");
-
-	if (nfp_fw_model != NULL) {
-		PMD_DRV_LOG(INFO, "firmware model found: %s", nfp_fw_model);
-	} else {
-		PMD_DRV_LOG(ERR, "firmware model NOT found");
-		return -EIO;
+	err = nfp_fw_get_name(dev, cpp, nfp_eth_table, hwinfo, fw_name, sizeof(fw_name));
+	if (err != 0) {
+		PMD_DRV_LOG(ERR, "Can't find suitable firmware.");
+		return err;
 	}
-
-	if (nfp_eth_table->count == 0 || nfp_eth_table->count > 8) {
-		PMD_DRV_LOG(ERR, "NFP ethernet table reports wrong ports: %u",
-				nfp_eth_table->count);
-		return -EIO;
-	}
-
-	PMD_DRV_LOG(INFO, "NFP ethernet port table reports %u ports",
-			nfp_eth_table->count);
-
-	PMD_DRV_LOG(INFO, "Port speed: %u", nfp_eth_table->ports[0].speed);
-
-	snprintf(card_desc, sizeof(card_desc), "nic_%s_%dx%d.nffw",
-			nfp_fw_model, nfp_eth_table->count,
-			nfp_eth_table->ports[0].speed / 1000);
 
 	nsp = nfp_nsp_open(cpp);
 	if (nsp == NULL) {
 		PMD_DRV_LOG(ERR, "NFP error when obtaining NSP handle");
 		return -EIO;
-	}
-
-	err = nfp_fw_get_name(dev, nsp, card_desc, fw_name, sizeof(fw_name));
-	if (err != 0) {
-		PMD_DRV_LOG(ERR, "Can't find suitable firmware.");
-		nfp_nsp_close(nsp);
-		return err;
 	}
 
 	if (multi_pf->enabled)
@@ -1835,6 +1820,13 @@ nfp_pf_init(struct rte_pci_device *pci_dev)
 		PMD_INIT_LOG(ERR, "Error reading NFP ethernet table");
 		ret = -EIO;
 		goto hwinfo_cleanup;
+	}
+
+	if (nfp_eth_table->count == 0 || nfp_eth_table->count > 8) {
+		PMD_INIT_LOG(ERR, "NFP ethernet table reports wrong ports: %u",
+				nfp_eth_table->count);
+		ret = -EIO;
+		goto eth_table_cleanup;
 	}
 
 	pf_dev->multi_pf.enabled = nfp_check_multi_pf_from_nsp(pci_dev, cpp);
