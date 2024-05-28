@@ -308,6 +308,7 @@ cnxk_ot_ipsec_inb_sa_fill(struct roc_ot_ipsec_inb_sa *sa,
 			  struct rte_crypto_sym_xform *crypto_xfrm,
 			  bool is_inline)
 {
+	uint16_t sport = 4500, dport = 4500;
 	union roc_ot_ipsec_sa_word2 w2;
 	uint32_t replay_win_sz;
 	size_t offset;
@@ -353,8 +354,14 @@ cnxk_ot_ipsec_inb_sa_fill(struct roc_ot_ipsec_inb_sa *sa,
 	/* ESN */
 	sa->w2.s.esn_en = !!ipsec_xfrm->options.esn;
 	if (ipsec_xfrm->options.udp_encap) {
-		sa->w10.s.udp_src_port = 4500;
-		sa->w10.s.udp_dst_port = 4500;
+		if (ipsec_xfrm->udp.sport)
+			sport = ipsec_xfrm->udp.sport;
+
+		if (ipsec_xfrm->udp.dport)
+			dport = ipsec_xfrm->udp.dport;
+
+		sa->w10.s.udp_src_port = sport;
+		sa->w10.s.udp_dst_port = dport;
 	}
 
 	if (ipsec_xfrm->options.udp_ports_verify)
@@ -411,6 +418,7 @@ cnxk_ot_ipsec_outb_sa_fill(struct roc_ot_ipsec_outb_sa *sa,
 			   struct rte_crypto_sym_xform *crypto_xfrm)
 {
 	struct rte_security_ipsec_tunnel_param *tunnel = &ipsec_xfrm->tunnel;
+	uint16_t sport = 4500, dport = 4500;
 	union roc_ot_ipsec_sa_word2 w2;
 	size_t offset;
 	int rc;
@@ -506,8 +514,14 @@ skip_tunnel_info:
 		sa->ctx.esn_val = ipsec_xfrm->esn.value - 1;
 
 	if (ipsec_xfrm->options.udp_encap) {
-		sa->w10.s.udp_src_port = 4500;
-		sa->w10.s.udp_dst_port = 4500;
+		if (ipsec_xfrm->udp.sport)
+			sport = ipsec_xfrm->udp.sport;
+
+		if (ipsec_xfrm->udp.dport)
+			dport = ipsec_xfrm->udp.dport;
+
+		sa->w10.s.udp_src_port = sport;
+		sa->w10.s.udp_dst_port = dport;
 	}
 
 	offset = offsetof(struct roc_ot_ipsec_outb_sa, ctx);
