@@ -1230,10 +1230,9 @@ nfp_flow_merge_eth(__rte_unused struct nfp_app_fw_flower *app_fw_flower,
 	}
 
 	eth->mpls_lse = 0;
-
-eth_end:
 	*mbuf_off += sizeof(struct nfp_flower_mac_mpls);
 
+eth_end:
 	return 0;
 }
 
