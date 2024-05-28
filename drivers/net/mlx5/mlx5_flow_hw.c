@@ -2296,6 +2296,16 @@ __flow_hw_actions_translate(struct rte_eth_dev *dev,
 			}
 			acts->rule_acts[dr_pos].action = priv->hw_def_miss;
 			break;
+		case RTE_FLOW_ACTION_TYPE_FLAG:
+			acts->mark = true;
+			acts->rule_acts[dr_pos].tag.value =
+				mlx5_flow_mark_set(MLX5_FLOW_MARK_DEFAULT);
+			acts->rule_acts[dr_pos].action =
+				priv->hw_tag[!!attr->group];
+			rte_atomic_fetch_add_explicit(&priv->hws_mark_refcnt, 1,
+					rte_memory_order_relaxed);
+			flow_hw_rxq_flag_set(dev, true);
+			break;
 		case RTE_FLOW_ACTION_TYPE_MARK:
 			acts->mark = true;
 			if (masks->conf &&
@@ -6420,6 +6430,10 @@ mlx5_flow_hw_actions_validate(struct rte_eth_dev *dev,
 			if (ret < 0)
 				return ret;
 			break;
+		case RTE_FLOW_ACTION_TYPE_FLAG:
+			/* TODO: Validation logic */
+			action_flags |= MLX5_FLOW_ACTION_FLAG;
+			break;
 		case RTE_FLOW_ACTION_TYPE_MARK:
 			/* TODO: Validation logic */
 			action_flags |= MLX5_FLOW_ACTION_MARK;
@@ -6611,6 +6625,7 @@ flow_hw_actions_validate(struct rte_eth_dev *dev,
 
 static enum mlx5dr_action_type mlx5_hw_dr_action_types[] = {
 	[RTE_FLOW_ACTION_TYPE_MARK] = MLX5DR_ACTION_TYP_TAG,
+	[RTE_FLOW_ACTION_TYPE_FLAG] = MLX5DR_ACTION_TYP_TAG,
 	[RTE_FLOW_ACTION_TYPE_DROP] = MLX5DR_ACTION_TYP_DROP,
 	[RTE_FLOW_ACTION_TYPE_JUMP] = MLX5DR_ACTION_TYP_TBL,
 	[RTE_FLOW_ACTION_TYPE_QUEUE] = MLX5DR_ACTION_TYP_TIR,
