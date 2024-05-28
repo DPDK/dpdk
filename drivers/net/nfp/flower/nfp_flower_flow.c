@@ -1586,27 +1586,42 @@ nfp_flow_merge_sctp(__rte_unused struct nfp_app_fw_flower *app_fw_flower,
 		bool is_mask,
 		__rte_unused bool is_outer_layer)
 {
-	char *ports_off;
 	struct nfp_flower_tp_ports *ports;
+	struct nfp_flower_ipv4 *ipv4 = NULL;
+	struct nfp_flower_ipv6 *ipv6 = NULL;
 	struct nfp_flower_meta_tci *meta_tci;
 	const struct rte_flow_item_sctp *spec;
 	const struct rte_flow_item_sctp *mask;
+
+	meta_tci = (struct nfp_flower_meta_tci *)nfp_flow->payload.unmasked_data;
+	if ((meta_tci->nfp_flow_key_layer & NFP_FLOWER_LAYER_IPV4) != 0) {
+		ipv4 = (struct nfp_flower_ipv4 *)
+				(*mbuf_off - sizeof(struct nfp_flower_ipv4));
+		if (is_mask)
+			ipv4->ip_ext.proto = 0xFF;
+		else
+			ipv4->ip_ext.proto = IPPROTO_SCTP;
+		ports = (struct nfp_flower_tp_ports *)
+				((char *)ipv4 - sizeof(struct nfp_flower_tp_ports));
+	} else if ((meta_tci->nfp_flow_key_layer & NFP_FLOWER_LAYER_IPV6) != 0) {
+		ipv6 = (struct nfp_flower_ipv6 *)
+				(*mbuf_off - sizeof(struct nfp_flower_ipv6));
+		if (is_mask)
+			ipv6->ip_ext.proto = 0xFF;
+		else
+			ipv6->ip_ext.proto = IPPROTO_SCTP;
+		ports = (struct nfp_flower_tp_ports *)
+				((char *)ipv6 - sizeof(struct nfp_flower_tp_ports));
+	} else {
+		PMD_DRV_LOG(ERR, "nfp flow merge sctp: no L3 layer!");
+		return -EINVAL;
+	}
 
 	spec = item->spec;
 	if (spec == NULL) {
 		PMD_DRV_LOG(DEBUG, "nfp flow merge sctp: no item->spec!");
 		return 0;
 	}
-
-	meta_tci = (struct nfp_flower_meta_tci *)nfp_flow->payload.unmasked_data;
-	if ((meta_tci->nfp_flow_key_layer & NFP_FLOWER_LAYER_IPV4) != 0) {
-		ports_off = *mbuf_off - sizeof(struct nfp_flower_ipv4) -
-				sizeof(struct nfp_flower_tp_ports);
-	} else { /* IPv6 */
-		ports_off = *mbuf_off - sizeof(struct nfp_flower_ipv6) -
-				sizeof(struct nfp_flower_tp_ports);
-	}
-	ports = (struct nfp_flower_tp_ports *)ports_off;
 
 	mask = item->mask ? item->mask : proc->mask_default;
 	if (is_mask) {
