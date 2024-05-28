@@ -117,6 +117,7 @@ cn9k_nix_prefree_seg(struct rte_mbuf *m, struct rte_mbuf **extm, struct cn9k_eth
 			send_hdr->w1.sqe_id = sqe_id &
 				txq->tx_compl.nb_desc_mask;
 			txq->tx_compl.ptr[send_hdr->w1.sqe_id] = m;
+			m->next = NULL;
 		}
 		return 1;
 	} else {
