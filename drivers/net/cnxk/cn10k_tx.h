@@ -2272,7 +2272,8 @@ again:
 	}
 
 	for (i = 0; i < burst; i += NIX_DESCS_PER_LOOP) {
-		if (flags & NIX_TX_OFFLOAD_SECURITY_F && c_lnum + 2 > 16) {
+		if (flags & NIX_TX_OFFLOAD_SECURITY_F &&
+		    (((int)((16 - c_lnum) << 1) - c_loff) < 4)) {
 			burst = i;
 			break;
 		}
