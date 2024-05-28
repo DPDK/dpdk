@@ -7,6 +7,8 @@
 
 #define CNXK_NIX_CQ_INL_CLAMP_MAX (64UL * 1024UL)
 
+#define NIX_TM_DFLT_RR_WT 71
+
 static inline uint64_t
 nix_get_rx_offload_capa(struct cnxk_eth_dev *dev)
 {
@@ -1884,6 +1886,8 @@ cnxk_eth_dev_init(struct rte_eth_dev *eth_dev)
 	nix->pci_dev = pci_dev;
 	nix->hw_vlan_ins = true;
 	nix->port_id = eth_dev->data->port_id;
+	/* For better performance set default VF root schedule weight */
+	nix->root_sched_weight = NIX_TM_DFLT_RR_WT;
 	if (roc_feature_nix_has_own_meta_aura())
 		nix->local_meta_aura_ena = true;
 	rc = roc_nix_dev_init(nix);
