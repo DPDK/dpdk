@@ -115,6 +115,7 @@ int __roc_api roc_nix_inl_dev_stats_get(struct roc_nix_stats *stats);
 uint16_t __roc_api roc_nix_inl_dev_pffunc_get(void);
 int __roc_api roc_nix_inl_dev_cpt_setup(bool use_inl_dev_sso);
 int __roc_api roc_nix_inl_dev_cpt_release(void);
+bool __roc_api roc_nix_inl_dev_is_multi_channel(void);
 
 /* NIX Inline Inbound API */
 int __roc_api roc_nix_inl_inb_init(struct roc_nix *roc_nix);

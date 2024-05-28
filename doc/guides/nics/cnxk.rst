@@ -444,6 +444,20 @@ Runtime Config Options
    With the above configuration, driver would enable packet inject from ARM cores
    to crypto to process and send back in Rx path.
 
+- ``Disable custom meta aura feature`` (default ``0``)
+
+   Custom meta aura i.e 1:N meta aura is enabled for second pass traffic by default
+   when ``inl_cpt_channel`` devarg is provided.
+   The custom meta aura feature can be disabled
+   by setting devarg ``custom_meta_aura_dis`` to ``1``.
+
+   For example::
+
+      -a 0002:02:00.0,custom_meta_aura_dis=1
+
+   With the above configuration, the driver would disable custom meta aura feature
+   for the device ``0002:02:00.0``.
+
 .. note::
 
    Above devarg parameters are configurable per device, user needs to pass the

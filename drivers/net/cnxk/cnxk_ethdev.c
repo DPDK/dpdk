@@ -107,6 +107,11 @@ nix_security_setup(struct cnxk_eth_dev *dev)
 		nix->ipsec_in_min_spi = dev->inb.no_inl_dev ? dev->inb.min_spi : 0;
 		nix->ipsec_in_max_spi = dev->inb.no_inl_dev ? dev->inb.max_spi : 1;
 
+		/* Enable custom meta aura when multi-chan is used */
+		if (nix->local_meta_aura_ena && roc_nix_inl_dev_is_multi_channel() &&
+		    !dev->inb.custom_meta_aura_dis)
+			nix->custom_meta_aura_ena = true;
+
 		/* Setup Inline Inbound */
 		rc = roc_nix_inl_inb_init(nix);
 		if (rc) {

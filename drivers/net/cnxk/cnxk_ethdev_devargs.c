@@ -280,6 +280,7 @@ parse_val_u16(const char *key, const char *value, void *extra_args)
 #define CNXK_NIX_META_BUF_SZ	"meta_buf_sz"
 #define CNXK_FLOW_AGING_POLL_FREQ	"aging_poll_freq"
 #define CNXK_NIX_RX_INJ_ENABLE	"rx_inj_ena"
+#define CNXK_CUSTOM_META_AURA_DIS "custom_meta_aura_dis"
 
 int
 cnxk_ethdev_parse_devargs(struct rte_devargs *devargs, struct cnxk_eth_dev *dev)
@@ -291,6 +292,7 @@ cnxk_ethdev_parse_devargs(struct rte_devargs *devargs, struct cnxk_eth_dev *dev)
 	uint32_t ipsec_in_max_spi = BIT(8) - 1;
 	uint16_t sqb_slack = ROC_NIX_SQB_SLACK;
 	uint32_t ipsec_out_max_sa = BIT(12);
+	uint16_t custom_meta_aura_dis = 0;
 	uint16_t flow_prealloc_size = 1;
 	uint16_t switch_header_type = 0;
 	uint16_t flow_max_priority = 3;
@@ -358,6 +360,8 @@ cnxk_ethdev_parse_devargs(struct rte_devargs *devargs, struct cnxk_eth_dev *dev)
 	rte_kvargs_process(kvlist, CNXK_FLOW_AGING_POLL_FREQ, &parse_val_u16,
 			   &aging_thread_poll_freq);
 	rte_kvargs_process(kvlist, CNXK_NIX_RX_INJ_ENABLE, &parse_flag, &rx_inj_ena);
+	rte_kvargs_process(kvlist, CNXK_CUSTOM_META_AURA_DIS, &parse_flag,
+			   &custom_meta_aura_dis);
 	rte_kvargs_free(kvlist);
 
 null_devargs:
@@ -366,6 +370,7 @@ null_devargs:
 	dev->inb.no_inl_dev = !!no_inl_dev;
 	dev->inb.min_spi = ipsec_in_min_spi;
 	dev->inb.max_spi = ipsec_in_max_spi;
+	dev->inb.custom_meta_aura_dis = custom_meta_aura_dis;
 	dev->outb.max_sa = ipsec_out_max_sa;
 	dev->outb.nb_desc = outb_nb_desc;
 	dev->outb.nb_crypto_qs = outb_nb_crypto_qs;
@@ -415,4 +420,5 @@ RTE_PMD_REGISTER_PARAM_STRING(net_cnxk,
 			      CNXK_CUSTOM_SA_ACT "=1"
 			      CNXK_SQB_SLACK "=<12-512>"
 			      CNXK_FLOW_AGING_POLL_FREQ "=<10-65535>"
-			      CNXK_NIX_RX_INJ_ENABLE "=1");
+			      CNXK_NIX_RX_INJ_ENABLE "=1"
+			      CNXK_CUSTOM_META_AURA_DIS "=1");

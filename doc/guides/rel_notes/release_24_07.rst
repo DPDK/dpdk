@@ -87,6 +87,11 @@ New Features
 
   * Updated base code with E610 device family support.
 
+* **Updated Marvell cnxk net driver.**
+
+  * Added support disabling custom meta aura
+    and separately use custom SA action support.
+
 * **Updated TAP driver.**
 
   * Updated to support up to 8 queues when used by secondary process.

@@ -257,6 +257,9 @@ struct cnxk_eth_dev_sec_inb {
 
 	/* Lock to synchronize sa setup/release */
 	rte_spinlock_t lock;
+
+	/* Disable custom meta aura */
+	bool custom_meta_aura_dis;
 };
 
 /* Outbound security data */
