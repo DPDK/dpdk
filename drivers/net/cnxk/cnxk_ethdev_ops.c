@@ -451,6 +451,13 @@ cnxk_nix_mac_addr_set(struct rte_eth_dev *eth_dev, struct rte_ether_addr *addr)
 			roc_nix_npc_mac_addr_set(nix, dev->mac_addr);
 			goto exit;
 		}
+
+		if (eth_dev->data->promiscuous) {
+			rc = roc_nix_mac_promisc_mode_enable(nix, true);
+			if (rc)
+				plt_err("Failed to setup promisc mode in mac, rc=%d(%s)", rc,
+					roc_error_msg_get(rc));
+		}
 	}
 
 	/* Update mac address to cnxk ethernet device */
