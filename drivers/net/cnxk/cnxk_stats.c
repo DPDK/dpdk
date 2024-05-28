@@ -316,6 +316,8 @@ cnxk_nix_xstats_reset(struct rte_eth_dev *eth_dev)
 			goto exit;
 	}
 
+	/* Reset MAC stats */
+	rc = roc_nix_mac_stats_reset(nix);
 exit:
 	return rc;
 }
