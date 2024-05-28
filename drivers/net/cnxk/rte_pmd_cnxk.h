@@ -453,6 +453,42 @@ union rte_pmd_cnxk_ipsec_hw_sa {
 	struct rte_pmd_cnxk_ipsec_outb_sa outb;
 };
 
+/** CPT HW result format */
+union rte_pmd_cnxk_cpt_res_s {
+	/** CN10K CPT result */
+	struct rte_pmd_cpt_cn10k_res_s {
+		/** Completion code */
+		uint64_t compcode : 7;
+		/** Done interrupt */
+		uint64_t doneint : 1;
+		/** Microcode completion code */
+		uint64_t uc_compcode : 8;
+		/** Result length */
+		uint64_t rlen : 16;
+		/** SPI */
+		uint64_t spi : 32;
+
+		/** Extended sequence number */
+		uint64_t esn;
+	} cn10k;
+
+	/** CN9K CPT result */
+	struct rte_pmd_cpt_cn9k_res_s {
+		/** Completion code */
+		uint64_t compcode : 8;
+		/** Microcode completion code */
+		uint64_t uc_compcode : 8;
+		/** Done interrupt */
+		uint64_t doneint : 1;
+		uint64_t reserved_17_63 : 47;
+
+		uint64_t reserved_64_127;
+	} cn9k;
+
+	/** CPT RES */
+	uint64_t u64[2];
+};
+
 /**
  * Read HW SA context from session.
  *
@@ -501,9 +537,9 @@ int rte_pmd_cnxk_hw_sa_write(void *device, struct rte_security_session *sess,
  *   Pointer to packet that was just received and was processed with Inline IPsec.
  *
  * @return
- *   - Pointer to mbuf location where CPT result info is stored on success.
+ *   - Pointer to mbuf location where `union rte_pmd_cnxk_cpt_res_s` is stored on success.
  *   - NULL on failure.
  */
 __rte_experimental
-void *rte_pmd_cnxk_inl_ipsec_res(struct rte_mbuf *mbuf);
+union rte_pmd_cnxk_cpt_res_s *rte_pmd_cnxk_inl_ipsec_res(struct rte_mbuf *mbuf);
 #endif /* _PMD_CNXK_H_ */

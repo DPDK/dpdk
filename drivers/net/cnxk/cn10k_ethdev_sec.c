@@ -1251,7 +1251,7 @@ rte_pmd_cnxk_hw_sa_write(void *device, struct rte_security_session *sess,
 	return 0;
 }
 
-void *
+union rte_pmd_cnxk_cpt_res_s *
 rte_pmd_cnxk_inl_ipsec_res(struct rte_mbuf *mbuf)
 {
 	const union nix_rx_parse_u *rx;
@@ -1265,7 +1265,7 @@ rte_pmd_cnxk_inl_ipsec_res(struct rte_mbuf *mbuf)
 	rx = (const union nix_rx_parse_u *)(wqe + 8);
 	desc_size = (rx->desc_sizem1 + 1) * 16;
 
-	/* cpt_res_s sits after SG list at 16B aligned address */
+	/* rte_pmd_cnxk_cpt_res_s sits after SG list at 16B aligned address */
 	return (void *)(wqe + 64 + desc_size);
 }
 
