@@ -310,6 +310,7 @@ INTERNAL {
 	roc_nix_mac_mtu_set;
 	roc_nix_mac_promisc_mode_enable;
 	roc_nix_mac_rxtx_start_stop;
+	roc_nix_mac_stats_reset;
 	roc_nix_max_pkt_len;
 	roc_nix_mcast_list_free;
 	roc_nix_mcast_list_setup;
