@@ -741,7 +741,6 @@ virtio_vdpa_vring_state_set(int vid, int vq_idx, int state)
 
 	if (priv->dev_work_flag == VIRTIO_VDPA_DEV_CLOSE_WORK_ERR) {
 		DRV_LOG(ERR, "%s is dev close work had err", vdev->device->name);
-		return -EINVAL;
 	}
 
 	/* TO_DO: check if vid set here is suitable */
@@ -1219,7 +1218,6 @@ virtio_vdpa_features_set(int vid)
 
 	if (priv->dev_work_flag == VIRTIO_VDPA_DEV_CLOSE_WORK_ERR) {
 		DRV_LOG(ERR, "%s is dev close work had err", vdev->device->name);
-		return -EINVAL;
 	}
 
 	priv->vid = vid;
@@ -1563,7 +1561,6 @@ virtio_vdpa_dev_config(int vid)
 
 	if (priv->dev_work_flag == VIRTIO_VDPA_DEV_CLOSE_WORK_ERR) {
 		DRV_LOG(ERR, "%s is dev close work had err", vdev->device->name);
-		return -EINVAL;
 	}
 
 	nr_virtqs = rte_vhost_get_vring_num(vid);
