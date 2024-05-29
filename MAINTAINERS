@@ -304,7 +304,7 @@ F: doc/guides/linux_gsg/cross_build_dpdk_for_loongarch.rst
 F: lib/eal/loongarch/
 
 IBM POWER (alpha)
-M: David Christensen <drc@linux.vnet.ibm.com>
+M: David Christensen <drc@linux.ibm.com>
 F: config/ppc/
 F: lib/eal/ppc/
 F: lib/*/*_altivec*
