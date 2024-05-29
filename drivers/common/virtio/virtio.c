@@ -46,7 +46,7 @@ virtio_pci_dev_alloc(struct rte_pci_device *pci_dev, int dev_fd, bool restore)
 	if (vpdev->vfio_dev_fd < 0) {
 		PMD_INIT_LOG(ERR, "Failed to get vfio dev fd");
 		rte_errno = VFE_VDPA_ERR_VFIO_DEV_FD;
-		goto error;
+		goto err_init;
 	}
 
 	satuts = virtio_pci_dev_get_status(vpdev);
@@ -58,7 +58,7 @@ virtio_pci_dev_alloc(struct rte_pci_device *pci_dev, int dev_fd, bool restore)
 		ret = virtio_pci_dev_reset(vpdev, VIRTIO_VDPA_PROBE_RESET_TIME_OUT);
 		if (ret) {
 			rte_errno = VFE_VDPA_ERR_RESET_DEVICE_TIMEOUT;
-			goto error;
+			goto err_init;
 		}
 	}
 
@@ -74,6 +74,8 @@ virtio_pci_dev_alloc(struct rte_pci_device *pci_dev, int dev_fd, bool restore)
 	PMD_INIT_LOG(DEBUG, "device_features is 0x%"PRIx64, hw->device_features);
 	return vpdev;
 
+err_init:
+	rte_pci_unmap_device(pci_dev);
 error:
 	rte_free(vpdev);
 	return NULL;
