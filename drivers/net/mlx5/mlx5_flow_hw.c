@@ -3407,7 +3407,7 @@ flow_hw_table_destroy(struct rte_eth_dev *dev,
 		return rte_flow_error_set(error, EBUSY,
 				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 				   NULL,
-				   "table in using");
+				   "table is in use");
 	}
 	LIST_REMOVE(table, next);
 	for (i = 0; i < table->nb_item_templates; i++)
@@ -4660,7 +4660,7 @@ flow_hw_actions_template_destroy(struct rte_eth_dev *dev __rte_unused,
 		return rte_flow_error_set(error, EBUSY,
 				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 				   NULL,
-				   "action template in using");
+				   "action template is in use");
 	}
 	LIST_REMOVE(template, next);
 	if (template->tmpl)
@@ -5013,7 +5013,7 @@ flow_hw_pattern_template_destroy(struct rte_eth_dev *dev __rte_unused,
 		return rte_flow_error_set(error, EBUSY,
 				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 				   NULL,
-				   "item template in using");
+				   "item template is in use");
 	}
 	LIST_REMOVE(template, next);
 	claim_zero(mlx5dr_match_template_destroy(template->mt));
@@ -7458,9 +7458,9 @@ void
 flow_hw_resource_release(struct rte_eth_dev *dev)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	struct rte_flow_template_table *tbl;
-	struct rte_flow_pattern_template *it;
-	struct rte_flow_actions_template *at;
+	struct rte_flow_template_table *tbl, *temp_tbl;
+	struct rte_flow_pattern_template *it, *temp_it;
+	struct rte_flow_actions_template *at, *temp_at;
 	uint32_t i;
 
 	if (!priv->dr_ctx)
@@ -7470,21 +7470,29 @@ flow_hw_resource_release(struct rte_eth_dev *dev)
 	flow_hw_cleanup_ctrl_fdb_tables(dev);
 	flow_hw_cleanup_tx_repr_tagging(dev);
 	flow_hw_cleanup_ctrl_rx_tables(dev);
-	while (!LIST_EMPTY(&priv->flow_hw_tbl_ongo)) {
-		tbl = LIST_FIRST(&priv->flow_hw_tbl_ongo);
-		flow_hw_table_destroy(dev, tbl, NULL);
+	tbl = LIST_FIRST(&priv->flow_hw_tbl_ongo);
+	while (tbl) {
+		temp_tbl = LIST_NEXT(tbl, next);
+		claim_zero(flow_hw_table_destroy(dev, tbl, NULL));
+		tbl = temp_tbl;
 	}
-	while (!LIST_EMPTY(&priv->flow_hw_tbl)) {
-		tbl = LIST_FIRST(&priv->flow_hw_tbl);
-		flow_hw_table_destroy(dev, tbl, NULL);
+	tbl = LIST_FIRST(&priv->flow_hw_tbl);
+	while (tbl) {
+		temp_tbl = LIST_NEXT(tbl, next);
+		claim_zero(flow_hw_table_destroy(dev, tbl, NULL));
+		tbl = temp_tbl;
 	}
-	while (!LIST_EMPTY(&priv->flow_hw_itt)) {
-		it = LIST_FIRST(&priv->flow_hw_itt);
-		flow_hw_pattern_template_destroy(dev, it, NULL);
+	it = LIST_FIRST(&priv->flow_hw_itt);
+	while (it) {
+		temp_it = LIST_NEXT(it, next);
+		claim_zero(flow_hw_pattern_template_destroy(dev, it, NULL));
+		it = temp_it;
 	}
-	while (!LIST_EMPTY(&priv->flow_hw_at)) {
-		at = LIST_FIRST(&priv->flow_hw_at);
-		flow_hw_actions_template_destroy(dev, at, NULL);
+	at = LIST_FIRST(&priv->flow_hw_at);
+	while (at) {
+		temp_at = LIST_NEXT(at, next);
+		claim_zero(flow_hw_actions_template_destroy(dev, at, NULL));
+		at = temp_at;
 	}
 	for (i = 0; i < MLX5_HW_ACTION_FLAG_MAX; i++) {
 		if (priv->hw_drop[i])
