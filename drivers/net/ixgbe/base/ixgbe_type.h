@@ -3983,6 +3983,7 @@ struct ixgbe_mac_operations {
 				   ixgbe_mc_addr_itr);
 	s32 (*update_mc_addr_list)(struct ixgbe_hw *, u8 *, u32,
 				   ixgbe_mc_addr_itr, bool clear);
+	s32 (*get_link_state)(struct ixgbe_hw *, bool *);
 	s32 (*enable_mc)(struct ixgbe_hw *);
 	s32 (*disable_mc)(struct ixgbe_hw *);
 	s32 (*clear_vfta)(struct ixgbe_hw *);
