@@ -97,7 +97,7 @@ static s32 ixgbevf_hv_check_mac_link_vf(struct ixgbe_hw *hw,
 	UNREFERENCED_1PARAMETER(autoneg_wait_to_complete);
 
 	/* If we were hit with a reset drop the link */
-	if (!mbx->ops.check_for_rst(hw, 0) || !mbx->timeout)
+	if (!mbx->ops[0].check_for_rst(hw, 0) || !mbx->timeout)
 		mac->get_link_status = true;
 
 	if (!mac->get_link_status)

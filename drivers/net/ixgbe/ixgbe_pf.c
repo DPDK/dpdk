@@ -77,6 +77,7 @@ int ixgbe_pf_host_init(struct rte_eth_dev *eth_dev)
 	uint16_t vf_num;
 	uint8_t nb_queue;
 	int ret = 0;
+	size_t i;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -122,7 +123,8 @@ int ixgbe_pf_host_init(struct rte_eth_dev *eth_dev)
 	ixgbe_vf_perm_addr_gen(eth_dev, vf_num);
 
 	/* init_mailbox_params */
-	hw->mbx.ops.init_params(hw);
+	for (i = 0; i < vf_num; i++)
+		hw->mbx.ops[i].init_params(hw);
 
 	/* set mb interrupt mask */
 	ixgbe_mb_intr_setup(eth_dev);

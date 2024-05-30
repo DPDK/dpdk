@@ -1663,7 +1663,7 @@ eth_ixgbevf_dev_init(struct rte_eth_dev *eth_dev)
 	}
 
 	/* init_mailbox_params */
-	hw->mbx.ops.init_params(hw);
+	hw->mbx.ops[0].init_params(hw);
 
 	/* Reset the hw statistics */
 	ixgbevf_dev_stats_reset(eth_dev);
@@ -4099,7 +4099,7 @@ ixgbevf_check_link(struct ixgbe_hw *hw, ixgbe_link_speed *speed,
 	int ret_val = 0;
 
 	/* If we were hit with a reset drop the link */
-	if (!mbx->ops.check_for_rst(hw, 0) || !mbx->timeout)
+	if (!mbx->ops[0].check_for_rst(hw, 0) || !mbx->timeout)
 		mac->get_link_status = true;
 
 	if (!mac->get_link_status)
@@ -4165,7 +4165,7 @@ ixgbevf_check_link(struct ixgbe_hw *hw, ixgbe_link_speed *speed,
 	/* if the read failed it could just be a mailbox collision, best wait
 	 * until we are called again and don't report an error
 	 */
-	if (mbx->ops.read(hw, &in_msg, 1, 0))
+	if (mbx->ops[0].read(hw, &in_msg, 1, 0))
 		goto out;
 
 	if (!(in_msg & IXGBE_VT_MSGTYPE_CTS)) {
