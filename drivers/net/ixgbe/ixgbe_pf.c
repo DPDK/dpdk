@@ -448,8 +448,8 @@ ixgbe_vf_reset(struct rte_eth_dev *dev, uint16_t vf, uint32_t *msgbuf)
 	/* Disable multicast promiscuous at reset */
 	ixgbe_disable_vf_mc_promisc(dev, vf);
 
-	/* reply to reset with ack and vf mac address */
-	msgbuf[0] = IXGBE_VF_RESET | IXGBE_VT_MSGTYPE_ACK;
+	/* reply to reset with success and vf mac address */
+	msgbuf[0] = IXGBE_VF_RESET | IXGBE_VT_MSGTYPE_SUCCESS;
 	rte_memcpy(new_mac, vf_mac, RTE_ETHER_ADDR_LEN);
 	/*
 	 * Piggyback the multicast filter type so VF can compute the
@@ -840,7 +840,7 @@ ixgbe_rcv_msg_from_vf(struct rte_eth_dev *dev, uint16_t vf)
 	}
 
 	/* do nothing with the message already been processed */
-	if (msgbuf[0] & (IXGBE_VT_MSGTYPE_ACK | IXGBE_VT_MSGTYPE_NACK))
+	if (msgbuf[0] & (IXGBE_VT_MSGTYPE_SUCCESS | IXGBE_VT_MSGTYPE_FAILURE))
 		return retval;
 
 	/* flush the ack before we write any messages back */
@@ -919,9 +919,9 @@ ixgbe_rcv_msg_from_vf(struct rte_eth_dev *dev, uint16_t vf)
 
 	/* response the VF according to the message process result */
 	if (retval)
-		msgbuf[0] |= IXGBE_VT_MSGTYPE_NACK;
+		msgbuf[0] |= IXGBE_VT_MSGTYPE_FAILURE;
 	else
-		msgbuf[0] |= IXGBE_VT_MSGTYPE_ACK;
+		msgbuf[0] |= IXGBE_VT_MSGTYPE_SUCCESS;
 
 	msgbuf[0] |= IXGBE_VT_MSGTYPE_CTS;
 
@@ -933,7 +933,7 @@ ixgbe_rcv_msg_from_vf(struct rte_eth_dev *dev, uint16_t vf)
 static inline void
 ixgbe_rcv_ack_from_vf(struct rte_eth_dev *dev, uint16_t vf)
 {
-	uint32_t msg = IXGBE_VT_MSGTYPE_NACK;
+	uint32_t msg = IXGBE_VT_MSGTYPE_FAILURE;
 	struct ixgbe_hw *hw =
 		IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct ixgbe_vf_info *vfinfo =

@@ -4169,8 +4169,8 @@ ixgbevf_check_link(struct ixgbe_hw *hw, ixgbe_link_speed *speed,
 		goto out;
 
 	if (!(in_msg & IXGBE_VT_MSGTYPE_CTS)) {
-		/* msg is not CTS and is NACK we must have lost CTS status */
-		if (in_msg & IXGBE_VT_MSGTYPE_NACK)
+		/* msg is not CTS and is FAILURE we must have lost CTS status */
+		if (in_msg & IXGBE_VT_MSGTYPE_FAILURE)
 			mac->get_link_status = false;
 		goto out;
 	}
