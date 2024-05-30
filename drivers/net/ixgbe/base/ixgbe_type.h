@@ -4189,6 +4189,8 @@ struct ixgbe_hw {
 	u16 subsystem_device_id;
 	u16 subsystem_vendor_id;
 	u8 revision_id;
+	u8 pf_id;
+	u8 logical_pf_id;
 	bool adapter_stopped;
 	int api_version;
 	bool force_full_reset;
