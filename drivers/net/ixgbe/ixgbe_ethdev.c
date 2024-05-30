@@ -3053,7 +3053,7 @@ ixgbe_dev_close(struct rte_eth_dev *dev)
 
 	ixgbe_dev_free_queues(dev);
 
-	ixgbe_disable_pcie_master(hw);
+	ixgbe_disable_pcie_primary(hw);
 
 	/* reprogram the RAR[0] in case user changed it. */
 	ixgbe_set_rar(hw, 0, hw->mac.addr, 0, IXGBE_RAH_AV);
