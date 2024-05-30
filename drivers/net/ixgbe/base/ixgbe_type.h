@@ -2511,6 +2511,7 @@ enum {
 #define IXGBE_PCI_LINK_SPEED_2500	0x1
 #define IXGBE_PCI_LINK_SPEED_5000	0x2
 #define IXGBE_PCI_LINK_SPEED_8000	0x3
+#define IXGBE_PCI_LINK_SPEED_16000	0x4
 #define IXGBE_PCI_HEADER_TYPE_REGISTER	0x0E
 #define IXGBE_PCI_HEADER_TYPE_MULTIFUNC	0x80
 #define IXGBE_PCI_DEVICE_CONTROL2_16ms	0x0005
@@ -3797,6 +3798,7 @@ enum ixgbe_bus_speed {
 	ixgbe_bus_speed_2500	= 2500,
 	ixgbe_bus_speed_5000	= 5000,
 	ixgbe_bus_speed_8000	= 8000,
+	ixgbe_bus_speed_16000   = 16000,
 	ixgbe_bus_speed_reserved
 };
 
@@ -3941,6 +3943,7 @@ struct ixgbe_eeprom_operations {
 	s32 (*validate_checksum)(struct ixgbe_hw *, u16 *);
 	s32 (*update_checksum)(struct ixgbe_hw *);
 	s32 (*calc_checksum)(struct ixgbe_hw *);
+	s32 (*read_pba_string)(struct ixgbe_hw *, u8 *, u32);
 };
 
 struct ixgbe_mac_operations {
@@ -4047,6 +4050,9 @@ struct ixgbe_mac_operations {
 	void (*mdd_event)(struct ixgbe_hw *hw, u32 *vf_bitmap);
 	void (*restore_mdd_vf)(struct ixgbe_hw *hw, u32 vf);
 	bool (*fw_recovery_mode)(struct ixgbe_hw *hw);
+	bool (*get_fw_tsam_mode)(struct ixgbe_hw *hw);
+	s32 (*get_fw_version)(struct ixgbe_hw *hw);
+	s32 (*get_nvm_version)(struct ixgbe_hw *hw, struct ixgbe_nvm_info *nvm);
 };
 
 struct ixgbe_phy_operations {

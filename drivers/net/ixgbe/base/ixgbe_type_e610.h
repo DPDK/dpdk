@@ -84,8 +84,73 @@
 /* General E610 defines */
 #define IXGBE_MAX_VSI			768
 
+/* Auxiliary field, mask and shift definition for Shadow RAM and NVM Flash */
+#define E610_SR_VPD_SIZE_WORDS		512
+#define E610_SR_PCIE_ALT_SIZE_WORDS	512
+
 /* Checksum and Shadow RAM pointers */
+#define E610_SR_NVM_DEV_STARTER_VER		0x18
+#define E610_NVM_VER_LO_SHIFT			0
+#define E610_NVM_VER_LO_MASK			(0xff << E610_NVM_VER_LO_SHIFT)
+#define E610_NVM_VER_HI_SHIFT			12
+#define E610_NVM_VER_HI_MASK			(0xf << E610_NVM_VER_HI_SHIFT)
+#define E610_SR_NVM_MAP_VER			0x29
+#define E610_SR_NVM_EETRACK_LO			0x2D
+#define E610_SR_NVM_EETRACK_HI			0x2E
+#define E610_SR_VPD_PTR				0x2F
+#define E610_SR_PCIE_ALT_AUTO_LOAD_PTR		0x3E
 #define E610_SR_SW_CHECKSUM_WORD		0x3F
+#define E610_SR_PFA_PTR				0x40
+#define E610_SR_1ST_NVM_BANK_PTR		0x42
+#define E610_SR_NVM_BANK_SIZE			0x43
+#define E610_SR_1ST_OROM_BANK_PTR		0x44
+#define E610_SR_OROM_BANK_SIZE			0x45
+#define E610_SR_NETLIST_BANK_PTR		0x46
+#define E610_SR_NETLIST_BANK_SIZE		0x47
+#define E610_SR_POINTER_TYPE_BIT		BIT(15)
+#define E610_SR_POINTER_MASK			0x7fff
+#define E610_SR_HALF_4KB_SECTOR_UNITS		2048
+#define E610_GET_PFA_POINTER_IN_WORDS(offset)				    \
+    ((offset & E610_SR_POINTER_TYPE_BIT) == E610_SR_POINTER_TYPE_BIT) ?     \
+        ((offset & E610_SR_POINTER_MASK) * E610_SR_HALF_4KB_SECTOR_UNITS) : \
+        (offset & E610_SR_POINTER_MASK)
+
+/* Checksum and Shadow RAM pointers */
+#define E610_SR_NVM_CTRL_WORD		0x00
+#define E610_SR_PBA_BLOCK_PTR		0x16
+
+/* CSS Header words */
+#define IXGBE_NVM_CSS_HDR_LEN_L			0x02
+#define IXGBE_NVM_CSS_HDR_LEN_H			0x03
+#define IXGBE_NVM_CSS_SREV_L			0x14
+#define IXGBE_NVM_CSS_SREV_H			0x15
+
+/* Length of Authentication header section in words */
+#define IXGBE_NVM_AUTH_HEADER_LEN		0x08
+
+/* Auxiliary field, mask and shift definition for Shadow RAM and NVM Flash */
+#define IXGBE_SR_CTRL_WORD_1_S		0x06
+#define IXGBE_SR_CTRL_WORD_1_M		(0x03 << IXGBE_SR_CTRL_WORD_1_S)
+#define IXGBE_SR_CTRL_WORD_VALID	0x1
+#define IXGBE_SR_CTRL_WORD_OROM_BANK	BIT(3)
+#define IXGBE_SR_CTRL_WORD_NETLIST_BANK	BIT(4)
+#define IXGBE_SR_CTRL_WORD_NVM_BANK	BIT(5)
+#define IXGBE_SR_NVM_PTR_4KB_UNITS	BIT(15)
+
+/* These macros strip from NVM Image Revision the particular part of NVM ver:
+   major ver, minor ver and image id */
+#define E610_NVM_MAJOR_VER(x)	((x & 0xF000) >> 12)
+#define E610_NVM_MINOR_VER(x)	(x & 0x00FF)
+
+/* Minimal Security Revision */
+
+/* Shadow RAM related */
+#define IXGBE_SR_SECTOR_SIZE_IN_WORDS		0x800
+#define IXGBE_SR_WORDS_IN_1KB			512
+/* Checksum should be calculated such that after adding all the words,
+ * including the checksum word itself, the sum should be 0xBABA.
+ */
+#define IXGBE_SR_SW_CHECKSUM_BASE		0xBABA
 
 /* The Netlist ID Block is located after all of the Link Topology nodes. */
 #define IXGBE_NETLIST_ID_BLK_SIZE		0x30
@@ -173,6 +238,26 @@
 #define GL_MNG_FWSM_RSV5_S			30
 #define GL_MNG_FWSM_RSV5_M			MAKEMASK(0x3, 30)
 
+/* FW mode indications */
+#define GL_MNG_FWSM_FW_MODES_DEBUG_M           BIT(0)
+#define GL_MNG_FWSM_FW_MODES_RECOVERY_M        BIT(1)
+#define GL_MNG_FWSM_FW_MODES_ROLLBACK_M        BIT(2)
+
+/* PF - Manageability  Registers  */
+
+/* Global NVM General Status Register */
+#define GLNVM_GENS				0x000B6100 /* Reset Source: POR */
+#define GLNVM_GENS_NVM_PRES_S			0
+#define GLNVM_GENS_NVM_PRES_M			BIT(0)
+#define GLNVM_GENS_SR_SIZE_S			5
+#define GLNVM_GENS_SR_SIZE_M			MAKEMASK(0x7, 5)
+#define GLNVM_GENS_BANK1VAL_S			8
+#define GLNVM_GENS_BANK1VAL_M			BIT(8)
+#define GLNVM_GENS_ALT_PRST_S			23
+#define GLNVM_GENS_ALT_PRST_M			BIT(23)
+#define GLNVM_GENS_FL_AUTO_RD_S			25
+#define GLNVM_GENS_FL_AUTO_RD_M			BIT(25)
+
 /* Flash Access Register */
 #define GLNVM_FLA				0x000B6108 /* Reset Source: POR */
 #define GLNVM_FLA_LOCKED_S			6
@@ -188,6 +273,14 @@
 #define PF_HICR_C			BIT(1)
 #define PF_HICR_SV			BIT(2)
 #define PF_HICR_EV			BIT(3)
+
+/* Admin Command Interface (ACI) defines */
+/* Defines that help manage the driver vs FW API checks.
+ */
+#define IXGBE_FW_API_VER_BRANCH		0x00
+#define IXGBE_FW_API_VER_MAJOR		0x01
+#define IXGBE_FW_API_VER_MINOR		0x05
+#define IXGBE_FW_API_VER_DIFF_ALLOWED	0x02
 
 #define IXGBE_ACI_DESC_SIZE		32
 #define IXGBE_ACI_DESC_SIZE_IN_DWORDS	IXGBE_ACI_DESC_SIZE / BYTES_PER_DWORD
@@ -1673,6 +1766,15 @@ struct ixgbe_aci_event {
 struct ixgbe_aci_info {
 	enum ixgbe_aci_err last_status;	/* last status of sent admin command */
 	struct ixgbe_lock lock;		/* admin command interface lock */
+};
+
+/* Enumeration of which flash bank is desired to read from, either the active
+ * bank or the inactive bank. Used to abstract 1st and 2nd bank notion from
+ * code which just wants to read the active or inactive flash bank.
+ */
+enum ixgbe_bank_select {
+	IXGBE_ACTIVE_FLASH_BANK,
+	IXGBE_INACTIVE_FLASH_BANK,
 };
 
 /* Option ROM version information */

@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2001-2020 Intel Corporation
+ * Copyright(c) 2001-2024 Intel Corporation
  */
 
 #include "ixgbe_api.h"
@@ -800,7 +800,8 @@ s32 ixgbe_setup_phy_link_generic(struct ixgbe_hw *hw)
 			     IXGBE_MDIO_AUTO_NEG_DEV_TYPE,
 			     &autoneg_reg);
 
-	if (hw->mac.type == ixgbe_mac_X550) {
+	if ((hw->mac.type == ixgbe_mac_X550) ||
+	    (hw->mac.type == ixgbe_mac_E610)) {
 		/* Set or unset auto-negotiation 5G advertisement */
 		autoneg_reg &= ~IXGBE_MII_5GBASE_T_ADVERTISE;
 		if ((hw->phy.autoneg_advertised & IXGBE_LINK_SPEED_5GB_FULL) &&
@@ -915,6 +916,7 @@ static s32 ixgbe_get_copper_speeds_supported(struct ixgbe_hw *hw)
 
 	switch (hw->mac.type) {
 	case ixgbe_mac_X550:
+	case ixgbe_mac_E610:
 		hw->phy.speeds_supported |= IXGBE_LINK_SPEED_2_5GB_FULL;
 		hw->phy.speeds_supported |= IXGBE_LINK_SPEED_5GB_FULL;
 		break;

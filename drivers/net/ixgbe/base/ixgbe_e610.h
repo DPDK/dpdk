@@ -18,6 +18,8 @@ s32 ixgbe_aci_get_event(struct ixgbe_hw *hw, struct ixgbe_aci_event *e,
 
 void ixgbe_fill_dflt_direct_cmd_desc(struct ixgbe_aci_desc *desc, u16 opcode);
 
+s32 ixgbe_aci_get_fw_ver(struct ixgbe_hw *hw);
+s32 ixgbe_aci_send_driver_ver(struct ixgbe_hw *hw, struct ixgbe_driver_ver *dv);
 s32 ixgbe_acquire_res(struct ixgbe_hw *hw, enum ixgbe_aci_res_ids res,
 		      enum ixgbe_aci_res_access_type access, u32 timeout);
 void ixgbe_release_res(struct ixgbe_hw *hw, enum ixgbe_aci_res_ids res);
@@ -67,7 +69,10 @@ s32 ixgbe_aci_read_nvm(struct ixgbe_hw *hw, u16 module_typeid, u32 offset,
 s32 ixgbe_nvm_validate_checksum(struct ixgbe_hw *hw);
 s32 ixgbe_nvm_recalculate_checksum(struct ixgbe_hw *hw);
 
+s32 ixgbe_get_inactive_nvm_ver(struct ixgbe_hw *hw, struct ixgbe_nvm_info *nvm);
+s32 ixgbe_get_active_nvm_ver(struct ixgbe_hw *hw, struct ixgbe_nvm_info *nvm);
 s32 ixgbe_read_sr_word_aci(struct ixgbe_hw  *hw, u16 offset, u16 *data);
+s32 ixgbe_read_sr_buf_aci(struct ixgbe_hw *hw, u16 offset, u16 *words, u16 *data);
 s32 ixgbe_read_flat_nvm(struct ixgbe_hw  *hw, u32 offset, u32 *length,
 			u8 *data, bool read_shadow_ram);
 s32 ixgbe_aci_get_internal_data(struct ixgbe_hw *hw, u16 cluster_id,
@@ -75,7 +80,11 @@ s32 ixgbe_aci_get_internal_data(struct ixgbe_hw *hw, u16 cluster_id,
 				u16 buf_size, u16 *ret_buf_size,
 				u16 *ret_next_cluster, u16 *ret_next_table,
 				u32 *ret_next_index);
+/* E610 operations */
+s32 ixgbe_reset_hw_E610(struct ixgbe_hw *hw);
+s32 ixgbe_start_hw_E610(struct ixgbe_hw *hw);
 enum ixgbe_media_type ixgbe_get_media_type_E610(struct ixgbe_hw *hw);
+u64 ixgbe_get_supported_physical_layer_E610(struct ixgbe_hw *hw);
 s32 ixgbe_setup_link_E610(struct ixgbe_hw *hw, ixgbe_link_speed speed,
 			  bool autoneg_wait);
 s32 ixgbe_check_link_E610(struct ixgbe_hw *hw, ixgbe_link_speed *speed,
@@ -88,7 +97,12 @@ s32 ixgbe_cfg_phy_fc(struct ixgbe_hw *hw,
 		     enum ixgbe_fc_mode req_mode);
 s32 ixgbe_setup_fc_E610(struct ixgbe_hw *hw);
 void ixgbe_fc_autoneg_E610(struct ixgbe_hw *hw);
+s32 ixgbe_set_fw_drv_ver_E610(struct ixgbe_hw *hw, u8 maj, u8 min, u8 build,
+			      u8 sub, u16 len, const char *driver_ver);
 void ixgbe_disable_rx_E610(struct ixgbe_hw *hw);
+s32 ixgbe_setup_eee_E610(struct ixgbe_hw *hw, bool enable_eee);
+bool ixgbe_fw_recovery_mode_E610(struct ixgbe_hw *hw);
+bool ixgbe_get_fw_tsam_mode_E610(struct ixgbe_hw *hw);
 s32 ixgbe_init_phy_ops_E610(struct ixgbe_hw *hw);
 s32 ixgbe_identify_phy_E610(struct ixgbe_hw *hw);
 s32 ixgbe_identify_module_E610(struct ixgbe_hw *hw);
@@ -104,7 +118,12 @@ s32 ixgbe_write_i2c_eeprom_E610(struct ixgbe_hw *hw, u8 byte_offset,
 s32 ixgbe_check_overtemp_E610(struct ixgbe_hw *hw);
 s32 ixgbe_set_phy_power_E610(struct ixgbe_hw *hw, bool on);
 s32 ixgbe_enter_lplu_E610(struct ixgbe_hw *hw);
+s32 ixgbe_init_eeprom_params_E610(struct ixgbe_hw *hw);
 s32 ixgbe_read_ee_aci_E610(struct ixgbe_hw *hw, u16 offset, u16 *data);
+s32 ixgbe_read_ee_aci_buffer_E610(struct ixgbe_hw *hw, u16 offset,
+				  u16 words, u16 *data);
+s32 ixgbe_calc_eeprom_checksum_E610(struct ixgbe_hw *hw);
 s32 ixgbe_validate_eeprom_checksum_E610(struct ixgbe_hw *hw, u16 *checksum_val);
+s32 ixgbe_read_pba_string_E610(struct ixgbe_hw *hw, u8 *pba_num, u32 pba_num_size);
 
 #endif /* _IXGBE_E610_H_ */
