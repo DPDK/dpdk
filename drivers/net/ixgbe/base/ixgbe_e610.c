@@ -2529,6 +2529,251 @@ s32 ixgbe_get_active_nvm_ver(struct ixgbe_hw *hw, struct ixgbe_nvm_info *nvm)
 }
 
 /**
+ * ixgbe_read_sr_pointer - Read the value of a Shadow RAM pointer word
+ * @hw: pointer to the HW structure
+ * @offset: the word offset of the Shadow RAM word to read
+ * @pointer: pointer value read from Shadow RAM
+ *
+ * Read the given Shadow RAM word, and convert it to a pointer value specified
+ * in bytes. This function assumes the specified offset is a valid pointer
+ * word.
+ *
+ * Each pointer word specifies whether it is stored in word size or 4KB
+ * sector size by using the highest bit. The reported pointer value will be in
+ * bytes, intended for flat NVM reads.
+ *
+ * Return: the exit code of the operation.
+ */
+static s32 ixgbe_read_sr_pointer(struct ixgbe_hw *hw, u16 offset, u32 *pointer)
+{
+	s32 status;
+	u16 value;
+
+	status = ixgbe_read_ee_aci_E610(hw, offset, &value);
+	if (status)
+		return status;
+
+	/* Determine if the pointer is in 4KB or word units */
+	if (value & IXGBE_SR_NVM_PTR_4KB_UNITS)
+		*pointer = (value & ~IXGBE_SR_NVM_PTR_4KB_UNITS) * 4 * 1024;
+	else
+		*pointer = value * 2;
+
+	return IXGBE_SUCCESS;
+}
+
+/**
+ * ixgbe_read_sr_area_size - Read an area size from a Shadow RAM word
+ * @hw: pointer to the HW structure
+ * @offset: the word offset of the Shadow RAM to read
+ * @size: size value read from the Shadow RAM
+ *
+ * Read the given Shadow RAM word, and convert it to an area size value
+ * specified in bytes. This function assumes the specified offset is a valid
+ * area size word.
+ *
+ * Each area size word is specified in 4KB sector units. This function reports
+ * the size in bytes, intended for flat NVM reads.
+ *
+ * Return: the exit code of the operation.
+ */
+static s32 ixgbe_read_sr_area_size(struct ixgbe_hw *hw, u16 offset, u32 *size)
+{
+	s32 status;
+	u16 value;
+
+	status = ixgbe_read_ee_aci_E610(hw, offset, &value);
+	if (status)
+		return status;
+
+	/* Area sizes are always specified in 4KB units */
+	*size = value * 4 * 1024;
+
+	return IXGBE_SUCCESS;
+}
+
+/**
+ * ixgbe_discover_flash_size - Discover the available flash size.
+ * @hw: pointer to the HW struct
+ *
+ * The device flash could be up to 16MB in size. However, it is possible that
+ * the actual size is smaller. Use bisection to determine the accessible size
+ * of flash memory.
+ *
+ * Return: the exit code of the operation.
+ */
+static s32 ixgbe_discover_flash_size(struct ixgbe_hw *hw)
+{
+	u32 min_size = 0, max_size = IXGBE_ACI_NVM_MAX_OFFSET + 1;
+	s32 status;
+
+	status = ixgbe_acquire_nvm(hw, IXGBE_RES_READ);
+	if (status)
+		return status;
+
+	while ((max_size - min_size) > 1) {
+		u32 offset = (max_size + min_size) / 2;
+		u32 len = 1;
+		u8 data;
+
+		status = ixgbe_read_flat_nvm(hw, offset, &len, &data, false);
+		if (status == IXGBE_ERR_ACI_ERROR &&
+		    hw->aci.last_status == IXGBE_ACI_RC_EINVAL) {
+			status = IXGBE_SUCCESS;
+			max_size = offset;
+		} else if (!status) {
+			min_size = offset;
+		} else {
+			/* an unexpected error occurred */
+			goto err_read_flat_nvm;
+		}
+	}
+
+	hw->flash.flash_size = max_size;
+
+err_read_flat_nvm:
+	ixgbe_release_nvm(hw);
+
+	return status;
+}
+
+/**
+ * ixgbe_determine_active_flash_banks - Discover active bank for each module
+ * @hw: pointer to the HW struct
+ *
+ * Read the Shadow RAM control word and determine which banks are active for
+ * the NVM, OROM, and Netlist modules. Also read and calculate the associated
+ * pointer and size. These values are then cached into the ixgbe_flash_info
+ * structure for later use in order to calculate the correct offset to read
+ * from the active module.
+ *
+ * Return: the exit code of the operation.
+ */
+static s32 ixgbe_determine_active_flash_banks(struct ixgbe_hw *hw)
+{
+	struct ixgbe_bank_info *banks = &hw->flash.banks;
+	u16 ctrl_word;
+	s32 status;
+
+	status = ixgbe_read_ee_aci_E610(hw, E610_SR_NVM_CTRL_WORD, &ctrl_word);
+	if (status) {
+		return status;
+	}
+
+	/* Check that the control word indicates validity */
+	if ((ctrl_word & IXGBE_SR_CTRL_WORD_1_M) >> IXGBE_SR_CTRL_WORD_1_S !=
+	    IXGBE_SR_CTRL_WORD_VALID) {
+		return IXGBE_ERR_CONFIG;
+	}
+
+	if (!(ctrl_word & IXGBE_SR_CTRL_WORD_NVM_BANK))
+		banks->nvm_bank = IXGBE_1ST_FLASH_BANK;
+	else
+		banks->nvm_bank = IXGBE_2ND_FLASH_BANK;
+
+	if (!(ctrl_word & IXGBE_SR_CTRL_WORD_OROM_BANK))
+		banks->orom_bank = IXGBE_1ST_FLASH_BANK;
+	else
+		banks->orom_bank = IXGBE_2ND_FLASH_BANK;
+
+	if (!(ctrl_word & IXGBE_SR_CTRL_WORD_NETLIST_BANK))
+		banks->netlist_bank = IXGBE_1ST_FLASH_BANK;
+	else
+		banks->netlist_bank = IXGBE_2ND_FLASH_BANK;
+
+	status = ixgbe_read_sr_pointer(hw, E610_SR_1ST_NVM_BANK_PTR,
+				       &banks->nvm_ptr);
+	if (status) {
+		return status;
+	}
+
+	status = ixgbe_read_sr_area_size(hw, E610_SR_NVM_BANK_SIZE,
+					 &banks->nvm_size);
+	if (status) {
+		return status;
+	}
+
+	status = ixgbe_read_sr_pointer(hw, E610_SR_1ST_OROM_BANK_PTR,
+				       &banks->orom_ptr);
+	if (status) {
+		return status;
+	}
+
+	status = ixgbe_read_sr_area_size(hw, E610_SR_OROM_BANK_SIZE,
+					 &banks->orom_size);
+	if (status) {
+		return status;
+	}
+
+	status = ixgbe_read_sr_pointer(hw, E610_SR_NETLIST_BANK_PTR,
+				       &banks->netlist_ptr);
+	if (status) {
+		return status;
+	}
+
+	status = ixgbe_read_sr_area_size(hw, E610_SR_NETLIST_BANK_SIZE,
+					 &banks->netlist_size);
+	if (status) {
+		return status;
+	}
+
+	return IXGBE_SUCCESS;
+}
+
+/**
+ * ixgbe_init_nvm - initializes NVM setting
+ * @hw: pointer to the HW struct
+ *
+ * Read and populate NVM settings such as Shadow RAM size,
+ * max_timeout, and blank_nvm_mode
+ *
+ * Return: the exit code of the operation.
+ */
+s32 ixgbe_init_nvm(struct ixgbe_hw *hw)
+{
+	struct ixgbe_flash_info *flash = &hw->flash;
+	u32 fla, gens_stat, status;
+	u8 sr_size;
+
+	/* The SR size is stored regardless of the NVM programming mode
+	 * as the blank mode may be used in the factory line.
+	 */
+	gens_stat = IXGBE_READ_REG(hw, GLNVM_GENS);
+	sr_size = (gens_stat & GLNVM_GENS_SR_SIZE_M) >> GLNVM_GENS_SR_SIZE_S;
+
+	/* Switching to words (sr_size contains power of 2) */
+	flash->sr_words = BIT(sr_size) * IXGBE_SR_WORDS_IN_1KB;
+
+	/* Check if we are in the normal or blank NVM programming mode */
+	fla = IXGBE_READ_REG(hw, GLNVM_FLA);
+	if (fla & GLNVM_FLA_LOCKED_M) { /* Normal programming mode */
+		flash->blank_nvm_mode = false;
+	} else {
+		/* Blank programming mode */
+		flash->blank_nvm_mode = true;
+		return IXGBE_ERR_NVM_BLANK_MODE;
+	}
+
+	status = ixgbe_discover_flash_size(hw);
+	if (status) {
+		return status;
+	}
+
+	status = ixgbe_determine_active_flash_banks(hw);
+	if (status) {
+		return status;
+	}
+
+	status = ixgbe_get_nvm_ver_info(hw, IXGBE_ACTIVE_FLASH_BANK,
+					&flash->nvm);
+	if (status) {
+		return status;
+	}
+
+	return IXGBE_SUCCESS;
+}
+
+/**
  * ixgbe_read_sr_word_aci - Reads Shadow RAM via ACI
  * @hw: pointer to the HW structure
  * @offset: offset of the Shadow RAM word to read (0x000000 - 0x001FFF)

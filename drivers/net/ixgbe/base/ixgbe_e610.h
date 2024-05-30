@@ -81,6 +81,8 @@ s32 ixgbe_nvm_recalculate_checksum(struct ixgbe_hw *hw);
 
 s32 ixgbe_get_inactive_nvm_ver(struct ixgbe_hw *hw, struct ixgbe_nvm_info *nvm);
 s32 ixgbe_get_active_nvm_ver(struct ixgbe_hw *hw, struct ixgbe_nvm_info *nvm);
+s32 ixgbe_init_nvm(struct ixgbe_hw *hw);
+
 s32 ixgbe_read_sr_word_aci(struct ixgbe_hw  *hw, u16 offset, u16 *data);
 s32 ixgbe_read_sr_buf_aci(struct ixgbe_hw *hw, u16 offset, u16 *words, u16 *data);
 s32 ixgbe_read_flat_nvm(struct ixgbe_hw  *hw, u32 offset, u32 *length,
