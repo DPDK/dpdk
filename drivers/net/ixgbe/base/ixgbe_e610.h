@@ -87,6 +87,15 @@ s32 ixgbe_read_sr_word_aci(struct ixgbe_hw  *hw, u16 offset, u16 *data);
 s32 ixgbe_read_sr_buf_aci(struct ixgbe_hw *hw, u16 offset, u16 *words, u16 *data);
 s32 ixgbe_read_flat_nvm(struct ixgbe_hw  *hw, u32 offset, u32 *length,
 			u8 *data, bool read_shadow_ram);
+
+s32 ixgbe_aci_alternate_write(struct ixgbe_hw *hw, u32 reg_addr0,
+			      u32 reg_val0, u32 reg_addr1, u32 reg_val1);
+s32 ixgbe_aci_alternate_read(struct ixgbe_hw *hw, u32 reg_addr0,
+			     u32 *reg_val0, u32 reg_addr1, u32 *reg_val1);
+s32 ixgbe_aci_alternate_write_done(struct ixgbe_hw *hw, u8 bios_mode,
+				   bool *reset_needed);
+s32 ixgbe_aci_alternate_clear(struct ixgbe_hw *hw);
+
 s32 ixgbe_aci_get_internal_data(struct ixgbe_hw *hw, u16 cluster_id,
 				u16 table_id, u32 start, void *buf,
 				u16 buf_size, u16 *ret_buf_size,

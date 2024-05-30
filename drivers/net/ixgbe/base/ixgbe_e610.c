@@ -2894,6 +2894,138 @@ s32 ixgbe_read_flat_nvm(struct ixgbe_hw  *hw, u32 offset, u32 *length,
 }
 
 /**
+ * ixgbe_aci_alternate_write - write to alternate structure
+ * @hw: pointer to the hardware structure
+ * @reg_addr0: address of first dword to be written
+ * @reg_val0: value to be written under 'reg_addr0'
+ * @reg_addr1: address of second dword to be written
+ * @reg_val1: value to be written under 'reg_addr1'
+ *
+ * Write one or two dwords to alternate structure using ACI command (0x0900).
+ * Fields are indicated by 'reg_addr0' and 'reg_addr1' register numbers.
+ *
+ * Return: 0 on success and error code on failure.
+ */
+s32 ixgbe_aci_alternate_write(struct ixgbe_hw *hw, u32 reg_addr0,
+			      u32 reg_val0, u32 reg_addr1, u32 reg_val1)
+{
+	struct ixgbe_aci_cmd_read_write_alt_direct *cmd;
+	struct ixgbe_aci_desc desc;
+	s32 status;
+
+	cmd = &desc.params.read_write_alt_direct;
+
+	ixgbe_fill_dflt_direct_cmd_desc(&desc, ixgbe_aci_opc_write_alt_direct);
+	cmd->dword0_addr = IXGBE_CPU_TO_LE32(reg_addr0);
+	cmd->dword1_addr = IXGBE_CPU_TO_LE32(reg_addr1);
+	cmd->dword0_value = IXGBE_CPU_TO_LE32(reg_val0);
+	cmd->dword1_value = IXGBE_CPU_TO_LE32(reg_val1);
+
+	status = ixgbe_aci_send_cmd(hw, &desc, NULL, 0);
+
+	return status;
+}
+
+/**
+ * ixgbe_aci_alternate_read - read from alternate structure
+ * @hw: pointer to the hardware structure
+ * @reg_addr0: address of first dword to be read
+ * @reg_val0: pointer for data read from 'reg_addr0'
+ * @reg_addr1: address of second dword to be read
+ * @reg_val1: pointer for data read from 'reg_addr1'
+ *
+ * Read one or two dwords from alternate structure using ACI command (0x0902).
+ * Fields are indicated by 'reg_addr0' and 'reg_addr1' register numbers.
+ * If 'reg_val1' pointer is not passed then only register at 'reg_addr0'
+ * is read.
+ *
+ * Return: 0 on success and error code on failure.
+ */
+s32 ixgbe_aci_alternate_read(struct ixgbe_hw *hw, u32 reg_addr0,
+			     u32 *reg_val0, u32 reg_addr1, u32 *reg_val1)
+{
+	struct ixgbe_aci_cmd_read_write_alt_direct *cmd;
+	struct ixgbe_aci_desc desc;
+	s32 status;
+
+	cmd = &desc.params.read_write_alt_direct;
+
+	if (!reg_val0)
+		return IXGBE_ERR_PARAM;
+
+	ixgbe_fill_dflt_direct_cmd_desc(&desc, ixgbe_aci_opc_read_alt_direct);
+	cmd->dword0_addr = IXGBE_CPU_TO_LE32(reg_addr0);
+	cmd->dword1_addr = IXGBE_CPU_TO_LE32(reg_addr1);
+
+	status = ixgbe_aci_send_cmd(hw, &desc, NULL, 0);
+
+	if (status == IXGBE_SUCCESS) {
+		*reg_val0 = IXGBE_LE32_TO_CPU(cmd->dword0_value);
+
+		if (reg_val1)
+			*reg_val1 = IXGBE_LE32_TO_CPU(cmd->dword1_value);
+	}
+
+	return status;
+}
+
+/**
+ * ixgbe_aci_alternate_write_done - check if writing to alternate structure
+ * is done
+ * @hw: pointer to the HW structure.
+ * @bios_mode: indicates whether the command is executed by UEFI or legacy BIOS
+ * @reset_needed: indicates the SW should trigger GLOBAL reset
+ *
+ * Indicates to the FW that alternate structures have been changed.
+ *
+ * Return: 0 on success and error code on failure.
+ */
+s32 ixgbe_aci_alternate_write_done(struct ixgbe_hw *hw, u8 bios_mode,
+				   bool *reset_needed)
+{
+	struct ixgbe_aci_cmd_done_alt_write *cmd;
+	struct ixgbe_aci_desc desc;
+	s32 status;
+
+	cmd = &desc.params.done_alt_write;
+
+	if (!reset_needed)
+		return IXGBE_ERR_PARAM;
+
+	ixgbe_fill_dflt_direct_cmd_desc(&desc, ixgbe_aci_opc_done_alt_write);
+	cmd->flags = bios_mode;
+
+	status = ixgbe_aci_send_cmd(hw, &desc, NULL, 0);
+	if (!status)
+		*reset_needed = (IXGBE_LE16_TO_CPU(cmd->flags) &
+				 IXGBE_ACI_RESP_RESET_NEEDED) != 0;
+
+	return status;
+}
+
+/**
+ * ixgbe_aci_alternate_clear - clear alternate structure
+ * @hw: pointer to the HW structure.
+ *
+ * Clear the alternate structures of the port from which the function
+ * is called.
+ *
+ * Return: 0 on success and error code on failure.
+ */
+s32 ixgbe_aci_alternate_clear(struct ixgbe_hw *hw)
+{
+	struct ixgbe_aci_desc desc;
+	s32 status;
+
+	ixgbe_fill_dflt_direct_cmd_desc(&desc,
+					ixgbe_aci_opc_clear_port_alt_write);
+
+	status = ixgbe_aci_send_cmd(hw, &desc, NULL, 0);
+
+	return status;
+}
+
+/**
  * ixgbe_aci_get_internal_data - get internal FW/HW data
  * @hw: pointer to the hardware structure
  * @cluster_id: specific cluster to dump
