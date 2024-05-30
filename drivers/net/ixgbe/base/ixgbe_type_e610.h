@@ -119,6 +119,14 @@
 #define E610_SR_NVM_CTRL_WORD		0x00
 #define E610_SR_PBA_BLOCK_PTR		0x16
 
+/* The Orom version topology */
+#define IXGBE_OROM_VER_PATCH_SHIFT	0
+#define IXGBE_OROM_VER_PATCH_MASK	(0xff << IXGBE_OROM_VER_PATCH_SHIFT)
+#define IXGBE_OROM_VER_BUILD_SHIFT	8
+#define IXGBE_OROM_VER_BUILD_MASK	(0xffff << IXGBE_OROM_VER_BUILD_SHIFT)
+#define IXGBE_OROM_VER_SHIFT		24
+#define IXGBE_OROM_VER_MASK		(0xff << IXGBE_OROM_VER_SHIFT)
+
 /* CSS Header words */
 #define IXGBE_NVM_CSS_HDR_LEN_L			0x02
 #define IXGBE_NVM_CSS_HDR_LEN_H			0x03
@@ -263,16 +271,80 @@
 #define GLNVM_FLA_LOCKED_S			6
 #define GLNVM_FLA_LOCKED_M			BIT(6)
 
+/* Bit Bang registers */
+#define RDASB_MSGCTL				0x000B6820
+#define RDASB_MSGCTL_HDR_DWS_S			0
+#define RDASB_MSGCTL_EXP_RDW_S			8
+#define RDASB_MSGCTL_CMDV_M			BIT(31)
+#define RDASB_RSPCTL				0x000B6824
+#define RDASB_RSPCTL_BAD_LENGTH_M		BIT(30)
+#define RDASB_RSPCTL_NOT_SUCCESS_M		BIT(31)
+#define RDASB_WHDR0				0x000B68F4
+#define RDASB_WHDR1				0x000B68F8
+#define RDASB_WHDR2				0x000B68FC
+#define RDASB_WHDR3				0x000B6900
+#define RDASB_WHDR4				0x000B6904
+#define RDASB_RHDR0				0x000B6AFC
+#define RDASB_RHDR0_RESPONSE_S			27
+#define RDASB_RHDR0_RESPONSE_M			MAKEMASK(0x7, 27)
+#define RDASB_RDATA0				0x000B6B00
+#define RDASB_RDATA1				0x000B6B04
+
+/* SPI Registers */
+#define SPISB_MSGCTL				0x000B7020
+#define SPISB_MSGCTL_HDR_DWS_S			0
+#define SPISB_MSGCTL_EXP_RDW_S			8
+#define SPISB_MSGCTL_MSG_MODE_S			26
+#define SPISB_MSGCTL_TOKEN_MODE_S		28
+#define SPISB_MSGCTL_BARCLR_S			30
+#define SPISB_MSGCTL_CMDV_S			31
+#define SPISB_MSGCTL_CMDV_M			BIT(31)
+#define SPISB_RSPCTL				0x000B7024
+#define SPISB_RSPCTL_BAD_LENGTH_M		BIT(30)
+#define SPISB_RSPCTL_NOT_SUCCESS_M		BIT(31)
+#define SPISB_WHDR0				0x000B70F4
+#define SPISB_WHDR0_DEST_SEL_S			12
+#define SPISB_WHDR0_OPCODE_SEL_S		16
+#define SPISB_WHDR0_TAG_S			24
+#define SPISB_WHDR1				0x000B70F8
+#define SPISB_WHDR2				0x000B70FC
+#define SPISB_RDATA				0x000B7300
+#define SPISB_WDATA				0x000B7100
+
+/* Firmware Reset Count register */
+#define GL_FWRESETCNT				0x00083100 /* Reset Source: POR */
+#define GL_FWRESETCNT_FWRESETCNT_S		0
+#define GL_FWRESETCNT_FWRESETCNT_M		MAKEMASK(0xFFFFFFFF, 0)
+
 /* Admin Command Interface (ACI) registers */
 #define PF_HIDA(_i)			(0x00085000 + ((_i) * 4))
 #define PF_HIDA_2(_i)			(0x00085020 + ((_i) * 4))
 #define PF_HIBA(_i)			(0x00084000 + ((_i) * 4))
 #define PF_HICR				0x00082048
 
+#define PF_HIDA_MAX_INDEX		15
+#define PF_HIBA_MAX_INDEX		1023
+
 #define PF_HICR_EN			BIT(0)
 #define PF_HICR_C			BIT(1)
 #define PF_HICR_SV			BIT(2)
 #define PF_HICR_EV			BIT(3)
+
+#define GL_HIDA(_i)			(0x00082000 + ((_i) * 4))
+#define GL_HIDA_2(_i)			(0x00082020 + ((_i) * 4))
+#define GL_HIBA(_i)			(0x00081000 + ((_i) * 4))
+#define GL_HICR				0x00082040
+
+#define GL_HIDA_MAX_INDEX		15
+#define GL_HIBA_MAX_INDEX		1023
+
+#define GL_HICR_C			BIT(1)
+#define GL_HICR_SV			BIT(2)
+#define GL_HICR_EV			BIT(3)
+
+#define GL_HICR_EN			0x00082044
+
+#define GL_HICR_EN_CHECK		BIT(0)
 
 /* Admin Command Interface (ACI) defines */
 /* Defines that help manage the driver vs FW API checks.
@@ -1278,9 +1350,47 @@ struct ixgbe_aci_cmd_nvm {
 };
 
 /* NVM Module_Type ID, needed offset and read_len for struct ixgbe_aci_cmd_nvm. */
+#define IXGBE_ACI_NVM_SECTOR_UNIT		4096 /* In Bytes */
+#define IXGBE_ACI_NVM_WORD_UNIT			2 /* In Bytes */
+
 #define IXGBE_ACI_NVM_START_POINT		0
+#define IXGBE_ACI_NVM_EMP_SR_PTR_OFFSET		0x90
+#define IXGBE_ACI_NVM_EMP_SR_PTR_RD_LEN		2 /* In Bytes */
+#define IXGBE_ACI_NVM_EMP_SR_PTR_M		MAKEMASK(0x7FFF, 0)
+#define IXGBE_ACI_NVM_EMP_SR_PTR_TYPE_S		15
+#define IXGBE_ACI_NVM_EMP_SR_PTR_TYPE_M		BIT(15)
+#define IXGBE_ACI_NVM_EMP_SR_PTR_TYPE_SECTOR	1
+
+#define IXGBE_ACI_NVM_LLDP_CFG_PTR_OFFSET	0x46
+#define IXGBE_ACI_NVM_LLDP_CFG_HEADER_LEN	2 /* In Bytes */
+#define IXGBE_ACI_NVM_LLDP_CFG_PTR_RD_LEN	2 /* In Bytes */
+
+#define IXGBE_ACI_NVM_LLDP_PRESERVED_MOD_ID		0x129
+#define IXGBE_ACI_NVM_CUR_LLDP_PERSIST_RD_OFFSET	2 /* In Bytes */
+#define IXGBE_ACI_NVM_LLDP_STATUS_M			MAKEMASK(0xF, 0)
+#define IXGBE_ACI_NVM_LLDP_STATUS_M_LEN			4 /* In Bits */
+#define IXGBE_ACI_NVM_LLDP_STATUS_RD_LEN		4 /* In Bytes */
+
+#define IXGBE_ACI_NVM_MINSREV_MOD_ID		0x130
 
 IXGBE_CHECK_PARAM_LEN(ixgbe_aci_cmd_nvm);
+
+/* Used for reading and writing MinSRev using 0x0701 and 0x0703. Note that the
+ * type field is excluded from the section when reading and writing from
+ * a module using the module_typeid field with these AQ commands.
+ */
+struct ixgbe_aci_cmd_nvm_minsrev {
+	__le16 length;
+	__le16 validity;
+#define IXGBE_ACI_NVM_MINSREV_NVM_VALID		BIT(0)
+#define IXGBE_ACI_NVM_MINSREV_OROM_VALID	BIT(1)
+	__le16 nvm_minsrev_l;
+	__le16 nvm_minsrev_h;
+	__le16 orom_minsrev_l;
+	__le16 orom_minsrev_h;
+};
+
+IXGBE_CHECK_STRUCT_LEN(12, ixgbe_aci_cmd_nvm_minsrev);
 
 /* Used for 0x0704 as well as for 0x0705 commands */
 struct ixgbe_aci_cmd_nvm_cfg {
@@ -1297,6 +1407,14 @@ struct ixgbe_aci_cmd_nvm_cfg {
 };
 
 IXGBE_CHECK_PARAM_LEN(ixgbe_aci_cmd_nvm_cfg);
+
+struct ixgbe_aci_cmd_nvm_cfg_data {
+	__le16 field_id;
+	__le16 field_options;
+	__le16 field_value;
+};
+
+IXGBE_CHECK_STRUCT_LEN(6, ixgbe_aci_cmd_nvm_cfg_data);
 
 /* NVM Checksum Command (direct, 0x0706) */
 struct ixgbe_aci_cmd_nvm_checksum {
@@ -1738,6 +1856,16 @@ struct ixgbe_ts_dev_info {
 	u8 tmr1_ena;
 };
 
+#pragma pack(1)
+struct ixgbe_orom_civd_info {
+	u8 signature[4];	/* Must match ASCII '$CIV' characters */
+	u8 checksum;		/* Simple modulo 256 sum of all structure bytes must equal 0 */
+	__le32 combo_ver;	/* Combo Image Version number */
+	u8 combo_name_len;	/* Length of the unicode combo image version string, max of 32 */
+	__le16 combo_name[32];	/* Unicode string representing the Combo Image version */
+};
+#pragma pack()
+
 /* Function specific capabilities */
 struct ixgbe_hw_func_caps {
 	struct ixgbe_hw_common_caps common_cap;
@@ -1766,6 +1894,14 @@ struct ixgbe_aci_event {
 struct ixgbe_aci_info {
 	enum ixgbe_aci_err last_status;	/* last status of sent admin command */
 	struct ixgbe_lock lock;		/* admin command interface lock */
+};
+
+/* Minimum Security Revision information */
+struct ixgbe_minsrev_info {
+	u32 nvm;
+	u32 orom;
+	u8 nvm_valid : 1;
+	u8 orom_valid : 1;
 };
 
 /* Enumeration of which flash bank is desired to read from, either the active
@@ -1823,6 +1959,21 @@ struct ixgbe_flash_info {
 	u16 sr_words;				/* Shadow RAM size in words */
 	u32 flash_size;				/* Size of available flash in bytes */
 	u8 blank_nvm_mode;			/* is NVM empty (no FW present) */
+};
+
+#define IXGBE_NVM_CMD_READ		0x0000000B
+#define IXGBE_NVM_CMD_WRITE		0x0000000C
+
+/* NVM Access command */
+struct ixgbe_nvm_access_cmd {
+	u32 command;		/* NVM command: READ or WRITE */
+	u32 offset;			/* Offset to read/write, in bytes */
+	u32 data_size;		/* Size of data field, in bytes */
+};
+
+/* NVM Access data */
+struct ixgbe_nvm_access_data {
+	u32 regval;			/* Storage for register value */
 };
 
 #endif /* _IXGBE_TYPE_E610_H_ */

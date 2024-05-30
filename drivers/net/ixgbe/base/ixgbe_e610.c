@@ -2064,6 +2064,72 @@ s32 ixgbe_aci_sff_eeprom(struct ixgbe_hw *hw, u16 lport, u8 bus_addr,
 }
 
 /**
+ * ixgbe_aci_prog_topo_dev_nvm - program Topology Device NVM
+ * @hw: pointer to the hardware structure
+ * @topo_params: pointer to structure storing topology parameters for a device
+ *
+ * Program Topology Device NVM using ACI command (0x06F2).
+ *
+ * Return: the exit code of the operation.
+ */
+s32 ixgbe_aci_prog_topo_dev_nvm(struct ixgbe_hw *hw,
+			struct ixgbe_aci_cmd_link_topo_params *topo_params)
+{
+	struct ixgbe_aci_cmd_prog_topo_dev_nvm *cmd;
+	struct ixgbe_aci_desc desc;
+
+	cmd = &desc.params.prog_topo_dev_nvm;
+
+	ixgbe_fill_dflt_direct_cmd_desc(&desc, ixgbe_aci_opc_prog_topo_dev_nvm);
+
+	memcpy(&cmd->topo_params, topo_params, sizeof(*topo_params));
+
+	return ixgbe_aci_send_cmd(hw, &desc, NULL, 0);
+}
+
+/**
+ * ixgbe_aci_read_topo_dev_nvm - read Topology Device NVM
+ * @hw: pointer to the hardware structure
+ * @topo_params: pointer to structure storing topology parameters for a device
+ * @start_address: byte offset in the topology device NVM
+ * @data: pointer to data buffer
+ * @data_size: number of bytes to be read from the topology device NVM
+ * Read Topology Device NVM (0x06F3)
+ *
+ * Read Topology of Device NVM using ACI command (0x06F3).
+ *
+ * Return: the exit code of the operation.
+ */
+s32 ixgbe_aci_read_topo_dev_nvm(struct ixgbe_hw *hw,
+			struct ixgbe_aci_cmd_link_topo_params *topo_params,
+			u32 start_address, u8 *data, u8 data_size)
+{
+	struct ixgbe_aci_cmd_read_topo_dev_nvm *cmd;
+	struct ixgbe_aci_desc desc;
+	s32 status;
+
+	if (!data || data_size == 0 ||
+	    data_size > IXGBE_ACI_READ_TOPO_DEV_NVM_DATA_READ_SIZE)
+		return IXGBE_ERR_PARAM;
+
+	cmd = &desc.params.read_topo_dev_nvm;
+
+	ixgbe_fill_dflt_direct_cmd_desc(&desc, ixgbe_aci_opc_read_topo_dev_nvm);
+
+	desc.datalen = IXGBE_CPU_TO_LE16(data_size);
+	memcpy(&cmd->topo_params, topo_params, sizeof(*topo_params));
+	cmd->start_address = IXGBE_CPU_TO_LE32(start_address);
+
+	status = ixgbe_aci_send_cmd(hw, &desc, NULL, 0);
+	if (status)
+		return status;
+
+	memcpy(data, cmd->data_read, data_size);
+
+	return IXGBE_SUCCESS;
+}
+
+/**
  * ixgbe_acquire_nvm - Generic request for acquiring the NVM ownership
  * @hw: pointer to the HW structure
  * @access: NVM access type (read or write)
@@ -2423,6 +2489,60 @@ static s32 ixgbe_read_nvm_sr_copy(struct ixgbe_hw *hw,
 }
 
 /**
+ * ixgbe_get_nvm_minsrevs - Get the minsrevs values from flash
+ * @hw: pointer to the HW struct
+ * @minsrevs: structure to store NVM and OROM minsrev values
+ *
+ * Read the Minimum Security Revision TLV and extract
+ * the revision values from the flash image
+ * into a readable structure for processing.
+ *
+ * Return: the exit code of the operation.
+ */
+s32 ixgbe_get_nvm_minsrevs(struct ixgbe_hw *hw,
+			   struct ixgbe_minsrev_info *minsrevs)
+{
+	struct ixgbe_aci_cmd_nvm_minsrev data;
+	s32 status;
+	u16 valid;
+
+	status = ixgbe_acquire_nvm(hw, IXGBE_RES_READ);
+	if (status)
+		return status;
+
+	status = ixgbe_aci_read_nvm(hw, IXGBE_ACI_NVM_MINSREV_MOD_ID,
+				    0, sizeof(data), &data,
+				    true, false);
+
+	ixgbe_release_nvm(hw);
+
+	if (status)
+		return status;
+
+	valid = IXGBE_LE16_TO_CPU(data.validity);
+
+	/* Extract NVM minimum security revision */
+	if (valid & IXGBE_ACI_NVM_MINSREV_NVM_VALID) {
+		u16 minsrev_l = IXGBE_LE16_TO_CPU(data.nvm_minsrev_l);
+		u16 minsrev_h = IXGBE_LE16_TO_CPU(data.nvm_minsrev_h);
+
+		minsrevs->nvm = minsrev_h << 16 | minsrev_l;
+		minsrevs->nvm_valid = true;
+	}
+
+	/* Extract the OROM minimum security revision */
+	if (valid & IXGBE_ACI_NVM_MINSREV_OROM_VALID) {
+		u16 minsrev_l = IXGBE_LE16_TO_CPU(data.orom_minsrev_l);
+		u16 minsrev_h = IXGBE_LE16_TO_CPU(data.orom_minsrev_h);
+
+		minsrevs->orom = minsrev_h << 16 | minsrev_l;
+		minsrevs->orom_valid = true;
+	}
+
+	return IXGBE_SUCCESS;
+}
+
+/**
  * ixgbe_get_nvm_srev - Read the security revision from the NVM CSS header
  * @hw: pointer to the HW struct
  * @bank: whether to read from the active or inactive flash bank
@@ -2774,6 +2894,63 @@ s32 ixgbe_init_nvm(struct ixgbe_hw *hw)
 }
 
 /**
+ * ixgbe_sanitize_operate - Clear the user data
+ * @hw: pointer to the HW struct
+ *
+ * Clear user data from NVM using ACI command (0x070C).
+ *
+ * Return: the exit code of the operation.
+ */
+s32 ixgbe_sanitize_operate(struct ixgbe_hw *hw)
+{
+	s32 status;
+	u8 values;
+
+	u8 cmd_flags = IXGBE_ACI_SANITIZE_REQ_OPERATE |
+		       IXGBE_ACI_SANITIZE_OPERATE_SUBJECT_CLEAR;
+
+	status = ixgbe_sanitize_nvm(hw, cmd_flags, &values);
+	if (status)
+		return status;
+	if ((!(values & IXGBE_ACI_SANITIZE_OPERATE_HOST_CLEAN_DONE) &&
+	     !(values & IXGBE_ACI_SANITIZE_OPERATE_BMC_CLEAN_DONE)) ||
+	    ((values & IXGBE_ACI_SANITIZE_OPERATE_HOST_CLEAN_DONE) &&
+	     !(values & IXGBE_ACI_SANITIZE_OPERATE_HOST_CLEAN_SUCCESS)) ||
+	    ((values & IXGBE_ACI_SANITIZE_OPERATE_BMC_CLEAN_DONE) &&
+	     !(values & IXGBE_ACI_SANITIZE_OPERATE_BMC_CLEAN_SUCCESS)))
+		return IXGBE_ERR_ACI_ERROR;
+
+	return IXGBE_SUCCESS;
+}
+
+/**
+ * ixgbe_sanitize_nvm - Sanitize NVM
+ * @hw: pointer to the HW struct
+ * @cmd_flags: flag to the ACI command
+ * @values: values returned from the command
+ *
+ * Sanitize NVM using ACI command (0x070C).
+ *
+ * Return: the exit code of the operation.
+ */
+s32 ixgbe_sanitize_nvm(struct ixgbe_hw *hw, u8 cmd_flags, u8 *values)
+{
+	struct ixgbe_aci_desc desc;
+	struct ixgbe_aci_cmd_nvm_sanitization *cmd;
+	s32 status;
+
+	cmd = &desc.params.nvm_sanitization;
+	ixgbe_fill_dflt_direct_cmd_desc(&desc, ixgbe_aci_opc_nvm_sanitization);
+	cmd->cmd_flags = cmd_flags;
+
+	status = ixgbe_aci_send_cmd(hw, &desc, NULL, 0);
+	if (values)
+		*values = cmd->values;
+
+	return status;
+}
+
+/**
  * ixgbe_read_sr_word_aci - Reads Shadow RAM via ACI
  * @hw: pointer to the HW structure
  * @offset: offset of the Shadow RAM word to read (0x000000 - 0x001FFF)
@@ -3078,6 +3255,148 @@ s32 ixgbe_aci_get_internal_data(struct ixgbe_hw *hw, u16 cluster_id,
 	}
 
 	return status;
+}
+
+/**
+ * ixgbe_validate_nvm_rw_reg - Check that an NVM access request is valid
+ * @cmd: NVM access command structure
+ *
+ * Validates that an NVM access structure is request to read or write a valid
+ * register offset. First validates that the module and flags are correct, and
+ * then ensures that the register offset is one of the accepted registers.
+ *
+ * Return: 0 if the register access is valid, out of range error code otherwise.
+ */
+static s32
+ixgbe_validate_nvm_rw_reg(struct ixgbe_nvm_access_cmd *cmd)
+{
+	u16 i;
+
+	switch (cmd->offset) {
+	case GL_HICR:
+	case GL_HICR_EN: /* Note, this register is read only */
+	case GL_FWSTS:
+	case GL_MNG_FWSM:
+	case GLNVM_GENS:
+	case GLNVM_FLA:
+	case GL_FWRESETCNT:
+		return 0;
+	default:
+		break;
+	}
+
+	for (i = 0; i <= GL_HIDA_MAX_INDEX; i++)
+		if (cmd->offset == (u32)GL_HIDA(i))
+			return 0;
+
+	for (i = 0; i <= GL_HIBA_MAX_INDEX; i++)
+		if (cmd->offset == (u32)GL_HIBA(i))
+			return 0;
+
+	/* All other register offsets are not valid */
+	return IXGBE_ERR_OUT_OF_RANGE;
+}
+
+/**
+ * ixgbe_nvm_access_read - Handle an NVM read request
+ * @hw: pointer to the HW struct
+ * @cmd: NVM access command to process
+ * @data: storage for the register value read
+ *
+ * Process an NVM access request to read a register.
+ *
+ * Return: 0 if the register read is valid and successful,
+ * out of range error code otherwise.
+ */
+static s32 ixgbe_nvm_access_read(struct ixgbe_hw *hw,
+			struct ixgbe_nvm_access_cmd *cmd,
+			struct ixgbe_nvm_access_data *data)
+{
+	s32 status;
+
+	/* Always initialize the output data, even on failure */
+	memset(&data->regval, 0, cmd->data_size);
+
+	/* Make sure this is a valid read/write access request */
+	status = ixgbe_validate_nvm_rw_reg(cmd);
+	if (status)
+		return status;
+
+	DEBUGOUT1("NVM access: reading register %08x\n", cmd->offset);
+
+	/* Read the register and store the contents in the data field */
+	data->regval = IXGBE_READ_REG(hw, cmd->offset);
+
+	return 0;
+}
+
+/**
+ * ixgbe_nvm_access_write - Handle an NVM write request
+ * @hw: pointer to the HW struct
+ * @cmd: NVM access command to process
+ * @data: NVM access data to write
+ *
+ * Process an NVM access request to write a register.
+ *
+ * Return: 0 if the register write is valid and successful,
+ * out of range error code otherwise.
+ */
+static s32 ixgbe_nvm_access_write(struct ixgbe_hw *hw,
+			struct ixgbe_nvm_access_cmd *cmd,
+			struct ixgbe_nvm_access_data *data)
+{
+	s32 status;
+
+	/* Make sure this is a valid read/write access request */
+	status = ixgbe_validate_nvm_rw_reg(cmd);
+	if (status)
+		return status;
+
+	/* Reject requests to write to read-only registers */
+	switch (cmd->offset) {
+	case GL_HICR_EN:
+		return IXGBE_ERR_OUT_OF_RANGE;
+	default:
+		break;
+	}
+
+	DEBUGOUT2("NVM access: writing register %08x with value %08x\n",
+		cmd->offset, data->regval);
+
+	/* Write the data field to the specified register */
+	IXGBE_WRITE_REG(hw, cmd->offset, data->regval);
+
+	return 0;
+}
+
+/**
+ * ixgbe_handle_nvm_access - Handle an NVM access request
+ * @hw: pointer to the HW struct
+ * @cmd: NVM access command info
+ * @data: pointer to read or return data
+ *
+ * Process an NVM access request. Read the command structure information and
+ * determine if it is valid. If not, report an error indicating the command
+ * was invalid.
+ *
+ * For valid commands, perform the necessary function, copying the data into
+ * the provided data buffer.
+ *
+ * Return: 0 if the nvm access request is valid and successful,
+ * error code otherwise.
+ */
+s32 ixgbe_handle_nvm_access(struct ixgbe_hw *hw,
+			struct ixgbe_nvm_access_cmd *cmd,
+			struct ixgbe_nvm_access_data *data)
+{
+	switch (cmd->command) {
+	case IXGBE_NVM_CMD_READ:
+		return ixgbe_nvm_access_read(hw, cmd, data);
+	case IXGBE_NVM_CMD_WRITE:
+		return ixgbe_nvm_access_write(hw, cmd, data);
+	default:
+		return IXGBE_ERR_PARAM;
+	}
 }
 
 /**

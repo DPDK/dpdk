@@ -68,6 +68,12 @@ s32 ixgbe_aci_get_gpio(struct ixgbe_hw *hw, u16 gpio_ctrl_handle, u8 pin_idx,
 s32 ixgbe_aci_sff_eeprom(struct ixgbe_hw *hw, u16 lport, u8 bus_addr,
 			 u16 mem_addr, u8 page, u8 page_bank_ctrl, u8 *data,
 			 u8 length, bool write);
+s32 ixgbe_aci_prog_topo_dev_nvm(struct ixgbe_hw *hw,
+			struct ixgbe_aci_cmd_link_topo_params *topo_params);
+s32 ixgbe_aci_read_topo_dev_nvm(struct ixgbe_hw *hw,
+			struct ixgbe_aci_cmd_link_topo_params *topo_params,
+			u32 start_address, u8 *data, u8 data_size);
+
 s32 ixgbe_acquire_nvm(struct ixgbe_hw *hw,
 		      enum ixgbe_aci_res_access_type access);
 void ixgbe_release_nvm(struct ixgbe_hw *hw);
@@ -79,9 +85,13 @@ s32 ixgbe_aci_read_nvm(struct ixgbe_hw *hw, u16 module_typeid, u32 offset,
 s32 ixgbe_nvm_validate_checksum(struct ixgbe_hw *hw);
 s32 ixgbe_nvm_recalculate_checksum(struct ixgbe_hw *hw);
 
+s32 ixgbe_get_nvm_minsrevs(struct ixgbe_hw *hw, struct ixgbe_minsrev_info *minsrevs);
 s32 ixgbe_get_inactive_nvm_ver(struct ixgbe_hw *hw, struct ixgbe_nvm_info *nvm);
 s32 ixgbe_get_active_nvm_ver(struct ixgbe_hw *hw, struct ixgbe_nvm_info *nvm);
 s32 ixgbe_init_nvm(struct ixgbe_hw *hw);
+
+s32 ixgbe_sanitize_operate(struct ixgbe_hw *hw);
+s32 ixgbe_sanitize_nvm(struct ixgbe_hw *hw, u8 cmd_flags, u8 *values);
 
 s32 ixgbe_read_sr_word_aci(struct ixgbe_hw  *hw, u16 offset, u16 *data);
 s32 ixgbe_read_sr_buf_aci(struct ixgbe_hw *hw, u16 offset, u16 *words, u16 *data);
@@ -101,6 +111,11 @@ s32 ixgbe_aci_get_internal_data(struct ixgbe_hw *hw, u16 cluster_id,
 				u16 buf_size, u16 *ret_buf_size,
 				u16 *ret_next_cluster, u16 *ret_next_table,
 				u32 *ret_next_index);
+
+s32 ixgbe_handle_nvm_access(struct ixgbe_hw *hw,
+				struct ixgbe_nvm_access_cmd *cmd,
+				struct ixgbe_nvm_access_data *data);
+
 /* E610 operations */
 s32 ixgbe_reset_hw_E610(struct ixgbe_hw *hw);
 s32 ixgbe_start_hw_E610(struct ixgbe_hw *hw);
