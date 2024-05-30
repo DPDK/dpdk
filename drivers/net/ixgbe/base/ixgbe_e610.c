@@ -1287,6 +1287,552 @@ void ixgbe_copy_phy_caps_to_cfg(struct ixgbe_aci_cmd_get_phy_caps_data *caps,
 }
 
 /**
+ * ixgbe_aci_set_phy_cfg - set PHY configuration
+ * @hw: pointer to the HW struct
+ * @cfg: structure with PHY configuration data to be set
+ *
+ * Set the various PHY configuration parameters supported on the Port
+ * using ACI command (0x0601).
+ * One or more of the Set PHY config parameters may be ignored in an MFP
+ * mode as the PF may not have the privilege to set some of the PHY Config
+ * parameters.
+ *
+ * Return: the exit code of the operation.
+ */
+s32 ixgbe_aci_set_phy_cfg(struct ixgbe_hw *hw,
+			  struct ixgbe_aci_cmd_set_phy_cfg_data *cfg)
+{
+	struct ixgbe_aci_desc desc;
+	s32 status;
+
+	if (!cfg)
+		return IXGBE_ERR_PARAM;
+
+	/* Ensure that only valid bits of cfg->caps can be turned on. */
+	if (cfg->caps & ~IXGBE_ACI_PHY_ENA_VALID_MASK) {
+		cfg->caps &= IXGBE_ACI_PHY_ENA_VALID_MASK;
+	}
+
+	ixgbe_fill_dflt_direct_cmd_desc(&desc, ixgbe_aci_opc_set_phy_cfg);
+	desc.flags |= IXGBE_CPU_TO_LE16(IXGBE_ACI_FLAG_RD);
+
+	status = ixgbe_aci_send_cmd(hw, &desc, cfg, sizeof(*cfg));
+
+	if (!status)
+		hw->phy.curr_user_phy_cfg = *cfg;
+
+	return status;
+}
+
+/**
+ * ixgbe_aci_set_link_restart_an - set up link and restart AN
+ * @hw: pointer to the HW struct
+ * @ena_link: if true: enable link, if false: disable link
+ *
+ * Function sets up the link and restarts the Auto-Negotiation over the link.
+ *
+ * Return: the exit code of the operation.
+ */
+s32 ixgbe_aci_set_link_restart_an(struct ixgbe_hw *hw, bool ena_link)
+{
+	struct ixgbe_aci_cmd_restart_an *cmd;
+	struct ixgbe_aci_desc desc;
+
+	cmd = &desc.params.restart_an;
+
+	ixgbe_fill_dflt_direct_cmd_desc(&desc, ixgbe_aci_opc_restart_an);
+
+	cmd->cmd_flags = IXGBE_ACI_RESTART_AN_LINK_RESTART;
+	if (ena_link)
+		cmd->cmd_flags |= IXGBE_ACI_RESTART_AN_LINK_ENABLE;
+	else
+		cmd->cmd_flags &= ~IXGBE_ACI_RESTART_AN_LINK_ENABLE;
+
+	return ixgbe_aci_send_cmd(hw, &desc, NULL, 0);
+}
+
+/**
+ * ixgbe_is_media_cage_present - check if media cage is present
+ * @hw: pointer to the HW struct
+ *
+ * Identify presence of media cage using the ACI command (0x06E0).
+ *
+ * Return: true if media cage is present, else false. If no cage, then
+ * media type is backplane or BASE-T.
+ */
+static bool ixgbe_is_media_cage_present(struct ixgbe_hw *hw)
+{
+	struct ixgbe_aci_cmd_get_link_topo *cmd;
+	struct ixgbe_aci_desc desc;
+
+	cmd = &desc.params.get_link_topo;
+
+	ixgbe_fill_dflt_direct_cmd_desc(&desc, ixgbe_aci_opc_get_link_topo);
+
+	cmd->addr.topo_params.node_type_ctx =
+		(IXGBE_ACI_LINK_TOPO_NODE_CTX_PORT <<
+		 IXGBE_ACI_LINK_TOPO_NODE_CTX_S);
+
+	/* set node type */
+	cmd->addr.topo_params.node_type_ctx |=
+		(IXGBE_ACI_LINK_TOPO_NODE_TYPE_M &
+		 IXGBE_ACI_LINK_TOPO_NODE_TYPE_CAGE);
+
+	/* Node type cage can be used to determine if cage is present. If AQC
+	 * returns error (ENOENT), then no cage present. If no cage present then
+	 * connection type is backplane or BASE-T.
+	 */
+	return ixgbe_aci_get_netlist_node(hw, cmd, NULL, NULL);
+}
+
+/**
+ * ixgbe_get_media_type_from_phy_type - Gets media type based on phy type
+ * @hw: pointer to the HW struct
+ *
+ * Try to identify the media type based on the phy type.
+ * If more than one media type, the ixgbe_media_type_unknown is returned.
+ * First, phy_type_low is checked, then phy_type_high.
+ * If none are identified, the ixgbe_media_type_unknown is returned
+ *
+ * Return: type of a media based on phy type in form of enum.
+ */
+static enum ixgbe_media_type
+ixgbe_get_media_type_from_phy_type(struct ixgbe_hw *hw)
+{
+	struct ixgbe_link_status *hw_link_info;
+
+	if (!hw)
+		return ixgbe_media_type_unknown;
+
+	hw_link_info = &hw->link.link_info;
+	if (hw_link_info->phy_type_low && hw_link_info->phy_type_high)
+		/* If more than one media type is selected, report unknown */
+		return ixgbe_media_type_unknown;
+
+	if (hw_link_info->phy_type_low) {
+		/* 1G SGMII is a special case where some DA cable PHYs
+		 * may show this as an option when it really shouldn't
+		 * be since SGMII is meant to be between a MAC and a PHY
+		 * in a backplane. Try to detect this case and handle it
+		 */
+		if (hw_link_info->phy_type_low == IXGBE_PHY_TYPE_LOW_1G_SGMII &&
+		    (hw_link_info->module_type[IXGBE_ACI_MOD_TYPE_IDENT] ==
+		    IXGBE_ACI_MOD_TYPE_BYTE1_SFP_PLUS_CU_ACTIVE ||
+		    hw_link_info->module_type[IXGBE_ACI_MOD_TYPE_IDENT] ==
+		    IXGBE_ACI_MOD_TYPE_BYTE1_SFP_PLUS_CU_PASSIVE))
+			return ixgbe_media_type_da;
+
+		switch (hw_link_info->phy_type_low) {
+		case IXGBE_PHY_TYPE_LOW_1000BASE_SX:
+		case IXGBE_PHY_TYPE_LOW_1000BASE_LX:
+		case IXGBE_PHY_TYPE_LOW_10GBASE_SR:
+		case IXGBE_PHY_TYPE_LOW_10GBASE_LR:
+		case IXGBE_PHY_TYPE_LOW_25GBASE_SR:
+		case IXGBE_PHY_TYPE_LOW_25GBASE_LR:
+			return ixgbe_media_type_fiber;
+		case IXGBE_PHY_TYPE_LOW_10G_SFI_AOC_ACC:
+		case IXGBE_PHY_TYPE_LOW_25G_AUI_AOC_ACC:
+			return ixgbe_media_type_fiber;
+		case IXGBE_PHY_TYPE_LOW_100BASE_TX:
+		case IXGBE_PHY_TYPE_LOW_1000BASE_T:
+		case IXGBE_PHY_TYPE_LOW_2500BASE_T:
+		case IXGBE_PHY_TYPE_LOW_5GBASE_T:
+		case IXGBE_PHY_TYPE_LOW_10GBASE_T:
+		case IXGBE_PHY_TYPE_LOW_25GBASE_T:
+			return ixgbe_media_type_copper;
+		case IXGBE_PHY_TYPE_LOW_10G_SFI_DA:
+		case IXGBE_PHY_TYPE_LOW_25GBASE_CR:
+		case IXGBE_PHY_TYPE_LOW_25GBASE_CR_S:
+		case IXGBE_PHY_TYPE_LOW_25GBASE_CR1:
+			return ixgbe_media_type_da;
+		case IXGBE_PHY_TYPE_LOW_25G_AUI_C2C:
+			if (ixgbe_is_media_cage_present(hw))
+				return ixgbe_media_type_aui;
+			return ixgbe_media_type_backplane;
+		case IXGBE_PHY_TYPE_LOW_1000BASE_KX:
+		case IXGBE_PHY_TYPE_LOW_2500BASE_KX:
+		case IXGBE_PHY_TYPE_LOW_2500BASE_X:
+		case IXGBE_PHY_TYPE_LOW_5GBASE_KR:
+		case IXGBE_PHY_TYPE_LOW_10GBASE_KR_CR1:
+		case IXGBE_PHY_TYPE_LOW_10G_SFI_C2C:
+		case IXGBE_PHY_TYPE_LOW_25GBASE_KR:
+		case IXGBE_PHY_TYPE_LOW_25GBASE_KR1:
+		case IXGBE_PHY_TYPE_LOW_25GBASE_KR_S:
+			return ixgbe_media_type_backplane;
+		}
+	} else {
+		switch (hw_link_info->phy_type_high) {
+		case IXGBE_PHY_TYPE_HIGH_10BASE_T:
+			return ixgbe_media_type_copper;
+		}
+	}
+	return ixgbe_media_type_unknown;
+}
+
+/**
+ * ixgbe_update_link_info - update status of the HW network link
+ * @hw: pointer to the HW struct
+ *
+ * Update the status of the HW network link.
+ *
+ * Return: the exit code of the operation.
+ */
+s32 ixgbe_update_link_info(struct ixgbe_hw *hw)
+{
+	struct ixgbe_aci_cmd_get_phy_caps_data *pcaps;
+	struct ixgbe_link_status *li;
+	s32 status;
+
+	if (!hw)
+		return IXGBE_ERR_PARAM;
+
+	li = &hw->link.link_info;
+
+	status = ixgbe_aci_get_link_info(hw, true, NULL);
+	if (status)
+		return status;
+
+	if (li->link_info & IXGBE_ACI_MEDIA_AVAILABLE) {
+		pcaps = (struct ixgbe_aci_cmd_get_phy_caps_data *)
+			ixgbe_malloc(hw, sizeof(*pcaps));
+		if (!pcaps)
+			return IXGBE_ERR_OUT_OF_MEM;
+
+		status = ixgbe_aci_get_phy_caps(hw, false,
+						IXGBE_ACI_REPORT_TOPO_CAP_MEDIA,
+						pcaps);
+
+		if (status == IXGBE_SUCCESS)
+			memcpy(li->module_type, &pcaps->module_type,
+			       sizeof(li->module_type));
+
+		ixgbe_free(hw, pcaps);
+	}
+
+	return status;
+}
+
+/**
+ * ixgbe_get_link_status - get status of the HW network link
+ * @hw: pointer to the HW struct
+ * @link_up: pointer to bool (true/false = linkup/linkdown)
+ *
+ * Variable link_up is true if link is up, false if link is down.
+ * The variable link_up is invalid if status is non zero. As a
+ * result of this call, link status reporting becomes enabled
+ *
+ * Return: the exit code of the operation.
+ */
+s32 ixgbe_get_link_status(struct ixgbe_hw *hw, bool *link_up)
+{
+	s32 status = IXGBE_SUCCESS;
+
+	if (!hw || !link_up)
+		return IXGBE_ERR_PARAM;
+
+	if (hw->link.get_link_info) {
+		status = ixgbe_update_link_info(hw);
+		if (status) {
+			return status;
+		}
+	}
+
+	*link_up = hw->link.link_info.link_info & IXGBE_ACI_LINK_UP;
+
+	return status;
+}
+
+/**
+ * ixgbe_aci_get_link_info - get the link status
+ * @hw: pointer to the HW struct
+ * @ena_lse: enable/disable LinkStatusEvent reporting
+ * @link: pointer to link status structure - optional
+ *
+ * Get the current Link Status using ACI command (0x607).
+ * The current link can be optionally provided to update
+ * the status.
+ *
+ * Return: the link status of the adapter.
+ */
+s32 ixgbe_aci_get_link_info(struct ixgbe_hw *hw, bool ena_lse,
+			    struct ixgbe_link_status *link)
+{
+	struct ixgbe_aci_cmd_get_link_status_data link_data = { 0 };
+	struct ixgbe_aci_cmd_get_link_status *resp;
+	struct ixgbe_link_status *li_old, *li;
+	struct ixgbe_fc_info *hw_fc_info;
+	enum ixgbe_media_type *hw_media_type;
+	struct ixgbe_aci_desc desc;
+	bool tx_pause, rx_pause;
+	u8 cmd_flags;
+	s32 status;
+
+	if (!hw)
+		return IXGBE_ERR_PARAM;
+
+	li_old = &hw->link.link_info_old;
+	hw_media_type = &hw->phy.media_type;
+	li = &hw->link.link_info;
+	hw_fc_info = &hw->fc;
+
+	ixgbe_fill_dflt_direct_cmd_desc(&desc, ixgbe_aci_opc_get_link_status);
+	cmd_flags = (ena_lse) ? IXGBE_ACI_LSE_ENA : IXGBE_ACI_LSE_DIS;
+	resp = &desc.params.get_link_status;
+	resp->cmd_flags = cmd_flags;
+
+	status = ixgbe_aci_send_cmd(hw, &desc, &link_data, sizeof(link_data));
+
+	if (status != IXGBE_SUCCESS)
+		return status;
+
+	/* save off old link status information */
+	*li_old = *li;
+
+	/* update current link status information */
+	li->link_speed = IXGBE_LE16_TO_CPU(link_data.link_speed);
+	li->phy_type_low = IXGBE_LE64_TO_CPU(link_data.phy_type_low);
+	li->phy_type_high = IXGBE_LE64_TO_CPU(link_data.phy_type_high);
+	*hw_media_type = ixgbe_get_media_type_from_phy_type(hw);
+	li->link_info = link_data.link_info;
+	li->link_cfg_err = link_data.link_cfg_err;
+	li->an_info = link_data.an_info;
+	li->ext_info = link_data.ext_info;
+	li->max_frame_size = IXGBE_LE16_TO_CPU(link_data.max_frame_size);
+	li->fec_info = link_data.cfg & IXGBE_ACI_FEC_MASK;
+	li->topo_media_conflict = link_data.topo_media_conflict;
+	li->pacing = link_data.cfg & (IXGBE_ACI_CFG_PACING_M |
+				      IXGBE_ACI_CFG_PACING_TYPE_M);
+
+	/* update fc info */
+	tx_pause = !!(link_data.an_info & IXGBE_ACI_LINK_PAUSE_TX);
+	rx_pause = !!(link_data.an_info & IXGBE_ACI_LINK_PAUSE_RX);
+	if (tx_pause && rx_pause)
+		hw_fc_info->current_mode = ixgbe_fc_full;
+	else if (tx_pause)
+		hw_fc_info->current_mode = ixgbe_fc_tx_pause;
+	else if (rx_pause)
+		hw_fc_info->current_mode = ixgbe_fc_rx_pause;
+	else
+		hw_fc_info->current_mode = ixgbe_fc_none;
+
+	li->lse_ena = !!(resp->cmd_flags & IXGBE_ACI_LSE_IS_ENABLED);
+
+	/* save link status information */
+	if (link)
+		*link = *li;
+
+	/* flag cleared so calling functions don't call AQ again */
+	hw->link.get_link_info = false;
+
+	return IXGBE_SUCCESS;
+}
+
+/**
+ * ixgbe_aci_set_event_mask - set event mask
+ * @hw: pointer to the HW struct
+ * @port_num: port number of the physical function
+ * @mask: event mask to be set
+ *
+ * Set the event mask using ACI command (0x0613).
+ *
+ * Return: the exit code of the operation.
+ */
+s32 ixgbe_aci_set_event_mask(struct ixgbe_hw *hw, u8 port_num, u16 mask)
+{
+	struct ixgbe_aci_cmd_set_event_mask *cmd;
+	struct ixgbe_aci_desc desc;
+
+	cmd = &desc.params.set_event_mask;
+
+	ixgbe_fill_dflt_direct_cmd_desc(&desc, ixgbe_aci_opc_set_event_mask);
+
+	cmd->event_mask = IXGBE_CPU_TO_LE16(mask);
+	return ixgbe_aci_send_cmd(hw, &desc, NULL, 0);
+}
+
+/**
+ * ixgbe_configure_lse - enable/disable link status events
+ * @hw: pointer to the HW struct
+ * @activate: bool value deciding if lse should be enabled nor disabled
+ * @mask: event mask to be set; a set bit means deactivation of the
+ * corresponding event
+ *
+ * Set the event mask and then enable or disable link status events
+ *
+ * Return: the exit code of the operation.
+ */
+s32 ixgbe_configure_lse(struct ixgbe_hw *hw, bool activate, u16 mask)
+{
+	s32 rc;
+
+	rc = ixgbe_aci_set_event_mask(hw, (u8)hw->bus.func, mask);
+	if (rc) {
+		return rc;
+	}
+
+	/* Enabling link status events generation by fw */
+	rc = ixgbe_aci_get_link_info(hw, activate, NULL);
+	if (rc) {
+		return rc;
+	}
+	return IXGBE_SUCCESS;
+}
+
+/**
+ * ixgbe_aci_get_netlist_node - get a node handle
+ * @hw: pointer to the hw struct
+ * @cmd: get_link_topo AQ structure
+ * @node_part_number: output node part number if node found
+ * @node_handle: output node handle parameter if node found
+ *
+ * Get the netlist node and assigns it to
+ * the provided handle using ACI command (0x06E0).
+ *
+ * Return: the exit code of the operation.
+ */
+s32 ixgbe_aci_get_netlist_node(struct ixgbe_hw *hw,
+			       struct ixgbe_aci_cmd_get_link_topo *cmd,
+			       u8 *node_part_number, u16 *node_handle)
+{
+	struct ixgbe_aci_desc desc;
+
+	ixgbe_fill_dflt_direct_cmd_desc(&desc, ixgbe_aci_opc_get_link_topo);
+	desc.params.get_link_topo = *cmd;
+
+	if (ixgbe_aci_send_cmd(hw, &desc, NULL, 0))
+		return IXGBE_ERR_NOT_SUPPORTED;
+
+	if (node_handle)
+		*node_handle =
+			IXGBE_LE16_TO_CPU(desc.params.get_link_topo.addr.handle);
+	if (node_part_number)
+		*node_part_number = desc.params.get_link_topo.node_part_num;
+
+	return IXGBE_SUCCESS;
+}
+
+/**
+ * ixgbe_aci_get_netlist_node_pin - get a node pin handle
+ * @hw: pointer to the hw struct
+ * @cmd: get_link_topo_pin AQ structure
+ * @node_handle: output node handle parameter if node found
+ *
+ * Get the netlist node pin and assign it to
+ * the provided handle using ACI command (0x06E1).
+ *
+ * Return: the exit code of the operation.
+ */
+s32 ixgbe_aci_get_netlist_node_pin(struct ixgbe_hw *hw,
+				   struct ixgbe_aci_cmd_get_link_topo_pin *cmd,
+				   u16 *node_handle)
+{
+	struct ixgbe_aci_desc desc;
+
+	ixgbe_fill_dflt_direct_cmd_desc(&desc, ixgbe_aci_opc_get_link_topo_pin);
+	desc.params.get_link_topo_pin = *cmd;
+
+	if (ixgbe_aci_send_cmd(hw, &desc, NULL, 0))
+		return IXGBE_ERR_NOT_SUPPORTED;
+
+	if (node_handle)
+		*node_handle =
+			IXGBE_LE16_TO_CPU(desc.params.get_link_topo_pin.addr.handle);
+
+	return IXGBE_SUCCESS;
+}
+
+/**
+ * ixgbe_find_netlist_node - find a node handle
+ * @hw: pointer to the hw struct
+ * @node_type_ctx: type of netlist node to look for
+ * @node_part_number: node part number to look for
+ * @node_handle: output parameter if node found - optional
+ *
+ * Find and return the node handle for a given node type and part number in the
+ * netlist. When found IXGBE_SUCCESS is returned, IXGBE_ERR_NOT_SUPPORTED
+ * otherwise. If @node_handle provided, it would be set to found node handle.
+ *
+ * Return: the exit code of the operation.
+ */
+s32 ixgbe_find_netlist_node(struct ixgbe_hw *hw, u8 node_type_ctx,
+			    u8 node_part_number, u16 *node_handle)
+{
+	struct ixgbe_aci_cmd_get_link_topo cmd;
+	u8 rec_node_part_number;
+	u16 rec_node_handle;
+	s32 status;
+	u8 idx;
+
+	for (idx = 0; idx < IXGBE_MAX_NETLIST_SIZE; idx++) {
+		memset(&cmd, 0, sizeof(cmd));
+
+		cmd.addr.topo_params.node_type_ctx =
+			(node_type_ctx << IXGBE_ACI_LINK_TOPO_NODE_TYPE_S);
+		cmd.addr.topo_params.index = idx;
+
+		status = ixgbe_aci_get_netlist_node(hw, &cmd,
+						    &rec_node_part_number,
+						    &rec_node_handle);
+		if (status)
+			return status;
+
+		if (rec_node_part_number == node_part_number) {
+			if (node_handle)
+				*node_handle = rec_node_handle;
+			return IXGBE_SUCCESS;
+		}
+	}
+
+	return IXGBE_ERR_NOT_SUPPORTED;
+}
+
+/**
+ * ixgbe_aci_sff_eeprom - read/write SFF EEPROM
+ * @hw: pointer to the HW struct
+ * @lport: bits [7:0] = logical port, bit [8] = logical port valid
+ * @bus_addr: I2C bus address of the eeprom (typically 0xA0, 0=topo default)
+ * @mem_addr: I2C offset. lower 8 bits for address, 8 upper bits zero padding.
+ * @page: QSFP page
+ * @page_bank_ctrl: configuration of SFF/CMIS paging and banking control
+ * @data: pointer to data buffer to be read/written to the I2C device.
+ * @length: 1-16 for read, 1 for write.
+ * @write: 0 read, 1 for write.
+ *
+ * Read/write SFF EEPROM using ACI command (0x06EE).
+ *
+ * Return: the exit code of the operation.
+ */
+s32 ixgbe_aci_sff_eeprom(struct ixgbe_hw *hw, u16 lport, u8 bus_addr,
+			 u16 mem_addr, u8 page, u8 page_bank_ctrl, u8 *data,
+			 u8 length, bool write)
+{
+	struct ixgbe_aci_cmd_sff_eeprom *cmd;
+	struct ixgbe_aci_desc desc;
+	s32 status;
+
+	if (!data || (mem_addr & 0xff00))
+		return IXGBE_ERR_PARAM;
+
+	ixgbe_fill_dflt_direct_cmd_desc(&desc, ixgbe_aci_opc_sff_eeprom);
+	cmd = &desc.params.read_write_sff_param;
+	desc.flags = IXGBE_CPU_TO_LE16(IXGBE_ACI_FLAG_RD);
+	cmd->lport_num = (u8)(lport & 0xff);
+	cmd->lport_num_valid = (u8)((lport >> 8) & 0x01);
+	cmd->i2c_bus_addr = IXGBE_CPU_TO_LE16(((bus_addr >> 1) &
+					 IXGBE_ACI_SFF_I2CBUS_7BIT_M) |
+					((page_bank_ctrl <<
+					  IXGBE_ACI_SFF_PAGE_BANK_CTRL_S) &
+					 IXGBE_ACI_SFF_PAGE_BANK_CTRL_M));
+	cmd->i2c_offset = IXGBE_CPU_TO_LE16(mem_addr & 0xff);
+	cmd->module_page = page;
+	if (write)
+		cmd->i2c_bus_addr |= IXGBE_CPU_TO_LE16(IXGBE_ACI_SFF_IS_WRITE);
+
+	status = ixgbe_aci_send_cmd(hw, &desc, data, length);
+	return status;
+}
+
+/**
  * ixgbe_aci_get_internal_data - get internal FW/HW data
  * @hw: pointer to the hardware structure
  * @cluster_id: specific cluster to dump
@@ -1337,6 +1883,848 @@ s32 ixgbe_aci_get_internal_data(struct ixgbe_hw *hw, u16 cluster_id,
 		if (ret_next_index)
 			*ret_next_index = IXGBE_LE32_TO_CPU(cmd->idx);
 	}
+
+	return status;
+}
+
+/**
+ * ixgbe_get_media_type_E610 - Gets media type
+ * @hw: pointer to the HW struct
+ *
+ * In order to get the media type, the function gets PHY
+ * capabilities and later on use them to identify the PHY type
+ * checking phy_type_high and phy_type_low.
+ *
+ * Return: the type of media in form of ixgbe_media_type enum
+ * or ixgbe_media_type_unknown in case of an error.
+ */
+enum ixgbe_media_type ixgbe_get_media_type_E610(struct ixgbe_hw *hw)
+{
+	struct ixgbe_aci_cmd_get_phy_caps_data pcaps;
+	u64 phy_mask = 0;
+	s32 rc;
+	u8 i;
+
+	rc = ixgbe_update_link_info(hw);
+	if (rc) {
+		return ixgbe_media_type_unknown;
+	}
+
+	/* If there is no link but PHY (dongle) is available SW should use
+	 * Get PHY Caps admin command instead of Get Link Status, find most
+	 * significant bit that is set in PHY types reported by the command
+	 * and use it to discover media type.
+	 */
+	if (!(hw->link.link_info.link_info & IXGBE_ACI_LINK_UP) &&
+	    (hw->link.link_info.link_info & IXGBE_ACI_MEDIA_AVAILABLE)) {
+		/* Get PHY Capabilities */
+		rc = ixgbe_aci_get_phy_caps(hw, false,
+					    IXGBE_ACI_REPORT_TOPO_CAP_MEDIA,
+					    &pcaps);
+		if (rc) {
+			return ixgbe_media_type_unknown;
+		}
+
+		/* Check if there is some bit set in phy_type_high */
+		for (i = 64; i > 0; i--) {
+			phy_mask = (u64)((u64)1 << (i - 1));
+			if ((pcaps.phy_type_high & phy_mask) != 0) {
+				/* If any bit is set treat it as PHY type */
+				hw->link.link_info.phy_type_high = phy_mask;
+				hw->link.link_info.phy_type_low = 0;
+				break;
+			}
+			phy_mask = 0;
+		}
+
+		/* If nothing found in phy_type_high search in phy_type_low */
+		if (phy_mask == 0) {
+			for (i = 64; i > 0; i--) {
+				phy_mask = (u64)((u64)1 << (i - 1));
+				if ((pcaps.phy_type_low & phy_mask) != 0) {
+					/* If any bit is set treat it as PHY type */
+					hw->link.link_info.phy_type_high = 0;
+					hw->link.link_info.phy_type_low = phy_mask;
+					break;
+				}
+			}
+		}
+
+		/* Based on search above try to discover media type */
+		hw->phy.media_type = ixgbe_get_media_type_from_phy_type(hw);
+	}
+
+	return hw->phy.media_type;
+}
+
+/**
+ * ixgbe_setup_link_E610 - Set up link
+ * @hw: pointer to hardware structure
+ * @speed: new link speed
+ * @autoneg_wait: true when waiting for completion is needed
+ *
+ * Set up the link with the specified speed.
+ *
+ * Return: the exit code of the operation.
+ */
+s32 ixgbe_setup_link_E610(struct ixgbe_hw *hw, ixgbe_link_speed speed,
+			  bool autoneg_wait)
+{
+
+	/* Simply request FW to perform proper PHY setup */
+	return hw->phy.ops.setup_link_speed(hw, speed, autoneg_wait);
+}
+
+/**
+ * ixgbe_check_link_E610 - Determine link and speed status
+ * @hw: pointer to hardware structure
+ * @speed: pointer to link speed
+ * @link_up: true when link is up
+ * @link_up_wait_to_complete: bool used to wait for link up or not
+ *
+ * Determine if the link is up and the current link speed
+ * using ACI command (0x0607).
+ *
+ * Return: the exit code of the operation.
+ */
+s32 ixgbe_check_link_E610(struct ixgbe_hw *hw, ixgbe_link_speed *speed,
+			  bool *link_up, bool link_up_wait_to_complete)
+{
+	s32 rc;
+	u32 i;
+
+	if (!speed || !link_up)
+		return IXGBE_ERR_PARAM;
+
+	/* Set get_link_info flag to ensure that fresh
+	 * link information will be obtained from FW
+	 * by sending Get Link Status admin command. */
+	hw->link.get_link_info = true;
+
+	/* Update link information in adapter context. */
+	rc = ixgbe_get_link_status(hw, link_up);
+	if (rc)
+		return rc;
+
+	/* Wait for link up if it was requested. */
+	if (link_up_wait_to_complete && *link_up == false) {
+		for (i = 0; i < hw->mac.max_link_up_time; i++) {
+			msec_delay(100);
+			hw->link.get_link_info = true;
+			rc = ixgbe_get_link_status(hw, link_up);
+			if (rc)
+				return rc;
+			if (*link_up)
+				break;
+		}
+	}
+
+	/* Use link information in adapter context updated by the call
+	 * to ixgbe_get_link_status() to determine current link speed.
+	 * Link speed information is valid only when link up was
+	 * reported by FW. */
+	if (*link_up) {
+		switch (hw->link.link_info.link_speed) {
+		case IXGBE_ACI_LINK_SPEED_10MB:
+			*speed = IXGBE_LINK_SPEED_10_FULL;
+			break;
+		case IXGBE_ACI_LINK_SPEED_100MB:
+			*speed = IXGBE_LINK_SPEED_100_FULL;
+			break;
+		case IXGBE_ACI_LINK_SPEED_1000MB:
+			*speed = IXGBE_LINK_SPEED_1GB_FULL;
+			break;
+		case IXGBE_ACI_LINK_SPEED_2500MB:
+			*speed = IXGBE_LINK_SPEED_2_5GB_FULL;
+			break;
+		case IXGBE_ACI_LINK_SPEED_5GB:
+			*speed = IXGBE_LINK_SPEED_5GB_FULL;
+			break;
+		case IXGBE_ACI_LINK_SPEED_10GB:
+			*speed = IXGBE_LINK_SPEED_10GB_FULL;
+			break;
+		default:
+			*speed = IXGBE_LINK_SPEED_UNKNOWN;
+			break;
+		}
+	} else {
+		*speed = IXGBE_LINK_SPEED_UNKNOWN;
+	}
+
+	return IXGBE_SUCCESS;
+}
+
+/**
+ * ixgbe_get_link_capabilities_E610 - Determine link capabilities
+ * @hw: pointer to hardware structure
+ * @speed: pointer to link speed
+ * @autoneg: true when autoneg or autotry is enabled
+ *
+ * Determine speed and AN parameters of a link.
+ *
+ * Return: the exit code of the operation.
+ */
+s32 ixgbe_get_link_capabilities_E610(struct ixgbe_hw *hw,
+				     ixgbe_link_speed *speed,
+				     bool *autoneg)
+{
+
+	if (!speed || !autoneg)
+		return IXGBE_ERR_PARAM;
+
+	*autoneg = true;
+	*speed = hw->phy.speeds_supported;
+
+	return IXGBE_SUCCESS;
+}
+
+/**
+ * ixgbe_cfg_phy_fc - Configure PHY Flow Control (FC) data based on FC mode
+ * @hw: pointer to hardware structure
+ * @cfg: PHY configuration data to set FC mode
+ * @req_mode: FC mode to configure
+ *
+ * Configures PHY Flow Control according to the provided configuration.
+ *
+ * Return: the exit code of the operation.
+ */
+s32 ixgbe_cfg_phy_fc(struct ixgbe_hw *hw,
+		     struct ixgbe_aci_cmd_set_phy_cfg_data *cfg,
+		     enum ixgbe_fc_mode req_mode)
+{
+	struct ixgbe_aci_cmd_get_phy_caps_data* pcaps = NULL;
+	s32 status = IXGBE_SUCCESS;
+	u8 pause_mask = 0x0;
+
+	if (!cfg)
+		return IXGBE_ERR_PARAM;
+
+	switch (req_mode) {
+	case ixgbe_fc_auto:
+	{
+		pcaps = (struct ixgbe_aci_cmd_get_phy_caps_data *)
+			ixgbe_malloc(hw, sizeof(*pcaps));
+		if (!pcaps) {
+			status = IXGBE_ERR_OUT_OF_MEM;
+			goto out;
+		}
+
+		/* Query the value of FC that both the NIC and the attached
+		 * media can do. */
+		status = ixgbe_aci_get_phy_caps(hw, false,
+			IXGBE_ACI_REPORT_TOPO_CAP_MEDIA, pcaps);
+		if (status)
+			goto out;
+
+		pause_mask |= pcaps->caps & IXGBE_ACI_PHY_EN_TX_LINK_PAUSE;
+		pause_mask |= pcaps->caps & IXGBE_ACI_PHY_EN_RX_LINK_PAUSE;
+
+		break;
+	}
+	case ixgbe_fc_full:
+		pause_mask |= IXGBE_ACI_PHY_EN_TX_LINK_PAUSE;
+		pause_mask |= IXGBE_ACI_PHY_EN_RX_LINK_PAUSE;
+		break;
+	case ixgbe_fc_rx_pause:
+		pause_mask |= IXGBE_ACI_PHY_EN_RX_LINK_PAUSE;
+		break;
+	case ixgbe_fc_tx_pause:
+		pause_mask |= IXGBE_ACI_PHY_EN_TX_LINK_PAUSE;
+		break;
+	default:
+		break;
+	}
+
+	/* clear the old pause settings */
+	cfg->caps &= ~(IXGBE_ACI_PHY_EN_TX_LINK_PAUSE |
+		IXGBE_ACI_PHY_EN_RX_LINK_PAUSE);
+
+	/* set the new capabilities */
+	cfg->caps |= pause_mask;
+
+out:
+	if (pcaps)
+		ixgbe_free(hw, pcaps);
+	return status;
+}
+
+/**
+ * ixgbe_setup_fc_E610 - Set up flow control
+ * @hw: pointer to hardware structure
+ *
+ * Set up flow control. This has to be done during init time.
+ *
+ * Return: the exit code of the operation.
+ */
+s32 ixgbe_setup_fc_E610(struct ixgbe_hw *hw)
+{
+	struct ixgbe_aci_cmd_get_phy_caps_data pcaps = { 0 };
+	struct ixgbe_aci_cmd_set_phy_cfg_data cfg = { 0 };
+	s32 status;
+
+	/* Get the current PHY config */
+	status = ixgbe_aci_get_phy_caps(hw, false,
+		IXGBE_ACI_REPORT_ACTIVE_CFG, &pcaps);
+	if (status)
+		return status;
+
+	ixgbe_copy_phy_caps_to_cfg(&pcaps, &cfg);
+
+	/* Configure the set PHY data */
+	status = ixgbe_cfg_phy_fc(hw, &cfg, hw->fc.requested_mode);
+	if (status)
+		return status;
+
+	/* If the capabilities have changed, then set the new config */
+	if (cfg.caps != pcaps.caps) {
+		cfg.caps |= IXGBE_ACI_PHY_ENA_AUTO_LINK_UPDT;
+
+		status = ixgbe_aci_set_phy_cfg(hw, &cfg);
+		if (status)
+			return status;
+	}
+
+	return status;
+}
+
+/**
+ * ixgbe_fc_autoneg_E610 - Configure flow control
+ * @hw: pointer to hardware structure
+ *
+ * Configure Flow Control.
+ */
+void ixgbe_fc_autoneg_E610(struct ixgbe_hw *hw)
+{
+	s32 status;
+
+	/* Get current link status.
+	 * Current FC mode will be stored in the hw context. */
+	status = ixgbe_aci_get_link_info(hw, false, NULL);
+	if (status) {
+		goto out;
+	}
+
+	/* Check if the link is up */
+	if (!(hw->link.link_info.link_info & IXGBE_ACI_LINK_UP)) {
+		status = IXGBE_ERR_FC_NOT_NEGOTIATED;
+		goto out;
+	}
+
+	/* Check if auto-negotiation has completed */
+	if (!(hw->link.link_info.an_info & IXGBE_ACI_AN_COMPLETED)) {
+		status = IXGBE_ERR_FC_NOT_NEGOTIATED;
+		goto out;
+	}
+
+out:
+	if (status == IXGBE_SUCCESS) {
+		hw->fc.fc_was_autonegged = true;
+	} else {
+		hw->fc.fc_was_autonegged = false;
+		hw->fc.current_mode = hw->fc.requested_mode;
+	}
+}
+
+/**
+ * ixgbe_disable_rx_E610 - Disable RX unit
+ * @hw: pointer to hardware structure
+ *
+ * Disable RX DMA unit on E610 with use of ACI command (0x000C).
+ *
+ * Return: the exit code of the operation.
+ */
+void ixgbe_disable_rx_E610(struct ixgbe_hw *hw)
+{
+	u32 rxctrl;
+
+	DEBUGFUNC("ixgbe_disable_rx_E610");
+
+	rxctrl = IXGBE_READ_REG(hw, IXGBE_RXCTRL);
+	if (rxctrl & IXGBE_RXCTRL_RXEN) {
+		u32 pfdtxgswc;
+		s32 status;
+
+		pfdtxgswc = IXGBE_READ_REG(hw, IXGBE_PFDTXGSWC);
+		if (pfdtxgswc & IXGBE_PFDTXGSWC_VT_LBEN) {
+			pfdtxgswc &= ~IXGBE_PFDTXGSWC_VT_LBEN;
+			IXGBE_WRITE_REG(hw, IXGBE_PFDTXGSWC, pfdtxgswc);
+			hw->mac.set_lben = true;
+		} else {
+			hw->mac.set_lben = false;
+		}
+
+		status = ixgbe_aci_disable_rxen(hw);
+
+		/* If we fail - disable RX using register write */
+		if (status) {
+			rxctrl = IXGBE_READ_REG(hw, IXGBE_RXCTRL);
+			if (rxctrl & IXGBE_RXCTRL_RXEN) {
+				rxctrl &= ~IXGBE_RXCTRL_RXEN;
+				IXGBE_WRITE_REG(hw, IXGBE_RXCTRL, rxctrl);
+			}
+		}
+	}
+}
+
+/**
+ * ixgbe_init_phy_ops_E610 - PHY specific init
+ * @hw: pointer to hardware structure
+ *
+ * Initialize any function pointers that were not able to be
+ * set during init_shared_code because the PHY type was not known.
+ *
+ * Return: the exit code of the operation.
+ */
+s32 ixgbe_init_phy_ops_E610(struct ixgbe_hw *hw)
+{
+	struct ixgbe_mac_info *mac = &hw->mac;
+	struct ixgbe_phy_info *phy = &hw->phy;
+	s32 ret_val;
+
+	phy->ops.identify_sfp = ixgbe_identify_module_E610;
+	phy->ops.read_reg = NULL; /* PHY reg access is not required */
+	phy->ops.write_reg = NULL;
+	phy->ops.read_reg_mdi = NULL;
+	phy->ops.write_reg_mdi = NULL;
+	phy->ops.setup_link = ixgbe_setup_phy_link_E610;
+	phy->ops.get_firmware_version = ixgbe_get_phy_firmware_version_E610;
+	phy->ops.read_i2c_byte = NULL; /* disabled for E610 */
+	phy->ops.write_i2c_byte = NULL; /* disabled for E610 */
+	phy->ops.read_i2c_sff8472 = ixgbe_read_i2c_sff8472_E610;
+	phy->ops.read_i2c_eeprom = ixgbe_read_i2c_eeprom_E610;
+	phy->ops.write_i2c_eeprom = ixgbe_write_i2c_eeprom_E610;
+	phy->ops.i2c_bus_clear = NULL; /* do not use generic implementation  */
+	phy->ops.check_overtemp = ixgbe_check_overtemp_E610;
+	if (mac->ops.get_media_type(hw) == ixgbe_media_type_copper)
+		phy->ops.set_phy_power = ixgbe_set_phy_power_E610;
+	else
+		phy->ops.set_phy_power = NULL;
+	phy->ops.enter_lplu = ixgbe_enter_lplu_E610;
+	phy->ops.handle_lasi = NULL; /* no implementation for E610 */
+	phy->ops.read_i2c_byte_unlocked = NULL; /* disabled for E610 */
+	phy->ops.write_i2c_byte_unlocked = NULL; /* disabled for E610 */
+
+	/* TODO: Set functions pointers based on device ID */
+
+	/* Identify the PHY */
+	ret_val = phy->ops.identify(hw);
+	if (ret_val != IXGBE_SUCCESS)
+		return ret_val;
+
+	/* TODO: Set functions pointers based on PHY type */
+
+	return ret_val;
+}
+
+/**
+ * ixgbe_identify_phy_E610 - Identify PHY
+ * @hw: pointer to hardware structure
+ *
+ * Determine PHY type, supported speeds and PHY ID.
+ *
+ * Return: the exit code of the operation.
+ */
+s32 ixgbe_identify_phy_E610(struct ixgbe_hw *hw)
+{
+	struct ixgbe_aci_cmd_get_phy_caps_data pcaps;
+	s32 rc;
+
+	/* Set PHY type */
+	hw->phy.type = ixgbe_phy_fw;
+
+	rc = ixgbe_aci_get_phy_caps(hw, false, IXGBE_ACI_REPORT_TOPO_CAP_MEDIA,
+				    &pcaps);
+	if (rc)
+		return rc;
+
+	if (!(pcaps.module_compliance_enforcement &
+	      IXGBE_ACI_MOD_ENFORCE_STRICT_MODE)) {
+		/* Handle lenient mode */
+		rc = ixgbe_aci_get_phy_caps(hw, false,
+					    IXGBE_ACI_REPORT_TOPO_CAP_NO_MEDIA,
+					    &pcaps);
+		if (rc)
+			return rc;
+	}
+
+	/* Determine supported speeds */
+	hw->phy.speeds_supported = IXGBE_LINK_SPEED_UNKNOWN;
+
+	if (pcaps.phy_type_high & IXGBE_PHY_TYPE_HIGH_10BASE_T ||
+	    pcaps.phy_type_high & IXGBE_PHY_TYPE_HIGH_10M_SGMII)
+		hw->phy.speeds_supported |= IXGBE_LINK_SPEED_10_FULL;
+	if (pcaps.phy_type_low  & IXGBE_PHY_TYPE_LOW_100BASE_TX ||
+	    pcaps.phy_type_low  & IXGBE_PHY_TYPE_LOW_100M_SGMII ||
+	    pcaps.phy_type_high & IXGBE_PHY_TYPE_HIGH_100M_USXGMII)
+		hw->phy.speeds_supported |= IXGBE_LINK_SPEED_100_FULL;
+	if (pcaps.phy_type_low  & IXGBE_PHY_TYPE_LOW_1000BASE_T  ||
+	    pcaps.phy_type_low  & IXGBE_PHY_TYPE_LOW_1000BASE_SX ||
+	    pcaps.phy_type_low  & IXGBE_PHY_TYPE_LOW_1000BASE_LX ||
+	    pcaps.phy_type_low  & IXGBE_PHY_TYPE_LOW_1000BASE_KX ||
+	    pcaps.phy_type_low  & IXGBE_PHY_TYPE_LOW_1G_SGMII    ||
+	    pcaps.phy_type_high & IXGBE_PHY_TYPE_HIGH_1G_USXGMII)
+		hw->phy.speeds_supported |= IXGBE_LINK_SPEED_1GB_FULL;
+	if (pcaps.phy_type_low  & IXGBE_PHY_TYPE_LOW_2500BASE_T   ||
+	    pcaps.phy_type_low  & IXGBE_PHY_TYPE_LOW_2500BASE_X   ||
+	    pcaps.phy_type_low  & IXGBE_PHY_TYPE_LOW_2500BASE_KX  ||
+	    pcaps.phy_type_high & IXGBE_PHY_TYPE_HIGH_2500M_SGMII ||
+	    pcaps.phy_type_high & IXGBE_PHY_TYPE_HIGH_2500M_USXGMII)
+		hw->phy.speeds_supported |= IXGBE_LINK_SPEED_2_5GB_FULL;
+	if (pcaps.phy_type_low  & IXGBE_PHY_TYPE_LOW_5GBASE_T  ||
+	    pcaps.phy_type_low  & IXGBE_PHY_TYPE_LOW_5GBASE_KR ||
+	    pcaps.phy_type_high & IXGBE_PHY_TYPE_HIGH_5G_USXGMII)
+		hw->phy.speeds_supported |= IXGBE_LINK_SPEED_5GB_FULL;
+	if (pcaps.phy_type_low  & IXGBE_PHY_TYPE_LOW_10GBASE_T       ||
+	    pcaps.phy_type_low  & IXGBE_PHY_TYPE_LOW_10G_SFI_DA      ||
+	    pcaps.phy_type_low  & IXGBE_PHY_TYPE_LOW_10GBASE_SR      ||
+	    pcaps.phy_type_low  & IXGBE_PHY_TYPE_LOW_10GBASE_LR      ||
+	    pcaps.phy_type_low  & IXGBE_PHY_TYPE_LOW_10GBASE_KR_CR1  ||
+	    pcaps.phy_type_low  & IXGBE_PHY_TYPE_LOW_10G_SFI_AOC_ACC ||
+	    pcaps.phy_type_low  & IXGBE_PHY_TYPE_LOW_10G_SFI_C2C     ||
+	    pcaps.phy_type_high & IXGBE_PHY_TYPE_HIGH_10G_USXGMII)
+		hw->phy.speeds_supported |= IXGBE_LINK_SPEED_10GB_FULL;
+
+	/* Initialize autoneg speeds */
+	if (!hw->phy.autoneg_advertised)
+		hw->phy.autoneg_advertised = hw->phy.speeds_supported;
+
+	/* Set PHY ID */
+	memcpy(&hw->phy.id, pcaps.phy_id_oui, sizeof(u32));
+
+	return IXGBE_SUCCESS;
+}
+
+/**
+ * ixgbe_identify_module_E610 - Identify SFP module type
+ * @hw: pointer to hardware structure
+ *
+ * Identify the SFP module type.
+ *
+ * Return: the exit code of the operation.
+ */
+s32 ixgbe_identify_module_E610(struct ixgbe_hw *hw)
+{
+	bool media_available;
+	u8 module_type;
+	s32 rc;
+
+	rc = ixgbe_update_link_info(hw);
+	if (rc)
+		goto err;
+
+	media_available =
+		(hw->link.link_info.link_info &
+		 IXGBE_ACI_MEDIA_AVAILABLE) ? true : false;
+
+	if (media_available) {
+		hw->phy.sfp_type = ixgbe_sfp_type_unknown;
+
+		/* Get module type from hw context updated by ixgbe_update_link_info() */
+		module_type = hw->link.link_info.module_type[IXGBE_ACI_MOD_TYPE_IDENT];
+
+		if ((module_type & IXGBE_ACI_MOD_TYPE_BYTE1_SFP_PLUS_CU_PASSIVE) ||
+		    (module_type & IXGBE_ACI_MOD_TYPE_BYTE1_SFP_PLUS_CU_ACTIVE)) {
+			hw->phy.sfp_type = ixgbe_sfp_type_da_cu;
+		} else if (module_type & IXGBE_ACI_MOD_TYPE_BYTE1_10G_BASE_SR) {
+			hw->phy.sfp_type = ixgbe_sfp_type_sr;
+		} else if ((module_type & IXGBE_ACI_MOD_TYPE_BYTE1_10G_BASE_LR) ||
+			   (module_type & IXGBE_ACI_MOD_TYPE_BYTE1_10G_BASE_LRM)) {
+			hw->phy.sfp_type = ixgbe_sfp_type_lr;
+		}
+		rc = IXGBE_SUCCESS;
+	} else {
+		hw->phy.sfp_type = ixgbe_sfp_type_not_present;
+		rc = IXGBE_ERR_SFP_NOT_PRESENT;
+	}
+err:
+	return rc;
+}
+
+/**
+ * ixgbe_setup_phy_link_E610 - Sets up firmware-controlled PHYs
+ * @hw: pointer to hardware structure
+ *
+ * Set the parameters for the firmware-controlled PHYs.
+ *
+ * Return: the exit code of the operation.
+ */
+s32 ixgbe_setup_phy_link_E610(struct ixgbe_hw *hw)
+{
+	struct ixgbe_aci_cmd_get_phy_caps_data pcaps;
+	struct ixgbe_aci_cmd_set_phy_cfg_data pcfg;
+	u8 rmode = IXGBE_ACI_REPORT_ACTIVE_CFG;
+	s32 rc;
+
+	rc = ixgbe_aci_get_link_info(hw, false, NULL);
+	if (rc) {
+		goto err;
+	}
+
+	/* If media is not available get default config */
+	if (!(hw->link.link_info.link_info & IXGBE_ACI_MEDIA_AVAILABLE))
+		rmode = IXGBE_ACI_REPORT_DFLT_CFG;
+
+	rc = ixgbe_aci_get_phy_caps(hw, false, rmode, &pcaps);
+	if (rc) {
+		goto err;
+	}
+
+	ixgbe_copy_phy_caps_to_cfg(&pcaps, &pcfg);
+
+	/* Set default PHY types for a given speed */
+	pcfg.phy_type_low = 0;
+	pcfg.phy_type_high = 0;
+
+	if (hw->phy.autoneg_advertised & IXGBE_LINK_SPEED_10_FULL) {
+		pcfg.phy_type_high |= IXGBE_PHY_TYPE_HIGH_10BASE_T;
+		pcfg.phy_type_high |= IXGBE_PHY_TYPE_HIGH_10M_SGMII;
+	}
+	if (hw->phy.autoneg_advertised & IXGBE_LINK_SPEED_100_FULL) {
+		pcfg.phy_type_low  |= IXGBE_PHY_TYPE_LOW_100BASE_TX;
+		pcfg.phy_type_low  |= IXGBE_PHY_TYPE_LOW_100M_SGMII;
+		pcfg.phy_type_high |= IXGBE_PHY_TYPE_HIGH_100M_USXGMII;
+	}
+	if (hw->phy.autoneg_advertised & IXGBE_LINK_SPEED_1GB_FULL) {
+		pcfg.phy_type_low  |= IXGBE_PHY_TYPE_LOW_1000BASE_T;
+		pcfg.phy_type_low  |= IXGBE_PHY_TYPE_LOW_1000BASE_SX;
+		pcfg.phy_type_low  |= IXGBE_PHY_TYPE_LOW_1000BASE_LX;
+		pcfg.phy_type_low  |= IXGBE_PHY_TYPE_LOW_1000BASE_KX;
+		pcfg.phy_type_low  |= IXGBE_PHY_TYPE_LOW_1G_SGMII;
+		pcfg.phy_type_high |= IXGBE_PHY_TYPE_HIGH_1G_USXGMII;
+	}
+	if (hw->phy.autoneg_advertised & IXGBE_LINK_SPEED_2_5GB_FULL) {
+		pcfg.phy_type_low  |= IXGBE_PHY_TYPE_LOW_2500BASE_T;
+		pcfg.phy_type_low  |= IXGBE_PHY_TYPE_LOW_2500BASE_X;
+		pcfg.phy_type_low  |= IXGBE_PHY_TYPE_LOW_2500BASE_KX;
+		pcfg.phy_type_high |= IXGBE_PHY_TYPE_HIGH_2500M_SGMII;
+		pcfg.phy_type_high |= IXGBE_PHY_TYPE_HIGH_2500M_USXGMII;
+	}
+	if (hw->phy.autoneg_advertised & IXGBE_LINK_SPEED_5GB_FULL) {
+		pcfg.phy_type_low  |= IXGBE_PHY_TYPE_LOW_5GBASE_T;
+		pcfg.phy_type_low  |= IXGBE_PHY_TYPE_LOW_5GBASE_KR;
+		pcfg.phy_type_high |= IXGBE_PHY_TYPE_HIGH_5G_USXGMII;
+	}
+	if (hw->phy.autoneg_advertised & IXGBE_LINK_SPEED_10GB_FULL) {
+		pcfg.phy_type_low  |= IXGBE_PHY_TYPE_LOW_10GBASE_T;
+		pcfg.phy_type_low  |= IXGBE_PHY_TYPE_LOW_10G_SFI_DA;
+		pcfg.phy_type_low  |= IXGBE_PHY_TYPE_LOW_10GBASE_SR;
+		pcfg.phy_type_low  |= IXGBE_PHY_TYPE_LOW_10GBASE_LR;
+		pcfg.phy_type_low  |= IXGBE_PHY_TYPE_LOW_10GBASE_KR_CR1;
+		pcfg.phy_type_low  |= IXGBE_PHY_TYPE_LOW_10G_SFI_AOC_ACC;
+		pcfg.phy_type_low  |= IXGBE_PHY_TYPE_LOW_10G_SFI_C2C;
+		pcfg.phy_type_high |= IXGBE_PHY_TYPE_HIGH_10G_USXGMII;
+	}
+
+	/* Mask the set values to avoid requesting unsupported link types */
+	pcfg.phy_type_low &= pcaps.phy_type_low;
+	pcfg.phy_type_high &= pcaps.phy_type_high;
+
+	if (pcfg.phy_type_high != pcaps.phy_type_high ||
+	    pcfg.phy_type_low != pcaps.phy_type_low ||
+	    pcfg.caps != pcaps.caps) {
+		pcfg.caps |= IXGBE_ACI_PHY_ENA_LINK;
+		pcfg.caps |= IXGBE_ACI_PHY_ENA_AUTO_LINK_UPDT;
+
+		rc = ixgbe_aci_set_phy_cfg(hw, &pcfg);
+	}
+
+err:
+	return rc;
+}
+
+/**
+ * ixgbe_get_phy_firmware_version_E610 - Gets the PHY Firmware Version
+ * @hw: pointer to hardware structure
+ * @firmware_version: pointer to the PHY Firmware Version
+ *
+ * Determines PHY FW version based on response to Get PHY Capabilities
+ * admin command (0x0600).
+ *
+ * Return: the exit code of the operation.
+ */
+s32 ixgbe_get_phy_firmware_version_E610(struct ixgbe_hw *hw,
+					u16 *firmware_version)
+{
+	struct ixgbe_aci_cmd_get_phy_caps_data pcaps;
+	s32 status;
+
+	if (!firmware_version)
+		return IXGBE_ERR_PARAM;
+
+	status = ixgbe_aci_get_phy_caps(hw, false,
+					IXGBE_ACI_REPORT_ACTIVE_CFG,
+					&pcaps);
+	if (status)
+		return status;
+
+	/* TODO: determine which bytes of the 8-byte phy_fw_ver
+	 * field should be written to the 2-byte firmware_version
+	 * output argument. */
+	memcpy(firmware_version, pcaps.phy_fw_ver, sizeof(u16));
+
+	return IXGBE_SUCCESS;
+}
+
+/**
+ * ixgbe_read_i2c_sff8472_E610 - Reads 8 bit word over I2C interface
+ * @hw: pointer to hardware structure
+ * @byte_offset: byte offset at address 0xA2
+ * @sff8472_data: value read
+ *
+ * Performs byte read operation from SFP module's SFF-8472 data over I2C.
+ *
+ * Return: the exit code of the operation.
+ **/
+s32 ixgbe_read_i2c_sff8472_E610(struct ixgbe_hw *hw, u8 byte_offset,
+				u8 *sff8472_data)
+{
+	return ixgbe_aci_sff_eeprom(hw, 0, IXGBE_I2C_EEPROM_DEV_ADDR2,
+				    byte_offset, 0,
+				    IXGBE_ACI_SFF_NO_PAGE_BANK_UPDATE,
+				    sff8472_data, 1, false);
+}
+
+/**
+ * ixgbe_read_i2c_eeprom_E610 - Reads 8 bit EEPROM word over I2C interface
+ * @hw: pointer to hardware structure
+ * @byte_offset: EEPROM byte offset to read
+ * @eeprom_data: value read
+ *
+ * Performs byte read operation from SFP module's EEPROM over I2C interface.
+ *
+ * Return: the exit code of the operation.
+ **/
+s32 ixgbe_read_i2c_eeprom_E610(struct ixgbe_hw *hw, u8 byte_offset,
+			       u8 *eeprom_data)
+{
+	return ixgbe_aci_sff_eeprom(hw, 0, IXGBE_I2C_EEPROM_DEV_ADDR,
+				    byte_offset, 0,
+				    IXGBE_ACI_SFF_NO_PAGE_BANK_UPDATE,
+				    eeprom_data, 1, false);
+}
+
+/**
+ * ixgbe_write_i2c_eeprom_E610 - Writes 8 bit EEPROM word over I2C interface
+ * @hw: pointer to hardware structure
+ * @byte_offset: EEPROM byte offset to write
+ * @eeprom_data: value to write
+ *
+ * Performs byte write operation to SFP module's EEPROM over I2C interface.
+ *
+ * Return: the exit code of the operation.
+ **/
+s32 ixgbe_write_i2c_eeprom_E610(struct ixgbe_hw *hw, u8 byte_offset,
+				u8 eeprom_data)
+{
+	return ixgbe_aci_sff_eeprom(hw, 0, IXGBE_I2C_EEPROM_DEV_ADDR,
+				    byte_offset, 0,
+				    IXGBE_ACI_SFF_NO_PAGE_BANK_UPDATE,
+				    &eeprom_data, 1, true);
+}
+
+/**
+ * ixgbe_check_overtemp_E610 - Check firmware-controlled PHYs for overtemp
+ * @hw: pointer to hardware structure
+ *
+ * Get the link status and check if the PHY temperature alarm detected.
+ *
+ * Return: the exit code of the operation.
+ */
+s32 ixgbe_check_overtemp_E610(struct ixgbe_hw *hw)
+{
+	struct ixgbe_aci_cmd_get_link_status_data link_data = { 0 };
+	struct ixgbe_aci_cmd_get_link_status *resp;
+	struct ixgbe_aci_desc desc;
+	s32 status = IXGBE_SUCCESS;
+
+	if (!hw)
+		return IXGBE_ERR_PARAM;
+
+	ixgbe_fill_dflt_direct_cmd_desc(&desc, ixgbe_aci_opc_get_link_status);
+	resp = &desc.params.get_link_status;
+	resp->cmd_flags = IXGBE_CPU_TO_LE16(IXGBE_ACI_LSE_NOP);
+
+	status = ixgbe_aci_send_cmd(hw, &desc, &link_data, sizeof(link_data));
+	if (status != IXGBE_SUCCESS)
+		return status;
+
+	if (link_data.ext_info & IXGBE_ACI_LINK_PHY_TEMP_ALARM) {
+		ERROR_REPORT1(IXGBE_ERROR_CAUTION,
+			      "PHY Temperature Alarm detected");
+		status = IXGBE_ERR_OVERTEMP;
+	}
+
+	return status;
+}
+
+/**
+ * ixgbe_set_phy_power_E610 - Control power for copper PHY
+ * @hw: pointer to hardware structure
+ * @on: true for on, false for off
+ *
+ * Set the power on/off of the PHY
+ * by getting its capabilities and setting the appropriate
+ * configuration parameters.
+ *
+ * Return: the exit code of the operation.
+ */
+s32 ixgbe_set_phy_power_E610(struct ixgbe_hw *hw, bool on)
+{
+	struct ixgbe_aci_cmd_get_phy_caps_data phy_caps = { 0 };
+	struct ixgbe_aci_cmd_set_phy_cfg_data phy_cfg = { 0 };
+	s32 status;
+
+	status = ixgbe_aci_get_phy_caps(hw, false,
+		IXGBE_ACI_REPORT_ACTIVE_CFG, &phy_caps);
+	if (status != IXGBE_SUCCESS)
+		return status;
+
+	ixgbe_copy_phy_caps_to_cfg(&phy_caps, &phy_cfg);
+
+	if (on) {
+		phy_cfg.caps &= ~IXGBE_ACI_PHY_ENA_LOW_POWER;
+	} else {
+		phy_cfg.caps |= IXGBE_ACI_PHY_ENA_LOW_POWER;
+	}
+
+	/* PHY is already in requested power mode */
+	if (phy_caps.caps == phy_cfg.caps)
+		return IXGBE_SUCCESS;
+
+	phy_cfg.caps |= IXGBE_ACI_PHY_ENA_LINK;
+	phy_cfg.caps |= IXGBE_ACI_PHY_ENA_AUTO_LINK_UPDT;
+
+	status = ixgbe_aci_set_phy_cfg(hw, &phy_cfg);
+
+	return status;
+}
+
+/**
+ * ixgbe_enter_lplu_E610 - Transition to low power states
+ * @hw: pointer to hardware structure
+ *
+ * Configures Low Power Link Up on transition to low power states
+ * (from D0 to non-D0). Link is required to enter LPLU so avoid resetting the
+ * X557 PHY immediately prior to entering LPLU.
+ *
+ * Return: the exit code of the operation.
+ */
+s32 ixgbe_enter_lplu_E610(struct ixgbe_hw *hw)
+{
+	struct ixgbe_aci_cmd_get_phy_caps_data phy_caps = { 0 };
+	struct ixgbe_aci_cmd_set_phy_cfg_data phy_cfg = { 0 };
+	s32 status;
+
+	status = ixgbe_aci_get_phy_caps(hw, false,
+		IXGBE_ACI_REPORT_ACTIVE_CFG, &phy_caps);
+	if (status != IXGBE_SUCCESS)
+		return status;
+
+	ixgbe_copy_phy_caps_to_cfg(&phy_caps, &phy_cfg);
+
+	phy_cfg.low_power_ctrl_an |= IXGBE_ACI_PHY_EN_D3COLD_LOW_POWER_AUTONEG;
+
+	status = ixgbe_aci_set_phy_cfg(hw, &phy_cfg);
 
 	return status;
 }
