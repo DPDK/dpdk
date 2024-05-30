@@ -56,6 +56,20 @@ s32 ixgbe_find_netlist_node(struct ixgbe_hw *hw, u8 node_type_ctx,
 s32 ixgbe_aci_sff_eeprom(struct ixgbe_hw *hw, u16 lport, u8 bus_addr,
 			 u16 mem_addr, u8 page, u8 page_bank_ctrl, u8 *data,
 			 u8 length, bool write);
+s32 ixgbe_acquire_nvm(struct ixgbe_hw *hw,
+		      enum ixgbe_aci_res_access_type access);
+void ixgbe_release_nvm(struct ixgbe_hw *hw);
+
+s32 ixgbe_aci_read_nvm(struct ixgbe_hw *hw, u16 module_typeid, u32 offset,
+		       u16 length, void *data, bool last_command,
+		       bool read_shadow_ram);
+
+s32 ixgbe_nvm_validate_checksum(struct ixgbe_hw *hw);
+s32 ixgbe_nvm_recalculate_checksum(struct ixgbe_hw *hw);
+
+s32 ixgbe_read_sr_word_aci(struct ixgbe_hw  *hw, u16 offset, u16 *data);
+s32 ixgbe_read_flat_nvm(struct ixgbe_hw  *hw, u32 offset, u32 *length,
+			u8 *data, bool read_shadow_ram);
 s32 ixgbe_aci_get_internal_data(struct ixgbe_hw *hw, u16 cluster_id,
 				u16 table_id, u32 start, void *buf,
 				u16 buf_size, u16 *ret_buf_size,
@@ -90,5 +104,7 @@ s32 ixgbe_write_i2c_eeprom_E610(struct ixgbe_hw *hw, u8 byte_offset,
 s32 ixgbe_check_overtemp_E610(struct ixgbe_hw *hw);
 s32 ixgbe_set_phy_power_E610(struct ixgbe_hw *hw, bool on);
 s32 ixgbe_enter_lplu_E610(struct ixgbe_hw *hw);
+s32 ixgbe_read_ee_aci_E610(struct ixgbe_hw *hw, u16 offset, u16 *data);
+s32 ixgbe_validate_eeprom_checksum_E610(struct ixgbe_hw *hw, u16 *checksum_val);
 
 #endif /* _IXGBE_E610_H_ */
