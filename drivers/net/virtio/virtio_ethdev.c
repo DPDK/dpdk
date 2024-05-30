@@ -1320,6 +1320,8 @@ virtio_mac_addr_add(struct rte_eth_dev *dev, struct rte_ether_addr *mac_addr,
 		struct virtio_net_ctrl_mac *tbl
 			= rte_is_multicast_ether_addr(addr) ? mc : uc;
 
+		if (rte_is_zero_ether_addr(addr))
+			break;
 		memcpy(&tbl->macs[tbl->entries++], addr, RTE_ETHER_ADDR_LEN);
 	}
 
