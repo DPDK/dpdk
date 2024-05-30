@@ -9,6 +9,7 @@ sources = [
         'ixgbe_dcb_82598.c',
         'ixgbe_dcb_82599.c',
         'ixgbe_dcb.c',
+        'ixgbe_e610.c',
         'ixgbe_hv_vf.c',
         'ixgbe_mbx.c',
         'ixgbe_osdep.c',

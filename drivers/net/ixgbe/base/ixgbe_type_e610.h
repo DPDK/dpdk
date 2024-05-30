@@ -167,6 +167,14 @@
 /* [ms] timeout of waiting for resource release */
 #define IXGBE_ACI_RELEASE_RES_TIMEOUT		10000
 
+/* Timestamp spacing for Tools ACI: queue is active if spacing is within the range [LO..HI] */
+#define IXGBE_TOOLS_ACI_ACTIVE_STAMP_SPACING_LO      0
+#define IXGBE_TOOLS_ACI_ACTIVE_STAMP_SPACING_HI      200
+
+/* Timestamp spacing for Tools ACI: queue is expired if spacing is outside the range [LO..HI] */
+#define IXGBE_TOOLS_ACI_EXPIRED_STAMP_SPACING_LO     -5
+#define IXGBE_TOOLS_ACI_EXPIRED_STAMP_SPACING_HI     205
+
 /* FW defined boundary for a large buffer, 4k >= Large buffer > 512 bytes */
 #define IXGBE_ACI_LG_BUF		512
 
