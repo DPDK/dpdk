@@ -6,8 +6,8 @@
 import socket
 import traceback
 
-from paramiko import AutoAddPolicy, SSHClient, Transport  # type: ignore[import]
-from paramiko.ssh_exception import (  # type: ignore[import]
+from paramiko import AutoAddPolicy, SSHClient, Transport  # type: ignore[import-untyped]
+from paramiko.ssh_exception import (  # type: ignore[import-untyped]
     AuthenticationException,
     BadHostKeyException,
     NoValidConnectionsError,

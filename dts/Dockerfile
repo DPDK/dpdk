@@ -14,7 +14,7 @@ RUN apt-get -y update && apt-get -y upgrade && \
         pipx \
         python3-cachecontrol \
         openssh-client && \
-    pipx install poetry>=1.5.1 && pipx ensurepath
+    pipx install poetry>=1.8.2 && pipx ensurepath
 WORKDIR /dpdk/dts
 
 

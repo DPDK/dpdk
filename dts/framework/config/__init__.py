@@ -40,7 +40,7 @@ from enum import auto, unique
 from pathlib import Path
 from typing import Union
 
-import warlock  # type: ignore[import]
+import warlock  # type: ignore[import-untyped]
 import yaml
 
 from framework.config.types import (

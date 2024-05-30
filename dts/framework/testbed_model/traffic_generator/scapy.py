@@ -20,9 +20,9 @@ import types
 import xmlrpc.client
 from xmlrpc.server import SimpleXMLRPCServer
 
-import scapy.all  # type: ignore[import]
-from scapy.layers.l2 import Ether  # type: ignore[import]
-from scapy.packet import Packet  # type: ignore[import]
+import scapy.all  # type: ignore[import-untyped]
+from scapy.layers.l2 import Ether  # type: ignore[import-untyped]
+from scapy.packet import Packet  # type: ignore[import-untyped]
 
 from framework.config import OS, ScapyTrafficGeneratorConfig
 from framework.remote_session import PythonShell

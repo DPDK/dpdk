@@ -7,8 +7,8 @@ Configure SUT node to route traffic from if1 to if2.
 Send a packet to the SUT node, verify it comes back on the second port on the TG node.
 """
 
-from scapy.layers.inet import IP, UDP  # type: ignore[import]
-from scapy.layers.l2 import Ether  # type: ignore[import]
+from scapy.layers.inet import IP, UDP  # type: ignore[import-untyped]
+from scapy.layers.l2 import Ether  # type: ignore[import-untyped]
 
 from framework.test_suite import TestSuite
 

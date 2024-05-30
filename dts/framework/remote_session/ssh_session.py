@@ -7,13 +7,13 @@ import socket
 import traceback
 from pathlib import PurePath
 
-from fabric import Connection  # type: ignore[import]
-from invoke.exceptions import (  # type: ignore[import]
+from fabric import Connection  # type: ignore[import-untyped]
+from invoke.exceptions import (  # type: ignore[import-untyped]
     CommandTimedOut,
     ThreadException,
     UnexpectedExit,
 )
-from paramiko.ssh_exception import (  # type: ignore[import]
+from paramiko.ssh_exception import (  # type: ignore[import-untyped]
     AuthenticationException,
     BadHostKeyException,
     NoValidConnectionsError,

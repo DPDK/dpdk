@@ -17,10 +17,10 @@ scattered packets.
 
 import struct
 
-from scapy.layers.inet import IP  # type: ignore[import]
-from scapy.layers.l2 import Ether  # type: ignore[import]
-from scapy.packet import Raw  # type: ignore[import]
-from scapy.utils import hexstr  # type: ignore[import]
+from scapy.layers.inet import IP  # type: ignore[import-untyped]
+from scapy.layers.l2 import Ether  # type: ignore[import-untyped]
+from scapy.packet import Raw  # type: ignore[import-untyped]
+from scapy.utils import hexstr  # type: ignore[import-untyped]
 
 from framework.remote_session.testpmd_shell import TestPmdForwardingModes, TestPmdShell
 from framework.test_suite import TestSuite

@@ -27,7 +27,7 @@ import os.path
 from collections.abc import MutableSequence
 from dataclasses import dataclass
 from enum import Enum, auto
-from types import MethodType
+from types import FunctionType
 from typing import Union
 
 from .config import (
@@ -63,7 +63,7 @@ class TestSuiteWithCases:
     """
 
     test_suite_class: type[TestSuite]
-    test_cases: list[MethodType]
+    test_cases: list[FunctionType]
 
     def create_config(self) -> TestSuiteConfig:
         """Generate a :class:`TestSuiteConfig` from the stored test suite with test cases.

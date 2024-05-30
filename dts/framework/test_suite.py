@@ -16,9 +16,9 @@ needed by subclasses:
 from ipaddress import IPv4Interface, IPv6Interface, ip_interface
 from typing import ClassVar, Union
 
-from scapy.layers.inet import IP  # type: ignore[import]
-from scapy.layers.l2 import Ether  # type: ignore[import]
-from scapy.packet import Packet, Padding  # type: ignore[import]
+from scapy.layers.inet import IP  # type: ignore[import-untyped]
+from scapy.layers.l2 import Ether  # type: ignore[import-untyped]
+from scapy.packet import Packet, Padding  # type: ignore[import-untyped]
 
 from .exception import TestCaseVerifyError
 from .logger import DTSLogger, get_dts_logger

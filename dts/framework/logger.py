@@ -79,7 +79,7 @@ class DTSLogger(logging.Logger):
             record: The generated record with the stage information.
         """
         record = super().makeRecord(*args, **kwargs)
-        record.stage = DTSLogger._stage  # type: ignore[attr-defined]
+        record.stage = DTSLogger._stage
         return record
 
     def add_dts_root_logger_handlers(self, verbose: bool, output_dir: str) -> None:
@@ -178,7 +178,7 @@ class DTSLogger(logging.Logger):
             self._extra_file_handlers = []
 
 
-def get_dts_logger(name: str = None) -> DTSLogger:
+def get_dts_logger(name: str | None = None) -> DTSLogger:
     """Return a DTS logger instance identified by `name`.
 
     Args:

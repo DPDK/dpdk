@@ -23,7 +23,7 @@ import os
 import re
 import sys
 from pathlib import Path
-from types import MethodType
+from types import FunctionType
 from typing import Iterable, Sequence
 
 from .config import (
@@ -94,7 +94,7 @@ class DTSRunner:
         self._func_test_case_regex = r"test_(?!perf_)"
         self._perf_test_case_regex = r"test_perf_"
 
-    def run(self):
+    def run(self) -> None:
         """Run all build targets in all executions from the test run configuration.
 
         Before running test suites, executions and build targets are first set up.
@@ -305,7 +305,7 @@ class DTSRunner:
 
     def _filter_test_cases(
         self, test_suite_class: type[TestSuite], test_cases_to_run: Sequence[str]
-    ) -> tuple[list[MethodType], list[MethodType]]:
+    ) -> tuple[list[FunctionType], list[FunctionType]]:
         """Filter `test_cases_to_run` from `test_suite_class`.
 
         There are two rounds of filtering if `test_cases_to_run` is not empty.
@@ -593,7 +593,7 @@ class DTSRunner:
     def _execute_test_suite(
         self,
         test_suite: TestSuite,
-        test_cases: Iterable[MethodType],
+        test_cases: Iterable[FunctionType],
         test_suite_result: TestSuiteResult,
     ) -> None:
         """Execute all `test_cases` in `test_suite`.
@@ -626,7 +626,7 @@ class DTSRunner:
     def _run_test_case(
         self,
         test_suite: TestSuite,
-        test_case_method: MethodType,
+        test_case_method: FunctionType,
         test_case_result: TestCaseResult,
     ) -> None:
         """Setup, execute and teardown `test_case_method` from `test_suite`.
@@ -672,7 +672,7 @@ class DTSRunner:
     def _execute_test_case(
         self,
         test_suite: TestSuite,
-        test_case_method: MethodType,
+        test_case_method: FunctionType,
         test_case_result: TestCaseResult,
     ) -> None:
         """Execute `test_case_method` from `test_suite`, record the result and handle failures.

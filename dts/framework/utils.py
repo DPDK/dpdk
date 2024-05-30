@@ -21,7 +21,7 @@ from enum import Enum
 from pathlib import Path
 from subprocess import SubprocessError
 
-from scapy.packet import Packet  # type: ignore[import]
+from scapy.packet import Packet  # type: ignore[import-untyped]
 
 from .exception import ConfigurationError
 
