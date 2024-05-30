@@ -604,6 +604,8 @@ IXGBE_CHECK_PARAM_LEN(ixgbe_aci_cmd_get_exp_err);
 
 /* FW update timeout definitions are in milliseconds */
 #define IXGBE_NVM_TIMEOUT		180000
+#define IXGBE_CHANGE_LOCK_TIMEOUT	1000
+#define IXGBE_GLOBAL_CFG_LOCK_TIMEOUT	3000
 
 enum ixgbe_aci_res_access_type {
 	IXGBE_RES_READ = 1,
@@ -1490,6 +1492,211 @@ struct ixgbe_aci_cmd_clear_port_alt_write {
 };
 
 IXGBE_CHECK_PARAM_LEN(ixgbe_aci_cmd_clear_port_alt_write);
+
+/* Get CGU abilities command response data structure (indirect 0x0C61) */
+struct ixgbe_aci_cmd_get_cgu_abilities {
+	u8 num_inputs;
+	u8 num_outputs;
+	u8 pps_dpll_idx;
+	u8 synce_dpll_idx;
+	__le32 max_in_freq;
+	__le32 max_in_phase_adj;
+	__le32 max_out_freq;
+	__le32 max_out_phase_adj;
+	u8 cgu_part_num;
+	u8 rsvd[3];
+};
+
+IXGBE_CHECK_STRUCT_LEN(24, ixgbe_aci_cmd_get_cgu_abilities);
+
+#define IXGBE_ACI_NODE_HANDLE_VALID	BIT(10)
+#define IXGBE_ACI_NODE_HANDLE		MAKEMASK(0x3FF, 0)
+#define IXGBE_ACI_DRIVING_CLK_NUM_SHIFT	10
+#define IXGBE_ACI_DRIVING_CLK_NUM	MAKEMASK(0x3F, IXGBE_ACI_DRIVING_CLK_NUM_SHIFT)
+
+/* Set CGU input config (direct 0x0C62) */
+struct ixgbe_aci_cmd_set_cgu_input_config {
+	u8 input_idx;
+	u8 flags1;
+#define IXGBE_ACI_SET_CGU_IN_CFG_FLG1_UPDATE_FREQ	BIT(6)
+#define IXGBE_ACI_SET_CGU_IN_CFG_FLG1_UPDATE_DELAY	BIT(7)
+	u8 flags2;
+#define IXGBE_ACI_SET_CGU_IN_CFG_FLG2_INPUT_EN		BIT(5)
+#define IXGBE_ACI_SET_CGU_IN_CFG_FLG2_ESYNC_EN		BIT(6)
+	u8 rsvd;
+	__le32 freq;
+	__le32 phase_delay;
+	u8 rsvd2[2];
+	__le16 node_handle;
+};
+
+IXGBE_CHECK_PARAM_LEN(ixgbe_aci_cmd_set_cgu_input_config);
+
+/* Get CGU input config response descriptor structure (direct 0x0C63) */
+struct ixgbe_aci_cmd_get_cgu_input_config {
+	u8 input_idx;
+	u8 status;
+#define IXGBE_ACI_GET_CGU_IN_CFG_STATUS_LOS		BIT(0)
+#define IXGBE_ACI_GET_CGU_IN_CFG_STATUS_SCM_FAIL	BIT(1)
+#define IXGBE_ACI_GET_CGU_IN_CFG_STATUS_CFM_FAIL	BIT(2)
+#define IXGBE_ACI_GET_CGU_IN_CFG_STATUS_GST_FAIL	BIT(3)
+#define IXGBE_ACI_GET_CGU_IN_CFG_STATUS_PFM_FAIL	BIT(4)
+#define IXGBE_ACI_GET_CGU_IN_CFG_STATUS_ESYNC_FAIL	BIT(6)
+#define IXGBE_ACI_GET_CGU_IN_CFG_STATUS_ESYNC_CAP	BIT(7)
+	u8 type;
+#define IXGBE_ACI_GET_CGU_IN_CFG_TYPE_READ_ONLY		BIT(0)
+#define IXGBE_ACI_GET_CGU_IN_CFG_TYPE_GPS		BIT(4)
+#define IXGBE_ACI_GET_CGU_IN_CFG_TYPE_EXTERNAL		BIT(5)
+#define IXGBE_ACI_GET_CGU_IN_CFG_TYPE_PHY		BIT(6)
+	u8 flags1;
+#define IXGBE_ACI_GET_CGU_IN_CFG_FLG1_PHASE_DELAY_SUPP	BIT(0)
+#define IXGBE_ACI_GET_CGU_IN_CFG_FLG1_1PPS_SUPP		BIT(2)
+#define IXGBE_ACI_GET_CGU_IN_CFG_FLG1_10MHZ_SUPP	BIT(3)
+#define IXGBE_ACI_GET_CGU_IN_CFG_FLG1_ANYFREQ		BIT(7)
+	__le32 freq;
+	__le32 phase_delay;
+	u8 flags2;
+#define IXGBE_ACI_GET_CGU_IN_CFG_FLG2_INPUT_EN		BIT(5)
+#define IXGBE_ACI_GET_CGU_IN_CFG_FLG2_ESYNC_EN		BIT(6)
+	u8 rsvd[1];
+	__le16 node_handle;
+};
+
+IXGBE_CHECK_PARAM_LEN(ixgbe_aci_cmd_get_cgu_input_config);
+
+/* Set CGU output config (direct 0x0C64) */
+struct ixgbe_aci_cmd_set_cgu_output_config {
+	u8 output_idx;
+	u8 flags;
+#define IXGBE_ACI_SET_CGU_OUT_CFG_OUT_EN		BIT(0)
+#define IXGBE_ACI_SET_CGU_OUT_CFG_ESYNC_EN		BIT(1)
+#define IXGBE_ACI_SET_CGU_OUT_CFG_UPDATE_FREQ		BIT(2)
+#define IXGBE_ACI_SET_CGU_OUT_CFG_UPDATE_PHASE		BIT(3)
+#define IXGBE_ACI_SET_CGU_OUT_CFG_UPDATE_SRC_SEL	BIT(4)
+	u8 src_sel;
+#define IXGBE_ACI_SET_CGU_OUT_CFG_DPLL_SRC_SEL		MAKEMASK(0x1F, 0)
+	u8 rsvd;
+	__le32 freq;
+	__le32 phase_delay;
+	u8 rsvd2[2];
+	__le16 node_handle;
+};
+
+IXGBE_CHECK_PARAM_LEN(ixgbe_aci_cmd_set_cgu_output_config);
+
+/* Get CGU output config (direct 0x0C65) */
+struct ixgbe_aci_cmd_get_cgu_output_config {
+	u8 output_idx;
+	u8 flags;
+#define IXGBE_ACI_GET_CGU_OUT_CFG_OUT_EN		BIT(0)
+#define IXGBE_ACI_GET_CGU_OUT_CFG_ESYNC_EN		BIT(1)
+#define IXGBE_ACI_GET_CGU_OUT_CFG_ESYNC_ABILITY		BIT(2)
+	u8 src_sel;
+#define IXGBE_ACI_GET_CGU_OUT_CFG_DPLL_SRC_SEL_SHIFT	0
+#define IXGBE_ACI_GET_CGU_OUT_CFG_DPLL_SRC_SEL \
+	MAKEMASK(0x1F, IXGBE_ACI_GET_CGU_OUT_CFG_DPLL_SRC_SEL_SHIFT)
+#define IXGBE_ACI_GET_CGU_OUT_CFG_DPLL_MODE_SHIFT	5
+#define IXGBE_ACI_GET_CGU_OUT_CFG_DPLL_MODE \
+	MAKEMASK(0x7, IXGBE_ACI_GET_CGU_OUT_CFG_DPLL_MODE_SHIFT)
+	u8 rsvd;
+	__le32 freq;
+	__le32 src_freq;
+	u8 rsvd2[2];
+	__le16 node_handle;
+};
+
+IXGBE_CHECK_PARAM_LEN(ixgbe_aci_cmd_get_cgu_output_config);
+
+/* Get CGU DPLL status (direct 0x0C66) */
+struct ixgbe_aci_cmd_get_cgu_dpll_status {
+	u8 dpll_num;
+	u8 ref_state;
+#define IXGBE_ACI_GET_CGU_DPLL_STATUS_REF_SW_LOS		BIT(0)
+#define IXGBE_ACI_GET_CGU_DPLL_STATUS_REF_SW_SCM		BIT(1)
+#define IXGBE_ACI_GET_CGU_DPLL_STATUS_REF_SW_CFM		BIT(2)
+#define IXGBE_ACI_GET_CGU_DPLL_STATUS_REF_SW_GST		BIT(3)
+#define IXGBE_ACI_GET_CGU_DPLL_STATUS_REF_SW_PFM		BIT(4)
+#define IXGBE_ACI_GET_CGU_DPLL_STATUS_FAST_LOCK_EN		BIT(5)
+#define IXGBE_ACI_GET_CGU_DPLL_STATUS_REF_SW_ESYNC		BIT(6)
+	__le16 dpll_state;
+#define IXGBE_ACI_GET_CGU_DPLL_STATUS_STATE_LOCK		BIT(0)
+#define IXGBE_ACI_GET_CGU_DPLL_STATUS_STATE_HO			BIT(1)
+#define IXGBE_ACI_GET_CGU_DPLL_STATUS_STATE_HO_READY		BIT(2)
+#define IXGBE_ACI_GET_CGU_DPLL_STATUS_STATE_FLHIT		BIT(5)
+#define IXGBE_ACI_GET_CGU_DPLL_STATUS_STATE_PSLHIT		BIT(7)
+#define IXGBE_ACI_GET_CGU_DPLL_STATUS_STATE_CLK_REF_SHIFT	8
+#define IXGBE_ACI_GET_CGU_DPLL_STATUS_STATE_CLK_REF_SEL		\
+	MAKEMASK(0x1F, IXGBE_ACI_GET_CGU_DPLL_STATUS_STATE_CLK_REF_SHIFT)
+#define IXGBE_ACI_GET_CGU_DPLL_STATUS_STATE_MODE_SHIFT		13
+#define IXGBE_ACI_GET_CGU_DPLL_STATUS_STATE_MODE 		\
+	MAKEMASK(0x7, IXGBE_ACI_GET_CGU_DPLL_STATUS_STATE_MODE_SHIFT)
+	__le32 phase_offset_h;
+	__le32 phase_offset_l;
+	u8 eec_mode;
+#define IXGBE_ACI_GET_CGU_DPLL_STATUS_EEC_MODE_1		0xA
+#define IXGBE_ACI_GET_CGU_DPLL_STATUS_EEC_MODE_2		0xB
+#define IXGBE_ACI_GET_CGU_DPLL_STATUS_EEC_MODE_UNKNOWN		0xF
+	u8 rsvd[1];
+	__le16 node_handle;
+};
+
+IXGBE_CHECK_PARAM_LEN(ixgbe_aci_cmd_get_cgu_dpll_status);
+
+/* Set CGU DPLL config (direct 0x0C67) */
+struct ixgbe_aci_cmd_set_cgu_dpll_config {
+	u8 dpll_num;
+	u8 ref_state;
+#define IXGBE_ACI_SET_CGU_DPLL_CONFIG_REF_SW_LOS	BIT(0)
+#define IXGBE_ACI_SET_CGU_DPLL_CONFIG_REF_SW_SCM	BIT(1)
+#define IXGBE_ACI_SET_CGU_DPLL_CONFIG_REF_SW_CFM	BIT(2)
+#define IXGBE_ACI_SET_CGU_DPLL_CONFIG_REF_SW_GST	BIT(3)
+#define IXGBE_ACI_SET_CGU_DPLL_CONFIG_REF_SW_PFM	BIT(4)
+#define IXGBE_ACI_SET_CGU_DPLL_CONFIG_REF_FLOCK_EN	BIT(5)
+#define IXGBE_ACI_SET_CGU_DPLL_CONFIG_REF_SW_ESYNC	BIT(6)
+	u8 rsvd;
+	u8 config;
+#define IXGBE_ACI_SET_CGU_DPLL_CONFIG_CLK_REF_SEL	MAKEMASK(0x1F, 0)
+#define IXGBE_ACI_SET_CGU_DPLL_CONFIG_MODE		MAKEMASK(0x7, 5)
+	u8 rsvd2[8];
+	u8 eec_mode;
+	u8 rsvd3[1];
+	__le16 node_handle;
+};
+
+IXGBE_CHECK_PARAM_LEN(ixgbe_aci_cmd_set_cgu_dpll_config);
+
+/* Set CGU reference priority (direct 0x0C68) */
+struct ixgbe_aci_cmd_set_cgu_ref_prio {
+	u8 dpll_num;
+	u8 ref_idx;
+	u8 ref_priority;
+	u8 rsvd[11];
+	__le16 node_handle;
+};
+
+IXGBE_CHECK_PARAM_LEN(ixgbe_aci_cmd_set_cgu_ref_prio);
+
+/* Get CGU reference priority (direct 0x0C69) */
+struct ixgbe_aci_cmd_get_cgu_ref_prio {
+	u8 dpll_num;
+	u8 ref_idx;
+	u8 ref_priority; /* Valid only in response */
+	u8 rsvd[13];
+};
+
+IXGBE_CHECK_PARAM_LEN(ixgbe_aci_cmd_get_cgu_ref_prio);
+
+/* Get CGU info (direct 0x0C6A) */
+struct ixgbe_aci_cmd_get_cgu_info {
+	__le32 cgu_id;
+	__le32 cgu_cfg_ver;
+	__le32 cgu_fw_ver;
+	u8 node_part_num;
+	u8 dev_rev;
+	__le16 node_handle;
+};
+
+IXGBE_CHECK_PARAM_LEN(ixgbe_aci_cmd_get_cgu_info);
 
 /* Debug Dump Internal Data (indirect 0xFF08) */
 struct ixgbe_aci_cmd_debug_dump_internals {

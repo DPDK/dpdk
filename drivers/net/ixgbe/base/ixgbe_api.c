@@ -227,8 +227,6 @@ s32 ixgbe_set_mac_type(struct ixgbe_hw *hw)
 		break;
 	}
 
-	DEBUGOUT2("ixgbe_set_mac_type found mac: %d, returns: %d\n",
-		  hw->mac.type, ret_val);
 	return ret_val;
 }
 

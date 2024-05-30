@@ -83,6 +83,10 @@ New Features
     without having to do a full handshake over a Unix Domain Socket
     with the Device Plugin.
 
+* **Updated Intel ixgbe driver.**
+
+  * Updated base code with E610 device family support.
+
 * **Updated TAP driver.**
 
   * Updated to support up to 8 queues when used by secondary process.

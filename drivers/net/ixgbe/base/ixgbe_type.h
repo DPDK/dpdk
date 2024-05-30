@@ -3396,6 +3396,7 @@ struct ixgbe_adv_tx_context_desc {
 #define IXGBE_ADVTXD_POPTS_RSV		0x00002000 /* POPTS Reserved */
 #define IXGBE_ADVTXD_PAYLEN_SHIFT	14 /* Adv desc PAYLEN shift */
 #define IXGBE_ADVTXD_MACLEN_SHIFT	9  /* Adv ctxt desc mac len shift */
+#define IXGBE_ADVTXD_MACLEN_MASK	(0x7F << IXGBE_ADVTXD_MACLEN_SHIFT) /* Adv ctxt desc mac len mask */
 #define IXGBE_ADVTXD_VLAN_SHIFT		16  /* Adv ctxt vlan tag shift */
 #define IXGBE_ADVTXD_TUCMD_IPV4		0x00000400 /* IP Packet Type: 1=IPv4 */
 #define IXGBE_ADVTXD_TUCMD_IPV6		0x00000000 /* IP Packet Type: 0=IPv6 */
