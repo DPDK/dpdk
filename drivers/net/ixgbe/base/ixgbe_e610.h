@@ -55,6 +55,16 @@ s32 ixgbe_aci_get_netlist_node_pin(struct ixgbe_hw *hw,
 				   u16 *node_handle);
 s32 ixgbe_find_netlist_node(struct ixgbe_hw *hw, u8 node_type_ctx,
 			    u8 node_part_number, u16 *node_handle);
+s32 ixgbe_aci_read_i2c(struct ixgbe_hw *hw,
+		       struct ixgbe_aci_cmd_link_topo_addr topo_addr,
+		       u16 bus_addr, __le16 addr, u8 params, u8 *data);
+s32 ixgbe_aci_write_i2c(struct ixgbe_hw *hw,
+			struct ixgbe_aci_cmd_link_topo_addr topo_addr,
+			u16 bus_addr, __le16 addr, u8 params, u8 *data);
+s32 ixgbe_aci_set_gpio(struct ixgbe_hw *hw, u16 gpio_ctrl_handle, u8 pin_idx,
+		       bool value);
+s32 ixgbe_aci_get_gpio(struct ixgbe_hw *hw, u16 gpio_ctrl_handle, u8 pin_idx,
+		       bool *value);
 s32 ixgbe_aci_sff_eeprom(struct ixgbe_hw *hw, u16 lport, u8 bus_addr,
 			 u16 mem_addr, u8 page, u8 page_bank_ctrl, u8 *data,
 			 u8 length, bool write);

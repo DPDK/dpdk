@@ -1860,6 +1860,164 @@ s32 ixgbe_find_netlist_node(struct ixgbe_hw *hw, u8 node_type_ctx,
 }
 
 /**
+ * ixgbe_aci_read_i2c - read I2C register value
+ * @hw: pointer to the hw struct
+ * @topo_addr: topology address for a device to communicate with
+ * @bus_addr: 7-bit I2C bus address
+ * @addr: I2C memory address (I2C offset) with up to 16 bits
+ * @params: I2C parameters: bit [7] - Repeated start,
+ *				      bits [6:5] data offset size,
+ *			    bit [4] - I2C address type, bits [3:0] - data size
+ *				      to read (0-16 bytes)
+ * @data: pointer to data (0 to 16 bytes) to be read from the I2C device
+ *
+ * Read the value of the I2C pin register using ACI command (0x06E2).
+ *
+ * Return: the exit code of the operation.
+ */
+s32 ixgbe_aci_read_i2c(struct ixgbe_hw *hw,
+		       struct ixgbe_aci_cmd_link_topo_addr topo_addr,
+		       u16 bus_addr, __le16 addr, u8 params, u8 *data)
+{
+	struct ixgbe_aci_desc desc = { 0 };
+	struct ixgbe_aci_cmd_i2c *cmd;
+	u8 data_size;
+	s32 status;
+
+	ixgbe_fill_dflt_direct_cmd_desc(&desc, ixgbe_aci_opc_read_i2c);
+	cmd = &desc.params.read_write_i2c;
+
+	if (!data)
+		return IXGBE_ERR_PARAM;
+
+	data_size = (params & IXGBE_ACI_I2C_DATA_SIZE_M) >>
+		    IXGBE_ACI_I2C_DATA_SIZE_S;
+
+	cmd->i2c_bus_addr = IXGBE_CPU_TO_LE16(bus_addr);
+	cmd->topo_addr = topo_addr;
+	cmd->i2c_params = params;
+	cmd->i2c_addr = addr;
+
+	status = ixgbe_aci_send_cmd(hw, &desc, NULL, 0);
+	if (!status) {
+		struct ixgbe_aci_cmd_read_i2c_resp *resp;
+		u8 i;
+
+		resp = &desc.params.read_i2c_resp;
+		for (i = 0; i < data_size; i++) {
+			*data = resp->i2c_data[i];
+			data++;
+		}
+	}
+
+	return status;
+}
+
+/**
+ * ixgbe_aci_write_i2c - write a value to I2C register
+ * @hw: pointer to the hw struct
+ * @topo_addr: topology address for a device to communicate with
+ * @bus_addr: 7-bit I2C bus address
+ * @addr: I2C memory address (I2C offset) with up to 16 bits
+ * @params: I2C parameters: bit [4] - I2C address type, bits [3:0] - data size
+ *				      to write (0-7 bytes)
+ * @data: pointer to data (0 to 4 bytes) to be written to the I2C device
+ *
+ * Write a value to the I2C pin register using ACI command (0x06E3).
+ *
+ * Return: the exit code of the operation.
+ */
+s32 ixgbe_aci_write_i2c(struct ixgbe_hw *hw,
+			struct ixgbe_aci_cmd_link_topo_addr topo_addr,
+			u16 bus_addr, __le16 addr, u8 params, u8 *data)
+{
+	struct ixgbe_aci_desc desc = { 0 };
+	struct ixgbe_aci_cmd_i2c *cmd;
+	u8 i, data_size;
+
+	ixgbe_fill_dflt_direct_cmd_desc(&desc, ixgbe_aci_opc_write_i2c);
+	cmd = &desc.params.read_write_i2c;
+
+	data_size = (params & IXGBE_ACI_I2C_DATA_SIZE_M) >>
+		    IXGBE_ACI_I2C_DATA_SIZE_S;
+
+	/* data_size limited to 4 */
+	if (data_size > 4)
+		return IXGBE_ERR_PARAM;
+
+	cmd->i2c_bus_addr = IXGBE_CPU_TO_LE16(bus_addr);
+	cmd->topo_addr = topo_addr;
+	cmd->i2c_params = params;
+	cmd->i2c_addr = addr;
+
+	for (i = 0; i < data_size; i++) {
+		cmd->i2c_data[i] = *data;
+		data++;
+	}
+
+	return ixgbe_aci_send_cmd(hw, &desc, NULL, 0);
+}
+
+/**
+ * ixgbe_aci_set_gpio - set GPIO pin state
+ * @hw: pointer to the hw struct
+ * @gpio_ctrl_handle: GPIO controller node handle
+ * @pin_idx: IO Number of the GPIO that needs to be set
+ * @value: SW provide IO value to set in the LSB
+ *
+ * Set the GPIO pin state that is a part of the topology
+ * using ACI command (0x06EC).
+ *
+ * Return: the exit code of the operation.
+ */
+s32 ixgbe_aci_set_gpio(struct ixgbe_hw *hw, u16 gpio_ctrl_handle, u8 pin_idx,
+		       bool value)
+{
+	struct ixgbe_aci_cmd_gpio *cmd;
+	struct ixgbe_aci_desc desc;
+
+	ixgbe_fill_dflt_direct_cmd_desc(&desc, ixgbe_aci_opc_set_gpio);
+	cmd = &desc.params.read_write_gpio;
+	cmd->gpio_ctrl_handle = IXGBE_CPU_TO_LE16(gpio_ctrl_handle);
+	cmd->gpio_num = pin_idx;
+	cmd->gpio_val = value ? 1 : 0;
+
+	return ixgbe_aci_send_cmd(hw, &desc, NULL, 0);
+}
+
+/**
+ * ixgbe_aci_get_gpio - get GPIO pin state
+ * @hw: pointer to the hw struct
+ * @gpio_ctrl_handle: GPIO controller node handle
+ * @pin_idx: IO Number of the GPIO that needs to be set
+ * @value: IO value read
+ *
+ * Get the value of a GPIO signal which is part of the topology
+ * using ACI command (0x06ED).
+ *
+ * Return: the exit code of the operation.
+ */
+s32 ixgbe_aci_get_gpio(struct ixgbe_hw *hw, u16 gpio_ctrl_handle, u8 pin_idx,
+		       bool *value)
+{
+	struct ixgbe_aci_cmd_gpio *cmd;
+	struct ixgbe_aci_desc desc;
+	s32 status;
+
+	ixgbe_fill_dflt_direct_cmd_desc(&desc, ixgbe_aci_opc_get_gpio);
+	cmd = &desc.params.read_write_gpio;
+	cmd->gpio_ctrl_handle = IXGBE_CPU_TO_LE16(gpio_ctrl_handle);
+	cmd->gpio_num = pin_idx;
+
+	status = ixgbe_aci_send_cmd(hw, &desc, NULL, 0);
+	if (status)
+		return status;
+
+	*value = !!cmd->gpio_val;
+	return IXGBE_SUCCESS;
+}
+
+/**
  * ixgbe_aci_sff_eeprom - read/write SFF EEPROM
  * @hw: pointer to the HW struct
  * @lport: bits [7:0] = logical port, bit [8] = logical port valid
