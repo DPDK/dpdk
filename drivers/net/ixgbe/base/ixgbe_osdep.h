@@ -1,10 +1,11 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2001-2020 Intel Corporation
+ * Copyright(c) 2001-2024 Intel Corporation
  */
 
 #ifndef _IXGBE_OS_H_
 #define _IXGBE_OS_H_
 
+#include <pthread.h>
 #include <string.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -151,5 +152,19 @@ do {									\
 	while (((IXGBE_READ_REG(hw, (reg))) & (mask)) && (cnt--))	\
 		rte_delay_ms(1);					\
 } while (0)
+
+struct ixgbe_hw;
+struct ixgbe_lock {
+	pthread_mutex_t mutex;
+};
+
+void *ixgbe_calloc(struct ixgbe_hw *hw, size_t count, size_t size);
+void *ixgbe_malloc(struct ixgbe_hw *hw, size_t size);
+void ixgbe_free(struct ixgbe_hw *hw, void *addr);
+
+void ixgbe_init_lock(struct ixgbe_lock *lock);
+void ixgbe_destroy_lock(struct ixgbe_lock *lock);
+void ixgbe_acquire_lock(struct ixgbe_lock *lock);
+void ixgbe_release_lock(struct ixgbe_lock *lock);
 
 #endif /* _IXGBE_OS_H_ */
