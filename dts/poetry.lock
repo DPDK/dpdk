@@ -853,4 +853,4 @@ jsonschema = ">=4,<5"
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "1572cb14f0bf88cddc6b6b225312ad468d01916b32067d17a7776af76c6d466c"
+content-hash = "4af4dd49c59e5bd6ed99e8c19c6756aaf00125339d26cfad2ef98551dc765f8b"

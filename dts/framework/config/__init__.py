@@ -42,6 +42,7 @@ from typing import Union
 
 import warlock  # type: ignore[import-untyped]
 import yaml
+from typing_extensions import Self
 
 from framework.config.types import (
     BuildTargetConfigDict,
@@ -156,8 +157,8 @@ class PortConfig:
     peer_node: str
     peer_pci: str
 
-    @staticmethod
-    def from_dict(node: str, d: PortConfigDict) -> "PortConfig":
+    @classmethod
+    def from_dict(cls, node: str, d: PortConfigDict) -> Self:
         """A convenience method that creates the object from fewer inputs.
 
         Args:
@@ -167,7 +168,7 @@ class PortConfig:
         Returns:
             The port configuration instance.
         """
-        return PortConfig(node=node, **d)
+        return cls(node=node, **d)
 
 
 @dataclass(slots=True, frozen=True)
@@ -183,7 +184,7 @@ class TrafficGeneratorConfig:
     traffic_generator_type: TrafficGeneratorType
 
     @staticmethod
-    def from_dict(d: TrafficGeneratorConfigDict) -> "ScapyTrafficGeneratorConfig":
+    def from_dict(d: TrafficGeneratorConfigDict) -> "TrafficGeneratorConfig":
         """A convenience method that produces traffic generator config of the proper type.
 
         Args:
@@ -312,7 +313,7 @@ class TGNodeConfiguration(NodeConfiguration):
         traffic_generator: The configuration of the traffic generator present on the TG node.
     """
 
-    traffic_generator: ScapyTrafficGeneratorConfig
+    traffic_generator: TrafficGeneratorConfig
 
 
 @dataclass(slots=True, frozen=True)
@@ -356,8 +357,8 @@ class BuildTargetConfiguration:
     compiler_wrapper: str
     name: str
 
-    @staticmethod
-    def from_dict(d: BuildTargetConfigDict) -> "BuildTargetConfiguration":
+    @classmethod
+    def from_dict(cls, d: BuildTargetConfigDict) -> Self:
         r"""A convenience method that processes the inputs before creating an instance.
 
         `arch`, `os`, `cpu` and `compiler` are converted to :class:`Enum`\s and
@@ -369,7 +370,7 @@ class BuildTargetConfiguration:
         Returns:
             The build target configuration instance.
         """
-        return BuildTargetConfiguration(
+        return cls(
             arch=Architecture(d["arch"]),
             os=OS(d["os"]),
             cpu=CPUType(d["cpu"]),
@@ -407,10 +408,11 @@ class TestSuiteConfig:
     test_suite: str
     test_cases: list[str]
 
-    @staticmethod
+    @classmethod
     def from_dict(
+        cls,
         entry: str | TestSuiteConfigDict,
-    ) -> "TestSuiteConfig":
+    ) -> Self:
         """Create an instance from two different types.
 
         Args:
@@ -420,9 +422,9 @@ class TestSuiteConfig:
             The test suite configuration instance.
         """
         if isinstance(entry, str):
-            return TestSuiteConfig(test_suite=entry, test_cases=[])
+            return cls(test_suite=entry, test_cases=[])
         elif isinstance(entry, dict):
-            return TestSuiteConfig(test_suite=entry["suite"], test_cases=entry["cases"])
+            return cls(test_suite=entry["suite"], test_cases=entry["cases"])
         else:
             raise TypeError(f"{type(entry)} is not valid for a test suite config.")
 
@@ -454,11 +456,12 @@ class ExecutionConfiguration:
     traffic_generator_node: TGNodeConfiguration
     vdevs: list[str]
 
-    @staticmethod
+    @classmethod
     def from_dict(
+        cls,
         d: ExecutionConfigDict,
-        node_map: dict[str, Union[SutNodeConfiguration | TGNodeConfiguration]],
-    ) -> "ExecutionConfiguration":
+        node_map: dict[str, SutNodeConfiguration | TGNodeConfiguration],
+    ) -> Self:
         """A convenience method that processes the inputs before creating an instance.
 
         The build target and the test suite config are transformed into their respective objects.
@@ -494,7 +497,7 @@ class ExecutionConfiguration:
         vdevs = (
             d["system_under_test_node"]["vdevs"] if "vdevs" in d["system_under_test_node"] else []
         )
-        return ExecutionConfiguration(
+        return cls(
             build_targets=build_targets,
             perf=d["perf"],
             func=d["func"],
@@ -505,7 +508,7 @@ class ExecutionConfiguration:
             vdevs=vdevs,
         )
 
-    def copy_and_modify(self, **kwargs) -> "ExecutionConfiguration":
+    def copy_and_modify(self, **kwargs) -> Self:
         """Create a shallow copy with any of the fields modified.
 
         The only new data are those passed to this method.
@@ -525,7 +528,7 @@ class ExecutionConfiguration:
             else:
                 new_config[field.name] = getattr(self, field.name)
 
-        return ExecutionConfiguration(**new_config)
+        return type(self)(**new_config)
 
 
 @dataclass(slots=True, frozen=True)
@@ -541,8 +544,8 @@ class Configuration:
 
     executions: list[ExecutionConfiguration]
 
-    @staticmethod
-    def from_dict(d: ConfigurationDict) -> "Configuration":
+    @classmethod
+    def from_dict(cls, d: ConfigurationDict) -> Self:
         """A convenience method that processes the inputs before creating an instance.
 
         Build target and test suite config are transformed into their respective objects.
@@ -555,7 +558,7 @@ class Configuration:
         Returns:
             The whole configuration instance.
         """
-        nodes: list[Union[SutNodeConfiguration | TGNodeConfiguration]] = list(
+        nodes: list[SutNodeConfiguration | TGNodeConfiguration] = list(
             map(NodeConfiguration.from_dict, d["nodes"])
         )
         assert len(nodes) > 0, "There must be a node to test"
@@ -567,7 +570,7 @@ class Configuration:
             map(ExecutionConfiguration.from_dict, d["executions"], [node_map for _ in d])
         )
 
-        return Configuration(executions=executions)
+        return cls(executions=executions)
 
 
 def load_config(config_file_path: Path) -> Configuration:

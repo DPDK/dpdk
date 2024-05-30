@@ -25,6 +25,7 @@ types-PyYAML = "^6.0.8"
 fabric = "^2.7.1"
 scapy = "^2.5.0"
 pydocstyle = "6.1.1"
+typing-extensions = "^4.11.0"
 
 [tool.poetry.group.dev.dependencies]
 mypy = "^1.10.0"
