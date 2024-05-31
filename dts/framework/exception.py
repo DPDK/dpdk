@@ -2,6 +2,7 @@
 # Copyright(c) 2010-2014 Intel Corporation
 # Copyright(c) 2022-2023 PANTHEON.tech s.r.o.
 # Copyright(c) 2022-2023 University of New Hampshire
+# Copyright(c) 2024 Arm Limited
 
 """DTS exceptions.
 
@@ -129,21 +130,27 @@ class RemoteCommandExecutionError(DTSError):
     severity: ClassVar[ErrorSeverity] = ErrorSeverity.REMOTE_CMD_EXEC_ERR
     #: The executed command.
     command: str
+    _command_stderr: str
     _command_return_code: int
 
-    def __init__(self, command: str, command_return_code: int):
+    def __init__(self, command: str, command_stderr: str, command_return_code: int):
         """Define the meaning of the first two arguments.
 
         Args:
             command: The executed command.
+            command_stderr: The stderr of the executed command.
             command_return_code: The return code of the executed command.
         """
         self.command = command
+        self._command_stderr = command_stderr
         self._command_return_code = command_return_code
 
     def __str__(self) -> str:
-        """Include both the command and return code in the string representation."""
-        return f"Command {self.command} returned a non-zero exit code: {self._command_return_code}"
+        """Include the command, its return code and stderr in the string representation."""
+        return (
+            f"Command '{self.command}' returned a non-zero exit code: "
+            f"{self._command_return_code}\nStderr: {self._command_stderr}"
+        )
 
 
 class InteractiveCommandExecutionError(DTSError):

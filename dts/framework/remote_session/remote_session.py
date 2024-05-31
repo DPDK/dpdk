@@ -2,6 +2,7 @@
 # Copyright(c) 2010-2014 Intel Corporation
 # Copyright(c) 2022-2023 PANTHEON.tech s.r.o.
 # Copyright(c) 2022-2023 University of New Hampshire
+# Copyright(c) 2024 Arm Limited
 
 """Base remote session.
 
@@ -172,7 +173,7 @@ class RemoteSession(ABC):
             )
             self._logger.debug(f"stdout: '{result.stdout}'")
             self._logger.debug(f"stderr: '{result.stderr}'")
-            raise RemoteCommandExecutionError(command, result.return_code)
+            raise RemoteCommandExecutionError(command, result.stderr, result.return_code)
         self._logger.debug(f"Received from '{command}':\n{result}")
         self.history.append(result)
         return result
