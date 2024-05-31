@@ -2,6 +2,7 @@
 # Copyright(c) 2010-2021 Intel Corporation
 # Copyright(c) 2022-2023 PANTHEON.tech s.r.o.
 # Copyright(c) 2022 University of New Hampshire
+# Copyright(c) 2024 Arm Limited
 
 """Environment variables and command line arguments parsing.
 
@@ -72,9 +73,11 @@ Typical usage example::
 
 import argparse
 import os
+import sys
+from argparse import Action, ArgumentDefaultsHelpFormatter, _get_action_name
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Callable
 
 from .config import TestSuiteConfig
 from .utils import DPDKGitTarball
@@ -110,103 +113,213 @@ class Settings:
 SETTINGS: Settings = Settings()
 
 
-def _get_parser() -> argparse.ArgumentParser:
+#: Attribute name representing the env variable name to augment :class:`~argparse.Action` with.
+_ENV_VAR_NAME_ATTR = "env_var_name"
+#: Attribute name representing the value origin to augment :class:`~argparse.Action` with.
+_IS_FROM_ENV_ATTR = "is_from_env"
+
+#: The prefix to be added to all of the environment variables.
+_ENV_PREFIX = "DTS_"
+
+
+def _make_env_var_name(action: Action, env_var_name: str | None) -> str:
+    """Make and assign an environment variable name to the given action."""
+    env_var_name = f"{_ENV_PREFIX}{env_var_name or action.dest.upper()}"
+    setattr(action, _ENV_VAR_NAME_ATTR, env_var_name)
+    return env_var_name
+
+
+def _get_env_var_name(action: Action) -> str | None:
+    """Get the environment variable name of the given action."""
+    return getattr(action, _ENV_VAR_NAME_ATTR, None)
+
+
+def _set_is_from_env(action: Action) -> None:
+    """Make the environment the given action's value origin."""
+    setattr(action, _IS_FROM_ENV_ATTR, True)
+
+
+def _is_from_env(action: Action) -> bool:
+    """Check if the given action's value originated from the environment."""
+    return getattr(action, _IS_FROM_ENV_ATTR, False)
+
+
+def _is_action_in_args(action: Action) -> bool:
+    """Check if the action is invoked in the command line arguments."""
+    for option in action.option_strings:
+        if option in sys.argv:
+            return True
+    return False
+
+
+def _add_env_var_to_action(
+    action: Action,
+    env_var_name: str | None = None,
+) -> None:
+    """Add an argument with an environment variable to the parser."""
+    env_var_name = _make_env_var_name(action, env_var_name)
+
+    if not _is_action_in_args(action):
+        env_var_value = os.environ.get(env_var_name)
+        if env_var_value is not None:
+            _set_is_from_env(action)
+            sys.argv[1:0] = [action.format_usage(), env_var_value]
+
+
+class _DTSArgumentParser(argparse.ArgumentParser):
+    """ArgumentParser with a custom error message.
+
+    This custom version of ArgumentParser changes the error message to accurately reflect the origin
+    of the value of its arguments. If it was supplied through the command line nothing changes, but
+    if it was supplied as an environment variable this is correctly communicated.
+    """
+
+    def find_action(
+        self, action_dest: str, filter_fn: Callable[[Action], bool] | None = None
+    ) -> Action | None:
+        """Find and return an action by its destination variable name.
+
+        Arguments:
+            action_dest: the destination variable name of the action to find.
+            filter_fn: if an action is found it is passed to this filter function, which must
+                return a boolean value.
+        """
+        it = (action for action in self._actions if action.dest == action_dest)
+        action = next(it, None)
+
+        if action and filter_fn:
+            return action if filter_fn(action) else None
+
+        return action
+
+    def error(self, message):
+        """Augments :meth:`~argparse.ArgumentParser.error` with environment variable awareness."""
+        for action in self._actions:
+            if _is_from_env(action):
+                action_name = _get_action_name(action)
+                env_var_name = _get_env_var_name(action)
+                env_var_value = os.environ.get(env_var_name)
+
+                message = message.replace(
+                    f"argument {action_name}",
+                    f"environment variable {env_var_name} (value: {env_var_value})",
+                )
+
+        print(f"{self.prog}: error: {message}\n", file=sys.stderr)
+        self.exit(2, "For help and usage, " "run the command with the --help flag.\n")
+
+
+class _EnvVarHelpFormatter(ArgumentDefaultsHelpFormatter):
+    """Custom formatter to add environment variables to the help page."""
+
+    def _get_help_string(self, action):
+        """Overrides :meth:`ArgumentDefaultsHelpFormatter._get_help_string`."""
+        help = super()._get_help_string(action)
+
+        env_var_name = _get_env_var_name(action)
+        if env_var_name is not None:
+            help = f"[{env_var_name}] {help}"
+
+            env_var_value = os.environ.get(env_var_name)
+            if env_var_value is not None:
+                help = f"{help} (env value: {env_var_value})"
+
+        return help
+
+
+def _get_parser() -> _DTSArgumentParser:
     """Create the argument parser for DTS.
 
     Command line options take precedence over environment variables, which in turn take precedence
     over default values.
 
     Returns:
-        argparse.ArgumentParser: The configured argument parser with defined options.
+        _DTSArgumentParser: The configured argument parser with defined options.
     """
-
-    def env_arg(env_var: str, default: Any) -> Any:
-        """A helper function augmenting the argparse with environment variables.
-
-        If the supplied environment variable is defined, then the default value
-        of the argument is modified. This satisfies the priority order of
-        command line argument > environment variable > default value.
-
-        Args:
-            env_var: Environment variable name.
-            default: Default value.
-
-        Returns:
-            Environment variable or default value.
-        """
-        return os.environ.get(env_var) or default
-
-    parser = argparse.ArgumentParser(
+    parser = _DTSArgumentParser(
         description="Run DPDK test suites. All options may be specified with the environment "
         "variables provided in brackets. Command line arguments have higher priority.",
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        formatter_class=_EnvVarHelpFormatter,
+        allow_abbrev=False,
     )
 
-    parser.add_argument(
+    action = parser.add_argument(
         "--config-file",
-        default=env_arg("DTS_CFG_FILE", SETTINGS.config_file_path),
+        default=SETTINGS.config_file_path,
         type=Path,
-        help="[DTS_CFG_FILE] The configuration file that describes the test cases, "
-        "SUTs and targets.",
+        help="The configuration file that describes the test cases, SUTs and targets.",
+        metavar="FILE_PATH",
+        dest="config_file_path",
     )
+    _add_env_var_to_action(action, "CFG_FILE")
 
-    parser.add_argument(
+    action = parser.add_argument(
         "--output-dir",
         "--output",
-        default=env_arg("DTS_OUTPUT_DIR", SETTINGS.output_dir),
-        help="[DTS_OUTPUT_DIR] Output directory where DTS logs and results are saved.",
+        default=SETTINGS.output_dir,
+        help="Output directory where DTS logs and results are saved.",
+        metavar="DIR_PATH",
     )
+    _add_env_var_to_action(action)
 
-    parser.add_argument(
+    action = parser.add_argument(
         "-t",
         "--timeout",
-        default=env_arg("DTS_TIMEOUT", SETTINGS.timeout),
+        default=SETTINGS.timeout,
         type=float,
-        help="[DTS_TIMEOUT] The default timeout for all DTS operations except for compiling DPDK.",
+        help="The default timeout for all DTS operations except for compiling DPDK.",
+        metavar="SECONDS",
     )
+    _add_env_var_to_action(action)
 
-    parser.add_argument(
+    action = parser.add_argument(
         "-v",
         "--verbose",
         action="store_true",
-        default=env_arg("DTS_VERBOSE", SETTINGS.verbose),
-        help="[DTS_VERBOSE] Specify to enable verbose output, logging all messages "
-        "to the console.",
+        default=SETTINGS.verbose,
+        help="Specify to enable verbose output, logging all messages to the console.",
     )
+    _add_env_var_to_action(action)
 
-    parser.add_argument(
+    action = parser.add_argument(
         "-s",
         "--skip-setup",
         action="store_true",
-        default=env_arg("DTS_SKIP_SETUP", SETTINGS.skip_setup),
-        help="[DTS_SKIP_SETUP] Specify to skip all setup steps on SUT and TG nodes.",
+        default=SETTINGS.skip_setup,
+        help="Specify to skip all setup steps on SUT and TG nodes.",
     )
+    _add_env_var_to_action(action)
 
-    parser.add_argument(
+    action = parser.add_argument(
         "--tarball",
         "--snapshot",
         "--git-ref",
-        default=env_arg("DTS_DPDK_TARBALL", SETTINGS.dpdk_tarball_path),
+        default=SETTINGS.dpdk_tarball_path,
         type=Path,
-        help="[DTS_DPDK_TARBALL] Path to DPDK source code tarball or a git commit ID, "
+        help="Path to DPDK source code tarball or a git commit ID, "
         "tag ID or tree ID to test. To test local changes, first commit them, "
         "then use the commit ID with this option.",
+        metavar="FILE_PATH",
+        dest="dpdk_tarball_path",
     )
+    _add_env_var_to_action(action, "DPDK_TARBALL")
 
-    parser.add_argument(
+    action = parser.add_argument(
         "--compile-timeout",
-        default=env_arg("DTS_COMPILE_TIMEOUT", SETTINGS.compile_timeout),
+        default=SETTINGS.compile_timeout,
         type=float,
-        help="[DTS_COMPILE_TIMEOUT] The timeout for compiling DPDK.",
+        help="The timeout for compiling DPDK.",
+        metavar="SECONDS",
     )
+    _add_env_var_to_action(action)
 
-    parser.add_argument(
+    action = parser.add_argument(
         "--test-suite",
         action="append",
         nargs="+",
         metavar=("TEST_SUITE", "TEST_CASES"),
-        default=env_arg("DTS_TEST_SUITES", SETTINGS.test_suites),
-        help="[DTS_TEST_SUITES] A list containing a test suite with test cases. "
+        default=SETTINGS.test_suites,
+        help="A list containing a test suite with test cases. "
         "The first parameter is the test suite name, and the rest are test case names, "
         "which are optional. May be specified multiple times. To specify multiple test suites in "
         "the environment variable, join the lists with a comma. "
@@ -215,21 +328,26 @@ def _get_parser() -> argparse.ArgumentParser:
         "DTS_TEST_SUITES='suite case case, suite case, ...' | "
         "--test-suite suite --test-suite suite case ... | "
         "DTS_TEST_SUITES='suite, suite case, ...'",
+        dest="test_suites",
     )
+    _add_env_var_to_action(action)
 
-    parser.add_argument(
+    action = parser.add_argument(
         "--re-run",
         "--re_run",
-        default=env_arg("DTS_RERUN", SETTINGS.re_run),
+        default=SETTINGS.re_run,
         type=int,
-        help="[DTS_RERUN] Re-run each test case the specified number of times "
-        "if a test failure occurs.",
+        help="Re-run each test case the specified number of times if a test failure occurs.",
+        metavar="N_TIMES",
     )
+    _add_env_var_to_action(action, "RERUN")
 
     return parser
 
 
-def _process_test_suites(args: str | list[list[str]]) -> list[TestSuiteConfig]:
+def _process_test_suites(
+    parser: _DTSArgumentParser, args: list[list[str]]
+) -> list[TestSuiteConfig]:
     """Process the given argument to a list of :class:`TestSuiteConfig` to execute.
 
     Args:
@@ -240,17 +358,11 @@ def _process_test_suites(args: str | list[list[str]]) -> list[TestSuiteConfig]:
     Returns:
         A list of test suite configurations to execute.
     """
-    if isinstance(args, str):
-        # Environment variable in the form of "suite case case, suite case, suite, ..."
-        args = [suite_with_cases.split() for suite_with_cases in args.split(",")]
+    if parser.find_action("test_suites", _is_from_env):
+        # Environment variable in the form of "SUITE1 CASE1 CASE2, SUITE2 CASE1, SUITE3, ..."
+        args = [suite_with_cases.split() for suite_with_cases in args[0][0].split(",")]
 
-    test_suites_to_run = []
-    for suite_with_cases in args:
-        test_suites_to_run.append(
-            TestSuiteConfig(test_suite=suite_with_cases[0], test_cases=suite_with_cases[1:])
-        )
-
-    return test_suites_to_run
+    return [TestSuiteConfig(test_suite, test_cases) for [test_suite, *test_cases] in args]
 
 
 def get_settings() -> Settings:
@@ -261,19 +373,21 @@ def get_settings() -> Settings:
     Returns:
         The new settings object.
     """
-    parsed_args = _get_parser().parse_args()
-    return Settings(
-        config_file_path=parsed_args.config_file,
-        output_dir=parsed_args.output_dir,
-        timeout=parsed_args.timeout,
-        verbose=parsed_args.verbose,
-        skip_setup=parsed_args.skip_setup,
-        dpdk_tarball_path=Path(
-            Path(DPDKGitTarball(parsed_args.tarball, parsed_args.output_dir))
-            if not os.path.exists(parsed_args.tarball)
-            else Path(parsed_args.tarball)
-        ),
-        compile_timeout=parsed_args.compile_timeout,
-        test_suites=_process_test_suites(parsed_args.test_suite),
-        re_run=parsed_args.re_run,
+    parser = _get_parser()
+
+    if len(sys.argv) == 1:
+        parser.print_help()
+        sys.exit(1)
+
+    args = parser.parse_args()
+
+    args.dpdk_tarball_path = Path(
+        Path(DPDKGitTarball(args.dpdk_tarball_path, args.output_dir))
+        if not os.path.exists(args.dpdk_tarball_path)
+        else Path(args.dpdk_tarball_path)
     )
+
+    args.test_suites = _process_test_suites(parser, args.test_suites)
+
+    kwargs = {k: v for k, v in vars(args).items() if hasattr(SETTINGS, k)}
+    return Settings(**kwargs)
