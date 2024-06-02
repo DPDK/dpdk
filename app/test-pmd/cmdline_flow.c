@@ -5863,9 +5863,12 @@ static const struct token token_list[] = {
 	[ITEM_CONNTRACK] = {
 		.name = "conntrack",
 		.help = "conntrack state",
+		.priv = PRIV_ITEM(CONNTRACK,
+				  sizeof(struct rte_flow_item_conntrack)),
 		.next = NEXT(NEXT_ENTRY(ITEM_NEXT), NEXT_ENTRY(COMMON_UNSIGNED),
 			     item_param),
 		.args = ARGS(ARGS_ENTRY(struct rte_flow_item_conntrack, flags)),
+		.call = parse_vc,
 	},
 	[ITEM_PORT_REPRESENTOR] = {
 		.name = "port_representor",
