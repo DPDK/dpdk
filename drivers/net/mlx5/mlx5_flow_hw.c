@@ -4623,6 +4623,25 @@ at_error:
 	return rte_errno;
 }
 
+static bool
+flow_hw_validate_template_domain(const struct rte_flow_attr *table_attr,
+				 uint32_t ingress, uint32_t egress, uint32_t transfer)
+{
+	if (table_attr->ingress)
+		return ingress != 0;
+	else if (table_attr->egress)
+		return egress != 0;
+	else
+		return transfer;
+}
+
+static bool
+flow_hw_validate_table_domain(const struct rte_flow_attr *table_attr)
+{
+	return table_attr->ingress + table_attr->egress + table_attr->transfer
+		== 1;
+}
+
 /**
  * Create flow table.
  *
@@ -4693,6 +4712,38 @@ flow_hw_table_create(struct rte_eth_dev *dev,
 	size_t tbl_mem_size;
 	int err;
 
+	if (!flow_hw_validate_table_domain(&attr->flow_attr)) {
+		rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ATTR,
+				   NULL, "invalid table domain attributes");
+		return NULL;
+	}
+	for (i = 0; i < nb_item_templates; i++) {
+		const struct rte_flow_pattern_template_attr *pt_attr =
+			&item_templates[i]->attr;
+		bool match = flow_hw_validate_template_domain(&attr->flow_attr,
+							      pt_attr->ingress,
+							      pt_attr->egress,
+							      pt_attr->transfer);
+		if (!match) {
+			rte_flow_error_set(error, EINVAL,
+					   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					   NULL, "pattern template domain does not match table");
+			return NULL;
+		}
+	}
+	for (i = 0; i < nb_action_templates; i++) {
+		const struct rte_flow_actions_template *at = action_templates[i];
+		bool match = flow_hw_validate_template_domain(&attr->flow_attr,
+							      at->attr.ingress,
+							      at->attr.egress,
+							      at->attr.transfer);
+		if (!match) {
+			rte_flow_error_set(error, EINVAL,
+					   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					   NULL, "action template domain does not match table");
+			return NULL;
+		}
+	}
 	/* HWS layer accepts only 1 item template with root table. */
 	if (!attr->flow_attr.group)
 		max_tpl = 1;
@@ -6042,42 +6093,6 @@ flow_hw_validate_action_ipv6_ext_push(struct rte_eth_dev *dev __rte_unused,
 }
 
 /**
- * Validate raw_encap action.
- *
- * @param[in] dev
- *   Pointer to rte_eth_dev structure.
- * @param[in] action
- *   Pointer to the indirect action.
- * @param[out] error
- *   Pointer to error structure.
- *
- * @return
- *   0 on success, a negative errno value otherwise and rte_errno is set.
- */
-static int
-flow_hw_validate_action_raw_encap(const struct rte_flow_action *action,
-				  const struct rte_flow_action *mask,
-				  struct rte_flow_error *error)
-{
-	const struct rte_flow_action_raw_encap *mask_conf = mask->conf;
-	const struct rte_flow_action_raw_encap *action_conf = action->conf;
-
-	if (!mask_conf || !mask_conf->size)
-		return rte_flow_error_set(error, EINVAL,
-					  RTE_FLOW_ERROR_TYPE_ACTION, mask,
-					  "raw_encap: size must be masked");
-	if (!action_conf || !action_conf->size)
-		return rte_flow_error_set(error, EINVAL,
-					  RTE_FLOW_ERROR_TYPE_ACTION, action,
-					  "raw_encap: invalid action configuration");
-	if (mask_conf->data && !action_conf->data)
-		return rte_flow_error_set(error, EINVAL,
-					  RTE_FLOW_ERROR_TYPE_ACTION, action,
-					  "raw_encap: masked data is missing");
-	return 0;
-}
-
-/**
  * Process `... / raw_decap / raw_encap / ...` actions sequence.
  * The PMD handles the sequence as a single encap or decap reformat action,
  * depending on the raw_encap configuration.
@@ -6394,6 +6409,278 @@ err_out:
 }
 
 static int
+flow_hw_validate_action_jump(struct rte_eth_dev *dev,
+			     const struct rte_flow_actions_template_attr *attr,
+			     const struct rte_flow_action *action,
+			     const struct rte_flow_action *mask,
+			     struct rte_flow_error *error)
+{
+	const struct rte_flow_action_jump *m = mask->conf;
+	const struct rte_flow_action_jump *v = action->conf;
+	struct mlx5_flow_template_table_cfg cfg = {
+		.external = true,
+		.attr = {
+			.flow_attr = {
+				.ingress = attr->ingress,
+				.egress = attr->egress,
+				.transfer = attr->transfer,
+			},
+		},
+	};
+	uint32_t t_group = 0;
+
+	if (!m || !m->group)
+		return 0;
+	if (!v)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ACTION, action,
+					  "Invalid jump action configuration");
+	if (flow_hw_translate_group(dev, &cfg, v->group, &t_group, error))
+		return -rte_errno;
+	if (t_group == 0)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ACTION, action,
+					  "Unsupported action - jump to root table");
+	return 0;
+}
+
+static int
+mlx5_hw_validate_action_mark(struct rte_eth_dev *dev,
+			     const struct rte_flow_action *template_action,
+			     const struct rte_flow_action *template_mask,
+			     uint64_t action_flags,
+			     const struct rte_flow_actions_template_attr *template_attr,
+			     struct rte_flow_error *error)
+{
+	const struct rte_flow_action_mark *mark_mask = template_mask->conf;
+	const struct rte_flow_action *action =
+		mark_mask && mark_mask->id ? template_action :
+		&(const struct rte_flow_action) {
+		.type = RTE_FLOW_ACTION_TYPE_MARK,
+		.conf = &(const struct rte_flow_action_mark) {
+			.id = MLX5_FLOW_MARK_MAX - 1
+		}
+	};
+	const struct rte_flow_attr attr = {
+		.ingress = template_attr->ingress,
+		.egress = template_attr->egress,
+		.transfer = template_attr->transfer
+	};
+
+	return mlx5_flow_validate_action_mark(dev, action, action_flags,
+					      &attr, error);
+}
+
+#define MLX5_FLOW_DEFAULT_INGRESS_QUEUE 0
+
+static int
+mlx5_hw_validate_action_queue(struct rte_eth_dev *dev,
+			      const struct rte_flow_action *template_action,
+			      const struct rte_flow_action *template_mask,
+			      const struct rte_flow_actions_template_attr *template_attr,
+			      uint64_t action_flags,
+			      struct rte_flow_error *error)
+{
+	const struct rte_flow_action_queue *queue_mask = template_mask->conf;
+	const struct rte_flow_action *action =
+		queue_mask && queue_mask->index ? template_action :
+		&(const struct rte_flow_action) {
+		.type = RTE_FLOW_ACTION_TYPE_QUEUE,
+		.conf = &(const struct rte_flow_action_queue) {
+			.index = MLX5_FLOW_DEFAULT_INGRESS_QUEUE
+		}
+	};
+	const struct rte_flow_attr attr = {
+		.ingress = template_attr->ingress,
+		.egress = template_attr->egress,
+		.transfer = template_attr->transfer
+	};
+
+	return mlx5_flow_validate_action_queue(action, action_flags,
+					       dev, &attr, error);
+}
+
+static int
+mlx5_hw_validate_action_rss(struct rte_eth_dev *dev,
+			      const struct rte_flow_action *template_action,
+			      const struct rte_flow_action *template_mask,
+			      const struct rte_flow_actions_template_attr *template_attr,
+			      __rte_unused uint64_t action_flags,
+			      struct rte_flow_error *error)
+{
+	const struct rte_flow_action_rss *mask = template_mask->conf;
+	const struct rte_flow_action *action = mask ? template_action :
+		&(const struct rte_flow_action) {
+		.type = RTE_FLOW_ACTION_TYPE_RSS,
+		.conf = &(const struct rte_flow_action_rss) {
+			.queue_num = 1,
+			.queue = (uint16_t [1]) {
+				MLX5_FLOW_DEFAULT_INGRESS_QUEUE
+			}
+		}
+	};
+
+	if (template_attr->egress || template_attr->transfer)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ATTR, NULL,
+					  "RSS action supported for ingress only");
+	return mlx5_validate_action_rss(dev, action, error);
+}
+
+static int
+mlx5_hw_validate_action_l2_encap(struct rte_eth_dev *dev,
+				 const struct rte_flow_action *template_action,
+				 const struct rte_flow_action *template_mask,
+				 const struct rte_flow_actions_template_attr *template_attr,
+				 uint64_t action_flags,
+				 struct rte_flow_error *error)
+{
+	const struct rte_flow_action_vxlan_encap default_action_conf = {
+		.definition = (struct rte_flow_item *)
+			(struct rte_flow_item [1]) {
+			[0] = { .type = RTE_FLOW_ITEM_TYPE_END }
+		}
+	};
+	const struct rte_flow_action *action = template_mask->conf ?
+		template_action : &(const struct rte_flow_action) {
+			.type = template_mask->type,
+			.conf = &default_action_conf
+	};
+	const struct rte_flow_attr attr = {
+		.ingress = template_attr->ingress,
+		.egress = template_attr->egress,
+		.transfer = template_attr->transfer
+	};
+
+	return flow_dv_validate_action_l2_encap(dev, action_flags, action,
+						&attr, error);
+}
+
+static int
+mlx5_hw_validate_action_l2_decap(struct rte_eth_dev *dev,
+				 const struct rte_flow_action *template_action,
+				 const struct rte_flow_action *template_mask,
+				 const struct rte_flow_actions_template_attr *template_attr,
+				 uint64_t action_flags,
+				 struct rte_flow_error *error)
+{
+	const struct rte_flow_action_vxlan_encap default_action_conf = {
+		.definition = (struct rte_flow_item *)
+			(struct rte_flow_item [1]) {
+				[0] = { .type = RTE_FLOW_ITEM_TYPE_END }
+			}
+	};
+	const struct rte_flow_action *action = template_mask->conf ?
+					       template_action : &(const struct rte_flow_action) {
+			.type = template_mask->type,
+			.conf = &default_action_conf
+		};
+	const struct rte_flow_attr attr = {
+		.ingress = template_attr->ingress,
+		.egress = template_attr->egress,
+		.transfer = template_attr->transfer
+	};
+	uint64_t item_flags =
+		action->type == RTE_FLOW_ACTION_TYPE_VXLAN_DECAP ?
+		MLX5_FLOW_LAYER_VXLAN : 0;
+
+	return flow_dv_validate_action_decap(dev, action_flags, action,
+					     item_flags, &attr, error);
+}
+
+static int
+mlx5_hw_validate_action_conntrack(struct rte_eth_dev *dev,
+				  const struct rte_flow_action *template_action,
+				  const struct rte_flow_action *template_mask,
+				  const struct rte_flow_actions_template_attr *template_attr,
+				  uint64_t action_flags,
+				  struct rte_flow_error *error)
+{
+	RTE_SET_USED(template_action);
+	RTE_SET_USED(template_mask);
+	RTE_SET_USED(template_attr);
+	return flow_dv_validate_action_aso_ct(dev, action_flags,
+					      MLX5_FLOW_LAYER_OUTER_L4_TCP,
+					      false, error);
+}
+
+static int
+flow_hw_validate_action_raw_encap(const struct rte_flow_action *action,
+				  const struct rte_flow_action *mask,
+				  struct rte_flow_error *error)
+{
+	const struct rte_flow_action_raw_encap *mask_conf = mask->conf;
+	const struct rte_flow_action_raw_encap *action_conf = action->conf;
+
+	if (!mask_conf || !mask_conf->size)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ACTION, mask,
+					  "raw_encap: size must be masked");
+	if (!action_conf || !action_conf->size)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ACTION, action,
+					  "raw_encap: invalid action configuration");
+	if (mask_conf->data && !action_conf->data)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ACTION,
+					  action, "raw_encap: masked data is missing");
+	return 0;
+}
+
+
+static int
+flow_hw_validate_action_raw_reformat(struct rte_eth_dev *dev,
+				     const struct rte_flow_action *template_action,
+				     const struct rte_flow_action *template_mask,
+				     const struct
+				     rte_flow_actions_template_attr *template_attr,
+				     uint64_t *action_flags,
+				     struct rte_flow_error *error)
+{
+	const struct rte_flow_action *encap_action = NULL;
+	const struct rte_flow_action *encap_mask = NULL;
+	const struct rte_flow_action_raw_decap *raw_decap = NULL;
+	const struct rte_flow_action_raw_encap *raw_encap = NULL;
+	const struct rte_flow_attr attr = {
+		.ingress = template_attr->ingress,
+		.egress = template_attr->egress,
+		.transfer = template_attr->transfer
+	};
+	uint64_t item_flags = 0;
+	int ret, actions_n = 0;
+
+	if (template_action->type == RTE_FLOW_ACTION_TYPE_RAW_DECAP) {
+		raw_decap = template_mask->conf ?
+			    template_action->conf : &empty_decap;
+		if ((template_action + 1)->type == RTE_FLOW_ACTION_TYPE_RAW_ENCAP) {
+			if ((template_mask + 1)->type != RTE_FLOW_ACTION_TYPE_RAW_ENCAP)
+				return rte_flow_error_set(error, EINVAL,
+							  RTE_FLOW_ERROR_TYPE_ACTION,
+							  template_mask + 1, "invalid mask type");
+			encap_action = template_action + 1;
+			encap_mask = template_mask + 1;
+		}
+	} else {
+		encap_action = template_action;
+		encap_mask = template_mask;
+	}
+	if (encap_action) {
+		raw_encap = encap_action->conf;
+		ret = flow_hw_validate_action_raw_encap(encap_action,
+							encap_mask, error);
+		if (ret)
+			return ret;
+	}
+	return flow_dv_validate_action_raw_encap_decap(dev, raw_decap,
+						       raw_encap, &attr,
+						       action_flags, &actions_n,
+						       template_action,
+						       item_flags, error);
+}
+
+
+
+static int
 mlx5_flow_hw_actions_validate(struct rte_eth_dev *dev,
 			      const struct rte_flow_actions_template_attr *attr,
 			      const struct rte_flow_action actions[],
@@ -6451,15 +6738,27 @@ mlx5_flow_hw_actions_validate(struct rte_eth_dev *dev,
 			action_flags |= MLX5_FLOW_ACTION_FLAG;
 			break;
 		case RTE_FLOW_ACTION_TYPE_MARK:
-			/* TODO: Validation logic */
+			ret = mlx5_hw_validate_action_mark(dev, action, mask,
+							   action_flags,
+							   attr, error);
+			if (ret)
+				return ret;
 			action_flags |= MLX5_FLOW_ACTION_MARK;
 			break;
 		case RTE_FLOW_ACTION_TYPE_DROP:
-			/* TODO: Validation logic */
+			ret = mlx5_flow_validate_action_drop
+				(dev, action_flags,
+				 &(struct rte_flow_attr){.egress = attr->egress},
+				 error);
+			if (ret)
+				return ret;
 			action_flags |= MLX5_FLOW_ACTION_DROP;
 			break;
 		case RTE_FLOW_ACTION_TYPE_JUMP:
-			/* TODO: Validation logic */
+			/* Only validate the jump to root table in template stage. */
+			ret = flow_hw_validate_action_jump(dev, attr, action, mask, error);
+			if (ret)
+				return ret;
 			action_flags |= MLX5_FLOW_ACTION_JUMP;
 			break;
 #ifdef HAVE_MLX5DV_DR_ACTION_CREATE_DEST_ROOT_TABLE
@@ -6481,38 +6780,52 @@ mlx5_flow_hw_actions_validate(struct rte_eth_dev *dev,
 			break;
 #endif
 		case RTE_FLOW_ACTION_TYPE_QUEUE:
-			/* TODO: Validation logic */
+			ret = mlx5_hw_validate_action_queue(dev, action, mask,
+							    attr, action_flags,
+							    error);
+			if (ret)
+				return ret;
 			action_flags |= MLX5_FLOW_ACTION_QUEUE;
 			break;
 		case RTE_FLOW_ACTION_TYPE_RSS:
-			/* TODO: Validation logic */
+			ret = mlx5_hw_validate_action_rss(dev, action, mask,
+							  attr, action_flags,
+							  error);
+			if (ret)
+				return ret;
 			action_flags |= MLX5_FLOW_ACTION_RSS;
 			break;
 		case RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP:
-			/* TODO: Validation logic */
-			action_flags |= MLX5_FLOW_ACTION_ENCAP;
-			break;
 		case RTE_FLOW_ACTION_TYPE_NVGRE_ENCAP:
-			/* TODO: Validation logic */
-			action_flags |= MLX5_FLOW_ACTION_ENCAP;
-			break;
-		case RTE_FLOW_ACTION_TYPE_VXLAN_DECAP:
-			/* TODO: Validation logic */
-			action_flags |= MLX5_FLOW_ACTION_DECAP;
-			break;
-		case RTE_FLOW_ACTION_TYPE_NVGRE_DECAP:
-			/* TODO: Validation logic */
-			action_flags |= MLX5_FLOW_ACTION_DECAP;
-			break;
-		case RTE_FLOW_ACTION_TYPE_RAW_ENCAP:
-			ret = flow_hw_validate_action_raw_encap(action, mask, error);
-			if (ret < 0)
+			ret = mlx5_hw_validate_action_l2_encap(dev, action, mask,
+							       attr, action_flags,
+							       error);
+			if (ret)
 				return ret;
 			action_flags |= MLX5_FLOW_ACTION_ENCAP;
 			break;
-		case RTE_FLOW_ACTION_TYPE_RAW_DECAP:
-			/* TODO: Validation logic */
+		case RTE_FLOW_ACTION_TYPE_VXLAN_DECAP:
+		case RTE_FLOW_ACTION_TYPE_NVGRE_DECAP:
+			ret = mlx5_hw_validate_action_l2_decap(dev, action, mask,
+							       attr, action_flags,
+							       error);
+			if (ret)
+				return ret;
 			action_flags |= MLX5_FLOW_ACTION_DECAP;
+			break;
+		case RTE_FLOW_ACTION_TYPE_RAW_ENCAP:
+		case RTE_FLOW_ACTION_TYPE_RAW_DECAP:
+			ret = flow_hw_validate_action_raw_reformat(dev, action,
+								   mask, attr,
+								   &action_flags,
+								   error);
+			if (ret)
+				return ret;
+			if (action->type == RTE_FLOW_ACTION_TYPE_RAW_DECAP &&
+			   (action + 1)->type == RTE_FLOW_ACTION_TYPE_RAW_ENCAP) {
+				action_flags |= MLX5_FLOW_XCAP_ACTIONS;
+				i++;
+			}
 			break;
 		case RTE_FLOW_ACTION_TYPE_IPV6_EXT_PUSH:
 			ret = flow_hw_validate_action_ipv6_ext_push(dev, action, error);
@@ -6580,7 +6893,11 @@ mlx5_flow_hw_actions_validate(struct rte_eth_dev *dev,
 			action_flags |= MLX5_FLOW_ACTION_COUNT;
 			break;
 		case RTE_FLOW_ACTION_TYPE_CONNTRACK:
-			/* TODO: Validation logic */
+			ret = mlx5_hw_validate_action_conntrack(dev, action, mask,
+								attr, action_flags,
+								error);
+			if (ret)
+				return ret;
 			action_flags |= MLX5_FLOW_ACTION_CT;
 			break;
 		case RTE_FLOW_ACTION_TYPE_OF_POP_VLAN:

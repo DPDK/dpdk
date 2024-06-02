@@ -1939,7 +1939,8 @@ mlx5_flow_validate_action_flag(uint64_t action_flags,
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 int
-mlx5_flow_validate_action_mark(const struct rte_flow_action *action,
+mlx5_flow_validate_action_mark(struct rte_eth_dev *dev,
+			       const struct rte_flow_action *action,
 			       uint64_t action_flags,
 			       const struct rte_flow_attr *attr,
 			       struct rte_flow_error *error)
@@ -1971,6 +1972,10 @@ mlx5_flow_validate_action_mark(const struct rte_flow_action *action,
 					  RTE_FLOW_ERROR_TYPE_ATTR_EGRESS, NULL,
 					  "mark action not supported for "
 					  "egress");
+	if (attr->transfer && mlx5_hws_active(dev))
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ATTR_EGRESS, NULL,
+					  "non-template mark action not supported for transfer");
 	return 0;
 }
 
@@ -2039,6 +2044,10 @@ mlx5_flow_validate_action_queue(const struct rte_flow_action *action,
 	struct mlx5_priv *priv = dev->data->dev_private;
 	const struct rte_flow_action_queue *queue = action->conf;
 
+	if (!queue)
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ACTION, action,
+					  "no QUEUE action configuration");
 	if (action_flags & MLX5_FLOW_FATE_ACTIONS)
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
@@ -2152,6 +2161,10 @@ mlx5_validate_action_rss(struct rte_eth_dev *dev,
 	const char *message;
 	uint32_t queue_idx;
 
+	if (!rss)
+		return rte_flow_error_set
+			(error, EINVAL, RTE_FLOW_ERROR_TYPE_ACTION,
+			 action, "no RSS action configuration");
 	if (rss->func == RTE_ETH_HASH_FUNCTION_SYMMETRIC_TOEPLITZ) {
 		DRV_LOG(WARNING, "port %u symmetric RSS supported with SORT",
 			dev->data->port_id);

@@ -3671,7 +3671,7 @@ flow_dv_validate_action_mark(struct rte_eth_dev *dev,
 					  "if tunnel offload active");
 	/* Fall back if no extended metadata register support. */
 	if (config->dv_xmeta_en == MLX5_XMETA_MODE_LEGACY)
-		return mlx5_flow_validate_action_mark(action, action_flags,
+		return mlx5_flow_validate_action_mark(dev, action, action_flags,
 						      attr, error);
 	/* Extensive metadata mode requires registers. */
 	if (!mlx5_flow_ext_mreg_supported(dev))
@@ -3910,7 +3910,7 @@ notsup_err:
  * @return
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
-static int
+int
 flow_dv_validate_action_l2_encap(struct rte_eth_dev *dev,
 				 uint64_t action_flags,
 				 const struct rte_flow_action *action,
@@ -3955,7 +3955,7 @@ flow_dv_validate_action_l2_encap(struct rte_eth_dev *dev,
  * @return
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
-static int
+int
 flow_dv_validate_action_decap(struct rte_eth_dev *dev,
 			      uint64_t action_flags,
 			      const struct rte_flow_action *action,
@@ -4028,7 +4028,7 @@ const struct rte_flow_action_raw_decap empty_decap = {.data = NULL, .size = 0,};
  * @return
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
-static int
+int
 flow_dv_validate_action_raw_encap_decap
 	(struct rte_eth_dev *dev,
 	 const struct rte_flow_action_raw_decap *decap,
@@ -4117,7 +4117,7 @@ flow_dv_validate_action_raw_encap_decap
  * @return
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
-static int
+int
 flow_dv_validate_action_aso_ct(struct rte_eth_dev *dev,
 			       uint64_t action_flags,
 			       uint64_t item_flags,
@@ -4136,10 +4136,12 @@ flow_dv_validate_action_aso_ct(struct rte_eth_dev *dev,
 					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
 					  "CT cannot follow a fate action");
 	if ((action_flags & MLX5_FLOW_ACTION_METER) ||
-	    (action_flags & MLX5_FLOW_ACTION_AGE))
-		return rte_flow_error_set(error, EINVAL,
-					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,
-					  "Only one ASO action is supported");
+	    (action_flags & MLX5_FLOW_ACTION_AGE)) {
+		if (!mlx5_hws_active(dev))
+			return rte_flow_error_set(error, EINVAL,
+						  RTE_FLOW_ERROR_TYPE_ACTION,
+						  NULL, "Only one ASO action is supported");
+	}
 	if (action_flags & MLX5_FLOW_ACTION_ENCAP)
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ACTION, NULL,

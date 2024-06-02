@@ -1522,7 +1522,7 @@ flow_verbs_validate(struct rte_eth_dev *dev,
 			action_flags |= MLX5_FLOW_ACTION_FLAG;
 			break;
 		case RTE_FLOW_ACTION_TYPE_MARK:
-			ret = mlx5_flow_validate_action_mark(actions,
+			ret = mlx5_flow_validate_action_mark(dev, actions,
 							     action_flags,
 							     attr,
 							     error);

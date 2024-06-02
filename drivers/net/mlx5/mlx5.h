@@ -2010,6 +2010,19 @@ struct mlx5_priv {
 	RTE_ATOMIC(uint16_t) shared_refcnt; /* HW steering host reference counter. */
 };
 
+static __rte_always_inline bool
+mlx5_hws_active(const struct rte_eth_dev *dev)
+{
+#if defined(HAVE_MLX5_HWS_SUPPORT)
+	const struct mlx5_priv *priv = dev->data->dev_private;
+
+	return priv->sh->config.dv_flow_en == 2;
+#else
+	RTE_SET_USED(dev);
+	return false;
+#endif
+}
+
 #define PORT_ID(priv) ((priv)->dev_data->port_id)
 #define ETH_DEV(priv) (&rte_eth_devices[PORT_ID(priv)])
 #define CTRL_QUEUE_ID(priv) ((priv)->nb_queue - 1)

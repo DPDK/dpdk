@@ -2874,7 +2874,8 @@ int mlx5_flow_validate_action_drop(struct rte_eth_dev *dev,
 int mlx5_flow_validate_action_flag(uint64_t action_flags,
 				   const struct rte_flow_attr *attr,
 				   struct rte_flow_error *error);
-int mlx5_flow_validate_action_mark(const struct rte_flow_action *action,
+int mlx5_flow_validate_action_mark(struct rte_eth_dev *dev,
+				   const struct rte_flow_action *action,
 				   uint64_t action_flags,
 				   const struct rte_flow_attr *attr,
 				   struct rte_flow_error *error);
@@ -2895,6 +2896,33 @@ int mlx5_flow_validate_action_default_miss(uint64_t action_flags,
 int flow_validate_modify_field_level
 			(const struct rte_flow_field_data *data,
 			 struct rte_flow_error *error);
+int
+flow_dv_validate_action_l2_encap(struct rte_eth_dev *dev,
+				 uint64_t action_flags,
+				 const struct rte_flow_action *action,
+				 const struct rte_flow_attr *attr,
+				 struct rte_flow_error *error);
+int
+flow_dv_validate_action_decap(struct rte_eth_dev *dev,
+			      uint64_t action_flags,
+			      const struct rte_flow_action *action,
+			      const uint64_t item_flags,
+			      const struct rte_flow_attr *attr,
+			      struct rte_flow_error *error);
+int
+flow_dv_validate_action_aso_ct(struct rte_eth_dev *dev,
+			       uint64_t action_flags,
+			       uint64_t item_flags,
+			       bool root,
+			       struct rte_flow_error *error);
+int
+flow_dv_validate_action_raw_encap_decap
+	(struct rte_eth_dev *dev,
+	 const struct rte_flow_action_raw_decap *decap,
+	 const struct rte_flow_action_raw_encap *encap,
+	 const struct rte_flow_attr *attr, uint64_t *action_flags,
+	 int *actions_n, const struct rte_flow_action *action,
+	 uint64_t item_flags, struct rte_flow_error *error);
 int mlx5_flow_item_acceptable(const struct rte_flow_item *item,
 			      const uint8_t *mask,
 			      const uint8_t *nic_mask,
@@ -3348,5 +3376,8 @@ mlx5_destroy_legacy_indirect(struct rte_eth_dev *dev,
 void
 mlx5_hw_decap_encap_destroy(struct rte_eth_dev *dev,
 			    struct mlx5_indirect_list *reformat);
+
+extern const struct rte_flow_action_raw_decap empty_decap;
+
 #endif
 #endif /* RTE_PMD_MLX5_FLOW_H_ */
