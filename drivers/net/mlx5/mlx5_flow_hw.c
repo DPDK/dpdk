@@ -56,6 +56,20 @@
 #define MLX5_HW_VLAN_PUSH_VID_IDX 1
 #define MLX5_HW_VLAN_PUSH_PCP_IDX 2
 
+static bool
+mlx5_hw_ctx_validate(const struct rte_eth_dev *dev, struct rte_flow_error *error)
+{
+	const struct mlx5_priv *priv = dev->data->dev_private;
+
+	if (!priv->dr_ctx) {
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				   "non-template flow engine was not configured");
+		return false;
+	}
+	return true;
+}
+
 static int flow_hw_flush_all_ctrl_flows(struct rte_eth_dev *dev);
 static int flow_hw_translate_group(struct rte_eth_dev *dev,
 				   const struct mlx5_flow_template_table_cfg *cfg,
@@ -3965,6 +3979,8 @@ mlx5_flow_hw_actions_validate(struct rte_eth_dev *dev,
 	bool actions_end = false;
 	int ret;
 
+	if (!mlx5_hw_ctx_validate(dev, error))
+		return -rte_errno;
 	/* FDB actions are only valid to proxy port. */
 	if (attr->transfer && (!priv->sh->config.dv_esw_en || !priv->master))
 		return rte_flow_error_set(error, EINVAL,
@@ -4717,6 +4733,8 @@ flow_hw_pattern_validate(struct rte_eth_dev *dev,
 	bool items_end = false;
 	uint32_t tag_bitmap = 0;
 
+	if (!mlx5_hw_ctx_validate(dev, error))
+		return -rte_errno;
 	if (!attr->ingress && !attr->egress && !attr->transfer)
 		return rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ATTR, NULL,
 					  "at least one of the direction attributes"
@@ -7974,6 +7992,9 @@ flow_hw_action_handle_create(struct rte_eth_dev *dev, uint32_t queue,
 	uint32_t age_idx;
 	bool push = true;
 	bool aso = false;
+
+	if (!mlx5_hw_ctx_validate(dev, error))
+		return NULL;
 
 	if (attr) {
 		MLX5_ASSERT(queue != MLX5_HW_INV_QUEUE);
