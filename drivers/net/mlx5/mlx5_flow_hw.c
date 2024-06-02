@@ -206,6 +206,20 @@ mlx5_destroy_multi_pattern_segment(struct mlx5_multi_pattern_segment *segment);
 static __rte_always_inline enum mlx5_indirect_list_type
 flow_hw_inlist_type_get(const struct rte_flow_action *actions);
 
+static bool
+mlx5_hw_ctx_validate(const struct rte_eth_dev *dev, struct rte_flow_error *error)
+{
+	const struct mlx5_priv *priv = dev->data->dev_private;
+
+	if (!priv->dr_ctx) {
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				   "non-template flow engine was not configured");
+		return false;
+	}
+	return true;
+}
+
 static __rte_always_inline int
 mlx5_multi_pattern_reformat_to_index(enum mlx5dr_action_type type)
 {
@@ -6399,6 +6413,8 @@ mlx5_flow_hw_actions_validate(struct rte_eth_dev *dev,
 	int ret;
 	const struct rte_flow_action_ipv6_ext_remove *remove_data;
 
+	if (!mlx5_hw_ctx_validate(dev, error))
+		return -rte_errno;
 	/* FDB actions are only valid to proxy port. */
 	if (attr->transfer && (!priv->sh->config.dv_esw_en || !priv->master))
 		return rte_flow_error_set(error, EINVAL,
@@ -7528,6 +7544,8 @@ flow_hw_pattern_validate(struct rte_eth_dev *dev,
 	uint32_t tag_bitmap = 0;
 	int ret;
 
+	if (!mlx5_hw_ctx_validate(dev, error))
+		return -rte_errno;
 	if (!attr->ingress && !attr->egress && !attr->transfer)
 		return rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ATTR, NULL,
 					  "at least one of the direction attributes"
@@ -11259,6 +11277,8 @@ flow_hw_action_handle_create(struct rte_eth_dev *dev, uint32_t queue,
 	bool aso = false;
 	bool force_job = action->type == RTE_FLOW_ACTION_TYPE_METER_MARK;
 
+	if (!mlx5_hw_ctx_validate(dev, error))
+		return NULL;
 	if (attr || force_job) {
 		job = flow_hw_action_job_init(priv, queue, NULL, user_data,
 					      NULL, MLX5_HW_Q_JOB_TYPE_CREATE,
@@ -12541,6 +12561,8 @@ flow_hw_async_action_list_handle_create(struct rte_eth_dev *dev, uint32_t queue,
 		}
 	};
 
+	if (!mlx5_hw_ctx_validate(dev, error))
+		return NULL;
 	if (!actions) {
 		rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ACTION,
 				   NULL, "No action list");
