@@ -247,6 +247,10 @@ struct axgbe_phy_data {
 };
 
 static enum axgbe_an_mode axgbe_phy_an_mode(struct axgbe_port *pdata);
+static void axgbe_phy_perform_ratechange(struct axgbe_port *pdata,
+		enum axgbe_mb_cmd cmd, enum axgbe_mb_subcmd sub_cmd);
+static void axgbe_phy_rrc(struct axgbe_port *pdata);
+
 
 static int axgbe_phy_i2c_xfer(struct axgbe_port *pdata,
 			      struct axgbe_i2c_op *i2c_op)
@@ -1194,6 +1198,92 @@ static void axgbe_phy_set_redrv_mode(struct axgbe_port *pdata)
 	axgbe_phy_put_comm_ownership(pdata);
 }
 
+#define MAX_RX_ADAPT_RETRIES		1
+#define XGBE_PMA_RX_VAL_SIG_MASK	(XGBE_PMA_RX_SIG_DET_0_MASK | \
+					 XGBE_PMA_RX_VALID_0_MASK)
+
+static void axgbe_set_rx_adap_mode(struct axgbe_port *pdata,
+				  enum axgbe_mode mode)
+{
+	if (pdata->rx_adapt_retries++ >= MAX_RX_ADAPT_RETRIES) {
+		pdata->rx_adapt_retries = 0;
+		return;
+	}
+
+	axgbe_phy_perform_ratechange(pdata,
+				    mode == AXGBE_MODE_KR ?
+				    AXGBE_MB_CMD_SET_10G_KR :
+				    AXGBE_MB_CMD_SET_10G_SFI,
+				    AXGBE_MB_SUBCMD_RX_ADAP);
+}
+
+static void axgbe_rx_adaptation(struct axgbe_port *pdata)
+{
+	struct axgbe_phy_data *phy_data = pdata->phy_data;
+	unsigned int reg;
+
+	/* step 2: force PCS to send RX_ADAPT Req to PHY */
+	XMDIO_WRITE_BITS(pdata, MDIO_MMD_PMAPMD, MDIO_PMA_RX_EQ_CTRL4,
+			 XGBE_PMA_RX_AD_REQ_MASK, XGBE_PMA_RX_AD_REQ_ENABLE);
+
+	/* Step 3: Wait for RX_ADAPT ACK from the PHY */
+	rte_delay_ms(200);
+
+	/* Software polls for coefficient update command (given by local PHY) */
+	reg = XMDIO_READ(pdata, MDIO_MMD_PMAPMD, MDIO_PMA_PHY_RX_EQ_CEU);
+
+	/* Clear the RX_AD_REQ bit */
+	XMDIO_WRITE_BITS(pdata, MDIO_MMD_PMAPMD, MDIO_PMA_RX_EQ_CTRL4,
+			 XGBE_PMA_RX_AD_REQ_MASK, XGBE_PMA_RX_AD_REQ_DISABLE);
+
+	/* Check if coefficient update command is set */
+	if ((reg & XGBE_PMA_CFF_UPDT_MASK) != XGBE_PMA_CFF_UPDT_MASK)
+		goto set_mode;
+
+	/* Step 4: Check for Block lock */
+
+	/* Link status is latched low, so read once to clear
+	 * and then read again to get current state
+	 */
+	reg = XMDIO_READ(pdata, MDIO_MMD_PCS, MDIO_STAT1);
+	reg = XMDIO_READ(pdata, MDIO_MMD_PCS, MDIO_STAT1);
+	if (reg & MDIO_STAT1_LSTATUS) {
+		/* If the block lock is found, update the helpers
+		 * and declare the link up
+		 */
+		PMD_DRV_LOG(NOTICE, "Rx adaptation - Block_lock done\n");
+		pdata->rx_adapt_done = true;
+		pdata->mode_set = false;
+		return;
+	}
+
+set_mode:
+	axgbe_set_rx_adap_mode(pdata, phy_data->cur_mode);
+}
+
+static void axgbe_phy_rx_adaptation(struct axgbe_port *pdata)
+{
+	unsigned int reg;
+
+rx_adapt_reinit:
+	reg = XMDIO_READ_BITS(pdata, MDIO_MMD_PMAPMD, MDIO_PMA_RX_LSTS,
+			      XGBE_PMA_RX_VAL_SIG_MASK);
+
+	/* step 1: Check for RX_VALID && LF_SIGDET */
+	if ((reg & XGBE_PMA_RX_VAL_SIG_MASK) != XGBE_PMA_RX_VAL_SIG_MASK) {
+		PMD_DRV_LOG(NOTICE, "RX_VALID or LF_SIGDET is unset, issue rrc\n");
+		axgbe_phy_rrc(pdata);
+		if (pdata->rx_adapt_retries++ >= MAX_RX_ADAPT_RETRIES) {
+			pdata->rx_adapt_retries = 0;
+			return;
+		}
+		goto rx_adapt_reinit;
+	}
+
+	/* perform rx adaptation */
+	axgbe_rx_adaptation(pdata);
+}
+
 static void axgbe_phy_rx_reset(struct axgbe_port *pdata)
 {
 	int reg;
@@ -1258,12 +1348,27 @@ static void axgbe_phy_perform_ratechange(struct axgbe_port *pdata,
 	wait = AXGBE_RATECHANGE_COUNT;
 	while (wait--) {
 		if (!XP_IOREAD_BITS(pdata, XP_DRIVER_INT_RO, STATUS))
-			goto reenable_pll;
+			goto do_rx_adaptation;
 		rte_delay_us(1500);
 	}
 	PMD_DRV_LOG(NOTICE, "firmware mailbox command did not complete\n");
 	/* Reset on error */
 	axgbe_phy_rx_reset(pdata);
+	goto reenable_pll;
+
+
+do_rx_adaptation:
+	if (pdata->en_rx_adap && sub_cmd == AXGBE_MB_SUBCMD_RX_ADAP &&
+	    (cmd == AXGBE_MB_CMD_SET_10G_KR || cmd == AXGBE_MB_CMD_SET_10G_SFI)) {
+		PMD_DRV_LOG(NOTICE, "Enabling RX adaptation\n");
+		pdata->mode_set = true;
+		axgbe_phy_rx_adaptation(pdata);
+		/* return from here to avoid enabling PLL ctrl
+		 * during adaptation phase
+		 */
+		return;
+	}
+
 
 reenable_pll:
 	/* Enable PLL re-initialization, not needed for PHY Power Off and RRC cmds */
@@ -1296,6 +1401,31 @@ static void axgbe_phy_power_off(struct axgbe_port *pdata)
 	PMD_DRV_LOG(DEBUG, "phy powered off\n");
 }
 
+static bool enable_rx_adap(struct axgbe_port *pdata, enum axgbe_mode mode)
+{
+	struct axgbe_phy_data *phy_data = pdata->phy_data;
+	unsigned int ver;
+
+	/* Rx-Adaptation is not supported on older platforms(< 0x30H) */
+	ver = AXGMAC_GET_BITS(pdata->hw_feat.version, MAC_VR, SNPSVER);
+	if (ver < 0x30)
+		return false;
+
+	/* Re-driver models 4223 && 4227 do not support Rx-Adaptation */
+	if (phy_data->redrv &&
+	    (phy_data->redrv_model == AXGBE_PHY_REDRV_MODEL_4223 ||
+	     phy_data->redrv_model == AXGBE_PHY_REDRV_MODEL_4227))
+		return false;
+
+	/* 10G KR mode with AN does not support Rx-Adaptation */
+	if (mode == AXGBE_MODE_KR &&
+	    phy_data->port_mode != AXGBE_PORT_MODE_BACKPLANE_NO_AUTONEG)
+		return false;
+
+	pdata->en_rx_adap = 1;
+	return true;
+}
+
 static void axgbe_phy_sfi_mode(struct axgbe_port *pdata)
 {
 	struct axgbe_phy_data *phy_data = pdata->phy_data;
@@ -1304,8 +1434,13 @@ static void axgbe_phy_sfi_mode(struct axgbe_port *pdata)
 
 	/* 10G/SFI */
 	if (phy_data->sfp_cable != AXGBE_SFP_CABLE_PASSIVE) {
+		pdata->en_rx_adap = 0;
 		axgbe_phy_perform_ratechange(pdata, AXGBE_MB_CMD_SET_10G_SFI,
 							AXGBE_MB_SUBCMD_ACTIVE);
+	} else if ((phy_data->sfp_cable == AXGBE_SFP_CABLE_PASSIVE) &&
+				(enable_rx_adap(pdata, AXGBE_MODE_SFI))) {
+		axgbe_phy_perform_ratechange(pdata, AXGBE_MB_CMD_SET_10G_SFI,
+						AXGBE_MB_SUBCMD_RX_ADAP);
 	} else {
 		if (phy_data->sfp_cable_len <= 1)
 			axgbe_phy_perform_ratechange(pdata, AXGBE_MB_CMD_SET_10G_SFI,
@@ -1330,6 +1465,10 @@ static void axgbe_phy_kr_mode(struct axgbe_port *pdata)
 	axgbe_phy_set_redrv_mode(pdata);
 
 	/* 10G/KR */
+	if (enable_rx_adap(pdata, AXGBE_MODE_KR))
+		axgbe_phy_perform_ratechange(pdata, AXGBE_MB_CMD_SET_10G_KR,
+						AXGBE_MB_SUBCMD_RX_ADAP);
+	else
 		axgbe_phy_perform_ratechange(pdata, AXGBE_MB_CMD_SET_10G_KR,
 						AXGBE_MB_SUBCMD_NONE);
 	phy_data->cur_mode = AXGBE_MODE_KR;
@@ -1719,8 +1858,11 @@ static int axgbe_phy_link_status(struct axgbe_port *pdata, int *an_restart)
 			return 0;
 		}
 
-		if (phy_data->sfp_mod_absent || phy_data->sfp_rx_los)
+		if (phy_data->sfp_mod_absent || phy_data->sfp_rx_los) {
+			if (pdata->en_rx_adap)
+				pdata->rx_adapt_done = false;
 			return 0;
+		}
 	}
 
 	/* Link status is latched low, so read once to clear
@@ -1728,7 +1870,29 @@ static int axgbe_phy_link_status(struct axgbe_port *pdata, int *an_restart)
 	 */
 	reg = XMDIO_READ(pdata, MDIO_MMD_PCS, MDIO_STAT1);
 	reg = XMDIO_READ(pdata, MDIO_MMD_PCS, MDIO_STAT1);
-	if (reg & MDIO_STAT1_LSTATUS)
+
+	if (pdata->en_rx_adap) {
+		/* if the link is available and adaptation is done,
+		 * declare link up
+		 */
+		if ((reg & MDIO_STAT1_LSTATUS) && pdata->rx_adapt_done)
+			return 1;
+		/* If either link is not available or adaptation is not done,
+		 * retrigger the adaptation logic. (if the mode is not set,
+		 * then issue mailbox command first)
+		 */
+		if (pdata->mode_set) {
+			axgbe_phy_rx_adaptation(pdata);
+		} else {
+			pdata->rx_adapt_done = false;
+			axgbe_phy_set_mode(pdata, phy_data->cur_mode);
+		}
+
+		/* check again for the link and adaptation status */
+		reg = XMDIO_READ(pdata, MDIO_MMD_PCS, MDIO_STAT1);
+		if ((reg & MDIO_STAT1_LSTATUS) && pdata->rx_adapt_done)
+			return 1;
+	} else if (reg & MDIO_STAT1_LSTATUS)
 		return 1;
 
 	if (pdata->phy.autoneg == AUTONEG_ENABLE &&

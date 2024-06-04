@@ -244,6 +244,7 @@ enum axgbe_mb_cmd {
 
 enum axgbe_mb_subcmd {
 	AXGBE_MB_SUBCMD_NONE = 0,
+	AXGBE_MB_SUBCMD_RX_ADAP,
 
 	/* 10GbE SFP subcommands */
 	AXGBE_MB_SUBCMD_ACTIVE = 0,
@@ -722,6 +723,10 @@ struct axgbe_port {
 	struct rte_timecounter tx_tstamp;
 	unsigned int tstamp_addend;
 
+	bool en_rx_adap;
+	int rx_adapt_retries;
+	bool rx_adapt_done;
+	bool mode_set;
 };
 
 void axgbe_init_function_ptrs_dev(struct axgbe_hw_if *hw_if);
