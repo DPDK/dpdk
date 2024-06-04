@@ -625,7 +625,10 @@ static void axgbe_phy_sfp_parse_eeprom(struct axgbe_port *pdata)
 	}
 
 	/* Determine the type of SFP */
-	if (sfp_base[AXGBE_SFP_BASE_10GBE_CC] & AXGBE_SFP_BASE_10GBE_CC_SR)
+	if (phy_data->sfp_cable == AXGBE_SFP_CABLE_PASSIVE &&
+		 axgbe_phy_sfp_bit_rate(sfp_eeprom, AXGBE_SFP_SPEED_10000))
+		phy_data->sfp_base = AXGBE_SFP_BASE_10000_CR;
+	else if (sfp_base[AXGBE_SFP_BASE_10GBE_CC] & AXGBE_SFP_BASE_10GBE_CC_SR)
 		phy_data->sfp_base = AXGBE_SFP_BASE_10000_SR;
 	else if (sfp_base[AXGBE_SFP_BASE_10GBE_CC] & AXGBE_SFP_BASE_10GBE_CC_LR)
 		phy_data->sfp_base = AXGBE_SFP_BASE_10000_LR;
@@ -642,9 +645,6 @@ static void axgbe_phy_sfp_parse_eeprom(struct axgbe_port *pdata)
 		phy_data->sfp_base = AXGBE_SFP_BASE_1000_CX;
 	else if (sfp_base[AXGBE_SFP_BASE_1GBE_CC] & AXGBE_SFP_BASE_1GBE_CC_T)
 		phy_data->sfp_base = AXGBE_SFP_BASE_1000_T;
-	else if ((phy_data->sfp_cable == AXGBE_SFP_CABLE_PASSIVE) &&
-		 axgbe_phy_sfp_bit_rate(sfp_eeprom, AXGBE_SFP_SPEED_10000))
-		phy_data->sfp_base = AXGBE_SFP_BASE_10000_CR;
 
 	switch (phy_data->sfp_base) {
 	case AXGBE_SFP_BASE_1000_T:
