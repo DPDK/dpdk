@@ -2012,9 +2012,9 @@ static bool axgbe_phy_port_mode_mismatch(struct axgbe_port *pdata)
 	struct axgbe_phy_data *phy_data = pdata->phy_data;
 	unsigned int ver;
 
-	/* 10 Mbps speed is not supported in ver < 30H */
+	/* 10 Mbps speed is supported in ver 21H and ver >= 30H */
 	ver = AXGMAC_GET_BITS(pdata->hw_feat.version, MAC_VR, SNPSVER);
-	if (ver < 0x30 && phy_data->port_speeds & AXGBE_PHY_PORT_SPEED_10)
+	if ((ver < 0x30 && ver != 0x21) && phy_data->port_speeds & AXGBE_PHY_PORT_SPEED_10)
 		return true;
 
 	switch (phy_data->port_mode) {
