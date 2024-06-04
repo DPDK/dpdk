@@ -578,6 +578,9 @@ static bool axgbe_phy_belfuse_parse_quirks(struct axgbe_port *pdata)
 		   AXGBE_BEL_FUSE_VENDOR, strlen(AXGBE_BEL_FUSE_VENDOR)))
 		return false;
 
+	/* Reset PHY - wait for self-clearing reset bit to clear */
+	pdata->phy_if.phy_impl.reset(pdata);
+
 	if (!memcmp(&sfp_eeprom->base[AXGBE_SFP_BASE_VENDOR_PN],
 		    AXGBE_BEL_FUSE_PARTNO, strlen(AXGBE_BEL_FUSE_PARTNO))) {
 		phy_data->sfp_base = AXGBE_SFP_BASE_1000_SX;
