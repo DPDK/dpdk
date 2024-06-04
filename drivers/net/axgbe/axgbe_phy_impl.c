@@ -556,6 +556,8 @@ static bool axgbe_phy_belfuse_parse_quirks(struct axgbe_port *pdata)
 	if (memcmp(&sfp_eeprom->base[AXGBE_SFP_BASE_VENDOR_NAME],
 		   AXGBE_BEL_FUSE_VENDOR, strlen(AXGBE_BEL_FUSE_VENDOR)))
 		return false;
+	/* For Bel-Fuse, use the extra AN flag */
+	pdata->an_again = 1;
 
 	/* Reset PHY - wait for self-clearing reset bit to clear */
 	pdata->phy_if.phy_impl.reset(pdata);
@@ -796,6 +798,9 @@ static void axgbe_phy_sfp_detect(struct axgbe_port *pdata)
 {
 	struct axgbe_phy_data *phy_data = pdata->phy_data;
 	int ret;
+
+	/* Clear the extra AN flag */
+	pdata->an_again = 0;
 
 	/* Reset the SFP signals and info */
 	axgbe_phy_sfp_reset(phy_data);

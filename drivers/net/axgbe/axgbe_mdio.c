@@ -883,21 +883,22 @@ static int axgbe_phy_config_fixed(struct axgbe_port *pdata)
 	return 0;
 }
 
-static int __axgbe_phy_config_aneg(struct axgbe_port *pdata)
+static int __axgbe_phy_config_aneg(struct axgbe_port *pdata, bool set_mode)
 {
 	int ret;
 
+	pthread_mutex_lock(&pdata->an_mutex);
 	rte_bit_relaxed_set32(AXGBE_LINK_INIT, &pdata->dev_state);
 	pdata->link_check = rte_get_timer_cycles();
 
 	ret = pdata->phy_if.phy_impl.an_config(pdata);
 	if (ret)
-		return ret;
+		goto out;
 
 	if (pdata->phy.autoneg != AUTONEG_ENABLE) {
 		ret = axgbe_phy_config_fixed(pdata);
 		if (ret || !pdata->kr_redrv)
-			return ret;
+			goto out;
 		PMD_DRV_LOG(DEBUG, "AN redriver support\n");
 	} else {
 		PMD_DRV_LOG(DEBUG, "AN PHY configuration\n");
@@ -907,23 +908,26 @@ static int __axgbe_phy_config_aneg(struct axgbe_port *pdata)
 	rte_intr_disable(pdata->pci_dev->intr_handle);
 
 	/* Start auto-negotiation in a supported mode */
-	if (axgbe_use_mode(pdata, AXGBE_MODE_KR)) {
-		axgbe_set_mode(pdata, AXGBE_MODE_KR);
-	} else if (axgbe_use_mode(pdata, AXGBE_MODE_KX_2500)) {
-		axgbe_set_mode(pdata, AXGBE_MODE_KX_2500);
-	} else if (axgbe_use_mode(pdata, AXGBE_MODE_KX_1000)) {
-		axgbe_set_mode(pdata, AXGBE_MODE_KX_1000);
-	} else if (axgbe_use_mode(pdata, AXGBE_MODE_SFI)) {
-		axgbe_set_mode(pdata, AXGBE_MODE_SFI);
-	} else if (axgbe_use_mode(pdata, AXGBE_MODE_X)) {
-		axgbe_set_mode(pdata, AXGBE_MODE_X);
-	} else if (axgbe_use_mode(pdata, AXGBE_MODE_SGMII_1000)) {
-		axgbe_set_mode(pdata, AXGBE_MODE_SGMII_1000);
-	} else if (axgbe_use_mode(pdata, AXGBE_MODE_SGMII_100)) {
-		axgbe_set_mode(pdata, AXGBE_MODE_SGMII_100);
-	} else {
-		rte_intr_enable(pdata->pci_dev->intr_handle);
-		return -EINVAL;
+	if (set_mode) {
+		if (axgbe_use_mode(pdata, AXGBE_MODE_KR)) {
+			axgbe_set_mode(pdata, AXGBE_MODE_KR);
+		} else if (axgbe_use_mode(pdata, AXGBE_MODE_KX_2500)) {
+			axgbe_set_mode(pdata, AXGBE_MODE_KX_2500);
+		} else if (axgbe_use_mode(pdata, AXGBE_MODE_KX_1000)) {
+			axgbe_set_mode(pdata, AXGBE_MODE_KX_1000);
+		} else if (axgbe_use_mode(pdata, AXGBE_MODE_SFI)) {
+			axgbe_set_mode(pdata, AXGBE_MODE_SFI);
+		} else if (axgbe_use_mode(pdata, AXGBE_MODE_X)) {
+			axgbe_set_mode(pdata, AXGBE_MODE_X);
+		} else if (axgbe_use_mode(pdata, AXGBE_MODE_SGMII_1000)) {
+			axgbe_set_mode(pdata, AXGBE_MODE_SGMII_1000);
+		} else if (axgbe_use_mode(pdata, AXGBE_MODE_SGMII_100)) {
+			axgbe_set_mode(pdata, AXGBE_MODE_SGMII_100);
+		} else {
+			rte_intr_enable(pdata->pci_dev->intr_handle);
+			ret = -EINVAL;
+			goto out;
+		}
 	}
 
 	/* Disable and stop any in progress auto-negotiation */
@@ -941,16 +945,7 @@ static int __axgbe_phy_config_aneg(struct axgbe_port *pdata)
 	axgbe_an_init(pdata);
 	axgbe_an_restart(pdata);
 
-	return 0;
-}
-
-static int axgbe_phy_config_aneg(struct axgbe_port *pdata)
-{
-	int ret;
-
-	pthread_mutex_lock(&pdata->an_mutex);
-
-	ret = __axgbe_phy_config_aneg(pdata);
+out:
 	if (ret)
 		rte_bit_relaxed_set32(AXGBE_LINK_ERR, &pdata->dev_state);
 	else
@@ -959,6 +954,16 @@ static int axgbe_phy_config_aneg(struct axgbe_port *pdata)
 	pthread_mutex_unlock(&pdata->an_mutex);
 
 	return ret;
+}
+
+static int axgbe_phy_config_aneg(struct axgbe_port *pdata)
+{
+	return __axgbe_phy_config_aneg(pdata, true);
+}
+
+static int axgbe_phy_reconfig_aneg(struct axgbe_port *pdata)
+{
+	return __axgbe_phy_config_aneg(pdata, false);
 }
 
 static bool axgbe_phy_aneg_done(struct axgbe_port *pdata)
@@ -1042,10 +1047,13 @@ static bool axgbe_phy_status_result(struct axgbe_port *pdata)
 
 	pdata->phy.duplex = DUPLEX_FULL;
 
-	if (axgbe_set_mode(pdata, mode))
-		return true;
-	else
+	if (!axgbe_set_mode(pdata, mode))
 		return false;
+
+	if (pdata->an_again)
+		axgbe_phy_reconfig_aneg(pdata);
+
+	return true;
 }
 
 static int autoneg_time_out(unsigned long autoneg_start_time)

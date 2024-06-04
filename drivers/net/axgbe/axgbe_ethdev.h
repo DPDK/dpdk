@@ -658,6 +658,7 @@ struct axgbe_port {
 	enum axgbe_an an_state;
 	enum axgbe_rx kr_state;
 	enum axgbe_rx kx_state;
+	unsigned int an_again;
 	unsigned int an_supported;
 	unsigned int parallel_detect;
 	unsigned int fec_ability;
