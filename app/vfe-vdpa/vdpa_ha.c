@@ -223,7 +223,7 @@ virtio_ha_client_dev_restore_vf(int total_vf)
 
 		ret = virtio_ha_vf_ctx_query(&vf_dev->vf_devargs.vf_name, &vf_dev->pf_name, &vf_ctx);
 		if (ret < 0) {
-			RTE_LOG(ERR, HA, "Failed to query vf ctx\n");
+			RTE_LOG(ERR, HA, "Failed to query vf ctx (ret %d)\n", ret);
 			pthread_mutex_unlock(&vf_restore_lock);
 			ret = -1;
 			goto err;
@@ -287,12 +287,18 @@ virtio_ha_client_dev_restore_vf(int total_vf)
 			}
 		}
 err_vf_ctx:
-		free(vf_ctx);
-		free(vf_dev);
+		if (vf_ctx) {
+			free(vf_ctx);
+			vf_ctx = NULL;
+		}
+err:
+		if (vf_dev) {
+			free(vf_dev);
+			vf_dev = NULL;
+		}
 		memset(&vf_info, 0, sizeof(struct vdpa_vf_params));
 	}
 
-err:
 	cleanup_restore_queue();
 	virtio_ha_prio_chnl_destroy();
 	return ret;

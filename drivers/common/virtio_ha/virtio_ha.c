@@ -839,6 +839,7 @@ virtio_ha_vf_ctx_query(struct virtio_dev_name *vf,
 	struct virtio_ha_vf_dev *vf_dev;
 	struct virtio_ha_vf_dev_list *vf_list;
 	struct virtio_ha_msg *msg;
+	struct vdpa_vf_ctx_content *ctt;
 	bool found = false;
 	int ret;
 
@@ -846,7 +847,7 @@ virtio_ha_vf_ctx_query(struct virtio_dev_name *vf,
 		;
 
 	if (!__atomic_load_n(&ipc_client_connected, __ATOMIC_RELAXED))
-		return 0;
+		return -2;
 
 	msg = virtio_ha_alloc_msg();
 	if (!msg) {
@@ -876,7 +877,10 @@ virtio_ha_vf_ctx_query(struct virtio_dev_name *vf,
 		return -1;
 	}
 
-	*ctx = malloc(sizeof(int) * 3 + msg->iov.iov_len);
+	ctt = (struct vdpa_vf_ctx_content *)msg->iov.iov_base;
+
+	*ctx = malloc(sizeof(struct vdpa_vf_ctx) +
+		ctt->mem.nregions * sizeof(struct virtio_vdpa_mem_region));
 	if (*ctx == NULL) {
 		HA_IPC_LOG(ERR, "Failed to alloc vf ctx");
 		return -1;			

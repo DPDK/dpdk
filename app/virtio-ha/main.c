@@ -281,7 +281,9 @@ ha_server_app_query_vf_ctx(struct virtio_ha_msg *msg)
 				vf_ctt->vhost_fd_saved = false;
 			else
 				vf_ctt->vhost_fd_saved = true;
-			memcpy((void *)&vf_ctt->mem, &vf_dev->vf_ctx.ctt.mem, msg->iov.iov_len - sizeof(bool));
+			vf_ctt->mem.nregions = vf_dev->vf_ctx.ctt.mem.nregions;
+			memcpy((void *)vf_ctt->mem.regions, vf_dev->vf_ctx.ctt.mem.regions,
+				vf_dev->vf_ctx.ctt.mem.nregions * sizeof(struct virtio_vdpa_mem_region));
 			msg->nr_fds = 3;
 			msg->fds[0] = vf_dev->vf_ctx.vfio_container_fd;
 			msg->fds[1] = vf_dev->vf_ctx.vfio_group_fd;
