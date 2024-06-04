@@ -208,6 +208,7 @@ static struct axgbe_version_data axgbe_v2a = {
 	.ecc_support			= 1,
 	.i2c_support			= 1,
 	.an_cdr_workaround		= 1,
+	.enable_rrc			= 1,
 };
 
 static struct axgbe_version_data axgbe_v2b = {
@@ -220,6 +221,7 @@ static struct axgbe_version_data axgbe_v2b = {
 	.ecc_support			= 1,
 	.i2c_support			= 1,
 	.an_cdr_workaround		= 1,
+	.enable_rrc			= 1,
 };
 
 static const struct rte_eth_desc_lim rx_desc_lim = {
@@ -2269,6 +2271,9 @@ eth_axgbe_dev_init(struct rte_eth_dev *eth_dev)
 
 			/* Yellow Carp devices do not need cdr workaround */
 			pdata->vdata->an_cdr_workaround = 0;
+
+			/* Yellow Carp devices do not need rrc */
+			pdata->vdata->enable_rrc = 0;
 		} else {
 			unknown_cpu = 1;
 		}
