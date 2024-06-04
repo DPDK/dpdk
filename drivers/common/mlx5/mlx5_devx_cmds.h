@@ -737,6 +737,15 @@ __rte_internal
 int mlx5_devx_cmd_modify_sq(struct mlx5_devx_obj *sq,
 			    struct mlx5_devx_modify_sq_attr *sq_attr);
 __rte_internal
+int mlx5_devx_cmd_query_sq(struct mlx5_devx_obj *sq, void *out, size_t outlen);
+
+__rte_internal
+int mlx5_devx_cmd_query_cq(struct mlx5_devx_obj *cq, void *out, size_t outlen);
+
+__rte_internal
+int mlx5_devx_cmd_query_rq(struct mlx5_devx_obj *rq, void *out, size_t outlen);
+
+__rte_internal
 struct mlx5_devx_obj *mlx5_devx_cmd_create_tis(void *ctx,
 					   struct mlx5_devx_tis_attr *tis_attr);
 __rte_internal

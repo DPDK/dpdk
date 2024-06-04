@@ -1597,6 +1597,35 @@ mlx5_devx_cmd_modify_rq(struct mlx5_devx_obj *rq,
 	return ret;
 }
 
+/*
+ * Query RQ using DevX API.
+ *
+ * @param[in] rq_obj
+ *   RQ Devx Object
+ * @param[out] out
+ *   RQ Query Output
+ * @param[in] outlen
+ *   RQ Query Output Length
+ *
+ * @return
+ *   0 if Query successful, else non-zero return value from devx_obj_query API
+ */
+int
+mlx5_devx_cmd_query_rq(struct mlx5_devx_obj *rq_obj, void *out, size_t outlen)
+{
+	uint32_t in[MLX5_ST_SZ_DW(query_rq_in)] = {0};
+	int rc;
+
+	MLX5_SET(query_rq_in, in, opcode, MLX5_CMD_OP_QUERY_RQ);
+	MLX5_SET(query_rq_in, in, rqn, rq_obj->id);
+	rc = mlx5_glue->devx_obj_query(rq_obj->obj, in, sizeof(in), out, outlen);
+	if (rc || MLX5_FW_STATUS(out)) {
+		DEVX_DRV_LOG(ERR, out, "RQ query", "rq_id", rq_obj->id);
+		return MLX5_DEVX_ERR_RC(rc);
+	}
+	return 0;
+}
+
 /**
  * Create RMP using DevX API.
  *
@@ -2004,6 +2033,35 @@ mlx5_devx_cmd_modify_sq(struct mlx5_devx_obj *sq,
 	return ret;
 }
 
+/*
+ * Query SQ using DevX API.
+ *
+ * @param[in] sq_obj
+ *   SQ Devx Object
+ * @param[out] out
+ *   SQ Query Output
+ * @param[in] outlen
+ *   SQ Query Output Length
+ *
+ * @return
+ *   0 if Query successful, else non-zero return value from devx_obj_query API
+ */
+int
+mlx5_devx_cmd_query_sq(struct mlx5_devx_obj *sq_obj, void *out, size_t outlen)
+{
+	uint32_t in[MLX5_ST_SZ_DW(query_sq_in)] = {0};
+	int rc;
+
+	MLX5_SET(query_sq_in, in, opcode, MLX5_CMD_OP_QUERY_SQ);
+	MLX5_SET(query_sq_in, in, sqn, sq_obj->id);
+	rc = mlx5_glue->devx_obj_query(sq_obj->obj, in, sizeof(in), out, outlen);
+	if (rc || MLX5_FW_STATUS(out)) {
+		DEVX_DRV_LOG(ERR, out, "SQ query", "sq_id", sq_obj->id);
+		return MLX5_DEVX_ERR_RC(rc);
+	}
+	return 0;
+}
+
 /**
  * Create TIS using DevX API.
  *
@@ -2203,6 +2261,35 @@ mlx5_devx_cmd_create_cq(void *ctx, struct mlx5_devx_cq_attr *attr)
 	}
 	cq_obj->id = MLX5_GET(create_cq_out, out, cqn);
 	return cq_obj;
+}
+
+/*
+ * Query CQ using DevX API.
+ *
+ * @param[in] cq_obj
+ *   CQ Devx Object
+ * @param[out] out
+ *   CQ Query Output
+ * @param[in] outlen
+ *   CQ Query Output Length
+ *
+ * @return
+ *   0 if Query successful, else non-zero return value from devx_obj_query API
+ */
+int
+mlx5_devx_cmd_query_cq(struct mlx5_devx_obj *cq_obj, void *out, size_t outlen)
+{
+	uint32_t in[MLX5_ST_SZ_DW(query_cq_in)] = {0};
+	int rc;
+
+	MLX5_SET(query_cq_in, in, opcode, MLX5_CMD_OP_QUERY_CQ);
+	MLX5_SET(query_cq_in, in, cqn, cq_obj->id);
+	rc = mlx5_glue->devx_obj_query(cq_obj->obj, in, sizeof(in), out, outlen);
+	if (rc || MLX5_FW_STATUS(out)) {
+		DEVX_DRV_LOG(ERR, out, "CQ query", "cq_id", cq_obj->id);
+		return MLX5_DEVX_ERR_RC(rc);
+	}
+	return 0;
 }
 
 /**

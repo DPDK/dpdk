@@ -379,6 +379,42 @@ __rte_experimental
 int
 rte_pmd_mlx5_destroy_geneve_tlv_parser(void *handle);
 
+/**
+ * Dump Rx Queue Context for a given port/queue
+ *
+ * @param[in] port_id
+ *   Port ID
+ * @param[in] queue_id
+ *   Queue ID
+ * @param[in] filename
+ *   Name of file to dump the Rx Queue Context
+ *
+ * @return
+ *   0 for success, non-zero value depending on failure type
+ */
+
+__rte_experimental
+int
+rte_pmd_mlx5_rxq_dump_contexts(uint16_t port_id, uint16_t queue_id, const char *filename);
+
+/**
+ * Dump Tx Queue Context for a given port/queue
+ *
+ * @param[in] port_id
+ *   Port ID
+ * @param[in] queue_id
+ *   Queue ID
+ * @param[in] filename
+ *   Name of file to dump the Tx Queue Context
+ *
+ * @return
+ *   0 for success, non-zero value depending on failure type
+ */
+
+__rte_experimental
+int
+rte_pmd_mlx5_txq_dump_contexts(uint16_t port_id, uint16_t queue_id, const char *filename);
+
 #ifdef __cplusplus
 }
 #endif

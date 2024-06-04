@@ -1586,3 +1586,85 @@ int rte_pmd_mlx5_host_shaper_config(int port_id, uint8_t rate,
 	return mlxreg_host_shaper_config(dev, priv->sh->lwm_triggered,
 					 priv->sh->host_shaper_rate);
 }
+
+/**
+ * Dump RQ/CQ Context to a file.
+ *
+ * @param[in] port_id
+ *   Port ID
+ * @param[in] queue_id
+ *   Queue ID
+ * @param[in] filename
+ *   Name of file to dump the Rx Queue Context
+ *
+ * @return
+ *   0 for Success, non-zero value depending on failure type
+ */
+int rte_pmd_mlx5_rxq_dump_contexts(uint16_t port_id, uint16_t queue_id, const char *filename)
+{
+	struct rte_eth_dev *dev;
+	struct mlx5_rxq_priv *rxq;
+	struct mlx5_rxq_ctrl *rxq_ctrl;
+	struct mlx5_rxq_obj *rxq_obj;
+	struct mlx5_devx_rq *rq;
+	struct mlx5_devx_cq *cq;
+	struct mlx5_devx_obj *rq_devx_obj;
+	struct mlx5_devx_obj *cq_devx_obj;
+
+	uint32_t rq_out[MLX5_ST_SZ_DW(query_rq_out)] = {0};
+	uint32_t cq_out[MLX5_ST_SZ_DW(query_cq_out)] = {0};
+
+	int ret;
+	FILE *fd;
+	MKSTR(path, "./%s", filename);
+
+	if (!rte_eth_dev_is_valid_port(port_id))
+		return -ENODEV;
+
+	if (rte_eth_rx_queue_is_valid(port_id, queue_id))
+		return -EINVAL;
+
+	fd = fopen(path, "w");
+	if (!fd) {
+		rte_errno = errno;
+		return -EIO;
+	}
+
+	dev = &rte_eth_devices[port_id];
+	rxq = mlx5_rxq_ref(dev, queue_id);
+	rxq_ctrl = rxq->ctrl;
+	rxq_obj = rxq_ctrl->obj;
+	rq = &rxq->devx_rq;
+	cq = &rxq_obj->cq_obj;
+	rq_devx_obj = rq->rq;
+	cq_devx_obj = cq->cq;
+
+	do {
+		ret = mlx5_devx_cmd_query_rq(rq_devx_obj, rq_out, sizeof(rq_out));
+		if (ret)
+			break;
+
+		/* Dump rq query output to file */
+		MKSTR(rq_headline, "RQ DevX ID = %u Port = %u Queue index = %u ",
+					rq_devx_obj->id, port_id, queue_id);
+		mlx5_dump_to_file(fd, NULL, rq_headline, 0);
+		mlx5_dump_to_file(fd, "Query RQ Dump:",
+					(const void *)((uintptr_t)rq_out),
+					sizeof(rq_out));
+
+		ret = mlx5_devx_cmd_query_cq(cq_devx_obj, cq_out, sizeof(cq_out));
+		if (ret)
+			break;
+
+		/* Dump cq query output to file */
+		MKSTR(cq_headline, "CQ DevX ID = %u Port = %u Queue index = %u ",
+					cq_devx_obj->id, port_id, queue_id);
+		mlx5_dump_to_file(fd, NULL, cq_headline, 0);
+		mlx5_dump_to_file(fd, "Query CQ Dump:",
+					(const void *)((uintptr_t)cq_out),
+					sizeof(cq_out));
+	} while (false);
+
+	fclose(fd);
+	return ret;
+}

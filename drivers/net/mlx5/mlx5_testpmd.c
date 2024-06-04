@@ -1201,6 +1201,170 @@ cmdline_parse_inst_t mlx5_cmd_destroy_tlv_options = {
 	}
 };
 
+/* Dump SQ Context for a given port/queue*/
+struct mlx5_cmd_dump_sq_context_options {
+	cmdline_fixed_string_t mlx5;
+	cmdline_fixed_string_t port;
+	portid_t port_id;
+	cmdline_fixed_string_t queue;
+	queueid_t queue_id;
+	cmdline_fixed_string_t dump;
+	cmdline_fixed_string_t sq_context;
+	cmdline_fixed_string_t file_name;
+};
+
+cmdline_parse_token_string_t mlx5_cmd_dump_sq_context_options_mlx5 =
+	TOKEN_STRING_INITIALIZER(struct mlx5_cmd_dump_sq_context_options, mlx5,
+				 "mlx5");
+cmdline_parse_token_string_t mlx5_cmd_dump_sq_context_options_port =
+	TOKEN_STRING_INITIALIZER(struct mlx5_cmd_dump_sq_context_options, port,
+				 "port");
+cmdline_parse_token_num_t mlx5_cmd_dump_sq_context_options_port_id =
+	TOKEN_NUM_INITIALIZER(struct mlx5_cmd_dump_sq_context_options, port_id,
+			      RTE_UINT16);
+cmdline_parse_token_string_t mlx5_cmd_dump_sq_context_options_queue =
+	TOKEN_STRING_INITIALIZER(struct mlx5_cmd_dump_sq_context_options, queue,
+				 "queue");
+cmdline_parse_token_num_t mlx5_cmd_dump_sq_context_options_queue_id =
+	TOKEN_NUM_INITIALIZER(struct mlx5_cmd_dump_sq_context_options, queue_id,
+			      RTE_UINT16);
+cmdline_parse_token_string_t mlx5_cmd_dump_sq_context_options_dump =
+	TOKEN_STRING_INITIALIZER(struct mlx5_cmd_dump_sq_context_options, dump,
+				 "dump");
+cmdline_parse_token_string_t mlx5_cmd_dump_sq_context_options_sq_context =
+	TOKEN_STRING_INITIALIZER(struct mlx5_cmd_dump_sq_context_options, sq_context,
+				 "sq_context");
+cmdline_parse_token_string_t mlx5_cmd_dump_sq_context_options_file_name =
+	TOKEN_STRING_INITIALIZER(struct mlx5_cmd_dump_sq_context_options, file_name,
+				 NULL);
+
+static void
+mlx5_cmd_dump_sq_context_options_parsed(void *parsed_result,
+				    __rte_unused struct cmdline *cl,
+				    __rte_unused void *data)
+{
+	struct mlx5_cmd_dump_sq_context_options *res = parsed_result;
+	int ret;
+
+	ret = rte_pmd_mlx5_txq_dump_contexts(res->port_id, res->queue_id, res->file_name);
+
+	switch (ret) {
+	case 0:
+		break;
+	case -EINVAL:
+		fprintf(stderr, "invalid queue index (%u), out of range\n",
+			res->queue_id);
+		break;
+	case -ENODEV:
+		fprintf(stderr, "invalid port_id %u\n", res->port_id);
+		break;
+	case -EIO:
+		fprintf(stderr, "File Access Error (%s)\n", strerror(rte_errno));
+		break;
+	default:
+		fprintf(stderr, "Unable to dump SQ/CQ HW Context (%s)\n", strerror(rte_errno));
+	}
+}
+
+cmdline_parse_inst_t mlx5_cmd_dump_sq_context_options = {
+	.f = mlx5_cmd_dump_sq_context_options_parsed,
+	.data = NULL,
+	.help_str = "mlx5 port <port_id> queue <queue_id> dump sq_context <file_name>",
+	.tokens = {
+		(void *)&mlx5_cmd_dump_sq_context_options_mlx5,
+		(void *)&mlx5_cmd_dump_sq_context_options_port,
+		(void *)&mlx5_cmd_dump_sq_context_options_port_id,
+		(void *)&mlx5_cmd_dump_sq_context_options_queue,
+		(void *)&mlx5_cmd_dump_sq_context_options_queue_id,
+		(void *)&mlx5_cmd_dump_sq_context_options_dump,
+		(void *)&mlx5_cmd_dump_sq_context_options_sq_context,
+		(void *)&mlx5_cmd_dump_sq_context_options_file_name,
+		NULL,
+	}
+};
+
+/* Dump RQ Context for a given port/queue*/
+struct mlx5_cmd_dump_rq_context_options {
+	cmdline_fixed_string_t mlx5;
+	cmdline_fixed_string_t port;
+	portid_t port_id;
+	cmdline_fixed_string_t queue;
+	queueid_t queue_id;
+	cmdline_fixed_string_t dump;
+	cmdline_fixed_string_t rq_context;
+	cmdline_fixed_string_t file_name;
+};
+
+cmdline_parse_token_string_t mlx5_cmd_dump_rq_context_options_mlx5 =
+	TOKEN_STRING_INITIALIZER(struct mlx5_cmd_dump_rq_context_options, mlx5,
+				 "mlx5");
+cmdline_parse_token_string_t mlx5_cmd_dump_rq_context_options_port =
+	TOKEN_STRING_INITIALIZER(struct mlx5_cmd_dump_rq_context_options, port,
+				 "port");
+cmdline_parse_token_num_t mlx5_cmd_dump_rq_context_options_port_id =
+	TOKEN_NUM_INITIALIZER(struct mlx5_cmd_dump_rq_context_options, port_id,
+			      RTE_UINT16);
+cmdline_parse_token_string_t mlx5_cmd_dump_rq_context_options_queue =
+	TOKEN_STRING_INITIALIZER(struct mlx5_cmd_dump_rq_context_options, queue,
+				 "queue");
+cmdline_parse_token_num_t mlx5_cmd_dump_rq_context_options_queue_id =
+	TOKEN_NUM_INITIALIZER(struct mlx5_cmd_dump_rq_context_options, queue_id,
+			      RTE_UINT16);
+cmdline_parse_token_string_t mlx5_cmd_dump_rq_context_options_dump =
+	TOKEN_STRING_INITIALIZER(struct mlx5_cmd_dump_rq_context_options, dump,
+				 "dump");
+cmdline_parse_token_string_t mlx5_cmd_dump_rq_context_options_rq_context =
+	TOKEN_STRING_INITIALIZER(struct mlx5_cmd_dump_rq_context_options, rq_context,
+				 "rq_context");
+cmdline_parse_token_string_t mlx5_cmd_dump_rq_context_options_file_name =
+	TOKEN_STRING_INITIALIZER(struct mlx5_cmd_dump_rq_context_options, file_name,
+				 NULL);
+
+static void
+mlx5_cmd_dump_rq_context_options_parsed(void *parsed_result,
+				    __rte_unused struct cmdline *cl,
+				    __rte_unused void *data)
+{
+	struct mlx5_cmd_dump_rq_context_options *res = parsed_result;
+	int ret;
+
+	ret = rte_pmd_mlx5_rxq_dump_contexts(res->port_id, res->queue_id, res->file_name);
+
+	switch (ret) {
+	case 0:
+		break;
+	case -EINVAL:
+		fprintf(stderr, "invalid queue index (%u), out of range\n",
+			res->queue_id);
+		break;
+	case -ENODEV:
+		fprintf(stderr, "invalid port_id %u\n", res->port_id);
+		break;
+	case -EIO:
+		fprintf(stderr, "File Access Error (%s)\n", strerror(rte_errno));
+		break;
+	default:
+		fprintf(stderr, "Unable to dump RQ/CQ HW Context (%s)\n", strerror(rte_errno));
+	}
+}
+
+cmdline_parse_inst_t mlx5_cmd_dump_rq_context_options = {
+	.f = mlx5_cmd_dump_rq_context_options_parsed,
+	.data = NULL,
+	.help_str = "mlx5 port <port_id> queue <queue_id> dump rq_context <file_name>",
+	.tokens = {
+		(void *)&mlx5_cmd_dump_rq_context_options_mlx5,
+		(void *)&mlx5_cmd_dump_rq_context_options_port,
+		(void *)&mlx5_cmd_dump_rq_context_options_port_id,
+		(void *)&mlx5_cmd_dump_rq_context_options_queue,
+		(void *)&mlx5_cmd_dump_rq_context_options_queue_id,
+		(void *)&mlx5_cmd_dump_rq_context_options_dump,
+		(void *)&mlx5_cmd_dump_rq_context_options_rq_context,
+		(void *)&mlx5_cmd_dump_rq_context_options_file_name,
+		NULL,
+	}
+};
+
 static struct testpmd_driver_commands mlx5_driver_cmds = {
 	.commands = {
 		{
@@ -1265,6 +1429,16 @@ static struct testpmd_driver_commands mlx5_driver_cmds = {
 			.ctx = &mlx5_cmd_destroy_tlv_options,
 			.help = "mlx5 port (port_id) destroy tlv_options\n"
 				"    Destroy GENEVE TLV parser\n\n",
+		},
+		{
+			.ctx = &mlx5_cmd_dump_sq_context_options,
+			.help = "mlx5 port (port_id) queue (queue_id) dump sq_context (file_name)\n"
+				"    Dump mlx5 SQ Context\n\n",
+		},
+		{
+			.ctx = &mlx5_cmd_dump_rq_context_options,
+			.help = "mlx5 port (port_id) queue (queue_id) dump rq_context (file_name)\n"
+				"    Dump mlx5 RQ Context\n\n",
 		},
 		{
 			.ctx = NULL,

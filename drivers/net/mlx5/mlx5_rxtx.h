@@ -38,6 +38,8 @@ void mlx5_set_cksum_table(void);
 void mlx5_set_swp_types_table(void);
 void mlx5_dump_debug_information(const char *path, const char *title,
 				 const void *buf, unsigned int len);
+void mlx5_dump_to_file(FILE *fd, const char *title,
+				 const void *buf, unsigned int len);
 int mlx5_queue_state_modify_primary(struct rte_eth_dev *dev,
 			const struct mlx5_mp_arg_queue_state_modify *sm);
 int mlx5_queue_state_modify(struct rte_eth_dev *dev,

@@ -23,4 +23,6 @@ EXPERIMENTAL {
 	# added in 24.07
 	rte_pmd_mlx5_external_tx_queue_id_map;
 	rte_pmd_mlx5_external_tx_queue_id_unmap;
+	rte_pmd_mlx5_txq_dump_contexts;
+	rte_pmd_mlx5_rxq_dump_contexts;
 };
