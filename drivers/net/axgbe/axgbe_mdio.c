@@ -143,6 +143,15 @@ static void axgbe_sgmii_1000_mode(struct axgbe_port *pdata)
 	pdata->phy_if.phy_impl.set_mode(pdata, AXGBE_MODE_SGMII_1000);
 }
 
+static void axgbe_sgmii_10_mode(struct axgbe_port *pdata)
+{
+	/* Set MAC to 10M speed */
+	pdata->hw_if.set_speed(pdata, SPEED_10);
+
+	/* Call PHY implementation support to complete rate change */
+	pdata->phy_if.phy_impl.set_mode(pdata, AXGBE_MODE_SGMII_10);
+}
+
 static void axgbe_sgmii_100_mode(struct axgbe_port *pdata)
 {
 
@@ -175,6 +184,9 @@ static void axgbe_change_mode(struct axgbe_port *pdata,
 		break;
 	case AXGBE_MODE_KR:
 		axgbe_kr_mode(pdata);
+		break;
+	case AXGBE_MODE_SGMII_10:
+		axgbe_sgmii_10_mode(pdata);
 		break;
 	case AXGBE_MODE_SGMII_100:
 		axgbe_sgmii_100_mode(pdata);
@@ -864,6 +876,7 @@ static int axgbe_phy_config_fixed(struct axgbe_port *pdata)
 	case AXGBE_MODE_KX_1000:
 	case AXGBE_MODE_KX_2500:
 	case AXGBE_MODE_KR:
+	case AXGBE_MODE_SGMII_10:
 	case AXGBE_MODE_SGMII_100:
 	case AXGBE_MODE_SGMII_1000:
 	case AXGBE_MODE_X:
@@ -923,6 +936,8 @@ static int __axgbe_phy_config_aneg(struct axgbe_port *pdata, bool set_mode)
 			axgbe_set_mode(pdata, AXGBE_MODE_SGMII_1000);
 		} else if (axgbe_use_mode(pdata, AXGBE_MODE_SGMII_100)) {
 			axgbe_set_mode(pdata, AXGBE_MODE_SGMII_100);
+		} else if (axgbe_use_mode(pdata, AXGBE_MODE_SGMII_10)) {
+			axgbe_set_mode(pdata, AXGBE_MODE_SGMII_10);
 		} else {
 			rte_intr_enable(pdata->pci_dev->intr_handle);
 			ret = -EINVAL;
@@ -1025,6 +1040,9 @@ static bool axgbe_phy_status_result(struct axgbe_port *pdata)
 		mode = axgbe_phy_status_aneg(pdata);
 
 	switch (mode) {
+	case AXGBE_MODE_SGMII_10:
+		pdata->phy.speed = SPEED_10;
+		break;
 	case AXGBE_MODE_SGMII_100:
 		pdata->phy.speed = SPEED_100;
 		break;
@@ -1181,6 +1199,8 @@ static int axgbe_phy_start(struct axgbe_port *pdata)
 		axgbe_sgmii_1000_mode(pdata);
 	} else if (axgbe_use_mode(pdata, AXGBE_MODE_SGMII_100)) {
 		axgbe_sgmii_100_mode(pdata);
+	} else if (axgbe_use_mode(pdata, AXGBE_MODE_SGMII_10)) {
+		axgbe_sgmii_10_mode(pdata);
 	} else {
 		ret = -EINVAL;
 		goto err_stop;
@@ -1228,6 +1248,8 @@ static int axgbe_phy_best_advertised_speed(struct axgbe_port *pdata)
 		return SPEED_1000;
 	else if (pdata->phy.advertising & ADVERTISED_100baseT_Full)
 		return SPEED_100;
+	else if (pdata->phy.advertising & ADVERTISED_10baseT_Full)
+		return SPEED_10;
 
 	return SPEED_UNKNOWN;
 }

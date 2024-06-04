@@ -7,6 +7,7 @@
 #include "axgbe_common.h"
 #include "axgbe_phy.h"
 
+#define AXGBE_PHY_PORT_SPEED_10		BIT(0)
 #define AXGBE_PHY_PORT_SPEED_100	BIT(1)
 #define AXGBE_PHY_PORT_SPEED_1000	BIT(2)
 #define AXGBE_PHY_PORT_SPEED_2500	BIT(3)
@@ -490,6 +491,8 @@ static void axgbe_phy_sfp_phy_settings(struct axgbe_port *pdata)
 
 	switch (phy_data->sfp_speed) {
 	case AXGBE_SFP_SPEED_100_1000:
+		if (phy_data->port_speeds & AXGBE_PHY_PORT_SPEED_10)
+			pdata->phy.advertising |= ADVERTISED_10baseT_Full;
 		if (phy_data->port_speeds & AXGBE_PHY_PORT_SPEED_100)
 			pdata->phy.advertising |= ADVERTISED_100baseT_Full;
 		if (phy_data->port_speeds & AXGBE_PHY_PORT_SPEED_1000)
@@ -511,6 +514,8 @@ static void axgbe_phy_sfp_phy_settings(struct axgbe_port *pdata)
 			pdata->phy.advertising |= ADVERTISED_1000baseT_Full;
 		else if (phy_data->port_speeds & AXGBE_PHY_PORT_SPEED_100)
 			pdata->phy.advertising |= ADVERTISED_100baseT_Full;
+		else if (phy_data->port_speeds & AXGBE_PHY_PORT_SPEED_10)
+			pdata->phy.advertising |= ADVERTISED_10baseT_Full;
 	}
 }
 
@@ -980,6 +985,14 @@ static enum axgbe_mode axgbe_phy_an37_sgmii_outcome(struct axgbe_port *pdata)
 		axgbe_phy_phydev_flowctrl(pdata);
 
 	switch (pdata->an_status & AXGBE_SGMII_AN_LINK_SPEED) {
+	case AXGBE_SGMII_AN_LINK_SPEED_10:
+		if (pdata->an_status & AXGBE_SGMII_AN_LINK_DUPLEX) {
+			pdata->phy.lp_advertising |= ADVERTISED_10baseT_Full;
+			mode = AXGBE_MODE_SGMII_10;
+		} else {
+			mode = AXGBE_MODE_UNKNOWN;
+		}
+		break;
 	case AXGBE_SGMII_AN_LINK_SPEED_100:
 		if (pdata->an_status & AXGBE_SGMII_AN_LINK_DUPLEX) {
 			pdata->phy.lp_advertising |= ADVERTISED_100baseT_Full;
@@ -1347,6 +1360,18 @@ static void axgbe_phy_sgmii_1000_mode(struct axgbe_port *pdata)
 	phy_data->cur_mode = AXGBE_MODE_SGMII_1000;
 }
 
+static void axgbe_phy_sgmii_10_mode(struct axgbe_port *pdata)
+{
+	struct axgbe_phy_data *phy_data = pdata->phy_data;
+
+	axgbe_phy_set_redrv_mode(pdata);
+
+	/* 10M/SGMII */
+	axgbe_phy_perform_ratechange(pdata, AXGBE_MB_CMD_SET_1G, AXGBE_MB_SUBCMD_10MBITS);
+
+	phy_data->cur_mode = AXGBE_MODE_SGMII_10;
+}
+
 static enum axgbe_mode axgbe_phy_cur_mode(struct axgbe_port *pdata)
 {
 	struct axgbe_phy_data *phy_data = pdata->phy_data;
@@ -1363,6 +1388,7 @@ static enum axgbe_mode axgbe_phy_switch_baset_mode(struct axgbe_port *pdata)
 		return axgbe_phy_cur_mode(pdata);
 
 	switch (axgbe_phy_cur_mode(pdata)) {
+	case AXGBE_MODE_SGMII_10:
 	case AXGBE_MODE_SGMII_100:
 	case AXGBE_MODE_SGMII_1000:
 		return AXGBE_MODE_KR;
@@ -1433,6 +1459,8 @@ static enum axgbe_mode axgbe_phy_get_baset_mode(struct axgbe_phy_data *phy_data
 						int speed)
 {
 	switch (speed) {
+	case SPEED_10:
+		return AXGBE_MODE_SGMII_10;
 	case SPEED_100:
 		return AXGBE_MODE_SGMII_100;
 	case SPEED_1000:
@@ -1448,6 +1476,8 @@ static enum axgbe_mode axgbe_phy_get_sfp_mode(struct axgbe_phy_data *phy_data,
 					      int speed)
 {
 	switch (speed) {
+	case SPEED_10:
+		return AXGBE_MODE_SGMII_10;
 	case SPEED_100:
 		return AXGBE_MODE_SGMII_100;
 	case SPEED_1000:
@@ -1525,6 +1555,9 @@ static void axgbe_phy_set_mode(struct axgbe_port *pdata, enum axgbe_mode mode)
 	case AXGBE_MODE_SGMII_1000:
 		axgbe_phy_sgmii_1000_mode(pdata);
 		break;
+	case AXGBE_MODE_SGMII_10:
+		axgbe_phy_sgmii_10_mode(pdata);
+		break;
 	default:
 		break;
 	}
@@ -1566,6 +1599,9 @@ static bool axgbe_phy_use_baset_mode(struct axgbe_port *pdata,
 				     enum axgbe_mode mode)
 {
 	switch (mode) {
+	case AXGBE_MODE_SGMII_10:
+		return axgbe_phy_check_mode(pdata, mode,
+					    ADVERTISED_10baseT_Full);
 	case AXGBE_MODE_SGMII_100:
 		return axgbe_phy_check_mode(pdata, mode,
 					    ADVERTISED_100baseT_Full);
@@ -1591,6 +1627,11 @@ static bool axgbe_phy_use_sfp_mode(struct axgbe_port *pdata,
 			return false;
 		return axgbe_phy_check_mode(pdata, mode,
 					    ADVERTISED_1000baseT_Full);
+	case AXGBE_MODE_SGMII_10:
+		if (phy_data->sfp_base != AXGBE_SFP_BASE_1000_T)
+			return false;
+		return axgbe_phy_check_mode(pdata, mode,
+					    ADVERTISED_10baseT_Full);
 	case AXGBE_MODE_SGMII_100:
 		if (phy_data->sfp_base != AXGBE_SFP_BASE_1000_T)
 			return false;
@@ -1803,6 +1844,12 @@ static int axgbe_phy_mdio_reset_setup(struct axgbe_port *pdata)
 static bool axgbe_phy_port_mode_mismatch(struct axgbe_port *pdata)
 {
 	struct axgbe_phy_data *phy_data = pdata->phy_data;
+	unsigned int ver;
+
+	/* 10 Mbps speed is not supported in ver < 30H */
+	ver = AXGMAC_GET_BITS(pdata->hw_feat.version, MAC_VR, SNPSVER);
+	if (ver < 0x30 && phy_data->port_speeds & AXGBE_PHY_PORT_SPEED_10)
+		return true;
 
 	switch (phy_data->port_mode) {
 	case AXGBE_PORT_MODE_BACKPLANE:
@@ -1816,7 +1863,8 @@ static bool axgbe_phy_port_mode_mismatch(struct axgbe_port *pdata)
 			return false;
 		break;
 	case AXGBE_PORT_MODE_1000BASE_T:
-		if ((phy_data->port_speeds & AXGBE_PHY_PORT_SPEED_100) ||
+		if ((phy_data->port_speeds & AXGBE_PHY_PORT_SPEED_10)  ||
+			(phy_data->port_speeds & AXGBE_PHY_PORT_SPEED_100) ||
 		    (phy_data->port_speeds & AXGBE_PHY_PORT_SPEED_1000))
 			return false;
 		break;
@@ -1825,13 +1873,15 @@ static bool axgbe_phy_port_mode_mismatch(struct axgbe_port *pdata)
 			return false;
 		break;
 	case AXGBE_PORT_MODE_NBASE_T:
-		if ((phy_data->port_speeds & AXGBE_PHY_PORT_SPEED_100) ||
+		if ((phy_data->port_speeds & AXGBE_PHY_PORT_SPEED_10)  ||
+			(phy_data->port_speeds & AXGBE_PHY_PORT_SPEED_100) ||
 		    (phy_data->port_speeds & AXGBE_PHY_PORT_SPEED_1000) ||
 		    (phy_data->port_speeds & AXGBE_PHY_PORT_SPEED_2500))
 			return false;
 		break;
 	case AXGBE_PORT_MODE_10GBASE_T:
-		if ((phy_data->port_speeds & AXGBE_PHY_PORT_SPEED_100) ||
+		if ((phy_data->port_speeds & AXGBE_PHY_PORT_SPEED_10)  ||
+		    (phy_data->port_speeds & AXGBE_PHY_PORT_SPEED_100) ||
 		    (phy_data->port_speeds & AXGBE_PHY_PORT_SPEED_1000) ||
 		    (phy_data->port_speeds & AXGBE_PHY_PORT_SPEED_10000))
 			return false;
@@ -1841,7 +1891,8 @@ static bool axgbe_phy_port_mode_mismatch(struct axgbe_port *pdata)
 			return false;
 		break;
 	case AXGBE_PORT_MODE_SFP:
-		if ((phy_data->port_speeds & AXGBE_PHY_PORT_SPEED_100) ||
+		if ((phy_data->port_speeds & AXGBE_PHY_PORT_SPEED_10)  ||
+			(phy_data->port_speeds & AXGBE_PHY_PORT_SPEED_100) ||
 		    (phy_data->port_speeds & AXGBE_PHY_PORT_SPEED_1000) ||
 		    (phy_data->port_speeds & AXGBE_PHY_PORT_SPEED_10000))
 			return false;
@@ -2150,6 +2201,10 @@ static int axgbe_phy_init(struct axgbe_port *pdata)
 		pdata->phy.supported |= SUPPORTED_Autoneg;
 		pdata->phy.supported |= SUPPORTED_Pause | SUPPORTED_Asym_Pause;
 		pdata->phy.supported |= SUPPORTED_TP;
+		if (phy_data->port_speeds & AXGBE_PHY_PORT_SPEED_10) {
+			pdata->phy.supported |= SUPPORTED_10baseT_Full;
+			phy_data->start_mode = AXGBE_MODE_SGMII_10;
+		}
 		if (phy_data->port_speeds & AXGBE_PHY_PORT_SPEED_100) {
 			pdata->phy.supported |= SUPPORTED_100baseT_Full;
 			phy_data->start_mode = AXGBE_MODE_SGMII_100;
@@ -2178,6 +2233,10 @@ static int axgbe_phy_init(struct axgbe_port *pdata)
 		pdata->phy.supported |= SUPPORTED_Autoneg;
 		pdata->phy.supported |= SUPPORTED_Pause | SUPPORTED_Asym_Pause;
 		pdata->phy.supported |= SUPPORTED_TP;
+		if (phy_data->port_speeds & AXGBE_PHY_PORT_SPEED_10) {
+			pdata->phy.supported |= SUPPORTED_10baseT_Full;
+			phy_data->start_mode = AXGBE_MODE_SGMII_10;
+		}
 		if (phy_data->port_speeds & AXGBE_PHY_PORT_SPEED_100) {
 			pdata->phy.supported |= SUPPORTED_100baseT_Full;
 			phy_data->start_mode = AXGBE_MODE_SGMII_100;
@@ -2199,6 +2258,10 @@ static int axgbe_phy_init(struct axgbe_port *pdata)
 		pdata->phy.supported |= SUPPORTED_Autoneg;
 		pdata->phy.supported |= SUPPORTED_Pause | SUPPORTED_Asym_Pause;
 		pdata->phy.supported |= SUPPORTED_TP;
+		if (phy_data->port_speeds & AXGBE_PHY_PORT_SPEED_10) {
+			pdata->phy.supported |= SUPPORTED_10baseT_Full;
+			phy_data->start_mode = AXGBE_MODE_SGMII_10;
+		}
 		if (phy_data->port_speeds & AXGBE_PHY_PORT_SPEED_100) {
 			pdata->phy.supported |= SUPPORTED_100baseT_Full;
 			phy_data->start_mode = AXGBE_MODE_SGMII_100;
@@ -2234,6 +2297,10 @@ static int axgbe_phy_init(struct axgbe_port *pdata)
 		pdata->phy.supported |= SUPPORTED_Pause | SUPPORTED_Asym_Pause;
 		pdata->phy.supported |= SUPPORTED_TP;
 		pdata->phy.supported |= SUPPORTED_FIBRE;
+		if (phy_data->port_speeds & AXGBE_PHY_PORT_SPEED_10) {
+			pdata->phy.supported |= SUPPORTED_10baseT_Full;
+			phy_data->start_mode = AXGBE_MODE_SGMII_10;
+		}
 		if (phy_data->port_speeds & AXGBE_PHY_PORT_SPEED_100) {
 			pdata->phy.supported |= SUPPORTED_100baseT_Full;
 			phy_data->start_mode = AXGBE_MODE_SGMII_100;
