@@ -1219,7 +1219,7 @@ static void axgbe_phy_pll_ctrl(struct axgbe_port *pdata, bool enable)
 }
 
 static void axgbe_phy_perform_ratechange(struct axgbe_port *pdata,
-					unsigned int cmd, unsigned int sub_cmd)
+		enum axgbe_mb_cmd cmd, enum axgbe_mb_subcmd sub_cmd)
 {
 	unsigned int s0 = 0;
 	unsigned int wait;
@@ -1254,7 +1254,8 @@ static void axgbe_phy_perform_ratechange(struct axgbe_port *pdata,
 
 reenable_pll:
 	/* Enable PLL re-initialization, not needed for PHY Power Off and RRC cmds */
-	if (cmd != 0 && cmd != 5)
+	if (cmd != AXGBE_MB_CMD_POWER_OFF &&
+		cmd != AXGBE_MB_CMD_RRC)
 		axgbe_phy_pll_ctrl(pdata, true);
 
 	PMD_DRV_LOG(NOTICE, "firmware mailbox command did not complete\n");
@@ -1265,7 +1266,7 @@ static void axgbe_phy_rrc(struct axgbe_port *pdata)
 
 
 	/* Receiver Reset Cycle */
-	axgbe_phy_perform_ratechange(pdata, 5, 0);
+	axgbe_phy_perform_ratechange(pdata, AXGBE_MB_CMD_RRC, AXGBE_MB_SUBCMD_NONE);
 
 	PMD_DRV_LOG(DEBUG, "receiver reset complete\n");
 }
@@ -1275,7 +1276,7 @@ static void axgbe_phy_power_off(struct axgbe_port *pdata)
 	struct axgbe_phy_data *phy_data = pdata->phy_data;
 
 	/* Power off */
-	axgbe_phy_perform_ratechange(pdata, 0, 0);
+	axgbe_phy_perform_ratechange(pdata, AXGBE_MB_CMD_POWER_OFF, AXGBE_MB_SUBCMD_NONE);
 
 	phy_data->cur_mode = AXGBE_MODE_UNKNOWN;
 
@@ -1290,14 +1291,18 @@ static void axgbe_phy_sfi_mode(struct axgbe_port *pdata)
 
 	/* 10G/SFI */
 	if (phy_data->sfp_cable != AXGBE_SFP_CABLE_PASSIVE) {
-		axgbe_phy_perform_ratechange(pdata, 3, 0);
+		axgbe_phy_perform_ratechange(pdata, AXGBE_MB_CMD_SET_10G_SFI,
+							AXGBE_MB_SUBCMD_ACTIVE);
 	} else {
 		if (phy_data->sfp_cable_len <= 1)
-			axgbe_phy_perform_ratechange(pdata, 3, 1);
+			axgbe_phy_perform_ratechange(pdata, AXGBE_MB_CMD_SET_10G_SFI,
+							AXGBE_MB_SUBCMD_PASSIVE_1M);
 		else if (phy_data->sfp_cable_len <= 3)
-			axgbe_phy_perform_ratechange(pdata, 3, 2);
+			axgbe_phy_perform_ratechange(pdata, AXGBE_MB_CMD_SET_10G_SFI,
+							AXGBE_MB_SUBCMD_PASSIVE_3M);
 		else
-			axgbe_phy_perform_ratechange(pdata, 3, 3);
+			axgbe_phy_perform_ratechange(pdata, AXGBE_MB_CMD_SET_10G_SFI,
+							AXGBE_MB_SUBCMD_PASSIVE_OTHER);
 	}
 
 	phy_data->cur_mode = AXGBE_MODE_SFI;
@@ -1312,7 +1317,8 @@ static void axgbe_phy_kr_mode(struct axgbe_port *pdata)
 	axgbe_phy_set_redrv_mode(pdata);
 
 	/* 10G/KR */
-	axgbe_phy_perform_ratechange(pdata, 4, 0);
+		axgbe_phy_perform_ratechange(pdata, AXGBE_MB_CMD_SET_10G_KR,
+						AXGBE_MB_SUBCMD_NONE);
 	phy_data->cur_mode = AXGBE_MODE_KR;
 
 	PMD_DRV_LOG(DEBUG, "10GbE KR mode set\n");
@@ -1325,7 +1331,7 @@ static void axgbe_phy_kx_2500_mode(struct axgbe_port *pdata)
 	axgbe_phy_set_redrv_mode(pdata);
 
 	/* 2.5G/KX */
-	axgbe_phy_perform_ratechange(pdata, 2, 0);
+	axgbe_phy_perform_ratechange(pdata, AXGBE_MB_CMD_SET_2_5G, AXGBE_MB_SUBCMD_NONE);
 	phy_data->cur_mode = AXGBE_MODE_KX_2500;
 }
 
@@ -1336,7 +1342,7 @@ static void axgbe_phy_sgmii_1000_mode(struct axgbe_port *pdata)
 	axgbe_phy_set_redrv_mode(pdata);
 
 	/* 1G/SGMII */
-	axgbe_phy_perform_ratechange(pdata, 1, 2);
+	axgbe_phy_perform_ratechange(pdata, AXGBE_MB_CMD_SET_1G, AXGBE_MB_SUBCMD_1G_SGMII);
 
 	phy_data->cur_mode = AXGBE_MODE_SGMII_1000;
 }

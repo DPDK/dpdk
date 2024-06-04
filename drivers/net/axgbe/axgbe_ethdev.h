@@ -231,6 +231,31 @@ enum axgbe_mdio_mode {
 	AXGBE_MDIO_MODE_CL45,
 };
 
+enum axgbe_mb_cmd {
+	AXGBE_MB_CMD_POWER_OFF = 0,
+	AXGBE_MB_CMD_SET_1G,
+	AXGBE_MB_CMD_SET_2_5G,
+	AXGBE_MB_CMD_SET_10G_SFI,
+	AXGBE_MB_CMD_SET_10G_KR,
+	AXGBE_MB_CMD_RRC
+};
+
+enum axgbe_mb_subcmd {
+	AXGBE_MB_SUBCMD_NONE = 0,
+
+	/* 10GbE SFP subcommands */
+	AXGBE_MB_SUBCMD_ACTIVE = 0,
+	AXGBE_MB_SUBCMD_PASSIVE_1M,
+	AXGBE_MB_SUBCMD_PASSIVE_3M,
+	AXGBE_MB_SUBCMD_PASSIVE_OTHER,
+
+	/* 1GbE Mode subcommands */
+	AXGBE_MB_SUBCMD_10MBITS = 0,
+	AXGBE_MB_SUBCMD_100MBITS,
+	AXGBE_MB_SUBCMD_1G_SGMII,
+	AXGBE_MB_SUBCMD_1G_KX
+};
+
 struct axgbe_phy {
 	uint32_t supported;
 	uint32_t advertising;
