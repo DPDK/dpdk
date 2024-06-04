@@ -325,8 +325,11 @@ struct axgbe_hw_if {
 
 	int (*set_ext_mii_mode)(struct axgbe_port *, unsigned int,
 				enum axgbe_mdio_mode);
-	int (*read_ext_mii_regs)(struct axgbe_port *, int, int);
-	int (*write_ext_mii_regs)(struct axgbe_port *, int, int, uint16_t);
+	int (*read_ext_mii_regs_c22)(struct axgbe_port *pdata, int addr, int reg);
+	int (*write_ext_mii_regs_c22)(struct axgbe_port *pdata, int addr, int reg, uint16_t val);
+	int (*read_ext_mii_regs_c45)(struct axgbe_port *pdata, int addr, int devad, int reg);
+	int (*write_ext_mii_regs_c45)(struct axgbe_port *pdata, int addr, int devad,
+									int reg, uint16_t val);
 
 	/* For FLOW ctrl */
 	int (*config_tx_flow_control)(struct axgbe_port *);

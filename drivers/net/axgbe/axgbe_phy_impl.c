@@ -1148,8 +1148,8 @@ static int axgbe_phy_set_redrv_mode_mdio(struct axgbe_port *pdata,
 	redrv_reg = AXGBE_PHY_REDRV_MODE_REG + (phy_data->redrv_lane * 0x1000);
 	redrv_val = (u16)mode;
 
-	return pdata->hw_if.write_ext_mii_regs(pdata, phy_data->redrv_addr,
-					       redrv_reg, redrv_val);
+	return pdata->hw_if.write_ext_mii_regs_c22(pdata,
+		phy_data->redrv_addr, redrv_reg, redrv_val);
 }
 
 static int axgbe_phy_set_redrv_mode_i2c(struct axgbe_port *pdata,
