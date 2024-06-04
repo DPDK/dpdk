@@ -16,7 +16,7 @@
 /* Or MII_ADDR_C45 into regnum for read/write on mii_bus to enable the 21 bit
  * IEEE 802.3ae clause 45 addressing mode used by 10GIGE phy chips.
  */
-#define MII_ADDR_C45 (1 << 30)
+#define AXGBE_ADDR_C45  (1 << 30)
 
 /* Basic mode status register. */
 #define BMSR_LSTATUS            0x0004  /* Link status */

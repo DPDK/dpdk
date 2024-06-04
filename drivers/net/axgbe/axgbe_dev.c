@@ -207,8 +207,8 @@ static int axgbe_read_mmd_regs_v2(struct axgbe_port *pdata,
 	unsigned int mmd_address, index, offset;
 	int mmd_data;
 
-	if (mmd_reg & MII_ADDR_C45)
-		mmd_address = mmd_reg & ~MII_ADDR_C45;
+	if (mmd_reg & AXGBE_ADDR_C45)
+		mmd_address = mmd_reg & ~AXGBE_ADDR_C45;
 	else
 		mmd_address = (pdata->mdio_mmd << 16) | (mmd_reg & 0xffff);
 
@@ -241,8 +241,8 @@ static void axgbe_write_mmd_regs_v2(struct axgbe_port *pdata,
 {
 	unsigned int mmd_address, index, offset;
 
-	if (mmd_reg & MII_ADDR_C45)
-		mmd_address = mmd_reg & ~MII_ADDR_C45;
+	if (mmd_reg & AXGBE_ADDR_C45)
+		mmd_address = mmd_reg & ~AXGBE_ADDR_C45;
 	else
 		mmd_address = (pdata->mdio_mmd << 16) | (mmd_reg & 0xffff);
 

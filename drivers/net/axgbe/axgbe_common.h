@@ -1732,14 +1732,14 @@ do {									\
  */
 #define XMDIO_READ(_pdata, _mmd, _reg)					\
 	((_pdata)->hw_if.read_mmd_regs((_pdata), 0,			\
-		MII_ADDR_C45 | ((_mmd) << 16) | ((_reg) & 0xffff)))
+		AXGBE_ADDR_C45 | ((_mmd) << 16) | ((_reg) & 0xffff)))
 
 #define XMDIO_READ_BITS(_pdata, _mmd, _reg, _mask)			\
 	(XMDIO_READ((_pdata), _mmd, _reg) & _mask)
 
 #define XMDIO_WRITE(_pdata, _mmd, _reg, _val)				\
 	((_pdata)->hw_if.write_mmd_regs((_pdata), 0,			\
-		MII_ADDR_C45 | ((_mmd) << 16) | ((_reg) & 0xffff), (_val)))
+		AXGBE_ADDR_C45 | ((_mmd) << 16) | ((_reg) & 0xffff), (_val)))
 
 #define XMDIO_WRITE_BITS(_pdata, _mmd, _reg, _mask, _val)		\
 do {									\
