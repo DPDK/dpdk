@@ -647,23 +647,21 @@ static void axgbe_config_dma_cache(struct axgbe_port *pdata)
 	unsigned int arcache, awcache, arwcache;
 
 	arcache = 0;
-	AXGMAC_SET_BITS(arcache, DMA_AXIARCR, DRC, 0x3);
+	AXGMAC_SET_BITS(arcache, DMA_AXIARCR, DRC, 0xf);
+	AXGMAC_SET_BITS(arcache, DMA_AXIARCR, TEC, 0xf);
+	AXGMAC_SET_BITS(arcache, DMA_AXIARCR, THC, 0xf);
 	AXGMAC_IOWRITE(pdata, DMA_AXIARCR, arcache);
 
 	awcache = 0;
-	AXGMAC_SET_BITS(awcache, DMA_AXIAWCR, DWC, 0x3);
-	AXGMAC_SET_BITS(awcache, DMA_AXIAWCR, RPC, 0x3);
-	AXGMAC_SET_BITS(awcache, DMA_AXIAWCR, RPD, 0x1);
-	AXGMAC_SET_BITS(awcache, DMA_AXIAWCR, RHC, 0x3);
-	AXGMAC_SET_BITS(awcache, DMA_AXIAWCR, RHD, 0x1);
-	AXGMAC_SET_BITS(awcache, DMA_AXIAWCR, RDC, 0x3);
-	AXGMAC_SET_BITS(awcache, DMA_AXIAWCR, RDD, 0x1);
+	AXGMAC_SET_BITS(awcache, DMA_AXIAWCR, DWC, 0xf);
+	AXGMAC_SET_BITS(awcache, DMA_AXIAWCR, RPC, 0xf);
+	AXGMAC_SET_BITS(awcache, DMA_AXIAWCR, RHC, 0xf);
+	AXGMAC_SET_BITS(awcache, DMA_AXIAWCR, RDC, 0xf);
 	AXGMAC_IOWRITE(pdata, DMA_AXIAWCR, awcache);
 
 	arwcache = 0;
-	AXGMAC_SET_BITS(arwcache, DMA_AXIAWRCR, TDWD, 0x1);
-	AXGMAC_SET_BITS(arwcache, DMA_AXIAWRCR, TDWC, 0x3);
-	AXGMAC_SET_BITS(arwcache, DMA_AXIAWRCR, RDRC, 0x3);
+	AXGMAC_SET_BITS(arwcache, DMA_AXIAWRCR, TDWC, 0xf);
+	AXGMAC_SET_BITS(arwcache, DMA_AXIAWRCR, RDRC, 0xf);
 	AXGMAC_IOWRITE(pdata, DMA_AXIAWRCR, arwcache);
 }
 
