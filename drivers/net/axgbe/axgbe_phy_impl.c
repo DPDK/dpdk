@@ -658,7 +658,7 @@ static bool axgbe_phy_sfp_verify_eeprom(uint8_t cc_in, uint8_t *buf,
 	for (cc = 0; len; buf++, len--)
 		cc += *buf;
 
-	return (cc == cc_in) ? true : false;
+	return cc == cc_in;
 }
 
 static int axgbe_phy_sfp_read_eeprom(struct axgbe_port *pdata)
