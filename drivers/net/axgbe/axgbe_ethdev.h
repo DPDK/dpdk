@@ -111,6 +111,7 @@
 /* Auto-negotiation */
 #define AXGBE_AN_MS_TIMEOUT		500
 #define AXGBE_LINK_TIMEOUT		5
+#define AXGBE_KR_TRAINING_WAIT_ITER	50
 
 #define AXGBE_SGMII_AN_LINK_STATUS	BIT(1)
 #define AXGBE_SGMII_AN_LINK_SPEED	(BIT(2) | BIT(3))
@@ -661,6 +662,7 @@ struct axgbe_port {
 	unsigned int parallel_detect;
 	unsigned int fec_ability;
 	unsigned long an_start;
+	unsigned long kr_start_time;
 	enum axgbe_an_mode an_mode;
 
 	/* I2C support */
