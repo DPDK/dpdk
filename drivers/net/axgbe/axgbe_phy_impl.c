@@ -1697,6 +1697,13 @@ static int axgbe_phy_link_status(struct axgbe_port *pdata, int *an_restart)
 	if (reg & MDIO_STAT1_LSTATUS)
 		return 1;
 
+	if (pdata->phy.autoneg == AUTONEG_ENABLE &&
+			phy_data->port_mode == AXGBE_PORT_MODE_BACKPLANE) {
+		if (rte_bit_relaxed_get32(AXGBE_LINK_INIT, &pdata->dev_state)) {
+			*an_restart = 1;
+		}
+	}
+
 	/* No link, attempt a receiver reset cycle */
 	if (phy_data->rrc_count++) {
 		phy_data->rrc_count = 0;
