@@ -204,8 +204,6 @@ struct axgbe_phy_data {
 
 	unsigned int mdio_addr;
 
-	unsigned int comm_owned;
-
 	/* SFP Support */
 	enum axgbe_sfp_comm sfp_comm;
 	unsigned int sfp_mux_address;
@@ -253,12 +251,6 @@ static enum axgbe_an_mode axgbe_phy_an_mode(struct axgbe_port *pdata);
 static int axgbe_phy_i2c_xfer(struct axgbe_port *pdata,
 			      struct axgbe_i2c_op *i2c_op)
 {
-	struct axgbe_phy_data *phy_data = pdata->phy_data;
-
-	/* Be sure we own the bus */
-	if (!phy_data->comm_owned)
-		return -EIO;
-
 	return pdata->i2c_if.i2c_xfer(pdata, i2c_op);
 }
 
@@ -399,10 +391,6 @@ static int axgbe_phy_sfp_get_mux(struct axgbe_port *pdata)
 
 static void axgbe_phy_put_comm_ownership(struct axgbe_port *pdata)
 {
-	struct axgbe_phy_data *phy_data = pdata->phy_data;
-
-	phy_data->comm_owned = 0;
-
 	pthread_mutex_unlock(&pdata->phy_mutex);
 }
 
@@ -417,9 +405,6 @@ static int axgbe_phy_get_comm_ownership(struct axgbe_port *pdata)
 	 * mutexes before being able to use the busses.
 	 */
 	pthread_mutex_lock(&pdata->phy_mutex);
-
-	if (phy_data->comm_owned)
-		return 0;
 
 	/* Clear the mutexes */
 	XP_IOWRITE(pdata, XP_I2C_MUTEX, AXGBE_MUTEX_RELEASE);
@@ -443,7 +428,6 @@ static int axgbe_phy_get_comm_ownership(struct axgbe_port *pdata)
 		XP_IOWRITE(pdata, XP_I2C_MUTEX, mutex_id);
 		XP_IOWRITE(pdata, XP_MDIO_MUTEX, mutex_id);
 
-		phy_data->comm_owned = 1;
 		return 0;
 	}
 
