@@ -117,9 +117,7 @@ enum axgbe_sfp_speed {
 
 #define AXGBE_SFP_BASE_BR			12
 #define AXGBE_SFP_BASE_BR_1GBE_MIN		0x0a
-#define AXGBE_SFP_BASE_BR_1GBE_MAX		0x0d
 #define AXGBE_SFP_BASE_BR_10GBE_MIN		0x64
-#define AXGBE_SFP_BASE_BR_10GBE_MAX		0x68
 
 #define AXGBE_SFP_BASE_CU_CABLE_LEN		18
 
@@ -536,25 +534,22 @@ static void axgbe_phy_sfp_phy_settings(struct axgbe_port *pdata)
 static bool axgbe_phy_sfp_bit_rate(struct axgbe_sfp_eeprom *sfp_eeprom,
 				   enum axgbe_sfp_speed sfp_speed)
 {
-	u8 *sfp_base, min, max;
+	u8 *sfp_base, min;
 
 	sfp_base = sfp_eeprom->base;
 
 	switch (sfp_speed) {
 	case AXGBE_SFP_SPEED_1000:
 		min = AXGBE_SFP_BASE_BR_1GBE_MIN;
-		max = AXGBE_SFP_BASE_BR_1GBE_MAX;
 		break;
 	case AXGBE_SFP_SPEED_10000:
 		min = AXGBE_SFP_BASE_BR_10GBE_MIN;
-		max = AXGBE_SFP_BASE_BR_10GBE_MAX;
 		break;
 	default:
 		return false;
 	}
 
-	return ((sfp_base[AXGBE_SFP_BASE_BR] >= min) &&
-		(sfp_base[AXGBE_SFP_BASE_BR] <= max));
+	return sfp_base[AXGBE_SFP_BASE_BR] >= min;
 }
 
 static void axgbe_phy_sfp_external_phy(struct axgbe_port *pdata)
