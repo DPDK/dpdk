@@ -2613,3 +2613,14 @@ Destroy GENEVE TLV parser for specific port::
 
 This command doesn't destroy the global list,
 For releasing options, ``flush`` command should be used.
+
+Dump RQ/SQ/CQ HW Context for debug purposes
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Dump RQ/CQ HW Context for a given port/queue to a file:
+
+   testpmd> mlx5 port (port_id) queue (queue_id) dump rq_context (file_name)
+
+Dump SQ/CQ HW Context for a given port/queue to a file:
+
+   testpmd> mlx5 port (port_id) queue (queue_id) dump sq_context (file_name)

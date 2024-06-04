@@ -144,6 +144,11 @@ New Features
 
   Added an API that allows the user to reclaim the defer queue with RCU.
 
+* **Add Queue Hardware object context dump.**
+
+  * Added debug capability  to mlx5 PMD to dump SQ/RQ/CQ HW object context for
+    a given port/queue. The context dump could provide useful information when
+    debugging certain Rx/Tx Failures.
 
 Removed Items
 -------------

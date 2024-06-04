@@ -1215,6 +1215,7 @@ enum {
 	MLX5_CMD_OP_QUERY_HCA_CAP = 0x100,
 	MLX5_CMD_OP_CREATE_MKEY = 0x200,
 	MLX5_CMD_OP_CREATE_CQ = 0x400,
+	MLX5_CMD_OP_QUERY_CQ = 0x402,
 	MLX5_CMD_OP_CREATE_QP = 0x500,
 	MLX5_CMD_OP_RST2INIT_QP = 0x502,
 	MLX5_CMD_OP_INIT2RTR_QP = 0x503,
@@ -1240,6 +1241,7 @@ enum {
 	MLX5_CMD_OP_MODIFY_TIR = 0x901,
 	MLX5_CMD_OP_CREATE_SQ = 0X904,
 	MLX5_CMD_OP_MODIFY_SQ = 0X905,
+	MLX5_CMD_OP_QUERY_SQ = 0x907,
 	MLX5_CMD_OP_CREATE_RQ = 0x908,
 	MLX5_CMD_OP_MODIFY_RQ = 0x909,
 	MLX5_CMD_OP_QUERY_RQ = 0x90b,
@@ -3140,6 +3142,14 @@ struct mlx5_ifc_sqc_bits {
 	struct mlx5_ifc_wq_bits wq;
 };
 
+struct mlx5_ifc_query_sq_out_bits {
+	u8 status[0x8];
+	u8 reserved_at_8[0x18];
+	u8 syndrome[0x20];
+	u8 reserved_at_40[0xc0];
+	struct mlx5_ifc_sqc_bits sq_context;
+};
+
 struct mlx5_ifc_query_sq_in_bits {
 	u8 opcode[0x10];
 	u8 reserved_at_10[0x10];
@@ -3359,6 +3369,26 @@ struct mlx5_ifc_create_cq_in_bits {
 	u8 reserved_at_2e1[0x1f];
 	u8 reserved_at_300[0x580];
 	u8 pas[];
+};
+
+struct mlx5_ifc_query_cq_out_bits {
+	u8 status[0x8];
+	u8 reserved_at_8[0x18];
+	u8 syndrome[0x20];
+	u8 reserved_at_40[0x40];
+	struct mlx5_ifc_cqc_bits cq_context;
+	u8 reserved_at_280[0x600];
+	u8 pas[][0x40];
+};
+
+struct mlx5_ifc_query_cq_in_bits {
+	u8 opcode[0x10];
+	u8 reserved_at_10[0x10];
+	u8 reserved_at_20[0x10];
+	u8 op_mod[0x10];
+	u8 reserved_at_40[0x8];
+	u8 cqn[0x18];
+	u8 reserved_at_60[0x20];
 };
 
 enum {

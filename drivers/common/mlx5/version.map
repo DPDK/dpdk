@@ -51,6 +51,9 @@ INTERNAL {
 	mlx5_devx_cmd_modify_rq;
 	mlx5_devx_cmd_modify_rqt;
 	mlx5_devx_cmd_modify_sq;
+	mlx5_devx_cmd_query_sq;
+	mlx5_devx_cmd_query_rq;
+	mlx5_devx_cmd_query_cq;
 	mlx5_devx_cmd_modify_tir;
 	mlx5_devx_cmd_modify_virtq;
 	mlx5_devx_cmd_qp_query_tis_td;

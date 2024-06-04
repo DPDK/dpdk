@@ -354,6 +354,30 @@ mlx5_dump_debug_information(const char *fname, const char *hex_title,
 }
 
 /**
+ * Dump information to a logfile
+ *
+ * @param fd
+ *   File descriptor to logfile. File descriptor open/close is managed by caller.
+ * @param title
+ *   If not NULL this string is printed as a header to the output
+ *   and the output will be in hexadecimal view.
+ * @param buf
+ *   This is the buffer address to print out.
+ * @param len
+ *   The number of bytes to dump out.
+ */
+void
+mlx5_dump_to_file(FILE *fd, const char *title,
+			    const void *buf, unsigned int len)
+{
+	if (title)
+		rte_hexdump(fd, title, buf, len);
+	else
+		fprintf(fd, "%s", (const char *)buf);
+	fprintf(fd, "\n\n\n");
+}
+
+/**
  * Modify a Verbs/DevX queue state.
  * This must be called from the primary process.
  *
