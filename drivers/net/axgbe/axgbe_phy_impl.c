@@ -1392,9 +1392,11 @@ static enum axgbe_mode axgbe_phy_switch_baset_mode(struct axgbe_port *pdata)
 	case AXGBE_MODE_SGMII_100:
 	case AXGBE_MODE_SGMII_1000:
 		return AXGBE_MODE_KR;
+	case AXGBE_MODE_KX_2500:
+		return AXGBE_MODE_SGMII_1000;
 	case AXGBE_MODE_KR:
 	default:
-		return AXGBE_MODE_SGMII_1000;
+		return AXGBE_MODE_KX_2500;
 	}
 }
 
@@ -1883,6 +1885,7 @@ static bool axgbe_phy_port_mode_mismatch(struct axgbe_port *pdata)
 		if ((phy_data->port_speeds & AXGBE_PHY_PORT_SPEED_10)  ||
 		    (phy_data->port_speeds & AXGBE_PHY_PORT_SPEED_100) ||
 		    (phy_data->port_speeds & AXGBE_PHY_PORT_SPEED_1000) ||
+		    (phy_data->port_speeds & AXGBE_PHY_PORT_SPEED_2500) ||
 		    (phy_data->port_speeds & AXGBE_PHY_PORT_SPEED_10000))
 			return false;
 		break;
@@ -2269,6 +2272,10 @@ static int axgbe_phy_init(struct axgbe_port *pdata)
 		if (phy_data->port_speeds & AXGBE_PHY_PORT_SPEED_1000) {
 			pdata->phy.supported |= SUPPORTED_1000baseT_Full;
 			phy_data->start_mode = AXGBE_MODE_SGMII_1000;
+		}
+		if (phy_data->port_speeds & AXGBE_PHY_PORT_SPEED_2500) {
+			pdata->phy.supported |= SUPPORTED_2500baseX_Full;
+			phy_data->start_mode = AXGBE_MODE_KX_2500;
 		}
 		if (phy_data->port_speeds & AXGBE_PHY_PORT_SPEED_10000) {
 			pdata->phy.supported |= SUPPORTED_10000baseT_Full;
