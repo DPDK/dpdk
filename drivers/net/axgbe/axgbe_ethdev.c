@@ -2411,12 +2411,14 @@ static int
 axgbe_dev_close(struct rte_eth_dev *eth_dev)
 {
 	struct rte_pci_device *pci_dev;
+	struct axgbe_port *pdata;
 
 	PMD_INIT_FUNC_TRACE();
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
 
+	pdata = eth_dev->data->dev_private;
 	pci_dev = RTE_DEV_TO_PCI(eth_dev->device);
 	axgbe_dev_clear_queues(eth_dev);
 
@@ -2425,6 +2427,9 @@ axgbe_dev_close(struct rte_eth_dev *eth_dev)
 	rte_intr_callback_unregister(pci_dev->intr_handle,
 				     axgbe_dev_interrupt_handler,
 				     (void *)eth_dev);
+
+	/* Disable all interrupts in the hardware */
+	XP_IOWRITE(pdata, XP_INT_EN, 0x0);
 
 	return 0;
 }
