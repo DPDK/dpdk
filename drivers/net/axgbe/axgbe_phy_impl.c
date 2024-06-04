@@ -1228,6 +1228,10 @@ static void axgbe_phy_rx_reset(struct axgbe_port *pdata)
 
 static void axgbe_phy_pll_ctrl(struct axgbe_port *pdata, bool enable)
 {
+	/* PLL_CTRL feature needs to be enabled for fixed PHY modes (Non-Autoneg) only */
+	if (pdata->phy.autoneg != AUTONEG_DISABLE)
+		return;
+
 	XMDIO_WRITE_BITS(pdata, MDIO_MMD_PMAPMD, MDIO_VEND2_PMA_MISC_CTRL0,
 			XGBE_PMA_PLL_CTRL_MASK,
 			enable ? XGBE_PMA_PLL_CTRL_SET
@@ -1272,8 +1276,9 @@ static void axgbe_phy_perform_ratechange(struct axgbe_port *pdata,
 	axgbe_phy_rx_reset(pdata);
 
 reenable_pll:
-	 /* Re-enable the PLL control */
-	axgbe_phy_pll_ctrl(pdata, true);
+	/* Enable PLL re-initialization, not needed for PHY Power Off and RRC cmds */
+	if (cmd != 0 && cmd != 5)
+		axgbe_phy_pll_ctrl(pdata, true);
 
 	PMD_DRV_LOG(NOTICE, "firmware mailbox command did not complete\n");
 }
