@@ -69,6 +69,7 @@ enum axgbe_sfp_cable {
 	AXGBE_SFP_CABLE_UNKNOWN = 0,
 	AXGBE_SFP_CABLE_ACTIVE,
 	AXGBE_SFP_CABLE_PASSIVE,
+	AXGBE_SFP_CABLE_FIBER,
 };
 
 enum axgbe_sfp_base {
@@ -616,16 +617,18 @@ static void axgbe_phy_sfp_parse_eeprom(struct axgbe_port *pdata)
 
 	axgbe_phy_sfp_parse_quirks(pdata);
 
-	/* Assume ACTIVE cable unless told it is PASSIVE */
+	/* Assume FIBER cable unless told otherwise */
 	if (sfp_base[AXGBE_SFP_BASE_CABLE] & AXGBE_SFP_BASE_CABLE_PASSIVE) {
 		phy_data->sfp_cable = AXGBE_SFP_CABLE_PASSIVE;
 		phy_data->sfp_cable_len = sfp_base[AXGBE_SFP_BASE_CU_CABLE_LEN];
-	} else {
+	} else if (sfp_base[AXGBE_SFP_BASE_CABLE] & AXGBE_SFP_BASE_CABLE_ACTIVE) {
 		phy_data->sfp_cable = AXGBE_SFP_CABLE_ACTIVE;
+	} else {
+		phy_data->sfp_cable = AXGBE_SFP_CABLE_FIBER;
 	}
 
 	/* Determine the type of SFP */
-	if (phy_data->sfp_cable == AXGBE_SFP_CABLE_PASSIVE &&
+	if (phy_data->sfp_cable != AXGBE_SFP_CABLE_FIBER &&
 		 axgbe_phy_sfp_bit_rate(sfp_eeprom, AXGBE_SFP_SPEED_10000))
 		phy_data->sfp_base = AXGBE_SFP_BASE_10000_CR;
 	else if (sfp_base[AXGBE_SFP_BASE_10GBE_CC] & AXGBE_SFP_BASE_10GBE_CC_SR)
