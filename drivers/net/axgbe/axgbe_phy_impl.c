@@ -1708,7 +1708,7 @@ static int axgbe_phy_link_status(struct axgbe_port *pdata, int *an_restart)
 	}
 
 	/* No link, attempt a receiver reset cycle */
-	if (phy_data->rrc_count++) {
+	if (pdata->vdata->enable_rrc && phy_data->rrc_count++) {
 		phy_data->rrc_count = 0;
 		axgbe_phy_rrc(pdata);
 	}

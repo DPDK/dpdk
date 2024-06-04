@@ -463,6 +463,7 @@ struct axgbe_version_data {
 	unsigned int ecc_support;
 	unsigned int i2c_support;
 	unsigned int an_cdr_workaround;
+	unsigned int enable_rrc;
 };
 
 struct axgbe_mmc_stats {
