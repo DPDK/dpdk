@@ -1375,8 +1375,6 @@ reenable_pll:
 	if (cmd != AXGBE_MB_CMD_POWER_OFF &&
 		cmd != AXGBE_MB_CMD_RRC)
 		axgbe_phy_pll_ctrl(pdata, true);
-
-	PMD_DRV_LOG(NOTICE, "firmware mailbox command did not complete\n");
 }
 
 static void axgbe_phy_rrc(struct axgbe_port *pdata)

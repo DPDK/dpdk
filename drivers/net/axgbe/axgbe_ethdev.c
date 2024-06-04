@@ -783,8 +783,8 @@ axgbe_dev_link_update(struct rte_eth_dev *dev,
 	link.link_autoneg = !(dev->data->dev_conf.link_speeds &
 			      RTE_ETH_LINK_SPEED_FIXED);
 	ret = rte_eth_linkstatus_set(dev, &link);
-	if (ret == -1)
-		PMD_DRV_LOG(ERR, "No change in link status\n");
+	if (ret == 0)
+		PMD_DRV_LOG(ERR, "Link status changed\n");
 
 	return ret;
 }
