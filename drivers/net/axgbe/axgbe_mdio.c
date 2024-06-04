@@ -200,13 +200,14 @@ static void axgbe_switch_mode(struct axgbe_port *pdata)
 	axgbe_change_mode(pdata, pdata->phy_if.phy_impl.switch_mode(pdata));
 }
 
-static void axgbe_set_mode(struct axgbe_port *pdata,
+static bool axgbe_set_mode(struct axgbe_port *pdata,
 			   enum axgbe_mode mode)
 {
 	if (mode == axgbe_cur_mode(pdata))
-		return;
+		return false;
 
 	axgbe_change_mode(pdata, mode);
+	return true;
 }
 
 static bool axgbe_use_mode(struct axgbe_port *pdata,
@@ -1007,7 +1008,7 @@ static enum axgbe_mode axgbe_phy_status_aneg(struct axgbe_port *pdata)
 	return pdata->phy_if.phy_impl.an_outcome(pdata);
 }
 
-static void axgbe_phy_status_result(struct axgbe_port *pdata)
+static bool axgbe_phy_status_result(struct axgbe_port *pdata)
 {
 	enum axgbe_mode mode;
 
@@ -1041,7 +1042,10 @@ static void axgbe_phy_status_result(struct axgbe_port *pdata)
 
 	pdata->phy.duplex = DUPLEX_FULL;
 
-	axgbe_set_mode(pdata, mode);
+	if (axgbe_set_mode(pdata, mode))
+		return true;
+	else
+		return false;
 }
 
 static int autoneg_time_out(unsigned long autoneg_start_time)
@@ -1108,7 +1112,10 @@ static void axgbe_phy_status(struct axgbe_port *pdata)
 				return;
 			}
 		}
-		axgbe_phy_status_result(pdata);
+
+		if (axgbe_phy_status_result(pdata))
+			return;
+
 		if (rte_bit_relaxed_get32(AXGBE_LINK_INIT, &pdata->dev_state))
 			rte_bit_relaxed_clear32(AXGBE_LINK_INIT,
 						&pdata->dev_state);
