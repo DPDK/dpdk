@@ -15,6 +15,7 @@ struct aesni_mb_op_buf_data {
 	uint32_t offset;
 };
 
+#if IMB_VERSION(1, 3, 0) >= IMB_VERSION_NUM
 /**
  * Calculate the authentication pre-computes
  *
@@ -57,6 +58,7 @@ calculate_auth_precomputes(hash_one_block_t one_block_hash,
 	memset(ipad_buf, 0, blocksize);
 	memset(opad_buf, 0, blocksize);
 }
+#endif
 
 static inline int
 is_aead_algo(IMB_HASH_ALG hash_alg, IMB_CIPHER_MODE cipher_mode)
@@ -68,12 +70,14 @@ is_aead_algo(IMB_HASH_ALG hash_alg, IMB_CIPHER_MODE cipher_mode)
 
 /** Set session authentication parameters */
 static int
-aesni_mb_set_session_auth_parameters(const IMB_MGR *mb_mgr,
+aesni_mb_set_session_auth_parameters(IMB_MGR *mb_mgr,
 		struct aesni_mb_session *sess,
 		const struct rte_crypto_sym_xform *xform)
 {
+#if IMB_VERSION(1, 3, 0) >= IMB_VERSION_NUM
 	hash_one_block_t hash_oneblock_fn = NULL;
 	unsigned int key_larger_block_size = 0;
+#endif
 	uint8_t hashed_key[HMAC_MAX_BLOCK_SIZE] = { 0 };
 	uint32_t auth_precompute = 1;
 
@@ -269,18 +273,24 @@ aesni_mb_set_session_auth_parameters(const IMB_MGR *mb_mgr,
 	switch (xform->auth.algo) {
 	case RTE_CRYPTO_AUTH_MD5_HMAC:
 		sess->template_job.hash_alg = IMB_AUTH_MD5;
+#if IMB_VERSION(1, 3, 0) >= IMB_VERSION_NUM
 		hash_oneblock_fn = mb_mgr->md5_one_block;
+#endif
 		break;
 	case RTE_CRYPTO_AUTH_SHA1_HMAC:
 		sess->template_job.hash_alg = IMB_AUTH_HMAC_SHA_1;
+#if IMB_VERSION(1, 3, 0) >= IMB_VERSION_NUM
 		hash_oneblock_fn = mb_mgr->sha1_one_block;
+#endif
 		if (xform->auth.key.length > get_auth_algo_blocksize(
 				IMB_AUTH_HMAC_SHA_1)) {
 			IMB_SHA1(mb_mgr,
 				xform->auth.key.data,
 				xform->auth.key.length,
 				hashed_key);
+#if IMB_VERSION(1, 3, 0) >= IMB_VERSION_NUM
 			key_larger_block_size = 1;
+#endif
 		}
 		break;
 	case RTE_CRYPTO_AUTH_SHA1:
@@ -289,14 +299,18 @@ aesni_mb_set_session_auth_parameters(const IMB_MGR *mb_mgr,
 		break;
 	case RTE_CRYPTO_AUTH_SHA224_HMAC:
 		sess->template_job.hash_alg = IMB_AUTH_HMAC_SHA_224;
+#if IMB_VERSION(1, 3, 0) >= IMB_VERSION_NUM
 		hash_oneblock_fn = mb_mgr->sha224_one_block;
+#endif
 		if (xform->auth.key.length > get_auth_algo_blocksize(
 				IMB_AUTH_HMAC_SHA_224)) {
 			IMB_SHA224(mb_mgr,
 				xform->auth.key.data,
 				xform->auth.key.length,
 				hashed_key);
+#if IMB_VERSION(1, 3, 0) >= IMB_VERSION_NUM
 			key_larger_block_size = 1;
+#endif
 		}
 		break;
 	case RTE_CRYPTO_AUTH_SHA224:
@@ -305,14 +319,18 @@ aesni_mb_set_session_auth_parameters(const IMB_MGR *mb_mgr,
 		break;
 	case RTE_CRYPTO_AUTH_SHA256_HMAC:
 		sess->template_job.hash_alg = IMB_AUTH_HMAC_SHA_256;
+#if IMB_VERSION(1, 3, 0) >= IMB_VERSION_NUM
 		hash_oneblock_fn = mb_mgr->sha256_one_block;
+#endif
 		if (xform->auth.key.length > get_auth_algo_blocksize(
 				IMB_AUTH_HMAC_SHA_256)) {
 			IMB_SHA256(mb_mgr,
 				xform->auth.key.data,
 				xform->auth.key.length,
 				hashed_key);
+#if IMB_VERSION(1, 3, 0) >= IMB_VERSION_NUM
 			key_larger_block_size = 1;
+#endif
 		}
 		break;
 	case RTE_CRYPTO_AUTH_SHA256:
@@ -321,14 +339,18 @@ aesni_mb_set_session_auth_parameters(const IMB_MGR *mb_mgr,
 		break;
 	case RTE_CRYPTO_AUTH_SHA384_HMAC:
 		sess->template_job.hash_alg = IMB_AUTH_HMAC_SHA_384;
+#if IMB_VERSION(1, 3, 0) >= IMB_VERSION_NUM
 		hash_oneblock_fn = mb_mgr->sha384_one_block;
+#endif
 		if (xform->auth.key.length > get_auth_algo_blocksize(
 				IMB_AUTH_HMAC_SHA_384)) {
 			IMB_SHA384(mb_mgr,
 				xform->auth.key.data,
 				xform->auth.key.length,
 				hashed_key);
+#if IMB_VERSION(1, 3, 0) >= IMB_VERSION_NUM
 			key_larger_block_size = 1;
+#endif
 		}
 		break;
 	case RTE_CRYPTO_AUTH_SHA384:
@@ -337,14 +359,18 @@ aesni_mb_set_session_auth_parameters(const IMB_MGR *mb_mgr,
 		break;
 	case RTE_CRYPTO_AUTH_SHA512_HMAC:
 		sess->template_job.hash_alg = IMB_AUTH_HMAC_SHA_512;
+#if IMB_VERSION(1, 3, 0) >= IMB_VERSION_NUM
 		hash_oneblock_fn = mb_mgr->sha512_one_block;
+#endif
 		if (xform->auth.key.length > get_auth_algo_blocksize(
 				IMB_AUTH_HMAC_SHA_512)) {
 			IMB_SHA512(mb_mgr,
 				xform->auth.key.data,
 				xform->auth.key.length,
 				hashed_key);
+#if IMB_VERSION(1, 3, 0) >= IMB_VERSION_NUM
 			key_larger_block_size = 1;
+#endif
 		}
 		break;
 	case RTE_CRYPTO_AUTH_SHA512:
@@ -378,6 +404,11 @@ aesni_mb_set_session_auth_parameters(const IMB_MGR *mb_mgr,
 		return 0;
 
 	/* Calculate Authentication precomputes */
+#if IMB_VERSION(1, 3, 0) < IMB_VERSION_NUM
+		imb_hmac_ipad_opad(mb_mgr, sess->template_job.hash_alg,
+					xform->auth.key.data, xform->auth.key.length,
+					sess->auth.pads.inner, sess->auth.pads.outer);
+#else
 	if (key_larger_block_size) {
 		calculate_auth_precomputes(hash_oneblock_fn,
 			sess->auth.pads.inner, sess->auth.pads.outer,
@@ -391,6 +422,7 @@ aesni_mb_set_session_auth_parameters(const IMB_MGR *mb_mgr,
 			xform->auth.key.length,
 			get_auth_algo_blocksize(sess->template_job.hash_alg));
 	}
+#endif
 	sess->template_job.u.HMAC._hashed_auth_key_xor_ipad =
 		sess->auth.pads.inner;
 	sess->template_job.u.HMAC._hashed_auth_key_xor_opad =
