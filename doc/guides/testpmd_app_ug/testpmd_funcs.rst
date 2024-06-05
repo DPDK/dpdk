@@ -214,7 +214,6 @@ For example:
      vxlan
      geneve
      nvgre
-     vxlan-gpe
 
 show port (module_eeprom|eeprom)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1104,12 +1103,12 @@ Where:
 * ``ip|udp|tcp|sctp`` always relate to  the inner layer.
 
 * ``outer-ip`` relates to the outer IP layer (only for IPv4) in the case where the packet is recognized
-  as a tunnel packet by the forwarding engine (geneve, gre, gtp, ipip, vxlan and vxlan-gpe are
-  supported). See also the ``csum parse-tunnel`` command.
+  as a tunnel packet by the forwarding engine (geneve, gre, gtp, ipip and vxlan are supported).
+  See also the ``csum parse-tunnel`` command.
 
 * ``outer-udp`` relates to the outer UDP layer in the case where the packet is recognized
-  as a tunnel packet by the forwarding engine (geneve, gtp, vxlan and vxlan-gpe are
-  supported). See also the ``csum parse-tunnel`` command.
+  as a tunnel packet by the forwarding engine (geneve, gtp and vxlan are supported).
+  See also the ``csum parse-tunnel`` command.
 
 .. note::
 
@@ -1124,7 +1123,7 @@ engine::
    testpmd> csum parse-tunnel (on|off) (tx_port_id)
 
 If enabled, the csum forward engine will try to recognize supported
-tunnel headers (geneve, gtp, gre, ipip, vxlan, vxlan-gpe).
+tunnel headers (geneve, gtp, gre, ipip, vxlan).
 
 If disabled, treat tunnel packets as non-tunneled packets (a inner
 header is handled as a packet payload).
@@ -2222,7 +2221,7 @@ port config udp_tunnel_port
 
 Add/remove UDP tunnel port for VXLAN/GENEVE tunneling protocols::
 
-    testpmd> port config (port_id) udp_tunnel_port add|rm vxlan|geneve|vxlan-gpe|ecpri (udp_port)
+    testpmd> port config (port_id) udp_tunnel_port add|rm vxlan|geneve|ecpri (udp_port)
 
 port config tx_metadata
 ~~~~~~~~~~~~~~~~~~~~~~~
@@ -3696,7 +3695,20 @@ This section lists supported pattern items and their attributes, if any.
 - ``vxlan``: match VXLAN header.
 
   - ``vni {unsigned}``: VXLAN identifier.
-  - ``last_rsvd {unsigned}``: VXLAN last reserved 8-bits.
+  - ``flag_g {unsigned}``: VXLAN flag GBP bit.
+  - ``flag_ver {unsigned}``: VXLAN flag GPE version.
+  - ``flag_i {unsigned}``: VXLAN flag Instance bit.
+  - ``flag_p {unsigned}``: VXLAN flag GPE Next Protocol bit.
+  - ``flag_b {unsigned}``: VXLAN flag GPE Ingress-Replicated BUM.
+  - ``flag_o {unsigned}``: VXLAN flag GPE OAM Packet bit.
+  - ``flag_d {unsigned}``: VXLAN flag GBP Don't Learn bit.
+  - ``flag_a {unsigned}``: VXLAN flag GBP Applied bit.
+  - ``group_policy_id {unsigned}``: VXLAN GBP Group Policy ID.
+  - ``protocol {unsigned}`` : VXLAN GPE next protocol.
+  - ``first_rsvd {unsigned}`` : VXLAN rsvd0 first byte.
+  - ``secnd_rsvd {unsigned}`` : VXLAN rsvd0 second byte.
+  - ``third_rsvd {unsigned}`` : VXLAN rsvd0 third byte.
+  - ``last_rsvd {unsigned}``: VXLAN last reserved byte.
 
 - ``e_tag``: match IEEE 802.1BR E-Tag header.
 
@@ -3744,13 +3756,6 @@ This section lists supported pattern items and their attributes, if any.
   - ``length {unsigned}``: GENEVE option length in 32-bit words.
   - ``data {hex string}``: GENEVE option data, the length is defined by
     ``length`` field.
-
-- ``vxlan-gpe``: match VXLAN-GPE header.
-
-  - ``vni {unsigned}``: VXLAN-GPE identifier.
-  - ``flags {unsigned}``: VXLAN-GPE flags.
-  - ``rsvd0 {unsigned}``: VXLAN-GPE reserved field 0.
-  - ``rsvd1 {unsigned}``: VXLAN-GPE reserved field 1.
 
 - ``arp_eth_ipv4``: match ARP header for Ethernet/IPv4.
 
