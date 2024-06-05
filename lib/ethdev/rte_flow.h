@@ -355,6 +355,9 @@ enum rte_flow_item_type {
 	RTE_FLOW_ITEM_TYPE_GENEVE,
 
 	/**
+	 * @deprecated
+	 * @see RTE_FLOW_ITEM_TYPE_VXLAN
+	 *
 	 * Matches a VXLAN-GPE header.
 	 *
 	 * See struct rte_flow_item_vxlan_gpe.
@@ -1103,7 +1106,12 @@ static const struct rte_flow_item_sctp rte_flow_item_sctp_mask = {
 /**
  * RTE_FLOW_ITEM_TYPE_VXLAN.
  *
- * Matches a VXLAN header (RFC 7348).
+ * Matches a VXLAN header (RFC 7348),
+ * including GPE (draft-ietf-nvo3-vxlan-gpe-13.txt)
+ * and GBP (draft-smith-vxlan-group-policy-05.txt).
+ *
+ * GPE is distinguished with its UDP port.
+ * UDP port may be specified with ``rte_eth_dev_udp_tunnel_port_add()``.
  */
 struct rte_flow_item_vxlan {
 	union {
@@ -1346,6 +1354,9 @@ static const struct rte_flow_item_geneve rte_flow_item_geneve_mask = {
 #endif
 
 /**
+ * @deprecated
+ * @see rte_flow_item_vxlan
+ *
  * RTE_FLOW_ITEM_TYPE_VXLAN_GPE (draft-ietf-nvo3-vxlan-gpe-05).
  *
  * Matches a VXLAN-GPE header.
@@ -1367,7 +1378,12 @@ struct rte_flow_item_vxlan_gpe {
 	};
 };
 
-/** Default mask for RTE_FLOW_ITEM_TYPE_VXLAN_GPE. */
+/**
+ * @deprecated
+ * @see rte_flow_item_vxlan_mask
+ *
+ * Default mask for RTE_FLOW_ITEM_TYPE_VXLAN_GPE.
+ */
 #ifndef __cplusplus
 static const struct rte_flow_item_vxlan_gpe rte_flow_item_vxlan_gpe_mask = {
 	.hdr.vni = "\xff\xff\xff",
