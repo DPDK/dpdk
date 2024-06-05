@@ -2469,7 +2469,7 @@ flow_dv_validate_item_mark(struct rte_eth_dev *dev,
 					RTE_FLOW_ERROR_TYPE_ITEM_SPEC, NULL,
 					"mask cannot be zero");
 
-	ret = mlx5_flow_item_acceptable(item, (const uint8_t *)mask,
+	ret = mlx5_flow_item_acceptable(dev, item, (const uint8_t *)mask,
 					(const uint8_t *)&nic_mask,
 					sizeof(struct rte_flow_item_mark),
 					MLX5_ITEM_RANGE_NOT_ACCEPTED, error);
@@ -2556,7 +2556,7 @@ flow_dv_validate_item_meta(struct rte_eth_dev *dev __rte_unused,
 					RTE_FLOW_ERROR_TYPE_ITEM_SPEC, NULL,
 					"mask cannot be zero");
 
-	ret = mlx5_flow_item_acceptable(item, (const uint8_t *)mask,
+	ret = mlx5_flow_item_acceptable(dev, item, (const uint8_t *)mask,
 					(const uint8_t *)&nic_mask,
 					sizeof(struct rte_flow_item_meta),
 					MLX5_ITEM_RANGE_NOT_ACCEPTED, error);
@@ -2612,7 +2612,7 @@ flow_dv_validate_item_tag(struct rte_eth_dev *dev,
 					RTE_FLOW_ERROR_TYPE_ITEM_SPEC, NULL,
 					"mask cannot be zero");
 
-	ret = mlx5_flow_item_acceptable(item, (const uint8_t *)mask,
+	ret = mlx5_flow_item_acceptable(dev, item, (const uint8_t *)mask,
 					(const uint8_t *)&nic_mask,
 					sizeof(struct rte_flow_item_tag),
 					MLX5_ITEM_RANGE_NOT_ACCEPTED, error);
@@ -2690,7 +2690,7 @@ flow_dv_validate_item_port_id(struct rte_eth_dev *dev,
 					   "no support for partial mask on"
 					   " \"id\" field");
 	ret = mlx5_flow_item_acceptable
-				(item, (const uint8_t *)mask,
+				(dev, item, (const uint8_t *)mask,
 				 (const uint8_t *)&rte_flow_item_port_id_mask,
 				 sizeof(struct rte_flow_item_port_id),
 				 MLX5_ITEM_RANGE_NOT_ACCEPTED, error);
@@ -2770,7 +2770,7 @@ flow_dv_validate_item_represented_port(struct rte_eth_dev *dev,
 					   RTE_FLOW_ERROR_TYPE_ITEM_MASK, mask,
 					   "no support for partial mask on \"id\" field");
 	ret = mlx5_flow_item_acceptable
-				(item, (const uint8_t *)mask,
+				(dev, item, (const uint8_t *)mask,
 				 (const uint8_t *)&rte_flow_item_ethdev_mask,
 				 sizeof(struct rte_flow_item_ethdev),
 				 MLX5_ITEM_RANGE_NOT_ACCEPTED, error);
@@ -2812,11 +2812,11 @@ flow_dv_validate_item_represented_port(struct rte_eth_dev *dev,
  * @return
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
-static int
-flow_dv_validate_item_vlan(const struct rte_flow_item *item,
-			   uint64_t item_flags,
-			   struct rte_eth_dev *dev,
-			   struct rte_flow_error *error)
+int
+mlx5_flow_dv_validate_item_vlan(const struct rte_flow_item *item,
+				uint64_t item_flags,
+				struct rte_eth_dev *dev,
+				struct rte_flow_error *error)
 {
 	const struct rte_flow_item_vlan *mask = item->mask;
 	const struct rte_flow_item_vlan nic_mask = {
@@ -2843,7 +2843,7 @@ flow_dv_validate_item_vlan(const struct rte_flow_item *item,
 					  "VLAN cannot follow L3/L4 layer");
 	if (!mask)
 		mask = &rte_flow_item_vlan_mask;
-	ret = mlx5_flow_item_acceptable(item, (const uint8_t *)mask,
+	ret = mlx5_flow_item_acceptable(dev, item, (const uint8_t *)mask,
 					(const uint8_t *)&nic_mask,
 					sizeof(struct rte_flow_item_vlan),
 					MLX5_ITEM_RANGE_NOT_ACCEPTED, error);
@@ -2898,11 +2898,11 @@ flow_dv_validate_item_vlan(const struct rte_flow_item *item,
  * @return
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
-static int
-flow_dv_validate_item_gtp(struct rte_eth_dev *dev,
-			  const struct rte_flow_item *item,
-			  uint64_t item_flags,
-			  struct rte_flow_error *error)
+int
+mlx5_flow_dv_validate_item_gtp(struct rte_eth_dev *dev,
+			       const struct rte_flow_item *item,
+			       uint64_t item_flags,
+			       struct rte_flow_error *error)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	const struct rte_flow_item_gtp *spec = item->spec;
@@ -2922,10 +2922,12 @@ flow_dv_validate_item_gtp(struct rte_eth_dev *dev,
 					  RTE_FLOW_ERROR_TYPE_ITEM, item,
 					  "multiple tunnel layers not"
 					  " supported");
-	if (!(item_flags & MLX5_FLOW_LAYER_OUTER_L4_UDP))
-		return rte_flow_error_set(error, EINVAL,
-					  RTE_FLOW_ERROR_TYPE_ITEM, item,
-					  "no outer UDP layer found");
+	if (!mlx5_hws_active(dev)) {
+		if (!(item_flags & MLX5_FLOW_LAYER_OUTER_L4_UDP))
+			return rte_flow_error_set(error, EINVAL,
+						  RTE_FLOW_ERROR_TYPE_ITEM,
+						  item, "no outer UDP layer found");
+	}
 	if (!mask)
 		mask = &rte_flow_item_gtp_mask;
 	if (spec && spec->hdr.gtp_hdr_info & ~MLX5_GTP_FLAGS_MASK)
@@ -2933,7 +2935,7 @@ flow_dv_validate_item_gtp(struct rte_eth_dev *dev,
 					  RTE_FLOW_ERROR_TYPE_ITEM, item,
 					  "Match is supported for GTP"
 					  " flags only");
-	return mlx5_flow_item_acceptable(item, (const uint8_t *)mask,
+	return mlx5_flow_item_acceptable(dev, item, (const uint8_t *)mask,
 					 (const uint8_t *)&nic_mask,
 					 sizeof(struct rte_flow_item_gtp),
 					 MLX5_ITEM_RANGE_NOT_ACCEPTED, error);
@@ -2956,12 +2958,13 @@ flow_dv_validate_item_gtp(struct rte_eth_dev *dev,
  * @return
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
-static int
-flow_dv_validate_item_gtp_psc(const struct rte_flow_item *item,
-			      uint64_t last_item,
-			      const struct rte_flow_item *gtp_item,
-			      bool root,
-			      struct rte_flow_error *error)
+int
+mlx5_flow_dv_validate_item_gtp_psc(const struct rte_eth_dev *dev,
+				   const struct rte_flow_item *item,
+				   uint64_t last_item,
+				   const struct rte_flow_item *gtp_item,
+				   bool root,
+				   struct rte_flow_error *error)
 {
 	const struct rte_flow_item_gtp *gtp_spec;
 	const struct rte_flow_item_gtp *gtp_mask;
@@ -2984,41 +2987,55 @@ flow_dv_validate_item_gtp_psc(const struct rte_flow_item *item,
 		return rte_flow_error_set
 			(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ITEM, item,
 			 "GTP E flag must be 1 to match GTP PSC");
-	/* Check the flow is not created in group zero. */
-	if (root)
-		return rte_flow_error_set
-			(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
-			 "GTP PSC is not supported for group 0");
-	/* GTP spec is here and E flag is requested to match zero. */
-	if (!item->spec)
-		return 0;
+	if (!mlx5_hws_active(dev)) {
+		/* Check the flow is not created in group zero. */
+		if (root)
+			return rte_flow_error_set
+				(error, ENOTSUP,
+				 RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				 "GTP PSC is not supported for group 0");
+		/* GTP spec is here and E flag is requested to match zero. */
+		if (!item->spec)
+			return 0;
+	}
 	mask = item->mask ? item->mask : &rte_flow_item_gtp_psc_mask;
-	return mlx5_flow_item_acceptable(item, (const uint8_t *)mask,
+	return mlx5_flow_item_acceptable(dev, item, (const uint8_t *)mask,
 					 (const uint8_t *)&nic_mask,
 					 sizeof(struct rte_flow_item_gtp_psc),
 					 MLX5_ITEM_RANGE_NOT_ACCEPTED, error);
 }
 
-/**
+/*
  * Validate IPV4 item.
  * Use existing validation function mlx5_flow_validate_item_ipv4(), and
  * add specific validation of fragment_offset field,
  *
+ * @param[in] dev
+ *   Pointer to the rte_eth_dev structure.
  * @param[in] item
  *   Item specification.
  * @param[in] item_flags
  *   Bit-fields that holds the items detected until now.
+ * @param[in] last_item
+ *   Previous validated item in the pattern items.
+ * @param[in] ether_type
+ *   Type in the ethernet layer header (including dot1q).
+ * @param[in] acc_mask
+ *   Default acceptable mask (will be adjusted).
  * @param[out] error
  *   Pointer to error structure.
  *
  * @return
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
-static int
-flow_dv_validate_item_ipv4(struct rte_eth_dev *dev,
-			   const struct rte_flow_item *item,
-			   uint64_t item_flags, uint64_t last_item,
-			   uint16_t ether_type, struct rte_flow_error *error)
+int
+mlx5_flow_dv_validate_item_ipv4(struct rte_eth_dev *dev,
+				const struct rte_flow_item *item,
+				uint64_t item_flags,
+				uint64_t last_item,
+				uint16_t ether_type,
+				const struct rte_flow_item_ipv4 *acc_mask,
+				struct rte_flow_error *error)
 {
 	int ret;
 	struct mlx5_priv *priv = dev->data->dev_private;
@@ -3028,16 +3045,7 @@ flow_dv_validate_item_ipv4(struct rte_eth_dev *dev,
 	const struct rte_flow_item_ipv4 *mask = item->mask;
 	rte_be16_t fragment_offset_spec = 0;
 	rte_be16_t fragment_offset_last = 0;
-	struct rte_flow_item_ipv4 nic_ipv4_mask = {
-		.hdr = {
-			.src_addr = RTE_BE32(0xffffffff),
-			.dst_addr = RTE_BE32(0xffffffff),
-			.type_of_service = 0xff,
-			.fragment_offset = RTE_BE16(0xffff),
-			.next_proto_id = 0xff,
-			.time_to_live = 0xff,
-		},
-	};
+	struct rte_flow_item_ipv4 actual_ipv4_mask = *acc_mask;
 
 	if (mask && (mask->hdr.version_ihl & RTE_IPV4_HDR_IHL_MASK)) {
 		int tunnel = !!(item_flags & MLX5_FLOW_LAYER_TUNNEL);
@@ -3048,10 +3056,10 @@ flow_dv_validate_item_ipv4(struct rte_eth_dev *dev,
 						  RTE_FLOW_ERROR_TYPE_ITEM,
 						  item,
 						  "IPV4 ihl offload not supported");
-		nic_ipv4_mask.hdr.version_ihl = mask->hdr.version_ihl;
+		actual_ipv4_mask.hdr.version_ihl = mask->hdr.version_ihl;
 	}
-	ret = mlx5_flow_validate_item_ipv4(item, item_flags, last_item,
-					   ether_type, &nic_ipv4_mask,
+	ret = mlx5_flow_validate_item_ipv4(dev, item, item_flags, last_item,
+					   ether_type, &actual_ipv4_mask,
 					   MLX5_ITEM_RANGE_ACCEPTED, error);
 	if (ret < 0)
 		return ret;
@@ -3141,7 +3149,8 @@ flow_dv_validate_item_ipv4(struct rte_eth_dev *dev,
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 static int
-flow_dv_validate_item_ipv6_frag_ext(const struct rte_flow_item *item,
+flow_dv_validate_item_ipv6_frag_ext(const struct rte_eth_dev *dev,
+				    const struct rte_flow_item *item,
 				    uint64_t item_flags,
 				    struct rte_flow_error *error)
 {
@@ -3200,7 +3209,7 @@ flow_dv_validate_item_ipv6_frag_ext(const struct rte_flow_item *item,
 					  RTE_FLOW_ERROR_TYPE_ITEM, item,
 					  "specified value not supported");
 	ret = mlx5_flow_item_acceptable
-				(item, (const uint8_t *)mask,
+				(dev, item, (const uint8_t *)mask,
 				 (const uint8_t *)&nic_mask,
 				 sizeof(struct rte_flow_item_ipv6_frag_ext),
 				 MLX5_ITEM_RANGE_ACCEPTED, error);
@@ -3256,31 +3265,33 @@ flow_dv_validate_item_ipv6_frag_ext(const struct rte_flow_item *item,
  * @return
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
-static int
-flow_dv_validate_item_aso_ct(struct rte_eth_dev *dev,
-			     const struct rte_flow_item *item,
-			     uint64_t *item_flags,
-			     struct rte_flow_error *error)
+int
+mlx5_flow_dv_validate_item_aso_ct(struct rte_eth_dev *dev,
+				  const struct rte_flow_item *item,
+				  uint64_t *item_flags,
+				  struct rte_flow_error *error)
 {
 	const struct rte_flow_item_conntrack *spec = item->spec;
 	const struct rte_flow_item_conntrack *mask = item->mask;
-	RTE_SET_USED(dev);
 	uint32_t flags;
 
 	if (*item_flags & MLX5_FLOW_LAYER_ASO_CT)
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ITEM, NULL,
 					  "Only one CT is supported");
-	if (!mask)
-		mask = &rte_flow_item_conntrack_mask;
-	flags = spec->flags & mask->flags;
-	if ((flags & RTE_FLOW_CONNTRACK_PKT_STATE_VALID) &&
-	    ((flags & RTE_FLOW_CONNTRACK_PKT_STATE_INVALID) ||
-	     (flags & RTE_FLOW_CONNTRACK_PKT_STATE_BAD) ||
-	     (flags & RTE_FLOW_CONNTRACK_PKT_STATE_DISABLED)))
-		return rte_flow_error_set(error, EINVAL,
-					  RTE_FLOW_ERROR_TYPE_ITEM, NULL,
-					  "Conflict status bits");
+	if (!mlx5_hws_active(dev)) {
+		if (!mask)
+			mask = &rte_flow_item_conntrack_mask;
+		flags = spec->flags & mask->flags;
+		if ((flags & RTE_FLOW_CONNTRACK_PKT_STATE_VALID) &&
+		    ((flags & RTE_FLOW_CONNTRACK_PKT_STATE_INVALID) ||
+		     (flags & RTE_FLOW_CONNTRACK_PKT_STATE_BAD) ||
+		     (flags & RTE_FLOW_CONNTRACK_PKT_STATE_DISABLED)))
+			return rte_flow_error_set(error, EINVAL,
+						  RTE_FLOW_ERROR_TYPE_ITEM,
+						  NULL,
+						  "Conflict status bits");
+	}
 	/* State change also needs to be considered. */
 	*item_flags |= MLX5_FLOW_LAYER_ASO_CT;
 	return 0;
@@ -3911,11 +3922,11 @@ notsup_err:
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 int
-flow_dv_validate_action_l2_encap(struct rte_eth_dev *dev,
-				 uint64_t action_flags,
-				 const struct rte_flow_action *action,
-				 const struct rte_flow_attr *attr,
-				 struct rte_flow_error *error)
+mlx5_flow_dv_validate_action_l2_encap(struct rte_eth_dev *dev,
+				      uint64_t action_flags,
+				      const struct rte_flow_action *action,
+				      const struct rte_flow_attr *attr,
+				      struct rte_flow_error *error)
 {
 	const struct mlx5_priv *priv = dev->data->dev_private;
 
@@ -3956,12 +3967,12 @@ flow_dv_validate_action_l2_encap(struct rte_eth_dev *dev,
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 int
-flow_dv_validate_action_decap(struct rte_eth_dev *dev,
-			      uint64_t action_flags,
-			      const struct rte_flow_action *action,
-			      const uint64_t item_flags,
-			      const struct rte_flow_attr *attr,
-			      struct rte_flow_error *error)
+mlx5_flow_dv_validate_action_decap(struct rte_eth_dev *dev,
+				   uint64_t action_flags,
+				   const struct rte_flow_action *action,
+				   const uint64_t item_flags,
+				   const struct rte_flow_attr *attr,
+				   struct rte_flow_error *error)
 {
 	const struct mlx5_priv *priv = dev->data->dev_private;
 
@@ -4029,7 +4040,7 @@ const struct rte_flow_action_raw_decap empty_decap = {.data = NULL, .size = 0,};
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 int
-flow_dv_validate_action_raw_encap_decap
+mlx5_flow_dv_validate_action_raw_encap_decap
 	(struct rte_eth_dev *dev,
 	 const struct rte_flow_action_raw_decap *decap,
 	 const struct rte_flow_action_raw_encap *encap,
@@ -4070,8 +4081,10 @@ flow_dv_validate_action_raw_encap_decap
 				"encap combination");
 	}
 	if (decap) {
-		ret = flow_dv_validate_action_decap(dev, *action_flags, action,
-						    item_flags, attr, error);
+		ret = mlx5_flow_dv_validate_action_decap(dev, *action_flags,
+							 action,
+							 item_flags, attr,
+							 error);
 		if (ret < 0)
 			return ret;
 		*action_flags |= MLX5_FLOW_ACTION_DECAP;
@@ -4118,11 +4131,11 @@ flow_dv_validate_action_raw_encap_decap
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 int
-flow_dv_validate_action_aso_ct(struct rte_eth_dev *dev,
-			       uint64_t action_flags,
-			       uint64_t item_flags,
-			       bool root,
-			       struct rte_flow_error *error)
+mlx5_flow_dv_validate_action_aso_ct(struct rte_eth_dev *dev,
+				    uint64_t action_flags,
+				    uint64_t item_flags,
+				    bool root,
+				    struct rte_flow_error *error)
 {
 	RTE_SET_USED(dev);
 
@@ -4207,7 +4220,7 @@ flow_dv_validate_item_meter_color(struct rte_eth_dev *dev,
 					RTE_FLOW_ERROR_TYPE_ITEM_SPEC, NULL,
 					"mask cannot be zero");
 
-	ret = mlx5_flow_item_acceptable(item, (const uint8_t *)mask,
+	ret = mlx5_flow_item_acceptable(dev, item, (const uint8_t *)mask,
 				(const uint8_t *)&nic_mask,
 				sizeof(struct rte_flow_item_meter_color),
 				MLX5_ITEM_RANGE_NOT_ACCEPTED, error);
@@ -4276,7 +4289,7 @@ flow_dv_validate_item_aggr_affinity(struct rte_eth_dev *dev,
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ITEM_SPEC, NULL,
 					  "mask cannot be zero");
-	ret = mlx5_flow_item_acceptable(item, (const uint8_t *)mask,
+	ret = mlx5_flow_item_acceptable(dev, item, (const uint8_t *)mask,
 				(const uint8_t *)&nic_mask,
 				sizeof(struct rte_flow_item_aggr_affinity),
 				MLX5_ITEM_RANGE_NOT_ACCEPTED, error);
@@ -6449,7 +6462,7 @@ flow_dv_validate_action_sample(uint64_t *action_flags,
 			++actions_n;
 			break;
 		case RTE_FLOW_ACTION_TYPE_RAW_ENCAP:
-			ret = flow_dv_validate_action_raw_encap_decap
+			ret = mlx5_flow_dv_validate_action_raw_encap_decap
 				(dev, NULL, act->conf, attr, sub_action_flags,
 				 &actions_n, action, item_flags, error);
 			if (ret < 0)
@@ -6458,10 +6471,10 @@ flow_dv_validate_action_sample(uint64_t *action_flags,
 			break;
 		case RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP:
 		case RTE_FLOW_ACTION_TYPE_NVGRE_ENCAP:
-			ret = flow_dv_validate_action_l2_encap(dev,
-							       *sub_action_flags,
-							       act, attr,
-							       error);
+			ret = mlx5_flow_dv_validate_action_l2_encap(dev,
+								    *sub_action_flags,
+								    act, attr,
+								    error);
 			if (ret < 0)
 				return ret;
 			*sub_action_flags |= MLX5_FLOW_ACTION_ENCAP;
@@ -7606,7 +7619,7 @@ mlx5_flow_validate_item_ib_bth(struct rte_eth_dev *dev,
 					  "IB BTH item is not supported");
 	if (!mask)
 		mask = &rte_flow_item_ib_bth_mask;
-	ret = mlx5_flow_item_acceptable(item, (const uint8_t *)mask,
+	ret = mlx5_flow_item_acceptable(dev, item, (const uint8_t *)mask,
 					(const uint8_t *)valid_mask,
 					sizeof(struct rte_flow_item_ib_bth),
 					MLX5_ITEM_RANGE_NOT_ACCEPTED, error);
@@ -7614,6 +7627,40 @@ mlx5_flow_validate_item_ib_bth(struct rte_eth_dev *dev,
 		return ret;
 	return 0;
 }
+
+const struct rte_flow_item_ipv4 nic_ipv4_mask = {
+	.hdr = {
+		.src_addr = RTE_BE32(0xffffffff),
+		.dst_addr = RTE_BE32(0xffffffff),
+		.type_of_service = 0xff,
+		.fragment_offset = RTE_BE16(0xffff),
+		.next_proto_id = 0xff,
+		.time_to_live = 0xff,
+	},
+};
+
+const struct rte_flow_item_ipv6 nic_ipv6_mask = {
+	.hdr = {
+		.src_addr =
+		"\xff\xff\xff\xff\xff\xff\xff\xff"
+		"\xff\xff\xff\xff\xff\xff\xff\xff",
+		.dst_addr =
+		"\xff\xff\xff\xff\xff\xff\xff\xff"
+		"\xff\xff\xff\xff\xff\xff\xff\xff",
+		.vtc_flow = RTE_BE32(0xffffffff),
+		.proto = 0xff,
+		.hop_limits = 0xff,
+	},
+	.has_frag_ext = 1,
+};
+
+const struct rte_flow_item_tcp nic_tcp_mask = {
+	.hdr = {
+		.tcp_flags = 0xFF,
+		.src_port = RTE_BE16(UINT16_MAX),
+		.dst_port = RTE_BE16(UINT16_MAX),
+	}
+};
 
 /**
  * Internal validation function. For validating both actions and items.
@@ -7660,27 +7707,6 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 	const struct rte_flow_action_rss *rss = NULL;
 	const struct rte_flow_action_rss *sample_rss = NULL;
 	const struct rte_flow_action_count *sample_count = NULL;
-	const struct rte_flow_item_tcp nic_tcp_mask = {
-		.hdr = {
-			.tcp_flags = 0xFF,
-			.src_port = RTE_BE16(UINT16_MAX),
-			.dst_port = RTE_BE16(UINT16_MAX),
-		}
-	};
-	const struct rte_flow_item_ipv6 nic_ipv6_mask = {
-		.hdr = {
-			.src_addr =
-			"\xff\xff\xff\xff\xff\xff\xff\xff"
-			"\xff\xff\xff\xff\xff\xff\xff\xff",
-			.dst_addr =
-			"\xff\xff\xff\xff\xff\xff\xff\xff"
-			"\xff\xff\xff\xff\xff\xff\xff\xff",
-			.vtc_flow = RTE_BE32(0xffffffff),
-			.proto = 0xff,
-			.hop_limits = 0xff,
-		},
-		.has_frag_ext = 1,
-	};
 	const struct rte_flow_item_ecpri nic_ecpri_mask = {
 		.hdr = {
 			.common = {
@@ -7765,9 +7791,10 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 		case RTE_FLOW_ITEM_TYPE_VOID:
 			break;
 		case RTE_FLOW_ITEM_TYPE_ESP:
-			ret = mlx5_flow_os_validate_item_esp(items, item_flags,
-							  next_protocol,
-							  error);
+			ret = mlx5_flow_os_validate_item_esp(dev, items,
+							     item_flags,
+							     next_protocol,
+							     error);
 			if (ret < 0)
 				return ret;
 			last_item = MLX5_FLOW_ITEM_ESP;
@@ -7790,7 +7817,7 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 			port_id_item = items;
 			break;
 		case RTE_FLOW_ITEM_TYPE_ETH:
-			ret = mlx5_flow_validate_item_eth(items, item_flags,
+			ret = mlx5_flow_validate_item_eth(dev, items, item_flags,
 							  true, error);
 			if (ret < 0)
 				return ret;
@@ -7809,8 +7836,8 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 			}
 			break;
 		case RTE_FLOW_ITEM_TYPE_VLAN:
-			ret = flow_dv_validate_item_vlan(items, item_flags,
-							 dev, error);
+			ret = mlx5_flow_dv_validate_item_vlan(items, item_flags,
+							      dev, error);
 			if (ret < 0)
 				return ret;
 			last_item = tunnel ? MLX5_FLOW_LAYER_INNER_VLAN :
@@ -7841,9 +7868,12 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 				item_flags |= l3_tunnel_flag;
 				tunnel = 1;
 			}
-			ret = flow_dv_validate_item_ipv4(dev, items, item_flags,
-							 last_item, ether_type,
-							 error);
+			ret = mlx5_flow_dv_validate_item_ipv4(dev, items,
+							      item_flags,
+							      last_item,
+							      ether_type,
+							      &nic_ipv4_mask,
+							      error);
 			if (ret < 0)
 				return ret;
 			last_item = tunnel ? MLX5_FLOW_LAYER_INNER_L3_IPV4 :
@@ -7862,7 +7892,8 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 				item_flags |= l3_tunnel_flag;
 				tunnel = 1;
 			}
-			ret = mlx5_flow_validate_item_ipv6(items, item_flags,
+			ret = mlx5_flow_validate_item_ipv6(dev, items,
+							   item_flags,
 							   last_item,
 							   ether_type,
 							   &nic_ipv6_mask,
@@ -7875,7 +7906,7 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 				item_flags |= l3_tunnel_flag;
 			break;
 		case RTE_FLOW_ITEM_TYPE_IPV6_FRAG_EXT:
-			ret = flow_dv_validate_item_ipv6_frag_ext(items,
+			ret = flow_dv_validate_item_ipv6_frag_ext(dev, items,
 								  item_flags,
 								  error);
 			if (ret < 0)
@@ -7888,7 +7919,7 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 			break;
 		case RTE_FLOW_ITEM_TYPE_TCP:
 			ret = mlx5_flow_validate_item_tcp
-						(items, item_flags,
+						(dev, items, item_flags,
 						 next_protocol,
 						 &nic_tcp_mask,
 						 error);
@@ -7898,7 +7929,7 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 					     MLX5_FLOW_LAYER_OUTER_L4_TCP;
 			break;
 		case RTE_FLOW_ITEM_TYPE_UDP:
-			ret = mlx5_flow_validate_item_udp(items, item_flags,
+			ret = mlx5_flow_validate_item_udp(dev, items, item_flags,
 							  next_protocol,
 							  error);
 			const struct rte_flow_item_udp *spec = items->spec;
@@ -7915,7 +7946,7 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 					     MLX5_FLOW_LAYER_OUTER_L4_UDP;
 			break;
 		case RTE_FLOW_ITEM_TYPE_GRE:
-			ret = mlx5_flow_validate_item_gre(items, item_flags,
+			ret = mlx5_flow_validate_item_gre(dev, items, item_flags,
 							  next_protocol, error);
 			if (ret < 0)
 				return ret;
@@ -7930,7 +7961,8 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 			last_item = MLX5_FLOW_LAYER_GRE;
 			break;
 		case RTE_FLOW_ITEM_TYPE_NVGRE:
-			ret = mlx5_flow_validate_item_nvgre(items, item_flags,
+			ret = mlx5_flow_validate_item_nvgre(dev, items,
+							    item_flags,
 							    next_protocol,
 							    error);
 			if (ret < 0)
@@ -7939,7 +7971,7 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 			break;
 		case RTE_FLOW_ITEM_TYPE_GRE_KEY:
 			ret = mlx5_flow_validate_item_gre_key
-				(items, item_flags, gre_item, error);
+				(dev, items, item_flags, gre_item, error);
 			if (ret < 0)
 				return ret;
 			last_item = MLX5_FLOW_LAYER_GRE_KEY;
@@ -8003,7 +8035,7 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 			last_item = MLX5_FLOW_ITEM_METADATA;
 			break;
 		case RTE_FLOW_ITEM_TYPE_ICMP:
-			ret = mlx5_flow_validate_item_icmp(items, item_flags,
+			ret = mlx5_flow_validate_item_icmp(dev, items, item_flags,
 							   next_protocol,
 							   error);
 			if (ret < 0)
@@ -8011,7 +8043,7 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 			last_item = MLX5_FLOW_LAYER_ICMP;
 			break;
 		case RTE_FLOW_ITEM_TYPE_ICMP6:
-			ret = mlx5_flow_validate_item_icmp6(items, item_flags,
+			ret = mlx5_flow_validate_item_icmp6(dev, items, item_flags,
 							    next_protocol,
 							    error);
 			if (ret < 0)
@@ -8021,7 +8053,7 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 			break;
 		case RTE_FLOW_ITEM_TYPE_ICMP6_ECHO_REQUEST:
 		case RTE_FLOW_ITEM_TYPE_ICMP6_ECHO_REPLY:
-			ret = mlx5_flow_validate_item_icmp6_echo(items,
+			ret = mlx5_flow_validate_item_icmp6_echo(dev, items,
 								 item_flags,
 								 next_protocol,
 								 error);
@@ -8050,24 +8082,27 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 			tag_bitmap |= 1 << mlx5_tag->id;
 			break;
 		case RTE_FLOW_ITEM_TYPE_GTP:
-			ret = flow_dv_validate_item_gtp(dev, items, item_flags,
-							error);
+			ret = mlx5_flow_dv_validate_item_gtp(dev, items,
+							     item_flags,
+							     error);
 			if (ret < 0)
 				return ret;
 			gtp_item = items;
 			last_item = MLX5_FLOW_LAYER_GTP;
 			break;
 		case RTE_FLOW_ITEM_TYPE_GTP_PSC:
-			ret = flow_dv_validate_item_gtp_psc(items, last_item,
-							    gtp_item, is_root,
-							    error);
+			ret = mlx5_flow_dv_validate_item_gtp_psc(dev, items,
+								 last_item,
+								 gtp_item,
+								 is_root, error);
 			if (ret < 0)
 				return ret;
 			last_item = MLX5_FLOW_LAYER_GTP_PSC;
 			break;
 		case RTE_FLOW_ITEM_TYPE_ECPRI:
 			/* Capacity will be checked in the translate stage. */
-			ret = mlx5_flow_validate_item_ecpri(items, item_flags,
+			ret = mlx5_flow_validate_item_ecpri(dev, items,
+							    item_flags,
 							    last_item,
 							    ether_type,
 							    &nic_ecpri_mask,
@@ -8086,8 +8121,9 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 				return ret;
 			break;
 		case RTE_FLOW_ITEM_TYPE_CONNTRACK:
-			ret = flow_dv_validate_item_aso_ct(dev, items,
-							   &item_flags, error);
+			ret = mlx5_flow_dv_validate_item_aso_ct(dev, items,
+								&item_flags,
+								error);
 			if (ret < 0)
 				return ret;
 			break;
@@ -8368,10 +8404,11 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 			break;
 		case RTE_FLOW_ACTION_TYPE_VXLAN_ENCAP:
 		case RTE_FLOW_ACTION_TYPE_NVGRE_ENCAP:
-			ret = flow_dv_validate_action_l2_encap(dev,
-							       action_flags,
-							       actions, attr,
-							       error);
+			ret = mlx5_flow_dv_validate_action_l2_encap(dev,
+								    action_flags,
+								    actions,
+								    attr,
+								    error);
 			if (ret < 0)
 				return ret;
 			action_flags |= MLX5_FLOW_ACTION_ENCAP;
@@ -8379,9 +8416,11 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 			break;
 		case RTE_FLOW_ACTION_TYPE_VXLAN_DECAP:
 		case RTE_FLOW_ACTION_TYPE_NVGRE_DECAP:
-			ret = flow_dv_validate_action_decap(dev, action_flags,
-							    actions, item_flags,
-							    attr, error);
+			ret = mlx5_flow_dv_validate_action_decap(dev,
+								 action_flags,
+								 actions,
+								 item_flags,
+								 attr, error);
 			if (ret < 0)
 				return ret;
 			if (action_flags & MLX5_FLOW_ACTION_SAMPLE)
@@ -8390,7 +8429,7 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 			++actions_n;
 			break;
 		case RTE_FLOW_ACTION_TYPE_RAW_ENCAP:
-			ret = flow_dv_validate_action_raw_encap_decap
+			ret = mlx5_flow_dv_validate_action_raw_encap_decap
 				(dev, NULL, actions->conf, attr, &action_flags,
 				 &actions_n, actions, item_flags, error);
 			if (ret < 0)
@@ -8406,11 +8445,11 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 			} else {
 				encap = actions->conf;
 			}
-			ret = flow_dv_validate_action_raw_encap_decap
-					   (dev,
-					    decap ? decap : &empty_decap, encap,
-					    attr, &action_flags, &actions_n,
-					    actions, item_flags, error);
+			ret = mlx5_flow_dv_validate_action_raw_encap_decap
+				(dev,
+				 decap ? decap : &empty_decap, encap,
+				 attr, &action_flags, &actions_n,
+				 actions, item_flags, error);
 			if (ret < 0)
 				return ret;
 			if ((action_flags & MLX5_FLOW_ACTION_SAMPLE) &&
@@ -8719,9 +8758,11 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 			rw_act_num += ret;
 			break;
 		case RTE_FLOW_ACTION_TYPE_CONNTRACK:
-			ret = flow_dv_validate_action_aso_ct(dev, action_flags,
-							     item_flags,
-							     is_root, error);
+			ret = mlx5_flow_dv_validate_action_aso_ct(dev,
+								  action_flags,
+								  item_flags,
+								  is_root,
+								  error);
 			if (ret < 0)
 				return ret;
 			if (action_flags & MLX5_FLOW_ACTION_SAMPLE)

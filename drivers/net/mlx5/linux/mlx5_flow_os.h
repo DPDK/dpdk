@@ -521,10 +521,11 @@ mlx5_os_flow_dr_sync_domain(void *domain, uint32_t flags)
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 int
-mlx5_flow_os_validate_item_esp(const struct rte_flow_item *item,
-			    uint64_t item_flags,
-			    uint8_t target_protocol,
-			    struct rte_flow_error *error);
+mlx5_flow_os_validate_item_esp(const struct rte_eth_dev *dev,
+			       const struct rte_flow_item *item,
+			       uint64_t item_flags,
+			       uint8_t target_protocol,
+			       struct rte_flow_error *error);
 
 /**
  * Add per thread workspace to the global list for garbage collection.

@@ -14,10 +14,11 @@ static struct mlx5_flow_workspace *gc_head;
 static rte_spinlock_t mlx5_flow_workspace_lock = RTE_SPINLOCK_INITIALIZER;
 
 int
-mlx5_flow_os_validate_item_esp(const struct rte_flow_item *item,
-			    uint64_t item_flags,
-			    uint8_t target_protocol,
-			    struct rte_flow_error *error)
+mlx5_flow_os_validate_item_esp(const struct rte_eth_dev *dev,
+			       const struct rte_flow_item *item,
+			       uint64_t item_flags,
+			       uint8_t target_protocol,
+			       struct rte_flow_error *error)
 {
 	const struct rte_flow_item_esp *mask = item->mask;
 	const int tunnel = !!(item_flags & MLX5_FLOW_LAYER_TUNNEL);
@@ -27,10 +28,12 @@ mlx5_flow_os_validate_item_esp(const struct rte_flow_item *item,
 				      MLX5_FLOW_LAYER_OUTER_L4;
 	int ret;
 
-	if (!(item_flags & l3m))
-		return rte_flow_error_set(error, EINVAL,
-					  RTE_FLOW_ERROR_TYPE_ITEM, item,
-					  "L3 is mandatory to filter on L4");
+	if (!mlx5_hws_active(dev)) {
+		if (!(item_flags & l3m))
+			return rte_flow_error_set(error, EINVAL,
+						  RTE_FLOW_ERROR_TYPE_ITEM,
+						  item, "L3 is mandatory to filter on L4");
+	}
 	if (item_flags & l4m)
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ITEM, item,
@@ -43,7 +46,7 @@ mlx5_flow_os_validate_item_esp(const struct rte_flow_item *item,
 	if (!mask)
 		mask = &rte_flow_item_esp_mask;
 	ret = mlx5_flow_item_acceptable
-		(item, (const uint8_t *)mask,
+		(dev, item, (const uint8_t *)mask,
 		 (const uint8_t *)&rte_flow_item_esp_mask,
 		 sizeof(struct rte_flow_item_esp), MLX5_ITEM_RANGE_NOT_ACCEPTED,
 		 error);

@@ -1332,9 +1332,10 @@ flow_verbs_validate(struct rte_eth_dev *dev,
 		switch (items->type) {
 #ifdef HAVE_IBV_FLOW_SPEC_ESP
 		case RTE_FLOW_ITEM_TYPE_ESP:
-			ret = mlx5_flow_os_validate_item_esp(items, item_flags,
-							  next_protocol,
-							  error);
+			ret = mlx5_flow_os_validate_item_esp(dev, items,
+							     item_flags,
+							     next_protocol,
+							     error);
 			if (ret < 0)
 				return ret;
 			last_item = MLX5_FLOW_ITEM_ESP;
@@ -1343,7 +1344,7 @@ flow_verbs_validate(struct rte_eth_dev *dev,
 		case RTE_FLOW_ITEM_TYPE_VOID:
 			break;
 		case RTE_FLOW_ITEM_TYPE_ETH:
-			ret = mlx5_flow_validate_item_eth(items, item_flags,
+			ret = mlx5_flow_validate_item_eth(dev, items, item_flags,
 							  false, error);
 			if (ret < 0)
 				return ret;
@@ -1387,7 +1388,7 @@ flow_verbs_validate(struct rte_eth_dev *dev,
 			break;
 		case RTE_FLOW_ITEM_TYPE_IPV4:
 			ret = mlx5_flow_validate_item_ipv4
-						(items, item_flags,
+						(dev, items, item_flags,
 						 last_item, ether_type, NULL,
 						 MLX5_ITEM_RANGE_NOT_ACCEPTED,
 						 error);
@@ -1410,7 +1411,8 @@ flow_verbs_validate(struct rte_eth_dev *dev,
 			}
 			break;
 		case RTE_FLOW_ITEM_TYPE_IPV6:
-			ret = mlx5_flow_validate_item_ipv6(items, item_flags,
+			ret = mlx5_flow_validate_item_ipv6(dev, items,
+							   item_flags,
 							   last_item,
 							   ether_type, NULL,
 							   error);
@@ -1433,7 +1435,8 @@ flow_verbs_validate(struct rte_eth_dev *dev,
 			}
 			break;
 		case RTE_FLOW_ITEM_TYPE_UDP:
-			ret = mlx5_flow_validate_item_udp(items, item_flags,
+			ret = mlx5_flow_validate_item_udp(dev, items,
+							  item_flags,
 							  next_protocol,
 							  error);
 			const struct rte_flow_item_udp *spec = items->spec;
@@ -1452,7 +1455,7 @@ flow_verbs_validate(struct rte_eth_dev *dev,
 			break;
 		case RTE_FLOW_ITEM_TYPE_TCP:
 			ret = mlx5_flow_validate_item_tcp
-						(items, item_flags,
+						(dev, items, item_flags,
 						 next_protocol,
 						 &rte_flow_item_tcp_mask,
 						 error);
@@ -1478,7 +1481,7 @@ flow_verbs_validate(struct rte_eth_dev *dev,
 			last_item = MLX5_FLOW_LAYER_VXLAN_GPE;
 			break;
 		case RTE_FLOW_ITEM_TYPE_GRE:
-			ret = mlx5_flow_validate_item_gre(items, item_flags,
+			ret = mlx5_flow_validate_item_gre(dev, items, item_flags,
 							  next_protocol, error);
 			if (ret < 0)
 				return ret;

@@ -270,6 +270,10 @@ enum mlx5_feature_name {
 #define MLX5_FLOW_ITEM_INNER_FLEX (UINT64_C(1) << 38)
 #define MLX5_FLOW_ITEM_FLEX_TUNNEL (UINT64_C(1) << 39)
 
+#define MLX5_FLOW_ITEM_FLEX \
+	(MLX5_FLOW_ITEM_OUTER_FLEX | MLX5_FLOW_ITEM_INNER_FLEX | \
+	MLX5_FLOW_ITEM_FLEX_TUNNEL)
+
 /* ESP item */
 #define MLX5_FLOW_ITEM_ESP (UINT64_C(1) << 40)
 
@@ -2268,6 +2272,7 @@ typedef int (*mlx5_flow_pattern_validate_t)
 			(struct rte_eth_dev *dev,
 			 const struct rte_flow_pattern_template_attr *attr,
 			 const struct rte_flow_item items[],
+			 uint64_t *item_flags,
 			 struct rte_flow_error *error);
 typedef struct rte_flow_pattern_template *(*mlx5_flow_pattern_template_create_t)
 			(struct rte_eth_dev *dev,
@@ -2897,46 +2902,79 @@ int flow_validate_modify_field_level
 			(const struct rte_flow_field_data *data,
 			 struct rte_flow_error *error);
 int
-flow_dv_validate_action_l2_encap(struct rte_eth_dev *dev,
-				 uint64_t action_flags,
-				 const struct rte_flow_action *action,
-				 const struct rte_flow_attr *attr,
-				 struct rte_flow_error *error);
+mlx5_flow_dv_validate_action_l2_encap(struct rte_eth_dev *dev,
+				      uint64_t action_flags,
+				      const struct rte_flow_action *action,
+				      const struct rte_flow_attr *attr,
+				      struct rte_flow_error *error);
 int
-flow_dv_validate_action_decap(struct rte_eth_dev *dev,
-			      uint64_t action_flags,
-			      const struct rte_flow_action *action,
-			      const uint64_t item_flags,
-			      const struct rte_flow_attr *attr,
-			      struct rte_flow_error *error);
+mlx5_flow_dv_validate_action_decap(struct rte_eth_dev *dev,
+				   uint64_t action_flags,
+				   const struct rte_flow_action *action,
+				   const uint64_t item_flags,
+				   const struct rte_flow_attr *attr,
+				   struct rte_flow_error *error);
 int
-flow_dv_validate_action_aso_ct(struct rte_eth_dev *dev,
-			       uint64_t action_flags,
-			       uint64_t item_flags,
-			       bool root,
-			       struct rte_flow_error *error);
+mlx5_flow_dv_validate_action_aso_ct(struct rte_eth_dev *dev,
+				    uint64_t action_flags,
+				    uint64_t item_flags,
+				    bool root,
+				    struct rte_flow_error *error);
 int
-flow_dv_validate_action_raw_encap_decap
+mlx5_flow_dv_validate_action_raw_encap_decap
 	(struct rte_eth_dev *dev,
 	 const struct rte_flow_action_raw_decap *decap,
 	 const struct rte_flow_action_raw_encap *encap,
 	 const struct rte_flow_attr *attr, uint64_t *action_flags,
 	 int *actions_n, const struct rte_flow_action *action,
 	 uint64_t item_flags, struct rte_flow_error *error);
-int mlx5_flow_item_acceptable(const struct rte_flow_item *item,
+int mlx5_flow_item_acceptable(const struct rte_eth_dev *dev,
+			      const struct rte_flow_item *item,
 			      const uint8_t *mask,
 			      const uint8_t *nic_mask,
 			      unsigned int size,
 			      bool range_accepted,
 			      struct rte_flow_error *error);
-int mlx5_flow_validate_item_eth(const struct rte_flow_item *item,
+int mlx5_flow_validate_item_eth(const struct rte_eth_dev *dev,
+				const struct rte_flow_item *item,
 				uint64_t item_flags, bool ext_vlan_sup,
 				struct rte_flow_error *error);
-int mlx5_flow_validate_item_gre(const struct rte_flow_item *item,
+int
+mlx5_flow_dv_validate_item_vlan(const struct rte_flow_item *item,
+				uint64_t item_flags,
+				struct rte_eth_dev *dev,
+				struct rte_flow_error *error);
+int
+mlx5_flow_dv_validate_item_ipv4(struct rte_eth_dev *dev,
+				const struct rte_flow_item *item,
+				uint64_t item_flags,
+				uint64_t last_item,
+				uint16_t ether_type,
+				const struct rte_flow_item_ipv4 *acc_mask,
+				struct rte_flow_error *error);
+int
+mlx5_flow_dv_validate_item_gtp(struct rte_eth_dev *dev,
+			       const struct rte_flow_item *item,
+			       uint64_t item_flags,
+			       struct rte_flow_error *error);
+int
+mlx5_flow_dv_validate_item_gtp_psc(const struct rte_eth_dev *dev,
+				   const struct rte_flow_item *item,
+				   uint64_t last_item,
+				   const struct rte_flow_item *gtp_item,
+				   bool root, struct rte_flow_error *error);
+int
+mlx5_flow_dv_validate_item_aso_ct(struct rte_eth_dev *dev,
+				  const struct rte_flow_item *item,
+				  uint64_t *item_flags,
+				  struct rte_flow_error *error);
+int mlx5_flow_validate_item_gre(const struct rte_eth_dev *dev,
+				const struct rte_flow_item *item,
 				uint64_t item_flags,
 				uint8_t target_protocol,
 				struct rte_flow_error *error);
-int mlx5_flow_validate_item_gre_key(const struct rte_flow_item *item,
+int mlx5_flow_validate_item_gre_key(const struct rte_eth_dev *dev,
+				    const struct rte_flow_item *item,
 				    uint64_t item_flags,
 				    const struct rte_flow_item *gre_item,
 				    struct rte_flow_error *error);
@@ -2946,14 +2984,16 @@ int mlx5_flow_validate_item_gre_option(struct rte_eth_dev *dev,
 				       const struct rte_flow_attr *attr,
 				       const struct rte_flow_item *gre_item,
 				       struct rte_flow_error *error);
-int mlx5_flow_validate_item_ipv4(const struct rte_flow_item *item,
+int mlx5_flow_validate_item_ipv4(const struct rte_eth_dev *dev,
+				 const struct rte_flow_item *item,
 				 uint64_t item_flags,
 				 uint64_t last_item,
 				 uint16_t ether_type,
 				 const struct rte_flow_item_ipv4 *acc_mask,
 				 bool range_accepted,
 				 struct rte_flow_error *error);
-int mlx5_flow_validate_item_ipv6(const struct rte_flow_item *item,
+int mlx5_flow_validate_item_ipv6(const struct rte_eth_dev *dev,
+				 const struct rte_flow_item *item,
 				 uint64_t item_flags,
 				 uint64_t last_item,
 				 uint16_t ether_type,
@@ -2964,12 +3004,14 @@ int mlx5_flow_validate_item_mpls(struct rte_eth_dev *dev,
 				 uint64_t item_flags,
 				 uint64_t prev_layer,
 				 struct rte_flow_error *error);
-int mlx5_flow_validate_item_tcp(const struct rte_flow_item *item,
+int mlx5_flow_validate_item_tcp(const struct rte_eth_dev *dev,
+				const struct rte_flow_item *item,
 				uint64_t item_flags,
 				uint8_t target_protocol,
 				const struct rte_flow_item_tcp *flow_mask,
 				struct rte_flow_error *error);
-int mlx5_flow_validate_item_udp(const struct rte_flow_item *item,
+int mlx5_flow_validate_item_udp(const struct rte_eth_dev *dev,
+				const struct rte_flow_item *item,
 				uint64_t item_flags,
 				uint8_t target_protocol,
 				struct rte_flow_error *error);
@@ -2987,19 +3029,23 @@ int mlx5_flow_validate_item_vxlan_gpe(const struct rte_flow_item *item,
 				      uint64_t item_flags,
 				      struct rte_eth_dev *dev,
 				      struct rte_flow_error *error);
-int mlx5_flow_validate_item_icmp(const struct rte_flow_item *item,
+int mlx5_flow_validate_item_icmp(const struct rte_eth_dev *dev,
+				 const struct rte_flow_item *item,
 				 uint64_t item_flags,
 				 uint8_t target_protocol,
 				 struct rte_flow_error *error);
-int mlx5_flow_validate_item_icmp6(const struct rte_flow_item *item,
-				   uint64_t item_flags,
-				   uint8_t target_protocol,
-				   struct rte_flow_error *error);
-int mlx5_flow_validate_item_icmp6_echo(const struct rte_flow_item *item,
+int mlx5_flow_validate_item_icmp6(const struct rte_eth_dev *dev,
+				  const struct rte_flow_item *item,
+				  uint64_t item_flags,
+				  uint8_t target_protocol,
+				  struct rte_flow_error *error);
+int mlx5_flow_validate_item_icmp6_echo(const struct rte_eth_dev *dev,
+				       const struct rte_flow_item *item,
 				       uint64_t item_flags,
 				       uint8_t target_protocol,
 				       struct rte_flow_error *error);
-int mlx5_flow_validate_item_nvgre(const struct rte_flow_item *item,
+int mlx5_flow_validate_item_nvgre(const struct rte_eth_dev *dev,
+				  const struct rte_flow_item *item,
 				  uint64_t item_flags,
 				  uint8_t target_protocol,
 				  struct rte_flow_error *error);
@@ -3012,7 +3058,8 @@ int mlx5_flow_validate_item_geneve_opt(const struct rte_flow_item *item,
 				   const struct rte_flow_item *geneve_item,
 				   struct rte_eth_dev *dev,
 				   struct rte_flow_error *error);
-int mlx5_flow_validate_item_ecpri(const struct rte_flow_item *item,
+int mlx5_flow_validate_item_ecpri(const struct rte_eth_dev *dev,
+				  const struct rte_flow_item *item,
 				  uint64_t item_flags,
 				  uint64_t last_item,
 				  uint16_t ether_type,
@@ -3378,6 +3425,8 @@ mlx5_hw_decap_encap_destroy(struct rte_eth_dev *dev,
 			    struct mlx5_indirect_list *reformat);
 
 extern const struct rte_flow_action_raw_decap empty_decap;
+extern const struct rte_flow_item_ipv6 nic_ipv6_mask;
+extern const struct rte_flow_item_tcp nic_tcp_mask;
 
 #endif
 #endif /* RTE_PMD_MLX5_FLOW_H_ */

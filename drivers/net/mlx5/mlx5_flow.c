@@ -1453,7 +1453,8 @@ mlx5_get_matcher_priority(struct rte_eth_dev *dev,
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 int
-mlx5_flow_item_acceptable(const struct rte_flow_item *item,
+mlx5_flow_item_acceptable(const struct rte_eth_dev *dev,
+			  const struct rte_flow_item *item,
 			  const uint8_t *mask,
 			  const uint8_t *nic_mask,
 			  unsigned int size,
@@ -1470,6 +1471,8 @@ mlx5_flow_item_acceptable(const struct rte_flow_item *item,
 						  item,
 						  "mask enables non supported"
 						  " bits");
+	if (mlx5_hws_active(dev))
+		return 0;
 	if (!item->spec && (item->mask || item->last))
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ITEM, item,
@@ -2454,10 +2457,11 @@ flow_validate_modify_field_level(const struct rte_flow_field_data *data,
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 int
-mlx5_flow_validate_item_icmp6(const struct rte_flow_item *item,
-			       uint64_t item_flags,
-			       uint8_t target_protocol,
-			       struct rte_flow_error *error)
+mlx5_flow_validate_item_icmp6(const struct rte_eth_dev *dev,
+			      const struct rte_flow_item *item,
+			      uint64_t item_flags,
+			      uint8_t target_protocol,
+			      struct rte_flow_error *error)
 {
 	const struct rte_flow_item_icmp6 *mask = item->mask;
 	const int tunnel = !!(item_flags & MLX5_FLOW_LAYER_TUNNEL);
@@ -2472,11 +2476,12 @@ mlx5_flow_validate_item_icmp6(const struct rte_flow_item *item,
 					  RTE_FLOW_ERROR_TYPE_ITEM, item,
 					  "protocol filtering not compatible"
 					  " with ICMP6 layer");
-	if (!(item_flags & l3m))
-		return rte_flow_error_set(error, EINVAL,
-					  RTE_FLOW_ERROR_TYPE_ITEM, item,
-					  "IPv6 is mandatory to filter on"
-					  " ICMP6");
+	if (!mlx5_hws_active(dev)) {
+		if (!(item_flags & l3m))
+			return rte_flow_error_set(error, EINVAL,
+						  RTE_FLOW_ERROR_TYPE_ITEM,
+						  item, "IPv6 is mandatory to filter on ICMP6");
+	}
 	if (item_flags & l4m)
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ITEM, item,
@@ -2484,7 +2489,7 @@ mlx5_flow_validate_item_icmp6(const struct rte_flow_item *item,
 	if (!mask)
 		mask = &rte_flow_item_icmp6_mask;
 	ret = mlx5_flow_item_acceptable
-		(item, (const uint8_t *)mask,
+		(dev, item, (const uint8_t *)mask,
 		 (const uint8_t *)&rte_flow_item_icmp6_mask,
 		 sizeof(struct rte_flow_item_icmp6),
 		 MLX5_ITEM_RANGE_NOT_ACCEPTED, error);
@@ -2509,7 +2514,8 @@ mlx5_flow_validate_item_icmp6(const struct rte_flow_item *item,
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 int
-mlx5_flow_validate_item_icmp6_echo(const struct rte_flow_item *item,
+mlx5_flow_validate_item_icmp6_echo(const struct rte_eth_dev *dev,
+				   const struct rte_flow_item *item,
 				   uint64_t item_flags,
 				   uint8_t target_protocol,
 				   struct rte_flow_error *error)
@@ -2533,11 +2539,12 @@ mlx5_flow_validate_item_icmp6_echo(const struct rte_flow_item *item,
 					  RTE_FLOW_ERROR_TYPE_ITEM, item,
 					  "protocol filtering not compatible"
 					  " with ICMP6 layer");
-	if (!(item_flags & l3m))
-		return rte_flow_error_set(error, EINVAL,
-					  RTE_FLOW_ERROR_TYPE_ITEM, item,
-					  "IPv6 is mandatory to filter on"
-					  " ICMP6");
+	if (!mlx5_hws_active(dev)) {
+		if (!(item_flags & l3m))
+			return rte_flow_error_set(error, EINVAL,
+						  RTE_FLOW_ERROR_TYPE_ITEM,
+						  item, "IPv6 is mandatory to filter on ICMP6");
+	}
 	if (item_flags & l4m)
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ITEM, item,
@@ -2545,7 +2552,7 @@ mlx5_flow_validate_item_icmp6_echo(const struct rte_flow_item *item,
 	if (!mask)
 		mask = &nic_mask;
 	ret = mlx5_flow_item_acceptable
-		(item, (const uint8_t *)mask,
+		(dev, item, (const uint8_t *)mask,
 		 (const uint8_t *)&nic_mask,
 		 sizeof(struct rte_flow_item_icmp6_echo),
 		 MLX5_ITEM_RANGE_NOT_ACCEPTED, error);
@@ -2568,7 +2575,8 @@ mlx5_flow_validate_item_icmp6_echo(const struct rte_flow_item *item,
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 int
-mlx5_flow_validate_item_icmp(const struct rte_flow_item *item,
+mlx5_flow_validate_item_icmp(const struct rte_eth_dev *dev,
+			     const struct rte_flow_item *item,
 			     uint64_t item_flags,
 			     uint8_t target_protocol,
 			     struct rte_flow_error *error)
@@ -2592,11 +2600,12 @@ mlx5_flow_validate_item_icmp(const struct rte_flow_item *item,
 					  RTE_FLOW_ERROR_TYPE_ITEM, item,
 					  "protocol filtering not compatible"
 					  " with ICMP layer");
-	if (!(item_flags & l3m))
-		return rte_flow_error_set(error, EINVAL,
-					  RTE_FLOW_ERROR_TYPE_ITEM, item,
-					  "IPv4 is mandatory to filter"
-					  " on ICMP");
+	if (!mlx5_hws_active(dev)) {
+		if (!(item_flags & l3m))
+			return rte_flow_error_set(error, EINVAL,
+						  RTE_FLOW_ERROR_TYPE_ITEM,
+						  item, "IPv4 is mandatory to filter on ICMP");
+	}
 	if (item_flags & l4m)
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ITEM, item,
@@ -2604,7 +2613,7 @@ mlx5_flow_validate_item_icmp(const struct rte_flow_item *item,
 	if (!mask)
 		mask = &nic_mask;
 	ret = mlx5_flow_item_acceptable
-		(item, (const uint8_t *)mask,
+		(dev, item, (const uint8_t *)mask,
 		 (const uint8_t *)&nic_mask,
 		 sizeof(struct rte_flow_item_icmp),
 		 MLX5_ITEM_RANGE_NOT_ACCEPTED, error);
@@ -2627,7 +2636,8 @@ mlx5_flow_validate_item_icmp(const struct rte_flow_item *item,
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 int
-mlx5_flow_validate_item_eth(const struct rte_flow_item *item,
+mlx5_flow_validate_item_eth(const struct rte_eth_dev *dev,
+			    const struct rte_flow_item *item,
 			    uint64_t item_flags, bool ext_vlan_sup,
 			    struct rte_flow_error *error)
 {
@@ -2664,7 +2674,7 @@ mlx5_flow_validate_item_eth(const struct rte_flow_item *item,
 					  "L2 layer should not follow GTP");
 	if (!mask)
 		mask = &rte_flow_item_eth_mask;
-	ret = mlx5_flow_item_acceptable(item, (const uint8_t *)mask,
+	ret = mlx5_flow_item_acceptable(dev, item, (const uint8_t *)mask,
 					(const uint8_t *)&nic_mask,
 					sizeof(struct rte_flow_item_eth),
 					MLX5_ITEM_RANGE_NOT_ACCEPTED, error);
@@ -2718,7 +2728,7 @@ mlx5_flow_validate_item_vlan(const struct rte_flow_item *item,
 					  "VLAN cannot follow L3/L4 layer");
 	if (!mask)
 		mask = &rte_flow_item_vlan_mask;
-	ret = mlx5_flow_item_acceptable(item, (const uint8_t *)mask,
+	ret = mlx5_flow_item_acceptable(dev, item, (const uint8_t *)mask,
 					(const uint8_t *)&nic_mask,
 					sizeof(struct rte_flow_item_vlan),
 					MLX5_ITEM_RANGE_NOT_ACCEPTED, error);
@@ -2782,7 +2792,8 @@ mlx5_flow_validate_item_vlan(const struct rte_flow_item *item,
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 int
-mlx5_flow_validate_item_ipv4(const struct rte_flow_item *item,
+mlx5_flow_validate_item_ipv4(const struct rte_eth_dev *dev,
+			     const struct rte_flow_item *item,
 			     uint64_t item_flags,
 			     uint64_t last_item,
 			     uint16_t ether_type,
@@ -2854,7 +2865,7 @@ mlx5_flow_validate_item_ipv4(const struct rte_flow_item *item,
 					  RTE_FLOW_ERROR_TYPE_ITEM_MASK, mask,
 					  "partial mask is not supported"
 					  " for protocol");
-	ret = mlx5_flow_item_acceptable(item, (const uint8_t *)mask,
+	ret = mlx5_flow_item_acceptable(dev, item, (const uint8_t *)mask,
 					acc_mask ? (const uint8_t *)acc_mask
 						 : (const uint8_t *)&nic_mask,
 					sizeof(struct rte_flow_item_ipv4),
@@ -2885,7 +2896,8 @@ mlx5_flow_validate_item_ipv4(const struct rte_flow_item *item,
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 int
-mlx5_flow_validate_item_ipv6(const struct rte_flow_item *item,
+mlx5_flow_validate_item_ipv6(const struct rte_eth_dev *dev,
+			     const struct rte_flow_item *item,
 			     uint64_t item_flags,
 			     uint64_t last_item,
 			     uint16_t ether_type,
@@ -2936,9 +2948,9 @@ mlx5_flow_validate_item_ipv6(const struct rte_flow_item *item,
 	if (next_proto == IPPROTO_HOPOPTS  ||
 	    next_proto == IPPROTO_ROUTING  ||
 	    next_proto == IPPROTO_FRAGMENT ||
-	    next_proto == IPPROTO_ESP	   ||
 	    next_proto == IPPROTO_AH	   ||
-	    next_proto == IPPROTO_DSTOPTS)
+	    next_proto == IPPROTO_DSTOPTS  ||
+	    (!mlx5_hws_active(dev) && next_proto == IPPROTO_ESP))
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ITEM, item,
 					  "IPv6 proto (next header) should "
@@ -2963,7 +2975,7 @@ mlx5_flow_validate_item_ipv6(const struct rte_flow_item *item,
 					  "L3 cannot follow an NVGRE layer.");
 	if (!mask)
 		mask = &rte_flow_item_ipv6_mask;
-	ret = mlx5_flow_item_acceptable(item, (const uint8_t *)mask,
+	ret = mlx5_flow_item_acceptable(dev, item, (const uint8_t *)mask,
 					acc_mask ? (const uint8_t *)acc_mask
 						 : (const uint8_t *)&nic_mask,
 					sizeof(struct rte_flow_item_ipv6),
@@ -2991,7 +3003,8 @@ mlx5_flow_validate_item_ipv6(const struct rte_flow_item *item,
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 int
-mlx5_flow_validate_item_udp(const struct rte_flow_item *item,
+mlx5_flow_validate_item_udp(const struct rte_eth_dev *dev,
+			    const struct rte_flow_item *item,
 			    uint64_t item_flags,
 			    uint8_t target_protocol,
 			    struct rte_flow_error *error)
@@ -3004,15 +3017,17 @@ mlx5_flow_validate_item_udp(const struct rte_flow_item *item,
 				      MLX5_FLOW_LAYER_OUTER_L4;
 	int ret;
 
-	if (target_protocol != 0xff && target_protocol != IPPROTO_UDP)
-		return rte_flow_error_set(error, EINVAL,
-					  RTE_FLOW_ERROR_TYPE_ITEM, item,
-					  "protocol filtering not compatible"
-					  " with UDP layer");
-	if (!(item_flags & l3m))
-		return rte_flow_error_set(error, EINVAL,
-					  RTE_FLOW_ERROR_TYPE_ITEM, item,
-					  "L3 is mandatory to filter on L4");
+	if (!mlx5_hws_active(dev)) {
+		if (target_protocol != 0xff && target_protocol != IPPROTO_UDP)
+			return rte_flow_error_set(error, EINVAL,
+						  RTE_FLOW_ERROR_TYPE_ITEM,
+						  item, "protocol filtering not compatible with UDP layer");
+		if (!(item_flags & l3m))
+			return rte_flow_error_set(error, EINVAL,
+						  RTE_FLOW_ERROR_TYPE_ITEM,
+						  item,
+						  "L3 is mandatory to filter on L4");
+	}
 	if (item_flags & l4m)
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ITEM, item,
@@ -3020,7 +3035,7 @@ mlx5_flow_validate_item_udp(const struct rte_flow_item *item,
 	if (!mask)
 		mask = &rte_flow_item_udp_mask;
 	ret = mlx5_flow_item_acceptable
-		(item, (const uint8_t *)mask,
+		(dev, item, (const uint8_t *)mask,
 		 (const uint8_t *)&rte_flow_item_udp_mask,
 		 sizeof(struct rte_flow_item_udp), MLX5_ITEM_RANGE_NOT_ACCEPTED,
 		 error);
@@ -3045,7 +3060,8 @@ mlx5_flow_validate_item_udp(const struct rte_flow_item *item,
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 int
-mlx5_flow_validate_item_tcp(const struct rte_flow_item *item,
+mlx5_flow_validate_item_tcp(const struct rte_eth_dev *dev,
+			    const struct rte_flow_item *item,
 			    uint64_t item_flags,
 			    uint8_t target_protocol,
 			    const struct rte_flow_item_tcp *flow_mask,
@@ -3060,15 +3076,16 @@ mlx5_flow_validate_item_tcp(const struct rte_flow_item *item,
 	int ret;
 
 	MLX5_ASSERT(flow_mask);
-	if (target_protocol != 0xff && target_protocol != IPPROTO_TCP)
-		return rte_flow_error_set(error, EINVAL,
-					  RTE_FLOW_ERROR_TYPE_ITEM, item,
-					  "protocol filtering not compatible"
-					  " with TCP layer");
-	if (!(item_flags & l3m))
-		return rte_flow_error_set(error, EINVAL,
-					  RTE_FLOW_ERROR_TYPE_ITEM, item,
-					  "L3 is mandatory to filter on L4");
+	if (!mlx5_hws_active(dev)) {
+		if (target_protocol != 0xff && target_protocol != IPPROTO_TCP)
+			return rte_flow_error_set(error, EINVAL,
+						  RTE_FLOW_ERROR_TYPE_ITEM,
+						  item, "protocol filtering not compatible with TCP layer");
+		if (!(item_flags & l3m))
+			return rte_flow_error_set(error, EINVAL,
+						  RTE_FLOW_ERROR_TYPE_ITEM,
+						  item, "L3 is mandatory to filter on L4");
+	}
 	if (item_flags & l4m)
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ITEM, item,
@@ -3076,7 +3093,7 @@ mlx5_flow_validate_item_tcp(const struct rte_flow_item *item,
 	if (!mask)
 		mask = &rte_flow_item_tcp_mask;
 	ret = mlx5_flow_item_acceptable
-		(item, (const uint8_t *)mask,
+		(dev, item, (const uint8_t *)mask,
 		 (const uint8_t *)flow_mask,
 		 sizeof(struct rte_flow_item_tcp), MLX5_ITEM_RANGE_NOT_ACCEPTED,
 		 error);
@@ -3136,10 +3153,16 @@ mlx5_flow_validate_item_vxlan(struct rte_eth_dev *dev,
 	 * Verify only UDPv4 is present as defined in
 	 * https://tools.ietf.org/html/rfc7348
 	 */
-	if (!(item_flags & MLX5_FLOW_LAYER_OUTER_L4_UDP))
-		return rte_flow_error_set(error, EINVAL,
-					  RTE_FLOW_ERROR_TYPE_ITEM, item,
-					  "no outer UDP layer found");
+	if (!mlx5_hws_active(dev)) {
+		if (!(item_flags & MLX5_FLOW_LAYER_OUTER_L4_UDP))
+			return rte_flow_error_set(error, EINVAL,
+						  RTE_FLOW_ERROR_TYPE_ITEM,
+						  item, "no outer UDP layer found");
+		if (!(item_flags & MLX5_FLOW_LAYER_OUTER))
+			return rte_flow_error_set(error, ENOTSUP,
+						  RTE_FLOW_ERROR_TYPE_ITEM, item,
+						  "VXLAN tunnel must be fully defined");
+	}
 	if (!mask)
 		mask = &rte_flow_item_vxlan_mask;
 
@@ -3154,7 +3177,7 @@ mlx5_flow_validate_item_vxlan(struct rte_eth_dev *dev,
 			valid_mask = &nic_mask;
 	}
 	ret = mlx5_flow_item_acceptable
-		(item, (const uint8_t *)mask,
+		(dev, item, (const uint8_t *)mask,
 		 (const uint8_t *)valid_mask,
 		 sizeof(struct rte_flow_item_vxlan),
 		 MLX5_ITEM_RANGE_NOT_ACCEPTED, error);
@@ -3164,10 +3187,6 @@ mlx5_flow_validate_item_vxlan(struct rte_eth_dev *dev,
 		memcpy(&id.vni[1], spec->hdr.vni, 3);
 		memcpy(&id.vni[1], mask->hdr.vni, 3);
 	}
-	if (!(item_flags & MLX5_FLOW_LAYER_OUTER))
-		return rte_flow_error_set(error, ENOTSUP,
-					  RTE_FLOW_ERROR_TYPE_ITEM, item,
-					  "VXLAN tunnel must be fully defined");
 	return 0;
 }
 
@@ -3224,19 +3243,22 @@ mlx5_flow_validate_item_vxlan_gpe(const struct rte_flow_item *item,
 	 * Verify only UDPv4 is present as defined in
 	 * https://tools.ietf.org/html/rfc7348
 	 */
-	if (!(item_flags & MLX5_FLOW_LAYER_OUTER_L4_UDP))
-		return rte_flow_error_set(error, EINVAL,
-					  RTE_FLOW_ERROR_TYPE_ITEM, item,
-					  "no outer UDP layer found");
+	if (!mlx5_hws_active(dev)) {
+		if (!(item_flags & MLX5_FLOW_LAYER_OUTER_L4_UDP))
+			return rte_flow_error_set(error, EINVAL,
+						  RTE_FLOW_ERROR_TYPE_ITEM,
+						  item, "no outer UDP layer found");
+	}
 	if (!mask)
 		mask = &rte_flow_item_vxlan_gpe_mask;
-	if (priv->sh->misc5_cap && priv->sh->tunnel_header_0_1) {
+	if (mlx5_hws_active(dev) ||
+	    (priv->sh->misc5_cap && priv->sh->tunnel_header_0_1)) {
 		nic_mask.rsvd0[0] = 0xff;
 		nic_mask.rsvd0[1] = 0xff;
 		nic_mask.rsvd1 = 0xff;
 	}
 	ret = mlx5_flow_item_acceptable
-		(item, (const uint8_t *)mask,
+		(dev, item, (const uint8_t *)mask,
 		 (const uint8_t *)&nic_mask,
 		 sizeof(struct rte_flow_item_vxlan_gpe),
 		 MLX5_ITEM_RANGE_NOT_ACCEPTED, error);
@@ -3269,7 +3291,8 @@ mlx5_flow_validate_item_vxlan_gpe(const struct rte_flow_item *item,
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 int
-mlx5_flow_validate_item_gre_key(const struct rte_flow_item *item,
+mlx5_flow_validate_item_gre_key(const struct rte_eth_dev *dev,
+				const struct rte_flow_item *item,
 				uint64_t item_flags,
 				const struct rte_flow_item *gre_item,
 				struct rte_flow_error *error)
@@ -3305,7 +3328,7 @@ mlx5_flow_validate_item_gre_key(const struct rte_flow_item *item,
 	if (!mask)
 		mask = &gre_key_default_mask;
 	ret = mlx5_flow_item_acceptable
-		(item, (const uint8_t *)mask,
+		(dev, item, (const uint8_t *)mask,
 		 (const uint8_t *)&gre_key_default_mask,
 		 sizeof(rte_be32_t), MLX5_ITEM_RANGE_NOT_ACCEPTED, error);
 	return ret;
@@ -3405,7 +3428,7 @@ mlx5_flow_validate_item_gre_option(struct rte_eth_dev *dev,
 						  "Checksum/Sequence not supported");
 	}
 	ret = mlx5_flow_item_acceptable
-		(item, (const uint8_t *)mask,
+		(dev, item, (const uint8_t *)mask,
 		 (const uint8_t *)&nic_mask,
 		 sizeof(struct rte_flow_item_gre_opt),
 		 MLX5_ITEM_RANGE_NOT_ACCEPTED, error);
@@ -3428,7 +3451,8 @@ mlx5_flow_validate_item_gre_option(struct rte_eth_dev *dev,
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 int
-mlx5_flow_validate_item_gre(const struct rte_flow_item *item,
+mlx5_flow_validate_item_gre(const struct rte_eth_dev *dev,
+			    const struct rte_flow_item *item,
 			    uint64_t item_flags,
 			    uint8_t target_protocol,
 			    struct rte_flow_error *error)
@@ -3451,14 +3475,16 @@ mlx5_flow_validate_item_gre(const struct rte_flow_item *item,
 					  RTE_FLOW_ERROR_TYPE_ITEM, item,
 					  "multiple tunnel layers not"
 					  " supported");
-	if (!(item_flags & MLX5_FLOW_LAYER_OUTER_L3))
-		return rte_flow_error_set(error, ENOTSUP,
-					  RTE_FLOW_ERROR_TYPE_ITEM, item,
-					  "L3 Layer is missing");
+	if (!mlx5_hws_active(dev)) {
+		if (!(item_flags & MLX5_FLOW_LAYER_OUTER_L3))
+			return rte_flow_error_set(error, ENOTSUP,
+						  RTE_FLOW_ERROR_TYPE_ITEM,
+						  item, "L3 Layer is missing");
+	}
 	if (!mask)
 		mask = &rte_flow_item_gre_mask;
 	ret = mlx5_flow_item_acceptable
-		(item, (const uint8_t *)mask,
+		(dev, item, (const uint8_t *)mask,
 		 (const uint8_t *)&nic_mask,
 		 sizeof(struct rte_flow_item_gre), MLX5_ITEM_RANGE_NOT_ACCEPTED,
 		 error);
@@ -3534,7 +3560,7 @@ mlx5_flow_validate_item_geneve(const struct rte_flow_item *item,
 	if (!mask)
 		mask = &rte_flow_item_geneve_mask;
 	ret = mlx5_flow_item_acceptable
-				  (item, (const uint8_t *)mask,
+				  (dev, item, (const uint8_t *)mask,
 				   (const uint8_t *)&nic_mask,
 				   sizeof(struct rte_flow_item_geneve),
 				   MLX5_ITEM_RANGE_NOT_ACCEPTED, error);
@@ -3732,36 +3758,48 @@ mlx5_flow_validate_item_mpls(struct rte_eth_dev *dev __rte_unused,
 			     struct rte_flow_error *error)
 {
 #ifdef HAVE_IBV_DEVICE_MPLS_SUPPORT
+	const struct rte_flow_item_mpls hws_nic_mask = {
+		.label_tc_s = {0xff, 0xff, 0xff},
+		.ttl = 0xff
+	};
+	const struct rte_flow_item_mpls *nic_mask = !mlx5_hws_active(dev) ?
+		&rte_flow_item_mpls_mask : &hws_nic_mask;
 	const struct rte_flow_item_mpls *mask = item->mask;
 	struct mlx5_priv *priv = dev->data->dev_private;
 	int ret;
 
-	if (!priv->sh->dev_cap.mpls_en)
-		return rte_flow_error_set(error, ENOTSUP,
-					  RTE_FLOW_ERROR_TYPE_ITEM, item,
-					  "MPLS not supported or"
-					  " disabled in firmware"
-					  " configuration.");
-	/* MPLS over UDP, GRE is allowed */
-	if (!(prev_layer & (MLX5_FLOW_LAYER_OUTER_L4_UDP |
-			    MLX5_FLOW_LAYER_GRE |
-			    MLX5_FLOW_LAYER_GRE_KEY)))
-		return rte_flow_error_set(error, EINVAL,
-					  RTE_FLOW_ERROR_TYPE_ITEM, item,
-					  "protocol filtering not compatible"
-					  " with MPLS layer");
-	/* Multi-tunnel isn't allowed but MPLS over GRE is an exception. */
-	if ((item_flags & MLX5_FLOW_LAYER_TUNNEL) &&
-	    !(item_flags & MLX5_FLOW_LAYER_GRE))
-		return rte_flow_error_set(error, ENOTSUP,
-					  RTE_FLOW_ERROR_TYPE_ITEM, item,
-					  "multiple tunnel layers not"
-					  " supported");
+	if (!mlx5_hws_active(dev)) {
+		/* MPLS has HW support in HWS */
+		if (!priv->sh->dev_cap.mpls_en)
+			return rte_flow_error_set(error, ENOTSUP,
+						  RTE_FLOW_ERROR_TYPE_ITEM,
+						  item, "MPLS not supported or disabled in firmware configuration.");
+		/* MPLS over UDP, GRE is allowed */
+		if (!(prev_layer & (MLX5_FLOW_LAYER_OUTER_L4_UDP |
+				    MLX5_FLOW_LAYER_GRE |
+				    MLX5_FLOW_LAYER_GRE_KEY)))
+			return rte_flow_error_set(error, EINVAL,
+						  RTE_FLOW_ERROR_TYPE_ITEM,
+						  item, "protocol filtering not compatible with MPLS layer");
+		/* Multi-tunnel isn't allowed but MPLS over GRE is an exception. */
+		if ((item_flags & MLX5_FLOW_LAYER_TUNNEL) &&
+		    !(item_flags & MLX5_FLOW_LAYER_GRE))
+			return rte_flow_error_set(error, ENOTSUP,
+						  RTE_FLOW_ERROR_TYPE_ITEM, item,
+						  "multiple tunnel layers not supported");
+	} else {
+		/* Multi-tunnel isn't allowed but MPLS over GRE is an exception. */
+		if ((item_flags & MLX5_FLOW_LAYER_TUNNEL) &&
+		    !(item_flags & MLX5_FLOW_LAYER_MPLS))
+			return rte_flow_error_set(error, ENOTSUP,
+						  RTE_FLOW_ERROR_TYPE_ITEM, item,
+						  "multiple tunnel layers not supported");
+	}
 	if (!mask)
-		mask = &rte_flow_item_mpls_mask;
+		mask = nic_mask;
 	ret = mlx5_flow_item_acceptable
-		(item, (const uint8_t *)mask,
-		 (const uint8_t *)&rte_flow_item_mpls_mask,
+		(dev, item, (const uint8_t *)mask,
+		 (const uint8_t *)nic_mask,
 		 sizeof(struct rte_flow_item_mpls),
 		 MLX5_ITEM_RANGE_NOT_ACCEPTED, error);
 	if (ret < 0)
@@ -3791,7 +3829,8 @@ mlx5_flow_validate_item_mpls(struct rte_eth_dev *dev __rte_unused,
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 int
-mlx5_flow_validate_item_nvgre(const struct rte_flow_item *item,
+mlx5_flow_validate_item_nvgre(const struct rte_eth_dev *dev,
+			      const struct rte_flow_item *item,
 			      uint64_t item_flags,
 			      uint8_t target_protocol,
 			      struct rte_flow_error *error)
@@ -3809,14 +3848,16 @@ mlx5_flow_validate_item_nvgre(const struct rte_flow_item *item,
 					  RTE_FLOW_ERROR_TYPE_ITEM, item,
 					  "multiple tunnel layers not"
 					  " supported");
-	if (!(item_flags & MLX5_FLOW_LAYER_OUTER_L3))
-		return rte_flow_error_set(error, ENOTSUP,
-					  RTE_FLOW_ERROR_TYPE_ITEM, item,
-					  "L3 Layer is missing");
+	if (!mlx5_hws_active(dev)) {
+		if (!(item_flags & MLX5_FLOW_LAYER_OUTER_L3))
+			return rte_flow_error_set(error, ENOTSUP,
+						  RTE_FLOW_ERROR_TYPE_ITEM,
+						  item, "L3 Layer is missing");
+	}
 	if (!mask)
 		mask = &rte_flow_item_nvgre_mask;
 	ret = mlx5_flow_item_acceptable
-		(item, (const uint8_t *)mask,
+		(dev, item, (const uint8_t *)mask,
 		 (const uint8_t *)&rte_flow_item_nvgre_mask,
 		 sizeof(struct rte_flow_item_nvgre),
 		 MLX5_ITEM_RANGE_NOT_ACCEPTED, error);
@@ -3846,7 +3887,8 @@ mlx5_flow_validate_item_nvgre(const struct rte_flow_item *item,
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 int
-mlx5_flow_validate_item_ecpri(const struct rte_flow_item *item,
+mlx5_flow_validate_item_ecpri(const struct rte_eth_dev *dev,
+			      const struct rte_flow_item *item,
 			      uint64_t item_flags,
 			      uint64_t last_item,
 			      uint16_t ether_type,
@@ -3909,7 +3951,7 @@ mlx5_flow_validate_item_ecpri(const struct rte_flow_item *item,
 		return rte_flow_error_set(error, EINVAL,
 					  RTE_FLOW_ERROR_TYPE_ITEM_MASK, mask,
 					  "message header mask must be after a type mask");
-	return mlx5_flow_item_acceptable(item, (const uint8_t *)mask,
+	return mlx5_flow_item_acceptable(dev, item, (const uint8_t *)mask,
 					 acc_mask ? (const uint8_t *)acc_mask
 						  : (const uint8_t *)&nic_mask,
 					 sizeof(struct rte_flow_item_ecpri),
@@ -9072,6 +9114,7 @@ mlx5_flow_pattern_validate(struct rte_eth_dev *dev,
 {
 	const struct mlx5_flow_driver_ops *fops;
 	struct rte_flow_attr fattr = {0};
+	uint64_t item_flags = 0;
 
 	if (flow_get_drv_type(dev, &fattr) != MLX5_FLOW_TYPE_HW) {
 		rte_flow_error_set(error, ENOTSUP,
@@ -9080,7 +9123,7 @@ mlx5_flow_pattern_validate(struct rte_eth_dev *dev,
 		return -ENOTSUP;
 	}
 	fops = flow_get_drv_ops(MLX5_FLOW_TYPE_HW);
-	return fops->pattern_validate(dev, attr, items, error);
+	return fops->pattern_validate(dev, attr, items, &item_flags, error);
 }
 
 /**
