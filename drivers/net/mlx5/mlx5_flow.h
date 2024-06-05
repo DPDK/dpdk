@@ -19,6 +19,7 @@
 #include "mlx5.h"
 #include "rte_pmd_mlx5.h"
 #include "hws/mlx5dr.h"
+#include "mlx5_tx.h"
 
 /* E-Switch Manager port, used for rte_flow_item_port_id. */
 #define MLX5_PORT_ESW_MGR UINT32_MAX
@@ -1948,6 +1949,63 @@ struct flow_hw_port_info {
 };
 
 extern struct flow_hw_port_info mlx5_flow_hw_port_infos[RTE_MAX_ETHPORTS];
+
+/*
+ * Get sqn for given tx_queue.
+ * Used in HWS rule creation.
+ */
+static __rte_always_inline int
+flow_hw_get_sqn(struct rte_eth_dev *dev, uint16_t tx_queue, uint32_t *sqn)
+{
+	struct mlx5_txq_ctrl *txq;
+
+	/* Means Tx queue is PF0. */
+	if (tx_queue == UINT16_MAX) {
+		*sqn = 0;
+		return 0;
+	}
+	txq = mlx5_txq_get(dev, tx_queue);
+	if (unlikely(!txq))
+		return -ENOENT;
+	*sqn = mlx5_txq_get_sqn(txq);
+	mlx5_txq_release(dev, tx_queue);
+	return 0;
+}
+
+/*
+ * Convert sqn for given rte_eth_dev port.
+ * Used in HWS rule creation.
+ */
+static __rte_always_inline int
+flow_hw_conv_sqn(uint16_t port_id, uint16_t tx_queue, uint32_t *sqn)
+{
+	if (port_id >= RTE_MAX_ETHPORTS)
+		return -EINVAL;
+	return flow_hw_get_sqn(&rte_eth_devices[port_id], tx_queue, sqn);
+}
+
+/*
+ * Get given rte_eth_dev port_id.
+ * Used in HWS rule creation.
+ */
+static __rte_always_inline uint16_t
+flow_hw_get_port_id(void *dr_ctx)
+{
+#if defined(HAVE_IBV_FLOW_DV_SUPPORT) || !defined(HAVE_INFINIBAND_VERBS_H)
+	uint16_t port_id;
+
+	MLX5_ETH_FOREACH_DEV(port_id, NULL) {
+		struct mlx5_priv *priv;
+
+		priv = rte_eth_devices[port_id].data->dev_private;
+		if (priv->dr_ctx == dr_ctx)
+			return port_id;
+	}
+#else
+	RTE_SET_USED(dr_ctx);
+#endif
+	return UINT16_MAX;
+}
 
 /*
  * Get metadata match tag and mask for given rte_eth_dev port.

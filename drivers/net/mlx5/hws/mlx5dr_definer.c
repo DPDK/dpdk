@@ -6,6 +6,7 @@
 
 #define GTP_PDU_SC	0x85
 #define BAD_PORT	0xBAD
+#define BAD_SQN		0xBAD
 #define ETH_TYPE_IPV4_VXLAN	0x0800
 #define ETH_TYPE_IPV6_VXLAN	0x86DD
 #define UDP_VXLAN_PORT	4789
@@ -876,6 +877,22 @@ mlx5dr_definer_vxlan_gpe_rsvd0_set(struct mlx5dr_definer_fc *fc,
 
 	rsvd0 = (v->rsvd0[0] << 8 | v->rsvd0[1]);
 	DR_SET(tag, rsvd0, fc->byte_off, fc->bit_off, fc->bit_mask);
+}
+
+static void
+mlx5dr_definer_tx_queue_set(struct mlx5dr_definer_fc *fc,
+			    const void *item_spec,
+			    uint8_t *tag)
+{
+	const struct rte_flow_item_tx_queue *v = item_spec;
+	uint32_t sqn = 0;
+	int ret;
+
+	ret = flow_hw_conv_sqn(fc->extra_data, v->tx_queue, &sqn);
+	if (unlikely(ret))
+		sqn = BAD_SQN;
+
+	DR_SET(tag, sqn, fc->byte_off, fc->bit_off, fc->bit_mask);
 }
 
 static int
@@ -1846,6 +1863,35 @@ mlx5dr_definer_conv_item_metadata(struct mlx5dr_definer_conv_data *cd,
 	fc->item_idx = item_idx;
 	fc->is_range = l && l->data;
 	fc->tag_set = &mlx5dr_definer_metadata_set;
+
+	return 0;
+}
+
+static int
+mlx5dr_definer_conv_item_tx_queue(struct mlx5dr_definer_conv_data *cd,
+				  struct rte_flow_item *item,
+				  int item_idx)
+{
+	const struct rte_flow_item_tx_queue *m = item->mask;
+	struct mlx5dr_definer_fc *fc;
+
+	if (!m)
+		return 0;
+
+	if (m->tx_queue) {
+		fc = &cd->fc[MLX5DR_DEFINER_FNAME_SOURCE_QP];
+		fc->item_idx = item_idx;
+		fc->tag_mask_set = &mlx5dr_definer_ones_set;
+		fc->tag_set = &mlx5dr_definer_tx_queue_set;
+		/* User extra_data to save DPDK port_id. */
+		fc->extra_data = flow_hw_get_port_id(cd->ctx);
+		if (fc->extra_data == UINT16_MAX) {
+			DR_LOG(ERR, "Invalid port for item tx_queue");
+			rte_errno = EINVAL;
+			return rte_errno;
+		}
+		DR_CALC_SET_HDR(fc, source_qp_gvmi, source_qp);
+	}
 
 	return 0;
 }
@@ -3149,6 +3195,10 @@ mlx5dr_definer_conv_items_to_hl(struct mlx5dr_context *ctx,
 		case RTE_FLOW_ITEM_TYPE_VXLAN:
 			ret = mlx5dr_definer_conv_item_vxlan(&cd, items, i);
 			item_flags |= MLX5_FLOW_LAYER_VXLAN;
+			break;
+		case RTE_FLOW_ITEM_TYPE_TX_QUEUE:
+			ret = mlx5dr_definer_conv_item_tx_queue(&cd, items, i);
+			item_flags |= MLX5_FLOW_ITEM_SQ;
 			break;
 		case MLX5_RTE_FLOW_ITEM_TYPE_SQ:
 			ret = mlx5dr_definer_conv_item_sq(&cd, items, i);

@@ -8069,6 +8069,7 @@ flow_dv_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
 				return ret;
 			last_item = MLX5_FLOW_ITEM_TAG;
 			break;
+		case RTE_FLOW_ITEM_TYPE_TX_QUEUE:
 		case MLX5_RTE_FLOW_ITEM_TYPE_SQ:
 			last_item = MLX5_FLOW_ITEM_SQ;
 			break;
@@ -12253,6 +12254,52 @@ flow_dv_translate_create_counter(struct rte_eth_dev *dev,
 }
 
 /**
+ * Add Tx queue matcher
+ *
+ * @param[in] dev
+ *   Pointer to rte_eth_dev structure.
+ * @param[in, out] key
+ *   Flow matcher value.
+ * @param[in] item
+ *   Flow pattern to translate.
+ * @param[in] key_type
+ *   Set flow matcher mask or value.
+ *
+ * @return
+ *   0 on success otherwise -errno and errno is set.
+ */
+static int
+flow_dv_translate_item_tx_queue(struct rte_eth_dev *dev, void *key,
+				const struct rte_flow_item *item, uint32_t key_type)
+{
+	const struct rte_flow_item_tx_queue *queue_m;
+	const struct rte_flow_item_tx_queue *queue_v;
+	void *misc_v = MLX5_ADDR_OF(fte_match_param, key, misc_parameters);
+	uint32_t tx_queue;
+	uint32_t sqn = 0;
+	int ret;
+
+	MLX5_ITEM_UPDATE(item, key_type, queue_v, queue_m, &rte_flow_item_tx_queue_mask);
+	if (!queue_m || !queue_v)
+		return -EINVAL;
+	if (key_type & MLX5_SET_MATCHER_V) {
+		tx_queue = queue_v->tx_queue;
+		if (key_type == MLX5_SET_MATCHER_SW_V)
+			tx_queue &= queue_m->tx_queue;
+		ret = flow_hw_get_sqn(dev, tx_queue, &sqn);
+		if (unlikely(ret))
+			return -ret;
+	} else {
+		/* Due to tx_queue to sqn converting, only fully masked value support. */
+		if (queue_m->tx_queue != rte_flow_item_tx_queue_mask.tx_queue)
+			return -EINVAL;
+		sqn = UINT32_MAX;
+	}
+	MLX5_SET(fte_match_set_misc, misc_v, source_sqn, sqn);
+	return 0;
+}
+
+/**
  * Add SQ matcher
  *
  * @param[in, out] matcher
@@ -14222,6 +14269,14 @@ flow_dv_translate_items(struct rte_eth_dev *dev,
 		flow_dv_translate_mlx5_item_tag(dev, key, items, key_type);
 		last_item = MLX5_FLOW_ITEM_TAG;
 		break;
+	case RTE_FLOW_ITEM_TYPE_TX_QUEUE:
+		ret = flow_dv_translate_item_tx_queue(dev, key, items, key_type);
+		if (ret)
+			return rte_flow_error_set(error, -ret,
+				RTE_FLOW_ERROR_TYPE_ITEM, NULL,
+				"invalid tx_queue item");
+		last_item = MLX5_FLOW_ITEM_SQ;
+		break;
 	case MLX5_RTE_FLOW_ITEM_TYPE_SQ:
 		flow_dv_translate_item_sq(key, items, key_type);
 		last_item = MLX5_FLOW_ITEM_SQ;
@@ -14451,6 +14506,20 @@ flow_dv_translate_items_sws(struct rte_eth_dev *dev,
 						    dev_flow, tunnel != 0);
 			wks.last_item = tunnel ? MLX5_FLOW_ITEM_INNER_FLEX :
 						 MLX5_FLOW_ITEM_OUTER_FLEX;
+			break;
+		case RTE_FLOW_ITEM_TYPE_TX_QUEUE:
+			ret = flow_dv_translate_item_tx_queue(dev, match_value, items,
+							      MLX5_SET_MATCHER_SW_V);
+			if (ret)
+				return rte_flow_error_set(error, -ret,
+					RTE_FLOW_ERROR_TYPE_ITEM, NULL,
+					"invalid tx_queue item spec");
+			ret = flow_dv_translate_item_tx_queue(dev, match_mask, items,
+							      MLX5_SET_MATCHER_SW_M);
+			if (ret)
+				return rte_flow_error_set(error, -ret,
+					RTE_FLOW_ERROR_TYPE_ITEM, NULL,
+					"invalid tx_queue item mask");
 			break;
 		case MLX5_RTE_FLOW_ITEM_TYPE_SQ:
 			flow_dv_translate_item_sq(match_value, items,

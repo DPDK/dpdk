@@ -92,6 +92,10 @@ New Features
   * Added support disabling custom meta aura
     and separately use custom SA action support.
 
+* **Updated NVIDIA mlx5 driver.**
+
+  * Added match with Tx queue.
+
 * **Updated TAP driver.**
 
   * Updated to support up to 8 queues when used by secondary process.
