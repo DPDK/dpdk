@@ -2133,10 +2133,10 @@ mlx5_rxq_data_get(struct rte_eth_dev *dev, uint16_t idx)
  * @return
  *   A pointer to the queue if it exists, NULL otherwise.
  */
-struct mlx5_external_rxq *
+struct mlx5_external_q *
 mlx5_ext_rxq_ref(struct rte_eth_dev *dev, uint16_t idx)
 {
-	struct mlx5_external_rxq *rxq = mlx5_ext_rxq_get(dev, idx);
+	struct mlx5_external_q *rxq = mlx5_ext_rxq_get(dev, idx);
 
 	rte_atomic_fetch_add_explicit(&rxq->refcnt, 1, rte_memory_order_relaxed);
 	return rxq;
@@ -2156,7 +2156,7 @@ mlx5_ext_rxq_ref(struct rte_eth_dev *dev, uint16_t idx)
 uint32_t
 mlx5_ext_rxq_deref(struct rte_eth_dev *dev, uint16_t idx)
 {
-	struct mlx5_external_rxq *rxq = mlx5_ext_rxq_get(dev, idx);
+	struct mlx5_external_q *rxq = mlx5_ext_rxq_get(dev, idx);
 
 	return rte_atomic_fetch_sub_explicit(&rxq->refcnt, 1, rte_memory_order_relaxed) - 1;
 }
@@ -2172,7 +2172,7 @@ mlx5_ext_rxq_deref(struct rte_eth_dev *dev, uint16_t idx)
  * @return
  *   A pointer to the queue if it exists, NULL otherwise.
  */
-struct mlx5_external_rxq *
+struct mlx5_external_q *
 mlx5_ext_rxq_get(struct rte_eth_dev *dev, uint16_t idx)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
@@ -2336,7 +2336,7 @@ int
 mlx5_ext_rxq_verify(struct rte_eth_dev *dev)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_external_rxq *rxq;
+	struct mlx5_external_q *rxq;
 	uint32_t i;
 	int ret = 0;
 
@@ -3206,7 +3206,7 @@ mlx5_rxq_timestamp_set(struct rte_eth_dev *dev)
  *   Pointer to concurrent external RxQ on success,
  *   NULL otherwise and rte_errno is set.
  */
-static struct mlx5_external_rxq *
+static struct mlx5_external_q *
 mlx5_external_rx_queue_get_validate(uint16_t port_id, uint16_t dpdk_idx)
 {
 	struct rte_eth_dev *dev;
@@ -3252,7 +3252,7 @@ int
 rte_pmd_mlx5_external_rx_queue_id_map(uint16_t port_id, uint16_t dpdk_idx,
 				      uint32_t hw_idx)
 {
-	struct mlx5_external_rxq *ext_rxq;
+	struct mlx5_external_q *ext_rxq;
 	uint32_t unmapped = 0;
 
 	ext_rxq = mlx5_external_rx_queue_get_validate(port_id, dpdk_idx);
@@ -3284,7 +3284,7 @@ rte_pmd_mlx5_external_rx_queue_id_map(uint16_t port_id, uint16_t dpdk_idx,
 int
 rte_pmd_mlx5_external_rx_queue_id_unmap(uint16_t port_id, uint16_t dpdk_idx)
 {
-	struct mlx5_external_rxq *ext_rxq;
+	struct mlx5_external_q *ext_rxq;
 	uint32_t mapped = 1;
 
 	ext_rxq = mlx5_external_rx_queue_get_validate(port_id, dpdk_idx);

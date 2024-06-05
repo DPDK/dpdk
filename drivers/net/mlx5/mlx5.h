@@ -1882,7 +1882,7 @@ struct mlx5_priv {
 	/* RX/TX queues. */
 	unsigned int rxqs_n; /* RX queues array size. */
 	unsigned int txqs_n; /* TX queues array size. */
-	struct mlx5_external_rxq *ext_rxqs; /* External RX queues array. */
+	struct mlx5_external_q *ext_rxqs; /* External RX queues array. */
 	struct mlx5_rxq_priv *(*rxq_privs)[]; /* RX queue non-shared data. */
 	struct mlx5_txq_data *(*txqs)[]; /* TX queues. */
 	struct rte_mempool *mprq_mp; /* Mempool for Multi-Packet RQ. */

@@ -186,7 +186,7 @@ struct mlx5_rxq_priv {
 };
 
 /* External RX queue descriptor. */
-struct mlx5_external_rxq {
+struct mlx5_external_q {
 	uint32_t hw_id; /* Queue index in the Hardware. */
 	RTE_ATOMIC(uint32_t) refcnt; /* Reference counter. */
 };
@@ -227,10 +227,10 @@ uint32_t mlx5_rxq_deref(struct rte_eth_dev *dev, uint16_t idx);
 struct mlx5_rxq_priv *mlx5_rxq_get(struct rte_eth_dev *dev, uint16_t idx);
 struct mlx5_rxq_ctrl *mlx5_rxq_ctrl_get(struct rte_eth_dev *dev, uint16_t idx);
 struct mlx5_rxq_data *mlx5_rxq_data_get(struct rte_eth_dev *dev, uint16_t idx);
-struct mlx5_external_rxq *mlx5_ext_rxq_ref(struct rte_eth_dev *dev,
+struct mlx5_external_q *mlx5_ext_rxq_ref(struct rte_eth_dev *dev,
 					   uint16_t idx);
 uint32_t mlx5_ext_rxq_deref(struct rte_eth_dev *dev, uint16_t idx);
-struct mlx5_external_rxq *mlx5_ext_rxq_get(struct rte_eth_dev *dev,
+struct mlx5_external_q *mlx5_ext_rxq_get(struct rte_eth_dev *dev,
 					   uint16_t idx);
 int mlx5_rxq_release(struct rte_eth_dev *dev, uint16_t idx);
 int mlx5_rxq_verify(struct rte_eth_dev *dev);
@@ -661,7 +661,7 @@ static __rte_always_inline bool
 mlx5_is_external_rxq(struct rte_eth_dev *dev, uint16_t queue_idx)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_external_rxq *rxq;
+	struct mlx5_external_q *rxq;
 
 	if (!priv->ext_rxqs || queue_idx < RTE_PMD_MLX5_EXTERNAL_RX_QUEUE_ID_MIN)
 		return false;

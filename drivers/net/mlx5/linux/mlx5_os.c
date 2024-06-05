@@ -1216,7 +1216,7 @@ err_secondary:
 	 */
 	if (mlx5_imported_pd_and_ctx(sh->cdev) && mlx5_devx_obj_ops_en(sh)) {
 		priv->ext_rxqs = mlx5_malloc(MLX5_MEM_ZERO | MLX5_MEM_RTE,
-					     sizeof(struct mlx5_external_rxq) *
+					     sizeof(struct mlx5_external_q) *
 					     MLX5_MAX_EXT_RX_QUEUES, 0,
 					     SOCKET_ID_ANY);
 		if (priv->ext_rxqs == NULL) {
