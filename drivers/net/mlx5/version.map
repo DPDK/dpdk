@@ -20,4 +20,7 @@ EXPERIMENTAL {
 	# added in 24.03
 	rte_pmd_mlx5_create_geneve_tlv_parser;
 	rte_pmd_mlx5_destroy_geneve_tlv_parser;
+	# added in 24.07
+	rte_pmd_mlx5_external_tx_queue_id_map;
+	rte_pmd_mlx5_external_tx_queue_id_unmap;
 };

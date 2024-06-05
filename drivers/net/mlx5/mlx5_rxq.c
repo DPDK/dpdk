@@ -3211,6 +3211,7 @@ mlx5_external_rx_queue_get_validate(uint16_t port_id, uint16_t dpdk_idx)
 {
 	struct rte_eth_dev *dev;
 	struct mlx5_priv *priv;
+	int ret;
 
 	if (dpdk_idx < RTE_PMD_MLX5_EXTERNAL_RX_QUEUE_ID_MIN) {
 		DRV_LOG(ERR, "Queue index %u should be in range: [%u, %u].",
@@ -3218,28 +3219,11 @@ mlx5_external_rx_queue_get_validate(uint16_t port_id, uint16_t dpdk_idx)
 		rte_errno = EINVAL;
 		return NULL;
 	}
-	if (rte_eth_dev_is_valid_port(port_id) < 0) {
-		DRV_LOG(ERR, "There is no Ethernet device for port %u.",
-			port_id);
-		rte_errno = ENODEV;
+	ret = mlx5_devx_extq_port_validate(port_id);
+	if (unlikely(ret))
 		return NULL;
-	}
 	dev = &rte_eth_devices[port_id];
 	priv = dev->data->dev_private;
-	if (!mlx5_imported_pd_and_ctx(priv->sh->cdev)) {
-		DRV_LOG(ERR, "Port %u "
-			"external RxQ isn't supported on local PD and CTX.",
-			port_id);
-		rte_errno = ENOTSUP;
-		return NULL;
-	}
-	if (!mlx5_devx_obj_ops_en(priv->sh)) {
-		DRV_LOG(ERR,
-			"Port %u external RxQ isn't supported by Verbs API.",
-			port_id);
-		rte_errno = ENOTSUP;
-		return NULL;
-	}
 	/*
 	 * When user configures remote PD and CTX and device creates RxQ by
 	 * DevX, external RxQs array is allocated.

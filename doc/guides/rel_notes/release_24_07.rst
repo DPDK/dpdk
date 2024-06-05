@@ -95,6 +95,7 @@ New Features
 * **Updated NVIDIA mlx5 driver.**
 
   * Added match with Tx queue.
+  * Added match with external Tx queue.
 
 * **Updated TAP driver.**
 

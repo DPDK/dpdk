@@ -185,12 +185,6 @@ struct mlx5_rxq_priv {
 	uint32_t lwm_devx_subscribed:1;
 };
 
-/* External RX queue descriptor. */
-struct mlx5_external_q {
-	uint32_t hw_id; /* Queue index in the Hardware. */
-	RTE_ATOMIC(uint32_t) refcnt; /* Reference counter. */
-};
-
 /* mlx5_rxq.c */
 
 extern uint8_t rss_hash_default_key[];

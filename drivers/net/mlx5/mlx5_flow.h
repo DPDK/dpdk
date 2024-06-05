@@ -1958,10 +1958,16 @@ static __rte_always_inline int
 flow_hw_get_sqn(struct rte_eth_dev *dev, uint16_t tx_queue, uint32_t *sqn)
 {
 	struct mlx5_txq_ctrl *txq;
+	struct mlx5_external_q *ext_txq;
 
 	/* Means Tx queue is PF0. */
 	if (tx_queue == UINT16_MAX) {
 		*sqn = 0;
+		return 0;
+	}
+	if (mlx5_is_external_txq(dev, tx_queue)) {
+		ext_txq = mlx5_ext_txq_get(dev, tx_queue);
+		*sqn = ext_txq->hw_id;
 		return 0;
 	}
 	txq = mlx5_txq_get(dev, tx_queue);

@@ -1224,7 +1224,16 @@ err_secondary:
 			err = ENOMEM;
 			goto error;
 		}
-		DRV_LOG(DEBUG, "External RxQ is supported.");
+		priv->ext_txqs = mlx5_malloc(MLX5_MEM_ZERO | MLX5_MEM_RTE,
+					     sizeof(struct mlx5_external_q) *
+					     MLX5_MAX_EXT_TX_QUEUES, 0,
+					     SOCKET_ID_ANY);
+		if (priv->ext_txqs == NULL) {
+			DRV_LOG(ERR, "Fail to allocate external TxQ array.");
+			err = ENOMEM;
+			goto error;
+		}
+		DRV_LOG(DEBUG, "External queue is supported.");
 	}
 	priv->sh = sh;
 	priv->dev_port = spawn->phys_port;
@@ -1762,6 +1771,7 @@ error:
 		if (eth_dev && priv->flex_item_map)
 			mlx5_flex_item_port_cleanup(eth_dev);
 		mlx5_free(priv->ext_rxqs);
+		mlx5_free(priv->ext_txqs);
 		mlx5_free(priv);
 		if (eth_dev != NULL)
 			eth_dev->data->dev_private = NULL;

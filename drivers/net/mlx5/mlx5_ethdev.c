@@ -123,6 +123,14 @@ mlx5_dev_configure(struct rte_eth_dev *dev)
 			dev->data->port_id, priv->txqs_n, txqs_n);
 		priv->txqs_n = txqs_n;
 	}
+	if (priv->ext_txqs && txqs_n >= MLX5_EXTERNAL_TX_QUEUE_ID_MIN) {
+		DRV_LOG(ERR, "port %u cannot handle this many Tx queues (%u), "
+			"the maximal number of internal Tx queues is %u",
+			dev->data->port_id, txqs_n,
+			MLX5_EXTERNAL_TX_QUEUE_ID_MIN - 1);
+		rte_errno = EINVAL;
+		return -rte_errno;
+	}
 	if (rxqs_n > priv->sh->dev_cap.ind_table_max_size) {
 		DRV_LOG(ERR, "port %u cannot handle this many Rx queues (%u)",
 			dev->data->port_id, rxqs_n);

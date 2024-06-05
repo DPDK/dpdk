@@ -381,6 +381,12 @@ struct mlx5_lb_ctx {
 	RTE_ATOMIC(uint16_t) refcnt; /* Reference count for representors. */
 };
 
+/* External queue descriptor. */
+struct mlx5_external_q {
+	uint32_t hw_id; /* Queue index in the Hardware. */
+	RTE_ATOMIC(uint32_t) refcnt; /* Reference counter. */
+};
+
 /* HW steering queue job descriptor type. */
 enum mlx5_hw_job_type {
 	MLX5_HW_Q_JOB_TYPE_CREATE, /* Flow create job type. */
@@ -1883,6 +1889,7 @@ struct mlx5_priv {
 	unsigned int rxqs_n; /* RX queues array size. */
 	unsigned int txqs_n; /* TX queues array size. */
 	struct mlx5_external_q *ext_rxqs; /* External RX queues array. */
+	struct mlx5_external_q *ext_txqs; /* External TX queues array. */
 	struct mlx5_rxq_priv *(*rxq_privs)[]; /* RX queue non-shared data. */
 	struct mlx5_txq_data *(*txqs)[]; /* TX queues. */
 	struct rte_mempool *mprq_mp; /* Mempool for Multi-Packet RQ. */

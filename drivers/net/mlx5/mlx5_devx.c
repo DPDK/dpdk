@@ -28,6 +28,46 @@
 #include "mlx5_flow_os.h"
 
 /**
+ * Validate given external queue's port is valid or not.
+ *
+ * @param[in] port_id
+ *   The port identifier of the Ethernet device.
+ *
+ * @return
+ *   0 on success, non-0 otherwise
+ */
+int
+mlx5_devx_extq_port_validate(uint16_t port_id)
+{
+	struct rte_eth_dev *dev;
+	struct mlx5_priv *priv;
+
+	if (rte_eth_dev_is_valid_port(port_id) < 0) {
+		DRV_LOG(ERR, "There is no Ethernet device for port %u.",
+			port_id);
+		rte_errno = ENODEV;
+		return -rte_errno;
+	}
+	dev = &rte_eth_devices[port_id];
+	priv = dev->data->dev_private;
+	if (!mlx5_imported_pd_and_ctx(priv->sh->cdev)) {
+		DRV_LOG(ERR, "Port %u "
+			"external queue isn't supported on local PD and CTX.",
+			port_id);
+		rte_errno = ENOTSUP;
+		return -rte_errno;
+	}
+	if (!mlx5_devx_obj_ops_en(priv->sh)) {
+		DRV_LOG(ERR,
+			"Port %u external queue isn't supported by Verbs API.",
+			port_id);
+		rte_errno = ENOTSUP;
+		return -rte_errno;
+	}
+	return 0;
+}
+
+/**
  * Modify RQ vlan stripping offload
  *
  * @param rxq

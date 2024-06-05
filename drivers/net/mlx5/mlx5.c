@@ -2436,6 +2436,10 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 	if (ret)
 		DRV_LOG(WARNING, "port %u some Verbs Tx queue still remain",
 			dev->data->port_id);
+	ret = mlx5_ext_txq_verify(dev);
+	if (ret)
+		DRV_LOG(WARNING, "Port %u some external TxQ still remain.",
+			dev->data->port_id);
 	ret = mlx5_txq_verify(dev);
 	if (ret)
 		DRV_LOG(WARNING, "port %u some Tx queues still remain",
@@ -2447,6 +2451,7 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 	if (priv->hrxqs)
 		mlx5_list_destroy(priv->hrxqs);
 	mlx5_free(priv->ext_rxqs);
+	mlx5_free(priv->ext_txqs);
 	sh->port[priv->dev_port - 1].nl_ih_port_id = RTE_MAX_ETHPORTS;
 	/*
 	 * The interrupt handler port id must be reset before priv is reset

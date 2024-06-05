@@ -27,6 +27,7 @@
 #include "mlx5_tx.h"
 #include "mlx5_rxtx.h"
 #include "mlx5_autoconf.h"
+#include "mlx5_devx.h"
 #include "rte_pmd_mlx5.h"
 #include "mlx5_flow.h"
 
@@ -1184,6 +1185,57 @@ mlx5_txq_get(struct rte_eth_dev *dev, uint16_t idx)
 }
 
 /**
+ * Get an external Tx queue.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ * @param idx
+ *   External Tx queue index.
+ *
+ * @return
+ *   A pointer to the queue if it exists, NULL otherwise.
+ */
+struct mlx5_external_q *
+mlx5_ext_txq_get(struct rte_eth_dev *dev, uint16_t idx)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+
+	MLX5_ASSERT(mlx5_is_external_txq(dev, idx));
+	return &priv->ext_txqs[idx - MLX5_EXTERNAL_TX_QUEUE_ID_MIN];
+}
+
+/**
+ * Verify the external Tx Queue list is empty.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ *
+ * @return
+ *   The number of object not released.
+ */
+int
+mlx5_ext_txq_verify(struct rte_eth_dev *dev)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_external_q *txq;
+	uint32_t i;
+	int ret = 0;
+
+	if (priv->ext_txqs == NULL)
+		return 0;
+
+	for (i = MLX5_EXTERNAL_TX_QUEUE_ID_MIN; i <= UINT16_MAX ; ++i) {
+		txq = mlx5_ext_txq_get(dev, i);
+		if (txq->refcnt < 2)
+			continue;
+		DRV_LOG(DEBUG, "Port %u external TxQ %u still referenced.",
+			dev->data->port_id, i);
+		++ret;
+	}
+	return ret;
+}
+
+/**
  * Release a Tx queue.
  *
  * @param dev
@@ -1414,5 +1466,105 @@ int mlx5_map_aggr_tx_affinity(struct rte_eth_dev *dev, uint16_t tx_queue_id,
 	DRV_LOG(DEBUG, "port %u configuring queue %u for aggregated affinity %u",
 		dev->data->port_id, tx_queue_id, affinity);
 	txq_ctrl->txq.tx_aggr_affinity = affinity;
+	return 0;
+}
+
+/**
+ * Validate given external TxQ rte_flow index, and get pointer to concurrent
+ * external TxQ object to map/unmap.
+ *
+ * @param[in] port_id
+ *   The port identifier of the Ethernet device.
+ * @param[in] dpdk_idx
+ *   Tx Queue index in rte_flow.
+ *
+ * @return
+ *   Pointer to concurrent external TxQ on success,
+ *   NULL otherwise and rte_errno is set.
+ */
+static struct mlx5_external_q *
+mlx5_external_tx_queue_get_validate(uint16_t port_id, uint16_t dpdk_idx)
+{
+	struct rte_eth_dev *dev;
+	struct mlx5_priv *priv;
+	int ret;
+
+	if (dpdk_idx < MLX5_EXTERNAL_TX_QUEUE_ID_MIN) {
+		DRV_LOG(ERR, "Queue index %u should be in range: [%u, %u].",
+			dpdk_idx, MLX5_EXTERNAL_TX_QUEUE_ID_MIN, UINT16_MAX);
+		rte_errno = EINVAL;
+		return NULL;
+	}
+	ret = mlx5_devx_extq_port_validate(port_id);
+	if (unlikely(ret))
+		return NULL;
+	dev = &rte_eth_devices[port_id];
+	priv = dev->data->dev_private;
+	/*
+	 * When user configures remote PD and CTX and device creates TxQ by
+	 * DevX, external TxQs array is allocated.
+	 */
+	MLX5_ASSERT(priv->ext_txqs != NULL);
+	return &priv->ext_txqs[dpdk_idx - MLX5_EXTERNAL_TX_QUEUE_ID_MIN];
+}
+
+int
+rte_pmd_mlx5_external_tx_queue_id_map(uint16_t port_id, uint16_t dpdk_idx,
+				      uint32_t hw_idx)
+{
+	struct mlx5_external_q *ext_txq;
+	uint32_t unmapped = 0;
+
+	ext_txq = mlx5_external_tx_queue_get_validate(port_id, dpdk_idx);
+	if (ext_txq == NULL)
+		return -rte_errno;
+	if (!rte_atomic_compare_exchange_strong_explicit(&ext_txq->refcnt, &unmapped, 1,
+					 rte_memory_order_relaxed, rte_memory_order_relaxed)) {
+		if (ext_txq->hw_id != hw_idx) {
+			DRV_LOG(ERR, "Port %u external TxQ index %u "
+				"is already mapped to HW index (requesting is "
+				"%u, existing is %u).",
+				port_id, dpdk_idx, hw_idx, ext_txq->hw_id);
+			rte_errno = EEXIST;
+			return -rte_errno;
+		}
+		DRV_LOG(WARNING, "Port %u external TxQ index %u "
+			"is already mapped to the requested HW index (%u)",
+			port_id, dpdk_idx, hw_idx);
+
+	} else {
+		ext_txq->hw_id = hw_idx;
+		DRV_LOG(DEBUG, "Port %u external TxQ index %u "
+			"is successfully mapped to the requested HW index (%u)",
+			port_id, dpdk_idx, hw_idx);
+	}
+	return 0;
+}
+
+int
+rte_pmd_mlx5_external_tx_queue_id_unmap(uint16_t port_id, uint16_t dpdk_idx)
+{
+	struct mlx5_external_q *ext_txq;
+	uint32_t mapped = 1;
+
+	ext_txq = mlx5_external_tx_queue_get_validate(port_id, dpdk_idx);
+	if (ext_txq == NULL)
+		return -rte_errno;
+	if (ext_txq->refcnt > 1) {
+		DRV_LOG(ERR, "Port %u external TxQ index %u still referenced.",
+			port_id, dpdk_idx);
+		rte_errno = EINVAL;
+		return -rte_errno;
+	}
+	if (!rte_atomic_compare_exchange_strong_explicit(&ext_txq->refcnt, &mapped, 0,
+					 rte_memory_order_relaxed, rte_memory_order_relaxed)) {
+		DRV_LOG(ERR, "Port %u external TxQ index %u doesn't exist.",
+			port_id, dpdk_idx);
+		rte_errno = EINVAL;
+		return -rte_errno;
+	}
+	DRV_LOG(DEBUG,
+		"Port %u external TxQ index %u is successfully unmapped.",
+		port_id, dpdk_idx);
 	return 0;
 }

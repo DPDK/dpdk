@@ -169,6 +169,7 @@ Features
 - Sub-Function.
 - Matching on represented port.
 - Matching on aggregated affinity.
+- Matching on external Tx queue.
 
 
 Limitations

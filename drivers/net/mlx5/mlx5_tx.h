@@ -227,6 +227,8 @@ void mlx5_txq_dynf_timestamp_set(struct rte_eth_dev *dev);
 int mlx5_count_aggr_ports(struct rte_eth_dev *dev);
 int mlx5_map_aggr_tx_affinity(struct rte_eth_dev *dev, uint16_t tx_queue_id,
 			      uint8_t affinity);
+int mlx5_ext_txq_verify(struct rte_eth_dev *dev);
+struct mlx5_external_q *mlx5_ext_txq_get(struct rte_eth_dev *dev, uint16_t idx);
 
 /* mlx5_tx.c */
 
@@ -3786,6 +3788,29 @@ burst_exit:
 	if (__rte_trace_point_fp_is_enabled() && loc.pkts_sent)
 		rte_pmd_mlx5_trace_tx_exit(loc.pkts_sent, pkts_n);
 	return loc.pkts_sent;
+}
+
+/**
+ * Check whether given TxQ is external.
+ *
+ * @param dev
+ *   Pointer to Ethernet device.
+ * @param queue_idx
+ *   Tx queue index.
+ *
+ * @return
+ *   True if is external TxQ, otherwise false.
+ */
+static __rte_always_inline bool
+mlx5_is_external_txq(struct rte_eth_dev *dev, uint16_t queue_idx)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	struct mlx5_external_q *txq;
+
+	if (!priv->ext_txqs || queue_idx < MLX5_EXTERNAL_TX_QUEUE_ID_MIN)
+		return false;
+	txq = &priv->ext_txqs[queue_idx - MLX5_EXTERNAL_TX_QUEUE_ID_MIN];
+	return !!rte_atomic_load_explicit(&txq->refcnt, rte_memory_order_relaxed);
 }
 
 #endif /* RTE_PMD_MLX5_TX_H_ */

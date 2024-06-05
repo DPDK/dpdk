@@ -69,6 +69,11 @@ int rte_pmd_mlx5_sync_flow(uint16_t port_id, uint32_t domains);
 #define RTE_PMD_MLX5_EXTERNAL_RX_QUEUE_ID_MIN (UINT16_MAX - 1000 + 1)
 
 /**
+ * External Tx queue rte_flow index minimal value.
+ */
+#define MLX5_EXTERNAL_TX_QUEUE_ID_MIN (UINT16_MAX - 1000 + 1)
+
+/**
  * Tag level to set the linear hash index.
  */
 #define RTE_PMD_MLX5_LINEAR_HASH_TAG_INDEX 255
@@ -114,6 +119,49 @@ int rte_pmd_mlx5_external_rx_queue_id_map(uint16_t port_id, uint16_t dpdk_idx,
  */
 __rte_experimental
 int rte_pmd_mlx5_external_rx_queue_id_unmap(uint16_t port_id,
+					    uint16_t dpdk_idx);
+
+/**
+ * Update mapping between rte_flow Tx queue index (16 bits) and HW queue index (32
+ * bits) for TxQs which is created outside the PMD.
+ *
+ * @param[in] port_id
+ *   The port identifier of the Ethernet device.
+ * @param[in] dpdk_idx
+ *   Queue index in rte_flow.
+ * @param[in] hw_idx
+ *   Queue index in hardware.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ *   Possible values for rte_errno:
+ *   - EEXIST - a mapping with the same rte_flow index already exists.
+ *   - EINVAL - invalid rte_flow index, out of range.
+ *   - ENODEV - there is no Ethernet device for this port id.
+ *   - ENOTSUP - the port doesn't support external TxQ.
+ */
+__rte_experimental
+int rte_pmd_mlx5_external_tx_queue_id_map(uint16_t port_id, uint16_t dpdk_idx,
+					  uint32_t hw_idx);
+
+/**
+ * Remove mapping between rte_flow Tx queue index (16 bits) and HW queue index (32
+ * bits) for TxQs which is created outside the PMD.
+ *
+ * @param[in] port_id
+ *   The port identifier of the Ethernet device.
+ * @param[in] dpdk_idx
+ *   Queue index in rte_flow.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ *   Possible values for rte_errno:
+ *   - EINVAL - invalid index, out of range, still referenced or doesn't exist.
+ *   - ENODEV - there is no Ethernet device for this port id.
+ *   - ENOTSUP - the port doesn't support external TxQ.
+ */
+__rte_experimental
+int rte_pmd_mlx5_external_tx_queue_id_unmap(uint16_t port_id,
 					    uint16_t dpdk_idx);
 
 /**
