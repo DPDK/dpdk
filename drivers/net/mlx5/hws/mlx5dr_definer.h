@@ -223,9 +223,12 @@ enum mlx5dr_definer_type {
 struct mlx5dr_definer_fc {
 	uint8_t item_idx;
 	uint8_t is_range;
-	uint16_t extra_data;
 	uint8_t compare_idx;
 	bool compare_set_base;
+	union {
+		uint32_t extra_data;
+		void *dr_ctx;
+	};
 	uint32_t byte_off;
 	int bit_off;
 	uint32_t bit_mask;

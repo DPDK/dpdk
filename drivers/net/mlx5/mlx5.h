@@ -141,6 +141,19 @@ struct mlx5_flow_cb_ctx {
 	void *data2;
 };
 
+struct flow_hw_port_info {
+	uint32_t regc_mask;
+	uint32_t regc_value;
+	uint32_t is_wire:1;
+	uint32_t direction:2;
+};
+
+enum mlx5_vport_direction {
+	MLX5_VPORT_DIRECTION_ANY = 0,
+	MLX5_VPORT_DIRECTION_NORTH,
+	MLX5_VPORT_DIRECTION_SOUTH,
+};
+
 /* Device capabilities structure which isn't changed in any stage. */
 struct mlx5_dev_cap {
 	int max_cq; /* Maximum number of supported CQs */
@@ -184,6 +197,7 @@ struct mlx5_dev_cap {
 		/* Log min WQE size, (size of single stride)*(num of strides).*/
 	} mprq; /* Capability for Multi-Packet RQ. */
 	char fw_ver[64]; /* Firmware version of this device. */
+	struct flow_hw_port_info esw_info; /* E-switch manager reg_c0. */
 };
 
 #define MLX5_MPESW_PORT_INVALID (-1)

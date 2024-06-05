@@ -170,6 +170,7 @@ Features
 - Matching on represented port.
 - Matching on aggregated affinity.
 - Matching on external Tx queue.
+- Matching on E-Switch manager.
 
 
 Limitations
@@ -892,6 +893,10 @@ Limitations
 
 - The NIC egress flow rules on representor port are not supported.
 
+- In switch mode, flow rule matching ``RTE_FLOW_ACTION_TYPE_REPRESENTED_PORT`` item
+  with port ID ``UINT16_MAX`` means matching packets sent by E-Switch manager from software.
+  Need MLNX_OFED 24.04+.
+
 - A driver limitation for ``RTE_FLOW_ACTION_TYPE_PORT_REPRESENTOR`` action
   restricts the ``port_id`` configuration to only accept the value ``0xffff``,
   indicating the E-Switch manager.
@@ -1589,6 +1594,8 @@ entities on the HCA.
 With this configuration, mlx5 PMD supports:
 
 - matching traffic coming from physical port, PF, VF or SF using REPRESENTED_PORT items;
+- matching traffic coming from E-Switch manager
+  using REPRESENTED_PORT item with port ID ``UINT16_MAX``;
 - forwarding traffic to physical port, PF, VF or SF using REPRESENTED_PORT actions;
 
 Requirements

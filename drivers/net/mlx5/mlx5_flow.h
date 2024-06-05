@@ -1942,12 +1942,6 @@ struct mlx5_hl_data {
 	uint32_t dw_mask;
 };
 
-struct flow_hw_port_info {
-	uint32_t regc_mask;
-	uint32_t regc_value;
-	uint32_t is_wire:1;
-};
-
 extern struct flow_hw_port_info mlx5_flow_hw_port_infos[RTE_MAX_ETHPORTS];
 
 /*
@@ -2014,13 +2008,39 @@ flow_hw_get_port_id(void *dr_ctx)
 }
 
 /*
+ * Get given eswitch manager id.
+ * Used in HWS match with port creation.
+ */
+static __rte_always_inline const struct flow_hw_port_info *
+flow_hw_get_esw_mgr_id(void *dr_ctx)
+{
+#if defined(HAVE_IBV_FLOW_DV_SUPPORT) || !defined(HAVE_INFINIBAND_VERBS_H)
+	uint16_t port_id;
+
+	MLX5_ETH_FOREACH_DEV(port_id, NULL) {
+		struct mlx5_priv *priv;
+
+		priv = rte_eth_devices[port_id].data->dev_private;
+		if (priv->dr_ctx == dr_ctx)
+			return &priv->sh->dev_cap.esw_info;
+	}
+#else
+	RTE_SET_USED(dr_ctx);
+#endif
+	return NULL;
+}
+
+/*
  * Get metadata match tag and mask for given rte_eth_dev port.
  * Used in HWS rule creation.
  */
 static __rte_always_inline const struct flow_hw_port_info *
-flow_hw_conv_port_id(const uint16_t port_id)
+flow_hw_conv_port_id(void *ctx, const uint16_t port_id)
 {
 	struct flow_hw_port_info *port_info;
+
+	if (port_id == UINT16_MAX && ctx)
+		return flow_hw_get_esw_mgr_id(ctx);
 
 	if (port_id >= RTE_MAX_ETHPORTS)
 		return NULL;
@@ -2047,7 +2067,7 @@ flow_hw_get_wire_port(struct ibv_context *ibctx)
 			struct ibv_context *port_ibctx = priv->sh->cdev->ctx;
 
 			if (port_ibctx->device == ibdev)
-				return flow_hw_conv_port_id(port_id);
+				return flow_hw_conv_port_id(priv->dr_ctx, port_id);
 		}
 	}
 	return NULL;

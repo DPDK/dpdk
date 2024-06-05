@@ -10892,17 +10892,31 @@ flow_dv_translate_item_represented_port(struct rte_eth_dev *dev, void *key,
 	const struct rte_flow_item_ethdev *pid_m = item ? item->mask : NULL;
 	const struct rte_flow_item_ethdev *pid_v = item ? item->spec : NULL;
 	struct mlx5_flow_workspace *wks = mlx5_flow_get_thread_workspace();
-	struct mlx5_priv *priv;
+	struct mlx5_priv *priv = dev->data->dev_private;
 	uint16_t mask, id;
 	uint32_t vport_meta;
+	bool vport_match = false;
 
 	MLX5_ASSERT(wks);
+#ifndef HAVE_IBV_DEVICE_ATTR_ESW_MGR_REG_C0
+	if (priv->sh->config.dv_flow_en == 2)
+		vport_match = true;
+#endif
 	if (!pid_m && !pid_v)
 		return 0;
 	if (pid_v && pid_v->port_id == UINT16_MAX) {
-		flow_dv_translate_item_source_vport(key,
-			key_type & MLX5_SET_MATCHER_V ?
-			mlx5_flow_get_esw_manager_vport_id(dev) : 0xffff);
+		if (priv->sh->config.dv_flow_en != 2 || vport_match) {
+			flow_dv_translate_item_source_vport
+				(key, key_type & MLX5_SET_MATCHER_V ?
+				 mlx5_flow_get_esw_manager_vport_id(dev) : 0xffff);
+		} else {
+			if (key_type & MLX5_SET_MATCHER_M)
+				vport_meta = priv->sh->dev_cap.esw_info.regc_mask;
+			else
+				vport_meta = priv->sh->dev_cap.esw_info.regc_value;
+			flow_dv_translate_item_meta_vport(key, vport_meta,
+							  priv->sh->dev_cap.esw_info.regc_mask);
+		}
 		return 0;
 	}
 	mask = pid_m ? pid_m->port_id : UINT16_MAX;
@@ -10923,7 +10937,7 @@ flow_dv_translate_item_represented_port(struct rte_eth_dev *dev, void *key,
 	 * Kernel can use either misc.source_port or half of C0 metadata
 	 * register.
 	 */
-	if (priv->vport_meta_mask) {
+	if (priv->vport_meta_mask && !vport_match) {
 		/*
 		 * Provide the hint for SW steering library
 		 * to insert the flow into ingress domain and

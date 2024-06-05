@@ -721,7 +721,7 @@ mlx5dr_definer_vport_set(struct mlx5dr_definer_fc *fc,
 	const struct flow_hw_port_info *port_info;
 	uint32_t regc_value;
 
-	port_info = flow_hw_conv_port_id(v->port_id);
+	port_info = flow_hw_conv_port_id(fc->dr_ctx, v->port_id);
 	if (unlikely(!port_info))
 		regc_value = BAD_PORT;
 	else
@@ -1548,6 +1548,7 @@ mlx5dr_definer_conv_item_port(struct mlx5dr_definer_conv_data *cd,
 		DR_CALC_SET_HDR(fc, registers, register_c_0);
 		fc->bit_off = __builtin_ctz(caps->wire_regc_mask);
 		fc->bit_mask = caps->wire_regc_mask >> fc->bit_off;
+		fc->dr_ctx = cd->ctx;
 	} else {
 		DR_LOG(ERR, "Pord ID item mask must specify ID mask");
 		rte_errno = EINVAL;

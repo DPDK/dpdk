@@ -96,6 +96,7 @@ New Features
 
   * Added match with Tx queue.
   * Added match with external Tx queue.
+  * Added match with E-Switch manager.
 
 * **Updated TAP driver.**
 

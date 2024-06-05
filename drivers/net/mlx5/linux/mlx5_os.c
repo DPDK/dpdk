@@ -161,6 +161,9 @@ mlx5_os_capabilities_prepare(struct mlx5_dev_ctx_shared *sh)
 #ifdef HAVE_IBV_DEVICE_STRIDING_RQ_SUPPORT
 	dv_attr.comp_mask |= MLX5DV_CONTEXT_MASK_STRIDING_RQ;
 #endif
+#ifdef HAVE_IBV_DEVICE_ATTR_ESW_MGR_REG_C0
+	dv_attr.comp_mask |= MLX5DV_CONTEXT_MASK_REG_C0;
+#endif
 	err = mlx5_glue->dv_query_device(cdev->ctx, &dv_attr);
 	if (err) {
 		rte_errno = errno;
@@ -374,6 +377,15 @@ mlx5_os_capabilities_prepare(struct mlx5_dev_ctx_shared *sh)
 					hca_attr->scatter_fcs_w_decap_disable;
 	sh->dev_cap.rq_delay_drop_en = hca_attr->rq_delay_drop;
 	mlx5_rt_timestamp_config(sh, hca_attr);
+#ifdef HAVE_IBV_DEVICE_ATTR_ESW_MGR_REG_C0
+	if (dv_attr.comp_mask & MLX5DV_CONTEXT_MASK_REG_C0) {
+		sh->dev_cap.esw_info.regc_value = dv_attr.reg_c0.value;
+		sh->dev_cap.esw_info.regc_mask = dv_attr.reg_c0.mask;
+	}
+#else
+	sh->dev_cap.esw_info.regc_value = 0;
+	sh->dev_cap.esw_info.regc_mask = 0;
+#endif
 	return 0;
 }
 
