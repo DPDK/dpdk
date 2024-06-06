@@ -176,6 +176,9 @@ static int mlx5dr_context_init_hws(struct mlx5dr_context *ctx,
 	if (ret)
 		goto uninit_pd;
 
+	if (attr->bwc)
+		ctx->flags |= MLX5DR_CONTEXT_FLAG_BWC_SUPPORT;
+
 	ret = mlx5dr_send_queues_open(ctx, attr->queues, attr->queue_size);
 	if (ret)
 		goto pools_uninit;

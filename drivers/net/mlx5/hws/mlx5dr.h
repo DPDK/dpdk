@@ -106,6 +106,7 @@ struct mlx5dr_context_attr {
 	struct ibv_pd *pd;
 	/* Optional other ctx for resources allocation, all objects will be created on it */
 	struct ibv_context *shared_ibv_ctx;
+	bool bwc; /* add support for backward compatible API*/
 };
 
 struct mlx5dr_table_attr {
@@ -991,5 +992,79 @@ int mlx5dr_crc_encap_entropy_hash_calc(struct mlx5dr_context *ctx,
 				       struct mlx5dr_crc_encap_entropy_hash_fields *data,
 				       uint8_t entropy_res[],
 				       enum mlx5dr_crc_encap_entropy_hash_size res_size);
+
+struct mlx5dr_bwc_matcher;
+struct mlx5dr_bwc_rule;
+
+/* Create a new BWC direct rule matcher.
+ * This function does the following:
+ *   - creates match template based on flow items
+ *   - creates an empty action template
+ *   - creates a usual mlx5dr_matcher with these mt and at, setting
+ *     its size to minimal
+ * Notes:
+ *   - table->ctx must have BWC support
+ *   - complex rules are not supported
+ *
+ * @param[in] table
+ *	The table in which the new matcher will be opened
+ * @param[in] priority
+ *	Priority for this BWC matcher
+ * @param[in] flow_items
+ *	Array of flow items that serve as basis for match and action templates
+ * @return pointer to mlx5dr_bwc_matcher on success or NULL otherwise.
+ */
+struct mlx5dr_bwc_matcher *
+mlx5dr_bwc_matcher_create(struct mlx5dr_table *table,
+			  uint32_t priority,
+			  const struct rte_flow_item flow_items[]);
+
+/* Destroy BWC direct rule matcher.
+ *
+ * @param[in] bwc_matcher
+ *	Matcher to destroy
+ * @return zero on success, non zero otherwise
+ */
+int mlx5dr_bwc_matcher_destroy(struct mlx5dr_bwc_matcher *bwc_matcher);
+
+/* Create a new BWC rule.
+ * Unlike the usual rule creation function, this one is blocking: when the
+ * function returns, the rule is written to its place (no need to poll).
+ * This function does the following:
+ *   - finds matching action template based on the provided rule_actions, or
+ *     creates new action template if matching action template doesn't exist
+ *   - updates corresponding BWC matcher stats
+ *   - if needed, the function performs rehash:
+ *       - creates a new matcher based on mt, at, new_sz
+ *       - moves all the existing matcher rules to the new matcher
+ *       - removes the old matcher
+ *   - inserts new rule
+ *   - polls till completion is received
+ * Notes:
+ *   - matcher->tbl->ctx must have BWC support
+ *   - separate BWC ctx queues are used
+ *
+ * @param[in] bwc_matcher
+ *	The BWC matcher in which the new rule will be created.
+ * @param[in] flow_items
+ *	Flow items to be used for the value matching
+ * @param[in] rule_actions
+ *	Rule action to be executed on match
+ * @param[in, out] rule_handle
+ *	A valid rule handle. The handle doesn't require any initialization
+ * @return valid BWC rule handle on success, NULL otherwise
+ */
+struct mlx5dr_bwc_rule *
+mlx5dr_bwc_rule_create(struct mlx5dr_bwc_matcher *bwc_matcher,
+		       const struct rte_flow_item flow_items[],
+		       struct mlx5dr_rule_action rule_actions[]);
+
+/* Destroy BWC direct rule.
+ *
+ * @param[in] bwc_rule
+ *	Rule to destroy
+ * @return zero on success, non zero otherwise
+ */
+int mlx5dr_bwc_rule_destroy(struct mlx5dr_bwc_rule *bwc_rule);
 
 #endif

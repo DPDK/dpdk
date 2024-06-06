@@ -8,6 +8,7 @@
 enum mlx5dr_context_flags {
 	MLX5DR_CONTEXT_FLAG_HWS_SUPPORT = 1 << 0,
 	MLX5DR_CONTEXT_FLAG_PRIVATE_PD = 1 << 1,
+	MLX5DR_CONTEXT_FLAG_BWC_SUPPORT = 1 << 2,
 };
 
 enum mlx5dr_context_shared_stc_type {
@@ -44,12 +45,18 @@ struct mlx5dr_context {
 	enum mlx5dr_context_flags flags;
 	struct mlx5dr_send_engine *send_queue;
 	size_t queues;
+	rte_spinlock_t *bwc_send_queue_locks;
 	LIST_HEAD(table_head, mlx5dr_table) head;
 };
 
 static inline bool mlx5dr_context_shared_gvmi_used(struct mlx5dr_context *ctx)
 {
 	return ctx->local_ibv_ctx ? true : false;
+}
+
+static inline bool mlx5dr_context_bwc_supported(struct mlx5dr_context *ctx)
+{
+	return ctx->flags & MLX5DR_CONTEXT_FLAG_BWC_SUPPORT;
 }
 
 static inline struct ibv_context *

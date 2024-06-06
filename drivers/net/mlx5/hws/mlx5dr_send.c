@@ -971,10 +971,42 @@ static void __mlx5dr_send_queues_close(struct mlx5dr_context *ctx, uint16_t queu
 		mlx5dr_send_queue_close(&ctx->send_queue[queues]);
 }
 
+static int mlx5dr_bwc_send_queues_init(struct mlx5dr_context *ctx)
+{
+	int bwc_queues = ctx->queues - 1;
+	int i;
+
+	if (!mlx5dr_context_bwc_supported(ctx))
+		return 0;
+
+	ctx->queues += bwc_queues;
+
+	ctx->bwc_send_queue_locks = simple_calloc(bwc_queues,
+						  sizeof(*ctx->bwc_send_queue_locks));
+	if (!ctx->bwc_send_queue_locks) {
+		rte_errno = ENOMEM;
+		return rte_errno;
+	}
+
+	for (i = 0; i < bwc_queues; i++)
+		rte_spinlock_init(&ctx->bwc_send_queue_locks[i]);
+
+	return 0;
+}
+
+static void mlx5dr_send_queues_bwc_locks_destroy(struct mlx5dr_context *ctx)
+{
+	if (!mlx5dr_context_bwc_supported(ctx))
+		return;
+
+	simple_free(ctx->bwc_send_queue_locks);
+}
+
 void mlx5dr_send_queues_close(struct mlx5dr_context *ctx)
 {
 	__mlx5dr_send_queues_close(ctx, ctx->queues);
 	simple_free(ctx->send_queue);
+	mlx5dr_send_queues_bwc_locks_destroy(ctx);
 }
 
 int mlx5dr_send_queues_open(struct mlx5dr_context *ctx,
@@ -987,10 +1019,16 @@ int mlx5dr_send_queues_open(struct mlx5dr_context *ctx,
 	/* Open one extra queue for control path */
 	ctx->queues = queues + 1;
 
+	/* open a separate set of queues and locks for bwc API */
+	err = mlx5dr_bwc_send_queues_init(ctx);
+	if (err)
+		return err;
+
 	ctx->send_queue = simple_calloc(ctx->queues, sizeof(*ctx->send_queue));
 	if (!ctx->send_queue) {
 		rte_errno = ENOMEM;
-		return rte_errno;
+		err = rte_errno;
+		goto free_bwc_locks;
 	}
 
 	for (i = 0; i < ctx->queues; i++) {
@@ -1005,6 +1043,9 @@ close_send_queues:
 	 __mlx5dr_send_queues_close(ctx, i);
 
 	simple_free(ctx->send_queue);
+
+free_bwc_locks:
+	mlx5dr_send_queues_bwc_locks_destroy(ctx);
 
 	return err;
 }
