@@ -22,6 +22,13 @@ mlx5dr_bwc_get_queue_id(struct mlx5dr_context *ctx, uint16_t idx)
 	return idx + mlx5dr_bwc_queues(ctx);
 }
 
+static uint16_t
+mlx5dr_bwc_get_burst_th(struct mlx5dr_context *ctx, uint16_t queue_id)
+{
+	return RTE_MIN(ctx->send_queue[queue_id].num_entries / 2,
+		       MLX5DR_BWC_MATCHER_REHASH_BURST_TH);
+}
+
 static rte_spinlock_t *
 mlx5dr_bwc_get_queue_lock(struct mlx5dr_context *ctx, uint16_t idx)
 {
@@ -175,8 +182,9 @@ mlx5dr_bwc_queue_poll(struct mlx5dr_context *ctx,
 		      bool drain)
 {
 	bool queue_full = *pending_rules == MLX5DR_BWC_MATCHER_REHASH_QUEUE_SZ;
-	bool got_comp = *pending_rules >= MLX5DR_BWC_MATCHER_REHASH_BURST_TH;
 	struct rte_flow_op_result comp[MLX5DR_BWC_MATCHER_REHASH_BURST_TH];
+	uint16_t burst_th = mlx5dr_bwc_get_burst_th(ctx, queue_id);
+	bool got_comp = *pending_rules >= burst_th;
 	int ret;
 	int i;
 
@@ -185,8 +193,7 @@ mlx5dr_bwc_queue_poll(struct mlx5dr_context *ctx,
 		return 0;
 
 	while (queue_full || ((got_comp || drain) && *pending_rules)) {
-		ret = mlx5dr_send_queue_poll(ctx, queue_id, comp,
-					     MLX5DR_BWC_MATCHER_REHASH_BURST_TH);
+		ret = mlx5dr_send_queue_poll(ctx, queue_id, comp, burst_th);
 		if (unlikely(ret < 0)) {
 			DR_LOG(ERR, "Rehash error: polling queue %d returned %d\n",
 			       queue_id, ret);
@@ -583,6 +590,7 @@ mlx5dr_bwc_matcher_move_all(struct mlx5dr_bwc_matcher *bwc_matcher)
 	struct mlx5dr_bwc_rule **bwc_rules;
 	struct mlx5dr_rule_attr rule_attr;
 	uint32_t *pending_rules;
+	uint16_t burst_th;
 	bool all_done;
 	int i, j, ret;
 
@@ -617,9 +625,10 @@ mlx5dr_bwc_matcher_move_all(struct mlx5dr_bwc_matcher *bwc_matcher)
 
 		for (i = 0; i < bwc_queues; i++) {
 			rule_attr.queue_id = mlx5dr_bwc_get_queue_id(ctx, i);
+			burst_th = mlx5dr_bwc_get_burst_th(ctx, rule_attr.queue_id);
 
-			for (j = 0; j < MLX5DR_BWC_MATCHER_REHASH_BURST_TH && bwc_rules[i]; j++) {
-				rule_attr.burst = !!((j + 1) % MLX5DR_BWC_MATCHER_REHASH_BURST_TH);
+			for (j = 0; j < burst_th && bwc_rules[i]; j++) {
+				rule_attr.burst = !!((j + 1) % burst_th);
 				ret = mlx5dr_matcher_resize_rule_move(bwc_matcher->matcher,
 								      bwc_rules[i]->rule,
 								      &rule_attr);
