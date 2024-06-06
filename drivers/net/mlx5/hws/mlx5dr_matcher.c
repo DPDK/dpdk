@@ -340,7 +340,7 @@ static int mlx5dr_matcher_disconnect(struct mlx5dr_matcher *matcher)
 	return 0;
 
 matcher_reconnect:
-	if (LIST_EMPTY(&tbl->head))
+	if (LIST_EMPTY(&tbl->head) || prev_matcher == matcher)
 		LIST_INSERT_HEAD(&matcher->tbl->head, matcher, next);
 	else
 		LIST_INSERT_AFTER(prev_matcher, matcher, next);
