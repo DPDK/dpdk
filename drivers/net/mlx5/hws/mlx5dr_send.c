@@ -523,9 +523,13 @@ static void mlx5dr_send_engine_update_rule(struct mlx5dr_send_engine *queue,
 			 */
 			priv->rule->status++;
 			*status = RTE_FLOW_OP_SUCCESS;
-			/* Rule was deleted now we can safely release action STEs */
-			if (priv->rule->status == MLX5DR_RULE_STATUS_DELETED)
+			/* Rule was deleted now we can safely release action STEs
+			 * and clear resize info
+			 */
+			if (priv->rule->status == MLX5DR_RULE_STATUS_DELETED) {
 				mlx5dr_rule_free_action_ste_idx(priv->rule);
+				mlx5dr_rule_clear_resize_info(priv->rule);
+			}
 		}
 	}
 }

@@ -157,6 +157,9 @@ static void
 mlx5dr_rule_save_resize_info(struct mlx5dr_rule *rule,
 			     struct mlx5dr_send_ste_attr *ste_attr)
 {
+	if (likely(!mlx5dr_matcher_is_resizable(rule->matcher)))
+		return;
+
 	rule->resize_info = simple_calloc(1, sizeof(*rule->resize_info));
 	if (unlikely(!rule->resize_info)) {
 		assert(rule->resize_info);
@@ -168,14 +171,16 @@ mlx5dr_rule_save_resize_info(struct mlx5dr_rule *rule,
 	memcpy(rule->resize_info->data_seg, ste_attr->wqe_data,
 	       sizeof(rule->resize_info->data_seg));
 
+	rule->resize_info->max_stes = rule->matcher->action_ste.max_stes;
 	rule->resize_info->action_ste_pool = rule->matcher->action_ste.max_stes ?
 					     rule->matcher->action_ste.pool :
 					     NULL;
 }
 
-static void mlx5dr_rule_clear_resize_info(struct mlx5dr_rule *rule)
+void mlx5dr_rule_clear_resize_info(struct mlx5dr_rule *rule)
 {
-	if (rule->resize_info) {
+	if (unlikely(mlx5dr_matcher_is_resizable(rule->matcher) &&
+		     rule->resize_info)) {
 		simple_free(rule->resize_info);
 		rule->resize_info = NULL;
 	}
@@ -220,8 +225,6 @@ mlx5dr_rule_save_delete_info(struct mlx5dr_rule *rule,
 			memcpy(&rule->tag.match, ste_attr->wqe_data->tag, MLX5DR_MATCH_TAG_SZ);
 		return;
 	}
-
-	mlx5dr_rule_save_resize_info(rule, ste_attr);
 }
 
 static void
@@ -229,11 +232,6 @@ mlx5dr_rule_clear_delete_info(struct mlx5dr_rule *rule)
 {
 	if (unlikely(mlx5dr_matcher_req_fw_wqe(rule->matcher))) {
 		simple_free(rule->tag_ptr);
-		return;
-	}
-
-	if (unlikely(mlx5dr_matcher_is_resizable(rule->matcher))) {
-		mlx5dr_rule_clear_resize_info(rule);
 		return;
 	}
 }
@@ -288,19 +286,26 @@ void mlx5dr_rule_free_action_ste_idx(struct mlx5dr_rule *rule)
 {
 	struct mlx5dr_matcher *matcher = rule->matcher;
 	struct mlx5dr_pool *pool;
+	uint8_t max_stes;
 
 	if (rule->action_ste_idx > -1 &&
 	    !matcher->attr.optimize_using_rule_idx &&
 	    !mlx5dr_matcher_is_insert_by_idx(matcher)) {
 		struct mlx5dr_pool_chunk ste = {0};
 
+		if (unlikely(mlx5dr_matcher_is_resizable(matcher))) {
+			/* Free the original action pool if rule was resized */
+			max_stes = rule->resize_info->max_stes;
+			pool = rule->resize_info->action_ste_pool;
+		} else {
+			max_stes = matcher->action_ste.max_stes;
+			pool = matcher->action_ste.pool;
+		}
+
 		/* This release is safe only when the rule match part was deleted */
-		ste.order = rte_log2_u32(matcher->action_ste.max_stes);
+		ste.order = rte_log2_u32(max_stes);
 		ste.offset = rule->action_ste_idx;
 
-		/* Free the original action pool if rule was resized */
-		pool = mlx5dr_matcher_is_resizable(matcher) ? rule->resize_info->action_ste_pool :
-							      matcher->action_ste.pool;
 		mlx5dr_pool_chunk_free(pool, &ste);
 	}
 }
@@ -442,9 +447,7 @@ static int mlx5dr_rule_create_hws_fw_wqe(struct mlx5dr_rule *rule,
 	/* Send WQEs to FW */
 	mlx5dr_send_stes_fw(queue, &ste_attr);
 
-	/* Backup TAG on the rule for deletion, and save ctrl/data
-	 * segments to be used when resizing the matcher.
-	 */
+	/* Backup TAG on the rule for deletion */
 	mlx5dr_rule_save_delete_info(rule, &ste_attr);
 	mlx5dr_send_engine_inc_rule(queue);
 
@@ -569,8 +572,10 @@ static int mlx5dr_rule_create_hws(struct mlx5dr_rule *rule,
 	/* Backup TAG on the rule for deletion and resize info for
 	 * moving rules to a new matcher, only after insertion.
 	 */
-	if (!is_update)
+	if (!is_update) {
 		mlx5dr_rule_save_delete_info(rule, &ste_attr);
+		mlx5dr_rule_save_resize_info(rule, &ste_attr);
+	}
 
 	mlx5dr_send_engine_inc_rule(queue);
 
@@ -595,8 +600,11 @@ static void mlx5dr_rule_destroy_failed_hws(struct mlx5dr_rule *rule,
 	/* Rule failed now we can safely release action STEs */
 	mlx5dr_rule_free_action_ste_idx(rule);
 
-	/* Clear complex tag or info that was saved for matcher resizing */
+	/* Clear complex tag */
 	mlx5dr_rule_clear_delete_info(rule);
+
+	/* Clear info that was saved for resizing */
+	mlx5dr_rule_clear_resize_info(rule);
 
 	/* If a rule that was indicated as burst (need to trigger HW) has failed
 	 * insertion we won't ring the HW as nothing is being written to the WQ.
