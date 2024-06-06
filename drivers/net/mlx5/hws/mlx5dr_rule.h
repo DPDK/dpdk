@@ -74,4 +74,11 @@ int mlx5dr_rule_move_hws_add(struct mlx5dr_rule *rule,
 
 bool mlx5dr_rule_move_in_progress(struct mlx5dr_rule *rule);
 
+int mlx5dr_rule_create_root_no_comp(struct mlx5dr_rule *rule,
+				    const struct rte_flow_item items[],
+				    uint8_t num_actions,
+				    struct mlx5dr_rule_action rule_actions[]);
+
+int mlx5dr_rule_destroy_root_no_comp(struct mlx5dr_rule *rule);
+
 #endif /* MLX5DR_RULE_H_ */

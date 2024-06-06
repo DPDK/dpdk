@@ -680,15 +680,12 @@ static int mlx5dr_rule_destroy_hws(struct mlx5dr_rule *rule,
 	return 0;
 }
 
-static int mlx5dr_rule_create_root(struct mlx5dr_rule *rule,
-				   struct mlx5dr_rule_attr *rule_attr,
-				   const struct rte_flow_item items[],
-				   uint8_t at_idx,
-				   struct mlx5dr_rule_action rule_actions[])
+int mlx5dr_rule_create_root_no_comp(struct mlx5dr_rule *rule,
+				    const struct rte_flow_item items[],
+				    uint8_t num_actions,
+				    struct mlx5dr_rule_action rule_actions[])
 {
 	struct mlx5dv_flow_matcher *dv_matcher = rule->matcher->dv_matcher;
-	uint8_t num_actions = rule->matcher->at[at_idx].num_actions;
-	struct mlx5dr_context *ctx = rule->matcher->tbl->ctx;
 	struct mlx5dv_flow_match_parameters *value;
 	struct mlx5_flow_attr flow_attr = {0};
 	struct mlx5dv_flow_action_attr *attr;
@@ -750,9 +747,6 @@ static int mlx5dr_rule_create_root(struct mlx5dr_rule *rule,
 						    num_actions,
 						    attr);
 
-	mlx5dr_rule_gen_comp(&ctx->send_queue[rule_attr->queue_id], rule, !rule->flow,
-			     rule_attr->user_data, MLX5DR_RULE_STATUS_CREATED);
-
 	simple_free(value);
 	simple_free(attr);
 
@@ -766,14 +760,41 @@ free_attr:
 	return rte_errno;
 }
 
+static int mlx5dr_rule_create_root(struct mlx5dr_rule *rule,
+				   struct mlx5dr_rule_attr *rule_attr,
+				   const struct rte_flow_item items[],
+				   uint8_t num_actions,
+				   struct mlx5dr_rule_action rule_actions[])
+{
+	struct mlx5dr_context *ctx = rule->matcher->tbl->ctx;
+	int ret;
+
+	ret = mlx5dr_rule_create_root_no_comp(rule, items,
+					      num_actions, rule_actions);
+	if (ret)
+		return rte_errno;
+
+	mlx5dr_rule_gen_comp(&ctx->send_queue[rule_attr->queue_id], rule, !rule->flow,
+			     rule_attr->user_data, MLX5DR_RULE_STATUS_CREATED);
+
+	return 0;
+}
+
+int mlx5dr_rule_destroy_root_no_comp(struct mlx5dr_rule *rule)
+{
+	if (rule->flow)
+		return ibv_destroy_flow(rule->flow);
+
+	return 0;
+}
+
 static int mlx5dr_rule_destroy_root(struct mlx5dr_rule *rule,
 				    struct mlx5dr_rule_attr *attr)
 {
 	struct mlx5dr_context *ctx = rule->matcher->tbl->ctx;
-	int err = 0;
+	int err;
 
-	if (rule->flow)
-		err = ibv_destroy_flow(rule->flow);
+	err = mlx5dr_rule_destroy_root_no_comp(rule);
 
 	mlx5dr_rule_gen_comp(&ctx->send_queue[attr->queue_id], rule, err,
 			     attr->user_data, MLX5DR_RULE_STATUS_DELETED);
@@ -970,7 +991,7 @@ int mlx5dr_rule_create(struct mlx5dr_matcher *matcher,
 		ret = mlx5dr_rule_create_root(rule_handle,
 					      attr,
 					      items,
-					      at_idx,
+					      matcher->at[at_idx].num_actions,
 					      rule_actions);
 	else
 		ret = mlx5dr_rule_create_hws(rule_handle,
