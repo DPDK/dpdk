@@ -49,7 +49,7 @@ virtio_ha_client_cfd_store(int container_fd)
 int
 virtio_ha_client_start(ver_time_set set_ver)
 {
-	int ret, vfio_container_fd = -1; 
+	int ret, vfio_container_fd = -1;
 
 	ret = virtio_ha_ipc_client_init(set_ver);
 	if (ret) {
@@ -67,7 +67,8 @@ virtio_ha_client_start(ver_time_set set_ver)
 		RTE_LOG(INFO, HA, "Query success: global container fd(%d)\n", vfio_container_fd);
 	}
 
-	rte_vfio_restore_default_cfd(vfio_container_fd);
+	if (vfio_container_fd != -1)
+		rte_vfio_restore_default_cfd(vfio_container_fd);
 
 	return 0;
 }
