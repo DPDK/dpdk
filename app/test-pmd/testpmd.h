@@ -84,7 +84,7 @@ extern volatile uint8_t f_quit;
 /* Maximum number of pools supported per Rx queue */
 #define MAX_MEMPOOL 8
 
-typedef uint8_t  lcoreid_t;
+typedef uint32_t lcoreid_t;
 typedef uint16_t portid_t;
 typedef uint16_t queueid_t;
 typedef uint16_t streamid_t;
