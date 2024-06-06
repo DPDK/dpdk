@@ -4782,9 +4782,9 @@ fwd_stream_on_other_lcores(uint16_t domain_id, lcoreid_t src_lc,
 				continue;
 			printf("Shared Rx queue group %u queue %hu can't be scheduled on different cores:\n",
 			       share_group, share_rxq);
-			printf("  lcore %hhu Port %hu queue %hu\n",
+			printf("  lcore %u Port %hu queue %hu\n",
 			       src_lc, src_port, src_rxq);
-			printf("  lcore %hhu Port %hu queue %hu\n",
+			printf("  lcore %u Port %hu queue %hu\n",
 			       lc_id, fs->rx_port, fs->rx_queue);
 			printf("Please use --nb-cores=%hu to limit number of forwarding cores\n",
 			       nb_rxq);
@@ -5156,7 +5156,7 @@ icmp_echo_config_setup(void)
 	lcoreid_t lc_id;
 	uint16_t  sm_id;
 
-	if ((nb_txq * nb_fwd_ports) < nb_fwd_lcores)
+	if ((lcoreid_t)(nb_txq * nb_fwd_ports) < nb_fwd_lcores)
 		cur_fwd_config.nb_fwd_lcores = (lcoreid_t)
 			(nb_txq * nb_fwd_ports);
 	else
