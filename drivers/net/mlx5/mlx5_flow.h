@@ -1333,12 +1333,12 @@ struct rte_flow_nt2hws {
 	struct rte_flow_hw_aux *flow_aux;
 	/** Modify header pointer. */
 	struct mlx5_flow_dv_modify_hdr_resource *modify_hdr;
+	/** Chain NTA flows. */
+	SLIST_ENTRY(rte_flow_hw) next;
 	/** Encap/decap index. */
 	uint32_t rix_encap_decap;
 	uint8_t chaned_flow;
-	/** Chain NTA flows. */
-	SLIST_ENTRY(rte_flow_hw) next;
-} __rte_packed;
+};
 
 /** HWS flow struct. */
 struct rte_flow_hw {
@@ -1350,6 +1350,12 @@ struct rte_flow_hw {
 	};
 	/** Application's private data passed to enqueued flow operation. */
 	void *user_data;
+	union {
+		/** Jump action. */
+		struct mlx5_hw_jump_action *jump;
+		/** TIR action. */
+		struct mlx5_hrxq *hrxq;
+	};
 	/** Flow index from indexed pool. */
 	uint32_t idx;
 	/** Resource index from indexed pool. */
@@ -1358,20 +1364,12 @@ struct rte_flow_hw {
 	uint32_t rule_idx;
 	/** Which flow fields (inline or in auxiliary struct) are used. */
 	uint32_t flags;
+	/** COUNT action index. */
+	cnt_id_t cnt_id;
 	/** Ongoing flow operation type. */
 	uint8_t operation_type;
 	/** Index of pattern template this flow is based on. */
 	uint8_t mt_idx;
-
-	/** COUNT action index. */
-	cnt_id_t cnt_id;
-	union {
-		/** Jump action. */
-		struct mlx5_hw_jump_action *jump;
-		/** TIR action. */
-		struct mlx5_hrxq *hrxq;
-	};
-
 	/** Equals true if it is non template rule. */
 	bool nt_rule;
 	/**
@@ -1382,7 +1380,7 @@ struct rte_flow_hw {
 	uint8_t padding[9];
 	/** HWS layer data struct. */
 	uint8_t rule[];
-} __rte_packed;
+};
 
 /** Auxiliary data fields that are updatable. */
 struct rte_flow_hw_aux_fields {
