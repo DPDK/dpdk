@@ -105,7 +105,9 @@ class InteractiveShell(ABC):
             start_command = get_privileged_command(start_command)
         self.send_command(start_command)
 
-    def send_command(self, command: str, prompt: str | None = None) -> str:
+    def send_command(
+        self, command: str, prompt: str | None = None, skip_first_line: bool = False
+    ) -> str:
         """Send `command` and get all output before the expected ending string.
 
         Lines that expect input are not included in the stdout buffer, so they cannot
@@ -121,6 +123,7 @@ class InteractiveShell(ABC):
             command: The command to send.
             prompt: After sending the command, `send_command` will be expecting this string.
                 If :data:`None`, will use the class's default prompt.
+            skip_first_line: Skip the first line when capturing the output.
 
         Returns:
             All output in the buffer before expected string.
@@ -132,6 +135,9 @@ class InteractiveShell(ABC):
         self._stdin.flush()
         out: str = ""
         for line in self._stdout:
+            if skip_first_line:
+                skip_first_line = False
+                continue
             if prompt in line and not line.rstrip().endswith(
                 command.rstrip()
             ):  # ignore line that sent command
