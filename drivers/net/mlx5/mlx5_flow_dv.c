@@ -6246,9 +6246,7 @@ flow_modify_create_cb(void *tool_ctx, void *cb_ctx)
 	uint32_t data_len = ref->actions_num * sizeof(ref->actions[0]);
 	uint32_t key_len = sizeof(*ref) - offsetof(typeof(*ref), ft_type);
 	uint32_t idx;
-	struct mlx5_tbl_multi_pattern_ctx *mpctx;
 
-	typeof(mpctx->mh) *mh_dr_pattern = ref->mh_dr_pattern;
 	if (unlikely(!ipool)) {
 		rte_flow_error_set(ctx->error, ENOMEM,
 				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
@@ -6267,9 +6265,13 @@ flow_modify_create_cb(void *tool_ctx, void *cb_ctx)
 			key_len + data_len);
 	if (sh->config.dv_flow_en == 2) {
 #ifdef HAVE_MLX5_HWS_SUPPORT
+		struct mlx5dr_action_mh_pattern pattern = {
+			.sz = data_len,
+			.data = (__be64 *)ref->actions
+		};
 		entry->action = mlx5dr_action_create_modify_header(ctx->data2,
-			mh_dr_pattern->elements_num,
-			mh_dr_pattern->pattern, 0, ref->flags);
+			1,
+			&pattern, 0, ref->flags);
 		if (!entry->action)
 			ret = -1;
 #else

@@ -674,9 +674,6 @@ struct mlx5_flow_dv_modify_hdr_resource {
 	struct mlx5_list_entry entry;
 	void *action; /**< Modify header action object. */
 	uint32_t idx;
-#ifdef HAVE_MLX5_HWS_SUPPORT
-	void *mh_dr_pattern; /**< Modify header DR pattern(HWS only). */
-#endif
 	uint64_t flags; /**< Flags for RDMA API(HWS only). */
 	/* Key area for hash list matching: */
 	uint8_t ft_type; /**< Flow table type, Rx or Tx. */

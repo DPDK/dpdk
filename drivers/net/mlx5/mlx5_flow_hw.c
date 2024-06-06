@@ -1462,13 +1462,11 @@ flow_hw_converted_mhdr_cmds_append(struct mlx5_hw_modify_header_action *mhdr,
 
 static __rte_always_inline void
 flow_hw_modify_field_init(struct mlx5_hw_modify_header_action *mhdr,
-			  struct rte_flow_actions_template *at,
-			  bool nt_mode)
+			  struct rte_flow_actions_template *at)
 {
 	memset(mhdr, 0, sizeof(*mhdr));
 	/* Modify header action without any commands is shared by default. */
-	if (!(nt_mode))
-		mhdr->shared = true;
+	mhdr->shared = true;
 	mhdr->pos = at->mhdr_off;
 }
 
@@ -2239,10 +2237,6 @@ mlx5_tbl_translate_modify_header(struct rte_eth_dev *dev,
 				 struct mlx5_hw_modify_header_action *mhdr,
 				 struct rte_flow_error *error)
 {
-	struct mlx5_priv *priv = dev->data->dev_private;
-	const struct rte_flow_template_table_attr *table_attr = &cfg->attr;
-	const struct rte_flow_attr *attr = &table_attr->flow_attr;
-	enum mlx5dr_table_type tbl_type = get_mlx5dr_table_type(attr);
 	uint16_t mhdr_ix = mhdr->pos;
 	struct mlx5dr_action_mh_pattern pattern = {
 		.sz = sizeof(struct mlx5_modification_cmd) * mhdr->mhdr_cmds_num
@@ -2259,20 +2253,8 @@ mlx5_tbl_translate_modify_header(struct rte_eth_dev *dev,
 					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 					  NULL, "translate modify_header: no memory for modify header context");
 	rte_memcpy(acts->mhdr, mhdr, sizeof(*mhdr));
-	pattern.data = (__be64 *)acts->mhdr->mhdr_cmds;
-	if (mhdr->shared) {
-		uint32_t flags = mlx5_hw_act_flag[!!attr->group][tbl_type] |
-				 MLX5DR_ACTION_FLAG_SHARED;
-
-		acts->mhdr->action = mlx5dr_action_create_modify_header
-						(priv->dr_ctx, 1, &pattern, 0,
-						 flags);
-		if (!acts->mhdr->action)
-			return rte_flow_error_set(error, rte_errno,
-						  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
-						  NULL, "translate modify_header: failed to create DR action");
-		acts->rule_acts[mhdr_ix].action = acts->mhdr->action;
-	} else {
+	if (!mhdr->shared) {
+		pattern.data = (__be64 *)acts->mhdr->mhdr_cmds;
 		typeof(mp_ctx->mh) *mh = &mp_ctx->mh;
 		uint32_t idx = mh->elements_num;
 		mh->pattern[mh->elements_num++] = pattern;
@@ -2283,6 +2265,32 @@ mlx5_tbl_translate_modify_header(struct rte_eth_dev *dev,
 	return 0;
 }
 
+static int
+mlx5_tbl_ensure_shared_modify_header(struct rte_eth_dev *dev,
+				     const struct mlx5_flow_template_table_cfg *cfg,
+				     struct mlx5_hw_actions *acts,
+				     struct rte_flow_error *error)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	const struct rte_flow_template_table_attr *table_attr = &cfg->attr;
+	const struct rte_flow_attr *attr = &table_attr->flow_attr;
+	enum mlx5dr_table_type tbl_type = get_mlx5dr_table_type(attr);
+	struct mlx5dr_action_mh_pattern pattern = {
+		.sz = sizeof(struct mlx5_modification_cmd) * acts->mhdr->mhdr_cmds_num
+	};
+	uint16_t mhdr_ix = acts->mhdr->pos;
+	uint32_t flags = mlx5_hw_act_flag[!!attr->group][tbl_type] | MLX5DR_ACTION_FLAG_SHARED;
+
+	pattern.data = (__be64 *)acts->mhdr->mhdr_cmds;
+	acts->mhdr->action = mlx5dr_action_create_modify_header(priv->dr_ctx, 1,
+								&pattern, 0, flags);
+	if (!acts->mhdr->action)
+		return rte_flow_error_set(error, rte_errno,
+					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+					  "translate modify_header: failed to create DR action");
+	acts->rule_acts[mhdr_ix].action = acts->mhdr->action;
+	return 0;
+}
 
 static int
 mlx5_create_ipv6_ext_reformat(struct rte_eth_dev *dev,
@@ -2420,7 +2428,7 @@ __flow_hw_translate_actions_template(struct rte_eth_dev *dev,
 	uint32_t target_grp = 0;
 	int table_type;
 
-	flow_hw_modify_field_init(&mhdr, at, nt_mode);
+	flow_hw_modify_field_init(&mhdr, at);
 	if (attr->transfer)
 		type = MLX5DR_TABLE_TYPE_FDB;
 	else if (attr->egress)
@@ -2817,10 +2825,14 @@ __flow_hw_translate_actions_template(struct rte_eth_dev *dev,
 		}
 	}
 	if (mhdr.pos != UINT16_MAX) {
-		ret = mlx5_tbl_translate_modify_header(dev, cfg, acts, mp_ctx,
-						       &mhdr, error);
+		ret = mlx5_tbl_translate_modify_header(dev, cfg, acts, mp_ctx, &mhdr, error);
 		if (ret)
 			goto err;
+		if (!nt_mode && mhdr.shared) {
+			ret = mlx5_tbl_ensure_shared_modify_header(dev, cfg, acts, error);
+			if (ret)
+				goto err;
+		}
 	}
 	if (reformat_used) {
 		ret = mlx5_tbl_translate_reformat(priv, table_attr, acts, at,
@@ -13017,8 +13029,8 @@ static int flow_hw_prepare(struct rte_eth_dev *dev,
 				"cannot allocate flow aux memory");
 	return 0;
 }
-#define FLOW_HW_SET_DV_FIELDS(flow_attr, root, flags)						\
-{												\
+
+#define FLOW_HW_SET_DV_FIELDS(flow_attr, root, flags, dv_resource) {				\
 	typeof(flow_attr) _flow_attr = (flow_attr);						\
 	if (_flow_attr->transfer)								\
 		dv_resource.ft_type = MLX5DV_FLOW_TABLE_TYPE_FDB;				\
@@ -13039,28 +13051,31 @@ flow_hw_modify_hdr_resource_register
 {
 	struct rte_flow_attr *attr = &table->cfg.attr.flow_attr;
 	struct mlx5_flow_dv_modify_hdr_resource *dv_resource_ptr = NULL;
-	struct mlx5_flow_dv_modify_hdr_resource dv_resource;
-	struct mlx5_tbl_multi_pattern_ctx *mpctx = &table->mpctx;
+	union {
+		struct mlx5_flow_dv_modify_hdr_resource dv_resource;
+		uint8_t data[sizeof(struct mlx5_flow_dv_modify_hdr_resource) +
+			     sizeof(struct mlx5_modification_cmd) * MLX5_MHDR_MAX_CMD];
+	} dummy;
 	int ret;
 
 	if (hw_acts->mhdr) {
-		dv_resource.actions_num = hw_acts->mhdr->mhdr_cmds_num;
-		memcpy(dv_resource.actions, hw_acts->mhdr->mhdr_cmds,
-			sizeof(struct mlx5_modification_cmd) * dv_resource.actions_num);
+		dummy.dv_resource.actions_num = hw_acts->mhdr->mhdr_cmds_num;
+		memcpy(dummy.dv_resource.actions, hw_acts->mhdr->mhdr_cmds,
+			sizeof(struct mlx5_modification_cmd) * dummy.dv_resource.actions_num);
 	} else {
 		return 0;
 	}
-	FLOW_HW_SET_DV_FIELDS(attr, dv_resource.root, dv_resource.flags);
-	/* Save a pointer to the pattern needed for DR layer created on actions translate. */
-	dv_resource.mh_dr_pattern = &table->mpctx.mh;
-	ret = __flow_modify_hdr_resource_register(dev, &dv_resource,
+	FLOW_HW_SET_DV_FIELDS(attr, dummy.dv_resource.root, dummy.dv_resource.flags,
+			      dummy.dv_resource);
+	dummy.dv_resource.flags |= MLX5DR_ACTION_FLAG_SHARED;
+	ret = __flow_modify_hdr_resource_register(dev, &dummy.dv_resource,
 		&dv_resource_ptr, error);
 	if (ret)
 		return ret;
 	MLX5_ASSERT(dv_resource_ptr);
 	dev_flow->nt2hws->modify_hdr = dv_resource_ptr;
 	/* keep action for the rule construction. */
-	mpctx->segments[0].mhdr_action = dv_resource_ptr->action;
+	hw_acts->rule_acts[hw_acts->mhdr->pos].action = dv_resource_ptr->action;
 	/* Bulk size is 1, so index is 1. */
 	dev_flow->res_idx = 1;
 	return 0;
@@ -13095,7 +13110,7 @@ flow_hw_encap_decap_resource_register
 		return rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ACTION,
 				   NULL, "No reformat action exist in the table.");
 	dv_resource.size = reformat->reformat_hdr->sz;
-	FLOW_HW_SET_DV_FIELDS(attr, is_root, dv_resource.flags);
+	FLOW_HW_SET_DV_FIELDS(attr, is_root, dv_resource.flags, dv_resource);
 	MLX5_ASSERT(dv_resource.size <= MLX5_ENCAP_MAX_LEN);
 	memcpy(dv_resource.buf, reformat->reformat_hdr->data, dv_resource.size);
 	ret = __flow_encap_decap_resource_register(dev, &dv_resource, is_root,
