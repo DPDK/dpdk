@@ -76,7 +76,7 @@ extern uint8_t cl_quit;
 
 #define MIN_TOTAL_NUM_MBUFS 1024
 
-typedef uint8_t  lcoreid_t;
+typedef uint32_t lcoreid_t;
 typedef uint16_t portid_t;
 typedef uint16_t queueid_t;
 typedef uint16_t streamid_t;
