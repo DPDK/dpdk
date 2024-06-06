@@ -712,7 +712,7 @@ mlx5dr_bwc_matcher_move(struct mlx5dr_bwc_matcher *bwc_matcher)
 }
 
 static int
-mlx5dr_bwc_matcher_rehash(struct mlx5dr_bwc_matcher *bwc_matcher, bool rehash_size)
+mlx5dr_bwc_matcher_rehash_size(struct mlx5dr_bwc_matcher *bwc_matcher)
 {
 	uint32_t num_of_rules;
 	int ret;
@@ -730,8 +730,7 @@ mlx5dr_bwc_matcher_rehash(struct mlx5dr_bwc_matcher *bwc_matcher, bool rehash_si
 	 */
 	num_of_rules = rte_atomic_load_explicit(&bwc_matcher->num_of_rules,
 						rte_memory_order_relaxed);
-	if (rehash_size &&
-	    !mlx5dr_bwc_matcher_rehash_size_needed(bwc_matcher, num_of_rules))
+	if (!mlx5dr_bwc_matcher_rehash_size_needed(bwc_matcher, num_of_rules))
 		return 0;
 
 	/* Now we're done all the checking - do the rehash:
@@ -745,6 +744,19 @@ mlx5dr_bwc_matcher_rehash(struct mlx5dr_bwc_matcher *bwc_matcher, bool rehash_si
 	if (ret)
 		return ret;
 
+	return mlx5dr_bwc_matcher_move(bwc_matcher);
+}
+
+static int
+mlx5dr_bwc_matcher_rehash_at(struct mlx5dr_bwc_matcher *bwc_matcher)
+{
+	/* Rehash by action template doesn't require any additional checking.
+	 * The bwc_matcher already contains the new action template.
+	 * Just do the usual rehash:
+	 *  - create new matcher
+	 *  - move all the rules to the new matcher
+	 *  - destroy the old matcher
+	 */
 	return mlx5dr_bwc_matcher_move(bwc_matcher);
 }
 
@@ -775,7 +787,6 @@ mlx5dr_bwc_rule_create_hws(struct mlx5dr_bwc_matcher *bwc_matcher,
 	struct mlx5dr_bwc_rule *bwc_rule = NULL;
 	struct mlx5dr_rule_attr rule_attr;
 	rte_spinlock_t *queue_lock;
-	bool rehash_size = false;
 	uint32_t num_of_rules;
 	uint16_t idx;
 	int at_idx;
@@ -791,7 +802,7 @@ mlx5dr_bwc_rule_create_hws(struct mlx5dr_bwc_matcher *bwc_matcher,
 
 	/* check if rehash needed due to missing action template */
 	at_idx = mlx5dr_bwc_matcher_find_at(bwc_matcher, rule_actions);
-	if (at_idx < 0) {
+	if (unlikely(at_idx < 0)) {
 		/* we need to extend BWC matcher action templates array */
 		rte_spinlock_unlock(queue_lock);
 		mlx5dr_bwc_lock_all_queues(ctx);
@@ -810,13 +821,22 @@ mlx5dr_bwc_rule_create_hws(struct mlx5dr_bwc_matcher *bwc_matcher,
 		ret = mlx5dr_matcher_attach_at(bwc_matcher->matcher,
 					       bwc_matcher->at[at_idx]);
 		if (unlikely(ret)) {
-			mlx5dr_action_template_destroy(bwc_matcher->at[at_idx]);
-			bwc_matcher->at[at_idx] = NULL;
-			bwc_matcher->num_of_at--;
+			/* Action template attach failed, possibly due to
+			 * requiring more action STEs.
+			 * Need to attempt creating new matcher with all
+			 * the action templates, including the new one.
+			 */
+			ret = mlx5dr_bwc_matcher_rehash_at(bwc_matcher);
+			if (unlikely(ret)) {
+				mlx5dr_action_template_destroy(bwc_matcher->at[at_idx]);
+				bwc_matcher->at[at_idx] = NULL;
+				bwc_matcher->num_of_at--;
 
-			mlx5dr_bwc_unlock_all_queues(ctx);
-			DR_LOG(ERR, "BWC rule: failed attaching action template - %d", ret);
-			return NULL;
+				mlx5dr_bwc_unlock_all_queues(ctx);
+
+				DR_LOG(ERR, "BWC rule insertion: rehash AT failed - %d", ret);
+				return NULL;
+			}
 		}
 
 		mlx5dr_bwc_unlock_all_queues(ctx);
@@ -826,9 +846,22 @@ mlx5dr_bwc_rule_create_hws(struct mlx5dr_bwc_matcher *bwc_matcher,
 	/* check if number of rules require rehash */
 	num_of_rules = rte_atomic_load_explicit(&bwc_matcher->num_of_rules,
 						rte_memory_order_relaxed);
-	if (mlx5dr_bwc_matcher_rehash_size_needed(bwc_matcher, num_of_rules)) {
-		rehash_size = true;
-		goto rehash;
+	if (unlikely(mlx5dr_bwc_matcher_rehash_size_needed(bwc_matcher, num_of_rules))) {
+		rte_spinlock_unlock(queue_lock);
+
+		mlx5dr_bwc_lock_all_queues(ctx);
+		ret = mlx5dr_bwc_matcher_rehash_size(bwc_matcher);
+		mlx5dr_bwc_unlock_all_queues(ctx);
+
+		if (ret) {
+			DR_LOG(ERR, "BWC rule insertion: rehash size [%d -> %d] failed - %d",
+			       bwc_matcher->size_log - MLX5DR_BWC_MATCHER_SIZE_LOG_STEP,
+			       bwc_matcher->size_log,
+			       ret);
+			return NULL;
+		}
+
+		rte_spinlock_lock(queue_lock);
 	}
 
 	bwc_rule = mlx5dr_bwc_rule_create_hws_sync(bwc_matcher,
@@ -847,14 +880,13 @@ mlx5dr_bwc_rule_create_hws(struct mlx5dr_bwc_matcher *bwc_matcher,
 	 * It could be because there was collision, or some other problem.
 	 * If we don't dive deeper than API, the only thing we know is that
 	 * the status of completion is RTE_FLOW_OP_ERROR.
-	 * Try rehash and insert rule again - last chance.
+	 * Try rehash by size and insert rule again - last chance.
 	 */
 
-rehash:
 	rte_spinlock_unlock(queue_lock);
 
 	mlx5dr_bwc_lock_all_queues(ctx);
-	ret = mlx5dr_bwc_matcher_rehash(bwc_matcher, rehash_size);
+	ret = mlx5dr_bwc_matcher_rehash_size(bwc_matcher);
 	mlx5dr_bwc_unlock_all_queues(ctx);
 
 	if (ret) {

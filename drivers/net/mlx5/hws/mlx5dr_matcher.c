@@ -1347,7 +1347,7 @@ int mlx5dr_matcher_attach_at(struct mlx5dr_matcher *matcher,
 	int ret;
 
 	if (!matcher->attr.max_num_of_at_attach) {
-		DR_LOG(ERR, "Num of current at (%d) exceed allowed value",
+		DR_LOG(DEBUG, "Num of current at (%d) exceed allowed value",
 		       matcher->num_of_at);
 		rte_errno = ENOTSUP;
 		return -rte_errno;
@@ -1359,7 +1359,7 @@ int mlx5dr_matcher_attach_at(struct mlx5dr_matcher *matcher,
 
 	required_stes = at->num_of_action_stes - (!is_jumbo || at->only_term);
 	if (matcher->action_ste.max_stes < required_stes) {
-		DR_LOG(ERR, "Required STEs [%d] exceeds initial action template STE [%d]",
+		DR_LOG(DEBUG, "Required STEs [%d] exceeds initial action template STE [%d]",
 		       required_stes, matcher->action_ste.max_stes);
 		rte_errno = ENOMEM;
 		return -rte_errno;
