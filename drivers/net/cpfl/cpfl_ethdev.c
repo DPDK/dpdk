@@ -14,6 +14,7 @@
 
 #include "cpfl_ethdev.h"
 #include <ethdev_private.h>
+#include <sys/utsname.h>
 #include "cpfl_rxtx.h"
 #include "cpfl_flow.h"
 #include "cpfl_rules.h"
@@ -2276,6 +2277,23 @@ cpfl_repr_allowlist_uninit(struct cpfl_adapter_ext *adapter)
 	rte_hash_free(adapter->repr_allowlist_hash);
 }
 
+static uint8_t
+get_running_host_id(void)
+{
+	struct utsname unamedata;
+	uint8_t host_id = CPFL_INVALID_HOST_ID;
+
+	if (uname(&unamedata) != 0)
+		PMD_INIT_LOG(ERR, "Cannot fetch node_name for host\n");
+	else if (strstr(unamedata.nodename, "ipu-imc"))
+		PMD_INIT_LOG(ERR, "CPFL PMD cannot be running on IMC.");
+	else if (strstr(unamedata.nodename, "ipu-acc"))
+		host_id = CPFL_HOST_ID_ACC;
+	else
+		host_id = CPFL_HOST_ID_HOST;
+
+	return host_id;
+}
 
 static int
 cpfl_adapter_ext_init(struct rte_pci_device *pci_dev, struct cpfl_adapter_ext *adapter,
@@ -2295,6 +2313,7 @@ cpfl_adapter_ext_init(struct rte_pci_device *pci_dev, struct cpfl_adapter_ext *a
 	hw->vendor_id = pci_dev->id.vendor_id;
 	hw->device_id = pci_dev->id.device_id;
 	hw->subsystem_vendor_id = pci_dev->id.subsystem_vendor_id;
+	adapter->host_id = get_running_host_id();
 
 	strncpy(adapter->name, pci_dev->device.name, PCI_PRI_STR_SIZE);
 

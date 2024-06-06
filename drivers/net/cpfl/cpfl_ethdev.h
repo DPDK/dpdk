@@ -66,6 +66,7 @@
 #define CPFL_PF_TYPE_NUM	2
 #define CPFL_HOST_ID_HOST	0
 #define CPFL_HOST_ID_ACC	1
+#define CPFL_INVALID_HOST_ID	UINT8_MAX
 #define CPFL_PF_TYPE_APF	0
 #define CPFL_PF_TYPE_CPF	1
 
@@ -230,6 +231,7 @@ struct cpfl_adapter_ext {
 	uint8_t ctrl_vport_recv_info[IDPF_DFLT_MBX_BUF_SIZE];
 	struct idpf_ctlq_info *ctlqp[CPFL_CFGQ_NUM];
 	struct cpfl_ctlq_create_info cfgq_info[CPFL_CFGQ_NUM];
+	uint8_t host_id;
 };
 
 TAILQ_HEAD(cpfl_adapter_list, cpfl_adapter_ext);
@@ -296,7 +298,8 @@ cpfl_get_vsi_id(struct cpfl_itf *itf)
 
 		vport_identity.func_type = CPCHNL2_FTYPE_LAN_PF;
 		/* host: CPFL_HOST0_CPF_ID, acc: CPFL_ACC_CPF_ID */
-		vport_identity.pf_id = CPFL_ACC_CPF_ID;
+		vport_identity.pf_id = (itf->adapter->host_id == CPFL_HOST_ID_ACC) ?
+								CPFL_ACC_CPF_ID : CPFL_HOST0_CPF_ID;
 		vport_identity.vf_id = 0;
 		vport_identity.vport_id = vport_id;
 		ret = rte_hash_lookup_data(itf->adapter->vport_map_hash,
