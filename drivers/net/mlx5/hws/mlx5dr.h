@@ -677,6 +677,18 @@ struct mlx5dr_action *
 mlx5dr_action_create_tag(struct mlx5dr_context *ctx,
 			 uint32_t flags);
 
+/* Create direct rule LAST action.
+ *
+ * @param[in] ctx
+ *	The context in which the new action will be created.
+ * @param[in] flags
+ *	Action creation flags. (enum mlx5dr_action_flags)
+ * @return pointer to mlx5dr_action on success NULL otherwise.
+ */
+struct mlx5dr_action *
+mlx5dr_action_create_last(struct mlx5dr_context *ctx,
+			  uint32_t flags);
+
 /* Create direct rule counter action.
  *
  * @param[in] ctx

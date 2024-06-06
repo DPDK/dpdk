@@ -1319,6 +1319,13 @@ free_action:
 	return NULL;
 }
 
+struct mlx5dr_action *
+mlx5dr_action_create_last(struct mlx5dr_context *ctx,
+			  uint32_t flags)
+{
+	return mlx5dr_action_create_generic(ctx, flags, MLX5DR_ACTION_TYP_LAST);
+}
+
 static struct mlx5dr_action *
 mlx5dr_action_create_aso(struct mlx5dr_context *ctx,
 			 enum mlx5dr_action_type action_type,
@@ -3004,6 +3011,8 @@ static void mlx5dr_action_destroy_hws(struct mlx5dr_action *action)
 	case MLX5DR_ACTION_TYP_NAT64:
 		for (i = 0; i < MLX5DR_ACTION_NAT64_STAGES; i++)
 			mlx5dr_action_destroy(action->nat64.stages[i]);
+		break;
+	case MLX5DR_ACTION_TYP_LAST:
 		break;
 	}
 }
