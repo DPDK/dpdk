@@ -138,6 +138,28 @@ static struct event_crypto_adapter **event_crypto_adapter;
 	} \
 } while (0)
 
+#define ECA_DYNFIELD_NAME "eca_ev_opaque_data"
+/* Device-specific metadata field type */
+typedef uint8_t eca_dynfield_t;
+
+/* mbuf dynamic field offset for device-specific metadata */
+int eca_dynfield_offset = -1;
+
+static int
+eca_dynfield_register(void)
+{
+	static const struct rte_mbuf_dynfield eca_dynfield_desc = {
+		.name = ECA_DYNFIELD_NAME,
+		.size = sizeof(eca_dynfield_t),
+		.align = alignof(eca_dynfield_t),
+		.flags = 0,
+	};
+
+	eca_dynfield_offset =
+		rte_mbuf_dynfield_register(&eca_dynfield_desc);
+	return eca_dynfield_offset;
+}
+
 static inline int
 eca_valid_id(uint8_t id)
 {
@@ -491,6 +513,25 @@ eca_enq_to_cryptodev(struct event_crypto_adapter *adapter, struct rte_event *ev,
 		crypto_op = ev[i].event_ptr;
 		if (crypto_op == NULL)
 			continue;
+
+		/** "struct rte_event::impl_opaque" field passed on from
+		 *  eventdev PMD could have different value per event.
+		 *  For session-based crypto operations retain
+		 *  "struct rte_event::impl_opaque" into mbuf dynamic field and
+		 *  restore it back after copying event information from
+		 *  session event metadata.
+		 *  For session-less, each crypto operation carries event
+		 *  metadata and retains "struct rte_event:impl_opaque"
+		 *  information to be passed back to eventdev PMD.
+		 */
+		if (crypto_op->sess_type == RTE_CRYPTO_OP_WITH_SESSION) {
+			struct rte_mbuf *mbuf = crypto_op->sym->m_src;
+
+			*RTE_MBUF_DYNFIELD(mbuf,
+					eca_dynfield_offset,
+					eca_dynfield_t *) = ev[i].impl_opaque;
+		}
+
 		m_data = rte_cryptodev_session_event_mdata_get(crypto_op);
 		if (m_data == NULL) {
 			rte_pktmbuf_free(crypto_op->sym->m_src);
@@ -657,6 +698,21 @@ eca_ops_enqueue_burst(struct event_crypto_adapter *adapter,
 
 		rte_memcpy(ev, &m_data->response_info, sizeof(*ev));
 		ev->event_ptr = ops[i];
+
+		/** Restore "struct rte_event::impl_opaque" from mbuf
+		 *  dynamic field for session based crypto operation.
+		 *  For session-less, each crypto operations carries event
+		 *  metadata and retains "struct rte_event::impl_opaque"
+		 *  information to be passed back to eventdev PMD.
+		 */
+		if (ops[i]->sess_type == RTE_CRYPTO_OP_WITH_SESSION) {
+			struct rte_mbuf *mbuf = ops[i]->sym->m_src;
+
+			ev->impl_opaque = *RTE_MBUF_DYNFIELD(mbuf,
+							eca_dynfield_offset,
+							eca_dynfield_t *);
+		}
+
 		ev->event_type = RTE_EVENT_TYPE_CRYPTODEV;
 		if (adapter->implicit_release_disabled)
 			ev->op = RTE_EVENT_OP_FORWARD;
@@ -895,6 +951,18 @@ eca_init_service(struct event_crypto_adapter *adapter, uint8_t id)
 	}
 
 	adapter->implicit_release_disabled = (uint8_t)impl_rel;
+
+	/** Register for mbuf dyn field to store/restore
+	 *  "struct rte_event::impl_opaque"
+	 */
+	eca_dynfield_offset = eca_dynfield_register();
+	if (eca_dynfield_offset  < 0) {
+		RTE_EDEV_LOG_ERR("Failed to register eca mbuf dyn field");
+		eca_circular_buffer_free(&adapter->ebuf);
+		rte_free(adapter);
+		return -EINVAL;
+	}
+
 	adapter->service_inited = 1;
 
 	return ret;
