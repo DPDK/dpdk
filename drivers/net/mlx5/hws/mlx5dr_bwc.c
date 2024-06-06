@@ -185,6 +185,7 @@ mlx5dr_bwc_queue_poll(struct mlx5dr_context *ctx,
 	struct rte_flow_op_result comp[MLX5DR_BWC_MATCHER_REHASH_BURST_TH];
 	uint16_t burst_th = mlx5dr_bwc_get_burst_th(ctx, queue_id);
 	bool got_comp = *pending_rules >= burst_th;
+	int err = 0;
 	int ret;
 	int i;
 
@@ -203,10 +204,12 @@ mlx5dr_bwc_queue_poll(struct mlx5dr_context *ctx,
 		if (ret) {
 			(*pending_rules) -= ret;
 			for (i = 0; i < ret; i++) {
-				if (unlikely(comp[i].status != RTE_FLOW_OP_SUCCESS))
+				if (unlikely(comp[i].status != RTE_FLOW_OP_SUCCESS)) {
 					DR_LOG(ERR,
 					       "Rehash error: polling queue %d returned completion with error\n",
 					       queue_id);
+					err = -EINVAL;
+				}
 			}
 			queue_full = false;
 		}
@@ -214,7 +217,7 @@ mlx5dr_bwc_queue_poll(struct mlx5dr_context *ctx,
 		got_comp = !!ret;
 	}
 
-	return 0;
+	return err;
 }
 
 static void
@@ -632,7 +635,7 @@ mlx5dr_bwc_matcher_move_all(struct mlx5dr_bwc_matcher *bwc_matcher)
 				ret = mlx5dr_matcher_resize_rule_move(bwc_matcher->matcher,
 								      bwc_rules[i]->rule,
 								      &rule_attr);
-				if (ret) {
+				if (unlikely(ret)) {
 					DR_LOG(ERR, "Moving BWC rule failed during rehash - %d",
 					       ret);
 					rte_errno = ENOMEM;
@@ -643,8 +646,12 @@ mlx5dr_bwc_matcher_move_all(struct mlx5dr_bwc_matcher *bwc_matcher)
 				pending_rules[i]++;
 				bwc_rules[i] = LIST_NEXT(bwc_rules[i], next);
 
-				mlx5dr_bwc_queue_poll(ctx, rule_attr.queue_id,
-						      &pending_rules[i], false);
+				ret = mlx5dr_bwc_queue_poll(ctx, rule_attr.queue_id,
+							    &pending_rules[i], false);
+				if (unlikely(ret)) {
+					rte_errno = EINVAL;
+					goto free_bwc_rules;
+				}
 			}
 		}
 	} while (!all_done);
@@ -654,8 +661,12 @@ mlx5dr_bwc_matcher_move_all(struct mlx5dr_bwc_matcher *bwc_matcher)
 		if (pending_rules[i]) {
 			uint16_t queue_id = mlx5dr_bwc_get_queue_id(ctx, i);
 			mlx5dr_send_engine_flush_queue(&ctx->send_queue[queue_id]);
-			mlx5dr_bwc_queue_poll(ctx, queue_id,
-					      &pending_rules[i], true);
+			ret = mlx5dr_bwc_queue_poll(ctx, queue_id,
+						    &pending_rules[i], true);
+			if (unlikely(ret)) {
+				rte_errno = EINVAL;
+				goto free_bwc_rules;
+			}
 		}
 	}
 
