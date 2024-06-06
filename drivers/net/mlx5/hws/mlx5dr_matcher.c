@@ -724,6 +724,7 @@ mlx5dr_matcher_resize_init(struct mlx5dr_matcher *src_matcher)
 		return rte_errno;
 	}
 
+	resize_data->max_stes = src_matcher->action_ste.max_stes;
 	resize_data->ste = src_matcher->action_ste.ste;
 	resize_data->stc = src_matcher->action_ste.stc;
 	resize_data->action_ste_rtc_0 = src_matcher->action_ste.rtc_0;
@@ -752,23 +753,25 @@ mlx5dr_matcher_resize_uninit(struct mlx5dr_matcher *matcher)
 {
 	struct mlx5dr_matcher_resize_data *resize_data;
 
-	if (!mlx5dr_matcher_is_resizable(matcher) ||
-	    !matcher->action_ste.max_stes)
+	if (!mlx5dr_matcher_is_resizable(matcher))
 		return;
 
 	while (!LIST_EMPTY(&matcher->resize_data)) {
 		resize_data = LIST_FIRST(&matcher->resize_data);
 		LIST_REMOVE(resize_data, next);
 
-		mlx5dr_action_free_single_stc(matcher->tbl->ctx,
-					      matcher->tbl->type,
-					      &resize_data->stc);
+		if (resize_data->max_stes) {
+			mlx5dr_action_free_single_stc(matcher->tbl->ctx,
+						matcher->tbl->type,
+						&resize_data->stc);
 
-		if (matcher->tbl->type == MLX5DR_TABLE_TYPE_FDB)
-			mlx5dr_cmd_destroy_obj(resize_data->action_ste_rtc_1);
-		mlx5dr_cmd_destroy_obj(resize_data->action_ste_rtc_0);
-		if (resize_data->action_ste_pool)
-			mlx5dr_pool_destroy(resize_data->action_ste_pool);
+			if (matcher->tbl->type == MLX5DR_TABLE_TYPE_FDB)
+				mlx5dr_cmd_destroy_obj(resize_data->action_ste_rtc_1);
+			mlx5dr_cmd_destroy_obj(resize_data->action_ste_rtc_0);
+			if (resize_data->action_ste_pool)
+				mlx5dr_pool_destroy(resize_data->action_ste_pool);
+		}
+
 		simple_free(resize_data);
 	}
 }

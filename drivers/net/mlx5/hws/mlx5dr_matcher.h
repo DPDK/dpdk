@@ -67,6 +67,7 @@ struct mlx5dr_matcher_resize_data {
 	struct mlx5dr_devx_obj *action_ste_rtc_0;
 	struct mlx5dr_devx_obj *action_ste_rtc_1;
 	struct mlx5dr_pool *action_ste_pool;
+	uint8_t max_stes;
 	LIST_ENTRY(mlx5dr_matcher_resize_data) next;
 };
 
