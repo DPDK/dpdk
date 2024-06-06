@@ -382,7 +382,7 @@ client_handler(void *sock_id)
 			"{\"version\":\"%s\",\"pid\":%d,\"max_output_len\":%d}",
 			telemetry_version, getpid(), MAX_OUTPUT_LEN);
 	if (write(s, info_str, strlen(info_str)) < 0) {
-		TMTY_LOG_LINE(ERR, "Socket write base info to client failed");
+		TMTY_LOG_LINE(DEBUG, "Socket write base info to client failed");
 		goto exit;
 	}
 
