@@ -32,6 +32,8 @@ class ErrorSeverity(IntEnum):
     #:
     SSH_ERR = 4
     #:
+    INTERNAL_ERR = 5
+    #:
     DPDK_BUILD_ERR = 10
     #:
     TESTCASE_VERIFY_ERR = 20
@@ -199,3 +201,10 @@ class BlockingTestSuiteError(DTSError):
     def __str__(self) -> str:
         """Add some context to the string representation."""
         return f"Blocking suite {self._suite_name} failed."
+
+
+class InternalError(DTSError):
+    """An internal error or bug has occurred in DTS."""
+
+    #:
+    severity: ClassVar[ErrorSeverity] = ErrorSeverity.INTERNAL_ERR
