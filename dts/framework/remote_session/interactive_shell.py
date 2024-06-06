@@ -132,11 +132,11 @@ class InteractiveShell(ABC):
         self._stdin.flush()
         out: str = ""
         for line in self._stdout:
-            out += line
             if prompt in line and not line.rstrip().endswith(
                 command.rstrip()
             ):  # ignore line that sent command
                 break
+            out += line
         self._logger.debug(f"Got output: {out}")
         return out
 
