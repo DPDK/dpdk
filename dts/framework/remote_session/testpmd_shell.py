@@ -571,6 +571,42 @@ class TestPmdPort(TextParser):
     )
 
 
+@dataclass
+class TestPmdPortStats(TextParser):
+    """Port statistics."""
+
+    #:
+    port_id: int = field(metadata=TextParser.find_int(r"NIC statistics for port (\d+)"))
+
+    #:
+    rx_packets: int = field(metadata=TextParser.find_int(r"RX-packets:\s+(\d+)"))
+    #:
+    rx_missed: int = field(metadata=TextParser.find_int(r"RX-missed:\s+(\d+)"))
+    #:
+    rx_bytes: int = field(metadata=TextParser.find_int(r"RX-bytes:\s+(\d+)"))
+    #:
+    rx_errors: int = field(metadata=TextParser.find_int(r"RX-errors:\s+(\d+)"))
+    #:
+    rx_nombuf: int = field(metadata=TextParser.find_int(r"RX-nombuf:\s+(\d+)"))
+
+    #:
+    tx_packets: int = field(metadata=TextParser.find_int(r"TX-packets:\s+(\d+)"))
+    #:
+    tx_errors: int = field(metadata=TextParser.find_int(r"TX-errors:\s+(\d+)"))
+    #:
+    tx_bytes: int = field(metadata=TextParser.find_int(r"TX-bytes:\s+(\d+)"))
+
+    #:
+    rx_pps: int = field(metadata=TextParser.find_int(r"Rx-pps:\s+(\d+)"))
+    #:
+    rx_bps: int = field(metadata=TextParser.find_int(r"Rx-bps:\s+(\d+)"))
+
+    #:
+    tx_pps: int = field(metadata=TextParser.find_int(r"Tx-pps:\s+(\d+)"))
+    #:
+    tx_bps: int = field(metadata=TextParser.find_int(r"Tx-bps:\s+(\d+)"))
+
+
 class TestPmdShell(InteractiveShell):
     """Testpmd interactive shell.
 
@@ -759,6 +795,45 @@ class TestPmdShell(InteractiveShell):
             raise InteractiveCommandExecutionError("invalid port given")
 
         return TestPmdPort.parse(output)
+
+    def show_port_stats_all(self) -> list[TestPmdPortStats]:
+        """Returns the statistics of all the ports.
+
+        Returns:
+            list[TestPmdPortStats]: A list containing all the ports stats as `TestPmdPortStats`.
+        """
+        output = self.send_command("show port stats all")
+
+        # Sample output of the "all" command looks like:
+        #
+        #   ########### NIC statistics for port 0 ###########
+        #   values...
+        #   #################################################
+        #
+        #   ########### NIC statistics for port 1 ###########
+        #   values...
+        #   #################################################
+        #
+        iter = re.finditer(r"(^  #*.+#*$[^#]+)^  #*\r$", output, re.MULTILINE)
+        return [TestPmdPortStats.parse(block.group(1)) for block in iter]
+
+    def show_port_stats(self, port_id: int) -> TestPmdPortStats:
+        """Returns the given port statistics.
+
+        Args:
+            port_id: The port ID to gather information for.
+
+        Raises:
+            InteractiveCommandExecutionError: If `port_id` is invalid.
+
+        Returns:
+            TestPmdPortStats: An instance of `TestPmdPortStats` containing the given port's stats.
+        """
+        output = self.send_command(f"show port stats {port_id}", skip_first_line=True)
+        if output.startswith("Invalid port"):
+            raise InteractiveCommandExecutionError("invalid port given")
+
+        return TestPmdPortStats.parse(output)
 
     def close(self) -> None:
         """Overrides :meth:`~.interactive_shell.close`."""
