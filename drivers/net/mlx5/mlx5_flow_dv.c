@@ -4344,7 +4344,7 @@ flow_encap_decap_create_cb(void *tool_ctx, void *cb_ctx)
 		hdr.data = ctx_resource->buf;
 		resource->action = mlx5dr_action_create_reformat
 		(ctx->data2, (enum mlx5dr_action_type)ctx_resource->reformat_type, 1,
-			&hdr, 1, ctx_resource->flags);
+			&hdr, 0, ctx_resource->flags);
 		if (!resource->action)
 			ret = -1;
 #else

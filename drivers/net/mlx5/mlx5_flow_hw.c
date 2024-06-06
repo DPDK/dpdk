@@ -2151,9 +2151,17 @@ table_template_translate_indirect_list(struct rte_eth_dev *dev,
 	return ret;
 }
 
+static void
+mlx5_set_reformat_header(struct mlx5dr_action_reformat_header *hdr,
+			 uint8_t *encap_data,
+			 size_t data_size)
+{
+	hdr->sz = data_size;
+	hdr->data = encap_data;
+}
+
 static int
 mlx5_tbl_translate_reformat(struct mlx5_priv *priv,
-			    const struct rte_flow_template_table_attr *table_attr,
 			    struct mlx5_hw_actions *acts,
 			    struct rte_flow_actions_template *at,
 			    const struct rte_flow_item *enc_item,
@@ -2165,8 +2173,6 @@ mlx5_tbl_translate_reformat(struct mlx5_priv *priv,
 			    struct rte_flow_error *error)
 {
 	int mp_reformat_ix = mlx5_multi_pattern_reformat_to_index(refmt_type);
-	const struct rte_flow_attr *attr = &table_attr->flow_attr;
-	enum mlx5dr_table_type tbl_type = get_mlx5dr_table_type(attr);
 	struct mlx5dr_action_reformat_header hdr;
 	uint8_t buf[MLX5_ENCAP_MAX_LEN];
 	bool shared_rfmt = false;
@@ -2191,19 +2197,16 @@ mlx5_tbl_translate_reformat(struct mlx5_priv *priv,
 		return rte_flow_error_set(error, ENOMEM,
 					  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 					  NULL, "no memory for reformat context");
-	hdr.sz = data_size;
-	hdr.data = encap_data;
+	acts->encap_decap_pos = at->reformat_off;
+	acts->encap_decap->data_size = data_size;
+	acts->encap_decap->action_type = refmt_type;
 	if (shared_rfmt || mp_reformat_ix < 0) {
 		uint16_t reformat_ix = at->reformat_off;
-		uint32_t flags = mlx5_hw_act_flag[!!attr->group][tbl_type] |
-				 MLX5DR_ACTION_FLAG_SHARED;
-
-		acts->encap_decap->action =
-			mlx5dr_action_create_reformat(priv->dr_ctx, refmt_type,
-						      1, &hdr, 0, flags);
-		if (!acts->encap_decap->action)
-			return -rte_errno;
-		acts->rule_acts[reformat_ix].action = acts->encap_decap->action;
+		/*
+		 * This copy is only needed in non template mode.
+		 * In order to create the action later.
+		 */
+		memcpy(acts->encap_decap->data, encap_data, data_size);
 		acts->rule_acts[reformat_ix].reformat.data = acts->encap_decap->data;
 		acts->rule_acts[reformat_ix].reformat.offset = 0;
 		acts->encap_decap->shared = true;
@@ -2211,14 +2214,11 @@ mlx5_tbl_translate_reformat(struct mlx5_priv *priv,
 		uint32_t ix;
 		typeof(mp_ctx->reformat[0]) *reformat = mp_ctx->reformat +
 							mp_reformat_ix;
-
+		mlx5_set_reformat_header(&hdr, encap_data, data_size);
 		ix = reformat->elements_num++;
 		reformat->reformat_hdr[ix] = hdr;
 		acts->rule_acts[at->reformat_off].reformat.hdr_idx = ix;
-		acts->encap_decap_pos = at->reformat_off;
 		acts->encap_decap->multi_pattern = 1;
-		acts->encap_decap->data_size = data_size;
-		acts->encap_decap->action_type = refmt_type;
 		ret = __flow_hw_act_data_encap_append
 			(priv, acts, (at->actions + reformat_src)->type,
 			 reformat_src, at->reformat_off, data_size);
@@ -2226,6 +2226,32 @@ mlx5_tbl_translate_reformat(struct mlx5_priv *priv,
 			return -rte_errno;
 		mlx5_multi_pattern_activate(mp_ctx);
 	}
+	return 0;
+}
+
+static int
+mlx5_tbl_create_reformat_action(struct mlx5_priv *priv,
+				const struct rte_flow_template_table_attr *table_attr,
+				struct mlx5_hw_actions *acts,
+				struct rte_flow_actions_template *at,
+				uint8_t *encap_data,
+				size_t data_size,
+				enum mlx5dr_action_type refmt_type)
+{
+	const struct rte_flow_attr *attr = &table_attr->flow_attr;
+	enum mlx5dr_table_type tbl_type = get_mlx5dr_table_type(attr);
+	struct mlx5dr_action_reformat_header hdr;
+
+	mlx5_set_reformat_header(&hdr, encap_data, data_size);
+	uint16_t reformat_ix = at->reformat_off;
+	uint32_t flags = mlx5_hw_act_flag[!!attr->group][tbl_type] |
+				MLX5DR_ACTION_FLAG_SHARED;
+
+	acts->encap_decap->action = mlx5dr_action_create_reformat(priv->dr_ctx, refmt_type,
+							   1, &hdr, 0, flags);
+	if (!acts->encap_decap->action)
+		return -rte_errno;
+	acts->rule_acts[reformat_ix].action = acts->encap_decap->action;
 	return 0;
 }
 
@@ -2835,7 +2861,7 @@ __flow_hw_translate_actions_template(struct rte_eth_dev *dev,
 		}
 	}
 	if (reformat_used) {
-		ret = mlx5_tbl_translate_reformat(priv, table_attr, acts, at,
+		ret = mlx5_tbl_translate_reformat(priv, acts, at,
 						  enc_item, enc_item_m,
 						  encap_data, encap_data_m,
 						  mp_ctx, data_size,
@@ -2843,6 +2869,13 @@ __flow_hw_translate_actions_template(struct rte_eth_dev *dev,
 						  refmt_type, error);
 		if (ret)
 			goto err;
+		if (!nt_mode && acts->encap_decap->shared) {
+			ret = mlx5_tbl_create_reformat_action(priv, table_attr, acts, at,
+							      encap_data, data_size,
+							      refmt_type);
+			if (ret)
+				goto err;
+		}
 	}
 	if (recom_used) {
 		MLX5_ASSERT(at->recom_off != UINT16_MAX);
@@ -13030,7 +13063,7 @@ static int flow_hw_prepare(struct rte_eth_dev *dev,
 	return 0;
 }
 
-#define FLOW_HW_SET_DV_FIELDS(flow_attr, root, flags, dv_resource) {				\
+#define FLOW_HW_SET_DV_FIELDS(flow_attr, root, dv_resource) {					\
 	typeof(flow_attr) _flow_attr = (flow_attr);						\
 	if (_flow_attr->transfer)								\
 		dv_resource.ft_type = MLX5DV_FLOW_TABLE_TYPE_FDB;				\
@@ -13038,7 +13071,8 @@ static int flow_hw_prepare(struct rte_eth_dev *dev,
 		dv_resource.ft_type = _flow_attr->egress ? MLX5DV_FLOW_TABLE_TYPE_NIC_TX :	\
 					     MLX5DV_FLOW_TABLE_TYPE_NIC_RX;			\
 	root = _flow_attr->group ? 0 : 1;							\
-	flags = mlx5_hw_act_flag[!!_flow_attr->group][get_mlx5dr_table_type(_flow_attr)];	\
+	dv_resource.flags =									\
+		mlx5_hw_act_flag[!!_flow_attr->group][get_mlx5dr_table_type(_flow_attr)];	\
 }
 
 static int
@@ -13065,8 +13099,7 @@ flow_hw_modify_hdr_resource_register
 	} else {
 		return 0;
 	}
-	FLOW_HW_SET_DV_FIELDS(attr, dummy.dv_resource.root, dummy.dv_resource.flags,
-			      dummy.dv_resource);
+	FLOW_HW_SET_DV_FIELDS(attr, dummy.dv_resource.root, dummy.dv_resource);
 	dummy.dv_resource.flags |= MLX5DR_ACTION_FLAG_SHARED;
 	ret = __flow_modify_hdr_resource_register(dev, &dummy.dv_resource,
 		&dv_resource_ptr, error);
@@ -13101,18 +13134,25 @@ flow_hw_encap_decap_resource_register
 		dv_resource.reformat_type = hw_acts->encap_decap->action_type;
 	else
 		return 0;
+	FLOW_HW_SET_DV_FIELDS(attr, is_root, dv_resource);
 	ix = mlx5_bwc_multi_pattern_reformat_to_index((enum mlx5dr_action_type)
-		dv_resource.reformat_type);
+			dv_resource.reformat_type);
 	if (ix < 0)
 		return ix;
-	typeof(mpctx->reformat[0]) *reformat = mpctx->reformat + ix;
-	if (!reformat->elements_num)
-		return rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ACTION,
-				   NULL, "No reformat action exist in the table.");
-	dv_resource.size = reformat->reformat_hdr->sz;
-	FLOW_HW_SET_DV_FIELDS(attr, is_root, dv_resource.flags, dv_resource);
-	MLX5_ASSERT(dv_resource.size <= MLX5_ENCAP_MAX_LEN);
-	memcpy(dv_resource.buf, reformat->reformat_hdr->data, dv_resource.size);
+	if (hw_acts->encap_decap->shared) {
+		dv_resource.size = hw_acts->encap_decap->data_size;
+		MLX5_ASSERT(dv_resource.size <= MLX5_ENCAP_MAX_LEN);
+		memcpy(&dv_resource.buf, hw_acts->encap_decap->data, dv_resource.size);
+		dv_resource.flags |= MLX5DR_ACTION_FLAG_SHARED;
+	} else {
+		typeof(mpctx->reformat[0]) *reformat = mpctx->reformat + ix;
+		if (!reformat->elements_num)
+			return rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ACTION,
+					NULL, "No reformat action exist in the table.");
+		dv_resource.size = reformat->reformat_hdr->sz;
+		MLX5_ASSERT(dv_resource.size <= MLX5_ENCAP_MAX_LEN);
+		memcpy(&dv_resource.buf, reformat->reformat_hdr->data, dv_resource.size);
+	}
 	ret = __flow_encap_decap_resource_register(dev, &dv_resource, is_root,
 		&dv_resource_ptr, error);
 	if (ret)
@@ -13120,7 +13160,10 @@ flow_hw_encap_decap_resource_register
 	MLX5_ASSERT(dv_resource_ptr);
 	dev_flow->nt2hws->rix_encap_decap = dv_resource_ptr->idx;
 	/* keep action for the rule construction. */
-	mpctx->segments[0].reformat_action[ix] = dv_resource_ptr->action;
+	if (hw_acts->encap_decap->shared)
+		hw_acts->rule_acts[hw_acts->encap_decap_pos].action = dv_resource_ptr->action;
+	else
+		mpctx->segments[0].reformat_action[ix] = dv_resource_ptr->action;
 	/* Bulk size is 1, so index is 1. */
 	dev_flow->res_idx = 1;
 	return 0;
@@ -13239,6 +13282,15 @@ flow_hw_translate_flow_actions(struct rte_eth_dev *dev,
 	RTE_SET_USED(action_flags);
 	memset(masks, 0, sizeof(masks));
 	memset(mask_conf, 0, sizeof(mask_conf));
+	/*
+	 * Notice All direct actions will be unmasked,
+	 * except for modify header and encap,
+	 * and therefore will be parsed as part of action construct.
+	 * Modify header is always shared in HWS,
+	 * encap is masked such that it will be treated as shared.
+	 * shared actions will be parsed as part of template translation
+	 * and not during action construct.
+	 */
 	flow_nta_build_template_mask(actions, masks, mask_conf);
 	/* The group in the attribute translation was done in advance. */
 	ret = __translate_group(dev, attr, external, attr->group, &src_group, error);
@@ -13255,7 +13307,6 @@ flow_hw_translate_flow_actions(struct rte_eth_dev *dev,
 	if (!table)
 		return rte_flow_error_set(error, ENOMEM, RTE_FLOW_ERROR_TYPE_ACTION,
 				   actions, "Failed to allocate dummy table");
-	/* Notice All actions will be unmasked. */
 	at = __flow_hw_actions_template_create(dev, &template_attr, actions, masks, true, error);
 	if (!at) {
 		ret = -rte_errno;
