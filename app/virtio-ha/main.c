@@ -106,7 +106,7 @@ ha_server_app_set_prio_chnl(struct virtio_ha_msg *msg)
 		if (!prio_msg) {
 			HA_APP_LOG(ERR, "Failed to alloc priority msg");
 			ret = HA_MSG_HDLR_ERR;
-			goto err;
+			goto unlock;
 		}
 
 		TAILQ_FOREACH(ent, &vf_cache, next) {
@@ -122,6 +122,7 @@ ha_server_app_set_prio_chnl(struct virtio_ha_msg *msg)
 err:
 	if (prio_msg)
 		virtio_ha_free_msg(prio_msg);
+unlock:
 	pthread_mutex_unlock(&prio_chnl_mutex);
 	return ret;
 }
@@ -995,18 +996,18 @@ main(__attribute__((__unused__)) int argc, __attribute__((__unused__)) char *arg
 
 	if (bind(sock, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
 		HA_APP_LOG(ERR, "Failed to bind socket");
-		goto err;
+		goto err_sock;
 	}
 
 	if (listen(sock, 5) < 0) {
 		HA_APP_LOG(ERR, "Failed on socket listen");
-		goto err;
+		goto err_sock;
 	}
 
 	epfd = epoll_create(1);
 	if (epfd < 0) {
 		HA_APP_LOG(ERR, "Failed to create epoll fd");
-		goto err;
+		goto err_sock;
 	}
 
 	TAILQ_INIT(&hs.pf_list);
@@ -1025,7 +1026,7 @@ main(__attribute__((__unused__)) int argc, __attribute__((__unused__)) char *arg
 	event.data.ptr = &hdl;
 	if (epoll_ctl(epfd, EPOLL_CTL_ADD, sock, &event) < 0) {
 		HA_APP_LOG(ERR, "Failed to epoll ctl add for connection");
-		goto err;
+		goto err_epoll;
 	}
 
 	HA_APP_LOG(INFO, "HA server init success");
@@ -1059,6 +1060,10 @@ main(__attribute__((__unused__)) int argc, __attribute__((__unused__)) char *arg
 
 	return 0;
 
+err_epoll:
+	close(epfd);
+err_sock:
+	close(sock);
 err:
 	virtio_ha_free_msg(msg);
 	return -1;
