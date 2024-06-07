@@ -1006,6 +1006,7 @@ static const char *const flow_field_ids[] = {
 	"ipv6_flow_label", "ipv6_traffic_class",
 	"esp_spi", "esp_seq_num", "esp_proto",
 	"random",
+	"vxlan_last_rsvd",
 	NULL
 };
 
@@ -4912,11 +4913,11 @@ static const struct token token_list[] = {
 	},
 	[ITEM_VXLAN_LAST_RSVD] = {
 		.name = "last_rsvd",
-		.help = "VXLAN last reserved bits",
+		.help = "VXLAN last reserved byte",
 		.next = NEXT(item_vxlan, NEXT_ENTRY(COMMON_UNSIGNED),
 			     item_param),
 		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_vxlan,
-					     hdr.rsvd1)),
+					     hdr.last_rsvd)),
 	},
 	[ITEM_E_TAG] = {
 		.name = "e_tag",

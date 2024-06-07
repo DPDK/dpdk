@@ -2428,6 +2428,7 @@ enum rte_flow_field_id {
 	RTE_FLOW_FIELD_ESP_SEQ_NUM,     /**< ESP Sequence Number. */
 	RTE_FLOW_FIELD_ESP_PROTO,       /**< ESP next protocol value. */
 	RTE_FLOW_FIELD_RANDOM,          /**< Random value. */
+	RTE_FLOW_FIELD_VXLAN_LAST_RSVD, /**< VXLAN last reserved byte. */
 };
 
 /**
