@@ -1002,10 +1002,10 @@ static const char *const flow_field_ids[] = {
 	"hash_result",
 	"geneve_opt_type", "geneve_opt_class", "geneve_opt_data", "mpls",
 	"tcp_data_off", "ipv4_ihl", "ipv4_total_len", "ipv6_payload_len",
-	"random",
 	"ipv4_proto",
-	"esp_spi", "esp_seq_num", "esp_proto",
 	"ipv6_flow_label", "ipv6_traffic_class",
+	"esp_spi", "esp_seq_num", "esp_proto",
+	"random",
 	NULL
 };
 
