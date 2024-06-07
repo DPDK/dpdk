@@ -174,6 +174,8 @@ struct iocpt_crypto_q {
 	uint16_t flags;
 
 	/* cacheline3 */
+	struct rte_cryptodev_stats stats;
+
 	uint64_t enqueued_wdogs;
 	uint64_t dequeued_wdogs;
 	uint8_t wdog_iv[IOCPT_Q_WDOG_IV_LEN];
@@ -252,6 +254,8 @@ struct iocpt_dev {
 
 	struct iocpt_qtype_info qtype_info[IOCPT_QTYPE_MAX];
 	uint8_t qtype_ver[IOCPT_QTYPE_MAX];
+
+	struct rte_cryptodev_stats stats_base;
 };
 
 struct iocpt_dev_intf {
@@ -312,6 +316,10 @@ typedef bool (*iocpt_cq_cb)(struct iocpt_cq *cq, uint16_t cq_desc_index,
 		void *cb_arg);
 uint32_t iocpt_cq_service(struct iocpt_cq *cq, uint32_t work_to_do,
 	iocpt_cq_cb cb, void *cb_arg);
+
+void iocpt_get_stats(const struct iocpt_dev *dev,
+	struct rte_cryptodev_stats *stats);
+void iocpt_reset_stats(struct iocpt_dev *dev);
 
 static inline uint16_t
 iocpt_q_space_avail(struct iocpt_queue *q)

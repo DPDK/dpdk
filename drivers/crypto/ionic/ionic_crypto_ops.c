@@ -65,6 +65,23 @@ iocpt_op_info_get(struct rte_cryptodev *cdev, struct rte_cryptodev_info *info)
 	info->min_mbuf_tailroom_req = 0;
 }
 
+static void
+iocpt_op_stats_get(struct rte_cryptodev *cdev,
+		struct rte_cryptodev_stats *stats)
+{
+	struct iocpt_dev *dev = cdev->data->dev_private;
+
+	iocpt_get_stats(dev, stats);
+}
+
+static void
+iocpt_op_stats_reset(struct rte_cryptodev *cdev)
+{
+	struct iocpt_dev *dev = cdev->data->dev_private;
+
+	iocpt_reset_stats(dev);
+}
+
 static int
 iocpt_op_queue_release(struct rte_cryptodev *cdev, uint16_t queue_id)
 {
@@ -350,6 +367,7 @@ iocpt_enqueue_sym(void *qp, struct rte_crypto_op **ops, uint16_t nb_ops)
 	struct iocpt_crypto_q *cptq = qp;
 	struct rte_crypto_op *op;
 	struct iocpt_session_priv *priv;
+	struct rte_cryptodev_stats *stats = &cptq->stats;
 	uint16_t avail, count;
 	int err;
 
@@ -375,6 +393,7 @@ iocpt_enqueue_sym(void *qp, struct rte_crypto_op **ops, uint16_t nb_ops)
 		err = iocpt_enq_one_aead(cptq, priv, op);
 		if (unlikely(err != 0)) {
 			op->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
+			stats->enqueue_err_count++;
 			break;
 		}
 
@@ -386,6 +405,8 @@ iocpt_enqueue_sym(void *qp, struct rte_crypto_op **ops, uint16_t nb_ops)
 
 		/* Restart timer if ops are being enqueued */
 		cptq->last_wdog_cycles = rte_get_timer_cycles();
+
+		stats->enqueued_count += count;
 	}
 
 	return count;
@@ -439,8 +460,8 @@ iocpt_enqueue_wdog(struct iocpt_crypto_q *cptq)
 	q->info[q->head_idx] = wdog_op;
 	q->head_idx = Q_NEXT_TO_POST(q, 1);
 
-	IOCPT_PRINT(DEBUG, "Queue %u wdog enq %p",
-		q->index, wdog_op);
+	IOCPT_PRINT(DEBUG, "Queue %u wdog enq %p ops %"PRIu64,
+		q->index, wdog_op, cptq->stats.enqueued_count);
 	cptq->enqueued_wdogs++;
 
 out_flush:
@@ -456,6 +477,7 @@ iocpt_dequeue_sym(void *qp, struct rte_crypto_op **ops, uint16_t nb_ops)
 	struct rte_crypto_op *op;
 	struct iocpt_crypto_comp *cq_desc_base = cq->base;
 	volatile struct iocpt_crypto_comp *cq_desc;
+	struct rte_cryptodev_stats *stats = &cptq->stats;
 	uint64_t then, now, hz, delta;
 	uint16_t count = 0;
 
@@ -515,6 +537,9 @@ iocpt_dequeue_sym(void *qp, struct rte_crypto_op **ops, uint16_t nb_ops)
 			continue;
 		}
 
+		if (unlikely(op->status != RTE_CRYPTO_OP_STATUS_SUCCESS))
+			stats->dequeue_err_count++;
+
 		ops[count] = op;
 		q->info[q->tail_idx] = NULL;
 
@@ -542,6 +567,8 @@ iocpt_dequeue_sym(void *qp, struct rte_crypto_op **ops, uint16_t nb_ops)
 		/* Restart timer if the queue is making progress */
 		cptq->last_wdog_cycles = rte_get_timer_cycles();
 
+	stats->dequeued_count += count;
+
 	return count;
 }
 
@@ -552,6 +579,8 @@ static struct rte_cryptodev_ops iocpt_ops = {
 	.dev_close = iocpt_op_close,
 	.dev_infos_get = iocpt_op_info_get,
 
+	.stats_get = iocpt_op_stats_get,
+	.stats_reset = iocpt_op_stats_reset,
 	.queue_pair_setup = iocpt_op_queue_setup,
 	.queue_pair_release = iocpt_op_queue_release,
 

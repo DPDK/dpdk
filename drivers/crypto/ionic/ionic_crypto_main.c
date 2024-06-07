@@ -128,6 +128,52 @@ iocpt_q_free(struct iocpt_queue *q)
 	}
 }
 
+static void
+iocpt_get_abs_stats(const struct iocpt_dev *dev,
+		struct rte_cryptodev_stats *stats)
+{
+	uint32_t i;
+
+	memset(stats, 0, sizeof(*stats));
+
+	/* Sum up the per-queue stats counters */
+	for (i = 0; i < dev->crypto_dev->data->nb_queue_pairs; i++) {
+		struct rte_cryptodev_stats *q_stats = &dev->cryptoqs[i]->stats;
+
+		stats->enqueued_count    += q_stats->enqueued_count;
+		stats->dequeued_count    += q_stats->dequeued_count;
+		stats->enqueue_err_count += q_stats->enqueue_err_count;
+		stats->dequeue_err_count += q_stats->dequeue_err_count;
+	}
+}
+
+void
+iocpt_get_stats(const struct iocpt_dev *dev, struct rte_cryptodev_stats *stats)
+{
+	/* Retrieve the new absolute stats values */
+	iocpt_get_abs_stats(dev, stats);
+
+	/* Subtract the base stats values to get relative values */
+	stats->enqueued_count    -= dev->stats_base.enqueued_count;
+	stats->dequeued_count    -= dev->stats_base.dequeued_count;
+	stats->enqueue_err_count -= dev->stats_base.enqueue_err_count;
+	stats->dequeue_err_count -= dev->stats_base.dequeue_err_count;
+}
+
+void
+iocpt_reset_stats(struct iocpt_dev *dev)
+{
+	uint32_t i;
+
+	/* Erase the per-queue stats counters */
+	for (i = 0; i < dev->crypto_dev->data->nb_queue_pairs; i++)
+		memset(&dev->cryptoqs[i]->stats, 0,
+			sizeof(dev->cryptoqs[i]->stats));
+
+	/* Update the base stats values */
+	iocpt_get_abs_stats(dev, &dev->stats_base);
+}
+
 static int
 iocpt_session_write(struct iocpt_session_priv *priv,
 		enum iocpt_sess_control_oper oper)
@@ -668,6 +714,8 @@ static int
 iocpt_init(struct iocpt_dev *dev)
 {
 	int err;
+
+	memset(&dev->stats_base, 0, sizeof(dev->stats_base));
 
 	/* Uses dev_cmds */
 	err = iocpt_dev_init(dev, dev->info_pa);
