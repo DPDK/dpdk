@@ -10,9 +10,64 @@
 
 #include "ionic_crypto.h"
 
+static const struct rte_memzone *
+iocpt_dma_zone_reserve(const char *type_name, uint16_t qid, size_t size,
+			unsigned int align, int socket_id)
+{
+	char zone_name[RTE_MEMZONE_NAMESIZE];
+	const struct rte_memzone *mz;
+	int err;
+
+	err = snprintf(zone_name, sizeof(zone_name),
+			"iocpt_%s_%u", type_name, qid);
+	if (err >= RTE_MEMZONE_NAMESIZE) {
+		IOCPT_PRINT(ERR, "Name %s too long", type_name);
+		return NULL;
+	}
+
+	mz = rte_memzone_lookup(zone_name);
+	if (mz != NULL)
+		return mz;
+
+	return rte_memzone_reserve_aligned(zone_name, size, socket_id,
+			RTE_MEMZONE_IOVA_CONTIG, align);
+}
+
+static int
+iocpt_alloc_objs(struct iocpt_dev *dev)
+{
+	int err;
+
+	IOCPT_PRINT(DEBUG, "Crypto: %s", dev->name);
+
+	dev->info_sz = RTE_ALIGN(sizeof(*dev->info), rte_mem_page_size());
+	dev->info_z = iocpt_dma_zone_reserve("info", 0, dev->info_sz,
+					IONIC_ALIGN, dev->socket_id);
+	if (dev->info_z == NULL) {
+		IOCPT_PRINT(ERR, "Cannot allocate dev info memory");
+		err = -ENOMEM;
+		goto err_out;
+	}
+
+	dev->info = dev->info_z->addr;
+	dev->info_pa = dev->info_z->iova;
+
+	return 0;
+
+err_out:
+	return err;
+}
+
 static int
 iocpt_init(struct iocpt_dev *dev)
 {
+	int err;
+
+	/* Uses dev_cmds */
+	err = iocpt_dev_init(dev, dev->info_pa);
+	if (err != 0)
+		return err;
+
 	dev->state |= IOCPT_DEV_F_INITED;
 
 	return 0;
@@ -33,6 +88,19 @@ iocpt_deinit(struct iocpt_dev *dev)
 		return;
 
 	dev->state &= ~IOCPT_DEV_F_INITED;
+}
+
+static void
+iocpt_free_objs(struct iocpt_dev *dev)
+{
+	IOCPT_PRINT_CALL();
+
+	if (dev->info != NULL) {
+		rte_memzone_free(dev->info_z);
+		dev->info_z = NULL;
+		dev->info = NULL;
+		dev->info_pa = 0;
+	}
 }
 
 static int
@@ -125,14 +193,29 @@ iocpt_probe(void *bus_dev, struct rte_device *rte_dev,
 	dev->fw_version[IOCPT_FWVERS_BUFLEN - 1] = '\0';
 	IOCPT_PRINT(DEBUG, "%s firmware: %s", dev->name, dev->fw_version);
 
+	err = iocpt_dev_identify(dev);
+	if (err != 0) {
+		IOCPT_PRINT(ERR, "Cannot identify device: %d, aborting",
+			err);
+		goto err_destroy_crypto_dev;
+	}
+
+	err = iocpt_alloc_objs(dev);
+	if (err != 0) {
+		IOCPT_PRINT(ERR, "Cannot alloc device objects: %d", err);
+		goto err_destroy_crypto_dev;
+	}
+
 	err = iocpt_init(dev);
 	if (err != 0) {
 		IOCPT_PRINT(ERR, "Cannot init device: %d, aborting", err);
-		goto err_destroy_crypto_dev;
+		goto err_free_objs;
 	}
 
 	return 0;
 
+err_free_objs:
+	iocpt_free_objs(dev);
 err_destroy_crypto_dev:
 	rte_cryptodev_pmd_destroy(cdev);
 err:
@@ -154,6 +237,10 @@ iocpt_remove(struct rte_device *rte_dev)
 	dev = cdev->data->dev_private;
 
 	iocpt_deinit(dev);
+
+	iocpt_dev_reset(dev);
+
+	iocpt_free_objs(dev);
 
 	rte_cryptodev_pmd_destroy(cdev);
 

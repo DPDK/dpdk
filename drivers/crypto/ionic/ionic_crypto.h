@@ -80,6 +80,17 @@ struct iocpt_dev_bars {
 	uint32_t num_bars;
 };
 
+struct iocpt_qtype_info {
+	uint8_t	 version;
+	uint8_t	 supported;
+	uint64_t features;
+	uint16_t desc_sz;
+	uint16_t comp_sz;
+	uint16_t sg_desc_sz;
+	uint16_t max_sg_elems;
+	uint16_t sg_desc_stride;
+};
+
 #define IOCPT_DEV_F_INITED		BIT(0)
 #define IOCPT_DEV_F_UP			BIT(1)
 #define IOCPT_DEV_F_FW_RESET		BIT(2)
@@ -89,6 +100,7 @@ struct iocpt_dev {
 	const char *name;
 	char fw_version[IOCPT_FWVERS_BUFLEN];
 	struct iocpt_dev_bars bars;
+	struct iocpt_identity ident;
 
 	const struct iocpt_dev_intf *intf;
 	void *bus_dev;
@@ -108,6 +120,14 @@ struct iocpt_dev {
 
 	uint64_t features;
 	uint32_t hw_features;
+
+	uint32_t info_sz;
+	struct iocpt_lif_info *info;
+	rte_iova_t info_pa;
+	const struct rte_memzone *info_z;
+
+	struct iocpt_qtype_info qtype_info[IOCPT_QTYPE_MAX];
+	uint8_t qtype_ver[IOCPT_QTYPE_MAX];
 };
 
 struct iocpt_dev_intf {
@@ -131,6 +151,10 @@ int iocpt_remove(struct rte_device *rte_dev);
 
 void iocpt_configure(struct iocpt_dev *dev);
 void iocpt_deinit(struct iocpt_dev *dev);
+
+int iocpt_dev_identify(struct iocpt_dev *dev);
+int iocpt_dev_init(struct iocpt_dev *dev, rte_iova_t info_pa);
+void iocpt_dev_reset(struct iocpt_dev *dev);
 
 static inline bool
 iocpt_is_embedded(void)
