@@ -112,6 +112,116 @@ iocpt_q_free(struct iocpt_queue *q)
 	}
 }
 
+static int
+iocpt_session_write(struct iocpt_session_priv *priv,
+		enum iocpt_sess_control_oper oper)
+{
+	struct iocpt_dev *dev = priv->dev;
+	struct iocpt_admin_ctx ctx = {
+		.pending_work = true,
+		.cmd.sess_control = {
+			.opcode = IOCPT_CMD_SESS_CONTROL,
+			.type = priv->type,
+			.oper = oper,
+			.index = rte_cpu_to_le_32(priv->index),
+			.key_len = rte_cpu_to_le_16(priv->key_len),
+			.key_seg_len = (uint8_t)RTE_MIN(priv->key_len,
+						IOCPT_SESS_KEY_SEG_LEN),
+		},
+	};
+	struct iocpt_sess_control_cmd *cmd = &ctx.cmd.sess_control;
+	uint16_t key_offset;
+	uint8_t key_segs, seg;
+	int err;
+
+	key_segs = ((priv->key_len - 1) >> IOCPT_SESS_KEY_SEG_SHFT) + 1;
+
+	for (seg = 0; seg < key_segs; seg++) {
+		ctx.pending_work = true;
+
+		key_offset = seg * cmd->key_seg_len;
+		memcpy(cmd->key, &priv->key[key_offset],
+			IOCPT_SESS_KEY_SEG_LEN);
+		cmd->key_seg_idx = seg;
+
+		/* Mark final segment */
+		if (seg + 1 == key_segs)
+			cmd->flags |= rte_cpu_to_le_16(IOCPT_SCTL_F_END);
+
+		err = iocpt_adminq_post_wait(dev, &ctx);
+		if (err != 0)
+			return err;
+	}
+
+	return 0;
+}
+
+int
+iocpt_session_init(struct iocpt_session_priv *priv)
+{
+	struct iocpt_dev *dev = priv->dev;
+	uint64_t bm_slab = 0;
+	uint32_t bm_pos = 0;
+	int err = 0;
+
+	rte_spinlock_lock(&dev->adminq_lock);
+
+	if (rte_bitmap_scan(dev->sess_bm, &bm_pos, &bm_slab) > 0) {
+		priv->index = bm_pos + rte_ctz64(bm_slab);
+		rte_bitmap_clear(dev->sess_bm, priv->index);
+	} else
+		err = -ENOSPC;
+
+	rte_spinlock_unlock(&dev->adminq_lock);
+
+	if (err != 0) {
+		IOCPT_PRINT(ERR, "session index space exhausted");
+		return err;
+	}
+
+	err = iocpt_session_write(priv, IOCPT_SESS_INIT);
+	if (err != 0) {
+		rte_spinlock_lock(&dev->adminq_lock);
+		rte_bitmap_set(dev->sess_bm, priv->index);
+		rte_spinlock_unlock(&dev->adminq_lock);
+		return err;
+	}
+
+	priv->flags |= IOCPT_S_F_INITED;
+
+	return 0;
+}
+
+int
+iocpt_session_update(struct iocpt_session_priv *priv)
+{
+	return iocpt_session_write(priv, IOCPT_SESS_UPDATE_KEY);
+}
+
+void
+iocpt_session_deinit(struct iocpt_session_priv *priv)
+{
+	struct iocpt_dev *dev = priv->dev;
+	struct iocpt_admin_ctx ctx = {
+		.pending_work = true,
+		.cmd.sess_control = {
+			.opcode = IOCPT_CMD_SESS_CONTROL,
+			.type = priv->type,
+			.oper = IOCPT_SESS_DISABLE,
+			.index = rte_cpu_to_le_32(priv->index),
+			.key_len = rte_cpu_to_le_16(priv->key_len),
+		},
+	};
+
+	(void)iocpt_adminq_post_wait(dev, &ctx);
+
+	rte_spinlock_lock(&dev->adminq_lock);
+	rte_bitmap_set(dev->sess_bm, priv->index);
+	rte_spinlock_unlock(&dev->adminq_lock);
+
+	priv->flags &= ~IOCPT_S_F_INITED;
+}
+
 static const struct rte_memzone *
 iocpt_dma_zone_reserve(const char *type_name, uint16_t qid, size_t size,
 			unsigned int align, int socket_id)
@@ -305,6 +415,8 @@ iocpt_adminq_free(struct iocpt_admin_q *aq)
 static int
 iocpt_alloc_objs(struct iocpt_dev *dev)
 {
+	uint32_t bmsize, i;
+	uint8_t *bm;
 	int err;
 
 	IOCPT_PRINT(DEBUG, "Crypto: %s", dev->name);
@@ -331,8 +443,33 @@ iocpt_alloc_objs(struct iocpt_dev *dev)
 	dev->info = dev->info_z->addr;
 	dev->info_pa = dev->info_z->iova;
 
+	bmsize = rte_bitmap_get_memory_footprint(dev->max_sessions);
+	bm = rte_malloc_socket("iocpt", bmsize,
+			RTE_CACHE_LINE_SIZE, dev->socket_id);
+	if (bm == NULL) {
+		IOCPT_PRINT(ERR, "Cannot allocate %uB bitmap memory", bmsize);
+		err = -ENOMEM;
+		goto err_free_dmazone;
+	}
+
+	dev->sess_bm = rte_bitmap_init(dev->max_sessions, bm, bmsize);
+	if (dev->sess_bm == NULL) {
+		IOCPT_PRINT(ERR, "Cannot initialize bitmap");
+		err = -EFAULT;
+		goto err_free_bm;
+	}
+	for (i = 0; i < dev->max_sessions; i++)
+		rte_bitmap_set(dev->sess_bm, i);
+
 	return 0;
 
+err_free_bm:
+	rte_free(bm);
+err_free_dmazone:
+	rte_memzone_free(dev->info_z);
+	dev->info_z = NULL;
+	dev->info = NULL;
+	dev->info_pa = 0;
 err_free_adminq:
 	iocpt_adminq_free(dev->adminq);
 	dev->adminq = NULL;
@@ -382,6 +519,12 @@ static void
 iocpt_free_objs(struct iocpt_dev *dev)
 {
 	IOCPT_PRINT_CALL();
+
+	if (dev->sess_bm != NULL) {
+		rte_bitmap_free(dev->sess_bm);
+		rte_free(dev->sess_bm);
+		dev->sess_bm = NULL;
+	}
 
 	if (dev->adminq != NULL) {
 		iocpt_adminq_free(dev->adminq);
