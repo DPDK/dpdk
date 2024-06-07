@@ -16,6 +16,7 @@
 #include <rte_log.h>
 
 #include "ionic_common.h"
+#include "ionic_crypto_if.h"
 #include "ionic_regs.h"
 
 /* Devargs */
@@ -29,6 +30,51 @@ extern int iocpt_logtype;
 
 #define IOCPT_PRINT_CALL() IOCPT_PRINT(DEBUG, " >>")
 
+static inline void iocpt_struct_size_checks(void)
+{
+	RTE_BUILD_BUG_ON(sizeof(struct ionic_doorbell) != 8);
+	RTE_BUILD_BUG_ON(sizeof(struct ionic_intr) != 32);
+	RTE_BUILD_BUG_ON(sizeof(struct ionic_intr_status) != 8);
+
+	RTE_BUILD_BUG_ON(sizeof(union iocpt_dev_regs) != 4096);
+	RTE_BUILD_BUG_ON(sizeof(union iocpt_dev_info_regs) != 2048);
+	RTE_BUILD_BUG_ON(sizeof(union iocpt_dev_cmd_regs) != 2048);
+
+	RTE_BUILD_BUG_ON(sizeof(struct iocpt_admin_cmd) != 64);
+	RTE_BUILD_BUG_ON(sizeof(struct iocpt_admin_comp) != 16);
+	RTE_BUILD_BUG_ON(sizeof(struct iocpt_nop_cmd) != 64);
+	RTE_BUILD_BUG_ON(sizeof(struct iocpt_nop_comp) != 16);
+
+	/* Device commands */
+	RTE_BUILD_BUG_ON(sizeof(struct iocpt_dev_identify_cmd) != 64);
+	RTE_BUILD_BUG_ON(sizeof(struct iocpt_dev_identify_comp) != 16);
+	RTE_BUILD_BUG_ON(sizeof(struct iocpt_dev_reset_cmd) != 64);
+	RTE_BUILD_BUG_ON(sizeof(struct iocpt_dev_reset_comp) != 16);
+
+	/* LIF commands */
+	RTE_BUILD_BUG_ON(sizeof(struct iocpt_lif_identify_cmd) != 64);
+	RTE_BUILD_BUG_ON(sizeof(struct iocpt_lif_identify_comp) != 16);
+	RTE_BUILD_BUG_ON(sizeof(struct iocpt_lif_init_cmd) != 64);
+	RTE_BUILD_BUG_ON(sizeof(struct iocpt_lif_init_comp) != 16);
+	RTE_BUILD_BUG_ON(sizeof(struct iocpt_lif_reset_cmd) != 64);
+	RTE_BUILD_BUG_ON(sizeof(struct iocpt_lif_getattr_cmd) != 64);
+	RTE_BUILD_BUG_ON(sizeof(struct iocpt_lif_getattr_comp) != 16);
+	RTE_BUILD_BUG_ON(sizeof(struct iocpt_lif_setattr_cmd) != 64);
+	RTE_BUILD_BUG_ON(sizeof(struct iocpt_lif_setattr_comp) != 16);
+
+	/* Queue commands */
+	RTE_BUILD_BUG_ON(sizeof(struct iocpt_q_identify_cmd) != 64);
+	RTE_BUILD_BUG_ON(sizeof(struct iocpt_q_identify_comp) != 16);
+	RTE_BUILD_BUG_ON(sizeof(struct iocpt_q_init_cmd) != 64);
+	RTE_BUILD_BUG_ON(sizeof(struct iocpt_q_init_comp) != 16);
+	RTE_BUILD_BUG_ON(sizeof(struct iocpt_q_control_cmd) != 64);
+
+	/* Crypto */
+	RTE_BUILD_BUG_ON(sizeof(struct iocpt_crypto_desc) != 32);
+	RTE_BUILD_BUG_ON(sizeof(struct iocpt_crypto_sg_desc) != 256);
+	RTE_BUILD_BUG_ON(sizeof(struct iocpt_crypto_comp) != 16);
+}
+
 struct iocpt_dev_bars {
 	struct ionic_dev_bar bar[IONIC_BARS_MAX];
 	uint32_t num_bars;
@@ -41,11 +87,18 @@ struct iocpt_dev_bars {
 /* Combined dev / LIF object */
 struct iocpt_dev {
 	const char *name;
+	char fw_version[IOCPT_FWVERS_BUFLEN];
 	struct iocpt_dev_bars bars;
 
 	const struct iocpt_dev_intf *intf;
 	void *bus_dev;
 	struct rte_cryptodev *crypto_dev;
+
+	union iocpt_dev_info_regs __iomem *dev_info;
+	union iocpt_dev_cmd_regs __iomem *dev_cmd;
+
+	struct ionic_doorbell __iomem *db_pages;
+	struct ionic_intr __iomem *intr_ctrl;
 
 	uint32_t max_qps;
 	uint32_t max_sessions;

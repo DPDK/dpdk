@@ -24,10 +24,47 @@
 #define IOCPT_VDEV_DEV_INFO_REGS_OFFSET      0x0000
 #define IOCPT_VDEV_DEV_CMD_REGS_OFFSET       0x0800
 
+#define IOCPT_VDEV_FW_WAIT_US       1000     /* 1ms */
+#define IOCPT_VDEV_FW_WAIT_MAX      5000     /* 5s */
+
 static int
 iocpt_vdev_setup_bars(struct iocpt_dev *dev)
 {
+	struct iocpt_dev_bars *bars = &dev->bars;
+	uint8_t *bar0_base;
+	uint32_t fw_waits = 0;
+	uint8_t fw;
+
 	IOCPT_PRINT_CALL();
+
+	/* BAR0: dev_cmd */
+	bar0_base = bars->bar[IOCPT_VDEV_DEV_BAR].vaddr;
+	dev->dev_info = (union iocpt_dev_info_regs *)
+		&bar0_base[IOCPT_VDEV_DEV_INFO_REGS_OFFSET];
+	dev->dev_cmd = (union iocpt_dev_cmd_regs *)
+		&bar0_base[IOCPT_VDEV_DEV_CMD_REGS_OFFSET];
+
+	/* BAR1: interrupts */
+	dev->intr_ctrl = (void *)bars->bar[IOCPT_VDEV_INTR_CTL_BAR].vaddr;
+
+	/* BAR3: doorbells */
+	dev->db_pages = (void *)bars->bar[IOCPT_VDEV_DB_BAR].vaddr;
+
+	/* Wait for the FW to indicate readiness */
+	while (1) {
+		fw = ioread8(&dev->dev_info->fw_status);
+		if ((fw & IOCPT_FW_STS_F_RUNNING) != 0)
+			break;
+
+		if (fw_waits > IOCPT_VDEV_FW_WAIT_MAX) {
+			IOCPT_PRINT(ERR, "Firmware readiness bit not set");
+			return -ETIMEDOUT;
+		}
+
+		fw_waits++;
+		rte_delay_us_block(IOCPT_VDEV_FW_WAIT_US);
+	}
+	IOCPT_PRINT(DEBUG, "Firmware ready (%u waits)", fw_waits);
 
 	dev->name = rte_vdev_device_name(dev->bus_dev);
 

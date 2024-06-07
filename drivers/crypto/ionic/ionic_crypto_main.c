@@ -57,8 +57,11 @@ iocpt_probe(void *bus_dev, struct rte_device *rte_dev,
 	};
 	struct rte_cryptodev *cdev;
 	struct iocpt_dev *dev;
-	uint32_t i;
+	uint32_t i, sig;
 	int err;
+
+	/* Check structs (trigger error at compilation time) */
+	iocpt_struct_size_checks();
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
 		IOCPT_PRINT(ERR, "Multi-process not supported");
@@ -109,6 +112,18 @@ iocpt_probe(void *bus_dev, struct rte_device *rte_dev,
 		IOCPT_PRINT(ERR, "Cannot setup BARs: %d, aborting", err);
 		goto err_destroy_crypto_dev;
 	}
+
+	sig = ioread32(&dev->dev_info->signature);
+	if (sig != IOCPT_DEV_INFO_SIGNATURE) {
+		IOCPT_PRINT(ERR, "Incompatible firmware signature %#x", sig);
+		err = -EFAULT;
+		goto err_destroy_crypto_dev;
+	}
+
+	for (i = 0; i < IOCPT_FWVERS_BUFLEN; i++)
+		dev->fw_version[i] = ioread8(&dev->dev_info->fw_version[i]);
+	dev->fw_version[IOCPT_FWVERS_BUFLEN - 1] = '\0';
+	IOCPT_PRINT(DEBUG, "%s firmware: %s", dev->name, dev->fw_version);
 
 	err = iocpt_init(dev);
 	if (err != 0) {
