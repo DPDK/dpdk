@@ -23,15 +23,20 @@ dsw_port_setup(struct rte_eventdev *dev, uint8_t port_id,
 	struct rte_event_ring *in_ring;
 	struct rte_ring *ctl_in_ring;
 	char ring_name[RTE_RING_NAMESIZE];
+	bool implicit_release;
 
 	port = &dsw->ports[port_id];
+
+	implicit_release =
+	    !(conf->event_port_cfg & RTE_EVENT_PORT_CFG_DISABLE_IMPL_REL);
 
 	*port = (struct dsw_port) {
 		.id = port_id,
 		.dsw = dsw,
 		.dequeue_depth = conf->dequeue_depth,
 		.enqueue_depth = conf->enqueue_depth,
-		.new_event_threshold = conf->new_event_threshold
+		.new_event_threshold = conf->new_event_threshold,
+		.implicit_release = implicit_release
 	};
 
 	snprintf(ring_name, sizeof(ring_name), "dsw%d_p%u", dev->data->dev_id,
@@ -222,6 +227,7 @@ dsw_info_get(struct rte_eventdev *dev __rte_unused,
 		RTE_EVENT_DEV_CAP_ATOMIC |
 		RTE_EVENT_DEV_CAP_PARALLEL |
 		RTE_EVENT_DEV_CAP_DISTRIBUTED_SCHED|
+		RTE_EVENT_DEV_CAP_IMPLICIT_RELEASE_DISABLE|
 		RTE_EVENT_DEV_CAP_NONSEQ_MODE|
 		RTE_EVENT_DEV_CAP_MULTIPLE_QUEUE_PORT|
 		RTE_EVENT_DEV_CAP_CARRY_FLOW_ID
